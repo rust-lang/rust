@@ -302,7 +302,7 @@ impl<T: Send> Packet<T> {
             }
         };
         match ret {
-            // See the discussion in the stream implementation for why we we
+            // See the discussion in the stream implementation for why we
             // might decrement steals.
             Some(data) => {
                 if self.steals > MAX_STEALS {
@@ -486,14 +486,12 @@ impl<T: Send> Packet<T> {
 #[unsafe_destructor]
 impl<T: Send> Drop for Packet<T> {
     fn drop(&mut self) {
-        unsafe {
-            // Note that this load is not only an assert for correctness about
-            // disconnection, but also a proper fence before the read of
-            // `to_wake`, so this assert cannot be removed with also removing
-            // the `to_wake` assert.
-            assert_eq!(self.cnt.load(atomics::SeqCst), DISCONNECTED);
-            assert_eq!(self.to_wake.load(atomics::SeqCst), 0);
-            assert_eq!(self.channels.load(atomics::SeqCst), 0);
-        }
+        // Note that this load is not only an assert for correctness about
+        // disconnection, but also a proper fence before the read of
+        // `to_wake`, so this assert cannot be removed with also removing
+        // the `to_wake` assert.
+        assert_eq!(self.cnt.load(atomics::SeqCst), DISCONNECTED);
+        assert_eq!(self.to_wake.load(atomics::SeqCst), 0);
+        assert_eq!(self.channels.load(atomics::SeqCst), 0);
     }
 }

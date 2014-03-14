@@ -9,21 +9,23 @@
 // except according to those terms.
 
 use std::cell::RefCell;
-use std::hashmap::HashSet;
+use std::char;
+use std::io;
+use std::io::Process;
 use std::local_data;
 use std::os;
-use std::run;
 use std::str;
 
+use collections::HashSet;
+use testing;
 use extra::tempfile::TempDir;
-use extra::test;
 use rustc::back::link;
 use rustc::driver::driver;
 use rustc::driver::session;
 use rustc::metadata::creader::Loader;
-use getopts;
 use syntax::diagnostic;
 use syntax::parse;
+use syntax::codemap::CodeMap;
 
 use core;
 use clean;
@@ -33,24 +35,24 @@ use html::markdown;
 use passes;
 use visit_ast::RustdocVisitor;
 
-pub fn run(input: &str, matches: &getopts::Matches) -> int {
-    let parsesess = parse::new_parse_sess();
+pub fn run(input: &str, libs: @RefCell<HashSet<Path>>, mut test_args: ~[~str]) -> int {
     let input_path = Path::new(input);
     let input = driver::FileInput(input_path.clone());
-    let libs = matches.opt_strs("L").map(|s| Path::new(s.as_slice()));
-    let libs = @RefCell::new(libs.move_iter().collect());
 
     let sessopts = @session::Options {
         maybe_sysroot: Some(@os::self_exe_path().unwrap().dir_path()),
         addl_lib_search_paths: libs,
-        crate_types: ~[session::CrateTypeDylib],
+        crate_types: vec!(session::CrateTypeDylib),
         .. (*session::basic_options()).clone()
     };
 
 
-    let diagnostic_handler = diagnostic::mk_handler();
+    let cm = @CodeMap::new();
+    let diagnostic_handler = diagnostic::default_handler();
     let span_diagnostic_handler =
-        diagnostic::mk_span_handler(diagnostic_handler, parsesess.cm);
+        diagnostic::mk_span_handler(diagnostic_handler, cm);
+    let parsesess = parse::new_parse_sess_special_handler(span_diagnostic_handler,
+                                                          cm);
 
     let sess = driver::build_session_(sessopts,
                                       Some(input_path),
@@ -75,35 +77,27 @@ pub fn run(input: &str, matches: &getopts::Matches) -> int {
     let (krate, _) = passes::unindent_comments(krate);
     let (krate, _) = passes::collapse_docs(krate);
 
-    let mut collector = Collector {
-        tests: ~[],
-        names: ~[],
-        cnt: 0,
-        libs: libs,
-        cratename: krate.name.to_owned(),
-    };
+    let mut collector = Collector::new(krate.name.to_owned(), libs, false, false);
     collector.fold_crate(krate);
 
-    let args = matches.opt_strs("test-args");
-    let mut args = args.iter().flat_map(|s| s.words()).map(|s| s.to_owned());
-    let mut args = args.to_owned_vec();
-    args.unshift(~"rustdoctest");
+    test_args.unshift(~"rustdoctest");
 
-    test::test_main(args, collector.tests);
+    testing::test_main(test_args, collector.tests);
 
     0
 }
 
-fn runtest(test: &str, cratename: &str, libs: HashSet<Path>, should_fail: bool) {
-    let test = maketest(test, cratename);
+fn runtest(test: &str, cratename: &str, libs: HashSet<Path>, should_fail: bool,
+           no_run: bool, loose_feature_gating: bool) {
+    let test = maketest(test, cratename, loose_feature_gating);
     let parsesess = parse::new_parse_sess();
     let input = driver::StrInput(test);
 
     let sessopts = @session::Options {
         maybe_sysroot: Some(@os::self_exe_path().unwrap().dir_path()),
         addl_lib_search_paths: @RefCell::new(libs),
-        crate_types: ~[session::CrateTypeExecutable],
-        output_types: ~[link::OutputTypeExe],
+        crate_types: vec!(session::CrateTypeExecutable),
+        output_types: vec!(link::OutputTypeExe),
         cg: session::CodegenOptions {
             prefer_dynamic: true,
             .. session::basic_codegen_options()
@@ -111,7 +105,30 @@ fn runtest(test: &str, cratename: &str, libs: HashSet<Path>, should_fail: bool) 
         .. (*session::basic_options()).clone()
     };
 
-    let diagnostic_handler = diagnostic::mk_handler();
+    // Shuffle around a few input and output handles here. We're going to pass
+    // an explicit handle into rustc to collect output messages, but we also
+    // want to catch the error message that rustc prints when it fails.
+    //
+    // We take our task-local stderr (likely set by the test runner), and move
+    // it into another task. This helper task then acts as a sink for both the
+    // stderr of this task and stderr of rustc itself, copying all the info onto
+    // the stderr channel we originally started with.
+    //
+    // The basic idea is to not use a default_handler() for rustc, and then also
+    // not print things by default to the actual stderr.
+    let (tx, rx) = channel();
+    let w1 = io::ChanWriter::new(tx);
+    let w2 = w1.clone();
+    let old = io::stdio::set_stderr(~w1);
+    spawn(proc() {
+        let mut p = io::ChanReader::new(rx);
+        let mut err = old.unwrap_or(~io::stderr() as ~Writer);
+        io::util::copy(&mut p, &mut err).unwrap();
+    });
+    let emitter = diagnostic::EmitterWriter::new(~w2);
+
+    // Compile the code
+    let diagnostic_handler = diagnostic::mk_handler(~emitter);
     let span_diagnostic_handler =
         diagnostic::mk_span_handler(diagnostic_handler, parsesess.cm);
 
@@ -125,10 +142,16 @@ fn runtest(test: &str, cratename: &str, libs: HashSet<Path>, should_fail: bool) 
     let cfg = driver::build_configuration(sess);
     driver::compile_input(sess, cfg, &input, &out, &None);
 
+    if no_run { return }
+
+    // Run the code!
     let exe = outdir.path().join("rust_out");
-    let out = run::process_output(exe.as_str().unwrap(), []);
+    let out = Process::output(exe.as_str().unwrap(), []);
     match out {
-        Err(e) => fail!("couldn't run the test: {}", e),
+        Err(e) => fail!("couldn't run the test: {}{}", e,
+                        if e.kind == io::PermissionDenied {
+                            " - maybe your tempdir is mounted with noexec?"
+                        } else { "" }),
         Ok(out) => {
             if should_fail && out.status.success() {
                 fail!("test executable succeeded when it should have failed");
@@ -139,16 +162,28 @@ fn runtest(test: &str, cratename: &str, libs: HashSet<Path>, should_fail: bool) 
     }
 }
 
-fn maketest(s: &str, cratename: &str) -> ~str {
+fn maketest(s: &str, cratename: &str, loose_feature_gating: bool) -> ~str {
     let mut prog = ~r"
 #[deny(warnings)];
 #[allow(unused_variable, dead_assignment, unused_mut, attribute_usage, dead_code)];
+
+// FIXME: remove when ~[] disappears from tests.
+#[allow(deprecated_owned_vector)];
 ";
-    if s.contains("extra") {
-        prog.push_str("extern crate extra;\n");
+
+    if loose_feature_gating {
+        // FIXME #12773: avoid inserting these when the tutorial & manual
+        // etc. have been updated to not use them so prolifically.
+        prog.push_str("#[ feature(macro_rules, globs, struct_variant, managed_boxes) ];\n");
     }
-    if s.contains(cratename) {
-        prog.push_str(format!("extern crate {};\n", cratename));
+
+    if !s.contains("extern crate") {
+        if s.contains("extra") {
+            prog.push_str("extern crate extra;\n");
+        }
+        if s.contains(cratename) {
+            prog.push_str(format!("extern crate {};\n", cratename));
+        }
     }
     if s.contains("fn main") {
         prog.push_str(s);
@@ -162,32 +197,75 @@ fn maketest(s: &str, cratename: &str) -> ~str {
 }
 
 pub struct Collector {
-    priv tests: ~[test::TestDescAndFn],
+    tests: ~[testing::TestDescAndFn],
     priv names: ~[~str],
     priv libs: @RefCell<HashSet<Path>>,
     priv cnt: uint,
+    priv use_headers: bool,
+    priv current_header: Option<~str>,
     priv cratename: ~str,
+
+    priv loose_feature_gating: bool
 }
 
 impl Collector {
-    pub fn add_test(&mut self, test: &str, should_fail: bool) {
-        let test = test.to_owned();
-        let name = format!("{}_{}", self.names.connect("::"), self.cnt);
+    pub fn new(cratename: ~str, libs: @RefCell<HashSet<Path>>,
+               use_headers: bool, loose_feature_gating: bool) -> Collector {
+        Collector {
+            tests: ~[],
+            names: ~[],
+            libs: libs,
+            cnt: 0,
+            use_headers: use_headers,
+            current_header: None,
+            cratename: cratename,
+
+            loose_feature_gating: loose_feature_gating
+        }
+    }
+
+    pub fn add_test(&mut self, test: ~str, should_fail: bool, no_run: bool) {
+        let name = if self.use_headers {
+            let s = self.current_header.as_ref().map(|s| s.as_slice()).unwrap_or("");
+            format!("{}_{}", s, self.cnt)
+        } else {
+            format!("{}_{}", self.names.connect("::"), self.cnt)
+        };
         self.cnt += 1;
         let libs = self.libs.borrow();
         let libs = (*libs.get()).clone();
         let cratename = self.cratename.to_owned();
+        let loose_feature_gating = self.loose_feature_gating;
         debug!("Creating test {}: {}", name, test);
-        self.tests.push(test::TestDescAndFn {
-            desc: test::TestDesc {
-                name: test::DynTestName(name),
+        self.tests.push(testing::TestDescAndFn {
+            desc: testing::TestDesc {
+                name: testing::DynTestName(name),
                 ignore: false,
                 should_fail: false, // compiler failures are test failures
             },
-            testfn: test::DynTestFn(proc() {
-                runtest(test, cratename, libs, should_fail);
+            testfn: testing::DynTestFn(proc() {
+                runtest(test, cratename, libs, should_fail, no_run, loose_feature_gating);
             }),
         });
+    }
+
+    pub fn register_header(&mut self, name: &str, level: u32) {
+        if self.use_headers && level == 1 {
+            // we use these headings as test names, so it's good if
+            // they're valid identifiers.
+            let name = name.chars().enumerate().map(|(i, c)| {
+                    if (i == 0 && char::is_XID_start(c)) ||
+                        (i != 0 && char::is_XID_continue(c)) {
+                        c
+                    } else {
+                        '_'
+                    }
+                }).collect::<~str>();
+
+            // new header => reset count.
+            self.cnt = 0;
+            self.current_header = Some(name);
+        }
     }
 }
 
@@ -201,7 +279,7 @@ impl DocFolder for Collector {
         match item.doc_value() {
             Some(doc) => {
                 self.cnt = 0;
-                markdown::find_testable_code(doc, self);
+                markdown::find_testable_code(doc, &mut *self);
             }
             None => {}
         }

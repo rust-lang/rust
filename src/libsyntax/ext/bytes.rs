@@ -17,14 +17,15 @@ use ext::base;
 use ext::build::AstBuilder;
 
 use std::char;
+use std::vec_ng::Vec;
 
 pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree]) -> base::MacResult {
     // Gather all argument expressions
     let exprs = match get_exprs_from_tts(cx, sp, tts) {
-        None => return MacResult::dummy_expr(),
+        None => return MacResult::dummy_expr(sp),
         Some(e) => e,
     };
-    let mut bytes = ~[];
+    let mut bytes = Vec::new();
 
     for expr in exprs.iter() {
         match expr.node {

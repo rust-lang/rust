@@ -53,7 +53,7 @@
 // leading to fairly decent performance for both native threads and green
 // threads on various workloads (uncontended and contended).
 //
-// The crux of this implementation is an atomic work which is CAS'd on many many
+// The crux of this implementation is an atomic work which is CAS'd on many
 // times in order to manage a few flags about who's blocking where and whether
 // it's locked or not.
 
@@ -94,7 +94,7 @@ pub struct Mutex {
     priv lock: StaticMutex,
 }
 
-#[deriving(Eq)]
+#[deriving(Eq, Show)]
 enum Flavor {
     Unlocked,
     TryLockAcquisition,
@@ -532,17 +532,17 @@ mod test {
             }
         }
 
-        let (p, c) = Chan::new();
+        let (tx, rx) = channel();
         for _ in range(0, N) {
-            let c2 = c.clone();
-            native::task::spawn(proc() { inc(); c2.send(()); });
-            let c2 = c.clone();
-            spawn(proc() { inc(); c2.send(()); });
+            let tx2 = tx.clone();
+            native::task::spawn(proc() { inc(); tx2.send(()); });
+            let tx2 = tx.clone();
+            spawn(proc() { inc(); tx2.send(()); });
         }
 
-        drop(c);
+        drop(tx);
         for _ in range(0, 2 * N) {
-            p.recv();
+            rx.recv();
         }
         assert_eq!(unsafe {CNT}, M * N * 2);
         unsafe {

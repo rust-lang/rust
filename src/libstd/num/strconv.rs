@@ -21,7 +21,7 @@ use str;
 use vec::{CloneableVector, ImmutableVector, MutableVector};
 use vec::OwnedVector;
 use num;
-use num::{NumCast, Zero, One, cast, Integer};
+use num::{NumCast, Zero, One, cast, Int};
 use num::{Round, Float, FPNaN, FPInfinite, ToPrimitive};
 
 pub enum ExponentFormat {
@@ -133,19 +133,7 @@ static NAN_BUF:          [u8, ..3] = ['N' as u8, 'a' as u8, 'N' as u8];
  * # Failure
  * - Fails if `radix` < 2 or `radix` > 36.
  */
-pub fn int_to_str_bytes_common<T:NumCast
-                                +Zero
-                                +Eq
-                                +Ord
-                                +Integer
-                                +Div<T,T>
-                                +Neg<T>
-                                +Rem<T,T>
-                                +Mul<T,T>>(
-                                num: T,
-                                radix: uint,
-                                sign: SignFormat,
-                                f: |u8|) {
+pub fn int_to_str_bytes_common<T: Int>(num: T, radix: uint, sign: SignFormat, f: |u8|) {
     assert!(2 <= radix && radix <= 36);
 
     let _0: T = Zero::zero();
@@ -544,19 +532,19 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Div<T,T>+
         ) -> Option<T> {
     match exponent {
         ExpDec if radix >= DIGIT_E_RADIX       // decimal exponent 'e'
-          => fail!("from_str_bytes_common: radix {:?} incompatible with \
+          => fail!("from_str_bytes_common: radix {} incompatible with \
                     use of 'e' as decimal exponent", radix),
         ExpBin if radix >= DIGIT_P_RADIX       // binary exponent 'p'
-          => fail!("from_str_bytes_common: radix {:?} incompatible with \
+          => fail!("from_str_bytes_common: radix {} incompatible with \
                     use of 'p' as binary exponent", radix),
         _ if special && radix >= DIGIT_I_RADIX // first digit of 'inf'
-          => fail!("from_str_bytes_common: radix {:?} incompatible with \
+          => fail!("from_str_bytes_common: radix {} incompatible with \
                     special values 'inf' and 'NaN'", radix),
         _ if (radix as int) < 2
-          => fail!("from_str_bytes_common: radix {:?} to low, \
+          => fail!("from_str_bytes_common: radix {} to low, \
                     must lie in the range [2, 36]", radix),
         _ if (radix as int) > 36
-          => fail!("from_str_bytes_common: radix {:?} to high, \
+          => fail!("from_str_bytes_common: radix {} to high, \
                     must lie in the range [2, 36]", radix),
         _ => ()
     }
@@ -803,24 +791,89 @@ mod test {
 
 #[cfg(test)]
 mod bench {
-    use extra::test::BenchHarness;
-    use rand::{XorShiftRng, Rng};
-    use to_str::ToStr;
-    use f64;
+    extern crate test;
 
-    #[bench]
-    fn uint_to_str_rand(bh: &mut BenchHarness) {
-        let mut rng = XorShiftRng::new();
-        bh.iter(|| {
-            rng.gen::<uint>().to_str();
-        })
+    mod uint {
+        use super::test::BenchHarness;
+        use rand::{XorShiftRng, Rng};
+        use num::ToStrRadix;
+
+        #[bench]
+        fn to_str_bin(bh: &mut BenchHarness) {
+            let mut rng = XorShiftRng::new();
+            bh.iter(|| { rng.gen::<uint>().to_str_radix(2); })
+        }
+
+        #[bench]
+        fn to_str_oct(bh: &mut BenchHarness) {
+            let mut rng = XorShiftRng::new();
+            bh.iter(|| { rng.gen::<uint>().to_str_radix(8); })
+        }
+
+        #[bench]
+        fn to_str_dec(bh: &mut BenchHarness) {
+            let mut rng = XorShiftRng::new();
+            bh.iter(|| { rng.gen::<uint>().to_str_radix(10); })
+        }
+
+        #[bench]
+        fn to_str_hex(bh: &mut BenchHarness) {
+            let mut rng = XorShiftRng::new();
+            bh.iter(|| { rng.gen::<uint>().to_str_radix(16); })
+        }
+
+        #[bench]
+        fn to_str_base_36(bh: &mut BenchHarness) {
+            let mut rng = XorShiftRng::new();
+            bh.iter(|| { rng.gen::<uint>().to_str_radix(36); })
+        }
     }
 
-    #[bench]
-    fn float_to_str_rand(bh: &mut BenchHarness) {
-        let mut rng = XorShiftRng::new();
-        bh.iter(|| {
-            f64::to_str(rng.gen());
-        })
+    mod int {
+        use super::test::BenchHarness;
+        use rand::{XorShiftRng, Rng};
+        use num::ToStrRadix;
+
+        #[bench]
+        fn to_str_bin(bh: &mut BenchHarness) {
+            let mut rng = XorShiftRng::new();
+            bh.iter(|| { rng.gen::<int>().to_str_radix(2); })
+        }
+
+        #[bench]
+        fn to_str_oct(bh: &mut BenchHarness) {
+            let mut rng = XorShiftRng::new();
+            bh.iter(|| { rng.gen::<int>().to_str_radix(8); })
+        }
+
+        #[bench]
+        fn to_str_dec(bh: &mut BenchHarness) {
+            let mut rng = XorShiftRng::new();
+            bh.iter(|| { rng.gen::<int>().to_str_radix(10); })
+        }
+
+        #[bench]
+        fn to_str_hex(bh: &mut BenchHarness) {
+            let mut rng = XorShiftRng::new();
+            bh.iter(|| { rng.gen::<int>().to_str_radix(16); })
+        }
+
+        #[bench]
+        fn to_str_base_36(bh: &mut BenchHarness) {
+            let mut rng = XorShiftRng::new();
+            bh.iter(|| { rng.gen::<int>().to_str_radix(36); })
+        }
+    }
+
+    mod f64 {
+        use super::test::BenchHarness;
+        use rand::{XorShiftRng, Rng};
+        use f64;
+
+        #[bench]
+        fn float_to_str(bh: &mut BenchHarness) {
+            let mut rng = XorShiftRng::new();
+            bh.iter(|| { f64::to_str(rng.gen()); })
+        }
     }
 }

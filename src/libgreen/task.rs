@@ -18,6 +18,7 @@
 //! contains the rust task itself in order to juggle around ownership of the
 //! values.
 
+use std::any::Any;
 use std::cast;
 use std::rt::env;
 use std::rt::Runtime;
@@ -26,7 +27,7 @@ use std::rt::rtio;
 use std::rt::task::{Task, BlockedTask, SendMessage};
 use std::task::TaskOpts;
 use std::unstable::mutex::NativeMutex;
-use std::unstable::raw;
+use std::raw;
 
 use context::Context;
 use coroutine::Coroutine;
@@ -266,7 +267,7 @@ impl GreenTask {
     // context switches
 
     pub fn as_uint(&self) -> uint {
-        unsafe { cast::transmute(self) }
+        self as *GreenTask as uint
     }
 
     pub unsafe fn from_uint(val: uint) -> ~GreenTask { cast::transmute(val) }
@@ -499,21 +500,21 @@ mod tests {
 
     #[test]
     fn smoke() {
-        let (p, c) = Chan::new();
+        let (tx, rx) = channel();
         spawn_opts(TaskOpts::new(), proc() {
-            c.send(());
+            tx.send(());
         });
-        p.recv();
+        rx.recv();
     }
 
     #[test]
     fn smoke_fail() {
-        let (p, c) = Chan::<()>::new();
+        let (tx, rx) = channel::<int>();
         spawn_opts(TaskOpts::new(), proc() {
-            let _c = c;
+            let _tx = tx;
             fail!()
         });
-        assert_eq!(p.recv_opt(), None);
+        assert_eq!(rx.recv_opt(), None);
     }
 
     #[test]
@@ -521,55 +522,54 @@ mod tests {
         let mut opts = TaskOpts::new();
         opts.name = Some("test".into_maybe_owned());
         opts.stack_size = Some(20 * 4096);
-        let (p, c) = Chan::new();
-        opts.notify_chan = Some(c);
+        let (tx, rx) = channel();
+        opts.notify_chan = Some(tx);
         spawn_opts(opts, proc() {});
-        assert!(p.recv().is_ok());
+        assert!(rx.recv().is_ok());
     }
 
     #[test]
     fn smoke_opts_fail() {
         let mut opts = TaskOpts::new();
-        let (p, c) = Chan::new();
-        opts.notify_chan = Some(c);
+        let (tx, rx) = channel();
+        opts.notify_chan = Some(tx);
         spawn_opts(opts, proc() { fail!() });
-        assert!(p.recv().is_err());
+        assert!(rx.recv().is_err());
     }
 
     #[test]
     fn yield_test() {
-        let (p, c) = Chan::new();
+        let (tx, rx) = channel();
         spawn_opts(TaskOpts::new(), proc() {
             for _ in range(0, 10) { task::deschedule(); }
-            c.send(());
+            tx.send(());
         });
-        p.recv();
+        rx.recv();
     }
 
     #[test]
     fn spawn_children() {
-        let (p, c) = Chan::new();
+        let (tx1, rx) = channel();
         spawn_opts(TaskOpts::new(), proc() {
-            let (p, c2) = Chan::new();
+            let (tx2, rx) = channel();
             spawn(proc() {
-                let (p, c3) = Chan::new();
+                let (tx3, rx) = channel();
                 spawn(proc() {
-                    c3.send(());
+                    tx3.send(());
                 });
-                p.recv();
-                c2.send(());
+                rx.recv();
+                tx2.send(());
             });
-            p.recv();
-            c.send(());
+            rx.recv();
+            tx1.send(());
         });
-        p.recv();
+        rx.recv();
     }
 
     #[test]
     fn spawn_inherits() {
-        let (p, c) = Chan::new();
+        let (tx, rx) = channel();
         spawn_opts(TaskOpts::new(), proc() {
-            let c = c;
             spawn(proc() {
                 let mut task: ~Task = Local::take();
                 match task.maybe_take_runtime::<GreenTask>() {
@@ -579,9 +579,9 @@ mod tests {
                     None => fail!(),
                 }
                 Local::put(task);
-                c.send(());
+                tx.send(());
             });
         });
-        p.recv();
+        rx.recv();
     }
 }

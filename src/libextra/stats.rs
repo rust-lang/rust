@@ -10,11 +10,11 @@
 
 #[allow(missing_doc)];
 
-use std::cmp;
-use std::hashmap;
+use std::hash::Hash;
 use std::io;
 use std::mem;
 use std::num;
+use collections::hashmap;
 
 // NB: this can probably be rewritten in terms of num::Num
 // to be less f64-specific.
@@ -103,7 +103,7 @@ pub trait Stats {
     fn median_abs_dev_pct(self) -> f64;
 
     /// Percentile: the value below which `pct` percent of the values in `self` fall. For example,
-    /// percentile(95.0) will return the value `v` such that that 95% of the samples `s` in `self`
+    /// percentile(95.0) will return the value `v` such that 95% of the samples `s` in `self`
     /// satisfy `s <= v`.
     ///
     /// Calculated by linear interpolation between closest ranks.
@@ -202,12 +202,12 @@ impl<'a> Stats for &'a [f64] {
 
     fn min(self) -> f64 {
         assert!(self.len() != 0);
-        self.iter().fold(self[0], |p,q| cmp::min(p, *q))
+        self.iter().fold(self[0], |p, q| p.min(*q))
     }
 
     fn max(self) -> f64 {
         assert!(self.len() != 0);
-        self.iter().fold(self[0], |p,q| cmp::max(p, *q))
+        self.iter().fold(self[0], |p, q| p.max(*q))
     }
 
     fn mean(self) -> f64 {
@@ -376,48 +376,48 @@ pub fn write_boxplot(w: &mut io::Writer, s: &Summary,
     let range_width = width_hint - overhead_width;;
     let char_step = range / (range_width as f64);
 
-    if_ok!(write!(w, "{} |", lostr));
+    try!(write!(w, "{} |", lostr));
 
     let mut c = 0;
     let mut v = lo;
 
     while c < range_width && v < s.min {
-        if_ok!(write!(w, " "));
+        try!(write!(w, " "));
         v += char_step;
         c += 1;
     }
-    if_ok!(write!(w, "["));
+    try!(write!(w, "["));
     c += 1;
     while c < range_width && v < q1 {
-        if_ok!(write!(w, "-"));
+        try!(write!(w, "-"));
         v += char_step;
         c += 1;
     }
     while c < range_width && v < q2 {
-        if_ok!(write!(w, "*"));
+        try!(write!(w, "*"));
         v += char_step;
         c += 1;
     }
-    if_ok!(write!(w, r"\#"));
+    try!(write!(w, r"\#"));
     c += 1;
     while c < range_width && v < q3 {
-        if_ok!(write!(w, "*"));
+        try!(write!(w, "*"));
         v += char_step;
         c += 1;
     }
     while c < range_width && v < s.max {
-        if_ok!(write!(w, "-"));
+        try!(write!(w, "-"));
         v += char_step;
         c += 1;
     }
-    if_ok!(write!(w, "]"));
+    try!(write!(w, "]"));
     while c < range_width {
-        if_ok!(write!(w, " "));
+        try!(write!(w, " "));
         v += char_step;
         c += 1;
     }
 
-    if_ok!(write!(w, "| {}", histr));
+    try!(write!(w, "| {}", histr));
     Ok(())
 }
 
@@ -441,6 +441,7 @@ mod tests {
     use stats::write_boxplot;
     use std::io;
     use std::str;
+    use std::f64;
 
     macro_rules! assert_approx_eq(
         ($a:expr, $b:expr) => ({
@@ -478,6 +479,14 @@ mod tests {
 
         assert_eq!(summ.quartiles, summ2.quartiles);
         assert_eq!(summ.iqr, summ2.iqr);
+    }
+
+    #[test]
+    fn test_min_max_nan() {
+        let xs = &[1.0, 2.0, f64::NAN, 3.0, 4.0];
+        let summary = Summary::new(xs);
+        assert_eq!(summary.min, 1.0);
+        assert_eq!(summary.max, 4.0);
     }
 
     #[test]
@@ -1025,7 +1034,8 @@ mod tests {
 
 #[cfg(test)]
 mod bench {
-    use extra::test::BenchHarness;
+    extern crate test;
+    use self::test::BenchHarness;
     use std::vec;
     use stats::Stats;
 

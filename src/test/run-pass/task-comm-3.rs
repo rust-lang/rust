@@ -16,7 +16,7 @@ use std::task;
 
 pub fn main() { info!("===== WITHOUT THREADS ====="); test00(); }
 
-fn test00_start(ch: &Chan<int>, message: int, count: int) {
+fn test00_start(ch: &Sender<int>, message: int, count: int) {
     info!("Starting test00_start");
     let mut i: int = 0;
     while i < count {
@@ -33,21 +33,20 @@ fn test00() {
 
     info!("Creating tasks");
 
-    let (po, ch) = Chan::new();
+    let (tx, rx) = channel();
 
     let mut i: int = 0;
 
     // Create and spawn tasks...
     let mut results = ~[];
     while i < number_of_tasks {
-        let ch = ch.clone();
+        let tx = tx.clone();
         let mut builder = task::task();
         results.push(builder.future_result());
         builder.spawn({
-            let ch = ch;
             let i = i;
             proc() {
-                test00_start(&ch, i, number_of_messages)
+                test00_start(&tx, i, number_of_messages)
             }
         });
         i = i + 1;
@@ -58,7 +57,7 @@ fn test00() {
     for _r in results.iter() {
         i = 0;
         while i < number_of_messages {
-            let value = po.recv();
+            let value = rx.recv();
             sum += value;
             i = i + 1;
         }

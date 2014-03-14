@@ -27,6 +27,7 @@
 #[crate_type = "rlib"];
 #[crate_type = "dylib"];
 #[license = "MIT/ASL2"];
+#[allow(deprecated_owned_vector)];
 
 use std::cell::Cell;
 use std::{cmp, os, path};
@@ -165,12 +166,12 @@ fn list_dir_sorted(path: &Path) -> ~[Path] {
 /**
  * A compiled Unix shell style pattern.
  */
-#[deriving(Clone, Eq, TotalEq, Ord, TotalOrd, IterBytes, Default)]
+#[deriving(Clone, Eq, TotalEq, Ord, TotalOrd, Hash, Default)]
 pub struct Pattern {
     priv tokens: ~[PatternToken]
 }
 
-#[deriving(Clone, Eq, TotalEq, Ord, TotalOrd, IterBytes)]
+#[deriving(Clone, Eq, TotalEq, Ord, TotalOrd, Hash)]
 enum PatternToken {
     Char(char),
     AnyChar,
@@ -179,7 +180,7 @@ enum PatternToken {
     AnyExcept(~[CharSpecifier])
 }
 
-#[deriving(Clone, Eq, TotalEq, Ord, TotalOrd, IterBytes)]
+#[deriving(Clone, Eq, TotalEq, Ord, TotalOrd, Hash)]
 enum CharSpecifier {
     SingleChar(char),
     CharRange(char, char)
@@ -369,11 +370,11 @@ impl Pattern {
                             return EntirePatternDoesntMatch;
                         }
 
-                        let (c, next) = file.slice_shift_char();
-                        if require_literal(c) {
+                        let (some_c, next) = file.slice_shift_char();
+                        if require_literal(some_c.unwrap()) {
                             return SubPatternDoesntMatch;
                         }
-                        prev_char.set(Some(c));
+                        prev_char.set(some_c);
                         file = next;
                     }
                 }
@@ -382,7 +383,8 @@ impl Pattern {
                         return EntirePatternDoesntMatch;
                     }
 
-                    let (c, next) = file.slice_shift_char();
+                    let (some_c, next) = file.slice_shift_char();
+                    let c = some_c.unwrap();
                     let matches = match *token {
                         AnyChar => {
                             !require_literal(c)
@@ -403,7 +405,7 @@ impl Pattern {
                     if !matches {
                         return SubPatternDoesntMatch;
                     }
-                    prev_char.set(Some(c));
+                    prev_char.set(some_c);
                     file = next;
                 }
             }
@@ -490,7 +492,7 @@ fn chars_eq(a: char, b: char, case_sensitive: bool) -> bool {
 /**
  * Configuration options to modify the behaviour of `Pattern::matches_with(..)`
  */
-#[deriving(Clone, Eq, TotalEq, Ord, TotalOrd, IterBytes, Default)]
+#[deriving(Clone, Eq, TotalEq, Ord, TotalOrd, Hash, Default)]
 pub struct MatchOptions {
 
     /**

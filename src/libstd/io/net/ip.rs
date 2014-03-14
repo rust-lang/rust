@@ -8,59 +8,60 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[allow(missing_doc)];
+
 use container::Container;
+use fmt;
 use from_str::FromStr;
 use iter::Iterator;
 use option::{Option, None, Some};
 use str::StrSlice;
-use to_str::ToStr;
-use to_bytes::IterBytes;
 use vec::{MutableCloneableVector, ImmutableVector, MutableVector};
 
 pub type Port = u16;
 
-#[deriving(Eq, TotalEq, Clone, IterBytes)]
+#[deriving(Eq, TotalEq, Clone, Hash)]
 pub enum IpAddr {
     Ipv4Addr(u8, u8, u8, u8),
     Ipv6Addr(u16, u16, u16, u16, u16, u16, u16, u16)
 }
 
-impl ToStr for IpAddr {
-    fn to_str(&self) -> ~str {
+impl fmt::Show for IpAddr {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             Ipv4Addr(a, b, c, d) =>
-                format!("{}.{}.{}.{}", a, b, c, d),
+                write!(fmt.buf, "{}.{}.{}.{}", a, b, c, d),
 
             // Ipv4 Compatible address
             Ipv6Addr(0, 0, 0, 0, 0, 0, g, h) => {
-                format!("::{}.{}.{}.{}", (g >> 8) as u8, g as u8,
-                        (h >> 8) as u8, h as u8)
+                write!(fmt.buf, "::{}.{}.{}.{}", (g >> 8) as u8, g as u8,
+                       (h >> 8) as u8, h as u8)
             }
 
             // Ipv4-Mapped address
             Ipv6Addr(0, 0, 0, 0, 0, 0xFFFF, g, h) => {
-                format!("::FFFF:{}.{}.{}.{}", (g >> 8) as u8, g as u8,
-                        (h >> 8) as u8, h as u8)
+                write!(fmt.buf, "::FFFF:{}.{}.{}.{}", (g >> 8) as u8, g as u8,
+                       (h >> 8) as u8, h as u8)
             }
 
             Ipv6Addr(a, b, c, d, e, f, g, h) =>
-                format!("{:x}:{:x}:{:x}:{:x}:{:x}:{:x}:{:x}:{:x}", a, b, c, d, e, f, g, h)
+                write!(fmt.buf, "{:x}:{:x}:{:x}:{:x}:{:x}:{:x}:{:x}:{:x}",
+                       a, b, c, d, e, f, g, h)
         }
     }
 }
 
-#[deriving(Eq, TotalEq, Clone, IterBytes)]
+#[deriving(Eq, TotalEq, Clone, Hash)]
 pub struct SocketAddr {
     ip: IpAddr,
     port: Port,
 }
 
-
-impl ToStr for SocketAddr {
-    fn to_str(&self) -> ~str {
+impl fmt::Show for SocketAddr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.ip {
-            Ipv4Addr(..) => format!("{}:{}", self.ip.to_str(), self.port),
-            Ipv6Addr(..) => format!("[{}]:{}", self.ip.to_str(), self.port),
+            Ipv4Addr(..) => write!(f.buf, "{}:{}", self.ip, self.port),
+            Ipv6Addr(..) => write!(f.buf, "[{}]:{}", self.ip, self.port),
         }
     }
 }
@@ -340,7 +341,7 @@ impl FromStr for SocketAddr {
 mod test {
     use prelude::*;
     use super::*;
-    use to_bytes::ToBytes;
+    use from_str::FromStr;
 
     #[test]
     fn test_from_str_ipv4() {
@@ -441,15 +442,5 @@ mod test {
         let a1 = Ipv6Addr(0, 0, 0, 0, 0, 0xffff, 0xc000, 0x280);
         assert!(a1.to_str() == ~"::ffff:192.0.2.128" || a1.to_str() == ~"::FFFF:192.0.2.128");
         assert_eq!(Ipv6Addr(8, 9, 10, 11, 12, 13, 14, 15).to_str(), ~"8:9:a:b:c:d:e:f");
-    }
-
-    #[test]
-    fn ipv4_addr_to_bytes() {
-        Ipv4Addr(123, 20, 12, 56).to_bytes(true);
-    }
-
-    #[test]
-    fn socket_addr_to_bytes() {
-        SocketAddr { ip: Ipv4Addr(1, 2, 3, 4), port: 1234 }.to_bytes(true);
     }
 }

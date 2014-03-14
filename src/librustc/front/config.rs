@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
+use std::vec_ng::Vec;
 use syntax::fold::Folder;
 use syntax::{ast, fold, attr};
 use syntax::codemap;
@@ -21,7 +21,7 @@ struct Context<'a> {
 // any items that do not belong in the current configuration
 pub fn strip_unconfigured_items(krate: ast::Crate) -> ast::Crate {
     let config = krate.config.clone();
-    strip_items(krate, |attrs| in_cfg(config, attrs))
+    strip_items(krate, |attrs| in_cfg(config.as_slice(), attrs))
 }
 
 impl<'a> fold::Folder for Context<'a> {
@@ -58,7 +58,7 @@ fn filter_view_item<'r>(cx: &Context, view_item: &'r ast::ViewItem)
 }
 
 fn fold_mod(cx: &mut Context, m: &ast::Mod) -> ast::Mod {
-    let filtered_items: ~[&@ast::Item] = m.items.iter()
+    let filtered_items: Vec<&@ast::Item> = m.items.iter()
             .filter(|&a| item_in_cfg(cx, *a))
             .collect();
     let flattened_items = filtered_items.move_iter()
@@ -117,7 +117,7 @@ fn fold_item_underscore(cx: &mut Context, item: &ast::Item_) -> ast::Item_ {
         ast::ItemEnum(ref def, ref generics) => {
             let mut variants = def.variants.iter().map(|c| c.clone()).
             filter_map(|v| {
-                if !(cx.in_cfg)(v.node.attrs) {
+                if !(cx.in_cfg)(v.node.attrs.as_slice()) {
                     None
                 } else {
                     Some(match v.node.kind {
@@ -147,7 +147,7 @@ fn fold_item_underscore(cx: &mut Context, item: &ast::Item_) -> ast::Item_ {
 
 fn fold_struct(cx: &Context, def: &ast::StructDef) -> @ast::StructDef {
     let mut fields = def.fields.iter().map(|c| c.clone()).filter(|m| {
-        (cx.in_cfg)(m.node.attrs)
+        (cx.in_cfg)(m.node.attrs.as_slice())
     });
     @ast::StructDef {
         fields: fields.collect(),
@@ -170,7 +170,7 @@ fn retain_stmt(cx: &Context, stmt: @ast::Stmt) -> bool {
 }
 
 fn fold_block(cx: &mut Context, b: ast::P<ast::Block>) -> ast::P<ast::Block> {
-    let resulting_stmts: ~[&@ast::Stmt] =
+    let resulting_stmts: Vec<&@ast::Stmt> =
         b.stmts.iter().filter(|&a| retain_stmt(cx, *a)).collect();
     let resulting_stmts = resulting_stmts.move_iter()
         .flat_map(|&stmt| cx.fold_stmt(stmt).move_iter())
@@ -189,25 +189,25 @@ fn fold_block(cx: &mut Context, b: ast::P<ast::Block>) -> ast::P<ast::Block> {
 }
 
 fn item_in_cfg(cx: &Context, item: &ast::Item) -> bool {
-    return (cx.in_cfg)(item.attrs);
+    return (cx.in_cfg)(item.attrs.as_slice());
 }
 
 fn foreign_item_in_cfg(cx: &Context, item: &ast::ForeignItem) -> bool {
-    return (cx.in_cfg)(item.attrs);
+    return (cx.in_cfg)(item.attrs.as_slice());
 }
 
 fn view_item_in_cfg(cx: &Context, item: &ast::ViewItem) -> bool {
-    return (cx.in_cfg)(item.attrs);
+    return (cx.in_cfg)(item.attrs.as_slice());
 }
 
 fn method_in_cfg(cx: &Context, meth: &ast::Method) -> bool {
-    return (cx.in_cfg)(meth.attrs);
+    return (cx.in_cfg)(meth.attrs.as_slice());
 }
 
 fn trait_method_in_cfg(cx: &Context, meth: &ast::TraitMethod) -> bool {
     match *meth {
-        ast::Required(ref meth) => (cx.in_cfg)(meth.attrs),
-        ast::Provided(meth) => (cx.in_cfg)(meth.attrs)
+        ast::Required(ref meth) => (cx.in_cfg)(meth.attrs.as_slice()),
+        ast::Provided(meth) => (cx.in_cfg)(meth.attrs.as_slice())
     }
 }
 

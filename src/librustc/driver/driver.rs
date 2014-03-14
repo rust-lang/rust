@@ -11,7 +11,8 @@
 
 use back::link;
 use back::{arm, x86, x86_64, mips};
-use driver::session::{Aggressive, CrateTypeExecutable};
+use driver::session::{Aggressive, CrateTypeExecutable, CrateType,
+                      FullDebugInfo, LimitedDebugInfo, NoDebugInfo};
 use driver::session::{Session, Session_, No, Less, Default};
 use driver::session;
 use front;
@@ -26,14 +27,18 @@ use middle::{trans, freevars, kind, ty, typeck, lint, astencode, reachable};
 use middle;
 use util::common::time;
 use util::ppaux;
+use util::nodemap::NodeSet;
+
+use serialize::{json, Encodable};
 
 use std::cell::{Cell, RefCell};
-use std::hashmap::{HashMap,HashSet};
 use std::io;
 use std::io::fs;
 use std::io::MemReader;
 use std::os;
-use std::vec;
+use std::vec_ng::Vec;
+use std::vec_ng;
+use collections::HashMap;
 use getopts::{optopt, optmulti, optflag, optflagopt};
 use getopts;
 use syntax::ast;
@@ -99,15 +104,15 @@ pub fn default_configuration(sess: Session) ->
     };
 
     let mk = attr::mk_name_value_item_str;
-    return ~[ // Target bindings.
+    return vec!(// Target bindings.
          attr::mk_word_item(fam.clone()),
          mk(InternedString::new("target_os"), tos),
          mk(InternedString::new("target_family"), fam),
          mk(InternedString::new("target_arch"), InternedString::new(arch)),
          mk(InternedString::new("target_endian"), InternedString::new(end)),
          mk(InternedString::new("target_word_size"),
-            InternedString::new(wordsz)),
-    ];
+            InternedString::new(wordsz))
+    );
 }
 
 pub fn append_configuration(cfg: &mut ast::CrateConfig,
@@ -117,8 +122,7 @@ pub fn append_configuration(cfg: &mut ast::CrateConfig,
     }
 }
 
-pub fn build_configuration(sess: Session) ->
-   ast::CrateConfig {
+pub fn build_configuration(sess: Session) -> ast::CrateConfig {
     // Combine the configuration requested by the session (command line) with
     // some default and generated configuration items
     let default_cfg = default_configuration(sess);
@@ -133,15 +137,19 @@ pub fn build_configuration(sess: Session) ->
     } else {
         InternedString::new("nogc")
     });
-    return vec::append(user_cfg, default_cfg);
+    return vec_ng::append(user_cfg.move_iter().collect(),
+                          default_cfg.as_slice());
 }
 
 // Convert strings provided as --cfg [cfgspec] into a crate_cfg
-fn parse_cfgspecs(cfgspecs: ~[~str])
+fn parse_cfgspecs(cfgspecs: Vec<~str> )
                   -> ast::CrateConfig {
     cfgspecs.move_iter().map(|s| {
         let sess = parse::new_parse_sess();
-        parse::parse_meta_from_source_str("cfgspec".to_str(), s, ~[], sess)
+        parse::parse_meta_from_source_str("cfgspec".to_str(),
+                                          s,
+                                          Vec::new(),
+                                          sess)
     }).collect::<ast::CrateConfig>()
 }
 
@@ -154,7 +162,7 @@ pub enum Input {
 
 pub fn phase_1_parse_input(sess: Session, cfg: ast::CrateConfig, input: &Input)
     -> ast::Crate {
-    time(sess.time_passes(), "parsing", (), |_| {
+    let krate = time(sess.time_passes(), "parsing", (), |_| {
         match *input {
             FileInput(ref file) => {
                 parse::parse_crate_from_file(&(*file), cfg.clone(), sess.parse_sess)
@@ -166,7 +174,15 @@ pub fn phase_1_parse_input(sess: Session, cfg: ast::CrateConfig, input: &Input)
                                                    sess.parse_sess)
             }
         }
-    })
+    });
+
+    if sess.opts.debugging_opts & session::AST_JSON_NOEXPAND != 0 {
+        let mut stdout = io::stdout();
+        let mut json = json::PrettyEncoder::new(&mut stdout);
+        krate.encode(&mut json);
+    }
+
+    krate
 }
 
 // For continuing compilation after a parsed crate has been
@@ -183,7 +199,9 @@ pub fn phase_2_configure_and_expand(sess: Session,
     let time_passes = sess.time_passes();
 
     sess.building_library.set(session::building_library(sess.opts, &krate));
-    sess.crate_types.set(session::collect_crate_types(&sess, krate.attrs));
+    sess.crate_types.set(session::collect_crate_types(&sess,
+                                                      krate.attrs
+                                                           .as_slice()));
 
     time(time_passes, "gated feature checking", (), |_|
          front::feature_gate::check_crate(sess, &krate));
@@ -203,8 +221,12 @@ pub fn phase_2_configure_and_expand(sess: Session,
                  front::config::strip_unconfigured_items(krate));
 
     krate = time(time_passes, "expansion", krate, |krate| {
+        let cfg = syntax::ext::expand::ExpansionConfig {
+            loader: loader,
+            deriving_hash_type_parameter: sess.features.default_type_params.get()
+        };
         syntax::ext::expand::expand_crate(sess.parse_sess,
-                                          loader,
+                                          cfg,
                                           krate)
     });
     // dump the syntax-time crates
@@ -220,8 +242,16 @@ pub fn phase_2_configure_and_expand(sess: Session,
     krate = time(time_passes, "prelude injection", krate, |krate|
                  front::std_inject::maybe_inject_prelude(sess, krate));
 
-    time(time_passes, "assinging node ids and indexing ast", krate, |krate|
-         front::assign_node_ids_and_map::assign_node_ids_and_map(sess, krate))
+    let (krate, map) = time(time_passes, "assinging node ids and indexing ast", krate, |krate|
+         front::assign_node_ids_and_map::assign_node_ids_and_map(sess, krate));
+
+    if sess.opts.debugging_opts & session::AST_JSON != 0 {
+        let mut stdout = io::stdout();
+        let mut json = json::PrettyEncoder::new(&mut stdout);
+        krate.encode(&mut json);
+    }
+
+    (krate, map)
 }
 
 pub struct CrateAnalysis {
@@ -230,7 +260,7 @@ pub struct CrateAnalysis {
     public_items: middle::privacy::PublicItems,
     ty_cx: ty::ctxt,
     maps: astencode::Maps,
-    reachable: @RefCell<HashSet<ast::NodeId>>
+    reachable: @RefCell<NodeSet>,
 }
 
 /// Run the resolution, typechecking, region checking and other
@@ -277,11 +307,14 @@ pub fn phase_3_run_analysis_passes(sess: Session,
     let region_map = time(time_passes, "region resolution", (), |_|
                           middle::region::resolve_crate(sess, krate));
 
-    let ty_cx = ty::mk_ctxt(sess, def_map, named_region_map, ast_map, freevars,
-                            region_map, lang_items);
+    let ty_cx = ty::mk_ctxt(sess, def_map, named_region_map, ast_map,
+                            freevars, region_map, lang_items);
 
     // passes are timed inside typeck
     let (method_map, vtable_map) = typeck::check_crate(ty_cx, trait_map, krate);
+
+    time(time_passes, "check static items", (), |_|
+         middle::check_static::check_crate(ty_cx, krate));
 
     // These next two const passes can probably be merged
     time(time_passes, "const marking", (), |_|
@@ -363,8 +396,8 @@ pub struct CrateTranslation {
     module: ModuleRef,
     metadata_module: ModuleRef,
     link: LinkMeta,
-    metadata: ~[u8],
-    reachable: ~[~str],
+    metadata: Vec<u8> ,
+    reachable: Vec<~str> ,
 }
 
 /// Run the translation phase to LLVM, after which the AST and analysis can
@@ -398,7 +431,7 @@ pub fn phase_5_run_llvm_passes(sess: Session,
         time(sess.time_passes(), "LLVM passes", (), |_|
             link::write::run_passes(sess,
                                     trans,
-                                    sess.opts.output_types,
+                                    sess.opts.output_types.as_slice(),
                                     outputs));
     }
 }
@@ -412,7 +445,7 @@ pub fn phase_6_link_output(sess: Session,
          link::link_binary(sess,
                            trans,
                            outputs,
-                           &trans.link));
+                           &trans.link.crateid));
 }
 
 pub fn stop_after_phase_3(sess: Session) -> bool {
@@ -428,7 +461,7 @@ pub fn stop_after_phase_1(sess: Session) -> bool {
         debug!("invoked with --parse-only, returning early from compile_input");
         return true;
     }
-    return false;
+    return sess.opts.debugging_opts & session::AST_JSON_NOEXPAND != 0;
 }
 
 pub fn stop_after_phase_2(sess: Session) -> bool {
@@ -436,7 +469,7 @@ pub fn stop_after_phase_2(sess: Session) -> bool {
         debug!("invoked with --no-analysis, returning early from compile_input");
         return true;
     }
-    return false;
+    return sess.opts.debugging_opts & session::AST_JSON != 0;
 }
 
 pub fn stop_after_phase_5(sess: Session) -> bool {
@@ -451,17 +484,16 @@ fn write_out_deps(sess: Session,
                   input: &Input,
                   outputs: &OutputFilenames,
                   krate: &ast::Crate) -> io::IoResult<()> {
-    let lm = link::build_link_meta(krate.attrs, outputs,
-                                   &mut ::util::sha2::Sha256::new());
+    let id = link::find_crate_id(krate.attrs.as_slice(), outputs);
 
-    let mut out_filenames = ~[];
+    let mut out_filenames = Vec::new();
     for output_type in sess.opts.output_types.iter() {
         let file = outputs.path(*output_type);
         match *output_type {
             link::OutputTypeExe => {
                 let crate_types = sess.crate_types.borrow();
                 for output in crate_types.get().iter() {
-                    let p = link::filename_for_input(&sess, *output, &lm, &file);
+                    let p = link::filename_for_input(&sess, *output, &id, &file);
                     out_filenames.push(p);
                 }
             }
@@ -489,7 +521,7 @@ fn write_out_deps(sess: Session,
 
     // Build a list of files used to compile the output and
     // write Makefile-compatible dependency rules
-    let files: ~[~str] = {
+    let files: Vec<~str> = {
         let files = sess.codemap.files.borrow();
         files.get()
              .iter()
@@ -502,9 +534,9 @@ fn write_out_deps(sess: Session,
              })
              .collect()
     };
-    let mut file = if_ok!(io::File::create(&deps_filename));
+    let mut file = try!(io::File::create(&deps_filename));
     for path in out_filenames.iter() {
-        if_ok!(write!(&mut file as &mut Writer,
+        try!(write!(&mut file as &mut Writer,
                       "{}: {}\n\n", path.display(), files.connect(" ")));
     }
     Ok(())
@@ -526,8 +558,11 @@ pub fn compile_input(sess: Session, cfg: ast::CrateConfig, input: &Input,
             let loader = &mut Loader::new(sess);
             phase_2_configure_and_expand(sess, loader, krate)
         };
-        let outputs = build_output_filenames(input, outdir, output,
-                                             expanded_crate.attrs, sess);
+        let outputs = build_output_filenames(input,
+                                             outdir,
+                                             output,
+                                             expanded_crate.attrs.as_slice(),
+                                             sess);
 
         write_out_deps(sess, input, &outputs, &expanded_crate).unwrap();
 
@@ -556,21 +591,21 @@ impl pprust::PpAnn for IdentifiedAnnotation {
     fn post(&self, node: pprust::AnnNode) -> io::IoResult<()> {
         match node {
             pprust::NodeItem(s, item) => {
-                if_ok!(pp::space(&mut s.s));
-                if_ok!(pprust::synth_comment(s, item.id.to_str()));
+                try!(pp::space(&mut s.s));
+                try!(pprust::synth_comment(s, item.id.to_str()));
             }
             pprust::NodeBlock(s, blk) => {
-                if_ok!(pp::space(&mut s.s));
-                if_ok!(pprust::synth_comment(s, ~"block " + blk.id.to_str()));
+                try!(pp::space(&mut s.s));
+                try!(pprust::synth_comment(s, ~"block " + blk.id.to_str()));
             }
             pprust::NodeExpr(s, expr) => {
-                if_ok!(pp::space(&mut s.s));
-                if_ok!(pprust::synth_comment(s, expr.id.to_str()));
-                if_ok!(pprust::pclose(s));
+                try!(pp::space(&mut s.s));
+                try!(pprust::synth_comment(s, expr.id.to_str()));
+                try!(pprust::pclose(s));
             }
             pprust::NodePat(s, pat) => {
-                if_ok!(pp::space(&mut s.s));
-                if_ok!(pprust::synth_comment(s, ~"pat " + pat.id.to_str()));
+                try!(pp::space(&mut s.s));
+                try!(pprust::synth_comment(s, ~"pat " + pat.id.to_str()));
             }
         }
         Ok(())
@@ -592,12 +627,12 @@ impl pprust::PpAnn for TypedAnnotation {
         let tcx = self.analysis.ty_cx;
         match node {
             pprust::NodeExpr(s, expr) => {
-                if_ok!(pp::space(&mut s.s));
-                if_ok!(pp::word(&mut s.s, "as"));
-                if_ok!(pp::space(&mut s.s));
-                if_ok!(pp::word(&mut s.s,
+                try!(pp::space(&mut s.s));
+                try!(pp::word(&mut s.s, "as"));
+                try!(pp::space(&mut s.s));
+                try!(pp::word(&mut s.s,
                                 ppaux::ty_to_str(tcx, ty::expr_ty(tcx, expr))));
-                if_ok!(pprust::pclose(s));
+                try!(pprust::pclose(s));
             }
             _ => ()
         }
@@ -729,18 +764,21 @@ pub fn host_triple() -> ~str {
 
 pub fn build_session_options(matches: &getopts::Matches)
                              -> @session::Options {
-    let crate_types = matches.opt_strs("crate-type").flat_map(|s| {
-        s.split(',').map(|part| {
-            match part {
+    let mut crate_types: Vec<CrateType> = Vec::new();
+    let unparsed_crate_types = matches.opt_strs("crate-type");
+    for unparsed_crate_type in unparsed_crate_types.iter() {
+        for part in unparsed_crate_type.split(',') {
+            let new_part = match part {
                 "lib"       => session::default_lib_output(),
                 "rlib"      => session::CrateTypeRlib,
                 "staticlib" => session::CrateTypeStaticlib,
                 "dylib"     => session::CrateTypeDylib,
                 "bin"       => session::CrateTypeExecutable,
                 _ => early_error(format!("unknown crate type: `{}`", part))
-            }
-        }).collect()
-    });
+            };
+            crate_types.push(new_part)
+        }
+    }
 
     let parse_only = matches.opt_present("parse-only");
     let no_trans = matches.opt_present("no-trans");
@@ -748,15 +786,17 @@ pub fn build_session_options(matches: &getopts::Matches)
 
     let lint_levels = [lint::allow, lint::warn,
                        lint::deny, lint::forbid];
-    let mut lint_opts = ~[];
+    let mut lint_opts = Vec::new();
     let lint_dict = lint::get_lint_dict();
     for level in lint_levels.iter() {
         let level_name = lint::level_to_str(*level);
 
         let level_short = level_name.slice_chars(0, 1);
         let level_short = level_short.to_ascii().to_upper().into_str();
-        let flags = vec::append(matches.opt_strs(level_short),
-                                matches.opt_strs(level_name));
+        let flags = vec_ng::append(matches.opt_strs(level_short)
+                                          .move_iter()
+                                          .collect(),
+                                   matches.opt_strs(level_name));
         for lint_name in flags.iter() {
             let lint_name = lint_name.replace("-", "_");
             match lint_dict.find_equiv(&lint_name) {
@@ -790,23 +830,24 @@ pub fn build_session_options(matches: &getopts::Matches)
         unsafe { llvm::LLVMSetDebug(1); }
     }
 
-    let mut output_types = if parse_only || no_trans {
-        ~[]
-    } else {
-        matches.opt_strs("emit").flat_map(|s| {
-            s.split(',').map(|part| {
-                match part.as_slice() {
+    let mut output_types = Vec::new();
+    if !parse_only && !no_trans {
+        let unparsed_output_types = matches.opt_strs("emit");
+        for unparsed_output_type in unparsed_output_types.iter() {
+            for part in unparsed_output_type.split(',') {
+                let output_type = match part.as_slice() {
                     "asm"  => link::OutputTypeAssembly,
                     "ir"   => link::OutputTypeLlvmAssembly,
                     "bc"   => link::OutputTypeBitcode,
                     "obj"  => link::OutputTypeObject,
                     "link" => link::OutputTypeExe,
                     _ => early_error(format!("unknown emission type: `{}`", part))
-                }
-            }).collect()
-        })
+                };
+                output_types.push(output_type)
+            }
+        }
     };
-    output_types.sort();
+    output_types.as_mut_slice().sort();
     output_types.dedup();
     if output_types.len() == 0 {
         output_types.push(link::OutputTypeExe);
@@ -823,25 +864,47 @@ pub fn build_session_options(matches: &getopts::Matches)
             }
             Default
         } else if matches.opt_present("opt-level") {
-            match matches.opt_str("opt-level").unwrap() {
-              ~"0" => No,
-              ~"1" => Less,
-              ~"2" => Default,
-              ~"3" => Aggressive,
-              _ => {
-                early_error("optimization level needs to be between 0-3")
-              }
+            match matches.opt_str("opt-level").as_ref().map(|s| s.as_slice()) {
+                None      |
+                Some("0") => No,
+                Some("1") => Less,
+                Some("2") => Default,
+                Some("3") => Aggressive,
+                Some(arg) => {
+                    early_error(format!("optimization level needs to be between 0-3 \
+                                        (instead was `{}`)", arg));
+                }
             }
-        } else { No }
+        } else {
+            No
+        }
     };
     let gc = debugging_opts & session::GC != 0;
-    let debuginfo = matches.opt_present("g") || matches.opt_present("debuginfo");
+    let debuginfo = if matches.opt_present("g") {
+        if matches.opt_present("debuginfo") {
+            early_error("-g and --debuginfo both provided");
+        }
+        FullDebugInfo
+    } else if matches.opt_present("debuginfo") {
+        match matches.opt_str("debuginfo").as_ref().map(|s| s.as_slice()) {
+            Some("0") => NoDebugInfo,
+            Some("1") => LimitedDebugInfo,
+            None      |
+            Some("2") => FullDebugInfo,
+            Some(arg) => {
+                early_error(format!("optimization level needs to be between 0-3 \
+                                    (instead was `{}`)", arg));
+            }
+        }
+    } else {
+        NoDebugInfo
+    };
 
     let addl_lib_search_paths = matches.opt_strs("L").map(|s| {
         Path::new(s.as_slice())
     }).move_iter().collect();
 
-    let cfg = parse_cfgspecs(matches.opt_strs("cfg"));
+    let cfg = parse_cfgspecs(matches.opt_strs("cfg").move_iter().collect());
     let test = matches.opt_present("test");
     let write_dependency_info = (matches.opt_present("dep-info"),
                                  matches.opt_str("dep-info").map(|p| Path::new(p)));
@@ -910,7 +973,7 @@ pub fn build_session(sopts: @session::Options,
                      -> Session {
     let codemap = @codemap::CodeMap::new();
     let diagnostic_handler =
-        diagnostic::mk_handler();
+        diagnostic::default_handler();
     let span_diagnostic_handler =
         diagnostic::mk_span_handler(diagnostic_handler, codemap);
 
@@ -956,7 +1019,9 @@ pub fn build_session_(sopts: @session::Options,
         working_dir: os::getcwd(),
         lints: RefCell::new(HashMap::new()),
         node_id: Cell::new(1),
-        crate_types: @RefCell::new(~[]),
+        crate_types: @RefCell::new(Vec::new()),
+        features: front::feature_gate::Features::new(),
+        recursion_limit: Cell::new(64),
     }
 }
 
@@ -976,67 +1041,52 @@ pub fn parse_pretty(sess: Session, name: &str) -> PpMode {
 }
 
 // rustc command line options
-pub fn optgroups() -> ~[getopts::OptGroup] {
- ~[
+pub fn optgroups() -> Vec<getopts::OptGroup> {
+ vec!(
   optflag("h", "help", "Display this message"),
   optmulti("", "cfg", "Configure the compilation environment", "SPEC"),
   optmulti("L", "",   "Add a directory to the library search path", "PATH"),
-  optmulti("", "crate-type", "Comma separated list of types of crates for the \
-                              compiler to emit",
+  optmulti("", "crate-type", "Comma separated list of types of crates for the compiler to emit",
            "[bin|lib|rlib|dylib|staticlib]"),
-  optmulti("", "emit", "Comma separated list of types of output for the compiler
-                        to emit",
+  optmulti("", "emit", "Comma separated list of types of output for the compiler to emit",
            "[asm|bc|ir|obj|link]"),
   optflag("", "crate-id", "Output the crate id and exit"),
   optflag("", "crate-name", "Output the crate name and exit"),
   optflag("", "crate-file-name", "Output the file(s) that would be written if compilation \
           continued and exit"),
   optflag("",  "ls",  "List the symbols defined by a library crate"),
-  optflag("g",  "debuginfo",  "Emit DWARF debug info to the objects created"),
-  optflag("", "no-trans",
-                        "Run all passes except translation; no output"),
-  optflag("", "no-analysis",
-                        "Parse and expand the output, but run no analysis or produce \
-                        output"),
-  optflag("O", "",    "Equivalent to --opt-level=2"),
-  optopt("o", "",     "Write output to <filename>", "FILENAME"),
-  optopt("", "opt-level",
-                        "Optimize with possible levels 0-3", "LEVEL"),
-  optopt( "",  "out-dir",
-                        "Write output to compiler-chosen filename
-                          in <dir>", "DIR"),
-  optflag("", "parse-only",
-                        "Parse only; do not compile, assemble, or link"),
+  optflag("g",  "",  "Equivalent to --debuginfo=2"),
+  optopt("",  "debuginfo",  "Emit DWARF debug info to the objects created:
+         0 = no debug info,
+         1 = line-tables only (for stacktraces and breakpoints),
+         2 = full debug info with variable and type information (same as -g)", "LEVEL"),
+  optflag("", "no-trans", "Run all passes except translation; no output"),
+  optflag("", "no-analysis", "Parse and expand the output, but run no analysis or produce output"),
+  optflag("O", "", "Equivalent to --opt-level=2"),
+  optopt("o", "", "Write output to <filename>", "FILENAME"),
+  optopt("", "opt-level", "Optimize with possible levels 0-3", "LEVEL"),
+  optopt( "",  "out-dir", "Write output to compiler-chosen filename in <dir>", "DIR"),
+  optflag("", "parse-only", "Parse only; do not compile, assemble, or link"),
   optflagopt("", "pretty",
-                        "Pretty-print the input instead of compiling;
-                          valid types are: normal (un-annotated source),
-                          expanded (crates expanded),
-                          typed (crates expanded, with type annotations),
-                          or identified (fully parenthesized,
-                          AST nodes and blocks with IDs)", "TYPE"),
-  optflagopt("", "dep-info",
-                        "Output dependency info to <filename> after compiling", "FILENAME"),
-  optopt("", "sysroot",
-                        "Override the system root", "PATH"),
+             "Pretty-print the input instead of compiling;
+              valid types are: normal (un-annotated source),
+              expanded (crates expanded),
+              typed (crates expanded, with type annotations),
+              or identified (fully parenthesized,
+              AST nodes and blocks with IDs)", "TYPE"),
+  optflagopt("", "dep-info", "Output dependency info to <filename> after compiling", "FILENAME"),
+  optopt("", "sysroot", "Override the system root", "PATH"),
   optflag("", "test", "Build a test harness"),
-  optopt("", "target",
-                        "Target triple cpu-manufacturer-kernel[-os]
-                          to compile for (see chapter 3.4 of http://www.sourceware.org/autobook/
-                          for details)", "TRIPLE"),
-  optmulti("W", "warn",
-                        "Set lint warnings", "OPT"),
-  optmulti("A", "allow",
-                        "Set lint allowed", "OPT"),
-  optmulti("D", "deny",
-                        "Set lint denied", "OPT"),
-  optmulti("F", "forbid",
-                        "Set lint forbidden", "OPT"),
-  optmulti("C", "codegen",
-                        "Set a codegen option", "OPT[=VALUE]"),
-  optmulti("Z", "",   "Set internal debugging options", "FLAG"),
-  optflag( "v", "version",
-                        "Print version info and exit"),
- ]
+  optopt("", "target", "Target triple cpu-manufacturer-kernel[-os]
+                        to compile for (see chapter 3.4 of http://www.sourceware.org/autobook/
+                        for details)", "TRIPLE"),
+  optmulti("W", "warn", "Set lint warnings", "OPT"),
+  optmulti("A", "allow", "Set lint allowed", "OPT"),
+  optmulti("D", "deny", "Set lint denied", "OPT"),
+  optmulti("F", "forbid", "Set lint forbidden", "OPT"),
+  optmulti("C", "codegen", "Set a codegen option", "OPT[=VALUE]"),
+  optmulti("Z", "", "Set internal debugging options", "FLAG"),
+  optflag( "v", "version", "Print version info and exit"))
 }
 
 pub struct OutputFilenames {
@@ -1127,7 +1177,8 @@ pub fn build_output_filenames(input: &Input,
 }
 
 pub fn early_error(msg: &str) -> ! {
-    diagnostic::DefaultEmitter.emit(None, msg, diagnostic::Fatal);
+    let mut emitter = diagnostic::EmitterWriter::stderr();
+    emitter.emit(None, msg, diagnostic::Fatal);
     fail!(diagnostic::FatalError);
 }
 
@@ -1151,14 +1202,14 @@ mod test {
     #[test]
     fn test_switch_implies_cfg_test() {
         let matches =
-            &match getopts([~"--test"], optgroups()) {
+            &match getopts([~"--test"], optgroups().as_slice()) {
               Ok(m) => m,
               Err(f) => fail!("test_switch_implies_cfg_test: {}", f.to_err_msg())
             };
         let sessopts = build_session_options(matches);
         let sess = build_session(sessopts, None);
         let cfg = build_configuration(sess);
-        assert!((attr::contains_name(cfg, "test")));
+        assert!((attr::contains_name(cfg.as_slice(), "test")));
     }
 
     // When the user supplies --test and --cfg test, don't implicitly add
@@ -1166,7 +1217,8 @@ mod test {
     #[test]
     fn test_switch_implies_cfg_test_unless_cfg_test() {
         let matches =
-            &match getopts([~"--test", ~"--cfg=test"], optgroups()) {
+            &match getopts([~"--test", ~"--cfg=test"],
+                           optgroups().as_slice()) {
               Ok(m) => m,
               Err(f) => {
                 fail!("test_switch_implies_cfg_test_unless_cfg_test: {}",

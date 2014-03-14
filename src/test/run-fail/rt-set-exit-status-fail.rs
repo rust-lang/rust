@@ -15,7 +15,7 @@ use std::os;
 fn main() {
     error!("whatever");
     // Setting the exit status only works when the scheduler terminates
-    // normally. In this case we're going to fail, so instead of of
+    // normally. In this case we're going to fail, so instead of
     // returning 50 the process will return the typical rt failure code.
     os::set_exit_status(50);
     fail!();

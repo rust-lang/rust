@@ -25,11 +25,11 @@ use rustc::metadata::csearch;
 use rustc::metadata::decoder;
 
 use std;
-use std::hashmap::HashMap;
 
 use doctree;
 use visit_ast;
 use std::local_data;
+use std::vec_ng::Vec;
 
 pub trait Clean<T> {
     fn clean(&self) -> T;
@@ -40,6 +40,13 @@ impl<T: Clean<U>, U> Clean<~[U]> for ~[T] {
         self.iter().map(|x| x.clean()).collect()
     }
 }
+
+impl<T: Clean<U>, U> Clean<Vec<U>> for Vec<T> {
+    fn clean(&self) -> Vec<U> {
+        self.iter().map(|x| x.clean()).collect()
+    }
+}
+
 impl<T: Clean<U>, U> Clean<U> for @T {
     fn clean(&self) -> U {
         (**self).clean()
@@ -55,10 +62,10 @@ impl<T: Clean<U>, U> Clean<Option<U>> for Option<T> {
     }
 }
 
-impl<T: Clean<U>, U> Clean<~[U]> for syntax::opt_vec::OptVec<T> {
-    fn clean(&self) -> ~[U] {
+impl<T: Clean<U>, U> Clean<Vec<U>> for syntax::opt_vec::OptVec<T> {
+    fn clean(&self) -> Vec<U> {
         match self {
-            &syntax::opt_vec::Empty => ~[],
+            &syntax::opt_vec::Empty => Vec::new(),
             &syntax::opt_vec::Vec(ref v) => v.clean()
         }
     }
@@ -68,7 +75,7 @@ impl<T: Clean<U>, U> Clean<~[U]> for syntax::opt_vec::OptVec<T> {
 pub struct Crate {
     name: ~str,
     module: Option<Item>,
-    externs: HashMap<ast::CrateNum, ExternalCrate>,
+    externs: ~[(ast::CrateNum, ExternalCrate)],
 }
 
 impl<'a> Clean<Crate> for visit_ast::RustdocVisitor<'a> {
@@ -76,9 +83,9 @@ impl<'a> Clean<Crate> for visit_ast::RustdocVisitor<'a> {
         use syntax::attr::find_crateid;
         let cx = local_data::get(super::ctxtkey, |x| *x.unwrap());
 
-        let mut externs = HashMap::new();
+        let mut externs = ~[];
         cx.sess.cstore.iter_crate_data(|n, meta| {
-            externs.insert(n, meta.clean());
+            externs.push((n, meta.clean()));
         });
 
         Crate {
@@ -103,6 +110,8 @@ impl Clean<ExternalCrate> for cstore::crate_metadata {
         ExternalCrate {
             name: self.name.to_owned(),
             attrs: decoder::get_crate_attributes(self.data()).clean()
+                                                             .move_iter()
+                                                             .collect(),
         }
     }
 }
@@ -128,7 +137,7 @@ impl Item {
     pub fn doc_list<'a>(&'a self) -> Option<&'a [Attribute]> {
         for attr in self.attrs.iter() {
             match *attr {
-                List(~"doc", ref list) => { return Some(list.as_slice()); }
+                List(ref x, ref list) if "doc" == *x => { return Some(list.as_slice()); }
                 _ => {}
             }
         }
@@ -140,7 +149,7 @@ impl Item {
     pub fn doc_value<'a>(&'a self) -> Option<&'a str> {
         for attr in self.attrs.iter() {
             match *attr {
-                NameValue(~"doc", ref v) => { return Some(v.as_slice()); }
+                NameValue(ref x, ref v) if "doc" == *x => { return Some(v.as_slice()); }
                 _ => {}
             }
         }
@@ -181,11 +190,13 @@ pub enum ItemEnum {
     VariantItem(Variant),
     ForeignFunctionItem(Function),
     ForeignStaticItem(Static),
+    MacroItem(Macro),
 }
 
 #[deriving(Clone, Encodable, Decodable)]
 pub struct Module {
     items: ~[Item],
+    is_crate: bool,
 }
 
 impl Clean<Item> for doctree::Module {
@@ -195,6 +206,25 @@ impl Clean<Item> for doctree::Module {
         } else {
             ~""
         };
+        let mut foreigns = ~[];
+        for subforeigns in self.foreigns.clean().move_iter() {
+            for foreign in subforeigns.move_iter() {
+                foreigns.push(foreign)
+            }
+        }
+        let items: ~[~[Item]] = ~[
+            self.structs.clean().move_iter().collect(),
+            self.enums.clean().move_iter().collect(),
+            self.fns.clean().move_iter().collect(),
+            foreigns,
+            self.mods.clean().move_iter().collect(),
+            self.typedefs.clean().move_iter().collect(),
+            self.statics.clean().move_iter().collect(),
+            self.traits.clean().move_iter().collect(),
+            self.impls.clean().move_iter().collect(),
+            self.view_items.clean().move_iter().collect(),
+            self.macros.clean().move_iter().collect()
+        ];
         Item {
             name: Some(name),
             attrs: self.attrs.clean(),
@@ -202,11 +232,8 @@ impl Clean<Item> for doctree::Module {
             visibility: self.vis.clean(),
             id: self.id,
             inner: ModuleItem(Module {
-               items: [self.structs.clean(), self.enums.clean(),
-                       self.fns.clean(), self.foreigns.clean().concat_vec(),
-                       self.mods.clean(), self.typedefs.clean(),
-                       self.statics.clean(), self.traits.clean(),
-                       self.impls.clean(), self.view_items.clean()].concat_vec()
+               is_crate: self.is_crate,
+               items: items.concat_vec(),
             })
         }
     }
@@ -224,7 +251,7 @@ impl Clean<Attribute> for ast::MetaItem {
         match self.node {
             ast::MetaWord(ref s) => Word(s.get().to_owned()),
             ast::MetaList(ref s, ref l) => {
-                List(s.get().to_owned(), l.clean())
+                List(s.get().to_owned(), l.clean().move_iter().collect())
             }
             ast::MetaNameValue(ref s, ref v) => {
                 NameValue(s.get().to_owned(), lit_to_str(v))
@@ -273,7 +300,7 @@ impl Clean<TyParam> for ast::TyParam {
         TyParam {
             name: self.ident.clean(),
             id: self.id,
-            bounds: self.bounds.clean(),
+            bounds: self.bounds.clean().move_iter().collect(),
         }
     }
 }
@@ -306,7 +333,7 @@ impl Lifetime {
 
 impl Clean<Lifetime> for ast::Lifetime {
     fn clean(&self) -> Lifetime {
-        Lifetime(self.ident.clean())
+        Lifetime(token::get_name(self.name).get().to_owned())
     }
 }
 
@@ -320,8 +347,8 @@ pub struct Generics {
 impl Clean<Generics> for ast::Generics {
     fn clean(&self) -> Generics {
         Generics {
-            lifetimes: self.lifetimes.clean(),
-            type_params: self.ty_params.clean(),
+            lifetimes: self.lifetimes.clean().move_iter().collect(),
+            type_params: self.ty_params.clean().move_iter().collect(),
         }
     }
 }
@@ -350,7 +377,7 @@ impl Clean<Item> for ast::Method {
         };
         Item {
             name: Some(self.ident.clean()),
-            attrs: self.attrs.clean(),
+            attrs: self.attrs.clean().move_iter().collect(),
             source: self.span.clean(),
             id: self.id.clone(),
             visibility: self.vis.clean(),
@@ -388,7 +415,7 @@ impl Clean<Item> for ast::TypeMethod {
         };
         Item {
             name: Some(self.ident.clean()),
-            attrs: self.attrs.clean(),
+            attrs: self.attrs.clean().move_iter().collect(),
             source: self.span.clean(),
             id: self.id,
             visibility: None,
@@ -461,12 +488,12 @@ impl Clean<ClosureDecl> for ast::ClosureTy {
         ClosureDecl {
             sigil: self.sigil,
             region: self.region.clean(),
-            lifetimes: self.lifetimes.clean(),
+            lifetimes: self.lifetimes.clean().move_iter().collect(),
             decl: self.decl.clean(),
             onceness: self.onceness,
             purity: self.purity,
             bounds: match self.bounds {
-                Some(ref x) => x.clean(),
+                Some(ref x) => x.clean().move_iter().collect(),
                 None        => ~[]
             },
         }
@@ -670,8 +697,11 @@ impl Clean<Type> for ast::Ty {
             TyFixedLengthVec(ty, ref e) => FixedVector(~ty.clean(),
                                                        e.span.to_src()),
             TyTup(ref tys) => Tuple(tys.iter().map(|x| x.clean()).collect()),
-            TyPath(ref p, ref tpbs, id) =>
-                resolve_type(p.clean(), tpbs.clean(), id),
+            TyPath(ref p, ref tpbs, id) => {
+                resolve_type(p.clean(),
+                             tpbs.clean().map(|x| x.move_iter().collect()),
+                             id)
+            }
             TyClosure(ref c) => Closure(~c.clean()),
             TyBareFn(ref barefn) => BareFunction(~barefn.clean()),
             TyBot => Bottom,
@@ -693,7 +723,7 @@ impl Clean<Item> for ast::StructField {
         };
         Item {
             name: name.clean(),
-            attrs: self.node.attrs.clean(),
+            attrs: self.node.attrs.clean().move_iter().collect(),
             source: self.span.clean(),
             visibility: vis,
             id: self.node.id,
@@ -738,7 +768,7 @@ impl Clean<Item> for doctree::Struct {
     }
 }
 
-/// This is a more limited form of the standard Struct, different in that it
+/// This is a more limited form of the standard Struct, different in that
 /// it lacks the things most items have (name, id, parameterization). Found
 /// only as a variant in an enum.
 #[deriving(Clone, Encodable, Decodable)]
@@ -752,7 +782,7 @@ impl Clean<VariantStruct> for syntax::ast::StructDef {
     fn clean(&self) -> VariantStruct {
         VariantStruct {
             struct_type: doctree::struct_type_from_def(self),
-            fields: self.fields.clean(),
+            fields: self.fields.clean().move_iter().collect(),
             fields_stripped: false,
         }
     }
@@ -859,7 +889,7 @@ impl Clean<Path> for ast::Path {
     fn clean(&self) -> Path {
         Path {
             global: self.global,
-            segments: self.segments.clean()
+            segments: self.segments.clean().move_iter().collect(),
         }
     }
 }
@@ -875,8 +905,8 @@ impl Clean<PathSegment> for ast::PathSegment {
     fn clean(&self) -> PathSegment {
         PathSegment {
             name: self.identifier.clean(),
-            lifetimes: self.lifetimes.clean(),
-            types: self.types.clean()
+            lifetimes: self.lifetimes.clean().move_iter().collect(),
+            types: self.types.clean().move_iter().collect()
         }
     }
 }
@@ -938,7 +968,7 @@ impl Clean<BareFunctionDecl> for ast::BareFnTy {
         BareFunctionDecl {
             purity: self.purity,
             generics: Generics {
-                lifetimes: self.lifetimes.clean(),
+                lifetimes: self.lifetimes.clean().move_iter().collect(),
                 type_params: ~[],
             },
             decl: self.decl.clean(),
@@ -975,7 +1005,7 @@ impl Clean<Item> for doctree::Static {
     }
 }
 
-#[deriving(ToStr, Clone, Encodable, Decodable)]
+#[deriving(Show, Clone, Encodable, Decodable)]
 pub enum Mutability {
     Mutable,
     Immutable,
@@ -1025,7 +1055,7 @@ impl Clean<Item> for ast::ViewItem {
     fn clean(&self) -> Item {
         Item {
             name: None,
-            attrs: self.attrs.clean(),
+            attrs: self.attrs.clean().move_iter().collect(),
             source: self.span.clean(),
             id: 0,
             visibility: self.vis.clean(),
@@ -1038,21 +1068,23 @@ impl Clean<Item> for ast::ViewItem {
 
 #[deriving(Clone, Encodable, Decodable)]
 pub enum ViewItemInner {
-    ExternMod(~str, Option<~str>, ast::NodeId),
+    ExternCrate(~str, Option<~str>, ast::NodeId),
     Import(~[ViewPath])
 }
 
 impl Clean<ViewItemInner> for ast::ViewItem_ {
     fn clean(&self) -> ViewItemInner {
         match self {
-            &ast::ViewItemExternMod(ref i, ref p, ref id) => {
+            &ast::ViewItemExternCrate(ref i, ref p, ref id) => {
                 let string = match *p {
                     None => None,
                     Some((ref x, _)) => Some(x.get().to_owned()),
                 };
-                ExternMod(i.clean(), string, *id)
+                ExternCrate(i.clean(), string, *id)
             }
-            &ast::ViewItemUse(ref vp) => Import(vp.clean())
+            &ast::ViewItemUse(ref vp) => {
+                Import(vp.clean().move_iter().collect())
+            }
         }
     }
 }
@@ -1080,8 +1112,10 @@ impl Clean<ViewPath> for ast::ViewPath {
                 SimpleImport(i.clean(), resolve_use_source(p.clean(), id)),
             ast::ViewPathGlob(ref p, id) =>
                 GlobImport(resolve_use_source(p.clean(), id)),
-            ast::ViewPathList(ref p, ref pl, id) =>
-                ImportList(resolve_use_source(p.clean(), id), pl.clean()),
+            ast::ViewPathList(ref p, ref pl, id) => {
+                ImportList(resolve_use_source(p.clean(), id),
+                           pl.clean().move_iter().collect())
+            }
         }
     }
 }
@@ -1101,8 +1135,8 @@ impl Clean<ViewListIdent> for ast::PathListIdent {
     }
 }
 
-impl Clean<~[Item]> for ast::ForeignMod {
-    fn clean(&self) -> ~[Item] {
+impl Clean<Vec<Item>> for ast::ForeignMod {
+    fn clean(&self) -> Vec<Item> {
         self.items.clean()
     }
 }
@@ -1127,7 +1161,7 @@ impl Clean<Item> for ast::ForeignItem {
         };
         Item {
             name: Some(self.ident.clean()),
-            attrs: self.attrs.clean(),
+            attrs: self.attrs.clean().move_iter().collect(),
             source: self.span.clean(),
             id: self.id,
             visibility: self.vis.clean(),
@@ -1158,7 +1192,7 @@ impl ToSource for syntax::codemap::Span {
 fn lit_to_str(lit: &ast::Lit) -> ~str {
     match lit.node {
         ast::LitStr(ref st, _) => st.get().to_owned(),
-        ast::LitBinary(ref data) => format!("{:?}", data.borrow().as_slice()),
+        ast::LitBinary(ref data) => format!("{:?}", data.deref().as_slice()),
         ast::LitChar(c) => ~"'" + std::char::from_u32(c).unwrap().to_str() + "'",
         ast::LitInt(i, _t) => i.to_str(),
         ast::LitUint(u, _t) => u.to_str(),
@@ -1261,5 +1295,25 @@ fn resolve_def(id: ast::NodeId) -> Option<ast::DefId> {
             def_map.get().find(&id).map(|&d| ast_util::def_id_of_def(d))
         }
         None => None
+    }
+}
+
+#[deriving(Clone, Encodable, Decodable)]
+pub struct Macro {
+    source: ~str,
+}
+
+impl Clean<Item> for doctree::Macro {
+    fn clean(&self) -> Item {
+        Item {
+            name: Some(self.name.clean()),
+            attrs: self.attrs.clean(),
+            source: self.where.clean(),
+            visibility: ast::Public.clean(),
+            id: self.id,
+            inner: MacroItem(Macro {
+                source: self.where.to_src(),
+            }),
+        }
     }
 }

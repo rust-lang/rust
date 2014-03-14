@@ -8,12 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+/*! Various utility functions useful for writing I/O tests */
+
 #[macro_escape];
 
+use libc;
 use os;
 use prelude::*;
-use rand;
-use rand::Rng;
 use std::io::net::ip::*;
 use sync::atomics::{AtomicUint, INIT_ATOMIC_UINT, Relaxed};
 
@@ -36,6 +37,7 @@ macro_rules! iotest (
             use io::net::unix::*;
             use io::timer::*;
             use io::process::*;
+            use unstable::running_on_valgrind;
             use str;
             use util;
 
@@ -44,9 +46,9 @@ macro_rules! iotest (
             $($a)* #[test] fn green() { f() }
             $($a)* #[test] fn native() {
                 use native;
-                let (p, c) = Chan::new();
-                native::task::spawn(proc() { c.send(f()) });
-                p.recv();
+                let (tx, rx) = channel();
+                native::task::spawn(proc() { tx.send(f()) });
+                rx.recv();
             }
         }
     )
@@ -62,10 +64,18 @@ pub fn next_test_port() -> u16 {
 
 /// Get a temporary path which could be the location of a unix socket
 pub fn next_test_unix() -> Path {
+    static mut COUNT: AtomicUint = INIT_ATOMIC_UINT;
+    // base port and pid are an attempt to be unique between multiple
+    // test-runners of different configurations running on one
+    // buildbot, the count is to be unique within this executable.
+    let string = format!("rust-test-unix-path-{}-{}-{}",
+                         base_port(),
+                         unsafe {libc::getpid()},
+                         unsafe {COUNT.fetch_add(1, Relaxed)});
     if cfg!(unix) {
-        os::tmpdir().join(rand::task_rng().gen_ascii_str(20))
+        os::tmpdir().join(string)
     } else {
-        Path::new(r"\\.\pipe\" + rand::task_rng().gen_ascii_str(20))
+        Path::new(r"\\.\pipe\" + string)
     }
 }
 
@@ -118,6 +128,7 @@ fn base_port() -> u16 {
     return final_base;
 }
 
+/// Raises the file descriptor limit when running tests if necessary
 pub fn raise_fd_limit() {
     unsafe { darwin_fd_limit::raise_fd_limit() }
 }
@@ -139,7 +150,6 @@ mod darwin_fd_limit {
         rlim_cur: rlim_t,
         rlim_max: rlim_t
     }
-    #[nolink]
     extern {
         // name probably doesn't need to be mut, but the C function doesn't specify const
         fn sysctl(name: *mut libc::c_int, namelen: libc::c_uint,

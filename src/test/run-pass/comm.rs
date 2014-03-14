@@ -11,15 +11,15 @@
 use std::task;
 
 pub fn main() {
-    let (p, ch) = Chan::new();
-    let _t = task::spawn(proc() { child(&ch) });
-    let y = p.recv();
+    let (tx, rx) = channel();
+    let _t = task::spawn(proc() { child(&tx) });
+    let y = rx.recv();
     error!("received");
     error!("{:?}", y);
     assert_eq!(y, 10);
 }
 
-fn child(c: &Chan<int>) {
+fn child(c: &Sender<int>) {
     error!("sending");
     c.send(10);
     error!("value sent");

@@ -15,15 +15,16 @@ use middle::ty;
 use middle::typeck;
 use util::ppaux;
 
+use std::vec_ng::Vec;
 use syntax::ast::*;
 use syntax::{ast_util, ast_map};
 use syntax::visit::Visitor;
 use syntax::visit;
 
-struct CheckCrateVisitor {
+pub struct CheckCrateVisitor {
     sess: Session,
     def_map: resolve::DefMap,
-    method_map: typeck::method_map,
+    method_map: typeck::MethodMap,
     tcx: ty::ctxt,
 }
 
@@ -43,7 +44,7 @@ impl Visitor<bool> for CheckCrateVisitor {
 pub fn check_crate(sess: Session,
                    krate: &Crate,
                    def_map: resolve::DefMap,
-                   method_map: typeck::method_map,
+                   method_map: typeck::MethodMap,
                    tcx: ty::ctxt) {
     let mut v = CheckCrateVisitor {
         sess: sess,
@@ -102,22 +103,22 @@ pub fn check_pat(v: &mut CheckCrateVisitor, p: &Pat, _is_const: bool) {
 pub fn check_expr(v: &mut CheckCrateVisitor,
                   sess: Session,
                   def_map: resolve::DefMap,
-                  method_map: typeck::method_map,
+                  method_map: typeck::MethodMap,
                   tcx: ty::ctxt,
                   e: &Expr,
                   is_const: bool) {
     if is_const {
         match e.node {
-          ExprUnary(_, UnDeref, _) => { }
-          ExprUnary(_, UnBox, _) | ExprUnary(_, UnUniq, _) => {
+          ExprUnary(UnDeref, _) => { }
+          ExprUnary(UnBox, _) | ExprUnary(UnUniq, _) => {
             sess.span_err(e.span,
                           "cannot do allocations in constant expressions");
             return;
           }
           ExprLit(lit) if ast_util::lit_is_str(lit) => {}
           ExprBinary(..) | ExprUnary(..) => {
-            let method_map = method_map.borrow();
-            if method_map.get().contains_key(&e.id) {
+              let method_call = typeck::MethodCall::expr(e.id);
+            if method_map.borrow().get().contains_key(&method_call) {
                 sess.span_err(e.span, "user-defined operators are not \
                                        allowed in constant expressions");
             }
@@ -207,8 +208,7 @@ struct CheckItemRecursionVisitor<'a> {
     sess: Session,
     ast_map: &'a ast_map::Map,
     def_map: resolve::DefMap,
-    idstack: ~[NodeId]
-}
+    idstack: Vec<NodeId> }
 
 // Make sure a const item doesn't recursively refer to itself
 // FIXME: Should use the dependency graph when it's available (#1356)
@@ -222,7 +222,7 @@ pub fn check_item_recursion<'a>(sess: Session,
         sess: sess,
         ast_map: ast_map,
         def_map: def_map,
-        idstack: ~[]
+        idstack: Vec::new()
     };
     visitor.visit_item(it, ());
 }

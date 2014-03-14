@@ -47,7 +47,6 @@
 //! Note that all time units in this file are in *milliseconds*.
 
 use std::comm::Data;
-use std::hashmap::HashMap;
 use std::libc;
 use std::mem;
 use std::os;
@@ -65,20 +64,21 @@ pub struct Timer {
 }
 
 struct Inner {
-    chan: Option<Chan<()>>,
+    tx: Option<Sender<()>>,
     interval: u64,
     repeat: bool,
     target: u64,
     id: uint,
 }
 
+#[allow(visible_private_types)]
 pub enum Req {
     // Add a new timer to the helper thread.
     NewTimer(~Inner),
 
     // Remove a timer based on its id and then send it back on the channel
     // provided
-    RemoveTimer(uint, Chan<~Inner>),
+    RemoveTimer(uint, Sender<~Inner>),
 
     // Shut down the loop and then ACK this channel once it's shut down
     Shutdown,
@@ -93,7 +93,7 @@ fn now() -> u64 {
     }
 }
 
-fn helper(input: libc::c_int, messages: Port<Req>) {
+fn helper(input: libc::c_int, messages: Receiver<Req>) {
     let mut set: imp::fd_set = unsafe { mem::init() };
 
     let mut fd = FileDesc::new(input, true);
@@ -103,7 +103,7 @@ fn helper(input: libc::c_int, messages: Port<Req>) {
     // sorted list, and dead timers are those which have expired, but ownership
     // hasn't yet been transferred back to the timer itself.
     let mut active: ~[~Inner] = ~[];
-    let mut dead = HashMap::new();
+    let mut dead = ~[];
 
     // inserts a timer into an array of timers (sorted by firing time)
     fn insert(t: ~Inner, active: &mut ~[~Inner]) {
@@ -114,43 +114,41 @@ fn helper(input: libc::c_int, messages: Port<Req>) {
     }
 
     // signals the first requests in the queue, possible re-enqueueing it.
-    fn signal(active: &mut ~[~Inner], dead: &mut HashMap<uint, ~Inner>) {
+    fn signal(active: &mut ~[~Inner], dead: &mut ~[(uint, ~Inner)]) {
         let mut timer = match active.shift() {
             Some(timer) => timer, None => return
         };
-        let chan = timer.chan.take_unwrap();
-        if chan.try_send(()) && timer.repeat {
-            timer.chan = Some(chan);
+        let tx = timer.tx.take_unwrap();
+        if tx.try_send(()) && timer.repeat {
+            timer.tx = Some(tx);
             timer.target += timer.interval;
             insert(timer, active);
         } else {
-            drop(chan);
-            dead.insert(timer.id, timer);
+            drop(tx);
+            dead.push((timer.id, timer));
         }
     }
 
     'outer: loop {
-        let timeout = match active {
+        let timeout = if active.len() == 0 {
             // Empty array? no timeout (wait forever for the next request)
-            [] => ptr::null(),
-
-            [~Inner { target, .. }, ..] => {
-                let now = now();
-                // If this request has already expired, then signal it and go
-                // through another iteration
-                if target <= now {
-                    signal(&mut active, &mut dead);
-                    continue;
-                }
-
-                // The actual timeout listed in the requests array is an
-                // absolute date, so here we translate the absolute time to a
-                // relative time.
-                let tm = target - now;
-                timeout.tv_sec = (tm / 1000) as libc::time_t;
-                timeout.tv_usec = ((tm % 1000) * 1000) as libc::suseconds_t;
-                &timeout as *libc::timeval
+            ptr::null()
+        } else {
+            let now = now();
+            // If this request has already expired, then signal it and go
+            // through another iteration
+            if active[0].target <= now {
+                signal(&mut active, &mut dead);
+                continue;
             }
+
+            // The actual timeout listed in the requests array is an
+            // absolute date, so here we translate the absolute time to a
+            // relative time.
+            let tm = active[0].target - now;
+            timeout.tv_sec = (tm / 1000) as libc::time_t;
+            timeout.tv_usec = ((tm % 1000) * 1000) as libc::suseconds_t;
+            &timeout as *libc::timeval
         };
 
         imp::fd_set(&mut set, input);
@@ -172,8 +170,12 @@ fn helper(input: libc::c_int, messages: Port<Req>) {
                         Data(NewTimer(timer)) => insert(timer, &mut active),
 
                         Data(RemoveTimer(id, ack)) => {
-                            match dead.pop(&id) {
-                                Some(i) => { ack.send(i); continue }
+                            match dead.iter().position(|&(i, _)| id == i) {
+                                Some(i) => {
+                                    let (_, i) = dead.remove(i).unwrap();
+                                    ack.send(i);
+                                    continue
+                                }
                                 None => {}
                             }
                             let i = active.iter().position(|i| i.id == id);
@@ -206,7 +208,7 @@ impl Timer {
         Ok(Timer {
             id: id,
             inner: Some(~Inner {
-                chan: None,
+                tx: None,
                 interval: 0,
                 target: 0,
                 repeat: false,
@@ -216,17 +218,24 @@ impl Timer {
     }
 
     pub fn sleep(ms: u64) {
-        // FIXME: this can fail because of EINTR, what do do?
-        let _ = unsafe { libc::usleep((ms * 1000) as libc::c_uint) };
+        let mut to_sleep = libc::timespec {
+            tv_sec: (ms / 1000) as libc::time_t,
+            tv_nsec: ((ms % 1000) * 1000000) as libc::c_long,
+        };
+        while unsafe { libc::nanosleep(&to_sleep, &mut to_sleep) } != 0 {
+            if os::errno() as int != libc::EINTR as int {
+                fail!("failed to sleep, but not because of EINTR?");
+            }
+        }
     }
 
     fn inner(&mut self) -> ~Inner {
         match self.inner.take() {
             Some(i) => i,
             None => {
-                let (p, c) = Chan::new();
-                timer_helper::send(RemoveTimer(self.id, c));
-                p.recv()
+                let (tx, rx) = channel();
+                timer_helper::send(RemoveTimer(self.id, tx));
+                rx.recv()
             }
         }
     }
@@ -235,38 +244,38 @@ impl Timer {
 impl rtio::RtioTimer for Timer {
     fn sleep(&mut self, msecs: u64) {
         let mut inner = self.inner();
-        inner.chan = None; // cancel any previous request
+        inner.tx = None; // cancel any previous request
         self.inner = Some(inner);
 
         Timer::sleep(msecs);
     }
 
-    fn oneshot(&mut self, msecs: u64) -> Port<()> {
+    fn oneshot(&mut self, msecs: u64) -> Receiver<()> {
         let now = now();
         let mut inner = self.inner();
 
-        let (p, c) = Chan::new();
+        let (tx, rx) = channel();
         inner.repeat = false;
-        inner.chan = Some(c);
+        inner.tx = Some(tx);
         inner.interval = msecs;
         inner.target = now + msecs;
 
         timer_helper::send(NewTimer(inner));
-        return p;
+        return rx;
     }
 
-    fn period(&mut self, msecs: u64) -> Port<()> {
+    fn period(&mut self, msecs: u64) -> Receiver<()> {
         let now = now();
         let mut inner = self.inner();
 
-        let (p, c) = Chan::new();
+        let (tx, rx) = channel();
         inner.repeat = true;
-        inner.chan = Some(c);
+        inner.tx = Some(tx);
         inner.interval = msecs;
         inner.target = now + msecs;
 
         timer_helper::send(NewTimer(inner));
-        return p;
+        return rx;
     }
 }
 

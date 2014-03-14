@@ -22,13 +22,14 @@ let y: int = x.unwrap();
 
 **Int to string, in non-base-10**
 
-Use [`ToStrRadix`](http://static.rust-lang.org/doc/master/std/num/trait.ToStrRadix.html).
+Use the `format!` syntax extension.
 
 ~~~
-use std::num::ToStrRadix;
-
 let x: int = 42;
-let y: ~str = x.to_str_radix(16);
+let y: ~str = format!("{:t}", x);   // binary
+let y: ~str = format!("{:o}", x);   // octal
+let y: ~str = format!("{:x}", x);   // lowercase hexadecimal
+let y: ~str = format!("{:X}", x);   // uppercase hexidecimal
 ~~~
 
 **String to int, in non-base-10**
@@ -210,7 +211,7 @@ Description            C signature                                    Equivalent
 ---------------------- ---------------------------------------------- ------------------------------------------
 no parameters          `void foo(void);`                              `fn foo();`
 return value           `int foo(void);`                               `fn foo() -> c_int;`
-function parameters    `void foo(int x, int y);`                      `fn foo(x: int, y: int);`
+function parameters    `void foo(int x, int y);`                      `fn foo(x: c_int, y: c_int);`
 in-out pointers        `void foo(const int* in_ptr, int* out_ptr);`   `fn foo(in_ptr: *c_int, out_ptr: *mut c_int);`
 
 Note: The Rust signatures should be wrapped in an `extern "ABI" { ... }` block.

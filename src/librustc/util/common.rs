@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[allow(non_camel_case_types)];
 
 use syntax::ast;
 use syntax::codemap::{Span};
@@ -15,7 +16,9 @@ use syntax::visit;
 use syntax::visit::Visitor;
 
 use std::local_data;
-use extra::time;
+use std::vec_ng::Vec;
+
+use time;
 
 pub fn time<T, U>(do_it: bool, what: &str, u: U, f: |U| -> T) -> T {
     local_data_key!(depth: uint);
@@ -64,7 +67,7 @@ pub fn indenter() -> _indenter {
 
 pub fn field_expr(f: ast::Field) -> @ast::Expr { return f.expr; }
 
-pub fn field_exprs(fields: ~[ast::Field]) -> ~[@ast::Expr] {
+pub fn field_exprs(fields: Vec<ast::Field> ) -> Vec<@ast::Expr> {
     fields.map(|f| f.expr)
 }
 

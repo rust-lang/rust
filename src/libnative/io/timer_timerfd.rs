@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -23,8 +23,8 @@
 //! why).
 //!
 //! As with timer_other, timers just using sleep() do not use the timerfd at
-//! all. They remove the timerfd from the worker thread and then invoke usleep()
-//! to block the calling thread.
+//! all. They remove the timerfd from the worker thread and then invoke
+//! nanosleep() to block the calling thread.
 //!
 //! As with timer_other, all units in this file are in units of millseconds.
 
@@ -33,7 +33,6 @@ use std::libc;
 use std::ptr;
 use std::os;
 use std::rt::rtio;
-use std::hashmap::HashMap;
 use std::mem;
 
 use io::file::FileDesc;
@@ -45,13 +44,14 @@ pub struct Timer {
     priv on_worker: bool,
 }
 
+#[allow(visible_private_types)]
 pub enum Req {
-    NewTimer(libc::c_int, Chan<()>, bool, imp::itimerspec),
-    RemoveTimer(libc::c_int, Chan<()>),
+    NewTimer(libc::c_int, Sender<()>, bool, imp::itimerspec),
+    RemoveTimer(libc::c_int, Sender<()>),
     Shutdown,
 }
 
-fn helper(input: libc::c_int, messages: Port<Req>) {
+fn helper(input: libc::c_int, messages: Receiver<Req>) {
     let efd = unsafe { imp::epoll_create(10) };
     let _fd1 = FileDesc::new(input, true);
     let _fd2 = FileDesc::new(efd, true);
@@ -76,7 +76,7 @@ fn helper(input: libc::c_int, messages: Port<Req>) {
 
     add(efd, input);
     let events: [imp::epoll_event, ..16] = unsafe { mem::init() };
-    let mut map: HashMap<libc::c_int, (Chan<()>, bool)> = HashMap::new();
+    let mut list: ~[(libc::c_int, Sender<()>, bool)] = ~[];
     'outer: loop {
         let n = match unsafe {
             imp::epoll_wait(efd, events.as_ptr(),
@@ -105,13 +105,17 @@ fn helper(input: libc::c_int, messages: Port<Req>) {
                 // FIXME: should this perform a send() this number of
                 //      times?
                 let _ = FileDesc::new(fd, false).inner_read(bits).unwrap();
-                let remove = {
-                    match map.find(&fd).expect("fd unregistered") {
-                        &(ref c, oneshot) => !c.try_send(()) || oneshot
+                let (remove, i) = {
+                    match list.bsearch(|&(f, _, _)| f.cmp(&fd)) {
+                        Some(i) => {
+                            let (_, ref c, oneshot) = list[i];
+                            (!c.try_send(()) || oneshot, i)
+                        }
+                        None => fail!("fd not active: {}", fd),
                     }
                 };
                 if remove {
-                    map.remove(&fd);
+                    drop(list.remove(i));
                     del(efd, fd);
                 }
             }
@@ -126,8 +130,17 @@ fn helper(input: libc::c_int, messages: Port<Req>) {
 
                     // If we haven't previously seen the file descriptor, then
                     // we need to add it to the epoll set.
-                    if map.insert(fd, (chan, one)) {
-                        add(efd, fd);
+                    match list.bsearch(|&(f, _, _)| f.cmp(&fd)) {
+                        Some(i) => {
+                            drop(mem::replace(&mut list[i], (fd, chan, one)));
+                        }
+                        None => {
+                            match list.iter().position(|&(f, _, _)| f >= fd) {
+                                Some(i) => list.insert(i, (fd, chan, one)),
+                                None => list.push((fd, chan, one)),
+                            }
+                            add(efd, fd);
+                        }
                     }
 
                     // Update the timerfd's time value now that we have control
@@ -139,14 +152,18 @@ fn helper(input: libc::c_int, messages: Port<Req>) {
                 }
 
                 Data(RemoveTimer(fd, chan)) => {
-                    if map.remove(&fd) {
-                        del(efd, fd);
+                    match list.bsearch(|&(f, _, _)| f.cmp(&fd)) {
+                        Some(i) => {
+                            drop(list.remove(i));
+                            del(efd, fd);
+                        }
+                        None => {}
                     }
                     chan.send(());
                 }
 
                 Data(Shutdown) => {
-                    assert!(map.len() == 0);
+                    assert!(list.len() == 0);
                     break 'outer;
                 }
 
@@ -166,16 +183,23 @@ impl Timer {
     }
 
     pub fn sleep(ms: u64) {
-        // FIXME: this can fail because of EINTR, what do do?
-        let _ = unsafe { libc::usleep((ms * 1000) as libc::c_uint) };
+        let mut to_sleep = libc::timespec {
+            tv_sec: (ms / 1000) as libc::time_t,
+            tv_nsec: ((ms % 1000) * 1000000) as libc::c_long,
+        };
+        while unsafe { libc::nanosleep(&to_sleep, &mut to_sleep) } != 0 {
+            if os::errno() as int != libc::EINTR as int {
+                fail!("failed to sleep, but not because of EINTR?");
+            }
+        }
     }
 
     fn remove(&mut self) {
         if !self.on_worker { return }
 
-        let (p, c) = Chan::new();
-        timer_helper::send(RemoveTimer(self.fd.fd(), c));
-        p.recv();
+        let (tx, rx) = channel();
+        timer_helper::send(RemoveTimer(self.fd.fd(), tx));
+        rx.recv();
         self.on_worker = false;
     }
 }
@@ -200,8 +224,8 @@ impl rtio::RtioTimer for Timer {
     // before returning to guarantee the invariant that when oneshot() and
     // period() return that the old port will never receive any more messages.
 
-    fn oneshot(&mut self, msecs: u64) -> Port<()> {
-        let (p, c) = Chan::new();
+    fn oneshot(&mut self, msecs: u64) -> Receiver<()> {
+        let (tx, rx) = channel();
 
         let new_value = imp::itimerspec {
             it_interval: imp::timespec { tv_sec: 0, tv_nsec: 0 },
@@ -210,26 +234,26 @@ impl rtio::RtioTimer for Timer {
                 tv_nsec: ((msecs % 1000) * 1000000) as libc::c_long,
             }
         };
-        timer_helper::send(NewTimer(self.fd.fd(), c, true, new_value));
-        p.recv();
+        timer_helper::send(NewTimer(self.fd.fd(), tx, true, new_value));
+        rx.recv();
         self.on_worker = true;
 
-        return p;
+        return rx;
     }
 
-    fn period(&mut self, msecs: u64) -> Port<()> {
-        let (p, c) = Chan::new();
+    fn period(&mut self, msecs: u64) -> Receiver<()> {
+        let (tx, rx) = channel();
 
         let spec = imp::timespec {
             tv_sec: (msecs / 1000) as libc::time_t,
             tv_nsec: ((msecs % 1000) * 1000000) as libc::c_long,
         };
         let new_value = imp::itimerspec { it_interval: spec, it_value: spec, };
-        timer_helper::send(NewTimer(self.fd.fd(), c, false, new_value));
-        p.recv();
+        timer_helper::send(NewTimer(self.fd.fd(), tx, false, new_value));
+        rx.recv();
         self.on_worker = true;
 
-        return p;
+        return rx;
     }
 }
 

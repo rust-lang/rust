@@ -14,23 +14,26 @@
 
 use ast::Name;
 
+use collections::HashMap;
 use std::cast;
 use std::cell::RefCell;
 use std::cmp::Equiv;
-use std::hashmap::HashMap;
+use std::fmt;
+use std::hash::Hash;
 use std::rc::Rc;
+use std::vec_ng::Vec;
 
 pub struct Interner<T> {
     priv map: RefCell<HashMap<T, Name>>,
-    priv vect: RefCell<~[T]>,
+    priv vect: RefCell<Vec<T> >,
 }
 
 // when traits can extend traits, we should extend index<Name,T> to get []
-impl<T:Eq + IterBytes + Hash + Freeze + Clone + 'static> Interner<T> {
+impl<T:Eq + Hash + Freeze + Clone + 'static> Interner<T> {
     pub fn new() -> Interner<T> {
         Interner {
             map: RefCell::new(HashMap::new()),
-            vect: RefCell::new(~[]),
+            vect: RefCell::new(Vec::new()),
         }
     }
 
@@ -66,7 +69,7 @@ impl<T:Eq + IterBytes + Hash + Freeze + Clone + 'static> Interner<T> {
 
     pub fn get(&self, idx: Name) -> T {
         let vect = self.vect.borrow();
-        vect.get()[idx].clone()
+        (*vect.get().get(idx as uint)).clone()
     }
 
     pub fn len(&self) -> uint {
@@ -74,8 +77,7 @@ impl<T:Eq + IterBytes + Hash + Freeze + Clone + 'static> Interner<T> {
         vect.get().len()
     }
 
-    pub fn find_equiv<Q:Hash + IterBytes + Equiv<T>>(&self, val: &Q)
-                                              -> Option<Name> {
+    pub fn find_equiv<Q:Hash + Equiv<T>>(&self, val: &Q) -> Option<Name> {
         let map = self.map.borrow();
         match map.get().find_equiv(val) {
             Some(v) => Some(*v),
@@ -84,7 +86,7 @@ impl<T:Eq + IterBytes + Hash + Freeze + Clone + 'static> Interner<T> {
     }
 }
 
-#[deriving(Clone, Eq, IterBytes, Ord)]
+#[deriving(Clone, Eq, Hash, Ord)]
 pub struct RcStr {
     priv string: Rc<~str>,
 }
@@ -104,13 +106,20 @@ impl TotalOrd for RcStr {
 impl Str for RcStr {
     #[inline]
     fn as_slice<'a>(&'a self) -> &'a str {
-        let s: &'a str = *self.string.borrow();
+        let s: &'a str = *self.string.deref();
         s
     }
 
     #[inline]
     fn into_owned(self) -> ~str {
-        self.string.borrow().to_owned()
+        self.string.deref().to_owned()
+    }
+}
+
+impl fmt::Show for RcStr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use std::fmt::Show;
+        self.as_slice().fmt(f)
     }
 }
 
@@ -126,7 +135,7 @@ impl RcStr {
 // &str rather than RcStr, resulting in less allocation.
 pub struct StrInterner {
     priv map: RefCell<HashMap<RcStr, Name>>,
-    priv vect: RefCell<~[RcStr]>,
+    priv vect: RefCell<Vec<RcStr> >,
 }
 
 // when traits can extend traits, we should extend index<Name,T> to get []
@@ -134,7 +143,7 @@ impl StrInterner {
     pub fn new() -> StrInterner {
         StrInterner {
             map: RefCell::new(HashMap::new()),
-            vect: RefCell::new(~[]),
+            vect: RefCell::new(Vec::new()),
         }
     }
 
@@ -181,21 +190,21 @@ impl StrInterner {
         let new_idx = self.len() as Name;
         // leave out of map to avoid colliding
         let mut vect = self.vect.borrow_mut();
-        let existing = vect.get()[idx].clone();
+        let existing = (*vect.get().get(idx as uint)).clone();
         vect.get().push(existing);
         new_idx
     }
 
     pub fn get(&self, idx: Name) -> RcStr {
         let vect = self.vect.borrow();
-        vect.get()[idx].clone()
+        (*vect.get().get(idx as uint)).clone()
     }
 
     /// Returns this string with lifetime tied to the interner. Since
     /// strings may never be removed from the interner, this is safe.
     pub fn get_ref<'a>(&'a self, idx: Name) -> &'a str {
         let vect = self.vect.borrow();
-        let s: &str = vect.get()[idx].as_slice();
+        let s: &str = vect.get().get(idx as uint).as_slice();
         unsafe {
             cast::transmute(s)
         }
@@ -206,8 +215,7 @@ impl StrInterner {
         vect.get().len()
     }
 
-    pub fn find_equiv<Q:Hash + IterBytes + Equiv<RcStr>>(&self, val: &Q)
-                                                         -> Option<Name> {
+    pub fn find_equiv<Q:Hash + Equiv<RcStr>>(&self, val: &Q) -> Option<Name> {
         let map = self.map.borrow();
         match map.get().find_equiv(val) {
             Some(v) => Some(*v),

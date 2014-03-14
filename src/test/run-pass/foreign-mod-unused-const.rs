@@ -11,7 +11,6 @@
 mod foo {
     use std::libc::c_int;
 
-    #[nolink]
     extern {
         pub static errno: c_int;
     }

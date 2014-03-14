@@ -13,6 +13,8 @@
 //! Currently these aren't particularly useful, there only exists bindings
 //! enough so that pipes can be created to child processes.
 
+#[allow(missing_doc)];
+
 use prelude::*;
 use io::IoResult;
 use libc;
@@ -46,6 +48,7 @@ impl PipeStream {
         })
     }
 
+    #[doc(hidden)]
     pub fn new(inner: ~RtioPipe) -> PipeStream {
         PipeStream { obj: inner }
     }
@@ -74,15 +77,15 @@ mod test {
         let os::Pipe { input, out } = os::pipe();
         let out = PipeStream::open(out);
         let mut input = PipeStream::open(input);
-        let (p, c) = Chan::new();
+        let (tx, rx) = channel();
         spawn(proc() {
             let mut out = out;
             out.write([10]).unwrap();
-            p.recv(); // don't close the pipe until the other read has finished
+            rx.recv(); // don't close the pipe until the other read has finished
         });
 
         let mut buf = [0, ..10];
         input.read(buf).unwrap();
-        c.send(());
+        tx.send(());
     })
 }

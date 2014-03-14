@@ -65,99 +65,14 @@ use option::{Some, None, Option};
 use prelude::drop;
 use ptr::RawPtr;
 use result::{Err, Ok};
+use rt::backtrace;
 use rt::local::Local;
 use rt::task::Task;
 use str::Str;
 use task::TaskResult;
-use unstable::intrinsics;
+use intrinsics;
 
-use uw = self::libunwind;
-
-#[allow(dead_code)]
-mod libunwind {
-    //! Unwind library interface
-
-    #[allow(non_camel_case_types)];
-    #[allow(dead_code)]; // these are just bindings
-
-    use libc::{uintptr_t};
-
-    #[cfg(not(target_arch = "arm"))]
-    #[repr(C)]
-    pub enum _Unwind_Action
-    {
-        _UA_SEARCH_PHASE = 1,
-        _UA_CLEANUP_PHASE = 2,
-        _UA_HANDLER_FRAME = 4,
-        _UA_FORCE_UNWIND = 8,
-        _UA_END_OF_STACK = 16,
-    }
-
-    #[cfg(target_arch = "arm")]
-    #[repr(C)]
-    pub enum _Unwind_State
-    {
-      _US_VIRTUAL_UNWIND_FRAME = 0,
-      _US_UNWIND_FRAME_STARTING = 1,
-      _US_UNWIND_FRAME_RESUME = 2,
-      _US_ACTION_MASK = 3,
-      _US_FORCE_UNWIND = 8,
-      _US_END_OF_STACK = 16
-    }
-
-    #[repr(C)]
-    pub enum _Unwind_Reason_Code {
-        _URC_NO_REASON = 0,
-        _URC_FOREIGN_EXCEPTION_CAUGHT = 1,
-        _URC_FATAL_PHASE2_ERROR = 2,
-        _URC_FATAL_PHASE1_ERROR = 3,
-        _URC_NORMAL_STOP = 4,
-        _URC_END_OF_STACK = 5,
-        _URC_HANDLER_FOUND = 6,
-        _URC_INSTALL_CONTEXT = 7,
-        _URC_CONTINUE_UNWIND = 8,
-        _URC_FAILURE = 9, // used only by ARM EABI
-    }
-
-    pub type _Unwind_Exception_Class = u64;
-
-    pub type _Unwind_Word = uintptr_t;
-
-    #[cfg(target_arch = "x86")]
-    pub static unwinder_private_data_size: int = 5;
-
-    #[cfg(target_arch = "x86_64")]
-    pub static unwinder_private_data_size: int = 2;
-
-    #[cfg(target_arch = "arm")]
-    pub static unwinder_private_data_size: int = 20;
-
-    pub struct _Unwind_Exception {
-        exception_class: _Unwind_Exception_Class,
-        exception_cleanup: _Unwind_Exception_Cleanup_Fn,
-        private: [_Unwind_Word, ..unwinder_private_data_size],
-    }
-
-    pub enum _Unwind_Context {}
-
-    pub type _Unwind_Exception_Cleanup_Fn = extern "C" fn(unwind_code: _Unwind_Reason_Code,
-                                                          exception: *_Unwind_Exception);
-
-    #[cfg(target_os = "linux")]
-    #[cfg(target_os = "freebsd")]
-    #[cfg(target_os = "win32")]
-    #[link(name = "gcc_s")]
-    extern {}
-
-    #[cfg(target_os = "android")]
-    #[link(name = "gcc")]
-    extern {}
-
-    extern "C" {
-        pub fn _Unwind_RaiseException(exception: *_Unwind_Exception) -> _Unwind_Reason_Code;
-        pub fn _Unwind_DeleteException(exception: *_Unwind_Exception);
-    }
-}
+use uw = rt::libunwind;
 
 pub struct Unwinder {
     priv unwinding: bool,
@@ -177,7 +92,7 @@ impl Unwinder {
     }
 
     pub fn try(&mut self, f: ||) {
-        use unstable::raw::Closure;
+        use raw::Closure;
         use libc::{c_void};
 
         unsafe {
@@ -280,8 +195,9 @@ fn rust_exception_class() -> uw::_Unwind_Exception_Class {
 
 #[cfg(not(target_arch = "arm"), not(test))]
 #[doc(hidden)]
+#[allow(visible_private_types)]
 pub mod eabi {
-    use uw = super::libunwind;
+    use uw = rt::libunwind;
     use libc::c_int;
 
     extern "C" {
@@ -333,8 +249,9 @@ pub mod eabi {
 // ARM EHABI uses a slightly different personality routine signature,
 // but otherwise works the same.
 #[cfg(target_arch = "arm", not(test))]
+#[allow(visible_private_types)]
 pub mod eabi {
-    use uw = super::libunwind;
+    use uw = rt::libunwind;
     use libc::c_int;
 
     extern "C" {
@@ -374,6 +291,24 @@ pub mod eabi {
             }
         }
     }
+}
+
+#[cold]
+#[lang="fail_"]
+#[cfg(not(test))]
+pub fn fail_(expr: *u8, file: *u8, line: uint) -> ! {
+    begin_unwind_raw(expr, file, line);
+}
+
+#[cold]
+#[lang="fail_bounds_check"]
+#[cfg(not(test))]
+pub fn fail_bounds_check(file: *u8, line: uint, index: uint, len: uint) -> ! {
+    use c_str::ToCStr;
+
+    let msg = format!("index out of bounds: the len is {} but the index is {}",
+                      len as uint, index as uint);
+    msg.with_c_str(|buf| fail_(buf as *u8, file, line))
 }
 
 /// This is the entry point of unwinding for things like lang items and such.
@@ -460,6 +395,10 @@ fn begin_unwind_inner(msg: ~Any, file: &'static str, line: uint) -> ! {
             Some(t) => t,
             None => {
                 rterrln!("failed at '{}', {}:{}", msg_s, file, line);
+                if backtrace::log_enabled() {
+                    let mut err = ::rt::util::Stderr;
+                    let _err = backtrace::write(&mut err);
+                }
                 unsafe { intrinsics::abort() }
             }
         };
@@ -479,6 +418,9 @@ fn begin_unwind_inner(msg: ~Any, file: &'static str, line: uint) -> ! {
                     let _err = format_args!(|args| ::fmt::writeln(stderr, args),
                                             "task '{}' failed at '{}', {}:{}",
                                             n, msg_s, file, line);
+                    if backtrace::log_enabled() {
+                        let _err = backtrace::write(stderr);
+                    }
                     task = Local::take();
 
                     match mem::replace(&mut task.stderr, Some(stderr)) {
@@ -493,6 +435,10 @@ fn begin_unwind_inner(msg: ~Any, file: &'static str, line: uint) -> ! {
                 None => {
                     rterrln!("task '{}' failed at '{}', {}:{}", n, msg_s,
                              file, line);
+                    if backtrace::log_enabled() {
+                        let mut err = ::rt::util::Stderr;
+                        let _err = backtrace::write(&mut err);
+                    }
                 }
             }
         }
@@ -505,6 +451,13 @@ fn begin_unwind_inner(msg: ~Any, file: &'static str, line: uint) -> ! {
             // unwinding or otherwise exiting the task cleanly.
             rterrln!("task failed during unwinding (double-failure - total drag!)")
             rterrln!("rust must abort now. so sorry.");
+
+            // Don't print the backtrace twice (it would have already been
+            // printed if logging was enabled).
+            if !backtrace::log_enabled() {
+                let mut err = ::rt::util::Stderr;
+                let _err = backtrace::write(&mut err);
+            }
             unsafe { intrinsics::abort() }
         }
     }

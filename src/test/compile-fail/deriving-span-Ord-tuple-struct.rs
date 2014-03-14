@@ -12,11 +12,12 @@
 
 #[feature(struct_variant)];
 extern crate extra;
+extern crate rand;
 
-
+#[deriving(Eq)]
 struct Error;
 
-#[deriving(Ord)]
+#[deriving(Eq, Ord)]
 struct Struct(
     Error //~ ERROR
 //~^ ERROR

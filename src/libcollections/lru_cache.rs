@@ -37,11 +37,13 @@
 //! assert!(cache.get(&2).is_none());
 //! ```
 
-use std::container::Container;
-use std::hashmap::HashMap;
-use std::to_bytes::Cb;
-use std::ptr;
 use std::cast;
+use std::container::Container;
+use std::hash::Hash;
+use std::fmt;
+use std::ptr;
+
+use HashMap;
 
 struct KeyRef<K> { k: *K }
 
@@ -60,9 +62,9 @@ pub struct LruCache<K, V> {
     priv tail: *mut LruEntry<K, V>,
 }
 
-impl<K: IterBytes> IterBytes for KeyRef<K> {
-    fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
-        unsafe{ (*self.k).iter_bytes(lsb0, f) }
+impl<S, K: Hash<S>> Hash<S> for KeyRef<K> {
+    fn hash(&self, state: &mut S) {
+        unsafe { (*self.k).hash(state) }
     }
 }
 
@@ -92,7 +94,7 @@ impl<K, V> LruEntry<K, V> {
     }
 }
 
-impl<K: IterBytes + Eq, V> LruCache<K, V> {
+impl<K: Hash + Eq, V> LruCache<K, V> {
     /// Create an LRU Cache that holds at most `capacity` items.
     pub fn new(capacity: uint) -> LruCache<K, V> {
         let cache = LruCache {
@@ -216,47 +218,43 @@ impl<K: IterBytes + Eq, V> LruCache<K, V> {
     }
 }
 
-impl<A: ToStr + IterBytes + Eq, B: ToStr> ToStr for LruCache<A, B> {
+impl<A: fmt::Show + Hash + Eq, B: fmt::Show> fmt::Show for LruCache<A, B> {
     /// Return a string that lists the key-value pairs from most-recently
     /// used to least-recently used.
-    #[inline]
-    fn to_str(&self) -> ~str {
-        let mut acc = ~"{";
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        try!(write!(f.buf, r"\{"));
         let mut cur = self.head;
         for i in range(0, self.len()) {
-            if i > 0 {
-                acc.push_str(", ");
-            }
+            if i > 0 { try!(write!(f.buf, ", ")) }
             unsafe {
                 cur = (*cur).next;
                 match (*cur).key {
                     // should never print nil
-                    None => acc.push_str("nil"),
-                    Some(ref k) => acc.push_str(k.to_str())
+                    None => try!(write!(f.buf, "nil")),
+                    Some(ref k) => try!(write!(f.buf, "{}", *k)),
                 }
             }
-            acc.push_str(": ");
+            try!(write!(f.buf, ": "));
             unsafe {
                 match (*cur).value {
                     // should never print nil
-                    None => acc.push_str("nil"),
-                    Some(ref value) => acc.push_str(value.to_str())
+                    None => try!(write!(f.buf, "nil")),
+                    Some(ref value) => try!(write!(f.buf, "{}", *value)),
                 }
             }
         }
-        acc.push_char('}');
-        acc
+        write!(f.buf, r"\}")
     }
 }
 
-impl<K: IterBytes + Eq, V> Container for LruCache<K, V> {
+impl<K: Hash + Eq, V> Container for LruCache<K, V> {
     /// Return the number of key-value pairs in the cache.
     fn len(&self) -> uint {
         self.map.len()
     }
 }
 
-impl<K: IterBytes + Eq, V> Mutable for LruCache<K, V> {
+impl<K: Hash + Eq, V> Mutable for LruCache<K, V> {
     /// Clear the cache of all key-value pairs.
     fn clear(&mut self) {
         self.map.clear();
@@ -279,7 +277,7 @@ mod tests {
 
     fn assert_opt_eq<V: Eq>(opt: Option<&V>, v: V) {
         assert!(opt.is_some());
-        assert_eq!(opt.unwrap(), &v);
+        assert!(opt.unwrap() == &v);
     }
 
     #[test]

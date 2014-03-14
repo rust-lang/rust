@@ -12,17 +12,15 @@
 
 #[allow(non_camel_case_types)];
 #[deny(warnings)];
+#[allow(deprecated_owned_vector)];
 
-extern crate extra;
+extern crate test;
 extern crate getopts;
 
 use std::os;
 use std::io;
 use std::io::fs;
-
 use getopts::{optopt, optflag, reqopt};
-use extra::test;
-
 use common::config;
 use common::mode_run_pass;
 use common::mode_run_fail;
@@ -194,13 +192,13 @@ pub fn opt_str2(maybestr: Option<~str>) -> ~str {
 }
 
 pub fn str_mode(s: ~str) -> mode {
-    match s {
-      ~"compile-fail" => mode_compile_fail,
-      ~"run-fail" => mode_run_fail,
-      ~"run-pass" => mode_run_pass,
-      ~"pretty" => mode_pretty,
-      ~"debug-info" => mode_debug_info,
-      ~"codegen" => mode_codegen,
+    match s.as_slice() {
+      "compile-fail" => mode_compile_fail,
+      "run-fail" => mode_run_fail,
+      "run-pass" => mode_run_pass,
+      "pretty" => mode_pretty,
+      "debug-info" => mode_debug_info,
+      "codegen" => mode_codegen,
       _ => fail!("invalid mode")
     }
 }

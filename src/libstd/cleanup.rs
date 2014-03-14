@@ -11,7 +11,7 @@
 #[doc(hidden)];
 
 use ptr;
-use unstable::raw;
+use raw;
 
 static RC_IMMORTAL : uint = 0x77777777;
 

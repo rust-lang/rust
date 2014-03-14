@@ -12,8 +12,6 @@
 # Translation of inline assembly.
 */
 
-use std::c_str::ToCStr;
-
 use lib;
 use middle::trans::build::*;
 use middle::trans::callee;
@@ -22,9 +20,10 @@ use middle::trans::cleanup;
 use middle::trans::cleanup::CleanupMethods;
 use middle::trans::expr;
 use middle::trans::type_of;
-
 use middle::trans::type_::Type;
 
+use std::c_str::ToCStr;
+use std::vec_ng::Vec;
 use syntax::ast;
 
 // Take an inline assembly expression and splat it out via LLVM
@@ -32,8 +31,8 @@ pub fn trans_inline_asm<'a>(bcx: &'a Block<'a>, ia: &ast::InlineAsm)
                         -> &'a Block<'a> {
     let fcx = bcx.fcx;
     let mut bcx = bcx;
-    let mut constraints = ~[];
-    let mut output_types = ~[];
+    let mut constraints = Vec::new();
+    let mut output_types = Vec::new();
 
     let temp_scope = fcx.push_custom_cleanup_scope();
 
@@ -51,10 +50,11 @@ pub fn trans_inline_asm<'a>(bcx: &'a Block<'a>, ia: &ast::InlineAsm)
     let inputs = ia.inputs.map(|&(ref c, input)| {
         constraints.push((*c).clone());
 
+        let in_datum = unpack_datum!(bcx, expr::trans(bcx, input));
         unpack_result!(bcx, {
-            callee::trans_arg_expr(bcx,
+            callee::trans_arg_datum(bcx,
                                    expr_ty(bcx, input),
-                                   input,
+                                   in_datum,
                                    cleanup::CustomScope(temp_scope),
                                    callee::DontAutorefArg)
         })
@@ -82,15 +82,15 @@ pub fn trans_inline_asm<'a>(bcx: &'a Block<'a>, ia: &ast::InlineAsm)
 
     debug!("Asm Constraints: {:?}", constraints);
 
-    let numOutputs = outputs.len();
+    let num_outputs = outputs.len();
 
     // Depending on how many outputs we have, the return type is different
-    let output_type = if numOutputs == 0 {
+    let output_type = if num_outputs == 0 {
         Type::void()
-    } else if numOutputs == 1 {
-        output_types[0]
+    } else if num_outputs == 1 {
+        *output_types.get(0)
     } else {
-        Type::struct_(output_types, false)
+        Type::struct_(output_types.as_slice(), false)
     };
 
     let dialect = match ia.dialect {
@@ -100,13 +100,20 @@ pub fn trans_inline_asm<'a>(bcx: &'a Block<'a>, ia: &ast::InlineAsm)
 
     let r = ia.asm.get().with_c_str(|a| {
         constraints.with_c_str(|c| {
-            InlineAsmCall(bcx, a, c, inputs, output_type, ia.volatile, ia.alignstack, dialect)
+            InlineAsmCall(bcx,
+                          a,
+                          c,
+                          inputs.as_slice(),
+                          output_type,
+                          ia.volatile,
+                          ia.alignstack,
+                          dialect)
         })
     });
 
     // Again, based on how many outputs we have
-    if numOutputs == 1 {
-        Store(bcx, r, outputs[0]);
+    if num_outputs == 1 {
+        Store(bcx, r, *outputs.get(0));
     } else {
         for (i, o) in outputs.iter().enumerate() {
             let v = ExtractValue(bcx, r, i);

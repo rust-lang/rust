@@ -16,8 +16,10 @@ use middle::lint::{allow, contains_lint, DeadCode};
 use middle::privacy;
 use middle::ty;
 use middle::typeck;
+use util::nodemap::NodeSet;
 
-use std::hashmap::HashSet;
+use collections::HashSet;
+use std::vec_ng::Vec;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util::{local_def, def_id_of_def, is_local};
@@ -48,16 +50,16 @@ fn should_explore(tcx: ty::ctxt, def_id: ast::DefId) -> bool {
 }
 
 struct MarkSymbolVisitor {
-    worklist: ~[ast::NodeId],
-    method_map: typeck::method_map,
+    worklist: Vec<ast::NodeId> ,
+    method_map: typeck::MethodMap,
     tcx: ty::ctxt,
     live_symbols: ~HashSet<ast::NodeId>,
 }
 
 impl MarkSymbolVisitor {
     fn new(tcx: ty::ctxt,
-           method_map: typeck::method_map,
-           worklist: ~[ast::NodeId]) -> MarkSymbolVisitor {
+           method_map: typeck::MethodMap,
+           worklist: Vec<ast::NodeId> ) -> MarkSymbolVisitor {
         MarkSymbolVisitor {
             worklist: worklist,
             method_map: method_map,
@@ -90,24 +92,24 @@ impl MarkSymbolVisitor {
         }
     }
 
-    fn lookup_and_handle_method(&mut self, id: &ast::NodeId,
+    fn lookup_and_handle_method(&mut self, id: ast::NodeId,
                                 span: codemap::Span) {
-        let method_map = self.method_map.borrow();
-        match method_map.get().find(id) {
-            Some(&typeck::method_map_entry { origin, .. }) => {
-                match origin {
-                    typeck::method_static(def_id) => {
+        let method_call = typeck::MethodCall::expr(id);
+        match self.method_map.borrow().get().find(&method_call) {
+            Some(method) => {
+                match method.origin {
+                    typeck::MethodStatic(def_id) => {
                         match ty::provided_source(self.tcx, def_id) {
                             Some(p_did) => self.check_def_id(p_did),
                             None => self.check_def_id(def_id)
                         }
                     }
-                    typeck::method_param(typeck::method_param {
+                    typeck::MethodParam(typeck::MethodParam {
                         trait_id: trait_id,
                         method_num: index,
                         ..
                     })
-                    | typeck::method_object(typeck::method_object {
+                    | typeck::MethodObject(typeck::MethodObject {
                         trait_id: trait_id,
                         method_num: index,
                         ..
@@ -178,7 +180,7 @@ impl Visitor<()> for MarkSymbolVisitor {
     fn visit_expr(&mut self, expr: &ast::Expr, _: ()) {
         match expr.node {
             ast::ExprMethodCall(..) => {
-                self.lookup_and_handle_method(&expr.id, expr.span);
+                self.lookup_and_handle_method(expr.id, expr.span);
             }
             _ => ()
         }
@@ -199,7 +201,7 @@ impl Visitor<()> for MarkSymbolVisitor {
 
 fn has_allow_dead_code_or_lang_attr(attrs: &[ast::Attribute]) -> bool {
     contains_lint(attrs, allow, DEAD_CODE_LINT_STR)
-    || attr::contains_name(attrs, "lang")
+    || attr::contains_name(attrs.as_slice(), "lang")
 }
 
 // This visitor seeds items that
@@ -216,12 +218,12 @@ fn has_allow_dead_code_or_lang_attr(attrs: &[ast::Attribute]) -> bool {
 //   2) We are not sure to be live or not
 //     * Implementation of a trait method
 struct LifeSeeder {
-    worklist: ~[ast::NodeId],
+    worklist: Vec<ast::NodeId> ,
 }
 
 impl Visitor<()> for LifeSeeder {
     fn visit_item(&mut self, item: &ast::Item, _: ()) {
-        if has_allow_dead_code_or_lang_attr(item.attrs) {
+        if has_allow_dead_code_or_lang_attr(item.attrs.as_slice()) {
             self.worklist.push(item.id);
         }
         match item.node {
@@ -241,7 +243,7 @@ impl Visitor<()> for LifeSeeder {
         // Check for method here because methods are not ast::Item
         match *fk {
             visit::FkMethod(_, _, method) => {
-                if has_allow_dead_code_or_lang_attr(method.attrs) {
+                if has_allow_dead_code_or_lang_attr(method.attrs.as_slice()) {
                     self.worklist.push(id);
                 }
             }
@@ -253,9 +255,9 @@ impl Visitor<()> for LifeSeeder {
 
 fn create_and_seed_worklist(tcx: ty::ctxt,
                             exported_items: &privacy::ExportedItems,
-                            reachable_symbols: &HashSet<ast::NodeId>,
-                            krate: &ast::Crate) -> ~[ast::NodeId] {
-    let mut worklist = ~[];
+                            reachable_symbols: &NodeSet,
+                            krate: &ast::Crate) -> Vec<ast::NodeId> {
+    let mut worklist = Vec::new();
 
     // Preferably, we would only need to seed the worklist with reachable
     // symbols. However, since the set of reachable symbols differs
@@ -285,9 +287,9 @@ fn create_and_seed_worklist(tcx: ty::ctxt,
 }
 
 fn find_live(tcx: ty::ctxt,
-             method_map: typeck::method_map,
+             method_map: typeck::MethodMap,
              exported_items: &privacy::ExportedItems,
-             reachable_symbols: &HashSet<ast::NodeId>,
+             reachable_symbols: &NodeSet,
              krate: &ast::Crate)
              -> ~HashSet<ast::NodeId> {
     let worklist = create_and_seed_worklist(tcx, exported_items,
@@ -408,9 +410,9 @@ impl Visitor<()> for DeadVisitor {
 }
 
 pub fn check_crate(tcx: ty::ctxt,
-                   method_map: typeck::method_map,
+                   method_map: typeck::MethodMap,
                    exported_items: &privacy::ExportedItems,
-                   reachable_symbols: &HashSet<ast::NodeId>,
+                   reachable_symbols: &NodeSet,
                    krate: &ast::Crate) {
     let live_symbols = find_live(tcx, method_map, exported_items,
                                  reachable_symbols, krate);

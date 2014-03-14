@@ -22,6 +22,8 @@ use mc = middle::mem_categorization;
 use middle::borrowck::*;
 use middle::moves;
 use middle::ty;
+use middle::typeck::MethodCall;
+use std::vec_ng::Vec;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::codemap::Span;
@@ -143,11 +145,11 @@ impl<'a> CheckLoanCtxt<'a> {
         })
     }
 
-    pub fn loans_generated_by(&self, scope_id: ast::NodeId) -> ~[uint] {
+    pub fn loans_generated_by(&self, scope_id: ast::NodeId) -> Vec<uint> {
         //! Returns a vector of the loans that are generated as
         //! we encounter `scope_id`.
 
-        let mut result = ~[];
+        let mut result = Vec::new();
         self.dfcx_loans.each_gen_bit_frozen(scope_id, |loan_index| {
             result.push(loan_index);
             true
@@ -715,7 +717,7 @@ impl<'a> CheckLoanCtxt<'a> {
                                 span: Span) {
         let capture_map = self.bccx.capture_map.borrow();
         let cap_vars = capture_map.get().get(&closure_id);
-        for cap_var in cap_vars.borrow().iter() {
+        for cap_var in cap_vars.deref().iter() {
             let var_id = ast_util::def_id_of_def(cap_var.def).node;
             let var_path = @LpVar(var_id);
             self.check_if_path_is_moved(closure_id, span,
@@ -784,7 +786,6 @@ impl<'a> CheckLoanCtxt<'a> {
     pub fn check_call(&self,
                       _expr: &ast::Expr,
                       _callee: Option<@ast::Expr>,
-                      _callee_id: ast::NodeId,
                       _callee_span: Span,
                       _args: &[@ast::Expr]) {
         // NB: This call to check for conflicting loans is not truly
@@ -828,23 +829,22 @@ fn check_loans_in_expr<'a>(this: &mut CheckLoanCtxt<'a>,
           this.check_captured_variables(expr.id, expr.span)
       }
       ast::ExprAssign(dest, _) |
-      ast::ExprAssignOp(_, _, dest, _) => {
+      ast::ExprAssignOp(_, dest, _) => {
         this.check_assignment(dest);
       }
       ast::ExprCall(f, ref args) => {
-        this.check_call(expr, Some(f), f.id, f.span, *args);
+        this.check_call(expr, Some(f), f.span, args.as_slice());
       }
-      ast::ExprMethodCall(callee_id, _, _, ref args) => {
-        this.check_call(expr, None, callee_id, expr.span, *args);
+      ast::ExprMethodCall(_, _, ref args) => {
+        this.check_call(expr, None, expr.span, args.as_slice());
       }
-      ast::ExprIndex(callee_id, _, rval) |
-      ast::ExprBinary(callee_id, _, _, rval)
-      if method_map.get().contains_key(&expr.id) => {
-        this.check_call(expr, None, callee_id, expr.span, [rval]);
+      ast::ExprIndex(_, rval) | ast::ExprBinary(_, _, rval)
+      if method_map.get().contains_key(&MethodCall::expr(expr.id)) => {
+        this.check_call(expr, None, expr.span, [rval]);
       }
-      ast::ExprUnary(callee_id, _, _) | ast::ExprIndex(callee_id, _, _)
-      if method_map.get().contains_key(&expr.id) => {
-        this.check_call(expr, None, callee_id, expr.span, []);
+      ast::ExprUnary(_, _) | ast::ExprIndex(_, _)
+      if method_map.get().contains_key(&MethodCall::expr(expr.id)) => {
+        this.check_call(expr, None, expr.span, []);
       }
       ast::ExprInlineAsm(ref ia) => {
           for &(_, out) in ia.outputs.iter() {

@@ -13,6 +13,7 @@
 use std::cmp;
 use std::ops;
 
+#[deriving(Show)]
 struct Point {
     x: int,
     y: int

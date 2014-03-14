@@ -16,10 +16,11 @@
 
 #[feature(struct_variant, managed_boxes)];
 
+extern crate rand;
 extern crate serialize;
 
 use std::io::MemWriter;
-use std::rand::{random, Rand};
+use rand::{random, Rand};
 use serialize::{Encodable, Decodable};
 use serialize::ebml;
 use serialize::ebml::writer::Encoder;
@@ -54,7 +55,7 @@ struct G<T> {
     t: T
 }
 
-fn roundtrip<'a, T: Rand + Eq + Encodable<Encoder> +
+fn roundtrip<'a, T: Rand + Eq + Encodable<Encoder<'a>> +
                     Decodable<Decoder<'a>>>() {
     let obj: T = random();
     let mut w = MemWriter::new();

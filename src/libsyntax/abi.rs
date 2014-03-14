@@ -8,12 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::to_bytes;
+use std::fmt;
+use std::vec_ng::Vec;
+use std::fmt::Show;
 
 #[deriving(Eq)]
 pub enum Os { OsWin32, OsMacos, OsLinux, OsAndroid, OsFreebsd, }
 
-#[deriving(Eq)]
+#[deriving(Eq, Hash)]
 pub enum Abi {
     // NB: This ordering MUST match the AbiDatas array below.
     // (This is ensured by the test indices_are_correct().)
@@ -47,7 +49,7 @@ pub enum Architecture {
 static IntelBits: u32 = (1 << (X86 as uint)) | (1 << (X86_64 as uint));
 static ArmBits: u32 = (1 << (Arm as uint));
 
-struct AbiData {
+pub struct AbiData {
     abi: Abi,
 
     // Name of this ABI as we like it called.
@@ -58,13 +60,13 @@ struct AbiData {
     abi_arch: AbiArchitecture
 }
 
-enum AbiArchitecture {
+pub enum AbiArchitecture {
     RustArch,   // Not a real ABI (e.g., intrinsic)
     AllArch,    // An ABI that specifies cross-platform defaults (e.g., "C")
     Archs(u32)  // Multiple architectures (bitset)
 }
 
-#[deriving(Clone, Eq, Encodable, Decodable)]
+#[deriving(Clone, Eq, Encodable, Decodable, Hash)]
 pub struct AbiSet {
     priv bits: u32   // each bit represents one of the abis below
 }
@@ -116,8 +118,8 @@ pub fn lookup(name: &str) -> Option<Abi> {
     res
 }
 
-pub fn all_names() -> ~[&'static str] {
-    AbiDatas.map(|d| d.name)
+pub fn all_names() -> Vec<&'static str> {
+    AbiDatas.iter().map(|d| d.name).collect()
 }
 
 impl Abi {
@@ -202,7 +204,7 @@ impl AbiSet {
     }
 
     pub fn add(&mut self, abi: Abi) {
-        self.bits |= (1 << abi.index());
+        self.bits |= 1 << abi.index();
     }
 
     pub fn each(&self, op: |abi: Abi| -> bool) -> bool {
@@ -231,7 +233,7 @@ impl AbiSet {
     }
 
     pub fn check_valid(&self) -> Option<(Abi, Abi)> {
-        let mut abis = ~[];
+        let mut abis = Vec::new();
         self.each(|abi| { abis.push(abi); true });
 
         for (i, abi) in abis.iter().enumerate() {
@@ -265,32 +267,23 @@ impl AbiSet {
     }
 }
 
-impl to_bytes::IterBytes for Abi {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
-        self.index().iter_bytes(lsb0, f)
+impl fmt::Show for Abi {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.data().name.fmt(f)
     }
 }
 
-impl to_bytes::IterBytes for AbiSet {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
-        self.bits.iter_bytes(lsb0, f)
-    }
-}
-
-impl ToStr for Abi {
-    fn to_str(&self) -> ~str {
-        self.data().name.to_str()
-    }
-}
-
-impl ToStr for AbiSet {
-    fn to_str(&self) -> ~str {
-        let mut strs = ~[];
+impl fmt::Show for AbiSet {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        try!(write!(f.buf, "\""));
+        let mut first = true;
         self.each(|abi| {
-            strs.push(abi.data().name);
+            if first { first = false; }
+            else { let _ = write!(f.buf, " "); }
+            let _ = write!(f.buf, "{}", abi.data().name);
             true
         });
-        format!("\"{}\"", strs.connect(" "))
+        write!(f.buf, "\"")
     }
 }
 

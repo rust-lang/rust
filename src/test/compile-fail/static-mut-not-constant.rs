@@ -8,6 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-static mut a: ~int = ~3; //~ ERROR: cannot do allocations in constant expressions
+static mut a: ~int = ~3; //~ ERROR: mutable static items are not allowed to have owned pointers
 
 fn main() {}

@@ -43,7 +43,7 @@ h2 code, h3 code, h4 code {
 }
 
 code, pre, h1.fqn {
-    font-family: Menlo, Monaco, Consolas, "Inconsolata", "Courier New", monospace;
+    font-family: "Inconsolata", Menlo, Monaco, Consolas, "DejaVu Sans Mono", monospace;
 }
 code, pre {
     color: #333;
@@ -126,7 +126,7 @@ nav.sub {
 .content pre.line-numbers { float: left; border: none; }
 .line-numbers span { color: #c67e2d; }
 .line-numbers .line-highlighted {
-    background-color: #fff871;
+    background-color: #f6fdb0;
 }
 
 .content .highlighted {
@@ -301,3 +301,27 @@ a {
 .stability.Stable { border-color: #AEC516; color: #7c8b10; }
 .stability.Frozen { border-color: #009431; color: #007726; }
 .stability.Locked { border-color: #0084B6; color: #00668c; }
+
+:target { background: #FDFFD3; }
+
+pre.rust, pre.line-numbers { background-color: #FDFDFD; }
+
+/* Code highlighting */
+pre.rust .kw { color: #8959A8; }
+pre.rust .kw-2, pre.rust .prelude-ty { color: #4271AE; }
+pre.rust .number, pre.rust .string { color: #718C00; }
+pre.rust .self, pre.rust .boolval, pre.rust .prelude-val,
+pre.rust .attribute, pre.rust .attribute .ident { color: #C82829; }
+pre.rust .comment { color: #8E908C; }
+pre.rust .doccomment { color: #4D4D4C; }
+pre.rust .macro, pre.rust .macro-nonterminal { color: #3E999F; }
+pre.rust .lifetime { color: #B76514; }
+
+h1.section-link:hover a:after,
+h2.section-link:hover a:after,
+h3.section-link:hover a:after,
+h4.section-link:hover a:after,
+h5.section-link:hover a:after,
+h6.section-link:hover a:after {
+  content: ' § ';
+}

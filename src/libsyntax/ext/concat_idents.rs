@@ -15,6 +15,7 @@ use ext::base;
 use opt_vec;
 use parse::token;
 use parse::token::{str_to_ident};
+use std::vec_ng::Vec;
 
 pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     -> base::MacResult {
@@ -25,7 +26,7 @@ pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                 ast::TTTok(_, token::COMMA) => (),
                 _ => {
                     cx.span_err(sp, "concat_idents! expecting comma.");
-                    return MacResult::dummy_expr();
+                    return MacResult::dummy_expr(sp);
                 }
             }
         } else {
@@ -35,7 +36,7 @@ pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                 }
                 _ => {
                     cx.span_err(sp, "concat_idents! requires ident args.");
-                    return MacResult::dummy_expr();
+                    return MacResult::dummy_expr(sp);
                 }
             }
         }
@@ -48,13 +49,13 @@ pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
             ast::Path {
                  span: sp,
                  global: false,
-                 segments: ~[
+                 segments: vec!(
                     ast::PathSegment {
                         identifier: res,
-                        lifetimes: opt_vec::Empty,
+                        lifetimes: Vec::new(),
                         types: opt_vec::Empty,
                     }
-                ]
+                )
             }
         ),
         span: sp,

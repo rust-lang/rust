@@ -23,10 +23,12 @@ use middle::moves;
 use middle::pat_util;
 use middle::ty::{ty_region};
 use middle::ty;
+use middle::typeck::MethodCall;
 use util::common::indenter;
 use util::ppaux::{Repr};
 
 use std::cell::RefCell;
+use std::vec_ng::Vec;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::ast_util::IdRange;
@@ -70,10 +72,9 @@ struct GatherLoanCtxt<'a> {
     bccx: &'a BorrowckCtxt,
     id_range: IdRange,
     move_data: move_data::MoveData,
-    all_loans: @RefCell<~[Loan]>,
+    all_loans: @RefCell<Vec<Loan> >,
     item_ub: ast::NodeId,
-    repeating_ids: ~[ast::NodeId]
-}
+    repeating_ids: Vec<ast::NodeId> }
 
 impl<'a> visit::Visitor<()> for GatherLoanCtxt<'a> {
     fn visit_expr(&mut self, ex: &Expr, _: ()) {
@@ -103,13 +104,13 @@ impl<'a> visit::Visitor<()> for GatherLoanCtxt<'a> {
 }
 
 pub fn gather_loans(bccx: &BorrowckCtxt, decl: &ast::FnDecl, body: &ast::Block)
-                    -> (IdRange, @RefCell<~[Loan]>, move_data::MoveData) {
+                    -> (IdRange, @RefCell<Vec<Loan> >, move_data::MoveData) {
     let mut glcx = GatherLoanCtxt {
         bccx: bccx,
         id_range: IdRange::max(),
-        all_loans: @RefCell::new(~[]),
+        all_loans: @RefCell::new(Vec::new()),
         item_ub: body.id,
-        repeating_ids: ~[body.id],
+        repeating_ids: vec!(body.id),
         move_data: MoveData::new()
     };
     glcx.gather_fn_arg_patterns(decl, body);
@@ -160,16 +161,8 @@ fn gather_loans_in_local(this: &mut GatherLoanCtxt,
             })
         }
         Some(init) => {
-            // Variable declarations with initializers are considered "assigns":
-            let tcx = this.bccx.tcx;
-            pat_util::pat_bindings(tcx.def_map, local.pat, |_, id, span, _| {
-                gather_moves::gather_assignment(this.bccx,
-                                                &this.move_data,
-                                                id,
-                                                span,
-                                                @LpVar(id),
-                                                id);
-            });
+            // Variable declarations with initializers are considered "assigns",
+            // which is handled by `gather_pat`:
             let init_cmt = this.bccx.cat_expr(init);
             this.gather_pat(init_cmt, local.pat, None);
         }
@@ -189,20 +182,9 @@ fn gather_loans_in_expr(this: &mut GatherLoanCtxt,
 
     this.id_range.add(ex.id);
 
-    {
-        let r = ex.get_callee_id();
-        for callee_id in r.iter() {
-            this.id_range.add(*callee_id);
-        }
-    }
-
     // If this expression is borrowed, have to ensure it remains valid:
-    {
-        let adjustments = tcx.adjustments.borrow();
-        let r = adjustments.get().find(&ex.id);
-        for &adjustments in r.iter() {
-            this.guarantee_adjustments(ex, *adjustments);
-        }
+    for &adjustments in tcx.adjustments.borrow().get().find(&ex.id).iter() {
+        this.guarantee_adjustments(ex, *adjustments);
     }
 
     // If this expression is a move, gather it:
@@ -233,20 +215,19 @@ fn gather_loans_in_expr(this: &mut GatherLoanCtxt,
         visit::walk_expr(this, ex, ());
       }
 
-      ast::ExprAssign(l, _) | ast::ExprAssignOp(_, _, l, _) => {
-          let l_cmt = this.bccx.cat_expr(l);
-          match opt_loan_path(l_cmt) {
-              Some(l_lp) => {
-                  gather_moves::gather_assignment(this.bccx, &this.move_data,
-                                                  ex.id, ex.span,
-                                                  l_lp, l.id);
-              }
-              None => {
-                  // This can occur with e.g. `*foo() = 5`.  In such
-                  // cases, there is no need to check for conflicts
-                  // with moves etc, just ignore.
-              }
-          }
+      ast::ExprAssign(l, _) => {
+          with_assignee_loan_path(
+              this.bccx, l,
+              |lp| gather_moves::gather_assignment(this.bccx, &this.move_data,
+                                                   ex.id, ex.span, lp, l.id));
+          visit::walk_expr(this, ex, ());
+      }
+
+      ast::ExprAssignOp(_, l, _) => {
+          with_assignee_loan_path(
+              this.bccx, l,
+              |lp| gather_moves::gather_move_and_assignment(this.bccx, &this.move_data,
+                                                            ex.id, ex.span, lp, l.id));
           visit::walk_expr(this, ex, ());
       }
 
@@ -260,9 +241,9 @@ fn gather_loans_in_expr(this: &mut GatherLoanCtxt,
         visit::walk_expr(this, ex, ());
       }
 
-      ast::ExprIndex(_, _, arg) |
-      ast::ExprBinary(_, _, _, arg)
-      if method_map.get().contains_key(&ex.id) => {
+      ast::ExprIndex(_, arg) |
+      ast::ExprBinary(_, _, arg)
+      if method_map.get().contains_key(&MethodCall::expr(ex.id)) => {
           // Arguments in method calls are always passed by ref.
           //
           // Currently these do not use adjustments, so we have to
@@ -307,17 +288,10 @@ fn gather_loans_in_expr(this: &mut GatherLoanCtxt,
 
       ast::ExprInlineAsm(ref ia) => {
           for &(_, out) in ia.outputs.iter() {
-              let out_cmt = this.bccx.cat_expr(out);
-              match opt_loan_path(out_cmt) {
-                  Some(out_lp) => {
-                      gather_moves::gather_assignment(this.bccx, &this.move_data,
-                                                      ex.id, ex.span,
-                                                      out_lp, out.id);
-                  }
-                  None => {
-                      // See the comment for ExprAssign.
-                  }
-              }
+              with_assignee_loan_path(
+                  this.bccx, out,
+                  |lp| gather_moves::gather_assignment(this.bccx, &this.move_data,
+                                                       ex.id, ex.span, lp, out.id));
           }
           visit::walk_expr(this, ex, ());
       }
@@ -325,6 +299,18 @@ fn gather_loans_in_expr(this: &mut GatherLoanCtxt,
       _ => {
           visit::walk_expr(this, ex, ());
       }
+    }
+}
+
+fn with_assignee_loan_path(bccx: &BorrowckCtxt, expr: &ast::Expr, op: |@LoanPath|) {
+    let cmt = bccx.cat_expr(expr);
+    match opt_loan_path(cmt) {
+        Some(lp) => op(lp),
+        None => {
+            // This can occur with e.g. `*foo() = 5`.  In such
+            // cases, there is no need to check for conflicts
+            // with moves etc, just ignore.
+        }
     }
 }
 
@@ -338,6 +324,39 @@ impl<'a> GatherLoanCtxt<'a> {
     pub fn pop_repeating_id(&mut self, id: ast::NodeId) {
         let popped = self.repeating_ids.pop().unwrap();
         assert_eq!(id, popped);
+    }
+
+    pub fn guarantee_autoderefs(&mut self,
+                                expr: &ast::Expr,
+                                autoderefs: uint) {
+        let method_map = self.bccx.method_map.borrow();
+        for i in range(0, autoderefs) {
+            match method_map.get().find(&MethodCall::autoderef(expr.id, i as u32)) {
+                Some(method) => {
+                    // Treat overloaded autoderefs as if an AutoRef adjustment
+                    // was applied on the base type, as that is always the case.
+                    let mut mc = self.bccx.mc();
+                    let cmt = match mc.cat_expr_autoderefd(expr, i) {
+                        Ok(v) => v,
+                        Err(()) => self.tcx().sess.span_bug(expr.span, "Err from mc")
+                    };
+                    let self_ty = *ty::ty_fn_args(method.ty).get(0);
+                    let (m, r) = match ty::get(self_ty).sty {
+                        ty::ty_rptr(r, ref m) => (m.mutbl, r),
+                        _ => self.tcx().sess.span_bug(expr.span,
+                                format!("bad overloaded deref type {}",
+                                    method.ty.repr(self.tcx())))
+                    };
+                    self.guarantee_valid(expr.id,
+                                         expr.span,
+                                         cmt,
+                                         m,
+                                         r,
+                                         AutoRef);
+                }
+                None => {}
+            }
+        }
     }
 
     pub fn guarantee_adjustments(&mut self,
@@ -355,15 +374,17 @@ impl<'a> GatherLoanCtxt<'a> {
 
             ty::AutoDerefRef(
                 ty::AutoDerefRef {
-                    autoref: None, .. }) => {
+                    autoref: None, autoderefs }) => {
                 debug!("no autoref");
+                self.guarantee_autoderefs(expr, autoderefs);
                 return;
             }
 
             ty::AutoDerefRef(
                 ty::AutoDerefRef {
                     autoref: Some(ref autoref),
-                    autoderefs: autoderefs}) => {
+                    autoderefs}) => {
+                self.guarantee_autoderefs(expr, autoderefs);
                 let mut mc = self.bccx.mc();
                 let cmt = match mc.cat_expr_autoderefd(expr, autoderefs) {
                     Ok(v) => v,
@@ -421,7 +442,7 @@ impl<'a> GatherLoanCtxt<'a> {
                           closure_expr: &ast::Expr) {
         let capture_map = self.bccx.capture_map.borrow();
         let captured_vars = capture_map.get().get(&closure_expr.id);
-        for captured_var in captured_vars.borrow().iter() {
+        for captured_var in captured_vars.deref().iter() {
             match captured_var.mode {
                 moves::CapCopy | moves::CapMove => { continue; }
                 moves::CapRef => { }
@@ -811,6 +832,17 @@ impl<'a> GatherLoanCtxt<'a> {
         self.bccx.cat_pattern(discr_cmt, root_pat, |cmt, pat| {
             match pat.node {
               ast::PatIdent(bm, _, _) if self.pat_is_binding(pat) => {
+                // Each match binding is effectively an assignment.
+                let tcx = self.bccx.tcx;
+                pat_util::pat_bindings(tcx.def_map, pat, |_, id, span, _| {
+                    gather_moves::gather_assignment(self.bccx,
+                                                    &self.move_data,
+                                                    id,
+                                                    span,
+                                                    @LpVar(id),
+                                                    id);
+                });
+
                 match bm {
                   ast::BindByRef(mutbl) => {
                     // ref x or ref x @ p --- creates a ptr which must

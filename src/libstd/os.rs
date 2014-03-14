@@ -88,7 +88,8 @@ pub fn getcwd() -> Path {
             fail!();
         }
     }
-    Path::new(str::from_utf16(buf))
+    Path::new(str::from_utf16(str::truncate_utf16_at_nul(buf))
+              .expect("GetCurrentDirectoryW returned invalid UTF-16"))
 }
 
 #[cfg(windows)]
@@ -112,19 +113,26 @@ pub mod win32 {
             let mut done = false;
             while !done {
                 let mut buf = vec::from_elem(n as uint, 0u16);
-                let k = f(buf.as_mut_ptr(), TMPBUF_SZ as DWORD);
+                let k = f(buf.as_mut_ptr(), n);
                 if k == (0 as DWORD) {
                     done = true;
                 } else if k == n &&
                           libc::GetLastError() ==
                           libc::ERROR_INSUFFICIENT_BUFFER as DWORD {
-                    n *= (2 as DWORD);
+                    n *= 2 as DWORD;
+                } else if k >= n {
+                    n = k;
                 } else {
                     done = true;
                 }
                 if k != 0 && done {
                     let sub = buf.slice(0, k as uint);
-                    res = option::Some(str::from_utf16(sub));
+                    // We want to explicitly catch the case when the
+                    // closure returned invalid UTF-16, rather than
+                    // set `res` to None and continue.
+                    let s = str::from_utf16(sub)
+                        .expect("fill_utf16_buf_and_decode: closure created invalid UTF-16");
+                    res = option::Some(s)
                 }
             }
             return res;
@@ -217,7 +225,7 @@ pub fn env_as_bytes() -> ~[(~[u8],~[u8])] {
             for p in input.iter() {
                 let vs: ~[&[u8]] = p.splitn(1, |b| *b == '=' as u8).collect();
                 let key = vs[0].to_owned();
-                let val = (if vs.len() < 2 { ~[] } else { vs[1].to_owned() });
+                let val = if vs.len() < 2 { ~[] } else { vs[1].to_owned() };
                 pairs.push((key, val));
             }
             pairs
@@ -607,7 +615,6 @@ pub fn errno() -> int {
     #[cfg(target_os = "macos")]
     #[cfg(target_os = "freebsd")]
     fn errno_location() -> *c_int {
-        #[nolink]
         extern {
             fn __error() -> *c_int;
         }
@@ -619,7 +626,6 @@ pub fn errno() -> int {
     #[cfg(target_os = "linux")]
     #[cfg(target_os = "android")]
     fn errno_location() -> *c_int {
-        #[nolink]
         extern {
             fn __errno_location() -> *c_int;
         }
@@ -657,7 +663,6 @@ pub fn last_os_error() -> ~str {
         #[cfg(target_os = "freebsd")]
         fn strerror_r(errnum: c_int, buf: *mut c_char, buflen: libc::size_t)
                       -> c_int {
-            #[nolink]
             extern {
                 fn strerror_r(errnum: c_int, buf: *mut c_char,
                               buflen: libc::size_t) -> c_int;
@@ -673,7 +678,6 @@ pub fn last_os_error() -> ~str {
         #[cfg(target_os = "linux")]
         fn strerror_r(errnum: c_int, buf: *mut c_char,
                       buflen: libc::size_t) -> c_int {
-            #[nolink]
             extern {
                 fn __xpg_strerror_r(errnum: c_int,
                                     buf: *mut c_char,
@@ -739,7 +743,8 @@ pub fn last_os_error() -> ~str {
                 fail!("[{}] FormatMessage failure", errno());
             }
 
-            str::from_utf16(buf)
+            str::from_utf16(str::truncate_utf16_at_nul(buf))
+                .expect("FormatMessageW returned invalid UTF-16")
         }
     }
 
@@ -828,8 +833,10 @@ fn real_args() -> ~[~str] {
             while *ptr.offset(len as int) != 0 { len += 1; }
 
             // Push it onto the list.
-            args.push(vec::raw::buf_as_slice(ptr, len,
-                                             str::from_utf16));
+            let opt_s = vec::raw::buf_as_slice(ptr, len, |buf| {
+                    str::from_utf16(str::truncate_utf16_at_nul(buf))
+                });
+            args.push(opt_s.expect("CommandLineToArgvW returned invalid UTF-16"));
         }
     }
 
@@ -1398,7 +1405,7 @@ mod tests {
     }
 
     fn make_rand_name() -> ~str {
-        let mut rng = rand::rng();
+        let mut rng = rand::task_rng();
         let n = ~"TEST" + rng.gen_ascii_str(10u);
         assert!(getenv(n).is_none());
         n
@@ -1486,6 +1493,16 @@ mod tests {
     }
 
     #[test]
+    fn test_env_set_get_huge() {
+        let n = make_rand_name();
+        let s = "x".repeat(10000);
+        setenv(n, s);
+        assert_eq!(getenv(n), Some(s));
+        unsetenv(n);
+        assert_eq!(getenv(n), None);
+    }
+
+    #[test]
     fn test_env_setenv() {
         let n = make_rand_name();
 
@@ -1514,7 +1531,7 @@ mod tests {
         let oldhome = getenv("HOME");
 
         setenv("HOME", "/home/MountainView");
-        assert_eq!(os::homedir(), Some(Path::new("/home/MountainView")));
+        assert!(os::homedir() == Some(Path::new("/home/MountainView")));
 
         setenv("HOME", "");
         assert!(os::homedir().is_none());
@@ -1535,16 +1552,16 @@ mod tests {
         assert!(os::homedir().is_none());
 
         setenv("HOME", "/home/MountainView");
-        assert_eq!(os::homedir(), Some(Path::new("/home/MountainView")));
+        assert!(os::homedir() == Some(Path::new("/home/MountainView")));
 
         setenv("HOME", "");
 
         setenv("USERPROFILE", "/home/MountainView");
-        assert_eq!(os::homedir(), Some(Path::new("/home/MountainView")));
+        assert!(os::homedir() == Some(Path::new("/home/MountainView")));
 
         setenv("HOME", "/home/MountainView");
         setenv("USERPROFILE", "/home/PaloAlto");
-        assert_eq!(os::homedir(), Some(Path::new("/home/MountainView")));
+        assert!(os::homedir() == Some(Path::new("/home/MountainView")));
 
         for s in oldhome.iter() { setenv("HOME", *s) }
         for s in olduserprofile.iter() { setenv("USERPROFILE", *s) }

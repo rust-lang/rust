@@ -245,7 +245,7 @@ fn trans_struct_drop<'a>(bcx: &'a Block<'a>,
 
     // Find and call the actual destructor
     let dtor_addr = get_res_dtor(bcx.ccx(), dtor_did,
-                                 class_did, substs.tps.clone());
+                                 class_did, substs.tps.as_slice());
 
     // The second argument is the "self" argument for drop
     let params = unsafe {
@@ -262,8 +262,8 @@ fn trans_struct_drop<'a>(bcx: &'a Block<'a>,
     // destructors if the user destructor fails.
     let field_scope = bcx.fcx.push_custom_cleanup_scope();
 
-    let self_arg = PointerCast(bcx, v0, params[0]);
-    let args = ~[self_arg];
+    let self_arg = PointerCast(bcx, v0, *params.get(0));
+    let args = vec!(self_arg);
 
     // Add all the fields as a value which needs to be cleaned at the end of
     // this scope.

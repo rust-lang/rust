@@ -46,6 +46,6 @@ pub fn get_target_strs(target_triple: ~str, target_os: abi::Os) -> target_strs::
 
         target_triple: target_triple,
 
-        cc_args: ~[~"-m32"],
+        cc_args: vec!(~"-m32"),
     };
 }

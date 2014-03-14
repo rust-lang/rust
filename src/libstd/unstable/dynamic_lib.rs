@@ -82,9 +82,7 @@ impl DynamicLibrary {
 #[cfg(test)]
 mod test {
     use super::*;
-    use option::*;
-    use result::*;
-    use path::*;
+    use prelude::*;
     use libc;
 
     #[test]

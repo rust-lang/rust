@@ -21,7 +21,7 @@ use syntax;
 use std::cell::RefCell;
 use std::os;
 use std::local_data;
-use std::hashmap::{HashSet};
+use collections::HashSet;
 
 use visit_ast::RustdocVisitor;
 use clean;
@@ -53,12 +53,12 @@ fn get_ast_and_resolve(cpath: &Path,
     let sessopts = @driver::session::Options {
         maybe_sysroot: Some(@os::self_exe_path().unwrap().dir_path()),
         addl_lib_search_paths: @RefCell::new(libs),
-        crate_types: ~[driver::session::CrateTypeDylib],
+        crate_types: vec!(driver::session::CrateTypeDylib),
         .. (*rustc::driver::session::basic_options()).clone()
     };
 
 
-    let diagnostic_handler = syntax::diagnostic::mk_handler();
+    let diagnostic_handler = syntax::diagnostic::default_handler();
     let span_diagnostic_handler =
         syntax::diagnostic::mk_span_handler(diagnostic_handler, parsesess.cm);
 

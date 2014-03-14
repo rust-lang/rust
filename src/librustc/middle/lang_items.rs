@@ -30,9 +30,10 @@ use syntax::parse::token::InternedString;
 use syntax::visit::Visitor;
 use syntax::visit;
 
-use std::hashmap::HashMap;
+use collections::HashMap;
 use std::iter::Enumerate;
 use std::vec;
+use std::vec_ng::Vec;
 
 // The actual lang items defined come at the end of this file in one handy table.
 // So you probably just want to nip down to the end.
@@ -47,7 +48,7 @@ pub enum LangItem {
 }
 
 pub struct LanguageItems {
-    items: ~[Option<ast::DefId>],
+    items: Vec<Option<ast::DefId>> ,
 }
 
 impl LanguageItems {
@@ -55,7 +56,7 @@ impl LanguageItems {
         fn foo(_: LangItem) -> Option<ast::DefId> { None }
 
         LanguageItems {
-            items: ~[$(foo($variant)),*]
+            items: vec!($(foo($variant)),*)
         }
     }
 
@@ -72,10 +73,12 @@ impl LanguageItems {
     }
 
     pub fn require(&self, it: LangItem) -> Result<ast::DefId, ~str> {
-        match self.items[it as uint] {
-            Some(id) => Ok(id),
-            None => Err(format!("requires `{}` lang_item",
-                             LanguageItems::item_name(it as uint)))
+        match self.items.get(it as uint) {
+            &Some(id) => Ok(id),
+            &None => {
+                Err(format!("requires `{}` lang_item",
+                            LanguageItems::item_name(it as uint)))
+            }
         }
     }
 
@@ -95,7 +98,7 @@ impl LanguageItems {
 
     $(
         pub fn $method(&self) -> Option<ast::DefId> {
-            self.items[$variant as uint]
+            *self.items.get($variant as uint)
         }
     )*
 }
@@ -114,7 +117,7 @@ struct LanguageItemVisitor<'a> {
 
 impl<'a> Visitor<()> for LanguageItemVisitor<'a> {
     fn visit_item(&mut self, item: &ast::Item, _: ()) {
-        match extract(item.attrs) {
+        match extract(item.attrs.as_slice()) {
             Some(value) => {
                 let item_index = self.this.item_refs.find_equiv(&value).map(|x| *x);
 
@@ -147,18 +150,18 @@ impl LanguageItemCollector {
 
     pub fn collect_item(&mut self, item_index: uint, item_def_id: ast::DefId) {
         // Check for duplicates.
-        match self.items.items[item_index] {
-            Some(original_def_id) if original_def_id != item_def_id => {
+        match self.items.items.get(item_index) {
+            &Some(original_def_id) if original_def_id != item_def_id => {
                 self.session.err(format!("duplicate entry for `{}`",
                                       LanguageItems::item_name(item_index)));
             }
-            Some(_) | None => {
+            &Some(_) | &None => {
                 // OK.
             }
         }
 
         // Matched.
-        self.items.items[item_index] = Some(item_def_id);
+        *self.items.items.get_mut(item_index) = Some(item_def_id);
     }
 
     pub fn collect_local_language_items(&mut self, krate: &ast::Crate) {
@@ -231,6 +234,9 @@ lets_do_this! {
     ShlTraitLangItem,                "shl",                     shl_trait;
     ShrTraitLangItem,                "shr",                     shr_trait;
     IndexTraitLangItem,              "index",                   index_trait;
+
+    DerefTraitLangItem,              "deref",                   deref_trait;
+    DerefMutTraitLangItem,           "deref_mut",               deref_mut_trait;
 
     EqTraitLangItem,                 "eq",                      eq_trait;
     OrdTraitLangItem,                "ord",                     ord_trait;

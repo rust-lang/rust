@@ -14,7 +14,7 @@
 //
 // I *think* it's the same, more or less.
 
-extern crate extra;
+extern crate time;
 
 use std::os;
 use std::task;
@@ -28,7 +28,7 @@ enum request {
     stop
 }
 
-fn server(requests: &Port<request>, responses: &Chan<uint>) {
+fn server(requests: &Receiver<request>, responses: &Sender<uint>) {
     let mut count: uint = 0;
     let mut done = false;
     while !done {
@@ -47,15 +47,15 @@ fn server(requests: &Port<request>, responses: &Chan<uint>) {
 }
 
 fn run(args: &[~str]) {
-    let (from_child, to_parent) = Chan::new();
+    let (to_parent, from_child) = channel();
 
     let size = from_str::<uint>(args[1]).unwrap();
     let workers = from_str::<uint>(args[2]).unwrap();
     let num_bytes = 100;
-    let start = extra::time::precise_time_s();
+    let start = time::precise_time_s();
     let mut worker_results = ~[];
     let from_parent = if workers == 1 {
-        let (from_parent, to_child) = Chan::new();
+        let (to_child, from_parent) = channel();
         let mut builder = task::task();
         worker_results.push(builder.future_result());
         builder.spawn(proc() {
@@ -67,7 +67,7 @@ fn run(args: &[~str]) {
         });
         from_parent
     } else {
-        let (from_parent, to_child) = Chan::new();
+        let (to_child, from_parent) = channel();
         for _ in range(0u, workers) {
             let to_child = to_child.clone();
             let mut builder = task::task();
@@ -94,7 +94,7 @@ fn run(args: &[~str]) {
     //to_child.send(stop);
     //move_out(to_child);
     let result = from_child.recv();
-    let end = extra::time::precise_time_s();
+    let end = time::precise_time_s();
     let elapsed = end - start;
     print!("Count is {:?}\n", result);
     print!("Test took {:?} seconds\n", elapsed);

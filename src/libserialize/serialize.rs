@@ -14,10 +14,10 @@
 Core encoding and decoding interfaces.
 */
 
-use std::hashmap::{HashMap, HashSet};
+use std::path;
 use std::rc::Rc;
-use std::trie::{TrieMap, TrieSet};
 use std::vec;
+use std::vec_ng::Vec;
 
 pub trait Encoder {
     // Primitive types:
@@ -388,7 +388,7 @@ impl<S:Encoder,T:Encodable<S>> Encodable<S> for @T {
 impl<S:Encoder,T:Encodable<S>> Encodable<S> for Rc<T> {
     #[inline]
     fn encode(&self, s: &mut S) {
-        self.borrow().encode(s)
+        self.deref().encode(s)
     }
 }
 
@@ -429,6 +429,26 @@ impl<D:Decoder,T:Decodable<D>> Decodable<D> for ~[T] {
     fn decode(d: &mut D) -> ~[T] {
         d.read_seq(|d, len| {
             vec::from_fn(len, |i| {
+                d.read_seq_elt(i, |d| Decodable::decode(d))
+            })
+        })
+    }
+}
+
+impl<S:Encoder,T:Encodable<S>> Encodable<S> for Vec<T> {
+    fn encode(&self, s: &mut S) {
+        s.emit_seq(self.len(), |s| {
+            for (i, e) in self.iter().enumerate() {
+                s.emit_seq_elt(i, |s| e.encode(s))
+            }
+        })
+    }
+}
+
+impl<D:Decoder,T:Decodable<D>> Decodable<D> for Vec<T> {
+    fn decode(d: &mut D) -> Vec<T> {
+        d.read_seq(|d, len| {
+            Vec::from_fn(len, |i| {
                 d.read_seq_elt(i, |d| Decodable::decode(d))
             })
         })
@@ -606,121 +626,29 @@ impl<
     }
 }
 
-impl<
-    E: Encoder,
-    K: Encodable<E> + Hash + IterBytes + Eq,
-    V: Encodable<E>
-> Encodable<E> for HashMap<K, V> {
+impl<E: Encoder> Encodable<E> for path::posix::Path {
     fn encode(&self, e: &mut E) {
-        e.emit_map(self.len(), |e| {
-            let mut i = 0;
-            for (key, val) in self.iter() {
-                e.emit_map_elt_key(i, |e| key.encode(e));
-                e.emit_map_elt_val(i, |e| val.encode(e));
-                i += 1;
-            }
-        })
+        self.as_vec().encode(e)
     }
 }
 
-impl<
-    D: Decoder,
-    K: Decodable<D> + Hash + IterBytes + Eq,
-    V: Decodable<D>
-> Decodable<D> for HashMap<K, V> {
-    fn decode(d: &mut D) -> HashMap<K, V> {
-        d.read_map(|d, len| {
-            let mut map = HashMap::with_capacity(len);
-            for i in range(0u, len) {
-                let key = d.read_map_elt_key(i, |d| Decodable::decode(d));
-                let val = d.read_map_elt_val(i, |d| Decodable::decode(d));
-                map.insert(key, val);
-            }
-            map
-        })
+impl<D: Decoder> Decodable<D> for path::posix::Path {
+    fn decode(d: &mut D) -> path::posix::Path {
+        let bytes: ~[u8] = Decodable::decode(d);
+        path::posix::Path::new(bytes)
     }
 }
 
-impl<
-    S: Encoder,
-    T: Encodable<S> + Hash + IterBytes + Eq
-> Encodable<S> for HashSet<T> {
-    fn encode(&self, s: &mut S) {
-        s.emit_seq(self.len(), |s| {
-            let mut i = 0;
-            for e in self.iter() {
-                s.emit_seq_elt(i, |s| e.encode(s));
-                i += 1;
-            }
-        })
-    }
-}
-
-impl<
-    D: Decoder,
-    T: Decodable<D> + Hash + IterBytes + Eq
-> Decodable<D> for HashSet<T> {
-    fn decode(d: &mut D) -> HashSet<T> {
-        d.read_seq(|d, len| {
-            let mut set = HashSet::with_capacity(len);
-            for i in range(0u, len) {
-                set.insert(d.read_seq_elt(i, |d| Decodable::decode(d)));
-            }
-            set
-        })
-    }
-}
-
-impl<
-    E: Encoder,
-    V: Encodable<E>
-> Encodable<E> for TrieMap<V> {
+impl<E: Encoder> Encodable<E> for path::windows::Path {
     fn encode(&self, e: &mut E) {
-        e.emit_map(self.len(), |e| {
-                for (i, (key, val)) in self.iter().enumerate() {
-                    e.emit_map_elt_key(i, |e| key.encode(e));
-                    e.emit_map_elt_val(i, |e| val.encode(e));
-                }
-            });
+        self.as_vec().encode(e)
     }
 }
 
-impl<
-    D: Decoder,
-    V: Decodable<D>
-> Decodable<D> for TrieMap<V> {
-    fn decode(d: &mut D) -> TrieMap<V> {
-        d.read_map(|d, len| {
-            let mut map = TrieMap::new();
-            for i in range(0u, len) {
-                let key = d.read_map_elt_key(i, |d| Decodable::decode(d));
-                let val = d.read_map_elt_val(i, |d| Decodable::decode(d));
-                map.insert(key, val);
-            }
-            map
-        })
-    }
-}
-
-impl<S: Encoder> Encodable<S> for TrieSet {
-    fn encode(&self, s: &mut S) {
-        s.emit_seq(self.len(), |s| {
-                for (i, e) in self.iter().enumerate() {
-                    s.emit_seq_elt(i, |s| e.encode(s));
-                }
-            })
-    }
-}
-
-impl<D: Decoder> Decodable<D> for TrieSet {
-    fn decode(d: &mut D) -> TrieSet {
-        d.read_seq(|d, len| {
-            let mut set = TrieSet::new();
-            for i in range(0u, len) {
-                set.insert(d.read_seq_elt(i, |d| Decodable::decode(d)));
-            }
-            set
-        })
+impl<D: Decoder> Decodable<D> for path::windows::Path {
+    fn decode(d: &mut D) -> path::windows::Path {
+        let bytes: ~[u8] = Decodable::decode(d);
+        path::windows::Path::new(bytes)
     }
 }
 

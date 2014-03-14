@@ -17,7 +17,7 @@ use cmp::Equiv;
 use iter::{range, Iterator};
 use mem;
 use option::{Option, Some, None};
-use unstable::intrinsics;
+use intrinsics;
 
 #[cfg(not(test))] use cmp::{Eq, Ord};
 
@@ -213,7 +213,8 @@ pub trait RawPtr<T> {
     /// be pointing to invalid memory.
     unsafe fn to_option(&self) -> Option<&T>;
     /// Calculates the offset from a pointer. The offset *must* be in-bounds of
-    /// the object, or one-byte-past-the-end.
+    /// the object, or one-byte-past-the-end.  `count` is in units of T; e.g. a
+    /// `count` of 3 represents a pointer offset of `3 * sizeof::<T>()` bytes.
     unsafe fn offset(self, count: int) -> Self;
 }
 
@@ -635,6 +636,6 @@ pub mod ptr_tests {
         let mut xs = [0u8, ..20];
         let ptr = xs.as_mut_ptr();
         unsafe { set_memory(ptr, 5u8, xs.len()); }
-        assert_eq!(xs, [5u8, ..20]);
+        assert!(xs == [5u8, ..20]);
     }
 }

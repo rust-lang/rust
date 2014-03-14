@@ -16,14 +16,12 @@ use prelude::*;
 
 use cmath;
 use default::Default;
+use from_str::FromStr;
 use libc::{c_double, c_int};
 use num::{FPCategory, FPNaN, FPInfinite , FPZero, FPSubnormal, FPNormal};
 use num::{Zero, One, Bounded, strconv};
 use num;
-use to_str;
-use unstable::intrinsics;
-
-pub use cmp::{min, max};
+use intrinsics;
 
 macro_rules! delegate(
     (
@@ -48,29 +46,25 @@ macro_rules! delegate(
 
 delegate!(
     // intrinsics
-    fn abs(n: f64) -> f64 = intrinsics::fabsf64,
+    fn sqrt(n: f64) -> f64 = intrinsics::sqrtf64,
+    fn powi(n: f64, e: i32) -> f64 = intrinsics::powif64,
+    fn sin(n: f64) -> f64 = intrinsics::sinf64,
     fn cos(n: f64) -> f64 = intrinsics::cosf64,
+    fn pow(n: f64, e: f64) -> f64 = intrinsics::powf64,
     fn exp(n: f64) -> f64 = intrinsics::expf64,
     fn exp2(n: f64) -> f64 = intrinsics::exp2f64,
-    fn floor(x: f64) -> f64 = intrinsics::floorf64,
     fn ln(n: f64) -> f64 = intrinsics::logf64,
     fn log10(n: f64) -> f64 = intrinsics::log10f64,
     fn log2(n: f64) -> f64 = intrinsics::log2f64,
     fn mul_add(a: f64, b: f64, c: f64) -> f64 = intrinsics::fmaf64,
-    fn pow(n: f64, e: f64) -> f64 = intrinsics::powf64,
-    // fn powi(n: f64, e: c_int) -> f64 = intrinsics::powif64,
-    fn sin(n: f64) -> f64 = intrinsics::sinf64,
-    fn sqrt(n: f64) -> f64 = intrinsics::sqrtf64,
-
-    // LLVM 3.3 required to use intrinsics for these four
-    fn ceil(n: c_double) -> c_double = cmath::c_double::ceil,
-    fn trunc(n: c_double) -> c_double = cmath::c_double::trunc,
-    /*
+    fn abs(n: f64) -> f64 = intrinsics::fabsf64,
+    fn copysign(x: f64, y: f64) -> f64 = intrinsics::copysignf64,
+    fn floor(x: f64) -> f64 = intrinsics::floorf64,
     fn ceil(n: f64) -> f64 = intrinsics::ceilf64,
     fn trunc(n: f64) -> f64 = intrinsics::truncf64,
-    fn rint(n: c_double) -> c_double = intrinsics::rintf64,
-    fn nearbyint(n: c_double) -> c_double = intrinsics::nearbyintf64,
-    */
+    fn rint(n: f64) -> f64 = intrinsics::rintf64,
+    fn nearbyint(n: f64) -> f64 = intrinsics::nearbyintf64,
+    fn round(n: f64) -> f64 = intrinsics::roundf64,
 
     // cmath
     fn acos(n: c_double) -> c_double = cmath::c_double::acos,
@@ -78,7 +72,6 @@ delegate!(
     fn atan(n: c_double) -> c_double = cmath::c_double::atan,
     fn atan2(a: c_double, b: c_double) -> c_double = cmath::c_double::atan2,
     fn cbrt(n: c_double) -> c_double = cmath::c_double::cbrt,
-    fn copysign(x: c_double, y: c_double) -> c_double = cmath::c_double::copysign,
     fn cosh(n: c_double) -> c_double = cmath::c_double::cosh,
     // fn erf(n: c_double) -> c_double = cmath::c_double::erf,
     // fn erfc(n: c_double) -> c_double = cmath::c_double::erfc,
@@ -92,7 +85,6 @@ delegate!(
     fn ln_1p(n: c_double) -> c_double = cmath::c_double::ln_1p,
     // fn ilog_radix(n: c_double) -> c_int = cmath::c_double::ilog_radix,
     // fn modf(n: c_double, iptr: &mut c_double) -> c_double = cmath::c_double::modf,
-    fn round(n: c_double) -> c_double = cmath::c_double::round,
     // fn ldexp_radix(n: c_double, i: c_int) -> c_double = cmath::c_double::ldexp_radix,
     fn sinh(n: c_double) -> c_double = cmath::c_double::sinh,
     fn tan(n: c_double) -> c_double = cmath::c_double::tan,
@@ -314,6 +306,16 @@ impl Primitive for f64 {}
 
 impl Float for f64 {
     #[inline]
+    fn max(self, other: f64) -> f64 {
+        unsafe { cmath::c_double::fmax(self, other) }
+    }
+
+    #[inline]
+    fn min(self, other: f64) -> f64 {
+        unsafe { cmath::c_double::fmin(self, other) }
+    }
+
+    #[inline]
     fn nan() -> f64 { 0.0 / 0.0 }
 
     #[inline]
@@ -353,10 +355,8 @@ impl Float for f64 {
         static EXP_MASK: u64 = 0x7ff0000000000000;
         static MAN_MASK: u64 = 0x000fffffffffffff;
 
-        match (
-            unsafe { ::cast::transmute::<f64,u64>(*self) } & MAN_MASK,
-            unsafe { ::cast::transmute::<f64,u64>(*self) } & EXP_MASK,
-        ) {
+        let bits: u64 = unsafe {::cast::transmute(*self)};
+        match (bits & MAN_MASK, bits & EXP_MASK) {
             (0, 0)        => FPZero,
             (_, 0)        => FPSubnormal,
             (0, EXP_MASK) => FPInfinite,
@@ -747,11 +747,6 @@ pub fn to_str_exp_digits(num: f64, dig: uint, upper: bool) -> ~str {
     r
 }
 
-impl to_str::ToStr for f64 {
-    #[inline]
-    fn to_str(&self) -> ~str { to_str_digits(*self, 8) }
-}
-
 impl num::ToStrRadix for f64 {
     /// Converts a float to a string in a given radix
     ///
@@ -867,9 +862,20 @@ impl num::FromStrRadix for f64 {
 #[cfg(test)]
 mod tests {
     use f64::*;
-
     use num::*;
     use num;
+
+    #[test]
+    fn test_min_nan() {
+        assert_eq!(NAN.min(2.0), 2.0);
+        assert_eq!(2.0f64.min(NAN), 2.0);
+    }
+
+    #[test]
+    fn test_max_nan() {
+        assert_eq!(NAN.max(2.0), 2.0);
+        assert_eq!(2.0f64.max(NAN), 2.0);
+    }
 
     #[test]
     fn test_num() {

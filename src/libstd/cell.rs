@@ -10,12 +10,13 @@
 
 //! Types dealing with dynamic mutability
 
-use clone::{Clone, DeepClone};
-use cmp::Eq;
-use ops::Drop;
-use option::{None, Option, Some};
 use cast;
+use clone::Clone;
+use cmp::Eq;
+use fmt;
 use kinds::{marker, Pod};
+use ops::{Deref, DerefMut, Drop};
+use option::{None, Option, Some};
 
 /// A mutable memory location that admits only `Pod` data.
 pub struct Cell<T> {
@@ -52,6 +53,18 @@ impl<T:Pod> Cell<T> {
 impl<T:Pod> Clone for Cell<T> {
     fn clone(&self) -> Cell<T> {
         Cell::new(self.get())
+    }
+}
+
+impl<T:Eq + Pod> Eq for Cell<T> {
+    fn eq(&self, other: &Cell<T>) -> bool {
+        self.get() == other.get()
+    }
+}
+
+impl<T: fmt::Show> fmt::Show for Cell<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f.buf, r"Cell \{ value: {} \}", self.value)
     }
 }
 
@@ -209,13 +222,6 @@ impl<T: Clone> Clone for RefCell<T> {
     }
 }
 
-impl<T: DeepClone> DeepClone for RefCell<T> {
-    fn deep_clone(&self) -> RefCell<T> {
-        let x = self.borrow();
-        RefCell::new(x.get().deep_clone())
-    }
-}
-
 impl<T: Eq> Eq for RefCell<T> {
     fn eq(&self, other: &RefCell<T>) -> bool {
         let a = self.borrow();
@@ -245,6 +251,13 @@ impl<'b, T> Ref<'b, T> {
     }
 }
 
+impl<'b, T> Deref<T> for Ref<'b, T> {
+    #[inline]
+    fn deref<'a>(&'a self) -> &'a T {
+        &self.parent.value
+    }
+}
+
 /// Wraps a mutable borrowed reference to a value in a `RefCell` box.
 pub struct RefMut<'b, T> {
     priv parent: &'b mut RefCell<T>
@@ -266,6 +279,20 @@ impl<'b, T> RefMut<'b, T> {
     }
 }
 
+impl<'b, T> Deref<T> for RefMut<'b, T> {
+    #[inline]
+    fn deref<'a>(&'a self) -> &'a T {
+        &self.parent.value
+    }
+}
+
+impl<'b, T> DerefMut<T> for RefMut<'b, T> {
+    #[inline]
+    fn deref_mut<'a>(&'a mut self) -> &'a mut T {
+        &mut self.parent.value
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -273,11 +300,14 @@ mod test {
     #[test]
     fn smoketest_cell() {
         let x = Cell::new(10);
+        assert_eq!(x, Cell::new(10));
         assert_eq!(x.get(), 10);
         x.set(20);
+        assert_eq!(x, Cell::new(20));
         assert_eq!(x.get(), 20);
 
         let y = Cell::new((30, 40));
+        assert_eq!(y, Cell::new((30, 40)));
         assert_eq!(y.get(), (30, 40));
     }
 

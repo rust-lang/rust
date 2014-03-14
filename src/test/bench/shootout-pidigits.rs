@@ -14,6 +14,7 @@ use std::from_str::FromStr;
 use std::num::One;
 use std::num::Zero;
 use std::num::FromPrimitive;
+use num::Integer;
 use num::bigint::BigInt;
 
 struct Context {

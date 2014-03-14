@@ -33,6 +33,8 @@
 //! modify the Context visitor appropriately. If you're adding lints from the
 //! Context itself, span_lint should be used instead of add_lint.
 
+#[allow(non_camel_case_types)];
+
 use driver::session;
 use metadata::csearch;
 use middle::dead::DEAD_CODE_LINT_STR;
@@ -43,19 +45,20 @@ use middle::ty;
 use middle::typeck::astconv::{ast_ty_to_ty, AstConv};
 use middle::typeck::infer;
 use middle::typeck;
-use std::to_str::ToStr;
 use util::ppaux::{ty_to_str};
 
 use std::cmp;
-use std::hashmap::HashMap;
+use collections::HashMap;
 use std::i16;
 use std::i32;
 use std::i64;
 use std::i8;
+use std::to_str::ToStr;
 use std::u16;
 use std::u32;
 use std::u64;
 use std::u8;
+use std::vec_ng::Vec;
 use collections::SmallIntMap;
 use syntax::ast_map;
 use syntax::ast_util::IdVisitingOperation;
@@ -78,6 +81,7 @@ pub enum Lint {
     NonCamelCaseTypes,
     NonUppercaseStatics,
     NonUppercasePatternStatics,
+    UppercaseVariables,
     UnnecessaryParens,
     TypeLimits,
     TypeOverflow,
@@ -86,7 +90,6 @@ pub enum Lint {
     AttributeUsage,
     UnknownFeatures,
     UnknownCrateType,
-    DefaultTypeParamUsage,
 
     ManagedHeapMemory,
     OwnedHeapMemory,
@@ -97,6 +100,7 @@ pub enum Lint {
     UnusedMut,
     UnnecessaryAllocation,
     DeadCode,
+    VisiblePrivateTypes,
     UnnecessaryTypecast,
 
     MissingDoc,
@@ -108,6 +112,8 @@ pub enum Lint {
 
     UnusedMustUse,
     UnusedResult,
+
+    DeprecatedOwnedVector,
 
     Warnings,
 }
@@ -189,7 +195,7 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
      LintSpec {
         lint: NonCamelCaseTypes,
         desc: "types, variants and traits should have camel case names",
-        default: allow
+        default: warn
      }),
 
     ("non_uppercase_statics",
@@ -206,7 +212,14 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
          default: warn
      }),
 
-    ("unnecessary_parens",
+    ("uppercase_variables",
+     LintSpec {
+         lint: UppercaseVariables,
+         desc: "variable and structure field names should start with a lowercase character",
+         default: warn
+     }),
+
+     ("unnecessary_parens",
      LintSpec {
         lint: UnnecessaryParens,
         desc: "`if`, `match`, `while` and `return` do not need parentheses",
@@ -311,6 +324,12 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
         desc: "detect piece of code that will never be used",
         default: warn
     }),
+    ("visible_private_types",
+     LintSpec {
+        lint: VisiblePrivateTypes,
+        desc: "detect use of private types in exported type signatures",
+        default: warn
+    }),
 
     ("missing_doc",
      LintSpec {
@@ -382,12 +401,12 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
         default: allow,
     }),
 
-     ("default_type_param_usage",
+    ("deprecated_owned_vector",
      LintSpec {
-         lint: DefaultTypeParamUsage,
-         desc: "prevents explicitly setting a type parameter with a default",
-         default: deny,
-     }),
+        lint: DeprecatedOwnedVector,
+        desc: "use of a `~[T]` vector",
+        default: warn
+    }),
 ];
 
 /*
@@ -411,7 +430,7 @@ struct Context<'a> {
     tcx: ty::ctxt,
     // maps from an expression id that corresponds to a method call to the
     // details of the method to be invoked
-    method_map: typeck::method_map,
+    method_map: typeck::MethodMap,
     // Items exported by the crate; used by the missing_doc lint.
     exported_items: &'a privacy::ExportedItems,
     // The id of the current `ast::StructDef` being walked.
@@ -423,7 +442,7 @@ struct Context<'a> {
     // When recursing into an attributed node of the ast which modifies lint
     // levels, this stack keeps track of the previous lint levels of whatever
     // was modified.
-    lint_stack: ~[(Lint, level, LintSource)],
+    lint_stack: Vec<(Lint, level, LintSource)> ,
 
     // id of the last visited negated expression
     negated_expr_id: ast::NodeId
@@ -547,7 +566,9 @@ impl<'a> Context<'a> {
                      attr.name().equiv(&("doc")) &&
                      match attr.meta_item_list() {
                          None => false,
-                         Some(l) => attr::contains_name(l, "hidden")
+                         Some(l) => {
+                             attr::contains_name(l.as_slice(), "hidden")
+                         }
                      }
                  });
 
@@ -680,7 +701,7 @@ fn check_unused_casts(cx: &Context, e: &ast::Expr) {
 
 fn check_type_limits(cx: &Context, e: &ast::Expr) {
     return match e.node {
-        ast::ExprBinary(_, binop, l, r) => {
+        ast::ExprBinary(binop, l, r) => {
             if is_comparison(binop) && !check_limits(cx.tcx, binop, l, r) {
                 cx.span_lint(TypeLimits, e.span,
                              "comparison is useless due to type limits");
@@ -967,11 +988,11 @@ static other_attrs: &'static [&'static str] = &[
     "macro_export", "must_use",
 
     //mod-level
-    "path", "link_name", "link_args", "nolink", "macro_escape", "no_implicit_prelude",
+    "path", "link_name", "link_args", "macro_escape", "no_implicit_prelude",
 
     // fn-level
     "test", "bench", "should_fail", "ignore", "inline", "lang", "main", "start",
-    "no_split_stack", "cold", "macro_registrar",
+    "no_split_stack", "cold", "macro_registrar", "linkage",
 
     // internal attribute: bypass privacy inside items
     "!resolve_unexported",
@@ -1069,7 +1090,8 @@ fn check_unused_result(cx: &Context, s: &ast::Stmt) {
             if ast_util::is_local(did) {
                 match cx.tcx.map.get(did.node) {
                     ast_map::NodeItem(it) => {
-                        if attr::contains_name(it.attrs, "must_use") {
+                        if attr::contains_name(it.attrs.as_slice(),
+                                               "must_use") {
                             cx.span_lint(UnusedMustUse, s.span,
                                          "unused result which must be used");
                             warned = true;
@@ -1079,7 +1101,7 @@ fn check_unused_result(cx: &Context, s: &ast::Stmt) {
                 }
             } else {
                 csearch::get_item_attrs(cx.tcx.sess.cstore, did, |attrs| {
-                    if attr::contains_name(attrs, "must_use") {
+                    if attr::contains_name(attrs.as_slice(), "must_use") {
                         cx.span_lint(UnusedMustUse, s.span,
                                      "unused result which must be used");
                         warned = true;
@@ -1091,6 +1113,17 @@ fn check_unused_result(cx: &Context, s: &ast::Stmt) {
     }
     if !warned {
         cx.span_lint(UnusedResult, s.span, "unused result");
+    }
+}
+
+fn check_deprecated_owned_vector(cx: &Context, e: &ast::Expr) {
+    let t = ty::expr_ty(cx.tcx, e);
+    match ty::get(t).sty {
+        ty::ty_vec(_, ty::vstore_uniq) => {
+            cx.span_lint(DeprecatedOwnedVector, e.span,
+                         "use of deprecated `~[]` vector; replaced by `std::vec_ng::Vec`")
+        }
+        _ => {}
     }
 }
 
@@ -1165,15 +1198,48 @@ fn check_pat_non_uppercase_statics(cx: &Context, p: &ast::Pat) {
     }
 }
 
-fn check_unnecessary_parens(cx: &Context, e: &ast::Expr) {
-    let (value, msg) = match e.node {
-        ast::ExprIf(cond, _, _) => (cond, "`if` condition"),
-        ast::ExprWhile(cond, _) => (cond, "`while` condition"),
-        ast::ExprMatch(head, _) => (head, "`match` head expression"),
-        ast::ExprRet(Some(value)) => (value, "`return` value"),
-        _ => return
-    };
+fn check_pat_uppercase_variable(cx: &Context, p: &ast::Pat) {
+    let def_map = cx.tcx.def_map.borrow();
+    match &p.node {
+        &ast::PatIdent(_, ref path, _) => {
+            match def_map.get().find(&p.id) {
+                Some(&ast::DefLocal(_, _)) | Some(&ast::DefBinding(_, _)) |
+                        Some(&ast::DefArg(_, _)) => {
+                    // last identifier alone is right choice for this lint.
+                    let ident = path.segments.last().unwrap().identifier;
+                    let s = token::get_ident(ident);
+                    if s.get().char_at(0).is_uppercase() {
+                        cx.span_lint(
+                            UppercaseVariables,
+                            path.span,
+                            "variable names should start with a lowercase character");
+                    }
+                }
+                _ => {}
+            }
+        }
+        _ => {}
+    }
+}
 
+fn check_struct_uppercase_variable(cx: &Context, s: &ast::StructDef) {
+    for sf in s.fields.iter() {
+        match sf.node {
+            ast::StructField_ { kind: ast::NamedField(ident, _), .. } => {
+                let s = token::get_ident(ident);
+                if s.get().char_at(0).is_uppercase() {
+                    cx.span_lint(
+                        UppercaseVariables,
+                        sf.span,
+                        "structure field names should start with a lowercase character");
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
+fn check_unnecessary_parens_core(cx: &Context, value: &ast::Expr, msg: &str) {
     match value.node {
         ast::ExprParen(_) => {
             cx.span_lint(UnnecessaryParens, value.span,
@@ -1181,6 +1247,33 @@ fn check_unnecessary_parens(cx: &Context, e: &ast::Expr) {
         }
         _ => {}
     }
+}
+
+fn check_unnecessary_parens_expr(cx: &Context, e: &ast::Expr) {
+    let (value, msg) = match e.node {
+        ast::ExprIf(cond, _, _) => (cond, "`if` condition"),
+        ast::ExprWhile(cond, _) => (cond, "`while` condition"),
+        ast::ExprMatch(head, _) => (head, "`match` head expression"),
+        ast::ExprRet(Some(value)) => (value, "`return` value"),
+        ast::ExprAssign(_, value) => (value, "assigned value"),
+        ast::ExprAssignOp(_, _, value) => (value, "assigned value"),
+        _ => return
+    };
+    check_unnecessary_parens_core(cx, value, msg);
+}
+
+fn check_unnecessary_parens_stmt(cx: &Context, s: &ast::Stmt) {
+    let (value, msg) = match s.node {
+        ast::StmtDecl(decl, _) => match decl.node {
+            ast::DeclLocal(local) => match local.init {
+                Some(value) => (value, "assigned value"),
+                None => return
+            },
+            _ => return
+        },
+        _ => return
+    };
+    check_unnecessary_parens_core(cx, value, msg);
 }
 
 fn check_unused_unsafe(cx: &Context, e: &ast::Expr) {
@@ -1213,15 +1306,14 @@ fn check_unused_mut_pat(cx: &Context, p: &ast::Pat) {
         ast::PatIdent(ast::BindByValue(ast::MutMutable),
                       ref path, _) if pat_util::pat_is_binding(cx.tcx.def_map, p)=> {
             // `let mut _a = 1;` doesn't need a warning.
-            let initial_underscore = match path.segments {
-                [ast::PathSegment { identifier: id, .. }] => {
-                    token::get_ident(id).get().starts_with("_")
-                }
-                _ => {
-                    cx.tcx.sess.span_bug(p.span,
-                                         "mutable binding that doesn't \
-                                         consist of exactly one segment");
-                }
+            let initial_underscore = if path.segments.len() == 1 {
+                token::get_ident(path.segments
+                                     .get(0)
+                                     .identifier).get().starts_with("_")
+            } else {
+                cx.tcx.sess.span_bug(p.span,
+                                     "mutable binding that doesn't consist \
+                                      of exactly one segment")
             };
 
             let used_mut_nodes = cx.tcx.used_mut_nodes.borrow();
@@ -1252,8 +1344,8 @@ fn check_unnecessary_allocation(cx: &Context, e: &ast::Expr) {
                 _ => return
             }
         }
-        ast::ExprUnary(_, ast::UnUniq, _) |
-        ast::ExprUnary(_, ast::UnBox, _) => BoxAllocation,
+        ast::ExprUnary(ast::UnUniq, _) |
+        ast::ExprUnary(ast::UnBox, _) => BoxAllocation,
 
         _ => return
     };
@@ -1335,7 +1427,11 @@ fn check_missing_doc_item(cx: &Context, it: &ast::Item) {
         ast::ItemTrait(..) => "a trait",
         _ => return
     };
-    check_missing_doc_attrs(cx, Some(it.id), it.attrs, it.span, desc);
+    check_missing_doc_attrs(cx,
+                            Some(it.id),
+                            it.attrs.as_slice(),
+                            it.span,
+                            desc);
 }
 
 fn check_missing_doc_method(cx: &Context, m: &ast::Method) {
@@ -1368,24 +1464,39 @@ fn check_missing_doc_method(cx: &Context, m: &ast::Method) {
             }
         }
     }
-    check_missing_doc_attrs(cx, Some(m.id), m.attrs, m.span, "a method");
+    check_missing_doc_attrs(cx,
+                            Some(m.id),
+                            m.attrs.as_slice(),
+                            m.span,
+                            "a method");
 }
 
 fn check_missing_doc_ty_method(cx: &Context, tm: &ast::TypeMethod) {
-    check_missing_doc_attrs(cx, Some(tm.id), tm.attrs, tm.span, "a type method");
+    check_missing_doc_attrs(cx,
+                            Some(tm.id),
+                            tm.attrs.as_slice(),
+                            tm.span,
+                            "a type method");
 }
 
 fn check_missing_doc_struct_field(cx: &Context, sf: &ast::StructField) {
     match sf.node.kind {
         ast::NamedField(_, vis) if vis != ast::Private =>
-            check_missing_doc_attrs(cx, Some(cx.cur_struct_def_id), sf.node.attrs,
-                                    sf.span, "a struct field"),
+            check_missing_doc_attrs(cx,
+                                    Some(cx.cur_struct_def_id),
+                                    sf.node.attrs.as_slice(),
+                                    sf.span,
+                                    "a struct field"),
         _ => {}
     }
 }
 
 fn check_missing_doc_variant(cx: &Context, v: &ast::Variant) {
-    check_missing_doc_attrs(cx, Some(v.node.id), v.node.attrs, v.span, "a variant");
+    check_missing_doc_attrs(cx,
+                            Some(v.node.id),
+                            v.node.attrs.as_slice(),
+                            v.span,
+                            "a variant");
 }
 
 /// Checks for use of items with #[deprecated], #[experimental] and
@@ -1400,11 +1511,11 @@ fn check_stability(cx: &Context, e: &ast::Expr) {
             }
         }
         ast::ExprMethodCall(..) => {
-            let method_map = cx.method_map.borrow();
-            match method_map.get().find(&e.id) {
-                Some(&typeck::method_map_entry { origin, .. }) => {
-                    match origin {
-                        typeck::method_static(def_id) => {
+            let method_call = typeck::MethodCall::expr(e.id);
+            match cx.method_map.borrow().get().find(&method_call) {
+                Some(method) => {
+                    match method.origin {
+                        typeck::MethodStatic(def_id) => {
                             // If this implements a trait method, get def_id
                             // of the method inside trait definition.
                             // Otherwise, use the current def_id (which refers
@@ -1412,12 +1523,12 @@ fn check_stability(cx: &Context, e: &ast::Expr) {
                             ty::trait_method_of_method(
                                 cx.tcx, def_id).unwrap_or(def_id)
                         }
-                        typeck::method_param(typeck::method_param {
+                        typeck::MethodParam(typeck::MethodParam {
                             trait_id: trait_id,
                             method_num: index,
                             ..
                         })
-                        | typeck::method_object(typeck::method_object {
+                        | typeck::MethodObject(typeck::MethodObject {
                             trait_id: trait_id,
                             method_num: index,
                             ..
@@ -1483,13 +1594,13 @@ fn check_stability(cx: &Context, e: &ast::Expr) {
 
 impl<'a> Visitor<()> for Context<'a> {
     fn visit_item(&mut self, it: &ast::Item, _: ()) {
-        self.with_lint_attrs(it.attrs, |cx| {
+        self.with_lint_attrs(it.attrs.as_slice(), |cx| {
             check_item_ctypes(cx, it);
             check_item_non_camel_case_types(cx, it);
             check_item_non_uppercase_statics(cx, it);
             check_heap_item(cx, it);
             check_missing_doc_item(cx, it);
-            check_attrs_usage(cx, it.attrs);
+            check_attrs_usage(cx, it.attrs.as_slice());
 
             cx.visit_ids(|v| v.visit_item(it, ()));
 
@@ -1498,21 +1609,22 @@ impl<'a> Visitor<()> for Context<'a> {
     }
 
     fn visit_foreign_item(&mut self, it: &ast::ForeignItem, _: ()) {
-        self.with_lint_attrs(it.attrs, |cx| {
-            check_attrs_usage(cx, it.attrs);
+        self.with_lint_attrs(it.attrs.as_slice(), |cx| {
+            check_attrs_usage(cx, it.attrs.as_slice());
             visit::walk_foreign_item(cx, it, ());
         })
     }
 
     fn visit_view_item(&mut self, i: &ast::ViewItem, _: ()) {
-        self.with_lint_attrs(i.attrs, |cx| {
-            check_attrs_usage(cx, i.attrs);
+        self.with_lint_attrs(i.attrs.as_slice(), |cx| {
+            check_attrs_usage(cx, i.attrs.as_slice());
             visit::walk_view_item(cx, i, ());
         })
     }
 
     fn visit_pat(&mut self, p: &ast::Pat, _: ()) {
         check_pat_non_uppercase_statics(self, p);
+        check_pat_uppercase_variable(self, p);
         check_unused_mut_pat(self, p);
 
         visit::walk_pat(self, p, ());
@@ -1520,7 +1632,7 @@ impl<'a> Visitor<()> for Context<'a> {
 
     fn visit_expr(&mut self, e: &ast::Expr, _: ()) {
         match e.node {
-            ast::ExprUnary(_, ast::UnNeg, expr) => {
+            ast::ExprUnary(ast::UnNeg, expr) => {
                 // propagate negation, if the negation itself isn't negated
                 if self.negated_expr_id != e.id {
                     self.negated_expr_id = expr.id;
@@ -1534,7 +1646,7 @@ impl<'a> Visitor<()> for Context<'a> {
 
         check_while_true_expr(self, e);
         check_stability(self, e);
-        check_unnecessary_parens(self, e);
+        check_unnecessary_parens_expr(self, e);
         check_unused_unsafe(self, e);
         check_unsafe_block(self, e);
         check_unnecessary_allocation(self, e);
@@ -1542,6 +1654,7 @@ impl<'a> Visitor<()> for Context<'a> {
 
         check_type_limits(self, e);
         check_unused_casts(self, e);
+        check_deprecated_owned_vector(self, e);
 
         visit::walk_expr(self, e, ());
     }
@@ -1549,6 +1662,7 @@ impl<'a> Visitor<()> for Context<'a> {
     fn visit_stmt(&mut self, s: &ast::Stmt, _: ()) {
         check_path_statement(self, s);
         check_unused_result(self, s);
+        check_unnecessary_parens_stmt(self, s);
 
         visit::walk_stmt(self, s, ());
     }
@@ -1561,9 +1675,9 @@ impl<'a> Visitor<()> for Context<'a> {
 
         match *fk {
             visit::FkMethod(_, _, m) => {
-                self.with_lint_attrs(m.attrs, |cx| {
+                self.with_lint_attrs(m.attrs.as_slice(), |cx| {
                     check_missing_doc_method(cx, m);
-                    check_attrs_usage(cx, m.attrs);
+                    check_attrs_usage(cx, m.attrs.as_slice());
 
                     cx.visit_ids(|v| {
                         v.visit_fn(fk, decl, body, span, id, ());
@@ -1577,9 +1691,9 @@ impl<'a> Visitor<()> for Context<'a> {
 
 
     fn visit_ty_method(&mut self, t: &ast::TypeMethod, _: ()) {
-        self.with_lint_attrs(t.attrs, |cx| {
+        self.with_lint_attrs(t.attrs.as_slice(), |cx| {
             check_missing_doc_ty_method(cx, t);
-            check_attrs_usage(cx, t.attrs);
+            check_attrs_usage(cx, t.attrs.as_slice());
 
             visit::walk_ty_method(cx, t, ());
         })
@@ -1591,6 +1705,8 @@ impl<'a> Visitor<()> for Context<'a> {
                         g: &ast::Generics,
                         id: ast::NodeId,
                         _: ()) {
+        check_struct_uppercase_variable(self, s);
+
         let old_id = self.cur_struct_def_id;
         self.cur_struct_def_id = id;
         visit::walk_struct_def(self, s, i, g, id, ());
@@ -1598,18 +1714,18 @@ impl<'a> Visitor<()> for Context<'a> {
     }
 
     fn visit_struct_field(&mut self, s: &ast::StructField, _: ()) {
-        self.with_lint_attrs(s.node.attrs, |cx| {
+        self.with_lint_attrs(s.node.attrs.as_slice(), |cx| {
             check_missing_doc_struct_field(cx, s);
-            check_attrs_usage(cx, s.node.attrs);
+            check_attrs_usage(cx, s.node.attrs.as_slice());
 
             visit::walk_struct_field(cx, s, ());
         })
     }
 
     fn visit_variant(&mut self, v: &ast::Variant, g: &ast::Generics, _: ()) {
-        self.with_lint_attrs(v.node.attrs, |cx| {
+        self.with_lint_attrs(v.node.attrs.as_slice(), |cx| {
             check_missing_doc_variant(cx, v);
-            check_attrs_usage(cx, v.node.attrs);
+            check_attrs_usage(cx, v.node.attrs.as_slice());
 
             visit::walk_variant(cx, v, g, ());
         })
@@ -1634,7 +1750,7 @@ impl<'a> IdVisitingOperation for Context<'a> {
 }
 
 pub fn check_crate(tcx: ty::ctxt,
-                   method_map: typeck::method_map,
+                   method_map: typeck::MethodMap,
                    exported_items: &privacy::ExportedItems,
                    krate: &ast::Crate) {
     let mut cx = Context {
@@ -1645,7 +1761,7 @@ pub fn check_crate(tcx: ty::ctxt,
         exported_items: exported_items,
         cur_struct_def_id: -1,
         is_doc_hidden: false,
-        lint_stack: ~[],
+        lint_stack: Vec::new(),
         negated_expr_id: -1
     };
 
@@ -1657,17 +1773,21 @@ pub fn check_crate(tcx: ty::ctxt,
     for &(lint, level) in tcx.sess.opts.lint_opts.iter() {
         cx.set_level(lint, level, CommandLine);
     }
-    cx.with_lint_attrs(krate.attrs, |cx| {
+    cx.with_lint_attrs(krate.attrs.as_slice(), |cx| {
         cx.visit_id(ast::CRATE_NODE_ID);
         cx.visit_ids(|v| {
             v.visited_outermost = true;
             visit::walk_crate(v, krate, ());
         });
 
-        check_crate_attrs_usage(cx, krate.attrs);
+        check_crate_attrs_usage(cx, krate.attrs.as_slice());
         // since the root module isn't visited as an item (because it isn't an item), warn for it
         // here.
-        check_missing_doc_attrs(cx, None, krate.attrs, krate.span, "crate");
+        check_missing_doc_attrs(cx,
+                                None,
+                                krate.attrs.as_slice(),
+                                krate.span,
+                                "crate");
 
         visit::walk_crate(cx, krate, ());
     });

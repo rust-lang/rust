@@ -12,7 +12,6 @@
 
 use std::libc;
 
-#[nolink]
 extern {
     pub fn bare_type1(size: int); //~ ERROR: found rust type
     pub fn bare_type2(size: uint); //~ ERROR: found rust type

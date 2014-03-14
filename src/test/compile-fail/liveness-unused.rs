@@ -8,21 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-test
-// ignored because lint is messed up with the new visitor transition
-
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
 #[deny(unused_variable)];
 #[deny(dead_assignment)];
+#[allow(dead_code, non_camel_case_types)];
 
 fn f1(x: int) {
     //~^ ERROR unused variable: `x`
@@ -34,6 +22,11 @@ fn f1b(x: &mut int) {
 
 #[allow(unused_variable)]
 fn f1c(x: int) {}
+
+fn f1d() {
+    let x: int;
+    //~^ ERROR unused variable: `x`
+}
 
 fn f2() {
     let x = 3;

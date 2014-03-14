@@ -30,8 +30,6 @@ use std::iter;
 
 use deque::Deque;
 
-use serialize::{Encodable, Decodable, Encoder, Decoder};
-
 /// A doubly-linked list.
 pub struct DList<T> {
     priv length: uint,
@@ -609,7 +607,7 @@ impl<A: Eq> Eq for DList<A> {
     }
 }
 
-impl<A: Eq + Ord> Ord for DList<A> {
+impl<A: Ord> Ord for DList<A> {
     fn lt(&self, other: &DList<A>) -> bool {
         iter::order::lt(self.iter(), other.iter())
     }
@@ -630,36 +628,12 @@ impl<A: Clone> Clone for DList<A> {
     }
 }
 
-impl<
-    S: Encoder,
-    T: Encodable<S>
-> Encodable<S> for DList<T> {
-    fn encode(&self, s: &mut S) {
-        s.emit_seq(self.len(), |s| {
-            for (i, e) in self.iter().enumerate() {
-                s.emit_seq_elt(i, |s| e.encode(s));
-            }
-        })
-    }
-}
-
-impl<D:Decoder,T:Decodable<D>> Decodable<D> for DList<T> {
-    fn decode(d: &mut D) -> DList<T> {
-        let mut list = DList::new();
-        d.read_seq(|d, len| {
-            for i in range(0u, len) {
-                list.push_back(d.read_seq_elt(i, |d| Decodable::decode(d)));
-            }
-        });
-        list
-    }
-}
-
 #[cfg(test)]
 mod tests {
+    extern crate test;
+    use self::test::BenchHarness;
     use deque::Deque;
-    use extra::test;
-    use std::rand;
+    use rand;
     use super::{DList, Node, ListInsertion};
 
     pub fn check_links<T>(list: &DList<T>) {
@@ -1008,11 +982,11 @@ mod tests {
     fn test_eq() {
         let mut n: DList<u8> = list_from([]);
         let mut m = list_from([]);
-        assert_eq!(&n, &m);
+        assert!(n == m);
         n.push_front(1);
         assert!(n != m);
         m.push_back(1);
-        assert_eq!(&n, &m);
+        assert!(n == m);
 
         let n = list_from([2,3,4]);
         let m = list_from([1,2,3]);

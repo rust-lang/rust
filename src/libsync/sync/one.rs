@@ -137,9 +137,9 @@ mod test {
         static mut o: Once = ONCE_INIT;
         static mut run: bool = false;
 
-        let (p, c) = Chan::new();
+        let (tx, rx) = channel();
         for _ in range(0, 10) {
-            let c = c.clone();
+            let tx = tx.clone();
             spawn(proc() {
                 for _ in range(0, 4) { task::deschedule() }
                 unsafe {
@@ -149,7 +149,7 @@ mod test {
                     });
                     assert!(run);
                 }
-                c.send(());
+                tx.send(());
             });
         }
 
@@ -162,7 +162,7 @@ mod test {
         }
 
         for _ in range(0, 10) {
-            p.recv();
+            rx.recv();
         }
     }
 }

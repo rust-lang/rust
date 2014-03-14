@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,6 +10,7 @@
 
 /*! See doc.rs for a thorough explanation of the borrow checker */
 
+#[allow(non_camel_case_types)];
 
 use mc = middle::mem_categorization;
 use middle::ty;
@@ -20,9 +21,10 @@ use middle::dataflow::DataFlowOperator;
 use util::ppaux::{note_and_explain_region, Repr, UserString};
 
 use std::cell::{Cell, RefCell};
-use std::hashmap::HashMap;
+use collections::HashMap;
 use std::ops::{BitOr, BitAnd};
 use std::result::{Result};
+use std::vec_ng::Vec;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util;
@@ -69,7 +71,7 @@ impl Visitor<()> for BorrowckCtxt {
 }
 
 pub fn check_crate(tcx: ty::ctxt,
-                   method_map: typeck::method_map,
+                   method_map: typeck::MethodMap,
                    moves_map: moves::MovesMap,
                    moved_variables_set: moves::MovedVariablesSet,
                    capture_map: moves::CaptureMap,
@@ -145,7 +147,7 @@ fn borrowck_fn(this: &mut BorrowckCtxt,
                                                       body);
 
     check_loans::check_loans(this, &loan_dfcx, flowed_moves,
-                             *all_loans.get(), body);
+                             all_loans.get().as_slice(), body);
 
     visit::walk_fn(this, fk, decl, body, sp, id, ());
 }
@@ -155,7 +157,7 @@ fn borrowck_fn(this: &mut BorrowckCtxt,
 
 pub struct BorrowckCtxt {
     tcx: ty::ctxt,
-    method_map: typeck::method_map,
+    method_map: typeck::MethodMap,
     moves_map: moves::MovesMap,
     moved_variables_set: moves::MovedVariablesSet,
     capture_map: moves::CaptureMap,
@@ -185,7 +187,7 @@ pub struct BorrowStats {
 //
 // Note that there is no entry with derefs:3---the type of that expression
 // is T, which is not a box.
-#[deriving(Eq, IterBytes)]
+#[deriving(Eq, Hash)]
 pub struct root_map_key {
     id: ast::NodeId,
     derefs: uint
@@ -208,7 +210,7 @@ pub struct Loan {
     loan_path: @LoanPath,
     cmt: mc::cmt,
     kind: ty::BorrowKind,
-    restrictions: ~[Restriction],
+    restrictions: Vec<Restriction> ,
     gen_scope: ast::NodeId,
     kill_scope: ast::NodeId,
     span: Span,
@@ -223,13 +225,13 @@ pub enum LoanCause {
     RefBinding,
 }
 
-#[deriving(Eq, IterBytes)]
+#[deriving(Eq, Hash)]
 pub enum LoanPath {
     LpVar(ast::NodeId),               // `x` in doc.rs
     LpExtend(@LoanPath, mc::MutabilityCategory, LoanPathElem)
 }
 
-#[deriving(Eq, IterBytes)]
+#[deriving(Eq, Hash)]
 pub enum LoanPathElem {
     LpDeref(mc::PointerKind),    // `*LV` in doc.rs
     LpInterior(mc::InteriorKind) // `LV.f` in doc.rs
@@ -533,7 +535,7 @@ impl BorrowckCtxt {
             move_data::Declared => {
                 self.tcx.sess.span_err(
                     use_span,
-                    format!("{} of possibly uninitialized value: `{}`",
+                    format!("{} of possibly uninitialized variable: `{}`",
                          verb,
                          self.loan_path_to_str(lp)));
             }
@@ -554,7 +556,8 @@ impl BorrowckCtxt {
             move_data::MoveExpr => {
                 let (expr_ty, expr_span) = match self.tcx.map.find(move.id) {
                     Some(ast_map::NodeExpr(expr)) => {
-                        (ty::expr_ty_adjusted(self.tcx, expr), expr.span)
+                        (ty::expr_ty_adjusted(self.tcx, expr,
+                                              self.method_map.borrow().get()), expr.span)
                     }
                     r => self.tcx.sess.bug(format!("MoveExpr({:?}) maps to {:?}, not Expr",
                                                    move.id, r))
@@ -580,7 +583,8 @@ impl BorrowckCtxt {
             move_data::Captured => {
                 let (expr_ty, expr_span) = match self.tcx.map.find(move.id) {
                     Some(ast_map::NodeExpr(expr)) => {
-                        (ty::expr_ty_adjusted(self.tcx, expr), expr.span)
+                        (ty::expr_ty_adjusted(self.tcx, expr,
+                                              self.method_map.borrow().get()), expr.span)
                     }
                     r => self.tcx.sess.bug(format!("Captured({:?}) maps to {:?}, not Expr",
                                                    move.id, r))
@@ -906,9 +910,9 @@ impl Repr for LoanPath {
 
 ///////////////////////////////////////////////////////////////////////////
 
-struct TcxTyper {
+pub struct TcxTyper {
     tcx: ty::ctxt,
-    method_map: typeck::method_map,
+    method_map: typeck::MethodMap,
 }
 
 impl mc::Typer for TcxTyper {
@@ -920,14 +924,17 @@ impl mc::Typer for TcxTyper {
         Ok(ty::node_id_to_type(self.tcx, id))
     }
 
+    fn node_method_ty(&mut self, method_call: typeck::MethodCall) -> Option<ty::t> {
+        self.method_map.borrow().get().find(&method_call).map(|method| method.ty)
+    }
+
     fn adjustment(&mut self, id: ast::NodeId) -> Option<@ty::AutoAdjustment> {
         let adjustments = self.tcx.adjustments.borrow();
         adjustments.get().find_copy(&id)
     }
 
     fn is_method_call(&mut self, id: ast::NodeId) -> bool {
-        let method_map = self.method_map.borrow();
-        method_map.get().contains_key(&id)
+        self.method_map.borrow().get().contains_key(&typeck::MethodCall::expr(id))
     }
 
     fn temporary_scope(&mut self, id: ast::NodeId) -> Option<ast::NodeId> {

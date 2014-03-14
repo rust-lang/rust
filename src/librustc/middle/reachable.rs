@@ -18,9 +18,11 @@
 use middle::ty;
 use middle::typeck;
 use middle::privacy;
+use util::nodemap::NodeSet;
 
 use std::cell::RefCell;
-use std::hashmap::HashSet;
+use std::vec_ng::Vec;
+use collections::HashSet;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util::{def_id_of_def, is_local};
@@ -44,7 +46,7 @@ fn generics_require_inlining(generics: &ast::Generics) -> bool {
 // monomorphized or it was marked with `#[inline]`. This will only return
 // true for functions.
 fn item_might_be_inlined(item: &ast::Item) -> bool {
-    if attributes_specify_inlining(item.attrs) {
+    if attributes_specify_inlining(item.attrs.as_slice()) {
         return true
     }
 
@@ -59,7 +61,7 @@ fn item_might_be_inlined(item: &ast::Item) -> bool {
 
 fn method_might_be_inlined(tcx: ty::ctxt, method: &ast::Method,
                            impl_src: ast::DefId) -> bool {
-    if attributes_specify_inlining(method.attrs) ||
+    if attributes_specify_inlining(method.attrs.as_slice()) ||
         generics_require_inlining(&method.generics) {
         return true
     }
@@ -86,19 +88,19 @@ struct ReachableContext {
     tcx: ty::ctxt,
     // The method map, which links node IDs of method call expressions to the
     // methods they've been resolved to.
-    method_map: typeck::method_map,
+    method_map: typeck::MethodMap,
     // The set of items which must be exported in the linkage sense.
-    reachable_symbols: @RefCell<HashSet<ast::NodeId>>,
+    reachable_symbols: @RefCell<NodeSet>,
     // A worklist of item IDs. Each item ID in this worklist will be inlined
     // and will be scanned for further references.
-    worklist: @RefCell<~[ast::NodeId]>,
+    worklist: @RefCell<Vec<ast::NodeId> >,
 }
 
 struct MarkSymbolVisitor {
-    worklist: @RefCell<~[ast::NodeId]>,
-    method_map: typeck::method_map,
+    worklist: @RefCell<Vec<ast::NodeId> >,
+    method_map: typeck::MethodMap,
     tcx: ty::ctxt,
-    reachable_symbols: @RefCell<HashSet<ast::NodeId>>,
+    reachable_symbols: @RefCell<NodeSet>,
 }
 
 impl Visitor<()> for MarkSymbolVisitor {
@@ -147,36 +149,20 @@ impl Visitor<()> for MarkSymbolVisitor {
                 }
             }
             ast::ExprMethodCall(..) => {
-                let method_map = self.method_map.borrow();
-                match method_map.get().find(&expr.id) {
-                    Some(&typeck::method_map_entry {
-                        origin: typeck::method_static(def_id),
-                        ..
-                    }) => {
+                let method_call = typeck::MethodCall::expr(expr.id);
+                match self.method_map.borrow().get().get(&method_call).origin {
+                    typeck::MethodStatic(def_id) => {
                         if is_local(def_id) {
                             if ReachableContext::
                                 def_id_represents_local_inlined_item(
                                     self.tcx,
                                     def_id) {
-                                {
-                                    let mut worklist = self.worklist
-                                                           .borrow_mut();
-                                    worklist.get().push(def_id.node)
-                                }
+                                self.worklist.borrow_mut().get().push(def_id.node)
                             }
-                            {
-                                let mut reachable_symbols =
-                                    self.reachable_symbols.borrow_mut();
-                                reachable_symbols.get().insert(def_id.node);
-                            }
+                            self.reachable_symbols.borrow_mut().get().insert(def_id.node);
                         }
                     }
-                    Some(_) => {}
-                    None => {
-                        self.tcx.sess.span_bug(expr.span,
-                        "method call expression \
-                                                   not in method map?!")
-                    }
+                    _ => {}
                 }
             }
             _ => {}
@@ -193,12 +179,12 @@ impl Visitor<()> for MarkSymbolVisitor {
 
 impl ReachableContext {
     // Creates a new reachability computation context.
-    fn new(tcx: ty::ctxt, method_map: typeck::method_map) -> ReachableContext {
+    fn new(tcx: ty::ctxt, method_map: typeck::MethodMap) -> ReachableContext {
         ReachableContext {
             tcx: tcx,
             method_map: method_map,
-            reachable_symbols: @RefCell::new(HashSet::new()),
-            worklist: @RefCell::new(~[]),
+            reachable_symbols: @RefCell::new(NodeSet::new()),
+            worklist: @RefCell::new(Vec::new()),
         }
     }
 
@@ -226,7 +212,7 @@ impl ReachableContext {
             }
             Some(ast_map::NodeMethod(method)) => {
                 if generics_require_inlining(&method.generics) ||
-                        attributes_specify_inlining(method.attrs) {
+                        attributes_specify_inlining(method.attrs.as_slice()) {
                     true
                 } else {
                     let impl_did = tcx.map.get_parent_did(node_id);
@@ -333,7 +319,7 @@ impl ReachableContext {
                     // Statics with insignificant addresses are not reachable
                     // because they're inlined specially into all other crates.
                     ast::ItemStatic(..) => {
-                        if attr::contains_name(item.attrs,
+                        if attr::contains_name(item.attrs.as_slice(),
                                                "address_insignificant") {
                             let mut reachable_symbols =
                                 self.reachable_symbols.borrow_mut();
@@ -402,17 +388,29 @@ impl ReachableContext {
 }
 
 pub fn find_reachable(tcx: ty::ctxt,
-                      method_map: typeck::method_map,
+                      method_map: typeck::MethodMap,
                       exported_items: &privacy::ExportedItems)
-                      -> @RefCell<HashSet<ast::NodeId>> {
+                      -> @RefCell<NodeSet> {
     let reachable_context = ReachableContext::new(tcx, method_map);
 
     // Step 1: Seed the worklist with all nodes which were found to be public as
-    //         a result of the privacy pass
+    //         a result of the privacy pass along with all local lang items. If
+    //         other crates link to us, they're going to expect to be able to
+    //         use the lang items, so we need to be sure to mark them as
+    //         exported.
+    let mut worklist = reachable_context.worklist.borrow_mut();
     for &id in exported_items.iter() {
-        let mut worklist = reachable_context.worklist.borrow_mut();
         worklist.get().push(id);
     }
+    for (_, item) in tcx.lang_items.items() {
+        match *item {
+            Some(did) if is_local(did) => {
+                worklist.get().push(did.node);
+            }
+            _ => {}
+        }
+    }
+    drop(worklist);
 
     // Step 2: Mark all symbols that the symbols on the worklist touch.
     reachable_context.propagate();

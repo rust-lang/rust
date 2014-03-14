@@ -10,7 +10,7 @@
 
 use c_str::CString;
 use cast;
-use comm::{Chan, Port};
+use comm::{Sender, Receiver};
 use libc::c_int;
 use libc;
 use ops::Drop;
@@ -179,10 +179,11 @@ pub trait IoFactory {
     fn timer_init(&mut self) -> Result<~RtioTimer, IoError>;
     fn spawn(&mut self, config: ProcessConfig)
             -> Result<(~RtioProcess, ~[Option<~RtioPipe>]), IoError>;
+    fn kill(&mut self, pid: libc::pid_t, signal: int) -> Result<(), IoError>;
     fn pipe_open(&mut self, fd: c_int) -> Result<~RtioPipe, IoError>;
     fn tty_open(&mut self, fd: c_int, readable: bool)
             -> Result<~RtioTTY, IoError>;
-    fn signal(&mut self, signal: Signum, channel: Chan<Signum>)
+    fn signal(&mut self, signal: Signum, channel: Sender<Signum>)
         -> Result<~RtioSignal, IoError>;
 }
 
@@ -205,6 +206,7 @@ pub trait RtioTcpStream : RtioSocket {
     fn keepalive(&mut self, delay_in_seconds: uint) -> Result<(), IoError>;
     fn letdie(&mut self) -> Result<(), IoError>;
     fn clone(&self) -> ~RtioTcpStream;
+    fn close_write(&mut self) -> Result<(), IoError>;
 }
 
 pub trait RtioSocket {
@@ -232,8 +234,8 @@ pub trait RtioUdpSocket : RtioSocket {
 
 pub trait RtioTimer {
     fn sleep(&mut self, msecs: u64);
-    fn oneshot(&mut self, msecs: u64) -> Port<()>;
-    fn period(&mut self, msecs: u64) -> Port<()>;
+    fn oneshot(&mut self, msecs: u64) -> Receiver<()>;
+    fn period(&mut self, msecs: u64) -> Receiver<()>;
 }
 
 pub trait RtioFileStream {

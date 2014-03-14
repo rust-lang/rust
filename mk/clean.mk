@@ -41,7 +41,6 @@ clean-misc:
 	@$(call E, cleaning)
 	$(Q)rm -f $(RUNTIME_OBJS) $(RUNTIME_DEF)
 	$(Q)rm -f $(RUSTLLVM_LIB_OBJS) $(RUSTLLVM_OBJS_OBJS) $(RUSTLLVM_DEF)
-	$(Q)rm -Rf $(DOCS)
 	$(Q)rm -Rf $(GENERATED)
 	$(Q)rm -Rf tmp/*
 	$(Q)rm -Rf rust-stage0-*.tar.bz2 $(PKG_NAME)-*.tar.gz $(PKG_NAME)-*.exe dist
@@ -58,6 +57,7 @@ clean-generic-$(2)-$(1):
          -name '*.[odasS]' -o \
          -name '*.so' -o      \
          -name '*.dylib' -o   \
+         -name '*.rlib' -o   \
          -name 'stamp.*' -o   \
          -name '*.lib' -o     \
          -name '*.dll' -o     \

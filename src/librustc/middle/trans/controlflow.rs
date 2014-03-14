@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use lib::llvm::*;
+use driver::session::FullDebugInfo;
 use middle::lang_items::{FailFnLangItem, FailBoundsCheckFnLangItem};
 use middle::trans::base::*;
 use middle::trans::build::*;
@@ -18,14 +19,12 @@ use middle::trans::debuginfo;
 use middle::trans::cleanup;
 use middle::trans::cleanup::CleanupMethods;
 use middle::trans::expr;
-use middle::ty;
-use util::ppaux;
 use util::ppaux::Repr;
 
 use middle::trans::type_::Type;
 
 use syntax::ast;
-use syntax::ast::Name;
+use syntax::ast::Ident;
 use syntax::ast_util;
 use syntax::codemap::Span;
 use syntax::parse::token::InternedString;
@@ -56,7 +55,7 @@ pub fn trans_stmt<'a>(cx: &'a Block<'a>,
             match d.node {
                 ast::DeclLocal(ref local) => {
                     bcx = init_local(bcx, *local);
-                    if cx.sess().opts.debuginfo {
+                    if cx.sess().opts.debuginfo == FullDebugInfo {
                         debuginfo::create_local_var_metadata(bcx, *local);
                     }
                 }
@@ -260,7 +259,7 @@ pub fn trans_loop<'a>(bcx:&'a Block<'a>,
 
 pub fn trans_break_cont<'a>(bcx: &'a Block<'a>,
                             expr_id: ast::NodeId,
-                            opt_label: Option<Name>,
+                            opt_label: Option<Ident>,
                             exit: uint)
                             -> &'a Block<'a> {
     let _icx = push_ctxt("trans_break_cont");
@@ -293,14 +292,14 @@ pub fn trans_break_cont<'a>(bcx: &'a Block<'a>,
 
 pub fn trans_break<'a>(bcx: &'a Block<'a>,
                        expr_id: ast::NodeId,
-                       label_opt: Option<Name>)
+                       label_opt: Option<Ident>)
                        -> &'a Block<'a> {
     return trans_break_cont(bcx, expr_id, label_opt, cleanup::EXIT_BREAK);
 }
 
 pub fn trans_cont<'a>(bcx: &'a Block<'a>,
                       expr_id: ast::NodeId,
-                      label_opt: Option<Name>)
+                      label_opt: Option<Ident>)
                       -> &'a Block<'a> {
     return trans_break_cont(bcx, expr_id, label_opt, cleanup::EXIT_LOOP);
 }
@@ -327,68 +326,27 @@ pub fn trans_ret<'a>(bcx: &'a Block<'a>,
     return bcx;
 }
 
-pub fn trans_fail_expr<'a>(
-                       bcx: &'a Block<'a>,
-                       sp_opt: Option<Span>,
-                       fail_expr: Option<@ast::Expr>)
-                       -> &'a Block<'a> {
-    let _icx = push_ctxt("trans_fail_expr");
-    let mut bcx = bcx;
-    match fail_expr {
-        Some(arg_expr) => {
-            let ccx = bcx.ccx();
-            let tcx = ccx.tcx;
-            let arg_datum =
-                unpack_datum!(bcx, expr::trans_to_lvalue(bcx, arg_expr, "fail"));
-
-            if ty::type_is_str(arg_datum.ty) {
-                let (lldata, _) = arg_datum.get_vec_base_and_len(bcx);
-                return trans_fail_value(bcx, sp_opt, lldata);
-            } else if bcx.unreachable.get() || ty::type_is_bot(arg_datum.ty) {
-                return bcx;
-            } else {
-                bcx.sess().span_bug(
-                    arg_expr.span, ~"fail called with unsupported type " +
-                    ppaux::ty_to_str(tcx, arg_datum.ty));
-            }
-        }
-        _ => trans_fail(bcx, sp_opt, InternedString::new("explicit failure"))
-    }
-}
-
 pub fn trans_fail<'a>(
                   bcx: &'a Block<'a>,
-                  sp_opt: Option<Span>,
+                  sp: Span,
                   fail_str: InternedString)
                   -> &'a Block<'a> {
-    let _icx = push_ctxt("trans_fail");
-    let V_fail_str = C_cstr(bcx.ccx(), fail_str);
-    return trans_fail_value(bcx, sp_opt, V_fail_str);
-}
-
-fn trans_fail_value<'a>(
-                    bcx: &'a Block<'a>,
-                    sp_opt: Option<Span>,
-                    V_fail_str: ValueRef)
-                    -> &'a Block<'a> {
+    let v_fail_str = C_cstr(bcx.ccx(), fail_str);
     let _icx = push_ctxt("trans_fail_value");
     let ccx = bcx.ccx();
-    let (V_filename, V_line) = match sp_opt {
-      Some(sp) => {
-        let sess = bcx.sess();
-        let loc = sess.parse_sess.cm.lookup_char_pos(sp.lo);
-        (C_cstr(bcx.ccx(), token::intern_and_get_ident(loc.file.name)),
-         loc.line as int)
-      }
-      None => {
-        (C_cstr(bcx.ccx(), InternedString::new("<runtime>")), 0)
-      }
-    };
-    let V_str = PointerCast(bcx, V_fail_str, Type::i8p());
-    let V_filename = PointerCast(bcx, V_filename, Type::i8p());
-    let args = ~[V_str, V_filename, C_int(ccx, V_line)];
-    let did = langcall(bcx, sp_opt, "", FailFnLangItem);
-    let bcx = callee::trans_lang_call(bcx, did, args, Some(expr::Ignore)).bcx;
+    let sess = bcx.sess();
+    let loc = sess.parse_sess.cm.lookup_char_pos(sp.lo);
+    let v_filename = C_cstr(bcx.ccx(),
+                            token::intern_and_get_ident(loc.file.name));
+    let v_line = loc.line as int;
+    let v_str = PointerCast(bcx, v_fail_str, Type::i8p());
+    let v_filename = PointerCast(bcx, v_filename, Type::i8p());
+    let args = vec!(v_str, v_filename, C_int(ccx, v_line));
+    let did = langcall(bcx, Some(sp), "", FailFnLangItem);
+    let bcx = callee::trans_lang_call(bcx,
+                                      did,
+                                      args.as_slice(),
+                                      Some(expr::Ignore)).bcx;
     Unreachable(bcx);
     return bcx;
 }
@@ -401,9 +359,12 @@ pub fn trans_fail_bounds_check<'a>(
                                -> &'a Block<'a> {
     let _icx = push_ctxt("trans_fail_bounds_check");
     let (filename, line) = filename_and_line_num_from_span(bcx, sp);
-    let args = ~[filename, line, index, len];
+    let args = vec!(filename, line, index, len);
     let did = langcall(bcx, Some(sp), "", FailBoundsCheckFnLangItem);
-    let bcx = callee::trans_lang_call(bcx, did, args, Some(expr::Ignore)).bcx;
+    let bcx = callee::trans_lang_call(bcx,
+                                      did,
+                                      args.as_slice(),
+                                      Some(expr::Ignore)).bcx;
     Unreachable(bcx);
     return bcx;
 }

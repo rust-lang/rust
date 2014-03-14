@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -7,6 +7,8 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+
+#[allow(non_camel_case_types)];
 
 //! Code that is useful in various trans modules.
 
@@ -27,14 +29,14 @@ use middle::ty::substs;
 use middle::ty;
 use middle::typeck;
 use util::ppaux::Repr;
+use util::nodemap::NodeMap;
 
 use arena::TypedArena;
+use collections::HashMap;
 use std::c_str::ToCStr;
-use std::cast::transmute;
-use std::cast;
 use std::cell::{Cell, RefCell};
-use std::hashmap::HashMap;
 use std::libc::{c_uint, c_longlong, c_ulonglong, c_char};
+use std::vec_ng::Vec;
 use syntax::ast::Ident;
 use syntax::ast;
 use syntax::ast_map::{PathElem, PathName};
@@ -49,8 +51,9 @@ fn type_is_newtype_immediate(ccx: &CrateContext, ty: ty::t) -> bool {
         ty::ty_struct(def_id, ref substs) => {
             let fields = ty::struct_fields(ccx.tcx, def_id, substs);
             fields.len() == 1 &&
-                fields[0].ident.name == token::special_idents::unnamed_field.name &&
-                type_is_immediate(ccx, fields[0].mt.ty)
+                fields.get(0).ident.name ==
+                    token::special_idents::unnamed_field.name &&
+                type_is_immediate(ccx, fields.get(0).mt.ty)
         }
         _ => false
     }
@@ -160,24 +163,24 @@ pub struct Stats {
     n_llvm_insns: Cell<uint>,
     llvm_insns: RefCell<HashMap<~str, uint>>,
     // (ident, time-in-ms, llvm-instructions)
-    fn_stats: RefCell<~[(~str, uint, uint)]>,
+    fn_stats: RefCell<Vec<(~str, uint, uint)> >,
 }
 
 pub struct BuilderRef_res {
-    B: BuilderRef,
+    b: BuilderRef,
 }
 
 impl Drop for BuilderRef_res {
     fn drop(&mut self) {
         unsafe {
-            llvm::LLVMDisposeBuilder(self.B);
+            llvm::LLVMDisposeBuilder(self.b);
         }
     }
 }
 
-pub fn BuilderRef_res(B: BuilderRef) -> BuilderRef_res {
+pub fn BuilderRef_res(b: BuilderRef) -> BuilderRef_res {
     BuilderRef_res {
-        B: B
+        b: b
     }
 }
 
@@ -186,7 +189,7 @@ pub type ExternMap = HashMap<~str, ValueRef>;
 // Here `self_ty` is the real type of the self parameter to this method. It
 // will only be set in the case of default methods.
 pub struct param_substs {
-    tys: ~[ty::t],
+    tys: Vec<ty::t> ,
     self_ty: Option<ty::t>,
     vtables: Option<typeck::vtable_res>,
     self_vtables: Option<typeck::vtable_param_res>
@@ -212,8 +215,8 @@ impl Repr for param_substs {
 }
 
 // work around bizarre resolve errors
-type RvalueDatum = datum::Datum<datum::Rvalue>;
-type LvalueDatum = datum::Datum<datum::Lvalue>;
+pub type RvalueDatum = datum::Datum<datum::Rvalue>;
+pub type LvalueDatum = datum::Datum<datum::Lvalue>;
 
 // Function context.  Every LLVM function we create will have one of
 // these.
@@ -253,14 +256,14 @@ pub struct FunctionContext<'a> {
     caller_expects_out_pointer: bool,
 
     // Maps arguments to allocas created for them in llallocas.
-    llargs: RefCell<HashMap<ast::NodeId, LvalueDatum>>,
+    llargs: RefCell<NodeMap<LvalueDatum>>,
 
     // Maps the def_ids for local variables to the allocas created for
     // them in llallocas.
-    lllocals: RefCell<HashMap<ast::NodeId, LvalueDatum>>,
+    lllocals: RefCell<NodeMap<LvalueDatum>>,
 
     // Same as above, but for closure upvars
-    llupvars: RefCell<HashMap<ast::NodeId, ValueRef>>,
+    llupvars: RefCell<NodeMap<ValueRef>>,
 
     // The NodeId of the function, or -1 if it doesn't correspond to
     // a user-defined function.
@@ -284,7 +287,7 @@ pub struct FunctionContext<'a> {
     debug_context: debuginfo::FunctionDebugContext,
 
     // Cleanup scopes.
-    scopes: RefCell<~[cleanup::CleanupScope<'a>]>,
+    scopes: RefCell<Vec<cleanup::CleanupScope<'a>> >,
 }
 
 impl<'a> FunctionContext<'a> {
@@ -638,7 +641,7 @@ pub fn C_binary_slice(cx: &CrateContext, data: &[u8]) -> ValueRef {
 pub fn C_zero_byte_arr(size: uint) -> ValueRef {
     unsafe {
         let mut i = 0u;
-        let mut elts: ~[ValueRef] = ~[];
+        let mut elts: Vec<ValueRef> = Vec::new();
         while i < size { elts.push(C_u8(0u)); i += 1u; }
         return llvm::LLVMConstArray(Type::i8().to_ref(),
                                     elts.as_ptr(), elts.len() as c_uint);
@@ -654,9 +657,9 @@ pub fn C_struct(elts: &[ValueRef], packed: bool) -> ValueRef {
     }
 }
 
-pub fn C_named_struct(T: Type, elts: &[ValueRef]) -> ValueRef {
+pub fn C_named_struct(t: Type, elts: &[ValueRef]) -> ValueRef {
     unsafe {
-        llvm::LLVMConstNamedStruct(T.to_ref(), elts.as_ptr(), elts.len() as c_uint)
+        llvm::LLVMConstNamedStruct(t.to_ref(), elts.as_ptr(), elts.len() as c_uint)
     }
 }
 
@@ -668,7 +671,7 @@ pub fn C_array(ty: Type, elts: &[ValueRef]) -> ValueRef {
 
 pub fn C_bytes(bytes: &[u8]) -> ValueRef {
     unsafe {
-        let ptr = cast::transmute(bytes.as_ptr());
+        let ptr = bytes.as_ptr() as *c_char;
         return llvm::LLVMConstStringInContext(base::task_llcx(), ptr, bytes.len() as c_uint, True);
     }
 }
@@ -722,9 +725,9 @@ pub fn is_null(val: ValueRef) -> bool {
 }
 
 // Used to identify cached monomorphized functions and vtables
-#[deriving(Eq,IterBytes)]
+#[deriving(Eq, Hash)]
 pub enum mono_param_id {
-    mono_precise(ty::t, Option<@~[mono_id]>),
+    mono_precise(ty::t, Option<@Vec<mono_id> >),
     mono_any,
     mono_repr(uint /* size */,
               uint /* align */,
@@ -732,7 +735,7 @@ pub enum mono_param_id {
               datum::RvalueMode),
 }
 
-#[deriving(Eq,IterBytes)]
+#[deriving(Eq, Hash)]
 pub enum MonoDataClass {
     MonoBits,    // Anything not treated differently from arbitrary integer data
     MonoNonNull, // Non-null pointers (used for optional-pointer optimization)
@@ -754,12 +757,10 @@ pub fn mono_data_classify(t: ty::t) -> MonoDataClass {
     }
 }
 
-
-#[deriving(Eq,IterBytes)]
+#[deriving(Eq, Hash)]
 pub struct mono_id_ {
     def: ast::DefId,
-    params: ~[mono_param_id]
-}
+    params: Vec<mono_param_id> }
 
 pub type mono_id = @mono_id_;
 
@@ -782,7 +783,7 @@ pub fn align_to(cx: &Block, off: ValueRef, align: ValueRef) -> ValueRef {
 pub fn monomorphize_type(bcx: &Block, t: ty::t) -> ty::t {
     match bcx.fcx.param_substs {
         Some(substs) => {
-            ty::subst_tps(bcx.tcx(), substs.tys, substs.self_ty, t)
+            ty::subst_tps(bcx.tcx(), substs.tys.as_slice(), substs.self_ty, t)
         }
         _ => {
             assert!(!ty::type_has_params(t));
@@ -804,24 +805,39 @@ pub fn expr_ty(bcx: &Block, ex: &ast::Expr) -> ty::t {
 
 pub fn expr_ty_adjusted(bcx: &Block, ex: &ast::Expr) -> ty::t {
     let tcx = bcx.tcx();
-    let t = ty::expr_ty_adjusted(tcx, ex);
+    let t = ty::expr_ty_adjusted(tcx, ex, bcx.ccx().maps.method_map.borrow().get());
     monomorphize_type(bcx, t)
 }
 
-pub fn node_id_type_params(bcx: &Block, id: ast::NodeId) -> ~[ty::t] {
+// Key used to lookup values supplied for type parameters in an expr.
+#[deriving(Eq)]
+pub enum ExprOrMethodCall {
+    // Type parameters for a path like `None::<int>`
+    ExprId(ast::NodeId),
+
+    // Type parameters for a method call like `a.foo::<int>()`
+    MethodCall(typeck::MethodCall)
+}
+
+pub fn node_id_type_params(bcx: &Block, node: ExprOrMethodCall) -> Vec<ty::t> {
     let tcx = bcx.tcx();
-    let params = ty::node_id_to_type_params(tcx, id);
+    let params = match node {
+        ExprId(id) => ty::node_id_to_type_params(tcx, id),
+        MethodCall(method_call) => {
+            bcx.ccx().maps.method_map.borrow().get().get(&method_call).substs.tps.clone()
+        }
+    };
 
     if !params.iter().all(|t| !ty::type_needs_infer(*t)) {
         bcx.sess().bug(
-            format!("type parameters for node {} include inference types: {}",
-                 id, params.map(|t| bcx.ty_to_str(*t)).connect(",")));
+            format!("type parameters for node {:?} include inference types: {}",
+                 node, params.map(|t| bcx.ty_to_str(*t)).connect(",")));
     }
 
     match bcx.fcx.param_substs {
       Some(substs) => {
         params.iter().map(|t| {
-            ty::subst_tps(tcx, substs.tys, substs.self_ty, *t)
+            ty::subst_tps(tcx, substs.tys.as_slice(), substs.self_ty, *t)
         }).collect()
       }
       _ => params
@@ -878,10 +894,13 @@ pub fn resolve_vtable_under_param_substs(tcx: ty::ctxt,
             let tys = match param_substs {
                 Some(substs) => {
                     tys.iter().map(|t| {
-                        ty::subst_tps(tcx, substs.tys, substs.self_ty, *t)
+                        ty::subst_tps(tcx,
+                                      substs.tys.as_slice(),
+                                      substs.self_ty,
+                                      *t)
                     }).collect()
                 }
-                _ => tys.to_owned()
+                _ => Vec::from_slice(tys.as_slice())
             };
             typeck::vtable_static(
                 trait_id, tys,
@@ -915,13 +934,13 @@ pub fn find_vtable(tcx: ty::ctxt,
         typeck::param_numbered(n) => {
             let tables = ps.vtables
                 .expect("vtables missing where they are needed");
-            tables[n]
+            *tables.get(n)
         }
     };
-    param_bounds[n_bound].clone()
+    param_bounds.get(n_bound).clone()
 }
 
-pub fn dummy_substs(tps: ~[ty::t]) -> ty::substs {
+pub fn dummy_substs(tps: Vec<ty::t> ) -> ty::substs {
     substs {
         regions: ty::ErasedRegions,
         self_ty: None,

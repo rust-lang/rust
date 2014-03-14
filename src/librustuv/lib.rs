@@ -41,12 +41,15 @@ via `close` and `delete` methods.
 
 #[feature(macro_rules)];
 #[deny(unused_result, unused_must_use)];
+#[allow(visible_private_types)];
+#[allow(deprecated_owned_vector)];
 
 #[cfg(test)] extern crate green;
 
 use std::cast;
-use std::io;
+use std::fmt;
 use std::io::IoError;
+use std::io;
 use std::libc::{c_int, c_void};
 use std::ptr::null;
 use std::ptr;
@@ -339,9 +342,9 @@ impl UvError {
     }
 }
 
-impl ToStr for UvError {
-    fn to_str(&self) -> ~str {
-        format!("{}: {}", self.name(), self.desc())
+impl fmt::Show for UvError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f.buf, "{}: {}", self.name(), self.desc())
     }
 }
 
@@ -433,7 +436,6 @@ fn local_loop() -> &'static mut uvio::UvIoFactory {
 #[cfg(test)]
 mod test {
     use std::cast::transmute;
-    use std::ptr;
     use std::unstable::run_in_bare_thread;
 
     use super::{slice_to_uv_buf, Loop};

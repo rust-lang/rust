@@ -17,7 +17,7 @@ use any::AnyOwnExt;
 use cast;
 use cleanup;
 use clone::Clone;
-use comm::Chan;
+use comm::Sender;
 use io::Writer;
 use iter::{Iterator, Take};
 use local_data;
@@ -73,7 +73,7 @@ pub enum DeathAction {
     /// until all its watched children exit before collecting the status.
     Execute(proc(TaskResult)),
     /// A channel to send the result of the task on when the task exits
-    SendMessage(Chan<TaskResult>),
+    SendMessage(Sender<TaskResult>),
 }
 
 /// Per-task state related to task death, killing, failure, etc.
@@ -450,16 +450,16 @@ mod test {
 
     #[test]
     fn comm_stream() {
-        let (port, chan) = Chan::new();
-        chan.send(10);
-        assert!(port.recv() == 10);
+        let (tx, rx) = channel();
+        tx.send(10);
+        assert!(rx.recv() == 10);
     }
 
     #[test]
     fn comm_shared_chan() {
-        let (port, chan) = Chan::new();
-        chan.send(10);
-        assert!(port.recv() == 10);
+        let (tx, rx) = channel();
+        tx.send(10);
+        assert!(rx.recv() == 10);
     }
 
     #[test]

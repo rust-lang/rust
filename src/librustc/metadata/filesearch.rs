@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,11 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[allow(non_camel_case_types)];
+
 use std::cell::RefCell;
 use std::option;
 use std::os;
 use std::io::fs;
-use std::hashmap::HashSet;
+use std::vec_ng::Vec;
+use collections::HashSet;
 
 pub enum FileMatch { FileMatches, FileDoesntMatch }
 
@@ -203,14 +206,14 @@ pub fn get_rust_path() -> Option<~str> {
 /// $HOME/.rust
 /// DIR/.rust for any DIR that's the current working directory
 /// or an ancestor of it
-pub fn rust_path() -> ~[Path] {
-    let mut env_rust_path: ~[Path] = match get_rust_path() {
+pub fn rust_path() -> Vec<Path> {
+    let mut env_rust_path: Vec<Path> = match get_rust_path() {
         Some(env_path) => {
-            let env_path_components: ~[&str] =
+            let env_path_components: Vec<&str> =
                 env_path.split_str(PATH_ENTRY_SEPARATOR).collect();
             env_path_components.map(|&s| Path::new(s))
         }
-        None => ~[]
+        None => Vec::new()
     };
     let mut cwd = os::getcwd();
     // now add in default entries

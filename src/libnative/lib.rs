@@ -45,10 +45,12 @@
 #[license = "MIT/ASL2"];
 #[crate_type = "rlib"];
 #[crate_type = "dylib"];
-#[doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk.png",
+#[doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
       html_root_url = "http://static.rust-lang.org/doc/master")];
 #[deny(unused_result, unused_must_use)];
+#[allow(non_camel_case_types)];
+#[allow(deprecated_owned_vector)];
 
 // NB this crate explicitly does *not* allow glob imports, please seriously
 //    consider whether they're needed before adding that feature here (the
@@ -57,7 +59,6 @@
 use std::os;
 use std::rt;
 
-mod bookkeeping;
 pub mod io;
 pub mod task;
 
@@ -104,6 +105,5 @@ pub fn start(argc: int, argv: **u8, main: proc()) -> int {
 /// number of arguments.
 pub fn run(main: proc()) -> int {
     main();
-    bookkeeping::wait_for_other_tasks();
     os::get_exit_status()
 }

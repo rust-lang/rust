@@ -9,10 +9,11 @@
 // except according to those terms.
 
 use std::cmp;
-use std::hashmap::HashSet;
+use collections::HashSet;
 use std::local_data;
 use std::uint;
 use syntax::ast;
+use rustc::util::nodemap::NodeSet;
 
 use clean;
 use clean::Item;
@@ -33,7 +34,7 @@ pub fn strip_hidden(krate: clean::Crate) -> plugins::PluginResult {
             fn fold_item(&mut self, i: Item) -> Option<Item> {
                 for attr in i.attrs.iter() {
                     match attr {
-                        &clean::List(~"doc", ref l) => {
+                        &clean::List(ref x, ref l) if "doc" == *x => {
                             for innerattr in l.iter() {
                                 match innerattr {
                                     &clean::Word(ref s) if "hidden" == *s => {
@@ -110,7 +111,7 @@ pub fn strip_private(krate: clean::Crate) -> plugins::PluginResult {
 
 struct Stripper<'a> {
     retained: &'a mut HashSet<ast::NodeId>,
-    exported_items: &'a HashSet<ast::NodeId>,
+    exported_items: &'a NodeSet,
 }
 
 impl<'a> fold::DocFolder for Stripper<'a> {
@@ -150,8 +151,8 @@ impl<'a> fold::DocFolder for Stripper<'a> {
             }
             clean::ImplItem(..) => {}
 
-            // tymethods have no control over privacy
-            clean::TyMethodItem(..) => {}
+            // tymethods/macros have no control over privacy
+            clean::MacroItem(..) | clean::TyMethodItem(..) => {}
         }
 
         let fastreturn = match i.inner {
@@ -222,7 +223,7 @@ pub fn unindent_comments(krate: clean::Crate) -> plugins::PluginResult {
             let mut avec: ~[clean::Attribute] = ~[];
             for attr in i.attrs.iter() {
                 match attr {
-                    &clean::NameValue(~"doc", ref s) => avec.push(
+                    &clean::NameValue(ref x, ref s) if "doc" == *x => avec.push(
                         clean::NameValue(~"doc", unindent(*s))),
                     x => avec.push(x.clone())
                 }
@@ -244,7 +245,7 @@ pub fn collapse_docs(krate: clean::Crate) -> plugins::PluginResult {
             let mut i = i;
             for attr in i.attrs.iter() {
                 match *attr {
-                    clean::NameValue(~"doc", ref s) => {
+                    clean::NameValue(ref x, ref s) if "doc" == *x => {
                         docstr.push_str(s.clone());
                         docstr.push_char('\n');
                     },
@@ -252,7 +253,7 @@ pub fn collapse_docs(krate: clean::Crate) -> plugins::PluginResult {
                 }
             }
             let mut a: ~[clean::Attribute] = i.attrs.iter().filter(|&a| match a {
-                &clean::NameValue(~"doc", _) => false,
+                &clean::NameValue(ref x, _) if "doc" == *x => false,
                 _ => true
             }).map(|x| x.clone()).collect();
             if "" != docstr {
@@ -311,20 +312,19 @@ pub fn unindent(s: &str) -> ~str {
         }
     });
 
-    match lines {
-        [head, .. tail] => {
-            let mut unindented = ~[ head.trim() ];
-            unindented.push_all(tail.map(|&line| {
-                if line.is_whitespace() {
-                    line
-                } else {
-                    assert!(line.len() >= min_indent);
-                    line.slice_from(min_indent)
-                }
-            }));
-            unindented.connect("\n")
-        }
-        [] => s.to_owned()
+    if lines.len() >= 1 {
+        let mut unindented = ~[ lines[0].trim() ];
+        unindented.push_all(lines.tail().map(|&line| {
+            if line.is_whitespace() {
+                line
+            } else {
+                assert!(line.len() >= min_indent);
+                line.slice_from(min_indent)
+            }
+        }));
+        unindented.connect("\n")
+    } else {
+        s.to_owned()
     }
 }
 

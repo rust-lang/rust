@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,6 +10,8 @@
 
 // Code that generates a test runner to run all the tests in a crate
 
+#[allow(dead_code)];
+#[allow(unused_imports)];
 
 use driver::session;
 use front::config;
@@ -18,12 +20,15 @@ use metadata::creader::Loader;
 
 use std::cell::RefCell;
 use std::vec;
+use std::vec_ng::Vec;
+use std::vec_ng;
 use syntax::ast_util::*;
 use syntax::attr::AttrMetaMethods;
 use syntax::attr;
 use syntax::codemap::{DUMMY_SP, Span, ExpnInfo, NameAndSpan, MacroAttribute};
 use syntax::codemap;
 use syntax::ext::base::ExtCtxt;
+use syntax::ext::expand::ExpansionConfig;
 use syntax::fold::Folder;
 use syntax::fold;
 use syntax::opt_vec;
@@ -35,7 +40,7 @@ use syntax::util::small_vector::SmallVector;
 
 struct Test {
     span: Span,
-    path: ~[ast::Ident],
+    path: Vec<ast::Ident> ,
     bench: bool,
     ignore: bool,
     should_fail: bool
@@ -43,10 +48,10 @@ struct Test {
 
 struct TestCtxt<'a> {
     sess: session::Session,
-    path: RefCell<~[ast::Ident]>,
+    path: RefCell<Vec<ast::Ident> >,
     ext_cx: ExtCtxt<'a>,
-    testfns: RefCell<~[Test]>,
-    is_extra: bool,
+    testfns: RefCell<Vec<Test> >,
+    is_test_crate: bool,
     config: ast::CrateConfig,
 }
 
@@ -57,7 +62,7 @@ pub fn modify_for_testing(sess: session::Session,
     // We generate the test harness when building in the 'test'
     // configuration, either with the '--test' or '--cfg test'
     // command line options.
-    let should_test = attr::contains_name(krate.config, "test");
+    let should_test = attr::contains_name(krate.config.as_slice(), "test");
 
     if should_test {
         generate_test_harness(sess, krate)
@@ -88,7 +93,7 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
             path.get().push(i.ident);
         }
         debug!("current path: {}",
-               ast_util::path_name_i(self.cx.path.get()));
+               ast_util::path_name_i(self.cx.path.get().as_slice()));
 
         if is_test_fn(&self.cx, i) || is_bench_fn(i) {
             match i.node {
@@ -161,10 +166,14 @@ fn generate_test_harness(sess: session::Session, krate: ast::Crate)
     let loader = &mut Loader::new(sess);
     let mut cx: TestCtxt = TestCtxt {
         sess: sess,
-        ext_cx: ExtCtxt::new(sess.parse_sess, sess.opts.cfg.clone(), loader),
-        path: RefCell::new(~[]),
-        testfns: RefCell::new(~[]),
-        is_extra: is_extra(&krate),
+        ext_cx: ExtCtxt::new(sess.parse_sess, sess.opts.cfg.clone(),
+                             ExpansionConfig {
+                                 loader: loader,
+                                 deriving_hash_type_parameter: false,
+                             }),
+        path: RefCell::new(Vec::new()),
+        testfns: RefCell::new(Vec::new()),
+        is_test_crate: is_test_crate(&krate),
         config: krate.config.clone(),
     };
 
@@ -189,13 +198,13 @@ fn strip_test_functions(krate: ast::Crate) -> ast::Crate {
     // When not compiling with --test we should not compile the
     // #[test] functions
     config::strip_items(krate, |attrs| {
-        !attr::contains_name(attrs, "test") &&
-        !attr::contains_name(attrs, "bench")
+        !attr::contains_name(attrs.as_slice(), "test") &&
+        !attr::contains_name(attrs.as_slice(), "bench")
     })
 }
 
 fn is_test_fn(cx: &TestCtxt, i: @ast::Item) -> bool {
-    let has_test_attr = attr::contains_name(i.attrs, "test");
+    let has_test_attr = attr::contains_name(i.attrs.as_slice(), "test");
 
     fn has_test_signature(i: @ast::Item) -> bool {
         match &i.node {
@@ -224,7 +233,7 @@ fn is_test_fn(cx: &TestCtxt, i: @ast::Item) -> bool {
 }
 
 fn is_bench_fn(i: @ast::Item) -> bool {
-    let has_bench_attr = attr::contains_name(i.attrs, "bench");
+    let has_bench_attr = attr::contains_name(i.attrs.as_slice(), "bench");
 
     fn has_test_signature(i: @ast::Item) -> bool {
         match i.node {
@@ -251,20 +260,22 @@ fn is_ignored(cx: &TestCtxt, i: @ast::Item) -> bool {
     i.attrs.iter().any(|attr| {
         // check ignore(cfg(foo, bar))
         attr.name().equiv(&("ignore")) && match attr.meta_item_list() {
-            Some(ref cfgs) => attr::test_cfg(cx.config, cfgs.iter().map(|x| *x)),
+            Some(ref cfgs) => {
+                attr::test_cfg(cx.config.as_slice(), cfgs.iter().map(|x| *x))
+            }
             None => true
         }
     })
 }
 
 fn should_fail(i: @ast::Item) -> bool {
-    attr::contains_name(i.attrs, "should_fail")
+    attr::contains_name(i.attrs.as_slice(), "should_fail")
 }
 
 fn add_test_module(cx: &TestCtxt, m: &ast::Mod) -> ast::Mod {
     let testmod = mk_test_module(cx);
     ast::Mod {
-        items: vec::append_one(m.items.clone(), testmod),
+        items: vec_ng::append_one(m.items.clone(), testmod),
         ..(*m).clone()
     }
 }
@@ -275,13 +286,12 @@ We're going to be building a module that looks more or less like:
 
 mod __test {
   #[!resolve_unexported]
-  extern crate extra (name = "extra", vers = "...");
+  extern crate test (name = "test", vers = "...");
   fn main() {
-    #[main];
-    extra::test::test_main_static(::os::args(), tests)
+    test::test_main_static(::os::args(), tests)
   }
 
-  static tests : &'static [extra::test::TestDescAndFn] = &[
+  static tests : &'static [test::TestDescAndFn] = &[
     ... the list of tests in the crate ...
   ];
 }
@@ -289,29 +299,28 @@ mod __test {
 */
 
 fn mk_std(cx: &TestCtxt) -> ast::ViewItem {
-    let id_extra = token::str_to_ident("extra");
-    let vi = if cx.is_extra {
+    let id_test = token::str_to_ident("test");
+    let vi = if cx.is_test_crate {
         ast::ViewItemUse(
-            ~[@nospan(ast::ViewPathSimple(id_extra,
-                                          path_node(~[id_extra]),
-                                          ast::DUMMY_NODE_ID))])
+            vec!(@nospan(ast::ViewPathSimple(id_test,
+                                             path_node(vec!(id_test)),
+                                             ast::DUMMY_NODE_ID))))
     } else {
-        ast::ViewItemExternMod(id_extra,
-                               with_version("extra"),
+        ast::ViewItemExternCrate(id_test,
+                               with_version("test"),
                                ast::DUMMY_NODE_ID)
     };
     ast::ViewItem {
         node: vi,
-        attrs: ~[],
+        attrs: Vec::new(),
         vis: ast::Inherited,
         span: DUMMY_SP
     }
 }
 
 fn mk_test_module(cx: &TestCtxt) -> @ast::Item {
-
-    // Link to extra
-    let view_items = ~[mk_std(cx)];
+    // Link to test crate
+    let view_items = vec!(mk_std(cx));
 
     // A constant vector of test descriptors.
     let tests = mk_tests(cx);
@@ -321,13 +330,13 @@ fn mk_test_module(cx: &TestCtxt) -> @ast::Item {
     let mainfn = (quote_item!(&cx.ext_cx,
         pub fn main() {
             #[main];
-            extra::test::test_main_static(::std::os::args(), TESTS);
+            test::test_main_static(::std::os::args(), TESTS);
         }
     )).unwrap();
 
     let testmod = ast::Mod {
         view_items: view_items,
-        items: ~[mainfn, tests],
+        items: vec!(mainfn, tests),
     };
     let item_ = ast::ItemMod(testmod);
 
@@ -338,7 +347,7 @@ fn mk_test_module(cx: &TestCtxt) -> @ast::Item {
 
     let item = ast::Item {
         ident: token::str_to_ident("__test"),
-        attrs: ~[resolve_unexported_attr],
+        attrs: vec!(resolve_unexported_attr),
         id: ast::DUMMY_NODE_ID,
         node: item_,
         vis: ast::Public,
@@ -354,25 +363,25 @@ fn nospan<T>(t: T) -> codemap::Spanned<T> {
     codemap::Spanned { node: t, span: DUMMY_SP }
 }
 
-fn path_node(ids: ~[ast::Ident]) -> ast::Path {
+fn path_node(ids: Vec<ast::Ident> ) -> ast::Path {
     ast::Path {
         span: DUMMY_SP,
         global: false,
         segments: ids.move_iter().map(|identifier| ast::PathSegment {
             identifier: identifier,
-            lifetimes: opt_vec::Empty,
+            lifetimes: Vec::new(),
             types: opt_vec::Empty,
         }).collect()
     }
 }
 
-fn path_node_global(ids: ~[ast::Ident]) -> ast::Path {
+fn path_node_global(ids: Vec<ast::Ident> ) -> ast::Path {
     ast::Path {
         span: DUMMY_SP,
         global: true,
         segments: ids.move_iter().map(|identifier| ast::PathSegment {
             identifier: identifier,
-            lifetimes: opt_vec::Empty,
+            lifetimes: Vec::new(),
             types: opt_vec::Empty,
         }).collect()
     }
@@ -383,21 +392,21 @@ fn mk_tests(cx: &TestCtxt) -> @ast::Item {
     let test_descs = mk_test_descs(cx);
 
     (quote_item!(&cx.ext_cx,
-        pub static TESTS : &'static [self::extra::test::TestDescAndFn] =
+        pub static TESTS : &'static [self::test::TestDescAndFn] =
             $test_descs
         ;
     )).unwrap()
 }
 
-fn is_extra(krate: &ast::Crate) -> bool {
-    match attr::find_crateid(krate.attrs) {
-        Some(ref s) if "extra" == s.name => true,
+fn is_test_crate(krate: &ast::Crate) -> bool {
+    match attr::find_crateid(krate.attrs.as_slice()) {
+        Some(ref s) if "test" == s.name => true,
         _ => false
     }
 }
 
 fn mk_test_descs(cx: &TestCtxt) -> @ast::Expr {
-    let mut descs = ~[];
+    let mut descs = Vec::new();
     {
         let testfns = cx.testfns.borrow();
         debug!("building test vector from {} tests", testfns.get().len());
@@ -423,11 +432,12 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> @ast::Expr {
     let span = test.span;
     let path = test.path.clone();
 
-    debug!("encoding {}", ast_util::path_name_i(path));
+    debug!("encoding {}", ast_util::path_name_i(path.as_slice()));
 
     let name_lit: ast::Lit =
         nospan(ast::LitStr(token::intern_and_get_ident(
-                    ast_util::path_name_i(path)), ast::CookedStr));
+                    ast_util::path_name_i(path.as_slice())),
+                    ast::CookedStr));
 
     let name_expr = @ast::Expr {
           id: ast::DUMMY_NODE_ID,
@@ -444,9 +454,9 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> @ast::Expr {
     };
 
     let t_expr = if test.bench {
-        quote_expr!(&cx.ext_cx, self::extra::test::StaticBenchFn($fn_expr) )
+        quote_expr!(&cx.ext_cx, self::test::StaticBenchFn($fn_expr) )
     } else {
-        quote_expr!(&cx.ext_cx, self::extra::test::StaticTestFn($fn_expr) )
+        quote_expr!(&cx.ext_cx, self::test::StaticTestFn($fn_expr) )
     };
 
     let ignore_expr = if test.ignore {
@@ -462,9 +472,9 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> @ast::Expr {
     };
 
     let e = quote_expr!(&cx.ext_cx,
-        self::extra::test::TestDescAndFn {
-            desc: self::extra::test::TestDesc {
-                name: self::extra::test::StaticTestName($name_expr),
+        self::test::TestDescAndFn {
+            desc: self::test::TestDesc {
+                name: self::test::StaticTestName($name_expr),
                 ignore: $ignore_expr,
                 should_fail: $fail_expr
             },

@@ -14,20 +14,21 @@
 //! by rust tasks. This implements the necessary API traits laid out by std::rt
 //! in order to spawn new tasks and deschedule the current task.
 
+use std::any::Any;
 use std::cast;
+use std::rt::bookkeeping;
 use std::rt::env;
 use std::rt::local::Local;
 use std::rt::rtio;
+use std::rt::stack;
 use std::rt::task::{Task, BlockedTask, SendMessage};
 use std::rt::thread::Thread;
 use std::rt;
 use std::task::TaskOpts;
 use std::unstable::mutex::NativeMutex;
-use std::unstable::stack;
 
 use io;
 use task;
-use bookkeeping;
 
 /// Creates a new Task which is ready to execute as a 1:1 task.
 pub fn new(stack_bounds: (uint, uint)) -> ~Task {
@@ -186,7 +187,7 @@ impl rt::Runtime for Ops {
         cur_task.put_runtime(self as ~rt::Runtime);
 
         unsafe {
-            let cur_task_dupe = *cast::transmute::<&~Task, &uint>(&cur_task);
+            let cur_task_dupe = &*cur_task as *Task;
             let task = BlockedTask::block(cur_task);
 
             if times == 1 {
@@ -218,7 +219,7 @@ impl rt::Runtime for Ops {
                 }
             }
             // re-acquire ownership of the task
-            cur_task = cast::transmute::<uint, ~Task>(cur_task_dupe);
+            cur_task = cast::transmute(cur_task_dupe);
         }
 
         // put the task back in TLS, and everything is as it once was.
@@ -261,21 +262,21 @@ mod tests {
 
     #[test]
     fn smoke() {
-        let (p, c) = Chan::new();
+        let (tx, rx) = channel();
         spawn(proc() {
-            c.send(());
+            tx.send(());
         });
-        p.recv();
+        rx.recv();
     }
 
     #[test]
     fn smoke_fail() {
-        let (p, c) = Chan::<()>::new();
+        let (tx, rx) = channel::<()>();
         spawn(proc() {
-            let _c = c;
+            let _tx = tx;
             fail!()
         });
-        assert_eq!(p.recv_opt(), None);
+        assert_eq!(rx.recv_opt(), None);
     }
 
     #[test]
@@ -283,55 +284,54 @@ mod tests {
         let mut opts = TaskOpts::new();
         opts.name = Some("test".into_maybe_owned());
         opts.stack_size = Some(20 * 4096);
-        let (p, c) = Chan::new();
-        opts.notify_chan = Some(c);
+        let (tx, rx) = channel();
+        opts.notify_chan = Some(tx);
         spawn_opts(opts, proc() {});
-        assert!(p.recv().is_ok());
+        assert!(rx.recv().is_ok());
     }
 
     #[test]
     fn smoke_opts_fail() {
         let mut opts = TaskOpts::new();
-        let (p, c) = Chan::new();
-        opts.notify_chan = Some(c);
+        let (tx, rx) = channel();
+        opts.notify_chan = Some(tx);
         spawn_opts(opts, proc() { fail!() });
-        assert!(p.recv().is_err());
+        assert!(rx.recv().is_err());
     }
 
     #[test]
     fn yield_test() {
-        let (p, c) = Chan::new();
+        let (tx, rx) = channel();
         spawn(proc() {
             for _ in range(0, 10) { task::deschedule(); }
-            c.send(());
+            tx.send(());
         });
-        p.recv();
+        rx.recv();
     }
 
     #[test]
     fn spawn_children() {
-        let (p, c) = Chan::new();
+        let (tx1, rx) = channel();
         spawn(proc() {
-            let (p, c2) = Chan::new();
+            let (tx2, rx) = channel();
             spawn(proc() {
-                let (p, c3) = Chan::new();
+                let (tx3, rx) = channel();
                 spawn(proc() {
-                    c3.send(());
+                    tx3.send(());
                 });
-                p.recv();
-                c2.send(());
+                rx.recv();
+                tx2.send(());
             });
-            p.recv();
-            c.send(());
+            rx.recv();
+            tx1.send(());
         });
-        p.recv();
+        rx.recv();
     }
 
     #[test]
     fn spawn_inherits() {
-        let (p, c) = Chan::new();
+        let (tx, rx) = channel();
         spawn(proc() {
-            let c = c;
             spawn(proc() {
                 let mut task: ~Task = Local::take();
                 match task.maybe_take_runtime::<Ops>() {
@@ -341,9 +341,9 @@ mod tests {
                     None => fail!(),
                 }
                 Local::put(task);
-                c.send(());
+                tx.send(());
             });
         });
-        p.recv();
+        rx.recv();
     }
 }

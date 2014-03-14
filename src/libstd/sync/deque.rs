@@ -97,7 +97,7 @@ pub struct Stealer<T> {
 }
 
 /// When stealing some data, this is an enumeration of the possible outcomes.
-#[deriving(Eq)]
+#[deriving(Eq, Show)]
 pub enum Stolen<T> {
     /// The deque was empty at the time of stealing
     Empty,

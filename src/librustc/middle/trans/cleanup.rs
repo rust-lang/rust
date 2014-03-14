@@ -19,7 +19,7 @@ use middle::trans::base;
 use middle::trans::build;
 use middle::trans::callee;
 use middle::trans::common;
-use middle::trans::common::{Block, FunctionContext};
+use middle::trans::common::{Block, FunctionContext, ExprId};
 use middle::trans::glue;
 use middle::trans::type_::Type;
 use middle::ty;
@@ -51,20 +51,20 @@ pub static EXIT_BREAK: uint = 0;
 pub static EXIT_LOOP: uint = 1;
 pub static EXIT_MAX: uint = 2;
 
-enum CleanupScopeKind<'a> {
+pub enum CleanupScopeKind<'a> {
     CustomScopeKind,
     AstScopeKind(ast::NodeId),
     LoopScopeKind(ast::NodeId, [&'a Block<'a>, ..EXIT_MAX])
 }
 
 #[deriving(Eq)]
-enum EarlyExitLabel {
+pub enum EarlyExitLabel {
     UnwindExit,
     ReturnExit,
     LoopExit(ast::NodeId, uint)
 }
 
-struct CachedEarlyExit {
+pub struct CachedEarlyExit {
     label: EarlyExitLabel,
     cleanup_block: BasicBlockRef,
 }
@@ -349,7 +349,7 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
         assert!(self.is_valid_custom_scope(custom_scope));
 
         let mut scopes = self.scopes.borrow_mut();
-        let scope = &mut scopes.get()[custom_scope.index];
+        let scope = scopes.get().get_mut(custom_scope.index);
         scope.cleanups.push(cleanup);
         scope.clear_cached_exits();
     }
@@ -433,7 +433,7 @@ impl<'a> CleanupHelperMethods<'a> for FunctionContext<'a> {
     fn is_valid_custom_scope(&self, custom_scope: CustomScopeIndex) -> bool {
         let scopes = self.scopes.borrow();
         custom_scope.index < scopes.get().len() &&
-            scopes.get()[custom_scope.index].kind.is_temp()
+            scopes.get().get(custom_scope.index).kind.is_temp()
     }
 
     fn trans_scope_cleanups(&self, // cannot borrow self, will recurse
@@ -673,7 +673,7 @@ impl<'a> CleanupHelperMethods<'a> for FunctionContext<'a> {
 
         // The exception handling personality function.
         let def_id = common::langcall(pad_bcx, None, "", EhPersonalityLangItem);
-        let llpersonality = callee::trans_fn_ref(pad_bcx, def_id, 0);
+        let llpersonality = callee::trans_fn_ref(pad_bcx, def_id, ExprId(0));
 
         // The only landing pad clause will be 'cleanup'
         let llretval = build::LandingPad(pad_bcx, llretty, llpersonality, 1u);

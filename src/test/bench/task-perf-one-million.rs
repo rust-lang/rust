@@ -17,24 +17,24 @@ use std::task;
 use std::uint;
 use std::vec;
 
-fn calc(children: uint, parent_wait_chan: &Chan<Chan<Chan<int>>>) {
+fn calc(children: uint, parent_wait_chan: &Sender<Sender<Sender<int>>>) {
 
-    let wait_ports: ~[Port<Chan<Chan<int>>>] = vec::from_fn(children, |_| {
-        let (wait_port, wait_chan) = stream::<Chan<Chan<int>>>();
+    let wait_ports: ~[Receiver<Sender<Sender<int>>>] = vec::from_fn(children, |_| {
+        let (wait_port, wait_chan) = stream::<Sender<Sender<int>>>();
         task::spawn(proc() {
             calc(children / 2, &wait_chan);
         });
         wait_port
     });
 
-    let child_start_chans: ~[Chan<Chan<int>>] =
+    let child_start_chans: ~[Sender<Sender<int>>] =
         wait_ports.move_iter().map(|port| port.recv()).collect();
 
-    let (start_port, start_chan) = stream::<Chan<int>>();
+    let (start_port, start_chan) = stream::<Sender<int>>();
     parent_wait_chan.send(start_chan);
-    let parent_result_chan: Chan<int> = start_port.recv();
+    let parent_result_chan: Sender<int> = start_port.recv();
 
-    let child_sum_ports: ~[Port<int>] =
+    let child_sum_ports: ~[Receiver<int>] =
         child_start_chans.move_iter().map(|child_start_chan| {
             let (child_sum_port, child_sum_chan) = stream::<int>();
             child_start_chan.send(child_sum_chan);

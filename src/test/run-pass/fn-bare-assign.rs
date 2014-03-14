@@ -13,7 +13,7 @@ fn f(i: int, called: &mut bool) {
     *called = true;
 }
 
-fn g(f: extern fn(int, v: &mut bool), called: &mut bool) {
+fn g(f: fn(int, v: &mut bool), called: &mut bool) {
     f(10, called);
 }
 

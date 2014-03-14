@@ -23,6 +23,6 @@ fn foo(i:int, j: char) -> foo {
 }
 
 pub fn main() {
-    let (_po, ch) = Chan::new();
-    ch.send(foo(42, 'c'));
+    let (tx, rx) = channel();
+    tx.send(foo(42, 'c'));
 }

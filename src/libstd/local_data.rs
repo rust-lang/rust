@@ -281,7 +281,7 @@ fn get_with<T:'static,
 }
 
 fn abort() -> ! {
-    use std::unstable::intrinsics;
+    use intrinsics;
     unsafe { intrinsics::abort() }
 }
 
@@ -398,8 +398,8 @@ mod tests {
             }
         });
         modify(my_key, |data| {
-            match data {
-                Some(~"first data") => Some(~"next data"),
+            match data.as_ref().map(|s| s.as_slice()) {
+                Some("first data") => Some(~"next data"),
                 Some(ref val)       => fail!("wrong value: {}", *val),
                 None                 => fail!("missing value")
             }

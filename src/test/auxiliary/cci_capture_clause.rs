@@ -10,10 +10,10 @@
 
 use std::task;
 
-pub fn foo<T:Send + Clone>(x: T) -> Port<T> {
-    let (p, c) = Chan::new();
+pub fn foo<T:Send + Clone>(x: T) -> Receiver<T> {
+    let (tx, rx) = channel();
     task::spawn(proc() {
-        c.send(x.clone());
+        tx.send(x.clone());
     });
-    p
+    rx
 }

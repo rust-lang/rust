@@ -12,13 +12,23 @@
 // ignore-stage1
 // ignore-fast
 // ignore-android
+// ignore-cross-compile #12102
 
 #[feature(phase)];
 
 #[phase(syntax)]
 extern crate macro_crate_test;
 
+#[into_foo]
+#[deriving(Eq, Clone, Show)]
+fn foo() -> AFakeTypeThatHadBetterGoAway {}
+
 pub fn main() {
     assert_eq!(1, make_a_1!());
     assert_eq!(2, exported_macro!());
+
+    assert_eq!(Bar, Bar);
+    test(None::<Foo>);
 }
+
+fn test<T: Eq+Clone>(_: Option<T>) {}

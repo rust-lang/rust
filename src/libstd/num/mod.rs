@@ -15,12 +15,14 @@
 
 #[allow(missing_doc)];
 
-use clone::{Clone, DeepClone};
+use clone::Clone;
 use cmp::{Eq, Ord};
+use kinds::Pod;
 use mem::size_of;
 use ops::{Add, Sub, Mul, Div, Rem, Neg};
 use ops::{Not, BitAnd, BitOr, BitXor, Shl, Shr};
 use option::{Option, Some, None};
+use fmt::{Show, Binary, Octal, LowerHex, UpperHex};
 
 pub mod strconv;
 
@@ -32,6 +34,12 @@ pub trait Num: Eq + Zero + One
              + Mul<Self,Self>
              + Div<Self,Self>
              + Rem<Self,Self> {}
+
+/// Simultaneous division and remainder
+#[inline]
+pub fn div_rem<T: Div<T, T> + Rem<T, T>>(x: T, y: T) -> (T, T) {
+    (x / y, x % y)
+}
 
 /// Defines an additive identity element for `Self`.
 ///
@@ -45,7 +53,7 @@ pub trait Zero: Add<Self, Self> {
     ///
     /// # Laws
     ///
-    /// ~~~ignore
+    /// ~~~notrust
     /// a + 0 = a       ∀ a ∈ Self
     /// 0 + a = a       ∀ a ∈ Self
     /// ~~~
@@ -71,7 +79,7 @@ pub trait One: Mul<Self, Self> {
     ///
     /// # Laws
     ///
-    /// ~~~ignore
+    /// ~~~notrust
     /// a * 1 = a       ∀ a ∈ Self
     /// 1 * a = a       ∀ a ∈ Self
     /// ~~~
@@ -121,31 +129,6 @@ pub trait Signed: Num
 #[inline(always)] pub fn signum<T: Signed>(value: T) -> T { value.signum() }
 
 pub trait Unsigned: Num {}
-
-pub trait Integer: Num
-                 + Ord
-                 + Div<Self,Self>
-                 + Rem<Self,Self> {
-    fn div_rem(&self, other: &Self) -> (Self,Self);
-
-    fn div_floor(&self, other: &Self) -> Self;
-    fn mod_floor(&self, other: &Self) -> Self;
-    fn div_mod_floor(&self, other: &Self) -> (Self,Self);
-
-    fn gcd(&self, other: &Self) -> Self;
-    fn lcm(&self, other: &Self) -> Self;
-
-    fn is_multiple_of(&self, other: &Self) -> bool;
-    fn is_even(&self) -> bool;
-    fn is_odd(&self) -> bool;
-}
-
-/// Calculates the Greatest Common Divisor (GCD) of the number and `other`.
-///
-/// The result is always positive.
-#[inline(always)] pub fn gcd<T: Integer>(x: T, y: T) -> T { x.gcd(&y) }
-/// Calculates the Lowest Common Multiple (LCM) of the number and `other`.
-#[inline(always)] pub fn lcm<T: Integer>(x: T, y: T) -> T { x.lcm(&y) }
 
 /// A collection of rounding operations.
 pub trait Round {
@@ -262,21 +245,25 @@ pub trait Bitwise: Bounded
 /// Specifies the available operations common to all of Rust's core numeric primitives.
 /// These may not always make sense from a purely mathematical point of view, but
 /// may be useful for systems programming.
-pub trait Primitive: Clone
-                   + DeepClone
+pub trait Primitive: Pod
+                   + Clone
                    + Num
                    + NumCast
                    + Ord
                    + Bounded {}
 
 /// A collection of traits relevant to primitive signed and unsigned integers
-pub trait Int: Integer
-             + Primitive
+pub trait Int: Primitive
              + Bitwise
              + CheckedAdd
              + CheckedSub
              + CheckedMul
-             + CheckedDiv {}
+             + CheckedDiv
+             + Show
+             + Binary
+             + Octal
+             + LowerHex
+             + UpperHex {}
 
 /// Returns the smallest power of 2 greater than or equal to `n`.
 #[inline]
@@ -307,7 +294,7 @@ pub fn checked_next_power_of_two<T: Unsigned + Int>(n: T) -> Option<T> {
 }
 
 /// Used for representing the classification of floating point numbers
-#[deriving(Eq)]
+#[deriving(Eq, Show)]
 pub enum FPCategory {
     /// "Not a Number", often obtained by dividing by zero
     FPNaN,
@@ -325,6 +312,9 @@ pub enum FPCategory {
 pub trait Float: Signed
                + Round
                + Primitive {
+    fn max(self, other: Self) -> Self;
+    fn min(self, other: Self) -> Self;
+
     // FIXME (#5527): These should be associated constants
     fn nan() -> Self;
     fn infinity() -> Self;
@@ -1087,7 +1077,7 @@ pub trait CheckedDiv: Div<Self, Self> {
 
 /// Helper function for testing numeric operations
 #[cfg(test)]
-pub fn test_num<T:Num + NumCast>(ten: T, two: T) {
+pub fn test_num<T:Num + NumCast + Show>(ten: T, two: T) {
     assert_eq!(ten.add(&two),  cast(12).unwrap());
     assert_eq!(ten.sub(&two),  cast(8).unwrap());
     assert_eq!(ten.mul(&two),  cast(20).unwrap());
@@ -1662,7 +1652,7 @@ mod tests {
     test_checked_next_power_of_two!(test_checked_next_power_of_two_u64, u64)
     test_checked_next_power_of_two!(test_checked_next_power_of_two_uint, uint)
 
-    #[deriving(Eq)]
+    #[deriving(Eq, Show)]
     struct Value { x: int }
 
     impl ToPrimitive for Value {
@@ -1734,10 +1724,11 @@ mod tests {
 
 #[cfg(test)]
 mod bench {
+    extern crate test;
+    use self::test::BenchHarness;
     use num;
     use vec;
     use prelude::*;
-    use extra::test::BenchHarness;
 
     #[bench]
     fn bench_pow_function(b: &mut BenchHarness) {

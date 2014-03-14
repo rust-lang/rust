@@ -12,11 +12,12 @@
 
 #[feature(struct_variant)];
 extern crate extra;
+extern crate rand;
 
-
+#[deriving(Eq)]
 struct Error;
 
-#[deriving(TotalEq)]
+#[deriving(Eq, TotalEq)]
 enum Enum {
    A {
      x: Error //~ ERROR

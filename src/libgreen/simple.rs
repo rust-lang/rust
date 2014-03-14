@@ -11,6 +11,7 @@
 //! A small module implementing a simple "runtime" used for bootstrapping a rust
 //! scheduler pool and then interacting with it.
 
+use std::any::Any;
 use std::cast;
 use std::rt::Runtime;
 use std::rt::local::Local;

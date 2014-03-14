@@ -18,23 +18,28 @@
  * With simple pipes, without Arc, a copy would have to be made for each task.
  *
  * ```rust
+ * extern crate sync;
+ * extern crate rand;
+ *
+ * use std::vec;
  * use sync::Arc;
- * use std::{rand, vec};
  *
- * let numbers = vec::from_fn(100, |i| (i as f32) * rand::random());
- * let shared_numbers = Arc::new(numbers);
+ * fn main() {
+ *     let numbers = vec::from_fn(100, |i| (i as f32) * rand::random());
+ *     let shared_numbers = Arc::new(numbers);
  *
- *   for _ in range(0, 10) {
- *       let (port, chan) = Chan::new();
- *       chan.send(shared_numbers.clone());
+ *     for _ in range(0, 10) {
+ *         let (tx, rx) = channel();
+ *         tx.send(shared_numbers.clone());
  *
- *       spawn(proc() {
- *           let shared_numbers = port.recv();
- *           let local_numbers = shared_numbers.get();
+ *         spawn(proc() {
+ *             let shared_numbers = rx.recv();
+ *             let local_numbers = shared_numbers.get();
  *
- *           // Work with the local numbers
- *       });
- *   }
+ *             // Work with the local numbers
+ *         });
+ *     }
+ * }
  * ```
  */
 
@@ -49,14 +54,15 @@ use std::kinds::marker;
 use std::sync::arc::UnsafeArc;
 use std::task;
 
-/// As sync::condvar, a mechanism for unlock-and-descheduling and signaling.
-pub struct Condvar<'a> {
+/// As sync::condvar, a mechanism for unlock-and-descheduling and
+/// signaling, for use with the Arc types.
+pub struct ArcCondvar<'a> {
     priv is_mutex: bool,
     priv failed: &'a bool,
     priv cond: &'a sync::Condvar<'a>
 }
 
-impl<'a> Condvar<'a> {
+impl<'a> ArcCondvar<'a> {
     /// Atomically exit the associated Arc and block until a signal is sent.
     #[inline]
     pub fn wait(&self) { self.wait_on(0) }
@@ -192,12 +198,6 @@ impl<T:Send> MutexArc<T> {
      * other tasks wishing to access the data will block until the closure
      * finishes running.
      *
-     * The reason this function is 'unsafe' is because it is possible to
-     * construct a circular reference among multiple Arcs by mutating the
-     * underlying data. This creates potential for deadlock, but worse, this
-     * will guarantee a memory leak of all involved Arcs. Using MutexArcs
-     * inside of other Arcs is safe in absence of circular references.
-     *
      * If you wish to nest MutexArcs, one strategy for ensuring safety at
      * runtime is to add a "nesting level counter" inside the stored data, and
      * when traversing the arcs, assert that they monotonically decrease.
@@ -210,63 +210,33 @@ impl<T:Send> MutexArc<T> {
      * blocked on the mutex) will also fail immediately.
      */
     #[inline]
-    pub unsafe fn unsafe_access<U>(&self, blk: |x: &mut T| -> U) -> U {
-        let state = self.x.get();
-        // Borrowck would complain about this if the function were
-        // not already unsafe. See borrow_rwlock, far below.
-        (&(*state).lock).lock(|| {
-            check_poison(true, (*state).failed);
-            let _z = PoisonOnFail::new(&mut (*state).failed);
-            blk(&mut (*state).data)
-        })
-    }
-
-    /// As unsafe_access(), but with a condvar, as sync::mutex.lock_cond().
-    #[inline]
-    pub unsafe fn unsafe_access_cond<U>(&self,
-                                        blk: |x: &mut T, c: &Condvar| -> U)
-                                        -> U {
-        let state = self.x.get();
-        (&(*state).lock).lock_cond(|cond| {
-            check_poison(true, (*state).failed);
-            let _z = PoisonOnFail::new(&mut (*state).failed);
-            blk(&mut (*state).data,
-                &Condvar {is_mutex: true,
-                          failed: &(*state).failed,
-                          cond: cond })
-        })
-    }
-}
-
-impl<T:Freeze + Send> MutexArc<T> {
-
-    /**
-     * As unsafe_access.
-     *
-     * The difference between access and unsafe_access is that the former
-     * forbids mutexes to be nested. While unsafe_access can be used on
-     * MutexArcs without freezable interiors, this safe version of access
-     * requires the Freeze bound, which prohibits access on MutexArcs which
-     * might contain nested MutexArcs inside.
-     *
-     * The purpose of this is to offer a safe implementation of MutexArc to be
-     * used instead of RWArc in cases where no readers are needed and slightly
-     * better performance is required.
-     *
-     * Both methods have the same failure behaviour as unsafe_access and
-     * unsafe_access_cond.
-     */
-    #[inline]
     pub fn access<U>(&self, blk: |x: &mut T| -> U) -> U {
-        unsafe { self.unsafe_access(blk) }
+        let state = self.x.get();
+        unsafe {
+            // Borrowck would complain about this if the code were
+            // not already unsafe. See borrow_rwlock, far below.
+            (&(*state).lock).lock(|| {
+                check_poison(true, (*state).failed);
+                let _z = PoisonOnFail::new(&mut (*state).failed);
+                blk(&mut (*state).data)
+            })
+        }
     }
 
-    /// As unsafe_access_cond but safe and Freeze.
+    /// As access(), but with a condvar, as sync::mutex.lock_cond().
     #[inline]
-    pub fn access_cond<U>(&self,
-                          blk: |x: &mut T, c: &Condvar| -> U)
-                          -> U {
-        unsafe { self.unsafe_access_cond(blk) }
+    pub fn access_cond<U>(&self, blk: |x: &mut T, c: &ArcCondvar| -> U) -> U {
+        let state = self.x.get();
+        unsafe {
+            (&(*state).lock).lock_cond(|cond| {
+                check_poison(true, (*state).failed);
+                let _z = PoisonOnFail::new(&mut (*state).failed);
+                blk(&mut (*state).data,
+                    &ArcCondvar {is_mutex: true,
+                            failed: &(*state).failed,
+                            cond: cond })
+            })
+        }
     }
 }
 
@@ -381,7 +351,7 @@ impl<T:Freeze + Send> RWArc<T> {
     /// As write(), but with a condvar, as sync::rwlock.write_cond().
     #[inline]
     pub fn write_cond<U>(&self,
-                         blk: |x: &mut T, c: &Condvar| -> U)
+                         blk: |x: &mut T, c: &ArcCondvar| -> U)
                          -> U {
         unsafe {
             let state = self.x.get();
@@ -389,7 +359,7 @@ impl<T:Freeze + Send> RWArc<T> {
                 check_poison(false, (*state).failed);
                 let _z = PoisonOnFail::new(&mut (*state).failed);
                 blk(&mut (*state).data,
-                    &Condvar {is_mutex: false,
+                    &ArcCondvar {is_mutex: false,
                               failed: &(*state).failed,
                               cond: cond})
             })
@@ -517,7 +487,7 @@ impl<'a, T:Freeze + Send> RWWriteMode<'a, T> {
 
     /// Access the pre-downgrade RWArc in write mode with a condvar.
     pub fn write_cond<U>(&mut self,
-                         blk: |x: &mut T, c: &Condvar| -> U)
+                         blk: |x: &mut T, c: &ArcCondvar| -> U)
                          -> U {
         match *self {
             RWWriteMode {
@@ -527,7 +497,7 @@ impl<'a, T:Freeze + Send> RWWriteMode<'a, T> {
             } => {
                 token.write_cond(|cond| {
                     unsafe {
-                        let cvar = Condvar {
+                        let cvar = ArcCondvar {
                             is_mutex: false,
                             failed: &*poison.flag,
                             cond: cond
@@ -590,7 +560,6 @@ impl<T:Clone+Send+Freeze> CowArc<T> {
 
 impl<T:Clone+Send+Freeze> Clone for CowArc<T> {
     /// Duplicate a Copy-on-write Arc. See arc::clone for more details.
-    #[inline]
     fn clone(&self) -> CowArc<T> {
         CowArc { x: self.x.clone() }
     }
@@ -614,16 +583,16 @@ mod tests {
         let v = ~[1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
         let arc_v = Arc::new(v);
 
-        let (p, c) = Chan::new();
+        let (tx, rx) = channel();
 
         task::spawn(proc() {
-            let arc_v: Arc<~[int]> = p.recv();
+            let arc_v: Arc<~[int]> = rx.recv();
 
             let v = arc_v.get().clone();
             assert_eq!(v[3], 4);
         });
 
-        c.send(arc_v.clone());
+        tx.send(arc_v.clone());
 
         assert_eq!(arc_v.get()[2], 3);
         assert_eq!(arc_v.get()[4], 5);
@@ -635,10 +604,10 @@ mod tests {
     fn test_mutex_arc_condvar() {
         let arc = ~MutexArc::new(false);
         let arc2 = ~arc.clone();
-        let (p,c) = Chan::new();
+        let (tx, rx) = channel();
         task::spawn(proc() {
             // wait until parent gets in
-            p.recv();
+            rx.recv();
             arc2.access_cond(|state, cond| {
                 *state = true;
                 cond.signal();
@@ -646,7 +615,7 @@ mod tests {
         });
 
         arc.access_cond(|state, cond| {
-            c.send(());
+            tx.send(());
             assert!(!*state);
             while !*state {
                 cond.wait();
@@ -658,10 +627,10 @@ mod tests {
     fn test_arc_condvar_poison() {
         let arc = ~MutexArc::new(1);
         let arc2 = ~arc.clone();
-        let (p, c) = Chan::new();
+        let (tx, rx) = channel();
 
         spawn(proc() {
-            let _ = p.recv();
+            let _ = rx.recv();
             arc2.access_cond(|one, cond| {
                 cond.signal();
                 // Parent should fail when it wakes up.
@@ -670,7 +639,7 @@ mod tests {
         });
 
         arc.access_cond(|one, cond| {
-            c.send(());
+            tx.send(());
             while *one == 1 {
                 cond.wait();
             }
@@ -692,20 +661,18 @@ mod tests {
     }
 
     #[test]
-    fn test_unsafe_mutex_arc_nested() {
-        unsafe {
-            // Tests nested mutexes and access
-            // to underlaying data.
-            let arc = ~MutexArc::new(1);
-            let arc2 = ~MutexArc::new(*arc);
-            task::spawn(proc() {
-                (*arc2).unsafe_access(|mutex| {
-                    (*mutex).access(|one| {
-                        assert!(*one == 1);
-                    })
+    fn test_mutex_arc_nested() {
+        // Tests nested mutexes and access
+        // to underlaying data.
+        let arc = ~MutexArc::new(1);
+        let arc2 = ~MutexArc::new(*arc);
+        task::spawn(proc() {
+            (*arc2).access(|mutex| {
+                (*mutex).access(|one| {
+                    assert!(*one == 1);
                 })
-            });
-        }
+            })
+        });
     }
 
     #[test]
@@ -815,7 +782,7 @@ mod tests {
     fn test_rw_arc() {
         let arc = RWArc::new(0);
         let arc2 = arc.clone();
-        let (p, c) = Chan::new();
+        let (tx, rx) = channel();
 
         task::spawn(proc() {
             arc2.write(|num| {
@@ -825,7 +792,7 @@ mod tests {
                     task::deschedule();
                     *num = tmp + 1;
                 }
-                c.send(());
+                tx.send(());
             })
         });
 
@@ -848,7 +815,7 @@ mod tests {
         }
 
         // Wait for writer to finish
-        p.recv();
+        rx.recv();
         arc.read(|num| {
             assert_eq!(*num, 10);
         })
@@ -886,42 +853,42 @@ mod tests {
         // Reader tasks
         let mut reader_convos = ~[];
         for _ in range(0, 10) {
-            let ((rp1, rc1), (rp2, rc2)) = (Chan::new(), Chan::new());
-            reader_convos.push((rc1, rp2));
+            let ((tx1, rx1), (tx2, rx2)) = (channel(), channel());
+            reader_convos.push((tx1, rx2));
             let arcn = arc.clone();
             task::spawn(proc() {
-                rp1.recv(); // wait for downgrader to give go-ahead
+                rx1.recv(); // wait for downgrader to give go-ahead
                 arcn.read(|state| {
                     assert_eq!(*state, 31337);
-                    rc2.send(());
+                    tx2.send(());
                 })
             });
         }
 
         // Writer task
         let arc2 = arc.clone();
-        let ((wp1, wc1), (wp2, wc2)) = (Chan::new(), Chan::new());
+        let ((tx1, rx1), (tx2, rx2)) = (channel(), channel());
         task::spawn(proc() {
-            wp1.recv();
+            rx1.recv();
             arc2.write_cond(|state, cond| {
                 assert_eq!(*state, 0);
                 *state = 42;
                 cond.signal();
             });
-            wp1.recv();
+            rx1.recv();
             arc2.write(|state| {
                 // This shouldn't happen until after the downgrade read
                 // section, and all other readers, finish.
                 assert_eq!(*state, 31337);
                 *state = 42;
             });
-            wc2.send(());
+            tx2.send(());
         });
 
         // Downgrader (us)
         arc.write_downgrade(|mut write_mode| {
             write_mode.write_cond(|state, cond| {
-                wc1.send(()); // send to another writer who will wake us up
+                tx1.send(()); // send to another writer who will wake us up
                 while *state == 0 {
                     cond.wait();
                 }
@@ -938,12 +905,12 @@ mod tests {
                 for &(_, ref mut rp) in reader_convos.mut_iter() {
                     rp.recv()
                 }
-                wc1.send(()); // tell writer to try again
+                tx1.send(()); // tell writer to try again
                 assert_eq!(*state, 31337);
             });
         });
 
-        wp2.recv(); // complete handshake with writer
+        rx2.recv(); // complete handshake with writer
     }
     #[cfg(test)]
     fn test_rw_write_cond_downgrade_read_race_helper() {
@@ -954,16 +921,16 @@ mod tests {
         // rwarc gives us extra shared state to help check for the race.
         // If you want to see this test fail, go to sync.rs and replace the
         // line in RWLock::write_cond() that looks like:
-        //     "blk(&Condvar { order: opt_lock, ..*cond })"
+        //     "blk(&ArcCondvar { order: opt_lock, ..*cond })"
         // with just "blk(cond)".
         let x = RWArc::new(true);
-        let (wp, wc) = Chan::new();
+        let (tx, rx) = channel();
 
         // writer task
         let xw = x.clone();
         task::spawn(proc() {
             xw.write_cond(|state, c| {
-                wc.send(()); // tell downgrader it's ok to go
+                tx.send(()); // tell downgrader it's ok to go
                 c.wait();
                 // The core of the test is here: the condvar reacquire path
                 // must involve order_lock, so that it cannot race with a reader
@@ -972,7 +939,7 @@ mod tests {
             })
         });
 
-        wp.recv(); // wait for writer to get in
+        rx.recv(); // wait for writer to get in
 
         x.write_downgrade(|mut write_mode| {
             write_mode.write_cond(|state, c| {
@@ -982,12 +949,12 @@ mod tests {
             });
             // make a reader task to trigger the "reader cloud lock" handoff
             let xr = x.clone();
-            let (rp, rc) = Chan::new();
+            let (tx, rx) = channel();
             task::spawn(proc() {
-                rc.send(());
+                tx.send(());
                 xr.read(|_state| { })
             });
-            rp.recv(); // wait for reader task to exist
+            rx.recv(); // wait for reader task to exist
 
             let read_mode = x.downgrade(write_mode);
             read_mode.read(|state| {

@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -59,6 +59,7 @@ independently:
 
 */
 
+#[allow(non_camel_case_types)];
 
 use driver::session;
 
@@ -67,12 +68,12 @@ use middle::ty;
 use util::common::time;
 use util::ppaux::Repr;
 use util::ppaux;
+use util::nodemap::{DefIdMap, FnvHashMap, NodeMap};
 
 use std::cell::RefCell;
-use std::hashmap::HashMap;
 use std::rc::Rc;
+use std::vec_ng::Vec;
 use collections::List;
-use collections::list;
 use syntax::codemap::Span;
 use syntax::print::pprust::*;
 use syntax::{ast, ast_map, abi};
@@ -92,22 +93,22 @@ pub enum param_index {
 }
 
 #[deriving(Clone, Encodable, Decodable)]
-pub enum method_origin {
+pub enum MethodOrigin {
     // fully statically resolved method
-    method_static(ast::DefId),
+    MethodStatic(ast::DefId),
 
     // method invoked on a type parameter with a bounded trait
-    method_param(method_param),
+    MethodParam(MethodParam),
 
     // method invoked on a trait instance
-    method_object(method_object),
+    MethodObject(MethodObject),
 
 }
 
 // details for a method invoked with a receiver whose type is a type parameter
 // with a bounded trait.
 #[deriving(Clone, Encodable, Decodable)]
-pub struct method_param {
+pub struct MethodParam {
     // the trait containing the method to be invoked
     trait_id: ast::DefId,
 
@@ -124,7 +125,7 @@ pub struct method_param {
 
 // details for a method invoked with a receiver whose type is an object
 #[deriving(Clone, Encodable, Decodable)]
-pub struct method_object {
+pub struct MethodObject {
     // the (super)trait containing the method to be invoked
     trait_id: ast::DefId,
 
@@ -141,20 +142,42 @@ pub struct method_object {
     real_index: uint,
 }
 
-
 #[deriving(Clone)]
-pub struct method_map_entry {
-    // method details being invoked
-    origin: method_origin,
+pub struct MethodCallee {
+    origin: MethodOrigin,
+    ty: ty::t,
+    substs: ty::substs
+}
+
+#[deriving(Clone, Eq, Hash)]
+pub struct MethodCall {
+    expr_id: ast::NodeId,
+    autoderef: u32
+}
+
+impl MethodCall {
+    pub fn expr(id: ast::NodeId) -> MethodCall {
+        MethodCall {
+            expr_id: id,
+            autoderef: 0
+        }
+    }
+
+    pub fn autoderef(expr_id: ast::NodeId, autoderef: u32) -> MethodCall {
+        MethodCall {
+            expr_id: expr_id,
+            autoderef: 1 + autoderef
+        }
+    }
 }
 
 // maps from an expression id that corresponds to a method call to the details
 // of the method to be invoked
-pub type method_map = @RefCell<HashMap<ast::NodeId, method_map_entry>>;
+pub type MethodMap = @RefCell<FnvHashMap<MethodCall, MethodCallee>>;
 
-pub type vtable_param_res = @~[vtable_origin];
+pub type vtable_param_res = @Vec<vtable_origin> ;
 // Resolutions for bounds of all parameters, left to right, for a given path.
-pub type vtable_res = @~[vtable_param_res];
+pub type vtable_res = @Vec<vtable_param_res> ;
 
 #[deriving(Clone)]
 pub enum vtable_origin {
@@ -163,7 +186,7 @@ pub enum vtable_origin {
       from whence comes the vtable, and tys are the type substs.
       vtable_res is the vtable itself
      */
-    vtable_static(ast::DefId, ~[ty::t], vtable_res),
+    vtable_static(ast::DefId, Vec<ty::t> , vtable_res),
 
     /*
       Dynamic vtable, comes from a parameter that has a bound on it:
@@ -194,10 +217,10 @@ impl Repr for vtable_origin {
     }
 }
 
-pub type vtable_map = @RefCell<HashMap<ast::NodeId, vtable_res>>;
+pub type vtable_map = @RefCell<NodeMap<vtable_res>>;
 
 
-// Information about the vtable resolutions for for a trait impl.
+// Information about the vtable resolutions for a trait impl.
 // Mostly the information is important for implementing default
 // methods.
 #[deriving(Clone)]
@@ -216,12 +239,12 @@ impl Repr for impl_res {
     }
 }
 
-pub type impl_vtable_map = RefCell<HashMap<ast::DefId, impl_res>>;
+pub type impl_vtable_map = RefCell<DefIdMap<impl_res>>;
 
 pub struct CrateCtxt {
     // A mapping from method call sites to traits that have that method.
     trait_map: resolve::TraitMap,
-    method_map: method_map,
+    method_map: MethodMap,
     vtable_map: vtable_map,
     tcx: ty::ctxt
 }
@@ -235,7 +258,7 @@ pub fn write_ty_to_tcx(tcx: ty::ctxt, node_id: ast::NodeId, ty: ty::t) {
 }
 pub fn write_substs_to_tcx(tcx: ty::ctxt,
                            node_id: ast::NodeId,
-                           substs: ~[ty::t]) {
+                           substs: Vec<ty::t> ) {
     if substs.len() > 0u {
         debug!("write_substs_to_tcx({}, {:?})", node_id,
                substs.map(|t| ppaux::ty_to_str(tcx, *t)));
@@ -271,8 +294,8 @@ pub fn lookup_def_ccx(ccx: &CrateCtxt, sp: Span, id: ast::NodeId)
 
 pub fn no_params(t: ty::t) -> ty::ty_param_bounds_and_ty {
     ty::ty_param_bounds_and_ty {
-        generics: ty::Generics {type_param_defs: Rc::new(~[]),
-                                region_param_defs: Rc::new(~[])},
+        generics: ty::Generics {type_param_defs: Rc::new(Vec::new()),
+                                region_param_defs: Rc::new(Vec::new())},
         ty: t
     }
 }
@@ -310,23 +333,18 @@ pub fn require_same_types(tcx: ty::ctxt,
 // corresponding ty::Region
 pub type isr_alist = @List<(ty::BoundRegion, ty::Region)>;
 
-trait get_and_find_region {
-    fn get(&self, br: ty::BoundRegion) -> ty::Region;
-    fn find(&self, br: ty::BoundRegion) -> Option<ty::Region>;
+trait get_region<'a, T:'static> {
+    fn get(&'a self, br: ty::BoundRegion) -> ty::Region;
 }
 
-impl get_and_find_region for isr_alist {
-    fn get(&self, br: ty::BoundRegion) -> ty::Region {
-        self.find(br).unwrap()
-    }
-
-    fn find(&self, br: ty::BoundRegion) -> Option<ty::Region> {
-        let mut ret = None;
-        list::each(*self, |isr| {
+impl<'a, T:'static> get_region <'a, T> for isr_alist {
+    fn get(&'a self, br: ty::BoundRegion) -> ty::Region {
+        let mut region = None;
+        for isr in self.iter() {
             let (isr_br, isr_r) = *isr;
-            if isr_br == br { ret = Some(isr_r); false } else { true }
-        });
-        ret
+            if isr_br == br { region = Some(isr_r); break; }
+        };
+        region.unwrap()
     }
 }
 
@@ -357,7 +375,7 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
                 abis: abi::AbiSet::Rust(),
                 sig: ty::FnSig {
                     binder_id: main_id,
-                    inputs: ~[],
+                    inputs: Vec::new(),
                     output: ty::mk_nil(),
                     variadic: false
                 }
@@ -403,10 +421,10 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
                 abis: abi::AbiSet::Rust(),
                 sig: ty::FnSig {
                     binder_id: start_id,
-                    inputs: ~[
+                    inputs: vec!(
                         ty::mk_int(),
                         ty::mk_imm_ptr(tcx, ty::mk_imm_ptr(tcx, ty::mk_u8()))
-                    ],
+                    ),
                     output: ty::mk_int(),
                     variadic: false
                 }
@@ -442,12 +460,12 @@ fn check_for_entry_fn(ccx: &CrateCtxt) {
 pub fn check_crate(tcx: ty::ctxt,
                    trait_map: resolve::TraitMap,
                    krate: &ast::Crate)
-                -> (method_map, vtable_map) {
+                -> (MethodMap, vtable_map) {
     let time_passes = tcx.sess.time_passes();
     let ccx = @CrateCtxt {
         trait_map: trait_map,
-        method_map: @RefCell::new(HashMap::new()),
-        vtable_map: @RefCell::new(HashMap::new()),
+        method_map: @RefCell::new(FnvHashMap::new()),
+        vtable_map: @RefCell::new(NodeMap::new()),
         tcx: tcx
     };
 

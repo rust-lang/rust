@@ -32,7 +32,7 @@
 /// The one caveat to consider is that when a port sees a disconnected channel
 /// it must check for data because there is no "data plus upgrade" state.
 
-use comm::Port;
+use comm::Receiver;
 use kinds::Send;
 use mem;
 use ops::Drop;
@@ -60,7 +60,7 @@ pub struct Packet<T> {
 pub enum Failure<T> {
     Empty,
     Disconnected,
-    Upgraded(Port<T>),
+    Upgraded(Receiver<T>),
 }
 
 pub enum UpgradeResult {
@@ -71,14 +71,14 @@ pub enum UpgradeResult {
 
 pub enum SelectionResult<T> {
     SelCanceled(BlockedTask),
-    SelUpgraded(BlockedTask, Port<T>),
+    SelUpgraded(BlockedTask, Receiver<T>),
     SelSuccess,
 }
 
 enum MyUpgrade<T> {
     NothingSent,
     SendUsed,
-    GoUp(Port<T>),
+    GoUp(Receiver<T>),
 }
 
 impl<T: Send> Packet<T> {
@@ -201,7 +201,7 @@ impl<T: Send> Packet<T> {
     // Returns whether the upgrade was completed. If the upgrade wasn't
     // completed, then the port couldn't get sent to the other half (it will
     // never receive it).
-    pub fn upgrade(&mut self, up: Port<T>) -> UpgradeResult {
+    pub fn upgrade(&mut self, up: Receiver<T>) -> UpgradeResult {
         let prev = match self.upgrade {
             NothingSent => NothingSent,
             SendUsed => SendUsed,
@@ -259,7 +259,7 @@ impl<T: Send> Packet<T> {
 
     // If Ok, the value is whether this port has data, if Err, then the upgraded
     // port needs to be checked instead of this one.
-    pub fn can_recv(&mut self) -> Result<bool, Port<T>> {
+    pub fn can_recv(&mut self) -> Result<bool, Receiver<T>> {
         match self.state.load(atomics::SeqCst) {
             EMPTY => Ok(false), // Welp, we tried
             DATA => Ok(true),   // we have some un-acquired data
@@ -318,7 +318,7 @@ impl<T: Send> Packet<T> {
     // blocked task will no longer be visible to any other threads.
     //
     // The return value indicates whether there's data on this port.
-    pub fn abort_selection(&mut self) -> Result<bool, Port<T>> {
+    pub fn abort_selection(&mut self) -> Result<bool, Receiver<T>> {
         let state = match self.state.load(atomics::SeqCst) {
             // Each of these states means that no further activity will happen
             // with regard to abortion selection
@@ -339,14 +339,19 @@ impl<T: Send> Packet<T> {
             DATA => Ok(true),
 
             // If the other end has hung up, then we have complete ownership
-            // of the port. We need to check to see if there was an upgrade
-            // requested, and if so, the other end needs to have its selection
-            // aborted.
+            // of the port. First, check if there was data waiting for us. This
+            // is possible if the other end sent something and then hung up.
+            //
+            // We then need to check to see if there was an upgrade requested,
+            // and if so, the upgraded port needs to have its selection aborted.
             DISCONNECTED => {
-                assert!(self.data.is_none());
-                match mem::replace(&mut self.upgrade, SendUsed) {
-                    GoUp(port) => Err(port),
-                    _ => Ok(true),
+                if self.data.is_some() {
+                    Ok(true)
+                } else {
+                    match mem::replace(&mut self.upgrade, SendUsed) {
+                        GoUp(port) => Err(port),
+                        _ => Ok(true),
+                    }
                 }
             }
 

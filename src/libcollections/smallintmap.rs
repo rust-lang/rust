@@ -304,7 +304,7 @@ mod test_map {
     fn test_insert_with_key() {
         let mut map = SmallIntMap::new();
 
-        // given a new key, initialize it with this new count, given
+        // given a new key, initialize it with this new count,
         // given an existing key, add more to its count
         fn addMoreToCount(_k: uint, v0: uint, v1: uint) -> uint {
             v0 + v1
@@ -470,9 +470,9 @@ mod test_map {
 
 #[cfg(test)]
 mod bench {
-
+    extern crate test;
+    use self::test::BenchHarness;
     use super::SmallIntMap;
-    use extra::test::BenchHarness;
     use deque::bench::{insert_rand_n, insert_seq_n, find_rand_n, find_seq_n};
 
     // Find seq

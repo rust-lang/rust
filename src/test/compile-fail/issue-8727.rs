@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[allow(deprecated_owned_vector)];
 
 // Verify the compiler fails with an error on infinite function
 // recursions.
@@ -15,7 +16,7 @@
 struct Data(~Option<Data>);
 
 fn generic<T>( _ : ~[(Data,T)] ) {
-    //~^ ERROR overly deep expansion of inlined function
+    //~^ ERROR reached the recursion limit during monomorphization
     let rec : ~[(Data,(bool,T))] = ~[];
     generic( rec );
 }

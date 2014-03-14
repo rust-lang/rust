@@ -18,7 +18,7 @@ use std::io;
 use std::io::stdio::StdReader;
 use std::io::BufferedReader;
 use std::os;
-use std::unstable::intrinsics::cttz16;
+use std::intrinsics::cttz16;
 use std::vec;
 
 // Computes a single solution to a given 9x9 sudoku
@@ -72,7 +72,7 @@ impl Sudoku {
 
         let mut g = vec::from_fn(10u, { |_i| ~[0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8] });
         for line in reader.lines() {
-            let comps: ~[&str] = line.trim().split(',').collect();
+            let comps: ~[&str] = line.unwrap().trim().split(',').collect();
 
             if comps.len() == 3u {
                 let row     = from_str::<uint>(comps[0]).unwrap() as u8;
@@ -278,7 +278,7 @@ fn main() {
     let mut sudoku = if use_default {
         Sudoku::from_vec(&DEFAULT_SUDOKU)
     } else {
-        Sudoku::read(BufferedReader::new(io::stdin()))
+        Sudoku::read(io::stdin())
     };
     sudoku.solve();
     sudoku.write(&mut io::stdout());

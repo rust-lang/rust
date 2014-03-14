@@ -12,10 +12,10 @@
 // other tycons.
 
 fn main() {
-    fn f(f: extern fn(extern fn(extern fn()))) {
+    fn f(f: fn(fn(fn()))) {
     }
 
-    fn g(f: extern fn(||)) {
+    fn g(f: fn(||)) {
     }
 
     f(g);

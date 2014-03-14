@@ -8,12 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-test
 // aux-build:private_variant_xc.rs
 
 extern crate private_variant_xc;
 
 pub fn main() {
     let _ = private_variant_xc::Bar;
-    let _ = private_variant_xc::Baz;    //~ ERROR unresolved name
+    let _ = private_variant_xc::Baz;    //~ ERROR variant `Baz` is private
 }

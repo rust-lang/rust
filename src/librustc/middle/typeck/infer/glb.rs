@@ -24,7 +24,7 @@ use middle::typeck::infer::fold_regions_in_sig;
 use syntax::ast::{Many, Once, MutImmutable, MutMutable};
 use syntax::ast::{ExternFn, ImpureFn, UnsafeFn, NodeId};
 use syntax::ast::{Onceness, Purity};
-use std::hashmap::HashMap;
+use collections::HashMap;
 use util::common::{indenter};
 use util::ppaux::mt_to_str;
 
@@ -136,11 +136,11 @@ impl<'f> Combine for Glb<'f> {
 
         // Instantiate each bound region with a fresh region variable.
         let (a_with_fresh, a_map) =
-            self.get_ref().infcx.replace_bound_regions_with_fresh_regions(
+            self.get_ref().infcx.replace_late_bound_regions_with_fresh_regions(
                 self.get_ref().trace, a);
         let a_vars = var_ids(self, &a_map);
         let (b_with_fresh, b_map) =
-            self.get_ref().infcx.replace_bound_regions_with_fresh_regions(
+            self.get_ref().infcx.replace_late_bound_regions_with_fresh_regions(
                 self.get_ref().trace, b);
         let b_vars = var_ids(self, &b_map);
 
@@ -155,10 +155,16 @@ impl<'f> Combine for Glb<'f> {
             fold_regions_in_sig(
                 self.get_ref().infcx.tcx,
                 &sig0,
-                |r| generalize_region(self, snapshot,
-                                      new_vars, sig0.binder_id,
-                                      &a_map, a_vars, b_vars,
-                                      r));
+                |r| {
+                generalize_region(self,
+                                  snapshot,
+                                  new_vars.as_slice(),
+                                  sig0.binder_id,
+                                  &a_map,
+                                  a_vars.as_slice(),
+                                  b_vars.as_slice(),
+                                  r)
+            });
         debug!("sig1 = {}", sig1.inf_str(self.get_ref().infcx));
         return Ok(sig1);
 

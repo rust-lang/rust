@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -14,11 +14,13 @@
 // tjc note: Would be great to have a `match check` macro equivalent
 // for some of these
 
+#[allow(non_camel_case_types)];
 
 use middle::ty;
 
 use std::str;
 use std::uint;
+use std::vec_ng::Vec;
 use syntax::abi::AbiSet;
 use syntax::abi;
 use syntax::ast;
@@ -53,7 +55,7 @@ pub enum DefIdSource {
     // Identifies a region parameter (`fn foo<'X>() { ... }`).
     RegionParameter,
 }
-type conv_did<'a> =
+pub type conv_did<'a> =
     'a |source: DefIdSource, ast::DefId| -> ast::DefId;
 
 pub struct PState<'a> {
@@ -176,7 +178,7 @@ fn parse_substs(st: &mut PState, conv: conv_did) -> ty::substs {
     let self_ty = parse_opt(st, |st| parse_ty(st, |x,y| conv(x,y)) );
 
     assert_eq!(next(st), '[');
-    let mut params: ~[ty::t] = ~[];
+    let mut params: Vec<ty::t> = Vec::new();
     while peek(st) != ']' { params.push(parse_ty(st, |x,y| conv(x,y))); }
     st.pos = st.pos + 1u;
 
@@ -213,7 +215,7 @@ fn parse_bound_region(st: &mut PState, conv: conv_did) -> ty::BoundRegion {
         '[' => {
             let def = parse_def(st, RegionParameter, |x,y| conv(x,y));
             let ident = token::str_to_ident(parse_str(st, ']'));
-            ty::BrNamed(def, ident)
+            ty::BrNamed(def, ident.name)
         }
         'f' => {
             let id = parse_uint(st);
@@ -241,7 +243,7 @@ fn parse_region(st: &mut PState, conv: conv_did) -> ty::Region {
         let index = parse_uint(st);
         assert_eq!(next(st), '|');
         let nm = token::str_to_ident(parse_str(st, ']'));
-        ty::ReEarlyBound(node_id, index, nm)
+        ty::ReEarlyBound(node_id, index, nm.name)
       }
       'f' => {
         assert_eq!(next(st), '[');
@@ -361,7 +363,7 @@ fn parse_ty(st: &mut PState, conv: conv_did) -> ty::t {
       }
       'T' => {
         assert_eq!(next(st), '[');
-        let mut params = ~[];
+        let mut params = Vec::new();
         while peek(st) != ']' { params.push(parse_ty(st, |x,y| conv(x,y))); }
         st.pos = st.pos + 1u;
         return ty::mk_tup(st.tcx, params);
@@ -519,7 +521,7 @@ fn parse_sig(st: &mut PState, conv: conv_did) -> ty::FnSig {
     assert_eq!(next(st), '[');
     let id = parse_uint(st) as ast::NodeId;
     assert_eq!(next(st), '|');
-    let mut inputs = ~[];
+    let mut inputs = Vec::new();
     while peek(st) != ']' {
         inputs.push(parse_ty(st, |x,y| conv(x,y)));
     }
@@ -582,7 +584,7 @@ fn parse_type_param_def(st: &mut PState, conv: conv_did) -> ty::TypeParameterDef
 fn parse_bounds(st: &mut PState, conv: conv_did) -> ty::ParamBounds {
     let mut param_bounds = ty::ParamBounds {
         builtin_bounds: ty::EmptyBuiltinBounds(),
-        trait_bounds: ~[]
+        trait_bounds: Vec::new()
     };
     loop {
         match next(st) {

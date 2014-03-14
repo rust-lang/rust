@@ -38,7 +38,7 @@ order.
 Each `HashMap` instance has a random 128-bit key to use with a keyed hash,
 making the order of a set of keys in a given hash table randomized. Rust
 provides a [SipHash](https://131002.net/siphash/) implementation for any type
-implementing the `IterBytes` trait.
+implementing the `Hash` trait.
 
 ## Double-ended queues
 
@@ -186,12 +186,12 @@ let mut calls = 0;
     let it = xs.iter().scan((), |_, x| {
         calls += 1;
         if *x < 3 { Some(x) } else { None }});
-        
+
     // the iterator will only yield 1 and 2 before returning None
     // If we were to call it 5 times, calls would end up as 5, despite
     // only 2 values being yielded (and therefore 3 unique calls being
     // made). The fuse() adaptor can fix this.
-    
+
     let mut it = it.fuse();
     it.next();
     it.next();
@@ -384,7 +384,7 @@ the trailing underscore is a workaround for issue #5898 and will be removed.
 ~~~
 let mut ys = [1, 2, 3, 4, 5];
 ys.mut_iter().reverse_();
-assert_eq!(ys, [5, 4, 3, 2, 1]);
+assert!(ys == [5, 4, 3, 2, 1]);
 ~~~
 
 ## Random-access iterators

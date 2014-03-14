@@ -70,7 +70,7 @@ hello                // turns on all logging for the 'hello' module
 info                 // turns on all info logging
 hello=debug          // turns on debug logging for 'hello'
 hello=3              // turns on info logging for 'hello'
-hello,std::hashmap   // turns on hello, and std's hashmap logging
+hello,std::option    // turns on hello, and std's option logging
 error,hello=warn     // turn on global error logging and also warn for hello
 ```
 
@@ -166,9 +166,7 @@ pub fn log(level: u32, args: &fmt::Arguments) {
     };
 
     if logger.is_none() {
-        logger = Some(~DefaultLogger {
-            handle: LineBufferedWriter::new(io::stderr()),
-        } as ~Logger);
+        logger = Some(~DefaultLogger { handle: io::stderr(), } as ~Logger);
     }
     logger.get_mut_ref().log(level, args);
 

@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[allow(non_camel_case_types)];
 
 use metadata::csearch;
 use middle::astencode;
@@ -15,6 +16,7 @@ use middle::astencode;
 use middle::ty;
 use middle::typeck::astconv;
 use middle;
+use util::nodemap::{DefIdMap, FnvHashMap, NodeMap};
 
 use syntax::ast::*;
 use syntax::parse::token::InternedString;
@@ -23,8 +25,9 @@ use syntax::visit;
 use syntax::{ast, ast_map, ast_util};
 
 use std::cell::RefCell;
-use std::hashmap::HashMap;
+use collections::HashMap;
 use std::rc::Rc;
+use std::vec_ng::Vec;
 
 //
 // This pass classifies expressions by their constant-ness.
@@ -65,7 +68,7 @@ pub enum constness {
     non_const
 }
 
-type constness_cache = HashMap<ast::DefId, constness>;
+type constness_cache = DefIdMap<constness>;
 
 pub fn join(a: constness, b: constness) -> constness {
     match (a, b) {
@@ -116,7 +119,7 @@ pub fn lookup_variant_by_id(tcx: ty::ctxt,
                 None => None,
                 Some(ast_map::NodeItem(it)) => match it.node {
                     ItemEnum(ast::EnumDef { variants: ref variants }, _) => {
-                        variant_expr(*variants, variant_def.node)
+                        variant_expr(variants.as_slice(), variant_def.node)
                     }
                     _ => None
                 },
@@ -133,9 +136,9 @@ pub fn lookup_variant_by_id(tcx: ty::ctxt,
         }
         let maps = astencode::Maps {
             root_map: @RefCell::new(HashMap::new()),
-            method_map: @RefCell::new(HashMap::new()),
-            vtable_map: @RefCell::new(HashMap::new()),
-            capture_map: @RefCell::new(HashMap::new())
+            method_map: @RefCell::new(FnvHashMap::new()),
+            vtable_map: @RefCell::new(NodeMap::new()),
+            capture_map: @RefCell::new(NodeMap::new())
         };
         let e = match csearch::maybe_get_item_ast(tcx, enum_def,
             |a, b, c, d| astencode::decode_inlined_item(a, b,
@@ -143,7 +146,7 @@ pub fn lookup_variant_by_id(tcx: ty::ctxt,
                                                         c, d)) {
             csearch::found(ast::IIItem(item)) => match item.node {
                 ItemEnum(ast::EnumDef { variants: ref variants }, _) => {
-                    variant_expr(*variants, variant_def.node)
+                    variant_expr(variants.as_slice(), variant_def.node)
                 }
                 _ => None
             },
@@ -183,9 +186,9 @@ pub fn lookup_const_by_id(tcx: ty::ctxt, def_id: ast::DefId)
         }
         let maps = astencode::Maps {
             root_map: @RefCell::new(HashMap::new()),
-            method_map: @RefCell::new(HashMap::new()),
-            vtable_map: @RefCell::new(HashMap::new()),
-            capture_map: @RefCell::new(HashMap::new())
+            method_map: @RefCell::new(FnvHashMap::new()),
+            vtable_map: @RefCell::new(NodeMap::new()),
+            capture_map: @RefCell::new(NodeMap::new())
         };
         let e = match csearch::maybe_get_item_ast(tcx, def_id,
             |a, b, c, d| astencode::decode_inlined_item(a, b, maps, c, d)) {
@@ -224,10 +227,10 @@ impl ConstEvalVisitor {
                 }
             }
 
-            ast::ExprUnary(_, _, inner) | ast::ExprParen(inner) =>
+            ast::ExprUnary(_, inner) | ast::ExprParen(inner) =>
                 self.classify(inner),
 
-            ast::ExprBinary(_, _, a, b) =>
+            ast::ExprBinary(_, a, b) =>
                 join(self.classify(a), self.classify(b)),
 
             ast::ExprTup(ref es) |
@@ -261,7 +264,7 @@ impl ConstEvalVisitor {
 
             ast::ExprField(base, _, _) => self.classify(base),
 
-            ast::ExprIndex(_, base, idx) =>
+            ast::ExprIndex(base, idx) =>
                 join(self.classify(base), self.classify(idx)),
 
             ast::ExprAddrOf(ast::MutImmutable, base) => self.classify(base),
@@ -304,7 +307,7 @@ pub fn process_crate(krate: &ast::Crate,
                      tcx: ty::ctxt) {
     let mut v = ConstEvalVisitor {
         tcx: tcx,
-        ccache: HashMap::new(),
+        ccache: DefIdMap::new(),
     };
     visit::walk_crate(&mut v, krate, ());
     tcx.sess.abort_if_errors();
@@ -319,7 +322,7 @@ pub enum const_val {
     const_int(i64),
     const_uint(u64),
     const_str(InternedString),
-    const_binary(Rc<~[u8]>),
+    const_binary(Rc<Vec<u8> >),
     const_bool(bool)
 }
 
@@ -335,7 +338,7 @@ pub fn eval_const_expr_partial<T: ty::ExprTyProvider>(tcx: &T, e: &Expr)
     use middle::ty;
     fn fromb(b: bool) -> Result<const_val, ~str> { Ok(const_int(b as i64)) }
     match e.node {
-      ExprUnary(_, UnNeg, inner) => {
+      ExprUnary(UnNeg, inner) => {
         match eval_const_expr_partial(tcx, inner) {
           Ok(const_float(f)) => Ok(const_float(-f)),
           Ok(const_int(i)) => Ok(const_int(-i)),
@@ -345,7 +348,7 @@ pub fn eval_const_expr_partial<T: ty::ExprTyProvider>(tcx: &T, e: &Expr)
           ref err => ((*err).clone())
         }
       }
-      ExprUnary(_, UnNot, inner) => {
+      ExprUnary(UnNot, inner) => {
         match eval_const_expr_partial(tcx, inner) {
           Ok(const_int(i)) => Ok(const_int(!i)),
           Ok(const_uint(i)) => Ok(const_uint(!i)),
@@ -353,7 +356,7 @@ pub fn eval_const_expr_partial<T: ty::ExprTyProvider>(tcx: &T, e: &Expr)
           _ => Err(~"not on float or string")
         }
       }
-      ExprBinary(_, op, a, b) => {
+      ExprBinary(op, a, b) => {
         match (eval_const_expr_partial(tcx, a),
                eval_const_expr_partial(tcx, b)) {
           (Ok(const_float(a)), Ok(const_float(b))) => {
@@ -508,7 +511,9 @@ pub fn eval_const_expr_partial<T: ty::ExprTyProvider>(tcx: &T, e: &Expr)
 pub fn lit_to_const(lit: &Lit) -> const_val {
     match lit.node {
         LitStr(ref s, _) => const_str((*s).clone()),
-        LitBinary(ref data) => const_binary(data.clone()),
+        LitBinary(ref data) => {
+            const_binary(Rc::new(data.deref().iter().map(|x| *x).collect()))
+        }
         LitChar(n) => const_uint(n as u64),
         LitInt(n, _) => const_int(n),
         LitUint(n, _) => const_uint(n),
@@ -521,7 +526,7 @@ pub fn lit_to_const(lit: &Lit) -> const_val {
     }
 }
 
-fn compare_vals<T : Eq + Ord>(a: T, b: T) -> Option<int> {
+fn compare_vals<T: Ord>(a: T, b: T) -> Option<int> {
     Some(if a == b { 0 } else if a < b { -1 } else { 1 })
 }
 pub fn compare_const_vals(a: &const_val, b: &const_val) -> Option<int> {

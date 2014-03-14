@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -21,10 +21,10 @@
 //! time.
 
 use std::cast;
+use std::rt::bookkeeping;
 use std::rt;
 use std::unstable::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
 
-use bookkeeping;
 use io::timer::{Req, Shutdown};
 use task;
 
@@ -33,26 +33,29 @@ use task;
 // only torn down after everything else has exited. This means that these
 // variables are read-only during use (after initialization) and both of which
 // are safe to use concurrently.
-static mut HELPER_CHAN: *mut Chan<Req> = 0 as *mut Chan<Req>;
+static mut HELPER_CHAN: *mut Sender<Req> = 0 as *mut Sender<Req>;
 static mut HELPER_SIGNAL: imp::signal = 0 as imp::signal;
 
-pub fn boot(helper: fn(imp::signal, Port<Req>)) {
+static mut TIMER_HELPER_EXIT: StaticNativeMutex = NATIVE_MUTEX_INIT;
+
+pub fn boot(helper: fn(imp::signal, Receiver<Req>)) {
     static mut LOCK: StaticNativeMutex = NATIVE_MUTEX_INIT;
     static mut INITIALIZED: bool = false;
 
     unsafe {
         let mut _guard = LOCK.lock();
         if !INITIALIZED {
-            let (msgp, msgc) = Chan::new();
+            let (tx, rx) = channel();
             // promote this to a shared channel
-            drop(msgc.clone());
-            HELPER_CHAN = cast::transmute(~msgc);
+            drop(tx.clone());
+            HELPER_CHAN = cast::transmute(~tx);
             let (receive, send) = imp::new();
             HELPER_SIGNAL = send;
 
             task::spawn(proc() {
                 bookkeeping::decrement();
-                helper(receive, msgp);
+                helper(receive, rx);
+                TIMER_HELPER_EXIT.lock().signal()
             });
 
             rt::at_exit(proc() { shutdown() });
@@ -70,23 +73,21 @@ pub fn send(req: Req) {
 }
 
 fn shutdown() {
-    // We want to wait for the entire helper task to exit, and in doing so it
-    // will attempt to decrement the global task count. When the helper was
-    // created, it decremented the count so it wouldn't count towards preventing
-    // the program to exit, so here we pair that manual decrement with a manual
-    // increment. We will then wait for the helper thread to exit by calling
-    // wait_for_other_tasks.
-    bookkeeping::increment();
-
     // Request a shutdown, and then wait for the task to exit
-    send(Shutdown);
-    bookkeeping::wait_for_other_tasks();
+    unsafe {
+        let mut guard = TIMER_HELPER_EXIT.lock();
+        send(Shutdown);
+        guard.wait();
+        drop(guard);
+        TIMER_HELPER_EXIT.destroy();
+    }
+
 
     // Clean up after ther helper thread
     unsafe {
         imp::close(HELPER_SIGNAL);
-        let _chan: ~Chan<Req> = cast::transmute(HELPER_CHAN);
-        HELPER_CHAN = 0 as *mut Chan<Req>;
+        let _chan: ~Sender<Req> = cast::transmute(HELPER_CHAN);
+        HELPER_CHAN = 0 as *mut Sender<Req>;
         HELPER_SIGNAL = 0 as imp::signal;
     }
 }

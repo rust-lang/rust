@@ -22,7 +22,7 @@ err() {
 need_ok() {
     if [ $? -ne 0 ]
     then
-        err $1
+        err "$1"
     fi
 }
 
@@ -340,7 +340,7 @@ DEFAULT_BUILD="${CFG_CPUTYPE}-${CFG_OSTYPE}"
 
 CFG_SRC_DIR="$(cd $(dirname $0) && pwd)/"
 CFG_BUILD_DIR="$(pwd)/"
-CFG_SELF=${CFG_SRC_DIR}$(basename $0)
+CFG_SELF="$0"
 CFG_CONFIGURE_ARGS="$@"
 
 OPTIONS=""
@@ -412,16 +412,15 @@ fi
 valopt libdir "${CFG_PREFIX}/${CFG_LIBDIR_RELATIVE}" "install libraries"
 valopt rustlibdir "rustlib" "subdirectory name for rustc's libraries"
 
-# Validate Options
-step_msg "validating $CFG_SELF args"
-validate_opt
-
 if [ $HELP -eq 1 ]
 then
     echo
     exit 0
 fi
 
+# Validate Options
+step_msg "validating $CFG_SELF args"
+validate_opt
 
 step_msg "looking for build programs"
 
@@ -455,9 +454,8 @@ probe CFG_ISCC             iscc
 probe CFG_LLNEXTGEN        LLnextgen
 probe CFG_PANDOC           pandoc
 probe CFG_PDFLATEX         pdflatex
-probe CFG_XETEX            xetex
-probe CFG_LUATEX           luatex
-probe CFG_NODE             nodejs node
+probe CFG_XELATEX          xelatex
+probe CFG_LUALATEX         lualatex
 probe CFG_GDB              gdb
 if [ "$CFG_OSTYPE" = "unknown-linux-gnu" ]
 then
@@ -604,7 +602,7 @@ then
     LLVM_VERSION=$($LLVM_CONFIG --version)
 
     case $LLVM_VERSION in
-        (3.[2-4]svn|3.[2-4])
+        (3.[2-5]svn|3.[2-5])
             msg "found ok version of LLVM: $LLVM_VERSION"
             ;;
         (*)
@@ -626,7 +624,7 @@ then
                       | cut -d ' ' -f 2)
 
     case $CFG_CLANG_VERSION in
-        (3.0svn | 3.0 | 3.1* | 3.2* | 3.3* | 3.4* )
+        (3.0svn | 3.0 | 3.1* | 3.2* | 3.3* | 3.4* | 3.5* )
         step_msg "found ok version of CLANG: $CFG_CLANG_VERSION"
         CFG_C_COMPILER="clang"
         ;;
@@ -728,7 +726,7 @@ step_msg "making directories"
 
 for i in \
     doc doc/std doc/extra \
-    dl tmp
+    dl tmp dist
 do
     make_dir $i
 done
@@ -803,7 +801,6 @@ do
     make_dir $h/test/doc-guide-pointers
     make_dir $h/test/doc-guide-container
     make_dir $h/test/doc-guide-tasks
-    make_dir $h/test/doc-guide-conditions
     make_dir $h/test/doc-complement-cheatsheet
     make_dir $h/test/doc-rust
 done

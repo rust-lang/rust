@@ -14,10 +14,10 @@ extern crate extra;
 
 use std::task;
 
-fn start(c: &Chan<int>, i0: int) {
+fn start(tx: &Sender<int>, i0: int) {
     let mut i = i0;
     while i > 0 {
-        c.send(0);
+        tx.send(0);
         i = i - 1;
     }
 }
@@ -27,10 +27,9 @@ pub fn main() {
     // is likely to terminate before the child completes, so from
     // the child's point of view the receiver may die. We should
     // drop messages on the floor in this case, and not crash!
-    let (p, ch) = Chan::new();
+    let (tx, rx) = channel();
     task::spawn(proc() {
-        let mut ch = ch;
-        start(&ch, 10)
+        start(&tx, 10)
     });
-    p.recv();
+    rx.recv();
 }

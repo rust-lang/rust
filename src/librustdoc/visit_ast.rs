@@ -11,6 +11,7 @@
 //! Rust AST Visitor. Extracts useful information and massages it into a form
 //! usable for clean
 
+use std::vec_ng::Vec;
 use syntax::abi::AbiSet;
 use syntax::ast;
 use syntax::ast_util;
@@ -39,11 +40,18 @@ impl<'a> RustdocVisitor<'a> {
     }
 
     pub fn visit(&mut self, krate: &ast::Crate) {
-        self.attrs = krate.attrs.clone();
+        self.attrs = krate.attrs.iter().map(|x| (*x).clone()).collect();
 
-        self.module = self.visit_mod_contents(krate.span, krate.attrs.clone(),
-                                              ast::Public, ast::CRATE_NODE_ID,
-                                              &krate.module, None);
+        self.module = self.visit_mod_contents(krate.span,
+                                              krate.attrs
+                                                   .iter()
+                                                   .map(|x| *x)
+                                                   .collect(),
+                                              ast::Public,
+                                              ast::CRATE_NODE_ID,
+                                              &krate.module,
+                                              None);
+        self.module.is_crate = true;
     }
 
     pub fn visit_struct_def(&mut self, item: &ast::Item, sd: @ast::StructDef,
@@ -55,9 +63,9 @@ impl<'a> RustdocVisitor<'a> {
             struct_type: struct_type,
             name: item.ident,
             vis: item.vis,
-            attrs: item.attrs.clone(),
+            attrs: item.attrs.iter().map(|x| *x).collect(),
             generics: generics.clone(),
-            fields: sd.fields.clone(),
+            fields: sd.fields.iter().map(|x| (*x).clone()).collect(),
             where: item.span
         }
     }
@@ -69,7 +77,7 @@ impl<'a> RustdocVisitor<'a> {
         for x in def.variants.iter() {
             vars.push(Variant {
                 name: x.node.name,
-                attrs: x.node.attrs.clone(),
+                attrs: x.node.attrs.iter().map(|x| *x).collect(),
                 vis: x.node.vis,
                 id: x.node.id,
                 kind: x.node.kind.clone(),
@@ -81,7 +89,7 @@ impl<'a> RustdocVisitor<'a> {
             variants: vars,
             vis: it.vis,
             generics: params.clone(),
-            attrs: it.attrs.clone(),
+            attrs: it.attrs.iter().map(|x| *x).collect(),
             id: it.id,
             where: it.span,
         }
@@ -94,7 +102,7 @@ impl<'a> RustdocVisitor<'a> {
         Function {
             id: item.id,
             vis: item.vis,
-            attrs: item.attrs.clone(),
+            attrs: item.attrs.iter().map(|x| *x).collect(),
             decl: fd.clone(),
             name: item.ident,
             where: item.span,
@@ -129,17 +137,17 @@ impl<'a> RustdocVisitor<'a> {
             ast::ViewItemUse(ref paths) => {
                 // rustc no longer supports "use foo, bar;"
                 assert_eq!(paths.len(), 1);
-                match self.visit_view_path(paths[0], om) {
+                match self.visit_view_path(*paths.get(0), om) {
                     None => return,
                     Some(path) => {
                         ast::ViewItem {
-                            node: ast::ViewItemUse(~[path]),
+                            node: ast::ViewItemUse(vec!(path)),
                             .. item.clone()
                         }
                     }
                 }
             }
-            ast::ViewItemExternMod(..) => item.clone()
+            ast::ViewItemExternCrate(..) => item.clone()
         };
         om.view_items.push(item);
     }
@@ -151,7 +159,7 @@ impl<'a> RustdocVisitor<'a> {
                 if self.resolve_id(id, false, om) { return None }
             }
             ast::ViewPathList(ref p, ref paths, ref b) => {
-                let mut mine = ~[];
+                let mut mine = Vec::new();
                 for path in paths.iter() {
                     if !self.resolve_id(path.node.id, false, om) {
                         mine.push(path.clone());
@@ -216,9 +224,15 @@ impl<'a> RustdocVisitor<'a> {
         debug!("Visiting item {:?}", item);
         match item.node {
             ast::ItemMod(ref m) => {
-                om.mods.push(self.visit_mod_contents(item.span, item.attrs.clone(),
-                                                item.vis, item.id, m,
-                                                Some(item.ident)));
+                om.mods.push(self.visit_mod_contents(item.span,
+                                                     item.attrs
+                                                         .iter()
+                                                         .map(|x| *x)
+                                                         .collect(),
+                                                     item.vis,
+                                                     item.id,
+                                                     m,
+                                                     Some(item.ident)));
             },
             ast::ItemEnum(ref ed, ref gen) =>
                 om.enums.push(self.visit_enum_def(item, ed, gen)),
@@ -232,7 +246,7 @@ impl<'a> RustdocVisitor<'a> {
                     gen: gen.clone(),
                     name: item.ident,
                     id: item.id,
-                    attrs: item.attrs.clone(),
+                    attrs: item.attrs.iter().map(|x| *x).collect(),
                     where: item.span,
                     vis: item.vis,
                 };
@@ -245,7 +259,7 @@ impl<'a> RustdocVisitor<'a> {
                     expr: exp.clone(),
                     id: item.id,
                     name: item.ident,
-                    attrs: item.attrs.clone(),
+                    attrs: item.attrs.iter().map(|x| *x).collect(),
                     where: item.span,
                     vis: item.vis,
                 };
@@ -254,11 +268,11 @@ impl<'a> RustdocVisitor<'a> {
             ast::ItemTrait(ref gen, ref tr, ref met) => {
                 let t = Trait {
                     name: item.ident,
-                    methods: met.clone(),
+                    methods: met.iter().map(|x| (*x).clone()).collect(),
                     generics: gen.clone(),
-                    parents: tr.clone(),
+                    parents: tr.iter().map(|x| (*x).clone()).collect(),
                     id: item.id,
-                    attrs: item.attrs.clone(),
+                    attrs: item.attrs.iter().map(|x| *x).collect(),
                     where: item.span,
                     vis: item.vis,
                 };
@@ -269,8 +283,8 @@ impl<'a> RustdocVisitor<'a> {
                     generics: gen.clone(),
                     trait_: tr.clone(),
                     for_: ty,
-                    methods: meths.clone(),
-                    attrs: item.attrs.clone(),
+                    methods: meths.iter().map(|x| *x).collect(),
+                    attrs: item.attrs.iter().map(|x| *x).collect(),
                     id: item.id,
                     where: item.span,
                     vis: item.vis,
@@ -280,7 +294,14 @@ impl<'a> RustdocVisitor<'a> {
             ast::ItemForeignMod(ref fm) => {
                 om.foreigns.push(fm.clone());
             }
-            _ => (),
+            ast::ItemMac(ref _m) => {
+                om.macros.push(Macro {
+                    id: item.id,
+                    attrs: item.attrs.iter().map(|x| *x).collect(),
+                    name: item.ident,
+                    where: item.span,
+                })
+            }
         }
     }
 }

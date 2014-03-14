@@ -26,13 +26,13 @@ impl fmt::Show for Foo {
 }
 
 pub fn main() {
-    let (p,c) = Chan::new();
+    let (tx, rx) = channel();
     spawn(proc() {
         let mut f = Foo(Cell::new(0));
         debug!("{}", f);
         let Foo(ref mut f) = f;
         assert!(f.get() == 1);
-        c.send(());
+        tx.send(());
     });
-    p.recv();
+    rx.recv();
 }

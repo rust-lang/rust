@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[allow(non_camel_case_types)];
 
 use driver::session::Session;
 use metadata::csearch;
@@ -15,11 +16,13 @@ use metadata::decoder::{DefLike, DlDef, DlField, DlImpl};
 use middle::lang_items::LanguageItems;
 use middle::lint::{UnnecessaryQualification, UnusedImports};
 use middle::pat_util::pat_bindings;
+use util::nodemap::{NodeMap, DefIdSet};
 
 use syntax::ast::*;
 use syntax::ast;
-use syntax::ast_util::{def_id_of_def, local_def, mtwt_resolve};
+use syntax::ast_util::{def_id_of_def, local_def};
 use syntax::ast_util::{path_to_ident, walk_pat, trait_method_to_ty_method};
+use syntax::ext::mtwt;
 use syntax::parse::token::special_idents;
 use syntax::parse::token;
 use syntax::print::pprust::path_to_str;
@@ -30,11 +33,12 @@ use syntax::visit::Visitor;
 
 use std::cell::{Cell, RefCell};
 use std::uint;
-use std::hashmap::{HashMap, HashSet};
 use std::mem::replace;
+use std::vec_ng::Vec;
+use collections::{HashMap, HashSet};
 
 // Definition mapping
-pub type DefMap = @RefCell<HashMap<NodeId,Def>>;
+pub type DefMap = @RefCell<NodeMap<Def>>;
 
 struct binding_info {
     span: Span,
@@ -45,11 +49,11 @@ struct binding_info {
 type BindingMap = HashMap<Name,binding_info>;
 
 // Trait method resolution
-pub type TraitMap = HashMap<NodeId,@RefCell<~[DefId]>>;
+pub type TraitMap = NodeMap<Vec<DefId> >;
 
 // This is the replacement export map. It maps a module to all of the exports
 // within.
-pub type ExportMap2 = @RefCell<HashMap<NodeId, ~[Export2]>>;
+pub type ExportMap2 = @RefCell<NodeMap<Vec<Export2> >>;
 
 pub struct Export2 {
     name: ~str,        // The name of the target.
@@ -58,20 +62,40 @@ pub struct Export2 {
 
 // This set contains all exported definitions from external crates. The set does
 // not contain any entries from local crates.
-pub type ExternalExports = HashSet<DefId>;
+pub type ExternalExports = DefIdSet;
 
 // FIXME: dox
-pub type LastPrivateMap = HashMap<NodeId, LastPrivate>;
+pub type LastPrivateMap = NodeMap<LastPrivate>;
 
 pub enum LastPrivate {
+    LastMod(PrivateDep),
+    // `use` directives (imports) can refer to two separate definitions in the
+    // type and value namespaces. We record here the last private node for each
+    // and whether the import is in fact used for each.
+    // If the Option<PrivateDep> fields are None, it means there is no defintion
+    // in that namespace.
+    LastImport{value_priv: Option<PrivateDep>,
+               value_used: ImportUse,
+               type_priv: Option<PrivateDep>,
+               type_used: ImportUse},
+}
+
+pub enum PrivateDep {
     AllPublic,
     DependsOn(DefId),
+}
+
+// How an import is used.
+#[deriving(Eq)]
+pub enum ImportUse {
+    Unused,       // The import is not used.
+    Used,         // The import is used.
 }
 
 impl LastPrivate {
     fn or(self, other: LastPrivate) -> LastPrivate {
         match (self, other) {
-            (me, AllPublic) => me,
+            (me, LastMod(AllPublic)) => me,
             (_, other) => other,
         }
     }
@@ -84,7 +108,7 @@ enum PatternBindingMode {
     ArgumentIrrefutableMode,
 }
 
-#[deriving(Eq)]
+#[deriving(Eq, Hash)]
 enum Namespace {
     TypeNS,
     ValueNS
@@ -296,7 +320,7 @@ impl Rib {
 
 /// One import directive.
 struct ImportDirective {
-    module_path: ~[Ident],
+    module_path: Vec<Ident> ,
     subclass: @ImportDirectiveSubclass,
     span: Span,
     id: NodeId,
@@ -304,7 +328,7 @@ struct ImportDirective {
 }
 
 impl ImportDirective {
-    fn new(module_path: ~[Ident],
+    fn new(module_path: Vec<Ident> ,
            subclass: @ImportDirectiveSubclass,
            span: Span,
            id: NodeId,
@@ -415,7 +439,7 @@ struct Module {
     is_public: bool,
 
     children: RefCell<HashMap<Name, @NameBindings>>,
-    imports: RefCell<~[@ImportDirective]>,
+    imports: RefCell<Vec<@ImportDirective> >,
 
     // The external module children of this node that were declared with
     // `extern crate`.
@@ -435,7 +459,7 @@ struct Module {
     //
     // There will be an anonymous module created around `g` with the ID of the
     // entry block for `f`.
-    anonymous_children: RefCell<HashMap<NodeId,@Module>>,
+    anonymous_children: RefCell<NodeMap<@Module>>,
 
     // The status of resolving each import in this module.
     import_resolutions: RefCell<HashMap<Name, @ImportResolution>>,
@@ -465,9 +489,9 @@ impl Module {
             kind: Cell::new(kind),
             is_public: is_public,
             children: RefCell::new(HashMap::new()),
-            imports: RefCell::new(~[]),
+            imports: RefCell::new(Vec::new()),
             external_module_children: RefCell::new(HashMap::new()),
-            anonymous_children: RefCell::new(HashMap::new()),
+            anonymous_children: RefCell::new(NodeMap::new()),
             import_resolutions: RefCell::new(HashMap::new()),
             glob_count: Cell::new(0),
             resolved_import_count: Cell::new(0),
@@ -792,9 +816,9 @@ fn Resolver(session: Session,
         unresolved_imports: 0,
 
         current_module: current_module,
-        value_ribs: @RefCell::new(~[]),
-        type_ribs: @RefCell::new(~[]),
-        label_ribs: @RefCell::new(~[]),
+        value_ribs: @RefCell::new(Vec::new()),
+        type_ribs: @RefCell::new(Vec::new()),
+        label_ribs: @RefCell::new(Vec::new()),
 
         current_trait_refs: None,
 
@@ -803,14 +827,14 @@ fn Resolver(session: Session,
 
         primitive_type_table: @PrimitiveTypeTable(),
 
-        namespaces: ~[ TypeNS, ValueNS ],
+        namespaces: vec!(TypeNS, ValueNS),
 
-        def_map: @RefCell::new(HashMap::new()),
-        export_map2: @RefCell::new(HashMap::new()),
-        trait_map: HashMap::new(),
+        def_map: @RefCell::new(NodeMap::new()),
+        export_map2: @RefCell::new(NodeMap::new()),
+        trait_map: NodeMap::new(),
         used_imports: HashSet::new(),
-        external_exports: HashSet::new(),
-        last_private: HashMap::new(),
+        external_exports: DefIdSet::new(),
+        last_private: NodeMap::new(),
 
         emit_errors: true,
     };
@@ -836,16 +860,16 @@ struct Resolver {
 
     // The current set of local scopes, for values.
     // FIXME #4948: Reuse ribs to avoid allocation.
-    value_ribs: @RefCell<~[@Rib]>,
+    value_ribs: @RefCell<Vec<@Rib> >,
 
     // The current set of local scopes, for types.
-    type_ribs: @RefCell<~[@Rib]>,
+    type_ribs: @RefCell<Vec<@Rib> >,
 
     // The current set of local scopes, for labels.
-    label_ribs: @RefCell<~[@Rib]>,
+    label_ribs: @RefCell<Vec<@Rib> >,
 
     // The trait that the current context can refer to.
-    current_trait_refs: Option<~[DefId]>,
+    current_trait_refs: Option<Vec<DefId> >,
 
     // The ident for the keyword "self".
     self_ident: Ident,
@@ -856,7 +880,7 @@ struct Resolver {
     primitive_type_table: @PrimitiveTypeTable,
 
     // The four namespaces.
-    namespaces: ~[Namespace],
+    namespaces: Vec<Namespace> ,
 
     def_map: DefMap,
     export_map2: ExportMap2,
@@ -869,7 +893,7 @@ struct Resolver {
     // so as to avoid printing duplicate errors
     emit_errors: bool,
 
-    used_imports: HashSet<NodeId>,
+    used_imports: HashSet<(NodeId, Namespace)>,
 }
 
 struct BuildReducedGraphVisitor<'a> {
@@ -904,7 +928,7 @@ impl<'a> Visitor<ReducedGraphParent> for BuildReducedGraphVisitor<'a> {
 
 }
 
-struct UnusedImportCheckVisitor<'a> { resolver: &'a Resolver }
+struct UnusedImportCheckVisitor<'a> { resolver: &'a mut Resolver }
 
 impl<'a> Visitor<()> for UnusedImportCheckVisitor<'a> {
     fn visit_view_item(&mut self, vi: &ViewItem, _: ()) {
@@ -1429,7 +1453,7 @@ impl Resolver {
                     // globs and lists, the path is found directly in the AST;
                     // for simple paths we have to munge the path a little.
 
-                    let mut module_path = ~[];
+                    let mut module_path = Vec::new();
                     match view_path.node {
                         ViewPathSimple(_, ref full_path, _) => {
                             let path_len = full_path.segments.len();
@@ -1493,7 +1517,7 @@ impl Resolver {
                 }
             }
 
-            ViewItemExternMod(name, _, node_id) => {
+            ViewItemExternCrate(name, _, node_id) => {
                 // n.b. we don't need to look at the path option here, because cstore already did
                 match self.session.cstore.find_extern_mod_stmt_cnum(node_id) {
                     Some(crate_id) => {
@@ -1928,7 +1952,7 @@ impl Resolver {
     /// Creates and adds an import directive to the given module.
     fn build_import_directive(&mut self,
                               module_: @Module,
-                              module_path: ~[Ident],
+                              module_path: Vec<Ident> ,
                               subclass: @ImportDirectiveSubclass,
                               span: Span,
                               id: NodeId,
@@ -1949,7 +1973,7 @@ impl Resolver {
             SingleImport(target, _) => {
                 debug!("(building import directive) building import \
                         directive: {}::{}",
-                       self.idents_to_str(directive.module_path),
+                       self.idents_to_str(directive.module_path.as_slice()),
                        token::get_ident(target));
 
                 let mut import_resolutions = module_.import_resolutions
@@ -2062,13 +2086,14 @@ impl Resolver {
         let import_count = imports.get().len();
         while module.resolved_import_count.get() < import_count {
             let import_index = module.resolved_import_count.get();
-            let import_directive = imports.get()[import_index];
+            let import_directive = *imports.get().get(import_index);
             match self.resolve_import_for_module(module, import_directive) {
                 Failed => {
                     // We presumably emitted an error. Continue.
                     let msg = format!("failed to resolve import `{}`",
                                    self.import_path_to_str(
-                                       import_directive.module_path,
+                                       import_directive.module_path
+                                                       .as_slice(),
                                        *import_directive.subclass));
                     self.resolve_error(import_directive.span, msg);
                 }
@@ -2101,11 +2126,11 @@ impl Resolver {
     }
 
     fn path_idents_to_str(&mut self, path: &Path) -> ~str {
-        let identifiers: ~[ast::Ident] = path.segments
+        let identifiers: Vec<ast::Ident> = path.segments
                                              .iter()
                                              .map(|seg| seg.identifier)
                                              .collect();
-        self.idents_to_str(identifiers)
+        self.idents_to_str(identifiers.as_slice())
     }
 
     fn import_directive_subclass_to_str(&mut self,
@@ -2146,16 +2171,16 @@ impl Resolver {
 
         debug!("(resolving import for module) resolving import `{}::...` in \
                 `{}`",
-               self.idents_to_str(*module_path),
+               self.idents_to_str(module_path.as_slice()),
                self.module_to_str(module_));
 
         // First, resolve the module path for the directive, if necessary.
         let container = if module_path.len() == 0 {
             // Use the crate root.
-            Some((self.graph_root.get_module(), AllPublic))
+            Some((self.graph_root.get_module(), LastMod(AllPublic)))
         } else {
             match self.resolve_module_path(module_,
-                                           *module_path,
+                                           module_path.as_slice(),
                                            DontUseLexicalScope,
                                            import_directive.span,
                                            ImportSearch) {
@@ -2257,6 +2282,12 @@ impl Resolver {
                directive.id,
                lp);
 
+        let lp = match lp {
+            LastMod(lp) => lp,
+            LastImport{..} => self.session.span_bug(directive.span,
+                                                    "Not expecting Import here, must be LastMod"),
+        };
+
         // We need to resolve both namespaces for this to succeed.
         //
 
@@ -2287,7 +2318,8 @@ impl Resolver {
 
         // Unless we managed to find a result in both namespaces (unlikely),
         // search imports as well.
-        let mut used_reexport = false;
+        let mut value_used_reexport = false;
+        let mut type_used_reexport = false;
         match (value_result, type_result) {
             (BoundResult(..), BoundResult(..)) => {} // Continue.
             _ => {
@@ -2342,7 +2374,7 @@ impl Resolver {
                                 }
                                 Some(target) => {
                                     let id = import_resolution.id(namespace);
-                                    this.used_imports.insert(id);
+                                    this.used_imports.insert((id, namespace));
                                     return BoundResult(target.target_module,
                                                        target.bindings);
                                 }
@@ -2354,12 +2386,12 @@ impl Resolver {
                         if value_result.is_unknown() {
                             value_result = get_binding(self, *import_resolution,
                                                        ValueNS);
-                            used_reexport = import_resolution.is_public.get();
+                            value_used_reexport = import_resolution.is_public.get();
                         }
                         if type_result.is_unknown() {
                             type_result = get_binding(self, *import_resolution,
                                                       TypeNS);
-                            used_reexport = import_resolution.is_public.get();
+                            type_used_reexport = import_resolution.is_public.get();
                         }
 
                     }
@@ -2375,7 +2407,8 @@ impl Resolver {
 
         // If we didn't find a result in the type namespace, search the
         // external modules.
-        let mut used_public = false;
+        let mut value_used_public = false;
+        let mut type_used_public = false;
         match type_result {
             BoundResult(..) => {}
             _ => {
@@ -2393,7 +2426,7 @@ impl Resolver {
                                 module);
                         type_result = BoundResult(containing_module,
                                                   name_bindings);
-                        used_public = true;
+                        type_used_public = true;
                     }
                 }
             }
@@ -2412,7 +2445,7 @@ impl Resolver {
                 import_resolution.value_target.set(
                     Some(Target::new(target_module, name_bindings)));
                 import_resolution.value_id.set(directive.id);
-                used_public = name_bindings.defined_in_public_namespace(ValueNS);
+                value_used_public = name_bindings.defined_in_public_namespace(ValueNS);
             }
             UnboundResult => { /* Continue. */ }
             UnknownResult => {
@@ -2426,7 +2459,7 @@ impl Resolver {
                 import_resolution.type_target.set(
                     Some(Target::new(target_module, name_bindings)));
                 import_resolution.type_id.set(directive.id);
-                used_public = name_bindings.defined_in_public_namespace(TypeNS);
+                type_used_public = name_bindings.defined_in_public_namespace(TypeNS);
             }
             UnboundResult => { /* Continue. */ }
             UnknownResult => {
@@ -2443,7 +2476,8 @@ impl Resolver {
             self.resolve_error(directive.span, msg);
             return Failed;
         }
-        let used_public = used_reexport || used_public;
+        let value_used_public = value_used_reexport || value_used_public;
+        let type_used_public = type_used_reexport || type_used_public;
 
         assert!(import_resolution.outstanding_references.get() >= 1);
         import_resolution.outstanding_references.set(
@@ -2452,28 +2486,33 @@ impl Resolver {
         // record what this import resolves to for later uses in documentation,
         // this may resolve to either a value or a type, but for documentation
         // purposes it's good enough to just favor one over the other.
-        match import_resolution.value_target.get() {
+        let value_private = match import_resolution.value_target.get() {
             Some(target) => {
                 let def = target.bindings.def_for_namespace(ValueNS).unwrap();
                 let mut def_map = self.def_map.borrow_mut();
                 def_map.get().insert(directive.id, def);
                 let did = def_id_of_def(def);
-                self.last_private.insert(directive.id,
-                    if used_public {lp} else {DependsOn(did)});
-            }
-            None => {}
-        }
-        match import_resolution.type_target.get() {
+                if value_used_public {Some(lp)} else {Some(DependsOn(did))}
+            },
+            // AllPublic here and below is a dummy value, it should never be used because
+            // _exists is false.
+            None => None,
+        };
+        let type_private = match import_resolution.type_target.get() {
             Some(target) => {
                 let def = target.bindings.def_for_namespace(TypeNS).unwrap();
                 let mut def_map = self.def_map.borrow_mut();
                 def_map.get().insert(directive.id, def);
                 let did = def_id_of_def(def);
-                self.last_private.insert(directive.id,
-                    if used_public {lp} else {DependsOn(did)});
-            }
-            None => {}
-        }
+                if type_used_public {Some(lp)} else {Some(DependsOn(did))}
+            },
+            None => None,
+        };
+
+        self.last_private.insert(directive.id, LastImport{value_priv: value_private,
+                                                          value_used: Used,
+                                                          type_priv: type_private,
+                                                          type_used: Used});
 
         debug!("(resolving single import) successfully resolved import");
         return Success(());
@@ -2732,7 +2771,7 @@ impl Resolver {
                                                                    .get() {
                                                     Some(did) => {
                                                         closest_private =
-                                                            DependsOn(did);
+                                                            LastMod(DependsOn(did));
                                                     }
                                                     None => {}
                                                 }
@@ -2817,7 +2856,7 @@ impl Resolver {
                         // resolution process at index zero.
                         search_module = self.graph_root.get_module();
                         start_index = 0;
-                        last_private = AllPublic;
+                        last_private = LastMod(AllPublic);
                     }
                     UseLexicalScope => {
                         // This is not a crate-relative path. We resolve the
@@ -2839,7 +2878,7 @@ impl Resolver {
                             Success(containing_module) => {
                                 search_module = containing_module;
                                 start_index = 1;
-                                last_private = AllPublic;
+                                last_private = LastMod(AllPublic);
                             }
                         }
                     }
@@ -2848,9 +2887,9 @@ impl Resolver {
             Success(PrefixFound(containing_module, index)) => {
                 search_module = containing_module;
                 start_index = index;
-                last_private = DependsOn(containing_module.def_id
-                                                          .get()
-                                                          .unwrap());
+                last_private = LastMod(DependsOn(containing_module.def_id
+                                                                  .get()
+                                                                  .unwrap()));
             }
         }
 
@@ -2914,7 +2953,7 @@ impl Resolver {
                     Some(target) => {
                         debug!("(resolving item in lexical scope) using \
                                 import resolution");
-                        self.used_imports.insert(import_resolution.id(namespace));
+                        self.used_imports.insert((import_resolution.id(namespace), namespace));
                         return Success((target, false));
                     }
                 }
@@ -3199,7 +3238,7 @@ impl Resolver {
                     Some(target) => {
                         debug!("(resolving name in module) resolved to \
                                 import");
-                        self.used_imports.insert(import_resolution.id(namespace));
+                        self.used_imports.insert((import_resolution.id(namespace), namespace));
                         return Success((target, true));
                     }
                 }
@@ -3237,15 +3276,15 @@ impl Resolver {
         if index != import_count {
             let sn = self.session
                          .codemap
-                         .span_to_snippet(imports.get()[index].span)
+                         .span_to_snippet(imports.get().get(index).span)
                          .unwrap();
             if sn.contains("::") {
-                self.resolve_error(imports.get()[index].span,
+                self.resolve_error(imports.get().get(index).span,
                                    "unresolved import");
             } else {
                 let err = format!("unresolved import (maybe you meant `{}::*`?)",
                                sn.slice(0, sn.len()));
-                self.resolve_error(imports.get()[index].span, err);
+                self.resolve_error(imports.get().get(index).span, err);
             }
         }
 
@@ -3337,7 +3376,7 @@ impl Resolver {
     }
 
     fn record_exports_for_module(&mut self, module_: @Module) {
-        let mut exports2 = ~[];
+        let mut exports2 = Vec::new();
 
         self.add_exports_for_module(&mut exports2, module_);
         match module_.def_id.get() {
@@ -3352,7 +3391,7 @@ impl Resolver {
     }
 
     fn add_exports_of_namebindings(&mut self,
-                                   exports2: &mut ~[Export2],
+                                   exports2: &mut Vec<Export2> ,
                                    name: Name,
                                    namebindings: @NameBindings,
                                    ns: Namespace) {
@@ -3373,7 +3412,7 @@ impl Resolver {
     }
 
     fn add_exports_for_module(&mut self,
-                              exports2: &mut ~[Export2],
+                              exports2: &mut Vec<Export2> ,
                               module_: @Module) {
         let import_resolutions = module_.import_resolutions.borrow();
         for (name, importresolution) in import_resolutions.get().iter() {
@@ -3458,7 +3497,7 @@ impl Resolver {
     /// Wraps the given definition in the appropriate number of `def_upvar`
     /// wrappers.
     fn upvarify(&mut self,
-                    ribs: &mut ~[@Rib],
+                    ribs: &mut Vec<@Rib> ,
                     rib_index: uint,
                     def_like: DefLike,
                     span: Span)
@@ -3483,7 +3522,7 @@ impl Resolver {
 
         let mut rib_index = rib_index + 1;
         while rib_index < ribs.len() {
-            match ribs[rib_index].kind {
+            match ribs.get(rib_index).kind {
                 NormalRibKind => {
                     // Nothing to do. Continue.
                 }
@@ -3573,7 +3612,7 @@ impl Resolver {
     }
 
     fn search_ribs(&mut self,
-                       ribs: &mut ~[@Rib],
+                       ribs: &mut Vec<@Rib> ,
                        name: Name,
                        span: Span)
                        -> Option<DefLike> {
@@ -3584,7 +3623,7 @@ impl Resolver {
         while i != 0 {
             i -= 1;
             let binding_opt = {
-                let bindings = ribs[i].bindings.borrow();
+                let bindings = ribs.get(i).bindings.borrow();
                 bindings.get().find_copy(&name)
             };
             match binding_opt {
@@ -3655,7 +3694,7 @@ impl Resolver {
                                             generics,
                                             implemented_traits,
                                             self_type,
-                                            *methods);
+                                            methods.as_slice());
             }
 
             ItemTrait(ref generics, ref traits, ref methods) => {
@@ -3729,7 +3768,7 @@ impl Resolver {
             ItemStruct(ref struct_def, ref generics) => {
                 self.resolve_struct(item.id,
                                     generics,
-                                    struct_def.fields);
+                                    struct_def.fields.as_slice());
             }
 
             ItemMod(ref module_) => {
@@ -3808,7 +3847,7 @@ impl Resolver {
                     // Associate this type parameter with
                     // the item that bound it
                     self.record_def(type_parameter.id,
-                                    (DefTyParamBinder(node_id), AllPublic));
+                                    (DefTyParamBinder(node_id), LastMod(AllPublic)));
                     // plain insert (no renaming)
                     let mut bindings = function_type_rib.bindings
                                                         .borrow_mut();
@@ -4058,7 +4097,7 @@ impl Resolver {
                         TraitImplementation);
 
                     // Record the current set of trait references.
-                    let mut new_trait_refs = ~[];
+                    let mut new_trait_refs = Vec::new();
                     {
                         let def_map = this.def_map.borrow();
                         let r = def_map.get().find(&trait_reference.ref_id);
@@ -4141,7 +4180,7 @@ impl Resolver {
     fn binding_mode_map(&mut self, pat: @Pat) -> BindingMap {
         let mut result = HashMap::new();
         pat_bindings(self.def_map, pat, |binding_mode, _id, sp, path| {
-            let name = mtwt_resolve(path_to_ident(path));
+            let name = mtwt::resolve(path_to_ident(path));
             result.insert(name,
                           binding_info {span: sp,
                                         binding_mode: binding_mode});
@@ -4152,8 +4191,10 @@ impl Resolver {
     // check that all of the arms in an or-pattern have exactly the
     // same set of bindings, with the same binding modes for each.
     fn check_consistent_bindings(&mut self, arm: &Arm) {
-        if arm.pats.len() == 0 { return; }
-        let map_0 = self.binding_mode_map(arm.pats[0]);
+        if arm.pats.len() == 0 {
+            return
+        }
+        let map_0 = self.binding_mode_map(*arm.pats.get(0));
         for (i, p) in arm.pats.iter().enumerate() {
             let map_i = self.binding_mode_map(*p);
 
@@ -4211,7 +4252,7 @@ impl Resolver {
         self.check_consistent_bindings(arm);
 
         visit::walk_expr_opt(self, arm.guard, ());
-        self.resolve_block(arm.body);
+        self.resolve_expr(arm.body);
 
         let mut value_ribs = self.value_ribs.borrow_mut();
         value_ribs.get().pop();
@@ -4256,7 +4297,7 @@ impl Resolver {
 
             TyPath(ref path, ref bounds, path_id) => {
                 // This is a path in the type namespace. Walk through scopes
-                // scopes looking for it.
+                // looking for it.
                 let mut result_def = None;
 
                 // First, check to see whether the name is a primitive type.
@@ -4269,7 +4310,7 @@ impl Resolver {
 
                         Some(&primitive_type) => {
                             result_def =
-                                Some((DefPrimTy(primitive_type), AllPublic));
+                                Some((DefPrimTy(primitive_type), LastMod(AllPublic)));
 
                             if path.segments
                                    .iter()
@@ -4373,8 +4414,8 @@ impl Resolver {
                     // such a value is simply disallowed (since it's rarely
                     // what you want).
 
-                    let ident = path.segments[0].identifier;
-                    let renamed = mtwt_resolve(ident);
+                    let ident = path.segments.get(0).identifier;
+                    let renamed = mtwt::resolve(ident);
 
                     match self.resolve_bare_identifier_pattern(ident) {
                         FoundStructOrEnumVariant(def, lp)
@@ -4438,7 +4479,7 @@ impl Resolver {
                             // will be able to distinguish variants from
                             // locals in patterns.
 
-                            self.record_def(pattern.id, (def, AllPublic));
+                            self.record_def(pattern.id, (def, LastMod(AllPublic)));
 
                             // Add the binding to the local ribs, if it
                             // doesn't already exist in the bindings list. (We
@@ -4453,8 +4494,9 @@ impl Resolver {
                                     {
                                         let mut value_ribs =
                                             this.value_ribs.borrow_mut();
-                                        let last_rib = value_ribs.get()[
-                                            value_ribs.get().len() - 1];
+                                        let length = value_ribs.get().len();
+                                        let last_rib = value_ribs.get().get(
+                                            length - 1);
                                         let mut bindings =
                                             last_rib.bindings.borrow_mut();
                                         bindings.get().insert(renamed,
@@ -4479,8 +4521,9 @@ impl Resolver {
                                     {
                                         let mut value_ribs =
                                             this.value_ribs.borrow_mut();
-                                        let last_rib = value_ribs.get()[
-                                                value_ribs.get().len() - 1];
+                                        let length = value_ribs.get().len();
+                                        let last_rib = value_ribs.get().get(
+                                                length - 1);
                                         let mut bindings =
                                             last_rib.bindings.borrow_mut();
                                         bindings.get().insert(renamed,
@@ -4632,10 +4675,10 @@ impl Resolver {
                         // the lookup happened only within the current module.
                         match def.def {
                             def @ DefVariant(..) | def @ DefStruct(..) => {
-                                return FoundStructOrEnumVariant(def, AllPublic);
+                                return FoundStructOrEnumVariant(def, LastMod(AllPublic));
                             }
                             def @ DefStatic(_, false) => {
-                                return FoundConst(def, AllPublic);
+                                return FoundConst(def, LastMod(AllPublic));
                             }
                             _ => {
                                 return BareIdentifierPatternUnresolved;
@@ -4711,7 +4754,7 @@ impl Resolver {
                                                       namespace,
                                                       span) {
                 Some(def) => {
-                    return Some((def, AllPublic));
+                    return Some((def, LastMod(AllPublic)));
                 }
                 None => {
                     // Continue.
@@ -4741,8 +4784,8 @@ impl Resolver {
                             // Found it. Stop the search here.
                             let p = child_name_bindings.defined_in_public_namespace(
                                             namespace);
-                            let lp = if p {AllPublic} else {
-                                DependsOn(def_id_of_def(def))
+                            let lp = if p {LastMod(AllPublic)} else {
+                                LastMod(DependsOn(def_id_of_def(def)))
                             };
                             return ChildNameDefinition(def, lp);
                         }
@@ -4764,8 +4807,8 @@ impl Resolver {
                             Some(def) => {
                                 // Found it.
                                 let id = import_resolution.id(namespace);
-                                self.used_imports.insert(id);
-                                return ImportNameDefinition(def, AllPublic);
+                                self.used_imports.insert((id, namespace));
+                                return ImportNameDefinition(def, LastMod(AllPublic));
                             }
                             None => {
                                 // This can happen with external impls, due to
@@ -4792,8 +4835,8 @@ impl Resolver {
                     match module.def_id.get() {
                         None => {} // Continue.
                         Some(def_id) => {
-                            let lp = if module.is_public {AllPublic} else {
-                                DependsOn(def_id)
+                            let lp = if module.is_public {LastMod(AllPublic)} else {
+                                LastMod(DependsOn(def_id))
                             };
                             return ChildNameDefinition(DefMod(def_id), lp);
                         }
@@ -4887,7 +4930,7 @@ impl Resolver {
                                                  0,
                                                  path.span,
                                                  PathSearch,
-                                                 AllPublic) {
+                                                 LastMod(AllPublic)) {
             Failed => {
                 let msg = format!("use of undeclared module `::{}`",
                                   self.idents_to_str(module_path_idents));
@@ -4928,7 +4971,7 @@ impl Resolver {
         let search_result;
         match namespace {
             ValueNS => {
-                let renamed = mtwt_resolve(ident);
+                let renamed = mtwt::resolve(ident);
                 let mut value_ribs = self.value_ribs.borrow_mut();
                 search_result = self.search_ribs(value_ribs.get(),
                                                  renamed,
@@ -4983,7 +5026,7 @@ impl Resolver {
                         // This lookup is "all public" because it only searched
                         // for one identifier in the current module (couldn't
                         // have passed through reexports or anything like that.
-                        return Some((def, AllPublic));
+                        return Some((def, LastMod(AllPublic)));
                     }
                 }
             }
@@ -5015,8 +5058,8 @@ impl Resolver {
                                 -> Option<~str> {
         let this = &mut *self;
 
-        let mut maybes: ~[token::InternedString] = ~[];
-        let mut values: ~[uint] = ~[];
+        let mut maybes: Vec<token::InternedString> = Vec::new();
+        let mut values: Vec<uint> = Vec::new();
 
         let mut j = {
             let value_ribs = this.value_ribs.borrow();
@@ -5025,7 +5068,7 @@ impl Resolver {
         while j != 0 {
             j -= 1;
             let value_ribs = this.value_ribs.borrow();
-            let bindings = value_ribs.get()[j].bindings.borrow();
+            let bindings = value_ribs.get().get(j).bindings.borrow();
             for (&k, _) in bindings.get().iter() {
                 maybes.push(token::get_name(k));
                 values.push(uint::MAX);
@@ -5034,20 +5077,20 @@ impl Resolver {
 
         let mut smallest = 0;
         for (i, other) in maybes.iter().enumerate() {
-            values[i] = name.lev_distance(other.get());
+            *values.get_mut(i) = name.lev_distance(other.get());
 
-            if values[i] <= values[smallest] {
+            if *values.get(i) <= *values.get(smallest) {
                 smallest = i;
             }
         }
 
         if values.len() > 0 &&
-            values[smallest] != uint::MAX &&
-            values[smallest] < name.len() + 2 &&
-            values[smallest] <= max_distance &&
-            name != maybes[smallest].get() {
+            *values.get(smallest) != uint::MAX &&
+            *values.get(smallest) < name.len() + 2 &&
+            *values.get(smallest) <= max_distance &&
+            name != maybes.get(smallest).get() {
 
-            Some(maybes[smallest].get().to_str())
+            Some(maybes.get(smallest).get().to_str())
 
         } else {
             None
@@ -5171,13 +5214,13 @@ impl Resolver {
             ExprLoop(_, Some(label)) => {
                 self.with_label_rib(|this| {
                     let def_like = DlDef(DefLabel(expr.id));
-                    // plain insert (no renaming)
                     {
                         let mut label_ribs = this.label_ribs.borrow_mut();
-                        let rib = label_ribs.get()[label_ribs.get().len() -
-                                                   1];
+                        let length = label_ribs.get().len();
+                        let rib = label_ribs.get().get(length - 1);
                         let mut bindings = rib.bindings.borrow_mut();
-                        bindings.get().insert(label.name, def_like);
+                        let renamed = mtwt::resolve(label);
+                        bindings.get().insert(renamed, def_like);
                     }
 
                     visit::walk_expr(this, expr, ());
@@ -5188,14 +5231,15 @@ impl Resolver {
 
             ExprBreak(Some(label)) | ExprAgain(Some(label)) => {
                 let mut label_ribs = self.label_ribs.borrow_mut();
-                match self.search_ribs(label_ribs.get(), label, expr.span) {
+                let renamed = mtwt::resolve(label);
+                match self.search_ribs(label_ribs.get(), renamed, expr.span) {
                     None =>
                         self.resolve_error(expr.span,
                                               format!("use of undeclared label `{}`",
-                                                   token::get_name(label))),
+                                                   token::get_ident(label))),
                     Some(DlDef(def @ DefLabel(_))) => {
-                        // FIXME: is AllPublic correct?
-                        self.record_def(expr.id, (def, AllPublic))
+                        // Since this def is a label, it is never read.
+                        self.record_def(expr.id, (def, LastMod(AllPublic)))
                     }
                     Some(_) => {
                         self.session.span_bug(expr.span,
@@ -5219,75 +5263,14 @@ impl Resolver {
                 // the field name so that we can do some nice error reporting
                 // later on in typeck.
                 let traits = self.search_for_traits_containing_method(ident);
-                self.trait_map.insert(expr.id, @RefCell::new(traits));
+                self.trait_map.insert(expr.id, traits);
             }
-            ExprMethodCall(_, ident, _, _) => {
+            ExprMethodCall(ident, _, _) => {
                 debug!("(recording candidate traits for expr) recording \
                         traits for {}",
                        expr.id);
                 let traits = self.search_for_traits_containing_method(ident);
-                self.trait_map.insert(expr.id, @RefCell::new(traits));
-            }
-            ExprBinary(_, BiAdd, _, _) | ExprAssignOp(_, BiAdd, _, _) => {
-                let i = self.lang_items.add_trait();
-                self.add_fixed_trait_for_expr(expr.id, i);
-            }
-            ExprBinary(_, BiSub, _, _) | ExprAssignOp(_, BiSub, _, _) => {
-                let i = self.lang_items.sub_trait();
-                self.add_fixed_trait_for_expr(expr.id, i);
-            }
-            ExprBinary(_, BiMul, _, _) | ExprAssignOp(_, BiMul, _, _) => {
-                let i = self.lang_items.mul_trait();
-                self.add_fixed_trait_for_expr(expr.id, i);
-            }
-            ExprBinary(_, BiDiv, _, _) | ExprAssignOp(_, BiDiv, _, _) => {
-                let i = self.lang_items.div_trait();
-                self.add_fixed_trait_for_expr(expr.id, i);
-            }
-            ExprBinary(_, BiRem, _, _) | ExprAssignOp(_, BiRem, _, _) => {
-                let i = self.lang_items.rem_trait();
-                self.add_fixed_trait_for_expr(expr.id, i);
-            }
-            ExprBinary(_, BiBitXor, _, _) | ExprAssignOp(_, BiBitXor, _, _) => {
-                let i = self.lang_items.bitxor_trait();
-                self.add_fixed_trait_for_expr(expr.id, i);
-            }
-            ExprBinary(_, BiBitAnd, _, _) | ExprAssignOp(_, BiBitAnd, _, _) => {
-                let i = self.lang_items.bitand_trait();
-                self.add_fixed_trait_for_expr(expr.id, i);
-            }
-            ExprBinary(_, BiBitOr, _, _) | ExprAssignOp(_, BiBitOr, _, _) => {
-                let i = self.lang_items.bitor_trait();
-                self.add_fixed_trait_for_expr(expr.id, i);
-            }
-            ExprBinary(_, BiShl, _, _) | ExprAssignOp(_, BiShl, _, _) => {
-                let i = self.lang_items.shl_trait();
-                self.add_fixed_trait_for_expr(expr.id, i);
-            }
-            ExprBinary(_, BiShr, _, _) | ExprAssignOp(_, BiShr, _, _) => {
-                let i = self.lang_items.shr_trait();
-                self.add_fixed_trait_for_expr(expr.id, i);
-            }
-            ExprBinary(_, BiLt, _, _) | ExprBinary(_, BiLe, _, _) |
-            ExprBinary(_, BiGe, _, _) | ExprBinary(_, BiGt, _, _) => {
-                let i = self.lang_items.ord_trait();
-                self.add_fixed_trait_for_expr(expr.id, i);
-            }
-            ExprBinary(_, BiEq, _, _) | ExprBinary(_, BiNe, _, _) => {
-                let i = self.lang_items.eq_trait();
-                self.add_fixed_trait_for_expr(expr.id, i);
-            }
-            ExprUnary(_, UnNeg, _) => {
-                let i = self.lang_items.neg_trait();
-                self.add_fixed_trait_for_expr(expr.id, i);
-            }
-            ExprUnary(_, UnNot, _) => {
-                let i = self.lang_items.not_trait();
-                self.add_fixed_trait_for_expr(expr.id, i);
-            }
-            ExprIndex(..) => {
-                let i = self.lang_items.index_trait();
-                self.add_fixed_trait_for_expr(expr.id, i);
+                self.trait_map.insert(expr.id, traits);
             }
             _ => {
                 // Nothing to do.
@@ -5295,11 +5278,11 @@ impl Resolver {
         }
     }
 
-    fn search_for_traits_containing_method(&mut self, name: Ident) -> ~[DefId] {
+    fn search_for_traits_containing_method(&mut self, name: Ident) -> Vec<DefId> {
         debug!("(searching for traits containing method) looking for '{}'",
                token::get_ident(name));
 
-        let mut found_traits = ~[];
+        let mut found_traits = Vec::new();
         let mut search_module = self.current_module;
         let method_map = self.method_map.borrow();
         match method_map.get().find(&name.name) {
@@ -5353,7 +5336,7 @@ impl Resolver {
                     };
                     if candidate_traits.contains(&did) {
                         self.add_trait_info(&mut found_traits, did, name);
-                        self.used_imports.insert(import.type_id.get());
+                        self.used_imports.insert((import.type_id.get(), TypeNS));
                     }
                 }
 
@@ -5371,7 +5354,7 @@ impl Resolver {
     }
 
     fn add_trait_info(&self,
-                          found_traits: &mut ~[DefId],
+                          found_traits: &mut Vec<DefId> ,
                           trait_def_id: DefId,
                           name: Ident) {
         debug!("(adding trait info) found trait {}:{} for method '{}'",
@@ -5381,20 +5364,11 @@ impl Resolver {
         found_traits.push(trait_def_id);
     }
 
-    fn add_fixed_trait_for_expr(&mut self,
-                                    expr_id: NodeId,
-                                    trait_id: Option<DefId>) {
-        match trait_id {
-            Some(trait_id) => {
-                self.trait_map.insert(expr_id, @RefCell::new(~[trait_id]));
-            }
-            None => {}
-        }
-    }
-
     fn record_def(&mut self, node_id: NodeId, (def, lp): (Def, LastPrivate)) {
         debug!("(recording def) recording {:?} for {:?}, last private {:?}",
                 def, node_id, lp);
+        assert!(match lp {LastImport{..} => false, _ => true},
+                "Import should only be used for `use` directives");
         self.last_private.insert(node_id, lp);
         let mut def_map = self.def_map.borrow_mut();
         def_map.get().insert_or_update_with(node_id, def, |_, old_value| {
@@ -5426,16 +5400,17 @@ impl Resolver {
     //
     // Unused import checking
     //
-    // Although this is a lint pass, it lives in here because it depends on
-    // resolve data structures.
+    // Although this is mostly a lint pass, it lives in here because it depends on
+    // resolve data structures and because it finalises the privacy information for
+    // `use` directives.
     //
 
-    fn check_for_unused_imports(&self, krate: &ast::Crate) {
+    fn check_for_unused_imports(&mut self, krate: &ast::Crate) {
         let mut visitor = UnusedImportCheckVisitor{ resolver: self };
         visit::walk_crate(&mut visitor, krate, ());
     }
 
-    fn check_for_item_unused_imports(&self, vi: &ViewItem) {
+    fn check_for_item_unused_imports(&mut self, vi: &ViewItem) {
         // Ignore is_public import statements because there's no way to be sure
         // whether they're used or not. Also ignore imports with a dummy span
         // because this means that they were generated in some fashion by the
@@ -5444,31 +5419,75 @@ impl Resolver {
         if vi.span == DUMMY_SP { return }
 
         match vi.node {
-            ViewItemExternMod(..) => {} // ignore
+            ViewItemExternCrate(..) => {} // ignore
             ViewItemUse(ref path) => {
                 for p in path.iter() {
                     match p.node {
-                        ViewPathSimple(_, _, id) | ViewPathGlob(_, id) => {
-                            if !self.used_imports.contains(&id) {
-                                self.session.add_lint(UnusedImports,
-                                                      id, p.span,
-                                                      ~"unused import");
-                            }
-                        }
-
+                        ViewPathSimple(_, _, id) => self.finalize_import(id, p.span),
                         ViewPathList(_, ref list, _) => {
                             for i in list.iter() {
-                                if !self.used_imports.contains(&i.node.id) {
-                                    self.session.add_lint(UnusedImports,
-                                                          i.node.id, i.span,
-                                                          ~"unused import");
-                                }
+                                self.finalize_import(i.node.id, i.span);
                             }
-                        }
+                        },
+                        ViewPathGlob(_, id) => {
+                            if !self.used_imports.contains(&(id, TypeNS)) &&
+                               !self.used_imports.contains(&(id, ValueNS)) {
+                                self.session.add_lint(UnusedImports, id, p.span, ~"unused import");
+                            }
+                        },
                     }
                 }
             }
         }
+    }
+
+    // We have information about whether `use` (import) directives are actually used now.
+    // If an import is not used at all, we signal a lint error. If an import is only used
+    // for a single namespace, we remove the other namespace from the recorded privacy
+    // information. That means in privacy.rs, we will only check imports and namespaces
+    // which are used. In particular, this means that if an import could name either a
+    // public or private item, we will check the correct thing, dependent on how the import
+    // is used.
+    fn finalize_import(&mut self, id: NodeId, span: Span) {
+        debug!("finalizing import uses for {}", self.session.codemap.span_to_snippet(span));
+
+        if !self.used_imports.contains(&(id, TypeNS)) &&
+           !self.used_imports.contains(&(id, ValueNS)) {
+            self.session.add_lint(UnusedImports, id, span, ~"unused import");
+        }
+
+        let (v_priv, t_priv) = match self.last_private.find(&id) {
+            Some(&LastImport{value_priv: v,
+                             value_used: _,
+                             type_priv: t,
+                             type_used: _}) => (v, t),
+            Some(_) => fail!("We should only have LastImport for `use` directives"),
+            _ => return,
+        };
+
+        let mut v_used = if self.used_imports.contains(&(id, ValueNS)) {
+            Used
+        } else {
+            Unused
+        };
+        let t_used = if self.used_imports.contains(&(id, TypeNS)) {
+            Used
+        } else {
+            Unused
+        };
+
+        match (v_priv, t_priv) {
+            // Since some items may be both in the value _and_ type namespaces (e.g., structs)
+            // we might have two LastPrivates pointing at the same thing. There is no point
+            // checking both, so lets not check the value one.
+            (Some(DependsOn(def_v)), Some(DependsOn(def_t))) if def_v == def_t => v_used = Unused,
+            _ => {},
+        }
+
+        self.last_private.insert(id, LastImport{value_priv: v_priv,
+                                                value_used: v_used,
+                                                type_priv: t_priv,
+                                                type_used: t_used});
     }
 
     //
@@ -5480,7 +5499,7 @@ impl Resolver {
 
     /// A somewhat inefficient routine to obtain the name of a module.
     fn module_to_str(&mut self, module_: @Module) -> ~str {
-        let mut idents = ~[];
+        let mut idents = Vec::new();
         let mut current_module = module_;
         loop {
             match current_module.parent_link {
@@ -5501,7 +5520,9 @@ impl Resolver {
         if idents.len() == 0 {
             return ~"???";
         }
-        return self.idents_to_str(idents.move_rev_iter().collect::<~[ast::Ident]>());
+        return self.idents_to_str(idents.move_rev_iter()
+                                        .collect::<Vec<ast::Ident>>()
+                                        .as_slice());
     }
 
     #[allow(dead_code)]   // useful for debugging

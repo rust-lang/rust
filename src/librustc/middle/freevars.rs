@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -11,11 +11,13 @@
 // A pass that annotates for each loops and functions with the free
 // variables that they contain.
 
+#[allow(non_camel_case_types)];
 
 use middle::resolve;
 use middle::ty;
+use util::nodemap::{NodeMap, NodeSet};
 
-use std::hashmap::HashMap;
+use std::vec_ng::Vec;
 use syntax::codemap::Span;
 use syntax::{ast, ast_util};
 use syntax::visit;
@@ -28,12 +30,12 @@ pub struct freevar_entry {
     def: ast::Def, //< The variable being accessed free.
     span: Span     //< First span where it is accessed (there can be multiple)
 }
-pub type freevar_info = @~[@freevar_entry];
-pub type freevar_map = HashMap<ast::NodeId, freevar_info>;
+pub type freevar_info = @Vec<@freevar_entry> ;
+pub type freevar_map = NodeMap<freevar_info>;
 
 struct CollectFreevarsVisitor {
-    seen: HashMap<ast::NodeId, ()>,
-    refs: ~[@freevar_entry],
+    seen: NodeSet,
+    refs: Vec<@freevar_entry> ,
     def_map: resolve::DefMap,
 }
 
@@ -64,12 +66,12 @@ impl Visitor<int> for CollectFreevarsVisitor {
                         }
                         if i == depth { // Made it to end of loop
                             let dnum = ast_util::def_id_of_def(def).node;
-                            if !self.seen.contains_key(&dnum) {
+                            if !self.seen.contains(&dnum) {
                                 self.refs.push(@freevar_entry {
                                     def: def,
                                     span: expr.span,
                                 });
-                                self.seen.insert(dnum, ());
+                                self.seen.insert(dnum);
                             }
                         }
                     }
@@ -88,8 +90,8 @@ impl Visitor<int> for CollectFreevarsVisitor {
 // of the AST, we take a walker function that we invoke with a visitor
 // in order to start the search.
 fn collect_freevars(def_map: resolve::DefMap, blk: &ast::Block) -> freevar_info {
-    let seen = HashMap::new();
-    let refs = ~[];
+    let seen = NodeSet::new();
+    let refs = Vec::new();
 
     let mut v = CollectFreevarsVisitor {
         seen: seen,
@@ -128,7 +130,7 @@ pub fn annotate_freevars(def_map: resolve::DefMap, krate: &ast::Crate) ->
    freevar_map {
     let mut visitor = AnnotateFreevarsVisitor {
         def_map: def_map,
-        freevars: HashMap::new(),
+        freevars: NodeMap::new(),
     };
     visit::walk_crate(&mut visitor, krate, ());
 

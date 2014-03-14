@@ -17,8 +17,9 @@ use lib::llvm::StructRetAttribute;
 use middle::trans::context::CrateContext;
 use middle::trans::context::task_llcx;
 use middle::trans::cabi::*;
-
 use middle::trans::type_::Type;
+
+use std::vec_ng::Vec;
 
 fn align_up_to(off: uint, a: uint) -> uint {
     return (off + a - 1u) / a * a;
@@ -132,9 +133,9 @@ fn padding_ty(align: uint, offset: uint) -> Option<Type> {
     return None;
 }
 
-fn coerce_to_int(size: uint) -> ~[Type] {
+fn coerce_to_int(size: uint) -> Vec<Type> {
     let int_ty = Type::i32();
-    let mut args = ~[];
+    let mut args = Vec::new();
 
     let mut n = size / 32;
     while n > 0 {
@@ -155,7 +156,7 @@ fn coerce_to_int(size: uint) -> ~[Type] {
 fn struct_ty(ty: Type) -> Type {
     let size = ty_size(ty) * 8;
     let fields = coerce_to_int(size);
-    return Type::struct_(fields, false);
+    return Type::struct_(fields.as_slice(), false);
 }
 
 pub fn compute_abi_info(_ccx: &CrateContext,
@@ -169,7 +170,7 @@ pub fn compute_abi_info(_ccx: &CrateContext,
     };
 
     let sret = ret_ty.is_indirect();
-    let mut arg_tys = ~[];
+    let mut arg_tys = Vec::new();
     let mut offset = if sret { 4 } else { 0 };
 
     for aty in atys.iter() {

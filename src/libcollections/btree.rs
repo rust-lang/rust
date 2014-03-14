@@ -18,7 +18,8 @@
 ///a length (the height of the tree), and lower and upper bounds on the
 ///number of elements that a given node can contain.
 
-use std::vec::OwnedVector;
+use std::fmt;
+use std::fmt::Show;
 
 #[allow(missing_doc)]
 pub struct BTree<K, V> {
@@ -91,11 +92,22 @@ impl<K: Clone + TotalOrd, V: Clone> Clone for BTree<K, V> {
     }
 }
 
+impl<K: TotalOrd, V: TotalEq> Eq for BTree<K, V> {
+    fn eq(&self, other: &BTree<K, V>) -> bool {
+        self.equals(other)
+    }
+}
 
 impl<K: TotalOrd, V: TotalEq> TotalEq for BTree<K, V> {
     ///Testing equality on BTrees by comparing the root.
     fn equals(&self, other: &BTree<K, V>) -> bool {
         self.root.cmp(&other.root) == Equal
+    }
+}
+
+impl<K: TotalOrd, V: TotalEq> Ord for BTree<K, V> {
+    fn lt(&self, other: &BTree<K, V>) -> bool {
+        self.cmp(other) == Less
     }
 }
 
@@ -106,11 +118,10 @@ impl<K: TotalOrd, V: TotalEq> TotalOrd for BTree<K, V> {
     }
 }
 
-impl<K: ToStr + TotalOrd, V: ToStr> ToStr for BTree<K, V> {
+impl<K: fmt::Show + TotalOrd, V: fmt::Show> fmt::Show for BTree<K, V> {
     ///Returns a string representation of the BTree
-    fn to_str(&self) -> ~str {
-        let ret = self.root.to_str();
-        ret
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.root.fmt(f)
     }
 }
 
@@ -191,6 +202,12 @@ impl<K: Clone + TotalOrd, V: Clone> Clone for Node<K, V> {
     }
 }
 
+impl<K: TotalOrd, V: TotalEq> Eq for Node<K, V> {
+    fn eq(&self, other: &Node<K, V>) -> bool {
+        self.equals(other)
+    }
+}
+
 impl<K: TotalOrd, V: TotalEq> TotalEq for Node<K, V> {
     ///Returns whether two nodes are equal based on the keys of each element.
     ///Two nodes are equal if all of their keys are the same.
@@ -215,6 +232,12 @@ impl<K: TotalOrd, V: TotalEq> TotalEq for Node<K, V> {
     }
 }
 
+impl<K: TotalOrd, V: TotalEq> Ord for Node<K, V> {
+    fn lt(&self, other: &Node<K, V>) -> bool {
+        self.cmp(other) == Less
+    }
+}
+
 impl<K: TotalOrd, V: TotalEq> TotalOrd for Node<K, V> {
     ///Implementation of TotalOrd for Nodes.
     fn cmp(&self, other: &Node<K, V>) -> Ordering {
@@ -235,15 +258,15 @@ impl<K: TotalOrd, V: TotalEq> TotalOrd for Node<K, V> {
     }
 }
 
-impl<K: ToStr + TotalOrd, V: ToStr> ToStr for Node<K, V> {
+impl<K: fmt::Show + TotalOrd, V: fmt::Show> fmt::Show for Node<K, V> {
     ///Returns a string representation of a Node.
     ///Will iterate over the Node and show "Key: x, value: y, child: () // "
     ///for all elements in the Node. "Child" only exists if the Node contains
     ///a branch.
-    fn to_str(&self) -> ~str {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            LeafNode(ref leaf) => leaf.to_str(),
-            BranchNode(ref branch) => branch.to_str()
+            LeafNode(ref leaf) => leaf.fmt(f),
+            BranchNode(ref branch) => branch.fmt(f),
         }
     }
 }
@@ -380,10 +403,22 @@ impl<K: Clone + TotalOrd, V: Clone> Clone for Leaf<K, V> {
     }
 }
 
+impl<K: TotalOrd, V: TotalEq> Eq for Leaf<K, V> {
+    fn eq(&self, other: &Leaf<K, V>) -> bool {
+        self.equals(other)
+    }
+}
+
 impl<K: TotalOrd, V: TotalEq> TotalEq for Leaf<K, V> {
     ///Implementation of equals function for leaves that compares LeafElts.
     fn equals(&self, other: &Leaf<K, V>) -> bool {
         self.elts.equals(&other.elts)
+    }
+}
+
+impl<K: TotalOrd, V: TotalEq> Ord for Leaf<K, V> {
+    fn lt(&self, other: &Leaf<K, V>) -> bool {
+        self.cmp(other) == Less
     }
 }
 
@@ -401,10 +436,14 @@ impl<K: TotalOrd, V: TotalEq> TotalOrd for Leaf<K, V> {
 }
 
 
-impl<K: ToStr + TotalOrd, V: ToStr> ToStr for Leaf<K, V> {
+impl<K: fmt::Show + TotalOrd, V: fmt::Show> fmt::Show for Leaf<K, V> {
     ///Returns a string representation of a Leaf.
-    fn to_str(&self) -> ~str {
-        self.elts.iter().map(|s| s.to_str()).to_owned_vec().connect(" // ")
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for (i, s) in self.elts.iter().enumerate() {
+            if i != 0 { try!(write!(f.buf, " // ")) }
+            try!(write!(f.buf, "{}", *s))
+        }
+        Ok(())
     }
 }
 
@@ -598,10 +637,22 @@ impl<K: Clone + TotalOrd, V: Clone> Clone for Branch<K, V> {
     }
 }
 
+impl<K: TotalOrd, V: TotalEq> Eq for Branch<K, V> {
+    fn eq(&self, other: &Branch<K, V>) -> bool {
+        self.equals(other)
+    }
+}
+
 impl<K: TotalOrd, V: TotalEq> TotalEq for Branch<K, V> {
     ///Equals function for Branches--compares all the elements in each branch
     fn equals(&self, other: &Branch<K, V>) -> bool {
         self.elts.equals(&other.elts)
+    }
+}
+
+impl<K: TotalOrd, V: TotalEq> Ord for Branch<K, V> {
+    fn lt(&self, other: &Branch<K, V>) -> bool {
+        self.cmp(other) == Less
     }
 }
 
@@ -618,13 +669,14 @@ impl<K: TotalOrd, V: TotalEq> TotalOrd for Branch<K, V> {
     }
 }
 
-impl<K: ToStr + TotalOrd, V: ToStr> ToStr for Branch<K, V> {
+impl<K: fmt::Show + TotalOrd, V: fmt::Show> fmt::Show for Branch<K, V> {
     ///Returns a string representation of a Branch.
-    fn to_str(&self) -> ~str {
-        let mut ret = self.elts.iter().map(|s| s.to_str()).to_owned_vec().connect(" // ");
-        ret.push_str(" // ");
-        ret.push_str("rightmost child: ("+ self.rightmost_child.to_str() +") ");
-        ret
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for (i, s) in self.elts.iter().enumerate() {
+            if i != 0 { try!(write!(f.buf, " // ")) }
+            try!(write!(f.buf, "{}", *s))
+        }
+        write!(f.buf, " // rightmost child: ({}) ", *self.rightmost_child)
     }
 }
 
@@ -658,10 +710,22 @@ impl<K: Clone + TotalOrd, V: Clone> Clone for LeafElt<K, V> {
     }
 }
 
+impl<K: TotalOrd, V: TotalEq> Eq for LeafElt<K, V> {
+    fn eq(&self, other: &LeafElt<K, V>) -> bool {
+        self.equals(other)
+    }
+}
+
 impl<K: TotalOrd, V: TotalEq> TotalEq for LeafElt<K, V> {
     ///TotalEq for LeafElts
     fn equals(&self, other: &LeafElt<K, V>) -> bool {
         self.key.equals(&other.key) && self.value.equals(&other.value)
+    }
+}
+
+impl<K: TotalOrd, V: TotalEq> Ord for LeafElt<K, V> {
+    fn lt(&self, other: &LeafElt<K, V>) -> bool {
+        self.cmp(other) == Less
     }
 }
 
@@ -672,11 +736,10 @@ impl<K: TotalOrd, V: TotalEq> TotalOrd for LeafElt<K, V> {
     }
 }
 
-impl<K: ToStr + TotalOrd, V: ToStr> ToStr for LeafElt<K, V> {
+impl<K: fmt::Show + TotalOrd, V: fmt::Show> fmt::Show for LeafElt<K, V> {
     ///Returns a string representation of a LeafElt.
-    fn to_str(&self) -> ~str {
-        format!("Key: {}, value: {};",
-            self.key.to_str(), self.value.to_str())
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f.buf, "Key: {}, value: {};", self.key, self.value)
     }
 }
 
@@ -701,10 +764,22 @@ impl<K: Clone + TotalOrd, V: Clone> Clone for BranchElt<K, V> {
     }
 }
 
+impl<K: TotalOrd, V: TotalEq> Eq for BranchElt<K, V>{
+    fn eq(&self, other: &BranchElt<K, V>) -> bool {
+        self.equals(other)
+    }
+}
+
 impl<K: TotalOrd, V: TotalEq> TotalEq for BranchElt<K, V>{
     ///TotalEq for BranchElts
     fn equals(&self, other: &BranchElt<K, V>) -> bool {
         self.key.equals(&other.key)&&self.value.equals(&other.value)
+    }
+}
+
+impl<K: TotalOrd, V: TotalEq> Ord for BranchElt<K, V> {
+    fn lt(&self, other: &BranchElt<K, V>) -> bool {
+        self.cmp(other) == Less
     }
 }
 
@@ -715,12 +790,12 @@ impl<K: TotalOrd, V: TotalEq> TotalOrd for BranchElt<K, V> {
     }
 }
 
-impl<K: ToStr + TotalOrd, V: ToStr> ToStr for BranchElt<K, V> {
-    ///Returns string containing key, value, and child (which should recur to a leaf)
-    ///Consider changing in future to be more readable.
-    fn to_str(&self) -> ~str {
-        format!("Key: {}, value: {}, (child: {})",
-            self.key.to_str(), self.value.to_str(), self.left.to_str())
+impl<K: fmt::Show + TotalOrd, V: fmt::Show> fmt::Show for BranchElt<K, V> {
+    /// Returns string containing key, value, and child (which should recur to a
+    /// leaf) Consider changing in future to be more readable.
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f.buf, "Key: {}, value: {}, (child: {})",
+               self.key, self.value, *self.left)
     }
 }
 

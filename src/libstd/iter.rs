@@ -65,7 +65,7 @@ the rest of the rust manuals.
 */
 
 use cmp;
-use num::{Zero, One, Integer, CheckedAdd, CheckedSub, Saturating, ToPrimitive};
+use num::{Zero, One, CheckedAdd, CheckedSub, Saturating, ToPrimitive, Int};
 use option::{Option, Some, None};
 use ops::{Add, Mul, Sub};
 use cmp::{Eq, Ord};
@@ -983,7 +983,7 @@ impl<A: Ord, T: Iterator<A>> OrdIterator<A> for T {
 }
 
 /// `MinMaxResult` is an enum returned by `min_max`. See `OrdIterator::min_max` for more detail.
-#[deriving(Clone, Eq)]
+#[deriving(Clone, Eq, Show)]
 pub enum MinMaxResult<T> {
     /// Empty iterator
     NoElements,
@@ -1757,7 +1757,7 @@ impl<'a,
 
 /// An iterator that yields `None` forever after the underlying iterator
 /// yields `None` once.
-#[deriving(Clone, DeepClone)]
+#[deriving(Clone)]
 pub struct Fuse<T> {
     priv iter: T,
     priv done: bool
@@ -1946,7 +1946,7 @@ impl<A: Add<A, A> + Clone> Iterator<A> for Counter<A> {
 }
 
 /// An iterator over the range [start, stop)
-#[deriving(Clone, DeepClone)]
+#[deriving(Clone)]
 pub struct Range<A> {
     priv state: A,
     priv stop: A,
@@ -2005,9 +2005,9 @@ impl<A: Add<A, A> + Ord + Clone + ToPrimitive> Iterator<A> for Range<A> {
     }
 }
 
-/// `Integer` is required to ensure the range will be the same regardless of
+/// `Int` is required to ensure the range will be the same regardless of
 /// the direction it is consumed.
-impl<A: Integer + Ord + Clone + ToPrimitive> DoubleEndedIterator<A> for Range<A> {
+impl<A: Int + Ord + Clone + ToPrimitive> DoubleEndedIterator<A> for Range<A> {
     #[inline]
     fn next_back(&mut self) -> Option<A> {
         if self.stop > self.state {
@@ -2020,7 +2020,7 @@ impl<A: Integer + Ord + Clone + ToPrimitive> DoubleEndedIterator<A> for Range<A>
 }
 
 /// An iterator over the range [start, stop]
-#[deriving(Clone, DeepClone)]
+#[deriving(Clone)]
 pub struct RangeInclusive<A> {
     priv range: Range<A>,
     priv done: bool
@@ -2033,7 +2033,7 @@ pub fn range_inclusive<A: Add<A, A> + Ord + Clone + One + ToPrimitive>(start: A,
     RangeInclusive{range: range(start, stop), done: false}
 }
 
-impl<A: Add<A, A> + Eq + Ord + Clone + ToPrimitive> Iterator<A> for RangeInclusive<A> {
+impl<A: Add<A, A> + Ord + Clone + ToPrimitive> Iterator<A> for RangeInclusive<A> {
     #[inline]
     fn next(&mut self) -> Option<A> {
         match self.range.next() {
@@ -2065,7 +2065,7 @@ impl<A: Add<A, A> + Eq + Ord + Clone + ToPrimitive> Iterator<A> for RangeInclusi
     }
 }
 
-impl<A: Sub<A, A> + Integer + Ord + Clone + ToPrimitive> DoubleEndedIterator<A>
+impl<A: Sub<A, A> + Int + Ord + Clone + ToPrimitive> DoubleEndedIterator<A>
     for RangeInclusive<A> {
     #[inline]
     fn next_back(&mut self) -> Option<A> {
@@ -2083,7 +2083,7 @@ impl<A: Sub<A, A> + Integer + Ord + Clone + ToPrimitive> DoubleEndedIterator<A>
 }
 
 /// An iterator over the range [start, stop) by `step`. It handles overflow by stopping.
-#[deriving(Clone, DeepClone)]
+#[deriving(Clone)]
 pub struct RangeStep<A> {
     priv state: A,
     priv stop: A,
@@ -2115,7 +2115,7 @@ impl<A: CheckedAdd + Ord + Clone> Iterator<A> for RangeStep<A> {
 }
 
 /// An iterator over the range [start, stop] by `step`. It handles overflow by stopping.
-#[deriving(Clone, DeepClone)]
+#[deriving(Clone)]
 pub struct RangeStepInclusive<A> {
     priv state: A,
     priv stop: A,
@@ -2150,7 +2150,7 @@ impl<A: CheckedAdd + Ord + Clone + Eq> Iterator<A> for RangeStepInclusive<A> {
 }
 
 /// An iterator that repeats an element endlessly
-#[deriving(Clone, DeepClone)]
+#[deriving(Clone)]
 pub struct Repeat<A> {
     priv element: A
 }
@@ -2244,7 +2244,7 @@ pub mod order {
     }
 
     /// Return `a` < `b` lexicographically (Using partial order, `Ord`)
-    pub fn lt<A: Eq + Ord, T: Iterator<A>>(mut a: T, mut b: T) -> bool {
+    pub fn lt<A: Ord, T: Iterator<A>>(mut a: T, mut b: T) -> bool {
         loop {
             match (a.next(), b.next()) {
                 (None, None) => return false,
@@ -2256,7 +2256,7 @@ pub mod order {
     }
 
     /// Return `a` <= `b` lexicographically (Using partial order, `Ord`)
-    pub fn le<A: Eq + Ord, T: Iterator<A>>(mut a: T, mut b: T) -> bool {
+    pub fn le<A: Ord, T: Iterator<A>>(mut a: T, mut b: T) -> bool {
         loop {
             match (a.next(), b.next()) {
                 (None, None) => return true,
@@ -2268,7 +2268,7 @@ pub mod order {
     }
 
     /// Return `a` > `b` lexicographically (Using partial order, `Ord`)
-    pub fn gt<A: Eq + Ord, T: Iterator<A>>(mut a: T, mut b: T) -> bool {
+    pub fn gt<A: Ord, T: Iterator<A>>(mut a: T, mut b: T) -> bool {
         loop {
             match (a.next(), b.next()) {
                 (None, None) => return false,
@@ -2280,7 +2280,7 @@ pub mod order {
     }
 
     /// Return `a` >= `b` lexicographically (Using partial order, `Ord`)
-    pub fn ge<A: Eq + Ord, T: Iterator<A>>(mut a: T, mut b: T) -> bool {
+    pub fn ge<A: Ord, T: Iterator<A>>(mut a: T, mut b: T) -> bool {
         loop {
             match (a.next(), b.next()) {
                 (None, None) => return true,
@@ -2381,7 +2381,7 @@ mod tests {
     #[test]
     fn test_filter_map() {
         let mut it = count(0u, 1u).take(10)
-            .filter_map(|x| if x.is_even() { Some(x*x) } else { None });
+            .filter_map(|x| if x % 2 == 0 { Some(x*x) } else { None });
         assert_eq!(it.collect::<~[uint]>(), ~[0*0, 2*2, 4*4, 6*6, 8*8]);
     }
 
@@ -2507,7 +2507,7 @@ mod tests {
                    .collect::<~[uint]>();
 
         assert_eq!(n, xs.len());
-        assert_eq!(xs, ys.as_slice());
+        assert_eq!(xs.as_slice(), ys.as_slice());
     }
 
     #[test]
@@ -2648,7 +2648,7 @@ mod tests {
     fn test_all() {
         let v: ~&[int] = ~&[1, 2, 3, 4, 5];
         assert!(v.iter().all(|&x| x < 10));
-        assert!(!v.iter().all(|&x| x.is_even()));
+        assert!(!v.iter().all(|&x| x % 2 == 0));
         assert!(!v.iter().all(|&x| x > 100));
         assert!(v.slice(0, 0).iter().all(|_| fail!()));
     }
@@ -2657,7 +2657,7 @@ mod tests {
     fn test_any() {
         let v: ~&[int] = ~&[1, 2, 3, 4, 5];
         assert!(v.iter().any(|&x| x < 10));
-        assert!(v.iter().any(|&x| x.is_even()));
+        assert!(v.iter().any(|&x| x % 2 == 0));
         assert!(!v.iter().any(|&x| x > 100));
         assert!(!v.slice(0, 0).iter().any(|_| fail!()));
     }
@@ -2824,11 +2824,11 @@ mod tests {
         assert_eq!(len, b.indexable());
         let mut n = 0;
         for (i, elt) in a.enumerate() {
-            assert_eq!(Some(elt), b.idx(i));
+            assert!(Some(elt) == b.idx(i));
             n += 1;
         }
         assert_eq!(n, len);
-        assert_eq!(None, b.idx(n));
+        assert!(None == b.idx(n));
         // call recursively to check after picking off an element
         if len > 0 {
             b.next();
@@ -2978,6 +2978,12 @@ mod tests {
             }
         }
 
+        impl Eq for Foo {
+            fn eq(&self, _: &Foo) -> bool {
+                true
+            }
+        }
+
         impl Ord for Foo {
             fn lt(&self, _: &Foo) -> bool {
                 false
@@ -3051,7 +3057,7 @@ mod tests {
     fn test_reverse() {
         let mut ys = [1, 2, 3, 4, 5];
         ys.mut_iter().reverse_();
-        assert_eq!(ys, [5, 4, 3, 2, 1]);
+        assert!(ys == [5, 4, 3, 2, 1]);
     }
 
     #[test]

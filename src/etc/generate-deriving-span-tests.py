@@ -39,6 +39,7 @@ TEMPLATE = """// Copyright {year} The Rust Project Developers. See the COPYRIGHT
 
 #[feature(struct_variant)];
 extern crate extra;
+extern crate rand;
 
 {error_deriving}
 struct Error;
@@ -119,7 +120,8 @@ for (trait, supers, errs) in [('Rand', [], 1),
                               ('Clone', [], 1), ('DeepClone', ['Clone'], 1),
                               ('Eq', [], 2), ('Ord', [], 8),
                               ('TotalEq', [], 1), ('TotalOrd', ['TotalEq'], 1),
-                              ('Show', [], 1)]:
+                              ('Show', [], 1),
+                              ('Hash', [], 1)]:
     traits[trait] = (ALL, supers, errs)
 
 for (trait, (types, super_traits, error_count)) in traits.items():

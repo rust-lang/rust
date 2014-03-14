@@ -45,11 +45,13 @@ There are several critical invariants which we maintain:
 > types lie in between.  The bottom type is then the Null type.
 > So the tree looks like:
 >
->             Object
->             /    \
->         String   Other
->             \    /
->             (null)
+> ```notrust
+>         Object
+>         /    \
+>     String   Other
+>         \    /
+>         (null)
+> ```
 >
 > So the upper bound type is the "supertype" and the lower bound is the
 > "subtype" (also, super and sub mean upper and lower in Latin, or something
@@ -104,18 +106,20 @@ Pictorally, what this does is to take two distinct variables with
 (hopefully not completely) distinct type ranges and produce one with
 the intersection.
 
-                      B.ub                  B.ub
-                       /\                    /
-               A.ub   /  \           A.ub   /
-               /   \ /    \              \ /
-              /     X      \              UB
-             /     / \      \            / \
-            /     /   /      \          /   /
-            \     \  /       /          \  /
-             \      X       /             LB
-              \    / \     /             / \
-               \  /   \   /             /   \
-               A.lb    B.lb          A.lb    B.lb
+```notrust
+                  B.ub                  B.ub
+                   /\                    /
+           A.ub   /  \           A.ub   /
+           /   \ /    \              \ /
+          /     X      \              UB
+         /     / \      \            / \
+        /     /   /      \          /   /
+        \     \  /       /          \  /
+         \      X       /             LB
+          \    / \     /             / \
+           \  /   \   /             /   \
+           A.lb    B.lb          A.lb    B.lb
+```
 
 
 ### Option 2: Relate UB/LB
@@ -125,20 +129,22 @@ bounds in such a way that, whatever happens, we know that A <: B will hold.
 This can be achieved by ensuring that A.ub <: B.lb.  In practice there
 are two ways to do that, depicted pictorally here:
 
-        Before                Option #1            Option #2
+```notrust
+    Before                Option #1            Option #2
 
-                 B.ub                B.ub                B.ub
-                  /\                 /  \                /  \
-          A.ub   /  \        A.ub   /(B')\       A.ub   /(B')\
-          /   \ /    \           \ /     /           \ /     /
-         /     X      \         __UB____/             UB    /
-        /     / \      \       /  |                   |    /
-       /     /   /      \     /   |                   |   /
-       \     \  /       /    /(A')|                   |  /
-        \      X       /    /     LB            ______LB/
-         \    / \     /    /     / \           / (A')/ \
-          \  /   \   /     \    /   \          \    /   \
-          A.lb    B.lb       A.lb    B.lb        A.lb    B.lb
+             B.ub                B.ub                B.ub
+              /\                 /  \                /  \
+      A.ub   /  \        A.ub   /(B')\       A.ub   /(B')\
+      /   \ /    \           \ /     /           \ /     /
+     /     X      \         __UB____/             UB    /
+    /     / \      \       /  |                   |    /
+   /     /   /      \     /   |                   |   /
+   \     \  /       /    /(A')|                   |  /
+    \      X       /    /     LB            ______LB/
+     \    / \     /    /     / \           / (A')/ \
+      \  /   \   /     \    /   \          \    /   \
+      A.lb    B.lb       A.lb    B.lb        A.lb    B.lb
+```
 
 In these diagrams, UB and LB are defined as before.  As you can see,
 the new ranges `A'` and `B'` are quite different from the range that
@@ -158,13 +164,15 @@ course, it depends on the program.
 
 The main case which fails today that I would like to support is:
 
-    fn foo<T>(x: T, y: T) { ... }
+```notrust
+fn foo<T>(x: T, y: T) { ... }
 
-    fn bar() {
-        let x: @mut int = @mut 3;
-        let y: @int = @3;
-        foo(x, y);
-    }
+fn bar() {
+    let x: @mut int = @mut 3;
+    let y: @int = @3;
+    foo(x, y);
+}
+```
 
 In principle, the inferencer ought to find that the parameter `T` to
 `foo(x, y)` is `@const int`.  Today, however, it does not; this is

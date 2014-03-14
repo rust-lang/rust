@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // ignore-android: FIXME(#10381)
-// ignore-test: FIXME(#12021)
 
 // This test case checks if function arguments already have the correct value when breaking at the
 // first line of the function, that is if the function prologue has already been executed at the

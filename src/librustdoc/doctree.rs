@@ -32,6 +32,8 @@ pub struct Module {
     impls: ~[Impl],
     foreigns: ~[ast::ForeignMod],
     view_items: ~[ast::ViewItem],
+    macros: ~[Macro],
+    is_crate: bool,
 }
 
 impl Module {
@@ -52,11 +54,13 @@ impl Module {
             impls      : ~[],
             view_items : ~[],
             foreigns   : ~[],
+            macros     : ~[],
+            is_crate   : false,
         }
     }
 }
 
-#[deriving(ToStr, Clone, Encodable, Decodable)]
+#[deriving(Show, Clone, Encodable, Decodable)]
 pub enum StructType {
     /// A normal struct
     Plain,
@@ -155,6 +159,13 @@ pub struct Impl {
     where: Span,
     vis: ast::Visibility,
     id: ast::NodeId,
+}
+
+pub struct Macro {
+    name: Ident,
+    id: ast::NodeId,
+    attrs: ~[ast::Attribute],
+    where: Span,
 }
 
 pub fn struct_type_from_def(sd: &ast::StructDef) -> StructType {

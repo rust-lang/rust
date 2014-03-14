@@ -81,6 +81,7 @@
 #[crate_type = "dylib"];
 #[license = "MIT/ASL2"];
 #[allow(missing_doc)];
+#[allow(deprecated_owned_vector)];
 
 #[feature(globs)];
 
@@ -169,7 +170,7 @@ pub struct Matches {
 /// The type returned when the command line does not conform to the
 /// expected format. Call the `to_err_msg` method to retrieve the
 /// error as a string.
-#[deriving(Clone, Eq, ToStr)]
+#[deriving(Clone, Eq, Show)]
 #[allow(missing_doc)]
 pub enum Fail_ {
     ArgumentMissing(~str),
@@ -452,6 +453,25 @@ pub fn optmulti(short_name: &str, long_name: &str, desc: &str, hint: &str) -> Op
         desc: desc.to_owned(),
         hasarg: Yes,
         occur: Multi
+    }
+}
+
+/// Create a generic option group, stating all parameters explicitly
+pub fn opt(short_name: &str,
+           long_name: &str,
+           desc: &str,
+           hint: &str,
+           hasarg: HasArg,
+           occur: Occur) -> OptGroup {
+    let len = short_name.len();
+    assert!(len == 1 || len == 0);
+    OptGroup {
+        short_name: short_name.to_owned(),
+        long_name: long_name.to_owned(),
+        hint: hint.to_owned(),
+        desc: desc.to_owned(),
+        hasarg: hasarg,
+        occur: occur
     }
 }
 
@@ -1361,7 +1381,7 @@ mod tests {
                                 aliases: ~[] }];
         let verbose = reqopt("b", "banana", "some bananas", "VAL");
 
-        assert_eq!(verbose.long_to_short(), short);
+        assert!(verbose.long_to_short() == short);
     }
 
     #[test]

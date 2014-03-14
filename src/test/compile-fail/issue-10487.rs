@@ -10,6 +10,6 @@
 
 #[feature(managed_boxes)];
 
-static x: ~[int] = ~[123, 456]; //~ ERROR: cannot allocate vectors in constant expressions
+static x: ~[int] = ~[123, 456]; //~ ERROR: static items are not allowed to have owned pointers
 
 fn main() {}

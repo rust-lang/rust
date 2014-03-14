@@ -15,7 +15,7 @@
 /// Returns the refcount of a shared box (as just before calling this)
 #[inline]
 pub fn refcount<T>(t: @T) -> uint {
-    use unstable::raw::Repr;
+    use raw::Repr;
     unsafe { (*t.repr()).ref_count - 1 }
 }
 

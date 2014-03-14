@@ -19,12 +19,13 @@ li {list-style-type: none; }
 * [Foreign Function Interface](guide-ffi.html)
 * [Macros](guide-macros.html)
 * [Testing](guide-testing.html)
-* [Conditions](guide-conditions.html)
 * [Rust's Runtime](guide-runtime.html)
 
 # Libraries
 
 * [The standard library, `std`](std/index.html)
+
+<!-- force the two lists to be separate -->
 
 * [The `arena` allocation library](arena/index.html)
 * [The `collections` library](collections/index.html)
@@ -34,8 +35,10 @@ li {list-style-type: none; }
 * [The `getopts` argument parsing library](getopts/index.html)
 * [The `glob` file path matching library](glob/index.html)
 * [The `green` M:N runtime library](green/index.html)
+* [The `hexfloat` library for hexadecimal floating-point literals](hexfloat/index.html)
 * [The `native` 1:1 threading runtime](native/index.html)
 * [The `num` arbitrary precision numerics library](num/index.html)
+* [The `rand` library for random numbers and distributions](rand/index.html)
 * [The `rustc` compiler](rustc/index.html)
 * [The `rustuv` M:N I/O library](rustuv/index.html)
 * [The `semver` version collation library](semver/index.html)
@@ -43,6 +46,8 @@ li {list-style-type: none; }
 * [The `sync` library for concurrency-enabled mechanisms and primitives](sync/index.html)
 * [The `syntax` library, the Rust parser](syntax/index.html)
 * [The `term` terminal-handling library](term/index.html)
+* [The `test` library containing the unit-testing & micro-benchmark framework](test/index.html)
+* [The `time` library](time/index.html)
 * [The `uuid` 128-bit universally unique identifier library](uuid/index.html)
 
 # Tooling

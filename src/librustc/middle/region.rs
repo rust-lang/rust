@@ -24,9 +24,11 @@ Most of the documentation on regions can be found in
 use driver::session::Session;
 use middle::ty::{FreeRegion};
 use middle::ty;
+use util::nodemap::NodeMap;
 
 use std::cell::RefCell;
-use std::hashmap::{HashMap, HashSet};
+use std::vec_ng::Vec;
+use collections::{HashMap, HashSet};
 use syntax::codemap::Span;
 use syntax::{ast, visit};
 use syntax::visit::{Visitor, FnKind};
@@ -74,10 +76,10 @@ The region maps encode information about region relationships.
   for dynamic checks and/or arbitrary amounts of stack space.
 */
 pub struct RegionMaps {
-    priv scope_map: RefCell<HashMap<ast::NodeId, ast::NodeId>>,
-    priv var_map: RefCell<HashMap<ast::NodeId, ast::NodeId>>,
-    priv free_region_map: RefCell<HashMap<FreeRegion, ~[FreeRegion]>>,
-    priv rvalue_scopes: RefCell<HashMap<ast::NodeId, ast::NodeId>>,
+    priv scope_map: RefCell<NodeMap<ast::NodeId>>,
+    priv var_map: RefCell<NodeMap<ast::NodeId>>,
+    priv free_region_map: RefCell<HashMap<FreeRegion, Vec<FreeRegion> >>,
+    priv rvalue_scopes: RefCell<NodeMap<ast::NodeId>>,
     priv terminating_scopes: RefCell<HashSet<ast::NodeId>>,
 }
 
@@ -112,7 +114,7 @@ impl RegionMaps {
 
         debug!("relate_free_regions(sub={:?}, sup={:?})", sub, sup);
 
-        free_region_map.get().insert(sub, ~[sup]);
+        free_region_map.get().insert(sub, vec!(sup));
     }
 
     pub fn record_encl_scope(&self, sub: ast::NodeId, sup: ast::NodeId) {
@@ -282,11 +284,11 @@ impl RegionMaps {
         // doubles as a way to detect if we've seen a particular FR
         // before.  Note that we expect this graph to be an *extremely
         // shallow* tree.
-        let mut queue = ~[sub];
+        let mut queue = vec!(sub);
         let mut i = 0;
         while i < queue.len() {
             let free_region_map = self.free_region_map.borrow();
-            match free_region_map.get().find(&queue[i]) {
+            match free_region_map.get().find(queue.get(i)) {
                 Some(parents) => {
                     for parent in parents.iter() {
                         if *parent == sup {
@@ -368,7 +370,7 @@ impl RegionMaps {
         // where they diverge.  If one vector is a suffix of the other,
         // then the corresponding scope is a superscope of the other.
 
-        if a_ancestors[a_index] != b_ancestors[b_index] {
+        if *a_ancestors.get(a_index) != *b_ancestors.get(b_index) {
             return None;
         }
 
@@ -379,16 +381,15 @@ impl RegionMaps {
             if b_index == 0u { return Some(scope_b); }
             a_index -= 1u;
             b_index -= 1u;
-            if a_ancestors[a_index] != b_ancestors[b_index] {
-                return Some(a_ancestors[a_index + 1u]);
+            if *a_ancestors.get(a_index) != *b_ancestors.get(b_index) {
+                return Some(*a_ancestors.get(a_index + 1u));
             }
         }
 
         fn ancestors_of(this: &RegionMaps, scope: ast::NodeId)
-            -> ~[ast::NodeId]
-        {
+            -> Vec<ast::NodeId> {
             // debug!("ancestors_of(scope={})", scope);
-            let mut result = ~[scope];
+            let mut result = vec!(scope);
             let mut scope = scope;
             loop {
                 let scope_map = this.scope_map.borrow();
@@ -512,8 +513,8 @@ fn resolve_expr(visitor: &mut RegionResolutionVisitor,
         // scopes, meaning that temporaries cannot outlive them.
         // This ensures fixed size stacks.
 
-        ast::ExprBinary(_, ast::BiAnd, _, r) |
-        ast::ExprBinary(_, ast::BiOr, _, r) => {
+        ast::ExprBinary(ast::BiAnd, _, r) |
+        ast::ExprBinary(ast::BiOr, _, r) => {
             // For shortcircuiting operators, mark the RHS as a terminating
             // scope since it only executes conditionally.
             visitor.region_maps.mark_as_terminating_scope(r.id);
@@ -756,7 +757,7 @@ fn resolve_local(visitor: &mut RegionResolutionVisitor,
                         visitor, subexpr, blk_id);
                 }
             }
-            ast::ExprUnary(_, ast::UnUniq, subexpr) => {
+            ast::ExprUnary(ast::UnUniq, subexpr) => {
                 record_rvalue_scope_if_borrow_expr(visitor, subexpr, blk_id);
             }
             ast::ExprCast(subexpr, _) |
@@ -811,9 +812,9 @@ fn resolve_local(visitor: &mut RegionResolutionVisitor,
 
             match expr.node {
                 ast::ExprAddrOf(_, ref subexpr) |
-                ast::ExprUnary(_, ast::UnDeref, ref subexpr) |
+                ast::ExprUnary(ast::UnDeref, ref subexpr) |
                 ast::ExprField(ref subexpr, _, _) |
-                ast::ExprIndex(_, ref subexpr, _) |
+                ast::ExprIndex(ref subexpr, _) |
                 ast::ExprParen(ref subexpr) => {
                     let subexpr: &'a @Expr = subexpr; // FIXME(#11586)
                     expr = &**subexpr;
@@ -910,10 +911,10 @@ impl<'a> Visitor<Context> for RegionResolutionVisitor<'a> {
 
 pub fn resolve_crate(sess: Session, krate: &ast::Crate) -> RegionMaps {
     let maps = RegionMaps {
-        scope_map: RefCell::new(HashMap::new()),
-        var_map: RefCell::new(HashMap::new()),
+        scope_map: RefCell::new(NodeMap::new()),
+        var_map: RefCell::new(NodeMap::new()),
         free_region_map: RefCell::new(HashMap::new()),
-        rvalue_scopes: RefCell::new(HashMap::new()),
+        rvalue_scopes: RefCell::new(NodeMap::new()),
         terminating_scopes: RefCell::new(HashSet::new()),
     };
     {

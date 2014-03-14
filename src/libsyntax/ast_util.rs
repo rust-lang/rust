@@ -11,6 +11,7 @@
 use ast::*;
 use ast;
 use ast_util;
+use codemap;
 use codemap::Span;
 use opt_vec;
 use parse::token;
@@ -18,11 +19,10 @@ use print::pprust;
 use visit::Visitor;
 use visit;
 
-use std::cell::{Cell, RefCell};
+use std::cell::Cell;
 use std::cmp;
-use std::hashmap::HashMap;
 use std::u32;
-use std::local_data;
+use std::vec_ng::Vec;
 
 pub fn path_name_i(idents: &[Ident]) -> ~str {
     // FIXME: Bad copies (#2543 -- same for everything else that says "bad")
@@ -79,48 +79,26 @@ pub fn def_id_of_def(d: Def) -> DefId {
     }
 }
 
-pub fn binop_to_str(op: BinOp) -> ~str {
+pub fn binop_to_str(op: BinOp) -> &'static str {
     match op {
-      BiAdd => return ~"+",
-      BiSub => return ~"-",
-      BiMul => return ~"*",
-      BiDiv => return ~"/",
-      BiRem => return ~"%",
-      BiAnd => return ~"&&",
-      BiOr => return ~"||",
-      BiBitXor => return ~"^",
-      BiBitAnd => return ~"&",
-      BiBitOr => return ~"|",
-      BiShl => return ~"<<",
-      BiShr => return ~">>",
-      BiEq => return ~"==",
-      BiLt => return ~"<",
-      BiLe => return ~"<=",
-      BiNe => return ~"!=",
-      BiGe => return ~">=",
-      BiGt => return ~">"
-    }
-}
-
-pub fn binop_to_method_name(op: BinOp) -> Option<~str> {
-    match op {
-      BiAdd => return Some(~"add"),
-      BiSub => return Some(~"sub"),
-      BiMul => return Some(~"mul"),
-      BiDiv => return Some(~"div"),
-      BiRem => return Some(~"rem"),
-      BiBitXor => return Some(~"bitxor"),
-      BiBitAnd => return Some(~"bitand"),
-      BiBitOr => return Some(~"bitor"),
-      BiShl => return Some(~"shl"),
-      BiShr => return Some(~"shr"),
-      BiLt => return Some(~"lt"),
-      BiLe => return Some(~"le"),
-      BiGe => return Some(~"ge"),
-      BiGt => return Some(~"gt"),
-      BiEq => return Some(~"eq"),
-      BiNe => return Some(~"ne"),
-      BiAnd | BiOr => return None
+        BiAdd => "+",
+        BiSub => "-",
+        BiMul => "*",
+        BiDiv => "/",
+        BiRem => "%",
+        BiAnd => "&&",
+        BiOr => "||",
+        BiBitXor => "^",
+        BiBitAnd => "&",
+        BiBitOr => "|",
+        BiShl => "<<",
+        BiShr => ">>",
+        BiEq => "==",
+        BiLt => "<",
+        BiLe => "<=",
+        BiNe => "!=",
+        BiGe => ">=",
+        BiGt => ">"
     }
 }
 
@@ -202,8 +180,8 @@ pub fn is_call_expr(e: @Expr) -> bool {
 
 pub fn block_from_expr(e: @Expr) -> P<Block> {
     P(Block {
-        view_items: ~[],
-        stmts: ~[],
+        view_items: Vec::new(),
+        stmts: Vec::new(),
         expr: Some(e),
         id: e.id,
         rules: DefaultBlock,
@@ -215,13 +193,13 @@ pub fn ident_to_path(s: Span, identifier: Ident) -> Path {
     ast::Path {
         span: s,
         global: false,
-        segments: ~[
+        segments: vec!(
             ast::PathSegment {
                 identifier: identifier,
-                lifetimes: opt_vec::Empty,
+                lifetimes: Vec::new(),
                 types: opt_vec::Empty,
             }
-        ],
+        ),
     }
 }
 
@@ -231,6 +209,12 @@ pub fn ident_to_pat(id: NodeId, s: Span, i: Ident) -> @Pat {
                 span: s }
 }
 
+pub fn name_to_dummy_lifetime(name: Name) -> Lifetime {
+    Lifetime { id: DUMMY_NODE_ID,
+               span: codemap::DUMMY_SP,
+               name: name }
+}
+
 pub fn is_unguarded(a: &Arm) -> bool {
     match a.guard {
       None => true,
@@ -238,7 +222,7 @@ pub fn is_unguarded(a: &Arm) -> bool {
     }
 }
 
-pub fn unguarded_pat(a: &Arm) -> Option<~[@Pat]> {
+pub fn unguarded_pat(a: &Arm) -> Option<Vec<@Pat> > {
     if is_unguarded(a) {
         Some(/* FIXME (#2543) */ a.pats.clone())
     } else {
@@ -263,7 +247,7 @@ pub fn impl_pretty_name(trait_ref: &Option<TraitRef>, ty: &Ty) -> Ident {
     token::gensym_ident(pretty)
 }
 
-pub fn public_methods(ms: ~[@Method]) -> ~[@Method] {
+pub fn public_methods(ms: Vec<@Method> ) -> Vec<@Method> {
     ms.move_iter().filter(|m| {
         match m.vis {
             Public => true,
@@ -293,9 +277,9 @@ pub fn trait_method_to_ty_method(method: &TraitMethod) -> TypeMethod {
 }
 
 pub fn split_trait_methods(trait_methods: &[TraitMethod])
-    -> (~[TypeMethod], ~[@Method]) {
-    let mut reqd = ~[];
-    let mut provd = ~[];
+    -> (Vec<TypeMethod> , Vec<@Method> ) {
+    let mut reqd = Vec::new();
+    let mut provd = Vec::new();
     for trt_method in trait_methods.iter() {
         match *trt_method {
             Required(ref tm) => reqd.push((*tm).clone()),
@@ -334,7 +318,7 @@ pub fn operator_prec(op: ast::BinOp) -> uint {
 pub static as_prec: uint = 12u;
 
 pub fn empty_generics() -> Generics {
-    Generics {lifetimes: opt_vec::Empty,
+    Generics {lifetimes: Vec::new(),
               ty_params: opt_vec::Empty}
 }
 
@@ -398,7 +382,7 @@ impl<'a, O: IdVisitingOperation> Visitor<()> for IdVisitor<'a, O> {
 
     fn visit_view_item(&mut self, view_item: &ViewItem, env: ()) {
         match view_item.node {
-            ViewItemExternMod(_, _, node_id) => {
+            ViewItemExternCrate(_, _, node_id) => {
                 self.operation.visit_id(node_id)
             }
             ViewItemUse(ref view_paths) => {
@@ -472,12 +456,6 @@ impl<'a, O: IdVisitingOperation> Visitor<()> for IdVisitor<'a, O> {
 
 
     fn visit_expr(&mut self, expression: &Expr, env: ()) {
-        {
-            let optional_callee_id = expression.get_callee_id();
-            for callee_id in optional_callee_id.iter() {
-                self.operation.visit_id(*callee_id)
-            }
-        }
         self.operation.visit_id(expression.id);
         visit::walk_expr(self, expression, env)
     }
@@ -678,258 +656,13 @@ pub fn pat_is_ident(pat: @ast::Pat) -> bool {
     }
 }
 
-// HYGIENE FUNCTIONS
-
-/// Extend a syntax context with a given mark
-pub fn new_mark(m:Mrk, tail:SyntaxContext) -> SyntaxContext {
-    new_mark_internal(m,tail,get_sctable())
-}
-
-// Extend a syntax context with a given mark and table
-// FIXME #8215 : currently pub to allow testing
-pub fn new_mark_internal(m: Mrk, tail: SyntaxContext, table: &SCTable)
-                         -> SyntaxContext {
-    let key = (tail,m);
-    // FIXME #5074 : can't use more natural style because we're missing
-    // flow-sensitivity. Results in two lookups on a hash table hit.
-    // also applies to new_rename_internal, below.
-    // let try_lookup = table.mark_memo.find(&key);
-    let mut mark_memo = table.mark_memo.borrow_mut();
-    match mark_memo.get().contains_key(&key) {
-        false => {
-            let new_idx = {
-                let mut table = table.table.borrow_mut();
-                idx_push(table.get(), Mark(m,tail))
-            };
-            mark_memo.get().insert(key,new_idx);
-            new_idx
-        }
-        true => {
-            match mark_memo.get().find(&key) {
-                None => fail!("internal error: key disappeared 2013042901"),
-                Some(idxptr) => {*idxptr}
-            }
-        }
-    }
-}
-
-/// Extend a syntax context with a given rename
-pub fn new_rename(id:Ident, to:Name, tail:SyntaxContext) -> SyntaxContext {
-    new_rename_internal(id, to, tail, get_sctable())
-}
-
-// Extend a syntax context with a given rename and sctable
-// FIXME #8215 : currently pub to allow testing
-pub fn new_rename_internal(id: Ident,
-                           to: Name,
-                           tail: SyntaxContext,
-                           table: &SCTable)
-                           -> SyntaxContext {
-    let key = (tail,id,to);
-    // FIXME #5074
-    //let try_lookup = table.rename_memo.find(&key);
-    let mut rename_memo = table.rename_memo.borrow_mut();
-    match rename_memo.get().contains_key(&key) {
-        false => {
-            let new_idx = {
-                let mut table = table.table.borrow_mut();
-                idx_push(table.get(), Rename(id,to,tail))
-            };
-            rename_memo.get().insert(key,new_idx);
-            new_idx
-        }
-        true => {
-            match rename_memo.get().find(&key) {
-                None => fail!("internal error: key disappeared 2013042902"),
-                Some(idxptr) => {*idxptr}
-            }
-        }
-    }
-}
-
-/// Make a fresh syntax context table with EmptyCtxt in slot zero
-/// and IllegalCtxt in slot one.
-// FIXME #8215 : currently pub to allow testing
-pub fn new_sctable_internal() -> SCTable {
-    SCTable {
-        table: RefCell::new(~[EmptyCtxt,IllegalCtxt]),
-        mark_memo: RefCell::new(HashMap::new()),
-        rename_memo: RefCell::new(HashMap::new()),
-    }
-}
-
-// fetch the SCTable from TLS, create one if it doesn't yet exist.
-pub fn get_sctable() -> @SCTable {
-    local_data_key!(sctable_key: @@SCTable)
-    match local_data::get(sctable_key, |k| k.map(|k| *k)) {
-        None => {
-            let new_table = @@new_sctable_internal();
-            local_data::set(sctable_key,new_table);
-            *new_table
-        },
-        Some(intr) => *intr
-    }
-}
-
-/// print out an SCTable for debugging
-pub fn display_sctable(table : &SCTable) {
-    error!("SC table:");
-    let table = table.table.borrow();
-    for (idx,val) in table.get().iter().enumerate() {
-        error!("{:4u} : {:?}",idx,val);
-    }
-}
-
-
-/// Add a value to the end of a vec, return its index
-fn idx_push<T>(vec: &mut ~[T], val: T) -> u32 {
-    vec.push(val);
-    (vec.len() - 1) as u32
-}
-
-/// Resolve a syntax object to a name, per MTWT.
-pub fn mtwt_resolve(id : Ident) -> Name {
-    let resolve_table = get_resolve_table();
-    let mut resolve_table = resolve_table.borrow_mut();
-    resolve_internal(id, get_sctable(), resolve_table.get())
-}
-
-// FIXME #8215: must be pub for testing
-pub type ResolveTable = HashMap<(Name,SyntaxContext),Name>;
-
-// okay, I admit, putting this in TLS is not so nice:
-// fetch the SCTable from TLS, create one if it doesn't yet exist.
-pub fn get_resolve_table() -> @RefCell<ResolveTable> {
-    local_data_key!(resolve_table_key: @@RefCell<ResolveTable>)
-    match local_data::get(resolve_table_key, |k| k.map(|k| *k)) {
-        None => {
-            let new_table = @@RefCell::new(HashMap::new());
-            local_data::set(resolve_table_key, new_table);
-            *new_table
-        },
-        Some(intr) => *intr
-    }
-}
-
-// Resolve a syntax object to a name, per MTWT.
-// adding memoization to possibly resolve 500+ seconds in resolve for librustc (!)
-// FIXME #8215 : currently pub to allow testing
-pub fn resolve_internal(id : Ident,
-                        table : &SCTable,
-                        resolve_table : &mut ResolveTable) -> Name {
-    let key = (id.name,id.ctxt);
-    match resolve_table.contains_key(&key) {
-        false => {
-            let resolved = {
-                let result = {
-                    let table = table.table.borrow();
-                    table.get()[id.ctxt]
-                };
-                match result {
-                    EmptyCtxt => id.name,
-                    // ignore marks here:
-                    Mark(_,subctxt) =>
-                        resolve_internal(Ident{name:id.name, ctxt: subctxt},table,resolve_table),
-                    // do the rename if necessary:
-                    Rename(Ident{name,ctxt},toname,subctxt) => {
-                        let resolvedfrom =
-                            resolve_internal(Ident{name:name,ctxt:ctxt},table,resolve_table);
-                        let resolvedthis =
-                            resolve_internal(Ident{name:id.name,ctxt:subctxt},table,resolve_table);
-                        if (resolvedthis == resolvedfrom)
-                            && (marksof(ctxt,resolvedthis,table)
-                                == marksof(subctxt,resolvedthis,table)) {
-                            toname
-                        } else {
-                            resolvedthis
-                        }
-                    }
-                    IllegalCtxt() => fail!("expected resolvable context, got IllegalCtxt")
-                }
-            };
-            resolve_table.insert(key,resolved);
-            resolved
-        }
-        true => {
-            // it's guaranteed to be there, because we just checked that it was
-            // there and we never remove anything from the table:
-            *(resolve_table.find(&key).unwrap())
-        }
-    }
-}
-
-/// Compute the marks associated with a syntax context.
-pub fn mtwt_marksof(ctxt: SyntaxContext, stopname: Name) -> ~[Mrk] {
-    marksof(ctxt, stopname, get_sctable())
-}
-
-// the internal function for computing marks
-// it's not clear to me whether it's better to use a [] mutable
-// vector or a cons-list for this.
-pub fn marksof(ctxt: SyntaxContext, stopname: Name, table: &SCTable) -> ~[Mrk] {
-    let mut result = ~[];
-    let mut loopvar = ctxt;
-    loop {
-        let table_entry = {
-            let table = table.table.borrow();
-            table.get()[loopvar]
-        };
-        match table_entry {
-            EmptyCtxt => {
-                return result;
-            },
-            Mark(mark, tl) => {
-                xorPush(&mut result, mark);
-                loopvar = tl;
-            },
-            Rename(_,name,tl) => {
-                // see MTWT for details on the purpose of the stopname.
-                // short version: it prevents duplication of effort.
-                if name == stopname {
-                    return result;
-                } else {
-                    loopvar = tl;
-                }
-            }
-            IllegalCtxt => fail!("expected resolvable context, got IllegalCtxt")
-        }
-    }
-}
-
-/// Return the outer mark for a context with a mark at the outside.
-/// FAILS when outside is not a mark.
-pub fn mtwt_outer_mark(ctxt: SyntaxContext) -> Mrk {
-    let sctable = get_sctable();
-    let table = sctable.table.borrow();
-    match table.get()[ctxt] {
-        ast::Mark(mrk,_) => mrk,
-        _ => fail!("can't retrieve outer mark when outside is not a mark")
-    }
-}
-
-/// Push a name... unless it matches the one on top, in which
-/// case pop and discard (so two of the same marks cancel)
-pub fn xorPush(marks: &mut ~[Mrk], mark: Mrk) {
-    if (marks.len() > 0) && (getLast(marks) == mark) {
-        marks.pop().unwrap();
-    } else {
-        marks.push(mark);
-    }
-}
-
-// get the last element of a mutable array.
-// FIXME #4903: , must be a separate procedure for now.
-pub fn getLast(arr: &~[Mrk]) -> Mrk {
-    *arr.last().unwrap()
-}
-
 // are two paths equal when compared unhygienically?
 // since I'm using this to replace ==, it seems appropriate
 // to compare the span, global, etc. fields as well.
 pub fn path_name_eq(a : &ast::Path, b : &ast::Path) -> bool {
     (a.span == b.span)
     && (a.global == b.global)
-    && (segments_name_eq(a.segments, b.segments))
+    && (segments_name_eq(a.segments.as_slice(), b.segments.as_slice()))
 }
 
 // are two arrays of segments equal when compared unhygienically?
@@ -958,17 +691,31 @@ pub fn lit_is_str(lit: @Lit) -> bool {
     }
 }
 
+pub fn get_inner_tys(ty: P<Ty>) -> Vec<P<Ty>> {
+    match ty.node {
+        ast::TyRptr(_, mut_ty) | ast::TyPtr(mut_ty) => {
+            vec!(mut_ty.ty)
+        }
+        ast::TyBox(ty)
+        | ast::TyVec(ty)
+        | ast::TyUniq(ty)
+        | ast::TyFixedLengthVec(ty, _) => vec!(ty),
+        ast::TyTup(ref tys) => tys.clone(),
+        _ => Vec::new()
+    }
+}
+
 
 #[cfg(test)]
 mod test {
     use ast::*;
     use super::*;
     use opt_vec;
-    use std::hashmap::HashMap;
+    use std::vec_ng::Vec;
 
     fn ident_to_segment(id : &Ident) -> PathSegment {
         PathSegment {identifier:id.clone(),
-                     lifetimes: opt_vec::Empty,
+                     lifetimes: Vec::new(),
                      types: opt_vec::Empty}
     }
 
@@ -982,210 +729,4 @@ mod test {
                                   [Ident{name:3,ctxt:104},
                                     Ident{name:77,ctxt:182}].map(ident_to_segment)));
     }
-
-    #[test] fn xorpush_test () {
-        let mut s = ~[];
-        xorPush(&mut s, 14);
-        assert_eq!(s.clone(), ~[14]);
-        xorPush(&mut s, 14);
-        assert_eq!(s.clone(), ~[]);
-        xorPush(&mut s, 14);
-        assert_eq!(s.clone(), ~[14]);
-        xorPush(&mut s, 15);
-        assert_eq!(s.clone(), ~[14, 15]);
-        xorPush(&mut s, 16);
-        assert_eq!(s.clone(), ~[14, 15, 16]);
-        xorPush(&mut s, 16);
-        assert_eq!(s.clone(), ~[14, 15]);
-        xorPush(&mut s, 15);
-        assert_eq!(s.clone(), ~[14]);
-    }
-
-    fn id(n: Name, s: SyntaxContext) -> Ident {
-        Ident {name: n, ctxt: s}
-    }
-
-    // because of the SCTable, I now need a tidy way of
-    // creating syntax objects. Sigh.
-    #[deriving(Clone, Eq)]
-    enum TestSC {
-        M(Mrk),
-        R(Ident,Name)
-    }
-
-    // unfold a vector of TestSC values into a SCTable,
-    // returning the resulting index
-    fn unfold_test_sc(tscs : ~[TestSC], tail: SyntaxContext, table: &SCTable)
-        -> SyntaxContext {
-        tscs.rev_iter().fold(tail, |tail : SyntaxContext, tsc : &TestSC|
-                  {match *tsc {
-                      M(mrk) => new_mark_internal(mrk,tail,table),
-                      R(ident,name) => new_rename_internal(ident,name,tail,table)}})
-    }
-
-    // gather a SyntaxContext back into a vector of TestSCs
-    fn refold_test_sc(mut sc: SyntaxContext, table : &SCTable) -> ~[TestSC] {
-        let mut result = ~[];
-        loop {
-            let table = table.table.borrow();
-            match table.get()[sc] {
-                EmptyCtxt => {return result;},
-                Mark(mrk,tail) => {
-                    result.push(M(mrk));
-                    sc = tail;
-                    continue;
-                },
-                Rename(id,name,tail) => {
-                    result.push(R(id,name));
-                    sc = tail;
-                    continue;
-                }
-                IllegalCtxt => fail!("expected resolvable context, got IllegalCtxt")
-            }
-        }
-    }
-
-    #[test] fn test_unfold_refold(){
-        let mut t = new_sctable_internal();
-
-        let test_sc = ~[M(3),R(id(101,0),14),M(9)];
-        assert_eq!(unfold_test_sc(test_sc.clone(),EMPTY_CTXT,&mut t),4);
-        {
-            let table = t.table.borrow();
-            assert_eq!(table.get()[2],Mark(9,0));
-            assert_eq!(table.get()[3],Rename(id(101,0),14,2));
-            assert_eq!(table.get()[4],Mark(3,3));
-        }
-        assert_eq!(refold_test_sc(4,&t),test_sc);
-    }
-
-    // extend a syntax context with a sequence of marks given
-    // in a vector. v[0] will be the outermost mark.
-    fn unfold_marks(mrks: ~[Mrk], tail: SyntaxContext, table: &SCTable)
-                    -> SyntaxContext {
-        mrks.rev_iter().fold(tail, |tail:SyntaxContext, mrk:&Mrk|
-                   {new_mark_internal(*mrk,tail,table)})
-    }
-
-    #[test] fn unfold_marks_test() {
-        let mut t = new_sctable_internal();
-
-        assert_eq!(unfold_marks(~[3,7],EMPTY_CTXT,&mut t),3);
-        {
-            let table = t.table.borrow();
-            assert_eq!(table.get()[2],Mark(7,0));
-            assert_eq!(table.get()[3],Mark(3,2));
-        }
-    }
-
-    #[test] fn test_marksof () {
-        let stopname = 242;
-        let name1 = 243;
-        let mut t = new_sctable_internal();
-        assert_eq!(marksof (EMPTY_CTXT,stopname,&t),~[]);
-        // FIXME #5074: ANF'd to dodge nested calls
-        { let ans = unfold_marks(~[4,98],EMPTY_CTXT,&mut t);
-         assert_eq! (marksof (ans,stopname,&t),~[4,98]);}
-        // does xoring work?
-        { let ans = unfold_marks(~[5,5,16],EMPTY_CTXT,&mut t);
-         assert_eq! (marksof (ans,stopname,&t), ~[16]);}
-        // does nested xoring work?
-        { let ans = unfold_marks(~[5,10,10,5,16],EMPTY_CTXT,&mut t);
-         assert_eq! (marksof (ans, stopname,&t), ~[16]);}
-        // rename where stop doesn't match:
-        { let chain = ~[M(9),
-                        R(id(name1,
-                             new_mark_internal (4, EMPTY_CTXT,&mut t)),
-                          100101102),
-                        M(14)];
-         let ans = unfold_test_sc(chain,EMPTY_CTXT,&mut t);
-         assert_eq! (marksof (ans, stopname, &t), ~[9,14]);}
-        // rename where stop does match
-        { let name1sc = new_mark_internal(4, EMPTY_CTXT, &mut t);
-         let chain = ~[M(9),
-                       R(id(name1, name1sc),
-                         stopname),
-                       M(14)];
-         let ans = unfold_test_sc(chain,EMPTY_CTXT,&mut t);
-         assert_eq! (marksof (ans, stopname, &t), ~[9]); }
-    }
-
-
-    #[test] fn resolve_tests () {
-        let a = 40;
-        let mut t = new_sctable_internal();
-        let mut rt = HashMap::new();
-        // - ctxt is MT
-        assert_eq!(resolve_internal(id(a,EMPTY_CTXT),&mut t, &mut rt),a);
-        // - simple ignored marks
-        { let sc = unfold_marks(~[1,2,3],EMPTY_CTXT,&mut t);
-         assert_eq!(resolve_internal(id(a,sc),&mut t, &mut rt),a);}
-        // - orthogonal rename where names don't match
-        { let sc = unfold_test_sc(~[R(id(50,EMPTY_CTXT),51),M(12)],EMPTY_CTXT,&mut t);
-         assert_eq!(resolve_internal(id(a,sc),&mut t, &mut rt),a);}
-        // - rename where names do match, but marks don't
-        { let sc1 = new_mark_internal(1,EMPTY_CTXT,&mut t);
-         let sc = unfold_test_sc(~[R(id(a,sc1),50),
-                                   M(1),
-                                   M(2)],
-                                 EMPTY_CTXT,&mut t);
-        assert_eq!(resolve_internal(id(a,sc),&mut t, &mut rt), a);}
-        // - rename where names and marks match
-        { let sc1 = unfold_test_sc(~[M(1),M(2)],EMPTY_CTXT,&mut t);
-         let sc = unfold_test_sc(~[R(id(a,sc1),50),M(1),M(2)],EMPTY_CTXT,&mut t);
-         assert_eq!(resolve_internal(id(a,sc),&mut t, &mut rt), 50); }
-        // - rename where names and marks match by literal sharing
-        { let sc1 = unfold_test_sc(~[M(1),M(2)],EMPTY_CTXT,&mut t);
-         let sc = unfold_test_sc(~[R(id(a,sc1),50)],sc1,&mut t);
-         assert_eq!(resolve_internal(id(a,sc),&mut t, &mut rt), 50); }
-        // - two renames of the same var.. can only happen if you use
-        // local-expand to prevent the inner binding from being renamed
-        // during the rename-pass caused by the first:
-        println!("about to run bad test");
-        { let sc = unfold_test_sc(~[R(id(a,EMPTY_CTXT),50),
-                                    R(id(a,EMPTY_CTXT),51)],
-                                  EMPTY_CTXT,&mut t);
-         assert_eq!(resolve_internal(id(a,sc),&mut t, &mut rt), 51); }
-        // the simplest double-rename:
-        { let a_to_a50 = new_rename_internal(id(a,EMPTY_CTXT),50,EMPTY_CTXT,&mut t);
-         let a50_to_a51 = new_rename_internal(id(a,a_to_a50),51,a_to_a50,&mut t);
-         assert_eq!(resolve_internal(id(a,a50_to_a51),&mut t, &mut rt),51);
-         // mark on the outside doesn't stop rename:
-         let sc = new_mark_internal(9,a50_to_a51,&mut t);
-         assert_eq!(resolve_internal(id(a,sc),&mut t, &mut rt),51);
-         // but mark on the inside does:
-         let a50_to_a51_b = unfold_test_sc(~[R(id(a,a_to_a50),51),
-                                              M(9)],
-                                           a_to_a50,
-                                           &mut t);
-         assert_eq!(resolve_internal(id(a,a50_to_a51_b),&mut t, &mut rt),50);}
-    }
-
-    #[test] fn mtwt_resolve_test(){
-        let a = 40;
-        assert_eq!(mtwt_resolve(id(a,EMPTY_CTXT)),a);
-    }
-
-
-    #[test] fn hashing_tests () {
-        let mut t = new_sctable_internal();
-        assert_eq!(new_mark_internal(12,EMPTY_CTXT,&mut t),2);
-        assert_eq!(new_mark_internal(13,EMPTY_CTXT,&mut t),3);
-        // using the same one again should result in the same index:
-        assert_eq!(new_mark_internal(12,EMPTY_CTXT,&mut t),2);
-        // I'm assuming that the rename table will behave the same....
-    }
-
-    #[test] fn resolve_table_hashing_tests() {
-        let mut t = new_sctable_internal();
-        let mut rt = HashMap::new();
-        assert_eq!(rt.len(),0);
-        resolve_internal(id(30,EMPTY_CTXT),&mut t, &mut rt);
-        assert_eq!(rt.len(),1);
-        resolve_internal(id(39,EMPTY_CTXT),&mut t, &mut rt);
-        assert_eq!(rt.len(),2);
-        resolve_internal(id(30,EMPTY_CTXT),&mut t, &mut rt);
-        assert_eq!(rt.len(),2);
-    }
-
 }

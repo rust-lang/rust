@@ -22,6 +22,8 @@ use middle::ty::{ty_nil, ty_param, ty_ptr, ty_rptr, ty_self, ty_tup};
 use middle::ty::{ty_uniq, ty_trait, ty_int, ty_uint, ty_unboxed_vec, ty_infer};
 use middle::ty;
 use middle::typeck;
+
+use std::vec_ng::Vec;
 use syntax::abi::AbiSet;
 use syntax::ast_map;
 use syntax::codemap::{Span, Pos};
@@ -49,11 +51,11 @@ pub fn note_and_explain_region(cx: ctxt,
       (ref str, Some(span)) => {
         cx.sess.span_note(
             span,
-            format!("{}{}{}", prefix, (*str), suffix));
+            format!("{}{}{}", prefix, *str, suffix));
       }
       (ref str, None) => {
         cx.sess.note(
-            format!("{}{}{}", prefix, (*str), suffix));
+            format!("{}{}{}", prefix, *str, suffix));
       }
     }
 }
@@ -73,9 +75,6 @@ pub fn explain_region_and_span(cx: ctxt, region: ty::Region)
         match cx.map.find(node_id) {
           Some(ast_map::NodeBlock(ref blk)) => {
             explain_span(cx, "block", blk.span)
-          }
-          Some(ast_map::NodeCalleeScope(expr)) => {
-              explain_span(cx, "callee", expr.span)
           }
           Some(ast_map::NodeExpr(expr)) => {
             match expr.node {
@@ -162,8 +161,8 @@ pub fn bound_region_to_str(cx: ctxt,
     }
 
     match br {
-        BrNamed(_, ident)   => format!("{}'{}{}", prefix,
-                                       token::get_ident(ident), space_str),
+        BrNamed(_, name)   => format!("{}'{}{}", prefix,
+                                      token::get_name(name), space_str),
         BrAnon(_)           => prefix.to_str(),
         BrFresh(_)          => prefix.to_str(),
     }
@@ -225,7 +224,7 @@ pub fn region_to_str(cx: ctxt, prefix: &str, space: bool, region: Region) -> ~st
     // `explain_region()` or `note_and_explain_region()`.
     match region {
         ty::ReScope(_) => prefix.to_str(),
-        ty::ReEarlyBound(_, _, ident) => token::get_ident(ident).get().to_str(),
+        ty::ReEarlyBound(_, _, name) => token::get_name(name).get().to_str(),
         ty::ReLateBound(_, br) => bound_region_to_str(cx, prefix, space, br),
         ty::ReFree(ref fr) => bound_region_to_str(cx, prefix, space, fr.bound_region),
         ty::ReInfer(ReSkolemized(_, br)) => {
@@ -479,12 +478,17 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
       ty_self(..) => ~"Self",
       ty_enum(did, ref substs) | ty_struct(did, ref substs) => {
         let base = ty::item_path_str(cx, did);
-        parameterized(cx, base, &substs.regions, substs.tps, did, false)
+        parameterized(cx,
+                      base,
+                      &substs.regions,
+                      substs.tps.as_slice(),
+                      did,
+                      false)
       }
       ty_trait(did, ref substs, s, mutbl, ref bounds) => {
         let base = ty::item_path_str(cx, did);
         let ty = parameterized(cx, base, &substs.regions,
-                               substs.tps, did, true);
+                               substs.tps.as_slice(), did, true);
         let bound_sep = if bounds.is_empty() { "" } else { ":" };
         let bound_str = bounds.repr(cx);
         format!("{}{}{}{}{}", trait_store_to_str(cx, s), mutability_to_str(mutbl), ty,
@@ -504,7 +508,7 @@ pub fn parameterized(cx: ctxt,
                      did: ast::DefId,
                      is_trait: bool) -> ~str {
 
-    let mut strs = ~[];
+    let mut strs = Vec::new();
     match *regions {
         ty::ErasedRegions => { }
         ty::NonerasedRegions(ref regions) => {
@@ -524,7 +528,7 @@ pub fn parameterized(cx: ctxt,
     let num_defaults = if has_defaults {
         // We should have a borrowed version of substs instead of cloning.
         let mut substs = ty::substs {
-            tps: tps.to_owned(),
+            tps: Vec::from_slice(tps),
             regions: regions.clone(),
             self_ty: None
         };
@@ -606,16 +610,16 @@ impl<T:Repr> Repr for OptVec<T> {
     fn repr(&self, tcx: ctxt) -> ~str {
         match *self {
             opt_vec::Empty => ~"[]",
-            opt_vec::Vec(ref v) => repr_vec(tcx, *v)
+            opt_vec::Vec(ref v) => repr_vec(tcx, v.as_slice())
         }
     }
 }
 
 // This is necessary to handle types like Option<~[T]>, for which
 // autoderef cannot convert the &[T] handler
-impl<T:Repr> Repr for ~[T] {
+impl<T:Repr> Repr for Vec<T> {
     fn repr(&self, tcx: ctxt) -> ~str {
-        repr_vec(tcx, *self)
+        repr_vec(tcx, self.as_slice())
     }
 }
 
@@ -630,7 +634,7 @@ impl Repr for ty::TypeParameterDef {
 impl Repr for ty::RegionParameterDef {
     fn repr(&self, _tcx: ctxt) -> ~str {
         format!("RegionParameterDef({}, {:?})",
-                token::get_ident(self.ident),
+                token::get_name(self.name),
                 self.def_id)
     }
 }
@@ -661,7 +665,7 @@ impl Repr for ty::RegionSubsts {
 
 impl Repr for ty::ParamBounds {
     fn repr(&self, tcx: ctxt) -> ~str {
-        let mut res = ~[];
+        let mut res = Vec::new();
         for b in self.builtin_bounds.iter() {
             res.push(match b {
                 ty::BoundStatic => ~"'static",
@@ -716,9 +720,9 @@ impl Repr for ty::BoundRegion {
     fn repr(&self, tcx: ctxt) -> ~str {
         match *self {
             ty::BrAnon(id) => format!("BrAnon({})", id),
-            ty::BrNamed(id, ident) => format!("BrNamed({}, {})",
-                                               id.repr(tcx),
-                                               ident.repr(tcx)),
+            ty::BrNamed(id, name) => format!("BrNamed({}, {})",
+                                             id.repr(tcx),
+                                             token::get_name(name)),
             ty::BrFresh(id) => format!("BrFresh({})", id),
         }
     }
@@ -727,9 +731,9 @@ impl Repr for ty::BoundRegion {
 impl Repr for ty::Region {
     fn repr(&self, tcx: ctxt) -> ~str {
         match *self {
-            ty::ReEarlyBound(id, index, ident) => {
+            ty::ReEarlyBound(id, index, name) => {
                 format!("ReEarlyBound({}, {}, {})",
-                        id, index, ident.repr(tcx))
+                        id, index, token::get_name(name))
             }
 
             ty::ReLateBound(binder_id, ref bound_region) => {
@@ -837,6 +841,12 @@ impl Repr for ty::Method {
     }
 }
 
+impl Repr for ast::Name {
+    fn repr(&self, _tcx: ctxt) -> ~str {
+        token::get_name(*self).get().to_str()
+    }
+}
+
 impl Repr for ast::Ident {
     fn repr(&self, _tcx: ctxt) -> ~str {
         token::get_ident(*self).get().to_str()
@@ -870,31 +880,34 @@ impl Repr for ty::FnSig {
     }
 }
 
-impl Repr for typeck::method_map_entry {
+impl Repr for typeck::MethodCallee {
     fn repr(&self, tcx: ctxt) -> ~str {
-        format!("method_map_entry \\{origin: {}\\}", self.origin.repr(tcx))
+        format!("MethodCallee \\{origin: {}, ty: {}, {}\\}",
+            self.origin.repr(tcx),
+            self.ty.repr(tcx),
+            self.substs.repr(tcx))
     }
 }
 
-impl Repr for typeck::method_origin {
+impl Repr for typeck::MethodOrigin {
     fn repr(&self, tcx: ctxt) -> ~str {
         match self {
-            &typeck::method_static(def_id) => {
-                format!("method_static({})", def_id.repr(tcx))
+            &typeck::MethodStatic(def_id) => {
+                format!("MethodStatic({})", def_id.repr(tcx))
             }
-            &typeck::method_param(ref p) => {
+            &typeck::MethodParam(ref p) => {
                 p.repr(tcx)
             }
-            &typeck::method_object(ref p) => {
+            &typeck::MethodObject(ref p) => {
                 p.repr(tcx)
             }
         }
     }
 }
 
-impl Repr for typeck::method_param {
+impl Repr for typeck::MethodParam {
     fn repr(&self, tcx: ctxt) -> ~str {
-        format!("method_param({},{:?},{:?},{:?})",
+        format!("MethodParam({},{:?},{:?},{:?})",
              self.trait_id.repr(tcx),
              self.method_num,
              self.param_num,
@@ -902,9 +915,9 @@ impl Repr for typeck::method_param {
     }
 }
 
-impl Repr for typeck::method_object {
+impl Repr for typeck::MethodObject {
     fn repr(&self, tcx: ctxt) -> ~str {
-        format!("method_object({},{:?},{:?})",
+        format!("MethodObject({},{:?},{:?})",
              self.trait_id.repr(tcx),
              self.method_num,
              self.real_index)
@@ -973,7 +986,7 @@ impl<A:UserString> UserString for @A {
 impl UserString for ty::BuiltinBounds {
     fn user_string(&self, tcx: ctxt) -> ~str {
         if self.is_empty() { ~"<no-bounds>" } else {
-            let mut result = ~[];
+            let mut result = Vec::new();
             for bb in self.iter() {
                 result.push(bb.user_string(tcx));
             }
@@ -989,10 +1002,10 @@ impl UserString for ty::TraitRef {
             let mut all_tps = self.substs.tps.clone();
             for &t in self.substs.self_ty.iter() { all_tps.push(t); }
             parameterized(tcx, base, &self.substs.regions,
-                          all_tps, self.def_id, true)
+                          all_tps.as_slice(), self.def_id, true)
         } else {
             parameterized(tcx, base, &self.substs.regions,
-                          self.substs.tps, self.def_id, true)
+                          self.substs.tps.as_slice(), self.def_id, true)
         }
     }
 }
@@ -1000,6 +1013,12 @@ impl UserString for ty::TraitRef {
 impl UserString for ty::t {
     fn user_string(&self, tcx: ctxt) -> ~str {
         ty_to_str(tcx, *self)
+    }
+}
+
+impl UserString for ast::Ident {
+    fn user_string(&self, _tcx: ctxt) -> ~str {
+        token::get_name(self.name).get().to_owned()
     }
 }
 

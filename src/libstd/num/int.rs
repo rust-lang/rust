@@ -15,12 +15,13 @@
 use prelude::*;
 
 use default::Default;
+use from_str::FromStr;
 use num::{Bitwise, Bounded, CheckedAdd, CheckedSub, CheckedMul};
 use num::{CheckedDiv, Zero, One, strconv};
 use num::{ToStrRadix, FromStrRadix};
 use option::{Option, Some, None};
 use str;
-use unstable::intrinsics;
+use intrinsics;
 
 #[cfg(target_word_size = "32")] int_module!(int, 32)
 #[cfg(target_word_size = "64")] int_module!(int, 64)

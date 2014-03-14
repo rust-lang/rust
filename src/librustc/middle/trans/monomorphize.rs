@@ -23,6 +23,7 @@ use middle::ty;
 use middle::typeck;
 use util::ppaux::Repr;
 
+use std::vec_ng::Vec;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util::local_def;
@@ -33,8 +34,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
                       vtables: Option<typeck::vtable_res>,
                       self_vtables: Option<typeck::vtable_param_res>,
                       ref_id: Option<ast::NodeId>)
-    -> (ValueRef, bool)
-{
+    -> (ValueRef, bool) {
     debug!("monomorphic_fn(\
             fn_id={}, \
             real_substs={}, \
@@ -52,7 +52,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
     let mut must_cast = false;
 
     let psubsts = @param_substs {
-        tys: real_substs.tps.to_owned(),
+        tys: real_substs.tps.clone(),
         vtables: vtables,
         self_ty: real_substs.self_ty.clone(),
         self_vtables: self_vtables
@@ -125,7 +125,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
 
     debug!("monomorphic_fn about to subst into {}", llitem_ty.repr(ccx.tcx));
     let mono_ty = match is_static_provided {
-        None => ty::subst_tps(ccx.tcx, psubsts.tys,
+        None => ty::subst_tps(ccx.tcx, psubsts.tys.as_slice(),
                               psubsts.self_ty, llitem_ty),
         Some(num_method_ty_params) => {
             // Static default methods are a little unfortunate, in
@@ -143,10 +143,8 @@ pub fn monomorphic_fn(ccx: @CrateContext,
             // This is a bit unfortunate.
 
             let idx = psubsts.tys.len() - num_method_ty_params;
-            let substs =
-                (psubsts.tys.slice(0, idx) +
-                 &[psubsts.self_ty.unwrap()] +
-                 psubsts.tys.tailn(idx));
+            let substs = psubsts.tys.slice(0, idx) +
+                &[psubsts.self_ty.unwrap()] + psubsts.tys.tailn(idx);
             debug!("static default: changed substitution to {}",
                    substs.repr(ccx.tcx));
 
@@ -174,11 +172,11 @@ pub fn monomorphic_fn(ccx: @CrateContext,
         // Random cut-off -- code that needs to instantiate the same function
         // recursively more than thirty times can probably safely be assumed
         // to be causing an infinite expansion.
-        if depth > 30 {
-            ccx.sess.span_fatal(
-                ccx.tcx.map.span(fn_id.node),
-                "overly deep expansion of inlined function");
+        if depth > ccx.sess.recursion_limit.get() {
+            ccx.sess.span_fatal(ccx.tcx.map.span(fn_id.node),
+                "reached the recursion limit during monomorphization");
         }
+
         monomorphizing.get().insert(fn_id, depth + 1);
     }
 
@@ -189,7 +187,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
 
     let mk_lldecl = || {
         let lldecl = decl_internal_rust_fn(ccx, false,
-                                           f.sig.inputs,
+                                           f.sig.inputs.as_slice(),
                                            f.sig.output, s);
         let mut monomorphized = ccx.monomorphized.borrow_mut();
         monomorphized.get().insert(hash_id, lldecl);
@@ -204,7 +202,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
                   ..
               } => {
                   let d = mk_lldecl();
-                  set_llvm_fn_attrs(i.attrs, d);
+                  set_llvm_fn_attrs(i.attrs.as_slice(), d);
                   trans_fn(ccx, decl, body, d, Some(psubsts), fn_id.node, []);
                   d
               }
@@ -235,7 +233,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
                     trans_enum_variant(ccx,
                                        parent,
                                        v,
-                                       (*args).clone(),
+                                       args.as_slice(),
                                        this_tv.disr_val,
                                        Some(psubsts),
                                        d);
@@ -247,7 +245,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
         }
         ast_map::NodeMethod(mth) => {
             let d = mk_lldecl();
-            set_llvm_fn_attrs(mth.attrs, d);
+            set_llvm_fn_attrs(mth.attrs.as_slice(), d);
             trans_fn(ccx, mth.decl, mth.body, d, Some(psubsts), mth.id, []);
             d
         }
@@ -255,7 +253,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
             match *method {
                 ast::Provided(mth) => {
                     let d = mk_lldecl();
-                    set_llvm_fn_attrs(mth.attrs, d);
+                    set_llvm_fn_attrs(mth.attrs.as_slice(), d);
                     trans_fn(ccx, mth.decl, mth.body, d, Some(psubsts), mth.id, []);
                     d
                 }
@@ -269,7 +267,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
             let d = mk_lldecl();
             set_inline_hint(d);
             base::trans_tuple_struct(ccx,
-                                     struct_def.fields,
+                                     struct_def.fields.as_slice(),
                                      struct_def.ctor_id.expect("ast-mapped tuple struct \
                                                                 didn't have a ctor id"),
                                      Some(psubsts),
@@ -282,7 +280,6 @@ pub fn monomorphic_fn(ccx: @CrateContext,
         ast_map::NodeStmt(..) |
         ast_map::NodeArg(..) |
         ast_map::NodeBlock(..) |
-        ast_map::NodeCalleeScope(..) |
         ast_map::NodeLocal(..) => {
             ccx.tcx.sess.bug(format!("can't monomorphize a {:?}", map_node))
         }
@@ -303,7 +300,7 @@ pub fn make_mono_id(ccx: @CrateContext,
     // FIXME (possibly #5801): Need a lot of type hints to get
     // .collect() to work.
     let substs_iter = substs.self_ty.iter().chain(substs.tys.iter());
-    let precise_param_ids: ~[(ty::t, Option<@~[mono_id]>)] = match substs.vtables {
+    let precise_param_ids: Vec<(ty::t, Option<@Vec<mono_id> >)> = match substs.vtables {
       Some(vts) => {
         debug!("make_mono_id vtables={} substs={}",
                vts.repr(ccx.tcx), substs.tys.repr(ccx.tcx));
@@ -313,7 +310,7 @@ pub fn make_mono_id(ccx: @CrateContext,
             (*subst, if !v.is_empty() { Some(@v) } else { None })
         }).collect()
       }
-      None => substs_iter.map(|subst| (*subst, None::<@~[mono_id]>)).collect()
+      None => substs_iter.map(|subst| (*subst, None::<@Vec<mono_id> >)).collect()
     };
 
 

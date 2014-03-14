@@ -16,15 +16,19 @@ A `BigUint` is represented as an array of `BigDigit`s.
 A `BigInt` is a combination of `BigUint` and `Sign`.
 */
 
+use Integer;
+
 use std::cmp;
-use std::cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
-use std::num::{Zero, One, ToStrRadix, FromStrRadix};
+use std::fmt;
+use std::from_str::FromStr;
+use std::num::CheckedDiv;
 use std::num::{Bitwise, ToPrimitive, FromPrimitive};
-use std::rand::Rng;
+use std::num::{Zero, One, ToStrRadix, FromStrRadix};
+use rand::Rng;
 use std::str;
 use std::uint;
-use std::{i64, u64};
 use std::vec;
+use std::{i64, u64};
 
 /**
 A `BigDigit` is a `BigUint`'s composing element.
@@ -119,9 +123,10 @@ impl TotalOrd for BigUint {
     }
 }
 
-impl ToStr for BigUint {
-    #[inline]
-    fn to_str(&self) -> ~str { self.to_str_radix(10) }
+impl fmt::Show for BigUint {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f.buf, "{}", self.to_str_radix(10))
+    }
 }
 
 impl FromStr for BigUint {
@@ -261,14 +266,14 @@ impl Mul<BigUint, BigUint> for BigUint {
         //   (a1*b1 + a0*b0 - (a1-b0)*(b1-a0)) * base +
         //   a0*b0
         let half_len = cmp::max(s_len, o_len) / 2;
-        let (sHi, sLo) = cut_at(self,  half_len);
-        let (oHi, oLo) = cut_at(other, half_len);
+        let (s_hi, s_lo) = cut_at(self,  half_len);
+        let (o_hi, o_lo) = cut_at(other, half_len);
 
-        let ll = sLo * oLo;
-        let hh = sHi * oHi;
+        let ll = s_lo * o_lo;
+        let hh = s_hi * o_hi;
         let mm = {
-            let (s1, n1) = sub_sign(sHi, sLo);
-            let (s2, n2) = sub_sign(oHi, oLo);
+            let (s1, n1) = sub_sign(s_hi, s_lo);
+            let (s2, n2) = sub_sign(o_hi, o_lo);
             match (s1, s2) {
                 (Equal, _) | (_, Equal) => hh + ll,
                 (Less, Greater) | (Greater, Less) => hh + ll + (n1 * n2),
@@ -332,6 +337,40 @@ impl Rem<BigUint, BigUint> for BigUint {
 impl Neg<BigUint> for BigUint {
     #[inline]
     fn neg(&self) -> BigUint { fail!() }
+}
+
+impl CheckedAdd for BigUint {
+    #[inline]
+    fn checked_add(&self, v: &BigUint) -> Option<BigUint> {
+        return Some(self.add(v));
+    }
+}
+
+impl CheckedSub for BigUint {
+    #[inline]
+    fn checked_sub(&self, v: &BigUint) -> Option<BigUint> {
+        if *self < *v {
+            return None;
+        }
+        return Some(self.sub(v));
+    }
+}
+
+impl CheckedMul for BigUint {
+    #[inline]
+    fn checked_mul(&self, v: &BigUint) -> Option<BigUint> {
+        return Some(self.mul(v));
+    }
+}
+
+impl CheckedDiv for BigUint {
+    #[inline]
+    fn checked_div(&self, v: &BigUint) -> Option<BigUint> {
+        if v.is_zero() {
+            return None;
+        }
+        return Some(self.div(v));
+    }
 }
 
 impl Integer for BigUint {
@@ -461,7 +500,7 @@ impl Integer for BigUint {
 
     /// Returns `true` if the number can be divided by `other` without leaving a remainder
     #[inline]
-    fn is_multiple_of(&self, other: &BigUint) -> bool { (*self % *other).is_zero() }
+    fn divides(&self, other: &BigUint) -> bool { (*self % *other).is_zero() }
 
     /// Returns `true` if the number is divisible by `2`
     #[inline]
@@ -495,24 +534,23 @@ impl ToPrimitive for BigUint {
     #[cfg(target_word_size = "32")]
     #[inline]
     fn to_u64(&self) -> Option<u64> {
-        match self.data {
-            [] => {
-                Some(0)
+        match self.data.len() {
+            0 => Some(0),
+            1 => Some(self.data[0] as u64),
+            2 => {
+                Some(BigDigit::to_uint(self.data[1], self.data[0]) as u64)
             }
-            [n0] => {
-                Some(n0 as u64)
-            }
-            [n0, n1] => {
-                Some(BigDigit::to_uint(n1, n0) as u64)
-            }
-            [n0, n1, n2] => {
-                let n_lo = BigDigit::to_uint(n1, n0) as u64;
-                let n_hi = n2 as u64;
+            3 => {
+                let n_lo = BigDigit::to_uint(self.data[1], self.data[0]) as
+                    u64;
+                let n_hi = self.data[2] as u64;
                 Some((n_hi << 32) + n_lo)
             }
-            [n0, n1, n2, n3] => {
-                let n_lo = BigDigit::to_uint(n1, n0) as u64;
-                let n_hi = BigDigit::to_uint(n3, n2) as u64;
+            4 => {
+                let n_lo = BigDigit::to_uint(self.data[1], self.data[0])
+                    as u64;
+                let n_hi = BigDigit::to_uint(self.data[3], self.data[2])
+                    as u64;
                 Some((n_hi << 32) + n_lo)
             }
             _ => None
@@ -522,16 +560,10 @@ impl ToPrimitive for BigUint {
     #[cfg(target_word_size = "64")]
     #[inline]
     fn to_u64(&self) -> Option<u64> {
-        match self.data {
-            [] => {
-                Some(0)
-            }
-            [n0] => {
-                Some(n0 as u64)
-            }
-            [n0, n1] => {
-                Some(BigDigit::to_uint(n1, n0) as u64)
-            }
+        match self.data.len() {
+            0 => Some(0),
+            1 => Some(self.data[0] as u64),
+            2 => Some(BigDigit::to_uint(self.data[1], self.data[0]) as u64),
             _ => None
         }
     }
@@ -832,7 +864,7 @@ fn get_radix_base(radix: uint) -> (uint, uint) {
 }
 
 /// A Sign is a `BigInt`'s composing element.
-#[deriving(Eq, Clone)]
+#[deriving(Eq, Clone, Show)]
 pub enum Sign { Minus, Zero, Plus }
 
 impl Ord for Sign {
@@ -909,9 +941,10 @@ impl TotalOrd for BigInt {
     }
 }
 
-impl ToStr for BigInt {
-    #[inline]
-    fn to_str(&self) -> ~str { self.to_str_radix(10) }
+impl fmt::Show for BigInt {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f.buf, "{}", self.to_str_radix(10))
+    }
 }
 
 impl FromStr for BigInt {
@@ -1055,6 +1088,38 @@ impl Neg<BigInt> for BigInt {
     }
 }
 
+impl CheckedAdd for BigInt {
+    #[inline]
+    fn checked_add(&self, v: &BigInt) -> Option<BigInt> {
+        return Some(self.add(v));
+    }
+}
+
+impl CheckedSub for BigInt {
+    #[inline]
+    fn checked_sub(&self, v: &BigInt) -> Option<BigInt> {
+        return Some(self.sub(v));
+    }
+}
+
+impl CheckedMul for BigInt {
+    #[inline]
+    fn checked_mul(&self, v: &BigInt) -> Option<BigInt> {
+        return Some(self.mul(v));
+    }
+}
+
+impl CheckedDiv for BigInt {
+    #[inline]
+    fn checked_div(&self, v: &BigInt) -> Option<BigInt> {
+        if v.is_zero() {
+            return None;
+        }
+        return Some(self.div(v));
+    }
+}
+
+
 impl Integer for BigInt {
     #[inline]
     fn div_rem(&self, other: &BigInt) -> (BigInt, BigInt) {
@@ -1125,7 +1190,7 @@ impl Integer for BigInt {
 
     /// Returns `true` if the number can be divided by `other` without leaving a remainder
     #[inline]
-    fn is_multiple_of(&self, other: &BigInt) -> bool { self.data.is_multiple_of(&other.data) }
+    fn divides(&self, other: &BigInt) -> bool { self.data.divides(&other.data) }
 
     /// Returns `true` if the number is divisible by `2`
     #[inline]
@@ -1261,7 +1326,7 @@ impl FromStrRadix for BigInt {
     }
 }
 
-trait RandBigInt {
+pub trait RandBigInt {
     /// Generate a random `BigUint` of the given bit size.
     fn gen_biguint(&mut self, bit_size: uint) -> BigUint;
 
@@ -1395,14 +1460,17 @@ impl BigInt {
 
 #[cfg(test)]
 mod biguint_tests {
+    use Integer;
     use super::{BigDigit, BigUint, ToBigUint};
     use super::{Plus, BigInt, RandBigInt, ToBigInt};
 
     use std::cmp::{Less, Equal, Greater};
+    use std::from_str::FromStr;
     use std::i64;
-    use std::num::{Zero, One, FromStrRadix};
+    use std::num::{Zero, One, FromStrRadix, ToStrRadix};
     use std::num::{ToPrimitive, FromPrimitive};
-    use std::rand::{task_rng};
+    use std::num::CheckedDiv;
+    use rand::{task_rng};
     use std::str;
     use std::u64;
     use std::vec;
@@ -1710,10 +1778,10 @@ mod biguint_tests {
     #[test]
     fn test_add() {
         for elm in sum_triples.iter() {
-            let (aVec, bVec, cVec) = *elm;
-            let a = BigUint::from_slice(aVec);
-            let b = BigUint::from_slice(bVec);
-            let c = BigUint::from_slice(cVec);
+            let (a_vec, b_vec, c_vec) = *elm;
+            let a = BigUint::from_slice(a_vec);
+            let b = BigUint::from_slice(b_vec);
+            let c = BigUint::from_slice(c_vec);
 
             assert!(a + b == c);
             assert!(b + a == c);
@@ -1723,10 +1791,10 @@ mod biguint_tests {
     #[test]
     fn test_sub() {
         for elm in sum_triples.iter() {
-            let (aVec, bVec, cVec) = *elm;
-            let a = BigUint::from_slice(aVec);
-            let b = BigUint::from_slice(bVec);
-            let c = BigUint::from_slice(cVec);
+            let (a_vec, b_vec, c_vec) = *elm;
+            let a = BigUint::from_slice(a_vec);
+            let b = BigUint::from_slice(b_vec);
+            let c = BigUint::from_slice(c_vec);
 
             assert!(c - a == b);
             assert!(c - b == a);
@@ -1774,21 +1842,21 @@ mod biguint_tests {
     #[test]
     fn test_mul() {
         for elm in mul_triples.iter() {
-            let (aVec, bVec, cVec) = *elm;
-            let a = BigUint::from_slice(aVec);
-            let b = BigUint::from_slice(bVec);
-            let c = BigUint::from_slice(cVec);
+            let (a_vec, b_vec, c_vec) = *elm;
+            let a = BigUint::from_slice(a_vec);
+            let b = BigUint::from_slice(b_vec);
+            let c = BigUint::from_slice(c_vec);
 
             assert!(a * b == c);
             assert!(b * a == c);
         }
 
         for elm in div_rem_quadruples.iter() {
-            let (aVec, bVec, cVec, dVec) = *elm;
-            let a = BigUint::from_slice(aVec);
-            let b = BigUint::from_slice(bVec);
-            let c = BigUint::from_slice(cVec);
-            let d = BigUint::from_slice(dVec);
+            let (a_vec, b_vec, c_vec, d_vec) = *elm;
+            let a = BigUint::from_slice(a_vec);
+            let b = BigUint::from_slice(b_vec);
+            let c = BigUint::from_slice(c_vec);
+            let d = BigUint::from_slice(d_vec);
 
             assert!(a == b * c + d);
             assert!(a == c * b + d);
@@ -1798,10 +1866,10 @@ mod biguint_tests {
     #[test]
     fn test_div_rem() {
         for elm in mul_triples.iter() {
-            let (aVec, bVec, cVec) = *elm;
-            let a = BigUint::from_slice(aVec);
-            let b = BigUint::from_slice(bVec);
-            let c = BigUint::from_slice(cVec);
+            let (a_vec, b_vec, c_vec) = *elm;
+            let a = BigUint::from_slice(a_vec);
+            let b = BigUint::from_slice(b_vec);
+            let c = BigUint::from_slice(c_vec);
 
             if !a.is_zero() {
                 assert_eq!(c.div_rem(&a), (b.clone(), Zero::zero()));
@@ -1812,13 +1880,89 @@ mod biguint_tests {
         }
 
         for elm in div_rem_quadruples.iter() {
+            let (a_vec, b_vec, c_vec, d_vec) = *elm;
+            let a = BigUint::from_slice(a_vec);
+            let b = BigUint::from_slice(b_vec);
+            let c = BigUint::from_slice(c_vec);
+            let d = BigUint::from_slice(d_vec);
+
+            if !b.is_zero() { assert!(a.div_rem(&b) == (c, d)); }
+        }
+    }
+
+    #[test]
+    fn test_checked_add() {
+        for elm in sum_triples.iter() {
+            let (aVec, bVec, cVec) = *elm;
+            let a = BigUint::from_slice(aVec);
+            let b = BigUint::from_slice(bVec);
+            let c = BigUint::from_slice(cVec);
+
+            assert!(a.checked_add(&b).unwrap() == c);
+            assert!(b.checked_add(&a).unwrap() == c);
+        }
+    }
+
+    #[test]
+    fn test_checked_sub() {
+        for elm in sum_triples.iter() {
+            let (aVec, bVec, cVec) = *elm;
+            let a = BigUint::from_slice(aVec);
+            let b = BigUint::from_slice(bVec);
+            let c = BigUint::from_slice(cVec);
+
+            assert!(c.checked_sub(&a).unwrap() == b);
+            assert!(c.checked_sub(&b).unwrap() == a);
+
+            if a > c {
+                assert!(a.checked_sub(&c).is_none());
+            }
+            if b > c {
+                assert!(b.checked_sub(&c).is_none());
+            }
+        }
+    }
+
+    #[test]
+    fn test_checked_mul() {
+        for elm in mul_triples.iter() {
+            let (aVec, bVec, cVec) = *elm;
+            let a = BigUint::from_slice(aVec);
+            let b = BigUint::from_slice(bVec);
+            let c = BigUint::from_slice(cVec);
+
+            assert!(a.checked_mul(&b).unwrap() == c);
+            assert!(b.checked_mul(&a).unwrap() == c);
+        }
+
+        for elm in div_rem_quadruples.iter() {
             let (aVec, bVec, cVec, dVec) = *elm;
             let a = BigUint::from_slice(aVec);
             let b = BigUint::from_slice(bVec);
             let c = BigUint::from_slice(cVec);
             let d = BigUint::from_slice(dVec);
 
-            if !b.is_zero() { assert!(a.div_rem(&b) == (c, d)); }
+            assert!(a == b.checked_mul(&c).unwrap() + d);
+            assert!(a == c.checked_mul(&b).unwrap() + d);
+        }
+    }
+
+    #[test]
+    fn test_checked_div() {
+        for elm in mul_triples.iter() {
+            let (aVec, bVec, cVec) = *elm;
+            let a = BigUint::from_slice(aVec);
+            let b = BigUint::from_slice(bVec);
+            let c = BigUint::from_slice(cVec);
+
+            if !a.is_zero() {
+                assert!(c.checked_div(&a).unwrap() == b);
+            }
+            if !b.is_zero() {
+                assert!(c.checked_div(&b).unwrap() == a);
+            }
+
+            assert!(c.checked_div(&Zero::zero()).is_none());
         }
     }
 
@@ -2052,14 +2196,16 @@ mod biguint_tests {
 
 #[cfg(test)]
 mod bigint_tests {
+    use Integer;
     use super::{BigDigit, BigUint, ToBigUint};
     use super::{Sign, Minus, Zero, Plus, BigInt, RandBigInt, ToBigInt};
 
     use std::cmp::{Less, Equal, Greater};
     use std::i64;
-    use std::num::{Zero, One, FromStrRadix};
+    use std::num::CheckedDiv;
+    use std::num::{Zero, One, FromStrRadix, ToStrRadix};
     use std::num::{ToPrimitive, FromPrimitive};
-    use std::rand::{task_rng};
+    use rand::{task_rng};
     use std::u64;
 
     #[test]
@@ -2205,10 +2351,10 @@ mod bigint_tests {
     #[test]
     fn test_add() {
         for elm in sum_triples.iter() {
-            let (aVec, bVec, cVec) = *elm;
-            let a = BigInt::from_slice(Plus, aVec);
-            let b = BigInt::from_slice(Plus, bVec);
-            let c = BigInt::from_slice(Plus, cVec);
+            let (a_vec, b_vec, c_vec) = *elm;
+            let a = BigInt::from_slice(Plus, a_vec);
+            let b = BigInt::from_slice(Plus, b_vec);
+            let c = BigInt::from_slice(Plus, c_vec);
 
             assert!(a + b == c);
             assert!(b + a == c);
@@ -2224,10 +2370,10 @@ mod bigint_tests {
     #[test]
     fn test_sub() {
         for elm in sum_triples.iter() {
-            let (aVec, bVec, cVec) = *elm;
-            let a = BigInt::from_slice(Plus, aVec);
-            let b = BigInt::from_slice(Plus, bVec);
-            let c = BigInt::from_slice(Plus, cVec);
+            let (a_vec, b_vec, c_vec) = *elm;
+            let a = BigInt::from_slice(Plus, a_vec);
+            let b = BigInt::from_slice(Plus, b_vec);
+            let c = BigInt::from_slice(Plus, c_vec);
 
             assert!(c - a == b);
             assert!(c - b == a);
@@ -2281,10 +2427,10 @@ mod bigint_tests {
     #[test]
     fn test_mul() {
         for elm in mul_triples.iter() {
-            let (aVec, bVec, cVec) = *elm;
-            let a = BigInt::from_slice(Plus, aVec);
-            let b = BigInt::from_slice(Plus, bVec);
-            let c = BigInt::from_slice(Plus, cVec);
+            let (a_vec, b_vec, c_vec) = *elm;
+            let a = BigInt::from_slice(Plus, a_vec);
+            let b = BigInt::from_slice(Plus, b_vec);
+            let c = BigInt::from_slice(Plus, c_vec);
 
             assert!(a * b == c);
             assert!(b * a == c);
@@ -2294,11 +2440,11 @@ mod bigint_tests {
         }
 
         for elm in div_rem_quadruples.iter() {
-            let (aVec, bVec, cVec, dVec) = *elm;
-            let a = BigInt::from_slice(Plus, aVec);
-            let b = BigInt::from_slice(Plus, bVec);
-            let c = BigInt::from_slice(Plus, cVec);
-            let d = BigInt::from_slice(Plus, dVec);
+            let (a_vec, b_vec, c_vec, d_vec) = *elm;
+            let a = BigInt::from_slice(Plus, a_vec);
+            let b = BigInt::from_slice(Plus, b_vec);
+            let c = BigInt::from_slice(Plus, c_vec);
+            let d = BigInt::from_slice(Plus, d_vec);
 
             assert!(a == b * c + d);
             assert!(a == c * b + d);
@@ -2333,21 +2479,21 @@ mod bigint_tests {
         }
 
         for elm in mul_triples.iter() {
-            let (aVec, bVec, cVec) = *elm;
-            let a = BigInt::from_slice(Plus, aVec);
-            let b = BigInt::from_slice(Plus, bVec);
-            let c = BigInt::from_slice(Plus, cVec);
+            let (a_vec, b_vec, c_vec) = *elm;
+            let a = BigInt::from_slice(Plus, a_vec);
+            let b = BigInt::from_slice(Plus, b_vec);
+            let c = BigInt::from_slice(Plus, c_vec);
 
             if !a.is_zero() { check(&c, &a, &b, &Zero::zero()); }
             if !b.is_zero() { check(&c, &b, &a, &Zero::zero()); }
         }
 
         for elm in div_rem_quadruples.iter() {
-            let (aVec, bVec, cVec, dVec) = *elm;
-            let a = BigInt::from_slice(Plus, aVec);
-            let b = BigInt::from_slice(Plus, bVec);
-            let c = BigInt::from_slice(Plus, cVec);
-            let d = BigInt::from_slice(Plus, dVec);
+            let (a_vec, b_vec, c_vec, d_vec) = *elm;
+            let a = BigInt::from_slice(Plus, a_vec);
+            let b = BigInt::from_slice(Plus, b_vec);
+            let c = BigInt::from_slice(Plus, c_vec);
+            let d = BigInt::from_slice(Plus, d_vec);
 
             if !b.is_zero() {
                 check(&a, &b, &c, &d);
@@ -2376,13 +2522,79 @@ mod bigint_tests {
             check_sub(&a.neg(), &b.neg(), q, &r.neg());
         }
         for elm in mul_triples.iter() {
+            let (a_vec, b_vec, c_vec) = *elm;
+            let a = BigInt::from_slice(Plus, a_vec);
+            let b = BigInt::from_slice(Plus, b_vec);
+            let c = BigInt::from_slice(Plus, c_vec);
+
+            if !a.is_zero() { check(&c, &a, &b, &Zero::zero()); }
+            if !b.is_zero() { check(&c, &b, &a, &Zero::zero()); }
+        }
+
+        for elm in div_rem_quadruples.iter() {
+            let (a_vec, b_vec, c_vec, d_vec) = *elm;
+            let a = BigInt::from_slice(Plus, a_vec);
+            let b = BigInt::from_slice(Plus, b_vec);
+            let c = BigInt::from_slice(Plus, c_vec);
+            let d = BigInt::from_slice(Plus, d_vec);
+
+            if !b.is_zero() {
+                check(&a, &b, &c, &d);
+            }
+        }
+    }
+
+    #[test]
+    fn test_checked_add() {
+        for elm in sum_triples.iter() {
             let (aVec, bVec, cVec) = *elm;
             let a = BigInt::from_slice(Plus, aVec);
             let b = BigInt::from_slice(Plus, bVec);
             let c = BigInt::from_slice(Plus, cVec);
 
-            if !a.is_zero() { check(&c, &a, &b, &Zero::zero()); }
-            if !b.is_zero() { check(&c, &b, &a, &Zero::zero()); }
+            assert!(a.checked_add(&b).unwrap() == c);
+            assert!(b.checked_add(&a).unwrap() == c);
+            assert!(c.checked_add(&(-a)).unwrap() == b);
+            assert!(c.checked_add(&(-b)).unwrap() == a);
+            assert!(a.checked_add(&(-c)).unwrap() == (-b));
+            assert!(b.checked_add(&(-c)).unwrap() == (-a));
+            assert!((-a).checked_add(&(-b)).unwrap() == (-c))
+            assert!(a.checked_add(&(-a)).unwrap() == Zero::zero());
+        }
+    }
+
+    #[test]
+    fn test_checked_sub() {
+        for elm in sum_triples.iter() {
+            let (aVec, bVec, cVec) = *elm;
+            let a = BigInt::from_slice(Plus, aVec);
+            let b = BigInt::from_slice(Plus, bVec);
+            let c = BigInt::from_slice(Plus, cVec);
+
+            assert!(c.checked_sub(&a).unwrap() == b);
+            assert!(c.checked_sub(&b).unwrap() == a);
+            assert!((-b).checked_sub(&a).unwrap() == (-c))
+            assert!((-a).checked_sub(&b).unwrap() == (-c))
+            assert!(b.checked_sub(&(-a)).unwrap() == c);
+            assert!(a.checked_sub(&(-b)).unwrap() == c);
+            assert!((-c).checked_sub(&(-a)).unwrap() == (-b));
+            assert!(a.checked_sub(&a).unwrap() == Zero::zero());
+        }
+    }
+
+    #[test]
+    fn test_checked_mul() {
+        for elm in mul_triples.iter() {
+            let (aVec, bVec, cVec) = *elm;
+            let a = BigInt::from_slice(Plus, aVec);
+            let b = BigInt::from_slice(Plus, bVec);
+            let c = BigInt::from_slice(Plus, cVec);
+
+            assert!(a.checked_mul(&b).unwrap() == c);
+            assert!(b.checked_mul(&a).unwrap() == c);
+
+            assert!((-a).checked_mul(&b).unwrap() == -c);
+            assert!((-b).checked_mul(&a).unwrap() == -c);
         }
 
         for elm in div_rem_quadruples.iter() {
@@ -2392,9 +2604,31 @@ mod bigint_tests {
             let c = BigInt::from_slice(Plus, cVec);
             let d = BigInt::from_slice(Plus, dVec);
 
-            if !b.is_zero() {
-                check(&a, &b, &c, &d);
+            assert!(a == b.checked_mul(&c).unwrap() + d);
+            assert!(a == c.checked_mul(&b).unwrap() + d);
+        }
+    }
+    #[test]
+    fn test_checked_div() {
+        for elm in mul_triples.iter() {
+            let (aVec, bVec, cVec) = *elm;
+            let a = BigInt::from_slice(Plus, aVec);
+            let b = BigInt::from_slice(Plus, bVec);
+            let c = BigInt::from_slice(Plus, cVec);
+
+            if !a.is_zero() {
+                assert!(c.checked_div(&a).unwrap() == b);
+                assert!((-c).checked_div(&(-a)).unwrap() == b);
+                assert!((-c).checked_div(&a).unwrap() == -b);
             }
+            if !b.is_zero() {
+                assert!(c.checked_div(&b).unwrap() == a);
+                assert!((-c).checked_div(&(-b)).unwrap() == a);
+                assert!((-c).checked_div(&b).unwrap() == -a);
+            }
+
+            assert!(c.checked_div(&Zero::zero()).is_none());
+            assert!((-c).checked_div(&Zero::zero()).is_none());
         }
     }
 
@@ -2553,11 +2787,12 @@ mod bigint_tests {
 
 #[cfg(test)]
 mod bench {
-    use super::{BigInt, BigUint};
+    extern crate test;
+    use self::test::BenchHarness;
+    use super::BigUint;
     use std::iter;
     use std::mem::replace;
     use std::num::{FromPrimitive, Zero, One};
-    use extra::test::BenchHarness;
 
     fn factorial(n: uint) -> BigUint {
         let mut f: BigUint = One::one();

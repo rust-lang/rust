@@ -16,18 +16,20 @@ use parse::token;
 use opt_vec::OptVec;
 use util::small_vector::SmallVector;
 
+use std::vec_ng::Vec;
+
 // We may eventually want to be able to fold over type parameters, too.
 pub trait Folder {
     fn fold_crate(&mut self, c: Crate) -> Crate {
         noop_fold_crate(c, self)
     }
 
-    fn fold_meta_items(&mut self, meta_items: &[@MetaItem]) -> ~[@MetaItem] {
-        meta_items.map(|x| fold_meta_item_(*x, self))
+    fn fold_meta_items(&mut self, meta_items: &[@MetaItem]) -> Vec<@MetaItem> {
+        meta_items.iter().map(|x| fold_meta_item_(*x, self)).collect()
     }
 
-    fn fold_view_paths(&mut self, view_paths: &[@ViewPath]) -> ~[@ViewPath] {
-        view_paths.map(|view_path| {
+    fn fold_view_paths(&mut self, view_paths: &[@ViewPath]) -> Vec<@ViewPath> {
+        view_paths.iter().map(|view_path| {
             let inner_view_path = match view_path.node {
                 ViewPathSimple(ref ident, ref path, node_id) => {
                     ViewPathSimple(ident.clone(),
@@ -60,7 +62,7 @@ pub trait Folder {
                 node: inner_view_path,
                 span: self.new_span(view_path.span),
             }
-        })
+        }).collect()
     }
 
     fn fold_view_item(&mut self, vi: &ViewItem) -> ViewItem {
@@ -115,7 +117,7 @@ pub trait Folder {
         Arm {
             pats: a.pats.map(|x| self.fold_pat(*x)),
             guard: a.guard.map(|x| self.fold_expr(x)),
-            body: self.fold_block(a.body),
+            body: self.fold_expr(a.body),
         }
     }
 
@@ -275,7 +277,7 @@ pub trait Folder {
             node: match macro.node {
                 MacInvocTT(ref p, ref tts, ctxt) => {
                     MacInvocTT(self.fold_path(p),
-                               fold_tts(*tts, self),
+                               fold_tts(tts.as_slice(), self),
                                ctxt)
                 }
             },
@@ -283,8 +285,8 @@ pub trait Folder {
         }
     }
 
-    fn map_exprs(&self, f: |@Expr| -> @Expr, es: &[@Expr]) -> ~[@Expr] {
-        es.map(|x| f(*x))
+    fn map_exprs(&self, f: |@Expr| -> @Expr, es: &[@Expr]) -> Vec<@Expr> {
+        es.iter().map(|x| f(*x)).collect()
     }
 
     fn new_id(&mut self, i: NodeId) -> NodeId {
@@ -353,21 +355,38 @@ fn fold_arg_<T: Folder>(a: &Arg, fld: &mut T) -> Arg {
 
 // build a new vector of tts by appling the Folder's fold_ident to
 // all of the identifiers in the token trees.
-pub fn fold_tts<T: Folder>(tts: &[TokenTree], fld: &mut T) -> ~[TokenTree] {
-    tts.map(|tt| {
+//
+// This is part of hygiene magic. As far as hygiene is concerned, there
+// are three types of let pattern bindings or loop labels:
+//      - those defined and used in non-macro part of the program
+//      - those used as part of macro invocation arguments
+//      - those defined and used inside macro definitions
+// Lexically, type 1 and 2 are in one group and type 3 the other. If they
+// clash, in order for let and loop label to work hygienically, one group
+// or the other needs to be renamed. The problem is that type 2 and 3 are
+// parsed together (inside the macro expand function). After being parsed and
+// AST being constructed, they can no longer be distinguished from each other.
+//
+// For that reason, type 2 let bindings and loop labels are actually renamed
+// in the form of tokens instead of AST nodes, here. There are wasted effort
+// since many token::IDENT are not necessary part of let bindings and most
+// token::LIFETIME are certainly not loop labels. But we can't tell in their
+// token form. So this is less ideal and hacky but it works.
+pub fn fold_tts<T: Folder>(tts: &[TokenTree], fld: &mut T) -> Vec<TokenTree> {
+    tts.iter().map(|tt| {
         match *tt {
             TTTok(span, ref tok) =>
             TTTok(span,maybe_fold_ident(tok,fld)),
-            TTDelim(tts) => TTDelim(@fold_tts(*tts, fld)),
+            TTDelim(tts) => TTDelim(@fold_tts(tts.as_slice(), fld)),
             TTSeq(span, pattern, ref sep, is_optional) =>
             TTSeq(span,
-                  @fold_tts(*pattern, fld),
+                  @fold_tts(pattern.as_slice(), fld),
                   sep.as_ref().map(|tok|maybe_fold_ident(tok,fld)),
                   is_optional),
             TTNonterminal(sp,ref ident) =>
             TTNonterminal(sp,fld.fold_ident(*ident))
         }
-    })
+    }).collect()
 }
 
 // apply ident folder if it's an ident, otherwise leave it alone
@@ -376,6 +395,7 @@ fn maybe_fold_ident<T: Folder>(t: &token::Token, fld: &mut T) -> token::Token {
         token::IDENT(id, followed_by_colons) => {
             token::IDENT(fld.fold_ident(id), followed_by_colons)
         }
+        token::LIFETIME(id) => token::LIFETIME(fld.fold_ident(id)),
         _ => (*t).clone()
     }
 }
@@ -415,12 +435,12 @@ pub fn fold_lifetime<T: Folder>(l: &Lifetime, fld: &mut T) -> Lifetime {
     Lifetime {
         id: fld.new_id(l.id),
         span: fld.new_span(l.span),
-        ident: l.ident
+        name: l.name
     }
 }
 
-pub fn fold_lifetimes<T: Folder>(lts: &OptVec<Lifetime>, fld: &mut T)
-                                   -> OptVec<Lifetime> {
+pub fn fold_lifetimes<T: Folder>(lts: &Vec<Lifetime>, fld: &mut T)
+                                   -> Vec<Lifetime> {
     lts.map(|l| fold_lifetime(l, fld))
 }
 
@@ -494,13 +514,13 @@ fn fold_variant_arg_<T: Folder>(va: &VariantArg, folder: &mut T) -> VariantArg {
 pub fn noop_fold_view_item<T: Folder>(vi: &ViewItem, folder: &mut T)
                                        -> ViewItem{
     let inner_view_item = match vi.node {
-        ViewItemExternMod(ref ident, ref string, node_id) => {
-            ViewItemExternMod(ident.clone(),
+        ViewItemExternCrate(ref ident, ref string, node_id) => {
+            ViewItemExternCrate(ident.clone(),
                               (*string).clone(),
                               folder.new_id(node_id))
         }
         ViewItemUse(ref view_paths) => {
-            ViewItemUse(folder.fold_view_paths(*view_paths))
+            ViewItemUse(folder.fold_view_paths(view_paths.as_slice()))
         }
     };
     ViewItem {
@@ -731,21 +751,19 @@ pub fn noop_fold_expr<T: Folder>(e: @Expr, folder: &mut T) -> @Expr {
             ExprCall(folder.fold_expr(f),
                      args.map(|&x| folder.fold_expr(x)))
         }
-        ExprMethodCall(callee_id, i, ref tps, ref args) => {
+        ExprMethodCall(i, ref tps, ref args) => {
             ExprMethodCall(
-                folder.new_id(callee_id),
                 folder.fold_ident(i),
                 tps.map(|&x| folder.fold_ty(x)),
                 args.map(|&x| folder.fold_expr(x)))
         }
-        ExprBinary(callee_id, binop, lhs, rhs) => {
-            ExprBinary(folder.new_id(callee_id),
-                       binop,
+        ExprBinary(binop, lhs, rhs) => {
+            ExprBinary(binop,
                        folder.fold_expr(lhs),
                        folder.fold_expr(rhs))
         }
-        ExprUnary(callee_id, binop, ohs) => {
-            ExprUnary(folder.new_id(callee_id), binop, folder.fold_expr(ohs))
+        ExprUnary(binop, ohs) => {
+            ExprUnary(binop, folder.fold_expr(ohs))
         }
         ExprLit(_) => e.node.clone(),
         ExprCast(expr, ty) => {
@@ -784,9 +802,8 @@ pub fn noop_fold_expr<T: Folder>(e: @Expr, folder: &mut T) -> @Expr {
         ExprAssign(el, er) => {
             ExprAssign(folder.fold_expr(el), folder.fold_expr(er))
         }
-        ExprAssignOp(callee_id, op, el, er) => {
-            ExprAssignOp(folder.new_id(callee_id),
-                         op,
+        ExprAssignOp(op, el, er) => {
+            ExprAssignOp(op,
                          folder.fold_expr(el),
                          folder.fold_expr(er))
         }
@@ -795,15 +812,13 @@ pub fn noop_fold_expr<T: Folder>(e: @Expr, folder: &mut T) -> @Expr {
                       folder.fold_ident(id),
                       tys.map(|&x| folder.fold_ty(x)))
         }
-        ExprIndex(callee_id, el, er) => {
-            ExprIndex(folder.new_id(callee_id),
-                      folder.fold_expr(el),
-                      folder.fold_expr(er))
+        ExprIndex(el, er) => {
+            ExprIndex(folder.fold_expr(el), folder.fold_expr(er))
         }
         ExprPath(ref pth) => ExprPath(folder.fold_path(pth)),
         ExprLogLevel => ExprLogLevel,
-        ExprBreak(opt_ident) => ExprBreak(opt_ident),
-        ExprAgain(opt_ident) => ExprAgain(opt_ident),
+        ExprBreak(opt_ident) => ExprBreak(opt_ident.map(|x| folder.fold_ident(x))),
+        ExprAgain(opt_ident) => ExprAgain(opt_ident.map(|x| folder.fold_ident(x))),
         ExprRet(ref e) => {
             ExprRet(e.map(|x| folder.fold_expr(x)))
         }
@@ -868,7 +883,7 @@ mod test {
     // this version doesn't care about getting comments or docstrings in.
     fn fake_print_crate(s: &mut pprust::State,
                         krate: &ast::Crate) -> io::IoResult<()> {
-        pprust::print_mod(s, &krate.module, krate.attrs)
+        pprust::print_mod(s, &krate.module, krate.attrs.as_slice())
     }
 
     // change every identifier to "zz"
@@ -918,4 +933,3 @@ mod test {
                      ~"zz!zz((zz$zz:zz$(zz $zz:zz)zz+=>(zz$(zz$zz$zz)+)))");
     }
 }
-
