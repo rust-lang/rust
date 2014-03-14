@@ -82,10 +82,12 @@ impl<'a> visit::Visitor<()> for GatherLoanCtxt<'a> {
     fn visit_block(&mut self, b: &Block, _: ()) {
         gather_loans_in_block(self, b);
     }
-    fn visit_fn(&mut self, fk: &FnKind, fd: &FnDecl, b: &Block,
-                s: Span, n: NodeId, _: ()) {
-        gather_loans_in_fn(self, fk, fd, b, s, n);
-    }
+
+    /// Do not visit closures or fn items here, the outer loop in
+    /// borrowck/mod will visit them for us in turn.
+    fn visit_fn(&mut self, _: &FnKind, _: &FnDecl, _: &Block,
+                _: Span, _: NodeId, _: ()) {}
+
     fn visit_stmt(&mut self, s: &Stmt, _: ()) {
         visit::walk_stmt(self, s, ());
     }
@@ -99,10 +101,20 @@ impl<'a> visit::Visitor<()> for GatherLoanCtxt<'a> {
     // #7740: Do not visit items here, not even fn items nor methods
     // of impl items; the outer loop in borrowck/mod will visit them
     // for us in turn.  Thus override visit_item's walk with a no-op.
-    fn visit_item(&mut self, _: &ast::Item, _: ()) { }
+    fn visit_item(&mut self, _: &ast::Item, _: ()) {}
 }
 
-pub fn gather_loans(bccx: &BorrowckCtxt, decl: &ast::FnDecl, body: &ast::Block)
+fn add_pat_to_id_range(this: &mut GatherLoanCtxt,
+                       p: &ast::Pat) {
+    // NB: This visitor function just adds the pat ids into the id
+    // range. We gather loans that occur in patterns using the
+    // `gather_pat()` method below. Eventually these two should be
+    // brought together.
+    this.id_range.add(p.id);
+    visit::walk_pat(this, p, ());
+}
+
+pub fn gather_loans_in_fn(bccx: &BorrowckCtxt, decl: &ast::FnDecl, body: &ast::Block)
                     -> (IdRange, Vec<Loan>, move_data::MoveData) {
     let mut glcx = GatherLoanCtxt {
         bccx: bccx,
@@ -117,27 +129,6 @@ pub fn gather_loans(bccx: &BorrowckCtxt, decl: &ast::FnDecl, body: &ast::Block)
     glcx.visit_block(body, ());
     let GatherLoanCtxt { id_range, all_loans, move_data, .. } = glcx;
     (id_range, all_loans, move_data)
-}
-
-fn add_pat_to_id_range(this: &mut GatherLoanCtxt,
-                       p: &ast::Pat) {
-    // NB: This visitor function just adds the pat ids into the id
-    // range. We gather loans that occur in patterns using the
-    // `gather_pat()` method below. Eventually these two should be
-    // brought together.
-    this.id_range.add(p.id);
-    visit::walk_pat(this, p, ());
-}
-
-fn gather_loans_in_fn(_v: &mut GatherLoanCtxt,
-                      _fk: &FnKind,
-                      _decl: &ast::FnDecl,
-                      _body: &ast::Block,
-                      _sp: Span,
-                      _id: ast::NodeId) {
-    // Do not visit closures or fn items here, the outer loop in
-    // borrowck/mod will visit them for us in turn.
-    return;
 }
 
 fn gather_loans_in_block(this: &mut GatherLoanCtxt,
@@ -171,6 +162,28 @@ fn gather_loans_in_local(this: &mut GatherLoanCtxt,
     visit::walk_local(this, local, ());
 }
 
+pub fn gather_loans_in_static_initializer(bccx: &mut BorrowckCtxt, expr: &ast::Expr) {
+
+    debug!("gather_loans_in_item(expr={})", expr.repr(bccx.tcx));
+
+    let mut glcx = GatherLoanCtxt {
+        bccx: bccx,
+        id_range: IdRange::max(),
+        all_loans: Vec::new(),
+        item_ub: expr.id,
+        repeating_ids: vec!(expr.id),
+        move_data: MoveData::new()
+    };
+
+    match expr.node {
+        // Just visit the expression if the
+        // item is taking an address.
+        ast::ExprAddrOf(..) => {
+            glcx.visit_expr(expr, ());
+        }
+        _ => {}
+    }
+}
 
 fn gather_loans_in_expr(this: &mut GatherLoanCtxt,
                         ex: &ast::Expr) {
