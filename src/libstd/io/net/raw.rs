@@ -75,7 +75,7 @@ pub enum MacAddr {
     MacAddr(u8, u8, u8, u8, u8, u8)
 }
 
-trait Packet {
+pub trait Packet {
     fn packet<'p>(&'p self) -> &'p [u8];
     fn offset(&self) -> uint;
 }
@@ -104,7 +104,7 @@ impl<'p> Packet for MutableEthernetHeader<'p> {
     fn offset(&self) -> uint { self.offset }
 }
 
-trait EthernetPacket : Packet {
+pub trait EthernetPacket : Packet {
     fn get_source(&self) -> MacAddr {
         MacAddr(
             self.packet()[self.offset() + 6],
@@ -202,7 +202,7 @@ impl<'p> Packet for MutableIpv4Header<'p> {
     fn offset(&self) -> uint { self.offset }
 }
 
-trait Ipv4Packet : Packet {
+pub trait Ipv4Packet : Packet {
     fn get_version(&self) -> u8 {
         self.packet()[self.offset()] >> 4
     }
@@ -400,8 +400,8 @@ fn ipv4_header_test() {
         ipHeader.set_ttl(64);
         assert_eq!(ipHeader.get_ttl(), 64);
 
-        ipHeader.set_next_level_protocol(IpNextHeaderProtocol::Udp);
-        assert_eq!(ipHeader.get_next_level_protocol(), IpNextHeaderProtocol::Udp);
+        ipHeader.set_next_level_protocol(IpNextHeaderProtocols::Udp);
+        assert_eq!(ipHeader.get_next_level_protocol(), IpNextHeaderProtocols::Udp);
 
         ipHeader.set_source(Ipv4Addr(192, 168, 0, 1));
         assert_eq!(ipHeader.get_source(), Ipv4Addr(192, 168, 0, 1));
@@ -450,7 +450,7 @@ impl<'p> Packet for MutableIpv6Header<'p> {
     fn offset(&self) -> uint { self.offset }
 }
 
-trait Ipv6Packet : Packet {
+pub trait Ipv6Packet : Packet {
     fn get_version(&self) -> u8 {
         self.packet()[self.offset()] >> 4
     }
@@ -619,8 +619,8 @@ fn ipv6_header_test() {
         ipHeader.set_payload_length(0x0101);
         assert_eq!(ipHeader.get_payload_length(), 0x0101);
 
-        ipHeader.set_next_header(IpNextHeaderProtocol::Udp);
-        assert_eq!(ipHeader.get_next_header(), IpNextHeaderProtocol::Udp);
+        ipHeader.set_next_header(IpNextHeaderProtocols::Udp);
+        assert_eq!(ipHeader.get_next_header(), IpNextHeaderProtocols::Udp);
 
         ipHeader.set_hop_limit(1);
         assert_eq!(ipHeader.get_hop_limit(), 1)
@@ -682,7 +682,7 @@ impl<'p> Packet for MutableUdpHeader<'p> {
     fn offset(&self) -> uint { self.offset }
 }
 
-trait UdpPacket : Packet {
+pub trait UdpPacket : Packet {
     fn get_source(&self) -> u16 {
         let s1 = self.packet()[self.offset() + 0] as u16 << 8;
         let s2 = self.packet()[self.offset() + 1] as u16;
@@ -770,7 +770,7 @@ pub enum TransportProto {
 // These values should be used in the Ethernet EtherType field
 //
 // A handful of these have been selected since most are archaic and unused.
-pub mod EtherType {
+pub mod EtherTypes {
     pub static Ipv4: u16      = 0x0800;
     pub static Arp: u16       = 0x0806;
     pub static WakeOnLan: u16 = 0x0842;
@@ -785,7 +785,7 @@ pub type EtherType = u16;
 // Above protocol numbers last updated: 2014-01-16
 // These values should be used in either the IPv4 Next Level Protocol field
 // or the IPv6 Next Header field.
-pub mod IpNextHeaderProtocol {
+pub mod IpNextHeaderProtocols {
     pub static Hopopt: u8         =   0; // IPv6 Hop-by-Hop Option [RFC2460]
     pub static Icmp: u8           =   1; // Internet Control Message [RFC792]
     pub static Igmp: u8           =   2; // Internet Group Management [RFC1112]
@@ -940,21 +940,71 @@ pub type IpNextHeaderProtocol = u8;
 
 #[cfg(test)]
 pub mod test {
-    extern crate netsupport;
-    extern crate std;
+//    extern crate netsupport;
 
-    use result::{Ok, Err};
-    use iter::Iterator;
-    use container::Container;
-    use option::{Some};
-    use str::StrSlice;
-    use io::net::raw::*;
-    use io::net::raw::{Ipv4Packet,UdpPacket};
-    use task::spawn;
-    use io::net::ip::{IpAddr, Ipv4Addr, Ipv6Addr};
-    use vec::Items;
-    use vec::ImmutableVector;
-    use vec_ng::Vec;
+    use realstd::clone::Clone;
+    use realstd::fmt::Show;
+    use realstd::result::{Ok, Err};
+    use realstd::iter::Iterator;
+    use realstd::container::Container;
+    use realstd::option::{Some};
+    use realstd::str::StrSlice;
+    use realstd::io::net::raw::*;
+    use realstd::io::net::raw::{Ipv4Packet, UdpPacket, EtherTypes, IpNextHeaderProtocols};
+    use realstd::task::spawn;
+    use realstd::io::net::ip::{IpAddr, Ipv4Addr, Ipv6Addr};
+    use realstd::io::net::ip;
+    use realstd::vec::Items;
+    use realstd::vec::ImmutableVector;
+    use realstd::vec_ng::Vec;
+    use realstd::cast;
+    use realstd::iter::Iterator;
+    use realstd::vec::{Items, MoveItems, Vector, OwnedVector};
+
+    //use io::net::raw::IpNextHeaderProtocol;
+    //use io::net::raw::EtherType;
+    //use io::net::ip;
+    //use fmt::Show;
+    use netsupport;
+
+macro_rules! iotest (
+    { fn $name:ident() $b:block $($a:attr)* } => (
+        mod $name {
+            #[allow(unused_imports)];
+
+            use realstd::io;
+            use realstd::prelude::*;
+            use realstd::io::*;
+            use realstd::io::fs::*;
+            use realstd::io::test::*;
+            use realstd::io::net::tcp::*;
+            use realstd::io::net::ip::*;
+            use realstd::io::net::udp::*;
+            use realstd::io::net::raw::*;
+            use std::io::net::raw::test::*;
+            use std::io::net::raw::EtherTypes;
+            #[cfg(unix)]
+            use realstd::io::net::unix::*;
+            use realstd::io::timer::*;
+            use realstd::io::process::*;
+            use realstd::unstable::running_on_valgrind;
+            use realstd::str;
+            use realstd::util;
+
+            fn f() $b
+
+            $($a)* #[test] fn green() { f() }
+            $($a)* #[test] fn native() {
+                use native;
+                let (p, c) = Chan::new();
+                native::task::spawn(proc() { c.send(f()) });
+                p.recv();
+            }
+        }
+    )
+)
+
+
 
     pub static ETHERNET_HEADER_LEN: u16 = 14;
     pub static IPV4_HEADER_LEN: u16 = 20;
@@ -972,7 +1022,7 @@ pub mod test {
                     Ok((len, Some(~IpAddress(addr)))) => {
                         assert_eq!(buf.slice(headerLen, message.len()), message.as_bytes());
                         assert_eq!(len, message.len());
-                        assert_eq!(addr, ip);
+                        assert!(addr == ip, "addr != ip");
                     },
                     _ => fail!()
                 },
@@ -990,8 +1040,8 @@ pub mod test {
 
         fn get_proto(ip: IpAddr) -> Protocol {
             match ip {
-                Ipv4Addr(..) => TransportProtocol(Ipv4TransportProtocol(IpNextHeaderProtocol::Test1)),
-                Ipv6Addr(..) => TransportProtocol(Ipv6TransportProtocol(IpNextHeaderProtocol::Test1))
+                Ipv4Addr(..) => TransportProtocol(Ipv4TransportProtocol(IpNextHeaderProtocols::Test1)),
+                Ipv6Addr(..) => TransportProtocol(Ipv6TransportProtocol(IpNextHeaderProtocols::Test1))
             }
         }
     }
@@ -1011,7 +1061,7 @@ pub mod test {
         ipHeader.set_header_length(5);
         ipHeader.set_total_length(IPV4_HEADER_LEN + UDP_HEADER_LEN + TEST_DATA_LEN);
         ipHeader.set_ttl(4);
-        ipHeader.set_next_level_protocol(IpNextHeaderProtocol::Udp);
+        ipHeader.set_next_level_protocol(IpNextHeaderProtocols::Udp);
         ipHeader.set_source(Ipv4Addr(127, 0, 0, 1));
         ipHeader.set_destination(Ipv4Addr(127, 0, 0, 1));
         ipHeader.checksum();
@@ -1022,7 +1072,7 @@ pub mod test {
 
         ipHeader.set_version(6);
         ipHeader.set_payload_length(UDP_HEADER_LEN + TEST_DATA_LEN);
-        ipHeader.set_next_header(IpNextHeaderProtocol::Udp);
+        ipHeader.set_next_header(IpNextHeaderProtocols::Udp);
         ipHeader.set_hop_limit(4);
         ipHeader.set_source(Ipv6Addr(0, 0, 0, 0, 0, 0, 0, 1));
         ipHeader.set_destination(Ipv6Addr(0, 0, 0, 0, 0, 0, 0, 1));
@@ -1060,17 +1110,16 @@ pub mod test {
     }
 
     pub fn get_test_interface() -> NetworkInterface {
-        use clone::Clone;
-        use iter::Iterator;
-        use vec::{Items, MoveItems, Vector, OwnedVector};
 
-        (**netsupport::get_network_interfaces()
-            .as_slice().iter()
-            //.move_iter()
-            .filter(|x| x.is_loopback())
-            .next()
-            .unwrap())
-            //.clone()
+        unsafe {
+            (**netsupport::get_network_interfaces()
+                .as_slice().iter()
+                //.move_iter()
+                .filter(|x| x.is_loopback())
+                .next()
+                .unwrap())
+                .clone()
+        }
     }
 
     pub fn same_ports(packet1: &[u8], packet2: &[u8], offset: uint) -> bool {
@@ -1080,8 +1129,8 @@ pub mod test {
 
             // Check we have an IPv4/UDP packet
             if ip1.get_version() != 4 || ip2.get_version() != 4 ||
-               ip1.get_next_level_protocol() != IpNextHeaderProtocol::Udp ||
-               ip2.get_next_level_protocol() != IpNextHeaderProtocol::Udp {
+               ip1.get_next_level_protocol() != IpNextHeaderProtocols::Udp ||
+               ip2.get_next_level_protocol() != IpNextHeaderProtocols::Udp {
                 return false;
             }
         }
@@ -1109,7 +1158,7 @@ pub mod test {
                     Ok((len, Some(~IpAddress(addr)))) => {
                         assert_eq!(buf.slice(0, packet.len()), packet.as_slice());
                         assert_eq!(len, packet.len());
-                        assert_eq!(addr, sendAddr);
+                        assert!(addr == sendAddr, "addr != sendAddr");
                     },
                     _ => fail!()
                 },
@@ -1139,7 +1188,7 @@ pub mod test {
                     Ok((len, Some(~IpAddress(addr)))) => {
                         assert_eq!(buf.slice(0, packet.len()), packet.as_slice());
                         assert_eq!(len, packet.len());
-                        assert_eq!(addr, sendAddr);
+                        assert!(addr == sendAddr, "addr != sendAddr");
                     },
                     _ => fail!()
                 },
@@ -1159,7 +1208,8 @@ pub mod test {
 
     iotest!(fn layer2_cooked_test() {
         let interface = get_test_interface();
-        let interface2 = interface.clone();
+        let interface2 = get_test_interface();
+        //let interface2 = interface.clone();
         let macAddr = interface.mac_address();
 
         let mut packet = [0u8, ..32];
@@ -1171,7 +1221,7 @@ pub mod test {
 
         spawn( proc() {
             let mut buf: ~[u8] = ~[0, ..128];
-            match RawSocket::new(DataLinkProtocol(CookedEthernetProtocol(EtherType::Ipv4))) {
+            match RawSocket::new(DataLinkProtocol(CookedEthernetProtocol(EtherTypes::Ipv4))) {
                 Ok(mut sock) => {
                     chan.send(());
                     loop {
@@ -1179,7 +1229,7 @@ pub mod test {
                             Ok((len, Some(~NetworkAddress(ni)))) => {
                                 if len == packet.len() && same_ports(packet.as_slice(), buf, 0) {
                                     assert_eq!(buf.slice(0, packet.len()), packet.as_slice());
-                                    assert_eq!(*ni, interface);
+                                    assert!(*ni == interface, "*ni != interface");
                                     break;
                                 }
                             },
@@ -1192,7 +1242,7 @@ pub mod test {
             port2.recv();
         });
 
-        match RawSocket::new(DataLinkProtocol(CookedEthernetProtocol(EtherType::Ipv4))) {
+        match RawSocket::new(DataLinkProtocol(CookedEthernetProtocol(EtherTypes::Ipv4))) {
             Ok(mut sock) => {
                 port.recv();
                 match sock.sendto(packet, ~NetworkAddress(~interface2)) {
@@ -1215,7 +1265,7 @@ pub mod test {
             let mut ethernetHeader = MutableEthernetHeader::new(packet.as_mut_slice(), 0);
             ethernetHeader.set_source(interface.mac_address());
             ethernetHeader.set_destination(interface.mac_address());
-            ethernetHeader.set_ethertype(EtherType::Ipv4);
+            ethernetHeader.set_ethertype(EtherTypes::Ipv4);
         }
 
         build_udp4_packet(packet.as_mut_slice(), ETHERNET_HEADER_LEN as uint);
@@ -1233,7 +1283,7 @@ pub mod test {
                             Ok((len, Some(~NetworkAddress(ni)))) => {
                                 if len == packet.len() && same_ports(packet.as_slice(), buf, ETHERNET_HEADER_LEN as uint) {
                                     assert_eq!(buf.slice(0, packet.len()), packet.as_slice());
-                                    assert_eq!(*ni, interface);
+                                    assert!(*ni == interface, "*ni != interface");
                                     break;
                                 }
                             },
