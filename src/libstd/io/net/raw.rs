@@ -940,71 +940,58 @@ pub type IpNextHeaderProtocol = u8;
 
 #[cfg(test)]
 pub mod test {
-//    extern crate netsupport;
-
     use realstd::clone::Clone;
-    use realstd::fmt::Show;
     use realstd::result::{Ok, Err};
-    use realstd::iter::Iterator;
     use realstd::container::Container;
     use realstd::option::{Some};
     use realstd::str::StrSlice;
     use realstd::io::net::raw::*;
-    use realstd::io::net::raw::{Ipv4Packet, UdpPacket, EtherTypes, IpNextHeaderProtocols};
+    use realstd::io::net::raw::{Ipv4Packet, UdpPacket, IpNextHeaderProtocols};
     use realstd::task::spawn;
     use realstd::io::net::ip::{IpAddr, Ipv4Addr, Ipv6Addr};
-    use realstd::io::net::ip;
-    use realstd::vec::Items;
     use realstd::vec::ImmutableVector;
-    use realstd::vec_ng::Vec;
-    use realstd::cast;
     use realstd::iter::Iterator;
-    use realstd::vec::{Items, MoveItems, Vector, OwnedVector};
+    use realstd::vec::{Vector};
 
-    //use io::net::raw::IpNextHeaderProtocol;
-    //use io::net::raw::EtherType;
-    //use io::net::ip;
-    //use fmt::Show;
     use netsupport;
 
-macro_rules! iotest (
-    { fn $name:ident() $b:block $($a:attr)* } => (
-        mod $name {
-            #[allow(unused_imports)];
+    // This needs to be redefined here otherwise imports do not work correctly
+    macro_rules! iotest (
+        { fn $name:ident() $b:block $($a:attr)* } => (
+            mod $name {
+                #[allow(unused_imports)];
 
-            use realstd::io;
-            use realstd::prelude::*;
-            use realstd::io::*;
-            use realstd::io::fs::*;
-            use realstd::io::test::*;
-            use realstd::io::net::tcp::*;
-            use realstd::io::net::ip::*;
-            use realstd::io::net::udp::*;
-            use realstd::io::net::raw::*;
-            use std::io::net::raw::test::*;
-            use std::io::net::raw::EtherTypes;
-            #[cfg(unix)]
-            use realstd::io::net::unix::*;
-            use realstd::io::timer::*;
-            use realstd::io::process::*;
-            use realstd::unstable::running_on_valgrind;
-            use realstd::str;
-            use realstd::util;
+                use realstd::io;
+                use realstd::prelude::*;
+                use realstd::io::*;
+                use realstd::io::fs::*;
+                use realstd::io::test::*;
+                use realstd::io::net::tcp::*;
+                use realstd::io::net::ip::*;
+                use realstd::io::net::udp::*;
+                use realstd::io::net::raw::*;
+                use std::io::net::raw::test::*;
+                use std::io::net::raw::EtherTypes;
+                #[cfg(unix)]
+                use realstd::io::net::unix::*;
+                use realstd::io::timer::*;
+                use realstd::io::process::*;
+                use realstd::unstable::running_on_valgrind;
+                use realstd::str;
+                use realstd::util;
 
-            fn f() $b
+                fn f() $b
 
-            $($a)* #[test] fn green() { f() }
-            $($a)* #[test] fn native() {
-                use native;
-                let (p, c) = Chan::new();
-                native::task::spawn(proc() { c.send(f()) });
-                p.recv();
+                $($a)* #[test] fn green() { f() }
+                $($a)* #[test] fn native() {
+                    use native;
+                    let (p, c) = Chan::new();
+                    native::task::spawn(proc() { c.send(f()) });
+                    p.recv();
+                }
             }
-        }
+        )
     )
-)
-
-
 
     pub static ETHERNET_HEADER_LEN: u16 = 14;
     pub static IPV4_HEADER_LEN: u16 = 20;
@@ -1110,16 +1097,12 @@ macro_rules! iotest (
     }
 
     pub fn get_test_interface() -> NetworkInterface {
-
-        unsafe {
-            (**netsupport::get_network_interfaces()
-                .as_slice().iter()
-                //.move_iter()
-                .filter(|x| x.is_loopback())
-                .next()
-                .unwrap())
-                .clone()
-        }
+        (**netsupport::get_network_interfaces()
+            .as_slice().iter()
+            .filter(|x| x.is_loopback())
+            .next()
+            .unwrap())
+            .clone()
     }
 
     pub fn same_ports(packet1: &[u8], packet2: &[u8], offset: uint) -> bool {
@@ -1209,8 +1192,6 @@ macro_rules! iotest (
     iotest!(fn layer2_cooked_test() {
         let interface = get_test_interface();
         let interface2 = get_test_interface();
-        //let interface2 = interface.clone();
-        let macAddr = interface.mac_address();
 
         let mut packet = [0u8, ..32];
 
