@@ -12,8 +12,6 @@
 
 #[feature(globs)];
 
-extern crate extra;
-
 mod rusti {
     extern "rust-intrinsic" {
         pub fn ctpop8(x: i8) -> i8;

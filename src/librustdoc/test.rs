@@ -11,14 +11,13 @@
 use std::cell::RefCell;
 use std::char;
 use std::io;
-use std::io::Process;
+use std::io::{Process, TempDir};
 use std::local_data;
 use std::os;
 use std::str;
 
 use collections::HashSet;
 use testing;
-use extra::tempfile::TempDir;
 use rustc::back::link;
 use rustc::driver::driver;
 use rustc::driver::session;
@@ -178,9 +177,6 @@ fn maketest(s: &str, cratename: &str, loose_feature_gating: bool) -> ~str {
     }
 
     if !s.contains("extern crate") {
-        if s.contains("extra") {
-            prog.push_str("extern crate extra;\n");
-        }
         if s.contains(cratename) {
             prog.push_str(format!("extern crate {};\n", cratename));
         }

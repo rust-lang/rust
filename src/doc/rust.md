@@ -787,9 +787,9 @@ Four examples of `extern crate` declarations:
 ~~~~ {.ignore}
 extern crate pcre;
 
-extern crate extra; // equivalent to: extern crate extra = "extra";
+extern crate std; // equivalent to: extern crate std = "std";
 
-extern crate rustextra = "extra"; // linking to 'extra' under another name
+extern crate ruststd = "std"; // linking to 'std' under another name
 
 extern crate foo = "some/where/rust-foo#foo:1.0"; // a full package ID for external tools
 ~~~~

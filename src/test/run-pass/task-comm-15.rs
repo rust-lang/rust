@@ -10,8 +10,6 @@
 
 // ignore-fast
 
-extern crate extra;
-
 use std::task;
 
 fn start(tx: &Sender<int>, i0: int) {

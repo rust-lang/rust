@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate extra;
-use extra; //~ ERROR unresolved import (maybe you meant `extra::*`?)
+extern crate collections;
+use collections; //~ ERROR unresolved import (maybe you meant `collections::*`?)
 
 fn main() {}

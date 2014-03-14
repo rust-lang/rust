@@ -10,7 +10,14 @@
 
 //! Types/fns concerning URLs (see RFC 3986)
 
-#[allow(missing_doc)];
+#[crate_id = "url#0.10-pre"];
+#[crate_type = "rlib"];
+#[crate_type = "dylib"];
+#[license = "MIT/ASL2"];
+#[feature(default_type_params)];
+#[allow(deprecated_owned_vector)];
+
+extern crate collections;
 
 use std::cmp::Eq;
 use std::fmt;
@@ -28,7 +35,7 @@ use collections::HashMap;
 /// # Example
 ///
 /// ```rust
-/// use extra::url::{Url, UserInfo};
+/// use url::{Url, UserInfo};
 ///
 /// let url = Url { scheme: ~"https",
 ///                 user: Some(UserInfo { user: ~"username", pass: None }),
@@ -174,7 +181,7 @@ fn encode_inner(s: &str, full_url: bool) -> ~str {
  * # Example
  *
  * ```rust
- * use extra::url::encode;
+ * use url::encode;
  *
  * let url = encode(&"https://example.com/Rust (programming language)");
  * println!("{}", url); // https://example.com/Rust%20(programming%20language)
@@ -249,7 +256,7 @@ fn decode_inner(s: &str, full_url: bool) -> ~str {
  * # Example
  *
  * ```rust
- * use extra::url::decode;
+ * use url::decode;
  *
  * let url = decode(&"https://example.com/Rust%20(programming%20language)");
  * println!("{}", url); // https://example.com/Rust (programming language)
@@ -436,8 +443,6 @@ fn query_from_str(rawquery: &str) -> Query {
  * # Example
  *
  * ```rust
- * use extra::url;
- *
  * let query = ~[(~"title", ~"The Village"), (~"north", ~"52.91"), (~"west", ~"4.10")];
  * println!("{}", url::query_to_str(&query));  // title=The%20Village&north=52.91&west=4.10
  * ```
@@ -464,7 +469,7 @@ pub fn query_to_str(query: &Query) -> ~str {
  * # Example
  *
  * ```rust
- * use extra::url::get_scheme;
+ * use url::get_scheme;
  *
  * let scheme = match get_scheme("https://example.com/") {
  *     Ok((sch, _)) => sch,
@@ -948,8 +953,9 @@ fn test_get_path() {
 
 #[cfg(test)]
 mod tests {
-
-    use super::*;
+    use {encode_form_urlencoded, decode_form_urlencoded, decode_component,
+         decode, encode, from_str, encode_component, decode_component,
+         path_from_str, UserInfo, get_scheme};
 
     use collections::HashMap;
 

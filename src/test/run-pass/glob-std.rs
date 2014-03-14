@@ -13,14 +13,13 @@
 
 #[feature(macro_rules)];
 
-extern crate extra;
 extern crate glob;
 
 use glob::glob;
-use extra::tempfile::TempDir;
 use std::unstable::finally::Finally;
 use std::{os, unstable};
 use std::io;
+use std::io::TempDir;
 
 macro_rules! assert_eq ( ($e1:expr, $e2:expr) => (
     if $e1 != $e2 {

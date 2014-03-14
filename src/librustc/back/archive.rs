@@ -17,14 +17,13 @@ use lib::llvm::{ArchiveRef, llvm};
 
 use std::cast;
 use std::vec_ng::Vec;
-use std::io::fs;
 use std::io;
+use std::io::{fs, TempDir};
 use std::libc;
 use std::os;
 use std::io::process::{ProcessConfig, Process, ProcessOutput};
 use std::str;
 use std::raw;
-use extra::tempfile::TempDir;
 use syntax::abi;
 
 pub static METADATA_FILENAME: &'static str = "rust.metadata.bin";
