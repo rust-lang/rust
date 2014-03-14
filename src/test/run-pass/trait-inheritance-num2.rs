@@ -12,8 +12,6 @@
 
 // A more complex example of numeric extensions
 
-extern crate extra;
-
 use std::cmp::{Eq, Ord};
 
 pub trait TypeExt {}

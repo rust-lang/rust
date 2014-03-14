@@ -3228,17 +3228,6 @@ See the [API documentation][stddoc] for details.
 
 [stddoc]: std/index.html
 
-## The extra library
-
-Rust ships with crates such as the [extra library], an accumulation of useful things,
-that are however not important enough to deserve a place in the standard
-library.  You can link to a library such as `extra` with an `extern crate extra;`.
-
-[extra library]: extra/index.html
-
-Right now `extra` contains those definitions directly, but in the future it will likely just
-re-export a bunch of 'officially blessed' crates that get managed with a package manager.
-
 # What next?
 
 Now that you know the essentials, check out any of the additional

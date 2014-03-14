@@ -12,7 +12,6 @@
 #[crate_id="req"];
 #[crate_type = "lib"];
 
-extern crate extra;
 extern crate collections;
 
 use std::cell::RefCell;

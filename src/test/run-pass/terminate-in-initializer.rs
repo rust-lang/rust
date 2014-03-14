@@ -13,8 +13,6 @@
 // Issue #787
 // Don't try to clean up uninitialized locals
 
-extern crate extra;
-
 use std::task;
 
 fn test_break() { loop { let _x: @int = break; } }

@@ -241,39 +241,30 @@ pub use self::net::tcp::TcpStream;
 pub use self::net::udp::UdpStream;
 pub use self::pipe::PipeStream;
 pub use self::process::{Process, ProcessConfig};
+pub use self::tempfile::TempDir;
 
 pub use self::mem::{MemReader, BufReader, MemWriter, BufWriter};
 pub use self::buffered::{BufferedReader, BufferedWriter, BufferedStream,
                          LineBufferedWriter};
 pub use self::comm_adapters::{ChanReader, ChanWriter};
 
+// this comes first to get the iotest! macro
 pub mod test;
 
-pub mod fs;
-
-pub mod pipe;
-
-pub mod process;
-
-pub mod net;
-
-mod mem;
-
-pub mod stdio;
-
-mod result;
-
-pub mod extensions;
-
-pub mod timer;
-
 mod buffered;
-
-pub mod signal;
-
-pub mod util;
-
 mod comm_adapters;
+mod mem;
+mod result;
+mod tempfile;
+pub mod extensions;
+pub mod fs;
+pub mod net;
+pub mod pipe;
+pub mod process;
+pub mod signal;
+pub mod stdio;
+pub mod timer;
+pub mod util;
 
 /// The default buffer size for various I/O operations
 // libuv recommends 64k buffers to maximize throughput

@@ -12,8 +12,6 @@
 
 #[allow(dead_assignment)];
 
-extern crate extra;
-
 use std::task;
 
 pub fn main() { test00(); }

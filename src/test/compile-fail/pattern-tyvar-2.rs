@@ -9,8 +9,6 @@
 // except according to those terms.
 
 
-extern crate extra;
-
 enum bar { t1((), Option<~[int]>), t2, }
 
 // n.b. my change changes this error message, but I think it's right -- tjc

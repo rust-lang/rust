@@ -13,7 +13,6 @@
 // ignore-pretty the `let to_child` line gets an extra newline
 // multi tasking k-nucleotide
 
-extern crate extra;
 extern crate collections;
 
 use std::cmp::Ord;
