@@ -225,6 +225,10 @@ impl AtomicInt {
     }
 }
 
+// temporary workaround
+// it causes link failure on MIPS target
+// libgcc doesn't implement 64-bit atomic operations for MIPS32
+#[cfg(not(target_arch = "mips"))]
 impl AtomicU64 {
     pub fn new(v: u64) -> AtomicU64 {
         AtomicU64 { v:v, nopod: marker::NoPod }
