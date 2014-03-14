@@ -134,6 +134,9 @@ pub mod lib {
     pub mod llvmdeps;
 }
 
+static BUG_REPORT_URL: &'static str =
+    "http://static.rust-lang.org/doc/master/complement-bugreport.html";
+
 pub fn version(argv0: &str) {
     let vers = match option_env!("CFG_VERSION") {
         Some(vers) => vers,
@@ -393,20 +396,31 @@ pub fn monitor(f: proc()) {
             // Task failed without emitting a fatal diagnostic
             if !value.is::<diagnostic::FatalError>() {
                 let mut emitter = diagnostic::EmitterWriter::stderr();
-                emitter.emit(
-                    None,
-                    diagnostic::ice_msg("unexpected failure"),
-                    diagnostic::Error);
+
+                // a .span_bug or .bug call has already printed what
+                // it wants to print.
+                if !value.is::<diagnostic::ExplicitBug>() {
+                    emitter.emit(
+                        None,
+                        "unexpected failure",
+                        diagnostic::Bug);
+                }
 
                 let xs = [
-                    ~"the compiler hit an unexpected failure path. \
-                     this is a bug",
+                    ~"the compiler hit an unexpected failure path. this is a bug.",
+                    "we would appreciate a bug report: " + BUG_REPORT_URL,
+                    ~"run with `RUST_LOG=std::rt::backtrace` for a backtrace",
                 ];
                 for note in xs.iter() {
                     emitter.emit(None, *note, diagnostic::Note)
                 }
 
-                println!("{}", r.read_to_str());
+                match r.read_to_str() {
+                    Ok(s) => println!("{}", s),
+                    Err(e) => emitter.emit(None,
+                                           format!("failed to read internal stderr: {}", e),
+                                           diagnostic::Error),
+                }
             }
 
             // Fail so the process returns a failure code, but don't pollute the
