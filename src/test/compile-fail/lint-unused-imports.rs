@@ -11,6 +11,7 @@
 #[feature(globs)];
 #[deny(unused_imports)];
 #[allow(dead_code)];
+#[allow(deprecated_owned_vector)];
 
 use cal = bar::c::cc;
 

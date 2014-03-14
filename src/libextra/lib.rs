@@ -31,6 +31,7 @@ Rust extras are part of the standard Rust distribution.
 
 #[feature(macro_rules, globs, managed_boxes, asm, default_type_params)];
 
+#[allow(deprecated_owned_vector)];
 #[deny(non_camel_case_types)];
 #[deny(missing_doc)];
 

@@ -27,6 +27,7 @@
 #[crate_type = "rlib"];
 #[crate_type = "dylib"];
 #[license = "MIT/ASL2"];
+#[allow(deprecated_owned_vector)];
 
 use std::cell::Cell;
 use std::{cmp, os, path};

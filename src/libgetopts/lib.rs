@@ -81,6 +81,7 @@
 #[crate_type = "dylib"];
 #[license = "MIT/ASL2"];
 #[allow(missing_doc)];
+#[allow(deprecated_owned_vector)];
 
 #[feature(globs)];
 

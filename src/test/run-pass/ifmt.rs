@@ -13,6 +13,7 @@
 #[feature(macro_rules)];
 #[deny(warnings)];
 #[allow(unused_must_use)];
+#[allow(deprecated_owned_vector)];
 
 use std::fmt;
 use std::io::MemWriter;
