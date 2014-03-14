@@ -132,7 +132,9 @@ impl AstConv for CrateCtxt {
     }
 
     fn ty_infer(&self, span: Span) -> ty::t {
-        self.tcx.sess.span_bug(span, "found `ty_infer` in unexpected place");
+        self.tcx.sess.span_err(span, "the type placeholder `_` is not \
+                                      allowed within types on item signatures.");
+        ty::mk_err()
     }
 }
 
