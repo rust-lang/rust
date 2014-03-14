@@ -12,7 +12,7 @@ fn main() {
     let mut p = Point { x: 1, y: 2};
     let q = p; // copies p deeply
     p.x += 1; // legal because p is mutable
-    println!(q.x); // still prints 1
+    println!("{}", q.x); // still prints 1
 }
 ~~~~
 
@@ -49,6 +49,8 @@ This small program prints "hello?" to the console. Use `println` instead of `pri
 
 ~~~~
 fn main() {
+    use std::io::print;
+
     print("hello?");
 }
 ~~~~
@@ -74,8 +76,8 @@ Introduce enums and matching here? Or after ownership? After 3.3?
 
 ## Ownership (front and center)
 
-~~~~
-struct Point { ... }
+~~~~ {.notrust}
+struct Point {x: int, y: int}
 fn main() {
     let mut p = ~Point { x: 1, y: 2 };
     let q = p;
@@ -92,6 +94,7 @@ fn main() {
 Ownership is not the right tool when you just want temporary access to data:
 
 ~~~~
+struct Point {x: int, y: int}
 fn main() {
     let p = ~Point { x: 1, y: 2};
     let r = inc_allocated_point(p);
@@ -107,9 +110,9 @@ fn inc_allocated_point(mut p: ~Point) -> ~Point {
 * mutability on function arguments
 
 ~~~~
-struct Point { ... }
+struct Point {x: int, y: int}
 fn main() {
-    let mut p = ~Point { ... };
+    let mut p = ~Point {x: 1, y: 2};
     inc_allocated_point(&mut p);
 }
 fn inc_allocated_point(p: &mut ~Point) {
@@ -120,6 +123,7 @@ fn inc_allocated_point(p: &mut ~Point) {
 ## Immutable borrow
 
 ~~~~
+struct Point {x: int, y: int}
 fn get_point(p: &Point) -> int {
     p.x + p.y
 }
