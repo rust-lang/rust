@@ -25,6 +25,8 @@ li {list-style-type: none; }
 
 * [The standard library, `std`](std/index.html)
 
+<!-- force the two lists to be separate -->
+
 * [The `arena` allocation library](arena/index.html)
 * [The `collections` library](collections/index.html)
 * [The `extra` library of extra stuff](extra/index.html)
@@ -33,8 +35,10 @@ li {list-style-type: none; }
 * [The `getopts` argument parsing library](getopts/index.html)
 * [The `glob` file path matching library](glob/index.html)
 * [The `green` M:N runtime library](green/index.html)
+* [The `hexfloat` library for hexadecimal floating-point literals](hexfloat/index.html)
 * [The `native` 1:1 threading runtime](native/index.html)
 * [The `num` arbitrary precision numerics library](num/index.html)
+* [The `rand` library for random numbers and distributions](rand/index.html)
 * [The `rustc` compiler](rustc/index.html)
 * [The `rustuv` M:N I/O library](rustuv/index.html)
 * [The `semver` version collation library](semver/index.html)

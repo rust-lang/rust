@@ -68,7 +68,7 @@ use cmp;
 use num::{Zero, One, CheckedAdd, CheckedSub, Saturating, ToPrimitive, Int};
 use option::{Option, Some, None};
 use ops::{Add, Mul, Sub};
-use cmp::{Eq, Ord};
+use cmp::{Eq, Ord, TotalOrd};
 use clone::Clone;
 use uint;
 use mem;
@@ -626,7 +626,7 @@ pub trait Iterator<A> {
     /// assert_eq!(*xs.iter().max_by(|x| x.abs()).unwrap(), -10);
     /// ```
     #[inline]
-    fn max_by<B: Ord>(&mut self, f: |&A| -> B) -> Option<A> {
+    fn max_by<B: TotalOrd>(&mut self, f: |&A| -> B) -> Option<A> {
         self.fold(None, |max: Option<(A, B)>, x| {
             let x_val = f(&x);
             match max {
@@ -650,7 +650,7 @@ pub trait Iterator<A> {
     /// assert_eq!(*xs.iter().min_by(|x| x.abs()).unwrap(), 0);
     /// ```
     #[inline]
-    fn min_by<B: Ord>(&mut self, f: |&A| -> B) -> Option<A> {
+    fn min_by<B: TotalOrd>(&mut self, f: |&A| -> B) -> Option<A> {
         self.fold(None, |min: Option<(A, B)>, x| {
             let x_val = f(&x);
             match min {
@@ -917,7 +917,7 @@ pub trait OrdIterator<A> {
     fn min_max(&mut self) -> MinMaxResult<A>;
 }
 
-impl<A: Ord, T: Iterator<A>> OrdIterator<A> for T {
+impl<A: TotalOrd, T: Iterator<A>> OrdIterator<A> for T {
     #[inline]
     fn max(&mut self) -> Option<A> {
         self.fold(None, |max, x| {
@@ -1757,7 +1757,7 @@ impl<'a,
 
 /// An iterator that yields `None` forever after the underlying iterator
 /// yields `None` once.
-#[deriving(Clone, DeepClone)]
+#[deriving(Clone)]
 pub struct Fuse<T> {
     priv iter: T,
     priv done: bool
@@ -1946,7 +1946,7 @@ impl<A: Add<A, A> + Clone> Iterator<A> for Counter<A> {
 }
 
 /// An iterator over the range [start, stop)
-#[deriving(Clone, DeepClone)]
+#[deriving(Clone)]
 pub struct Range<A> {
     priv state: A,
     priv stop: A,
@@ -2020,7 +2020,7 @@ impl<A: Int + Ord + Clone + ToPrimitive> DoubleEndedIterator<A> for Range<A> {
 }
 
 /// An iterator over the range [start, stop]
-#[deriving(Clone, DeepClone)]
+#[deriving(Clone)]
 pub struct RangeInclusive<A> {
     priv range: Range<A>,
     priv done: bool
@@ -2083,7 +2083,7 @@ impl<A: Sub<A, A> + Int + Ord + Clone + ToPrimitive> DoubleEndedIterator<A>
 }
 
 /// An iterator over the range [start, stop) by `step`. It handles overflow by stopping.
-#[deriving(Clone, DeepClone)]
+#[deriving(Clone)]
 pub struct RangeStep<A> {
     priv state: A,
     priv stop: A,
@@ -2115,7 +2115,7 @@ impl<A: CheckedAdd + Ord + Clone> Iterator<A> for RangeStep<A> {
 }
 
 /// An iterator over the range [start, stop] by `step`. It handles overflow by stopping.
-#[deriving(Clone, DeepClone)]
+#[deriving(Clone)]
 pub struct RangeStepInclusive<A> {
     priv state: A,
     priv stop: A,
@@ -2150,7 +2150,7 @@ impl<A: CheckedAdd + Ord + Clone + Eq> Iterator<A> for RangeStepInclusive<A> {
 }
 
 /// An iterator that repeats an element endlessly
-#[deriving(Clone, DeepClone)]
+#[deriving(Clone)]
 pub struct Repeat<A> {
     priv element: A
 }

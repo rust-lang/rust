@@ -15,7 +15,7 @@ use c_str::{CString, ToCStr};
 use clone::Clone;
 use cmp::Eq;
 use from_str::FromStr;
-use hash::{Hash, sip};
+use io::Writer;
 use iter::{AdditiveIterator, Extendable, Iterator, Map};
 use option::{Option, None, Some};
 use str;
@@ -38,7 +38,7 @@ pub type RevStrComponents<'a> = Map<'a, &'a [u8], Option<&'a str>,
                                           RevComponents<'a>>;
 
 /// Represents a POSIX file path
-#[deriving(Clone, DeepClone)]
+#[deriving(Clone)]
 pub struct Path {
     priv repr: ~[u8], // assumed to never be empty or contain NULs
     priv sepidx: Option<uint> // index of the final separator in repr
@@ -88,10 +88,10 @@ impl ToCStr for Path {
     }
 }
 
-impl Hash for Path {
+impl<S: Writer> ::hash::Hash<S> for Path {
     #[inline]
-    fn hash(&self, s: &mut sip::SipState) {
-        self.repr.hash(s)
+    fn hash(&self, state: &mut S) {
+        self.repr.hash(state)
     }
 }
 

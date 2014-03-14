@@ -29,14 +29,16 @@ Rust extras are part of the standard Rust distribution.
       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
       html_root_url = "http://static.rust-lang.org/doc/master")];
 
-#[feature(macro_rules, globs, managed_boxes, asm)];
+#[feature(macro_rules, globs, managed_boxes, asm, default_type_params)];
 
+#[allow(deprecated_owned_vector)];
 #[deny(non_camel_case_types)];
 #[deny(missing_doc)];
 
-extern crate sync;
-extern crate serialize;
 extern crate collections;
+extern crate rand;
+extern crate serialize;
+extern crate sync;
 extern crate time;
 
 // Utility modules

@@ -16,13 +16,13 @@
 
 use std::task;
 
-type ctx = Chan<int>;
+type ctx = Sender<int>;
 
-fn iotask(_cx: &ctx, ip: ~str) {
+fn iotask(_tx: &ctx, ip: ~str) {
     assert_eq!(ip, ~"localhost");
 }
 
 pub fn main() {
-    let (_p, ch) = Chan::<int>::new();
-    task::spawn(proc() iotask(&ch, ~"localhost") );
+    let (tx, _rx) = channel::<int>();
+    task::spawn(proc() iotask(&tx, ~"localhost") );
 }

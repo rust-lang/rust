@@ -37,8 +37,8 @@ pub struct PipeWatcher {
 pub struct PipeListener {
     home: HomeHandle,
     pipe: *uvll::uv_pipe_t,
-    priv outgoing: Chan<Result<~RtioPipe, IoError>>,
-    priv incoming: Port<Result<~RtioPipe, IoError>>,
+    priv outgoing: Sender<Result<~RtioPipe, IoError>>,
+    priv incoming: Receiver<Result<~RtioPipe, IoError>>,
 }
 
 pub struct PipeAcceptor {
@@ -182,12 +182,12 @@ impl PipeListener {
                 // If successful, unwrap the PipeWatcher because we control how
                 // we close the pipe differently. We can't rely on
                 // StreamWatcher's default close method.
-                let (port, chan) = Chan::new();
+                let (tx, rx) = channel();
                 let p = ~PipeListener {
                     home: io.make_handle(),
                     pipe: pipe.unwrap(),
-                    incoming: port,
-                    outgoing: chan,
+                    incoming: rx,
+                    outgoing: tx,
                 };
                 Ok(p.install())
             }
@@ -299,19 +299,19 @@ mod tests {
     fn connect() {
         let path = next_test_unix();
         let path2 = path.clone();
-        let (port, chan) = Chan::new();
+        let (tx, rx) = channel();
 
         spawn(proc() {
             let p = PipeListener::bind(local_loop(), &path2.to_c_str()).unwrap();
             let mut p = p.listen().unwrap();
-            chan.send(());
+            tx.send(());
             let mut client = p.accept().unwrap();
             let mut buf = [0];
             assert!(client.read(buf).unwrap() == 1);
             assert_eq!(buf[0], 1);
             assert!(client.write([2]).is_ok());
         });
-        port.recv();
+        rx.recv();
         let mut c = PipeWatcher::connect(local_loop(), &path.to_c_str()).unwrap();
         assert!(c.write([1]).is_ok());
         let mut buf = [0];
@@ -323,15 +323,15 @@ mod tests {
     fn connect_fail() {
         let path = next_test_unix();
         let path2 = path.clone();
-        let (port, chan) = Chan::new();
+        let (tx, rx) = channel();
 
         spawn(proc() {
             let p = PipeListener::bind(local_loop(), &path2.to_c_str()).unwrap();
             let mut p = p.listen().unwrap();
-            chan.send(());
+            tx.send(());
             drop(p.accept().unwrap());
         });
-        port.recv();
+        rx.recv();
         let _c = PipeWatcher::connect(local_loop(), &path.to_c_str()).unwrap();
         fail!()
 

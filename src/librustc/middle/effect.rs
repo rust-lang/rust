@@ -12,7 +12,7 @@
 /// `unsafe`.
 
 use middle::ty;
-use middle::typeck::MethodMap;
+use middle::typeck::{MethodCall, MethodMap};
 use util::ppaux;
 
 use syntax::ast;
@@ -138,7 +138,8 @@ impl Visitor<()> for EffectCheckVisitor {
     fn visit_expr(&mut self, expr: &ast::Expr, _:()) {
         match expr.node {
             ast::ExprMethodCall(_, _, _) => {
-                let base_type = self.method_map.borrow().get().get(&expr.id).ty;
+                let method_call = MethodCall::expr(expr.id);
+                let base_type = self.method_map.borrow().get().get(&method_call).ty;
                 debug!("effect: method call case, base type is {}",
                        ppaux::ty_to_str(self.tcx, base_type));
                 if type_is_unsafe_function(base_type) {

@@ -10,9 +10,11 @@
 
 // ensure that the TaskRng isn't/doesn't become accidentally sendable.
 
+extern crate rand;
+
 fn test_send<S: Send>() {}
 
 pub fn main() {
-    test_send::<::std::rand::TaskRng>();
-    //~^ ERROR: incompatible type `std::rand::TaskRng`, which does not fulfill `Send`
+    test_send::<::rand::TaskRng>();
+    //~^ ERROR: incompatible type `rand::TaskRng`, which does not fulfill `Send`
 }

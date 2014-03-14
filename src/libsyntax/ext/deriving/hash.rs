@@ -24,12 +24,12 @@ pub fn expand_deriving_hash(cx: &mut ExtCtxt,
 
     let (path, generics, args) = if cx.ecfg.deriving_hash_type_parameter {
         (Path::new_(vec!("std", "hash", "Hash"), None,
-                    vec!(~Literal(Path::new_local("__H"))), true),
+                    vec!(~Literal(Path::new_local("__S"))), true),
          LifetimeBounds {
              lifetimes: Vec::new(),
-             bounds: vec!(("__H", vec!(Path::new(vec!("std", "io", "Writer"))))),
+             bounds: vec!(("__S", vec!(Path::new(vec!("std", "io", "Writer"))))),
          },
-         Path::new_local("__H"))
+         Path::new_local("__S"))
     } else {
         (Path::new(vec!("std", "hash", "Hash")),
          LifetimeBounds::empty(),

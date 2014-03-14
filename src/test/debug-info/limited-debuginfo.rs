@@ -10,14 +10,14 @@
 
 // ignore-android: FIXME(#10381)
 
-// compile-flags:-g1
+// compile-flags:--debuginfo=1
 
 // Make sure functions have proper names
 // debugger:info functions
-// check:static void limited-debuginfo::main();
-// check:static void limited-debuginfo::some_function();
-// check:static void limited-debuginfo::some_other_function();
-// check:static void limited-debuginfo::zzz();
+// check:static void [...]main();
+// check:static void [...]some_function();
+// check:static void [...]some_other_function();
+// check:static void [...]zzz();
 
 // debugger:rbreak zzz
 // debugger:run

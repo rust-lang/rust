@@ -15,7 +15,7 @@
 
 #[allow(missing_doc)];
 
-use clone::{Clone, DeepClone};
+use clone::Clone;
 use cmp::{Eq, Ord};
 use kinds::Pod;
 use mem::size_of;
@@ -247,7 +247,6 @@ pub trait Bitwise: Bounded
 /// may be useful for systems programming.
 pub trait Primitive: Pod
                    + Clone
-                   + DeepClone
                    + Num
                    + NumCast
                    + Ord

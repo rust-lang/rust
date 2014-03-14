@@ -50,14 +50,15 @@
 ################################################################################
 
 TARGET_CRATES := std extra green rustuv native flate arena glob term semver \
-                 uuid serialize sync getopts collections num test time netsupport
-HOST_CRATES := syntax rustc rustdoc fourcc
+                 uuid serialize sync getopts collections num test time rand \
+				 netsupport
+HOST_CRATES := syntax rustc rustdoc fourcc hexfloat
 CRATES := $(TARGET_CRATES) $(HOST_CRATES)
 TOOLS := compiletest rustdoc rustc
 
-DEPS_std := native:rustrt native:compiler-rt
-DEPS_extra := std term sync serialize getopts collections time
-DEPS_green := std native:context_switch
+DEPS_std := native:rustrt native:compiler-rt native:backtrace
+DEPS_extra := std term sync serialize getopts collections time rand
+DEPS_green := std rand native:context_switch
 DEPS_rustuv := std native:uv native:uv_support netsupport
 DEPS_native := std netsupport
 DEPS_syntax := std term serialize collections
@@ -71,14 +72,16 @@ DEPS_glob := std
 DEPS_serialize := std collections
 DEPS_term := std collections
 DEPS_semver := std
-DEPS_uuid := std serialize
+DEPS_uuid := std serialize rand
 DEPS_sync := std
 DEPS_getopts := std
-DEPS_collections := std
+DEPS_collections := std rand
 DEPS_fourcc := syntax std
-DEPS_num := std
+DEPS_hexfloat := syntax std
+DEPS_num := std rand
 DEPS_test := std extra collections getopts serialize term
 DEPS_time := std serialize
+DEPS_rand := std
 DEPS_netsupport := std
 
 TOOL_DEPS_compiletest := test green rustuv getopts
@@ -93,6 +96,7 @@ TOOL_SOURCE_rustc := $(S)src/driver/driver.rs
 ################################################################################
 
 DOC_CRATES := $(filter-out rustc, $(filter-out syntax, $(CRATES)))
+COMPILER_DOC_CRATES := rustc syntax
 
 # This macro creates some simple definitions for each crate being built, just
 # some munging of all of the parameters above.

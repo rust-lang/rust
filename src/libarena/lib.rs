@@ -21,6 +21,7 @@
 #[license = "MIT/ASL2"];
 #[allow(missing_doc)];
 #[feature(managed_boxes)];
+#[allow(deprecated_owned_vector)];
 
 extern crate collections;
 
@@ -51,11 +52,11 @@ struct Chunk {
 }
 impl Chunk {
     fn capacity(&self) -> uint {
-        self.data.borrow().borrow().get().capacity()
+        self.data.deref().borrow().get().capacity()
     }
 
     unsafe fn as_ptr(&self) -> *u8 {
-        self.data.borrow().borrow().get().as_ptr()
+        self.data.deref().borrow().get().as_ptr()
     }
 }
 

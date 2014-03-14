@@ -15,6 +15,7 @@ use ext::base;
 use opt_vec;
 use parse::token;
 use parse::token::{str_to_ident};
+use std::vec_ng::Vec;
 
 pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     -> base::MacResult {
@@ -51,7 +52,7 @@ pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                  segments: vec!(
                     ast::PathSegment {
                         identifier: res,
-                        lifetimes: opt_vec::Empty,
+                        lifetimes: Vec::new(),
                         types: opt_vec::Empty,
                     }
                 )

@@ -42,6 +42,7 @@ via `close` and `delete` methods.
 #[feature(macro_rules)];
 #[deny(unused_result, unused_must_use)];
 #[allow(visible_private_types)];
+#[allow(deprecated_owned_vector)];
 
 #[cfg(test)] extern crate green;
 

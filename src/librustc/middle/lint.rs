@@ -45,7 +45,6 @@ use middle::ty;
 use middle::typeck::astconv::{ast_ty_to_ty, AstConv};
 use middle::typeck::infer;
 use middle::typeck;
-use std::to_str::ToStr;
 use util::ppaux::{ty_to_str};
 
 use std::cmp;
@@ -54,10 +53,12 @@ use std::i16;
 use std::i32;
 use std::i64;
 use std::i8;
+use std::to_str::ToStr;
 use std::u16;
 use std::u32;
 use std::u64;
 use std::u8;
+use std::vec_ng::Vec;
 use collections::SmallIntMap;
 use syntax::ast_map;
 use syntax::ast_util::IdVisitingOperation;
@@ -111,6 +112,8 @@ pub enum Lint {
 
     UnusedMustUse,
     UnusedResult,
+
+    DeprecatedOwnedVector,
 
     Warnings,
 }
@@ -396,7 +399,14 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
         lint: UnusedResult,
         desc: "unused result of an expression in a statement",
         default: allow,
-    })
+    }),
+
+    ("deprecated_owned_vector",
+     LintSpec {
+        lint: DeprecatedOwnedVector,
+        desc: "use of a `~[T]` vector",
+        default: warn
+    }),
 ];
 
 /*
@@ -432,7 +442,7 @@ struct Context<'a> {
     // When recursing into an attributed node of the ast which modifies lint
     // levels, this stack keeps track of the previous lint levels of whatever
     // was modified.
-    lint_stack: ~[(Lint, level, LintSource)],
+    lint_stack: Vec<(Lint, level, LintSource)> ,
 
     // id of the last visited negated expression
     negated_expr_id: ast::NodeId
@@ -978,11 +988,11 @@ static other_attrs: &'static [&'static str] = &[
     "macro_export", "must_use",
 
     //mod-level
-    "path", "link_name", "link_args", "nolink", "macro_escape", "no_implicit_prelude",
+    "path", "link_name", "link_args", "macro_escape", "no_implicit_prelude",
 
     // fn-level
     "test", "bench", "should_fail", "ignore", "inline", "lang", "main", "start",
-    "no_split_stack", "cold", "macro_registrar",
+    "no_split_stack", "cold", "macro_registrar", "linkage",
 
     // internal attribute: bypass privacy inside items
     "!resolve_unexported",
@@ -1091,7 +1101,7 @@ fn check_unused_result(cx: &Context, s: &ast::Stmt) {
                 }
             } else {
                 csearch::get_item_attrs(cx.tcx.sess.cstore, did, |attrs| {
-                    if attr::contains_name(attrs, "must_use") {
+                    if attr::contains_name(attrs.as_slice(), "must_use") {
                         cx.span_lint(UnusedMustUse, s.span,
                                      "unused result which must be used");
                         warned = true;
@@ -1103,6 +1113,17 @@ fn check_unused_result(cx: &Context, s: &ast::Stmt) {
     }
     if !warned {
         cx.span_lint(UnusedResult, s.span, "unused result");
+    }
+}
+
+fn check_deprecated_owned_vector(cx: &Context, e: &ast::Expr) {
+    let t = ty::expr_ty(cx.tcx, e);
+    match ty::get(t).sty {
+        ty::ty_vec(_, ty::vstore_uniq) => {
+            cx.span_lint(DeprecatedOwnedVector, e.span,
+                         "use of deprecated `~[]` vector; replaced by `std::vec_ng::Vec`")
+        }
+        _ => {}
     }
 }
 
@@ -1490,7 +1511,8 @@ fn check_stability(cx: &Context, e: &ast::Expr) {
             }
         }
         ast::ExprMethodCall(..) => {
-            match cx.method_map.borrow().get().find(&e.id) {
+            let method_call = typeck::MethodCall::expr(e.id);
+            match cx.method_map.borrow().get().find(&method_call) {
                 Some(method) => {
                     match method.origin {
                         typeck::MethodStatic(def_id) => {
@@ -1632,6 +1654,7 @@ impl<'a> Visitor<()> for Context<'a> {
 
         check_type_limits(self, e);
         check_unused_casts(self, e);
+        check_deprecated_owned_vector(self, e);
 
         visit::walk_expr(self, e, ());
     }
@@ -1738,7 +1761,7 @@ pub fn check_crate(tcx: ty::ctxt,
         exported_items: exported_items,
         cur_struct_def_id: -1,
         is_doc_hidden: false,
-        lint_stack: ~[],
+        lint_stack: Vec::new(),
         negated_expr_id: -1
     };
 

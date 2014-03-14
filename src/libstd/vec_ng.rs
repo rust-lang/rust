@@ -8,18 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Migrate documentation over from `std::vec` when it is removed.
-#[doc(hidden)];
+// Migrate documentation over from `std::vec` progressively.  (This is
+// shown in docs so that people have something to refer too, even if
+// the page is rather empty.)
+#[allow(missing_doc)];
 
 use cast::{forget, transmute};
 use clone::Clone;
 use cmp::{Ord, Eq, Ordering, TotalEq, TotalOrd};
-use container::Container;
+use container::{Container, Mutable};
 use default::Default;
 use fmt;
-use iter::{DoubleEndedIterator, FromIterator, Extendable, Iterator};
+use iter::{DoubleEndedIterator, FromIterator, Extendable, Iterator, Rev};
 use libc::{free, c_void};
 use mem::{size_of, move_val_init};
+use mem;
 use num;
 use num::{CheckedMul, CheckedAdd};
 use ops::Drop;
@@ -31,6 +34,7 @@ use raw::Slice;
 use vec::{ImmutableEqVector, ImmutableVector, Items, MutItems, MutableVector};
 use vec::{RevItems};
 
+#[unsafe_no_drop_flag]
 pub struct Vec<T> {
     priv len: uint,
     priv cap: uint,
@@ -63,9 +67,33 @@ impl<T> Vec<T> {
             xs
         }
     }
+
+    /**
+     * Partitions the vector into two vectors `(A,B)`, where all
+     * elements of `A` satisfy `f` and all elements of `B` do not.
+     */
+    #[inline]
+    pub fn partition(self, f: |&T| -> bool) -> (Vec<T>, Vec<T>) {
+        let mut lefts  = Vec::new();
+        let mut rights = Vec::new();
+
+        for elt in self.move_iter() {
+            if f(&elt) {
+                lefts.push(elt);
+            } else {
+                rights.push(elt);
+            }
+        }
+
+        (lefts, rights)
+    }
 }
 
 impl<T: Clone> Vec<T> {
+    pub fn from_slice(values: &[T]) -> Vec<T> {
+        values.iter().map(|x| x.clone()).collect()
+    }
+
     pub fn from_elem(length: uint, value: T) -> Vec<T> {
         unsafe {
             let mut xs = Vec::with_capacity(length);
@@ -102,6 +130,21 @@ impl<T: Clone> Vec<T> {
             self.grow(index - l + 1u, initval);
         }
         *self.get_mut(index) = val;
+    }
+
+    pub fn partitioned(&self, f: |&T| -> bool) -> (Vec<T>, Vec<T>) {
+        let mut lefts = Vec::new();
+        let mut rights = Vec::new();
+
+        for elt in self.iter() {
+            if f(elt) {
+                lefts.push(elt.clone());
+            } else {
+                rights.push(elt.clone());
+            }
+        }
+
+        (lefts, rights)
     }
 }
 
@@ -283,6 +326,11 @@ impl<T> Vec<T> {
     }
 
     #[inline]
+    pub fn move_rev_iter(self) -> Rev<MoveItems<T>> {
+        self.move_iter().rev()
+    }
+
+    #[inline]
     pub unsafe fn set_len(&mut self, len: uint) {
         self.len = len;
     }
@@ -323,6 +371,11 @@ impl<T> Vec<T> {
     }
 
     #[inline]
+    pub fn tailn<'a>(&'a self, n: uint) -> &'a [T] {
+        self.as_slice().tailn(n)
+    }
+
+    #[inline]
     pub fn last<'a>(&'a self) -> Option<&'a T> {
         self.as_slice().last()
     }
@@ -348,6 +401,11 @@ impl<T> Vec<T> {
         self.insert(0, element)
     }
 
+    #[inline]
+    pub fn shift(&mut self) -> Option<T> {
+        self.remove(0)
+    }
+
     pub fn insert(&mut self, index: uint, element: T) {
         let len = self.len();
         assert!(index <= len);
@@ -370,6 +428,30 @@ impl<T> Vec<T> {
         }
     }
 
+    fn remove(&mut self, index: uint) -> Option<T> {
+        let len = self.len();
+        if index < len {
+            unsafe { // infallible
+                let ret;
+                {
+                    let slice = self.as_mut_slice();
+                    // the place we are taking from.
+                    let ptr = slice.as_mut_ptr().offset(index as int);
+                    // copy it out, unsafely having a copy of the value on
+                    // the stack and in the vector at the same time.
+                    ret = Some(ptr::read(ptr as *T));
+
+                    // Shift everything down to fill in that spot.
+                    ptr::copy_memory(ptr, &*ptr.offset(1), len - index - 1);
+                }
+                self.set_len(len - 1);
+                ret
+            }
+        } else {
+            None
+        }
+    }
+
     #[inline]
     pub fn rev_iter<'a>(&'a self) -> RevItems<'a,T> {
         self.as_slice().rev_iter()
@@ -387,13 +469,43 @@ impl<T> Vec<T> {
         }
     }
 
+    #[inline]
+    pub fn mut_slice<'a>(&'a mut self, start: uint, end: uint)
+                     -> &'a mut [T] {
+        self.as_mut_slice().mut_slice(start, end)
+    }
+
+    #[inline]
+    pub fn reverse(&mut self) {
+        self.as_mut_slice().reverse()
+    }
+
+    #[inline]
     pub fn slice_from<'a>(&'a self, start: uint) -> &'a [T] {
         self.as_slice().slice_from(start)
     }
 
     #[inline]
+    pub fn slice_to<'a>(&'a self, end: uint) -> &'a [T] {
+        self.as_slice().slice_to(end)
+    }
+
+    #[inline]
     pub fn init<'a>(&'a self) -> &'a [T] {
         self.slice(0, self.len() - 1)
+    }
+
+    #[inline]
+    pub fn as_ptr(&self) -> *T {
+        self.as_slice().as_ptr()
+    }
+}
+
+impl<T> Mutable for Vec<T> {
+    /// Clear the vector, removing all values.
+    #[inline]
+    fn clear(&mut self) {
+        self.truncate(0)
     }
 }
 
@@ -401,6 +513,90 @@ impl<T:Eq> Vec<T> {
     /// Return true if a vector contains an element with the given value
     pub fn contains(&self, x: &T) -> bool {
         self.as_slice().contains(x)
+    }
+
+    pub fn dedup(&mut self) {
+        unsafe {
+            // Although we have a mutable reference to `self`, we cannot make
+            // *arbitrary* changes. The `Eq` comparisons could fail, so we
+            // must ensure that the vector is in a valid state at all time.
+            //
+            // The way that we handle this is by using swaps; we iterate
+            // over all the elements, swapping as we go so that at the end
+            // the elements we wish to keep are in the front, and those we
+            // wish to reject are at the back. We can then truncate the
+            // vector. This operation is still O(n).
+            //
+            // Example: We start in this state, where `r` represents "next
+            // read" and `w` represents "next_write`.
+            //
+            //           r
+            //     +---+---+---+---+---+---+
+            //     | 0 | 1 | 1 | 2 | 3 | 3 |
+            //     +---+---+---+---+---+---+
+            //           w
+            //
+            // Comparing self[r] against self[w-1], tis is not a duplicate, so
+            // we swap self[r] and self[w] (no effect as r==w) and then increment both
+            // r and w, leaving us with:
+            //
+            //               r
+            //     +---+---+---+---+---+---+
+            //     | 0 | 1 | 1 | 2 | 3 | 3 |
+            //     +---+---+---+---+---+---+
+            //               w
+            //
+            // Comparing self[r] against self[w-1], this value is a duplicate,
+            // so we increment `r` but leave everything else unchanged:
+            //
+            //                   r
+            //     +---+---+---+---+---+---+
+            //     | 0 | 1 | 1 | 2 | 3 | 3 |
+            //     +---+---+---+---+---+---+
+            //               w
+            //
+            // Comparing self[r] against self[w-1], this is not a duplicate,
+            // so swap self[r] and self[w] and advance r and w:
+            //
+            //                       r
+            //     +---+---+---+---+---+---+
+            //     | 0 | 1 | 2 | 1 | 3 | 3 |
+            //     +---+---+---+---+---+---+
+            //                   w
+            //
+            // Not a duplicate, repeat:
+            //
+            //                           r
+            //     +---+---+---+---+---+---+
+            //     | 0 | 1 | 2 | 3 | 1 | 3 |
+            //     +---+---+---+---+---+---+
+            //                       w
+            //
+            // Duplicate, advance r. End of vec. Truncate to w.
+
+            let ln = self.len();
+            if ln < 1 { return; }
+
+            // Avoid bounds checks by using unsafe pointers.
+            let p = self.as_mut_slice().as_mut_ptr();
+            let mut r = 1;
+            let mut w = 1;
+
+            while r < ln {
+                let p_r = p.offset(r as int);
+                let p_wm1 = p.offset((w - 1) as int);
+                if *p_r != *p_wm1 {
+                    if r != w {
+                        let p_w = p_wm1.offset(1);
+                        mem::swap(&mut *p_r, &mut *p_w);
+                    }
+                    w += 1;
+                }
+                r += 1;
+            }
+
+            self.truncate(w);
+        }
     }
 }
 
@@ -421,6 +617,8 @@ pub fn append_one<T>(mut lhs: Vec<T>, x: T) -> Vec<T> {
 #[unsafe_destructor]
 impl<T> Drop for Vec<T> {
     fn drop(&mut self) {
+        // This is (and should always remain) a no-op if the fields are
+        // zeroed (when moving out, because of #[unsafe_no_drop_flag]).
         unsafe {
             for x in self.as_mut_slice().iter() {
                 ptr::read(x);
@@ -485,7 +683,54 @@ impl<T> Drop for MoveItems<T> {
 mod tests {
     use super::Vec;
     use iter::{Iterator, range, Extendable};
+    use mem::{drop, size_of};
+    use ops::Drop;
     use option::{Some, None};
+    use ptr;
+
+    #[test]
+    fn test_small_vec_struct() {
+        assert!(size_of::<Vec<u8>>() == size_of::<uint>() * 3);
+    }
+
+    #[test]
+    fn test_double_drop() {
+        struct TwoVec<T> {
+            x: Vec<T>,
+            y: Vec<T>
+        }
+
+        struct DropCounter<'a> {
+            count: &'a mut int
+        }
+
+        #[unsafe_destructor]
+        impl<'a> Drop for DropCounter<'a> {
+            fn drop(&mut self) {
+                *self.count += 1;
+            }
+        }
+
+        let mut count_x @ mut count_y = 0;
+        {
+            let mut tv = TwoVec {
+                x: Vec::new(),
+                y: Vec::new()
+            };
+            tv.x.push(DropCounter {count: &mut count_x});
+            tv.y.push(DropCounter {count: &mut count_y});
+
+            // If Vec had a drop flag, here is where it would be zeroed.
+            // Instead, it should rely on its internal state to prevent
+            // doing anything significant when dropped multiple times.
+            drop(tv.x);
+
+            // Here tv goes out of scope, tv.y should be dropped, but not tv.x.
+        }
+
+        assert_eq!(count_x, 1);
+        assert_eq!(count_y, 1);
+    }
 
     #[test]
     fn test_reserve_additional() {

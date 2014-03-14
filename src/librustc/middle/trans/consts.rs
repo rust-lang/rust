@@ -25,15 +25,16 @@ use middle::trans::consts;
 use middle::trans::expr;
 use middle::trans::inline;
 use middle::trans::machine;
+use middle::trans::type_::Type;
 use middle::trans::type_of;
 use middle::ty;
 use util::ppaux::{Repr, ty_to_str};
 
-use middle::trans::type_::Type;
-
 use std::c_str::ToCStr;
 use std::libc::c_uint;
 use std::vec;
+use std::vec_ng::Vec;
+use std::vec_ng;
 use syntax::{ast, ast_util};
 
 pub fn const_lit(cx: &CrateContext, e: &ast::Expr, lit: ast::Lit)
@@ -75,9 +76,7 @@ pub fn const_lit(cx: &CrateContext, e: &ast::Expr, lit: ast::Lit)
         ast::LitBool(b) => C_bool(b),
         ast::LitNil => C_nil(),
         ast::LitStr(ref s, _) => C_str_slice(cx, (*s).clone()),
-        ast::LitBinary(ref data) => {
-            C_binary_slice(cx, data.borrow().as_slice())
-        }
+        ast::LitBinary(ref data) => C_binary_slice(cx, data.deref().as_slice()),
     }
 }
 
@@ -191,7 +190,8 @@ pub fn const_expr(cx: @CrateContext, e: &ast::Expr, is_local: bool) -> (ValueRef
     let mut llconst = llconst;
     let mut inlineable = inlineable;
     let ety = ty::expr_ty(cx.tcx, e);
-    let ety_adjusted = ty::expr_ty_adjusted(cx.tcx, e);
+    let ety_adjusted = ty::expr_ty_adjusted(cx.tcx, e,
+                                            cx.maps.method_map.borrow().get());
     let adjustment = {
         let adjustments = cx.tcx.adjustments.borrow();
         adjustments.get().find_copy(&e.id)
@@ -302,8 +302,9 @@ fn const_expr_unadjusted(cx: @CrateContext, e: &ast::Expr,
                          is_local: bool) -> (ValueRef, bool) {
     let map_list = |exprs: &[@ast::Expr]| {
         exprs.iter().map(|&e| const_expr(cx, e, is_local))
-             .fold((~[], true), |(l, all_inlineable), (val, inlineable)| {
-                (vec::append_one(l, val), all_inlineable && inlineable)
+             .fold((Vec::new(), true),
+                   |(l, all_inlineable), (val, inlineable)| {
+                (vec_ng::append_one(l, val), all_inlineable && inlineable)
              })
     };
     unsafe {
@@ -422,7 +423,8 @@ fn const_expr_unadjusted(cx: @CrateContext, e: &ast::Expr,
             }, true)
           }
           ast::ExprField(base, field, _) => {
-              let bt = ty::expr_ty_adjusted(cx.tcx, base);
+              let bt = ty::expr_ty_adjusted(cx.tcx, base,
+                                            cx.maps.method_map.borrow().get());
               let brepr = adt::represent_type(cx, bt);
               let (bv, inlineable) = const_expr(cx, base, is_local);
               expr::with_field_tys(cx.tcx, bt, None, |discr, field_tys| {
@@ -432,7 +434,8 @@ fn const_expr_unadjusted(cx: @CrateContext, e: &ast::Expr,
           }
 
           ast::ExprIndex(base, index) => {
-              let bt = ty::expr_ty_adjusted(cx.tcx, base);
+              let bt = ty::expr_ty_adjusted(cx.tcx, base,
+                                            cx.maps.method_map.borrow().get());
               let (bv, inlineable) = const_expr(cx, base, is_local);
               let iv = match const_eval::eval_const_expr(cx.tcx, index) {
                   const_eval::const_int(i) => i as u64,
@@ -532,7 +535,7 @@ fn const_expr_unadjusted(cx: @CrateContext, e: &ast::Expr,
               let ety = ty::expr_ty(cx.tcx, e);
               let repr = adt::represent_type(cx, ety);
               let (vals, inlineable) = map_list(es.as_slice());
-              (adt::trans_const(cx, repr, 0, vals), inlineable)
+              (adt::trans_const(cx, repr, 0, vals.as_slice()), inlineable)
           }
           ast::ExprStruct(_, ref fs, ref base_opt) => {
               let ety = ty::expr_ty(cx.tcx, e);
@@ -666,7 +669,8 @@ fn const_expr_unadjusted(cx: @CrateContext, e: &ast::Expr,
                       let ety = ty::expr_ty(cx.tcx, e);
                       let repr = adt::represent_type(cx, ety);
                       let (arg_vals, inlineable) = map_list(args.as_slice());
-                      (adt::trans_const(cx, repr, 0, arg_vals), inlineable)
+                      (adt::trans_const(cx, repr, 0, arg_vals.as_slice()),
+                       inlineable)
                   }
                   Some(ast::DefVariant(enum_did, variant_did, _)) => {
                       let ety = ty::expr_ty(cx.tcx, e);
@@ -675,8 +679,10 @@ fn const_expr_unadjusted(cx: @CrateContext, e: &ast::Expr,
                                                            enum_did,
                                                            variant_did);
                       let (arg_vals, inlineable) = map_list(args.as_slice());
-                      (adt::trans_const(cx, repr, vinfo.disr_val, arg_vals),
-                       inlineable)
+                      (adt::trans_const(cx,
+                                        repr,
+                                        vinfo.disr_val,
+                                        arg_vals.as_slice()), inlineable)
                   }
                   _ => cx.sess.span_bug(e.span, "expected a struct or variant def")
               }

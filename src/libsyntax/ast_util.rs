@@ -11,6 +11,7 @@
 use ast::*;
 use ast;
 use ast_util;
+use codemap;
 use codemap::Span;
 use opt_vec;
 use parse::token;
@@ -195,7 +196,7 @@ pub fn ident_to_path(s: Span, identifier: Ident) -> Path {
         segments: vec!(
             ast::PathSegment {
                 identifier: identifier,
-                lifetimes: opt_vec::Empty,
+                lifetimes: Vec::new(),
                 types: opt_vec::Empty,
             }
         ),
@@ -206,6 +207,12 @@ pub fn ident_to_pat(id: NodeId, s: Span, i: Ident) -> @Pat {
     @ast::Pat { id: id,
                 node: PatIdent(BindByValue(MutImmutable), ident_to_path(s, i), None),
                 span: s }
+}
+
+pub fn name_to_dummy_lifetime(name: Name) -> Lifetime {
+    Lifetime { id: DUMMY_NODE_ID,
+               span: codemap::DUMMY_SP,
+               name: name }
 }
 
 pub fn is_unguarded(a: &Arm) -> bool {
@@ -311,7 +318,7 @@ pub fn operator_prec(op: ast::BinOp) -> uint {
 pub static as_prec: uint = 12u;
 
 pub fn empty_generics() -> Generics {
-    Generics {lifetimes: opt_vec::Empty,
+    Generics {lifetimes: Vec::new(),
               ty_params: opt_vec::Empty}
 }
 
@@ -684,16 +691,31 @@ pub fn lit_is_str(lit: @Lit) -> bool {
     }
 }
 
+pub fn get_inner_tys(ty: P<Ty>) -> Vec<P<Ty>> {
+    match ty.node {
+        ast::TyRptr(_, mut_ty) | ast::TyPtr(mut_ty) => {
+            vec!(mut_ty.ty)
+        }
+        ast::TyBox(ty)
+        | ast::TyVec(ty)
+        | ast::TyUniq(ty)
+        | ast::TyFixedLengthVec(ty, _) => vec!(ty),
+        ast::TyTup(ref tys) => tys.clone(),
+        _ => Vec::new()
+    }
+}
+
 
 #[cfg(test)]
 mod test {
     use ast::*;
     use super::*;
     use opt_vec;
+    use std::vec_ng::Vec;
 
     fn ident_to_segment(id : &Ident) -> PathSegment {
         PathSegment {identifier:id.clone(),
-                     lifetimes: opt_vec::Empty,
+                     lifetimes: Vec::new(),
                      types: opt_vec::Empty}
     }
 

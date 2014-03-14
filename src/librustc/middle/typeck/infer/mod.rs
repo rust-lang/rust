@@ -21,12 +21,13 @@ pub use middle::typeck::infer::resolve::{resolve_ivar, resolve_all};
 pub use middle::typeck::infer::resolve::{resolve_nested_tvar};
 pub use middle::typeck::infer::resolve::{resolve_rvar};
 
+use collections::HashMap;
 use collections::SmallIntMap;
 use middle::ty::{TyVid, IntVid, FloatVid, RegionVid, Vid};
 use middle::ty;
 use middle::ty_fold;
 use middle::ty_fold::TypeFolder;
-use middle::typeck::check::regionmanip::replace_bound_regions_in_fn_sig;
+use middle::typeck::check::regionmanip::replace_late_bound_regions_in_fn_sig;
 use middle::typeck::infer::coercion::Coerce;
 use middle::typeck::infer::combine::{Combine, CombineFields, eq_tys};
 use middle::typeck::infer::region_inference::{RegionVarBindings};
@@ -37,13 +38,13 @@ use middle::typeck::infer::to_str::InferStr;
 use middle::typeck::infer::unify::{ValsAndBindings, Root};
 use middle::typeck::infer::error_reporting::ErrorReporting;
 use std::cell::{Cell, RefCell};
-use collections::HashMap;
 use std::result;
-use std::vec;
+use std::vec_ng::Vec;
 use syntax::ast::{MutImmutable, MutMutable};
 use syntax::ast;
 use syntax::codemap;
 use syntax::codemap::Span;
+use syntax::opt_vec::OptVec;
 use util::common::indent;
 use util::ppaux::{bound_region_to_str, ty_to_str, trait_ref_to_str, Repr};
 
@@ -201,6 +202,7 @@ pub enum SubregionOrigin {
 /// Reasons to create a region inference variable
 ///
 /// See `error_reporting.rs` for more details
+#[deriving(Clone)]
 pub enum RegionVariableOrigin {
     // Region variables created for ill-categorized reasons,
     // mostly indicates places in need of refactoring
@@ -221,9 +223,12 @@ pub enum RegionVariableOrigin {
     // Regions created as part of an automatic coercion
     Coercion(TypeTrace),
 
+    // Region variables created as the values for early-bound regions
+    EarlyBoundRegion(Span, ast::Name),
+
     // Region variables created for bound regions
     // in a function or method that is called
-    BoundRegionInFnCall(Span, ty::BoundRegion),
+    LateBoundRegion(Span, ty::BoundRegion),
 
     // Region variables created for bound regions
     // when doing subtyping/lub/glb computations
@@ -231,9 +236,7 @@ pub enum RegionVariableOrigin {
 
     UpvarRegion(ty::UpvarId, Span),
 
-    BoundRegionInTypeOrImpl(Span),
-
-    BoundRegionInCoherence,
+    BoundRegionInCoherence(ast::Name),
 }
 
 pub enum fixup_err {
@@ -260,7 +263,7 @@ pub fn fixup_err_to_str(f: fixup_err) -> ~str {
 fn new_ValsAndBindings<V:Clone,T:Clone>() -> ValsAndBindings<V, T> {
     ValsAndBindings {
         vals: SmallIntMap::new(),
-        bindings: ~[]
+        bindings: Vec::new()
     }
 }
 
@@ -622,8 +625,8 @@ impl InferCtxt {
         ty::mk_var(self.tcx, self.next_ty_var_id())
     }
 
-    pub fn next_ty_vars(&self, n: uint) -> ~[ty::t] {
-        vec::from_fn(n, |_i| self.next_ty_var())
+    pub fn next_ty_vars(&self, n: uint) -> Vec<ty::t> {
+        Vec::from_fn(n, |_i| self.next_ty_var())
     }
 
     pub fn next_int_var_id(&self) -> IntVid {
@@ -659,8 +662,17 @@ impl InferCtxt {
     pub fn next_region_vars(&self,
                             origin: RegionVariableOrigin,
                             count: uint)
-                            -> ~[ty::Region] {
-        vec::from_fn(count, |_| self.next_region_var(origin))
+                            -> Vec<ty::Region> {
+        Vec::from_fn(count, |_| self.next_region_var(origin))
+    }
+
+    pub fn region_vars_for_defs(&self,
+                                span: Span,
+                                defs: &[ty::RegionParameterDef])
+                                -> OptVec<ty::Region> {
+        defs.iter()
+            .map(|d| self.next_region_var(EarlyBoundRegion(span, d.name)))
+            .collect()
     }
 
     pub fn fresh_bound_region(&self, binder_id: ast::NodeId) -> ty::Region {
@@ -809,14 +821,14 @@ impl InferCtxt {
         self.type_error_message(sp, mk_msg, a, Some(err));
     }
 
-    pub fn replace_bound_regions_with_fresh_regions(&self,
-                                                    trace: TypeTrace,
-                                                    fsig: &ty::FnSig)
+    pub fn replace_late_bound_regions_with_fresh_regions(&self,
+                                                         trace: TypeTrace,
+                                                         fsig: &ty::FnSig)
                                                     -> (ty::FnSig,
                                                         HashMap<ty::BoundRegion,
                                                                 ty::Region>) {
         let (map, fn_sig) =
-            replace_bound_regions_in_fn_sig(self.tcx, fsig, |br| {
+            replace_late_bound_regions_in_fn_sig(self.tcx, fsig, |br| {
                 let rvar = self.next_region_var(
                     BoundRegionInFnType(trace.origin.span(), br));
                 debug!("Bound region {} maps to {:?}",
@@ -932,10 +944,10 @@ impl RegionVariableOrigin {
             AddrOfSlice(a) => a,
             Autoref(a) => a,
             Coercion(a) => a.span(),
-            BoundRegionInFnCall(a, _) => a,
+            EarlyBoundRegion(a, _) => a,
+            LateBoundRegion(a, _) => a,
             BoundRegionInFnType(a, _) => a,
-            BoundRegionInTypeOrImpl(a) => a,
-            BoundRegionInCoherence => codemap::DUMMY_SP,
+            BoundRegionInCoherence(_) => codemap::DUMMY_SP,
             UpvarRegion(_, a) => a
         }
     }
@@ -950,13 +962,14 @@ impl Repr for RegionVariableOrigin {
             AddrOfSlice(a) => format!("AddrOfSlice({})", a.repr(tcx)),
             Autoref(a) => format!("Autoref({})", a.repr(tcx)),
             Coercion(a) => format!("Coercion({})", a.repr(tcx)),
-            BoundRegionInFnCall(a, b) => format!("bound_regionInFnCall({},{})",
+            EarlyBoundRegion(a, b) => format!("EarlyBoundRegion({},{})",
                                               a.repr(tcx), b.repr(tcx)),
+            LateBoundRegion(a, b) => format!("LateBoundRegion({},{})",
+                                             a.repr(tcx), b.repr(tcx)),
             BoundRegionInFnType(a, b) => format!("bound_regionInFnType({},{})",
                                               a.repr(tcx), b.repr(tcx)),
-            BoundRegionInTypeOrImpl(a) => format!("bound_regionInTypeOrImpl({})",
-                                               a.repr(tcx)),
-            BoundRegionInCoherence => format!("bound_regionInCoherence"),
+            BoundRegionInCoherence(a) => format!("bound_regionInCoherence({})",
+                                                 a.repr(tcx)),
             UpvarRegion(a, b) => format!("UpvarRegion({}, {})",
                                          a.repr(tcx),
                                          b.repr(tcx)),

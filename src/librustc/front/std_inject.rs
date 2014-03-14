@@ -164,12 +164,12 @@ impl fold::Folder for PreludeInjector {
             segments: vec!(
                 ast::PathSegment {
                     identifier: token::str_to_ident("std"),
-                    lifetimes: opt_vec::Empty,
+                    lifetimes: Vec::new(),
                     types: opt_vec::Empty,
                 },
                 ast::PathSegment {
                     identifier: token::str_to_ident("prelude"),
-                    lifetimes: opt_vec::Empty,
+                    lifetimes: Vec::new(),
                     types: opt_vec::Empty,
                 }),
         };

@@ -17,7 +17,7 @@ use clone::Clone;
 use container::Container;
 use cmp::Eq;
 use from_str::FromStr;
-use hash::{Hash, sip};
+use io::Writer;
 use iter::{AdditiveIterator, DoubleEndedIterator, Extendable, Rev, Iterator, Map};
 use option::{Option, Some, None};
 use str;
@@ -79,7 +79,7 @@ pub type RevComponents<'a> = Map<'a, Option<&'a str>, &'a [u8],
 //
 // The only error condition imposed here is valid utf-8. All other invalid paths are simply
 // preserved by the data structure; let the Windows API error out on them.
-#[deriving(Clone, DeepClone)]
+#[deriving(Clone)]
 pub struct Path {
     priv repr: ~str, // assumed to never be empty
     priv prefix: Option<PathPrefix>,
@@ -112,10 +112,10 @@ impl ToCStr for Path {
     }
 }
 
-impl Hash for Path {
+impl<S: Writer> ::hash::Hash<S> for Path {
     #[inline]
-    fn hash(&self, s: &mut sip::SipState) {
-        self.repr.hash(s)
+    fn hash(&self, state: &mut S) {
+        self.repr.hash(state)
     }
 }
 
@@ -942,7 +942,7 @@ pub fn is_sep_byte_verbatim(u: &u8) -> bool {
 }
 
 /// Prefix types for Path
-#[deriving(Eq, Clone, DeepClone)]
+#[deriving(Eq, Clone)]
 pub enum PathPrefix {
     /// Prefix `\\?\`, uint is the length of the following component
     VerbatimPrefix(uint),

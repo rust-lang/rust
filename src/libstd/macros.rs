@@ -387,17 +387,17 @@ macro_rules! vec(
 /// # Example
 ///
 /// ```
-/// let (p1, c1) = Chan::new();
-/// let (p2, c2) = Chan::new();
+/// let (tx1, rx1) = channel();
+/// let (tx2, rx2) = channel();
 /// # fn long_running_task() {}
 /// # fn calculate_the_answer() -> int { 42 }
 ///
-/// spawn(proc() { long_running_task(); c1.send(()) });
-/// spawn(proc() { c2.send(calculate_the_answer()) });
+/// spawn(proc() { long_running_task(); tx1.send(()) });
+/// spawn(proc() { tx2.send(calculate_the_answer()) });
 ///
 /// select! (
-///     () = p1.recv() => println!("the long running task finished first"),
-///     answer = p2.recv() => {
+///     () = rx1.recv() => println!("the long running task finished first"),
+///     answer = rx2.recv() => {
 ///         println!("the answer was: {}", answer);
 ///     }
 /// )
@@ -408,16 +408,16 @@ macro_rules! vec(
 #[experimental]
 macro_rules! select {
     (
-        $($name:pat = $port:ident.$meth:ident() => $code:expr),+
+        $($name:pat = $rx:ident.$meth:ident() => $code:expr),+
     ) => ({
         use std::comm::Select;
         let sel = Select::new();
-        $( let mut $port = sel.handle(&$port); )+
+        $( let mut $rx = sel.handle(&$rx); )+
         unsafe {
-            $( $port.add(); )+
+            $( $rx.add(); )+
         }
         let ret = sel.wait();
-        $( if ret == $port.id() { let $name = $port.$meth(); $code } else )+
+        $( if ret == $rx.id() { let $name = $rx.$meth(); $code } else )+
         { unreachable!() }
     })
 }

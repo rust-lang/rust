@@ -14,7 +14,8 @@
 #[crate_type = "dylib"];
 #[crate_type = "rlib"];
 
-#[feature(globs, struct_variant, managed_boxes)];
+#[allow(deprecated_owned_vector)];
+#[feature(globs, struct_variant, managed_boxes, macro_rules)];
 
 extern crate syntax;
 extern crate rustc;
@@ -26,6 +27,7 @@ extern crate collections;
 extern crate testing = "test";
 extern crate time;
 
+use std::cell::RefCell;
 use std::local_data;
 use std::io;
 use std::io::{File, MemWriter};
@@ -43,7 +45,9 @@ pub mod html {
     pub mod layout;
     pub mod markdown;
     pub mod render;
+    pub mod toc;
 }
+pub mod markdown;
 pub mod passes;
 pub mod plugins;
 pub mod visit_ast;
@@ -105,6 +109,19 @@ pub fn opts() -> ~[getopts::OptGroup] {
         optflag("", "test", "run code examples as tests"),
         optmulti("", "test-args", "arguments to pass to the test runner",
                  "ARGS"),
+        optmulti("", "markdown-css", "CSS files to include via <link> in a rendered Markdown file",
+                 "FILES"),
+        optmulti("", "markdown-in-header",
+                 "files to include inline in the <head> section of a rendered Markdown file",
+                 "FILES"),
+        optmulti("", "markdown-before-content",
+                 "files to include inline between <body> and the content of a rendered \
+                 Markdown file",
+                 "FILES"),
+        optmulti("", "markdown-after-content",
+                 "files to include inline between the content and </body> of a rendered \
+                 Markdown file",
+                 "FILES"),
     ]
 }
 
@@ -137,8 +154,24 @@ pub fn main_args(args: &[~str]) -> int {
     }
     let input = matches.free[0].as_slice();
 
-    if matches.opt_present("test") {
-        return test::run(input, &matches);
+    let libs = matches.opt_strs("L").map(|s| Path::new(s.as_slice()));
+    let libs = @RefCell::new(libs.move_iter().collect());
+
+    let test_args = matches.opt_strs("test-args");
+    let test_args = test_args.iter().flat_map(|s| s.words()).map(|s| s.to_owned()).to_owned_vec();
+
+    let should_test = matches.opt_present("test");
+    let markdown_input = input.ends_with(".md") || input.ends_with(".markdown");
+
+    let output = matches.opt_str("o").map(|s| Path::new(s));
+
+    match (should_test, markdown_input) {
+        (true, true) => return markdown::test(input, libs, test_args),
+        (true, false) => return test::run(input, libs, test_args),
+
+        (false, true) => return markdown::render(input, output.unwrap_or(Path::new("doc")),
+                                                 &matches),
+        (false, false) => {}
     }
 
     if matches.opt_strs("passes") == ~[~"list"] {
@@ -163,15 +196,14 @@ pub fn main_args(args: &[~str]) -> int {
 
     info!("going to format");
     let started = time::precise_time_ns();
-    let output = matches.opt_str("o").map(|s| Path::new(s));
-    match matches.opt_str("w") {
-        Some(~"html") | None => {
+    match matches.opt_str("w").as_ref().map(|s| s.as_slice()) {
+        Some("html") | None => {
             match html::render::run(krate, output.unwrap_or(Path::new("doc"))) {
                 Ok(()) => {}
                 Err(e) => fail!("failed to generate documentation: {}", e),
             }
         }
-        Some(~"json") => {
+        Some("json") => {
             match json_output(krate, res, output.unwrap_or(Path::new("doc.json"))) {
                 Ok(()) => {}
                 Err(e) => fail!("failed to write json: {}", e),
@@ -192,9 +224,9 @@ pub fn main_args(args: &[~str]) -> int {
 /// and files and then generates the necessary rustdoc output for formatting.
 fn acquire_input(input: &str,
                  matches: &getopts::Matches) -> Result<Output, ~str> {
-    match matches.opt_str("r") {
-        Some(~"rust") => Ok(rust_input(input, matches)),
-        Some(~"json") => json_input(input),
+    match matches.opt_str("r").as_ref().map(|s| s.as_slice()) {
+        Some("rust") => Ok(rust_input(input, matches)),
+        Some("json") => json_input(input),
         Some(s) => Err("unknown input format: " + s),
         None => {
             if input.ends_with(".json") {
@@ -234,15 +266,15 @@ fn rust_input(cratefile: &str, matches: &getopts::Matches) -> Output {
         Some(nested) => {
             for inner in nested.iter() {
                 match *inner {
-                    clean::Word(~"no_default_passes") => {
+                    clean::Word(ref x) if "no_default_passes" == *x => {
                         default_passes = false;
                     }
-                    clean::NameValue(~"passes", ref value) => {
+                    clean::NameValue(ref x, ref value) if "passes" == *x => {
                         for pass in value.words() {
                             passes.push(pass.to_owned());
                         }
                     }
-                    clean::NameValue(~"plugins", ref value) => {
+                    clean::NameValue(ref x, ref value) if "plugins" == *x => {
                         for p in value.words() {
                             plugins.push(p.to_owned());
                         }

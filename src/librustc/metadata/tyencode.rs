@@ -19,6 +19,7 @@ use std::io;
 use std::io::MemWriter;
 use std::str;
 use std::fmt;
+use std::vec_ng::Vec;
 
 use middle::ty::param_ty;
 use middle::ty;
@@ -175,11 +176,11 @@ fn enc_region(w: &mut MemWriter, cx: @ctxt, r: ty::Region) {
             enc_bound_region(w, cx, br);
             mywrite!(w, "]");
         }
-        ty::ReEarlyBound(node_id, index, ident) => {
+        ty::ReEarlyBound(node_id, index, name) => {
             mywrite!(w, "B[{}|{}|{}]",
                      node_id,
                      index,
-                     token::get_name(ident));
+                     token::get_name(name));
         }
         ty::ReFree(ref fr) => {
             mywrite!(w, "f[{}|", fr.scope_id);
@@ -207,10 +208,10 @@ fn enc_bound_region(w: &mut MemWriter, cx: @ctxt, br: ty::BoundRegion) {
         ty::BrAnon(idx) => {
             mywrite!(w, "a{}|", idx);
         }
-        ty::BrNamed(d, s) => {
+        ty::BrNamed(d, name) => {
             mywrite!(w, "[{}|{}]",
                      (cx.ds)(d),
-                     token::get_name(s));
+                     token::get_name(name));
         }
         ty::BrFresh(id) => {
             mywrite!(w, "f{}|", id);
@@ -286,7 +287,7 @@ fn enc_sty(w: &mut MemWriter, cx: @ctxt, st: &ty::sty) {
             enc_trait_store(w, cx, store);
             enc_mutability(w, mt);
             let bounds = ty::ParamBounds {builtin_bounds: bounds,
-                                          trait_bounds: ~[]};
+                                          trait_bounds: Vec::new()};
             enc_bounds(w, cx, &bounds);
             mywrite!(w, "]");
         }
@@ -383,7 +384,7 @@ fn enc_closure_ty(w: &mut MemWriter, cx: @ctxt, ft: &ty::ClosureTy) {
     enc_onceness(w, ft.onceness);
     enc_region(w, cx, ft.region);
     let bounds = ty::ParamBounds {builtin_bounds: ft.bounds,
-                                  trait_bounds: ~[]};
+                                  trait_bounds: Vec::new()};
     enc_bounds(w, cx, &bounds);
     enc_fn_sig(w, cx, &ft.sig);
 }

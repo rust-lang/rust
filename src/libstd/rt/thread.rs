@@ -221,7 +221,7 @@ mod imp {
                                                PTHREAD_CREATE_JOINABLE), 0);
 
         // Reserve room for the red zone, the runtime's stack of last resort.
-        let stack_size = cmp::max(stack, RED_ZONE + __pthread_get_minstack(&attr) as uint);
+        let stack_size = cmp::max(stack, RED_ZONE + min_stack_size(&attr) as uint);
         match pthread_attr_setstacksize(&mut attr, stack_size as libc::size_t) {
             0 => {
             },
@@ -261,49 +261,37 @@ mod imp {
     #[cfg(not(target_os = "macos"), not(target_os = "android"))]
     pub unsafe fn yield_now() { assert_eq!(pthread_yield(), 0); }
 
-    #[cfg(not(target_os = "linux"))]
-    unsafe fn __pthread_get_minstack(_: *libc::pthread_attr_t) -> libc::size_t {
-        libc::PTHREAD_STACK_MIN
-    }
-
     // glibc >= 2.15 has a __pthread_get_minstack() function that returns
     // PTHREAD_STACK_MIN plus however many bytes are needed for thread-local
     // storage.  We need that information to avoid blowing up when a small stack
     // is created in an application with big thread-local storage requirements.
     // See #6233 for rationale and details.
     //
-    // Dynamically resolve the symbol for compatibility with older versions
-    // of glibc.  Assumes that we've been dynamically linked to libpthread
-    // but that is currently always the case.  Note that this means we take
-    // a dlopen/dlsym/dlclose hit for every new thread.  Mitigating that by
-    // caching the symbol or the function's return value has its drawbacks:
-    //
-    //  * Caching the symbol breaks when libpthread.so is reloaded because
-    //    its address changes.
-    //
-    //  * Caching the return value assumes that it's a fixed quantity.
-    //    Not very future-proof and untrue in the presence of guard pages
-    //    The reason __pthread_get_minstack() takes a *libc::pthread_attr_t
-    //    as its argument is because it takes pthread_attr_setguardsize() into
-    //    account.
-    //
-    // A better solution is to define __pthread_get_minstack() as a weak symbol
-    // but there is currently no way to express that in Rust code.
-    #[cfg(target_os = "linux")]
-    unsafe fn __pthread_get_minstack(attr: *libc::pthread_attr_t) -> libc::size_t {
-        use option::None;
-        use result::{Err, Ok};
-        use unstable::dynamic_lib;
-        match dynamic_lib::DynamicLibrary::open(None) {
-            Err(err) => fail!("DynamicLibrary::open(): {}", err),
-            Ok(handle) => {
-                match handle.symbol::<extern "C" fn(*libc::pthread_attr_t) ->
-                                     libc::size_t>("__pthread_get_minstack") {
-                    Err(_) => libc::PTHREAD_STACK_MIN,
-                    Ok(__pthread_get_minstack) => __pthread_get_minstack(attr),
-                }
-            }
+    // Link weakly to the symbol for compatibility with older versions of glibc.
+    // Assumes that we've been dynamically linked to libpthread but that is
+    // currently always the case.  Note that you need to check that the symbol
+    // is non-null before calling it!
+    #[cfg(target_os = "linux", not(stage0))]
+    fn min_stack_size(attr: *libc::pthread_attr_t) -> libc::size_t {
+        use ptr::RawPtr;
+        type F = extern "C" unsafe fn(*libc::pthread_attr_t) -> libc::size_t;
+        extern {
+            #[linkage = "extern_weak"]
+            static __pthread_get_minstack: *();
         }
+        if __pthread_get_minstack.is_null() {
+            PTHREAD_STACK_MIN
+        } else {
+            unsafe { cast::transmute::<*(), F>(__pthread_get_minstack)(attr) }
+        }
+    }
+
+    // __pthread_get_minstack() is marked as weak but extern_weak linkage is
+    // not supported on OS X, hence this kludge...
+    #[cfg(not(target_os = "linux"))]
+    #[cfg(stage0)]
+    fn min_stack_size(_: *libc::pthread_attr_t) -> libc::size_t {
+        PTHREAD_STACK_MIN
     }
 
     extern {
@@ -347,3 +335,4 @@ mod tests {
         assert_eq!(42, Thread::start_stack(1, proc () 42).join());
     }
 }
+

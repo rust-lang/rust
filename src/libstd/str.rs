@@ -85,11 +85,11 @@ use cast;
 use cast::transmute;
 use char;
 use char::Char;
-use clone::{Clone, DeepClone};
+use clone::Clone;
 use cmp::{Eq, TotalEq, Ord, TotalOrd, Equiv, Ordering};
 use container::{Container, Mutable};
 use fmt;
-use hash::{Hash, sip};
+use io::Writer;
 use iter::{Iterator, FromIterator, Extendable, range};
 use iter::{Filter, AdditiveIterator, Map};
 use iter::{Rev, DoubleEndedIterator, ExactSize};
@@ -1326,25 +1326,18 @@ impl<'a> Clone for MaybeOwned<'a> {
     }
 }
 
-impl<'a> DeepClone for MaybeOwned<'a> {
-    #[inline]
-    fn deep_clone(&self) -> MaybeOwned<'a> {
-        match *self {
-            Slice(s) => Slice(s),
-            Owned(ref s) => Owned(s.to_owned())
-        }
-    }
-}
-
 impl<'a> Default for MaybeOwned<'a> {
     #[inline]
     fn default() -> MaybeOwned<'a> { Slice("") }
 }
 
-impl<'a> Hash for MaybeOwned<'a> {
+impl<'a, H: Writer> ::hash::Hash<H> for MaybeOwned<'a> {
     #[inline]
-    fn hash(&self, s: &mut sip::SipState) {
-        self.as_slice().hash(s)
+    fn hash(&self, hasher: &mut H) {
+        match *self {
+            Slice(s) => s.hash(hasher),
+            Owned(ref s) => s.hash(hasher),
+        }
     }
 }
 
@@ -1365,6 +1358,7 @@ pub mod raw {
     use libc;
     use ptr;
     use ptr::RawPtr;
+    use option::{Option, Some, None};
     use str::{is_utf8, OwnedStr, StrSlice};
     use vec;
     use vec::{MutableVector, ImmutableVector, OwnedVector};
@@ -1474,23 +1468,31 @@ pub mod raw {
     }
 
     /// Removes the last byte from a string and returns it.
+    /// Returns None when an empty string is passed.
     /// The caller must preserve the valid UTF-8 property.
-    pub unsafe fn pop_byte(s: &mut ~str) -> u8 {
+    pub unsafe fn pop_byte(s: &mut ~str) -> Option<u8> {
         let len = s.len();
-        assert!((len > 0u));
-        let b = s[len - 1u];
-        s.set_len(len - 1);
-        return b;
+        if len == 0u {
+            return None;
+        } else {
+            let b = s[len - 1u];
+            s.set_len(len - 1);
+            return Some(b);
+        }
     }
 
     /// Removes the first byte from a string and returns it.
+    /// Returns None when an empty string is passed.
     /// The caller must preserve the valid UTF-8 property.
-    pub unsafe fn shift_byte(s: &mut ~str) -> u8 {
+    pub unsafe fn shift_byte(s: &mut ~str) -> Option<u8> {
         let len = s.len();
-        assert!((len > 0u));
-        let b = s[0];
-        *s = s.slice(1, len).to_owned();
-        return b;
+        if len == 0u {
+            return None;
+        } else {
+            let b = s[0];
+            *s = s.slice(1, len).to_owned();
+            return Some(b);
+        }
     }
 
     /// Access the str in its vector representation.
@@ -2283,25 +2285,22 @@ pub trait StrSlice<'a> {
     /// Retrieves the first character from a string slice and returns
     /// it. This does not allocate a new string; instead, it returns a
     /// slice that point one character beyond the character that was
-    /// shifted.
-    ///
-    /// # Failure
-    ///
-    /// If the string does not contain any characters.
+    /// shifted. If the string does not contain any characters,
+    /// a tuple of None and an empty string is returned instead.
     ///
     /// # Example
     ///
     /// ```rust
     /// let s = "Löwe 老虎 Léopard";
     /// let (c, s1) = s.slice_shift_char();
-    /// assert_eq!(c, 'L');
+    /// assert_eq!(c, Some('L'));
     /// assert_eq!(s1, "öwe 老虎 Léopard");
     ///
     /// let (c, s2) = s1.slice_shift_char();
-    /// assert_eq!(c, 'ö');
+    /// assert_eq!(c, Some('ö'));
     /// assert_eq!(s2, "we 老虎 Léopard");
     /// ```
-    fn slice_shift_char(&self) -> (char, &'a str);
+    fn slice_shift_char(&self) -> (Option<char>, &'a str);
 
     /// Levenshtein Distance between two strings.
     fn lev_distance(&self, t: &str) -> uint;
@@ -2754,10 +2753,14 @@ impl<'a> StrSlice<'a> for &'a str {
     }
 
     #[inline]
-    fn slice_shift_char(&self) -> (char, &'a str) {
-        let CharRange {ch, next} = self.char_range_at(0u);
-        let next_s = unsafe { raw::slice_bytes(*self, next, self.len()) };
-        return (ch, next_s);
+    fn slice_shift_char(&self) -> (Option<char>, &'a str) {
+        if self.is_empty() {
+            return (None, *self);
+        } else {
+            let CharRange {ch, next} = self.char_range_at(0u);
+            let next_s = unsafe { raw::slice_bytes(*self, next, self.len()) };
+            return (Some(ch), next_s);
+        }
     }
 
     fn lev_distance(&self, t: &str) -> uint {
@@ -2820,19 +2823,13 @@ pub trait OwnedStr {
     /// Appends a character to the back of a string
     fn push_char(&mut self, c: char);
 
-    /// Remove the final character from a string and return it
-    ///
-    /// # Failure
-    ///
-    /// If the string does not contain any characters
-    fn pop_char(&mut self) -> char;
+    /// Remove the final character from a string and return it. Return None
+    /// when the string is empty.
+    fn pop_char(&mut self) -> Option<char>;
 
-    /// Remove the first character from a string and return it
-    ///
-    /// # Failure
-    ///
-    /// If the string does not contain any characters
-    fn shift_char(&mut self) -> char;
+    /// Remove the first character from a string and return it. Return None
+    /// when the string is empty.
+    fn shift_char(&mut self) -> Option<char>;
 
     /// Prepend a char to a string
     fn unshift_char(&mut self, ch: char);
@@ -2935,19 +2932,26 @@ impl OwnedStr for ~str {
     }
 
     #[inline]
-    fn pop_char(&mut self) -> char {
+    fn pop_char(&mut self) -> Option<char> {
         let end = self.len();
-        assert!(end > 0u);
-        let CharRange {ch, next} = self.char_range_at_reverse(end);
-        unsafe { self.set_len(next); }
-        return ch;
+        if end == 0u {
+            return None;
+        } else {
+            let CharRange {ch, next} = self.char_range_at_reverse(end);
+            unsafe { self.set_len(next); }
+            return Some(ch);
+        }
     }
 
     #[inline]
-    fn shift_char(&mut self) -> char {
-        let CharRange {ch, next} = self.char_range_at(0u);
-        *self = self.slice(next, self.len()).to_owned();
-        return ch;
+    fn shift_char(&mut self) -> Option<char> {
+        if self.is_empty() {
+            return None;
+        } else {
+            let CharRange {ch, next} = self.char_range_at(0u);
+            *self = self.slice(next, self.len()).to_owned();
+            return Some(ch);
+        }
     }
 
     #[inline]
@@ -3027,13 +3031,6 @@ impl OwnedStr for ~str {
 impl Clone for ~str {
     #[inline]
     fn clone(&self) -> ~str {
-        self.to_owned()
-    }
-}
-
-impl DeepClone for ~str {
-    #[inline]
-    fn deep_clone(&self) -> ~str {
         self.to_owned()
     }
 }
@@ -3165,7 +3162,7 @@ mod tests {
         let mut data = ~"ประเทศไทย中华";
         let cc = data.pop_char();
         assert_eq!(~"ประเทศไทย中", data);
-        assert_eq!('华', cc);
+        assert_eq!(Some('华'), cc);
     }
 
     #[test]
@@ -3173,14 +3170,15 @@ mod tests {
         let mut data2 = ~"华";
         let cc2 = data2.pop_char();
         assert_eq!(~"", data2);
-        assert_eq!('华', cc2);
+        assert_eq!(Some('华'), cc2);
     }
 
     #[test]
-    #[should_fail]
-    fn test_pop_char_fail() {
+    fn test_pop_char_empty() {
         let mut data = ~"";
-        let _cc3 = data.pop_char();
+        let cc3 = data.pop_char();
+        assert_eq!(~"", data);
+        assert_eq!(None, cc3);
     }
 
     #[test]
@@ -3199,7 +3197,7 @@ mod tests {
         let mut data = ~"ประเทศไทย中";
         let cc = data.shift_char();
         assert_eq!(~"ระเทศไทย中", data);
-        assert_eq!('ป', cc);
+        assert_eq!(Some('ป'), cc);
     }
 
     #[test]
@@ -3617,6 +3615,18 @@ mod tests {
     }
 
     #[test]
+    fn test_slice_shift_char() {
+        let data = "ประเทศไทย中";
+        assert_eq!(data.slice_shift_char(), (Some('ป'), "ระเทศไทย中"));
+    }
+
+    #[test]
+    fn test_slice_shift_char_2() {
+        let empty = "";
+        assert_eq!(empty.slice_shift_char(), (None, ""));
+    }
+
+    #[test]
     fn test_push_byte() {
         let mut s = ~"ABC";
         unsafe{raw::push_byte(&mut s, 'D' as u8)};
@@ -3628,7 +3638,7 @@ mod tests {
         let mut s = ~"ABC";
         let b = unsafe{raw::shift_byte(&mut s)};
         assert_eq!(s, ~"BC");
-        assert_eq!(b, 65u8);
+        assert_eq!(b, Some(65u8));
     }
 
     #[test]
@@ -3636,7 +3646,7 @@ mod tests {
         let mut s = ~"ABC";
         let b = unsafe{raw::pop_byte(&mut s)};
         assert_eq!(s, ~"AB");
-        assert_eq!(b, 67u8);
+        assert_eq!(b, Some(67u8));
     }
 
     #[test]
@@ -4465,16 +4475,9 @@ mod tests {
     #[test]
     fn test_maybe_owned_clone() {
         assert_eq!(Owned(~"abcde"), Slice("abcde").clone());
-        assert_eq!(Owned(~"abcde"), Slice("abcde").deep_clone());
-
         assert_eq!(Owned(~"abcde"), Owned(~"abcde").clone());
-        assert_eq!(Owned(~"abcde"), Owned(~"abcde").deep_clone());
-
         assert_eq!(Slice("abcde"), Slice("abcde").clone());
-        assert_eq!(Slice("abcde"), Slice("abcde").deep_clone());
-
         assert_eq!(Slice("abcde"), Owned(~"abcde").clone());
-        assert_eq!(Slice("abcde"), Owned(~"abcde").deep_clone());
     }
 
     #[test]

@@ -205,7 +205,7 @@ struct X { f: int }
 fn example1() {
     let mut x = X { f: 3 };
     let y = &mut x.f;  // -+ L
-    ...                //  |
+    // ...             //  |
 }                      // -+
 ~~~
 
@@ -221,7 +221,7 @@ The situation gets more complex when borrowing data inside heap boxes:
 fn example2() {
     let mut x = @X { f: 3 };
     let y = &x.f;      // -+ L
-    ...                //  |
+    // ...             //  |
 }                      // -+
 ~~~
 
@@ -251,7 +251,7 @@ fn example2() {
     let mut x = @X {f: 3};
     let x1 = x;
     let y = &x1.f;     // -+ L
-    ...                //  |
+    // ...             //  |
 }                      // -+
 ~~~
 
@@ -282,7 +282,7 @@ fn example3() -> int {
         return *y;         //  |
     }                      // -+
     x = ~Foo {f: 4};
-    ...
+    // ...
 # return 0;
 }
 ~~~

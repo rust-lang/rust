@@ -59,9 +59,19 @@ Examples of string representations:
 #[crate_type = "dylib"];
 #[license = "MIT/ASL2"];
 
+#[allow(deprecated_owned_vector)];
+
+#[feature(default_type_params)];
+
+// NOTE remove the following two attributes after the next snapshot.
+#[allow(unrecognized_lint)];
+#[allow(default_type_param_usage)];
+
 // test harness access
 #[cfg(test)]
 extern crate test;
+
+extern crate rand;
 extern crate serialize;
 
 use std::cast::{transmute,transmute_copy};
@@ -69,12 +79,12 @@ use std::char::Char;
 use std::default::Default;
 use std::fmt;
 use std::from_str::FromStr;
-use std::hash::{Hash, sip};
+use std::hash::Hash;
 use std::num::FromStrRadix;
-use std::rand::Rng;
-use std::rand;
 use std::str;
 use std::vec;
+
+use rand::Rng;
 
 use serialize::{Encoder, Encodable, Decoder, Decodable};
 
@@ -114,9 +124,10 @@ pub struct Uuid {
     /// The 128-bit number stored in 16 bytes
     bytes: UuidBytes
 }
-impl Hash for Uuid {
-    fn hash(&self, s: &mut sip::SipState) {
-        self.bytes.slice_from(0).hash(s)
+
+impl<S: Writer> Hash<S> for Uuid {
+    fn hash(&self, state: &mut S) {
+        self.bytes.hash(state)
     }
 }
 
@@ -519,12 +530,12 @@ impl rand::Rand for Uuid {
 #[cfg(test)]
 mod test {
     extern crate collections;
+    extern crate rand;
 
     use super::{Uuid, VariantMicrosoft, VariantNCS, VariantRFC4122,
                 Version1Mac, Version2Dce, Version3Md5, Version4Random,
                 Version5Sha1};
     use std::str;
-    use std::rand;
     use std::io::MemWriter;
 
     #[test]
@@ -778,7 +789,7 @@ mod test {
 
     #[test]
     fn test_rand_rand() {
-        let mut rng = rand::rng();
+        let mut rng = rand::task_rng();
         let u: ~Uuid = rand::Rand::rand(&mut rng);
         let ub = u.as_bytes();
 

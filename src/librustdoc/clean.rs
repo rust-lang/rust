@@ -110,6 +110,8 @@ impl Clean<ExternalCrate> for cstore::crate_metadata {
         ExternalCrate {
             name: self.name.to_owned(),
             attrs: decoder::get_crate_attributes(self.data()).clean()
+                                                             .move_iter()
+                                                             .collect(),
         }
     }
 }
@@ -135,7 +137,7 @@ impl Item {
     pub fn doc_list<'a>(&'a self) -> Option<&'a [Attribute]> {
         for attr in self.attrs.iter() {
             match *attr {
-                List(~"doc", ref list) => { return Some(list.as_slice()); }
+                List(ref x, ref list) if "doc" == *x => { return Some(list.as_slice()); }
                 _ => {}
             }
         }
@@ -147,7 +149,7 @@ impl Item {
     pub fn doc_value<'a>(&'a self) -> Option<&'a str> {
         for attr in self.attrs.iter() {
             match *attr {
-                NameValue(~"doc", ref v) => { return Some(v.as_slice()); }
+                NameValue(ref x, ref v) if "doc" == *x => { return Some(v.as_slice()); }
                 _ => {}
             }
         }
@@ -331,7 +333,7 @@ impl Lifetime {
 
 impl Clean<Lifetime> for ast::Lifetime {
     fn clean(&self) -> Lifetime {
-        Lifetime(token::get_name(self.ident).get().to_owned())
+        Lifetime(token::get_name(self.name).get().to_owned())
     }
 }
 
@@ -1190,7 +1192,7 @@ impl ToSource for syntax::codemap::Span {
 fn lit_to_str(lit: &ast::Lit) -> ~str {
     match lit.node {
         ast::LitStr(ref st, _) => st.get().to_owned(),
-        ast::LitBinary(ref data) => format!("{:?}", data.borrow().as_slice()),
+        ast::LitBinary(ref data) => format!("{:?}", data.deref().as_slice()),
         ast::LitChar(c) => ~"'" + std::char::from_u32(c).unwrap().to_str() + "'",
         ast::LitInt(i, _t) => i.to_str(),
         ast::LitUint(u, _t) => u.to_str(),

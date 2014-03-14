@@ -31,7 +31,7 @@ Some examples of obvious things you might want to do
     use std::io;
 
     for line in io::stdin().lines() {
-        print!("{}", line);
+        print!("{}", line.unwrap());
     }
     ```
 
@@ -57,26 +57,26 @@ Some examples of obvious things you might want to do
 
 * Iterate over the lines of a file
 
-    ```rust
+    ```rust,no_run
     use std::io::BufferedReader;
     use std::io::File;
 
     let path = Path::new("message.txt");
     let mut file = BufferedReader::new(File::open(&path));
     for line in file.lines() {
-        print!("{}", line);
+        print!("{}", line.unwrap());
     }
     ```
 
 * Pull the lines of a file into a vector of strings
 
-    ```rust
+    ```rust,no_run
     use std::io::BufferedReader;
     use std::io::File;
 
     let path = Path::new("message.txt");
     let mut file = BufferedReader::new(File::open(&path));
-    let lines: ~[~str] = file.lines().collect();
+    let lines: ~[~str] = file.lines().map(|x| x.unwrap()).collect();
     ```
 
 * Make a simple TCP client connection and request
@@ -172,6 +172,40 @@ need to inspect or unwrap the `IoResult<File>` and we simply call `write_line`
 on it. If `new` returned an `Err(..)` then the followup call to `write_line`
 will also return an error.
 
+## `try!`
+
+Explicit pattern matching on `IoResult`s can get quite verbose, especially
+when performing many I/O operations. Some examples (like those above) are
+alleviated with extra methods implemented on `IoResult`, but others have more
+complex interdependencies among each I/O operation.
+
+The `try!` macro from `std::macros` is provided as a method of early-return
+inside `Result`-returning functions. It expands to an early-return on `Err`
+and otherwise unwraps the contained `Ok` value.
+
+If you wanted to read several `u32`s from a file and return their product:
+
+```rust
+use std::io::{File, IoResult};
+
+fn file_product(p: &Path) -> IoResult<u32> {
+    let mut f = File::open(p);
+    let x1 = try!(f.read_le_u32());
+    let x2 = try!(f.read_le_u32());
+
+    Ok(x1 * x2)
+}
+
+match file_product(&Path::new("numbers.bin")) {
+    Ok(x) => println!("{}", x),
+    Err(e) => println!("Failed to read numbers!")
+}
+```
+
+With `try!` in `file_product`, each `read_le_u32` need not be directly
+concerned with error handling; instead its caller is responsible for
+responding to errors that may occur while attempting to read the numbers.
+
 */
 
 #[deny(unused_must_use)];
@@ -211,7 +245,7 @@ pub use self::process::{Process, ProcessConfig};
 pub use self::mem::{MemReader, BufReader, MemWriter, BufWriter};
 pub use self::buffered::{BufferedReader, BufferedWriter, BufferedStream,
                          LineBufferedWriter};
-pub use self::comm_adapters::{PortReader, ChanWriter};
+pub use self::comm_adapters::{ChanReader, ChanWriter};
 
 pub mod test;
 
@@ -432,10 +466,8 @@ pub trait Reader {
     ///
     /// # Error
     ///
-    /// The iterator protocol causes all specifics about errors encountered to
-    /// be swallowed. All errors will be signified by returning `None` from the
-    /// iterator. If this is undesirable, it is recommended to use the
-    /// `read_byte` method.
+    /// Any error other than `EndOfFile` that is produced by the underlying Reader
+    /// is returned by the iterator and should be handled by the caller.
     fn bytes<'r>(&'r mut self) -> extensions::Bytes<'r, Self> {
         extensions::Bytes::new(self)
     }
@@ -952,7 +984,7 @@ pub trait Stream: Reader + Writer { }
 impl<T: Reader + Writer> Stream for T {}
 
 /// An iterator that reads a line on each iteration,
-/// until `.read_line()` returns `None`.
+/// until `.read_line()` encounters `EndOfFile`.
 ///
 /// # Notes about the Iteration Protocol
 ///
@@ -962,21 +994,24 @@ impl<T: Reader + Writer> Stream for T {}
 ///
 /// # Error
 ///
-/// This iterator will swallow all I/O errors, transforming `Err` values to
-/// `None`. If errors need to be handled, it is recommended to use the
-/// `read_line` method directly.
+/// Any error other than `EndOfFile` that is produced by the underlying Reader
+/// is returned by the iterator and should be handled by the caller.
 pub struct Lines<'r, T> {
     priv buffer: &'r mut T,
 }
 
-impl<'r, T: Buffer> Iterator<~str> for Lines<'r, T> {
-    fn next(&mut self) -> Option<~str> {
-        self.buffer.read_line().ok()
+impl<'r, T: Buffer> Iterator<IoResult<~str>> for Lines<'r, T> {
+    fn next(&mut self) -> Option<IoResult<~str>> {
+        match self.buffer.read_line() {
+            Ok(x) => Some(Ok(x)),
+            Err(IoError { kind: EndOfFile, ..}) => None,
+            Err(y) => Some(Err(y))
+        }
     }
 }
 
 /// An iterator that reads a utf8-encoded character on each iteration,
-/// until `.read_char()` returns `None`.
+/// until `.read_char()` encounters `EndOfFile`.
 ///
 /// # Notes about the Iteration Protocol
 ///
@@ -986,16 +1021,19 @@ impl<'r, T: Buffer> Iterator<~str> for Lines<'r, T> {
 ///
 /// # Error
 ///
-/// This iterator will swallow all I/O errors, transforming `Err` values to
-/// `None`. If errors need to be handled, it is recommended to use the
-/// `read_char` method directly.
+/// Any error other than `EndOfFile` that is produced by the underlying Reader
+/// is returned by the iterator and should be handled by the caller.
 pub struct Chars<'r, T> {
     priv buffer: &'r mut T
 }
 
-impl<'r, T: Buffer> Iterator<char> for Chars<'r, T> {
-    fn next(&mut self) -> Option<char> {
-        self.buffer.read_char().ok()
+impl<'r, T: Buffer> Iterator<IoResult<char>> for Chars<'r, T> {
+    fn next(&mut self) -> Option<IoResult<char>> {
+        match self.buffer.read_char() {
+            Ok(x) => Some(Ok(x)),
+            Err(IoError { kind: EndOfFile, ..}) => None,
+            Err(y) => Some(Err(y))
+        }
     }
 }
 
@@ -1061,9 +1099,8 @@ pub trait Buffer: Reader {
     ///
     /// # Error
     ///
-    /// This iterator will transform all error values to `None`, discarding the
-    /// cause of the error. If this is undesirable, it is recommended to call
-    /// `read_line` directly.
+    /// Any error other than `EndOfFile` that is produced by the underlying Reader
+    /// is returned by the iterator and should be handled by the caller.
     fn lines<'r>(&'r mut self) -> Lines<'r, Self> {
         Lines { buffer: self }
     }
@@ -1149,9 +1186,8 @@ pub trait Buffer: Reader {
     ///
     /// # Error
     ///
-    /// This iterator will transform all error values to `None`, discarding the
-    /// cause of the error. If this is undesirable, it is recommended to call
-    /// `read_char` directly.
+    /// Any error other than `EndOfFile` that is produced by the underlying Reader
+    /// is returned by the iterator and should be handled by the caller.
     fn chars<'r>(&'r mut self) -> Chars<'r, Self> {
         Chars { buffer: self }
     }
@@ -1286,7 +1322,7 @@ pub enum FileAccess {
 }
 
 /// Different kinds of files which can be identified by a call to stat
-#[deriving(Eq, Show)]
+#[deriving(Eq, Show, Hash)]
 pub enum FileType {
     /// This is a normal file, corresponding to `S_IFREG`
     TypeFile,
@@ -1324,6 +1360,7 @@ pub enum FileType {
 /// println!("byte size: {}", info.size);
 /// # }
 /// ```
+#[deriving(Hash)]
 pub struct FileStat {
     /// The path that this stat structure is describing
     path: Path,
@@ -1365,6 +1402,7 @@ pub struct FileStat {
 /// have different meanings or no meaning at all on some platforms.
 #[unstable]
 #[allow(missing_doc)]
+#[deriving(Hash)]
 pub struct UnstableFileStat {
     device: u64,
     inode: u64,

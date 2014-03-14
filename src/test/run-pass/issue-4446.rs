@@ -11,11 +11,11 @@
 use std::io::println;
 
 pub fn main() {
-    let (port, chan) = Chan::new();
+    let (tx, rx) = channel();
 
     spawn(proc() {
-        println(port.recv());
+        println(rx.recv());
     });
 
-    chan.send("hello, world");
+    tx.send("hello, world");
 }

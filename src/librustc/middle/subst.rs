@@ -16,6 +16,7 @@ use middle::ty_fold::TypeFolder;
 use util::ppaux::Repr;
 
 use std::rc::Rc;
+use std::vec_ng::Vec;
 use syntax::codemap::Span;
 use syntax::opt_vec::OptVec;
 
@@ -88,7 +89,7 @@ impl<'a> TypeFolder for SubstFolder<'a> {
         match ty::get(t).sty {
             ty::ty_param(p) => {
                 if p.idx < self.substs.tps.len() {
-                    self.substs.tps[p.idx]
+                    *self.substs.tps.get(p.idx)
                 } else {
                     let root_msg = match self.root_ty {
                         Some(root) => format!(" in the substitution of `{}`",
@@ -130,10 +131,10 @@ impl<'a> TypeFolder for SubstFolder<'a> {
 ///////////////////////////////////////////////////////////////////////////
 // Other types
 
-impl<T:Subst> Subst for ~[T] {
+impl<T:Subst> Subst for Vec<T> {
     fn subst_spanned(&self, tcx: ty::ctxt,
                      substs: &ty::substs,
-                     span: Option<Span>) -> ~[T] {
+                     span: Option<Span>) -> Vec<T> {
         self.map(|t| t.subst_spanned(tcx, substs, span))
     }
 }
@@ -141,7 +142,7 @@ impl<T:Subst> Subst for Rc<T> {
     fn subst_spanned(&self, tcx: ty::ctxt,
                      substs: &ty::substs,
                      span: Option<Span>) -> Rc<T> {
-        Rc::new(self.borrow().subst_spanned(tcx, substs, span))
+        Rc::new(self.deref().subst_spanned(tcx, substs, span))
     }
 }
 
@@ -275,7 +276,7 @@ impl Subst for ty::Region {
         // bound in *fn types*. Region substitution of the bound
         // regions that appear in a function signature is done using
         // the specialized routine
-        // `middle::typeck::check::regionmanip::replace_bound_regions_in_fn_sig()`.
+        // `middle::typeck::check::regionmanip::replace_late_regions_in_fn_sig()`.
         match self {
             &ty::ReEarlyBound(_, i, _) => {
                 match substs.regions {

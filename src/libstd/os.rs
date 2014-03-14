@@ -615,7 +615,6 @@ pub fn errno() -> int {
     #[cfg(target_os = "macos")]
     #[cfg(target_os = "freebsd")]
     fn errno_location() -> *c_int {
-        #[nolink]
         extern {
             fn __error() -> *c_int;
         }
@@ -627,7 +626,6 @@ pub fn errno() -> int {
     #[cfg(target_os = "linux")]
     #[cfg(target_os = "android")]
     fn errno_location() -> *c_int {
-        #[nolink]
         extern {
             fn __errno_location() -> *c_int;
         }
@@ -665,7 +663,6 @@ pub fn last_os_error() -> ~str {
         #[cfg(target_os = "freebsd")]
         fn strerror_r(errnum: c_int, buf: *mut c_char, buflen: libc::size_t)
                       -> c_int {
-            #[nolink]
             extern {
                 fn strerror_r(errnum: c_int, buf: *mut c_char,
                               buflen: libc::size_t) -> c_int;
@@ -681,7 +678,6 @@ pub fn last_os_error() -> ~str {
         #[cfg(target_os = "linux")]
         fn strerror_r(errnum: c_int, buf: *mut c_char,
                       buflen: libc::size_t) -> c_int {
-            #[nolink]
             extern {
                 fn __xpg_strerror_r(errnum: c_int,
                                     buf: *mut c_char,
@@ -1409,7 +1405,7 @@ mod tests {
     }
 
     fn make_rand_name() -> ~str {
-        let mut rng = rand::rng();
+        let mut rng = rand::task_rng();
         let n = ~"TEST" + rng.gen_ascii_str(10u);
         assert!(getenv(n).is_none());
         n

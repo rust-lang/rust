@@ -410,7 +410,7 @@ rust_win32_rand_acquire(HCRYPTPROV* phProv) {
     win32_require
         (_T("CryptAcquireContext"),
          // changes to the parameters here should be reflected in the docs of
-         // std::rand::os::OSRng
+         // rand::os::OSRng
          CryptAcquireContext(phProv, NULL, NULL, PROV_RSA_FULL,
                              CRYPT_VERIFYCONTEXT|CRYPT_SILENT));
 

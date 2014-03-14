@@ -51,6 +51,7 @@ fs::unlink(&path);
 
 use c_str::ToCStr;
 use clone::Clone;
+use container::Container;
 use iter::Iterator;
 use super::{Reader, Writer, Seek};
 use super::{SeekStyle, Read, Write, Open, IoError, Truncate,
@@ -62,6 +63,7 @@ use result::{Ok, Err};
 use path;
 use path::{Path, GenericPath};
 use vec::{OwnedVector, ImmutableVector};
+use vec_ng::Vec;
 
 /// Unconstrained file access type that exposes read and write operations
 ///
@@ -528,10 +530,25 @@ pub fn mkdir_recursive(path: &Path, mode: FilePermission) -> IoResult<()> {
     if path.is_dir() {
         return Ok(())
     }
-    if path.filename().is_some() {
-        try!(mkdir_recursive(&path.dir_path(), mode));
+
+    let mut comps = path.components();
+    let mut curpath = path.root_path().unwrap_or(Path::new("."));
+
+    for c in comps {
+        curpath.push(c);
+
+        match mkdir(&curpath, mode) {
+            Err(mkdir_err) => {
+                // already exists ?
+                if try!(stat(&curpath)).kind != io::TypeDirectory {
+                    return Err(mkdir_err);
+                }
+            }
+            Ok(()) => ()
+        }
     }
-    mkdir(path, mode)
+
+    Ok(())
 }
 
 /// Removes a directory at this path, after removing all its contents. Use
@@ -542,16 +559,47 @@ pub fn mkdir_recursive(path: &Path, mode: FilePermission) -> IoResult<()> {
 /// This function will return an `Err` value if an error happens. See
 /// `file::unlink` and `fs::readdir` for possible error conditions.
 pub fn rmdir_recursive(path: &Path) -> IoResult<()> {
-    let children = try!(readdir(path));
-    for child in children.iter() {
-        if child.is_dir() {
-            try!(rmdir_recursive(child));
-        } else {
-            try!(unlink(child));
+    let mut rm_stack = Vec::new();
+    rm_stack.push(path.clone());
+
+    while !rm_stack.is_empty() {
+        let children = try!(readdir(rm_stack.last().unwrap()));
+        let mut has_child_dir = false;
+
+        // delete all regular files in the way and push subdirs
+        // on the stack
+        for child in children.move_iter() {
+            // FIXME(#12795) we should use lstat in all cases
+            let child_type = match cfg!(windows) {
+                true => try!(stat(&child)).kind,
+                false => try!(lstat(&child)).kind
+            };
+
+            if child_type == io::TypeDirectory {
+                rm_stack.push(child);
+                has_child_dir = true;
+            } else {
+                // we can carry on safely if the file is already gone
+                // (eg: deleted by someone else since readdir)
+                match unlink(&child) {
+                    Ok(()) => (),
+                    Err(ref e) if e.kind == io::FileNotFound => (),
+                    Err(e) => return Err(e)
+                }
+            }
+        }
+
+        // if no subdir was found, let's pop and delete
+        if !has_child_dir {
+            match rmdir(&rm_stack.pop().unwrap()) {
+                Ok(()) => (),
+                Err(ref e) if e.kind == io::FileNotFound => (),
+                Err(e) => return Err(e)
+            }
         }
     }
-    // Directory should now be empty
-    rmdir(path)
+
+    Ok(())
 }
 
 /// Changes the timestamps for a file's last modification and access time.
@@ -920,8 +968,34 @@ mod test {
         check!(rmdir(dir));
     })
 
+    iotest!(fn recursive_mkdir() {
+        let tmpdir = tmpdir();
+        let dir = tmpdir.join("d1/d2");
+        check!(mkdir_recursive(&dir, io::UserRWX));
+        assert!(dir.is_dir())
+    })
+
     iotest!(fn recursive_mkdir_slash() {
         check!(mkdir_recursive(&Path::new("/"), io::UserRWX));
+    })
+
+    // FIXME(#12795) depends on lstat to work on windows
+    #[cfg(not(windows))]
+    iotest!(fn recursive_rmdir() {
+        let tmpdir = tmpdir();
+        let d1 = tmpdir.join("d1");
+        let dt = d1.join("t");
+        let dtt = dt.join("t");
+        let d2 = tmpdir.join("d2");
+        let canary = d2.join("do_not_delete");
+        check!(mkdir_recursive(&dtt, io::UserRWX));
+        check!(mkdir_recursive(&d2, io::UserRWX));
+        check!(File::create(&canary).write(bytes!("foo")));
+        check!(symlink(&d2, &dt.join("d2")));
+        check!(rmdir_recursive(&d1));
+
+        assert!(!d1.is_dir());
+        assert!(canary.exists());
     })
 
     iotest!(fn unicode_path_is_dir() {

@@ -504,7 +504,7 @@ pub fn print_type(s: &mut State, ty: &ast::Ty) -> io::IoResult<()> {
             try!(word(&mut s.s, ")"));
         }
         ast::TyInfer => {
-            fail!("print_type shouldn't see a ty_infer");
+            try!(word(&mut s.s, "_"));
         }
     }
     end(s)
@@ -1956,7 +1956,7 @@ pub fn print_bounds(s: &mut State, bounds: &OptVec<ast::TyParamBound>,
 pub fn print_lifetime(s: &mut State,
                       lifetime: &ast::Lifetime) -> io::IoResult<()> {
     try!(word(&mut s.s, "'"));
-    print_name(s, lifetime.ident)
+    print_name(s, lifetime.name)
 }
 
 pub fn print_generics(s: &mut State,
@@ -2291,7 +2291,7 @@ pub fn print_literal(s: &mut State, lit: &ast::Lit) -> io::IoResult<()> {
       ast::LitBinary(ref arr) => {
         try!(ibox(s, indent_unit));
         try!(word(&mut s.s, "["));
-        try!(commasep_cmnt(s, Inconsistent, arr.borrow().as_slice(),
+        try!(commasep_cmnt(s, Inconsistent, arr.deref().as_slice(),
                              |s, u| word(&mut s.s, format!("{}", *u)),
                              |_| lit.span));
         try!(word(&mut s.s, "]"));

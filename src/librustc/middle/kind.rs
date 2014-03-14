@@ -16,6 +16,7 @@ use middle::typeck;
 use util::ppaux::{Repr, ty_to_str};
 use util::ppaux::UserString;
 
+use std::vec_ng::Vec;
 use syntax::ast::*;
 use syntax::attr;
 use syntax::codemap::Span;
@@ -94,7 +95,7 @@ fn check_struct_safe_for_destructor(cx: &mut Context,
         let struct_ty = ty::mk_struct(cx.tcx, struct_did, ty::substs {
             regions: ty::NonerasedRegions(opt_vec::Empty),
             self_ty: None,
-            tps: ~[]
+            tps: Vec::new()
         });
         if !ty::type_is_sendable(cx.tcx, struct_ty) {
             cx.tcx.sess.span_err(span,
@@ -266,7 +267,7 @@ pub fn check_expr(cx: &mut Context, e: &Expr) {
     // Handle any kind bounds on type parameters
     {
         let method_map = cx.method_map.borrow();
-        let method = method_map.get().find(&e.id);
+        let method = method_map.get().find(&typeck::MethodCall::expr(e.id));
         let node_type_substs = cx.tcx.node_type_substs.borrow();
         let r = match method {
             Some(method) => Some(&method.substs.tps),
@@ -297,7 +298,7 @@ pub fn check_expr(cx: &mut Context, e: &Expr) {
                 }
               }
             };
-            let type_param_defs = type_param_defs.borrow();
+            let type_param_defs = type_param_defs.deref();
             if ts.len() != type_param_defs.len() {
                 // Fail earlier to make debugging easier
                 fail!("internal error: in kind::check_expr, length \
@@ -340,7 +341,8 @@ pub fn check_expr(cx: &mut Context, e: &Expr) {
             match **adjustment {
                 ty::AutoObject(..) => {
                     let source_ty = ty::expr_ty(cx.tcx, e);
-                    let target_ty = ty::expr_ty_adjusted(cx.tcx, e);
+                    let target_ty = ty::expr_ty_adjusted(cx.tcx, e,
+                                                         cx.method_map.borrow().get());
                     check_trait_cast(cx, source_ty, target_ty, e.span);
                 }
                 ty::AutoAddEnv(..) |
@@ -533,7 +535,7 @@ pub fn check_cast_for_escaping_regions(
     // Collect up the regions that appear in the target type.  We want to
     // ensure that these lifetimes are shorter than all lifetimes that are in
     // the source type.  See test `src/test/compile-fail/regions-trait-2.rs`
-    let mut target_regions = ~[];
+    let mut target_regions = Vec::new();
     ty::walk_regions_and_ty(
         cx.tcx,
         target_ty,

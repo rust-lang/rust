@@ -19,7 +19,7 @@ pub fn load_errors(testfile: &Path) -> ~[ExpectedError] {
     let mut rdr = BufferedReader::new(File::open(testfile).unwrap());
     let mut line_num = 1u;
     for ln in rdr.lines() {
-        error_patterns.push_all_move(parse_expected(line_num, ln));
+        error_patterns.push_all_move(parse_expected(line_num, ln.unwrap()));
         line_num += 1u;
     }
     return error_patterns;

@@ -24,12 +24,12 @@ struct X<T>(T);
 impl <T: Freeze> RequiresFreeze for X<T> { }
 impl <T: Freeze+Send> RequiresRequiresFreezeAndSend for X<T> { }
 
-fn foo<T: RequiresRequiresFreezeAndSend>(val: T, chan: Chan<T>) {
+fn foo<T: RequiresRequiresFreezeAndSend>(val: T, chan: Sender<T>) {
     chan.send(val);
 }
 
 pub fn main() {
-    let (p,c) = Chan::new();
-    foo(X(31337), c);
-    assert!(p.recv() == X(31337));
+    let (tx, rx) = channel();
+    foo(X(31337), tx);
+    assert!(rx.recv() == X(31337));
 }

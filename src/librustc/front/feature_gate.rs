@@ -31,6 +31,7 @@ use syntax::parse::token;
 use driver::session::Session;
 
 use std::cell::Cell;
+use std::vec_ng::Vec;
 
 /// This is a list of all known features since the beginning of time. This list
 /// can never shrink, it may only be expanded (in order to prevent old programs
@@ -52,6 +53,7 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("simd", Active),
     ("default_type_params", Active),
     ("quote", Active),
+    ("linkage", Active),
 
     // These are used to test this portion of the compiler, they don't actually
     // mean anything
@@ -85,7 +87,7 @@ impl Features {
 }
 
 struct Context {
-    features: ~[&'static str],
+    features: Vec<&'static str> ,
     sess: Session,
 }
 
@@ -237,6 +239,19 @@ impl Visitor<()> for Context {
         }
     }
 
+    fn visit_foreign_item(&mut self, i: &ast::ForeignItem, _: ()) {
+        match i.node {
+            ast::ForeignItemFn(..) | ast::ForeignItemStatic(..) => {
+                if attr::contains_name(i.attrs.as_slice(), "linkage") {
+                    self.gate_feature("linkage", i.span,
+                                      "the `linkage` attribute is experimental \
+                                       and not portable across platforms")
+                }
+            }
+        }
+        visit::walk_foreign_item(self, i, ())
+    }
+
     fn visit_ty(&mut self, t: &ast::Ty, _: ()) {
         match t.node {
             ast::TyClosure(closure) if closure.onceness == ast::Once &&
@@ -280,7 +295,7 @@ impl Visitor<()> for Context {
 
 pub fn check_crate(sess: Session, krate: &ast::Crate) {
     let mut cx = Context {
-        features: ~[],
+        features: Vec::new(),
         sess: sess,
     };
 

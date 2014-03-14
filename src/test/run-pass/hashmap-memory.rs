@@ -31,9 +31,9 @@ mod map_reduce {
 
     pub type mapper = extern fn(~str, putter);
 
-    enum ctrl_proto { find_reducer(~[u8], Chan<int>), mapper_done, }
+    enum ctrl_proto { find_reducer(~[u8], Sender<int>), mapper_done, }
 
-    fn start_mappers(ctrl: Chan<ctrl_proto>, inputs: ~[~str]) {
+    fn start_mappers(ctrl: Sender<ctrl_proto>, inputs: ~[~str]) {
         for i in inputs.iter() {
             let ctrl = ctrl.clone();
             let i = i.clone();
@@ -41,20 +41,20 @@ mod map_reduce {
         }
     }
 
-    fn map_task(ctrl: Chan<ctrl_proto>, input: ~str) {
+    fn map_task(ctrl: Sender<ctrl_proto>, input: ~str) {
         let mut intermediates = HashMap::new();
 
         fn emit(im: &mut HashMap<~str, int>,
-                ctrl: Chan<ctrl_proto>, key: ~str,
+                ctrl: Sender<ctrl_proto>, key: ~str,
                 _val: ~str) {
             if im.contains_key(&key) {
                 return;
             }
-            let (pp, cc) = Chan::new();
+            let (tx, rx) = channel();
             error!("sending find_reducer");
-            ctrl.send(find_reducer(key.as_bytes().to_owned(), cc));
+            ctrl.send(find_reducer(key.as_bytes().to_owned(), tx));
             error!("receiving");
-            let c = pp.recv();
+            let c = rx.recv();
             error!("{:?}", c);
             im.insert(key, c);
         }
@@ -65,7 +65,7 @@ mod map_reduce {
     }
 
     pub fn map_reduce(inputs: ~[~str]) {
-        let (ctrl_port, ctrl_chan) = Chan::new();
+        let (tx, rx) = channel();
 
         // This task becomes the master control task. It spawns others
         // to do the rest.
@@ -74,12 +74,12 @@ mod map_reduce {
 
         reducers = HashMap::new();
 
-        start_mappers(ctrl_chan, inputs.clone());
+        start_mappers(tx, inputs.clone());
 
         let mut num_mappers = inputs.len() as int;
 
         while num_mappers > 0 {
-            match ctrl_port.recv() {
+            match rx.recv() {
               mapper_done => { num_mappers -= 1; }
               find_reducer(k, cc) => {
                 let mut c;

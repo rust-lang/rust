@@ -21,6 +21,7 @@ use middle::privacy;
 use util::nodemap::NodeSet;
 
 use std::cell::RefCell;
+use std::vec_ng::Vec;
 use collections::HashSet;
 use syntax::ast;
 use syntax::ast_map;
@@ -92,11 +93,11 @@ struct ReachableContext {
     reachable_symbols: @RefCell<NodeSet>,
     // A worklist of item IDs. Each item ID in this worklist will be inlined
     // and will be scanned for further references.
-    worklist: @RefCell<~[ast::NodeId]>,
+    worklist: @RefCell<Vec<ast::NodeId> >,
 }
 
 struct MarkSymbolVisitor {
-    worklist: @RefCell<~[ast::NodeId]>,
+    worklist: @RefCell<Vec<ast::NodeId> >,
     method_map: typeck::MethodMap,
     tcx: ty::ctxt,
     reachable_symbols: @RefCell<NodeSet>,
@@ -148,24 +149,17 @@ impl Visitor<()> for MarkSymbolVisitor {
                 }
             }
             ast::ExprMethodCall(..) => {
-                match self.method_map.borrow().get().get(&expr.id).origin {
+                let method_call = typeck::MethodCall::expr(expr.id);
+                match self.method_map.borrow().get().get(&method_call).origin {
                     typeck::MethodStatic(def_id) => {
                         if is_local(def_id) {
                             if ReachableContext::
                                 def_id_represents_local_inlined_item(
                                     self.tcx,
                                     def_id) {
-                                {
-                                    let mut worklist = self.worklist
-                                                           .borrow_mut();
-                                    worklist.get().push(def_id.node)
-                                }
+                                self.worklist.borrow_mut().get().push(def_id.node)
                             }
-                            {
-                                let mut reachable_symbols =
-                                    self.reachable_symbols.borrow_mut();
-                                reachable_symbols.get().insert(def_id.node);
-                            }
+                            self.reachable_symbols.borrow_mut().get().insert(def_id.node);
                         }
                     }
                     _ => {}
@@ -190,7 +184,7 @@ impl ReachableContext {
             tcx: tcx,
             method_map: method_map,
             reachable_symbols: @RefCell::new(NodeSet::new()),
-            worklist: @RefCell::new(~[]),
+            worklist: @RefCell::new(Vec::new()),
         }
     }
 

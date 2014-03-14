@@ -39,8 +39,7 @@
 
 use any::Any;
 use clone::Clone;
-use clone::DeepClone;
-use cmp::{Eq, TotalOrd};
+use cmp::{Eq, TotalEq, TotalOrd};
 use default::Default;
 use iter::{Iterator, DoubleEndedIterator, FromIterator, ExactSize};
 use kinds::Send;
@@ -48,7 +47,7 @@ use mem;
 use vec;
 
 /// The option type
-#[deriving(Clone, DeepClone, Eq, Ord, TotalEq, TotalOrd, Show)]
+#[deriving(Clone, Eq, Ord, TotalEq, TotalOrd, Show)]
 pub enum Option<T> {
     /// No value
     None,
@@ -296,10 +295,13 @@ impl<T> Option<T> {
 
     /// Applies a function zero or more times until the result is `None`.
     #[inline]
-    pub fn while_some(self, blk: |v: T| -> Option<T>) {
+    pub fn while_some(self, f: |v: T| -> Option<T>) {
         let mut opt = self;
-        while opt.is_some() {
-            opt = blk(opt.unwrap());
+        loop {
+            match opt {
+                Some(x) => opt = f(x),
+                None => break
+            }
         }
     }
 
@@ -387,7 +389,7 @@ impl<T> Default for Option<T> {
 /////////////////////////////////////////////////////////////////////////////
 
 /// An iterator that yields either one or zero elements
-#[deriving(Clone, DeepClone)]
+#[deriving(Clone)]
 pub struct Item<A> {
     priv opt: Option<A>
 }
@@ -504,7 +506,7 @@ mod tests {
         #[unsafe_destructor]
         impl ::ops::Drop for R {
            fn drop(&mut self) {
-                let ii = self.i.borrow();
+                let ii = self.i.deref();
                 ii.set(ii.get() + 1);
             }
         }
@@ -521,7 +523,7 @@ mod tests {
             let opt = Some(x);
             let _y = opt.unwrap();
         }
-        assert_eq!(i.borrow().get(), 1);
+        assert_eq!(i.deref().get(), 1);
     }
 
     #[test]

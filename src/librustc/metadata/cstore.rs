@@ -18,6 +18,7 @@ use metadata::decoder;
 use metadata::loader;
 
 use std::cell::RefCell;
+use std::vec_ng::Vec;
 use collections::HashMap;
 use extra::c_vec::CVec;
 use syntax::ast;
@@ -67,9 +68,9 @@ pub struct CrateSource {
 pub struct CStore {
     priv metas: RefCell<HashMap<ast::CrateNum, @crate_metadata>>,
     priv extern_mod_crate_map: RefCell<extern_mod_crate_map>,
-    priv used_crate_sources: RefCell<~[CrateSource]>,
-    priv used_libraries: RefCell<~[(~str, NativeLibaryKind)]>,
-    priv used_link_args: RefCell<~[~str]>,
+    priv used_crate_sources: RefCell<Vec<CrateSource> >,
+    priv used_libraries: RefCell<Vec<(~str, NativeLibaryKind)> >,
+    priv used_link_args: RefCell<Vec<~str> >,
     intr: @IdentInterner
 }
 
@@ -81,9 +82,9 @@ impl CStore {
         CStore {
             metas: RefCell::new(HashMap::new()),
             extern_mod_crate_map: RefCell::new(HashMap::new()),
-            used_crate_sources: RefCell::new(~[]),
-            used_libraries: RefCell::new(~[]),
-            used_link_args: RefCell::new(~[]),
+            used_crate_sources: RefCell::new(Vec::new()),
+            used_libraries: RefCell::new(Vec::new()),
+            used_link_args: RefCell::new(Vec::new()),
             intr: intr
         }
     }
@@ -143,7 +144,7 @@ impl CStore {
     }
 
     pub fn get_used_crates(&self, prefer: LinkagePreference)
-                           -> ~[(ast::CrateNum, Option<Path>)] {
+                           -> Vec<(ast::CrateNum, Option<Path>)> {
         let used_crate_sources = self.used_crate_sources.borrow();
         used_crate_sources.get()
             .iter()
@@ -161,7 +162,7 @@ impl CStore {
     }
 
     pub fn get_used_libraries<'a>(&'a self)
-                              -> &'a RefCell<~[(~str, NativeLibaryKind)]> {
+                              -> &'a RefCell<Vec<(~str, NativeLibaryKind)> > {
         &self.used_libraries
     }
 
@@ -172,7 +173,7 @@ impl CStore {
         }
     }
 
-    pub fn get_used_link_args<'a>(&'a self) -> &'a RefCell<~[~str]> {
+    pub fn get_used_link_args<'a>(&'a self) -> &'a RefCell<Vec<~str> > {
         &self.used_link_args
     }
 

@@ -11,6 +11,7 @@
 #[deny(unreachable_code)];
 #[allow(unused_variable)];
 #[allow(dead_code)];
+#[allow(deprecated_owned_vector)];
 
 fn fail_len(v: ~[int]) -> uint {
     let mut i = 3;

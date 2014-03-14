@@ -92,18 +92,18 @@ pub fn ast_region_to_region(tcx: ty::ctxt, lifetime: &ast::Lifetime)
 
         Some(&ast::DefLateBoundRegion(binder_id, _, id)) => {
             ty::ReLateBound(binder_id, ty::BrNamed(ast_util::local_def(id),
-                                                   lifetime.ident))
+                                                   lifetime.name))
         }
 
         Some(&ast::DefEarlyBoundRegion(index, id)) => {
-            ty::ReEarlyBound(id, index, lifetime.ident)
+            ty::ReEarlyBound(id, index, lifetime.name)
         }
 
         Some(&ast::DefFreeRegion(scope_id, id)) => {
             ty::ReFree(ty::FreeRegion {
                     scope_id: scope_id,
                     bound_region: ty::BrNamed(ast_util::local_def(id),
-                                              lifetime.ident)
+                                              lifetime.name)
                 })
         }
     };
@@ -136,7 +136,7 @@ fn opt_ast_region_to_region<AC:AstConv,RS:RegionScope>(
                 }
 
                 Ok(rs) => {
-                    rs[0]
+                    *rs.get(0)
                 }
             }
         }
@@ -186,9 +186,9 @@ fn ast_path_substs<AC:AstConv,RS:RegionScope>(
         }
 
         match anon_regions {
-            Ok(v) => opt_vec::from(v.move_iter().collect()),
-            Err(()) => opt_vec::from(Vec::from_fn(expected_num_region_params,
-                                                  |_| ty::ReStatic)) // hokey
+            Ok(v) => v.move_iter().collect(),
+            Err(()) => Vec::from_fn(expected_num_region_params,
+                                    |_| ty::ReStatic) // hokey
         }
     };
 
@@ -231,7 +231,7 @@ fn ast_path_substs<AC:AstConv,RS:RegionScope>(
                             .collect();
 
     let mut substs = substs {
-        regions: ty::NonerasedRegions(regions),
+        regions: ty::NonerasedRegions(opt_vec::from(regions)),
         self_ty: self_ty,
         tps: tps
     };
@@ -640,13 +640,11 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
                 tcx.sess.span_bug(ast_ty.span, "typeof is reserved but unimplemented");
             }
             ast::TyInfer => {
-                // ty_infer should only appear as the type of arguments or return
-                // values in a fn_expr, or as the type of local variables.  Both of
-                // these cases are handled specially and should not descend into this
-                // routine.
-                this.tcx().sess.span_bug(
-                    ast_ty.span,
-                    "found `ty_infer` in unexpected place");
+                // TyInfer also appears as the type of arguments or return
+                // values in a ExprFnBlock or ExprProc, or as the type of
+                // local variables. Both of these cases are handled specially
+                // and will not descend into this routine.
+                this.ty_infer(ast_ty.span)
             }
         });
 
@@ -791,7 +789,11 @@ pub fn ty_of_closure<AC:AstConv,RS:RegionScope>(
         let expected_arg_ty = expected_sig.as_ref().and_then(|e| {
             // no guarantee that the correct number of expected args
             // were supplied
-            if i < e.inputs.len() {Some(e.inputs[i])} else {None}
+            if i < e.inputs.len() {
+                Some(*e.inputs.get(i))
+            } else {
+                None
+            }
         });
         ty_of_arg(this, &rb, a, expected_arg_ty)
     }).collect();
