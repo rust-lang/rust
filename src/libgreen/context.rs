@@ -283,6 +283,8 @@ fn initialize_call_frame(regs: &mut Registers, fptr: InitFn, arg: uint,
     unsafe { *sp = 0; }
 
     regs[4] = arg as uint;
+    regs[5] = procedure.code as uint;
+    regs[6] = procedure.env as uint;
     regs[29] = sp as uint;
     regs[25] = fptr as uint;
     regs[31] = fptr as uint;
