@@ -69,6 +69,10 @@ impl<'a> Visitor<()> for BorrowckCtxt<'a> {
                 b: &Block, s: Span, n: NodeId, _: ()) {
         borrowck_fn(self, fk, fd, b, s, n);
     }
+
+    fn visit_item(&mut self, item: &ast::Item, _: ()) {
+        borrowck_item(self, item);
+    }
 }
 
 pub fn check_crate(tcx: &ty::ctxt,
@@ -117,6 +121,20 @@ pub fn check_crate(tcx: &ty::ctxt,
     }
 }
 
+fn borrowck_item(this: &mut BorrowckCtxt, item: &ast::Item) {
+    // Gather loans for items. Note that we don't need
+    // to check loans for single expressions. The check
+    // loan step is intended for things that have a data
+    // flow dependent conditions.
+    match item.node {
+        ast::ItemStatic(_, _, ex) => {
+            gather_loans::gather_loans_in_static_initializer(this, ex);
+        }
+        _ => {}
+    }
+    visit::walk_item(this, item, ());
+}
+
 fn borrowck_fn(this: &mut BorrowckCtxt,
                fk: &FnKind,
                decl: &ast::FnDecl,
@@ -127,7 +145,7 @@ fn borrowck_fn(this: &mut BorrowckCtxt,
 
     // Check the body of fn items.
     let (id_range, all_loans, move_data) =
-        gather_loans::gather_loans(this, decl, body);
+        gather_loans::gather_loans_in_fn(this, decl, body);
     let mut loan_dfcx =
         DataFlowContext::new(this.tcx,
                              this.method_map,
