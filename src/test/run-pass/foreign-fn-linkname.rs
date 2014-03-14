@@ -8,6 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-fast doesn't like extern crate
+
+extern crate libc;
+
 mod mlibc {
     extern crate libc;
     use self::libc::{c_char, size_t};

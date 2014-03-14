@@ -28,7 +28,6 @@
 
 extern crate libc;
 
-use libc;
 use std::cast;
 use std::fmt;
 use std::io;

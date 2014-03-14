@@ -79,7 +79,7 @@
 #[allow(uppercase_variables)];
 
 #[cfg(test)] extern crate std;
-#[cfg(test)] extern crate extra;
+#[cfg(test)] extern crate test;
 // for lang="start"
 #[cfg(test)] extern crate green;
 #[cfg(test)] extern crate rustuv;
@@ -1101,24 +1101,6 @@ pub mod types {
                     wProcessorRevision: WORD
                 }
                 pub type LPSYSTEM_INFO = *mut SYSTEM_INFO;
-
-                impl SYSTEM_INFO {
-                    pub fn new() -> SYSTEM_INFO {
-                        SYSTEM_INFO {
-                            wProcessorArchitecture: 0,
-                            wReserved: 0,
-                            dwPageSize: 0,
-                            lpMinimumApplicationAddress: ptr::mut_null(),
-                            lpMaximumApplicationAddress: ptr::mut_null(),
-                            dwActiveProcessorMask: 0,
-                            dwNumberOfProcessors: 0,
-                            dwProcessorType: 0,
-                            dwAllocationGranularity: 0,
-                            wProcessorLevel: 0,
-                            wProcessorRevision: 0
-                        }
-                    }
-                }
 
                 pub struct MEMORY_BASIC_INFORMATION {
                     BaseAddress: LPVOID,
