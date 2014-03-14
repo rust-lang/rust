@@ -157,6 +157,7 @@ pub type uv_process_t = c_void;
 pub type uv_pipe_t = c_void;
 pub type uv_tty_t = c_void;
 pub type uv_signal_t = c_void;
+pub type uv_shutdown_t = c_void;
 
 pub struct uv_timespec_t {
     tv_sec: libc::c_long,
@@ -248,6 +249,7 @@ pub type uv_exit_cb = extern "C" fn(handle: *uv_process_t,
 pub type uv_signal_cb = extern "C" fn(handle: *uv_signal_t,
                                       signum: c_int);
 pub type uv_fs_cb = extern "C" fn(req: *uv_fs_t);
+pub type uv_shutdown_cb = extern "C" fn(req: *uv_shutdown_t, status: c_int);
 
 #[cfg(unix)] pub type uv_uid_t = libc::types::os::arch::posix88::uid_t;
 #[cfg(unix)] pub type uv_gid_t = libc::types::os::arch::posix88::gid_t;
@@ -539,6 +541,8 @@ extern {
                          on_alloc: uv_alloc_cb,
                          on_read: uv_read_cb) -> c_int;
     pub fn uv_read_stop(stream: *uv_stream_t) -> c_int;
+    pub fn uv_shutdown(req: *uv_shutdown_t, handle: *uv_stream_t,
+                       cb: uv_shutdown_cb) -> c_int;
 
     // idle bindings
     pub fn uv_idle_init(l: *uv_loop_t, i: *uv_idle_t) -> c_int;
