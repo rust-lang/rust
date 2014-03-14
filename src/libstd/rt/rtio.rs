@@ -206,6 +206,7 @@ pub trait RtioTcpStream : RtioSocket {
     fn keepalive(&mut self, delay_in_seconds: uint) -> Result<(), IoError>;
     fn letdie(&mut self) -> Result<(), IoError>;
     fn clone(&self) -> ~RtioTcpStream;
+    fn close_write(&mut self) -> Result<(), IoError>;
 }
 
 pub trait RtioSocket {

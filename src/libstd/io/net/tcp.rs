@@ -710,5 +710,23 @@ mod test {
 
         rx.recv();
     })
+
+    iotest!(fn shutdown_smoke() {
+        use rt::rtio::RtioTcpStream;
+
+        let addr = next_test_ip4();
+        let a = TcpListener::bind(addr).unwrap().listen();
+        spawn(proc() {
+            let mut a = a;
+            let mut c = a.accept().unwrap();
+            assert_eq!(c.read_to_end(), Ok(~[]));
+            c.write([1]).unwrap();
+        });
+
+        let mut s = TcpStream::connect(addr).unwrap();
+        assert!(s.obj.close_write().is_ok());
+        assert!(s.write([1]).is_err());
+        assert_eq!(s.read_to_end(), Ok(~[1]));
+    })
 }
 

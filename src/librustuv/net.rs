@@ -305,6 +305,38 @@ impl rtio::RtioTcpStream for TcpWatcher {
             read_access: self.read_access.clone(),
         } as ~rtio::RtioTcpStream
     }
+
+    fn close_write(&mut self) -> Result<(), IoError> {
+        struct Ctx {
+            slot: Option<BlockedTask>,
+            status: c_int,
+        }
+        let mut req = Request::new(uvll::UV_SHUTDOWN);
+
+        return match unsafe {
+            uvll::uv_shutdown(req.handle, self.handle, shutdown_cb)
+        } {
+            0 => {
+                req.defuse(); // uv callback now owns this request
+                let mut cx = Ctx { slot: None, status: 0 };
+
+                wait_until_woken_after(&mut cx.slot, &self.uv_loop(), || {
+                    req.set_data(&cx);
+                });
+
+                status_to_io_result(cx.status)
+            }
+            n => Err(uv_error_to_io_error(UvError(n)))
+        };
+
+        extern fn shutdown_cb(req: *uvll::uv_shutdown_t, status: libc::c_int) {
+            let req = Request::wrap(req);
+            assert!(status != uvll::ECANCELED);
+            let cx: &mut Ctx = unsafe { req.get_data() };
+            cx.status = status;
+            wakeup(&mut cx.slot);
+        }
+    }
 }
 
 impl UvHandle<uvll::uv_tcp_t> for TcpWatcher {
