@@ -1274,6 +1274,9 @@ impl Parser {
                 bounds
             } = self.parse_path(LifetimeAndTypesAndBounds);
             TyPath(path, bounds, ast::DUMMY_NODE_ID)
+        } else if self.eat(&token::UNDERSCORE) {
+            // TYPE TO BE INFERRED
+            TyInfer
         } else {
             let msg = format!("expected type, found token {:?}", self.token);
             self.fatal(msg);
