@@ -12,6 +12,7 @@
 
 use driver::session::Session;
 use metadata::csearch;
+use metadata::cstore;
 use metadata::decoder::{DefLike, DlDef, DlField, DlImpl};
 use middle::lang_items::LanguageItems;
 use middle::lint::{UnnecessaryQualification, UnusedImports};
@@ -153,7 +154,7 @@ enum NameDefinition {
     ImportNameDefinition(Def, LastPrivate) //< The name identifies an import.
 }
 
-impl Visitor<()> for Resolver {
+impl<'a> Visitor<()> for Resolver<'a> {
     fn visit_item(&mut self, item: &Item, _: ()) {
         self.resolve_item(item);
     }
@@ -787,9 +788,10 @@ fn namespace_error_to_str(ns: NamespaceError) -> &'static str {
     }
 }
 
-fn Resolver(session: Session,
+fn Resolver<'a>(session: Session,
             lang_items: @LanguageItems,
-            crate_span: Span) -> Resolver {
+            crate_span: Span,
+			krate:&'a ast::Crate) -> Resolver<'a> {
     let graph_root = @NameBindings();
 
     graph_root.define_module(NoParentLink,
@@ -809,6 +811,7 @@ fn Resolver(session: Session,
         // AST.
 
         graph_root: graph_root,
+		resolver_krate:krate,
 
         method_map: @RefCell::new(HashMap::new()),
         structs: HashSet::new(),
@@ -843,7 +846,7 @@ fn Resolver(session: Session,
 }
 
 /// The main resolver class.
-struct Resolver {
+struct Resolver<'a> {
     session: @Session,
     lang_items: @LanguageItems,
 
@@ -851,6 +854,8 @@ struct Resolver {
 
     method_map: @RefCell<HashMap<Name, HashSet<DefId>>>,
     structs: HashSet<DefId>,
+
+	resolver_krate: &'a ast::Crate, // for error message search-"did you mean..."
 
     // The number of imports that are currently unresolved.
     unresolved_imports: uint,
@@ -896,11 +901,11 @@ struct Resolver {
     used_imports: HashSet<(NodeId, Namespace)>,
 }
 
-struct BuildReducedGraphVisitor<'a> {
-    resolver: &'a mut Resolver,
+struct BuildReducedGraphVisitor<'a,'r> {
+    resolver: &'a mut Resolver<'r>,
 }
 
-impl<'a> Visitor<ReducedGraphParent> for BuildReducedGraphVisitor<'a> {
+impl<'a,'r> Visitor<ReducedGraphParent> for BuildReducedGraphVisitor<'a,'r> {
 
     fn visit_item(&mut self, item: &Item, context: ReducedGraphParent) {
         let p = self.resolver.build_reduced_graph_for_item(item, context);
@@ -920,7 +925,7 @@ impl<'a> Visitor<ReducedGraphParent> for BuildReducedGraphVisitor<'a> {
     fn visit_view_item(&mut self, view_item: &ViewItem, context: ReducedGraphParent) {
         self.resolver.build_reduced_graph_for_view_item(view_item, context);
     }
-
+	
     fn visit_block(&mut self, block: &Block, context: ReducedGraphParent) {
         let np = self.resolver.build_reduced_graph_for_block(block, context);
         visit::walk_block(self, block, np);
@@ -928,18 +933,19 @@ impl<'a> Visitor<ReducedGraphParent> for BuildReducedGraphVisitor<'a> {
 
 }
 
-struct UnusedImportCheckVisitor<'a> { resolver: &'a mut Resolver }
+struct UnusedImportCheckVisitor<'a,'r> { resolver: &'a mut Resolver<'r> }
 
-impl<'a> Visitor<()> for UnusedImportCheckVisitor<'a> {
+impl<'a,'r> Visitor<()> for UnusedImportCheckVisitor<'a,'r> {
     fn visit_view_item(&mut self, vi: &ViewItem, _: ()) {
         self.resolver.check_for_item_unused_imports(vi);
         visit::walk_view_item(self, vi, ());
     }
 }
 
-impl Resolver {
+impl<'r> Resolver<'r> {
     /// The main name resolution procedure.
-    fn resolve(&mut self, krate: &ast::Crate) {
+    fn resolve(&mut self, krate: &'r ast::Crate) {
+		self.resolver_krate = krate;
         self.build_reduced_graph(krate);
         self.session.abort_if_errors();
 
@@ -2860,7 +2866,7 @@ impl Resolver {
                     }
                     UseLexicalScope => {
                         // This is not a crate-relative path. We resolve the
-                        // first component of the path in the current lexical
+                        // first component	of the path in the current lexical
                         // scope and then proceed to resolve below that.
                         let result = self.resolve_module_in_lexical_scope(
                             module_,
@@ -5163,7 +5169,7 @@ impl Resolver {
                                match self.find_best_match_for_name(wrong_name, 5) {
                                    Some(m) => {
                                        self.resolve_error(expr.span,
-                                           format!("unresolved name `{}`. \
+                                           format!("unresolved name `{}`.  \
                                                     Did you mean `{}`?",
                                                     wrong_name, m));
                                    }
@@ -5171,6 +5177,7 @@ impl Resolver {
                                        self.resolve_error(expr.span,
                                             format!("unresolved name `{}`.",
                                                     wrong_name));
+										self.find_unresolved_symbol_elsewhere(path);
                                    }
                                }
                         }
@@ -5560,7 +5567,84 @@ impl Resolver {
             debug!("* {}:{}{}", token::get_name(name), value_repr, type_repr);
         }
     }
+
+	// Search other modules for this ident, and advise possible module paths
+	fn find_unresolved_symbol_elsewhere(&mut self, path:&Path) {
+
+		let mut finder_visitor= FindSymbolVisitor{
+			cstore:self.session.cstore,
+			curr_path_idents: ::std::vec_ng::Vec::new(),
+			path_to_find:path,
+			suggestions: ::std::vec_ng::Vec::new(),
+			max_suggestions: 5,
+		};
+
+		visit::walk_crate(&mut finder_visitor, self.resolver_krate, ());
+
+		if finder_visitor.suggestions.len()>0 {
+			let mut note=~"did you mean\n";
+			for &(ref name,score) in finder_visitor.suggestions.iter() {
+				note.push_str(*name);
+				note.push_str("\n");
+			}
+			self.session.span_note(path.span, note); 
+		}
+	}
 }
+
+struct FindSymbolVisitor<'a>{
+	cstore:@cstore::CStore,
+	curr_path_idents: ::std::vec_ng::Vec<Name>,
+	path_to_find:&'a Path,
+	suggestions: ::std::vec_ng::Vec<(~str,int)>,
+	max_suggestions: uint,
+}
+
+impl<'a,'r> Visitor<()> for FindSymbolVisitor<'a> {
+	fn visit_ident<'a>(&mut self, _sp:Span, ident:Ident, e: ()) {
+	//	::std::io::println(format!("visit ident {:?}", ident));
+	}
+	fn visit_item<'a>(&mut self, i:&Item, e: ()) {
+		let find_path_last_seg:&PathSegment = self.path_to_find.segments.last().unwrap();
+
+
+//		std::io::println();
+		let mut cmp_path_str:~str=~"::";
+		for &n in self.curr_path_idents.iter() {
+			cmp_path_str.push_str(
+				self.cstore.intr.get_ref(n));
+			cmp_path_str.push_str(~"::");
+		}
+		cmp_path_str.push_str(self.cstore.intr.get_ref(i.ident.name));
+
+		debug!("visit item: {:?} ?== {:s} ??",
+				self.cstore.intr.get_ref(find_path_last_seg.identifier.name),
+				cmp_path_str
+				);
+
+		if find_path_last_seg.identifier.name== i.ident.name  && 
+			self.suggestions.len()  < self.max_suggestions {
+			// todo: score = num matched supplied paths, plus number of paths
+			// already in scope
+			// todo - prune lowest score if count too high
+			let score=0;
+			self.suggestions.push((cmp_path_str,score));
+		}
+
+		// visit sub nodes..
+		self.curr_path_idents.push(i.ident.name);
+		visit::walk_item(self,i,e);
+		self.curr_path_idents.pop();
+	}
+
+    fn visit_mod(&mut self, m: &Mod, _s: Span, _n: NodeId, e: ()) {
+		visit::walk_mod(self, m, e) ;
+	}
+
+
+}
+
+
 
 pub struct CrateMap {
     def_map: DefMap,
@@ -5575,7 +5659,7 @@ pub fn resolve_crate(session: Session,
                      lang_items: @LanguageItems,
                      krate: &Crate)
                   -> CrateMap {
-    let mut resolver = Resolver(session, lang_items, krate.span);
+    let mut resolver = Resolver(session, lang_items, krate.span, krate);
     resolver.resolve(krate);
     let Resolver { def_map, export_map2, trait_map, last_private,
                    external_exports, .. } = resolver;
