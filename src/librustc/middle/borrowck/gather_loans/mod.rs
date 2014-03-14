@@ -27,7 +27,6 @@ use middle::typeck::MethodCall;
 use util::common::indenter;
 use util::ppaux::{Repr};
 
-use std::cell::RefCell;
 use std::vec_ng::Vec;
 use syntax::ast;
 use syntax::ast_util;
@@ -72,7 +71,7 @@ struct GatherLoanCtxt<'a> {
     bccx: &'a BorrowckCtxt<'a>,
     id_range: IdRange,
     move_data: move_data::MoveData,
-    all_loans: @RefCell<Vec<Loan> >,
+    all_loans: Vec<Loan>,
     item_ub: ast::NodeId,
     repeating_ids: Vec<ast::NodeId> }
 
@@ -104,11 +103,11 @@ impl<'a> visit::Visitor<()> for GatherLoanCtxt<'a> {
 }
 
 pub fn gather_loans(bccx: &BorrowckCtxt, decl: &ast::FnDecl, body: &ast::Block)
-                    -> (IdRange, @RefCell<Vec<Loan> >, move_data::MoveData) {
+                    -> (IdRange, Vec<Loan>, move_data::MoveData) {
     let mut glcx = GatherLoanCtxt {
         bccx: bccx,
         id_range: IdRange::max(),
-        all_loans: @RefCell::new(Vec::new()),
+        all_loans: Vec::new(),
         item_ub: body.id,
         repeating_ids: vec!(body.id),
         move_data: MoveData::new()
@@ -116,7 +115,8 @@ pub fn gather_loans(bccx: &BorrowckCtxt, decl: &ast::FnDecl, body: &ast::Block)
     glcx.gather_fn_arg_patterns(decl, body);
 
     glcx.visit_block(body, ());
-    return (glcx.id_range, glcx.all_loans, glcx.move_data);
+    let GatherLoanCtxt { id_range, all_loans, move_data, .. } = glcx;
+    (id_range, all_loans, move_data)
 }
 
 fn add_pat_to_id_range(this: &mut GatherLoanCtxt,
@@ -584,9 +584,8 @@ impl<'a> GatherLoanCtxt<'a> {
                     self.mark_loan_path_as_mutated(loan_path);
                 }
 
-                let all_loans = self.all_loans.borrow();
                 Loan {
-                    index: all_loans.get().len(),
+                    index: self.all_loans.len(),
                     loan_path: loan_path,
                     cmt: cmt,
                     kind: req_kind,
@@ -605,10 +604,7 @@ impl<'a> GatherLoanCtxt<'a> {
         // let loan_path = loan.loan_path;
         // let loan_gen_scope = loan.gen_scope;
         // let loan_kill_scope = loan.kill_scope;
-        {
-            let mut all_loans = self.all_loans.borrow_mut();
-            all_loans.get().push(loan);
-        }
+        self.all_loans.push(loan);
 
         // if loan_gen_scope != borrow_id {
             // FIXME(#6268) Nested method calls
