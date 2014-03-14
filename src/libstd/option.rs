@@ -211,10 +211,7 @@ impl<T> Option<T> {
     /// Return an iterator over the possibly contained value
     #[inline]
     pub fn iter<'r>(&'r self) -> Item<&'r T> {
-        match *self {
-            Some(ref x) => Item{opt: Some(x)},
-            None => Item{opt: None}
-        }
+        Item{opt: self.as_ref()}
     }
 
     /// Return a mutable iterator over the possibly contained value
