@@ -114,35 +114,36 @@ use cast;
 use std::kinds::marker;
 use option::{Option,Some,None};
 use ops::Drop;
+use ty::Unsafe;
 
 /// An atomic boolean type.
 pub struct AtomicBool {
-    priv v: uint,
+    priv v: Unsafe<uint>,
     priv nopod: marker::NoPod
 }
 
 /// A signed atomic integer type, supporting basic atomic arithmetic operations
 pub struct AtomicInt {
-    priv v: int,
+    priv v: Unsafe<int>,
     priv nopod: marker::NoPod
 }
 
 /// An unsigned atomic integer type, supporting basic atomic arithmetic operations
 pub struct AtomicUint {
-    priv v: uint,
+    priv v: Unsafe<uint>,
     priv nopod: marker::NoPod
 }
 
 /// An unsigned atomic integer type that is forced to be 64-bits. This does not
 /// support all operations.
 pub struct AtomicU64 {
-    priv v: u64,
+    priv v: Unsafe<u64>,
     priv nopod: marker::NoPod
 }
 
 /// An unsafe atomic pointer. Only supports basic atomic operations
 pub struct AtomicPtr<T> {
-    priv p: uint,
+    priv p: Unsafe<uint>,
     priv nopod: marker::NoPod
 }
 
@@ -152,7 +153,7 @@ pub struct AtomicPtr<T> {
 /// owned heap objects across tasks.
 #[unsafe_no_drop_flag]
 pub struct AtomicOption<T> {
-    priv p: uint,
+    priv p: Unsafe<uint>,
 }
 
 /// Atomic memory orderings
@@ -186,13 +187,21 @@ pub enum Ordering {
 }
 
 /// An `AtomicBool` initialized to `false`
-pub static INIT_ATOMIC_BOOL : AtomicBool = AtomicBool { v: 0, nopod: marker::NoPod };
+pub static INIT_ATOMIC_BOOL : AtomicBool = AtomicBool { v: Unsafe{value: 0,
+                                                                  marker1: marker::InvariantType},
+                                                        nopod: marker::NoPod };
 /// An `AtomicInt` initialized to `0`
-pub static INIT_ATOMIC_INT  : AtomicInt  = AtomicInt  { v: 0, nopod: marker::NoPod };
+pub static INIT_ATOMIC_INT  : AtomicInt  = AtomicInt  { v: Unsafe{value: 0,
+                                                                  marker1: marker::InvariantType},
+                                                        nopod: marker::NoPod };
 /// An `AtomicUint` initialized to `0`
-pub static INIT_ATOMIC_UINT : AtomicUint = AtomicUint { v: 0, nopod: marker::NoPod };
+pub static INIT_ATOMIC_UINT : AtomicUint = AtomicUint { v: Unsafe{value: 0,
+                                                                  marker1: marker::InvariantType},
+                                                        nopod: marker::NoPod };
 /// An `AtomicU64` initialized to `0`
-pub static INIT_ATOMIC_U64 : AtomicU64 = AtomicU64 { v: 0, nopod: marker::NoPod };
+pub static INIT_ATOMIC_U64 : AtomicU64 = AtomicU64 { v: Unsafe{value: 0,
+                                                               marker1: marker::InvariantType},
+                                                     nopod: marker::NoPod };
 
 
 // NB: Needs to be -1 (0b11111111...) to make fetch_nand work correctly
@@ -201,13 +210,14 @@ static UINT_TRUE: uint = -1;
 impl AtomicBool {
     /// Create a new `AtomicBool`
     pub fn new(v: bool) -> AtomicBool {
-        AtomicBool { v: if v { UINT_TRUE } else { 0 }, nopod: marker::NoPod }
+        let val = if v { UINT_TRUE } else { 0 };
+        AtomicBool { v: Unsafe::new(val), nopod: marker::NoPod }
     }
 
     /// Load the value
     #[inline]
     pub fn load(&self, order: Ordering) -> bool {
-        unsafe { atomic_load(&self.v, order) > 0 }
+        unsafe { atomic_load(&*self.v.get(), order) > 0 }
     }
 
     /// Store the value
@@ -215,7 +225,7 @@ impl AtomicBool {
     pub fn store(&mut self, val: bool, order: Ordering) {
         let val = if val { UINT_TRUE } else { 0 };
 
-        unsafe { atomic_store(&mut self.v, val, order); }
+        unsafe { atomic_store(&mut *self.v.get(), val, order); }
     }
 
     /// Store a value, returning the old value
@@ -223,7 +233,7 @@ impl AtomicBool {
     pub fn swap(&mut self, val: bool, order: Ordering) -> bool {
         let val = if val { UINT_TRUE } else { 0 };
 
-        unsafe { atomic_swap(&mut self.v, val, order) > 0 }
+        unsafe { atomic_swap(&mut *self.v.get(), val, order) > 0 }
     }
 
     /// If the current value is the same as expected, store a new value
@@ -276,7 +286,7 @@ impl AtomicBool {
         let old = if old { UINT_TRUE } else { 0 };
         let new = if new { UINT_TRUE } else { 0 };
 
-        unsafe { atomic_compare_and_swap(&mut self.v, old, new, order) > 0 }
+        unsafe { atomic_compare_and_swap(&mut *self.v.get(), old, new, order) > 0 }
     }
 
     /// A logical "and" operation
@@ -306,7 +316,7 @@ impl AtomicBool {
     pub fn fetch_and(&mut self, val: bool, order: Ordering) -> bool {
         let val = if val { UINT_TRUE } else { 0 };
 
-        unsafe { atomic_and(&mut self.v, val, order) > 0 }
+        unsafe { atomic_and(&mut *self.v.get(), val, order) > 0 }
     }
 
     /// A logical "nand" operation
@@ -337,7 +347,7 @@ impl AtomicBool {
     pub fn fetch_nand(&mut self, val: bool, order: Ordering) -> bool {
         let val = if val { UINT_TRUE } else { 0 };
 
-        unsafe { atomic_nand(&mut self.v, val, order) > 0 }
+        unsafe { atomic_nand(&mut *self.v.get(), val, order) > 0 }
     }
 
     /// A logical "or" operation
@@ -367,7 +377,7 @@ impl AtomicBool {
     pub fn fetch_or(&mut self, val: bool, order: Ordering) -> bool {
         let val = if val { UINT_TRUE } else { 0 };
 
-        unsafe { atomic_or(&mut self.v, val, order) > 0 }
+        unsafe { atomic_or(&mut *self.v.get(), val, order) > 0 }
     }
 
     /// A logical "xor" operation
@@ -397,32 +407,32 @@ impl AtomicBool {
     pub fn fetch_xor(&mut self, val: bool, order: Ordering) -> bool {
         let val = if val { UINT_TRUE } else { 0 };
 
-        unsafe { atomic_xor(&mut self.v, val, order) > 0 }
+        unsafe { atomic_xor(&mut *self.v.get(), val, order) > 0 }
     }
 }
 
 impl AtomicInt {
     /// Create a new `AtomicInt`
     pub fn new(v: int) -> AtomicInt {
-        AtomicInt { v:v, nopod: marker::NoPod}
+        AtomicInt {v: Unsafe::new(v), nopod: marker::NoPod}
     }
 
     /// Load the value
     #[inline]
     pub fn load(&self, order: Ordering) -> int {
-        unsafe { atomic_load(&self.v, order) }
+        unsafe { atomic_load(&*self.v.get(), order) }
     }
 
     /// Store the value
     #[inline]
     pub fn store(&mut self, val: int, order: Ordering) {
-        unsafe { atomic_store(&mut self.v, val, order); }
+        unsafe { atomic_store(&mut *self.v.get(), val, order); }
     }
 
     /// Store a value, returning the old value
     #[inline]
     pub fn swap(&mut self, val: int, order: Ordering) -> int {
-        unsafe { atomic_swap(&mut self.v, val, order) }
+        unsafe { atomic_swap(&mut *self.v.get(), val, order) }
     }
 
     /// If the current value is the same as expected, store a new value
@@ -432,7 +442,7 @@ impl AtomicInt {
     /// If the return value is equal to `old` then the value was updated.
     #[inline]
     pub fn compare_and_swap(&mut self, old: int, new: int, order: Ordering) -> int {
-        unsafe { atomic_compare_and_swap(&mut self.v, old, new, order) }
+        unsafe { atomic_compare_and_swap(&mut *self.v.get(), old, new, order) }
     }
 
     /// Add to the current value, returning the previous
@@ -448,7 +458,7 @@ impl AtomicInt {
     /// ```
     #[inline]
     pub fn fetch_add(&mut self, val: int, order: Ordering) -> int {
-        unsafe { atomic_add(&mut self.v, val, order) }
+        unsafe { atomic_add(&mut *self.v.get(), val, order) }
     }
 
     /// Subtract from the current value, returning the previous
@@ -464,7 +474,7 @@ impl AtomicInt {
     /// ```
     #[inline]
     pub fn fetch_sub(&mut self, val: int, order: Ordering) -> int {
-        unsafe { atomic_sub(&mut self.v, val, order) }
+        unsafe { atomic_sub(&mut *self.v.get(), val, order) }
     }
 }
 
@@ -474,62 +484,62 @@ impl AtomicInt {
 #[cfg(not(target_arch = "mips"))]
 impl AtomicU64 {
     pub fn new(v: u64) -> AtomicU64 {
-        AtomicU64 { v:v, nopod: marker::NoPod }
+        AtomicU64 { v: Unsafe::new(v), nopod: marker::NoPod }
     }
 
     #[inline]
     pub fn load(&self, order: Ordering) -> u64 {
-        unsafe { atomic_load(&self.v, order) }
+        unsafe { atomic_load(&*self.v.get(), order) }
     }
 
     #[inline]
     pub fn store(&mut self, val: u64, order: Ordering) {
-        unsafe { atomic_store(&mut self.v, val, order); }
+        unsafe { atomic_store(&mut *self.v.get(), val, order); }
     }
 
     #[inline]
     pub fn swap(&mut self, val: u64, order: Ordering) -> u64 {
-        unsafe { atomic_swap(&mut self.v, val, order) }
+        unsafe { atomic_swap(&mut *self.v.get(), val, order) }
     }
 
     #[inline]
     pub fn compare_and_swap(&mut self, old: u64, new: u64, order: Ordering) -> u64 {
-        unsafe { atomic_compare_and_swap(&mut self.v, old, new, order) }
+        unsafe { atomic_compare_and_swap(&mut *self.v.get(), old, new, order) }
     }
 
     #[inline]
     pub fn fetch_add(&mut self, val: u64, order: Ordering) -> u64 {
-        unsafe { atomic_add(&mut self.v, val, order) }
+        unsafe { atomic_add(&mut *self.v.get(), val, order) }
     }
 
     #[inline]
     pub fn fetch_sub(&mut self, val: u64, order: Ordering) -> u64 {
-        unsafe { atomic_sub(&mut self.v, val, order) }
+        unsafe { atomic_sub(&mut *self.v.get(), val, order) }
     }
 }
 
 impl AtomicUint {
     /// Create a new `AtomicUint`
     pub fn new(v: uint) -> AtomicUint {
-        AtomicUint { v:v, nopod: marker::NoPod }
+        AtomicUint { v: Unsafe::new(v), nopod: marker::NoPod }
     }
 
     /// Load the value
     #[inline]
     pub fn load(&self, order: Ordering) -> uint {
-        unsafe { atomic_load(&self.v, order) }
+        unsafe { atomic_load(&*self.v.get(), order) }
     }
 
     /// Store the value
     #[inline]
     pub fn store(&mut self, val: uint, order: Ordering) {
-        unsafe { atomic_store(&mut self.v, val, order); }
+        unsafe { atomic_store(&mut *self.v.get(), val, order); }
     }
 
     /// Store a value, returning the old value
     #[inline]
     pub fn swap(&mut self, val: uint, order: Ordering) -> uint {
-        unsafe { atomic_swap(&mut self.v, val, order) }
+        unsafe { atomic_swap(&mut *self.v.get(), val, order) }
     }
 
     /// If the current value is the same as expected, store a new value
@@ -539,7 +549,7 @@ impl AtomicUint {
     /// If the return value is equal to `old` then the value was updated.
     #[inline]
     pub fn compare_and_swap(&mut self, old: uint, new: uint, order: Ordering) -> uint {
-        unsafe { atomic_compare_and_swap(&mut self.v, old, new, order) }
+        unsafe { atomic_compare_and_swap(&mut *self.v.get(), old, new, order) }
     }
 
     /// Add to the current value, returning the previous
@@ -555,7 +565,7 @@ impl AtomicUint {
     /// ```
     #[inline]
     pub fn fetch_add(&mut self, val: uint, order: Ordering) -> uint {
-        unsafe { atomic_add(&mut self.v, val, order) }
+        unsafe { atomic_add(&mut *self.v.get(), val, order) }
     }
 
     /// Subtract from the current value, returning the previous
@@ -571,34 +581,34 @@ impl AtomicUint {
     /// ```
     #[inline]
     pub fn fetch_sub(&mut self, val: uint, order: Ordering) -> uint {
-        unsafe { atomic_sub(&mut self.v, val, order) }
+        unsafe { atomic_sub(&mut *self.v.get(), val, order) }
     }
 }
 
 impl<T> AtomicPtr<T> {
     /// Create a new `AtomicPtr`
     pub fn new(p: *mut T) -> AtomicPtr<T> {
-        AtomicPtr { p: p as uint, nopod: marker::NoPod }
+        AtomicPtr { p: Unsafe::new(p as uint), nopod: marker::NoPod }
     }
 
     /// Load the value
     #[inline]
     pub fn load(&self, order: Ordering) -> *mut T {
         unsafe {
-            atomic_load(&self.p, order) as *mut T
+            atomic_load(&*self.p.get(), order) as *mut T
         }
     }
 
     /// Store the value
     #[inline]
     pub fn store(&mut self, ptr: *mut T, order: Ordering) {
-        unsafe { atomic_store(&mut self.p, ptr as uint, order); }
+        unsafe { atomic_store(&mut *self.p.get(), ptr as uint, order); }
     }
 
     /// Store a value, returning the old value
     #[inline]
     pub fn swap(&mut self, ptr: *mut T, order: Ordering) -> *mut T {
-        unsafe { atomic_swap(&mut self.p, ptr as uint, order) as *mut T }
+        unsafe { atomic_swap(&mut *self.p.get(), ptr as uint, order) as *mut T }
     }
 
     /// If the current value is the same as expected, store a new value
@@ -609,7 +619,7 @@ impl<T> AtomicPtr<T> {
     #[inline]
     pub fn compare_and_swap(&mut self, old: *mut T, new: *mut T, order: Ordering) -> *mut T {
         unsafe {
-            atomic_compare_and_swap(&mut self.p, old as uint,
+            atomic_compare_and_swap(&mut *self.p.get(), old as uint,
                                     new as uint, order) as *mut T
         }
     }
@@ -618,11 +628,11 @@ impl<T> AtomicPtr<T> {
 impl<T> AtomicOption<T> {
     /// Create a new `AtomicOption`
     pub fn new(p: ~T) -> AtomicOption<T> {
-        unsafe { AtomicOption { p: cast::transmute(p) } }
+        unsafe { AtomicOption { p: Unsafe::new(cast::transmute(p)) } }
     }
 
     /// Create a new `AtomicOption` that doesn't contain a value
-    pub fn empty() -> AtomicOption<T> { AtomicOption { p: 0 } }
+    pub fn empty() -> AtomicOption<T> { AtomicOption { p: Unsafe::new(0) } }
 
     /// Store a value, returning the old value
     #[inline]
@@ -630,7 +640,7 @@ impl<T> AtomicOption<T> {
         unsafe {
             let val = cast::transmute(val);
 
-            let p = atomic_swap(&mut self.p, val, order);
+            let p = atomic_swap(&mut *self.p.get(), val, order);
             if p as uint == 0 {
                 None
             } else {
@@ -655,7 +665,7 @@ impl<T> AtomicOption<T> {
         unsafe {
             let val = cast::transmute(val);
             let expected = cast::transmute(0);
-            let oldval = atomic_compare_and_swap(&mut self.p, expected, val, order);
+            let oldval = atomic_compare_and_swap(&mut *self.p.get(), expected, val, order);
             if oldval == expected {
                 None
             } else {
@@ -670,7 +680,7 @@ impl<T> AtomicOption<T> {
     /// result does not get invalidated by another task after this returns.
     #[inline]
     pub fn is_empty(&mut self, order: Ordering) -> bool {
-        unsafe { atomic_load(&self.p, order) as uint == 0 }
+        unsafe { atomic_load(&*self.p.get(), order) as uint == 0 }
     }
 }
 
