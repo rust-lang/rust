@@ -28,10 +28,10 @@ fn main() {
     });
 
     let addr = SocketAddr { ip: Ipv4Addr(127, 0, 0, 1), port: 0 };
-    let (p, c) = Chan::new();
+    let (tx, rx) = channel();
     spawn(proc() {
         let mut listener = TcpListener::bind(addr).unwrap();
-        c.send(listener.socket_name().unwrap());
+        tx.send(listener.socket_name().unwrap());
         let mut acceptor = listener.listen();
         loop {
             let mut stream = match acceptor.accept() {
@@ -45,11 +45,11 @@ fn main() {
             stream.write([2]);
         }
     });
-    let addr = p.recv();
+    let addr = rx.recv();
 
-    let (p, c) = Chan::new();
+    let (tx, rx) = channel();
     for _ in range(0, 1000) {
-        let c = c.clone();
+        let tx = tx.clone();
         spawn(proc() {
             match TcpStream::connect(addr) {
                 Ok(stream) => {
@@ -60,15 +60,15 @@ fn main() {
                 },
                 Err(e) => debug!("{:?}", e)
             }
-            c.send(());
+            tx.send(());
         });
     }
 
     // Wait for all clients to exit, but don't wait for the server to exit. The
     // server just runs infinitely.
-    drop(c);
+    drop(tx);
     for _ in range(0, 1000) {
-        p.recv();
+        rx.recv();
     }
     unsafe { libc::exit(0) }
 }
