@@ -1070,7 +1070,7 @@ impl MetricMap {
                     if delta.abs() <= noise {
                         LikelyNoise
                     } else {
-                        let pct = delta.abs() / cmp::max(vold.value, f64::EPSILON) * 100.0;
+                        let pct = delta.abs() / vold.value.max(f64::EPSILON) * 100.0;
                         if vold.noise < 0.0 {
                             // When 'noise' is negative, it means we want
                             // to see deltas that go up over time, and can
