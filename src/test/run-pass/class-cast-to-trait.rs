@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-test FIXME fails on BSD
+// ignore-freebsd FIXME fails on BSD
 
 #[feature(managed_boxes)];
 
