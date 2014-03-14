@@ -2137,7 +2137,7 @@ pub mod consts {
             pub static MAP_SHARED : c_int = 0x0001;
             pub static MAP_PRIVATE : c_int = 0x0002;
             pub static MAP_FIXED : c_int = 0x0010;
-            pub static MAP_ANON : c_int = 0x0020;
+            pub static MAP_ANON : c_int = 0x0800;
 
             pub static MAP_FAILED : *c_void = -1 as *c_void;
 
@@ -2433,20 +2433,19 @@ pub mod consts {
             pub static O_DSYNC : c_int = 16;
             pub static O_SYNC : c_int = 16400;
 
-            pub static PROT_GROWSDOWN : c_int = 0x010000000;
-            pub static PROT_GROWSUP : c_int = 0x020000000;
+            pub static PROT_GROWSDOWN : c_int = 0x01000000;
+            pub static PROT_GROWSUP : c_int = 0x02000000;
 
             pub static MAP_TYPE : c_int = 0x000f;
-            pub static MAP_ANONONYMOUS : c_int = 0x0020;
-            pub static MAP_32BIT : c_int = 0x0040;
-            pub static MAP_GROWSDOWN : c_int = 0x0100;
-            pub static MAP_DENYWRITE : c_int = 0x0800;
-            pub static MAP_EXECUTABLE : c_int = 0x01000;
-            pub static MAP_LOCKED : c_int = 0x02000;
-            pub static MAP_NONRESERVE : c_int = 0x04000;
-            pub static MAP_POPULATE : c_int = 0x08000;
-            pub static MAP_NONBLOCK : c_int = 0x010000;
-            pub static MAP_STACK : c_int = 0x020000;
+            pub static MAP_ANONONYMOUS : c_int = 0x0800;
+            pub static MAP_GROWSDOWN : c_int = 0x01000;
+            pub static MAP_DENYWRITE : c_int = 0x02000;
+            pub static MAP_EXECUTABLE : c_int = 0x04000;
+            pub static MAP_LOCKED : c_int = 0x08000;
+            pub static MAP_NONRESERVE : c_int = 0x0400;
+            pub static MAP_POPULATE : c_int = 0x010000;
+            pub static MAP_NONBLOCK : c_int = 0x020000;
+            pub static MAP_STACK : c_int = 0x040000;
         }
         #[cfg(target_os = "linux")]
         pub mod sysconf {
