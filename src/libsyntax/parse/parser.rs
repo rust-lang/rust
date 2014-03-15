@@ -4320,7 +4320,7 @@ impl Parser {
     ///
     /// # Example
     ///
-    /// extern crate extra;
+    /// extern crate url;
     /// extern crate foo = "bar";
     fn parse_item_extern_crate(&mut self,
                                 lo: BytePos,

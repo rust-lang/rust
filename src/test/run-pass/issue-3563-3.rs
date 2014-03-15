@@ -16,7 +16,6 @@
 // However the extra library is designed to be optional (for code that must run on constrained
 //  environments like embedded devices or special environments like kernel code) so it must
 // be explicitly linked in.
-extern crate extra;
 
 // Extern mod controls linkage. Use controls the visibility of names to modules that are
 // already linked in. Using WriterUtil allows us to use the write_line method.

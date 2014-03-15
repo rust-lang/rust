@@ -12,8 +12,6 @@
 
 // This test will call __morestack with various minimum stack sizes
 
-extern crate extra;
-
 use std::task;
 
 fn getbig(i: int) {

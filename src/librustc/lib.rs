@@ -32,7 +32,6 @@ This API is completely unstable and subject to change.
 #[feature(macro_rules, globs, struct_variant, managed_boxes)];
 #[feature(quote, default_type_params)];
 
-extern crate extra;
 extern crate flate;
 extern crate arena;
 extern crate syntax;

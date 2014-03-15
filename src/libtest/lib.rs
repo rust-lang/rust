@@ -29,19 +29,17 @@
 #[crate_type = "rlib"];
 #[crate_type = "dylib"];
 
-#[feature(asm)];
+#[feature(asm, macro_rules)];
 #[allow(deprecated_owned_vector)];
 
 extern crate collections;
-extern crate extra;
 extern crate getopts;
 extern crate serialize;
 extern crate term;
 extern crate time;
 
 use collections::TreeMap;
-use extra::stats::Stats;
-use extra::stats;
+use stats::Stats;
 use time::precise_time_ns;
 use getopts::{OptGroup, optflag, optopt};
 use serialize::{json, Decodable};
@@ -68,8 +66,10 @@ pub mod test {
              MetricChange, Improvement, Regression, LikelyNoise,
              StaticTestFn, StaticTestName, DynTestName, DynTestFn,
              run_test, test_main, test_main_static, filter_tests,
-             parse_opts};
+             parse_opts, StaticBenchFn};
 }
+
+pub mod stats;
 
 // The name of a test. By convention this follows the rules for rust
 // paths; i.e. it should be a series of identifiers separated by double
@@ -1309,7 +1309,7 @@ mod tests {
                Metric, MetricMap, MetricAdded, MetricRemoved,
                Improvement, Regression, LikelyNoise,
                StaticTestName, DynTestName, DynTestFn};
-    use extra::tempfile::TempDir;
+    use std::io::TempDir;
 
     #[test]
     pub fn do_not_run_ignored_tests() {

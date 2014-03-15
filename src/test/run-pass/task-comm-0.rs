@@ -10,8 +10,6 @@
 
 // ignore-fast
 
-extern crate extra;
-
 use std::task;
 
 pub fn main() { test05(); }

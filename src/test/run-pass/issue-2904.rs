@@ -14,8 +14,6 @@
 
 /// Map representation
 
-extern crate extra;
-
 use std::io;
 use std::fmt;
 

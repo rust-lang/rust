@@ -14,8 +14,6 @@
 */
 // ignore-test
 
-extern crate extra;
-
 fn loopy(n: int) {
     if n > 0 { spawn(proc() { loopy(n - 1) }); spawn(proc() { loopy(n - 1) }); }
     loop { }

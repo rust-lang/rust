@@ -74,9 +74,8 @@
 #[cfg(test)] extern crate native;
 #[cfg(test)] extern crate green;
 
-// Make extra and rand accessible for benchmarking/testcases
+// Make and rand accessible for benchmarking/testcases
 #[cfg(test)] extern crate rand;
-#[cfg(test)] extern crate extra = "extra";
 
 // Make std testable by not duplicating lang items. See #2912
 #[cfg(test)] extern crate realstd = "std";
@@ -172,6 +171,7 @@ pub mod sync;
 #[unstable]
 pub mod libc;
 pub mod c_str;
+pub mod c_vec;
 pub mod os;
 pub mod io;
 pub mod path;

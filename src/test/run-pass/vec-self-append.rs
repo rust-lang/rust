@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate extra;
-
 fn test_heap_to_heap() {
     // a spills onto the heap
     let mut a = ~[0, 1, 2, 3, 4];

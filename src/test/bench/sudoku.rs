@@ -12,8 +12,6 @@
 
 #[feature(managed_boxes)];
 
-extern crate extra;
-
 use std::io;
 use std::io::stdio::StdReader;
 use std::io::BufferedReader;

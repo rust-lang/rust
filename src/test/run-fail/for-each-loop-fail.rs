@@ -9,6 +9,5 @@
 // except according to those terms.
 
 // error-pattern:moop
-extern crate extra;
 
 fn main() { for _ in range(0u, 10u) { fail!("moop"); } }

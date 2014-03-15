@@ -12,10 +12,7 @@
 
 #[feature(quote)];
 
-extern crate extra;
 extern crate syntax;
-
-use extra::io::*;
 
 use syntax::diagnostic;
 use syntax::ast;

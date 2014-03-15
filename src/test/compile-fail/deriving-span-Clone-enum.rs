@@ -11,7 +11,6 @@
 // This file was auto-generated using 'src/etc/generate-keyword-span-tests.py'
 
 #[feature(struct_variant)];
-extern crate extra;
 extern crate rand;
 
 

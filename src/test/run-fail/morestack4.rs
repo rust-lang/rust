@@ -13,8 +13,6 @@
 
 // Just testing unwinding
 
-extern crate extra;
-
 use std::task;
 
 fn getbig_and_fail(i: int) {
