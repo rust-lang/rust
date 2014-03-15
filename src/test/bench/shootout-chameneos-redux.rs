@@ -10,8 +10,6 @@
 
 // chameneos
 
-extern crate extra;
-
 use std::option;
 use std::os;
 use std::task;

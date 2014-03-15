@@ -19,10 +19,7 @@
 // they're in a different location than before. Hence, these tests are all run
 // serially here.
 
-extern crate extra;
-
-use extra::tempfile::TempDir;
-use std::io::fs;
+use std::io::{fs, TempDir};
 use std::io;
 use std::os;
 use std::task;

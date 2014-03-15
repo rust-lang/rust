@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate extra;
-
 // error-pattern: mismatched types
 
 enum bar { t1((), Option<~[int]>), t2, }

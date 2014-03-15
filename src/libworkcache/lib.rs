@@ -8,8 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[allow(missing_doc)];
-#[allow(visible_private_types)];
+#[crate_id = "workcache#0.10-pre"];
+#[crate_type = "rlib"];
+#[crate_type = "dylib"];
+#[license = "MIT/ASL2"];
+#[allow(deprecated_owned_vector, visible_private_types)];
+
+extern crate serialize;
+extern crate collections;
+extern crate sync;
 
 use serialize::json;
 use serialize::json::ToJson;

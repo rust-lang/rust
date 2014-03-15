@@ -19,8 +19,8 @@ use metadata::loader;
 
 use std::cell::RefCell;
 use std::vec_ng::Vec;
+use std::c_vec::CVec;
 use collections::HashMap;
-use extra::c_vec::CVec;
 use syntax::ast;
 use syntax::parse::token::IdentInterner;
 use syntax::crateid::CrateId;

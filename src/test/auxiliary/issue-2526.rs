@@ -11,8 +11,6 @@
 #[crate_id="issue_2526#0.2"];
 #[crate_type = "lib"];
 
-extern crate extra;
-
 struct arc_destruct<T> {
   _data: int,
 }

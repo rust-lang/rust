@@ -11,7 +11,6 @@
 #[allow(unnecessary_allocation)];
 
 // rustc --test match_borrowed_str.rs.rs && ./match_borrowed_str.rs
-extern crate extra;
 
 fn compare(x: &str, y: &str) -> bool
 {

@@ -11,7 +11,7 @@
 // error-pattern:expected item
 
 #[foo = "bar"]
-extern crate extra;
+extern crate test;
 
 pub fn main() {
 }

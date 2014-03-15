@@ -10,8 +10,6 @@
 
 #[feature(managed_boxes)];
 
-extern crate extra;
-
 enum Token {
     Text(@~str),
     ETag(@~[~str], @~str),

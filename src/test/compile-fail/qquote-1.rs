@@ -12,7 +12,6 @@
 
 #[feature(quote)];
 
-extern crate extra;
 extern crate syntax;
 
 use io::*;

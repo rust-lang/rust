@@ -10,8 +10,6 @@
 
 #[feature(managed_boxes)];
 
-extern crate extra;
-
 struct Triple { x: int, y: int, z: int }
 
 fn test(x: bool, foo: @Triple) -> int {

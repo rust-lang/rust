@@ -12,9 +12,8 @@
 // because it needs TempDir, which is in extra
 
 // ignore-fast
-extern crate extra;
 
-use extra::tempfile::TempDir;
+use std::io::TempDir;
 use std::os;
 use std::libc;
 use std::io;
