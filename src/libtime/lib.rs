@@ -63,9 +63,7 @@ mod imp {
 }
 
 /// A record specifying a time value in seconds and nanoseconds.
-
-
-#[deriving(Clone, Eq, Encodable, Decodable, Show)]
+#[deriving(Clone, Eq, TotalEq, Ord, TotalOrd, Encodable, Decodable, Show)]
 pub struct Timespec { sec: i64, nsec: i32 }
 /*
  * Timespec assumes that pre-epoch Timespecs have negative sec and positive
@@ -79,13 +77,6 @@ impl Timespec {
     pub fn new(sec: i64, nsec: i32) -> Timespec {
         assert!(nsec >= 0 && nsec < NSEC_PER_SEC);
         Timespec { sec: sec, nsec: nsec }
-    }
-}
-
-impl Ord for Timespec {
-    fn lt(&self, other: &Timespec) -> bool {
-        self.sec < other.sec ||
-            (self.sec == other.sec && self.nsec < other.nsec)
     }
 }
 
