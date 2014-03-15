@@ -144,7 +144,11 @@ pub fn sockaddr_to_network_addr(sa: *libc::sockaddr, useLocal: bool) -> Option<~
             let ni = if useLocal {
                 let nis = get_network_interfaces();
                 if nis.iter().filter(|x| x.index as i32 == (*sll).sll_ifindex).len() == 1 {
-                    (*nis.iter().filter(|x| x.index as i32 == (*sll).sll_ifindex).next().unwrap()).clone()
+                    (*nis.iter()
+                         .filter(|x| x.index as i32 == (*sll).sll_ifindex)
+                         .next()
+                         .unwrap())
+                    .clone()
                 } else {
                     sll_to_ni(*sll)
                 }

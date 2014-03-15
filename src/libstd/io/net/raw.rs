@@ -1027,8 +1027,10 @@ pub mod test {
 
         fn get_proto(ip: IpAddr) -> Protocol {
             match ip {
-                Ipv4Addr(..) => TransportProtocol(Ipv4TransportProtocol(IpNextHeaderProtocols::Test1)),
-                Ipv6Addr(..) => TransportProtocol(Ipv6TransportProtocol(IpNextHeaderProtocols::Test1))
+                Ipv4Addr(..) =>
+                    TransportProtocol(Ipv4TransportProtocol(IpNextHeaderProtocols::Test1)),
+                Ipv6Addr(..) =>
+                    TransportProtocol(Ipv6TransportProtocol(IpNextHeaderProtocols::Test1))
             }
         }
     }
@@ -1262,7 +1264,8 @@ pub mod test {
                     loop {
                         match sock.recvfrom(buf) {
                             Ok((len, Some(~NetworkAddress(ni)))) => {
-                                if len == packet.len() && same_ports(packet.as_slice(), buf, ETHERNET_HEADER_LEN as uint) {
+                                if len == packet.len() &&
+                                  same_ports(packet.as_slice(), buf, ETHERNET_HEADER_LEN as uint) {
                                     assert_eq!(buf.slice(0, packet.len()), packet.as_slice());
                                     assert!(*ni == interface, "*ni != interface");
                                     break;
