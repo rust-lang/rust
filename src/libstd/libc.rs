@@ -3928,7 +3928,6 @@ pub mod funcs {
             }
         }
 
-        #[nolink]
         pub mod net {
             use libc::types::os::arch::c95::{c_char, c_uint};
 
