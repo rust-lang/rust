@@ -1290,7 +1290,7 @@ pub mod test {
             },
             Err(_) => fail!()
         }
-        tx.send(());
+        tx2.send(());
     } #[cfg(hasroot)])
 
 }
