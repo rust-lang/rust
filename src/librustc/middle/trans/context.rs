@@ -31,14 +31,14 @@ use util::nodemap::{NodeMap, NodeSet, DefIdMap};
 
 use std::cell::{Cell, RefCell};
 use std::c_str::ToCStr;
-use std::local_data;
 use std::libc::c_uint;
+use std::ptr;
 use std::vec_ng::Vec;
 use collections::{HashMap, HashSet};
 use syntax::ast;
 use syntax::parse::token::InternedString;
 
-pub struct CrateContext<'a> {
+pub struct CrateContext {
     llmod: ModuleRef,
     llcx: ContextRef,
     metadata_llmod: ModuleRef,
@@ -48,7 +48,7 @@ pub struct CrateContext<'a> {
     intrinsics: HashMap<&'static str, ValueRef>,
     item_vals: RefCell<NodeMap<ValueRef>>,
     exp_map2: resolve::ExportMap2,
-    reachable: &'a NodeSet,
+    reachable: NodeSet,
     item_symbols: RefCell<NodeMap<~str>>,
     link_meta: LinkMeta,
     drop_glues: RefCell<HashMap<ty::t, ValueRef>>,
@@ -100,10 +100,9 @@ pub struct CrateContext<'a> {
     symbol_hasher: RefCell<Sha256>,
     type_hashcodes: RefCell<HashMap<ty::t, ~str>>,
     all_llvm_symbols: RefCell<HashSet<~str>>,
-    tcx: &'a ty::ctxt,
+    tcx: ty::ctxt,
     maps: astencode::Maps,
     stats: @Stats,
-    tydesc_type: Type,
     int_type: Type,
     opaque_vec_type: Type,
     builder: BuilderRef_res,
@@ -116,18 +115,17 @@ pub struct CrateContext<'a> {
     dbg_cx: Option<debuginfo::CrateDebugContext>,
 }
 
-impl<'a> CrateContext<'a> {
+impl CrateContext {
     pub fn new(name: &str,
-               tcx: &'a ty::ctxt,
+               tcx: ty::ctxt,
                emap2: resolve::ExportMap2,
                maps: astencode::Maps,
                symbol_hasher: Sha256,
                link_meta: LinkMeta,
-               reachable: &'a NodeSet)
-               -> CrateContext<'a> {
+               reachable: NodeSet)
+               -> CrateContext {
         unsafe {
             let llcx = llvm::LLVMContextCreate();
-            set_task_llcx(llcx);
             let llmod = name.with_c_str(|buf| {
                 llvm::LLVMModuleCreateWithNameInContext(buf, llcx)
             });
@@ -144,95 +142,96 @@ impl<'a> CrateContext<'a> {
                 llvm::LLVMRustSetNormalizedTarget(llmod, buf);
                 llvm::LLVMRustSetNormalizedTarget(metadata_llmod, buf);
             });
-            let targ_cfg = tcx.sess.targ_cfg;
 
             let td = mk_target_data(tcx.sess.targ_cfg.target_strs.data_layout);
-            let tn = TypeNames::new();
 
-            let mut intrinsics = base::declare_intrinsics(llmod);
-            if tcx.sess.opts.debuginfo != NoDebugInfo {
-                base::declare_dbg_intrinsics(llmod, &mut intrinsics);
-            }
-            let int_type = Type::int(targ_cfg.arch);
-            let tydesc_type = Type::tydesc(targ_cfg.arch);
-            let opaque_vec_type = Type::opaque_vec(targ_cfg.arch);
-
-            let mut str_slice_ty = Type::named_struct("str_slice");
-            str_slice_ty.set_struct_body([Type::i8p(), int_type], false);
-
-            tn.associate_type("tydesc", &tydesc_type);
-            tn.associate_type("str_slice", &str_slice_ty);
-
-            let (crate_map_name, crate_map) = decl_crate_map(&tcx.sess, link_meta.clone(), llmod);
             let dbg_cx = if tcx.sess.opts.debuginfo != NoDebugInfo {
                 Some(debuginfo::CrateDebugContext::new(llmod))
             } else {
                 None
             };
 
-            if tcx.sess.count_llvm_insns() {
+            let mut ccx = CrateContext {
+                llmod: llmod,
+                llcx: llcx,
+                metadata_llmod: metadata_llmod,
+                td: td,
+                tn: TypeNames::new(),
+                externs: RefCell::new(HashMap::new()),
+                intrinsics: HashMap::new(),
+                item_vals: RefCell::new(NodeMap::new()),
+                exp_map2: emap2,
+                reachable: reachable,
+                item_symbols: RefCell::new(NodeMap::new()),
+                link_meta: link_meta,
+                drop_glues: RefCell::new(HashMap::new()),
+                tydescs: RefCell::new(HashMap::new()),
+                finished_tydescs: Cell::new(false),
+                external: RefCell::new(DefIdMap::new()),
+                external_srcs: RefCell::new(NodeMap::new()),
+                non_inlineable_statics: RefCell::new(NodeSet::new()),
+                monomorphized: RefCell::new(HashMap::new()),
+                monomorphizing: RefCell::new(DefIdMap::new()),
+                vtables: RefCell::new(HashMap::new()),
+                const_cstr_cache: RefCell::new(HashMap::new()),
+                const_globals: RefCell::new(HashMap::new()),
+                const_values: RefCell::new(NodeMap::new()),
+                extern_const_values: RefCell::new(DefIdMap::new()),
+                impl_method_cache: RefCell::new(HashMap::new()),
+                closure_bare_wrapper_cache: RefCell::new(HashMap::new()),
+                lltypes: RefCell::new(HashMap::new()),
+                llsizingtypes: RefCell::new(HashMap::new()),
+                adt_reprs: RefCell::new(HashMap::new()),
+                symbol_hasher: RefCell::new(symbol_hasher),
+                type_hashcodes: RefCell::new(HashMap::new()),
+                all_llvm_symbols: RefCell::new(HashSet::new()),
+                tcx: tcx,
+                maps: maps,
+                stats: @Stats {
+                    n_static_tydescs: Cell::new(0u),
+                    n_glues_created: Cell::new(0u),
+                    n_null_glues: Cell::new(0u),
+                    n_real_glues: Cell::new(0u),
+                    n_fns: Cell::new(0u),
+                    n_monos: Cell::new(0u),
+                    n_inlines: Cell::new(0u),
+                    n_closures: Cell::new(0u),
+                    n_llvm_insns: Cell::new(0u),
+                    llvm_insns: RefCell::new(HashMap::new()),
+                    fn_stats: RefCell::new(Vec::new()),
+                },
+                int_type: Type::from_ref(ptr::null()),
+                opaque_vec_type: Type::from_ref(ptr::null()),
+                builder: BuilderRef_res(llvm::LLVMCreateBuilderInContext(llcx)),
+                crate_map: ptr::null(),
+                crate_map_name: ~"",
+                uses_gc: false,
+                dbg_cx: dbg_cx,
+            };
+
+            ccx.int_type = Type::int(&ccx);
+            ccx.opaque_vec_type = Type::opaque_vec(&ccx);
+
+            ccx.tn.associate_type("tydesc", &Type::tydesc(&ccx));
+
+            let mut str_slice_ty = Type::named_struct(&ccx, "str_slice");
+            str_slice_ty.set_struct_body([Type::i8p(&ccx), ccx.int_type], false);
+            ccx.tn.associate_type("str_slice", &str_slice_ty);
+
+            decl_crate_map(&mut ccx);
+
+            base::declare_intrinsics(&mut ccx);
+
+            if ccx.sess().count_llvm_insns() {
                 base::init_insn_ctxt()
             }
 
-            CrateContext {
-                 llmod: llmod,
-                 llcx: llcx,
-                 metadata_llmod: metadata_llmod,
-                 td: td,
-                 tn: tn,
-                 externs: RefCell::new(HashMap::new()),
-                 intrinsics: intrinsics,
-                 item_vals: RefCell::new(NodeMap::new()),
-                 exp_map2: emap2,
-                 reachable: reachable,
-                 item_symbols: RefCell::new(NodeMap::new()),
-                 link_meta: link_meta,
-                 drop_glues: RefCell::new(HashMap::new()),
-                 tydescs: RefCell::new(HashMap::new()),
-                 finished_tydescs: Cell::new(false),
-                 external: RefCell::new(DefIdMap::new()),
-                 external_srcs: RefCell::new(NodeMap::new()),
-                 non_inlineable_statics: RefCell::new(NodeSet::new()),
-                 monomorphized: RefCell::new(HashMap::new()),
-                 monomorphizing: RefCell::new(DefIdMap::new()),
-                 vtables: RefCell::new(HashMap::new()),
-                 const_cstr_cache: RefCell::new(HashMap::new()),
-                 const_globals: RefCell::new(HashMap::new()),
-                 const_values: RefCell::new(NodeMap::new()),
-                 extern_const_values: RefCell::new(DefIdMap::new()),
-                 impl_method_cache: RefCell::new(HashMap::new()),
-                 closure_bare_wrapper_cache: RefCell::new(HashMap::new()),
-                 lltypes: RefCell::new(HashMap::new()),
-                 llsizingtypes: RefCell::new(HashMap::new()),
-                 adt_reprs: RefCell::new(HashMap::new()),
-                 symbol_hasher: RefCell::new(symbol_hasher),
-                 type_hashcodes: RefCell::new(HashMap::new()),
-                 all_llvm_symbols: RefCell::new(HashSet::new()),
-                 tcx: tcx,
-                 maps: maps,
-                 stats: @Stats {
-                   n_static_tydescs: Cell::new(0u),
-                   n_glues_created: Cell::new(0u),
-                   n_null_glues: Cell::new(0u),
-                   n_real_glues: Cell::new(0u),
-                   n_fns: Cell::new(0u),
-                   n_monos: Cell::new(0u),
-                   n_inlines: Cell::new(0u),
-                   n_closures: Cell::new(0u),
-                   n_llvm_insns: Cell::new(0u),
-                   llvm_insns: RefCell::new(HashMap::new()),
-                   fn_stats: RefCell::new(Vec::new()),
-                 },
-                 tydesc_type: tydesc_type,
-                 int_type: int_type,
-                 opaque_vec_type: opaque_vec_type,
-                 builder: BuilderRef_res(llvm::LLVMCreateBuilderInContext(llcx)),
-                 crate_map: crate_map,
-                 crate_map_name: crate_map_name,
-                 uses_gc: false,
-                 dbg_cx: dbg_cx,
-            }
+            ccx
         }
+    }
+
+    pub fn tcx<'a>(&'a self) -> &'a ty::ctxt {
+        &self.tcx
     }
 
     pub fn sess<'a>(&'a self) -> &'a Session {
@@ -249,7 +248,7 @@ impl<'a> CrateContext<'a> {
         debug!("const_inbounds_gepi: pointer={} indices={:?}",
                self.tn.val_to_str(pointer), indices);
         let v: Vec<ValueRef> =
-            indices.iter().map(|i| C_i32(*i as i32)).collect();
+            indices.iter().map(|i| C_i32(self, *i as i32)).collect();
         unsafe {
             llvm::LLVMConstInBoundsGEP(pointer,
                                        v.as_ptr(),
@@ -272,26 +271,8 @@ impl<'a> CrateContext<'a> {
                                     self.int_type.to_ref())
         }
     }
-}
 
-#[unsafe_destructor]
-impl<'a> Drop for CrateContext<'a> {
-    fn drop(&mut self) {
-        unset_task_llcx();
+    pub fn tydesc_type(&self) -> Type {
+        self.tn.find_type("tydesc").unwrap()
     }
-}
-
-local_data_key!(task_local_llcx_key: @ContextRef)
-
-pub fn task_llcx() -> ContextRef {
-    let opt = local_data::get(task_local_llcx_key, |k| k.map(|k| *k));
-    *opt.expect("task-local LLVMContextRef wasn't ever set!")
-}
-
-fn set_task_llcx(c: ContextRef) {
-    local_data::set(task_local_llcx_key, @c);
-}
-
-fn unset_task_llcx() {
-    local_data::pop(task_local_llcx_key);
 }

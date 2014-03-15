@@ -34,6 +34,7 @@ use syntax;
 
 use std::libc;
 use std::cast;
+use std::cell::RefCell;
 use std::io::Seek;
 use std::rc::Rc;
 use std::vec_ng::Vec;
@@ -53,13 +54,13 @@ pub struct Maps {
     root_map: middle::borrowck::root_map,
     method_map: middle::typeck::MethodMap,
     vtable_map: middle::typeck::vtable_map,
-    capture_map: middle::moves::CaptureMap,
+    capture_map: RefCell<middle::moves::CaptureMap>,
 }
 
 struct DecodeContext<'a> {
     cdata: @cstore::crate_metadata,
     tcx: &'a ty::ctxt,
-    maps: Maps
+    maps: &'a Maps
 }
 
 struct ExtendedDecodeContext<'a> {
@@ -82,7 +83,7 @@ trait tr_intern {
 pub fn encode_inlined_item(ecx: &e::EncodeContext,
                            ebml_w: &mut writer::Encoder,
                            ii: e::InlinedItemRef,
-                           maps: Maps) {
+                           maps: &Maps) {
     let id = match ii {
         e::IIItemRef(i) => i.id,
         e::IIForeignRef(i) => i.id,
@@ -115,7 +116,7 @@ pub fn encode_exported_macro(ebml_w: &mut writer::Encoder, i: &ast::Item) {
 
 pub fn decode_inlined_item(cdata: @cstore::crate_metadata,
                            tcx: &ty::ctxt,
-                           maps: Maps,
+                           maps: &Maps,
                            path: Vec<ast_map::PathElem>,
                            par_doc: ebml::Doc)
                            -> Result<ast::InlinedItem, Vec<ast_map::PathElem>> {
@@ -906,7 +907,7 @@ impl<'a> write_tag_and_id for writer::Encoder<'a> {
 struct SideTableEncodingIdVisitor<'a,'b> {
     ecx_ptr: *libc::c_void,
     new_ebml_w: &'a mut writer::Encoder<'b>,
-    maps: Maps,
+    maps: &'a Maps,
 }
 
 impl<'a,'b> ast_util::IdVisitingOperation for
@@ -929,7 +930,7 @@ impl<'a,'b> ast_util::IdVisitingOperation for
 }
 
 fn encode_side_tables_for_ii(ecx: &e::EncodeContext,
-                             maps: Maps,
+                             maps: &Maps,
                              ebml_w: &mut writer::Encoder,
                              ii: &ast::InlinedItem) {
     ebml_w.start_tag(c::tag_table as uint);
@@ -951,7 +952,7 @@ fn encode_side_tables_for_ii(ecx: &e::EncodeContext,
 }
 
 fn encode_side_tables_for_id(ecx: &e::EncodeContext,
-                             maps: Maps,
+                             maps: &Maps,
                              ebml_w: &mut writer::Encoder,
                              id: ast::NodeId) {
     let tcx = ecx.tcx;
@@ -1075,20 +1076,16 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
         }
     }
 
-    {
-        let capture_map = maps.capture_map.borrow();
-        let r = capture_map.get().find(&id);
-        for &cap_vars in r.iter() {
-            ebml_w.tag(c::tag_table_capture_map, |ebml_w| {
-                ebml_w.id(id);
-                ebml_w.tag(c::tag_table_val, |ebml_w| {
-                    ebml_w.emit_from_vec(cap_vars.deref().as_slice(),
-                                         |ebml_w, cap_var| {
-                        cap_var.encode(ebml_w);
-                    })
+    for &cap_vars in maps.capture_map.borrow().get().find(&id).iter() {
+        ebml_w.tag(c::tag_table_capture_map, |ebml_w| {
+            ebml_w.id(id);
+            ebml_w.tag(c::tag_table_val, |ebml_w| {
+                ebml_w.emit_from_vec(cap_vars.deref().as_slice(),
+                                        |ebml_w, cap_var| {
+                    cap_var.encode(ebml_w);
                 })
             })
-        }
+        })
     }
 }
 

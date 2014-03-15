@@ -28,7 +28,7 @@ pub fn maybe_instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
             Some(&Some(node_id)) => {
                 // Already inline
                 debug!("maybe_instantiate_inline({}): already inline as node id {}",
-                       ty::item_path_str(ccx.tcx, fn_id), node_id);
+                       ty::item_path_str(ccx.tcx(), fn_id), node_id);
                 return local_def(node_id);
             }
             Some(&None) => {
@@ -42,8 +42,8 @@ pub fn maybe_instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
 
     let csearch_result =
         csearch::maybe_get_item_ast(
-            ccx.tcx, fn_id,
-            |a,b,c,d| astencode::decode_inlined_item(a, b, ccx.maps, c, d));
+            ccx.tcx(), fn_id,
+            |a,b,c,d| astencode::decode_inlined_item(a, b, &ccx.maps, c, d));
     return match csearch_result {
         csearch::not_found => {
             let mut external = ccx.external.borrow_mut();
@@ -104,8 +104,8 @@ pub fn maybe_instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
           let mut my_id = 0;
           match item.node {
             ast::ItemEnum(_, _) => {
-              let vs_here = ty::enum_variants(ccx.tcx, local_def(item.id));
-              let vs_there = ty::enum_variants(ccx.tcx, parent_id);
+              let vs_here = ty::enum_variants(ccx.tcx(), local_def(item.id));
+              let vs_there = ty::enum_variants(ccx.tcx(), parent_id);
               for (here, there) in vs_here.iter().zip(vs_there.iter()) {
                   if there.id == fn_id { my_id = here.id.node; }
                   let mut external = ccx.external.borrow_mut();
@@ -146,7 +146,7 @@ pub fn maybe_instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
           // impl type. But we aren't going to translate anyways, so don't.
           if is_provided { return local_def(mth.id); }
 
-            let impl_tpt = ty::lookup_item_type(ccx.tcx, impl_did);
+            let impl_tpt = ty::lookup_item_type(ccx.tcx(), impl_did);
             let num_type_params =
                 impl_tpt.generics.type_param_defs().len() +
                 mth.generics.ty_params.len();

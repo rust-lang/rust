@@ -173,7 +173,7 @@ impl<'a> Visitor<()> for IrMaps<'a> {
 
 pub fn check_crate(tcx: &ty::ctxt,
                    method_map: typeck::MethodMap,
-                   capture_map: moves::CaptureMap,
+                   capture_map: &moves::CaptureMap,
                    krate: &Crate) {
     visit::walk_crate(&mut IrMaps(tcx, method_map, capture_map), krate, ());
     tcx.sess.abort_if_errors();
@@ -249,7 +249,7 @@ enum VarKind {
 struct IrMaps<'a> {
     tcx: &'a ty::ctxt,
     method_map: typeck::MethodMap,
-    capture_map: moves::CaptureMap,
+    capture_map: &'a moves::CaptureMap,
 
     num_live_nodes: uint,
     num_vars: uint,
@@ -262,7 +262,7 @@ struct IrMaps<'a> {
 
 fn IrMaps<'a>(tcx: &'a ty::ctxt,
               method_map: typeck::MethodMap,
-              capture_map: moves::CaptureMap)
+              capture_map: &'a moves::CaptureMap)
               -> IrMaps<'a> {
     IrMaps {
         tcx: tcx,
@@ -473,7 +473,7 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
         // in better error messages than just pointing at the closure
         // construction site.
         let mut call_caps = Vec::new();
-        for cv in ir.capture_map.borrow().get().get(&expr.id).deref().iter() {
+        for cv in ir.capture_map.get(&expr.id).deref().iter() {
             match moves::moved_variable_node_id_from_def(cv.def) {
               Some(rv) => {
                 let cv_ln = ir.add_live_node(FreeVarNode(cv.span));

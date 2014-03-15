@@ -137,7 +137,6 @@ use util::common::indenter;
 use util::ppaux::UserString;
 use util::nodemap::{NodeMap, NodeSet};
 
-use std::cell::RefCell;
 use std::rc::Rc;
 use std::vec_ng::Vec;
 use syntax::ast::*;
@@ -160,23 +159,19 @@ pub struct CaptureVar {
     mode: CaptureMode // How variable is being accessed
 }
 
-pub type CaptureMap = @RefCell<NodeMap<Rc<Vec<CaptureVar> >>>;
-
-pub type MovesMap = @RefCell<NodeSet>;
-
-/**
- * Set of variable node-ids that are moved.
- *
- * Note: The `VariableMovesMap` stores expression ids that
- * are moves, whereas this set stores the ids of the variables
- * that are moved at some point */
-pub type MovedVariablesSet = @RefCell<NodeSet>;
+pub type CaptureMap = NodeMap<Rc<Vec<CaptureVar>>>;
 
 /** See the section Output on the module comment for explanation. */
 #[deriving(Clone)]
 pub struct MoveMaps {
-    moves_map: MovesMap,
-    moved_variables_set: MovedVariablesSet,
+    moves_map: NodeSet,
+    /**
+     * Set of variable node-ids that are moved.
+     *
+     * Note: The `moves_map` stores expression ids that are moves,
+     * whereas this set stores the ids of the variables that are
+     * moved at some point */
+    moved_variables_set: NodeSet,
     capture_map: CaptureMap
 }
 
@@ -216,14 +211,13 @@ pub fn compute_moves(tcx: &ty::ctxt,
         tcx: tcx,
         method_map: method_map,
         move_maps: MoveMaps {
-            moves_map: @RefCell::new(NodeSet::new()),
-            capture_map: @RefCell::new(NodeMap::new()),
-            moved_variables_set: @RefCell::new(NodeSet::new())
+            moves_map: NodeSet::new(),
+            moved_variables_set: NodeSet::new(),
+            capture_map: NodeMap::new()
         }
     };
-    let visit_cx = &mut visit_cx;
-    visit::walk_crate(visit_cx, krate, ());
-    return visit_cx.move_maps;
+    visit::walk_crate(&mut visit_cx, krate, ());
+    visit_cx.move_maps
 }
 
 pub fn moved_variable_node_id_from_def(def: Def) -> Option<NodeId> {
@@ -284,7 +278,7 @@ impl<'a> VisitContext<'a> {
         let expr_ty = ty::expr_ty_adjusted(self.tcx, expr,
                                            self.method_map.borrow().get());
         if ty::type_moves_by_default(self.tcx, expr_ty) {
-            self.move_maps.moves_map.borrow_mut().get().insert(expr.id);
+            self.move_maps.moves_map.insert(expr.id);
             self.use_expr(expr, Move);
         } else {
             self.use_expr(expr, Read);
@@ -349,11 +343,7 @@ impl<'a> VisitContext<'a> {
                         let def = def_map.get().get_copy(&expr.id);
                         let r = moved_variable_node_id_from_def(def);
                         for &id in r.iter() {
-                            let mut moved_variables_set =
-                                self.move_maps
-                                    .moved_variables_set
-                                    .borrow_mut();
-                            moved_variables_set.get().insert(id);
+                            self.move_maps.moved_variables_set.insert(id);
                         }
                     }
                     Read => {}
@@ -361,8 +351,7 @@ impl<'a> VisitContext<'a> {
             }
 
             ExprUnary(UnDeref, base) => {      // *base
-                if !self.use_overloaded_operator(expr, base, [])
-                {
+                if !self.use_overloaded_operator(expr, base, []) {
                     // Moving out of *base moves out of base.
                     self.use_expr(base, comp_mode);
                 }
@@ -374,8 +363,7 @@ impl<'a> VisitContext<'a> {
             }
 
             ExprIndex(lhs, rhs) => {           // lhs[rhs]
-                if !self.use_overloaded_operator(expr, lhs, [rhs])
-                {
+                if !self.use_overloaded_operator(expr, lhs, [rhs]) {
                     self.use_expr(lhs, comp_mode);
                     self.consume_expr(rhs);
                 }
@@ -400,12 +388,7 @@ impl<'a> VisitContext<'a> {
                 // closures should be noncopyable, they shouldn't move by default;
                 // calling a closure should only consume it if it's once.
                 if mode == Move {
-                    {
-                        let mut moves_map = self.move_maps
-                                                .moves_map
-                                                .borrow_mut();
-                        moves_map.get().insert(callee.id);
-                    }
+                    self.move_maps.moves_map.insert(callee.id);
                 }
                 self.use_expr(callee, mode);
                 self.use_fn_args(args.as_slice());
@@ -520,15 +503,13 @@ impl<'a> VisitContext<'a> {
             ExprForLoop(..) => fail!("non-desugared expr_for_loop"),
 
             ExprUnary(_, lhs) => {
-                if !self.use_overloaded_operator(expr, lhs, [])
-                {
+                if !self.use_overloaded_operator(expr, lhs, []) {
                     self.consume_expr(lhs);
                 }
             }
 
             ExprBinary(_, lhs, rhs) => {
-                if !self.use_overloaded_operator(expr, lhs, [rhs])
-                {
+                if !self.use_overloaded_operator(expr, lhs, [rhs]) {
                     self.consume_expr(lhs);
                     self.consume_expr(rhs);
                 }
@@ -574,12 +555,7 @@ impl<'a> VisitContext<'a> {
                     self.use_pat(a.pat);
                 }
                 let cap_vars = self.compute_captures(expr.id);
-                {
-                    let mut capture_map = self.move_maps
-                                              .capture_map
-                                              .borrow_mut();
-                    capture_map.get().insert(expr.id, cap_vars);
-                }
+                self.move_maps.capture_map.insert(expr.id, cap_vars);
                 self.consume_block(body);
             }
 
@@ -657,16 +633,12 @@ impl<'a> VisitContext<'a> {
                    id, bm, binding_moves);
 
             if binding_moves {
-                {
-                    let mut moves_map = self.move_maps.moves_map.borrow_mut();
-                    moves_map.get().insert(id);
-                }
+                self.move_maps.moves_map.insert(id);
             }
         })
     }
 
-    pub fn use_fn_args(&mut self,
-                       arg_exprs: &[@Expr]) {
+    pub fn use_fn_args(&mut self, arg_exprs: &[@Expr]) {
         //! Uses the argument expressions.
         for arg_expr in arg_exprs.iter() {
             self.use_fn_arg(*arg_expr);

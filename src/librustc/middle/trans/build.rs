@@ -115,7 +115,7 @@ pub fn Invoke(cx: &Block,
               attributes: &[(uint, lib::llvm::Attribute)])
               -> ValueRef {
     if cx.unreachable.get() {
-        return C_null(Type::i8());
+        return C_null(Type::i8(cx.ccx()));
     }
     check_not_terminated(cx);
     terminate(cx, "Invoke");
@@ -300,14 +300,18 @@ pub fn Not(cx: &Block, v: ValueRef) -> ValueRef {
 /* Memory */
 pub fn Malloc(cx: &Block, ty: Type) -> ValueRef {
     unsafe {
-        if cx.unreachable.get() { return llvm::LLVMGetUndef(Type::i8p().to_ref()); }
+        if cx.unreachable.get() {
+            return llvm::LLVMGetUndef(Type::i8p(cx.ccx()).to_ref());
+        }
         B(cx).malloc(ty)
     }
 }
 
 pub fn ArrayMalloc(cx: &Block, ty: Type, val: ValueRef) -> ValueRef {
     unsafe {
-        if cx.unreachable.get() { return llvm::LLVMGetUndef(Type::i8p().to_ref()); }
+        if cx.unreachable.get() {
+            return llvm::LLVMGetUndef(Type::i8p(cx.ccx()).to_ref());
+        }
         B(cx).array_malloc(ty, val)
     }
 }
@@ -357,7 +361,9 @@ pub fn Load(cx: &Block, pointer_val: ValueRef) -> ValueRef {
 
 pub fn VolatileLoad(cx: &Block, pointer_val: ValueRef) -> ValueRef {
     unsafe {
-        if cx.unreachable.get() { return llvm::LLVMGetUndef(Type::nil().to_ref()); }
+        if cx.unreachable.get() {
+            return llvm::LLVMGetUndef(Type::nil(cx.ccx()).to_ref());
+        }
         B(cx).volatile_load(pointer_val)
     }
 }
@@ -408,7 +414,9 @@ pub fn AtomicStore(cx: &Block, val: ValueRef, ptr: ValueRef, order: AtomicOrderi
 
 pub fn GEP(cx: &Block, pointer: ValueRef, indices: &[ValueRef]) -> ValueRef {
     unsafe {
-        if cx.unreachable.get() { return llvm::LLVMGetUndef(Type::nil().ptr_to().to_ref()); }
+        if cx.unreachable.get() {
+            return llvm::LLVMGetUndef(Type::nil(cx.ccx()).ptr_to().to_ref());
+        }
         B(cx).gep(pointer, indices)
     }
 }
@@ -418,35 +426,45 @@ pub fn GEP(cx: &Block, pointer: ValueRef, indices: &[ValueRef]) -> ValueRef {
 #[inline]
 pub fn GEPi(cx: &Block, base: ValueRef, ixs: &[uint]) -> ValueRef {
     unsafe {
-        if cx.unreachable.get() { return llvm::LLVMGetUndef(Type::nil().ptr_to().to_ref()); }
+        if cx.unreachable.get() {
+            return llvm::LLVMGetUndef(Type::nil(cx.ccx()).ptr_to().to_ref());
+        }
         B(cx).gepi(base, ixs)
     }
 }
 
 pub fn InBoundsGEP(cx: &Block, pointer: ValueRef, indices: &[ValueRef]) -> ValueRef {
     unsafe {
-        if cx.unreachable.get() { return llvm::LLVMGetUndef(Type::nil().ptr_to().to_ref()); }
+        if cx.unreachable.get() {
+            return llvm::LLVMGetUndef(Type::nil(cx.ccx()).ptr_to().to_ref());
+        }
         B(cx).inbounds_gep(pointer, indices)
     }
 }
 
 pub fn StructGEP(cx: &Block, pointer: ValueRef, idx: uint) -> ValueRef {
     unsafe {
-        if cx.unreachable.get() { return llvm::LLVMGetUndef(Type::nil().ptr_to().to_ref()); }
+        if cx.unreachable.get() {
+            return llvm::LLVMGetUndef(Type::nil(cx.ccx()).ptr_to().to_ref());
+        }
         B(cx).struct_gep(pointer, idx)
     }
 }
 
 pub fn GlobalString(cx: &Block, _str: *c_char) -> ValueRef {
     unsafe {
-        if cx.unreachable.get() { return llvm::LLVMGetUndef(Type::i8p().to_ref()); }
+        if cx.unreachable.get() {
+            return llvm::LLVMGetUndef(Type::i8p(cx.ccx()).to_ref());
+        }
         B(cx).global_string(_str)
     }
 }
 
 pub fn GlobalStringPtr(cx: &Block, _str: *c_char) -> ValueRef {
     unsafe {
-        if cx.unreachable.get() { return llvm::LLVMGetUndef(Type::i8p().to_ref()); }
+        if cx.unreachable.get() {
+            return llvm::LLVMGetUndef(Type::i8p(cx.ccx()).to_ref());
+        }
         B(cx).global_string_ptr(_str)
     }
 }
@@ -591,7 +609,9 @@ pub fn FPCast(cx: &Block, val: ValueRef, dest_ty: Type) -> ValueRef {
 pub fn ICmp(cx: &Block, op: IntPredicate, lhs: ValueRef, rhs: ValueRef)
      -> ValueRef {
     unsafe {
-        if cx.unreachable.get() { return llvm::LLVMGetUndef(Type::i1().to_ref()); }
+        if cx.unreachable.get() {
+            return llvm::LLVMGetUndef(Type::i1(cx.ccx()).to_ref());
+        }
         B(cx).icmp(op, lhs, rhs)
     }
 }
@@ -599,7 +619,9 @@ pub fn ICmp(cx: &Block, op: IntPredicate, lhs: ValueRef, rhs: ValueRef)
 pub fn FCmp(cx: &Block, op: RealPredicate, lhs: ValueRef, rhs: ValueRef)
      -> ValueRef {
     unsafe {
-        if cx.unreachable.get() { return llvm::LLVMGetUndef(Type::i1().to_ref()); }
+        if cx.unreachable.get() {
+            return llvm::LLVMGetUndef(Type::i1(cx.ccx()).to_ref());
+        }
         B(cx).fcmp(op, lhs, rhs)
     }
 }
@@ -686,7 +708,9 @@ pub fn VAArg(cx: &Block, list: ValueRef, ty: Type) -> ValueRef {
 
 pub fn ExtractElement(cx: &Block, vec_val: ValueRef, index: ValueRef) -> ValueRef {
     unsafe {
-        if cx.unreachable.get() { return llvm::LLVMGetUndef(Type::nil().to_ref()); }
+        if cx.unreachable.get() {
+            return llvm::LLVMGetUndef(Type::nil(cx.ccx()).to_ref());
+        }
         B(cx).extract_element(vec_val, index)
     }
 }
@@ -694,7 +718,9 @@ pub fn ExtractElement(cx: &Block, vec_val: ValueRef, index: ValueRef) -> ValueRe
 pub fn InsertElement(cx: &Block, vec_val: ValueRef, elt_val: ValueRef,
                      index: ValueRef) -> ValueRef {
     unsafe {
-        if cx.unreachable.get() { return llvm::LLVMGetUndef(Type::nil().to_ref()); }
+        if cx.unreachable.get() {
+            return llvm::LLVMGetUndef(Type::nil(cx.ccx()).to_ref());
+        }
         B(cx).insert_element(vec_val, elt_val, index)
     }
 }
@@ -702,42 +728,54 @@ pub fn InsertElement(cx: &Block, vec_val: ValueRef, elt_val: ValueRef,
 pub fn ShuffleVector(cx: &Block, v1: ValueRef, v2: ValueRef,
                      mask: ValueRef) -> ValueRef {
     unsafe {
-        if cx.unreachable.get() { return llvm::LLVMGetUndef(Type::nil().to_ref()); }
+        if cx.unreachable.get() {
+            return llvm::LLVMGetUndef(Type::nil(cx.ccx()).to_ref());
+        }
         B(cx).shuffle_vector(v1, v2, mask)
     }
 }
 
 pub fn VectorSplat(cx: &Block, num_elts: uint, elt_val: ValueRef) -> ValueRef {
     unsafe {
-        if cx.unreachable.get() { return llvm::LLVMGetUndef(Type::nil().to_ref()); }
+        if cx.unreachable.get() {
+            return llvm::LLVMGetUndef(Type::nil(cx.ccx()).to_ref());
+        }
         B(cx).vector_splat(num_elts, elt_val)
     }
 }
 
 pub fn ExtractValue(cx: &Block, agg_val: ValueRef, index: uint) -> ValueRef {
     unsafe {
-        if cx.unreachable.get() { return llvm::LLVMGetUndef(Type::nil().to_ref()); }
+        if cx.unreachable.get() {
+            return llvm::LLVMGetUndef(Type::nil(cx.ccx()).to_ref());
+        }
         B(cx).extract_value(agg_val, index)
     }
 }
 
 pub fn InsertValue(cx: &Block, agg_val: ValueRef, elt_val: ValueRef, index: uint) -> ValueRef {
     unsafe {
-        if cx.unreachable.get() { return llvm::LLVMGetUndef(Type::nil().to_ref()); }
+        if cx.unreachable.get() {
+            return llvm::LLVMGetUndef(Type::nil(cx.ccx()).to_ref());
+        }
         B(cx).insert_value(agg_val, elt_val, index)
     }
 }
 
 pub fn IsNull(cx: &Block, val: ValueRef) -> ValueRef {
     unsafe {
-        if cx.unreachable.get() { return llvm::LLVMGetUndef(Type::i1().to_ref()); }
+        if cx.unreachable.get() {
+            return llvm::LLVMGetUndef(Type::i1(cx.ccx()).to_ref());
+        }
         B(cx).is_null(val)
     }
 }
 
 pub fn IsNotNull(cx: &Block, val: ValueRef) -> ValueRef {
     unsafe {
-        if cx.unreachable.get() { return llvm::LLVMGetUndef(Type::i1().to_ref()); }
+        if cx.unreachable.get() {
+            return llvm::LLVMGetUndef(Type::i1(cx.ccx()).to_ref());
+        }
         B(cx).is_not_null(val)
     }
 }

@@ -369,10 +369,10 @@ pub fn create_captured_var_metadata(bcx: &Block,
     let byte_offset_of_var_in_env = machine::llelement_offset(cx, llvm_env_data_type, env_index);
 
     let address_operations = unsafe {
-        [llvm::LLVMDIBuilderCreateOpDeref(Type::i64().to_ref()),
-         llvm::LLVMDIBuilderCreateOpPlus(Type::i64().to_ref()),
-         C_i64(byte_offset_of_var_in_env as i64),
-         llvm::LLVMDIBuilderCreateOpDeref(Type::i64().to_ref())]
+        [llvm::LLVMDIBuilderCreateOpDeref(Type::i64(cx).to_ref()),
+         llvm::LLVMDIBuilderCreateOpPlus(Type::i64(cx).to_ref()),
+         C_i64(cx, byte_offset_of_var_in_env as i64),
+         llvm::LLVMDIBuilderCreateOpDeref(Type::i64(cx).to_ref())]
     };
 
     let address_op_count = match closure_sigil {
@@ -719,11 +719,11 @@ pub fn create_function_debug_context(cx: &CrateContext,
             _ => {
                 assert_type_for_node_id(cx, fn_ast_id, error_span);
 
-                let return_type = ty::node_id_to_type(cx.tcx, fn_ast_id);
+                let return_type = ty::node_id_to_type(cx.tcx(), fn_ast_id);
                 let return_type = match param_substs {
                     None => return_type,
                     Some(substs) => {
-                        ty::subst_tps(cx.tcx,
+                        ty::subst_tps(cx.tcx(),
                                       substs.tys.as_slice(),
                                       substs.self_ty,
                                       return_type)
@@ -737,11 +737,11 @@ pub fn create_function_debug_context(cx: &CrateContext,
         // Arguments types
         for arg in fn_decl.inputs.iter() {
             assert_type_for_node_id(cx, arg.pat.id, arg.pat.span);
-            let arg_type = ty::node_id_to_type(cx.tcx, arg.pat.id);
+            let arg_type = ty::node_id_to_type(cx.tcx(), arg.pat.id);
             let arg_type = match param_substs {
                 None => arg_type,
                 Some(substs) => {
-                    ty::subst_tps(cx.tcx,
+                    ty::subst_tps(cx.tcx(),
                                   substs.tys.as_slice(),
                                   substs.self_ty,
                                   arg_type)
@@ -782,7 +782,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
         if has_self_type {
             let actual_self_type = self_type.unwrap();
             // Add self type name to <...> clause of function name
-            let actual_self_type_name = ppaux::ty_to_str(cx.tcx, actual_self_type);
+            let actual_self_type_name = ppaux::ty_to_str(cx.tcx(), actual_self_type);
             name_to_append_suffix_to.push_str(actual_self_type_name);
 
             if generics.is_type_parameterized() {
@@ -826,7 +826,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
         for (index, &ast::TyParam{ ident: ident, .. }) in generics.ty_params.iter().enumerate() {
             let actual_type = *actual_types.get(index);
             // Add actual type name to <...> clause of function name
-            let actual_type_name = ppaux::ty_to_str(cx.tcx, actual_type);
+            let actual_type_name = ppaux::ty_to_str(cx.tcx(), actual_type);
             name_to_append_suffix_to.push_str(actual_type_name);
 
             if index != generics.ty_params.len() - 1 {
@@ -1118,7 +1118,7 @@ fn pointer_type_metadata(cx: &CrateContext,
                       -> DIType {
     let pointer_llvm_type = type_of::type_of(cx, pointer_type);
     let (pointer_size, pointer_align) = size_and_align_of(cx, pointer_llvm_type);
-    let name = ppaux::ty_to_str(cx.tcx, pointer_type);
+    let name = ppaux::ty_to_str(cx.tcx(), pointer_type);
     let ptr_metadata = name.with_c_str(|name| {
         unsafe {
             llvm::LLVMDIBuilderCreatePointerType(
@@ -1190,7 +1190,7 @@ fn prepare_struct_metadata(cx: &CrateContext,
                            substs: &ty::substs,
                            span: Span)
                         -> RecursiveTypeDescription {
-    let struct_name = ppaux::ty_to_str(cx.tcx, struct_type);
+    let struct_name = ppaux::ty_to_str(cx.tcx(), struct_type);
     let struct_llvm_type = type_of::type_of(cx, struct_type);
 
     let (containing_scope, definition_span) = get_namespace_and_span_for_item(cx, def_id);
@@ -1205,7 +1205,7 @@ fn prepare_struct_metadata(cx: &CrateContext,
                                                   file_metadata,
                                                   definition_span);
 
-    let fields = ty::struct_fields(cx.tcx, def_id, substs);
+    let fields = ty::struct_fields(cx.tcx(), def_id, substs);
 
     UnfinishedMetadata {
         cache_id: cache_id_for_type(struct_type),
@@ -1288,7 +1288,7 @@ fn prepare_tuple_metadata(cx: &CrateContext,
                           component_types: &[ty::t],
                           span: Span)
                        -> RecursiveTypeDescription {
-    let tuple_name = ppaux::ty_to_str(cx.tcx, tuple_type);
+    let tuple_name = ppaux::ty_to_str(cx.tcx(), tuple_type);
     let tuple_llvm_type = type_of::type_of(cx, tuple_type);
 
     let loc = span_start(cx, span);
@@ -1393,9 +1393,9 @@ fn describe_enum_variant(cx: &CrateContext,
                          span: Span)
                       -> (DICompositeType, Type, MemberDescriptionFactory) {
     let variant_llvm_type =
-        Type::struct_(struct_def.fields
-                                .map(|&t| type_of::type_of(cx, t))
-                                .as_slice(),
+        Type::struct_(cx, struct_def.fields
+                                    .map(|&t| type_of::type_of(cx, t))
+                                    .as_slice(),
                       struct_def.packed);
     // Could some consistency checks here: size, align, field count, discr type
 
@@ -1448,7 +1448,7 @@ fn prepare_enum_metadata(cx: &CrateContext,
                          enum_def_id: ast::DefId,
                          span: Span)
                       -> RecursiveTypeDescription {
-    let enum_name = ppaux::ty_to_str(cx.tcx, enum_type);
+    let enum_name = ppaux::ty_to_str(cx.tcx(), enum_type);
 
     let (containing_scope, definition_span) = get_namespace_and_span_for_item(cx, enum_def_id);
     let loc = span_start(cx, definition_span);
@@ -1456,9 +1456,9 @@ fn prepare_enum_metadata(cx: &CrateContext,
 
     // For empty enums there is an early exit. Just describe it as an empty struct with the
     // appropriate type name
-    if ty::type_is_empty(cx.tcx, enum_type) {
+    if ty::type_is_empty(cx.tcx(), enum_type) {
         let empty_type_metadata = composite_type_metadata(cx,
-                                                          Type::nil(),
+                                                          Type::nil(cx),
                                                           enum_name,
                                                           [],
                                                           containing_scope,
@@ -1468,7 +1468,7 @@ fn prepare_enum_metadata(cx: &CrateContext,
         return FinalMetadata(empty_type_metadata);
     }
 
-    let variants = ty::enum_variants(cx.tcx, enum_def_id);
+    let variants = ty::enum_variants(cx.tcx(), enum_def_id);
 
     let enumerators_metadata: Vec<DIDescriptor> = variants
         .iter()
@@ -1754,7 +1754,7 @@ fn boxed_type_metadata(cx: &CrateContext,
                                   content_llvm_type));
 
     let int_type = ty::mk_int();
-    let nil_pointer_type = ty::mk_nil_ptr(cx.tcx);
+    let nil_pointer_type = ty::mk_nil_ptr(cx.tcx());
     let nil_pointer_type_metadata = type_metadata(cx, nil_pointer_type, codemap::DUMMY_SP);
 
     let member_descriptions = [
@@ -1811,8 +1811,8 @@ fn boxed_type_metadata(cx: &CrateContext,
         member_llvm_types.len() == 5 &&
         member_llvm_types[0] == cx.int_type &&
         member_llvm_types[1] == Type::generic_glue_fn(cx).ptr_to() &&
-        member_llvm_types[2] == Type::i8().ptr_to() &&
-        member_llvm_types[3] == Type::i8().ptr_to() &&
+        member_llvm_types[2] == Type::i8(cx).ptr_to() &&
+        member_llvm_types[3] == Type::i8(cx).ptr_to() &&
         member_llvm_types[4] == content_llvm_type
     }
 }
@@ -1853,8 +1853,8 @@ fn vec_metadata(cx: &CrateContext,
     let element_llvm_type = type_of::type_of(cx, element_type);
     let (element_size, element_align) = size_and_align_of(cx, element_llvm_type);
 
-    let vec_llvm_type = Type::vec(cx.sess().targ_cfg.arch, &element_llvm_type);
-    let vec_type_name: &str = format!("[{}]", ppaux::ty_to_str(cx.tcx, element_type));
+    let vec_llvm_type = Type::vec(cx, &element_llvm_type);
+    let vec_type_name: &str = format!("[{}]", ppaux::ty_to_str(cx.tcx(), element_type));
 
     let member_llvm_types = vec_llvm_type.field_types();
 
@@ -1913,14 +1913,17 @@ fn vec_slice_metadata(cx: &CrateContext,
     debug!("vec_slice_metadata: {:?}", ty::get(vec_type));
 
     let slice_llvm_type = type_of::type_of(cx, vec_type);
-    let slice_type_name = ppaux::ty_to_str(cx.tcx, vec_type);
+    let slice_type_name = ppaux::ty_to_str(cx.tcx(), vec_type);
 
     let member_llvm_types = slice_llvm_type.field_types();
     assert!(slice_layout_is_correct(cx,
                                     member_llvm_types.as_slice(),
                                     element_type));
 
-    let data_ptr_type = ty::mk_ptr(cx.tcx, ty::mt { ty: element_type, mutbl: ast::MutImmutable });
+    let data_ptr_type = ty::mk_ptr(cx.tcx(), ty::mt {
+        ty: element_type,
+        mutbl: ast::MutImmutable
+    });
 
     let member_descriptions = [
         MemberDescription {
@@ -2001,13 +2004,13 @@ fn trait_metadata(cx: &CrateContext,
     // The implementation provided here is a stub. It makes sure that the trait type is
     // assigned the correct name, size, namespace, and source location. But it does not describe
     // the trait's methods.
-    let last = ty::with_path(cx.tcx, def_id, |mut path| path.last().unwrap());
+    let last = ty::with_path(cx.tcx(), def_id, |mut path| path.last().unwrap());
     let ident_string = token::get_name(last.name());
-    let name = ppaux::trait_store_to_str(cx.tcx, trait_store) +
+    let name = ppaux::trait_store_to_str(cx.tcx(), trait_store) +
                ppaux::mutability_to_str(mutability) +
                ident_string.get();
     // Add type and region parameters
-    let name = ppaux::parameterized(cx.tcx, name, &substs.regions,
+    let name = ppaux::parameterized(cx.tcx(), name, &substs.regions,
                                     substs.tps.as_slice(), def_id, true);
 
     let (containing_scope, definition_span) = get_namespace_and_span_for_item(cx, def_id);
@@ -2044,7 +2047,7 @@ fn type_metadata(cx: &CrateContext,
                                       pointer_type: ty::t,
                                       type_in_box: ty::t)
                                    -> DIType {
-        let content_type_name: &str = ppaux::ty_to_str(cx.tcx, type_in_box);
+        let content_type_name: &str = ppaux::ty_to_str(cx.tcx(), type_in_box);
         let content_llvm_type = type_of::type_of(cx, type_in_box);
         let content_type_metadata = type_metadata(
             cx,
@@ -2127,9 +2130,9 @@ fn type_metadata(cx: &CrateContext,
             trait_metadata(cx, def_id, t, substs, trait_store, mutability, bounds)
         },
         ty::ty_struct(def_id, ref substs) => {
-            if ty::type_is_simd(cx.tcx, t) {
-                let element_type = ty::simd_type(cx.tcx, t);
-                let len = ty::simd_size(cx.tcx, t);
+            if ty::type_is_simd(cx.tcx(), t) {
+                let element_type = ty::simd_type(cx.tcx(), t);
+                let len = ty::simd_size(cx.tcx(), t);
                 fixed_vec_metadata(cx, element_type, len, usage_site_span)
             } else {
                 prepare_struct_metadata(cx, t, def_id, substs, usage_site_span).finalize(cx)
@@ -2176,7 +2179,7 @@ fn set_debug_location(cx: &CrateContext, debug_location: DebugLocation) {
         KnownLocation { scope, line, .. } => {
             let col = 0; // Always set the column to zero like Clang and GCC
             debug!("setting debug location to {} {}", line, col);
-            let elements = [C_i32(line as i32), C_i32(col as i32), scope, ptr::null()];
+            let elements = [C_i32(cx, line as i32), C_i32(cx, col as i32), scope, ptr::null()];
             unsafe {
                 metadata_node = llvm::LLVMMDNodeInContext(debug_context(cx).llcontext,
                                                           elements.as_ptr(),
@@ -2748,7 +2751,7 @@ impl NamespaceTreeNode {
 }
 
 fn namespace_for_item(cx: &CrateContext, def_id: ast::DefId) -> @NamespaceTreeNode {
-    ty::with_path(cx.tcx, def_id, |path| {
+    ty::with_path(cx.tcx(), def_id, |path| {
         // prepend crate name if not already present
         let krate = if def_id.krate == ast::LOCAL_CRATE {
             let crate_namespace_ident = token::str_to_ident(cx.link_meta.crateid.name);

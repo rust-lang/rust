@@ -35,6 +35,7 @@ use std::cell::{Cell, RefCell};
 use std::io;
 use std::io::fs;
 use std::io::MemReader;
+use std::mem::drop;
 use std::os;
 use std::vec_ng::Vec;
 use std::vec_ng;
@@ -357,17 +358,20 @@ pub fn phase_3_run_analysis_passes(sess: Session,
 
     time(time_passes, "match checking", (), |_|
          middle::check_match::check_crate(&ty_cx, method_map,
-                                          moves_map, krate));
+                                          &moves_map, krate));
 
     time(time_passes, "liveness checking", (), |_|
          middle::liveness::check_crate(&ty_cx, method_map,
-                                       capture_map, krate));
+                                       &capture_map, krate));
 
     let root_map =
         time(time_passes, "borrow checking", (), |_|
              middle::borrowck::check_crate(&ty_cx, method_map,
-                                           moves_map, moved_variables_set,
-                                           capture_map, krate));
+                                           &moves_map, &moved_variables_set,
+                                           &capture_map, krate));
+
+    drop(moves_map);
+    drop(moved_variables_set);
 
     time(time_passes, "kind checking", (), |_|
          kind::check_crate(&ty_cx, method_map, krate));
@@ -396,7 +400,7 @@ pub fn phase_3_run_analysis_passes(sess: Session,
             root_map: root_map,
             method_map: method_map,
             vtable_map: vtable_map,
-            capture_map: capture_map
+            capture_map: RefCell::new(capture_map)
         },
         reachable: reachable_map
     }
@@ -414,10 +418,13 @@ pub struct CrateTranslation {
 /// Run the translation phase to LLVM, after which the AST and analysis can
 /// be discarded.
 pub fn phase_4_translate_to_llvm(krate: ast::Crate,
-                                 analysis: &CrateAnalysis,
-                                 outputs: &OutputFilenames) -> CrateTranslation {
-    time(analysis.ty_cx.sess.time_passes(), "translation", krate, |krate|
-         trans::base::trans_crate(krate, analysis, outputs))
+                                 analysis: CrateAnalysis,
+                                 outputs: &OutputFilenames) -> (ty::ctxt, CrateTranslation) {
+    // Option dance to work around the lack of stack once closures.
+    let time_passes = analysis.ty_cx.sess.time_passes();
+    let mut analysis = Some(analysis);
+    time(time_passes, "translation", krate, |krate|
+         trans::base::trans_crate(krate, analysis.take_unwrap(), outputs))
 }
 
 /// Run LLVM itself, producing a bitcode file, assembly file or object file
@@ -582,9 +589,9 @@ pub fn compile_input(sess: Session, cfg: ast::CrateConfig, input: &Input,
 
         let analysis = phase_3_run_analysis_passes(sess, &expanded_crate, ast_map);
         if stop_after_phase_3(&analysis.ty_cx.sess) { return; }
-        let trans = phase_4_translate_to_llvm(expanded_crate,
-                                              &analysis, &outputs);
-        (outputs, trans, analysis.ty_cx.sess)
+        let (tcx, trans) = phase_4_translate_to_llvm(expanded_crate,
+                                                     analysis, &outputs);
+        (outputs, trans, tcx.sess)
     };
     phase_5_run_llvm_passes(&sess, &trans, &outputs);
     if stop_after_phase_5(&sess) { return; }

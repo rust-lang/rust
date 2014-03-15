@@ -559,7 +559,7 @@ fn get_symbol_hash(ccx: &CrateContext, t: ty::t) -> ~str {
 
     let mut type_hashcodes = ccx.type_hashcodes.borrow_mut();
     let mut symbol_hasher = ccx.symbol_hasher.borrow_mut();
-    let hash = symbol_hash(ccx.tcx, symbol_hasher.get(), t, &ccx.link_meta);
+    let hash = symbol_hash(ccx.tcx(), symbol_hasher.get(), t, &ccx.link_meta);
     type_hashcodes.get().insert(t, hash.clone());
     hash
 }
@@ -694,7 +694,7 @@ pub fn mangle_exported_name(ccx: &CrateContext, path: PathElems,
 pub fn mangle_internal_name_by_type_only(ccx: &CrateContext,
                                          t: ty::t,
                                          name: &str) -> ~str {
-    let s = ppaux::ty_to_short_str(ccx.tcx, t);
+    let s = ppaux::ty_to_short_str(ccx.tcx(), t);
     let path = [PathName(token::intern(name)),
                 PathName(token::intern(s))];
     let hash = get_symbol_hash(ccx, t);
@@ -704,7 +704,7 @@ pub fn mangle_internal_name_by_type_only(ccx: &CrateContext,
 pub fn mangle_internal_name_by_type_and_seq(ccx: &CrateContext,
                                             t: ty::t,
                                             name: &str) -> ~str {
-    let s = ppaux::ty_to_str(ccx.tcx, t);
+    let s = ppaux::ty_to_str(ccx.tcx(), t);
     let path = [PathName(token::intern(s)),
                 gensym_name(name)];
     let hash = get_symbol_hash(ccx, t);
