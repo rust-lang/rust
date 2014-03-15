@@ -317,9 +317,9 @@ pub fn test_cfg<AM: AttrMetaMethods, It: Iterator<AM>>
                                 debug!("not!");
                                 // inside #[cfg(not(...))], so these need to all
                                 // not match.
-                                not_cfgs.iter().all(|mi| {
+                                !not_cfgs.iter().all(|mi| {
                                     debug!("cfg(not({}[...]))", mi.name());
-                                    !contains(cfg, *mi)
+                                    contains(cfg, *mi)
                                 })
                             }
                             _ => contains(cfg, *cfg_mi)
