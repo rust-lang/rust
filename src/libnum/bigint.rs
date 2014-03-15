@@ -47,6 +47,7 @@ A `BigDigit` is half the size of machine word size.
 pub type BigDigit = u32;
 
 pub static ZERO_BIG_DIGIT: BigDigit = 0;
+static ZERO_VEC: [BigDigit, ..1] = [ZERO_BIG_DIGIT];
 
 pub mod BigDigit {
     use super::BigDigit;
@@ -140,37 +141,28 @@ impl Num for BigUint {}
 
 impl BitAnd<BigUint, BigUint> for BigUint {
     fn bitand(&self, other: &BigUint) -> BigUint {
-        let new_len = cmp::min(self.data.len(), other.data.len());
-        let anded = vec::from_fn(new_len, |i| {
-            // i will never be less than the size of either data vector
-            let ai = self.data[i];
-            let bi = other.data[i];
-            ai & bi
-        });
-        return BigUint::new(anded);
+        BigUint::new(self.data.iter().zip(other.data.iter()).map(|(ai, bi)| *ai & *bi).collect())
     }
 }
 
 impl BitOr<BigUint, BigUint> for BigUint {
     fn bitor(&self, other: &BigUint) -> BigUint {
-        let new_len = cmp::max(self.data.len(), other.data.len());
-        let ored = vec::from_fn(new_len, |i| {
-            let ai = if i < self.data.len()  { self.data[i]  } else { 0 };
-            let bi = if i < other.data.len() { other.data[i] } else { 0 };
-            ai | bi
-        });
+        let zeros = ZERO_VEC.iter().cycle();
+        let (a, b) = if self.data.len() > other.data.len() { (self, other) } else { (other, self) };
+        let ored = a.data.iter().zip(b.data.iter().chain(zeros)).map(
+            |(ai, bi)| *ai | *bi
+        ).collect();
         return BigUint::new(ored);
     }
 }
 
 impl BitXor<BigUint, BigUint> for BigUint {
     fn bitxor(&self, other: &BigUint) -> BigUint {
-        let new_len = cmp::max(self.data.len(), other.data.len());
-        let xored = vec::from_fn(new_len, |i| {
-            let ai = if i < self.data.len()  { self.data[i]  } else { 0 };
-            let bi = if i < other.data.len() { other.data[i] } else { 0 };
-            ai ^ bi
-        });
+        let zeros = ZERO_VEC.iter().cycle();
+        let (a, b) = if self.data.len() > other.data.len() { (self, other) } else { (other, self) };
+        let xored = a.data.iter().zip(b.data.iter().chain(zeros)).map(
+            |(ai, bi)| *ai ^ *bi
+        ).collect();
         return BigUint::new(xored);
     }
 }
@@ -210,18 +202,15 @@ impl Unsigned for BigUint {}
 
 impl Add<BigUint, BigUint> for BigUint {
     fn add(&self, other: &BigUint) -> BigUint {
-        let new_len = cmp::max(self.data.len(), other.data.len());
+        let zeros = ZERO_VEC.iter().cycle();
+        let (a, b) = if self.data.len() > other.data.len() { (self, other) } else { (other, self) };
 
         let mut carry = 0;
-        let mut sum = vec::from_fn(new_len, |i| {
-            let ai = if i < self.data.len()  { self.data[i]  } else { 0 };
-            let bi = if i < other.data.len() { other.data[i] } else { 0 };
-            let (hi, lo) = BigDigit::from_uint(
-                (ai as uint) + (bi as uint) + (carry as uint)
-            );
+        let mut sum: ~[BigDigit] =  a.data.iter().zip(b.data.iter().chain(zeros)).map(|(ai, bi)| {
+            let (hi, lo) = BigDigit::from_uint((*ai as uint) + (*bi as uint) + (carry as uint));
             carry = hi;
             lo
-        });
+        }).collect();
         if carry != 0 { sum.push(carry); }
         return BigUint::new(sum);
     }
@@ -230,14 +219,13 @@ impl Add<BigUint, BigUint> for BigUint {
 impl Sub<BigUint, BigUint> for BigUint {
     fn sub(&self, other: &BigUint) -> BigUint {
         let new_len = cmp::max(self.data.len(), other.data.len());
+        let zeros = ZERO_VEC.iter().cycle();
+        let (a, b) = (self.data.iter().chain(zeros.clone()), other.data.iter().chain(zeros));
 
         let mut borrow = 0;
-        let diff = vec::from_fn(new_len, |i| {
-            let ai = if i < self.data.len()  { self.data[i]  } else { 0 };
-            let bi = if i < other.data.len() { other.data[i] } else { 0 };
+        let diff: ~[BigDigit] =  a.take(new_len).zip(b).map(|(ai, bi)| {
             let (hi, lo) = BigDigit::from_uint(
-                (BigDigit::base) +
-                (ai as uint) - (bi as uint) - (borrow as uint)
+                BigDigit::base + (*ai as uint) - (*bi as uint) - (borrow as uint)
             );
             /*
             hi * (base) + lo == 1*(base) + ai - bi - borrow
@@ -245,7 +233,7 @@ impl Sub<BigUint, BigUint> for BigUint {
             */
             borrow = if hi == 0 { 1 } else { 0 };
             lo
-        });
+        }).collect();
 
         assert_eq!(borrow, 0);     // <=> assert!((self >= other));
         return BigUint::new(diff);
@@ -451,17 +439,18 @@ impl Integer for BigUint {
                 return (Zero::zero(), Zero::zero(), (*a).clone());
             }
 
-            let an = a.data.slice(a.data.len() - n, a.data.len());
+            let an = a.data.tailn(a.data.len() - n);
             let bn = *b.data.last().unwrap();
-            let mut d = ~[];
+            let mut d = vec::with_capacity(an.len());
             let mut carry = 0;
             for elt in an.rev_iter() {
                 let ai = BigDigit::to_uint(carry, *elt);
                 let di = ai / (bn as uint);
                 assert!(di < BigDigit::base);
                 carry = (ai % (bn as uint)) as BigDigit;
-                d = ~[di as BigDigit] + d;
+                d.push(di as BigDigit)
             }
+            d.reverse();
 
             let shift = (a.data.len() - an.len()) - (b.data.len() - 1);
             if shift == 0 {
@@ -506,10 +495,9 @@ impl Integer for BigUint {
     #[inline]
     fn is_even(&self) -> bool {
         // Considering only the last digit.
-        if self.data.is_empty() {
-            true
-        } else {
-            self.data[0].is_even()
+        match self.data.head() {
+            Some(x) => x.is_even(),
+            None => true
         }
     }
 
@@ -664,12 +652,12 @@ impl ToStrRadix for BigUint {
         if base == BigDigit::base {
             return fill_concat(self.data, radix, max_len)
         }
-        return fill_concat(convert_base((*self).clone(), base), radix, max_len);
+        return fill_concat(convert_base(self, base), radix, max_len);
 
-        fn convert_base(n: BigUint, base: uint) -> ~[BigDigit] {
+        fn convert_base(n: &BigUint, base: uint) -> ~[BigDigit] {
             let divider    = FromPrimitive::from_uint(base).unwrap();
             let mut result = ~[];
-            let mut m      = n;
+            let mut m      = n.clone();
             while m >= divider {
                 let (d, m0) = m.div_mod_floor(&divider);
                 result.push(m0.to_uint().unwrap() as BigDigit);
