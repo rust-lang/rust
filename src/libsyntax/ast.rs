@@ -574,7 +574,10 @@ pub enum TokenTree {
     TTSeq(Span, @Vec<TokenTree> , Option<::parse::token::Token>, bool),
 
     // a syntactic variable that will be filled in by macro expansion.
-    TTNonterminal(Span, Ident)
+    TTNonterminal(Span, Ident),
+
+    // #($v), expanding to the number of occurrences of a syntactic variable
+    TTMatchCount(Span, Ident)
 }
 
 //

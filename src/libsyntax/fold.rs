@@ -382,7 +382,9 @@ pub fn fold_tts<T: Folder>(tts: &[TokenTree], fld: &mut T) -> Vec<TokenTree> {
                   sep.as_ref().map(|tok|maybe_fold_ident(tok,fld)),
                   is_optional),
             TTNonterminal(sp,ref ident) =>
-            TTNonterminal(sp,fld.fold_ident(*ident))
+            TTNonterminal(sp,fld.fold_ident(*ident)),
+            TTMatchCount(sp, ref ident) =>
+            TTMatchCount(sp, fld.fold_ident(*ident))
         }
     }).collect()
 }

@@ -811,6 +811,11 @@ impl<'a> State<'a> {
                 try!(word(&mut self.s, "$"));
                 self.print_ident(name)
             }
+            ast::TTMatchCount(_, name) => {
+                try!(word(&mut self.s, "#($"));
+                try!(self.print_ident(name));
+                word(&mut self.s, ")")
+            }
         }
     }
 

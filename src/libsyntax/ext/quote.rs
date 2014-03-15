@@ -560,7 +560,9 @@ fn mk_tt(cx: &ExtCtxt, sp: Span, tt: &ast::TokenTree) -> Vec<@ast::Stmt> {
                                     vec!(e_to_toks));
 
             vec!(cx.stmt_expr(e_push))
-        }
+        },
+
+        ast::TTMatchCount(_, _) => fail!("TTMatchCount in quote!")
     }
 }
 

@@ -48,7 +48,7 @@ use ast::{StmtExpr, StmtSemi, StmtMac, StructDef, StructField};
 use ast::{StructVariantKind, BiSub};
 use ast::StrStyle;
 use ast::{SelfRegion, SelfStatic, SelfUniq, SelfValue};
-use ast::{TokenTree, TraitMethod, TraitRef, TTDelim, TTSeq, TTTok};
+use ast::{TokenTree, TraitMethod, TraitRef, TTDelim, TTSeq, TTTok, TTMatchCount};
 use ast::{TTNonterminal, TupleVariantKind, Ty, Ty_, TyBot, TyBox};
 use ast::{TypeField, TyFixedLengthVec, TyClosure, TyBareFn, TyTypeof};
 use ast::{TyInfer, TypeMethod};
@@ -2121,6 +2121,15 @@ impl<'a> Parser<'a> {
                   let token_str = p.this_token_to_str();
                   p.fatal(format!("incorrect close delimiter: `{}`",
                                   token_str))
+              },
+              token::POUND if p.quote_depth > 0u && p.look_ahead(1, |t| *t == token::LPAREN) => {
+                p.bump();
+                let sp = p.span;
+                p.expect(&token::LPAREN);
+                p.expect(&token::DOLLAR);
+                let ident = p.parse_ident();
+                p.expect(&token::RPAREN);
+                TTMatchCount(mk_sp(sp.lo, p.span.hi), ident)
               },
               /* we ought to allow different depths of unquotation */
               token::DOLLAR if p.quote_depth > 0u => {
