@@ -16,7 +16,7 @@
 fn foo1() -> int { 1 }
 
 // !fooA AND !bar
-#[cfg(not(fooA, bar))]
+#[cfg(not(fooA), not(bar))]
 fn foo2() -> int { 2 }
 
 // fooC OR (fooB AND !bar)
@@ -24,8 +24,16 @@ fn foo2() -> int { 2 }
 #[cfg(fooB, not(bar))]
 fn foo2() -> int { 3 }
 
+// fooA AND bar
+#[cfg(fooA, bar)]
+fn foo3() -> int { 2 }
+
+// !(fooA AND bar)
+#[cfg(not(fooA, bar))]
+fn foo3() -> int { 3 }
 
 pub fn main() {
     assert_eq!(1, foo1());
     assert_eq!(3, foo2());
+    assert_eq!(3, foo3());
 }
