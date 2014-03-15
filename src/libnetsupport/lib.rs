@@ -183,9 +183,12 @@ pub fn sockaddr_to_network_addr(sa: *libc::sockaddr, useLocal: bool) -> Option<~
 #[cfg(not(target_os = "linux"))]
 pub fn sockaddr_to_network_addr(sa: *libc::sockaddr, _useLocal: bool) -> Option<~NetworkAddress> {
     unsafe {
-        Some(~IpAddress(sockaddr_to_addr(cast::transmute(sa),
-				     mem::size_of::<libc::sockaddr_storage>()
-				    ).unwrap().ip))
+        Some(
+            ~IpAddress(
+                sockaddr_to_addr(cast::transmute(sa),
+                     mem::size_of::<libc::sockaddr_storage>()
+                ).unwrap().ip)
+        )
     }
 }
 
