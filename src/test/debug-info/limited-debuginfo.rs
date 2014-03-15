@@ -14,10 +14,10 @@
 
 // Make sure functions have proper names
 // debugger:info functions
-// check:static void [...]main();
-// check:static void [...]some_function();
-// check:static void [...]some_other_function();
-// check:static void [...]zzz();
+// check:[...]void[...]main([...]);
+// check:[...]void[...]some_function([...]);
+// check:[...]void[...]some_other_function([...]);
+// check:[...]void[...]zzz([...]);
 
 // debugger:rbreak zzz
 // debugger:run
