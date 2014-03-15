@@ -137,6 +137,7 @@ pub fn sockaddr_to_addr(storage: &libc::sockaddr_storage,
     }
 }
 
+#[cfg(target_os = "linux")]
 pub fn sockaddr_to_network_addr(sa: *libc::sockaddr, useLocal: bool) -> Option<~NetworkAddress> {
     unsafe {
         if (*sa).sa_family as libc::c_int == libc::AF_PACKET {
@@ -179,6 +180,17 @@ pub fn sockaddr_to_network_addr(sa: *libc::sockaddr, useLocal: bool) -> Option<~
     }
 }
 
+#[cfg(not(target_os = "linux"))]
+pub fn sockaddr_to_network_addr(sa: *libc::sockaddr, _useLocal: bool) -> Option<~NetworkAddress> {
+    unsafe {
+        Some(~IpAddress(sockaddr_to_addr(cast::transmute(sa),
+				     mem::size_of::<libc::sockaddr_storage>()
+				    ).unwrap().ip))
+    }
+}
+
+
+#[cfg(target_os = "linux")]
 pub fn network_addr_to_sockaddr(na: ~NetworkAddress) -> (libc::sockaddr_storage, uint) {
     unsafe {
         match na {
@@ -198,6 +210,14 @@ pub fn network_addr_to_sockaddr(na: ~NetworkAddress) -> (libc::sockaddr_storage,
             }
         }
     }
+}
+
+#[cfg(not(target_os = "linux"))]
+pub fn network_addr_to_sockaddr(na: ~NetworkAddress) -> (libc::sockaddr_storage, uint) {
+     match na {
+         ~IpAddress(ip) => addr_to_sockaddr(ip::SocketAddr { ip: ip, port : 0}),
+         _ => fail!("Layer 2 networking not supported on this OS")
+     }
 }
 
 pub fn sockaddr_to_network_addrs(sa: *libc::sockaddr)
@@ -268,6 +288,7 @@ pub fn get_network_interfaces() -> Vec<~NetworkInterface> {
 
 }
 
+#[cfg(target_os = "linux")]
 pub fn protocol_to_libc(protocol: raw::Protocol)
     -> (libc::c_int, libc::c_int, libc::c_int) {
     let eth_p_all: u16 = htons(0x0003);
@@ -284,6 +305,22 @@ pub fn protocol_to_libc(protocol: raw::Protocol)
             => (libc::AF_INET, libc::SOCK_RAW, proto as libc::c_int),
         raw::TransportProtocol(raw::Ipv6TransportProtocol(proto))
             => (libc::AF_INET6, libc::SOCK_RAW, proto as libc::c_int)
+    }
+}
+
+#[cfg(not(target_os = "linux"))]
+pub fn protocol_to_libc(protocol: raw::Protocol)
+    -> (libc::c_int, libc::c_int, libc::c_int) {
+    match protocol {
+        raw::NetworkProtocol(raw::Ipv4NetworkProtocol)
+            => (libc::AF_INET, libc::SOCK_RAW, libc::IPPROTO_RAW),
+        raw::NetworkProtocol(raw::Ipv6NetworkProtocol)
+            => (libc::AF_INET6, libc::SOCK_RAW, libc::IPPROTO_RAW),
+        raw::TransportProtocol(raw::Ipv4TransportProtocol(proto))
+            => (libc::AF_INET, libc::SOCK_RAW, proto as libc::c_int),
+        raw::TransportProtocol(raw::Ipv6TransportProtocol(proto))
+            => (libc::AF_INET6, libc::SOCK_RAW, proto as libc::c_int),
+        _   => fail!("Layer 2 networking not supported on this OS")
     }
 }
 

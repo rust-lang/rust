@@ -672,6 +672,7 @@ pub mod types {
                 pub enum timezone {}
             }
             pub mod bsd44 {
+                use libc::types::common::c95::{c_void};
                 use libc::types::os::arch::c95::{c_char, c_int, c_uint};
 
                 pub type socklen_t = u32;
@@ -734,6 +735,16 @@ pub mod types {
                     sun_family: sa_family_t,
                     sun_path: [c_char, ..104]
                 }
+                pub struct ifaddrs {
+                    ifa_next: *ifaddrs,
+                    ifa_name: *c_char,
+                    ifa_flags: c_uint,
+                    ifa_addr: *sockaddr,
+                    ifa_netmask: *sockaddr,
+                    ifa_dstaddr: *sockaddr,
+                    ifa_data: *c_void
+                }
+
             }
         }
 
@@ -2900,6 +2911,8 @@ pub mod consts {
             pub static SO_BROADCAST: c_int = 0x0020;
             pub static SO_REUSEADDR: c_int = 0x0004;
 
+            pub static IFF_LOOPBACK: c_int = 0x8;
+
             pub static SHUT_RD: c_int = 0;
             pub static SHUT_WR: c_int = 1;
             pub static SHUT_RDWR: c_int = 2;
@@ -2920,6 +2933,8 @@ pub mod consts {
             pub static MAP_STACK : c_int = 0x0400;
             pub static MAP_NOSYNC : c_int = 0x0800;
             pub static MAP_NOCORE : c_int = 0x020000;
+
+            pub static IPPROTO_RAW : c_int = 255;
         }
         pub mod sysconf {
             use libc::types::os::arch::c95::c_int;
