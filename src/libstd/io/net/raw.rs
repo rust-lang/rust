@@ -985,7 +985,7 @@ pub mod test {
                 $($a)* #[test] fn green() { f() }
                 $($a)* #[test] fn native() {
                     use native;
-                    let (p, c) = Chan::new();
+                    let (p, c) = channel();
                     native::task::spawn(proc() { c.send(f()) });
                     p.recv();
                 }
@@ -1199,8 +1199,8 @@ pub mod test {
 
         build_udp4_packet(packet.as_mut_slice(), 0);
 
-        let (port, chan) = Chan::new();
-        let (port2, chan2) = Chan::new();
+        let (port, chan) = channel();
+        let (port2, chan2) = channel();
 
         spawn( proc() {
             let mut buf: ~[u8] = ~[0, ..128];
@@ -1253,8 +1253,8 @@ pub mod test {
 
         build_udp4_packet(packet.as_mut_slice(), ETHERNET_HEADER_LEN as uint);
 
-        let (port, chan) = Chan::new();
-        let (port2, chan2) = Chan::new();
+        let (port, chan) = channel();
+        let (port2, chan2) = channel();
 
         spawn( proc() {
             let mut buf: ~[u8] = ~[0, ..128];
