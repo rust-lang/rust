@@ -101,9 +101,18 @@ extern "C" {
     pub fn _Unwind_Backtrace(trace: _Unwind_Trace_Fn,
                              trace_argument: *libc::c_void)
                 -> _Unwind_Reason_Code;
-    #[cfg(not(target_os = "android"))]
+    #[cfg(stage0, not(target_os = "android"))]
     pub fn _Unwind_GetIP(ctx: *_Unwind_Context) -> libc::uintptr_t;
-    #[cfg(not(target_os = "android"))]
+    #[cfg(stage0, not(target_os = "android"))]
+    pub fn _Unwind_FindEnclosingFunction(pc: *libc::c_void) -> *libc::c_void;
+
+    #[cfg(not(stage0),
+          not(target_os = "android"),
+          not(target_os = "linux", target_arch = "arm"))]
+    pub fn _Unwind_GetIP(ctx: *_Unwind_Context) -> libc::uintptr_t;
+    #[cfg(not(stage0),
+          not(target_os = "android"),
+          not(target_os = "linux", target_arch = "arm"))]
     pub fn _Unwind_FindEnclosingFunction(pc: *libc::c_void) -> *libc::c_void;
 }
 
@@ -111,6 +120,7 @@ extern "C" {
 // of the macro. This is all copy/pasted directly from the header file with the
 // definition of _Unwind_GetIP.
 #[cfg(target_os = "android")]
+#[cfg(target_os = "linux", target_os = "arm")]
 pub unsafe fn _Unwind_GetIP(ctx: *_Unwind_Context) -> libc::uintptr_t {
     #[repr(C)]
     enum _Unwind_VRS_Result {
@@ -154,6 +164,7 @@ pub unsafe fn _Unwind_GetIP(ctx: *_Unwind_Context) -> libc::uintptr_t {
 
 // This function also doesn't exist on android, so make it a no-op
 #[cfg(target_os = "android")]
+#[cfg(target_os = "linux", target_os = "arm")]
 pub unsafe fn _Unwind_FindEnclosingFunction(pc: *libc::c_void) -> *libc::c_void{
     pc
 }
