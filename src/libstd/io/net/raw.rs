@@ -1236,7 +1236,7 @@ pub mod test {
             Err(_) => fail!()
         }
         tx2.send(());
-    } #[cfg(hasroot)])
+    } #[cfg(hasroot)] #[ignore(cfg(not(target_os = "linux")))])
 
     iotest!(fn layer2_test() {
         let interface = get_test_interface();
@@ -1291,6 +1291,6 @@ pub mod test {
             Err(_) => fail!()
         }
         tx2.send(());
-    } #[cfg(hasroot)])
+    } #[cfg(hasroot)] #[ignore(cfg(not(target_os = "linux")))])
 
 }
