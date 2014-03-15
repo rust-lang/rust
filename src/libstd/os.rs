@@ -1392,7 +1392,6 @@ mod tests {
     use rand::Rng;
     use rand;
 
-
     #[test]
     pub fn last_os_error() {
         debug!("{}", os::last_os_error());

@@ -19,7 +19,6 @@
 
 extern crate syntax;
 extern crate rustc;
-extern crate extra;
 extern crate serialize;
 extern crate sync;
 extern crate getopts;

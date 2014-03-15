@@ -11,7 +11,6 @@
 // except according to those terms.
 
 // rustc --test ignores2.rs && ./ignores2
-extern crate extra;
 
 use std::path::{Path};
 use std::path;

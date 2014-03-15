@@ -13,7 +13,6 @@
 #[feature(globs)];
 #[allow(dead_assignment)];
 
-extern crate extra;
 use std::vec::*;
 
 pub fn main() {

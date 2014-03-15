@@ -8,10 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-extern crate extra;
-
 fn test1() {
     let mut s: ~str = ~"hello";
     s.push_str("world");

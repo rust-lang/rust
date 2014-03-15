@@ -18,12 +18,10 @@ Simple compression
 #[crate_type = "rlib"];
 #[crate_type = "dylib"];
 #[license = "MIT/ASL2"];
-#[allow(missing_doc)];
 
-extern crate extra;
 use std::libc::{c_void, size_t, c_int};
 use std::libc;
-use extra::c_vec::CVec;
+use std::c_vec::CVec;
 
 pub mod rustrt {
     use std::libc::{c_int, c_void, size_t};

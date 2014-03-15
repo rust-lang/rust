@@ -10,8 +10,6 @@
 
 #[feature(managed_boxes)];
 
-extern crate extra;
-
 use std::task;
 
 struct complainer {

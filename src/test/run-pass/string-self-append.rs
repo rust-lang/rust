@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate extra;
-
 pub fn main() {
     // Make sure we properly handle repeated self-appends.
     let mut a: ~str = ~"A";

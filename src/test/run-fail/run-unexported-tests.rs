@@ -12,8 +12,6 @@
 // compile-flags:--test
 // check-stdout
 
-extern crate extra;
-
 mod m {
     pub fn exported() { }
 

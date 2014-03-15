@@ -50,6 +50,8 @@ li {list-style-type: none; }
 * [The `test` library containing the unit-testing & micro-benchmark framework](test/index.html)
 * [The `time` library](time/index.html)
 * [The `uuid` 128-bit universally unique identifier library](uuid/index.html)
+* [The `url` library](url/index.html)
+* [The `workcache` library](workcache/index.html)
 
 # Tooling
 

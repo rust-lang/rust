@@ -13,7 +13,6 @@
 
 #[feature(quote)];
 
-extern crate extra;
 extern crate syntax;
 
 use std::io::*;

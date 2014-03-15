@@ -16,7 +16,7 @@
 #[attr3];
 #[attr4(attr5)];
 
-#[crate_id="extra#0.1"];
+#[crate_id="foobar#0.1"];
 
 // These are attributes of the following mod
 #[attr1 = "val"]
@@ -140,8 +140,6 @@ mod test_attr_inner_then_outer_multi {
 }
 
 mod test_distinguish_syntax_ext {
-    extern crate extra;
-
     pub fn f() {
         format!("test{}", "s");
         #[attr = "val"]
