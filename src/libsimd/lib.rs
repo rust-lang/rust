@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #[crate_id = "simd#0.10-pre"];
+#[crate_type = "dylib"];
 #[crate_type = "rlib"];
 #[license = "MIT/ASL2"];
 #[comment = "A link-time library to facilitate access to SIMD types & operations"];
