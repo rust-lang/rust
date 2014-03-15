@@ -85,34 +85,34 @@ fn ty_size(ty: Type) -> uint {
     }
 }
 
-fn classify_ret_ty(ty: Type) -> ArgType {
+fn classify_ret_ty(ccx: &CrateContext, ty: Type) -> ArgType {
     if is_reg_ty(ty) {
         return ArgType::direct(ty, None, None, None);
     }
     let size = ty_size(ty);
     if size <= 4 {
         let llty = if size <= 1 {
-            Type::i8()
+            Type::i8(ccx)
         } else if size <= 2 {
-            Type::i16()
+            Type::i16(ccx)
         } else {
-            Type::i32()
+            Type::i32(ccx)
         };
         return ArgType::direct(ty, Some(llty), None, None);
     }
     ArgType::indirect(ty, Some(StructRetAttribute))
 }
 
-fn classify_arg_ty(ty: Type) -> ArgType {
+fn classify_arg_ty(ccx: &CrateContext, ty: Type) -> ArgType {
     if is_reg_ty(ty) {
         return ArgType::direct(ty, None, None, None);
     }
     let align = ty_align(ty);
     let size = ty_size(ty);
     let llty = if align <= 4 {
-        Type::array(&Type::i32(), ((size + 3) / 4) as u64)
+        Type::array(&Type::i32(ccx), ((size + 3) / 4) as u64)
     } else {
-        Type::array(&Type::i64(), ((size + 7) / 8) as u64)
+        Type::array(&Type::i64(ccx), ((size + 7) / 8) as u64)
     };
     ArgType::direct(ty, Some(llty), None, None)
 }
@@ -127,20 +127,20 @@ fn is_reg_ty(ty: Type) -> bool {
     }
 }
 
-pub fn compute_abi_info(_ccx: &CrateContext,
+pub fn compute_abi_info(ccx: &CrateContext,
                         atys: &[Type],
                         rty: Type,
                         ret_def: bool) -> FnType {
     let mut arg_tys = Vec::new();
     for &aty in atys.iter() {
-        let ty = classify_arg_ty(aty);
+        let ty = classify_arg_ty(ccx, aty);
         arg_tys.push(ty);
     }
 
     let ret_ty = if ret_def {
-        classify_ret_ty(rty)
+        classify_ret_ty(ccx, rty)
     } else {
-        ArgType::direct(Type::void(), None, None, None)
+        ArgType::direct(Type::void(ccx), None, None, None)
     };
 
     return FnType {

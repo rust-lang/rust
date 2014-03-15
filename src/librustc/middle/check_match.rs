@@ -16,7 +16,7 @@ use middle::pat_util::*;
 use middle::ty::*;
 use middle::ty;
 use middle::typeck::MethodMap;
-use middle::moves;
+use util::nodemap::NodeSet;
 use util::ppaux::ty_to_str;
 
 use std::cmp;
@@ -33,7 +33,7 @@ use syntax::visit::{Visitor, FnKind};
 struct MatchCheckCtxt<'a> {
     tcx: &'a ty::ctxt,
     method_map: MethodMap,
-    moves_map: moves::MovesMap
+    moves_map: &'a NodeSet
 }
 
 impl<'a> Visitor<()> for MatchCheckCtxt<'a> {
@@ -50,7 +50,7 @@ impl<'a> Visitor<()> for MatchCheckCtxt<'a> {
 
 pub fn check_crate(tcx: &ty::ctxt,
                    method_map: MethodMap,
-                   moves_map: moves::MovesMap,
+                   moves_map: &NodeSet,
                    krate: &Crate) {
     let mut cx = MatchCheckCtxt {
         tcx: tcx,
@@ -953,8 +953,7 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
                     by_ref_span = Some(span);
                 }
                 BindByValue(_) => {
-                    let moves_map = cx.moves_map.borrow();
-                    if moves_map.get().contains(&id) {
+                    if cx.moves_map.contains(&id) {
                         any_by_move = true;
                     }
                 }
@@ -991,8 +990,7 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
             if pat_is_binding(def_map, p) {
                 match p.node {
                     PatIdent(_, _, sub) => {
-                        let moves_map = cx.moves_map.borrow();
-                        if moves_map.get().contains(&p.id) {
+                        if cx.moves_map.contains(&p.id) {
                             check_move(p, sub);
                         }
                     }

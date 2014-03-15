@@ -261,10 +261,7 @@ impl<'a> GuaranteeLifetimeContext<'a> {
         match cmt.guarantor().cat {
             mc::cat_local(id) |
             mc::cat_arg(id) => {
-                let moved_variables_set = self.bccx
-                                              .moved_variables_set
-                                              .borrow();
-                moved_variables_set.get().contains(&id)
+                self.bccx.moved_variables_set.contains(&id)
             }
             mc::cat_rvalue(..) |
             mc::cat_static_item |

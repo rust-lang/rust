@@ -161,8 +161,7 @@ fn allocate_cbox<'a>(bcx: &'a Block<'a>,
                      cdata_ty: ty::t)
                      -> Result<'a> {
     let _icx = push_ctxt("closure::allocate_cbox");
-    let ccx = bcx.ccx();
-    let tcx = ccx.tcx;
+    let tcx = bcx.tcx();
 
     // Allocate and initialize the box:
     match sigil {
@@ -197,7 +196,7 @@ pub fn store_environment<'a>(
                          -> ClosureResult<'a> {
     let _icx = push_ctxt("closure::store_environment");
     let ccx = bcx.ccx();
-    let tcx = ccx.tcx;
+    let tcx = ccx.tcx();
 
     // compute the type of the closure
     let cdata_ty = mk_closure_tys(tcx, bound_values.as_slice());
@@ -343,7 +342,7 @@ fn load_environment<'a>(bcx: &'a Block<'a>, cdata_ty: ty::t,
 
 fn fill_fn_pair(bcx: &Block, pair: ValueRef, llfn: ValueRef, llenvptr: ValueRef) {
     Store(bcx, llfn, GEPi(bcx, pair, [0u, abi::fn_field_code]));
-    let llenvptr = PointerCast(bcx, llenvptr, Type::i8p());
+    let llenvptr = PointerCast(bcx, llenvptr, Type::i8p(bcx.ccx()));
     Store(bcx, llenvptr, GEPi(bcx, pair, [0u, abi::fn_field_box]));
 }
 
@@ -433,7 +432,7 @@ pub fn get_wrapper_for_bare_fn(ccx: &CrateContext,
         }
     }
 
-    let tcx = ccx.tcx;
+    let tcx = ccx.tcx();
 
     debug!("get_wrapper_for_bare_fn(closure_ty={})", closure_ty.repr(tcx));
 
@@ -510,7 +509,7 @@ pub fn make_closure_from_bare_fn<'a>(bcx: &'a Block<'a>,
                                      -> DatumBlock<'a, Expr>  {
     let scratch = rvalue_scratch_datum(bcx, closure_ty, "__adjust");
     let wrapper = get_wrapper_for_bare_fn(bcx.ccx(), closure_ty, def, fn_ptr, true);
-    fill_fn_pair(bcx, scratch.val, wrapper, C_null(Type::i8p()));
+    fill_fn_pair(bcx, scratch.val, wrapper, C_null(Type::i8p(bcx.ccx())));
 
     DatumBlock(bcx, scratch.to_expr_datum())
 }

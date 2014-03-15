@@ -126,23 +126,18 @@ pub fn lookup_variant_by_id(tcx: &ty::ctxt,
             }
         }
     } else {
-        {
-            let extern_const_variants = tcx.extern_const_variants.borrow();
-            match extern_const_variants.get().find(&variant_def) {
-                Some(&e) => return e,
-                None => {}
-            }
+        match tcx.extern_const_variants.borrow().get().find(&variant_def) {
+            Some(&e) => return e,
+            None => {}
         }
         let maps = astencode::Maps {
             root_map: @RefCell::new(HashMap::new()),
             method_map: @RefCell::new(FnvHashMap::new()),
             vtable_map: @RefCell::new(NodeMap::new()),
-            capture_map: @RefCell::new(NodeMap::new())
+            capture_map: RefCell::new(NodeMap::new())
         };
         let e = match csearch::maybe_get_item_ast(tcx, enum_def,
-            |a, b, c, d| astencode::decode_inlined_item(a, b,
-                                                        maps,
-                                                        c, d)) {
+            |a, b, c, d| astencode::decode_inlined_item(a, b, &maps, c, d)) {
             csearch::found(ast::IIItem(item)) => match item.node {
                 ItemEnum(ast::EnumDef { variants: ref variants }, _) => {
                     variant_expr(variants.as_slice(), variant_def.node)
@@ -151,12 +146,8 @@ pub fn lookup_variant_by_id(tcx: &ty::ctxt,
             },
             _ => None
         };
-        {
-            let mut extern_const_variants = tcx.extern_const_variants
-                                               .borrow_mut();
-            extern_const_variants.get().insert(variant_def, e);
-            return e;
-        }
+        tcx.extern_const_variants.borrow_mut().get().insert(variant_def, e);
+        return e;
     }
 }
 
@@ -187,10 +178,10 @@ pub fn lookup_const_by_id(tcx: &ty::ctxt, def_id: ast::DefId)
             root_map: @RefCell::new(HashMap::new()),
             method_map: @RefCell::new(FnvHashMap::new()),
             vtable_map: @RefCell::new(NodeMap::new()),
-            capture_map: @RefCell::new(NodeMap::new())
+            capture_map: RefCell::new(NodeMap::new())
         };
         let e = match csearch::maybe_get_item_ast(tcx, def_id,
-            |a, b, c, d| astencode::decode_inlined_item(a, b, maps, c, d)) {
+            |a, b, c, d| astencode::decode_inlined_item(a, b, &maps, c, d)) {
             csearch::found(ast::IIItem(item)) => match item.node {
                 ItemStatic(_, ast::MutImmutable, const_expr) => Some(const_expr),
                 _ => None

@@ -359,7 +359,7 @@ fn variant_opt(bcx: &Block, pat_id: ast::NodeId) -> Opt {
     let def_map = ccx.tcx.def_map.borrow();
     match def_map.get().get_copy(&pat_id) {
         ast::DefVariant(enum_id, var_id, _) => {
-            let variants = ty::enum_variants(ccx.tcx, enum_id);
+            let variants = ty::enum_variants(ccx.tcx(), enum_id);
             for v in (*variants).iter() {
                 if var_id == v.id {
                     return var(v.disr_val,
@@ -960,7 +960,7 @@ fn get_options(bcx: &Block, m: &[Match], col: uint) -> Vec<Opt> {
         let cur = *br.pats.get(col);
         match cur.node {
             ast::PatLit(l) => {
-                add_to_set(ccx.tcx, &mut found, lit(ExprLit(l)));
+                add_to_set(ccx.tcx(), &mut found, lit(ExprLit(l)));
             }
             ast::PatIdent(..) => {
                 // This is one of: an enum variant, a unit-like struct, or a
@@ -971,15 +971,15 @@ fn get_options(bcx: &Block, m: &[Match], col: uint) -> Vec<Opt> {
                 };
                 match opt_def {
                     Some(ast::DefVariant(..)) => {
-                        add_to_set(ccx.tcx, &mut found,
+                        add_to_set(ccx.tcx(), &mut found,
                                    variant_opt(bcx, cur.id));
                     }
                     Some(ast::DefStruct(..)) => {
-                        add_to_set(ccx.tcx, &mut found,
+                        add_to_set(ccx.tcx(), &mut found,
                                    lit(UnitLikeStructLit(cur.id)));
                     }
                     Some(ast::DefStatic(const_did, false)) => {
-                        add_to_set(ccx.tcx, &mut found,
+                        add_to_set(ccx.tcx(), &mut found,
                                    lit(ConstLit(const_did)));
                     }
                     _ => {}
@@ -995,18 +995,18 @@ fn get_options(bcx: &Block, m: &[Match], col: uint) -> Vec<Opt> {
                 match opt_def {
                     Some(ast::DefFn(..)) |
                     Some(ast::DefVariant(..)) => {
-                        add_to_set(ccx.tcx, &mut found,
+                        add_to_set(ccx.tcx(), &mut found,
                                    variant_opt(bcx, cur.id));
                     }
                     Some(ast::DefStatic(const_did, false)) => {
-                        add_to_set(ccx.tcx, &mut found,
+                        add_to_set(ccx.tcx(), &mut found,
                                    lit(ConstLit(const_did)));
                     }
                     _ => {}
                 }
             }
             ast::PatRange(l1, l2) => {
-                add_to_set(ccx.tcx, &mut found, range(l1, l2));
+                add_to_set(ccx.tcx(), &mut found, range(l1, l2));
             }
             ast::PatVec(ref before, slice, ref after) => {
                 let (len, vec_opt) = match slice {
@@ -2224,7 +2224,7 @@ fn bind_irrefutable_pat<'a>(
             match def_map.get().find(&pat.id) {
                 Some(&ast::DefVariant(enum_id, var_id, _)) => {
                     let repr = adt::represent_node(bcx, pat.id);
-                    let vinfo = ty::enum_variant_with_id(ccx.tcx,
+                    let vinfo = ty::enum_variant_with_id(ccx.tcx(),
                                                          enum_id,
                                                          var_id);
                     let args = extract_variant_args(bcx,

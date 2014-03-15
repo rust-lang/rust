@@ -18,6 +18,7 @@ use middle::typeck;
 use middle::moves;
 use middle::dataflow::DataFlowContext;
 use middle::dataflow::DataFlowOperator;
+use util::nodemap::NodeSet;
 use util::ppaux::{note_and_explain_region, Repr, UserString};
 
 use std::cell::{Cell, RefCell};
@@ -72,9 +73,9 @@ impl<'a> Visitor<()> for BorrowckCtxt<'a> {
 
 pub fn check_crate(tcx: &ty::ctxt,
                    method_map: typeck::MethodMap,
-                   moves_map: moves::MovesMap,
-                   moved_variables_set: moves::MovedVariablesSet,
-                   capture_map: moves::CaptureMap,
+                   moves_map: &NodeSet,
+                   moved_variables_set: &NodeSet,
+                   capture_map: &moves::CaptureMap,
                    krate: &ast::Crate)
                    -> root_map {
     let mut bccx = BorrowckCtxt {
@@ -157,9 +158,9 @@ fn borrowck_fn(this: &mut BorrowckCtxt,
 pub struct BorrowckCtxt<'a> {
     tcx: &'a ty::ctxt,
     method_map: typeck::MethodMap,
-    moves_map: moves::MovesMap,
-    moved_variables_set: moves::MovedVariablesSet,
-    capture_map: moves::CaptureMap,
+    moves_map: &'a NodeSet,
+    moved_variables_set: &'a NodeSet,
+    capture_map: &'a moves::CaptureMap,
     root_map: root_map,
 
     // Statistics:
@@ -416,8 +417,7 @@ impl<'a> BorrowckCtxt<'a> {
     }
 
     pub fn is_move(&self, id: ast::NodeId) -> bool {
-        let moves_map = self.moves_map.borrow();
-        moves_map.get().contains(&id)
+        self.moves_map.contains(&id)
     }
 
     pub fn mc(&self) -> mc::MemCategorizationContext<TcxTyper<'a>> {

@@ -339,8 +339,8 @@ pub fn trans_fail<'a>(
     let v_filename = C_cstr(bcx.ccx(),
                             token::intern_and_get_ident(loc.file.name));
     let v_line = loc.line as int;
-    let v_str = PointerCast(bcx, v_fail_str, Type::i8p());
-    let v_filename = PointerCast(bcx, v_filename, Type::i8p());
+    let v_str = PointerCast(bcx, v_fail_str, Type::i8p(ccx));
+    let v_filename = PointerCast(bcx, v_filename, Type::i8p(ccx));
     let args = vec!(v_str, v_filename, C_int(ccx, v_line));
     let did = langcall(bcx, Some(sp), "", FailFnLangItem);
     let bcx = callee::trans_lang_call(bcx,

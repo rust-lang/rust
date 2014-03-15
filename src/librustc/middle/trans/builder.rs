@@ -25,7 +25,7 @@ use syntax::codemap::Span;
 
 pub struct Builder<'a> {
     llbuilder: BuilderRef,
-    ccx: &'a CrateContext<'a>,
+    ccx: &'a CrateContext,
 }
 
 // This is a really awful way to get a zero-length c-string, but better (and a
@@ -536,13 +536,13 @@ impl<'a> Builder<'a> {
         // Small vector optimization. This should catch 100% of the cases that
         // we care about.
         if ixs.len() < 16 {
-            let mut small_vec = [ C_i32(0), ..16 ];
+            let mut small_vec = [ C_i32(self.ccx, 0), ..16 ];
             for (small_vec_e, &ix) in small_vec.mut_iter().zip(ixs.iter()) {
-                *small_vec_e = C_i32(ix as i32);
+                *small_vec_e = C_i32(self.ccx, ix as i32);
             }
             self.inbounds_gep(base, small_vec.slice(0, ixs.len()))
         } else {
-            let v = ixs.iter().map(|i| C_i32(*i as i32)).collect::<Vec<ValueRef> >();
+            let v = ixs.iter().map(|i| C_i32(self.ccx, *i as i32)).collect::<Vec<ValueRef>>();
             self.count_insn("gepi");
             self.inbounds_gep(base, v.as_slice())
         }
@@ -762,7 +762,7 @@ impl<'a> Builder<'a> {
             self.count_insn("inlineasm");
             let asm = comment_text.with_c_str(|c| {
                 unsafe {
-                    llvm::LLVMConstInlineAsm(Type::func([], &Type::void()).to_ref(),
+                    llvm::LLVMConstInlineAsm(Type::func([], &Type::void(self.ccx)).to_ref(),
                                              c, noname(), False, False)
                 }
             });
@@ -860,8 +860,9 @@ impl<'a> Builder<'a> {
         unsafe {
             let elt_ty = val_ty(elt);
             let undef = llvm::LLVMGetUndef(Type::vector(&elt_ty, num_elts as u64).to_ref());
-            let vec = self.insert_element(undef, elt, C_i32(0));
-            self.shuffle_vector(vec, undef, C_null(Type::vector(&Type::i32(), num_elts as u64)))
+            let vec = self.insert_element(undef, elt, C_i32(self.ccx, 0));
+            let vec_i32_ty = Type::vector(&Type::i32(self.ccx), num_elts as u64);
+            self.shuffle_vector(vec, undef, C_null(vec_i32_ty))
         }
     }
 
