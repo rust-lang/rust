@@ -18,6 +18,9 @@ Core encoding and decoding interfaces.
 #[crate_type = "rlib"];
 #[crate_type = "dylib"];
 #[license = "MIT/ASL2"];
+#[doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
+      html_favicon_url = "http://www.rust-lang.org/favicon.ico",
+      html_root_url = "http://static.rust-lang.org/doc/master")];
 #[allow(missing_doc)];
 #[forbid(non_camel_case_types)];
 #[feature(macro_rules, managed_boxes, default_type_params)];
