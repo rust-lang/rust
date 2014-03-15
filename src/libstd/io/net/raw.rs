@@ -985,9 +985,9 @@ pub mod test {
                 $($a)* #[test] fn green() { f() }
                 $($a)* #[test] fn native() {
                     use native;
-                    let (p, c) = channel();
-                    native::task::spawn(proc() { c.send(f()) });
-                    p.recv();
+                    let (tx, rx) = channel();
+                    native::task::spawn(proc() { tx.send(f()) });
+                    rx.recv();
                 }
             }
         )
@@ -1199,14 +1199,14 @@ pub mod test {
 
         build_udp4_packet(packet.as_mut_slice(), 0);
 
-        let (port, chan) = channel();
-        let (port2, chan2) = channel();
+        let (tx, rx) = channel();
+        let (tx2, rx2) = channel();
 
         spawn( proc() {
             let mut buf: ~[u8] = ~[0, ..128];
             match RawSocket::new(DataLinkProtocol(CookedEthernetProtocol(EtherTypes::Ipv4))) {
                 Ok(mut sock) => {
-                    chan.send(());
+                    tx.send(());
                     loop {
                         match sock.recvfrom(buf) {
                             Ok((len, Some(~NetworkAddress(ni)))) => {
@@ -1222,12 +1222,12 @@ pub mod test {
                 },
                 Err(_) => fail!()
             }
-            port2.recv();
+            rx2.recv();
         });
 
         match RawSocket::new(DataLinkProtocol(CookedEthernetProtocol(EtherTypes::Ipv4))) {
             Ok(mut sock) => {
-                port.recv();
+                rx.recv();
                 match sock.sendto(packet, ~NetworkAddress(~interface2)) {
                     Ok(res) => assert_eq!(res as uint, packet.len()),
                     Err(_) => fail!()
@@ -1235,7 +1235,7 @@ pub mod test {
             },
             Err(_) => fail!()
         }
-        chan2.send(());
+        tx2.send(());
     } #[cfg(hasroot)])
 
     iotest!(fn layer2_test() {
@@ -1253,14 +1253,14 @@ pub mod test {
 
         build_udp4_packet(packet.as_mut_slice(), ETHERNET_HEADER_LEN as uint);
 
-        let (port, chan) = channel();
-        let (port2, chan2) = channel();
+        let (tx, rx) = channel();
+        let (tx2, rx2) = channel();
 
         spawn( proc() {
             let mut buf: ~[u8] = ~[0, ..128];
             match RawSocket::new(DataLinkProtocol(EthernetProtocol)) {
                 Ok(mut sock) => {
-                    chan.send(());
+                    tx.send(());
                     loop {
                         match sock.recvfrom(buf) {
                             Ok((len, Some(~NetworkAddress(ni)))) => {
@@ -1277,12 +1277,12 @@ pub mod test {
                 },
                 Err(_) => fail!()
             }
-            port2.recv();
+            rx2.recv();
         });
 
         match RawSocket::new(DataLinkProtocol(EthernetProtocol)) {
             Ok(mut sock) => {
-                port.recv();
+                rx.recv();
                 match sock.sendto(packet, ~NetworkAddress(~interface2)) {
                     Ok(res) => assert_eq!(res as uint, packet.len()),
                     Err(_) => fail!()
@@ -1290,7 +1290,7 @@ pub mod test {
             },
             Err(_) => fail!()
         }
-        chan2.send(());
+        tx.send(());
     } #[cfg(hasroot)])
 
 }
