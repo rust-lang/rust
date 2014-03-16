@@ -174,12 +174,18 @@ pub enum ItemEnum {
     StaticItem(Static),
     TraitItem(Trait),
     ImplItem(Impl),
+    /// `use` and `extern crate`
     ViewItemItem(ViewItem),
+    /// A method signature only. Used for required methods in traits (ie,
+    /// non-default-methods).
     TyMethodItem(TyMethod),
+    /// A method with a body.
     MethodItem(Method),
     StructFieldItem(StructField),
     VariantItem(Variant),
+    /// `fn`s from an extern block
     ForeignFunctionItem(Function),
+    /// `static`s from an extern block
     ForeignStaticItem(Static),
     MacroItem(Macro),
 }
