@@ -153,7 +153,7 @@ enum LiveNodeKind {
 }
 
 fn live_node_kind_to_str(lnk: LiveNodeKind, cx: &ty::ctxt) -> ~str {
-    let cm = cx.sess.codemap;
+    let cm = cx.sess.codemap();
     match lnk {
         FreeVarNode(s) => format!("Free var node [{}]", cm.span_to_str(s)),
         ExprNode(s)    => format!("Expr node [{}]", cm.span_to_str(s)),

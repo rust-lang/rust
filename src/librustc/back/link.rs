@@ -1352,9 +1352,8 @@ fn add_upstream_rust_crates(args: &mut Vec<~str>, sess: &Session,
     }
 
     // Converts a library file-stem into a cc -l argument
-    fn unlib(config: @session::Config, stem: &str) -> ~str {
-        if stem.starts_with("lib") &&
-            config.os != abi::OsWin32 {
+    fn unlib(config: &session::Config, stem: &str) -> ~str {
+        if stem.starts_with("lib") && config.os != abi::OsWin32 {
             stem.slice(3, stem.len()).to_owned()
         } else {
             stem.to_owned()
@@ -1434,7 +1433,7 @@ fn add_upstream_rust_crates(args: &mut Vec<~str>, sess: &Session,
             // what its name is
             let dir = cratepath.dirname_str().unwrap();
             if !dir.is_empty() { args.push("-L" + dir); }
-            let libarg = unlib(sess.targ_cfg, cratepath.filestem_str().unwrap());
+            let libarg = unlib(&sess.targ_cfg, cratepath.filestem_str().unwrap());
             args.push("-l" + libarg);
         }
     }

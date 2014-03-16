@@ -132,13 +132,11 @@ impl CrateContext {
             let metadata_llmod = format!("{}_metadata", name).with_c_str(|buf| {
                 llvm::LLVMModuleCreateWithNameInContext(buf, llcx)
             });
-            let data_layout: &str = tcx.sess.targ_cfg.target_strs.data_layout;
-            let targ_triple: &str = tcx.sess.targ_cfg.target_strs.target_triple;
-            data_layout.with_c_str(|buf| {
+            tcx.sess.targ_cfg.target_strs.data_layout.with_c_str(|buf| {
                 llvm::LLVMSetDataLayout(llmod, buf);
                 llvm::LLVMSetDataLayout(metadata_llmod, buf);
             });
-            targ_triple.with_c_str(|buf| {
+            tcx.sess.targ_cfg.target_strs.target_triple.with_c_str(|buf| {
                 llvm::LLVMRustSetNormalizedTarget(llmod, buf);
                 llvm::LLVMRustSetNormalizedTarget(metadata_llmod, buf);
             });

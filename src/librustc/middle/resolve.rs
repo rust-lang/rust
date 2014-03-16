@@ -3275,7 +3275,7 @@ impl<'a> Resolver<'a> {
         let import_count = imports.get().len();
         if index != import_count {
             let sn = self.session
-                         .codemap
+                         .codemap()
                          .span_to_snippet(imports.get().get(index).span)
                          .unwrap();
             if sn.contains("::") {
@@ -5449,7 +5449,7 @@ impl<'a> Resolver<'a> {
     // public or private item, we will check the correct thing, dependent on how the import
     // is used.
     fn finalize_import(&mut self, id: NodeId, span: Span) {
-        debug!("finalizing import uses for {}", self.session.codemap.span_to_snippet(span));
+        debug!("finalizing import uses for {}", self.session.codemap().span_to_snippet(span));
 
         if !self.used_imports.contains(&(id, TypeNS)) &&
            !self.used_imports.contains(&(id, ValueNS)) {

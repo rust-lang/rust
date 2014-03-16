@@ -139,9 +139,8 @@ pub fn explain_region_and_span(cx: &ctxt, region: ty::Region)
     };
 
     fn explain_span(cx: &ctxt, heading: &str, span: Span)
-        -> (~str, Option<Span>)
-    {
-        let lo = cx.sess.codemap.lookup_char_pos_adj(span.lo);
+        -> (~str, Option<Span>) {
+        let lo = cx.sess.codemap().lookup_char_pos_adj(span.lo);
         (format!("the {} at {}:{}", heading,
               lo.line, lo.col.to_uint()), Some(span))
     }
@@ -172,28 +171,28 @@ pub fn ReScope_id_to_str(cx: &ctxt, node_id: ast::NodeId) -> ~str {
     match cx.map.find(node_id) {
       Some(ast_map::NodeBlock(ref blk)) => {
         format!("<block at {}>",
-             cx.sess.codemap.span_to_str(blk.span))
+             cx.sess.codemap().span_to_str(blk.span))
       }
       Some(ast_map::NodeExpr(expr)) => {
         match expr.node {
           ast::ExprCall(..) => {
             format!("<call at {}>",
-                 cx.sess.codemap.span_to_str(expr.span))
+                 cx.sess.codemap().span_to_str(expr.span))
           }
           ast::ExprMatch(..) => {
             format!("<match at {}>",
-                 cx.sess.codemap.span_to_str(expr.span))
+                 cx.sess.codemap().span_to_str(expr.span))
           }
           ast::ExprAssignOp(..) |
           ast::ExprUnary(..) |
           ast::ExprBinary(..) |
           ast::ExprIndex(..) => {
             format!("<method at {}>",
-                 cx.sess.codemap.span_to_str(expr.span))
+                 cx.sess.codemap().span_to_str(expr.span))
           }
           _ => {
             format!("<expression at {}>",
-                 cx.sess.codemap.span_to_str(expr.span))
+                 cx.sess.codemap().span_to_str(expr.span))
           }
         }
       }
@@ -972,7 +971,7 @@ impl Repr for ty::BuiltinBounds {
 
 impl Repr for Span {
     fn repr(&self, tcx: &ctxt) -> ~str {
-        tcx.sess.codemap.span_to_str(*self)
+        tcx.sess.codemap().span_to_str(*self)
     }
 }
 

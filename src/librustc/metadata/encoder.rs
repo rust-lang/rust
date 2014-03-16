@@ -68,7 +68,7 @@ pub type EncodeInlinedItem<'a> = 'a |ecx: &EncodeContext,
                                      ii: InlinedItemRef|;
 
 pub struct EncodeParams<'a> {
-    diag: @SpanHandler,
+    diag: &'a SpanHandler,
     tcx: &'a ty::ctxt,
     reexports2: middle::resolve::ExportMap2,
     item_symbols: &'a RefCell<NodeMap<~str>>,
@@ -95,7 +95,7 @@ pub struct Stats {
 }
 
 pub struct EncodeContext<'a> {
-    diag: @SpanHandler,
+    diag: &'a SpanHandler,
     tcx: &'a ty::ctxt,
     stats: @Stats,
     reexports2: middle::resolve::ExportMap2,
@@ -904,7 +904,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
     }
 
     debug!("encoding info for item at {}",
-           ecx.tcx.sess.codemap.span_to_str(item.span));
+           ecx.tcx.sess.codemap().span_to_str(item.span));
 
     let def_id = local_def(item.id);
     match item.node {
@@ -1630,7 +1630,7 @@ impl<'a, 'b> Visitor<()> for MacroDefVisitor<'a, 'b> {
     fn visit_item(&mut self, item: &Item, _: ()) {
         match item.node {
             ItemMac(..) => {
-                let def = self.ecx.tcx.sess.codemap.span_to_snippet(item.span)
+                let def = self.ecx.tcx.sess.codemap().span_to_snippet(item.span)
                     .expect("Unable to find source for macro");
                 self.ebml_w.start_tag(tag_macro_def);
                 self.ebml_w.wr_str(def);
@@ -1901,7 +1901,7 @@ fn encode_metadata_inner(wr: &mut MemWriter, parms: EncodeParams, krate: &Crate)
 // Get the encoded string for a type
 pub fn encoded_ty(tcx: &ty::ctxt, t: ty::t) -> ~str {
     let cx = &tyencode::ctxt {
-        diag: tcx.diag,
+        diag: tcx.sess.diagnostic(),
         ds: def_to_str,
         tcx: tcx,
         abbrevs: tyencode::ac_no_abbrevs};
