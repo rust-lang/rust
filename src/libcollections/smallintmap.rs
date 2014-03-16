@@ -19,7 +19,36 @@ use std::iter::{Enumerate, FilterMap, Rev};
 use std::mem::replace;
 use std::vec;
 
-#[allow(missing_doc)]
+/// A map implementation designed for use with small unsigned integer keys.
+///
+/// Underneath, it's backed by a simple continuous vector where a key-value pair
+/// with the key `n` is stored in the n-th element of the vector.
+/// Therefore, its memory usage is proportional to the maximum value of all the
+/// keys in the map.
+///
+/// # Example
+///
+/// ```rust
+/// use collections::SmallIntMap;
+///
+/// let mut birthdates = SmallIntMap::new();
+///
+/// // Add some key-value pairs.
+/// birthdates.insert(1987, ~"John");
+/// birthdates.insert(1955, ~"Alice");
+/// birthdates.insert(1990, ~"Anna");
+///
+/// // Find a single element.
+/// match birthdates.get(1955) {
+///     Some(v) => println!("{}", v);
+///     None => println!("Not found.");
+/// }
+///
+/// // Iterate over the map.
+/// for (year, name) in birthdates {
+///     println!("{} => {}", year, name);
+/// }
+/// ```
 pub struct SmallIntMap<T> {
     priv v: ~[Option<T>],
 }
@@ -112,6 +141,11 @@ impl<V> SmallIntMap<V> {
     /// Create an empty SmallIntMap
     pub fn new() -> SmallIntMap<V> { SmallIntMap{v: ~[]} }
 
+    /// Return a reference to the value corresponding to the key.
+    ///
+    /// # Failure
+    ///
+    /// Fails if the key does not exist.
     pub fn get<'a>(&'a self, key: &uint) -> &'a V {
         self.find(key).expect("key not present")
     }
@@ -163,6 +197,11 @@ impl<V> SmallIntMap<V> {
 }
 
 impl<V:Clone> SmallIntMap<V> {
+    /// Insert a key-value pair into the map. If the key already exists, uses the function `ff`
+    /// to resolve the collision.
+    ///
+    /// The arguments to the user-provided function are the key, the original value and the new
+    /// intended value and its return value is used as the final value that is put into the map.
     pub fn update_with_key(&mut self,
                            key: uint,
                            val: V,
@@ -175,6 +214,11 @@ impl<V:Clone> SmallIntMap<V> {
         self.insert(key, new_val)
     }
 
+    /// Insert a key-value pair into the map. If the key already exists, uses the function `ff`
+    /// to resolve the collision.
+    ///
+    /// The arguments to the user-provided function are the original value and the new
+    /// intended value and its return value is used as the final value that is put into the map.
     pub fn update(&mut self, key: uint, newval: V, ff: |V, V| -> V) -> bool {
         self.update_with_key(key, newval, |_k, v, v1| ff(v,v1))
     }
@@ -233,6 +277,7 @@ macro_rules! double_ended_iterator {
     }
 }
 
+/// SmallIntMap iterator
 pub struct Entries<'a, T> {
     priv front: uint,
     priv back: uint,
@@ -241,8 +286,10 @@ pub struct Entries<'a, T> {
 
 iterator!(impl Entries -> (uint, &'a T), get_ref)
 double_ended_iterator!(impl Entries -> (uint, &'a T), get_ref)
+/// SmallIntMap backwards iterator
 pub type RevEntries<'a, T> = Rev<Entries<'a, T>>;
 
+/// SmallIntMap mutable values iterator
 pub struct MutEntries<'a, T> {
     priv front: uint,
     priv back: uint,
@@ -251,6 +298,7 @@ pub struct MutEntries<'a, T> {
 
 iterator!(impl MutEntries -> (uint, &'a mut T), get_mut_ref)
 double_ended_iterator!(impl MutEntries -> (uint, &'a mut T), get_mut_ref)
+/// SmallIntMap mutable values backwards iterator
 pub type RevMutEntries<'a, T> = Rev<MutEntries<'a, T>>;
 
 #[cfg(test)]
