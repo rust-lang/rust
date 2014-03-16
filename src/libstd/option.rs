@@ -149,7 +149,7 @@ impl<T> Option<T> {
         }
     }
 
-    /// Returns the contained value or a default
+    /// Returns the contained value or a default.
     #[inline]
     pub fn unwrap_or(self, def: T) -> T {
         match self {
@@ -158,7 +158,7 @@ impl<T> Option<T> {
         }
     }
 
-    /// Returns the contained value or computes it from a closure
+    /// Returns the contained value or computes it from a closure.
     #[inline]
     pub fn unwrap_or_else(self, f: || -> T) -> T {
         match self {
@@ -183,7 +183,7 @@ impl<T> Option<T> {
         match self { None => def, Some(t) => f(t) }
     }
 
-    /// Apply a function to the contained value or do nothing.
+    /// Applies a function to the contained value or does nothing.
     /// Returns true if the contained value was mutated.
     pub fn mutate(&mut self, f: |T| -> T) -> bool {
         if self.is_some() {
@@ -192,7 +192,7 @@ impl<T> Option<T> {
         } else { false }
     }
 
-    /// Apply a function to the contained value or set it to a default.
+    /// Applies a function to the contained value or sets it to a default.
     /// Returns true if the contained value was mutated, or false if set to the default.
     pub fn mutate_or_set(&mut self, def: T, f: |T| -> T) -> bool {
         if self.is_some() {
@@ -208,19 +208,19 @@ impl<T> Option<T> {
     // Iterator constructors
     /////////////////////////////////////////////////////////////////////////
 
-    /// Return an iterator over the possibly contained value
+    /// Returns an iterator over the possibly contained value.
     #[inline]
     pub fn iter<'r>(&'r self) -> Item<&'r T> {
         Item{opt: self.as_ref()}
     }
 
-    /// Return a mutable iterator over the possibly contained value
+    /// Returns a mutable iterator over the possibly contained value.
     #[inline]
     pub fn mut_iter<'r>(&'r mut self) -> Item<&'r mut T> {
         Item{opt: self.as_mut()}
     }
 
-    /// Return a consuming iterator over the possibly contained value
+    /// Returns a consuming iterator over the possibly contained value.
     #[inline]
     pub fn move_iter(self) -> Item<T> {
         Item{opt: self}
@@ -264,7 +264,7 @@ impl<T> Option<T> {
     pub fn or_else(self, f: || -> Option<T>) -> Option<T> {
         match self {
             Some(_) => self,
-            None => f(),
+            None => f()
         }
     }
 
@@ -272,7 +272,7 @@ impl<T> Option<T> {
     // Misc
     /////////////////////////////////////////////////////////////////////////
 
-    /// Take the value out of the option, leaving a `None` in its place.
+    /// Takes the value out of the option, leaving a `None` in its place.
     #[inline]
     pub fn take(&mut self) -> Option<T> {
         mem::replace(self, None)
@@ -282,7 +282,7 @@ impl<T> Option<T> {
     #[inline(always)]
     pub fn filtered(self, f: |t: &T| -> bool) -> Option<T> {
         match self {
-            Some(x) => if f(&x) {Some(x)} else {None},
+            Some(x) => if f(&x) { Some(x) } else { None },
             None => None
         }
     }
@@ -296,6 +296,15 @@ impl<T> Option<T> {
                 Some(x) => opt = f(x),
                 None => break
             }
+        }
+    }
+
+    /// Applies a function to the contained value or does nothing.
+    #[inline]
+    pub fn apply(self, f: |T|) {
+        match self {
+            Some(x) => f(x),
+            None => ()
         }
     }
 
@@ -595,6 +604,14 @@ mod tests {
             }
         });
         assert_eq!(i, 11);
+    }
+
+    #[test]
+    fn test_apply() {
+        let mut i = 0;
+        let x: Option<int> = Some(1);
+        x.apply(|j| i = j);
+        assert_eq!(i, 1);
     }
 
     #[test]
