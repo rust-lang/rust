@@ -10,7 +10,7 @@
 
 #[allow(non_uppercase_statics)];
 
-/// ncurses-compatible compiled terminfo format parsing (term(5))
+//! ncurses-compatible compiled terminfo format parsing (term(5))
 
 use collections::HashMap;
 use std::io;
