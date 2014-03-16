@@ -34,6 +34,6 @@ fn main() {
 
     task::spawn(proc() {
         let y = x;   //~ ERROR does not fulfill `Send`
-        error!("{:?}", y);
+        println!("{:?}", y);
     });
 }

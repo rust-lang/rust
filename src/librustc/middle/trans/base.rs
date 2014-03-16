@@ -32,7 +32,7 @@ use driver::session::{Session, NoDebugInfo, FullDebugInfo};
 use driver::driver::OutputFilenames;
 use driver::driver::{CrateAnalysis, CrateTranslation};
 use lib::llvm::{ModuleRef, ValueRef, BasicBlockRef};
-use lib::llvm::{llvm, True, Vector};
+use lib::llvm::{llvm, Vector};
 use lib;
 use metadata::common::LinkMeta;
 use metadata::{csearch, encoder};
@@ -2404,70 +2404,6 @@ pub fn trap(bcx: &Block) {
     }
 }
 
-pub fn decl_gc_metadata(ccx: &CrateContext, llmod_id: &str) {
-    if !ccx.sess.opts.gc || !ccx.uses_gc {
-        return;
-    }
-
-    let gc_metadata_name = ~"_gc_module_metadata_" + llmod_id;
-    let gc_metadata = gc_metadata_name.with_c_str(|buf| {
-        unsafe {
-            llvm::LLVMAddGlobal(ccx.llmod, Type::i32().to_ref(), buf)
-        }
-    });
-    unsafe {
-        llvm::LLVMSetGlobalConstant(gc_metadata, True);
-        lib::llvm::SetLinkage(gc_metadata, lib::llvm::ExternalLinkage);
-
-        let mut module_data = ccx.module_data.borrow_mut();
-        module_data.get().insert(~"_gc_module_metadata", gc_metadata);
-    }
-}
-
-pub fn create_module_map(ccx: &CrateContext) -> (ValueRef, uint) {
-    let str_slice_type = Type::struct_([Type::i8p(), ccx.int_type], false);
-    let elttype = Type::struct_([str_slice_type, ccx.int_type], false);
-    let maptype = {
-        let module_data = ccx.module_data.borrow();
-        Type::array(&elttype, module_data.get().len() as u64)
-    };
-    let map = "_rust_mod_map".with_c_str(|buf| {
-        unsafe {
-            llvm::LLVMAddGlobal(ccx.llmod, maptype.to_ref(), buf)
-        }
-    });
-    lib::llvm::SetLinkage(map, lib::llvm::InternalLinkage);
-    let mut elts: Vec<ValueRef> = Vec::new();
-
-    // This is not ideal, but the borrow checker doesn't
-    // like the multiple borrows. At least, it doesn't
-    // like them on the current snapshot. (2013-06-14)
-    let keys = {
-        let mut keys = Vec::new();
-        let module_data = ccx.module_data.borrow();
-        for (k, _) in module_data.get().iter() {
-            keys.push(k.clone());
-        }
-        keys
-    };
-
-    for key in keys.iter() {
-        let llstrval = C_str_slice(ccx, token::intern_and_get_ident(*key));
-        let module_data = ccx.module_data.borrow();
-        let val = *module_data.get().find_equiv(key).unwrap();
-        let v_ptr = p2i(ccx, val);
-        let elt = C_struct([
-            llstrval,
-            v_ptr
-        ], false);
-        elts.push(elt);
-    }
-    unsafe {
-        llvm::LLVMSetInitializer(map, C_array(elttype, elts.as_slice()));
-    }
-    return (map, keys.len())
-}
-
 pub fn symname(name: &str, hash: &str, vers: &str) -> ~str {
     let path = [PathName(token::intern(name))];
     link::exported_name(ast_map::Values(path.iter()).chain(None), hash, vers)
@@ -2489,11 +2425,8 @@ pub fn decl_crate_map(sess: session::Session, mapmeta: LinkMeta,
                 mapmeta.crateid.version_or_default())
     };
 
-    let slicetype = Type::struct_([int_type, int_type], false);
     let maptype = Type::struct_([
         Type::i32(),        // version
-        slicetype,          // child modules
-        slicetype,          // sub crate-maps
         int_type.ptr_to(),  // event loop factory
     ], false);
     let map = sym_name.with_c_str(|buf| {
@@ -2513,22 +2446,6 @@ pub fn decl_crate_map(sess: session::Session, mapmeta: LinkMeta,
 }
 
 pub fn fill_crate_map(ccx: @CrateContext, map: ValueRef) {
-    let mut subcrates: Vec<ValueRef> = Vec::new();
-    let mut i = 1;
-    let cstore = ccx.sess.cstore;
-    while cstore.have_crate_data(i) {
-        let cdata = cstore.get_crate_data(i);
-        let nm = symname(format!("_rust_crate_map_{}", cdata.name),
-                         cstore.get_crate_hash(i).as_str(),
-                         cstore.get_crate_id(i).version_or_default());
-        let cr = nm.with_c_str(|buf| {
-            unsafe {
-                llvm::LLVMAddGlobal(ccx.llmod, ccx.int_type.to_ref(), buf)
-            }
-        });
-        subcrates.push(p2i(ccx, cr));
-        i += 1;
-    }
     let event_loop_factory = match ccx.tcx.lang_items.event_loop_factory() {
         Some(did) => unsafe {
             if is_local(did) {
@@ -2545,26 +2462,8 @@ pub fn fill_crate_map(ccx: @CrateContext, map: ValueRef) {
         None => C_null(ccx.int_type.ptr_to())
     };
     unsafe {
-        let maptype = Type::array(&ccx.int_type, subcrates.len() as u64);
-        let vec_elements = "_crate_map_child_vectors".with_c_str(|buf| {
-            llvm::LLVMAddGlobal(ccx.llmod, maptype.to_ref(), buf)
-        });
-        lib::llvm::SetLinkage(vec_elements, lib::llvm::InternalLinkage);
-
-        llvm::LLVMSetInitializer(vec_elements,
-                                 C_array(ccx.int_type, subcrates.as_slice()));
-        let (mod_map, mod_count) = create_module_map(ccx);
-
         llvm::LLVMSetInitializer(map, C_struct(
             [C_i32(2),
-             C_struct([
-                p2i(ccx, mod_map),
-                C_uint(ccx, mod_count)
-             ], false),
-             C_struct([
-                p2i(ccx, vec_elements),
-                C_uint(ccx, subcrates.len())
-             ], false),
             event_loop_factory,
         ], false));
     }
@@ -2642,7 +2541,7 @@ pub fn trans_crate(sess: session::Session,
         }
     }
 
-    let link_meta = link::build_link_meta(&krate, output);
+    let link_meta = link::build_link_meta(&krate, output.out_filestem);
 
     // Append ".rs" to crate name as LLVM module identifier.
     //
@@ -2667,7 +2566,6 @@ pub fn trans_crate(sess: session::Session,
         trans_mod(ccx, &krate.module);
     }
 
-    decl_gc_metadata(ccx, llmod_id);
     fill_crate_map(ccx, ccx.crate_map);
 
     // win32: wart with exporting crate_map symbol

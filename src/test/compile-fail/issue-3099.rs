@@ -17,5 +17,5 @@ fn a(x: ~str, y: ~str) -> ~str { //~ ERROR duplicate definition of value `a`
 }
 
 fn main() {
-    info!("Result: ");
+    println!("Result: ");
 }

@@ -1490,11 +1490,6 @@ pub fn print_expr(s: &mut State, expr: &ast::Expr) -> io::IoResult<()> {
           _ => ()
         }
       }
-      ast::ExprLogLevel => {
-        try!(word(&mut s.s, "__log_level"));
-        try!(popen(s));
-        try!(pclose(s));
-      }
       ast::ExprInlineAsm(ref a) => {
         if a.volatile {
             try!(word(&mut s.s, "__volatile__ asm!"));

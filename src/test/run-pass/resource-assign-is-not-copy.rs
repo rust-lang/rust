@@ -36,7 +36,7 @@ pub fn main() {
         let a = r(i);
         let b = (a, 10);
         let (c, _d) = b;
-        info!("{:?}", c);
+        println!("{:?}", c);
     }
     assert_eq!(i.get(), 1);
 }

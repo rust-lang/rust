@@ -9,4 +9,4 @@
 // except according to those terms.
 
 // error-pattern: unresolved name `this_does_nothing_what_the`.
-fn main() { info!("doing"); this_does_nothing_what_the; info!("boing"); }
+fn main() { println!("doing"); this_does_nothing_what_the; println!("boing"); }

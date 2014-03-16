@@ -796,7 +796,7 @@ unit, `()`, as the empty tuple if you like).
 ~~~~
 let mytup: (int, int, f64) = (10, 20, 30.0);
 match mytup {
-  (a, b, c) => info!("{}", a + b + (c as int))
+  (a, b, c) => println!("{}", a + b + (c as int))
 }
 ~~~~
 
@@ -813,7 +813,7 @@ For example:
 struct MyTup(int, int, f64);
 let mytup: MyTup = MyTup(10, 20, 30.0);
 match mytup {
-  MyTup(a, b, c) => info!("{}", a + b + (c as int))
+  MyTup(a, b, c) => println!("{}", a + b + (c as int))
 }
 ~~~~
 
@@ -1794,7 +1794,7 @@ use std::task::spawn;
 
 // proc is the closure which will be spawned.
 spawn(proc() {
-    debug!("I'm a new task")
+    println!("I'm a new task")
 });
 ~~~~
 

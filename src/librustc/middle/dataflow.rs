@@ -613,7 +613,6 @@ impl<'a, O:DataFlowOperator> PropagationContext<'a, O> {
                 self.walk_exprs([l, r], in_out, loop_scopes);
             }
 
-            ast::ExprLogLevel |
             ast::ExprLit(..) |
             ast::ExprPath(..) => {}
 

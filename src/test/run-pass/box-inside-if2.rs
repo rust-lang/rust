@@ -17,7 +17,7 @@ fn is_odd(_n: int) -> bool { return true; }
 fn length_is_even(_vs: @int) -> bool { return true; }
 
 fn foo(_acc: int, n: int) {
-    if is_odd(n) || length_is_even(some_box(1)) { error!("bloop"); }
+    if is_odd(n) || length_is_even(some_box(1)) { println!("bloop"); }
 }
 
 pub fn main() { foo(67, 5); }

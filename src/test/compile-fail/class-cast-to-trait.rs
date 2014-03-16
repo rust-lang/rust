@@ -22,12 +22,12 @@ struct cat {
 impl cat {
   pub fn eat(&self) -> bool {
     if self.how_hungry > 0 {
-        error!("OM NOM NOM");
+        println!("OM NOM NOM");
         self.how_hungry -= 2;
         return true;
     }
     else {
-        error!("Not hungry!");
+        println!("Not hungry!");
         return false;
     }
   }
@@ -40,7 +40,7 @@ impl noisy for cat {
 
 impl cat {
     fn meow(&self) {
-      error!("Meow");
+      println!("Meow");
       self.meows += 1;
       if self.meows % 5 == 0 {
           self.how_hungry += 1;

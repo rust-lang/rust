@@ -143,16 +143,44 @@ impl CStore {
         self.used_link_args.with_mut(|s| s.clear());
     }
 
+    // This method is used when generating the command line to pass through to
+    // system linker. The linker expects undefined symbols on the left of the
+    // command line to be defined in libraries on the right, not the other way
+    // around. For more info, see some comments in the add_used_library function
+    // below.
+    //
+    // In order to get this left-to-right dependency ordering, we perform a
+    // topological sort of all crates putting the leaves at the right-most
+    // positions.
     pub fn get_used_crates(&self, prefer: LinkagePreference)
                            -> Vec<(ast::CrateNum, Option<Path>)> {
+        let mut ordering = Vec::new();
+        fn visit(cstore: &CStore, cnum: ast::CrateNum,
+                 ordering: &mut Vec<ast::CrateNum>) {
+            if ordering.as_slice().contains(&cnum) { return }
+            let meta = cstore.get_crate_data(cnum);
+            for (_, &dep) in meta.cnum_map.borrow().get().iter() {
+                visit(cstore, dep, ordering);
+            }
+            ordering.push(cnum);
+        };
+        for (&num, _) in self.metas.borrow().get().iter() {
+            visit(self, num, &mut ordering);
+        }
+        ordering.as_mut_slice().reverse();
+        let ordering = ordering.as_slice();
         let used_crate_sources = self.used_crate_sources.borrow();
-        used_crate_sources.get()
+        let mut libs = used_crate_sources.get()
             .iter()
             .map(|src| (src.cnum, match prefer {
                 RequireDynamic => src.dylib.clone(),
                 RequireStatic => src.rlib.clone(),
             }))
-            .collect()
+            .collect::<Vec<(ast::CrateNum, Option<Path>)>>();
+        libs.sort_by(|&(a, _), &(b, _)| {
+            ordering.position_elem(&a).cmp(&ordering.position_elem(&b))
+        });
+        libs
     }
 
     pub fn add_used_library(&self, lib: ~str, kind: NativeLibaryKind) {

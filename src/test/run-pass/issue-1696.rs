@@ -17,5 +17,5 @@ use collections::HashMap;
 pub fn main() {
     let mut m = HashMap::new();
     m.insert("foo".as_bytes().to_owned(), "bar".as_bytes().to_owned());
-    error!("{:?}", m);
+    println!("{:?}", m);
 }

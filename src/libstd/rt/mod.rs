@@ -104,9 +104,6 @@ pub mod env;
 /// The local, managed heap
 pub mod local_heap;
 
-/// The Logger trait and implementations
-pub mod logging;
-
 /// Crate map
 pub mod crate_map;
 
@@ -183,7 +180,6 @@ pub fn init(argc: int, argv: **u8) {
     unsafe {
         args::init(argc, argv);
         env::init();
-        logging::init();
         local_ptr::init();
         at_exit_imp::init();
     }

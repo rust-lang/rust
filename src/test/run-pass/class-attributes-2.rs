@@ -18,7 +18,7 @@ impl Drop for cat {
        Actually, cats don't always land on their feet when you drop them.
     */
     fn drop(&mut self) {
-        error!("{} landed on hir feet", self.name);
+        println!("{} landed on hir feet", self.name);
     }
 }
 

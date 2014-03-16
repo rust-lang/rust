@@ -13,5 +13,5 @@ fn main() {
 
     static y: int = foo + 1; //~ ERROR: attempt to use a non-constant value in a constant
 
-    error!("{}", y);
+    println!("{}", y);
 }

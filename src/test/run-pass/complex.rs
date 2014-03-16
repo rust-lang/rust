@@ -36,7 +36,7 @@ fn foo(x: int) -> int {
 
 pub fn main() {
     let x: int = 2 + 2;
-    info!("{}", x);
-    info!("hello, world");
-    info!("{}", 10);
+    println!("{}", x);
+    println!("hello, world");
+    println!("{}", 10);
 }

@@ -16,9 +16,9 @@ fn foo() -> int {
         x = 0;
     }
 
-    info!("{}", x); //~ ERROR use of possibly uninitialized variable: `x`
+    println!("{}", x); //~ ERROR use of possibly uninitialized variable: `x`
 
     return 17;
 }
 
-fn main() { info!("{}", foo()); }
+fn main() { println!("{}", foo()); }

@@ -30,7 +30,7 @@ This API is completely unstable and subject to change.
 #[allow(deprecated)];
 #[allow(deprecated_owned_vector)];
 #[feature(macro_rules, globs, struct_variant, managed_boxes)];
-#[feature(quote, default_type_params)];
+#[feature(quote, default_type_params, phase)];
 
 extern crate flate;
 extern crate arena;
@@ -40,6 +40,8 @@ extern crate sync;
 extern crate getopts;
 extern crate collections;
 extern crate time;
+#[phase(syntax, link)]
+extern crate log;
 
 use back::link;
 use driver::session;
@@ -318,7 +320,7 @@ pub fn run_compiler(args: &[~str]) {
         let attrs = parse_crate_attrs(sess, &input);
         let t_outputs = d::build_output_filenames(&input, &odir, &ofile,
                                                   attrs.as_slice(), sess);
-        let id = link::find_crate_id(attrs.as_slice(), &t_outputs);
+        let id = link::find_crate_id(attrs.as_slice(), t_outputs.out_filestem);
 
         if crate_id {
             println!("{}", id.to_str());
@@ -408,7 +410,7 @@ pub fn monitor(f: proc()) {
                 let xs = [
                     ~"the compiler hit an unexpected failure path. this is a bug.",
                     "we would appreciate a bug report: " + BUG_REPORT_URL,
-                    ~"run with `RUST_LOG=std::rt::backtrace` for a backtrace",
+                    ~"run with `RUST_BACKTRACE=1` for a backtrace",
                 ];
                 for note in xs.iter() {
                     emitter.emit(None, *note, diagnostic::Note)

@@ -70,7 +70,7 @@ fn stress_task(id: int) {
         let n = 15;
         assert_eq!(fib(n), fib(n));
         i += 1;
-        error!("{}: Completed {} iterations", id, i);
+        println!("{}: Completed {} iterations", id, i);
     }
 }
 

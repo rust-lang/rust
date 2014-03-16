@@ -170,7 +170,6 @@ fn take_nonempty_prefix<T:Iterator<char>>(rdr: &mut T, pred: |char| -> bool)
             }
         }
     }
-    debug!("extracted nonempty prefix: {}", buf);
     (buf, ch)
 }
 

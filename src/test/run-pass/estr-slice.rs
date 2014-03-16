@@ -14,8 +14,8 @@ pub fn main() {
     let v = &"hello";
     let y : &str = &"there";
 
-    info!("{}", x);
-    info!("{}", y);
+    println!("{}", x);
+    println!("{}", y);
 
     assert_eq!(x[0], 'h' as u8);
     assert_eq!(x[4], 'o' as u8);
@@ -30,7 +30,7 @@ pub fn main() {
     let c = &"cccc";
     let cc = &"ccccc";
 
-    info!("{}", a);
+    println!("{}", a);
 
     assert!(a < b);
     assert!(a <= b);
@@ -38,7 +38,7 @@ pub fn main() {
     assert!(b >= a);
     assert!(b > a);
 
-    info!("{}", b);
+    println!("{}", b);
 
     assert!(a < c);
     assert!(a <= c);
@@ -46,7 +46,7 @@ pub fn main() {
     assert!(c >= a);
     assert!(c > a);
 
-    info!("{}", c);
+    println!("{}", c);
 
     assert!(c < cc);
     assert!(c <= cc);
@@ -54,5 +54,5 @@ pub fn main() {
     assert!(cc >= c);
     assert!(cc > c);
 
-    info!("{}", cc);
+    println!("{}", cc);
 }

@@ -83,7 +83,7 @@ fn check_pp<T>(cx: fake_ext_ctxt,
     });
     stdout().write_line(s);
     if expect != ~"" {
-        error!("expect: '%s', got: '%s'", expect, s);
+        println!("expect: '%s', got: '%s'", expect, s);
         assert_eq!(s, expect);
     }
 }

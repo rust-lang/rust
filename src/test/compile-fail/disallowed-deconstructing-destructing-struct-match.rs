@@ -14,7 +14,7 @@ struct X {
 
 impl Drop for X {
     fn drop(&mut self) {
-        error!("value: {}", self.x);
+        println!("value: {}", self.x);
     }
 }
 
@@ -22,7 +22,7 @@ fn main() {
     let x = X { x: ~"hello" };
 
     match x {
-        X { x: y } => error!("contents: {}", y)
+        X { x: y } => println!("contents: {}", y)
         //~^ ERROR cannot move out of type `X`, which defines the `Drop` trait
     }
 }

@@ -10,5 +10,5 @@
 
 fn main() {
     #[attr] //~ ERROR expected item after attributes
-    info!("hi");
+    println!("hi");
 }

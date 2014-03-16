@@ -29,7 +29,7 @@ pub fn main() {
     let sa = A { a: 100 };
     let sb = B { b: 200, pa: &sa };
 
-    debug!("sa is {:?}", sa);
-    debug!("sb is {:?}", sb);
-    debug!("sb.pa is {:?}", sb.get_pa());
+    println!("sa is {:?}", sa);
+    println!("sb is {:?}", sb);
+    println!("sb.pa is {:?}", sb.get_pa());
 }

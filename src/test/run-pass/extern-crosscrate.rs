@@ -15,13 +15,13 @@ extern crate externcallback = "externcallback#0.1";
 
 fn fact(n: uint) -> uint {
     unsafe {
-        info!("n = {}", n);
+        println!("n = {}", n);
         externcallback::rustrt::rust_dbg_call(externcallback::cb, n)
     }
 }
 
 pub fn main() {
     let result = fact(10u);
-    info!("result = {}", result);
+    println!("result = {}", result);
     assert_eq!(result, 3628800u);
 }

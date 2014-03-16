@@ -30,16 +30,16 @@ pub fn main() {
 
     let x = @6;
     let y = x.get();
-    info!("y={}", y);
+    println!("y={}", y);
     assert_eq!(y, 6);
 
     let x = ~6;
     let y = x.get();
-    info!("y={}", y);
+    println!("y={}", y);
     assert_eq!(y, 6);
 
     let x = &6;
     let y = x.get();
-    info!("y={}", y);
+    println!("y={}", y);
     assert_eq!(y, 6);
 }

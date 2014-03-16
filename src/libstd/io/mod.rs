@@ -352,9 +352,7 @@ pub trait Reader {
         let mut buf = [0];
         loop {
             match self.read(buf) {
-                Ok(0) => {
-                    debug!("read 0 bytes. trying again");
-                }
+                Ok(0) => {}
                 Ok(1) => return Ok(buf[0]),
                 Ok(_) => unreachable!(),
                 Err(e) => return Err(e)

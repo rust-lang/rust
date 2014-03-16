@@ -14,7 +14,7 @@ enum foo<T> { arm(T), }
 
 fn altfoo<T>(f: foo<T>) {
     let mut hit = false;
-    match f { arm::<T>(_x) => { info!("in arm"); hit = true; } }
+    match f { arm::<T>(_x) => { println!("in arm"); hit = true; } }
     assert!((hit));
 }
 

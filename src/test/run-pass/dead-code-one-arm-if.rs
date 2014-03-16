@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-test #12920
 
-
-
-pub fn main() { if 1 == 1 { return; } info!("Paul is dead"); }
+pub fn main() { if 1 == 1 { return; } println!("Paul is dead"); }

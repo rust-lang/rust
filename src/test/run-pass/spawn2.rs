@@ -14,15 +14,15 @@ pub fn main() { task::spawn(proc() child((10, 20, 30, 40, 50, 60, 70, 80, 90)) )
 
 fn child(args: (int, int, int, int, int, int, int, int, int)) {
     let (i1, i2, i3, i4, i5, i6, i7, i8, i9) = args;
-    error!("{}", i1);
-    error!("{}", i2);
-    error!("{}", i3);
-    error!("{}", i4);
-    error!("{}", i5);
-    error!("{}", i6);
-    error!("{}", i7);
-    error!("{}", i8);
-    error!("{}", i9);
+    println!("{}", i1);
+    println!("{}", i2);
+    println!("{}", i3);
+    println!("{}", i4);
+    println!("{}", i5);
+    println!("{}", i6);
+    println!("{}", i7);
+    println!("{}", i8);
+    println!("{}", i9);
     assert_eq!(i1, 10);
     assert_eq!(i2, 20);
     assert_eq!(i3, 30);

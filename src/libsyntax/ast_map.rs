@@ -18,7 +18,6 @@ use parse::token;
 use print::pprust;
 use util::small_vector::SmallVector;
 
-use std::logging;
 use std::cell::RefCell;
 use std::iter;
 use std::vec;
@@ -538,7 +537,7 @@ pub fn map_crate<F: FoldOps>(krate: Crate, fold_ops: F) -> (Crate, Map) {
         cx.fold_crate(krate)
     };
 
-    if log_enabled!(logging::DEBUG) {
+    if log_enabled!(::log::DEBUG) {
         let map = map.map.borrow();
         // This only makes sense for ordered stores; note the
         // enumerate to count the number of entries.

@@ -408,7 +408,6 @@ impl CFGBuilder {
                 self.straightline(expr, pred, [e])
             }
 
-            ast::ExprLogLevel |
             ast::ExprMac(..) |
             ast::ExprInlineAsm(..) |
             ast::ExprFnBlock(..) |

@@ -209,7 +209,8 @@ impl Drop for Inner {
         if self.close_on_drop && self.fd > libc::STDERR_FILENO {
             let n = unsafe { libc::close(self.fd) };
             if n != 0 {
-                warn!("error {} when closing file descriptor {}", n, self.fd);
+                println!("error {} when closing file descriptor {}", n,
+                         self.fd);
             }
         }
     }
@@ -362,13 +363,10 @@ pub fn readdir(p: &CString) -> IoResult<~[Path]> {
     let mut buf = Vec::<u8>::with_capacity(size as uint);
     let ptr = buf.as_mut_slice().as_mut_ptr() as *mut dirent_t;
 
-    debug!("os::list_dir -- BEFORE OPENDIR");
-
     let dir_ptr = p.with_ref(|buf| unsafe { opendir(buf) });
 
     if dir_ptr as uint != 0 {
         let mut paths = ~[];
-        debug!("os::list_dir -- opendir() SUCCESS");
         let mut entry_ptr = 0 as *mut dirent_t;
         while unsafe { readdir_r(dir_ptr, ptr, &mut entry_ptr) == 0 } {
             if entry_ptr.is_null() { break }
