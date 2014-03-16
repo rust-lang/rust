@@ -2692,7 +2692,7 @@ impl<'r> Resolver<'r> {
 
     /// Resolves the given module path from the given root `module_`.
     fn resolve_module_path_from_root(&mut self,
-                                     module_: @Module,
+                                     module_: @Module, 
                                      module_path: &[Ident],
                                      index: uint,
                                      span: Span,
@@ -5583,7 +5583,8 @@ impl<'r> Resolver<'r> {
 
 		if finder_visitor.suggestions.len()>0 {
 			let mut note=~"did you mean\n";
-			for &(ref name,score) in finder_visitor.suggestions.iter() {
+			for &(ref name,_) in finder_visitor.suggestions.iter() {
+				note.push_str("\t\t");
 				note.push_str(*name);
 				note.push_str("\n");
 			}
@@ -5601,9 +5602,9 @@ struct FindSymbolVisitor<'a>{
 }
 
 impl<'a,'r> Visitor<()> for FindSymbolVisitor<'a> {
-	fn visit_ident<'a>(&mut self, _sp:Span, ident:Ident, e: ()) {
+//	fn visit_ident<'a>(&mut self, _sp:Span, _:Ident, e: ()) {
 	//	::std::io::println(format!("visit ident {:?}", ident));
-	}
+//	}
 	fn visit_item<'a>(&mut self, i:&Item, e: ()) {
 		let find_path_last_seg:&PathSegment = self.path_to_find.segments.last().unwrap();
 
@@ -5613,7 +5614,7 @@ impl<'a,'r> Visitor<()> for FindSymbolVisitor<'a> {
 		for &n in self.curr_path_idents.iter() {
 			cmp_path_str.push_str(
 				self.cstore.intr.get_ref(n));
-			cmp_path_str.push_str(~"::");
+			cmp_path_str.push_str("::");
 		}
 		cmp_path_str.push_str(self.cstore.intr.get_ref(i.ident.name));
 
@@ -5640,8 +5641,6 @@ impl<'a,'r> Visitor<()> for FindSymbolVisitor<'a> {
     fn visit_mod(&mut self, m: &Mod, _s: Span, _n: NodeId, e: ()) {
 		visit::walk_mod(self, m, e) ;
 	}
-
-
 }
 
 
