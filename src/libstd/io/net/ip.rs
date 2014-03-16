@@ -8,7 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[allow(missing_doc)];
+/*!
+IP and socket addresses.
+
+# Examples
+
+```rust
+use std::io::net::ip::{SocketAddr, Ipv4Addr};
+
+let socket_address = SocketAddr {
+    ip: Ipv4Addr(127, 0, 0, 1),
+    port: 8080,
+};
+
+println!("{}", socket_address);
+```
+*/
 
 use container::Container;
 use fmt;
@@ -18,11 +33,15 @@ use option::{Option, None, Some};
 use str::StrSlice;
 use vec::{MutableCloneableVector, ImmutableVector, MutableVector};
 
+/// Network port, usually part of a SocketAddr struct
 pub type Port = u16;
 
+/// IP address. Either `Ipv4Addr` or `Ipv6Addr`.
 #[deriving(Eq, TotalEq, Clone, Hash)]
 pub enum IpAddr {
+    /// Represents an IPv4 address
     Ipv4Addr(u8, u8, u8, u8),
+    /// Represents an IPv6 address
     Ipv6Addr(u16, u16, u16, u16, u16, u16, u16, u16)
 }
 
@@ -51,9 +70,12 @@ impl fmt::Show for IpAddr {
     }
 }
 
+/// Network socket address
 #[deriving(Eq, TotalEq, Clone, Hash)]
 pub struct SocketAddr {
+    /// IP address. Either `Ipv4Addr` or `Ipv6Addr`.
     ip: IpAddr,
+    /// Network Port. Just a typedef to `u16`.
     port: Port,
 }
 

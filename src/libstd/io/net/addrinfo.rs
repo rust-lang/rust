@@ -79,6 +79,7 @@ pub struct Hint {
 /// This structure contains a result from a DNS lookup, the most important
 /// field being `address`.
 pub struct Info {
+    /// Socket address returned by DNS lookup
     address: SocketAddr,
     family: uint,
     socktype: Option<SocketType>,
