@@ -595,33 +595,36 @@ pub fn compile_input(sess: Session, cfg: ast::CrateConfig, input: &Input,
 struct IdentifiedAnnotation;
 
 impl pprust::PpAnn for IdentifiedAnnotation {
-    fn pre(&self, node: pprust::AnnNode) -> io::IoResult<()> {
+    fn pre(&self,
+           s: &mut pprust::State<IdentifiedAnnotation>,
+           node: pprust::AnnNode) -> io::IoResult<()> {
         match node {
-            pprust::NodeExpr(s, _) => pprust::popen(s),
+            pprust::NodeExpr(_) => s.popen(),
             _ => Ok(())
         }
     }
-    fn post(&self, node: pprust::AnnNode) -> io::IoResult<()> {
+    fn post(&self,
+            s: &mut pprust::State<IdentifiedAnnotation>,
+            node: pprust::AnnNode) -> io::IoResult<()> {
         match node {
-            pprust::NodeItem(s, item) => {
+            pprust::NodeItem(item) => {
                 try!(pp::space(&mut s.s));
-                try!(pprust::synth_comment(s, item.id.to_str()));
+                s.synth_comment(item.id.to_str())
             }
-            pprust::NodeBlock(s, blk) => {
+            pprust::NodeBlock(blk) => {
                 try!(pp::space(&mut s.s));
-                try!(pprust::synth_comment(s, ~"block " + blk.id.to_str()));
+                s.synth_comment(~"block " + blk.id.to_str())
             }
-            pprust::NodeExpr(s, expr) => {
+            pprust::NodeExpr(expr) => {
                 try!(pp::space(&mut s.s));
-                try!(pprust::synth_comment(s, expr.id.to_str()));
-                try!(pprust::pclose(s));
+                try!(s.synth_comment(expr.id.to_str()));
+                s.pclose()
             }
-            pprust::NodePat(s, pat) => {
+            pprust::NodePat(pat) => {
                 try!(pp::space(&mut s.s));
-                try!(pprust::synth_comment(s, ~"pat " + pat.id.to_str()));
+                s.synth_comment(~"pat " + pat.id.to_str())
             }
         }
-        Ok(())
     }
 }
 
@@ -630,26 +633,29 @@ struct TypedAnnotation {
 }
 
 impl pprust::PpAnn for TypedAnnotation {
-    fn pre(&self, node: pprust::AnnNode) -> io::IoResult<()> {
+    fn pre(&self,
+           s: &mut pprust::State<TypedAnnotation>,
+           node: pprust::AnnNode) -> io::IoResult<()> {
         match node {
-            pprust::NodeExpr(s, _) => pprust::popen(s),
+            pprust::NodeExpr(_) => s.popen(),
             _ => Ok(())
         }
     }
-    fn post(&self, node: pprust::AnnNode) -> io::IoResult<()> {
+    fn post(&self,
+            s: &mut pprust::State<TypedAnnotation>,
+            node: pprust::AnnNode) -> io::IoResult<()> {
         let tcx = &self.analysis.ty_cx;
         match node {
-            pprust::NodeExpr(s, expr) => {
+            pprust::NodeExpr(expr) => {
                 try!(pp::space(&mut s.s));
                 try!(pp::word(&mut s.s, "as"));
                 try!(pp::space(&mut s.s));
                 try!(pp::word(&mut s.s,
                                 ppaux::ty_to_str(tcx, ty::expr_ty(tcx, expr))));
-                try!(pprust::pclose(s));
+                s.pclose()
             }
-            _ => ()
+            _ => Ok(())
         }
-        Ok(())
     }
 }
 
@@ -670,34 +676,48 @@ pub fn pretty_print_input(sess: Session,
         _ => (krate, None, false)
     };
 
-    let codemap = sess.codemap;
-    let span_diagnostic = sess.span_diagnostic;
+    let src_name = source_name(input);
+    let src = sess.codemap().get_filemap(src_name).deref().src.as_bytes().to_owned();
+    let mut rdr = MemReader::new(src);
 
-    let annotation = match ppm {
+    match ppm {
         PpmIdentified | PpmExpandedIdentified => {
-            ~IdentifiedAnnotation as ~pprust::PpAnn
+            pprust::print_crate(sess.codemap(),
+                                sess.diagnostic(),
+                                &krate,
+                                src_name,
+                                &mut rdr,
+                                ~io::stdout(),
+                                &IdentifiedAnnotation,
+                                is_expanded)
         }
         PpmTyped => {
             let ast_map = ast_map.expect("--pretty=typed missing ast_map");
             let analysis = phase_3_run_analysis_passes(sess, &krate, ast_map);
-            ~TypedAnnotation {
+            let annotation = TypedAnnotation {
                 analysis: analysis
-            } as ~pprust::PpAnn:
+            };
+            pprust::print_crate(annotation.analysis.ty_cx.sess.codemap(),
+                                annotation.analysis.ty_cx.sess.diagnostic(),
+                                &krate,
+                                src_name,
+                                &mut rdr,
+                                ~io::stdout(),
+                                &annotation,
+                                is_expanded)
         }
-        _ => ~pprust::NoAnn as ~pprust::PpAnn:,
-    };
+        _ => {
+            pprust::print_crate(sess.codemap(),
+                                sess.diagnostic(),
+                                &krate,
+                                src_name,
+                                &mut rdr,
+                                ~io::stdout(),
+                                &pprust::NoAnn,
+                                is_expanded)
+        }
+    }.unwrap()
 
-    let src = &codemap.get_filemap(source_name(input)).src;
-    let mut rdr = MemReader::new(src.as_bytes().to_owned());
-    let stdout = io::stdout();
-    pprust::print_crate(codemap,
-                        span_diagnostic,
-                        &krate,
-                        source_name(input),
-                        &mut rdr,
-                        ~stdout as ~io::Writer,
-                        annotation,
-                        is_expanded).unwrap();
 }
 
 pub fn get_os(triple: &str) -> Option<abi::Os> {
@@ -778,8 +798,7 @@ pub fn host_triple() -> ~str {
     (env!("CFG_COMPILER")).to_owned()
 }
 
-pub fn build_session_options(matches: &getopts::Matches)
-                             -> @session::Options {
+pub fn build_session_options(matches: &getopts::Matches) -> session::Options {
     let mut crate_types: Vec<CrateType> = Vec::new();
     let unparsed_crate_types = matches.opt_strs("crate-type");
     for unparsed_crate_type in unparsed_crate_types.iter() {
