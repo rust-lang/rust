@@ -1912,12 +1912,9 @@ impl Parser {
             if self.token == token::NOT {
                 // MACRO INVOCATION expression
                 self.bump();
-                match self.token {
-                    token::LPAREN | token::LBRACE => {}
-                    _ => self.fatal("expected open delimiter")
-                };
 
-                let ket = token::flip_delimiter(&self.token);
+                let ket = token::close_delimiter_for(&self.token)
+                                .unwrap_or_else(|| self.fatal("expected open delimiter"));
                 self.bump();
 
                 let tts = self.parse_seq_to_end(&ket,
@@ -2140,8 +2137,8 @@ impl Parser {
             TTTok(p.span, p.bump_and_get())
         }
 
-        match self.token {
-            token::EOF => {
+        match (&self.token, token::close_delimiter_for(&self.token)) {
+            (&token::EOF, _) => {
                 let open_braces = self.open_braces.clone();
                 for sp in open_braces.iter() {
                     self.span_note(*sp, "Did you mean to close this delimiter?");
@@ -2150,9 +2147,7 @@ impl Parser {
                 // if we give it one
                 self.fatal("this file contains an un-closed delimiter ");
             }
-            token::LPAREN | token::LBRACE | token::LBRACKET => {
-                let close_delim = token::flip_delimiter(&self.token);
-
+            (_, Some(close_delim)) => {
                 // Parse the open delimiter.
                 self.open_braces.push(self.span);
                 let mut result = vec!(parse_any_tt_tok(self));
@@ -2188,13 +2183,12 @@ impl Parser {
         // the interpolation of Matcher's
         maybe_whole!(self, NtMatchers);
         let name_idx = @Cell::new(0u);
-        match self.token {
-            token::LBRACE | token::LPAREN | token::LBRACKET => {
-                let other_delimiter = token::flip_delimiter(&self.token);
+        match token::close_delimiter_for(&self.token) {
+            Some(other_delimiter) => {
                 self.bump();
                 self.parse_matcher_subseq_upto(name_idx, &other_delimiter)
             }
-            _ => self.fatal("expected open delimiter")
+            None => self.fatal("expected open delimiter")
         }
     }
 
@@ -3171,7 +3165,7 @@ impl Parser {
             let pth = self.parse_path(NoTypesAllowed).path;
             self.bump();
 
-            let id = if self.token == token::LPAREN || self.token == token::LBRACE {
+            let id = if token::close_delimiter_for(&self.token).is_some() {
                 token::special_idents::invalid // no special identifier
             } else {
                 self.parse_ident()
@@ -3180,10 +3174,9 @@ impl Parser {
             // check that we're pointing at delimiters (need to check
             // again after the `if`, because of `parse_ident`
             // consuming more tokens).
-            let (bra, ket) = match self.token {
-                token::LPAREN => (token::LPAREN, token::RPAREN),
-                token::LBRACE => (token::LBRACE, token::RBRACE),
-                _ => {
+            let (bra, ket) = match token::close_delimiter_for(&self.token) {
+                Some(ket) => (self.token.clone(), ket),
+                None      => {
                     // we only expect an ident if we didn't parse one
                     // above.
                     let ident_str = if id == token::special_idents::invalid {
@@ -4769,15 +4762,14 @@ impl Parser {
                 token::special_idents::invalid // no special identifier
             };
             // eat a matched-delimiter token tree:
-            let tts = match self.token {
-                token::LPAREN | token::LBRACE => {
-                    let ket = token::flip_delimiter(&self.token);
+            let tts = match token::close_delimiter_for(&self.token) {
+                Some(ket) => {
                     self.bump();
                     self.parse_seq_to_end(&ket,
                                           seq_sep_none(),
                                           |p| p.parse_token_tree())
                 }
-                _ => self.fatal("expected open delimiter")
+                None => self.fatal("expected open delimiter")
             };
             // single-variant-enum... :
             let m = ast::MacInvocTT(pth, tts, EMPTY_CTXT);
