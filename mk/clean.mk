@@ -78,6 +78,7 @@ define CLEAN_HOST_STAGE_N
 clean$(1)_H_$(2):							    \
 	    $$(foreach crate,$$(CRATES),clean$(1)_H_$(2)-lib-$$(crate))	    \
 	    $$(foreach tool,$$(TOOLS),clean$(1)_H_$(2)-tool-$$(tool))
+	$$(Q)rm -fr $(2)/rt/libbacktrace
 
 clean$(1)_H_$(2)-tool-%:
 	$$(Q)rm -f $$(HBIN$(1)_H_$(2))/$$*$$(X_$(2))
