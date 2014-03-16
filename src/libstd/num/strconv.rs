@@ -24,31 +24,66 @@ use num;
 use num::{NumCast, Zero, One, cast, Int};
 use num::{Round, Float, FPNaN, FPInfinite, ToPrimitive};
 
+/// A flag that specifies whether to use exponential (scientific) notation.
 pub enum ExponentFormat {
+    /// Do not use exponential notation.
     ExpNone,
+    /// Use exponential notation with the exponent having a base of 10 and the
+    /// exponent sign being `e` or `E`. For example, 1000 would be printed
+    /// 1e3.
     ExpDec,
-    ExpBin
+    /// Use exponential notation with the exponent having a base of 2 and the
+    /// exponent sign being `p` or `P`. For example, 8 would be printed 1p3.
+    ExpBin,
 }
 
+/// The number of digits used for emitting the fractional part of a number, if
+/// any.
 pub enum SignificantDigits {
+    /// All calculable digits will be printed.
+    ///
+    /// Note that bignums or fractions may cause a surprisingly large number
+    /// of digits to be printed.
     DigAll,
+
+    /// At most the given number of digits will be printed, truncating any
+    /// trailing zeroes.
     DigMax(uint),
+
+    /// Precisely the given number of digits will be printed.
     DigExact(uint)
 }
 
+/// How to emit the sign of a number.
 pub enum SignFormat {
+    /// No sign will be printed. The exponent sign will also be emitted.
     SignNone,
+    /// `-` will be printed for negative values, but no sign will be emitted
+    /// for positive numbers.
     SignNeg,
-    SignAll
+    /// `+` will be printed for positive values, and `-` will be printed for
+    /// negative values.
+    SignAll,
 }
 
+/// Encompasses functions used by the string converter.
 pub trait NumStrConv {
+    /// Returns the NaN value.
     fn nan()      -> Option<Self>;
+
+    /// Returns the infinite value.
     fn inf()      -> Option<Self>;
+
+    /// Returns the negative infinite value.
     fn neg_inf()  -> Option<Self>;
+
+    /// Returns -0.0.
     fn neg_zero() -> Option<Self>;
 
+    /// Rounds the number toward zero.
     fn round_to_zero(&self)   -> Self;
+
+    /// Returns the fractional part of the number.
     fn fractional_part(&self) -> Self;
 }
 
@@ -200,25 +235,11 @@ pub fn int_to_str_bytes_common<T: Int>(num: T, radix: uint, sign: SignFormat, f:
  *                     itself always printed using a base of 10.
  * - `negative_zero` - Whether to treat the special value `-0` as
  *                     `-0` or as `+0`.
- * - `sign`          - How to emit the sign. Options are:
- *     - `SignNone`: No sign at all. The exponent sign is also omitted.
- *     - `SignNeg`:  Only `-` on negative values.
- *     - `SignAll`:  Both `+` on positive, and `-` on negative numbers.
- * - `digits`        - The amount of digits to use for emitting the
- *                     fractional part, if any. Options are:
- *     - `DigAll`:         All calculatable digits. Beware of bignums or
- *                         fractions!
- *     - `DigMax(uint)`:   Maximum N digits, truncating any trailing zeros.
- *     - `DigExact(uint)`: Exactly N digits.
+ * - `sign`          - How to emit the sign. See `SignFormat`.
+ * - `digits`        - The amount of digits to use for emitting the fractional
+ *                     part, if any. See `SignificantDigits`.
  * - `exp_format`   - Whether or not to use the exponential (scientific) notation.
- *                    Options are:
- *     - `ExpNone`: Do not use the exponential notation.
- *     - `ExpDec`:  Use the exponential notation with the exponent having a base of 10,
- *                  and exponent sign being `'e'` or `'E'` depending on the value of
- *                  the `exp_upper` argument. E.g. the number 1000 would be printed as 1e3.
- *     - `ExpBin`:  Use the exponential notation with the exponent having a base of 2,
- *                  and exponent sign being `'p'` or `'P'` depending on the value of
- *                  the `exp_upper` argument. E.g. the number 8 would be printed as 1p3.
+ *                    See `ExponentFormat`.
  * - `exp_capital`   - Whether or not to use a capital letter for the exponent sign, if
  *                     exponential notation is desired.
  *

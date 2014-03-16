@@ -120,7 +120,7 @@ pub static NEG_INFINITY: f64 = -1.0_f64/0.0_f64;
 
 // FIXME (#1999): add is_normal, is_subnormal, and fpclassify
 
-/* Module: consts */
+/// Various useful constants.
 pub mod consts {
     // FIXME (requires Issue #1433 to fix): replace with mathematical
     // constants from cmath.

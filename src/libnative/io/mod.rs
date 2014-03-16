@@ -97,8 +97,9 @@ fn translate_error(errno: i32, detail: bool) -> IoError {
             libc::WSAECONNREFUSED => (io::ConnectionRefused, "connection refused"),
             libc::WSAECONNRESET => (io::ConnectionReset, "connection reset"),
             libc::WSAEACCES => (io::PermissionDenied, "permission denied"),
-            libc::WSAEWOULDBLOCK =>
-                (io::ResourceUnavailable, "resource temporarily unavailable"),
+            libc::WSAEWOULDBLOCK => {
+                (io::ResourceUnavailable, "resource temporarily unavailable")
+            }
             libc::WSAENOTCONN => (io::NotConnected, "not connected"),
             libc::WSAECONNABORTED => (io::ConnectionAborted, "connection aborted"),
             libc::WSAEADDRNOTAVAIL => (io::ConnectionRefused, "address not available"),

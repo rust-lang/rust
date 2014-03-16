@@ -562,51 +562,94 @@ pub struct Arguments<'a> {
 /// When a format is not otherwise specified, types are formatted by ascribing
 /// to this trait. There is not an explicit way of selecting this trait to be
 /// used for formatting, it is only if no other format is specified.
-#[allow(missing_doc)]
-pub trait Show { fn fmt(&self, &mut Formatter) -> Result; }
+pub trait Show {
+    /// Formats the value using the given formatter.
+    fn fmt(&self, &mut Formatter) -> Result;
+}
 
 /// Format trait for the `b` character
-#[allow(missing_doc)]
-pub trait Bool { fn fmt(&self, &mut Formatter) -> Result; }
+pub trait Bool {
+    /// Formats the value using the given formatter.
+    fn fmt(&self, &mut Formatter) -> Result;
+}
+
 /// Format trait for the `c` character
-#[allow(missing_doc)]
-pub trait Char { fn fmt(&self, &mut Formatter) -> Result; }
+pub trait Char {
+    /// Formats the value using the given formatter.
+    fn fmt(&self, &mut Formatter) -> Result;
+}
+
 /// Format trait for the `i` and `d` characters
-#[allow(missing_doc)]
-pub trait Signed { fn fmt(&self, &mut Formatter) -> Result; }
+pub trait Signed {
+    /// Formats the value using the given formatter.
+    fn fmt(&self, &mut Formatter) -> Result;
+}
+
 /// Format trait for the `u` character
-#[allow(missing_doc)]
-pub trait Unsigned { fn fmt(&self, &mut Formatter) -> Result; }
+pub trait Unsigned {
+    /// Formats the value using the given formatter.
+    fn fmt(&self, &mut Formatter) -> Result;
+}
+
 /// Format trait for the `o` character
-#[allow(missing_doc)]
-pub trait Octal { fn fmt(&self, &mut Formatter) -> Result; }
+pub trait Octal {
+    /// Formats the value using the given formatter.
+    fn fmt(&self, &mut Formatter) -> Result;
+}
+
 /// Format trait for the `t` character
-#[allow(missing_doc)]
-pub trait Binary { fn fmt(&self, &mut Formatter) -> Result; }
+pub trait Binary {
+    /// Formats the value using the given formatter.
+    fn fmt(&self, &mut Formatter) -> Result;
+}
+
 /// Format trait for the `x` character
-#[allow(missing_doc)]
-pub trait LowerHex { fn fmt(&self, &mut Formatter) -> Result; }
+pub trait LowerHex {
+    /// Formats the value using the given formatter.
+    fn fmt(&self, &mut Formatter) -> Result;
+}
+
 /// Format trait for the `X` character
-#[allow(missing_doc)]
-pub trait UpperHex { fn fmt(&self, &mut Formatter) -> Result; }
+pub trait UpperHex {
+    /// Formats the value using the given formatter.
+    fn fmt(&self, &mut Formatter) -> Result;
+}
+
 /// Format trait for the `s` character
-#[allow(missing_doc)]
-pub trait String { fn fmt(&self, &mut Formatter) -> Result; }
+pub trait String {
+    /// Formats the value using the given formatter.
+    fn fmt(&self, &mut Formatter) -> Result;
+}
+
 /// Format trait for the `?` character
-#[allow(missing_doc)]
-pub trait Poly { fn fmt(&self, &mut Formatter) -> Result; }
+pub trait Poly {
+    /// Formats the value using the given formatter.
+    fn fmt(&self, &mut Formatter) -> Result;
+}
+
 /// Format trait for the `p` character
-#[allow(missing_doc)]
-pub trait Pointer { fn fmt(&self, &mut Formatter) -> Result; }
+pub trait Pointer {
+    /// Formats the value using the given formatter.
+    fn fmt(&self, &mut Formatter) -> Result;
+}
+
 /// Format trait for the `f` character
-#[allow(missing_doc)]
-pub trait Float { fn fmt(&self, &mut Formatter) -> Result; }
+pub trait Float {
+    /// Formats the value using the given formatter.
+    fn fmt(&self, &mut Formatter) -> Result;
+}
+
 /// Format trait for the `e` character
-#[allow(missing_doc)]
-pub trait LowerExp { fn fmt(&self, &mut Formatter) -> Result; }
+pub trait LowerExp {
+    /// Formats the value using the given formatter.
+    fn fmt(&self, &mut Formatter) -> Result;
+}
+
 /// Format trait for the `E` character
-#[allow(missing_doc)]
-pub trait UpperExp { fn fmt(&self, &mut Formatter) -> Result; }
+pub trait UpperExp {
+    /// Formats the value using the given formatter.
+    fn fmt(&self, &mut Formatter) -> Result;
+}
 
 // FIXME #11938 - UFCS would make us able call the above methods
 // directly Show::show(x, fmt).
