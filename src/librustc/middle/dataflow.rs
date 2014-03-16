@@ -84,12 +84,14 @@ struct LoopScope<'a> {
 }
 
 impl<'a, O:DataFlowOperator> pprust::PpAnn for DataFlowContext<'a, O> {
-    fn pre(&self, node: pprust::AnnNode) -> io::IoResult<()> {
-        let (ps, id) = match node {
-            pprust::NodeExpr(ps, expr) => (ps, expr.id),
-            pprust::NodeBlock(ps, blk) => (ps, blk.id),
-            pprust::NodeItem(ps, _) => (ps, 0),
-            pprust::NodePat(ps, pat) => (ps, pat.id)
+    fn pre(&self,
+           ps: &mut pprust::State<DataFlowContext<'a, O>>,
+           node: pprust::AnnNode) -> io::IoResult<()> {
+        let id = match node {
+            pprust::NodeExpr(expr) => expr.id,
+            pprust::NodeBlock(blk) => blk.id,
+            pprust::NodeItem(_) => 0,
+            pprust::NodePat(pat) => pat.id
         };
 
         if self.nodeid_to_bitset.contains_key(&id) {
@@ -111,9 +113,8 @@ impl<'a, O:DataFlowOperator> pprust::PpAnn for DataFlowContext<'a, O> {
                 ~""
             };
 
-            let comment_str = format!("id {}: {}{}{}",
-                                      id, entry_str, gens_str, kills_str);
-            try!(pprust::synth_comment(ps, comment_str));
+            try!(ps.synth_comment(format!("id {}: {}{}{}", id, entry_str,
+                                          gens_str, kills_str)));
             try!(pp::space(&mut ps.s));
         }
         Ok(())
@@ -351,11 +352,10 @@ impl<'a, O:DataFlowOperator+Clone+'static> DataFlowContext<'a, O> {
     fn pretty_print_to(&self, wr: ~io::Writer,
                        blk: &ast::Block) -> io::IoResult<()> {
         let mut ps = pprust::rust_printer_annotated(wr, self);
-        try!(pprust::cbox(&mut ps, pprust::indent_unit));
-        try!(pprust::ibox(&mut ps, 0u));
-        try!(pprust::print_block(&mut ps, blk));
-        try!(pp::eof(&mut ps.s));
-        Ok(())
+        try!(ps.cbox(pprust::indent_unit));
+        try!(ps.ibox(0u));
+        try!(ps.print_block(blk));
+        pp::eof(&mut ps.s)
     }
 }
 

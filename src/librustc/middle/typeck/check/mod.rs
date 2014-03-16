@@ -800,7 +800,7 @@ fn compare_impl_method(tcx: &ty::ctxt,
                 format!("method `{}` has a `{}` declaration in the impl, \
                         but not in the trait",
                         token::get_ident(trait_m.ident),
-                        pprust::explicit_self_to_str(&impl_m.explicit_self)));
+                        pprust::explicit_self_to_str(impl_m.explicit_self)));
             return;
         }
         (_, &ast::SelfStatic) => {
@@ -809,7 +809,7 @@ fn compare_impl_method(tcx: &ty::ctxt,
                 format!("method `{}` has a `{}` declaration in the trait, \
                         but not in the impl",
                         token::get_ident(trait_m.ident),
-                        pprust::explicit_self_to_str(&trait_m.explicit_self)));
+                        pprust::explicit_self_to_str(trait_m.explicit_self)));
             return;
         }
         _ => {
