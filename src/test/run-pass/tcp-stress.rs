@@ -13,6 +13,10 @@
 // ignore-android needs extra network permissions
 // exec-env:RUST_LOG=debug
 
+#[feature(phase)];
+#[phase(syntax, link)]
+extern crate log;
+
 use std::libc;
 use std::io::net::ip::{Ipv4Addr, SocketAddr};
 use std::io::net::tcp::{TcpListener, TcpStream};
