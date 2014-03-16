@@ -29,53 +29,53 @@ pub fn render<T: fmt::Show, S: fmt::Show>(
     -> fmt::Result
 {
     write!(dst,
-"<!DOCTYPE html>
-<html lang=\"en\">
+r##"<!DOCTYPE html>
+<html lang="en">
 <head>
-    <meta charset=\"utf-8\" />
+    <meta charset="utf-8" />
     <title>{title}</title>
 
     <link href='http://fonts.googleapis.com/css?family=Oswald:700|Inconsolata:400,700'
           rel='stylesheet' type='text/css'>
-    <link rel=\"stylesheet\" type=\"text/css\" href=\"{root_path}main.css\">
+    <link rel="stylesheet" type="text/css" href="{root_path}main.css">
 
-    {favicon, select, none{} other{<link rel=\"shortcut icon\" href=\"#\" />}}
+    {favicon, select, none{} other{<link rel="shortcut icon" href="\#" />}}
 </head>
 <body>
     <!--[if lte IE 8]>
-    <div class=\"warning\">
+    <div class="warning">
         This old browser is unsupported and will most likely display funky
         things.
     </div>
     <![endif]-->
 
-    <section class=\"sidebar\">
+    <section class="sidebar">
         {logo, select, none{} other{
-            <a href='{root_path}{krate}/index.html'><img src='#' alt=''/></a>
+            <a href='{root_path}{krate}/index.html'><img src='\#' alt=''/></a>
         }}
 
         {sidebar}
     </section>
 
-    <nav class=\"sub\">
-        <form class=\"search-form js-only\">
-            <button class=\"do-search\">Search</button>
-            <div class=\"search-container\">
-                <input class=\"search-input\" name=\"search\"
-                       autocomplete=\"off\"
-                       placeholder=\"Search documentation...\"
-                       type=\"search\" />
+    <nav class="sub">
+        <form class="search-form js-only">
+            <button class="do-search">Search</button>
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Search documentation..."
+                       type="search" />
             </div>
         </form>
     </nav>
 
-    <section id='main' class=\"content {ty}\">{content}</section>
-    <section id='search' class=\"content hidden\"></section>
+    <section id='main' class="content {ty}">{content}</section>
+    <section id='search' class="content hidden"></section>
 
-    <section class=\"footer\"></section>
+    <section class="footer"></section>
 
-    <div id=\"help\" class=\"hidden\">
-        <div class=\"shortcuts\">
+    <div id="help" class="hidden">
+        <div class="shortcuts">
             <h1>Keyboard shortcuts</h1>
             <dl>
                 <dt>?</dt>
@@ -86,11 +86,11 @@ pub fn render<T: fmt::Show, S: fmt::Show>(
                 <dd>Move up in search results</dd>
                 <dt>&darr;</dt>
                 <dd>Move down in search results</dd>
-                <dt>&\\#9166;</dt>
+                <dt>&\#9166;</dt>
                 <dd>Go to active search result</dd>
             </dl>
         </div>
-        <div class=\"infos\">
+        <div class="infos">
             <h1>Search tricks</h1>
             <p>
                 Prefix searches with a type followed by a colon (e.g.
@@ -106,15 +106,15 @@ pub fn render<T: fmt::Show, S: fmt::Show>(
     </div>
 
     <script>
-        var rootPath = \"{root_path}\";
-        var currentCrate = \"{krate}\";
+        var rootPath = "{root_path}";
+        var currentCrate = "{krate}";
     </script>
-    <script src=\"{root_path}jquery.js\"></script>
-    <script src=\"{root_path}main.js\"></script>
-    <script async src=\"{root_path}search-index.js\"></script>
+    <script src="{root_path}jquery.js"></script>
+    <script src="{root_path}main.js"></script>
+    <script async src="{root_path}search-index.js"></script>
 </body>
 </html>
-",
+"##,
     content   = *t,
     root_path = page.root_path,
     ty        = page.ty,
