@@ -20,7 +20,7 @@
       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
       html_root_url = "http://static.rust-lang.org/doc/master")];
 
-#[feature(macro_rules, managed_boxes, default_type_params)];
+#[feature(macro_rules, managed_boxes, default_type_params, phase)];
 
 // NOTE remove the following two attributes after the next snapshot.
 #[allow(unrecognized_lint)];
@@ -30,6 +30,7 @@
 extern crate rand;
 
 #[cfg(test)] extern crate test;
+#[cfg(test)] #[phase(syntax, link)] extern crate log;
 
 pub use bitv::Bitv;
 pub use btree::BTree;

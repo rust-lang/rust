@@ -31,13 +31,13 @@ extern fn cb(data: libc::uintptr_t) -> libc::uintptr_t {
 
 fn count(n: uint) -> uint {
     unsafe {
-        info!("n = {}", n);
+        println!("n = {}", n);
         rustrt::rust_dbg_call(cb, n)
     }
 }
 
 pub fn main() {
     let result = count(1000u);
-    info!("result = {}", result);
+    println!("result = {}", result);
     assert_eq!(result, 1000u);
 }

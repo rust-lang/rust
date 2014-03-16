@@ -13,7 +13,7 @@
 
 fn f() {
     let v = ~[1i];
-    info!("{}", v.some_field_name); //type error
+    println!("{}", v.some_field_name); //type error
 }
 
 fn main() { }

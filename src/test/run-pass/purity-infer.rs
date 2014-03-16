@@ -11,5 +11,5 @@
 
 fn something(f: ||) { f(); }
 pub fn main() {
-    something(|| error!("hi!") );
+    something(|| println!("hi!") );
 }

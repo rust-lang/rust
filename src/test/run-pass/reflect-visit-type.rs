@@ -19,32 +19,32 @@ struct MyVisitor {
 impl TyVisitor for MyVisitor {
     fn visit_bot(&mut self) -> bool {
         self.types.push(~"bot");
-        error!("visited bot type");
+        println!("visited bot type");
         true
     }
     fn visit_nil(&mut self) -> bool {
         self.types.push(~"nil");
-        error!("visited nil type");
+        println!("visited nil type");
         true
     }
     fn visit_bool(&mut self) -> bool {
         self.types.push(~"bool");
-        error!("visited bool type");
+        println!("visited bool type");
         true
     }
     fn visit_int(&mut self) -> bool {
         self.types.push(~"int");
-        error!("visited int type");
+        println!("visited int type");
         true
     }
     fn visit_i8(&mut self) -> bool {
         self.types.push(~"i8");
-        error!("visited i8 type");
+        println!("visited i8 type");
         true
     }
     fn visit_i16(&mut self) -> bool {
         self.types.push(~"i16");
-        error!("visited i16 type");
+        println!("visited i16 type");
         true
     }
     fn visit_i32(&mut self) -> bool { true }

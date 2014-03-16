@@ -10,6 +10,8 @@
 
 // error-pattern:whatever
 
+#[feature(phase)];
+#[phase(syntax, link)] extern crate log;
 use std::os;
 use std::task;
 

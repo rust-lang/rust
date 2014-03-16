@@ -59,12 +59,11 @@ pub fn spawn(f: proc()) {
 pub fn spawn_opts(opts: TaskOpts, f: proc()) {
     let TaskOpts {
         notify_chan, name, stack_size,
-        logger, stderr, stdout,
+        stderr, stdout,
     } = opts;
 
     let mut task = ~Task::new();
     task.name = name;
-    task.logger = logger;
     task.stderr = stderr;
     task.stdout = stdout;
     match notify_chan {

@@ -97,6 +97,6 @@ pub unsafe fn annihilate() {
 
     if debug_mem() {
         // We do logging here w/o allocation.
-        debug!("total boxes annihilated: {}", n_total_boxes);
+        println!("total boxes annihilated: {}", n_total_boxes);
     }
 }

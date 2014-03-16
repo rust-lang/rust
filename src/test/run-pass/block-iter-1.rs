@@ -20,6 +20,6 @@ pub fn main() {
             odds += 1;
         }
     });
-    error!("{:?}", odds);
+    println!("{:?}", odds);
     assert_eq!(odds, 4);
 }

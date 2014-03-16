@@ -43,6 +43,6 @@ fn main() {
         cast::forget(i1);
         let x = @r(i1p);
         failfn();
-        error!("{:?}", x);
+        println!("{:?}", x);
     }
 }

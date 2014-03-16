@@ -14,13 +14,13 @@ pub fn main() {
     let (tx, rx) = channel();
     let _t = task::spawn(proc() { child(&tx) });
     let y = rx.recv();
-    error!("received");
-    error!("{:?}", y);
+    println!("received");
+    println!("{:?}", y);
     assert_eq!(y, 10);
 }
 
 fn child(c: &Sender<int>) {
-    error!("sending");
+    println!("sending");
     c.send(10);
-    error!("value sent");
+    println!("value sent");
 }

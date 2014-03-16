@@ -16,21 +16,21 @@ pub fn main() { test05(); }
 
 fn test05_start(tx : &Sender<int>) {
     tx.send(10);
-    error!("sent 10");
+    println!("sent 10");
     tx.send(20);
-    error!("sent 20");
+    println!("sent 20");
     tx.send(30);
-    error!("sent 30");
+    println!("sent 30");
 }
 
 fn test05() {
     let (tx, rx) = channel();
     task::spawn(proc() { test05_start(&tx) });
     let mut value: int = rx.recv();
-    error!("{}", value);
+    println!("{}", value);
     value = rx.recv();
-    error!("{}", value);
+    println!("{}", value);
     value = rx.recv();
-    error!("{}", value);
+    println!("{}", value);
     assert_eq!(value, 30);
 }

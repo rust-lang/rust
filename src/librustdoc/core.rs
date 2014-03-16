@@ -75,7 +75,9 @@ fn get_ast_and_resolve(cpath: &Path,
 
     let krate = phase_1_parse_input(sess, cfg, &input);
     let loader = &mut Loader::new(sess);
-    let (krate, ast_map) = phase_2_configure_and_expand(sess, loader, krate);
+    let id = from_str("rustdoc").unwrap();
+    let (krate, ast_map) = phase_2_configure_and_expand(sess, loader,
+                                                        krate, &id);
     let driver::driver::CrateAnalysis {
         exported_items, public_items, ty_cx, ..
     } = phase_3_run_analysis_passes(sess, &krate, ast_map);

@@ -296,16 +296,16 @@ pub mod pingpong {
 
 fn client(chan: pingpong::client::ping) {
     let chan = pingpong::client::do_ping(chan);
-    error!("Sent ping");
+    println!("Sent ping");
     let (_chan, _data) = pingpong::client::do_pong(chan);
-    error!("Received pong");
+    println!("Received pong");
 }
 
 fn server(chan: pingpong::server::ping) {
     let (chan, _data) = pingpong::server::do_ping(chan);
-    error!("Received ping");
+    println!("Received ping");
     let _chan = pingpong::server::do_pong(chan);
-    error!("Sent pong");
+    println!("Sent pong");
 }
 
 pub fn main() {

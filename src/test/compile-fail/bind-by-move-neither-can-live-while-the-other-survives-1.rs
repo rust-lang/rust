@@ -12,7 +12,7 @@ struct X { x: () }
 
 impl Drop for X {
     fn drop(&mut self) {
-        error!("destructor runs");
+        println!("destructor runs");
     }
 }
 

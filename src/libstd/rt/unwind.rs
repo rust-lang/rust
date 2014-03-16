@@ -398,6 +398,8 @@ fn begin_unwind_inner(msg: ~Any, file: &'static str, line: uint) -> ! {
                 if backtrace::log_enabled() {
                     let mut err = ::rt::util::Stderr;
                     let _err = backtrace::write(&mut err);
+                } else {
+                    rterrln!("run with `RUST_BACKTRACE=1` to see a backtrace");
                 }
                 unsafe { intrinsics::abort() }
             }

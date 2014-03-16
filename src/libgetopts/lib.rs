@@ -86,7 +86,9 @@
 #[allow(missing_doc)];
 #[allow(deprecated_owned_vector)];
 
-#[feature(globs)];
+#[feature(globs, phase)];
+
+#[cfg(test)] #[phase(syntax, link)] extern crate log;
 
 use std::cmp::Eq;
 use std::result::{Err, Ok};

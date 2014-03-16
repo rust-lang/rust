@@ -13,7 +13,7 @@ struct cat {
 }
 
 fn meow() {
-    error!("meow")
+    println!("meow")
 }
 
 fn cat() -> cat {

@@ -12,9 +12,9 @@
 // exec-env:RUST_LOG=conditional-debug-macro-on=4
 
 pub fn main() {
-    // exits early if debug! evaluates its arguments, otherwise it
+    // exits early if println! evaluates its arguments, otherwise it
     // will hit the fail.
-    debug!("{:?}", { if true { return; } });
+    println!("{:?}", { if true { return; } });
 
     fail!();
 }

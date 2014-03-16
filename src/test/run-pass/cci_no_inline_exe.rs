@@ -21,12 +21,12 @@ pub fn main() {
     // sys::frame_address() to determine if we are inlining is
     // actually working.
     //let bt0 = sys::frame_address();
-    //info!("%?", bt0);
+    //println!("%?", bt0);
     iter(~[1u, 2u, 3u], |i| {
         println!("{}", i);
 
         //let bt1 = sys::frame_address();
-        //info!("%?", bt1);
+        //println!("%?", bt1);
 
         //assert!(bt0 != bt1);
     })

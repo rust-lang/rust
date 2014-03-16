@@ -19,8 +19,8 @@ fn failfn() {
 fn main() {
     let y = ~0;
     let x: @proc() = @(proc() {
-        error!("{:?}", y.clone());
+        println!("{:?}", y.clone());
     });
     failfn();
-    error!("{:?}", x);
+    println!("{:?}", x);
 }
