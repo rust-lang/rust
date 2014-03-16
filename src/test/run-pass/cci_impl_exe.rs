@@ -16,13 +16,13 @@ use cci_impl_lib::uint_helpers;
 
 pub fn main() {
     //let bt0 = sys::frame_address();
-    //info!("%?", bt0);
+    //println!("%?", bt0);
 
     3u.to(10u, |i| {
         println!("{}", i);
 
         //let bt1 = sys::frame_address();
-        //info!("%?", bt1);
+        //println!("%?", bt1);
         //assert!(bt0 == bt1);
     })
 }

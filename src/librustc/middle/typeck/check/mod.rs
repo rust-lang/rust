@@ -2848,9 +2848,6 @@ fn check_expr_with_unifier(fcx: @FnCtxt,
         }
         fcx.write_bot(id);
       }
-      ast::ExprLogLevel => {
-        fcx.write_ty(id, ty::mk_u32())
-      }
       ast::ExprParen(a) => {
         check_expr_with_opt_hint_and_lvalue_pref(fcx, a, expected, lvalue_pref);
         fcx.write_ty(id, fcx.expr_ty(a));

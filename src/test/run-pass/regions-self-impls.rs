@@ -22,6 +22,6 @@ impl<'a> get_chowder<'a> for Clam<'a> {
 
 pub fn main() {
     let clam = Clam { chowder: &3 };
-    info!("{:?}", *clam.get_chowder());
+    println!("{:?}", *clam.get_chowder());
     clam.get_chowder();
 }

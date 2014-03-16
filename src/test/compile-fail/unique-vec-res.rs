@@ -35,6 +35,6 @@ fn main() {
     let r2 = ~[~r { i: i2 }];
     f(r1.clone(), r2.clone());
     //~^ ERROR failed to find an implementation of
-    info!("{:?}", (r2, i1.get()));
-    info!("{:?}", (r1, i2.get()));
+    println!("{:?}", (r2, i1.get()));
+    println!("{:?}", (r1, i2.get()));
 }

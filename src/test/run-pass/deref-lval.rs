@@ -15,5 +15,5 @@ use std::cell::Cell;
 pub fn main() {
     let x = @Cell::new(5);
     x.set(1000);
-    info!("{:?}", x.get());
+    println!("{:?}", x.get());
 }

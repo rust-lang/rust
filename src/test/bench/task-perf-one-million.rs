@@ -66,5 +66,5 @@ fn main() {
     let (sum_port, sum_chan) = stream::<int>();
     start_chan.send(sum_chan);
     let sum = sum_port.recv();
-    error!("How many tasks? {} tasks.", sum);
+    println!("How many tasks? {} tasks.", sum);
 }

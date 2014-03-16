@@ -19,5 +19,5 @@ fn failfn() {
 fn main() {
     let x = @~0;
     failfn();
-    error!("{:?}", x);
+    println!("{:?}", x);
 }

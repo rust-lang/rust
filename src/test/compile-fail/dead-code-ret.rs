@@ -14,5 +14,5 @@
 
 fn main() {
     return;
-    info!("Paul is dead");
+    println!("Paul is dead");
 }

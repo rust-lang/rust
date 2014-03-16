@@ -12,7 +12,11 @@
 // compile-flags: --cfg ndebug
 // exec-env:RUST_LOG=conditional-debug-macro-off=4
 
+#[feature(phase)];
+#[phase(syntax, link)]
+extern crate log;
+
 pub fn main() {
-    // only fails if debug! evaluates its argument.
+    // only fails if println! evaluates its argument.
     debug!("{:?}", { if true { fail!() } });
 }

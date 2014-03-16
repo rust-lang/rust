@@ -20,6 +20,6 @@ pub fn main() {
             sum += *i * *j;
         });
     });
-    error!("{:?}", sum);
+    println!("{:?}", sum);
     assert_eq!(sum, 225);
 }

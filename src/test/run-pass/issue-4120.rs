@@ -17,5 +17,5 @@ pub fn main()
     unsafe {
         libc::exit(0);
     }
-    error!("ack");
+    println!("ack");
 }

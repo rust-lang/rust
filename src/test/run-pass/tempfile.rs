@@ -80,7 +80,7 @@ fn test_rm_tempdir() {
 fn recursive_mkdir_rel() {
     let path = Path::new("frob");
     let cwd = os::getcwd();
-    debug!("recursive_mkdir_rel: Making: {} in cwd {} [{:?}]", path.display(),
+    println!("recursive_mkdir_rel: Making: {} in cwd {} [{:?}]", path.display(),
            cwd.display(), path.exists());
     fs::mkdir_recursive(&path, io::UserRWX);
     assert!(path.is_dir());
@@ -98,13 +98,13 @@ fn recursive_mkdir_dot() {
 fn recursive_mkdir_rel_2() {
     let path = Path::new("./frob/baz");
     let cwd = os::getcwd();
-    debug!("recursive_mkdir_rel_2: Making: {} in cwd {} [{:?}]", path.display(),
+    println!("recursive_mkdir_rel_2: Making: {} in cwd {} [{:?}]", path.display(),
            cwd.display(), path.exists());
     fs::mkdir_recursive(&path, io::UserRWX);
     assert!(path.is_dir());
     assert!(path.dir_path().is_dir());
     let path2 = Path::new("quux/blat");
-    debug!("recursive_mkdir_rel_2: Making: {} in cwd {}", path2.display(),
+    println!("recursive_mkdir_rel_2: Making: {} in cwd {}", path2.display(),
            cwd.display());
     fs::mkdir_recursive(&path2, io::UserRWX);
     assert!(path2.is_dir());
@@ -120,7 +120,7 @@ pub fn test_rmdir_recursive_ok() {
     let tmpdir = tmpdir.path();
     let root = tmpdir.join("foo");
 
-    debug!("making {}", root.display());
+    println!("making {}", root.display());
     fs::mkdir(&root, rwx);
     fs::mkdir(&root.join("foo"), rwx);
     fs::mkdir(&root.join("foo").join("bar"), rwx);

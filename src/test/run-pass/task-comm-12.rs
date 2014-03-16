@@ -12,7 +12,7 @@ use std::task;
 
 pub fn main() { test00(); }
 
-fn start(_task_number: int) { info!("Started / Finished task."); }
+fn start(_task_number: int) { println!("Started / Finished task."); }
 
 fn test00() {
     let i: int = 0;
@@ -32,5 +32,5 @@ fn test00() {
     // Try joining tasks that have already finished.
     result.recv();
 
-    info!("Joined task.");
+    println!("Joined task.");
 }

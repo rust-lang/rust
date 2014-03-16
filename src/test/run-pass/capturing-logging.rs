@@ -12,12 +12,16 @@
 // ignore-android (FIXME #11419)
 // exec-env:RUST_LOG=info
 
+#[feature(phase)];
+
 #[no_uv];
 extern crate native;
+#[phase(syntax, link)]
+extern crate log;
 
 use std::fmt;
 use std::io::{ChanReader, ChanWriter};
-use std::logging::{set_logger, Logger};
+use log::{set_logger, Logger};
 
 struct MyWriter(ChanWriter);
 

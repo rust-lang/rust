@@ -16,7 +16,7 @@ struct cat {
 
 impl Drop for cat {
     #[cat_dropper]
-    fn drop(&mut self) { error!("{} landed on hir feet" , self . name); }
+    fn drop(&mut self) { println!("{} landed on hir feet" , self . name); }
 }
 
 

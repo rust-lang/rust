@@ -35,7 +35,7 @@ fn server(requests: &Receiver<request>, responses: &Sender<uint>) {
         match requests.recv_opt() {
           Some(get_count) => { responses.send(count.clone()); }
           Some(bytes(b)) => {
-            //error!("server: received {:?} bytes", b);
+            //println!("server: received {:?} bytes", b);
             count += b;
           }
           None => { done = true; }
@@ -43,7 +43,7 @@ fn server(requests: &Receiver<request>, responses: &Sender<uint>) {
         }
     }
     responses.send(count);
-    //error!("server exiting");
+    //println!("server exiting");
 }
 
 fn run(args: &[~str]) {
@@ -60,10 +60,10 @@ fn run(args: &[~str]) {
         worker_results.push(builder.future_result());
         builder.spawn(proc() {
             for _ in range(0u, size / workers) {
-                //error!("worker {:?}: sending {:?} bytes", i, num_bytes);
+                //println!("worker {:?}: sending {:?} bytes", i, num_bytes);
                 to_child.send(bytes(num_bytes));
             }
-            //error!("worker {:?} exiting", i);
+            //println!("worker {:?} exiting", i);
         });
         from_parent
     } else {
@@ -74,10 +74,10 @@ fn run(args: &[~str]) {
             worker_results.push(builder.future_result());
             builder.spawn(proc() {
                 for _ in range(0u, size / workers) {
-                    //error!("worker {:?}: sending {:?} bytes", i, num_bytes);
+                    //println!("worker {:?}: sending {:?} bytes", i, num_bytes);
                     to_child.send(bytes(num_bytes));
                 }
-                //error!("worker {:?} exiting", i);
+                //println!("worker {:?} exiting", i);
             });
         }
         from_parent
@@ -90,7 +90,7 @@ fn run(args: &[~str]) {
         r.recv();
     }
 
-    //error!("sending stop message");
+    //println!("sending stop message");
     //to_child.send(stop);
     //move_out(to_child);
     let result = from_child.recv();
@@ -113,6 +113,6 @@ fn main() {
         args.clone()
     };
 
-    info!("{:?}", args);
+    println!("{:?}", args);
     run(args);
 }

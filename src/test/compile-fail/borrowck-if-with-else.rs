@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foo(x: int) { info!("{:?}", x); }
+fn foo(x: int) { println!("{:?}", x); }
 
 fn main() {
     let x: int;
     if 1 > 2 {
-        info!("whoops");
+        println!("whoops");
     } else {
         x = 10;
     }

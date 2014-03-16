@@ -34,7 +34,7 @@ pub fn main() {
                 }
             }
             let z = tail[0].clone();
-            info!("{:?}", z);
+            println!("{:?}", z);
         }
         _ => {
             unreachable!();

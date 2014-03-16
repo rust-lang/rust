@@ -15,7 +15,7 @@ use foo::x;
 use z = foo::x;
 
 mod foo {
-    pub fn x(y: int) { info!("{}", y); }
+    pub fn x(y: int) { println!("{}", y); }
 }
 
 pub fn main() { x(10); z(10); }

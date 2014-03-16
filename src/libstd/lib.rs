@@ -53,7 +53,7 @@
       html_root_url = "http://static.rust-lang.org/doc/master")];
 
 #[feature(macro_rules, globs, asm, managed_boxes, thread_local, link_args,
-          simd, linkage, default_type_params)];
+          simd, linkage, default_type_params, phase)];
 
 // NOTE remove the following two attributes after the next snapshot.
 #[allow(unrecognized_lint)];
@@ -73,6 +73,7 @@
 #[cfg(test)] extern crate rustuv;
 #[cfg(test)] extern crate native;
 #[cfg(test)] extern crate green;
+#[cfg(test)] #[phase(syntax, link)] extern crate log;
 
 // Make and rand accessible for benchmarking/testcases
 #[cfg(test)] extern crate rand;
@@ -178,7 +179,6 @@ pub mod path;
 pub mod cast;
 pub mod fmt;
 pub mod cleanup;
-pub mod logging;
 pub mod mem;
 
 
@@ -221,7 +221,6 @@ mod std {
     pub use io;
     pub use kinds;
     pub use local_data;
-    pub use logging;
     pub use option;
     pub use os;
     pub use rt;

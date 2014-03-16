@@ -70,8 +70,11 @@ println!("{:?}", tuple_ptr)
       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
       html_root_url = "http://static.rust-lang.org/doc/master")];
 
-#[feature(macro_rules, managed_boxes)];
+#[feature(macro_rules, managed_boxes, phase)];
 #[allow(deprecated_owned_vector)];
+
+#[cfg(test)]
+#[phase(syntax, link)] extern crate log;
 
 use std::cast;
 use std::kinds::marker;

@@ -11,7 +11,7 @@
 
 
 
-fn my_err(s: ~str) -> ! { error!("{:?}", s); fail!(); }
+fn my_err(s: ~str) -> ! { println!("{:?}", s); fail!(); }
 
 fn okay(i: uint) -> int {
     if i == 3u { my_err(~"I don't like three"); } else { return 42; }

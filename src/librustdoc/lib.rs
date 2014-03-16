@@ -15,7 +15,7 @@
 #[crate_type = "rlib"];
 
 #[allow(deprecated_owned_vector)];
-#[feature(globs, struct_variant, managed_boxes, macro_rules)];
+#[feature(globs, struct_variant, managed_boxes, macro_rules, phase)];
 
 extern crate syntax;
 extern crate rustc;
@@ -25,6 +25,8 @@ extern crate getopts;
 extern crate collections;
 extern crate testing = "test";
 extern crate time;
+#[phase(syntax, link)]
+extern crate log;
 
 use std::cell::RefCell;
 use std::local_data;

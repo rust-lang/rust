@@ -62,5 +62,5 @@ pub fn main() {
     assert!(!branch(@leaf(magenta), @leaf(cyan))
         .isEq(branch(@leaf(magenta), @leaf(magenta))));
 
-    error!("Assertions all succeeded!");
+    println!("Assertions all succeeded!");
 }

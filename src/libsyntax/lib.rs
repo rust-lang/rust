@@ -26,9 +26,7 @@ This API is completely unstable and subject to change.
       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
       html_root_url = "http://static.rust-lang.org/doc/master")];
 
-#[feature(macro_rules, globs, managed_boxes, default_type_params)];
-#[allow(unknown_features)];// Note: remove it after a snapshot.
-#[feature(quote)];
+#[feature(macro_rules, globs, managed_boxes, default_type_params, phase, quote)];
 
 #[allow(deprecated)];
 #[deny(non_camel_case_types)];
@@ -37,6 +35,8 @@ This API is completely unstable and subject to change.
 extern crate serialize;
 extern crate term;
 extern crate collections;
+#[phase(syntax, link)]
+extern crate log;
 
 pub mod util {
     pub mod interner;

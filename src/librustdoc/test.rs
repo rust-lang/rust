@@ -61,7 +61,9 @@ pub fn run(input: &str, libs: @RefCell<HashSet<Path>>, mut test_args: ~[~str]) -
     let cfg = driver::build_configuration(sess);
     let krate = driver::phase_1_parse_input(sess, cfg, &input);
     let loader = &mut Loader::new(sess);
-    let (krate, _) = driver::phase_2_configure_and_expand(sess, loader, krate);
+    let id = from_str("rustdoc-test").unwrap();
+    let (krate, _) = driver::phase_2_configure_and_expand(sess, loader, krate,
+                                                          &id);
 
     let ctx = @core::DocContext {
         krate: krate,

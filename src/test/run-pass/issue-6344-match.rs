@@ -18,7 +18,7 @@ pub fn main() {
 
     match a {
         A { x : ref x } => {
-            info!("{:?}", x)
+            println!("{:?}", x)
         }
     }
 }

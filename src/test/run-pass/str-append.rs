@@ -11,7 +11,7 @@
 fn test1() {
     let mut s: ~str = ~"hello";
     s.push_str("world");
-    info!("{}", s.clone());
+    println!("{}", s.clone());
     assert_eq!(s[9], 'd' as u8);
 }
 
@@ -21,8 +21,8 @@ fn test2() {
     let ff: ~str = ~"abc";
     let a: ~str = ff + "ABC" + ff;
     let b: ~str = ~"ABC" + ff + "ABC";
-    info!("{}", a.clone());
-    info!("{}", b.clone());
+    println!("{}", a.clone());
+    println!("{}", b.clone());
     assert_eq!(a, ~"abcABCabc");
     assert_eq!(b, ~"ABCabcABC");
 }

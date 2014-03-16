@@ -15,6 +15,6 @@ fn id<T:Send>(t: T) -> T { return t; }
 pub fn main() {
     let expected = ~100;
     let actual = id::<~int>(expected.clone());
-    info!("{:?}", *actual);
+    println!("{:?}", *actual);
     assert_eq!(*expected, *actual);
 }

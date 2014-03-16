@@ -10,8 +10,8 @@
 
 #[feature(managed_boxes)];
 
-fn magic(x: A) { info!("{:?}", x); }
-fn magic2(x: @int) { info!("{:?}", x); }
+fn magic(x: A) { println!("{:?}", x); }
+fn magic2(x: @int) { println!("{:?}", x); }
 
 struct A { a: @int }
 

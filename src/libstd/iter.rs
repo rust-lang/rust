@@ -398,9 +398,9 @@ pub trait Iterator<A> {
     /// let xs = [1u, 4, 2, 3, 8, 9, 6];
     /// let sum = xs.iter()
     ///             .map(|&x| x)
-    ///             .inspect(|&x| debug!("filtering {}", x))
+    ///             .inspect(|&x| println!("filtering {}", x))
     ///             .filter(|&x| x % 2 == 0)
-    ///             .inspect(|&x| debug!("{} made it through", x))
+    ///             .inspect(|&x| println!("{} made it through", x))
     ///             .sum();
     /// println!("{}", sum);
     /// ```

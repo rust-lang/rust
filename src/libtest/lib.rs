@@ -692,7 +692,6 @@ pub fn run_tests_console(opts: &TestOpts,
                          tests: ~[TestDescAndFn]) -> io::IoResult<bool> {
     fn callback<T: Writer>(event: &TestEvent,
                            st: &mut ConsoleTestState<T>) -> io::IoResult<()> {
-        debug!("callback(event={:?})", event);
         match (*event).clone() {
             TeFiltered(ref filtered_tests) => st.write_run_start(filtered_tests.len()),
             TeWait(ref test, padding) => st.write_test_start(test, padding),
@@ -736,7 +735,6 @@ pub fn run_tests_console(opts: &TestOpts,
     match tests.iter().max_by(|t|len_if_padded(*t)) {
         Some(t) => {
             let n = t.desc.name.to_str();
-            debug!("Setting max_name_len from: {}", n);
             st.max_name_len = n.len();
         },
         None => {}
@@ -825,7 +823,6 @@ fn run_tests(opts: &TestOpts,
     // It's tempting to just spawn all the tests at once, but since we have
     // many tests that run in other processes we would be making a big mess.
     let concurrency = get_concurrency();
-    debug!("using {} test tasks", concurrency);
 
     let mut remaining = filtered_tests;
     remaining.reverse();
@@ -1151,7 +1148,6 @@ impl MetricMap {
         });
 
         if ok {
-            debug!("rewriting file '{:?}' with updated metrics", p);
             self.save(p).unwrap();
         }
         return (diff, ok)
@@ -1202,8 +1198,6 @@ impl BenchHarness {
 
     pub fn bench_n(&mut self, n: u64, f: |&mut BenchHarness|) {
         self.iterations = n;
-        debug!("running benchmark for {} iterations",
-               n as uint);
         f(self);
     }
 
@@ -1228,9 +1222,6 @@ impl BenchHarness {
         // (i.e. larger error bars).
         if n == 0 { n = 1; }
 
-        debug!("Initial run took {} ns, iter count that takes 1ms estimated as {}",
-               self.ns_per_iter(), n);
-
         let mut total_run = 0;
         let samples : &mut [f64] = [0.0_f64, ..50];
         loop {
@@ -1251,12 +1242,6 @@ impl BenchHarness {
 
             stats::winsorize(samples, 5.0);
             let summ5 = stats::Summary::new(samples);
-
-            debug!("{} samples, median {}, MAD={}, MADP={}",
-                   samples.len(),
-                   summ.median as f64,
-                   summ.median_abs_dev as f64,
-                   summ.median_abs_dev_pct as f64);
 
             let now = precise_time_ns();
             let loop_run = now - loop_start;
