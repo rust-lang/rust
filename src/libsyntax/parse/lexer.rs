@@ -18,6 +18,7 @@ use parse::token::{str_to_ident};
 
 use std::cell::{Cell, RefCell};
 use std::char;
+use std::rc::Rc;
 use std::mem::replace;
 use std::num::from_str_radix;
 
@@ -27,7 +28,7 @@ pub trait Reader {
     fn is_eof(&self) -> bool;
     fn next_token(&self) -> TokenAndSpan;
     fn fatal(&self, ~str) -> !;
-    fn span_diag(&self) -> @SpanHandler;
+    fn span_diag<'a>(&'a self) -> &'a SpanHandler;
     fn peek(&self) -> TokenAndSpan;
     fn dup(&self) -> ~Reader:;
 }
@@ -38,8 +39,8 @@ pub struct TokenAndSpan {
     sp: Span,
 }
 
-pub struct StringReader {
-    span_diagnostic: @SpanHandler,
+pub struct StringReader<'a> {
+    span_diagnostic: &'a SpanHandler,
     // The absolute offset within the codemap of the next character to read
     pos: Cell<BytePos>,
     // The absolute offset within the codemap of the last character read(curr)
@@ -48,36 +49,36 @@ pub struct StringReader {
     col: Cell<CharPos>,
     // The last character to be read
     curr: Cell<Option<char>>,
-    filemap: @codemap::FileMap,
+    filemap: Rc<codemap::FileMap>,
     /* cached: */
     peek_tok: RefCell<token::Token>,
     peek_span: RefCell<Span>,
 }
 
-impl StringReader {
+impl<'a> StringReader<'a> {
     pub fn curr_is(&self, c: char) -> bool {
         self.curr.get() == Some(c)
     }
 }
 
-pub fn new_string_reader(span_diagnostic: @SpanHandler,
-                         filemap: @codemap::FileMap)
-                      -> StringReader {
+pub fn new_string_reader<'a>(span_diagnostic: &'a SpanHandler,
+                             filemap: Rc<codemap::FileMap>)
+                             -> StringReader<'a> {
     let r = new_low_level_string_reader(span_diagnostic, filemap);
     string_advance_token(&r); /* fill in peek_* */
     r
 }
 
 /* For comments.rs, which hackily pokes into 'pos' and 'curr' */
-pub fn new_low_level_string_reader(span_diagnostic: @SpanHandler,
-                                   filemap: @codemap::FileMap)
-                                -> StringReader {
+pub fn new_low_level_string_reader<'a>(span_diagnostic: &'a SpanHandler,
+                                       filemap: Rc<codemap::FileMap>)
+                                       -> StringReader<'a> {
     // Force the initial reader bump to start on a fresh line
     let initial_char = '\n';
     let r = StringReader {
         span_diagnostic: span_diagnostic,
-        pos: Cell::new(filemap.start_pos),
-        last_pos: Cell::new(filemap.start_pos),
+        pos: Cell::new(filemap.deref().start_pos),
+        last_pos: Cell::new(filemap.deref().start_pos),
         col: Cell::new(CharPos(0)),
         curr: Cell::new(Some(initial_char)),
         filemap: filemap,
@@ -92,20 +93,20 @@ pub fn new_low_level_string_reader(span_diagnostic: @SpanHandler,
 // duplicating the string reader is probably a bad idea, in
 // that using them will cause interleaved pushes of line
 // offsets to the underlying filemap...
-fn dup_string_reader(r: &StringReader) -> StringReader {
+fn dup_string_reader<'a>(r: &StringReader<'a>) -> StringReader<'a> {
     StringReader {
         span_diagnostic: r.span_diagnostic,
         pos: Cell::new(r.pos.get()),
         last_pos: Cell::new(r.last_pos.get()),
         col: Cell::new(r.col.get()),
         curr: Cell::new(r.curr.get()),
-        filemap: r.filemap,
+        filemap: r.filemap.clone(),
         peek_tok: r.peek_tok.clone(),
         peek_span: r.peek_span.clone(),
     }
 }
 
-impl Reader for StringReader {
+impl<'a> Reader for StringReader<'a> {
     fn is_eof(&self) -> bool { is_eof(self) }
     // return the next token. EFFECT: advances the string_reader.
     fn next_token(&self) -> TokenAndSpan {
@@ -122,7 +123,7 @@ impl Reader for StringReader {
     fn fatal(&self, m: ~str) -> ! {
         self.span_diagnostic.span_fatal(self.peek_span.get(), m)
     }
-    fn span_diag(&self) -> @SpanHandler { self.span_diagnostic }
+    fn span_diag<'a>(&'a self) -> &'a SpanHandler { self.span_diagnostic }
     fn peek(&self) -> TokenAndSpan {
         // FIXME(pcwalton): Bad copy!
         TokenAndSpan {
@@ -133,7 +134,7 @@ impl Reader for StringReader {
     fn dup(&self) -> ~Reader: { ~dup_string_reader(self) as ~Reader: }
 }
 
-impl Reader for TtReader {
+impl<'a> Reader for TtReader<'a> {
     fn is_eof(&self) -> bool {
         let cur_tok = self.cur_tok.borrow();
         *cur_tok.get() == token::EOF
@@ -146,7 +147,7 @@ impl Reader for TtReader {
     fn fatal(&self, m: ~str) -> ! {
         self.sp_diag.span_fatal(self.cur_span.get(), m);
     }
-    fn span_diag(&self) -> @SpanHandler { self.sp_diag }
+    fn span_diag<'a>(&'a self) -> &'a SpanHandler { self.sp_diag }
     fn peek(&self) -> TokenAndSpan {
         TokenAndSpan {
             tok: self.cur_tok.get(),
@@ -189,7 +190,7 @@ fn fatal_span_verbose(rdr: &StringReader,
                    -> ! {
     let mut m = m;
     m.push_str(": ");
-    let s = rdr.filemap.src.slice(
+    let s = rdr.filemap.deref().src.slice(
                   byte_offset(rdr, from_pos).to_uint(),
                   byte_offset(rdr, to_pos).to_uint());
     m.push_str(s);
@@ -218,7 +219,7 @@ fn string_advance_token(r: &StringReader) {
 }
 
 fn byte_offset(rdr: &StringReader, pos: BytePos) -> BytePos {
-    (pos - rdr.filemap.start_pos)
+    (pos - rdr.filemap.deref().start_pos)
 }
 
 /// Calls `f` with a string slice of the source text spanning from `start`
@@ -240,7 +241,7 @@ fn with_str_from_to<T>(
                     end: BytePos,
                     f: |s: &str| -> T)
                     -> T {
-    f(rdr.filemap.src.slice(
+    f(rdr.filemap.deref().src.slice(
             byte_offset(rdr, start).to_uint(),
             byte_offset(rdr, end).to_uint()))
 }
@@ -250,21 +251,21 @@ fn with_str_from_to<T>(
 pub fn bump(rdr: &StringReader) {
     rdr.last_pos.set(rdr.pos.get());
     let current_byte_offset = byte_offset(rdr, rdr.pos.get()).to_uint();
-    if current_byte_offset < (rdr.filemap.src).len() {
+    if current_byte_offset < rdr.filemap.deref().src.len() {
         assert!(rdr.curr.get().is_some());
         let last_char = rdr.curr.get().unwrap();
-        let next = rdr.filemap.src.char_range_at(current_byte_offset);
+        let next = rdr.filemap.deref().src.char_range_at(current_byte_offset);
         let byte_offset_diff = next.next - current_byte_offset;
         rdr.pos.set(rdr.pos.get() + Pos::from_uint(byte_offset_diff));
         rdr.curr.set(Some(next.ch));
         rdr.col.set(rdr.col.get() + CharPos(1u));
         if last_char == '\n' {
-            rdr.filemap.next_line(rdr.last_pos.get());
+            rdr.filemap.deref().next_line(rdr.last_pos.get());
             rdr.col.set(CharPos(0u));
         }
 
         if byte_offset_diff > 1 {
-            rdr.filemap.record_multibyte_char(rdr.last_pos.get(), byte_offset_diff);
+            rdr.filemap.deref().record_multibyte_char(rdr.last_pos.get(), byte_offset_diff);
         }
     } else {
         rdr.curr.set(None);
@@ -275,8 +276,8 @@ pub fn is_eof(rdr: &StringReader) -> bool {
 }
 pub fn nextch(rdr: &StringReader) -> Option<char> {
     let offset = byte_offset(rdr, rdr.pos.get()).to_uint();
-    if offset < (rdr.filemap.src).len() {
-        Some(rdr.filemap.src.char_at(offset))
+    if offset < rdr.filemap.deref().src.len() {
+        Some(rdr.filemap.deref().src.char_at(offset))
     } else {
         None
     }
@@ -334,56 +335,55 @@ fn consume_any_line_comment(rdr: &StringReader)
                          -> Option<TokenAndSpan> {
     if rdr.curr_is('/') {
         match nextch(rdr) {
-          Some('/') => {
-            bump(rdr);
-            bump(rdr);
-            // line comments starting with "///" or "//!" are doc-comments
-            if rdr.curr_is('/') || rdr.curr_is('!') {
-                let start_bpos = rdr.pos.get() - BytePos(3);
-                while !rdr.curr_is('\n') && !is_eof(rdr) {
-                    bump(rdr);
-                }
-                let ret = with_str_from(rdr, start_bpos, |string| {
-                    // but comments with only more "/"s are not
-                    if !is_line_non_doc_comment(string) {
-                        Some(TokenAndSpan{
-                            tok: token::DOC_COMMENT(str_to_ident(string)),
-                            sp: codemap::mk_sp(start_bpos, rdr.pos.get())
-                        })
-                    } else {
-                        None
+            Some('/') => {
+                bump(rdr);
+                bump(rdr);
+                // line comments starting with "///" or "//!" are doc-comments
+                if rdr.curr_is('/') || rdr.curr_is('!') {
+                    let start_bpos = rdr.pos.get() - BytePos(3);
+                    while !rdr.curr_is('\n') && !is_eof(rdr) {
+                        bump(rdr);
                     }
-                });
+                    let ret = with_str_from(rdr, start_bpos, |string| {
+                        // but comments with only more "/"s are not
+                        if !is_line_non_doc_comment(string) {
+                            Some(TokenAndSpan{
+                                tok: token::DOC_COMMENT(str_to_ident(string)),
+                                sp: codemap::mk_sp(start_bpos, rdr.pos.get())
+                            })
+                        } else {
+                            None
+                        }
+                    });
 
-                if ret.is_some() {
-                    return ret;
+                    if ret.is_some() {
+                        return ret;
+                    }
+                } else {
+                    while !rdr.curr_is('\n') && !is_eof(rdr) { bump(rdr); }
                 }
-            } else {
-                while !rdr.curr_is('\n') && !is_eof(rdr) { bump(rdr); }
+                // Restart whitespace munch.
+                consume_whitespace_and_comments(rdr)
             }
-            // Restart whitespace munch.
-            return consume_whitespace_and_comments(rdr);
-          }
-          Some('*') => { bump(rdr); bump(rdr); return consume_block_comment(rdr); }
-          _ => ()
+            Some('*') => { bump(rdr); bump(rdr); consume_block_comment(rdr) }
+            _ => None
         }
     } else if rdr.curr_is('#') {
         if nextch_is(rdr, '!') {
             // I guess this is the only way to figure out if
             // we're at the beginning of the file...
-            let cmap = @CodeMap::new();
-            {
-                let mut files = cmap.files.borrow_mut();
-                files.get().push(rdr.filemap);
-            }
+            let cmap = CodeMap::new();
+            cmap.files.borrow_mut().get().push(rdr.filemap.clone());
             let loc = cmap.lookup_char_pos_adj(rdr.last_pos.get());
             if loc.line == 1u && loc.col == CharPos(0u) {
                 while !rdr.curr_is('\n') && !is_eof(rdr) { bump(rdr); }
                 return consume_whitespace_and_comments(rdr);
             }
         }
+        None
+    } else {
+        None
     }
-    return None;
 }
 
 pub fn is_block_non_doc_comment(s: &str) -> bool {
@@ -1019,7 +1019,7 @@ mod test {
         let writer = ~util::NullWriter;
         let emitter = diagnostic::EmitterWriter::new(writer);
         let handler = diagnostic::mk_handler(~emitter);
-        let span_handler = diagnostic::mk_span_handler(handler, @cm);
+        let span_handler = diagnostic::mk_span_handler(handler, cm);
         Env {
             string_reader: new_string_reader(span_handler,fm)
         }

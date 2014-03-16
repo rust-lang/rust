@@ -29,16 +29,15 @@ use syntax::ast;
 use syntax::ast::*;
 use syntax::diagnostic::SpanHandler;
 use syntax::parse::token;
-use syntax::print::pprust::*;
 
 macro_rules! mywrite( ($wr:expr, $($arg:tt)*) => (
     format_args!(|a| { mywrite($wr, a) }, $($arg)*)
 ) )
 
 pub struct ctxt<'a> {
-    diag: @SpanHandler,
+    diag: &'a SpanHandler,
     // Def -> str Callback:
-    ds: extern "Rust" fn(DefId) -> ~str,
+    ds: fn(DefId) -> ~str,
     // The type context.
     tcx: &'a ty::ctxt,
     abbrevs: abbrev_ctxt

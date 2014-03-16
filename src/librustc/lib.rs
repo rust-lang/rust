@@ -295,26 +295,26 @@ pub fn run_compiler(args: &[~str]) {
         d::parse_pretty(&sess, a)
     });
     match pretty {
-      Some::<d::PpMode>(ppm) => {
-        d::pretty_print_input(sess, cfg, &input, ppm);
-        return;
-      }
-      None::<d::PpMode> => {/* continue */ }
+        Some::<d::PpMode>(ppm) => {
+            d::pretty_print_input(sess, cfg, &input, ppm);
+            return;
+        }
+        None::<d::PpMode> => {/* continue */ }
     }
     let ls = matches.opt_present("ls");
     if ls {
         match input {
-          d::FileInput(ref ifile) => {
-            let mut stdout = io::stdout();
-            d::list_metadata(&sess, &(*ifile), &mut stdout).unwrap();
-          }
-          d::StrInput(_) => {
-            d::early_error("can not list metadata for stdin");
-          }
+            d::FileInput(ref ifile) => {
+                let mut stdout = io::stdout();
+                d::list_metadata(&sess, &(*ifile), &mut stdout).unwrap();
+            }
+            d::StrInput(_) => {
+                d::early_error("can not list metadata for stdin");
+            }
         }
         return;
     }
-    let (crate_id, crate_name, crate_file_name) = sopts.print_metas;
+    let (crate_id, crate_name, crate_file_name) = sess.opts.print_metas;
     // these nasty nested conditions are to avoid doing extra work
     if crate_id || crate_name || crate_file_name {
         let attrs = parse_crate_attrs(&sess, &input);

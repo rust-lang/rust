@@ -847,7 +847,7 @@ fn resolve_fn(visitor: &mut RegionResolutionVisitor,
                                body.id={}, \
                                cx.parent={})",
            id,
-           visitor.sess.codemap.span_to_str(sp),
+           visitor.sess.codemap().span_to_str(sp),
            body.id,
            cx.parent);
 

@@ -27,7 +27,7 @@ use middle::{trans, freevars, kind, ty, typeck, lint, astencode, reachable};
 use middle;
 use util::common::time;
 use util::ppaux;
-use util::nodemap::NodeSet;
+use util::nodemap::{NodeMap, NodeSet};
 
 use serialize::{json, Encodable};
 
@@ -39,7 +39,6 @@ use std::mem::drop;
 use std::os;
 use std::vec_ng::Vec;
 use std::vec_ng;
-use collections::HashMap;
 use getopts::{optopt, optmulti, optflag, optflagopt};
 use getopts;
 use syntax::ast;
@@ -75,9 +74,9 @@ pub fn anon_src() -> ~str {
 
 pub fn source_name(input: &Input) -> ~str {
     match *input {
-      // FIXME (#9639): This needs to handle non-utf8 paths
-      FileInput(ref ifile) => ifile.as_str().unwrap().to_str(),
-      StrInput(_) => anon_src()
+        // FIXME (#9639): This needs to handle non-utf8 paths
+        FileInput(ref ifile) => ifile.as_str().unwrap().to_str(),
+        StrInput(_) => anon_src()
     }
 }
 
@@ -213,7 +212,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
                                     -> (ast::Crate, syntax::ast_map::Map) {
     let time_passes = sess.time_passes();
 
-    sess.building_library.set(session::building_library(sess.opts, &krate));
+    sess.building_library.set(session::building_library(&sess.opts, &krate));
     sess.crate_types.set(session::collect_crate_types(sess,
                                                       krate.attrs
                                                            .as_slice()));
@@ -315,7 +314,7 @@ pub fn phase_3_run_analysis_passes(sess: Session,
     sess.macro_registrar_fn.with_mut(|r| *r =
         time(time_passes, "looking for macro registrar", (), |_|
             syntax::ext::registrar::find_macro_registrar(
-                sess.span_diagnostic, krate)));
+                sess.diagnostic(), krate)));
 
     let freevars = time(time_passes, "freevar finding", (), |_|
                         freevars::annotate_freevars(def_map, krate));
@@ -541,19 +540,14 @@ fn write_out_deps(sess: &Session,
 
     // Build a list of files used to compile the output and
     // write Makefile-compatible dependency rules
-    let files: Vec<~str> = {
-        let files = sess.codemap.files.borrow();
-        files.get()
-             .iter()
-             .filter_map(|fmap| {
-                 if fmap.is_real_file() {
-                     Some(fmap.name.clone())
-                 } else {
-                     None
-                 }
-             })
-             .collect()
-    };
+    let files: Vec<~str> = sess.codemap().files.borrow().get()
+                               .iter().filter_map(|fmap| {
+                                    if fmap.deref().is_real_file() {
+                                        Some(fmap.deref().name.clone())
+                                    } else {
+                                        None
+                                    }
+                                }).collect();
     let mut file = try!(io::File::create(&deps_filename));
     for path in out_filenames.iter() {
         try!(write!(&mut file as &mut Writer,
@@ -741,8 +735,7 @@ static architecture_abis : &'static [(&'static str, abi::Architecture)] = &'stat
 
     ("mips",   abi::Mips)];
 
-pub fn build_target_config(sopts: @session::Options)
-                           -> @session::Config {
+pub fn build_target_config(sopts: &session::Options) -> session::Config {
     let os = match get_os(sopts.target_triple) {
       Some(os) => os,
       None => early_error("unknown operating system")
@@ -764,14 +757,13 @@ pub fn build_target_config(sopts: @session::Options)
       abi::Arm => arm::get_target_strs(target_triple, os),
       abi::Mips => mips::get_target_strs(target_triple, os)
     };
-    let target_cfg = @session::Config {
+    session::Config {
         os: os,
         arch: arch,
         target_strs: target_strs,
         int_type: int_type,
         uint_type: uint_type,
-    };
-    return target_cfg;
+    }
 }
 
 pub fn host_triple() -> ~str {
@@ -938,7 +930,7 @@ pub fn build_session_options(matches: &getopts::Matches)
                        matches.opt_present("crate-file-name"));
     let cg = build_codegen_options(matches);
 
-    @session::Options {
+    session::Options {
         crate_types: crate_types,
         gc: gc,
         optimize: opt_level,
@@ -991,25 +983,24 @@ pub fn build_codegen_options(matches: &getopts::Matches)
     return cg;
 }
 
-pub fn build_session(sopts: @session::Options,
+pub fn build_session(sopts: session::Options,
                      local_crate_source_file: Option<Path>)
                      -> Session {
-    let codemap = @codemap::CodeMap::new();
+    let codemap = codemap::CodeMap::new();
     let diagnostic_handler =
         diagnostic::default_handler();
     let span_diagnostic_handler =
         diagnostic::mk_span_handler(diagnostic_handler, codemap);
 
-    build_session_(sopts, local_crate_source_file, codemap, span_diagnostic_handler)
+    build_session_(sopts, local_crate_source_file, span_diagnostic_handler)
 }
 
-pub fn build_session_(sopts: @session::Options,
+pub fn build_session_(sopts: session::Options,
                       local_crate_source_file: Option<Path>,
-                      codemap: @codemap::CodeMap,
-                      span_diagnostic_handler: @diagnostic::SpanHandler)
+                      span_diagnostic: diagnostic::SpanHandler)
                       -> Session {
-    let target_cfg = build_target_config(sopts);
-    let p_s = parse::new_parse_sess_special_handler(span_diagnostic_handler, codemap);
+    let target_cfg = build_target_config(&sopts);
+    let p_s = parse::new_parse_sess_special_handler(span_diagnostic);
     let default_sysroot = match sopts.maybe_sysroot {
         Some(_) => None,
         None => Some(filesearch::get_or_default_sysroot())
@@ -1029,19 +1020,17 @@ pub fn build_session_(sopts: @session::Options,
         opts: sopts,
         cstore: CStore::new(token::get_ident_interner()),
         parse_sess: p_s,
-        codemap: codemap,
         // For a library crate, this is always none
         entry_fn: RefCell::new(None),
         entry_type: Cell::new(None),
         macro_registrar_fn: RefCell::new(None),
-        span_diagnostic: span_diagnostic_handler,
         default_sysroot: default_sysroot,
         building_library: Cell::new(false),
         local_crate_source_file: local_crate_source_file,
         working_dir: os::getcwd(),
-        lints: RefCell::new(HashMap::new()),
+        lints: RefCell::new(NodeMap::new()),
         node_id: Cell::new(1),
-        crate_types: @RefCell::new(Vec::new()),
+        crate_types: RefCell::new(Vec::new()),
         features: front::feature_gate::Features::new(),
         recursion_limit: Cell::new(64),
     }

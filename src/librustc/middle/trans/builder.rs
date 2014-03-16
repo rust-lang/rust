@@ -749,7 +749,7 @@ impl<'a> Builder<'a> {
 
     pub fn add_span_comment(&self, sp: Span, text: &str) {
         if self.ccx.sess().asm_comments() {
-            let s = format!("{} ({})", text, self.ccx.sess().codemap.span_to_str(sp));
+            let s = format!("{} ({})", text, self.ccx.sess().codemap().span_to_str(sp));
             debug!("{}", s);
             self.add_comment(s);
         }

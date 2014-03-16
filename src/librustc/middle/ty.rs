@@ -253,7 +253,6 @@ pub enum AutoRef {
 /// generates so that so that it can be reused and doesn't have to be redone
 /// later on.
 pub struct ctxt {
-    diag: @syntax::diagnostic::SpanHandler,
     // Specifically use a speedy hash algorithm for this hash map, it's used
     // quite often.
     interner: RefCell<FnvHashMap<intern_key, ~t_box_>>,
@@ -1088,7 +1087,6 @@ pub fn mk_ctxt(s: Session,
     ctxt {
         named_region_map: named_region_map,
         item_variance_map: RefCell::new(DefIdMap::new()),
-        diag: s.diagnostic(),
         interner: RefCell::new(FnvHashMap::new()),
         next_id: Cell::new(primitives::LAST_PRIMITIVE_ID),
         sess: s,

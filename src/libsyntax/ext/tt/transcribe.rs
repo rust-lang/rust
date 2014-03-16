@@ -30,8 +30,8 @@ struct TtFrame {
     up: Option<@TtFrame>,
 }
 
-pub struct TtReader {
-    sp_diag: @SpanHandler,
+pub struct TtReader<'a> {
+    sp_diag: &'a SpanHandler,
     // the unzipped tree:
     priv stack: RefCell<@TtFrame>,
     /* for MBE-style macro transcription */
@@ -46,10 +46,10 @@ pub struct TtReader {
 /** This can do Macro-By-Example transcription. On the other hand, if
  *  `src` contains no `TTSeq`s and `TTNonterminal`s, `interp` can (and
  *  should) be none. */
-pub fn new_tt_reader(sp_diag: @SpanHandler,
-                     interp: Option<HashMap<Ident, @NamedMatch>>,
-                     src: Vec<ast::TokenTree> )
-                     -> TtReader {
+pub fn new_tt_reader<'a>(sp_diag: &'a SpanHandler,
+                         interp: Option<HashMap<Ident, @NamedMatch>>,
+                         src: Vec<ast::TokenTree> )
+                         -> TtReader<'a> {
     let r = TtReader {
         sp_diag: sp_diag,
         stack: RefCell::new(@TtFrame {
@@ -70,7 +70,7 @@ pub fn new_tt_reader(sp_diag: @SpanHandler,
         cur_span: RefCell::new(DUMMY_SP),
     };
     tt_next_token(&r); /* get cur_tok and cur_span set up */
-    return r;
+    r
 }
 
 fn dup_tt_frame(f: @TtFrame) -> @TtFrame {
@@ -86,7 +86,7 @@ fn dup_tt_frame(f: @TtFrame) -> @TtFrame {
     }
 }
 
-pub fn dup_tt_reader(r: &TtReader) -> TtReader {
+pub fn dup_tt_reader<'a>(r: &TtReader<'a>) -> TtReader<'a> {
     TtReader {
         sp_diag: r.sp_diag,
         stack: RefCell::new(dup_tt_frame(r.stack.get())),
