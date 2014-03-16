@@ -59,8 +59,6 @@ pub enum Linkage {
     ExternalWeakLinkage = 12,
     GhostLinkage = 13,
     CommonLinkage = 14,
-    LinkerPrivateLinkage = 15,
-    LinkerPrivateWeakLinkage = 16,
 }
 
 #[deriving(Clone)]
