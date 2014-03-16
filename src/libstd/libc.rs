@@ -3643,7 +3643,7 @@ pub mod funcs {
                 pub fn open(path: *c_char, oflag: c_int, mode: c_int)
                             -> c_int;
                 pub fn creat(path: *c_char, mode: mode_t) -> c_int;
-                pub fn fcntl(fd: c_int, cmd: c_int) -> c_int;
+                pub fn fcntl(fd: c_int, cmd: c_int, ...) -> c_int;
             }
         }
 
