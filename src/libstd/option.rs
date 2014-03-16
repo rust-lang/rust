@@ -311,10 +311,10 @@ impl<T> Option<T> {
     /// Fails if the value equals `None`.
     #[inline]
     pub fn take_unwrap(&mut self) -> T {
-        if self.is_none() {
-            fail!("called `Option::take_unwrap()` on a `None` value")
+        match self.take() {
+            Some(x) => x,
+            None => fail!("called `Option::take_unwrap()` on a `None` value")
         }
-        self.take().unwrap()
     }
 
     /// Gets an immutable reference to the value inside an option.
