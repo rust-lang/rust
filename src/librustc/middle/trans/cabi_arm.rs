@@ -11,7 +11,7 @@
 #![allow(non_uppercase_pattern_statics)]
 
 use lib::llvm::{llvm, Integer, Pointer, Float, Double, Struct, Array};
-use lib::llvm::StructRetAttribute;
+use lib::llvm::{StructRetAttribute, ZExtAttribute};
 use middle::trans::cabi::{FnType, ArgType};
 use middle::trans::context::CrateContext;
 use middle::trans::type_::Type;
@@ -85,7 +85,8 @@ fn ty_size(ty: Type) -> uint {
 
 fn classify_ret_ty(ccx: &CrateContext, ty: Type) -> ArgType {
     if is_reg_ty(ty) {
-        return ArgType::direct(ty, None, None, None);
+        let attr = if ty == Type::bool(ccx) { Some(ZExtAttribute) } else { None };
+        return ArgType::direct(ty, None, None, attr);
     }
     let size = ty_size(ty);
     if size <= 4 {
@@ -103,7 +104,8 @@ fn classify_ret_ty(ccx: &CrateContext, ty: Type) -> ArgType {
 
 fn classify_arg_ty(ccx: &CrateContext, ty: Type) -> ArgType {
     if is_reg_ty(ty) {
-        return ArgType::direct(ty, None, None, None);
+        let attr = if ty == Type::bool(ccx) { Some(ZExtAttribute) } else { None };
+        return ArgType::direct(ty, None, None, attr);
     }
     let align = ty_align(ty);
     let size = ty_size(ty);

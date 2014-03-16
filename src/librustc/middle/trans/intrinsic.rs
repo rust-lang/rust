@@ -96,19 +96,13 @@ pub fn trans_intrinsic(ccx: &CrateContext,
         let b = get_param(bcx.fcx.llfn, first_real_arg + 1);
         let llfn = bcx.ccx().get_intrinsic(&name);
 
-        // convert `i1` to a `bool`, and write to the out parameter
         let val = Call(bcx, llfn, [a, b], []);
-        let result = ExtractValue(bcx, val, 0);
-        let overflow = ZExt(bcx, ExtractValue(bcx, val, 1), Type::bool(bcx.ccx()));
-        let ret = C_undef(type_of::type_of(bcx.ccx(), t));
-        let ret = InsertValue(bcx, ret, result, 0);
-        let ret = InsertValue(bcx, ret, overflow, 1);
 
         if type_is_immediate(bcx.ccx(), t) {
-            Ret(bcx, ret);
+            Ret(bcx, val);
         } else {
             let retptr = get_param(bcx.fcx.llfn, bcx.fcx.out_arg_pos());
-            Store(bcx, ret, retptr);
+            Store(bcx, val, retptr);
             RetVoid(bcx);
         }
     }

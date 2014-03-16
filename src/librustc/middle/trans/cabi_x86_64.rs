@@ -15,7 +15,7 @@
 
 use lib::llvm::{llvm, Integer, Pointer, Float, Double};
 use lib::llvm::{Struct, Array, Attribute};
-use lib::llvm::{StructRetAttribute, ByValAttribute};
+use lib::llvm::{StructRetAttribute, ByValAttribute, ZExtAttribute};
 use middle::trans::cabi::*;
 use middle::trans::context::CrateContext;
 use middle::trans::type_::Type;
@@ -337,12 +337,12 @@ pub fn compute_abi_info(ccx: &CrateContext,
     fn x86_64_ty(ccx: &CrateContext,
                  ty: Type,
                  is_mem_cls: |cls: &[RegClass]| -> bool,
-                 attr: Attribute)
+                 ind_attr: Attribute)
                  -> ArgType {
         if !ty.is_reg_ty() {
             let cls = classify_ty(ty);
             if is_mem_cls(cls.as_slice()) {
-                ArgType::indirect(ty, Some(attr))
+                ArgType::indirect(ty, Some(ind_attr))
             } else {
                 ArgType::direct(ty,
                                 Some(llreg_ty(ccx, cls.as_slice())),
@@ -350,7 +350,8 @@ pub fn compute_abi_info(ccx: &CrateContext,
                                 None)
             }
         } else {
-            ArgType::direct(ty, None, None, None)
+            let attr = if ty == Type::bool(ccx) { Some(ZExtAttribute) } else { None };
+            ArgType::direct(ty, None, None, attr)
         }
     }
 

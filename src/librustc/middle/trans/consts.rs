@@ -399,18 +399,7 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr,
                 let (dv, _dt) = const_deref(cx, te, ty, true);
                 dv
               }
-              ast::UnNot    => {
-                match ty::get(ty).sty {
-                    ty::ty_bool => {
-                        // Somewhat questionable, but I believe this is
-                        // correct.
-                        let te = llvm::LLVMConstTrunc(te, Type::i1(cx).to_ref());
-                        let te = llvm::LLVMConstNot(te);
-                        llvm::LLVMConstZExt(te, Type::bool(cx).to_ref())
-                    }
-                    _ => llvm::LLVMConstNot(te),
-                }
-              }
+              ast::UnNot    => llvm::LLVMConstNot(te),
               ast::UnNeg    => {
                 if is_float { llvm::LLVMConstFNeg(te) }
                 else        { llvm::LLVMConstNeg(te) }
