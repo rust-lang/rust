@@ -52,6 +52,7 @@ pub mod passes;
 pub mod plugins;
 pub mod visit_ast;
 pub mod test;
+mod flock;
 
 pub static SCHEMA_VERSION: &'static str = "0.8.1";
 
