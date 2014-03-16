@@ -59,7 +59,8 @@ pub fn compute_abi_info(ccx: &CrateContext,
             }
         }
     } else {
-        ret_ty = ArgType::direct(rty, None, None, None);
+        let attr = if rty == Type::bool(ccx) { Some(ZExtAttribute) } else { None };
+        ret_ty = ArgType::direct(rty, None, None, attr);
     }
 
     for &t in atys.iter() {
@@ -72,7 +73,10 @@ pub fn compute_abi_info(ccx: &CrateContext,
                     ArgType::indirect(t, Some(ByValAttribute))
                 }
             }
-            _ => ArgType::direct(t, None, None, None),
+            _ => {
+                let attr = if t == Type::bool(ccx) { Some(ZExtAttribute) } else { None };
+                ArgType::direct(t, None, None, attr)
+            }
         };
         arg_tys.push(ty);
     }

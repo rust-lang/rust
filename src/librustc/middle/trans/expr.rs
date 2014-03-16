@@ -1147,11 +1147,7 @@ fn trans_unary<'a>(bcx: &'a Block<'a>,
             let datum = unpack_datum!(bcx, trans(bcx, sub_expr));
             let llresult = if ty::type_is_bool(un_ty) {
                 let val = datum.to_llscalarish(bcx);
-                let llcond = ICmp(bcx,
-                                  lib::llvm::IntEQ,
-                                  val,
-                                  C_bool(ccx, false));
-                Select(bcx, llcond, C_bool(ccx, true), C_bool(ccx, false))
+                Xor(bcx, val, C_bool(ccx, true))
             } else {
                 // Note: `Not` is bitwise, not suitable for logical not.
                 Not(bcx, datum.to_llscalarish(bcx))
@@ -1325,9 +1321,7 @@ fn trans_eager_binop<'a>(
         if ty::type_is_bot(rhs_t) {
             C_bool(bcx.ccx(), false)
         } else if ty::type_is_scalar(rhs_t) {
-            let cmpr = base::compare_scalar_types(bcx, lhs, rhs, rhs_t, op);
-            bcx = cmpr.bcx;
-            ZExt(bcx, cmpr.val, Type::i8(bcx.ccx()))
+            unpack_result!(bcx, base::compare_scalar_types(bcx, lhs, rhs, rhs_t, op))
         } else if is_simd {
             base::compare_simd_types(bcx, lhs, rhs, intype, ty::simd_size(tcx, lhs_t), op)
         } else {
@@ -1369,10 +1363,9 @@ fn trans_lazy_binop<'a>(
     let join = fcx.new_id_block("join", binop_expr.id);
     let before_rhs = fcx.new_id_block("before_rhs", b.id);
 
-    let lhs_i1 = bool_to_i1(past_lhs, lhs);
     match op {
-      lazy_and => CondBr(past_lhs, lhs_i1, before_rhs.llbb, join.llbb),
-      lazy_or => CondBr(past_lhs, lhs_i1, join.llbb, before_rhs.llbb)
+      lazy_and => CondBr(past_lhs, lhs, before_rhs.llbb, join.llbb),
+      lazy_or => CondBr(past_lhs, lhs, join.llbb, before_rhs.llbb)
     }
 
     let DatumBlock {bcx: past_rhs, datum: rhs} = trans(before_rhs, b);

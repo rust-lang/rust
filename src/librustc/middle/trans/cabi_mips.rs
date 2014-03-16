@@ -13,7 +13,7 @@
 use libc::c_uint;
 use std::cmp;
 use lib::llvm::{llvm, Integer, Pointer, Float, Double, Struct, Array};
-use lib::llvm::StructRetAttribute;
+use lib::llvm::{StructRetAttribute, ZExtAttribute};
 use middle::trans::context::CrateContext;
 use middle::trans::cabi::*;
 use middle::trans::type_::Type;
@@ -83,9 +83,10 @@ fn ty_size(ty: Type) -> uint {
     }
 }
 
-fn classify_ret_ty(ty: Type) -> ArgType {
+fn classify_ret_ty(ccx: &CrateContext, ty: Type) -> ArgType {
     if is_reg_ty(ty) {
-        ArgType::direct(ty, None, None, None)
+        let attr = if ty == Type::bool(ccx) { Some(ZExtAttribute) } else { None };
+        ArgType::direct(ty, None, None, attr)
     } else {
         ArgType::indirect(ty, Some(StructRetAttribute))
     }
@@ -101,7 +102,8 @@ fn classify_arg_ty(ccx: &CrateContext, ty: Type, offset: &mut uint) -> ArgType {
     *offset += align_up_to(size, align * 8) / 8;
 
     if is_reg_ty(ty) {
-        ArgType::direct(ty, None, None, None)
+        let attr = if ty == Type::bool(ccx) { Some(ZExtAttribute) } else { None };
+        ArgType::direct(ty, None, None, attr)
     } else {
         ArgType::direct(
             ty,
@@ -160,7 +162,7 @@ pub fn compute_abi_info(ccx: &CrateContext,
                         rty: Type,
                         ret_def: bool) -> FnType {
     let ret_ty = if ret_def {
-        classify_ret_ty(rty)
+        classify_ret_ty(ccx, rty)
     } else {
         ArgType::direct(Type::void(ccx), None, None, None)
     };

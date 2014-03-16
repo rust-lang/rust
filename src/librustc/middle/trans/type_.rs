@@ -93,7 +93,7 @@ impl Type {
     }
 
     pub fn bool(ccx: &CrateContext) -> Type {
-        Type::i8(ccx)
+        Type::i1(ccx)
     }
 
     pub fn char(ccx: &CrateContext) -> Type {
