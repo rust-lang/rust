@@ -186,7 +186,6 @@ use codemap;
 use codemap::Span;
 use opt_vec;
 use parse::token::InternedString;
-use parse::token;
 
 use std::vec_ng::Vec;
 use std::vec_ng;
@@ -399,19 +398,16 @@ impl<'a> TraitDef<'a> {
             cx.path_all(self.span, false, vec!( type_ident ), self_lifetimes,
                         opt_vec::take_vec(self_ty_params)), None);
 
-        let doc_attr = cx.attribute(
+        let attr = cx.attribute(
             self.span,
-            cx.meta_name_value(self.span,
-                               InternedString::new("doc"),
-                               ast::LitStr(token::intern_and_get_ident(
-                                               "Automatically derived."),
-                                           ast::CookedStr)));
+            cx.meta_word(self.span,
+                         InternedString::new("automatically_derived")));
         let opt_trait_ref = Some(trait_ref);
         let ident = ast_util::impl_pretty_name(&opt_trait_ref, self_type);
         cx.item(
             self.span,
             ident,
-            vec_ng::append(vec!(doc_attr), self.attributes.as_slice()),
+            vec_ng::append(vec!(attr), self.attributes.as_slice()),
             ast::ItemImpl(trait_generics, opt_trait_ref,
                           self_type, methods.map(|x| *x)))
     }

@@ -985,7 +985,7 @@ static other_attrs: &'static [&'static str] = &[
     "crate_map", "cfg", "doc", "export_name", "link_section",
     "no_mangle", "static_assert", "unsafe_no_drop_flag", "packed",
     "simd", "repr", "deriving", "unsafe_destructor", "link", "phase",
-    "macro_export", "must_use",
+    "macro_export", "must_use", "automatically_derived",
 
     //mod-level
     "path", "link_name", "link_args", "macro_escape", "no_implicit_prelude",
