@@ -36,13 +36,12 @@
       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
       html_root_url = "http://static.rust-lang.org/doc/master")];
 
-#[allow(deprecated_owned_vector)];
-
 use std::char;
 use std::cmp;
 use std::fmt;
 use std::fmt::Show;
 use std::option::{Option, Some, None};
+use std::vec_ng::Vec;
 
 /// An identifier in the pre-release or build metadata. If the identifier can
 /// be parsed as a decimal value, it will be represented with `Numeric`.
@@ -88,9 +87,9 @@ pub struct Version {
     /// fixes are made.
     patch: uint,
     /// The pre-release version identifier, if one exists.
-    pre: ~[Identifier],
+    pre: Vec<Identifier>,
     /// The build metadata, ignored when determining version precedence.
-    build: ~[Identifier],
+    build: Vec<Identifier>,
 }
 
 impl fmt::Show for Version {
@@ -221,8 +220,8 @@ fn parse_iter<T: Iterator<char>>(rdr: &mut T) -> Option<Version> {
         None => return None
     };
 
-    let mut pre = ~[];
-    let mut build = ~[];
+    let mut pre = vec!();
+    let mut build = vec!();
 
     let mut ch = ch;
     if ch == Some('-') {
@@ -295,66 +294,66 @@ fn test_parse() {
         major: 1u,
         minor: 2u,
         patch: 3u,
-        pre: ~[],
-        build: ~[],
+        pre: vec!(),
+        build: vec!(),
     }));
     assert!(parse("  1.2.3  ") == Some(Version {
         major: 1u,
         minor: 2u,
         patch: 3u,
-        pre: ~[],
-        build: ~[],
+        pre: vec!(),
+        build: vec!(),
     }));
     assert!(parse("1.2.3-alpha1") == Some(Version {
         major: 1u,
         minor: 2u,
         patch: 3u,
-        pre: ~[AlphaNumeric(~"alpha1")],
-        build: ~[]
+        pre: vec!(AlphaNumeric(~"alpha1")),
+        build: vec!(),
     }));
     assert!(parse("  1.2.3-alpha1  ") == Some(Version {
         major: 1u,
         minor: 2u,
         patch: 3u,
-        pre: ~[AlphaNumeric(~"alpha1")],
-        build: ~[]
+        pre: vec!(AlphaNumeric(~"alpha1")),
+        build: vec!()
     }));
     assert!(parse("1.2.3+build5") == Some(Version {
         major: 1u,
         minor: 2u,
         patch: 3u,
-        pre: ~[],
-        build: ~[AlphaNumeric(~"build5")]
+        pre: vec!(),
+        build: vec!(AlphaNumeric(~"build5"))
     }));
     assert!(parse("  1.2.3+build5  ") == Some(Version {
         major: 1u,
         minor: 2u,
         patch: 3u,
-        pre: ~[],
-        build: ~[AlphaNumeric(~"build5")]
+        pre: vec!(),
+        build: vec!(AlphaNumeric(~"build5"))
     }));
     assert!(parse("1.2.3-alpha1+build5") == Some(Version {
         major: 1u,
         minor: 2u,
         patch: 3u,
-        pre: ~[AlphaNumeric(~"alpha1")],
-        build: ~[AlphaNumeric(~"build5")]
+        pre: vec!(AlphaNumeric(~"alpha1")),
+        build: vec!(AlphaNumeric(~"build5"))
     }));
     assert!(parse("  1.2.3-alpha1+build5  ") == Some(Version {
         major: 1u,
         minor: 2u,
         patch: 3u,
-        pre: ~[AlphaNumeric(~"alpha1")],
-        build: ~[AlphaNumeric(~"build5")]
+        pre: vec!(AlphaNumeric(~"alpha1")),
+        build: vec!(AlphaNumeric(~"build5"))
     }));
     assert!(parse("1.2.3-1.alpha1.9+build5.7.3aedf  ") == Some(Version {
         major: 1u,
         minor: 2u,
         patch: 3u,
-        pre: ~[Numeric(1),AlphaNumeric(~"alpha1"),Numeric(9)],
-        build: ~[AlphaNumeric(~"build5"),
+        pre: vec!(Numeric(1),AlphaNumeric(~"alpha1"),Numeric(9)),
+        build: vec!(AlphaNumeric(~"build5"),
                  Numeric(7),
-                 AlphaNumeric(~"3aedf")]
+                 AlphaNumeric(~"3aedf"))
     }));
 
 }
