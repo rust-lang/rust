@@ -8,7 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[allow(missing_doc)];
+//! UDP (User Datagram Protocol) network connections.
+//!
+//! This module contains the ability to open a UDP stream to a socket address.
+//! The destination and binding addresses can either be an IPv4 or IPv6
+//! address. There is no corresponding notion of a server because UDP is a
+//! datagram protocol.
+//!
+//! A UDP connection implements the `Reader` and `Writer` traits.
 
 use clone::Clone;
 use result::{Ok, Err};
@@ -16,58 +23,85 @@ use io::net::ip::SocketAddr;
 use io::{Reader, Writer, IoResult};
 use rt::rtio::{RtioSocket, RtioUdpSocket, IoFactory, LocalIo};
 
+/// A User Datagram Protocol socket.
 pub struct UdpSocket {
     priv obj: ~RtioUdpSocket
 }
 
 impl UdpSocket {
+    /// Creates a UDP socket from the given socket address.
     pub fn bind(addr: SocketAddr) -> IoResult<UdpSocket> {
         LocalIo::maybe_raise(|io| {
             io.udp_bind(addr).map(|s| UdpSocket { obj: s })
         })
     }
 
-    pub fn recvfrom(&mut self, buf: &mut [u8]) -> IoResult<(uint, SocketAddr)> {
+    /// Receives data from the socket. On success, returns the number of bytes
+    /// read and the address from whence the data came.
+    pub fn recvfrom(&mut self, buf: &mut [u8])
+                    -> IoResult<(uint, SocketAddr)> {
         self.obj.recvfrom(buf)
     }
 
+    /// Sends data on the socket to the given address. Returns nothing on
+    /// success.
     pub fn sendto(&mut self, buf: &[u8], dst: SocketAddr) -> IoResult<()> {
         self.obj.sendto(buf, dst)
     }
 
+    /// Creates a `UdpStream`, which allows use of the `Reader` and `Writer`
+    /// traits to receive and send data from the same address. This transfers
+    /// ownership of the socket to the stream.
+    ///
+    /// Note that this call does not perform any actual network communication,
+    /// because UDP is a datagram protocol.
     pub fn connect(self, other: SocketAddr) -> UdpStream {
-        UdpStream { socket: self, connected_to: other }
+        UdpStream {
+            socket: self,
+            connected_to: other,
+        }
     }
 
+    /// Returns the socket address that this socket was created from.
     pub fn socket_name(&mut self) -> IoResult<SocketAddr> {
         self.obj.socket_name()
     }
 }
 
 impl Clone for UdpSocket {
-    /// Creates a new handle to this UDP socket, allowing for simultaneous reads
-    /// and writes of the socket.
+    /// Creates a new handle to this UDP socket, allowing for simultaneous
+    /// reads and writes of the socket.
     ///
     /// The underlying UDP socket will not be closed until all handles to the
-    /// socket have been deallocated. Two concurrent reads will not receive the
-    /// same data.  Instead, the first read will receive the first packet
+    /// socket have been deallocated. Two concurrent reads will not receive
+    /// the same data. Instead, the first read will receive the first packet
     /// received, and the second read will receive the second packet.
     fn clone(&self) -> UdpSocket {
-        UdpSocket { obj: self.obj.clone() }
+        UdpSocket {
+            obj: self.obj.clone(),
+        }
     }
 }
 
+/// A type that allows convenient usage of a UDP stream connected to one
+/// address via the `Reader` and `Writer` traits.
 pub struct UdpStream {
     priv socket: UdpSocket,
     priv connected_to: SocketAddr
 }
 
 impl UdpStream {
+    /// Allows access to the underlying UDP socket owned by this stream. This
+    /// is useful to, for example, use the socket to send data to hosts other
+    /// than the one that this stream is connected to.
     pub fn as_socket<T>(&mut self, f: |&mut UdpSocket| -> T) -> T {
         f(&mut self.socket)
     }
 
-    pub fn disconnect(self) -> UdpSocket { self.socket }
+    /// Consumes this UDP stream and returns out the underlying socket.
+    pub fn disconnect(self) -> UdpSocket {
+        self.socket
+    }
 }
 
 impl Reader for UdpStream {
