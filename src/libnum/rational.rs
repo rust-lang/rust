@@ -16,6 +16,7 @@ use std::cmp;
 use std::fmt;
 use std::from_str::FromStr;
 use std::num::{Zero,One,ToStrRadix,FromStrRadix,Round};
+use std::vec_ng::Vec;
 use bigint::{BigInt, BigUint, Sign, Plus, Minus};
 
 /// Represents the ratio between 2 numbers.
@@ -295,13 +296,13 @@ impl<T: FromStr + Clone + Integer + Ord>
     FromStr for Ratio<T> {
     /// Parses `numer/denom`.
     fn from_str(s: &str) -> Option<Ratio<T>> {
-        let split: ~[&str] = s.splitn('/', 1).collect();
+        let split: Vec<&str> = s.splitn('/', 1).collect();
         if split.len() < 2 {
             return None
         }
-        let a_option: Option<T> = FromStr::from_str(split[0]);
+        let a_option: Option<T> = FromStr::from_str(split.as_slice()[0]);
         a_option.and_then(|a| {
-            let b_option: Option<T> = FromStr::from_str(split[1]);
+            let b_option: Option<T> = FromStr::from_str(split.as_slice()[1]);
             b_option.and_then(|b| {
                 Some(Ratio::new(a.clone(), b.clone()))
             })
@@ -312,15 +313,15 @@ impl<T: FromStrRadix + Clone + Integer + Ord>
     FromStrRadix for Ratio<T> {
     /// Parses `numer/denom` where the numbers are in base `radix`.
     fn from_str_radix(s: &str, radix: uint) -> Option<Ratio<T>> {
-        let split: ~[&str] = s.splitn('/', 1).collect();
+        let split: Vec<&str> = s.splitn('/', 1).collect();
         if split.len() < 2 {
             None
         } else {
-            let a_option: Option<T> = FromStrRadix::from_str_radix(split[0],
+            let a_option: Option<T> = FromStrRadix::from_str_radix(split.as_slice()[0],
                                                                    radix);
             a_option.and_then(|a| {
                 let b_option: Option<T> =
-                    FromStrRadix::from_str_radix(split[1], radix);
+                    FromStrRadix::from_str_radix(split.as_slice()[1], radix);
                 b_option.and_then(|b| {
                     Some(Ratio::new(a.clone(), b.clone()))
                 })
