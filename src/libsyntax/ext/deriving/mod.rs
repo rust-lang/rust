@@ -60,7 +60,7 @@ pub fn expand_meta_deriving(cx: &mut ExtCtxt,
             cx.span_warn(mitem.span, "empty trait list in `deriving`");
         }
         MetaList(_, ref titems) => {
-            for &titem in titems.rev_iter() {
+            for &titem in titems.iter().rev() {
                 match titem.node {
                     MetaNameValue(ref tname, _) |
                     MetaList(ref tname, _) |
