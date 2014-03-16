@@ -34,6 +34,7 @@ use syntax::visit::Visitor;
 
 use std::cell::{Cell, RefCell};
 use std::uint;
+use std::cmp;
 use std::mem::replace;
 use std::vec_ng::Vec;
 use collections::{HashMap, HashSet};
@@ -5573,20 +5574,18 @@ impl<'r> Resolver<'r> {
 
 		let mut finder_visitor= FindSymbolVisitor{
 			cstore:self.session.cstore,
-			curr_path_idents: ::std::vec_ng::Vec::new(),
+			curr_path_idents: Vec::new(),
 			path_to_find:path,
-			suggestions: ::std::vec_ng::Vec::new(),
+			suggestions: Vec::new(),
 			max_suggestions: 5,
 		};
 
 		visit::walk_crate(&mut finder_visitor, self.resolver_krate, ());
 
 		if finder_visitor.suggestions.len()>0 {
-			let mut note=~"did you mean\n";
+			let mut note=~"did you mean:-\n";
 			for &(ref name,_) in finder_visitor.suggestions.iter() {
-				note.push_str("\t\t");
-				note.push_str(*name);
-				note.push_str("\n");
+				note.push_str("\t\t\t"+ "::"+name.map(|i|{token::get_ident(*i).get().to_str()}).connect("::")+"\n");
 			}
 			self.session.span_note(path.span, note); 
 		}
@@ -5595,46 +5594,40 @@ impl<'r> Resolver<'r> {
 
 struct FindSymbolVisitor<'a>{
 	cstore:@cstore::CStore,
-	curr_path_idents: ::std::vec_ng::Vec<Name>,
+	curr_path_idents: Vec<Ident>,
 	path_to_find:&'a Path,
-	suggestions: ::std::vec_ng::Vec<(~str,int)>,
+	suggestions: Vec<(Vec<Ident>,uint)>,
 	max_suggestions: uint,
 }
 
+
 impl<'a,'r> Visitor<()> for FindSymbolVisitor<'a> {
-//	fn visit_ident<'a>(&mut self, _sp:Span, _:Ident, e: ()) {
-	//	::std::io::println(format!("visit ident {:?}", ident));
-//	}
-	fn visit_item<'a>(&mut self, i:&Item, e: ()) {
+	fn visit_item<'a>(&mut self, item:&Item, e: ()) {
 		let find_path_last_seg:&PathSegment = self.path_to_find.segments.last().unwrap();
 
+		self.curr_path_idents.push(item.ident);
 
-//		std::io::println();
-		let mut cmp_path_str:~str=~"::";
-		for &n in self.curr_path_idents.iter() {
-			cmp_path_str.push_str(
-				self.cstore.intr.get_ref(n));
-			cmp_path_str.push_str("::");
-		}
-		cmp_path_str.push_str(self.cstore.intr.get_ref(i.ident.name));
+		//todo: compare with current 'use' and uprate suggestions with more segs in scope.
+		if find_path_last_seg.identifier.name== item.ident.name  && 
+			self.suggestions.len()  <= (self.max_suggestions) {
 
-		debug!("visit item: {:?} ?== {:s} ??",
-				self.cstore.intr.get_ref(find_path_last_seg.identifier.name),
-				cmp_path_str
-				);
-
-		if find_path_last_seg.identifier.name== i.ident.name  && 
-			self.suggestions.len()  < self.max_suggestions {
-			// todo: score = num matched supplied paths, plus number of paths
-			// already in scope
-			// todo - prune lowest score if count too high
-			let score=0;
-			self.suggestions.push((cmp_path_str,score));
+			let mut score=0;
+			for ref find_seg in self.path_to_find.segments.iter() {
+				for (ref index,ref ident) in self.curr_path_idents.iter().enumerate() {
+					if ident.name==find_seg.identifier.name	{score+=*index;}
+				}
+			}
+			// sort such that highscore is first.
+			self.suggestions.push((self.curr_path_idents.clone(),score));
+			self.suggestions.sort_by(
+				|&(_,ref score1),&(_,ref score2)| 
+					if score1<score2 {cmp::Greater}else {cmp::Less});
+			if self.suggestions.len() > self.max_suggestions {self.suggestions.pop();}
 		}
 
 		// visit sub nodes..
-		self.curr_path_idents.push(i.ident.name);
-		visit::walk_item(self,i,e);
+
+		visit::walk_item(self,item,e);
 		self.curr_path_idents.pop();
 	}
 
