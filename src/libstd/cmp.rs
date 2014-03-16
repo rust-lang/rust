@@ -10,17 +10,36 @@
 
 /*!
 
-The `Ord` and `Eq` comparison traits
+Defines the `Ord` and `Eq` comparison traits.
 
-This module contains the definition of both `Ord` and `Eq` which define
-the common interfaces for doing comparison. Both are language items
-that the compiler uses to implement the comparison operators. Rust code
-may implement `Ord` to overload the `<`, `<=`, `>`, and `>=` operators,
-and `Eq` to overload the `==` and `!=` operators.
+This module defines both `Ord` and `Eq` traits which are used by the compiler
+to implement comparison operators.
+Rust programs may implement `Ord` to overload the `<`, `<=`, `>`, and `>=` operators,
+and may implement `Eq` to overload the `==` and `!=` operators.
+
+For example, to define a type with a customized definition for the Eq operators,
+you could do the following:
+
+```rust
+// Our type.
+struct SketchyNum {
+    num : int
+}
+
+// Our implementation of `Eq` to support `==` and `!=`.
+impl Eq for SketchyNum {
+    // Our custom eq allows numbers which are near eachother to be equal! :D
+    fn eq(&self, other: &SketchyNum) -> bool {
+        (self.num - other.num).abs() < 5
+    }
+}
+
+// Now these binary operators will work when applied!
+assert!(SketchyNum {num: 37} == SketchyNum {num: 34});
+assert!(SketchyNum {num: 25} != SketchyNum {num: 57});
+```
 
 */
-
-#![allow(missing_doc)]
 
 /**
 * Trait for values that can be compared for equality and inequality.
@@ -35,8 +54,10 @@ and `Eq` to overload the `==` and `!=` operators.
 */
 #[lang="eq"]
 pub trait Eq {
+    /// This method tests for `self` and `other` values to be equal, and is used by `==`.
     fn eq(&self, other: &Self) -> bool;
 
+    /// This method tests for `!=`.
     #[inline]
     fn ne(&self, other: &Self) -> bool { !self.eq(other) }
 }
@@ -55,6 +76,7 @@ pub trait TotalEq: Eq {
     fn assert_receiver_is_total_eq(&self) {}
 }
 
+/// A macro which defines an implementation of TotalEq for a given type.
 macro_rules! totaleq_impl(
     ($t:ty) => {
         impl TotalEq for $t {}
@@ -78,11 +100,29 @@ totaleq_impl!(uint)
 
 totaleq_impl!(char)
 
+/// An ordering is, e.g, a result of a comparison between two values.
 #[deriving(Clone, Eq, Show)]
-pub enum Ordering { Less = -1, Equal = 0, Greater = 1 }
+pub enum Ordering {
+   /// An ordering where a compared value is less [than another].
+   Less = -1,
+   /// An ordering where a compared value is equal [to another].
+   Equal = 0,
+   /// An ordering where a compared value is greater [than another].
+   Greater = 1
+}
 
-/// Trait for types that form a total order
+/// Trait for types that form a total order.
 pub trait TotalOrd: TotalEq + Ord {
+    /// This method returns an ordering between `self` and `other` values.
+    ///
+    /// By convention, `self.cmp(&other)` returns the ordering matching
+    /// the expression `self <operator> other` if true.  For example:
+    ///
+    /// ```
+    /// assert_eq!( 5u.cmp(&10), Less);     // because 5 < 10
+    /// assert_eq!(10u.cmp(&5),  Greater);  // because 10 > 5
+    /// assert_eq!( 5u.cmp(&5),  Equal);    // because 5 == 5
+    /// ```
     fn cmp(&self, other: &Self) -> Ordering;
 }
 
@@ -99,6 +139,7 @@ impl Ord for Ordering {
     fn lt(&self, other: &Ordering) -> bool { (*self as int) < (*other as int) }
 }
 
+/// A macro which defines an implementation of TotalOrd for a given type.
 macro_rules! totalord_impl(
     ($t:ty) => {
         impl TotalOrd for $t {
@@ -128,8 +169,11 @@ totalord_impl!(uint)
 totalord_impl!(char)
 
 /**
-Return `o1` if it is not `Equal`, otherwise `o2`. Simulates the
-lexical ordering on a type `(int, int)`.
+ * Combine orderings, lexically.
+ *
+ * For example for a type `(int, int)`, two comparisons could be done.
+ * If the first ordering is different, the first ordering is all that must be returned.
+ * If the first ordering is equal, then second ordering is returned.
 */
 #[inline]
 pub fn lexical_ordering(o1: Ordering, o2: Ordering) -> Ordering {
@@ -151,11 +195,18 @@ pub fn lexical_ordering(o1: Ordering, o2: Ordering) -> Ordering {
 */
 #[lang="ord"]
 pub trait Ord: Eq {
+    /// This method tests less than (for `self` and `other`) and is used by the `<` operator.
     fn lt(&self, other: &Self) -> bool;
+
+    /// This method tests less than or equal to (`<=`).
     #[inline]
     fn le(&self, other: &Self) -> bool { !other.lt(self) }
+
+    /// This method tests greater than (`>`).
     #[inline]
     fn gt(&self, other: &Self) -> bool {  other.lt(self) }
+
+    /// This method tests greater than or equal to (`>=`).
     #[inline]
     fn ge(&self, other: &Self) -> bool { !self.lt(other) }
 }
@@ -165,14 +216,17 @@ pub trait Ord: Eq {
 /// container types; e.g. it is often desirable to be able to use `&str`
 /// values to look up entries in a container with `~str` keys.
 pub trait Equiv<T> {
+    /// Implement this function to decide equivalent values.
     fn equiv(&self, other: &T) -> bool;
 }
 
+/// Compare and return the minimum of two values.
 #[inline]
 pub fn min<T: TotalOrd>(v1: T, v2: T) -> T {
     if v1 < v2 { v1 } else { v2 }
 }
 
+/// Compare and return the maximum of two values.
 #[inline]
 pub fn max<T: TotalOrd>(v1: T, v2: T) -> T {
     if v1 > v2 { v1 } else { v2 }
@@ -184,11 +238,11 @@ mod test {
 
     #[test]
     fn test_int_totalord() {
-        assert_eq!(5.cmp(&10), Less);
-        assert_eq!(10.cmp(&5), Greater);
-        assert_eq!(5.cmp(&5), Equal);
-        assert_eq!((-5).cmp(&12), Less);
-        assert_eq!(12.cmp(-5), Greater);
+        assert_eq!(5u.cmp(&10), Less);
+        assert_eq!(10u.cmp(&5), Greater);
+        assert_eq!(5u.cmp(&5), Equal);
+        assert_eq!((-5u).cmp(&12), Less);
+        assert_eq!(12u.cmp(-5), Greater);
     }
 
     #[test]
@@ -209,5 +263,25 @@ mod test {
             t(Equal, o, o);
             t(Greater, o, Greater);
          }
+    }
+
+    #[test]
+    fn test_user_defined_eq() {
+        // Our type.
+        struct SketchyNum {
+            num : int
+        }
+
+        // Our implementation of `Eq` to support `==` and `!=`.
+        impl Eq for SketchyNum {
+            // Our custom eq allows numbers which are near eachother to be equal! :D
+            fn eq(&self, other: &SketchyNum) -> bool {
+                (self.num - other.num).abs() < 5
+            }
+        }
+
+        // Now these binary operators will work when applied!
+        assert!(SketchyNum {num: 37} == SketchyNum {num: 34});
+        assert!(SketchyNum {num: 25} != SketchyNum {num: 57});
     }
 }
