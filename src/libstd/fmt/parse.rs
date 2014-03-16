@@ -11,16 +11,16 @@
 //! Parsing of format strings
 //!
 //! These structures are used when parsing format strings for the compiler.
-//! Parsing does not currently happen at runtime (structures of std::fmt::rt are
-//! generated instead).
+//! Parsing does not happen at runtime: structures of `std::fmt::rt` are
+//! generated instead.
 
 use prelude::*;
 
 use char;
 use str;
 
-/// A piece is a portion of the format string which represents the next part to
-/// emit. These are emitted as a stream by the `Parser` class.
+/// A piece is a portion of the format string which represents the next part
+/// to emit. These are emitted as a stream by the `Parser` class.
 #[deriving(Eq)]
 pub enum Piece<'a> {
     /// A literal string which should directly be emitted
@@ -65,36 +65,55 @@ pub struct FormatSpec<'a> {
 
 /// Enum describing where an argument for a format can be located.
 #[deriving(Eq)]
-#[allow(missing_doc)]
 pub enum Position<'a> {
-    ArgumentNext, ArgumentIs(uint), ArgumentNamed(&'a str)
+    /// The argument will be in the next position. This is the default.
+    ArgumentNext,
+    /// The argument is located at a specific index.
+    ArgumentIs(uint),
+    /// The argument has a name.
+    ArgumentNamed(&'a str),
 }
 
 /// Enum of alignments which are supported.
 #[deriving(Eq)]
-#[allow(missing_doc)]
-pub enum Alignment { AlignLeft, AlignRight, AlignUnknown }
+pub enum Alignment {
+    /// The value will be aligned to the left.
+    AlignLeft,
+    /// The value will be aligned to the right.
+    AlignRight,
+    /// The value will take on a default alignment.
+    AlignUnknown,
+}
 
-/// Various flags which can be applied to format strings, the meaning of these
+/// Various flags which can be applied to format strings. The meaning of these
 /// flags is defined by the formatters themselves.
 #[deriving(Eq)]
-#[allow(missing_doc)]
 pub enum Flag {
+    /// A `+` will be used to denote positive numbers.
     FlagSignPlus,
+    /// A `-` will be used to denote negative numbers. This is the default.
     FlagSignMinus,
+    /// An alternate form will be used for the value. In the case of numbers,
+    /// this means that the number will be prefixed with the supplied string.
     FlagAlternate,
+    /// For numbers, this means that the number will be padded with zeroes,
+    /// and the sign (`+` or `-`) will precede them.
     FlagSignAwareZeroPad,
 }
 
 /// A count is used for the precision and width parameters of an integer, and
 /// can reference either an argument or a literal integer.
 #[deriving(Eq)]
-#[allow(missing_doc)]
 pub enum Count<'a> {
+    /// The count is specified explicitly.
     CountIs(uint),
+    /// The count is specified by the argument with the given name.
     CountIsName(&'a str),
+    /// The count is specified by the argument at the given index.
     CountIsParam(uint),
+    /// The count is specified by the next parameter.
     CountIsNextParam,
+    /// The count is implied and cannot be explicitly specified.
     CountImplied,
 }
 
@@ -106,8 +125,9 @@ pub enum Method<'a> {
     /// keyword-defined clauses. The meaning of the keywords is defined by the
     /// current locale.
     ///
-    /// An offset is optionally present at the beginning which is used to match
-    /// against keywords, but it is not matched against the literal integers.
+    /// An offset is optionally present at the beginning which is used to
+    /// match against keywords, but it is not matched against the literal
+    /// integers.
     ///
     /// The final element of this enum is the default "other" case which is
     /// always required to be specified.
@@ -139,14 +159,23 @@ pub struct PluralArm<'a> {
     result: ~[Piece<'a>],
 }
 
-/// Enum of the 5 CLDR plural keywords. There is one more, "other", but that is
-/// specially placed in the `Plural` variant of `Method`
+/// Enum of the 5 CLDR plural keywords. There is one more, "other", but that
+/// is specially placed in the `Plural` variant of `Method`.
 ///
 /// http://www.icu-project.org/apiref/icu4c/classicu_1_1PluralRules.html
 #[deriving(Eq, TotalEq, Hash)]
 #[allow(missing_doc)]
 pub enum PluralKeyword {
-    Zero, One, Two, Few, Many
+    /// The plural form for zero objects.
+    Zero,
+    /// The plural form for one object.
+    One,
+    /// The plural form for two objects.
+    Two,
+    /// The plural form for few objects.
+    Few,
+    /// The plural form for many objects.
+    Many,
 }
 
 /// Structure representing one "arm" of the `select` function.

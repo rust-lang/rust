@@ -79,7 +79,9 @@ impl Writer for UnixStream {
     fn write(&mut self, buf: &[u8]) -> IoResult<()> { self.obj.write(buf) }
 }
 
+/// A value that can listen for incoming named pipe connection requests.
 pub struct UnixListener {
+    /// The internal, opaque runtime Unix listener.
     priv obj: ~RtioUnixListener,
 }
 
@@ -119,7 +121,9 @@ impl Listener<UnixStream, UnixAcceptor> for UnixListener {
     }
 }
 
+/// A value that can accept named pipe connections, returned from `listen()`.
 pub struct UnixAcceptor {
+    /// The internal, opaque runtime Unix acceptor.
     priv obj: ~RtioUnixAcceptor,
 }
 
