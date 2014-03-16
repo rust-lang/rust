@@ -329,6 +329,7 @@ fn mk_test_module(cx: &TestCtxt) -> @ast::Item {
     // with our list of tests
     let mainfn = (quote_item!(&cx.ext_cx,
         pub fn main() {
+            #[allow(deprecated_owned_vector)];
             #[main];
             test::test_main_static(::std::os::args(), TESTS);
         }
