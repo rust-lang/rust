@@ -28,6 +28,7 @@ use std::hash::Hash;
 use std::io::BufReader;
 use std::from_str::FromStr;
 use std::uint;
+use std::vec_ng::Vec;
 
 use collections::HashMap;
 
@@ -45,7 +46,7 @@ use collections::HashMap;
 ///                 host: ~"example.com",
 ///                 port: Some(~"8080"),
 ///                 path: ~"/foo/bar",
-///                 query: ~[(~"baz", ~"qux")],
+///                 query: vec!((~"baz", ~"qux")),
 ///                 fragment: Some(~"quz") };
 /// // https://username@example.com:8080/foo/bar?baz=qux#quz
 /// ```
@@ -61,7 +62,7 @@ pub struct Url {
     port: Option<~str>,
     /// The path component of a URL, for example `/foo/bar`.
     path: ~str,
-    /// The query component of a URL.  `~[(~"baz", ~"qux")]` represents the
+    /// The query component of a URL.  `vec!((~"baz", ~"qux"))` represents the
     /// fragment `baz=qux` in the above example.
     query: Query,
     /// The fragment component, such as `quz`.  Doesn't include the leading `#` character.
@@ -72,7 +73,7 @@ pub struct Url {
 pub struct Path {
     /// The path component of a URL, for example `/foo/bar`.
     path: ~str,
-    /// The query component of a URL.  `~[(~"baz", ~"qux")]` represents the
+    /// The query component of a URL.  `vec!((~"baz", ~"qux"))` represents the
     /// fragment `baz=qux` in the above example.
     query: Query,
     /// The fragment component, such as `quz`.  Doesn't include the leading `#` character.
@@ -89,7 +90,7 @@ pub struct UserInfo {
 }
 
 /// Represents the query component of a URI.
-pub type Query = ~[(~str, ~str)];
+pub type Query = Vec<(~str, ~str)>;
 
 impl Url {
     pub fn new(scheme: ~str,
@@ -301,7 +302,7 @@ fn encode_plus(s: &str) -> ~str {
 /**
  * Encode a hashmap to the 'application/x-www-form-urlencoded' media type.
  */
-pub fn encode_form_urlencoded(m: &HashMap<~str, ~[~str]>) -> ~str {
+pub fn encode_form_urlencoded(m: &HashMap<~str, Vec<~str>>) -> ~str {
     let mut out = ~"";
     let mut first = true;
 
@@ -327,7 +328,7 @@ pub fn encode_form_urlencoded(m: &HashMap<~str, ~[~str]>) -> ~str {
  * Decode a string encoded with the 'application/x-www-form-urlencoded' media
  * type into a hashmap.
  */
-pub fn decode_form_urlencoded(s: &[u8]) -> HashMap<~str, ~[~str]> {
+pub fn decode_form_urlencoded(s: &[u8]) -> HashMap<~str, Vec<~str>> {
     let mut rdr = BufReader::new(s);
     let mut m = HashMap::new();
     let mut key = ~"";
@@ -345,7 +346,7 @@ pub fn decode_form_urlencoded(s: &[u8]) -> HashMap<~str, ~[~str]> {
                 if key != ~"" && value != ~"" {
                     let mut values = match m.pop(&key) {
                         Some(values) => values,
-                        None => ~[],
+                        None => vec!(),
                     };
 
                     values.push(value);
@@ -383,7 +384,7 @@ pub fn decode_form_urlencoded(s: &[u8]) -> HashMap<~str, ~[~str]> {
     if key != ~"" && value != ~"" {
         let mut values = match m.pop(&key) {
             Some(values) => values,
-            None => ~[],
+            None => vec!(),
         };
 
         values.push(value);
@@ -430,7 +431,7 @@ impl fmt::Show for UserInfo {
 }
 
 fn query_from_str(rawquery: &str) -> Query {
-    let mut query: Query = ~[];
+    let mut query: Query = vec!();
     if !rawquery.is_empty() {
         for p in rawquery.split('&') {
             let (k, v) = split_char_first(p, '=');
@@ -446,7 +447,7 @@ fn query_from_str(rawquery: &str) -> Query {
  * # Example
  *
  * ```rust
- * let query = ~[(~"title", ~"The Village"), (~"north", ~"52.91"), (~"west", ~"4.10")];
+ * let query = vec!((~"title", ~"The Village"), (~"north", ~"52.91"), (~"west", ~"4.10"));
  * println!("{}", url::query_to_str(&query));  // title=The%20Village&north=52.91&west=4.10
  * ```
  */
@@ -712,9 +713,9 @@ fn get_query_fragment(rawurl: &str) ->
             let f = decode_component(rawurl.slice(
                                                 1,
                                                 rawurl.len()));
-            return Ok((~[], Some(f)));
+            return Ok((vec!(), Some(f)));
         } else {
-            return Ok((~[], None));
+            return Ok((vec!(), None));
         }
     }
     let (q, r) = split_char_first(rawurl.slice(1, rawurl.len()), '#');
@@ -956,7 +957,7 @@ fn test_get_path() {
 
 #[cfg(test)]
 mod tests {
-    use {encode_form_urlencoded, decode_form_urlencoded, decode_component,
+    use {encode_form_urlencoded, decode_form_urlencoded,
          decode, encode, from_str, encode_component, decode_component,
          path_from_str, UserInfo, get_scheme};
 
@@ -973,7 +974,7 @@ mod tests {
         assert_eq!(&u.host, &~"rust-lang.org");
         assert_eq!(&u.port, &Some(~"8080"));
         assert_eq!(&u.path, &~"/doc/~u");
-        assert_eq!(&u.query, &~[(~"s", ~"v")]);
+        assert_eq!(&u.query, &vec!((~"s", ~"v")));
         assert_eq!(&u.fragment, &Some(~"something"));
     }
 
@@ -984,7 +985,7 @@ mod tests {
         let up = path_from_str(path);
         let u = up.unwrap();
         assert_eq!(&u.path, &~"/doc/~u");
-        assert_eq!(&u.query, &~[(~"s", ~"v")]);
+        assert_eq!(&u.query, &vec!((~"s", ~"v")));
         assert_eq!(&u.fragment, &Some(~"something"));
     }
 
@@ -1124,7 +1125,7 @@ mod tests {
         let url = ~"http://rust-lang.org/doc%20uments?ba%25d%20=%23%26%2B";
         let u = from_str(url).unwrap();
         assert!(u.path == ~"/doc uments");
-        assert!(u.query == ~[(~"ba%d ", ~"#&+")]);
+        assert!(u.query == vec!((~"ba%d ", ~"#&+")));
     }
 
     #[test]
@@ -1132,7 +1133,7 @@ mod tests {
         let path = ~"/doc%20uments?ba%25d%20=%23%26%2B";
         let p = path_from_str(path).unwrap();
         assert!(p.path == ~"/doc uments");
-        assert!(p.query == ~[(~"ba%d ", ~"#&+")]);
+        assert!(p.query == vec!((~"ba%d ", ~"#&+")));
     }
 
     #[test]
@@ -1259,16 +1260,16 @@ mod tests {
         let mut m = HashMap::new();
         assert_eq!(encode_form_urlencoded(&m), ~"");
 
-        m.insert(~"", ~[]);
-        m.insert(~"foo", ~[]);
+        m.insert(~"", vec!());
+        m.insert(~"foo", vec!());
         assert_eq!(encode_form_urlencoded(&m), ~"");
 
         let mut m = HashMap::new();
-        m.insert(~"foo", ~[~"bar", ~"123"]);
+        m.insert(~"foo", vec!(~"bar", ~"123"));
         assert_eq!(encode_form_urlencoded(&m), ~"foo=bar&foo=123");
 
         let mut m = HashMap::new();
-        m.insert(~"foo bar", ~[~"abc", ~"12 = 34"]);
+        m.insert(~"foo bar", vec!(~"abc", ~"12 = 34"));
         assert!(encode_form_urlencoded(&m) ==
             ~"foo+bar=abc&foo+bar=12+%3D+34");
     }
@@ -1280,7 +1281,7 @@ mod tests {
         let s = "a=1&foo+bar=abc&foo+bar=12+%3D+34".as_bytes();
         let form = decode_form_urlencoded(s);
         assert_eq!(form.len(), 2);
-        assert_eq!(form.get(&~"a"), &~[~"1"]);
-        assert_eq!(form.get(&~"foo bar"), &~[~"abc", ~"12 = 34"]);
+        assert_eq!(form.get(&~"a"), &vec!(~"1"));
+        assert_eq!(form.get(&~"foo bar"), &vec!(~"abc", ~"12 = 34"));
     }
 }
