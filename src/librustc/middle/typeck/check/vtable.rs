@@ -94,7 +94,8 @@ fn lookup_vtables(vcx: &VtableContext,
     // We do this backwards for reasons discussed above.
     assert_eq!(substs.tps.len(), type_param_defs.len());
     let mut result: Vec<vtable_param_res> =
-        substs.tps.rev_iter()
+        substs.tps.iter()
+        .rev()
         .zip(type_param_defs.rev_iter())
         .map(|(ty, def)|
             lookup_vtables_for_param(vcx, span, Some(substs),

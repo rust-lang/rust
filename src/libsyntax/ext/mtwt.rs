@@ -309,7 +309,7 @@ mod tests {
     // returning the resulting index
     fn unfold_test_sc(tscs : Vec<TestSC> , tail: SyntaxContext, table: &SCTable)
         -> SyntaxContext {
-        tscs.rev_iter().fold(tail, |tail : SyntaxContext, tsc : &TestSC|
+        tscs.iter().rev().fold(tail, |tail : SyntaxContext, tsc : &TestSC|
                   {match *tsc {
                       M(mrk) => new_mark_internal(mrk,tail,table),
                       R(ident,name) => new_rename_internal(ident,name,tail,table)}})
@@ -355,7 +355,7 @@ mod tests {
     // in a vector. v[0] will be the outermost mark.
     fn unfold_marks(mrks: Vec<Mrk> , tail: SyntaxContext, table: &SCTable)
                     -> SyntaxContext {
-        mrks.rev_iter().fold(tail, |tail:SyntaxContext, mrk:&Mrk|
+        mrks.iter().rev().fold(tail, |tail:SyntaxContext, mrk:&Mrk|
                    {new_mark_internal(*mrk,tail,table)})
     }
 

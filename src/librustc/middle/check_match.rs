@@ -288,7 +288,7 @@ fn is_useful(cx: &MatchCheckCtxt, m: &matrix, v: &[@Pat]) -> useful {
                 is_useful_specialized(cx, m, v, vec(n), n, left_ty)
               }
               ty::ty_unboxed_vec(..) | ty::ty_vec(..) => {
-                let max_len = m.rev_iter().fold(0, |max_len, r| {
+                let max_len = m.iter().rev().fold(0, |max_len, r| {
                   match r.get(0).node {
                     PatVec(ref before, _, ref after) => {
                       cmp::max(before.len() + after.len(), max_len)
