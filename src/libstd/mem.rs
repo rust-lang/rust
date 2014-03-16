@@ -99,32 +99,127 @@ pub unsafe fn move_val_init<T>(dst: &mut T, src: T) {
     intrinsics::move_val_init(dst, src)
 }
 
+/// Convert an i16 to little endian from the target's endianness.
+///
+/// On little endian, this is a no-op.  On big endian, the bytes are swapped.
 #[cfg(target_endian = "little")] #[inline] pub fn to_le16(x: i16) -> i16 { x }
+
+/// Convert an i16 to little endian from the target's endianness.
+///
+/// On little endian, this is a no-op.  On big endian, the bytes are swapped.
 #[cfg(target_endian = "big")]    #[inline] pub fn to_le16(x: i16) -> i16 { unsafe { bswap16(x) } }
+
+/// Convert an i32 to little endian from the target's endianness.
+///
+/// On little endian, this is a no-op.  On big endian, the bytes are swapped.
 #[cfg(target_endian = "little")] #[inline] pub fn to_le32(x: i32) -> i32 { x }
+
+/// Convert an i32 to little endian from the target's endianness.
+///
+/// On little endian, this is a no-op.  On big endian, the bytes are swapped.
 #[cfg(target_endian = "big")]    #[inline] pub fn to_le32(x: i32) -> i32 { unsafe { bswap32(x) } }
+
+/// Convert an i64 to little endian from the target's endianness.
+///
+/// On little endian, this is a no-op.  On big endian, the bytes are swapped.
 #[cfg(target_endian = "little")] #[inline] pub fn to_le64(x: i64) -> i64 { x }
+
+/// Convert an i64 to little endian from the target's endianness.
+///
+/// On little endian, this is a no-op.  On big endian, the bytes are swapped.
 #[cfg(target_endian = "big")]    #[inline] pub fn to_le64(x: i64) -> i64 { unsafe { bswap64(x) } }
 
+
+/// Convert an i16 to big endian from the target's endianness.
+///
+/// On big endian, this is a no-op.  On little endian, the bytes are swapped.
 #[cfg(target_endian = "little")] #[inline] pub fn to_be16(x: i16) -> i16 { unsafe { bswap16(x) } }
+
+/// Convert an i16 to big endian from the target's endianness.
+///
+/// On big endian, this is a no-op.  On little endian, the bytes are swapped.
 #[cfg(target_endian = "big")]    #[inline] pub fn to_be16(x: i16) -> i16 { x }
+
+/// Convert an i32 to big endian from the target's endianness.
+///
+/// On big endian, this is a no-op.  On little endian, the bytes are swapped.
 #[cfg(target_endian = "little")] #[inline] pub fn to_be32(x: i32) -> i32 { unsafe { bswap32(x) } }
+
+/// Convert an i32 to big endian from the target's endianness.
+///
+/// On big endian, this is a no-op.  On little endian, the bytes are swapped.
 #[cfg(target_endian = "big")]    #[inline] pub fn to_be32(x: i32) -> i32 { x }
+
+/// Convert an i64 to big endian from the target's endianness.
+///
+/// On big endian, this is a no-op.  On little endian, the bytes are swapped.
 #[cfg(target_endian = "little")] #[inline] pub fn to_be64(x: i64) -> i64 { unsafe { bswap64(x) } }
+
+/// Convert an i64 to big endian from the target's endianness.
+///
+/// On big endian, this is a no-op.  On little endian, the bytes are swapped.
 #[cfg(target_endian = "big")]    #[inline] pub fn to_be64(x: i64) -> i64 { x }
 
+
+/// Convert an i16 from little endian to the target's endianness.
+///
+/// On little endian, this is a no-op.  On big endian, the bytes are swapped.
 #[cfg(target_endian = "little")] #[inline] pub fn from_le16(x: i16) -> i16 { x }
+
+/// Convert an i16 from little endian to the target's endianness.
+///
+/// On little endian, this is a no-op.  On big endian, the bytes are swapped.
 #[cfg(target_endian = "big")]    #[inline] pub fn from_le16(x: i16) -> i16 { unsafe { bswap16(x) } }
+
+/// Convert an i32 from little endian to the target's endianness.
+///
+/// On little endian, this is a no-op.  On big endian, the bytes are swapped.
 #[cfg(target_endian = "little")] #[inline] pub fn from_le32(x: i32) -> i32 { x }
+
+/// Convert an i32 from little endian to the target's endianness.
+///
+/// On little endian, this is a no-op.  On big endian, the bytes are swapped.
 #[cfg(target_endian = "big")]    #[inline] pub fn from_le32(x: i32) -> i32 { unsafe { bswap32(x) } }
+
+/// Convert an i64 from little endian to the target's endianness.
+///
+/// On little endian, this is a no-op.  On big endian, the bytes are swapped.
 #[cfg(target_endian = "little")] #[inline] pub fn from_le64(x: i64) -> i64 { x }
+
+/// Convert an i64 from little endian to the target's endianness.
+///
+/// On little endian, this is a no-op.  On big endian, the bytes are swapped.
 #[cfg(target_endian = "big")]    #[inline] pub fn from_le64(x: i64) -> i64 { unsafe { bswap64(x) } }
 
+
+/// Convert an i16 from big endian to the target's endianness.
+///
+/// On big endian, this is a no-op.  On little endian, the bytes are swapped.
 #[cfg(target_endian = "little")] #[inline] pub fn from_be16(x: i16) -> i16 { unsafe { bswap16(x) } }
+
+/// Convert an i16 from big endian to the target's endianness.
+///
+/// On big endian, this is a no-op.  On little endian, the bytes are swapped.
 #[cfg(target_endian = "big")]    #[inline] pub fn from_be16(x: i16) -> i16 { x }
+
+/// Convert an i32 from big endian to the target's endianness.
+///
+/// On big endian, this is a no-op.  On little endian, the bytes are swapped.
 #[cfg(target_endian = "little")] #[inline] pub fn from_be32(x: i32) -> i32 { unsafe { bswap32(x) } }
+
+/// Convert an i32 from big endian to the target's endianness.
+///
+/// On big endian, this is a no-op.  On little endian, the bytes are swapped.
 #[cfg(target_endian = "big")]    #[inline] pub fn from_be32(x: i32) -> i32 { x }
+
+/// Convert an i64 from big endian to the target's endianness.
+///
+/// On big endian, this is a no-op.  On little endian, the bytes are swapped.
 #[cfg(target_endian = "little")] #[inline] pub fn from_be64(x: i64) -> i64 { unsafe { bswap64(x) } }
+
+/// Convert an i64 from big endian to the target's endianness.
+///
+/// On big endian, this is a no-op.  On little endian, the bytes are swapped.
 #[cfg(target_endian = "big")]    #[inline] pub fn from_be64(x: i64) -> i64 { x }
 
 
