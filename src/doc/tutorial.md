@@ -2095,6 +2095,10 @@ and may not be overridden:
 Types are sendable
 unless they contain managed boxes, managed closures, or references.
 
+* `Share` - Types that are *threadsafe*
+These are types that are safe to be used across several threads with access to
+a `&T` pointer. `MutexArc` is an example of a *sharable* type with internal mutable data.
+
 * `Freeze` - Constant (immutable) types.
 These are types that do not contain anything intrinsically mutable.
 Intrinsically mutable values include `Cell` in the standard library.
