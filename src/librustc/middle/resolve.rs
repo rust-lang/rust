@@ -792,7 +792,7 @@ fn namespace_error_to_str(ns: NamespaceError) -> &'static str {
 fn Resolver<'a>(session: Session,
             lang_items: @LanguageItems,
             crate_span: Span,
-			krate:&'a ast::Crate) -> Resolver<'a> {
+            krate:&'a ast::Crate) -> Resolver<'a> {
     let graph_root = @NameBindings();
 
     graph_root.define_module(NoParentLink,
@@ -812,7 +812,7 @@ fn Resolver<'a>(session: Session,
         // AST.
 
         graph_root: graph_root,
-		resolver_krate:krate,
+        resolver_krate:krate,
 
         method_map: @RefCell::new(HashMap::new()),
         structs: HashSet::new(),
@@ -856,7 +856,7 @@ struct Resolver<'a> {
     method_map: @RefCell<HashMap<Name, HashSet<DefId>>>,
     structs: HashSet<DefId>,
 
-	resolver_krate: &'a ast::Crate, // for error message search-"did you mean..."
+    resolver_krate: &'a ast::Crate, // for error message search-"did you mean..."
 
     // The number of imports that are currently unresolved.
     unresolved_imports: uint,
@@ -926,7 +926,7 @@ impl<'a,'r> Visitor<ReducedGraphParent> for BuildReducedGraphVisitor<'a,'r> {
     fn visit_view_item(&mut self, view_item: &ViewItem, context: ReducedGraphParent) {
         self.resolver.build_reduced_graph_for_view_item(view_item, context);
     }
-	
+
     fn visit_block(&mut self, block: &Block, context: ReducedGraphParent) {
         let np = self.resolver.build_reduced_graph_for_block(block, context);
         visit::walk_block(self, block, np);
@@ -946,7 +946,7 @@ impl<'a,'r> Visitor<()> for UnusedImportCheckVisitor<'a,'r> {
 impl<'r> Resolver<'r> {
     /// The main name resolution procedure.
     fn resolve(&mut self, krate: &'r ast::Crate) {
-		self.resolver_krate = krate;
+        self.resolver_krate = krate;
         self.build_reduced_graph(krate);
         self.session.abort_if_errors();
 
@@ -2693,7 +2693,7 @@ impl<'r> Resolver<'r> {
 
     /// Resolves the given module path from the given root `module_`.
     fn resolve_module_path_from_root(&mut self,
-                                     module_: @Module, 
+                                     module_: @Module,
                                      module_path: &[Ident],
                                      index: uint,
                                      span: Span,
@@ -2867,7 +2867,7 @@ impl<'r> Resolver<'r> {
                     }
                     UseLexicalScope => {
                         // This is not a crate-relative path. We resolve the
-                        // first component	of the path in the current lexical
+                        // first component  of the path in the current lexical
                         // scope and then proceed to resolve below that.
                         let result = self.resolve_module_in_lexical_scope(
                             module_,
@@ -5178,7 +5178,7 @@ impl<'r> Resolver<'r> {
                                        self.resolve_error(expr.span,
                                             format!("unresolved name `{}`.",
                                                     wrong_name));
-										self.find_unresolved_symbol_elsewhere(path);
+                                        self.find_unresolved_symbol_elsewhere(path);
                                    }
                                }
                         }
@@ -5569,71 +5569,76 @@ impl<'r> Resolver<'r> {
         }
     }
 
-	// Search other modules for this ident, and advise possible module paths
-	fn find_unresolved_symbol_elsewhere(&mut self, path:&Path) {
+    // Search other modules for this ident, and advise possible module paths
+    fn find_unresolved_symbol_elsewhere(&mut self, path:&Path) {
 
-		let mut finder_visitor= FindSymbolVisitor{
-			cstore:self.session.cstore,
-			curr_path_idents: Vec::new(),
-			path_to_find:path,
-			suggestions: Vec::new(),
-			max_suggestions: 5,
-		};
+        let mut finder_visitor= FindSymbolVisitor{
+            cstore:self.session.cstore,
+            curr_path_idents: Vec::new(),
+            path_to_find:path,
+            suggestions: Vec::new(),
+            max_suggestions: 5,
+        };
 
-		visit::walk_crate(&mut finder_visitor, self.resolver_krate, ());
+        visit::walk_crate(&mut finder_visitor, self.resolver_krate, ());
 
-		if finder_visitor.suggestions.len()>0 {
-			let mut note=~"did you mean:-\n";
-			for &(ref name,_) in finder_visitor.suggestions.iter() {
-				note.push_str("\t\t\t"+ "::"+name.map(|i|{token::get_ident(*i).get().to_str()}).connect("::")+"\n");
-			}
-			self.session.span_note(path.span, note); 
-		}
-	}
+        if finder_visitor.suggestions.len()>0 {
+            let mut note=~"did you mean:-\n";
+            for &(ref name,_) in finder_visitor.suggestions.iter() {
+                note.push_str(
+                    "\t\t\t"+ "::"+
+                    name.map(
+                        |i|{oken::get_ident(*i).get().to_str()})
+                        .connect("::")+"\n"
+                );
+            }
+            self.session.span_note(path.span, note);
+        }
+    }
 }
 
 struct FindSymbolVisitor<'a>{
-	cstore:@cstore::CStore,
-	curr_path_idents: Vec<Ident>,
-	path_to_find:&'a Path,
-	suggestions: Vec<(Vec<Ident>,uint)>,
-	max_suggestions: uint,
+    cstore:@cstore::CStore,
+    curr_path_idents: Vec<Ident>,
+    path_to_find:&'a Path,
+    suggestions: Vec<(Vec<Ident>,uint)>,
+    max_suggestions: uint,
 }
 
 
 impl<'a,'r> Visitor<()> for FindSymbolVisitor<'a> {
-	fn visit_item<'a>(&mut self, item:&Item, e: ()) {
-		let find_path_last_seg:&PathSegment = self.path_to_find.segments.last().unwrap();
+    fn visit_item<'a>(&mut self, item:&Item, e: ()) {
+        let find_path_last_seg:&PathSegment = self.path_to_find.segments.last().unwrap();
 
-		self.curr_path_idents.push(item.ident);
+        self.curr_path_idents.push(item.ident);
 
-		//todo: compare with current 'use' and uprate suggestions with more segs in scope.
-		if find_path_last_seg.identifier.name== item.ident.name  && 
-			self.suggestions.len()  <= (self.max_suggestions) {
+        //todo: compare with current 'use' and uprate suggestions with more segs in scope.
+        if find_path_last_seg.identifier.name== item.ident.name  &&
+            self.suggestions.len()  <= (self.max_suggestions) {
 
-			let mut score=0;
-			for ref find_seg in self.path_to_find.segments.iter() {
-				for (ref index,ref ident) in self.curr_path_idents.iter().enumerate() {
-					if ident.name==find_seg.identifier.name	{score+=*index;}
-				}
-			}
-			// sort such that highscore is first.
-			self.suggestions.push((self.curr_path_idents.clone(),score));
-			self.suggestions.sort_by(
-				|&(_,ref score1),&(_,ref score2)| 
-					if score1<score2 {cmp::Greater}else {cmp::Less});
-			if self.suggestions.len() > self.max_suggestions {self.suggestions.pop();}
-		}
+            let mut score=0;
+            for ref find_seg in self.path_to_find.segments.iter() {
+                for (ref index,ref ident) in self.curr_path_idents.iter().enumerate() {
+                    if ident.name==find_seg.identifier.name {score+=*index;}
+                }
+            }
+            // sort such that highscore is first.
+            self.suggestions.push((self.curr_path_idents.clone(),score));
+            self.suggestions.sort_by(
+                |&(_,ref score1),&(_,ref score2)|
+                    if score1<score2 {cmp::Greater}else {cmp::Less});
+            if self.suggestions.len() > self.max_suggestions {self.suggestions.pop();}
+        }
 
-		// visit sub nodes..
+        // visit sub nodes..
 
-		visit::walk_item(self,item,e);
-		self.curr_path_idents.pop();
-	}
+        visit::walk_item(self,item,e);
+        self.curr_path_idents.pop();
+    }
 
     fn visit_mod(&mut self, m: &Mod, _s: Span, _n: NodeId, e: ()) {
-		visit::walk_mod(self, m, e) ;
-	}
+        visit::walk_mod(self, m, e) ;
+    }
 }
 
 
