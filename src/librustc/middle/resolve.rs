@@ -5164,23 +5164,25 @@ impl<'r> Resolver<'r> {
                                             wrong_name));
 
                             }
-                            _ =>
-                               // limit search to 5 to reduce the number
-                               // of stupid suggestions
-                               match self.find_best_match_for_name(wrong_name, 5) {
-                                   Some(m) => {
-                                       self.resolve_error(expr.span,
-                                           format!("unresolved name `{}`.  \
-                                                    Did you mean `{}`?",
-                                                    wrong_name, m));
-                                   }
-                                   None => {
-                                       self.resolve_error(expr.span,
-                                            format!("unresolved name `{}`.",
-                                                    wrong_name));
-                                        self.find_unresolved_symbol_suggestions(path);
-                                   }
-                               }
+                            _ => {
+                                // limit search to 5 to reduce the number
+                                // of stupid suggestions
+                                match self.find_best_match_for_name(wrong_name, 5) {
+                                    Some(m) => {
+                                        self.resolve_error(expr.span,
+                                            format!("unresolved name `{}`.  \
+                                                     Did you mean `{}`?",
+                                                     wrong_name, m));
+                                    }
+                                    None => {
+                                        self.resolve_error(expr.span,
+                                             format!("unresolved name `{}`.",
+                                                     wrong_name));
+                                    }
+                                }
+                                // additionally display exact symbol matches from other scopes.
+                                self.show_suggestions_from_other_scopes(path);
+                            }
                         }
                     }
                 }
@@ -5570,7 +5572,7 @@ impl<'r> Resolver<'r> {
     }
 
     // Search other modules for this ident, and advise possible module paths
-    fn find_unresolved_symbol_suggestions(&mut self, path:&Path) {
+    fn show_suggestions_from_other_scopes(&mut self, path:&Path) {
 
         let mut finder_visitor= FindSymbolVisitor{
             cstore:self.session.cstore,
