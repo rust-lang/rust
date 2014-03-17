@@ -69,6 +69,7 @@ mod imp {
     use iter::Iterator;
     use unstable::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
     use mem;
+    #[cfg(not(test))] use ptr::RawPtr;
 
     static mut global_args_ptr: uint = 0;
     static mut lock: StaticNativeMutex = NATIVE_MUTEX_INIT;
