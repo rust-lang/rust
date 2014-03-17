@@ -5178,7 +5178,7 @@ impl<'r> Resolver<'r> {
                                        self.resolve_error(expr.span,
                                             format!("unresolved name `{}`.",
                                                     wrong_name));
-                                        self.find_unresolved_symbol_elsewhere(path);
+                                        self.find_unresolved_symbol_suggestions(path);
                                    }
                                }
                         }
@@ -5570,7 +5570,7 @@ impl<'r> Resolver<'r> {
     }
 
     // Search other modules for this ident, and advise possible module paths
-    fn find_unresolved_symbol_elsewhere(&mut self, path:&Path) {
+    fn find_unresolved_symbol_suggestions(&mut self, path:&Path) {
 
         let mut finder_visitor= FindSymbolVisitor{
             cstore:self.session.cstore,
