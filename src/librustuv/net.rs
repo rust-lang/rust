@@ -658,6 +658,28 @@ pub struct RawSocketWatcher {
     home: HomeHandle,
 }
 
+#[cfg(windows)]
+fn make_nonblocking(socket: libc::SOCKET) -> Option<IoError> {
+    let one: libc::c_ulong = 1;
+    if unsafe { libc::ioctlsocket(socket, libc::FIONBIO, &one as *libc::c_ulong) } != 0 {
+        Some(netsupport::last_error())
+    } else {
+        None
+    }
+}
+
+#[cfg(not(windows))]
+fn make_nonblocking(socket: c_int) -> Option<IoError> {
+    let flags = unsafe { libc::fcntl(socket, libc::F_GETFL, 0) };
+    if flags == -1 {
+        return Some(netsupport::last_error());
+    }
+    if unsafe { libc::fcntl(socket, libc::F_SETFL, flags | libc::O_NONBLOCK) } == -1 {
+        return Some(netsupport::last_error());
+    }
+    return None;
+}
+
 impl RawSocketWatcher {
     pub fn new(io: &mut UvIoFactory, protocol: raw::Protocol)
         -> Result<RawSocketWatcher, IoError>
@@ -676,12 +698,9 @@ impl RawSocketWatcher {
         };
 
         // Make socket non-blocking - required for libuv
-        let flags = unsafe { libc::fcntl(raw.socket, libc::F_GETFL, 0) };
-        if flags == -1 {
-            return Err(netsupport::last_error());
-        }
-        if unsafe { libc::fcntl(raw.socket, libc::F_SETFL, flags | libc::O_NONBLOCK) } == -1 {
-            return Err(netsupport::last_error());
+        match make_nonblocking(raw.socket) {
+            Some(e) => return Err(e),
+            None => ()
         }
 
         assert_eq!(unsafe {
@@ -765,7 +784,7 @@ impl rtio::RtioRawSocket for RawSocketWatcher {
                     let addr = &mut caddr as *mut libc::sockaddr_storage;
                     libc::recvfrom(sock,
                                    cx.buf.as_ptr() as *mut c_void,
-                                   cx.buf.len() as u64,
+                                   netsupport::net_buflen(cx.buf),
                                    0,
                                    addr as *mut libc::sockaddr,
                                    &mut caddrlen)
@@ -777,7 +796,6 @@ impl rtio::RtioRawSocket for RawSocketWatcher {
                 wakeup(&mut cx.task);
                 return;
             }
-            //let addr = Some(raw::IpAddress(sockaddr_to_addr(&caddr, caddrlen as uint).ip));
             let addr = netsupport::sockaddr_to_network_addr(
                 (&caddr as *libc::sockaddr_storage) as *libc::sockaddr, true
             );
@@ -840,14 +858,11 @@ impl rtio::RtioRawSocket for RawSocketWatcher {
 
             let len = match cx.socket {
                 Some(sock) => {
-                    //let (addr, len) = addr_to_sockaddr(
-                    //                    ip::SocketAddr{ ip: cx.addr, port: 0 }
-                    //                  );
                     let (addr, len) = netsupport::network_addr_to_sockaddr(cx.addr.clone());
                     unsafe {
                         libc::sendto(sock,
                             cx.buf.as_ptr() as *c_void,
-                            cx.buf.len() as u64,
+                            netsupport::net_buflen(cx.buf),
                             0,
                             (&addr as *libc::sockaddr_storage) as *libc::sockaddr,
                             len as libc::socklen_t)

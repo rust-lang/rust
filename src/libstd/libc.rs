@@ -122,6 +122,8 @@ pub use libc::funcs::extra::*;
 pub use libc::funcs::extra::kernel32::*;
 #[cfg(target_os = "win32")]
 pub use libc::funcs::extra::msvcrt::*;
+#[cfg(target_os = "win32")]
+pub use libc::funcs::extra::winsock::*;
 
 // Explicit export lists for the intersection (provided here) mean that
 // you can write more-platform-agnostic code if you stick to just these
@@ -1650,6 +1652,7 @@ pub mod consts {
             pub static AF_INET6: c_int = 23;
             pub static SOCK_STREAM: c_int = 1;
             pub static SOCK_DGRAM: c_int = 2;
+            pub static SOCK_RAW: c_int = 3;
             pub static IPPROTO_TCP: c_int = 6;
             pub static IPPROTO_IP: c_int = 0;
             pub static IPPROTO_IPV6: c_int = 41;
@@ -1667,12 +1670,14 @@ pub mod consts {
             pub static SO_BROADCAST: c_int = 32;
             pub static SO_REUSEADDR: c_int = 4;
 
+            pub static IFF_LOOPBACK: c_int = 4;
+
             pub static SHUT_RD: c_int = 0;
             pub static SHUT_WR: c_int = 1;
             pub static SHUT_RDWR: c_int = 2;
         }
         pub mod extra {
-            use libc::types::os::arch::c95::c_int;
+            use libc::types::os::arch::c95::{c_int, c_long};
             use libc::types::os::arch::extra::{WORD, DWORD, BOOL};
 
             pub static TRUE : BOOL = 1;
@@ -1891,6 +1896,10 @@ pub mod consts {
             pub static PIPE_ACCEPT_REMOTE_CLIENTS: DWORD = 0x00000000;
             pub static PIPE_REJECT_REMOTE_CLIENTS: DWORD = 0x00000008;
             pub static PIPE_UNLIMITED_INSTANCES: DWORD = 255;
+
+            pub static IPPROTO_RAW : c_int = 255;
+
+            pub static FIONBIO : c_long = -0x7FFB9982;
         }
         pub mod sysconf {
         }
@@ -3992,6 +4001,9 @@ pub mod funcs {
 
         pub mod mman {
         }
+
+        pub mod net {
+        }
     }
 
 
@@ -4368,6 +4380,15 @@ pub mod funcs {
                 #[link_name = "_open_osfhandle"]
                 pub fn open_osfhandle(osfhandle: intptr_t,
                                       flags: c_int) -> c_int;
+            }
+        }
+
+        pub mod winsock {
+            use libc::types::os::arch::c95::{c_int, c_long, c_ulong};
+            use libc::types::os::common::bsd44::SOCKET;
+
+            extern "system" {
+                pub fn ioctlsocket(s: SOCKET, cmd: c_long, argp: *c_ulong) -> c_int;
             }
         }
     }

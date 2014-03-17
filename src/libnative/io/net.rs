@@ -62,7 +62,7 @@ fn last_error() -> io::IoError {
     extern "system" {
         fn WSAGetLastError() -> libc::c_int;
     }
-    super::translate_error(unsafe { WSAGetLastError() }, true)
+    netsupport::translate_error(unsafe { WSAGetLastError() }, true)
 }
 
 #[cfg(not(windows))]
@@ -613,7 +613,7 @@ impl rtio::RtioRawSocket for RawSocket {
                     let addr = &mut caddr as *mut libc::sockaddr_storage;
                     retry( || libc::recvfrom(self.fd,
                                    buf.as_ptr() as *mut libc::c_void,
-                                   buf.len() as u64,
+                                   netsupport::net_buflen(buf),
                                    0,
                                    addr as *mut libc::sockaddr,
                                    &mut caddrlen))
@@ -625,22 +625,17 @@ impl rtio::RtioRawSocket for RawSocket {
         return Ok((len as uint, netsupport::sockaddr_to_network_addr(
             (&caddr as *libc::sockaddr_storage) as *libc::sockaddr, true)
         ));
-        //return sockaddr_to_addr(&caddr, caddrlen as uint).and_then(|addr| {
-        //    Ok((len as uint, Some(raw::IpAddress(addr.ip))))
-        //});
     }
 
     fn sendto(&mut self, buf: &[u8], dst: ~raw::NetworkAddress)
         -> IoResult<int>
     {
-        //let dst_ip = match dst { Some(raw::IpAddress(ip)) => Some(ip), _ => None };
-        //let (sockaddr, slen) = addr_to_sockaddr(ip::SocketAddr { ip: dst_ip.unwrap(), port: 0 });
         let (sockaddr, slen) = netsupport::network_addr_to_sockaddr(dst);
         let addr = (&sockaddr as *libc::sockaddr_storage) as *libc::sockaddr;
         let len = unsafe {
                     retry( || libc::sendto(self.fd,
                                  buf.as_ptr() as *libc::c_void,
-                                 buf.len() as u64,
+                                 netsupport::net_buflen(buf),
                                  0,
                                  addr,
                                  slen as libc::socklen_t))

@@ -24,14 +24,15 @@ use std::io::net::ip;
 use std::io::net::ip::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::io::net::raw::{IpAddress, MacAddr, NetworkAddress, NetworkInterface};
 use std::io::net::raw;
-use std::iter::Iterator;
 use std::libc;
 use std::mem;
 use std::os;
-use std::ptr;
 use std::result::Result;
-use strraw = std::str::raw;
 use std::vec_ng::Vec;
+
+#[cfg(not(windows))] use std::iter::Iterator;
+#[cfg(not(windows))] use std::ptr;
+#[cfg(not(windows))] use strraw = std::str::raw;
 
 pub fn htons(u: u16) -> u16 {
     mem::to_be16(u as i16) as u16
@@ -233,6 +234,7 @@ pub fn sockaddr_to_network_addrs(sa: *libc::sockaddr)
     }
 }
 
+#[cfg(not(windows))]
 pub fn get_network_interfaces() -> Vec<~NetworkInterface> {
     let mut ifaces: Vec<~NetworkInterface> = Vec::new();
     unsafe {
@@ -290,6 +292,12 @@ pub fn get_network_interfaces() -> Vec<~NetworkInterface> {
     }
 
 }
+
+#[cfg(windows)]
+pub fn get_network_interfaces() -> Vec<~NetworkInterface> {
+    Vec::new()
+}
+
 
 #[cfg(target_os = "linux")]
 pub fn protocol_to_libc(protocol: raw::Protocol)
@@ -398,3 +406,14 @@ pub fn translate_error(errno: i32, detail: bool) -> io::IoError {
 }
 
 pub fn last_error() -> io::IoError { translate_error(os::errno() as i32, true) }
+
+#[cfg(windows)]
+pub fn net_buflen(buf: &[u8]) -> i32 {
+    buf.len() as i32
+}
+
+#[cfg(not(windows))]
+pub fn net_buflen(buf: &[u8]) -> u64 {
+    buf.len() as u64
+}
+

@@ -84,6 +84,8 @@
 //! the test suite passing (the suite is in libstd), and that's good enough for
 //! me!
 
+extern crate netsupport;
+
 use std::c_str::CString;
 use std::libc;
 use std::os::win32::as_utf16_p;
@@ -105,7 +107,7 @@ impl Event {
                                ptr::null())
         };
         if event as uint == 0 {
-            Err(super::last_error())
+            Err(netsupport::last_error())
         } else {
             Ok(Event(event))
         }
@@ -226,7 +228,7 @@ impl UnixStream {
                                                           ptr::mut_null())
                         };
                         return if ret == 0 {
-                            Err(super::last_error())
+                            Err(netsupport::last_error())
                         } else {
                             Ok(UnixStream {
                                 inner: UnsafeArc::new(inner),
@@ -243,14 +245,14 @@ impl UnixStream {
                 // code of ERROR_PIPE_BUSY.
                 let code = unsafe { libc::GetLastError() };
                 if code as int != libc::ERROR_PIPE_BUSY as int {
-                    return Err(super::last_error())
+                    return Err(netsupport::last_error())
                 }
 
                 // An example I found on microsoft's website used 20 seconds,
                 // libuv uses 30 seconds, hence we make the obvious choice of
                 // waiting for 25 seconds.
                 if unsafe { libc::WaitNamedPipeW(p, 25000) } == 0 {
-                    return Err(super::last_error())
+                    return Err(netsupport::last_error())
                 }
             }
         })
@@ -286,10 +288,10 @@ impl rtio::RtioPipe for UnixStream {
                                               libc::TRUE)
                 };
                 if ret == 0 {
-                    return Err(super::last_error())
+                    return Err(netsupport::last_error())
                 }
             } else {
-                return Err(super::last_error())
+                return Err(netsupport::last_error())
             }
         }
 
@@ -324,10 +326,10 @@ impl rtio::RtioPipe for UnixStream {
                                                   libc::TRUE)
                     };
                     if ret == 0 {
-                        return Err(super::last_error())
+                        return Err(netsupport::last_error())
                     }
                 } else {
-                    return Err(super::last_error())
+                    return Err(netsupport::last_error())
                 }
             }
             offset += bytes_written as uint;
@@ -361,7 +363,7 @@ impl UnixListener {
         as_utf16_p(addr.as_str().unwrap(), |p| {
             let ret = unsafe { pipe(p, true) };
             if ret == libc::INVALID_HANDLE_VALUE as libc::HANDLE {
-                Err(super::last_error())
+                Err(netsupport::last_error())
             } else {
                 Ok(UnixListener { handle: ret, name: addr.clone() })
             }
@@ -454,7 +456,7 @@ impl UnixAcceptor {
                 }
             }
             if err != libc::ERROR_PIPE_CONNECTED as libc::DWORD {
-                return Err(super::last_error())
+                return Err(netsupport::last_error())
             }
         }
 
@@ -465,7 +467,7 @@ impl UnixAcceptor {
             unsafe { pipe(p, false) }
         });
         if new_handle == libc::INVALID_HANDLE_VALUE as libc::HANDLE {
-            let ret = Err(super::last_error());
+            let ret = Err(netsupport::last_error());
             // If our disconnection fails, then there's not really a whole lot
             // that we can do, so fail the task.
             let err = unsafe { libc::DisconnectNamedPipe(handle) };
