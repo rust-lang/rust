@@ -5572,21 +5572,13 @@ impl<'r> Resolver<'r> {
     }
 
     // Search other modules for this ident, and advise possible module paths
-    fn show_suggestions_from_other_scopes(&mut self, path:&Path) {
+    fn show_suggestions_from_other_scopes(&self, path:&Path) {
 
-        let mut finder_visitor= FindSymbolVisitor{
-            cstore:self.session.cstore,
-            curr_path_idents: Vec::new(),
-            path_to_find:path,
-            suggestions: Vec::new(),
-            max_suggestions: 5,
-        };
+        let suggestions = self.find_suggestions_from_other_scopes(path);
 
-        visit::walk_crate(&mut finder_visitor, self.resolver_krate, ());
-
-        if finder_visitor.suggestions.len()>0 {
+        if suggestions.len()>0 {
             let mut note=~"did you mean:-\n";
-            for &(ref name,_) in finder_visitor.suggestions.iter() {
+            for &(ref name,_) in suggestions.iter() {
                 note.push_str(
                     "\t\t\t"+ "::"+
                     name.map(
@@ -5597,6 +5589,18 @@ impl<'r> Resolver<'r> {
             self.session.span_note(path.span, note);
         }
     }
+
+    fn find_suggestions_from_other_scopes(&self, path:&Path)->Vec<(Vec<Ident>,uint)> {
+        let mut finder_visitor= FindSymbolVisitor{
+            cstore:self.session.cstore,
+            curr_path_idents: Vec::new(),
+            path_to_find:path,
+            suggestions: Vec::new(),
+            max_suggestions: 5,
+        };
+        visit::walk_crate(&mut finder_visitor, self.resolver_krate, ());
+        finder_visitor.suggestions
+    }
 }
 
 struct FindSymbolVisitor<'a>{
@@ -5606,7 +5610,6 @@ struct FindSymbolVisitor<'a>{
     suggestions: Vec<(Vec<Ident>,uint)>,
     max_suggestions: uint,
 }
-
 
 impl<'a,'r> Visitor<()> for FindSymbolVisitor<'a> {
     fn visit_item<'a>(&mut self, item:&Item, e: ()) {
@@ -5619,19 +5622,22 @@ impl<'a,'r> Visitor<()> for FindSymbolVisitor<'a> {
             self.suggestions.len()  <= (self.max_suggestions) {
 
             let mut score=0;
+            let mut segs_found=0;
             for ref find_seg in self.path_to_find.segments.iter() {
                 for (ref index,ref ident) in self.curr_path_idents.iter().enumerate() {
-                    if ident.name==find_seg.identifier.name {score+=*index;}
+                    if ident.name==find_seg.identifier.name {score+=*index;segs_found+=1;}
                 }
             }
+			if segs_found >=self.path_to_find.segments.len() {
             // sort such that highscore is first.
-            self.suggestions.push((self.curr_path_idents.clone(),score));
-            self.suggestions.sort_by(
-                |&(_,ref score1),&(_,ref score2)|
-                    if score1<score2 {cmp::Greater}else {cmp::Less});
-            if self.suggestions.len() > self.max_suggestions {self.suggestions.pop();}
+                self.suggestions.push((self.curr_path_idents.clone(),score));
+                self.suggestions.sort_by(
+                     |&(_,ref score1),&(_,ref score2)|
+                        if score1<score2 {cmp::Greater}else {cmp::Less});
+ 
+                if self.suggestions.len() > self.max_suggestions {self.suggestions.pop();}
+			}
         }
-
         // visit sub nodes..
 
         visit::walk_item(self,item,e);
