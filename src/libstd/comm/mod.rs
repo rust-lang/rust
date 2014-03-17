@@ -238,6 +238,7 @@
 use cast;
 use cell::Cell;
 use clone::Clone;
+use cmp;
 use iter::Iterator;
 use kinds::Send;
 use kinds::marker;
@@ -248,6 +249,7 @@ use result::{Ok, Err, Result};
 use rt::local::Local;
 use rt::task::{Task, BlockedTask};
 use sync::arc::UnsafeArc;
+use uint;
 
 pub use comm::select::{Select, Handle};
 
@@ -330,12 +332,51 @@ enum Flavor<T> {
     Shared(UnsafeArc<shared::Packet<T>>),
 }
 
-/// Creates a new channel, returning the sender/receiver halves. All data sent
-/// on the sender will become available on the receiver. See the documentation
-/// of `Receiver` and `Sender` to see what's possible with them.
+/// Creates a new asynchronous, unbounded channel.
+///
+/// The return value is the sender/receiver pair which can be deconstructed to
+/// move ownership separately. All data sent on the sender will become
+/// available on the receiver.  See the documentation of `Receiver` and
+/// `Sender` to see what's possible with them.
+///
+/// The `Receiver` returned will always block in `recv` waiting for new values,
+/// but the `Sender` will never block when sending values (this is an
+/// asynchronous channel). Additionally, the `Sender` will never fail if the
+/// receiver has not disconnected, because the channel is unbounded.
+///
+/// # Example
+///
+/// ```
+/// let (tx, rx) = channel();
+///
+/// spawn(proc() {
+///     tx.send(100);
+/// });
+///
+/// println!("received: {}", rx.recv());
+/// ```
 pub fn channel<T: Send>() -> (Sender<T>, Receiver<T>) {
     let (a, b) = UnsafeArc::new2(oneshot::Packet::new());
     (Sender::new(Oneshot(b)), Receiver::new(Oneshot(a)))
+}
+
+/// Creates a new asynchronous, unbounded channel which disables asserts about
+/// the size of the channel.
+///
+/// The asynchronous channels in Rust will normally assert that the size of the
+/// channel is under a certain "very high" threshold, but using this function
+/// disables this assertion, enabling a truly unbounded number of sends.
+///
+/// It is not recommended to use this method, the `channel()` constructor is
+/// likely what you want.
+#[experimental]
+pub fn unchecked_channel<T: Send>() -> (Sender<T>, Receiver<T>) {
+    let mut packet = shared::Packet::new();
+    packet.inherit_blocker(None); // finish upgrade protocol
+    packet.bound_checks = false;  // disable assertions
+
+    let (a, b) = UnsafeArc::new2(packet);
+    (Sender::new(Shared(a)), Receiver::new(Shared(b)))
 }
 
 impl<T: Send> Sender<T> {
@@ -706,6 +747,17 @@ impl<T: Send> Drop for Receiver<T> {
             Shared(ref mut p) => unsafe { (*p.get()).drop_port(); },
         }
     }
+}
+
+fn assert_sane_bound<T>(amt: uint) {
+    // Assume that either taking up half the address space with messages or
+    // having some "very large number" of messages constitues overflowing.
+    //
+    // Currently, this "very large number" is around 500 million. This was
+    // arbitrarily chosen. On OSX, it took about a 80 seconds of sending 1s on a
+    // channel to reach this limit.
+    let limit = cmp::min(uint::MAX / 2 / mem::nonzero_size_of::<T>(), 2 << 28);
+    assert!(amt < limit);
 }
 
 #[cfg(test)]

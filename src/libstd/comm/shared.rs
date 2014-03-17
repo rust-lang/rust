@@ -58,6 +58,10 @@ pub struct Packet<T> {
     // this lock protects various portions of this implementation during
     // select()
     select_lock: NativeMutex,
+
+    // Flag to disable sanity bound checks. This value does not change after
+    // construction.
+    bound_checks: bool,
 }
 
 pub enum Failure {
@@ -77,6 +81,7 @@ impl<T: Send> Packet<T> {
             port_dropped: atomics::AtomicBool::new(false),
             sender_drain: atomics::AtomicInt::new(0),
             select_lock: unsafe { NativeMutex::new() },
+            bound_checks: true,
         };
         // see comments in inherit_blocker about why we grab this lock
         unsafe { p.select_lock.lock_noguard() }
@@ -210,7 +215,13 @@ impl<T: Send> Packet<T> {
             }
 
             // Can't make any assumptions about this case like in the SPSC case.
-            _ => {}
+            // Be sure, however, that we're not going towards exhausting the
+            // address space.
+            n => {
+                if n > 0 && self.bound_checks {
+                    super::assert_sane_bound::<T>(n as uint);
+                }
+            }
         }
 
         true
