@@ -61,11 +61,11 @@ use syntax::print::pprust::{path_to_str};
 use syntax::visit;
 use syntax::opt_vec::OptVec;
 
-struct CollectItemTypesVisitor {
-    ccx: @CrateCtxt
+struct CollectItemTypesVisitor<'a> {
+    ccx: &'a CrateCtxt<'a>
 }
 
-impl visit::Visitor<()> for CollectItemTypesVisitor {
+impl<'a> visit::Visitor<()> for CollectItemTypesVisitor<'a> {
     fn visit_item(&mut self, i: &ast::Item, _: ()) {
         convert(self.ccx, i);
         visit::walk_item(self, i, ());
@@ -76,7 +76,7 @@ impl visit::Visitor<()> for CollectItemTypesVisitor {
     }
 }
 
-pub fn collect_item_types(ccx: @CrateCtxt, krate: &ast::Crate) {
+pub fn collect_item_types(ccx: &CrateCtxt, krate: &ast::Crate) {
     fn collect_intrinsic_type(ccx: &CrateCtxt,
                               lang_item: ast::DefId) {
         let ty::ty_param_bounds_and_ty { ty: ty, .. } =
@@ -100,14 +100,14 @@ pub trait ToTy {
     fn to_ty<RS:RegionScope>(&self, rs: &RS, ast_ty: &ast::Ty) -> ty::t;
 }
 
-impl ToTy for CrateCtxt {
+impl<'a> ToTy for CrateCtxt<'a> {
     fn to_ty<RS:RegionScope>(&self, rs: &RS, ast_ty: &ast::Ty) -> ty::t {
         ast_ty_to_ty(self, rs, ast_ty)
     }
 }
 
-impl AstConv for CrateCtxt {
-    fn tcx(&self) -> ty::ctxt { self.tcx }
+impl<'a> AstConv for CrateCtxt<'a> {
+    fn tcx<'a>(&'a self) -> &'a ty::ctxt { self.tcx }
 
     fn get_item_ty(&self, id: ast::DefId) -> ty::ty_param_bounds_and_ty {
         if id.krate != ast::LOCAL_CRATE {

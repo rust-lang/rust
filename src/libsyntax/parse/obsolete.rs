@@ -59,7 +59,7 @@ pub trait ParserObsoleteMethods {
     fn eat_obsolete_ident(&mut self, ident: &str) -> bool;
 }
 
-impl ParserObsoleteMethods for Parser {
+impl<'a> ParserObsoleteMethods for Parser<'a> {
     /// Reports an obsolete syntax non-fatal error.
     fn obsolete(&mut self, sp: Span, kind: ObsoleteSyntax) {
         let (kind_str, desc) = match kind {

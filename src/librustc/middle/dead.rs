@@ -35,7 +35,7 @@ pub static DEAD_CODE_LINT_STR: &'static str = "dead_code";
 // explored. For example, if it's a live NodeItem that is a
 // function, then we should explore its block to check for codes that
 // may need to be marked as live.
-fn should_explore(tcx: ty::ctxt, def_id: ast::DefId) -> bool {
+fn should_explore(tcx: &ty::ctxt, def_id: ast::DefId) -> bool {
     if !is_local(def_id) {
         return false;
     }
@@ -49,17 +49,17 @@ fn should_explore(tcx: ty::ctxt, def_id: ast::DefId) -> bool {
     }
 }
 
-struct MarkSymbolVisitor {
-    worklist: Vec<ast::NodeId> ,
+struct MarkSymbolVisitor<'a> {
+    worklist: Vec<ast::NodeId>,
     method_map: typeck::MethodMap,
-    tcx: ty::ctxt,
+    tcx: &'a ty::ctxt,
     live_symbols: ~HashSet<ast::NodeId>,
 }
 
-impl MarkSymbolVisitor {
-    fn new(tcx: ty::ctxt,
+impl<'a> MarkSymbolVisitor<'a> {
+    fn new(tcx: &'a ty::ctxt,
            method_map: typeck::MethodMap,
-           worklist: Vec<ast::NodeId> ) -> MarkSymbolVisitor {
+           worklist: Vec<ast::NodeId>) -> MarkSymbolVisitor<'a> {
         MarkSymbolVisitor {
             worklist: worklist,
             method_map: method_map,
@@ -175,7 +175,7 @@ impl MarkSymbolVisitor {
     }
 }
 
-impl Visitor<()> for MarkSymbolVisitor {
+impl<'a> Visitor<()> for MarkSymbolVisitor<'a> {
 
     fn visit_expr(&mut self, expr: &ast::Expr, _: ()) {
         match expr.node {
@@ -253,7 +253,7 @@ impl Visitor<()> for LifeSeeder {
     }
 }
 
-fn create_and_seed_worklist(tcx: ty::ctxt,
+fn create_and_seed_worklist(tcx: &ty::ctxt,
                             exported_items: &privacy::ExportedItems,
                             reachable_symbols: &NodeSet,
                             krate: &ast::Crate) -> Vec<ast::NodeId> {
@@ -286,7 +286,7 @@ fn create_and_seed_worklist(tcx: ty::ctxt,
     return life_seeder.worklist;
 }
 
-fn find_live(tcx: ty::ctxt,
+fn find_live(tcx: &ty::ctxt,
              method_map: typeck::MethodMap,
              exported_items: &privacy::ExportedItems,
              reachable_symbols: &NodeSet,
@@ -316,12 +316,12 @@ fn get_struct_ctor_id(item: &ast::Item) -> Option<ast::NodeId> {
     }
 }
 
-struct DeadVisitor {
-    tcx: ty::ctxt,
+struct DeadVisitor<'a> {
+    tcx: &'a ty::ctxt,
     live_symbols: ~HashSet<ast::NodeId>,
 }
 
-impl DeadVisitor {
+impl<'a> DeadVisitor<'a> {
     // id := node id of an item's definition.
     // ctor_id := `Some` if the item is a struct_ctor (tuple struct),
     //            `None` otherwise.
@@ -368,7 +368,7 @@ impl DeadVisitor {
     }
 }
 
-impl Visitor<()> for DeadVisitor {
+impl<'a> Visitor<()> for DeadVisitor<'a> {
     fn visit_item(&mut self, item: &ast::Item, _: ()) {
         let ctor_id = get_struct_ctor_id(item);
         if !self.symbol_is_live(item.id, ctor_id) && should_warn(item) {
@@ -409,7 +409,7 @@ impl Visitor<()> for DeadVisitor {
     }
 }
 
-pub fn check_crate(tcx: ty::ctxt,
+pub fn check_crate(tcx: &ty::ctxt,
                    method_map: typeck::MethodMap,
                    exported_items: &privacy::ExportedItems,
                    reachable_symbols: &NodeSet,

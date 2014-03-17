@@ -37,7 +37,7 @@ impl Visitor<()> for MacroRegistrarContext {
     }
 }
 
-pub fn find_macro_registrar(diagnostic: @diagnostic::SpanHandler,
+pub fn find_macro_registrar(diagnostic: &diagnostic::SpanHandler,
                             krate: &ast::Crate) -> Option<ast::DefId> {
     let mut ctx = MacroRegistrarContext { registrars: Vec::new() };
     visit::walk_crate(&mut ctx, krate, ());

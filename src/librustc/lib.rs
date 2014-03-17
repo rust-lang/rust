@@ -290,36 +290,36 @@ pub fn run_compiler(args: &[~str]) {
     let sess = d::build_session(sopts, input_file_path);
     let odir = matches.opt_str("out-dir").map(|o| Path::new(o));
     let ofile = matches.opt_str("o").map(|o| Path::new(o));
-    let cfg = d::build_configuration(sess);
+    let cfg = d::build_configuration(&sess);
     let pretty = matches.opt_default("pretty", "normal").map(|a| {
-        d::parse_pretty(sess, a)
+        d::parse_pretty(&sess, a)
     });
     match pretty {
-      Some::<d::PpMode>(ppm) => {
-        d::pretty_print_input(sess, cfg, &input, ppm);
-        return;
-      }
-      None::<d::PpMode> => {/* continue */ }
+        Some::<d::PpMode>(ppm) => {
+            d::pretty_print_input(sess, cfg, &input, ppm);
+            return;
+        }
+        None::<d::PpMode> => {/* continue */ }
     }
     let ls = matches.opt_present("ls");
     if ls {
         match input {
-          d::FileInput(ref ifile) => {
-            let mut stdout = io::stdout();
-            d::list_metadata(sess, &(*ifile), &mut stdout).unwrap();
-          }
-          d::StrInput(_) => {
-            d::early_error("can not list metadata for stdin");
-          }
+            d::FileInput(ref ifile) => {
+                let mut stdout = io::stdout();
+                d::list_metadata(&sess, &(*ifile), &mut stdout).unwrap();
+            }
+            d::StrInput(_) => {
+                d::early_error("can not list metadata for stdin");
+            }
         }
         return;
     }
-    let (crate_id, crate_name, crate_file_name) = sopts.print_metas;
+    let (crate_id, crate_name, crate_file_name) = sess.opts.print_metas;
     // these nasty nested conditions are to avoid doing extra work
     if crate_id || crate_name || crate_file_name {
-        let attrs = parse_crate_attrs(sess, &input);
+        let attrs = parse_crate_attrs(&sess, &input);
         let t_outputs = d::build_output_filenames(&input, &odir, &ofile,
-                                                  attrs.as_slice(), sess);
+                                                  attrs.as_slice(), &sess);
         let id = link::find_crate_id(attrs.as_slice(), t_outputs.out_filestem);
 
         if crate_id {
@@ -344,19 +344,19 @@ pub fn run_compiler(args: &[~str]) {
     d::compile_input(sess, cfg, &input, &odir, &ofile);
 }
 
-fn parse_crate_attrs(sess: session::Session, input: &d::Input) ->
+fn parse_crate_attrs(sess: &session::Session, input: &d::Input) ->
                      Vec<ast::Attribute> {
     let result = match *input {
         d::FileInput(ref ifile) => {
             parse::parse_crate_attrs_from_file(ifile,
                                                Vec::new(),
-                                               sess.parse_sess)
+                                               &sess.parse_sess)
         }
         d::StrInput(ref src) => {
             parse::parse_crate_attrs_from_source_str(d::anon_src(),
                                                      (*src).clone(),
                                                      Vec::new(),
-                                                     sess.parse_sess)
+                                                     &sess.parse_sess)
         }
     };
     result.move_iter().collect()

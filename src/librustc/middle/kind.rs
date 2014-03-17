@@ -52,12 +52,12 @@ use syntax::visit::Visitor;
 // types.
 
 #[deriving(Clone)]
-pub struct Context {
-    tcx: ty::ctxt,
+pub struct Context<'a> {
+    tcx: &'a ty::ctxt,
     method_map: typeck::MethodMap,
 }
 
-impl Visitor<()> for Context {
+impl<'a> Visitor<()> for Context<'a> {
 
     fn visit_expr(&mut self, ex: &Expr, _: ()) {
         check_expr(self, ex);
@@ -76,7 +76,7 @@ impl Visitor<()> for Context {
     }
 }
 
-pub fn check_crate(tcx: ty::ctxt,
+pub fn check_crate(tcx: &ty::ctxt,
                    method_map: typeck::MethodMap,
                    krate: &Crate) {
     let mut ctx = Context {
@@ -324,7 +324,7 @@ pub fn check_expr(cx: &mut Context, e: &Expr) {
             check_trait_cast(cx, source_ty, target_ty, source.span);
         }
         ExprRepeat(element, count_expr, _) => {
-            let count = ty::eval_repeat_count(&cx.tcx, count_expr);
+            let count = ty::eval_repeat_count(cx.tcx, count_expr);
             if count > 1 {
                 let element_ty = ty::expr_ty(cx.tcx, element);
                 check_copy(cx, element_ty, element.span,
@@ -476,7 +476,7 @@ pub fn check_send(cx: &Context, ty: ty::t, sp: Span) -> bool {
     }
 }
 
-pub fn check_static(tcx: ty::ctxt, ty: ty::t, sp: Span) -> bool {
+pub fn check_static(tcx: &ty::ctxt, ty: ty::t, sp: Span) -> bool {
     if !ty::type_is_static(tcx, ty) {
         match ty::get(ty).sty {
           ty::ty_param(..) => {

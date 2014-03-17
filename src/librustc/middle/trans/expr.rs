@@ -523,7 +523,7 @@ fn trans_index<'a>(bcx: &'a Block<'a>,
 
     let bounds_check = ICmp(bcx, lib::llvm::IntUGE, ix_val, len);
     let expect = ccx.intrinsics.get_copy(&("llvm.expect.i1"));
-    let expected = Call(bcx, expect, [bounds_check, C_i1(false)], []);
+    let expected = Call(bcx, expect, [bounds_check, C_i1(ccx, false)], []);
     let bcx = with_cond(bcx, expected, |bcx| {
             controlflow::trans_fail_bounds_check(bcx, index_expr.span, ix_val, len)
         });
@@ -548,7 +548,7 @@ fn trans_def<'a>(bcx: &'a Block<'a>,
         ast::DefStatic(did, _) => {
             let const_ty = expr_ty(bcx, ref_expr);
 
-            fn get_did(ccx: @CrateContext, did: ast::DefId)
+            fn get_did(ccx: &CrateContext, did: ast::DefId)
                        -> ast::DefId {
                 if did.krate != ast::LOCAL_CRATE {
                     inline::maybe_instantiate_inline(ccx, did)
@@ -581,7 +581,7 @@ fn trans_def<'a>(bcx: &'a Block<'a>,
                     unsafe {
                         let llty = type_of::type_of(bcx.ccx(), const_ty);
                         let symbol = csearch::get_symbol(
-                            bcx.ccx().sess.cstore,
+                            &bcx.ccx().sess().cstore,
                             did);
                         let llval = symbol.with_c_str(|buf| {
                                 llvm::LLVMAddGlobal(bcx.ccx().llmod,
@@ -816,7 +816,6 @@ fn trans_def_dps_unadjusted<'a>(
                             dest: Dest)
                             -> &'a Block<'a> {
     let _icx = push_ctxt("trans_def_dps_unadjusted");
-    let ccx = bcx.ccx();
 
     let lldest = match dest {
         SaveIn(lldest) => lldest,
@@ -825,7 +824,7 @@ fn trans_def_dps_unadjusted<'a>(
 
     match def {
         ast::DefVariant(tid, vid, _) => {
-            let variant_info = ty::enum_variant_with_id(ccx.tcx, tid, vid);
+            let variant_info = ty::enum_variant_with_id(bcx.tcx(), tid, vid);
             if variant_info.args.len() > 0u {
                 // N-ary variant.
                 let llfn = callee::trans_fn_ref(bcx, vid, ExprId(ref_expr.id));
@@ -834,7 +833,7 @@ fn trans_def_dps_unadjusted<'a>(
             } else {
                 // Nullary variant.
                 let ty = expr_ty(bcx, ref_expr);
-                let repr = adt::represent_type(ccx, ty);
+                let repr = adt::represent_type(bcx.ccx(), ty);
                 adt::trans_start_init(bcx, repr, lldest,
                                       variant_info.disr_val);
                 return bcx;
@@ -843,8 +842,8 @@ fn trans_def_dps_unadjusted<'a>(
         ast::DefStruct(_) => {
             let ty = expr_ty(bcx, ref_expr);
             match ty::get(ty).sty {
-                ty::ty_struct(did, _) if ty::has_dtor(ccx.tcx, did) => {
-                    let repr = adt::represent_type(ccx, ty);
+                ty::ty_struct(did, _) if ty::has_dtor(bcx.tcx(), did) => {
+                    let repr = adt::represent_type(bcx.ccx(), ty);
                     adt::trans_start_init(bcx, repr, lldest, 0);
                 }
                 _ => {}
@@ -940,7 +939,7 @@ pub fn trans_local_var<'a>(bcx: &'a Block<'a>,
     }
 }
 
-pub fn with_field_tys<R>(tcx: ty::ctxt,
+pub fn with_field_tys<R>(tcx: &ty::ctxt,
                          ty: ty::t,
                          node_id_opt: Option<ast::NodeId>,
                          op: |ty::Disr, (&[ty::field])| -> R)
@@ -1150,6 +1149,7 @@ fn trans_unary<'a>(bcx: &'a Block<'a>,
                    op: ast::UnOp,
                    sub_expr: &ast::Expr)
                    -> DatumBlock<'a, Expr> {
+    let ccx = bcx.ccx();
     let mut bcx = bcx;
     let _icx = push_ctxt("trans_unary_datum");
 
@@ -1160,7 +1160,7 @@ fn trans_unary<'a>(bcx: &'a Block<'a>,
     // Otherwise, we should be in the RvalueDpsExpr path.
     assert!(
         op == ast::UnDeref ||
-        !bcx.ccx().maps.method_map.borrow().get().contains_key(&method_call));
+        !ccx.maps.method_map.borrow().get().contains_key(&method_call));
 
     let un_ty = expr_ty(bcx, expr);
 
@@ -1172,8 +1172,8 @@ fn trans_unary<'a>(bcx: &'a Block<'a>,
                 let llcond = ICmp(bcx,
                                   lib::llvm::IntEQ,
                                   val,
-                                  C_bool(false));
-                Select(bcx, llcond, C_bool(true), C_bool(false))
+                                  C_bool(ccx, false));
+                Select(bcx, llcond, C_bool(ccx, true), C_bool(ccx, false))
             } else {
                 // Note: `Not` is bitwise, not suitable for logical not.
                 Not(bcx, datum.to_llscalarish(bcx))
@@ -1361,7 +1361,7 @@ fn trans_eager_binop<'a>(
       }
       ast::BiEq | ast::BiNe | ast::BiLt | ast::BiGe | ast::BiLe | ast::BiGt => {
         if ty::type_is_bot(rhs_t) {
-            C_bool(false)
+            C_bool(bcx.ccx(), false)
         } else {
             if !ty::type_is_scalar(rhs_t) {
                 bcx.tcx().sess.span_bug(binop_expr.span,
@@ -1369,7 +1369,7 @@ fn trans_eager_binop<'a>(
             }
             let cmpr = base::compare_scalar_types(bcx, lhs, rhs, rhs_t, op);
             bcx = cmpr.bcx;
-            ZExt(bcx, cmpr.val, Type::i8())
+            ZExt(bcx, cmpr.val, Type::i8(bcx.ccx()))
         }
       }
       _ => {
@@ -1421,8 +1421,8 @@ fn trans_lazy_binop<'a>(
     }
 
     Br(past_rhs, join.llbb);
-    let phi = Phi(join, Type::bool(), [lhs, rhs], [past_lhs.llbb,
-                                                   past_rhs.llbb]);
+    let phi = Phi(join, Type::bool(bcx.ccx()), [lhs, rhs],
+                  [past_lhs.llbb, past_rhs.llbb]);
 
     return immediate_rvalue_bcx(join, phi, binop_ty).to_expr_datumblock();
 }
@@ -1612,22 +1612,22 @@ fn trans_imm_cast<'a>(bcx: &'a Block<'a>,
                 bcx, datum.to_lvalue_datum(bcx, "trans_imm_cast", expr.id));
             let llexpr_ptr = datum.to_llref();
             let lldiscrim_a =
-                adt::trans_get_discr(bcx, repr, llexpr_ptr, Some(Type::i64()));
+                adt::trans_get_discr(bcx, repr, llexpr_ptr, Some(Type::i64(ccx)));
             match k_out {
                 cast_integral => int_cast(bcx, ll_t_out,
                                           val_ty(lldiscrim_a),
                                           lldiscrim_a, true),
                 cast_float => SIToFP(bcx, lldiscrim_a, ll_t_out),
-                _ => ccx.sess.bug(format!("translating unsupported cast: \
-                                          {} ({:?}) -> {} ({:?})",
-                                          t_in.repr(ccx.tcx), k_in,
-                                          t_out.repr(ccx.tcx), k_out))
+                _ => ccx.sess().bug(format!("translating unsupported cast: \
+                                            {} ({:?}) -> {} ({:?})",
+                                            t_in.repr(bcx.tcx()), k_in,
+                                            t_out.repr(bcx.tcx()), k_out))
             }
         }
-        _ => ccx.sess.bug(format!("translating unsupported cast: \
-                                  {} ({:?}) -> {} ({:?})",
-                                  t_in.repr(ccx.tcx), k_in,
-                                  t_out.repr(ccx.tcx), k_out))
+        _ => ccx.sess().bug(format!("translating unsupported cast: \
+                                    {} ({:?}) -> {} ({:?})",
+                                    t_in.repr(bcx.tcx()), k_in,
+                                    t_out.repr(bcx.tcx()), k_out))
     };
     return immediate_rvalue_bcx(bcx, newval, t_out).to_expr_datumblock();
 }
@@ -1664,7 +1664,6 @@ fn trans_assign_op<'a>(
                                dst_ty, dst, rhs_ty, rhs));
     return result_datum.store_to(bcx, dst_datum.val);
 }
-
 
 fn auto_ref<'a>(bcx: &'a Block<'a>,
                 datum: Datum<Expr>,

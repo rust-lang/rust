@@ -153,7 +153,7 @@ enum NameDefinition {
     ImportNameDefinition(Def, LastPrivate) //< The name identifies an import.
 }
 
-impl Visitor<()> for Resolver {
+impl<'a> Visitor<()> for Resolver<'a> {
     fn visit_item(&mut self, item: &Item, _: ()) {
         self.resolve_item(item);
     }
@@ -787,9 +787,9 @@ fn namespace_error_to_str(ns: NamespaceError) -> &'static str {
     }
 }
 
-fn Resolver(session: Session,
-            lang_items: @LanguageItems,
-            crate_span: Span) -> Resolver {
+fn Resolver<'a>(session: &'a Session,
+                lang_items: @LanguageItems,
+                crate_span: Span) -> Resolver<'a> {
     let graph_root = @NameBindings();
 
     graph_root.define_module(NoParentLink,
@@ -802,7 +802,7 @@ fn Resolver(session: Session,
     let current_module = graph_root.get_module();
 
     let this = Resolver {
-        session: @session,
+        session: session,
         lang_items: lang_items,
 
         // The outermost module has def ID 0; this is not reflected in the
@@ -843,8 +843,8 @@ fn Resolver(session: Session,
 }
 
 /// The main resolver class.
-struct Resolver {
-    session: @Session,
+struct Resolver<'a> {
+    session: &'a Session,
     lang_items: @LanguageItems,
 
     graph_root: @NameBindings,
@@ -896,11 +896,11 @@ struct Resolver {
     used_imports: HashSet<(NodeId, Namespace)>,
 }
 
-struct BuildReducedGraphVisitor<'a> {
-    resolver: &'a mut Resolver,
+struct BuildReducedGraphVisitor<'a, 'b> {
+    resolver: &'a mut Resolver<'b>,
 }
 
-impl<'a> Visitor<ReducedGraphParent> for BuildReducedGraphVisitor<'a> {
+impl<'a, 'b> Visitor<ReducedGraphParent> for BuildReducedGraphVisitor<'a, 'b> {
 
     fn visit_item(&mut self, item: &Item, context: ReducedGraphParent) {
         let p = self.resolver.build_reduced_graph_for_item(item, context);
@@ -928,16 +928,16 @@ impl<'a> Visitor<ReducedGraphParent> for BuildReducedGraphVisitor<'a> {
 
 }
 
-struct UnusedImportCheckVisitor<'a> { resolver: &'a mut Resolver }
+struct UnusedImportCheckVisitor<'a, 'b> { resolver: &'a mut Resolver<'b> }
 
-impl<'a> Visitor<()> for UnusedImportCheckVisitor<'a> {
+impl<'a, 'b> Visitor<()> for UnusedImportCheckVisitor<'a, 'b> {
     fn visit_view_item(&mut self, vi: &ViewItem, _: ()) {
         self.resolver.check_for_item_unused_imports(vi);
         visit::walk_view_item(self, vi, ());
     }
 }
 
-impl Resolver {
+impl<'a> Resolver<'a> {
     /// The main name resolution procedure.
     fn resolve(&mut self, krate: &ast::Crate) {
         self.build_reduced_graph(krate);
@@ -1690,11 +1690,11 @@ impl Resolver {
               // to the trait info.
 
               let method_def_ids =
-                csearch::get_trait_method_def_ids(self.session.cstore, def_id);
+                csearch::get_trait_method_def_ids(&self.session.cstore, def_id);
               let mut interned_method_names = HashSet::new();
               for &method_def_id in method_def_ids.iter() {
                   let (method_name, explicit_self) =
-                      csearch::get_method_name_and_explicit_self(self.session.cstore,
+                      csearch::get_method_name_and_explicit_self(&self.session.cstore,
                                                                  method_def_id);
 
                   debug!("(building reduced graph for \
@@ -1743,7 +1743,7 @@ impl Resolver {
                     crate) building type and value for {}",
                    final_ident);
             child_name_bindings.define_type(def, DUMMY_SP, is_public);
-            if csearch::get_struct_fields(self.session.cstore, def_id).len() == 0 {
+            if csearch::get_struct_fields(&self.session.cstore, def_id).len() == 0 {
                 child_name_bindings.define_value(def, DUMMY_SP, is_public);
             }
             self.structs.insert(def_id);
@@ -1775,7 +1775,7 @@ impl Resolver {
                     DefForeignMod(def_id) => {
                         // Foreign modules have no names. Recur and populate
                         // eagerly.
-                        csearch::each_child_of_item(self.session.cstore,
+                        csearch::each_child_of_item(&self.session.cstore,
                                                     def_id,
                                                     |def_like,
                                                      child_ident,
@@ -1805,11 +1805,11 @@ impl Resolver {
             }
             DlImpl(def) => {
                 // We only process static methods of impls here.
-                match csearch::get_type_name_if_impl(self.session.cstore, def) {
+                match csearch::get_type_name_if_impl(&self.session.cstore, def) {
                     None => {}
                     Some(final_ident) => {
                         let static_methods_opt =
-                            csearch::get_static_methods_if_impl(self.session.cstore, def);
+                            csearch::get_static_methods_if_impl(&self.session.cstore, def);
                         match static_methods_opt {
                             Some(ref static_methods) if
                                 static_methods.len() >= 1 => {
@@ -1910,7 +1910,7 @@ impl Resolver {
             Some(def_id) => def_id,
         };
 
-        csearch::each_child_of_item(self.session.cstore,
+        csearch::each_child_of_item(&self.session.cstore,
                                     def_id,
                                     |def_like, child_ident, visibility| {
             debug!("(populating external module) ... found ident: {}",
@@ -1936,7 +1936,7 @@ impl Resolver {
     /// crate.
     fn build_reduced_graph_for_external_crate(&mut self,
                                               root: @Module) {
-        csearch::each_top_level_item_of_crate(self.session.cstore,
+        csearch::each_top_level_item_of_crate(&self.session.cstore,
                                               root.def_id
                                                   .get()
                                                   .unwrap()
@@ -3275,7 +3275,7 @@ impl Resolver {
         let import_count = imports.get().len();
         if index != import_count {
             let sn = self.session
-                         .codemap
+                         .codemap()
                          .span_to_snippet(imports.get().get(index).span)
                          .unwrap();
             if sn.contains("::") {
@@ -5449,7 +5449,7 @@ impl Resolver {
     // public or private item, we will check the correct thing, dependent on how the import
     // is used.
     fn finalize_import(&mut self, id: NodeId, span: Span) {
-        debug!("finalizing import uses for {}", self.session.codemap.span_to_snippet(span));
+        debug!("finalizing import uses for {}", self.session.codemap().span_to_snippet(span));
 
         if !self.used_imports.contains(&(id, TypeNS)) &&
            !self.used_imports.contains(&(id, ValueNS)) {
@@ -5571,7 +5571,7 @@ pub struct CrateMap {
 }
 
 /// Entry point to crate resolution.
-pub fn resolve_crate(session: Session,
+pub fn resolve_crate(session: &Session,
                      lang_items: @LanguageItems,
                      krate: &Crate)
                   -> CrateMap {

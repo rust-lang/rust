@@ -19,18 +19,18 @@ use syntax::visit::Visitor;
 
 use driver::session::Session;
 
-struct ShowSpanVisitor {
-    sess: Session
+struct ShowSpanVisitor<'a> {
+    sess: &'a Session
 }
 
-impl Visitor<()> for ShowSpanVisitor {
+impl<'a> Visitor<()> for ShowSpanVisitor<'a> {
     fn visit_expr(&mut self, e: &ast::Expr, _: ()) {
         self.sess.span_note(e.span, "expression");
         visit::walk_expr(self, e, ());
     }
 }
 
-pub fn run(sess: Session, krate: &ast::Crate) {
+pub fn run(sess: &Session, krate: &ast::Crate) {
     let mut v = ShowSpanVisitor { sess: sess };
     visit::walk_crate(&mut v, krate, ());
 }

@@ -35,7 +35,7 @@ use syntax::print::pprust::pat_to_str;
 use syntax::visit;
 use syntax::visit::Visitor;
 
-fn resolve_type_vars_in_type(fcx: @FnCtxt, sp: Span, typ: ty::t)
+fn resolve_type_vars_in_type(fcx: &FnCtxt, sp: Span, typ: ty::t)
                           -> Option<ty::t> {
     if !ty::type_needs_infer(typ) { return Some(typ); }
     match resolve_type(fcx.infcx(), typ, resolve_all | force_all) {
@@ -53,7 +53,7 @@ fn resolve_type_vars_in_type(fcx: @FnCtxt, sp: Span, typ: ty::t)
     }
 }
 
-fn resolve_type_vars_in_types(fcx: @FnCtxt, sp: Span, tys: &[ty::t])
+fn resolve_type_vars_in_types(fcx: &FnCtxt, sp: Span, tys: &[ty::t])
                           -> Vec<ty::t> {
     tys.iter().map(|t| {
         match resolve_type_vars_in_type(fcx, sp, *t) {
@@ -101,7 +101,7 @@ fn resolve_method_map_entry(wbcx: &mut WbCtxt, sp: Span, method_call: MethodCall
     }
 }
 
-fn resolve_vtable_map_entry(fcx: @FnCtxt, sp: Span, id: ast::NodeId) {
+fn resolve_vtable_map_entry(fcx: &FnCtxt, sp: Span, id: ast::NodeId) {
     // Resolve any vtable map entry
     match fcx.inh.vtable_map.borrow().get().find_copy(&id) {
         Some(origins) => {
@@ -113,12 +113,12 @@ fn resolve_vtable_map_entry(fcx: @FnCtxt, sp: Span, id: ast::NodeId) {
         None => {}
     }
 
-    fn resolve_origins(fcx: @FnCtxt, sp: Span,
+    fn resolve_origins(fcx: &FnCtxt, sp: Span,
                        vtbls: vtable_res) -> vtable_res {
         @vtbls.map(|os| @os.map(|o| resolve_origin(fcx, sp, o)))
     }
 
-    fn resolve_origin(fcx: @FnCtxt,
+    fn resolve_origin(fcx: &FnCtxt,
                       sp: Span,
                       origin: &vtable_origin) -> vtable_origin {
         match origin {
@@ -254,8 +254,8 @@ fn resolve_type_vars_for_node(wbcx: &mut WbCtxt, sp: Span, id: ast::NodeId)
     }
 }
 
-struct WbCtxt {
-    fcx: @FnCtxt,
+struct WbCtxt<'a> {
+    fcx: &'a FnCtxt<'a>,
 
     // As soon as we hit an error we have to stop resolving
     // the entire function.
@@ -338,7 +338,7 @@ fn visit_item(_item: &ast::Item, _wbcx: &mut WbCtxt) {
     // Ignore items
 }
 
-impl Visitor<()> for WbCtxt {
+impl<'a> Visitor<()> for WbCtxt<'a> {
     fn visit_item(&mut self, i: &ast::Item, _: ()) { visit_item(i, self); }
     fn visit_stmt(&mut self, s: &ast::Stmt, _: ()) { visit_stmt(s, self); }
     fn visit_expr(&mut self, ex:&ast::Expr, _: ()) { visit_expr(ex, self); }
@@ -383,7 +383,7 @@ fn resolve_upvar_borrow_map(wbcx: &mut WbCtxt) {
     }
 }
 
-pub fn resolve_type_vars_in_expr(fcx: @FnCtxt, e: &ast::Expr) -> bool {
+pub fn resolve_type_vars_in_expr(fcx: &FnCtxt, e: &ast::Expr) -> bool {
     let mut wbcx = WbCtxt { fcx: fcx, success: true };
     let wbcx = &mut wbcx;
     wbcx.visit_expr(e, ());
@@ -391,7 +391,7 @@ pub fn resolve_type_vars_in_expr(fcx: @FnCtxt, e: &ast::Expr) -> bool {
     return wbcx.success;
 }
 
-pub fn resolve_type_vars_in_fn(fcx: @FnCtxt, decl: &ast::FnDecl,
+pub fn resolve_type_vars_in_fn(fcx: &FnCtxt, decl: &ast::FnDecl,
                                blk: &ast::Block) -> bool {
     let mut wbcx = WbCtxt { fcx: fcx, success: true };
     let wbcx = &mut wbcx;

@@ -44,13 +44,13 @@ impl<'a> Builder<'a> {
     }
 
     pub fn count_insn(&self, category: &str) {
-        if self.ccx.sess.trans_stats() {
+        if self.ccx.sess().trans_stats() {
             self.ccx.stats.n_llvm_insns.set(self.ccx
                                                 .stats
                                                 .n_llvm_insns
                                                 .get() + 1);
         }
-        if self.ccx.sess.count_llvm_insns() {
+        if self.ccx.sess().count_llvm_insns() {
             base::with_insn_ctxt(|v| {
                 let mut h = self.ccx.stats.llvm_insns.borrow_mut();
 
@@ -536,13 +536,13 @@ impl<'a> Builder<'a> {
         // Small vector optimization. This should catch 100% of the cases that
         // we care about.
         if ixs.len() < 16 {
-            let mut small_vec = [ C_i32(0), ..16 ];
+            let mut small_vec = [ C_i32(self.ccx, 0), ..16 ];
             for (small_vec_e, &ix) in small_vec.mut_iter().zip(ixs.iter()) {
-                *small_vec_e = C_i32(ix as i32);
+                *small_vec_e = C_i32(self.ccx, ix as i32);
             }
             self.inbounds_gep(base, small_vec.slice(0, ixs.len()))
         } else {
-            let v = ixs.iter().map(|i| C_i32(*i as i32)).collect::<Vec<ValueRef> >();
+            let v = ixs.iter().map(|i| C_i32(self.ccx, *i as i32)).collect::<Vec<ValueRef>>();
             self.count_insn("gepi");
             self.inbounds_gep(base, v.as_slice())
         }
@@ -748,21 +748,21 @@ impl<'a> Builder<'a> {
     }
 
     pub fn add_span_comment(&self, sp: Span, text: &str) {
-        if self.ccx.sess.asm_comments() {
-            let s = format!("{} ({})", text, self.ccx.sess.codemap.span_to_str(sp));
+        if self.ccx.sess().asm_comments() {
+            let s = format!("{} ({})", text, self.ccx.sess().codemap().span_to_str(sp));
             debug!("{}", s);
             self.add_comment(s);
         }
     }
 
     pub fn add_comment(&self, text: &str) {
-        if self.ccx.sess.asm_comments() {
+        if self.ccx.sess().asm_comments() {
             let sanitized = text.replace("$", "");
             let comment_text = format!("\\# {}", sanitized.replace("\n", "\n\t# "));
             self.count_insn("inlineasm");
             let asm = comment_text.with_c_str(|c| {
                 unsafe {
-                    llvm::LLVMConstInlineAsm(Type::func([], &Type::void()).to_ref(),
+                    llvm::LLVMConstInlineAsm(Type::func([], &Type::void(self.ccx)).to_ref(),
                                              c, noname(), False, False)
                 }
             });
@@ -860,8 +860,9 @@ impl<'a> Builder<'a> {
         unsafe {
             let elt_ty = val_ty(elt);
             let undef = llvm::LLVMGetUndef(Type::vector(&elt_ty, num_elts as u64).to_ref());
-            let vec = self.insert_element(undef, elt, C_i32(0));
-            self.shuffle_vector(vec, undef, C_null(Type::vector(&Type::i32(), num_elts as u64)))
+            let vec = self.insert_element(undef, elt, C_i32(self.ccx, 0));
+            let vec_i32_ty = Type::vector(&Type::i32(self.ccx), num_elts as u64);
+            self.shuffle_vector(vec, undef, C_null(vec_i32_ty))
         }
     }
 

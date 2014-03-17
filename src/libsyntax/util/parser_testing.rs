@@ -17,32 +17,20 @@ use parse::token;
 
 use std::vec_ng::Vec;
 
-// map a string to tts, using a made-up filename: return both the TokenTree's
-// and the ParseSess
-pub fn string_to_tts_and_sess (source_str : ~str) -> (Vec<ast::TokenTree> , @ParseSess) {
-    let ps = new_parse_sess();
-    (filemap_to_tts(ps,string_to_filemap(ps,source_str,~"bogofile")),ps)
-}
-
 // map a string to tts, using a made-up filename:
-pub fn string_to_tts(source_str : ~str) -> Vec<ast::TokenTree> {
-    let (tts,_) = string_to_tts_and_sess(source_str);
-    tts
-}
-
-pub fn string_to_parser_and_sess(source_str: ~str) -> (Parser,@ParseSess) {
+pub fn string_to_tts(source_str: ~str) -> Vec<ast::TokenTree> {
     let ps = new_parse_sess();
-    (new_parser_from_source_str(ps,Vec::new(),~"bogofile",source_str),ps)
+    filemap_to_tts(&ps, string_to_filemap(&ps, source_str,~"bogofile"))
 }
 
 // map string to parser (via tts)
-pub fn string_to_parser(source_str: ~str) -> Parser {
-    let (p,_) = string_to_parser_and_sess(source_str);
-    p
+pub fn string_to_parser<'a>(ps: &'a ParseSess, source_str: ~str) -> Parser<'a> {
+    new_parser_from_source_str(ps, Vec::new(), ~"bogofile", source_str)
 }
 
 fn with_error_checking_parse<T>(s: ~str, f: |&mut Parser| -> T) -> T {
-    let mut p = string_to_parser(s);
+    let ps = new_parse_sess();
+    let mut p = string_to_parser(&ps, s);
     let x = f(&mut p);
     p.abort_if_errors();
     x
@@ -53,12 +41,6 @@ pub fn string_to_crate (source_str : ~str) -> ast::Crate {
     with_error_checking_parse(source_str, |p| {
         p.parse_crate_mod()
     })
-}
-
-// parse a string, return a crate and the ParseSess
-pub fn string_to_crate_and_sess (source_str : ~str) -> (ast::Crate,@ParseSess) {
-    let (mut p,ps) = string_to_parser_and_sess(source_str);
-    (p.parse_crate_mod(),ps)
 }
 
 // parse a string, return an expr
@@ -84,8 +66,8 @@ pub fn string_to_stmt(source_str : ~str) -> @ast::Stmt {
 
 // parse a string, return a pat. Uses "irrefutable"... which doesn't
 // (currently) affect parsing.
-pub fn string_to_pat(source_str : ~str) -> @ast::Pat {
-    string_to_parser(source_str).parse_pat()
+pub fn string_to_pat(source_str: ~str) -> @ast::Pat {
+    string_to_parser(&new_parse_sess(), source_str).parse_pat()
 }
 
 // convert a vector of strings to a vector of ast::Ident's

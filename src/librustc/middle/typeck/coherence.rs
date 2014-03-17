@@ -144,13 +144,13 @@ fn get_base_type_def_id(inference_context: &InferCtxt,
     }
 }
 
-struct CoherenceChecker {
-    crate_context: @CrateCtxt,
-    inference_context: InferCtxt,
+struct CoherenceChecker<'a> {
+    crate_context: &'a CrateCtxt<'a>,
+    inference_context: InferCtxt<'a>,
 }
 
 struct CoherenceCheckVisitor<'a> {
-    cc: &'a CoherenceChecker
+    cc: &'a CoherenceChecker<'a>
 }
 
 impl<'a> visit::Visitor<()> for CoherenceCheckVisitor<'a> {
@@ -176,7 +176,7 @@ impl<'a> visit::Visitor<()> for CoherenceCheckVisitor<'a> {
     }
 }
 
-struct PrivilegedScopeVisitor<'a> { cc: &'a CoherenceChecker }
+struct PrivilegedScopeVisitor<'a> { cc: &'a CoherenceChecker<'a> }
 
 impl<'a> visit::Visitor<()> for PrivilegedScopeVisitor<'a> {
     fn visit_item(&mut self, item: &Item, _: ()) {
@@ -189,7 +189,7 @@ impl<'a> visit::Visitor<()> for PrivilegedScopeVisitor<'a> {
             ItemImpl(_, None, ast_ty, _) => {
                 if !self.cc.ast_type_is_defined_in_local_crate(ast_ty) {
                     // This is an error.
-                    let session = self.cc.crate_context.tcx.sess;
+                    let session = &self.cc.crate_context.tcx.sess;
                     session.span_err(item.span,
                                      "cannot associate methods with a type outside the \
                                      crate the type is defined in; define and implement \
@@ -210,7 +210,7 @@ impl<'a> visit::Visitor<()> for PrivilegedScopeVisitor<'a> {
                         self.cc.trait_ref_to_trait_def_id(trait_ref);
 
                     if trait_def_id.krate != LOCAL_CRATE {
-                        let session = self.cc.crate_context.tcx.sess;
+                        let session = &self.cc.crate_context.tcx.sess;
                         session.span_err(item.span,
                                 "cannot provide an extension implementation \
                                 where both trait and type are not defined in this crate");
@@ -226,14 +226,7 @@ impl<'a> visit::Visitor<()> for PrivilegedScopeVisitor<'a> {
     }
 }
 
-impl CoherenceChecker {
-    fn new(crate_context: @CrateCtxt) -> CoherenceChecker {
-        CoherenceChecker {
-            crate_context: crate_context,
-            inference_context: new_infer_ctxt(crate_context.tcx),
-        }
-    }
-
+impl<'a> CoherenceChecker<'a> {
     fn check(&self, krate: &Crate) {
         // Check implementations and traits. This populates the tables
         // containing the inherent methods and extension methods. It also
@@ -274,7 +267,7 @@ impl CoherenceChecker {
                                        item.span,
                                        self_type.ty) {
                 None => {
-                    let session = self.crate_context.tcx.sess;
+                    let session = &self.crate_context.tcx.sess;
                     session.span_err(item.span,
                                      "no base type found for inherent implementation; \
                                       implement a trait or new type instead");
@@ -447,7 +440,7 @@ impl CoherenceChecker {
                             implementation_b);
 
                     if self.polytypes_unify(polytype_a.clone(), polytype_b) {
-                        let session = self.crate_context.tcx.sess;
+                        let session = &self.crate_context.tcx.sess;
                         session.span_err(
                             self.span_of_impl(implementation_a),
                             format!("conflicting implementations for trait `{}`",
@@ -457,7 +450,7 @@ impl CoherenceChecker {
                             session.span_note(self.span_of_impl(implementation_b),
                                               "note conflicting implementation here");
                         } else {
-                            let crate_store = self.crate_context.tcx.sess.cstore;
+                            let crate_store = &self.crate_context.tcx.sess.cstore;
                             let cdata = crate_store.get_crate_data(implementation_b.did.krate);
                             session.note(
                                 "conflicting implementation in crate `" + cdata.name + "`");
@@ -475,7 +468,7 @@ impl CoherenceChecker {
             return;
         }
 
-        let crate_store = self.crate_context.tcx.sess.cstore;
+        let crate_store = &self.crate_context.tcx.sess.cstore;
         csearch::each_implementation_for_trait(crate_store, trait_def_id, |impl_def_id| {
             let implementation = @csearch::get_impl(self.crate_context.tcx, impl_def_id);
             let _ = lookup_item_type(self.crate_context.tcx, implementation.did);
@@ -689,7 +682,7 @@ impl CoherenceChecker {
     fn add_external_crates(&self) {
         let mut impls_seen = HashSet::new();
 
-        let crate_store = self.crate_context.tcx.sess.cstore;
+        let crate_store = &self.crate_context.tcx.sess.cstore;
         crate_store.iter_crate_data(|crate_number, _crate_metadata| {
             each_impl(crate_store, crate_number, |def_id| {
                 assert_eq!(crate_number, def_id.krate);
@@ -762,7 +755,7 @@ impl CoherenceChecker {
     }
 }
 
-pub fn make_substs_for_receiver_types(tcx: ty::ctxt,
+pub fn make_substs_for_receiver_types(tcx: &ty::ctxt,
                                       impl_id: ast::DefId,
                                       trait_ref: &ty::TraitRef,
                                       method: &ty::Method)
@@ -810,7 +803,7 @@ pub fn make_substs_for_receiver_types(tcx: ty::ctxt,
     };
 }
 
-fn subst_receiver_types_in_method_ty(tcx: ty::ctxt,
+fn subst_receiver_types_in_method_ty(tcx: &ty::ctxt,
                                      impl_id: ast::DefId,
                                      trait_ref: &ty::TraitRef,
                                      new_def_id: ast::DefId,
@@ -838,6 +831,9 @@ fn subst_receiver_types_in_method_ty(tcx: ty::ctxt,
     )
 }
 
-pub fn check_coherence(crate_context: @CrateCtxt, krate: &Crate) {
-    CoherenceChecker::new(crate_context).check(krate);
+pub fn check_coherence(crate_context: &CrateCtxt, krate: &Crate) {
+    CoherenceChecker {
+        crate_context: crate_context,
+        inference_context: new_infer_ctxt(crate_context.tcx),
+    }.check(krate);
 }
