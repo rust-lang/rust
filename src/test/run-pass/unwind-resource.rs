@@ -10,8 +10,6 @@
 
 // ignore-fast
 
-extern crate extra;
-
 use std::task;
 
 struct complainer {
@@ -20,14 +18,14 @@ struct complainer {
 
 impl Drop for complainer {
     fn drop(&mut self) {
-        error!("About to send!");
+        println!("About to send!");
         self.tx.send(true);
-        error!("Sent!");
+        println!("Sent!");
     }
 }
 
 fn complainer(tx: Sender<bool>) -> complainer {
-    error!("Hello!");
+    println!("Hello!");
     complainer {
         tx: tx
     }
@@ -41,6 +39,6 @@ fn f(tx: Sender<bool>) {
 pub fn main() {
     let (tx, rx) = channel();
     task::spawn(proc() f(tx.clone()));
-    error!("hiiiiiiiii");
+    println!("hiiiiiiiii");
     assert!(rx.recv());
 }

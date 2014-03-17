@@ -170,6 +170,7 @@ fn generate_test_harness(sess: session::Session, krate: ast::Crate)
                              ExpansionConfig {
                                  loader: loader,
                                  deriving_hash_type_parameter: false,
+                                 crate_id: from_str("test").unwrap(),
                              }),
         path: RefCell::new(Vec::new()),
         testfns: RefCell::new(Vec::new()),
@@ -329,6 +330,7 @@ fn mk_test_module(cx: &TestCtxt) -> @ast::Item {
     // with our list of tests
     let mainfn = (quote_item!(&cx.ext_cx,
         pub fn main() {
+            #[allow(deprecated_owned_vector)];
             #[main];
             test::test_main_static(::std::os::args(), TESTS);
         }

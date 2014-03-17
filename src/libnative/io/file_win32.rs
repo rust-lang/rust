@@ -238,7 +238,7 @@ impl Drop for Inner {
         if self.close_on_drop && self.fd > libc::STDERR_FILENO {
             let n = unsafe { libc::close(self.fd) };
             if n != 0 {
-                warn!("error {} when closing file descriptor {}", n, self.fd);
+                println!("error {} when closing file descriptor {}", n, self.fd);
             }
         }
     }

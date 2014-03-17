@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate extra;
+extern crate test;
 
 fn f() {
 }
 
-use extra::net;    //~ ERROR `use` and `extern crate` declarations must precede items
+use test::net;    //~ ERROR `use` and `extern crate` declarations must precede items
 
 fn main() {
 }

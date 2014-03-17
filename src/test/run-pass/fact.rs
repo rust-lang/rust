@@ -12,26 +12,26 @@
 
 
 fn f(x: int) -> int {
-    // info!("in f:");
+    // println!("in f:");
 
-    info!("{}", x);
+    println!("{}", x);
     if x == 1 {
-        // info!("bottoming out");
+        // println!("bottoming out");
 
         return 1;
     } else {
-        // info!("recurring");
+        // println!("recurring");
 
         let y: int = x * f(x - 1);
-        // info!("returned");
+        // println!("returned");
 
-        info!("{}", y);
+        println!("{}", y);
         return y;
     }
 }
 
 pub fn main() {
     assert_eq!(f(5), 120);
-    // info!("all done");
+    // println!("all done");
 
 }

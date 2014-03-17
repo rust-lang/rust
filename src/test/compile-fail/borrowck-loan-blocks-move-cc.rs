@@ -18,7 +18,7 @@ fn box_imm() {
     let v = ~3;
     let _w = &v;
     task::spawn(proc() {
-        info!("v={}", *v);
+        println!("v={}", *v);
         //~^ ERROR cannot move `v` into closure
     });
 }
@@ -27,7 +27,7 @@ fn box_imm_explicit() {
     let v = ~3;
     let _w = &v;
     task::spawn(proc() {
-        info!("v={}", *v);
+        println!("v={}", *v);
         //~^ ERROR cannot move
     });
 }

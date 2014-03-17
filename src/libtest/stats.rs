@@ -1034,19 +1034,18 @@ mod tests {
 
 #[cfg(test)]
 mod bench {
-    extern crate test;
-    use self::test::BenchHarness;
+    use BenchHarness;
     use std::vec;
     use stats::Stats;
 
     #[bench]
-    fn sum_three_items(bh: &mut BenchHarness) {
+    pub fn sum_three_items(bh: &mut BenchHarness) {
         bh.iter(|| {
             [1e20, 1.5, -1e20].sum();
         })
     }
     #[bench]
-    fn sum_many_f64(bh: &mut BenchHarness) {
+    pub fn sum_many_f64(bh: &mut BenchHarness) {
         let nums = [-1e30, 1e60, 1e30, 1.0, -1e60];
         let v = vec::from_fn(500, |i| nums[i%5]);
 

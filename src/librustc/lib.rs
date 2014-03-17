@@ -30,9 +30,8 @@ This API is completely unstable and subject to change.
 #[allow(deprecated)];
 #[allow(deprecated_owned_vector)];
 #[feature(macro_rules, globs, struct_variant, managed_boxes)];
-#[feature(quote, default_type_params)];
+#[feature(quote, default_type_params, phase)];
 
-extern crate extra;
 extern crate flate;
 extern crate arena;
 extern crate syntax;
@@ -41,6 +40,8 @@ extern crate sync;
 extern crate getopts;
 extern crate collections;
 extern crate time;
+#[phase(syntax, link)]
+extern crate log;
 
 use back::link;
 use driver::session;
@@ -133,6 +134,9 @@ pub mod lib {
     pub mod llvm;
     pub mod llvmdeps;
 }
+
+static BUG_REPORT_URL: &'static str =
+    "http://static.rust-lang.org/doc/master/complement-bugreport.html";
 
 pub fn version(argv0: &str) {
     let vers = match option_env!("CFG_VERSION") {
@@ -316,7 +320,7 @@ pub fn run_compiler(args: &[~str]) {
         let attrs = parse_crate_attrs(sess, &input);
         let t_outputs = d::build_output_filenames(&input, &odir, &ofile,
                                                   attrs.as_slice(), sess);
-        let id = link::find_crate_id(attrs.as_slice(), &t_outputs);
+        let id = link::find_crate_id(attrs.as_slice(), t_outputs.out_filestem);
 
         if crate_id {
             println!("{}", id.to_str());
@@ -393,20 +397,31 @@ pub fn monitor(f: proc()) {
             // Task failed without emitting a fatal diagnostic
             if !value.is::<diagnostic::FatalError>() {
                 let mut emitter = diagnostic::EmitterWriter::stderr();
-                emitter.emit(
-                    None,
-                    diagnostic::ice_msg("unexpected failure"),
-                    diagnostic::Error);
+
+                // a .span_bug or .bug call has already printed what
+                // it wants to print.
+                if !value.is::<diagnostic::ExplicitBug>() {
+                    emitter.emit(
+                        None,
+                        "unexpected failure",
+                        diagnostic::Bug);
+                }
 
                 let xs = [
-                    ~"the compiler hit an unexpected failure path. \
-                     this is a bug",
+                    ~"the compiler hit an unexpected failure path. this is a bug.",
+                    "we would appreciate a bug report: " + BUG_REPORT_URL,
+                    ~"run with `RUST_BACKTRACE=1` for a backtrace",
                 ];
                 for note in xs.iter() {
                     emitter.emit(None, *note, diagnostic::Note)
                 }
 
-                println!("{}", r.read_to_str());
+                match r.read_to_str() {
+                    Ok(s) => println!("{}", s),
+                    Err(e) => emitter.emit(None,
+                                           format!("failed to read internal stderr: {}", e),
+                                           diagnostic::Error),
+                }
             }
 
             // Fail so the process returns a failure code, but don't pollute the

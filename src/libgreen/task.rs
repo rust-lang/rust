@@ -20,14 +20,15 @@
 
 use std::any::Any;
 use std::cast;
-use std::rt::env;
+use std::raw;
 use std::rt::Runtime;
+use std::rt::env;
 use std::rt::local::Local;
 use std::rt::rtio;
+use std::rt::stack;
 use std::rt::task::{Task, BlockedTask, SendMessage};
 use std::task::TaskOpts;
 use std::unstable::mutex::NativeMutex;
-use std::raw;
 
 use context::Context;
 use coroutine::Coroutine;
@@ -177,14 +178,13 @@ impl GreenTask {
                      f: proc()) -> ~GreenTask {
         let TaskOpts {
             notify_chan, name, stack_size,
-            stderr, stdout, logger,
+            stderr, stdout,
         } = opts;
 
         let mut green = GreenTask::new(pool, stack_size, f);
         {
             let task = green.task.get_mut_ref();
             task.name = name;
-            task.logger = logger;
             task.stderr = stderr;
             task.stdout = stdout;
             match notify_chan {
@@ -469,7 +469,9 @@ impl Runtime for GreenTask {
         let c = self.coroutine.as_ref()
             .expect("GreenTask.stack_bounds called without a coroutine");
 
-        (c.current_stack_segment.start() as uint,
+        // Don't return the red zone as part of the usable stack of this task,
+        // it's essentially an implementation detail.
+        (c.current_stack_segment.start() as uint + stack::RED_ZONE,
          c.current_stack_segment.end() as uint)
     }
 

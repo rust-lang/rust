@@ -25,7 +25,7 @@ use ast::{Expr, Expr_, ExprAddrOf, ExprMatch, ExprAgain};
 use ast::{ExprAssign, ExprAssignOp, ExprBinary, ExprBlock, ExprBox};
 use ast::{ExprBreak, ExprCall, ExprCast};
 use ast::{ExprField, ExprFnBlock, ExprIf, ExprIndex};
-use ast::{ExprLit, ExprLogLevel, ExprLoop, ExprMac};
+use ast::{ExprLit, ExprLoop, ExprMac};
 use ast::{ExprMethodCall, ExprParen, ExprPath, ExprProc};
 use ast::{ExprRepeat, ExprRet, ExprStruct, ExprTup, ExprUnary};
 use ast::{ExprVec, ExprVstore, ExprVstoreSlice};
@@ -1274,6 +1274,9 @@ impl Parser {
                 bounds
             } = self.parse_path(LifetimeAndTypesAndBounds);
             TyPath(path, bounds, ast::DUMMY_NODE_ID)
+        } else if self.eat(&token::UNDERSCORE) {
+            // TYPE TO BE INFERRED
+            TyInfer
         } else {
             let msg = format!("expected type, found token {:?}", self.token);
             self.fatal(msg);
@@ -1883,12 +1886,6 @@ impl Parser {
                 }
             }
             hi = self.last_span.hi;
-        } else if self.eat_keyword(keywords::__LogLevel) {
-            // LOG LEVEL expression
-            self.expect(&token::LPAREN);
-            ex = ExprLogLevel;
-            hi = self.span.hi;
-            self.expect(&token::RPAREN);
         } else if self.eat_keyword(keywords::Return) {
             // RETURN expression
             if can_begin_expr(&self.token) {
@@ -4317,7 +4314,7 @@ impl Parser {
     ///
     /// # Example
     ///
-    /// extern crate extra;
+    /// extern crate url;
     /// extern crate foo = "bar";
     fn parse_item_extern_crate(&mut self,
                                 lo: BytePos,

@@ -12,10 +12,14 @@
 #[crate_type = "rlib"];
 #[crate_type = "dylib"];
 #[license = "MIT/ASL2"];
+#[doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
+      html_favicon_url = "http://www.rust-lang.org/favicon.ico",
+      html_root_url = "http://static.rust-lang.org/doc/master")];
 
-#[allow(missing_doc)];
+#[feature(phase)];
 #[allow(deprecated_owned_vector)];
 
+#[cfg(test)] #[phase(syntax, link)] extern crate log;
 extern crate serialize;
 
 use std::io::BufReader;
@@ -63,9 +67,7 @@ mod imp {
 }
 
 /// A record specifying a time value in seconds and nanoseconds.
-
-
-#[deriving(Clone, Eq, Encodable, Decodable, Show)]
+#[deriving(Clone, Eq, TotalEq, Ord, TotalOrd, Encodable, Decodable, Show)]
 pub struct Timespec { sec: i64, nsec: i32 }
 /*
  * Timespec assumes that pre-epoch Timespecs have negative sec and positive
@@ -79,13 +81,6 @@ impl Timespec {
     pub fn new(sec: i64, nsec: i32) -> Timespec {
         assert!(nsec >= 0 && nsec < NSEC_PER_SEC);
         Timespec { sec: sec, nsec: nsec }
-    }
-}
-
-impl Ord for Timespec {
-    fn lt(&self, other: &Timespec) -> bool {
-        self.sec < other.sec ||
-            (self.sec == other.sec && self.nsec < other.nsec)
     }
 }
 

@@ -104,7 +104,7 @@ impl<T> Option<T> {
         }
     }
 
-    /// Convert from `Option<T>` to `&[T]` (without copying)
+    /// Convert from `Option<T>` to `&mut [T]` (without copying)
     #[inline]
     pub fn as_mut_slice<'r>(&'r mut self) -> &'r mut [T] {
         match *self {
@@ -211,19 +211,13 @@ impl<T> Option<T> {
     /// Return an iterator over the possibly contained value
     #[inline]
     pub fn iter<'r>(&'r self) -> Item<&'r T> {
-        match *self {
-            Some(ref x) => Item{opt: Some(x)},
-            None => Item{opt: None}
-        }
+        Item{opt: self.as_ref()}
     }
 
     /// Return a mutable iterator over the possibly contained value
     #[inline]
     pub fn mut_iter<'r>(&'r mut self) -> Item<&'r mut T> {
-        match *self {
-            Some(ref mut x) => Item{opt: Some(x)},
-            None => Item{opt: None}
-        }
+        Item{opt: self.as_mut()}
     }
 
     /// Return a consuming iterator over the possibly contained value
@@ -295,10 +289,13 @@ impl<T> Option<T> {
 
     /// Applies a function zero or more times until the result is `None`.
     #[inline]
-    pub fn while_some(self, blk: |v: T| -> Option<T>) {
+    pub fn while_some(self, f: |v: T| -> Option<T>) {
         let mut opt = self;
-        while opt.is_some() {
-            opt = blk(opt.unwrap());
+        loop {
+            match opt {
+                Some(x) => opt = f(x),
+                None => break
+            }
         }
     }
 
@@ -314,10 +311,10 @@ impl<T> Option<T> {
     /// Fails if the value equals `None`.
     #[inline]
     pub fn take_unwrap(&mut self) -> T {
-        if self.is_none() {
-            fail!("called `Option::take_unwrap()` on a `None` value")
+        match self.take() {
+            Some(x) => x,
+            None => fail!("called `Option::take_unwrap()` on a `None` value")
         }
-        self.take().unwrap()
     }
 
     /// Gets an immutable reference to the value inside an option.

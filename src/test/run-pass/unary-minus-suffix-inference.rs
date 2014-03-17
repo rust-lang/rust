@@ -11,43 +11,43 @@
 pub fn main() {
     let a = 1;
     let a_neg: i8 = -a;
-    error!("{}", a_neg);
+    println!("{}", a_neg);
 
     let b = 1;
     let b_neg: i16 = -b;
-    error!("{}", b_neg);
+    println!("{}", b_neg);
 
     let c = 1;
     let c_neg: i32 = -c;
-    error!("{}", c_neg);
+    println!("{}", c_neg);
 
     let d = 1;
     let d_neg: i64 = -d;
-    error!("{}", d_neg);
+    println!("{}", d_neg);
 
     let e = 1;
     let e_neg: int = -e;
-    error!("{}", e_neg);
+    println!("{}", e_neg);
 
     // intentional overflows
 
     let f = 1;
     let f_neg: u8 = -f;
-    error!("{}", f_neg);
+    println!("{}", f_neg);
 
     let g = 1;
     let g_neg: u16 = -g;
-    error!("{}", g_neg);
+    println!("{}", g_neg);
 
     let h = 1;
     let h_neg: u32 = -h;
-    error!("{}", h_neg);
+    println!("{}", h_neg);
 
     let i = 1;
     let i_neg: u64 = -i;
-    error!("{}", i_neg);
+    println!("{}", i_neg);
 
     let j = 1;
     let j_neg: uint = -j;
-    error!("{}", j_neg);
+    println!("{}", j_neg);
 }

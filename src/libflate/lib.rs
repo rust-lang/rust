@@ -18,12 +18,16 @@ Simple compression
 #[crate_type = "rlib"];
 #[crate_type = "dylib"];
 #[license = "MIT/ASL2"];
-#[allow(missing_doc)];
+#[doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
+      html_favicon_url = "http://www.rust-lang.org/favicon.ico",
+      html_root_url = "http://static.rust-lang.org/doc/master")];
+#[feature(phase)];
 
-extern crate extra;
+#[cfg(test)] #[phase(syntax, link)] extern crate log;
+
 use std::libc::{c_void, size_t, c_int};
 use std::libc;
-use extra::c_vec::CVec;
+use std::c_vec::CVec;
 
 pub mod rustrt {
     use std::libc::{c_int, c_void, size_t};

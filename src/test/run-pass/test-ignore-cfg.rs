@@ -11,8 +11,6 @@
 // compile-flags: --test --cfg ignorecfg
 // ignore-fast
 
-extern crate extra;
-
 #[test]
 #[ignore(cfg(ignorecfg))]
 fn shouldignore() {

@@ -10,8 +10,6 @@
 
 // ignore-fast
 
-extern crate extra;
-
 use std::task;
 
 fn start(tx: &Sender<Sender<~str>>) {
@@ -22,10 +20,10 @@ fn start(tx: &Sender<Sender<~str>>) {
     let mut b;
     a = rx.recv();
     assert!(a == ~"A");
-    error!("{:?}", a);
+    println!("{:?}", a);
     b = rx.recv();
     assert!(b == ~"B");
-    error!("{:?}", b);
+    println!("{:?}", b);
 }
 
 pub fn main() {

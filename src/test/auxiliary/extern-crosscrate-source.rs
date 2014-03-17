@@ -26,7 +26,7 @@ pub mod rustrt {
 
 pub fn fact(n: uint) -> uint {
     unsafe {
-        info!("n = {}", n);
+        println!("n = {}", n);
         rustrt::rust_dbg_call(cb, n)
     }
 }

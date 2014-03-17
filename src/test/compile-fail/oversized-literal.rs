@@ -10,4 +10,4 @@
 
 // compile-flags: -D type-overflow
 
-fn main() { info!("{}", 300u8); } //~ error: literal out of range for its type
+fn main() { println!("{}", 300u8); } //~ error: literal out of range for its type

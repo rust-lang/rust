@@ -17,6 +17,7 @@ li {list-style-type: none; }
 * [Containers and Iterators](guide-container.html)
 * [Tasks and Communication](guide-tasks.html)
 * [Foreign Function Interface](guide-ffi.html)
+* [Writing Safe Unsafe and Low-Level Code](guide-unsafe.html)
 * [Macros](guide-macros.html)
 * [Testing](guide-testing.html)
 * [Rust's Runtime](guide-runtime.html)
@@ -29,7 +30,6 @@ li {list-style-type: none; }
 
 * [The `arena` allocation library](arena/index.html)
 * [The `collections` library](collections/index.html)
-* [The `extra` library of extra stuff](extra/index.html)
 * [The `flate` compression library](flate/index.html)
 * [The `fourcc` four-character code library](fourcc/index.html)
 * [The `getopts` argument parsing library](getopts/index.html)
@@ -49,6 +49,9 @@ li {list-style-type: none; }
 * [The `test` library containing the unit-testing & micro-benchmark framework](test/index.html)
 * [The `time` library](time/index.html)
 * [The `uuid` 128-bit universally unique identifier library](uuid/index.html)
+* [The `url` library](url/index.html)
+* [The `workcache` library](workcache/index.html)
+* [The `log` library](log/index.html)
 
 # Tooling
 

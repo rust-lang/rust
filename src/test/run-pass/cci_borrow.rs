@@ -19,6 +19,6 @@ use cci_borrow_lib::foo;
 pub fn main() {
     let p = @22u;
     let r = foo(p);
-    info!("r={}", r);
+    println!("r={}", r);
     assert_eq!(r, 22u);
 }

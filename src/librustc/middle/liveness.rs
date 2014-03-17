@@ -541,7 +541,7 @@ fn visit_expr(v: &mut LivenessVisitor, expr: &Expr, this: @IrMaps) {
 
       // otherwise, live nodes are not required:
       ExprIndex(..) | ExprField(..) | ExprVstore(..) | ExprVec(..) |
-      ExprCall(..) | ExprMethodCall(..) | ExprTup(..) | ExprLogLevel |
+      ExprCall(..) | ExprMethodCall(..) | ExprTup(..) |
       ExprBinary(..) | ExprAddrOf(..) |
       ExprCast(..) | ExprUnary(..) | ExprBreak(_) |
       ExprAgain(_) | ExprLit(_) | ExprRet(..) | ExprBlock(..) |
@@ -1271,7 +1271,6 @@ impl Liveness {
             })
           }
 
-          ExprLogLevel |
           ExprLit(..) => {
             succ
           }
@@ -1521,7 +1520,7 @@ fn check_expr(this: &mut Liveness, expr: &Expr) {
       // no correctness conditions related to liveness
       ExprCall(..) | ExprMethodCall(..) | ExprIf(..) | ExprMatch(..) |
       ExprWhile(..) | ExprLoop(..) | ExprIndex(..) | ExprField(..) |
-      ExprVstore(..) | ExprVec(..) | ExprTup(..) | ExprLogLevel |
+      ExprVstore(..) | ExprVec(..) | ExprTup(..) |
       ExprBinary(..) |
       ExprCast(..) | ExprUnary(..) | ExprRet(..) | ExprBreak(..) |
       ExprAgain(..) | ExprLit(_) | ExprBlock(..) |

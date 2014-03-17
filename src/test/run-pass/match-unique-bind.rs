@@ -11,7 +11,7 @@
 pub fn main() {
     match ~100 {
       ~x => {
-        info!("{:?}", x);
+        println!("{:?}", x);
         assert_eq!(x, 100);
       }
     }

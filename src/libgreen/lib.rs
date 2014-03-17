@@ -172,10 +172,11 @@
       html_root_url = "http://static.rust-lang.org/doc/master")];
 
 // NB this does *not* include globs, please keep it that way.
-#[feature(macro_rules)];
+#[feature(macro_rules, phase)];
 #[allow(visible_private_types)];
 #[allow(deprecated_owned_vector)];
 
+#[cfg(test)] #[phase(syntax, link)] extern crate log;
 extern crate rand;
 
 use std::mem::replace;

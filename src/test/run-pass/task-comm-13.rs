@@ -10,8 +10,6 @@
 
 // ignore-fast
 
-extern crate extra;
-
 use std::task;
 
 fn start(tx: &Sender<int>, start: int, number_of_messages: int) {
@@ -20,8 +18,8 @@ fn start(tx: &Sender<int>, start: int, number_of_messages: int) {
 }
 
 pub fn main() {
-    info!("Check that we don't deadlock.");
+    println!("Check that we don't deadlock.");
     let (tx, rx) = channel();
     task::try(proc() { start(&tx, 0, 10) });
-    info!("Joined task");
+    println!("Joined task");
 }

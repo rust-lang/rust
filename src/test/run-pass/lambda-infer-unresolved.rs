@@ -15,7 +15,7 @@ struct Refs { refs: ~[int], n: int }
 
 pub fn main() {
     let mut e = Refs{refs: ~[], n: 0};
-    let _f: || = || error!("{}", e.n);
+    let _f: || = || println!("{}", e.n);
     let x: &[int] = e.refs;
     assert_eq!(x.len(), 0);
 }

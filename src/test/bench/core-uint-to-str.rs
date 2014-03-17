@@ -25,6 +25,6 @@ fn main() {
 
     for i in range(0u, n) {
         let x = i.to_str();
-        info!("{}", x);
+        println!("{}", x);
     }
 }

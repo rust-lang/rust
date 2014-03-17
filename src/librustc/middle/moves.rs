@@ -503,7 +503,6 @@ impl VisitContext {
                 self.use_expr(base, Read);
             }
 
-            ExprLogLevel |
             ExprInlineAsm(..) |
             ExprBreak(..) |
             ExprAgain(..) |

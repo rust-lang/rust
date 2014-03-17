@@ -14,14 +14,14 @@ pub fn main() {
     let mut builder = task::task();
     let mut result = builder.future_result();
     builder.spawn(child);
-    error!("1");
+    println!("1");
     task::deschedule();
-    error!("2");
+    println!("2");
     task::deschedule();
-    error!("3");
+    println!("3");
     result.recv();
 }
 
 fn child() {
-    error!("4"); task::deschedule(); error!("5"); task::deschedule(); error!("6");
+    println!("4"); task::deschedule(); println!("5"); task::deschedule(); println!("6");
 }

@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate extra;
-
 mod libc {
     use std::libc::{c_char, size_t};
 
