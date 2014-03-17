@@ -25,7 +25,7 @@
 #[cfg(test)]
 #[phase(syntax, link)] extern crate log;
 
-pub use comm::{DuplexStream, SyncSender, SyncReceiver, rendezvous, duplex};
+pub use comm::{DuplexStream, duplex};
 pub use task_pool::TaskPool;
 pub use future::Future;
 pub use arc::{Arc, Weak};
