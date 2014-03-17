@@ -10,7 +10,8 @@
 
 
 use back::abi;
-use lib::llvm::{llvm, ConstFCmp, ConstICmp, SetLinkage, PrivateLinkage, ValueRef, Bool, True};
+use lib::llvm::{llvm, ConstFCmp, ConstICmp, SetLinkage, PrivateLinkage, ValueRef, Bool, True,
+    False};
 use lib::llvm::{IntEQ, IntNE, IntUGT, IntUGE, IntULT, IntULE, IntSGT, IntSGE, IntSLT, IntSLE,
     RealOEQ, RealOGT, RealOGE, RealOLT, RealOLE, RealONE};
 
@@ -574,7 +575,8 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr,
                                                is_local);
             (v, inlineable)
           }
-          ast::ExprVstore(sub, ast::ExprVstoreSlice) => {
+          ast::ExprVstore(sub, store @ ast::ExprVstoreSlice) |
+          ast::ExprVstore(sub, store @ ast::ExprVstoreMutSlice) => {
             match sub.node {
               ast::ExprLit(ref lit) => {
                 match lit.node {
@@ -592,7 +594,8 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr,
                     llvm::LLVMAddGlobal(cx.llmod, llty.to_ref(), name)
                 });
                 llvm::LLVMSetInitializer(gv, cv);
-                llvm::LLVMSetGlobalConstant(gv, True);
+                llvm::LLVMSetGlobalConstant(gv,
+                      if store == ast::ExprVstoreMutSlice { False } else { True });
                 SetLinkage(gv, PrivateLinkage);
                 let p = const_ptrcast(cx, gv, llunitty);
                 (C_struct(cx, [p, C_uint(cx, es.len())], false), false)

@@ -107,6 +107,10 @@ impl<'a> Visitor<bool> for CheckStaticVisitor<'a> {
             ast::ExprVstore(_, ast::ExprVstoreSlice) => {
                 visit::walk_expr(self, e, is_const);
             }
+            ast::ExprVstore(_, ast::ExprVstoreMutSlice) => {
+                self.tcx.sess.span_err(e.span,
+                                       "static items are not allowed to have mutable slices");
+           },
             ast::ExprUnary(ast::UnBox, _) => {
                 self.tcx.sess.span_err(e.span,
                                    "static items are not allowed to have managed pointers");
