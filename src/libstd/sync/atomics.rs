@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -462,6 +462,51 @@ impl AtomicInt {
     pub fn fetch_sub(&self, val: int, order: Ordering) -> int {
         unsafe { atomic_sub(self.v.get(), val, order) }
     }
+
+    /// Bitwise and with the current value, returning the previous
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::atomics::{AtomicUint, SeqCst};
+    ///
+    /// let foo = AtomicUint::new(0b101101);
+    /// assert_eq!(0b101101, foo.fetch_and(0b110011, SeqCst));
+    /// assert_eq!(0b100001, foo.load(SeqCst));
+    #[inline]
+    pub fn fetch_and(&self, val: int, order: Ordering) -> int {
+        unsafe { atomic_and(self.v.get(), val, order) }
+    }
+
+    /// Bitwise or with the current value, returning the previous
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::atomics::{AtomicUint, SeqCst};
+    ///
+    /// let foo = AtomicUint::new(0b101101);
+    /// assert_eq!(0b101101, foo.fetch_or(0b110011, SeqCst));
+    /// assert_eq!(0b111111, foo.load(SeqCst));
+    #[inline]
+    pub fn fetch_or(&self, val: int, order: Ordering) -> int {
+        unsafe { atomic_or(self.v.get(), val, order) }
+    }
+
+    /// Bitwise xor with the current value, returning the previous
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::atomics::{AtomicUint, SeqCst};
+    ///
+    /// let foo = AtomicUint::new(0b101101);
+    /// assert_eq!(0b101101, foo.fetch_xor(0b110011, SeqCst));
+    /// assert_eq!(0b011110, foo.load(SeqCst));
+    #[inline]
+    pub fn fetch_xor(&self, val: int, order: Ordering) -> int {
+        unsafe { atomic_xor(self.v.get(), val, order) }
+    }
 }
 
 impl AtomicUint {
@@ -528,6 +573,51 @@ impl AtomicUint {
     #[inline]
     pub fn fetch_sub(&self, val: uint, order: Ordering) -> uint {
         unsafe { atomic_sub(self.v.get(), val, order) }
+    }
+
+    /// Bitwise and with the current value, returning the previous
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::atomics::{AtomicUint, SeqCst};
+    ///
+    /// let foo = AtomicUint::new(0b101101);
+    /// assert_eq!(0b101101, foo.fetch_and(0b110011, SeqCst));
+    /// assert_eq!(0b100001, foo.load(SeqCst));
+    #[inline]
+    pub fn fetch_and(&self, val: uint, order: Ordering) -> uint {
+        unsafe { atomic_and(self.v.get(), val, order) }
+    }
+
+    /// Bitwise or with the current value, returning the previous
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::atomics::{AtomicUint, SeqCst};
+    ///
+    /// let foo = AtomicUint::new(0b101101);
+    /// assert_eq!(0b101101, foo.fetch_or(0b110011, SeqCst));
+    /// assert_eq!(0b111111, foo.load(SeqCst));
+    #[inline]
+    pub fn fetch_or(&self, val: uint, order: Ordering) -> uint {
+        unsafe { atomic_or(self.v.get(), val, order) }
+    }
+
+    /// Bitwise xor with the current value, returning the previous
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::atomics::{AtomicUint, SeqCst};
+    ///
+    /// let foo = AtomicUint::new(0b101101);
+    /// assert_eq!(0b101101, foo.fetch_xor(0b110011, SeqCst));
+    /// assert_eq!(0b011110, foo.load(SeqCst));
+    #[inline]
+    pub fn fetch_xor(&self, val: uint, order: Ordering) -> uint {
+        unsafe { atomic_xor(self.v.get(), val, order) }
     }
 }
 
@@ -841,6 +931,48 @@ mod test {
         let a = AtomicBool::new(true);
         assert_eq!(a.fetch_and(false, SeqCst),true);
         assert_eq!(a.load(SeqCst),false);
+    }
+
+    #[test]
+    fn uint_and() {
+        let x = AtomicUint::new(0xf731);
+        assert_eq!(x.fetch_and(0x137f, SeqCst), 0xf731);
+        assert_eq!(x.load(SeqCst), 0xf731 & 0x137f);
+    }
+
+    #[test]
+    fn uint_or() {
+        let x = AtomicUint::new(0xf731);
+        assert_eq!(x.fetch_or(0x137f, SeqCst), 0xf731);
+        assert_eq!(x.load(SeqCst), 0xf731 | 0x137f);
+    }
+
+    #[test]
+    fn uint_xor() {
+        let x = AtomicUint::new(0xf731);
+        assert_eq!(x.fetch_xor(0x137f, SeqCst), 0xf731);
+        assert_eq!(x.load(SeqCst), 0xf731 ^ 0x137f);
+    }
+
+    #[test]
+    fn int_and() {
+        let x = AtomicInt::new(0xf731);
+        assert_eq!(x.fetch_and(0x137f, SeqCst), 0xf731);
+        assert_eq!(x.load(SeqCst), 0xf731 & 0x137f);
+    }
+
+    #[test]
+    fn int_or() {
+        let x = AtomicInt::new(0xf731);
+        assert_eq!(x.fetch_or(0x137f, SeqCst), 0xf731);
+        assert_eq!(x.load(SeqCst), 0xf731 | 0x137f);
+    }
+
+    #[test]
+    fn int_xor() {
+        let x = AtomicInt::new(0xf731);
+        assert_eq!(x.fetch_xor(0x137f, SeqCst), 0xf731);
+        assert_eq!(x.load(SeqCst), 0xf731 ^ 0x137f);
     }
 
     static mut S_BOOL : AtomicBool = INIT_ATOMIC_BOOL;
