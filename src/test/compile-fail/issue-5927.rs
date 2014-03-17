@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -14,7 +14,7 @@
 
 fn main() {
     let z = match 3 {
-        x() => x
+        x(1) => x(1)
     };
     assert_eq!(z,3);
 }
