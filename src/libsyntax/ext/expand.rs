@@ -1044,7 +1044,7 @@ mod test {
         let crate_ast = parse::parse_crate_from_source_str(
             ~"<test>",
             src,
-            Vec::new(),sess);
+            Vec::new(), &sess);
         // should fail:
         let mut loader = ErrLoader;
         let cfg = ::syntax::ext::expand::ExpansionConfig {
@@ -1052,7 +1052,7 @@ mod test {
             deriving_hash_type_parameter: false,
             crate_id: from_str("test").unwrap(),
         };
-        expand_crate(sess,cfg,crate_ast);
+        expand_crate(&sess,cfg,crate_ast);
     }
 
     // make sure that macros can leave scope for modules
@@ -1064,7 +1064,7 @@ mod test {
         let crate_ast = parse::parse_crate_from_source_str(
             ~"<test>",
             src,
-            Vec::new(),sess);
+            Vec::new(), &sess);
         // should fail:
         let mut loader = ErrLoader;
         let cfg = ::syntax::ext::expand::ExpansionConfig {
@@ -1072,7 +1072,7 @@ mod test {
             deriving_hash_type_parameter: false,
             crate_id: from_str("test").unwrap(),
         };
-        expand_crate(sess,cfg,crate_ast);
+        expand_crate(&sess,cfg,crate_ast);
     }
 
     // macro_escape modules shouldn't cause macros to leave scope
@@ -1083,7 +1083,7 @@ mod test {
         let crate_ast = parse::parse_crate_from_source_str(
             ~"<test>",
             src,
-            Vec::new(), sess);
+            Vec::new(), &sess);
         // should fail:
         let mut loader = ErrLoader;
         let cfg = ::syntax::ext::expand::ExpansionConfig {
@@ -1091,7 +1091,7 @@ mod test {
             deriving_hash_type_parameter: false,
             crate_id: from_str("test").unwrap(),
         };
-        expand_crate(sess, cfg, crate_ast);
+        expand_crate(&sess, cfg, crate_ast);
     }
 
     #[test] fn test_contains_flatten (){
@@ -1127,7 +1127,7 @@ mod test {
 
     fn expand_crate_str(crate_str: ~str) -> ast::Crate {
         let ps = parse::new_parse_sess();
-        let crate_ast = string_to_parser(&ps, source_str).parse_crate_mod();
+        let crate_ast = string_to_parser(&ps, crate_str).parse_crate_mod();
         // the cfg argument actually does matter, here...
         let mut loader = ErrLoader;
         let cfg = ::syntax::ext::expand::ExpansionConfig {

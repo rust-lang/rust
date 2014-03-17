@@ -15,7 +15,6 @@ use rustc::middle::privacy;
 
 use syntax::ast;
 use syntax::parse::token;
-use syntax::parse;
 use syntax;
 
 use std::cell::RefCell;
@@ -60,24 +59,23 @@ fn get_ast_and_resolve(cpath: &Path,
                                 phase_2_configure_and_expand,
                                 phase_3_run_analysis_passes};
 
-    let parsesess = parse::new_parse_sess();
     let input = FileInput(cpath.clone());
 
-    let sessopts = @driver::session::Options {
+    let sessopts = driver::session::Options {
         maybe_sysroot: Some(os::self_exe_path().unwrap().dir_path()),
         addl_lib_search_paths: RefCell::new(libs),
         crate_types: vec!(driver::session::CrateTypeDylib),
-        .. (*rustc::driver::session::basic_options()).clone()
+        ..rustc::driver::session::basic_options().clone()
     };
 
 
+    let codemap = syntax::codemap::CodeMap::new();
     let diagnostic_handler = syntax::diagnostic::default_handler();
     let span_diagnostic_handler =
-        syntax::diagnostic::mk_span_handler(diagnostic_handler, parsesess.cm);
+        syntax::diagnostic::mk_span_handler(diagnostic_handler, codemap);
 
     let sess = driver::driver::build_session_(sessopts,
                                               Some(cpath.clone()),
-                                              parsesess.cm,
                                               span_diagnostic_handler);
 
     let mut cfg = build_configuration(&sess);
@@ -87,7 +85,7 @@ fn get_ast_and_resolve(cpath: &Path,
     }
 
     let krate = phase_1_parse_input(&sess, cfg, &input);
-    let (krate, ast_map) = phase_2_configure_and_expand(&sess, &mut Loader::new(sess),
+    let (krate, ast_map) = phase_2_configure_and_expand(&sess, &mut Loader::new(&sess),
                                                         krate, &from_str("rustdoc").unwrap());
     let driver::driver::CrateAnalysis {
         exported_items, public_items, ty_cx, ..

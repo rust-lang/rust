@@ -880,9 +880,9 @@ mod test {
     use super::*;
 
     // this version doesn't care about getting comments or docstrings in.
-    fn fake_print_crate(s: &mut pprust::State,
-                        krate: &ast::Crate) -> io::IoResult<()> {
-        pprust::print_mod(s, &krate.module, krate.attrs.as_slice())
+    fn fake_print_crate<A: pprust::PpAnn>(s: &mut pprust::State<A>,
+                                          krate: &ast::Crate) -> io::IoResult<()> {
+        s.print_mod(&krate.module, krate.attrs.as_slice())
     }
 
     // change every identifier to "zz"
@@ -914,9 +914,10 @@ mod test {
         let mut zz_fold = ToZzIdentFolder;
         let ast = string_to_crate(
             ~"#[a] mod b {fn c (d : e, f : g) {h!(i,j,k);l;m}}");
+        let folded_crate = zz_fold.fold_crate(ast);
         assert_pred!(matches_codepattern,
                      "matches_codepattern",
-                     pprust::to_str(&mut zz_fold.fold_crate(ast),fake_print_crate),
+                     pprust::to_str(|s| fake_print_crate(s, &folded_crate)),
                      ~"#[a]mod zz{fn zz(zz:zz,zz:zz){zz!(zz,zz,zz);zz;zz}}");
     }
 
@@ -926,9 +927,10 @@ mod test {
         let ast = string_to_crate(
             ~"macro_rules! a {(b $c:expr $(d $e:token)f+ => \
               (g $(d $d $e)+))} ");
+        let folded_crate = zz_fold.fold_crate(ast);
         assert_pred!(matches_codepattern,
                      "matches_codepattern",
-                     pprust::to_str(&mut zz_fold.fold_crate(ast),fake_print_crate),
+                     pprust::to_str(|s| fake_print_crate(s, &folded_crate)),
                      ~"zz!zz((zz$zz:zz$(zz $zz:zz)zz+=>(zz$(zz$zz$zz)+)))");
     }
 }

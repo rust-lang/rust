@@ -1007,28 +1007,24 @@ mod test {
     use std::io::util;
     use std::vec_ng::Vec;
 
-    // represents a testing reader (incl. both reader and interner)
-    struct Env {
-        string_reader: StringReader
+    fn mk_sh() -> diagnostic::SpanHandler {
+        let emitter = diagnostic::EmitterWriter::new(~util::NullWriter);
+        let handler = diagnostic::mk_handler(~emitter);
+        diagnostic::mk_span_handler(handler, CodeMap::new())
     }
 
     // open a string reader for the given string
-    fn setup(teststr: ~str) -> Env {
-        let cm = CodeMap::new();
-        let fm = cm.new_filemap(~"zebra.rs", teststr);
-        let writer = ~util::NullWriter;
-        let emitter = diagnostic::EmitterWriter::new(writer);
-        let handler = diagnostic::mk_handler(~emitter);
-        let span_handler = diagnostic::mk_span_handler(handler, cm);
-        Env {
-            string_reader: new_string_reader(span_handler,fm)
-        }
+    fn setup<'a>(span_handler: &'a diagnostic::SpanHandler,
+                 teststr: ~str) -> StringReader<'a> {
+        let fm = span_handler.cm.new_filemap(~"zebra.rs", teststr);
+        new_string_reader(span_handler, fm)
     }
 
     #[test] fn t1 () {
-        let Env {string_reader} =
-            setup(~"/* my source file */ \
-                    fn main() { println!(\"zebra\"); }\n");
+        let span_handler = mk_sh();
+        let string_reader = setup(&span_handler,
+            ~"/* my source file */ \
+              fn main() { println!(\"zebra\"); }\n");
         let id = str_to_ident("fn");
         let tok1 = string_reader.next_token();
         let tok2 = TokenAndSpan{
@@ -1049,11 +1045,9 @@ mod test {
 
     // check that the given reader produces the desired stream
     // of tokens (stop checking after exhausting the expected vec)
-    fn check_tokenization (env: Env, expected: Vec<token::Token> ) {
+    fn check_tokenization (string_reader: StringReader, expected: Vec<token::Token> ) {
         for expected_tok in expected.iter() {
-            let TokenAndSpan {tok:actual_tok, sp: _} =
-                env.string_reader.next_token();
-            assert_eq!(&actual_tok,expected_tok);
+            assert_eq!(&string_reader.next_token().tok, expected_tok);
         }
     }
 
@@ -1063,71 +1057,55 @@ mod test {
     }
 
     #[test] fn doublecolonparsing () {
-        let env = setup (~"a b");
-        check_tokenization (env,
+        check_tokenization(setup(&mk_sh(), ~"a b"),
                            vec!(mk_ident("a",false),
                              mk_ident("b",false)));
     }
 
     #[test] fn dcparsing_2 () {
-        let env = setup (~"a::b");
-        check_tokenization (env,
+        check_tokenization(setup(&mk_sh(), ~"a::b"),
                            vec!(mk_ident("a",true),
                              token::MOD_SEP,
                              mk_ident("b",false)));
     }
 
     #[test] fn dcparsing_3 () {
-        let env = setup (~"a ::b");
-        check_tokenization (env,
+        check_tokenization(setup(&mk_sh(), ~"a ::b"),
                            vec!(mk_ident("a",false),
                              token::MOD_SEP,
                              mk_ident("b",false)));
     }
 
     #[test] fn dcparsing_4 () {
-        let env = setup (~"a:: b");
-        check_tokenization (env,
+        check_tokenization(setup(&mk_sh(), ~"a:: b"),
                            vec!(mk_ident("a",true),
                              token::MOD_SEP,
                              mk_ident("b",false)));
     }
 
     #[test] fn character_a() {
-        let env = setup(~"'a'");
-        let TokenAndSpan {tok, sp: _} =
-            env.string_reader.next_token();
-        assert_eq!(tok,token::LIT_CHAR('a' as u32));
+        assert_eq!(setup(&mk_sh(), ~"'a'").next_token().tok,
+                   token::LIT_CHAR('a' as u32));
     }
 
     #[test] fn character_space() {
-        let env = setup(~"' '");
-        let TokenAndSpan {tok, sp: _} =
-            env.string_reader.next_token();
-        assert_eq!(tok, token::LIT_CHAR(' ' as u32));
+        assert_eq!(setup(&mk_sh(), ~"' '").next_token().tok,
+                   token::LIT_CHAR(' ' as u32));
     }
 
     #[test] fn character_escaped() {
-        let env = setup(~"'\\n'");
-        let TokenAndSpan {tok, sp: _} =
-            env.string_reader.next_token();
-        assert_eq!(tok, token::LIT_CHAR('\n' as u32));
+        assert_eq!(setup(&mk_sh(), ~"'\\n'").next_token().tok,
+                   token::LIT_CHAR('\n' as u32));
     }
 
     #[test] fn lifetime_name() {
-        let env = setup(~"'abc");
-        let TokenAndSpan {tok, sp: _} =
-            env.string_reader.next_token();
-        let id = token::str_to_ident("abc");
-        assert_eq!(tok, token::LIFETIME(id));
+        assert_eq!(setup(&mk_sh(), ~"'abc").next_token().tok,
+                   token::LIFETIME(token::str_to_ident("abc")));
     }
 
     #[test] fn raw_string() {
-        let env = setup(~"r###\"\"#a\\b\x00c\"\"###");
-        let TokenAndSpan {tok, sp: _} =
-            env.string_reader.next_token();
-        let id = token::str_to_ident("\"#a\\b\x00c\"");
-        assert_eq!(tok, token::LIT_STR_RAW(id, 3));
+        assert_eq!(setup(&mk_sh(), ~"r###\"\"#a\\b\x00c\"\"###").next_token().tok,
+                   token::LIT_STR_RAW(token::str_to_ident("\"#a\\b\x00c\""), 3));
     }
 
     #[test] fn line_doc_comments() {
@@ -1137,10 +1115,8 @@ mod test {
     }
 
     #[test] fn nested_block_comments() {
-        let env = setup(~"/* /* */ */'a'");
-        let TokenAndSpan {tok, sp: _} =
-            env.string_reader.next_token();
-        assert_eq!(tok,token::LIT_CHAR('a' as u32));
+        assert_eq!(setup(&mk_sh(), ~"/* /* */ */'a'").next_token().tok,
+                   token::LIT_CHAR('a' as u32));
     }
 
 }

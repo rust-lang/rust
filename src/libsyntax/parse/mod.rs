@@ -584,7 +584,8 @@ mod test {
     }
 
     #[test] fn parse_ident_pat () {
-        let mut parser = string_to_parser(&new_parse_sess(), ~"b");
+        let sess = new_parse_sess();
+        let mut parser = string_to_parser(&sess, ~"b");
         assert!(parser.parse_pat() ==
                    @ast::Pat{id: ast::DUMMY_NODE_ID,
                              node: ast::PatIdent(

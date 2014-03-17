@@ -23,7 +23,6 @@ use rustc::driver::driver;
 use rustc::driver::session;
 use rustc::metadata::creader::Loader;
 use syntax::diagnostic;
-use syntax::parse;
 use syntax::codemap::CodeMap;
 
 use core;
@@ -38,29 +37,26 @@ pub fn run(input: &str, libs: HashSet<Path>, mut test_args: ~[~str]) -> int {
     let input_path = Path::new(input);
     let input = driver::FileInput(input_path.clone());
 
-    let sessopts = @session::Options {
+    let sessopts = session::Options {
         maybe_sysroot: Some(os::self_exe_path().unwrap().dir_path()),
         addl_lib_search_paths: RefCell::new(libs.clone()),
         crate_types: vec!(session::CrateTypeDylib),
-        .. (*session::basic_options()).clone()
+        ..session::basic_options().clone()
     };
 
 
-    let cm = @CodeMap::new();
+    let codemap = CodeMap::new();
     let diagnostic_handler = diagnostic::default_handler();
     let span_diagnostic_handler =
-        diagnostic::mk_span_handler(diagnostic_handler, cm);
-    let parsesess = parse::new_parse_sess_special_handler(span_diagnostic_handler,
-                                                          cm);
+    diagnostic::mk_span_handler(diagnostic_handler, codemap);
 
     let sess = driver::build_session_(sessopts,
                                       Some(input_path),
-                                      parsesess.cm,
                                       span_diagnostic_handler);
 
     let cfg = driver::build_configuration(&sess);
     let krate = driver::phase_1_parse_input(&sess, cfg, &input);
-    let (krate, _) = driver::phase_2_configure_and_expand(sess, &mut Loader::new(sess), krate,
+    let (krate, _) = driver::phase_2_configure_and_expand(&sess, &mut Loader::new(&sess), krate,
                                                           &from_str("rustdoc-test").unwrap());
 
     let ctx = @core::DocContext {
@@ -88,10 +84,9 @@ pub fn run(input: &str, libs: HashSet<Path>, mut test_args: ~[~str]) -> int {
 fn runtest(test: &str, cratename: &str, libs: HashSet<Path>, should_fail: bool,
            no_run: bool, loose_feature_gating: bool) {
     let test = maketest(test, cratename, loose_feature_gating);
-    let parsesess = parse::new_parse_sess();
     let input = driver::StrInput(test);
 
-    let sessopts = @session::Options {
+    let sessopts = session::Options {
         maybe_sysroot: Some(os::self_exe_path().unwrap().dir_path()),
         addl_lib_search_paths: RefCell::new(libs),
         crate_types: vec!(session::CrateTypeExecutable),
@@ -100,7 +95,7 @@ fn runtest(test: &str, cratename: &str, libs: HashSet<Path>, should_fail: bool,
             prefer_dynamic: true,
             .. session::basic_codegen_options()
         },
-        .. (*session::basic_options()).clone()
+        ..session::basic_options().clone()
     };
 
     // Shuffle around a few input and output handles here. We're going to pass
@@ -126,13 +121,13 @@ fn runtest(test: &str, cratename: &str, libs: HashSet<Path>, should_fail: bool,
     let emitter = diagnostic::EmitterWriter::new(~w2);
 
     // Compile the code
+    let codemap = CodeMap::new();
     let diagnostic_handler = diagnostic::mk_handler(~emitter);
     let span_diagnostic_handler =
-        diagnostic::mk_span_handler(diagnostic_handler, parsesess.cm);
+        diagnostic::mk_span_handler(diagnostic_handler, codemap);
 
     let sess = driver::build_session_(sessopts,
                                       None,
-                                      parsesess.cm,
                                       span_diagnostic_handler);
 
     let outdir = TempDir::new("rustdoctest").expect("rustdoc needs a tempdir");
