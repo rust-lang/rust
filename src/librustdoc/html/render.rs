@@ -1517,8 +1517,22 @@ fn render_methods(w: &mut Writer, it: &clean::Item) -> fmt::Result {
                 if traits.len() > 0 {
                     try!(write!(w, "<h2 id='implementations'>Trait \
                                       Implementations</h2>"));
-                    for &(ref i, ref dox) in traits.move_iter() {
-                        try!(render_impl(w, i, dox));
+                    let mut any_derived = false;
+                    for & &(ref i, ref dox) in traits.iter() {
+                        if !i.derived {
+                            try!(render_impl(w, i, dox));
+                        } else {
+                            any_derived = true;
+                        }
+                    }
+                    if any_derived {
+                        try!(write!(w, "<h3 id='derived_implementations'>Derived Implementations \
+                                    </h3>"));
+                        for &(ref i, ref dox) in traits.move_iter() {
+                            if i.derived {
+                                try!(render_impl(w, i, dox));
+                            }
+                        }
                     }
                 }
             }
