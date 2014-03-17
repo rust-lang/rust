@@ -5588,7 +5588,7 @@ impl<'r> Resolver<'r> {
                 note.push_str(
                     "\t\t\t"+ "::"+
                     name.map(
-                        |i|{oken::get_ident(*i).get().to_str()})
+                        |i|{token::get_ident(*i).get().to_str()})
                         .connect("::")+"\n"
                 );
             }
