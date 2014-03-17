@@ -10,3 +10,5 @@
 
 #[no_mangle]
 pub static foo: int = 3;
+
+pub fn bar() {}
