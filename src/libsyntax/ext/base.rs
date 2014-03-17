@@ -289,7 +289,7 @@ pub trait CrateLoader {
 // when a macro expansion occurs, the resulting nodes have the backtrace()
 // -> expn_info of their expansion context stored into their span.
 pub struct ExtCtxt<'a> {
-    parse_sess: @parse::ParseSess,
+    parse_sess: &'a parse::ParseSess,
     cfg: ast::CrateConfig,
     backtrace: Option<@ExpnInfo>,
     ecfg: expand::ExpansionConfig<'a>,
@@ -299,7 +299,7 @@ pub struct ExtCtxt<'a> {
 }
 
 impl<'a> ExtCtxt<'a> {
-    pub fn new<'a>(parse_sess: @parse::ParseSess, cfg: ast::CrateConfig,
+    pub fn new<'a>(parse_sess: &'a parse::ParseSess, cfg: ast::CrateConfig,
                    ecfg: expand::ExpansionConfig<'a>) -> ExtCtxt<'a> {
         ExtCtxt {
             parse_sess: parse_sess,
@@ -326,8 +326,8 @@ impl<'a> ExtCtxt<'a> {
         }
     }
 
-    pub fn codemap(&self) -> @CodeMap { self.parse_sess.cm }
-    pub fn parse_sess(&self) -> @parse::ParseSess { self.parse_sess }
+    pub fn codemap(&self) -> &'a CodeMap { &self.parse_sess.span_diagnostic.cm }
+    pub fn parse_sess(&self) -> &'a parse::ParseSess { self.parse_sess }
     pub fn cfg(&self) -> ast::CrateConfig { self.cfg.clone() }
     pub fn call_site(&self) -> Span {
         match self.backtrace {

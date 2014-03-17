@@ -123,9 +123,9 @@ impl SameRegions {
 
 pub type CombineMap = HashMap<TwoRegions, RegionVid>;
 
-pub struct RegionVarBindings {
-    tcx: ty::ctxt,
-    var_origins: RefCell<Vec<RegionVariableOrigin> >,
+pub struct RegionVarBindings<'a> {
+    tcx: &'a ty::ctxt,
+    var_origins: RefCell<Vec<RegionVariableOrigin>>,
     constraints: RefCell<HashMap<Constraint, SubregionOrigin>>,
     lubs: RefCell<CombineMap>,
     glbs: RefCell<CombineMap>,
@@ -147,7 +147,7 @@ pub struct RegionVarBindings {
     values: RefCell<Option<Vec<VarValue> >>,
 }
 
-pub fn RegionVarBindings(tcx: ty::ctxt) -> RegionVarBindings {
+pub fn RegionVarBindings<'a>(tcx: &'a ty::ctxt) -> RegionVarBindings<'a> {
     RegionVarBindings {
         tcx: tcx,
         var_origins: RefCell::new(Vec::new()),
@@ -161,7 +161,7 @@ pub fn RegionVarBindings(tcx: ty::ctxt) -> RegionVarBindings {
     }
 }
 
-impl RegionVarBindings {
+impl<'a> RegionVarBindings<'a> {
     pub fn in_snapshot(&self) -> bool {
         let undo_log = self.undo_log.borrow();
         undo_log.get().len() > 0
@@ -572,7 +572,7 @@ impl RegionVarBindings {
     }
 }
 
-impl RegionVarBindings {
+impl<'a> RegionVarBindings<'a> {
     fn is_subregion_of(&self, sub: Region, sup: Region) -> bool {
         self.tcx.region_maps.is_subregion_of(sub, sup)
     }
@@ -814,7 +814,7 @@ struct RegionAndOrigin {
 
 type RegionGraph = graph::Graph<(), Constraint>;
 
-impl RegionVarBindings {
+impl<'a> RegionVarBindings<'a> {
     fn infer_variable_values(&self,
                              errors: &mut OptVec<RegionResolutionError>)
                              -> Vec<VarValue> {
@@ -1359,7 +1359,7 @@ impl RegionVarBindings {
 }
 
 impl Repr for Constraint {
-    fn repr(&self, tcx: ty::ctxt) -> ~str {
+    fn repr(&self, tcx: &ty::ctxt) -> ~str {
         match *self {
             ConstrainVarSubVar(a, b) => format!("ConstrainVarSubVar({}, {})",
                                              a.repr(tcx), b.repr(tcx)),

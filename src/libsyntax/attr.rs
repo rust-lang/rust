@@ -375,7 +375,7 @@ pub fn find_stability<AM: AttrMetaMethods, It: Iterator<AM>>(mut metas: It)
     None
 }
 
-pub fn require_unique_names(diagnostic: @SpanHandler, metas: &[@MetaItem]) {
+pub fn require_unique_names(diagnostic: &SpanHandler, metas: &[@MetaItem]) {
     let mut set = HashSet::new();
     for meta in metas.iter() {
         let name = meta.name();
@@ -400,7 +400,7 @@ pub fn require_unique_names(diagnostic: @SpanHandler, metas: &[@MetaItem]) {
  * present (before fields, if any) with that type; reprensentation
  * optimizations which would remove it will not be done.
  */
-pub fn find_repr_attr(diagnostic: @SpanHandler, attr: @ast::MetaItem, acc: ReprAttr)
+pub fn find_repr_attr(diagnostic: &SpanHandler, attr: @ast::MetaItem, acc: ReprAttr)
     -> ReprAttr {
     let mut acc = acc;
     match attr.node {
@@ -438,7 +438,7 @@ pub fn find_repr_attr(diagnostic: @SpanHandler, attr: @ast::MetaItem, acc: ReprA
         // Not a "repr" hint: ignore.
         _ => { }
     }
-    return acc;
+    acc
 }
 
 fn int_type_of_word(s: &str) -> Option<IntType> {

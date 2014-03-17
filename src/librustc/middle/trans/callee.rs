@@ -267,15 +267,15 @@ pub fn trans_fn_ref_with_vtables(
 
     let _icx = push_ctxt("trans_fn_ref_with_vtables");
     let ccx = bcx.ccx();
-    let tcx = ccx.tcx;
+    let tcx = bcx.tcx();
 
     debug!("trans_fn_ref_with_vtables(bcx={}, def_id={}, node={:?}, \
             type_params={}, vtables={})",
            bcx.to_str(),
-           def_id.repr(bcx.tcx()),
+           def_id.repr(tcx),
            node,
-           type_params.repr(bcx.tcx()),
-           vtables.repr(bcx.tcx()));
+           type_params.repr(tcx),
+           vtables.repr(tcx));
 
     assert!(type_params.iter().all(|t| !ty::type_needs_infer(*t)));
 
@@ -365,13 +365,13 @@ pub fn trans_fn_ref_with_vtables(
         true
     } else if def_id.krate == ast::LOCAL_CRATE {
         let map_node = session::expect(
-            ccx.sess,
-            ccx.tcx.map.find(def_id.node),
+            ccx.sess(),
+            tcx.map.find(def_id.node),
             || format!("local item should be in ast map"));
 
         match map_node {
             ast_map::NodeForeignItem(_) => {
-                ccx.tcx.map.get_foreign_abis(def_id.node).is_intrinsic()
+                tcx.map.get_foreign_abis(def_id.node).is_intrinsic()
             }
             _ => false
         }
@@ -502,9 +502,9 @@ pub fn trans_lang_call<'a>(
                        dest: Option<expr::Dest>)
                        -> Result<'a> {
     let fty = if did.krate == ast::LOCAL_CRATE {
-        ty::node_id_to_type(bcx.ccx().tcx, did.node)
+        ty::node_id_to_type(bcx.tcx(), did.node)
     } else {
-        csearch::get_type(bcx.ccx().tcx, did).ty
+        csearch::get_type(bcx.tcx(), did).ty
     };
     callee::trans_call_inner(bcx,
                              None,
@@ -649,7 +649,7 @@ pub fn trans_call_inner<'a>(
     };
 
     let mut llresult = unsafe {
-        llvm::LLVMGetUndef(Type::nil().ptr_to().to_ref())
+        llvm::LLVMGetUndef(Type::nil(ccx).ptr_to().to_ref())
     };
 
     // The code below invokes the function, using either the Rust

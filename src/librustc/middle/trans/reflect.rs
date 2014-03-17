@@ -54,7 +54,7 @@ impl<'a> Reflector<'a> {
     }
 
     pub fn c_bool(&mut self, b: bool) -> ValueRef {
-        C_bool(b)
+        C_bool(self.bcx.ccx(), b)
     }
 
     pub fn c_slice(&mut self, s: InternedString) -> ValueRef {
@@ -65,7 +65,7 @@ impl<'a> Reflector<'a> {
         let str_ty = ty::mk_str(bcx.tcx(), str_vstore);
         let scratch = rvalue_scratch_datum(bcx, str_ty, "");
         let len = C_uint(bcx.ccx(), s.get().len());
-        let c_str = PointerCast(bcx, C_cstr(bcx.ccx(), s), Type::i8p());
+        let c_str = PointerCast(bcx, C_cstr(bcx.ccx(), s), Type::i8p(bcx.ccx()));
         Store(bcx, c_str, GEPi(bcx, scratch.val, [ 0, 0 ]));
         Store(bcx, len, GEPi(bcx, scratch.val, [ 0, 1 ]));
         scratch.val
@@ -151,8 +151,8 @@ impl<'a> Reflector<'a> {
     // Entrypoint
     pub fn visit_ty(&mut self, t: ty::t) {
         let bcx = self.bcx;
-        let tcx = bcx.ccx().tcx;
-        debug!("reflect::visit_ty {}", ty_to_str(bcx.ccx().tcx, t));
+        let tcx = bcx.tcx();
+        debug!("reflect::visit_ty {}", ty_to_str(bcx.tcx(), t));
 
         match ty::get(t).sty {
           ty::ty_bot => self.leaf("bot"),
@@ -285,10 +285,10 @@ impl<'a> Reflector<'a> {
           ty::ty_enum(did, ref substs) => {
             let ccx = bcx.ccx();
             let repr = adt::represent_type(bcx.ccx(), t);
-            let variants = ty::substd_enum_variants(ccx.tcx, did, substs);
+            let variants = ty::substd_enum_variants(ccx.tcx(), did, substs);
             let llptrty = type_of(ccx, t).ptr_to();
-            let opaquety = ty::get_opaque_ty(ccx.tcx).unwrap();
-            let opaqueptrty = ty::mk_ptr(ccx.tcx, ty::mt { ty: opaquety,
+            let opaquety = ty::get_opaque_ty(ccx.tcx()).unwrap();
+            let opaqueptrty = ty::mk_ptr(ccx.tcx(), ty::mt { ty: opaquety,
                                                            mutbl: ast::MutImmutable });
 
             let make_get_disr = || {
@@ -311,7 +311,7 @@ impl<'a> Reflector<'a> {
                 };
                 let bcx = fcx.entry_bcx.get().unwrap();
                 let arg = BitCast(bcx, arg, llptrty);
-                let ret = adt::trans_get_discr(bcx, repr, arg, Some(Type::i64()));
+                let ret = adt::trans_get_discr(bcx, repr, arg, Some(Type::i64(ccx)));
                 Store(bcx, ret, fcx.llretptr.get().unwrap());
                 match fcx.llreturn.get() {
                     Some(llreturn) => Br(bcx, llreturn),
@@ -328,23 +328,23 @@ impl<'a> Reflector<'a> {
             self.bracketed("enum", enum_args.as_slice(), |this| {
                 for (i, v) in variants.iter().enumerate() {
                     let name = token::get_ident(v.name);
-                    let variant_args = vec!(this.c_uint(i),
-                                         C_u64(v.disr_val),
+                    let variant_args = [this.c_uint(i),
+                                         C_u64(ccx, v.disr_val),
                                          this.c_uint(v.args.len()),
-                                         this.c_slice(name));
+                                         this.c_slice(name)];
                     this.bracketed("enum_variant",
-                                   variant_args.as_slice(),
+                                   variant_args,
                                    |this| {
                         for (j, a) in v.args.iter().enumerate() {
                             let bcx = this.bcx;
                             let null = C_null(llptrty);
                             let ptr = adt::trans_field_ptr(bcx, repr, null, v.disr_val, j);
                             let offset = p2i(ccx, ptr);
-                            let field_args = vec!(this.c_uint(j),
+                            let field_args = [this.c_uint(j),
                                                offset,
-                                               this.c_tydesc(*a));
+                                               this.c_tydesc(*a)];
                             this.visit("enum_variant_field",
-                                       field_args.as_slice());
+                                       field_args);
                         }
                     })
                 }
@@ -393,7 +393,7 @@ pub fn emit_calls_to_trait_visit_ty<'a>(
                                     -> &'a Block<'a> {
     let fcx = bcx.fcx;
     let final = fcx.new_temp_block("final");
-    let tydesc_ty = ty::get_tydesc_ty(bcx.ccx().tcx).unwrap();
+    let tydesc_ty = ty::get_tydesc_ty(bcx.tcx()).unwrap();
     let tydesc_ty = type_of(bcx.ccx(), tydesc_ty);
     let mut r = Reflector {
         visitor_val: visitor_val,

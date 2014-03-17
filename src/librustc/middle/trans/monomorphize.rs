@@ -28,7 +28,7 @@ use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util::local_def;
 
-pub fn monomorphic_fn(ccx: @CrateContext,
+pub fn monomorphic_fn(ccx: &CrateContext,
                       fn_id: ast::DefId,
                       real_substs: &ty::substs,
                       vtables: Option<typeck::vtable_res>,
@@ -41,10 +41,10 @@ pub fn monomorphic_fn(ccx: @CrateContext,
             vtables={}, \
             self_vtable={}, \
             ref_id={:?})",
-           fn_id.repr(ccx.tcx),
-           real_substs.repr(ccx.tcx),
-           vtables.repr(ccx.tcx),
-           self_vtables.repr(ccx.tcx),
+           fn_id.repr(ccx.tcx()),
+           real_substs.repr(ccx.tcx()),
+           vtables.repr(ccx.tcx()),
+           self_vtables.repr(ccx.tcx()),
            ref_id);
 
     assert!(real_substs.tps.iter().all(|t| !ty::type_needs_infer(*t)));
@@ -71,8 +71,8 @@ pub fn monomorphic_fn(ccx: @CrateContext,
             fn_id={}, \
             psubsts={}, \
             hash_id={:?})",
-           fn_id.repr(ccx.tcx),
-           psubsts.repr(ccx.tcx),
+           fn_id.repr(ccx.tcx()),
+           psubsts.repr(ccx.tcx()),
            hash_id);
 
     {
@@ -80,14 +80,14 @@ pub fn monomorphic_fn(ccx: @CrateContext,
         match monomorphized.get().find(&hash_id) {
           Some(&val) => {
             debug!("leaving monomorphic fn {}",
-                   ty::item_path_str(ccx.tcx, fn_id));
+                   ty::item_path_str(ccx.tcx(), fn_id));
             return (val, must_cast);
           }
           None => ()
         }
     }
 
-    let tpt = ty::lookup_item_type(ccx.tcx, fn_id);
+    let tpt = ty::lookup_item_type(ccx.tcx(), fn_id);
     let llitem_ty = tpt.ty;
 
     // We need to do special handling of the substitutions if we are
@@ -95,7 +95,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
     let mut is_static_provided = None;
 
     let map_node = session::expect(
-        ccx.sess,
+        ccx.sess(),
         ccx.tcx.map.find(fn_id.node),
         || format!("while monomorphizing {:?}, couldn't find it in the \
                     item map (may have attempted to monomorphize an item \
@@ -123,9 +123,9 @@ pub fn monomorphic_fn(ccx: @CrateContext,
         _ => {}
     }
 
-    debug!("monomorphic_fn about to subst into {}", llitem_ty.repr(ccx.tcx));
+    debug!("monomorphic_fn about to subst into {}", llitem_ty.repr(ccx.tcx()));
     let mono_ty = match is_static_provided {
-        None => ty::subst_tps(ccx.tcx, psubsts.tys.as_slice(),
+        None => ty::subst_tps(ccx.tcx(), psubsts.tys.as_slice(),
                               psubsts.self_ty, llitem_ty),
         Some(num_method_ty_params) => {
             // Static default methods are a little unfortunate, in
@@ -146,9 +146,9 @@ pub fn monomorphic_fn(ccx: @CrateContext,
             let substs = psubsts.tys.slice(0, idx) +
                 &[psubsts.self_ty.unwrap()] + psubsts.tys.tailn(idx);
             debug!("static default: changed substitution to {}",
-                   substs.repr(ccx.tcx));
+                   substs.repr(ccx.tcx()));
 
-            ty::subst_tps(ccx.tcx, substs, None, llitem_ty)
+            ty::subst_tps(ccx.tcx(), substs, None, llitem_ty)
         }
     };
 
@@ -172,8 +172,8 @@ pub fn monomorphic_fn(ccx: @CrateContext,
         // Random cut-off -- code that needs to instantiate the same function
         // recursively more than thirty times can probably safely be assumed
         // to be causing an infinite expansion.
-        if depth > ccx.sess.recursion_limit.get() {
-            ccx.sess.span_fatal(ccx.tcx.map.span(fn_id.node),
+        if depth > ccx.sess().recursion_limit.get() {
+            ccx.sess().span_fatal(ccx.tcx.map.span(fn_id.node),
                 "reached the recursion limit during monomorphization");
         }
 
@@ -207,7 +207,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
                   d
               }
               _ => {
-                ccx.tcx.sess.bug("Can't monomorphize this kind of item")
+                ccx.sess().bug("Can't monomorphize this kind of item")
               }
             }
         }
@@ -224,7 +224,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
         }
         ast_map::NodeVariant(v) => {
             let parent = ccx.tcx.map.get_parent(fn_id.node);
-            let tvs = ty::enum_variants(ccx.tcx, local_def(parent));
+            let tvs = ty::enum_variants(ccx.tcx(), local_def(parent));
             let this_tv = *tvs.iter().find(|tv| { tv.id.node == fn_id.node}).unwrap();
             let d = mk_lldecl();
             set_inline_hint(d);
@@ -239,7 +239,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
                                        d);
                 }
                 ast::StructVariantKind(_) =>
-                    ccx.tcx.sess.bug("can't monomorphize struct variants"),
+                    ccx.sess().bug("can't monomorphize struct variants"),
             }
             d
         }
@@ -258,8 +258,8 @@ pub fn monomorphic_fn(ccx: @CrateContext,
                     d
                 }
                 _ => {
-                    ccx.tcx.sess.bug(format!("can't monomorphize a {:?}",
-                                             map_node))
+                    ccx.sess().bug(format!("can't monomorphize a {:?}",
+                                           map_node))
                 }
             }
         }
@@ -281,7 +281,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
         ast_map::NodeArg(..) |
         ast_map::NodeBlock(..) |
         ast_map::NodeLocal(..) => {
-            ccx.tcx.sess.bug(format!("can't monomorphize a {:?}", map_node))
+            ccx.sess().bug(format!("can't monomorphize a {:?}", map_node))
         }
     };
 
@@ -290,11 +290,11 @@ pub fn monomorphic_fn(ccx: @CrateContext,
         monomorphizing.get().insert(fn_id, depth);
     }
 
-    debug!("leaving monomorphic fn {}", ty::item_path_str(ccx.tcx, fn_id));
+    debug!("leaving monomorphic fn {}", ty::item_path_str(ccx.tcx(), fn_id));
     (lldecl, must_cast)
 }
 
-pub fn make_mono_id(ccx: @CrateContext,
+pub fn make_mono_id(ccx: &CrateContext,
                     item: ast::DefId,
                     substs: &param_substs) -> mono_id {
     // FIXME (possibly #5801): Need a lot of type hints to get
@@ -303,7 +303,7 @@ pub fn make_mono_id(ccx: @CrateContext,
     let precise_param_ids: Vec<(ty::t, Option<@Vec<mono_id> >)> = match substs.vtables {
       Some(vts) => {
         debug!("make_mono_id vtables={} substs={}",
-               vts.repr(ccx.tcx), substs.tys.repr(ccx.tcx));
+               vts.repr(ccx.tcx()), substs.tys.repr(ccx.tcx()));
         let vts_iter = substs.self_vtables.iter().chain(vts.iter());
         vts_iter.zip(substs_iter).map(|(vtable, subst)| {
             let v = vtable.map(|vt| meth::vtable_id(ccx, vt));

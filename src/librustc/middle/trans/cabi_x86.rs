@@ -25,7 +25,7 @@ pub fn compute_abi_info(ccx: &CrateContext,
 
     let ret_ty;
     if !ret_def {
-        ret_ty = ArgType::direct(Type::void(), None, None, None);
+        ret_ty = ArgType::direct(Type::void(ccx), None, None, None);
     } else if rty.kind() == Struct {
         // Returning a structure. Most often, this will use
         // a hidden first argument. On some platforms, though,
@@ -36,13 +36,13 @@ pub fn compute_abi_info(ccx: &CrateContext,
         // Clang's ABI handling is in lib/CodeGen/TargetInfo.cpp
 
         enum Strategy { RetValue(Type), RetPointer }
-        let strategy = match ccx.sess.targ_cfg.os {
+        let strategy = match ccx.sess().targ_cfg.os {
             OsWin32 | OsMacos => {
                 match llsize_of_alloc(ccx, rty) {
-                    1 => RetValue(Type::i8()),
-                    2 => RetValue(Type::i16()),
-                    4 => RetValue(Type::i32()),
-                    8 => RetValue(Type::i64()),
+                    1 => RetValue(Type::i8(ccx)),
+                    2 => RetValue(Type::i16(ccx)),
+                    4 => RetValue(Type::i32(ccx)),
+                    8 => RetValue(Type::i64(ccx)),
                     _ => RetPointer
                 }
             }

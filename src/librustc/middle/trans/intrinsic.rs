@@ -31,7 +31,7 @@ use syntax::ast_map;
 use syntax::parse::token;
 use util::ppaux::ty_to_str;
 
-pub fn get_simple_intrinsic(ccx: @CrateContext, item: &ast::ForeignItem) -> Option<ValueRef> {
+pub fn get_simple_intrinsic(ccx: &CrateContext, item: &ast::ForeignItem) -> Option<ValueRef> {
     let name = match token::get_ident(item.ident).get() {
         "sqrtf32" => "llvm.sqrt.f32",
         "sqrtf64" => "llvm.sqrt.f64",
@@ -83,7 +83,7 @@ pub fn get_simple_intrinsic(ccx: @CrateContext, item: &ast::ForeignItem) -> Opti
     Some(ccx.intrinsics.get_copy(&name))
 }
 
-pub fn trans_intrinsic(ccx: @CrateContext,
+pub fn trans_intrinsic(ccx: &CrateContext,
                        decl: ValueRef,
                        item: &ast::ForeignItem,
                        substs: @param_substs,
@@ -99,7 +99,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
         // convert `i1` to a `bool`, and write to the out parameter
         let val = Call(bcx, llfn, [a, b], []);
         let result = ExtractValue(bcx, val, 0);
-        let overflow = ZExt(bcx, ExtractValue(bcx, val, 1), Type::bool());
+        let overflow = ZExt(bcx, ExtractValue(bcx, val, 1), Type::bool(bcx.ccx()));
         let ret = C_undef(type_of::type_of(bcx.ccx(), t));
         let ret = InsertValue(bcx, ret, result, 0);
         let ret = InsertValue(bcx, ret, overflow, 1);
@@ -133,7 +133,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
     fn copy_intrinsic(bcx: &Block, allow_overlap: bool, tp_ty: ty::t) {
         let ccx = bcx.ccx();
         let lltp_ty = type_of::type_of(ccx, tp_ty);
-        let align = C_i32(machine::llalign_of_min(ccx, lltp_ty) as i32);
+        let align = C_i32(ccx, machine::llalign_of_min(ccx, lltp_ty) as i32);
         let size = machine::llsize_of(ccx, lltp_ty);
         let int_size = machine::llbitsize_of_real(ccx, ccx.int_type);
         let name = if allow_overlap {
@@ -152,11 +152,11 @@ pub fn trans_intrinsic(ccx: @CrateContext,
 
         let decl = bcx.fcx.llfn;
         let first_real_arg = bcx.fcx.arg_pos(0u);
-        let dst_ptr = PointerCast(bcx, get_param(decl, first_real_arg), Type::i8p());
-        let src_ptr = PointerCast(bcx, get_param(decl, first_real_arg + 1), Type::i8p());
+        let dst_ptr = PointerCast(bcx, get_param(decl, first_real_arg), Type::i8p(ccx));
+        let src_ptr = PointerCast(bcx, get_param(decl, first_real_arg + 1), Type::i8p(ccx));
         let count = get_param(decl, first_real_arg + 2);
-        let volatile = C_i1(false);
-        let llfn = bcx.ccx().intrinsics.get_copy(&name);
+        let volatile = C_i1(ccx, false);
+        let llfn = ccx.intrinsics.get_copy(&name);
         Call(bcx, llfn, [dst_ptr, src_ptr, Mul(bcx, size, count), align, volatile], []);
         RetVoid(bcx);
     }
@@ -164,7 +164,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
     fn memset_intrinsic(bcx: &Block, tp_ty: ty::t) {
         let ccx = bcx.ccx();
         let lltp_ty = type_of::type_of(ccx, tp_ty);
-        let align = C_i32(machine::llalign_of_min(ccx, lltp_ty) as i32);
+        let align = C_i32(ccx, machine::llalign_of_min(ccx, lltp_ty) as i32);
         let size = machine::llsize_of(ccx, lltp_ty);
         let name = if machine::llbitsize_of_real(ccx, ccx.int_type) == 32 {
             "llvm.memset.p0i8.i32"
@@ -174,24 +174,24 @@ pub fn trans_intrinsic(ccx: @CrateContext,
 
         let decl = bcx.fcx.llfn;
         let first_real_arg = bcx.fcx.arg_pos(0u);
-        let dst_ptr = PointerCast(bcx, get_param(decl, first_real_arg), Type::i8p());
+        let dst_ptr = PointerCast(bcx, get_param(decl, first_real_arg), Type::i8p(ccx));
         let val = get_param(decl, first_real_arg + 1);
         let count = get_param(decl, first_real_arg + 2);
-        let volatile = C_i1(false);
-        let llfn = bcx.ccx().intrinsics.get_copy(&name);
+        let volatile = C_i1(ccx, false);
+        let llfn = ccx.intrinsics.get_copy(&name);
         Call(bcx, llfn, [dst_ptr, val, Mul(bcx, size, count), align, volatile], []);
         RetVoid(bcx);
     }
 
     fn count_zeros_intrinsic(bcx: &Block, name: &'static str) {
         let x = get_param(bcx.fcx.llfn, bcx.fcx.arg_pos(0u));
-        let y = C_i1(false);
+        let y = C_i1(bcx.ccx(), false);
         let llfn = bcx.ccx().intrinsics.get_copy(&name);
         let llcall = Call(bcx, llfn, [x, y], []);
         Ret(bcx, llcall);
     }
 
-    let output_type = ty::ty_fn_ret(ty::node_id_to_type(ccx.tcx, item.id));
+    let output_type = ty::ty_fn_ret(ty::node_id_to_type(ccx.tcx(), item.id));
 
     let arena = TypedArena::new();
     let fcx = new_fn_ctxt(ccx, decl, item.id, false, output_type,
@@ -218,7 +218,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
                 "acq"     => lib::llvm::Acquire,
                 "rel"     => lib::llvm::Release,
                 "acqrel"  => lib::llvm::AcquireRelease,
-                _ => ccx.sess.fatal("unknown ordering in atomic intrinsic")
+                _ => ccx.sess().fatal("unknown ordering in atomic intrinsic")
             }
         };
 
@@ -259,7 +259,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
                     "min"   => lib::llvm::Min,
                     "umax"  => lib::llvm::UMax,
                     "umin"  => lib::llvm::UMin,
-                    _ => ccx.sess.fatal("unknown atomic operation")
+                    _ => ccx.sess().fatal("unknown atomic operation")
                 };
 
                 let old = AtomicRMW(bcx, atom_op, get_param(decl, first_real_arg),
@@ -328,12 +328,13 @@ pub fn trans_intrinsic(ccx: @CrateContext,
         }
         "type_id" => {
             let hash = ty::hash_crate_independent(
-                ccx.tcx,
+                ccx.tcx(),
                 *substs.tys.get(0),
                 &ccx.link_meta.crate_hash);
             // NB: This needs to be kept in lockstep with the TypeId struct in
             //     libstd/unstable/intrinsics.rs
-            let val = C_named_struct(type_of::type_of(ccx, output_type), [C_u64(hash)]);
+            let val = C_named_struct(type_of::type_of(ccx, output_type),
+                                     [C_u64(ccx, hash)]);
             match bcx.fcx.llretptr.get() {
                 Some(ptr) => {
                     Store(bcx, val, ptr);
@@ -377,13 +378,13 @@ pub fn trans_intrinsic(ccx: @CrateContext,
                     ast_map::NodeExpr(e) => e.span,
                     _ => fail!("transmute has non-expr arg"),
                 };
-                ccx.sess.span_fatal(sp,
+                ccx.sess().span_fatal(sp,
                     format!("transmute called on types with different sizes: \
                              {intype} ({insize, plural, =1{# bit} other{# bits}}) to \
                              {outtype} ({outsize, plural, =1{# bit} other{# bits}})",
-                            intype = ty_to_str(ccx.tcx, in_type),
+                            intype = ty_to_str(ccx.tcx(), in_type),
                             insize = in_type_size as uint,
-                            outtype = ty_to_str(ccx.tcx, out_type),
+                            outtype = ty_to_str(ccx.tcx(), out_type),
                             outsize = out_type_size as uint));
             }
 
@@ -421,8 +422,8 @@ pub fn trans_intrinsic(ccx: @CrateContext,
                     // code bloat when `transmute` is used on large structural
                     // types.
                     let lldestptr = fcx.llretptr.get().unwrap();
-                    let lldestptr = PointerCast(bcx, lldestptr, Type::i8p());
-                    let llsrcptr = PointerCast(bcx, llsrcval, Type::i8p());
+                    let lldestptr = PointerCast(bcx, lldestptr, Type::i8p(ccx));
+                    let llsrcptr = PointerCast(bcx, llsrcval, Type::i8p(ccx));
 
                     let llsize = llsize_of(ccx, llintype);
                     call_memcpy(bcx, lldestptr, llsrcptr, llsize, 1);
@@ -434,16 +435,16 @@ pub fn trans_intrinsic(ccx: @CrateContext,
         }
         "needs_drop" => {
             let tp_ty = *substs.tys.get(0);
-            Ret(bcx, C_bool(ty::type_needs_drop(ccx.tcx, tp_ty)));
+            Ret(bcx, C_bool(ccx, ty::type_needs_drop(ccx.tcx(), tp_ty)));
         }
         "owns_managed" => {
             let tp_ty = *substs.tys.get(0);
-            Ret(bcx, C_bool(ty::type_contents(ccx.tcx, tp_ty).owns_managed()));
+            Ret(bcx, C_bool(ccx, ty::type_contents(ccx.tcx(), tp_ty).owns_managed()));
         }
         "visit_tydesc" => {
             let td = get_param(decl, first_real_arg);
             let visitor = get_param(decl, first_real_arg + 1u);
-            let td = PointerCast(bcx, td, ccx.tydesc_type.ptr_to());
+            let td = PointerCast(bcx, td, ccx.tydesc_type().ptr_to());
             glue::call_visit_glue(bcx, visitor, td, None);
             RetVoid(bcx);
         }
@@ -527,7 +528,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
         _ => {
             // Could we make this an enum rather than a string? does it get
             // checked earlier?
-            ccx.sess.span_bug(item.span, "unknown intrinsic");
+            ccx.sess().span_bug(item.span, "unknown intrinsic");
         }
     }
     fcx.cleanup();

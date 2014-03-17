@@ -29,10 +29,10 @@ use syntax::opt_vec::OptVec;
 // information available (for better errors).
 
 pub trait Subst {
-    fn subst(&self, tcx: ty::ctxt, substs: &ty::substs) -> Self {
+    fn subst(&self, tcx: &ty::ctxt, substs: &ty::substs) -> Self {
         self.subst_spanned(tcx, substs, None)
     }
-    fn subst_spanned(&self, tcx: ty::ctxt,
+    fn subst_spanned(&self, tcx: &ty::ctxt,
                      substs: &ty::substs,
                      span: Option<Span>) -> Self;
 }
@@ -46,7 +46,7 @@ pub trait Subst {
 // our current method/trait matching algorithm. - Niko
 
 impl Subst for ty::t {
-    fn subst_spanned(&self, tcx: ty::ctxt,
+    fn subst_spanned(&self, tcx: &ty::ctxt,
                      substs: &ty::substs,
                      span: Option<Span>) -> ty::t {
         if ty::substs_is_noop(substs) && !ty::type_has_params(*self) {
@@ -64,7 +64,7 @@ impl Subst for ty::t {
 }
 
 struct SubstFolder<'a> {
-    tcx: ty::ctxt,
+    tcx: &'a ty::ctxt,
     substs: &'a ty::substs,
 
     // The location for which the substitution is performed, if available.
@@ -75,7 +75,7 @@ struct SubstFolder<'a> {
 }
 
 impl<'a> TypeFolder for SubstFolder<'a> {
-    fn tcx(&self) -> ty::ctxt { self.tcx }
+    fn tcx<'a>(&'a self) -> &'a ty::ctxt { self.tcx }
 
     fn fold_region(&mut self, r: ty::Region) -> ty::Region {
         r.subst(self.tcx, self.substs)
@@ -132,14 +132,14 @@ impl<'a> TypeFolder for SubstFolder<'a> {
 // Other types
 
 impl<T:Subst> Subst for Vec<T> {
-    fn subst_spanned(&self, tcx: ty::ctxt,
+    fn subst_spanned(&self, tcx: &ty::ctxt,
                      substs: &ty::substs,
                      span: Option<Span>) -> Vec<T> {
         self.map(|t| t.subst_spanned(tcx, substs, span))
     }
 }
 impl<T:Subst> Subst for Rc<T> {
-    fn subst_spanned(&self, tcx: ty::ctxt,
+    fn subst_spanned(&self, tcx: &ty::ctxt,
                      substs: &ty::substs,
                      span: Option<Span>) -> Rc<T> {
         Rc::new(self.deref().subst_spanned(tcx, substs, span))
@@ -147,7 +147,7 @@ impl<T:Subst> Subst for Rc<T> {
 }
 
 impl<T:Subst> Subst for OptVec<T> {
-    fn subst_spanned(&self, tcx: ty::ctxt,
+    fn subst_spanned(&self, tcx: &ty::ctxt,
                      substs: &ty::substs,
                      span: Option<Span>) -> OptVec<T> {
         self.map(|t| t.subst_spanned(tcx, substs, span))
@@ -155,7 +155,7 @@ impl<T:Subst> Subst for OptVec<T> {
 }
 
 impl<T:Subst + 'static> Subst for @T {
-    fn subst_spanned(&self, tcx: ty::ctxt,
+    fn subst_spanned(&self, tcx: &ty::ctxt,
                      substs: &ty::substs,
                      span: Option<Span>) -> @T {
         match self {
@@ -165,7 +165,7 @@ impl<T:Subst + 'static> Subst for @T {
 }
 
 impl<T:Subst> Subst for Option<T> {
-    fn subst_spanned(&self, tcx: ty::ctxt,
+    fn subst_spanned(&self, tcx: &ty::ctxt,
                      substs: &ty::substs,
                      span: Option<Span>) -> Option<T> {
         self.as_ref().map(|t| t.subst_spanned(tcx, substs, span))
@@ -173,7 +173,7 @@ impl<T:Subst> Subst for Option<T> {
 }
 
 impl Subst for ty::TraitRef {
-    fn subst_spanned(&self, tcx: ty::ctxt,
+    fn subst_spanned(&self, tcx: &ty::ctxt,
                      substs: &ty::substs,
                      span: Option<Span>) -> ty::TraitRef {
         ty::TraitRef {
@@ -184,7 +184,7 @@ impl Subst for ty::TraitRef {
 }
 
 impl Subst for ty::substs {
-    fn subst_spanned(&self, tcx: ty::ctxt,
+    fn subst_spanned(&self, tcx: &ty::ctxt,
                      substs: &ty::substs,
                      span: Option<Span>) -> ty::substs {
         ty::substs {
@@ -196,7 +196,7 @@ impl Subst for ty::substs {
 }
 
 impl Subst for ty::RegionSubsts {
-    fn subst_spanned(&self, tcx: ty::ctxt,
+    fn subst_spanned(&self, tcx: &ty::ctxt,
                      substs: &ty::substs,
                      span: Option<Span>) -> ty::RegionSubsts {
         match *self {
@@ -211,7 +211,7 @@ impl Subst for ty::RegionSubsts {
 }
 
 impl Subst for ty::BareFnTy {
-    fn subst_spanned(&self, tcx: ty::ctxt,
+    fn subst_spanned(&self, tcx: &ty::ctxt,
                      substs: &ty::substs,
                      span: Option<Span>) -> ty::BareFnTy {
         let mut folder = SubstFolder {
@@ -225,7 +225,7 @@ impl Subst for ty::BareFnTy {
 }
 
 impl Subst for ty::ParamBounds {
-    fn subst_spanned(&self, tcx: ty::ctxt,
+    fn subst_spanned(&self, tcx: &ty::ctxt,
                      substs: &ty::substs,
                      span: Option<Span>) -> ty::ParamBounds {
         ty::ParamBounds {
@@ -236,7 +236,7 @@ impl Subst for ty::ParamBounds {
 }
 
 impl Subst for ty::TypeParameterDef {
-    fn subst_spanned(&self, tcx: ty::ctxt,
+    fn subst_spanned(&self, tcx: &ty::ctxt,
                      substs: &ty::substs,
                      span: Option<Span>) -> ty::TypeParameterDef {
         ty::TypeParameterDef {
@@ -249,7 +249,7 @@ impl Subst for ty::TypeParameterDef {
 }
 
 impl Subst for ty::Generics {
-    fn subst_spanned(&self, tcx: ty::ctxt,
+    fn subst_spanned(&self, tcx: &ty::ctxt,
                      substs: &ty::substs,
                      span: Option<Span>) -> ty::Generics {
         ty::Generics {
@@ -260,7 +260,7 @@ impl Subst for ty::Generics {
 }
 
 impl Subst for ty::RegionParameterDef {
-    fn subst_spanned(&self, _: ty::ctxt,
+    fn subst_spanned(&self, _: &ty::ctxt,
                      _: &ty::substs,
                      _: Option<Span>) -> ty::RegionParameterDef {
         *self
@@ -268,7 +268,7 @@ impl Subst for ty::RegionParameterDef {
 }
 
 impl Subst for ty::Region {
-    fn subst_spanned(&self, _tcx: ty::ctxt,
+    fn subst_spanned(&self, _tcx: &ty::ctxt,
                      substs: &ty::substs,
                      _: Option<Span>) -> ty::Region {
         // Note: This routine only handles regions that are bound on
@@ -290,7 +290,7 @@ impl Subst for ty::Region {
 }
 
 impl Subst for ty::ty_param_bounds_and_ty {
-    fn subst_spanned(&self, tcx: ty::ctxt,
+    fn subst_spanned(&self, tcx: &ty::ctxt,
                      substs: &ty::substs,
                      span: Option<Span>) -> ty::ty_param_bounds_and_ty {
         ty::ty_param_bounds_and_ty {

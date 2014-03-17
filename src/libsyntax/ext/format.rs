@@ -35,8 +35,8 @@ enum Position {
     Named(~str),
 }
 
-struct Context<'a> {
-    ecx: &'a mut ExtCtxt<'a>,
+struct Context<'a, 'b> {
+    ecx: &'a mut ExtCtxt<'b>,
     fmtsp: Span,
 
     // Parsed argument expressions and the types that we've found so far for
@@ -142,7 +142,7 @@ fn parse_args(ecx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     return (extra, Some((fmtstr, args, order, names)));
 }
 
-impl<'a> Context<'a> {
+impl<'a, 'b> Context<'a, 'b> {
     /// Verifies one piece of a parse string. All errors are not emitted as
     /// fatal so we can continue giving errors about this and possibly other
     /// format strings.

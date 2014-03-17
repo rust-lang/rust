@@ -141,7 +141,7 @@ pub fn annotate_freevars(def_map: resolve::DefMap, krate: &ast::Crate) ->
     freevars
 }
 
-pub fn get_freevars(tcx: ty::ctxt, fid: ast::NodeId) -> freevar_info {
+pub fn get_freevars(tcx: &ty::ctxt, fid: ast::NodeId) -> freevar_info {
     let freevars = tcx.freevars.borrow();
     match freevars.get().find(&fid) {
         None => fail!("get_freevars: {} has no freevars", fid),
@@ -149,6 +149,6 @@ pub fn get_freevars(tcx: ty::ctxt, fid: ast::NodeId) -> freevar_info {
     }
 }
 
-pub fn has_freevars(tcx: ty::ctxt, fid: ast::NodeId) -> bool {
+pub fn has_freevars(tcx: &ty::ctxt, fid: ast::NodeId) -> bool {
     !get_freevars(tcx, fid).is_empty()
 }
