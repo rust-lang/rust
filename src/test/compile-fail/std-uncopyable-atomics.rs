@@ -16,8 +16,6 @@ use std::sync::atomics::*;
 use std::ptr;
 
 fn main() {
-    let x = INIT_ATOMIC_FLAG; //~ ERROR cannot move out of static item
-    let x = *&x; //~ ERROR: cannot move out of dereference
     let x = INIT_ATOMIC_BOOL; //~ ERROR cannot move out of static item
     let x = *&x; //~ ERROR: cannot move out of dereference
     let x = INIT_ATOMIC_INT; //~ ERROR cannot move out of static item

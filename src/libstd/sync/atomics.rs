@@ -28,14 +28,6 @@ use option::{Option,Some,None};
 use ops::Drop;
 
 /**
- * A simple atomic flag, that can be set and cleared. The most basic atomic type.
- */
-pub struct AtomicFlag {
-    priv v: int,
-    priv nopod: marker::NoPod
-}
-
-/**
  * An atomic boolean type.
  */
 pub struct AtomicBool {
@@ -92,35 +84,10 @@ pub enum Ordering {
     SeqCst
 }
 
-pub static INIT_ATOMIC_FLAG : AtomicFlag = AtomicFlag { v: 0, nopod: marker::NoPod };
 pub static INIT_ATOMIC_BOOL : AtomicBool = AtomicBool { v: 0, nopod: marker::NoPod };
 pub static INIT_ATOMIC_INT  : AtomicInt  = AtomicInt  { v: 0, nopod: marker::NoPod };
 pub static INIT_ATOMIC_UINT : AtomicUint = AtomicUint { v: 0, nopod: marker::NoPod };
 pub static INIT_ATOMIC_U64 : AtomicU64 = AtomicU64 { v: 0, nopod: marker::NoPod };
-
-impl AtomicFlag {
-
-    pub fn new() -> AtomicFlag {
-        AtomicFlag { v: 0, nopod: marker::NoPod}
-    }
-
-    /**
-     * Clears the atomic flag
-     */
-    #[inline]
-    pub fn clear(&mut self, order: Ordering) {
-        unsafe {atomic_store(&mut self.v, 0, order)}
-    }
-
-    /**
-     * Sets the flag if it was previously unset, returns the previous value of the
-     * flag.
-     */
-    #[inline]
-    pub fn test_and_set(&mut self, order: Ordering) -> bool {
-        unsafe { atomic_compare_and_swap(&mut self.v, 0, 1, order) > 0 }
-    }
-}
 
 impl AtomicBool {
     pub fn new(v: bool) -> AtomicBool {
@@ -539,13 +506,13 @@ mod test {
     use super::*;
 
     #[test]
-    fn flag() {
-        let mut flg = AtomicFlag::new();
-        assert!(!flg.test_and_set(SeqCst));
-        assert!(flg.test_and_set(SeqCst));
+    fn bool_() {
+        let mut a = AtomicBool::new(false);
+        assert_eq!(a.compare_and_swap(false, true, SeqCst), false);
+        assert_eq!(a.compare_and_swap(false, true, SeqCst), true);
 
-        flg.clear(SeqCst);
-        assert!(!flg.test_and_set(SeqCst));
+        a.store(false, SeqCst);
+        assert_eq!(a.compare_and_swap(false, true, SeqCst), false);
     }
 
     #[test]
@@ -595,7 +562,6 @@ mod test {
         assert_eq!(a.load(SeqCst),false);
     }
 
-    static mut S_FLAG : AtomicFlag = INIT_ATOMIC_FLAG;
     static mut S_BOOL : AtomicBool = INIT_ATOMIC_BOOL;
     static mut S_INT  : AtomicInt  = INIT_ATOMIC_INT;
     static mut S_UINT : AtomicUint = INIT_ATOMIC_UINT;
@@ -603,7 +569,6 @@ mod test {
     #[test]
     fn static_init() {
         unsafe {
-            assert!(!S_FLAG.test_and_set(SeqCst));
             assert!(!S_BOOL.load(SeqCst));
             assert!(S_INT.load(SeqCst) == 0);
             assert!(S_UINT.load(SeqCst) == 0);
