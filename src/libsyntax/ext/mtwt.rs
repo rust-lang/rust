@@ -198,7 +198,7 @@ fn resolve_internal(id: Ident,
                     resolvedthis
                 }
             }
-            IllegalCtxt() => fail!("expected resolvable context, got IllegalCtxt")
+            IllegalCtxt => fail!("expected resolvable context, got IllegalCtxt")
         }
     };
     resolve_table.insert(key, resolved);
