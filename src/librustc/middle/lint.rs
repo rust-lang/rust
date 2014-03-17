@@ -1208,7 +1208,7 @@ fn check_pat_uppercase_variable(cx: &Context, p: &ast::Pat) {
                     // last identifier alone is right choice for this lint.
                     let ident = path.segments.last().unwrap().identifier;
                     let s = token::get_ident(ident);
-                    if s.get().char_at(0).is_uppercase() {
+                    if s.get().char_at(0).is_uppercase() && s.get() != "L" {
                         cx.span_lint(
                             UppercaseVariables,
                             path.span,
@@ -1227,7 +1227,7 @@ fn check_struct_uppercase_variable(cx: &Context, s: &ast::StructDef) {
         match sf.node {
             ast::StructField_ { kind: ast::NamedField(ident, _), .. } => {
                 let s = token::get_ident(ident);
-                if s.get().char_at(0).is_uppercase() {
+                if s.get().char_at(0).is_uppercase() && s.get() != "L" {
                     cx.span_lint(
                         UppercaseVariables,
                         sf.span,
