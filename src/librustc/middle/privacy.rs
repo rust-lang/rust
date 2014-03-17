@@ -142,7 +142,7 @@ impl Visitor<()> for ParentVisitor {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct EmbargoVisitor<'a> {
-    tcx: ty::ctxt,
+    tcx: &'a ty::ctxt,
     exp_map2: &'a resolve::ExportMap2,
 
     // This flag is an indicator of whether the previous item in the
@@ -345,7 +345,7 @@ impl<'a> Visitor<()> for EmbargoVisitor<'a> {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct PrivacyVisitor<'a> {
-    tcx: ty::ctxt,
+    tcx: &'a ty::ctxt,
     curitem: ast::NodeId,
     in_fn: bool,
     in_foreign: bool,
@@ -585,7 +585,7 @@ impl<'a> PrivacyVisitor<'a> {
                 }
             }
         } else {
-            let cstore = self.tcx.sess.cstore;
+            let cstore = &self.tcx.sess.cstore;
             match enum_id {
                 Some(enum_id) => {
                     let v = csearch::get_enum_variants(self.tcx, enum_id);
@@ -920,12 +920,12 @@ impl<'a> Visitor<()> for PrivacyVisitor<'a> {
 /// The privacy sanity check visitor, ensures unnecessary visibility isn't here
 ////////////////////////////////////////////////////////////////////////////////
 
-struct SanePrivacyVisitor {
-    tcx: ty::ctxt,
+struct SanePrivacyVisitor<'a> {
+    tcx: &'a ty::ctxt,
     in_fn: bool,
 }
 
-impl Visitor<()> for SanePrivacyVisitor {
+impl<'a> Visitor<()> for SanePrivacyVisitor<'a> {
     fn visit_item(&mut self, item: &ast::Item, _: ()) {
         if self.in_fn {
             self.check_all_inherited(item);
@@ -976,7 +976,7 @@ impl Visitor<()> for SanePrivacyVisitor {
     }
 }
 
-impl SanePrivacyVisitor {
+impl<'a> SanePrivacyVisitor<'a> {
     /// Validates all of the visibility qualifers placed on the item given. This
     /// ensures that there are no extraneous qualifiers that don't actually do
     /// anything. In theory these qualifiers wouldn't parse, but that may happen
@@ -1159,7 +1159,7 @@ impl SanePrivacyVisitor {
 }
 
 struct VisiblePrivateTypesVisitor<'a> {
-    tcx: ty::ctxt,
+    tcx: &'a ty::ctxt,
     exported_items: &'a ExportedItems,
     public_items: &'a PublicItems,
 }
@@ -1403,7 +1403,7 @@ impl<'a> Visitor<()> for VisiblePrivateTypesVisitor<'a> {
     fn visit_expr(&mut self, _: &ast::Expr, _: ()) {}
 }
 
-pub fn check_crate(tcx: ty::ctxt,
+pub fn check_crate(tcx: &ty::ctxt,
                    method_map: &MethodMap,
                    exp_map2: &resolve::ExportMap2,
                    external_exports: resolve::ExternalExports,

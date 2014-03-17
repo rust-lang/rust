@@ -183,21 +183,18 @@ impl<'a> RustdocVisitor<'a> {
 
     fn resolve_id(&mut self, id: ast::NodeId, glob: bool,
                   om: &mut Module) -> bool {
-        let def = {
-            let dm = match self.cx.tycx {
-                Some(tcx) => tcx.def_map.borrow(),
-                None => return false,
-            };
-            ast_util::def_id_of_def(*dm.get().get(&id))
+        let tcx = match self.cx.maybe_typed {
+            core::Typed(ref tcx) => tcx,
+            core::NotTyped(_) => return false
         };
+        let def = ast_util::def_id_of_def(*tcx.def_map.borrow().get().get(&id));
         if !ast_util::is_local(def) { return false }
         let analysis = match self.analysis {
             Some(analysis) => analysis, None => return false
         };
         if analysis.public_items.contains(&def.node) { return false }
 
-        let item = self.cx.tycx.unwrap().map.get(def.node);
-        match item {
+        match tcx.map.get(def.node) {
             ast_map::NodeItem(it) => {
                 if glob {
                     match it.node {

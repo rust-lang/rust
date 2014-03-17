@@ -20,15 +20,15 @@ enum Context {
     Normal, Loop, Closure
 }
 
-struct CheckLoopVisitor {
-    tcx: ty::ctxt,
+struct CheckLoopVisitor<'a> {
+    tcx: &'a ty::ctxt,
 }
 
-pub fn check_crate(tcx: ty::ctxt, krate: &ast::Crate) {
+pub fn check_crate(tcx: &ty::ctxt, krate: &ast::Crate) {
     visit::walk_crate(&mut CheckLoopVisitor { tcx: tcx }, krate, Normal)
 }
 
-impl Visitor<Context> for CheckLoopVisitor {
+impl<'a> Visitor<Context> for CheckLoopVisitor<'a> {
     fn visit_item(&mut self, i: &ast::Item, _cx: Context) {
         visit::walk_item(self, i, Normal);
     }
@@ -52,7 +52,7 @@ impl Visitor<Context> for CheckLoopVisitor {
     }
 }
 
-impl CheckLoopVisitor {
+impl<'a> CheckLoopVisitor<'a> {
     fn require_loop(&self, name: &str, cx: Context, span: Span) {
         match cx {
             Loop => {}

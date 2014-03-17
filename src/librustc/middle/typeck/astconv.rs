@@ -20,7 +20,7 @@
  * `AstConv` instance; in this phase, the `get_item_ty()` function
  * triggers a recursive call to `ty_of_item()`  (note that
  * `ast_ty_to_ty()` will detect recursive types and report an error).
- * In the check phase, when the @FnCtxt is used as the `AstConv`,
+ * In the check phase, when the FnCtxt is used as the `AstConv`,
  * `get_item_ty()` just looks up the item type in `tcx.tcache`.
  *
  * The `RegionScope` trait controls what happens when the user does
@@ -69,7 +69,7 @@ use syntax::opt_vec;
 use syntax::print::pprust::{lifetime_to_str, path_to_str};
 
 pub trait AstConv {
-    fn tcx(&self) -> ty::ctxt;
+    fn tcx<'a>(&'a self) -> &'a ty::ctxt;
     fn get_item_ty(&self, id: ast::DefId) -> ty::ty_param_bounds_and_ty;
     fn get_trait_def(&self, id: ast::DefId) -> @ty::TraitDef;
 
@@ -77,10 +77,9 @@ pub trait AstConv {
     fn ty_infer(&self, span: Span) -> ty::t;
 }
 
-pub fn ast_region_to_region(tcx: ty::ctxt, lifetime: &ast::Lifetime)
+pub fn ast_region_to_region(tcx: &ty::ctxt, lifetime: &ast::Lifetime)
                             -> ty::Region {
-    let named_region_map = tcx.named_region_map.borrow();
-    let r = match named_region_map.get().find(&lifetime.id) {
+    let r = match tcx.named_region_map.find(&lifetime.id) {
         None => {
             // should have been recorded by the `resolve_lifetime` pass
             tcx.sess.span_bug(lifetime.span, "unresolved lifetime");
@@ -304,7 +303,7 @@ pub fn ast_path_to_ty<AC:AstConv,RS:RegionScope>(
 pub static NO_REGIONS: uint = 1;
 pub static NO_TPS: uint = 2;
 
-fn check_path_args(tcx: ty::ctxt,
+fn check_path_args(tcx: &ty::ctxt,
                    path: &ast::Path,
                    flags: uint) {
     if (flags & NO_TPS) != 0u {
@@ -324,7 +323,7 @@ fn check_path_args(tcx: ty::ctxt,
     }
 }
 
-pub fn ast_ty_to_prim_ty(tcx: ty::ctxt, ast_ty: &ast::Ty) -> Option<ty::t> {
+pub fn ast_ty_to_prim_ty(tcx: &ty::ctxt, ast_ty: &ast::Ty) -> Option<ty::t> {
     match ast_ty.node {
         ast::TyPath(ref path, _, id) => {
             let def_map = tcx.def_map.borrow();
@@ -393,7 +392,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
         VStore(ty::vstore)
     }
     impl PointerTy {
-        fn expect_vstore(&self, tcx: ty::ctxt, span: Span, ty: &str) -> ty::vstore {
+        fn expect_vstore(&self, tcx: &ty::ctxt, span: Span, ty: &str) -> ty::vstore {
             match *self {
                 Box => {
                     tcx.sess.span_err(span, format!("managed {} are not supported", ty));
@@ -614,7 +613,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
                 }
             }
             ast::TyFixedLengthVec(ty, e) => {
-                match const_eval::eval_const_expr_partial(&tcx, e) {
+                match const_eval::eval_const_expr_partial(tcx, e) {
                     Ok(ref r) => {
                         match *r {
                             const_eval::const_int(i) =>
@@ -818,7 +817,7 @@ pub fn ty_of_closure<AC:AstConv,RS:RegionScope>(
     }
 }
 
-fn conv_builtin_bounds(tcx: ty::ctxt, ast_bounds: &Option<OptVec<ast::TyParamBound>>,
+fn conv_builtin_bounds(tcx: &ty::ctxt, ast_bounds: &Option<OptVec<ast::TyParamBound>>,
                        store: ty::TraitStore)
                        -> ty::BuiltinBounds {
     //! Converts a list of bounds from the AST into a `BuiltinBounds`

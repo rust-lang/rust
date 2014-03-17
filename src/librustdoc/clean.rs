@@ -26,6 +26,7 @@ use rustc::metadata::decoder;
 
 use std;
 
+use core;
 use doctree;
 use visit_ast;
 use std::local_data;
@@ -84,7 +85,7 @@ impl<'a> Clean<Crate> for visit_ast::RustdocVisitor<'a> {
         let cx = local_data::get(super::ctxtkey, |x| *x.unwrap());
 
         let mut externs = ~[];
-        cx.sess.cstore.iter_crate_data(|n, meta| {
+        cx.sess().cstore.iter_crate_data(|n, meta| {
             externs.push((n, meta.clean()));
         });
 
@@ -683,7 +684,7 @@ impl Clean<Type> for ast::Ty {
     fn clean(&self) -> Type {
         use syntax::ast::*;
         debug!("cleaning type `{:?}`", self);
-        let codemap = local_data::get(super::ctxtkey, |x| *x.unwrap()).sess.codemap;
+        let codemap = local_data::get(super::ctxtkey, |x| *x.unwrap()).sess().codemap();
         debug!("span corresponds to `{}`", codemap.span_to_str(self.span));
         match self.node {
             TyNil => Unit,
@@ -865,7 +866,7 @@ pub struct Span {
 
 impl Clean<Span> for syntax::codemap::Span {
     fn clean(&self) -> Span {
-        let cm = local_data::get(super::ctxtkey, |x| *x.unwrap()).sess.codemap;
+        let cm = local_data::get(super::ctxtkey, |x| *x.unwrap()).sess().codemap();
         let filename = cm.span_to_filename(*self);
         let lo = cm.lookup_char_pos(self.lo);
         let hi = cm.lookup_char_pos(self.hi);
@@ -1179,7 +1180,7 @@ trait ToSource {
 impl ToSource for syntax::codemap::Span {
     fn to_src(&self) -> ~str {
         debug!("converting span {:?} to snippet", self.clean());
-        let cm = local_data::get(super::ctxtkey, |x| x.unwrap().clone()).sess.codemap.clone();
+        let cm = local_data::get(super::ctxtkey, |x| x.unwrap().clone()).sess().codemap().clone();
         let sn = match cm.span_to_snippet(*self) {
             Some(x) => x,
             None    => ~""
@@ -1234,10 +1235,10 @@ fn name_from_pat(p: &ast::Pat) -> ~str {
 fn resolve_type(path: Path, tpbs: Option<~[TyParamBound]>,
                 id: ast::NodeId) -> Type {
     let cx = local_data::get(super::ctxtkey, |x| *x.unwrap());
-    let tycx = match cx.tycx {
-        Some(tycx) => tycx,
+    let tycx = match cx.maybe_typed {
+        core::Typed(ref tycx) => tycx,
         // If we're extracting tests, this return value doesn't matter.
-        None => return Bool
+        core::NotTyped(_) => return Bool
     };
     debug!("searching for {:?} in defmap", id);
     let def_map = tycx.def_map.borrow();
@@ -1289,12 +1290,12 @@ fn resolve_use_source(path: Path, id: ast::NodeId) -> ImportSource {
 
 fn resolve_def(id: ast::NodeId) -> Option<ast::DefId> {
     let cx = local_data::get(super::ctxtkey, |x| *x.unwrap());
-    match cx.tycx {
-        Some(tcx) => {
+    match cx.maybe_typed {
+        core::Typed(ref tcx) => {
             let def_map = tcx.def_map.borrow();
             def_map.get().find(&id).map(|&d| ast_util::def_id_of_def(d))
         }
-        None => None
+        core::NotTyped(_) => None
     }
 }
 

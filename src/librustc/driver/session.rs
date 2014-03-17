@@ -16,6 +16,7 @@ use front;
 use metadata::filesearch;
 use metadata;
 use middle::lint;
+use util::nodemap::NodeMap;
 
 use syntax::attr::AttrMetaMethods;
 use syntax::ast::NodeId;
@@ -28,7 +29,7 @@ use syntax;
 
 use std::cell::{Cell, RefCell};
 use std::vec_ng::Vec;
-use collections::{HashMap,HashSet};
+use collections::HashSet;
 
 pub struct Config {
     os: abi::Os,
@@ -134,8 +135,8 @@ pub struct Options {
     // This was mutable for rustpkg, which updates search paths based on the
     // parsed code. It remains mutable in case its replacements wants to use
     // this.
-    addl_lib_search_paths: @RefCell<HashSet<Path>>,
-    maybe_sysroot: Option<@Path>,
+    addl_lib_search_paths: RefCell<HashSet<Path>>,
+    maybe_sysroot: Option<Path>,
     target_triple: ~str,
     // User-specified cfg meta items. The compiler itself will add additional
     // items to the crate config, and during parsing the entire crate config
@@ -173,27 +174,24 @@ pub enum CrateType {
     CrateTypeStaticlib,
 }
 
-pub struct Session_ {
-    targ_cfg: @Config,
-    opts: @Options,
-    cstore: @metadata::cstore::CStore,
-    parse_sess: @ParseSess,
-    codemap: @codemap::CodeMap,
+pub struct Session {
+    targ_cfg: Config,
+    opts: Options,
+    cstore: metadata::cstore::CStore,
+    parse_sess: ParseSess,
     // For a library crate, this is always none
     entry_fn: RefCell<Option<(NodeId, codemap::Span)>>,
     entry_type: Cell<Option<EntryFnType>>,
-    span_diagnostic: @diagnostic::SpanHandler,
     macro_registrar_fn: RefCell<Option<ast::DefId>>,
-    filesearch: @filesearch::FileSearch,
+    default_sysroot: Option<Path>,
     building_library: Cell<bool>,
     // The name of the root source file of the crate, in the local file system. The path is always
     // expected to be absolute. `None` means that there is no source file.
     local_crate_source_file: Option<Path>,
     working_dir: Path,
-    lints: RefCell<HashMap<ast::NodeId,
-                           Vec<(lint::Lint, codemap::Span, ~str)> >>,
+    lints: RefCell<NodeMap<Vec<(lint::Lint, codemap::Span, ~str)>>>,
     node_id: Cell<ast::NodeId>,
-    crate_types: @RefCell<Vec<CrateType> >,
+    crate_types: RefCell<Vec<CrateType>>,
     features: front::feature_gate::Features,
 
     /// The maximum recursion limit for potentially infinitely recursive
@@ -201,56 +199,54 @@ pub struct Session_ {
     recursion_limit: Cell<uint>,
 }
 
-pub type Session = @Session_;
-
-impl Session_ {
+impl Session {
     pub fn span_fatal(&self, sp: Span, msg: &str) -> ! {
-        self.span_diagnostic.span_fatal(sp, msg)
+        self.diagnostic().span_fatal(sp, msg)
     }
     pub fn fatal(&self, msg: &str) -> ! {
-        self.span_diagnostic.handler().fatal(msg)
+        self.diagnostic().handler().fatal(msg)
     }
     pub fn span_err(&self, sp: Span, msg: &str) {
-        self.span_diagnostic.span_err(sp, msg)
+        self.diagnostic().span_err(sp, msg)
     }
     pub fn err(&self, msg: &str) {
-        self.span_diagnostic.handler().err(msg)
+        self.diagnostic().handler().err(msg)
     }
     pub fn err_count(&self) -> uint {
-        self.span_diagnostic.handler().err_count()
+        self.diagnostic().handler().err_count()
     }
     pub fn has_errors(&self) -> bool {
-        self.span_diagnostic.handler().has_errors()
+        self.diagnostic().handler().has_errors()
     }
     pub fn abort_if_errors(&self) {
-        self.span_diagnostic.handler().abort_if_errors()
+        self.diagnostic().handler().abort_if_errors()
     }
     pub fn span_warn(&self, sp: Span, msg: &str) {
-        self.span_diagnostic.span_warn(sp, msg)
+        self.diagnostic().span_warn(sp, msg)
     }
     pub fn warn(&self, msg: &str) {
-        self.span_diagnostic.handler().warn(msg)
+        self.diagnostic().handler().warn(msg)
     }
     pub fn span_note(&self, sp: Span, msg: &str) {
-        self.span_diagnostic.span_note(sp, msg)
+        self.diagnostic().span_note(sp, msg)
     }
     pub fn span_end_note(&self, sp: Span, msg: &str) {
-        self.span_diagnostic.span_end_note(sp, msg)
+        self.diagnostic().span_end_note(sp, msg)
     }
     pub fn note(&self, msg: &str) {
-        self.span_diagnostic.handler().note(msg)
+        self.diagnostic().handler().note(msg)
     }
     pub fn span_bug(&self, sp: Span, msg: &str) -> ! {
-        self.span_diagnostic.span_bug(sp, msg)
+        self.diagnostic().span_bug(sp, msg)
     }
     pub fn bug(&self, msg: &str) -> ! {
-        self.span_diagnostic.handler().bug(msg)
+        self.diagnostic().handler().bug(msg)
     }
     pub fn span_unimpl(&self, sp: Span, msg: &str) -> ! {
-        self.span_diagnostic.span_unimpl(sp, msg)
+        self.diagnostic().span_unimpl(sp, msg)
     }
     pub fn unimpl(&self, msg: &str) -> ! {
-        self.span_diagnostic.handler().unimpl(msg)
+        self.diagnostic().handler().unimpl(msg)
     }
     pub fn add_lint(&self,
                     lint: lint::Lint,
@@ -277,11 +273,14 @@ impl Session_ {
 
         v
     }
-    pub fn diagnostic(&self) -> @diagnostic::SpanHandler {
-        self.span_diagnostic
+    pub fn diagnostic<'a>(&'a self) -> &'a diagnostic::SpanHandler {
+        &self.parse_sess.span_diagnostic
     }
     pub fn debugging_opt(&self, opt: u64) -> bool {
         (self.opts.debugging_opts & opt) != 0
+    }
+    pub fn codemap<'a>(&'a self) -> &'a codemap::CodeMap {
+        &self.parse_sess.span_diagnostic.cm
     }
     // This exists to help with refactoring to eliminate impossible
     // cases later on
@@ -316,18 +315,29 @@ impl Session_ {
     pub fn show_span(&self) -> bool {
         self.debugging_opt(SHOW_SPAN)
     }
+    pub fn filesearch<'a>(&'a self) -> filesearch::FileSearch<'a> {
+        let sysroot = match self.opts.maybe_sysroot {
+            Some(ref sysroot) => sysroot,
+            None => self.default_sysroot.as_ref()
+                        .expect("missing sysroot and default_sysroot in Session")
+        };
+        filesearch::FileSearch::new(
+            sysroot,
+            self.opts.target_triple,
+            &self.opts.addl_lib_search_paths)
+    }
 }
 
 /// Some reasonable defaults
-pub fn basic_options() -> @Options {
-    @Options {
+pub fn basic_options() -> Options {
+    Options {
         crate_types: Vec::new(),
         gc: false,
         optimize: No,
         debuginfo: NoDebugInfo,
         lint_opts: Vec::new(),
         output_types: Vec::new(),
-        addl_lib_search_paths: @RefCell::new(HashSet::new()),
+        addl_lib_search_paths: RefCell::new(HashSet::new()),
         maybe_sysroot: None,
         target_triple: host_triple(),
         cfg: Vec::new(),
@@ -451,7 +461,7 @@ cgoptions!(
 )
 
 // Seems out of place, but it uses session, so I'm putting it here
-pub fn expect<T:Clone>(sess: Session, opt: Option<T>, msg: || -> ~str) -> T {
+pub fn expect<T:Clone>(sess: &Session, opt: Option<T>, msg: || -> ~str) -> T {
     diagnostic::expect(sess.diagnostic(), opt, msg)
 }
 

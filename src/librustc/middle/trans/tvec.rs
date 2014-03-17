@@ -38,7 +38,7 @@ use syntax::parse::token::InternedString;
 // containing an unboxed vector. This expands a boxed vector type into such an
 // expanded type. It doesn't respect mutability, but that doesn't matter at
 // this point.
-pub fn expand_boxed_vec_ty(tcx: ty::ctxt, t: ty::t) -> ty::t {
+pub fn expand_boxed_vec_ty(tcx: &ty::ctxt, t: ty::t) -> ty::t {
     let unit_ty = ty::sequence_element_type(tcx, t);
     let unboxed_vec_ty = ty::mk_mut_unboxed_vec(tcx, unit_ty);
     match ty::get(t).sty {
@@ -71,7 +71,7 @@ pub fn get_dataptr(bcx: &Block, vptr: ValueRef) -> ValueRef {
 pub fn pointer_add_byte(bcx: &Block, ptr: ValueRef, bytes: ValueRef) -> ValueRef {
     let _icx = push_ctxt("tvec::pointer_add_byte");
     let old_ty = val_ty(ptr);
-    let bptr = PointerCast(bcx, ptr, Type::i8p());
+    let bptr = PointerCast(bcx, ptr, Type::i8p(bcx.ccx()));
     return PointerCast(bcx, InBoundsGEP(bcx, bptr, [bytes]), old_ty);
 }
 
@@ -154,8 +154,8 @@ impl VecTypes {
     pub fn to_str(&self, ccx: &CrateContext) -> ~str {
         format!("VecTypes \\{vec_ty={}, unit_ty={}, llunit_ty={}, llunit_size={}, \
                  llunit_alloc_size={}\\}",
-             ty_to_str(ccx.tcx, self.vec_ty),
-             ty_to_str(ccx.tcx, self.unit_ty),
+             ty_to_str(ccx.tcx(), self.vec_ty),
+             ty_to_str(ccx.tcx(), self.unit_ty),
              ccx.tn.type_to_str(self.llunit_ty),
              ccx.tn.val_to_str(self.llunit_size),
              self.llunit_alloc_size)
@@ -290,7 +290,7 @@ pub fn trans_lit_str<'a>(
                 let bytes = str_lit.get().len();
                 let llbytes = C_uint(bcx.ccx(), bytes);
                 let llcstr = C_cstr(bcx.ccx(), str_lit);
-                let llcstr = llvm::LLVMConstPointerCast(llcstr, Type::i8p().to_ref());
+                let llcstr = llvm::LLVMConstPointerCast(llcstr, Type::i8p(bcx.ccx()).to_ref());
                 Store(bcx, llcstr,
                       GEPi(bcx, lldest, [0u, abi::slice_elt_base]));
                 Store(bcx, llbytes,
@@ -322,7 +322,7 @@ pub fn trans_uniq_vstore<'a>(bcx: &'a Block<'a>,
                     let llptrval = C_cstr(bcx.ccx(), (*s).clone());
                     let llptrval = PointerCast(bcx,
                                                llptrval,
-                                               Type::i8p());
+                                               Type::i8p(bcx.ccx()));
                     let llsizeval = C_uint(bcx.ccx(), s.get().len());
                     let typ = ty::mk_str(bcx.tcx(), ty::vstore_uniq);
                     let lldestval = rvalue_scratch_datum(bcx,
@@ -441,7 +441,7 @@ pub fn write_content<'a>(
                     return expr::trans_into(bcx, element, Ignore);
                 }
                 SaveIn(lldest) => {
-                    let count = ty::eval_repeat_count(&bcx.tcx(), count_expr);
+                    let count = ty::eval_repeat_count(bcx.tcx(), count_expr);
                     if count == 0 {
                         return bcx;
                     }
@@ -505,7 +505,7 @@ pub fn elements_required(bcx: &Block, content_expr: &ast::Expr) -> uint {
         },
         ast::ExprVec(ref es, _) => es.len(),
         ast::ExprRepeat(_, count_expr, _) => {
-            ty::eval_repeat_count(&bcx.tcx(), count_expr)
+            ty::eval_repeat_count(bcx.tcx(), count_expr)
         }
         _ => bcx.tcx().sess.span_bug(content_expr.span,
                                      "unexpected vec content")

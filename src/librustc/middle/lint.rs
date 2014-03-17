@@ -427,7 +427,7 @@ struct Context<'a> {
     // Current levels of each lint warning
     cur: SmallIntMap<(level, LintSource)>,
     // context we're checking in (used to access fields like sess)
-    tcx: ty::ctxt,
+    tcx: &'a ty::ctxt,
     // maps from an expression id that corresponds to a method call to the
     // details of the method to be invoked
     method_map: typeck::MethodMap,
@@ -530,7 +530,7 @@ impl<'a> Context<'a> {
         // of what we changed so we can roll everything back after invoking the
         // specified closure
         let mut pushed = 0u;
-        each_lint(self.tcx.sess, attrs, |meta, level, lintname| {
+        each_lint(&self.tcx.sess, attrs, |meta, level, lintname| {
             match self.dict.find_equiv(&lintname) {
                 None => {
                     self.span_lint(
@@ -594,7 +594,7 @@ impl<'a> Context<'a> {
 
 // Check that every lint from the list of attributes satisfies `f`.
 // Return true if that's the case. Otherwise return false.
-pub fn each_lint(sess: session::Session,
+pub fn each_lint(sess: &session::Session,
                  attrs: &[ast::Attribute],
                  f: |@ast::MetaItem, level, InternedString| -> bool)
                  -> bool {
@@ -670,7 +670,7 @@ fn check_while_true_expr(cx: &Context, e: &ast::Expr) {
     }
 }
 impl<'a> AstConv for Context<'a>{
-    fn tcx(&self) -> ty::ctxt { self.tcx }
+    fn tcx<'a>(&'a self) -> &'a ty::ctxt { self.tcx }
 
     fn get_item_ty(&self, id: ast::DefId) -> ty::ty_param_bounds_and_ty {
         ty::lookup_item_type(self.tcx, id)
@@ -795,7 +795,7 @@ fn check_type_limits(cx: &Context, e: &ast::Expr) {
         }
     }
 
-    fn check_limits(tcx: ty::ctxt, binop: ast::BinOp,
+    fn check_limits(tcx: &ty::ctxt, binop: ast::BinOp,
                     l: &ast::Expr, r: &ast::Expr) -> bool {
         let (lit, expr, swap) = match (&l.node, &r.node) {
             (&ast::ExprLit(_), _) => (l, r, true),
@@ -1100,7 +1100,7 @@ fn check_unused_result(cx: &Context, s: &ast::Stmt) {
                     _ => {}
                 }
             } else {
-                csearch::get_item_attrs(cx.tcx.sess.cstore, did, |attrs| {
+                csearch::get_item_attrs(&cx.tcx.sess.cstore, did, |attrs| {
                     if attr::contains_name(attrs.as_slice(), "must_use") {
                         cx.span_lint(UnusedMustUse, s.span,
                                      "unused result which must be used");
@@ -1562,7 +1562,7 @@ fn check_stability(cx: &Context, e: &ast::Expr) {
         let mut s = None;
         // run through all the attributes and take the first
         // stability one.
-        csearch::get_item_attrs(cx.tcx.cstore, id, |meta_items| {
+        csearch::get_item_attrs(&cx.tcx.sess.cstore, id, |meta_items| {
             if s.is_none() {
                 s = attr::find_stability(meta_items.move_iter())
             }
@@ -1749,7 +1749,7 @@ impl<'a> IdVisitingOperation for Context<'a> {
     }
 }
 
-pub fn check_crate(tcx: ty::ctxt,
+pub fn check_crate(tcx: &ty::ctxt,
                    method_map: typeck::MethodMap,
                    exported_items: &privacy::ExportedItems,
                    krate: &ast::Crate) {

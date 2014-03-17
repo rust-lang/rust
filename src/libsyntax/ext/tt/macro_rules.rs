@@ -30,11 +30,11 @@ use util::small_vector::SmallVector;
 use std::cell::RefCell;
 use std::vec_ng::Vec;
 
-struct ParserAnyMacro {
-    parser: RefCell<Parser>,
+struct ParserAnyMacro<'a> {
+    parser: RefCell<Parser<'a>>,
 }
 
-impl ParserAnyMacro {
+impl<'a> ParserAnyMacro<'a> {
     /// Make sure we don't have any tokens left to parse, so we don't
     /// silently drop anything. `allow_semi` is so that "optional"
     /// semilons at the end of normal expressions aren't complained
@@ -57,7 +57,7 @@ impl ParserAnyMacro {
     }
 }
 
-impl AnyMacro for ParserAnyMacro {
+impl<'a> AnyMacro for ParserAnyMacro<'a> {
     fn make_expr(&self) -> @ast::Expr {
         let ret = {
             let mut parser = self.parser.borrow_mut();
@@ -131,13 +131,11 @@ fn generic_extension(cx: &ExtCtxt,
     let mut best_fail_spot = DUMMY_SP;
     let mut best_fail_msg = ~"internal error: ran no matchers";
 
-    let s_d = cx.parse_sess().span_diagnostic;
-
     for (i, lhs) in lhses.iter().enumerate() { // try each arm's matchers
         match **lhs {
           MatchedNonterminal(NtMatchers(ref mtcs)) => {
             // `None` is because we're not interpolating
-            let arg_rdr = new_tt_reader(s_d,
+            let arg_rdr = new_tt_reader(&cx.parse_sess().span_diagnostic,
                                         None,
                                         arg.iter()
                                            .map(|x| (*x).clone())
@@ -162,7 +160,8 @@ fn generic_extension(cx: &ExtCtxt,
                     _ => cx.span_bug(sp, "bad thing in rhs")
                 };
                 // rhs has holes ( `$id` and `$(...)` that need filled)
-                let trncbr = new_tt_reader(s_d, Some(named_matches),
+                let trncbr = new_tt_reader(&cx.parse_sess().span_diagnostic,
+                                           Some(named_matches),
                                            rhs);
                 let p = Parser(cx.parse_sess(), cx.cfg(), ~trncbr);
                 // Let the context choose how to interpret the result.
@@ -218,7 +217,7 @@ pub fn add_new_extension(cx: &mut ExtCtxt,
 
 
     // Parse the macro_rules! invocation (`none` is for no interpolations):
-    let arg_reader = new_tt_reader(cx.parse_sess().span_diagnostic,
+    let arg_reader = new_tt_reader(&cx.parse_sess().span_diagnostic,
                                    None,
                                    arg.clone());
     let argument_map = parse_or_else(cx.parse_sess(),

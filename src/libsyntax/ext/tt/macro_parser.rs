@@ -170,9 +170,9 @@ pub enum NamedMatch {
     MatchedNonterminal(Nonterminal)
 }
 
-pub fn nameize(p_s: @ParseSess, ms: &[Matcher], res: &[@NamedMatch])
+pub fn nameize(p_s: &ParseSess, ms: &[Matcher], res: &[@NamedMatch])
             -> HashMap<Ident, @NamedMatch> {
-    fn n_rec(p_s: @ParseSess, m: &Matcher, res: &[@NamedMatch],
+    fn n_rec(p_s: &ParseSess, m: &Matcher, res: &[@NamedMatch],
              ret_val: &mut HashMap<Ident, @NamedMatch>) {
         match *m {
           codemap::Spanned {node: MatchTok(_), .. } => (),
@@ -205,7 +205,7 @@ pub enum ParseResult {
     Error(codemap::Span, ~str)
 }
 
-pub fn parse_or_else<R: Reader>(sess: @ParseSess,
+pub fn parse_or_else<R: Reader>(sess: &ParseSess,
                                 cfg: ast::CrateConfig,
                                 rdr: R,
                                 ms: Vec<Matcher> )
@@ -227,7 +227,7 @@ pub fn token_name_eq(t1 : &Token, t2 : &Token) -> bool {
     }
 }
 
-pub fn parse<R: Reader>(sess: @ParseSess,
+pub fn parse<R: Reader>(sess: &ParseSess,
                         cfg: ast::CrateConfig,
                         rdr: R,
                         ms: &[Matcher])

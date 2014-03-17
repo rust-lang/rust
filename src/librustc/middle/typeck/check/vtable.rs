@@ -66,12 +66,12 @@ use syntax::visit::Visitor;
 /// A vtable context includes an inference context, a crate context, and a
 /// callback function to call in case of type error.
 pub struct VtableContext<'a> {
-    infcx: &'a infer::InferCtxt,
+    infcx: &'a infer::InferCtxt<'a>,
     param_env: &'a ty::ParameterEnvironment,
 }
 
 impl<'a> VtableContext<'a> {
-    pub fn tcx(&self) -> ty::ctxt { self.infcx.tcx }
+    pub fn tcx(&self) -> &'a ty::ctxt { self.infcx.tcx }
 }
 
 fn has_trait_bounds(type_param_defs: &[ty::TypeParameterDef]) -> bool {
@@ -726,7 +726,7 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
     }
 }
 
-pub fn resolve_impl(tcx: ty::ctxt,
+pub fn resolve_impl(tcx: &ty::ctxt,
                     impl_item: &ast::Item,
                     impl_generics: &ty::Generics,
                     impl_trait_ref: &ty::TraitRef) {
@@ -783,7 +783,7 @@ pub fn resolve_impl(tcx: ty::ctxt,
 
 /// Resolve vtables for a method call after typeck has finished.
 /// Used by trans to monomorphize artificial method callees (e.g. drop).
-pub fn trans_resolve_method(tcx: ty::ctxt, id: ast::NodeId,
+pub fn trans_resolve_method(tcx: &ty::ctxt, id: ast::NodeId,
                             substs: &ty::substs) -> Option<vtable_res> {
     let generics = ty::lookup_item_type(tcx, ast_util::local_def(id)).generics;
     let type_param_defs = generics.type_param_defs.deref();
@@ -803,7 +803,7 @@ pub fn trans_resolve_method(tcx: ty::ctxt, id: ast::NodeId,
     }
 }
 
-impl<'a> visit::Visitor<()> for &'a FnCtxt {
+impl<'a, 'b> visit::Visitor<()> for &'a FnCtxt<'b> {
     fn visit_expr(&mut self, ex: &ast::Expr, _: ()) {
         early_resolve_expr(ex, *self, false);
         visit::walk_expr(self, ex, ());

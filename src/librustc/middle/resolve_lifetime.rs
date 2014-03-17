@@ -17,8 +17,7 @@
  * way. Therefore we break lifetime name resolution into a separate pass.
  */
 
-use driver::session;
-use std::cell::RefCell;
+use driver::session::Session;
 use std::vec_ng::Vec;
 use util::nodemap::NodeMap;
 use syntax::ast;
@@ -40,9 +39,9 @@ fn lifetime_show(lt_name: &ast::Name) -> token::InternedString {
     token::get_name(*lt_name)
 }
 
-struct LifetimeContext {
-    sess: session::Session,
-    named_region_map: @RefCell<NamedRegionMap>,
+struct LifetimeContext<'a> {
+    sess: &'a Session,
+    named_region_map: NamedRegionMap,
 }
 
 enum ScopeChain<'a> {
@@ -60,18 +59,17 @@ enum ScopeChain<'a> {
 
 type Scope<'a> = &'a ScopeChain<'a>;
 
-pub fn krate(sess: session::Session, krate: &ast::Crate)
-             -> @RefCell<NamedRegionMap> {
+pub fn krate(sess: &Session, krate: &ast::Crate) -> NamedRegionMap {
     let mut ctxt = LifetimeContext {
         sess: sess,
-        named_region_map: @RefCell::new(NodeMap::new())
+        named_region_map: NodeMap::new()
     };
     visit::walk_crate(&mut ctxt, krate, &RootScope);
     sess.abort_if_errors();
     ctxt.named_region_map
 }
 
-impl<'a> Visitor<Scope<'a>> for LifetimeContext {
+impl<'a, 'b> Visitor<Scope<'a>> for LifetimeContext<'b> {
     fn visit_item(&mut self,
                   item: &ast::Item,
                   _: Scope<'a>) {
@@ -181,7 +179,7 @@ impl<'a> ScopeChain<'a> {
     }
 }
 
-impl LifetimeContext {
+impl<'a> LifetimeContext<'a> {
     /// Visits self by adding a scope and handling recursive walk over the contents with `walk`.
     fn visit_fn_decl(&mut self,
                      n: ast::NodeId,
@@ -237,7 +235,7 @@ impl LifetimeContext {
         debug!("popping fn scope id={} due to fn item/method", n);
     }
 
-    fn resolve_lifetime_ref(&self,
+    fn resolve_lifetime_ref(&mut self,
                             lifetime_ref: &ast::Lifetime,
                             scope: Scope) {
         // Walk up the scope chain, tracking the number of fn scopes
@@ -293,7 +291,7 @@ impl LifetimeContext {
         self.unresolved_lifetime_ref(lifetime_ref);
     }
 
-    fn resolve_free_lifetime_ref(&self,
+    fn resolve_free_lifetime_ref(&mut self,
                                  scope_id: ast::NodeId,
                                  lifetime_ref: &ast::Lifetime,
                                  scope: Scope) {
@@ -374,7 +372,7 @@ impl LifetimeContext {
         }
     }
 
-    fn insert_lifetime(&self,
+    fn insert_lifetime(&mut self,
                        lifetime_ref: &ast::Lifetime,
                        def: ast::DefRegion) {
         if lifetime_ref.id == ast::DUMMY_NODE_ID {
@@ -387,8 +385,7 @@ impl LifetimeContext {
                 lifetime_to_str(lifetime_ref),
                 lifetime_ref.id,
                 def);
-        let mut named_region_map = self.named_region_map.borrow_mut();
-        named_region_map.get().insert(lifetime_ref.id, def);
+        self.named_region_map.insert(lifetime_ref.id, def);
     }
 }
 

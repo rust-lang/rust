@@ -86,11 +86,11 @@ pub fn trans_inline_asm<'a>(bcx: &'a Block<'a>, ia: &ast::InlineAsm)
 
     // Depending on how many outputs we have, the return type is different
     let output_type = if num_outputs == 0 {
-        Type::void()
+        Type::void(bcx.ccx())
     } else if num_outputs == 1 {
         *output_types.get(0)
     } else {
-        Type::struct_(output_types.as_slice(), false)
+        Type::struct_(bcx.ccx(), output_types.as_slice(), false)
     };
 
     let dialect = match ia.dialect {

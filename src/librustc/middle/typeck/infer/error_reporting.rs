@@ -150,7 +150,7 @@ trait ErrorReportingHelpers {
                                 generics: ast::Generics);
 }
 
-impl ErrorReporting for InferCtxt {
+impl<'a> ErrorReporting for InferCtxt<'a> {
     fn report_region_errors(&self,
                             errors: &OptVec<RegionResolutionError>) {
         let p_errors = self.process_errors(errors);
@@ -255,7 +255,7 @@ impl ErrorReporting for InferCtxt {
             scope_id: ast::NodeId
         }
 
-        fn free_regions_from_same_fn(tcx: ty::ctxt,
+        fn free_regions_from_same_fn(tcx: &ty::ctxt,
                                      sub: Region,
                                      sup: Region)
                                      -> Option<FreeRegionsFromSameFn> {
@@ -672,7 +672,7 @@ impl ErrorReporting for InferCtxt {
 }
 
 struct Rebuilder<'a> {
-    tcx: ty::ctxt,
+    tcx: &'a ty::ctxt,
     fn_decl: ast::P<ast::FnDecl>,
     generics: &'a ast::Generics,
     same_regions: &'a [SameRegions],
@@ -682,7 +682,7 @@ struct Rebuilder<'a> {
 }
 
 impl<'a> Rebuilder<'a> {
-    fn new(tcx: ty::ctxt,
+    fn new(tcx: &'a ty::ctxt,
            fn_decl: ast::P<ast::FnDecl>,
            generics: &'a ast::Generics,
            same_regions: &'a [SameRegions])
@@ -1006,7 +1006,7 @@ impl<'a> Rebuilder<'a> {
     }
 }
 
-impl ErrorReportingHelpers for InferCtxt {
+impl<'a> ErrorReportingHelpers for InferCtxt<'a> {
     fn give_expl_lifetime_param(&self,
                                 inputs: Vec<ast::Arg>,
                                 output: ast::P<ast::Ty>,

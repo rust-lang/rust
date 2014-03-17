@@ -15,7 +15,6 @@ use std::cmp;
 use lib::llvm::{llvm, Integer, Pointer, Float, Double, Struct, Array};
 use lib::llvm::StructRetAttribute;
 use middle::trans::context::CrateContext;
-use middle::trans::context::task_llcx;
 use middle::trans::cabi::*;
 use middle::trans::type_::Type;
 
@@ -94,7 +93,7 @@ fn classify_ret_ty(ty: Type) -> ArgType {
     }
 }
 
-fn classify_arg_ty(ty: Type, offset: &mut uint) -> ArgType {
+fn classify_arg_ty(ccx: &CrateContext, ty: Type, offset: &mut uint) -> ArgType {
     let orig_offset = *offset;
     let size = ty_size(ty) * 8;
     let mut align = ty_align(ty);
@@ -108,8 +107,8 @@ fn classify_arg_ty(ty: Type, offset: &mut uint) -> ArgType {
     } else {
         ArgType::direct(
             ty,
-            Some(struct_ty(ty)),
-            padding_ty(align, orig_offset),
+            Some(struct_ty(ccx, ty)),
+            padding_ty(ccx, align, orig_offset),
             None
         )
     }
@@ -125,16 +124,16 @@ fn is_reg_ty(ty: Type) -> bool {
     };
 }
 
-fn padding_ty(align: uint, offset: uint) -> Option<Type> {
+fn padding_ty(ccx: &CrateContext, align: uint, offset: uint) -> Option<Type> {
     if ((align - 1 ) & offset) > 0 {
-        return Some(Type::i32());
+        Some(Type::i32(ccx))
+    } else {
+        None
     }
-
-    return None;
 }
 
-fn coerce_to_int(size: uint) -> Vec<Type> {
-    let int_ty = Type::i32();
+fn coerce_to_int(ccx: &CrateContext, size: uint) -> Vec<Type> {
+    let int_ty = Type::i32(ccx);
     let mut args = Vec::new();
 
     let mut n = size / 32;
@@ -146,27 +145,26 @@ fn coerce_to_int(size: uint) -> Vec<Type> {
     let r = size % 32;
     if r > 0 {
         unsafe {
-            args.push(Type::from_ref(llvm::LLVMIntTypeInContext(task_llcx(), r as c_uint)));
+            args.push(Type::from_ref(llvm::LLVMIntTypeInContext(ccx.llcx, r as c_uint)));
         }
     }
 
     args
 }
 
-fn struct_ty(ty: Type) -> Type {
+fn struct_ty(ccx: &CrateContext, ty: Type) -> Type {
     let size = ty_size(ty) * 8;
-    let fields = coerce_to_int(size);
-    return Type::struct_(fields.as_slice(), false);
+    Type::struct_(ccx, coerce_to_int(ccx, size).as_slice(), false)
 }
 
-pub fn compute_abi_info(_ccx: &CrateContext,
+pub fn compute_abi_info(ccx: &CrateContext,
                         atys: &[Type],
                         rty: Type,
                         ret_def: bool) -> FnType {
     let ret_ty = if ret_def {
         classify_ret_ty(rty)
     } else {
-        ArgType::direct(Type::void(), None, None, None)
+        ArgType::direct(Type::void(ccx), None, None, None)
     };
 
     let sret = ret_ty.is_indirect();
@@ -174,7 +172,7 @@ pub fn compute_abi_info(_ccx: &CrateContext,
     let mut offset = if sret { 4 } else { 0 };
 
     for aty in atys.iter() {
-        let ty = classify_arg_ty(*aty, &mut offset);
+        let ty = classify_arg_ty(ccx, *aty, &mut offset);
         arg_tys.push(ty);
     };
 
