@@ -284,8 +284,8 @@ struct ParsedItemsAndViewItems {
 
 /* ident is handled by common.rs */
 
-pub fn Parser(sess: @ParseSess, cfg: ast::CrateConfig, rdr: ~Reader:)
-              -> Parser {
+pub fn Parser<'a>(sess: &'a ParseSess, cfg: ast::CrateConfig, rdr: ~Reader:)
+              -> Parser<'a> {
     let tok0 = rdr.next_token();
     let span = tok0.sp;
     let placeholder = TokenAndSpan {
@@ -320,8 +320,8 @@ pub fn Parser(sess: @ParseSess, cfg: ast::CrateConfig, rdr: ~Reader:)
     }
 }
 
-pub struct Parser {
-    sess: @ParseSess,
+pub struct Parser<'a> {
+    sess: &'a ParseSess,
     cfg: CrateConfig,
     // the current token:
     token: token::Token,
@@ -354,7 +354,7 @@ fn is_plain_ident_or_underscore(t: &token::Token) -> bool {
     is_plain_ident(t) || *t == token::UNDERSCORE
 }
 
-impl Parser {
+impl<'a> Parser<'a> {
     // convert a token to a string using self's reader
     pub fn token_to_str(token: &token::Token) -> ~str {
         token::to_str(token)
@@ -4150,7 +4150,7 @@ impl Parser {
                     outer_attrs: &[ast::Attribute],
                     id_sp: Span)
                     -> (ast::Item_, Vec<ast::Attribute> ) {
-        let mut prefix = Path::new(self.sess.cm.span_to_filename(self.span));
+        let mut prefix = Path::new(self.sess.span_diagnostic.cm.span_to_filename(self.span));
         prefix.pop();
         let mod_path = Path::new(".").join_many(self.mod_path_stack.as_slice());
         let dir_path = prefix.join(&mod_path);

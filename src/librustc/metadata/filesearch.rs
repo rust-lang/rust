@@ -11,7 +11,6 @@
 #[allow(non_camel_case_types)];
 
 use std::cell::RefCell;
-use std::option;
 use std::os;
 use std::io::fs;
 use std::vec_ng::Vec;
@@ -27,13 +26,13 @@ pub enum FileMatch { FileMatches, FileDoesntMatch }
 /// a file found in that directory.
 pub type pick<'a> = 'a |path: &Path| -> FileMatch;
 
-pub struct FileSearch {
-    sysroot: @Path,
-    addl_lib_search_paths: @RefCell<HashSet<Path>>,
-    target_triple: ~str
+pub struct FileSearch<'a> {
+    sysroot: &'a Path,
+    addl_lib_search_paths: &'a RefCell<HashSet<Path>>,
+    target_triple: &'a str
 }
 
-impl FileSearch {
+impl<'a> FileSearch<'a> {
     pub fn for_each_lib_search_path(&self, f: |&Path| -> FileMatch) {
         let mut visited_dirs = HashSet::new();
         let mut found = false;
@@ -127,15 +126,14 @@ impl FileSearch {
         });
     }
 
-    pub fn new(maybe_sysroot: &Option<@Path>,
-               target_triple: &str,
-               addl_lib_search_paths: @RefCell<HashSet<Path>>) -> FileSearch {
-        let sysroot = get_sysroot(maybe_sysroot);
+    pub fn new(sysroot: &'a Path,
+               target_triple: &'a str,
+               addl_lib_search_paths: &'a RefCell<HashSet<Path>>) -> FileSearch<'a> {
         debug!("using sysroot = {}", sysroot.display());
-        FileSearch{
+        FileSearch {
             sysroot: sysroot,
             addl_lib_search_paths: addl_lib_search_paths,
-            target_triple: target_triple.to_owned()
+            target_triple: target_triple
         }
     }
 }
@@ -179,15 +177,8 @@ pub fn get_or_default_sysroot() -> Path {
     }
 
     match canonicalize(os::self_exe_name()) {
-      option::Some(p) => { let mut p = p; p.pop(); p.pop(); p }
-      option::None => fail!("can't determine value for sysroot")
-    }
-}
-
-fn get_sysroot(maybe_sysroot: &Option<@Path>) -> @Path {
-    match *maybe_sysroot {
-      option::Some(sr) => sr,
-      option::None => @get_or_default_sysroot()
+        Some(mut p) => { p.pop(); p.pop(); p }
+        None => fail!("can't determine value for sysroot")
     }
 }
 

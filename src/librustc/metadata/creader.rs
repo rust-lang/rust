@@ -39,7 +39,7 @@ use syntax::visit;
 
 // Traverses an AST, reading all the information about use'd crates and extern
 // libraries necessary for later resolving, typechecking, linking, etc.
-pub fn read_crates(sess: Session,
+pub fn read_crates(sess: &Session,
                    krate: &ast::Crate,
                    os: loader::Os,
                    intr: @IdentInterner) {
@@ -51,12 +51,7 @@ pub fn read_crates(sess: Session,
         intr: intr
     };
     visit_crate(&e, krate);
-    {
-        let mut v = ReadCrateVisitor {
-            e: &mut e
-        };
-        visit::walk_crate(&mut v, krate, ());
-    }
+    visit::walk_crate(&mut e, krate, ());
     let crate_cache = e.crate_cache.borrow();
     dump_crates(crate_cache.get().as_slice());
     warn_if_multiple_versions(&mut e,
@@ -64,17 +59,13 @@ pub fn read_crates(sess: Session,
                               crate_cache.get().as_slice());
 }
 
-struct ReadCrateVisitor<'a> {
-    e: &'a mut Env,
-}
-
-impl<'a> visit::Visitor<()> for ReadCrateVisitor<'a> {
+impl<'a> visit::Visitor<()> for Env<'a> {
     fn visit_view_item(&mut self, a: &ast::ViewItem, _: ()) {
-        visit_view_item(self.e, a);
+        visit_view_item(self, a);
         visit::walk_view_item(self, a, ());
     }
     fn visit_item(&mut self, a: &ast::Item, _: ()) {
-        visit_item(self.e, a);
+        visit_item(self, a);
         visit::walk_item(self, a, ());
     }
 }
@@ -97,7 +88,7 @@ fn dump_crates(crate_cache: &[cache_entry]) {
 }
 
 fn warn_if_multiple_versions(e: &mut Env,
-                             diag: @SpanHandler,
+                             diag: &SpanHandler,
                              crate_cache: &[cache_entry]) {
     if crate_cache.len() != 0u {
         let name = crate_cache[crate_cache.len() - 1].crate_id.name.clone();
@@ -120,8 +111,8 @@ fn warn_if_multiple_versions(e: &mut Env,
     }
 }
 
-struct Env {
-    sess: Session,
+struct Env<'a> {
+    sess: &'a Session,
     os: loader::Os,
     crate_cache: @RefCell<Vec<cache_entry>>,
     next_crate_num: ast::CrateNum,
@@ -129,12 +120,10 @@ struct Env {
 }
 
 fn visit_crate(e: &Env, c: &ast::Crate) {
-    let cstore = e.sess.cstore;
-
     for a in c.attrs.iter().filter(|m| m.name().equiv(&("link_args"))) {
         match a.value_str() {
-          Some(ref linkarg) => cstore.add_used_link_args(linkarg.get()),
-          None => { /* fallthrough */ }
+            Some(ref linkarg) => e.sess.cstore.add_used_link_args(linkarg.get()),
+            None => { /* fallthrough */ }
         }
     }
 }
@@ -204,7 +193,6 @@ fn visit_item(e: &Env, i: &ast::Item) {
             }
 
             // First, add all of the custom link_args attributes
-            let cstore = e.sess.cstore;
             let link_args = i.attrs.iter()
                 .filter_map(|at| if at.name().equiv(&("link_args")) {
                     Some(at)
@@ -214,13 +202,12 @@ fn visit_item(e: &Env, i: &ast::Item) {
                 .to_owned_vec();
             for m in link_args.iter() {
                 match m.value_str() {
-                    Some(linkarg) => cstore.add_used_link_args(linkarg.get()),
+                    Some(linkarg) => e.sess.cstore.add_used_link_args(linkarg.get()),
                     None => { /* fallthrough */ }
                 }
             }
 
             // Next, process all of the #[link(..)]-style arguments
-            let cstore = e.sess.cstore;
             let link_args = i.attrs.iter()
                 .filter_map(|at| if at.name().equiv(&("link")) {
                     Some(at)
@@ -269,7 +256,7 @@ fn visit_item(e: &Env, i: &ast::Item) {
                         if n.get().is_empty() {
                             e.sess.span_err(m.span, "#[link(name = \"\")] given with empty name");
                         } else {
-                            cstore.add_used_library(n.get().to_owned(), kind);
+                            e.sess.cstore.add_used_library(n.get().to_owned(), kind);
                         }
                     }
                     None => {}
@@ -353,18 +340,15 @@ fn resolve_crate(e: &mut Env,
                 cnum: cnum
             };
 
-            let cstore = e.sess.cstore;
-            cstore.set_crate_data(cnum, cmeta);
-            cstore.add_used_crate_source(cstore::CrateSource {
+            e.sess.cstore.set_crate_data(cnum, cmeta);
+            e.sess.cstore.add_used_crate_source(cstore::CrateSource {
                 dylib: dylib,
                 rlib: rlib,
                 cnum: cnum,
             });
-            return cnum;
+            cnum
         }
-        Some(cnum) => {
-            return cnum;
-        }
+        Some(cnum) => cnum
     }
 }
 
@@ -391,12 +375,12 @@ fn resolve_crate_deps(e: &mut Env,
     return @RefCell::new(cnum_map);
 }
 
-pub struct Loader {
-    priv env: Env,
+pub struct Loader<'a> {
+    priv env: Env<'a>,
 }
 
-impl Loader {
-    pub fn new(sess: Session) -> Loader {
+impl<'a> Loader<'a> {
+    pub fn new(sess: &'a Session) -> Loader<'a> {
         let os = driver::get_os(driver::host_triple()).unwrap();
         let os = session::sess_os_to_meta_os(os);
         Loader {
@@ -411,7 +395,7 @@ impl Loader {
     }
 }
 
-impl CrateLoader for Loader {
+impl<'a> CrateLoader for Loader<'a> {
     fn load_crate(&mut self, krate: &ast::ViewItem) -> MacroCrate {
         let info = extract_crate_info(&self.env, krate).unwrap();
         let cnum = resolve_crate(&mut self.env, None, info.ident,
@@ -424,12 +408,12 @@ impl CrateLoader for Loader {
     }
 
     fn get_exported_macros(&mut self, cnum: ast::CrateNum) -> Vec<~str> {
-        csearch::get_exported_macros(self.env.sess.cstore, cnum).move_iter()
-                                                                .collect()
+        csearch::get_exported_macros(&self.env.sess.cstore, cnum).move_iter()
+                                                                 .collect()
     }
 
     fn get_registrar_symbol(&mut self, cnum: ast::CrateNum) -> Option<~str> {
-        let cstore = self.env.sess.cstore;
+        let cstore = &self.env.sess.cstore;
         csearch::get_macro_registrar_fn(cstore, cnum)
             .map(|did| csearch::get_symbol(cstore, did))
     }

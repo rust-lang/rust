@@ -291,7 +291,7 @@ fn classify_ty(ty: Type) -> Vec<RegClass> {
     return cls;
 }
 
-fn llreg_ty(cls: &[RegClass]) -> Type {
+fn llreg_ty(ccx: &CrateContext, cls: &[RegClass]) -> Type {
     fn llvec_len(cls: &[RegClass]) -> uint {
         let mut len = 1u;
         for c in cls.iter() {
@@ -309,33 +309,34 @@ fn llreg_ty(cls: &[RegClass]) -> Type {
     while i < e {
         match cls[i] {
             Int => {
-                tys.push(Type::i64());
+                tys.push(Type::i64(ccx));
             }
             SSEFv => {
                 let vec_len = llvec_len(cls.tailn(i + 1u));
-                let vec_ty = Type::vector(&Type::f32(), (vec_len * 2u) as u64);
+                let vec_ty = Type::vector(&Type::f32(ccx), (vec_len * 2u) as u64);
                 tys.push(vec_ty);
                 i += vec_len;
                 continue;
             }
             SSEFs => {
-                tys.push(Type::f32());
+                tys.push(Type::f32(ccx));
             }
             SSEDs => {
-                tys.push(Type::f64());
+                tys.push(Type::f64(ccx));
             }
             _ => fail!("llregtype: unhandled class")
         }
         i += 1u;
     }
-    return Type::struct_(tys.as_slice(), false);
+    return Type::struct_(ccx, tys.as_slice(), false);
 }
 
-pub fn compute_abi_info(_ccx: &CrateContext,
+pub fn compute_abi_info(ccx: &CrateContext,
                         atys: &[Type],
                         rty: Type,
                         ret_def: bool) -> FnType {
-    fn x86_64_ty(ty: Type,
+    fn x86_64_ty(ccx: &CrateContext,
+                 ty: Type,
                  is_mem_cls: |cls: &[RegClass]| -> bool,
                  attr: Attribute)
                  -> ArgType {
@@ -345,7 +346,7 @@ pub fn compute_abi_info(_ccx: &CrateContext,
                 ArgType::indirect(ty, Some(attr))
             } else {
                 ArgType::direct(ty,
-                                Some(llreg_ty(cls.as_slice())),
+                                Some(llreg_ty(ccx, cls.as_slice())),
                                 None,
                                 None)
             }
@@ -356,14 +357,14 @@ pub fn compute_abi_info(_ccx: &CrateContext,
 
     let mut arg_tys = Vec::new();
     for t in atys.iter() {
-        let ty = x86_64_ty(*t, |cls| cls.is_pass_byval(), ByValAttribute);
+        let ty = x86_64_ty(ccx, *t, |cls| cls.is_pass_byval(), ByValAttribute);
         arg_tys.push(ty);
     }
 
     let ret_ty = if ret_def {
-        x86_64_ty(rty, |cls| cls.is_ret_bysret(), StructRetAttribute)
+        x86_64_ty(ccx, rty, |cls| cls.is_ret_bysret(), StructRetAttribute)
     } else {
-        ArgType::direct(Type::void(), None, None, None)
+        ArgType::direct(Type::void(ccx), None, None, None)
     };
 
     return FnType {

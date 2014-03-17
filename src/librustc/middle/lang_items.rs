@@ -103,27 +103,23 @@ impl LanguageItems {
     )*
 }
 
-struct LanguageItemCollector {
+struct LanguageItemCollector<'a> {
     items: LanguageItems,
 
-    session: Session,
+    session: &'a Session,
 
     item_refs: HashMap<&'static str, uint>,
 }
 
-struct LanguageItemVisitor<'a> {
-    this: &'a mut LanguageItemCollector,
-}
-
-impl<'a> Visitor<()> for LanguageItemVisitor<'a> {
+impl<'a> Visitor<()> for LanguageItemCollector<'a> {
     fn visit_item(&mut self, item: &ast::Item, _: ()) {
         match extract(item.attrs.as_slice()) {
             Some(value) => {
-                let item_index = self.this.item_refs.find_equiv(&value).map(|x| *x);
+                let item_index = self.item_refs.find_equiv(&value).map(|x| *x);
 
                 match item_index {
                     Some(item_index) => {
-                        self.this.collect_item(item_index, local_def(item.id))
+                        self.collect_item(item_index, local_def(item.id))
                     }
                     None => {}
                 }
@@ -135,8 +131,8 @@ impl<'a> Visitor<()> for LanguageItemVisitor<'a> {
     }
 }
 
-impl LanguageItemCollector {
-    pub fn new(session: Session) -> LanguageItemCollector {
+impl<'a> LanguageItemCollector<'a> {
+    pub fn new(session: &'a Session) -> LanguageItemCollector<'a> {
         let mut item_refs = HashMap::new();
 
         $( item_refs.insert($name, $variant as uint); )*
@@ -165,12 +161,11 @@ impl LanguageItemCollector {
     }
 
     pub fn collect_local_language_items(&mut self, krate: &ast::Crate) {
-        let mut v = LanguageItemVisitor { this: self };
-        visit::walk_crate(&mut v, krate, ());
+        visit::walk_crate(self, krate, ());
     }
 
     pub fn collect_external_language_items(&mut self) {
-        let crate_store = self.session.cstore;
+        let crate_store = &self.session.cstore;
         crate_store.iter_crate_data(|crate_number, _crate_metadata| {
             each_lang_item(crate_store, crate_number, |node_id, item_index| {
                 let def_id = ast::DefId { krate: crate_number, node: node_id };
@@ -200,7 +195,7 @@ pub fn extract(attrs: &[ast::Attribute]) -> Option<InternedString> {
 }
 
 pub fn collect_language_items(krate: &ast::Crate,
-                              session: Session) -> @LanguageItems {
+                              session: &Session) -> @LanguageItems {
     let mut collector = LanguageItemCollector::new(session);
     collector.collect(krate);
     let LanguageItemCollector { items, .. } = collector;

@@ -789,7 +789,7 @@ fn namespace_error_to_str(ns: NamespaceError) -> &'static str {
     }
 }
 
-fn Resolver<'a>(session: Session,
+fn Resolver<'a>(session: &'a Session,
             lang_items: @LanguageItems,
             crate_span: Span,
             krate:&'a ast::Crate) -> Resolver<'a> {
@@ -805,7 +805,7 @@ fn Resolver<'a>(session: Session,
     let current_module = graph_root.get_module();
 
     let this = Resolver {
-        session: @session,
+        session: session,
         lang_items: lang_items,
 
         // The outermost module has def ID 0; this is not reflected in the
@@ -848,7 +848,7 @@ fn Resolver<'a>(session: Session,
 
 /// The main resolver class.
 struct Resolver<'a> {
-    session: @Session,
+    session: &'a Session,
     lang_items: @LanguageItems,
 
     graph_root: @NameBindings,
@@ -902,11 +902,11 @@ struct Resolver<'a> {
     used_imports: HashSet<(NodeId, Namespace)>,
 }
 
-struct BuildReducedGraphVisitor<'a,'r> {
-    resolver: &'a mut Resolver<'r>,
+struct BuildReducedGraphVisitor<'a, 'b> {
+    resolver: &'a mut Resolver<'b>,
 }
 
-impl<'a,'r> Visitor<ReducedGraphParent> for BuildReducedGraphVisitor<'a,'r> {
+impl<'a, 'b> Visitor<ReducedGraphParent> for BuildReducedGraphVisitor<'a, 'b> {
 
     fn visit_item(&mut self, item: &Item, context: ReducedGraphParent) {
         let p = self.resolver.build_reduced_graph_for_item(item, context);
@@ -934,18 +934,18 @@ impl<'a,'r> Visitor<ReducedGraphParent> for BuildReducedGraphVisitor<'a,'r> {
 
 }
 
-struct UnusedImportCheckVisitor<'a,'r> { resolver: &'a mut Resolver<'r> }
+struct UnusedImportCheckVisitor<'a, 'b> { resolver: &'a mut Resolver<'b> }
 
-impl<'a,'r> Visitor<()> for UnusedImportCheckVisitor<'a,'r> {
+impl<'a, 'b> Visitor<()> for UnusedImportCheckVisitor<'a, 'b> {
     fn visit_view_item(&mut self, vi: &ViewItem, _: ()) {
         self.resolver.check_for_item_unused_imports(vi);
         visit::walk_view_item(self, vi, ());
     }
 }
 
-impl<'r> Resolver<'r> {
+impl<'a> Resolver<'a> {
     /// The main name resolution procedure.
-    fn resolve(&mut self, krate: &'r ast::Crate) {
+    fn resolve(&mut self, krate: &'a ast::Crate) {
         self.resolver_krate = krate;
         self.build_reduced_graph(krate);
         self.session.abort_if_errors();
@@ -1697,11 +1697,11 @@ impl<'r> Resolver<'r> {
               // to the trait info.
 
               let method_def_ids =
-                csearch::get_trait_method_def_ids(self.session.cstore, def_id);
+                csearch::get_trait_method_def_ids(&self.session.cstore, def_id);
               let mut interned_method_names = HashSet::new();
               for &method_def_id in method_def_ids.iter() {
                   let (method_name, explicit_self) =
-                      csearch::get_method_name_and_explicit_self(self.session.cstore,
+                      csearch::get_method_name_and_explicit_self(&self.session.cstore,
                                                                  method_def_id);
 
                   debug!("(building reduced graph for \
@@ -1750,7 +1750,7 @@ impl<'r> Resolver<'r> {
                     crate) building type and value for {}",
                    final_ident);
             child_name_bindings.define_type(def, DUMMY_SP, is_public);
-            if csearch::get_struct_fields(self.session.cstore, def_id).len() == 0 {
+            if csearch::get_struct_fields(&self.session.cstore, def_id).len() == 0 {
                 child_name_bindings.define_value(def, DUMMY_SP, is_public);
             }
             self.structs.insert(def_id);
@@ -1782,7 +1782,7 @@ impl<'r> Resolver<'r> {
                     DefForeignMod(def_id) => {
                         // Foreign modules have no names. Recur and populate
                         // eagerly.
-                        csearch::each_child_of_item(self.session.cstore,
+                        csearch::each_child_of_item(&self.session.cstore,
                                                     def_id,
                                                     |def_like,
                                                      child_ident,
@@ -1812,11 +1812,11 @@ impl<'r> Resolver<'r> {
             }
             DlImpl(def) => {
                 // We only process static methods of impls here.
-                match csearch::get_type_name_if_impl(self.session.cstore, def) {
+                match csearch::get_type_name_if_impl(&self.session.cstore, def) {
                     None => {}
                     Some(final_ident) => {
                         let static_methods_opt =
-                            csearch::get_static_methods_if_impl(self.session.cstore, def);
+                            csearch::get_static_methods_if_impl(&self.session.cstore, def);
                         match static_methods_opt {
                             Some(ref static_methods) if
                                 static_methods.len() >= 1 => {
@@ -1917,7 +1917,7 @@ impl<'r> Resolver<'r> {
             Some(def_id) => def_id,
         };
 
-        csearch::each_child_of_item(self.session.cstore,
+        csearch::each_child_of_item(&self.session.cstore,
                                     def_id,
                                     |def_like, child_ident, visibility| {
             debug!("(populating external module) ... found ident: {}",
@@ -1943,7 +1943,7 @@ impl<'r> Resolver<'r> {
     /// crate.
     fn build_reduced_graph_for_external_crate(&mut self,
                                               root: @Module) {
-        csearch::each_top_level_item_of_crate(self.session.cstore,
+        csearch::each_top_level_item_of_crate(&self.session.cstore,
                                               root.def_id
                                                   .get()
                                                   .unwrap()
@@ -3282,7 +3282,7 @@ impl<'r> Resolver<'r> {
         let import_count = imports.get().len();
         if index != import_count {
             let sn = self.session
-                         .codemap
+                         .codemap()
                          .span_to_snippet(imports.get().get(index).span)
                          .unwrap();
             if sn.contains("::") {
@@ -5459,7 +5459,7 @@ impl<'r> Resolver<'r> {
     // public or private item, we will check the correct thing, dependent on how the import
     // is used.
     fn finalize_import(&mut self, id: NodeId, span: Span) {
-        debug!("finalizing import uses for {}", self.session.codemap.span_to_snippet(span));
+        debug!("finalizing import uses for {}", self.session.codemap().span_to_snippet(span));
 
         if !self.used_imports.contains(&(id, TypeNS)) &&
            !self.used_imports.contains(&(id, ValueNS)) {
@@ -5592,7 +5592,7 @@ impl<'r> Resolver<'r> {
 
     fn find_suggestions_from_other_scopes(&self, path:&Path)->Vec<(Vec<Ident>,uint)> {
         let mut finder_visitor= FindSymbolVisitor{
-            cstore:self.session.cstore,
+            cstore:&self.session.cstore,
             curr_path_idents: Vec::new(),
             path_to_find:path,
             suggestions: Vec::new(),
@@ -5604,7 +5604,7 @@ impl<'r> Resolver<'r> {
 }
 
 struct FindSymbolVisitor<'a>{
-    cstore:@cstore::CStore,
+    cstore:&'a cstore::CStore,
     curr_path_idents: Vec<Ident>,
     path_to_find:&'a Path,
     suggestions: Vec<(Vec<Ident>,uint)>,
@@ -5628,7 +5628,7 @@ impl<'a,'r> Visitor<()> for FindSymbolVisitor<'a> {
                     if ident.name==find_seg.identifier.name {score+=*index;segs_found+=1;}
                 }
             }
-			if segs_found >=self.path_to_find.segments.len() {
+            if segs_found >=self.path_to_find.segments.len() {
             // sort such that highscore is first.
                 self.suggestions.push((self.curr_path_idents.clone(),score));
                 self.suggestions.sort_by(
@@ -5636,7 +5636,7 @@ impl<'a,'r> Visitor<()> for FindSymbolVisitor<'a> {
                         if score1<score2 {cmp::Greater}else {cmp::Less});
  
                 if self.suggestions.len() > self.max_suggestions {self.suggestions.pop();}
-			}
+            }
         }
         // visit sub nodes..
 
@@ -5660,7 +5660,7 @@ pub struct CrateMap {
 }
 
 /// Entry point to crate resolution.
-pub fn resolve_crate(session: Session,
+pub fn resolve_crate(session: &Session,
                      lang_items: @LanguageItems,
                      krate: &Crate)
                   -> CrateMap {

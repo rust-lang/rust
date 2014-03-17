@@ -28,7 +28,6 @@ extern crate time;
 #[phase(syntax, link)]
 extern crate log;
 
-use std::cell::RefCell;
 use std::local_data;
 use std::io;
 use std::io::{File, MemWriter};
@@ -155,8 +154,7 @@ pub fn main_args(args: &[~str]) -> int {
     }
     let input = matches.free[0].as_slice();
 
-    let libs = matches.opt_strs("L").map(|s| Path::new(s.as_slice()));
-    let libs = @RefCell::new(libs.move_iter().collect());
+    let libs = matches.opt_strs("L").map(|s| Path::new(s.as_slice())).move_iter().collect();
 
     let test_args = matches.opt_strs("test-args");
     let test_args = test_args.iter().flat_map(|s| s.words()).map(|s| s.to_owned()).to_owned_vec();

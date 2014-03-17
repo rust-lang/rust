@@ -30,7 +30,7 @@ use syntax::visit;
 use syntax::print::pprust;
 
 
-fn safe_type_for_static_mut(cx: ty::ctxt, e: &ast::Expr) -> Option<~str> {
+fn safe_type_for_static_mut(cx: &ty::ctxt, e: &ast::Expr) -> Option<~str> {
     let node_ty = ty::node_id_to_type(cx, e.id);
     let tcontents = ty::type_contents(cx, node_ty);
     debug!("safe_type_for_static_mut(dtor={}, managed={}, owned={})",
@@ -49,16 +49,15 @@ fn safe_type_for_static_mut(cx: ty::ctxt, e: &ast::Expr) -> Option<~str> {
     Some(format!("mutable static items are not allowed to have {}", suffix))
 }
 
-struct CheckStaticVisitor {
-    tcx: ty::ctxt,
+struct CheckStaticVisitor<'a> {
+    tcx: &'a ty::ctxt,
 }
 
-pub fn check_crate(tcx: ty::ctxt, krate: &ast::Crate) {
+pub fn check_crate(tcx: &ty::ctxt, krate: &ast::Crate) {
     visit::walk_crate(&mut CheckStaticVisitor { tcx: tcx }, krate, false)
 }
 
-impl CheckStaticVisitor {
-
+impl<'a> CheckStaticVisitor<'a> {
     fn report_error(&self, span: Span, result: Option<~str>) -> bool {
         match result {
             None => { false }
@@ -70,7 +69,7 @@ impl CheckStaticVisitor {
     }
 }
 
-impl Visitor<bool> for CheckStaticVisitor {
+impl<'a> Visitor<bool> for CheckStaticVisitor<'a> {
 
     fn visit_item(&mut self, i: &ast::Item, _is_const: bool) {
         debug!("visit_item(item={})", pprust::item_to_str(i));

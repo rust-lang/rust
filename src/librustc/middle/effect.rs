@@ -35,8 +35,8 @@ fn type_is_unsafe_function(ty: ty::t) -> bool {
     }
 }
 
-struct EffectCheckVisitor {
-    tcx: ty::ctxt,
+struct EffectCheckVisitor<'a> {
+    tcx: &'a ty::ctxt,
 
     /// The method map.
     method_map: MethodMap,
@@ -44,7 +44,7 @@ struct EffectCheckVisitor {
     unsafe_context: UnsafeContext,
 }
 
-impl EffectCheckVisitor {
+impl<'a> EffectCheckVisitor<'a> {
     fn require_unsafe(&mut self, span: Span, description: &str) {
         match self.unsafe_context {
             SafeContext => {
@@ -80,7 +80,7 @@ impl EffectCheckVisitor {
     }
 }
 
-impl Visitor<()> for EffectCheckVisitor {
+impl<'a> Visitor<()> for EffectCheckVisitor<'a> {
     fn visit_fn(&mut self, fn_kind: &visit::FnKind, fn_decl: &ast::FnDecl,
                 block: &ast::Block, span: Span, node_id: ast::NodeId, _:()) {
 
@@ -191,7 +191,7 @@ impl Visitor<()> for EffectCheckVisitor {
     }
 }
 
-pub fn check_crate(tcx: ty::ctxt, method_map: MethodMap, krate: &ast::Crate) {
+pub fn check_crate(tcx: &ty::ctxt, method_map: MethodMap, krate: &ast::Crate) {
     let mut visitor = EffectCheckVisitor {
         tcx: tcx,
         method_map: method_map,

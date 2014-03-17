@@ -18,6 +18,7 @@ use middle::typeck;
 use middle::moves;
 use middle::dataflow::DataFlowContext;
 use middle::dataflow::DataFlowOperator;
+use util::nodemap::NodeSet;
 use util::ppaux::{note_and_explain_region, Repr, UserString};
 
 use std::cell::{Cell, RefCell};
@@ -61,20 +62,20 @@ impl Clone for LoanDataFlowOperator {
     }
 }
 
-pub type LoanDataFlow = DataFlowContext<LoanDataFlowOperator>;
+pub type LoanDataFlow<'a> = DataFlowContext<'a, LoanDataFlowOperator>;
 
-impl Visitor<()> for BorrowckCtxt {
+impl<'a> Visitor<()> for BorrowckCtxt<'a> {
     fn visit_fn(&mut self, fk: &FnKind, fd: &FnDecl,
                 b: &Block, s: Span, n: NodeId, _: ()) {
         borrowck_fn(self, fk, fd, b, s, n);
     }
 }
 
-pub fn check_crate(tcx: ty::ctxt,
+pub fn check_crate(tcx: &ty::ctxt,
                    method_map: typeck::MethodMap,
-                   moves_map: moves::MovesMap,
-                   moved_variables_set: moves::MovedVariablesSet,
-                   capture_map: moves::CaptureMap,
+                   moves_map: &NodeSet,
+                   moved_variables_set: &NodeSet,
+                   capture_map: &moves::CaptureMap,
                    krate: &ast::Crate)
                    -> root_map {
     let mut bccx = BorrowckCtxt {
@@ -127,14 +128,13 @@ fn borrowck_fn(this: &mut BorrowckCtxt,
     // Check the body of fn items.
     let (id_range, all_loans, move_data) =
         gather_loans::gather_loans(this, decl, body);
-    let all_loans = all_loans.borrow();
     let mut loan_dfcx =
         DataFlowContext::new(this.tcx,
                              this.method_map,
                              LoanDataFlowOperator,
                              id_range,
-                             all_loans.get().len());
-    for (loan_idx, loan) in all_loans.get().iter().enumerate() {
+                             all_loans.len());
+    for (loan_idx, loan) in all_loans.iter().enumerate() {
         loan_dfcx.add_gen(loan.gen_scope, loan_idx);
         loan_dfcx.add_kill(loan.kill_scope, loan_idx);
     }
@@ -147,7 +147,7 @@ fn borrowck_fn(this: &mut BorrowckCtxt,
                                                       body);
 
     check_loans::check_loans(this, &loan_dfcx, flowed_moves,
-                             all_loans.get().as_slice(), body);
+                             all_loans.as_slice(), body);
 
     visit::walk_fn(this, fk, decl, body, sp, id, ());
 }
@@ -155,12 +155,12 @@ fn borrowck_fn(this: &mut BorrowckCtxt,
 // ----------------------------------------------------------------------
 // Type definitions
 
-pub struct BorrowckCtxt {
-    tcx: ty::ctxt,
+pub struct BorrowckCtxt<'a> {
+    tcx: &'a ty::ctxt,
     method_map: typeck::MethodMap,
-    moves_map: moves::MovesMap,
-    moved_variables_set: moves::MovedVariablesSet,
-    capture_map: moves::CaptureMap,
+    moves_map: &'a NodeSet,
+    moved_variables_set: &'a NodeSet,
+    capture_map: &'a moves::CaptureMap,
     root_map: root_map,
 
     // Statistics:
@@ -335,7 +335,7 @@ impl BitAnd<RestrictionSet,RestrictionSet> for RestrictionSet {
 }
 
 impl Repr for RestrictionSet {
-    fn repr(&self, _tcx: ty::ctxt) -> ~str {
+    fn repr(&self, _tcx: &ty::ctxt) -> ~str {
         format!("RestrictionSet(0x{:x})", self.bits as uint)
     }
 }
@@ -405,7 +405,7 @@ pub enum MovedValueUseKind {
 ///////////////////////////////////////////////////////////////////////////
 // Misc
 
-impl BorrowckCtxt {
+impl<'a> BorrowckCtxt<'a> {
     pub fn is_subregion_of(&self, r_sub: ty::Region, r_sup: ty::Region)
                            -> bool {
         self.tcx.region_maps.is_subregion_of(r_sub, r_sup)
@@ -417,11 +417,10 @@ impl BorrowckCtxt {
     }
 
     pub fn is_move(&self, id: ast::NodeId) -> bool {
-        let moves_map = self.moves_map.borrow();
-        moves_map.get().contains(&id)
+        self.moves_map.contains(&id)
     }
 
-    pub fn mc(&self) -> mc::MemCategorizationContext<TcxTyper> {
+    pub fn mc(&self) -> mc::MemCategorizationContext<TcxTyper<'a>> {
         mc::MemCategorizationContext {
             typer: TcxTyper {
                 tcx: self.tcx,
@@ -601,7 +600,7 @@ impl BorrowckCtxt {
             }
         }
 
-        fn move_suggestion(tcx: ty::ctxt, ty: ty::t, default_msg: &'static str)
+        fn move_suggestion(tcx: &ty::ctxt, ty: ty::t, default_msg: &'static str)
                           -> &'static str {
             match ty::get(ty).sty {
                 ty::ty_closure(ref cty) if cty.sigil == ast::BorrowedSigil =>
@@ -871,7 +870,7 @@ impl DataFlowOperator for LoanDataFlowOperator {
 }
 
 impl Repr for Loan {
-    fn repr(&self, tcx: ty::ctxt) -> ~str {
+    fn repr(&self, tcx: &ty::ctxt) -> ~str {
         format!("Loan_{:?}({}, {:?}, {:?}-{:?}, {})",
              self.index,
              self.loan_path.repr(tcx),
@@ -883,7 +882,7 @@ impl Repr for Loan {
 }
 
 impl Repr for Restriction {
-    fn repr(&self, tcx: ty::ctxt) -> ~str {
+    fn repr(&self, tcx: &ty::ctxt) -> ~str {
         format!("Restriction({}, {:x})",
              self.loan_path.repr(tcx),
              self.set.bits as uint)
@@ -891,7 +890,7 @@ impl Repr for Restriction {
 }
 
 impl Repr for LoanPath {
-    fn repr(&self, tcx: ty::ctxt) -> ~str {
+    fn repr(&self, tcx: &ty::ctxt) -> ~str {
         match self {
             &LpVar(id) => {
                 format!("$({})", tcx.map.node_to_str(id))
@@ -910,13 +909,13 @@ impl Repr for LoanPath {
 
 ///////////////////////////////////////////////////////////////////////////
 
-pub struct TcxTyper {
-    tcx: ty::ctxt,
+pub struct TcxTyper<'a> {
+    tcx: &'a ty::ctxt,
     method_map: typeck::MethodMap,
 }
 
-impl mc::Typer for TcxTyper {
-    fn tcx(&self) -> ty::ctxt {
+impl<'a> mc::Typer for TcxTyper<'a> {
+    fn tcx<'a>(&'a self) -> &'a ty::ctxt {
         self.tcx
     }
 
@@ -924,7 +923,7 @@ impl mc::Typer for TcxTyper {
         Ok(ty::node_id_to_type(self.tcx, id))
     }
 
-    fn node_method_ty(&mut self, method_call: typeck::MethodCall) -> Option<ty::t> {
+    fn node_method_ty(&self, method_call: typeck::MethodCall) -> Option<ty::t> {
         self.method_map.borrow().get().find(&method_call).map(|method| method.ty)
     }
 

@@ -46,7 +46,7 @@ pub fn suptype_with_fn(fcx: &FnCtxt,
     }
 }
 
-pub fn eqtype(fcx: @FnCtxt, sp: Span, expected: ty::t, actual: ty::t) {
+pub fn eqtype(fcx: &FnCtxt, sp: Span, expected: ty::t, actual: ty::t) {
     match infer::mk_eqty(fcx.infcx(), false, infer::Misc(sp), actual, expected) {
         Ok(()) => { /* ok */ }
         Err(ref err) => {
@@ -56,7 +56,7 @@ pub fn eqtype(fcx: @FnCtxt, sp: Span, expected: ty::t, actual: ty::t) {
 }
 
 // Checks that the type `actual` can be coerced to `expected`.
-pub fn coerce(fcx: @FnCtxt, sp: Span, expected: ty::t, expr: &ast::Expr) {
+pub fn coerce(fcx: &FnCtxt, sp: Span, expected: ty::t, expr: &ast::Expr) {
     let expr_ty = fcx.expr_ty(expr);
     match fcx.mk_assignty(expr, expr_ty, expected) {
       result::Ok(()) => { /* ok */ }

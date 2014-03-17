@@ -635,7 +635,7 @@ impl<K:KindOps> Datum<K> {
     pub fn to_str(&self, ccx: &CrateContext) -> ~str {
         format!("Datum({}, {}, {:?})",
              ccx.tn.val_to_str(self.val),
-             ty_to_str(ccx.tcx, self.ty),
+             ty_to_str(ccx.tcx(), self.ty),
              self.kind)
     }
 
@@ -709,11 +709,11 @@ impl<'a> DatumBlock<'a, Expr> {
         self.datum.shallow_copy(self.bcx, dst)
     }
 
-    pub fn ccx(&self) -> @CrateContext {
+    pub fn ccx(&self) -> &'a CrateContext {
         self.bcx.ccx()
     }
 
-    pub fn tcx(&self) -> ty::ctxt {
+    pub fn tcx(&self) -> &'a ty::ctxt {
         self.bcx.tcx()
     }
 

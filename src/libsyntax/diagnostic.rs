@@ -40,37 +40,37 @@ pub struct ExplicitBug;
 // accepts span information for source-location
 // reporting.
 pub struct SpanHandler {
-    handler: @Handler,
-    cm: @codemap::CodeMap,
+    handler: Handler,
+    cm: codemap::CodeMap,
 }
 
 impl SpanHandler {
     pub fn span_fatal(&self, sp: Span, msg: &str) -> ! {
-        self.handler.emit(Some((&*self.cm, sp)), msg, Fatal);
+        self.handler.emit(Some((&self.cm, sp)), msg, Fatal);
         fail!(FatalError);
     }
     pub fn span_err(&self, sp: Span, msg: &str) {
-        self.handler.emit(Some((&*self.cm, sp)), msg, Error);
+        self.handler.emit(Some((&self.cm, sp)), msg, Error);
         self.handler.bump_err_count();
     }
     pub fn span_warn(&self, sp: Span, msg: &str) {
-        self.handler.emit(Some((&*self.cm, sp)), msg, Warning);
+        self.handler.emit(Some((&self.cm, sp)), msg, Warning);
     }
     pub fn span_note(&self, sp: Span, msg: &str) {
-        self.handler.emit(Some((&*self.cm, sp)), msg, Note);
+        self.handler.emit(Some((&self.cm, sp)), msg, Note);
     }
     pub fn span_end_note(&self, sp: Span, msg: &str) {
-        self.handler.custom_emit(&*self.cm, sp, msg, Note);
+        self.handler.custom_emit(&self.cm, sp, msg, Note);
     }
     pub fn span_bug(&self, sp: Span, msg: &str) -> ! {
-        self.handler.emit(Some((&*self.cm, sp)), msg, Bug);
+        self.handler.emit(Some((&self.cm, sp)), msg, Bug);
         fail!(ExplicitBug);
     }
     pub fn span_unimpl(&self, sp: Span, msg: &str) -> ! {
         self.span_bug(sp, ~"unimplemented " + msg);
     }
-    pub fn handler(&self) -> @Handler {
-        self.handler
+    pub fn handler<'a>(&'a self) -> &'a Handler {
+        &self.handler
     }
 }
 
@@ -137,20 +137,19 @@ impl Handler {
     }
 }
 
-pub fn mk_span_handler(handler: @Handler, cm: @codemap::CodeMap)
-                       -> @SpanHandler {
-    @SpanHandler {
+pub fn mk_span_handler(handler: Handler, cm: codemap::CodeMap) -> SpanHandler {
+    SpanHandler {
         handler: handler,
         cm: cm,
     }
 }
 
-pub fn default_handler() -> @Handler {
+pub fn default_handler() -> Handler {
     mk_handler(~EmitterWriter::stderr())
 }
 
-pub fn mk_handler(e: ~Emitter) -> @Handler {
-    @Handler {
+pub fn mk_handler(e: ~Emitter) -> Handler {
+    Handler {
         err_count: Cell::new(0),
         emit: RefCell::new(e),
     }
@@ -301,8 +300,8 @@ fn highlight_lines(err: &mut EmitterWriter,
                    cm: &codemap::CodeMap,
                    sp: Span,
                    lvl: Level,
-                   lines: &codemap::FileLines) -> io::IoResult<()> {
-    let fm = lines.file;
+                   lines: codemap::FileLines) -> io::IoResult<()> {
+    let fm = lines.file.deref();
 
     let mut elided = false;
     let mut display_lines = lines.lines.as_slice();
@@ -374,8 +373,8 @@ fn custom_highlight_lines(w: &mut EmitterWriter,
                           cm: &codemap::CodeMap,
                           sp: Span,
                           lvl: Level,
-                          lines: &codemap::FileLines) -> io::IoResult<()> {
-    let fm = lines.file;
+                          lines: codemap::FileLines) -> io::IoResult<()> {
+    let fm = lines.file.deref();
 
     let lines = lines.lines.as_slice();
     if lines.len() > MAX_LINES {
@@ -420,8 +419,7 @@ fn print_macro_backtrace(w: &mut EmitterWriter,
     Ok(())
 }
 
-pub fn expect<T:Clone>(diag: @SpanHandler, opt: Option<T>, msg: || -> ~str)
-              -> T {
+pub fn expect<T:Clone>(diag: &SpanHandler, opt: Option<T>, msg: || -> ~str) -> T {
     match opt {
        Some(ref t) => (*t).clone(),
        None => diag.handler().bug(msg()),

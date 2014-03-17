@@ -48,7 +48,7 @@ pub fn guarantee_lifetime(bccx: &BorrowckCtxt,
 // Private
 
 struct GuaranteeLifetimeContext<'a> {
-    bccx: &'a BorrowckCtxt,
+    bccx: &'a BorrowckCtxt<'a>,
 
     // the node id of the function body for the enclosing item
     item_scope_id: ast::NodeId,
@@ -65,7 +65,7 @@ struct GuaranteeLifetimeContext<'a> {
 }
 
 impl<'a> GuaranteeLifetimeContext<'a> {
-    fn tcx(&self) -> ty::ctxt {
+    fn tcx(&self) -> &'a ty::ctxt {
         self.bccx.tcx
     }
 
@@ -261,10 +261,7 @@ impl<'a> GuaranteeLifetimeContext<'a> {
         match cmt.guarantor().cat {
             mc::cat_local(id) |
             mc::cat_arg(id) => {
-                let moved_variables_set = self.bccx
-                                              .moved_variables_set
-                                              .borrow();
-                moved_variables_set.get().contains(&id)
+                self.bccx.moved_variables_set.contains(&id)
             }
             mc::cat_rvalue(..) |
             mc::cat_static_item |
