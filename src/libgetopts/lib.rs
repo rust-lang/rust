@@ -98,27 +98,34 @@ use std::vec;
 
 /// Name of an option. Either a string or a single char.
 #[deriving(Clone, Eq)]
-#[allow(missing_doc)]
 pub enum Name {
+    /// A string representing the long name of an option.
+    /// For example: "help"
     Long(~str),
+    /// A char representing the short name of an option.
+    /// For example: 'h'
     Short(char),
 }
 
 /// Describes whether an option has an argument.
 #[deriving(Clone, Eq)]
-#[allow(missing_doc)]
 pub enum HasArg {
+    /// The option requires an argument.
     Yes,
+    /// The option is just a flag, therefore no argument.
     No,
+    /// The option argument is optional and it could or not exist.
     Maybe,
 }
 
 /// Describes how often an option may occur.
 #[deriving(Clone, Eq)]
-#[allow(missing_doc)]
 pub enum Occur {
+    /// The option occurs once.
     Req,
+    /// The option could or not occur.
     Optional,
+    /// The option occurs once or multiple times.
     Multi,
 }
 
@@ -176,12 +183,16 @@ pub struct Matches {
 /// expected format. Call the `to_err_msg` method to retrieve the
 /// error as a string.
 #[deriving(Clone, Eq, Show)]
-#[allow(missing_doc)]
 pub enum Fail_ {
+    /// The option requires an argument but none was passed.
     ArgumentMissing(~str),
+    /// The passed option is not declared among the possible options.
     UnrecognizedOption(~str),
+    /// A required option is not present.
     OptionMissing(~str),
+    /// A single occurence option is being used multiple times.
     OptionDuplicated(~str),
+    /// There's an argument being passed to a non-argument option.
     UnexpectedArgument(~str),
 }
 
