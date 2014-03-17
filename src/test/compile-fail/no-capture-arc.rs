@@ -26,5 +26,5 @@ fn main() {
 
     assert_eq!((arc_v.get())[2], 3);
 
-    info!("{:?}", arc_v);
+    println!("{:?}", arc_v);
 }

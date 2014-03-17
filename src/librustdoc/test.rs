@@ -11,14 +11,13 @@
 use std::cell::RefCell;
 use std::char;
 use std::io;
-use std::io::Process;
+use std::io::{Process, TempDir};
 use std::local_data;
 use std::os;
 use std::str;
 
 use collections::HashSet;
 use testing;
-use extra::tempfile::TempDir;
 use rustc::back::link;
 use rustc::driver::driver;
 use rustc::driver::session;
@@ -62,7 +61,9 @@ pub fn run(input: &str, libs: @RefCell<HashSet<Path>>, mut test_args: ~[~str]) -
     let cfg = driver::build_configuration(sess);
     let krate = driver::phase_1_parse_input(sess, cfg, &input);
     let loader = &mut Loader::new(sess);
-    let (krate, _) = driver::phase_2_configure_and_expand(sess, loader, krate);
+    let id = from_str("rustdoc-test").unwrap();
+    let (krate, _) = driver::phase_2_configure_and_expand(sess, loader, krate,
+                                                          &id);
 
     let ctx = @core::DocContext {
         krate: krate,
@@ -178,9 +179,6 @@ fn maketest(s: &str, cratename: &str, loose_feature_gating: bool) -> ~str {
     }
 
     if !s.contains("extern crate") {
-        if s.contains("extra") {
-            prog.push_str("extern crate extra;\n");
-        }
         if s.contains(cratename) {
             prog.push_str(format!("extern crate {};\n", cratename));
         }

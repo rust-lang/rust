@@ -15,7 +15,7 @@
 // during unwinding
 
 fn recurse() {
-    info!("don't optimize me out");
+    println!("don't optimize me out");
     recurse();
 }
 

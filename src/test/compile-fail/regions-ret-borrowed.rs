@@ -27,5 +27,5 @@ fn return_it() -> &int {
 
 fn main() {
     let x = return_it();
-    info!("foo={}", *x);
+    println!("foo={}", *x);
 }

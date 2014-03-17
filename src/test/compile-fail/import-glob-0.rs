@@ -15,10 +15,10 @@
 use module_of_many_things::*;
 
 mod module_of_many_things {
-    pub fn f1() { info!("f1"); }
-    pub fn f2() { info!("f2"); }
-    fn f3() { info!("f3"); }
-    pub fn f4() { info!("f4"); }
+    pub fn f1() { println!("f1"); }
+    pub fn f2() { println!("f2"); }
+    fn f3() { println!("f3"); }
+    pub fn f4() { println!("f4"); }
 }
 
 

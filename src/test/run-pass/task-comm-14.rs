@@ -18,7 +18,7 @@ pub fn main() {
     // Spawn 10 tasks each sending us back one int.
     let mut i = 10;
     while (i > 0) {
-        info!("{}", i);
+        println!("{}", i);
         let tx = tx.clone();
         task::spawn({let i = i; proc() { child(i, &tx) }});
         i = i - 1;
@@ -29,15 +29,15 @@ pub fn main() {
 
     i = 10;
     while (i > 0) {
-        info!("{}", i);
+        println!("{}", i);
         rx.recv();
         i = i - 1;
     }
 
-    info!("main thread exiting");
+    println!("main thread exiting");
 }
 
 fn child(x: int, tx: &Sender<int>) {
-    info!("{}", x);
+    println!("{}", x);
     tx.send(x);
 }

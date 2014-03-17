@@ -10,11 +10,16 @@
 
 //! Temporary files and directories
 
-
-use std::os;
-use rand::{task_rng, Rng};
-use std::io;
-use std::io::fs;
+use io::fs;
+use io;
+use iter::{Iterator, range};
+use libc;
+use ops::Drop;
+use option::{Option, None, Some};
+use os;
+use path::{Path, GenericPath};
+use result::{Ok, Err};
+use sync::atomics;
 
 /// A wrapper for a path to temporary directory implementing automatic
 /// scope-based deletion.
@@ -30,13 +35,17 @@ impl TempDir {
     /// If no directory can be created, None is returned.
     pub fn new_in(tmpdir: &Path, suffix: &str) -> Option<TempDir> {
         if !tmpdir.is_absolute() {
-            let abs_tmpdir = os::make_absolute(tmpdir);
-            return TempDir::new_in(&abs_tmpdir, suffix);
+            return TempDir::new_in(&os::make_absolute(tmpdir), suffix);
         }
 
-        let mut r = task_rng();
+        static mut CNT: atomics::AtomicUint = atomics::INIT_ATOMIC_UINT;
+
         for _ in range(0u, 1000) {
-            let p = tmpdir.join(r.gen_ascii_str(16) + suffix);
+            let filename = format!("rs-{}-{}-{}",
+                                   unsafe { libc::getpid() },
+                                   unsafe { CNT.fetch_add(1, atomics::SeqCst) },
+                                   suffix);
+            let p = tmpdir.join(filename);
             match fs::mkdir(&p, io::UserRWX) {
                 Err(..) => {}
                 Ok(()) => return Some(TempDir { path: Some(p) })

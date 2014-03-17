@@ -49,27 +49,26 @@
 # automatically generated for all stage/host/target combinations.
 ################################################################################
 
-TARGET_CRATES := std extra green rustuv native flate arena glob term semver \
+TARGET_CRATES := std green rustuv native flate arena glob term semver \
                  uuid serialize sync getopts collections num test time rand \
-				 netsupport
+		 workcache url log netsupport
 HOST_CRATES := syntax rustc rustdoc fourcc hexfloat
 CRATES := $(TARGET_CRATES) $(HOST_CRATES)
 TOOLS := compiletest rustdoc rustc
 
 DEPS_std := native:rustrt native:compiler-rt native:backtrace
-DEPS_extra := std term sync serialize getopts collections time rand
 DEPS_green := std rand native:context_switch
 DEPS_rustuv := std native:uv native:uv_support netsupport
 DEPS_native := std netsupport
-DEPS_syntax := std term serialize collections
+DEPS_syntax := std term serialize collections log
 DEPS_rustc := syntax native:rustllvm flate arena serialize sync getopts \
-              collections time extra
+              collections time log
 DEPS_rustdoc := rustc native:sundown serialize sync getopts collections \
                 test time
-DEPS_flate := std extra native:miniz
+DEPS_flate := std native:miniz
 DEPS_arena := std collections
 DEPS_glob := std
-DEPS_serialize := std collections
+DEPS_serialize := std collections log
 DEPS_term := std collections
 DEPS_semver := std
 DEPS_uuid := std serialize rand
@@ -79,9 +78,12 @@ DEPS_collections := std rand
 DEPS_fourcc := syntax std
 DEPS_hexfloat := syntax std
 DEPS_num := std rand
-DEPS_test := std extra collections getopts serialize term
+DEPS_test := std collections getopts serialize term time
 DEPS_time := std serialize
 DEPS_rand := std
+DEPS_url := std collections
+DEPS_workcache := std serialize collections log
+DEPS_log := std sync
 DEPS_netsupport := std
 
 TOOL_DEPS_compiletest := test green rustuv getopts

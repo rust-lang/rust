@@ -13,20 +13,20 @@
 enum t { make_t(@int), clam, }
 
 fn foo(s: @int) {
-    info!("{:?}", ::std::managed::refcount(s));
+    println!("{:?}", ::std::managed::refcount(s));
     let count = ::std::managed::refcount(s);
     let x: t = make_t(s); // ref up
     assert_eq!(::std::managed::refcount(s), count + 1u);
-    info!("{:?}", ::std::managed::refcount(s));
+    println!("{:?}", ::std::managed::refcount(s));
 
     match x {
       make_t(y) => {
-        info!("{:?}", y); // ref up then down
+        println!("{:?}", y); // ref up then down
 
       }
-      _ => { info!("?"); fail!(); }
+      _ => { println!("?"); fail!(); }
     }
-    info!("{:?}", ::std::managed::refcount(s));
+    println!("{:?}", ::std::managed::refcount(s));
     assert_eq!(::std::managed::refcount(s), count + 1u);
     let _ = ::std::managed::refcount(s); // don't get bitten by last-use.
 }
@@ -38,7 +38,7 @@ pub fn main() {
 
     foo(s); // ref up then down
 
-    info!("{}", ::std::managed::refcount(s));
+    println!("{}", ::std::managed::refcount(s));
     let count2 = ::std::managed::refcount(s);
     assert_eq!(count, count2);
 }

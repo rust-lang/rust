@@ -57,7 +57,7 @@ fn thread_ring(i: uint, count: uint, num_chan: pipe, num_port: pipe) {
     let mut num_port = Some(num_port);
     // Send/Receive lots of messages.
     for j in range(0u, count) {
-        //error!("task %?, iter %?", i, j);
+        //println!("task %?, iter %?", i, j);
         let num_chan2 = num_chan.take_unwrap();
         let num_port2 = num_port.take_unwrap();
         send(&num_chan2, i * j);
@@ -89,7 +89,7 @@ fn main() {
     let mut futures = ~[];
 
     for i in range(1u, num_tasks) {
-        //error!("spawning %?", i);
+        //println!("spawning %?", i);
         let (new_chan, num_port) = init();
         let num_chan_2 = num_chan.clone();
         let new_future = Future::spawn(proc() {

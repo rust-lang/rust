@@ -12,10 +12,12 @@
 // compile-flags:--cfg ndebug
 // exec-env:RUST_LOG=logging-enabled-debug=debug
 
-use std::logging;
+#[feature(phase)];
+#[phase(syntax, link)]
+extern crate log;
 
 pub fn main() {
-    if log_enabled!(logging::DEBUG) {
+    if log_enabled!(log::DEBUG) {
         fail!("what?! debugging?");
     }
 }

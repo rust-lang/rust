@@ -13,8 +13,8 @@ enum Numbers {
 }
 
 pub fn main() {
-    info!("{}", 1);
-    info!("{}", 2.0);
-    warn!("{:?}", Three);
-    error!("{:?}", ~[4]);
+    println!("{}", 1);
+    println!("{}", 2.0);
+    println!("{:?}", Three);
+    println!("{:?}", ~[4]);
 }

@@ -2317,11 +2317,13 @@ fn check_expr_with_unifier(fcx: @FnCtxt,
                 fcx.type_error_message(
                     expr.span,
                     |actual| {
-                        format!("attempted to take value of method `{}` on type `{}` \
-                                 (try writing an anonymous function)",
+                        format!("attempted to take value of method `{}` on type `{}`",
                                 token::get_name(field), actual)
                     },
                     expr_t, None);
+
+                tcx.sess.span_note(expr.span,
+                    "maybe a missing `()` to call it? If not, try an anonymous function.");
             }
 
             None => {
@@ -2847,9 +2849,6 @@ fn check_expr_with_unifier(fcx: @FnCtxt,
           }
         }
         fcx.write_bot(id);
-      }
-      ast::ExprLogLevel => {
-        fcx.write_ty(id, ty::mk_u32())
       }
       ast::ExprParen(a) => {
         check_expr_with_opt_hint_and_lvalue_pref(fcx, a, expected, lvalue_pref);

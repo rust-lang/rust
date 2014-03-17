@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate extra;
-
 fn grow(v: &mut ~[int]) {
     v.push(1);
 }
@@ -20,6 +18,6 @@ pub fn main() {
     grow(&mut v);
     grow(&mut v);
     let len = v.len();
-    info!("{}", len);
+    println!("{}", len);
     assert_eq!(len, 3 as uint);
 }

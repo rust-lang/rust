@@ -51,11 +51,11 @@ mod map_reduce {
                 return;
             }
             let (tx, rx) = channel();
-            error!("sending find_reducer");
+            println!("sending find_reducer");
             ctrl.send(find_reducer(key.as_bytes().to_owned(), tx));
-            error!("receiving");
+            println!("receiving");
             let c = rx.recv();
-            error!("{:?}", c);
+            println!("{:?}", c);
             im.insert(key, c);
         }
 

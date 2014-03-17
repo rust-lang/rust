@@ -8,12 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate extra;
-
 use std::task;
 
 pub fn main() {
     task::spawn(proc() child(10) );
 }
 
-fn child(i: int) { error!("{}", i); assert!((i == 10)); }
+fn child(i: int) { println!("{}", i); assert!((i == 10)); }

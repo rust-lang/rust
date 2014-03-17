@@ -796,7 +796,7 @@ unit, `()`, as the empty tuple if you like).
 ~~~~
 let mytup: (int, int, f64) = (10, 20, 30.0);
 match mytup {
-  (a, b, c) => info!("{}", a + b + (c as int))
+  (a, b, c) => println!("{}", a + b + (c as int))
 }
 ~~~~
 
@@ -813,7 +813,7 @@ For example:
 struct MyTup(int, int, f64);
 let mytup: MyTup = MyTup(10, 20, 30.0);
 match mytup {
-  MyTup(a, b, c) => info!("{}", a + b + (c as int))
+  MyTup(a, b, c) => println!("{}", a + b + (c as int))
 }
 ~~~~
 
@@ -1794,7 +1794,7 @@ use std::task::spawn;
 
 // proc is the closure which will be spawned.
 spawn(proc() {
-    debug!("I'm a new task")
+    println!("I'm a new task")
 });
 ~~~~
 
@@ -3227,17 +3227,6 @@ Both auto-insertions can be disabled with an attribute if necessary:
 See the [API documentation][stddoc] for details.
 
 [stddoc]: std/index.html
-
-## The extra library
-
-Rust ships with crates such as the [extra library], an accumulation of useful things,
-that are however not important enough to deserve a place in the standard
-library.  You can link to a library such as `extra` with an `extern crate extra;`.
-
-[extra library]: extra/index.html
-
-Right now `extra` contains those definitions directly, but in the future it will likely just
-re-export a bunch of 'officially blessed' crates that get managed with a package manager.
 
 # What next?
 

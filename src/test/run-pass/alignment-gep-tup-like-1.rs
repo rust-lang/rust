@@ -36,7 +36,7 @@ fn f<A:Clone + 'static>(a: A, b: u16) -> ~Invokable:<A> {
 
 pub fn main() {
     let (a, b) = f(22_u64, 44u16).f();
-    info!("a={:?} b={:?}", a, b);
+    println!("a={:?} b={:?}", a, b);
     assert_eq!(a, 22u64);
     assert_eq!(b, 44u16);
 }

@@ -17,5 +17,5 @@ pub fn main() {
     let (tx, rx) = channel();
     tx.send(42);
     let r = rx.recv();
-    error!("{:?}", r);
+    println!("{:?}", r);
 }

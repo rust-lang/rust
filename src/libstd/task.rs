@@ -40,7 +40,6 @@ use any::Any;
 use comm::{Sender, Receiver, channel};
 use io::Writer;
 use kinds::{Send, marker};
-use logging::Logger;
 use option::{None, Some, Option};
 use result::{Result, Ok, Err};
 use rt::local::Local;
@@ -66,8 +65,6 @@ pub struct TaskOpts {
     name: Option<SendStr>,
     /// The size of the stack for the spawned task
     stack_size: Option<uint>,
-    /// Task-local logger (see std::logging)
-    logger: Option<~Logger>,
     /// Task-local stdout
     stdout: Option<~Writer>,
     /// Task-local stderr
@@ -230,7 +227,6 @@ impl TaskOpts {
             notify_chan: None,
             name: None,
             stack_size: None,
-            logger: None,
             stdout: None,
             stderr: None,
         }

@@ -24,5 +24,5 @@ fn main() {
 
     assert_eq!((arc_v.get())[2], 3); //~ ERROR use of moved value: `arc_v`
 
-    info!("{:?}", arc_v); //~ ERROR use of moved value: `arc_v`
+    println!("{:?}", arc_v); //~ ERROR use of moved value: `arc_v`
 }

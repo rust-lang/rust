@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate extra;
-
 fn test_heap_to_heap() {
     // a spills onto the heap
     let mut a = ~[0, 1, 2, 3, 4];
@@ -47,7 +45,7 @@ fn test_loop() {
     let mut i = 20;
     let mut expected_len = 1u;
     while i > 0 {
-        error!("{}", a.len());
+        println!("{}", a.len());
         assert_eq!(a.len(), expected_len);
         a = a + a; // FIXME(#3387)---can't write a += a
         i -= 1;

@@ -56,7 +56,6 @@ c.write(
 #[feature(globs, macro_rules, struct_variant, managed_boxes)];
 #[allow(warnings)];
 extern crate collections;
-extern crate extra;
 """
 )
 for t in stage2_tests:
@@ -73,7 +72,6 @@ d.write(
 """
 // AUTO-GENERATED FILE: DO NOT EDIT
 #[feature(globs, managed_boxes)];
-extern crate extra;
 extern crate run_pass_stage2;
 use run_pass_stage2::*;
 use std::io;

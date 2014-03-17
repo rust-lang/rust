@@ -156,8 +156,6 @@ impl<T: Writer> Terminal<T> {
             if s.is_ok() {
                 try!(self.out.write(s.unwrap()));
                 return Ok(true)
-            } else {
-                warn!("{}", s.unwrap_err());
             }
         }
         Ok(false)
@@ -177,8 +175,6 @@ impl<T: Writer> Terminal<T> {
             if s.is_ok() {
                 try!(self.out.write(s.unwrap()));
                 return Ok(true)
-            } else {
-                warn!("{}", s.unwrap_err());
             }
         }
         Ok(false)
@@ -199,8 +195,6 @@ impl<T: Writer> Terminal<T> {
                     if s.is_ok() {
                         try!(self.out.write(s.unwrap()));
                         return Ok(true)
-                    } else {
-                        warn!("{}", s.unwrap_err());
                     }
                 }
                 Ok(false)
@@ -237,12 +231,6 @@ impl<T: Writer> Terminal<T> {
         });
         if s.is_ok() {
             return self.out.write(s.unwrap())
-        } else if self.num_colors > 0 {
-            warn!("{}", s.unwrap_err());
-        } else {
-            // if we support attributes but not color, it would be nice to still warn!()
-            // but it's not worth testing all known attributes just for this.
-            debug!("{}", s.unwrap_err());
         }
         Ok(())
     }
