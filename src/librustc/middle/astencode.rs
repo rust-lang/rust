@@ -1517,7 +1517,7 @@ fn test_more() {
 #[test]
 fn test_simplification() {
     let cx = mk_ctxt();
-    let item = quote_item!(cx,
+    let item = quote_item!(&cx,
         fn new_int_alist<B>() -> alist<int, B> {
             fn eq_int(a: int, b: int) -> bool { a == b }
             return alist {eq_fn: eq_int, data: Vec::new()};

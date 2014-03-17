@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use std::{str, io};
-use std::cell::RefCell;
 use std::vec_ng::Vec;
 
 use collections::HashSet;

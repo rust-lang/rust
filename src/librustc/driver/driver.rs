@@ -1234,7 +1234,7 @@ mod test {
             };
         let sessopts = build_session_options(matches);
         let sess = build_session(sessopts, None);
-        let cfg = build_configuration(sess);
+        let cfg = build_configuration(&sess);
         assert!((attr::contains_name(cfg.as_slice(), "test")));
     }
 
@@ -1253,7 +1253,7 @@ mod test {
             };
         let sessopts = build_session_options(matches);
         let sess = build_session(sessopts, None);
-        let cfg = build_configuration(sess);
+        let cfg = build_configuration(&sess);
         let mut test_items = cfg.iter().filter(|m| m.name().equiv(&("test")));
         assert!(test_items.next().is_some());
         assert!(test_items.next().is_none());

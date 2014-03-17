@@ -29,7 +29,8 @@ pub fn string_to_parser<'a>(ps: &'a ParseSess, source_str: ~str) -> Parser<'a> {
 }
 
 fn with_error_checking_parse<T>(s: ~str, f: |&mut Parser| -> T) -> T {
-    let mut p = string_to_parser(&new_parse_sess(), s);
+    let ps = new_parse_sess();
+    let mut p = string_to_parser(&ps, s);
     let x = f(&mut p);
     p.abort_if_errors();
     x

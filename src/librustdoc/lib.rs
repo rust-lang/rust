@@ -28,7 +28,6 @@ extern crate time;
 #[phase(syntax, link)]
 extern crate log;
 
-use std::cell::RefCell;
 use std::local_data;
 use std::io;
 use std::io::{File, MemWriter};
