@@ -19,7 +19,9 @@
 //! Options are most commonly used with pattern matching to query the presence
 //! of a value and take action, always accounting for the `None` case.
 //!
-//! # Example
+//! # Examples
+//!
+//! Basic usage:
 //!
 //! ```
 //! let msg = Some(~"howdy");
@@ -30,11 +32,44 @@
 //!     None => ()
 //! }
 //!
-//! // Remove the contained string, destroying the Option
+//! // Remove the contained string, destroying the `Option`
 //! let unwrapped_msg = match msg {
 //!     Some(m) => m,
 //!     None => ~"default message"
 //! };
+//! ```
+//!
+//! You don't have to always use a `match` statement, there are some methods
+//! for common use cases. Defaulting to a value, as in the above example, is
+//! one such case. It could be replaced with the following:
+//!
+//! ```rust
+//! let msg = Some(~"howdy");
+//! let unwrapped_msg = msg.unwrap_or(~"default message");
+//! ```
+//!
+//! For more complex use cases, the `and_then` method may be useful. It
+//! allows you to chain multiple functions that could return an `Option` as if
+//! they all contain a `Some(T)`, simply returning a `None` if any one
+//! `Option` in the chain contains `None`. Thus, `and_then` constitutes monadic
+//!  bind and can be much more compact than `match` statements:
+//!
+//! ```rust
+//! // Fake functions for demonstration purposes
+//! fn x () -> Option<u8> { Some(1) }
+//! fn y (x: u8) -> Option<u8> { Some(1 + x) }
+//! fn z (y: u8) -> Option<u8> { None }
+//!
+//! // By using `and_then`, we pass the unwrapped value returned by `x()` to
+//! // the function `y`, returning another `Option` for chaining.
+//! let res1 = x().and_then(y);
+//! println!("x and y: {}", res1);
+//!
+//! // We can chain on further calls to `z`. The first call returns `None`, but
+//! // calling `and_then` on it is still safe - `z` is not called again after the
+//! // first `None` is encountered.
+//! let res2 = x().and_then(y).and_then(z).and_then(z);
+//! println!("x and y and z and z: {}", res2);
 //! ```
 
 use any::Any;
