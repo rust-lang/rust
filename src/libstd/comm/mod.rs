@@ -335,11 +335,11 @@ enum Flavor<T> {
 /// of `Receiver` and `Sender` to see what's possible with them.
 pub fn channel<T: Send>() -> (Sender<T>, Receiver<T>) {
     let (a, b) = UnsafeArc::new2(oneshot::Packet::new());
-    (Sender::my_new(Oneshot(b)), Receiver::my_new(Oneshot(a)))
+    (Sender::new(Oneshot(b)), Receiver::new(Oneshot(a)))
 }
 
 impl<T: Send> Sender<T> {
-    fn my_new(inner: Flavor<T>) -> Sender<T> {
+    fn new(inner: Flavor<T>) -> Sender<T> {
         Sender { inner: inner, sends: Cell::new(0), marker: marker::NoShare }
     }
 
@@ -405,7 +405,7 @@ impl<T: Send> Sender<T> {
                         return (*p).send(t);
                     } else {
                         let (a, b) = UnsafeArc::new2(stream::Packet::new());
-                        match (*p).upgrade(Receiver::my_new(Stream(b))) {
+                        match (*p).upgrade(Receiver::new(Stream(b))) {
                             oneshot::UpSuccess => {
                                 (*a.get()).send(t);
                                 (a, true)
@@ -425,7 +425,7 @@ impl<T: Send> Sender<T> {
         };
 
         unsafe {
-            let mut tmp = Sender::my_new(Stream(new_inner));
+            let mut tmp = Sender::new(Stream(new_inner));
             mem::swap(&mut cast::transmute_mut(self).inner, &mut tmp.inner);
         }
         return ret;
@@ -437,31 +437,31 @@ impl<T: Send> Clone for Sender<T> {
         let (packet, sleeper) = match self.inner {
             Oneshot(ref p) => {
                 let (a, b) = UnsafeArc::new2(shared::Packet::new());
-                match unsafe { (*p.get()).upgrade(Receiver::my_new(Shared(a))) } {
+                match unsafe { (*p.get()).upgrade(Receiver::new(Shared(a))) } {
                     oneshot::UpSuccess | oneshot::UpDisconnected => (b, None),
                     oneshot::UpWoke(task) => (b, Some(task))
                 }
             }
             Stream(ref p) => {
                 let (a, b) = UnsafeArc::new2(shared::Packet::new());
-                match unsafe { (*p.get()).upgrade(Receiver::my_new(Shared(a))) } {
+                match unsafe { (*p.get()).upgrade(Receiver::new(Shared(a))) } {
                     stream::UpSuccess | stream::UpDisconnected => (b, None),
                     stream::UpWoke(task) => (b, Some(task)),
                 }
             }
             Shared(ref p) => {
                 unsafe { (*p.get()).clone_chan(); }
-                return Sender::my_new(Shared(p.clone()));
+                return Sender::new(Shared(p.clone()));
             }
         };
 
         unsafe {
             (*packet.get()).inherit_blocker(sleeper);
 
-            let mut tmp = Sender::my_new(Shared(packet.clone()));
+            let mut tmp = Sender::new(Shared(packet.clone()));
             mem::swap(&mut cast::transmute_mut(self).inner, &mut tmp.inner);
         }
-        Sender::my_new(Shared(packet))
+        Sender::new(Shared(packet))
     }
 }
 
@@ -477,7 +477,7 @@ impl<T: Send> Drop for Sender<T> {
 }
 
 impl<T: Send> Receiver<T> {
-    fn my_new(inner: Flavor<T>) -> Receiver<T> {
+    fn new(inner: Flavor<T>) -> Receiver<T> {
         Receiver { inner: inner, receives: Cell::new(0), marker: marker::NoShare }
     }
 
