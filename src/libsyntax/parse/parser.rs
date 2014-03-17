@@ -713,6 +713,23 @@ impl<'a> Parser<'a> {
         result
     }
 
+    // parse a sequence parameter of enum variant. For consistency purposes,
+    // these should not be empty.
+    pub fn parse_enum_variant_seq<T>(
+                               &mut self,
+                               bra: &token::Token,
+                               ket: &token::Token,
+                               sep: SeqSep,
+                               f: |&mut Parser| -> T)
+                               -> Vec<T> {
+        let result = self.parse_unspanned_seq(bra, ket, sep, f);
+        if result.is_empty() {
+            self.span_err(self.last_span,
+            "nullary enum variants are written with no trailing `( )`");
+        }
+        result
+    }
+
     // NB: Do not use this function unless you actually plan to place the
     // spanned list in the AST.
     pub fn parse_seq<T>(
@@ -3013,7 +3030,7 @@ impl<'a> Parser<'a> {
                                 self.expect(&token::RPAREN);
                                 pat = PatEnum(enum_path, None);
                             } else {
-                                args = self.parse_unspanned_seq(
+                                args = self.parse_enum_variant_seq(
                                     &token::LPAREN,
                                     &token::RPAREN,
                                     seq_sep_trailing_disallowed(token::COMMA),
@@ -4431,7 +4448,7 @@ impl<'a> Parser<'a> {
                 kind = StructVariantKind(self.parse_struct_def());
             } else if self.token == token::LPAREN {
                 all_nullary = false;
-                let arg_tys = self.parse_unspanned_seq(
+                let arg_tys = self.parse_enum_variant_seq(
                     &token::LPAREN,
                     &token::RPAREN,
                     seq_sep_trailing_disallowed(token::COMMA),
