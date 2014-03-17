@@ -26,6 +26,13 @@ extern {
 }
 
 fn main() {
+    // It appears that the --as-needed flag to linkers will not pull in a dynamic
+    // library unless it satisfies a non weak undefined symbol. The 'other' crate
+    // is compiled as a dynamic library where it would only be used for a
+    // weak-symbol as part of an executable, so the dynamic library woudl be
+    // discarded. By adding and calling `other::bar`, we get around this problem.
+    other::bar();
+
     assert!(!foo.is_null());
     assert_eq!(unsafe { *foo }, 3);
     assert!(something_that_should_never_exist.is_null());
