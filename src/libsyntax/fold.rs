@@ -880,8 +880,8 @@ mod test {
     use super::*;
 
     // this version doesn't care about getting comments or docstrings in.
-    fn fake_print_crate<A: pprust::PpAnn>(s: &mut pprust::State<A>,
-                                          krate: &ast::Crate) -> io::IoResult<()> {
+    fn fake_print_crate(s: &mut pprust::State,
+                        krate: &ast::Crate) -> io::IoResult<()> {
         s.print_mod(&krate.module, krate.attrs.as_slice())
     }
 
