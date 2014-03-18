@@ -401,12 +401,10 @@ pub mod reader {
         }
 
         fn read_f64(&mut self) -> f64 {
-            let bits = doc_as_u64(self.next_doc(EsF64));
-            unsafe { transmute(bits) }
+            doc_as_u64(self.next_doc(EsF64)) as f64
         }
         fn read_f32(&mut self) -> f32 {
-            let bits = doc_as_u32(self.next_doc(EsF32));
-            unsafe { transmute(bits) }
+            doc_as_u32(self.next_doc(EsF32)) as f32
         }
         fn read_char(&mut self) -> char {
             char::from_u32(doc_as_u32(self.next_doc(EsChar))).unwrap()

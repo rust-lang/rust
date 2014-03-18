@@ -87,7 +87,7 @@ pub fn from_u32(i: u32) -> Option<char> {
     if (i > MAX as u32) || (i >= 0xD800 && i <= 0xDFFF) {
         None
     } else {
-        Some(unsafe { transmute(i) })
+        Some(unsafe { transmute::<u32, char>(i) })
     }
 }
 
@@ -277,9 +277,9 @@ pub fn from_digit(num: uint, radix: uint) -> Option<char> {
     if num < radix {
         unsafe {
             if num < 10 {
-                Some(transmute(('0' as uint + num) as u32))
+                Some(transmute::<u32, char>(('0' as uint + num) as u32))
             } else {
-                Some(transmute(('a' as uint + num - 10u) as u32))
+                Some(transmute::<u32, char>(('a' as uint + num - 10u) as u32))
             }
         }
     } else {
@@ -304,14 +304,14 @@ fn decompose_hangul(s: char, f: |char|) {
 
     let li = si / N_COUNT;
     unsafe {
-        f(transmute((L_BASE + li) as u32));
+        f(transmute::<u32, char>((L_BASE + li) as u32));
 
         let vi = (si % N_COUNT) / T_COUNT;
-        f(transmute((V_BASE + vi) as u32));
+        f(transmute::<u32, char>((V_BASE + vi) as u32));
 
         let ti = si % T_COUNT;
         if ti > 0 {
-            f(transmute((T_BASE + ti) as u32));
+            f(transmute::<u32, char>((T_BASE + ti) as u32));
         }
     }
 }
@@ -355,8 +355,8 @@ pub fn escape_unicode(c: char, f: |char|) {
     for offset in range_step::<i32>(4 * (pad - 1), -1, -4) {
         unsafe {
             match ((c as i32) >> offset) & 0xf {
-                i @ 0 .. 9 => { f(transmute('0' as i32 + i)); }
-                i => { f(transmute('a' as i32 + (i - 10))); }
+                i @ 0 .. 9 => { f(transmute::<i32, char>('0' as i32 + i)); }
+                i => { f(transmute::<i32, char>('a' as i32 + (i - 10))); }
             }
         }
     }

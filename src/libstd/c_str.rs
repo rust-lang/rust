@@ -78,8 +78,8 @@ use str::StrSlice;
 use str;
 use vec::{ImmutableVector, MutableVector};
 use vec;
+use raw;
 use rt::global_heap::malloc_raw;
-use raw::Slice;
 
 /// The representation of a C String.
 ///
@@ -179,7 +179,7 @@ impl CString {
     pub fn as_bytes<'a>(&'a self) -> &'a [u8] {
         if self.buf.is_null() { fail!("CString is null!"); }
         unsafe {
-            cast::transmute(Slice { data: self.buf, len: self.len() + 1 })
+            raw::slice_from_buf(self.buf as *u8, self.len() + 1)
         }
     }
 
@@ -193,7 +193,7 @@ impl CString {
     pub fn as_bytes_no_nul<'a>(&'a self) -> &'a [u8] {
         if self.buf.is_null() { fail!("CString is null!"); }
         unsafe {
-            cast::transmute(Slice { data: self.buf, len: self.len() })
+            raw::slice_from_buf(self.buf as *u8, self.len())
         }
     }
 
