@@ -121,8 +121,6 @@ pub fn llvm_linkage_by_name(name: &str) -> Option<Linkage> {
         "extern_weak" => Some(lib::llvm::ExternalWeakLinkage),
         "external" => Some(lib::llvm::ExternalLinkage),
         "internal" => Some(lib::llvm::InternalLinkage),
-        "linker_private" => Some(lib::llvm::LinkerPrivateLinkage),
-        "linker_private_weak" => Some(lib::llvm::LinkerPrivateWeakLinkage),
         "linkonce" => Some(lib::llvm::LinkOnceAnyLinkage),
         "linkonce_odr" => Some(lib::llvm::LinkOnceODRLinkage),
         "private" => Some(lib::llvm::PrivateLinkage),
