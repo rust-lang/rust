@@ -470,10 +470,10 @@ mod tests {
     fn test_get_ptr() {
         unsafe {
             let x = ~0;
-            let addr_x: *int = ::cast::transmute(&*x);
+            let addr_x: *int = &*x as *int;
             let opt = Some(x);
             let y = opt.unwrap();
-            let addr_y: *int = ::cast::transmute(&*y);
+            let addr_y: *int = &*y as *int;
             assert_eq!(addr_x, addr_y);
         }
     }

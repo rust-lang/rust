@@ -85,7 +85,7 @@ impl<'a> AnyRefExt<'a> for &'a Any {
                 let to: TraitObject = transmute_copy(&self);
 
                 // Extract the data pointer
-                Some(transmute(to.data))
+                Some(transmute::<*(), &'a T>(to.data))
             }
         } else {
             None
@@ -109,7 +109,7 @@ impl<'a> AnyMutRefExt<'a> for &'a mut Any {
                 let to: TraitObject = transmute_copy(&self);
 
                 // Extract the data pointer
-                Some(transmute(to.data))
+                Some(transmute::<*(), &'a mut T>(to.data))
             }
         } else {
             None
@@ -136,7 +136,7 @@ impl AnyOwnExt for ~Any {
                 intrinsics::forget(self);
 
                 // Extract the data pointer
-                Ok(transmute(to.data))
+                Ok(transmute::<*(), ~T>(to.data))
             }
         } else {
             Err(self)

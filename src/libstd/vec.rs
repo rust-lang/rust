@@ -216,7 +216,7 @@ pub fn build<A>(size: Option<uint>, builder: |push: |v: A||) -> ~[A] {
  */
 pub fn ref_slice<'a, A>(s: &'a A) -> &'a [A] {
     unsafe {
-        transmute(Slice { data: s, len: 1 })
+        ::raw::slice_from_buf(s as *A, 1)
     }
 }
 
@@ -225,8 +225,7 @@ pub fn ref_slice<'a, A>(s: &'a A) -> &'a [A] {
  */
 pub fn mut_ref_slice<'a, A>(s: &'a mut A) -> &'a mut [A] {
     unsafe {
-        let ptr: *A = transmute(s);
-        transmute(Slice { data: ptr, len: 1 })
+        ::raw::mut_slice_from_buf(s as *mut A, 1)
     }
 }
 
@@ -991,10 +990,7 @@ impl<'a,T> ImmutableVector<'a, T> for &'a [T] {
         assert!(start <= end);
         assert!(end <= self.len());
         unsafe {
-            transmute(Slice {
-                    data: self.as_ptr().offset(start as int),
-                    len: (end - start)
-                })
+            ::raw::slice_from_buf(self.as_ptr().offset(start as int), end - start)
         }
     }
 
@@ -1473,8 +1469,7 @@ impl<T> OwnedVector<T> for ~[T] {
     #[inline]
     fn capacity(&self) -> uint {
         unsafe {
-            let repr: **Vec<()> = transmute(self);
-            (**repr).alloc / mem::nonzero_size_of::<T>()
+            (*self.repr()).alloc / mem::nonzero_size_of::<T>()
         }
     }
 

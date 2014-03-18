@@ -82,6 +82,14 @@ impl<T> Repr<*Box<T>> for @T {}
 impl<T> Repr<*Vec<T>> for ~[T] {}
 impl Repr<*String> for ~str {}
 
+pub unsafe fn slice_from_buf<'a, T>(data: *T, len: uint) -> &'a [T] {
+    cast::transmute(Slice { data: data, len: len })
+}
+
+pub unsafe fn mut_slice_from_buf<'a, T>(data: *mut T, len: uint) -> &'a mut [T] {
+    cast::transmute(Slice { data: data as *T, len: len })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

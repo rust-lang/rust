@@ -74,7 +74,7 @@ impl DynamicLibrary {
         // the destructor does not run.
         match maybe_symbol_value {
             Err(err) => Err(err),
-            Ok(symbol_value) => Ok(cast::transmute(symbol_value))
+            Ok(symbol_value) => Ok(cast::transmute::<*u8, T>(symbol_value))
         }
     }
 }
