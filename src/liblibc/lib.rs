@@ -4270,3 +4270,5 @@ pub mod funcs {
         }
     }
 }
+
+#[test] fn work_on_windows() { } // this is needed to make rustc happy on windows
