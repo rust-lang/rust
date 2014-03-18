@@ -43,8 +43,8 @@ pub enum AnnNode<'a> {
 }
 
 pub trait PpAnn {
-    fn pre(&self, _state: &mut State<Self>, _node: AnnNode) -> IoResult<()> { Ok(()) }
-    fn post(&self, _state: &mut State<Self>, _node: AnnNode) -> IoResult<()> { Ok(()) }
+    fn pre(&self, _state: &mut State, _node: AnnNode) -> IoResult<()> { Ok(()) }
+    fn post(&self, _state: &mut State, _node: AnnNode) -> IoResult<()> { Ok(()) }
 }
 
 pub struct NoAnn;
@@ -56,7 +56,7 @@ pub struct CurrentCommentAndLiteral {
     cur_lit: uint,
 }
 
-pub struct State<'a, A> {
+pub struct State<'a> {
     s: pp::Printer,
     cm: Option<&'a CodeMap>,
     intr: @token::IdentInterner,
@@ -64,15 +64,16 @@ pub struct State<'a, A> {
     literals: Option<Vec<comments::Literal> >,
     cur_cmnt_and_lit: CurrentCommentAndLiteral,
     boxes: RefCell<Vec<pp::Breaks> >,
-    ann: &'a A
+    ann: &'a PpAnn
 }
 
-pub fn rust_printer(writer: ~io::Writer) -> State<'static, NoAnn> {
+pub fn rust_printer(writer: ~io::Writer) -> State<'static> {
     static NO_ANN: NoAnn = NoAnn;
     rust_printer_annotated(writer, &NO_ANN)
 }
 
-pub fn rust_printer_annotated<'a, A: PpAnn>(writer: ~io::Writer, ann: &'a A) -> State<'a, A> {
+pub fn rust_printer_annotated<'a>(writer: ~io::Writer,
+                                  ann: &'a PpAnn) -> State<'a> {
     State {
         s: pp::mk_printer(writer, default_columns),
         cm: None,
@@ -95,14 +96,14 @@ pub static default_columns: uint = 78u;
 // Requires you to pass an input filename and reader so that
 // it can scan the input text for comments and literals to
 // copy forward.
-pub fn print_crate<'a, A: PpAnn>(cm: &'a CodeMap,
-                                 span_diagnostic: &diagnostic::SpanHandler,
-                                 krate: &ast::Crate,
-                                 filename: ~str,
-                                 input: &mut io::Reader,
-                                 out: ~io::Writer,
-                                 ann: &'a A,
-                                 is_expanded: bool) -> IoResult<()> {
+pub fn print_crate<'a>(cm: &'a CodeMap,
+                       span_diagnostic: &diagnostic::SpanHandler,
+                       krate: &ast::Crate,
+                       filename: ~str,
+                       input: &mut io::Reader,
+                       out: ~io::Writer,
+                       ann: &'a PpAnn,
+                       is_expanded: bool) -> IoResult<()> {
     let (cmnts, lits) = comments::gather_comments_and_literals(
         span_diagnostic,
         filename,
@@ -133,7 +134,7 @@ pub fn print_crate<'a, A: PpAnn>(cm: &'a CodeMap,
     eof(&mut s.s)
 }
 
-pub fn to_str(f: |&mut State<NoAnn>| -> IoResult<()>) -> ~str {
+pub fn to_str(f: |&mut State| -> IoResult<()>) -> ~str {
     let mut s = rust_printer(~MemWriter::new());
     f(&mut s).unwrap();
     eof(&mut s.s).unwrap();
@@ -237,7 +238,7 @@ pub fn visibility_qualified(vis: ast::Visibility, s: &str) -> ~str {
     }
 }
 
-impl<'a, A: PpAnn> State<'a, A> {
+impl<'a> State<'a> {
     pub fn ibox(&mut self, u: uint) -> IoResult<()> {
         self.boxes.borrow_mut().get().push(pp::Inconsistent);
         pp::ibox(&mut self.s, u)
@@ -365,7 +366,7 @@ impl<'a, A: PpAnn> State<'a, A> {
     }
 
     pub fn commasep<T>(&mut self, b: Breaks, elts: &[T],
-                       op: |&mut State<A>, &T| -> IoResult<()>)
+                       op: |&mut State, &T| -> IoResult<()>)
         -> IoResult<()> {
         try!(self.rbox(0u, b));
         let mut first = true;
@@ -381,7 +382,7 @@ impl<'a, A: PpAnn> State<'a, A> {
                          &mut self,
                          b: Breaks,
                          elts: &[T],
-                         op: |&mut State<A>, &T| -> IoResult<()>,
+                         op: |&mut State, &T| -> IoResult<()>,
                          get_span: |&T| -> codemap::Span) -> IoResult<()> {
         try!(self.rbox(0u, b));
         let len = elts.len();
