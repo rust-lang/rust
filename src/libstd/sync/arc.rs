@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -26,7 +26,7 @@ use clone::Clone;
 use kinds::Send;
 use ops::Drop;
 use ptr::RawPtr;
-use sync::atomics::{AtomicUint, SeqCst, Relaxed, Acquire};
+use sync::atomics::{fence, AtomicUint, Relaxed, Acquire, Release};
 use vec;
 
 /// An atomically reference counted pointer.
@@ -109,8 +109,16 @@ impl<T: Send> UnsafeArc<T> {
 impl<T: Send> Clone for UnsafeArc<T> {
     fn clone(&self) -> UnsafeArc<T> {
         unsafe {
-            // This barrier might be unnecessary, but I'm not sure...
-            let old_count = (*self.data).count.fetch_add(1, Acquire);
+            // Using a relaxed ordering is alright here, as knowledge of the original reference
+            // prevents other threads from erroneously deleting the object.
+            //
+            // As explained in the [Boost documentation][1],
+            //  Increasing the reference counter can always be done with memory_order_relaxed: New
+            //  references to an object can only be formed from an existing reference, and passing
+            //  an existing reference from one thread to another must already provide any required
+            //  synchronization.
+            // [1]: (www.boost.org/doc/libs/1_55_0/doc/html/atomic/usage_examples.html)
+            let old_count = (*self.data).count.fetch_add(1, Relaxed);
             // FIXME(#12049): this needs some sort of debug assertion
             if cfg!(test) { assert!(old_count >= 1); }
             return UnsafeArc { data: self.data };
@@ -127,12 +135,26 @@ impl<T> Drop for UnsafeArc<T>{
             if self.data.is_null() {
                 return
             }
-            // Must be acquire+release, not just release, to make sure this
-            // doesn't get reordered to after the unwrapper pointer load.
-            let old_count = (*self.data).count.fetch_sub(1, SeqCst);
+            // Because `fetch_sub` is already atomic, we do not need to synchronize with other
+            // threads unless we are going to delete the object.
+            let old_count = (*self.data).count.fetch_sub(1, Release);
             // FIXME(#12049): this needs some sort of debug assertion
             if cfg!(test) { assert!(old_count >= 1); }
             if old_count == 1 {
+                // This fence is needed to prevent reordering of use of the data and deletion of
+                // the data. Because it is marked `Release`, the decreasing of the reference count
+                // sychronizes with this `Acquire` fence. This means that use of the data happens
+                // before decreasing the refernce count, which happens before this fence, which
+                // happens before the deletion of the data.
+                //
+                // As explained in the [Boost documentation][1],
+                //  It is important to enforce any possible access to the object in one thread
+                //  (through an existing reference) to *happen before* deleting the object in a
+                //  different thread. This is achieved by a "release" operation after dropping a
+                //  reference (any access to the object through this reference must obviously
+                //  happened before), and an "acquire" operation before deleting the object.
+                // [1]: (www.boost.org/doc/libs/1_55_0/doc/html/atomic/usage_examples.html)
+                fence(Acquire);
                 let _: ~ArcData<T> = cast::transmute(self.data);
             }
         }
