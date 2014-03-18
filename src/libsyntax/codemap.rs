@@ -271,11 +271,20 @@ impl CodeMap {
         }
     }
 
-    pub fn new_filemap(&self, filename: FileName, mut src: ~str) -> Rc<FileMap> {
+    pub fn new_filemap(&self, filename: FileName, src: ~str) -> Rc<FileMap> {
         let mut files = self.files.borrow_mut();
         let start_pos = match files.get().last() {
             None => 0,
             Some(last) => last.deref().start_pos.to_uint() + last.deref().src.len(),
+        };
+
+        // Remove utf-8 BOM if any.
+        // FIXME #12884: no efficient/safe way to remove from the start of a string
+        // and reuse the allocation.
+        let mut src = if src.starts_with("\ufeff") {
+            src.as_slice().slice_from(3).into_owned()
+        } else {
+            src
         };
 
         // Append '\n' in case it's not already there.
