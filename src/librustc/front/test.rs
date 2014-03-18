@@ -95,10 +95,9 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
         debug!("current path: {}",
                ast_util::path_name_i(self.cx.path.get().as_slice()));
 
-        if is_test_fn(&self.cx, i) || is_bench_fn(i) {
+        if is_test_fn(&self.cx, i) || is_bench_fn(&self.cx, i) {
             match i.node {
-                ast::ItemFn(_, purity, _, _, _)
-                    if purity == ast::UnsafeFn => {
+                ast::ItemFn(_, ast::UnsafeFn, _, _, _) => {
                     let sess = self.cx.sess;
                     sess.span_fatal(i.span,
                                     "unsafe functions cannot be used for \
@@ -109,7 +108,7 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
                     let test = Test {
                         span: i.span,
                         path: self.cx.path.get(),
-                        bench: is_bench_fn(i),
+                        bench: is_bench_fn(&self.cx, i),
                         ignore: is_ignored(&self.cx, i),
                         should_fail: should_fail(i)
                     };
@@ -233,7 +232,7 @@ fn is_test_fn(cx: &TestCtxt, i: @ast::Item) -> bool {
     return has_test_attr && has_test_signature(i);
 }
 
-fn is_bench_fn(i: @ast::Item) -> bool {
+fn is_bench_fn(cx: &TestCtxt, i: @ast::Item) -> bool {
     let has_bench_attr = attr::contains_name(i.attrs.as_slice(), "bench");
 
     fn has_test_signature(i: @ast::Item) -> bool {
@@ -252,6 +251,12 @@ fn is_bench_fn(i: @ast::Item) -> bool {
             }
           _ => false
         }
+    }
+
+    if has_bench_attr && !has_test_signature(i) {
+        let sess = cx.sess;
+        sess.span_err(i.span, "functions used as benches must have signature \
+                      `fn(&mut BenchHarness) -> ()`");
     }
 
     return has_bench_attr && has_test_signature(i);
