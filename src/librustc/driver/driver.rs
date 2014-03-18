@@ -596,7 +596,7 @@ struct IdentifiedAnnotation;
 
 impl pprust::PpAnn for IdentifiedAnnotation {
     fn pre(&self,
-           s: &mut pprust::State<IdentifiedAnnotation>,
+           s: &mut pprust::State,
            node: pprust::AnnNode) -> io::IoResult<()> {
         match node {
             pprust::NodeExpr(_) => s.popen(),
@@ -604,7 +604,7 @@ impl pprust::PpAnn for IdentifiedAnnotation {
         }
     }
     fn post(&self,
-            s: &mut pprust::State<IdentifiedAnnotation>,
+            s: &mut pprust::State,
             node: pprust::AnnNode) -> io::IoResult<()> {
         match node {
             pprust::NodeItem(item) => {
@@ -634,7 +634,7 @@ struct TypedAnnotation {
 
 impl pprust::PpAnn for TypedAnnotation {
     fn pre(&self,
-           s: &mut pprust::State<TypedAnnotation>,
+           s: &mut pprust::State,
            node: pprust::AnnNode) -> io::IoResult<()> {
         match node {
             pprust::NodeExpr(_) => s.popen(),
@@ -642,7 +642,7 @@ impl pprust::PpAnn for TypedAnnotation {
         }
     }
     fn post(&self,
-            s: &mut pprust::State<TypedAnnotation>,
+            s: &mut pprust::State,
             node: pprust::AnnNode) -> io::IoResult<()> {
         let tcx = &self.analysis.ty_cx;
         match node {
