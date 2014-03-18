@@ -475,8 +475,10 @@ pub trait Index<Index,Result> {
     fn index(&self, index: &Index) -> Result;
 }
 
+/// Dummy dox
 #[cfg(stage0)]
 pub trait Deref<Result> {
+    /// dummy dox
     fn deref<'a>(&'a self) -> &'a Result;
 }
 
@@ -514,8 +516,10 @@ pub trait Deref<Result> {
     fn deref<'a>(&'a self) -> &'a Result;
 }
 
+/// dummy dox
 #[cfg(stage0)]
 pub trait DerefMut<Result>: Deref<Result> {
+    /// dummy dox
     fn deref_mut<'a>(&'a mut self) -> &'a mut Result;
 }
 
