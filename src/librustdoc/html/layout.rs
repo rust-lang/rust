@@ -51,7 +51,7 @@ r##"<!DOCTYPE html>
 
     <section class="sidebar">
         {logo, select, none{} other{
-            <a href='{root_path}{krate}/index.html'><img src='#' alt=''/></a>
+            <a href='{root_path}{krate}/index.html'><img src='#' alt='' width='100px' /></a>
         }}
 
         {sidebar}
