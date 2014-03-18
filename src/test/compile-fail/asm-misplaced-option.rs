@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // ignore-fast #[feature] doesn't work with check-fast
+// ignore-android
+
 #[feature(asm)];
 
 #[allow(dead_code)];
@@ -32,9 +34,6 @@ pub fn main() {
     }
     assert_eq!(x, 13);
 }
-
-// #[cfg(not(target_arch = "x86"), not(target_arch = "x86_64"))]
-// pub fn main() {}
 
 // At least one error is needed so that compilation fails
 #[static_assert]
