@@ -463,6 +463,13 @@ impl<'a> SourceCollector<'a> {
         };
         let contents = str::from_utf8_owned(contents).unwrap();
 
+        // Remove the utf-8 BOM if any
+        let contents = if contents.starts_with("\ufeff") {
+            contents.as_slice().slice_from(3)
+        } else {
+            contents.as_slice()
+        };
+
         // Create the intermediate directories
         let mut cur = self.dst.clone();
         let mut root_path = ~"../../";
@@ -482,7 +489,7 @@ impl<'a> SourceCollector<'a> {
             root_path: root_path,
         };
         try!(layout::render(&mut w as &mut Writer, &self.cx.layout,
-                              &page, &(""), &Source(contents.as_slice())));
+                              &page, &(""), &Source(contents)));
         try!(w.flush());
         return Ok(());
     }
