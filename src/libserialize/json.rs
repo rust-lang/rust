@@ -1312,7 +1312,7 @@ impl ::Decoder for Decoder {
             value => self.expected("number", &value)
         }
     }
-    fn read_f32(&mut self) -> f32 { self.read_f64() as f32 }
+
     fn read_f32(&mut self) -> f32 { self.read_f64() as f32 }
 
     fn read_char(&mut self) -> char {
