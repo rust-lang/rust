@@ -58,8 +58,8 @@ runtime.
 
 An `&mut` reference has a stronger requirement: when a object has an
 `&mut T` pointing into it, then that `&mut` reference must be the only
-such usable path to that object in the whole program. That is, an
-`&mut` cannot alias with any other references.
+usable path to that object in the whole program. That is, an `&mut`
+cannot alias with any other references.
 
 Using `unsafe` code to incorrectly circumvent and violate these
 restrictions is undefined behaviour. For example, the following
@@ -131,7 +131,7 @@ unsafe, and neither is converting to an integer.
 
 ### References and raw pointers
 
-At runtime, a raw pointer `*` and a reference pointing to the same
+At runtime, a raw `*` pointer and a `&` reference pointing to the same
 piece of data have an identical representation. In fact, an `&T`
 reference will implicitly coerce to an `*T` raw pointer in safe code
 and similarly for the `mut` variants (both coercions can be performed
@@ -139,7 +139,7 @@ explicitly with, respectively, `value as *T` and `value as *mut T`).
 
 Going the opposite direction, from `*` to a reference `&`, is not
 safe. A `&T` is always valid, and so, at a minimum, the raw pointer
-`*T` has to be a valid to a valid instance of type `T`. Furthermore,
+`*T` has to be pointing to a valid instance of type `T`. Furthermore,
 the resulting pointer must satisfy the aliasing and mutability laws of
 references. The compiler assumes these properties are true for any
 references, no matter how they are created, and so any conversion from
@@ -178,9 +178,9 @@ code:
   structs), so that you can see and control all reads and writes to
   the pointer in one place.
 - use `assert!()` a lot: once you've thrown away the protection of the
-  compiler & type-system via `unsafe { ... }` you're left with just
-  your wits and your `assert!()`s, any bug is potentially exploitable.
-- implement the `Drop` for resource clean-up via a destructor, and use
+  compiler & type-system via `unsafe { ... }`, you're left with just
+  your wits and your `assert!()` and any bug is potentially exploitable.
+- implement the `Drop` trait for resource clean-up via a destructor, and use
   RAII (Resource Acquisition Is Initialization). This reduces the need
   for any manual memory management by users, and automatically ensures
   that clean-up is always run, even when the task fails.
@@ -435,9 +435,9 @@ attribute attached to the crate.
 # // fn main() {} tricked you, rustdoc!
 ```
 
-Obviously there's more to life than just libraries: one can use
-`#[no_std]` with an executable, controlling the entry point is
-possible in two ways: the `#[start]` attribute, or overriding the
+Obviously there's more to life than just libraries; one can use
+`#[no_std]` with an executable, controlling the entry point in
+one of two ways: the `#[start]` attribute, or overriding the
 default shim for the C `main` function with your own.
 
 The function marked `#[start]` is passed the command line parameters
@@ -493,7 +493,7 @@ detects that it will overflow its stack. The example above uses the
 # Interacting with the compiler internals
 
 > **Note**: this section is specific to the `rustc` compiler; these
-> parts of the language may never be full specified and so details may
+> parts of the language may never be fully specified and so details may
 > differ wildly between implementations (and even versions of `rustc`
 > itself).
 >
