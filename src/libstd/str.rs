@@ -2665,9 +2665,6 @@ impl<'a> StrSlice<'a> for &'a str {
     }
 
     #[inline]
-    fn char_at(&self, i: uint) -> char { self.char_range_at(i).ch }
-
-    #[inline]
     fn char_range_at_reverse(&self, start: uint) -> CharRange {
         let mut prev = start;
 
