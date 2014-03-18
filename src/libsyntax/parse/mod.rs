@@ -288,11 +288,20 @@ mod test {
     use util::parser_testing::{string_to_expr, string_to_item};
     use util::parser_testing::string_to_stmt;
 
-    #[cfg(test)]
+    // FIXME: remove stage0 to_json_str after snapshot
+    #[cfg(stage0)]
     fn to_json_str<'a, E: Encodable<json::Encoder<'a>>>(val: &E) -> ~str {
         let mut writer = MemWriter::new();
         let mut encoder = json::Encoder::new(&mut writer as &mut io::Writer);
         val.encode(&mut encoder);
+        str::from_utf8_owned(writer.unwrap()).unwrap()
+    }
+
+    #[cfg(not(stage0))]
+    fn to_json_str<'a, E: Encodable<json::Encoder<'a>, io::IoError>>(val: &E) -> ~str {
+        let mut writer = MemWriter::new();
+        let mut encoder = json::Encoder::new(&mut writer as &mut io::Writer);
+        let _ = val.encode(&mut encoder);
         str::from_utf8_owned(writer.unwrap()).unwrap()
     }
 
