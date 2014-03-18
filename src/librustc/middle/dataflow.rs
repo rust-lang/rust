@@ -85,7 +85,7 @@ struct LoopScope<'a> {
 
 impl<'a, O:DataFlowOperator> pprust::PpAnn for DataFlowContext<'a, O> {
     fn pre(&self,
-           ps: &mut pprust::State<DataFlowContext<'a, O>>,
+           ps: &mut pprust::State,
            node: pprust::AnnNode) -> io::IoResult<()> {
         let id = match node {
             pprust::NodeExpr(expr) => expr.id,

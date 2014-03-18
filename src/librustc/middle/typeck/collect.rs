@@ -48,6 +48,8 @@ use util::ppaux::Repr;
 use std::rc::Rc;
 use std::vec_ng::Vec;
 use std::vec_ng;
+use collections::HashSet;
+
 use syntax::abi::AbiSet;
 use syntax::ast::{RegionTyParamBound, TraitTyParamBound};
 use syntax::ast;
@@ -478,7 +480,12 @@ fn convert_methods(ccx: &CrateCtxt,
                    rcvr_visibility: ast::Visibility)
 {
     let tcx = ccx.tcx;
+    let mut seen_methods = HashSet::new();
     for m in ms.iter() {
+        if !seen_methods.insert(m.ident.repr(ccx.tcx)) {
+            tcx.sess.span_err(m.span, "duplicate method in trait impl");
+        }
+
         let num_rcvr_ty_params = rcvr_ty_generics.type_param_defs().len();
         let m_ty_generics = ty_generics_for_fn_or_method(ccx, &m.generics,
                                                          num_rcvr_ty_params);

@@ -37,7 +37,7 @@ pub fn render<T: fmt::Show, S: fmt::Show>(
 
     <link href='http://fonts.googleapis.com/css?family=Oswald:700|Inconsolata:400,700'
           rel='stylesheet' type='text/css'>
-    <link rel=\"stylesheet\" type=\"text/css\" href=\"{root_path}{krate}/main.css\">
+    <link rel=\"stylesheet\" type=\"text/css\" href=\"{root_path}main.css\">
 
     {favicon, select, none{} other{<link rel=\"shortcut icon\" href=\"#\" />}}
 </head>
@@ -74,13 +74,6 @@ pub fn render<T: fmt::Show, S: fmt::Show>(
 
     <section class=\"footer\"></section>
 
-    <script>
-        var rootPath = \"{root_path}\";
-    </script>
-    <script src=\"{root_path}{krate}/jquery.js\"></script>
-    <script src=\"{root_path}{krate}/search-index.js\"></script>
-    <script src=\"{root_path}{krate}/main.js\"></script>
-
     <div id=\"help\" class=\"hidden\">
         <div class=\"shortcuts\">
             <h1>Keyboard shortcuts</h1>
@@ -111,6 +104,14 @@ pub fn render<T: fmt::Show, S: fmt::Show>(
             </p>
         </div>
     </div>
+
+    <script>
+        var rootPath = \"{root_path}\";
+        var currentCrate = \"{krate}\";
+    </script>
+    <script src=\"{root_path}jquery.js\"></script>
+    <script src=\"{root_path}main.js\"></script>
+    <script async src=\"{root_path}search-index.js\"></script>
 </body>
 </html>
 ",

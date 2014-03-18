@@ -43,24 +43,22 @@ pub enum Visibility {
     ProtectedVisibility = 2,
 }
 
+// This enum omits the obsolete (and no-op) linkage types DLLImportLinkage,
+// DLLExportLinkage, GhostLinkage and LinkOnceODRAutoHideLinkage.
+// LinkerPrivateLinkage and LinkerPrivateWeakLinkage are not included either;
+// they've been removed in upstream LLVM commit r203866.
 pub enum Linkage {
     ExternalLinkage = 0,
     AvailableExternallyLinkage = 1,
     LinkOnceAnyLinkage = 2,
     LinkOnceODRLinkage = 3,
-    LinkOnceODRAutoHideLinkage = 4,
     WeakAnyLinkage = 5,
     WeakODRLinkage = 6,
     AppendingLinkage = 7,
     InternalLinkage = 8,
     PrivateLinkage = 9,
-    DLLImportLinkage = 10,
-    DLLExportLinkage = 11,
     ExternalWeakLinkage = 12,
-    GhostLinkage = 13,
     CommonLinkage = 14,
-    LinkerPrivateLinkage = 15,
-    LinkerPrivateWeakLinkage = 16,
 }
 
 #[deriving(Clone)]

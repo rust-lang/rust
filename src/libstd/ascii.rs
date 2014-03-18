@@ -20,6 +20,7 @@ use cast;
 use fmt;
 use iter::Iterator;
 use vec::{ImmutableVector, MutableVector, Vector};
+use vec_ng::Vec;
 use option::{Option, Some, None};
 
 /// Datatype to hold one ascii character. It wraps a `u8`, with the highest bit always zero.
@@ -305,6 +306,14 @@ impl IntoStr for ~[Ascii] {
     }
 }
 
+impl IntoStr for Vec<Ascii> {
+    #[inline]
+    fn into_str(self) -> ~str {
+        let v: ~[Ascii] = self.move_iter().collect();
+        unsafe { cast::transmute(v) }
+    }
+}
+
 /// Trait to convert to an owned byte array by consuming self
 pub trait IntoBytes {
     /// Converts to an owned byte array by consuming self
@@ -473,11 +482,16 @@ mod tests {
     use super::*;
     use str::from_char;
     use char::from_u32;
+    use vec_ng::Vec;
 
     macro_rules! v2ascii (
         ( [$($e:expr),*]) => (&[$(Ascii{chr:$e}),*]);
         (&[$($e:expr),*]) => (&[$(Ascii{chr:$e}),*]);
         (~[$($e:expr),*]) => (~[$(Ascii{chr:$e}),*]);
+    )
+
+    macro_rules! vec2ascii (
+        ($($e:expr),*) => (Vec::from_slice([$(Ascii{chr:$e}),*]));
     )
 
     #[test]
@@ -536,6 +550,17 @@ mod tests {
     }
 
     #[test]
+    fn test_ascii_vec_ng() {
+        assert_eq!(Vec::from_slice("abCDef&?#".to_ascii().to_lower()).into_str(), ~"abcdef&?#");
+        assert_eq!(Vec::from_slice("abCDef&?#".to_ascii().to_upper()).into_str(), ~"ABCDEF&?#");
+
+        assert_eq!(Vec::from_slice("".to_ascii().to_lower()).into_str(), ~"");
+        assert_eq!(Vec::from_slice("YMCA".to_ascii().to_lower()).into_str(), ~"ymca");
+        assert_eq!(Vec::from_slice("abcDEFxyz:.;".to_ascii().to_upper()).into_str(),
+                   ~"ABCDEFXYZ:.;");
+    }
+
+    #[test]
     fn test_owned_ascii_vec() {
         assert_eq!((~"( ;").into_ascii(), v2ascii!(~[40, 32, 59]));
         assert_eq!((~[40u8, 32u8, 59u8]).into_ascii(), v2ascii!(~[40, 32, 59]));
@@ -550,6 +575,7 @@ mod tests {
     #[test]
     fn test_ascii_into_str() {
         assert_eq!(v2ascii!(~[40, 32, 59]).into_str(), ~"( ;");
+        assert_eq!(vec2ascii!(40, 32, 59).into_str(), ~"( ;");
     }
 
     #[test]
