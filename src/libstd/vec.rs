@@ -951,6 +951,79 @@ impl<T> Vec<T> {
         self.as_mut_slice().mut_slice(start, end)
     }
 
+    /// Returns a mutable slice of self from `start` to the end of the vec.
+    ///
+    /// # Failure
+    ///
+    /// Fails when `start` points outside the bounds of self.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let mut vec = vec!(1, 2, 3, 4);
+    /// assert!(vec.mut_slice_from(2) == [3, 4]);
+    /// ```
+    #[inline]
+    pub fn mut_slice_from<'a>(&'a mut self, start: uint) -> &'a mut [T] {
+        self.as_mut_slice().mut_slice_from(start)
+    }
+
+    /// Returns a mutable slice of self from the start of the vec to `end`.
+    ///
+    /// # Failure
+    ///
+    /// Fails when `end` points outside the bounds of self.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let mut vec = vec!(1, 2, 3, 4);
+    /// assert!(vec.mut_slice_to(2) == [1, 2]);
+    /// ```
+    #[inline]
+    pub fn mut_slice_to<'a>(&'a mut self, end: uint) -> &'a mut [T] {
+        self.as_mut_slice().mut_slice_to(end)
+    }
+
+    /// Returns a pair of mutable slices that divides the vec at an index.
+    ///
+    /// The first will contain all indices from `[0, mid)` (excluding
+    /// the index `mid` itself) and the second will contain all
+    /// indices from `[mid, len)` (excluding the index `len` itself).
+    ///
+    /// # Failure
+    ///
+    /// Fails if `mid > len`.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let mut vec = vec!(1, 2, 3, 4, 5, 6);
+    ///
+    /// // scoped to restrict the lifetime of the borrows
+    /// {
+    ///    let (left, right) = vec.mut_split_at(0);
+    ///    assert!(left == &mut []);
+    ///    assert!(right == &mut [1, 2, 3, 4, 5, 6]);
+    /// }
+    ///
+    /// {
+    ///     let (left, right) = vec.mut_split_at(2);
+    ///     assert!(left == &mut [1, 2]);
+    ///     assert!(right == &mut [3, 4, 5, 6]);
+    /// }
+    ///
+    /// {
+    ///     let (left, right) = vec.mut_split_at(6);
+    ///     assert!(left == &mut [1, 2, 3, 4, 5, 6]);
+    ///     assert!(right == &mut []);
+    /// }
+    /// ```
+    #[inline]
+    pub fn mut_split_at<'a>(&'a mut self, mid: uint) -> (&'a mut [T], &'a mut [T]) {
+        self.as_mut_slice().mut_split_at(mid)
+    }
+
     /// Reverse the order of elements in a vector, in place.
     ///
     /// # Example
@@ -1293,6 +1366,8 @@ mod tests {
     use ops::Drop;
     use option::{Some, None};
     use ptr;
+    use container::Container;
+    use slice::{Vector, MutableVector, ImmutableVector};
 
     #[test]
     fn test_small_vec_struct() {
@@ -1374,5 +1449,52 @@ mod tests {
         for i in range(3, 10) { w.push(i) }
 
         assert_eq!(v, w);
+    }
+
+    #[test]
+    fn test_mut_slice_from() {
+        let mut values = Vec::from_slice([1u8,2,3,4,5]);
+        {
+            let slice = values.mut_slice_from(2);
+            assert!(slice == [3, 4, 5]);
+            for p in slice.mut_iter() {
+                *p += 2;
+            }
+        }
+
+        assert!(values.as_slice() == [1, 2, 5, 6, 7]);
+    }
+
+    #[test]
+    fn test_mut_slice_to() {
+        let mut values = Vec::from_slice([1u8,2,3,4,5]);
+        {
+            let slice = values.mut_slice_to(2);
+            assert!(slice == [1, 2]);
+            for p in slice.mut_iter() {
+                *p += 1;
+            }
+        }
+
+        assert!(values.as_slice() == [2, 3, 3, 4, 5]);
+    }
+
+    #[test]
+    fn test_mut_split_at() {
+        let mut values = Vec::from_slice([1u8,2,3,4,5]);
+        {
+            let (left, right) = values.mut_split_at(2);
+            assert!(left.slice(0, left.len()) == [1, 2]);
+            for p in left.mut_iter() {
+                *p += 1;
+            }
+
+            assert!(right.slice(0, right.len()) == [3, 4, 5]);
+            for p in right.mut_iter() {
+                *p += 2;
+            }
+        }
+
+        assert!(values == Vec::from_slice([2u8, 3, 5, 6, 7]));
     }
 }
