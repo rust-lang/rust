@@ -15,12 +15,12 @@ extern crate serialize;
 
 use serialize::{json, Decodable};
 
-trait JD : Decodable<json::Decoder> { }
+trait JD : Decodable<json::Decoder, json::Error> { }
 
 fn exec<T: JD>() {
     let doc = json::from_str("").unwrap();
     let mut decoder = json::Decoder::new(doc);
-    let _v: T = Decodable::decode(&mut decoder);
+    let _v: T = Decodable::decode(&mut decoder).unwrap();
     fail!()
 }
 

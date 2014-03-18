@@ -20,272 +20,294 @@ use collections::{DList, RingBuf, TreeMap, TreeSet, Deque, HashMap, HashSet,
 use collections::enum_set::{EnumSet, CLike};
 
 impl<
-    S: Encoder,
-    T: Encodable<S>
-> Encodable<S> for DList<T> {
-    fn encode(&self, s: &mut S) {
+    E,
+    S: Encoder<E>,
+    T: Encodable<S, E>
+> Encodable<S, E> for DList<T> {
+    fn encode(&self, s: &mut S) -> Result<(), E> {
         s.emit_seq(self.len(), |s| {
             for (i, e) in self.iter().enumerate() {
-                s.emit_seq_elt(i, |s| e.encode(s));
+                try!(s.emit_seq_elt(i, |s| e.encode(s)));
             }
+            Ok(())
         })
     }
 }
 
-impl<D:Decoder,T:Decodable<D>> Decodable<D> for DList<T> {
-    fn decode(d: &mut D) -> DList<T> {
-        let mut list = DList::new();
+impl<E, D:Decoder<E>,T:Decodable<D, E>> Decodable<D, E> for DList<T> {
+    fn decode(d: &mut D) -> Result<DList<T>, E> {
         d.read_seq(|d, len| {
+            let mut list = DList::new();
             for i in range(0u, len) {
-                list.push_back(d.read_seq_elt(i, |d| Decodable::decode(d)));
+                list.push_back(try!(d.read_seq_elt(i, |d| Decodable::decode(d))));
             }
-        });
-        list
-    }
-}
-
-impl<
-    S: Encoder,
-    T: Encodable<S>
-> Encodable<S> for RingBuf<T> {
-    fn encode(&self, s: &mut S) {
-        s.emit_seq(self.len(), |s| {
-            for (i, e) in self.iter().enumerate() {
-                s.emit_seq_elt(i, |s| e.encode(s));
-            }
+            Ok(list)
         })
     }
 }
 
-impl<D:Decoder,T:Decodable<D>> Decodable<D> for RingBuf<T> {
-    fn decode(d: &mut D) -> RingBuf<T> {
-        let mut deque = RingBuf::new();
-        d.read_seq(|d, len| {
-            for i in range(0u, len) {
-                deque.push_back(d.read_seq_elt(i, |d| Decodable::decode(d)));
+impl<
+    E,
+    S: Encoder<E>,
+    T: Encodable<S, E>
+> Encodable<S, E> for RingBuf<T> {
+    fn encode(&self, s: &mut S) -> Result<(), E> {
+        s.emit_seq(self.len(), |s| {
+            for (i, e) in self.iter().enumerate() {
+                try!(s.emit_seq_elt(i, |s| e.encode(s)));
             }
-        });
-        deque
+            Ok(())
+        })
+    }
+}
+
+impl<E, D:Decoder<E>,T:Decodable<D, E>> Decodable<D, E> for RingBuf<T> {
+    fn decode(d: &mut D) -> Result<RingBuf<T>, E> {
+        d.read_seq(|d, len| {
+            let mut deque: RingBuf<T> = RingBuf::new();
+            for i in range(0u, len) {
+                deque.push_back(try!(d.read_seq_elt(i, |d| Decodable::decode(d))));
+            }
+            Ok(deque)
+        })
     }
 }
 
 impl<
-    E: Encoder,
-    K: Encodable<E> + Eq + TotalOrd,
-    V: Encodable<E> + Eq
-> Encodable<E> for TreeMap<K, V> {
-    fn encode(&self, e: &mut E) {
+    E,
+    S: Encoder<E>,
+    K: Encodable<S, E> + Eq + TotalOrd,
+    V: Encodable<S, E> + Eq
+> Encodable<S, E> for TreeMap<K, V> {
+    fn encode(&self, e: &mut S) -> Result<(), E> {
         e.emit_map(self.len(), |e| {
             let mut i = 0;
             for (key, val) in self.iter() {
-                e.emit_map_elt_key(i, |e| key.encode(e));
-                e.emit_map_elt_val(i, |e| val.encode(e));
+                try!(e.emit_map_elt_key(i, |e| key.encode(e)));
+                try!(e.emit_map_elt_val(i, |e| val.encode(e)));
                 i += 1;
             }
+            Ok(())
         })
     }
 }
 
 impl<
-    D: Decoder,
-    K: Decodable<D> + Eq + TotalOrd,
-    V: Decodable<D> + Eq
-> Decodable<D> for TreeMap<K, V> {
-    fn decode(d: &mut D) -> TreeMap<K, V> {
+    E,
+    D: Decoder<E>,
+    K: Decodable<D, E> + Eq + TotalOrd,
+    V: Decodable<D, E> + Eq
+> Decodable<D, E> for TreeMap<K, V> {
+    fn decode(d: &mut D) -> Result<TreeMap<K, V>, E> {
         d.read_map(|d, len| {
             let mut map = TreeMap::new();
             for i in range(0u, len) {
-                let key = d.read_map_elt_key(i, |d| Decodable::decode(d));
-                let val = d.read_map_elt_val(i, |d| Decodable::decode(d));
+                let key = try!(d.read_map_elt_key(i, |d| Decodable::decode(d)));
+                let val = try!(d.read_map_elt_val(i, |d| Decodable::decode(d)));
                 map.insert(key, val);
             }
-            map
+            Ok(map)
         })
     }
 }
 
 impl<
-    S: Encoder,
-    T: Encodable<S> + Eq + TotalOrd
-> Encodable<S> for TreeSet<T> {
-    fn encode(&self, s: &mut S) {
+    E,
+    S: Encoder<E>,
+    T: Encodable<S, E> + Eq + TotalOrd
+> Encodable<S, E> for TreeSet<T> {
+    fn encode(&self, s: &mut S) -> Result<(), E> {
         s.emit_seq(self.len(), |s| {
             let mut i = 0;
             for e in self.iter() {
-                s.emit_seq_elt(i, |s| e.encode(s));
+                try!(s.emit_seq_elt(i, |s| e.encode(s)));
                 i += 1;
             }
+            Ok(())
         })
     }
 }
 
 impl<
-    D: Decoder,
-    T: Decodable<D> + Eq + TotalOrd
-> Decodable<D> for TreeSet<T> {
-    fn decode(d: &mut D) -> TreeSet<T> {
+    E,
+    D: Decoder<E>,
+    T: Decodable<D, E> + Eq + TotalOrd
+> Decodable<D, E> for TreeSet<T> {
+    fn decode(d: &mut D) -> Result<TreeSet<T>, E> {
         d.read_seq(|d, len| {
             let mut set = TreeSet::new();
             for i in range(0u, len) {
-                set.insert(d.read_seq_elt(i, |d| Decodable::decode(d)));
+                set.insert(try!(d.read_seq_elt(i, |d| Decodable::decode(d))));
             }
-            set
+            Ok(set)
         })
     }
 }
 
 impl<
-    S: Encoder,
-    T: Encodable<S> + CLike
-> Encodable<S> for EnumSet<T> {
-    fn encode(&self, s: &mut S) {
+    E,
+    S: Encoder<E>,
+    T: Encodable<S, E> + CLike
+> Encodable<S, E> for EnumSet<T> {
+    fn encode(&self, s: &mut S) -> Result<(), E> {
         let mut bits = 0;
         for item in self.iter() {
             bits |= item.to_uint();
         }
-        s.emit_uint(bits);
+        s.emit_uint(bits)
     }
 }
 
 impl<
-    D: Decoder,
-    T: Decodable<D> + CLike
-> Decodable<D> for EnumSet<T> {
-    fn decode(d: &mut D) -> EnumSet<T> {
-        let bits = d.read_uint();
+    E,
+    D: Decoder<E>,
+    T: Decodable<D, E> + CLike
+> Decodable<D, E> for EnumSet<T> {
+    fn decode(d: &mut D) -> Result<EnumSet<T>, E> {
+        let bits = try!(d.read_uint());
         let mut set = EnumSet::empty();
         for bit in range(0, uint::BITS) {
             if bits & (1 << bit) != 0 {
                 set.add(CLike::from_uint(1 << bit));
             }
         }
-        set
+        Ok(set)
     }
 }
 
 impl<
-    E: Encoder,
-    K: Encodable<E> + Hash<S> + TotalEq,
-    V: Encodable<E>,
-    S,
-    H: Hasher<S>
-> Encodable<E> for HashMap<K, V, H> {
-    fn encode(&self, e: &mut E) {
+    E,
+    S: Encoder<E>,
+    K: Encodable<S, E> + Hash<X> + TotalEq,
+    V: Encodable<S, E>,
+    X,
+    H: Hasher<X>
+> Encodable<S, E> for HashMap<K, V, H> {
+    fn encode(&self, e: &mut S) -> Result<(), E> {
         e.emit_map(self.len(), |e| {
             let mut i = 0;
             for (key, val) in self.iter() {
-                e.emit_map_elt_key(i, |e| key.encode(e));
-                e.emit_map_elt_val(i, |e| val.encode(e));
+                try!(e.emit_map_elt_key(i, |e| key.encode(e)));
+                try!(e.emit_map_elt_val(i, |e| val.encode(e)));
                 i += 1;
             }
+            Ok(())
         })
     }
 }
 
 impl<
-    D: Decoder,
-    K: Decodable<D> + Hash<S> + TotalEq,
-    V: Decodable<D>,
+    E,
+    D: Decoder<E>,
+    K: Decodable<D, E> + Hash<S> + TotalEq,
+    V: Decodable<D, E>,
     S,
     H: Hasher<S> + Default
-> Decodable<D> for HashMap<K, V, H> {
-    fn decode(d: &mut D) -> HashMap<K, V, H> {
+> Decodable<D, E> for HashMap<K, V, H> {
+    fn decode(d: &mut D) -> Result<HashMap<K, V, H>, E> {
         d.read_map(|d, len| {
             let hasher = Default::default();
             let mut map = HashMap::with_capacity_and_hasher(len, hasher);
             for i in range(0u, len) {
-                let key = d.read_map_elt_key(i, |d| Decodable::decode(d));
-                let val = d.read_map_elt_val(i, |d| Decodable::decode(d));
+                let key = try!(d.read_map_elt_key(i, |d| Decodable::decode(d)));
+                let val = try!(d.read_map_elt_val(i, |d| Decodable::decode(d)));
                 map.insert(key, val);
             }
-            map
+            Ok(map)
         })
     }
 }
 
 impl<
-    E: Encoder,
-    T: Encodable<E> + Hash<S> + TotalEq,
-    S,
-    H: Hasher<S>
-> Encodable<E> for HashSet<T, H> {
-    fn encode(&self, s: &mut E) {
+    E,
+    S: Encoder<E>,
+    T: Encodable<S, E> + Hash<X> + TotalEq,
+    X,
+    H: Hasher<X>
+> Encodable<S, E> for HashSet<T, H> {
+    fn encode(&self, s: &mut S) -> Result<(), E> {
         s.emit_seq(self.len(), |s| {
             let mut i = 0;
             for e in self.iter() {
-                s.emit_seq_elt(i, |s| e.encode(s));
+                try!(s.emit_seq_elt(i, |s| e.encode(s)));
                 i += 1;
             }
+            Ok(())
         })
     }
 }
 
 impl<
-    D: Decoder,
-    T: Decodable<D> + Hash<S> + TotalEq,
+    E,
+    D: Decoder<E>,
+    T: Decodable<D, E> + Hash<S> + TotalEq,
     S,
     H: Hasher<S> + Default
-> Decodable<D> for HashSet<T, H> {
-    fn decode(d: &mut D) -> HashSet<T, H> {
+> Decodable<D, E> for HashSet<T, H> {
+    fn decode(d: &mut D) -> Result<HashSet<T, H>, E> {
         d.read_seq(|d, len| {
             let mut set = HashSet::with_capacity_and_hasher(len, Default::default());
             for i in range(0u, len) {
-                set.insert(d.read_seq_elt(i, |d| Decodable::decode(d)));
+                set.insert(try!(d.read_seq_elt(i, |d| Decodable::decode(d))));
             }
-            set
+            Ok(set)
         })
     }
 }
 
 impl<
-    E: Encoder,
-    V: Encodable<E>
-> Encodable<E> for TrieMap<V> {
-    fn encode(&self, e: &mut E) {
+    E,
+    S: Encoder<E>,
+    V: Encodable<S, E>
+> Encodable<S, E> for TrieMap<V> {
+    fn encode(&self, e: &mut S) -> Result<(), E> {
         e.emit_map(self.len(), |e| {
                 for (i, (key, val)) in self.iter().enumerate() {
-                    e.emit_map_elt_key(i, |e| key.encode(e));
-                    e.emit_map_elt_val(i, |e| val.encode(e));
+                    try!(e.emit_map_elt_key(i, |e| key.encode(e)));
+                    try!(e.emit_map_elt_val(i, |e| val.encode(e)));
                 }
-            });
-    }
-}
-
-impl<
-    D: Decoder,
-    V: Decodable<D>
-> Decodable<D> for TrieMap<V> {
-    fn decode(d: &mut D) -> TrieMap<V> {
-        d.read_map(|d, len| {
-            let mut map = TrieMap::new();
-            for i in range(0u, len) {
-                let key = d.read_map_elt_key(i, |d| Decodable::decode(d));
-                let val = d.read_map_elt_val(i, |d| Decodable::decode(d));
-                map.insert(key, val);
-            }
-            map
-        })
-    }
-}
-
-impl<S: Encoder> Encodable<S> for TrieSet {
-    fn encode(&self, s: &mut S) {
-        s.emit_seq(self.len(), |s| {
-                for (i, e) in self.iter().enumerate() {
-                    s.emit_seq_elt(i, |s| e.encode(s));
-                }
+                Ok(())
             })
     }
 }
 
-impl<D: Decoder> Decodable<D> for TrieSet {
-    fn decode(d: &mut D) -> TrieSet {
+impl<
+    E,
+    D: Decoder<E>,
+    V: Decodable<D, E>
+> Decodable<D, E> for TrieMap<V> {
+    fn decode(d: &mut D) -> Result<TrieMap<V>, E> {
+        d.read_map(|d, len| {
+            let mut map = TrieMap::new();
+            for i in range(0u, len) {
+                let key = try!(d.read_map_elt_key(i, |d| Decodable::decode(d)));
+                let val = try!(d.read_map_elt_val(i, |d| Decodable::decode(d)));
+                map.insert(key, val);
+            }
+            Ok(map)
+        })
+    }
+}
+
+impl<E, S: Encoder<E>> Encodable<S, E> for TrieSet {
+    fn encode(&self, s: &mut S) -> Result<(), E> {
+        s.emit_seq(self.len(), |s| {
+                for (i, e) in self.iter().enumerate() {
+                    try!(s.emit_seq_elt(i, |s| e.encode(s)));
+                }
+                Ok(())
+            })
+    }
+}
+
+impl<E, D: Decoder<E>> Decodable<D, E> for TrieSet {
+    fn decode(d: &mut D) -> Result<TrieSet, E> {
         d.read_seq(|d, len| {
             let mut set = TrieSet::new();
             for i in range(0u, len) {
-                set.insert(d.read_seq_elt(i, |d| Decodable::decode(d)));
+                set.insert(try!(d.read_seq_elt(i, |d| Decodable::decode(d))));
             }
-            set
+            Ok(set)
         })
     }
 }

@@ -82,7 +82,7 @@ would yield functions like:
 ```
 */
 
-use ast::{MetaItem, Item, Expr, MutMutable};
+use ast::{MetaItem, Item, Expr, ExprRet, MutMutable, LitNil};
 use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
@@ -98,20 +98,28 @@ pub fn expand_deriving_encodable(cx: &mut ExtCtxt,
         span: span,
         attributes: Vec::new(),
         path: Path::new_(vec!("serialize", "Encodable"), None,
-                         vec!(~Literal(Path::new_local("__E"))), true),
+                         vec!(~Literal(Path::new_local("__S")),
+                              ~Literal(Path::new_local("__E"))), true),
         additional_bounds: Vec::new(),
         generics: LifetimeBounds {
             lifetimes: Vec::new(),
-            bounds: vec!(("__E", vec!(Path::new(vec!("serialize", "Encoder"))))),
+            bounds: vec!(("__S", vec!(Path::new_(
+                            vec!("serialize", "Encoder"), None,
+                            vec!(~Literal(Path::new_local("__E"))), true))),
+                         ("__E", vec!()))
         },
         methods: vec!(
             MethodDef {
                 name: "encode",
                 generics: LifetimeBounds::empty(),
                 explicit_self: borrowed_explicit_self(),
-                args: vec!(Ptr(~Literal(Path::new_local("__E")),
+                args: vec!(Ptr(~Literal(Path::new_local("__S")),
                             Borrowed(None, MutMutable))),
-                ret_ty: nil_ty(),
+                ret_ty: Literal(Path::new_(vec!("std", "result", "Result"),
+                                           None,
+                                           vec!(~Tuple(Vec::new()),
+                                                ~Literal(Path::new_local("__E"))),
+                                           true)),
                 inline: false,
                 const_nonmatching: true,
                 combine_substructure: encodable_substructure,
@@ -133,6 +141,7 @@ fn encodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
         Struct(ref fields) => {
             let emit_struct_field = cx.ident_of("emit_struct_field");
             let mut stmts = Vec::new();
+            let last = fields.len() - 1;
             for (i, &FieldInfo {
                     name,
                     self_,
@@ -152,6 +161,13 @@ fn encodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
                                                vec!(cx.expr_str(span, name),
                                                  cx.expr_uint(span, i),
                                                  lambda));
+
+                // last call doesn't need a try!
+                let call = if i != last {
+                    cx.expr_try(span, call)
+                } else {
+                    cx.expr(span, ExprRet(Some(call)))
+                };
                 stmts.push(cx.stmt_expr(call));
             }
 
@@ -175,6 +191,7 @@ fn encodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
             let encoder = cx.expr_ident(trait_span, blkarg);
             let emit_variant_arg = cx.ident_of("emit_enum_variant_arg");
             let mut stmts = Vec::new();
+            let last = fields.len() - 1;
             for (i, &FieldInfo { self_, span, .. }) in fields.iter().enumerate() {
                 let enc = cx.expr_method_call(span, self_, encode, vec!(blkencoder));
                 let lambda = cx.lambda_expr_1(span, enc, blkarg);
@@ -182,7 +199,20 @@ fn encodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
                                                emit_variant_arg,
                                                vec!(cx.expr_uint(span, i),
                                                  lambda));
+                let call = if i != last {
+                    cx.expr_try(span, call)
+                } else {
+                    cx.expr(span, ExprRet(Some(call)))
+                };
                 stmts.push(cx.stmt_expr(call));
+            }
+
+            // enums with no fields need to return Ok()
+            if stmts.len() == 0 {
+                let ret_ok = cx.expr(trait_span,
+                                     ExprRet(Some(cx.expr_ok(trait_span,
+                                                             cx.expr_lit(trait_span, LitNil)))));
+                stmts.push(cx.stmt_expr(ret_ok));
             }
 
             let blk = cx.lambda_stmts_1(trait_span, stmts, blkarg);
