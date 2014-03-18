@@ -51,7 +51,7 @@
 
 TARGET_CRATES := std green rustuv native flate arena glob term semver \
                  uuid serialize sync getopts collections num test time rand \
-		 workcache url log
+                 workcache url log hexfloat
 HOST_CRATES := syntax rustc rustdoc fourcc hexfloat
 CRATES := $(TARGET_CRATES) $(HOST_CRATES)
 TOOLS := compiletest rustdoc rustc
