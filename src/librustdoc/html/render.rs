@@ -58,6 +58,26 @@ use html::markdown;
 use html::markdown::Markdown;
 use html::highlight;
 
+/// A pair of name and its optional document.
+#[deriving(Clone, Eq, TotalEq)]
+pub struct NameDoc(~str, Option<~str>);
+
+impl Ord for NameDoc {
+    fn lt(&self, other: &NameDoc) -> bool {
+        let &NameDoc(ref name1, _) = self;
+        let &NameDoc(ref name2, _) = other;
+        name1.lt(name2)
+    }
+}
+
+impl TotalOrd for NameDoc {
+    fn cmp(&self, other: &NameDoc) -> Ordering {
+        let &NameDoc(ref name1, _) = self;
+        let &NameDoc(ref name2, _) = other;
+        name1.cmp(name2)
+    }
+}
+
 /// Major driving force in all rustdoc rendering. This contains information
 /// about where in the tree-like hierarchy rendering is occurring and controls
 /// how the current page is being rendered.
@@ -84,7 +104,7 @@ pub struct Context {
     /// functions), and the value is the list of containers belonging to this
     /// header. This map will change depending on the surrounding context of the
     /// page.
-    sidebar: HashMap<~str, ~[~str]>,
+    sidebar: HashMap<~str, ~[NameDoc]>,
     /// This flag indicates whether [src] links should be generated or not. If
     /// the source files are present in the html rendering, then this will be
     /// `true`.
@@ -207,11 +227,18 @@ local_data_key!(pub current_location_key: ~[~str])
 
 /// Generates the documentation for `crate` into the directory `dst`
 pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
+    if krate.module.is_none() {
+        println!("No docs need to generate for empty crate.");
+        return Ok(());
+    }
     let mut cx = Context {
         dst: dst,
         current: ~[],
         root_path: ~"",
-        sidebar: HashMap::new(),
+        sidebar: match krate.module.get_ref().inner {
+            clean::ModuleItem(ref m) => { build_sidebar(m) }
+            _ => { HashMap::new() }
+        },
         layout: layout::Layout {
             logo: ~"",
             favicon: ~"",
@@ -1012,6 +1039,11 @@ fn shorter<'a>(s: Option<&'a str>) -> &'a str {
     }
 }
 
+#[inline]
+fn shorter_line(s: Option<&str>) -> ~str {
+    shorter(s).replace("\n", " ")
+}
+
 fn document(w: &mut Writer, item: &clean::Item) -> fmt::Result {
     match item.doc_value() {
         Some(s) => {
@@ -1651,21 +1683,23 @@ impl<'a> fmt::Show for Sidebar<'a> {
                 None => return Ok(())
             };
             try!(write!(w, "<div class='block {}'><h2>{}</h2>", short, longty));
-            for item in items.iter() {
-                let class = if cur.name.get_ref() == item &&
+            for &NameDoc(ref name, ref doc) in items.iter() {
+                let class = if cur.name.get_ref() == name &&
                                short == shortty(cur) { "current" } else { "" };
-                try!(write!(w, "<a class='{ty} {class}' href='{curty, select,
-                                mod{../}
-                                other{}
-                           }{tysel, select,
+                // cx.current.len() == 1: we are in crate root index.html
+                let relpath = if shortty(cur) == "mod" &&
+                                 cx.current.len() > 1 { "../" } else { "" };
+                try!(write!(w, "<a class='{ty} {class}' href='{relpath}{tysel, select,
                                 mod{{name}/index.html}
                                 other{#.{name}.html}
-                           }'>{name}</a><br/>",
+                           }' title='{title}'>{name}</a><br/>",
                        ty = short,
                        tysel = short,
                        class = class,
-                       curty = shortty(cur),
-                       name = item.as_slice()));
+                       relpath = relpath,
+                       name = name,
+                       title = doc.get_ref().to_owned(), // doc always Some<>, see build_sidebar()
+                   ));
             }
             try!(write!(w, "</div>"));
             Ok(())
@@ -1680,7 +1714,7 @@ impl<'a> fmt::Show for Sidebar<'a> {
     }
 }
 
-fn build_sidebar(m: &clean::Module) -> HashMap<~str, ~[~str]> {
+fn build_sidebar(m: &clean::Module) -> HashMap<~str, ~[NameDoc]> {
     let mut map = HashMap::new();
     for item in m.items.iter() {
         let short = shortty(item);
@@ -1689,7 +1723,7 @@ fn build_sidebar(m: &clean::Module) -> HashMap<~str, ~[~str]> {
             Some(ref s) => s.to_owned(),
         };
         let v = map.find_or_insert_with(short.to_owned(), |_| ~[]);
-        v.push(myname);
+        v.push(NameDoc(myname, Some(shorter_line(item.doc_value()))));
     }
 
     for (_, items) in map.mut_iter() {
