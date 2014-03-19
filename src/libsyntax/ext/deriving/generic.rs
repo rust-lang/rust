@@ -184,7 +184,7 @@ use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use codemap;
 use codemap::Span;
-use opt_vec;
+use owned_slice::OwnedSlice;
 use parse::token::InternedString;
 
 use std::vec;
@@ -362,7 +362,7 @@ impl<'a> TraitDef<'a> {
 
         let Generics { mut lifetimes, ty_params } =
             self.generics.to_generics(cx, self.span, type_ident, generics);
-        let mut ty_params = opt_vec::take_vec(ty_params);
+        let mut ty_params = ty_params.into_vec();
 
         // Copy the lifetimes
         lifetimes.extend(&mut generics.lifetimes.iter().map(|l| *l));
@@ -380,11 +380,11 @@ impl<'a> TraitDef<'a> {
             // require the current trait
             bounds.push(cx.typarambound(trait_path.clone()));
 
-            cx.typaram(ty_param.ident, opt_vec::from(bounds), None)
+            cx.typaram(ty_param.ident, OwnedSlice::from_vec(bounds), None)
         }));
         let trait_generics = Generics {
             lifetimes: lifetimes,
-            ty_params: opt_vec::from(ty_params)
+            ty_params: OwnedSlice::from_vec(ty_params)
         };
 
         // Create the reference to the trait.
@@ -400,7 +400,7 @@ impl<'a> TraitDef<'a> {
         // Create the type of `self`.
         let self_type = cx.ty_path(
             cx.path_all(self.span, false, vec!( type_ident ), self_lifetimes,
-                        opt_vec::take_vec(self_ty_params)), None);
+                        self_ty_params.into_vec()), None);
 
         let attr = cx.attribute(
             self.span,

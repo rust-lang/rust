@@ -13,7 +13,7 @@ use ast;
 use ast_util;
 use codemap::{respan, Span, Spanned};
 use parse::token;
-use opt_vec::OptVec;
+use owned_slice::OwnedSlice;
 use util::small_vector::SmallVector;
 
 // We may eventually want to be able to fold over type parameters, too.
@@ -424,8 +424,8 @@ pub fn fold_ty_param<T: Folder>(tp: &TyParam, fld: &mut T) -> TyParam {
     }
 }
 
-pub fn fold_ty_params<T: Folder>(tps: &OptVec<TyParam>, fld: &mut T)
-                                   -> OptVec<TyParam> {
+pub fn fold_ty_params<T: Folder>(tps: &OwnedSlice<TyParam>, fld: &mut T)
+                                   -> OwnedSlice<TyParam> {
     tps.map(|tp| fold_ty_param(tp, fld))
 }
 
@@ -493,8 +493,8 @@ fn fold_mt<T: Folder>(mt: &MutTy, folder: &mut T) -> MutTy {
     }
 }
 
-fn fold_opt_bounds<T: Folder>(b: &Option<OptVec<TyParamBound>>, folder: &mut T)
-                              -> Option<OptVec<TyParamBound>> {
+fn fold_opt_bounds<T: Folder>(b: &Option<OwnedSlice<TyParamBound>>, folder: &mut T)
+                              -> Option<OwnedSlice<TyParamBound>> {
     b.as_ref().map(|bounds| {
         bounds.map(|bound| {
             fold_ty_param_bound(bound, folder)

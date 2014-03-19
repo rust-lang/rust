@@ -28,7 +28,7 @@ use syntax::ast_util::{is_local, def_id_of_def, local_def};
 use syntax::attr;
 use syntax::codemap::Span;
 use syntax::parse::token;
-use syntax::opt_vec;
+use syntax::owned_slice::OwnedSlice;
 use syntax::visit;
 use syntax::visit::Visitor;
 
@@ -842,7 +842,7 @@ impl<'a> Visitor<()> for PrivacyVisitor<'a> {
                                 let seg = ast::PathSegment {
                                     identifier: pid.node.name,
                                     lifetimes: Vec::new(),
-                                    types: opt_vec::Empty,
+                                    types: OwnedSlice::empty(),
                                 };
                                 let segs = vec!(seg);
                                 let path = ast::Path {

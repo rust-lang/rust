@@ -13,8 +13,7 @@ use ast::*;
 use ast;
 use codemap::Span;
 use parse;
-use opt_vec;
-use opt_vec::OptVec;
+use owned_slice::OwnedSlice;
 
 // Context-passing AST walker. Each overridden visit method has full control
 // over what happens with its node, it can do its own traversal of the node's
@@ -56,7 +55,7 @@ pub fn generics_of_fn(fk: &FnKind) -> Generics {
         FkFnBlock(..) => {
             Generics {
                 lifetimes: Vec::new(),
-                ty_params: opt_vec::Empty,
+                ty_params: OwnedSlice::empty(),
             }
         }
     }
@@ -457,7 +456,7 @@ pub fn walk_foreign_item<E: Clone, V: Visitor<E>>(visitor: &mut V,
 }
 
 pub fn walk_ty_param_bounds<E: Clone, V: Visitor<E>>(visitor: &mut V,
-                                                     bounds: &OptVec<TyParamBound>,
+                                                     bounds: &OwnedSlice<TyParamBound>,
                                                      env: E) {
     for bound in bounds.iter() {
         match *bound {

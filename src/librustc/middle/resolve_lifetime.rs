@@ -21,7 +21,7 @@ use driver::session::Session;
 use util::nodemap::NodeMap;
 use syntax::ast;
 use syntax::codemap::Span;
-use syntax::opt_vec::OptVec;
+use syntax::owned_slice::OwnedSlice;
 use syntax::parse::token::special_idents;
 use syntax::parse::token;
 use syntax::print::pprust::{lifetime_to_str};
@@ -412,7 +412,7 @@ pub fn early_bound_lifetimes<'a>(generics: &'a ast::Generics) -> Vec<ast::Lifeti
         .collect()
 }
 
-pub fn free_lifetimes(ty_params: &OptVec<ast::TyParam>) -> Vec<ast::Name> {
+pub fn free_lifetimes(ty_params: &OwnedSlice<ast::TyParam>) -> Vec<ast::Name> {
     /*!
      * Gathers up and returns the names of any lifetimes that appear
      * free in `ty_params`. Of course, right now, all lifetimes appear

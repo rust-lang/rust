@@ -199,7 +199,7 @@ use middle::ty;
 use std::fmt;
 use syntax::ast;
 use syntax::ast_util;
-use syntax::opt_vec;
+use syntax::owned_slice::OwnedSlice;
 use syntax::visit;
 use syntax::visit::Visitor;
 use util::ppaux::Repr;
@@ -286,8 +286,8 @@ fn determine_parameters_to_be_inferred<'a>(tcx: &'a ty::ctxt,
         // cache and share the variance struct used for items with
         // no type/region parameters
         empty_variances: @ty::ItemVariances { self_param: None,
-                                              type_params: opt_vec::Empty,
-                                              region_params: opt_vec::Empty }
+                                              type_params: OwnedSlice::empty(),
+                                              region_params: OwnedSlice::empty() }
     };
 
     visit::walk_crate(&mut terms_cx, krate, ());
@@ -928,8 +928,8 @@ impl<'a> SolveContext<'a> {
 
             let item_variances = ty::ItemVariances {
                 self_param: self_param,
-                type_params: opt_vec::from(type_params),
-                region_params: opt_vec::from(region_params)
+                type_params: OwnedSlice::from_vec(type_params),
+                region_params: OwnedSlice::from_vec(region_params)
             };
             debug!("item_id={} item_variances={}",
                     item_id,

@@ -50,7 +50,6 @@ pub mod syntax {
 }
 
 pub mod owned_slice;
-pub mod opt_vec;
 pub mod attr;
 pub mod diagnostic;
 pub mod codemap;

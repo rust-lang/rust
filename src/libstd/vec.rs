@@ -121,6 +121,19 @@ impl<T> Vec<T> {
         }
     }
 
+    /// Create a `Vec<T>` directly from the raw constituents.
+    ///
+    /// This is highly unsafe:
+    ///
+    /// - if `ptr` is null, then `length` and `capacity` should be 0
+    /// - `ptr` must point to an allocation of size `capacity`
+    /// - there must be `length` valid instances of type `T` at the
+    ///   beginning of that allocation
+    /// - `ptr` must be allocated by the default `Vec` allocator
+    pub unsafe fn from_raw_parts(length: uint, capacity: uint, ptr: *mut T) -> Vec<T> {
+        Vec { len: length, cap: capacity, ptr: ptr }
+    }
+
     /// Consumes the `Vec`, partitioning it based on a predcate.
     ///
     /// Partitions the `Vec` into two `Vec`s `(A,B)`, where all elements of `A`
