@@ -705,7 +705,7 @@ impl<'a> ConstraintContext<'a> {
                 self.add_constraints_from_sig(sig, variance);
             }
 
-            ty::ty_closure(ty::ClosureTy { sig: ref sig, region, .. }) => {
+            ty::ty_closure(~ty::ClosureTy { sig: ref sig, region, .. }) => {
                 let contra = self.contravariant(variance);
                 self.add_constraints_from_region(region, contra);
                 self.add_constraints_from_sig(sig, variance);

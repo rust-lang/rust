@@ -173,7 +173,7 @@ pub fn opt_deref_kind(t: ty::t) -> Option<deref_kind> {
         ty::ty_trait(~ty::TyTrait { store: ty::UniqTraitStore, .. }) |
         ty::ty_vec(_, ty::vstore_uniq) |
         ty::ty_str(ty::vstore_uniq) |
-        ty::ty_closure(ty::ClosureTy {sigil: ast::OwnedSigil, ..}) => {
+        ty::ty_closure(~ty::ClosureTy {sigil: ast::OwnedSigil, ..}) => {
             Some(deref_ptr(OwnedPtr))
         }
 
@@ -189,7 +189,7 @@ pub fn opt_deref_kind(t: ty::t) -> Option<deref_kind> {
         }
 
         ty::ty_str(ty::vstore_slice(r)) |
-        ty::ty_closure(ty::ClosureTy {sigil: ast::BorrowedSigil,
+        ty::ty_closure(~ty::ClosureTy {sigil: ast::BorrowedSigil,
                                       region: r, ..}) => {
             Some(deref_ptr(BorrowedPtr(ty::ImmBorrow, r)))
         }

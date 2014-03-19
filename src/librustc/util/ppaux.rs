@@ -453,7 +453,7 @@ pub fn ty_to_str(cx: &ctxt, typ: t) -> ~str {
         ~"(" + strs.connect(",") + ")"
       }
       ty_closure(ref f) => {
-          closure_to_str(cx, f)
+          closure_to_str(cx, *f)
       }
       ty_bare_fn(ref f) => {
           bare_fn_to_str(cx, f.purity, f.abis, None, &f.sig)

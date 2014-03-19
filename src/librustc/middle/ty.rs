@@ -746,7 +746,7 @@ pub enum sty {
     ty_ptr(mt),
     ty_rptr(Region, mt),
     ty_bare_fn(BareFnTy),
-    ty_closure(ClosureTy),
+    ty_closure(~ClosureTy),
     ty_trait(~TyTrait),
     ty_struct(DefId, substs),
     ty_tup(Vec<t>),
@@ -1407,7 +1407,7 @@ pub fn mk_mut_unboxed_vec(cx: &ctxt, ty: t) -> t {
 pub fn mk_tup(cx: &ctxt, ts: Vec<t>) -> t { mk_t(cx, ty_tup(ts)) }
 
 pub fn mk_closure(cx: &ctxt, fty: ClosureTy) -> t {
-    mk_t(cx, ty_closure(fty))
+    mk_t(cx, ty_closure(~fty))
 }
 
 pub fn mk_bare_fn(cx: &ctxt, fty: BareFnTy) -> t {
@@ -2149,7 +2149,7 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
             }
 
             ty_closure(ref c) => {
-                closure_contents(cx, c)
+                closure_contents(cx, *c)
             }
 
             ty_box(typ) => {
@@ -2870,7 +2870,7 @@ pub fn ty_region(tcx: &ctxt,
 pub fn replace_fn_sig(cx: &ctxt, fsty: &sty, new_sig: FnSig) -> t {
     match *fsty {
         ty_bare_fn(ref f) => mk_bare_fn(cx, BareFnTy {sig: new_sig, ..*f}),
-        ty_closure(ref f) => mk_closure(cx, ClosureTy {sig: new_sig, ..*f}),
+        ty_closure(ref f) => mk_closure(cx, ClosureTy {sig: new_sig, ..**f}),
         ref s => {
             cx.sess.bug(
                 format!("ty_fn_sig() called on non-fn type: {:?}", s));
@@ -2888,7 +2888,7 @@ pub fn replace_closure_return_type(tcx: &ctxt, fn_type: t, ret_type: t) -> t {
         ty::ty_closure(ref fty) => {
             ty::mk_closure(tcx, ClosureTy {
                 sig: FnSig {output: ret_type, ..fty.sig.clone()},
-                ..(*fty).clone()
+                ..(**fty).clone()
             })
         }
         _ => {
@@ -3140,7 +3140,7 @@ pub fn adjust_ty(cx: &ctxt,
                 ty::mk_closure(cx, ClosureTy {
                     sigil: BorrowedSigil,
                     region: r,
-                    ..(*fty).clone()
+                    ..(**fty).clone()
                 })
             }
 

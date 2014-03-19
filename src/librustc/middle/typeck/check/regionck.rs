@@ -610,7 +610,7 @@ fn check_expr_fn_block(rcx: &mut Rcx,
     let tcx = rcx.fcx.tcx();
     let function_type = rcx.resolve_node_type(expr.id);
     match ty::get(function_type).sty {
-        ty::ty_closure(ty::ClosureTy {
+        ty::ty_closure(~ty::ClosureTy {
                 sigil: ast::BorrowedSigil, region: region, ..}) => {
             let freevars = freevars::get_freevars(tcx, expr.id);
             if freevars.is_empty() {
@@ -635,7 +635,7 @@ fn check_expr_fn_block(rcx: &mut Rcx,
     rcx.set_repeating_scope(repeating_scope);
 
     match ty::get(function_type).sty {
-        ty::ty_closure(ty::ClosureTy {sigil: ast::BorrowedSigil, ..}) => {
+        ty::ty_closure(~ty::ClosureTy {sigil: ast::BorrowedSigil, ..}) => {
             let freevars = freevars::get_freevars(tcx, expr.id);
             propagate_upupvar_borrow_kind(rcx, expr, freevars);
         }

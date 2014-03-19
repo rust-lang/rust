@@ -175,7 +175,7 @@ pub fn super_fold_sty<T:TypeFolder>(this: &mut T,
             ty::ty_bare_fn(this.fold_bare_fn_ty(f))
         }
         ty::ty_closure(ref f) => {
-            ty::ty_closure(this.fold_closure_ty(f))
+            ty::ty_closure(~this.fold_closure_ty(*f))
         }
         ty::ty_rptr(r, ref tm) => {
             ty::ty_rptr(this.fold_region(r),
