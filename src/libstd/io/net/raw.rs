@@ -189,6 +189,30 @@ impl<'p> MutableEthernetHeader<'p> {
     }
 }
 
+#[test]
+fn ethernet_header_test() {
+    let mut packet = [0u8, ..14];
+    {
+        let mut ethernetHeader = MutableEthernetHeader::new(packet.as_mut_slice(), 0);
+
+        let source = MacAddr(0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc);
+        ethernetHeader.set_source(source);
+        assert_eq!(ethernetHeader.get_source(), source);
+
+        let dest = MacAddr(0xde, 0xf0, 0x12, 0x34, 0x45, 0x67);
+        ethernetHeader.set_destination(dest);
+        assert_eq!(ethernetHeader.get_destination(), dest);
+
+        ethernetHeader.set_ethertype(EtherTypes::Ipv6);
+        assert_eq!(ethernetHeader.get_ethertype(), EtherTypes::Ipv6);
+    }
+
+     let refPacket = [0xde, 0xf0, 0x12, 0x34, 0x45, 0x67, /* destination */
+                      0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc, /* source */
+                      0x86, 0xdd /* ethertype */];
+    assert_eq!(refPacket.as_slice(), packet.as_slice());
+}
+
 pub struct Ipv4Header<'p> {
     priv packet: &'p [u8],
     priv offset: uint
@@ -217,55 +241,82 @@ pub trait Ipv4Packet : Packet {
     fn get_version(&self) -> u8 {
         self.packet()[self.offset()] >> 4
     }
+
     fn get_header_length(&self) -> u8 {
         self.packet()[self.offset()] & 0xF
     }
+
     fn get_dscp(&self) -> u8 {
         (self.packet()[self.offset() + 1] & 0xFC) >> 2
     }
+
     fn get_ecn(&self) -> u8 {
         self.packet()[self.offset() + 1] & 3
     }
+
     fn get_total_length(&self) -> u16 {
         let b1 = self.packet()[self.offset() + 2] as u16 << 8;
         let b2 = self.packet()[self.offset() + 3] as u16;
         b1 | b2
     }
+
     fn get_identification(&self) -> u16 {
         let b1 = self.packet()[self.offset() + 4] as u16 << 8;
         let b2 = self.packet()[self.offset() + 5] as u16;
         b1 | b2
     }
+
     fn get_flags(&self) -> u8 {
         self.packet()[self.offset() + 6] >> 5
     }
+
     fn get_fragment_offset(&self) -> u16 {
         let b1 = (self.packet()[self.offset() + 6] & 0x1F) as u16 << 8;
         let b2 = self.packet()[self.offset() + 7] as u16;
         b1 | b2
     }
+
     fn get_ttl(&self) -> u8 {
         self.packet()[self.offset() + 8]
     }
+
     fn get_next_level_protocol(&self) -> IpNextHeaderProtocol {
         self.packet()[self.offset() + 9]
     }
+
     fn get_checksum(&self) -> u16 {
         let cs1 = self.packet()[self.offset() + 10] as u16 << 8;
         let cs2 = self.packet()[self.offset() + 11] as u16;
         cs1 | cs2
     }
+
     fn get_source(&self) -> IpAddr {
         Ipv4Addr(self.packet()[self.offset() + 12],
                  self.packet()[self.offset() + 13],
                  self.packet()[self.offset() + 14],
                  self.packet()[self.offset() + 15])
     }
+
     fn get_destination(&self) -> IpAddr {
         Ipv4Addr(self.packet()[self.offset() + 16],
                  self.packet()[self.offset() + 17],
                  self.packet()[self.offset() + 18],
                  self.packet()[self.offset() + 19])
+    }
+
+    fn calculate_checksum(&mut self) -> u16 {
+        let len = self.offset() + self.get_header_length() as uint * 4;
+        let mut sum = 0u32;
+        let mut i = self.offset();
+        while i < len {
+            let word = self.packet()[i] as u32 << 8 | self.packet()[i + 1] as u32;
+            sum = sum + word;
+            i = i + 2;
+        }
+        while sum >> 16 != 0 {
+            sum = (sum >> 16) + (sum & 0xFFFF);
+        }
+        return !sum as u16;
     }
 }
 
@@ -364,18 +415,8 @@ impl<'p> MutableIpv4Header<'p> {
     }
 
     pub fn checksum(&mut self) {
-        let len = self.offset + self.get_header_length() as uint * 4;
-        let mut sum = 0u32;
-        let mut i = self.offset;
-        while i < len {
-            let word = self.packet[i] as u32 << 8 | self.packet[i + 1] as u32;
-            sum = sum + word;
-            i = i + 2;
-        }
-        while sum >> 16 != 0 {
-            sum = (sum >> 16) + (sum & 0xFFFF);
-        }
-        self.set_checksum(!sum as u16);
+        let checksum = self.calculate_checksum();
+        self.set_checksum(checksum);
     }
 }
 
@@ -465,28 +506,34 @@ pub trait Ipv6Packet : Packet {
     fn get_version(&self) -> u8 {
         self.packet()[self.offset()] >> 4
     }
+
     fn get_traffic_class(&self) -> u8 {
         let tc1 = (self.packet()[self.offset() + 0] & 0x0F) << 4;
         let tc2 = self.packet()[self.offset() + 1] >> 4;
         tc1 | tc2
     }
+
     fn get_flow_label(&self) -> u32 {
         let fl1 = (self.packet()[self.offset() + 1] as u32 & 0xF) << 16;
         let fl2 =  self.packet()[self.offset() + 2] as u32 << 8;
         let fl3 =  self.packet()[self.offset() + 3] as u32;
         fl1 | fl2 | fl3
     }
+
     fn get_payload_length(&self) -> u16 {
         let len1 = self.packet()[self.offset() + 4] as u16 << 8;
         let len2 = self.packet()[self.offset() + 5] as u16;
         len1 | len2
     }
+
     fn get_next_header(&self) -> IpNextHeaderProtocol {
         self.packet()[self.offset() + 6]
     }
+
     fn get_hop_limit(&self) -> u8 {
         self.packet()[self.offset() + 7]
     }
+
     fn get_source(&self) -> IpAddr {
         let packet = self.packet();
         let offset = self.offset();
@@ -502,6 +549,7 @@ pub trait Ipv6Packet : Packet {
 
         Ipv6Addr(a, b, c, d, e, f, g, h)
     }
+
     fn get_destination(&self) -> IpAddr {
         let packet = self.packet();
         let offset = self.offset();
@@ -699,21 +747,103 @@ pub trait UdpPacket : Packet {
         let s2 = self.packet()[self.offset() + 1] as u16;
         s1 | s2
     }
+
     fn get_destination(&self) -> u16 {
         let d1 = self.packet()[self.offset() + 2] as u16 << 8;
         let d2 = self.packet()[self.offset() + 3] as u16;
         d1 | d2
     }
+
     fn get_length(&self) -> u16 {
         let l1 = self.packet()[self.offset() + 4] as u16 << 8;
         let l2 = self.packet()[self.offset() + 5] as u16;
         l1 | l2
     }
+
     fn get_checksum(&self) -> u16 {
         let c1 = self.packet()[self.offset() + 6] as u16 << 8;
         let c2 = self.packet()[self.offset() + 7] as u16;
         c1 | c2
     }
+
+    fn calculate_ipv4_checksum(&self, offset: uint) -> u16 {
+        let mut sum = 0u32;
+        let mut i = offset;
+
+        // Checksum pseudo-header
+        // IPv4 source
+        sum = sum + (self.packet()[i + 12] as u32 << 8 | self.packet()[i + 13] as u32);
+        sum = sum + (self.packet()[i + 14] as u32 << 8 | self.packet()[i + 15] as u32);
+
+        // IPv4 destination
+        sum = sum + (self.packet()[i + 16] as u32 << 8 | self.packet()[i + 17] as u32);
+        sum = sum + (self.packet()[i + 18] as u32 << 8 | self.packet()[i + 19] as u32);
+
+        // IPv4 Next level protocol
+        sum = sum + self.packet()[i + 9] as u32;
+
+        // UDP Length
+        sum = sum + (self.packet()[self.offset() + 4] as u32 << 8 |
+                     self.packet()[self.offset() + 5] as u32);
+
+        // Checksum UDP header/packet
+        i = self.offset();
+        let len = self.offset() + self.get_length() as uint;
+        while i < len {
+            let word = self.packet()[i] as u32 << 8 | self.packet()[i + 1] as u32;
+            sum = sum + word;
+            i = i + 2;
+        }
+        // If the length is odd, make sure to checksum the final byte
+        if len & 1 != 0 {
+            sum = sum + (self.packet()[len - 1] as u32 << 8);
+        }
+        while sum >> 16 != 0 {
+            sum = (sum >> 16) + (sum & 0xFFFF);
+        }
+
+        return !sum as u16;
+    }
+
+    fn calculate_ipv6_checksum(&self, offset: uint) -> u16 {
+        let mut sum = 0u32;
+        let mut i = offset + 8;
+        let mut len = offset + 40;
+
+        // Checksum pseudo-header
+        // IPv6 source and destination
+        while i < len {
+            let word = self.packet()[i] as u32 << 8 | self.packet()[i + 1] as u32;
+            sum = sum + word;
+            i = i + 2;
+        }
+
+        // IPv6 Next header
+        sum = sum + self.packet()[offset + 6] as u32;
+
+        // UDP Length
+        sum = sum + self.get_length() as u32;
+
+        // Checksum UDP header/packet
+        i = self.offset();
+        len = self.offset() + self.get_length() as uint;
+        while i < len {
+            let word = self.packet()[i] as u32 << 8 | self.packet()[i + 1] as u32;
+            sum = sum + word;
+            i = i + 2;
+        }
+        // If the length is odd, make sure to checksum the final byte
+        if len & 1 != 0 {
+            sum = sum + self.packet()[len - 1] as u32 << 8;
+        }
+
+        while sum >> 16 != 0 {
+            sum = (sum >> 16) + (sum & 0xFFFF);
+        }
+
+        return !sum as u16;
+    }
+
 }
 
 impl<'p> UdpPacket for UdpHeader<'p> {}
@@ -750,10 +880,104 @@ impl<'p> MutableUdpHeader<'p> {
         self.packet[self.offset + 7] = (checksum & 0xFF) as u8;
     }
 
-    pub fn checksum(&mut self) {
-        // FIXME
+    pub fn ipv4_checksum(&mut self, offset: uint) {
+        let checksum = self.calculate_ipv4_checksum(offset);
+        // RFC 768, a checksum of zero is transmitted as all ones
+        if checksum != 0 {
+            self.set_checksum(checksum);
+        } else {
+            self.set_checksum(0xFFFF);
+        }
     }
+
+    pub fn ipv6_checksum(&mut self, offset: uint) {
+        let checksum = self.calculate_ipv6_checksum(offset);
+        if checksum != 0 {
+            self.set_checksum(checksum);
+        } else {
+            self.set_checksum(0xFFFF);
+        }
+    }
+
 }
+
+#[test]
+fn udp_header_ipv4_test() {
+    let mut packet = [0u8, ..20 + 8 + 4];
+    {
+        let mut ipHeader = MutableIpv4Header::new(packet.as_mut_slice(), 0);
+        ipHeader.set_next_level_protocol(IpNextHeaderProtocols::Udp);
+        ipHeader.set_source(Ipv4Addr(192, 168, 0, 1));
+        ipHeader.set_destination(Ipv4Addr(192, 168, 0, 199));
+    }
+
+    // Set data
+    packet[20 + 8 + 0] = 't' as u8;
+    packet[20 + 8 + 1] = 'e' as u8;
+    packet[20 + 8 + 2] = 's' as u8;
+    packet[20 + 8 + 3] = 't' as u8;
+
+    {
+        let mut udpHeader = MutableUdpHeader::new(packet.as_mut_slice(), 20);
+        udpHeader.set_source(12345);
+        assert_eq!(udpHeader.get_source(), 12345);
+
+        udpHeader.set_destination(54321);
+        assert_eq!(udpHeader.get_destination(), 54321);
+
+        udpHeader.set_length(8 + 4);
+        assert_eq!(udpHeader.get_length(), 8 + 4);
+
+        udpHeader.ipv4_checksum(0);
+        assert_eq!(udpHeader.get_checksum(), 0x9178);
+    }
+
+    let refPacket = [0x30, 0x39, /* source */
+                     0xd4, 0x31, /* destination */
+                     0x00, 0x0c, /* length */
+                     0x91, 0x78  /* checksum*/];
+    assert_eq!(refPacket.as_slice(), packet.slice(20, 28));
+}
+
+
+#[test]
+fn udp_header_ipv6_test() {
+    let mut packet = [0u8, ..40 + 8 + 4];
+    {
+        let mut ipHeader = MutableIpv6Header::new(packet.as_mut_slice(), 0);
+        ipHeader.set_next_header(IpNextHeaderProtocols::Udp);
+        ipHeader.set_source(Ipv6Addr(0, 0, 0, 0, 0, 0, 0, 1));
+        ipHeader.set_destination(Ipv6Addr(0, 0, 0, 0, 0, 0, 0, 1));
+    }
+
+    // Set data
+    packet[40 + 8 + 0] = 't' as u8;
+    packet[40 + 8 + 1] = 'e' as u8;
+    packet[40 + 8 + 2] = 's' as u8;
+    packet[40 + 8 + 3] = 't' as u8;
+
+    {
+        let mut udpHeader = MutableUdpHeader::new(packet.as_mut_slice(), 20);
+        udpHeader.set_source(12345);
+        assert_eq!(udpHeader.get_source(), 12345);
+
+        udpHeader.set_destination(54321);
+        assert_eq!(udpHeader.get_destination(), 54321);
+
+        udpHeader.set_length(8 + 4);
+        assert_eq!(udpHeader.get_length(), 8 + 4);
+
+        udpHeader.ipv6_checksum(0);
+        assert_eq!(udpHeader.get_checksum(), 0xf6f3);
+    }
+
+    let refPacket = [0x30, 0x39, /* source */
+                     0xd4, 0x31, /* destination */
+                     0x00, 0x0c, /* length */
+                     0xf6, 0xf3  /* checksum*/];
+    assert_eq!(refPacket.as_slice(), packet.slice(20, 28));
+}
+
 
 pub enum Protocol {
     DataLinkProtocol(DataLinkProto),
@@ -1084,7 +1308,6 @@ pub mod test {
         udpHeader.set_source(1234); // Arbitary port number
         udpHeader.set_destination(1234);
         udpHeader.set_length(UDP_HEADER_LEN + TEST_DATA_LEN);
-        udpHeader.checksum();
     }
 
     pub fn build_udp4_packet(packet: &mut [u8], start: uint) {
@@ -1096,6 +1319,8 @@ pub mod test {
         packet[dataStart + 1] = 'e' as u8;
         packet[dataStart + 2] = 's' as u8;
         packet[dataStart + 3] = 't' as u8;
+
+        MutableUdpHeader::new(packet, IPV4_HEADER_LEN as uint).ipv4_checksum(start);
     }
 
     pub fn build_udp6_packet(packet: &mut [u8], start: uint) {
@@ -1107,6 +1332,8 @@ pub mod test {
         packet[dataStart + 1] = 'e' as u8;
         packet[dataStart + 2] = 's' as u8;
         packet[dataStart + 3] = 't' as u8;
+
+        MutableUdpHeader::new(packet, IPV6_HEADER_LEN as uint).ipv6_checksum(start);
     }
 
     pub fn get_test_interface() -> NetworkInterface {
