@@ -997,7 +997,6 @@ pub mod types {
             pub mod bsd44 {
             }
             pub mod extra {
-                use ptr;
                 use consts::os::extra::{MAX_PROTOCOL_CHAIN,
                                               WSAPROTOCOL_LEN};
                 use types::common::c95::c_void;
