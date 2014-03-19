@@ -25,7 +25,9 @@ pub enum ArgKind {
     /// LLVM type or by coercing to another specified type
     Direct,
     /// Pass the argument indirectly via a hidden pointer
-    Indirect
+    Indirect,
+    /// Ignore the argument (useful for empty struct)
+    Ignore,
 }
 
 /// Information about how a specific C type
@@ -68,12 +70,26 @@ impl ArgType {
         }
     }
 
+    pub fn ignore(ty: Type) -> ArgType {
+        ArgType {
+            kind: Ignore,
+            ty: ty,
+            cast: None,
+            pad: None,
+            attr: None,
+        }
+    }
+
     pub fn is_direct(&self) -> bool {
         return self.kind == Direct;
     }
 
     pub fn is_indirect(&self) -> bool {
         return self.kind == Indirect;
+    }
+
+    pub fn is_ignore(&self) -> bool {
+        return self.kind == Ignore;
     }
 }
 
