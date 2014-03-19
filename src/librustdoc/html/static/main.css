@@ -130,9 +130,6 @@ nav.sub {
     font-size: 14px;
 
     transition: border 500ms ease-out;
-    -webkit-transition: border 500ms ease-out;
-    -moz-transition: border 500ms ease-out;
-    -o-transition: border 500ms ease-out;
 }
 
 body p {
@@ -285,16 +282,18 @@ a {
 .content .fnname { color: #8c6067; }
 
 .search-container {
-    padding-right: 10px;
+    width: 60%;
+    margin-left: 50px;
 }
+
 .search-input {
     border: 2px solid #e9e9e9;
     border-radius: 2px;
-    width: 85%;
+    width: 95%;
     box-sizing: content-box;
     outline: none;
     border: none;
-    background: none;
+    background-color: white;
     font-family: "Helvetica Neue";
     color: #000;
     margin-top: 5px;
@@ -306,17 +305,10 @@ a {
     padding: 10px 16px;
     line-height: 1.4;
     font-size: 17px;
-    background-color: white;
-    -webkit-transition: background-color 50ms linear;
+
     transition: background-color 50ms linear;
     transition: border 500ms ease-out;
-    -webkit-transition: border 500ms ease-out;
-    -moz-transition: border 500ms ease-out;
-    -o-transition: border 500ms ease-out;
     transition: box-shadow 500ms ease-out;
-    -webkit-transition: box-shadow 500ms ease-out;
-    -moz-transition: box-shadow 500ms ease-out;
-    -o-transition: box-shadow 500ms ease-out;
 }
 
 .search-input:focus {
@@ -327,7 +319,7 @@ a {
 }
 
 .do-search {
-    float: right;
+    display: none;
     outline: none;
     border: none;
     font-family: Helvetica Neue;
@@ -336,10 +328,11 @@ a {
     padding: 14px 25px;
     margin-top: 3px;
     font-size: 16px;
-    margin-right: 15px;
     text-align: center;
-    background: #6F5E59;
+    background: #5B6672;
+    margin-left: 10px;
 }
+
 .search-results .desc {
     white-space: nowrap;
     text-overflow: ellipsis;
@@ -421,4 +414,29 @@ h4.section-link:hover a:after,
 h5.section-link:hover a:after,
 h6.section-link:hover a:after {
   content: ' § ';
+}
+
+/** Media Queries **/
+
+@media (max-width: 620px) {
+  .search-container {
+    display: block;
+    width: 100%;
+    margin-left: 0px;
+  }
+}
+
+@media (max-width: 700px) {
+    .sidebar {
+        display: none;
+    }
+
+    .content {
+        margin-left: 0px;
+    }
+
+    nav.sub {
+        width: 80%;
+        margin: 0 auto;
+    }
 }
