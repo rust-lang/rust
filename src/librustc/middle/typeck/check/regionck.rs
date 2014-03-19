@@ -542,7 +542,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
             // explaining how it goes about doing that.
             let target_ty = rcx.resolve_node_type(expr.id);
             match ty::get(target_ty).sty {
-                ty::ty_trait(_, _, ty::RegionTraitStore(trait_region), _, _) => {
+                ty::ty_trait(~ty::TyTrait { store: ty::RegionTraitStore(trait_region), .. }) => {
                     let source_ty = rcx.resolve_expr_type_adjusted(source);
                     constrain_regions_in_type(
                         rcx,
@@ -610,7 +610,7 @@ fn check_expr_fn_block(rcx: &mut Rcx,
     let tcx = rcx.fcx.tcx();
     let function_type = rcx.resolve_node_type(expr.id);
     match ty::get(function_type).sty {
-        ty::ty_closure(ty::ClosureTy {
+        ty::ty_closure(~ty::ClosureTy {
                 sigil: ast::BorrowedSigil, region: region, ..}) => {
             let freevars = freevars::get_freevars(tcx, expr.id);
             if freevars.is_empty() {
@@ -635,7 +635,7 @@ fn check_expr_fn_block(rcx: &mut Rcx,
     rcx.set_repeating_scope(repeating_scope);
 
     match ty::get(function_type).sty {
-        ty::ty_closure(ty::ClosureTy {sigil: ast::BorrowedSigil, ..}) => {
+        ty::ty_closure(~ty::ClosureTy {sigil: ast::BorrowedSigil, ..}) => {
             let freevars = freevars::get_freevars(tcx, expr.id);
             propagate_upupvar_borrow_kind(rcx, expr, freevars);
         }

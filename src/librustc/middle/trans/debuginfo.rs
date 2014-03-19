@@ -2126,7 +2126,9 @@ fn type_metadata(cx: &CrateContext,
         ty::ty_closure(ref closurety) => {
             subroutine_type_metadata(cx, &closurety.sig, usage_site_span)
         },
-        ty::ty_trait(def_id, ref substs, trait_store, mutability, ref bounds) => {
+        ty::ty_trait(~ty::TyTrait { def_id, ref substs,
+                                store: trait_store, mutability,
+                                ref bounds }) => {
             trait_metadata(cx, def_id, t, substs, trait_store, mutability, bounds)
         },
         ty::ty_struct(def_id, ref substs) => {

@@ -351,7 +351,7 @@ impl<'a> Reflector<'a> {
             })
           }
 
-          ty::ty_trait(_, _, _, _, _) => {
+          ty::ty_trait(..) => {
               let extra = [
                   self.c_slice(token::intern_and_get_ident(ty_to_str(tcx, t)))
               ];

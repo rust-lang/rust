@@ -453,7 +453,7 @@ pub fn ty_to_str(cx: &ctxt, typ: t) -> ~str {
         ~"(" + strs.connect(",") + ")"
       }
       ty_closure(ref f) => {
-          closure_to_str(cx, f)
+          closure_to_str(cx, *f)
       }
       ty_bare_fn(ref f) => {
           bare_fn_to_str(cx, f.purity, f.abis, None, &f.sig)
@@ -484,7 +484,9 @@ pub fn ty_to_str(cx: &ctxt, typ: t) -> ~str {
                       did,
                       false)
       }
-      ty_trait(did, ref substs, s, mutbl, ref bounds) => {
+      ty_trait(~ty::TyTrait {
+          def_id: did, ref substs, store: s, mutability: mutbl, ref bounds
+      }) => {
         let base = ty::item_path_str(cx, did);
         let ty = parameterized(cx, base, &substs.regions,
                                substs.tps.as_slice(), did, true);
