@@ -15,6 +15,20 @@ Synchronous DNS Resolution
 Contains the functionality to perform DNS resolution in a style related to
 getaddrinfo()
 
+
+# Examples
+
+```rust
+use std::io::net::addrinfo;
+
+fn main(){
+    let ips = addrinfo::get_host_addresses("rust-lang.org").unwrap();
+    for ip in ips.iter() {
+        println!("{}", ip);
+    }
+}
+```
+
 */
 
 #[allow(missing_doc)];
@@ -62,7 +76,10 @@ pub struct Hint {
     flags: uint,
 }
 
+/// This structure contains a result from a DNS lookup, the most important
+/// field being `address`.
 pub struct Info {
+    /// Socket address returned by DNS lookup
     address: SocketAddr,
     family: uint,
     socktype: Option<SocketType>,
@@ -72,6 +89,17 @@ pub struct Info {
 
 /// Easy name resolution. Given a hostname, returns the list of IP addresses for
 /// that hostname.
+///
+/// # Example
+///
+/// ```rust
+/// use std::io::net::addrinfo;
+///
+/// let ips = addrinfo::get_host_addresses("rust-lang.org").unwrap();
+/// for ip in ips.iter() {
+///     println!("{}", ip);
+/// }
+/// ```
 pub fn get_host_addresses(host: &str) -> IoResult<~[IpAddr]> {
     lookup(Some(host), None, None).map(|a| a.map(|i| i.address.ip))
 }
