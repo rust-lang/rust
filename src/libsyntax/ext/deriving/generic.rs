@@ -1158,7 +1158,7 @@ pub fn cs_fold(use_foldl: bool,
                       field.other.as_slice())
                 })
             } else {
-                all_fields.rev_iter().fold(base, |old, field| {
+                all_fields.iter().rev().fold(base, |old, field| {
                     f(cx,
                       field.span,
                       old,
@@ -1235,7 +1235,7 @@ pub fn cs_same_method_fold(use_foldl: bool,
                     f(cx, span, old, new)
                 })
             } else {
-                vals.rev_iter().fold(base, |old, &new| {
+                vals.iter().rev().fold(base, |old, &new| {
                     f(cx, span, old, new)
                 })
             }

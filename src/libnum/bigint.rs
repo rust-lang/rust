@@ -117,7 +117,7 @@ impl TotalOrd for BigUint {
         if s_len < o_len { return Less; }
         if s_len > o_len { return Greater;  }
 
-        for (&self_i, &other_i) in self.data.rev_iter().zip(other.data.rev_iter()) {
+        for (&self_i, &other_i) in self.data.iter().rev().zip(other.data.iter().rev()) {
             if self_i < other_i { return Less; }
             if self_i > other_i { return Greater; }
         }
@@ -788,7 +788,7 @@ impl BigUint {
 
         let mut borrow = 0;
         let mut shifted_rev = Vec::with_capacity(self.data.len());
-        for elem in self.data.rev_iter() {
+        for elem in self.data.iter().rev() {
             shifted_rev.push((*elem >> n_bits) | borrow);
             borrow = *elem << (BigDigit::bits - n_bits);
         }

@@ -7,11 +7,7 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-
-// Migrate documentation over from `std::vec` progressively.  (This is
-// shown in docs so that people have something to refer too, even if
-// the page is rather empty.)
-#[allow(missing_doc)];
+//! A growable, owned vector
 
 use cast::{forget, transmute};
 use clone::Clone;
@@ -19,7 +15,7 @@ use cmp::{Ord, Eq, Ordering, TotalEq, TotalOrd};
 use container::{Container, Mutable};
 use default::Default;
 use fmt;
-use iter::{DoubleEndedIterator, FromIterator, Extendable, Iterator, Rev};
+use iter::{DoubleEndedIterator, FromIterator, Extendable, Iterator};
 use libc::{free, c_void};
 use mem::{size_of, move_val_init};
 use mem;
@@ -32,8 +28,21 @@ use ptr;
 use rt::global_heap::{malloc_raw, realloc_raw};
 use raw::Slice;
 use vec::{ImmutableEqVector, ImmutableVector, Items, MutItems, MutableVector};
-use vec::{RevItems};
+use vec::{MutableTotalOrdVector};
 
+/// An owned, growable vector
+///
+/// `Vec<T>` is the replacement for the deprecated `~[T]` type. The API is
+/// largely the same. The `vec!` macro is provided to make initialization
+/// easier.
+///
+/// # Example
+///
+/// ```rust
+/// let mut vec = vec!(1, 2, 3);
+/// vec.push(4);
+/// println!("{}", vec); // prints [1, 2, 3, 4]
+/// ```
 #[unsafe_no_drop_flag]
 pub struct Vec<T> {
     priv len: uint,
@@ -42,11 +51,32 @@ pub struct Vec<T> {
 }
 
 impl<T> Vec<T> {
+    /// Constructs a new, empty `Vec`.
+    ///
+    /// The vector will not allocate until elements are pushed onto it.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use std::vec_ng::Vec;
+    /// let mut vec: Vec<int> = Vec::new();
+    /// ```
     #[inline]
     pub fn new() -> Vec<T> {
         Vec { len: 0, cap: 0, ptr: 0 as *mut T }
     }
 
+    /// Constructs a new, empty `Vec` with the specified capacity.
+    ///
+    /// The vector will be able to hold exactly `capacity` elements without
+    /// reallocating. If `capacity` is 0, the vector will not allocate.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use std::vec_ng::Vec;
+    /// let vec: Vec<int> = Vec::with_capacity(10);
+    /// ```
     pub fn with_capacity(capacity: uint) -> Vec<T> {
         if capacity == 0 {
             Vec::new()
@@ -57,6 +87,19 @@ impl<T> Vec<T> {
         }
     }
 
+
+    /// Creates and initializes a `Vec`.
+    ///
+    /// Creates a `Vec` of size `length` and initializes the elements to the
+    /// value returned by the closure `op`.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use std::vec_ng::Vec;
+    /// let vec = Vec::from_fn(3, |idx| idx * 2);
+    /// assert_eq!(vec, vec!(0, 2, 4));
+    /// ```
     pub fn from_fn(length: uint, op: |uint| -> T) -> Vec<T> {
         unsafe {
             let mut xs = Vec::with_capacity(length);
@@ -68,10 +111,20 @@ impl<T> Vec<T> {
         }
     }
 
-    /**
-     * Partitions the vector into two vectors `(A,B)`, where all
-     * elements of `A` satisfy `f` and all elements of `B` do not.
-     */
+    /// Consumes the `Vec`, partitioning it based on a predcate.
+    ///
+    /// Partitions the `Vec` into two `Vec`s `(A,B)`, where all elements of `A`
+    /// satisfy `f` and all elements of `B` do not. The order of elements is
+    /// preserved.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let vec = vec!(1, 2, 3, 4);
+    /// let (even, odd) = vec.partition(|&n| n % 2 == 0);
+    /// assert_eq!(even, vec!(2, 4));
+    /// assert_eq!(odd, vec!(1, 3));
+    /// ```
     #[inline]
     pub fn partition(self, f: |&T| -> bool) -> (Vec<T>, Vec<T>) {
         let mut lefts  = Vec::new();
@@ -90,10 +143,29 @@ impl<T> Vec<T> {
 }
 
 impl<T: Clone> Vec<T> {
+    /// Constructs a `Vec` by cloning elements of a slice.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use std::vec_ng::Vec;
+    /// let slice = [1, 2, 3];
+    /// let vec = Vec::from_slice(slice);
+    /// ```
     pub fn from_slice(values: &[T]) -> Vec<T> {
         values.iter().map(|x| x.clone()).collect()
     }
 
+    /// Constructs a `Vec` with copies of a value.
+    ///
+    /// Creates a `Vec` with `length` copies of `value`.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use std::vec_ng::Vec;
+    /// let vec = Vec::from_elem(3, "hi");
+    /// println!("{}", vec); // prints [hi, hi, hi]
+    /// ```
     pub fn from_elem(length: uint, value: T) -> Vec<T> {
         unsafe {
             let mut xs = Vec::with_capacity(length);
@@ -105,6 +177,18 @@ impl<T: Clone> Vec<T> {
         }
     }
 
+    /// Appends all elements in a slice to the `Vec`.
+    ///
+    /// Iterates over the slice `other`, clones each element, and then appends
+    /// it to this `Vec`. The `other` vector is traversed in-order.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let mut vec = vec!(1);
+    /// vec.push_all([2, 3, 4]);
+    /// assert_eq!(vec, vec!(1, 2, 3, 4));
+    /// ```
     #[inline]
     pub fn push_all(&mut self, other: &[T]) {
         for element in other.iter() {
@@ -112,26 +196,65 @@ impl<T: Clone> Vec<T> {
         }
     }
 
-
-    pub fn grow(&mut self, n: uint, initval: &T) {
+    /// Grows the `Vec` in-place.
+    ///
+    /// Adds `n` copies of `value` to the `Vec`.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let mut vec = vec!("hello");
+    /// vec.grow(2, & &"world");
+    /// assert_eq!(vec, vec!("hello", "world", "world"));
+    /// ```
+    pub fn grow(&mut self, n: uint, value: &T) {
         let new_len = self.len() + n;
         self.reserve(new_len);
         let mut i: uint = 0u;
 
         while i < n {
-            self.push((*initval).clone());
+            self.push((*value).clone());
             i += 1u;
         }
     }
 
-    pub fn grow_set(&mut self, index: uint, initval: &T, val: T) {
+    /// Sets the value of a vector element at a given index, growing the vector
+    /// as needed.
+    ///
+    /// Sets the element at position `index` to `value`. If `index` is past the
+    /// end of the vector, expands the vector by replicating `initval` to fill
+    /// the intervening space.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let mut vec = vec!("a", "b", "c");
+    /// vec.grow_set(1, & &"fill", "d");
+    /// vec.grow_set(4, & &"fill", "e");
+    /// assert_eq!(vec, vec!("a", "d", "c", "fill", "e"));
+    /// ```
+    pub fn grow_set(&mut self, index: uint, initval: &T, value: T) {
         let l = self.len();
         if index >= l {
             self.grow(index - l + 1u, initval);
         }
-        *self.get_mut(index) = val;
+        *self.get_mut(index) = value;
     }
 
+    /// Partitions a vector based on a predcate.
+    ///
+    /// Clones the elements of the vector, partitioning them into two `Vec`s
+    /// `(A,B)`, where all elements of `A` satisfy `f` and all elements of `B`
+    /// do not. The order of elements is preserved.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let vec = vec!(1, 2, 3, 4);
+    /// let (even, odd) = vec.partitioned(|&n| n % 2 == 0);
+    /// assert_eq!(even, vec!(2, 4));
+    /// assert_eq!(odd, vec!(1, 3));
+    /// ```
     pub fn partitioned(&self, f: |&T| -> bool) -> (Vec<T>, Vec<T>) {
         let mut lefts = Vec::new();
         let mut rights = Vec::new();
@@ -215,11 +338,36 @@ impl<T> Container for Vec<T> {
 }
 
 impl<T> Vec<T> {
+    /// Returns the number of elements the vector can hold without
+    /// reallocating.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use std::vec_ng::Vec;
+    /// let vec: Vec<int> = Vec::with_capacity(10);
+    /// assert_eq!(vec.capacity(), 10);
+    /// ```
     #[inline]
     pub fn capacity(&self) -> uint {
         self.cap
     }
 
+     /// Reserves capacity for at least `n` additional elements in the given
+     /// vector.
+     ///
+     /// # Failure
+     ///
+     /// Fails if the new capacity overflows `uint`.
+     ///
+     /// # Example
+     ///
+     /// ```rust
+     /// # use std::vec_ng::Vec;
+     /// let mut vec: Vec<int> = vec!(1);
+     /// vec.reserve_additional(10);
+     /// assert!(vec.capacity() >= 11);
+     /// ```
     pub fn reserve_additional(&mut self, extra: uint) {
         if self.cap - self.len < extra {
             match self.len.checked_add(&extra) {
@@ -229,12 +377,41 @@ impl<T> Vec<T> {
         }
     }
 
+    /// Reserves capacity for at least `n` elements in the given vector.
+    ///
+    /// This function will over-allocate in order to amortize the allocation
+    /// costs in scenarios where the caller may need to repeatedly reserve
+    /// additional space.
+    ///
+    /// If the capacity for `self` is already equal to or greater than the
+    /// requested capacity, then no action is taken.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let mut vec = vec!(1, 2, 3);
+    /// vec.reserve(10);
+    /// assert!(vec.capacity() >= 10);
+    /// ```
     pub fn reserve(&mut self, capacity: uint) {
         if capacity >= self.len {
             self.reserve_exact(num::next_power_of_two(capacity))
         }
     }
 
+    /// Reserves capacity for exactly `capacity` elements in the given vector.
+    ///
+    /// If the capacity for `self` is already equal to or greater than the
+    /// requested capacity, then no action is taken.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use std::vec_ng::Vec;
+    /// let mut vec: Vec<int> = Vec::with_capacity(10);
+    /// vec.reserve_exact(11);
+    /// assert_eq!(vec.capacity(), 11);
+    /// ```
     pub fn reserve_exact(&mut self, capacity: uint) {
         if capacity >= self.len {
             let size = capacity.checked_mul(&size_of::<T>()).expect("capacity overflow");
@@ -245,6 +422,15 @@ impl<T> Vec<T> {
         }
     }
 
+    /// Shrink the capacity of the vector to match the length
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let mut vec = vec!(1, 2, 3);
+    /// vec.shrink_to_fit();
+    /// assert_eq!(vec.capacity(), vec.len());
+    /// ```
     pub fn shrink_to_fit(&mut self) {
         if self.len == 0 {
             unsafe { free(self.ptr as *mut c_void) };
@@ -259,6 +445,16 @@ impl<T> Vec<T> {
         }
     }
 
+    /// Remove the last element from a vector and return it, or `None` if it is
+    /// empty.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let mut vec = vec!(1, 2, 3);
+    /// assert_eq!(vec.pop(), Some(3));
+    /// assert_eq!(vec, vec!(1, 2));
+    /// ```
     #[inline]
     pub fn pop(&mut self) -> Option<T> {
         if self.len == 0 {
@@ -271,6 +467,19 @@ impl<T> Vec<T> {
         }
     }
 
+    /// Append an element to a vector.
+    ///
+    /// # Failure
+    ///
+    /// Fails if the number of elements in the vector overflows a `uint`.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let mut vec = vec!(1, 2);
+    /// vec.push(3);
+    /// assert_eq!(vec, vec!(1, 2, 3));
+    /// ```
     #[inline]
     pub fn push(&mut self, value: T) {
         if self.len == self.cap {
@@ -291,6 +500,18 @@ impl<T> Vec<T> {
         }
     }
 
+    /// Shorten a vector, dropping excess elements.
+    ///
+    /// If `len` is greater than the vector's current length, this has no
+    /// effect.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let mut vec = vec!(1, 2, 3, 4);
+    /// vec.truncate(2);
+    /// assert_eq!(vec, vec!(1, 2));
+    /// ```
     pub fn truncate(&mut self, len: uint) {
         unsafe {
             let mut i = len;
@@ -303,18 +524,51 @@ impl<T> Vec<T> {
         self.len = len;
     }
 
+    /// Work with `self` as a slice.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// fn foo(slice: &[int]) {}
+    ///
+    /// let vec = vec!(1, 2);
+    /// foo(vec.as_slice());
+    /// ```
     #[inline]
     pub fn as_slice<'a>(&'a self) -> &'a [T] {
         let slice = Slice { data: self.ptr as *T, len: self.len };
         unsafe { transmute(slice) }
     }
 
+    /// Work with `self` as a mutable slice.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// fn foo(slice: &mut [int]) {}
+    ///
+    /// let mut vec = vec!(1, 2);
+    /// foo(vec.as_mut_slice());
+    /// ```
     #[inline]
     pub fn as_mut_slice<'a>(&'a mut self) -> &'a mut [T] {
         let slice = Slice { data: self.ptr as *T, len: self.len };
         unsafe { transmute(slice) }
     }
 
+    /// Creates a consuming iterator, that is, one that moves each
+    /// value out of the vector (from start to end). The vector cannot
+    /// be used after calling this.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let v = vec!(~"a", ~"b");
+    /// for s in v.move_iter() {
+    ///     // s has type ~str, not &~str
+    ///     println!("{}", s);
+    /// }
+    /// ```
     #[inline]
     pub fn move_iter(self) -> MoveItems<T> {
         unsafe {
@@ -325,66 +579,204 @@ impl<T> Vec<T> {
         }
     }
 
-    #[inline]
-    pub fn move_rev_iter(self) -> Rev<MoveItems<T>> {
-        self.move_iter().rev()
-    }
 
+    /// Sets the length of a vector.
+    ///
+    /// This will explicitly set the size of the vector, without actually
+    /// modifying its buffers, so it is up to the caller to ensure that the
+    /// vector is actually the specified size.
     #[inline]
     pub unsafe fn set_len(&mut self, len: uint) {
         self.len = len;
     }
 
+    /// Returns a reference to the value at index `index`.
+    ///
+    /// # Failure
+    ///
+    /// Fails if `index` is out of bounds
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let vec = vec!(1, 2, 3);
+    /// assert!(vec.get(1) == &2);
+    /// ```
     #[inline]
     pub fn get<'a>(&'a self, index: uint) -> &'a T {
         &self.as_slice()[index]
     }
 
+    /// Returns a mutable reference to the value at index `index`.
+    ///
+    /// # Failure
+    ///
+    /// Fails if `index` is out of bounds
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let mut vec = vec!(1, 2, 3);
+    /// *vec.get_mut(1) = 4;
+    /// assert_eq!(vec, vec!(1, 4, 3));
+    /// ```
     #[inline]
     pub fn get_mut<'a>(&'a mut self, index: uint) -> &'a mut T {
         &mut self.as_mut_slice()[index]
     }
 
+    /// Returns an iterator over references to the elements of the vector in
+    /// order.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let vec = vec!(1, 2, 3);
+    /// for num in vec.iter() {
+    ///     println!("{}", *num);
+    /// }
+    /// ```
     #[inline]
     pub fn iter<'a>(&'a self) -> Items<'a,T> {
         self.as_slice().iter()
     }
 
+
+    /// Returns an iterator over mutable references to the elements of the
+    /// vector in order.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let mut vec = vec!(1, 2, 3);
+    /// for num in vec.mut_iter() {
+    ///     *num = 0;
+    /// }
+    /// ```
     #[inline]
     pub fn mut_iter<'a>(&'a mut self) -> MutItems<'a,T> {
         self.as_mut_slice().mut_iter()
     }
 
+    /// Sort the vector, in place, using `compare` to compare elements.
+    ///
+    /// This sort is `O(n log n)` worst-case and stable, but allocates
+    /// approximately `2 * n`, where `n` is the length of `self`.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let mut v = vec!(5i, 4, 1, 3, 2);
+    /// v.sort_by(|a, b| a.cmp(b));
+    /// assert_eq!(v, vec!(1, 2, 3, 4, 5));
+    ///
+    /// // reverse sorting
+    /// v.sort_by(|a, b| b.cmp(a));
+    /// assert_eq!(v, vec!(5, 4, 3, 2, 1));
+    /// ```
     #[inline]
     pub fn sort_by(&mut self, compare: |&T, &T| -> Ordering) {
         self.as_mut_slice().sort_by(compare)
     }
 
+    /// Returns a slice of `self` between `start` and `end`.
+    ///
+    /// # Failure
+    ///
+    /// Fails when `start` or `end` point outside the bounds of `self`, or when
+    /// `start` > `end`.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let vec = vec!(1, 2, 3, 4);
+    /// assert!(vec.slice(0, 2) == [1, 2]);
+    /// ```
     #[inline]
     pub fn slice<'a>(&'a self, start: uint, end: uint) -> &'a [T] {
         self.as_slice().slice(start, end)
     }
 
+    /// Returns a slice containing all but the first element of the vector.
+    ///
+    /// # Failure
+    ///
+    /// Fails when the vector is empty.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let vec = vec!(1, 2, 3);
+    /// assert!(vec.tail() == [2, 3]);
+    /// ```
     #[inline]
     pub fn tail<'a>(&'a self) -> &'a [T] {
         self.as_slice().tail()
     }
 
+    /// Returns all but the first `n' elements of a vector.
+    ///
+    /// # Failure
+    ///
+    /// Fails when there are fewer than `n` elements in the vector.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let vec = vec!(1, 2, 3, 4);
+    /// assert!(vec.tailn(2) == [3, 4]);
+    /// ```
     #[inline]
     pub fn tailn<'a>(&'a self, n: uint) -> &'a [T] {
         self.as_slice().tailn(n)
     }
 
+    /// Returns a reference to the last element of a vector, or `None` if it is
+    /// empty.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let vec = vec!(1, 2, 3);
+    /// assert!(vec.last() == Some(&3));
+    /// ```
     #[inline]
     pub fn last<'a>(&'a self) -> Option<&'a T> {
         self.as_slice().last()
     }
 
+    /// Returns a mutable reference to the last element of a vector, or `None`
+    /// if it is empty.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let mut vec = vec!(1, 2, 3);
+    /// *vec.mut_last().unwrap() = 4;
+    /// assert_eq!(vec, vec!(1, 2, 4));
+    /// ```
     #[inline]
     pub fn mut_last<'a>(&'a mut self) -> Option<&'a mut T> {
         self.as_mut_slice().mut_last()
     }
 
+    /// Remove an element from anywhere in the vector and return it, replacing
+    /// it with the last element. This does not preserve ordering, but is O(1).
+    ///
+    /// Returns `None` if `index` is out of bounds.
+    ///
+    /// # Example
+    /// ```rust
+    /// let mut v = ~[~"foo", ~"bar", ~"baz", ~"qux"];
+    ///
+    /// assert_eq!(v.swap_remove(1), Some(~"bar"));
+    /// assert_eq!(v, ~[~"foo", ~"qux", ~"baz"]);
+    ///
+    /// assert_eq!(v.swap_remove(0), Some(~"foo"));
+    /// assert_eq!(v, ~[~"baz", ~"qux"]);
+    ///
+    /// assert_eq!(v.swap_remove(2), None);
+    /// ```
     #[inline]
     pub fn swap_remove(&mut self, index: uint) -> Option<T> {
         let length = self.len();
@@ -396,16 +788,59 @@ impl<T> Vec<T> {
         self.pop()
     }
 
+    /// Prepend an element to the vector.
+    ///
+    /// # Warning
+    ///
+    /// This is an O(n) operation as it requires copying every element in the
+    /// vector.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let mut vec = vec!(1, 2, 3);
+    /// vec.unshift(4);
+    /// assert_eq!(vec, vec!(4, 1, 2, 3));
+    /// ```
     #[inline]
     pub fn unshift(&mut self, element: T) {
         self.insert(0, element)
     }
 
+    /// Removes the first element from a vector and returns it, or `None` if
+    /// the vector is empty.
+    ///
+    /// # Warning
+    ///
+    /// This is an O(n) operation as it requires copying every element in the
+    /// vector.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let mut vec = vec!(1, 2, 3);
+    /// assert!(vec.shift() == Some(1));
+    /// assert_eq!(vec, vec!(2, 3));
+    /// ```
     #[inline]
     pub fn shift(&mut self) -> Option<T> {
         self.remove(0)
     }
 
+    /// Insert an element at position `index` within the vector, shifting all
+    /// elements after position i one position to the right.
+    ///
+    /// # Failure
+    ///
+    /// Fails if `index` is out of bounds of the vector.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let mut vec = vec!(1, 2, 3);
+    /// vec.insert(1, 4);
+    /// assert_eq!(vec, vec!(1, 4, 2, 3));
+    /// ```
     pub fn insert(&mut self, index: uint, element: T) {
         let len = self.len();
         assert!(index <= len);
@@ -427,6 +862,21 @@ impl<T> Vec<T> {
         }
     }
 
+    /// Remove and return the element at position `index` within the vector,
+    /// shifting all elements after position `index` one position to the left.
+    /// Returns `None` if `i` is out of bounds.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let mut v = ~[1, 2, 3];
+    /// assert_eq!(v.remove(1), Some(2));
+    /// assert_eq!(v, ~[1, 3]);
+    ///
+    /// assert_eq!(v.remove(4), None);
+    /// // v is unchanged:
+    /// assert_eq!(v, ~[1, 3]);
+    /// ```
     pub fn remove(&mut self, index: uint) -> Option<T> {
         let len = self.len();
         if index < len {
@@ -450,62 +900,153 @@ impl<T> Vec<T> {
         }
     }
 
-    #[inline]
-    pub fn rev_iter<'a>(&'a self) -> RevItems<'a,T> {
-        self.as_slice().rev_iter()
-    }
-
+    ///Apply a function to each element of a vector and return the results.
     #[inline]
     #[deprecated="Use `xs.iter().map(closure)` instead."]
     pub fn map<U>(&self, f: |t: &T| -> U) -> Vec<U> {
         self.iter().map(f).collect()
     }
 
+    /// Takes ownership of the vector `other`, moving all elements into
+    /// the current vector. This does not copy any elements, and it is
+    /// illegal to use the `other` vector after calling this method
+    /// (because it is moved here).
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let mut vec = vec!(~1);
+    /// vec.push_all_move(vec!(~2, ~3, ~4));
+    /// assert_eq!(vec, vec!(~1, ~2, ~3, ~4));
+    /// ```
     pub fn push_all_move(&mut self, other: Vec<T>) {
         for element in other.move_iter() {
             self.push(element)
         }
     }
 
+    /// Returns a mutable slice of `self` between `start` and `end`.
+    ///
+    /// # Failure
+    ///
+    /// Fails when `start` or `end` point outside the bounds of `self`, or when
+    /// `start` > `end`.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let mut vec = vec!(1, 2, 3, 4);
+    /// assert!(vec.mut_slice(0, 2) == [1, 2]);
+    /// ```
     #[inline]
     pub fn mut_slice<'a>(&'a mut self, start: uint, end: uint)
-                     -> &'a mut [T] {
+                         -> &'a mut [T] {
         self.as_mut_slice().mut_slice(start, end)
     }
 
+    /// Reverse the order of elements in a vector, in place.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let mut v = vec!(1, 2, 3);
+    /// v.reverse();
+    /// assert_eq!(v, vec!(3, 2, 1));
+    /// ```
     #[inline]
     pub fn reverse(&mut self) {
         self.as_mut_slice().reverse()
     }
 
+    /// Returns a slice of `self` from `start` to the end of the vec.
+    ///
+    /// # Failure
+    ///
+    /// Fails when `start` points outside the bounds of self.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let vec = vec!(1, 2, 3);
+    /// assert!(vec.slice_from(1) == [2, 3]);
+    /// ```
     #[inline]
     pub fn slice_from<'a>(&'a self, start: uint) -> &'a [T] {
         self.as_slice().slice_from(start)
     }
 
+    /// Returns a slice of self from the start of the vec to `end`.
+    ///
+    /// # Failure
+    ///
+    /// Fails when `end` points outside the bounds of self.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let vec = vec!(1, 2, 3);
+    /// assert!(vec.slice_to(2) == [1, 2]);
+    /// ```
     #[inline]
     pub fn slice_to<'a>(&'a self, end: uint) -> &'a [T] {
         self.as_slice().slice_to(end)
     }
 
+    /// Returns a slice containing all but the last element of the vector.
+    ///
+    /// # Failure
+    ///
+    /// Fails if the vector is empty
     #[inline]
     pub fn init<'a>(&'a self) -> &'a [T] {
         self.slice(0, self.len() - 1)
     }
 
+
+    /// Returns an unsafe pointer to the vector's buffer.
+    ///
+    /// The caller must ensure that the vector outlives the pointer this
+    /// function returns, or else it will end up pointing to garbage.
+    ///
+    /// Modifying the vector may cause its buffer to be reallocated, which
+    /// would also make any pointers to it invalid.
     #[inline]
     pub fn as_ptr(&self) -> *T {
         self.as_slice().as_ptr()
     }
 
+    /// Returns a mutable unsafe pointer to the vector's buffer.
+    ///
+    /// The caller must ensure that the vector outlives the pointer this
+    /// function returns, or else it will end up pointing to garbage.
+    ///
+    /// Modifying the vector may cause its buffer to be reallocated, which
+    /// would also make any pointers to it invalid.
     #[inline]
     pub fn as_mut_ptr(&mut self) -> *mut T {
         self.as_mut_slice().as_mut_ptr()
     }
 }
 
+impl<T:TotalOrd> Vec<T> {
+    /// Sorts the vector in place.
+    ///
+    /// This sort is `O(n log n)` worst-case and stable, but allocates
+    /// approximately `2 * n`, where `n` is the length of `self`.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let mut vec = vec!(3i, 1, 2);
+    /// vec.sort();
+    /// assert_eq!(vec, vec!(1, 2, 3));
+    /// ```
+    pub fn sort(&mut self) {
+        self.as_mut_slice().sort()
+    }
+}
+
 impl<T> Mutable for Vec<T> {
-    /// Clear the vector, removing all values.
     #[inline]
     fn clear(&mut self) {
         self.truncate(0)
@@ -514,10 +1055,28 @@ impl<T> Mutable for Vec<T> {
 
 impl<T:Eq> Vec<T> {
     /// Return true if a vector contains an element with the given value
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let vec = vec!(1, 2, 3);
+    /// assert!(vec.contains(&1));
+    /// ```
     pub fn contains(&self, x: &T) -> bool {
         self.as_slice().contains(x)
     }
 
+    /// Remove consecutive repeated elements in the vector.
+    ///
+    /// If the vector is sorted, this removes all duplicates.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let mut vec = vec!(1, 2, 2, 3, 2);
+    /// vec.dedup();
+    /// assert_eq!(vec, vec!(1, 2, 3, 2));
+    /// ```
     pub fn dedup(&mut self) {
         unsafe {
             // Although we have a mutable reference to `self`, we cannot make
@@ -603,6 +1162,16 @@ impl<T:Eq> Vec<T> {
     }
 }
 
+/// Iterates over the `second` vector, copying each element and appending it to
+/// the `first`. Afterwards, the `first` is then returned for use again.
+///
+/// # Example
+///
+/// ```rust
+/// let vec = vec!(1, 2);
+/// let vec = std::vec_ng::append(vec, [3, 4]);
+/// assert_eq!(vec, vec!(1, 2, 3, 4));
+/// ```
 #[inline]
 pub fn append<T:Clone>(mut first: Vec<T>, second: &[T]) -> Vec<T> {
     first.push_all(second);
@@ -611,6 +1180,14 @@ pub fn append<T:Clone>(mut first: Vec<T>, second: &[T]) -> Vec<T> {
 
 /// Appends one element to the vector provided. The vector itself is then
 /// returned for use again.
+///
+/// # Example
+///
+/// ```rust
+/// let vec = vec!(1, 2);
+/// let vec = std::vec_ng::append_one(vec, 3);
+/// assert_eq!(vec, vec!(1, 2, 3));
+/// ```
 #[inline]
 pub fn append_one<T>(mut lhs: Vec<T>, x: T) -> Vec<T> {
     lhs.push(x);
@@ -643,6 +1220,7 @@ impl<T:fmt::Show> fmt::Show for Vec<T> {
     }
 }
 
+/// An iterator that moves out of a vector.
 pub struct MoveItems<T> {
     priv allocation: *mut c_void, // the block of memory allocated for the vector
     priv iter: Items<'static, T>

@@ -879,7 +879,7 @@ impl<'a> Liveness<'a> {
     fn propagate_through_block(&mut self, blk: &Block, succ: LiveNode)
                                -> LiveNode {
         let succ = self.propagate_through_opt_expr(blk.expr, succ);
-        blk.stmts.rev_iter().fold(succ, |succ, stmt| {
+        blk.stmts.iter().rev().fold(succ, |succ, stmt| {
             self.propagate_through_stmt(*stmt, succ)
         })
     }
@@ -980,7 +980,7 @@ impl<'a> Liveness<'a> {
                         this.ir.tcx.sess.span_bug(expr.span, "no registered caps");
                      }
                  };
-                 caps.deref().rev_iter().fold(succ, |succ, cap| {
+                 caps.deref().iter().rev().fold(succ, |succ, cap| {
                      this.init_from_succ(cap.ln, succ);
                      let var = this.variable(cap.var_nid, expr.span);
                      this.acc(cap.ln, var, ACC_READ | ACC_USE);
@@ -1121,7 +1121,7 @@ impl<'a> Liveness<'a> {
 
           ExprStruct(_, ref fields, with_expr) => {
             let succ = self.propagate_through_opt_expr(with_expr, succ);
-            fields.rev_iter().fold(succ, |succ, field| {
+            fields.iter().rev().fold(succ, |succ, field| {
                 self.propagate_through_expr(field.expr, succ)
             })
           }
@@ -1173,14 +1173,14 @@ impl<'a> Liveness<'a> {
           }
 
           ExprInlineAsm(ref ia) => {
-            let succ = ia.outputs.rev_iter().fold(succ, |succ, &(_, expr)| {
+            let succ = ia.outputs.iter().rev().fold(succ, |succ, &(_, expr)| {
                 // see comment on lvalues in
                 // propagate_through_lvalue_components()
                 let succ = self.write_lvalue(expr, succ, ACC_WRITE);
                 self.propagate_through_lvalue_components(expr, succ)
             });
             // Inputs are executed first. Propagate last because of rev order
-            ia.inputs.rev_iter().fold(succ, |succ, &(_, expr)| {
+            ia.inputs.iter().rev().fold(succ, |succ, &(_, expr)| {
                 self.propagate_through_expr(expr, succ)
             })
           }
