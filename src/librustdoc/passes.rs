@@ -128,7 +128,8 @@ impl<'a> fold::DocFolder for Stripper<'a> {
                 }
             }
 
-            clean::ViewItemItem(..) => {
+            clean::ViewItemItem(..) |
+            clean::ModuleItem(..) => {
                 if i.visibility != Some(ast::Public) {
                     return None
                 }
@@ -139,9 +140,6 @@ impl<'a> fold::DocFolder for Stripper<'a> {
                     return None;
                 }
             }
-
-            // handled below
-            clean::ModuleItem(..) => {}
 
             // trait impls for private items should be stripped
             clean::ImplItem(clean::Impl{ for_: clean::ResolvedPath{ id: ref for_id, .. }, .. }) => {
