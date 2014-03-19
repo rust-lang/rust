@@ -8,45 +8,102 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! A standard, garbage-collected linked list.
-
 use std::container::Container;
+use std::fmt;
+use std::mem;
 
-#[deriving(Clone, Eq)]
-#[allow(missing_doc)]
+/// A linked list implementation.
+///
+/// # Example
+///
+/// ```rust
+/// use collections::list::{List, Cons, Nil};
+///
+/// let mut list = List::new();
+/// list.push(3);
+/// list.push(2);
+/// list.push(1);
+/// assert_eq!(list, Cons(1, ~Cons(2, ~Cons(3, ~Nil))));
+/// ```
 pub enum List<T> {
-    Cons(T, @List<T>),
+    /// A node with a value in the linked list.
+    Cons(T, ~List<T>),
+
+    /// No value.
     Nil,
 }
 
-pub struct Items<'a, T> {
-    priv head: &'a List<T>,
-    priv next: Option<&'a @List<T>>
-}
+impl<T> List<T> {
+    /// Create an empty linked list.
+    ///
+    /// ```rust
+    /// use collections::list::{List, Nil};
+    ///
+    /// let list: List<int> = List::new();
+    /// assert_eq!(list, Nil);
+    /// ```
+    #[inline]
+    pub fn new() -> List<T> {
+        Nil
+    }
 
-impl<'a, T> Iterator<&'a T> for Items<'a, T> {
-    fn next(&mut self) -> Option<&'a T> {
-        match self.next {
-            None => match *self.head {
-                Nil => None,
-                Cons(ref value, ref tail) => {
-                    self.next = Some(tail);
-                    Some(value)
-                }
-            },
-            Some(next) => match **next {
-                Nil => None,
-                Cons(ref value, ref tail) => {
-                    self.next = Some(tail);
-                    Some(value)
-                }
+    /// Pushes a value at the front of the list.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use collections::List;
+    ///
+    /// let mut list = List::new();
+    /// assert_eq!(list.head(), None);
+    ///
+    /// list.push(5);
+    /// assert_eq!(list.head().unwrap(), &5);
+    /// ```
+    #[inline]
+    pub fn push(&mut self, value: T) {
+        *self = Cons(value, ~mem::replace(self, Nil));
+    }
+
+    /// Removes the first element of a list, or `None` if empty.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use collections::List;
+    ///
+    /// let mut list = List::new();
+    /// assert_eq!(list.pop(), None);
+    ///
+    /// list.push(5);
+    /// assert_eq!(list.pop(), Some(5));
+    /// ```
+    #[inline]
+    pub fn pop(&mut self) -> Option<T> {
+        match mem::replace(self, Nil) {
+            Cons(value, ~tail) => {
+                *self = tail;
+                Some(value)
             }
+            Nil => None,
         }
     }
-}
 
-impl<T> List<T> {
-    /// Returns a forward iterator
+    /// Provide a forward iterator.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use collections::List;
+    ///
+    /// let list = List::from_vec([1, 2, 3]);
+    /// let mut iter = list.iter();
+    /// assert_eq!(iter.next().unwrap(), &1);
+    /// assert_eq!(iter.next().unwrap(), &2);
+    /// assert_eq!(iter.next().unwrap(), &3);
+    /// assert_eq!(iter.next(), None);
+    /// ```
+    #[inline]
     pub fn iter<'a>(&'a self) -> Items<'a, T> {
         Items {
             head: self,
@@ -54,7 +111,40 @@ impl<T> List<T> {
         }
     }
 
-    /// Returns the first element of a list
+    /// Provide a forward iterator that moves elements out of the list.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use collections::List;
+    ///
+    /// let list = List::from_vec([1, 2, 3]);
+    /// let mut iter = list.move_iter();
+    /// assert_eq!(iter.next().unwrap(), 1);
+    /// assert_eq!(iter.next().unwrap(), 2);
+    /// assert_eq!(iter.next().unwrap(), 3);
+    /// assert_eq!(iter.next(), None);
+    /// ```
+    #[inline]
+    pub fn move_iter(self) -> MoveItems<T> {
+        MoveItems {
+            head: self,
+        }
+    }
+
+    /// Returns the first element of a list.
+    ///
+    /// # example
+    ///
+    /// ```rust
+    /// use collections::List;
+    ///
+    /// let mut list = List::new();
+    /// assert_eq!(list.head(), None);
+    ///
+    /// list.push(1);
+    /// assert_eq!(list.head().unwrap(), &1);
+    #[inline]
     pub fn head<'a>(&'a self) -> Option<&'a T> {
         match *self {
           Nil => None,
@@ -62,53 +152,273 @@ impl<T> List<T> {
         }
     }
 
-    /// Returns all but the first element of a list
-    pub fn tail(&self) -> Option<@List<T>> {
+    /// Returns all but the first element of a list.
+    ///
+    /// # example
+    ///
+    /// ```rust
+    /// use collections::list::{List, Cons, Nil};
+    ///
+    /// let mut list = List::new();
+    /// assert_eq!(list.tail(), None);
+    ///
+    /// list.push(1);
+    /// assert_eq!(list.tail().unwrap(), &Nil);
+    ///
+    /// list.push(2);
+    /// assert_eq!(list.tail().unwrap(), &Cons(1, ~Nil));
+    #[inline]
+    pub fn tail<'a>(&'a self) -> Option<&'a List<T>> {
         match *self {
             Nil => None,
-            Cons(_, tail) => Some(tail)
+            Cons(_, ref tail) => Some(&**tail)
+        }
+    }
+}
+
+impl<T: Clone> List<T> {
+    /// Create a list from a vector.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use collections::list::{List, Cons, Nil};
+    ///
+    /// let list = List::from_vec([1, 2, 3]);
+    /// assert_eq!(list, Cons(1, ~Cons(2, ~Cons(3, ~Nil))));
+    /// ```
+    pub fn from_vec(v: &[T]) -> List<T> {
+        match v.len() {
+            0 => Nil,
+            _ => {
+                v.rev_iter().fold(Nil, |tail, value: &T| Cons(value.clone(), ~tail))
+            }
+        }
+    }
+
+    /// Creates a reversed list from an iterator. This is faster than using
+    /// `FromIterator::from_iterator`.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use collections::List;
+    ///
+    /// let v = ~[1, 2, 3];
+    /// let list: List<int> = List::from_iterator_rev(&mut v.move_iter());
+    /// assert_eq!(list, List::from_vec([3, 2, 1]));
+    /// ```
+    pub fn from_iterator_rev<Iter: Iterator<T>>(iterator: &mut Iter) -> List<T> {
+        let mut list = List::new();
+
+        for elt in *iterator {
+            list.push(elt);
+        }
+
+        list
+    }
+
+    /// Appends one list at the end of another.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use collections::List;
+    ///
+    /// let a = List::from_vec([1, 2, 3]);
+    /// let b = List::from_vec([4, 5, 6]);
+    /// let c = a.append(b);
+    /// assert_eq!(c, List::from_vec([1, 2, 3, 4, 5, 6]));
+    /// ```
+    pub fn append(self, other: List<T>) -> List<T> {
+        match (self, other) {
+            (Nil, other) => other,
+            (self_, Nil) => self_,
+            (self_, other) => {
+                let mut list = List::from_iterator_rev(&mut self_.move_iter());
+
+                for elt in other.move_iter() {
+                    list.push(elt);
+                }
+
+                list.reverse();
+
+                list
+            }
+        }
+    }
+
+    /// Reverses a list in place.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use collections::List;
+    ///
+    /// let mut list = List::from_vec([1, 2, 3]);
+    /// list.reverse();
+    /// assert_eq!(list, List::from_vec([3, 2, 1]));
+    /// ```
+    pub fn reverse(&mut self) {
+        for elt in mem::replace(self, Nil).move_iter() {
+            self.push(elt);
+        }
+    }
+}
+
+impl<T: Eq> List<T> {
+    /// Return true if the list contains a value.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use collections::List;
+    ///
+    /// let list = List::from_vec([1, 2, 3]);
+    /// assert!(list.contains(&2));
+    /// assert!(!list.contains(&4));
+    /// ```
+    pub fn contains(&self, element: &T) -> bool {
+        self.iter().any(|list_element| list_element == element)
+    }
+}
+
+impl<T: Clone> Clone for List<T> {
+    fn clone(&self) -> List<T> {
+        // Contruct the list in reversed order to avoid a stack overflow.
+        let mut list = List::new();
+
+        for elt in self.iter() {
+            list.push(elt.clone());
+        }
+
+        list.reverse();
+
+        list
+    }
+}
+
+impl<T: Eq> Eq for List<T> {
+    fn eq(&self, other: &List<T>) -> bool {
+        // Explicitly implement `Eq` to avoid running out of stack while
+        // comparing lists.
+        let mut list0 = self;
+        let mut list1 = other;
+
+        loop {
+            match *list0 {
+                Nil => {
+                    match *list1 {
+                        Nil => { return true; }
+                        Cons(_, _) => { return false; }
+                    }
+                }
+                Cons(ref v0, ref t0) => {
+                    match *list1 {
+                        Nil => { return false; }
+                        Cons(ref v1, ref t1) => {
+                            if v0 != v1 { return false; }
+
+                            list0 = &**t0;
+                            list1 = &**t1;
+                        }
+                    }
+                }
+            }
         }
     }
 }
 
 impl<T> Container for List<T> {
-    /// Returns the length of a list
     fn len(&self) -> uint { self.iter().len() }
 
-    /// Returns true if the list is empty
     fn is_empty(&self) -> bool { match *self { Nil => true, _ => false } }
 }
 
-impl<T:Eq> List<T> {
-    /// Returns true if a list contains an element with the given value
-    pub fn contains(&self, element: T) -> bool {
-        self.iter().any(|list_element| *list_element == element)
+impl<T: Clone> FromIterator<T> for List<T> {
+    fn from_iterator<Iter: Iterator<T>>(iterator: &mut Iter) -> List<T> {
+        let mut list = List::from_iterator_rev(iterator);
+        list.reverse();
+        list
     }
 }
 
-impl<T:'static + Clone> List<T> {
-    /// Create a list from a vector
-    pub fn from_vec(v: &[T]) -> List<T> {
-        match v.len() {
-            0 => Nil,
-            _ => v.rev_iter().fold(Nil, |tail, value: &T| Cons(value.clone(), @tail))
-        }
-    }
+impl<T: Clone> Extendable<T> for List<T> {
+    fn extend<Iter: Iterator<T>>(&mut self, iterator: &mut Iter) {
+        let mut list = List::from_iterator_rev(iterator);
 
-    /// Appends one list to another, returning a new list
-    pub fn append(&self, other: List<T>) -> List<T> {
-        match other {
-            Nil => return self.clone(),
-            _ => match *self {
-                Nil => return other,
-                Cons(ref value, tail) => Cons(value.clone(), @tail.append(other))
+        for elt in self.iter() {
+            list.push(elt.clone());
+        }
+
+        list.reverse();
+
+        *self = list;
+    }
+}
+
+impl<T: fmt::Show> fmt::Show for List<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        try!(write!(f.buf, "["));
+        let mut is_first = true;
+        for x in self.iter() {
+            if is_first {
+                is_first = false;
+            } else {
+                try!(write!(f.buf, ", "));
+            }
+            try!(write!(f.buf, "{}", *x))
+        }
+        write!(f.buf, "]")
+    }
+}
+
+/// A linked list iterator. See `List::iter` for a usage example.
+pub struct Items<'a, T> {
+    priv head: &'a List<T>,
+    priv next: Option<&'a ~List<T>>
+}
+
+impl<'a, T> Iterator<&'a T> for Items<'a, T> {
+    fn next(&mut self) -> Option<&'a T> {
+        match self.next {
+            None => {
+                match *self.head {
+                    Nil => None,
+                    Cons(ref value, ref tail) => {
+                        self.next = Some(tail);
+                        Some(value)
+                    }
+                }
+            }
+            Some(next) => {
+                match **next {
+                    Nil => None,
+                    Cons(ref value, ref tail) => {
+                        self.next = Some(tail);
+                        Some(value)
+                    }
+                }
             }
         }
     }
+}
 
-    /// Push one element into the front of a list, returning a new list
-    pub fn unshift(&self, element: T) -> List<T> {
-        Cons(element, @(self.clone()))
+/// A linked list iterator that moves the elements out of the list. See
+/// `List::move_iter` for a usage example.
+pub struct MoveItems<T> {
+    priv head: List<T>,
+}
+
+impl<T> Iterator<T> for MoveItems<T> {
+    fn next(&mut self) -> Option<T> {
+        match mem::replace(&mut self.head, Nil) {
+            Nil => None,
+            Cons(value, tail) => {
+                self.head = *tail;
+                Some(value)
+            }
+        }
     }
 }
 
@@ -203,12 +513,12 @@ mod tests {
     #[test]
     fn test_contains() {
         let empty = Nil::<int>;
-        assert!((!empty.contains(5)));
+        assert!((!empty.contains(&5)));
 
         let list = List::from_vec([5, 8, 6]);
-        assert!((list.contains(5)));
-        assert!((!list.contains(7)));
-        assert!((list.contains(8)));
+        assert!((list.contains(&5)));
+        assert!((!list.contains(&7)));
+        assert!((list.contains(&8)));
     }
 
     #[test]
@@ -227,11 +537,10 @@ mod tests {
     }
 
     #[test]
-    fn test_unshift() {
-        let list = List::from_vec([1]);
-        let new_list = list.unshift(0);
-        assert_eq!(list.len(), 1u);
-        assert_eq!(new_list.len(), 2u);
-        assert!(new_list == List::from_vec([0, 1]));
+    fn test_push() {
+        let mut list = List::from_vec([1]);
+        list.push(0);
+        assert_eq!(list.len(), 2);
+        assert!(list == List::from_vec([0, 1]));
     }
 }
