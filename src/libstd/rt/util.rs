@@ -71,14 +71,22 @@ pub fn default_sched_threads() -> uint {
     }
 }
 
-pub struct Stderr;
+pub struct Stdio(libc::c_int);
 
-impl io::Writer for Stderr {
+pub static Stdout: Stdio = Stdio(libc::STDOUT_FILENO);
+pub static Stderr: Stdio = Stdio(libc::STDERR_FILENO);
+
+impl io::Writer for Stdio {
     fn write(&mut self, data: &[u8]) -> IoResult<()> {
+        #[cfg(unix)]
+        type WriteLen = libc::size_t;
+        #[cfg(windows)]
+        type WriteLen = libc::c_uint;
         unsafe {
-            libc::write(libc::STDERR_FILENO,
+            let Stdio(fd) = *self;
+            libc::write(fd,
                         data.as_ptr() as *libc::c_void,
-                        data.len() as libc::size_t);
+                        data.len() as WriteLen);
         }
         Ok(()) // yes, we're lying
     }
