@@ -542,7 +542,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
             // explaining how it goes about doing that.
             let target_ty = rcx.resolve_node_type(expr.id);
             match ty::get(target_ty).sty {
-                ty::ty_trait(_, _, ty::RegionTraitStore(trait_region), _, _) => {
+                ty::ty_trait(~ty::TyTrait { store: ty::RegionTraitStore(trait_region), .. }) => {
                     let source_ty = rcx.resolve_expr_type_adjusted(source);
                     constrain_regions_in_type(
                         rcx,

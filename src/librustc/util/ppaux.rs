@@ -484,7 +484,9 @@ pub fn ty_to_str(cx: &ctxt, typ: t) -> ~str {
                       did,
                       false)
       }
-      ty_trait(did, ref substs, s, mutbl, ref bounds) => {
+      ty_trait(~ty::TyTrait {
+          def_id: did, ref substs, store: s, mutability: mutbl, ref bounds
+      }) => {
         let base = ty::item_path_str(cx, did);
         let ty = parameterized(cx, base, &substs.regions,
                                substs.tps.as_slice(), did, true);

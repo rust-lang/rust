@@ -310,7 +310,7 @@ fn make_drop_glue<'a>(bcx: &'a Block<'a>, v0: ValueRef, t: ty::t) -> &'a Block<'
                 }
             }
         }
-        ty::ty_trait(_, _, ty::UniqTraitStore, _, _) => {
+        ty::ty_trait(~ty::TyTrait { store: ty::UniqTraitStore, .. }) => {
             let lluniquevalue = GEPi(bcx, v0, [0, abi::trt_field_box]);
             // Only drop the value when it is non-null
             with_cond(bcx, IsNotNull(bcx, Load(bcx, lluniquevalue)), |bcx| {

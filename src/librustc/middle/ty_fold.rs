@@ -159,12 +159,14 @@ pub fn super_fold_sty<T:TypeFolder>(this: &mut T,
         ty::ty_enum(tid, ref substs) => {
             ty::ty_enum(tid, this.fold_substs(substs))
         }
-        ty::ty_trait(did, ref substs, st, mutbl, bounds) => {
-            ty::ty_trait(did,
-                     this.fold_substs(substs),
-                     this.fold_trait_store(st),
-                     mutbl,
-                     bounds)
+        ty::ty_trait(~ty::TyTrait { def_id, ref substs, store, mutability, bounds }) => {
+            ty::ty_trait(~ty::TyTrait{
+                def_id: def_id,
+                substs: this.fold_substs(substs),
+                store: this.fold_trait_store(store),
+                mutability: mutability,
+                bounds: bounds
+            })
         }
         ty::ty_tup(ref ts) => {
             ty::ty_tup(fold_ty_vec(this, ts.as_slice()))
