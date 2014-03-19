@@ -464,8 +464,20 @@ impl<'a> ::Encoder for Encoder<'a> {
     }
 
     fn emit_map_elt_key(&mut self, idx: uint, f: |&mut Encoder<'a>|) {
+        use std::str::from_utf8;
         if idx != 0 { try!(write!(self.wr, ",")) }
-        f(self)
+        // ref #12967, make sure to wrap a key in double quotes,
+        // in the event that its of a type that omits them (eg numbers)
+        let mut buf = MemWriter::new();
+        let mut check_encoder = Encoder::new(&mut buf);
+        f(&mut check_encoder);
+        let buf = buf.unwrap();
+        let out = from_utf8(buf).unwrap();
+        let needs_wrapping = out.char_at(0) != '"' &&
+            out.char_at_reverse(out.len()) != '"';
+        if needs_wrapping { try!(write!(self.wr, "\"")); }
+        f(self);
+        if needs_wrapping { try!(write!(self.wr, "\"")); }
     }
 
     fn emit_map_elt_val(&mut self, _idx: uint, f: |&mut Encoder<'a>|) {
@@ -659,13 +671,25 @@ impl<'a> ::Encoder for PrettyEncoder<'a> {
     }
 
     fn emit_map_elt_key(&mut self, idx: uint, f: |&mut PrettyEncoder<'a>|) {
+        use std::str::from_utf8;
         if idx == 0 {
             try!(write!(self.wr, "\n"));
         } else {
             try!(write!(self.wr, ",\n"));
         }
         try!(write!(self.wr, "{}", spaces(self.indent)));
+        // ref #12967, make sure to wrap a key in double quotes,
+        // in the event that its of a type that omits them (eg numbers)
+        let mut buf = MemWriter::new();
+        let mut check_encoder = PrettyEncoder::new(&mut buf);
+        f(&mut check_encoder);
+        let buf = buf.unwrap();
+        let out = from_utf8(buf).unwrap();
+        let needs_wrapping = out.char_at(0) != '"' &&
+            out.char_at_reverse(out.len()) != '"';
+        if needs_wrapping { try!(write!(self.wr, "\"")); }
         f(self);
+        if needs_wrapping { try!(write!(self.wr, "\"")); }
     }
 
     fn emit_map_elt_val(&mut self, _idx: uint, f: |&mut PrettyEncoder<'a>|) {
@@ -1306,13 +1330,19 @@ impl ::Decoder for Decoder {
     }
 
     fn read_f64(&mut self) -> f64 {
+        use std::from_str::FromStr;
         debug!("read_f64");
         match self.stack.pop().unwrap() {
             Number(f) => f,
+            String(s) => {
+                // re: #12967.. a type w/ numeric keys (ie HashMap<uint, V> etc)
+                // is going to have a string here, as per JSON spec..
+                FromStr::from_str(s).unwrap()
+            },
             value => self.expected("number", &value)
         }
     }
-    fn read_f32(&mut self) -> f32 { self.read_f64() as f32 }
+
     fn read_f32(&mut self) -> f32 { self.read_f64() as f32 }
 
     fn read_char(&mut self) -> char {
@@ -2518,5 +2548,58 @@ mod tests {
         let json_null = json_value.as_null();
         let expected_null = ();
         assert!(json_null.is_some() && json_null.unwrap() == expected_null);
+    }
+
+    #[test]
+    fn test_encode_hashmap_with_numeric_key() {
+        use std::str::from_utf8;
+        use std::io::Writer;
+        use std::io::MemWriter;
+        use collections::HashMap;
+        let mut hm: HashMap<uint, bool> = HashMap::new();
+        hm.insert(1, true);
+        let mut mem_buf = MemWriter::new();
+        {
+            let mut encoder = Encoder::new(&mut mem_buf as &mut io::Writer);
+            hm.encode(&mut encoder)
+        }
+        let bytes = mem_buf.unwrap();
+        let json_str = from_utf8(bytes).unwrap();
+        match from_str(json_str) {
+            Err(_) => fail!("Unable to parse json_str: {:?}", json_str),
+            _ => {} // it parsed and we are good to go
+        }
+    }
+    #[test]
+    fn test_prettyencode_hashmap_with_numeric_key() {
+        use std::str::from_utf8;
+        use std::io::Writer;
+        use std::io::MemWriter;
+        use collections::HashMap;
+        let mut hm: HashMap<uint, bool> = HashMap::new();
+        hm.insert(1, true);
+        let mut mem_buf = MemWriter::new();
+        {
+            let mut encoder = PrettyEncoder::new(&mut mem_buf as &mut io::Writer);
+            hm.encode(&mut encoder)
+        }
+        let bytes = mem_buf.unwrap();
+        let json_str = from_utf8(bytes).unwrap();
+        match from_str(json_str) {
+            Err(_) => fail!("Unable to parse json_str: {:?}", json_str),
+            _ => {} // it parsed and we are good to go
+        }
+    }
+    #[test]
+    fn test_hashmap_with_numeric_key_can_handle_double_quote_delimited_key() {
+        use collections::HashMap;
+        use Decodable;
+        let json_str = "{\"1\":true}";
+        let json_obj = match from_str(json_str) {
+            Err(_) => fail!("Unable to parse json_str: {:?}", json_str),
+            Ok(o) => o
+        };
+        let mut decoder = Decoder::new(json_obj);
+        let hm: HashMap<uint, bool> = Decodable::decode(&mut decoder);
     }
 }

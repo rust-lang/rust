@@ -45,8 +45,9 @@ impl<T: Clone> Clone for ~T {
     fn clone(&self) -> ~T { ~(**self).clone() }
 
     /// Perform copy-assignment from `source` by reusing the existing allocation.
+    #[inline]
     fn clone_from(&mut self, source: &~T) {
-        **self = (**source).clone()
+        (**self).clone_from(&(**source));
     }
 }
 

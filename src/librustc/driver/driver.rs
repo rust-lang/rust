@@ -186,7 +186,7 @@ pub fn phase_1_parse_input(sess: &Session, cfg: ast::CrateConfig, input: &Input)
     });
 
     if sess.opts.debugging_opts & session::AST_JSON_NOEXPAND != 0 {
-        let mut stdout = io::stdout();
+        let mut stdout = io::BufferedWriter::new(io::stdout());
         let mut json = json::PrettyEncoder::new(&mut stdout);
         krate.encode(&mut json);
     }
@@ -261,7 +261,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
          front::assign_node_ids_and_map::assign_node_ids_and_map(sess, krate));
 
     if sess.opts.debugging_opts & session::AST_JSON != 0 {
-        let mut stdout = io::stdout();
+        let mut stdout = io::BufferedWriter::new(io::stdout());
         let mut json = json::PrettyEncoder::new(&mut stdout);
         krate.encode(&mut json);
     }
@@ -596,7 +596,7 @@ struct IdentifiedAnnotation;
 
 impl pprust::PpAnn for IdentifiedAnnotation {
     fn pre(&self,
-           s: &mut pprust::State<IdentifiedAnnotation>,
+           s: &mut pprust::State,
            node: pprust::AnnNode) -> io::IoResult<()> {
         match node {
             pprust::NodeExpr(_) => s.popen(),
@@ -604,7 +604,7 @@ impl pprust::PpAnn for IdentifiedAnnotation {
         }
     }
     fn post(&self,
-            s: &mut pprust::State<IdentifiedAnnotation>,
+            s: &mut pprust::State,
             node: pprust::AnnNode) -> io::IoResult<()> {
         match node {
             pprust::NodeItem(item) => {
@@ -634,7 +634,7 @@ struct TypedAnnotation {
 
 impl pprust::PpAnn for TypedAnnotation {
     fn pre(&self,
-           s: &mut pprust::State<TypedAnnotation>,
+           s: &mut pprust::State,
            node: pprust::AnnNode) -> io::IoResult<()> {
         match node {
             pprust::NodeExpr(_) => s.popen(),
@@ -642,7 +642,7 @@ impl pprust::PpAnn for TypedAnnotation {
         }
     }
     fn post(&self,
-            s: &mut pprust::State<TypedAnnotation>,
+            s: &mut pprust::State,
             node: pprust::AnnNode) -> io::IoResult<()> {
         let tcx = &self.analysis.ty_cx;
         match node {

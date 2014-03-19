@@ -427,7 +427,7 @@ impl<T> Vec<T> {
         }
     }
 
-    fn remove(&mut self, index: uint) -> Option<T> {
+    pub fn remove(&mut self, index: uint) -> Option<T> {
         let len = self.len();
         if index < len {
             unsafe { // infallible

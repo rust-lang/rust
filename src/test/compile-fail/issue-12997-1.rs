@@ -8,7 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[no_mangle]
-pub static foo: int = 3;
+// compile-flags: --test
 
-pub fn bar() {}
+//! Test that makes sure wrongly-typed bench functions aren't ignored
+
+#[bench]
+fn foo() { } //~ ERROR functions used as benches
+
+#[bench]
+fn bar(x: int, y: int) { } //~ ERROR functions used as benches

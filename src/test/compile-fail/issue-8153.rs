@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,7 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[no_mangle]
-pub static foo: int = 3;
+// Test that duplicate methods in impls are not allowed
 
-pub fn bar() {}
+struct Foo;
+
+trait Bar {
+    fn bar(&self) -> int;
+}
+
+impl Bar for Foo {
+    fn bar(&self) -> int {1}
+    fn bar(&self) -> int {2} //~ ERROR duplicate method
+}
+
+fn main() {
+    println!("{}", Foo.bar());
+}
