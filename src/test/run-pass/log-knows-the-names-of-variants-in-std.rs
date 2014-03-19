@@ -10,9 +10,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate collections;
-use collections::list::List;
-
 #[deriving(Clone)]
 enum foo {
   a(uint),
@@ -24,9 +21,21 @@ fn check_log<T>(exp: ~str, v: T) {
 }
 
 pub fn main() {
-    let x = List::from_vec([a(22u), b(~"hi")]);
-    let exp = ~"Cons(a(22u), @Cons(b(~\"hi\"), @Nil))";
+    let mut x = Some(a(22u));
+    let exp = ~"Some(a(22u))";
     let act = format!("{:?}", x);
-    assert!(act == exp);
+    assert_eq!(act, exp);
+    check_log(exp, x);
+
+    x = Some(b(~"hi"));
+    let exp = ~"Some(b(~\"hi\"))";
+    let act = format!("{:?}", x);
+    assert_eq!(act, exp);
+    check_log(exp, x);
+
+    x = None;
+    let exp = ~"None";
+    let act = format!("{:?}", x);
+    assert_eq!(act, exp);
     check_log(exp, x);
 }
