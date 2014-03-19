@@ -264,7 +264,7 @@ pub fn expand_item(it: @ast::Item, fld: &mut MacroExpander)
     let it = expand_item_modifiers(it, fld);
 
     let mut decorator_items = SmallVector::zero();
-    for attr in it.attrs.rev_iter() {
+    for attr in it.attrs.iter().rev() {
         let mname = attr.name();
 
         match fld.extsbox.find(&intern(mname.get())) {

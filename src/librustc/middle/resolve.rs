@@ -5520,7 +5520,8 @@ impl<'a> Resolver<'a> {
         if idents.len() == 0 {
             return ~"???";
         }
-        return self.idents_to_str(idents.move_rev_iter()
+        return self.idents_to_str(idents.move_iter()
+                                        .rev()
                                         .collect::<Vec<ast::Ident>>()
                                         .as_slice());
     }
