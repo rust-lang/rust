@@ -126,6 +126,15 @@ pub fn display_sctable(table: &SCTable) {
     }
 }
 
+/// Clear the tables from TLD to reclaim memory.
+pub fn clear_tables() {
+    with_sctable(|table| {
+        *table.table.borrow_mut().get() = Vec::new();
+        *table.mark_memo.borrow_mut().get() = HashMap::new();
+        *table.rename_memo.borrow_mut().get() = HashMap::new();
+    });
+    with_resolve_table_mut(|table| *table = HashMap::new());
+}
 
 // Add a value to the end of a vec, return its index
 fn idx_push<T>(vec: &mut Vec<T> , val: T) -> u32 {

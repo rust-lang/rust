@@ -305,6 +305,9 @@ pub fn phase_3_run_analysis_passes(sess: Session,
         time(time_passes, "resolution", (), |_|
              middle::resolve::resolve_crate(&sess, lang_items, krate));
 
+    // Discard MTWT tables that aren't required past resolution.
+    syntax::ext::mtwt::clear_tables();
+
     let named_region_map = time(time_passes, "lifetime resolution", (),
                                 |_| middle::resolve_lifetime::krate(&sess, krate));
 
@@ -585,6 +588,10 @@ pub fn compile_input(sess: Session, cfg: ast::CrateConfig, input: &Input,
         if stop_after_phase_3(&analysis.ty_cx.sess) { return; }
         let (tcx, trans) = phase_4_translate_to_llvm(expanded_crate,
                                                      analysis, &outputs);
+
+        // Discard interned strings as they are no longer required.
+        token::get_ident_interner().clear();
+
         (outputs, trans, tcx.sess)
     };
     phase_5_run_llvm_passes(&sess, &trans, &outputs);
