@@ -269,7 +269,7 @@ pub fn decl_rust_fn(ccx: &CrateContext, has_env: bool,
             // noalias because the actual object pointer is nested.
             ty::ty_uniq(..) | // ty::ty_trait(_, _, ty::UniqTraitStore, _, _) |
             ty::ty_vec(_, ty::vstore_uniq) | ty::ty_str(ty::vstore_uniq) |
-            ty::ty_closure(ty::ClosureTy {sigil: ast::OwnedSigil, ..}) => {
+            ty::ty_closure(~ty::ClosureTy {sigil: ast::OwnedSigil, ..}) => {
                 unsafe {
                     llvm::LLVMAddAttribute(llarg, lib::llvm::NoAliasAttribute as c_uint);
                 }

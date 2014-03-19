@@ -315,7 +315,7 @@ fn enc_sty(w: &mut MemWriter, cx: &ctxt, st: &ty::sty) {
         ty::ty_unboxed_vec(mt) => { mywrite!(w, "U"); enc_mt(w, cx, mt); }
         ty::ty_closure(ref f) => {
             mywrite!(w, "f");
-            enc_closure_ty(w, cx, f);
+            enc_closure_ty(w, cx, *f);
         }
         ty::ty_bare_fn(ref f) => {
             mywrite!(w, "F");
