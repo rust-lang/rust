@@ -66,7 +66,7 @@ use std::result;
 
 use syntax::ast::{Onceness, Purity};
 use syntax::ast;
-use syntax::opt_vec;
+use syntax::owned_slice::OwnedSlice;
 use syntax::abi::AbiSet;
 
 pub trait Combine {
@@ -176,7 +176,7 @@ pub trait Combine {
                         };
                         rs.push(if_ok!(r));
                     }
-                    Ok(ty::NonerasedRegions(opt_vec::from(rs)))
+                    Ok(ty::NonerasedRegions(OwnedSlice::from_vec(rs)))
                 }
             }
         }

@@ -51,8 +51,7 @@ use syntax::codemap::Span;
 use syntax::parse::token;
 use syntax::parse::token::InternedString;
 use syntax::{ast, ast_map};
-use syntax::opt_vec::OptVec;
-use syntax::opt_vec;
+use syntax::owned_slice::OwnedSlice;
 use syntax::abi::AbiSet;
 use syntax;
 use collections::enum_set::{EnumSet, CLike};
@@ -192,8 +191,8 @@ pub enum ast_ty_to_ty_cache_entry {
 #[deriving(Clone, Eq, Decodable, Encodable)]
 pub struct ItemVariances {
     self_param: Option<Variance>,
-    type_params: OptVec<Variance>,
-    region_params: OptVec<Variance>
+    type_params: OwnedSlice<Variance>,
+    region_params: OwnedSlice<Variance>
 }
 
 #[deriving(Clone, Eq, Decodable, Encodable, Show)]
@@ -646,7 +645,7 @@ pub enum BoundRegion {
 #[deriving(Clone, Eq, Hash)]
 pub enum RegionSubsts {
     ErasedRegions,
-    NonerasedRegions(OptVec<ty::Region>)
+    NonerasedRegions(OwnedSlice<ty::Region>)
 }
 
 /**
@@ -4658,7 +4657,7 @@ pub fn visitor_object_ty(tcx: &ctxt,
         Err(s) => { return Err(s); }
     };
     let substs = substs {
-        regions: ty::NonerasedRegions(opt_vec::Empty),
+        regions: ty::NonerasedRegions(OwnedSlice::empty()),
         self_ty: None,
         tps: Vec::new()
     };
@@ -5092,7 +5091,7 @@ pub fn construct_parameter_environment(
     let free_substs = substs {
         self_ty: self_ty,
         tps: type_params,
-        regions: ty::NonerasedRegions(opt_vec::from(region_params))
+        regions: ty::NonerasedRegions(OwnedSlice::from_vec(region_params))
     };
 
     //
@@ -5130,7 +5129,7 @@ impl substs {
         substs {
             self_ty: None,
             tps: Vec::new(),
-            regions: NonerasedRegions(opt_vec::Empty)
+            regions: NonerasedRegions(OwnedSlice::empty())
         }
     }
 }

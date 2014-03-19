@@ -63,8 +63,7 @@ use util::ppaux::Repr;
 use syntax::abi::AbiSet;
 use syntax::{ast, ast_util};
 use syntax::codemap::Span;
-use syntax::opt_vec::OptVec;
-use syntax::opt_vec;
+use syntax::owned_slice::OwnedSlice;
 use syntax::print::pprust::{lifetime_to_str, path_to_str};
 
 pub trait AstConv {
@@ -229,7 +228,7 @@ fn ast_path_substs<AC:AstConv,RS:RegionScope>(
                             .collect();
 
     let mut substs = substs {
-        regions: ty::NonerasedRegions(opt_vec::from(regions)),
+        regions: ty::NonerasedRegions(OwnedSlice::from_vec(regions)),
         self_ty: self_ty,
         tps: tps
     };
@@ -816,7 +815,7 @@ pub fn ty_of_closure<AC:AstConv,RS:RegionScope>(
     }
 }
 
-fn conv_builtin_bounds(tcx: &ty::ctxt, ast_bounds: &Option<OptVec<ast::TyParamBound>>,
+fn conv_builtin_bounds(tcx: &ty::ctxt, ast_bounds: &Option<OwnedSlice<ast::TyParamBound>>,
                        store: ty::TraitStore)
                        -> ty::BuiltinBounds {
     //! Converts a list of bounds from the AST into a `BuiltinBounds`

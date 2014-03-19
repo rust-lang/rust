@@ -104,7 +104,7 @@ use syntax::ast::{MutMutable, MutImmutable};
 use syntax::ast;
 use syntax::codemap::Span;
 use syntax::parse::token;
-use syntax::opt_vec;
+use syntax::owned_slice::OwnedSlice;
 
 #[deriving(Eq)]
 pub enum CheckTraitsFlag {
@@ -1120,7 +1120,7 @@ impl<'a> LookupContext<'a> {
         let all_substs = substs {
             tps: vec::append(candidate.rcvr_substs.tps.clone(),
                                 m_substs.as_slice()),
-            regions: NonerasedRegions(opt_vec::from(all_regions)),
+            regions: NonerasedRegions(OwnedSlice::from_vec(all_regions)),
             self_ty: candidate.rcvr_substs.self_ty,
         };
 

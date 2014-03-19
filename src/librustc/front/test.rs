@@ -31,7 +31,7 @@ use syntax::ext::base::ExtCtxt;
 use syntax::ext::expand::ExpansionConfig;
 use syntax::fold::Folder;
 use syntax::fold;
-use syntax::opt_vec;
+use syntax::owned_slice::OwnedSlice;
 use syntax::parse::token::InternedString;
 use syntax::parse::token;
 use syntax::print::pprust;
@@ -377,7 +377,7 @@ fn path_node(ids: Vec<ast::Ident> ) -> ast::Path {
         segments: ids.move_iter().map(|identifier| ast::PathSegment {
             identifier: identifier,
             lifetimes: Vec::new(),
-            types: opt_vec::Empty,
+            types: OwnedSlice::empty(),
         }).collect()
     }
 }
@@ -389,7 +389,7 @@ fn path_node_global(ids: Vec<ast::Ident> ) -> ast::Path {
         segments: ids.move_iter().map(|identifier| ast::PathSegment {
             identifier: identifier,
             lifetimes: Vec::new(),
-            types: opt_vec::Empty,
+            types: OwnedSlice::empty(),
         }).collect()
     }
 }

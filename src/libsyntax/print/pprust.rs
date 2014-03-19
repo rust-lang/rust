@@ -12,8 +12,7 @@ use abi::AbiSet;
 use ast::{P, RegionTyParamBound, TraitTyParamBound, Required, Provided};
 use ast;
 use ast_util;
-use opt_vec::OptVec;
-use opt_vec;
+use owned_slice::OwnedSlice;
 use attr::{AttrMetaMethods, AttributeMethods};
 use codemap::{CodeMap, BytePos};
 use codemap;
@@ -478,7 +477,7 @@ impl<'a> State<'a> {
             ast::TyBareFn(f) => {
                 let generics = ast::Generics {
                     lifetimes: f.lifetimes.clone(),
-                    ty_params: opt_vec::Empty
+                    ty_params: OwnedSlice::empty()
                 };
                 try!(self.print_ty_fn(Some(f.abis), None, &None,
                                    f.purity, ast::Many, f.decl, None, &None,
@@ -487,7 +486,7 @@ impl<'a> State<'a> {
             ast::TyClosure(f) => {
                 let generics = ast::Generics {
                     lifetimes: f.lifetimes.clone(),
-                    ty_params: opt_vec::Empty
+                    ty_params: OwnedSlice::empty()
                 };
                 try!(self.print_ty_fn(None, Some(f.sigil), &f.region,
                                    f.purity, f.onceness, f.decl, None, &f.bounds,
@@ -1518,7 +1517,7 @@ impl<'a> State<'a> {
     fn print_path_(&mut self,
                    path: &ast::Path,
                    colons_before_params: bool,
-                   opt_bounds: &Option<OptVec<ast::TyParamBound>>)
+                   opt_bounds: &Option<OwnedSlice<ast::TyParamBound>>)
         -> IoResult<()> {
         try!(self.maybe_print_comment(path.span.lo));
         if path.global {
@@ -1564,7 +1563,7 @@ impl<'a> State<'a> {
                     }
                     try!(self.commasep(
                         Inconsistent,
-                        segment.types.map_to_vec(|&t| t).as_slice(),
+                        segment.types.as_slice(),
                         |s, ty| s.print_type_ref(ty)));
                 }
 
@@ -1580,7 +1579,7 @@ impl<'a> State<'a> {
     }
 
     fn print_bounded_path(&mut self, path: &ast::Path,
-                          bounds: &Option<OptVec<ast::TyParamBound>>)
+                          bounds: &Option<OwnedSlice<ast::TyParamBound>>)
         -> IoResult<()> {
         self.print_path_(path, false, bounds)
     }
@@ -1826,7 +1825,7 @@ impl<'a> State<'a> {
         self.maybe_print_comment(decl.output.span.lo)
     }
 
-    pub fn print_bounds(&mut self, bounds: &OptVec<ast::TyParamBound>,
+    pub fn print_bounds(&mut self, bounds: &OwnedSlice<ast::TyParamBound>,
                         print_colon_anyway: bool) -> IoResult<()> {
         if !bounds.is_empty() {
             try!(word(&mut self.s, ":"));
@@ -2028,7 +2027,7 @@ impl<'a> State<'a> {
                        onceness: ast::Onceness,
                        decl: &ast::FnDecl,
                        id: Option<ast::Ident>,
-                       opt_bounds: &Option<OptVec<ast::TyParamBound>>,
+                       opt_bounds: &Option<OwnedSlice<ast::TyParamBound>>,
                        generics: Option<&ast::Generics>,
                        opt_explicit_self: Option<ast::ExplicitSelf_>)
         -> IoResult<()> {
