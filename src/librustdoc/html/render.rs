@@ -36,7 +36,7 @@
 use std::fmt;
 use std::local_data;
 use std::io;
-use std::io::{fs, File, BufferedWriter};
+use std::io::{fs, File, BufferedWriter, MemWriter, BufferedReader};
 use std::str;
 use std::vec;
 use std::vec_ng::Vec;
@@ -283,48 +283,75 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
         };
     }
 
-    // Add all the static files
-    let mut dst = cx.dst.join(krate.name.as_slice());
-    try!(mkdir(&dst));
-    try!(write(dst.join("jquery.js"),
-                 include_str!("static/jquery-2.1.0.min.js")));
-    try!(write(dst.join("main.js"), include_str!("static/main.js")));
-    try!(write(dst.join("main.css"), include_str!("static/main.css")));
-    try!(write(dst.join("normalize.css"),
-                 include_str!("static/normalize.css")));
-
     // Publish the search index
-    {
-        dst.push("search-index.js");
-        let mut w = BufferedWriter::new(File::create(&dst).unwrap());
-        let w = &mut w as &mut Writer;
-        try!(write!(w, "var searchIndex = ["));
+    let index = {
+        let mut w = MemWriter::new();
+        try!(write!(&mut w, "searchIndex['{}'] = [", krate.name));
         for (i, item) in cache.search_index.iter().enumerate() {
             if i > 0 {
-                try!(write!(w, ","));
+                try!(write!(&mut w, ","));
             }
-            try!(write!(w, "\\{ty:\"{}\",name:\"{}\",path:\"{}\",desc:{}",
-                          item.ty, item.name, item.path,
-                          item.desc.to_json().to_str()));
+            try!(write!(&mut w, "\\{ty:\"{}\",name:\"{}\",path:\"{}\",desc:{}",
+                        item.ty, item.name, item.path,
+                        item.desc.to_json().to_str()));
             match item.parent {
                 Some(id) => {
-                    try!(write!(w, ",parent:'{}'", id));
+                    try!(write!(&mut w, ",parent:'{}'", id));
                 }
                 None => {}
             }
-            try!(write!(w, "\\}"));
+            try!(write!(&mut w, "\\}"));
         }
-        try!(write!(w, "];"));
-        try!(write!(w, "var allPaths = \\{"));
+        try!(write!(&mut w, "];"));
+        try!(write!(&mut w, "allPaths['{}'] = \\{", krate.name));
         for (i, (&id, &(ref fqp, short))) in cache.paths.iter().enumerate() {
             if i > 0 {
-                try!(write!(w, ","));
+                try!(write!(&mut w, ","));
             }
-            try!(write!(w, "'{}':\\{type:'{}',name:'{}'\\}",
-                          id, short, *fqp.last().unwrap()));
+            try!(write!(&mut w, "'{}':\\{type:'{}',name:'{}'\\}",
+                        id, short, *fqp.last().unwrap()));
         }
-        try!(write!(w, "\\};"));
-        try!(w.flush());
+        try!(write!(&mut w, "\\};"));
+
+        str::from_utf8_owned(w.unwrap()).unwrap()
+    };
+
+    // Write out the shared files. Note that these are shared among all rustdoc
+    // docs placed in the output directory, so this needs to be a synchronized
+    // operation with respect to all other rustdocs running around.
+    {
+        try!(mkdir(&cx.dst));
+        let _lock = ::flock::Lock::new(&cx.dst.join(".lock"));
+
+        // Add all the static files. These may already exist, but we just
+        // overwrite them anyway to make sure that they're fresh and up-to-date.
+        try!(write(cx.dst.join("jquery.js"),
+                   include_str!("static/jquery-2.1.0.min.js")));
+        try!(write(cx.dst.join("main.js"), include_str!("static/main.js")));
+        try!(write(cx.dst.join("main.css"), include_str!("static/main.css")));
+        try!(write(cx.dst.join("normalize.css"),
+                   include_str!("static/normalize.css")));
+
+        // Update the search index
+        let dst = cx.dst.join("search-index.js");
+        let mut all_indexes = Vec::new();
+        all_indexes.push(index);
+        if dst.exists() {
+            for line in BufferedReader::new(File::open(&dst)).lines() {
+                let line = try!(line);
+                if !line.starts_with("searchIndex") { continue }
+                if line.starts_with(format!("searchIndex['{}']", krate.name)) {
+                    continue
+                }
+                all_indexes.push(line);
+            }
+        }
+        let mut w = try!(File::create(&dst));
+        try!(writeln!(&mut w, r"var searchIndex = \{\}; var allPaths = \{\};"));
+        for index in all_indexes.iter() {
+            try!(writeln!(&mut w, "{}", *index));
+        }
+        try!(writeln!(&mut w, "initSearch(searchIndex);"));
     }
 
     // Render all source files (this may turn into a giant no-op)
@@ -463,6 +490,13 @@ impl<'a> SourceCollector<'a> {
         };
         let contents = str::from_utf8_owned(contents).unwrap();
 
+        // Remove the utf-8 BOM if any
+        let contents = if contents.starts_with("\ufeff") {
+            contents.as_slice().slice_from(3)
+        } else {
+            contents.as_slice()
+        };
+
         // Create the intermediate directories
         let mut cur = self.dst.clone();
         let mut root_path = ~"../../";
@@ -482,7 +516,7 @@ impl<'a> SourceCollector<'a> {
             root_path: root_path,
         };
         try!(layout::render(&mut w as &mut Writer, &self.cx.layout,
-                              &page, &(""), &Source(contents.as_slice())));
+                              &page, &(""), &Source(contents)));
         try!(w.flush());
         return Ok(());
     }

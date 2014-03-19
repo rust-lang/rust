@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// So we don't have to document the actual methods on the traits.
-#[allow(missing_doc)];
-
 /*!
  *
  * Traits representing built-in operators, useful for overloading
@@ -83,6 +80,7 @@
  */
 #[lang="drop"]
 pub trait Drop {
+    /// The `drop` method, called when the value goes out of scope.
     fn drop(&mut self);
 }
 
@@ -112,6 +110,7 @@ pub trait Drop {
  */
 #[lang="add"]
 pub trait Add<RHS,Result> {
+    /// The method for the `+` operator
     fn add(&self, rhs: &RHS) -> Result;
 }
 
@@ -141,6 +140,7 @@ pub trait Add<RHS,Result> {
  */
 #[lang="sub"]
 pub trait Sub<RHS,Result> {
+    /// The method for the `-` operator
     fn sub(&self, rhs: &RHS) -> Result;
 }
 
@@ -170,6 +170,7 @@ pub trait Sub<RHS,Result> {
  */
 #[lang="mul"]
 pub trait Mul<RHS,Result> {
+    /// The method for the `*` operator
     fn mul(&self, rhs: &RHS) -> Result;
 }
 
@@ -199,6 +200,7 @@ pub trait Mul<RHS,Result> {
  */
 #[lang="div"]
 pub trait Div<RHS,Result> {
+    /// The method for the `/` operator
     fn div(&self, rhs: &RHS) -> Result;
 }
 
@@ -228,6 +230,7 @@ pub trait Div<RHS,Result> {
  */
 #[lang="rem"]
 pub trait Rem<RHS,Result> {
+    /// The method for the `%` operator
     fn rem(&self, rhs: &RHS) -> Result;
 }
 
@@ -257,6 +260,7 @@ pub trait Rem<RHS,Result> {
  */
 #[lang="neg"]
 pub trait Neg<Result> {
+    /// The method for the unary `-` operator
     fn neg(&self) -> Result;
 }
 
@@ -286,6 +290,7 @@ pub trait Neg<Result> {
  */
 #[lang="not"]
 pub trait Not<Result> {
+    /// The method for the unary `!` operator
     fn not(&self) -> Result;
 }
 
@@ -315,6 +320,7 @@ pub trait Not<Result> {
  */
 #[lang="bitand"]
 pub trait BitAnd<RHS,Result> {
+    /// The method for the `&` operator
     fn bitand(&self, rhs: &RHS) -> Result;
 }
 
@@ -344,6 +350,7 @@ pub trait BitAnd<RHS,Result> {
  */
 #[lang="bitor"]
 pub trait BitOr<RHS,Result> {
+    /// The method for the `|` operator
     fn bitor(&self, rhs: &RHS) -> Result;
 }
 
@@ -373,6 +380,7 @@ pub trait BitOr<RHS,Result> {
  */
 #[lang="bitxor"]
 pub trait BitXor<RHS,Result> {
+    /// The method for the `^` operator
     fn bitxor(&self, rhs: &RHS) -> Result;
 }
 
@@ -402,6 +410,7 @@ pub trait BitXor<RHS,Result> {
  */
 #[lang="shl"]
 pub trait Shl<RHS,Result> {
+    /// The method for the `<<` operator
     fn shl(&self, rhs: &RHS) -> Result;
 }
 
@@ -431,6 +440,7 @@ pub trait Shl<RHS,Result> {
  */
 #[lang="shr"]
 pub trait Shr<RHS,Result> {
+    /// The method for the `>>` operator
     fn shr(&self, rhs: &RHS) -> Result;
 }
 
@@ -461,28 +471,96 @@ pub trait Shr<RHS,Result> {
  */
 #[lang="index"]
 pub trait Index<Index,Result> {
+    /// The method for the indexing (`Foo[Bar]`) operation
     fn index(&self, index: &Index) -> Result;
 }
 
+/// Dummy dox
 #[cfg(stage0)]
 pub trait Deref<Result> {
+    /// dummy dox
     fn deref<'a>(&'a self) -> &'a Result;
 }
 
+/**
+ *
+ * The `Deref` trait is used to specify the functionality of dereferencing
+ * operations like `*v`.
+ *
+ * # Example
+ *
+ * A struct with a single field which is accessible via dereferencing the
+ * struct.
+ *
+ * ```
+ * struct DerefExample<T> {
+ *     value: T
+ * }
+ *
+ * impl<T> Deref<T> for DerefExample<T> {
+ *     fn deref<'a>(&'a self) -> &'a T {
+ *         &self.value
+ *     }
+ * }
+ *
+ * fn main() {
+ *     let x = DerefExample { value: 'a' };
+ *     assert_eq!('a', *x);
+ * }
+ * ```
+ */
 #[cfg(not(stage0))]
 #[lang="deref"]
 pub trait Deref<Result> {
+    /// The method called to dereference a value
     fn deref<'a>(&'a self) -> &'a Result;
 }
 
+/// dummy dox
 #[cfg(stage0)]
 pub trait DerefMut<Result>: Deref<Result> {
+    /// dummy dox
     fn deref_mut<'a>(&'a mut self) -> &'a mut Result;
 }
 
+/**
+ *
+ * The `DerefMut` trait is used to specify the functionality of dereferencing
+ * mutably like `*v = 1;`
+ *
+ * # Example
+ *
+ * A struct with a single field which is modifiable via dereferencing the
+ * struct.
+ *
+ * ```
+ * struct DerefMutExample<T> {
+ *     value: T
+ * }
+ *
+ * impl<T> Deref<T> for DerefMutExample<T> {
+ *     fn deref<'a>(&'a self) -> &'a T {
+ *         &self.value
+ *     }
+ * }
+ *
+ * impl<T> DerefMut<T> for DerefMutExample<T> {
+ *     fn deref_mut<'a>(&'a mut self) -> &'a mut T {
+ *         &mut self.value
+ *     }
+ * }
+ *
+ * fn main() {
+ *     let mut x = DerefMutExample { value: 'a' };
+ *     *x = 'b';
+ *     assert_eq!('b', *x);
+ * }
+ * ```
+ */
 #[cfg(not(stage0))]
 #[lang="deref_mut"]
 pub trait DerefMut<Result>: Deref<Result> {
+    /// The method called to mutably dereference a value
     fn deref_mut<'a>(&'a mut self) -> &'a mut Result;
 }
 
