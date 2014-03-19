@@ -417,9 +417,9 @@ impl<'a> LookupContext<'a> {
         let span = self.self_expr.map_or(self.span, |e| e.span);
         check::autoderef(self.fcx, span, self_ty, None, PreferMutLvalue, |self_ty, _| {
             match get(self_ty).sty {
-                ty_trait(did, ref substs, _, _, _) => {
-                    self.push_inherent_candidates_from_object(did, substs);
-                    self.push_inherent_impl_candidates_for_type(did);
+                ty_trait(~TyTrait { def_id, ref substs, .. }) => {
+                    self.push_inherent_candidates_from_object(def_id, substs);
+                    self.push_inherent_impl_candidates_for_type(def_id);
                 }
                 ty_enum(did, _) | ty_struct(did, _) => {
                     if self.check_traits == CheckTraitsAndInherentMethods {
@@ -775,10 +775,12 @@ impl<'a> LookupContext<'a> {
                      autoderefs: autoderefs,
                      autoref: Some(ty::AutoBorrowVec(region, self_mt.mutbl))})
             }
-            ty::ty_trait(did, ref substs, ty::RegionTraitStore(_), mutbl, bounds) => {
+            ty::ty_trait(~ty::TyTrait {
+                def_id, ref substs, store: ty::RegionTraitStore(_), mutability: mutbl, bounds
+            }) => {
                 let region =
                     self.infcx().next_region_var(infer::Autoref(self.span));
-                (ty::mk_trait(tcx, did, substs.clone(),
+                (ty::mk_trait(tcx, def_id, substs.clone(),
                               ty::RegionTraitStore(region),
                               mutbl, bounds),
                  ty::AutoDerefRef {
@@ -860,7 +862,7 @@ impl<'a> LookupContext<'a> {
                     })
             }
 
-            ty_trait(trt_did, trt_substs, _, _, b) => {
+            ty_trait(~ty::TyTrait { def_id: trt_did, substs: trt_substs, bounds: b, .. }) => {
                 // Coerce ~/@/&Trait instances to &Trait.
 
                 self.search_for_some_kind_of_autorefd_method(
@@ -1301,7 +1303,9 @@ impl<'a> LookupContext<'a> {
                         rcvr_matches_ty(self.fcx, mt.ty, candidate)
                     }
 
-                    ty::ty_trait(self_did, _, RegionTraitStore(_), self_m, _) => {
+                    ty::ty_trait(~ty::TyTrait {
+                        def_id: self_did, store: RegionTraitStore(_), mutability: self_m, ..
+                    }) => {
                         mutability_matches(self_m, m) &&
                         rcvr_matches_object(self_did, candidate)
                     }
@@ -1317,7 +1321,9 @@ impl<'a> LookupContext<'a> {
                         rcvr_matches_ty(self.fcx, typ, candidate)
                     }
 
-                    ty::ty_trait(self_did, _, UniqTraitStore, _, _) => {
+                    ty::ty_trait(~ty::TyTrait {
+                        def_id: self_did, store: UniqTraitStore, ..
+                    }) => {
                         rcvr_matches_object(self_did, candidate)
                     }
 

@@ -719,7 +719,7 @@ impl<'a> InferCtxt<'a> {
                                   ty::EmptyBuiltinBounds());
         let dummy1 = self.resolve_type_vars_if_possible(dummy0);
         match ty::get(dummy1).sty {
-            ty::ty_trait(ref def_id, ref substs, _, _, _) => {
+            ty::ty_trait(~ty::TyTrait { ref def_id, ref substs, .. }) => {
                 ty::TraitRef {
                     def_id: *def_id,
                     substs: (*substs).clone(),
@@ -976,4 +976,3 @@ impl Repr for RegionVariableOrigin {
         }
     }
 }
-

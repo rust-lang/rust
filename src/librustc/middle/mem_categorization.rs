@@ -170,7 +170,7 @@ pub enum deref_kind {
 pub fn opt_deref_kind(t: ty::t) -> Option<deref_kind> {
     match ty::get(t).sty {
         ty::ty_uniq(_) |
-        ty::ty_trait(_, _, ty::UniqTraitStore, _, _) |
+        ty::ty_trait(~ty::TyTrait { store: ty::UniqTraitStore, .. }) |
         ty::ty_vec(_, ty::vstore_uniq) |
         ty::ty_str(ty::vstore_uniq) |
         ty::ty_closure(ty::ClosureTy {sigil: ast::OwnedSigil, ..}) => {
@@ -183,7 +183,7 @@ pub fn opt_deref_kind(t: ty::t) -> Option<deref_kind> {
             Some(deref_ptr(BorrowedPtr(kind, r)))
         }
 
-        ty::ty_trait(_, _, ty::RegionTraitStore(r), m, _) => {
+        ty::ty_trait(~ty::TyTrait { store: ty::RegionTraitStore(r), mutability: m, .. }) => {
             let kind = ty::BorrowKind::from_mutbl(m);
             Some(deref_ptr(BorrowedPtr(kind, r)))
         }
