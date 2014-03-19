@@ -27,8 +27,6 @@
 
 extern crate collections;
 
-use collections::list::{List, Cons, Nil};
-
 use std::cast::{transmute, transmute_mut, transmute_mut_region};
 use std::cast;
 use std::cell::{Cell, RefCell};
@@ -87,7 +85,7 @@ pub struct Arena {
     // access the head.
     priv head: Chunk,
     priv copy_head: Chunk,
-    priv chunks: RefCell<@List<Chunk>>,
+    priv chunks: RefCell<Vec<Chunk>>,
 }
 
 impl Arena {
@@ -99,7 +97,7 @@ impl Arena {
         Arena {
             head: chunk(initial_size, false),
             copy_head: chunk(initial_size, true),
-            chunks: RefCell::new(@Nil),
+            chunks: RefCell::new(Vec::new()),
         }
     }
 }
@@ -117,7 +115,7 @@ impl Drop for Arena {
     fn drop(&mut self) {
         unsafe {
             destroy_chunk(&self.head);
-            for chunk in self.chunks.get().iter() {
+            for chunk in self.chunks.borrow().iter() {
                 if !chunk.is_copy.get() {
                     destroy_chunk(chunk);
                 }
@@ -179,7 +177,7 @@ impl Arena {
     fn alloc_copy_grow(&mut self, n_bytes: uint, align: uint) -> *u8 {
         // Allocate a new chunk.
         let new_min_chunk_size = cmp::max(n_bytes, self.chunk_size());
-        self.chunks.set(@Cons(self.copy_head.clone(), self.chunks.get()));
+        self.chunks.borrow_mut().push(self.copy_head.clone());
         self.copy_head =
             chunk(num::next_power_of_two(new_min_chunk_size + 1u), true);
 
@@ -219,7 +217,7 @@ impl Arena {
                          -> (*u8, *u8) {
         // Allocate a new chunk.
         let new_min_chunk_size = cmp::max(n_bytes, self.chunk_size());
-        self.chunks.set(@Cons(self.head.clone(), self.chunks.get()));
+        self.chunks.borrow_mut().push(self.head.clone());
         self.head =
             chunk(num::next_power_of_two(new_min_chunk_size + 1u), false);
 
