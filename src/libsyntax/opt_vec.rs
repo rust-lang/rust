@@ -37,25 +37,6 @@ pub fn from<T>(t: Vec<T> ) -> OptVec<T> {
 }
 
 impl<T> OptVec<T> {
-    pub fn push(&mut self, t: T) {
-        match *self {
-            Vec(ref mut v) => {
-                v.push(t);
-                return;
-            }
-            Empty => {
-                *self = Vec(vec!(t));
-            }
-        }
-    }
-
-    pub fn pop(&mut self) -> Option<T> {
-        match *self {
-            Vec(ref mut v) => v.pop(),
-            Empty => None
-        }
-    }
-
     pub fn last<'a>(&'a self) -> Option<&'a T> {
         match *self {
             Vec(ref v) => v.last(),
@@ -102,16 +83,6 @@ impl<T> OptVec<T> {
         }
     }
 
-    pub fn swap_remove(&mut self, index: uint) {
-        match *self {
-            Empty => { fail!("index out of bounds"); }
-            Vec(ref mut v) => {
-                assert!(index < v.len());
-                v.swap_remove(index);
-            }
-        }
-    }
-
     #[inline]
     pub fn iter<'r>(&'r self) -> Items<'r, T> {
         match *self {
@@ -139,17 +110,6 @@ pub fn take_vec<T>(v: OptVec<T>) -> Vec<T> {
     match v {
         Empty => Vec::new(),
         Vec(v) => v
-    }
-}
-
-impl<T:Clone> OptVec<T> {
-    pub fn prepend(&self, t: T) -> OptVec<T> {
-        let mut v0 = vec!(t);
-        match *self {
-            Empty => {}
-            Vec(ref v1) => { v0.push_all(v1.as_slice()); }
-        }
-        return Vec(v0);
     }
 }
 
@@ -208,10 +168,7 @@ impl<'a, T> DoubleEndedIterator<&'a T> for Items<'a, T> {
 
 impl<A> FromIterator<A> for OptVec<A> {
     fn from_iterator<T: Iterator<A>>(iterator: &mut T) -> OptVec<A> {
-        let mut r = Empty;
-        for x in *iterator {
-            r.push(x);
-        }
-        r
+        let v: Vec<A> = iterator.collect();
+        from(v)
     }
 }

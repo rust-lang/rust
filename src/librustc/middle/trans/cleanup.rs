@@ -24,8 +24,6 @@ use middle::trans::glue;
 use middle::trans::type_::Type;
 use middle::ty;
 use syntax::ast;
-use syntax::opt_vec;
-use syntax::opt_vec::OptVec;
 use util::ppaux::Repr;
 
 pub struct CleanupScope<'a> {
@@ -37,9 +35,9 @@ pub struct CleanupScope<'a> {
     kind: CleanupScopeKind<'a>,
 
     // Cleanups to run upon scope exit.
-    cleanups: OptVec<~Cleanup>,
+    cleanups: Vec<~Cleanup>,
 
-    cached_early_exits: OptVec<CachedEarlyExit>,
+    cached_early_exits: Vec<CachedEarlyExit>,
     cached_landing_pad: Option<BasicBlockRef>,
 }
 
@@ -379,7 +377,7 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
         assert!(orig_scopes_len > 0);
 
         // Remove any scopes that do not have cleanups on failure:
-        let mut popped_scopes = opt_vec::Empty;
+        let mut popped_scopes = vec!();
         while !self.top_scope(|s| s.needs_invoke()) {
             debug!("top scope does not need invoke");
             popped_scopes.push(self.pop_scope());
@@ -510,7 +508,7 @@ impl<'a> CleanupHelperMethods<'a> for FunctionContext<'a> {
 
         let orig_scopes_len = self.scopes_len();
         let mut prev_llbb;
-        let mut popped_scopes = opt_vec::Empty;
+        let mut popped_scopes = vec!();
 
         // First we pop off all the cleanup stacks that are
         // traversed until the exit is reached, pushing them
@@ -708,14 +706,14 @@ impl<'a> CleanupScope<'a> {
     fn new(kind: CleanupScopeKind<'a>) -> CleanupScope<'a> {
         CleanupScope {
             kind: kind,
-            cleanups: opt_vec::Empty,
-            cached_early_exits: opt_vec::Empty,
+            cleanups: vec!(),
+            cached_early_exits: vec!(),
             cached_landing_pad: None,
         }
     }
 
     fn clear_cached_exits(&mut self) {
-        self.cached_early_exits = opt_vec::Empty;
+        self.cached_early_exits = vec!();
         self.cached_landing_pad = None;
     }
 

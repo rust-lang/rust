@@ -192,13 +192,13 @@ fn parse_region_substs(st: &mut PState, conv: conv_did) -> ty::RegionSubsts {
     match next(st) {
         'e' => ty::ErasedRegions,
         'n' => {
-            let mut regions = opt_vec::Empty;
+            let mut regions = vec!();
             while peek(st) != '.' {
                 let r = parse_region(st, |x,y| conv(x,y));
                 regions.push(r);
             }
             assert_eq!(next(st), '.');
-            ty::NonerasedRegions(regions)
+            ty::NonerasedRegions(opt_vec::from(regions))
         }
         _ => fail!("parse_bound_region: bad input")
     }

@@ -904,32 +904,33 @@ impl<'a> SolveContext<'a> {
         let num_inferred = self.terms_cx.num_inferred();
         while index < num_inferred {
             let item_id = inferred_infos.get(index).item_id;
-            let mut item_variances = ty::ItemVariances {
-                self_param: None,
-                type_params: opt_vec::Empty,
-                region_params: opt_vec::Empty
-            };
+            let mut self_param = None;
+            let mut type_params = vec!();
+            let mut region_params = vec!();
+
             while index < num_inferred &&
                   inferred_infos.get(index).item_id == item_id {
                 let info = inferred_infos.get(index);
                 match info.kind {
                     SelfParam => {
-                        assert!(item_variances.self_param.is_none());
-                        item_variances.self_param =
-                            Some(*solutions.get(index));
+                        assert!(self_param.is_none());
+                        self_param = Some(*solutions.get(index));
                     }
                     TypeParam => {
-                        item_variances.type_params
-                                      .push(*solutions.get(index));
+                        type_params.push(*solutions.get(index));
                     }
                     RegionParam => {
-                        item_variances.region_params
-                                      .push(*solutions.get(index));
+                        region_params.push(*solutions.get(index));
                     }
                 }
                 index += 1;
             }
 
+            let item_variances = ty::ItemVariances {
+                self_param: self_param,
+                type_params: opt_vec::from(type_params),
+                region_params: opt_vec::from(region_params)
+            };
             debug!("item_id={} item_variances={}",
                     item_id,
                     item_variances.repr(tcx));
