@@ -405,7 +405,7 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
      LintSpec {
         lint: DeprecatedOwnedVector,
         desc: "use of a `~[T]` vector",
-        default: warn
+        default: allow,
     }),
 ];
 
