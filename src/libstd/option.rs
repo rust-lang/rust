@@ -8,21 +8,86 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Optionally nullable values (`Option` type)
+//! Optional values
 //!
-//! Type `Option` represents an optional value.
+//! Type `Option` represents an optional value: every `Option`
+//! is either `Some` and contains a value, or `None`, and
+//! does not. `Option` types are very common in Rust code, as
+//! they have a number of uses:
 //!
-//! Every `Option<T>` value can either be `Some(T)` or `None`. Where in other
-//! languages you might use a nullable type, in Rust you would use an option
-//! type.
+//! * Initial values
+//! * Return values for functions that are not defined
+//!   over their entire input range (partial functions)
+//! * Return value for otherwise reporting simple errors, where `None` is
+//!   returned on error
+//! * Optional struct fields
+//! * Struct fields that can be loaned or "taken"
+//! * Optional function arguments
+//! * Nullable pointers
+//! * Swapping things out of difficult situations
 //!
-//! Options are most commonly used with pattern matching to query the presence
+//! Options are commonly paired with pattern matching to query the presence
 //! of a value and take action, always accounting for the `None` case.
 //!
-//! # Example
+//! ```
+//! # // FIXME This is not the greatest first example
+//! // cow_says contains the word "moo"
+//! let cow_says = Some("moo");
+//! // dog_says does not contain a value
+//! let dog_says: Option<&str> = None;
+//!
+//! // Pattern match to retrieve the value
+//! match (cow_says, dog_says) {
+//!     (Some(cow_words), Some(dog_words)) => {
+//!         println!("Cow says {} and dog says {}!", cow_words, dog_words);
+//!     }
+//!     (Some(cow_words), None) => println!("Cow says {}", cow_words),
+//!     (None, Some(dog_words)) => println!("Dog says {}", dog_words),
+//!     (None, None) => println!("Cow and dog are suspiciously silent")
+//! }
+//! ```
+//!
+//
+// FIXME: Show how `Option` is used in practice, with lots of methods
+//
+//! # Options and pointers ("nullable" pointers)
+//!
+//! Rust's pointer types must always point to a valid location; there are
+//! no "null" pointers. Instead, Rust has *optional* pointers, like
+//! the optional owned box, `Option<~T>`.
+//!
+//! The following example uses `Option` to create an optional box of
+//! `int`. Notice that in order to use the inner `int` value first the
+//! `check_optional` function needs to use pattern matching to
+//! determine whether the box has a value (i.e. it is `Some(...)`) or
+//! not (`None`).
 //!
 //! ```
-//! let msg = Some(~"howdy");
+//! let optional: Option<~int> = None;
+//! check_optional(&optional);
+//!
+//! let optional: Option<~int> = Some(~9000);
+//! check_optional(&optional);
+//!
+//! fn check_optional(optional: &Option<~int>) {
+//!     match *optional {
+//!         Some(ref p) => println!("have value {}", p),
+//!         None => println!("have no value")
+//!     }
+//! }
+//! ```
+//!
+//! This usage of `Option` to create safe nullable pointers is so
+//! common that Rust does special optimizations to make the
+//! representation of `Option<~T>` a single pointer. Optional pointers
+//! in Rust are stored as efficiently as any other pointer type.
+//!
+//! # Examples
+//!
+//! Basic pattern matching on `Option`:
+//!
+//! ```
+//! let msg = Some("howdy");
 //!
 //! // Take a reference to the contained string
 //! match msg {
@@ -33,8 +98,44 @@
 //! // Remove the contained string, destroying the Option
 //! let unwrapped_msg = match msg {
 //!     Some(m) => m,
-//!     None => ~"default message"
+//!     None => "default message"
 //! };
+//! ```
+//!
+//! Initialize a result to `None` before a loop:
+//!
+//! ```
+//! enum Kingdom { Plant(uint, &'static str), Animal(uint, &'static str) }
+//!
+//! // A list of data to search through.
+//! let all_the_big_things = [
+//!     Plant(250, "redwood"),
+//!     Plant(230, "noble fir"),
+//!     Plant(229, "sugar pine"),
+//!     Animal(25, "blue whale"),
+//!     Animal(19, "fin whale"),
+//!     Animal(15, "north pacific right whale"),
+//! ];
+//!
+//! // We're going to search for the name of the biggest animal,
+//! // but to start with we've just got `None`.
+//! let mut name_of_biggest_animal = None;
+//! let mut size_of_biggest_animal = 0;
+//! for big_thing in all_the_big_things.iter() {
+//!     match *big_thing {
+//!         Animal(size, name) if size > size_of_biggest_animal => {
+//!             // Now we've found the name of some big animal
+//!             size_of_biggest_animal = size;
+//!             name_of_biggest_animal = Some(name);
+//!         }
+//!         Animal(..) | Plant(..) => ()
+//!     }
+//! }
+//!
+//! match name_of_biggest_animal {
+//!     Some(name) => println!("the biggest animal is {}", name),
+//!     None => println!("there are no animals :(")
+//! }
 //! ```
 
 use any::Any;
@@ -46,7 +147,7 @@ use kinds::Send;
 use mem;
 use vec;
 
-/// The option type
+/// The `Option`
 #[deriving(Clone, Eq, Ord, TotalEq, TotalOrd, Show)]
 pub enum Option<T> {
     /// No value
@@ -64,7 +165,7 @@ impl<T> Option<T> {
     // Querying the contained values
     /////////////////////////////////////////////////////////////////////////
 
-    /// Returns true if the option contains a `Some` value
+    /// Returns `true` if the option is a `Some` value
     #[inline]
     pub fn is_some(&self) -> bool {
         match *self {
@@ -73,7 +174,7 @@ impl<T> Option<T> {
         }
     }
 
-    /// Returns true if the option equals `None`
+    /// Returns `true` if the option is a `None` value
     #[inline]
     pub fn is_none(&self) -> bool {
         !self.is_some()
@@ -84,6 +185,21 @@ impl<T> Option<T> {
     /////////////////////////////////////////////////////////////////////////
 
     /// Convert from `Option<T>` to `Option<&T>`
+    ///
+    /// # Example
+    ///
+    /// Convert an `Option<~str>` into an `Option<int>`, preserving the original.
+    /// The `map` method takes the `self` argument by value, consuming the original,
+    /// so this technique uses `as_ref` to first take an `Option` to a reference
+    /// to the value inside the original.
+    ///
+    /// ```
+    /// let num_as_str: Option<~str> = Some(~"10");
+    /// // First, cast `Option<~str>` to `Option<&~str>` with `as_ref`,
+    /// // then consume *that* with `map`, leaving `num_as_str` on the stack.
+    /// let num_as_int: Option<uint> = num_as_str.as_ref().map(|n| n.len());
+    /// println!("still can print num_as_str: {}", num_as_str);
+    /// ```
     #[inline]
     pub fn as_ref<'r>(&'r self) -> Option<&'r T> {
         match *self { Some(ref x) => Some(x), None => None }
@@ -118,6 +234,9 @@ impl<T> Option<T> {
     /////////////////////////////////////////////////////////////////////////
 
     /// Unwraps an option, yielding the content of a `Some`
+    ///
+    /// # Failure
+    ///
     /// Fails if the value is a `None` with a custom failure message provided by `msg`.
     #[inline]
     pub fn expect<M: Any + Send>(self, msg: M) -> T {
@@ -127,14 +246,11 @@ impl<T> Option<T> {
         }
     }
 
-    /// Moves a value out of an option type and returns it.
-    ///
-    /// Useful primarily for getting strings, vectors and unique pointers out
-    /// of option types without copying them.
+    /// Moves a value out of an option type and returns it, consuming the `Option`.
     ///
     /// # Failure
     ///
-    /// Fails if the value equals `None`.
+    /// Fails if the self value equals `None`.
     ///
     /// # Safety note
     ///
@@ -171,7 +287,17 @@ impl<T> Option<T> {
     // Transforming contained values
     /////////////////////////////////////////////////////////////////////////
 
-    /// Maps an `Option<T>` to `Option<U>` by applying a function to a contained value.
+    /// Maps an `Option<T>` to `Option<U>` by applying a function to a contained value
+    ///
+    /// # Example
+    ///
+    /// Convert an `Option<~str>` into an `Option<uint>`, consuming the original:
+    ///
+    /// ```
+    /// let num_as_str: Option<~str> = Some(~"10");
+    /// // `Option::map` takes self *by value*, consuming `num_as_str`
+    /// let num_as_int: Option<uint> = num_as_str.map(|n| n.len());
+    /// ```
     #[inline]
     pub fn map<U>(self, f: |T| -> U) -> Option<U> {
         match self { Some(x) => Some(f(x)), None => None }
@@ -359,7 +485,28 @@ impl<T> Option<T> {
 }
 
 impl<T: Default> Option<T> {
-    /// Returns the contained value or default (for this type)
+    /// Returns the contained value or a default
+    ///
+    /// Consumes the `self` argument then, if `Some`, returns the contained
+    /// value, otherwise if `None`, returns the default value for that
+    /// type.
+    ///
+    /// # Example
+    ///
+    /// Convert a string to an integer, turning poorly-formed strings
+    /// into 0 (the default value for integers). `from_str` converts
+    /// a string to any other type that implements `FromStr`, returning
+    /// `None` on error.
+    ///
+    /// ```
+    /// let good_year_from_input = "1909";
+    /// let bad_year_from_input = "190blarg";
+    /// let good_year = from_str(good_year_from_input).unwrap_or_default();
+    /// let bad_year = from_str(bad_year_from_input).unwrap_or_default();
+    ///
+    /// assert_eq!(1909, good_year);
+    /// assert_eq!(0, bad_year);
+    /// ```
     #[inline]
     pub fn unwrap_or_default(self) -> T {
         match self {
@@ -382,7 +529,10 @@ impl<T> Default for Option<T> {
 // The Option Iterator
 /////////////////////////////////////////////////////////////////////////////
 
-/// An iterator that yields either one or zero elements
+/// An `Option` iterator that yields either one or zero elements
+///
+/// The `Item` iterator is returned by the `iter`, `mut_iter` and `move_iter`
+/// methods on `Option`.
 #[deriving(Clone)]
 pub struct Item<A> {
     priv opt: Option<A>
