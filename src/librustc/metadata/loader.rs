@@ -284,38 +284,46 @@ impl<'a> Context<'a> {
     //                reading dylib metadata is quite slow.
     fn extract_one(&mut self, m: HashSet<Path>, flavor: &str,
                    slot: &mut Option<MetadataBlob>) -> Option<Path> {
-        if m.len() == 0 { return None }
-        if m.len() > 1 {
-            self.sess.span_err(self.span,
-                               format!("multiple {} candidates for `{}` \
-                                        found", flavor, self.crate_id.name));
-            for (i, path) in m.iter().enumerate() {
-                self.sess.span_note(self.span,
-                                    format!(r"candidate \#{}: {}", i + 1,
-                                            path.display()));
-            }
-            return None
-        }
+        let mut ret = None::<Path>;
+        let mut error = 0;
 
-        let lib = m.move_iter().next().unwrap();
-        if slot.is_none() {
+        for lib in m.move_iter() {
             info!("{} reading metadata from: {}", flavor, lib.display());
-            match get_metadata_section(self.os, &lib) {
+            let metadata = match get_metadata_section(self.os, &lib) {
                 Ok(blob) => {
                     if self.crate_matches(blob.as_slice()) {
-                        *slot = Some(blob);
+                        blob
                     } else {
                         info!("metadata mismatch");
-                        return None;
+                        continue
                     }
                 }
                 Err(_) => {
                     info!("no metadata found");
-                    return None
+                    continue
                 }
+            };
+            if ret.is_some() {
+                self.sess.span_err(self.span,
+                                   format!("multiple {} candidates for `{}` \
+                                            found", flavor, self.crate_id.name));
+                self.sess.span_note(self.span,
+                                    format!(r"candidate \#1: {}",
+                                            ret.get_ref().display()));
+                error = 1;
+                ret = None;
             }
+            if error > 0 {
+                error += 1;
+                self.sess.span_note(self.span,
+                                    format!(r"candidate \#{}: {}", error,
+                                            lib.display()));
+                continue
+            }
+            *slot = Some(metadata);
+            ret = Some(lib);
         }
-        return Some(lib);
+        return if error > 0 {None} else {ret}
     }
 
     fn crate_matches(&mut self, crate_data: &[u8]) -> bool {
