@@ -31,8 +31,8 @@ use util::ppaux::Repr;
 use util::nodemap::NodeMap;
 
 #[deriving(Clone)]
-pub struct DataFlowContext<O> {
-    priv tcx: ty::ctxt,
+pub struct DataFlowContext<'a, O> {
+    priv tcx: &'a ty::ctxt,
     priv method_map: typeck::MethodMap,
 
     /// the data flow operator
@@ -73,8 +73,8 @@ pub trait DataFlowOperator {
     fn join(&self, succ: uint, pred: uint) -> uint;
 }
 
-struct PropagationContext<'a, O> {
-    dfcx: &'a mut DataFlowContext<O>,
+struct PropagationContext<'a, 'b, O> {
+    dfcx: &'a mut DataFlowContext<'b, O>,
     changed: bool
 }
 
@@ -83,13 +83,15 @@ struct LoopScope<'a> {
     break_bits: Vec<uint>
 }
 
-impl<O:DataFlowOperator> pprust::PpAnn for DataFlowContext<O> {
-    fn pre(&self, node: pprust::AnnNode) -> io::IoResult<()> {
-        let (ps, id) = match node {
-            pprust::NodeExpr(ps, expr) => (ps, expr.id),
-            pprust::NodeBlock(ps, blk) => (ps, blk.id),
-            pprust::NodeItem(ps, _) => (ps, 0),
-            pprust::NodePat(ps, pat) => (ps, pat.id)
+impl<'a, O:DataFlowOperator> pprust::PpAnn for DataFlowContext<'a, O> {
+    fn pre(&self,
+           ps: &mut pprust::State<DataFlowContext<'a, O>>,
+           node: pprust::AnnNode) -> io::IoResult<()> {
+        let id = match node {
+            pprust::NodeExpr(expr) => expr.id,
+            pprust::NodeBlock(blk) => blk.id,
+            pprust::NodeItem(_) => 0,
+            pprust::NodePat(pat) => pat.id
         };
 
         if self.nodeid_to_bitset.contains_key(&id) {
@@ -111,21 +113,20 @@ impl<O:DataFlowOperator> pprust::PpAnn for DataFlowContext<O> {
                 ~""
             };
 
-            let comment_str = format!("id {}: {}{}{}",
-                                      id, entry_str, gens_str, kills_str);
-            try!(pprust::synth_comment(ps, comment_str));
+            try!(ps.synth_comment(format!("id {}: {}{}{}", id, entry_str,
+                                          gens_str, kills_str)));
             try!(pp::space(&mut ps.s));
         }
         Ok(())
     }
 }
 
-impl<O:DataFlowOperator> DataFlowContext<O> {
-    pub fn new(tcx: ty::ctxt,
+impl<'a, O:DataFlowOperator> DataFlowContext<'a, O> {
+    pub fn new(tcx: &'a ty::ctxt,
                method_map: typeck::MethodMap,
                oper: O,
                id_range: IdRange,
-               bits_per_id: uint) -> DataFlowContext<O> {
+               bits_per_id: uint) -> DataFlowContext<'a, O> {
         let words_per_id = (bits_per_id + uint::BITS - 1) / uint::BITS;
 
         debug!("DataFlowContext::new(id_range={:?}, bits_per_id={:?}, words_per_id={:?})",
@@ -315,8 +316,8 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
     }
 }
 
-impl<O:DataFlowOperator+Clone+'static> DataFlowContext<O> {
-//                      ^^^^^^^^^^^^^ only needed for pretty printing
+impl<'a, O:DataFlowOperator+Clone+'static> DataFlowContext<'a, O> {
+//                          ^^^^^^^^^^^^^ only needed for pretty printing
     pub fn propagate(&mut self, blk: &ast::Block) {
         //! Performs the data flow analysis.
 
@@ -327,7 +328,7 @@ impl<O:DataFlowOperator+Clone+'static> DataFlowContext<O> {
 
         {
             let mut propcx = PropagationContext {
-                dfcx: self,
+                dfcx: &mut *self,
                 changed: true
             };
 
@@ -351,16 +352,15 @@ impl<O:DataFlowOperator+Clone+'static> DataFlowContext<O> {
     fn pretty_print_to(&self, wr: ~io::Writer,
                        blk: &ast::Block) -> io::IoResult<()> {
         let mut ps = pprust::rust_printer_annotated(wr, self);
-        try!(pprust::cbox(&mut ps, pprust::indent_unit));
-        try!(pprust::ibox(&mut ps, 0u));
-        try!(pprust::print_block(&mut ps, blk));
-        try!(pp::eof(&mut ps.s));
-        Ok(())
+        try!(ps.cbox(pprust::indent_unit));
+        try!(ps.ibox(0u));
+        try!(ps.print_block(blk));
+        pp::eof(&mut ps.s)
     }
 }
 
-impl<'a, O:DataFlowOperator> PropagationContext<'a, O> {
-    fn tcx(&self) -> ty::ctxt {
+impl<'a, 'b, O:DataFlowOperator> PropagationContext<'a, 'b, O> {
+    fn tcx(&self) -> &'b ty::ctxt {
         self.dfcx.tcx
     }
 

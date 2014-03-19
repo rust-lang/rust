@@ -46,7 +46,7 @@ pub enum Os {
 }
 
 pub struct Context<'a> {
-    sess: Session,
+    sess: &'a Session,
     span: Span,
     ident: &'a str,
     crate_id: &'a CrateId,
@@ -110,7 +110,7 @@ impl<'a> Context<'a> {
     }
 
     fn find_library_crate(&mut self) -> Option<Library> {
-        let filesearch = self.sess.filesearch;
+        let filesearch = self.sess.filesearch();
         let (dyprefix, dysuffix) = self.dylibname();
 
         // want: crate_name.dir_part() + prefix + crate_name.file_part + "-"
@@ -352,7 +352,7 @@ impl<'a> Context<'a> {
     }
 }
 
-pub fn note_crateid_attr(diag: @SpanHandler, crateid: &CrateId) {
+pub fn note_crateid_attr(diag: &SpanHandler, crateid: &CrateId) {
     diag.handler().note(format!("crate_id: {}", crateid.to_str()));
 }
 

@@ -86,12 +86,12 @@ impl Features {
     }
 }
 
-struct Context {
-    features: Vec<&'static str> ,
-    sess: Session,
+struct Context<'a> {
+    features: Vec<&'static str>,
+    sess: &'a Session,
 }
 
-impl Context {
+impl<'a> Context<'a> {
     fn gate_feature(&self, feature: &str, span: Span, explain: &str) {
         if !self.has_feature(feature) {
             self.sess.span_err(span, explain);
@@ -114,7 +114,7 @@ impl Context {
     }
 }
 
-impl Visitor<()> for Context {
+impl<'a> Visitor<()> for Context<'a> {
     fn visit_ident(&mut self, sp: Span, id: ast::Ident, _: ()) {
         if !token::get_ident(id).get().is_ascii() {
             self.gate_feature("non_ascii_idents", sp,
@@ -293,7 +293,7 @@ impl Visitor<()> for Context {
     }
 }
 
-pub fn check_crate(sess: Session, krate: &ast::Crate) {
+pub fn check_crate(sess: &Session, krate: &ast::Crate) {
     let mut cx = Context {
         features: Vec::new(),
         sess: sess,

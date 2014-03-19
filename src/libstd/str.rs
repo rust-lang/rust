@@ -1376,9 +1376,8 @@ pub mod raw {
 
     #[lang="strdup_uniq"]
     #[cfg(not(test))]
-    #[allow(missing_doc)]
     #[inline]
-    pub unsafe fn strdup_uniq(ptr: *u8, len: uint) -> ~str {
+    unsafe fn strdup_uniq(ptr: *u8, len: uint) -> ~str {
         from_buf_len(ptr, len)
     }
 

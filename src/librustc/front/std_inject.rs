@@ -26,7 +26,7 @@ use syntax::util::small_vector::SmallVector;
 
 pub static VERSION: &'static str = "0.10-pre";
 
-pub fn maybe_inject_crates_ref(sess: Session, krate: ast::Crate)
+pub fn maybe_inject_crates_ref(sess: &Session, krate: ast::Crate)
                                -> ast::Crate {
     if use_std(&krate) {
         inject_crates_ref(sess, krate)
@@ -35,7 +35,7 @@ pub fn maybe_inject_crates_ref(sess: Session, krate: ast::Crate)
     }
 }
 
-pub fn maybe_inject_prelude(sess: Session, krate: ast::Crate) -> ast::Crate {
+pub fn maybe_inject_prelude(sess: &Session, krate: ast::Crate) -> ast::Crate {
     if use_std(&krate) {
         inject_prelude(sess, krate)
     } else {
@@ -55,8 +55,8 @@ fn no_prelude(attrs: &[ast::Attribute]) -> bool {
     attr::contains_name(attrs, "no_implicit_prelude")
 }
 
-struct StandardLibraryInjector {
-    sess: Session,
+struct StandardLibraryInjector<'a> {
+    sess: &'a Session,
 }
 
 pub fn with_version(krate: &str) -> Option<(InternedString, ast::StrStyle)> {
@@ -71,7 +71,7 @@ pub fn with_version(krate: &str) -> Option<(InternedString, ast::StrStyle)> {
     }
 }
 
-impl fold::Folder for StandardLibraryInjector {
+impl<'a> fold::Folder for StandardLibraryInjector<'a> {
     fn fold_crate(&mut self, krate: ast::Crate) -> ast::Crate {
         let mut vis = vec!(ast::ViewItem {
             node: ast::ViewItemExternCrate(token::str_to_ident("std"),
@@ -120,19 +120,19 @@ impl fold::Folder for StandardLibraryInjector {
     }
 }
 
-fn inject_crates_ref(sess: Session, krate: ast::Crate) -> ast::Crate {
+fn inject_crates_ref(sess: &Session, krate: ast::Crate) -> ast::Crate {
     let mut fold = StandardLibraryInjector {
         sess: sess,
     };
     fold.fold_crate(krate)
 }
 
-struct PreludeInjector {
-    sess: Session,
+struct PreludeInjector<'a> {
+    sess: &'a Session,
 }
 
 
-impl fold::Folder for PreludeInjector {
+impl<'a> fold::Folder for PreludeInjector<'a> {
     fn fold_crate(&mut self, krate: ast::Crate) -> ast::Crate {
         if !no_prelude(krate.attrs.as_slice()) {
             // only add `use std::prelude::*;` if there wasn't a
@@ -193,7 +193,7 @@ impl fold::Folder for PreludeInjector {
     }
 }
 
-fn inject_prelude(sess: Session, krate: ast::Crate) -> ast::Crate {
+fn inject_prelude(sess: &Session, krate: ast::Crate) -> ast::Crate {
     let mut fold = PreludeInjector {
         sess: sess,
     };

@@ -257,7 +257,7 @@ enum Opt {
     vec_len(/* length */ uint, VecLenOpt, /*range of matches*/(uint, uint))
 }
 
-fn opt_eq(tcx: ty::ctxt, a: &Opt, b: &Opt) -> bool {
+fn opt_eq(tcx: &ty::ctxt, a: &Opt, b: &Opt) -> bool {
     match (a, b) {
         (&lit(a), &lit(b)) => {
             match (a, b) {
@@ -359,7 +359,7 @@ fn variant_opt(bcx: &Block, pat_id: ast::NodeId) -> Opt {
     let def_map = ccx.tcx.def_map.borrow();
     match def_map.get().get_copy(&pat_id) {
         ast::DefVariant(enum_id, var_id, _) => {
-            let variants = ty::enum_variants(ccx.tcx, enum_id);
+            let variants = ty::enum_variants(ccx.tcx(), enum_id);
             for v in (*variants).iter() {
                 if var_id == v.id {
                     return var(v.disr_val,
@@ -373,7 +373,7 @@ fn variant_opt(bcx: &Block, pat_id: ast::NodeId) -> Opt {
             return lit(UnitLikeStructLit(pat_id));
         }
         _ => {
-            ccx.sess.bug("non-variant or struct in variant_opt()");
+            ccx.sess().bug("non-variant or struct in variant_opt()");
         }
     }
 }
@@ -427,7 +427,7 @@ struct Match<'a,'b> {
     bound_ptrs: Vec<(Ident, ValueRef)> }
 
 impl<'a,'b> Repr for Match<'a,'b> {
-    fn repr(&self, tcx: ty::ctxt) -> ~str {
+    fn repr(&self, tcx: &ty::ctxt) -> ~str {
         if tcx.sess.verbose() {
             // for many programs, this just take too long to serialize
             self.pats.repr(tcx)
@@ -931,7 +931,7 @@ fn enter_region<'r,
 // on a set of enum variants or a literal.
 fn get_options(bcx: &Block, m: &[Match], col: uint) -> Vec<Opt> {
     let ccx = bcx.ccx();
-    fn add_to_set(tcx: ty::ctxt, set: &mut Vec<Opt> , val: Opt) {
+    fn add_to_set(tcx: &ty::ctxt, set: &mut Vec<Opt>, val: Opt) {
         if set.iter().any(|l| opt_eq(tcx, l, &val)) {return;}
         set.push(val);
     }
@@ -960,7 +960,7 @@ fn get_options(bcx: &Block, m: &[Match], col: uint) -> Vec<Opt> {
         let cur = *br.pats.get(col);
         match cur.node {
             ast::PatLit(l) => {
-                add_to_set(ccx.tcx, &mut found, lit(ExprLit(l)));
+                add_to_set(ccx.tcx(), &mut found, lit(ExprLit(l)));
             }
             ast::PatIdent(..) => {
                 // This is one of: an enum variant, a unit-like struct, or a
@@ -971,15 +971,15 @@ fn get_options(bcx: &Block, m: &[Match], col: uint) -> Vec<Opt> {
                 };
                 match opt_def {
                     Some(ast::DefVariant(..)) => {
-                        add_to_set(ccx.tcx, &mut found,
+                        add_to_set(ccx.tcx(), &mut found,
                                    variant_opt(bcx, cur.id));
                     }
                     Some(ast::DefStruct(..)) => {
-                        add_to_set(ccx.tcx, &mut found,
+                        add_to_set(ccx.tcx(), &mut found,
                                    lit(UnitLikeStructLit(cur.id)));
                     }
                     Some(ast::DefStatic(const_did, false)) => {
-                        add_to_set(ccx.tcx, &mut found,
+                        add_to_set(ccx.tcx(), &mut found,
                                    lit(ConstLit(const_did)));
                     }
                     _ => {}
@@ -995,18 +995,18 @@ fn get_options(bcx: &Block, m: &[Match], col: uint) -> Vec<Opt> {
                 match opt_def {
                     Some(ast::DefFn(..)) |
                     Some(ast::DefVariant(..)) => {
-                        add_to_set(ccx.tcx, &mut found,
+                        add_to_set(ccx.tcx(), &mut found,
                                    variant_opt(bcx, cur.id));
                     }
                     Some(ast::DefStatic(const_did, false)) => {
-                        add_to_set(ccx.tcx, &mut found,
+                        add_to_set(ccx.tcx(), &mut found,
                                    lit(ConstLit(const_did)));
                     }
                     _ => {}
                 }
             }
             ast::PatRange(l1, l2) => {
-                add_to_set(ccx.tcx, &mut found, range(l1, l2));
+                add_to_set(ccx.tcx(), &mut found, range(l1, l2));
             }
             ast::PatVec(ref before, slice, ref after) => {
                 let (len, vec_opt) = match slice {
@@ -1324,8 +1324,7 @@ fn compare_values<'a>(
             }
         }
         _ => {
-            cx.tcx().sess.bug("only scalars and strings supported in \
-                                compare_values");
+            cx.sess().bug("only scalars and strings supported in compare_values");
         }
     }
 }
@@ -1585,7 +1584,7 @@ fn compile_submatch_continue<'r,
         let tup_repr = adt::represent_type(bcx.ccx(), tup_ty);
         let n_tup_elts = match ty::get(tup_ty).sty {
           ty::ty_tup(ref elts) => elts.len(),
-          _ => ccx.sess.bug("non-tuple type in tuple pattern")
+          _ => ccx.sess().bug("non-tuple type in tuple pattern")
         };
         let tup_vals = Vec::from_fn(n_tup_elts, |i| {
             adt::trans_field_ptr(bcx, tup_repr, val, 0, i)
@@ -1612,7 +1611,7 @@ fn compile_submatch_continue<'r,
                     ty::lookup_struct_fields(tcx, struct_id).len();
             }
             _ => {
-                ccx.sess.bug("non-struct type in tuple struct pattern");
+                ccx.sess().bug("non-struct type in tuple struct pattern");
             }
         }
 
@@ -2093,7 +2092,7 @@ pub fn store_arg<'a>(mut bcx: &'a Block<'a>,
             // like `x: T`
             let arg_ty = node_id_type(bcx, pat.id);
             if type_of::arg_is_indirect(bcx.ccx(), arg_ty)
-                && bcx.ccx().sess.opts.debuginfo != FullDebugInfo {
+                && bcx.sess().opts.debuginfo != FullDebugInfo {
                 // Don't copy an indirect argument to an alloca, the caller
                 // already put it in a temporary alloca and gave it up, unless
                 // we emit extra-debug-info, which requires local allocas :(.
@@ -2225,7 +2224,7 @@ fn bind_irrefutable_pat<'a>(
             match def_map.get().find(&pat.id) {
                 Some(&ast::DefVariant(enum_id, var_id, _)) => {
                     let repr = adt::represent_node(bcx, pat.id);
-                    let vinfo = ty::enum_variant_with_id(ccx.tcx,
+                    let vinfo = ty::enum_variant_with_id(ccx.tcx(),
                                                          enum_id,
                                                          var_id);
                     let args = extract_variant_args(bcx,
@@ -2297,8 +2296,7 @@ fn bind_irrefutable_pat<'a>(
             bcx = bind_irrefutable_pat(bcx, inner, loaded_val, binding_mode, cleanup_scope);
         }
         ast::PatVec(..) => {
-            bcx.tcx().sess.span_bug(
-                pat.span,
+            bcx.sess().span_bug(pat.span,
                 format!("vector patterns are never irrefutable!"));
         }
         ast::PatWild | ast::PatWildMulti | ast::PatLit(_) | ast::PatRange(_, _) => ()

@@ -55,15 +55,15 @@ pub struct MoveData {
     assignee_ids: RefCell<HashSet<ast::NodeId>>,
 }
 
-pub struct FlowedMoveData {
+pub struct FlowedMoveData<'a> {
     move_data: MoveData,
 
-    dfcx_moves: MoveDataFlow,
+    dfcx_moves: MoveDataFlow<'a>,
 
     // We could (and maybe should, for efficiency) combine both move
     // and assign data flow into one, but this way it's easier to
     // distinguish the bits that correspond to moves and assignments.
-    dfcx_assign: AssignDataFlow
+    dfcx_assign: AssignDataFlow<'a>
 }
 
 /// Index into `MoveData.paths`, used like a pointer
@@ -159,7 +159,7 @@ impl Clone for MoveDataFlowOperator {
     }
 }
 
-pub type MoveDataFlow = DataFlowContext<MoveDataFlowOperator>;
+pub type MoveDataFlow<'a> = DataFlowContext<'a, MoveDataFlowOperator>;
 
 pub struct AssignDataFlowOperator;
 
@@ -171,7 +171,7 @@ impl Clone for AssignDataFlowOperator {
     }
 }
 
-pub type AssignDataFlow = DataFlowContext<AssignDataFlowOperator>;
+pub type AssignDataFlow<'a> = DataFlowContext<'a, AssignDataFlowOperator>;
 
 impl MoveData {
     pub fn new() -> MoveData {
@@ -236,7 +236,7 @@ impl MoveData {
     }
 
     pub fn move_path(&self,
-                     tcx: ty::ctxt,
+                     tcx: &ty::ctxt,
                      lp: @LoanPath) -> MovePathIndex {
         /*!
          * Returns the existing move path index for `lp`, if any,
@@ -355,7 +355,7 @@ impl MoveData {
     }
 
     pub fn add_move(&self,
-                    tcx: ty::ctxt,
+                    tcx: &ty::ctxt,
                     lp: @LoanPath,
                     id: ast::NodeId,
                     kind: MoveKind) {
@@ -390,7 +390,7 @@ impl MoveData {
     }
 
     pub fn add_assignment(&self,
-                          tcx: ty::ctxt,
+                          tcx: &ty::ctxt,
                           lp: @LoanPath,
                           assign_id: ast::NodeId,
                           span: Span,
@@ -435,7 +435,7 @@ impl MoveData {
     }
 
     fn add_gen_kills(&self,
-                     tcx: ty::ctxt,
+                     tcx: &ty::ctxt,
                      dfcx_moves: &mut MoveDataFlow,
                      dfcx_assign: &mut AssignDataFlow) {
         /*!
@@ -566,13 +566,13 @@ impl MoveData {
     }
 }
 
-impl FlowedMoveData {
+impl<'a> FlowedMoveData<'a> {
     pub fn new(move_data: MoveData,
-               tcx: ty::ctxt,
+               tcx: &'a ty::ctxt,
                method_map: typeck::MethodMap,
                id_range: ast_util::IdRange,
                body: &ast::Block)
-               -> FlowedMoveData {
+               -> FlowedMoveData<'a> {
         let mut dfcx_moves = {
             let moves = move_data.moves.borrow();
             DataFlowContext::new(tcx,

@@ -54,7 +54,7 @@ pub fn type_of_rust_fn(cx: &CrateContext, has_env: bool,
 
     // Arg 1: Environment
     if has_env {
-        atys.push(Type::i8p());
+        atys.push(Type::i8p(cx));
     }
 
     // ... then explicit args.
@@ -63,7 +63,7 @@ pub fn type_of_rust_fn(cx: &CrateContext, has_env: bool,
 
     // Use the output as the actual return value if it's immediate.
     if use_out_pointer || return_type_is_void(cx, output) {
-        Type::func(atys.as_slice(), &Type::void())
+        Type::func(atys.as_slice(), &Type::void(cx))
     } else {
         Type::func(atys.as_slice(), &lloutputtype)
     }
@@ -86,7 +86,7 @@ pub fn type_of_fn_from_ty(cx: &CrateContext, fty: ty::t) -> Type {
             }
         }
         _ => {
-            cx.sess.bug("type_of_fn_from_ty given non-closure, non-bare-fn")
+            cx.sess().bug("type_of_fn_from_ty given non-closure, non-bare-fn")
         }
     }
 }
@@ -112,37 +112,36 @@ pub fn sizing_type_of(cx: &CrateContext, t: ty::t) -> Type {
     }
 
     let llsizingty = match ty::get(t).sty {
-        ty::ty_nil | ty::ty_bot => Type::nil(),
-        ty::ty_bool => Type::bool(),
-        ty::ty_char => Type::char(),
+        ty::ty_nil | ty::ty_bot => Type::nil(cx),
+        ty::ty_bool => Type::bool(cx),
+        ty::ty_char => Type::char(cx),
         ty::ty_int(t) => Type::int_from_ty(cx, t),
         ty::ty_uint(t) => Type::uint_from_ty(cx, t),
-        ty::ty_float(t) => Type::float_from_ty(t),
+        ty::ty_float(t) => Type::float_from_ty(cx, t),
 
         ty::ty_str(ty::vstore_uniq) |
         ty::ty_vec(_, ty::vstore_uniq) |
         ty::ty_box(..) |
         ty::ty_uniq(..) |
         ty::ty_ptr(..) |
-        ty::ty_rptr(..) => Type::i8p(),
+        ty::ty_rptr(..) => Type::i8p(cx),
 
         ty::ty_str(ty::vstore_slice(..)) |
         ty::ty_vec(_, ty::vstore_slice(..)) => {
-            Type::struct_([Type::i8p(), Type::i8p()], false)
+            Type::struct_(cx, [Type::i8p(cx), Type::i8p(cx)], false)
         }
 
-        ty::ty_bare_fn(..) => Type::i8p(),
-        ty::ty_closure(..) => Type::struct_([Type::i8p(), Type::i8p()], false),
-        ty::ty_trait(..) => Type::opaque_trait(),
+        ty::ty_bare_fn(..) => Type::i8p(cx),
+        ty::ty_closure(..) => Type::struct_(cx, [Type::i8p(cx), Type::i8p(cx)], false),
+        ty::ty_trait(..) => Type::opaque_trait(cx),
 
-        ty::ty_str(ty::vstore_fixed(size)) => Type::array(&Type::i8(), size as u64),
+        ty::ty_str(ty::vstore_fixed(size)) => Type::array(&Type::i8(cx), size as u64),
         ty::ty_vec(mt, ty::vstore_fixed(size)) => {
             Type::array(&sizing_type_of(cx, mt.ty), size as u64)
         }
 
         ty::ty_unboxed_vec(mt) => {
-            let sz_ty = sizing_type_of(cx, mt.ty);
-            Type::vec(cx.sess.targ_cfg.arch, &sz_ty)
+            Type::vec(cx, &sizing_type_of(cx, mt.ty))
         }
 
         ty::ty_tup(..) | ty::ty_enum(..) => {
@@ -151,9 +150,9 @@ pub fn sizing_type_of(cx: &CrateContext, t: ty::t) -> Type {
         }
 
         ty::ty_struct(..) => {
-            if ty::type_is_simd(cx.tcx, t) {
-                let et = ty::simd_type(cx.tcx, t);
-                let n = ty::simd_size(cx.tcx, t);
+            if ty::type_is_simd(cx.tcx(), t) {
+                let et = ty::simd_type(cx.tcx(), t);
+                let n = ty::simd_size(cx.tcx(), t);
                 Type::vector(&type_of(cx, et), n as u64)
             } else {
                 let repr = adt::represent_type(cx, t);
@@ -162,7 +161,8 @@ pub fn sizing_type_of(cx: &CrateContext, t: ty::t) -> Type {
         }
 
         ty::ty_self(_) | ty::ty_infer(..) | ty::ty_param(..) | ty::ty_err(..) => {
-            cx.tcx.sess.bug(format!("fictitious type {:?} in sizing_type_of()", ty::get(t).sty))
+            cx.sess().bug(format!("fictitious type {:?} in sizing_type_of()",
+                                  ty::get(t).sty))
         }
     };
 
@@ -182,21 +182,21 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
         }
     }
 
-    debug!("type_of {} {:?}", t.repr(cx.tcx), t);
+    debug!("type_of {} {:?}", t.repr(cx.tcx()), t);
 
     // Replace any typedef'd types with their equivalent non-typedef
     // type. This ensures that all LLVM nominal types that contain
     // Rust types are defined as the same LLVM types.  If we don't do
     // this then, e.g. `Option<{myfield: bool}>` would be a different
     // type than `Option<myrec>`.
-    let t_norm = ty::normalize_ty(cx.tcx, t);
+    let t_norm = ty::normalize_ty(cx.tcx(), t);
 
     if t != t_norm {
         let llty = type_of(cx, t_norm);
         debug!("--> normalized {} {:?} to {} {:?} llty={}",
-                t.repr(cx.tcx),
+                t.repr(cx.tcx()),
                 t,
-                t_norm.repr(cx.tcx),
+                t_norm.repr(cx.tcx()),
                 t_norm,
                 cx.tn.type_to_str(llty));
         let mut lltypes = cx.lltypes.borrow_mut();
@@ -205,14 +205,14 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
     }
 
     let mut llty = match ty::get(t).sty {
-      ty::ty_nil | ty::ty_bot => Type::nil(),
-      ty::ty_bool => Type::bool(),
-      ty::ty_char => Type::char(),
+      ty::ty_nil | ty::ty_bot => Type::nil(cx),
+      ty::ty_bool => Type::bool(cx),
+      ty::ty_char => Type::char(cx),
       ty::ty_int(t) => Type::int_from_ty(cx, t),
       ty::ty_uint(t) => Type::uint_from_ty(cx, t),
-      ty::ty_float(t) => Type::float_from_ty(t),
+      ty::ty_float(t) => Type::float_from_ty(cx, t),
       ty::ty_str(ty::vstore_uniq) => {
-        Type::vec(cx.sess.targ_cfg.arch, &Type::i8()).ptr_to()
+        Type::vec(cx, &Type::i8(cx)).ptr_to()
       }
       ty::ty_enum(did, ref substs) => {
         // Only create the named struct, but don't fill it in. We
@@ -230,12 +230,10 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
           type_of(cx, typ).ptr_to()
       }
       ty::ty_vec(ref mt, ty::vstore_uniq) => {
-          let ty = type_of(cx, mt.ty);
-          Type::vec(cx.sess.targ_cfg.arch, &ty).ptr_to()
+          Type::vec(cx, &type_of(cx, mt.ty)).ptr_to()
       }
       ty::ty_unboxed_vec(ref mt) => {
-          let ty = type_of(cx, mt.ty);
-          Type::vec(cx.sess.targ_cfg.arch, &ty)
+          Type::vec(cx, &type_of(cx, mt.ty))
       }
       ty::ty_ptr(ref mt) => type_of(cx, mt.ty).ptr_to(),
       ty::ty_rptr(_, ref mt) => type_of(cx, mt.ty).ptr_to(),
@@ -243,7 +241,7 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
       ty::ty_vec(ref mt, ty::vstore_slice(_)) => {
           let p_ty = type_of(cx, mt.ty).ptr_to();
           let u_ty = Type::uint_from_ty(cx, ast::TyU);
-          Type::struct_([p_ty, u_ty], false)
+          Type::struct_(cx, [p_ty, u_ty], false)
       }
 
       ty::ty_str(ty::vstore_slice(_)) => {
@@ -252,7 +250,7 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
       }
 
       ty::ty_str(ty::vstore_fixed(n)) => {
-          Type::array(&Type::i8(), (n + 1u) as u64)
+          Type::array(&Type::i8(cx), (n + 1u) as u64)
       }
 
       ty::ty_vec(ref mt, ty::vstore_fixed(n)) => {
@@ -264,17 +262,17 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
       }
       ty::ty_closure(_) => {
           let fn_ty = type_of_fn_from_ty(cx, t).ptr_to();
-          Type::struct_([fn_ty, Type::i8p()], false)
+          Type::struct_(cx, [fn_ty, Type::i8p(cx)], false)
       }
-      ty::ty_trait(..) => Type::opaque_trait(),
+      ty::ty_trait(..) => Type::opaque_trait(cx),
       ty::ty_tup(..) => {
           let repr = adt::represent_type(cx, t);
           adt::type_of(cx, repr)
       }
       ty::ty_struct(did, ref substs) => {
-          if ty::type_is_simd(cx.tcx, t) {
-              let et = ty::simd_type(cx.tcx, t);
-              let n = ty::simd_size(cx.tcx, t);
+          if ty::type_is_simd(cx.tcx(), t) {
+              let et = ty::simd_type(cx.tcx(), t);
+              let n = ty::simd_size(cx.tcx(), t);
               Type::vector(&type_of(cx, et), n as u64)
           } else {
               // Only create the named struct, but don't fill it in. We fill it
@@ -288,14 +286,14 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
               adt::incomplete_type_of(cx, repr, name)
           }
       }
-      ty::ty_self(..) => cx.tcx.sess.unimpl("type_of: ty_self"),
-      ty::ty_infer(..) => cx.tcx.sess.bug("type_of with ty_infer"),
-      ty::ty_param(..) => cx.tcx.sess.bug("type_of with ty_param"),
-      ty::ty_err(..) => cx.tcx.sess.bug("type_of with ty_err")
+      ty::ty_self(..) => cx.sess().unimpl("type_of: ty_self"),
+      ty::ty_infer(..) => cx.sess().bug("type_of with ty_infer"),
+      ty::ty_param(..) => cx.sess().bug("type_of with ty_param"),
+      ty::ty_err(..) => cx.sess().bug("type_of with ty_err")
     };
 
     debug!("--> mapped t={} {:?} to llty={}",
-            t.repr(cx.tcx),
+            t.repr(cx.tcx()),
             t,
             cx.tn.type_to_str(llty));
     {
@@ -305,7 +303,7 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
 
     // If this was an enum or struct, fill in the type now.
     match ty::get(t).sty {
-        ty::ty_enum(..) | ty::ty_struct(..) if !ty::type_is_simd(cx.tcx, t) => {
+        ty::ty_enum(..) | ty::ty_struct(..) if !ty::type_is_simd(cx.tcx(), t) => {
             let repr = adt::represent_type(cx, t);
             adt::finish_type_of(cx, repr, &mut llty);
         }
@@ -326,7 +324,7 @@ pub fn llvm_type_name(cx: &CrateContext,
         a_struct => { "struct" }
         an_enum => { "enum" }
     };
-    let tstr = ppaux::parameterized(cx.tcx, ty::item_path_str(cx.tcx, did),
+    let tstr = ppaux::parameterized(cx.tcx(), ty::item_path_str(cx.tcx(), did),
                                     &ty::NonerasedRegions(opt_vec::Empty),
                                     tps, did, false);
     if did.krate == 0 {
@@ -338,5 +336,5 @@ pub fn llvm_type_name(cx: &CrateContext,
 
 pub fn type_of_dtor(ccx: &CrateContext, self_ty: ty::t) -> Type {
     let self_ty = type_of(ccx, self_ty).ptr_to();
-    Type::func([self_ty], &Type::void())
+    Type::func([self_ty], &Type::void(ccx))
 }

@@ -415,8 +415,7 @@ impl<T> Vec<T> {
         unsafe { // infallible
             // The spot to put the new value
             {
-                let slice = self.as_mut_slice();
-                let p = slice.as_mut_ptr().offset(index as int);
+                let p = self.as_mut_ptr().offset(index as int);
                 // Shift everything over to make space. (Duplicating the
                 // `index`th element into two consecutive places.)
                 ptr::copy_memory(p.offset(1), &*p, len - index);
@@ -434,9 +433,8 @@ impl<T> Vec<T> {
             unsafe { // infallible
                 let ret;
                 {
-                    let slice = self.as_mut_slice();
                     // the place we are taking from.
-                    let ptr = slice.as_mut_ptr().offset(index as int);
+                    let ptr = self.as_mut_ptr().offset(index as int);
                     // copy it out, unsafely having a copy of the value on
                     // the stack and in the vector at the same time.
                     ret = Some(ptr::read(ptr as *T));
@@ -498,6 +496,11 @@ impl<T> Vec<T> {
     #[inline]
     pub fn as_ptr(&self) -> *T {
         self.as_slice().as_ptr()
+    }
+
+    #[inline]
+    pub fn as_mut_ptr(&mut self) -> *mut T {
+        self.as_mut_slice().as_mut_ptr()
     }
 }
 

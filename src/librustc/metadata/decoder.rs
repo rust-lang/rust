@@ -219,35 +219,35 @@ fn variant_disr_val(d: ebml::Doc) -> Option<ty::Disr> {
     })
 }
 
-fn doc_type(doc: ebml::Doc, tcx: ty::ctxt, cdata: Cmd) -> ty::t {
+fn doc_type(doc: ebml::Doc, tcx: &ty::ctxt, cdata: Cmd) -> ty::t {
     let tp = reader::get_doc(doc, tag_items_data_item_type);
     parse_ty_data(tp.data, cdata.cnum, tp.start, tcx,
                   |_, did| translate_def_id(cdata, did))
 }
 
-fn doc_method_fty(doc: ebml::Doc, tcx: ty::ctxt, cdata: Cmd) -> ty::BareFnTy {
+fn doc_method_fty(doc: ebml::Doc, tcx: &ty::ctxt, cdata: Cmd) -> ty::BareFnTy {
     let tp = reader::get_doc(doc, tag_item_method_fty);
     parse_bare_fn_ty_data(tp.data, cdata.cnum, tp.start, tcx,
                           |_, did| translate_def_id(cdata, did))
 }
 
 pub fn item_type(_item_id: ast::DefId, item: ebml::Doc,
-                 tcx: ty::ctxt, cdata: Cmd) -> ty::t {
+                 tcx: &ty::ctxt, cdata: Cmd) -> ty::t {
     doc_type(item, tcx, cdata)
 }
 
-fn doc_trait_ref(doc: ebml::Doc, tcx: ty::ctxt, cdata: Cmd) -> ty::TraitRef {
+fn doc_trait_ref(doc: ebml::Doc, tcx: &ty::ctxt, cdata: Cmd) -> ty::TraitRef {
     parse_trait_ref_data(doc.data, cdata.cnum, doc.start, tcx,
                          |_, did| translate_def_id(cdata, did))
 }
 
-fn item_trait_ref(doc: ebml::Doc, tcx: ty::ctxt, cdata: Cmd) -> ty::TraitRef {
+fn item_trait_ref(doc: ebml::Doc, tcx: &ty::ctxt, cdata: Cmd) -> ty::TraitRef {
     let tp = reader::get_doc(doc, tag_item_trait_ref);
     doc_trait_ref(tp, tcx, cdata)
 }
 
 fn item_ty_param_defs(item: ebml::Doc,
-                      tcx: ty::ctxt,
+                      tcx: &ty::ctxt,
                       cdata: Cmd,
                       tag: uint)
                       -> Rc<Vec<ty::TypeParameterDef> > {
@@ -378,7 +378,7 @@ fn item_to_def_like(item: ebml::Doc, did: ast::DefId, cnum: ast::CrateNum)
 
 pub fn get_trait_def(cdata: Cmd,
                      item_id: ast::NodeId,
-                     tcx: ty::ctxt) -> ty::TraitDef
+                     tcx: &ty::ctxt) -> ty::TraitDef
 {
     let item_doc = lookup_item(item_id, cdata.data());
     let tp_defs = item_ty_param_defs(item_doc, tcx, cdata,
@@ -403,7 +403,7 @@ pub fn get_trait_def(cdata: Cmd,
     }
 }
 
-pub fn get_type(cdata: Cmd, id: ast::NodeId, tcx: ty::ctxt)
+pub fn get_type(cdata: Cmd, id: ast::NodeId, tcx: &ty::ctxt)
     -> ty::ty_param_bounds_and_ty {
 
     let item = lookup_item(id, cdata.data());
@@ -427,7 +427,7 @@ pub fn get_type_param_count(data: &[u8], id: ast::NodeId) -> uint {
 
 pub fn get_impl_trait(cdata: Cmd,
                       id: ast::NodeId,
-                      tcx: ty::ctxt) -> Option<@ty::TraitRef>
+                      tcx: &ty::ctxt) -> Option<@ty::TraitRef>
 {
     let item_doc = lookup_item(id, cdata.data());
     reader::maybe_get_doc(item_doc, tag_item_trait_ref).map(|tp| {
@@ -437,7 +437,7 @@ pub fn get_impl_trait(cdata: Cmd,
 
 pub fn get_impl_vtables(cdata: Cmd,
                         id: ast::NodeId,
-                        tcx: ty::ctxt) -> typeck::impl_res
+                        tcx: &ty::ctxt) -> typeck::impl_res
 {
     let item_doc = lookup_item(id, cdata.data());
     let vtables_doc = reader::get_doc(item_doc, tag_item_impl_vtables);
@@ -672,12 +672,12 @@ pub fn get_item_path(cdata: Cmd, id: ast::NodeId) -> Vec<ast_map::PathElem> {
 }
 
 pub type DecodeInlinedItem<'a> = 'a |cdata: @cstore::crate_metadata,
-                                     tcx: ty::ctxt,
-                                     path: Vec<ast_map::PathElem> ,
+                                     tcx: &ty::ctxt,
+                                     path: Vec<ast_map::PathElem>,
                                      par_doc: ebml::Doc|
                                      -> Result<ast::InlinedItem, Vec<ast_map::PathElem> >;
 
-pub fn maybe_get_item_ast(cdata: Cmd, tcx: ty::ctxt, id: ast::NodeId,
+pub fn maybe_get_item_ast(cdata: Cmd, tcx: &ty::ctxt, id: ast::NodeId,
                           decode_inlined_item: DecodeInlinedItem)
                           -> csearch::found_ast {
     debug!("Looking up item: {}", id);
@@ -702,7 +702,7 @@ pub fn maybe_get_item_ast(cdata: Cmd, tcx: ty::ctxt, id: ast::NodeId,
 }
 
 pub fn get_enum_variants(intr: @IdentInterner, cdata: Cmd, id: ast::NodeId,
-                     tcx: ty::ctxt) -> Vec<@ty::VariantInfo> {
+                     tcx: &ty::ctxt) -> Vec<@ty::VariantInfo> {
     let data = cdata.data();
     let items = reader::get_doc(reader::Doc(data), tag_items);
     let item = find_item(id, items);
@@ -761,7 +761,7 @@ fn get_explicit_self(item: ebml::Doc) -> ast::ExplicitSelf_ {
 }
 
 fn item_impl_methods(intr: @IdentInterner, cdata: Cmd, item: ebml::Doc,
-                     tcx: ty::ctxt) -> Vec<@ty::Method> {
+                     tcx: &ty::ctxt) -> Vec<@ty::Method> {
     let mut rslt = Vec::new();
     reader::tagged_docs(item, tag_item_impl_method, |doc| {
         let m_did = reader::with_doc_data(doc, parse_def_id);
@@ -774,7 +774,7 @@ fn item_impl_methods(intr: @IdentInterner, cdata: Cmd, item: ebml::Doc,
 
 /// Returns information about the given implementation.
 pub fn get_impl(intr: @IdentInterner, cdata: Cmd, impl_id: ast::NodeId,
-               tcx: ty::ctxt)
+               tcx: &ty::ctxt)
                 -> ty::Impl {
     let data = cdata.data();
     let impl_item = lookup_item(impl_id, data);
@@ -800,7 +800,7 @@ pub fn get_method_name_and_explicit_self(
 }
 
 pub fn get_method(intr: @IdentInterner, cdata: Cmd, id: ast::NodeId,
-                  tcx: ty::ctxt) -> ty::Method
+                  tcx: &ty::ctxt) -> ty::Method
 {
     let method_doc = lookup_item(id, cdata.data());
     let def_id = item_def_id(method_doc, cdata);
@@ -858,7 +858,7 @@ pub fn get_item_variances(cdata: Cmd, id: ast::NodeId) -> ty::ItemVariances {
 }
 
 pub fn get_provided_trait_methods(intr: @IdentInterner, cdata: Cmd,
-                                  id: ast::NodeId, tcx: ty::ctxt) ->
+                                  id: ast::NodeId, tcx: &ty::ctxt) ->
         Vec<@ty::Method> {
     let data = cdata.data();
     let item = lookup_item(id, data);
@@ -878,7 +878,7 @@ pub fn get_provided_trait_methods(intr: @IdentInterner, cdata: Cmd,
 }
 
 /// Returns the supertraits of the given trait.
-pub fn get_supertraits(cdata: Cmd, id: ast::NodeId, tcx: ty::ctxt)
+pub fn get_supertraits(cdata: Cmd, id: ast::NodeId, tcx: &ty::ctxt)
                     -> Vec<@ty::TraitRef> {
     let mut results = Vec::new();
     let item_doc = lookup_item(id, cdata.data());
@@ -1235,7 +1235,7 @@ pub fn each_implementation_for_trait(cdata: Cmd,
     });
 }
 
-pub fn get_trait_of_method(cdata: Cmd, id: ast::NodeId, tcx: ty::ctxt)
+pub fn get_trait_of_method(cdata: Cmd, id: ast::NodeId, tcx: &ty::ctxt)
                            -> Option<ast::DefId> {
     let item_doc = lookup_item(id, cdata.data());
     let parent_item_id = match item_parent_item(item_doc) {

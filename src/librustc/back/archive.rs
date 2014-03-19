@@ -28,8 +28,8 @@ use syntax::abi;
 
 pub static METADATA_FILENAME: &'static str = "rust.metadata.bin";
 
-pub struct Archive {
-    priv sess: Session,
+pub struct Archive<'a> {
+    priv sess: &'a Session,
     priv dst: Path,
 }
 
@@ -37,8 +37,8 @@ pub struct ArchiveRO {
     priv ptr: ArchiveRef,
 }
 
-fn run_ar(sess: Session, args: &str, cwd: Option<&Path>,
-        paths: &[&Path]) -> ProcessOutput {
+fn run_ar(sess: &Session, args: &str, cwd: Option<&Path>,
+          paths: &[&Path]) -> ProcessOutput {
     let ar = get_ar_prog(sess);
 
     let mut args = vec!(args.to_owned());
@@ -74,16 +74,16 @@ fn run_ar(sess: Session, args: &str, cwd: Option<&Path>,
     }
 }
 
-impl Archive {
+impl<'a> Archive<'a> {
     /// Initializes a new static archive with the given object file
-    pub fn create<'a>(sess: Session, dst: &'a Path,
-                      initial_object: &'a Path) -> Archive {
+    pub fn create<'b>(sess: &'a Session, dst: &'b Path,
+                      initial_object: &'b Path) -> Archive<'a> {
         run_ar(sess, "crus", None, [dst, initial_object]);
         Archive { sess: sess, dst: dst.clone() }
     }
 
     /// Opens an existing static archive
-    pub fn open(sess: Session, dst: Path) -> Archive {
+    pub fn open(sess: &'a Session, dst: Path) -> Archive<'a> {
         assert!(dst.exists());
         Archive { sess: sess, dst: dst }
     }
@@ -206,7 +206,7 @@ impl Archive {
         let unixlibname = format!("lib{}.a", name);
 
         let mut rustpath = filesearch::rust_path();
-        rustpath.push(self.sess.filesearch.get_target_lib_path());
+        rustpath.push(self.sess.filesearch().get_target_lib_path());
         let addl_lib_search_paths = self.sess
                                         .opts
                                         .addl_lib_search_paths
