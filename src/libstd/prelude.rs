@@ -59,6 +59,7 @@ pub use slice::{ImmutableEqVector, ImmutableTotalOrdVector, ImmutableCloneableVe
 pub use slice::{OwnedVector, OwnedCloneableVector, OwnedEqVector};
 pub use slice::{MutableVector, MutableTotalOrdVector};
 pub use slice::{Vector, VectorVector, CloneableVector, ImmutableVector};
+pub use vec::Vec;
 
 // Reexported runtime types
 pub use comm::{channel, Sender, Receiver};
