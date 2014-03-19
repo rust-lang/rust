@@ -632,7 +632,7 @@ impl<'a> Parser<'a> {
                                   f: |&mut Parser| -> T)
                                   -> OptVec<T> {
         let mut first = true;
-        let mut v = opt_vec::Empty;
+        let mut v = Vec::new();
         while self.token != token::GT
             && self.token != token::BINOP(token::SHR) {
             match sep {
@@ -644,7 +644,7 @@ impl<'a> Parser<'a> {
             }
             v.push(f(self));
         }
-        return v;
+        return opt_vec::from(v);
     }
 
     pub fn parse_seq_to_gt<T>(
@@ -681,7 +681,7 @@ impl<'a> Parser<'a> {
                                    f: |&mut Parser| -> T)
                                    -> Vec<T> {
         let mut first: bool = true;
-        let mut v: Vec<T> = Vec::new();
+        let mut v = vec!();
         while self.token != *ket {
             match sep.sep {
               Some(ref t) => {
@@ -3437,7 +3437,7 @@ impl<'a> Parser<'a> {
             return None;
         }
 
-        let mut result = opt_vec::Empty;
+        let mut result = vec!();
         loop {
             match self.token {
                 token::LIFETIME(lifetime) => {
@@ -3462,7 +3462,7 @@ impl<'a> Parser<'a> {
             }
         }
 
-        return Some(result);
+        return Some(opt_vec::from(result));
     }
 
     // matches typaram = IDENT optbounds ( EQ ty )?

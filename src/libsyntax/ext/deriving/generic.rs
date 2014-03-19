@@ -360,27 +360,32 @@ impl<'a> TraitDef<'a> {
                            methods: Vec<@ast::Method> ) -> @ast::Item {
         let trait_path = self.path.to_path(cx, self.span, type_ident, generics);
 
-        let mut trait_generics = self.generics.to_generics(cx, self.span,
-                                                           type_ident, generics);
+        let Generics { mut lifetimes, ty_params } =
+            self.generics.to_generics(cx, self.span, type_ident, generics);
+        let mut ty_params = opt_vec::take_vec(ty_params);
+
         // Copy the lifetimes
-        for l in generics.lifetimes.iter() {
-            trait_generics.lifetimes.push(*l)
-        };
+        lifetimes.extend(&mut generics.lifetimes.iter().map(|l| *l));
+
         // Create the type parameters.
-        for ty_param in generics.ty_params.iter() {
+        ty_params.extend(&mut generics.ty_params.iter().map(|ty_param| {
             // I don't think this can be moved out of the loop, since
             // a TyParamBound requires an ast id
-            let mut bounds = opt_vec::from(
+            let mut bounds =
                 // extra restrictions on the generics parameters to the type being derived upon
                 self.additional_bounds.map(|p| {
                     cx.typarambound(p.to_path(cx, self.span,
                                                   type_ident, generics))
-                }));
+                });
             // require the current trait
             bounds.push(cx.typarambound(trait_path.clone()));
 
-            trait_generics.ty_params.push(cx.typaram(ty_param.ident, bounds, None));
-        }
+            cx.typaram(ty_param.ident, opt_vec::from(bounds), None)
+        }));
+        let trait_generics = Generics {
+            lifetimes: lifetimes,
+            ty_params: opt_vec::from(ty_params)
+        };
 
         // Create the reference to the trait.
         let trait_ref = cx.trait_ref(trait_path);
