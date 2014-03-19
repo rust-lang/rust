@@ -1159,14 +1159,6 @@ mod test {
 
     use std::vec_ng::Vec;
 
-    fn is_share<T: Share>() {}
-
-    // Assert that the AST remains sharable.
-    #[test]
-    fn ast_is_share() {
-        is_share::<Item>();
-    }
-
     // are ASTs encodable?
     #[test]
     fn check_asts_encodable() {
