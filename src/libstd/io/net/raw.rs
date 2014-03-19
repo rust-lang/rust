@@ -11,6 +11,7 @@
 // FIXME
 #[allow(missing_doc)];
 
+use fmt;
 use io::net::ip::{IpAddr, Ipv4Addr, Ipv6Addr};
 use io::{IoResult};
 use iter::Iterator;
@@ -70,9 +71,19 @@ pub enum NetworkAddress {
     NetworkAddress(~NetworkInterface)
 }
 
-#[deriving(Eq, Clone, Show)]
+#[deriving(Eq, Clone)]
 pub enum MacAddr {
     MacAddr(u8, u8, u8, u8, u8, u8)
+}
+
+impl fmt::Show for MacAddr {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            MacAddr(a, b, c, d, e, f) =>
+                write!(fmt.buf, "{:x}:{:x}:{:x}:{:x}:{:x}:{:x}",
+                       a, b, c, d, e, f)
+        }
+    }
 }
 
 pub trait Packet {
