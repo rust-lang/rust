@@ -325,6 +325,10 @@ pub fn trans_native_call<'a>(
     for (i, &llarg_rust) in llargs_rust.iter().enumerate() {
         let mut llarg_rust = llarg_rust;
 
+        if arg_tys[i].is_ignore() {
+            continue;
+        }
+
         // Does Rust pass this argument by pointer?
         let rust_indirect = type_of::arg_is_indirect(ccx,
                                                      *passed_arg_tys.get(i));
@@ -901,6 +905,9 @@ fn lltype_for_fn_from_foreign_types(ccx: &CrateContext, tys: &ForeignTypes) -> T
     };
 
     for &arg_ty in tys.fn_ty.arg_tys.iter() {
+        if arg_ty.is_ignore() {
+            continue;
+        }
         // add padding
         match arg_ty.pad {
             Some(ty) => llargument_tys.push(ty),
@@ -949,6 +956,9 @@ fn add_argument_attributes(tys: &ForeignTypes,
     }
 
     for &arg_ty in tys.fn_ty.arg_tys.iter() {
+        if arg_ty.is_ignore() {
+            continue;
+        }
         // skip padding
         if arg_ty.pad.is_some() { i += 1; }
 

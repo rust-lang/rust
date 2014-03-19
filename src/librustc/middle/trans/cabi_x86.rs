@@ -63,8 +63,19 @@ pub fn compute_abi_info(ccx: &CrateContext,
         ret_ty = ArgType::direct(rty, None, None, None);
     }
 
-    for &a in atys.iter() {
-        arg_tys.push(ArgType::direct(a, None, None, None));
+    for &t in atys.iter() {
+        let ty = match t.kind() {
+            Struct => {
+                let size = llsize_of_alloc(ccx, t);
+                if size == 0 {
+                    ArgType::ignore(t)
+                } else {
+                    ArgType::indirect(t, Some(ByValAttribute))
+                }
+            }
+            _ => ArgType::direct(t, None, None, None),
+        };
+        arg_tys.push(ty);
     }
 
     return FnType {
