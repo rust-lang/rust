@@ -71,6 +71,8 @@ pub use self::util::default_sched_threads;
 // Export unwinding facilities used by the failure macros
 pub use self::unwind::{begin_unwind, begin_unwind_raw, begin_unwind_fmt};
 
+pub use self::util::{Stdio, Stdout, Stderr};
+
 // FIXME: these probably shouldn't be public...
 #[doc(hidden)]
 pub mod shouldnt_be_public {

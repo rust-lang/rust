@@ -29,19 +29,8 @@ macro_rules! uvdebug (
 
 pub fn dumb_println(args: &fmt::Arguments) {
     use std::io;
-    use libc;
+    use std::rt;
 
-    struct Stderr;
-    impl io::Writer for Stderr {
-        fn write(&mut self, data: &[u8]) -> io::IoResult<()> {
-            let _ = unsafe {
-                libc::write(libc::STDERR_FILENO,
-                            data.as_ptr() as *libc::c_void,
-                            data.len() as libc::size_t)
-            };
-            Ok(()) // just ignore the errors
-        }
-    }
-    let mut w = Stderr;
+    let mut w = rt::Stderr;
     let _ = fmt::writeln(&mut w as &mut io::Writer, args);
 }
