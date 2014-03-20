@@ -51,20 +51,14 @@
 #[doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
       html_root_url = "http://static.rust-lang.org/doc/master")];
-
 #[feature(macro_rules, globs, asm, managed_boxes, thread_local, link_args,
           simd, linkage, default_type_params, phase)];
-
-// NOTE remove the following two attributes after the next snapshot.
-#[allow(unrecognized_lint)];
-#[allow(default_type_param_usage)];
 
 // Don't link to std. We are std.
 #[no_std];
 
-#[deny(non_camel_case_types)];
 #[deny(missing_doc)];
-#[allow(unknown_features)];
+#[allow(deprecated_owned_vector)]; // NOTE: remove after stage0
 
 // When testing libstd, bring in libuv as the I/O backend so tests can print
 // things and all of the std::io tests have an I/O interface to run on top
