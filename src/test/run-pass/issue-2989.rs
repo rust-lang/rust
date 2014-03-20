@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::vec;
+use std::slice;
 
 trait methods {
     fn to_bytes(&self) -> ~[u8];
@@ -16,14 +16,14 @@ trait methods {
 
 impl methods for () {
     fn to_bytes(&self) -> ~[u8] {
-        vec::from_elem(0, 0u8)
+        slice::from_elem(0, 0u8)
     }
 }
 
 // the position of this function is significant! - if it comes before methods
 // then it works, if it comes after it then it doesn't!
 fn to_bools(bitv: Storage) -> ~[bool] {
-    vec::from_fn(8, |i| {
+    slice::from_fn(8, |i| {
         let w = i / 64;
         let b = i % 64;
         let x = 1u64 & (bitv.storage[w] >> b);

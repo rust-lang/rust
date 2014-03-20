@@ -145,7 +145,7 @@ use default::Default;
 use iter::{Iterator, DoubleEndedIterator, FromIterator, ExactSize};
 use kinds::Send;
 use mem;
-use vec;
+use slice;
 
 /// The `Option`
 #[deriving(Clone, Eq, Ord, TotalEq, TotalOrd, Show)]
@@ -215,7 +215,7 @@ impl<T> Option<T> {
     #[inline]
     pub fn as_slice<'r>(&'r self) -> &'r [T] {
         match *self {
-            Some(ref x) => vec::ref_slice(x),
+            Some(ref x) => slice::ref_slice(x),
             None => &[]
         }
     }
@@ -224,7 +224,7 @@ impl<T> Option<T> {
     #[inline]
     pub fn as_mut_slice<'r>(&'r mut self) -> &'r mut [T] {
         match *self {
-            Some(ref mut x) => vec::mut_ref_slice(x),
+            Some(ref mut x) => slice::mut_ref_slice(x),
             None => &mut []
         }
     }
@@ -614,7 +614,7 @@ mod tests {
     use iter::range;
     use str::StrSlice;
     use kinds::marker;
-    use vec::ImmutableVector;
+    use slice::ImmutableVector;
 
     #[test]
     fn test_get_ptr() {

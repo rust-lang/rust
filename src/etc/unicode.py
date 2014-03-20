@@ -162,7 +162,7 @@ def emit_bsearch_range_table(f):
     f.write("""
 fn bsearch_range_table(c: char, r: &'static [(char,char)]) -> bool {
     use cmp::{Equal, Less, Greater};
-    use vec::ImmutableVector;
+    use slice::ImmutableVector;
     use option::None;
     r.bsearch(|&(lo,hi)| {
         if lo <= c && c <= hi { Equal }
@@ -200,7 +200,7 @@ def emit_conversions_module(f, lowerupper, upperlower):
     f.write("pub mod conversions {\n")
     f.write("""
     use cmp::{Equal, Less, Greater};
-    use vec::ImmutableVector;
+    use slice::ImmutableVector;
     use tuple::Tuple2;
     use option::{Option, Some, None};
 
@@ -264,7 +264,7 @@ def emit_decomp_module(f, canon, compat, combine):
     f.write("pub mod decompose {\n");
     f.write("    use option::Option;\n");
     f.write("    use option::{Some, None};\n");
-    f.write("    use vec::ImmutableVector;\n");
+    f.write("    use slice::ImmutableVector;\n");
     f.write("""
     fn bsearch_table(c: char, r: &'static [(char, &'static [char])]) -> Option<&'static [char]> {
         use cmp::{Equal, Less, Greater};

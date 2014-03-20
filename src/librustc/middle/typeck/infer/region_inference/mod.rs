@@ -26,7 +26,7 @@ use util::ppaux::{Repr};
 
 use std::cell::{Cell, RefCell};
 use std::uint;
-use std::vec;
+use std::slice;
 use std::vec_ng::Vec;
 use collections::{HashMap, HashSet};
 use syntax::ast;
@@ -1049,7 +1049,7 @@ impl<'a> RegionVarBindings<'a> {
         // idea is to report errors that derive from independent
         // regions of the graph, but not those that derive from
         // overlapping locations.
-        let mut dup_vec = vec::from_elem(self.num_vars(), uint::MAX);
+        let mut dup_vec = slice::from_elem(self.num_vars(), uint::MAX);
 
         let mut opt_graph = None;
 

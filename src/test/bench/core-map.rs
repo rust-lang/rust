@@ -16,7 +16,7 @@ use collections::{TrieMap, TreeMap, HashMap, HashSet};
 use std::os;
 use rand::{Rng, IsaacRng, SeedableRng};
 use std::uint;
-use std::vec;
+use std::slice;
 
 fn timed(label: &str, f: ||) {
     let start = time::precise_time_s();
@@ -99,7 +99,7 @@ fn main() {
         }
     };
 
-    let mut rand = vec::with_capacity(n_keys);
+    let mut rand = slice::with_capacity(n_keys);
 
     {
         let mut rng: IsaacRng = SeedableRng::from_seed(&[1, 1, 1, 1, 1, 1, 1]);

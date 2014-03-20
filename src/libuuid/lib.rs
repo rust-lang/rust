@@ -85,7 +85,7 @@ use std::from_str::FromStr;
 use std::hash::Hash;
 use std::num::FromStrRadix;
 use std::str;
-use std::vec;
+use std::slice;
 
 use rand::Rng;
 
@@ -202,7 +202,7 @@ impl Uuid {
     pub fn new_v4() -> Uuid {
         let ub = rand::task_rng().gen_vec(16);
         let mut uuid = Uuid{ bytes: [0, .. 16] };
-        vec::bytes::copy_memory(uuid.bytes, ub);
+        slice::bytes::copy_memory(uuid.bytes, ub);
         uuid.set_variant(VariantRFC4122);
         uuid.set_version(Version4Random);
         uuid
@@ -229,7 +229,7 @@ impl Uuid {
         fields.data1 = to_be32(d1 as i32) as u32;
         fields.data2 = to_be16(d2 as i16) as u16;
         fields.data3 = to_be16(d3 as i16) as u16;
-        vec::bytes::copy_memory(fields.data4, d4);
+        slice::bytes::copy_memory(fields.data4, d4);
 
         unsafe {
             transmute(fields)
@@ -246,7 +246,7 @@ impl Uuid {
         }
 
         let mut uuid = Uuid{ bytes: [0, .. 16] };
-        vec::bytes::copy_memory(uuid.bytes, b);
+        slice::bytes::copy_memory(uuid.bytes, b);
         Some(uuid)
     }
 
@@ -329,7 +329,7 @@ impl Uuid {
     ///
     /// Example: `936DA01F9ABD4d9d80C702AF85C822A8`
     pub fn to_simple_str(&self) -> ~str {
-        let mut s: ~[u8] = vec::from_elem(32, 0u8);
+        let mut s: ~[u8] = slice::from_elem(32, 0u8);
         for i in range(0u, 16u) {
             let digit = format!("{:02x}", self.bytes[i] as uint);
             s[i*2+0] = digit[0];
@@ -523,7 +523,7 @@ impl rand::Rand for Uuid {
     fn rand<R: rand::Rng>(rng: &mut R) -> Uuid {
         let ub = rng.gen_vec(16);
         let mut uuid = Uuid{ bytes: [0, .. 16] };
-        vec::bytes::copy_memory(uuid.bytes, ub);
+        slice::bytes::copy_memory(uuid.bytes, ub);
         uuid.set_variant(VariantRFC4122);
         uuid.set_version(Version4Random);
         uuid

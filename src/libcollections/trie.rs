@@ -13,8 +13,8 @@
 use std::mem;
 use std::uint;
 use std::mem::init;
-use std::vec;
-use std::vec::{Items, MutItems};
+use std::slice;
+use std::slice::{Items, MutItems};
 
 // FIXME: #5244: need to manually update the TrieNode constructor
 static SHIFT: uint = 4;
@@ -474,7 +474,7 @@ fn remove<T>(count: &mut uint, child: &mut Child<T>, key: uint,
 
 /// Forward iterator over a map
 pub struct Entries<'a, T> {
-    priv stack: [vec::Items<'a, Child<T>>, .. NUM_CHUNKS],
+    priv stack: [slice::Items<'a, Child<T>>, .. NUM_CHUNKS],
     priv length: uint,
     priv remaining_min: uint,
     priv remaining_max: uint
@@ -483,7 +483,7 @@ pub struct Entries<'a, T> {
 /// Forward iterator over the key-value pairs of a map, with the
 /// values being mutable.
 pub struct MutEntries<'a, T> {
-    priv stack: [vec::MutItems<'a, Child<T>>, .. NUM_CHUNKS],
+    priv stack: [slice::MutItems<'a, Child<T>>, .. NUM_CHUNKS],
     priv length: uint,
     priv remaining_min: uint,
     priv remaining_max: uint

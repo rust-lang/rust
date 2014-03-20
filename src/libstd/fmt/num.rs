@@ -17,7 +17,7 @@ use fmt;
 use iter::{Iterator, DoubleEndedIterator};
 use num::{Int, cast, zero};
 use option::{Some, None};
-use vec::{ImmutableVector, MutableVector};
+use slice::{ImmutableVector, MutableVector};
 
 /// A type that represents a specific radix
 trait GenericRadix {

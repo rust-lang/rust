@@ -76,8 +76,8 @@ use ptr::RawPtr;
 use ptr;
 use str::StrSlice;
 use str;
-use vec::{ImmutableVector, MutableVector};
-use vec;
+use slice::{ImmutableVector, MutableVector};
+use slice;
 use rt::global_heap::malloc_raw;
 use raw::Slice;
 
@@ -343,7 +343,7 @@ impl<'a> ToCStr for &'a [u8] {
 unsafe fn with_c_str<T>(v: &[u8], checked: bool, f: |*libc::c_char| -> T) -> T {
     if v.len() < BUF_LEN {
         let mut buf: [u8, .. BUF_LEN] = mem::uninit();
-        vec::bytes::copy_memory(buf, v);
+        slice::bytes::copy_memory(buf, v);
         buf[v.len()] = 0;
 
         let buf = buf.as_mut_ptr();

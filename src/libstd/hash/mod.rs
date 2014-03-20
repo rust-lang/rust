@@ -70,7 +70,7 @@ use ops::Deref;
 use option::{Option, Some, None};
 use rc::Rc;
 use str::{Str, StrSlice};
-use vec::{Vector, ImmutableVector};
+use slice::{Vector, ImmutableVector};
 use vec_ng::Vec;
 
 /// Reexport the `sip::hash` function as our default hasher.
@@ -293,7 +293,7 @@ mod tests {
     use iter::{Iterator};
     use option::{Some, None};
     use result::Ok;
-    use vec::ImmutableVector;
+    use slice::ImmutableVector;
 
     use super::{Hash, Hasher};
 

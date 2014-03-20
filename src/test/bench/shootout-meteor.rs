@@ -180,7 +180,7 @@ fn get_id(m: u64) -> u8 {
 
 // Converts a list of mask to a ~str.
 fn to_utf8(raw_sol: &List<u64>) -> ~str {
-    let mut sol: ~[u8] = std::vec::from_elem(50, '.' as u8);
+    let mut sol: ~[u8] = std::slice::from_elem(50, '.' as u8);
     for &m in raw_sol.iter() {
         let id = get_id(m);
         for i in range(0, 50) {

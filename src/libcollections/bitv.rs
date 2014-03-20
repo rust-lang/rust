@@ -16,7 +16,7 @@ use std::iter::RandomAccessIterator;
 use std::iter::{Rev, Enumerate, Repeat, Map, Zip};
 use std::ops;
 use std::uint;
-use std::vec;
+use std::slice;
 
 #[deriving(Clone)]
 struct SmallBitv {
@@ -278,13 +278,13 @@ impl Bitv {
             let s =
                 if init {
                     if exact {
-                        vec::from_elem(nelems, !0u)
+                        slice::from_elem(nelems, !0u)
                     } else {
-                        let mut v = vec::from_elem(nelems-1, !0u);
+                        let mut v = slice::from_elem(nelems-1, !0u);
                         v.push((1<<nbits % uint::BITS)-1);
                         v
                     }
-                } else { vec::from_elem(nelems, 0u)};
+                } else { slice::from_elem(nelems, 0u)};
             Big(BigBitv::new(s))
         };
         Bitv {rep: rep, nbits: nbits}
@@ -452,7 +452,7 @@ impl Bitv {
      * Each `uint` in the resulting vector has either value `0u` or `1u`.
      */
     pub fn to_vec(&self) -> ~[uint] {
-        vec::from_fn(self.nbits, |x| self.init_to_vec(x))
+        slice::from_fn(self.nbits, |x| self.init_to_vec(x))
     }
 
     /**
@@ -473,7 +473,7 @@ impl Bitv {
 
         let len = self.nbits/8 +
                   if self.nbits % 8 == 0 { 0 } else { 1 };
-        vec::from_fn(len, |i|
+        slice::from_fn(len, |i|
             bit(self, i, 0) |
             bit(self, i, 1) |
             bit(self, i, 2) |
@@ -489,7 +489,7 @@ impl Bitv {
      * Transform `self` into a `[bool]` by turning each bit into a `bool`.
      */
     pub fn to_bools(&self) -> ~[bool] {
-        vec::from_fn(self.nbits, |i| self[i])
+        slice::from_fn(self.nbits, |i| self[i])
     }
 
     /**
@@ -879,7 +879,7 @@ impl BitvSet {
     /// and w1/w2 are the words coming from the two vectors self, other.
     fn commons<'a>(&'a self, other: &'a BitvSet)
         -> Map<'static, ((uint, &'a uint), &'a ~[uint]), (uint, uint, uint),
-               Zip<Enumerate<vec::Items<'a, uint>>, Repeat<&'a ~[uint]>>> {
+               Zip<Enumerate<slice::Items<'a, uint>>, Repeat<&'a ~[uint]>>> {
         let min = cmp::min(self.bitv.storage.len(), other.bitv.storage.len());
         self.bitv.storage.slice(0, min).iter().enumerate()
             .zip(Repeat::new(&other.bitv.storage))
@@ -895,7 +895,7 @@ impl BitvSet {
     /// `other`.
     fn outliers<'a>(&'a self, other: &'a BitvSet)
         -> Map<'static, ((uint, &'a uint), uint), (bool, uint, uint),
-               Zip<Enumerate<vec::Items<'a, uint>>, Repeat<uint>>> {
+               Zip<Enumerate<slice::Items<'a, uint>>, Repeat<uint>>> {
         let slen = self.bitv.storage.len();
         let olen = other.bitv.storage.len();
 
@@ -946,7 +946,7 @@ mod tests {
     use bitv;
 
     use std::uint;
-    use std::vec;
+    use std::slice;
     use rand;
     use rand::Rng;
 
@@ -964,7 +964,7 @@ mod tests {
     #[test]
     fn test_0_elements() {
         let act = Bitv::new(0u, false);
-        let exp = vec::from_elem::<bool>(0u, false);
+        let exp = slice::from_elem::<bool>(0u, false);
         assert!(act.eq_vec(exp));
     }
 

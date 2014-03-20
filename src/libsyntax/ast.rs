@@ -520,7 +520,7 @@ pub enum Expr_ {
     ExprIndex(@Expr, @Expr),
 
     /// Expression that looks like a "name". For example,
-    /// `std::vec::from_elem::<uint>` is an ExprPath that's the "name" part
+    /// `std::slice::from_elem::<uint>` is an ExprPath that's the "name" part
     /// of a function call.
     ExprPath(Path),
 

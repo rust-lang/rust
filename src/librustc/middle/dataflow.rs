@@ -19,7 +19,7 @@
 
 use std::io;
 use std::uint;
-use std::vec;
+use std::slice;
 use std::vec_ng::Vec;
 use syntax::ast;
 use syntax::ast_util;
@@ -332,7 +332,7 @@ impl<'a, O:DataFlowOperator+Clone+'static> DataFlowContext<'a, O> {
                 changed: true
             };
 
-            let mut temp = vec::from_elem(self.words_per_id, 0u);
+            let mut temp = slice::from_elem(self.words_per_id, 0u);
             let mut loop_scopes = Vec::new();
 
             while propcx.changed {

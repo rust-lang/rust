@@ -20,7 +20,7 @@ use rsparse = parse;
 
 use std::fmt::parse;
 use collections::{HashMap, HashSet};
-use std::vec;
+use std::slice;
 use std::vec_ng::Vec;
 
 #[deriving(Eq)]
@@ -610,7 +610,7 @@ impl<'a, 'b> Context<'a, 'b> {
     fn to_expr(&self, extra: @ast::Expr) -> @ast::Expr {
         let mut lets = Vec::new();
         let mut locals = Vec::new();
-        let mut names = vec::from_fn(self.name_positions.len(), |_| None);
+        let mut names = slice::from_fn(self.name_positions.len(), |_| None);
         let mut pats = Vec::new();
         let mut heads = Vec::new();
 

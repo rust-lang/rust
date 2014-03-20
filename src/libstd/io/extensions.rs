@@ -21,7 +21,7 @@ use option::{Option, Some, None};
 use result::{Ok, Err};
 use io;
 use io::{IoError, IoResult, Reader};
-use vec::{OwnedVector, ImmutableVector};
+use slice::{OwnedVector, ImmutableVector};
 use ptr::RawPtr;
 
 /// An iterator that reads a single byte on each iteration,
@@ -114,7 +114,7 @@ pub fn u64_from_be_bytes(data: &[u8],
                       -> u64 {
     use ptr::{copy_nonoverlapping_memory};
     use mem::from_be64;
-    use vec::MutableVector;
+    use slice::MutableVector;
 
     assert!(size <= 8u);
 
@@ -470,10 +470,10 @@ mod bench {
     macro_rules! u64_from_be_bytes_bench_impl(
         ($size:expr, $stride:expr, $start_index:expr) =>
         ({
-            use vec;
+            use slice;
             use super::u64_from_be_bytes;
 
-            let data = vec::from_fn($stride*100+$start_index, |i| i as u8);
+            let data = slice::from_fn($stride*100+$start_index, |i| i as u8);
             let mut sum = 0u64;
             bh.iter(|| {
                 let mut i = $start_index;
