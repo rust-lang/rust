@@ -18,7 +18,6 @@
       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
       html_root_url = "http://static.rust-lang.org/doc/master")];
 #[feature(default_type_params)];
-#[allow(deprecated_owned_vector)];
 
 extern crate collections;
 
@@ -28,7 +27,6 @@ use std::hash::Hash;
 use std::io::BufReader;
 use std::from_str::FromStr;
 use std::uint;
-use std::vec::Vec;
 
 use collections::HashMap;
 

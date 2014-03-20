@@ -33,7 +33,6 @@ use std::cell::{Cell, RefCell};
 use std::c_str::ToCStr;
 use std::libc::c_uint;
 use std::ptr;
-use std::vec::Vec;
 use collections::{HashMap, HashSet};
 use syntax::ast;
 use syntax::parse::token::InternedString;

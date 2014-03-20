@@ -21,8 +21,6 @@ use opt_vec::OptVec;
 use parse::token::special_idents;
 use parse::token;
 
-use std::vec::Vec;
-
 pub struct Field {
     ident: ast::Ident,
     ex: @ast::Expr

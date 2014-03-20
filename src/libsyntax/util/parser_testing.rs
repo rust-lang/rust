@@ -15,8 +15,6 @@ use parse::{new_parser_from_source_str};
 use parse::parser::Parser;
 use parse::token;
 
-use std::vec::Vec;
-
 // map a string to tts, using a made-up filename:
 pub fn string_to_tts(source_str: ~str) -> Vec<ast::TokenTree> {
     let ps = new_parse_sess();

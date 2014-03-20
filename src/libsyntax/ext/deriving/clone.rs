@@ -14,8 +14,6 @@ use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use ext::deriving::generic::*;
 
-use std::vec::Vec;
-
 pub fn expand_deriving_clone(cx: &mut ExtCtxt,
                              span: Span,
                              mitem: @MetaItem,

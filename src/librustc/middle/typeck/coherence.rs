@@ -48,7 +48,6 @@ use syntax::visit;
 use collections::HashSet;
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::vec::Vec;
 use std::vec;
 
 struct UniversalQuantificationResult {

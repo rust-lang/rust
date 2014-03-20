@@ -46,7 +46,6 @@ use util::ppaux;
 use util::ppaux::Repr;
 
 use std::rc::Rc;
-use std::vec::Vec;
 use std::vec;
 use collections::HashSet;
 

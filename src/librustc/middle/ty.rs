@@ -40,7 +40,6 @@ use std::fmt;
 use std::hash::{Hash, sip};
 use std::ops;
 use std::rc::Rc;
-use std::vec::Vec;
 use std::vec;
 use collections::{HashMap, HashSet};
 use syntax::ast::*;

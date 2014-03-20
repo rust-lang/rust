@@ -1005,7 +1005,6 @@ mod test {
     use parse::token;
     use parse::token::{str_to_ident};
     use std::io::util;
-    use std::vec::Vec;
 
     fn mk_sh() -> diagnostic::SpanHandler {
         let emitter = diagnostic::EmitterWriter::new(~util::NullWriter);

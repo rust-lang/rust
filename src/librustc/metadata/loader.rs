@@ -31,7 +31,6 @@ use std::io;
 use std::os::consts::{macos, freebsd, linux, android, win32};
 use std::str;
 use std::slice;
-use std::vec::Vec;
 
 use collections::{HashMap, HashSet};
 use flate;

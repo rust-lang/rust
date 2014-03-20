@@ -14,8 +14,6 @@
 static CONSTEXPR: *int = &'static 413 as *_;
 
 pub fn main() {
-    use std::vec::Vec;
-
     let x: Vec<_> = range(0u, 5).collect();
     assert_eq!(x.as_slice(), &[0u,1,2,3,4]);
 

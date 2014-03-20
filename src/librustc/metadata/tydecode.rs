@@ -20,7 +20,6 @@ use middle::ty;
 
 use std::str;
 use std::uint;
-use std::vec::Vec;
 use syntax::abi::AbiSet;
 use syntax::abi;
 use syntax::ast;

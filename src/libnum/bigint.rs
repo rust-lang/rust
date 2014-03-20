@@ -29,7 +29,6 @@ use std::str;
 use std::uint;
 use std::{i64, u64};
 use std::vec;
-use std::vec::Vec;
 
 /**
 A `BigDigit` is a `BigUint`'s composing element.
@@ -1461,7 +1460,6 @@ mod biguint_tests {
     use std::num::CheckedDiv;
     use rand::{task_rng};
     use std::u64;
-    use std::vec::Vec;
 
     #[test]
     fn test_from_slice() {
@@ -2195,7 +2193,6 @@ mod bigint_tests {
     use std::num::{ToPrimitive, FromPrimitive};
     use rand::{task_rng};
     use std::u64;
-    use std::vec::Vec;
 
     #[test]
     fn test_from_biguint() {

@@ -35,7 +35,6 @@ be indexed by the direction (see the type `Direction`).
 */
 
 use std::uint;
-use std::vec::Vec;
 
 pub struct Graph<N,E> {
     priv nodes: Vec<Node<N>> ,

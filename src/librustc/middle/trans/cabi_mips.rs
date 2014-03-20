@@ -18,8 +18,6 @@ use middle::trans::context::CrateContext;
 use middle::trans::cabi::*;
 use middle::trans::type_::Type;
 
-use std::vec::Vec;
-
 fn align_up_to(off: uint, a: uint) -> uint {
     return (off + a - 1u) / a * a;
 }
