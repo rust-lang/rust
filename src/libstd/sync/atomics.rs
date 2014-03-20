@@ -288,15 +288,15 @@ impl AtomicBool {
     /// ```
     /// use std::sync::atomics::{AtomicBool, SeqCst};
     ///
-    /// let mut foo = AtomicBool::new(true);
+    /// let foo = AtomicBool::new(true);
     /// assert_eq!(true, foo.fetch_and(false, SeqCst));
     /// assert_eq!(false, foo.load(SeqCst));
     ///
-    /// let mut foo = AtomicBool::new(true);
+    /// let foo = AtomicBool::new(true);
     /// assert_eq!(true, foo.fetch_and(true, SeqCst));
     /// assert_eq!(true, foo.load(SeqCst));
     ///
-    /// let mut foo = AtomicBool::new(false);
+    /// let foo = AtomicBool::new(false);
     /// assert_eq!(false, foo.fetch_and(false, SeqCst));
     /// assert_eq!(false, foo.load(SeqCst));
     /// ```
@@ -318,16 +318,16 @@ impl AtomicBool {
     /// ```
     /// use std::sync::atomics::{AtomicBool, SeqCst};
     ///
-    /// let mut foo = AtomicBool::new(true);
+    /// let foo = AtomicBool::new(true);
     /// assert_eq!(true, foo.fetch_nand(false, SeqCst));
     /// assert_eq!(true, foo.load(SeqCst));
     ///
-    /// let mut foo = AtomicBool::new(true);
+    /// let foo = AtomicBool::new(true);
     /// assert_eq!(true, foo.fetch_nand(true, SeqCst));
     /// assert_eq!(0, foo.load(SeqCst) as int);
     /// assert_eq!(false, foo.load(SeqCst));
     ///
-    /// let mut foo = AtomicBool::new(false);
+    /// let foo = AtomicBool::new(false);
     /// assert_eq!(false, foo.fetch_nand(false, SeqCst));
     /// assert_eq!(true, foo.load(SeqCst));
     /// ```
@@ -349,15 +349,15 @@ impl AtomicBool {
     /// ```
     /// use std::sync::atomics::{AtomicBool, SeqCst};
     ///
-    /// let mut foo = AtomicBool::new(true);
+    /// let foo = AtomicBool::new(true);
     /// assert_eq!(true, foo.fetch_or(false, SeqCst));
     /// assert_eq!(true, foo.load(SeqCst));
     ///
-    /// let mut foo = AtomicBool::new(true);
+    /// let foo = AtomicBool::new(true);
     /// assert_eq!(true, foo.fetch_or(true, SeqCst));
     /// assert_eq!(true, foo.load(SeqCst));
     ///
-    /// let mut foo = AtomicBool::new(false);
+    /// let foo = AtomicBool::new(false);
     /// assert_eq!(false, foo.fetch_or(false, SeqCst));
     /// assert_eq!(false, foo.load(SeqCst));
     /// ```
@@ -379,15 +379,15 @@ impl AtomicBool {
     /// ```
     /// use std::sync::atomics::{AtomicBool, SeqCst};
     ///
-    /// let mut foo = AtomicBool::new(true);
+    /// let foo = AtomicBool::new(true);
     /// assert_eq!(true, foo.fetch_xor(false, SeqCst));
     /// assert_eq!(true, foo.load(SeqCst));
     ///
-    /// let mut foo = AtomicBool::new(true);
+    /// let foo = AtomicBool::new(true);
     /// assert_eq!(true, foo.fetch_xor(true, SeqCst));
     /// assert_eq!(false, foo.load(SeqCst));
     ///
-    /// let mut foo = AtomicBool::new(false);
+    /// let foo = AtomicBool::new(false);
     /// assert_eq!(false, foo.fetch_xor(false, SeqCst));
     /// assert_eq!(false, foo.load(SeqCst));
     /// ```
@@ -440,7 +440,7 @@ impl AtomicInt {
     /// ```
     /// use std::sync::atomics::{AtomicInt, SeqCst};
     ///
-    /// let mut foo = AtomicInt::new(0);
+    /// let foo = AtomicInt::new(0);
     /// assert_eq!(0, foo.fetch_add(10, SeqCst));
     /// assert_eq!(10, foo.load(SeqCst));
     /// ```
@@ -456,7 +456,7 @@ impl AtomicInt {
     /// ```
     /// use std::sync::atomics::{AtomicInt, SeqCst};
     ///
-    /// let mut foo = AtomicInt::new(0);
+    /// let foo = AtomicInt::new(0);
     /// assert_eq!(0, foo.fetch_sub(10, SeqCst));
     /// assert_eq!(-10, foo.load(SeqCst));
     /// ```
@@ -507,7 +507,7 @@ impl AtomicUint {
     /// ```
     /// use std::sync::atomics::{AtomicUint, SeqCst};
     ///
-    /// let mut foo = AtomicUint::new(0);
+    /// let foo = AtomicUint::new(0);
     /// assert_eq!(0, foo.fetch_add(10, SeqCst));
     /// assert_eq!(10, foo.load(SeqCst));
     /// ```
@@ -523,7 +523,7 @@ impl AtomicUint {
     /// ```
     /// use std::sync::atomics::{AtomicUint, SeqCst};
     ///
-    /// let mut foo = AtomicUint::new(10);
+    /// let foo = AtomicUint::new(10);
     /// assert_eq!(10, foo.fetch_sub(10, SeqCst));
     /// assert_eq!(0, foo.load(SeqCst));
     /// ```
@@ -790,7 +790,7 @@ mod test {
 
     #[test]
     fn bool_() {
-        let mut a = AtomicBool::new(false);
+        let a = AtomicBool::new(false);
         assert_eq!(a.compare_and_swap(false, true, SeqCst), false);
         assert_eq!(a.compare_and_swap(false, true, SeqCst), true);
 
@@ -800,13 +800,13 @@ mod test {
 
     #[test]
     fn option_empty() {
-        let mut option: AtomicOption<()> = AtomicOption::empty();
+        let option: AtomicOption<()> = AtomicOption::empty();
         assert!(option.is_empty(SeqCst));
     }
 
     #[test]
     fn option_swap() {
-        let mut p = AtomicOption::new(~1);
+        let p = AtomicOption::new(~1);
         let a = ~2;
 
         let b = p.swap(a, SeqCst);
@@ -817,7 +817,7 @@ mod test {
 
     #[test]
     fn option_take() {
-        let mut p = AtomicOption::new(~1);
+        let p = AtomicOption::new(~1);
 
         assert_eq!(p.take(SeqCst), Some(~1));
         assert_eq!(p.take(SeqCst), None);
@@ -830,7 +830,7 @@ mod test {
 
     #[test]
     fn option_fill() {
-        let mut p = AtomicOption::new(~1);
+        let p = AtomicOption::new(~1);
         assert!(p.fill(~2, SeqCst).is_some()); // should fail; shouldn't leak!
         assert_eq!(p.take(SeqCst), Some(~1));
 
@@ -840,7 +840,7 @@ mod test {
 
     #[test]
     fn bool_and() {
-        let mut a = AtomicBool::new(true);
+        let a = AtomicBool::new(true);
         assert_eq!(a.fetch_and(false, SeqCst),true);
         assert_eq!(a.load(SeqCst),false);
     }
@@ -867,7 +867,7 @@ mod test {
             let mut slot = 0u8;
             assert_eq!(super::atomic_compare_and_swap(&mut slot, 1, 2, SeqCst), 0);
 
-            let mut slot = 0u32;
+            let slot = 0u32;
             assert_eq!(super::atomic_load(&slot, SeqCst), 0);
 
             let mut slot = 0u64;
