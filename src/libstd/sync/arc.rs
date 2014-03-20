@@ -28,6 +28,7 @@ use ops::Drop;
 use ptr::RawPtr;
 use sync::atomics::{fence, AtomicUint, Relaxed, Acquire, Release};
 use slice;
+use ty::Unsafe;
 
 /// An atomically reference counted pointer.
 ///
@@ -39,11 +40,14 @@ pub struct UnsafeArc<T> {
 
 struct ArcData<T> {
     count: AtomicUint,
-    data: T,
+    data: Unsafe<T>,
 }
 
 unsafe fn new_inner<T: Send>(data: T, refcount: uint) -> *mut ArcData<T> {
-    let data = ~ArcData { count: AtomicUint::new(refcount), data: data };
+    let data = ~ArcData {
+                    count: AtomicUint::new(refcount),
+                    data: Unsafe::new(data)
+                 };
     cast::transmute(data)
 }
 
@@ -82,7 +86,7 @@ impl<T: Send> UnsafeArc<T> {
         unsafe {
             // FIXME(#12049): this needs some sort of debug assertion
             if cfg!(test) { assert!((*self.data).count.load(Relaxed) > 0); }
-            return &mut (*self.data).data as *mut T;
+            return (*self.data).data.get();
         }
     }
 
@@ -93,7 +97,7 @@ impl<T: Send> UnsafeArc<T> {
         unsafe {
             // FIXME(#12049): this needs some sort of debug assertion
             if cfg!(test) { assert!((*self.data).count.load(Relaxed) > 0); }
-            return &(*self.data).data as *T;
+            return (*self.data).data.get() as *T;
         }
     }
 

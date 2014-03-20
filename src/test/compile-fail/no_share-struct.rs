@@ -10,9 +10,13 @@
 
 use std::kinds::marker;
 
-fn foo<P:Freeze>(p: P) { }
+struct Foo { a: int, m: marker::NoShare }
 
-fn main()
-{
-    foo(marker::NoFreeze); //~ ERROR does not fulfill `Freeze`
+fn bar<T: Share>(_: T) {}
+
+fn main() {
+    let x = Foo { a: 5, m: marker::NoShare };
+    bar(x);
+    //~^ ERROR instantiating a type parameter with an incompatible type `Foo`,
+    //         which does not fulfill `Share`
 }
