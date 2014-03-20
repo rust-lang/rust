@@ -84,11 +84,11 @@ pub struct Handler {
 
 impl Handler {
     pub fn fatal(&self, msg: &str) -> ! {
-        self.emit.borrow_mut().get().emit(None, msg, Fatal);
+        self.emit.borrow_mut().emit(None, msg, Fatal);
         fail!(FatalError);
     }
     pub fn err(&self, msg: &str) {
-        self.emit.borrow_mut().get().emit(None, msg, Error);
+        self.emit.borrow_mut().emit(None, msg, Error);
         self.bump_err_count();
     }
     pub fn bump_err_count(&self) {
@@ -113,13 +113,13 @@ impl Handler {
         self.fatal(s);
     }
     pub fn warn(&self, msg: &str) {
-        self.emit.borrow_mut().get().emit(None, msg, Warning);
+        self.emit.borrow_mut().emit(None, msg, Warning);
     }
     pub fn note(&self, msg: &str) {
-        self.emit.borrow_mut().get().emit(None, msg, Note);
+        self.emit.borrow_mut().emit(None, msg, Note);
     }
     pub fn bug(&self, msg: &str) -> ! {
-        self.emit.borrow_mut().get().emit(None, msg, Bug);
+        self.emit.borrow_mut().emit(None, msg, Bug);
         fail!(ExplicitBug);
     }
     pub fn unimpl(&self, msg: &str) -> ! {
@@ -129,11 +129,11 @@ impl Handler {
                 cmsp: Option<(&codemap::CodeMap, Span)>,
                 msg: &str,
                 lvl: Level) {
-        self.emit.borrow_mut().get().emit(cmsp, msg, lvl);
+        self.emit.borrow_mut().emit(cmsp, msg, lvl);
     }
     pub fn custom_emit(&self, cm: &codemap::CodeMap,
                        sp: Span, msg: &str, lvl: Level) {
-        self.emit.borrow_mut().get().custom_emit(cm, sp, msg, lvl);
+        self.emit.borrow_mut().custom_emit(cm, sp, msg, lvl);
     }
 }
 
@@ -301,7 +301,7 @@ fn highlight_lines(err: &mut EmitterWriter,
                    sp: Span,
                    lvl: Level,
                    lines: codemap::FileLines) -> io::IoResult<()> {
-    let fm = lines.file.deref();
+    let fm = &*lines.file;
 
     let mut elided = false;
     let mut display_lines = lines.lines.as_slice();
@@ -374,7 +374,7 @@ fn custom_highlight_lines(w: &mut EmitterWriter,
                           sp: Span,
                           lvl: Level,
                           lines: codemap::FileLines) -> io::IoResult<()> {
-    let fm = lines.file.deref();
+    let fm = &*lines.file;
 
     let lines = lines.lines.as_slice();
     if lines.len() > MAX_LINES {

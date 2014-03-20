@@ -63,11 +63,10 @@ pub fn new_mark(m: Mrk, tail: SyntaxContext) -> SyntaxContext {
 // Extend a syntax context with a given mark and table
 fn new_mark_internal(m: Mrk, tail: SyntaxContext, table: &SCTable) -> SyntaxContext {
     let key = (tail, m);
-    let mut mark_memo = table.mark_memo.borrow_mut();
     let new_ctxt = |_: &(SyntaxContext, Mrk)|
-                   idx_push(table.table.borrow_mut().get(), Mark(m, tail));
+                   idx_push(&mut *table.table.borrow_mut(), Mark(m, tail));
 
-    *mark_memo.get().find_or_insert_with(key, new_ctxt)
+    *table.mark_memo.borrow_mut().find_or_insert_with(key, new_ctxt)
 }
 
 /// Extend a syntax context with a given rename
@@ -82,11 +81,10 @@ fn new_rename_internal(id: Ident,
                        tail: SyntaxContext,
                        table: &SCTable) -> SyntaxContext {
     let key = (tail,id,to);
-    let mut rename_memo = table.rename_memo.borrow_mut();
     let new_ctxt = |_: &(SyntaxContext, Ident, Mrk)|
-                   idx_push(table.table.borrow_mut().get(), Rename(id, to, tail));
+                   idx_push(&mut *table.table.borrow_mut(), Rename(id, to, tail));
 
-    *rename_memo.get().find_or_insert_with(key, new_ctxt)
+    *table.rename_memo.borrow_mut().find_or_insert_with(key, new_ctxt)
 }
 
 /// Fetch the SCTable from TLS, create one if it doesn't yet exist.
@@ -102,7 +100,7 @@ pub fn with_sctable<T>(op: |&SCTable| -> T) -> T {
             }
             Some(ts) => ts.clone()
         };
-        op(table.deref())
+        op(&*table)
     })
 }
 
@@ -119,8 +117,7 @@ fn new_sctable_internal() -> SCTable {
 /// Print out an SCTable for debugging
 pub fn display_sctable(table: &SCTable) {
     error!("SC table:");
-    let table = table.table.borrow();
-    for (idx,val) in table.get().iter().enumerate() {
+    for (idx,val) in table.table.borrow().iter().enumerate() {
         error!("{:4u} : {:?}",idx,val);
     }
 }
@@ -128,9 +125,9 @@ pub fn display_sctable(table: &SCTable) {
 /// Clear the tables from TLD to reclaim memory.
 pub fn clear_tables() {
     with_sctable(|table| {
-        *table.table.borrow_mut().get() = Vec::new();
-        *table.mark_memo.borrow_mut().get() = HashMap::new();
-        *table.rename_memo.borrow_mut().get() = HashMap::new();
+        *table.table.borrow_mut() = Vec::new();
+        *table.mark_memo.borrow_mut() = HashMap::new();
+        *table.rename_memo.borrow_mut() = HashMap::new();
     });
     with_resolve_table_mut(|table| *table = HashMap::new());
 }
@@ -166,7 +163,7 @@ fn with_resolve_table_mut<T>(op: |&mut ResolveTable| -> T) -> T {
             }
             Some(ts) => ts.clone()
         };
-        op(table.deref().borrow_mut().get())
+        op(&mut *table.borrow_mut())
     })
 }
 
@@ -183,7 +180,7 @@ fn resolve_internal(id: Ident,
     }
 
     let resolved = {
-        let result = *table.table.borrow().get().get(id.ctxt as uint);
+        let result = *table.table.borrow().get(id.ctxt as uint);
         match result {
             EmptyCtxt => id.name,
             // ignore marks here:
@@ -227,10 +224,7 @@ fn marksof_internal(ctxt: SyntaxContext,
     let mut result = Vec::new();
     let mut loopvar = ctxt;
     loop {
-        let table_entry = {
-            let table = table.table.borrow();
-            *table.get().get(loopvar as uint)
-        };
+        let table_entry = *table.table.borrow().get(loopvar as uint);
         match table_entry {
             EmptyCtxt => {
                 return result;
@@ -257,7 +251,7 @@ fn marksof_internal(ctxt: SyntaxContext,
 /// FAILS when outside is not a mark.
 pub fn outer_mark(ctxt: SyntaxContext) -> Mrk {
     with_sctable(|sctable| {
-        match *sctable.table.borrow().get().get(ctxt as uint) {
+        match *sctable.table.borrow().get(ctxt as uint) {
             Mark(mrk, _) => mrk,
             _ => fail!("can't retrieve outer mark when outside is not a mark")
         }
@@ -327,7 +321,7 @@ mod tests {
         let mut result = Vec::new();
         loop {
             let table = table.table.borrow();
-            match *table.get().get(sc as uint) {
+            match *table.get(sc as uint) {
                 EmptyCtxt => {return result;},
                 Mark(mrk,tail) => {
                     result.push(M(mrk));
@@ -351,9 +345,9 @@ mod tests {
         assert_eq!(unfold_test_sc(test_sc.clone(),EMPTY_CTXT,&mut t),4);
         {
             let table = t.table.borrow();
-            assert!(*table.get().get(2) == Mark(9,0));
-            assert!(*table.get().get(3) == Rename(id(101,0),14,2));
-            assert!(*table.get().get(4) == Mark(3,3));
+            assert!(*table.get(2) == Mark(9,0));
+            assert!(*table.get(3) == Rename(id(101,0),14,2));
+            assert!(*table.get(4) == Mark(3,3));
         }
         assert_eq!(refold_test_sc(4,&t),test_sc);
     }
@@ -372,8 +366,8 @@ mod tests {
         assert_eq!(unfold_marks(vec!(3,7),EMPTY_CTXT,&mut t),3);
         {
             let table = t.table.borrow();
-            assert!(*table.get().get(2) == Mark(7,0));
-            assert!(*table.get().get(3) == Mark(3,2));
+            assert!(*table.get(2) == Mark(7,0));
+            assert!(*table.get(3) == Mark(3,2));
         }
     }
 

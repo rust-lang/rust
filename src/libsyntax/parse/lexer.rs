@@ -78,8 +78,8 @@ pub fn new_low_level_string_reader<'a>(span_diagnostic: &'a SpanHandler,
     let initial_char = '\n';
     let r = StringReader {
         span_diagnostic: span_diagnostic,
-        pos: Cell::new(filemap.deref().start_pos),
-        last_pos: Cell::new(filemap.deref().start_pos),
+        pos: Cell::new(filemap.start_pos),
+        last_pos: Cell::new(filemap.start_pos),
         col: Cell::new(CharPos(0)),
         curr: Cell::new(Some(initial_char)),
         filemap: filemap,
@@ -111,12 +111,9 @@ impl<'a> Reader for StringReader<'a> {
     fn is_eof(&self) -> bool { is_eof(self) }
     // return the next token. EFFECT: advances the string_reader.
     fn next_token(&self) -> TokenAndSpan {
-        let ret_val = {
-            let mut peek_tok = self.peek_tok.borrow_mut();
-            TokenAndSpan {
-                tok: replace(peek_tok.get(), token::UNDERSCORE),
-                sp: self.peek_span.get(),
-            }
+        let ret_val = TokenAndSpan {
+            tok: replace(&mut *self.peek_tok.borrow_mut(), token::UNDERSCORE),
+            sp: self.peek_span.get(),
         };
         string_advance_token(self);
         ret_val
@@ -137,8 +134,7 @@ impl<'a> Reader for StringReader<'a> {
 
 impl<'a> Reader for TtReader<'a> {
     fn is_eof(&self) -> bool {
-        let cur_tok = self.cur_tok.borrow();
-        *cur_tok.get() == token::EOF
+        *self.cur_tok.borrow() == token::EOF
     }
     fn next_token(&self) -> TokenAndSpan {
         let r = tt_next_token(self);
@@ -191,7 +187,7 @@ fn fatal_span_verbose(rdr: &StringReader,
                    -> ! {
     let mut m = m;
     m.push_str(": ");
-    let s = rdr.filemap.deref().src.slice(
+    let s = rdr.filemap.src.slice(
                   byte_offset(rdr, from_pos).to_uint(),
                   byte_offset(rdr, to_pos).to_uint());
     m.push_str(s);
@@ -220,7 +216,7 @@ fn string_advance_token(r: &StringReader) {
 }
 
 fn byte_offset(rdr: &StringReader, pos: BytePos) -> BytePos {
-    (pos - rdr.filemap.deref().start_pos)
+    (pos - rdr.filemap.start_pos)
 }
 
 /// Calls `f` with a string slice of the source text spanning from `start`
@@ -242,7 +238,7 @@ fn with_str_from_to<T>(
                     end: BytePos,
                     f: |s: &str| -> T)
                     -> T {
-    f(rdr.filemap.deref().src.slice(
+    f(rdr.filemap.src.slice(
             byte_offset(rdr, start).to_uint(),
             byte_offset(rdr, end).to_uint()))
 }
@@ -252,21 +248,21 @@ fn with_str_from_to<T>(
 pub fn bump(rdr: &StringReader) {
     rdr.last_pos.set(rdr.pos.get());
     let current_byte_offset = byte_offset(rdr, rdr.pos.get()).to_uint();
-    if current_byte_offset < rdr.filemap.deref().src.len() {
+    if current_byte_offset < rdr.filemap.src.len() {
         assert!(rdr.curr.get().is_some());
         let last_char = rdr.curr.get().unwrap();
-        let next = rdr.filemap.deref().src.char_range_at(current_byte_offset);
+        let next = rdr.filemap.src.char_range_at(current_byte_offset);
         let byte_offset_diff = next.next - current_byte_offset;
         rdr.pos.set(rdr.pos.get() + Pos::from_uint(byte_offset_diff));
         rdr.curr.set(Some(next.ch));
         rdr.col.set(rdr.col.get() + CharPos(1u));
         if last_char == '\n' {
-            rdr.filemap.deref().next_line(rdr.last_pos.get());
+            rdr.filemap.next_line(rdr.last_pos.get());
             rdr.col.set(CharPos(0u));
         }
 
         if byte_offset_diff > 1 {
-            rdr.filemap.deref().record_multibyte_char(rdr.last_pos.get(), byte_offset_diff);
+            rdr.filemap.record_multibyte_char(rdr.last_pos.get(), byte_offset_diff);
         }
     } else {
         rdr.curr.set(None);
@@ -279,8 +275,8 @@ pub fn is_eof(rdr: &StringReader) -> bool {
 
 pub fn nextch(rdr: &StringReader) -> Option<char> {
     let offset = byte_offset(rdr, rdr.pos.get()).to_uint();
-    if offset < rdr.filemap.deref().src.len() {
-        Some(rdr.filemap.deref().src.char_at(offset))
+    if offset < rdr.filemap.src.len() {
+        Some(rdr.filemap.src.char_at(offset))
     } else {
         None
     }
@@ -397,7 +393,7 @@ fn consume_any_line_comment(rdr: &StringReader)
             // I guess this is the only way to figure out if
             // we're at the beginning of the file...
             let cmap = CodeMap::new();
-            cmap.files.borrow_mut().get().push(rdr.filemap.clone());
+            cmap.files.borrow_mut().push(rdr.filemap.clone());
             let loc = cmap.lookup_char_pos_adj(rdr.last_pos.get());
             if loc.line == 1u && loc.col == CharPos(0u) {
                 while !rdr.curr_is('\n') && !is_eof(rdr) { bump(rdr); }
