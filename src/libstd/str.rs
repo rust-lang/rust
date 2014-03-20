@@ -101,7 +101,7 @@ use ptr::RawPtr;
 use from_str::FromStr;
 use slice;
 use slice::{OwnedVector, OwnedCloneableVector, ImmutableVector, MutableVector};
-use vec_ng::Vec;
+use vec::Vec;
 use default::Default;
 use raw::Repr;
 

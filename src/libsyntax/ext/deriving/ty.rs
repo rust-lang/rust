@@ -20,7 +20,7 @@ use ext::build::AstBuilder;
 use codemap::{Span,respan};
 use opt_vec;
 
-use std::vec_ng::Vec;
+use std::vec::Vec;
 
 /// The types of pointers
 pub enum PtrTy<'a> {

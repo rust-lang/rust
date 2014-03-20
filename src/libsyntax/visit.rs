@@ -15,7 +15,7 @@ use codemap::Span;
 use parse;
 use opt_vec;
 use opt_vec::OptVec;
-use std::vec_ng::Vec;
+use std::vec::Vec;
 
 // Context-passing AST walker. Each overridden visit method has full control
 // over what happens with its node, it can do its own traversal of the node's

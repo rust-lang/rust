@@ -18,7 +18,7 @@ use parse::token;
 use parse::lexer::TokenAndSpan;
 
 use std::cell::{Cell, RefCell};
-use std::vec_ng::Vec;
+use std::vec::Vec;
 use collections::HashMap;
 
 ///an unzipping of `TokenTree`s

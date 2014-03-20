@@ -225,8 +225,8 @@ use util::ppaux::{Repr, vec_map_to_str};
 
 use collections::HashMap;
 use std::cell::Cell;
-use std::vec_ng::Vec;
-use std::vec_ng;
+use std::vec::Vec;
+use std::vec;
 use syntax::ast;
 use syntax::ast::Ident;
 use syntax::ast_util::path_to_ident;
@@ -463,9 +463,9 @@ fn expand_nested_bindings<'r,'b>(
     m.iter().map(|br| {
         match br.pats.get(col).node {
             ast::PatIdent(_, ref path, Some(inner)) => {
-                let pats = vec_ng::append(
+                let pats = vec::append(
                     Vec::from_slice(br.pats.slice(0u, col)),
-                    vec_ng::append(vec!(inner),
+                    vec::append(vec!(inner),
                                 br.pats.slice(col + 1u,
                                            br.pats.len())).as_slice());
 
@@ -513,8 +513,8 @@ fn enter_match<'r,'b>(
         match e(*br.pats.get(col)) {
             Some(sub) => {
                 let pats =
-                    vec_ng::append(
-                        vec_ng::append(sub, br.pats.slice(0u, col)),
+                    vec::append(
+                        vec::append(sub, br.pats.slice(0u, col)),
                         br.pats.slice(col + 1u, br.pats.len()));
 
                 let this = *br.pats.get(col);
@@ -1537,7 +1537,7 @@ fn compile_submatch_continue<'r,
     let tcx = bcx.tcx();
     let dm = tcx.def_map;
 
-    let vals_left = vec_ng::append(Vec::from_slice(vals.slice(0u, col)),
+    let vals_left = vec::append(Vec::from_slice(vals.slice(0u, col)),
                                    vals.slice(col + 1u, vals.len()));
     let ccx = bcx.fcx.ccx;
     let mut pat_id = 0;
@@ -1570,7 +1570,7 @@ fn compile_submatch_continue<'r,
                                             col,
                                             rec_fields.as_slice(),
                                             val).as_slice(),
-                        vec_ng::append(rec_vals,
+                        vec::append(rec_vals,
                                        vals_left.as_slice()).as_slice(),
                         chk);
             });
@@ -1596,7 +1596,7 @@ fn compile_submatch_continue<'r,
                                    col,
                                    val,
                                    n_tup_elts).as_slice(),
-                         vec_ng::append(tup_vals,
+                         vec::append(tup_vals,
                                         vals_left.as_slice()).as_slice(),
                          chk);
         return;
@@ -1622,7 +1622,7 @@ fn compile_submatch_continue<'r,
         compile_submatch(bcx,
                          enter_tuple_struct(bcx, dm, m, col, val,
                                             struct_element_count).as_slice(),
-                         vec_ng::append(llstructvals,
+                         vec::append(llstructvals,
                                         vals_left.as_slice()).as_slice(),
                          chk);
         return;
@@ -1632,7 +1632,7 @@ fn compile_submatch_continue<'r,
         let llbox = Load(bcx, val);
         compile_submatch(bcx,
                          enter_uniq(bcx, dm, m, col, val).as_slice(),
-                         vec_ng::append(vec!(llbox),
+                         vec::append(vec!(llbox),
                                         vals_left.as_slice()).as_slice(),
                          chk);
         return;
@@ -1642,7 +1642,7 @@ fn compile_submatch_continue<'r,
         let loaded_val = Load(bcx, val);
         compile_submatch(bcx,
                          enter_region(bcx, dm, m, col, val).as_slice(),
-                         vec_ng::append(vec!(loaded_val),
+                         vec::append(vec!(loaded_val),
                                         vals_left.as_slice()).as_slice(),
                          chk);
         return;
@@ -1824,7 +1824,7 @@ fn compile_submatch_continue<'r,
             lit(_) | range(_, _) => ()
         }
         let opt_ms = enter_opt(opt_cx, m, opt, col, size, val);
-        let opt_vals = vec_ng::append(unpacked, vals_left.as_slice());
+        let opt_vals = vec::append(unpacked, vals_left.as_slice());
 
         match branch_chk {
             None => {

@@ -20,7 +20,7 @@ use parse::token::{InternedString, intern, str_to_ident};
 use util::small_vector::SmallVector;
 
 use collections::HashMap;
-use std::vec_ng::Vec;
+use std::vec::Vec;
 
 // new-style macro! tt code:
 //

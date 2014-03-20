@@ -22,7 +22,7 @@ use visit;
 use std::cell::Cell;
 use std::cmp;
 use std::u32;
-use std::vec_ng::Vec;
+use std::vec::Vec;
 
 pub fn path_name_i(idents: &[Ident]) -> ~str {
     // FIXME: Bad copies (#2543 -- same for everything else that says "bad")
@@ -711,7 +711,7 @@ mod test {
     use ast::*;
     use super::*;
     use opt_vec;
-    use std::vec_ng::Vec;
+    use std::vec::Vec;
 
     fn ident_to_segment(id : &Ident) -> PathSegment {
         PathSegment {identifier:id.clone(),

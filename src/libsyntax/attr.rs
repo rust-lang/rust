@@ -21,7 +21,7 @@ use parse::token;
 use crateid::CrateId;
 
 use collections::HashSet;
-use std::vec_ng::Vec;
+use std::vec::Vec;
 
 pub trait AttrMetaMethods {
     // This could be changed to `fn check_name(&self, name: InternedString) ->

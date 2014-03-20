@@ -11,7 +11,7 @@
 
 use driver::session;
 use driver::session::Session;
-use std::vec_ng::Vec;
+use std::vec::Vec;
 use syntax::ast::{Crate, Name, NodeId, Item, ItemFn};
 use syntax::ast_map;
 use syntax::attr;

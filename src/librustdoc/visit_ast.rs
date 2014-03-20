@@ -11,7 +11,7 @@
 //! Rust AST Visitor. Extracts useful information and massages it into a form
 //! usable for clean
 
-use std::vec_ng::Vec;
+use std::vec::Vec;
 use syntax::abi::AbiSet;
 use syntax::ast;
 use syntax::ast_util;

@@ -31,7 +31,7 @@ use syntax::parse::token;
 use driver::session::Session;
 
 use std::cell::Cell;
-use std::vec_ng::Vec;
+use std::vec::Vec;
 
 /// This is a list of all known features since the beginning of time. This list
 /// can never shrink, it may only be expanded (in order to prevent old programs

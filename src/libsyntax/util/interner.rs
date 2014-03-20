@@ -21,7 +21,7 @@ use std::cmp::Equiv;
 use std::fmt;
 use std::hash::Hash;
 use std::rc::Rc;
-use std::vec_ng::Vec;
+use std::vec::Vec;
 
 pub struct Interner<T> {
     priv map: RefCell<HashMap<T, Name>>,

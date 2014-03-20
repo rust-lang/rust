@@ -63,7 +63,7 @@ use util::common::indent;
 use util::ppaux::Repr;
 
 use std::result;
-use std::vec_ng::Vec;
+use std::vec::Vec;
 use syntax::ast::{Onceness, Purity};
 use syntax::ast;
 use syntax::opt_vec;

@@ -17,7 +17,7 @@ use middle::resolve;
 use middle::ty;
 use util::nodemap::{NodeMap, NodeSet};
 
-use std::vec_ng::Vec;
+use std::vec::Vec;
 use syntax::codemap::Span;
 use syntax::{ast, ast_util};
 use syntax::visit;
