@@ -2781,7 +2781,6 @@ impl<'a> Parser<'a> {
                 break;
             }
 
-            let lo1 = self.last_span.lo;
             let bind_type = if self.eat_keyword(keywords::Mut) {
                 BindByValue(MutMutable)
             } else if self.eat_keyword(keywords::Ref) {
@@ -2791,11 +2790,8 @@ impl<'a> Parser<'a> {
             };
 
             let fieldname = self.parse_ident();
-            let hi1 = self.last_span.lo;
-            let fieldpath = ast_util::ident_to_path(mk_sp(lo1, hi1),
-                                                    fieldname);
-            let subpat;
-            if self.token == token::COLON {
+
+            let subpat = if self.token == token::COLON {
                 match bind_type {
                     BindByRef(..) | BindByValue(MutMutable) => {
                         let token_str = self.this_token_to_str();
@@ -2805,14 +2801,16 @@ impl<'a> Parser<'a> {
                 }
 
                 self.bump();
-                subpat = self.parse_pat();
+                self.parse_pat()
             } else {
-                subpat = @ast::Pat {
+                let fieldpath = ast_util::ident_to_path(self.last_span,
+                                                        fieldname);
+                @ast::Pat {
                     id: ast::DUMMY_NODE_ID,
                     node: PatIdent(bind_type, fieldpath, None),
                     span: self.last_span
-                };
-            }
+                }
+            };
             fields.push(ast::FieldPat { ident: fieldname, pat: subpat });
         }
         return (fields, etc);
