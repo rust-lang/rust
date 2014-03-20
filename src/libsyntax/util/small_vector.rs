@@ -9,8 +9,8 @@
 // except according to those terms.
 
 use std::mem;
-use std::vec_ng::Vec;
-use std::vec_ng;
+use std::vec::Vec;
+use std::vec;
 
 /// A vector type optimized for cases where the size is almost always 0 or 1
 pub enum SmallVector<T> {
@@ -114,7 +114,7 @@ impl<T> SmallVector<T> {
 pub enum MoveItems<T> {
     priv ZeroIterator,
     priv OneIterator(T),
-    priv ManyIterator(vec_ng::MoveItems<T>),
+    priv ManyIterator(vec::MoveItems<T>),
 }
 
 impl<T> Iterator<T> for MoveItems<T> {
@@ -146,7 +146,7 @@ impl<T> Iterator<T> for MoveItems<T> {
 mod test {
     use super::*;
 
-    use std::vec_ng::Vec;
+    use std::vec::Vec;
 
     #[test]
     fn test_len() {

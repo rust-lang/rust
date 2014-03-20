@@ -22,7 +22,7 @@ use rt::local::Local;
 use rt::task::Task;
 use raw;
 use slice::ImmutableVector;
-use vec_ng::Vec;
+use vec::Vec;
 
 // This has no meaning with out rtdebug also turned on.
 #[cfg(rtdebug)]

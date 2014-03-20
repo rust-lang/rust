@@ -97,8 +97,8 @@ use util::ppaux::Repr;
 
 use collections::HashSet;
 use std::result;
-use std::vec_ng::Vec;
-use std::vec_ng;
+use std::vec::Vec;
+use std::vec;
 use syntax::ast::{DefId, SelfValue, SelfRegion};
 use syntax::ast::{SelfUniq, SelfStatic};
 use syntax::ast::{MutMutable, MutImmutable};
@@ -1118,7 +1118,7 @@ impl<'a> LookupContext<'a> {
         // Construct the full set of type parameters for the method,
         // which is equal to the class tps + the method tps.
         let all_substs = substs {
-            tps: vec_ng::append(candidate.rcvr_substs.tps.clone(),
+            tps: vec::append(candidate.rcvr_substs.tps.clone(),
                                 m_substs.as_slice()),
             regions: NonerasedRegions(all_regions),
             self_ty: candidate.rcvr_substs.self_ty,

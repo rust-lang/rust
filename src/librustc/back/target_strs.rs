@@ -10,7 +10,7 @@
 
 #[allow(non_camel_case_types)];
 
-use std::vec_ng::Vec;
+use std::vec::Vec;
 
 pub struct t {
     module_asm: ~str,

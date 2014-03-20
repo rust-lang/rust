@@ -58,7 +58,7 @@ use std::u16;
 use std::u32;
 use std::u64;
 use std::u8;
-use std::vec_ng::Vec;
+use std::vec::Vec;
 use collections::SmallIntMap;
 use syntax::ast_map;
 use syntax::ast_util::IdVisitingOperation;
@@ -1121,7 +1121,7 @@ fn check_deprecated_owned_vector(cx: &Context, e: &ast::Expr) {
     match ty::get(t).sty {
         ty::ty_vec(_, ty::vstore_uniq) => {
             cx.span_lint(DeprecatedOwnedVector, e.span,
-                         "use of deprecated `~[]` vector; replaced by `std::vec_ng::Vec`")
+                         "use of deprecated `~[]` vector; replaced by `std::vec::Vec`")
         }
         _ => {}
     }

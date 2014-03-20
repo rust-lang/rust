@@ -82,8 +82,8 @@ use std::cell::Cell;
 use collections::HashSet;
 use std::kinds::marker;
 use std::mem::replace;
-use std::vec_ng::Vec;
-use std::vec_ng;
+use std::vec::Vec;
+use std::vec;
 
 #[allow(non_camel_case_types)]
 #[deriving(Eq)]
@@ -271,7 +271,7 @@ fn maybe_append(lhs: Vec<Attribute> , rhs: Option<Vec<Attribute> >)
              -> Vec<Attribute> {
     match rhs {
         None => lhs,
-        Some(ref attrs) => vec_ng::append(lhs, attrs.as_slice())
+        Some(ref attrs) => vec::append(lhs, attrs.as_slice())
     }
 }
 
@@ -407,7 +407,7 @@ impl<'a> Parser<'a> {
         } else if inedible.contains(&self.token) {
             // leave it in the input
         } else {
-            let expected = vec_ng::append(edible.iter()
+            let expected = vec::append(edible.iter()
                                                 .map(|x| (*x).clone())
                                                 .collect(),
                                           inedible);
@@ -449,7 +449,7 @@ impl<'a> Parser<'a> {
         match e.node {
             ExprPath(..) => {
                 // might be unit-struct construction; check for recoverableinput error.
-                let expected = vec_ng::append(edible.iter()
+                let expected = vec::append(edible.iter()
                                                     .map(|x| (*x).clone())
                                                     .collect(),
                                               inedible);
@@ -472,7 +472,7 @@ impl<'a> Parser<'a> {
         debug!("commit_stmt {:?}", s);
         let _s = s; // unused, but future checks might want to inspect `s`.
         if self.last_token.as_ref().map_or(false, |t| is_ident_or_path(*t)) {
-            let expected = vec_ng::append(edible.iter()
+            let expected = vec::append(edible.iter()
                                                 .map(|x| (*x).clone())
                                                 .collect(),
                                           inedible.as_slice());
@@ -1113,7 +1113,7 @@ impl<'a> Parser<'a> {
                 debug!("parse_trait_methods(): parsing provided method");
                 let (inner_attrs, body) =
                     p.parse_inner_attrs_and_block();
-                let attrs = vec_ng::append(attrs, inner_attrs.as_slice());
+                let attrs = vec::append(attrs, inner_attrs.as_slice());
                 Provided(@ast::Method {
                     ident: ident,
                     attrs: attrs,
@@ -3852,7 +3852,7 @@ impl<'a> Parser<'a> {
 
         let (inner_attrs, body) = self.parse_inner_attrs_and_block();
         let hi = body.span.hi;
-        let attrs = vec_ng::append(attrs, inner_attrs.as_slice());
+        let attrs = vec::append(attrs, inner_attrs.as_slice());
         @ast::Method {
             ident: ident,
             attrs: attrs,
@@ -4084,7 +4084,7 @@ impl<'a> Parser<'a> {
         while self.token != term {
             let mut attrs = self.parse_outer_attributes();
             if first {
-                attrs = vec_ng::append(attrs_remaining.clone(),
+                attrs = vec::append(attrs_remaining.clone(),
                                        attrs.as_slice());
                 first = false;
             }
@@ -4234,7 +4234,7 @@ impl<'a> Parser<'a> {
                                      &path,
                                      id_sp);
         let (inner, next) = p0.parse_inner_attrs_and_next();
-        let mod_attrs = vec_ng::append(outer_attrs, inner.as_slice());
+        let mod_attrs = vec::append(outer_attrs, inner.as_slice());
         let first_item_outer_attrs = next;
         let m0 = p0.parse_mod_items(token::EOF, first_item_outer_attrs);
         {
@@ -4559,7 +4559,7 @@ impl<'a> Parser<'a> {
         match self.token {
             INTERPOLATED(token::NtItem(item)) => {
                 self.bump();
-                let new_attrs = vec_ng::append(attrs, item.attrs.as_slice());
+                let new_attrs = vec::append(attrs, item.attrs.as_slice());
                 return IoviItem(@Item {
                     attrs: new_attrs,
                     ..(*item).clone()
@@ -4987,7 +4987,7 @@ impl<'a> Parser<'a> {
                                   mut extern_mod_allowed: bool,
                                   macros_allowed: bool)
                                   -> ParsedItemsAndViewItems {
-        let mut attrs = vec_ng::append(first_item_attrs,
+        let mut attrs = vec::append(first_item_attrs,
                                        self.parse_outer_attributes()
                                            .as_slice());
         // First, parse view items.
@@ -5069,7 +5069,7 @@ impl<'a> Parser<'a> {
     fn parse_foreign_items(&mut self, first_item_attrs: Vec<Attribute> ,
                            macros_allowed: bool)
         -> ParsedItemsAndViewItems {
-        let mut attrs = vec_ng::append(first_item_attrs,
+        let mut attrs = vec::append(first_item_attrs,
                                        self.parse_outer_attributes()
                                            .as_slice());
         let mut foreign_items = Vec::new();

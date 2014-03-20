@@ -16,7 +16,7 @@ use parse::token;
 use opt_vec::OptVec;
 use util::small_vector::SmallVector;
 
-use std::vec_ng::Vec;
+use std::vec::Vec;
 
 // We may eventually want to be able to fold over type parameters, too.
 pub trait Folder {

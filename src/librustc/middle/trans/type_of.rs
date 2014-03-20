@@ -19,7 +19,7 @@ use util::ppaux::Repr;
 
 use middle::trans::type_::Type;
 
-use std::vec_ng::Vec;
+use std::vec::Vec;
 use syntax::ast;
 use syntax::opt_vec;
 

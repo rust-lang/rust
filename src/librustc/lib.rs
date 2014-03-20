@@ -55,8 +55,8 @@ use std::io;
 use std::os;
 use std::str;
 use std::task;
-use std::vec_ng::Vec;
-use std::vec_ng;
+use std::vec::Vec;
+use std::vec;
 use syntax::ast;
 use syntax::diagnostic::Emitter;
 use syntax::diagnostic;
@@ -241,7 +241,7 @@ pub fn run_compiler(args: &[~str]) {
         return;
     }
 
-    let lint_flags = vec_ng::append(matches.opt_strs("W")
+    let lint_flags = vec::append(matches.opt_strs("W")
                                            .move_iter()
                                            .collect(),
                                     matches.opt_strs("warn"));

@@ -33,7 +33,7 @@ use syntax::visit;
 use collections::HashMap;
 use std::iter::Enumerate;
 use std::slice;
-use std::vec_ng::Vec;
+use std::vec::Vec;
 
 // The actual lang items defined come at the end of this file in one handy table.
 // So you probably just want to nip down to the end.

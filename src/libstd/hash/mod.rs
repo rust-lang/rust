@@ -71,7 +71,7 @@ use option::{Option, Some, None};
 use rc::Rc;
 use str::{Str, StrSlice};
 use slice::{Vector, ImmutableVector};
-use vec_ng::Vec;
+use vec::Vec;
 
 /// Reexport the `sip::hash` function as our default hasher.
 pub use hash = self::sip::hash;

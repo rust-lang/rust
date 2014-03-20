@@ -16,7 +16,7 @@ use middle::trans::cabi_x86_64;
 use middle::trans::cabi_arm;
 use middle::trans::cabi_mips;
 use middle::trans::type_::Type;
-use std::vec_ng::Vec;
+use std::vec::Vec;
 use syntax::abi::{X86, X86_64, Arm, Mips};
 
 #[deriving(Clone, Eq)]

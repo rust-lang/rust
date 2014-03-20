@@ -63,7 +63,7 @@ use result::{Ok, Err};
 use path;
 use path::{Path, GenericPath};
 use slice::{OwnedVector, ImmutableVector};
-use vec_ng::Vec;
+use vec::Vec;
 
 /// Unconstrained file access type that exposes read and write operations
 ///

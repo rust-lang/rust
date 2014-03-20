@@ -58,7 +58,7 @@ use middle::typeck::infer::unify::{Root, UnifyInferCtxtMethods};
 use util::common::{indent, indenter};
 use util::ppaux::ty_to_str;
 
-use std::vec_ng::Vec;
+use std::vec::Vec;
 use syntax::ast;
 
 pub static resolve_nested_tvar: uint = 0b0000000001;
