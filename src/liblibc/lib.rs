@@ -197,6 +197,11 @@ pub use funcs::posix88::unistd::{execv, execve, execvp, getcwd};
 pub use funcs::posix88::unistd::{getpid, isatty, lseek, pipe, read};
 pub use funcs::posix88::unistd::{rmdir, unlink, write};
 
+#[cfg(not(windows))]
+#[link(name = "c")]
+#[link(name = "m")]
+extern {}
+
 /// A wrapper for a nullable pointer. Don't use this except for interacting
 /// with libc. Basically Option, but without the dependance on libstd.
 // If/when libprim happens, this can be removed in favor of that

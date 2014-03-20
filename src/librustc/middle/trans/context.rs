@@ -29,7 +29,6 @@ use util::sha2::Sha256;
 use util::nodemap::{NodeMap, NodeSet, DefIdMap};
 
 use libc::c_uint;
-use collections::{HashMap, HashSet};
 use std::cell::{Cell, RefCell};
 use std::c_str::ToCStr;
 use std::ptr;
