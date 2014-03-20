@@ -15,19 +15,15 @@ use std::hash::{Hasher, Hash};
 use std::io;
 use syntax::ast;
 
-#[cfg(not(stage0))]
 pub type FnvHashMap<K, V> = HashMap<K, V, FnvHasher>;
 
 pub type NodeMap<T> = FnvHashMap<ast::NodeId, T>;
 pub type DefIdMap<T> = FnvHashMap<ast::DefId, T>;
 
-#[cfg(not(stage0))]
 pub type NodeSet = HashSet<ast::NodeId, FnvHasher>;
-#[cfg(not(stage0))]
 pub type DefIdSet = HashSet<ast::DefId, FnvHasher>;
 
 // Hacks to get good names
-#[cfg(not(stage0))]
 pub mod FnvHashMap {
     use std::hash::Hash;
     use collections::HashMap;
@@ -45,50 +41,16 @@ pub mod DefIdMap {
         super::FnvHashMap::new()
     }
 }
-#[cfg(not(stage0))]
 pub mod NodeSet {
     use collections::HashSet;
     pub fn new() -> super::NodeSet {
         HashSet::with_hasher(super::FnvHasher)
     }
 }
-#[cfg(not(stage0))]
 pub mod DefIdSet {
     use collections::HashSet;
     pub fn new() -> super::DefIdSet {
         HashSet::with_hasher(super::FnvHasher)
-    }
-}
-
-#[cfg(stage0)]
-pub type FnvHashMap<K, V> = HashMap<K, V>;
-
-#[cfg(stage0)]
-pub type NodeSet = HashSet<ast::NodeId>;
-#[cfg(stage0)]
-pub type DefIdSet = HashSet<ast::DefId>;
-
-// Hacks to get good names
-#[cfg(stage0)]
-pub mod FnvHashMap {
-    use std::hash::Hash;
-    use collections::HashMap;
-    pub fn new<K: Hash + Eq, V>() -> super::FnvHashMap<K, V> {
-        HashMap::new()
-    }
-}
-#[cfg(stage0)]
-pub mod NodeSet {
-    use collections::HashSet;
-    pub fn new() -> super::NodeSet {
-        HashSet::new()
-    }
-}
-#[cfg(stage0)]
-pub mod DefIdSet {
-    use collections::HashSet;
-    pub fn new() -> super::DefIdSet {
-        HashSet::new()
     }
 }
 

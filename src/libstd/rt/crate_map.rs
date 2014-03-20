@@ -13,11 +13,6 @@ use option::{Some, None, Option};
 use ptr::RawPtr;
 use rt::rtio::EventLoop;
 
-#[cfg(stage0)] use cmp::TotalOrd;
-#[cfg(stage0)] use container::MutableSet;
-#[cfg(stage0)] use iter::Iterator;
-#[cfg(stage0)] use slice::{ImmutableVector, OwnedVector};
-
 // Need to tell the linker on OS X to not barf on undefined symbols
 // and instead look them up at runtime, which we need to resolve
 // the crate_map properly.
@@ -25,20 +20,6 @@ use rt::rtio::EventLoop;
 #[link_args = "-Wl,-U,__rust_crate_map_toplevel"]
 extern {}
 
-#[cfg(stage0)]
-pub struct ModEntry<'a> {
-    name: &'a str,
-    log_level: *mut u32
-}
-
-#[cfg(stage0)]
-pub struct CrateMap<'a> {
-    version: i32,
-    entries: &'a [ModEntry<'a>],
-    children: &'a [&'a CrateMap<'a>],
-    event_loop_factory: Option<fn() -> ~EventLoop>,
-}
-#[cfg(not(stage0))]
 pub struct CrateMap<'a> {
     version: i32,
     event_loop_factory: Option<fn() -> ~EventLoop>,
@@ -120,47 +101,4 @@ pub fn get_crate_map() -> Option<&'static CrateMap<'static>> {
             return Some(cast::transmute(sym));
         }
     }
-}
-
-#[cfg(stage0)]
-fn version(crate_map: &CrateMap) -> i32 {
-    match crate_map.version {
-        2 => return 2,
-        _ => return 0
-    }
-}
-
-#[cfg(stage0)]
-fn do_iter_crate_map<'a>(
-                     crate_map: &'a CrateMap<'a>,
-                     f: |&'a ModEntry<'a>|,
-                     visited: &mut ~[*CrateMap<'a>]) {
-    let raw = crate_map as *CrateMap<'a>;
-    if visited.bsearch(|a| (*a as uint).cmp(&(raw as uint))).is_some() {
-        return
-    }
-    match visited.iter().position(|i| *i as uint > raw as uint) {
-        Some(i) => visited.insert(i, raw),
-        None => visited.push(raw),
-    }
-
-    match version(crate_map) {
-        2 => {
-            let (entries, children) = (crate_map.entries, crate_map.children);
-            for entry in entries.iter() {
-                f(entry);
-            }
-            for child in children.iter() {
-                do_iter_crate_map(*child, |x| f(x), visited);
-            }
-        },
-        _ => fail!("invalid crate map version")
-    }
-}
-
-/// Iterates recursively over `crate_map` and all child crate maps
-#[cfg(stage0)]
-pub fn iter_crate_map<'a>(crate_map: &'a CrateMap<'a>, f: |&'a ModEntry<'a>|) {
-    let mut v = ~[];
-    do_iter_crate_map(crate_map, f, &mut v);
 }

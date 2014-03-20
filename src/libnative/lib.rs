@@ -50,6 +50,7 @@
       html_root_url = "http://static.rust-lang.org/doc/master")];
 #[deny(unused_result, unused_must_use)];
 #[allow(non_camel_case_types)];
+#[allow(deprecated_owned_vector)]; // NOTE: remove after stage0
 
 // NB this crate explicitly does *not* allow glob imports, please seriously
 //    consider whether they're needed before adding that feature here (the

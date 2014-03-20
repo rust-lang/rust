@@ -20,6 +20,7 @@
       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
       html_root_url = "http://static.rust-lang.org/doc/master")];
 #[feature(phase)];
+#[allow(deprecated_owned_vector)]; // NOTE: remove after stage0
 
 #[cfg(test)] #[phase(syntax, link)] extern crate log;
 

@@ -28,8 +28,9 @@ This API is completely unstable and subject to change.
       html_root_url = "http://static.rust-lang.org/doc/master")];
 
 #[allow(deprecated)];
-#[feature(macro_rules, globs, struct_variant, managed_boxes)];
-#[feature(quote, default_type_params, phase)];
+#[feature(macro_rules, globs, struct_variant, managed_boxes, quote,
+          default_type_params, phase)];
+#[allow(deprecated_owned_vector)]; // NOTE: remove after stage0
 
 extern crate flate;
 extern crate arena;

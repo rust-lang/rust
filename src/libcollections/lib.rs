@@ -21,10 +21,7 @@
       html_root_url = "http://static.rust-lang.org/doc/master")];
 
 #[feature(macro_rules, managed_boxes, default_type_params, phase)];
-
-// NOTE remove the following two attributes after the next snapshot.
-#[allow(unrecognized_lint)];
-#[allow(default_type_param_usage)];
+#[allow(deprecated_owned_vector)]; // NOTE: remove after stage0
 
 extern crate rand;
 
