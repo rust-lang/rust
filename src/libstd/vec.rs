@@ -7,7 +7,7 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-//! A growable, owned vector
+//! An owned, growable vector.
 
 use cast::{forget, transmute};
 use clone::Clone;
@@ -30,18 +30,29 @@ use raw::Slice;
 use slice::{ImmutableEqVector, ImmutableVector, Items, MutItems, MutableVector};
 use slice::{MutableTotalOrdVector};
 
-/// An owned, growable vector
+/// An owned, growable vector.
 ///
-/// `Vec<T>` is the replacement for the deprecated `~[T]` type. The API is
-/// largely the same. The `vec!` macro is provided to make initialization
-/// easier.
+/// # Examples
 ///
-/// # Example
+/// ```rust
+/// # use std::vec::Vec;
+/// let mut vec = Vec::new();
+/// vec.push(1);
+/// vec.push(2);
+///
+/// assert_eq!(vec.len(), 2);
+/// assert_eq!(vec.get(0), &1);
+///
+/// assert_eq!(vec.pop(), Some(2));
+/// assert_eq!(vec.len(), 1);
+/// ```
+///
+/// The `vec!` macro is provided to make initialization more convenient:
 ///
 /// ```rust
 /// let mut vec = vec!(1, 2, 3);
 /// vec.push(4);
-/// println!("{}", vec); // prints [1, 2, 3, 4]
+/// assert_eq!(vec, vec!(1, 2, 3, 4));
 /// ```
 #[unsafe_no_drop_flag]
 pub struct Vec<T> {
@@ -86,7 +97,6 @@ impl<T> Vec<T> {
             Vec { len: 0, cap: capacity, ptr: ptr as *mut T }
         }
     }
-
 
     /// Creates and initializes a `Vec`.
     ///
@@ -767,13 +777,13 @@ impl<T> Vec<T> {
     ///
     /// # Example
     /// ```rust
-    /// let mut v = ~[~"foo", ~"bar", ~"baz", ~"qux"];
+    /// let mut v = vec!(~"foo", ~"bar", ~"baz", ~"qux");
     ///
     /// assert_eq!(v.swap_remove(1), Some(~"bar"));
-    /// assert_eq!(v, ~[~"foo", ~"qux", ~"baz"]);
+    /// assert_eq!(v, vec!(~"foo", ~"qux", ~"baz"));
     ///
     /// assert_eq!(v.swap_remove(0), Some(~"foo"));
-    /// assert_eq!(v, ~[~"baz", ~"qux"]);
+    /// assert_eq!(v, vec!(~"baz", ~"qux"));
     ///
     /// assert_eq!(v.swap_remove(2), None);
     /// ```
@@ -869,13 +879,13 @@ impl<T> Vec<T> {
     /// # Example
     ///
     /// ```rust
-    /// let mut v = ~[1, 2, 3];
+    /// let mut v = vec!(1, 2, 3);
     /// assert_eq!(v.remove(1), Some(2));
-    /// assert_eq!(v, ~[1, 3]);
+    /// assert_eq!(v, vec!(1, 3));
     ///
     /// assert_eq!(v.remove(4), None);
     /// // v is unchanged:
-    /// assert_eq!(v, ~[1, 3]);
+    /// assert_eq!(v, vec!(1, 3));
     /// ```
     pub fn remove(&mut self, index: uint) -> Option<T> {
         let len = self.len();
