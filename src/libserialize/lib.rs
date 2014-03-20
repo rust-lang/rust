@@ -21,13 +21,8 @@ Core encoding and decoding interfaces.
 #[doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
       html_root_url = "http://static.rust-lang.org/doc/master")];
-#[allow(missing_doc)];
-#[forbid(non_camel_case_types)];
 #[feature(macro_rules, managed_boxes, default_type_params, phase)];
-
-// NOTE remove the following two attributes after the next snapshot.
-#[allow(unrecognized_lint)];
-#[allow(default_type_param_usage)];
+#[allow(deprecated_owned_vector)]; // NOTE: remove after stage0
 
 // test harness access
 #[cfg(test)]

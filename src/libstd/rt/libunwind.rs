@@ -101,17 +101,11 @@ extern "C" {
     pub fn _Unwind_Backtrace(trace: _Unwind_Trace_Fn,
                              trace_argument: *libc::c_void)
                 -> _Unwind_Reason_Code;
-    #[cfg(stage0, not(target_os = "android"))]
-    pub fn _Unwind_GetIP(ctx: *_Unwind_Context) -> libc::uintptr_t;
-    #[cfg(stage0, not(target_os = "android"))]
-    pub fn _Unwind_FindEnclosingFunction(pc: *libc::c_void) -> *libc::c_void;
 
-    #[cfg(not(stage0),
-          not(target_os = "android"),
+    #[cfg(not(target_os = "android"),
           not(target_os = "linux", target_arch = "arm"))]
     pub fn _Unwind_GetIP(ctx: *_Unwind_Context) -> libc::uintptr_t;
-    #[cfg(not(stage0),
-          not(target_os = "android"),
+    #[cfg(not(target_os = "android"),
           not(target_os = "linux", target_arch = "arm"))]
     pub fn _Unwind_FindEnclosingFunction(pc: *libc::c_void) -> *libc::c_void;
 }
