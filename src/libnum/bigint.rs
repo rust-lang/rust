@@ -2185,7 +2185,7 @@ mod bigint_tests {
             nums.push(BigInt::from_slice(Minus, *s));
         }
         nums.push(Zero::zero());
-        nums.extend(&mut vs.iter().map(|s| BigInt::from_slice(Plus, *s)));
+        nums.extend(vs.iter().map(|s| BigInt::from_slice(Plus, *s)));
 
         for (i, ni) in nums.iter().enumerate() {
             for (j0, nj) in nums.slice(i, nums.len()).iter().enumerate() {
