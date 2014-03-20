@@ -15,8 +15,6 @@ use parse::token;
 use parse::parser::Parser;
 use parse::token::INTERPOLATED;
 
-use std::vec::Vec;
-
 // a parser that can parse attributes.
 pub trait ParserAttr {
     fn parse_outer_attributes(&mut self) -> Vec<ast::Attribute> ;

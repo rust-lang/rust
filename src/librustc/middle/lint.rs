@@ -58,7 +58,6 @@ use std::u16;
 use std::u32;
 use std::u64;
 use std::u8;
-use std::vec::Vec;
 use collections::SmallIntMap;
 use syntax::ast_map;
 use syntax::ast_util::IdVisitingOperation;
@@ -405,7 +404,7 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
      LintSpec {
         lint: DeprecatedOwnedVector,
         desc: "use of a `~[T]` vector",
-        default: warn
+        default: allow,
     }),
 ];
 

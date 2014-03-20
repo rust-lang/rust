@@ -17,8 +17,6 @@ use parse::token::*;
 use parse::token;
 use parse;
 
-use std::vec::Vec;
-
 /**
 *
 * Quasiquoting works via token trees.
@@ -36,8 +34,6 @@ pub mod rt {
     use parse::token;
     use parse;
     use print::pprust;
-
-    use std::vec::Vec;
 
     pub use ast::*;
     pub use parse::token::*;

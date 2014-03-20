@@ -20,7 +20,6 @@
 use std::io;
 use std::uint;
 use std::slice;
-use std::vec::Vec;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::ast_util::IdRange;

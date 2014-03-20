@@ -34,7 +34,6 @@ use syntax::visit::Visitor;
 use std::cell::{Cell, RefCell};
 use std::uint;
 use std::mem::replace;
-use std::vec::Vec;
 use collections::{HashMap, HashSet};
 
 // Definition mapping

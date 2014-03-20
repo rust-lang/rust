@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use std::mem;
-use std::vec::Vec;
 use std::vec;
 
 /// A vector type optimized for cases where the size is almost always 0 or 1
@@ -145,8 +144,6 @@ impl<T> Iterator<T> for MoveItems<T> {
 #[cfg(test)]
 mod test {
     use super::*;
-
-    use std::vec::Vec;
 
     #[test]
     fn test_len() {

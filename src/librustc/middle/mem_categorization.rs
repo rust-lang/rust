@@ -66,7 +66,6 @@ use middle::ty;
 use middle::typeck;
 use util::ppaux::{ty_to_str, region_ptr_to_str, Repr};
 
-use std::vec::Vec;
 use syntax::ast::{MutImmutable, MutMutable};
 use syntax::ast;
 use syntax::codemap::Span;

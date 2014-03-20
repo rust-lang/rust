@@ -17,7 +17,6 @@
       html_root_url = "http://static.rust-lang.org/doc/master")];
 
 #[feature(phase)];
-#[allow(deprecated_owned_vector)];
 
 #[cfg(test)] #[phase(syntax, link)] extern crate log;
 extern crate serialize;

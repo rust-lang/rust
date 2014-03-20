@@ -15,7 +15,6 @@ use metadata::filesearch;
 
 use collections::HashSet;
 use std::{os, slice};
-use std::vec::Vec;
 use syntax::abi;
 
 fn not_win32(os: abi::Os) -> bool {

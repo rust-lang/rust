@@ -60,7 +60,6 @@ use middle::typeck::rscope::{RegionScope};
 use middle::typeck::lookup_def_tcx;
 use util::ppaux::Repr;
 
-use std::vec::Vec;
 use syntax::abi::AbiSet;
 use syntax::{ast, ast_util};
 use syntax::codemap::Span;

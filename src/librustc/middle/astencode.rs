@@ -37,7 +37,6 @@ use std::cast;
 use std::cell::RefCell;
 use std::io::Seek;
 use std::rc::Rc;
-use std::vec::Vec;
 
 use serialize::ebml::reader;
 use serialize::ebml;

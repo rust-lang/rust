@@ -13,8 +13,6 @@
 use middle::ty;
 use util::ppaux::Repr;
 
-use std::vec::Vec;
-
 pub trait TypeFolder {
     fn tcx<'a>(&'a self) -> &'a ty::ctxt;
 

@@ -49,7 +49,6 @@ use util::ppaux::Repr;
 
 use middle::trans::type_::Type;
 
-use std::vec::Vec;
 use std::vec;
 use syntax::ast;
 use syntax::abi::AbiSet;
