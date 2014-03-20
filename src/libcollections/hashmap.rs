@@ -2199,11 +2199,11 @@ mod test_set {
 #[cfg(test)]
 mod bench {
     extern crate test;
-    use self::test::BenchHarness;
+    use self::test::Bencher;
     use std::iter::{range_inclusive};
 
     #[bench]
-    fn insert(b: &mut BenchHarness) {
+    fn insert(b: &mut Bencher) {
         use super::HashMap;
 
         let mut m = HashMap::new();
@@ -2221,7 +2221,7 @@ mod bench {
     }
 
     #[bench]
-    fn find_existing(b: &mut BenchHarness) {
+    fn find_existing(b: &mut Bencher) {
         use super::HashMap;
 
         let mut m = HashMap::new();
@@ -2236,7 +2236,7 @@ mod bench {
     }
 
     #[bench]
-    fn find_nonexisting(b: &mut BenchHarness) {
+    fn find_nonexisting(b: &mut Bencher) {
         use super::HashMap;
 
         let mut m = HashMap::new();
@@ -2251,7 +2251,7 @@ mod bench {
     }
 
     #[bench]
-    fn hashmap_as_queue(b: &mut BenchHarness) {
+    fn hashmap_as_queue(b: &mut Bencher) {
         use super::HashMap;
 
         let mut m = HashMap::new();
@@ -2270,7 +2270,7 @@ mod bench {
     }
 
     #[bench]
-    fn find_pop_insert(b: &mut BenchHarness) {
+    fn find_pop_insert(b: &mut Bencher) {
         use super::HashMap;
 
         let mut m = HashMap::new();

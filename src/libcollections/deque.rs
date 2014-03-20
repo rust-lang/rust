@@ -42,7 +42,7 @@ pub trait Deque<T> : Mutable {
 #[cfg(test)]
 pub mod bench {
     extern crate test;
-    use self::test::BenchHarness;
+    use self::test::Bencher;
     use std::container::MutableMap;
     use std::slice;
     use rand;
@@ -50,7 +50,7 @@ pub mod bench {
 
     pub fn insert_rand_n<M:MutableMap<uint,uint>>(n: uint,
                                                   map: &mut M,
-                                                  bh: &mut BenchHarness) {
+                                                  b: &mut Bencher) {
         // setup
         let mut rng = rand::XorShiftRng::new();
 
@@ -60,7 +60,7 @@ pub mod bench {
         }
 
         // measure
-        bh.iter(|| {
+        b.iter(|| {
             let k = rng.gen::<uint>() % n;
             map.insert(k, 1);
             map.remove(&k);
@@ -69,7 +69,7 @@ pub mod bench {
 
     pub fn insert_seq_n<M:MutableMap<uint,uint>>(n: uint,
                                                  map: &mut M,
-                                                 bh: &mut BenchHarness) {
+                                                 b: &mut Bencher) {
         // setup
         map.clear();
         for i in range(0u, n) {
@@ -78,7 +78,7 @@ pub mod bench {
 
         // measure
         let mut i = 1;
-        bh.iter(|| {
+        b.iter(|| {
             map.insert(i, 1);
             map.remove(&i);
             i = (i + 2) % n;
@@ -87,7 +87,7 @@ pub mod bench {
 
     pub fn find_rand_n<M:MutableMap<uint,uint>>(n: uint,
                                                 map: &mut M,
-                                                bh: &mut BenchHarness) {
+                                                b: &mut Bencher) {
         // setup
         let mut rng = rand::XorShiftRng::new();
         let mut keys = slice::from_fn(n, |_| rng.gen::<uint>() % n);
@@ -100,7 +100,7 @@ pub mod bench {
 
         // measure
         let mut i = 0;
-        bh.iter(|| {
+        b.iter(|| {
             map.find(&(keys[i]));
             i = (i + 1) % n;
         })
@@ -108,7 +108,7 @@ pub mod bench {
 
     pub fn find_seq_n<M:MutableMap<uint,uint>>(n: uint,
                                                map: &mut M,
-                                               bh: &mut BenchHarness) {
+                                               b: &mut Bencher) {
         // setup
         for i in range(0u, n) {
             map.insert(i, 1);
@@ -116,7 +116,7 @@ pub mod bench {
 
         // measure
         let mut i = 0;
-        bh.iter(|| {
+        b.iter(|| {
             let x = map.find(&i);
             i = (i + 1) % n;
             x

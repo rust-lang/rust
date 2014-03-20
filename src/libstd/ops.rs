@@ -567,7 +567,7 @@ pub trait DerefMut<Result>: Deref<Result> {
 #[cfg(test)]
 mod bench {
     extern crate test;
-    use self::test::BenchHarness;
+    use self::test::Bencher;
     use ops::Drop;
 
     // Overhead of dtors
@@ -582,8 +582,8 @@ mod bench {
     }
 
     #[bench]
-    fn alloc_obj_with_dtor(bh: &mut BenchHarness) {
-        bh.iter(|| {
+    fn alloc_obj_with_dtor(b: &mut Bencher) {
+        b.iter(|| {
             HasDtor { x : 10 };
         })
     }

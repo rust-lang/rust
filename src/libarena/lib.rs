@@ -489,7 +489,7 @@ impl<T> Drop for TypedArena<T> {
 #[cfg(test)]
 mod tests {
     extern crate test;
-    use self::test::BenchHarness;
+    use self::test::Bencher;
     use super::{Arena, TypedArena};
 
     struct Point {
@@ -511,9 +511,9 @@ mod tests {
     }
 
     #[bench]
-    pub fn bench_pod(bh: &mut BenchHarness) {
+    pub fn bench_pod(b: &mut Bencher) {
         let arena = TypedArena::new();
-        bh.iter(|| {
+        b.iter(|| {
             arena.alloc(Point {
                 x: 1,
                 y: 2,
@@ -523,8 +523,8 @@ mod tests {
     }
 
     #[bench]
-    pub fn bench_pod_nonarena(bh: &mut BenchHarness) {
-        bh.iter(|| {
+    pub fn bench_pod_nonarena(b: &mut Bencher) {
+        b.iter(|| {
             ~Point {
                 x: 1,
                 y: 2,
@@ -534,9 +534,9 @@ mod tests {
     }
 
     #[bench]
-    pub fn bench_pod_old_arena(bh: &mut BenchHarness) {
+    pub fn bench_pod_old_arena(b: &mut Bencher) {
         let arena = Arena::new();
-        bh.iter(|| {
+        b.iter(|| {
             arena.alloc(|| {
                 Point {
                     x: 1,
@@ -564,9 +564,9 @@ mod tests {
     }
 
     #[bench]
-    pub fn bench_nonpod(bh: &mut BenchHarness) {
+    pub fn bench_nonpod(b: &mut Bencher) {
         let arena = TypedArena::new();
-        bh.iter(|| {
+        b.iter(|| {
             arena.alloc(Nonpod {
                 string: ~"hello world",
                 array: ~[ 1, 2, 3, 4, 5 ],
@@ -575,8 +575,8 @@ mod tests {
     }
 
     #[bench]
-    pub fn bench_nonpod_nonarena(bh: &mut BenchHarness) {
-        bh.iter(|| {
+    pub fn bench_nonpod_nonarena(b: &mut Bencher) {
+        b.iter(|| {
             ~Nonpod {
                 string: ~"hello world",
                 array: ~[ 1, 2, 3, 4, 5 ],
@@ -585,9 +585,9 @@ mod tests {
     }
 
     #[bench]
-    pub fn bench_nonpod_old_arena(bh: &mut BenchHarness) {
+    pub fn bench_nonpod_old_arena(b: &mut Bencher) {
         let arena = Arena::new();
-        bh.iter(|| {
+        b.iter(|| {
             arena.alloc(|| Nonpod {
                 string: ~"hello world",
                 array: ~[ 1, 2, 3, 4, 5 ],
