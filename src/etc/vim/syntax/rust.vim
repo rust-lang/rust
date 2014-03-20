@@ -72,7 +72,7 @@ syn keyword rustTrait Any AnyOwnExt AnyRefExt AnyMutRefExt
 syn keyword rustTrait Ascii AsciiCast OwnedAsciiCast AsciiStr IntoBytes
 syn keyword rustTrait ToCStr
 syn keyword rustTrait Char
-syn keyword rustTrait Clone DeepClone
+syn keyword rustTrait Clone
 syn keyword rustTrait Eq Ord TotalEq TotalOrd Ordering Equiv
 syn keyword rustEnumVariant Less Equal Greater
 syn keyword rustTrait Container Mutable Map MutableMap Set MutableSet
