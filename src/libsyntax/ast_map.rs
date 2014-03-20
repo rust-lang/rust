@@ -22,7 +22,7 @@ use std::cell::RefCell;
 use std::iter;
 use std::slice;
 use std::fmt;
-use std::vec_ng::Vec;
+use std::vec::Vec;
 
 #[deriving(Clone, Eq)]
 pub enum PathElem {

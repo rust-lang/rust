@@ -15,7 +15,7 @@ use middle::ty_fold;
 use middle::ty_fold::TypeFolder;
 
 use collections::HashMap;
-use std::vec_ng::Vec;
+use std::vec::Vec;
 use util::ppaux::Repr;
 use util::ppaux;
 

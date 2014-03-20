@@ -76,7 +76,7 @@ use middle::typeck::infer::region_inference::ProcessedErrors;
 use middle::typeck::infer::region_inference::SameRegions;
 use std::cell::{Cell, RefCell};
 use std::char::from_u32;
-use std::vec_ng::Vec;
+use std::vec::Vec;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util;

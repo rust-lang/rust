@@ -15,7 +15,7 @@ use ext::base::ExtCtxt;
 use ext::build::{AstBuilder};
 use ext::deriving::generic::*;
 
-use std::vec_ng::Vec;
+use std::vec::Vec;
 
 pub fn expand_deriving_rand(cx: &mut ExtCtxt,
                             span: Span,

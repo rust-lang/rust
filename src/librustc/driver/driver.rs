@@ -37,8 +37,8 @@ use std::io::fs;
 use std::io::MemReader;
 use std::mem::drop;
 use std::os;
-use std::vec_ng::Vec;
-use std::vec_ng;
+use std::vec::Vec;
+use std::vec;
 use getopts::{optopt, optmulti, optflag, optflagopt};
 use getopts;
 use syntax::ast;
@@ -138,7 +138,7 @@ pub fn build_configuration(sess: &Session) -> ast::CrateConfig {
     } else {
         InternedString::new("nogc")
     });
-    return vec_ng::append(user_cfg.move_iter().collect(),
+    return vec::append(user_cfg.move_iter().collect(),
                           default_cfg.as_slice());
 }
 
@@ -835,7 +835,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> session::Options {
 
         let level_short = level_name.slice_chars(0, 1);
         let level_short = level_short.to_ascii().to_upper().into_str();
-        let flags = vec_ng::append(matches.opt_strs(level_short)
+        let flags = vec::append(matches.opt_strs(level_short)
                                           .move_iter()
                                           .collect(),
                                    matches.opt_strs(level_name));

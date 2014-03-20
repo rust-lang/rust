@@ -41,7 +41,7 @@ use std::cmp;
 use std::fmt;
 use std::fmt::Show;
 use std::option::{Option, Some, None};
-use std::vec_ng::Vec;
+use std::vec::Vec;
 
 /// An identifier in the pre-release or build metadata. If the identifier can
 /// be parsed as a decimal value, it will be represented with `Numeric`.

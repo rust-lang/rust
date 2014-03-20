@@ -20,7 +20,7 @@ use parse::token;
 use std::io;
 use std::str;
 use std::uint;
-use std::vec_ng::Vec;
+use std::vec::Vec;
 
 #[deriving(Clone, Eq)]
 pub enum CommentStyle {

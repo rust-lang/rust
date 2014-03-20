@@ -15,7 +15,7 @@ use parse::token;
 use parse::parser::Parser;
 use parse::token::INTERPOLATED;
 
-use std::vec_ng::Vec;
+use std::vec::Vec;
 
 // a parser that can parse attributes.
 pub trait ParserAttr {

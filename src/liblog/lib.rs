@@ -126,7 +126,7 @@ use std::local_data;
 use std::os;
 use std::rt;
 use std::slice;
-use std::vec_ng::Vec;
+use std::vec::Vec;
 
 use sync::one::{Once, ONCE_INIT};
 

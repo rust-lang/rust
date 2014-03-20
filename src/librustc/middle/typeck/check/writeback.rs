@@ -28,7 +28,7 @@ use middle::typeck::write_ty_to_tcx;
 use util::ppaux;
 use util::ppaux::Repr;
 
-use std::vec_ng::Vec;
+use std::vec::Vec;
 use syntax::ast;
 use syntax::codemap::Span;
 use syntax::print::pprust::pat_to_str;

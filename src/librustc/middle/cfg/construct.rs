@@ -12,7 +12,7 @@ use middle::cfg::*;
 use middle::graph;
 use middle::typeck;
 use middle::ty;
-use std::vec_ng::Vec;
+use std::vec::Vec;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::opt_vec;

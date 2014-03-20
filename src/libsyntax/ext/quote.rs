@@ -17,7 +17,7 @@ use parse::token::*;
 use parse::token;
 use parse;
 
-use std::vec_ng::Vec;
+use std::vec::Vec;
 
 /**
 *
@@ -37,7 +37,7 @@ pub mod rt {
     use parse;
     use print::pprust;
 
-    use std::vec_ng::Vec;
+    use std::vec::Vec;
 
     pub use ast::*;
     pub use parse::token::*;

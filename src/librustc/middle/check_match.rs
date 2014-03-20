@@ -21,8 +21,8 @@ use util::ppaux::ty_to_str;
 
 use std::cmp;
 use std::iter;
-use std::vec_ng::Vec;
-use std::vec_ng;
+use std::vec::Vec;
+use std::vec;
 use syntax::ast::*;
 use syntax::ast_util::{unguarded_pat, walk_pat};
 use syntax::codemap::{DUMMY_SP, Span};
@@ -569,10 +569,10 @@ fn specialize(cx: &MatchCheckCtxt,
         Pat{id: pat_id, node: n, span: pat_span} =>
             match n {
             PatWild => {
-                Some(vec_ng::append(Vec::from_elem(arity, wild()), r.tail()))
+                Some(vec::append(Vec::from_elem(arity, wild()), r.tail()))
             }
             PatWildMulti => {
-                Some(vec_ng::append(Vec::from_elem(arity, wild_multi()),
+                Some(vec::append(Vec::from_elem(arity, wild_multi()),
                                     r.tail()))
             }
             PatIdent(_, _, _) => {
@@ -628,7 +628,7 @@ fn specialize(cx: &MatchCheckCtxt,
                     }
                     _ => {
                         Some(
-                            vec_ng::append(
+                            vec::append(
                                 Vec::from_elem(arity, wild()),
                                 r.tail()
                             )
@@ -682,7 +682,7 @@ fn specialize(cx: &MatchCheckCtxt,
                             Some(args) => args.iter().map(|x| *x).collect(),
                             None => Vec::from_elem(arity, wild())
                         };
-                        Some(vec_ng::append(args, r.tail()))
+                        Some(vec::append(args, r.tail()))
                     }
                     DefVariant(_, _, _) => None,
 
@@ -695,7 +695,7 @@ fn specialize(cx: &MatchCheckCtxt,
                             }
                             None => new_args = Vec::from_elem(arity, wild())
                         }
-                        Some(vec_ng::append(new_args, r.tail()))
+                        Some(vec::append(new_args, r.tail()))
                     }
                     _ => None
                 }
@@ -716,7 +716,7 @@ fn specialize(cx: &MatchCheckCtxt,
                                     _ => wild()
                                 }
                             });
-                            Some(vec_ng::append(args, r.tail()))
+                            Some(vec::append(args, r.tail()))
                         } else {
                             None
                         }
@@ -747,15 +747,15 @@ fn specialize(cx: &MatchCheckCtxt,
                                 _ => wild()
                             }
                         }).collect();
-                        Some(vec_ng::append(args, r.tail()))
+                        Some(vec::append(args, r.tail()))
                     }
                 }
             }
             PatTup(args) => {
-                Some(vec_ng::append(args.iter().map(|x| *x).collect(), r.tail()))
+                Some(vec::append(args.iter().map(|x| *x).collect(), r.tail()))
             }
             PatUniq(a) | PatRegion(a) => {
-                Some(vec_ng::append(vec!(a), r.tail()))
+                Some(vec::append(vec!(a), r.tail()))
             }
             PatLit(expr) => {
                 let e_v = eval_const_expr(cx.tcx, expr);

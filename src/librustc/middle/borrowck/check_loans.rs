@@ -23,7 +23,7 @@ use middle::borrowck::*;
 use middle::moves;
 use middle::ty;
 use middle::typeck::MethodCall;
-use std::vec_ng::Vec;
+use std::vec::Vec;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::codemap::Span;

@@ -25,7 +25,7 @@ use std::cell::{Cell, RefCell};
 use collections::HashMap;
 use std::ops::{BitOr, BitAnd};
 use std::result::{Result};
-use std::vec_ng::Vec;
+use std::vec::Vec;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util;

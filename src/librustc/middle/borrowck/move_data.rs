@@ -17,7 +17,7 @@ comments in the section "Moves and initialization" and in `doc.rs`.
 
 use std::cell::RefCell;
 use std::uint;
-use std::vec_ng::Vec;
+use std::vec::Vec;
 use collections::{HashMap, HashSet};
 use middle::borrowck::*;
 use middle::dataflow::DataFlowContext;

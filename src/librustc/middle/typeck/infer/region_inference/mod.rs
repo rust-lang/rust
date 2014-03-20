@@ -27,7 +27,7 @@ use util::ppaux::{Repr};
 use std::cell::{Cell, RefCell};
 use std::uint;
 use std::slice;
-use std::vec_ng::Vec;
+use std::vec::Vec;
 use collections::{HashMap, HashSet};
 use syntax::ast;
 use syntax::opt_vec;

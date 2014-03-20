@@ -23,7 +23,7 @@ use metadata::loader;
 use metadata::loader::Os;
 
 use std::cell::RefCell;
-use std::vec_ng::Vec;
+use std::vec::Vec;
 use collections::HashMap;
 use syntax::ast;
 use syntax::abi;

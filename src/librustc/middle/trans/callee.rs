@@ -49,8 +49,8 @@ use util::ppaux::Repr;
 
 use middle::trans::type_::Type;
 
-use std::vec_ng::Vec;
-use std::vec_ng;
+use std::vec::Vec;
+use std::vec;
 use syntax::ast;
 use syntax::abi::AbiSet;
 use syntax::ast_map;
@@ -233,7 +233,7 @@ fn resolve_default_method_vtables(bcx: &Block,
         None => slice::from_elem(num_method_vtables, @Vec::new())
     };
 
-    let param_vtables = @(vec_ng::append((*trait_vtables_fixed).clone(),
+    let param_vtables = @(vec::append((*trait_vtables_fixed).clone(),
                                           method_vtables));
 
     let self_vtables = resolve_param_vtables_under_param_substs(
