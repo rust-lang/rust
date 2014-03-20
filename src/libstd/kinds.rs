@@ -46,6 +46,22 @@ pub trait Pod {
     // Empty.
 }
 
+/// Types that can be safely shared between threads, hence thread-safe.
+#[cfg(stage0)]
+pub trait Share {
+    // Empty
+}
+
+#[cfg(stage0)]
+impl<T> Share for T {}
+
+/// Types that can be safely shared between threads, hence thread-safe.
+#[cfg(not(stage0))]
+#[lang="share"]
+pub trait Share {
+    // Empty
+}
+
 /// Marker types are special types that are used with unsafe code to
 /// inform the compiler of special constraints. Marker types should
 /// only be needed when you are creating an abstraction that is
@@ -231,6 +247,13 @@ pub mod marker {
     #[lang="no_pod_bound"]
     #[deriving(Eq,Clone)]
     pub struct NoPod;
+
+    /// A type which is considered "not sharable", meaning that
+    /// its contents are not threadsafe, hence they cannot be
+    /// shared between tasks.
+    #[lang="no_share_bound"]
+    #[deriving(Eq,Clone)]
+    pub struct NoShare;
 
     /// A type which is considered managed by the GC. This is typically
     /// embedded in other types.

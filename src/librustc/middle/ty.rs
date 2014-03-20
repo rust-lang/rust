@@ -850,6 +850,7 @@ pub enum BuiltinBound {
     BoundFreeze,
     BoundSized,
     BoundPod,
+    BoundShare,
 }
 
 pub fn EmptyBuiltinBounds() -> BuiltinBounds {
@@ -862,6 +863,7 @@ pub fn AllBuiltinBounds() -> BuiltinBounds {
     set.add(BoundSend);
     set.add(BoundFreeze);
     set.add(BoundSized);
+    set.add(BoundShare);
     set
 }
 
@@ -1872,31 +1874,33 @@ macro_rules! def_type_content_sets(
 
 def_type_content_sets!(
     mod TC {
-        None                                = 0b0000__00000000__0000,
+        None                                = 0b0000_0000__0000_0000__0000,
 
         // Things that are interior to the value (first nibble):
-        InteriorUnsized                     = 0b0000__00000000__0001,
-        // InteriorAll                         = 0b0000__00000000__1111,
+        InteriorUnsized                     = 0b0000_0000__0000_0000__0001,
+        InteriorUnsafe                      = 0b0000_0000__0000_0000__0010,
+        // InteriorAll                         = 0b00000000__00000000__1111,
 
         // Things that are owned by the value (second and third nibbles):
-        OwnsOwned                           = 0b0000__00000001__0000,
-        OwnsDtor                            = 0b0000__00000010__0000,
-        OwnsManaged /* see [1] below */     = 0b0000__00000100__0000,
-        OwnsAffine                          = 0b0000__00001000__0000,
-        OwnsAll                             = 0b0000__11111111__0000,
+        OwnsOwned                           = 0b0000_0000__0000_0001__0000,
+        OwnsDtor                            = 0b0000_0000__0000_0010__0000,
+        OwnsManaged /* see [1] below */     = 0b0000_0000__0000_0100__0000,
+        OwnsAffine                          = 0b0000_0000__0000_1000__0000,
+        OwnsAll                             = 0b0000_0000__1111_1111__0000,
 
         // Things that are reachable by the value in any way (fourth nibble):
-        ReachesNonsendAnnot                 = 0b0001__00000000__0000,
-        ReachesBorrowed                     = 0b0010__00000000__0000,
-        // ReachesManaged /* see [1] below */  = 0b0100__00000000__0000,
-        ReachesMutable                      = 0b1000__00000000__0000,
-        ReachesAll                          = 0b1111__00000000__0000,
+        ReachesNonsendAnnot                 = 0b0000_0001__0000_0000__0000,
+        ReachesBorrowed                     = 0b0000_0010__0000_0000__0000,
+        // ReachesManaged /* see [1] below */  = 0b0000_0100__0000_0000__0000,
+        ReachesMutable                      = 0b0000_1000__0000_0000__0000,
+        ReachesNoShare                      = 0b0001_0000__0000_0000__0000,
+        ReachesAll                          = 0b0001_1111__0000_0000__0000,
 
         // Things that cause values to *move* rather than *copy*
-        Moves                               = 0b0000__00001011__0000,
+        Moves                               = 0b0000_0000__0000_1011__0000,
 
         // Things that mean drop glue is necessary
-        NeedsDrop                           = 0b0000__00000111__0000,
+        NeedsDrop                           = 0b0000_0000__0000_0111__0000,
 
         // Things that prevent values from being sent
         //
@@ -1905,31 +1909,34 @@ def_type_content_sets!(
         //       both ReachesManaged and OwnsManaged so that when
         //       a parameter has a bound T:Send, we are able to deduce
         //       that it neither reaches nor owns a managed pointer.
-        Nonsendable                         = 0b0111__00000100__0000,
+        Nonsendable                         = 0b0000_0111__0000_0100__0000,
 
         // Things that prevent values from being considered freezable
-        Nonfreezable                        = 0b1000__00000000__0000,
+        Nonfreezable                        = 0b0000_1000__0000_0000__0000,
 
         // Things that prevent values from being considered 'static
-        Nonstatic                           = 0b0010__00000000__0000,
+        Nonstatic                           = 0b0000_0010__0000_0000__0000,
 
         // Things that prevent values from being considered sized
-        Nonsized                            = 0b0000__00000000__0001,
+        Nonsized                            = 0b0000_0000__0000_0000__0001,
+
+        // Things that prevent values from being shared
+        Nonsharable                         = 0b0001_0000__0000_0000__0000,
 
         // Things that make values considered not POD (would be same
         // as `Moves`, but for the fact that managed data `@` is
         // not considered POD)
-        Nonpod                              = 0b0000__00001111__0000,
+        Nonpod                              = 0b0000_0000__0000_1111__0000,
 
         // Bits to set when a managed value is encountered
         //
         // [1] Do not set the bits TC::OwnsManaged or
         //     TC::ReachesManaged directly, instead reference
         //     TC::Managed to set them both at once.
-        Managed                             = 0b0100__00000100__0000,
+        Managed                             = 0b0000_0100__0000_0100__0000,
 
         // All bits
-        All                                 = 0b1111__11111111__1111
+        All                                 = 0b1111_1111__1111_1111__1111
     }
 )
 
@@ -1945,6 +1952,7 @@ impl TypeContents {
             BoundSend => self.is_sendable(cx),
             BoundSized => self.is_sized(cx),
             BoundPod => self.is_pod(cx),
+            BoundShare => self.is_sharable(cx),
         }
     }
 
@@ -1962,6 +1970,10 @@ impl TypeContents {
 
     pub fn is_sendable(&self, _: &ctxt) -> bool {
         !self.intersects(TC::Nonsendable)
+    }
+
+    pub fn is_sharable(&self, _: &ctxt) -> bool {
+        !self.intersects(TC::Nonsharable)
     }
 
     pub fn owns_managed(&self) -> bool {
@@ -1982,6 +1994,10 @@ impl TypeContents {
 
     pub fn is_pod(&self, _: &ctxt) -> bool {
         !self.intersects(TC::Nonpod)
+    }
+
+    pub fn interior_unsafe(&self) -> bool {
+        self.intersects(TC::InteriorUnsafe)
     }
 
     pub fn moves_by_default(&self, _: &ctxt) -> bool {
@@ -2078,6 +2094,10 @@ pub fn type_is_sendable(cx: &ctxt, t: ty::t) -> bool {
 
 pub fn type_is_freezable(cx: &ctxt, t: ty::t) -> bool {
     type_contents(cx, t).is_freezable(cx)
+}
+
+pub fn type_interior_is_unsafe(cx: &ctxt, t: ty::t) -> bool {
+    type_contents(cx, t).interior_unsafe()
 }
 
 pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
@@ -2284,6 +2304,10 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
             tc | TC::Managed
         } else if Some(did) == cx.lang_items.no_pod_bound() {
             tc | TC::OwnsAffine
+        } else if Some(did) == cx.lang_items.no_share_bound() {
+            tc | TC::ReachesNoShare
+        } else if Some(did) == cx.lang_items.unsafe_type() {
+            tc | TC::InteriorUnsafe
         } else {
             tc
         }
@@ -2362,6 +2386,7 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
                 BoundFreeze => TC::Nonfreezable,
                 BoundSized => TC::Nonsized,
                 BoundPod => TC::Nonpod,
+                BoundShare => TC::Nonsharable,
             };
         });
         return tc;

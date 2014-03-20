@@ -595,10 +595,10 @@ Other features provided by lang items include:
 - stack unwinding and general failure; the `eh_personality`, `fail_`
   and `fail_bounds_checks` lang items.
 - the traits in `std::kinds` used to indicate types that satisfy
-  various kinds; lang items `send`, `freeze` and `pod`.
+  various kinds; lang items `send`, `share` and `pod`.
 - the marker types and variance indicators found in
   `std::kinds::markers`; lang items `covariant_type`,
-  `contravariant_lifetime`, `no_freeze_bound`, etc.
+  `contravariant_lifetime`, `no_share_bound`, etc.
 
 Lang items are loaded lazily by the compiler; e.g. if one never uses
 `~` then there is no need to define functions for `exchange_malloc`

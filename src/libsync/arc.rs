@@ -54,6 +54,9 @@ use std::kinds::marker;
 use std::sync::arc::UnsafeArc;
 use std::task;
 
+#[cfg(stage0)]
+use std::kinds::Share;
+
 /// As sync::condvar, a mechanism for unlock-and-descheduling and
 /// signaling, for use with the Arc types.
 pub struct ArcCondvar<'a> {
@@ -122,7 +125,7 @@ pub struct Arc<T> { priv x: UnsafeArc<T> }
  * Access the underlying data in an atomically reference counted
  * wrapper.
  */
-impl<T:Freeze+Send> Arc<T> {
+impl<T: Share + Send> Arc<T> {
     /// Create an atomically reference counted wrapper.
     #[inline]
     pub fn new(data: T) -> Arc<T> {
@@ -135,7 +138,7 @@ impl<T:Freeze+Send> Arc<T> {
     }
 }
 
-impl<T:Freeze + Send> Clone for Arc<T> {
+impl<T: Share + Send> Clone for Arc<T> {
     /**
     * Duplicate an atomically reference counted wrapper.
     *
@@ -295,19 +298,21 @@ struct RWArcInner<T> { lock: RWLock, failed: bool, data: T }
 pub struct RWArc<T> {
     priv x: UnsafeArc<RWArcInner<T>>,
     priv marker: marker::NoFreeze,
+    priv marker1: marker::NoShare,
 }
 
-impl<T:Freeze + Send> Clone for RWArc<T> {
+impl<T: Share + Send> Clone for RWArc<T> {
     /// Duplicate a rwlock-protected Arc. See arc::clone for more details.
     #[inline]
     fn clone(&self) -> RWArc<T> {
         RWArc { x: self.x.clone(),
-                marker: marker::NoFreeze, }
+                marker: marker::NoFreeze,
+                marker1: marker::NoShare, }
     }
 
 }
 
-impl<T:Freeze + Send> RWArc<T> {
+impl<T: Share + Send> RWArc<T> {
     /// Create a reader/writer Arc with the supplied data.
     pub fn new(user_data: T) -> RWArc<T> {
         RWArc::new_with_condvars(user_data, 1)
@@ -323,7 +328,8 @@ impl<T:Freeze + Send> RWArc<T> {
             failed: false, data: user_data
         };
         RWArc { x: UnsafeArc::new(data),
-                marker: marker::NoFreeze, }
+                marker: marker::NoFreeze,
+                marker1: marker::NoShare, }
     }
 
     /**
@@ -454,7 +460,7 @@ impl<T:Freeze + Send> RWArc<T> {
 // lock it. This wraps the unsafety, with the justification that the 'lock'
 // field is never overwritten; only 'failed' and 'data'.
 #[doc(hidden)]
-fn borrow_rwlock<T:Freeze + Send>(state: *mut RWArcInner<T>) -> *RWLock {
+fn borrow_rwlock<T: Share + Send>(state: *mut RWArcInner<T>) -> *RWLock {
     unsafe { cast::transmute(&(*state).lock) }
 }
 
@@ -471,7 +477,7 @@ pub struct RWReadMode<'a, T> {
     priv token: sync::RWLockReadMode<'a>,
 }
 
-impl<'a, T:Freeze + Send> RWWriteMode<'a, T> {
+impl<'a, T: Share + Send> RWWriteMode<'a, T> {
     /// Access the pre-downgrade RWArc in write mode.
     pub fn write<U>(&mut self, blk: |x: &mut T| -> U) -> U {
         match *self {
@@ -510,7 +516,7 @@ impl<'a, T:Freeze + Send> RWWriteMode<'a, T> {
     }
 }
 
-impl<'a, T:Freeze + Send> RWReadMode<'a, T> {
+impl<'a, T: Share + Send> RWReadMode<'a, T> {
     /// Access the post-downgrade rwlock in read mode.
     pub fn read<U>(&self, blk: |x: &T| -> U) -> U {
         match *self {
@@ -534,7 +540,7 @@ pub struct CowArc<T> { priv x: UnsafeArc<T> }
 /// mutation of the contents if there is only a single reference to
 /// the data. If there are multiple references the data is automatically
 /// cloned and the task modifies the cloned data in place of the shared data.
-impl<T:Clone+Send+Freeze> CowArc<T> {
+impl<T: Clone + Send + Share> CowArc<T> {
     /// Create a copy-on-write atomically reference counted wrapper
     #[inline]
     pub fn new(data: T) -> CowArc<T> {
@@ -558,7 +564,7 @@ impl<T:Clone+Send+Freeze> CowArc<T> {
     }
 }
 
-impl<T:Clone+Send+Freeze> Clone for CowArc<T> {
+impl<T: Clone + Send + Share> Clone for CowArc<T> {
     /// Duplicate a Copy-on-write Arc. See arc::clone for more details.
     fn clone(&self) -> CowArc<T> {
         CowArc { x: self.x.clone() }

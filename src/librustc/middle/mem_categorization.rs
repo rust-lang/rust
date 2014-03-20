@@ -1222,12 +1222,17 @@ pub fn field_mutbl(tcx: &ty::ctxt,
     return None;
 }
 
+pub enum InteriorSafety {
+    InteriorUnsafe,
+    InteriorSafe
+}
+
 pub enum AliasableReason {
     AliasableManaged,
     AliasableBorrowed,
     AliasableOther,
-    AliasableStatic,
-    AliasableStaticMut,
+    AliasableStatic(InteriorSafety),
+    AliasableStaticMut(InteriorSafety),
 }
 
 impl cmt_ {
@@ -1257,7 +1262,7 @@ impl cmt_ {
         }
     }
 
-    pub fn freely_aliasable(&self) -> Option<AliasableReason> {
+    pub fn freely_aliasable(&self, ctxt: &ty::ctxt) -> Option<AliasableReason> {
         /*!
          * Returns `Some(_)` if this lvalue represents a freely aliasable
          * pointer type.
@@ -1275,7 +1280,7 @@ impl cmt_ {
             cat_interior(b, _) |
             cat_discr(b, _) => {
                 // Aliasability depends on base cmt
-                b.freely_aliasable()
+                b.freely_aliasable(ctxt)
             }
 
             cat_copied_upvar(CopiedUpvar {onceness: ast::Once, ..}) |
@@ -1292,10 +1297,16 @@ impl cmt_ {
             }
 
             cat_static_item(..) => {
-                if self.mutbl.is_mutable() {
-                    Some(AliasableStaticMut)
+                let int_safe = if ty::type_interior_is_unsafe(ctxt, self.ty) {
+                    InteriorUnsafe
                 } else {
-                    Some(AliasableStatic)
+                    InteriorSafe
+                };
+
+                if self.mutbl.is_mutable() {
+                    Some(AliasableStaticMut(int_safe))
+                } else {
+                    Some(AliasableStatic(int_safe))
                 }
             }
 

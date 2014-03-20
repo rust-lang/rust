@@ -22,7 +22,7 @@
 
 use driver::session::Session;
 use metadata::csearch::each_lang_item;
-use middle::ty::{BuiltinBound, BoundFreeze, BoundPod, BoundSend, BoundSized};
+use middle::ty;
 use syntax::ast;
 use syntax::ast_util::local_def;
 use syntax::attr::AttrMetaMethods;
@@ -82,15 +82,17 @@ impl LanguageItems {
         }
     }
 
-    pub fn to_builtin_kind(&self, id: ast::DefId) -> Option<BuiltinBound> {
+    pub fn to_builtin_kind(&self, id: ast::DefId) -> Option<ty::BuiltinBound> {
         if Some(id) == self.freeze_trait() {
-            Some(BoundFreeze)
+            Some(ty::BoundFreeze)
         } else if Some(id) == self.send_trait() {
-            Some(BoundSend)
+            Some(ty::BoundSend)
         } else if Some(id) == self.sized_trait() {
-            Some(BoundSized)
+            Some(ty::BoundSized)
         } else if Some(id) == self.pod_trait() {
-            Some(BoundPod)
+            Some(ty::BoundPod)
+        } else if Some(id) == self.share_trait() {
+            Some(ty::BoundShare)
         } else {
             None
         }
@@ -213,6 +215,7 @@ lets_do_this! {
     SendTraitLangItem,               "send",                    send_trait;
     SizedTraitLangItem,              "sized",                   sized_trait;
     PodTraitLangItem,                "pod",                     pod_trait;
+    ShareTraitLangItem,              "share",                   share_trait;
 
     DropTraitLangItem,               "drop",                    drop_trait;
 
@@ -229,6 +232,8 @@ lets_do_this! {
     ShlTraitLangItem,                "shl",                     shl_trait;
     ShrTraitLangItem,                "shr",                     shr_trait;
     IndexTraitLangItem,              "index",                   index_trait;
+
+    UnsafeTypeLangItem,              "unsafe",                  unsafe_type;
 
     DerefTraitLangItem,              "deref",                   deref_trait;
     DerefMutTraitLangItem,           "deref_mut",               deref_mut_trait;
@@ -274,5 +279,6 @@ lets_do_this! {
     NoFreezeItem,                    "no_freeze_bound",         no_freeze_bound;
     NoSendItem,                      "no_send_bound",           no_send_bound;
     NoPodItem,                       "no_pod_bound",            no_pod_bound;
+    NoShareItem,                     "no_share_bound",          no_share_bound;
     ManagedItem,                     "managed_bound",           managed_bound;
 }

@@ -410,6 +410,7 @@ fn enc_bounds(w: &mut MemWriter, cx: &ctxt, bs: &ty::ParamBounds) {
             ty::BoundStatic => mywrite!(w, "O"),
             ty::BoundSized => mywrite!(w, "Z"),
             ty::BoundPod => mywrite!(w, "P"),
+            ty::BoundShare => mywrite!(w, "T"),
         }
     }
 

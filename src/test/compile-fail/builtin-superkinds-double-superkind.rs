@@ -11,12 +11,12 @@
 // Test for traits that inherit from multiple builtin kinds at once,
 // testing that all such kinds must be present on implementing types.
 
-trait Foo : Send+Freeze { }
+trait Foo : Send+Share { }
 
-impl <T: Freeze> Foo for (T,) { } //~ ERROR cannot implement this trait
+impl <T: Share> Foo for (T,) { } //~ ERROR cannot implement this trait
 
 impl <T: Send> Foo for (T,T) { } //~ ERROR cannot implement this trait
 
-impl <T: Send+Freeze> Foo for (T,T,T) { } // (ok)
+impl <T: Send+Share> Foo for (T,T,T) { } // (ok)
 
 fn main() { }

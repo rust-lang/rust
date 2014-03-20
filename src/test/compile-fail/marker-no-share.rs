@@ -8,14 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::rc::Rc;
-use std::cell::RefCell;
+use std::kinds::marker;
 
-fn bar<T: Freeze>(_: T) {}
+fn foo<P: Share>(p: P) { }
 
-fn main() {
-    let x = Rc::new(RefCell::new(5));
-    bar(x);
-    //~^ ERROR instantiating a type parameter with an incompatible type
-    //         `std::rc::Rc<std::cell::RefCell<int>>`, which does not fulfill `Freeze`
+fn main()
+{
+    foo(marker::NoShare); //~ ERROR does not fulfill `Share`
 }
