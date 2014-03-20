@@ -208,21 +208,21 @@ fn with_appropriate_checker(cx: &Context,
 
     let fty = ty::node_id_to_type(cx.tcx, id);
     match ty::get(fty).sty {
-        ty::ty_closure(ty::ClosureTy {
+        ty::ty_closure(~ty::ClosureTy {
             sigil: OwnedSigil,
             bounds: bounds,
             ..
         }) => {
             b(|cx, fv| check_for_uniq(cx, fv, bounds))
         }
-        ty::ty_closure(ty::ClosureTy {
+        ty::ty_closure(~ty::ClosureTy {
             sigil: ManagedSigil,
             ..
         }) => {
             // can't happen
             fail!("internal error: saw closure with managed sigil (@fn)");
         }
-        ty::ty_closure(ty::ClosureTy {
+        ty::ty_closure(~ty::ClosureTy {
             sigil: BorrowedSigil,
             bounds: bounds,
             region: region,
@@ -358,7 +358,7 @@ pub fn check_expr(cx: &mut Context, e: &Expr) {
 fn check_trait_cast(cx: &mut Context, source_ty: ty::t, target_ty: ty::t, span: Span) {
     check_cast_for_escaping_regions(cx, source_ty, target_ty, span);
     match ty::get(target_ty).sty {
-        ty::ty_trait(_, _, _, _, bounds) => {
+        ty::ty_trait(~ty::TyTrait { bounds, .. }) => {
             check_trait_cast_bounds(cx, span, source_ty, bounds);
         }
         _ => {}

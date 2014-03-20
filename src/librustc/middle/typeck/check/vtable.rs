@@ -479,7 +479,7 @@ fn fixup_substs(vcx: &VtableContext,
                          ty::EmptyBuiltinBounds());
     fixup_ty(vcx, span, t, is_early).map(|t_f| {
         match ty::get(t_f).sty {
-          ty::ty_trait(_, ref substs_f, _, _, _) => (*substs_f).clone(),
+          ty::ty_trait(ref inner) => inner.substs.clone(),
           _ => fail!("t_f should be a trait")
         }
     })
@@ -537,8 +537,10 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
     let resolve_object_cast = |src: &ast::Expr, target_ty: ty::t| {
       match ty::get(target_ty).sty {
           // Bounds of type's contents are not checked here, but in kind.rs.
-          ty::ty_trait(target_def_id, ref target_substs, store,
-                       target_mutbl, _bounds) => {
+          ty::ty_trait(~ty::TyTrait {
+              def_id: target_def_id, substs: ref target_substs, store: store,
+              mutability: target_mutbl, bounds: _bounds
+          }) => {
               fn mutability_allowed(a_mutbl: ast::Mutability,
                                     b_mutbl: ast::Mutability) -> bool {
                   a_mutbl == b_mutbl ||
