@@ -21,7 +21,7 @@ use rsparse = parse;
 use std::fmt::parse;
 use collections::{HashMap, HashSet};
 use std::slice;
-use std::vec_ng::Vec;
+use std::vec::Vec;
 
 #[deriving(Eq)]
 enum ArgumentType {

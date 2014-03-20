@@ -21,7 +21,7 @@ use syntax::abi::{X86, X86_64, Arm, Mips};
 use std::c_str::ToCStr;
 use std::cast;
 use std::slice;
-use std::vec_ng::Vec;
+use std::vec::Vec;
 
 use std::libc::{c_uint};
 

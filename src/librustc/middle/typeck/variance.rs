@@ -197,7 +197,7 @@ use arena;
 use arena::Arena;
 use middle::ty;
 use std::fmt;
-use std::vec_ng::Vec;
+use std::vec::Vec;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::opt_vec;

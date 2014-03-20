@@ -32,7 +32,7 @@ use std::hash;
 use std::hash::Hash;
 use std::io::MemWriter;
 use std::str;
-use std::vec_ng::Vec;
+use std::vec::Vec;
 use collections::HashMap;
 use syntax::abi::AbiSet;
 use syntax::ast::*;

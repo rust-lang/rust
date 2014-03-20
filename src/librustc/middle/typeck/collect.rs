@@ -46,8 +46,8 @@ use util::ppaux;
 use util::ppaux::Repr;
 
 use std::rc::Rc;
-use std::vec_ng::Vec;
-use std::vec_ng;
+use std::vec::Vec;
+use std::vec;
 use collections::HashSet;
 
 use syntax::abi::AbiSet;
@@ -330,7 +330,7 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt, trait_id: ast::NodeId) {
         let substs = substs {
             regions: ty::NonerasedRegions(rps_from_trait),
             self_ty: Some(self_param),
-            tps: vec_ng::append(non_shifted_trait_tps,
+            tps: vec::append(non_shifted_trait_tps,
                                 shifted_method_tps.as_slice())
         };
 
@@ -510,11 +510,11 @@ fn convert_methods(ccx: &CrateCtxt,
                 // itself
                 ty_param_bounds_and_ty {
                     generics: ty::Generics {
-                        type_param_defs: Rc::new(vec_ng::append(
+                        type_param_defs: Rc::new(vec::append(
                             Vec::from_slice(
                                 rcvr_ty_generics.type_param_defs()),
                             m_ty_generics.type_param_defs())),
-                        region_param_defs: Rc::new(vec_ng::append(
+                        region_param_defs: Rc::new(vec::append(
                                 Vec::from_slice(rcvr_ty_generics.region_param_defs()),
                                 m_ty_generics.region_param_defs())),
                     },

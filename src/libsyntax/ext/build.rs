@@ -21,7 +21,7 @@ use opt_vec::OptVec;
 use parse::token::special_idents;
 use parse::token;
 
-use std::vec_ng::Vec;
+use std::vec::Vec;
 
 pub struct Field {
     ident: ast::Ident,
@@ -585,7 +585,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     fn expr_vec_ng(&self, sp: Span) -> @ast::Expr {
         self.expr_call_global(sp,
                               vec!(self.ident_of("std"),
-                                   self.ident_of("vec_ng"),
+                                   self.ident_of("vec"),
                                    self.ident_of("Vec"),
                                    self.ident_of("new")),
                               Vec::new())

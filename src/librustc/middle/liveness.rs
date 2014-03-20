@@ -116,7 +116,7 @@ use std::io;
 use std::rc::Rc;
 use std::str;
 use std::uint;
-use std::vec_ng::Vec;
+use std::vec::Vec;
 use syntax::ast::*;
 use syntax::codemap::Span;
 use syntax::parse::token::special_idents;

@@ -20,7 +20,7 @@ use cast;
 use fmt;
 use iter::Iterator;
 use slice::{ImmutableVector, MutableVector, Vector};
-use vec_ng::Vec;
+use vec::Vec;
 use option::{Option, Some, None};
 
 /// Datatype to hold one ascii character. It wraps a `u8`, with the highest bit always zero.
@@ -482,7 +482,7 @@ mod tests {
     use super::*;
     use str::from_char;
     use char::from_u32;
-    use vec_ng::Vec;
+    use vec::Vec;
 
     macro_rules! v2ascii (
         ( [$($e:expr),*]) => (&[$(Ascii{chr:$e}),*]);

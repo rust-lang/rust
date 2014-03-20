@@ -28,8 +28,8 @@ use util::ppaux::ty_to_str;
 use arena::TypedArena;
 use std::libc::c_uint;
 use std::option::{Some,None};
-use std::vec_ng::Vec;
-use std::vec_ng;
+use std::vec::Vec;
+use std::vec;
 use syntax::ast::DefId;
 use syntax::ast;
 use syntax::ast_map;
@@ -134,7 +134,7 @@ impl<'a> Reflector<'a> {
                                  -> (~str, Vec<ValueRef> ) {
         match vstore {
             ty::vstore_fixed(n) => {
-                let extra = vec_ng::append(vec!(self.c_uint(n)),
+                let extra = vec::append(vec!(self.c_uint(n)),
                                            self.c_size_and_align(t)
                                                .as_slice());
                 (~"fixed", extra)
@@ -184,7 +184,7 @@ impl<'a> Reflector<'a> {
           }
           ty::ty_vec(ref mt, vst) => {
               let (name, extra) = self.vstore_name_and_extra(t, vst);
-              let extra = vec_ng::append(extra, self.c_mt(mt).as_slice());
+              let extra = vec::append(extra, self.c_mt(mt).as_slice());
               self.visit(~"evec_" + name, extra.as_slice())
           }
           // Should remove mt from box and uniq.
@@ -212,7 +212,7 @@ impl<'a> Reflector<'a> {
           }
 
           ty::ty_tup(ref tys) => {
-              let extra = vec_ng::append(vec!(self.c_uint(tys.len())),
+              let extra = vec::append(vec!(self.c_uint(tys.len())),
                                          self.c_size_and_align(t).as_slice());
               self.bracketed("tup", extra.as_slice(), |this| {
                   for (i, t) in tys.iter().enumerate() {
@@ -260,7 +260,7 @@ impl<'a> Reflector<'a> {
                       special_idents::unnamed_field.name;
               }
 
-              let extra = vec_ng::append(vec!(
+              let extra = vec::append(vec!(
                   self.c_slice(token::intern_and_get_ident(ty_to_str(tcx,
                                                                      t))),
                   self.c_bool(named_fields),
@@ -268,7 +268,7 @@ impl<'a> Reflector<'a> {
               ), self.c_size_and_align(t).as_slice());
               self.bracketed("class", extra.as_slice(), |this| {
                   for (i, field) in fields.iter().enumerate() {
-                      let extra = vec_ng::append(vec!(
+                      let extra = vec::append(vec!(
                         this.c_uint(i),
                         this.c_slice(token::get_ident(field.ident)),
                         this.c_bool(named_fields)
@@ -321,7 +321,7 @@ impl<'a> Reflector<'a> {
                 llfdecl
             };
 
-            let enum_args = vec_ng::append(vec!(self.c_uint(variants.len()),
+            let enum_args = vec::append(vec!(self.c_uint(variants.len()),
                                                 make_get_disr()),
                                            self.c_size_and_align(t)
                                                .as_slice());

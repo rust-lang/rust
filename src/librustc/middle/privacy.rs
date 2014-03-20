@@ -13,7 +13,7 @@
 //! which are available for use externally when compiled as a library.
 
 use std::mem::replace;
-use std::vec_ng::Vec;
+use std::vec::Vec;
 
 use metadata::csearch;
 use middle::lint;

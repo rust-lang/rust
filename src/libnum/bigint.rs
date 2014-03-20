@@ -28,8 +28,8 @@ use rand::Rng;
 use std::str;
 use std::uint;
 use std::{i64, u64};
-use std::vec_ng;
-use std::vec_ng::Vec;
+use std::vec;
+use std::vec::Vec;
 
 /**
 A `BigDigit` is a `BigUint`'s composing element.
@@ -753,7 +753,7 @@ impl BigUint {
     fn shl_unit(&self, n_unit: uint) -> BigUint {
         if n_unit == 0 || self.is_zero() { return (*self).clone(); }
 
-        return BigUint::new(vec_ng::append(Vec::from_elem(n_unit, ZERO_BIG_DIGIT),
+        return BigUint::new(vec::append(Vec::from_elem(n_unit, ZERO_BIG_DIGIT),
                                            self.data.as_slice()));
     }
 
@@ -1461,7 +1461,7 @@ mod biguint_tests {
     use std::num::CheckedDiv;
     use rand::{task_rng};
     use std::u64;
-    use std::vec_ng::Vec;
+    use std::vec::Vec;
 
     #[test]
     fn test_from_slice() {
@@ -2195,7 +2195,7 @@ mod bigint_tests {
     use std::num::{ToPrimitive, FromPrimitive};
     use rand::{task_rng};
     use std::u64;
-    use std::vec_ng::Vec;
+    use std::vec::Vec;
 
     #[test]
     fn test_from_biguint() {
