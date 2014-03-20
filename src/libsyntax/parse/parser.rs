@@ -4203,28 +4203,22 @@ impl<'a> Parser<'a> {
                               path: Path,
                               outer_attrs: Vec<ast::Attribute> ,
                               id_sp: Span) -> (ast::Item_, Vec<ast::Attribute> ) {
-        {
-            let mut included_mod_stack = self.sess
-                                             .included_mod_stack
-                                             .borrow_mut();
-            let maybe_i = included_mod_stack.get()
-                                            .iter()
-                                            .position(|p| *p == path);
-            match maybe_i {
-                Some(i) => {
-                    let mut err = ~"circular modules: ";
-                    let len = included_mod_stack.get().len();
-                    for p in included_mod_stack.get().slice(i, len).iter() {
-                        err.push_str(p.display().as_maybe_owned().as_slice());
-                        err.push_str(" -> ");
-                    }
-                    err.push_str(path.display().as_maybe_owned().as_slice());
-                    self.span_fatal(id_sp, err);
+        let mut included_mod_stack = self.sess.included_mod_stack.borrow_mut();
+        match included_mod_stack.iter().position(|p| *p == path) {
+            Some(i) => {
+                let mut err = ~"circular modules: ";
+                let len = included_mod_stack.len();
+                for p in included_mod_stack.slice(i, len).iter() {
+                    err.push_str(p.display().as_maybe_owned().as_slice());
+                    err.push_str(" -> ");
                 }
-                None => ()
+                err.push_str(path.display().as_maybe_owned().as_slice());
+                self.span_fatal(id_sp, err);
             }
-            included_mod_stack.get().push(path.clone());
+            None => ()
         }
+        included_mod_stack.push(path.clone());
+        drop(included_mod_stack);
 
         let mut p0 =
             new_sub_parser_from_file(self.sess,
@@ -4235,12 +4229,7 @@ impl<'a> Parser<'a> {
         let mod_attrs = vec::append(outer_attrs, inner.as_slice());
         let first_item_outer_attrs = next;
         let m0 = p0.parse_mod_items(token::EOF, first_item_outer_attrs);
-        {
-            let mut included_mod_stack = self.sess
-                                             .included_mod_stack
-                                             .borrow_mut();
-            included_mod_stack.get().pop();
-        }
+        self.sess.included_mod_stack.borrow_mut().pop();
         return (ast::ItemMod(m0), mod_attrs);
     }
 

@@ -42,26 +42,23 @@ impl<'a> ParserAnyMacro<'a> {
     /// allowed to be there.
     fn ensure_complete_parse(&self, allow_semi: bool) {
         let mut parser = self.parser.borrow_mut();
-        if allow_semi && parser.get().token == SEMI {
-            parser.get().bump()
+        if allow_semi && parser.token == SEMI {
+            parser.bump()
         }
-        if parser.get().token != EOF {
-            let token_str = parser.get().this_token_to_str();
+        if parser.token != EOF {
+            let token_str = parser.this_token_to_str();
             let msg = format!("macro expansion ignores token `{}` and any \
                                following",
                               token_str);
-            let span = parser.get().span;
-            parser.get().span_err(span, msg);
+            let span = parser.span;
+            parser.span_err(span, msg);
         }
     }
 }
 
 impl<'a> AnyMacro for ParserAnyMacro<'a> {
     fn make_expr(&self) -> @ast::Expr {
-        let ret = {
-            let mut parser = self.parser.borrow_mut();
-            parser.get().parse_expr()
-        };
+        let ret = self.parser.borrow_mut().parse_expr();
         self.ensure_complete_parse(true);
         ret
     }
@@ -69,8 +66,8 @@ impl<'a> AnyMacro for ParserAnyMacro<'a> {
         let mut ret = SmallVector::zero();
         loop {
             let mut parser = self.parser.borrow_mut();
-            let attrs = parser.get().parse_outer_attributes();
-            match parser.get().parse_item(attrs) {
+            let attrs = parser.parse_outer_attributes();
+            match parser.parse_item(attrs) {
                 Some(item) => ret.push(item),
                 None => break
             }
@@ -79,11 +76,8 @@ impl<'a> AnyMacro for ParserAnyMacro<'a> {
         ret
     }
     fn make_stmt(&self) -> @ast::Stmt {
-        let ret = {
-            let mut parser = self.parser.borrow_mut();
-            let attrs = parser.get().parse_outer_attributes();
-            parser.get().parse_stmt(attrs)
-        };
+        let attrs = self.parser.borrow_mut().parse_outer_attributes();
+        let ret = self.parser.borrow_mut().parse_stmt(attrs);
         self.ensure_complete_parse(true);
         ret
     }
@@ -242,7 +236,7 @@ pub fn add_new_extension(cx: &mut ExtCtxt,
     };
 
     return MRDef(MacroDef {
-        name: token::get_ident(name).get().to_str(),
+        name: token::get_ident(name).to_str(),
         ext: NormalTT(exp, Some(sp))
     });
 }
