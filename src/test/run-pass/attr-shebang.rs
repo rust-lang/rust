@@ -1,4 +1,5 @@
 #![allow(unknown_features)]
 #![feature(bogus)]
-fn main() { }
+pub fn main() { }
 // ignore-license
+// ignore-fast

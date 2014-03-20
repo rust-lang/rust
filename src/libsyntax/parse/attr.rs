@@ -58,41 +58,40 @@ impl<'a> ParserAttr for Parser<'a> {
         return attrs;
     }
 
-    // matches attribute = # [ meta_item ]
+    // matches attribute = # ! [ meta_item ]
     //
-    // if permit_inner is true, then a trailing `;` indicates an inner
+    // if permit_inner is true, then a leading `!` indicates an inner
     // attribute
     fn parse_attribute(&mut self, permit_inner: bool) -> ast::Attribute {
         debug!("parse_attributes: permit_inner={:?} self.token={:?}",
                permit_inner, self.token);
-        let mut warned = false;
-        let (span, value) = match self.token {
+        let (span, value, mut style) = match self.token {
             INTERPOLATED(token::NtAttr(attr)) => {
                 assert!(attr.node.style == ast::AttrOuter);
                 self.bump();
-                (attr.span, attr.node.value)
+                (attr.span, attr.node.value, ast::AttrOuter)
             }
             token::POUND => {
                 let lo = self.span.lo;
                 self.bump();
 
-                if self.eat(&token::NOT) {
+                let style = if self.eat(&token::NOT) {
                     if !permit_inner {
-                        self.fatal("an inner attribute was not permitted in this context.");
+                        self.span_err(self.span,
+                                      "an inner attribute is not permitted in \
+                                       this context");
                     }
+                    ast::AttrInner
                 } else {
-                    warned = true;
-                    // NOTE: uncomment this after a stage0 snap
-                    //self.warn("The syntax for inner attributes have changed.
-                    //    Use `#![lang(foo)]` instead.");
-                }
+                    ast::AttrOuter
+                };
 
                 self.expect(&token::LBRACKET);
                 let meta_item = self.parse_meta_item();
                 self.expect(&token::RBRACKET);
 
                 let hi = self.span.hi;
-                (mk_sp(lo, hi), meta_item)
+                (mk_sp(lo, hi), meta_item, style)
             }
             _ => {
                 let token_str = self.this_token_to_str();
@@ -101,21 +100,12 @@ impl<'a> ParserAttr for Parser<'a> {
             }
         };
 
-        let style = if permit_inner {
-
-            if self.eat(&token::SEMI) {
-                // Only warn the user once if the syntax is the old one.
-                if !warned {
-                    // NOTE: uncomment this after a stage0 snap
-                    //self.warn("This uses the old attribute syntax. Semicolons
-                    //  are not longer required.");
-                }
-            }
-
-            ast::AttrInner
-        } else {
-            ast::AttrOuter
-        };
+        if permit_inner && self.eat(&token::SEMI) {
+            // NOTE: uncomment this after a stage0 snap
+            //self.warn("This uses the old attribute syntax. Semicolons
+            //  are not longer required.");
+            style = ast::AttrInner;
+        }
 
         return Spanned {
             span: span,

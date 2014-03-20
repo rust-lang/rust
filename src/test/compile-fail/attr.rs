@@ -10,5 +10,5 @@
 
 fn main() {}
 
-#![lang(foo)] //~ ERROR An inner attribute was not permitted in this context.
+#![lang(foo)] //~ ERROR an inner attribute is not permitted in this context
 fn foo() {}
