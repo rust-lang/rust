@@ -284,7 +284,7 @@ mod tests {
 
         let a = Rc::new(Cycle { x: RefCell::new(None) });
         let b = a.clone().downgrade();
-        *a.deref().x.borrow_mut().get() = Some(b);
+        *a.deref().x.borrow_mut() = Some(b);
 
         // hopefully we don't double-free (or leak)...
     }
