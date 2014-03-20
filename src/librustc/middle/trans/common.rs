@@ -35,7 +35,6 @@ use collections::HashMap;
 use std::c_str::ToCStr;
 use std::cell::{Cell, RefCell};
 use std::libc::{c_uint, c_longlong, c_ulonglong, c_char};
-use std::vec::Vec;
 use syntax::ast::Ident;
 use syntax::ast;
 use syntax::ast_map::{PathElem, PathName};

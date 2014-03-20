@@ -15,7 +15,6 @@
 use std::iter::range_step;
 use std::num::Zero;
 use std::slice::bytes::{MutableByteVector, copy_memory};
-use std::vec::Vec;
 use serialize::hex::ToHex;
 
 /// Write a u32 into a vector, which must be 4 bytes long. The value is written in big-endian
@@ -529,7 +528,6 @@ mod tests {
     use super::{Digest, Sha256, FixedBuffer};
     use std::num::Bounded;
     use std::slice;
-    use std::vec::Vec;
     use self::rand::isaac::IsaacRng;
     use self::rand::Rng;
     use serialize::hex::FromHex;

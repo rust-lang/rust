@@ -21,8 +21,6 @@
       html_root_url = "http://static.rust-lang.org/doc/master")];
 #[feature(phase)];
 
-#[allow(deprecated_owned_vector)];
-
 #[cfg(test)] #[phase(syntax, link)] extern crate log;
 
 pub use arc::{Arc, MutexArc, RWArc, RWWriteMode, RWReadMode, ArcCondvar, CowArc};

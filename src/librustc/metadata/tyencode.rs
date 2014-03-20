@@ -19,7 +19,6 @@ use std::io;
 use std::io::MemWriter;
 use std::str;
 use std::fmt;
-use std::vec::Vec;
 
 use middle::ty::param_ty;
 use middle::ty;

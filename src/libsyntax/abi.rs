@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use std::fmt;
-use std::vec::Vec;
 use std::fmt::Show;
 
 #[deriving(Eq)]

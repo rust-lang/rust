@@ -20,7 +20,6 @@ use middle::typeck::infer;
 use middle::typeck::require_same_types;
 
 use collections::{HashMap, HashSet};
-use std::vec::Vec;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::parse::token;

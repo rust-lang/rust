@@ -94,7 +94,6 @@ pub fn inflate_bytes_zlib(bytes: &[u8]) -> CVec<u8> {
 
 #[cfg(test)]
 mod tests {
-    #[allow(deprecated_owned_vector)];
     extern crate rand;
 
     use super::{inflate_bytes, deflate_bytes};

@@ -26,7 +26,6 @@ use syntax::{ast, ast_map, ast_util};
 use std::cell::RefCell;
 use collections::HashMap;
 use std::rc::Rc;
-use std::vec::Vec;
 
 //
 // This pass classifies expressions by their constant-ness.

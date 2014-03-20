@@ -11,7 +11,6 @@
 
 use driver::session::Session;
 
-use std::vec::Vec;
 use std::vec;
 use syntax::ast;
 use syntax::attr;

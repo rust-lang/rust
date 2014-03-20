@@ -17,7 +17,6 @@ Core encoding and decoding interfaces.
 use std::path;
 use std::rc::Rc;
 use std::slice;
-use std::vec::Vec;
 
 pub trait Encoder {
     // Primitive types:

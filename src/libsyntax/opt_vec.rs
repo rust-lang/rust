@@ -17,7 +17,6 @@
 
 use std::default::Default;
 use std::slice;
-use std::vec::Vec;
 
 #[deriving(Clone, Encodable, Decodable, Hash)]
 pub enum OptVec<T> {

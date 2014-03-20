@@ -62,8 +62,6 @@ Examples of string representations:
       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
       html_root_url = "http://static.rust-lang.org/doc/master")];
 
-#[allow(deprecated_owned_vector)];
-
 #[feature(default_type_params)];
 
 // NOTE remove the following two attributes after the next snapshot.

@@ -20,7 +20,6 @@ use ast::{Ident, Mrk, Name, SyntaxContext};
 use std::cell::RefCell;
 use std::local_data;
 use std::rc::Rc;
-use std::vec::Vec;
 
 use collections::HashMap;
 
@@ -281,7 +280,6 @@ mod tests {
     use super::{resolve, xorPush, new_mark_internal, new_sctable_internal};
     use super::{new_rename_internal, marksof_internal, resolve_internal};
     use super::{SCTable, EmptyCtxt, Mark, Rename, IllegalCtxt};
-    use std::vec::Vec;
     use collections::HashMap;
 
     #[test] fn xorpush_test () {

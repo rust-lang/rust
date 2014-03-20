@@ -16,8 +16,6 @@ use parse::token;
 use opt_vec::OptVec;
 use util::small_vector::SmallVector;
 
-use std::vec::Vec;
-
 // We may eventually want to be able to fold over type parameters, too.
 pub trait Folder {
     fn fold_crate(&mut self, c: Crate) -> Crate {

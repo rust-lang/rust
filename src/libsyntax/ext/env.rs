@@ -22,7 +22,6 @@ use ext::build::AstBuilder;
 use parse::token;
 
 use std::os;
-use std::vec::Vec;
 
 pub fn expand_option_env(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     -> base::MacResult {

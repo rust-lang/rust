@@ -21,7 +21,6 @@ use std::fmt;
 use std::fmt::Show;
 use std::option::Option;
 use std::rc::Rc;
-use std::vec::Vec;
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 
 /// A pointer abstraction. FIXME(eddyb) #10676 use Rc<T> in the future.
@@ -1157,7 +1156,13 @@ mod test {
     use codemap::*;
     use super::*;
 
-    use std::vec::Vec;
+    fn is_freeze<T: Freeze>() {}
+
+    // Assert that the AST remains Freeze (#10693).
+    #[test]
+    fn ast_is_freeze() {
+        is_freeze::<Item>();
+    }
 
     // are ASTs encodable?
     #[test]

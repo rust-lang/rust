@@ -82,7 +82,6 @@ use std::cell::Cell;
 use collections::HashSet;
 use std::kinds::marker;
 use std::mem::replace;
-use std::vec::Vec;
 use std::vec;
 
 #[allow(non_camel_case_types)]

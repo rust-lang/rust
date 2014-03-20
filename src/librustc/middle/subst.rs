@@ -16,7 +16,6 @@ use middle::ty_fold::TypeFolder;
 use util::ppaux::Repr;
 
 use std::rc::Rc;
-use std::vec::Vec;
 use syntax::codemap::Span;
 use syntax::opt_vec::OptVec;
 

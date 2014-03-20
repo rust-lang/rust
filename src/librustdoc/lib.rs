@@ -14,7 +14,6 @@
 #[crate_type = "dylib"];
 #[crate_type = "rlib"];
 
-#[allow(deprecated_owned_vector)];
 #[feature(globs, struct_variant, managed_boxes, macro_rules, phase)];
 
 extern crate syntax;

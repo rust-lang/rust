@@ -24,7 +24,6 @@
       html_root_url = "http://static.rust-lang.org/doc/master")];
 #[allow(missing_doc)];
 #[feature(managed_boxes)];
-#[allow(deprecated_owned_vector)];
 
 extern crate collections;
 

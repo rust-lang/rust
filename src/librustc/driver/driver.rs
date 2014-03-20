@@ -37,7 +37,6 @@ use std::io::fs;
 use std::io::MemReader;
 use std::mem::drop;
 use std::os;
-use std::vec::Vec;
 use std::vec;
 use getopts::{optopt, optmulti, optflag, optflagopt};
 use getopts;

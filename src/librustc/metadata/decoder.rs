@@ -33,7 +33,6 @@ use std::io;
 use std::io::extensions::u64_from_be_bytes;
 use std::option;
 use std::rc::Rc;
-use std::vec::Vec;
 use serialize::ebml::reader;
 use serialize::ebml;
 use serialize::Decodable;

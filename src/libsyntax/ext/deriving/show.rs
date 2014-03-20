@@ -19,7 +19,6 @@ use ext::deriving::generic::*;
 use parse::token;
 
 use collections::HashMap;
-use std::vec::Vec;
 
 pub fn expand_deriving_show(cx: &mut ExtCtxt,
                             span: Span,
