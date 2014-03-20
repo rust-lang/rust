@@ -20,54 +20,42 @@
 /* General structure and fonts */
 
 body {
+    color: #333;
     min-height: 100%;
     min-width: 500px;
     height: 100%;
-    font: 13px "Helvetica Neue", Helvetica, Arial, sans-serif;
-    line-height: 165%;
+    font: 15px "Helvetica Neue", Helvetica, Arial, sans-serif;
+    line-height: 150%;
     position: relative;
     height: auto;
     padding-bottom: 20px;
 }
 
+h1, h2, h3, h4 {
+    color: black;
+    font-weight: 500;
+    margin: 30px 0 20px 0;
+    padding-bottom: 15px;
+}
+h1.fqn {
+    border-bottom: 1px dashed #D5D5D5;
+    margin-top: 0;
+}
+h2, h3, h4 {
+    border-bottom: 1px solid #DDDDDD;
+}
 h2 code, h3 code, h4 code {
-    text-transform: none;
+
     font-size: 1.2em;
 }
 
-h1 {
-    font: 600 26px "Helvetica Neue", Arial, sans-serif !important;
-    margin: 20px 0;
-}
-
-h2, h3, h4 {
-    font: 500 20px "Helvetica Neue", Arial, sans-serif;
-    margin: 40px 0 20px 0;
-    padding-bottom: 15px;
-    border-bottom: 1px solid #DDDDDD;
-}
-
-code, pre, h1.fqn {
-    font-family: "Inconsolata", Menlo, Monaco, Consolas, "DejaVu Sans Mono", monospace;
-    font-weight: normal;
-}
 code, pre {
-    color: #333;
+    font-family: "Inconsolata", Menlo, Monaco, Consolas, "DejaVu Sans Mono", monospace;
 }
 pre {
     font-size: 15px;
 }
-h1.fqn {
-    font-size: 26px;
-    font-weight: normal;
-    padding-bottom: 15px;
-    border-bottom: 1px dashed #D5D5D5;
-}
 
-nav {
-    font: 700 26px "Oswald", "Helvetica Neue", Helvetica, Arial, sans-serif;
-    text-transform: uppercase;
-}
 nav.sub {
     padding-top: 10px;
     font-size: 16px;
@@ -104,10 +92,6 @@ nav.sub {
     color: #333;
 }
 
-.sidebar .location a {
-    color: #333;
-}
-
 .sidebar .block, pre { background: #fff; }
 
 .block {
@@ -124,26 +108,14 @@ nav.sub {
     text-overflow: ellipsis;
     overflow: hidden;
     line-height: 15px;
-    margin: 0 0 0 45px;
-    padding-bottom: 4px;
-    border-bottom: 2px solid #fff;
+    padding-left: 5px;
+    padding-bottom: 6px;
     font-size: 14px;
-
     transition: border 500ms ease-out;
 }
 
-body p {
-    font-size: 15px;
-    line-height: 1.6;
-}
-
 .content {
-    padding: 20px 20px 20px 40px;
-}
-
-.content h1 { 
-    margin-top: 0;
-    font-weight: 400 !important;
+    padding: 20px 40px;
 }
 
 .content pre { padding: 20px; }
@@ -186,27 +158,17 @@ body p {
     margin-left: 0;
     margin: 40px 0 10px 0;
     padding-bottom: 10px;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid #DDD;
 }
 
-.docblock h1 { font-size: 1.1em; }
-.docblock h2 { font-size: 1.05em; }
+.docblock h1 { font-size: 1.3em; }
+.docblock h2 { font-size: 1.15em; }
 .docblock h3, .docblock h4, .docblock h5 { font-size: 1em; }
-
-.docblock h3 {
-    font-size: 1.3em;
-}
-
-.docblock h2 {
-    font-size: 1.5em;
-}
 
 .content .source { 
     float: right;
-    font-size: 14px;
-    font-weight: 400;
+    font-weight: 500;
     padding: 9px 15px;
-    color: #333;
 }
 
 .content table {
@@ -263,7 +225,6 @@ nav.sub form { display: inline; }
 
 nav, .content {
     margin-left: 220px;
-    margin-right: 20px;
 }
 
 a {
@@ -272,8 +233,6 @@ a {
     background: transparent;
 }
 
-.content a, .block a.current { font-weight: 400; }
-
 .content a.trait, .block a.current.trait { color: #ed9603; }
 .content a.mod, .block a.current.mod { color: #4d76ae; }
 .content a.enum, .block a.current.enum { color: #5e9766; }
@@ -281,31 +240,22 @@ a {
 .content a.fn, .block a.current.fn { color: #8c6067; }
 .content .fnname { color: #8c6067; }
 
-.search-container {
-    width: 60%;
-    margin-left: 50px;
-}
-
 .search-input {
-    border: 2px solid #e9e9e9;
-    border-radius: 2px;
-    width: 95%;
-    box-sizing: content-box;
+    width: 100%;
+    /* Override Normalize.css: we have margins and do
+     not want to overflow - the `moz` attribute is necessary
+     until Firefox 29, too early to drop at this point */
+    -moz-box-sizing: border-box !important;
+    box-sizing: border-box !important;
     outline: none;
     border: none;
-    background-color: white;
-    font-family: "Helvetica Neue";
-    color: #000;
-    margin-top: 5px;
-    padding: 10px 20px;
-    font-weight: 300;
     border-radius: 1px;
-    box-shadow: 0 0 0 1px #e0e0e0, 0 0 0 2px transparent;
-    color: #555555;
+    color: #555;
+    margin-top: 5px;
     padding: 10px 16px;
-    line-height: 1.4;
     font-size: 17px;
-
+    font-weight: 300;
+    box-shadow: 0 0 0 1px #e0e0e0, 0 0 0 2px transparent;
     transition: background-color 50ms linear;
     transition: border 500ms ease-out;
     transition: box-shadow 500ms ease-out;
@@ -316,21 +266,6 @@ a {
     border: 0;
     outline: 0;
     box-shadow: 0 0 0 1px #078dd8, 0 0 0 2px #078dd8;
-}
-
-.do-search {
-    display: none;
-    outline: none;
-    border: none;
-    font-family: Helvetica Neue;
-    font-weight: 200;
-    color: #fff;
-    padding: 14px 25px;
-    margin-top: 3px;
-    font-size: 16px;
-    text-align: center;
-    background: #5B6672;
-    margin-left: 10px;
 }
 
 .search-results .desc {
@@ -377,11 +312,9 @@ a {
 .stability {
     border-left: 6px solid #000;
     border-radius: 3px;
-    padding: 8px 3px;
-    background: #fff;
+    padding: 8px 3px 8px 10px;
     text-transform: lowercase;
     display: block;
-    padding-left: 10px;
     margin-bottom: 20px;
 }
 
@@ -418,14 +351,6 @@ h6.section-link:hover a:after {
 
 /** Media Queries **/
 
-@media (max-width: 620px) {
-  .search-container {
-    display: block;
-    width: 100%;
-    margin-left: 0px;
-  }
-}
-
 @media (max-width: 700px) {
     .sidebar {
         display: none;
@@ -436,7 +361,7 @@ h6.section-link:hover a:after {
     }
 
     nav.sub {
-        width: 80%;
+        width: 85.5%;
         margin: 0 auto;
     }
 }
