@@ -1727,12 +1727,12 @@ mod bench {
     extern crate test;
     use self::test::BenchHarness;
     use num;
-    use vec;
+    use slice;
     use prelude::*;
 
     #[bench]
     fn bench_pow_function(b: &mut BenchHarness) {
-        let v = vec::from_fn(1024, |n| n);
+        let v = slice::from_fn(1024, |n| n);
         b.iter(|| {v.iter().fold(0, |old, new| num::pow(old, *new));});
     }
 }

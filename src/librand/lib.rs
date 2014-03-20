@@ -80,7 +80,7 @@ use std::cast;
 use std::kinds::marker;
 use std::local_data;
 use std::str;
-use std::vec;
+use std::slice;
 
 pub use isaac::{IsaacRng, Isaac64Rng};
 pub use os::OSRng;
@@ -202,7 +202,7 @@ pub trait Rng {
     /// println!("{:?}", rng.gen_vec::<(f64, bool)>(5));
     /// ```
     fn gen_vec<T: Rand>(&mut self, len: uint) -> ~[T] {
-        vec::from_fn(len, |_| self.gen())
+        slice::from_fn(len, |_| self.gen())
     }
 
     /// Generate a random value in the range [`low`, `high`). Fails if
@@ -342,7 +342,7 @@ pub trait Rng {
     /// println!("{:?}", sample);
     /// ```
     fn sample<A, T: Iterator<A>>(&mut self, iter: T, n: uint) -> ~[A] {
-        let mut reservoir : ~[A] = vec::with_capacity(n);
+        let mut reservoir : ~[A] = slice::with_capacity(n);
         for (i, elem) in iter.enumerate() {
             if i < n {
                 reservoir.push(elem);
@@ -677,7 +677,7 @@ pub struct Closed01<F>(F);
 
 #[cfg(test)]
 mod test {
-    use std::vec;
+    use std::slice;
     use super::{Rng, task_rng, random, OSRng, SeedableRng, StdRng};
 
     struct ConstRng { i: u64 }
@@ -696,7 +696,7 @@ mod test {
         let lengths = [0, 1, 2, 3, 4, 5, 6, 7,
                        80, 81, 82, 83, 84, 85, 86, 87];
         for &n in lengths.iter() {
-            let mut v = vec::from_elem(n, 0u8);
+            let mut v = slice::from_elem(n, 0u8);
             r.fill_bytes(v);
 
             // use this to get nicer error messages.

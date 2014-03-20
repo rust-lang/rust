@@ -188,18 +188,18 @@ For example:
 # #[allow(unused_imports)];
 extern crate test;
 
-use std::vec;
+use std::slice;
 use test::BenchHarness;
 
 #[bench]
 fn bench_sum_1024_ints(b: &mut BenchHarness) {
-    let v = vec::from_fn(1024, |n| n);
+    let v = slice::from_fn(1024, |n| n);
     b.iter(|| {v.iter().fold(0, |old, new| old + *new);} );
 }
 
 #[bench]
 fn initialise_a_vector(b: &mut BenchHarness) {
-    b.iter(|| {vec::from_elem(1024, 0u64);} );
+    b.iter(|| {slice::from_elem(1024, 0u64);} );
     b.bytes = 1024 * 8;
 }
 

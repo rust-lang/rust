@@ -119,7 +119,7 @@ pub mod bool;
 pub mod char;
 pub mod tuple;
 
-pub mod vec;
+pub mod slice;
 pub mod vec_ng;
 pub mod str;
 

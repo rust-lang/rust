@@ -29,7 +29,7 @@ use test::B;
 
 // Make sure this import is warned about when at least one of its imported names
 // is unused
-use std::vec::{from_fn, from_elem};   //~ ERROR unused import
+use std::slice::{from_fn, from_elem};   //~ ERROR unused import
 
 mod test {
     pub trait A { fn a(&self) {} }

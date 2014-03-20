@@ -349,7 +349,7 @@ mod imp {
         use path::GenericPath;
         use ptr::RawPtr;
         use ptr;
-        use vec::{ImmutableVector, MutableVector};
+        use slice::{ImmutableVector, MutableVector};
 
         ////////////////////////////////////////////////////////////////////////
         // libbacktrace.h API
@@ -510,7 +510,7 @@ mod imp {
     use unstable::dynamic_lib::DynamicLibrary;
     use intrinsics;
     use unstable::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
-    use vec::ImmutableVector;
+    use slice::ImmutableVector;
 
     extern "system" {
         fn GetCurrentProcess() -> libc::HANDLE;

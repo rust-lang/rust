@@ -30,7 +30,7 @@ use std::cmp;
 use std::io;
 use std::os::consts::{macos, freebsd, linux, android, win32};
 use std::str;
-use std::vec;
+use std::slice;
 use std::vec_ng::Vec;
 
 use collections::{HashMap, HashSet};
@@ -443,7 +443,7 @@ fn get_metadata_section_imp(os: Os, filename: &Path) -> Result<MetadataBlob, ~st
                 debug!("checking {} bytes of metadata-version stamp",
                        vlen);
                 let minsz = cmp::min(vlen, csz);
-                let version_ok = vec::raw::buf_as_slice(cvbuf, minsz,
+                let version_ok = slice::raw::buf_as_slice(cvbuf, minsz,
                     |buf0| buf0 == encoder::metadata_encoding_version);
                 if !version_ok { return Err(format!("incompatible metadata version found: '{}'",
                                                     filename.display()));}
@@ -451,7 +451,7 @@ fn get_metadata_section_imp(os: Os, filename: &Path) -> Result<MetadataBlob, ~st
                 let cvbuf1 = cvbuf.offset(vlen as int);
                 debug!("inflating {} bytes of compressed metadata",
                        csz - vlen);
-                vec::raw::buf_as_slice(cvbuf1, csz-vlen, |bytes| {
+                slice::raw::buf_as_slice(cvbuf1, csz-vlen, |bytes| {
                     let inflated = flate::inflate_bytes(bytes);
                     found = Ok(MetadataVec(inflated));
                 });

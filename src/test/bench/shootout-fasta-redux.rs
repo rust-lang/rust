@@ -11,8 +11,8 @@
 use std::cmp::min;
 use std::io::{stdout, IoResult};
 use std::os;
-use std::vec::bytes::copy_memory;
-use std::vec;
+use std::slice::bytes::copy_memory;
+use std::slice;
 
 static LINE_LEN: uint = 60;
 static LOOKUP_SIZE: uint = 4 * 1024;
@@ -89,7 +89,7 @@ impl<'a, W: Writer> RepeatFasta<'a, W> {
 
     fn make(&mut self, n: uint) -> IoResult<()> {
         let alu_len = self.alu.len();
-        let mut buf = vec::from_elem(alu_len + LINE_LEN, 0u8);
+        let mut buf = slice::from_elem(alu_len + LINE_LEN, 0u8);
         let alu: &[u8] = self.alu.as_bytes();
 
         copy_memory(buf, alu);

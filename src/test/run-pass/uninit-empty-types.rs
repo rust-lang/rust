@@ -10,7 +10,6 @@
 
 // Test the uninit() construct returning various empty types.
 
-use std::vec;
 use std::mem;
 
 #[deriving(Clone)]

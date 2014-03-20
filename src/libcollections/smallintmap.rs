@@ -17,7 +17,7 @@
 
 use std::iter::{Enumerate, FilterMap, Rev};
 use std::mem::replace;
-use std::vec;
+use std::slice;
 
 #[allow(missing_doc)]
 pub struct SmallIntMap<T> {
@@ -153,7 +153,7 @@ impl<V> SmallIntMap<V> {
     /// Empties the hash map, moving all values into the specified closure
     pub fn move_iter(&mut self)
         -> FilterMap<(uint, Option<V>), (uint, V),
-                Enumerate<vec::MoveItems<Option<V>>>>
+                Enumerate<slice::MoveItems<Option<V>>>>
     {
         let values = replace(&mut self.v, ~[]);
         values.move_iter().enumerate().filter_map(|(i, v)| {
@@ -236,7 +236,7 @@ macro_rules! double_ended_iterator {
 pub struct Entries<'a, T> {
     priv front: uint,
     priv back: uint,
-    priv iter: vec::Items<'a, Option<T>>
+    priv iter: slice::Items<'a, Option<T>>
 }
 
 iterator!(impl Entries -> (uint, &'a T), get_ref)
@@ -246,7 +246,7 @@ pub type RevEntries<'a, T> = Rev<Entries<'a, T>>;
 pub struct MutEntries<'a, T> {
     priv front: uint,
     priv back: uint,
-    priv iter: vec::MutItems<'a, Option<T>>
+    priv iter: slice::MutItems<'a, Option<T>>
 }
 
 iterator!(impl MutEntries -> (uint, &'a mut T), get_mut_ref)

@@ -158,7 +158,7 @@ pub fn from_elem<T:Clone>(n_elts: uint, t: T) -> ~[T] {
     // FIXME (#7136): manually inline from_fn for 2x plus speedup (sadly very
     // important, from_elem is a bottleneck in borrowck!). Unfortunately it
     // still is substantially slower than using the unsafe
-    // vec::with_capacity/ptr::set_memory for primitive types.
+    // slice::with_capacity/ptr::set_memory for primitive types.
     unsafe {
         let mut v = with_capacity(n_elts);
         let p = v.as_mut_ptr();
@@ -1464,7 +1464,7 @@ impl<T> OwnedVector<T> for ~[T] {
     fn reserve_additional(&mut self, n: uint) {
         if self.capacity() - self.len() < n {
             match self.len().checked_add(&n) {
-                None => fail!("vec::reserve_additional: `uint` overflow"),
+                None => fail!("slice::reserve_additional: `uint` overflow"),
                 Some(new_cap) => self.reserve(new_cap)
             }
         }
@@ -2430,7 +2430,7 @@ pub trait MutableCloneableVector<T> {
     /// # Example
     ///
     /// ```rust
-    /// use std::vec::MutableCloneableVector;
+    /// use std::slice::MutableCloneableVector;
     ///
     /// let mut dst = [0, 0, 0];
     /// let src = [1, 2];
@@ -2497,7 +2497,7 @@ pub mod raw {
     use cast::transmute;
     use ptr;
     use ptr::RawPtr;
-    use vec::{with_capacity, MutableVector, OwnedVector};
+    use slice::{with_capacity, MutableVector, OwnedVector};
     use raw::Slice;
 
     /**
@@ -2576,7 +2576,7 @@ pub mod raw {
 /// Operations on `[u8]`.
 pub mod bytes {
     use container::Container;
-    use vec::{MutableVector, OwnedVector, ImmutableVector};
+    use slice::{MutableVector, OwnedVector, ImmutableVector};
     use ptr;
     use ptr::RawPtr;
 
@@ -2952,7 +2952,7 @@ impl<A> Extendable<A> for ~[A] {
 mod tests {
     use prelude::*;
     use mem;
-    use vec::*;
+    use slice::*;
     use cmp::*;
     use rand::{Rng, task_rng};
 
@@ -4105,7 +4105,7 @@ mod tests {
 
     #[test]
     fn test_bytes_set_memory() {
-        use vec::bytes::MutableByteVector;
+        use slice::bytes::MutableByteVector;
         let mut values = [1u8,2,3,4,5];
         values.mut_slice(0,5).set_memory(0xAB);
         assert!(values == [0xAB, 0xAB, 0xAB, 0xAB, 0xAB]);
@@ -4185,11 +4185,11 @@ mod tests {
 
         let xs = ~[Foo, Foo, Foo];
         assert_eq!(format!("{:?}", xs.slice(0, 2).to_owned()),
-                   ~"~[vec::tests::Foo, vec::tests::Foo]");
+                   ~"~[slice::tests::Foo, slice::tests::Foo]");
 
         let xs: [Foo, ..3] = [Foo, Foo, Foo];
         assert_eq!(format!("{:?}", xs.slice(0, 2).to_owned()),
-                   ~"~[vec::tests::Foo, vec::tests::Foo]");
+                   ~"~[slice::tests::Foo, slice::tests::Foo]");
         cnt = 0;
         for f in xs.iter() {
             assert!(*f == Foo);
@@ -4365,13 +4365,13 @@ mod bench {
     use prelude::*;
     use ptr;
     use rand::{weak_rng, Rng};
-    use vec;
+    use slice;
 
     #[bench]
     fn iterator(bh: &mut BenchHarness) {
         // peculiar numbers to stop LLVM from optimising the summation
         // out.
-        let v = vec::from_fn(100, |i| i ^ (i << 1) ^ (i >> 1));
+        let v = slice::from_fn(100, |i| i ^ (i << 1) ^ (i >> 1));
 
         bh.iter(|| {
             let mut sum = 0;
@@ -4385,7 +4385,7 @@ mod bench {
 
     #[bench]
     fn mut_iterator(bh: &mut BenchHarness) {
-        let mut v = vec::from_elem(100, 0);
+        let mut v = slice::from_elem(100, 0);
 
         bh.iter(|| {
             let mut i = 0;
@@ -4407,7 +4407,7 @@ mod bench {
 
     #[bench]
     fn concat(bh: &mut BenchHarness) {
-        let xss: &[~[uint]] = vec::from_fn(100, |i| range(0, i).collect());
+        let xss: &[~[uint]] = slice::from_fn(100, |i| range(0, i).collect());
         bh.iter(|| {
             let _ = xss.concat_vec();
         });
@@ -4415,7 +4415,7 @@ mod bench {
 
     #[bench]
     fn connect(bh: &mut BenchHarness) {
-        let xss: &[~[uint]] = vec::from_fn(100, |i| range(0, i).collect());
+        let xss: &[~[uint]] = slice::from_fn(100, |i| range(0, i).collect());
         bh.iter(|| {
             let _ = xss.connect_vec(&0);
         });
@@ -4432,7 +4432,7 @@ mod bench {
 
     #[bench]
     fn starts_with_same_vector(bh: &mut BenchHarness) {
-        let vec: ~[uint] = vec::from_fn(100, |i| i);
+        let vec: ~[uint] = slice::from_fn(100, |i| i);
         bh.iter(|| {
             vec.starts_with(vec)
         })
@@ -4448,8 +4448,8 @@ mod bench {
 
     #[bench]
     fn starts_with_diff_one_element_at_end(bh: &mut BenchHarness) {
-        let vec: ~[uint] = vec::from_fn(100, |i| i);
-        let mut match_vec: ~[uint] = vec::from_fn(99, |i| i);
+        let vec: ~[uint] = slice::from_fn(100, |i| i);
+        let mut match_vec: ~[uint] = slice::from_fn(99, |i| i);
         match_vec.push(0);
         bh.iter(|| {
             vec.starts_with(match_vec)
@@ -4458,7 +4458,7 @@ mod bench {
 
     #[bench]
     fn ends_with_same_vector(bh: &mut BenchHarness) {
-        let vec: ~[uint] = vec::from_fn(100, |i| i);
+        let vec: ~[uint] = slice::from_fn(100, |i| i);
         bh.iter(|| {
             vec.ends_with(vec)
         })
@@ -4474,8 +4474,8 @@ mod bench {
 
     #[bench]
     fn ends_with_diff_one_element_at_beginning(bh: &mut BenchHarness) {
-        let vec: ~[uint] = vec::from_fn(100, |i| i);
-        let mut match_vec: ~[uint] = vec::from_fn(100, |i| i);
+        let vec: ~[uint] = slice::from_fn(100, |i| i);
+        let mut match_vec: ~[uint] = slice::from_fn(100, |i| i);
         match_vec[0] = 200;
         bh.iter(|| {
             vec.starts_with(match_vec)
@@ -4484,7 +4484,7 @@ mod bench {
 
     #[bench]
     fn contains_last_element(bh: &mut BenchHarness) {
-        let vec: ~[uint] = vec::from_fn(100, |i| i);
+        let vec: ~[uint] = slice::from_fn(100, |i| i);
         bh.iter(|| {
             vec.contains(&99u)
         })
@@ -4493,14 +4493,14 @@ mod bench {
     #[bench]
     fn zero_1kb_from_elem(bh: &mut BenchHarness) {
         bh.iter(|| {
-            let _v: ~[u8] = vec::from_elem(1024, 0u8);
+            let _v: ~[u8] = slice::from_elem(1024, 0u8);
         });
     }
 
     #[bench]
     fn zero_1kb_set_memory(bh: &mut BenchHarness) {
         bh.iter(|| {
-            let mut v: ~[u8] = vec::with_capacity(1024);
+            let mut v: ~[u8] = slice::with_capacity(1024);
             unsafe {
                 let vp = v.as_mut_ptr();
                 ptr::set_memory(vp, 0, 1024);
@@ -4522,7 +4522,7 @@ mod bench {
         // Slower because the { len, cap, [0 x T] }* repr allows a pointer to the length
         // field to be aliased (in theory) and prevents LLVM from optimizing loads away.
         bh.iter(|| {
-            let mut v: ~[u8] = vec::with_capacity(1024);
+            let mut v: ~[u8] = slice::with_capacity(1024);
             unsafe {
                 v.set_len(1024);
             }
@@ -4535,7 +4535,7 @@ mod bench {
     #[bench]
     fn zero_1kb_mut_iter(bh: &mut BenchHarness) {
         bh.iter(|| {
-            let mut v: ~[u8] = vec::with_capacity(1024);
+            let mut v: ~[u8] = slice::with_capacity(1024);
             unsafe {
                 v.set_len(1024);
             }
@@ -4550,7 +4550,7 @@ mod bench {
     fn random_inserts(bh: &mut BenchHarness) {
         let mut rng = weak_rng();
         bh.iter(|| {
-                let mut v = vec::from_elem(30, (0u, 0u));
+                let mut v = slice::from_elem(30, (0u, 0u));
                 for _ in range(0, 100) {
                     let l = v.len();
                     v.insert(rng.gen::<uint>() % (l + 1),
@@ -4562,7 +4562,7 @@ mod bench {
     fn random_removes(bh: &mut BenchHarness) {
         let mut rng = weak_rng();
         bh.iter(|| {
-                let mut v = vec::from_elem(130, (0u, 0u));
+                let mut v = slice::from_elem(130, (0u, 0u));
                 for _ in range(0, 100) {
                     let l = v.len();
                     v.remove(rng.gen::<uint>() % l);
@@ -4602,7 +4602,7 @@ mod bench {
 
     #[bench]
     fn sort_sorted(bh: &mut BenchHarness) {
-        let mut v = vec::from_fn(10000, |i| i);
+        let mut v = slice::from_fn(10000, |i| i);
         bh.iter(|| {
             v.sort();
         });
@@ -4643,7 +4643,7 @@ mod bench {
 
     #[bench]
     fn sort_big_sorted(bh: &mut BenchHarness) {
-        let mut v = vec::from_fn(10000u, |i| (i, i, i, i));
+        let mut v = slice::from_fn(10000u, |i| (i, i, i, i));
         bh.iter(|| {
             v.sort();
         });

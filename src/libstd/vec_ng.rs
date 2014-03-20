@@ -27,8 +27,8 @@ use ptr::RawPtr;
 use ptr;
 use rt::global_heap::{malloc_raw, realloc_raw};
 use raw::Slice;
-use vec::{ImmutableEqVector, ImmutableVector, Items, MutItems, MutableVector};
-use vec::{MutableTotalOrdVector};
+use slice::{ImmutableEqVector, ImmutableVector, Items, MutItems, MutableVector};
+use slice::{MutableTotalOrdVector};
 
 /// An owned, growable vector
 ///

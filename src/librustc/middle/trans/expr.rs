@@ -70,7 +70,7 @@ use util::nodemap::NodeMap;
 use middle::trans::machine::llsize_of;
 use middle::trans::type_::Type;
 
-use std::vec;
+use std::slice;
 use std::vec_ng::Vec;
 use syntax::ast;
 use syntax::codemap;
@@ -1010,7 +1010,7 @@ fn trans_rec_or_struct<'a>(
     let ty = node_id_type(bcx, id);
     let tcx = bcx.tcx();
     with_field_tys(tcx, ty, Some(id), |discr, field_tys| {
-        let mut need_base = vec::from_elem(field_tys.len(), true);
+        let mut need_base = slice::from_elem(field_tys.len(), true);
 
         let numbered_fields = fields.map(|field| {
             let opt_pos =

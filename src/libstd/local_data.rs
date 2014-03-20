@@ -42,7 +42,7 @@ local_data::get(key_vector, |opt| assert_eq!(*opt.unwrap(), ~[4]));
 
 use cast;
 use option::{None, Option, Some};
-use vec::{ImmutableVector, MutableVector, OwnedVector};
+use slice::{ImmutableVector, MutableVector, OwnedVector};
 use iter::{Iterator};
 use rt::task::{Task, LocalStorage};
 use mem::replace;
