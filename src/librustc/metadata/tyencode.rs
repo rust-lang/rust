@@ -280,11 +280,11 @@ fn enc_sty(w: &mut MemWriter, cx: &ctxt, st: &ty::sty) {
             enc_substs(w, cx, substs);
             mywrite!(w, "]");
         }
-        ty::ty_trait(def, ref substs, store, mt, bounds) => {
-            mywrite!(w, "x[{}|", (cx.ds)(def));
+        ty::ty_trait(~ty::TyTrait { def_id, ref substs, store, mutability, bounds }) => {
+            mywrite!(w, "x[{}|", (cx.ds)(def_id));
             enc_substs(w, cx, substs);
             enc_trait_store(w, cx, store);
-            enc_mutability(w, mt);
+            enc_mutability(w, mutability);
             let bounds = ty::ParamBounds {builtin_bounds: bounds,
                                           trait_bounds: Vec::new()};
             enc_bounds(w, cx, &bounds);
@@ -315,7 +315,7 @@ fn enc_sty(w: &mut MemWriter, cx: &ctxt, st: &ty::sty) {
         ty::ty_unboxed_vec(mt) => { mywrite!(w, "U"); enc_mt(w, cx, mt); }
         ty::ty_closure(ref f) => {
             mywrite!(w, "f");
-            enc_closure_ty(w, cx, f);
+            enc_closure_ty(w, cx, *f);
         }
         ty::ty_bare_fn(ref f) => {
             mywrite!(w, "F");

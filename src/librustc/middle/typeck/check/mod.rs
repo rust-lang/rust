@@ -1860,7 +1860,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
 
         let fn_sig = match *fn_sty {
             ty::ty_bare_fn(ty::BareFnTy {sig: ref sig, ..}) |
-            ty::ty_closure(ty::ClosureTy {sig: ref sig, ..}) => sig,
+            ty::ty_closure(~ty::ClosureTy {sig: ref sig, ..}) => sig,
             _ => {
                 fcx.type_error_message(call_expr.span, |actual| {
                     format!("expected function but \

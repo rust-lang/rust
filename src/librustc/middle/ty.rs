@@ -746,8 +746,8 @@ pub enum sty {
     ty_ptr(mt),
     ty_rptr(Region, mt),
     ty_bare_fn(BareFnTy),
-    ty_closure(ClosureTy),
-    ty_trait(DefId, substs, TraitStore, ast::Mutability, BuiltinBounds),
+    ty_closure(~ClosureTy),
+    ty_trait(~TyTrait),
     ty_struct(DefId, substs),
     ty_tup(Vec<t>),
 
@@ -762,6 +762,15 @@ pub enum sty {
 
     // "Fake" types, used for trans purposes
     ty_unboxed_vec(mt),
+}
+
+#[deriving(Clone, Eq, Hash)]
+pub struct TyTrait {
+    def_id: DefId,
+    substs: substs,
+    store: TraitStore,
+    mutability: ast::Mutability,
+    bounds: BuiltinBounds
 }
 
 #[deriving(Eq, Hash)]
@@ -1205,10 +1214,10 @@ pub fn mk_t(cx: &ctxt, st: sty) -> t {
       &ty_infer(_) => flags |= needs_infer as uint,
       &ty_self(_) => flags |= has_self as uint,
       &ty_enum(_, ref substs) | &ty_struct(_, ref substs) |
-      &ty_trait(_, ref substs, _, _, _) => {
+      &ty_trait(~ty::TyTrait { ref substs, .. }) => {
           flags |= sflags(substs);
           match st {
-              ty_trait(_, _, RegionTraitStore(r), _, _) => {
+              ty_trait(~ty::TyTrait { store: RegionTraitStore(r), .. }) => {
                     flags |= rflags(r);
                 }
               _ => {}
@@ -1398,7 +1407,7 @@ pub fn mk_mut_unboxed_vec(cx: &ctxt, ty: t) -> t {
 pub fn mk_tup(cx: &ctxt, ts: Vec<t>) -> t { mk_t(cx, ty_tup(ts)) }
 
 pub fn mk_closure(cx: &ctxt, fty: ClosureTy) -> t {
-    mk_t(cx, ty_closure(fty))
+    mk_t(cx, ty_closure(~fty))
 }
 
 pub fn mk_bare_fn(cx: &ctxt, fty: BareFnTy) -> t {
@@ -1432,7 +1441,14 @@ pub fn mk_trait(cx: &ctxt,
                 bounds: BuiltinBounds)
              -> t {
     // take a copy of substs so that we own the vectors inside
-    mk_t(cx, ty_trait(did, substs, store, mutability, bounds))
+    let inner = ~TyTrait {
+        def_id: did,
+        substs: substs,
+        store: store,
+        mutability: mutability,
+        bounds: bounds
+    };
+    mk_t(cx, ty_trait(inner))
 }
 
 pub fn mk_struct(cx: &ctxt, struct_id: ast::DefId, substs: substs) -> t {
@@ -1472,7 +1488,7 @@ pub fn maybe_walk_ty(ty: t, f: |t| -> bool) {
             maybe_walk_ty(tm.ty, f);
         }
         ty_enum(_, ref substs) | ty_struct(_, ref substs) |
-        ty_trait(_, ref substs, _, _, _) => {
+        ty_trait(~TyTrait { ref substs, .. }) => {
             for subty in (*substs).tps.iter() { maybe_walk_ty(*subty, |x| f(x)); }
         }
         ty_tup(ref ts) => { for tt in ts.iter() { maybe_walk_ty(*tt, |x| f(x)); } }
@@ -2133,7 +2149,7 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
             }
 
             ty_closure(ref c) => {
-                closure_contents(cx, c)
+                closure_contents(cx, *c)
             }
 
             ty_box(typ) => {
@@ -2144,8 +2160,8 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
                 tc_ty(cx, typ, cache).owned_pointer()
             }
 
-            ty_trait(_, _, store, mutbl, bounds) => {
-                object_contents(cx, store, mutbl, bounds)
+            ty_trait(~ty::TyTrait { store, mutability, bounds, .. }) => {
+                object_contents(cx, store, mutability, bounds)
             }
 
             ty_ptr(ref mt) => {
@@ -2437,7 +2453,7 @@ pub fn is_instantiable(cx: &ctxt, r_ty: t) -> bool {
                 false           // unsafe ptrs can always be NULL
             }
 
-            ty_trait(_, _, _, _, _) => {
+            ty_trait(..) => {
                 false
             }
 
@@ -2854,7 +2870,7 @@ pub fn ty_region(tcx: &ctxt,
 pub fn replace_fn_sig(cx: &ctxt, fsty: &sty, new_sig: FnSig) -> t {
     match *fsty {
         ty_bare_fn(ref f) => mk_bare_fn(cx, BareFnTy {sig: new_sig, ..*f}),
-        ty_closure(ref f) => mk_closure(cx, ClosureTy {sig: new_sig, ..*f}),
+        ty_closure(ref f) => mk_closure(cx, ClosureTy {sig: new_sig, ..**f}),
         ref s => {
             cx.sess.bug(
                 format!("ty_fn_sig() called on non-fn type: {:?}", s));
@@ -2872,7 +2888,7 @@ pub fn replace_closure_return_type(tcx: &ctxt, fn_type: t, ret_type: t) -> t {
         ty::ty_closure(ref fty) => {
             ty::mk_closure(tcx, ClosureTy {
                 sig: FnSig {output: ret_type, ..fty.sig.clone()},
-                ..(*fty).clone()
+                ..(**fty).clone()
             })
         }
         _ => {
@@ -3124,7 +3140,7 @@ pub fn adjust_ty(cx: &ctxt,
                 ty::mk_closure(cx, ClosureTy {
                     sigil: BorrowedSigil,
                     region: r,
-                    ..(*fty).clone()
+                    ..(**fty).clone()
                 })
             }
 
@@ -3140,9 +3156,9 @@ pub fn adjust_ty(cx: &ctxt,
     fn borrow_obj(cx: &ctxt, span: Span, r: Region,
                   m: ast::Mutability, ty: ty::t) -> ty::t {
         match get(ty).sty {
-            ty_trait(trt_did, ref trt_substs, _, _, b) => {
-                ty::mk_trait(cx, trt_did, trt_substs.clone(),
-                             RegionTraitStore(r), m, b)
+            ty_trait(~ty::TyTrait {def_id, ref substs, bounds, .. }) => {
+                ty::mk_trait(cx, def_id, substs.clone(),
+                             RegionTraitStore(r), m, bounds)
             }
             ref s => {
                 cx.sess.span_bug(
@@ -3479,7 +3495,7 @@ pub fn ty_sort_str(cx: &ctxt, t: t) -> ~str {
         ty_rptr(_, _) => ~"&-ptr",
         ty_bare_fn(_) => ~"extern fn",
         ty_closure(_) => ~"fn",
-        ty_trait(id, _, _, _, _) => format!("trait {}", item_path_str(cx, id)),
+        ty_trait(ref inner) => format!("trait {}", item_path_str(cx, inner.def_id)),
         ty_struct(id, _) => format!("struct {}", item_path_str(cx, id)),
         ty_tup(_) => ~"tuple",
         ty_infer(TyVar(_)) => ~"inferred type",
@@ -3865,7 +3881,7 @@ pub fn try_add_builtin_trait(tcx: &ctxt,
 
 pub fn ty_to_def_id(ty: t) -> Option<ast::DefId> {
     match get(ty).sty {
-      ty_trait(id, _, _, _, _) | ty_struct(id, _) | ty_enum(id, _) => Some(id),
+      ty_trait(~TyTrait { def_id: id, .. }) | ty_struct(id, _) | ty_enum(id, _) => Some(id),
       _ => None
     }
 }
@@ -4951,7 +4967,7 @@ pub fn hash_crate_independent(tcx: &ctxt, t: t, svh: &Svh) -> u64 {
                 hash!(c.bounds);
                 region(&mut state, c.region);
             }
-            ty_trait(d, _, store, m, bounds) => {
+            ty_trait(~ty::TyTrait { def_id: d, store, mutability: m, bounds, .. }) => {
                 byte!(17);
                 did(&mut state, d);
                 match store {

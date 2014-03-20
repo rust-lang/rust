@@ -675,7 +675,7 @@ impl<'a> ConstraintContext<'a> {
                                                  substs, variance);
             }
 
-            ty::ty_trait(def_id, ref substs, _, _, _) => {
+            ty::ty_trait(~ty::TyTrait { def_id, ref substs, .. }) => {
                 let trait_def = ty::lookup_trait_def(self.tcx(), def_id);
                 self.add_constraints_from_substs(def_id, &trait_def.generics,
                                                  substs, variance);
@@ -705,7 +705,7 @@ impl<'a> ConstraintContext<'a> {
                 self.add_constraints_from_sig(sig, variance);
             }
 
-            ty::ty_closure(ty::ClosureTy { sig: ref sig, region, .. }) => {
+            ty::ty_closure(~ty::ClosureTy { sig: ref sig, region, .. }) => {
                 let contra = self.contravariant(variance);
                 self.add_constraints_from_region(region, contra);
                 self.add_constraints_from_sig(sig, variance);

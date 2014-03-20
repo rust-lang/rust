@@ -119,7 +119,7 @@ impl<'f> Coerce<'f> {
                 });
             }
 
-            ty::ty_closure(ty::ClosureTy {sigil: ast::BorrowedSigil, ..}) => {
+            ty::ty_closure(~ty::ClosureTy {sigil: ast::BorrowedSigil, ..}) => {
                 return self.unpack_actual_value(a, |sty_a| {
                     self.coerce_borrowed_fn(a, sty_a, b)
                 });
@@ -131,7 +131,9 @@ impl<'f> Coerce<'f> {
                 });
             }
 
-            ty::ty_trait(def_id, ref substs, ty::UniqTraitStore, m, bounds) => {
+            ty::ty_trait(~ty::TyTrait {
+                def_id, ref substs, store: ty::UniqTraitStore, mutability: m, bounds
+            }) => {
                 let result = self.unpack_actual_value(a, |sty_a| {
                     match *sty_a {
                         ty::ty_uniq(..) => {
@@ -148,7 +150,9 @@ impl<'f> Coerce<'f> {
                 }
             }
 
-            ty::ty_trait(def_id, ref substs, ty::RegionTraitStore(region), m, bounds) => {
+            ty::ty_trait(~ty::TyTrait {
+                def_id, ref substs, store: ty::RegionTraitStore(region), mutability: m, bounds
+            }) => {
                 let result = self.unpack_actual_value(a, |sty_a| {
                     match *sty_a {
                         ty::ty_rptr(..) => {
@@ -313,9 +317,9 @@ impl<'f> Coerce<'f> {
         let r_a = self.get_ref().infcx.next_region_var(Coercion(self.get_ref().trace));
 
         let a_borrowed = match *sty_a {
-            ty::ty_trait(did, ref substs, _, _, b) => {
-                ty::mk_trait(tcx, did, substs.clone(),
-                             ty::RegionTraitStore(r_a), b_mutbl, b)
+            ty::ty_trait(~ty::TyTrait { def_id, ref substs, bounds, .. }) => {
+                ty::mk_trait(tcx, def_id, substs.clone(),
+                             ty::RegionTraitStore(r_a), b_mutbl, bounds)
             }
             _ => {
                 return self.subtype(a, b);
@@ -357,7 +361,7 @@ impl<'f> Coerce<'f> {
             ty::ClosureTy {
                 sigil: ast::BorrowedSigil,
                 region: r_borrow,
-                ..fn_ty
+                .. *fn_ty
             });
 
         if_ok!(self.subtype(a_borrowed, b));
@@ -393,7 +397,7 @@ impl<'f> Coerce<'f> {
             let a_closure = ty::mk_closure(self.get_ref().infcx.tcx,
                                            ty::ClosureTy {
                                                 sig: fn_ty_a.sig.clone(),
-                                                ..fn_ty_b
+                                                .. *fn_ty_b
                                            });
             if_ok!(self.subtype(a_closure, b));
             Ok(Some(adj))
