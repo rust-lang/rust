@@ -112,15 +112,16 @@ use middle::lang_items::TypeIdLangItem;
 use util::common::{block_query, indenter, loop_query};
 use util::ppaux;
 use util::ppaux::{UserString, Repr};
-use util::nodemap::{FnvHashMap, NodeMap};
+use util::nodemap::{NodeMap, FnvHashMap};
+use collections::{HashMap, HashSet};
 
 use std::cell::{Cell, RefCell};
-use collections::HashMap;
 use std::mem::replace;
 use std::result;
 use std::slice;
 use std::vec_ng::Vec;
 use std::vec_ng;
+use std::str::StrVector;
 use syntax::abi::AbiSet;
 use syntax::ast::{Provided, Required};
 use syntax::ast;
@@ -868,25 +869,60 @@ fn compare_impl_method(tcx: &ty::ctxt,
            return;
         }
 
-        // FIXME(#2687)---we should be checking that the bounds of the
-        // trait imply the bounds of the subtype, but it appears we
-        // are...not checking this.
-        if impl_param_def.bounds.trait_bounds.len() !=
-            trait_param_def.bounds.trait_bounds.len()
-        {
+        // check that the bounds of the trait imply the bounds of the implementation type
+        let mut enforced_bounds = HashSet::new();
+        let mut unspecified_bounds = ~[];
+        for impl_bound in impl_param_def.bounds.trait_bounds.iter() {
+            let mut specified = false;
+            for trait_bound in trait_param_def.bounds.trait_bounds.iter() {
+                if !enforced_bounds.contains(&trait_bound.def_id) {
+                    match infer::mk_sub_trait_refs(&infcx,
+                                                   false,
+                                                   infer::RelateTraitRefs(impl_m_span),
+                                                   *impl_bound,
+                                                   *trait_bound) {
+                        result::Ok(()) => {
+                            enforced_bounds.insert(trait_bound.def_id);
+                            specified = true;
+                        } // Ok.
+                        result::Err(_) => {}
+                    }
+                }
+            }
+            if !specified {
+                unspecified_bounds.push(format!("`{}`", impl_bound.repr(tcx)));
+            }
+        }
+
+        let unenforced_bounds: ~[~str] =
+            trait_param_def.bounds.trait_bounds.iter().filter_map(|&trait_bound| {
+            if !enforced_bounds.contains(&trait_bound.def_id) {
+                Some(format!("`{}`", trait_bound.repr(tcx)))
+            } else {
+                None
+            }
+        }).collect();
+
+        if unenforced_bounds.len() > 0 {
+             tcx.sess.span_err(
+                impl_m_span,
+                format!("in method `{method}`, \
+                        {nbounds, plural, =1{trait bound} other{trait bounds}} \
+                        {bounds} not enforced by this implementation",
+                        method = token::get_ident(trait_m.ident),
+                        nbounds = unenforced_bounds.len(),
+                        bounds = unenforced_bounds.connect(", ")));
+        }
+        if unspecified_bounds.len() > 0 {
             tcx.sess.span_err(
                 impl_m_span,
                 format!("in method `{method}`, \
-                        type parameter {typaram} has \
-                        {nimpl, plural, =1{# trait bound} other{# trait bounds}}, \
-                        but the corresponding type parameter in \
-                        the trait declaration has \
-                        {ntrait, plural, =1{# trait bound} other{# trait bounds}}",
+                        implementation {nbounds, plural, =1{bound} other{bounds}} \
+                        {bounds} {nbounds, plural, =1{was} other{were}} \
+                        not specified in trait definition",
                         method = token::get_ident(trait_m.ident),
-                        typaram = i,
-                        nimpl = impl_param_def.bounds.trait_bounds.len(),
-                        ntrait = trait_param_def.bounds.trait_bounds.len()));
-            return;
+                        nbounds = unspecified_bounds.len(),
+                        bounds = unspecified_bounds.connect(", ")));
         }
     }
 

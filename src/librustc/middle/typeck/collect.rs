@@ -33,6 +33,7 @@ are represented as `ty_param()` instances.
 
 use metadata::csearch;
 use middle::resolve_lifetime;
+use middle::lint::DuplicatedTypeBound;
 use middle::ty::{ImplContainer, MethodContainer, TraitContainer, substs};
 use middle::ty::{ty_param_bounds_and_ty};
 use middle::ty;
@@ -44,6 +45,8 @@ use middle::typeck::rscope::*;
 use middle::typeck::{CrateCtxt, lookup_def_tcx, no_params, write_ty_to_tcx};
 use util::ppaux;
 use util::ppaux::Repr;
+
+use collections::HashSet;
 
 use std::rc::Rc;
 use std::vec_ng::Vec;
@@ -1036,11 +1039,23 @@ pub fn ty_generics(ccx: &CrateCtxt,
             builtin_bounds: ty::EmptyBuiltinBounds(),
             trait_bounds: Vec::new()
         };
+
+        let mut added_bounds = HashSet::new();
         for ast_bound in ast_bounds.iter() {
             match *ast_bound {
                 TraitTyParamBound(ref b) => {
                     let ty = ty::mk_param(ccx.tcx, param_ty.idx, param_ty.def_id);
                     let trait_ref = instantiate_trait_ref(ccx, b, ty);
+                    if !added_bounds.insert(trait_ref.def_id) {
+                        ccx.tcx.sess.add_lint(
+                            DuplicatedTypeBound,
+                            0,
+                            b.path.span,
+                            format!("duplicated bound `{}`, ignoring it",
+                                    trait_ref.repr(ccx.tcx)));
+                        continue;
+                    }
+
                     if !ty::try_add_builtin_trait(
                         ccx.tcx, trait_ref.def_id,
                         &mut param_bounds.builtin_bounds)
