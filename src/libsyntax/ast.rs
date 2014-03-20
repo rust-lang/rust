@@ -21,7 +21,7 @@ use std::fmt;
 use std::fmt::Show;
 use std::option::Option;
 use std::rc::Rc;
-use std::vec_ng::Vec;
+use std::vec::Vec;
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 
 /// A pointer abstraction. FIXME(eddyb) #10676 use Rc<T> in the future.
@@ -1157,7 +1157,7 @@ mod test {
     use codemap::*;
     use super::*;
 
-    use std::vec_ng::Vec;
+    use std::vec::Vec;
 
     fn is_freeze<T: Freeze>() {}
 

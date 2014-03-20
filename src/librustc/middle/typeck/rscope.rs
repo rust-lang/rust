@@ -12,7 +12,7 @@
 use middle::ty;
 
 use std::cell::Cell;
-use std::vec_ng::Vec;
+use std::vec::Vec;
 use syntax::ast;
 use syntax::codemap::Span;
 use syntax::opt_vec::OptVec;

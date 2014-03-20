@@ -19,7 +19,7 @@ use std::fmt;
 /// to be `0.0`.
 
 use std::from_str::FromStr;
-use std::vec_ng::Vec;
+use std::vec::Vec;
 
 #[deriving(Clone, Eq)]
 pub struct CrateId {

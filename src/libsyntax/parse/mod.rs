@@ -21,7 +21,7 @@ use std::cell::RefCell;
 use std::io::File;
 use std::rc::Rc;
 use std::str;
-use std::vec_ng::Vec;
+use std::vec::Vec;
 
 pub mod lexer;
 pub mod parser;
@@ -279,7 +279,7 @@ mod test {
     use std::io;
     use std::io::MemWriter;
     use std::str;
-    use std::vec_ng::Vec;
+    use std::vec::Vec;
     use codemap::{Span, BytePos, Spanned};
     use opt_vec;
     use ast;

@@ -22,7 +22,7 @@ use std::char;
 use std::fmt;
 use std::local_data;
 use std::path::BytesContainer;
-use std::vec_ng::Vec;
+use std::vec::Vec;
 
 #[allow(non_camel_case_types)]
 #[deriving(Clone, Encodable, Decodable, Eq, Hash, Show)]

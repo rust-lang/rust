@@ -84,6 +84,9 @@
 #[cfg(test)] pub use ops = realstd::ops;
 #[cfg(test)] pub use cmp = realstd::cmp;
 
+#[cfg(stage0)]
+pub use vec_ng = vec;
+
 pub mod macros;
 
 mod rtdeps;
@@ -120,7 +123,7 @@ pub mod char;
 pub mod tuple;
 
 pub mod slice;
-pub mod vec_ng;
+pub mod vec;
 pub mod str;
 
 pub mod ascii;

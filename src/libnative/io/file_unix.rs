@@ -19,7 +19,7 @@ use std::libc;
 use std::mem;
 use std::rt::rtio;
 use std::slice;
-use std::vec_ng::Vec;
+use std::vec::Vec;
 
 use io::{IoResult, retry, keep_going};
 

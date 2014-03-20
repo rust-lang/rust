@@ -28,7 +28,7 @@ use std::hash::Hash;
 use std::io::BufReader;
 use std::from_str::FromStr;
 use std::uint;
-use std::vec_ng::Vec;
+use std::vec::Vec;
 
 use collections::HashMap;
 

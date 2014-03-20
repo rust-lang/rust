@@ -10,7 +10,7 @@
 
 use std::cell::Cell;
 use std::ops::{Deref, DerefMut};
-use std::vec_ng::Vec;
+use std::vec::Vec;
 
 #[deriving(Eq)]
 struct DerefCounter<T> {

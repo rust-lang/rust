@@ -20,8 +20,8 @@ use metadata::creader::Loader;
 
 use std::cell::RefCell;
 use std::slice;
-use std::vec_ng::Vec;
-use std::vec_ng;
+use std::vec::Vec;
+use std::vec;
 use syntax::ast_util::*;
 use syntax::attr::AttrMetaMethods;
 use syntax::attr;
@@ -281,7 +281,7 @@ fn should_fail(i: @ast::Item) -> bool {
 fn add_test_module(cx: &TestCtxt, m: &ast::Mod) -> ast::Mod {
     let testmod = mk_test_module(cx);
     ast::Mod {
-        items: vec_ng::append_one(m.items.clone(), testmod),
+        items: vec::append_one(m.items.clone(), testmod),
         ..(*m).clone()
     }
 }

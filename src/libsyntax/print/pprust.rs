@@ -32,7 +32,7 @@ use std::char;
 use std::str;
 use std::io;
 use std::io::{IoResult, MemWriter};
-use std::vec_ng::Vec;
+use std::vec::Vec;
 
 // The &mut State is stored here to prevent recursive type.
 pub enum AnnNode<'a> {
@@ -2392,7 +2392,7 @@ mod test {
     use codemap;
     use parse::token;
 
-    use std::vec_ng::Vec;
+    use std::vec::Vec;
 
     #[test]
     fn test_fun_to_str() {

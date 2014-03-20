@@ -71,7 +71,7 @@ use middle::trans::machine::llsize_of;
 use middle::trans::type_::Type;
 
 use std::slice;
-use std::vec_ng::Vec;
+use std::vec::Vec;
 use syntax::ast;
 use syntax::codemap;
 use syntax::print::pprust::{expr_to_str};

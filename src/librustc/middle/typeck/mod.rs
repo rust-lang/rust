@@ -72,7 +72,7 @@ use util::nodemap::{DefIdMap, FnvHashMap, NodeMap};
 
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::vec_ng::Vec;
+use std::vec::Vec;
 use collections::List;
 use syntax::codemap::Span;
 use syntax::print::pprust::*;

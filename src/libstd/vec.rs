@@ -58,7 +58,7 @@ impl<T> Vec<T> {
     /// # Example
     ///
     /// ```rust
-    /// # use std::vec_ng::Vec;
+    /// # use std::vec::Vec;
     /// let mut vec: Vec<int> = Vec::new();
     /// ```
     #[inline]
@@ -74,7 +74,7 @@ impl<T> Vec<T> {
     /// # Example
     ///
     /// ```rust
-    /// # use std::vec_ng::Vec;
+    /// # use std::vec::Vec;
     /// let vec: Vec<int> = Vec::with_capacity(10);
     /// ```
     pub fn with_capacity(capacity: uint) -> Vec<T> {
@@ -96,7 +96,7 @@ impl<T> Vec<T> {
     /// # Example
     ///
     /// ```rust
-    /// # use std::vec_ng::Vec;
+    /// # use std::vec::Vec;
     /// let vec = Vec::from_fn(3, |idx| idx * 2);
     /// assert_eq!(vec, vec!(0, 2, 4));
     /// ```
@@ -148,7 +148,7 @@ impl<T: Clone> Vec<T> {
     /// # Example
     ///
     /// ```rust
-    /// # use std::vec_ng::Vec;
+    /// # use std::vec::Vec;
     /// let slice = [1, 2, 3];
     /// let vec = Vec::from_slice(slice);
     /// ```
@@ -162,7 +162,7 @@ impl<T: Clone> Vec<T> {
     ///
     /// # Example
     /// ```rust
-    /// # use std::vec_ng::Vec;
+    /// # use std::vec::Vec;
     /// let vec = Vec::from_elem(3, "hi");
     /// println!("{}", vec); // prints [hi, hi, hi]
     /// ```
@@ -344,7 +344,7 @@ impl<T> Vec<T> {
     /// # Example
     ///
     /// ```rust
-    /// # use std::vec_ng::Vec;
+    /// # use std::vec::Vec;
     /// let vec: Vec<int> = Vec::with_capacity(10);
     /// assert_eq!(vec.capacity(), 10);
     /// ```
@@ -363,7 +363,7 @@ impl<T> Vec<T> {
      /// # Example
      ///
      /// ```rust
-     /// # use std::vec_ng::Vec;
+     /// # use std::vec::Vec;
      /// let mut vec: Vec<int> = vec!(1);
      /// vec.reserve_additional(10);
      /// assert!(vec.capacity() >= 11);
@@ -407,7 +407,7 @@ impl<T> Vec<T> {
     /// # Example
     ///
     /// ```rust
-    /// # use std::vec_ng::Vec;
+    /// # use std::vec::Vec;
     /// let mut vec: Vec<int> = Vec::with_capacity(10);
     /// vec.reserve_exact(11);
     /// assert_eq!(vec.capacity(), 11);
@@ -1169,7 +1169,7 @@ impl<T:Eq> Vec<T> {
 ///
 /// ```rust
 /// let vec = vec!(1, 2);
-/// let vec = std::vec_ng::append(vec, [3, 4]);
+/// let vec = std::vec::append(vec, [3, 4]);
 /// assert_eq!(vec, vec!(1, 2, 3, 4));
 /// ```
 #[inline]
@@ -1185,7 +1185,7 @@ pub fn append<T:Clone>(mut first: Vec<T>, second: &[T]) -> Vec<T> {
 ///
 /// ```rust
 /// let vec = vec!(1, 2);
-/// let vec = std::vec_ng::append_one(vec, 3);
+/// let vec = std::vec::append_one(vec, 3);
 /// assert_eq!(vec, vec!(1, 2, 3));
 /// ```
 #[inline]

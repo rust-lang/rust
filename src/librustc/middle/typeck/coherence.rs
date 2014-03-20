@@ -48,8 +48,8 @@ use syntax::visit;
 use collections::HashSet;
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::vec_ng::Vec;
-use std::vec_ng;
+use std::vec::Vec;
+use std::vec;
 
 struct UniversalQuantificationResult {
     monotype: t,
@@ -347,7 +347,7 @@ impl<'a> CoherenceChecker<'a> {
             // construct the polytype for the method based on the method_ty
             let new_generics = ty::Generics {
                 type_param_defs:
-                    Rc::new(vec_ng::append(
+                    Rc::new(vec::append(
                         Vec::from_slice(impl_poly_type.generics
                                                       .type_param_defs()),
                             new_method_ty.generics.type_param_defs())),

@@ -33,7 +33,7 @@ use std::ptr;
 use std::str;
 use std::io;
 use std::io::{fs, TempDir, Process};
-use std::vec_ng::Vec;
+use std::vec::Vec;
 use flate;
 use serialize::hex::ToHex;
 use syntax::abi;
@@ -105,7 +105,7 @@ pub mod write {
     use std::io::Process;
     use std::libc::{c_uint, c_int};
     use std::str;
-    use std::vec_ng::Vec;
+    use std::vec::Vec;
 
     // On android, we by default compile for armv7 processors. This enables
     // things like double word CAS instructions (rather than emulating them)

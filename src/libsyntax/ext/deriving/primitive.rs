@@ -16,7 +16,7 @@ use ext::build::AstBuilder;
 use ext::deriving::generic::*;
 use parse::token::InternedString;
 
-use std::vec_ng::Vec;
+use std::vec::Vec;
 
 pub fn expand_deriving_from_primitive(cx: &mut ExtCtxt,
                                       span: Span,
