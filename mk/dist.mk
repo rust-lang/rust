@@ -106,7 +106,7 @@ distcheck: dist
 
 else
 
-dist: $(PKG_TAR) $(PKG_OSX)
+dist: $(PKG_TAR)
 
 distcheck: $(PKG_TAR)
 	$(Q)rm -Rf dist
