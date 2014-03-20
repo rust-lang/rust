@@ -67,6 +67,7 @@ pub fn render<T: fmt::Show, S: fmt::Show>(
                        autocomplete=\"off\"
                        placeholder=\"Search documentation...\"
                        type=\"search\" />
+                <button class=\"search\">Search</button>
             </div>
         </form>
     </nav>

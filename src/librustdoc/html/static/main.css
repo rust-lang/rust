@@ -45,7 +45,6 @@ h2, h3, h4 {
     border-bottom: 1px solid #DDDDDD;
 }
 h2 code, h3 code, h4 code {
-
     font-size: 1.2em;
 }
 
@@ -233,32 +232,37 @@ a {
     background: transparent;
 }
 
-.content a.trait, .block a.current.trait { color: #ed9603; }
-.content a.mod, .block a.current.mod { color: #4d76ae; }
-.content a.enum, .block a.current.enum { color: #5e9766; }
+.content a.trait, .block a.current.trait { color: #FFA000; }
+.content a.mod, .block a.current.mod { color: #377BD8; }
+.content a.enum, .block a.current.enum { color: #5ED66E; }
 .content a.struct, .block a.current.struct { color: #e53700; }
-.content a.fn, .block a.current.fn { color: #8c6067; }
-.content .fnname { color: #8c6067; }
+.content a.fn, .block a.current.fn { color: #CE3D54; }
+.content .fnname { color: #CE3D54; }
 
 .search-input {
     width: 100%;
+    outline: none;
     /* Override Normalize.css: we have margins and do
      not want to overflow - the `moz` attribute is necessary
      until Firefox 29, too early to drop at this point */
     -moz-box-sizing: border-box !important;
     box-sizing: border-box !important;
-    outline: none;
-    border: none;
-    border-radius: 1px;
+    display: inline-block;
+    border: 2px solid #e9e9e9;
+    border-radius: 2px;
+    width: 75%;
+    box-sizing: content-box;
     color: #555;
     margin-top: 5px;
     padding: 10px 16px;
     font-size: 17px;
     font-weight: 300;
     box-shadow: 0 0 0 1px #e0e0e0, 0 0 0 2px transparent;
+
     transition: background-color 50ms linear;
     transition: border 500ms ease-out;
     transition: box-shadow 500ms ease-out;
+    transition: width 300ms ease-out;
 }
 
 .search-input:focus {
@@ -266,6 +270,25 @@ a {
     border: 0;
     outline: 0;
     box-shadow: 0 0 0 1px #078dd8, 0 0 0 2px #078dd8;
+}
+
+.search {
+    display: inline-block;
+    width: 100px;
+    cursor: pointer;
+    font-family: Helvetica Neue;
+    font-weight: 200;
+    color: #fff;
+    padding: 13px 25px;
+    border: 1px solid #343E49;
+    margin-top: 4px;
+    font-size: 16px;
+    text-align: center;
+    background: #5B6672;
+}
+
+.search:hover {
+    background: #4484CA;
 }
 
 .search-results .desc {
@@ -350,18 +373,22 @@ h6.section-link:hover a:after {
 }
 
 /** Media Queries **/
-
-@media (max-width: 700px) {
+@media (max-width: 810px) {
     .sidebar {
         display: none;
     }
 
-    .content {
-        margin-left: 0px;
+    nav, .content {
+        margin: 0;
     }
 
-    nav.sub {
-        width: 85.5%;
-        margin: 0 auto;
+    .search-container {
+        width: 100%;
+    }
+}
+
+@media (max-width: 1140px) {
+    .search-input {
+        width: 60%;
     }
 }
