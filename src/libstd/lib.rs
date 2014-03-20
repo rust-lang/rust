@@ -83,6 +83,7 @@
 #[cfg(test)] pub use kinds = realstd::kinds;
 #[cfg(test)] pub use ops = realstd::ops;
 #[cfg(test)] pub use cmp = realstd::cmp;
+#[cfg(test)] pub use ty = realstd::ty;
 
 #[cfg(stage0)]
 pub use vec_ng = vec;
@@ -141,6 +142,7 @@ pub mod gc;
 #[cfg(not(test))] pub mod kinds;
 #[cfg(not(test))] pub mod ops;
 #[cfg(not(test))] pub mod cmp;
+#[cfg(not(test))] pub mod ty;
 
 
 /* Common traits */
@@ -229,5 +231,6 @@ mod std {
     pub use rt;
     pub use str;
     pub use to_str;
+    pub use ty;
     pub use unstable;
 }

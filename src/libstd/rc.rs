@@ -42,7 +42,8 @@ struct RcBox<T> {
 #[unsafe_no_drop_flag]
 pub struct Rc<T> {
     priv ptr: *mut RcBox<T>,
-    priv marker: marker::NoSend
+    priv nosend: marker::NoSend,
+    priv noshare: marker::NoShare
 }
 
 impl<T> Rc<T> {
@@ -56,7 +57,8 @@ impl<T> Rc<T> {
                 // strong destructor is running, even if the weak
                 // pointer is stored inside the strong one.
                 ptr: transmute(~RcBox { value: value, strong: 1, weak: 1 }),
-                marker: marker::NoSend,
+                nosend: marker::NoSend,
+                noshare: marker::NoShare
             }
         }
     }
@@ -67,7 +69,11 @@ impl<T> Rc<T> {
     pub fn downgrade(&self) -> Weak<T> {
         unsafe {
             (*self.ptr).weak += 1;
-            Weak { ptr: self.ptr, marker: marker::NoSend }
+            Weak {
+                ptr: self.ptr,
+                nosend: marker::NoSend,
+                noshare: marker::NoShare
+            }
         }
     }
 }
@@ -107,7 +113,7 @@ impl<T> Clone for Rc<T> {
     fn clone(&self) -> Rc<T> {
         unsafe {
             (*self.ptr).strong += 1;
-            Rc { ptr: self.ptr, marker: marker::NoSend }
+            Rc { ptr: self.ptr, nosend: marker::NoSend, noshare: marker::NoShare }
         }
     }
 }
@@ -138,7 +144,8 @@ impl<T: Ord> Ord for Rc<T> {
 #[unsafe_no_drop_flag]
 pub struct Weak<T> {
     priv ptr: *mut RcBox<T>,
-    priv marker: marker::NoSend
+    priv nosend: marker::NoSend,
+    priv noshare: marker::NoShare
 }
 
 impl<T> Weak<T> {
@@ -149,7 +156,7 @@ impl<T> Weak<T> {
                 None
             } else {
                 (*self.ptr).strong += 1;
-                Some(Rc { ptr: self.ptr, marker: marker::NoSend })
+                Some(Rc { ptr: self.ptr, nosend: marker::NoSend, noshare: marker::NoShare })
             }
         }
     }
@@ -176,7 +183,7 @@ impl<T> Clone for Weak<T> {
     fn clone(&self) -> Weak<T> {
         unsafe {
             (*self.ptr).weak += 1;
-            Weak { ptr: self.ptr, marker: marker::NoSend }
+            Weak { ptr: self.ptr, nosend: marker::NoSend, noshare: marker::NoShare }
         }
     }
 }
