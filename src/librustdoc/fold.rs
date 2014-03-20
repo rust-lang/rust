@@ -25,7 +25,7 @@ pub trait DocFolder {
             StructItem(mut i) => {
                 let mut foo = Vec::new(); swap(&mut foo, &mut i.fields);
                 let num_fields = foo.len();
-                i.fields.extend(&mut foo.move_iter().filter_map(|x| self.fold_item(x)));
+                i.fields.extend(foo.move_iter().filter_map(|x| self.fold_item(x)));
                 i.fields_stripped |= num_fields != i.fields.len();
                 StructItem(i)
             },
@@ -35,7 +35,7 @@ pub trait DocFolder {
             EnumItem(mut i) => {
                 let mut foo = Vec::new(); swap(&mut foo, &mut i.variants);
                 let num_variants = foo.len();
-                i.variants.extend(&mut foo.move_iter().filter_map(|x| self.fold_item(x)));
+                i.variants.extend(foo.move_iter().filter_map(|x| self.fold_item(x)));
                 i.variants_stripped |= num_variants != i.variants.len();
                 EnumItem(i)
             },
@@ -57,12 +57,12 @@ pub trait DocFolder {
                     }
                 }
                 let mut foo = Vec::new(); swap(&mut foo, &mut i.methods);
-                i.methods.extend(&mut foo.move_iter().filter_map(|x| vtrm(self, x)));
+                i.methods.extend(foo.move_iter().filter_map(|x| vtrm(self, x)));
                 TraitItem(i)
             },
             ImplItem(mut i) => {
                 let mut foo = Vec::new(); swap(&mut foo, &mut i.methods);
-                i.methods.extend(&mut foo.move_iter().filter_map(|x| self.fold_item(x)));
+                i.methods.extend(foo.move_iter().filter_map(|x| self.fold_item(x)));
                 ImplItem(i)
             },
             VariantItem(i) => {
@@ -72,7 +72,7 @@ pub trait DocFolder {
                         let mut foo = Vec::new(); swap(&mut foo, &mut j.fields);
                         let num_fields = foo.len();
                         let c = |x| self.fold_item(x);
-                        j.fields.extend(&mut foo.move_iter().filter_map(c));
+                        j.fields.extend(foo.move_iter().filter_map(c));
                         j.fields_stripped |= num_fields != j.fields.len();
                         VariantItem(Variant {kind: StructVariant(j), ..i2})
                     },
