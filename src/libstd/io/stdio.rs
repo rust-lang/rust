@@ -296,7 +296,13 @@ pub struct StdReader {
 impl Reader for StdReader {
     fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
         let ret = match self.inner {
-            TTY(ref mut tty) => tty.read(buf),
+            TTY(ref mut tty) => {
+                // Flush the task-local stdout so that weird issues like a
+                // print!'d prompt not being shown until after the user hits
+                // enter.
+                flush();
+                tty.read(buf)
+            },
             File(ref mut file) => file.read(buf).map(|i| i as uint),
         };
         match ret {
