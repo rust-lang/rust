@@ -18,7 +18,7 @@ use std::libc::{c_int, c_void};
 use std::libc;
 use std::mem;
 use std::rt::rtio;
-use std::vec;
+use std::slice;
 use std::vec_ng::Vec;
 
 use io::{IoResult, retry, keep_going};
@@ -417,7 +417,7 @@ pub fn readlink(p: &CString) -> IoResult<Path> {
     if len == -1 {
         len = 1024; // FIXME: read PATH_MAX from C ffi?
     }
-    let mut buf = vec::with_capacity::<u8>(len as uint);
+    let mut buf = slice::with_capacity::<u8>(len as uint);
     match retry(|| unsafe {
         libc::readlink(p, buf.as_ptr() as *mut libc::c_char,
                        len as libc::size_t) as libc::c_int

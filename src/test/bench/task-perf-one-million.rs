@@ -15,11 +15,11 @@
 use std::os;
 use std::task;
 use std::uint;
-use std::vec;
+use std::slice;
 
 fn calc(children: uint, parent_wait_chan: &Sender<Sender<Sender<int>>>) {
 
-    let wait_ports: ~[Receiver<Sender<Sender<int>>>] = vec::from_fn(children, |_| {
+    let wait_ports: ~[Receiver<Sender<Sender<int>>>] = slice::from_fn(children, |_| {
         let (wait_port, wait_chan) = stream::<Sender<Sender<int>>>();
         task::spawn(proc() {
             calc(children / 2, &wait_chan);

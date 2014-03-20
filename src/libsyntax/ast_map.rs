@@ -20,7 +20,7 @@ use util::small_vector::SmallVector;
 
 use std::cell::RefCell;
 use std::iter;
-use std::vec;
+use std::slice;
 use std::fmt;
 use std::vec_ng::Vec;
 
@@ -65,9 +65,9 @@ impl<'a> Iterator<PathElem> for LinkedPath<'a> {
     }
 }
 
-// HACK(eddyb) move this into libstd (value wrapper for vec::Items).
+// HACK(eddyb) move this into libstd (value wrapper for slice::Items).
 #[deriving(Clone)]
-pub struct Values<'a, T>(vec::Items<'a, T>);
+pub struct Values<'a, T>(slice::Items<'a, T>);
 
 impl<'a, T: Pod> Iterator<T> for Values<'a, T> {
     fn next(&mut self) -> Option<T> {

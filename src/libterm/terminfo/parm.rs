@@ -10,7 +10,7 @@
 
 //! Parameterized string expansion
 
-use std::{char, vec};
+use std::{char, slice};
 use std::mem::replace;
 
 #[deriving(Eq)]
@@ -93,7 +93,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
     let mut state = Nothing;
 
     // expanded cap will only rarely be larger than the cap itself
-    let mut output = vec::with_capacity(cap.len());
+    let mut output = slice::with_capacity(cap.len());
 
     let mut stack: ~[Param] = ~[];
 
@@ -488,7 +488,7 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<~[u8],~str> {
                 (FormatString, _)    => return Err(~"non-number on stack with %s"),
             };
             if flags.precision > s.len() {
-                let mut s_ = vec::with_capacity(flags.precision);
+                let mut s_ = slice::with_capacity(flags.precision);
                 let n = flags.precision - s.len();
                 s_.grow(n, &('0' as u8));
                 s_.push_all_move(s);
@@ -543,7 +543,7 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<~[u8],~str> {
         if flags.left {
             s.grow(n, &(' ' as u8));
         } else {
-            let mut s_ = vec::with_capacity(flags.width);
+            let mut s_ = slice::with_capacity(flags.width);
             s_.grow(n, &(' ' as u8));
             s_.push_all_move(s);
             s = s_;

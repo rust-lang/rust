@@ -94,7 +94,7 @@ use std::cmp::Eq;
 use std::result::{Err, Ok};
 use std::result;
 use std::option::{Some, None};
-use std::vec;
+use std::slice;
 
 /// Name of an option. Either a string or a single char.
 #[deriving(Clone, Eq)]
@@ -525,7 +525,7 @@ pub fn getopts(args: &[~str], optgrps: &[OptGroup]) -> Result {
 
     fn f(_x: uint) -> ~[Optval] { return ~[]; }
 
-    let mut vals = vec::from_fn(n_opts, f);
+    let mut vals = slice::from_fn(n_opts, f);
     let mut free: ~[~str] = ~[];
     let l = args.len();
     let mut i = 0;

@@ -118,7 +118,7 @@ use std::cell::{Cell, RefCell};
 use collections::HashMap;
 use std::mem::replace;
 use std::result;
-use std::vec;
+use std::slice;
 use std::vec_ng::Vec;
 use std::vec_ng;
 use syntax::abi::AbiSet;
@@ -3978,7 +3978,7 @@ pub fn check_bounds_are_used(ccx: &CrateCtxt,
 
     // make a vector of booleans initially false, set to true when used
     if tps.len() == 0u { return; }
-    let mut tps_used = vec::from_elem(tps.len(), false);
+    let mut tps_used = slice::from_elem(tps.len(), false);
 
     ty::walk_ty(ty, |t| {
             match ty::get(t).sty {

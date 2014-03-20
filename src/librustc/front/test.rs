@@ -19,7 +19,7 @@ use front::std_inject::with_version;
 use metadata::creader::Loader;
 
 use std::cell::RefCell;
-use std::vec;
+use std::slice;
 use std::vec_ng::Vec;
 use std::vec_ng;
 use syntax::ast_util::*;

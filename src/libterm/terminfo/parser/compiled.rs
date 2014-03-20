@@ -13,7 +13,7 @@
 /// ncurses-compatible compiled terminfo format parsing (term(5))
 
 
-use std::{vec, str};
+use std::{slice, str};
 use std::io;
 use collections::HashMap;
 use super::super::TermInfo;
@@ -246,7 +246,7 @@ pub fn parse(file: &mut io::Reader,
     let mut string_map = HashMap::new();
 
     if string_offsets_count != 0 {
-        let mut string_offsets = vec::with_capacity(10);
+        let mut string_offsets = slice::with_capacity(10);
         for _ in range(0, string_offsets_count) {
             string_offsets.push(try!(file.read_le_u16()));
         }

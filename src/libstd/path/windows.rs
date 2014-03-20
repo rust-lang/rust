@@ -22,7 +22,7 @@ use iter::{AdditiveIterator, DoubleEndedIterator, Extendable, Rev, Iterator, Map
 use option::{Option, Some, None};
 use str;
 use str::{CharSplits, OwnedStr, Str, StrVector, StrSlice};
-use vec::{Vector, OwnedVector, ImmutableVector};
+use slice::{Vector, OwnedVector, ImmutableVector};
 use super::{contains_nul, BytesContainer, GenericPath, GenericPathUnsafe};
 
 /// Iterator that yields successive components of a Path as &str

@@ -40,7 +40,7 @@ use rt::local::Local;
 use rt::rtio::{DontClose, IoFactory, LocalIo, RtioFileStream, RtioTTY};
 use rt::task::Task;
 use str::StrSlice;
-use vec::ImmutableVector;
+use slice::ImmutableVector;
 
 // And so begins the tale of acquiring a uv handle to a stdio stream on all
 // platforms in all situations. Our story begins by splitting the world into two

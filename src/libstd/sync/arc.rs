@@ -27,7 +27,7 @@ use kinds::Send;
 use ops::Drop;
 use ptr::RawPtr;
 use sync::atomics::{fence, AtomicUint, Relaxed, Acquire, Release};
-use vec;
+use slice;
 
 /// An atomically reference counted pointer.
 ///
@@ -69,7 +69,7 @@ impl<T: Send> UnsafeArc<T> {
                 ~[] // need to free data here
             } else {
                 let ptr = new_inner(data, num_handles);
-                vec::from_fn(num_handles, |_| UnsafeArc { data: ptr })
+                slice::from_fn(num_handles, |_| UnsafeArc { data: ptr })
             }
         }
     }

@@ -14,7 +14,7 @@ use metadata::cstore;
 use metadata::filesearch;
 
 use collections::HashSet;
-use std::{os, vec};
+use std::{os, slice};
 use std::vec_ng::Vec;
 use syntax::abi;
 
@@ -46,7 +46,7 @@ pub fn get_rpath_flags(sess: &Session, out_filename: &Path) -> Vec<~str> {
     let libs = libs.move_iter().filter_map(|(_, l)| l.map(|p| p.clone())).collect();
     // We don't currently rpath extern libraries, but we know
     // where rustrt is and we know every rust program needs it
-    let libs = vec::append_one(libs, get_sysroot_absolute_rt_lib(sess));
+    let libs = slice::append_one(libs, get_sysroot_absolute_rt_lib(sess));
 
     let rpaths = get_rpaths(os, sysroot, output, libs,
                             sess.opts.target_triple);

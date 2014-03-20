@@ -13,10 +13,9 @@
 #[allow(missing_doc)];
 #[allow(non_uppercase_statics)];
 
-
 fn bsearch_range_table(c: char, r: &'static [(char,char)]) -> bool {
     use cmp::{Equal, Less, Greater};
-    use vec::ImmutableVector;
+    use slice::ImmutableVector;
     use option::None;
     r.bsearch(|&(lo,hi)| {
         if lo <= c && c <= hi { Equal }
@@ -24,7 +23,6 @@ fn bsearch_range_table(c: char, r: &'static [(char,char)]) -> bool {
         else { Greater }
     }) != None
 }
-
 
 pub mod general_category {
     static Cc_table : &'static [(char,char)] = &[
@@ -108,7 +106,7 @@ pub mod general_category {
 pub mod decompose {
     use option::Option;
     use option::{Some, None};
-    use vec::ImmutableVector;
+    use slice::ImmutableVector;
 
     fn bsearch_table(c: char, r: &'static [(char, &'static [char])]) -> Option<&'static [char]> {
         use cmp::{Equal, Less, Greater};
@@ -4136,8 +4134,8 @@ pub mod derived_property {
     pub fn XID_Start(c: char) -> bool {
         super::bsearch_range_table(c, XID_Start_table)
     }
-
 }
+
 pub mod property {
     static White_Space_table : &'static [(char,char)] = &[
         ('\x09', '\x0d'), ('\x20', '\x20'),
@@ -4151,12 +4149,11 @@ pub mod property {
     pub fn White_Space(c: char) -> bool {
         super::bsearch_range_table(c, White_Space_table)
     }
-
 }
-pub mod conversions {
 
+pub mod conversions {
     use cmp::{Equal, Less, Greater};
-    use vec::ImmutableVector;
+    use slice::ImmutableVector;
     use tuple::Tuple2;
     use option::{Option, Some, None};
 
@@ -4181,7 +4178,8 @@ pub mod conversions {
             else { Greater }
         })
     }
-   static LuLl_table : &'static [(char, char)] = &[
+
+    static LuLl_table : &'static [(char, char)] = &[
         ('\x41', '\x61'), ('\x42', '\x62'),
         ('\x43', '\x63'), ('\x44', '\x64'),
         ('\x45', '\x65'), ('\x46', '\x66'),

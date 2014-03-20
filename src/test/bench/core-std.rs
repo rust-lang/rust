@@ -20,7 +20,7 @@ use rand::Rng;
 use std::mem::swap;
 use std::os;
 use std::str;
-use std::vec;
+use std::slice;
 use std::io::File;
 
 macro_rules! bench (
@@ -61,7 +61,7 @@ fn maybe_run_test(argv: &[~str], name: ~str, test: ||) {
 }
 
 fn shift_push() {
-    let mut v1 = vec::from_elem(30000, 1);
+    let mut v1 = slice::from_elem(30000, 1);
     let mut v2 = ~[];
 
     while v1.len() > 0 {
@@ -88,7 +88,7 @@ fn vec_plus() {
     let mut v = ~[];
     let mut i = 0;
     while i < 1500 {
-        let rv = vec::from_elem(r.gen_range(0u, i + 1), i);
+        let rv = slice::from_elem(r.gen_range(0u, i + 1), i);
         if r.gen() {
             v.push_all_move(rv);
         } else {
@@ -104,12 +104,12 @@ fn vec_append() {
     let mut v = ~[];
     let mut i = 0;
     while i < 1500 {
-        let rv = vec::from_elem(r.gen_range(0u, i + 1), i);
+        let rv = slice::from_elem(r.gen_range(0u, i + 1), i);
         if r.gen() {
-            v = vec::append(v, rv);
+            v = slice::append(v, rv);
         }
         else {
-            v = vec::append(rv, v);
+            v = slice::append(rv, v);
         }
         i += 1;
     }
@@ -120,7 +120,7 @@ fn vec_push_all() {
 
     let mut v = ~[];
     for i in range(0u, 1500) {
-        let mut rv = vec::from_elem(r.gen_range(0u, i + 1), i);
+        let mut rv = slice::from_elem(r.gen_range(0u, i + 1), i);
         if r.gen() {
             v.push_all(rv);
         }

@@ -16,7 +16,7 @@ use rt::rtio::EventLoop;
 #[cfg(stage0)] use cmp::TotalOrd;
 #[cfg(stage0)] use container::MutableSet;
 #[cfg(stage0)] use iter::Iterator;
-#[cfg(stage0)] use vec::{ImmutableVector, OwnedVector};
+#[cfg(stage0)] use slice::{ImmutableVector, OwnedVector};
 
 // Need to tell the linker on OS X to not barf on undefined symbols
 // and instead look them up at runtime, which we need to resolve

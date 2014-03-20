@@ -19,7 +19,7 @@ use container::Container;
 use cast;
 use fmt;
 use iter::Iterator;
-use vec::{ImmutableVector, MutableVector, Vector};
+use slice::{ImmutableVector, MutableVector, Vector};
 use vec_ng::Vec;
 use option::{Option, Some, None};
 

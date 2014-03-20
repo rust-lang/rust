@@ -16,7 +16,7 @@ Core encoding and decoding interfaces.
 
 use std::path;
 use std::rc::Rc;
-use std::vec;
+use std::slice;
 use std::vec_ng::Vec;
 
 pub trait Encoder {
@@ -428,7 +428,7 @@ impl<S:Encoder,T:Encodable<S>> Encodable<S> for ~[T] {
 impl<D:Decoder,T:Decodable<D>> Decodable<D> for ~[T] {
     fn decode(d: &mut D) -> ~[T] {
         d.read_seq(|d, len| {
-            vec::from_fn(len, |i| {
+            slice::from_fn(len, |i| {
                 d.read_seq_elt(i, |d| Decodable::decode(d))
             })
         })
@@ -680,7 +680,7 @@ pub trait DecoderHelpers {
 impl<D:Decoder> DecoderHelpers for D {
     fn read_to_vec<T>(&mut self, f: |&mut D| -> T) -> ~[T] {
         self.read_seq(|this, len| {
-            vec::from_fn(len, |i| {
+            slice::from_fn(len, |i| {
                 this.read_seq_elt(i, |this| f(this))
             })
         })

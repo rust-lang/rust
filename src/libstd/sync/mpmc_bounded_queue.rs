@@ -35,7 +35,7 @@ use num::next_power_of_two;
 use option::{Option, Some, None};
 use sync::arc::UnsafeArc;
 use sync::atomics::{AtomicUint,Relaxed,Release,Acquire};
-use vec;
+use slice;
 
 struct Node<T> {
     sequence: AtomicUint,
@@ -69,8 +69,8 @@ impl<T: Send> State<T> {
         } else {
             capacity
         };
-        let buffer = vec::from_fn(capacity, |i:uint| {
-            Node{sequence:AtomicUint::new(i),value:None}
+        let buffer = slice::from_fn(capacity, |i| {
+            Node { sequence:AtomicUint::new(i), value: None }
         });
         State{
             pad0: [0, ..64],

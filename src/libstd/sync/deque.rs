@@ -61,7 +61,7 @@ use ptr::RawPtr;
 use sync::arc::UnsafeArc;
 use sync::atomics::{AtomicInt, AtomicPtr, SeqCst};
 use unstable::sync::Exclusive;
-use vec::{OwnedVector, ImmutableVector};
+use slice::{OwnedVector, ImmutableVector};
 
 // Once the queue is less than 1/K full, then it will be downsized. Note that
 // the deque requires that this number be less than 2.
@@ -404,7 +404,7 @@ mod tests {
     use rand::Rng;
     use sync::atomics::{AtomicBool, INIT_ATOMIC_BOOL, SeqCst,
                         AtomicUint, INIT_ATOMIC_UINT};
-    use vec;
+    use slice;
 
     #[test]
     fn smoke() {
@@ -600,7 +600,7 @@ mod tests {
         let mut pool = BufferPool::<(int, uint)>::new();
         let (mut w, s) = pool.deque();
 
-        let (threads, hits) = vec::unzip(range(0, NTHREADS).map(|_| {
+        let (threads, hits) = slice::unzip(range(0, NTHREADS).map(|_| {
             let s = s.clone();
             let unique_box = ~AtomicUint::new(0);
             let thread_box = unsafe {

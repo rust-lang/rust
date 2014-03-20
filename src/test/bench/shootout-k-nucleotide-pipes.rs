@@ -24,7 +24,7 @@ use std::os;
 use std::io;
 use std::str;
 use std::task;
-use std::vec;
+use std::slice;
 
 fn f64_cmp(x: f64, y: f64) -> Ordering {
     // arbitrarily decide that NaNs are larger than everything.
@@ -157,7 +157,7 @@ fn main() {
 
     // initialize each sequence sorter
     let sizes = ~[1u,2,3,4,6,12,18];
-    let mut streams = vec::from_fn(sizes.len(), |_| Some(channel::<~str>()));
+    let mut streams = slice::from_fn(sizes.len(), |_| Some(channel::<~str>()));
     let mut from_child = ~[];
     let to_child  = sizes.iter().zip(streams.mut_iter()).map(|(sz, stream_ref)| {
         let sz = *sz;

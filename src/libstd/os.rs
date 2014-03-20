@@ -47,7 +47,7 @@ use fmt;
 use sync::atomics::{AtomicInt, INIT_ATOMIC_INT, SeqCst};
 use path::{Path, GenericPath};
 use iter::Iterator;
-use vec::{Vector, CloneableVector, ImmutableVector, MutableVector, OwnedVector};
+use slice::{Vector, CloneableVector, ImmutableVector, MutableVector, OwnedVector};
 use ptr::RawPtr;
 
 #[cfg(unix)]
@@ -101,8 +101,8 @@ pub mod win32 {
     use os::TMPBUF_SZ;
     use str::StrSlice;
     use str;
-    use vec::{MutableVector, ImmutableVector, OwnedVector};
-    use vec;
+    use slice::{MutableVector, ImmutableVector, OwnedVector};
+    use slice;
 
     pub fn fill_utf16_buf_and_decode(f: |*mut u16, DWORD| -> DWORD)
         -> Option<~str> {
@@ -112,7 +112,7 @@ pub mod win32 {
             let mut res = None;
             let mut done = false;
             while !done {
-                let mut buf = vec::from_elem(n as uint, 0u16);
+                let mut buf = slice::from_elem(n as uint, 0u16);
                 let k = f(buf.as_mut_ptr(), n);
                 if k == (0 as DWORD) {
                     done = true;
@@ -412,7 +412,7 @@ pub fn self_exe_name() -> Option<Path> {
         unsafe {
             use libc::funcs::bsd44::*;
             use libc::consts::os::extra::*;
-            use vec;
+            use slice;
             let mib = ~[CTL_KERN as c_int,
                         KERN_PROC as c_int,
                         KERN_PROC_PATHNAME as c_int, -1 as c_int];
@@ -422,7 +422,7 @@ pub fn self_exe_name() -> Option<Path> {
                              0u as libc::size_t);
             if err != 0 { return None; }
             if sz == 0 { return None; }
-            let mut v: ~[u8] = vec::with_capacity(sz as uint);
+            let mut v: ~[u8] = slice::with_capacity(sz as uint);
             let err = sysctl(mib.as_ptr(), mib.len() as ::libc::c_uint,
                              v.as_mut_ptr() as *mut c_void, &mut sz, ptr::null(),
                              0u as libc::size_t);
@@ -448,11 +448,11 @@ pub fn self_exe_name() -> Option<Path> {
     fn load_self() -> Option<~[u8]> {
         unsafe {
             use libc::funcs::extra::_NSGetExecutablePath;
-            use vec;
+            use slice;
             let mut sz: u32 = 0;
             _NSGetExecutablePath(ptr::mut_null(), &mut sz);
             if sz == 0 { return None; }
-            let mut v: ~[u8] = vec::with_capacity(sz as uint);
+            let mut v: ~[u8] = slice::with_capacity(sz as uint);
             let err = _NSGetExecutablePath(v.as_mut_ptr() as *mut i8, &mut sz);
             if err != 0 { return None; }
             v.set_len(sz as uint - 1); // chop off trailing NUL
@@ -817,7 +817,7 @@ fn real_args() -> ~[~str] {
 
 #[cfg(windows)]
 fn real_args() -> ~[~str] {
-    use vec;
+    use slice;
 
     let mut nArgs: c_int = 0;
     let lpArgCount: *mut c_int = &mut nArgs;
@@ -833,7 +833,7 @@ fn real_args() -> ~[~str] {
             while *ptr.offset(len as int) != 0 { len += 1; }
 
             // Push it onto the list.
-            let opt_s = vec::raw::buf_as_slice(ptr, len, |buf| {
+            let opt_s = slice::raw::buf_as_slice(ptr, len, |buf| {
                     str::from_utf16(str::truncate_utf16_at_nul(buf))
                 });
             args.push(opt_s.expect("CommandLineToArgvW returned invalid UTF-16"));

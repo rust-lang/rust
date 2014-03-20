@@ -13,9 +13,8 @@
 /// A task pool abstraction. Useful for achieving predictable CPU
 /// parallelism.
 
-
 use std::task;
-use std::vec;
+use std::slice;
 
 enum Msg<T> {
     Execute(proc(&T)),
@@ -47,7 +46,7 @@ impl<T> TaskPool<T> {
                -> TaskPool<T> {
         assert!(n_tasks >= 1);
 
-        let channels = vec::from_fn(n_tasks, |i| {
+        let channels = slice::from_fn(n_tasks, |i| {
             let (tx, rx) = channel::<Msg<T>>();
             let init_fn = init_fn_factory();
 

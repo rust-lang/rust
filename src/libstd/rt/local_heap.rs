@@ -21,7 +21,7 @@ use rt::global_heap;
 use rt::local::Local;
 use rt::task::Task;
 use raw;
-use vec::ImmutableVector;
+use slice::ImmutableVector;
 use vec_ng::Vec;
 
 // This has no meaning with out rtdebug also turned on.

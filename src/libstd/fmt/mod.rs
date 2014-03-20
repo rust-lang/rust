@@ -490,8 +490,8 @@ use repr;
 use result::{Ok, Err};
 use str::StrSlice;
 use str;
-use vec::ImmutableVector;
-use vec;
+use slice::ImmutableVector;
+use slice;
 
 pub use self::num::radix;
 pub use self::num::Radix;
@@ -520,7 +520,7 @@ pub struct Formatter<'a> {
 
     /// Output buffer.
     buf: &'a mut io::Writer,
-    priv curarg: vec::Items<'a, Argument<'a>>,
+    priv curarg: slice::Items<'a, Argument<'a>>,
     priv args: &'a [Argument<'a>],
 }
 

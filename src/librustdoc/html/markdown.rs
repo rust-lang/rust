@@ -33,7 +33,7 @@ use std::libc;
 use std::local_data;
 use std::mem;
 use std::str;
-use std::vec;
+use std::slice;
 use collections::HashMap;
 
 use html::toc::TocBuilder;
@@ -130,7 +130,7 @@ pub fn render(w: &mut io::Writer, s: &str, print_toc: bool) -> fmt::Result {
     extern fn block(ob: *buf, text: *buf, lang: *buf, opaque: *libc::c_void) {
         unsafe {
             let my_opaque: &my_opaque = cast::transmute(opaque);
-            vec::raw::buf_as_slice((*text).data, (*text).size as uint, |text| {
+            slice::raw::buf_as_slice((*text).data, (*text).size as uint, |text| {
                 let text = str::from_utf8(text).unwrap();
                 let mut lines = text.lines().filter(|l| stripped_filtered_line(*l).is_none());
                 let text = lines.to_owned_vec().connect("\n");
@@ -144,7 +144,7 @@ pub fn render(w: &mut io::Writer, s: &str, print_toc: bool) -> fmt::Result {
                 let rendered = if lang.is_null() {
                     false
                 } else {
-                    vec::raw::buf_as_slice((*lang).data,
+                    slice::raw::buf_as_slice((*lang).data,
                                            (*lang).size as uint, |rlang| {
                         let rlang = str::from_utf8(rlang).unwrap();
                         if rlang.contains("notrust") {
@@ -255,7 +255,7 @@ pub fn render(w: &mut io::Writer, s: &str, print_toc: bool) -> fmt::Result {
         };
 
         if ret.is_ok() {
-            ret = vec::raw::buf_as_slice((*ob).data, (*ob).size as uint, |buf| {
+            ret = slice::raw::buf_as_slice((*ob).data, (*ob).size as uint, |buf| {
                 w.write(buf)
             });
         }
@@ -271,7 +271,7 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
             let (should_fail, no_run, ignore) = if lang.is_null() {
                 (false, false, false)
             } else {
-                vec::raw::buf_as_slice((*lang).data,
+                slice::raw::buf_as_slice((*lang).data,
                                        (*lang).size as uint, |lang| {
                     let s = str::from_utf8(lang).unwrap();
                     (s.contains("should_fail"),
@@ -280,7 +280,7 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
                 })
             };
             if ignore { return }
-            vec::raw::buf_as_slice((*text).data, (*text).size as uint, |text| {
+            slice::raw::buf_as_slice((*text).data, (*text).size as uint, |text| {
                 let tests = &mut *(opaque as *mut ::test::Collector);
                 let text = str::from_utf8(text).unwrap();
                 let mut lines = text.lines().map(|l| stripped_filtered_line(l).unwrap_or(l));
@@ -295,7 +295,7 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
             if text.is_null() {
                 tests.register_header("", level as u32);
             } else {
-                vec::raw::buf_as_slice((*text).data, (*text).size as uint, |text| {
+                slice::raw::buf_as_slice((*text).data, (*text).size as uint, |text| {
                     let text = str::from_utf8(text).unwrap();
                     tests.register_header(text, level as u32);
                 })

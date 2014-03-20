@@ -14,7 +14,7 @@ use std::from_str::FromStr;
 use std::iter::count;
 use std::cmp::min;
 use std::os;
-use std::vec::from_elem;
+use std::slice::from_elem;
 use sync::RWArc;
 
 fn A(i: uint, j: uint) -> f64 {

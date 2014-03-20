@@ -71,7 +71,7 @@ The raw C API needs to be wrapped to provide memory safety and make use of highe
 like vectors. A library can choose to expose only the safe, high-level interface and hide the unsafe
 internal details.
 
-Wrapping the functions which expect buffers involves using the `vec::raw` module to manipulate Rust
+Wrapping the functions which expect buffers involves using the `slice::raw` module to manipulate Rust
 vectors as pointers to memory. Rust's vectors are guaranteed to be a contiguous block of memory. The
 length is number of elements currently contained, and the capacity is the total size in elements of
 the allocated memory. The length is less than or equal to the capacity.
@@ -103,7 +103,7 @@ pub fn compress(src: &[u8]) -> ~[u8] {
         let psrc = src.as_ptr();
 
         let mut dstlen = snappy_max_compressed_length(srclen);
-        let mut dst = vec::with_capacity(dstlen as uint);
+        let mut dst = slice::with_capacity(dstlen as uint);
         let pdst = dst.as_mut_ptr();
 
         snappy_compress(psrc, srclen, pdst, &mut dstlen);
@@ -125,7 +125,7 @@ pub fn uncompress(src: &[u8]) -> Option<~[u8]> {
         let mut dstlen: size_t = 0;
         snappy_uncompressed_length(psrc, srclen, &mut dstlen);
 
-        let mut dst = vec::with_capacity(dstlen as uint);
+        let mut dst = slice::with_capacity(dstlen as uint);
         let pdst = dst.as_mut_ptr();
 
         if snappy_uncompress(psrc, srclen, pdst, &mut dstlen) == 0 {
