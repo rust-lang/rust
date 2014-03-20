@@ -16,7 +16,6 @@ use middle::typeck;
 use util::ppaux::{Repr, ty_to_str};
 use util::ppaux::UserString;
 
-use std::vec::Vec;
 use syntax::ast::*;
 use syntax::attr;
 use syntax::codemap::Span;

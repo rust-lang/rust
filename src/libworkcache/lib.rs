@@ -16,7 +16,7 @@
       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
       html_root_url = "http://static.rust-lang.org/doc/master")];
 #[feature(phase)];
-#[allow(deprecated_owned_vector, visible_private_types)];
+#[allow(visible_private_types)];
 
 #[phase(syntax, link)] extern crate log;
 extern crate serialize;

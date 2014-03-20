@@ -20,7 +20,6 @@ use middle::trans::type_::Type;
 
 use collections::HashMap;
 use std::libc::{c_uint, c_ulonglong, c_char};
-use std::vec::Vec;
 use syntax::codemap::Span;
 
 pub struct Builder<'a> {

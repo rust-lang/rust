@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::vec::Vec;
-
 fn main() {
     let mut v = vec!(1);
     let f = || v.push(2);

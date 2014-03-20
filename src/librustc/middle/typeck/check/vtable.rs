@@ -30,7 +30,6 @@ use util::ppaux::Repr;
 use collections::HashSet;
 use std::cell::RefCell;
 use std::result;
-use std::vec::Vec;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::codemap::Span;

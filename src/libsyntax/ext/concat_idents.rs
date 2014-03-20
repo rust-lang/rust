@@ -15,7 +15,6 @@ use ext::base;
 use opt_vec;
 use parse::token;
 use parse::token::{str_to_ident};
-use std::vec::Vec;
 
 pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     -> base::MacResult {

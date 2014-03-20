@@ -27,7 +27,6 @@ use middle::typeck::MethodCall;
 use util::common::indenter;
 use util::ppaux::{Repr};
 
-use std::vec::Vec;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::ast_util::IdRange;

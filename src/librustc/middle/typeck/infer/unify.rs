@@ -17,7 +17,6 @@ use middle::typeck::infer::{Bounds, uok, ures};
 use middle::typeck::infer::InferCtxt;
 use middle::typeck::infer::to_str::InferStr;
 use std::cell::RefCell;
-use std::vec::Vec;
 use syntax::ast;
 
 #[deriving(Clone)]

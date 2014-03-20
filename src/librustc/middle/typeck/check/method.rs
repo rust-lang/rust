@@ -97,7 +97,6 @@ use util::ppaux::Repr;
 
 use collections::HashSet;
 use std::result;
-use std::vec::Vec;
 use std::vec;
 use syntax::ast::{DefId, SelfValue, SelfRegion};
 use syntax::ast::{SelfUniq, SelfStatic};

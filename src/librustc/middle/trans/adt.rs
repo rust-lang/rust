@@ -57,7 +57,6 @@ use middle::trans::type_::Type;
 use middle::trans::type_of;
 use middle::ty;
 use middle::ty::Disr;
-use std::vec::Vec;
 use std::vec;
 use syntax::abi::{X86, X86_64, Arm, Mips};
 use syntax::ast;

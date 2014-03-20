@@ -28,7 +28,6 @@ use print;
 use util::small_vector::SmallVector;
 
 use std::cell::RefCell;
-use std::vec::Vec;
 
 struct ParserAnyMacro<'a> {
     parser: RefCell<Parser<'a>>,

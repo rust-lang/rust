@@ -12,7 +12,6 @@
  * Computes the restrictions that result from a borrow.
  */
 
-use std::vec::Vec;
 use std::vec;
 use middle::borrowck::*;
 use mc = middle::mem_categorization;

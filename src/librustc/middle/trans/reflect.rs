@@ -27,8 +27,6 @@ use util::ppaux::ty_to_str;
 
 use arena::TypedArena;
 use std::libc::c_uint;
-use std::option::{Some,None};
-use std::vec::Vec;
 use std::vec;
 use syntax::ast::DefId;
 use syntax::ast;

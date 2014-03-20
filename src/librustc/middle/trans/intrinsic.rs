@@ -25,7 +25,6 @@ use middle::trans::machine;
 use middle::trans::machine::llsize_of;
 use middle::trans::type_::Type;
 use middle::ty;
-use std::vec::Vec;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::parse::token;

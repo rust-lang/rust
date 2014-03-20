@@ -225,7 +225,6 @@ use util::ppaux::{Repr, vec_map_to_str};
 
 use collections::HashMap;
 use std::cell::Cell;
-use std::vec::Vec;
 use std::vec;
 use syntax::ast;
 use syntax::ast::Ident;

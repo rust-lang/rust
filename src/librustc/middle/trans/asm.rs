@@ -23,7 +23,6 @@ use middle::trans::type_of;
 use middle::trans::type_::Type;
 
 use std::c_str::ToCStr;
-use std::vec::Vec;
 use syntax::ast;
 
 // Take an inline assembly expression and splat it out via LLVM
