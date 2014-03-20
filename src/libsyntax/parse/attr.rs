@@ -38,9 +38,6 @@ impl<'a> ParserAttr for Parser<'a> {
                 attrs.push(self.parse_attribute(false));
               }
               token::POUND => {
-                if self.look_ahead(1, |t| *t != token::LBRACKET) {
-                    break;
-                }
                 attrs.push(self.parse_attribute(false));
               }
               token::DOC_COMMENT(s) => {
@@ -68,6 +65,7 @@ impl<'a> ParserAttr for Parser<'a> {
     fn parse_attribute(&mut self, permit_inner: bool) -> ast::Attribute {
         debug!("parse_attributes: permit_inner={:?} self.token={:?}",
                permit_inner, self.token);
+        let mut warned = false;
         let (span, value) = match self.token {
             INTERPOLATED(token::NtAttr(attr)) => {
                 assert!(attr.node.style == ast::AttrOuter);
@@ -77,9 +75,22 @@ impl<'a> ParserAttr for Parser<'a> {
             token::POUND => {
                 let lo = self.span.lo;
                 self.bump();
+
+                if self.eat(&token::NOT) {
+                    if !permit_inner {
+                        self.fatal("an inner attribute was not permitted in this context.");
+                    }
+                } else {
+                    warned = true;
+                    // NOTE: uncomment this after a stage0 snap
+                    //self.warn("The syntax for inner attributes have changed.
+                    //    Use `#![lang(foo)]` instead.");
+                }
+
                 self.expect(&token::LBRACKET);
                 let meta_item = self.parse_meta_item();
                 self.expect(&token::RBRACKET);
+
                 let hi = self.span.hi;
                 (mk_sp(lo, hi), meta_item)
             }
@@ -89,12 +100,23 @@ impl<'a> ParserAttr for Parser<'a> {
                                    token_str));
             }
         };
-        let style = if permit_inner && self.token == token::SEMI {
-            self.bump();
+
+        let style = if permit_inner {
+
+            if self.eat(&token::SEMI) {
+                // Only warn the user once if the syntax is the old one.
+                if !warned {
+                    // NOTE: uncomment this after a stage0 snap
+                    //self.warn("This uses the old attribute syntax. Semicolons
+                    //  are not longer required.");
+                }
+            }
+
             ast::AttrInner
         } else {
             ast::AttrOuter
         };
+
         return Spanned {
             span: span,
             node: ast::Attribute_ {
@@ -125,10 +147,6 @@ impl<'a> ParserAttr for Parser<'a> {
                     self.parse_attribute(true)
                 }
                 token::POUND => {
-                    if self.look_ahead(1, |t| *t != token::LBRACKET) {
-                        // This is an extension
-                        break;
-                    }
                     self.parse_attribute(true)
                 }
                 token::DOC_COMMENT(s) => {
