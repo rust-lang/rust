@@ -475,13 +475,6 @@ pub trait Index<Index,Result> {
     fn index(&self, index: &Index) -> Result;
 }
 
-/// Dummy dox
-#[cfg(stage0)]
-pub trait Deref<Result> {
-    /// dummy dox
-    fn deref<'a>(&'a self) -> &'a Result;
-}
-
 /**
  *
  * The `Deref` trait is used to specify the functionality of dereferencing
@@ -509,18 +502,10 @@ pub trait Deref<Result> {
  * }
  * ```
  */
-#[cfg(not(stage0))]
 #[lang="deref"]
 pub trait Deref<Result> {
     /// The method called to dereference a value
     fn deref<'a>(&'a self) -> &'a Result;
-}
-
-/// dummy dox
-#[cfg(stage0)]
-pub trait DerefMut<Result>: Deref<Result> {
-    /// dummy dox
-    fn deref_mut<'a>(&'a mut self) -> &'a mut Result;
 }
 
 /**
@@ -557,7 +542,6 @@ pub trait DerefMut<Result>: Deref<Result> {
  * }
  * ```
  */
-#[cfg(not(stage0))]
 #[lang="deref_mut"]
 pub trait DerefMut<Result>: Deref<Result> {
     /// The method called to mutably dereference a value
