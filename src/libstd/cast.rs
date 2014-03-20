@@ -75,12 +75,6 @@ pub unsafe fn transmute_mut_unsafe<T>(ptr: *T) -> *mut T {
     transmute(ptr)
 }
 
-/// Coerce an immutable reference to be mutable.
-#[inline]
-pub unsafe fn transmute_immut_unsafe<T>(ptr: *mut T) -> *T {
-    transmute(ptr)
-}
-
 /// Coerce a mutable reference to have an arbitrary associated region.
 #[inline]
 pub unsafe fn transmute_mut_region<'a,'b,T>(ptr: &'a mut T) -> &'b mut T {
