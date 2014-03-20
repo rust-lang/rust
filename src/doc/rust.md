@@ -2033,7 +2033,7 @@ Supported traits for `deriving` are:
 
 * Comparison traits: `Eq`, `TotalEq`, `Ord`, `TotalOrd`.
 * Serialization: `Encodable`, `Decodable`. These require `serialize`.
-* `Clone` and `DeepClone`, to perform (deep) copies.
+* `Clone`, to create `T` from `&T` via a copy.
 * `Hash`, to iterate over the bytes in a data type.
 * `Rand`, to create a random instance of a data type.
 * `Default`, to create an empty instance of a data type.

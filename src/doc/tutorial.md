@@ -2538,7 +2538,7 @@ enum ABC { A, B, C }
 ~~~
 
 The full list of derivable traits is `Eq`, `TotalEq`, `Ord`,
-`TotalOrd`, `Encodable` `Decodable`, `Clone`, `DeepClone`,
+`TotalOrd`, `Encodable` `Decodable`, `Clone`,
 `Hash`, `Rand`, `Default`, `Zero`, `FromPrimitive` and `Show`.
 
 # Crates and the module system
