@@ -178,13 +178,6 @@ impl cmp::Eq for intern_key {
     }
 }
 
-#[cfg(stage0)]
-impl Hash for intern_key {
-    fn hash(&self, s: &mut sip::SipState) {
-        unsafe { (*self.sty).hash(s) }
-    }
-}
-#[cfg(not(stage0))]
 impl<W:Writer> Hash<W> for intern_key {
     fn hash(&self, s: &mut W) {
         unsafe { (*self.sty).hash(s) }
