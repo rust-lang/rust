@@ -13,4 +13,4 @@ mod foo {
   #![feature(globs)]
 }
 
-fn main() {}
+pub fn main() {}

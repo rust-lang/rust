@@ -12,6 +12,7 @@
 #[feature(phase)];
 
 #[allow(non_camel_case_types)];
+#[allow(deprecated_owned_vector)]; // NOTE: remove after stage0
 #[deny(warnings)];
 
 extern crate test;
