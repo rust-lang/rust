@@ -13,7 +13,6 @@
 use std::cell::RefCell;
 use std::os;
 use std::io::fs;
-use std::vec::Vec;
 use collections::HashSet;
 
 pub enum FileMatch { FileMatches, FileDoesntMatch }

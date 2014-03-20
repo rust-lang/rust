@@ -39,7 +39,6 @@ use std::io;
 use std::io::{fs, File, BufferedWriter, MemWriter, BufferedReader};
 use std::str;
 use std::slice;
-use std::vec::Vec;
 use collections::{HashMap, HashSet};
 
 use sync::Arc;

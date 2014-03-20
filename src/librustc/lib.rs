@@ -28,7 +28,6 @@ This API is completely unstable and subject to change.
       html_root_url = "http://static.rust-lang.org/doc/master")];
 
 #[allow(deprecated)];
-#[allow(deprecated_owned_vector)];
 #[feature(macro_rules, globs, struct_variant, managed_boxes)];
 #[feature(quote, default_type_params, phase)];
 
@@ -55,7 +54,6 @@ use std::io;
 use std::os;
 use std::str;
 use std::task;
-use std::vec::Vec;
 use std::vec;
 use syntax::ast;
 use syntax::diagnostic::Emitter;

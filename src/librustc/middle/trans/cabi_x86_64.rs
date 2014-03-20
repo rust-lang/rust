@@ -21,7 +21,6 @@ use middle::trans::context::CrateContext;
 use middle::trans::type_::Type;
 
 use std::cmp;
-use std::vec::Vec;
 
 #[deriving(Clone, Eq)]
 enum RegClass {

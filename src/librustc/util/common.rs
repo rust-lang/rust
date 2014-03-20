@@ -16,7 +16,6 @@ use syntax::visit;
 use syntax::visit::Visitor;
 
 use std::local_data;
-use std::vec::Vec;
 
 use time;
 

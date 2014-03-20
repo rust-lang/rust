@@ -30,7 +30,6 @@ use core;
 use doctree;
 use visit_ast;
 use std::local_data;
-use std::vec::Vec;
 
 pub trait Clean<T> {
     fn clean(&self) -> T;

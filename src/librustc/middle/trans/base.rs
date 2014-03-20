@@ -76,7 +76,6 @@ use std::c_str::ToCStr;
 use std::cell::{Cell, RefCell};
 use std::libc::c_uint;
 use std::local_data;
-use std::vec::Vec;
 use syntax::abi::{X86, X86_64, Arm, Mips, Rust, RustIntrinsic, OsWin32};
 use syntax::ast_map::PathName;
 use syntax::ast_util::{local_def, is_local};

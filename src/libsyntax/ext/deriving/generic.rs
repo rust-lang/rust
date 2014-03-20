@@ -187,7 +187,6 @@ use codemap::Span;
 use opt_vec;
 use parse::token::InternedString;
 
-use std::vec::Vec;
 use std::vec;
 
 pub use self::ty::*;

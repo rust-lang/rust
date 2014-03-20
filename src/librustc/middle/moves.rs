@@ -138,7 +138,6 @@ use util::ppaux::UserString;
 use util::nodemap::{NodeMap, NodeSet};
 
 use std::rc::Rc;
-use std::vec::Vec;
 use syntax::ast::*;
 use syntax::ast_util;
 use syntax::visit;

@@ -18,7 +18,6 @@
  */
 
 use driver::session::Session;
-use std::vec::Vec;
 use util::nodemap::NodeMap;
 use syntax::ast;
 use syntax::codemap::Span;

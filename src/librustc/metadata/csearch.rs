@@ -20,7 +20,6 @@ use middle::typeck;
 
 use reader = serialize::ebml::reader;
 use std::rc::Rc;
-use std::vec::Vec;
 use std::vec;
 use syntax::ast;
 use syntax::ast_map;

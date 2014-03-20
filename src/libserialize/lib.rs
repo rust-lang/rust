@@ -28,7 +28,6 @@ Core encoding and decoding interfaces.
 // NOTE remove the following two attributes after the next snapshot.
 #[allow(unrecognized_lint)];
 #[allow(default_type_param_usage)];
-#[allow(deprecated_owned_vector)];
 
 // test harness access
 #[cfg(test)]

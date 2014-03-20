@@ -24,7 +24,6 @@ source code snippets, etc.
 use std::cell::RefCell;
 use std::cmp;
 use std::rc::Rc;
-use std::vec::Vec;
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 
 pub trait Pos {

@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use std::{str, io};
-use std::vec::Vec;
 
 use collections::HashSet;
 

@@ -28,7 +28,6 @@ use syntax::{abi, ast, codemap};
 use syntax;
 
 use std::cell::{Cell, RefCell};
-use std::vec::Vec;
 use collections::HashSet;
 
 pub struct Config {
@@ -407,7 +406,7 @@ macro_rules! cgoptions(
             }
         }
 
-        fn parse_list(slot: &mut ::std::vec::Vec<~str>, v: Option<&str>)
+        fn parse_list(slot: &mut Vec<~str>, v: Option<&str>)
                       -> bool {
             match v {
                 Some(s) => {

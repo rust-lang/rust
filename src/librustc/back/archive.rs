@@ -16,7 +16,6 @@ use metadata::filesearch;
 use lib::llvm::{ArchiveRef, llvm};
 
 use std::cast;
-use std::vec::Vec;
 use std::io;
 use std::io::{fs, TempDir};
 use std::libc;

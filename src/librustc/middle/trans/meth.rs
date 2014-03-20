@@ -34,7 +34,6 @@ use util::common::indenter;
 use util::ppaux::Repr;
 
 use std::c_str::ToCStr;
-use std::vec::Vec;
 use std::vec;
 use syntax::parse::token;
 use syntax::{ast, ast_map, visit};

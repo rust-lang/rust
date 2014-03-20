@@ -23,7 +23,6 @@ use middle::ty::{ty_uniq, ty_trait, ty_int, ty_uint, ty_unboxed_vec, ty_infer};
 use middle::ty;
 use middle::typeck;
 
-use std::vec::Vec;
 use syntax::abi::AbiSet;
 use syntax::ast_map;
 use syntax::codemap::{Span, Pos};

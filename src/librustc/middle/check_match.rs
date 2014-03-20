@@ -21,7 +21,6 @@ use util::ppaux::ty_to_str;
 
 use std::cmp;
 use std::iter;
-use std::vec::Vec;
 use std::vec;
 use syntax::ast::*;
 use syntax::ast_util::{unguarded_pat, walk_pat};

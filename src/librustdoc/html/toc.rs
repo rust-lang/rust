@@ -11,7 +11,6 @@
 //! Table-of-contents creation.
 
 use std::fmt;
-use std::vec::Vec;
 
 /// A (recursive) table of contents
 #[deriving(Eq)]
