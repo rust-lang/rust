@@ -190,7 +190,7 @@ impl Seek for MemReader {
 }
 
 impl Buffer for MemReader {
-    fn fill<'a>(&'a mut self) -> IoResult<&'a [u8]> {
+    fn fill_buf<'a>(&'a mut self) -> IoResult<&'a [u8]> {
         if self.pos < self.buf.len() {
             Ok(self.buf.slice_from(self.pos))
         } else {
@@ -322,7 +322,7 @@ impl<'a> Seek for BufReader<'a> {
 }
 
 impl<'a> Buffer for BufReader<'a> {
-    fn fill<'a>(&'a mut self) -> IoResult<&'a [u8]> {
+    fn fill_buf<'a>(&'a mut self) -> IoResult<&'a [u8]> {
         if self.pos < self.buf.len() {
             Ok(self.buf.slice_from(self.pos))
         } else {
@@ -554,5 +554,19 @@ mod test {
         let mut buf = [0];
         let mut r = BufWriter::new(buf);
         assert!(r.seek(-1, SeekSet).is_err());
+    }
+
+    #[test]
+    fn io_fill() {
+        let mut r = MemReader::new(~[1, 2, 3, 4, 5, 6, 7, 8]);
+        let mut buf = [0, ..3];
+        assert_eq!(r.fill(buf), Ok(()));
+        assert_eq!(buf.as_slice(), &[1, 2, 3]);
+        assert_eq!(r.fill(buf.mut_slice_to(0)), Ok(()));
+        assert_eq!(buf.as_slice(), &[1, 2, 3]);
+        assert_eq!(r.fill(buf), Ok(()));
+        assert_eq!(buf.as_slice(), &[4, 5, 6]);
+        assert!(r.fill(buf).is_err());
+        assert_eq!(buf.as_slice(), &[7, 8, 6]);
     }
 }
