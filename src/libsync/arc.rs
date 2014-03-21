@@ -162,7 +162,6 @@ struct MutexArcInner<T> { lock: Mutex, failed: bool, data: T }
 /// An Arc with mutable data protected by a blocking mutex.
 pub struct MutexArc<T> {
     priv x: UnsafeArc<MutexArcInner<T>>,
-    priv marker: marker::NoFreeze,
 }
 
 impl<T:Send> Clone for MutexArc<T> {
@@ -171,8 +170,7 @@ impl<T:Send> Clone for MutexArc<T> {
     fn clone(&self) -> MutexArc<T> {
         // NB: Cloning the underlying mutex is not necessary. Its reference
         // count would be exactly the same as the shared state's.
-        MutexArc { x: self.x.clone(),
-                   marker: marker::NoFreeze, }
+        MutexArc { x: self.x.clone() }
     }
 }
 
@@ -191,8 +189,7 @@ impl<T:Send> MutexArc<T> {
             lock: Mutex::new_with_condvars(num_condvars),
             failed: false, data: user_data
         };
-        MutexArc { x: UnsafeArc::new(data),
-                   marker: marker::NoFreeze, }
+        MutexArc { x: UnsafeArc::new(data) }
     }
 
     /**
@@ -297,17 +294,17 @@ struct RWArcInner<T> { lock: RWLock, failed: bool, data: T }
  */
 pub struct RWArc<T> {
     priv x: UnsafeArc<RWArcInner<T>>,
-    priv marker: marker::NoFreeze,
-    priv marker1: marker::NoShare,
+    priv marker: marker::NoShare,
 }
 
 impl<T: Share + Send> Clone for RWArc<T> {
     /// Duplicate a rwlock-protected Arc. See arc::clone for more details.
     #[inline]
     fn clone(&self) -> RWArc<T> {
-        RWArc { x: self.x.clone(),
-                marker: marker::NoFreeze,
-                marker1: marker::NoShare, }
+        RWArc {
+            x: self.x.clone(),
+            marker: marker::NoShare
+        }
     }
 
 }
@@ -327,9 +324,10 @@ impl<T: Share + Send> RWArc<T> {
             lock: RWLock::new_with_condvars(num_condvars),
             failed: false, data: user_data
         };
-        RWArc { x: UnsafeArc::new(data),
-                marker: marker::NoFreeze,
-                marker1: marker::NoShare, }
+        RWArc {
+            x: UnsafeArc::new(data),
+            marker: marker::NoShare
+        }
     }
 
     /**
