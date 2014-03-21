@@ -20,6 +20,7 @@
 # * dist-win - Windows exe installers
 # * dist-osx - OS X .pkg installers
 # * dist-tar-bins - Ad-hoc Unix binary installers
+# * dist-docs - Stage docs for upload
 
 PKG_NAME = $(CFG_PACKAGE_NAME)
 
@@ -183,6 +184,17 @@ endef
 
 $(foreach host,$(CFG_HOST),\
   $(eval $(call DEF_INSTALLER,$(host))))
+
+
+######################################################################
+# Docs
+######################################################################
+
+# Just copy the docs to a folder under dist with the appropriate name
+# for uploading to S3
+dist-docs: docs compiler-docs
+	$(Q) mkdir -p dist/doc/
+	$(Q) cp -r doc dist/doc/$(CFG_PACKAGE_VERS)
 
 
 ######################################################################
