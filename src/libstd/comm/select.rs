@@ -66,7 +66,6 @@ pub struct Select {
     priv tail: *mut Handle<'static, ()>,
     priv next_id: Cell<uint>,
     priv marker1: marker::NoSend,
-    priv marker2: marker::NoFreeze,
 }
 
 /// A handle to a receiver which is currently a member of a `Select` set of
@@ -105,7 +104,6 @@ impl Select {
     pub fn new() -> Select {
         Select {
             marker1: marker::NoSend,
-            marker2: marker::NoFreeze,
             head: 0 as *mut Handle<'static, ()>,
             tail: 0 as *mut Handle<'static, ()>,
             next_id: Cell::new(1),
