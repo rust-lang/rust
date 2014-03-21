@@ -60,10 +60,8 @@ impl<R: Reader> Rng for ReaderRng<R> {
     }
     fn fill_bytes(&mut self, v: &mut [u8]) {
         if v.len() == 0 { return }
-        match self.reader.read(v) {
-            Ok(n) if n == v.len() => return,
-            Ok(n) => fail!("ReaderRng.fill_bytes could not fill buffer: \
-                            read {} out of {} bytes.", n, v.len()),
+        match self.reader.fill(v) {
+            Ok(()) => {}
             Err(e) => fail!("ReaderRng.fill_bytes error: {}", e)
         }
     }
