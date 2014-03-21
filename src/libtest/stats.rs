@@ -1034,22 +1034,22 @@ mod tests {
 
 #[cfg(test)]
 mod bench {
-    use BenchHarness;
+    use Bencher;
     use std::slice;
     use stats::Stats;
 
     #[bench]
-    pub fn sum_three_items(bh: &mut BenchHarness) {
-        bh.iter(|| {
+    pub fn sum_three_items(b: &mut Bencher) {
+        b.iter(|| {
             [1e20, 1.5, -1e20].sum();
         })
     }
     #[bench]
-    pub fn sum_many_f64(bh: &mut BenchHarness) {
+    pub fn sum_many_f64(b: &mut Bencher) {
         let nums = [-1e30, 1e60, 1e30, 1.0, -1e60];
         let v = slice::from_fn(500, |i| nums[i%5]);
 
-        bh.iter(|| {
+        b.iter(|| {
             v.sum();
         })
     }

@@ -293,7 +293,7 @@ mod tests {
     use option::{Some, None};
     use str::{Str, OwnedStr};
     use slice::{Vector, ImmutableVector, OwnedVector};
-    use self::test::BenchHarness;
+    use self::test::Bencher;
 
     use super::super::Hash;
     use super::{SipState, hash, hash_with_keys};
@@ -516,9 +516,9 @@ mod tests {
     }
 
     #[bench]
-    fn bench_str(bh: &mut BenchHarness) {
+    fn bench_str(b: &mut Bencher) {
         let s = "foo";
-        bh.iter(|| {
+        b.iter(|| {
             assert_eq!(hash(&s), 16262950014981195938);
         })
     }
@@ -539,13 +539,13 @@ mod tests {
     }
 
     #[bench]
-    fn bench_compound_1(bh: &mut BenchHarness) {
+    fn bench_compound_1(b: &mut Bencher) {
         let compound = Compound {
             x: 1,
             y: 2,
             z: ~"foobarbaz",
         };
-        bh.iter(|| {
+        b.iter(|| {
             assert_eq!(hash(&compound), 3581836382593270478);
         })
     }

@@ -367,7 +367,7 @@ mod test {
 #[cfg(test)]
 mod bench {
     extern crate test;
-    use self::test::BenchHarness;
+    use self::test::Bencher;
     use std::mem::size_of;
     use distributions::IndependentSample;
     use {StdRng, RAND_BENCH_N};
@@ -375,28 +375,28 @@ mod bench {
 
 
     #[bench]
-    fn bench_gamma_large_shape(bh: &mut BenchHarness) {
+    fn bench_gamma_large_shape(b: &mut Bencher) {
         let gamma = Gamma::new(10., 1.0);
         let mut rng = StdRng::new();
 
-        bh.iter(|| {
+        b.iter(|| {
             for _ in range(0, RAND_BENCH_N) {
                 gamma.ind_sample(&mut rng);
             }
         });
-        bh.bytes = size_of::<f64>() as u64 * RAND_BENCH_N;
+        b.bytes = size_of::<f64>() as u64 * RAND_BENCH_N;
     }
 
     #[bench]
-    fn bench_gamma_small_shape(bh: &mut BenchHarness) {
+    fn bench_gamma_small_shape(b: &mut Bencher) {
         let gamma = Gamma::new(0.1, 1.0);
         let mut rng = StdRng::new();
 
-        bh.iter(|| {
+        b.iter(|| {
             for _ in range(0, RAND_BENCH_N) {
                 gamma.ind_sample(&mut rng);
             }
         });
-        bh.bytes = size_of::<f64>() as u64 * RAND_BENCH_N;
+        b.bytes = size_of::<f64>() as u64 * RAND_BENCH_N;
     }
 }

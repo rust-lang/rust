@@ -363,7 +363,7 @@ mod tests {
 #[cfg(test)]
 mod bench {
     extern crate test;
-    use self::test::BenchHarness;
+    use self::test::Bencher;
     use option::{Some,None};
 
     // Static/dynamic method dispatch
@@ -383,18 +383,18 @@ mod bench {
     }
 
     #[bench]
-    fn trait_vtable_method_call(bh: &mut BenchHarness) {
+    fn trait_vtable_method_call(b: &mut Bencher) {
         let s = Struct { field: 10 };
         let t = &s as &Trait;
-        bh.iter(|| {
+        b.iter(|| {
             t.method()
         });
     }
 
     #[bench]
-    fn trait_static_method_call(bh: &mut BenchHarness) {
+    fn trait_static_method_call(b: &mut Bencher) {
         let s = Struct { field: 10 };
-        bh.iter(|| {
+        b.iter(|| {
             s.method()
         });
     }
@@ -402,9 +402,9 @@ mod bench {
     // Overhead of various match forms
 
     #[bench]
-    fn match_option_some(bh: &mut BenchHarness) {
+    fn match_option_some(b: &mut Bencher) {
         let x = Some(10);
-        bh.iter(|| {
+        b.iter(|| {
             match x {
                 Some(y) => y,
                 None => 11
@@ -413,9 +413,9 @@ mod bench {
     }
 
     #[bench]
-    fn match_vec_pattern(bh: &mut BenchHarness) {
+    fn match_vec_pattern(b: &mut Bencher) {
         let x = [1,2,3,4,5,6];
-        bh.iter(|| {
+        b.iter(|| {
             match x {
                 [1,2,3,..] => 10,
                 _ => 11
