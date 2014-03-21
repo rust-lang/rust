@@ -1066,14 +1066,46 @@ pub fn with_cond<'a>(
                  -> &'a Block<'a> {
     let _icx = push_ctxt("with_cond");
     let fcx = bcx.fcx;
-    let next_cx = fcx.new_temp_block("next");
-    let cond_cx = fcx.new_temp_block("cond");
-    CondBr(bcx, val, cond_cx.llbb, next_cx.llbb);
-    let after_cx = f(cond_cx);
-    if !after_cx.terminated.get() {
-        Br(after_cx, next_cx.llbb);
+
+    let is_const = unsafe { llvm::LLVMIsConstant(val) != 0};
+
+    if !is_const {
+        let next_cx = fcx.new_temp_block("next");
+        let cond_cx = fcx.new_temp_block("cond");
+        CondBr(bcx, val, cond_cx.llbb, next_cx.llbb);
+        let after_cx = f(cond_cx);
+        if !after_cx.terminated.get() {
+            Br(after_cx, next_cx.llbb);
+        }
+        next_cx
+    } else {
+        let val = unsafe {
+            llvm::LLVMConstIntGetZExtValue(val) != 0
+        };
+        if val {
+            f(bcx)
+        } else {
+            bcx
+        }
     }
-    next_cx
+}
+
+pub fn with_cond_expected<'a>(
+                 bcx: &'a Block<'a>,
+                 val: ValueRef,
+                 expected: bool,
+                 f: |&'a Block<'a>| -> &'a Block<'a>)
+                 -> &'a Block<'a> {
+
+    let is_const = unsafe { llvm::LLVMIsConstant(val) != 0};
+
+    if !is_const {
+        let expect = bcx.ccx().intrinsics.get_copy(&("llvm.expect.i1"));
+        let expected = Call(bcx, expect, [val, C_i1(bcx.ccx(), expected)], []);
+        with_cond(bcx, expected, f)
+    } else {
+        with_cond(bcx, val, f)
+    }
 }
 
 pub fn call_memcpy(cx: &Block, dst: ValueRef, src: ValueRef, n_bytes: ValueRef, align: u32) {
