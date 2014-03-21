@@ -12,6 +12,7 @@
 // closed over do not contain managed values, and thus the ~ boxes do
 // not have headers.
 
+
 trait FooTrait {
     fn foo(&self) -> uint;
 }
@@ -27,13 +28,13 @@ impl FooTrait for BarStruct {
 }
 
 pub fn main() {
-    let foos: ~[ ~FooTrait ] = ~[
+    let foos: Vec<~FooTrait> = vec!(
         ~BarStruct{ x: 0 } as ~FooTrait,
         ~BarStruct{ x: 1 } as ~FooTrait,
         ~BarStruct{ x: 2 } as ~FooTrait
-    ];
+    );
 
     for i in range(0u, foos.len()) {
-        assert_eq!(i, foos[i].foo());
+        assert_eq!(i, foos.get(i).foo());
     }
 }

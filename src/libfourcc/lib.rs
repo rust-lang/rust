@@ -47,6 +47,7 @@ fn main() {
       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
       html_root_url = "http://static.rust-lang.org/doc/master")];
 
+#[deny(deprecated_owned_vector)];
 #[feature(macro_registrar, managed_boxes)];
 
 extern crate syntax;

@@ -837,7 +837,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> session::Options {
         let flags = vec::append(matches.opt_strs(level_short)
                                           .move_iter()
                                           .collect(),
-                                   matches.opt_strs(level_name));
+                                   matches.opt_strs(level_name).as_slice());
         for lint_name in flags.iter() {
             let lint_name = lint_name.replace("-", "_");
             match lint_dict.find_equiv(&lint_name) {

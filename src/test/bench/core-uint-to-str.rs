@@ -14,14 +14,14 @@ use std::uint;
 fn main() {
     let args = os::args();
     let args = if os::getenv("RUST_BENCH").is_some() {
-        ~[~"", ~"10000000"]
+        vec!(~"", ~"10000000")
     } else if args.len() <= 1u {
-        ~[~"", ~"100000"]
+        vec!(~"", ~"100000")
     } else {
-        args
+        args.move_iter().collect()
     };
 
-    let n = from_str::<uint>(args[1]).unwrap();
+    let n = from_str::<uint>(*args.get(1)).unwrap();
 
     for i in range(0u, n) {
         let x = i.to_str();

@@ -9,8 +9,8 @@
 // except according to those terms.
 
 fn a() -> &[int] {
-    let vec = ~[1, 2, 3, 4];
-    let vec: &[int] = vec; //~ ERROR does not live long enough
+    let vec = vec!(1, 2, 3, 4);
+    let vec: &[int] = vec.as_slice(); //~ ERROR does not live long enough
     let tail = match vec {
         [_, ..tail] => tail,
         _ => fail!("a")
@@ -19,8 +19,8 @@ fn a() -> &[int] {
 }
 
 fn b() -> &[int] {
-    let vec = ~[1, 2, 3, 4];
-    let vec: &[int] = vec; //~ ERROR does not live long enough
+    let vec = vec!(1, 2, 3, 4);
+    let vec: &[int] = vec.as_slice(); //~ ERROR does not live long enough
     let init = match vec {
         [..init, _] => init,
         _ => fail!("b")
@@ -29,8 +29,8 @@ fn b() -> &[int] {
 }
 
 fn c() -> &[int] {
-    let vec = ~[1, 2, 3, 4];
-    let vec: &[int] = vec; //~ ERROR does not live long enough
+    let vec = vec!(1, 2, 3, 4);
+    let vec: &[int] = vec.as_slice(); //~ ERROR does not live long enough
     let slice = match vec {
         [_, ..slice, _] => slice,
         _ => fail!("c")

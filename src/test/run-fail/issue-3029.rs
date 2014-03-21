@@ -12,10 +12,11 @@
 #[allow(unreachable_code)];
 #[allow(unused_variable)];
 
+
 // error-pattern:so long
 fn main() {
-    let mut x = ~[];
-    let y = ~[3];
+    let mut x = Vec::new();
+    let y = vec!(3);
     fail!("so long");
     x.push_all_move(y);
     ~"good" + ~"bye";

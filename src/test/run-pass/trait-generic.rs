@@ -10,6 +10,7 @@
 
 // ignore-fast
 
+
 trait to_str {
     fn to_string(&self) -> ~str;
 }
@@ -24,29 +25,29 @@ impl to_str for () {
 }
 
 trait map<T> {
-    fn map<U>(&self, f: |&T| -> U) -> ~[U];
+    fn map<U>(&self, f: |&T| -> U) -> Vec<U> ;
 }
-impl<T> map<T> for ~[T] {
-    fn map<U>(&self, f: |&T| -> U) -> ~[U] {
-        let mut r = ~[];
+impl<T> map<T> for Vec<T> {
+    fn map<U>(&self, f: |&T| -> U) -> Vec<U> {
+        let mut r = Vec::new();
         // FIXME: #7355 generates bad code with VecIterator
         for i in range(0u, self.len()) {
-            r.push(f(&self[i]));
+            r.push(f(self.get(i)));
         }
         r
     }
 }
 
-fn foo<U, T: map<U>>(x: T) -> ~[~str] {
+fn foo<U, T: map<U>>(x: T) -> Vec<~str> {
     x.map(|_e| ~"hi" )
 }
-fn bar<U:to_str,T:map<U>>(x: T) -> ~[~str] {
+fn bar<U:to_str,T:map<U>>(x: T) -> Vec<~str> {
     x.map(|_e| _e.to_string() )
 }
 
 pub fn main() {
-    assert_eq!(foo(~[1]), ~[~"hi"]);
-    assert_eq!(bar::<int, ~[int]>(~[4, 5]), ~[~"4", ~"5"]);
-    assert_eq!(bar::<~str, ~[~str]>(~[~"x", ~"y"]), ~[~"x", ~"y"]);
-    assert_eq!(bar::<(), ~[()]>(~[()]), ~[~"()"]);
+    assert_eq!(foo(vec!(1)), vec!(~"hi"));
+    assert_eq!(bar::<int, Vec<int> >(vec!(4, 5)), vec!(~"4", ~"5"));
+    assert_eq!(bar::<~str, Vec<~str> >(vec!(~"x", ~"y")), vec!(~"x", ~"y"));
+    assert_eq!(bar::<(), Vec<()>>(vec!(())), vec!(~"()"));
 }

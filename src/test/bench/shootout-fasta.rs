@@ -36,8 +36,7 @@ impl MyRandom {
 
 struct AAGen<'a> {
     rng: &'a mut MyRandom,
-    data: ~[(u32, u8)]
-}
+    data: Vec<(u32, u8)> }
 impl<'a> AAGen<'a> {
     fn new<'b>(rng: &'b mut MyRandom, aa: &[(char, f32)]) -> AAGen<'b> {
         let mut cum = 0.;

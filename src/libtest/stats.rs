@@ -168,6 +168,7 @@ impl Summary {
 impl<'a> Stats for &'a [f64] {
 
     // FIXME #11059 handle NaN, inf and overflow
+    #[allow(deprecated_owned_vector)]
     fn sum(self) -> f64 {
         let mut partials : ~[f64] = ~[];
 
@@ -246,10 +247,10 @@ impl<'a> Stats for &'a [f64] {
 
     fn median_abs_dev(self) -> f64 {
         let med = self.median();
-        let abs_devs = self.map(|&v| num::abs(med - v));
+        let abs_devs: Vec<f64> = self.iter().map(|&v| num::abs(med - v)).collect();
         // This constant is derived by smarter statistics brains than me, but it is
         // consistent with how R and other packages treat the MAD.
-        abs_devs.median() * 1.4826
+        abs_devs.as_slice().median() * 1.4826
     }
 
     fn median_abs_dev_pct(self) -> f64 {
@@ -257,17 +258,17 @@ impl<'a> Stats for &'a [f64] {
     }
 
     fn percentile(self, pct: f64) -> f64 {
-        let mut tmp = self.to_owned();
-        f64_sort(tmp);
-        percentile_of_sorted(tmp, pct)
+        let mut tmp = Vec::from_slice(self);
+        f64_sort(tmp.as_mut_slice());
+        percentile_of_sorted(tmp.as_slice(), pct)
     }
 
     fn quartiles(self) -> (f64,f64,f64) {
-        let mut tmp = self.to_owned();
-        f64_sort(tmp);
-        let a = percentile_of_sorted(tmp, 25.0);
-        let b = percentile_of_sorted(tmp, 50.0);
-        let c = percentile_of_sorted(tmp, 75.0);
+        let mut tmp = Vec::from_slice(self);
+        f64_sort(tmp.as_mut_slice());
+        let a = percentile_of_sorted(tmp.as_slice(), 25.0);
+        let b = percentile_of_sorted(tmp.as_slice(), 50.0);
+        let c = percentile_of_sorted(tmp.as_slice(), 75.0);
         (a,b,c)
     }
 
@@ -308,10 +309,10 @@ fn percentile_of_sorted(sorted_samples: &[f64],
 ///
 /// See: http://en.wikipedia.org/wiki/Winsorising
 pub fn winsorize(samples: &mut [f64], pct: f64) {
-    let mut tmp = samples.to_owned();
-    f64_sort(tmp);
-    let lo = percentile_of_sorted(tmp, pct);
-    let hi = percentile_of_sorted(tmp, 100.0-pct);
+    let mut tmp = Vec::from_slice(samples);
+    f64_sort(tmp.as_mut_slice());
+    let lo = percentile_of_sorted(tmp.as_slice(), pct);
+    let hi = percentile_of_sorted(tmp.as_slice(), 100.0-pct);
     for samp in samples.mut_iter() {
         if *samp > hi {
             *samp = hi
@@ -1009,6 +1010,7 @@ mod tests {
 
     #[test]
     fn test_boxplot_nonpositive() {
+        #[allow(deprecated_owned_vector)]
         fn t(s: &Summary, expected: ~str) {
             use std::io::MemWriter;
             let mut m = MemWriter::new();
@@ -1035,7 +1037,6 @@ mod tests {
 #[cfg(test)]
 mod bench {
     use BenchHarness;
-    use std::slice;
     use stats::Stats;
 
     #[bench]
@@ -1047,10 +1048,10 @@ mod bench {
     #[bench]
     pub fn sum_many_f64(bh: &mut BenchHarness) {
         let nums = [-1e30, 1e60, 1e30, 1.0, -1e60];
-        let v = slice::from_fn(500, |i| nums[i%5]);
+        let v = Vec::from_fn(500, |i| nums[i%5]);
 
         bh.iter(|| {
-            v.sum();
+            v.as_slice().sum();
         })
     }
 }

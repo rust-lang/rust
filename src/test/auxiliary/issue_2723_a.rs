@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub unsafe fn f(xs: ~[int]) {
+
+pub unsafe fn f(xs: Vec<int> ) {
     xs.map(|_x| { unsafe fn q() { fail!(); } });
 }

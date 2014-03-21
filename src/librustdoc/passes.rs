@@ -218,7 +218,7 @@ pub fn unindent_comments(krate: clean::Crate) -> plugins::PluginResult {
     impl fold::DocFolder for CommentCleaner {
         fn fold_item(&mut self, i: Item) -> Option<Item> {
             let mut i = i;
-            let mut avec: ~[clean::Attribute] = ~[];
+            let mut avec: Vec<clean::Attribute> = Vec::new();
             for attr in i.attrs.iter() {
                 match attr {
                     &clean::NameValue(ref x, ref s) if "doc" == *x => avec.push(
@@ -250,7 +250,7 @@ pub fn collapse_docs(krate: clean::Crate) -> plugins::PluginResult {
                     _ => ()
                 }
             }
-            let mut a: ~[clean::Attribute] = i.attrs.iter().filter(|&a| match a {
+            let mut a: Vec<clean::Attribute> = i.attrs.iter().filter(|&a| match a {
                 &clean::NameValue(ref x, _) if "doc" == *x => false,
                 _ => true
             }).map(|x| x.clone()).collect();
@@ -267,7 +267,7 @@ pub fn collapse_docs(krate: clean::Crate) -> plugins::PluginResult {
 }
 
 pub fn unindent(s: &str) -> ~str {
-    let lines = s.lines_any().collect::<~[&str]>();
+    let lines = s.lines_any().collect::<Vec<&str> >();
     let mut saw_first_line = false;
     let mut saw_second_line = false;
     let min_indent = lines.iter().fold(uint::MAX, |min_indent, line| {
@@ -311,7 +311,7 @@ pub fn unindent(s: &str) -> ~str {
     });
 
     if lines.len() >= 1 {
-        let mut unindented = ~[ lines[0].trim() ];
+        let mut unindented = vec!( lines.get(0).trim() );
         unindented.push_all(lines.tail().map(|&line| {
             if line.is_whitespace() {
                 line

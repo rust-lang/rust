@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 fn reverse(v: &mut [uint]) {
     v.reverse();
 }
@@ -19,7 +20,7 @@ fn bar(v: &mut [uint]) {
 }
 
 pub fn main() {
-    let mut the_vec = ~[1, 2, 3, 100];
-    bar(the_vec);
-    assert_eq!(the_vec, ~[100, 3, 2, 1]);
+    let mut the_vec = vec!(1, 2, 3, 100);
+    bar(the_vec.as_mut_slice());
+    assert_eq!(the_vec, vec!(100, 3, 2, 1));
 }

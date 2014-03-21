@@ -17,6 +17,7 @@ use collections::list::{List, Cons, Nil};
 use time::precise_time_s;
 use std::os;
 use std::task;
+use std::vec;
 
 enum UniqueList {
     ULNil, ULCons(~UniqueList)
@@ -50,7 +51,7 @@ struct State {
     managed: @nillist,
     unique: ~nillist,
     tuple: (@nillist, ~nillist),
-    vec: ~[@nillist],
+    vec: Vec<@nillist>,
     res: r
 }
 
@@ -82,7 +83,7 @@ fn recurse_or_fail(depth: int, st: Option<State>) {
                 managed: @Nil,
                 unique: ~Nil,
                 tuple: (@Nil, ~Nil),
-                vec: ~[@Nil],
+                vec: vec!(@Nil),
                 res: r(@Nil)
             }
           }
@@ -92,7 +93,8 @@ fn recurse_or_fail(depth: int, st: Option<State>) {
                 unique: ~Cons((), @*st.unique),
                 tuple: (@Cons((), st.tuple.ref0().clone()),
                         ~Cons((), @*st.tuple.ref1().clone())),
-                vec: st.vec + &[@Cons((), *st.vec.last().unwrap())],
+                vec: vec::append(st.vec.clone(),
+                     &[@Cons((), *st.vec.last().unwrap())]),
                 res: r(@Cons((), st.res._l))
             }
           }

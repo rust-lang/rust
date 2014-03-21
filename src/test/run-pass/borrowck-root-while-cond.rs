@@ -10,6 +10,7 @@
 
 #[feature(managed_boxes)];
 
+
 fn borrow<'r,T>(x: &'r T) -> &'r T {x}
 
 struct Rec { f: @int }

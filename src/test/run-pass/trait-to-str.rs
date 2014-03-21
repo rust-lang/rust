@@ -10,6 +10,7 @@
 
 // ignore-fast
 
+
 trait to_str {
     fn to_string(&self) -> ~str;
 }
@@ -18,7 +19,7 @@ impl to_str for int {
     fn to_string(&self) -> ~str { self.to_str() }
 }
 
-impl<T:to_str> to_str for ~[T] {
+impl<T:to_str> to_str for Vec<T> {
     fn to_string(&self) -> ~str {
         format!("[{}]", self.iter().map(|e| e.to_string()).to_owned_vec().connect(", "))
     }
@@ -26,15 +27,15 @@ impl<T:to_str> to_str for ~[T] {
 
 pub fn main() {
     assert!(1.to_string() == ~"1");
-    assert!((~[2, 3, 4]).to_string() == ~"[2, 3, 4]");
+    assert!((vec!(2, 3, 4)).to_string() == ~"[2, 3, 4]");
 
     fn indirect<T:to_str>(x: T) -> ~str {
         x.to_string() + "!"
     }
-    assert!(indirect(~[10, 20]) == ~"[10, 20]!");
+    assert!(indirect(vec!(10, 20)) == ~"[10, 20]!");
 
     fn indirect2<T:to_str>(x: T) -> ~str {
         indirect(x)
     }
-    assert!(indirect2(~[1]) == ~"[1]!");
+    assert!(indirect2(vec!(1)) == ~"[1]!");
 }

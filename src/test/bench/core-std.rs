@@ -20,7 +20,7 @@ use rand::Rng;
 use std::mem::swap;
 use std::os;
 use std::str;
-use std::slice;
+use std::vec;
 use std::io::File;
 
 macro_rules! bench (
@@ -61,8 +61,8 @@ fn maybe_run_test(argv: &[~str], name: ~str, test: ||) {
 }
 
 fn shift_push() {
-    let mut v1 = slice::from_elem(30000, 1);
-    let mut v2 = ~[];
+    let mut v1 = Vec::from_elem(30000, 1);
+    let mut v2 = Vec::new();
 
     while v1.len() > 0 {
         v2.push(v1.shift().unwrap());
@@ -85,14 +85,14 @@ fn read_line() {
 fn vec_plus() {
     let mut r = rand::task_rng();
 
-    let mut v = ~[];
+    let mut v = Vec::new();
     let mut i = 0;
     while i < 1500 {
-        let rv = slice::from_elem(r.gen_range(0u, i + 1), i);
+        let rv = Vec::from_elem(r.gen_range(0u, i + 1), i);
         if r.gen() {
             v.push_all_move(rv);
         } else {
-            v = rv + v;
+            v = vec::append(rv.clone(), v.as_slice());
         }
         i += 1;
     }
@@ -101,15 +101,15 @@ fn vec_plus() {
 fn vec_append() {
     let mut r = rand::task_rng();
 
-    let mut v = ~[];
+    let mut v = Vec::new();
     let mut i = 0;
     while i < 1500 {
-        let rv = slice::from_elem(r.gen_range(0u, i + 1), i);
+        let rv = Vec::from_elem(r.gen_range(0u, i + 1), i);
         if r.gen() {
-            v = slice::append(v, rv);
+            v = vec::append(v.clone(), rv.as_slice());
         }
         else {
-            v = slice::append(rv, v);
+            v = vec::append(rv.clone(), v.as_slice());
         }
         i += 1;
     }
@@ -118,24 +118,24 @@ fn vec_append() {
 fn vec_push_all() {
     let mut r = rand::task_rng();
 
-    let mut v = ~[];
+    let mut v = Vec::new();
     for i in range(0u, 1500) {
-        let mut rv = slice::from_elem(r.gen_range(0u, i + 1), i);
+        let mut rv = Vec::from_elem(r.gen_range(0u, i + 1), i);
         if r.gen() {
-            v.push_all(rv);
+            v.push_all(rv.as_slice());
         }
         else {
             swap(&mut v, &mut rv);
-            v.push_all(rv);
+            v.push_all(rv.as_slice());
         }
     }
 }
 
 fn is_utf8_ascii() {
-    let mut v : ~[u8] = ~[];
+    let mut v : Vec<u8> = Vec::new();
     for _ in range(0u, 20000) {
         v.push('b' as u8);
-        if !str::is_utf8(v) {
+        if !str::is_utf8(v.as_slice()) {
             fail!("is_utf8 failed");
         }
     }
@@ -143,10 +143,10 @@ fn is_utf8_ascii() {
 
 fn is_utf8_multibyte() {
     let s = "b¢€𤭢";
-    let mut v : ~[u8]= ~[];
+    let mut v : Vec<u8> = Vec::new();
     for _ in range(0u, 5000) {
         v.push_all(s.as_bytes());
-        if !str::is_utf8(v) {
+        if !str::is_utf8(v.as_slice()) {
             fail!("is_utf8 failed");
         }
     }

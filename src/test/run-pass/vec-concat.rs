@@ -8,12 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::vec;
+
 pub fn main() {
-    let a: ~[int] = ~[1, 2, 3, 4, 5];
-    let b: ~[int] = ~[6, 7, 8, 9, 0];
-    let v: ~[int] = a + b;
-    println!("{}", v[9]);
-    assert_eq!(v[0], 1);
-    assert_eq!(v[7], 8);
-    assert_eq!(v[9], 0);
+    let a: Vec<int> = vec!(1, 2, 3, 4, 5);
+    let b: Vec<int> = vec!(6, 7, 8, 9, 0);
+    let v: Vec<int> = vec::append(a, b.as_slice());
+    println!("{}", *v.get(9));
+    assert_eq!(*v.get(0), 1);
+    assert_eq!(*v.get(7), 8);
+    assert_eq!(*v.get(9), 0);
 }

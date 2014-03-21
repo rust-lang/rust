@@ -61,13 +61,14 @@ fn runtest2(f: extern fn(), frame_backoff: u32, last_stk: *u8) -> u32 {
 
 pub fn main() {
     use rand::Rng;
-    let fns = ~[
+    let fns = vec!(
         calllink01,
         calllink02,
         calllink08,
         calllink10
-    ];
+    );
     let mut rng = rand::task_rng();
+
     for f in fns.iter() {
         let f = *f;
         let sz = rng.gen::<u32>() % 256u32 + 256u32;

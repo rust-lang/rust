@@ -68,7 +68,7 @@ use html::highlight;
 pub struct Context {
     /// Current hierarchy of components leading down to what's currently being
     /// rendered
-    current: ~[~str],
+    current: Vec<~str> ,
     /// String representation of how to get back to the root path of the 'doc/'
     /// folder in terms of a relative URL.
     root_path: ~str,
@@ -83,7 +83,7 @@ pub struct Context {
     /// functions), and the value is the list of containers belonging to this
     /// header. This map will change depending on the surrounding context of the
     /// page.
-    sidebar: HashMap<~str, ~[~str]>,
+    sidebar: HashMap<~str, Vec<~str> >,
     /// This flag indicates whether [src] links should be generated or not. If
     /// the source files are present in the html rendering, then this will be
     /// `true`.
@@ -130,14 +130,14 @@ pub struct Cache {
     ///
     /// The values of the map are a list of implementations and documentation
     /// found on that implementation.
-    impls: HashMap<ast::NodeId, ~[(clean::Impl, Option<~str>)]>,
+    impls: HashMap<ast::NodeId, Vec<(clean::Impl, Option<~str>)> >,
 
     /// Maintains a mapping of local crate node ids to the fully qualified name
     /// and "short type description" of that node. This is used when generating
     /// URLs when a type is being linked to. External paths are not located in
     /// this map because the `External` type itself has all the information
     /// necessary.
-    paths: HashMap<ast::NodeId, (~[~str], &'static str)>,
+    paths: HashMap<ast::NodeId, (Vec<~str> , &'static str)>,
 
     /// This map contains information about all known traits of this crate.
     /// Implementations of a crate should inherit the documentation of the
@@ -148,16 +148,16 @@ pub struct Cache {
     /// When rendering traits, it's often useful to be able to list all
     /// implementors of the trait, and this mapping is exactly, that: a mapping
     /// of trait ids to the list of known implementors of the trait
-    implementors: HashMap<ast::NodeId, ~[Implementor]>,
+    implementors: HashMap<ast::NodeId, Vec<Implementor> >,
 
     /// Cache of where external crate documentation can be found.
     extern_locations: HashMap<ast::CrateNum, ExternalLocation>,
 
     // Private fields only used when initially crawling a crate to build a cache
 
-    priv stack: ~[~str],
-    priv parent_stack: ~[ast::NodeId],
-    priv search_index: ~[IndexItem],
+    priv stack: Vec<~str> ,
+    priv parent_stack: Vec<ast::NodeId> ,
+    priv search_index: Vec<IndexItem> ,
     priv privmod: bool,
     priv public_items: NodeSet,
 
@@ -202,13 +202,13 @@ struct IndexItem {
 // TLS keys used to carry information around during rendering.
 
 local_data_key!(pub cache_key: Arc<Cache>)
-local_data_key!(pub current_location_key: ~[~str])
+local_data_key!(pub current_location_key: Vec<~str> )
 
 /// Generates the documentation for `crate` into the directory `dst`
 pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
     let mut cx = Context {
         dst: dst,
-        current: ~[],
+        current: Vec::new(),
         root_path: ~"",
         sidebar: HashMap::new(),
         layout: layout::Layout {
@@ -250,9 +250,9 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
             paths: HashMap::new(),
             traits: HashMap::new(),
             implementors: HashMap::new(),
-            stack: ~[],
-            parent_stack: ~[],
-            search_index: ~[],
+            stack: Vec::new(),
+            parent_stack: Vec::new(),
+            search_index: Vec::new(),
             extern_locations: HashMap::new(),
             privmod: false,
             public_items: public_items,
@@ -563,7 +563,7 @@ impl DocFolder for Cache {
                 match i.trait_ {
                     Some(clean::ResolvedPath{ id, .. }) => {
                         let v = self.implementors.find_or_insert_with(id, |_|{
-                            ~[]
+                            Vec::new()
                         });
                         match i.for_ {
                             clean::ResolvedPath{..} => {
@@ -694,7 +694,7 @@ impl DocFolder for Cache {
                         match i.for_ {
                             clean::ResolvedPath { id, .. } => {
                                 let v = self.impls.find_or_insert_with(id, |_| {
-                                    ~[]
+                                    Vec::new()
                                 });
                                 // extract relevant documentation for this impl
                                 match attrs.move_iter().find(|a| {
@@ -787,7 +787,7 @@ impl Context {
         // using a rwarc makes this parallelizable in the future
         local_data::set(cache_key, Arc::new(cache));
 
-        let mut work = ~[(self, item)];
+        let mut work = vec!((self, item));
         loop {
             match work.pop() {
                 Some((mut cx, item)) => try!(cx.item(item, |cx, item| {
@@ -919,7 +919,7 @@ impl<'a> fmt::Show for Item<'a> {
         }
 
         if self.cx.include_sources {
-            let mut path = ~[];
+            let mut path = Vec::new();
             clean_srcpath(self.item.source.filename.as_bytes(), |component| {
                 path.push(component.to_owned());
             });
@@ -966,8 +966,9 @@ impl<'a> fmt::Show for Item<'a> {
                       shortty(self.item), self.item.name.get_ref().as_slice()));
 
         match self.item.inner {
-            clean::ModuleItem(ref m) => item_module(fmt.buf, self.cx,
-                                                    self.item, m.items),
+            clean::ModuleItem(ref m) => {
+                item_module(fmt.buf, self.cx, self.item, m.items.as_slice())
+            }
             clean::FunctionItem(ref f) | clean::ForeignFunctionItem(ref f) =>
                 item_function(fmt.buf, self.item, f),
             clean::TraitItem(ref t) => item_trait(fmt.buf, self.item, t),
@@ -1319,8 +1320,14 @@ fn render_method(w: &mut Writer, meth: &clean::Item) -> fmt::Result {
 fn item_struct(w: &mut Writer, it: &clean::Item,
                s: &clean::Struct) -> fmt::Result {
     try!(write!(w, "<pre class='rust struct'>"));
-    try!(render_struct(w, it, Some(&s.generics), s.struct_type, s.fields,
-                         s.fields_stripped, "", true));
+    try!(render_struct(w,
+                       it,
+                       Some(&s.generics),
+                       s.struct_type,
+                       s.fields.as_slice(),
+                       s.fields_stripped,
+                       "",
+                       true));
     try!(write!(w, "</pre>"));
 
     try!(document(w, it));
@@ -1368,9 +1375,14 @@ fn item_enum(w: &mut Writer, it: &clean::Item, e: &clean::Enum) -> fmt::Result {
                             try!(write!(w, ")"));
                         }
                         clean::StructVariant(ref s) => {
-                            try!(render_struct(w, v, None, s.struct_type,
-                                                 s.fields, s.fields_stripped,
-                                                 "    ", false));
+                            try!(render_struct(w,
+                                               v,
+                                               None,
+                                               s.struct_type,
+                                               s.fields.as_slice(),
+                                               s.fields_stripped,
+                                               "    ",
+                                               false));
                         }
                     }
                 }
@@ -1679,7 +1691,7 @@ impl<'a> fmt::Show for Sidebar<'a> {
     }
 }
 
-fn build_sidebar(m: &clean::Module) -> HashMap<~str, ~[~str]> {
+fn build_sidebar(m: &clean::Module) -> HashMap<~str, Vec<~str> > {
     let mut map = HashMap::new();
     for item in m.items.iter() {
         let short = shortty(item);
@@ -1687,12 +1699,12 @@ fn build_sidebar(m: &clean::Module) -> HashMap<~str, ~[~str]> {
             None => continue,
             Some(ref s) => s.to_owned(),
         };
-        let v = map.find_or_insert_with(short.to_owned(), |_| ~[]);
+        let v = map.find_or_insert_with(short.to_owned(), |_| Vec::new());
         v.push(myname);
     }
 
     for (_, items) in map.mut_iter() {
-        items.sort();
+        items.as_mut_slice().sort();
     }
     return map;
 }

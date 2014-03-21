@@ -161,10 +161,10 @@ impl<Q:Send> Sem<Q> {
 }
 
 #[doc(hidden)]
-impl Sem<~[WaitQueue]> {
+impl Sem<Vec<WaitQueue> > {
     fn new_and_signal(count: int, num_condvars: uint)
-        -> Sem<~[WaitQueue]> {
-        let mut queues = ~[];
+        -> Sem<Vec<WaitQueue> > {
+        let mut queues = Vec::new();
         for _ in range(0, num_condvars) { queues.push(WaitQueue::new()); }
         Sem::new(count, queues)
     }
@@ -182,7 +182,7 @@ enum ReacquireOrderLock<'a> {
 pub struct Condvar<'a> {
     // The 'Sem' object associated with this condvar. This is the one that's
     // atomically-unlocked-and-descheduled upon and reacquired during wakeup.
-    priv sem: &'a Sem<~[WaitQueue]>,
+    priv sem: &'a Sem<Vec<WaitQueue> >,
     // This is (can be) an extra semaphore which is held around the reacquire
     // operation on the first one. This is only used in cvars associated with
     // rwlocks, and is needed to ensure that, when a downgrader is trying to
@@ -230,7 +230,7 @@ impl<'a> Condvar<'a> {
                     }
                     // Create waiter nobe, and enqueue ourself to
                     // be woken up by a signaller.
-                    wait_end = Some(state.blocked[condvar_id].wait_end());
+                    wait_end = Some(state.blocked.get(condvar_id).wait_end());
                 } else {
                     out_of_bounds = Some(state.blocked.len());
                 }
@@ -265,7 +265,7 @@ impl<'a> Condvar<'a> {
             let mut result = false;
             self.sem.with(|state| {
                 if condvar_id < state.blocked.len() {
-                    result = state.blocked[condvar_id].signal();
+                    result = state.blocked.get(condvar_id).signal();
                 } else {
                     out_of_bounds = Some(state.blocked.len());
                 }
@@ -290,7 +290,7 @@ impl<'a> Condvar<'a> {
                     // To avoid :broadcast_heavy, we make a new waitqueue,
                     // swap it out with the old one, and broadcast on the
                     // old one outside of the little-lock.
-                    queue = Some(replace(&mut state.blocked[condvar_id],
+                    queue = Some(replace(state.blocked.get_mut(condvar_id),
                                                WaitQueue::new()));
                 } else {
                     out_of_bounds = Some(state.blocked.len());
@@ -326,7 +326,7 @@ fn check_cvar_bounds<U>(
 }
 
 #[doc(hidden)]
-impl Sem<~[WaitQueue]> {
+impl Sem<Vec<WaitQueue> > {
     // The only other places that condvars get built are rwlock.write_cond()
     // and rwlock_write_mode.
     pub fn access_cond<U>(&self, blk: |c: &Condvar| -> U) -> U {
@@ -391,7 +391,7 @@ impl Semaphore {
  * unwinds.
  */
 
-pub struct Mutex { priv sem: Sem<~[WaitQueue]> }
+pub struct Mutex { priv sem: Sem<Vec<WaitQueue> > }
 impl Clone for Mutex {
     /// Create a new handle to the mutex.
     fn clone(&self) -> Mutex {
@@ -461,7 +461,7 @@ struct RWLockInner {
  */
 pub struct RWLock {
     priv order_lock:  Semaphore,
-    priv access_lock: Sem<~[WaitQueue]>,
+    priv access_lock: Sem<Vec<WaitQueue> >,
     priv state:       UnsafeArc<RWLockInner>,
 }
 
@@ -931,7 +931,7 @@ mod tests {
     #[cfg(test)]
     fn test_mutex_cond_broadcast_helper(num_waiters: uint) {
         let m = Mutex::new();
-        let mut rxs = ~[];
+        let mut rxs = vec!();
 
         for _ in range(0, num_waiters) {
             let mi = m.clone();
@@ -1200,7 +1200,7 @@ mod tests {
             }
         }
         let x = RWLock::new();
-        let mut rxs = ~[];
+        let mut rxs = vec!();
 
         for _ in range(0, num_waiters) {
             let xi = x.clone();

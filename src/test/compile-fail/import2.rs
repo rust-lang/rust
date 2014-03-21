@@ -11,8 +11,9 @@
 use baz::zed::bar;  //~ ERROR unresolved import
 //~^ ERROR failed to resolve import
 
+
 mod baz {}
 mod zed {
     pub fn bar() { println!("bar3"); }
 }
-fn main(args: ~[str]) { bar(); }
+fn main(args: Vec<~str>) { bar(); }

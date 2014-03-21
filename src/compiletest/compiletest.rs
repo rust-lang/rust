@@ -43,15 +43,15 @@ pub mod errors;
 
 pub fn main() {
     let args = os::args();
-    let config = parse_config(args);
+    let config = parse_config(args.move_iter().collect());
     log_config(&config);
     run_tests(&config);
 }
 
-pub fn parse_config(args: ~[~str]) -> config {
+pub fn parse_config(args: Vec<~str> ) -> config {
 
-    let groups : ~[getopts::OptGroup] =
-        ~[reqopt("", "compile-lib-path", "path to host shared libraries", "PATH"),
+    let groups : Vec<getopts::OptGroup> =
+        vec!(reqopt("", "compile-lib-path", "path to host shared libraries", "PATH"),
           reqopt("", "run-lib-path", "path to target shared libraries", "PATH"),
           reqopt("", "rustc-path", "path to rustc to use for compiling", "PATH"),
           optopt("", "clang-path", "path to  executable for codegen tests", "PATH"),
@@ -79,28 +79,27 @@ pub fn parse_config(args: ~[~str]) -> config {
           optopt("", "adb-path", "path to the android debugger", "PATH"),
           optopt("", "adb-test-dir", "path to tests for the android debugger", "PATH"),
           optopt("", "test-shard", "run shard A, of B shards, worth of the testsuite", "A.B"),
-          optflag("h", "help", "show this message"),
-         ];
+          optflag("h", "help", "show this message"));
 
     assert!(!args.is_empty());
-    let argv0 = args[0].clone();
+    let argv0 = (*args.get(0)).clone();
     let args_ = args.tail();
-    if args[1] == ~"-h" || args[1] == ~"--help" {
+    if *args.get(1) == ~"-h" || *args.get(1) == ~"--help" {
         let message = format!("Usage: {} [OPTIONS] [TESTNAME...]", argv0);
-        println!("{}", getopts::usage(message, groups));
+        println!("{}", getopts::usage(message, groups.as_slice()));
         println!("");
         fail!()
     }
 
     let matches =
-        &match getopts::getopts(args_, groups) {
+        &match getopts::getopts(args_, groups.as_slice()) {
           Ok(m) => m,
           Err(f) => fail!("{}", f.to_err_msg())
         };
 
     if matches.opt_present("h") || matches.opt_present("help") {
         let message = format!("Usage: {} [OPTIONS]  [TESTNAME...]", argv0);
-        println!("{}", getopts::usage(message, groups));
+        println!("{}", getopts::usage(message, groups.as_slice()));
         println!("");
         fail!()
     }
@@ -123,7 +122,7 @@ pub fn parse_config(args: ~[~str]) -> config {
         run_ignored: matches.opt_present("ignored"),
         filter:
             if !matches.free.is_empty() {
-                 Some(matches.free[0].clone())
+                 Some((*matches.free.get(0)).clone())
             } else {
                 None
             },
@@ -239,7 +238,7 @@ pub fn run_tests(config: &config) {
     // parallel (especially when we have lots and lots of child processes).
     // For context, see #8904
     io::test::raise_fd_limit();
-    let res = test::run_tests_console(&opts, tests);
+    let res = test::run_tests_console(&opts, tests.move_iter().collect());
     match res {
         Ok(true) => {}
         Ok(false) => fail!("Some tests failed"),
@@ -263,10 +262,10 @@ pub fn test_opts(config: &config) -> test::TestOpts {
     }
 }
 
-pub fn make_tests(config: &config) -> ~[test::TestDescAndFn] {
+pub fn make_tests(config: &config) -> Vec<test::TestDescAndFn> {
     debug!("making tests from {}",
            config.src_base.display());
-    let mut tests = ~[];
+    let mut tests = Vec::new();
     let dirs = fs::readdir(&config.src_base).unwrap();
     for file in dirs.iter() {
         let file = file.clone();
@@ -288,10 +287,10 @@ pub fn is_test(config: &config, testfile: &Path) -> bool {
     // Pretty-printer does not work with .rc files yet
     let valid_extensions =
         match config.mode {
-          mode_pretty => ~[~".rs"],
-          _ => ~[~".rc", ~".rs"]
+          mode_pretty => vec!(~".rs"),
+          _ => vec!(~".rc", ~".rs")
         };
-    let invalid_prefixes = ~[~".", ~"#", ~"~"];
+    let invalid_prefixes = vec!(~".", ~"#", ~"~");
     let name = testfile.filename_str().unwrap();
 
     let mut valid = false;

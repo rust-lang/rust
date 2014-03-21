@@ -12,14 +12,14 @@ use std::str;
 
 pub fn main() {
     // Chars of 1, 2, 3, and 4 bytes
-    let chs: ~[char] = ~['e', 'é', '€', '\U00010000'];
-    let s: ~str = str::from_chars(chs);
-    let schs: ~[char] = s.chars().collect();
+    let chs: Vec<char> = vec!('e', 'é', '€', '\U00010000');
+    let s: ~str = str::from_chars(chs.as_slice());
+    let schs: Vec<char> = s.chars().collect();
 
     assert!(s.len() == 10u);
     assert!(s.char_len() == 4u);
     assert!(schs.len() == 4u);
-    assert!(str::from_chars(schs) == s);
+    assert!(str::from_chars(schs.as_slice()) == s);
     assert!(s.char_at(0u) == 'e');
     assert!(s.char_at(1u) == 'é');
 

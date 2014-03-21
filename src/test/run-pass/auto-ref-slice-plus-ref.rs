@@ -29,7 +29,7 @@ pub fn main() {
     // NB: Associativity of ~, etc. in this context is surprising. These must be parenthesized
 
     ([1]).test_imm();
-    (~[1]).test_imm();
+    (vec!(1)).as_slice().test_imm();
     (&[1]).test_imm();
     ("test").test_imm();
     (~"test").test_imm();

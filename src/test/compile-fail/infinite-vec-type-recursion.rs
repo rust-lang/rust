@@ -10,6 +10,7 @@
 
 // error-pattern: illegal recursive type
 
-type x = ~[x];
 
-fn main() { let b: x = ~[]; }
+type x = Vec<x>;
+
+fn main() { let b: x = Vec::new(); }

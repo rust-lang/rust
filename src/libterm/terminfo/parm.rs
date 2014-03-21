@@ -10,7 +10,7 @@
 
 //! Parameterized string expansion
 
-use std::{char, slice};
+use std::char;
 use std::mem::replace;
 
 #[deriving(Eq)]
@@ -89,13 +89,13 @@ impl Variables {
   multiple capabilities for the same terminal.
   */
 pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
-    -> Result<~[u8], ~str> {
+    -> Result<Vec<u8> , ~str> {
     let mut state = Nothing;
 
     // expanded cap will only rarely be larger than the cap itself
-    let mut output = slice::with_capacity(cap.len());
+    let mut output = Vec::with_capacity(cap.len());
 
-    let mut stack: ~[Param] = ~[];
+    let mut stack: Vec<Param> = Vec::new();
 
     // Copy parameters into a local vector for mutability
     let mut mparams = [
@@ -248,7 +248,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
                         let flags = Flags::new();
                         let res = format(stack.pop().unwrap(), FormatOp::from_char(cur), flags);
                         if res.is_err() { return res }
-                        output.push_all(res.unwrap())
+                        output.push_all(res.unwrap().as_slice())
                     } else { return Err(~"stack is empty") },
                     ':'|'#'|' '|'.'|'0'..'9' => {
                         let mut flags = Flags::new();
@@ -343,7 +343,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
                     (_,'d')|(_,'o')|(_,'x')|(_,'X')|(_,'s') => if stack.len() > 0 {
                         let res = format(stack.pop().unwrap(), FormatOp::from_char(cur), *flags);
                         if res.is_err() { return res }
-                        output.push_all(res.unwrap());
+                        output.push_all(res.unwrap().as_slice());
                         old_state = state; // will cause state to go to Nothing
                     } else { return Err(~"stack is empty") },
                     (FormatStateFlags,'#') => {
@@ -476,10 +476,10 @@ impl FormatOp {
     }
 }
 
-fn format(val: Param, op: FormatOp, flags: Flags) -> Result<~[u8],~str> {
+fn format(val: Param, op: FormatOp, flags: Flags) -> Result<Vec<u8> ,~str> {
     let mut s = match val {
         Number(d) => {
-            let mut s = match (op, flags.sign) {
+            let s = match (op, flags.sign) {
                 (FormatDigit, true)  => format!("{:+d}", d).into_bytes(),
                 (FormatDigit, false) => format!("{:d}", d).into_bytes(),
                 (FormatOctal, _)     => format!("{:o}", d).into_bytes(),
@@ -487,8 +487,9 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<~[u8],~str> {
                 (FormatHEX, _)       => format!("{:X}", d).into_bytes(),
                 (FormatString, _)    => return Err(~"non-number on stack with %s"),
             };
+            let mut s: Vec<u8> = s.move_iter().collect();
             if flags.precision > s.len() {
-                let mut s_ = slice::with_capacity(flags.precision);
+                let mut s_ = Vec::with_capacity(flags.precision);
                 let n = flags.precision - s.len();
                 s_.grow(n, &('0' as u8));
                 s_.push_all_move(s);
@@ -497,25 +498,31 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<~[u8],~str> {
             assert!(!s.is_empty(), "string conversion produced empty result");
             match op {
                 FormatDigit => {
-                    if flags.space && !(s[0] == '-' as u8 || s[0] == '+' as u8) {
+                    if flags.space && !(*s.get(0) == '-' as u8 ||
+                                        *s.get(0) == '+' as u8) {
                         s.unshift(' ' as u8);
                     }
                 }
                 FormatOctal => {
-                    if flags.alternate && s[0] != '0' as u8 {
+                    if flags.alternate && *s.get(0) != '0' as u8 {
                         s.unshift('0' as u8);
                     }
                 }
                 FormatHex => {
                     if flags.alternate {
-                        let s_ = replace(&mut s, ~['0' as u8, 'x' as u8]);
+                        let s_ = replace(&mut s, vec!('0' as u8, 'x' as u8));
                         s.push_all_move(s_);
                     }
                 }
                 FormatHEX => {
-                    s = s.into_ascii().to_upper().into_bytes();
+                    s = s.as_slice()
+                         .to_ascii()
+                         .to_upper()
+                         .into_bytes()
+                         .move_iter()
+                         .collect();
                     if flags.alternate {
-                        let s_ = replace(&mut s, ~['0' as u8, 'X' as u8]);
+                        let s_ = replace(&mut s, vec!('0' as u8, 'X' as u8));
                         s.push_all_move(s_);
                     }
                 }
@@ -526,7 +533,7 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<~[u8],~str> {
         String(s) => {
             match op {
                 FormatString => {
-                    let mut s = s.as_bytes().to_owned();
+                    let mut s = Vec::from_slice(s.as_bytes());
                     if flags.precision > 0 && flags.precision < s.len() {
                         s.truncate(flags.precision);
                     }
@@ -543,7 +550,7 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<~[u8],~str> {
         if flags.left {
             s.grow(n, &(' ' as u8));
         } else {
-            let mut s_ = slice::with_capacity(flags.width);
+            let mut s_ = Vec::with_capacity(flags.width);
             s_.grow(n, &(' ' as u8));
             s_.push_all_move(s);
             s = s_;
@@ -556,18 +563,19 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<~[u8],~str> {
 mod test {
     use super::{expand,String,Variables,Number};
     use std::result::Ok;
+    use std::vec;
 
     #[test]
     fn test_basic_setabf() {
         let s = bytes!("\\E[48;5;%p1%dm");
         assert_eq!(expand(s, [Number(1)], &mut Variables::new()).unwrap(),
-                   bytes!("\\E[48;5;1m").to_owned());
+                   bytes!("\\E[48;5;1m").iter().map(|x| *x).collect());
     }
 
     #[test]
     fn test_multiple_int_constants() {
         assert_eq!(expand(bytes!("%{1}%{2}%d%d"), [], &mut Variables::new()).unwrap(),
-                   bytes!("21").to_owned());
+                   bytes!("21").iter().map(|x| *x).collect());
     }
 
     #[test]
@@ -575,9 +583,9 @@ mod test {
         let mut vars = Variables::new();
         assert_eq!(expand(bytes!("%p1%d%p2%d%p3%d%i%p1%d%p2%d%p3%d"),
                           [Number(1),Number(2),Number(3)], &mut vars),
-                   Ok(bytes!("123233").to_owned()));
+                   Ok(bytes!("123233").iter().map(|x| *x).collect()));
         assert_eq!(expand(bytes!("%p1%d%p2%d%i%p1%d%p2%d"), [], &mut vars),
-                   Ok(bytes!("0011").to_owned()));
+                   Ok(bytes!("0011").iter().map(|x| *x).collect()));
     }
 
     #[test]
@@ -590,7 +598,12 @@ mod test {
             assert!(res.is_err(),
                     "Op {} succeeded incorrectly with 0 stack entries", *cap);
             let p = if *cap == "%s" || *cap == "%l" { String(~"foo") } else { Number(97) };
-            let res = expand((bytes!("%p1")).to_owned() + cap.as_bytes(), [p], vars);
+            let res = expand(vec::append(bytes!("%p1").iter()
+                                                         .map(|x| *x)
+                                                         .collect(),
+                                            cap.as_bytes()).as_slice(),
+                             [p],
+                             vars);
             assert!(res.is_ok(),
                     "Op {} failed with 1 stack entry: {}", *cap, res.unwrap_err());
         }
@@ -599,10 +612,20 @@ mod test {
             let res = expand(cap.as_bytes(), [], vars);
             assert!(res.is_err(),
                     "Binop {} succeeded incorrectly with 0 stack entries", *cap);
-            let res = expand((bytes!("%{1}")).to_owned() + cap.as_bytes(), [], vars);
+            let res = expand(vec::append(bytes!("%{1}").iter()
+                                                          .map(|x| *x)
+                                                          .collect(),
+                                             cap.as_bytes()).as_slice(),
+                              [],
+                              vars);
             assert!(res.is_err(),
                     "Binop {} succeeded incorrectly with 1 stack entry", *cap);
-            let res = expand((bytes!("%{1}%{2}")).to_owned() + cap.as_bytes(), [], vars);
+            let res = expand(vec::append(bytes!("%{1}%{2}").iter()
+                                                              .map(|x| *x)
+                                                              .collect(),
+                                            cap.as_bytes()).as_slice(),
+                             [],
+                             vars);
             assert!(res.is_ok(),
                     "Binop {} failed with 2 stack entries: {}", *cap, res.unwrap_err());
         }
@@ -620,15 +643,15 @@ mod test {
             let s = format!("%\\{1\\}%\\{2\\}%{}%d", op);
             let res = expand(s.as_bytes(), [], &mut Variables::new());
             assert!(res.is_ok(), res.unwrap_err());
-            assert_eq!(res.unwrap(), ~['0' as u8 + bs[0]]);
+            assert_eq!(res.unwrap(), vec!('0' as u8 + bs[0]));
             let s = format!("%\\{1\\}%\\{1\\}%{}%d", op);
             let res = expand(s.as_bytes(), [], &mut Variables::new());
             assert!(res.is_ok(), res.unwrap_err());
-            assert_eq!(res.unwrap(), ~['0' as u8 + bs[1]]);
+            assert_eq!(res.unwrap(), vec!('0' as u8 + bs[1]));
             let s = format!("%\\{2\\}%\\{1\\}%{}%d", op);
             let res = expand(s.as_bytes(), [], &mut Variables::new());
             assert!(res.is_ok(), res.unwrap_err());
-            assert_eq!(res.unwrap(), ~['0' as u8 + bs[2]]);
+            assert_eq!(res.unwrap(), vec!('0' as u8 + bs[2]));
         }
     }
 
@@ -638,13 +661,16 @@ mod test {
         let s = bytes!("\\E[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m");
         let res = expand(s, [Number(1)], &mut vars);
         assert!(res.is_ok(), res.unwrap_err());
-        assert_eq!(res.unwrap(), bytes!("\\E[31m").to_owned());
+        assert_eq!(res.unwrap(),
+                   bytes!("\\E[31m").iter().map(|x| *x).collect());
         let res = expand(s, [Number(8)], &mut vars);
         assert!(res.is_ok(), res.unwrap_err());
-        assert_eq!(res.unwrap(), bytes!("\\E[90m").to_owned());
+        assert_eq!(res.unwrap(),
+                   bytes!("\\E[90m").iter().map(|x| *x).collect());
         let res = expand(s, [Number(42)], &mut vars);
         assert!(res.is_ok(), res.unwrap_err());
-        assert_eq!(res.unwrap(), bytes!("\\E[38;5;42m").to_owned());
+        assert_eq!(res.unwrap(),
+                   bytes!("\\E[38;5;42m").iter().map(|x| *x).collect());
     }
 
     #[test]
@@ -653,13 +679,15 @@ mod test {
         let vars = &mut varstruct;
         assert_eq!(expand(bytes!("%p1%s%p2%2s%p3%2s%p4%.2s"),
                           [String(~"foo"), String(~"foo"), String(~"f"), String(~"foo")], vars),
-                   Ok(bytes!("foofoo ffo").to_owned()));
+                   Ok(bytes!("foofoo ffo").iter().map(|x| *x).collect()));
         assert_eq!(expand(bytes!("%p1%:-4.2s"), [String(~"foo")], vars),
-                   Ok(bytes!("fo  ").to_owned()));
+                   Ok(bytes!("fo  ").iter().map(|x| *x).collect()));
 
         assert_eq!(expand(bytes!("%p1%d%p1%.3d%p1%5d%p1%:+d"), [Number(1)], vars),
-                   Ok(bytes!("1001    1+1").to_owned()));
+                   Ok(bytes!("1001    1+1").iter().map(|x| *x).collect()));
         assert_eq!(expand(bytes!("%p1%o%p1%#o%p2%6.4x%p2%#6.4X"), [Number(15), Number(27)], vars),
-                   Ok(bytes!("17017  001b0X001B").to_owned()));
+                   Ok(bytes!("17017  001b0X001B").iter()
+                                                 .map(|x| *x)
+                                                 .collect()));
     }
 }

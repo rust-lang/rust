@@ -243,7 +243,7 @@ pub fn run_compiler(args: &[~str]) {
     let lint_flags = vec::append(matches.opt_strs("W")
                                            .move_iter()
                                            .collect(),
-                                    matches.opt_strs("warn"));
+                                    matches.opt_strs("warn").as_slice());
     if lint_flags.iter().any(|x| x == &~"help") {
         describe_warnings();
         return;
@@ -273,7 +273,7 @@ pub fn run_compiler(args: &[~str]) {
     let (input, input_file_path) = match matches.free.len() {
       0u => d::early_error("no input filename given"),
       1u => {
-        let ifile = matches.free[0].as_slice();
+        let ifile = matches.free.get(0).as_slice();
         if ifile == "-" {
             let contents = io::stdin().read_to_end().unwrap();
             let src = str::from_utf8_owned(contents).unwrap();

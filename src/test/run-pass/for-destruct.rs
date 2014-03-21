@@ -11,7 +11,7 @@
 struct Pair { x: int, y: int }
 
 pub fn main() {
-    for elt in (~[Pair {x: 10, y: 20}, Pair {x: 30, y: 0}]).iter() {
+    for elt in (vec!(Pair {x: 10, y: 20}, Pair {x: 30, y: 0})).iter() {
         assert_eq!(elt.x + elt.y, 30);
     }
 }

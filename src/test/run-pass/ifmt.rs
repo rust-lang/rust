@@ -182,7 +182,7 @@ fn test_write() {
 // can do with them just yet (to test the output)
 fn test_print() {
     print!("hi");
-    print!("{:?}", ~[0u8]);
+    print!("{:?}", vec!(0u8));
     println!("hello");
     println!("this is a {}", "test");
     println!("{foo}", foo="bar");

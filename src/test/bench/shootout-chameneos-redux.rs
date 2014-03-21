@@ -39,7 +39,7 @@ fn show_color(cc: color) -> ~str {
     }
 }
 
-fn show_color_list(set: ~[color]) -> ~str {
+fn show_color_list(set: Vec<color>) -> ~str {
     let mut out = ~"";
     for col in set.iter() {
         out.push_char(' ');
@@ -132,7 +132,7 @@ fn creature(
     }
 }
 
-fn rendezvous(nn: uint, set: ~[color]) {
+fn rendezvous(nn: uint, set: Vec<color>) {
 
     // these ports will allow us to hear from the creatures
     let (to_rendezvous, from_creatures) = channel::<CreatureInfo>();
@@ -141,7 +141,7 @@ fn rendezvous(nn: uint, set: ~[color]) {
     // these channels will be passed to the creatures so they can talk to us
 
     // these channels will allow us to talk to each creature by 'name'/index
-    let to_creature: ~[Sender<Option<CreatureInfo>>] =
+    let mut to_creature: Vec<Sender<Option<CreatureInfo>>> =
         set.iter().enumerate().map(|(ii, col)| {
             // create each creature as a listener with a port, and
             // give us a channel to talk to each
@@ -164,13 +164,13 @@ fn rendezvous(nn: uint, set: ~[color]) {
 
     // set up meetings...
     for _ in range(0, nn) {
-        let fst_creature: CreatureInfo = from_creatures.recv();
-        let snd_creature: CreatureInfo = from_creatures.recv();
+        let mut fst_creature: CreatureInfo = from_creatures.recv();
+        let mut snd_creature: CreatureInfo = from_creatures.recv();
 
         creatures_met += 2;
 
-        to_creature[fst_creature.name].send(Some(snd_creature));
-        to_creature[snd_creature.name].send(Some(fst_creature));
+        to_creature.get_mut(fst_creature.name).send(Some(snd_creature));
+        to_creature.get_mut(snd_creature.name).send(Some(fst_creature));
     }
 
     // tell each creature to stop
@@ -179,7 +179,7 @@ fn rendezvous(nn: uint, set: ~[color]) {
     }
 
     // save each creature's meeting stats
-    let mut report = ~[];
+    let mut report = Vec::new();
     for _to_one in to_creature.iter() {
         report.push(from_creatures_log.recv());
     }
@@ -199,21 +199,21 @@ fn rendezvous(nn: uint, set: ~[color]) {
 fn main() {
     let args = os::args();
     let args = if os::getenv("RUST_BENCH").is_some() {
-        ~[~"", ~"200000"]
+        vec!(~"", ~"200000")
     } else if args.len() <= 1u {
-        ~[~"", ~"600"]
+        vec!(~"", ~"600")
     } else {
-        args
+        args.move_iter().collect()
     };
 
-    let nn = from_str::<uint>(args[1]).unwrap();
+    let nn = from_str::<uint>(*args.get(1)).unwrap();
 
     print_complements();
     println!("");
 
-    rendezvous(nn, ~[Blue, Red, Yellow]);
+    rendezvous(nn, vec!(Blue, Red, Yellow));
     println!("");
 
     rendezvous(nn,
-        ~[Blue, Red, Yellow, Red, Yellow, Blue, Red, Yellow, Red, Blue]);
+        vec!(Blue, Red, Yellow, Red, Yellow, Blue, Red, Yellow, Red, Blue));
 }

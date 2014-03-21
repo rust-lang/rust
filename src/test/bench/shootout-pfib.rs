@@ -51,12 +51,12 @@ struct Config {
     stress: bool
 }
 
-fn parse_opts(argv: ~[~str]) -> Config {
-    let opts = ~[getopts::optflag("", "stress", "")];
+fn parse_opts(argv: Vec<~str> ) -> Config {
+    let opts = vec!(getopts::optflag("", "stress", ""));
 
     let opt_args = argv.slice(1, argv.len());
 
-    match getopts::getopts(opt_args, opts) {
+    match getopts::getopts(opt_args, opts.as_slice()) {
       Ok(ref m) => {
           return Config {stress: m.opt_present("stress")}
       }
@@ -75,7 +75,7 @@ fn stress_task(id: int) {
 }
 
 fn stress(num_tasks: int) {
-    let mut results = ~[];
+    let mut results = Vec::new();
     for i in range(0, num_tasks) {
         let mut builder = task::task();
         results.push(builder.future_result());
@@ -91,11 +91,11 @@ fn stress(num_tasks: int) {
 fn main() {
     let args = os::args();
     let args = if os::getenv("RUST_BENCH").is_some() {
-        ~[~"", ~"20"]
+        vec!(~"", ~"20")
     } else if args.len() <= 1u {
-        ~[~"", ~"8"]
+        vec!(~"", ~"8")
     } else {
-        args
+        args.move_iter().collect()
     };
 
     let opts = parse_opts(args.clone());
@@ -103,7 +103,8 @@ fn main() {
     if opts.stress {
         stress(2);
     } else {
-        let max = uint::parse_bytes(args[1].as_bytes(), 10u).unwrap() as int;
+        let max = uint::parse_bytes(args.get(1).as_bytes(), 10u).unwrap() as
+            int;
 
         let num_trials = 10;
 
