@@ -18,9 +18,10 @@ use parse::token::{str_to_ident};
 
 use std::cell::{Cell, RefCell};
 use std::char;
-use std::rc::Rc;
 use std::mem::replace;
 use std::num::from_str_radix;
+use std::rc::Rc;
+use std::str;
 
 pub use ext::tt::transcribe::{TtReader, new_tt_reader};
 
@@ -271,9 +272,11 @@ pub fn bump(rdr: &StringReader) {
         rdr.curr.set(None);
     }
 }
+
 pub fn is_eof(rdr: &StringReader) -> bool {
     rdr.curr.get().is_none()
 }
+
 pub fn nextch(rdr: &StringReader) -> Option<char> {
     let offset = byte_offset(rdr, rdr.pos.get()).to_uint();
     if offset < rdr.filemap.deref().src.len() {
@@ -284,6 +287,21 @@ pub fn nextch(rdr: &StringReader) -> Option<char> {
 }
 pub fn nextch_is(rdr: &StringReader, c: char) -> bool {
     nextch(rdr) == Some(c)
+}
+
+pub fn nextnextch(rdr: &StringReader) -> Option<char> {
+    let offset = byte_offset(rdr, rdr.pos.get()).to_uint();
+    let s = rdr.filemap.deref().src.as_slice();
+    if offset >= s.len() { return None }
+    let str::CharRange { next, .. } = s.char_range_at(offset);
+    if next < s.len() {
+        Some(s.char_at(next))
+    } else {
+        None
+    }
+}
+pub fn nextnextch_is(rdr: &StringReader, c: char) -> bool {
+    nextnextch(rdr) == Some(c)
 }
 
 fn hex_digit_val(c: Option<char>) -> int {
@@ -370,6 +388,12 @@ fn consume_any_line_comment(rdr: &StringReader)
         }
     } else if rdr.curr_is('#') {
         if nextch_is(rdr, '!') {
+
+            // Parse an inner attribute.
+            if nextnextch_is(rdr, '[') {
+                return None;
+            }
+
             // I guess this is the only way to figure out if
             // we're at the beginning of the file...
             let cmap = CodeMap::new();
