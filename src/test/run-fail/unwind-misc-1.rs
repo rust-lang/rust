@@ -15,13 +15,16 @@
 
 extern crate collections;
 
+use std::vec;
+
 fn main() {
     let _count = @0u;
     let mut map = collections::HashMap::new();
-    let mut arr = ~[];
+    let mut arr = Vec::new();
     for _i in range(0u, 10u) {
         arr.push(@~"key stuff");
-        map.insert(arr.clone(), arr + &[@~"value stuff"]);
+        map.insert(arr.clone(),
+                   vec::append(arr.clone(), &[@~"value stuff"]));
         if arr.len() == 5 {
             fail!();
         }

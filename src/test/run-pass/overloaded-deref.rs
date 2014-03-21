@@ -42,8 +42,10 @@ pub fn main() {
     (*(*p).borrow_mut()).y += 3;
     assert_eq!(*(*p).borrow(), Point {x: 3, y: 5});
 
-    let v = Rc::new(RefCell::new(~[1, 2, 3]));
-    (*(*v).borrow_mut())[0] = 3;
-    (*(*v).borrow_mut())[1] += 3;
-    assert_eq!(((*(*v).borrow())[0], (*(*v).borrow())[1], (*(*v).borrow())[2]), (3, 5, 3));
+    let v = Rc::new(RefCell::new(vec!(1, 2, 3)));
+    *(*(*v).borrow_mut()).get_mut(0) = 3;
+    *(*(*v).borrow_mut()).get_mut(1) += 3;
+    assert_eq!((*(*(*v).borrow()).get(0),
+                *(*(*v).borrow()).get(1),
+                *(*(*v).borrow()).get(2)), (3, 5, 3));
 }

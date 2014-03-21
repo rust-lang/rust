@@ -8,37 +8,35 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::slice;
-
 trait methods {
-    fn to_bytes(&self) -> ~[u8];
+    fn to_bytes(&self) -> Vec<u8> ;
 }
 
 impl methods for () {
-    fn to_bytes(&self) -> ~[u8] {
-        slice::from_elem(0, 0u8)
+    fn to_bytes(&self) -> Vec<u8> {
+        Vec::from_elem(0, 0u8)
     }
 }
 
 // the position of this function is significant! - if it comes before methods
 // then it works, if it comes after it then it doesn't!
-fn to_bools(bitv: Storage) -> ~[bool] {
-    slice::from_fn(8, |i| {
+fn to_bools(bitv: Storage) -> Vec<bool> {
+    Vec::from_fn(8, |i| {
         let w = i / 64;
         let b = i % 64;
-        let x = 1u64 & (bitv.storage[w] >> b);
+        let x = 1u64 & (*bitv.storage.get(w) >> b);
         x == 1u64
     })
 }
 
-struct Storage { storage: ~[u64] }
+struct Storage { storage: Vec<u64> }
 
 pub fn main() {
-    let bools = ~[false, false, true, false, false, true, true, false];
-    let bools2 = to_bools(Storage{storage: ~[0b01100100]});
+    let bools = vec!(false, false, true, false, false, true, true, false);
+    let bools2 = to_bools(Storage{storage: vec!(0b01100100)});
 
     for i in range(0u, 8) {
-        println!("{} => {} vs {}", i, bools[i], bools2[i]);
+        println!("{} => {} vs {}", i, *bools.get(i), *bools2.get(i));
     }
 
     assert_eq!(bools, bools2);

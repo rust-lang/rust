@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:expected `[` but found `~`
+// error-pattern:expected `[` but found `vec`
 mod blade_runner {
-    #~[doc(
+    #vec[doc(
         brief = "Blade Runner is probably the best movie ever",
         desc = "I like that in the world of Blade Runner it is always
                 raining, and that it's always night time. And Aliens

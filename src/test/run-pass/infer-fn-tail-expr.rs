@@ -10,6 +10,7 @@
 
 // issue #680
 
-fn f() -> ~[int] { ~[] }
+
+fn f() -> Vec<int> { Vec::new() }
 
 pub fn main() { }

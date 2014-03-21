@@ -12,5 +12,5 @@
 
 fn main() {
     let n = 1;
-    let a = ~[0, ..n]; //~ ERROR expected constant integer for repeat count but found variable
+    let a = [0, ..n]; //~ ERROR expected constant integer for repeat count but found variable
 }

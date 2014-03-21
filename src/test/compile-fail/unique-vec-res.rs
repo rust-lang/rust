@@ -25,14 +25,14 @@ impl Drop for r {
     }
 }
 
-fn f<T>(_i: ~[T], _j: ~[T]) {
+fn f<T>(_i: Vec<T> , _j: Vec<T> ) {
 }
 
 fn main() {
     let i1 = @Cell::new(0);
     let i2 = @Cell::new(1);
-    let r1 = ~[~r { i: i1 }];
-    let r2 = ~[~r { i: i2 }];
+    let r1 = vec!(~r { i: i1 });
+    let r2 = vec!(~r { i: i2 });
     f(r1.clone(), r2.clone());
     //~^ ERROR failed to find an implementation of
     println!("{:?}", (r2, i1.get()));

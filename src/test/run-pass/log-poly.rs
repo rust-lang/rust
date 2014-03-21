@@ -16,5 +16,5 @@ pub fn main() {
     println!("{}", 1);
     println!("{}", 2.0);
     println!("{:?}", Three);
-    println!("{:?}", ~[4]);
+    println!("{:?}", vec!(4));
 }

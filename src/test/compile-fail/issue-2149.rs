@@ -8,12 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 trait vec_monad<A> {
-    fn bind<B>(&self, f: |A| -> ~[B]);
+    fn bind<B>(&self, f: |A| -> Vec<B> );
 }
 
-impl<A> vec_monad<A> for ~[A] {
-    fn bind<B>(&self, f: |A| -> ~[B]) {
+impl<A> vec_monad<A> for Vec<A> {
+    fn bind<B>(&self, f: |A| -> Vec<B> ) {
         let mut r = fail!();
         for elt in self.iter() { r = r + f(*elt); }
         //~^ ERROR the type of this value must be known

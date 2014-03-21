@@ -22,7 +22,7 @@ use doctree::*;
 
 pub struct RustdocVisitor<'a> {
     module: Module,
-    attrs: ~[ast::Attribute],
+    attrs: Vec<ast::Attribute> ,
     cx: &'a core::DocContext,
     analysis: Option<&'a core::CrateAnalysis>,
 }
@@ -32,7 +32,7 @@ impl<'a> RustdocVisitor<'a> {
                    analysis: Option<&'b core::CrateAnalysis>) -> RustdocVisitor<'b> {
         RustdocVisitor {
             module: Module::new(None),
-            attrs: ~[],
+            attrs: Vec::new(),
             cx: cx,
             analysis: analysis,
         }
@@ -72,7 +72,7 @@ impl<'a> RustdocVisitor<'a> {
     pub fn visit_enum_def(&mut self, it: &ast::Item, def: &ast::EnumDef,
                           params: &ast::Generics) -> Enum {
         debug!("Visiting enum");
-        let mut vars: ~[Variant] = ~[];
+        let mut vars: Vec<Variant> = Vec::new();
         for x in def.variants.iter() {
             vars.push(Variant {
                 name: x.node.name,
@@ -110,7 +110,7 @@ impl<'a> RustdocVisitor<'a> {
         }
     }
 
-    pub fn visit_mod_contents(&mut self, span: Span, attrs: ~[ast::Attribute],
+    pub fn visit_mod_contents(&mut self, span: Span, attrs: Vec<ast::Attribute> ,
                               vis: ast::Visibility, id: ast::NodeId,
                               m: &ast::Mod,
                               name: Option<ast::Ident>) -> Module {

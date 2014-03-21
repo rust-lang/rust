@@ -16,12 +16,13 @@
 #[allow(deprecated_owned_vector)];
 #[deny(unused_mut)];
 
+
 fn main() {
     // negative cases
     let mut a = 3; //~ ERROR: variable does not need to be mutable
     let mut a = 2; //~ ERROR: variable does not need to be mutable
     let mut b = 3; //~ ERROR: variable does not need to be mutable
-    let mut a = ~[3]; //~ ERROR: variable does not need to be mutable
+    let mut a = vec!(3); //~ ERROR: variable does not need to be mutable
     let (mut a, b) = (1, 2); //~ ERROR: variable does not need to be mutable
 
     match 30 {
@@ -34,9 +35,9 @@ fn main() {
     // positive cases
     let mut a = 2;
     a = 3;
-    let mut a = ~[];
+    let mut a = Vec::new();
     a.push(3);
-    let mut a = ~[];
+    let mut a = Vec::new();
     callback(|| {
         a.push(3);
     });
@@ -63,5 +64,5 @@ fn callback(f: ||) {}
 #[allow(unused_mut)]
 fn foo(mut a: int) {
     let mut a = 3;
-    let mut b = ~[2];
+    let mut b = vec!(2);
 }

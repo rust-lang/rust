@@ -10,17 +10,17 @@
 
 use std::task;
 
-fn producer(tx: &Sender<~[u8]>) {
+fn producer(tx: &Sender<Vec<u8>>) {
     tx.send(
-         ~[1u8, 2u8, 3u8, 4u8, 5u8, 6u8, 7u8, 8u8, 9u8, 10u8, 11u8, 12u8,
-          13u8]);
+         vec!(1u8, 2u8, 3u8, 4u8, 5u8, 6u8, 7u8, 8u8, 9u8, 10u8, 11u8, 12u8,
+          13u8));
 }
 
 pub fn main() {
-    let (tx, rx) = channel::<~[u8]>();
+    let (tx, rx) = channel::<Vec<u8>>();
     let _prod = task::spawn(proc() {
         producer(&tx)
     });
 
-    let _data: ~[u8] = rx.recv();
+    let _data: Vec<u8> = rx.recv();
 }

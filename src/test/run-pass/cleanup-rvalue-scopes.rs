@@ -116,7 +116,6 @@ pub fn main() {
     end_of_block!(_, { { check_flags(0); &AddFlags(1) } });
     end_of_block!(_, &((Box { f: AddFlags(1) }).f));
     end_of_block!(_, &(([AddFlags(1)])[0]));
-    end_of_block!(_, &((&~[AddFlags(1)])[0]));
 
     // LHS does not create a ref binding, so temporary lives as long
     // as statement, and we do not move the AddFlags out:

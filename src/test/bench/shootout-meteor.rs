@@ -12,6 +12,7 @@
 // Utilities.
 //
 
+
 // returns an infinite iterator of repeated applications of f to x,
 // i.e. [x, f(x), f(f(x)), ...], as haskell iterate function.
 fn iterate<'a, T>(x: T, f: 'a |&T| -> T) -> Iterate<'a, T> {
@@ -63,8 +64,8 @@ impl<'a, T> Iterator<&'a T> for ListIterator<'a, T> {
 // corresponding mirrored piece), with, as minimum coordinates, (0,
 // 0).  If all is false, only generate half of the possibilities (used
 // to break the symetry of the board).
-fn transform(piece: ~[(int, int)], all: bool) -> ~[~[(int, int)]] {
-    let mut res =
+fn transform(piece: Vec<(int, int)> , all: bool) -> Vec<Vec<(int, int)>> {
+    let mut res: Vec<Vec<(int, int)>> =
         // rotations
         iterate(piece, |rot| rot.iter().map(|&(y, x)| (x + y, -y)).collect())
         .take(if all {6} else {3})
@@ -72,7 +73,7 @@ fn transform(piece: ~[(int, int)], all: bool) -> ~[~[(int, int)]] {
         .flat_map(|cur_piece| {
             iterate(cur_piece, |mir| mir.iter().map(|&(y, x)| (x, y)).collect())
             .take(2)
-        }).to_owned_vec();
+        }).collect();
 
     // translating to (0, 0) as minimum coordinates.
     for cur_piece in res.mut_iter() {
@@ -107,30 +108,30 @@ fn mask(dy: int, dx: int, id: uint, p: &[(int, int)]) -> Option<u64> {
 // Makes every possible masks.  masks[id][i] correspond to every
 // possible masks for piece with identifier id with minimum coordinate
 // (i/5, i%5).
-fn make_masks() -> ~[~[~[u64]]] {
-    let pieces = ~[
-        ~[(0,0),(0,1),(0,2),(0,3),(1,3)],
-        ~[(0,0),(0,2),(0,3),(1,0),(1,1)],
-        ~[(0,0),(0,1),(0,2),(1,2),(2,1)],
-        ~[(0,0),(0,1),(0,2),(1,1),(2,1)],
-        ~[(0,0),(0,2),(1,0),(1,1),(2,1)],
-        ~[(0,0),(0,1),(0,2),(1,1),(1,2)],
-        ~[(0,0),(0,1),(1,1),(1,2),(2,1)],
-        ~[(0,0),(0,1),(0,2),(1,0),(1,2)],
-        ~[(0,0),(0,1),(0,2),(1,2),(1,3)],
-        ~[(0,0),(0,1),(0,2),(0,3),(1,2)]];
-    let mut res = ~[];
+fn make_masks() -> Vec<Vec<Vec<u64> > > {
+    let pieces = vec!(
+        vec!((0,0),(0,1),(0,2),(0,3),(1,3)),
+        vec!((0,0),(0,2),(0,3),(1,0),(1,1)),
+        vec!((0,0),(0,1),(0,2),(1,2),(2,1)),
+        vec!((0,0),(0,1),(0,2),(1,1),(2,1)),
+        vec!((0,0),(0,2),(1,0),(1,1),(2,1)),
+        vec!((0,0),(0,1),(0,2),(1,1),(1,2)),
+        vec!((0,0),(0,1),(1,1),(1,2),(2,1)),
+        vec!((0,0),(0,1),(0,2),(1,0),(1,2)),
+        vec!((0,0),(0,1),(0,2),(1,2),(1,3)),
+        vec!((0,0),(0,1),(0,2),(0,3),(1,2)));
+    let mut res = Vec::new();
     for (id, p) in pieces.move_iter().enumerate() {
         // To break the central symetry of the problem, every
         // transformation must be taken except for one piece (piece 3
         // here).
         let trans = transform(p, id != 3);
-        let mut cur_piece = ~[];
+        let mut cur_piece = Vec::new();
         for dy in range(0, 10) {
             for dx in range(0, 5) {
                 let masks =
                     trans.iter()
-                    .filter_map(|t| mask(dy, dx, id, *t))
+                    .filter_map(|t| mask(dy, dx, id, t.as_slice()))
                     .collect();
                 cur_piece.push(masks);
             }
@@ -142,12 +143,12 @@ fn make_masks() -> ~[~[~[u64]]] {
 
 // Check if all coordinates can be covered by an unused piece and that
 // all unused piece can be placed on the board.
-fn is_board_unfeasible(board: u64, masks: &[~[~[u64]]]) -> bool {
+fn is_board_unfeasible(board: u64, masks: &[Vec<Vec<u64> > ]) -> bool {
     let mut coverable = board;
     for i in range(0, 50).filter(|&i| board & 1 << i == 0) {
         for (cur_id, pos_masks) in masks.iter().enumerate() {
             if board & 1 << (50 + cur_id) != 0 {continue;}
-            for &cur_m in pos_masks[i].iter() {
+            for &cur_m in pos_masks.get(i as uint).iter() {
                 if cur_m & board == 0 {coverable |= cur_m;}
             }
         }
@@ -159,7 +160,7 @@ fn is_board_unfeasible(board: u64, masks: &[~[~[u64]]]) -> bool {
 }
 
 // Filter the masks that we can prove to result to unfeasible board.
-fn filter_masks(masks: &[~[~[u64]]]) -> ~[~[~[u64]]] {
+fn filter_masks(masks: &[Vec<Vec<u64> > ]) -> Vec<Vec<Vec<u64> > > {
     masks.iter().map(
         |p| p.iter().map(
             |p| p.iter()
@@ -180,14 +181,16 @@ fn get_id(m: u64) -> u8 {
 
 // Converts a list of mask to a ~str.
 fn to_utf8(raw_sol: &List<u64>) -> ~str {
-    let mut sol: ~[u8] = std::slice::from_elem(50, '.' as u8);
+    let mut sol: Vec<u8> = Vec::from_elem(50, '.' as u8);
     for &m in raw_sol.iter() {
         let id = get_id(m);
         for i in range(0, 50) {
-            if m & 1 << i != 0 {sol[i] = '0' as u8 + id;}
+            if m & 1 << i != 0 {
+                *sol.get_mut(i as uint) = '0' as u8 + id;
+            }
         }
     }
-    std::str::from_utf8_owned(sol).unwrap()
+    std::str::from_utf8_owned(sol.move_iter().collect()).unwrap()
 }
 
 // Prints a solution in ~str form.
@@ -237,7 +240,7 @@ fn handle_sol(raw_sol: &List<u64>, data: &mut Data) -> bool {
 // Search for every solutions.  Returns false if the search was
 // stopped before the end.
 fn search(
-    masks: &[~[~[u64]]],
+    masks: &[Vec<Vec<u64> > ],
     board: u64,
     mut i: int,
     cur: List<u64>,
@@ -252,7 +255,9 @@ fn search(
     // for every unused piece
     for id in range(0, 10).filter(|id| board & (1 << (id + 50)) == 0) {
         // for each mask that fits on the board
-        for &m in masks[id][i].iter().filter(|&m| board & *m == 0) {
+        for &m in masks[id].get(i as uint)
+                           .iter()
+                           .filter(|&m| board & *m == 0) {
             // This check is too costy.
             //if is_board_unfeasible(board | m, masks) {continue;}
             if !search(masks, board | m, i + 1, Cons(m, &cur), data) {
@@ -271,9 +276,9 @@ fn main () {
         from_str(args[1]).unwrap()
     };
     let masks = make_masks();
-    let masks = filter_masks(masks);
+    let masks = filter_masks(masks.as_slice());
     let mut data = Data {stop_after: stop_after, nb: 0, min: ~"", max: ~""};
-    search(masks, 0, 0, Nil, &mut data);
+    search(masks.as_slice(), 0, 0, Nil, &mut data);
     println!("{} solutions found", data.nb);
     print_sol(data.min);
     print_sol(data.max);

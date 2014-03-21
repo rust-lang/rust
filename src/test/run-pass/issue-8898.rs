@@ -11,7 +11,6 @@
 #[feature(managed_boxes)];
 
 fn assert_repr_eq<T>(obj : T, expected : ~str) {
-
     assert_eq!(expected, format!("{:?}", obj));
 }
 
@@ -19,14 +18,12 @@ pub fn main() {
     let abc = [1, 2, 3];
     let tf = [true, false];
     let x  = [(), ()];
-    let y = ~[(), ()];
     let slice = x.slice(0,1);
     let z = @x;
 
     assert_repr_eq(abc, ~"[1, 2, 3]");
     assert_repr_eq(tf, ~"[true, false]");
     assert_repr_eq(x, ~"[(), ()]");
-    assert_repr_eq(y, ~"~[(), ()]");
     assert_repr_eq(slice, ~"&[()]");
     assert_repr_eq(&x, ~"&[(), ()]");
     assert_repr_eq(z, ~"@[(), ()]");

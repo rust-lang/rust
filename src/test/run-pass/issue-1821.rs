@@ -9,7 +9,9 @@
 // except according to those terms.
 
 // Issue #1821 - Don't recurse trying to typecheck this
+
+
 enum t {
-    foo(~[t])
+    foo(Vec<t>)
 }
 pub fn main() {}

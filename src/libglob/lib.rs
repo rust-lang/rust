@@ -42,10 +42,9 @@ use std::path::is_sep;
  */
 pub struct Paths {
     priv root: Path,
-    priv dir_patterns: ~[Pattern],
+    priv dir_patterns: Vec<Pattern> ,
     priv options: MatchOptions,
-    priv todo: ~[(Path,uint)]
-}
+    priv todo: Vec<(Path,uint)> }
 
 ///
 /// Return an iterator that produces all the Paths that match the given pattern,
@@ -103,16 +102,23 @@ pub fn glob_with(pattern: &str, options: MatchOptions) -> Paths {
         if check_windows_verbatim(pat_root.get_ref()) {
             // FIXME: How do we want to handle verbatim paths? I'm inclined to return nothing,
             // since we can't very well find all UNC shares with a 1-letter server name.
-            return Paths { root: root, dir_patterns: ~[], options: options, todo: ~[] };
+            return Paths {
+                root: root,
+                dir_patterns: Vec::new(),
+                options: options,
+                todo: Vec::new(),
+            };
         }
         root.push(pat_root.get_ref());
     }
 
     let root_len = pat_root.map_or(0u, |p| p.as_vec().len());
     let dir_patterns = pattern.slice_from(cmp::min(root_len, pattern.len()))
-                       .split_terminator(is_sep).map(|s| Pattern::new(s)).to_owned_vec();
+                       .split_terminator(is_sep)
+                       .map(|s| Pattern::new(s))
+                       .collect();
 
-    let todo = list_dir_sorted(&root).move_iter().map(|x|(x,0u)).to_owned_vec();
+    let todo = list_dir_sorted(&root).move_iter().map(|x|(x,0u)).collect();
 
     Paths {
         root: root,
@@ -131,7 +137,7 @@ impl Iterator<Path> for Paths {
             }
 
             let (path,idx) = self.todo.pop().unwrap();
-            let ref pattern = self.dir_patterns[idx];
+            let ref pattern = *self.dir_patterns.get(idx);
 
             if pattern.matches_with(match path.filename_str() {
                 // this ugly match needs to go here to avoid a borrowck error
@@ -155,13 +161,13 @@ impl Iterator<Path> for Paths {
 
 }
 
-fn list_dir_sorted(path: &Path) -> ~[Path] {
+fn list_dir_sorted(path: &Path) -> Vec<Path> {
     match fs::readdir(path) {
         Ok(mut children) => {
             children.sort_by(|p1, p2| p2.filename().cmp(&p1.filename()));
-            children
+            children.move_iter().collect()
         }
-        Err(..) => ~[]
+        Err(..) => Vec::new()
     }
 }
 
@@ -170,16 +176,15 @@ fn list_dir_sorted(path: &Path) -> ~[Path] {
  */
 #[deriving(Clone, Eq, TotalEq, Ord, TotalOrd, Hash, Default)]
 pub struct Pattern {
-    priv tokens: ~[PatternToken]
-}
+    priv tokens: Vec<PatternToken> }
 
 #[deriving(Clone, Eq, TotalEq, Ord, TotalOrd, Hash)]
 enum PatternToken {
     Char(char),
     AnyChar,
     AnySequence,
-    AnyWithin(~[CharSpecifier]),
-    AnyExcept(~[CharSpecifier])
+    AnyWithin(Vec<CharSpecifier> ),
+    AnyExcept(Vec<CharSpecifier> )
 }
 
 #[deriving(Clone, Eq, TotalEq, Ord, TotalOrd, Hash)]
@@ -219,7 +224,7 @@ impl Pattern {
     pub fn new(pattern: &str) -> Pattern {
 
         let chars = pattern.chars().to_owned_vec();
-        let mut tokens = ~[];
+        let mut tokens = Vec::new();
         let mut i = 0;
 
         while i < chars.len() {
@@ -392,10 +397,16 @@ impl Pattern {
                             !require_literal(c)
                         }
                         AnyWithin(ref specifiers) => {
-                            !require_literal(c) && in_char_specifiers(*specifiers, c, options)
+                            !require_literal(c) &&
+                                in_char_specifiers(specifiers.as_slice(),
+                                                   c,
+                                                   options)
                         }
                         AnyExcept(ref specifiers) => {
-                            !require_literal(c) && !in_char_specifiers(*specifiers, c, options)
+                            !require_literal(c) &&
+                                !in_char_specifiers(specifiers.as_slice(),
+                                                    c,
+                                                    options)
                         }
                         Char(c2) => {
                             chars_eq(c, c2, options.case_sensitive)
@@ -422,8 +433,8 @@ impl Pattern {
 
 }
 
-fn parse_char_specifiers(s: &[char]) -> ~[CharSpecifier] {
-    let mut cs = ~[];
+fn parse_char_specifiers(s: &[char]) -> Vec<CharSpecifier> {
+    let mut cs = Vec::new();
     let mut i = 0;
     while i < s.len() {
         if i + 3 <= s.len() && s[i + 1] == '-' {

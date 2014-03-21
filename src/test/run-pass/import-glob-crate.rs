@@ -13,10 +13,12 @@
 #[feature(globs)];
 #[allow(dead_assignment)];
 
-use std::slice::*;
+use std::mem::*;
 
 pub fn main() {
-    let mut v = from_elem(0u, 0);
-    v = append(v, [4, 2]);
-    assert_eq!(from_fn(2, |i| 2*(i+1)), ~[2, 4]);
+    assert_eq!(size_of::<u8>(), 1);
+    let (mut x, mut y) = (1, 2);
+    swap(&mut x, &mut y);
+    assert_eq!(x, 2);
+    assert_eq!(y, 1);
 }

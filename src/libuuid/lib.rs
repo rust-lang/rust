@@ -327,13 +327,13 @@ impl Uuid {
     ///
     /// Example: `936DA01F9ABD4d9d80C702AF85C822A8`
     pub fn to_simple_str(&self) -> ~str {
-        let mut s: ~[u8] = slice::from_elem(32, 0u8);
+        let mut s: Vec<u8> = Vec::from_elem(32, 0u8);
         for i in range(0u, 16u) {
             let digit = format!("{:02x}", self.bytes[i] as uint);
-            s[i*2+0] = digit[0];
-            s[i*2+1] = digit[1];
+            *s.get_mut(i*2+0) = digit[0];
+            *s.get_mut(i*2+1) = digit[1];
         }
-        str::from_utf8_owned(s).unwrap()
+        str::from_utf8(s.as_slice()).unwrap().to_str()
     }
 
     /// Returns a string of hexadecimal digits, separated into groups with a hyphen.
@@ -397,17 +397,17 @@ impl Uuid {
         }
 
         // Split string up by hyphens into groups
-        let hex_groups: ~[&str] = us.split_str("-").collect();
+        let hex_groups: Vec<&str> = us.split_str("-").collect();
 
         // Get the length of each group
-        let group_lens: ~[uint] = hex_groups.iter().map(|&v| v.len()).collect();
+        let group_lens: Vec<uint> = hex_groups.iter().map(|&v| v.len()).collect();
 
         // Ensure the group lengths are valid
         match group_lens.len() {
             // Single group, no hyphens
             1 => {
-                if group_lens[0] != 32 {
-                    return Err(ErrorInvalidLength(group_lens[0]));
+                if *group_lens.get(0) != 32 {
+                    return Err(ErrorInvalidLength(*group_lens.get(0)));
                 }
             },
             // Five groups, hyphens in between each
@@ -697,7 +697,10 @@ mod test {
         let hs = uuid1.to_hyphenated_str();
         let ss = uuid1.to_str();
 
-        let hsn = str::from_chars(hs.chars().filter(|&c| c != '-').collect::<~[char]>());
+        let hsn = str::from_chars(hs.chars()
+                                    .filter(|&c| c != '-')
+                                    .collect::<Vec<char>>()
+                                    .as_slice());
 
         assert!(hsn == ss);
     }
@@ -731,9 +734,9 @@ mod test {
         let d1: u32 = 0xa1a2a3a4;
         let d2: u16 = 0xb1b2;
         let d3: u16 = 0xc1c2;
-        let d4: ~[u8] = ~[0xd1, 0xd2, 0xd3, 0xd4, 0xd5, 0xd6, 0xd7, 0xd8];
+        let d4: Vec<u8> = vec!(0xd1, 0xd2, 0xd3, 0xd4, 0xd5, 0xd6, 0xd7, 0xd8);
 
-        let u = Uuid::from_fields(d1, d2, d3, d4);
+        let u = Uuid::from_fields(d1, d2, d3, d4.as_slice());
 
         let expected = ~"a1a2a3a4b1b2c1c2d1d2d3d4d5d6d7d8";
         let result = u.to_simple_str();
@@ -742,10 +745,10 @@ mod test {
 
     #[test]
     fn test_from_bytes() {
-        let b = ~[ 0xa1, 0xa2, 0xa3, 0xa4, 0xb1, 0xb2, 0xc1, 0xc2,
-                   0xd1, 0xd2, 0xd3, 0xd4, 0xd5, 0xd6, 0xd7, 0xd8 ];
+        let b = vec!( 0xa1, 0xa2, 0xa3, 0xa4, 0xb1, 0xb2, 0xc1, 0xc2,
+                   0xd1, 0xd2, 0xd3, 0xd4, 0xd5, 0xd6, 0xd7, 0xd8 );
 
-        let u = Uuid::from_bytes(b).unwrap();
+        let u = Uuid::from_bytes(b.as_slice()).unwrap();
         let expected = ~"a1a2a3a4b1b2c1c2d1d2d3d4d5d6d7d8";
 
         assert!(u.to_simple_str() == expected);

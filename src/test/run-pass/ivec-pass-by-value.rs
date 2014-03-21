@@ -8,5 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn f(_a: ~[int]) { }
-pub fn main() { f(~[1, 2, 3, 4, 5]); }
+
+fn f(_a: Vec<int> ) { }
+pub fn main() { f(vec!(1, 2, 3, 4, 5)); }

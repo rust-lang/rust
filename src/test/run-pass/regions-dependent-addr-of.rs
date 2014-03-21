@@ -11,6 +11,7 @@
 // Test lifetimes are linked properly when we create dependent region pointers.
 // Issue #3148.
 
+
 struct A {
     value: B
 }
@@ -18,7 +19,7 @@ struct A {
 struct B {
     v1: int,
     v2: [int, ..3],
-    v3: ~[int],
+    v3: Vec<int> ,
     v4: C,
     v5: ~C,
     v6: Option<C>
@@ -41,7 +42,7 @@ fn get_v2<'v>(a: &'v A, i: uint) -> &'v int {
 
 fn get_v3<'v>(a: &'v A, i: uint) -> &'v int {
     let foo = &a.value;
-    &foo.v3[i]
+    foo.v3.get(i)
 }
 
 fn get_v4<'v>(a: &'v A, _i: uint) -> &'v int {
@@ -84,7 +85,7 @@ fn get_v5_ref<'v>(a: &'v A, _i: uint) -> &'v int {
 pub fn main() {
     let a = A {value: B {v1: 22,
                          v2: [23, 24, 25],
-                         v3: ~[26, 27, 28],
+                         v3: vec!(26, 27, 28),
                          v4: C { f: 29 },
                          v5: ~C { f: 30 },
                          v6: Some(C { f: 31 })}};
@@ -96,7 +97,7 @@ pub fn main() {
     assert_eq!(*p, a.value.v2[1]);
 
     let p = get_v3(&a, 1);
-    assert_eq!(*p, a.value.v3[1]);
+    assert_eq!(*p, *a.value.v3.get(1));
 
     let p = get_v4(&a, 1);
     assert_eq!(*p, a.value.v4.f);

@@ -80,15 +80,15 @@ static DEFAULT_PASSES: &'static [&'static str] = &[
 local_data_key!(pub ctxtkey: @core::DocContext)
 local_data_key!(pub analysiskey: core::CrateAnalysis)
 
-type Output = (clean::Crate, ~[plugins::PluginJson]);
+type Output = (clean::Crate, Vec<plugins::PluginJson> );
 
 pub fn main() {
     std::os::set_exit_status(main_args(std::os::args()));
 }
 
-pub fn opts() -> ~[getopts::OptGroup] {
+pub fn opts() -> Vec<getopts::OptGroup> {
     use getopts::*;
-    ~[
+    vec!(
         optflag("h", "help", "show this help message"),
         optflag("", "version", "print rustdoc's version"),
         optopt("r", "input-format", "the input type of the specified file",
@@ -121,16 +121,18 @@ pub fn opts() -> ~[getopts::OptGroup] {
         optmulti("", "markdown-after-content",
                  "files to include inline between the content and </body> of a rendered \
                  Markdown file",
-                 "FILES"),
-    ]
+                 "FILES")
+    )
 }
 
 pub fn usage(argv0: &str) {
-    println!("{}", getopts::usage(format!("{} [options] <input>", argv0), opts()));
+    println!("{}",
+             getopts::usage(format!("{} [options] <input>", argv0),
+                            opts().as_slice()));
 }
 
 pub fn main_args(args: &[~str]) -> int {
-    let matches = match getopts::getopts(args.tail(), opts()) {
+    let matches = match getopts::getopts(args.tail(), opts().as_slice()) {
         Ok(m) => m,
         Err(err) => {
             println!("{}", err.to_err_msg());
@@ -152,12 +154,15 @@ pub fn main_args(args: &[~str]) -> int {
         println!("only one input file may be specified");
         return 1;
     }
-    let input = matches.free[0].as_slice();
+    let input = matches.free.get(0).as_slice();
 
-    let libs = matches.opt_strs("L").map(|s| Path::new(s.as_slice())).move_iter().collect();
+    let libs = matches.opt_strs("L").iter().map(|s| Path::new(s.as_slice())).collect();
 
     let test_args = matches.opt_strs("test-args");
-    let test_args = test_args.iter().flat_map(|s| s.words()).map(|s| s.to_owned()).to_owned_vec();
+    let test_args: Vec<~str> = test_args.iter()
+                                        .flat_map(|s| s.words())
+                                        .map(|s| s.to_owned())
+                                        .collect();
 
     let should_test = matches.opt_present("test");
     let markdown_input = input.ends_with(".md") || input.ends_with(".markdown");
@@ -165,7 +170,11 @@ pub fn main_args(args: &[~str]) -> int {
     let output = matches.opt_str("o").map(|s| Path::new(s));
 
     match (should_test, markdown_input) {
-        (true, true) => return markdown::test(input, libs, test_args),
+        (true, true) => {
+            return markdown::test(input,
+                                  libs,
+                                  test_args.move_iter().collect())
+        }
         (true, false) => return test::run(input, libs, test_args),
 
         (false, true) => return markdown::render(input, output.unwrap_or(Path::new("doc")),
@@ -173,7 +182,7 @@ pub fn main_args(args: &[~str]) -> int {
         (false, false) => {}
     }
 
-    if matches.opt_strs("passes") == ~[~"list"] {
+    if matches.opt_strs("passes").as_slice() == &[~"list"] {
         println!("Available passes for running rustdoc:");
         for &(name, _, description) in PASSES.iter() {
             println!("{:>20s} - {}", name, description);
@@ -248,13 +257,18 @@ fn rust_input(cratefile: &str, matches: &getopts::Matches) -> Output {
     let mut plugins = matches.opt_strs("plugins");
 
     // First, parse the crate and extract all relevant information.
-    let libs = matches.opt_strs("L").map(|s| Path::new(s.as_slice()));
+    let libs: Vec<Path> = matches.opt_strs("L")
+                                 .iter()
+                                 .map(|s| Path::new(s.as_slice()))
+                                 .collect();
     let cfgs = matches.opt_strs("cfg");
     let cr = Path::new(cratefile);
     info!("starting to run rustc");
     let (krate, analysis) = std::task::try(proc() {
         let cr = cr;
-        core::run_core(libs.move_iter().collect(), cfgs, &cr)
+        core::run_core(libs.move_iter().collect(),
+                       cfgs.move_iter().collect(),
+                       &cr)
     }).unwrap();
     info!("finished with rustc");
     local_data::set(analysiskey, analysis);
@@ -344,7 +358,7 @@ fn json_input(input: &str) -> Result<Output, ~str> {
             };
             // FIXME: this should read from the "plugins" field, but currently
             //      Json doesn't implement decodable...
-            let plugin_output = ~[];
+            let plugin_output = Vec::new();
             Ok((krate, plugin_output))
         }
         Ok(..) => Err(~"malformed json input: expected an object at the top"),
@@ -353,7 +367,7 @@ fn json_input(input: &str) -> Result<Output, ~str> {
 
 /// Outputs the crate/plugin json as a giant json blob at the specified
 /// destination.
-fn json_output(krate: clean::Crate, res: ~[plugins::PluginJson],
+fn json_output(krate: clean::Crate, res: Vec<plugins::PluginJson> ,
                dst: Path) -> io::IoResult<()> {
     // {
     //   "schema": version,

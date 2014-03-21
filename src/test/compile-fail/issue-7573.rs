@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 pub struct CrateId {
     local_path: ~str,
     junk: ~str
@@ -23,7 +24,7 @@ impl CrateId {
 }
 
 pub fn remove_package_from_database() {
-    let mut lines_to_use: ~[&CrateId] = ~[]; //~ ERROR cannot infer an appropriate lifetime
+    let mut lines_to_use: Vec<&CrateId> = Vec::new(); //~ ERROR cannot infer an appropriate lifetime
     let push_id = |installed_id: &CrateId| {
         lines_to_use.push(installed_id);
     };

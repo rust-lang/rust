@@ -20,7 +20,7 @@ fn main() {
     // address of the 0th cell in the array (even though the index is
     // huge).
 
-    let x = ~[1u,2u,3u];
+    let x = vec!(1u,2u,3u);
 
     let base = x.as_ptr() as uint;
     let idx = base / mem::size_of::<uint>();
@@ -31,5 +31,5 @@ fn main() {
            idx * mem::size_of::<uint>());
 
     // This should fail.
-    println!("ov1 0x{:x}",  x[idx]);
+    println!("ov1 0x{:x}", *x.get(idx));
 }

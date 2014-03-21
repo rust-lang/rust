@@ -12,6 +12,7 @@
 
 #[feature(macro_rules)];
 
+
 /*
 
 This is an HTML parser written as a macro. It's all CPS, and we have
@@ -41,7 +42,7 @@ macro_rules! parse_node (
         parse_node!(
             [$(: $tags ($(:$tag_nodes),*))*];
             [$(:$head_nodes,)* :tag(stringify!($head).to_owned(),
-                                    ~[$($nodes),*])];
+                                    vec!($($nodes),*))];
             $($rest)*
         )
     );
@@ -97,6 +98,6 @@ pub fn main() {
 }
 
 enum HTMLFragment {
-    tag(~str, ~[HTMLFragment]),
+    tag(~str, Vec<HTMLFragment> ),
     text(~str),
 }

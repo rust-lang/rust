@@ -13,7 +13,8 @@
 #[allow(dead_code)];
 #[allow(deprecated_owned_vector)];
 
-fn fail_len(v: ~[int]) -> uint {
+
+fn fail_len(v: Vec<int> ) -> uint {
     let mut i = 3;
     fail!();
     for x in v.iter() { i += 1u; }

@@ -15,8 +15,8 @@ pub fn main() {
         println!("{}", i);
         i = i + 1;
         if i == 95 {
-            let _v: ~[int] =
-                ~[1, 2, 3, 4, 5]; // we check that it is freed by break
+            let _v: Vec<int> =
+                vec!(1, 2, 3, 4, 5); // we check that it is freed by break
 
             println!("breaking");
             break;

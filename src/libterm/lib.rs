@@ -24,8 +24,8 @@
 
 extern crate collections;
 
-use std::os;
 use std::io;
+use std::os;
 use terminfo::TermInfo;
 use terminfo::searcher::open;
 use terminfo::parser::compiled::{parse, msys_terminfo};
@@ -149,10 +149,14 @@ impl<T: Writer> Terminal<T> {
     pub fn fg(&mut self, color: color::Color) -> io::IoResult<bool> {
         let color = self.dim_if_necessary(color);
         if self.num_colors > color {
-            let s = expand(*self.ti.strings.find_equiv(&("setaf")).unwrap(),
+            let s = expand(self.ti
+                               .strings
+                               .find_equiv(&("setaf"))
+                               .unwrap()
+                               .as_slice(),
                            [Number(color as int)], &mut Variables::new());
             if s.is_ok() {
-                try!(self.out.write(s.unwrap()));
+                try!(self.out.write(s.unwrap().as_slice()));
                 return Ok(true)
             }
         }
@@ -168,10 +172,14 @@ impl<T: Writer> Terminal<T> {
     pub fn bg(&mut self, color: color::Color) -> io::IoResult<bool> {
         let color = self.dim_if_necessary(color);
         if self.num_colors > color {
-            let s = expand(*self.ti.strings.find_equiv(&("setab")).unwrap(),
+            let s = expand(self.ti
+                               .strings
+                               .find_equiv(&("setab"))
+                               .unwrap()
+                               .as_slice(),
                            [Number(color as int)], &mut Variables::new());
             if s.is_ok() {
-                try!(self.out.write(s.unwrap()));
+                try!(self.out.write(s.unwrap().as_slice()));
                 return Ok(true)
             }
         }
@@ -189,9 +197,11 @@ impl<T: Writer> Terminal<T> {
                 let cap = cap_for_attr(attr);
                 let parm = self.ti.strings.find_equiv(&cap);
                 if parm.is_some() {
-                    let s = expand(*parm.unwrap(), [], &mut Variables::new());
+                    let s = expand(parm.unwrap().as_slice(),
+                                   [],
+                                   &mut Variables::new());
                     if s.is_ok() {
-                        try!(self.out.write(s.unwrap()));
+                        try!(self.out.write(s.unwrap().as_slice()));
                         return Ok(true)
                     }
                 }
@@ -225,10 +235,10 @@ impl<T: Writer> Terminal<T> {
             }
         }
         let s = cap.map_or(Err(~"can't find terminfo capability `sgr0`"), |op| {
-            expand(*op, [], &mut Variables::new())
+            expand(op.as_slice(), [], &mut Variables::new())
         });
         if s.is_ok() {
-            return self.out.write(s.unwrap())
+            return self.out.write(s.unwrap().as_slice())
         }
         Ok(())
     }

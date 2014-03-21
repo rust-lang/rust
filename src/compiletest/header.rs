@@ -14,20 +14,20 @@ use util;
 
 pub struct TestProps {
     // Lines that should be expected, in order, on standard out
-    error_patterns: ~[~str],
+    error_patterns: Vec<~str> ,
     // Extra flags to pass to the compiler
     compile_flags: Option<~str>,
     // If present, the name of a file that this test should match when
     // pretty-printed
     pp_exact: Option<Path>,
     // Modules from aux directory that should be compiled
-    aux_builds: ~[~str],
+    aux_builds: Vec<~str> ,
     // Environment settings to use during execution
-    exec_env: ~[(~str,~str)],
+    exec_env: Vec<(~str,~str)> ,
     // Commands to be given to the debugger, when testing debug info
-    debugger_cmds: ~[~str],
+    debugger_cmds: Vec<~str> ,
     // Lines to check if they appear in the expected debugger output
-    check_lines: ~[~str],
+    check_lines: Vec<~str> ,
     // Flag to force a crate to be built with the host architecture
     force_host: bool,
     // Check stdout for error-pattern output as well as stderr
@@ -38,13 +38,13 @@ pub struct TestProps {
 
 // Load any test directives embedded in the file
 pub fn load_props(testfile: &Path) -> TestProps {
-    let mut error_patterns = ~[];
-    let mut aux_builds = ~[];
-    let mut exec_env = ~[];
+    let mut error_patterns = Vec::new();
+    let mut aux_builds = Vec::new();
+    let mut exec_env = Vec::new();
     let mut compile_flags = None;
     let mut pp_exact = None;
-    let mut debugger_cmds = ~[];
-    let mut check_lines = ~[];
+    let mut debugger_cmds = Vec::new();
+    let mut check_lines = Vec::new();
     let mut force_host = false;
     let mut check_stdout = false;
     let mut no_prefer_dynamic = false;
@@ -183,7 +183,7 @@ fn parse_no_prefer_dynamic(line: &str) -> bool {
 fn parse_exec_env(line: &str) -> Option<(~str, ~str)> {
     parse_name_value_directive(line, ~"exec-env").map(|nv| {
         // nv is either FOO or FOO=BAR
-        let mut strs: ~[~str] = nv.splitn('=', 1).map(|s| s.to_owned()).collect();
+        let mut strs: Vec<~str> = nv.splitn('=', 1).map(|s| s.to_owned()).collect();
 
         match strs.len() {
           1u => (strs.pop().unwrap(), ~""),

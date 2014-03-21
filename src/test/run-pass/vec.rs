@@ -9,16 +9,14 @@
 // except according to those terms.
 
 
-
-
 pub fn main() {
-    let v: ~[int] = ~[10, 20];
-    assert_eq!(v[0], 10);
-    assert_eq!(v[1], 20);
-    let mut x: int = 0;
-    assert_eq!(v[x], 10);
-    assert_eq!(v[x + 1], 20);
+    let v: Vec<int> = vec!(10, 20);
+    assert_eq!(*v.get(0), 10);
+    assert_eq!(*v.get(1), 20);
+    let mut x: uint = 0;
+    assert_eq!(*v.get(x), 10);
+    assert_eq!(*v.get(x + 1), 20);
     x = x + 1;
-    assert_eq!(v[x], 20);
-    assert_eq!(v[x - 1], 10);
+    assert_eq!(*v.get(x), 20);
+    assert_eq!(*v.get(x - 1), 10);
 }

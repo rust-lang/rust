@@ -19,7 +19,7 @@ use std::slice;
 
 fn calc(children: uint, parent_wait_chan: &Sender<Sender<Sender<int>>>) {
 
-    let wait_ports: ~[Receiver<Sender<Sender<int>>>] = slice::from_fn(children, |_| {
+    let wait_ports: Vec<Reciever<Sender<Sender<int>>>> = vec::from_fn(children, |_| {
         let (wait_port, wait_chan) = stream::<Sender<Sender<int>>>();
         task::spawn(proc() {
             calc(children / 2, &wait_chan);
@@ -27,14 +27,14 @@ fn calc(children: uint, parent_wait_chan: &Sender<Sender<Sender<int>>>) {
         wait_port
     });
 
-    let child_start_chans: ~[Sender<Sender<int>>] =
+    let child_start_chans: Vec<Sender<Sender<int>>> =
         wait_ports.move_iter().map(|port| port.recv()).collect();
 
     let (start_port, start_chan) = stream::<Sender<int>>();
     parent_wait_chan.send(start_chan);
     let parent_result_chan: Sender<int> = start_port.recv();
 
-    let child_sum_ports: ~[Receiver<int>] =
+    let child_sum_ports: Vec<Reciever<int>> =
         child_start_chans.move_iter().map(|child_start_chan| {
             let (child_sum_port, child_sum_chan) = stream::<int>();
             child_start_chan.send(child_sum_chan);
@@ -49,9 +49,9 @@ fn calc(children: uint, parent_wait_chan: &Sender<Sender<Sender<int>>>) {
 fn main() {
     let args = os::args();
     let args = if os::getenv("RUST_BENCH").is_some() {
-        ~[~"", ~"30"]
+        vec!(~"", ~"30")
     } else if args.len() <= 1u {
-        ~[~"", ~"10"]
+        vec!(~"", ~"10")
     } else {
         args
     };

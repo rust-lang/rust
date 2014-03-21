@@ -51,8 +51,8 @@ pub struct CrateAnalysis {
 }
 
 /// Parses, resolves, and typechecks the given crate
-fn get_ast_and_resolve(cpath: &Path,
-                       libs: HashSet<Path>, cfgs: ~[~str]) -> (DocContext, CrateAnalysis) {
+fn get_ast_and_resolve(cpath: &Path, libs: HashSet<Path>, cfgs: Vec<~str>)
+                       -> (DocContext, CrateAnalysis) {
     use syntax::codemap::dummy_spanned;
     use rustc::driver::driver::{FileInput, build_configuration,
                                 phase_1_parse_input,
@@ -101,7 +101,8 @@ fn get_ast_and_resolve(cpath: &Path,
     })
 }
 
-pub fn run_core (libs: HashSet<Path>, cfgs: ~[~str], path: &Path) -> (clean::Crate, CrateAnalysis) {
+pub fn run_core(libs: HashSet<Path>, cfgs: Vec<~str>, path: &Path)
+                -> (clean::Crate, CrateAnalysis) {
     let (ctxt, analysis) = get_ast_and_resolve(path, libs, cfgs);
     let ctxt = @ctxt;
     local_data::set(super::ctxtkey, ctxt);

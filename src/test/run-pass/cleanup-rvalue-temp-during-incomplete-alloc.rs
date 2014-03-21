@@ -36,12 +36,12 @@ fn do_it(x: &[uint]) -> Foo {
     fail!()
 }
 
-fn get_bar(x: uint) -> ~[uint] { ~[x * 2] }
+fn get_bar(x: uint) -> Vec<uint> { vec!(x * 2) }
 
 pub fn fails() {
     let x = 2;
-    let mut y = ~[];
-    y.push(~Bickwick(do_it(get_bar(x))));
+    let mut y = Vec::new();
+    y.push(~Bickwick(do_it(get_bar(x).as_slice())));
 }
 
 pub fn main() {

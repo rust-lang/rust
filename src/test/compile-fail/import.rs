@@ -11,7 +11,9 @@
 // error-pattern:failed to resolve import
 use zed::bar;
 use zed::baz;
+
+
 mod zed {
     pub fn bar() { println!("bar"); }
 }
-fn main(args: ~[str]) { bar(); }
+fn main(args: Vec<~str>) { bar(); }
