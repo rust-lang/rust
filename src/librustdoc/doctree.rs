@@ -18,21 +18,21 @@ use syntax::ast::{Ident, NodeId};
 
 pub struct Module {
     name: Option<Ident>,
-    attrs: ~[ast::Attribute],
+    attrs: Vec<ast::Attribute> ,
     where: Span,
-    structs: ~[Struct],
-    enums: ~[Enum],
-    fns: ~[Function],
-    mods: ~[Module],
+    structs: Vec<Struct> ,
+    enums: Vec<Enum> ,
+    fns: Vec<Function> ,
+    mods: Vec<Module> ,
     id: NodeId,
-    typedefs: ~[Typedef],
-    statics: ~[Static],
-    traits: ~[Trait],
+    typedefs: Vec<Typedef> ,
+    statics: Vec<Static> ,
+    traits: Vec<Trait> ,
     vis: ast::Visibility,
-    impls: ~[Impl],
-    foreigns: ~[ast::ForeignMod],
-    view_items: ~[ast::ViewItem],
-    macros: ~[Macro],
+    impls: Vec<Impl> ,
+    foreigns: Vec<ast::ForeignMod> ,
+    view_items: Vec<ast::ViewItem> ,
+    macros: Vec<Macro> ,
     is_crate: bool,
 }
 
@@ -43,18 +43,18 @@ impl Module {
             id: 0,
             vis: ast::Private,
             where: syntax::codemap::DUMMY_SP,
-            attrs      : ~[],
-            structs    : ~[],
-            enums      : ~[],
-            fns        : ~[],
-            mods       : ~[],
-            typedefs   : ~[],
-            statics    : ~[],
-            traits     : ~[],
-            impls      : ~[],
-            view_items : ~[],
-            foreigns   : ~[],
-            macros     : ~[],
+            attrs      : Vec::new(),
+            structs    : Vec::new(),
+            enums      : Vec::new(),
+            fns        : Vec::new(),
+            mods       : Vec::new(),
+            typedefs   : Vec::new(),
+            statics    : Vec::new(),
+            traits     : Vec::new(),
+            impls      : Vec::new(),
+            view_items : Vec::new(),
+            foreigns   : Vec::new(),
+            macros     : Vec::new(),
             is_crate   : false,
         }
     }
@@ -83,16 +83,16 @@ pub struct Struct {
     struct_type: StructType,
     name: Ident,
     generics: ast::Generics,
-    attrs: ~[ast::Attribute],
-    fields: ~[ast::StructField],
+    attrs: Vec<ast::Attribute> ,
+    fields: Vec<ast::StructField> ,
     where: Span,
 }
 
 pub struct Enum {
     vis: ast::Visibility,
-    variants: ~[Variant],
+    variants: Vec<Variant> ,
     generics: ast::Generics,
-    attrs: ~[ast::Attribute],
+    attrs: Vec<ast::Attribute> ,
     id: NodeId,
     where: Span,
     name: Ident,
@@ -100,7 +100,7 @@ pub struct Enum {
 
 pub struct Variant {
     name: Ident,
-    attrs: ~[ast::Attribute],
+    attrs: Vec<ast::Attribute> ,
     kind: ast::VariantKind,
     id: ast::NodeId,
     vis: ast::Visibility,
@@ -109,7 +109,7 @@ pub struct Variant {
 
 pub struct Function {
     decl: ast::FnDecl,
-    attrs: ~[ast::Attribute],
+    attrs: Vec<ast::Attribute> ,
     id: NodeId,
     name: Ident,
     vis: ast::Visibility,
@@ -123,7 +123,7 @@ pub struct Typedef {
     gen: ast::Generics,
     name: Ident,
     id: ast::NodeId,
-    attrs: ~[ast::Attribute],
+    attrs: Vec<ast::Attribute> ,
     where: Span,
     vis: ast::Visibility,
 }
@@ -133,7 +133,7 @@ pub struct Static {
     mutability: ast::Mutability,
     expr: @ast::Expr,
     name: Ident,
-    attrs: ~[ast::Attribute],
+    attrs: Vec<ast::Attribute> ,
     vis: ast::Visibility,
     id: ast::NodeId,
     where: Span,
@@ -141,10 +141,10 @@ pub struct Static {
 
 pub struct Trait {
     name: Ident,
-    methods: ~[ast::TraitMethod], //should be TraitMethod
+    methods: Vec<ast::TraitMethod> , //should be TraitMethod
     generics: ast::Generics,
-    parents: ~[ast::TraitRef],
-    attrs: ~[ast::Attribute],
+    parents: Vec<ast::TraitRef> ,
+    attrs: Vec<ast::Attribute> ,
     id: ast::NodeId,
     where: Span,
     vis: ast::Visibility,
@@ -154,8 +154,8 @@ pub struct Impl {
     generics: ast::Generics,
     trait_: Option<ast::TraitRef>,
     for_: ast::P<ast::Ty>,
-    methods: ~[@ast::Method],
-    attrs: ~[ast::Attribute],
+    methods: Vec<@ast::Method> ,
+    attrs: Vec<ast::Attribute> ,
     where: Span,
     vis: ast::Visibility,
     id: ast::NodeId,
@@ -164,7 +164,7 @@ pub struct Impl {
 pub struct Macro {
     name: Ident,
     id: ast::NodeId,
-    attrs: ~[ast::Attribute],
+    attrs: Vec<ast::Attribute> ,
     where: Span,
 }
 

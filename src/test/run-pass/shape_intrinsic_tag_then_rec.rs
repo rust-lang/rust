@@ -15,6 +15,7 @@
 // interior record which is then itself interior to
 // something else, shape calculations were off.
 
+
 #[deriving(Clone)]
 enum opt_span {
     //hack (as opposed to option), to make `span` compile
@@ -40,8 +41,8 @@ type ty_ = uint;
 #[deriving(Clone)]
 struct Path_ {
     global: bool,
-    idents: ~[~str],
-    types: ~[@ty],
+    idents: Vec<~str> ,
+    types: Vec<@ty>,
 }
 
 type path = Spanned<Path_>;
@@ -56,7 +57,11 @@ struct X {
 pub fn main() {
     let sp: Span = Span {lo: 57451u, hi: 57542u, expanded_from: os_none};
     let t: @ty = @Spanned { data: 3u, span: sp };
-    let p_: Path_ = Path_ { global: true, idents: ~[~"hi"], types: ~[t] };
+    let p_: Path_ = Path_ {
+        global: true,
+        idents: vec!(~"hi"),
+        types: vec!(t),
+    };
     let p: path = Spanned { data: p_, span: sp };
     let x = X { sp: sp, path: p };
     println!("{:?}", x.path.clone());

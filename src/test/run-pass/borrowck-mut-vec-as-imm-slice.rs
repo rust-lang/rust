@@ -8,16 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 fn want_slice(v: &[int]) -> int {
     let mut sum = 0;
     for i in v.iter() { sum += *i; }
     sum
 }
 
-fn has_mut_vec(v: ~[int]) -> int {
-    want_slice(v)
+fn has_mut_vec(v: Vec<int> ) -> int {
+    want_slice(v.as_slice())
 }
 
 pub fn main() {
-    assert_eq!(has_mut_vec(~[1, 2, 3]), 6);
+    assert_eq!(has_mut_vec(vec!(1, 2, 3)), 6);
 }

@@ -50,14 +50,14 @@ impl Code {
     // FIXME: Inefficient.
     fn unpack(&self, frame: i32) -> ~str {
         let mut key = self.hash();
-        let mut result = ~[];
+        let mut result = Vec::new();
         for _ in range(0, frame) {
             result.push(unpack_symbol((key as u8) & 3));
             key >>= 2;
         }
 
         result.reverse();
-        str::from_utf8_owned(result).unwrap()
+        str::from_utf8_owned(result.move_iter().collect()).unwrap()
     }
 }
 
@@ -92,8 +92,7 @@ struct Entry {
 
 struct Table {
     count: i32,
-    items: ~[Option<~Entry>]
-}
+    items: Vec<Option<~Entry>> }
 
 struct Items<'a> {
     cur: Option<&'a Entry>,
@@ -104,7 +103,7 @@ impl Table {
     fn new() -> Table {
         Table {
             count: 0,
-            items: slice::from_fn(TABLE_SIZE, |_| None),
+            items: Vec::from_fn(TABLE_SIZE, |_| None),
         }
     }
 
@@ -134,20 +133,20 @@ impl Table {
         let index = key.hash() % (TABLE_SIZE as u64);
 
         {
-            if self.items[index].is_none() {
+            if self.items.get(index as uint).is_none() {
                 let mut entry = ~Entry {
                     code: key,
                     count: 0,
                     next: None,
                 };
                 c.f(entry);
-                self.items[index] = Some(entry);
+                *self.items.get_mut(index as uint) = Some(entry);
                 return;
             }
         }
 
         {
-            let entry = &mut *self.items[index].get_mut_ref();
+            let entry = &mut *self.items.get_mut(index as uint).get_mut_ref();
             if entry.code == key {
                 c.f(*entry);
                 return;
@@ -237,11 +236,11 @@ fn generate_frequencies(frequencies: &mut Table,
 }
 
 fn print_frequencies(frequencies: &Table, frame: i32) {
-    let mut vector = ~[];
+    let mut vector = Vec::new();
     for entry in frequencies.iter() {
         vector.push((entry.code, entry.count));
     }
-    vector.sort();
+    vector.as_mut_slice().sort();
 
     let mut total_count = 0;
     for &(_, count) in vector.iter() {

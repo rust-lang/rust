@@ -8,17 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct F { f: ~[int] }
+
+struct F { f: Vec<int> }
 
 fn impure(_v: &[int]) {
 }
 
 pub fn main() {
-    let mut x = F {f: ~[3]};
+    let mut x = F {f: vec!(3)};
 
     match x {
       F {f: ref mut v} => {
-        impure(*v);
+        impure(v.as_slice());
       }
     }
 }

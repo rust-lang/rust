@@ -10,6 +10,7 @@
 
 // Test which of the builtin types are considered freezeable.
 
+
 fn assert_freeze<T:Freeze>() { }
 trait Dummy { }
 
@@ -27,7 +28,7 @@ fn test<'a,T,U:Freeze>(_: &'a int) {
     // ~ pointers are ok
     assert_freeze::<~int>();
     assert_freeze::<~str>();
-    assert_freeze::<~[int]>();
+    assert_freeze::<Vec<int> >();
 
     // but not if they own a bad thing
     assert_freeze::<~&'a mut int>(); //~ ERROR does not fulfill `Freeze`

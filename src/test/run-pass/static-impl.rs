@@ -10,6 +10,7 @@
 
 // ignore-fast
 
+
 pub trait plus {
     fn plus(&self) -> int;
 }
@@ -40,14 +41,14 @@ impl uint_utils for uint {
 trait vec_utils<T> {
     fn length_(&self, ) -> uint;
     fn iter_(&self, f: |&T|);
-    fn map_<U>(&self, f: |&T| -> U) -> ~[U];
+    fn map_<U>(&self, f: |&T| -> U) -> Vec<U> ;
 }
 
-impl<T> vec_utils<T> for ~[T] {
+impl<T> vec_utils<T> for Vec<T> {
     fn length_(&self) -> uint { self.len() }
     fn iter_(&self, f: |&T|) { for x in self.iter() { f(x); } }
-    fn map_<U>(&self, f: |&T| -> U) -> ~[U] {
-        let mut r = ~[];
+    fn map_<U>(&self, f: |&T| -> U) -> Vec<U> {
+        let mut r = Vec::new();
         for elt in self.iter() {
             r.push(f(elt));
         }
@@ -59,9 +60,11 @@ pub fn main() {
     assert_eq!(10u.plus(), 30);
     assert_eq!((~"hi").plus(), 200);
 
-    assert_eq!((~[1]).length_().str(), ~"1");
-    assert_eq!((~[3, 4]).map_(|a| *a + 4 )[0], 7);
-    assert_eq!((~[3, 4]).map_::<uint>(|a| *a as uint + 4u )[0], 7u);
+    assert_eq!((vec!(1)).length_().str(), ~"1");
+    let vect = vec!(3, 4).map_(|a| *a + 4);
+    assert_eq!(*vect.get(0), 7);
+    let vect = (vec!(3, 4)).map_::<uint>(|a| *a as uint + 4u);
+    assert_eq!(*vect.get(0), 7u);
     let mut x = 0u;
     10u.multi(|_n| x += 2u );
     assert_eq!(x, 20u);

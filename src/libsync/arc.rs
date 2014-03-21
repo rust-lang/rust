@@ -586,22 +586,22 @@ mod tests {
 
     #[test]
     fn manually_share_arc() {
-        let v = ~[1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+        let v = vec!(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
         let arc_v = Arc::new(v);
 
         let (tx, rx) = channel();
 
         task::spawn(proc() {
-            let arc_v: Arc<~[int]> = rx.recv();
+            let arc_v: Arc<Vec<int>> = rx.recv();
 
             let v = arc_v.get().clone();
-            assert_eq!(v[3], 4);
+            assert_eq!(*v.get(3), 4);
         });
 
         tx.send(arc_v.clone());
 
-        assert_eq!(arc_v.get()[2], 3);
-        assert_eq!(arc_v.get()[4], 5);
+        assert_eq!(*arc_v.get().get(2), 3);
+        assert_eq!(*arc_v.get().get(4), 5);
 
         info!("{:?}", arc_v);
     }
@@ -803,7 +803,7 @@ mod tests {
         });
 
         // Readers try to catch the writer in the act
-        let mut children = ~[];
+        let mut children = Vec::new();
         for _ in range(0, 5) {
             let arc3 = arc.clone();
             let mut builder = task::task();
@@ -857,7 +857,7 @@ mod tests {
         let arc = RWArc::new(0);
 
         // Reader tasks
-        let mut reader_convos = ~[];
+        let mut reader_convos = Vec::new();
         for _ in range(0, 10) {
             let ((tx1, rx1), (tx2, rx2)) = (channel(), channel());
             reader_convos.push((tx1, rx2));

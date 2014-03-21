@@ -10,9 +10,10 @@
 
 #[feature(managed_boxes)];
 
+
 // error-pattern:fail
 
-fn fold_local() -> @~[int]{
+fn fold_local() -> @Vec<int> {
     fail!();
 }
 

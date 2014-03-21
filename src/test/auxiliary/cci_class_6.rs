@@ -9,22 +9,23 @@
 // except according to those terms.
 
 pub mod kitties {
+
     pub struct cat<U> {
-        priv info : ~[U],
+        priv info : Vec<U> ,
         priv meows : uint,
 
         how_hungry : int,
     }
 
     impl<U> cat<U> {
-        pub fn speak<T>(&mut self, stuff: ~[T]) {
+        pub fn speak<T>(&mut self, stuff: Vec<T> ) {
             self.meows += stuff.len();
         }
 
         pub fn meow_count(&mut self) -> uint { self.meows }
     }
 
-    pub fn cat<U>(in_x : uint, in_y : int, in_info: ~[U]) -> cat<U> {
+    pub fn cat<U>(in_x : uint, in_y : int, in_info: Vec<U> ) -> cat<U> {
         cat {
             meows: in_x,
             how_hungry: in_y,

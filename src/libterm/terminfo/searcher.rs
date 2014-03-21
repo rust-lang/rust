@@ -23,7 +23,7 @@ pub fn get_dbpath_for_term(term: &str) -> Option<~Path> {
 
     let homedir = os::homedir();
 
-    let mut dirs_to_search = ~[];
+    let mut dirs_to_search = Vec::new();
     let first_char = term.char_at(0);
 
     // Find search directory

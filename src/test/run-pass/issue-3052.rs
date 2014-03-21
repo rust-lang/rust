@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-type Connection = 'static |~[u8]|;
+
+type Connection = 'static |Vec<u8> |;
 
 fn f() -> Option<Connection> {
     let mock_connection: Connection = |_| {};

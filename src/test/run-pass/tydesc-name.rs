@@ -19,7 +19,6 @@ struct Foo<T> {
 pub fn main() {
     unsafe {
         assert_eq!((*get_tydesc::<int>()).name, "int");
-        assert_eq!((*get_tydesc::<~[int]>()).name, "~[int]");
         assert_eq!((*get_tydesc::<Foo<uint>>()).name, "Foo<uint>");
     }
 }

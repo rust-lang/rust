@@ -59,8 +59,8 @@ static HOMO_SAPIENS: [AminoAcid, ..4] = [
 ];
 
 // FIXME: Use map().
-fn sum_and_scale(a: &'static [AminoAcid]) -> ~[AminoAcid] {
-    let mut result = ~[];
+fn sum_and_scale(a: &'static [AminoAcid]) -> Vec<AminoAcid> {
+    let mut result = Vec::new();
     let mut p = 0f32;
     for a_i in a.iter() {
         let mut a_i = *a_i;
@@ -68,7 +68,8 @@ fn sum_and_scale(a: &'static [AminoAcid]) -> ~[AminoAcid] {
         a_i.p = p * LOOKUP_SCALE;
         result.push(a_i);
     }
-    result[result.len() - 1].p = LOOKUP_SCALE;
+    let result_len = result.len();
+    result.get_mut(result_len - 1).p = LOOKUP_SCALE;
     result
 }
 
@@ -193,12 +194,12 @@ fn main() {
 
     out.write_line(">TWO IUB ambiguity codes").unwrap();
     let iub = sum_and_scale(IUB);
-    let mut random = RandomFasta::new(&mut out, iub);
+    let mut random = RandomFasta::new(&mut out, iub.as_slice());
     random.make(n * 3).unwrap();
 
     random.out.write_line(">THREE Homo sapiens frequency").unwrap();
     let homo_sapiens = sum_and_scale(HOMO_SAPIENS);
-    random.lookup = make_lookup(homo_sapiens);
+    random.lookup = make_lookup(homo_sapiens.as_slice());
     random.make(n * 5).unwrap();
 
     random.out.write_str("\n").unwrap();

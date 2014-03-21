@@ -10,4 +10,4 @@
 
 // error-pattern: unresolved name
 
-fn main() { let foo = thing::len(~[]); }
+fn main() { let foo = thing::len(Vec::new()); }

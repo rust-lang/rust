@@ -17,7 +17,7 @@ fn failfn() {
 }
 
 fn main() {
-    let x = @~[0, 1, 2, 3, 4, 5];
+    let x = @vec!(0, 1, 2, 3, 4, 5);
     failfn();
     println!("{:?}", x);
 }

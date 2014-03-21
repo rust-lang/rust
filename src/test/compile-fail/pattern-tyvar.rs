@@ -10,7 +10,7 @@
 
 // error-pattern: mismatched types
 
-enum bar { t1((), Option<~[int]>), t2, }
+enum bar { t1((), Option<Vec<int> >), t2, }
 
 fn foo(t: bar) {
     match t {

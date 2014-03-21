@@ -25,7 +25,7 @@ use std::os;
 use std::uint;
 
 // A poor man's pipe.
-type pipe = MutexArc<~[uint]>;
+type pipe = MutexArc<Vec<uint> >;
 
 fn send(p: &pipe, msg: uint) {
     unsafe {
@@ -47,7 +47,7 @@ fn recv(p: &pipe) -> uint {
 }
 
 fn init() -> (pipe,pipe) {
-    let m = MutexArc::new(~[]);
+    let m = MutexArc::new(Vec::new());
     ((&m).clone(), m)
 }
 
@@ -71,22 +71,22 @@ fn thread_ring(i: uint, count: uint, num_chan: pipe, num_port: pipe) {
 fn main() {
     let args = os::args();
     let args = if os::getenv("RUST_BENCH").is_some() {
-        ~[~"", ~"100", ~"10000"]
+        vec!(~"", ~"100", ~"10000")
     } else if args.len() <= 1u {
-        ~[~"", ~"10", ~"100"]
+        vec!(~"", ~"10", ~"100")
     } else {
-        args.clone()
+        args.clone().move_iter().collect()
     };
 
-    let num_tasks = from_str::<uint>(args[1]).unwrap();
-    let msg_per_task = from_str::<uint>(args[2]).unwrap();
+    let num_tasks = from_str::<uint>(*args.get(1)).unwrap();
+    let msg_per_task = from_str::<uint>(*args.get(2)).unwrap();
 
     let (mut num_chan, num_port) = init();
 
     let start = time::precise_time_s();
 
     // create the ring
-    let mut futures = ~[];
+    let mut futures = Vec::new();
 
     for i in range(1u, num_tasks) {
         //println!("spawning %?", i);

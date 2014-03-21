@@ -21,7 +21,7 @@ use std::cell::RefCell;
 use collections::HashMap;
 
 pub fn main() {
-  let v = ~[@~"hi"];
+  let v = vec!(@~"hi");
   let mut m: req::header_map = HashMap::new();
   m.insert(~"METHOD", @RefCell::new(v));
   request::<int>(&m);

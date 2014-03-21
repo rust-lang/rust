@@ -65,10 +65,10 @@ pub fn main() {
     let dogge1 = Dogge { bark_decibels: 100, tricks_known: 42, name: ~"alan_turing" };
     let dogge2 = Dogge { bark_decibels: 55,  tricks_known: 11, name: ~"albert_einstein" };
     let fishe = Goldfyshe { swim_speed: 998, name: ~"alec_guinness" };
-    let arc = Arc::new(~[~catte  as ~Pet:Share+Send,
+    let arc = Arc::new(vec!(~catte  as ~Pet:Share+Send,
                          ~dogge1 as ~Pet:Share+Send,
                          ~fishe  as ~Pet:Share+Send,
-                         ~dogge2 as ~Pet:Share+Send]);
+                         ~dogge2 as ~Pet:Share+Send));
     let (tx1, rx1) = channel();
     let arc1 = arc.clone();
     task::spawn(proc() { check_legs(arc1); tx1.send(()); });
@@ -83,21 +83,21 @@ pub fn main() {
     rx3.recv();
 }
 
-fn check_legs(arc: Arc<~[~Pet:Share+Send]>) {
+fn check_legs(arc: Arc<Vec<~Pet:Share+Send>>) {
     let mut legs = 0;
     for pet in arc.get().iter() {
         legs += pet.num_legs();
     }
     assert!(legs == 12);
 }
-fn check_names(arc: Arc<~[~Pet:Share+Send]>) {
+fn check_names(arc: Arc<Vec<~Pet:Share+Send>>) {
     for pet in arc.get().iter() {
         pet.name(|name| {
             assert!(name[0] == 'a' as u8 && name[1] == 'l' as u8);
         })
     }
 }
-fn check_pedigree(arc: Arc<~[~Pet:Share+Send]>) {
+fn check_pedigree(arc: Arc<Vec<~Pet:Share+Send>>) {
     for pet in arc.get().iter() {
         assert!(pet.of_good_pedigree());
     }

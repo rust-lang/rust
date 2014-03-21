@@ -9,9 +9,9 @@
 // except according to those terms.
 
 
-struct sty(~[int]);
+struct sty(Vec<int> );
 
-fn unpack(_unpack: |v: &sty| -> ~[int]) {}
+fn unpack(_unpack: |v: &sty| -> Vec<int> ) {}
 
 fn main() {
     let _foo = unpack(|s| {

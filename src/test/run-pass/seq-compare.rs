@@ -9,18 +9,17 @@
 // except according to those terms.
 
 
-
 pub fn main() {
     assert!((~"hello" < ~"hellr"));
     assert!((~"hello " > ~"hello"));
     assert!((~"hello" != ~"there"));
-    assert!((~[1, 2, 3, 4] > ~[1, 2, 3]));
-    assert!((~[1, 2, 3] < ~[1, 2, 3, 4]));
-    assert!((~[1, 2, 4, 4] > ~[1, 2, 3, 4]));
-    assert!((~[1, 2, 3, 4] < ~[1, 2, 4, 4]));
-    assert!((~[1, 2, 3] <= ~[1, 2, 3]));
-    assert!((~[1, 2, 3] <= ~[1, 2, 3, 3]));
-    assert!((~[1, 2, 3, 4] > ~[1, 2, 3]));
-    assert_eq!(~[1, 2, 3], ~[1, 2, 3]);
-    assert!((~[1, 2, 3] != ~[1, 1, 3]));
+    assert!((vec!(1, 2, 3, 4) > vec!(1, 2, 3)));
+    assert!((vec!(1, 2, 3) < vec!(1, 2, 3, 4)));
+    assert!((vec!(1, 2, 4, 4) > vec!(1, 2, 3, 4)));
+    assert!((vec!(1, 2, 3, 4) < vec!(1, 2, 4, 4)));
+    assert!((vec!(1, 2, 3) <= vec!(1, 2, 3)));
+    assert!((vec!(1, 2, 3) <= vec!(1, 2, 3, 3)));
+    assert!((vec!(1, 2, 3, 4) > vec!(1, 2, 3)));
+    assert_eq!(vec!(1, 2, 3), vec!(1, 2, 3));
+    assert!((vec!(1, 2, 3) != vec!(1, 1, 3)));
 }

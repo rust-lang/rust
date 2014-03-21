@@ -11,7 +11,7 @@
 fn main() {
 trait seq { }
 
-impl<T> seq<T> for ~[T] { //~ ERROR wrong number of type arguments
+impl<T> seq<T> for Vec<T> { //~ ERROR wrong number of type arguments
     /* ... */
 }
 impl seq<bool> for u32 {

@@ -114,7 +114,7 @@ if logging is disabled, none of the components of the log will be executed.
       html_root_url = "http://static.rust-lang.org/doc/master")];
 
 #[feature(macro_rules)];
-#[deny(missing_doc)];
+#[deny(missing_doc, deprecated_owned_vector)];
 
 extern crate sync;
 

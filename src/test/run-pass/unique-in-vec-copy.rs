@@ -8,16 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 pub fn main() {
-    let mut a = ~[~10];
+    let mut a = vec!(~10);
     let b = a.clone();
 
-    assert_eq!(*a[0], 10);
-    assert_eq!(*b[0], 10);
+    assert_eq!(**a.get(0), 10);
+    assert_eq!(**b.get(0), 10);
 
     // This should only modify the value in a, not b
-    *a[0] = 20;
+    **a.get_mut(0) = 20;
 
-    assert_eq!(*a[0], 20);
-    assert_eq!(*b[0], 10);
+    assert_eq!(**a.get(0), 20);
+    assert_eq!(**b.get(0), 10);
 }

@@ -13,7 +13,7 @@
 use std::intrinsics::{TyDesc, get_tydesc, visit_tydesc, TyVisitor, Disr, Opaque};
 
 struct MyVisitor {
-    types: ~[~str],
+    types: Vec<~str> ,
 }
 
 impl TyVisitor for MyVisitor {
@@ -145,16 +145,17 @@ fn visit_ty<T>(v: &mut MyVisitor) {
 }
 
 pub fn main() {
-    let mut v = MyVisitor {types: ~[]};
+    let mut v = MyVisitor {types: Vec::new()};
 
     visit_ty::<bool>(&mut v);
     visit_ty::<int>(&mut v);
     visit_ty::<i8>(&mut v);
     visit_ty::<i16>(&mut v);
-    visit_ty::<~[int]>(&mut v);
 
     for s in v.types.iter() {
         println!("type: {}", (*s).clone());
     }
-    assert_eq!(v.types.clone(), ~[~"bool", ~"int", ~"i8", ~"i16", ~"[", ~"int", ~"]"]);
+
+    let vec_types: Vec<~str> = v.types.clone().move_iter().collect();
+    assert_eq!(vec_types, vec!(~"bool", ~"int", ~"i8", ~"i16"));
 }

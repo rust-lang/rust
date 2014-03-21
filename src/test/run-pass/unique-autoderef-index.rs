@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 pub fn main() {
-    let i = ~~[100];
-    assert_eq!(i[0], 100);
+    let i = ~vec!(100);
+    assert_eq!(*i.get(0), 100);
 }

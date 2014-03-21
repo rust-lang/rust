@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn grow(v: &mut ~[int]) {
+fn grow(v: &mut Vec<int> ) {
     v.push(1);
 }
 
 pub fn main() {
-    let mut v: ~[int] = ~[];
+    let mut v: Vec<int> = Vec::new();
     grow(&mut v);
     grow(&mut v);
     grow(&mut v);

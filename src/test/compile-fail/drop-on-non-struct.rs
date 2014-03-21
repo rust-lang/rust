@@ -10,10 +10,12 @@
 
 #[feature(managed_boxes)];
 
-type Foo = ~[u8];
 
-impl Drop for Foo {   //~ ERROR the Drop trait may only be implemented
+type Foo = Vec<u8>;
+
+impl Drop for Foo {   //~ ERROR conflicting implementations
 //~^ ERROR cannot provide an extension implementation
+//~^^ ERROR multiple applicable methods
     fn drop(&mut self) {
         println!("kaboom");
     }

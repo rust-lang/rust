@@ -8,8 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn swap(f: |~[int]| -> ~[int]) -> ~[int] {
-    let x = ~[1, 2, 3];
+
+fn swap(f: |Vec<int> | -> Vec<int> ) -> Vec<int> {
+    let x = vec!(1, 2, 3);
     f(x)
 }
 
