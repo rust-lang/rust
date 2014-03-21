@@ -87,6 +87,8 @@ dist-tar-src: $(PKG_TAR)
 # Windows .exe installer
 ######################################################################
 
+# FIXME Needs to support all hosts, but making rust.iss compatible looks like a chore
+
 ifdef CFG_ISCC
 
 PKG_EXE = dist/$(PKG_NAME)-install.exe
