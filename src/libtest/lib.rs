@@ -33,7 +33,7 @@
       html_root_url = "http://static.rust-lang.org/doc/master")];
 
 #[feature(asm, macro_rules)];
-#[allow(deprecated_owned_vector)]; // NOTE: remove after stage0
+#[deny(deprecated_owned_vector)];
 
 extern crate collections;
 extern crate getopts;
@@ -363,15 +363,10 @@ pub fn opt_shard(maybestr: Option<~str>) -> Option<(uint,uint)> {
     match maybestr {
         None => None,
         Some(s) => {
-            let vector = s.split('.').to_owned_vec();
-            if vector.len() == 2 {
-                match (from_str::<uint>(vector[0]),
-                       from_str::<uint>(vector[1])) {
-                    (Some(a), Some(b)) => Some((a, b)),
-                    _ => None
-                }
-            } else {
-                None
+            let mut it = s.split('.');
+            match (it.next().and_then(from_str), it.next().and_then(from_str), it.next()) {
+                (Some(a), Some(b), None) => Some((a, b)),
+                _ => None,
             }
         }
     }
@@ -950,6 +945,7 @@ pub fn run_test(force_ignore: bool,
         return;
     }
 
+    #[allow(deprecated_owned_vector)]
     fn run_test_inner(desc: TestDesc,
                       monitor_ch: Sender<MonitorMsg>,
                       testfn: proc()) {
