@@ -37,7 +37,6 @@ use std::mem;
 use std::ptr::read;
 use std::cmp;
 use std::num;
-use std::kinds::marker;
 use std::rc::Rc;
 use std::rt::global_heap;
 use std::intrinsics::{TyDesc, get_tydesc};
@@ -90,7 +89,6 @@ pub struct Arena {
     priv head: Chunk,
     priv pod_head: Chunk,
     priv chunks: RefCell<@List<Chunk>>,
-    priv no_freeze: marker::NoFreeze,
 }
 
 impl Arena {
@@ -103,7 +101,6 @@ impl Arena {
             head: chunk(initial_size, false),
             pod_head: chunk(initial_size, true),
             chunks: RefCell::new(@Nil),
-            no_freeze: marker::NoFreeze,
         }
     }
 }
