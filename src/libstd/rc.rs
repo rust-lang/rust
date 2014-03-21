@@ -24,18 +24,20 @@ pointers, and then storing the parent pointers as `Weak` pointers.
 */
 
 use cast::transmute;
+use cell::Cell;
 use clone::Clone;
 use cmp::{Eq, Ord};
 use kinds::marker;
 use ops::{Deref, Drop};
 use option::{Option, Some, None};
 use ptr;
+use ptr::RawPtr;
 use rt::global_heap::exchange_free;
 
 struct RcBox<T> {
     value: T,
-    strong: uint,
-    weak: uint
+    strong: Cell<uint>,
+    weak: Cell<uint>
 }
 
 /// Immutable reference counted pointer type
@@ -56,7 +58,11 @@ impl<T> Rc<T> {
                 // destructor never frees the allocation while the
                 // strong destructor is running, even if the weak
                 // pointer is stored inside the strong one.
-                ptr: transmute(~RcBox { value: value, strong: 1, weak: 1 }),
+                ptr: transmute(~RcBox {
+                    value: value,
+                    strong: Cell::new(1),
+                    weak: Cell::new(1)
+                }),
                 nosend: marker::NoSend,
                 noshare: marker::NoShare
             }
@@ -67,13 +73,11 @@ impl<T> Rc<T> {
 impl<T> Rc<T> {
     /// Downgrade the reference-counted pointer to a weak reference
     pub fn downgrade(&self) -> Weak<T> {
-        unsafe {
-            (*self.ptr).weak += 1;
-            Weak {
-                ptr: self.ptr,
-                nosend: marker::NoSend,
-                noshare: marker::NoShare
-            }
+        self.inc_weak();
+        Weak {
+            ptr: self.ptr,
+            nosend: marker::NoSend,
+            noshare: marker::NoShare
         }
     }
 }
@@ -82,7 +86,7 @@ impl<T> Deref<T> for Rc<T> {
     /// Borrow the value contained in the reference-counted box
     #[inline(always)]
     fn deref<'a>(&'a self) -> &'a T {
-        unsafe { &(*self.ptr).value }
+        &self.inner().value
     }
 }
 
@@ -90,16 +94,16 @@ impl<T> Deref<T> for Rc<T> {
 impl<T> Drop for Rc<T> {
     fn drop(&mut self) {
         unsafe {
-            if self.ptr != 0 as *mut RcBox<T> {
-                (*self.ptr).strong -= 1;
-                if (*self.ptr).strong == 0 {
+            if !self.ptr.is_null() {
+                self.dec_strong();
+                if self.strong() == 0 {
                     ptr::read(self.deref()); // destroy the contained object
 
                     // remove the implicit "strong weak" pointer now
                     // that we've destroyed the contents.
-                    (*self.ptr).weak -= 1;
+                    self.dec_weak();
 
-                    if (*self.ptr).weak == 0 {
+                    if self.weak() == 0 {
                         exchange_free(self.ptr as *u8)
                     }
                 }
@@ -111,10 +115,8 @@ impl<T> Drop for Rc<T> {
 impl<T> Clone for Rc<T> {
     #[inline]
     fn clone(&self) -> Rc<T> {
-        unsafe {
-            (*self.ptr).strong += 1;
-            Rc { ptr: self.ptr, nosend: marker::NoSend, noshare: marker::NoShare }
-        }
+        self.inc_strong();
+        Rc { ptr: self.ptr, nosend: marker::NoSend, noshare: marker::NoShare }
     }
 }
 
@@ -151,13 +153,11 @@ pub struct Weak<T> {
 impl<T> Weak<T> {
     /// Upgrade a weak reference to a strong reference
     pub fn upgrade(&self) -> Option<Rc<T>> {
-        unsafe {
-            if (*self.ptr).strong == 0 {
-                None
-            } else {
-                (*self.ptr).strong += 1;
-                Some(Rc { ptr: self.ptr, nosend: marker::NoSend, noshare: marker::NoShare })
-            }
+        if self.strong() == 0 {
+            None
+        } else {
+            self.inc_strong();
+            Some(Rc { ptr: self.ptr, nosend: marker::NoSend, noshare: marker::NoShare })
         }
     }
 }
@@ -166,11 +166,11 @@ impl<T> Weak<T> {
 impl<T> Drop for Weak<T> {
     fn drop(&mut self) {
         unsafe {
-            if self.ptr != 0 as *mut RcBox<T> {
-                (*self.ptr).weak -= 1;
+            if !self.ptr.is_null() {
+                self.dec_weak();
                 // the weak count starts at 1, and will only go to
                 // zero if all the strong pointers have disappeared.
-                if (*self.ptr).weak == 0 {
+                if self.weak() == 0 {
                     exchange_free(self.ptr as *u8)
                 }
             }
@@ -181,11 +181,42 @@ impl<T> Drop for Weak<T> {
 impl<T> Clone for Weak<T> {
     #[inline]
     fn clone(&self) -> Weak<T> {
-        unsafe {
-            (*self.ptr).weak += 1;
-            Weak { ptr: self.ptr, nosend: marker::NoSend, noshare: marker::NoShare }
-        }
+        self.inc_weak();
+        Weak { ptr: self.ptr, nosend: marker::NoSend, noshare: marker::NoShare }
     }
+}
+
+#[allow(missing_doc)]
+trait RcBoxPtr<T> {
+    fn inner<'a>(&'a self) -> &'a RcBox<T>;
+
+    #[inline]
+    fn strong(&self) -> uint { self.inner().strong.get() }
+
+    #[inline]
+    fn inc_strong(&self) { self.inner().strong.set(self.strong() + 1); }
+
+    #[inline]
+    fn dec_strong(&self) { self.inner().strong.set(self.strong() - 1); }
+
+    #[inline]
+    fn weak(&self) -> uint { self.inner().weak.get() }
+
+    #[inline]
+    fn inc_weak(&self) { self.inner().weak.set(self.weak() + 1); }
+
+    #[inline]
+    fn dec_weak(&self) { self.inner().weak.set(self.weak() - 1); }
+}
+
+impl<T> RcBoxPtr<T> for Rc<T> {
+    #[inline(always)]
+    fn inner<'a>(&'a self) -> &'a RcBox<T> { unsafe { &(*self.ptr) } }
+}
+
+impl<T> RcBoxPtr<T> for Weak<T> {
+    #[inline(always)]
+    fn inner<'a>(&'a self) -> &'a RcBox<T> { unsafe { &(*self.ptr) } }
 }
 
 #[cfg(test)]
