@@ -25,10 +25,6 @@ PKG_NAME := rust
 PKG_DIR = $(PKG_NAME)-$(CFG_RELEASE)
 PKG_TAR = dist/$(PKG_DIR).tar.gz
 
-ifeq ($(CFG_OSTYPE), apple-darwin)
-PKG_OSX = dist/$(PKG_DIR).pkg
-endif
-
 PKG_GITMODULES := $(S)src/libuv $(S)src/llvm $(S)src/gyp $(S)src/compiler-rt
 
 PKG_FILES := \
@@ -128,22 +124,27 @@ dist-win: $(PKG_EXE)
 
 ifeq ($(CFG_OSTYPE), apple-darwin)
 
-dist-prepare-osx: PREPARE_HOST=$(CFG_BUILD)
-dist-prepare-osx: PREPARE_TARGETS=$(CFG_BUILD)
-dist-prepare-osx: PREPARE_DEST_DIR=tmp/dist/pkgroot
-dist-prepare-osx: PREPARE_DIR_CMD=$(DEFAULT_PREPARE_DIR_CMD)
-dist-prepare-osx: PREPARE_BIN_CMD=$(DEFAULT_PREPARE_BIN_CMD)
-dist-prepare-osx: PREPARE_LIB_CMD=$(DEFAULT_PREPARE_LIB_CMD)
-dist-prepare-osx: PREPARE_MAN_CMD=$(DEFAULT_PREPARE_MAN_CMD)
-dist-prepare-osx: prepare-base
+define DEF_OSX_PKG
+dist-prepare-osx-$(1): PREPARE_HOST=$(1)
+dist-prepare-osx-$(1): PREPARE_TARGETS=$(1)
+dist-prepare-osx-$(1): PREPARE_DEST_DIR=tmp/dist/pkgroot-$(1)
+dist-prepare-osx-$(1): PREPARE_DIR_CMD=$(DEFAULT_PREPARE_DIR_CMD)
+dist-prepare-osx-$(1): PREPARE_BIN_CMD=$(DEFAULT_PREPARE_BIN_CMD)
+dist-prepare-osx-$(1): PREPARE_LIB_CMD=$(DEFAULT_PREPARE_LIB_CMD)
+dist-prepare-osx-$(1): PREPARE_MAN_CMD=$(DEFAULT_PREPARE_MAN_CMD)
+dist-prepare-osx-$(1): prepare-base
 
-$(PKG_OSX): Distribution.xml LICENSE.txt dist-prepare-osx
-	@$(call E, making OS X pkg)
-	$(Q)pkgbuild --identifier org.rust-lang.rust --root tmp/dist/pkgroot rust.pkg
-	$(Q)productbuild --distribution Distribution.xml --resources . $(PKG_OSX)
+dist/$(PKG_DIR)-$(1).pkg: $(S)src/etc/pkg/Distribution.xml LICENSE.txt dist-prepare-osx-$(1)
+	@$$(call E, making OS X pkg)
+	$(Q)pkgbuild --identifier org.rust-lang.rust --root tmp/dist/pkgroot-$(1) rust.pkg
+	$(Q)productbuild --distribution $(S)src/etc/pkg/Distribution.xml --resources . dist/$(PKG_DIR)-$(1).pkg
 	$(Q)rm -rf tmp rust.pkg
 
-dist-osx: $(PKG_OSX)
+endef
+
+$(foreach host,$(CFG_HOST),$(eval $(call DEF_OSX_PKG,$(host))))
+
+dist-osx: $(foreach host,$(CFG_HOST),dist/$(PKG_DIR)-$(host).pkg)
 
 endif
 
