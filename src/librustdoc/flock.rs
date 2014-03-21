@@ -135,6 +135,7 @@ mod imp {
     use std::libc;
     use std::mem;
     use std::os::win32::as_utf16_p;
+    use std::os;
     use std::ptr;
 
     static LOCKFILE_EXCLUSIVE_LOCK: libc::DWORD = 0x00000002;
@@ -160,12 +161,20 @@ mod imp {
     impl Lock {
         pub fn new(p: &Path) -> Lock {
             let handle = as_utf16_p(p.as_str().unwrap(), |p| unsafe {
-                libc::CreateFileW(p, libc::GENERIC_READ, 0, ptr::mut_null(),
+                libc::CreateFileW(p,
+                                  libc::FILE_GENERIC_READ |
+                                    libc::FILE_GENERIC_WRITE,
+                                  libc::FILE_SHARE_READ |
+                                    libc::FILE_SHARE_DELETE |
+                                    libc::FILE_SHARE_WRITE,
+                                  ptr::mut_null(),
                                   libc::CREATE_ALWAYS,
                                   libc::FILE_ATTRIBUTE_NORMAL,
                                   ptr::mut_null())
             });
-            assert!(handle as uint != libc::INVALID_HANDLE_VALUE as uint);
+            if handle as uint == libc::INVALID_HANDLE_VALUE as uint {
+                fail!("create file error: {}", os::last_os_error());
+            }
             let mut overlapped: libc::OVERLAPPED = unsafe { mem::init() };
             let ret = unsafe {
                 LockFileEx(handle, LOCKFILE_EXCLUSIVE_LOCK, 0, 100, 0,
@@ -173,7 +182,8 @@ mod imp {
             };
             if ret == 0 {
                 unsafe { libc::CloseHandle(handle); }
-                fail!("could not lock `{}`", p.display())
+                fail!("could not lock `{}`: {}", p.display(),
+                      os::last_os_error())
             }
             Lock { handle: handle }
         }
