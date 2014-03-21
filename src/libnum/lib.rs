@@ -18,6 +18,8 @@
       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
       html_root_url = "http://static.rust-lang.org/doc/master")];
 
+#[deny(deprecated_owned_vector)];
+
 extern crate rand;
 
 pub mod bigint;

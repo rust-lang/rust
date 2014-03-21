@@ -22,6 +22,7 @@ Simple compression
       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
       html_root_url = "http://static.rust-lang.org/doc/master")];
 #[feature(phase)];
+#[deny(deprecated_owned_vector)];
 
 #[cfg(test)] #[phase(syntax, link)] extern crate log;
 
@@ -100,9 +101,10 @@ mod tests {
     use self::rand::Rng;
 
     #[test]
+    #[allow(deprecated_owned_vector)]
     fn test_flate_round_trip() {
         let mut r = rand::task_rng();
-        let mut words = ~[];
+        let mut words = vec!();
         for _ in range(0, 20) {
             let range = r.gen_range(1u, 10);
             words.push(r.gen_vec::<u8>(range));
@@ -110,7 +112,7 @@ mod tests {
         for _ in range(0, 20) {
             let mut input = ~[];
             for _ in range(0, 2000) {
-                input.push_all(r.choose(words));
+                input.push_all(r.choose(words.as_slice()));
             }
             debug!("de/inflate of {} bytes of random word-sequences",
                    input.len());
@@ -125,8 +127,8 @@ mod tests {
 
     #[test]
     fn test_zlib_flate() {
-        let bytes = ~[1, 2, 3, 4, 5];
-        let deflated = deflate_bytes(bytes);
+        let bytes = vec!(1, 2, 3, 4, 5);
+        let deflated = deflate_bytes(bytes.as_slice());
         let inflated = inflate_bytes(deflated.as_slice());
         assert_eq!(inflated.as_slice(), bytes.as_slice());
     }
