@@ -1156,14 +1156,6 @@ mod test {
     use codemap::*;
     use super::*;
 
-    fn is_freeze<T: Freeze>() {}
-
-    // Assert that the AST remains Freeze (#10693).
-    #[test]
-    fn ast_is_freeze() {
-        is_freeze::<Item>();
-    }
-
     // are ASTs encodable?
     #[test]
     fn check_asts_encodable() {
