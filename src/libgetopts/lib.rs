@@ -85,7 +85,7 @@
       html_root_url = "http://static.rust-lang.org/doc/master")];
 #[feature(globs, phase)];
 #[deny(missing_doc)];
-#[allow(deprecated_owned_vector)]; // NOTE: remove after stage0
+#[deny(deprecated_owned_vector)];
 
 #[cfg(test)] #[phase(syntax, link)] extern crate log;
 
@@ -516,7 +516,7 @@ impl Fail_ {
 /// `opt_str`, etc. to interrogate results.  Returns `Err(Fail_)` on failure.
 /// Use `to_err_msg` to get an error message.
 pub fn getopts(args: &[~str], optgrps: &[OptGroup]) -> Result {
-    let opts = optgrps.map(|x| x.long_to_short());
+    let opts: Vec<Opt> = optgrps.iter().map(|x| x.long_to_short()).collect();
     let n_opts = opts.len();
 
     fn f(_x: uint) -> Vec<Optval> { return Vec::new(); }
@@ -562,12 +562,12 @@ pub fn getopts(args: &[~str], optgrps: &[OptGroup]) -> Result {
                        interpreted correctly
                     */
 
-                    match find_opt(opts, opt.clone()) {
+                    match find_opt(opts.as_slice(), opt.clone()) {
                       Some(id) => last_valid_opt_id = Some(id),
                       None => {
                         let arg_follows =
                             last_valid_opt_id.is_some() &&
-                            match opts[last_valid_opt_id.unwrap()]
+                            match opts.get(last_valid_opt_id.unwrap())
                               .hasarg {
 
                               Yes | Maybe => true,
@@ -588,11 +588,11 @@ pub fn getopts(args: &[~str], optgrps: &[OptGroup]) -> Result {
             let mut name_pos = 0;
             for nm in names.iter() {
                 name_pos += 1;
-                let optid = match find_opt(opts, (*nm).clone()) {
+                let optid = match find_opt(opts.as_slice(), (*nm).clone()) {
                   Some(id) => id,
                   None => return Err(UnrecognizedOption(nm.to_str()))
                 };
-                match opts[optid].hasarg {
+                match opts.get(optid).hasarg {
                   No => {
                     if !i_arg.is_none() {
                         return Err(UnexpectedArgument(nm.to_str()));
@@ -630,21 +630,21 @@ pub fn getopts(args: &[~str], optgrps: &[OptGroup]) -> Result {
     i = 0u;
     while i < n_opts {
         let n = vals.get(i).len();
-        let occ = opts[i].occur;
+        let occ = opts.get(i).occur;
         if occ == Req {
             if n == 0 {
-                return Err(OptionMissing(opts[i].name.to_str()));
+                return Err(OptionMissing(opts.get(i).name.to_str()));
             }
         }
         if occ != Multi {
             if n > 1 {
-                return Err(OptionDuplicated(opts[i].name.to_str()));
+                return Err(OptionDuplicated(opts.get(i).name.to_str()));
             }
         }
         i += 1;
     }
     Ok(Matches {
-        opts: Vec::from_slice(opts),
+        opts: opts,
         vals: vals,
         free: free
     })
@@ -772,7 +772,7 @@ fn format_option(opt: &OptGroup) -> ~str {
 /// Derive a short one-line usage summary from a set of long options.
 pub fn short_usage(program_name: &str, opts: &[OptGroup]) -> ~str {
     let mut line = ~"Usage: " + program_name + " ";
-    line.push_str(opts.iter().map(format_option).to_owned_vec().connect(" "));
+    line.push_str(opts.iter().map(format_option).collect::<Vec<~str>>().connect(" "));
 
     line
 }
