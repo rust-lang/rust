@@ -65,8 +65,6 @@ $(PKG_EXE): rust.iss modpath.iss LICENSE.txt rust-logo.ico \
 dist-prepare-win: PREPARE_HOST=$(CFG_BUILD)
 dist-prepare-win: PREPARE_TARGETS=$(CFG_BUILD)
 dist-prepare-win: PREPARE_DEST_DIR=tmp/dist/win
-# On windows we're using stage3, unlike Unix...
-dist-prepare-win: PREPARE_STAGE=3
 dist-prepare-win: PREPARE_DIR_CMD=$(DEFAULT_PREPARE_DIR_CMD)
 dist-prepare-win: PREPARE_BIN_CMD=$(DEFAULT_PREPARE_BIN_CMD)
 dist-prepare-win: PREPARE_LIB_CMD=$(DEFAULT_PREPARE_LIB_CMD)
@@ -135,7 +133,6 @@ ifeq ($(CFG_OSTYPE), apple-darwin)
 dist-prepare-osx: PREPARE_HOST=$(CFG_BUILD)
 dist-prepare-osx: PREPARE_TARGETS=$(CFG_BUILD)
 dist-prepare-osx: PREPARE_DEST_DIR=tmp/dist/pkgroot
-dist-prepare-osx: PREPARE_STAGE=2
 dist-prepare-osx: PREPARE_DIR_CMD=$(DEFAULT_PREPARE_DIR_CMD)
 dist-prepare-osx: PREPARE_BIN_CMD=$(DEFAULT_PREPARE_BIN_CMD)
 dist-prepare-osx: PREPARE_LIB_CMD=$(DEFAULT_PREPARE_LIB_CMD)
@@ -165,7 +162,6 @@ dist-tar-bins: $(foreach host,$(CFG_HOST),dist/$(PKG_DIR)-$(host).tar.gz)
 define DEF_INSTALLER
 dist-install-dir-$(1): PREPARE_HOST=$(1)
 dist-install-dir-$(1): PREPARE_TARGETS=$(1)
-dist-install-dir-$(1): PREPARE_STAGE=2
 dist-install-dir-$(1): PREPARE_DEST_DIR=tmp/dist/$$(PKG_DIR)-$(1)
 dist-install-dir-$(1): PREPARE_DIR_CMD=$(DEFAULT_PREPARE_DIR_CMD)
 dist-install-dir-$(1): PREPARE_BIN_CMD=$(DEFAULT_PREPARE_BIN_CMD)
