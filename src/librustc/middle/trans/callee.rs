@@ -399,7 +399,7 @@ pub fn trans_fn_ref_with_vtables(
             let ref_ty = match node {
                 ExprId(id) => node_id_type(bcx, id),
                 MethodCall(method_call) => {
-                    let t = bcx.ccx().maps.method_map.borrow().get().get(&method_call).ty;
+                    let t = bcx.ccx().maps.method_map.borrow().get(&method_call).ty;
                     monomorphize_type(bcx, t)
                 }
             };
@@ -482,7 +482,7 @@ pub fn trans_method_call<'a>(
     let _icx = push_ctxt("trans_method_call");
     debug!("trans_method_call(call_ex={})", call_ex.repr(bcx.tcx()));
     let method_call = MethodCall::expr(call_ex.id);
-    let method_ty = bcx.ccx().maps.method_map.borrow().get().get(&method_call).ty;
+    let method_ty = bcx.ccx().maps.method_map.borrow().get(&method_call).ty;
     trans_call_inner(
         bcx,
         Some(common::expr_info(call_ex)),

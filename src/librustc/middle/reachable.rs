@@ -100,7 +100,7 @@ impl<'a> Visitor<()> for ReachableContext<'a> {
 
         match expr.node {
             ast::ExprPath(_) => {
-                let def = match self.tcx.def_map.borrow().get().find(&expr.id) {
+                let def = match self.tcx.def_map.borrow().find(&expr.id) {
                     Some(&def) => def,
                     None => {
                         self.tcx.sess.span_bug(expr.span,
@@ -133,7 +133,7 @@ impl<'a> Visitor<()> for ReachableContext<'a> {
             }
             ast::ExprMethodCall(..) => {
                 let method_call = typeck::MethodCall::expr(expr.id);
-                match self.method_map.borrow().get().get(&method_call).origin {
+                match self.method_map.borrow().get(&method_call).origin {
                     typeck::MethodStatic(def_id) => {
                         if is_local(def_id) {
                             if self.def_id_represents_local_inlined_item(def_id) {
@@ -330,7 +330,7 @@ impl<'a> ReachableContext<'a> {
     // this properly would result in the necessity of computing *type*
     // reachability, which might result in a compile time loss.
     fn mark_destructors_reachable(&mut self) {
-        for (_, destructor_def_id) in self.tcx.destructor_for_type.borrow().get().iter() {
+        for (_, destructor_def_id) in self.tcx.destructor_for_type.borrow().iter() {
             if destructor_def_id.krate == ast::LOCAL_CRATE {
                 self.reachable_symbols.insert(destructor_def_id.node);
             }

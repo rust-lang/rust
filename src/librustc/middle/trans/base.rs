@@ -161,12 +161,9 @@ impl<'a> Drop for StatRecorder<'a> {
             let end = time::precise_time_ns();
             let elapsed = ((end - self.start) / 1_000_000) as uint;
             let iend = self.ccx.stats.n_llvm_insns.get();
-            {
-                let mut fn_stats = self.ccx.stats.fn_stats.borrow_mut();
-                fn_stats.get().push((self.name.take_unwrap(),
-                                     elapsed,
-                                     iend - self.istart));
-            }
+            self.ccx.stats.fn_stats.borrow_mut().push((self.name.take_unwrap(),
+                                                       elapsed,
+                                                       iend - self.istart));
             self.ccx.stats.n_fns.set(self.ccx.stats.n_fns.get() + 1);
             // Reset LLVM insn count to avoid compound costs.
             self.ccx.stats.n_llvm_insns.set(self.istart);
@@ -232,12 +229,9 @@ pub fn get_extern_fn(externs: &mut ExternMap, llmod: ModuleRef,
 
 fn get_extern_rust_fn(ccx: &CrateContext, inputs: &[ty::t], output: ty::t,
                       name: &str, did: ast::DefId) -> ValueRef {
-    {
-        let externs = ccx.externs.borrow();
-        match externs.get().find_equiv(&name) {
-            Some(n) => return *n,
-            None => ()
-        }
+    match ccx.externs.borrow().find_equiv(&name) {
+        Some(n) => return *n,
+        None => ()
     }
 
     let f = decl_rust_fn(ccx, false, inputs, output, name);
@@ -245,8 +239,7 @@ fn get_extern_rust_fn(ccx: &CrateContext, inputs: &[ty::t], output: ty::t,
         set_llvm_fn_attrs(meta_items.iter().map(|&x| attr::mk_attr(x)).to_owned_vec(), f)
     });
 
-    let mut externs = ccx.externs.borrow_mut();
-    externs.get().insert(name.to_owned(), f);
+    ccx.externs.borrow_mut().insert(name.to_owned(), f);
     f
 }
 
@@ -448,19 +441,15 @@ pub fn get_tydesc_simple(ccx: &CrateContext, t: ty::t) -> ValueRef {
 }
 
 pub fn get_tydesc(ccx: &CrateContext, t: ty::t) -> @tydesc_info {
-    {
-        let tydescs = ccx.tydescs.borrow();
-        match tydescs.get().find(&t) {
-            Some(&inf) => return inf,
-            _ => { }
-        }
+    match ccx.tydescs.borrow().find(&t) {
+        Some(&inf) => return inf,
+        _ => { }
     }
 
     ccx.stats.n_static_tydescs.set(ccx.stats.n_static_tydescs.get() + 1u);
     let inf = glue::declare_tydesc(ccx, t);
 
-    let mut tydescs = ccx.tydescs.borrow_mut();
-    tydescs.get().insert(t, inf);
+    ccx.tydescs.borrow_mut().insert(t, inf);
     return inf;
 }
 
@@ -519,11 +508,10 @@ pub fn set_no_split_stack(f: ValueRef) {
 // Double-check that we never ask LLVM to declare the same symbol twice. It
 // silently mangles such symbols, breaking our linkage model.
 pub fn note_unique_llvm_symbol(ccx: &CrateContext, sym: ~str) {
-    let mut all_llvm_symbols = ccx.all_llvm_symbols.borrow_mut();
-    if all_llvm_symbols.get().contains(&sym) {
+    if ccx.all_llvm_symbols.borrow().contains(&sym) {
         ccx.sess().bug(~"duplicate LLVM symbol: " + sym);
     }
-    all_llvm_symbols.get().insert(sym);
+    ccx.all_llvm_symbols.borrow_mut().insert(sym);
 }
 
 
@@ -561,11 +549,8 @@ pub fn get_res_dtor(ccx: &CrateContext,
                                      ty::lookup_item_type(tcx, parent_id).ty);
         let llty = type_of_dtor(ccx, class_ty);
 
-        {
-            let mut externs = ccx.externs.borrow_mut();
-            get_extern_fn(externs.get(), ccx.llmod, name,
-                          lib::llvm::CCallConv, llty, ty::mk_nil())
-        }
+        get_extern_fn(&mut *ccx.externs.borrow_mut(), ccx.llmod, name,
+                      lib::llvm::CCallConv, llty, ty::mk_nil())
     }
 }
 
@@ -889,9 +874,8 @@ pub fn trans_external_path(ccx: &CrateContext, did: ast::DefId, t: ty::t) -> Val
                     let c = foreign::llvm_calling_convention(ccx, fn_ty.abis);
                     let cconv = c.unwrap_or(lib::llvm::CCallConv);
                     let llty = type_of_fn_from_ty(ccx, t);
-                    let mut externs = ccx.externs.borrow_mut();
-                    get_extern_fn(externs.get(), ccx.llmod, name,
-                                  cconv, llty, fn_ty.sig.output)
+                    get_extern_fn(&mut *ccx.externs.borrow_mut(), ccx.llmod,
+                                  name, cconv, llty, fn_ty.sig.output)
                 }
             }
         }
@@ -904,8 +888,8 @@ pub fn trans_external_path(ccx: &CrateContext, did: ast::DefId, t: ty::t) -> Val
         }
         _ => {
             let llty = type_of(ccx, t);
-            let mut externs = ccx.externs.borrow_mut();
-            get_extern_const(externs.get(), ccx.llmod, name, llty)
+            get_extern_const(&mut *ccx.externs.borrow_mut(), ccx.llmod, name,
+                             llty)
         }
     }
 }
@@ -1709,8 +1693,7 @@ pub fn trans_item(ccx: &CrateContext, item: &ast::Item) {
                                          static");
               }
 
-              let const_values = ccx.const_values.borrow();
-              let v = const_values.get().get_copy(&item.id);
+              let v = ccx.const_values.borrow().get_copy(&item.id);
               unsafe {
                   if !(llvm::LLVMConstIntGetZExtValue(v) != 0) {
                       ccx.sess().span_fatal(expr.span, "static assertion failed");
@@ -1766,7 +1749,7 @@ pub fn trans_mod(ccx: &CrateContext, m: &ast::Mod) {
 
 fn finish_register_fn(ccx: &CrateContext, sp: Span, sym: ~str, node_id: ast::NodeId,
                       llfn: ValueRef) {
-    ccx.item_symbols.borrow_mut().get().insert(node_id, sym);
+    ccx.item_symbols.borrow_mut().insert(node_id, sym);
 
     if !ccx.reachable.contains(&node_id) {
         lib::llvm::SetLinkage(llfn, lib::llvm::InternalLinkage);
@@ -1919,241 +1902,222 @@ fn exported_name(ccx: &CrateContext, id: ast::NodeId,
 pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
     debug!("get_item_val(id=`{:?}`)", id);
 
-    let val = {
-        let item_vals = ccx.item_vals.borrow();
-        item_vals.get().find_copy(&id)
-    };
+    match ccx.item_vals.borrow().find_copy(&id) {
+        Some(v) => return v,
+        None => {}
+    }
 
-    match val {
-        Some(v) => v,
-        None => {
-            let mut foreign = false;
-            let item = ccx.tcx.map.get(id);
-            let val = match item {
-                ast_map::NodeItem(i) => {
-                    let ty = ty::node_id_to_type(ccx.tcx(), i.id);
-                    let sym = exported_name(ccx, id, ty, i.attrs.as_slice());
+    let mut foreign = false;
+    let item = ccx.tcx.map.get(id);
+    let val = match item {
+        ast_map::NodeItem(i) => {
+            let ty = ty::node_id_to_type(ccx.tcx(), i.id);
+            let sym = exported_name(ccx, id, ty, i.attrs.as_slice());
 
-                    let v = match i.node {
-                        ast::ItemStatic(_, _, expr) => {
-                            // If this static came from an external crate, then
-                            // we need to get the symbol from csearch instead of
-                            // using the current crate's name/version
-                            // information in the hash of the symbol
-                            debug!("making {}", sym);
-                            let (sym, is_local) = {
-                                let external_srcs = ccx.external_srcs
-                                                       .borrow();
-                                match external_srcs.get().find(&i.id) {
-                                    Some(&did) => {
-                                        debug!("but found in other crate...");
-                                        (csearch::get_symbol(&ccx.sess().cstore,
-                                                             did), false)
-                                    }
-                                    None => (sym, true)
-                                }
-                            };
-
-                            // We need the translated value here, because for enums the
-                            // LLVM type is not fully determined by the Rust type.
-                            let (v, inlineable) = consts::const_expr(ccx, expr, is_local);
-                            {
-                                let mut const_values = ccx.const_values
-                                                          .borrow_mut();
-                                const_values.get().insert(id, v);
+            let v = match i.node {
+                ast::ItemStatic(_, _, expr) => {
+                    // If this static came from an external crate, then
+                    // we need to get the symbol from csearch instead of
+                    // using the current crate's name/version
+                    // information in the hash of the symbol
+                    debug!("making {}", sym);
+                    let (sym, is_local) = {
+                        match ccx.external_srcs.borrow().find(&i.id) {
+                            Some(&did) => {
+                                debug!("but found in other crate...");
+                                (csearch::get_symbol(&ccx.sess().cstore,
+                                                     did), false)
                             }
-                            let mut inlineable = inlineable;
-
-                            unsafe {
-                                let llty = llvm::LLVMTypeOf(v);
-                                let g = sym.with_c_str(|buf| {
-                                    llvm::LLVMAddGlobal(ccx.llmod, llty, buf)
-                                });
-
-                                if !ccx.reachable.contains(&id) {
-                                    lib::llvm::SetLinkage(g, lib::llvm::InternalLinkage);
-                                }
-
-                                // Apply the `unnamed_addr` attribute if
-                                // requested
-                                if attr::contains_name(i.attrs.as_slice(),
-                                                       "address_insignificant") {
-                                    if ccx.reachable.contains(&id) {
-                                        ccx.sess().span_bug(i.span,
-                                            "insignificant static is reachable");
-                                    }
-                                    lib::llvm::SetUnnamedAddr(g, true);
-
-                                    // This is a curious case where we must make
-                                    // all of these statics inlineable. If a
-                                    // global is tagged as
-                                    // address_insignificant, then LLVM won't
-                                    // coalesce globals unless they have an
-                                    // internal linkage type. This means that
-                                    // external crates cannot use this global.
-                                    // This is a problem for things like inner
-                                    // statics in generic functions, because the
-                                    // function will be inlined into another
-                                    // crate and then attempt to link to the
-                                    // static in the original crate, only to
-                                    // find that it's not there. On the other
-                                    // side of inlininig, the crates knows to
-                                    // not declare this static as
-                                    // available_externally (because it isn't)
-                                    inlineable = true;
-                                }
-
-                                if attr::contains_name(i.attrs.as_slice(),
-                                                       "thread_local") {
-                                    lib::llvm::set_thread_local(g, true);
-                                }
-
-                                if !inlineable {
-                                    debug!("{} not inlined", sym);
-                                    let mut non_inlineable_statics =
-                                        ccx.non_inlineable_statics
-                                           .borrow_mut();
-                                    non_inlineable_statics.get().insert(id);
-                                }
-
-                                let mut item_symbols = ccx.item_symbols
-                                                          .borrow_mut();
-                                item_symbols.get().insert(i.id, sym);
-                                g
-                            }
+                            None => (sym, true)
                         }
-
-                        ast::ItemFn(_, purity, _, _, _) => {
-                            let llfn = if purity != ast::ExternFn {
-                                register_fn(ccx, i.span, sym, i.id, ty)
-                            } else {
-                                foreign::register_rust_fn_with_foreign_abi(ccx,
-                                                                           i.span,
-                                                                           sym,
-                                                                           i.id)
-                            };
-                            set_llvm_fn_attrs(i.attrs.as_slice(), llfn);
-                            llfn
-                        }
-
-                        _ => fail!("get_item_val: weird result in table")
                     };
 
-                    match attr::first_attr_value_str_by_name(i.attrs
-                                                              .as_slice(),
-                                                             "link_section") {
-                        Some(sect) => unsafe {
-                            sect.get().with_c_str(|buf| {
-                                llvm::LLVMSetSection(v, buf);
-                            })
-                        },
-                        None => ()
-                    }
+                    // We need the translated value here, because for enums the
+                    // LLVM type is not fully determined by the Rust type.
+                    let (v, inlineable) = consts::const_expr(ccx, expr, is_local);
+                    ccx.const_values.borrow_mut().insert(id, v);
+                    let mut inlineable = inlineable;
 
-                    v
+                    unsafe {
+                        let llty = llvm::LLVMTypeOf(v);
+                        let g = sym.with_c_str(|buf| {
+                            llvm::LLVMAddGlobal(ccx.llmod, llty, buf)
+                        });
+
+                        if !ccx.reachable.contains(&id) {
+                            lib::llvm::SetLinkage(g, lib::llvm::InternalLinkage);
+                        }
+
+                        // Apply the `unnamed_addr` attribute if
+                        // requested
+                        if attr::contains_name(i.attrs.as_slice(),
+                                               "address_insignificant") {
+                            if ccx.reachable.contains(&id) {
+                                ccx.sess().span_bug(i.span,
+                                    "insignificant static is reachable");
+                            }
+                            lib::llvm::SetUnnamedAddr(g, true);
+
+                            // This is a curious case where we must make
+                            // all of these statics inlineable. If a
+                            // global is tagged as
+                            // address_insignificant, then LLVM won't
+                            // coalesce globals unless they have an
+                            // internal linkage type. This means that
+                            // external crates cannot use this global.
+                            // This is a problem for things like inner
+                            // statics in generic functions, because the
+                            // function will be inlined into another
+                            // crate and then attempt to link to the
+                            // static in the original crate, only to
+                            // find that it's not there. On the other
+                            // side of inlininig, the crates knows to
+                            // not declare this static as
+                            // available_externally (because it isn't)
+                            inlineable = true;
+                        }
+
+                        if attr::contains_name(i.attrs.as_slice(),
+                                               "thread_local") {
+                            lib::llvm::set_thread_local(g, true);
+                        }
+
+                        if !inlineable {
+                            debug!("{} not inlined", sym);
+                            ccx.non_inlineable_statics.borrow_mut()
+                                                      .insert(id);
+                        }
+
+                        ccx.item_symbols.borrow_mut().insert(i.id, sym);
+                        g
+                    }
                 }
 
-                ast_map::NodeTraitMethod(trait_method) => {
-                    debug!("get_item_val(): processing a NodeTraitMethod");
-                    match *trait_method {
-                        ast::Required(_) => {
-                            ccx.sess().bug("unexpected variant: required trait method in \
-                                           get_item_val()");
-                        }
-                        ast::Provided(m) => {
-                            register_method(ccx, id, m)
-                        }
-                    }
-                }
-
-                ast_map::NodeMethod(m) => {
-                    register_method(ccx, id, m)
-                }
-
-                ast_map::NodeForeignItem(ni) => {
-                    foreign = true;
-
-                    match ni.node {
-                        ast::ForeignItemFn(..) => {
-                            let abis = ccx.tcx.map.get_foreign_abis(id);
-                            foreign::register_foreign_item_fn(ccx, abis, ni)
-                        }
-                        ast::ForeignItemStatic(..) => {
-                            foreign::register_static(ccx, ni)
-                        }
-                    }
-                }
-
-                ast_map::NodeVariant(ref v) => {
-                    let llfn;
-                    match v.node.kind {
-                        ast::TupleVariantKind(ref args) => {
-                            assert!(args.len() != 0u);
-                            let ty = ty::node_id_to_type(ccx.tcx(), id);
-                            let parent = ccx.tcx.map.get_parent(id);
-                            let enm = ccx.tcx.map.expect_item(parent);
-                            let sym = exported_name(ccx,
-                                                    id,
-                                                    ty,
-                                                    enm.attrs.as_slice());
-
-                            llfn = match enm.node {
-                                ast::ItemEnum(_, _) => {
-                                    register_fn(ccx, (*v).span, sym, id, ty)
-                                }
-                                _ => fail!("NodeVariant, shouldn't happen")
-                            };
-                        }
-                        ast::StructVariantKind(_) => {
-                            fail!("struct variant kind unexpected in get_item_val")
-                        }
-                    }
-                    set_inline_hint(llfn);
+                ast::ItemFn(_, purity, _, _, _) => {
+                    let llfn = if purity != ast::ExternFn {
+                        register_fn(ccx, i.span, sym, i.id, ty)
+                    } else {
+                        foreign::register_rust_fn_with_foreign_abi(ccx,
+                                                                   i.span,
+                                                                   sym,
+                                                                   i.id)
+                    };
+                    set_llvm_fn_attrs(i.attrs.as_slice(), llfn);
                     llfn
                 }
 
-                ast_map::NodeStructCtor(struct_def) => {
-                    // Only register the constructor if this is a tuple-like struct.
-                    match struct_def.ctor_id {
-                        None => {
-                            ccx.sess().bug("attempt to register a constructor of \
-                                            a non-tuple-like struct")
-                        }
-                        Some(ctor_id) => {
-                            let parent = ccx.tcx.map.get_parent(id);
-                            let struct_item = ccx.tcx.map.expect_item(parent);
-                            let ty = ty::node_id_to_type(ccx.tcx(), ctor_id);
-                            let sym = exported_name(ccx,
-                                                    id,
-                                                    ty,
-                                                    struct_item.attrs
-                                                               .as_slice());
-                            let llfn = register_fn(ccx, struct_item.span,
-                                                   sym, ctor_id, ty);
-                            set_inline_hint(llfn);
-                            llfn
-                        }
-                    }
-                }
-
-                ref variant => {
-                    ccx.sess().bug(format!("get_item_val(): unexpected variant: {:?}",
-                                   variant))
-                }
+                _ => fail!("get_item_val: weird result in table")
             };
 
-            // foreign items (extern fns and extern statics) don't have internal
-            // linkage b/c that doesn't quite make sense. Otherwise items can
-            // have internal linkage if they're not reachable.
-            if !foreign && !ccx.reachable.contains(&id) {
-                lib::llvm::SetLinkage(val, lib::llvm::InternalLinkage);
+            match attr::first_attr_value_str_by_name(i.attrs.as_slice(),
+                                                     "link_section") {
+                Some(sect) => unsafe {
+                    sect.get().with_c_str(|buf| {
+                        llvm::LLVMSetSection(v, buf);
+                    })
+                },
+                None => ()
             }
 
-            let mut item_vals = ccx.item_vals.borrow_mut();
-            item_vals.get().insert(id, val);
-            val
+            v
         }
+
+        ast_map::NodeTraitMethod(trait_method) => {
+            debug!("get_item_val(): processing a NodeTraitMethod");
+            match *trait_method {
+                ast::Required(_) => {
+                    ccx.sess().bug("unexpected variant: required trait method in \
+                                   get_item_val()");
+                }
+                ast::Provided(m) => {
+                    register_method(ccx, id, m)
+                }
+            }
+        }
+
+        ast_map::NodeMethod(m) => {
+            register_method(ccx, id, m)
+        }
+
+        ast_map::NodeForeignItem(ni) => {
+            foreign = true;
+
+            match ni.node {
+                ast::ForeignItemFn(..) => {
+                    let abis = ccx.tcx.map.get_foreign_abis(id);
+                    foreign::register_foreign_item_fn(ccx, abis, ni)
+                }
+                ast::ForeignItemStatic(..) => {
+                    foreign::register_static(ccx, ni)
+                }
+            }
+        }
+
+        ast_map::NodeVariant(ref v) => {
+            let llfn;
+            let args = match v.node.kind {
+                ast::TupleVariantKind(ref args) => args,
+                ast::StructVariantKind(_) => {
+                    fail!("struct variant kind unexpected in get_item_val")
+                }
+            };
+            assert!(args.len() != 0u);
+            let ty = ty::node_id_to_type(ccx.tcx(), id);
+            let parent = ccx.tcx.map.get_parent(id);
+            let enm = ccx.tcx.map.expect_item(parent);
+            let sym = exported_name(ccx,
+                                    id,
+                                    ty,
+                                    enm.attrs.as_slice());
+
+            llfn = match enm.node {
+                ast::ItemEnum(_, _) => {
+                    register_fn(ccx, (*v).span, sym, id, ty)
+                }
+                _ => fail!("NodeVariant, shouldn't happen")
+            };
+            set_inline_hint(llfn);
+            llfn
+        }
+
+        ast_map::NodeStructCtor(struct_def) => {
+            // Only register the constructor if this is a tuple-like struct.
+            let ctor_id = match struct_def.ctor_id {
+                None => {
+                    ccx.sess().bug("attempt to register a constructor of \
+                                    a non-tuple-like struct")
+                }
+                Some(ctor_id) => ctor_id,
+            };
+            let parent = ccx.tcx.map.get_parent(id);
+            let struct_item = ccx.tcx.map.expect_item(parent);
+            let ty = ty::node_id_to_type(ccx.tcx(), ctor_id);
+            let sym = exported_name(ccx,
+                                    id,
+                                    ty,
+                                    struct_item.attrs
+                                               .as_slice());
+            let llfn = register_fn(ccx, struct_item.span,
+                                   sym, ctor_id, ty);
+            set_inline_hint(llfn);
+            llfn
+        }
+
+        ref variant => {
+            ccx.sess().bug(format!("get_item_val(): unexpected variant: {:?}",
+                           variant))
+        }
+    };
+
+    // foreign items (extern fns and extern statics) don't have internal
+    // linkage b/c that doesn't quite make sense. Otherwise items can
+    // have internal linkage if they're not reachable.
+    if !foreign && !ccx.reachable.contains(&id) {
+        lib::llvm::SetLinkage(val, lib::llvm::InternalLinkage);
     }
+
+    ccx.item_vals.borrow_mut().insert(id, val);
+    val
 }
 
 fn register_method(ccx: &CrateContext, id: ast::NodeId,
@@ -2542,11 +2506,10 @@ pub fn trans_crate(krate: ast::Crate,
         println!("n_inlines: {}", ccx.stats.n_inlines.get());
         println!("n_closures: {}", ccx.stats.n_closures.get());
         println!("fn stats:");
-        let mut fn_stats = ccx.stats.fn_stats.borrow_mut();
-        fn_stats.get().sort_by(|&(_, _, insns_a), &(_, _, insns_b)| {
+        ccx.stats.fn_stats.borrow_mut().sort_by(|&(_, _, insns_a), &(_, _, insns_b)| {
             insns_b.cmp(&insns_a)
         });
-        for tuple in fn_stats.get().iter() {
+        for tuple in ccx.stats.fn_stats.borrow().iter() {
             match *tuple {
                 (ref name, ms, insns) => {
                     println!("{} insns, {} ms, {}", insns, ms, *name);
@@ -2555,8 +2518,7 @@ pub fn trans_crate(krate: ast::Crate,
         }
     }
     if ccx.sess().count_llvm_insns() {
-        let llvm_insns = ccx.stats.llvm_insns.borrow();
-        for (k, v) in llvm_insns.get().iter() {
+        for (k, v) in ccx.stats.llvm_insns.borrow().iter() {
             println!("{:7u} {}", *v, *k);
         }
     }
@@ -2566,7 +2528,7 @@ pub fn trans_crate(krate: ast::Crate,
     let llmod = ccx.llmod;
 
     let mut reachable: Vec<~str> = ccx.reachable.iter().filter_map(|id| {
-        ccx.item_symbols.borrow().get().find(id).map(|s| s.to_owned())
+        ccx.item_symbols.borrow().find(id).map(|s| s.to_owned())
     }).collect();
 
     // Make sure that some other crucial symbols are not eliminated from the

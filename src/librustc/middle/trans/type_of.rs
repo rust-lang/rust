@@ -102,12 +102,9 @@ pub fn type_of_fn_from_ty(cx: &CrateContext, fty: ty::t) -> Type {
 //     recursive types. For example, enum types rely on this behavior.
 
 pub fn sizing_type_of(cx: &CrateContext, t: ty::t) -> Type {
-    {
-        let llsizingtypes = cx.llsizingtypes.borrow();
-        match llsizingtypes.get().find_copy(&t) {
-            Some(t) => return t,
-            None => ()
-        }
+    match cx.llsizingtypes.borrow().find_copy(&t) {
+        Some(t) => return t,
+        None => ()
     }
 
     let llsizingty = match ty::get(t).sty {
@@ -165,20 +162,16 @@ pub fn sizing_type_of(cx: &CrateContext, t: ty::t) -> Type {
         }
     };
 
-    let mut llsizingtypes = cx.llsizingtypes.borrow_mut();
-    llsizingtypes.get().insert(t, llsizingty);
+    cx.llsizingtypes.borrow_mut().insert(t, llsizingty);
     llsizingty
 }
 
 // NB: If you update this, be sure to update `sizing_type_of()` as well.
 pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
     // Check the cache.
-    {
-        let lltypes = cx.lltypes.borrow();
-        match lltypes.get().find(&t) {
-            Some(&llty) => return llty,
-            None => ()
-        }
+    match cx.lltypes.borrow().find(&t) {
+        Some(&llty) => return llty,
+        None => ()
     }
 
     debug!("type_of {} {:?}", t.repr(cx.tcx()), t);
@@ -198,8 +191,7 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
                 t_norm.repr(cx.tcx()),
                 t_norm,
                 cx.tn.type_to_str(llty));
-        let mut lltypes = cx.lltypes.borrow_mut();
-        lltypes.get().insert(t, llty);
+        cx.lltypes.borrow_mut().insert(t, llty);
         return llty;
     }
 
@@ -295,10 +287,8 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
             t.repr(cx.tcx()),
             t,
             cx.tn.type_to_str(llty));
-    {
-        let mut lltypes = cx.lltypes.borrow_mut();
-        lltypes.get().insert(t, llty);
-    }
+
+    cx.lltypes.borrow_mut().insert(t, llty);
 
     // If this was an enum or struct, fill in the type now.
     match ty::get(t).sty {

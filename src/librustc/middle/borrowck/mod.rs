@@ -574,7 +574,7 @@ impl<'a> BorrowckCtxt<'a> {
                 let (expr_ty, expr_span) = match self.tcx.map.find(move.id) {
                     Some(ast_map::NodeExpr(expr)) => {
                         (ty::expr_ty_adjusted(self.tcx, expr,
-                                              self.method_map.borrow().get()), expr.span)
+                                              &*self.method_map.borrow()), expr.span)
                     }
                     r => self.tcx.sess.bug(format!("MoveExpr({:?}) maps to {:?}, not Expr",
                                                    move.id, r))
@@ -601,7 +601,7 @@ impl<'a> BorrowckCtxt<'a> {
                 let (expr_ty, expr_span) = match self.tcx.map.find(move.id) {
                     Some(ast_map::NodeExpr(expr)) => {
                         (ty::expr_ty_adjusted(self.tcx, expr,
-                                              self.method_map.borrow().get()), expr.span)
+                                              &*self.method_map.borrow()), expr.span)
                     }
                     r => self.tcx.sess.bug(format!("Captured({:?}) maps to {:?}, not Expr",
                                                    move.id, r))
@@ -942,16 +942,15 @@ impl<'a> mc::Typer for TcxTyper<'a> {
     }
 
     fn node_method_ty(&self, method_call: typeck::MethodCall) -> Option<ty::t> {
-        self.method_map.borrow().get().find(&method_call).map(|method| method.ty)
+        self.method_map.borrow().find(&method_call).map(|method| method.ty)
     }
 
     fn adjustment(&mut self, id: ast::NodeId) -> Option<@ty::AutoAdjustment> {
-        let adjustments = self.tcx.adjustments.borrow();
-        adjustments.get().find_copy(&id)
+        self.tcx.adjustments.borrow().find_copy(&id)
     }
 
     fn is_method_call(&mut self, id: ast::NodeId) -> bool {
-        self.method_map.borrow().get().contains_key(&typeck::MethodCall::expr(id))
+        self.method_map.borrow().contains_key(&typeck::MethodCall::expr(id))
     }
 
     fn temporary_scope(&mut self, id: ast::NodeId) -> Option<ast::NodeId> {
@@ -959,7 +958,6 @@ impl<'a> mc::Typer for TcxTyper<'a> {
     }
 
     fn upvar_borrow(&mut self, id: ty::UpvarId) -> ty::UpvarBorrow {
-        let upvar_borrow_map = self.tcx.upvar_borrow_map.borrow();
-        upvar_borrow_map.get().get_copy(&id)
+        self.tcx.upvar_borrow_map.borrow().get_copy(&id)
     }
 }

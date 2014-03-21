@@ -270,8 +270,7 @@ fn encode_symbol(ecx: &EncodeContext,
                  ebml_w: &mut writer::Encoder,
                  id: NodeId) {
     ebml_w.start_tag(tag_items_data_item_symbol);
-    let item_symbols = ecx.item_symbols.borrow();
-    match item_symbols.get().find(&id) {
+    match ecx.item_symbols.borrow().find(&id) {
         Some(x) => {
             debug!("encode_symbol(id={:?}, str={})", id, *x);
             ebml_w.writer.write(x.as_bytes());
@@ -334,13 +333,10 @@ fn encode_enum_variant_info(ecx: &EncodeContext,
                                ast::DefId { krate: LOCAL_CRATE, node: id });
     for variant in variants.iter() {
         let def_id = local_def(variant.node.id);
-        {
-            let mut index = index.borrow_mut();
-            index.get().push(entry {
-                val: variant.node.id as i64,
-                pos: ebml_w.writer.tell().unwrap(),
-            });
-        }
+        index.borrow_mut().push(entry {
+            val: variant.node.id as i64,
+            pos: ebml_w.writer.tell().unwrap(),
+        });
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, def_id);
         match variant.node.kind {
@@ -415,11 +411,9 @@ fn encode_reexported_static_base_methods(ecx: &EncodeContext,
                                          ebml_w: &mut writer::Encoder,
                                          exp: &middle::resolve::Export2)
                                          -> bool {
-    let inherent_impls = ecx.tcx.inherent_impls.borrow();
-    match inherent_impls.get().find(&exp.def_id) {
+    match ecx.tcx.inherent_impls.borrow().find(&exp.def_id) {
         Some(implementations) => {
-            let implementations = implementations.borrow();
-            for &base_impl in implementations.get().iter() {
+            for &base_impl in implementations.borrow().iter() {
                 for &m in base_impl.methods.iter() {
                     if m.explicit_self == ast::SelfStatic {
                         encode_reexported_static_method(ebml_w, exp, m.def_id, m.ident);
@@ -437,8 +431,7 @@ fn encode_reexported_static_trait_methods(ecx: &EncodeContext,
                                           ebml_w: &mut writer::Encoder,
                                           exp: &middle::resolve::Export2)
                                           -> bool {
-    let trait_methods_cache = ecx.tcx.trait_methods_cache.borrow();
-    match trait_methods_cache.get().find(&exp.def_id) {
+    match ecx.tcx.trait_methods_cache.borrow().find(&exp.def_id) {
         Some(methods) => {
             for &m in methods.iter() {
                 if m.explicit_self == ast::SelfStatic {
@@ -538,8 +531,7 @@ fn encode_reexports(ecx: &EncodeContext,
                     id: NodeId,
                     path: PathElems) {
     debug!("(encoding info for module) encoding reexports for {}", id);
-    let reexports2 = ecx.reexports2.borrow();
-    match reexports2.get().find(&id) {
+    match ecx.reexports2.borrow().find(&id) {
         Some(ref exports) => {
             debug!("(encoding info for module) found reexports for {}", id);
             for exp in exports.iter() {
@@ -703,13 +695,10 @@ fn encode_info_for_struct(ecx: &EncodeContext,
 
         let id = field.node.id;
         index.push(entry {val: id as i64, pos: ebml_w.writer.tell().unwrap()});
-        {
-            let mut global_index = global_index.borrow_mut();
-            global_index.get().push(entry {
-                val: id as i64,
-                pos: ebml_w.writer.tell().unwrap(),
-            });
-        }
+        global_index.borrow_mut().push(entry {
+            val: id as i64,
+            pos: ebml_w.writer.tell().unwrap(),
+        });
         ebml_w.start_tag(tag_items_data_item);
         debug!("encode_info_for_struct: doing {} {}",
                token::get_ident(nm), id);
@@ -728,13 +717,10 @@ fn encode_info_for_struct_ctor(ecx: &EncodeContext,
                                ctor_id: NodeId,
                                index: @RefCell<Vec<entry<i64>> >,
                                struct_id: NodeId) {
-    {
-        let mut index = index.borrow_mut();
-        index.get().push(entry {
-            val: ctor_id as i64,
-            pos: ebml_w.writer.tell().unwrap(),
-        });
-    }
+    index.borrow_mut().push(entry {
+        val: ctor_id as i64,
+        pos: ebml_w.writer.tell().unwrap(),
+    });
 
     ebml_w.start_tag(tag_items_data_item);
     encode_def_id(ebml_w, local_def(ctor_id));
@@ -746,8 +732,7 @@ fn encode_info_for_struct_ctor(ecx: &EncodeContext,
     ecx.tcx.map.with_path(ctor_id, |path| encode_path(ebml_w, path));
     encode_parent_item(ebml_w, local_def(struct_id));
 
-    let item_symbols = ecx.item_symbols.borrow();
-    if item_symbols.get().contains_key(&ctor_id) {
+    if ecx.item_symbols.borrow().contains_key(&ctor_id) {
         encode_symbol(ecx, ebml_w, ctor_id);
     }
 
@@ -853,12 +838,10 @@ fn should_inline(attrs: &[Attribute]) -> bool {
 fn encode_inherent_implementations(ecx: &EncodeContext,
                                    ebml_w: &mut writer::Encoder,
                                    def_id: DefId) {
-    let inherent_impls = ecx.tcx.inherent_impls.borrow();
-    match inherent_impls.get().find(&def_id) {
+    match ecx.tcx.inherent_impls.borrow().find(&def_id) {
         None => {}
         Some(&implementations) => {
-            let implementations = implementations.borrow();
-            for implementation in implementations.get().iter() {
+            for implementation in implementations.borrow().iter() {
                 ebml_w.start_tag(tag_items_data_item_inherent_impl);
                 encode_def_id(ebml_w, implementation.did);
                 ebml_w.end_tag();
@@ -871,12 +854,10 @@ fn encode_inherent_implementations(ecx: &EncodeContext,
 fn encode_extension_implementations(ecx: &EncodeContext,
                                     ebml_w: &mut writer::Encoder,
                                     trait_def_id: DefId) {
-    let trait_impls = ecx.tcx.trait_impls.borrow();
-    match trait_impls.get().find(&trait_def_id) {
+    match ecx.tcx.trait_impls.borrow().find(&trait_def_id) {
         None => {}
         Some(&implementations) => {
-            let implementations = implementations.borrow();
-            for implementation in implementations.get().iter() {
+            for implementation in implementations.borrow().iter() {
                 ebml_w.start_tag(tag_items_data_item_extension_impl);
                 encode_def_id(ebml_w, implementation.did);
                 ebml_w.end_tag();
@@ -895,8 +876,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
 
     fn add_to_index(item: &Item, ebml_w: &writer::Encoder,
                      index: @RefCell<Vec<entry<i64>> >) {
-        let mut index = index.borrow_mut();
-        index.get().push(entry {
+        index.borrow_mut().push(entry {
             val: item.id as i64,
             pos: ebml_w.writer.tell().unwrap(),
         });
@@ -921,7 +901,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_name(ebml_w, item.ident.name);
         encode_path(ebml_w, path);
 
-        let inlineable = !ecx.non_inlineable_statics.borrow().get().contains(&item.id);
+        let inlineable = !ecx.non_inlineable_statics.borrow().contains(&item.id);
 
         if inlineable {
             (ecx.encode_inlined_item)(ecx, ebml_w, IIItemRef(item));
@@ -1065,7 +1045,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         // We need to encode information about the default methods we
         // have inherited, so we drive this based on the impl structure.
         let impls = tcx.impls.borrow();
-        let imp = impls.get().get(&def_id);
+        let imp = impls.get(&def_id);
 
         add_to_index(item, ebml_w, index);
         ebml_w.start_tag(tag_items_data_item);
@@ -1108,13 +1088,10 @@ fn encode_info_for_item(ecx: &EncodeContext,
                 Some(*ast_methods.get(i))
             } else { None };
 
-            {
-                let mut index = index.borrow_mut();
-                index.get().push(entry {
-                    val: m.def_id.node as i64,
-                    pos: ebml_w.writer.tell().unwrap(),
-                });
-            }
+            index.borrow_mut().push(entry {
+                val: m.def_id.node as i64,
+                pos: ebml_w.writer.tell().unwrap(),
+            });
             encode_info_for_method(ecx,
                                    ebml_w,
                                    *m,
@@ -1169,13 +1146,10 @@ fn encode_info_for_item(ecx: &EncodeContext,
 
             let method_ty = ty::method(tcx, method_def_id);
 
-            {
-                let mut index = index.borrow_mut();
-                index.get().push(entry {
-                    val: method_def_id.node as i64,
-                    pos: ebml_w.writer.tell().unwrap(),
-                });
-            }
+            index.borrow_mut().push(entry {
+                val: method_def_id.node as i64,
+                pos: ebml_w.writer.tell().unwrap(),
+            });
 
             ebml_w.start_tag(tag_items_data_item);
 
@@ -1242,13 +1216,10 @@ fn encode_info_for_foreign_item(ecx: &EncodeContext,
                                 index: @RefCell<Vec<entry<i64>> >,
                                 path: PathElems,
                                 abi: AbiSet) {
-    {
-        let mut index = index.borrow_mut();
-        index.get().push(entry {
-            val: nitem.id as i64,
-            pos: ebml_w.writer.tell().unwrap(),
-        });
-    }
+    index.borrow_mut().push(entry {
+        val: nitem.id as i64,
+        pos: ebml_w.writer.tell().unwrap(),
+    });
 
     ebml_w.start_tag(tag_items_data_item);
     encode_def_id(ebml_w, local_def(nitem.id));
@@ -1347,13 +1318,10 @@ fn encode_info_for_items(ecx: &EncodeContext,
                          -> Vec<entry<i64>> {
     let index = @RefCell::new(Vec::new());
     ebml_w.start_tag(tag_items_data);
-    {
-        let mut index = index.borrow_mut();
-        index.get().push(entry {
-            val: CRATE_NODE_ID as i64,
-            pos: ebml_w.writer.tell().unwrap(),
-        });
-    }
+    index.borrow_mut().push(entry {
+        val: CRATE_NODE_ID as i64,
+        pos: ebml_w.writer.tell().unwrap(),
+    });
     encode_info_for_mod(ecx,
                         ebml_w,
                         &krate.module,
@@ -1390,8 +1358,7 @@ fn create_index<T:Clone + Hash + 'static>(
     }
     for elt in index.iter() {
         let h = hash::hash(&elt.val) as uint;
-        let mut bucket = buckets.get_mut(h % 256).borrow_mut();
-        bucket.get().push((*elt).clone());
+        buckets.get_mut(h % 256).borrow_mut().push((*elt).clone());
     }
 
     let mut buckets_frozen = Vec::new();
@@ -1584,9 +1551,8 @@ fn encode_lang_items(ecx: &EncodeContext, ebml_w: &mut writer::Encoder) {
 fn encode_native_libraries(ecx: &EncodeContext, ebml_w: &mut writer::Encoder) {
     ebml_w.start_tag(tag_native_libraries);
 
-    let used_libraries = ecx.tcx.sess.cstore.get_used_libraries();
-    let used_libraries = used_libraries.borrow();
-    for &(ref lib, kind) in used_libraries.get().iter() {
+    for &(ref lib, kind) in ecx.tcx.sess.cstore.get_used_libraries()
+                               .borrow().iter() {
         match kind {
             cstore::NativeStatic => {} // these libraries are not propagated
             cstore::NativeFramework | cstore::NativeUnknown => {
@@ -1609,8 +1575,7 @@ fn encode_native_libraries(ecx: &EncodeContext, ebml_w: &mut writer::Encoder) {
 }
 
 fn encode_macro_registrar_fn(ecx: &EncodeContext, ebml_w: &mut writer::Encoder) {
-    let ptr = ecx.tcx.sess.macro_registrar_fn.borrow();
-    match *ptr.get() {
+    match *ecx.tcx.sess.macro_registrar_fn.borrow() {
         Some(did) => {
             ebml_w.start_tag(tag_macro_registrar_fn);
             encode_def_id(ebml_w, did);
@@ -1665,8 +1630,7 @@ impl<'a,'b> Visitor<()> for ImplVisitor<'a,'b> {
         match item.node {
             ItemImpl(_, Some(ref trait_ref), _, _) => {
                 let def_map = self.ecx.tcx.def_map;
-                let def_map = def_map.borrow();
-                let trait_def = def_map.get().get_copy(&trait_ref.ref_id);
+                let trait_def = def_map.borrow().get_copy(&trait_ref.ref_id);
                 let def_id = ast_util::def_id_of_def(trait_def);
 
                 // Load eagerly if this is an implementation of the Drop trait

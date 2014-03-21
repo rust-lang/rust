@@ -103,7 +103,7 @@ fn check_expr(v: &mut CheckCrateVisitor, e: &Expr, is_const: bool) {
           ExprLit(lit) if ast_util::lit_is_str(lit) => {}
           ExprBinary(..) | ExprUnary(..) => {
             let method_call = typeck::MethodCall::expr(e.id);
-            if v.method_map.borrow().get().contains_key(&method_call) {
+            if v.method_map.borrow().contains_key(&method_call) {
                 v.tcx.sess.span_err(e.span, "user-defined operators are not \
                                              allowed in constant expressions");
             }
@@ -127,7 +127,7 @@ fn check_expr(v: &mut CheckCrateVisitor, e: &Expr, is_const: bool) {
                                     "paths in constants may only refer to \
                                      items without type parameters");
             }
-            match v.def_map.borrow().get().find(&e.id) {
+            match v.def_map.borrow().find(&e.id) {
               Some(&DefStatic(..)) |
               Some(&DefFn(_, _)) |
               Some(&DefVariant(_, _, _)) |
@@ -145,7 +145,7 @@ fn check_expr(v: &mut CheckCrateVisitor, e: &Expr, is_const: bool) {
             }
           }
           ExprCall(callee, _) => {
-            match v.def_map.borrow().get().find(&callee.id) {
+            match v.def_map.borrow().find(&callee.id) {
                 Some(&DefStruct(..)) => {}    // OK.
                 Some(&DefVariant(..)) => {}    // OK.
                 _ => {
@@ -221,8 +221,7 @@ impl<'a> Visitor<()> for CheckItemRecursionVisitor<'a> {
     fn visit_expr(&mut self, e: &Expr, _: ()) {
         match e.node {
             ExprPath(..) => {
-                let def_map = self.def_map.borrow();
-                match def_map.get().find(&e.id) {
+                match self.def_map.borrow().find(&e.id) {
                     Some(&DefStatic(def_id, _)) if
                             ast_util::is_local(def_id) => {
                         self.visit_item(self.ast_map.expect_item(def_id.node), ());

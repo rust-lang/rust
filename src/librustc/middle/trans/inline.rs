@@ -22,21 +22,18 @@ use syntax::attr;
 pub fn maybe_instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
     -> ast::DefId {
     let _icx = push_ctxt("maybe_instantiate_inline");
-    {
-        let external = ccx.external.borrow();
-        match external.get().find(&fn_id) {
-            Some(&Some(node_id)) => {
-                // Already inline
-                debug!("maybe_instantiate_inline({}): already inline as node id {}",
-                       ty::item_path_str(ccx.tcx(), fn_id), node_id);
-                return local_def(node_id);
-            }
-            Some(&None) => {
-                return fn_id; // Not inlinable
-            }
-            None => {
-                // Not seen yet
-            }
+    match ccx.external.borrow().find(&fn_id) {
+        Some(&Some(node_id)) => {
+            // Already inline
+            debug!("maybe_instantiate_inline({}): already inline as node id {}",
+                   ty::item_path_str(ccx.tcx(), fn_id), node_id);
+            return local_def(node_id);
+        }
+        Some(&None) => {
+            return fn_id; // Not inlinable
+        }
+        None => {
+            // Not seen yet
         }
     }
 
@@ -46,17 +43,12 @@ pub fn maybe_instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
             |a,b,c,d| astencode::decode_inlined_item(a, b, &ccx.maps, c, d));
     return match csearch_result {
         csearch::not_found => {
-            let mut external = ccx.external.borrow_mut();
-            external.get().insert(fn_id, None);
+            ccx.external.borrow_mut().insert(fn_id, None);
             fn_id
         }
         csearch::found(ast::IIItem(item)) => {
-            {
-                let mut external = ccx.external.borrow_mut();
-                let mut external_srcs = ccx.external_srcs.borrow_mut();
-                external.get().insert(fn_id, Some(item.id));
-                external_srcs.get().insert(item.id, fn_id);
-            }
+            ccx.external.borrow_mut().insert(fn_id, Some(item.id));
+            ccx.external_srcs.borrow_mut().insert(item.id, fn_id);
 
             ccx.stats.n_inlines.set(ccx.stats.n_inlines.get() + 1);
             trans_item(ccx, item);
@@ -85,21 +77,13 @@ pub fn maybe_instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
             local_def(item.id)
         }
         csearch::found(ast::IIForeign(item)) => {
-            {
-                let mut external = ccx.external.borrow_mut();
-                let mut external_srcs = ccx.external_srcs.borrow_mut();
-                external.get().insert(fn_id, Some(item.id));
-                external_srcs.get().insert(item.id, fn_id);
-            }
+            ccx.external.borrow_mut().insert(fn_id, Some(item.id));
+            ccx.external_srcs.borrow_mut().insert(item.id, fn_id);
             local_def(item.id)
         }
         csearch::found_parent(parent_id, ast::IIItem(item)) => {
-            {
-                let mut external = ccx.external.borrow_mut();
-                let mut external_srcs = ccx.external_srcs.borrow_mut();
-                external.get().insert(parent_id, Some(item.id));
-                external_srcs.get().insert(item.id, parent_id);
-            }
+            ccx.external.borrow_mut().insert(parent_id, Some(item.id));
+            ccx.external_srcs.borrow_mut().insert(item.id, parent_id);
 
           let mut my_id = 0;
           match item.node {
@@ -108,16 +92,14 @@ pub fn maybe_instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
               let vs_there = ty::enum_variants(ccx.tcx(), parent_id);
               for (here, there) in vs_here.iter().zip(vs_there.iter()) {
                   if there.id == fn_id { my_id = here.id.node; }
-                  let mut external = ccx.external.borrow_mut();
-                  external.get().insert(there.id, Some(here.id.node));
+                  ccx.external.borrow_mut().insert(there.id, Some(here.id.node));
               }
             }
             ast::ItemStruct(ref struct_def, _) => {
               match struct_def.ctor_id {
                 None => {}
                 Some(ctor_id) => {
-                    let mut external = ccx.external.borrow_mut();
-                    let _ = external.get().insert(fn_id, Some(ctor_id));
+                    ccx.external.borrow_mut().insert(fn_id, Some(ctor_id));
                     my_id = ctor_id;
                 }
               }
@@ -133,12 +115,8 @@ pub fn maybe_instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
              with a non-item parent");
         }
         csearch::found(ast::IIMethod(impl_did, is_provided, mth)) => {
-            {
-                let mut external = ccx.external.borrow_mut();
-                let mut external_srcs = ccx.external_srcs.borrow_mut();
-                external.get().insert(fn_id, Some(mth.id));
-                external_srcs.get().insert(mth.id, fn_id);
-            }
+            ccx.external.borrow_mut().insert(fn_id, Some(mth.id));
+            ccx.external_srcs.borrow_mut().insert(mth.id, fn_id);
 
           ccx.stats.n_inlines.set(ccx.stats.n_inlines.get() + 1);
 

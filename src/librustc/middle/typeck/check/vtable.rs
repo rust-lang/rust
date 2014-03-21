@@ -321,15 +321,10 @@ fn search_for_vtable(vcx: &VtableContext,
 
     // FIXME: this is a bad way to do this, since we do
     // pointless allocations.
-    let impls = {
-        let trait_impls = tcx.trait_impls.borrow();
-        trait_impls.get()
-                   .find(&trait_ref.def_id)
-                   .map_or(@RefCell::new(Vec::new()), |x| *x)
-    };
+    let impls = tcx.trait_impls.borrow().find(&trait_ref.def_id)
+                               .map_or(@RefCell::new(Vec::new()), |x| *x);
     // impls is the list of all impls in scope for trait_ref.
-    let impls = impls.borrow();
-    for im in impls.get().iter() {
+    for im in impls.borrow().iter() {
         // im is one specific impl of trait_ref.
 
         // First, ensure we haven't processed this impl yet.
@@ -524,7 +519,7 @@ fn connect_trait_tps(vcx: &VtableContext,
 fn insert_vtables(fcx: &FnCtxt, expr_id: ast::NodeId, vtables: vtable_res) {
     debug!("insert_vtables(expr_id={}, vtables={:?})",
            expr_id, vtables.repr(fcx.tcx()));
-    fcx.inh.vtable_map.borrow_mut().get().insert(expr_id, vtables);
+    fcx.inh.vtable_map.borrow_mut().insert(expr_id, vtables);
 }
 
 pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
@@ -640,8 +635,7 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
         fcx.opt_node_ty_substs(ex.id, |substs| {
             debug!("vtable resolution on parameter bounds for expr {}",
                    ex.repr(fcx.tcx()));
-            let def_map = cx.tcx.def_map.borrow();
-            let def = def_map.get().get_copy(&ex.id);
+            let def = cx.tcx.def_map.borrow().get_copy(&ex.id);
             let did = ast_util::def_id_of_def(def);
             let item_ty = ty::lookup_item_type(cx.tcx, did);
             debug!("early resolve expr: def {:?} {:?}, {:?}, {}", ex.id, did, def,
@@ -667,7 +661,7 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
       ast::ExprAssignOp(_, _, _) |
       ast::ExprIndex(_, _) |
       ast::ExprMethodCall(_, _, _) => {
-        match fcx.inh.method_map.borrow().get().find(&MethodCall::expr(ex.id)) {
+        match fcx.inh.method_map.borrow().find(&MethodCall::expr(ex.id)) {
           Some(method) => {
             debug!("vtable resolution on parameter bounds for method call {}",
                    ex.repr(fcx.tcx()));
@@ -696,8 +690,7 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
     }
 
     // Search for auto-adjustments to find trait coercions
-    let adjustments = fcx.inh.adjustments.borrow();
-    match adjustments.get().find(&ex.id) {
+    match fcx.inh.adjustments.borrow().find(&ex.id) {
         Some(adjustment) => {
             match **adjustment {
                 AutoObject(ref sigil,
@@ -779,8 +772,7 @@ pub fn resolve_impl(tcx: &ty::ctxt,
     };
     let impl_def_id = ast_util::local_def(impl_item.id);
 
-    let mut impl_vtables = tcx.impl_vtables.borrow_mut();
-    impl_vtables.get().insert(impl_def_id, res);
+    tcx.impl_vtables.borrow_mut().insert(impl_def_id, res);
 }
 
 /// Resolve vtables for a method call after typeck has finished.

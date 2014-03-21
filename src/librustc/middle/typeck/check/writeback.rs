@@ -67,7 +67,7 @@ fn resolve_method_map_entry(wbcx: &mut WbCtxt, sp: Span, method_call: MethodCall
     let tcx = fcx.ccx.tcx;
 
     // Resolve any method map entry
-    match fcx.inh.method_map.borrow().get().find(&method_call) {
+    match fcx.inh.method_map.borrow().find(&method_call) {
         Some(method) => {
             debug!("writeback::resolve_method_map_entry(call={:?}, entry={:?})",
                    method_call, method.repr(tcx));
@@ -94,7 +94,7 @@ fn resolve_method_map_entry(wbcx: &mut WbCtxt, sp: Span, method_call: MethodCall
                     self_ty: None
                 }
             };
-            fcx.ccx.method_map.borrow_mut().get().insert(method_call, new_method);
+            fcx.ccx.method_map.borrow_mut().insert(method_call, new_method);
         }
         None => {}
     }
@@ -102,10 +102,10 @@ fn resolve_method_map_entry(wbcx: &mut WbCtxt, sp: Span, method_call: MethodCall
 
 fn resolve_vtable_map_entry(fcx: &FnCtxt, sp: Span, id: ast::NodeId) {
     // Resolve any vtable map entry
-    match fcx.inh.vtable_map.borrow().get().find_copy(&id) {
+    match fcx.inh.vtable_map.borrow().find_copy(&id) {
         Some(origins) => {
             let r_origins = resolve_origins(fcx, sp, origins);
-            fcx.ccx.vtable_map.borrow_mut().get().insert(id, r_origins);
+            fcx.ccx.vtable_map.borrow_mut().insert(id, r_origins);
             debug!("writeback::resolve_vtable_map_entry(id={}, vtables={:?})",
                     id, r_origins.repr(fcx.tcx()));
         }
@@ -141,8 +141,7 @@ fn resolve_type_vars_for_node(wbcx: &mut WbCtxt, sp: Span, id: ast::NodeId)
     let tcx = fcx.ccx.tcx;
 
     // Resolve any borrowings for the node with id `id`
-    let adjustment = fcx.inh.adjustments.borrow().get().find_copy(&id);
-    match adjustment {
+    match fcx.inh.adjustments.borrow().find_copy(&id) {
         None => (),
 
         Some(adjustment) => {
@@ -163,7 +162,7 @@ fn resolve_type_vars_for_node(wbcx: &mut WbCtxt, sp: Span, id: ast::NodeId)
                             // FIXME(eddyb) #2190 Allow only statically resolved
                             // bare functions to coerce to a closure to avoid
                             // constructing (slower) indirect call wrappers.
-                            match tcx.def_map.borrow().get().find(&id) {
+                            match tcx.def_map.borrow().find(&id) {
                                 Some(&ast::DefFn(..)) |
                                 Some(&ast::DefStaticMethod(..)) |
                                 Some(&ast::DefVariant(..)) |
@@ -175,7 +174,7 @@ fn resolve_type_vars_for_node(wbcx: &mut WbCtxt, sp: Span, id: ast::NodeId)
                             let resolved_adj = @ty::AutoAddEnv(r1, s);
                             debug!("Adjustments for node {}: {:?}",
                                    id, resolved_adj);
-                            tcx.adjustments.borrow_mut().get().insert(id, resolved_adj);
+                            tcx.adjustments.borrow_mut().insert(id, resolved_adj);
                         }
                     }
                 }
@@ -213,12 +212,12 @@ fn resolve_type_vars_for_node(wbcx: &mut WbCtxt, sp: Span, id: ast::NodeId)
                         autoref: resolved_autoref,
                     });
                     debug!("Adjustments for node {}: {:?}", id, resolved_adj);
-                    tcx.adjustments.borrow_mut().get().insert(id, resolved_adj);
+                    tcx.adjustments.borrow_mut().insert(id, resolved_adj);
                 }
 
                 ty::AutoObject(..) => {
                     debug!("Adjustments for node {}: {:?}", id, adjustment);
-                    tcx.adjustments.borrow_mut().get().insert(id, adjustment);
+                    tcx.adjustments.borrow_mut().insert(id, adjustment);
                 }
             }
         }
@@ -355,8 +354,7 @@ fn resolve_upvar_borrow_map(wbcx: &mut WbCtxt) {
 
     let fcx = wbcx.fcx;
     let tcx = fcx.tcx();
-    let upvar_borrow_map = fcx.inh.upvar_borrow_map.borrow();
-    for (upvar_id, upvar_borrow) in upvar_borrow_map.get().iter() {
+    for (upvar_id, upvar_borrow) in fcx.inh.upvar_borrow_map.borrow().iter() {
         let r = upvar_borrow.region;
         match resolve_region(fcx.infcx(), r, resolve_all | force_all) {
             Ok(r) => {
@@ -366,8 +364,8 @@ fn resolve_upvar_borrow_map(wbcx: &mut WbCtxt) {
                 };
                 debug!("Upvar borrow for {} resolved to {}",
                        upvar_id.repr(tcx), new_upvar_borrow.repr(tcx));
-                let mut tcx_upvar_borrow_map = tcx.upvar_borrow_map.borrow_mut();
-                tcx_upvar_borrow_map.get().insert(*upvar_id, new_upvar_borrow);
+                tcx.upvar_borrow_map.borrow_mut().insert(*upvar_id,
+                                                         new_upvar_borrow);
             }
             Err(e) => {
                 let span = ty::expr_span(tcx, upvar_id.closure_expr_id);

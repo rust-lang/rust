@@ -252,8 +252,7 @@ impl<'a> Visitor<()> for EmbargoVisitor<'a> {
             ast::ItemImpl(_, _, ref ty, ref methods) => {
                 let public_ty = match ty.node {
                     ast::TyPath(_, _, id) => {
-                        let def_map = self.tcx.def_map.borrow();
-                        match def_map.get().get_copy(&id) {
+                        match self.tcx.def_map.borrow().get_copy(&id) {
                             ast::DefPrimTy(..) => true,
                             def => {
                                 let did = def_id_of_def(def);
@@ -328,8 +327,8 @@ impl<'a> Visitor<()> for EmbargoVisitor<'a> {
         // crate module gets processed as well.
         if self.prev_exported {
             let exp_map2 = self.exp_map2.borrow();
-            assert!(exp_map2.get().contains_key(&id), "wut {:?}", id);
-            for export in exp_map2.get().get(&id).iter() {
+            assert!(exp_map2.contains_key(&id), "wut {:?}", id);
+            for export in exp_map2.get(&id).iter() {
                 if is_local(export.def_id) {
                     self.reexports.insert(export.def_id.node);
                 }
@@ -376,8 +375,7 @@ impl<'a> PrivacyVisitor<'a> {
             }
             debug!("privacy - is {:?} a public method", did);
 
-            let methods = self.tcx.methods.borrow();
-            return match methods.get().find(&did) {
+            return match self.tcx.methods.borrow().find(&did) {
                 Some(meth) => {
                     debug!("privacy - well at least it's a method: {:?}", meth);
                     match meth.container {
@@ -639,8 +637,7 @@ impl<'a> PrivacyVisitor<'a> {
     // Checks that a path is in scope.
     fn check_path(&mut self, span: Span, path_id: ast::NodeId, path: &ast::Path) {
         debug!("privacy - path {}", self.nodestr(path_id));
-        let def_map = self.tcx.def_map.borrow();
-        let orig_def = def_map.get().get_copy(&path_id);
+        let orig_def = self.tcx.def_map.borrow().get_copy(&path_id);
         let ck = |tyname: &str| {
             let ck_public = |def: ast::DefId| {
                 let name = token::get_ident(path.segments
@@ -722,8 +719,7 @@ impl<'a> PrivacyVisitor<'a> {
         // def map is not. Therefore the names we work out below will not always
         // be accurate and we can get slightly wonky error messages (but type
         // checking is always correct).
-        let def_map = self.tcx.def_map.borrow();
-        match def_map.get().get_copy(&path_id) {
+        match self.tcx.def_map.borrow().get_copy(&path_id) {
             ast::DefStaticMethod(..) => ck("static method"),
             ast::DefFn(..) => ck("function"),
             ast::DefStatic(..) => ck("static"),
@@ -772,7 +768,7 @@ impl<'a> Visitor<()> for PrivacyVisitor<'a> {
         match expr.node {
             ast::ExprField(base, ident, _) => {
                 match ty::get(ty::expr_ty_adjusted(self.tcx, base,
-                                                   self.method_map.borrow().get())).sty {
+                                                   &*self.method_map.borrow())).sty {
                     ty::ty_struct(id, _) => {
                         self.check_field(expr.span, id, ident, None);
                     }
@@ -781,7 +777,7 @@ impl<'a> Visitor<()> for PrivacyVisitor<'a> {
             }
             ast::ExprMethodCall(ident, _, _) => {
                 let method_call = MethodCall::expr(expr.id);
-                match self.method_map.borrow().get().find(&method_call) {
+                match self.method_map.borrow().find(&method_call) {
                     None => {
                         self.tcx.sess.span_bug(expr.span,
                                                 "method call not in \
@@ -802,8 +798,7 @@ impl<'a> Visitor<()> for PrivacyVisitor<'a> {
                         }
                     }
                     ty::ty_enum(_, _) => {
-                        let def_map = self.tcx.def_map.borrow();
-                        match def_map.get().get_copy(&expr.id) {
+                        match self.tcx.def_map.borrow().get_copy(&expr.id) {
                             ast::DefVariant(enum_id, variant_id, _) => {
                                 for field in fields.iter() {
                                     self.check_field(expr.span, variant_id,
@@ -877,8 +872,7 @@ impl<'a> Visitor<()> for PrivacyVisitor<'a> {
                         }
                     }
                     ty::ty_enum(_, _) => {
-                        let def_map = self.tcx.def_map.borrow();
-                        match def_map.get().find(&pattern.id) {
+                        match self.tcx.def_map.borrow().find(&pattern.id) {
                             Some(&ast::DefVariant(enum_id, variant_id, _)) => {
                                 for field in fields.iter() {
                                     self.check_field(pattern.span, variant_id,
@@ -1176,7 +1170,7 @@ struct CheckTypeForPrivatenessVisitor<'a, 'b> {
 
 impl<'a> VisiblePrivateTypesVisitor<'a> {
     fn path_is_private_type(&self, path_id: ast::NodeId) -> bool {
-        let did = match self.tcx.def_map.borrow().get().find_copy(&path_id) {
+        let did = match self.tcx.def_map.borrow().find_copy(&path_id) {
             // `int` etc. (None doesn't seem to occur.)
             None | Some(ast::DefPrimTy(..)) => return false,
             Some(def) => def_id_of_def(def)

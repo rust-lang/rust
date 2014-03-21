@@ -239,16 +239,12 @@ pub fn register_foreign_item_fn(ccx: &CrateContext, abis: AbiSet,
     // Create the LLVM value for the C extern fn
     let llfn_ty = lltype_for_fn_from_foreign_types(ccx, &tys);
 
-    let llfn;
-    {
-        let mut externs = ccx.externs.borrow_mut();
-        llfn = base::get_extern_fn(externs.get(),
+    let llfn = base::get_extern_fn(&mut *ccx.externs.borrow_mut(),
                                    ccx.llmod,
                                    lname.get(),
                                    cc,
                                    llfn_ty,
                                    tys.fn_sig.output);
-    };
     add_argument_attributes(&tys, llfn);
 
     llfn
@@ -470,8 +466,8 @@ pub fn trans_foreign_mod(ccx: &CrateContext, foreign_mod: &ast::ForeignMod) {
         }
 
         let lname = link_name(foreign_item);
-        let mut item_symbols = ccx.item_symbols.borrow_mut();
-        item_symbols.get().insert(foreign_item.id, lname.get().to_owned());
+        ccx.item_symbols.borrow_mut().insert(foreign_item.id,
+                                             lname.get().to_owned());
     }
 }
 

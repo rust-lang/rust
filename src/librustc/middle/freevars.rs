@@ -51,8 +51,7 @@ impl Visitor<int> for CollectFreevarsVisitor {
             }
             ast::ExprPath(..) => {
                 let mut i = 0;
-                let def_map = self.def_map.borrow();
-                match def_map.get().find(&expr.id) {
+                match self.def_map.borrow().find(&expr.id) {
                     None => fail!("path not found"),
                     Some(&df) => {
                         let mut def = df;
@@ -141,8 +140,7 @@ pub fn annotate_freevars(def_map: resolve::DefMap, krate: &ast::Crate) ->
 }
 
 pub fn get_freevars(tcx: &ty::ctxt, fid: ast::NodeId) -> freevar_info {
-    let freevars = tcx.freevars.borrow();
-    match freevars.get().find(&fid) {
+    match tcx.freevars.borrow().find(&fid) {
         None => fail!("get_freevars: {} has no freevars", fid),
         Some(&d) => return d
     }

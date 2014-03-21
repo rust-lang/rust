@@ -194,8 +194,7 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
          * Returns the id of the top-most loop scope
          */
 
-        let scopes = self.scopes.borrow();
-        for scope in scopes.get().iter().rev() {
+        for scope in self.scopes.borrow().iter().rev() {
             match scope.kind {
                 LoopScopeKind(id, _) => {
                     return id;
@@ -316,8 +315,7 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
         debug!("schedule_clean_in_ast_scope(cleanup_scope={:?})",
                cleanup_scope);
 
-        let mut scopes = self.scopes.borrow_mut();
-        for scope in scopes.get().mut_iter().rev() {
+        for scope in self.scopes.borrow_mut().mut_iter().rev() {
             if scope.kind.is_ast_with_id(cleanup_scope) {
                 scope.cleanups.push(cleanup);
                 scope.clear_cached_exits();
@@ -347,7 +345,7 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
         assert!(self.is_valid_custom_scope(custom_scope));
 
         let mut scopes = self.scopes.borrow_mut();
-        let scope = scopes.get().get_mut(custom_scope.index);
+        let scope = scopes.get_mut(custom_scope.index);
         scope.cleanups.push(cleanup);
         scope.clear_cached_exits();
     }
@@ -358,8 +356,7 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
          * execute on failure.
          */
 
-        let scopes = self.scopes.borrow();
-        scopes.get().iter().rev().any(|s| s.needs_invoke())
+        self.scopes.borrow().iter().rev().any(|s| s.needs_invoke())
     }
 
     fn get_landing_pad(&'a self) -> BasicBlockRef {
@@ -405,8 +402,7 @@ impl<'a> CleanupHelperMethods<'a> for FunctionContext<'a> {
         /*!
          * Returns the id of the current top-most AST scope, if any.
          */
-        let scopes = self.scopes.borrow();
-        for scope in scopes.get().iter().rev() {
+        for scope in self.scopes.borrow().iter().rev() {
             match scope.kind {
                 CustomScopeKind | LoopScopeKind(..) => {}
                 AstScopeKind(i) => {
@@ -418,20 +414,18 @@ impl<'a> CleanupHelperMethods<'a> for FunctionContext<'a> {
     }
 
     fn top_nonempty_cleanup_scope(&self) -> Option<uint> {
-        let scopes = self.scopes.borrow();
-        scopes.get().iter().rev().position(|s| !s.cleanups.is_empty())
+        self.scopes.borrow().iter().rev().position(|s| !s.cleanups.is_empty())
     }
 
     fn is_valid_to_pop_custom_scope(&self, custom_scope: CustomScopeIndex) -> bool {
-        let scopes = self.scopes.borrow();
         self.is_valid_custom_scope(custom_scope) &&
-            custom_scope.index == scopes.get().len() - 1
+            custom_scope.index == self.scopes.borrow().len() - 1
     }
 
     fn is_valid_custom_scope(&self, custom_scope: CustomScopeIndex) -> bool {
         let scopes = self.scopes.borrow();
-        custom_scope.index < scopes.get().len() &&
-            scopes.get().get(custom_scope.index).kind.is_temp()
+        custom_scope.index < scopes.len() &&
+            scopes.get(custom_scope.index).kind.is_temp()
     }
 
     fn trans_scope_cleanups(&self, // cannot borrow self, will recurse
@@ -449,13 +443,11 @@ impl<'a> CleanupHelperMethods<'a> for FunctionContext<'a> {
     }
 
     fn scopes_len(&self) -> uint {
-        let scopes = self.scopes.borrow();
-        scopes.get().len()
+        self.scopes.borrow().len()
     }
 
     fn push_scope(&self, scope: CleanupScope<'a>) {
-        let mut scopes = self.scopes.borrow_mut();
-        scopes.get().push(scope);
+        self.scopes.borrow_mut().push(scope)
     }
 
     fn pop_scope(&self) -> CleanupScope<'a> {
@@ -463,13 +455,11 @@ impl<'a> CleanupHelperMethods<'a> for FunctionContext<'a> {
                self.top_scope(|s| s.block_name("")),
                self.scopes_len() - 1);
 
-        let mut scopes = self.scopes.borrow_mut();
-        scopes.get().pop().unwrap()
+        self.scopes.borrow_mut().pop().unwrap()
     }
 
     fn top_scope<R>(&self, f: |&CleanupScope<'a>| -> R) -> R {
-        let scopes = self.scopes.borrow();
-        f(scopes.get().last().unwrap())
+        f(self.scopes.borrow().last().unwrap())
     }
 
     fn trans_cleanups_to_exit_scope(&'a self,
@@ -653,7 +643,7 @@ impl<'a> CleanupHelperMethods<'a> for FunctionContext<'a> {
         // Check if a landing pad block exists; if not, create one.
         {
             let mut scopes = self.scopes.borrow_mut();
-            let last_scope = scopes.get().mut_last().unwrap();
+            let last_scope = scopes.mut_last().unwrap();
             match last_scope.cached_landing_pad {
                 Some(llbb) => { return llbb; }
                 None => {

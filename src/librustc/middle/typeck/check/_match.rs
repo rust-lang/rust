@@ -364,8 +364,7 @@ pub fn check_struct_pat(pcx: &pat_ctxt, pat_id: ast::NodeId, span: Span,
     let class_fields = ty::lookup_struct_fields(tcx, struct_id);
 
     // Check to ensure that the struct is the one specified.
-    let def_map = tcx.def_map.borrow();
-    match def_map.get().find(&pat_id) {
+    match tcx.def_map.borrow().find(&pat_id) {
         Some(&ast::DefStruct(supplied_def_id))
                 if supplied_def_id == struct_id => {
             // OK.
@@ -399,8 +398,7 @@ pub fn check_struct_like_enum_variant_pat(pcx: &pat_ctxt,
     let tcx = pcx.fcx.ccx.tcx;
 
     // Find the variant that was specified.
-    let def_map = tcx.def_map.borrow();
-    match def_map.get().find(&pat_id) {
+    match tcx.def_map.borrow().find(&pat_id) {
         Some(&ast::DefVariant(found_enum_id, variant_id, _))
                 if found_enum_id == enum_id => {
             // Get the struct fields from this struct-like enum variant.
@@ -470,9 +468,8 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
       }
       ast::PatEnum(..) |
       ast::PatIdent(..) if pat_is_const(tcx.def_map, pat) => {
-        let def_map = tcx.def_map.borrow();
-        let const_did = ast_util::def_id_of_def(def_map.get()
-                                                       .get_copy(&pat.id));
+        let const_did = ast_util::def_id_of_def(tcx.def_map.borrow()
+                                                   .get_copy(&pat.id));
         let const_tpt = ty::lookup_item_type(tcx, const_did);
         demand::suptype(fcx, pat.span, expected, const_tpt.ty);
         fcx.write_ty(pat.id, const_tpt.ty);
@@ -548,8 +545,7 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
                                          e, actual)})},
                                          Some(expected), ~"a structure pattern",
                                          None);
-                let def_map = tcx.def_map.borrow();
-                match def_map.get().find(&pat.id) {
+                match tcx.def_map.borrow().find(&pat.id) {
                     Some(&ast::DefStruct(supplied_def_id)) => {
                          check_struct_pat(pcx,
                                           pat.id,
