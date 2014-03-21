@@ -165,7 +165,14 @@ $(foreach host,$(CFG_HOST),$(eval $(call DEF_OSX_PKG,$(host))))
 
 dist-osx: $(foreach host,$(CFG_HOST),dist/$(PKG_NAME)-$(host).pkg)
 
+else
+
+dist-osx:
+
 endif
+
+# FIXME should do something
+distcheck-osx:
 
 
 ######################################################################
@@ -223,6 +230,7 @@ distcheck-tar-bins: dist-tar-bins
 # Just copy the docs to a folder under dist with the appropriate name
 # for uploading to S3
 dist-docs: docs compiler-docs
+	$(Q) rm -Rf dist/doc
 	$(Q) mkdir -p dist/doc/
 	$(Q) cp -r doc dist/doc/$(CFG_PACKAGE_VERS)
 
@@ -239,18 +247,18 @@ distcheck: dist
 	$(Q)rm -Rf tmp/distcheck
 	@echo
 	@echo -----------------------------------------------
-	@echo Rust ready for distribution (see ./dist)
+	@echo "Rust ready for distribution (see ./dist)"
 	@echo -----------------------------------------------
 
 else
 
-dist: dist-tar-src
+dist: dist-tar-src dist-osx dist-tar-bins dist-docs
 
-distcheck: dist distcheck-tar-src
+distcheck: dist distcheck-tar-src distcheck-osx distcheck-tar-bins
 	$(Q)rm -Rf tmp/distcheck
 	@echo
 	@echo -----------------------------------------------
-	@echo Rust ready for distribution (see ./dist)
+	@echo "Rust ready for distribution (see ./dist)"
 	@echo -----------------------------------------------
 
 endif
