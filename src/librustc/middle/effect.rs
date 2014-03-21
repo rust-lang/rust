@@ -56,8 +56,7 @@ impl<'a> EffectCheckVisitor<'a> {
             UnsafeBlock(block_id) => {
                 // OK, but record this.
                 debug!("effect: recording unsafe block as used: {:?}", block_id);
-                let mut used_unsafe = self.tcx.used_unsafe.borrow_mut();
-                let _ = used_unsafe.get().insert(block_id);
+                self.tcx.used_unsafe.borrow_mut().insert(block_id);
             }
             UnsafeFn => {}
         }
@@ -139,7 +138,7 @@ impl<'a> Visitor<()> for EffectCheckVisitor<'a> {
         match expr.node {
             ast::ExprMethodCall(_, _, _) => {
                 let method_call = MethodCall::expr(expr.id);
-                let base_type = self.method_map.borrow().get().get(&method_call).ty;
+                let base_type = self.method_map.borrow().get(&method_call).ty;
                 debug!("effect: method call case, base type is {}",
                        ppaux::ty_to_str(self.tcx, base_type));
                 if type_is_unsafe_function(base_type) {

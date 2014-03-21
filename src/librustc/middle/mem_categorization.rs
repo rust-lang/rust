@@ -455,8 +455,7 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
           }
 
           ast::ExprPath(_) => {
-            let def_map = self.tcx().def_map.borrow();
-            let def = def_map.get().get_copy(&expr.id);
+            let def = self.tcx().def_map.borrow().get_copy(&expr.id);
             self.cat_def(expr.id, expr.span, expr_ty, def)
           }
 
@@ -1010,8 +1009,7 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
             // variant(..)
           }
           ast::PatEnum(_, Some(ref subpats)) => {
-            let def_map = self.tcx().def_map.borrow();
-            match def_map.get().find(&pat.id) {
+            match self.tcx().def_map.borrow().find(&pat.id) {
                 Some(&ast::DefVariant(enum_did, _, _)) => {
                     // variant(x, y, z)
 
@@ -1202,8 +1200,7 @@ pub fn field_mutbl(tcx: &ty::ctxt,
         }
       }
       ty::ty_enum(..) => {
-        let def_map = tcx.def_map.borrow();
-        match def_map.get().get_copy(&node_id) {
+        match tcx.def_map.borrow().get_copy(&node_id) {
           ast::DefVariant(_, variant_id, _) => {
             let r = ty::lookup_struct_fields(tcx, variant_id);
             for fld in r.iter() {

@@ -466,8 +466,8 @@ impl<'a> LookupContext<'a> {
         ty::populate_implementations_for_trait_if_necessary(self.tcx(), trait_did);
 
         // Look for explicit implementations.
-        for impl_infos in self.tcx().trait_impls.borrow().get().find(&trait_did).iter() {
-            for impl_info in impl_infos.borrow().get().iter() {
+        for impl_infos in self.tcx().trait_impls.borrow().find(&trait_did).iter() {
+            for impl_info in impl_infos.borrow().iter() {
                 self.push_candidates_from_impl(*impl_info, true);
             }
         }
@@ -641,8 +641,8 @@ impl<'a> LookupContext<'a> {
         // metadata if necessary.
         ty::populate_implementations_for_type_if_necessary(self.tcx(), did);
 
-        for impl_infos in self.tcx().inherent_impls.borrow().get().find(&did).iter() {
-            for impl_info in impl_infos.borrow().get().iter() {
+        for impl_infos in self.tcx().inherent_impls.borrow().find(&did).iter() {
+            for impl_info in impl_infos.borrow().iter() {
                 self.push_candidates_from_impl(*impl_info, false);
             }
         }
@@ -1259,17 +1259,14 @@ impl<'a> LookupContext<'a> {
         let bad;
         match candidate.origin {
             MethodStatic(method_id) => {
-                let destructors = self.tcx().destructors.borrow();
-                bad = destructors.get().contains(&method_id);
+                bad = self.tcx().destructors.borrow().contains(&method_id);
             }
             // FIXME: does this properly enforce this on everything now
             // that self has been merged in? -sully
             MethodParam(MethodParam { trait_id: trait_id, .. }) |
             MethodObject(MethodObject { trait_id: trait_id, .. }) => {
-                let destructor_for_type = self.tcx()
-                                              .destructor_for_type
-                                              .borrow();
-                bad = destructor_for_type.get().contains_key(&trait_id);
+                bad = self.tcx().destructor_for_type.borrow()
+                          .contains_key(&trait_id);
             }
         }
 

@@ -455,7 +455,7 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
     match expr.node {
       // live nodes required for uses or definitions of variables:
       ExprPath(_) => {
-        let def = ir.tcx.def_map.borrow().get().get_copy(&expr.id);
+        let def = ir.tcx.def_map.borrow().get_copy(&expr.id);
         debug!("expr {}: path that leads to {:?}", expr.id, def);
         if moves::moved_variable_node_id_from_def(def).is_some() {
             ir.add_live_node_for_node(expr.id, ExprNode(expr.span));
@@ -707,7 +707,7 @@ impl<'a> Liveness<'a> {
             Some(_) => {
                 // Refers to a labeled loop. Use the results of resolve
                 // to find with one
-                match self.ir.tcx.def_map.borrow().get().find(&id) {
+                match self.ir.tcx.def_map.borrow().find(&id) {
                     Some(&DefLabel(loop_id)) => loop_id,
                     _ => self.ir.tcx.sess.span_bug(sp, "label on break/loop \
                                                         doesn't refer to a loop")
@@ -1274,7 +1274,7 @@ impl<'a> Liveness<'a> {
 
     fn access_path(&mut self, expr: &Expr, succ: LiveNode, acc: uint)
                    -> LiveNode {
-        let def = self.ir.tcx.def_map.borrow().get().get_copy(&expr.id);
+        let def = self.ir.tcx.def_map.borrow().get_copy(&expr.id);
         match moves::moved_variable_node_id_from_def(def) {
           Some(nid) => {
             let ln = self.live_node(expr.id, expr.span);
@@ -1490,7 +1490,7 @@ impl<'a> Liveness<'a> {
     fn check_lvalue(&mut self, expr: &Expr) {
         match expr.node {
           ExprPath(_) => {
-            match self.ir.tcx.def_map.borrow().get().get_copy(&expr.id) {
+            match self.ir.tcx.def_map.borrow().get_copy(&expr.id) {
               DefLocal(nid, _) => {
                 // Assignment to an immutable variable or argument: only legal
                 // if there is no later assignment. If this local is actually

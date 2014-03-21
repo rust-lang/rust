@@ -273,8 +273,7 @@ pub fn trans_break_cont<'a>(bcx: &'a Block<'a>,
     let loop_id = match opt_label {
         None => fcx.top_loop_scope(),
         Some(_) => {
-            let def_map = bcx.tcx().def_map.borrow();
-            match def_map.get().find(&expr_id) {
+            match bcx.tcx().def_map.borrow().find(&expr_id) {
                 Some(&ast::DefLabel(loop_id)) => loop_id,
                 ref r => {
                     bcx.tcx().sess.bug(format!("{:?} in def-map for label", r))

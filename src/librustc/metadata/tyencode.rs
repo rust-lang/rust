@@ -63,37 +63,27 @@ fn mywrite(w: &mut MemWriter, fmt: &fmt::Arguments) {
 pub fn enc_ty(w: &mut MemWriter, cx: &ctxt, t: ty::t) {
     match cx.abbrevs {
       ac_no_abbrevs => {
-          let result_str_opt;
-          {
-              let short_names_cache = cx.tcx.short_names_cache.borrow();
-              result_str_opt = short_names_cache.get()
-                                                .find(&t)
-                                                .map(|result| {
-                                                    (*result).clone()
-                                                });
-          }
+          let result_str_opt = cx.tcx.short_names_cache.borrow()
+                                            .find(&t)
+                                            .map(|result| {
+                                                (*result).clone()
+                                            });
           let result_str = match result_str_opt {
             Some(s) => s,
             None => {
                 let wr = &mut MemWriter::new();
                 enc_sty(wr, cx, &ty::get(t).sty);
                 let s = str::from_utf8(wr.get_ref()).unwrap();
-                let mut short_names_cache = cx.tcx
-                                              .short_names_cache
-                                              .borrow_mut();
-                short_names_cache.get().insert(t, s.to_str());
+                cx.tcx.short_names_cache.borrow_mut().insert(t, s.to_str());
                 s.to_str()
             }
           };
           w.write(result_str.as_bytes());
       }
       ac_use_abbrevs(abbrevs) => {
-          {
-              let mut abbrevs = abbrevs.borrow_mut();
-              match abbrevs.get().find(&t) {
-                  Some(a) => { w.write(a.s.as_bytes()); return; }
-                  None => {}
-              }
+          match abbrevs.borrow_mut().find(&t) {
+              Some(a) => { w.write(a.s.as_bytes()); return; }
+              None => {}
           }
           let pos = w.tell().unwrap();
           enc_sty(w, cx, &ty::get(t).sty);
@@ -112,10 +102,7 @@ pub fn enc_ty(w: &mut MemWriter, cx: &ctxt, t: ty::t) {
               let a = ty_abbrev { pos: pos as uint,
                                   len: len as uint,
                                   s: s };
-              {
-                  let mut abbrevs = abbrevs.borrow_mut();
-                  abbrevs.get().insert(t, a);
-              }
+              abbrevs.borrow_mut().insert(t, a);
           }
           return;
       }

@@ -253,11 +253,11 @@ impl Session {
                     sp: Span,
                     msg: ~str) {
         let mut lints = self.lints.borrow_mut();
-        match lints.get().find_mut(&id) {
+        match lints.find_mut(&id) {
             Some(arr) => { arr.push((lint, sp, msg)); return; }
             None => {}
         }
-        lints.get().insert(id, vec!((lint, sp, msg)));
+        lints.insert(id, vec!((lint, sp, msg)));
     }
     pub fn next_node_id(&self) -> ast::NodeId {
         self.reserve_node_ids(1)

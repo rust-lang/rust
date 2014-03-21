@@ -252,8 +252,7 @@ pub struct CrateCtxt<'a> {
 pub fn write_ty_to_tcx(tcx: &ty::ctxt, node_id: ast::NodeId, ty: ty::t) {
     debug!("write_ty_to_tcx({}, {})", node_id, ppaux::ty_to_str(tcx, ty));
     assert!(!ty::type_needs_infer(ty));
-    let mut node_types = tcx.node_types.borrow_mut();
-    node_types.get().insert(node_id as uint, ty);
+    tcx.node_types.borrow_mut().insert(node_id as uint, ty);
 }
 pub fn write_substs_to_tcx(tcx: &ty::ctxt,
                            node_id: ast::NodeId,
@@ -263,8 +262,7 @@ pub fn write_substs_to_tcx(tcx: &ty::ctxt,
                substs.map(|t| ppaux::ty_to_str(tcx, *t)));
         assert!(substs.iter().all(|t| !ty::type_needs_infer(*t)));
 
-        let mut node_type_substs = tcx.node_type_substs.borrow_mut();
-        node_type_substs.get().insert(node_id, substs);
+        tcx.node_type_substs.borrow_mut().insert(node_id, substs);
     }
 }
 pub fn write_tpt_to_tcx(tcx: &ty::ctxt,
@@ -277,8 +275,7 @@ pub fn write_tpt_to_tcx(tcx: &ty::ctxt,
 }
 
 pub fn lookup_def_tcx(tcx:&ty::ctxt, sp: Span, id: ast::NodeId) -> ast::Def {
-    let def_map = tcx.def_map.borrow();
-    match def_map.get().find(&id) {
+    match tcx.def_map.borrow().find(&id) {
         Some(&x) => x,
         _ => {
             tcx.sess.span_fatal(sp, "internal error looking up a definition")

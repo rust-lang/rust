@@ -209,9 +209,8 @@ pub mod write {
             // Emit the bytecode if we're either saving our temporaries or
             // emitting an rlib. Whenever an rlib is created, the bytecode is
             // inserted into the archive in order to allow LTO against it.
-            let crate_types = sess.crate_types.borrow();
             if sess.opts.cg.save_temps ||
-               (crate_types.get().contains(&session::CrateTypeRlib) &&
+               (sess.crate_types.borrow().contains(&session::CrateTypeRlib) &&
                 sess.opts.output_types.contains(&OutputTypeExe)) {
                 output.temp_path(OutputTypeBitcode).with_c_str(|buf| {
                     llvm::LLVMWriteBitcodeToFile(llmod, buf);
@@ -550,15 +549,14 @@ fn symbol_hash(tcx: &ty::ctxt, symbol_hasher: &mut Sha256,
 }
 
 fn get_symbol_hash(ccx: &CrateContext, t: ty::t) -> ~str {
-    match ccx.type_hashcodes.borrow().get().find(&t) {
+    match ccx.type_hashcodes.borrow().find(&t) {
         Some(h) => return h.to_str(),
         None => {}
     }
 
-    let mut type_hashcodes = ccx.type_hashcodes.borrow_mut();
     let mut symbol_hasher = ccx.symbol_hasher.borrow_mut();
-    let hash = symbol_hash(ccx.tcx(), symbol_hasher.get(), t, &ccx.link_meta);
-    type_hashcodes.get().insert(t, hash.clone());
+    let hash = symbol_hash(ccx.tcx(), &mut *symbol_hasher, t, &ccx.link_meta);
+    ccx.type_hashcodes.borrow_mut().insert(t, hash.clone());
     hash
 }
 
@@ -779,8 +777,7 @@ pub fn link_binary(sess: &Session,
                    outputs: &OutputFilenames,
                    id: &CrateId) -> Vec<Path> {
     let mut out_filenames = Vec::new();
-    let crate_types = sess.crate_types.borrow();
-    for &crate_type in crate_types.get().iter() {
+    for &crate_type in sess.crate_types.borrow().iter() {
         let out_file = link_binary_output(sess, trans, crate_type, outputs, id);
         out_filenames.push(out_file);
     }
@@ -887,9 +884,7 @@ fn link_rlib<'a>(sess: &'a Session,
                  out_filename: &Path) -> Archive<'a> {
     let mut a = Archive::create(sess, out_filename, obj_filename);
 
-    let used_libraries = sess.cstore.get_used_libraries();
-    let used_libraries = used_libraries.borrow();
-    for &(ref l, kind) in used_libraries.get().iter() {
+    for &(ref l, kind) in sess.cstore.get_used_libraries().borrow().iter() {
         match kind {
             cstore::NativeStatic => {
                 a.add_native_library(l.as_slice()).unwrap();
@@ -1227,9 +1222,7 @@ fn link_args(sess: &Session,
     // Finally add all the linker arguments provided on the command line along
     // with any #[link_args] attributes found inside the crate
     args.push_all(sess.opts.cg.link_args.as_slice());
-    let used_link_args = sess.cstore.get_used_link_args();
-    let used_link_args = used_link_args.borrow();
-    for arg in used_link_args.get().iter() {
+    for arg in sess.cstore.get_used_link_args().borrow().iter() {
         args.push(arg.clone());
     }
     return args;
@@ -1247,8 +1240,7 @@ fn link_args(sess: &Session,
 // in the current crate. Upstream crates with native library dependencies
 // may have their native library pulled in above.
 fn add_local_native_libraries(args: &mut Vec<~str>, sess: &Session) {
-    let addl_lib_search_paths = sess.opts.addl_lib_search_paths.borrow();
-    for path in addl_lib_search_paths.get().iter() {
+    for path in sess.opts.addl_lib_search_paths.borrow().iter() {
         // FIXME (#9639): This needs to handle non-utf8 paths
         args.push("-L" + path.as_str().unwrap().to_owned());
     }
@@ -1259,9 +1251,7 @@ fn add_local_native_libraries(args: &mut Vec<~str>, sess: &Session) {
         args.push("-L" + path.as_str().unwrap().to_owned());
     }
 
-    let used_libraries = sess.cstore.get_used_libraries();
-    let used_libraries = used_libraries.borrow();
-    for &(ref l, kind) in used_libraries.get().iter() {
+    for &(ref l, kind) in sess.cstore.get_used_libraries().borrow().iter() {
         match kind {
             cstore::NativeUnknown | cstore::NativeStatic => {
                 args.push("-l" + *l);

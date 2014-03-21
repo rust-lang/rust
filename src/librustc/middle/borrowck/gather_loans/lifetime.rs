@@ -237,8 +237,7 @@ impl<'a> GuaranteeLifetimeContext<'a> {
         let rm_key = root_map_key {id: cmt_deref.id, derefs: derefs};
         let root_info = RootInfo {scope: root_scope};
 
-        let mut root_map = self.bccx.root_map.borrow_mut();
-        root_map.get().insert(rm_key, root_info);
+        self.bccx.root_map.borrow_mut().insert(rm_key, root_info);
 
         debug!("root_key: {:?} root_info: {:?}", rm_key, root_info);
         Ok(())

@@ -27,8 +27,7 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
     }
 
     // Make sure we actually can run LTO
-    let crate_types = sess.crate_types.borrow();
-    for crate_type in crate_types.get().iter() {
+    for crate_type in sess.crate_types.borrow().iter() {
         match *crate_type {
             session::CrateTypeExecutable | session::CrateTypeStaticlib => {}
             _ => {
