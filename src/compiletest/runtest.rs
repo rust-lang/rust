@@ -33,8 +33,7 @@ use std::os;
 use std::str;
 use std::task;
 use std::slice;
-use std::vec_ng;
-
+use std::vec;
 use test::MetricMap;
 
 pub fn run(config: config, testfile: ~str) {

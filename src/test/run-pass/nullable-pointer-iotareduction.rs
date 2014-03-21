@@ -11,7 +11,6 @@
 #[feature(macro_rules)];
 
 use std::{option, cast};
-use std::vec_ng::Vec;
 
 // Iota-reduction is a rule in the Calculus of (Co-)Inductive Constructions,
 // which "says that a destructor applied to an object built from a constructor

@@ -15,8 +15,7 @@
 
 extern crate collections;
 
-use std::vec_ng::Vec;
-use std::vec_ng;
+use std::vec;
 
 fn main() {
     let _count = @0u;

@@ -10,7 +10,6 @@
 
 // ignore-fast
 
-use std::vec_ng::Vec;
 
 fn iter_vec<T>(v: Vec<T> , f: |&T|) { for x in v.iter() { f(x); } }
 

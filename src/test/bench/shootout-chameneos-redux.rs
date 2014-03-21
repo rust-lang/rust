@@ -13,7 +13,6 @@
 use std::option;
 use std::os;
 use std::task;
-use std::vec_ng::Vec;
 
 fn print_complements() {
     let all = [Blue, Red, Yellow];

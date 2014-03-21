@@ -23,7 +23,6 @@
 use std::str;
 use std::slice;
 use std::fmt;
-use std::vec_ng::Vec;
 
 // Represents a position on a canvas.
 struct Point {

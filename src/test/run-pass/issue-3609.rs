@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use std::task;
-use std::vec_ng::Vec;
 
 type RingBuffer = Vec<f64> ;
 type SamplesFn = proc(samples: &RingBuffer);

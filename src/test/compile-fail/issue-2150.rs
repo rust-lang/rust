@@ -13,7 +13,6 @@
 #[allow(dead_code)];
 #[allow(deprecated_owned_vector)];
 
-use std::vec_ng::Vec;
 
 fn fail_len(v: Vec<int> ) -> uint {
     let mut i = 3;

@@ -10,7 +10,6 @@
 
 use std::os;
 use std::uint;
-use std::vec_ng::Vec;
 
 fn main() {
     let args = os::args();

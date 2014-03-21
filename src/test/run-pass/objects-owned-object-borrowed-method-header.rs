@@ -12,7 +12,6 @@
 
 #[feature(managed_boxes)];
 
-use std::vec_ng::Vec;
 
 // Test invoked `&self` methods on owned objects where the values
 // closed over contain managed values. This implies that the ~ boxes

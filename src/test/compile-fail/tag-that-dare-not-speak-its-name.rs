@@ -12,8 +12,7 @@
 // Issue #876
 
 #[no_implicit_prelude];
-
-use std::vec_ng::Vec;
+use std::vec::Vec;
 
 fn last<T>(v: Vec<&T> ) -> std::option::Option<T> {
     fail!();

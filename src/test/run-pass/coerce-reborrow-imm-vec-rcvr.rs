@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::vec_ng::Vec;
 
 fn bar(v: &mut [uint]) -> Vec<uint> {
     Vec::from_slice(v)

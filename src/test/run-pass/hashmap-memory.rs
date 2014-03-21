@@ -14,7 +14,6 @@
 
 extern crate collections;
 
-use std::vec_ng::Vec;
 
 /**
    A somewhat reduced test case to expose some Valgrind issues.
@@ -28,7 +27,6 @@ mod map_reduce {
     use collections::HashMap;
     use std::str;
     use std::task;
-    use std::vec_ng::Vec;
 
     pub type putter<'a> = 'a |~str, ~str|;
 

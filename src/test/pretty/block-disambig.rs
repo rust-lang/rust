@@ -15,7 +15,6 @@
 #[feature(managed_boxes)];
 
 use std::cell::Cell;
-use std::vec_ng::Vec;
 
 fn test1() { let val = @0; { } *val; }
 

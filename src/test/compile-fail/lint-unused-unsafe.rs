@@ -14,7 +14,6 @@
 #[deny(unused_unsafe)];
 #[allow(deprecated_owned_vector)];
 
-use std::vec_ng::Vec;
 
 mod foo {
     extern {

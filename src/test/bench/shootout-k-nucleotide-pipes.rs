@@ -24,7 +24,7 @@ use std::os;
 use std::io;
 use std::str;
 use std::task;
-use std::slice;
+use std::vec;
 
 fn f64_cmp(x: f64, y: f64) -> Ordering {
     // arbitrarily decide that NaNs are larger than everything.

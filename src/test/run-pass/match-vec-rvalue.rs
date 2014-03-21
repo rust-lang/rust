@@ -10,7 +10,6 @@
 
 // Tests that matching rvalues with drops does not crash.
 
-use std::vec_ng::Vec;
 
 pub fn main() {
     match vec!(1, 2, 3) {

@@ -10,7 +10,6 @@
 
 // ignore-fast
 
-use std::vec_ng::Vec;
 
 pub trait plus {
     fn plus(&self) -> int;

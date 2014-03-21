@@ -25,7 +25,6 @@ use std::os;
 use std::result::{Ok, Err};
 use std::task;
 use std::uint;
-use std::vec_ng::Vec;
 
 fn fib(n: int) -> int {
     fn pfib(tx: &Sender<int>, n: int) {

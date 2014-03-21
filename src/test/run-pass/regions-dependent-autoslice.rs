@@ -11,7 +11,6 @@
 // Test lifetimes are linked properly when we autoslice a vector.
 // Issue #3148.
 
-use std::vec_ng::Vec;
 
 fn subslice1<'r>(v: &'r [uint]) -> &'r [uint] { v }
 

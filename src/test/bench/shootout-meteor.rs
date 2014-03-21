@@ -12,7 +12,6 @@
 // Utilities.
 //
 
-use std::vec_ng::Vec;
 
 // returns an infinite iterator of repeated applications of f to x,
 // i.e. [x, f(x), f(f(x)), ...], as haskell iterate function.

@@ -12,7 +12,6 @@
 use zed::bar;
 use zed::baz;
 
-use std::vec_ng::Vec;
 
 mod zed {
     pub fn bar() { println!("bar"); }

@@ -538,7 +538,6 @@ mod test {
                 Version5Sha1};
     use std::str;
     use std::io::MemWriter;
-    use std::vec_ng::Vec;
 
     #[test]
     fn test_nil() {

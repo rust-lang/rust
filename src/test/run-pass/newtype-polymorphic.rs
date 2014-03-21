@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::vec_ng::Vec;
 
 #[deriving(Clone)]
 struct myvec<X>(Vec<X> );

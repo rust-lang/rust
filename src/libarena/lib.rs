@@ -489,7 +489,6 @@ impl<T> Drop for TypedArena<T> {
 mod tests {
     extern crate test;
 
-    use std::vec_ng::Vec;
 
     use self::test::BenchHarness;
     use super::{Arena, TypedArena};

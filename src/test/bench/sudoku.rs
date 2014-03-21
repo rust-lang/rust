@@ -70,6 +70,7 @@ impl Sudoku {
 
         let mut g = Vec::from_fn(10u, { |_i| vec!(0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8) });
         for line in reader.lines() {
+            let line = line.unwrap();
             let comps: Vec<&str> = line.trim().split(',').collect();
 
             if comps.len() == 3u {

@@ -18,7 +18,6 @@ This does not occur with concrete types, only with references
 to traits.
 */
 
-use std::vec_ng::Vec;
 
 // original
 trait Inner {

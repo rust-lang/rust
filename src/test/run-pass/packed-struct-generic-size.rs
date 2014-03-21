@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use std::mem;
-use std::vec_ng::Vec;
 
 #[packed]
 struct S<T, S> {

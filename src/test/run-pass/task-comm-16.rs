@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use std::cmp;
-use std::vec_ng::Vec;
 
 // Tests of ports and channels on various types
 fn test_rec() {

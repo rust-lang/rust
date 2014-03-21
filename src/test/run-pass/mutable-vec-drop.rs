@@ -11,7 +11,6 @@
 #[feature(managed_boxes)];
 #[allow(unused_mut)];
 
-use std::vec_ng::Vec;
 
 struct Pair { a: int, b: int}
 

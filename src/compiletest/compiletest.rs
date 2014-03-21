@@ -21,7 +21,6 @@ extern crate getopts;
 extern crate log;
 
 use std::os;
-use std::vec_ng::Vec;
 use std::io;
 use std::io::fs;
 use getopts::{optopt, optflag, reqopt};

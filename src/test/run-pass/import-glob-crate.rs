@@ -20,5 +20,5 @@ pub fn main() {
     let (mut x, mut y) = (1, 2);
     swap(&mut x, &mut y);
     assert_eq!(x, 2);
-    assert_eq!(x, 1);
+    assert_eq!(y, 1);
 }

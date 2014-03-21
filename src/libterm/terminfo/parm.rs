@@ -563,7 +563,7 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<Vec<u8> ,~str> {
 mod test {
     use super::{expand,String,Variables,Number};
     use std::result::Ok;
-    use std::vec_ng;
+    use std::vec;
 
     #[test]
     fn test_basic_setabf() {

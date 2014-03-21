@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use std::os;
-use std::vec_ng::Vec;
 
 fn fib(n: int) -> int {
     if n < 2 {

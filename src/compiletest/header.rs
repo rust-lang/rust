@@ -12,8 +12,6 @@ use common::config;
 use common;
 use util;
 
-use std::vec_ng::Vec;
-
 pub struct TestProps {
     // Lines that should be expected, in order, on standard out
     error_patterns: Vec<~str> ,

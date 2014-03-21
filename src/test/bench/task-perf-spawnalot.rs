@@ -11,7 +11,6 @@
 use std::os;
 use std::task;
 use std::uint;
-use std::vec_ng::Vec;
 
 fn f(n: uint) {
     let mut i = 0u;

@@ -10,7 +10,6 @@
 
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::vec_ng::Vec;
 
 #[deriving(Eq, Show)]
 struct Point {

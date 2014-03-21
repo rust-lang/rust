@@ -17,8 +17,7 @@ use collections::list::{List, Cons, Nil};
 use time::precise_time_s;
 use std::os;
 use std::task;
-use std::vec_ng::Vec;
-use std::vec_ng;
+use std::vec;
 
 enum UniqueList {
     ULNil, ULCons(~UniqueList)

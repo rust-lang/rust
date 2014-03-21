@@ -14,7 +14,6 @@ use std::from_str::FromStr;
 use std::iter::count;
 use std::cmp::min;
 use std::os;
-use std::slice::from_elem;
 use sync::RWArc;
 
 fn A(i: uint, j: uint) -> f64 {
@@ -49,7 +48,7 @@ fn mult(v: RWArc<Vec<f64>>,
         spawn(proc() {
             for i in range(chk, min(len, chk + chunk)) {
                 let val = v.read(|v| f(v, i));
-                out.write(|out| out[i] = val);
+                out.write(|out| *out.get_mut(i) = val);
             }
             drop(tx)
         });
@@ -98,15 +97,16 @@ fn main() {
     } else {
         FromStr::from_str(args[1]).unwrap()
     };
-    let u = RWArc::new(from_elem(n, 1.));
-    let v = RWArc::new(from_elem(n, 1.));
-    let tmp = RWArc::new(from_elem(n, 1.));
+    let u = RWArc::new(Vec::from_elem(n, 1.));
+    let v = RWArc::new(Vec::from_elem(n, 1.));
+    let tmp = RWArc::new(Vec::from_elem(n, 1.));
     for _ in range(0, 10) {
         mult_AtAv(u.clone(), v.clone(), tmp.clone());
         mult_AtAv(v.clone(), u.clone(), tmp.clone());
     }
 
     u.read(|u| v.read(|v| {
-        println!("{:.9f}", (dot(*u, *v) / dot(*v, *v)).sqrt());
+        println!("{:.9f}",
+                 (dot(u.as_slice(), v.as_slice()) / dot(v.as_slice(), v.as_slice())).sqrt());
     }))
 }

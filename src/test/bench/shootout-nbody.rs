@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use std::os;
-use std::vec_ng::Vec;
 
 static PI: f64 = 3.141592653589793;
 static SOLAR_MASS: f64 = 4.0 * PI * PI;
