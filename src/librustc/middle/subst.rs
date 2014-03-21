@@ -141,7 +141,7 @@ impl<T:Subst> Subst for Rc<T> {
     fn subst_spanned(&self, tcx: &ty::ctxt,
                      substs: &ty::substs,
                      span: Option<Span>) -> Rc<T> {
-        Rc::new(self.deref().subst_spanned(tcx, substs, span))
+        Rc::new((**self).subst_spanned(tcx, substs, span))
     }
 }
 

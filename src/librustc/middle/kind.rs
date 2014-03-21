@@ -291,7 +291,6 @@ pub fn check_expr(cx: &mut Context, e: &Expr) {
                 }
               }
             };
-            let type_param_defs = type_param_defs.deref();
             if ts.len() != type_param_defs.len() {
                 // Fail earlier to make debugging easier
                 fail!("internal error: in kind::check_expr, length \

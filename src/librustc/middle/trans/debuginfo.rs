@@ -610,7 +610,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
     }
 
     let loc = span_start(cx, span);
-    let file_metadata = file_metadata(cx, loc.file.deref().name);
+    let file_metadata = file_metadata(cx, loc.file.name);
 
     let function_type_metadata = unsafe {
         let fn_signature = get_function_signature(cx, fn_ast_id, fn_decl, param_substs, span);
@@ -930,7 +930,7 @@ fn declare_local(bcx: &Block,
                  span: Span) {
     let cx: &CrateContext = bcx.ccx();
 
-    let filename = span_start(cx, span).file.deref().name.clone();
+    let filename = span_start(cx, span).file.name.clone();
     let file_metadata = file_metadata(cx, filename);
 
     let name = token::get_ident(variable_ident);
@@ -1181,7 +1181,7 @@ fn prepare_struct_metadata(cx: &CrateContext,
 
     let (containing_scope, definition_span) = get_namespace_and_span_for_item(cx, def_id);
 
-    let file_name = span_start(cx, definition_span).file.deref().name.clone();
+    let file_name = span_start(cx, definition_span).file.name.clone();
     let file_metadata = file_metadata(cx, file_name);
 
     let struct_metadata_stub = create_struct_stub(cx,
@@ -1276,7 +1276,7 @@ fn prepare_tuple_metadata(cx: &CrateContext,
     let tuple_llvm_type = type_of::type_of(cx, tuple_type);
 
     let loc = span_start(cx, span);
-    let file_metadata = file_metadata(cx, loc.file.deref().name);
+    let file_metadata = file_metadata(cx, loc.file.name);
 
     UnfinishedMetadata {
         cache_id: cache_id_for_type(tuple_type),
@@ -1436,7 +1436,7 @@ fn prepare_enum_metadata(cx: &CrateContext,
 
     let (containing_scope, definition_span) = get_namespace_and_span_for_item(cx, enum_def_id);
     let loc = span_start(cx, definition_span);
-    let file_metadata = file_metadata(cx, loc.file.deref().name);
+    let file_metadata = file_metadata(cx, loc.file.name);
 
     // For empty enums there is an early exit. Just describe it as an empty struct with the
     // appropriate type name
@@ -1775,7 +1775,7 @@ fn boxed_type_metadata(cx: &CrateContext,
     ];
 
     let loc = span_start(cx, span);
-    let file_metadata = file_metadata(cx, loc.file.deref().name);
+    let file_metadata = file_metadata(cx, loc.file.name);
 
     return composite_type_metadata(
         cx,
@@ -1876,7 +1876,7 @@ fn vec_metadata(cx: &CrateContext,
     assert!(member_descriptions.len() == member_llvm_types.len());
 
     let loc = span_start(cx, span);
-    let file_metadata = file_metadata(cx, loc.file.deref().name);
+    let file_metadata = file_metadata(cx, loc.file.name);
 
     composite_type_metadata(
         cx,
@@ -1927,7 +1927,7 @@ fn vec_slice_metadata(cx: &CrateContext,
     assert!(member_descriptions.len() == member_llvm_types.len());
 
     let loc = span_start(cx, span);
-    let file_metadata = file_metadata(cx, loc.file.deref().name);
+    let file_metadata = file_metadata(cx, loc.file.name);
 
     return composite_type_metadata(
         cx,
@@ -1953,7 +1953,7 @@ fn subroutine_type_metadata(cx: &CrateContext,
                             span: Span)
                          -> DICompositeType {
     let loc = span_start(cx, span);
-    let file_metadata = file_metadata(cx, loc.file.deref().name);
+    let file_metadata = file_metadata(cx, loc.file.name);
 
     let mut signature_metadata: Vec<DIType> =
         Vec::with_capacity(signature.inputs.len() + 1);
@@ -1999,7 +1999,7 @@ fn trait_metadata(cx: &CrateContext,
 
     let (containing_scope, definition_span) = get_namespace_and_span_for_item(cx, def_id);
 
-    let file_name = span_start(cx, definition_span).file.deref().name.clone();
+    let file_name = span_start(cx, definition_span).file.name.clone();
     let file_metadata = file_metadata(cx, file_name);
 
     let trait_llvm_type = type_of::type_of(cx, trait_type);
@@ -2297,7 +2297,7 @@ fn populate_scope_map(cx: &CrateContext,
                                    &mut HashMap<ast::NodeId, DIScope>|) {
         // Create a new lexical scope and push it onto the stack
         let loc = cx.sess().codemap().lookup_char_pos(scope_span.lo);
-        let file_metadata = file_metadata(cx, loc.file.deref().name);
+        let file_metadata = file_metadata(cx, loc.file.name);
         let parent_scope = scope_stack.last().unwrap().scope_metadata;
 
         let scope_metadata = unsafe {
@@ -2414,7 +2414,7 @@ fn populate_scope_map(cx: &CrateContext,
                     if need_new_scope {
                         // Create a new lexical scope and push it onto the stack
                         let loc = cx.sess().codemap().lookup_char_pos(pat.span.lo);
-                        let file_metadata = file_metadata(cx, loc.file.deref().name);
+                        let file_metadata = file_metadata(cx, loc.file.name);
                         let parent_scope = scope_stack.last().unwrap().scope_metadata;
 
                         let scope_metadata = unsafe {

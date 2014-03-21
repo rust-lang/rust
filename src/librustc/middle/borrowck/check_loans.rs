@@ -710,7 +710,7 @@ impl<'a> CheckLoanCtxt<'a> {
     fn check_captured_variables(&self,
                                 closure_id: ast::NodeId,
                                 span: Span) {
-        for cap_var in self.bccx.capture_map.get(&closure_id).deref().iter() {
+        for cap_var in self.bccx.capture_map.get(&closure_id).iter() {
             let var_id = ast_util::def_id_of_def(cap_var.def).node;
             let var_path = @LpVar(var_id);
             self.check_if_path_is_moved(closure_id, span,

@@ -472,7 +472,7 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
         // in better error messages than just pointing at the closure
         // construction site.
         let mut call_caps = Vec::new();
-        for cv in ir.capture_map.get(&expr.id).deref().iter() {
+        for cv in ir.capture_map.get(&expr.id).iter() {
             match moves::moved_variable_node_id_from_def(cv.def) {
               Some(rv) => {
                 let cv_ln = ir.add_live_node(FreeVarNode(cv.span));
@@ -979,7 +979,7 @@ impl<'a> Liveness<'a> {
                         this.ir.tcx.sess.span_bug(expr.span, "no registered caps");
                      }
                  };
-                 caps.deref().iter().rev().fold(succ, |succ, cap| {
+                 caps.iter().rev().fold(succ, |succ, cap| {
                      this.init_from_succ(cap.ln, succ);
                      let var = this.variable(cap.var_nid, expr.span);
                      this.acc(cap.ln, var, ACC_READ | ACC_USE);

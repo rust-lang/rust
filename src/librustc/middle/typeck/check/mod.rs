@@ -565,7 +565,7 @@ pub fn check_item(ccx: &CrateCtxt, it: &ast::Item) {
                 fn_tpt.generics.type_param_defs(),
                 [],
                 [],
-                fn_tpt.generics.region_param_defs.deref().as_slice(),
+                fn_tpt.generics.region_param_defs.as_slice(),
                 body.id);
 
         check_bare_fn(ccx, decl, body, it.id, fn_tpt.ty, param_env);
@@ -3698,7 +3698,7 @@ pub fn instantiate_path(fcx: &FnCtxt,
                         nsupplied = num_supplied_regions));
         }
 
-        fcx.infcx().region_vars_for_defs(span, tpt.generics.region_param_defs.deref().as_slice())
+        fcx.infcx().region_vars_for_defs(span, tpt.generics.region_param_defs.as_slice())
     };
     let regions = ty::NonerasedRegions(regions);
 

@@ -1045,8 +1045,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
         ebml_w.tag(c::tag_table_capture_map, |ebml_w| {
             ebml_w.id(id);
             ebml_w.tag(c::tag_table_val, |ebml_w| {
-                ebml_w.emit_from_vec(cap_vars.deref().as_slice(),
-                                        |ebml_w, cap_var| {
+                ebml_w.emit_from_vec(cap_vars.as_slice(), |ebml_w, cap_var| {
                     cap_var.encode(ebml_w);
                 })
             })
