@@ -21,9 +21,7 @@
 # * dist-osx - OS X .pkg installers
 # * dist-tar-bins - Ad-hoc Unix binary installers
 
-PKG_NAME := rust
-PKG_DIR = $(PKG_NAME)-$(CFG_RELEASE)
-PKG_TAR = dist/$(PKG_DIR).tar.gz
+PKG_NAME = $(CFG_PACKAGE_NAME)
 
 PKG_GITMODULES := $(S)src/libuv $(S)src/llvm $(S)src/gyp $(S)src/compiler-rt
 
@@ -62,10 +60,12 @@ LICENSE.txt: $(S)COPYRIGHT $(S)LICENSE-APACHE $(S)LICENSE-MIT
 # Source tarball
 ######################################################################
 
+PKG_TAR = dist/$(PKG_NAME).tar.gz
+
 $(PKG_TAR): $(PKG_FILES)
 	@$(call E, making dist dir)
-	$(Q)rm -Rf tmp/dist/$(PKG_DIR)
-	$(Q)mkdir -p tmp/dist/$(PKG_DIR)
+	$(Q)rm -Rf tmp/dist/$(PKG_NAME)
+	$(Q)mkdir -p tmp/dist/$(PKG_NAME)
 	$(Q)tar \
          -C $(S) \
          --exclude-vcs \
@@ -76,9 +76,9 @@ $(PKG_TAR): $(PKG_FILES)
          --exclude=*/llvm/test/*/*/*.ll \
          --exclude=*/llvm/test/*/*/*.td \
          --exclude=*/llvm/test/*/*/*.s \
-         -c $(UNROOTED_PKG_FILES) | tar -x -C tmp/dist/$(PKG_DIR)
-	$(Q)tar -czf $(PKG_TAR) -C tmp/dist $(PKG_DIR)
-	$(Q)rm -Rf tmp/dist/$(PKG_DIR)
+         -c $(UNROOTED_PKG_FILES) | tar -x -C tmp/dist/$(PKG_NAME)
+	$(Q)tar -czf $(PKG_TAR) -C tmp/dist $(PKG_NAME)
+	$(Q)rm -Rf tmp/dist/$(PKG_NAME)
 
 dist-tar-src: $(PKG_TAR)
 
@@ -88,7 +88,7 @@ dist-tar-src: $(PKG_TAR)
 
 ifdef CFG_ISCC
 
-PKG_EXE = dist/$(PKG_DIR)-install.exe
+PKG_EXE = dist/$(PKG_NAME)-install.exe
 
 %.iss: $(S)src/etc/pkg/%.iss
 	cp $< $@
@@ -134,17 +134,17 @@ dist-prepare-osx-$(1): PREPARE_LIB_CMD=$(DEFAULT_PREPARE_LIB_CMD)
 dist-prepare-osx-$(1): PREPARE_MAN_CMD=$(DEFAULT_PREPARE_MAN_CMD)
 dist-prepare-osx-$(1): prepare-base
 
-dist/$(PKG_DIR)-$(1).pkg: $(S)src/etc/pkg/Distribution.xml LICENSE.txt dist-prepare-osx-$(1)
+dist/$(PKG_NAME)-$(1).pkg: $(S)src/etc/pkg/Distribution.xml LICENSE.txt dist-prepare-osx-$(1)
 	@$$(call E, making OS X pkg)
 	$(Q)pkgbuild --identifier org.rust-lang.rust --root tmp/dist/pkgroot-$(1) rust.pkg
-	$(Q)productbuild --distribution $(S)src/etc/pkg/Distribution.xml --resources . dist/$(PKG_DIR)-$(1).pkg
+	$(Q)productbuild --distribution $(S)src/etc/pkg/Distribution.xml --resources . dist/$(PKG_NAME)-$(1).pkg
 	$(Q)rm -rf tmp rust.pkg
 
 endef
 
 $(foreach host,$(CFG_HOST),$(eval $(call DEF_OSX_PKG,$(host))))
 
-dist-osx: $(foreach host,$(CFG_HOST),dist/$(PKG_DIR)-$(host).pkg)
+dist-osx: $(foreach host,$(CFG_HOST),dist/$(PKG_NAME)-$(host).pkg)
 
 endif
 
@@ -155,12 +155,12 @@ endif
 
 dist-install-dirs: $(foreach host,$(CFG_HOST),dist-install-dir-$(host))
 
-dist-tar-bins: $(foreach host,$(CFG_HOST),dist/$(PKG_DIR)-$(host).tar.gz)
+dist-tar-bins: $(foreach host,$(CFG_HOST),dist/$(PKG_NAME)-$(host).tar.gz)
 
 define DEF_INSTALLER
 dist-install-dir-$(1): PREPARE_HOST=$(1)
 dist-install-dir-$(1): PREPARE_TARGETS=$(1)
-dist-install-dir-$(1): PREPARE_DEST_DIR=tmp/dist/$$(PKG_DIR)-$(1)
+dist-install-dir-$(1): PREPARE_DEST_DIR=tmp/dist/$$(PKG_NAME)-$(1)
 dist-install-dir-$(1): PREPARE_DIR_CMD=$(DEFAULT_PREPARE_DIR_CMD)
 dist-install-dir-$(1): PREPARE_BIN_CMD=$(DEFAULT_PREPARE_BIN_CMD)
 dist-install-dir-$(1): PREPARE_LIB_CMD=$(DEFAULT_PREPARE_LIB_CMD)
@@ -175,9 +175,9 @@ dist-install-dir-$(1): prepare-base
 	$$(Q)$$(PREPARE_MAN_CMD) $$(S)README.md $$(PREPARE_DEST_DIR)
 	$$(Q)$$(PREPARE_BIN_CMD) $$(S)src/etc/install.sh $$(PREPARE_DEST_DIR)
 
-dist/$$(PKG_DIR)-$(1).tar.gz: dist-install-dir-$(1)
+dist/$$(PKG_NAME)-$(1).tar.gz: dist-install-dir-$(1)
 	@$(call E, build: $$@)
-	$$(Q)tar -czf dist/$$(PKG_DIR)-$(1).tar.gz -C tmp/dist $$(PKG_DIR)-$(1)
+	$$(Q)tar -czf dist/$$(PKG_NAME)-$(1).tar.gz -C tmp/dist $$(PKG_NAME)-$(1)
 
 endef
 
@@ -206,15 +206,15 @@ dist: dist-tar-src
 distcheck: $(PKG_TAR)
 	$(Q)rm -Rf dist
 	$(Q)mkdir -p dist
-	@$(call E, unpacking $(PKG_TAR) in dist/$(PKG_DIR))
+	@$(call E, unpacking $(PKG_TAR) in dist/$(PKG_NAME))
 	$(Q)cd dist && tar -xzf ../$(PKG_TAR)
-	@$(call E, configuring in dist/$(PKG_DIR)-build)
-	$(Q)mkdir -p dist/$(PKG_DIR)-build
-	$(Q)cd dist/$(PKG_DIR)-build && ../$(PKG_DIR)/configure
-	@$(call E, making 'check' in dist/$(PKG_DIR)-build)
-	$(Q)+make -C dist/$(PKG_DIR)-build check
-	@$(call E, making 'clean' in dist/$(PKG_DIR)-build)
-	$(Q)+make -C dist/$(PKG_DIR)-build clean
+	@$(call E, configuring in dist/$(PKG_NAME)-build)
+	$(Q)mkdir -p dist/$(PKG_NAME)-build
+	$(Q)cd dist/$(PKG_NAME)-build && ../$(PKG_NAME)/configure
+	@$(call E, making 'check' in dist/$(PKG_NAME)-build)
+	$(Q)+make -C dist/$(PKG_NAME)-build check
+	@$(call E, making 'clean' in dist/$(PKG_NAME)-build)
+	$(Q)+make -C dist/$(PKG_NAME)-build clean
 	$(Q)rm -Rf dist
 	@echo
 	@echo -----------------------------------------------
