@@ -1,16 +1,29 @@
+# Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+# file at the top-level directory of this distribution and at
+# http://rust-lang.org/COPYRIGHT.
+#
+# Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+# http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+# <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+# option. This file may not be copied, modified, or distributed
+# except according to those terms.
+
 ######################################################################
 # Distribution
 ######################################################################
 
+# Primary targets:
+#
+# * dist - make all distribution artifacts
+# * distcheck - sanity check dist artifacts
+# * dist-tar-src - source tarballs
+# * dist-win - Windows exe installers
+# * dist-osx - OS X .pkg installers
+# * dist-tar-bins - Ad-hoc Unix binary installers
+
 PKG_NAME := rust
 PKG_DIR = $(PKG_NAME)-$(CFG_RELEASE)
 PKG_TAR = dist/$(PKG_DIR).tar.gz
-
-ifdef CFG_ISCC
-PKG_ISS = $(wildcard $(S)src/etc/pkg/*.iss)
-PKG_ICO = $(S)src/etc/pkg/rust-logo.ico
-PKG_EXE = dist/$(PKG_DIR)-install.exe
-endif
 
 ifeq ($(CFG_OSTYPE), apple-darwin)
 PKG_OSX = dist/$(PKG_DIR).pkg
@@ -71,12 +84,16 @@ $(PKG_TAR): $(PKG_FILES)
 	$(Q)tar -czf $(PKG_TAR) -C tmp/dist $(PKG_DIR)
 	$(Q)rm -Rf tmp/dist/$(PKG_DIR)
 
+dist-tar-src: $(PKG_TAR)
 
 ######################################################################
 # Windows .exe installer
 ######################################################################
 
 ifdef CFG_ISCC
+
+PKG_EXE = dist/$(PKG_DIR)-install.exe
+
 %.iss: $(S)src/etc/pkg/%.iss
 	cp $< $@
 
@@ -102,6 +119,8 @@ dist-prepare-win: prepare-base
 
 endif
 
+dist-win: $(PKG_EXE)
+
 
 ######################################################################
 # OS X .pkg installer
@@ -126,12 +145,6 @@ $(PKG_OSX): Distribution.xml LICENSE.txt dist-prepare-osx
 
 dist-osx: $(PKG_OSX)
 
-distcheck-osx: $(PKG_OSX)
-	@echo
-	@echo -----------------------------------------------
-	@echo $(PKG_OSX) ready for distribution
-	@echo -----------------------------------------------
-
 endif
 
 
@@ -139,7 +152,7 @@ endif
 # Unix binary installer tarballs
 ######################################################################
 
-dist-install-dir: $(foreach host,$(CFG_HOST),dist-install-dir-$(host))
+dist-install-dirs: $(foreach host,$(CFG_HOST),dist-install-dir-$(host))
 
 dist-tar-bins: $(foreach host,$(CFG_HOST),dist/$(PKG_DIR)-$(host).tar.gz)
 
@@ -177,17 +190,17 @@ $(foreach host,$(CFG_HOST),\
 
 ifdef CFG_WINDOWSY_$(CFG_BUILD)
 
-dist: $(PKG_EXE)
+dist: dist-win
 
 distcheck: dist
 	@echo
 	@echo -----------------------------------------------
-	@echo $(PKG_EXE) ready for distribution
+	@echo Rust ready for distribution (see ./dist)
 	@echo -----------------------------------------------
 
 else
 
-dist: $(PKG_TAR)
+dist: dist-tar-src
 
 distcheck: $(PKG_TAR)
 	$(Q)rm -Rf dist
@@ -204,7 +217,7 @@ distcheck: $(PKG_TAR)
 	$(Q)rm -Rf dist
 	@echo
 	@echo -----------------------------------------------
-	@echo $(PKG_TAR) ready for distribution
+	@echo Rust ready for distribution (see ./dist)
 	@echo -----------------------------------------------
 
 endif
