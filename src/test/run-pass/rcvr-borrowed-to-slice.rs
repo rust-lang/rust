@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::vec_ng::Vec;
 
 trait sum {
     fn sum_(self) -> int;
@@ -30,7 +29,7 @@ pub fn main() {
     assert_eq!(y, 6);
 
     let x = vec!(1, 2, 3);
-    let y = x..as_slice().sum_();
+    let y = x.as_slice().sum_();
     println!("y=={}", y);
     assert_eq!(y, 6);
 

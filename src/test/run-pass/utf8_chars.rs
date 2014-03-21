@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use std::str;
-use std::vec_ng::Vec;
 
 pub fn main() {
     // Chars of 1, 2, 3, and 4 bytes

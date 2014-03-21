@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use std::io::{BufferedReader, File};
-use std::vec_ng::Vec;
 
 pub struct ExpectedError { line: uint, kind: ~str, msg: ~str }
 

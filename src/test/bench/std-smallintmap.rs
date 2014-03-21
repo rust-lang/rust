@@ -16,7 +16,6 @@ extern crate time;
 use collections::SmallIntMap;
 use std::os;
 use std::uint;
-use std::vec_ng::Vec;
 
 fn append_sequential(min: uint, max: uint, map: &mut SmallIntMap<uint>) {
     for i in range(min, max) {

@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::vec_ng::Vec;
 
 pub unsafe fn f(xs: Vec<int> ) {
     xs.map(|_x| { unsafe fn q() { fail!(); } });

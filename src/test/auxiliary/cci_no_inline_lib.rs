@@ -10,7 +10,6 @@
 
 #[crate_id="cci_no_inline_lib"];
 
-use std::vec_ng::Vec;
 
 // same as cci_iter_lib, more-or-less, but not marked inline
 pub fn iter(v: Vec<uint> , f: |uint|) {

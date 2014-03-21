@@ -903,7 +903,6 @@ mod tests {
 
     use std::result::{Err, Ok};
     use std::result;
-    use std::vec_ng::Vec;
 
     fn check_fail_type(f: Fail_, ft: FailType) {
         match f {

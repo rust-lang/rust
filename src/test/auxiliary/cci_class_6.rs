@@ -9,7 +9,6 @@
 // except according to those terms.
 
 pub mod kitties {
-    use std::vec_ng::Vec;
 
     pub struct cat<U> {
         priv info : Vec<U> ,

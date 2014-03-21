@@ -12,7 +12,6 @@
 // closed over do not contain managed values, and thus the ~ boxes do
 // not have headers.
 
-use std::vec_ng::Vec;
 
 trait FooTrait {
     fn foo(&self) -> uint;

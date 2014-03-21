@@ -17,16 +17,16 @@
 // debugger:run
 // debugger:finish
 
-// debugger:print unique->elements[0]->val
+// debugger:print unique.ptr[0]->val
 // check:$1 = 10
 
-// debugger:print unique->elements[1]->val
+// debugger:print unique.ptr[1]->val
 // check:$2 = 11
 
-// debugger:print unique->elements[2]->val
+// debugger:print unique.ptr[2]->val
 // check:$3 = 12
 
-// debugger:print unique->elements[3]->val
+// debugger:print unique.ptr[3]->val
 // check:$4 = 13
 
 #[allow(unused_variable)];

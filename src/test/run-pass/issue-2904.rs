@@ -16,7 +16,6 @@
 
 use std::io;
 use std::fmt;
-use std::vec_ng::Vec;
 
 enum square {
     bot,

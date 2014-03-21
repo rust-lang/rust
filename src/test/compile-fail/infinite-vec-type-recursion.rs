@@ -10,7 +10,6 @@
 
 // error-pattern: illegal recursive type
 
-use std::vec_ng::Vec;
 
 type x = Vec<x>;
 

@@ -765,7 +765,6 @@ mod tests {
     use std::result;
     use std::task;
     use std::comm::Empty;
-    use std::vec_ng::Vec;
 
     /************************************************************************
      * Semaphore tests

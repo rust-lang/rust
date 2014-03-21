@@ -12,7 +12,6 @@
 
 use std::libc;
 
-use std::vec_ng::Vec;
 #[link(name="rustrt")]
 extern {
     pub fn rust_get_test_int() -> libc::intptr_t;

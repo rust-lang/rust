@@ -21,7 +21,6 @@ use std::comm;
 use std::os;
 use std::task;
 use std::uint;
-use std::vec_ng::Vec;
 
 fn child_generation(gens_left: uint, tx: comm::Sender<()>) {
     // This used to be O(n^2) in the number of generations that ever existed.

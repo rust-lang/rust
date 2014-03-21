@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::vec_ng::Vec;
 
 fn f(_a: Vec<int> ) { }
 pub fn main() { f(vec!(1, 2, 3, 4, 5)); }

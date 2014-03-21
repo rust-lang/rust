@@ -10,7 +10,6 @@
 
 #[feature(managed_boxes)];
 
-use std::vec_ng::Vec;
 
 fn borrow<'r,T>(x: &'r T) -> &'r T {x}
 

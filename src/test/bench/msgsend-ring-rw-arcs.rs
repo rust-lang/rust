@@ -22,7 +22,6 @@ use sync::RWArc;
 use sync::Future;
 use std::os;
 use std::uint;
-use std::vec_ng::Vec;
 
 // A poor man's pipe.
 type pipe = RWArc<Vec<uint> >;

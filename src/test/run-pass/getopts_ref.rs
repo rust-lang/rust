@@ -13,7 +13,6 @@
 extern crate getopts;
 
 use getopts::{optopt, getopts};
-use std::vec_ng::Vec;
 
 pub fn main() {
     let args = Vec::new();

@@ -12,7 +12,6 @@
 
 #[feature(macro_rules)];
 
-use std::vec_ng::Vec;
 
 /*
 

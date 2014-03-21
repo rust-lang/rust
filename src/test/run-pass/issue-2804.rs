@@ -16,7 +16,6 @@ extern crate serialize;
 use collections::HashMap;
 use serialize::json;
 use std::option;
-use std::vec_ng::Vec;
 
 enum object {
     bool_value(bool),

@@ -11,7 +11,6 @@
 #[feature(managed_boxes)];
 
 use std::cell::Cell;
-use std::vec_ng::Vec;
 
 struct r {
   i: @Cell<int>,

@@ -12,7 +12,6 @@
 // takes its argument *by reference*.
 
 use std::ops::Index;
-use std::vec_ng::Vec;
 
 struct AssociationList<K,V> {
     pairs: Vec<AssociationPair<K,V>> }

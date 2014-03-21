@@ -9,11 +9,10 @@
 // except according to those terms.
 
 use std::mem::swap;
-use std::vec_ng::Vec;
 
 pub fn main() {
     let mut a: Vec<int> = vec!(0, 1, 2, 3, 4, 5, 6);
-    a.swap(2, 4);
+    a.as_mut_slice().swap(2, 4);
     assert_eq!(*a.get(2), 4);
     assert_eq!(*a.get(4), 2);
     let mut n = 42;

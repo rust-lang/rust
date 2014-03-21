@@ -10,7 +10,6 @@
 
 #[feature(managed_boxes)];
 
-use std::vec_ng::Vec;
 
 struct F { f: @G }
 struct G { g: Vec<int> }

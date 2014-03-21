@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use std::mem::swap;
-use std::vec_ng::Vec;
 
 struct Ints {sum: ~int, values: Vec<int> }
 

@@ -15,7 +15,6 @@
 #[feature(macro_rules)];
 
 use std::ops::Drop;
-use std::vec_ng::Vec;
 
 static mut FLAGS: u64 = 0;
 

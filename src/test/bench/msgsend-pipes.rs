@@ -19,7 +19,6 @@ extern crate time;
 use std::os;
 use std::task;
 use std::uint;
-use std::vec_ng::Vec;
 
 fn move_out<T>(_x: T) {}
 

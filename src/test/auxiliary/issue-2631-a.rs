@@ -15,7 +15,6 @@
 extern crate collections;
 
 use std::cell::RefCell;
-use std::vec_ng::Vec;
 use collections::HashMap;
 
 pub type header_map = HashMap<~str, @RefCell<Vec<@~str>>>;

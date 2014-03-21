@@ -583,7 +583,6 @@ mod tests {
     use super::{Arc, RWArc, MutexArc, CowArc};
 
     use std::task;
-    use std::vec_ng::Vec;
 
     #[test]
     fn manually_share_arc() {

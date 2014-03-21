@@ -16,7 +16,6 @@
 // from a vector to a slice. The drop glue was being invoked on
 // the temporary slice with a wrong type, triggering an LLVM assert.
 
-use std::vec_ng::Vec;
 
 struct Thing1<'a> {
     baz: &'a [~int],

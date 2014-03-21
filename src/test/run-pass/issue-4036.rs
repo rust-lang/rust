@@ -16,7 +16,6 @@
 extern crate serialize;
 
 use serialize::{json, Decodable};
-use std::vec_ng::Vec;
 
 pub fn main() {
     let json = json::from_str("[1]").unwrap();

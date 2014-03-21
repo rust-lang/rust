@@ -11,7 +11,6 @@
 #[feature(managed_boxes)];
 
 use std::intrinsics::{TyDesc, get_tydesc, visit_tydesc, TyVisitor, Disr, Opaque};
-use std::vec_ng::Vec;
 
 struct MyVisitor {
     types: Vec<~str> ,

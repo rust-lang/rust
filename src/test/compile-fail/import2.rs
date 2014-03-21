@@ -11,7 +11,6 @@
 use baz::zed::bar;  //~ ERROR unresolved import
 //~^ ERROR failed to resolve import
 
-use std::vec_ng::Vec;
 
 mod baz {}
 mod zed {

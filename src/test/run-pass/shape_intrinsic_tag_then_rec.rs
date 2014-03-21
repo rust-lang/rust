@@ -15,7 +15,6 @@
 // interior record which is then itself interior to
 // something else, shape calculations were off.
 
-use std::vec_ng::Vec;
 
 #[deriving(Clone)]
 enum opt_span {

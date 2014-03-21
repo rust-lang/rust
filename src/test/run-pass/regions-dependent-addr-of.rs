@@ -11,7 +11,6 @@
 // Test lifetimes are linked properly when we create dependent region pointers.
 // Issue #3148.
 
-use std::vec_ng::Vec;
 
 struct A {
     value: B

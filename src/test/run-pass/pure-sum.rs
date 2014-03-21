@@ -10,7 +10,6 @@
 
 // Check that functions can modify local state.
 
-use std::vec_ng::Vec;
 
 fn sums_to(v: Vec<int> , sum: int) -> bool {
     let mut i = 0u;

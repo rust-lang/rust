@@ -12,7 +12,6 @@
 // making method calls, but only if there aren't any matches without
 // it.
 
-use std::vec_ng::Vec;
 
 trait iterable<A> {
     fn iterate(&self, blk: |x: &A| -> bool) -> bool;

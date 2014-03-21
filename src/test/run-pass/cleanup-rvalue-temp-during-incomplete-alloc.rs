@@ -25,7 +25,6 @@
 // scenario worth testing.
 
 use std::task;
-use std::vec_ng::Vec;
 
 enum Conzabble {
     Bickwick(Foo)

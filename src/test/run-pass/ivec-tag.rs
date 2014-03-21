@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use std::task;
-use std::vec_ng::Vec;
 
 fn producer(tx: &Sender<Vec<u8>>) {
     tx.send(
