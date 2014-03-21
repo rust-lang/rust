@@ -13,11 +13,10 @@
 # mirror of the installation directory structure.
 
 # The stage we install from
-ISTAGE = 2
+ISTAGE = $(PREPARE_STAGE)
 
 install: PREPARE_HOST=$(CFG_BUILD)
 install: PREPARE_TARGETS=$(CFG_TARGET)
-install: PREPARE_STAGE=$(ISTAGE)
 install: PREPARE_DIR_CMD=$(DEFAULT_PREPARE_DIR_CMD)
 install: PREPARE_BIN_CMD=$(DEFAULT_PREPARE_BIN_CMD)
 install: PREPARE_LIB_CMD=$(DEFAULT_PREPARE_LIB_CMD)
