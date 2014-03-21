@@ -20,7 +20,14 @@
 #   PREPARE_TARGETS - the target triples, space separated
 #   PREPARE_DEST_DIR - the directory to put the image
 
-prepare: PREPARE_STAGE=2
+
+# On windows we install from stage3, but on unix only stage2
+ifdef CFG_WINDOWSY_$(CFG_BUILD)
+PREPARE_STAGE=3
+else
+PREPARE_STAGE=2
+endif
+
 prepare: PREPARE_DIR_CMD=$(DEFAULT_PREPARE_DIR_CMD)
 prepare: PREPARE_BIN_CMD=$(DEFAULT_PREPARE_BIN_CMD)
 prepare: PREPARE_LIB_CMD=$(DEFAULT_PREPARE_LIB_CMD)
@@ -42,15 +49,6 @@ DEFAULT_PREPARE_DIR_CMD = umask 022 && mkdir -p
 DEFAULT_PREPARE_BIN_CMD = install -m755
 DEFAULT_PREPARE_LIB_CMD = install -m644
 DEFAULT_PREPARE_MAN_CMD = install -m644
-
-# On windows we install from stage3, but on unix only stage2
-# Because of the way these rules are organized, preparing from any
-# stage requires all these stages to be built
-ifdef CFG_WINDOWSY_$(CFG_BUILD)
-PREPARE_STAGES=3
-else
-PREPARE_STAGES=2
-endif
 
 # Create a directory
 # $(1) is the directory
@@ -102,9 +100,8 @@ prepare-host: prepare-host-tools
 
 prepare-host-tools: \
         $(foreach tool, $(PREPARE_TOOLS),\
-          $(foreach stage,$(PREPARE_STAGES),\
-            $(foreach host,$(CFG_HOST),\
-              prepare-host-tool-$(tool)-$(stage)-$(host))))
+          $(foreach host,$(CFG_HOST),\
+            prepare-host-tool-$(tool)-$(PREPARE_STAGE)-$(host)))
 
 prepare-host-dirs: prepare-maybe-clean
 	$(call PREPARE_DIR,$(PREPARE_DEST_BIN_DIR))
@@ -128,9 +125,8 @@ prepare-host-tool-$(1)-$(2)-$(3): prepare-maybe-clean \
 endef
 
 $(foreach tool,$(PREPARE_TOOLS),\
-  $(foreach stage,$(PREPARE_STAGES),\
-    $(foreach host,$(CFG_HOST),\
-        $(eval $(call DEF_PREPARE_HOST_TOOL,$(tool),$(stage),$(host))))))
+  $(foreach host,$(CFG_HOST),\
+      $(eval $(call DEF_PREPARE_HOST_TOOL,$(tool),$(PREPARE_STAGE),$(host)))))
 
 # For host libraries only install dylibs, not rlibs since the host libs are only
 # used to support rustc and rustc uses dynamic linking
@@ -151,15 +147,13 @@ prepare-host-lib-$(1)-$(2)-$(3): prepare-maybe-clean \
 endef
 
 $(foreach lib,$(CRATES),\
-  $(foreach stage,$(PREPARE_STAGES),\
-    $(foreach host,$(CFG_HOST),\
-      $(eval $(call DEF_PREPARE_HOST_LIB,$(lib),$(stage),$(host))))))
+  $(foreach host,$(CFG_HOST),\
+    $(eval $(call DEF_PREPARE_HOST_LIB,$(lib),$(PREPARE_STAGE),$(host)))))
 
 prepare-targets:\
         $(foreach host,$(CFG_HOST),\
            $(foreach target,$(CFG_TARGET),\
-             $(foreach stage,$(PREPARE_STAGES),\
-               prepare-target-$(target)-host-$(host)-$(stage))))
+             prepare-target-$(target)-host-$(host)-$(PREPARE_STAGE)))
 
 # $(1) is stage
 # $(2) is target
@@ -194,8 +188,7 @@ endef
 
 $(foreach host,$(CFG_HOST),\
   $(foreach target,$(CFG_TARGET), \
-    $(foreach stage,$(PREPARE_STAGES),\
-      $(eval $(call DEF_PREPARE_TARGET_N,$(stage),$(target),$(host))))))
+    $(eval $(call DEF_PREPARE_TARGET_N,$(PREPARE_STAGE),$(target),$(host)))))
 
 prepare-maybe-clean:
 	$(if $(findstring true,$(PREPARE_CLEAN)),\
