@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:expected item
+// error-pattern:expected `[` but found `~`
 mod blade_runner {
     #~[doc(
         brief = "Blade Runner is probably the best movie ever",

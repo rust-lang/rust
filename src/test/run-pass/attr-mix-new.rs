@@ -8,4 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-# //~ ERROR 11:1: 11:2 error: expected `[` but found `<eof>`
+#[foo(bar)]
+mod foo {
+  #![feature(globs)]
+}
+
+pub fn main() {}

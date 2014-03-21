@@ -8,4 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-# //~ ERROR 11:1: 11:2 error: expected `[` but found `<eof>`
+fn main() {}
+
+#![lang(foo)] //~ ERROR an inner attribute is not permitted in this context
+fn foo() {}
