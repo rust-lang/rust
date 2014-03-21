@@ -173,28 +173,6 @@ impl<T> RefCell<T> {
         }
     }
 
-    /// Immutably borrows the wrapped value and applies `blk` to it.
-    ///
-    /// # Failure
-    ///
-    /// Fails if the value is currently mutably borrowed.
-    #[inline]
-    pub fn with<U>(&self, blk: |&T| -> U) -> U {
-        let ptr = self.borrow();
-        blk(ptr.get())
-    }
-
-    /// Mutably borrows the wrapped value and applies `blk` to it.
-    ///
-    /// # Failure
-    ///
-    /// Fails if the value is currently borrowed.
-    #[inline]
-    pub fn with_mut<U>(&self, blk: |&mut T| -> U) -> U {
-        let mut ptr = self.borrow_mut();
-        blk(ptr.get())
-    }
-
     /// Sets the value, replacing what was there.
     ///
     /// # Failure
@@ -370,43 +348,6 @@ mod test {
             let _b2 = x.borrow();
         }
         assert!(x.try_borrow_mut().is_none());
-    }
-
-    #[test]
-    fn with_ok() {
-        let x = RefCell::new(0);
-        assert_eq!(1, x.with(|x| *x+1));
-    }
-
-    #[test]
-    #[should_fail]
-    fn mut_borrow_with() {
-        let x = RefCell::new(0);
-        let _b1 = x.borrow_mut();
-        x.with(|x| *x+1);
-    }
-
-    #[test]
-    fn borrow_with() {
-        let x = RefCell::new(0);
-        let _b1 = x.borrow();
-        assert_eq!(1, x.with(|x| *x+1));
-    }
-
-    #[test]
-    fn with_mut_ok() {
-        let x = RefCell::new(0);
-        x.with_mut(|x| *x += 1);
-        let b = x.borrow();
-        assert_eq!(1, *b.get());
-    }
-
-    #[test]
-    #[should_fail]
-    fn borrow_with_mut() {
-        let x = RefCell::new(0);
-        let _b = x.borrow();
-        x.with_mut(|x| *x += 1);
     }
 
     #[test]
