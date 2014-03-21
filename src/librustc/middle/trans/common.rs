@@ -937,7 +937,7 @@ pub fn filename_and_line_num_from_span(bcx: &Block, span: Span)
                                        -> (ValueRef, ValueRef) {
     let loc = bcx.sess().codemap().lookup_char_pos(span.lo);
     let filename_cstr = C_cstr(bcx.ccx(),
-                               token::intern_and_get_ident(loc.file.deref().name));
+                               token::intern_and_get_ident(loc.file.name));
     let filename = build::PointerCast(bcx, filename_cstr, Type::i8p(bcx.ccx()));
     let line = C_int(bcx.ccx(), loc.line as int);
     (filename, line)

@@ -666,12 +666,11 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
             debug!("vtable resolution on parameter bounds for method call {}",
                    ex.repr(fcx.tcx()));
             let type_param_defs = ty::method_call_type_param_defs(cx.tcx, method.origin);
-            if has_trait_bounds(type_param_defs.deref().as_slice()) {
+            if has_trait_bounds(type_param_defs.as_slice()) {
                 let substs = fcx.method_ty_substs(ex.id);
                 let vcx = fcx.vtable_context();
                 let vtbls = lookup_vtables(&vcx, ex.span,
-                                           type_param_defs.deref()
-                                                          .as_slice(),
+                                           type_param_defs.as_slice(),
                                            &substs, is_early);
                 if !is_early {
                     insert_vtables(fcx, ex.id, vtbls);
@@ -780,7 +779,7 @@ pub fn resolve_impl(tcx: &ty::ctxt,
 pub fn trans_resolve_method(tcx: &ty::ctxt, id: ast::NodeId,
                             substs: &ty::substs) -> Option<vtable_res> {
     let generics = ty::lookup_item_type(tcx, ast_util::local_def(id)).generics;
-    let type_param_defs = generics.type_param_defs.deref();
+    let type_param_defs = &*generics.type_param_defs;
     if has_trait_bounds(type_param_defs.as_slice()) {
         let vcx = VtableContext {
             infcx: &infer::new_infer_ctxt(tcx),

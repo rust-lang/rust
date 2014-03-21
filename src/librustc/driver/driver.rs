@@ -543,8 +543,8 @@ fn write_out_deps(sess: &Session,
     // write Makefile-compatible dependency rules
     let files: Vec<~str> = sess.codemap().files.borrow()
                                .iter().filter_map(|fmap| {
-                                    if fmap.deref().is_real_file() {
-                                        Some(fmap.deref().name.clone())
+                                    if fmap.is_real_file() {
+                                        Some(fmap.name.clone())
                                     } else {
                                         None
                                     }
@@ -682,7 +682,7 @@ pub fn pretty_print_input(sess: Session,
     };
 
     let src_name = source_name(input);
-    let src = sess.codemap().get_filemap(src_name).deref().src.as_bytes().to_owned();
+    let src = sess.codemap().get_filemap(src_name).src.as_bytes().to_owned();
     let mut rdr = MemReader::new(src);
 
     match ppm {

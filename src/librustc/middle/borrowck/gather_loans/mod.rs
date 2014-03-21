@@ -452,7 +452,7 @@ impl<'a> GatherLoanCtxt<'a> {
 
     fn guarantee_captures(&mut self,
                           closure_expr: &ast::Expr) {
-        for captured_var in self.bccx.capture_map.get(&closure_expr.id).deref().iter() {
+        for captured_var in self.bccx.capture_map.get(&closure_expr.id).iter() {
             match captured_var.mode {
                 moves::CapCopy | moves::CapMove => { continue; }
                 moves::CapRef => { }

@@ -394,11 +394,11 @@ pub fn trans_expr_fn<'a>(
 
     let cap_vars = ccx.maps.capture_map.borrow().get_copy(&id);
     let ClosureResult {llbox, cdata_ty, bcx} =
-        build_closure(bcx, cap_vars.deref().as_slice(), sigil);
+        build_closure(bcx, cap_vars.as_slice(), sigil);
     trans_closure(ccx, decl, body, llfn,
                   bcx.fcx.param_substs, id,
                   [], ty::ty_fn_ret(fty),
-                  |bcx| load_environment(bcx, cdata_ty, cap_vars.deref().as_slice(), sigil));
+                  |bcx| load_environment(bcx, cdata_ty, cap_vars.as_slice(), sigil));
     fill_fn_pair(bcx, dest_addr, llfn, llbox);
 
     bcx
