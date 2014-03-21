@@ -35,6 +35,6 @@ pub fn main() {
     let v = empty_pointy();
     {
         let mut vb = v.borrow_mut();
-        vb.get().a = p(v);
+        vb.a = p(v);
     }
 }
