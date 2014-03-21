@@ -18,7 +18,7 @@ DisableProgramGroupPage=true
 DisableReadyPage=true
 DisableStartupPrompt=true
 
-OutputDir=.\
+OutputDir=.\dist\
 SourceDir=.\
 OutputBaseFilename={#CFG_PACKAGE_NAME}-install
 DefaultDirName={pf32}\Rust
