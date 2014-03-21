@@ -20,7 +20,7 @@ generally useful to many Rust programs.
 */
 
 // Reexported core operators
-pub use kinds::{Freeze, Pod, Send, Sized, Share};
+pub use kinds::{Pod, Send, Sized, Share};
 pub use ops::{Add, Sub, Mul, Div, Rem, Neg, Not};
 pub use ops::{BitAnd, BitOr, BitXor};
 pub use ops::{Drop, Deref, DerefMut};
