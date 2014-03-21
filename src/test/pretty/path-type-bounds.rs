@@ -13,11 +13,11 @@
 trait Tr { }
 impl Tr for int { }
 
-fn foo(x: ~Tr: Freeze) -> ~Tr: Freeze { x }
+fn foo(x: ~Tr: Share) -> ~Tr: Share { x }
 
 fn main() {
-    let x: ~Tr: Freeze;
+    let x: ~Tr: Share;
 
-    ~1 as ~Tr: Freeze;
+    ~1 as ~Tr: Share;
 }
 

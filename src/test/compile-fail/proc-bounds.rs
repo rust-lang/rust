@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn is_send<T: Send>() {}
-fn is_freeze<T: Freeze>() {}
+fn is_freeze<T: Share>() {}
 fn is_static<T: 'static>() {}
 
 fn main() {

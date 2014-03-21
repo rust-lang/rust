@@ -18,11 +18,11 @@ fn a(_x: ~Foo) { // should be same as ~Foo:Send
 fn b(_x: &'static Foo) { // should be same as &'static Foo:'static
 }
 
-fn c(x: ~Foo:Freeze) {
+fn c(x: ~Foo:Share) {
     a(x); //~ ERROR expected bounds `Send`
 }
 
-fn d(x: &'static Foo:Freeze) {
+fn d(x: &'static Foo:Share) {
     b(x); //~ ERROR expected bounds `'static`
 }
 
