@@ -42,5 +42,5 @@ fn main()
     let w = v.clone();
     let b = v.deref();
     let mut b = b.borrow_mut();
-    b.get().v.set(w.clone());
+    b.v.set(w.clone());
 }

@@ -13,6 +13,6 @@ use std::cell::RefCell;
 fn main() {
     let m = RefCell::new(0);
     let mut b = m.borrow_mut();
-    let b1 = b.get();
-    let b2 = b.get(); //~ ERROR cannot borrow
+    let b1 = &mut *b;
+    let b2 = &mut *b; //~ ERROR cannot borrow
 }
