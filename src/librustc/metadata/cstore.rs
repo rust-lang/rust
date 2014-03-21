@@ -135,11 +135,11 @@ impl CStore {
     }
 
     pub fn reset(&self) {
-        self.metas.with_mut(|s| s.clear());
-        self.extern_mod_crate_map.with_mut(|s| s.clear());
-        self.used_crate_sources.with_mut(|s| s.clear());
-        self.used_libraries.with_mut(|s| s.clear());
-        self.used_link_args.with_mut(|s| s.clear());
+        self.metas.borrow_mut().clear();
+        self.extern_mod_crate_map.borrow_mut().clear();
+        self.used_crate_sources.borrow_mut().clear();
+        self.used_libraries.borrow_mut().clear();
+        self.used_link_args.borrow_mut().clear();
     }
 
     // This method is used when generating the command line to pass through to

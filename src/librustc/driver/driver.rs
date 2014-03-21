@@ -313,10 +313,10 @@ pub fn phase_3_run_analysis_passes(sess: Session,
     time(time_passes, "looking for entry point", (),
          |_| middle::entry::find_entry_point(&sess, krate, &ast_map));
 
-    sess.macro_registrar_fn.with_mut(|r| *r =
+    *sess.macro_registrar_fn.borrow_mut() =
         time(time_passes, "looking for macro registrar", (), |_|
             syntax::ext::registrar::find_macro_registrar(
-                sess.diagnostic(), krate)));
+                sess.diagnostic(), krate));
 
     let freevars = time(time_passes, "freevar finding", (), |_|
                         freevars::annotate_freevars(def_map, krate));
