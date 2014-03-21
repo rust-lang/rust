@@ -25,7 +25,6 @@
 PKG_NAME = $(CFG_PACKAGE_NAME)
 
 PKG_GITMODULES := $(S)src/libuv $(S)src/llvm $(S)src/gyp $(S)src/compiler-rt
-
 PKG_FILES := \
     $(S)COPYRIGHT                              \
     $(S)LICENSE-APACHE                         \
@@ -48,8 +47,8 @@ PKG_FILES := \
       snapshots.txt                            \
       test)                                    \
     $(PKG_GITMODULES)                          \
-    $(filter-out Makefile config.stamp config.mk, \
-                 $(MKFILE_DEPS))
+    $(filter-out config.stamp, \
+                 $(MKFILES_FOR_TARBALL))
 
 UNROOTED_PKG_FILES := $(patsubst $(S)%,./%,$(PKG_FILES))
 
@@ -83,6 +82,23 @@ $(PKG_TAR): $(PKG_FILES)
 
 dist-tar-src: $(PKG_TAR)
 
+distcheck-tar-src: $(PKG_TAR)
+	$(Q)rm -Rf tmp/distcheck/$(PKG_NAME)
+	$(Q)rm -Rf tmp/distcheck/srccheck
+	$(Q)mkdir -p tmp/distcheck
+	@$(call E, unpacking $(PKG_TAR) in tmp/distcheck/$(PKG_NAME))
+	$(Q)cd tmp/distcheck && tar -xzf ../../$(PKG_TAR)
+	@$(call E, configuring in tmp/distcheck/srccheck)
+	$(Q)mkdir -p tmp/distcheck/srccheck
+	$(Q)cd tmp/distcheck/srccheck && ../$(PKG_NAME)/configure
+	@$(call E, making 'check' in tmp/distcheck/srccheck)
+	$(Q)+make -C tmp/distcheck/srccheck check
+	@$(call E, making 'clean' in tmp/distcheck/srccheck)
+	$(Q)+make -C tmp/distcheck/srccheck clean
+	$(Q)rm -Rf tmp/distcheck/$(PKG_NAME)
+	$(Q)rm -Rf tmp/distcheck/srccheck
+
+
 ######################################################################
 # Windows .exe installer
 ######################################################################
@@ -100,7 +116,7 @@ PKG_EXE = dist/$(PKG_NAME)-install.exe
 	cp $< $@
 
 $(PKG_EXE): rust.iss modpath.iss LICENSE.txt rust-logo.ico \
-            $(PKG_FILES) $(CSREQ3_T_$(CFG_BUILD)_H_$(CFG_BUILD)) \
+            $(CSREQ3_T_$(CFG_BUILD)_H_$(CFG_BUILD)) \
             dist-prepare-win
 	$(CFG_PYTHON) $(S)src/etc/copy-runtime-deps.py tmp/dist/win/bin
 	@$(call E, ISCC: $@)
@@ -156,10 +172,6 @@ endif
 # Unix binary installer tarballs
 ######################################################################
 
-dist-install-dirs: $(foreach host,$(CFG_HOST),dist-install-dir-$(host))
-
-dist-tar-bins: $(foreach host,$(CFG_HOST),dist/$(PKG_NAME)-$(host).tar.gz)
-
 define DEF_INSTALLER
 dist-install-dir-$(1): PREPARE_HOST=$(1)
 dist-install-dir-$(1): PREPARE_TARGETS=$(1)
@@ -187,6 +199,22 @@ endef
 $(foreach host,$(CFG_HOST),\
   $(eval $(call DEF_INSTALLER,$(host))))
 
+dist-install-dirs: $(foreach host,$(CFG_HOST),dist-install-dir-$(host))
+
+dist-tar-bins: $(foreach host,$(CFG_HOST),dist/$(PKG_NAME)-$(host).tar.gz)
+
+# Just try to run the compiler for the build host
+distcheck-tar-bins: dist-tar-bins
+	@$(call E, checking binary tarball)
+	$(Q)rm -Rf tmp/distcheck/$(PKG_NAME)-$(CFG_BUILD)
+	$(Q)rm -Rf tmp/distcheck/tarbininstall
+	$(Q)mkdir -p tmp/distcheck
+	$(Q)cd tmp/distcheck && tar -xzf ../../dist/$(PKG_NAME)-$(CFG_BUILD).tar.gz
+	$(Q)mkdir -p tmp/distcheck/tarbininstall
+	$(Q)sh tmp/distcheck/$(PKG_NAME)-$(CFG_BUILD)/install.sh --prefix=tmp/distcheck/tarbininstall
+	$(Q)tmp/distcheck/tarbininstall/bin/rustc --version
+	$(Q)rm -Rf tmp/distcheck/$(PKG_NAME)-$(CFG_BUILD)
+	$(Q)rm -Rf tmp/distcheck/tarbininstall
 
 ######################################################################
 # Docs
@@ -208,6 +236,7 @@ ifdef CFG_WINDOWSY_$(CFG_BUILD)
 dist: dist-win
 
 distcheck: dist
+	$(Q)rm -Rf tmp/distcheck
 	@echo
 	@echo -----------------------------------------------
 	@echo Rust ready for distribution (see ./dist)
@@ -217,19 +246,8 @@ else
 
 dist: dist-tar-src
 
-distcheck: $(PKG_TAR)
-	$(Q)rm -Rf dist
-	$(Q)mkdir -p dist
-	@$(call E, unpacking $(PKG_TAR) in dist/$(PKG_NAME))
-	$(Q)cd dist && tar -xzf ../$(PKG_TAR)
-	@$(call E, configuring in dist/$(PKG_NAME)-build)
-	$(Q)mkdir -p dist/$(PKG_NAME)-build
-	$(Q)cd dist/$(PKG_NAME)-build && ../$(PKG_NAME)/configure
-	@$(call E, making 'check' in dist/$(PKG_NAME)-build)
-	$(Q)+make -C dist/$(PKG_NAME)-build check
-	@$(call E, making 'clean' in dist/$(PKG_NAME)-build)
-	$(Q)+make -C dist/$(PKG_NAME)-build clean
-	$(Q)rm -Rf dist
+distcheck: dist distcheck-tar-src
+	$(Q)rm -Rf tmp/distcheck
 	@echo
 	@echo -----------------------------------------------
 	@echo Rust ready for distribution (see ./dist)

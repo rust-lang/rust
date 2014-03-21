@@ -224,6 +224,7 @@ step_msg "validating $CFG_SELF args"
 validate_opt
 
 # Sanity check: can we can write to the destination?
+mkdir -p "${CFG_PREFIX}/lib"
 touch "${CFG_PREFIX}/lib/rust-install-probe" 2> /dev/null
 if [ $? -ne 0 ]
 then

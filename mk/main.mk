@@ -61,10 +61,11 @@ CFG_VERSION_WIN = $(CFG_RELEASE_NUM)
 # and include all of the .d files in one fell swoop.
 ALL_OBJ_FILES :=
 
+MKFILE_DEPS := config.stamp $(call rwildcard,$(CFG_SRC_DIR)mk/,*)
+MKFILES_FOR_TARBALL:=$(MKFILE_DEPS)
+$(info $(MKFILES_FOR_TARBALL))
 ifneq ($(NO_MKFILE_DEPS),)
 MKFILE_DEPS :=
-else
-MKFILE_DEPS := config.stamp $(call rwildcard,$(CFG_SRC_DIR)mk/,*)
 endif
 NON_BUILD_HOST = $(filter-out $(CFG_BUILD),$(CFG_HOST))
 NON_BUILD_TARGET = $(filter-out $(CFG_BUILD),$(CFG_TARGET))
