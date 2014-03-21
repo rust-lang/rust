@@ -319,7 +319,9 @@ fn read_block_comment(rdr: &StringReader,
 fn peeking_at_comment(rdr: &StringReader) -> bool {
     return (rdr.curr_is('/') && nextch_is(rdr, '/')) ||
          (rdr.curr_is('/') && nextch_is(rdr, '*')) ||
-         (rdr.curr_is('#') && nextch_is(rdr, '!'));
+         // consider shebangs comments, but not inner attributes
+         (rdr.curr_is('#') && nextch_is(rdr, '!') &&
+          !lexer::nextnextch_is(rdr, '['));
 }
 
 fn consume_comment(rdr: &StringReader,
