@@ -283,7 +283,7 @@ mod test {
     #[test]
     fn read_bytes() {
         let mut reader = MemReader::new(~[10, 11, 12, 13]);
-        let bytes = reader.read_bytes(4).unwrap();
+        let bytes = reader.read_exact(4).unwrap();
         assert!(bytes == ~[10, 11, 12, 13]);
     }
 
@@ -292,49 +292,49 @@ mod test {
         let mut reader = PartialReader {
             count: 0,
         };
-        let bytes = reader.read_bytes(4).unwrap();
+        let bytes = reader.read_exact(4).unwrap();
         assert!(bytes == ~[10, 11, 12, 13]);
     }
 
     #[test]
     fn read_bytes_eof() {
         let mut reader = MemReader::new(~[10, 11]);
-        assert!(reader.read_bytes(4).is_err());
+        assert!(reader.read_exact(4).is_err());
     }
 
     #[test]
-    fn push_bytes() {
+    fn push_exact() {
         let mut reader = MemReader::new(~[10, 11, 12, 13]);
         let mut buf = ~[8, 9];
-        reader.push_bytes(&mut buf, 4).unwrap();
+        reader.push_exact(&mut buf, 4).unwrap();
         assert!(buf == ~[8, 9, 10, 11, 12, 13]);
     }
 
     #[test]
-    fn push_bytes_partial() {
+    fn push_exact_partial() {
         let mut reader = PartialReader {
             count: 0,
         };
         let mut buf = ~[8, 9];
-        reader.push_bytes(&mut buf, 4).unwrap();
+        reader.push_exact(&mut buf, 4).unwrap();
         assert!(buf == ~[8, 9, 10, 11, 12, 13]);
     }
 
     #[test]
-    fn push_bytes_eof() {
+    fn push_exact_eof() {
         let mut reader = MemReader::new(~[10, 11]);
         let mut buf = ~[8, 9];
-        assert!(reader.push_bytes(&mut buf, 4).is_err());
+        assert!(reader.push_exact(&mut buf, 4).is_err());
         assert!(buf == ~[8, 9, 10, 11]);
     }
 
     #[test]
-    fn push_bytes_error() {
+    fn push_exact_error() {
         let mut reader = ErroringLaterReader {
             count: 0,
         };
         let mut buf = ~[8, 9];
-        assert!(reader.push_bytes(&mut buf, 4).is_err());
+        assert!(reader.push_exact(&mut buf, 4).is_err());
         assert!(buf == ~[8, 9, 10]);
     }
 

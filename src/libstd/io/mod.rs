@@ -360,13 +360,13 @@ pub trait Reader {
         }
     }
 
-    /// Reads `len` bytes and appends them to a vector.
+    /// Reads exactly `len` bytes and appends them to a vector.
     ///
     /// May push fewer than the requested number of bytes on error
     /// or EOF. If `Ok(())` is returned, then all of the requested bytes were
     /// pushed on to the vector, otherwise the amount `len` bytes couldn't be
     /// read (an error was encountered), and the error is returned.
-    fn push_bytes(&mut self, buf: &mut ~[u8], len: uint) -> IoResult<()> {
+    fn push_exact(&mut self, buf: &mut ~[u8], len: uint) -> IoResult<()> {
         struct State<'a> {
             buf: &'a mut ~[u8],
             total_read: uint
@@ -396,7 +396,8 @@ pub trait Reader {
             |s| unsafe { s.buf.set_len(start_len + s.total_read) })
     }
 
-    /// Reads `len` bytes and gives you back a new vector of length `len`
+    /// Reads exactly `len` bytes and gives you back a new vector of length
+    /// `len`
     ///
     /// # Error
     ///
@@ -404,10 +405,10 @@ pub trait Reader {
     /// on EOF. Note that if an error is returned, then some number of bytes may
     /// have already been consumed from the underlying reader, and they are lost
     /// (not returned as part of the error). If this is unacceptable, then it is
-    /// recommended to use the `push_bytes` or `read` methods.
-    fn read_bytes(&mut self, len: uint) -> IoResult<~[u8]> {
+    /// recommended to use the `push_exact` or `read` methods.
+    fn read_exact(&mut self, len: uint) -> IoResult<~[u8]> {
         let mut buf = slice::with_capacity(len);
-        match self.push_bytes(&mut buf, len) {
+        match self.push_exact(&mut buf, len) {
             Ok(()) => Ok(buf),
             Err(e) => Err(e),
         }
@@ -424,7 +425,7 @@ pub trait Reader {
     fn read_to_end(&mut self) -> IoResult<~[u8]> {
         let mut buf = slice::with_capacity(DEFAULT_BUF_SIZE);
         loop {
-            match self.push_bytes(&mut buf, DEFAULT_BUF_SIZE) {
+            match self.push_exact(&mut buf, DEFAULT_BUF_SIZE) {
                 Ok(()) => {}
                 Err(ref e) if e.kind == EndOfFile => break,
                 Err(e) => return Err(e)
