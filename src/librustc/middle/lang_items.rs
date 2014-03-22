@@ -13,7 +13,7 @@
 // Language items are items that represent concepts intrinsic to the language
 // itself. Examples are:
 //
-// * Traits that specify "kinds"; e.g. "Freeze", "Send".
+// * Traits that specify "kinds"; e.g. "Share", "Send".
 //
 // * Traits that represent operators; e.g. "Add", "Sub", "Index".
 //
@@ -82,9 +82,7 @@ impl LanguageItems {
     }
 
     pub fn to_builtin_kind(&self, id: ast::DefId) -> Option<ty::BuiltinBound> {
-        if Some(id) == self.freeze_trait() {
-            Some(ty::BoundFreeze)
-        } else if Some(id) == self.send_trait() {
+        if Some(id) == self.send_trait() {
             Some(ty::BoundSend)
         } else if Some(id) == self.sized_trait() {
             Some(ty::BoundSized)
@@ -210,7 +208,6 @@ pub fn collect_language_items(krate: &ast::Crate,
 
 lets_do_this! {
 //  Variant name,                    Name,                      Method name;
-    FreezeTraitLangItem,             "freeze",                  freeze_trait;
     SendTraitLangItem,               "send",                    send_trait;
     SizedTraitLangItem,              "sized",                   sized_trait;
     PodTraitLangItem,                "pod",                     pod_trait;
@@ -275,7 +272,6 @@ lets_do_this! {
     ContravariantLifetimeItem,       "contravariant_lifetime",  contravariant_lifetime;
     InvariantLifetimeItem,           "invariant_lifetime",      invariant_lifetime;
 
-    NoFreezeItem,                    "no_freeze_bound",         no_freeze_bound;
     NoSendItem,                      "no_send_bound",           no_send_bound;
     NoPodItem,                       "no_pod_bound",            no_pod_bound;
     NoShareItem,                     "no_share_bound",          no_share_bound;

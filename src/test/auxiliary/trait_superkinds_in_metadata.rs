@@ -13,6 +13,6 @@
 
 #[crate_type="lib"];
 
-pub trait RequiresFreeze : Freeze { }
-pub trait RequiresRequiresFreezeAndSend : RequiresFreeze + Send { }
+pub trait RequiresShare : Share { }
+pub trait RequiresRequiresShareAndSend : RequiresShare + Send { }
 pub trait RequiresPod : Pod { }

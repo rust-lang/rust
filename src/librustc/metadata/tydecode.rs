@@ -584,9 +584,6 @@ fn parse_bounds(st: &mut PState, conv: conv_did) -> ty::ParamBounds {
             'S' => {
                 param_bounds.builtin_bounds.add(ty::BoundSend);
             }
-            'K' => {
-                param_bounds.builtin_bounds.add(ty::BoundFreeze);
-            }
             'O' => {
                 param_bounds.builtin_bounds.add(ty::BoundStatic);
             }

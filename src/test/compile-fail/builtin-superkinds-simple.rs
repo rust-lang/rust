@@ -13,10 +13,7 @@
 
 trait Foo : Send { }
 
-impl <'a> Foo for &'a mut () { } //~ ERROR cannot implement this trait
-
-trait Bar : Freeze { }
-
-impl <'a> Bar for &'a mut () { } //~ ERROR cannot implement this trait
+impl <'a> Foo for &'a mut () { }
+//~^ ERROR which does not fulfill `Send`, cannot implement this trait
 
 fn main() { }

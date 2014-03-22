@@ -1019,7 +1019,7 @@ never invoking this behaviour or exposing an API making it possible for it to oc
 
 * Data races
 * Dereferencing a null/dangling raw pointer
-* Mutating an immutable value/reference, if it is not marked as non-`Freeze`
+* Mutating an immutable value/reference
 * Reads of [undef](http://llvm.org/docs/LangRef.html#undefined-values) (uninitialized) memory
 * Breaking the [pointer aliasing rules](http://llvm.org/docs/LangRef.html#pointer-aliasing-rules)
   with raw pointers (a subset of the rules used by C)
@@ -3434,10 +3434,6 @@ call to the method `make_string`.
 Types in Rust are categorized into kinds, based on various properties of the components of the type.
 The kinds are:
 
-`Freeze`
-  : Types of this kind are deeply immutable;
-    they contain no mutable memory locations
-    directly or indirectly via pointers.
 `Send`
   : Types of this kind can be safely sent between tasks.
     This kind includes scalars, owning pointers, owned closures, and

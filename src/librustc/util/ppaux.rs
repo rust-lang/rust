@@ -664,7 +664,6 @@ impl Repr for ty::ParamBounds {
             res.push(match b {
                 ty::BoundStatic => ~"'static",
                 ty::BoundSend => ~"Send",
-                ty::BoundFreeze => ~"Freeze",
                 ty::BoundSized => ~"Sized",
                 ty::BoundPod => ~"Pod",
                 ty::BoundShare => ~"Share",
@@ -952,7 +951,6 @@ impl UserString for ty::BuiltinBound {
         match *self {
             ty::BoundStatic => ~"'static",
             ty::BoundSend => ~"Send",
-            ty::BoundFreeze => ~"Freeze",
             ty::BoundSized => ~"Sized",
             ty::BoundPod => ~"Pod",
             ty::BoundShare => ~"Share",
