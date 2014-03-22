@@ -79,7 +79,7 @@ impl<T:Send> Exclusive<T> {
     #[inline]
     pub unsafe fn hold_and_signal(&self, f: |x: &mut T|) {
         let rec = self.x.get();
-        let mut guard = (*rec).lock.lock();
+        let guard = (*rec).lock.lock();
         if (*rec).failed {
             fail!("Poisoned Exclusive::new - another task failed inside!");
         }
@@ -92,7 +92,7 @@ impl<T:Send> Exclusive<T> {
     #[inline]
     pub unsafe fn hold_and_wait(&self, f: |x: &T| -> bool) {
         let rec = self.x.get();
-        let mut l = (*rec).lock.lock();
+        let l = (*rec).lock.lock();
         if (*rec).failed {
             fail!("Poisoned Exclusive::new - another task failed inside!");
         }
