@@ -46,8 +46,8 @@ fn use_std(krate: &ast::Crate) -> bool {
     !attr::contains_name(krate.attrs.as_slice(), "no_std")
 }
 
-fn use_uv(krate: &ast::Crate) -> bool {
-    !attr::contains_name(krate.attrs.as_slice(), "no_uv")
+fn use_start(krate: &ast::Crate) -> bool {
+    !attr::contains_name(krate.attrs.as_slice(), "no_start")
 }
 
 fn no_prelude(attrs: &[ast::Attribute]) -> bool {
@@ -87,18 +87,10 @@ impl<'a> fold::Folder for StandardLibraryInjector<'a> {
             span: DUMMY_SP
         });
 
-        if use_uv(&krate) && !self.sess.building_library.get() {
+        if use_start(&krate) && !self.sess.building_library.get() {
             vis.push(ast::ViewItem {
-                node: ast::ViewItemExternCrate(token::str_to_ident("green"),
-                                             with_version("green"),
-                                             ast::DUMMY_NODE_ID),
-                attrs: Vec::new(),
-                vis: ast::Inherited,
-                span: DUMMY_SP
-            });
-            vis.push(ast::ViewItem {
-                node: ast::ViewItemExternCrate(token::str_to_ident("rustuv"),
-                                             with_version("rustuv"),
+                node: ast::ViewItemExternCrate(token::str_to_ident("native"),
+                                             with_version("native"),
                                              ast::DUMMY_NODE_ID),
                 attrs: Vec::new(),
                 vis: ast::Inherited,

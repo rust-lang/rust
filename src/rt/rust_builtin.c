@@ -387,65 +387,6 @@ rust_unset_sigprocmask() {
 
 #endif
 
-#if defined(__WIN32__)
-void
-win32_require(LPCTSTR fn, BOOL ok) {
-    if (!ok) {
-        LPTSTR buf;
-        DWORD err = GetLastError();
-        FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER |
-                      FORMAT_MESSAGE_FROM_SYSTEM |
-                      FORMAT_MESSAGE_IGNORE_INSERTS,
-                      NULL, err,
-                      MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-                      (LPTSTR) &buf, 0, NULL );
-        fprintf(stderr, "%s failed with error %ld: %s", fn, err, buf);
-        LocalFree((HLOCAL)buf);
-        abort();
-    }
-}
-
-void
-rust_win32_rand_acquire(HCRYPTPROV* phProv) {
-    win32_require
-        (_T("CryptAcquireContext"),
-         // changes to the parameters here should be reflected in the docs of
-         // rand::os::OSRng
-         CryptAcquireContext(phProv, NULL, NULL, PROV_RSA_FULL,
-                             CRYPT_VERIFYCONTEXT|CRYPT_SILENT));
-
-}
-void
-rust_win32_rand_gen(HCRYPTPROV hProv, DWORD dwLen, BYTE* pbBuffer) {
-    win32_require
-        (_T("CryptGenRandom"), CryptGenRandom(hProv, dwLen, pbBuffer));
-}
-void
-rust_win32_rand_release(HCRYPTPROV hProv) {
-    win32_require
-        (_T("CryptReleaseContext"), CryptReleaseContext(hProv, 0));
-}
-
-#else
-
-// these symbols are listed in rustrt.def.in, so they need to exist; but they
-// should never be called.
-
-void
-rust_win32_rand_acquire() {
-    abort();
-}
-void
-rust_win32_rand_gen() {
-    abort();
-}
-void
-rust_win32_rand_release() {
-    abort();
-}
-
-#endif
-
 //
 // Local Variables:
 // mode: C++

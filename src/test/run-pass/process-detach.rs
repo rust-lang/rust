@@ -20,9 +20,15 @@
 // Note that the first thing we do is put ourselves in our own process group so
 // we don't interfere with other running tests.
 
+extern crate green;
+extern crate rustuv;
+
 use std::libc;
 use std::io::process;
 use std::io::signal::{Listener, Interrupt};
+
+#[start]
+fn start(argc: int, argv: **u8) -> int { green::start(argc, argv, main) }
 
 fn main() {
     unsafe { libc::setsid(); }

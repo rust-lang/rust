@@ -19,6 +19,8 @@ extern crate test;
 extern crate getopts;
 #[phase(link, syntax)]
 extern crate log;
+extern crate green;
+extern crate rustuv;
 
 use std::os;
 use std::io;
@@ -40,6 +42,9 @@ pub mod header;
 pub mod runtest;
 pub mod common;
 pub mod errors;
+
+#[start]
+fn start(argc: int, argv: **u8) -> int { green::start(argc, argv, main) }
 
 pub fn main() {
     let args = os::args();
