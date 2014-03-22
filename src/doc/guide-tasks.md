@@ -493,14 +493,14 @@ Here is the function that implements the child task:
 ~~~
 extern crate sync;
 # fn main() {
-    fn stringifier(channel: &sync::DuplexStream<~str, uint>) {
-        let mut value: uint;
-        loop {
-            value = channel.recv();
-            channel.send(value.to_str());
-            if value == 0 { break; }
-        }
+fn stringifier(channel: &sync::DuplexStream<~str, uint>) {
+    let mut value: uint;
+    loop {
+        value = channel.recv();
+        channel.send(value.to_str());
+        if value == 0 { break; }
     }
+}
 # }
 ~~~~
 
