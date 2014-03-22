@@ -2099,10 +2099,6 @@ unless they contain managed boxes, managed closures, or references.
 These are types that are safe to be used across several threads with access to
 a `&T` pointer. `MutexArc` is an example of a *sharable* type with internal mutable data.
 
-* `Freeze` - Constant (immutable) types.
-These are types that do not contain anything intrinsically mutable.
-Intrinsically mutable values include `Cell` in the standard library.
-
 * `'static` - Non-borrowed types.
 These are types that do not contain any data whose lifetime is bound to
 a particular stack frame. These are types that do not contain any
@@ -2152,7 +2148,7 @@ We say that the `Printable` trait _provides_ a `print` method with the
 given signature.  This means that we can call `print` on an argument
 of any type that implements the `Printable` trait.
 
-Rust's built-in `Send` and `Freeze` types are examples of traits that
+Rust's built-in `Send` and `Share` types are examples of traits that
 don't provide any methods.
 
 Traits may be implemented for specific types with [impls]. An impl for
@@ -2444,15 +2440,15 @@ Consequently, the trait objects themselves automatically fulfill their
 respective kind bounds. However, this default behavior can be overridden by
 specifying a list of bounds on the trait type, for example, by writing `~Trait:`
 (which indicates that the contents of the owned trait need not fulfill any
-bounds), or by writing `~Trait:Send+Freeze`, which indicates that in addition
-to fulfilling `Send`, contents must also fulfill `Freeze`, and as a consequence,
-the trait itself fulfills `Freeze`.
+bounds), or by writing `~Trait:Send+Share`, which indicates that in addition
+to fulfilling `Send`, contents must also fulfill `Share`, and as a consequence,
+the trait itself fulfills `Share`.
 
 * `~Trait:Send` is equivalent to `~Trait`.
 * `&Trait:` is equivalent to `&Trait`.
 
 Builtin kind bounds can also be specified on closure types in the same way (for
-example, by writing `fn:Freeze()`), and the default behaviours are the same as
+example, by writing `fn:Send()`), and the default behaviours are the same as
 for traits of the same storage class.
 
 ## Trait inheritance
