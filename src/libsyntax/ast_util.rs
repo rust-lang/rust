@@ -13,7 +13,7 @@ use ast;
 use ast_util;
 use codemap;
 use codemap::Span;
-use opt_vec;
+use owned_slice::OwnedSlice;
 use parse::token;
 use print::pprust;
 use visit::Visitor;
@@ -196,7 +196,7 @@ pub fn ident_to_path(s: Span, identifier: Ident) -> Path {
             ast::PathSegment {
                 identifier: identifier,
                 lifetimes: Vec::new(),
-                types: opt_vec::Empty,
+                types: OwnedSlice::empty(),
             }
         ),
     }
@@ -318,7 +318,7 @@ pub static as_prec: uint = 12u;
 
 pub fn empty_generics() -> Generics {
     Generics {lifetimes: Vec::new(),
-              ty_params: opt_vec::Empty}
+              ty_params: OwnedSlice::empty()}
 }
 
 // ______________________________________________________________________
@@ -709,12 +709,12 @@ pub fn get_inner_tys(ty: P<Ty>) -> Vec<P<Ty>> {
 mod test {
     use ast::*;
     use super::*;
-    use opt_vec;
+    use owned_slice::OwnedSlice;
 
     fn ident_to_segment(id : &Ident) -> PathSegment {
         PathSegment {identifier:id.clone(),
                      lifetimes: Vec::new(),
-                     types: opt_vec::Empty}
+                     types: OwnedSlice::empty()}
     }
 
     #[test] fn idents_name_eq_test() {

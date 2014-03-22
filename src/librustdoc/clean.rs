@@ -56,12 +56,9 @@ impl<T: Clean<U>, U> Clean<Option<U>> for Option<T> {
     }
 }
 
-impl<T: Clean<U>, U> Clean<Vec<U>> for syntax::opt_vec::OptVec<T> {
+impl<T: Clean<U>, U> Clean<Vec<U>> for syntax::owned_slice::OwnedSlice<T> {
     fn clean(&self) -> Vec<U> {
-        match self {
-            &syntax::opt_vec::Empty => Vec::new(),
-            &syntax::opt_vec::Vec(ref v) => v.clean()
-        }
+        self.iter().map(|x| x.clean()).collect()
     }
 }
 

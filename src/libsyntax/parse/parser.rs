@@ -75,8 +75,7 @@ use parse::token::{is_ident, is_ident_or_path, is_plain_ident};
 use parse::token::{keywords, special_idents, token_to_binop};
 use parse::token;
 use parse::{new_sub_parser_from_file, ParseSess};
-use opt_vec;
-use opt_vec::OptVec;
+use owned_slice::OwnedSlice;
 
 use std::cell::Cell;
 use collections::HashSet;
@@ -117,13 +116,13 @@ pub enum PathParsingMode {
 /// for the definition of a path segment.)
 struct PathSegmentAndBoundSet {
     segment: ast::PathSegment,
-    bound_set: Option<OptVec<TyParamBound>>,
+    bound_set: Option<OwnedSlice<TyParamBound>>,
 }
 
 /// A path paired with optional type bounds.
 pub struct PathAndBounds {
     path: ast::Path,
-    bounds: Option<OptVec<TyParamBound>>,
+    bounds: Option<OwnedSlice<TyParamBound>>,
 }
 
 enum ItemOrViewItem {
@@ -630,9 +629,9 @@ impl<'a> Parser<'a> {
                                   &mut self,
                                   sep: Option<token::Token>,
                                   f: |&mut Parser| -> T)
-                                  -> OptVec<T> {
+                                  -> OwnedSlice<T> {
         let mut first = true;
-        let mut v = opt_vec::Empty;
+        let mut v = Vec::new();
         while self.token != token::GT
             && self.token != token::BINOP(token::SHR) {
             match sep {
@@ -644,14 +643,14 @@ impl<'a> Parser<'a> {
             }
             v.push(f(self));
         }
-        return v;
+        return OwnedSlice::from_vec(v);
     }
 
     pub fn parse_seq_to_gt<T>(
                            &mut self,
                            sep: Option<token::Token>,
                            f: |&mut Parser| -> T)
-                           -> OptVec<T> {
+                           -> OwnedSlice<T> {
         let v = self.parse_seq_to_before_gt(sep, f);
         self.expect_gt();
         return v;
@@ -681,7 +680,7 @@ impl<'a> Parser<'a> {
                                    f: |&mut Parser| -> T)
                                    -> Vec<T> {
         let mut first: bool = true;
-        let mut v: Vec<T> = Vec::new();
+        let mut v = vec!();
         while self.token != *ket {
             match sep.sep {
               Some(ref t) => {
@@ -1531,7 +1530,7 @@ impl<'a> Parser<'a> {
                     segment: ast::PathSegment {
                         identifier: identifier,
                         lifetimes: Vec::new(),
-                        types: opt_vec::Empty,
+                        types: OwnedSlice::empty(),
                     },
                     bound_set: bound_set
                 });
@@ -1543,9 +1542,9 @@ impl<'a> Parser<'a> {
                 if mode != NoTypesAllowed && self.eat(&token::LT) {
                     let (lifetimes, types) =
                         self.parse_generic_values_after_lt();
-                    (true, lifetimes, opt_vec::from(types))
+                    (true, lifetimes, OwnedSlice::from_vec(types))
                 } else {
-                    (false, Vec::new(), opt_vec::Empty)
+                    (false, Vec::new(), OwnedSlice::empty())
                 }
             };
 
@@ -3432,12 +3431,12 @@ impl<'a> Parser<'a> {
     // Returns "Some(Empty)" if there's a colon but nothing after (e.g. "T:")
     // Returns "Some(stuff)" otherwise (e.g. "T:stuff").
     // NB: The None/Some distinction is important for issue #7264.
-    fn parse_optional_ty_param_bounds(&mut self) -> Option<OptVec<TyParamBound>> {
+    fn parse_optional_ty_param_bounds(&mut self) -> Option<OwnedSlice<TyParamBound>> {
         if !self.eat(&token::COLON) {
             return None;
         }
 
-        let mut result = opt_vec::Empty;
+        let mut result = vec!();
         loop {
             match self.token {
                 token::LIFETIME(lifetime) => {
@@ -3462,7 +3461,7 @@ impl<'a> Parser<'a> {
             }
         }
 
-        return Some(result);
+        return Some(OwnedSlice::from_vec(result));
     }
 
     // matches typaram = IDENT optbounds ( EQ ty )?
@@ -3515,7 +3514,7 @@ impl<'a> Parser<'a> {
         let result = self.parse_seq_to_gt(
             Some(token::COMMA),
             |p| p.parse_ty(false));
-        (lifetimes, opt_vec::take_vec(result))
+        (lifetimes, result.into_vec())
     }
 
     fn parse_fn_args(&mut self, named_args: bool, allow_variadic: bool)
@@ -4882,7 +4881,7 @@ impl<'a> Parser<'a> {
                     ast::PathSegment {
                         identifier: identifier,
                         lifetimes: Vec::new(),
-                        types: opt_vec::Empty,
+                        types: OwnedSlice::empty(),
                     }
                 }).collect()
             };
@@ -4917,7 +4916,7 @@ impl<'a> Parser<'a> {
                             ast::PathSegment {
                                 identifier: identifier,
                                 lifetimes: Vec::new(),
-                                types: opt_vec::Empty,
+                                types: OwnedSlice::empty(),
                             }
                         }).collect()
                     };
@@ -4935,7 +4934,7 @@ impl<'a> Parser<'a> {
                             ast::PathSegment {
                                 identifier: identifier,
                                 lifetimes: Vec::new(),
-                                types: opt_vec::Empty,
+                                types: OwnedSlice::empty(),
                             }
                         }).collect()
                     };
@@ -4957,7 +4956,7 @@ impl<'a> Parser<'a> {
                 ast::PathSegment {
                     identifier: identifier,
                     lifetimes: Vec::new(),
-                    types: opt_vec::Empty,
+                    types: OwnedSlice::empty(),
                 }
             }).collect()
         };

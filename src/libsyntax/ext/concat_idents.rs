@@ -12,7 +12,7 @@ use ast;
 use codemap::Span;
 use ext::base::*;
 use ext::base;
-use opt_vec;
+use owned_slice::OwnedSlice;
 use parse::token;
 use parse::token::{str_to_ident};
 
@@ -52,7 +52,7 @@ pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                     ast::PathSegment {
                         identifier: res,
                         lifetimes: Vec::new(),
-                        types: opt_vec::Empty,
+                        types: OwnedSlice::empty(),
                     }
                 )
             }
