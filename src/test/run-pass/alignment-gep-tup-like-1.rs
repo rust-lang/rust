@@ -27,11 +27,11 @@ impl<A:Clone> Invokable<A> for Invoker<A> {
     }
 }
 
-fn f<A:Clone + 'static>(a: A, b: u16) -> ~Invokable:<A> {
+fn f<A:Clone + 'static>(a: A, b: u16) -> ~Invokable<A>: {
     ~Invoker {
         a: a,
         b: b,
-    } as ~Invokable:<A>
+    } as ~Invokable<A>:
 }
 
 pub fn main() {
