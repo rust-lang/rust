@@ -674,8 +674,19 @@ impl<'a> ConstraintContext<'a> {
                                                  substs, variance);
             }
 
-            ty::ty_trait(~ty::TyTrait { def_id, ref substs, .. }) => {
+            ty::ty_trait(~ty::TyTrait { def_id, ref substs, store, mutability, .. }) => {
+                match store {
+                    ty::RegionTraitStore(region) => {
+                        let contra = self.contravariant(variance);
+                        self.add_constraints_from_region(region, contra);
+                    }
+                    ty::UniqTraitStore => {},
+                }
                 let trait_def = ty::lookup_trait_def(self.tcx(), def_id);
+                let variance = match mutability {
+                    ast::MutMutable => self.invariant(variance),
+                    ast::MutImmutable => variance,
+                };
                 self.add_constraints_from_substs(def_id, &trait_def.generics,
                                                  substs, variance);
             }
@@ -781,6 +792,8 @@ impl<'a> ConstraintContext<'a> {
     fn add_constraints_from_region(&mut self,
                                    region: ty::Region,
                                    variance: VarianceTermPtr<'a>) {
+        debug!("add_constraints_from_region(region={}, variance={})",
+                region.repr(self.tcx()), variance.to_str());
         match region {
             ty::ReEarlyBound(param_id, _, _) => {
                 let index = self.inferred_index(param_id);
