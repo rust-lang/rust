@@ -229,10 +229,8 @@ mod tests {
     fn test_clone() {
         let x = Rc::new(RefCell::new(5));
         let y = x.clone();
-        x.deref().with_mut(|inner| {
-            *inner = 20;
-        });
-        assert_eq!(y.deref().with(|v| *v), 20);
+        *x.borrow_mut() = 20;
+        assert_eq!(*y.borrow(), 20);
     }
 
     #[test]
