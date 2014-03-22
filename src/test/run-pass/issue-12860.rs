@@ -14,7 +14,7 @@ extern crate collections;
 
 use collections::HashSet;
 
-#[deriving(Eq, Hash)]
+#[deriving(Eq, TotalEq, Hash)]
 struct XYZ {
     x: int,
     y: int,
