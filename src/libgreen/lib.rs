@@ -209,7 +209,7 @@ pub mod stack;
 pub mod task;
 
 #[lang = "start"]
-#[cfg(not(test))]
+#[cfg(not(test), stage0)]
 pub fn lang_start(main: *u8, argc: int, argv: **u8) -> int {
     use std::cast;
     start(argc, argv, proc() {

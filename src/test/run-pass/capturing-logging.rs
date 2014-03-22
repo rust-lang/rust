@@ -14,10 +14,9 @@
 
 #[feature(phase)];
 
-#[no_uv];
-extern crate native;
 #[phase(syntax, link)]
 extern crate log;
+extern crate native;
 
 use std::fmt;
 use std::io::{ChanReader, ChanWriter};
