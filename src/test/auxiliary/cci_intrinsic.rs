@@ -10,26 +10,12 @@
 
 pub mod rusti {
     extern "rust-intrinsic" {
-        pub fn atomic_cxchg<T>(dst: &mut T, old: T, src: T) -> T;
-        pub fn atomic_cxchg_acq<T>(dst: &mut T, old: T, src: T) -> T;
-        pub fn atomic_cxchg_rel<T>(dst: &mut T, old: T, src: T) -> T;
-
-        pub fn atomic_xchg<T>(dst: &mut T, src: T) -> T;
-        pub fn atomic_xchg_acq<T>(dst: &mut T, src: T) -> T;
-        pub fn atomic_xchg_rel<T>(dst: &mut T, src: T) -> T;
-
-        pub fn atomic_xadd<T>(dst: &mut T, src: T) -> T;
-        pub fn atomic_xadd_acq<T>(dst: &mut T, src: T) -> T;
-        pub fn atomic_xadd_rel<T>(dst: &mut T, src: T) -> T;
-
-        pub fn atomic_xsub<T>(dst: &mut T, src: T) -> T;
-        pub fn atomic_xsub_acq<T>(dst: &mut T, src: T) -> T;
-        pub fn atomic_xsub_rel<T>(dst: &mut T, src: T) -> T;
+        pub fn atomic_xchg<T>(dst: *mut T, src: T) -> T;
     }
 }
 
 #[inline(always)]
-pub fn atomic_xchg(dst: &mut int, src: int) -> int {
+pub fn atomic_xchg(dst: *mut int, src: int) -> int {
     unsafe {
         rusti::atomic_xchg(dst, src)
     }
