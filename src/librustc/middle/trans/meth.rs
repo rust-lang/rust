@@ -208,7 +208,8 @@ pub fn trans_static_method_callee(bcx: &Block,
     debug!("trans_static_method_callee: method_id={:?}, expr_id={:?}, \
             name={}", method_id, expr_id, token::get_name(mname));
 
-    let vtbls = ccx.maps.vtable_map.borrow().get_copy(&expr_id);
+    let vtable_key = MethodCall::expr(expr_id);
+    let vtbls = ccx.maps.vtable_map.borrow().get_copy(&vtable_key);
     let vtbls = resolve_vtables_in_fn_ctxt(bcx.fcx, vtbls);
 
     match vtbls.get(bound_index).get(0) {
@@ -327,16 +328,11 @@ fn combine_impl_and_methods_tps(bcx: &Block,
 
     // Now, do the same work for the vtables.  The vtables might not
     // exist, in which case we need to make them.
-    let vtables = match node {
-        ExprId(id) => node_vtables(bcx, id),
-        MethodCall(method_call) => {
-            if method_call.autoderef == 0 {
-                node_vtables(bcx, method_call.expr_id)
-            } else {
-                None
-            }
-        }
+    let vtable_key = match node {
+        ExprId(id) => MethodCall::expr(id),
+        MethodCall(method_call) => method_call
     };
+    let vtables = node_vtables(bcx, vtable_key);
     let r_m_origins = match vtables {
         Some(vt) => vt,
         None => @Vec::from_elem(node_substs.len(), @Vec::new())
@@ -597,10 +593,8 @@ pub fn trans_trait_cast<'a>(bcx: &'a Block<'a>,
     bcx = datum.store_to(bcx, llboxdest);
 
     // Store the vtable into the second half of pair.
-    // This is structured a bit funny because of dynamic borrow failures.
-    let res = *ccx.maps.vtable_map.borrow().get(&id);
-    let res = resolve_vtables_in_fn_ctxt(bcx.fcx, res);
-    let origins = *res.get(0);
+    let res = *ccx.maps.vtable_map.borrow().get(&MethodCall::expr(id));
+    let origins = *resolve_vtables_in_fn_ctxt(bcx.fcx, res).get(0);
     let vtable = get_vtable(bcx, v_ty, origins);
     let llvtabledest = GEPi(bcx, lldest, [0u, abi::trt_field_vtable]);
     let llvtabledest = PointerCast(bcx, llvtabledest, val_ty(vtable).ptr_to());
