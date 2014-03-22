@@ -275,7 +275,7 @@ impl<'a> VisitContext<'a> {
                expr.repr(self.tcx));
 
         let expr_ty = ty::expr_ty_adjusted(self.tcx, expr,
-                                           self.method_map.borrow().get());
+                                           &*self.method_map.borrow());
         if ty::type_moves_by_default(self.tcx, expr_ty) {
             self.move_maps.moves_map.insert(expr.id);
             self.use_expr(expr, Move);
@@ -316,20 +316,17 @@ impl<'a> VisitContext<'a> {
         // `expr_mode` refers to the post-adjustment value.  If one of
         // those adjustments is to take a reference, then it's only
         // reading the underlying expression, not moving it.
-        let comp_mode = {
-            let adjustments = self.tcx.adjustments.borrow();
-            match adjustments.get().find(&expr.id) {
-                Some(adjustment) => {
-                    match **adjustment {
-                        ty::AutoDerefRef(ty::AutoDerefRef {
-                            autoref: Some(_),
-                            ..
-                        }) => Read,
-                        _ => expr_mode,
-                    }
+        let comp_mode = match self.tcx.adjustments.borrow().find(&expr.id) {
+            Some(adjustment) => {
+                match **adjustment {
+                    ty::AutoDerefRef(ty::AutoDerefRef {
+                        autoref: Some(_),
+                        ..
+                    }) => Read,
+                    _ => expr_mode,
                 }
-                _ => expr_mode,
             }
+            _ => expr_mode,
         };
 
         debug!("comp_mode = {:?}", comp_mode);
@@ -338,8 +335,7 @@ impl<'a> VisitContext<'a> {
             ExprPath(..) => {
                 match comp_mode {
                     Move => {
-                        let def_map = self.tcx.def_map.borrow();
-                        let def = def_map.get().get_copy(&expr.id);
+                        let def = self.tcx.def_map.borrow().get_copy(&expr.id);
                         let r = moved_variable_node_id_from_def(def);
                         for &id in r.iter() {
                             self.move_maps.moved_variables_set.insert(id);
@@ -581,7 +577,7 @@ impl<'a> VisitContext<'a> {
                                    arg_exprs: &[@Expr])
                                    -> bool {
         let method_call = MethodCall::expr(expr.id);
-        if !self.method_map.borrow().get().contains_key(&method_call) {
+        if !self.method_map.borrow().contains_key(&method_call) {
             return false;
         }
 

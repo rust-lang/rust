@@ -122,24 +122,23 @@ impl<T> Clone for Rc<T> {
 
 impl<T: Eq> Eq for Rc<T> {
     #[inline(always)]
-    fn eq(&self, other: &Rc<T>) -> bool { *self.deref() == *other.deref() }
-
+    fn eq(&self, other: &Rc<T>) -> bool { **self == **other }
     #[inline(always)]
-    fn ne(&self, other: &Rc<T>) -> bool { *self.deref() != *other.deref() }
+    fn ne(&self, other: &Rc<T>) -> bool { **self != **other }
 }
 
 impl<T: Ord> Ord for Rc<T> {
     #[inline(always)]
-    fn lt(&self, other: &Rc<T>) -> bool { *self.deref() < *other.deref() }
+    fn lt(&self, other: &Rc<T>) -> bool { **self < **other }
 
     #[inline(always)]
-    fn le(&self, other: &Rc<T>) -> bool { *self.deref() <= *other.deref() }
+    fn le(&self, other: &Rc<T>) -> bool { **self <= **other }
 
     #[inline(always)]
-    fn gt(&self, other: &Rc<T>) -> bool { *self.deref() > *other.deref() }
+    fn gt(&self, other: &Rc<T>) -> bool { **self > **other }
 
     #[inline(always)]
-    fn ge(&self, other: &Rc<T>) -> bool { *self.deref() >= *other.deref() }
+    fn ge(&self, other: &Rc<T>) -> bool { **self >= **other }
 }
 
 /// Weak reference to a reference-counted box
@@ -236,21 +235,21 @@ mod tests {
     #[test]
     fn test_simple() {
         let x = Rc::new(5);
-        assert_eq!(*x.deref(), 5);
+        assert_eq!(*x, 5);
     }
 
     #[test]
     fn test_simple_clone() {
         let x = Rc::new(5);
         let y = x.clone();
-        assert_eq!(*x.deref(), 5);
-        assert_eq!(*y.deref(), 5);
+        assert_eq!(*x, 5);
+        assert_eq!(*y, 5);
     }
 
     #[test]
     fn test_destructor() {
         let x = Rc::new(~5);
-        assert_eq!(**x.deref(), 5);
+        assert_eq!(**x, 5);
     }
 
     #[test]
@@ -273,7 +272,7 @@ mod tests {
         // see issue #11532
         use gc::Gc;
         let a = Rc::new(RefCell::new(Gc::new(1)));
-        assert!(a.deref().try_borrow_mut().is_some());
+        assert!(a.try_borrow_mut().is_some());
     }
 
     #[test]
@@ -284,7 +283,7 @@ mod tests {
 
         let a = Rc::new(Cycle { x: RefCell::new(None) });
         let b = a.clone().downgrade();
-        *a.deref().x.borrow_mut().get() = Some(b);
+        *a.x.borrow_mut() = Some(b);
 
         // hopefully we don't double-free (or leak)...
     }

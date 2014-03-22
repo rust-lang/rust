@@ -1181,7 +1181,7 @@ impl ToSource for syntax::codemap::Span {
 fn lit_to_str(lit: &ast::Lit) -> ~str {
     match lit.node {
         ast::LitStr(ref st, _) => st.get().to_owned(),
-        ast::LitBinary(ref data) => format!("{:?}", data.deref().as_slice()),
+        ast::LitBinary(ref data) => format!("{:?}", data.as_slice()),
         ast::LitChar(c) => ~"'" + std::char::from_u32(c).unwrap().to_str() + "'",
         ast::LitInt(i, _t) => i.to_str(),
         ast::LitUint(u, _t) => u.to_str(),
@@ -1229,16 +1229,15 @@ fn resolve_type(path: Path, tpbs: Option<Vec<TyParamBound> >,
         core::NotTyped(_) => return Bool
     };
     debug!("searching for {:?} in defmap", id);
-    let def_map = tycx.def_map.borrow();
-    let d = match def_map.get().find(&id) {
-        Some(k) => k,
+    let d = match tycx.def_map.borrow().find(&id) {
+        Some(&k) => k,
         None => {
             debug!("could not find {:?} in defmap (`{}`)", id, tycx.map.node_to_str(id));
             fail!("Unexpected failure: unresolved id not in defmap (this is a bug!)")
         }
     };
 
-    let (def_id, kind) = match *d {
+    let (def_id, kind) = match d {
         ast::DefFn(i, _) => (i, TypeFunction),
         ast::DefSelfTy(i) => return Self(i),
         ast::DefTy(i) => (i, TypeEnum),
@@ -1285,8 +1284,7 @@ fn resolve_def(id: ast::NodeId) -> Option<ast::DefId> {
     let cx = local_data::get(super::ctxtkey, |x| *x.unwrap());
     match cx.maybe_typed {
         core::Typed(ref tcx) => {
-            let def_map = tcx.def_map.borrow();
-            def_map.get().find(&id).map(|&d| ast_util::def_id_of_def(d))
+            tcx.def_map.borrow().find(&id).map(|&d| ast_util::def_id_of_def(d))
         }
         core::NotTyped(_) => None
     }

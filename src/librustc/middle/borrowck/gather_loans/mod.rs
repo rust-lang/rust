@@ -195,7 +195,7 @@ fn gather_loans_in_expr(this: &mut GatherLoanCtxt,
     this.id_range.add(ex.id);
 
     // If this expression is borrowed, have to ensure it remains valid:
-    for &adjustments in tcx.adjustments.borrow().get().find(&ex.id).iter() {
+    for &adjustments in tcx.adjustments.borrow().find(&ex.id).iter() {
         this.guarantee_adjustments(ex, *adjustments);
     }
 
@@ -255,7 +255,7 @@ fn gather_loans_in_expr(this: &mut GatherLoanCtxt,
 
       ast::ExprIndex(_, arg) |
       ast::ExprBinary(_, _, arg)
-      if method_map.get().contains_key(&MethodCall::expr(ex.id)) => {
+      if method_map.contains_key(&MethodCall::expr(ex.id)) => {
           // Arguments in method calls are always passed by ref.
           //
           // Currently these do not use adjustments, so we have to
@@ -343,7 +343,7 @@ impl<'a> GatherLoanCtxt<'a> {
                                 autoderefs: uint) {
         let method_map = self.bccx.method_map.borrow();
         for i in range(0, autoderefs) {
-            match method_map.get().find(&MethodCall::autoderef(expr.id, i as u32)) {
+            match method_map.find(&MethodCall::autoderef(expr.id, i as u32)) {
                 Some(method) => {
                     // Treat overloaded autoderefs as if an AutoRef adjustment
                     // was applied on the base type, as that is always the case.
@@ -452,7 +452,7 @@ impl<'a> GatherLoanCtxt<'a> {
 
     fn guarantee_captures(&mut self,
                           closure_expr: &ast::Expr) {
-        for captured_var in self.bccx.capture_map.get(&closure_expr.id).deref().iter() {
+        for captured_var in self.bccx.capture_map.get(&closure_expr.id).iter() {
             match captured_var.mode {
                 moves::CapCopy | moves::CapMove => { continue; }
                 moves::CapRef => { }
@@ -466,8 +466,8 @@ impl<'a> GatherLoanCtxt<'a> {
             // Lookup the kind of borrow the callee requires
             let upvar_id = ty::UpvarId { var_id: var_id,
                                          closure_expr_id: closure_expr.id };
-            let upvar_borrow_map = self.tcx().upvar_borrow_map.borrow();
-            let upvar_borrow = upvar_borrow_map.get().get_copy(&upvar_id);
+            let upvar_borrow = self.tcx().upvar_borrow_map.borrow()
+                                   .get_copy(&upvar_id);
 
             self.guarantee_valid_kind(closure_expr.id,
                                       closure_expr.span,
@@ -750,10 +750,7 @@ impl<'a> GatherLoanCtxt<'a> {
 
         match *loan_path {
             LpVar(local_id) => {
-                let mut used_mut_nodes = self.tcx()
-                                             .used_mut_nodes
-                                             .borrow_mut();
-                used_mut_nodes.get().insert(local_id);
+                self.tcx().used_mut_nodes.borrow_mut().insert(local_id);
             }
             LpExtend(base, mc::McInherited, _) => {
                 self.mark_loan_path_as_mutated(base);

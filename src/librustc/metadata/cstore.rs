@@ -89,8 +89,7 @@ impl CStore {
     }
 
     pub fn get_crate_data(&self, cnum: ast::CrateNum) -> @crate_metadata {
-        let metas = self.metas.borrow();
-        *metas.get().get(&cnum)
+        *self.metas.borrow().get(&cnum)
     }
 
     pub fn get_crate_hash(&self, cnum: ast::CrateNum) -> Svh {
@@ -104,33 +103,30 @@ impl CStore {
     }
 
     pub fn set_crate_data(&self, cnum: ast::CrateNum, data: @crate_metadata) {
-        let mut metas = self.metas.borrow_mut();
-        metas.get().insert(cnum, data);
+        self.metas.borrow_mut().insert(cnum, data);
     }
 
     pub fn have_crate_data(&self, cnum: ast::CrateNum) -> bool {
-        let metas = self.metas.borrow();
-        metas.get().contains_key(&cnum)
+        self.metas.borrow().contains_key(&cnum)
     }
 
     pub fn iter_crate_data(&self, i: |ast::CrateNum, @crate_metadata|) {
-        let metas = self.metas.borrow();
-        for (&k, &v) in metas.get().iter() {
+        for (&k, &v) in self.metas.borrow().iter() {
             i(k, v);
         }
     }
 
     pub fn add_used_crate_source(&self, src: CrateSource) {
         let mut used_crate_sources = self.used_crate_sources.borrow_mut();
-        if !used_crate_sources.get().contains(&src) {
-            used_crate_sources.get().push(src);
+        if !used_crate_sources.contains(&src) {
+            used_crate_sources.push(src);
         }
     }
 
     pub fn get_used_crate_source(&self, cnum: ast::CrateNum)
                                      -> Option<CrateSource> {
-        let mut used_crate_sources = self.used_crate_sources.borrow_mut();
-        used_crate_sources.get().iter().find(|source| source.cnum == cnum)
+        self.used_crate_sources.borrow_mut()
+            .iter().find(|source| source.cnum == cnum)
             .map(|source| source.clone())
     }
 
@@ -158,18 +154,17 @@ impl CStore {
                  ordering: &mut Vec<ast::CrateNum>) {
             if ordering.as_slice().contains(&cnum) { return }
             let meta = cstore.get_crate_data(cnum);
-            for (_, &dep) in meta.cnum_map.borrow().get().iter() {
+            for (_, &dep) in meta.cnum_map.borrow().iter() {
                 visit(cstore, dep, ordering);
             }
             ordering.push(cnum);
         };
-        for (&num, _) in self.metas.borrow().get().iter() {
+        for (&num, _) in self.metas.borrow().iter() {
             visit(self, num, &mut ordering);
         }
         ordering.as_mut_slice().reverse();
         let ordering = ordering.as_slice();
-        let used_crate_sources = self.used_crate_sources.borrow();
-        let mut libs = used_crate_sources.get()
+        let mut libs = self.used_crate_sources.borrow()
             .iter()
             .map(|src| (src.cnum, match prefer {
                 RequireDynamic => src.dylib.clone(),
@@ -184,8 +179,7 @@ impl CStore {
 
     pub fn add_used_library(&self, lib: ~str, kind: NativeLibaryKind) {
         assert!(!lib.is_empty());
-        let mut used_libraries = self.used_libraries.borrow_mut();
-        used_libraries.get().push((lib, kind));
+        self.used_libraries.borrow_mut().push((lib, kind));
     }
 
     pub fn get_used_libraries<'a>(&'a self)
@@ -194,9 +188,8 @@ impl CStore {
     }
 
     pub fn add_used_link_args(&self, args: &str) {
-        let mut used_link_args = self.used_link_args.borrow_mut();
         for s in args.split(' ') {
-            used_link_args.get().push(s.to_owned());
+            self.used_link_args.borrow_mut().push(s.to_owned());
         }
     }
 
@@ -207,14 +200,12 @@ impl CStore {
     pub fn add_extern_mod_stmt_cnum(&self,
                                     emod_id: ast::NodeId,
                                     cnum: ast::CrateNum) {
-        let mut extern_mod_crate_map = self.extern_mod_crate_map.borrow_mut();
-        extern_mod_crate_map.get().insert(emod_id, cnum);
+        self.extern_mod_crate_map.borrow_mut().insert(emod_id, cnum);
     }
 
     pub fn find_extern_mod_stmt_cnum(&self, emod_id: ast::NodeId)
                                      -> Option<ast::CrateNum> {
-        let extern_mod_crate_map = self.extern_mod_crate_map.borrow();
-        extern_mod_crate_map.get().find(&emod_id).map(|x| *x)
+        self.extern_mod_crate_map.borrow().find(&emod_id).map(|x| *x)
     }
 }
 

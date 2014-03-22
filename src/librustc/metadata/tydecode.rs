@@ -382,23 +382,17 @@ fn parse_ty(st: &mut PState, conv: conv_did) -> ty::t {
                                          pos: pos,
                                          len: len };
 
-        let tt_opt = {
-            let rcache = st.tcx.rcache.borrow();
-            rcache.get().find_copy(&key)
-        };
-        match tt_opt {
+        match st.tcx.rcache.borrow().find_copy(&key) {
           Some(tt) => return tt,
-          None => {
-            let mut ps = PState {
-                pos: pos,
-                .. *st
-            };
-            let tt = parse_ty(&mut ps, |x,y| conv(x,y));
-            let mut rcache = st.tcx.rcache.borrow_mut();
-            rcache.get().insert(key, tt);
-            return tt;
-          }
+          None => {}
         }
+        let mut ps = PState {
+            pos: pos,
+            .. *st
+        };
+        let tt = parse_ty(&mut ps, |x,y| conv(x,y));
+        st.tcx.rcache.borrow_mut().insert(key, tt);
+        return tt;
       }
       '"' => {
         let _ = parse_def(st, TypeWithId, |x,y| conv(x,y));

@@ -100,8 +100,7 @@ struct RegionResolutionVisitor<'a> {
 
 impl RegionMaps {
     pub fn relate_free_regions(&self, sub: FreeRegion, sup: FreeRegion) {
-        let mut free_region_map = self.free_region_map.borrow_mut();
-        match free_region_map.get().find_mut(&sub) {
+        match self.free_region_map.borrow_mut().find_mut(&sub) {
             Some(sups) => {
                 if !sups.iter().any(|x| x == &sup) {
                     sups.push(sup);
@@ -112,32 +111,25 @@ impl RegionMaps {
         }
 
         debug!("relate_free_regions(sub={:?}, sup={:?})", sub, sup);
-
-        free_region_map.get().insert(sub, vec!(sup));
+        self.free_region_map.borrow_mut().insert(sub, vec!(sup));
     }
 
     pub fn record_encl_scope(&self, sub: ast::NodeId, sup: ast::NodeId) {
         debug!("record_encl_scope(sub={}, sup={})", sub, sup);
         assert!(sub != sup);
-
-        let mut scope_map = self.scope_map.borrow_mut();
-        scope_map.get().insert(sub, sup);
+        self.scope_map.borrow_mut().insert(sub, sup);
     }
 
     pub fn record_var_scope(&self, var: ast::NodeId, lifetime: ast::NodeId) {
         debug!("record_var_scope(sub={}, sup={})", var, lifetime);
         assert!(var != lifetime);
-
-        let mut var_map = self.var_map.borrow_mut();
-        var_map.get().insert(var, lifetime);
+        self.var_map.borrow_mut().insert(var, lifetime);
     }
 
     pub fn record_rvalue_scope(&self, var: ast::NodeId, lifetime: ast::NodeId) {
         debug!("record_rvalue_scope(sub={}, sup={})", var, lifetime);
         assert!(var != lifetime);
-
-        let mut rvalue_scopes = self.rvalue_scopes.borrow_mut();
-        rvalue_scopes.get().insert(var, lifetime);
+        self.rvalue_scopes.borrow_mut().insert(var, lifetime);
     }
 
     pub fn mark_as_terminating_scope(&self, scope_id: ast::NodeId) {
@@ -149,22 +141,17 @@ impl RegionMaps {
          */
 
         debug!("record_terminating_scope(scope_id={})", scope_id);
-        let mut terminating_scopes = self.terminating_scopes.borrow_mut();
-        terminating_scopes.get().insert(scope_id);
+        self.terminating_scopes.borrow_mut().insert(scope_id);
     }
 
     pub fn opt_encl_scope(&self, id: ast::NodeId) -> Option<ast::NodeId> {
         //! Returns the narrowest scope that encloses `id`, if any.
-
-        let scope_map = self.scope_map.borrow();
-        scope_map.get().find(&id).map(|x| *x)
+        self.scope_map.borrow().find(&id).map(|x| *x)
     }
 
     pub fn encl_scope(&self, id: ast::NodeId) -> ast::NodeId {
         //! Returns the narrowest scope that encloses `id`, if any.
-
-        let scope_map = self.scope_map.borrow();
-        match scope_map.get().find(&id) {
+        match self.scope_map.borrow().find(&id) {
             Some(&r) => r,
             None => { fail!("no enclosing scope for id {}", id); }
         }
@@ -174,9 +161,7 @@ impl RegionMaps {
         /*!
          * Returns the lifetime of the local variable `var_id`
          */
-
-        let var_map = self.var_map.borrow();
-        match var_map.get().find(&var_id) {
+        match self.var_map.borrow().find(&var_id) {
             Some(&r) => r,
             None => { fail!("no enclosing scope for id {}", var_id); }
         }
@@ -186,8 +171,7 @@ impl RegionMaps {
         //! Returns the scope when temp created by expr_id will be cleaned up
 
         // check for a designated rvalue scope
-        let rvalue_scopes = self.rvalue_scopes.borrow();
-        match rvalue_scopes.get().find(&expr_id) {
+        match self.rvalue_scopes.borrow().find(&expr_id) {
             Some(&s) => {
                 debug!("temporary_scope({}) = {} [custom]", expr_id, s);
                 return Some(s);
@@ -204,8 +188,7 @@ impl RegionMaps {
             None => { return None; }
         };
 
-        let terminating_scopes = self.terminating_scopes.borrow();
-        while !terminating_scopes.get().contains(&id) {
+        while !self.terminating_scopes.borrow().contains(&id) {
             match self.opt_encl_scope(id) {
                 Some(p) => {
                     id = p;
@@ -249,8 +232,7 @@ impl RegionMaps {
 
         let mut s = subscope;
         while superscope != s {
-            let scope_map = self.scope_map.borrow();
-            match scope_map.get().find(&s) {
+            match self.scope_map.borrow().find(&s) {
                 None => {
                     debug!("is_subscope_of({}, {}, s={})=false",
                            subscope, superscope, s);
@@ -286,8 +268,7 @@ impl RegionMaps {
         let mut queue = vec!(sub);
         let mut i = 0;
         while i < queue.len() {
-            let free_region_map = self.free_region_map.borrow();
-            match free_region_map.get().find(queue.get(i)) {
+            match self.free_region_map.borrow().find(queue.get(i)) {
                 Some(parents) => {
                     for parent in parents.iter() {
                         if *parent == sup {
@@ -391,8 +372,7 @@ impl RegionMaps {
             let mut result = vec!(scope);
             let mut scope = scope;
             loop {
-                let scope_map = this.scope_map.borrow();
-                match scope_map.get().find(&scope) {
+                match this.scope_map.borrow().find(&scope) {
                     None => return result,
                     Some(&superscope) => {
                         result.push(superscope);

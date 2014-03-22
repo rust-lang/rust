@@ -66,7 +66,6 @@
 use container::Container;
 use io::Writer;
 use iter::Iterator;
-use ops::Deref;
 use option::{Option, Some, None};
 use rc::Rc;
 use str::{Str, StrSlice};
@@ -247,7 +246,7 @@ impl<S: Writer, T: Hash<S>> Hash<S> for @T {
 impl<S: Writer, T: Hash<S>> Hash<S> for Rc<T> {
     #[inline]
     fn hash(&self, state: &mut S) {
-        self.deref().hash(state);
+        (**self).hash(state);
     }
 }
 

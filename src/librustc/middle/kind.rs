@@ -117,18 +117,13 @@ fn check_struct_safe_for_destructor(cx: &mut Context,
 }
 
 fn check_impl_of_trait(cx: &mut Context, it: &Item, trait_ref: &TraitRef, self_type: &Ty) {
-    let def_map = cx.tcx.def_map.borrow();
-    let ast_trait_def = def_map.get()
-                               .find(&trait_ref.ref_id)
-                               .expect("trait ref not in def map!");
-    let trait_def_id = ast_util::def_id_of_def(*ast_trait_def);
-    let trait_def;
-    {
-        let trait_defs = cx.tcx.trait_defs.borrow();
-        trait_def = *trait_defs.get()
-                               .find(&trait_def_id)
-                               .expect("trait def not in trait-defs map!");
-    }
+    let ast_trait_def = *cx.tcx.def_map.borrow()
+                              .find(&trait_ref.ref_id)
+                              .expect("trait ref not in def map!");
+    let trait_def_id = ast_util::def_id_of_def(ast_trait_def);
+    let trait_def = *cx.tcx.trait_defs.borrow()
+                           .find(&trait_def_id)
+                           .expect("trait def not in trait-defs map!");
 
     // If this trait has builtin-kind supertraits, meet them.
     let self_ty: ty::t = ty::node_id_to_type(cx.tcx, it.id);
@@ -147,7 +142,7 @@ fn check_impl_of_trait(cx: &mut Context, it: &Item, trait_ref: &TraitRef, self_t
         match self_type.node {
             TyPath(_, ref bounds, path_node_id) => {
                 assert!(bounds.is_none());
-                let struct_def = def_map.get().get_copy(&path_node_id);
+                let struct_def = cx.tcx.def_map.borrow().get_copy(&path_node_id);
                 let struct_did = ast_util::def_id_of_def(struct_def);
                 check_struct_safe_for_destructor(cx, self_type.span, struct_did);
             }
@@ -266,18 +261,17 @@ pub fn check_expr(cx: &mut Context, e: &Expr) {
     // Handle any kind bounds on type parameters
     {
         let method_map = cx.method_map.borrow();
-        let method = method_map.get().find(&typeck::MethodCall::expr(e.id));
+        let method = method_map.find(&typeck::MethodCall::expr(e.id));
         let node_type_substs = cx.tcx.node_type_substs.borrow();
         let r = match method {
             Some(method) => Some(&method.substs.tps),
-            None => node_type_substs.get().find(&e.id)
+            None => node_type_substs.find(&e.id)
         };
         for ts in r.iter() {
             let def_map = cx.tcx.def_map.borrow();
             let type_param_defs = match e.node {
               ExprPath(_) => {
-                let did = ast_util::def_id_of_def(def_map.get()
-                                                         .get_copy(&e.id));
+                let did = ast_util::def_id_of_def(def_map.get_copy(&e.id));
                 ty::lookup_item_type(cx.tcx, did).generics.type_param_defs.clone()
               }
               _ => {
@@ -297,7 +291,6 @@ pub fn check_expr(cx: &mut Context, e: &Expr) {
                 }
               }
             };
-            let type_param_defs = type_param_defs.deref();
             if ts.len() != type_param_defs.len() {
                 // Fail earlier to make debugging easier
                 fail!("internal error: in kind::check_expr, length \
@@ -334,14 +327,13 @@ pub fn check_expr(cx: &mut Context, e: &Expr) {
     }
 
     // Search for auto-adjustments to find trait coercions.
-    let adjustments = cx.tcx.adjustments.borrow();
-    match adjustments.get().find(&e.id) {
+    match cx.tcx.adjustments.borrow().find(&e.id) {
         Some(adjustment) => {
             match **adjustment {
                 ty::AutoObject(..) => {
                     let source_ty = ty::expr_ty(cx.tcx, e);
                     let target_ty = ty::expr_ty_adjusted(cx.tcx, e,
-                                                         cx.method_map.borrow().get());
+                                                         &*cx.method_map.borrow());
                     check_trait_cast(cx, source_ty, target_ty, e.span);
                 }
                 ty::AutoAddEnv(..) |
@@ -368,10 +360,10 @@ fn check_ty(cx: &mut Context, aty: &Ty) {
     match aty.node {
         TyPath(_, _, id) => {
             let node_type_substs = cx.tcx.node_type_substs.borrow();
-            let r = node_type_substs.get().find(&id);
+            let r = node_type_substs.find(&id);
             for ts in r.iter() {
                 let def_map = cx.tcx.def_map.borrow();
-                let did = ast_util::def_id_of_def(def_map.get().get_copy(&id));
+                let did = ast_util::def_id_of_def(def_map.get_copy(&id));
                 let generics = ty::lookup_item_type(cx.tcx, did).generics;
                 let type_param_defs = generics.type_param_defs();
                 for (&ty, type_param_def) in ts.iter().zip(type_param_defs.iter()) {

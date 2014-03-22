@@ -100,7 +100,7 @@ pub fn trans_method_callee<'a>(
     let _icx = push_ctxt("meth::trans_method_callee");
 
     let (origin, method_ty) = match bcx.ccx().maps.method_map
-                                       .borrow().get().find(&method_call) {
+                                       .borrow().find(&method_call) {
         Some(method) => {
             debug!("trans_method_callee({:?}, method={})",
                    method_call, method.repr(bcx.tcx()));
@@ -208,7 +208,7 @@ pub fn trans_static_method_callee(bcx: &Block,
     debug!("trans_static_method_callee: method_id={:?}, expr_id={:?}, \
             name={}", method_id, expr_id, token::get_name(mname));
 
-    let vtbls = ccx.maps.vtable_map.borrow().get().get_copy(&expr_id);
+    let vtbls = ccx.maps.vtable_map.borrow().get_copy(&expr_id);
     let vtbls = resolve_vtables_in_fn_ctxt(bcx.fcx, vtbls);
 
     match vtbls.get(bound_index).get(0) {
@@ -239,23 +239,18 @@ pub fn trans_static_method_callee(bcx: &Block,
 pub fn method_with_name(ccx: &CrateContext,
                         impl_id: ast::DefId,
                         name: ast::Name) -> ast::DefId {
-    {
-        let impl_method_cache = ccx.impl_method_cache.borrow();
-        let meth_id_opt = impl_method_cache.get().find_copy(&(impl_id, name));
-        match meth_id_opt {
-            Some(m) => return m,
-            None => {}
-        }
+    match ccx.impl_method_cache.borrow().find_copy(&(impl_id, name)) {
+        Some(m) => return m,
+        None => {}
     }
 
-    let impls = ccx.tcx.impls.borrow();
-    let imp = impls.get().find(&impl_id)
-        .expect("could not find impl while translating");
+    let imp = ccx.tcx.impls.borrow();
+    let imp = imp.find(&impl_id)
+                 .expect("could not find impl while translating");
     let meth = imp.methods.iter().find(|m| m.ident.name == name)
-        .expect("could not find method while translating");
+                  .expect("could not find method while translating");
 
-    let mut impl_method_cache = ccx.impl_method_cache.borrow_mut();
-    impl_method_cache.get().insert((impl_id, name), meth.def_id);
+    ccx.impl_method_cache.borrow_mut().insert((impl_id, name), meth.def_id);
     meth.def_id
 }
 
@@ -478,12 +473,9 @@ pub fn get_vtable(bcx: &Block,
 
     // Check the cache.
     let hash_id = (self_ty, vtable_id(ccx, origins.get(0)));
-    {
-        let vtables = ccx.vtables.borrow();
-        match vtables.get().find(&hash_id) {
-            Some(&val) => { return val }
-            None => { }
-        }
+    match ccx.vtables.borrow().find(&hash_id) {
+        Some(&val) => { return val }
+        None => { }
     }
 
     // Not in the cache. Actually build it.
@@ -507,8 +499,7 @@ pub fn get_vtable(bcx: &Block,
     let drop_glue = glue::get_drop_glue(ccx, self_ty);
     let vtable = make_vtable(ccx, drop_glue, methods.as_slice());
 
-    let mut vtables = ccx.vtables.borrow_mut();
-    vtables.get().insert(hash_id, vtable);
+    ccx.vtables.borrow_mut().insert(hash_id, vtable);
     return vtable;
 }
 
@@ -607,14 +598,9 @@ pub fn trans_trait_cast<'a>(bcx: &'a Block<'a>,
 
     // Store the vtable into the second half of pair.
     // This is structured a bit funny because of dynamic borrow failures.
-    let origins = {
-        let res = {
-            let vtable_map = ccx.maps.vtable_map.borrow();
-            *vtable_map.get().get(&id)
-        };
-        let res = resolve_vtables_in_fn_ctxt(bcx.fcx, res);
-        *res.get(0)
-    };
+    let res = *ccx.maps.vtable_map.borrow().get(&id);
+    let res = resolve_vtables_in_fn_ctxt(bcx.fcx, res);
+    let origins = *res.get(0);
     let vtable = get_vtable(bcx, v_ty, origins);
     let llvtabledest = GEPi(bcx, lldest, [0u, abi::trt_field_vtable]);
     let llvtabledest = PointerCast(bcx, llvtabledest, val_ty(vtable).ptr_to());

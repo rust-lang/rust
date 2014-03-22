@@ -40,7 +40,7 @@ fn main()
     //~^ ERROR cannot pack type `~B`, which does not fulfill `Send`
     let v = Rc::new(RefCell::new(a));
     let w = v.clone();
-    let b = v.deref();
+    let b = &*v;
     let mut b = b.borrow_mut();
-    b.get().v.set(w.clone());
+    b.v.set(w.clone());
 }

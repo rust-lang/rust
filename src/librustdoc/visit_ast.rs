@@ -186,7 +186,7 @@ impl<'a> RustdocVisitor<'a> {
             core::Typed(ref tcx) => tcx,
             core::NotTyped(_) => return false
         };
-        let def = ast_util::def_id_of_def(*tcx.def_map.borrow().get().get(&id));
+        let def = ast_util::def_id_of_def(*tcx.def_map.borrow().get(&id));
         if !ast_util::is_local(def) { return false }
         let analysis = match self.analysis {
             Some(analysis) => analysis, None => return false

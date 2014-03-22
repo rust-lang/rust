@@ -20,5 +20,5 @@ pub fn main() {
 
    let mut x = Rc::new(3);
    x = x;
-   assert!(*x.deref() == 3);
+   assert!(*x == 3);
 }
