@@ -39,8 +39,8 @@
 //!
 //! A simple spinlock:
 //!
-//! ```ignore
-//! # // FIXME: Needs PR #12430
+//! ```
+//! # // FIXME: .get() calls can be removed with Deref for Arc
 //! extern crate sync;
 //!
 //! use sync::Arc;
@@ -52,11 +52,11 @@
 //!
 //!     let spinlock_clone = spinlock.clone();
 //!     spawn(proc() {
-//!         spinlock_clone.store(0, SeqCst);
+//!         spinlock_clone.get().store(0, SeqCst);
 //!     });
 //!
 //!     // Wait for the other task to release the lock
-//!     while spinlock.load(SeqCst) != 0 {
+//!     while spinlock.get().load(SeqCst) != 0 {
 //!         // Since tasks may not be preemptive (if they are green threads)
 //!         // yield to the scheduler to let the other task run. Low level
 //!         // concurrent code needs to take into account Rust's two threading
@@ -68,8 +68,8 @@
 //!
 //! Transferring a heap object with `AtomicOption`:
 //!
-//! ```ignore
-//! # // FIXME: Needs PR #12430
+//! ```
+//! # // FIXME: .get() calls can be removed with Deref for Arc
 //! extern crate sync;
 //!
 //! use sync::Arc;
@@ -82,7 +82,7 @@
 //!
 //!     let shared_big_object_clone = shared_big_object.clone();
 //!     spawn(proc() {
-//!         let unwrapped_big_object = shared_big_object_clone.take(SeqCst);
+//!         let unwrapped_big_object = shared_big_object_clone.get().take(SeqCst);
 //!         if unwrapped_big_object.is_some() {
 //!             println!("got a big object from another task");
 //!         } else {
@@ -90,7 +90,7 @@
 //!         }
 //!     });
 //!
-//!     shared_big_object.swap(~BigObject, SeqCst);
+//!     shared_big_object.get().swap(~BigObject, SeqCst);
 //! }
 //! ```
 //!
