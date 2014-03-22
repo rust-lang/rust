@@ -87,10 +87,8 @@ mod tests {
     fn test_clone() {
         let x = Gc::new(RefCell::new(5));
         let y = x.clone();
-        x.borrow().with_mut(|inner| {
-            *inner = 20;
-        });
-        assert_eq!(y.borrow().with(|x| *x), 20);
+        *x.borrow().borrow_mut() = 20;
+        assert_eq!(*y.borrow().borrow(), 20);
     }
 
     #[test]
