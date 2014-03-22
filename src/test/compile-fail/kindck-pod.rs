@@ -10,7 +10,7 @@
 
 // Test which of the builtin types are considered POD.
 
-#[feature(managed_boxes)];
+#![feature(managed_boxes)]
 
 use std::rc::Rc;
 

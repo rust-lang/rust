@@ -10,7 +10,7 @@
 
 //! Operations and constants for 32-bits floats (`f32` type)
 
-#[allow(missing_doc)];
+#![allow(missing_doc)]
 
 use prelude::*;
 

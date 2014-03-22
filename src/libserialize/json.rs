@@ -11,8 +11,8 @@
 // Rust JSON serialization library
 // Copyright (c) 2011 Google Inc.
 
-#[forbid(non_camel_case_types)];
-#[allow(missing_doc)];
+#![forbid(non_camel_case_types)]
+#![allow(missing_doc)]
 
 /*!
 JSON parsing and serialization

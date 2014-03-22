@@ -10,8 +10,8 @@
 
 // Code that generates a test runner to run all the tests in a crate
 
-#[allow(dead_code)];
-#[allow(unused_imports)];
+#![allow(dead_code)]
+#![allow(unused_imports)]
 
 use driver::session::Session;
 use front::config;

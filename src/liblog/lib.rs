@@ -105,16 +105,16 @@ if logging is disabled, none of the components of the log will be executed.
 
 */
 
-#[crate_id = "log#0.10-pre"];
-#[license = "MIT/ASL2"];
-#[crate_type = "rlib"];
-#[crate_type = "dylib"];
-#[doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
-      html_favicon_url = "http://www.rust-lang.org/favicon.ico",
-      html_root_url = "http://static.rust-lang.org/doc/master")];
+#![crate_id = "log#0.10-pre"]
+#![license = "MIT/ASL2"]
+#![crate_type = "rlib"]
+#![crate_type = "dylib"]
+#![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
+       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
+       html_root_url = "http://static.rust-lang.org/doc/master")]
 
-#[feature(macro_rules)];
-#[deny(missing_doc, deprecated_owned_vector)];
+#![feature(macro_rules)]
+#![deny(missing_doc, deprecated_owned_vector)]
 
 extern crate sync;
 

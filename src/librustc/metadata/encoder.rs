@@ -10,8 +10,8 @@
 
 // Metadata encoding
 
-#[allow(unused_must_use)]; // everything is just a MemWriter, can't fail
-#[allow(non_camel_case_types)];
+#![allow(unused_must_use)] // everything is just a MemWriter, can't fail
+#![allow(non_camel_case_types)]
 
 use back::svh::Svh;
 use metadata::common::*;

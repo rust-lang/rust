@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[allow(unused_unsafe)];
-#[allow(dead_code)];
-#[deny(unsafe_block)];
-#[feature(macro_rules)];
+#![allow(unused_unsafe)]
+#![allow(dead_code)]
+#![deny(unsafe_block)]
+#![feature(macro_rules)]
 
 unsafe fn allowed() {}
 

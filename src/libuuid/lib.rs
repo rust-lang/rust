@@ -54,19 +54,15 @@ Examples of string representations:
 
 */
 
-#[crate_id = "uuid#0.10-pre"];
-#[crate_type = "rlib"];
-#[crate_type = "dylib"];
-#[license = "MIT/ASL2"];
-#[doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
-      html_favicon_url = "http://www.rust-lang.org/favicon.ico",
-      html_root_url = "http://static.rust-lang.org/doc/master")];
+#![crate_id = "uuid#0.10-pre"]
+#![crate_type = "rlib"]
+#![crate_type = "dylib"]
+#![license = "MIT/ASL2"]
+#![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
+       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
+       html_root_url = "http://static.rust-lang.org/doc/master")]
 
-#[feature(default_type_params)];
-
-// NOTE remove the following two attributes after the next snapshot.
-#[allow(unrecognized_lint)];
-#[allow(default_type_param_usage)];
+#![feature(default_type_params)]
 
 // test harness access
 #[cfg(test)]

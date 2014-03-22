@@ -60,7 +60,7 @@
  * tied to `x`. The type of `x'` will be a borrowed pointer.
  */
 
-#[allow(non_camel_case_types)];
+#![allow(non_camel_case_types)]
 
 use middle::ty;
 use middle::typeck;

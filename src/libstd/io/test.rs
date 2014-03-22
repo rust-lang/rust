@@ -10,7 +10,7 @@
 
 /*! Various utility functions useful for writing I/O tests */
 
-#[macro_escape];
+#![macro_escape]
 
 use libc;
 use os;

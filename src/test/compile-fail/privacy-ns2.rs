@@ -11,9 +11,9 @@
 // Check we do the correct privacy checks when we import a name and there is an
 // item with that name in both the value and type namespaces.
 
-#[feature(globs)];
-#[allow(dead_code)];
-#[allow(unused_imports)];
+#![feature(globs)]
+#![allow(dead_code)]
+#![allow(unused_imports)]
 
 // public type, private value
 pub mod foo1 {

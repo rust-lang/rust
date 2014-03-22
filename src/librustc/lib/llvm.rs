@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[allow(non_uppercase_pattern_statics)];
-#[allow(non_camel_case_types)];
+#![allow(non_uppercase_pattern_statics)]
+#![allow(non_camel_case_types)]
 
 use std::c_str::ToCStr;
 use std::cell::RefCell;

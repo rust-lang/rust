@@ -190,7 +190,7 @@ impl<T: ToStrRadix + Num + Ord> ToStrRadix for Cmplx<T> {
 
 #[cfg(test)]
 mod test {
-    #[allow(non_uppercase_statics)];
+    #![allow(non_uppercase_statics)]
 
     use super::{Complex64, Cmplx};
     use std::num::{Zero,One,Float};

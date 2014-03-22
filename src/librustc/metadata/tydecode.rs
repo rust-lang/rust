@@ -14,7 +14,7 @@
 // tjc note: Would be great to have a `match check` macro equivalent
 // for some of these
 
-#[allow(non_camel_case_types)];
+#![allow(non_camel_case_types)]
 
 use middle::ty;
 

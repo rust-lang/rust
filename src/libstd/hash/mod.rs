@@ -61,7 +61,7 @@
  * ```
  */
 
-#[allow(unused_must_use)];
+#![allow(unused_must_use)]
 
 use container::Container;
 use io::Writer;

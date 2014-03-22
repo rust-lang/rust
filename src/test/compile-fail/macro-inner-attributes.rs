@@ -8,11 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[feature(macro_rules)];
+// ignore-test FIXME #13067 attr macro_rules matchers don't work right with new attr syntax
+#![feature(macro_rules)]
 
 macro_rules! test ( ($nm:ident,
                      $a:attr,
-                     $i:item) => (mod $nm { $a; $i }); )
+                     $i:item) => (mod $nm { $a $i }); )
 
 test!(a,
       #[cfg(qux)],

@@ -23,17 +23,17 @@
 // running tests while providing a base that other test frameworks may
 // build off of.
 
-#[crate_id = "test#0.10-pre"];
-#[comment = "Rust internal test library only used by rustc"];
-#[license = "MIT/ASL2"];
-#[crate_type = "rlib"];
-#[crate_type = "dylib"];
-#[doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
-      html_favicon_url = "http://www.rust-lang.org/favicon.ico",
-      html_root_url = "http://static.rust-lang.org/doc/master")];
+#![crate_id = "test#0.10-pre"]
+#![comment = "Rust internal test library only used by rustc"]
+#![license = "MIT/ASL2"]
+#![crate_type = "rlib"]
+#![crate_type = "dylib"]
+#![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
+       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
+       html_root_url = "http://static.rust-lang.org/doc/master")]
 
-#[feature(asm, macro_rules)];
-#[deny(deprecated_owned_vector)];
+#![feature(asm, macro_rules)]
+#![deny(deprecated_owned_vector)]
 
 extern crate collections;
 extern crate getopts;
