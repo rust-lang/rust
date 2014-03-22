@@ -207,7 +207,7 @@ pub fn parse(file: &mut io::Reader,
     }
 
     // don't read NUL
-    let bytes = try!(file.read_bytes(names_bytes as uint - 1));
+    let bytes = try!(file.read_exact(names_bytes as uint - 1));
     let names_str = match str::from_utf8_owned(bytes) {
         Some(s) => s, None => return Err(~"input not utf-8"),
     };
@@ -250,7 +250,7 @@ pub fn parse(file: &mut io::Reader,
             string_offsets.push(try!(file.read_le_u16()));
         }
 
-        let string_table = try!(file.read_bytes(string_table_bytes as uint));
+        let string_table = try!(file.read_exact(string_table_bytes as uint));
 
         if string_table.len() != string_table_bytes as uint {
             return Err(~"error: hit EOF before end of string table");
