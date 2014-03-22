@@ -13,7 +13,7 @@
 use codemap::{Span, Spanned, DUMMY_SP};
 use abi::AbiSet;
 use ast_util;
-use opt_vec::OptVec;
+use owned_slice::OwnedSlice;
 use parse::token::{InternedString, special_idents, str_to_ident};
 use parse::token;
 
@@ -143,7 +143,7 @@ pub struct PathSegment {
     /// The lifetime parameters for this path segment.
     lifetimes: Vec<Lifetime>,
     /// The type parameters for this path segment, if present.
-    types: OptVec<P<Ty>>,
+    types: OwnedSlice<P<Ty>>,
 }
 
 pub type CrateNum = u32;
@@ -180,14 +180,14 @@ pub enum TyParamBound {
 pub struct TyParam {
     ident: Ident,
     id: NodeId,
-    bounds: OptVec<TyParamBound>,
+    bounds: OwnedSlice<TyParamBound>,
     default: Option<P<Ty>>
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, Hash)]
 pub struct Generics {
     lifetimes: Vec<Lifetime>,
-    ty_params: OptVec<TyParam>,
+    ty_params: OwnedSlice<TyParam>,
 }
 
 impl Generics {
@@ -799,7 +799,7 @@ pub struct ClosureTy {
     // implement issue #7264. None means "fn()", which means infer a default
     // bound based on pointer sigil during typeck. Some(Empty) means "fn:()",
     // which means use no bounds (e.g., not even Owned on a ~fn()).
-    bounds: Option<OptVec<TyParamBound>>,
+    bounds: Option<OwnedSlice<TyParamBound>>,
 }
 
 #[deriving(Eq, Encodable, Decodable, Hash)]
@@ -823,7 +823,7 @@ pub enum Ty_ {
     TyClosure(@ClosureTy),
     TyBareFn(@BareFnTy),
     TyTup(Vec<P<Ty>> ),
-    TyPath(Path, Option<OptVec<TyParamBound>>, NodeId), // for #7264; see above
+    TyPath(Path, Option<OwnedSlice<TyParamBound>>, NodeId), // for #7264; see above
     TyTypeof(@Expr),
     // TyInfer means the type should be inferred instead of it having been
     // specified. This can appear anywhere in a type.

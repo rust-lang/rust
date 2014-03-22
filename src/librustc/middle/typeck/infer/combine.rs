@@ -66,7 +66,7 @@ use std::result;
 
 use syntax::ast::{Onceness, Purity};
 use syntax::ast;
-use syntax::opt_vec;
+use syntax::owned_slice::OwnedSlice;
 use syntax::abi::AbiSet;
 
 pub trait Combine {
@@ -160,7 +160,7 @@ pub trait Combine {
 
                     assert_eq!(num_region_params, a_rs.len());
                     assert_eq!(num_region_params, b_rs.len());
-                    let mut rs = opt_vec::Empty;
+                    let mut rs = vec!();
                     for i in range(0, num_region_params) {
                         let a_r = *a_rs.get(i);
                         let b_r = *b_rs.get(i);
@@ -176,7 +176,7 @@ pub trait Combine {
                         };
                         rs.push(if_ok!(r));
                     }
-                    Ok(ty::NonerasedRegions(rs))
+                    Ok(ty::NonerasedRegions(OwnedSlice::from_vec(rs)))
                 }
             }
         }

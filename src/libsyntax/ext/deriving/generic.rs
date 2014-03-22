@@ -184,7 +184,7 @@ use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use codemap;
 use codemap::Span;
-use opt_vec;
+use owned_slice::OwnedSlice;
 use parse::token::InternedString;
 
 use std::vec;
@@ -360,27 +360,32 @@ impl<'a> TraitDef<'a> {
                            methods: Vec<@ast::Method> ) -> @ast::Item {
         let trait_path = self.path.to_path(cx, self.span, type_ident, generics);
 
-        let mut trait_generics = self.generics.to_generics(cx, self.span,
-                                                           type_ident, generics);
+        let Generics { mut lifetimes, ty_params } =
+            self.generics.to_generics(cx, self.span, type_ident, generics);
+        let mut ty_params = ty_params.into_vec();
+
         // Copy the lifetimes
-        for l in generics.lifetimes.iter() {
-            trait_generics.lifetimes.push(*l)
-        };
+        lifetimes.extend(&mut generics.lifetimes.iter().map(|l| *l));
+
         // Create the type parameters.
-        for ty_param in generics.ty_params.iter() {
+        ty_params.extend(&mut generics.ty_params.iter().map(|ty_param| {
             // I don't think this can be moved out of the loop, since
             // a TyParamBound requires an ast id
-            let mut bounds = opt_vec::from(
+            let mut bounds =
                 // extra restrictions on the generics parameters to the type being derived upon
                 self.additional_bounds.map(|p| {
                     cx.typarambound(p.to_path(cx, self.span,
                                                   type_ident, generics))
-                }));
+                });
             // require the current trait
             bounds.push(cx.typarambound(trait_path.clone()));
 
-            trait_generics.ty_params.push(cx.typaram(ty_param.ident, bounds, None));
-        }
+            cx.typaram(ty_param.ident, OwnedSlice::from_vec(bounds), None)
+        }));
+        let trait_generics = Generics {
+            lifetimes: lifetimes,
+            ty_params: OwnedSlice::from_vec(ty_params)
+        };
 
         // Create the reference to the trait.
         let trait_ref = cx.trait_ref(trait_path);
@@ -395,7 +400,7 @@ impl<'a> TraitDef<'a> {
         // Create the type of `self`.
         let self_type = cx.ty_path(
             cx.path_all(self.span, false, vec!( type_ident ), self_lifetimes,
-                        opt_vec::take_vec(self_ty_params)), None);
+                        self_ty_params.into_vec()), None);
 
         let attr = cx.attribute(
             self.span,

@@ -129,8 +129,7 @@ use syntax::ast_util;
 use syntax::attr;
 use syntax::codemap::Span;
 use syntax::codemap;
-use syntax::opt_vec::OptVec;
-use syntax::opt_vec;
+use syntax::owned_slice::OwnedSlice;
 use syntax::parse::token;
 use syntax::print::pprust;
 use syntax::visit;
@@ -903,7 +902,7 @@ fn compare_impl_method(tcx: &ty::ctxt,
         impl_m.generics.type_param_defs().iter().enumerate().
         map(|(i,t)| ty::mk_param(tcx, i + impl_tps, t.def_id)).
         collect();
-    let dummy_impl_regions: OptVec<ty::Region> =
+    let dummy_impl_regions: OwnedSlice<ty::Region> =
         impl_generics.region_param_defs().iter().
         map(|l| ty::ReFree(ty::FreeRegion {
                 scope_id: impl_m_body_id,
@@ -2631,7 +2630,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                                       }
                                   };
                               let regions =
-                                  ty::NonerasedRegions(opt_vec::Empty);
+                                  ty::NonerasedRegions(OwnedSlice::empty());
                               let sty = ty::mk_struct(tcx,
                                                       gc_struct_id,
                                                       substs {
@@ -3706,7 +3705,7 @@ pub fn instantiate_path(fcx: &FnCtxt,
     let num_expected_regions = tpt.generics.region_param_defs().len();
     let num_supplied_regions = pth.segments.last().unwrap().lifetimes.len();
     let regions = if num_expected_regions == num_supplied_regions {
-        opt_vec::from(pth.segments.last().unwrap().lifetimes.map(
+        OwnedSlice::from_vec(pth.segments.last().unwrap().lifetimes.map(
             |l| ast_region_to_region(fcx.tcx(), l)))
     } else {
         if num_supplied_regions != 0 {
@@ -3971,7 +3970,7 @@ pub fn may_break(cx: &ty::ctxt, id: ast::NodeId, b: ast::P<ast::Block>) -> bool 
 
 pub fn check_bounds_are_used(ccx: &CrateCtxt,
                              span: Span,
-                             tps: &OptVec<ast::TyParam>,
+                             tps: &OwnedSlice<ast::TyParam>,
                              ty: ty::t) {
     debug!("check_bounds_are_used(n_tps={}, ty={})",
            tps.len(), ppaux::ty_to_str(ccx.tcx, ty));
@@ -4087,7 +4086,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
                     Ok(did) => (1u, Vec::new(), ty::mk_struct(ccx.tcx, did, substs {
                                                  self_ty: None,
                                                  tps: Vec::new(),
-                                                 regions: ty::NonerasedRegions(opt_vec::Empty)
+                                                 regions: ty::NonerasedRegions(OwnedSlice::empty())
                                                  }) ),
                     Err(msg) => { tcx.sess.span_fatal(it.span, msg); }
                 }
