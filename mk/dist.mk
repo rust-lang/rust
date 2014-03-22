@@ -24,6 +24,17 @@
 
 PKG_NAME := $(CFG_PACKAGE_NAME)
 
+# License suitable for displaying in a popup
+LICENSE.txt: $(S)COPYRIGHT $(S)LICENSE-APACHE $(S)LICENSE-MIT
+	cat $^ > $@
+
+
+######################################################################
+# Source tarball
+######################################################################
+
+PKG_TAR = dist/$(PKG_NAME).tar.gz
+
 PKG_GITMODULES := $(S)src/libuv $(S)src/llvm $(S)src/gyp $(S)src/compiler-rt
 PKG_FILES := \
     $(S)COPYRIGHT                              \
@@ -51,16 +62,6 @@ PKG_FILES := \
                  $(MKFILES_FOR_TARBALL))
 
 UNROOTED_PKG_FILES := $(patsubst $(S)%,./%,$(PKG_FILES))
-
-LICENSE.txt: $(S)COPYRIGHT $(S)LICENSE-APACHE $(S)LICENSE-MIT
-	cat $^ > $@
-
-
-######################################################################
-# Source tarball
-######################################################################
-
-PKG_TAR = dist/$(PKG_NAME).tar.gz
 
 $(PKG_TAR): $(PKG_FILES)
 	@$(call E, making dist dir)
