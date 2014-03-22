@@ -1395,7 +1395,7 @@ let mut y = ~5; // mutable
 In contrast with
 owned boxes, where the holder of an owned box is the owner of the pointed-to
 memory, references never imply ownership - they are "borrowed".
-A reference can be borrowed to
+You can borrow a reference to
 any object, and the compiler verifies that it cannot outlive the lifetime of
 the object.
 
