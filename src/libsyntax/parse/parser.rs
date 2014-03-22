@@ -77,7 +77,6 @@ use parse::token;
 use parse::{new_sub_parser_from_file, ParseSess};
 use owned_slice::OwnedSlice;
 
-use std::cell::Cell;
 use collections::HashSet;
 use std::kinds::marker;
 use std::mem::replace;
@@ -2202,12 +2201,12 @@ impl<'a> Parser<'a> {
         // unification of Matcher's and TokenTree's would vastly improve
         // the interpolation of Matcher's
         maybe_whole!(self, NtMatchers);
-        let name_idx = @Cell::new(0u);
+        let mut name_idx = 0u;
         match self.token {
             token::LBRACE | token::LPAREN | token::LBRACKET => {
                 let other_delimiter = token::flip_delimiter(&self.token);
                 self.bump();
-                self.parse_matcher_subseq_upto(name_idx, &other_delimiter)
+                self.parse_matcher_subseq_upto(&mut name_idx, &other_delimiter)
             }
             _ => self.fatal("expected open delimiter")
         }
@@ -2217,7 +2216,7 @@ impl<'a> Parser<'a> {
     // Otherwise, `$( ( )` would be a valid Matcher, and `$( () )` would be
     // invalid. It's similar to common::parse_seq.
     pub fn parse_matcher_subseq_upto(&mut self,
-                                     name_idx: @Cell<uint>,
+                                     name_idx: &mut uint,
                                      ket: &token::Token)
                                      -> Vec<Matcher> {
         let mut ret_val = Vec::new();
@@ -2234,13 +2233,13 @@ impl<'a> Parser<'a> {
         return ret_val;
     }
 
-    pub fn parse_matcher(&mut self, name_idx: @Cell<uint>) -> Matcher {
+    pub fn parse_matcher(&mut self, name_idx: &mut uint) -> Matcher {
         let lo = self.span.lo;
 
         let m = if self.token == token::DOLLAR {
             self.bump();
             if self.token == token::LPAREN {
-                let name_idx_lo = name_idx.get();
+                let name_idx_lo = *name_idx;
                 self.bump();
                 let ms = self.parse_matcher_subseq_upto(name_idx,
                                                         &token::RPAREN);
@@ -2248,13 +2247,13 @@ impl<'a> Parser<'a> {
                     self.fatal("repetition body must be nonempty");
                 }
                 let (sep, zerok) = self.parse_sep_and_zerok();
-                MatchSeq(ms, sep, zerok, name_idx_lo, name_idx.get())
+                MatchSeq(ms, sep, zerok, name_idx_lo, *name_idx)
             } else {
                 let bound_to = self.parse_ident();
                 self.expect(&token::COLON);
                 let nt_name = self.parse_ident();
-                let m = MatchNonterminal(bound_to, nt_name, name_idx.get());
-                name_idx.set(name_idx.get() + 1u);
+                let m = MatchNonterminal(bound_to, nt_name, *name_idx);
+                *name_idx += 1;
                 m
             }
         } else {
