@@ -10,13 +10,13 @@
 
 // When denying at the crate level, be sure to not get random warnings from the
 // injected intrinsics by the compiler.
-#[feature(struct_variant)];
-#[feature(globs)];
-#[deny(missing_doc)];
-#[allow(dead_code)];
+#![feature(struct_variant)]
+#![feature(globs)]
+#![deny(missing_doc)]
+#![allow(dead_code)]
 
 //! Some garbage docs for the crate here
-#[doc="More garbage"];
+#![doc="More garbage"]
 
 struct Foo {
     a: int,

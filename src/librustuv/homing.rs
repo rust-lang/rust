@@ -31,7 +31,7 @@
 //! This enqueueing is done with a concurrent queue from libstd, and the
 //! signalling is achieved with an async handle.
 
-#[allow(dead_code)];
+#![allow(dead_code)]
 
 use std::cast;
 use std::rt::local::Local;

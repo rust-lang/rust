@@ -4008,7 +4008,7 @@ mod tests {
 
     #[test]
     fn test_add() {
-        #[allow(unnecessary_allocation)];
+        #![allow(unnecessary_allocation)]
         macro_rules! t (
             ($s1:expr, $s2:expr, $e:expr) => { {
                 let s1 = $s1;

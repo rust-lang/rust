@@ -10,7 +10,7 @@
 
 // Issue #8380
 
-#[feature(globs)];
+#![feature(globs)]
 
 use std::sync::atomics::*;
 use std::ptr;

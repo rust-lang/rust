@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[feature(once_fns)];
+#![feature(once_fns)]
 fn main() {
     let f: once || = ||();
     let g: || = f;  //~ ERROR mismatched types

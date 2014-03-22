@@ -10,7 +10,7 @@
 
 //! Operations and constants for unsigned 8-bits integers (`u8` type)
 
-#[allow(non_uppercase_statics)];
+#![allow(non_uppercase_statics)]
 
 use prelude::*;
 

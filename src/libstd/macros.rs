@@ -14,7 +14,7 @@
 //! library. Each macro is available for use when linking against the standard
 //! library.
 
-#[macro_escape];
+#![macro_escape]
 
 /// The entry point for failure of rust tasks.
 ///

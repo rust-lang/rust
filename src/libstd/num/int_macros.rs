@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[macro_escape];
-#[doc(hidden)];
+#![macro_escape]
+#![doc(hidden)]
 
 macro_rules! int_module (($T:ty, $bits:expr) => (
 

@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[feature(struct_variant)];
-#[allow(dead_code)];
-#[deny(raw_pointer_deriving)];
+#![feature(struct_variant)]
+#![allow(dead_code)]
+#![deny(raw_pointer_deriving)]
 
 #[deriving(Clone)]
 struct Foo {

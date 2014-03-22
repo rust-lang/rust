@@ -17,7 +17,7 @@ getaddrinfo()
 
 */
 
-#[allow(missing_doc)];
+#![allow(missing_doc)]
 
 use io::IoResult;
 use io::net::ip::{SocketAddr, IpAddr};

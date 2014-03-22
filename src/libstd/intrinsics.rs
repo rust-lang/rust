@@ -41,7 +41,7 @@ A quick refresher on memory ordering:
 
 */
 
-#[allow(missing_doc)];
+#![allow(missing_doc)]
 
 // This is needed to prevent duplicate lang item definitions.
 #[cfg(test)]

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[deny(deprecated_owned_vector)];
+#![deny(deprecated_owned_vector)]
 
 fn main() {
     ~[1]; //~ ERROR use of deprecated `~[]`

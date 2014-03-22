@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[deny(unused_variable)];
-#[deny(dead_assignment)];
-#[allow(dead_code, non_camel_case_types)];
+#![deny(unused_variable)]
+#![deny(dead_assignment)]
+#![allow(dead_code, non_camel_case_types)]
 
 fn f1(x: int) {
     //~^ ERROR unused variable: `x`

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[feature(default_type_params)];
+#![feature(default_type_params)]
 
 // Ensure that we get an error and not an ICE for this problematic case.
 struct Foo<T = Option<U>, U = bool>;

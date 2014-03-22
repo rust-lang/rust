@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[forbid(non_camel_case_types)];
-#[allow(dead_code)];
+#![forbid(non_camel_case_types)]
+#![allow(dead_code)]
 
 struct foo { //~ ERROR type `foo` should have a camel case identifier
     bar: int,

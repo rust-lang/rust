@@ -9,7 +9,7 @@
 // except according to those terms.
 //
 
-#[deny(type_overflow)];
+#![deny(type_overflow)]
 
 fn test(x: i8) {
     println!("x {}", x);

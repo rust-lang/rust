@@ -34,14 +34,14 @@ via `close` and `delete` methods.
 
 */
 
-#[crate_id = "rustuv#0.10-pre"];
-#[license = "MIT/ASL2"];
-#[crate_type = "rlib"];
-#[crate_type = "dylib"];
+#![crate_id = "rustuv#0.10-pre"]
+#![license = "MIT/ASL2"]
+#![crate_type = "rlib"]
+#![crate_type = "dylib"]
 
-#[feature(macro_rules)];
-#[deny(unused_result, unused_must_use)];
-#[allow(visible_private_types)];
+#![feature(macro_rules)]
+#![deny(unused_result, unused_must_use)]
+#![allow(visible_private_types)]
 
 #[cfg(test)] extern crate green;
 #[cfg(test)] extern crate realrustuv = "rustuv";

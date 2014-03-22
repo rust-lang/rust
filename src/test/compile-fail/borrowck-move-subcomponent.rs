@@ -11,7 +11,7 @@
 // Tests that the borrow checker checks all components of a path when moving
 // out.
 
-#[no_std];
+#![no_std]
 
 struct S {
   x : ~int
