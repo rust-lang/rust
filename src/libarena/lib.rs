@@ -28,7 +28,7 @@
 
 extern crate collections;
 
-use collections::list::{List, Cons, Nil};
+use collections::list::List;
 
 use std::cast::{transmute, transmute_mut, transmute_mut_region};
 use std::cast;
@@ -89,7 +89,7 @@ pub struct Arena {
     // access the head.
     priv head: Chunk,
     priv pod_head: Chunk,
-    priv chunks: RefCell<@List<Chunk>>,
+    priv chunks: List<Chunk>,
     priv no_freeze: marker::NoFreeze,
 }
 
@@ -102,7 +102,7 @@ impl Arena {
         Arena {
             head: chunk(initial_size, false),
             pod_head: chunk(initial_size, true),
-            chunks: RefCell::new(@Nil),
+            chunks: List::new(),
             no_freeze: marker::NoFreeze,
         }
     }
@@ -121,7 +121,7 @@ impl Drop for Arena {
     fn drop(&mut self) {
         unsafe {
             destroy_chunk(&self.head);
-            for chunk in self.chunks.get().iter() {
+            for chunk in self.chunks.iter() {
                 if !chunk.is_pod.get() {
                     destroy_chunk(chunk);
                 }
@@ -183,7 +183,7 @@ impl Arena {
     fn alloc_pod_grow(&mut self, n_bytes: uint, align: uint) -> *u8 {
         // Allocate a new chunk.
         let new_min_chunk_size = cmp::max(n_bytes, self.chunk_size());
-        self.chunks.set(@Cons(self.pod_head.clone(), self.chunks.get()));
+        self.chunks.push(self.pod_head.clone());
         self.pod_head =
             chunk(num::next_power_of_two(new_min_chunk_size + 1u), true);
 
@@ -223,7 +223,7 @@ impl Arena {
                          -> (*u8, *u8) {
         // Allocate a new chunk.
         let new_min_chunk_size = cmp::max(n_bytes, self.chunk_size());
-        self.chunks.set(@Cons(self.head.clone(), self.chunks.get()));
+        self.chunks.push(self.head.clone());
         self.head =
             chunk(num::next_power_of_two(new_min_chunk_size + 1u), false);
 
