@@ -81,7 +81,7 @@
 #[cfg(test)] extern crate std;
 #[cfg(test)] extern crate test;
 // for lang="start"
-#[cfg(test)] extern crate green;
+#[cfg(test)] extern crate native;
 #[cfg(test)] extern crate rustuv;
 
 // Initial glob-exports mean that all the contents of all the modules
