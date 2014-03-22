@@ -39,8 +39,7 @@
 //!
 //! A simple spinlock:
 //!
-//! ```ignore
-//! # // FIXME: Needs PR #12430
+//! ```
 //! extern crate sync;
 //!
 //! use sync::Arc;
@@ -68,8 +67,7 @@
 //!
 //! Transferring a heap object with `AtomicOption`:
 //!
-//! ```ignore
-//! # // FIXME: Needs PR #12430
+//! ```
 //! extern crate sync;
 //!
 //! use sync::Arc;
