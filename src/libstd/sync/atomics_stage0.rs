@@ -134,6 +134,13 @@ pub struct AtomicUint {
     priv nopod: marker::NoPod
 }
 
+/// An unsigned atomic integer type that is forced to be 64-bits. This does not
+/// support all operations.
+pub struct AtomicU64 {
+    priv v: Unsafe<u64>,
+    priv nopod: marker::NoPod
+}
+
 /// An unsafe atomic pointer. Only supports basic atomic operations
 pub struct AtomicPtr<T> {
     priv p: Unsafe<uint>,
@@ -191,6 +198,11 @@ pub static INIT_ATOMIC_INT  : AtomicInt  = AtomicInt  { v: Unsafe{value: 0,
 pub static INIT_ATOMIC_UINT : AtomicUint = AtomicUint { v: Unsafe{value: 0,
                                                                   marker1: marker::InvariantType},
                                                         nopod: marker::NoPod };
+/// An `AtomicU64` initialized to `0`
+pub static INIT_ATOMIC_U64 : AtomicU64 = AtomicU64 { v: Unsafe{value: 0,
+                                                               marker1: marker::InvariantType},
+                                                     nopod: marker::NoPod };
+
 
 // NB: Needs to be -1 (0b11111111...) to make fetch_nand work correctly
 static UINT_TRUE: uint = -1;
@@ -205,23 +217,23 @@ impl AtomicBool {
     /// Load the value
     #[inline]
     pub fn load(&self, order: Ordering) -> bool {
-        unsafe { atomic_load(self.v.get() as *uint, order) > 0 }
+        unsafe { atomic_load(&*self.v.get(), order) > 0 }
     }
 
     /// Store the value
     #[inline]
-    pub fn store(&self, val: bool, order: Ordering) {
+    pub fn store(&mut self, val: bool, order: Ordering) {
         let val = if val { UINT_TRUE } else { 0 };
 
-        unsafe { atomic_store(self.v.get(), val, order); }
+        unsafe { atomic_store(&mut *self.v.get(), val, order); }
     }
 
     /// Store a value, returning the old value
     #[inline]
-    pub fn swap(&self, val: bool, order: Ordering) -> bool {
+    pub fn swap(&mut self, val: bool, order: Ordering) -> bool {
         let val = if val { UINT_TRUE } else { 0 };
 
-        unsafe { atomic_swap(self.v.get(), val, order) > 0 }
+        unsafe { atomic_swap(&mut *self.v.get(), val, order) > 0 }
     }
 
     /// If the current value is the same as expected, store a new value
@@ -270,11 +282,11 @@ impl AtomicBool {
     /// }
     /// ```
     #[inline]
-    pub fn compare_and_swap(&self, old: bool, new: bool, order: Ordering) -> bool {
+    pub fn compare_and_swap(&mut self, old: bool, new: bool, order: Ordering) -> bool {
         let old = if old { UINT_TRUE } else { 0 };
         let new = if new { UINT_TRUE } else { 0 };
 
-        unsafe { atomic_compare_and_swap(self.v.get(), old, new, order) > 0 }
+        unsafe { atomic_compare_and_swap(&mut *self.v.get(), old, new, order) > 0 }
     }
 
     /// A logical "and" operation
@@ -288,23 +300,23 @@ impl AtomicBool {
     /// ```
     /// use std::sync::atomics::{AtomicBool, SeqCst};
     ///
-    /// let foo = AtomicBool::new(true);
+    /// let mut foo = AtomicBool::new(true);
     /// assert_eq!(true, foo.fetch_and(false, SeqCst));
     /// assert_eq!(false, foo.load(SeqCst));
     ///
-    /// let foo = AtomicBool::new(true);
+    /// let mut foo = AtomicBool::new(true);
     /// assert_eq!(true, foo.fetch_and(true, SeqCst));
     /// assert_eq!(true, foo.load(SeqCst));
     ///
-    /// let foo = AtomicBool::new(false);
+    /// let mut foo = AtomicBool::new(false);
     /// assert_eq!(false, foo.fetch_and(false, SeqCst));
     /// assert_eq!(false, foo.load(SeqCst));
     /// ```
     #[inline]
-    pub fn fetch_and(&self, val: bool, order: Ordering) -> bool {
+    pub fn fetch_and(&mut self, val: bool, order: Ordering) -> bool {
         let val = if val { UINT_TRUE } else { 0 };
 
-        unsafe { atomic_and(self.v.get(), val, order) > 0 }
+        unsafe { atomic_and(&mut *self.v.get(), val, order) > 0 }
     }
 
     /// A logical "nand" operation
@@ -318,24 +330,24 @@ impl AtomicBool {
     /// ```
     /// use std::sync::atomics::{AtomicBool, SeqCst};
     ///
-    /// let foo = AtomicBool::new(true);
+    /// let mut foo = AtomicBool::new(true);
     /// assert_eq!(true, foo.fetch_nand(false, SeqCst));
     /// assert_eq!(true, foo.load(SeqCst));
     ///
-    /// let foo = AtomicBool::new(true);
+    /// let mut foo = AtomicBool::new(true);
     /// assert_eq!(true, foo.fetch_nand(true, SeqCst));
     /// assert_eq!(0, foo.load(SeqCst) as int);
     /// assert_eq!(false, foo.load(SeqCst));
     ///
-    /// let foo = AtomicBool::new(false);
+    /// let mut foo = AtomicBool::new(false);
     /// assert_eq!(false, foo.fetch_nand(false, SeqCst));
     /// assert_eq!(true, foo.load(SeqCst));
     /// ```
     #[inline]
-    pub fn fetch_nand(&self, val: bool, order: Ordering) -> bool {
+    pub fn fetch_nand(&mut self, val: bool, order: Ordering) -> bool {
         let val = if val { UINT_TRUE } else { 0 };
 
-        unsafe { atomic_nand(self.v.get(), val, order) > 0 }
+        unsafe { atomic_nand(&mut *self.v.get(), val, order) > 0 }
     }
 
     /// A logical "or" operation
@@ -349,23 +361,23 @@ impl AtomicBool {
     /// ```
     /// use std::sync::atomics::{AtomicBool, SeqCst};
     ///
-    /// let foo = AtomicBool::new(true);
+    /// let mut foo = AtomicBool::new(true);
     /// assert_eq!(true, foo.fetch_or(false, SeqCst));
     /// assert_eq!(true, foo.load(SeqCst));
     ///
-    /// let foo = AtomicBool::new(true);
+    /// let mut foo = AtomicBool::new(true);
     /// assert_eq!(true, foo.fetch_or(true, SeqCst));
     /// assert_eq!(true, foo.load(SeqCst));
     ///
-    /// let foo = AtomicBool::new(false);
+    /// let mut foo = AtomicBool::new(false);
     /// assert_eq!(false, foo.fetch_or(false, SeqCst));
     /// assert_eq!(false, foo.load(SeqCst));
     /// ```
     #[inline]
-    pub fn fetch_or(&self, val: bool, order: Ordering) -> bool {
+    pub fn fetch_or(&mut self, val: bool, order: Ordering) -> bool {
         let val = if val { UINT_TRUE } else { 0 };
 
-        unsafe { atomic_or(self.v.get(), val, order) > 0 }
+        unsafe { atomic_or(&mut *self.v.get(), val, order) > 0 }
     }
 
     /// A logical "xor" operation
@@ -379,23 +391,23 @@ impl AtomicBool {
     /// ```
     /// use std::sync::atomics::{AtomicBool, SeqCst};
     ///
-    /// let foo = AtomicBool::new(true);
+    /// let mut foo = AtomicBool::new(true);
     /// assert_eq!(true, foo.fetch_xor(false, SeqCst));
     /// assert_eq!(true, foo.load(SeqCst));
     ///
-    /// let foo = AtomicBool::new(true);
+    /// let mut foo = AtomicBool::new(true);
     /// assert_eq!(true, foo.fetch_xor(true, SeqCst));
     /// assert_eq!(false, foo.load(SeqCst));
     ///
-    /// let foo = AtomicBool::new(false);
+    /// let mut foo = AtomicBool::new(false);
     /// assert_eq!(false, foo.fetch_xor(false, SeqCst));
     /// assert_eq!(false, foo.load(SeqCst));
     /// ```
     #[inline]
-    pub fn fetch_xor(&self, val: bool, order: Ordering) -> bool {
+    pub fn fetch_xor(&mut self, val: bool, order: Ordering) -> bool {
         let val = if val { UINT_TRUE } else { 0 };
 
-        unsafe { atomic_xor(self.v.get(), val, order) > 0 }
+        unsafe { atomic_xor(&mut *self.v.get(), val, order) > 0 }
     }
 }
 
@@ -408,19 +420,19 @@ impl AtomicInt {
     /// Load the value
     #[inline]
     pub fn load(&self, order: Ordering) -> int {
-        unsafe { atomic_load(self.v.get() as *int, order) }
+        unsafe { atomic_load(&*self.v.get(), order) }
     }
 
     /// Store the value
     #[inline]
-    pub fn store(&self, val: int, order: Ordering) {
-        unsafe { atomic_store(self.v.get(), val, order); }
+    pub fn store(&mut self, val: int, order: Ordering) {
+        unsafe { atomic_store(&mut *self.v.get(), val, order); }
     }
 
     /// Store a value, returning the old value
     #[inline]
-    pub fn swap(&self, val: int, order: Ordering) -> int {
-        unsafe { atomic_swap(self.v.get(), val, order) }
+    pub fn swap(&mut self, val: int, order: Ordering) -> int {
+        unsafe { atomic_swap(&mut *self.v.get(), val, order) }
     }
 
     /// If the current value is the same as expected, store a new value
@@ -429,8 +441,8 @@ impl AtomicInt {
     /// replace the current value with `new`. Return the previous value.
     /// If the return value is equal to `old` then the value was updated.
     #[inline]
-    pub fn compare_and_swap(&self, old: int, new: int, order: Ordering) -> int {
-        unsafe { atomic_compare_and_swap(self.v.get(), old, new, order) }
+    pub fn compare_and_swap(&mut self, old: int, new: int, order: Ordering) -> int {
+        unsafe { atomic_compare_and_swap(&mut *self.v.get(), old, new, order) }
     }
 
     /// Add to the current value, returning the previous
@@ -440,13 +452,13 @@ impl AtomicInt {
     /// ```
     /// use std::sync::atomics::{AtomicInt, SeqCst};
     ///
-    /// let foo = AtomicInt::new(0);
+    /// let mut foo = AtomicInt::new(0);
     /// assert_eq!(0, foo.fetch_add(10, SeqCst));
     /// assert_eq!(10, foo.load(SeqCst));
     /// ```
     #[inline]
-    pub fn fetch_add(&self, val: int, order: Ordering) -> int {
-        unsafe { atomic_add(self.v.get(), val, order) }
+    pub fn fetch_add(&mut self, val: int, order: Ordering) -> int {
+        unsafe { atomic_add(&mut *self.v.get(), val, order) }
     }
 
     /// Subtract from the current value, returning the previous
@@ -456,13 +468,53 @@ impl AtomicInt {
     /// ```
     /// use std::sync::atomics::{AtomicInt, SeqCst};
     ///
-    /// let foo = AtomicInt::new(0);
+    /// let mut foo = AtomicInt::new(0);
     /// assert_eq!(0, foo.fetch_sub(10, SeqCst));
     /// assert_eq!(-10, foo.load(SeqCst));
     /// ```
     #[inline]
-    pub fn fetch_sub(&self, val: int, order: Ordering) -> int {
-        unsafe { atomic_sub(self.v.get(), val, order) }
+    pub fn fetch_sub(&mut self, val: int, order: Ordering) -> int {
+        unsafe { atomic_sub(&mut *self.v.get(), val, order) }
+    }
+}
+
+// temporary workaround
+// it causes link failure on MIPS target
+// libgcc doesn't implement 64-bit atomic operations for MIPS32
+#[cfg(not(target_arch = "mips"))]
+impl AtomicU64 {
+    pub fn new(v: u64) -> AtomicU64 {
+        AtomicU64 { v: Unsafe::new(v), nopod: marker::NoPod }
+    }
+
+    #[inline]
+    pub fn load(&self, order: Ordering) -> u64 {
+        unsafe { atomic_load(&*self.v.get(), order) }
+    }
+
+    #[inline]
+    pub fn store(&mut self, val: u64, order: Ordering) {
+        unsafe { atomic_store(&mut *self.v.get(), val, order); }
+    }
+
+    #[inline]
+    pub fn swap(&mut self, val: u64, order: Ordering) -> u64 {
+        unsafe { atomic_swap(&mut *self.v.get(), val, order) }
+    }
+
+    #[inline]
+    pub fn compare_and_swap(&mut self, old: u64, new: u64, order: Ordering) -> u64 {
+        unsafe { atomic_compare_and_swap(&mut *self.v.get(), old, new, order) }
+    }
+
+    #[inline]
+    pub fn fetch_add(&mut self, val: u64, order: Ordering) -> u64 {
+        unsafe { atomic_add(&mut *self.v.get(), val, order) }
+    }
+
+    #[inline]
+    pub fn fetch_sub(&mut self, val: u64, order: Ordering) -> u64 {
+        unsafe { atomic_sub(&mut *self.v.get(), val, order) }
     }
 }
 
@@ -475,19 +527,19 @@ impl AtomicUint {
     /// Load the value
     #[inline]
     pub fn load(&self, order: Ordering) -> uint {
-        unsafe { atomic_load(self.v.get() as *uint, order) }
+        unsafe { atomic_load(&*self.v.get(), order) }
     }
 
     /// Store the value
     #[inline]
-    pub fn store(&self, val: uint, order: Ordering) {
-        unsafe { atomic_store(self.v.get(), val, order); }
+    pub fn store(&mut self, val: uint, order: Ordering) {
+        unsafe { atomic_store(&mut *self.v.get(), val, order); }
     }
 
     /// Store a value, returning the old value
     #[inline]
-    pub fn swap(&self, val: uint, order: Ordering) -> uint {
-        unsafe { atomic_swap(self.v.get(), val, order) }
+    pub fn swap(&mut self, val: uint, order: Ordering) -> uint {
+        unsafe { atomic_swap(&mut *self.v.get(), val, order) }
     }
 
     /// If the current value is the same as expected, store a new value
@@ -496,8 +548,8 @@ impl AtomicUint {
     /// replace the current value with `new`. Return the previous value.
     /// If the return value is equal to `old` then the value was updated.
     #[inline]
-    pub fn compare_and_swap(&self, old: uint, new: uint, order: Ordering) -> uint {
-        unsafe { atomic_compare_and_swap(self.v.get(), old, new, order) }
+    pub fn compare_and_swap(&mut self, old: uint, new: uint, order: Ordering) -> uint {
+        unsafe { atomic_compare_and_swap(&mut *self.v.get(), old, new, order) }
     }
 
     /// Add to the current value, returning the previous
@@ -507,13 +559,13 @@ impl AtomicUint {
     /// ```
     /// use std::sync::atomics::{AtomicUint, SeqCst};
     ///
-    /// let foo = AtomicUint::new(0);
+    /// let mut foo = AtomicUint::new(0);
     /// assert_eq!(0, foo.fetch_add(10, SeqCst));
     /// assert_eq!(10, foo.load(SeqCst));
     /// ```
     #[inline]
-    pub fn fetch_add(&self, val: uint, order: Ordering) -> uint {
-        unsafe { atomic_add(self.v.get(), val, order) }
+    pub fn fetch_add(&mut self, val: uint, order: Ordering) -> uint {
+        unsafe { atomic_add(&mut *self.v.get(), val, order) }
     }
 
     /// Subtract from the current value, returning the previous
@@ -523,13 +575,13 @@ impl AtomicUint {
     /// ```
     /// use std::sync::atomics::{AtomicUint, SeqCst};
     ///
-    /// let foo = AtomicUint::new(10);
+    /// let mut foo = AtomicUint::new(10);
     /// assert_eq!(10, foo.fetch_sub(10, SeqCst));
     /// assert_eq!(0, foo.load(SeqCst));
     /// ```
     #[inline]
-    pub fn fetch_sub(&self, val: uint, order: Ordering) -> uint {
-        unsafe { atomic_sub(self.v.get(), val, order) }
+    pub fn fetch_sub(&mut self, val: uint, order: Ordering) -> uint {
+        unsafe { atomic_sub(&mut *self.v.get(), val, order) }
     }
 }
 
@@ -543,20 +595,20 @@ impl<T> AtomicPtr<T> {
     #[inline]
     pub fn load(&self, order: Ordering) -> *mut T {
         unsafe {
-            atomic_load(self.p.get() as **mut T, order) as *mut T
+            atomic_load(&*self.p.get(), order) as *mut T
         }
     }
 
     /// Store the value
     #[inline]
-    pub fn store(&self, ptr: *mut T, order: Ordering) {
-        unsafe { atomic_store(self.p.get(), ptr as uint, order); }
+    pub fn store(&mut self, ptr: *mut T, order: Ordering) {
+        unsafe { atomic_store(&mut *self.p.get(), ptr as uint, order); }
     }
 
     /// Store a value, returning the old value
     #[inline]
-    pub fn swap(&self, ptr: *mut T, order: Ordering) -> *mut T {
-        unsafe { atomic_swap(self.p.get(), ptr as uint, order) as *mut T }
+    pub fn swap(&mut self, ptr: *mut T, order: Ordering) -> *mut T {
+        unsafe { atomic_swap(&mut *self.p.get(), ptr as uint, order) as *mut T }
     }
 
     /// If the current value is the same as expected, store a new value
@@ -565,9 +617,9 @@ impl<T> AtomicPtr<T> {
     /// replace the current value with `new`. Return the previous value.
     /// If the return value is equal to `old` then the value was updated.
     #[inline]
-    pub fn compare_and_swap(&self, old: *mut T, new: *mut T, order: Ordering) -> *mut T {
+    pub fn compare_and_swap(&mut self, old: *mut T, new: *mut T, order: Ordering) -> *mut T {
         unsafe {
-            atomic_compare_and_swap(self.p.get(), old as uint,
+            atomic_compare_and_swap(&mut *self.p.get(), old as uint,
                                     new as uint, order) as *mut T
         }
     }
@@ -584,11 +636,11 @@ impl<T> AtomicOption<T> {
 
     /// Store a value, returning the old value
     #[inline]
-    pub fn swap(&self, val: ~T, order: Ordering) -> Option<~T> {
+    pub fn swap(&mut self, val: ~T, order: Ordering) -> Option<~T> {
         unsafe {
             let val = cast::transmute(val);
 
-            let p = atomic_swap(self.p.get(), val, order);
+            let p = atomic_swap(&mut *self.p.get(), val, order);
             if p as uint == 0 {
                 None
             } else {
@@ -599,7 +651,7 @@ impl<T> AtomicOption<T> {
 
     /// Remove the value, leaving the `AtomicOption` empty.
     #[inline]
-    pub fn take(&self, order: Ordering) -> Option<~T> {
+    pub fn take(&mut self, order: Ordering) -> Option<~T> {
         unsafe { self.swap(cast::transmute(0), order) }
     }
 
@@ -609,11 +661,11 @@ impl<T> AtomicOption<T> {
     /// the option was already `Some`, returns `Some` of the rejected
     /// value.
     #[inline]
-    pub fn fill(&self, val: ~T, order: Ordering) -> Option<~T> {
+    pub fn fill(&mut self, val: ~T, order: Ordering) -> Option<~T> {
         unsafe {
             let val = cast::transmute(val);
             let expected = cast::transmute(0);
-            let oldval = atomic_compare_and_swap(self.p.get(), expected, val, order);
+            let oldval = atomic_compare_and_swap(&mut *self.p.get(), expected, val, order);
             if oldval == expected {
                 None
             } else {
@@ -627,8 +679,8 @@ impl<T> AtomicOption<T> {
     /// Be careful: The caller must have some external method of ensuring the
     /// result does not get invalidated by another task after this returns.
     #[inline]
-    pub fn is_empty(&self, order: Ordering) -> bool {
-        unsafe { atomic_load(self.p.get() as *uint, order) as uint == 0 }
+    pub fn is_empty(&mut self, order: Ordering) -> bool {
+        unsafe { atomic_load(&*self.p.get(), order) as uint == 0 }
     }
 }
 
@@ -640,7 +692,7 @@ impl<T> Drop for AtomicOption<T> {
 }
 
 #[inline]
-unsafe fn atomic_store<T>(dst: *mut T, val: T, order:Ordering) {
+pub unsafe fn atomic_store<T>(dst: &mut T, val: T, order:Ordering) {
     match order {
         Release => intrinsics::atomic_store_rel(dst, val),
         Relaxed => intrinsics::atomic_store_relaxed(dst, val),
@@ -649,7 +701,7 @@ unsafe fn atomic_store<T>(dst: *mut T, val: T, order:Ordering) {
 }
 
 #[inline]
-unsafe fn atomic_load<T>(dst: *T, order:Ordering) -> T {
+pub unsafe fn atomic_load<T>(dst: &T, order:Ordering) -> T {
     match order {
         Acquire => intrinsics::atomic_load_acq(dst),
         Relaxed => intrinsics::atomic_load_relaxed(dst),
@@ -658,7 +710,7 @@ unsafe fn atomic_load<T>(dst: *T, order:Ordering) -> T {
 }
 
 #[inline]
-unsafe fn atomic_swap<T>(dst: *mut T, val: T, order: Ordering) -> T {
+pub unsafe fn atomic_swap<T>(dst: &mut T, val: T, order: Ordering) -> T {
     match order {
         Acquire => intrinsics::atomic_xchg_acq(dst, val),
         Release => intrinsics::atomic_xchg_rel(dst, val),
@@ -670,7 +722,7 @@ unsafe fn atomic_swap<T>(dst: *mut T, val: T, order: Ordering) -> T {
 
 /// Returns the old value (like __sync_fetch_and_add).
 #[inline]
-unsafe fn atomic_add<T>(dst: *mut T, val: T, order: Ordering) -> T {
+pub unsafe fn atomic_add<T>(dst: &mut T, val: T, order: Ordering) -> T {
     match order {
         Acquire => intrinsics::atomic_xadd_acq(dst, val),
         Release => intrinsics::atomic_xadd_rel(dst, val),
@@ -682,7 +734,7 @@ unsafe fn atomic_add<T>(dst: *mut T, val: T, order: Ordering) -> T {
 
 /// Returns the old value (like __sync_fetch_and_sub).
 #[inline]
-unsafe fn atomic_sub<T>(dst: *mut T, val: T, order: Ordering) -> T {
+pub unsafe fn atomic_sub<T>(dst: &mut T, val: T, order: Ordering) -> T {
     match order {
         Acquire => intrinsics::atomic_xsub_acq(dst, val),
         Release => intrinsics::atomic_xsub_rel(dst, val),
@@ -693,7 +745,7 @@ unsafe fn atomic_sub<T>(dst: *mut T, val: T, order: Ordering) -> T {
 }
 
 #[inline]
-unsafe fn atomic_compare_and_swap<T>(dst: *mut T, old:T, new:T, order: Ordering) -> T {
+pub unsafe fn atomic_compare_and_swap<T>(dst:&mut T, old:T, new:T, order: Ordering) -> T {
     match order {
         Acquire => intrinsics::atomic_cxchg_acq(dst, old, new),
         Release => intrinsics::atomic_cxchg_rel(dst, old, new),
@@ -704,7 +756,7 @@ unsafe fn atomic_compare_and_swap<T>(dst: *mut T, old:T, new:T, order: Ordering)
 }
 
 #[inline]
-unsafe fn atomic_and<T>(dst: *mut T, val: T, order: Ordering) -> T {
+pub unsafe fn atomic_and<T>(dst: &mut T, val: T, order: Ordering) -> T {
     match order {
         Acquire => intrinsics::atomic_and_acq(dst, val),
         Release => intrinsics::atomic_and_rel(dst, val),
@@ -715,7 +767,7 @@ unsafe fn atomic_and<T>(dst: *mut T, val: T, order: Ordering) -> T {
 }
 
 #[inline]
-unsafe fn atomic_nand<T>(dst: *mut T, val: T, order: Ordering) -> T {
+pub unsafe fn atomic_nand<T>(dst: &mut T, val: T, order: Ordering) -> T {
     match order {
         Acquire => intrinsics::atomic_nand_acq(dst, val),
         Release => intrinsics::atomic_nand_rel(dst, val),
@@ -727,7 +779,7 @@ unsafe fn atomic_nand<T>(dst: *mut T, val: T, order: Ordering) -> T {
 
 
 #[inline]
-unsafe fn atomic_or<T>(dst: *mut T, val: T, order: Ordering) -> T {
+pub unsafe fn atomic_or<T>(dst: &mut T, val: T, order: Ordering) -> T {
     match order {
         Acquire => intrinsics::atomic_or_acq(dst, val),
         Release => intrinsics::atomic_or_rel(dst, val),
@@ -739,7 +791,7 @@ unsafe fn atomic_or<T>(dst: *mut T, val: T, order: Ordering) -> T {
 
 
 #[inline]
-unsafe fn atomic_xor<T>(dst: *mut T, val: T, order: Ordering) -> T {
+pub unsafe fn atomic_xor<T>(dst: &mut T, val: T, order: Ordering) -> T {
     match order {
         Acquire => intrinsics::atomic_xor_acq(dst, val),
         Release => intrinsics::atomic_xor_rel(dst, val),
@@ -790,7 +842,7 @@ mod test {
 
     #[test]
     fn bool_() {
-        let a = AtomicBool::new(false);
+        let mut a = AtomicBool::new(false);
         assert_eq!(a.compare_and_swap(false, true, SeqCst), false);
         assert_eq!(a.compare_and_swap(false, true, SeqCst), true);
 
@@ -800,13 +852,13 @@ mod test {
 
     #[test]
     fn option_empty() {
-        let option: AtomicOption<()> = AtomicOption::empty();
+        let mut option: AtomicOption<()> = AtomicOption::empty();
         assert!(option.is_empty(SeqCst));
     }
 
     #[test]
     fn option_swap() {
-        let p = AtomicOption::new(~1);
+        let mut p = AtomicOption::new(~1);
         let a = ~2;
 
         let b = p.swap(a, SeqCst);
@@ -817,7 +869,7 @@ mod test {
 
     #[test]
     fn option_take() {
-        let p = AtomicOption::new(~1);
+        let mut p = AtomicOption::new(~1);
 
         assert_eq!(p.take(SeqCst), Some(~1));
         assert_eq!(p.take(SeqCst), None);
@@ -830,7 +882,7 @@ mod test {
 
     #[test]
     fn option_fill() {
-        let p = AtomicOption::new(~1);
+        let mut p = AtomicOption::new(~1);
         assert!(p.fill(~2, SeqCst).is_some()); // should fail; shouldn't leak!
         assert_eq!(p.take(SeqCst), Some(~1));
 
@@ -840,7 +892,7 @@ mod test {
 
     #[test]
     fn bool_and() {
-        let a = AtomicBool::new(true);
+        let mut a = AtomicBool::new(true);
         assert_eq!(a.fetch_and(false, SeqCst),true);
         assert_eq!(a.load(SeqCst),false);
     }
@@ -867,11 +919,12 @@ mod test {
             let mut slot = 0u8;
             assert_eq!(super::atomic_compare_and_swap(&mut slot, 1, 2, SeqCst), 0);
 
-            let slot = 0u32;
-            assert_eq!(super::atomic_load(&slot, SeqCst), 0);
+            let mut slot = 0u32;
+            assert_eq!(super::atomic_load(&mut slot, SeqCst), 0);
 
             let mut slot = 0u64;
             super::atomic_store(&mut slot, 2, SeqCst);
         }
     }
 }
+
