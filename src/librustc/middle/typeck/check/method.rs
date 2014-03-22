@@ -104,6 +104,7 @@ use syntax::ast::{MutMutable, MutImmutable};
 use syntax::ast;
 use syntax::codemap::Span;
 use syntax::parse::token;
+use syntax::owned_slice::OwnedSlice;
 
 #[deriving(Eq)]
 pub enum CheckTraitsFlag {
@@ -1102,8 +1103,8 @@ impl<'a> LookupContext<'a> {
 
         // Determine values for the early-bound lifetime parameters.
         // FIXME -- permit users to manually specify lifetimes
-        let mut all_regions = match candidate.rcvr_substs.regions {
-            NonerasedRegions(ref v) => v.clone(),
+        let mut all_regions: Vec<Region> = match candidate.rcvr_substs.regions {
+            NonerasedRegions(ref v) => v.iter().map(|r| r.clone()).collect(),
             ErasedRegions => tcx.sess.span_bug(self.span, "ErasedRegions")
         };
         let m_regions =
@@ -1119,7 +1120,7 @@ impl<'a> LookupContext<'a> {
         let all_substs = substs {
             tps: vec::append(candidate.rcvr_substs.tps.clone(),
                                 m_substs.as_slice()),
-            regions: NonerasedRegions(all_regions),
+            regions: NonerasedRegions(OwnedSlice::from_vec(all_regions)),
             self_ty: candidate.rcvr_substs.self_ty,
         };
 

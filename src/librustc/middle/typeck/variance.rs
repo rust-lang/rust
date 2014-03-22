@@ -199,7 +199,7 @@ use middle::ty;
 use std::fmt;
 use syntax::ast;
 use syntax::ast_util;
-use syntax::opt_vec;
+use syntax::owned_slice::OwnedSlice;
 use syntax::visit;
 use syntax::visit::Visitor;
 use util::ppaux::Repr;
@@ -286,8 +286,8 @@ fn determine_parameters_to_be_inferred<'a>(tcx: &'a ty::ctxt,
         // cache and share the variance struct used for items with
         // no type/region parameters
         empty_variances: @ty::ItemVariances { self_param: None,
-                                              type_params: opt_vec::Empty,
-                                              region_params: opt_vec::Empty }
+                                              type_params: OwnedSlice::empty(),
+                                              region_params: OwnedSlice::empty() }
     };
 
     visit::walk_crate(&mut terms_cx, krate, ());
@@ -904,32 +904,33 @@ impl<'a> SolveContext<'a> {
         let num_inferred = self.terms_cx.num_inferred();
         while index < num_inferred {
             let item_id = inferred_infos.get(index).item_id;
-            let mut item_variances = ty::ItemVariances {
-                self_param: None,
-                type_params: opt_vec::Empty,
-                region_params: opt_vec::Empty
-            };
+            let mut self_param = None;
+            let mut type_params = vec!();
+            let mut region_params = vec!();
+
             while index < num_inferred &&
                   inferred_infos.get(index).item_id == item_id {
                 let info = inferred_infos.get(index);
                 match info.kind {
                     SelfParam => {
-                        assert!(item_variances.self_param.is_none());
-                        item_variances.self_param =
-                            Some(*solutions.get(index));
+                        assert!(self_param.is_none());
+                        self_param = Some(*solutions.get(index));
                     }
                     TypeParam => {
-                        item_variances.type_params
-                                      .push(*solutions.get(index));
+                        type_params.push(*solutions.get(index));
                     }
                     RegionParam => {
-                        item_variances.region_params
-                                      .push(*solutions.get(index));
+                        region_params.push(*solutions.get(index));
                     }
                 }
                 index += 1;
             }
 
+            let item_variances = ty::ItemVariances {
+                self_param: self_param,
+                type_params: OwnedSlice::from_vec(type_params),
+                region_params: OwnedSlice::from_vec(region_params)
+            };
             debug!("item_id={} item_variances={}",
                     item_id,
                     item_variances.repr(tcx));

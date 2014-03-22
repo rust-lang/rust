@@ -19,7 +19,6 @@ use middle::graph;
 use middle::ty;
 use middle::typeck;
 use syntax::ast;
-use syntax::opt_vec::OptVec;
 use util::nodemap::NodeMap;
 
 mod construct;
@@ -36,7 +35,7 @@ pub struct CFGNodeData {
 }
 
 pub struct CFGEdgeData {
-    exiting_scopes: OptVec<ast::NodeId>
+    exiting_scopes: Vec<ast::NodeId>
 }
 
 pub type CFGIndex = graph::NodeIndex;

@@ -60,7 +60,7 @@ use syntax::parse::token::special_idents;
 use syntax::parse::token;
 use syntax::print::pprust::{path_to_str};
 use syntax::visit;
-use syntax::opt_vec::OptVec;
+use syntax::owned_slice::OwnedSlice;
 
 struct CollectItemTypesVisitor<'a> {
     ccx: &'a CrateCtxt<'a>
@@ -987,14 +987,14 @@ pub fn ty_generics_for_fn_or_method(ccx: &CrateCtxt,
 
 pub fn ty_generics(ccx: &CrateCtxt,
                    lifetimes: &Vec<ast::Lifetime>,
-                   ty_params: &OptVec<ast::TyParam>,
+                   ty_params: &OwnedSlice<ast::TyParam>,
                    base_index: uint) -> ty::Generics {
     return ty::Generics {
         region_param_defs: Rc::new(lifetimes.iter().map(|l| {
                 ty::RegionParameterDef { name: l.name,
                                          def_id: local_def(l.id) }
             }).collect()),
-        type_param_defs: Rc::new(ty_params.mapi_to_vec(|offset, param| {
+        type_param_defs: Rc::new(ty_params.iter().enumerate().map(|(offset, param)| {
             let existing_def_opt = {
                 let ty_param_defs = ccx.tcx.ty_param_defs.borrow();
                 ty_param_defs.get().find(&param.id).map(|&def| def)
@@ -1015,13 +1015,13 @@ pub fn ty_generics(ccx: &CrateCtxt,
                 ty_param_defs.get().insert(param.id, def);
                 def
             })
-        }).move_iter().collect()),
+        }).collect()),
     };
 
     fn compute_bounds(
         ccx: &CrateCtxt,
         param_ty: ty::param_ty,
-        ast_bounds: &OptVec<ast::TyParamBound>) -> ty::ParamBounds
+        ast_bounds: &OwnedSlice<ast::TyParamBound>) -> ty::ParamBounds
     {
         /*!
          * Translate the AST's notion of ty param bounds (which are an
@@ -1113,7 +1113,7 @@ pub fn mk_item_substs(ccx: &CrateCtxt,
         ty_generics.type_param_defs().iter().enumerate().map(
             |(i, t)| ty::mk_param(ccx.tcx, i, t.def_id)).collect();
 
-    let regions: OptVec<ty::Region> =
+    let regions: OwnedSlice<ty::Region> =
         ty_generics.region_param_defs().iter().enumerate().map(
             |(i, l)| ty::ReEarlyBound(l.def_id.node, i, l.name)).collect();
 

@@ -18,7 +18,7 @@ use ast::{P,Expr,Generics,Ident};
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use codemap::{Span,respan};
-use opt_vec;
+use owned_slice::OwnedSlice;
 
 /// The types of pointers
 pub enum PtrTy<'a> {
@@ -116,11 +116,10 @@ fn mk_lifetime(cx: &ExtCtxt, span: Span, lt: &Option<&str>) -> Option<ast::Lifet
 }
 
 fn mk_lifetimes(cx: &ExtCtxt, span: Span, lt: &Option<&str>) -> Vec<ast::Lifetime> {
-    let lifetimes = match *lt {
-        Some(ref s) => opt_vec::with(cx.lifetime(span, cx.ident_of(*s).name)),
-        None => opt_vec::Empty
-    };
-    opt_vec::take_vec(lifetimes)
+    match *lt {
+        Some(ref s) => vec!(cx.lifetime(span, cx.ident_of(*s).name)),
+        None => vec!()
+    }
 }
 
 impl<'a> Ty<'a> {
@@ -173,7 +172,7 @@ impl<'a> Ty<'a> {
                 let lifetimes = self_generics.lifetimes.clone();
 
                 cx.path_all(span, false, vec!(self_ty), lifetimes,
-                            opt_vec::take_vec(self_params))
+                            self_params.into_vec())
             }
             Literal(ref p) => {
                 p.to_path(cx, span, self_ty, self_generics)
@@ -187,18 +186,18 @@ impl<'a> Ty<'a> {
 
 fn mk_ty_param(cx: &ExtCtxt, span: Span, name: &str, bounds: &[Path],
                self_ident: Ident, self_generics: &Generics) -> ast::TyParam {
-    let bounds = opt_vec::from(
+    let bounds =
         bounds.iter().map(|b| {
             let path = b.to_path(cx, span, self_ident, self_generics);
             cx.typarambound(path)
-        }).collect());
+        }).collect();
     cx.typaram(cx.ident_of(name), bounds, None)
 }
 
 fn mk_generics(lifetimes: Vec<ast::Lifetime> ,  ty_params: Vec<ast::TyParam> ) -> Generics {
     Generics {
         lifetimes: lifetimes,
-        ty_params: opt_vec::from(ty_params)
+        ty_params: OwnedSlice::from_vec(ty_params)
     }
 }
 

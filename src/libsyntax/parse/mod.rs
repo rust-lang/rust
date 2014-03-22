@@ -279,7 +279,7 @@ mod test {
     use std::io::MemWriter;
     use std::str;
     use codemap::{Span, BytePos, Spanned};
-    use opt_vec;
+    use owned_slice::OwnedSlice;
     use ast;
     use abi;
     use parse::parser::Parser;
@@ -312,7 +312,7 @@ mod test {
                             ast::PathSegment {
                                 identifier: str_to_ident("a"),
                                 lifetimes: Vec::new(),
-                                types: opt_vec::Empty,
+                                types: OwnedSlice::empty(),
                             }
                         ),
                     }),
@@ -331,12 +331,12 @@ mod test {
                                 ast::PathSegment {
                                     identifier: str_to_ident("a"),
                                     lifetimes: Vec::new(),
-                                    types: opt_vec::Empty,
+                                    types: OwnedSlice::empty(),
                                 },
                                 ast::PathSegment {
                                     identifier: str_to_ident("b"),
                                     lifetimes: Vec::new(),
-                                    types: opt_vec::Empty,
+                                    types: OwnedSlice::empty(),
                                 }
                             )
                         }),
@@ -545,7 +545,7 @@ mod test {
                                 ast::PathSegment {
                                     identifier: str_to_ident("d"),
                                     lifetimes: Vec::new(),
-                                    types: opt_vec::Empty,
+                                    types: OwnedSlice::empty(),
                                 }
                             ),
                         }),
@@ -567,7 +567,7 @@ mod test {
                                 ast::PathSegment {
                                     identifier: str_to_ident("b"),
                                     lifetimes: Vec::new(),
-                                    types: opt_vec::Empty,
+                                    types: OwnedSlice::empty(),
                                 }
                                ),
                             }),
@@ -595,7 +595,7 @@ mod test {
                                         ast::PathSegment {
                                             identifier: str_to_ident("b"),
                                             lifetimes: Vec::new(),
-                                            types: opt_vec::Empty,
+                                            types: OwnedSlice::empty(),
                                         }
                                     ),
                                 },
@@ -623,7 +623,7 @@ mod test {
                                                 identifier:
                                                     str_to_ident("int"),
                                                 lifetimes: Vec::new(),
-                                                types: opt_vec::Empty,
+                                                types: OwnedSlice::empty(),
                                             }
                                         ),
                                         }, None, ast::DUMMY_NODE_ID),
@@ -641,7 +641,7 @@ mod test {
                                                         identifier:
                                                             str_to_ident("b"),
                                                         lifetimes: Vec::new(),
-                                                        types: opt_vec::Empty,
+                                                        types: OwnedSlice::empty(),
                                                     }
                                                 ),
                                             },
@@ -661,7 +661,7 @@ mod test {
                                     abi::AbiSet::Rust(),
                                     ast::Generics{ // no idea on either of these:
                                         lifetimes: Vec::new(),
-                                        ty_params: opt_vec::Empty,
+                                        ty_params: OwnedSlice::empty(),
                                     },
                                     ast::P(ast::Block {
                                         view_items: Vec::new(),
@@ -680,7 +680,7 @@ mod test {
                                                                 lifetimes:
                                                                 Vec::new(),
                                                                 types:
-                                                                opt_vec::Empty
+                                                                OwnedSlice::empty()
                                                             }
                                                         ),
                                                       }),

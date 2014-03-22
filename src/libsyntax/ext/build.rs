@@ -16,8 +16,7 @@ use codemap::{Span, respan, DUMMY_SP};
 use ext::base::ExtCtxt;
 use ext::quote::rt::*;
 use fold::Folder;
-use opt_vec;
-use opt_vec::OptVec;
+use owned_slice::OwnedSlice;
 use parse::token::special_idents;
 use parse::token;
 
@@ -48,7 +47,7 @@ pub trait AstBuilder {
     fn ty_mt(&self, ty: P<ast::Ty>, mutbl: ast::Mutability) -> ast::MutTy;
 
     fn ty(&self, span: Span, ty: ast::Ty_) -> P<ast::Ty>;
-    fn ty_path(&self, ast::Path, Option<OptVec<ast::TyParamBound>>) -> P<ast::Ty>;
+    fn ty_path(&self, ast::Path, Option<OwnedSlice<ast::TyParamBound>>) -> P<ast::Ty>;
     fn ty_ident(&self, span: Span, idents: ast::Ident) -> P<ast::Ty>;
 
     fn ty_rptr(&self, span: Span,
@@ -61,14 +60,14 @@ pub trait AstBuilder {
     fn ty_infer(&self, sp: Span) -> P<ast::Ty>;
     fn ty_nil(&self) -> P<ast::Ty>;
 
-    fn ty_vars(&self, ty_params: &OptVec<ast::TyParam>) -> Vec<P<ast::Ty>> ;
-    fn ty_vars_global(&self, ty_params: &OptVec<ast::TyParam>) -> Vec<P<ast::Ty>> ;
+    fn ty_vars(&self, ty_params: &OwnedSlice<ast::TyParam>) -> Vec<P<ast::Ty>> ;
+    fn ty_vars_global(&self, ty_params: &OwnedSlice<ast::TyParam>) -> Vec<P<ast::Ty>> ;
     fn ty_field_imm(&self, span: Span, name: Ident, ty: P<ast::Ty>) -> ast::TypeField;
     fn strip_bounds(&self, bounds: &Generics) -> Generics;
 
     fn typaram(&self,
                id: ast::Ident,
-               bounds: OptVec<ast::TyParamBound>,
+               bounds: OwnedSlice<ast::TyParamBound>,
                default: Option<P<ast::Ty>>) -> ast::TyParam;
 
     fn trait_ref(&self, path: ast::Path) -> ast::TraitRef;
@@ -274,13 +273,13 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             ast::PathSegment {
                 identifier: ident,
                 lifetimes: Vec::new(),
-                types: opt_vec::Empty,
+                types: OwnedSlice::empty(),
             }
         }).collect();
         segments.push(ast::PathSegment {
             identifier: last_identifier,
             lifetimes: lifetimes,
-            types: opt_vec::from(types),
+            types: OwnedSlice::from_vec(types),
         });
         ast::Path {
             span: sp,
@@ -304,7 +303,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         })
     }
 
-    fn ty_path(&self, path: ast::Path, bounds: Option<OptVec<ast::TyParamBound>>)
+    fn ty_path(&self, path: ast::Path, bounds: Option<OwnedSlice<ast::TyParamBound>>)
               -> P<ast::Ty> {
         self.ty(path.span,
                 ast::TyPath(path, bounds, ast::DUMMY_NODE_ID))
@@ -366,7 +365,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
 
     fn typaram(&self,
                id: ast::Ident,
-               bounds: OptVec<ast::TyParamBound>,
+               bounds: OwnedSlice<ast::TyParamBound>,
                default: Option<P<ast::Ty>>) -> ast::TyParam {
         ast::TyParam {
             ident: id,
@@ -379,20 +378,18 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     // these are strange, and probably shouldn't be used outside of
     // pipes. Specifically, the global version possible generates
     // incorrect code.
-    fn ty_vars(&self, ty_params: &OptVec<ast::TyParam>) -> Vec<P<ast::Ty>> {
-        opt_vec::take_vec(
-            ty_params.map(|p| self.ty_ident(DUMMY_SP, p.ident)))
+    fn ty_vars(&self, ty_params: &OwnedSlice<ast::TyParam>) -> Vec<P<ast::Ty>> {
+        ty_params.iter().map(|p| self.ty_ident(DUMMY_SP, p.ident)).collect()
     }
 
-    fn ty_vars_global(&self, ty_params: &OptVec<ast::TyParam>) -> Vec<P<ast::Ty>> {
-        opt_vec::take_vec(
-            ty_params.map(|p| self.ty_path(
-                self.path_global(DUMMY_SP, vec!(p.ident)), None)))
+    fn ty_vars_global(&self, ty_params: &OwnedSlice<ast::TyParam>) -> Vec<P<ast::Ty>> {
+        ty_params.iter().map(|p| self.ty_path(
+                self.path_global(DUMMY_SP, vec!(p.ident)), None)).collect()
     }
 
     fn strip_bounds(&self, generics: &Generics) -> Generics {
         let new_params = generics.ty_params.map(|ty_param| {
-            ast::TyParam { bounds: opt_vec::Empty, ..*ty_param }
+            ast::TyParam { bounds: OwnedSlice::empty(), ..*ty_param }
         });
         Generics {
             ty_params: new_params,

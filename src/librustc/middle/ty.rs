@@ -51,8 +51,7 @@ use syntax::codemap::Span;
 use syntax::parse::token;
 use syntax::parse::token::InternedString;
 use syntax::{ast, ast_map};
-use syntax::opt_vec::OptVec;
-use syntax::opt_vec;
+use syntax::owned_slice::OwnedSlice;
 use syntax::abi::AbiSet;
 use syntax;
 use collections::enum_set::{EnumSet, CLike};
@@ -192,8 +191,8 @@ pub enum ast_ty_to_ty_cache_entry {
 #[deriving(Clone, Eq, Decodable, Encodable)]
 pub struct ItemVariances {
     self_param: Option<Variance>,
-    type_params: OptVec<Variance>,
-    region_params: OptVec<Variance>
+    type_params: OwnedSlice<Variance>,
+    region_params: OwnedSlice<Variance>
 }
 
 #[deriving(Clone, Eq, Decodable, Encodable, Show)]
@@ -646,7 +645,7 @@ pub enum BoundRegion {
 #[deriving(Clone, Eq, Hash)]
 pub enum RegionSubsts {
     ErasedRegions,
-    NonerasedRegions(OptVec<ty::Region>)
+    NonerasedRegions(OwnedSlice<ty::Region>)
 }
 
 /**
@@ -4658,7 +4657,7 @@ pub fn visitor_object_ty(tcx: &ctxt,
         Err(s) => { return Err(s); }
     };
     let substs = substs {
-        regions: ty::NonerasedRegions(opt_vec::Empty),
+        regions: ty::NonerasedRegions(OwnedSlice::empty()),
         self_ty: None,
         tps: Vec::new()
     };
@@ -5072,11 +5071,10 @@ pub fn construct_parameter_environment(
 
     // map bound 'a => free 'a
     let region_params = {
-        fn push_region_params(accum: OptVec<ty::Region>,
+        fn push_region_params(mut accum: Vec<ty::Region>,
                               free_id: ast::NodeId,
                               region_params: &[RegionParameterDef])
-                              -> OptVec<ty::Region> {
-            let mut accum = accum;
+                              -> Vec<ty::Region> {
             for r in region_params.iter() {
                 accum.push(
                     ty::ReFree(ty::FreeRegion {
@@ -5086,14 +5084,14 @@ pub fn construct_parameter_environment(
             accum
         }
 
-        let t = push_region_params(opt_vec::Empty, free_id, item_region_params);
+        let t = push_region_params(vec!(), free_id, item_region_params);
         push_region_params(t, free_id, method_region_params)
     };
 
     let free_substs = substs {
         self_ty: self_ty,
         tps: type_params,
-        regions: ty::NonerasedRegions(region_params)
+        regions: ty::NonerasedRegions(OwnedSlice::from_vec(region_params))
     };
 
     //
@@ -5131,7 +5129,7 @@ impl substs {
         substs {
             self_ty: None,
             tps: Vec::new(),
-            regions: NonerasedRegions(opt_vec::Empty)
+            regions: NonerasedRegions(OwnedSlice::empty())
         }
     }
 }
