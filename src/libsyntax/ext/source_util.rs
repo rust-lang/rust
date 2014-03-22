@@ -57,7 +57,7 @@ pub fn expand_file(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
 
     let topmost = topmost_expn_info(cx.backtrace().unwrap());
     let loc = cx.codemap().lookup_char_pos(topmost.call_site.lo);
-    let filename = token::intern_and_get_ident(loc.file.deref().name);
+    let filename = token::intern_and_get_ident(loc.file.name);
     base::MRExpr(cx.expr_str(topmost.call_site, filename))
 }
 

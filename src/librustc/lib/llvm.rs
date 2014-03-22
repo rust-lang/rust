@@ -1831,13 +1831,11 @@ impl TypeNames {
     }
 
     pub fn associate_type(&self, s: &str, t: &Type) {
-        let mut named_types = self.named_types.borrow_mut();
-        assert!(named_types.get().insert(s.to_owned(), t.to_ref()));
+        assert!(self.named_types.borrow_mut().insert(s.to_owned(), t.to_ref()));
     }
 
     pub fn find_type(&self, s: &str) -> Option<Type> {
-        let named_types = self.named_types.borrow();
-        named_types.get().find_equiv(&s).map(|x| Type::from_ref(*x))
+        self.named_types.borrow().find_equiv(&s).map(|x| Type::from_ref(*x))
     }
 
     pub fn type_to_str(&self, ty: Type) -> ~str {

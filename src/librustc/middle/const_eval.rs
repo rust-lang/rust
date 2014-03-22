@@ -83,10 +83,7 @@ pub fn join_all<It: Iterator<constness>>(mut cs: It) -> constness {
 }
 
 pub fn lookup_const(tcx: &ty::ctxt, e: &Expr) -> Option<@Expr> {
-    let opt_def = {
-        let def_map = tcx.def_map.borrow();
-        def_map.get().find_copy(&e.id)
-    };
+    let opt_def = tcx.def_map.borrow().find_copy(&e.id);
     match opt_def {
         Some(ast::DefStatic(def_id, false)) => {
             lookup_const_by_id(tcx, def_id)
@@ -125,7 +122,7 @@ pub fn lookup_variant_by_id(tcx: &ty::ctxt,
             }
         }
     } else {
-        match tcx.extern_const_variants.borrow().get().find(&variant_def) {
+        match tcx.extern_const_variants.borrow().find(&variant_def) {
             Some(&e) => return e,
             None => {}
         }
@@ -145,7 +142,7 @@ pub fn lookup_variant_by_id(tcx: &ty::ctxt,
             },
             _ => None
         };
-        tcx.extern_const_variants.borrow_mut().get().insert(variant_def, e);
+        tcx.extern_const_variants.borrow_mut().insert(variant_def, e);
         return e;
     }
 }
@@ -166,12 +163,9 @@ pub fn lookup_const_by_id(tcx: &ty::ctxt, def_id: ast::DefId)
             }
         }
     } else {
-        {
-            let extern_const_statics = tcx.extern_const_statics.borrow();
-            match extern_const_statics.get().find(&def_id) {
-                Some(&e) => return e,
-                None => {}
-            }
+        match tcx.extern_const_statics.borrow().find(&def_id) {
+            Some(&e) => return e,
+            None => {}
         }
         let maps = astencode::Maps {
             root_map: @RefCell::new(HashMap::new()),
@@ -187,12 +181,8 @@ pub fn lookup_const_by_id(tcx: &ty::ctxt, def_id: ast::DefId)
             },
             _ => None
         };
-        {
-            let mut extern_const_statics = tcx.extern_const_statics
-                                              .borrow_mut();
-            extern_const_statics.get().insert(def_id, e);
-            return e;
-        }
+        tcx.extern_const_statics.borrow_mut().insert(def_id, e);
+        return e;
     }
 }
 
@@ -500,7 +490,7 @@ pub fn lit_to_const(lit: &Lit) -> const_val {
     match lit.node {
         LitStr(ref s, _) => const_str((*s).clone()),
         LitBinary(ref data) => {
-            const_binary(Rc::new(data.deref().iter().map(|x| *x).collect()))
+            const_binary(Rc::new(data.iter().map(|x| *x).collect()))
         }
         LitChar(n) => const_uint(n as u64),
         LitInt(n, _) => const_int(n),

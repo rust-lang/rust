@@ -241,7 +241,7 @@ impl<'a> Rcx<'a> {
     }
 
     fn resolve_method_type(&self, method_call: MethodCall) -> Option<ty::t> {
-        let method_ty = self.fcx.inh.method_map.borrow().get()
+        let method_ty = self.fcx.inh.method_map.borrow()
                             .find(&method_call).map(|method| method.ty);
         method_ty.map(|method_ty| self.resolve_type(method_ty))
     }
@@ -253,7 +253,7 @@ impl<'a> Rcx<'a> {
             ty_unadjusted
         } else {
             let tcx = self.fcx.tcx();
-            let adjustment = self.fcx.inh.adjustments.borrow().get().find_copy(&expr.id);
+            let adjustment = self.fcx.inh.adjustments.borrow().find_copy(&expr.id);
             ty::adjust_ty(tcx, expr.span, expr.id, ty_unadjusted, adjustment,
                           |method_call| self.resolve_method_type(method_call))
         }
@@ -275,12 +275,11 @@ impl<'a, 'b> mc::Typer for &'a mut Rcx<'b> {
     }
 
     fn adjustment(&mut self, id: ast::NodeId) -> Option<@ty::AutoAdjustment> {
-        let adjustments = self.fcx.inh.adjustments.borrow();
-        adjustments.get().find_copy(&id)
+        self.fcx.inh.adjustments.borrow().find_copy(&id)
     }
 
     fn is_method_call(&mut self, id: ast::NodeId) -> bool {
-        self.fcx.inh.method_map.borrow().get().contains_key(&MethodCall::expr(id))
+        self.fcx.inh.method_map.borrow().contains_key(&MethodCall::expr(id))
     }
 
     fn temporary_scope(&mut self, id: ast::NodeId) -> Option<ast::NodeId> {
@@ -288,8 +287,7 @@ impl<'a, 'b> mc::Typer for &'a mut Rcx<'b> {
     }
 
     fn upvar_borrow(&mut self, id: ty::UpvarId) -> ty::UpvarBorrow {
-        let upvar_borrow_map = self.fcx.inh.upvar_borrow_map.borrow();
-        upvar_borrow_map.get().get_copy(&id)
+        self.fcx.inh.upvar_borrow_map.borrow().get_copy(&id)
     }
 }
 
@@ -403,7 +401,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
     let has_method_map = rcx.fcx.inh.method_map.get().contains_key(&method_call);
 
     // Check any autoderefs or autorefs that appear.
-    for &adjustment in rcx.fcx.inh.adjustments.borrow().get().find(&expr.id).iter() {
+    for &adjustment in rcx.fcx.inh.adjustments.borrow().find(&expr.id).iter() {
         debug!("adjustment={:?}", adjustment);
         match **adjustment {
             ty::AutoDerefRef(ty::AutoDerefRef {autoderefs, autoref: opt_autoref}) => {
@@ -678,8 +676,8 @@ fn check_expr_fn_block(rcx: &mut Rcx,
             // immutable as dictated by the uses.
             let upvar_borrow = ty::UpvarBorrow { kind: ty::ImmBorrow,
                                                  region: freevar_region };
-            let mut upvar_borrow_map = rcx.fcx.inh.upvar_borrow_map.borrow_mut();
-            upvar_borrow_map.get().insert(upvar_id, upvar_borrow);
+            rcx.fcx.inh.upvar_borrow_map.borrow_mut().insert(upvar_id,
+                                                             upvar_borrow);
 
             // Guarantee that the closure does not outlive the variable itself.
             let en_region = region_of_def(rcx.fcx, def);
@@ -951,7 +949,7 @@ fn constrain_regions_in_type_of_node(
     // is going to fail anyway, so just stop here and let typeck
     // report errors later on in the writeback phase.
     let ty0 = rcx.resolve_node_type(id);
-    let adjustment = rcx.fcx.inh.adjustments.borrow().get().find_copy(&id);
+    let adjustment = rcx.fcx.inh.adjustments.borrow().find_copy(&id);
     let ty = ty::adjust_ty(tcx, origin.span(), id, ty0, adjustment,
                            |method_call| rcx.resolve_method_type(method_call));
     debug!("constrain_regions_in_type_of_node(\
@@ -1204,9 +1202,8 @@ fn link_region(rcx: &mut Rcx,
                 // to use for each upvar.
                 let cause = match base.cat {
                     mc::cat_upvar(ref upvar_id, _) => {
-                        let mut upvar_borrow_map =
-                            rcx.fcx.inh.upvar_borrow_map.borrow_mut();
-                        match upvar_borrow_map.get().find_mut(upvar_id) {
+                        match rcx.fcx.inh.upvar_borrow_map.borrow_mut()
+                                 .find_mut(upvar_id) {
                             Some(upvar_borrow) => {
                                 debug!("link_region: {} <= {}",
                                        region_min.repr(rcx.tcx()),
@@ -1324,7 +1321,7 @@ fn adjust_upvar_borrow_kind_for_mut(rcx: &mut Rcx,
                         // is inferred to mutable if necessary
                         let mut upvar_borrow_map =
                             rcx.fcx.inh.upvar_borrow_map.borrow_mut();
-                        let ub = upvar_borrow_map.get().get_mut(upvar_id);
+                        let ub = upvar_borrow_map.get_mut(upvar_id);
                         return adjust_upvar_borrow_kind(*upvar_id, ub, ty::MutBorrow);
                     }
 
@@ -1377,9 +1374,8 @@ fn adjust_upvar_borrow_kind_for_unique(rcx: &mut Rcx,
                         // upvar, then we need to modify the
                         // borrow_kind of the upvar to make sure it
                         // is inferred to unique if necessary
-                        let mut upvar_borrow_map =
-                            rcx.fcx.inh.upvar_borrow_map.borrow_mut();
-                        let ub = upvar_borrow_map.get().get_mut(upvar_id);
+                        let mut ub = rcx.fcx.inh.upvar_borrow_map.borrow_mut();
+                        let ub = ub.get_mut(upvar_id);
                         return adjust_upvar_borrow_kind(*upvar_id, ub, ty::UniqueImmBorrow);
                     }
 
@@ -1419,8 +1415,8 @@ fn link_upvar_borrow_kind_for_nested_closures(rcx: &mut Rcx,
            inner_upvar_id, outer_upvar_id);
 
     let mut upvar_borrow_map = rcx.fcx.inh.upvar_borrow_map.borrow_mut();
-    let inner_borrow = upvar_borrow_map.get().get_copy(&inner_upvar_id);
-    match upvar_borrow_map.get().find_mut(&outer_upvar_id) {
+    let inner_borrow = upvar_borrow_map.get_copy(&inner_upvar_id);
+    match upvar_borrow_map.find_mut(&outer_upvar_id) {
         Some(outer_borrow) => {
             adjust_upvar_borrow_kind(outer_upvar_id, outer_borrow, inner_borrow.kind);
         }

@@ -238,23 +238,23 @@ pub fn visibility_qualified(vis: ast::Visibility, s: &str) -> ~str {
 
 impl<'a> State<'a> {
     pub fn ibox(&mut self, u: uint) -> IoResult<()> {
-        self.boxes.borrow_mut().get().push(pp::Inconsistent);
+        self.boxes.borrow_mut().push(pp::Inconsistent);
         pp::ibox(&mut self.s, u)
     }
 
     pub fn end(&mut self) -> IoResult<()> {
-        self.boxes.borrow_mut().get().pop().unwrap();
+        self.boxes.borrow_mut().pop().unwrap();
         pp::end(&mut self.s)
     }
 
     pub fn cbox(&mut self, u: uint) -> IoResult<()> {
-        self.boxes.borrow_mut().get().push(pp::Consistent);
+        self.boxes.borrow_mut().push(pp::Consistent);
         pp::cbox(&mut self.s, u)
     }
 
     // "raw box"
     pub fn rbox(&mut self, u: uint, b: pp::Breaks) -> IoResult<()> {
-        self.boxes.borrow_mut().get().push(b);
+        self.boxes.borrow_mut().push(b);
         pp::rbox(&mut self.s, u, b)
     }
 
@@ -322,7 +322,7 @@ impl<'a> State<'a> {
     }
 
     pub fn in_cbox(&mut self) -> bool {
-        match self.boxes.borrow().get().last() {
+        match self.boxes.borrow().last() {
             Some(&last_box) => last_box == pp::Consistent,
             None => false
         }
@@ -2186,7 +2186,7 @@ impl<'a> State<'a> {
             ast::LitBinary(ref arr) => {
                 try!(self.ibox(indent_unit));
                 try!(word(&mut self.s, "["));
-                try!(self.commasep_cmnt(Inconsistent, arr.deref().as_slice(),
+                try!(self.commasep_cmnt(Inconsistent, arr.as_slice(),
                                         |s, u| word(&mut s.s, format!("{}", *u)),
                                         |_| lit.span));
                 try!(word(&mut self.s, "]"));

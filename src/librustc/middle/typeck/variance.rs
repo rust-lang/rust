@@ -359,10 +359,7 @@ impl<'a> Visitor<()> for TermsContext<'a> {
                 // "invalid item id" from "item id with no
                 // parameters".
                 if self.num_inferred() == inferreds_on_entry {
-                    let mut item_variance_map = self.tcx
-                                                    .item_variance_map
-                                                    .borrow_mut();
-                    let newly_added = item_variance_map.get().insert(
+                    let newly_added = self.tcx.item_variance_map.borrow_mut().insert(
                         ast_util::local_def(item.id),
                         self.empty_variances);
                     assert!(newly_added);
@@ -944,9 +941,8 @@ impl<'a> SolveContext<'a> {
                 tcx.sess.span_err(tcx.map.span(item_id), found);
             }
 
-            let mut item_variance_map = tcx.item_variance_map.borrow_mut();
-            let newly_added = item_variance_map.get().insert(item_def_id,
-                                                             @item_variances);
+            let newly_added = tcx.item_variance_map.borrow_mut()
+                                 .insert(item_def_id, @item_variances);
             assert!(newly_added);
         }
     }

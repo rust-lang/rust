@@ -628,7 +628,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             vec!(
                 self.expr_str(span, msg),
                 self.expr_str(span,
-                              token::intern_and_get_ident(loc.file.deref().name)),
+                              token::intern_and_get_ident(loc.file.name)),
                 self.expr_uint(span, loc.line)))
     }
 

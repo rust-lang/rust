@@ -51,11 +51,10 @@ pub fn read_crates(sess: &Session,
     };
     visit_crate(&e, krate);
     visit::walk_crate(&mut e, krate, ());
-    let crate_cache = e.crate_cache.borrow();
-    dump_crates(crate_cache.get().as_slice());
+    dump_crates(e.crate_cache.borrow().as_slice());
     warn_if_multiple_versions(&mut e,
                               sess.diagnostic(),
-                              crate_cache.get().as_slice());
+                              e.crate_cache.borrow().as_slice());
 }
 
 impl<'a> visit::Visitor<()> for Env<'a> {
@@ -268,8 +267,7 @@ fn visit_item(e: &Env, i: &ast::Item) {
 
 fn existing_match(e: &Env, crate_id: &CrateId,
                   hash: Option<&Svh>) -> Option<ast::CrateNum> {
-    let crate_cache = e.crate_cache.borrow();
-    for c in crate_cache.get().iter() {
+    for c in e.crate_cache.borrow().iter() {
         if !crate_id.matches(&c.crate_id) { continue }
         match hash {
             Some(hash) if *hash != c.hash => {}
@@ -309,15 +307,12 @@ fn resolve_crate(e: &mut Env,
 
             // Claim this crate number and cache it
             let cnum = e.next_crate_num;
-            {
-                let mut crate_cache = e.crate_cache.borrow_mut();
-                crate_cache.get().push(cache_entry {
-                    cnum: cnum,
-                    span: span,
-                    hash: hash,
-                    crate_id: crate_id,
-                });
-            }
+            e.crate_cache.borrow_mut().push(cache_entry {
+                cnum: cnum,
+                span: span,
+                hash: hash,
+                crate_id: crate_id,
+            });
             e.next_crate_num += 1;
 
             // Maintain a reference to the top most crate.

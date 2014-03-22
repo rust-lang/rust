@@ -109,15 +109,11 @@ fn lookup_cur_matched_by_matched(r: &TtReader, start: @NamedMatch)
             MatchedSeq(ref ads, _) => *ads.get(*idx)
         }
     }
-    let repeat_idx = r.repeat_idx.borrow();
-    repeat_idx.get().iter().fold(start, red)
+    r.repeat_idx.borrow().iter().fold(start, red)
 }
 
 fn lookup_cur_matched(r: &TtReader, name: Ident) -> @NamedMatch {
-    let matched_opt = {
-        let interpolations = r.interpolations.borrow();
-        interpolations.get().find_copy(&name)
-    };
+    let matched_opt = r.interpolations.borrow().find_copy(&name);
     match matched_opt {
         Some(s) => lookup_cur_matched_by_matched(r, s),
         None => {
@@ -178,19 +174,14 @@ pub fn tt_next_token(r: &TtReader) -> TokenAndSpan {
         sp: r.cur_span.get(),
     };
     loop {
-        {
-            let mut stack = r.stack.borrow_mut();
-            if stack.get().idx.get() < stack.get().forest.len() {
-                break;
-            }
+        if r.stack.borrow().idx.get() < r.stack.borrow().forest.len() {
+            break;
         }
 
         /* done with this set; pop or repeat? */
         if !r.stack.get().dotdotdoted || {
-                let repeat_idx = r.repeat_idx.borrow();
-                let repeat_len = r.repeat_len.borrow();
-                *repeat_idx.get().last().unwrap() ==
-                *repeat_len.get().last().unwrap() - 1
+                *r.repeat_idx.borrow().last().unwrap() ==
+                *r.repeat_len.borrow().last().unwrap() - 1
             } {
 
             match r.stack.get().up {
@@ -200,12 +191,8 @@ pub fn tt_next_token(r: &TtReader) -> TokenAndSpan {
               }
               Some(tt_f) => {
                 if r.stack.get().dotdotdoted {
-                    {
-                        let mut repeat_idx = r.repeat_idx.borrow_mut();
-                        let mut repeat_len = r.repeat_len.borrow_mut();
-                        repeat_idx.get().pop().unwrap();
-                        repeat_len.get().pop().unwrap();
-                    }
+                    r.repeat_idx.borrow_mut().pop().unwrap();
+                    r.repeat_len.borrow_mut().pop().unwrap();
                 }
 
                 r.stack.set(tt_f);
@@ -217,8 +204,8 @@ pub fn tt_next_token(r: &TtReader) -> TokenAndSpan {
             r.stack.get().idx.set(0u);
             {
                 let mut repeat_idx = r.repeat_idx.borrow_mut();
-                let last_repeat_idx = repeat_idx.get().len() - 1u;
-                *repeat_idx.get().get_mut(last_repeat_idx) += 1u;
+                let last_repeat_idx = repeat_idx.len() - 1u;
+                *repeat_idx.get_mut(last_repeat_idx) += 1u;
             }
             match r.stack.get().sep.clone() {
               Some(tk) => {
@@ -276,19 +263,15 @@ pub fn tt_next_token(r: &TtReader) -> TokenAndSpan {
                     r.stack.get().idx.set(r.stack.get().idx.get() + 1u);
                     return tt_next_token(r);
                 } else {
-                    {
-                        let mut repeat_idx = r.repeat_idx.borrow_mut();
-                        let mut repeat_len = r.repeat_len.borrow_mut();
-                        repeat_len.get().push(len);
-                        repeat_idx.get().push(0u);
-                        r.stack.set(@TtFrame {
-                            forest: tts,
-                            idx: Cell::new(0u),
-                            dotdotdoted: true,
-                            sep: sep,
-                            up: Some(r.stack.get())
-                        });
-                    }
+                    r.repeat_len.borrow_mut().push(len);
+                    r.repeat_idx.borrow_mut().push(0u);
+                    r.stack.set(@TtFrame {
+                        forest: tts,
+                        idx: Cell::new(0u),
+                        dotdotdoted: true,
+                        sep: sep,
+                        up: Some(r.stack.get())
+                    });
                 }
               }
             }

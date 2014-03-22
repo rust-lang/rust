@@ -294,15 +294,12 @@ pub fn create_local_var_metadata(bcx: &Block, local: &ast::Local) {
     pat_util::pat_bindings(def_map, local.pat, |_, node_id, span, path_ref| {
         let var_ident = ast_util::path_to_ident(path_ref);
 
-        let datum = {
-            let lllocals = bcx.fcx.lllocals.borrow();
-            match lllocals.get().find_copy(&node_id) {
-                Some(datum) => datum,
-                None => {
-                    bcx.sess().span_bug(span,
-                        format!("no entry in lllocals table for {:?}",
-                                node_id));
-                }
+        let datum = match bcx.fcx.lllocals.borrow().find_copy(&node_id) {
+            Some(datum) => datum,
+            None => {
+                bcx.sess().span_bug(span,
+                    format!("no entry in lllocals table for {:?}",
+                            node_id));
             }
         };
 
@@ -436,15 +433,12 @@ pub fn create_argument_metadata(bcx: &Block, arg: &ast::Arg) {
     let scope_metadata = bcx.fcx.debug_context.get_ref(cx, arg.pat.span).fn_metadata;
 
     pat_util::pat_bindings(def_map, arg.pat, |_, node_id, span, path_ref| {
-        let llarg = {
-            let llargs = bcx.fcx.llargs.borrow();
-            match llargs.get().find_copy(&node_id) {
-                Some(v) => v,
-                None => {
-                    bcx.sess().span_bug(span,
-                        format!("no entry in llargs table for {:?}",
-                                node_id));
-                }
+        let llarg = match bcx.fcx.llargs.borrow().find_copy(&node_id) {
+            Some(v) => v,
+            None => {
+                bcx.sess().span_bug(span,
+                    format!("no entry in llargs table for {:?}",
+                            node_id));
             }
         };
 
@@ -616,7 +610,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
     }
 
     let loc = span_start(cx, span);
-    let file_metadata = file_metadata(cx, loc.file.deref().name);
+    let file_metadata = file_metadata(cx, loc.file.name);
 
     let function_type_metadata = unsafe {
         let fn_signature = get_function_signature(cx, fn_ast_id, fn_decl, param_substs, span);
@@ -686,14 +680,11 @@ pub fn create_function_debug_context(cx: &CrateContext,
     };
 
     let arg_pats = fn_decl.inputs.map(|arg_ref| arg_ref.pat);
-    {
-        let mut scope_map = fn_debug_context.scope_map.borrow_mut();
-        populate_scope_map(cx,
-                           arg_pats.as_slice(),
-                           top_level_block,
-                           fn_metadata,
-                           scope_map.get());
-    }
+    populate_scope_map(cx,
+                       arg_pats.as_slice(),
+                       top_level_block,
+                       fn_metadata,
+                       &mut *fn_debug_context.scope_map.borrow_mut());
 
     // Clear the debug location so we don't assign them in the function prelude
     set_debug_location(cx, UnknownLocation);
@@ -939,7 +930,7 @@ fn declare_local(bcx: &Block,
                  span: Span) {
     let cx: &CrateContext = bcx.ccx();
 
-    let filename = span_start(cx, span).file.deref().name.clone();
+    let filename = span_start(cx, span).file.name.clone();
     let file_metadata = file_metadata(cx, filename);
 
     let name = token::get_ident(variable_ident);
@@ -1014,12 +1005,9 @@ fn declare_local(bcx: &Block,
 }
 
 fn file_metadata(cx: &CrateContext, full_path: &str) -> DIFile {
-    {
-        let created_files = debug_context(cx).created_files.borrow();
-        match created_files.get().find_equiv(&full_path) {
-            Some(file_metadata) => return *file_metadata,
-            None => ()
-        }
+    match debug_context(cx).created_files.borrow().find_equiv(&full_path) {
+        Some(file_metadata) => return *file_metadata,
+        None => ()
     }
 
     debug!("file_metadata: {}", full_path);
@@ -1043,7 +1031,7 @@ fn file_metadata(cx: &CrateContext, full_path: &str) -> DIFile {
         });
 
     let mut created_files = debug_context(cx).created_files.borrow_mut();
-    created_files.get().insert(full_path.to_owned(), file_metadata);
+    created_files.insert(full_path.to_owned(), file_metadata);
     return file_metadata;
 }
 
@@ -1053,9 +1041,7 @@ fn scope_metadata(fcx: &FunctionContext,
                   span: Span)
                -> DIScope {
     let scope_map = &fcx.debug_context.get_ref(fcx.ccx, span).scope_map;
-    let scope_map = scope_map.borrow();
-
-    match scope_map.get().find_copy(&node_id) {
+    match scope_map.borrow().find_copy(&node_id) {
         Some(scope_metadata) => scope_metadata,
         None => {
             let node = fcx.ccx.tcx.map.get(node_id);
@@ -1195,7 +1181,7 @@ fn prepare_struct_metadata(cx: &CrateContext,
 
     let (containing_scope, definition_span) = get_namespace_and_span_for_item(cx, def_id);
 
-    let file_name = span_start(cx, definition_span).file.deref().name.clone();
+    let file_name = span_start(cx, definition_span).file.name.clone();
     let file_metadata = file_metadata(cx, file_name);
 
     let struct_metadata_stub = create_struct_stub(cx,
@@ -1243,10 +1229,8 @@ impl RecursiveTypeDescription {
                 ref member_description_factory
             } => {
                 // Insert the stub into the cache in order to allow recursive references ...
-                {
-                    let mut created_types = debug_context(cx).created_types.borrow_mut();
-                    created_types.get().insert(cache_id, metadata_stub);
-                }
+                debug_context(cx).created_types.borrow_mut()
+                                 .insert(cache_id, metadata_stub);
 
                 // ... then create the member descriptions ...
                 let member_descriptions = member_description_factory.create_member_descriptions(cx);
@@ -1292,7 +1276,7 @@ fn prepare_tuple_metadata(cx: &CrateContext,
     let tuple_llvm_type = type_of::type_of(cx, tuple_type);
 
     let loc = span_start(cx, span);
-    let file_metadata = file_metadata(cx, loc.file.deref().name);
+    let file_metadata = file_metadata(cx, loc.file.name);
 
     UnfinishedMetadata {
         cache_id: cache_id_for_type(tuple_type),
@@ -1452,7 +1436,7 @@ fn prepare_enum_metadata(cx: &CrateContext,
 
     let (containing_scope, definition_span) = get_namespace_and_span_for_item(cx, enum_def_id);
     let loc = span_start(cx, definition_span);
-    let file_metadata = file_metadata(cx, loc.file.deref().name);
+    let file_metadata = file_metadata(cx, loc.file.name);
 
     // For empty enums there is an early exit. Just describe it as an empty struct with the
     // appropriate type name
@@ -1649,12 +1633,12 @@ fn set_members_of_composite_type(cx: &CrateContext,
     {
         let mut composite_types_completed =
             debug_context(cx).composite_types_completed.borrow_mut();
-        if composite_types_completed.get().contains(&composite_type_metadata) {
+        if composite_types_completed.contains(&composite_type_metadata) {
             cx.sess().span_bug(definition_span, "debuginfo::set_members_of_composite_type() - \
                                                  Already completed forward declaration \
                                                  re-encountered.");
         } else {
-            composite_types_completed.get().insert(composite_type_metadata);
+            composite_types_completed.insert(composite_type_metadata);
         }
     }
 
@@ -1791,7 +1775,7 @@ fn boxed_type_metadata(cx: &CrateContext,
     ];
 
     let loc = span_start(cx, span);
-    let file_metadata = file_metadata(cx, loc.file.deref().name);
+    let file_metadata = file_metadata(cx, loc.file.name);
 
     return composite_type_metadata(
         cx,
@@ -1892,7 +1876,7 @@ fn vec_metadata(cx: &CrateContext,
     assert!(member_descriptions.len() == member_llvm_types.len());
 
     let loc = span_start(cx, span);
-    let file_metadata = file_metadata(cx, loc.file.deref().name);
+    let file_metadata = file_metadata(cx, loc.file.name);
 
     composite_type_metadata(
         cx,
@@ -1943,7 +1927,7 @@ fn vec_slice_metadata(cx: &CrateContext,
     assert!(member_descriptions.len() == member_llvm_types.len());
 
     let loc = span_start(cx, span);
-    let file_metadata = file_metadata(cx, loc.file.deref().name);
+    let file_metadata = file_metadata(cx, loc.file.name);
 
     return composite_type_metadata(
         cx,
@@ -1969,7 +1953,7 @@ fn subroutine_type_metadata(cx: &CrateContext,
                             span: Span)
                          -> DICompositeType {
     let loc = span_start(cx, span);
-    let file_metadata = file_metadata(cx, loc.file.deref().name);
+    let file_metadata = file_metadata(cx, loc.file.name);
 
     let mut signature_metadata: Vec<DIType> =
         Vec::with_capacity(signature.inputs.len() + 1);
@@ -2015,7 +1999,7 @@ fn trait_metadata(cx: &CrateContext,
 
     let (containing_scope, definition_span) = get_namespace_and_span_for_item(cx, def_id);
 
-    let file_name = span_start(cx, definition_span).file.deref().name.clone();
+    let file_name = span_start(cx, definition_span).file.name.clone();
     let file_metadata = file_metadata(cx, file_name);
 
     let trait_llvm_type = type_of::type_of(cx, trait_type);
@@ -2035,12 +2019,9 @@ fn type_metadata(cx: &CrateContext,
               -> DIType {
     let cache_id = cache_id_for_type(t);
 
-    {
-        let created_types = debug_context(cx).created_types.borrow();
-        match created_types.get().find(&cache_id) {
-            Some(type_metadata) => return *type_metadata,
-            None => ()
-        }
+    match debug_context(cx).created_types.borrow().find(&cache_id) {
+        Some(type_metadata) => return *type_metadata,
+        None => ()
     }
 
     fn create_pointer_to_box_metadata(cx: &CrateContext,
@@ -2149,8 +2130,7 @@ fn type_metadata(cx: &CrateContext,
         _ => cx.sess().bug(format!("debuginfo: unexpected type in type_metadata: {:?}", sty))
     };
 
-    let mut created_types = debug_context(cx).created_types.borrow_mut();
-    created_types.get().insert(cache_id, type_metadata);
+    debug_context(cx).created_types.borrow_mut().insert(cache_id, type_metadata);
     type_metadata
 }
 
@@ -2250,8 +2230,7 @@ fn fn_should_be_ignored(fcx: &FunctionContext) -> bool {
 }
 
 fn assert_type_for_node_id(cx: &CrateContext, node_id: ast::NodeId, error_span: Span) {
-    let node_types = cx.tcx.node_types.borrow();
-    if !node_types.get().contains_key(&(node_id as uint)) {
+    if !cx.tcx.node_types.borrow().contains_key(&(node_id as uint)) {
         cx.sess().span_bug(error_span, "debuginfo: Could not find type for node id!");
     }
 }
@@ -2318,7 +2297,7 @@ fn populate_scope_map(cx: &CrateContext,
                                    &mut HashMap<ast::NodeId, DIScope>|) {
         // Create a new lexical scope and push it onto the stack
         let loc = cx.sess().codemap().lookup_char_pos(scope_span.lo);
-        let file_metadata = file_metadata(cx, loc.file.deref().name);
+        let file_metadata = file_metadata(cx, loc.file.name);
         let parent_scope = scope_stack.last().unwrap().scope_metadata;
 
         let scope_metadata = unsafe {
@@ -2435,7 +2414,7 @@ fn populate_scope_map(cx: &CrateContext,
                     if need_new_scope {
                         // Create a new lexical scope and push it onto the stack
                         let loc = cx.sess().codemap().lookup_char_pos(pat.span.lo);
-                        let file_metadata = file_metadata(cx, loc.file.deref().name);
+                        let file_metadata = file_metadata(cx, loc.file.name);
                         let parent_scope = scope_stack.last().unwrap().scope_metadata;
 
                         let scope_metadata = unsafe {
@@ -2781,10 +2760,8 @@ fn namespace_for_item(cx: &CrateContext, def_id: ast::DefId) -> @NamespaceTreeNo
             let name = path_element.name();
             current_key.push(name);
 
-            let existing_node = {
-                let namespace_map = debug_context(cx).namespace_map.borrow();
-                namespace_map.get().find_copy(&current_key)
-            };
+            let existing_node = debug_context(cx).namespace_map.borrow()
+                                                 .find_copy(&current_key);
             let current_node = match existing_node {
                 Some(existing_node) => existing_node,
                 None => {
@@ -2813,11 +2790,8 @@ fn namespace_for_item(cx: &CrateContext, def_id: ast::DefId) -> @NamespaceTreeNo
                         parent: parent_node,
                     };
 
-                    {
-                        let mut namespace_map = debug_context(cx).namespace_map
-                                                                 .borrow_mut();
-                        namespace_map.get().insert(current_key.clone(), node);
-                    }
+                    debug_context(cx).namespace_map.borrow_mut()
+                                     .insert(current_key.clone(), node);
 
                     node
                 }

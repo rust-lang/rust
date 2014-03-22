@@ -465,8 +465,7 @@ impl<'a> Block<'a> {
     }
 
     pub fn def(&self, nid: ast::NodeId) -> ast::Def {
-        let def_map = self.tcx().def_map.borrow();
-        match def_map.get().find(&nid) {
+        match self.tcx().def_map.borrow().find(&nid) {
             Some(&v) => v,
             None => {
                 self.tcx().sess.bug(format!(
@@ -584,12 +583,9 @@ pub fn C_u8(ccx: &CrateContext, i: uint) -> ValueRef {
 // our boxed-and-length-annotated strings.
 pub fn C_cstr(cx: &CrateContext, s: InternedString) -> ValueRef {
     unsafe {
-        {
-            let const_cstr_cache = cx.const_cstr_cache.borrow();
-            match const_cstr_cache.get().find(&s) {
-                Some(&llval) => return llval,
-                None => ()
-            }
+        match cx.const_cstr_cache.borrow().find(&s) {
+            Some(&llval) => return llval,
+            None => ()
         }
 
         let sc = llvm::LLVMConstStringInContext(cx.llcx,
@@ -605,8 +601,7 @@ pub fn C_cstr(cx: &CrateContext, s: InternedString) -> ValueRef {
         llvm::LLVMSetGlobalConstant(g, True);
         lib::llvm::SetLinkage(g, lib::llvm::InternalLinkage);
 
-        let mut const_cstr_cache = cx.const_cstr_cache.borrow_mut();
-        const_cstr_cache.get().insert(s, g);
+        cx.const_cstr_cache.borrow_mut().insert(s, g);
         g
     }
 }
@@ -795,7 +790,7 @@ pub fn expr_ty(bcx: &Block, ex: &ast::Expr) -> ty::t {
 
 pub fn expr_ty_adjusted(bcx: &Block, ex: &ast::Expr) -> ty::t {
     let tcx = bcx.tcx();
-    let t = ty::expr_ty_adjusted(tcx, ex, bcx.ccx().maps.method_map.borrow().get());
+    let t = ty::expr_ty_adjusted(tcx, ex, &*bcx.ccx().maps.method_map.borrow());
     monomorphize_type(bcx, t)
 }
 
@@ -814,7 +809,7 @@ pub fn node_id_type_params(bcx: &Block, node: ExprOrMethodCall) -> Vec<ty::t> {
     let params = match node {
         ExprId(id) => ty::node_id_to_type_params(tcx, id),
         MethodCall(method_call) => {
-            bcx.ccx().maps.method_map.borrow().get().get(&method_call).substs.tps.clone()
+            bcx.ccx().maps.method_map.borrow().get(&method_call).substs.tps.clone()
         }
     };
 
@@ -837,7 +832,7 @@ pub fn node_id_type_params(bcx: &Block, node: ExprOrMethodCall) -> Vec<ty::t> {
 pub fn node_vtables(bcx: &Block, id: ast::NodeId)
                  -> Option<typeck::vtable_res> {
     let vtable_map = bcx.ccx().maps.vtable_map.borrow();
-    let raw_vtables = vtable_map.get().find(&id);
+    let raw_vtables = vtable_map.find(&id);
     raw_vtables.map(|vts| resolve_vtables_in_fn_ctxt(bcx.fcx, *vts))
 }
 
@@ -942,7 +937,7 @@ pub fn filename_and_line_num_from_span(bcx: &Block, span: Span)
                                        -> (ValueRef, ValueRef) {
     let loc = bcx.sess().codemap().lookup_char_pos(span.lo);
     let filename_cstr = C_cstr(bcx.ccx(),
-                               token::intern_and_get_ident(loc.file.deref().name));
+                               token::intern_and_get_ident(loc.file.name));
     let filename = build::PointerCast(bcx, filename_cstr, Type::i8p(bcx.ccx()));
     let line = C_int(bcx.ccx(), loc.line as int);
     (filename, line)

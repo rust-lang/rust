@@ -74,16 +74,13 @@ pub fn monomorphic_fn(ccx: &CrateContext,
            psubsts.repr(ccx.tcx()),
            hash_id);
 
-    {
-        let monomorphized = ccx.monomorphized.borrow();
-        match monomorphized.get().find(&hash_id) {
-          Some(&val) => {
+    match ccx.monomorphized.borrow().find(&hash_id) {
+        Some(&val) => {
             debug!("leaving monomorphic fn {}",
-                   ty::item_path_str(ccx.tcx(), fn_id));
+            ty::item_path_str(ccx.tcx(), fn_id));
             return (val, must_cast);
-          }
-          None => ()
         }
+        None => ()
     }
 
     let tpt = ty::lookup_item_type(ccx.tcx(), fn_id);
@@ -164,7 +161,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
     let depth;
     {
         let mut monomorphizing = ccx.monomorphizing.borrow_mut();
-        depth = match monomorphizing.get().find(&fn_id) {
+        depth = match monomorphizing.find(&fn_id) {
             Some(&d) => d, None => 0
         };
 
@@ -176,7 +173,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
                 "reached the recursion limit during monomorphization");
         }
 
-        monomorphizing.get().insert(fn_id, depth + 1);
+        monomorphizing.insert(fn_id, depth + 1);
     }
 
     let s = ccx.tcx.map.with_path(fn_id.node, |path| {
@@ -188,8 +185,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
         let lldecl = decl_internal_rust_fn(ccx, false,
                                            f.sig.inputs.as_slice(),
                                            f.sig.output, s);
-        let mut monomorphized = ccx.monomorphized.borrow_mut();
-        monomorphized.get().insert(hash_id, lldecl);
+        ccx.monomorphized.borrow_mut().insert(hash_id, lldecl);
         lldecl
     };
 
@@ -284,10 +280,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
         }
     };
 
-    {
-        let mut monomorphizing = ccx.monomorphizing.borrow_mut();
-        monomorphizing.get().insert(fn_id, depth);
-    }
+    ccx.monomorphizing.borrow_mut().insert(fn_id, depth);
 
     debug!("leaving monomorphic fn {}", ty::item_path_str(ccx.tcx(), fn_id));
     (lldecl, must_cast)

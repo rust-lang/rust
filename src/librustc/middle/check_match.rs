@@ -121,10 +121,7 @@ fn check_arms(cx: &MatchCheckCtxt, arms: &[Arm]) {
 
             // Check that we do not match against a static NaN (#6804)
             let pat_matches_nan: |&Pat| -> bool = |p| {
-                let opt_def = {
-                    let def_map = cx.tcx.def_map.borrow();
-                    def_map.get().find_copy(&p.id)
-                };
+                let opt_def = cx.tcx.def_map.borrow().find_copy(&p.id);
                 match opt_def {
                     Some(DefStatic(did, false)) => {
                         let const_expr = lookup_const_by_id(cx.tcx, did).unwrap();
@@ -351,10 +348,7 @@ fn pat_ctor_id(cx: &MatchCheckCtxt, p: @Pat) -> Option<ctor> {
     match pat.node {
       PatWild | PatWildMulti => { None }
       PatIdent(_, _, _) | PatEnum(_, _) => {
-        let opt_def = {
-            let def_map = cx.tcx.def_map.borrow();
-            def_map.get().find_copy(&pat.id)
-        };
+        let opt_def = cx.tcx.def_map.borrow().find_copy(&pat.id);
         match opt_def {
           Some(DefVariant(_, id, _)) => Some(variant(id)),
           Some(DefStatic(did, false)) => {
@@ -369,8 +363,7 @@ fn pat_ctor_id(cx: &MatchCheckCtxt, p: @Pat) -> Option<ctor> {
         Some(range(eval_const_expr(cx.tcx, lo), eval_const_expr(cx.tcx, hi)))
       }
       PatStruct(..) => {
-        let def_map = cx.tcx.def_map.borrow();
-        match def_map.get().find(&pat.id) {
+        match cx.tcx.def_map.borrow().find(&pat.id) {
           Some(&DefVariant(_, id, _)) => Some(variant(id)),
           _ => Some(single)
         }
@@ -392,8 +385,7 @@ fn is_wild(cx: &MatchCheckCtxt, p: @Pat) -> bool {
     match pat.node {
       PatWild | PatWildMulti => { true }
       PatIdent(_, _, _) => {
-        let def_map = cx.tcx.def_map.borrow();
-        match def_map.get().find(&pat.id) {
+        match cx.tcx.def_map.borrow().find(&pat.id) {
           Some(&DefVariant(_, _, _)) | Some(&DefStatic(..)) => { false }
           _ => { true }
         }
@@ -575,10 +567,7 @@ fn specialize(cx: &MatchCheckCtxt,
                                     r.tail()))
             }
             PatIdent(_, _, _) => {
-                let opt_def = {
-                    let def_map = cx.tcx.def_map.borrow();
-                    def_map.get().find_copy(&pat_id)
-                };
+                let opt_def = cx.tcx.def_map.borrow().find_copy(&pat_id);
                 match opt_def {
                     Some(DefVariant(_, id, _)) => {
                         if variant(id) == *ctor_id {
@@ -636,11 +625,8 @@ fn specialize(cx: &MatchCheckCtxt,
                 }
             }
             PatEnum(_, args) => {
-                let opt_def = {
-                    let def_map = cx.tcx.def_map.borrow();
-                    def_map.get().get_copy(&pat_id)
-                };
-                match opt_def {
+                let def = cx.tcx.def_map.borrow().get_copy(&pat_id);
+                match def {
                     DefStatic(did, _) => {
                         let const_expr =
                             lookup_const_by_id(cx.tcx, did).unwrap();
@@ -701,11 +687,8 @@ fn specialize(cx: &MatchCheckCtxt,
             }
             PatStruct(_, ref pattern_fields, _) => {
                 // Is this a struct or an enum variant?
-                let opt_def = {
-                    let def_map = cx.tcx.def_map.borrow();
-                    def_map.get().get_copy(&pat_id)
-                };
-                match opt_def {
+                let def = cx.tcx.def_map.borrow().get_copy(&pat_id);
+                match def {
                     DefVariant(_, variant_id, _) => {
                         if variant(variant_id) == *ctor_id {
                             let struct_fields = ty::lookup_struct_fields(cx.tcx, variant_id);
@@ -891,10 +874,7 @@ fn check_fn(cx: &mut MatchCheckCtxt,
 }
 
 fn is_refutable(cx: &MatchCheckCtxt, pat: &Pat) -> bool {
-    let opt_def = {
-        let def_map = cx.tcx.def_map.borrow();
-        def_map.get().find_copy(&pat.id)
-    };
+    let opt_def = cx.tcx.def_map.borrow().find_copy(&pat.id);
     match opt_def {
       Some(DefVariant(enum_id, _, _)) => {
         if ty::enum_variants(cx.tcx, enum_id).len() != 1u {

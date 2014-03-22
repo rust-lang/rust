@@ -75,8 +75,7 @@ impl<'a> UnifyInferCtxtMethods for InferCtxt<'a> {
 
         let tcx = self.tcx;
         let vb = UnifyVid::appropriate_vals_and_bindings(self);
-        let mut vb = vb.borrow_mut();
-        return helper(tcx, vb.get(), vid);
+        return helper(tcx, &mut *vb.borrow_mut(), vid);
 
         fn helper<T:Clone, V:Clone+Eq+Vid>(
             tcx: &ty::ctxt,
@@ -123,9 +122,9 @@ impl<'a> UnifyInferCtxtMethods for InferCtxt<'a> {
 
         let vb = UnifyVid::appropriate_vals_and_bindings(self);
         let mut vb = vb.borrow_mut();
-        let old_v = (*vb.get().vals.get(&vid.to_uint())).clone();
-        vb.get().bindings.push((vid.clone(), old_v));
-        vb.get().vals.insert(vid.to_uint(), new_v);
+        let old_v = (*vb.vals.get(&vid.to_uint())).clone();
+        vb.bindings.push((vid.clone(), old_v));
+        vb.vals.insert(vid.to_uint(), new_v);
     }
 
     fn unify<T:Clone + InferStr,

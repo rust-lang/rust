@@ -106,12 +106,7 @@ pub fn trans_into<'a>(bcx: &'a Block<'a>,
 
     let mut bcx = bcx;
 
-    let is_adjusted = {
-        let adjustments = bcx.tcx().adjustments.borrow();
-        adjustments.get().contains_key(&expr.id)
-    };
-
-    if is_adjusted {
+    if bcx.tcx().adjustments.borrow().contains_key(&expr.id) {
         // use trans, which may be less efficient but
         // which will perform the adjustments:
         let datum = unpack_datum!(bcx, trans(bcx, expr));
@@ -172,14 +167,11 @@ fn apply_adjustments<'a>(bcx: &'a Block<'a>,
 
     let mut bcx = bcx;
     let mut datum = datum;
-    let adjustment = {
-        let adjustments = bcx.tcx().adjustments.borrow();
-        match adjustments.get().find_copy(&expr.id) {
-            None => {
-                return DatumBlock(bcx, datum);
-            }
-            Some(adj) => { adj }
+    let adjustment = match bcx.tcx().adjustments.borrow().find_copy(&expr.id) {
+        None => {
+            return DatumBlock(bcx, datum);
         }
+        Some(adj) => { adj }
     };
     debug!("unadjusted datum for expr {}: {}",
            expr.id, datum.to_str(bcx.ccx()));
@@ -210,7 +202,7 @@ fn apply_adjustments<'a>(bcx: &'a Block<'a>,
                 Some(AutoBorrowFn(..)) => {
                     let adjusted_ty = ty::adjust_ty(bcx.tcx(), expr.span, expr.id, datum.ty,
                                                     Some(adjustment), |method_call| {
-                        bcx.ccx().maps.method_map.borrow().get()
+                        bcx.ccx().maps.method_map.borrow()
                            .find(&method_call).map(|method| method.ty)
                     });
                     unpack_datum!(bcx, auto_borrow_fn(bcx, adjusted_ty, datum))
@@ -222,7 +214,7 @@ fn apply_adjustments<'a>(bcx: &'a Block<'a>,
         }
         AutoObject(..) => {
             let adjusted_ty = ty::expr_ty_adjusted(bcx.tcx(), expr,
-                                                   bcx.ccx().maps.method_map.borrow().get());
+                                                   &*bcx.ccx().maps.method_map.borrow());
             let scratch = rvalue_scratch_datum(bcx, adjusted_ty, "__adjust");
             bcx = meth::trans_trait_cast(
                 bcx, datum, expr.id, SaveIn(scratch.val));
@@ -567,13 +559,10 @@ fn trans_def<'a>(bcx: &'a Block<'a>,
                     let pty = type_of::type_of(bcx.ccx(), const_ty).ptr_to();
                     PointerCast(bcx, val, pty)
                 } else {
-                    {
-                        let extern_const_values = bcx.ccx().extern_const_values.borrow();
-                        match extern_const_values.get().find(&did) {
-                            None => {}  // Continue.
-                            Some(llval) => {
-                                return *llval;
-                            }
+                    match bcx.ccx().extern_const_values.borrow().find(&did) {
+                        None => {}  // Continue.
+                        Some(llval) => {
+                            return *llval;
                         }
                     }
 
@@ -587,8 +576,8 @@ fn trans_def<'a>(bcx: &'a Block<'a>,
                                                     llty.to_ref(),
                                                     buf)
                             });
-                        let mut extern_const_values = bcx.ccx().extern_const_values.borrow_mut();
-                        extern_const_values.get().insert(did, llval);
+                        bcx.ccx().extern_const_values.borrow_mut()
+                           .insert(did, llval);
                         llval
                     }
                 }
@@ -898,8 +887,7 @@ pub fn trans_local_var<'a>(bcx: &'a Block<'a>,
         ast::DefUpvar(nid, _, _, _) => {
             // Can't move upvars, so this is never a ZeroMemLastUse.
             let local_ty = node_id_type(bcx, nid);
-            let llupvars = bcx.fcx.llupvars.borrow();
-            match llupvars.get().find(&nid) {
+            match bcx.fcx.llupvars.borrow().find(&nid) {
                 Some(&val) => Datum(val, local_ty, Lvalue),
                 None => {
                     bcx.sess().bug(format!(
@@ -908,12 +896,10 @@ pub fn trans_local_var<'a>(bcx: &'a Block<'a>,
             }
         }
         ast::DefArg(nid, _) => {
-            let llargs = bcx.fcx.llargs.borrow();
-            take_local(bcx, llargs.get(), nid)
+            take_local(bcx, &*bcx.fcx.llargs.borrow(), nid)
         }
         ast::DefLocal(nid, _) | ast::DefBinding(nid, _) => {
-            let lllocals = bcx.fcx.lllocals.borrow();
-            take_local(bcx, lllocals.get(), nid)
+            take_local(bcx, &*bcx.fcx.lllocals.borrow(), nid)
         }
         _ => {
             bcx.sess().unimpl(format!(
@@ -965,11 +951,8 @@ pub fn with_field_tys<R>(tcx: &ty::ctxt,
                         ty.repr(tcx)));
                 }
                 Some(node_id) => {
-                    let opt_def = {
-                        let def_map = tcx.def_map.borrow();
-                        def_map.get().get_copy(&node_id)
-                    };
-                    match opt_def {
+                    let def = tcx.def_map.borrow().get_copy(&node_id);
+                    match def {
                         ast::DefVariant(enum_id, variant_id, _) => {
                             let variant_info = ty::enum_variant_with_id(
                                 tcx, enum_id, variant_id);
@@ -1159,7 +1142,7 @@ fn trans_unary<'a>(bcx: &'a Block<'a>,
     // Otherwise, we should be in the RvalueDpsExpr path.
     assert!(
         op == ast::UnDeref ||
-        !ccx.maps.method_map.borrow().get().contains_key(&method_call));
+        !ccx.maps.method_map.borrow().contains_key(&method_call));
 
     let un_ty = expr_ty(bcx, expr);
 
@@ -1436,7 +1419,7 @@ fn trans_binary<'a>(bcx: &'a Block<'a>,
     let ccx = bcx.ccx();
 
     // if overloaded, would be RvalueDpsExpr
-    assert!(!ccx.maps.method_map.borrow().get().contains_key(&MethodCall::expr(expr.id)));
+    assert!(!ccx.maps.method_map.borrow().contains_key(&MethodCall::expr(expr.id)));
 
     match op {
         ast::BiAnd => {
@@ -1476,7 +1459,7 @@ fn trans_overloaded_op<'a, 'b>(
                        rhs: Option<(Datum<Expr>, ast::NodeId)>,
                        dest: Option<Dest>)
                        -> Result<'a> {
-    let method_ty = bcx.ccx().maps.method_map.borrow().get().get(&method_call).ty;
+    let method_ty = bcx.ccx().maps.method_map.borrow().get(&method_call).ty;
     callee::trans_call_inner(bcx,
                              Some(expr_info(expr)),
                              monomorphize_type(bcx, method_ty),
@@ -1644,7 +1627,7 @@ fn trans_assign_op<'a>(
     debug!("trans_assign_op(expr={})", bcx.expr_to_str(expr));
 
     // User-defined operator methods cannot be used with `+=` etc right now
-    assert!(!bcx.ccx().maps.method_map.borrow().get().contains_key(&MethodCall::expr(expr.id)));
+    assert!(!bcx.ccx().maps.method_map.borrow().contains_key(&MethodCall::expr(expr.id)));
 
     // Evaluate LHS (destination), which should be an lvalue
     let dst_datum = unpack_datum!(bcx, trans_to_lvalue(bcx, dst, "assign_op"));
@@ -1722,7 +1705,7 @@ fn deref_once<'a>(bcx: &'a Block<'a>,
         expr_id: expr.id,
         autoderef: derefs as u32
     };
-    let method_ty = ccx.maps.method_map.borrow().get()
+    let method_ty = ccx.maps.method_map.borrow()
                        .find(&method_call).map(|method| method.ty);
     let datum = match method_ty {
         Some(method_ty) => {

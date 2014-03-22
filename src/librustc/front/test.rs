@@ -88,10 +88,7 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
     }
 
     fn fold_item(&mut self, i: @ast::Item) -> SmallVector<@ast::Item> {
-        {
-            let mut path = self.cx.path.borrow_mut();
-            path.get().push(i.ident);
-        }
+        self.cx.path.borrow_mut().push(i.ident);
         debug!("current path: {}",
                ast_util::path_name_i(self.cx.path.get().as_slice()));
 
@@ -112,10 +109,7 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
                         ignore: is_ignored(&self.cx, i),
                         should_fail: should_fail(i)
                     };
-                    {
-                        let mut testfns = self.cx.testfns.borrow_mut();
-                        testfns.get().push(test);
-                    }
+                    self.cx.testfns.borrow_mut().push(test);
                     // debug!("have {} test/bench functions",
                     //        cx.testfns.len());
                 }
@@ -123,10 +117,7 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
         }
 
         let res = fold::noop_fold_item(i, self);
-        {
-            let mut path = self.cx.path.borrow_mut();
-            path.get().pop();
-        }
+        self.cx.path.borrow_mut().pop();
         res
     }
 
@@ -414,12 +405,9 @@ fn is_test_crate(krate: &ast::Crate) -> bool {
 
 fn mk_test_descs(cx: &TestCtxt) -> @ast::Expr {
     let mut descs = Vec::new();
-    {
-        let testfns = cx.testfns.borrow();
-        debug!("building test vector from {} tests", testfns.get().len());
-        for test in testfns.get().iter() {
-            descs.push(mk_test_desc_and_fn_rec(cx, test));
-        }
+    debug!("building test vector from {} tests", cx.testfns.borrow().len());
+    for test in cx.testfns.borrow().iter() {
+        descs.push(mk_test_desc_and_fn_rec(cx, test));
     }
 
     let inner_expr = @ast::Expr {
