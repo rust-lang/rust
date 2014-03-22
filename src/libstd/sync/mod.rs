@@ -16,6 +16,10 @@
 //! other types of concurrent primitives.
 
 pub mod arc;
+#[cfg(stage0)]
+#[path = "atomics_stage0.rs"]
+pub mod atomics;
+#[cfg(not(stage0))]
 pub mod atomics;
 pub mod deque;
 pub mod mpmc_bounded_queue;
