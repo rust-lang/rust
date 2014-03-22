@@ -170,7 +170,7 @@ pub enum StdioContainer {
 
 /// Describes the result of a process after it has terminated.
 /// Note that Windows have no signals, so the result is usually ExitStatus.
-#[deriving(Eq)]
+#[deriving(Eq, TotalEq, Clone)]
 pub enum ProcessExit {
     /// Normal termination with an exit status.
     ExitStatus(int),
@@ -460,6 +460,7 @@ mod tests {
         assert!(p.is_ok());
         let mut p = p.unwrap();
         assert!(p.wait().matches_exit_status(1));
+        drop(p.wait().clone());
     })
 
     #[cfg(unix, not(target_os="android"))]
