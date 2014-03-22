@@ -57,13 +57,16 @@
 // times in order to manage a few flags about who's blocking where and whether
 // it's locked or not.
 
+use std::kinds::marker;
+use std::mem;
 use std::rt::local::Local;
 use std::rt::task::{BlockedTask, Task};
 use std::rt::thread::Thread;
 use std::sync::atomics;
+use std::ty::Unsafe;
 use std::unstable::mutex;
 
-use q = sync::mpsc_intrusive;
+use q = mpsc_intrusive;
 
 pub static LOCKED: uint = 1 << 0;
 pub static GREEN_BLOCKED: uint = 1 << 1;
@@ -85,7 +88,7 @@ pub static NATIVE_BLOCKED: uint = 1 << 2;
 /// ```rust
 /// use sync::mutex::Mutex;
 ///
-/// let mut m = Mutex::new();
+/// let m = Mutex::new();
 /// let guard = m.lock();
 /// // do some work
 /// drop(guard); // unlock the lock
@@ -126,14 +129,15 @@ enum Flavor {
 pub struct StaticMutex {
     /// Current set of flags on this mutex
     priv state: atomics::AtomicUint,
-    /// Type of locking operation currently on this mutex
-    priv flavor: Flavor,
-    /// uint-cast of the green thread waiting for this mutex
-    priv green_blocker: uint,
-    /// uint-cast of the native thread waiting for this mutex
-    priv native_blocker: uint,
     /// an OS mutex used by native threads
     priv lock: mutex::StaticNativeMutex,
+
+    /// Type of locking operation currently on this mutex
+    priv flavor: Unsafe<Flavor>,
+    /// uint-cast of the green thread waiting for this mutex
+    priv green_blocker: Unsafe<uint>,
+    /// uint-cast of the native thread waiting for this mutex
+    priv native_blocker: Unsafe<uint>,
 
     /// A concurrent mpsc queue used by green threads, along with a count used
     /// to figure out when to dequeue and enqueue.
@@ -145,7 +149,7 @@ pub struct StaticMutex {
 /// dropped (falls out of scope), the lock will be unlocked.
 #[must_use]
 pub struct Guard<'a> {
-    priv lock: &'a mut StaticMutex,
+    priv lock: &'a StaticMutex,
 }
 
 /// Static initialization of a mutex. This constant can be used to initialize
@@ -153,13 +157,16 @@ pub struct Guard<'a> {
 pub static MUTEX_INIT: StaticMutex = StaticMutex {
     lock: mutex::NATIVE_MUTEX_INIT,
     state: atomics::INIT_ATOMIC_UINT,
-    flavor: Unlocked,
-    green_blocker: 0,
-    native_blocker: 0,
+    flavor: Unsafe { value: Unlocked, marker1: marker::InvariantType },
+    green_blocker: Unsafe { value: 0, marker1: marker::InvariantType },
+    native_blocker: Unsafe { value: 0, marker1: marker::InvariantType },
     green_cnt: atomics::INIT_ATOMIC_UINT,
     q: q::Queue {
         head: atomics::INIT_ATOMIC_UINT,
-        tail: 0 as *mut q::Node<uint>,
+        tail: Unsafe {
+            value: 0 as *mut q::Node<uint>,
+            marker1: marker::InvariantType,
+        },
         stub: q::DummyNode {
             next: atomics::INIT_ATOMIC_UINT,
         }
@@ -168,14 +175,18 @@ pub static MUTEX_INIT: StaticMutex = StaticMutex {
 
 impl StaticMutex {
     /// Attempts to grab this lock, see `Mutex::try_lock`
-    pub fn try_lock<'a>(&'a mut self) -> Option<Guard<'a>> {
+    pub fn try_lock<'a>(&'a self) -> Option<Guard<'a>> {
         // Attempt to steal the mutex from an unlocked state.
         //
         // FIXME: this can mess up the fairness of the mutex, seems bad
         match self.state.compare_and_swap(0, LOCKED, atomics::SeqCst) {
             0 => {
-                assert!(self.flavor == Unlocked);
-                self.flavor = TryLockAcquisition;
+                // After acquiring the mutex, we can safely access the inner
+                // fields.
+                let prev = unsafe {
+                    mem::replace(&mut *self.flavor.get(), TryLockAcquisition)
+                };
+                assert_eq!(prev, Unlocked);
                 Some(Guard::new(self))
             }
             _ => None
@@ -183,19 +194,15 @@ impl StaticMutex {
     }
 
     /// Acquires this lock, see `Mutex::lock`
-    pub fn lock<'a>(&'a mut self) -> Guard<'a> {
+    pub fn lock<'a>(&'a self) -> Guard<'a> {
         // First, attempt to steal the mutex from an unlocked state. The "fast
         // path" needs to have as few atomic instructions as possible, and this
         // one cmpxchg is already pretty expensive.
         //
         // FIXME: this can mess up the fairness of the mutex, seems bad
-        match self.state.compare_and_swap(0, LOCKED, atomics::SeqCst) {
-            0 => {
-                assert!(self.flavor == Unlocked);
-                self.flavor = TryLockAcquisition;
-                return Guard::new(self)
-            }
-            _ => {}
+        match self.try_lock() {
+            Some(guard) => return guard,
+            None => {}
         }
 
         // After we've failed the fast path, then we delegate to the differnet
@@ -219,11 +226,14 @@ impl StaticMutex {
         let mut old = match self.state.compare_and_swap(0, LOCKED,
                                                         atomics::SeqCst) {
             0 => {
-                self.flavor = if can_block {
+                let flavor = if can_block {
                     NativeAcquisition
                 } else {
                     GreenAcquisition
                 };
+                // We've acquired the lock, so this unsafe access to flavor is
+                // allowed.
+                unsafe { *self.flavor.get() = flavor; }
                 return Guard::new(self)
             }
             old => old,
@@ -237,13 +247,15 @@ impl StaticMutex {
         let t: ~Task = Local::take();
         t.deschedule(1, |task| {
             let task = unsafe { task.cast_to_uint() };
-            if can_block {
-                assert_eq!(self.native_blocker, 0);
-                self.native_blocker = task;
+
+            // These accesses are protected by the respective native/green
+            // mutexes which were acquired above.
+            let prev = if can_block {
+                unsafe { mem::replace(&mut *self.native_blocker.get(), task) }
             } else {
-                assert_eq!(self.green_blocker, 0);
-                self.green_blocker = task;
-            }
+                unsafe { mem::replace(&mut *self.green_blocker.get(), task) }
+            };
+            assert_eq!(prev, 0);
 
             loop {
                 assert_eq!(old & native_bit, 0);
@@ -264,14 +276,23 @@ impl StaticMutex {
                                                             old | LOCKED,
                                                             atomics::SeqCst) {
                         n if n == old => {
-                            assert_eq!(self.flavor, Unlocked);
-                            if can_block {
-                                self.native_blocker = 0;
-                                self.flavor = NativeAcquisition;
+                            // After acquiring the lock, we have access to the
+                            // flavor field, and we've regained access to our
+                            // respective native/green blocker field.
+                            let prev = if can_block {
+                                unsafe {
+                                    *self.native_blocker.get() = 0;
+                                    mem::replace(&mut *self.flavor.get(),
+                                                 NativeAcquisition)
+                                }
                             } else {
-                                self.green_blocker = 0;
-                                self.flavor = GreenAcquisition;
-                            }
+                                unsafe {
+                                    *self.green_blocker.get() = 0;
+                                    mem::replace(&mut *self.flavor.get(),
+                                                 GreenAcquisition)
+                                }
+                            };
+                            assert_eq!(prev, Unlocked);
                             return Err(unsafe {
                                 BlockedTask::cast_from_uint(task)
                             })
@@ -287,16 +308,16 @@ impl StaticMutex {
 
     // Tasks which can block are super easy. These tasks just call the blocking
     // `lock()` function on an OS mutex
-    fn native_lock(&mut self, t: ~Task) {
+    fn native_lock(&self, t: ~Task) {
         Local::put(t);
         unsafe { self.lock.lock_noguard(); }
     }
 
-    fn native_unlock(&mut self) {
+    fn native_unlock(&self) {
         unsafe { self.lock.unlock_noguard(); }
     }
 
-    fn green_lock(&mut self, t: ~Task) {
+    fn green_lock(&self, t: ~Task) {
         // Green threads flag their presence with an atomic counter, and if they
         // fail to be the first to the mutex, they enqueue themselves on a
         // concurrent internal queue with a stack-allocated node.
@@ -318,7 +339,7 @@ impl StaticMutex {
         });
     }
 
-    fn green_unlock(&mut self) {
+    fn green_unlock(&self) {
         // If we're the only green thread, then no need to check the queue,
         // otherwise the fixme above forces us to spin for a bit.
         if self.green_cnt.fetch_sub(1, atomics::SeqCst) == 1 { return }
@@ -333,7 +354,7 @@ impl StaticMutex {
         task.wake().map(|t| t.reawaken());
     }
 
-    fn unlock(&mut self) {
+    fn unlock(&self) {
         // Unlocking this mutex is a little tricky. We favor any task that is
         // manually blocked (not in each of the separate locks) in order to help
         // provide a little fairness (green threads will wake up the pending
@@ -351,8 +372,7 @@ impl StaticMutex {
         // task needs to be woken, and in this case it's ok that the "mutex
         // halves" are unlocked, we're just mainly dealing with the atomic state
         // of the outer mutex.
-        let flavor = self.flavor;
-        self.flavor = Unlocked;
+        let flavor = unsafe { mem::replace(&mut *self.flavor.get(), Unlocked) };
 
         let mut state = self.state.load(atomics::SeqCst);
         let mut unlocked = false;
@@ -362,18 +382,18 @@ impl StaticMutex {
             if state & GREEN_BLOCKED != 0 {
                 self.unset(state, GREEN_BLOCKED);
                 task = unsafe {
-                    BlockedTask::cast_from_uint(self.green_blocker)
+                    *self.flavor.get() = GreenAcquisition;
+                    let task = mem::replace(&mut *self.green_blocker.get(), 0);
+                    BlockedTask::cast_from_uint(task)
                 };
-                self.green_blocker = 0;
-                self.flavor = GreenAcquisition;
                 break;
             } else if state & NATIVE_BLOCKED != 0 {
                 self.unset(state, NATIVE_BLOCKED);
                 task = unsafe {
-                    BlockedTask::cast_from_uint(self.native_blocker)
+                    *self.flavor.get() = NativeAcquisition;
+                    let task = mem::replace(&mut *self.native_blocker.get(), 0);
+                    BlockedTask::cast_from_uint(task)
                 };
-                self.native_blocker = 0;
-                self.flavor = NativeAcquisition;
                 break;
             } else {
                 assert_eq!(state, LOCKED);
@@ -405,7 +425,7 @@ impl StaticMutex {
     }
 
     /// Loops around a CAS to unset the `bit` in `state`
-    fn unset(&mut self, mut state: uint, bit: uint) {
+    fn unset(&self, mut state: uint, bit: uint) {
         loop {
             assert!(state & bit != 0);
             let new = state ^ bit;
@@ -426,7 +446,7 @@ impl StaticMutex {
     /// *all* platforms. It may be the case that some platforms do not leak
     /// memory if this method is not called, but this is not guaranteed to be
     /// true on all platforms.
-    pub unsafe fn destroy(&mut self) {
+    pub unsafe fn destroy(&self) {
         self.lock.destroy()
     }
 }
@@ -437,9 +457,9 @@ impl Mutex {
         Mutex {
             lock: StaticMutex {
                 state: atomics::AtomicUint::new(0),
-                flavor: Unlocked,
-                green_blocker: 0,
-                native_blocker: 0,
+                flavor: Unsafe::new(Unlocked),
+                green_blocker: Unsafe::new(0),
+                native_blocker: Unsafe::new(0),
                 green_cnt: atomics::AtomicUint::new(0),
                 q: q::Queue::new(),
                 lock: unsafe { mutex::StaticNativeMutex::new() },
@@ -454,7 +474,7 @@ impl Mutex {
     /// guard is dropped.
     ///
     /// This function does not block.
-    pub fn try_lock<'a>(&'a mut self) -> Option<Guard<'a>> {
+    pub fn try_lock<'a>(&'a self) -> Option<Guard<'a>> {
         self.lock.try_lock()
     }
 
@@ -464,13 +484,14 @@ impl Mutex {
     /// the mutex. Upon returning, the task is the only task with the mutex
     /// held. An RAII guard is returned to allow scoped unlock of the lock. When
     /// the guard goes out of scope, the mutex will be unlocked.
-    pub fn lock<'a>(&'a mut self) -> Guard<'a> { self.lock.lock() }
+    pub fn lock<'a>(&'a self) -> Guard<'a> { self.lock.lock() }
 }
 
 impl<'a> Guard<'a> {
-    fn new<'b>(lock: &'b mut StaticMutex) -> Guard<'b> {
+    fn new<'b>(lock: &'b StaticMutex) -> Guard<'b> {
         if cfg!(debug) {
-            assert!(lock.flavor != Unlocked);
+            // once we've acquired a lock, it's ok to access the flavor
+            assert!(unsafe { *lock.flavor.get() != Unlocked });
             assert!(lock.state.load(atomics::SeqCst) & LOCKED != 0);
         }
         Guard { lock: lock }
@@ -501,7 +522,7 @@ mod test {
 
     #[test]
     fn smoke() {
-        let mut m = Mutex::new();
+        let m = Mutex::new();
         drop(m.lock());
         drop(m.lock());
     }
@@ -552,7 +573,7 @@ mod test {
 
     #[test]
     fn trylock() {
-        let mut m = Mutex::new();
+        let m = Mutex::new();
         assert!(m.try_lock().is_some());
     }
 }
