@@ -24,7 +24,7 @@ use std::local_data;
 use std::path::BytesContainer;
 
 #[allow(non_camel_case_types)]
-#[deriving(Clone, Encodable, Decodable, Eq, Hash, Show)]
+#[deriving(Clone, Encodable, Decodable, Eq, TotalEq, Hash, Show)]
 pub enum BinOp {
     PLUS,
     MINUS,
@@ -39,7 +39,7 @@ pub enum BinOp {
 }
 
 #[allow(non_camel_case_types)]
-#[deriving(Clone, Encodable, Decodable, Eq, Hash, Show)]
+#[deriving(Clone, Encodable, Decodable, Eq, TotalEq, Hash, Show)]
 pub enum Token {
     /* Expression-operator symbols. */
     EQ,
@@ -103,7 +103,7 @@ pub enum Token {
     EOF,
 }
 
-#[deriving(Clone, Encodable, Decodable, Eq, Hash)]
+#[deriving(Clone, Encodable, Decodable, Eq, TotalEq, Hash)]
 /// For interpolation during macro expansion.
 pub enum Nonterminal {
     NtItem(@ast::Item),

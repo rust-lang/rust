@@ -22,7 +22,6 @@ source code snippets, etc.
 */
 
 use std::cell::RefCell;
-use std::cmp;
 use std::rc::Rc;
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 
@@ -33,7 +32,7 @@ pub trait Pos {
 
 /// A byte offset. Keep this small (currently 32-bits), as AST contains
 /// a lot of them.
-#[deriving(Clone, Eq, Hash, Ord, Show)]
+#[deriving(Clone, Eq, TotalEq, Hash, Ord, Show)]
 pub struct BytePos(u32);
 
 /// A character offset. Because of multibyte utf8 characters, a byte offset
@@ -94,18 +93,20 @@ pub struct Span {
 
 pub static DUMMY_SP: Span = Span { lo: BytePos(0), hi: BytePos(0), expn_info: None };
 
-#[deriving(Clone, Eq, Encodable, Decodable, Hash)]
+#[deriving(Clone, Eq, TotalEq, Encodable, Decodable, Hash)]
 pub struct Spanned<T> {
     node: T,
     span: Span,
 }
 
-impl cmp::Eq for Span {
+impl Eq for Span {
     fn eq(&self, other: &Span) -> bool {
         return (*self).lo == (*other).lo && (*self).hi == (*other).hi;
     }
     fn ne(&self, other: &Span) -> bool { !(*self).eq(other) }
 }
+
+impl TotalEq for Span {}
 
 impl<S:Encoder> Encodable<S> for Span {
     /* Note #1972 -- spans are encoded but not decoded */

@@ -42,6 +42,8 @@ impl<'tcx> Eq for TypeStructure<'tcx> {
     }
 }
 
+impl<'tcx> TotalEq for TypeStructure<'tcx> {}
+
 struct TypeContext<'tcx, 'ast> {
     ty_arena: &'tcx Arena,
     types: Vec<Type<'tcx>> ,
@@ -86,7 +88,7 @@ impl<'tcx,'ast> TypeContext<'tcx, 'ast> {
     }
 }
 
-#[deriving(Eq, Hash)]
+#[deriving(Eq, TotalEq, Hash)]
 struct NodeId {
     id: uint
 }
