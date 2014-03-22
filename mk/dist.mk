@@ -82,7 +82,7 @@ $(PKG_TAR): $(PKG_FILES)
 
 dist-tar-src: $(PKG_TAR)
 
-distcheck-tar-src: $(PKG_TAR)
+distcheck-tar-src: dist-tar-src
 	$(Q)rm -Rf tmp/distcheck/$(PKG_NAME)
 	$(Q)rm -Rf tmp/distcheck/srccheck
 	$(Q)mkdir -p tmp/distcheck
@@ -136,6 +136,7 @@ endif
 
 dist-win: $(PKG_EXE)
 
+distcheck-win: dist-win
 
 ######################################################################
 # OS X .pkg installer
@@ -172,7 +173,7 @@ dist-osx:
 endif
 
 # FIXME should do something
-distcheck-osx:
+distcheck-osx: dist-osx
 
 
 ######################################################################
@@ -243,7 +244,7 @@ ifdef CFG_WINDOWSY_$(CFG_BUILD)
 
 dist: dist-win
 
-distcheck: dist
+distcheck: distcheck-win
 	$(Q)rm -Rf tmp/distcheck
 	@echo
 	@echo -----------------------------------------------
@@ -254,7 +255,7 @@ else
 
 dist: dist-tar-src dist-osx dist-tar-bins dist-docs
 
-distcheck: dist distcheck-tar-src distcheck-osx distcheck-tar-bins
+distcheck: distcheck-tar-src distcheck-osx distcheck-tar-bins
 	$(Q)rm -Rf tmp/distcheck
 	@echo
 	@echo -----------------------------------------------
