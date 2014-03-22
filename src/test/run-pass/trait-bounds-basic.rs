@@ -17,7 +17,7 @@ fn a(_x: ~Foo:) {
 fn b(_x: ~Foo:Send) {
 }
 
-fn c(x: ~Foo:Freeze+Send) {
+fn c(x: ~Foo:Share+Send) {
     a(x);
 }
 

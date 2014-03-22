@@ -116,8 +116,8 @@ pub enum Implementor {
 ///
 /// This structure purposefully does not implement `Clone` because it's intended
 /// to be a fairly large and expensive structure to clone. Instead this adheres
-/// to both `Send` and `Freeze` so it may be stored in a `Arc` instance and
-/// shared among the various rendering tasks.
+/// to `Send` so it may be stored in a `Arc` instance and shared among the various
+/// rendering tasks.
 pub struct Cache {
     /// Mapping of typaram ids to the name of the type parameter. This is used
     /// when pretty-printing a type (so pretty printing doesn't have to

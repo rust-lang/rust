@@ -392,7 +392,6 @@ fn enc_bounds(w: &mut MemWriter, cx: &ctxt, bs: &ty::ParamBounds) {
     for bound in bs.builtin_bounds.iter() {
         match bound {
             ty::BoundSend => mywrite!(w, "S"),
-            ty::BoundFreeze => mywrite!(w, "K"),
             ty::BoundStatic => mywrite!(w, "O"),
             ty::BoundSized => mywrite!(w, "Z"),
             ty::BoundPod => mywrite!(w, "P"),

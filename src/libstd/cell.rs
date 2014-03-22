@@ -22,8 +22,7 @@ use ty::Unsafe;
 /// A mutable memory location that admits only `Pod` data.
 pub struct Cell<T> {
     priv value: Unsafe<T>,
-    priv marker1: marker::NoFreeze,
-    priv marker2: marker::NoShare,
+    priv noshare: marker::NoShare,
 }
 
 impl<T:Pod> Cell<T> {
@@ -31,8 +30,7 @@ impl<T:Pod> Cell<T> {
     pub fn new(value: T) -> Cell<T> {
         Cell {
             value: Unsafe::new(value),
-            marker1: marker::NoFreeze,
-            marker2: marker::NoShare,
+            noshare: marker::NoShare,
         }
     }
 
@@ -73,9 +71,8 @@ impl<T: fmt::Show> fmt::Show for Cell<T> {
 pub struct RefCell<T> {
     priv value: Unsafe<T>,
     priv borrow: BorrowFlag,
-    priv marker1: marker::NoFreeze,
-    priv marker2: marker::NoPod,
-    priv marker3: marker::NoShare,
+    priv nopod: marker::NoPod,
+    priv noshare: marker::NoShare,
 }
 
 // Values [1, MAX-1] represent the number of `Ref` active
@@ -88,10 +85,9 @@ impl<T> RefCell<T> {
     /// Create a new `RefCell` containing `value`
     pub fn new(value: T) -> RefCell<T> {
         RefCell {
-            marker1: marker::NoFreeze,
-            marker2: marker::NoPod,
-            marker3: marker::NoShare,
             value: Unsafe::new(value),
+            nopod: marker::NoPod,
+            noshare: marker::NoShare,
             borrow: UNUSED,
         }
     }
