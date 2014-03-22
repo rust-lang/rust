@@ -400,7 +400,7 @@ unsafe fn str_map_bytes(string: ~str, map: &'static [u8]) -> ~str {
 
 #[inline]
 unsafe fn str_copy_map_bytes(string: &str, map: &'static [u8]) -> ~str {
-    let bytes = string.bytes().map(|b| map[b]).to_owned_vec();
+    let bytes = string.bytes().map(|b| map[b]).collect::<~[_]>();
 
     str::raw::from_utf8_owned(bytes)
 }
