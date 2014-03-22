@@ -10,7 +10,7 @@
 
 // ignore-tidy-linelength
 
-#[no_std];
+#![no_std]
 
 struct S<T> {
     contents: T,

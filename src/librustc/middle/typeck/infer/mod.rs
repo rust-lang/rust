@@ -10,7 +10,7 @@
 
 /*! See doc.rs for documentation */
 
-#[allow(non_camel_case_types)];
+#![allow(non_camel_case_types)]
 
 pub use middle::ty::IntVarValue;
 pub use middle::typeck::infer::resolve::resolve_and_force_all_but_regions;

@@ -56,7 +56,7 @@
 //! } // `lock` is deallocated here
 //! ```
 
-#[allow(non_camel_case_types)];
+#![allow(non_camel_case_types)]
 
 use option::{Option, None, Some};
 use ops::Drop;

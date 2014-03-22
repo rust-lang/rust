@@ -10,7 +10,7 @@
 
 // aux-build:default_type_params_xc.rs
 
-#[deny(default_type_param_usage)];
+#![deny(default_type_param_usage)]
 
 extern crate default_type_params_xc;
 

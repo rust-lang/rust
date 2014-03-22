@@ -11,7 +11,7 @@
 // A pass that annotates for each loops and functions with the free
 // variables that they contain.
 
-#[allow(non_camel_case_types)];
+#![allow(non_camel_case_types)]
 
 use middle::resolve;
 use middle::ty;

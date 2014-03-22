@@ -10,7 +10,7 @@
 
 //! Operations and constants for signed 16-bits integers (`i16` type)
 
-#[allow(non_uppercase_statics)];
+#![allow(non_uppercase_statics)]
 
 use prelude::*;
 

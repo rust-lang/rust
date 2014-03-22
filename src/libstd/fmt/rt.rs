@@ -14,8 +14,8 @@
 //! These definitions are similar to their `ct` equivalents, but differ in that
 //! these can be statically allocated and are slightly optimized for the runtime
 
-#[allow(missing_doc)];
-#[doc(hidden)];
+#![allow(missing_doc)]
+#![doc(hidden)]
 
 use fmt::parse;
 use option::Option;

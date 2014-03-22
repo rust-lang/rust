@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[macro_escape];
+#![macro_escape]
 
 use abi;
 use abi::AbiSet;
@@ -810,6 +810,9 @@ impl<'a> Parser<'a> {
     }
     pub fn warn(&mut self, m: &str) {
         self.sess.span_diagnostic.span_warn(self.span, m)
+    }
+    pub fn span_warn(&mut self, sp: Span, m: &str) {
+        self.sess.span_diagnostic.span_warn(sp, m)
     }
     pub fn span_err(&mut self, sp: Span, m: &str) {
         self.sess.span_diagnostic.span_err(sp, m)

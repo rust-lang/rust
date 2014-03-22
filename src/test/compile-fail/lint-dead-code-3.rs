@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[allow(unused_variable)];
-#[allow(non_camel_case_types)];
-#[deny(dead_code)];
+#![allow(unused_variable)]
+#![allow(non_camel_case_types)]
+#![deny(dead_code)]
 
-#[crate_type="lib"];
+#![crate_type="lib"]
 
 struct Foo; //~ ERROR: code is never used
 impl Foo {

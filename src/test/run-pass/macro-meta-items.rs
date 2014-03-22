@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-fast
 // ignore-pretty - token trees can't pretty print
 // compile-flags: --cfg foo
 

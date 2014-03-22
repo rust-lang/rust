@@ -14,7 +14,7 @@ Runtime type reflection
 
 */
 
-#[allow(missing_doc)];
+#![allow(missing_doc)]
 
 use intrinsics::{Disr, Opaque, TyDesc, TyVisitor};
 use mem;

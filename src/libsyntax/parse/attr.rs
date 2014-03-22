@@ -93,9 +93,8 @@ impl<'a> ParserAttr for Parser<'a> {
         };
 
         if permit_inner && self.eat(&token::SEMI) {
-            // NOTE: uncomment this after a stage0 snap
-            //self.warn("This uses the old attribute syntax. Semicolons
-            //  are not longer required.");
+            self.span_warn(span, "this inner attribute syntax is deprecated. \
+                           The new syntax is `#![foo]`, with a bang and no semicolon.");
             style = ast::AttrInner;
         }
 

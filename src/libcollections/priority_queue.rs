@@ -10,7 +10,7 @@
 
 //! A priority queue implemented with a binary heap
 
-#[allow(missing_doc)];
+#![allow(missing_doc)]
 
 use std::clone::Clone;
 use std::mem::{move_val_init, init, replace, swap};

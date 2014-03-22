@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[deny(unnecessary_qualification)];
+#![deny(unnecessary_qualification)]
 
 mod foo {
     pub fn bar() {}

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[allow(non_uppercase_pattern_statics)];
+#![allow(non_uppercase_pattern_statics)]
 
 use lib::llvm::{llvm, TypeRef, Bool, False, True, TypeKind};
 use lib::llvm::{Float, Double, X86_FP80, PPC_FP128, FP128};

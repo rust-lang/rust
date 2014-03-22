@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[feature(managed_boxes)];
-#[forbid(heap_memory)];
-#[allow(dead_code)];
-#[allow(deprecated_owned_vector)];
+#![feature(managed_boxes)]
+#![forbid(heap_memory)]
+#![allow(dead_code)]
+#![allow(deprecated_owned_vector)]
 
 struct Foo {
     x: @int //~ ERROR type uses managed

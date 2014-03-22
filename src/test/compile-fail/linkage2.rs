@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[feature(linkage)];
+#![feature(linkage)]
 
 extern {
     #[linkage = "extern_weak"] static foo: i32;

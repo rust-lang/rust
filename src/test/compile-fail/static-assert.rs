@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[allow(dead_code)];
+#![allow(dead_code)]
 
 #[static_assert]
 static A: bool = false; //~ ERROR static assertion failed

@@ -15,7 +15,7 @@
 //! XXX: Add runtime checks for usage of inconsistent pointer types.
 //! and for overwriting an existing pointer.
 
-#[allow(dead_code)];
+#![allow(dead_code)]
 
 use cast;
 use ops::Drop;

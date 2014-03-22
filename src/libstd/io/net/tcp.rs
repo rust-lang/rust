@@ -17,7 +17,7 @@
 //! A TCP connection implements the `Reader` and `Writer` traits, while the TCP
 //! listener (socket server) implements the `Listener` and `Acceptor` traits.
 
-#[deny(missing_doc)];
+#![deny(missing_doc)]
 
 use clone::Clone;
 use io::IoResult;
