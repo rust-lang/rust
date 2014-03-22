@@ -1117,16 +1117,32 @@ impl<'a> RegionVarBindings<'a> {
     {
         // Errors in expanding nodes result from a lower-bound that is
         // not contained by an upper-bound.
-        let (lower_bounds, lower_dup) =
+        let (mut lower_bounds, lower_dup) =
             self.collect_concrete_regions(graph, var_data, node_idx,
                                           graph::Incoming, dup_vec);
-        let (upper_bounds, upper_dup) =
+        let (mut upper_bounds, upper_dup) =
             self.collect_concrete_regions(graph, var_data, node_idx,
                                           graph::Outgoing, dup_vec);
 
         if lower_dup || upper_dup {
             return;
         }
+
+        // We place free regions first because we are special casing
+        // SubSupConflict(ReFree, ReFree) when reporting error, and so
+        // the user will more likely get a specific suggestion.
+        fn free_regions_first(a: &RegionAndOrigin,
+                              b: &RegionAndOrigin)
+                              -> Ordering {
+            match (a.region, b.region) {
+                (ReFree(..), ReFree(..)) => Equal,
+                (ReFree(..), _) => Less,
+                (_, ReFree(..)) => Greater,
+                (_, _) => Equal,
+            }
+        }
+        lower_bounds.sort_by(|a, b| { free_regions_first(a, b) });
+        upper_bounds.sort_by(|a, b| { free_regions_first(a, b) });
 
         for lower_bound in lower_bounds.iter() {
             for upper_bound in upper_bounds.iter() {
