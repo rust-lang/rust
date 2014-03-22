@@ -79,11 +79,11 @@ impl<'a> Builder<'a> {
                 s.push_char('/');
                 s.push_str(category);
 
-                let n = match h.get().find(&s) {
+                let n = match h.find(&s) {
                     Some(&n) => n,
                     _ => 0u
                 };
-                h.get().insert(s, n+1u);
+                h.insert(s, n+1u);
             })
         }
     }

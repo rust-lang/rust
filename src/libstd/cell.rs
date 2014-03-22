@@ -176,8 +176,7 @@ impl<T> RefCell<T> {
     /// Fails if the value is currently borrowed.
     #[inline]
     pub fn set(&self, value: T) {
-        let mut reference = self.borrow_mut();
-        *reference.get() = value;
+        *self.borrow_mut() = value;
     }
 }
 
@@ -189,23 +188,19 @@ impl<T:Clone> RefCell<T> {
     /// Fails if the value is currently mutably borrowed.
     #[inline]
     pub fn get(&self) -> T {
-        let reference = self.borrow();
-        (*reference.get()).clone()
+        (*self.borrow()).clone()
     }
 }
 
 impl<T: Clone> Clone for RefCell<T> {
     fn clone(&self) -> RefCell<T> {
-        let x = self.borrow();
-        RefCell::new(x.get().clone())
+        RefCell::new(self.get())
     }
 }
 
 impl<T: Eq> Eq for RefCell<T> {
     fn eq(&self, other: &RefCell<T>) -> bool {
-        let a = self.borrow();
-        let b = other.borrow();
-        a.get() == b.get()
+        *self.borrow() == *other.borrow()
     }
 }
 
@@ -219,14 +214,6 @@ impl<'b, T> Drop for Ref<'b, T> {
     fn drop(&mut self) {
         assert!(self.parent.borrow != WRITING && self.parent.borrow != UNUSED);
         unsafe { self.parent.as_mut().borrow -= 1; }
-    }
-}
-
-impl<'b, T> Ref<'b, T> {
-    /// Retrieve an immutable reference to the stored value.
-    #[inline]
-    pub fn get<'a>(&'a self) -> &'a T {
-        unsafe{ &*self.parent.value.get() }
     }
 }
 
@@ -247,14 +234,6 @@ impl<'b, T> Drop for RefMut<'b, T> {
     fn drop(&mut self) {
         assert!(self.parent.borrow == WRITING);
         self.parent.borrow = UNUSED;
-    }
-}
-
-impl<'b, T> RefMut<'b, T> {
-    /// Retrieve a mutable reference to the stored value.
-    #[inline]
-    pub fn get<'a>(&'a mut self) -> &'a mut T {
-        unsafe{ &mut *self.parent.value.get() }
     }
 }
 

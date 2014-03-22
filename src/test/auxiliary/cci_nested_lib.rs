@@ -24,7 +24,7 @@ pub struct alist<A,B> {
 
 pub fn alist_add<A:'static,B:'static>(lst: &alist<A,B>, k: A, v: B) {
     let mut data = lst.data.borrow_mut();
-    data.get().push(Entry{key:k, value:v});
+    (*data).push(Entry{key:k, value:v});
 }
 
 pub fn alist_get<A:Clone + 'static,
@@ -34,7 +34,7 @@ pub fn alist_get<A:Clone + 'static,
                  -> B {
     let eq_fn = lst.eq_fn;
     let data = lst.data.borrow();
-    for entry in data.get().iter() {
+    for entry in (*data).iter() {
         if eq_fn(entry.key.clone(), k.clone()) {
             return entry.value.clone();
         }

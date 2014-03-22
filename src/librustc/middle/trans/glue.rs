@@ -128,7 +128,7 @@ pub fn drop_ty_immediate<'a>(bcx: &'a Block<'a>, v: ValueRef, t: ty::t)
 
 pub fn get_drop_glue(ccx: &CrateContext, t: ty::t) -> ValueRef {
     let t = get_drop_glue_type(ccx, t);
-    match ccx.drop_glues.borrow().get().find(&t) {
+    match ccx.drop_glues.borrow().find(&t) {
         Some(&glue) => return glue,
         _ => { }
     }
@@ -136,7 +136,7 @@ pub fn get_drop_glue(ccx: &CrateContext, t: ty::t) -> ValueRef {
     let llfnty = Type::glue_fn(ccx, type_of(ccx, t).ptr_to());
     let glue = declare_generic_glue(ccx, t, llfnty, "drop");
 
-    ccx.drop_glues.borrow_mut().get().insert(t, glue);
+    ccx.drop_glues.borrow_mut().insert(t, glue);
 
     make_generic_glue(ccx, t, glue, make_drop_glue, "drop");
 
@@ -476,8 +476,7 @@ pub fn emit_tydescs(ccx: &CrateContext) {
     // As of this point, allow no more tydescs to be created.
     ccx.finished_tydescs.set(true);
     let glue_fn_ty = Type::generic_glue_fn(ccx).ptr_to();
-    let mut tyds = ccx.tydescs.borrow_mut();
-    for (_, &val) in tyds.get().iter() {
+    for (_, &val) in ccx.tydescs.borrow().iter() {
         let ti = val;
 
         // Each of the glue functions needs to be cast to a generic type

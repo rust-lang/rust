@@ -1187,8 +1187,7 @@ pub fn translate_def_id(cdata: Cmd, did: ast::DefId) -> ast::DefId {
         return ast::DefId { krate: cdata.cnum, node: did.node };
     }
 
-    let cnum_map = cdata.cnum_map.borrow();
-    match cnum_map.get().find(&did.krate) {
+    match cdata.cnum_map.borrow().find(&did.krate) {
         Some(&n) => {
             ast::DefId {
                 krate: n,

@@ -497,8 +497,7 @@ impl<'a> CFGBuilder<'a> {
             }
 
             Some(_) => {
-                let def_map = self.tcx.def_map.borrow();
-                match def_map.get().find(&expr.id) {
+                match self.tcx.def_map.borrow().find(&expr.id) {
                     Some(&ast::DefLabel(loop_id)) => {
                         for l in self.loop_scopes.iter() {
                             if l.loop_id == loop_id {
@@ -522,6 +521,6 @@ impl<'a> CFGBuilder<'a> {
 
     fn is_method_call(&self, expr: &ast::Expr) -> bool {
         let method_call = typeck::MethodCall::expr(expr.id);
-        self.method_map.borrow().get().contains_key(&method_call)
+        self.method_map.borrow().contains_key(&method_call)
     }
 }

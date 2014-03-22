@@ -77,15 +77,14 @@ pub fn const_lit(cx: &CrateContext, e: &ast::Expr, lit: ast::Lit)
         ast::LitBool(b) => C_bool(cx, b),
         ast::LitNil => C_nil(cx),
         ast::LitStr(ref s, _) => C_str_slice(cx, (*s).clone()),
-        ast::LitBinary(ref data) => C_binary_slice(cx, data.deref().as_slice()),
+        ast::LitBinary(ref data) => C_binary_slice(cx, data.as_slice()),
     }
 }
 
 pub fn const_ptrcast(cx: &CrateContext, a: ValueRef, t: Type) -> ValueRef {
     unsafe {
         let b = llvm::LLVMConstPointerCast(a, t.ptr_to().to_ref());
-        let mut const_globals = cx.const_globals.borrow_mut();
-        assert!(const_globals.get().insert(b as int, a));
+        assert!(cx.const_globals.borrow_mut().insert(b as int, a));
         b
     }
 }
@@ -118,8 +117,7 @@ fn const_addr_of(cx: &CrateContext, cv: ValueRef) -> ValueRef {
 }
 
 fn const_deref_ptr(cx: &CrateContext, v: ValueRef) -> ValueRef {
-    let const_globals = cx.const_globals.borrow();
-    let v = match const_globals.get().find(&(v as int)) {
+    let v = match cx.const_globals.borrow().find(&(v as int)) {
         Some(&v) => v,
         None => v
     };
@@ -163,10 +161,7 @@ fn const_deref(cx: &CrateContext, v: ValueRef, t: ty::t, explicit: bool)
 
 pub fn get_const_val(cx: &CrateContext,
                      mut def_id: ast::DefId) -> (ValueRef, bool) {
-    let contains_key = {
-        let const_values = cx.const_values.borrow();
-        const_values.get().contains_key(&def_id.node)
-    };
+    let contains_key = cx.const_values.borrow().contains_key(&def_id.node);
     if !ast_util::is_local(def_id) || !contains_key {
         if !ast_util::is_local(def_id) {
             def_id = inline::maybe_instantiate_inline(cx, def_id);
@@ -180,10 +175,8 @@ pub fn get_const_val(cx: &CrateContext,
         }
     }
 
-    let const_values = cx.const_values.borrow();
-    let non_inlineable_statics = cx.non_inlineable_statics.borrow();
-    (const_values.get().get_copy(&def_id.node),
-     !non_inlineable_statics.get().contains(&def_id.node))
+    (cx.const_values.borrow().get_copy(&def_id.node),
+     !cx.non_inlineable_statics.borrow().contains(&def_id.node))
 }
 
 pub fn const_expr(cx: &CrateContext, e: &ast::Expr, is_local: bool) -> (ValueRef, bool) {
@@ -192,12 +185,9 @@ pub fn const_expr(cx: &CrateContext, e: &ast::Expr, is_local: bool) -> (ValueRef
     let mut inlineable = inlineable;
     let ety = ty::expr_ty(cx.tcx(), e);
     let ety_adjusted = ty::expr_ty_adjusted(cx.tcx(), e,
-                                            cx.maps.method_map.borrow().get());
-    let adjustment = {
-        let adjustments = cx.tcx.adjustments.borrow();
-        adjustments.get().find_copy(&e.id)
-    };
-    match adjustment {
+                                            &*cx.maps.method_map.borrow());
+    let opt_adj = cx.tcx.adjustments.borrow().find_copy(&e.id);
+    match opt_adj {
         None => { }
         Some(adj) => {
             match *adj {
@@ -424,7 +414,7 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr,
           }
           ast::ExprField(base, field, _) => {
               let bt = ty::expr_ty_adjusted(cx.tcx(), base,
-                                            cx.maps.method_map.borrow().get());
+                                            &*cx.maps.method_map.borrow());
               let brepr = adt::represent_type(cx, bt);
               let (bv, inlineable) = const_expr(cx, base, is_local);
               expr::with_field_tys(cx.tcx(), bt, None, |discr, field_tys| {
@@ -435,7 +425,7 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr,
 
           ast::ExprIndex(base, index) => {
               let bt = ty::expr_ty_adjusted(cx.tcx(), base,
-                                            cx.maps.method_map.borrow().get());
+                                            &*cx.maps.method_map.borrow());
               let (bv, inlineable) = const_expr(cx, base, is_local);
               let iv = match const_eval::eval_const_expr(cx.tcx(), index) {
                   const_eval::const_int(i) => i as u64,
@@ -624,11 +614,7 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr,
             // Assert that there are no type parameters in this path.
             assert!(pth.segments.iter().all(|seg| seg.types.is_empty()));
 
-            let tcx = cx.tcx();
-            let opt_def = {
-                let def_map = tcx.def_map.borrow();
-                def_map.get().find_copy(&e.id)
-            };
+            let opt_def = cx.tcx().def_map.borrow().find_copy(&e.id);
             match opt_def {
                 Some(ast::DefFn(def_id, _purity)) => {
                     if !ast_util::is_local(def_id) {
@@ -661,11 +647,7 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr,
             }
           }
           ast::ExprCall(callee, ref args) => {
-              let tcx = cx.tcx();
-              let opt_def = {
-                  let def_map = tcx.def_map.borrow();
-                  def_map.get().find_copy(&callee.id)
-              };
+              let opt_def = cx.tcx().def_map.borrow().find_copy(&callee.id);
               match opt_def {
                   Some(ast::DefStruct(_)) => {
                       let ety = ty::expr_ty(cx.tcx(), e);
@@ -702,8 +684,7 @@ pub fn trans_const(ccx: &CrateContext, m: ast::Mutability, id: ast::NodeId) {
         let g = base::get_item_val(ccx, id);
         // At this point, get_item_val has already translated the
         // constant's initializer to determine its LLVM type.
-        let const_values = ccx.const_values.borrow();
-        let v = const_values.get().get_copy(&id);
+        let v = ccx.const_values.borrow().get_copy(&id);
         llvm::LLVMSetInitializer(g, v);
         if m != ast::MutMutable {
             llvm::LLVMSetGlobalConstant(g, True);

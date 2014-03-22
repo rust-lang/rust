@@ -1009,13 +1009,13 @@ pub struct Generics {
 
 impl Generics {
     pub fn has_type_params(&self) -> bool {
-        !self.type_param_defs.deref().is_empty()
+        !self.type_param_defs.is_empty()
     }
     pub fn type_param_defs<'a>(&'a self) -> &'a [TypeParameterDef] {
-        self.type_param_defs.deref().as_slice()
+        self.type_param_defs.as_slice()
     }
     pub fn region_param_defs<'a>(&'a self) -> &'a [RegionParameterDef] {
-        self.region_param_defs.deref().as_slice()
+        self.region_param_defs.as_slice()
     }
 }
 
@@ -1154,12 +1154,9 @@ pub fn mk_t(cx: &ctxt, st: sty) -> t {
 
     let key = intern_key { sty: &st };
 
-    {
-        let mut interner = cx.interner.borrow_mut();
-        match interner.get().find(&key) {
-          Some(t) => unsafe { return cast::transmute(&t.sty); },
-          _ => ()
-        }
+    match cx.interner.borrow().find(&key) {
+        Some(t) => unsafe { return cast::transmute(&t.sty); },
+        _ => ()
     }
 
     let mut flags = 0u;
@@ -1255,8 +1252,7 @@ pub fn mk_t(cx: &ctxt, st: sty) -> t {
         sty: sty_ptr,
     };
 
-    let mut interner = cx.interner.borrow_mut();
-    interner.get().insert(key, t);
+    cx.interner.borrow_mut().insert(key, t);
 
     cx.next_id.set(cx.next_id.get() + 1);
 
@@ -1762,21 +1758,15 @@ pub fn type_needs_drop(cx: &ctxt, ty: t) -> bool {
 // that only contain scalars and shared boxes can avoid unwind
 // cleanups.
 pub fn type_needs_unwind_cleanup(cx: &ctxt, ty: t) -> bool {
-    {
-        let needs_unwind_cleanup_cache = cx.needs_unwind_cleanup_cache
-                                           .borrow();
-        match needs_unwind_cleanup_cache.get().find(&ty) {
-            Some(&result) => return result,
-            None => ()
-        }
+    match cx.needs_unwind_cleanup_cache.borrow().find(&ty) {
+        Some(&result) => return result,
+        None => ()
     }
 
     let mut tycache = HashSet::new();
     let needs_unwind_cleanup =
         type_needs_unwind_cleanup_(cx, ty, &mut tycache, false);
-    let mut needs_unwind_cleanup_cache = cx.needs_unwind_cleanup_cache
-                                           .borrow_mut();
-    needs_unwind_cleanup_cache.get().insert(ty, needs_unwind_cleanup);
+    cx.needs_unwind_cleanup_cache.borrow_mut().insert(ty, needs_unwind_cleanup);
     return needs_unwind_cleanup;
 }
 
@@ -2094,19 +2084,15 @@ pub fn type_interior_is_unsafe(cx: &ctxt, t: ty::t) -> bool {
 pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
     let ty_id = type_id(ty);
 
-    {
-        let tc_cache = cx.tc_cache.borrow();
-        match tc_cache.get().find(&ty_id) {
-            Some(tc) => { return *tc; }
-            None => {}
-        }
+    match cx.tc_cache.borrow().find(&ty_id) {
+        Some(tc) => { return *tc; }
+        None => {}
     }
 
     let mut cache = HashMap::new();
     let result = tc_ty(cx, ty, &mut cache);
 
-    let mut tc_cache = cx.tc_cache.borrow_mut();
-    tc_cache.get().insert(ty_id, result);
+    cx.tc_cache.borrow_mut().insert(ty_id, result);
     return result;
 
     fn tc_ty(cx: &ctxt,
@@ -2139,12 +2125,9 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
             Some(tc) => { return *tc; }
             None => {}
         }
-        {
-            let tc_cache = cx.tc_cache.borrow();
-            match tc_cache.get().find(&ty_id) {    // Must check both caches!
-                Some(tc) => { return *tc; }
-                None => {}
-            }
+        match cx.tc_cache.borrow().find(&ty_id) {    // Must check both caches!
+            Some(tc) => { return *tc; }
+            None => {}
         }
         cache.insert(ty_id, TC::None);
 
@@ -2243,7 +2226,7 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
                 assert_eq!(p.def_id.krate, ast::LOCAL_CRATE);
 
                 let ty_param_defs = cx.ty_param_defs.borrow();
-                let tp_def = ty_param_defs.get().get(&p.def_id.node);
+                let tp_def = ty_param_defs.get(&p.def_id.node);
                 kind_bounds_to_contents(cx,
                                         tp_def.bounds.builtin_bounds,
                                         tp_def.bounds.trait_bounds.as_slice())
@@ -2686,7 +2669,7 @@ pub fn type_is_sized(cx: &ctxt, ty: ty::t) -> bool {
         // FIXME(#6308) add trait, vec, str, etc here.
         ty_param(p) => {
             let ty_param_defs = cx.ty_param_defs.borrow();
-            let param_def = ty_param_defs.get().get(&p.def_id.node);
+            let param_def = ty_param_defs.get(&p.def_id.node);
             if param_def.bounds.builtin_bounds.contains_elem(BoundSized) {
                 return true;
             }
@@ -2746,8 +2729,7 @@ pub fn index(t: t) -> Option<mt> {
 }
 
 pub fn node_id_to_trait_ref(cx: &ctxt, id: ast::NodeId) -> @ty::TraitRef {
-    let trait_refs = cx.trait_refs.borrow();
-    match trait_refs.get().find(&id) {
+    match cx.trait_refs.borrow().find(&id) {
        Some(&t) => t,
        None => cx.sess.bug(
            format!("node_id_to_trait_ref: no trait ref for node `{}`",
@@ -2756,8 +2738,7 @@ pub fn node_id_to_trait_ref(cx: &ctxt, id: ast::NodeId) -> @ty::TraitRef {
 }
 
 pub fn try_node_id_to_type(cx: &ctxt, id: ast::NodeId) -> Option<t> {
-    let node_types = cx.node_types.borrow();
-    node_types.get().find_copy(&(id as uint))
+    cx.node_types.borrow().find_copy(&(id as uint))
 }
 
 pub fn node_id_to_type(cx: &ctxt, id: ast::NodeId) -> t {
@@ -2770,9 +2751,7 @@ pub fn node_id_to_type(cx: &ctxt, id: ast::NodeId) -> t {
 }
 
 pub fn node_id_to_type_opt(cx: &ctxt, id: ast::NodeId) -> Option<t> {
-    let node_types = cx.node_types.borrow();
-    debug!("id: {:?}, node_types: {:?}", id, node_types);
-    match node_types.get().find(&(id as uint)) {
+    match cx.node_types.borrow().find(&(id as uint)) {
        Some(&t) => Some(t),
        None => None
     }
@@ -2780,16 +2759,14 @@ pub fn node_id_to_type_opt(cx: &ctxt, id: ast::NodeId) -> Option<t> {
 
 // FIXME(pcwalton): Makes a copy, bleh. Probably better to not do that.
 pub fn node_id_to_type_params(cx: &ctxt, id: ast::NodeId) -> Vec<t> {
-    let node_type_substs = cx.node_type_substs.borrow();
-    match node_type_substs.get().find(&id) {
+    match cx.node_type_substs.borrow().find(&id) {
       None => return Vec::new(),
       Some(ts) => return (*ts).clone(),
     }
 }
 
 fn node_id_has_type_params(cx: &ctxt, id: ast::NodeId) -> bool {
-    let node_type_substs = cx.node_type_substs.borrow();
-    node_type_substs.get().contains_key(&id)
+    cx.node_type_substs.borrow().contains_key(&id)
 }
 
 pub fn fn_is_variadic(fty: t) -> bool {
@@ -2970,7 +2947,7 @@ pub fn expr_ty_adjusted(cx: &ctxt,
      */
 
     let unadjusted_ty = expr_ty(cx, expr);
-    let adjustment = cx.adjustments.borrow().get().find_copy(&expr.id);
+    let adjustment = cx.adjustments.borrow().find_copy(&expr.id);
     adjust_ty(cx, expr.span, expr.id, unadjusted_ty, adjustment, |method_call| {
         method_map.find(&method_call).map(|method| method.ty)
     })
@@ -3260,8 +3237,7 @@ pub fn method_call_type_param_defs(tcx: &ctxt, origin: typeck::MethodOrigin)
 }
 
 pub fn resolve_expr(tcx: &ctxt, expr: &ast::Expr) -> ast::Def {
-    let def_map = tcx.def_map.borrow();
-    match def_map.get().find(&expr.id) {
+    match tcx.def_map.borrow().find(&expr.id) {
         Some(&def) => def,
         None => {
             tcx.sess.span_bug(expr.span, format!(
@@ -3294,7 +3270,7 @@ pub enum ExprKind {
 pub fn expr_kind(tcx: &ctxt,
                  method_map: MethodMap,
                  expr: &ast::Expr) -> ExprKind {
-    if method_map.borrow().get().contains_key(&MethodCall::expr(expr.id)) {
+    if method_map.borrow().contains_key(&MethodCall::expr(expr.id)) {
         // Overloaded operations are generally calls, and hence they are
         // generated via DPS, but there are two exceptions:
         return match expr.node {
@@ -3377,8 +3353,7 @@ pub fn expr_kind(tcx: &ctxt,
         }
 
         ast::ExprCast(..) => {
-            let node_types = tcx.node_types.borrow();
-            match node_types.get().find(&(expr.id as uint)) {
+            match tcx.node_types.borrow().find(&(expr.id as uint)) {
                 Some(&t) => {
                     if type_is_trait(t) {
                         RvalueDpsExpr
@@ -3426,8 +3401,7 @@ pub fn expr_kind(tcx: &ctxt,
 
         ast::ExprBox(place, _) => {
             // Special case `~T` for now:
-            let def_map = tcx.def_map.borrow();
-            let definition = match def_map.get().find(&place.id) {
+            let definition = match tcx.def_map.borrow().find(&place.id) {
                 Some(&def) => def,
                 None => fail!("no def for place"),
             };
@@ -3709,8 +3683,7 @@ pub fn def_has_ty_params(def: ast::Def) -> bool {
 }
 
 pub fn provided_source(cx: &ctxt, id: ast::DefId) -> Option<ast::DefId> {
-    let provided_method_sources = cx.provided_method_sources.borrow();
-    provided_method_sources.get().find(&id).map(|x| *x)
+    cx.provided_method_sources.borrow().find(&id).map(|x| *x)
 }
 
 pub fn provided_trait_methods(cx: &ctxt, id: ast::DefId) -> Vec<@Method> {
@@ -3747,12 +3720,9 @@ pub fn provided_trait_methods(cx: &ctxt, id: ast::DefId) -> Vec<@Method> {
 
 pub fn trait_supertraits(cx: &ctxt, id: ast::DefId) -> @Vec<@TraitRef> {
     // Check the cache.
-    {
-        let supertraits = cx.supertraits.borrow();
-        match supertraits.get().find(&id) {
-            Some(&trait_refs) => { return trait_refs; }
-            None => {}  // Continue.
-        }
+    match cx.supertraits.borrow().find(&id) {
+        Some(&trait_refs) => { return trait_refs; }
+        None => {}  // Continue.
     }
 
     // Not in the cache. It had better be in the metadata, which means it
@@ -3762,8 +3732,7 @@ pub fn trait_supertraits(cx: &ctxt, id: ast::DefId) -> @Vec<@TraitRef> {
     // Get the supertraits out of the metadata and create the
     // TraitRef for each.
     let result = @csearch::get_supertraits(cx, id);
-    let mut supertraits = cx.supertraits.borrow_mut();
-    supertraits.get().insert(id, result);
+    cx.supertraits.borrow_mut().insert(id, result);
     return result;
 }
 
@@ -3808,42 +3777,38 @@ pub fn trait_method(cx: &ctxt, trait_did: ast::DefId, idx: uint) -> @Method {
 
 
 pub fn trait_methods(cx: &ctxt, trait_did: ast::DefId) -> @Vec<@Method> {
-    let mut trait_methods_cache = cx.trait_methods_cache.borrow_mut();
-    match trait_methods_cache.get().find(&trait_did) {
+    let mut trait_methods = cx.trait_methods_cache.borrow_mut();
+    match trait_methods.find(&trait_did) {
         Some(&methods) => methods,
         None => {
             let def_ids = ty::trait_method_def_ids(cx, trait_did);
             let methods = @def_ids.map(|d| ty::method(cx, *d));
-            trait_methods_cache.get().insert(trait_did, methods);
+            trait_methods.insert(trait_did, methods);
             methods
         }
     }
 }
 
 pub fn method(cx: &ctxt, id: ast::DefId) -> @Method {
-    let mut methods = cx.methods.borrow_mut();
-    lookup_locally_or_in_crate_store("methods", id, methods.get(), || {
+    lookup_locally_or_in_crate_store("methods", id,
+                                     &mut *cx.methods.borrow_mut(), || {
         @csearch::get_method(cx, id)
     })
 }
 
 pub fn trait_method_def_ids(cx: &ctxt, id: ast::DefId) -> @Vec<DefId> {
-    let mut trait_method_def_ids = cx.trait_method_def_ids.borrow_mut();
     lookup_locally_or_in_crate_store("trait_method_def_ids",
                                      id,
-                                     trait_method_def_ids.get(),
+                                     &mut *cx.trait_method_def_ids.borrow_mut(),
                                      || {
         @csearch::get_trait_method_def_ids(&cx.sess.cstore, id)
     })
 }
 
 pub fn impl_trait_ref(cx: &ctxt, id: ast::DefId) -> Option<@TraitRef> {
-    {
-        let mut impl_trait_cache = cx.impl_trait_cache.borrow_mut();
-        match impl_trait_cache.get().find(&id) {
-            Some(&ret) => { return ret; }
-            None => {}
-        }
+    match cx.impl_trait_cache.borrow().find(&id) {
+        Some(&ret) => { return ret; }
+        None => {}
     }
 
     let ret = if id.krate == ast::LOCAL_CRATE {
@@ -3868,17 +3833,15 @@ pub fn impl_trait_ref(cx: &ctxt, id: ast::DefId) -> Option<@TraitRef> {
         csearch::get_impl_trait(cx, id)
     };
 
-    let mut impl_trait_cache = cx.impl_trait_cache.borrow_mut();
-    impl_trait_cache.get().insert(id, ret);
+    cx.impl_trait_cache.borrow_mut().insert(id, ret);
     return ret;
 }
 
 pub fn trait_ref_to_def_id(tcx: &ctxt, tr: &ast::TraitRef) -> ast::DefId {
-    let def_map = tcx.def_map.borrow();
-    let def = def_map.get()
+    let def = *tcx.def_map.borrow()
                      .find(&tr.ref_id)
                      .expect("no def-map entry for trait");
-    ast_util::def_id_of_def(*def)
+    ast_util::def_id_of_def(def)
 }
 
 pub fn try_add_builtin_trait(tcx: &ctxt,
@@ -4021,8 +3984,7 @@ impl DtorKind {
 /* If struct_id names a struct with a dtor, return Some(the dtor's id).
    Otherwise return none. */
 pub fn ty_dtor(cx: &ctxt, struct_id: DefId) -> DtorKind {
-    let destructor_for_type = cx.destructor_for_type.borrow();
-    match destructor_for_type.get().find(&struct_id) {
+    match cx.destructor_for_type.borrow().find(&struct_id) {
         Some(&method_def_id) => {
             let flag = !has_attr(cx, struct_id, "unsafe_no_drop_flag");
 
@@ -4056,12 +4018,9 @@ pub fn type_is_empty(cx: &ctxt, t: t) -> bool {
 }
 
 pub fn enum_variants(cx: &ctxt, id: ast::DefId) -> @Vec<@VariantInfo> {
-    {
-        let enum_var_cache = cx.enum_var_cache.borrow();
-        match enum_var_cache.get().find(&id) {
-            Some(&variants) => return variants,
-            _ => { /* fallthrough */ }
-        }
+    match cx.enum_var_cache.borrow().find(&id) {
+        Some(&variants) => return variants,
+        _ => { /* fallthrough */ }
     }
 
     let result = if ast::LOCAL_CRATE != id.krate {
@@ -4129,11 +4088,8 @@ pub fn enum_variants(cx: &ctxt, id: ast::DefId) -> @Vec<@VariantInfo> {
         }
     };
 
-    {
-        let mut enum_var_cache = cx.enum_var_cache.borrow_mut();
-        enum_var_cache.get().insert(id, result);
-        result
-    }
+    cx.enum_var_cache.borrow_mut().insert(id, result);
+    result
 }
 
 
@@ -4160,25 +4116,23 @@ pub fn enum_variant_with_id(cx: &ctxt,
 pub fn lookup_item_type(cx: &ctxt,
                         did: ast::DefId)
                      -> ty_param_bounds_and_ty {
-    let mut tcache = cx.tcache.borrow_mut();
     lookup_locally_or_in_crate_store(
-        "tcache", did, tcache.get(),
+        "tcache", did, &mut *cx.tcache.borrow_mut(),
         || csearch::get_type(cx, did))
 }
 
 pub fn lookup_impl_vtables(cx: &ctxt,
                            did: ast::DefId)
                      -> typeck::impl_res {
-    let mut impl_vtables = cx.impl_vtables.borrow_mut();
     lookup_locally_or_in_crate_store(
-        "impl_vtables", did, impl_vtables.get(),
+        "impl_vtables", did, &mut *cx.impl_vtables.borrow_mut(),
         || csearch::get_impl_vtables(cx, did) )
 }
 
 /// Given the did of a trait, returns its canonical trait ref.
 pub fn lookup_trait_def(cx: &ctxt, did: ast::DefId) -> @ty::TraitDef {
     let mut trait_defs = cx.trait_defs.borrow_mut();
-    match trait_defs.get().find(&did) {
+    match trait_defs.find(&did) {
         Some(&trait_def) => {
             // The item is in this crate. The caller should have added it to the
             // type cache already
@@ -4187,7 +4141,7 @@ pub fn lookup_trait_def(cx: &ctxt, did: ast::DefId) -> @ty::TraitDef {
         None => {
             assert!(did.krate != ast::LOCAL_CRATE);
             let trait_def = @csearch::get_trait_def(cx, did);
-            trait_defs.get().insert(did, trait_def);
+            trait_defs.insert(did, trait_def);
             return trait_def;
         }
     }
@@ -4255,16 +4209,14 @@ pub fn lookup_field_type(tcx: &ctxt,
     let t = if id.krate == ast::LOCAL_CRATE {
         node_id_to_type(tcx, id.node)
     } else {
-        {
-            let mut tcache = tcx.tcache.borrow_mut();
-            match tcache.get().find(&id) {
-               Some(&ty_param_bounds_and_ty {ty, ..}) => ty,
-               None => {
-                   let tpt = csearch::get_field_type(tcx, struct_id, id);
-                   tcache.get().insert(id, tpt.clone());
-                   tpt.ty
-               }
-            }
+        let mut tcache = tcx.tcache.borrow_mut();
+        match tcache.find(&id) {
+           Some(&ty_param_bounds_and_ty {ty, ..}) => ty,
+           None => {
+               let tpt = csearch::get_field_type(tcx, struct_id, id);
+               tcache.insert(id, tpt.clone());
+               tpt.ty
+           }
         }
     };
     subst(tcx, substs, t)
@@ -4444,23 +4396,14 @@ pub fn normalize_ty(cx: &ctxt, t: t) -> t {
         fn tcx<'a>(&'a self) -> &'a ctxt { let TypeNormalizer(c) = *self; c }
 
         fn fold_ty(&mut self, t: ty::t) -> ty::t {
-            let normalized_opt = {
-                let normalized_cache = self.tcx().normalized_cache.borrow();
-                normalized_cache.get().find_copy(&t)
-            };
-            match normalized_opt {
-                Some(u) => {
-                    return u;
-                }
-                None => {
-                    let t_norm = ty_fold::super_fold_ty(self, t);
-                    let mut normalized_cache = self.tcx()
-                                                   .normalized_cache
-                                                   .borrow_mut();
-                    normalized_cache.get().insert(t, t_norm);
-                    return t_norm;
-                }
+            match self.tcx().normalized_cache.borrow().find_copy(&t) {
+                None => {}
+                Some(u) => return u
             }
+
+            let t_norm = ty_fold::super_fold_ty(self, t);
+            self.tcx().normalized_cache.borrow_mut().insert(t, t_norm);
+            return t_norm;
         }
 
         fn fold_vstore(&mut self, vstore: vstore) -> vstore {
@@ -4636,16 +4579,14 @@ pub fn count_traits_and_supertraits(tcx: &ctxt,
 
 pub fn get_tydesc_ty(tcx: &ctxt) -> Result<t, ~str> {
     tcx.lang_items.require(TyDescStructLangItem).map(|tydesc_lang_item| {
-        let intrinsic_defs = tcx.intrinsic_defs.borrow();
-        intrinsic_defs.get().find_copy(&tydesc_lang_item)
+        tcx.intrinsic_defs.borrow().find_copy(&tydesc_lang_item)
             .expect("Failed to resolve TyDesc")
     })
 }
 
 pub fn get_opaque_ty(tcx: &ctxt) -> Result<t, ~str> {
     tcx.lang_items.require(OpaqueStructLangItem).map(|opaque_lang_item| {
-        let intrinsic_defs = tcx.intrinsic_defs.borrow();
-        intrinsic_defs.get().find_copy(&opaque_lang_item)
+        tcx.intrinsic_defs.borrow().find_copy(&opaque_lang_item)
             .expect("Failed to resolve Opaque")
     })
 }
@@ -4672,9 +4613,8 @@ pub fn visitor_object_ty(tcx: &ctxt,
 }
 
 pub fn item_variances(tcx: &ctxt, item_id: ast::DefId) -> @ItemVariances {
-    let mut item_variance_map = tcx.item_variance_map.borrow_mut();
     lookup_locally_or_in_crate_store(
-        "item_variance_map", item_id, item_variance_map.get(),
+        "item_variance_map", item_id, &mut *tcx.item_variance_map.borrow_mut(),
         || @csearch::get_item_variances(&tcx.sess.cstore, item_id))
 }
 
@@ -4684,18 +4624,17 @@ fn record_trait_implementation(tcx: &ctxt,
                                implementation: @Impl) {
     let implementation_list;
     let mut trait_impls = tcx.trait_impls.borrow_mut();
-    match trait_impls.get().find(&trait_def_id) {
+    match trait_impls.find(&trait_def_id) {
         None => {
             implementation_list = @RefCell::new(Vec::new());
-            trait_impls.get().insert(trait_def_id, implementation_list);
+            trait_impls.insert(trait_def_id, implementation_list);
         }
         Some(&existing_implementation_list) => {
             implementation_list = existing_implementation_list
         }
     }
 
-    let mut implementation_list = implementation_list.borrow_mut();
-    implementation_list.get().push(implementation);
+    implementation_list.borrow_mut().push(implementation);
 }
 
 /// Populates the type context with all the implementations for the given type
@@ -4705,11 +4644,8 @@ pub fn populate_implementations_for_type_if_necessary(tcx: &ctxt,
     if type_id.krate == LOCAL_CRATE {
         return
     }
-    {
-        let populated_external_types = tcx.populated_external_types.borrow();
-        if populated_external_types.get().contains(&type_id) {
-            return
-        }
+    if tcx.populated_external_types.borrow().contains(&type_id) {
+        return
     }
 
     csearch::each_implementation_for_type(&tcx.sess.cstore, type_id,
@@ -4729,9 +4665,8 @@ pub fn populate_implementations_for_type_if_necessary(tcx: &ctxt,
         // the map. This is a bit unfortunate.
         for method in implementation.methods.iter() {
             for source in method.provided_source.iter() {
-                let mut provided_method_sources =
-                    tcx.provided_method_sources.borrow_mut();
-                provided_method_sources.get().insert(method.def_id, *source);
+                tcx.provided_method_sources.borrow_mut()
+                   .insert(method.def_id, *source);
             }
         }
 
@@ -4739,30 +4674,23 @@ pub fn populate_implementations_for_type_if_necessary(tcx: &ctxt,
         if associated_traits.is_none() {
             let implementation_list;
             let mut inherent_impls = tcx.inherent_impls.borrow_mut();
-            match inherent_impls.get().find(&type_id) {
+            match inherent_impls.find(&type_id) {
                 None => {
                     implementation_list = @RefCell::new(Vec::new());
-                    inherent_impls.get().insert(type_id, implementation_list);
+                    inherent_impls.insert(type_id, implementation_list);
                 }
                 Some(&existing_implementation_list) => {
                     implementation_list = existing_implementation_list;
                 }
             }
-            {
-                let mut implementation_list =
-                    implementation_list.borrow_mut();
-                implementation_list.get().push(implementation);
-            }
+            implementation_list.borrow_mut().push(implementation);
         }
 
         // Store the implementation info.
-        let mut impls = tcx.impls.borrow_mut();
-        impls.get().insert(implementation_def_id, implementation);
+        tcx.impls.borrow_mut().insert(implementation_def_id, implementation);
     });
 
-    let mut populated_external_types = tcx.populated_external_types
-                                          .borrow_mut();
-    populated_external_types.get().insert(type_id);
+    tcx.populated_external_types.borrow_mut().insert(type_id);
 }
 
 /// Populates the type context with all the implementations for the given
@@ -4773,12 +4701,8 @@ pub fn populate_implementations_for_trait_if_necessary(
     if trait_id.krate == LOCAL_CRATE {
         return
     }
-    {
-        let populated_external_traits = tcx.populated_external_traits
-                                           .borrow();
-        if populated_external_traits.get().contains(&trait_id) {
-            return
-        }
+    if tcx.populated_external_traits.borrow().contains(&trait_id) {
+        return
     }
 
     csearch::each_implementation_for_trait(&tcx.sess.cstore, trait_id,
@@ -4792,20 +4716,16 @@ pub fn populate_implementations_for_trait_if_necessary(
         // the map. This is a bit unfortunate.
         for method in implementation.methods.iter() {
             for source in method.provided_source.iter() {
-                let mut provided_method_sources =
-                    tcx.provided_method_sources.borrow_mut();
-                provided_method_sources.get().insert(method.def_id, *source);
+                tcx.provided_method_sources.borrow_mut()
+                   .insert(method.def_id, *source);
             }
         }
 
         // Store the implementation info.
-        let mut impls = tcx.impls.borrow_mut();
-        impls.get().insert(implementation_def_id, implementation);
+        tcx.impls.borrow_mut().insert(implementation_def_id, implementation);
     });
 
-    let mut populated_external_traits = tcx.populated_external_traits
-                                           .borrow_mut();
-    populated_external_traits.get().insert(trait_id);
+    tcx.populated_external_traits.borrow_mut().insert(trait_id);
 }
 
 /// Given the def_id of an impl, return the def_id of the trait it implements.
@@ -4837,12 +4757,7 @@ pub fn trait_of_method(tcx: &ctxt, def_id: ast::DefId)
     if def_id.krate != LOCAL_CRATE {
         return csearch::get_trait_of_method(&tcx.sess.cstore, def_id, tcx);
     }
-    let method;
-    {
-        let methods = tcx.methods.borrow();
-        method = methods.get().find(&def_id).map(|method| *method);
-    }
-    match method {
+    match tcx.methods.borrow().find(&def_id).map(|m| *m) {
         Some(method) => {
             match method.container {
                 TraitContainer(def_id) => Some(def_id),
@@ -4861,14 +4776,10 @@ pub fn trait_of_method(tcx: &ctxt, def_id: ast::DefId)
 /// Otherwise, return `None`.
 pub fn trait_method_of_method(tcx: &ctxt,
                               def_id: ast::DefId) -> Option<ast::DefId> {
-    let method;
-    {
-        let methods = tcx.methods.borrow();
-        match methods.get().find(&def_id) {
-            Some(m) => method = *m,
-            None => return None,
-        }
-    }
+    let method = match tcx.methods.borrow().find(&def_id) {
+        Some(&m) => m,
+        None => return None,
+    };
     let name = method.ident.name;
     match trait_of_method(tcx, def_id) {
         Some(trait_did) => {

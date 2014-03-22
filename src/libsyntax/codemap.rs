@@ -228,15 +228,15 @@ impl FileMap {
     pub fn next_line(&self, pos: BytePos) {
         // the new charpos must be > the last one (or it's the first one).
         let mut lines = self.lines.borrow_mut();;
-        let line_len = lines.get().len();
-        assert!(line_len == 0 || (*lines.get().get(line_len - 1) < pos))
-        lines.get().push(pos);
+        let line_len = lines.len();
+        assert!(line_len == 0 || (*lines.get(line_len - 1) < pos))
+        lines.push(pos);
     }
 
     // get a line from the list of pre-computed line-beginnings
     pub fn get_line(&self, line: int) -> ~str {
         let mut lines = self.lines.borrow_mut();
-        let begin: BytePos = *lines.get().get(line as uint) - self.start_pos;
+        let begin: BytePos = *lines.get(line as uint) - self.start_pos;
         let begin = begin.to_uint();
         let slice = self.src.slice_from(begin);
         match slice.find('\n') {
@@ -251,7 +251,7 @@ impl FileMap {
             pos: pos,
             bytes: bytes,
         };
-        self.multibyte_chars.borrow_mut().get().push(mbc);
+        self.multibyte_chars.borrow_mut().push(mbc);
     }
 
     pub fn is_real_file(&self) -> bool {
@@ -272,9 +272,9 @@ impl CodeMap {
 
     pub fn new_filemap(&self, filename: FileName, src: ~str) -> Rc<FileMap> {
         let mut files = self.files.borrow_mut();
-        let start_pos = match files.get().last() {
+        let start_pos = match files.last() {
             None => 0,
-            Some(last) => last.deref().start_pos.to_uint() + last.deref().src.len(),
+            Some(last) => last.start_pos.to_uint() + last.src.len(),
         };
 
         // Remove utf-8 BOM if any.
@@ -302,14 +302,14 @@ impl CodeMap {
             multibyte_chars: RefCell::new(Vec::new()),
         });
 
-        files.get().push(filemap.clone());
+        files.push(filemap.clone());
 
         filemap
     }
 
     pub fn mk_substr_filename(&self, sp: Span) -> ~str {
         let pos = self.lookup_char_pos(sp.lo);
-        format!("<{}:{}:{}>", pos.file.deref().name, pos.line, pos.col.to_uint() + 1)
+        format!("<{}:{}:{}>", pos.file.name, pos.line, pos.col.to_uint() + 1)
     }
 
     /// Lookup source information about a BytePos
@@ -320,7 +320,7 @@ impl CodeMap {
     pub fn lookup_char_pos_adj(&self, pos: BytePos) -> LocWithOpt {
         let loc = self.lookup_char_pos(pos);
         LocWithOpt {
-            filename: loc.file.deref().name.to_str(),
+            filename: loc.file.name.to_str(),
             line: loc.line,
             col: loc.col,
             file: Some(loc.file)
@@ -328,7 +328,7 @@ impl CodeMap {
     }
 
     pub fn span_to_str(&self, sp: Span) -> ~str {
-        if self.files.borrow().get().len() == 0 && sp == DUMMY_SP {
+        if self.files.borrow().len() == 0 && sp == DUMMY_SP {
             return ~"no-location";
         }
 
@@ -339,7 +339,7 @@ impl CodeMap {
     }
 
     pub fn span_to_filename(&self, sp: Span) -> FileName {
-        self.lookup_char_pos(sp.lo).file.deref().name.to_str()
+        self.lookup_char_pos(sp.lo).file.name.to_str()
     }
 
     pub fn span_to_lines(&self, sp: Span) -> FileLines {
@@ -360,16 +360,16 @@ impl CodeMap {
         // it's testing isn't true for all spans in the AST, so to allow the
         // caller to not have to fail (and it can't catch it since the CodeMap
         // isn't sendable), return None
-        if begin.fm.deref().start_pos != end.fm.deref().start_pos {
+        if begin.fm.start_pos != end.fm.start_pos {
             None
         } else {
-            Some(begin.fm.deref().src.slice( begin.pos.to_uint(), end.pos.to_uint()).to_owned())
+            Some(begin.fm.src.slice( begin.pos.to_uint(), end.pos.to_uint()).to_owned())
         }
     }
 
     pub fn get_filemap(&self, filename: &str) -> Rc<FileMap> {
-        for fm in self.files.borrow().get().iter() {
-            if filename == fm.deref().name {
+        for fm in self.files.borrow().iter() {
+            if filename == fm.name {
                 return fm.clone();
             }
         }
@@ -378,13 +378,13 @@ impl CodeMap {
 
     fn lookup_filemap_idx(&self, pos: BytePos) -> uint {
         let files = self.files.borrow();
-        let files = files.get();
+        let files = files;
         let len = files.len();
         let mut a = 0u;
         let mut b = len;
         while b - a > 1u {
             let m = (a + b) / 2u;
-            if files.get(m).deref().start_pos > pos {
+            if files.get(m).start_pos > pos {
                 b = m;
             } else {
                 a = m;
@@ -394,8 +394,8 @@ impl CodeMap {
         // filemap, but are not the filemaps we want (because they are length 0, they cannot
         // contain what we are looking for). So, rewind until we find a useful filemap.
         loop {
-            let lines = files.get(a).deref().lines.borrow();
-            let lines = lines.get();
+            let lines = files.get(a).lines.borrow();
+            let lines = lines;
             if lines.len() > 0 {
                 break;
             }
@@ -415,14 +415,14 @@ impl CodeMap {
         let idx = self.lookup_filemap_idx(pos);
 
         let files = self.files.borrow();
-        let f = files.get().get(idx).clone();
+        let f = files.get(idx).clone();
         let mut a = 0u;
         {
-            let mut lines = f.deref().lines.borrow_mut();
-            let mut b = lines.get().len();
+            let mut lines = f.lines.borrow_mut();
+            let mut b = lines.len();
             while b - a > 1u {
                 let m = (a + b) / 2u;
-                if *lines.get().get(m) > pos { b = m; } else { a = m; }
+                if *lines.get(m) > pos { b = m; } else { a = m; }
             }
         }
         FileMapAndLine {fm: f, line: a}
@@ -432,7 +432,7 @@ impl CodeMap {
         let FileMapAndLine {fm: f, line: a} = self.lookup_line(pos);
         let line = a + 1u; // Line numbers start at 1
         let chpos = self.bytepos_to_file_charpos(pos);
-        let linebpos = *f.deref().lines.borrow().get().get(a);
+        let linebpos = *f.lines.borrow().get(a);
         let linechpos = self.bytepos_to_file_charpos(linebpos);
         debug!("codemap: byte pos {:?} is on the line at byte pos {:?}",
                pos, linebpos);
@@ -449,8 +449,8 @@ impl CodeMap {
 
     fn lookup_byte_offset(&self, bpos: BytePos) -> FileMapAndBytePos {
         let idx = self.lookup_filemap_idx(bpos);
-        let fm = self.files.borrow().get().get(idx).clone();
-        let offset = bpos - fm.deref().start_pos;
+        let fm = self.files.borrow().get(idx).clone();
+        let offset = bpos - fm.start_pos;
         FileMapAndBytePos {fm: fm, pos: offset}
     }
 
@@ -459,12 +459,12 @@ impl CodeMap {
         debug!("codemap: converting {:?} to char pos", bpos);
         let idx = self.lookup_filemap_idx(bpos);
         let files = self.files.borrow();
-        let map = files.get().get(idx);
+        let map = files.get(idx);
 
         // The number of extra bytes due to multibyte chars in the FileMap
         let mut total_extra_bytes = 0;
 
-        for mbc in map.deref().multibyte_chars.borrow().get().iter() {
+        for mbc in map.multibyte_chars.borrow().iter() {
             debug!("codemap: {:?}-byte char at {:?}", mbc.bytes, mbc.pos);
             if mbc.pos < bpos {
                 // every character is at least one byte, so we only
@@ -478,8 +478,8 @@ impl CodeMap {
             }
         }
 
-        assert!(map.deref().start_pos.to_uint() + total_extra_bytes <= bpos.to_uint());
-        CharPos(bpos.to_uint() - map.deref().start_pos.to_uint() - total_extra_bytes)
+        assert!(map.start_pos.to_uint() + total_extra_bytes <= bpos.to_uint());
+        CharPos(bpos.to_uint() - map.start_pos.to_uint() - total_extra_bytes)
     }
 }
 

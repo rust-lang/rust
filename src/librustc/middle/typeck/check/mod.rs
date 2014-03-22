@@ -355,13 +355,11 @@ impl<'a> GatherLocalsVisitor<'a> {
                     // infer the variable's type
                     let var_id = self.fcx.infcx().next_ty_var_id();
                     let var_ty = ty::mk_var(self.fcx.tcx(), var_id);
-                    let mut locals = self.fcx.inh.locals.borrow_mut();
-                    locals.get().insert(nid, var_ty);
+                    self.fcx.inh.locals.borrow_mut().insert(nid, var_ty);
                 }
                 Some(typ) => {
                     // take type that the user specified
-                    let mut locals = self.fcx.inh.locals.borrow_mut();
-                    locals.get().insert(nid, typ);
+                    self.fcx.inh.locals.borrow_mut().insert(nid, typ);
                 }
             }
     }
@@ -375,13 +373,10 @@ impl<'a> Visitor<()> for GatherLocalsVisitor<'a> {
               _ => Some(self.fcx.to_ty(local.ty))
             };
             self.assign(local.id, o_ty);
-            {
-                let locals = self.fcx.inh.locals.borrow();
-                debug!("Local variable {} is assigned type {}",
-                       self.fcx.pat_to_str(local.pat),
-                       self.fcx.infcx().ty_to_str(
-                           locals.get().get_copy(&local.id)));
-            }
+            debug!("Local variable {} is assigned type {}",
+                   self.fcx.pat_to_str(local.pat),
+                   self.fcx.infcx().ty_to_str(
+                       self.fcx.inh.locals.borrow().get_copy(&local.id)));
             visit::walk_local(self, local, ());
 
     }
@@ -391,13 +386,10 @@ impl<'a> Visitor<()> for GatherLocalsVisitor<'a> {
               ast::PatIdent(_, ref path, _)
                   if pat_util::pat_is_binding(self.fcx.ccx.tcx.def_map, p) => {
                 self.assign(p.id, None);
-                {
-                    let locals = self.fcx.inh.locals.borrow();
-                    debug!("Pattern binding {} is assigned to {}",
-                           token::get_ident(path.segments.get(0).identifier),
-                           self.fcx.infcx().ty_to_str(
-                               locals.get().get_copy(&p.id)));
-                }
+                debug!("Pattern binding {} is assigned to {}",
+                       token::get_ident(path.segments.get(0).identifier),
+                       self.fcx.infcx().ty_to_str(
+                           self.fcx.inh.locals.borrow().get_copy(&p.id)));
               }
               _ => {}
             }
@@ -573,7 +565,7 @@ pub fn check_item(ccx: &CrateCtxt, it: &ast::Item) {
                 fn_tpt.generics.type_param_defs(),
                 [],
                 [],
-                fn_tpt.generics.region_param_defs.deref().as_slice(),
+                fn_tpt.generics.region_param_defs.as_slice(),
                 body.id);
 
         check_bare_fn(ccx, decl, body, it.id, fn_tpt.ty, param_env);
@@ -1007,8 +999,7 @@ impl<'a> FnCtxt<'a> {
     }
 
     pub fn local_ty(&self, span: Span, nid: ast::NodeId) -> ty::t {
-        let locals = self.inh.locals.borrow();
-        match locals.get().find(&nid) {
+        match self.inh.locals.borrow().find(&nid) {
             Some(&t) => t,
             None => {
                 self.tcx().sess.span_bug(
@@ -1026,8 +1017,7 @@ impl<'a> FnCtxt<'a> {
     pub fn write_ty(&self, node_id: ast::NodeId, ty: ty::t) {
         debug!("write_ty({}, {}) in fcx {}",
                node_id, ppaux::ty_to_str(self.tcx(), ty), self.tag());
-        let mut node_types = self.inh.node_types.borrow_mut();
-        node_types.get().insert(node_id, ty);
+        self.inh.node_types.borrow_mut().insert(node_id, ty);
     }
 
     pub fn write_substs(&self, node_id: ast::NodeId, substs: ty::substs) {
@@ -1037,8 +1027,7 @@ impl<'a> FnCtxt<'a> {
                    ty::substs_to_str(self.tcx(), &substs),
                    self.tag());
 
-            let mut node_type_substs = self.inh.node_type_substs.borrow_mut();
-            node_type_substs.get().insert(node_id, substs);
+            self.inh.node_type_substs.borrow_mut().insert(node_id, substs);
         }
     }
 
@@ -1067,8 +1056,7 @@ impl<'a> FnCtxt<'a> {
                             node_id: ast::NodeId,
                             adj: @ty::AutoAdjustment) {
         debug!("write_adjustment(node_id={:?}, adj={:?})", node_id, adj);
-        let mut adjustments = self.inh.adjustments.borrow_mut();
-        adjustments.get().insert(node_id, adj);
+        self.inh.adjustments.borrow_mut().insert(node_id, adj);
     }
 
     pub fn write_nil(&self, node_id: ast::NodeId) {
@@ -1090,8 +1078,7 @@ impl<'a> FnCtxt<'a> {
     }
 
     pub fn expr_ty(&self, ex: &ast::Expr) -> ty::t {
-        let node_types = self.inh.node_types.borrow();
-        match node_types.get().find(&ex.id) {
+        match self.inh.node_types.borrow().find(&ex.id) {
             Some(&t) => t,
             None => {
                 self.tcx().sess.bug(format!("no type for expr in fcx {}",
@@ -1101,7 +1088,7 @@ impl<'a> FnCtxt<'a> {
     }
 
     pub fn node_ty(&self, id: ast::NodeId) -> ty::t {
-        match self.inh.node_types.borrow().get().find(&id) {
+        match self.inh.node_types.borrow().find(&id) {
             Some(&t) => t,
             None => {
                 self.tcx().sess.bug(
@@ -1113,7 +1100,7 @@ impl<'a> FnCtxt<'a> {
     }
 
     pub fn node_ty_substs(&self, id: ast::NodeId) -> ty::substs {
-        match self.inh.node_type_substs.borrow().get().find(&id) {
+        match self.inh.node_type_substs.borrow().find(&id) {
             Some(ts) => (*ts).clone(),
             None => {
                 self.tcx().sess.bug(
@@ -1125,7 +1112,7 @@ impl<'a> FnCtxt<'a> {
     }
 
     pub fn method_ty_substs(&self, id: ast::NodeId) -> ty::substs {
-        match self.inh.method_map.borrow().get().find(&MethodCall::expr(id)) {
+        match self.inh.method_map.borrow().find(&MethodCall::expr(id)) {
             Some(method) => method.substs.clone(),
             None => {
                 self.tcx().sess.bug(
@@ -1140,8 +1127,7 @@ impl<'a> FnCtxt<'a> {
                               id: ast::NodeId,
                               f: |&ty::substs| -> bool)
                               -> bool {
-        let node_type_substs = self.inh.node_type_substs.borrow();
-        match node_type_substs.get().find(&id) {
+        match self.inh.node_type_substs.borrow().find(&id) {
             Some(s) => f(s),
             None => true
         }
@@ -1327,7 +1313,7 @@ fn try_overloaded_deref(fcx: &FnCtxt,
             let ref_ty = ty::ty_fn_ret(method.ty);
             match method_call {
                 Some(method_call) => {
-                    fcx.inh.method_map.borrow_mut().get().insert(method_call, method);
+                    fcx.inh.method_map.borrow_mut().insert(method_call, method);
                 }
                 None => {}
             }
@@ -1908,7 +1894,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
             Some(method) => {
                 let method_ty = method.ty;
                 let method_call = MethodCall::expr(expr.id);
-                fcx.inh.method_map.borrow_mut().get().insert(method_call, method);
+                fcx.inh.method_map.borrow_mut().insert(method_call, method);
                 method_ty
             }
             None => {
@@ -1998,7 +1984,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                 let method_ty = method.ty;
                 // HACK(eddyb) Fully qualified path to work around a resolve bug.
                 let method_call = ::middle::typeck::MethodCall::expr(op_ex.id);
-                fcx.inh.method_map.borrow_mut().get().insert(method_call, method);
+                fcx.inh.method_map.borrow_mut().insert(method_call, method);
                 check_method_argument_types(fcx, op_ex.span,
                                             method_ty, op_ex,
                                             args, DoDerefArgs)
@@ -3131,8 +3117,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
       }
       ast::ExprStruct(ref path, ref fields, base_expr) => {
         // Resolve the path.
-        let def_map = tcx.def_map.borrow();
-        match def_map.get().find(&id) {
+        match tcx.def_map.borrow().find(&id) {
             Some(&ast::DefStruct(type_def_id)) => {
                 check_struct_constructor(fcx, id, expr.span, type_def_id,
                                          fields.as_slice(), base_expr);
@@ -3323,8 +3308,8 @@ pub fn check_block_with_expected(fcx: &FnCtxt,
                                  expected: Option<ty::t>) {
     let prev = {
         let mut fcx_ps = fcx.ps.borrow_mut();
-        let purity_state = fcx_ps.get().recurse(blk);
-        replace(fcx_ps.get(), purity_state)
+        let purity_state = fcx_ps.recurse(blk);
+        replace(&mut *fcx_ps, purity_state)
     };
 
     fcx.with_region_lb(blk.id, || {
@@ -3394,10 +3379,7 @@ pub fn check_const(ccx: &CrateCtxt,
     let inh = blank_inherited_fields(ccx);
     let rty = ty::node_id_to_type(ccx.tcx, id);
     let fcx = blank_fn_ctxt(ccx, &inh, rty, e.id);
-    let declty = {
-        let tcache = fcx.ccx.tcx.tcache.borrow();
-        tcache.get().get(&local_def(id)).ty
-    };
+    let declty = fcx.ccx.tcx.tcache.borrow().get(&local_def(id)).ty;
     check_const_with_ty(&fcx, sp, e, declty);
 }
 
@@ -3608,10 +3590,7 @@ pub fn check_enum_variants(ccx: &CrateCtxt,
     let variants = do_check(ccx, vs, id, hint);
 
     // cache so that ty::enum_variants won't repeat this work
-    {
-        let mut enum_var_cache = ccx.tcx.enum_var_cache.borrow_mut();
-        enum_var_cache.get().insert(local_def(id), @variants);
-    }
+    ccx.tcx.enum_var_cache.borrow_mut().insert(local_def(id), @variants);
 
     // Check that it is possible to represent this enum.
     check_representable(ccx.tcx, sp, id, "enum");
@@ -3719,7 +3698,7 @@ pub fn instantiate_path(fcx: &FnCtxt,
                         nsupplied = num_supplied_regions));
         }
 
-        fcx.infcx().region_vars_for_defs(span, tpt.generics.region_param_defs.deref().as_slice())
+        fcx.infcx().region_vars_for_defs(span, tpt.generics.region_param_defs.as_slice())
     };
     let regions = ty::NonerasedRegions(regions);
 
@@ -3958,8 +3937,7 @@ pub fn may_break(cx: &ty::ctxt, id: ast::NodeId, b: ast::P<ast::Block>) -> bool 
     (block_query(b, |e| {
         match e.node {
             ast::ExprBreak(Some(_)) => {
-                let def_map = cx.def_map.borrow();
-                match def_map.get().find(&e.id) {
+                match cx.def_map.borrow().find(&e.id) {
                     Some(&ast::DefLabel(loop_id)) if id == loop_id => true,
                     _ => false,
                 }

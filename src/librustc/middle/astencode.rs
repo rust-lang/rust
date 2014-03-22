@@ -958,89 +958,63 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
 
     debug!("Encoding side tables for id {}", id);
 
-    {
-        let def_map = tcx.def_map.borrow();
-        let r = def_map.get().find(&id);
-        for def in r.iter() {
-            ebml_w.tag(c::tag_table_def, |ebml_w| {
-                ebml_w.id(id);
-                ebml_w.tag(c::tag_table_val, |ebml_w| (*def).encode(ebml_w));
-            })
-        }
+    for def in tcx.def_map.borrow().find(&id).iter() {
+        ebml_w.tag(c::tag_table_def, |ebml_w| {
+            ebml_w.id(id);
+            ebml_w.tag(c::tag_table_val, |ebml_w| (*def).encode(ebml_w));
+        })
     }
 
-    {
-        let node_types = tcx.node_types.borrow();
-        let r = node_types.get().find(&(id as uint));
-        for &ty in r.iter() {
-            ebml_w.tag(c::tag_table_node_type, |ebml_w| {
-                ebml_w.id(id);
-                ebml_w.tag(c::tag_table_val, |ebml_w| {
-                    ebml_w.emit_ty(ecx, *ty);
-                })
+    for &ty in tcx.node_types.borrow().find(&(id as uint)).iter() {
+        ebml_w.tag(c::tag_table_node_type, |ebml_w| {
+            ebml_w.id(id);
+            ebml_w.tag(c::tag_table_val, |ebml_w| {
+                ebml_w.emit_ty(ecx, *ty);
             })
-        }
+        })
     }
 
-    {
-        let node_type_substs = tcx.node_type_substs.borrow();
-        let r = node_type_substs.get().find(&id);
-        for tys in r.iter() {
-            ebml_w.tag(c::tag_table_node_type_subst, |ebml_w| {
-                ebml_w.id(id);
-                ebml_w.tag(c::tag_table_val, |ebml_w| {
-                    ebml_w.emit_tys(ecx, tys.as_slice())
-                })
+    for tys in tcx.node_type_substs.borrow().find(&id).iter() {
+        ebml_w.tag(c::tag_table_node_type_subst, |ebml_w| {
+            ebml_w.id(id);
+            ebml_w.tag(c::tag_table_val, |ebml_w| {
+                ebml_w.emit_tys(ecx, tys.as_slice())
             })
-        }
+        })
     }
 
-    {
-        let freevars = tcx.freevars.borrow();
-        let r = freevars.get().find(&id);
-        for &fv in r.iter() {
-            ebml_w.tag(c::tag_table_freevars, |ebml_w| {
-                ebml_w.id(id);
-                ebml_w.tag(c::tag_table_val, |ebml_w| {
-                    ebml_w.emit_from_vec(fv.as_slice(), |ebml_w, fv_entry| {
-                        encode_freevar_entry(ebml_w, *fv_entry)
-                    })
+    for &fv in tcx.freevars.borrow().find(&id).iter() {
+        ebml_w.tag(c::tag_table_freevars, |ebml_w| {
+            ebml_w.id(id);
+            ebml_w.tag(c::tag_table_val, |ebml_w| {
+                ebml_w.emit_from_vec(fv.as_slice(), |ebml_w, fv_entry| {
+                    encode_freevar_entry(ebml_w, *fv_entry)
                 })
             })
-        }
+        })
     }
 
     let lid = ast::DefId { krate: ast::LOCAL_CRATE, node: id };
-    {
-        let tcache = tcx.tcache.borrow();
-        let r = tcache.get().find(&lid);
-        for &tpbt in r.iter() {
-            ebml_w.tag(c::tag_table_tcache, |ebml_w| {
-                ebml_w.id(id);
-                ebml_w.tag(c::tag_table_val, |ebml_w| {
-                    ebml_w.emit_tpbt(ecx, tpbt.clone());
-                })
+    for &tpbt in tcx.tcache.borrow().find(&lid).iter() {
+        ebml_w.tag(c::tag_table_tcache, |ebml_w| {
+            ebml_w.id(id);
+            ebml_w.tag(c::tag_table_val, |ebml_w| {
+                ebml_w.emit_tpbt(ecx, tpbt.clone());
             })
-        }
+        })
     }
 
-    {
-        let r = {
-            let ty_param_defs = tcx.ty_param_defs.borrow();
-            ty_param_defs.get().find(&id).map(|def| *def)
-        };
-        for type_param_def in r.iter() {
-            ebml_w.tag(c::tag_table_param_defs, |ebml_w| {
-                ebml_w.id(id);
-                ebml_w.tag(c::tag_table_val, |ebml_w| {
-                    ebml_w.emit_type_param_def(ecx, type_param_def)
-                })
+    for &type_param_def in tcx.ty_param_defs.borrow().find(&id).iter() {
+        ebml_w.tag(c::tag_table_param_defs, |ebml_w| {
+            ebml_w.id(id);
+            ebml_w.tag(c::tag_table_val, |ebml_w| {
+                ebml_w.emit_type_param_def(ecx, type_param_def)
             })
-        }
+        })
     }
 
     let method_call = MethodCall::expr(id);
-    for &method in maps.method_map.borrow().get().find(&method_call).iter() {
+    for &method in maps.method_map.borrow().find(&method_call).iter() {
         ebml_w.tag(c::tag_table_method_map, |ebml_w| {
             ebml_w.id(id);
             ebml_w.tag(c::tag_table_val, |ebml_w| {
@@ -1049,38 +1023,29 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
         })
     }
 
-    {
-        let vtable_map = maps.vtable_map.borrow();
-        let r = vtable_map.get().find(&id);
-        for &dr in r.iter() {
-            ebml_w.tag(c::tag_table_vtable_map, |ebml_w| {
-                ebml_w.id(id);
-                ebml_w.tag(c::tag_table_val, |ebml_w| {
-                    encode_vtable_res(ecx, ebml_w, *dr);
-                })
+    for &dr in maps.vtable_map.borrow().find(&id).iter() {
+        ebml_w.tag(c::tag_table_vtable_map, |ebml_w| {
+            ebml_w.id(id);
+            ebml_w.tag(c::tag_table_val, |ebml_w| {
+                encode_vtable_res(ecx, ebml_w, *dr);
             })
-        }
+        })
     }
 
-    {
-        let adjustments = tcx.adjustments.borrow();
-        let r = adjustments.get().find(&id);
-        for adj in r.iter() {
-            ebml_w.tag(c::tag_table_adjustments, |ebml_w| {
-                ebml_w.id(id);
-                ebml_w.tag(c::tag_table_val, |ebml_w| {
-                    ebml_w.emit_auto_adjustment(ecx, **adj);
-                })
+    for adj in tcx.adjustments.borrow().find(&id).iter() {
+        ebml_w.tag(c::tag_table_adjustments, |ebml_w| {
+            ebml_w.id(id);
+            ebml_w.tag(c::tag_table_val, |ebml_w| {
+                ebml_w.emit_auto_adjustment(ecx, **adj);
             })
-        }
+        })
     }
 
-    for &cap_vars in maps.capture_map.borrow().get().find(&id).iter() {
+    for &cap_vars in maps.capture_map.borrow().find(&id).iter() {
         ebml_w.tag(c::tag_table_capture_map, |ebml_w| {
             ebml_w.id(id);
             ebml_w.tag(c::tag_table_val, |ebml_w| {
-                ebml_w.emit_from_vec(cap_vars.deref().as_slice(),
-                                        |ebml_w, cap_var| {
+                ebml_w.emit_from_vec(cap_vars.as_slice(), |ebml_w, cap_var| {
                     cap_var.encode(ebml_w);
                 })
             })
@@ -1343,71 +1308,54 @@ fn decode_side_tables(xcx: &ExtendedDecodeContext,
                 match value {
                     c::tag_table_def => {
                         let def = decode_def(xcx, val_doc);
-                        let mut def_map = dcx.tcx.def_map.borrow_mut();
-                        def_map.get().insert(id, def);
+                        dcx.tcx.def_map.borrow_mut().insert(id, def);
                     }
                     c::tag_table_node_type => {
                         let ty = val_dsr.read_ty(xcx);
                         debug!("inserting ty for node {:?}: {}",
                                id, ty_to_str(dcx.tcx, ty));
-                        let mut node_types = dcx.tcx.node_types.borrow_mut();
-                        node_types.get().insert(id as uint, ty);
+                        dcx.tcx.node_types.borrow_mut().insert(id as uint, ty);
                     }
                     c::tag_table_node_type_subst => {
                         let tys = val_dsr.read_tys(xcx);
-                        let mut node_type_substs = dcx.tcx
-                                                      .node_type_substs
-                                                      .borrow_mut();
-                        node_type_substs.get().insert(id, tys);
+                        dcx.tcx.node_type_substs.borrow_mut().insert(id, tys);
                     }
                     c::tag_table_freevars => {
                         let fv_info = @val_dsr.read_to_vec(|val_dsr| {
                             @val_dsr.read_freevar_entry(xcx)
                         }).move_iter().collect();
-                        let mut freevars = dcx.tcx.freevars.borrow_mut();
-                        freevars.get().insert(id, fv_info);
+                        dcx.tcx.freevars.borrow_mut().insert(id, fv_info);
                     }
                     c::tag_table_tcache => {
                         let tpbt = val_dsr.read_ty_param_bounds_and_ty(xcx);
                         let lid = ast::DefId { krate: ast::LOCAL_CRATE, node: id };
-                        let mut tcache = dcx.tcx.tcache.borrow_mut();
-                        tcache.get().insert(lid, tpbt);
+                        dcx.tcx.tcache.borrow_mut().insert(lid, tpbt);
                     }
                     c::tag_table_param_defs => {
                         let bounds = val_dsr.read_type_param_def(xcx);
-                        let mut ty_param_defs = dcx.tcx
-                                                   .ty_param_defs
-                                                   .borrow_mut();
-                        ty_param_defs.get().insert(id, bounds);
+                        dcx.tcx.ty_param_defs.borrow_mut().insert(id, bounds);
                     }
                     c::tag_table_method_map => {
                         let method = val_dsr.read_method_callee(xcx);
                         let method_call = MethodCall::expr(id);
-                        dcx.maps.method_map.borrow_mut().get().insert(method_call, method);
+                        dcx.maps.method_map.borrow_mut().insert(method_call, method);
                     }
                     c::tag_table_vtable_map => {
                         let vtable_res =
                             val_dsr.read_vtable_res(xcx.dcx.tcx,
                                                     xcx.dcx.cdata);
-                        let mut vtable_map = dcx.maps.vtable_map.borrow_mut();
-                        vtable_map.get().insert(id, vtable_res);
+                        dcx.maps.vtable_map.borrow_mut().insert(id, vtable_res);
                     }
                     c::tag_table_adjustments => {
                         let adj: @ty::AutoAdjustment = @val_dsr.read_auto_adjustment(xcx);
-                        let mut adjustments = dcx.tcx
-                                                 .adjustments
-                                                 .borrow_mut();
-                        adjustments.get().insert(id, adj);
+                        dcx.tcx.adjustments.borrow_mut().insert(id, adj);
                     }
                     c::tag_table_capture_map => {
                         let cvars =
                                 val_dsr.read_to_vec(|val_dsr| val_dsr.read_capture_var(xcx))
                                        .move_iter()
                                        .collect();
-                        let mut capture_map = dcx.maps
-                                                 .capture_map
-                                                 .borrow_mut();
-                        capture_map.get().insert(id, Rc::new(cvars));
+                        dcx.maps.capture_map.borrow_mut().insert(id, Rc::new(cvars));
                     }
                     _ => {
                         xcx.dcx.tcx.sess.bug(

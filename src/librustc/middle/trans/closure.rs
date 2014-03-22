@@ -317,10 +317,7 @@ fn load_environment<'a>(bcx: &'a Block<'a>, cdata_ty: ty::t,
         }
         let def_id = ast_util::def_id_of_def(cap_var.def);
 
-        {
-            let mut llupvars = bcx.fcx.llupvars.borrow_mut();
-            llupvars.get().insert(def_id.node, upvarptr);
-        }
+        bcx.fcx.llupvars.borrow_mut().insert(def_id.node, upvarptr);
 
         for &env_pointer_alloca in env_pointer_alloca.iter() {
             debuginfo::create_captured_var_metadata(
@@ -395,13 +392,13 @@ pub fn trans_expr_fn<'a>(
     // set an inline hint for all closures
     set_inline_hint(llfn);
 
-    let cap_vars = ccx.maps.capture_map.borrow().get().get_copy(&id);
+    let cap_vars = ccx.maps.capture_map.borrow().get_copy(&id);
     let ClosureResult {llbox, cdata_ty, bcx} =
-        build_closure(bcx, cap_vars.deref().as_slice(), sigil);
+        build_closure(bcx, cap_vars.as_slice(), sigil);
     trans_closure(ccx, decl, body, llfn,
                   bcx.fcx.param_substs, id,
                   [], ty::ty_fn_ret(fty),
-                  |bcx| load_environment(bcx, cdata_ty, cap_vars.deref().as_slice(), sigil));
+                  |bcx| load_environment(bcx, cdata_ty, cap_vars.as_slice(), sigil));
     fill_fn_pair(bcx, dest_addr, llfn, llbox);
 
     bcx
@@ -423,12 +420,9 @@ pub fn get_wrapper_for_bare_fn(ccx: &CrateContext,
         }
     };
 
-    {
-        let cache = ccx.closure_bare_wrapper_cache.borrow();
-        match cache.get().find(&fn_ptr) {
-            Some(&llval) => return llval,
-            None => {}
-        }
+    match ccx.closure_bare_wrapper_cache.borrow().find(&fn_ptr) {
+        Some(&llval) => return llval,
+        None => {}
     }
 
     let tcx = ccx.tcx();
@@ -457,10 +451,7 @@ pub fn get_wrapper_for_bare_fn(ccx: &CrateContext,
         decl_rust_fn(ccx, true, f.sig.inputs.as_slice(), f.sig.output, name)
     };
 
-    {
-        let mut cache = ccx.closure_bare_wrapper_cache.borrow_mut();
-        cache.get().insert(fn_ptr, llfn);
-    }
+    ccx.closure_bare_wrapper_cache.borrow_mut().insert(fn_ptr, llfn);
 
     // This is only used by statics inlined from a different crate.
     if !is_local {

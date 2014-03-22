@@ -183,48 +183,40 @@ impl MoveData {
     }
 
     fn path_loan_path(&self, index: MovePathIndex) -> @LoanPath {
-        let paths = self.paths.borrow();
-        paths.get().get(index.get()).loan_path
+        self.paths.borrow().get(index.get()).loan_path
     }
 
     fn path_parent(&self, index: MovePathIndex) -> MovePathIndex {
-        let paths = self.paths.borrow();
-        paths.get().get(index.get()).parent
+        self.paths.borrow().get(index.get()).parent
     }
 
     fn path_first_move(&self, index: MovePathIndex) -> MoveIndex {
-        let paths = self.paths.borrow();
-        paths.get().get(index.get()).first_move
+        self.paths.borrow().get(index.get()).first_move
     }
 
     fn path_first_child(&self, index: MovePathIndex) -> MovePathIndex {
-        let paths = self.paths.borrow();
-        paths.get().get(index.get()).first_child
+        self.paths.borrow().get(index.get()).first_child
     }
 
     fn path_next_sibling(&self, index: MovePathIndex) -> MovePathIndex {
-        let paths = self.paths.borrow();
-        paths.get().get(index.get()).next_sibling
+        self.paths.borrow().get(index.get()).next_sibling
     }
 
     fn set_path_first_move(&self,
                            index: MovePathIndex,
                            first_move: MoveIndex) {
-        let mut paths = self.paths.borrow_mut();
-        paths.get().get_mut(index.get()).first_move = first_move
+        self.paths.borrow_mut().get_mut(index.get()).first_move = first_move
     }
 
     fn set_path_first_child(&self,
                             index: MovePathIndex,
                             first_child: MovePathIndex) {
-        let mut paths = self.paths.borrow_mut();
-        paths.get().get_mut(index.get()).first_child = first_child
+        self.paths.borrow_mut().get_mut(index.get()).first_child = first_child
     }
 
     fn move_next_move(&self, index: MoveIndex) -> MoveIndex {
         //! Type safe indexing operator
-        let moves = self.moves.borrow();
-        moves.get().get(index.get()).next_move
+        self.moves.borrow().get(index.get()).next_move
     }
 
     fn is_var_path(&self, index: MovePathIndex) -> bool {
@@ -241,22 +233,18 @@ impl MoveData {
          * base paths that do not yet have an index.
          */
 
-        {
-            let path_map = self.path_map.borrow();
-            match path_map.get().find(&lp) {
-                Some(&index) => {
-                    return index;
-                }
-                None => {}
+        match self.path_map.borrow().find(&lp) {
+            Some(&index) => {
+                return index;
             }
+            None => {}
         }
 
         let index = match *lp {
             LpVar(..) => {
-                let mut paths = self.paths.borrow_mut();
-                let index = MovePathIndex(paths.get().len());
+                let index = MovePathIndex(self.paths.borrow().len());
 
-                paths.get().push(MovePath {
+                self.paths.borrow_mut().push(MovePath {
                     loan_path: lp,
                     parent: InvalidMovePathIndex,
                     first_move: InvalidMoveIndex,
@@ -270,24 +258,18 @@ impl MoveData {
             LpExtend(base, _, _) => {
                 let parent_index = self.move_path(tcx, base);
 
-                let index = {
-                    let paths = self.paths.borrow();
-                    MovePathIndex(paths.get().len())
-                };
+                let index = MovePathIndex(self.paths.borrow().len());
 
                 let next_sibling = self.path_first_child(parent_index);
                 self.set_path_first_child(parent_index, index);
 
-                {
-                    let mut paths = self.paths.borrow_mut();
-                    paths.get().push(MovePath {
-                        loan_path: lp,
-                        parent: parent_index,
-                        first_move: InvalidMoveIndex,
-                        first_child: InvalidMovePathIndex,
-                        next_sibling: next_sibling,
-                    });
-                }
+                self.paths.borrow_mut().push(MovePath {
+                    loan_path: lp,
+                    parent: parent_index,
+                    first_move: InvalidMoveIndex,
+                    first_child: InvalidMovePathIndex,
+                    next_sibling: next_sibling,
+                });
 
                 index
             }
@@ -297,19 +279,15 @@ impl MoveData {
                lp.repr(tcx),
                index);
 
-        let paths = self.paths.borrow();
-        assert_eq!(index.get(), paths.get().len() - 1);
-
-        let mut path_map = self.path_map.borrow_mut();
-        path_map.get().insert(lp, index);
+        assert_eq!(index.get(), self.paths.borrow().len() - 1);
+        self.path_map.borrow_mut().insert(lp, index);
         return index;
     }
 
     fn existing_move_path(&self,
                           lp: @LoanPath)
                           -> Option<MovePathIndex> {
-        let path_map = self.path_map.borrow();
-        path_map.get().find_copy(&lp)
+        self.path_map.borrow().find_copy(&lp)
     }
 
     fn existing_base_paths(&self,
@@ -328,11 +306,7 @@ impl MoveData {
          * paths of `lp` to `result`, but does not add new move paths
          */
 
-        let index_opt = {
-            let path_map = self.path_map.borrow();
-            path_map.get().find_copy(&lp)
-        };
-        match index_opt {
+        match self.path_map.borrow().find_copy(&lp) {
             Some(index) => {
                 self.each_base_path(index, |p| {
                     result.push(p);
@@ -367,23 +341,17 @@ impl MoveData {
                kind);
 
         let path_index = self.move_path(tcx, lp);
-        let move_index = {
-            let moves = self.moves.borrow();
-            MoveIndex(moves.get().len())
-        };
+        let move_index = MoveIndex(self.moves.borrow().len());
 
         let next_move = self.path_first_move(path_index);
         self.set_path_first_move(path_index, move_index);
 
-        {
-            let mut moves = self.moves.borrow_mut();
-            moves.get().push(Move {
-                path: path_index,
-                id: id,
-                kind: kind,
-                next_move: next_move
-            });
-        }
+        self.moves.borrow_mut().push(Move {
+            path: path_index,
+            id: id,
+            kind: kind,
+            next_move: next_move
+        });
     }
 
     pub fn add_assignment(&self,
@@ -404,8 +372,7 @@ impl MoveData {
         let path_index = self.move_path(tcx, lp);
 
         if !is_also_move {
-            let mut assignee_ids = self.assignee_ids.borrow_mut();
-            assignee_ids.get().insert(assignee_id);
+            self.assignee_ids.borrow_mut().insert(assignee_id);
         }
 
         let assignment = Assignment {
@@ -415,19 +382,15 @@ impl MoveData {
         };
 
         if self.is_var_path(path_index) {
-            let mut var_assignments = self.var_assignments.borrow_mut();
             debug!("add_assignment[var](lp={}, assignment={}, path_index={:?})",
-                   lp.repr(tcx), var_assignments.get().len(), path_index);
+                   lp.repr(tcx), self.var_assignments.borrow().len(), path_index);
 
-            var_assignments.get().push(assignment);
+            self.var_assignments.borrow_mut().push(assignment);
         } else {
             debug!("add_assignment[path](lp={}, path_index={:?})",
                    lp.repr(tcx), path_index);
 
-            {
-                let mut path_assignments = self.path_assignments.borrow_mut();
-                path_assignments.get().push(assignment);
-            }
+            self.path_assignments.borrow_mut().push(assignment);
         }
     }
 
@@ -443,60 +406,42 @@ impl MoveData {
          * killed by scoping. See `doc.rs` for more details.
          */
 
-        {
-            let moves = self.moves.borrow();
-            for (i, move) in moves.get().iter().enumerate() {
-                dfcx_moves.add_gen(move.id, i);
-            }
+        for (i, move) in self.moves.borrow().iter().enumerate() {
+            dfcx_moves.add_gen(move.id, i);
         }
 
-        {
-            let var_assignments = self.var_assignments.borrow();
-            for (i, assignment) in var_assignments.get().iter().enumerate() {
-                dfcx_assign.add_gen(assignment.id, i);
-                self.kill_moves(assignment.path, assignment.id, dfcx_moves);
-            }
+        for (i, assignment) in self.var_assignments.borrow().iter().enumerate() {
+            dfcx_assign.add_gen(assignment.id, i);
+            self.kill_moves(assignment.path, assignment.id, dfcx_moves);
         }
 
-        {
-            let path_assignments = self.path_assignments.borrow();
-            for assignment in path_assignments.get().iter() {
-                self.kill_moves(assignment.path, assignment.id, dfcx_moves);
-            }
+        for assignment in self.path_assignments.borrow().iter() {
+            self.kill_moves(assignment.path, assignment.id, dfcx_moves);
         }
 
         // Kill all moves related to a variable `x` when it goes out
         // of scope:
-        {
-            let paths = self.paths.borrow();
-            for path in paths.get().iter() {
-                match *path.loan_path {
-                    LpVar(id) => {
-                        let kill_id = tcx.region_maps.var_scope(id);
-                        let path = {
-                            let path_map = self.path_map.borrow();
-                            *path_map.get().get(&path.loan_path)
-                        };
-                        self.kill_moves(path, kill_id, dfcx_moves);
-                    }
-                    LpExtend(..) => {}
+        for path in self.paths.borrow().iter() {
+            match *path.loan_path {
+                LpVar(id) => {
+                    let kill_id = tcx.region_maps.var_scope(id);
+                    let path = *self.path_map.borrow().get(&path.loan_path);
+                    self.kill_moves(path, kill_id, dfcx_moves);
                 }
+                LpExtend(..) => {}
             }
         }
 
         // Kill all assignments when the variable goes out of scope:
-        {
-            let var_assignments = self.var_assignments.borrow();
-            for (assignment_index, assignment) in
-                    var_assignments.get().iter().enumerate() {
-                match *self.path_loan_path(assignment.path) {
-                    LpVar(id) => {
-                        let kill_id = tcx.region_maps.var_scope(id);
-                        dfcx_assign.add_kill(kill_id, assignment_index);
-                    }
-                    LpExtend(..) => {
-                        tcx.sess.bug("var assignment for non var path");
-                    }
+        for (assignment_index, assignment) in
+                self.var_assignments.borrow().iter().enumerate() {
+            match *self.path_loan_path(assignment.path) {
+                LpVar(id) => {
+                    let kill_id = tcx.region_maps.var_scope(id);
+                    dfcx_assign.add_kill(kill_id, assignment_index);
+                }
+                LpExtend(..) => {
+                    tcx.sess.bug("var assignment for non var path");
                 }
             }
         }
@@ -570,22 +515,18 @@ impl<'a> FlowedMoveData<'a> {
                id_range: ast_util::IdRange,
                body: &ast::Block)
                -> FlowedMoveData<'a> {
-        let mut dfcx_moves = {
-            let moves = move_data.moves.borrow();
+        let mut dfcx_moves =
             DataFlowContext::new(tcx,
                                  method_map,
                                  MoveDataFlowOperator,
                                  id_range,
-                                 moves.get().len())
-        };
-        let mut dfcx_assign = {
-            let var_assignments = move_data.var_assignments.borrow();
+                                 move_data.moves.borrow().len());
+        let mut dfcx_assign =
             DataFlowContext::new(tcx,
                                  method_map,
                                  AssignDataFlowOperator,
                                  id_range,
-                                 var_assignments.get().len())
-        };
+                                 move_data.var_assignments.borrow().len());
         move_data.add_gen_kills(tcx, &mut dfcx_moves, &mut dfcx_assign);
         dfcx_moves.propagate(body);
         dfcx_assign.propagate(body);
@@ -605,8 +546,8 @@ impl<'a> FlowedMoveData<'a> {
          */
 
         self.dfcx_moves.each_gen_bit_frozen(id, |index| {
-            let moves = self.move_data.moves.borrow();
-            let move = moves.get().get(index);
+            let move = self.move_data.moves.borrow();
+            let move = move.get(index);
             let moved_path = move.path;
             f(move, self.move_data.path_loan_path(moved_path))
         })
@@ -644,8 +585,8 @@ impl<'a> FlowedMoveData<'a> {
         let mut ret = true;
 
         self.dfcx_moves.each_bit_on_entry_frozen(id, |index| {
-            let moves = self.move_data.moves.borrow();
-            let move = moves.get().get(index);
+            let move = self.move_data.moves.borrow();
+            let move = move.get(index);
             let moved_path = move.path;
             if base_indices.iter().any(|x| x == &moved_path) {
                 // Scenario 1 or 2: `loan_path` or some base path of
@@ -675,9 +616,7 @@ impl<'a> FlowedMoveData<'a> {
                        id: ast::NodeId)
                        -> bool {
         //! True if `id` is the id of the LHS of an assignment
-
-        let assignee_ids = self.move_data.assignee_ids.borrow();
-        assignee_ids.get().iter().any(|x| x == &id)
+        self.move_data.assignee_ids.borrow().iter().any(|x| x == &id)
     }
 
     pub fn each_assignment_of(&self,
@@ -702,8 +641,8 @@ impl<'a> FlowedMoveData<'a> {
         };
 
         self.dfcx_assign.each_bit_on_entry_frozen(id, |index| {
-            let var_assignments = self.move_data.var_assignments.borrow();
-            let assignment = var_assignments.get().get(index);
+            let assignment = self.move_data.var_assignments.borrow();
+            let assignment = assignment.get(index);
             if assignment.path == loan_path_index && !f(assignment) {
                 false
             } else {

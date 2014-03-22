@@ -471,7 +471,7 @@ mod test {
 
         {
             let mut a = a.borrow_mut();
-            a.get().next = Some(b);
+            a.next = Some(b);
         }
     }
 
