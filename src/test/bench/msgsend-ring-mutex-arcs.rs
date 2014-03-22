@@ -18,36 +18,28 @@
 extern crate sync;
 extern crate time;
 
-use sync::Arc;
-use sync::MutexArc;
-use sync::Future;
+use sync::{Arc, Future, Mutex};
 use std::os;
 use std::uint;
 
 // A poor man's pipe.
-type pipe = MutexArc<Vec<uint> >;
+type pipe = Arc<Mutex<Vec<uint>>>;
 
 fn send(p: &pipe, msg: uint) {
-    unsafe {
-        p.access_cond(|state, cond| {
-            state.push(msg);
-            cond.signal();
-        })
-    }
+    let mut arr = p.lock();
+    arr.push(msg);
+    arr.cond.signal();
 }
 fn recv(p: &pipe) -> uint {
-    unsafe {
-        p.access_cond(|state, cond| {
-            while state.is_empty() {
-                cond.wait();
-            }
-            state.pop().unwrap()
-        })
+    let mut arr = p.lock();
+    while arr.is_empty() {
+        arr.cond.wait();
     }
+    arr.pop().unwrap()
 }
 
 fn init() -> (pipe,pipe) {
-    let m = MutexArc::new(Vec::new());
+    let m = Arc::new(Mutex::new(Vec::new()));
     ((&m).clone(), m)
 }
 

@@ -22,7 +22,7 @@ fn foo(blk: ||) {
 fn main() {
     let x = Arc::new(true);
     foo(|| {
-        assert!(*x.get());
+        assert!(*x);
         drop(x); //~ ERROR cannot move out of captured outer variable
     })
 }

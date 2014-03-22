@@ -208,8 +208,8 @@ fn path(w: &mut io::Writer, path: &clean::Path, print_all: bool,
         let loc = loc.unwrap();
 
         local_data::get(cache_key, |cache| {
-            let cache = cache.unwrap().get();
-            let abs_root = root(cache, loc.as_slice());
+            let cache = cache.unwrap();
+            let abs_root = root(&**cache, loc.as_slice());
             let rel_root = match path.segments.get(0).name.as_slice() {
                 "self" => Some(~"./"),
                 _ => None,
@@ -241,7 +241,7 @@ fn path(w: &mut io::Writer, path: &clean::Path, print_all: bool,
                 }
             }
 
-            match info(cache) {
+            match info(&**cache) {
                 // This is a documented path, link to it!
                 Some((ref fqp, shortty)) if abs_root.is_some() => {
                     let mut url = abs_root.unwrap();
@@ -301,7 +301,7 @@ impl fmt::Show for clean::Type {
         match *self {
             clean::TyParamBinder(id) | clean::Generic(id) => {
                 local_data::get(cache_key, |cache| {
-                    let m = cache.unwrap().get();
+                    let m = cache.unwrap();
                     f.buf.write(m.typarams.get(&id).as_bytes())
                 })
             }

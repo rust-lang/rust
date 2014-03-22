@@ -85,20 +85,20 @@ pub fn main() {
 
 fn check_legs(arc: Arc<Vec<~Pet:Share+Send>>) {
     let mut legs = 0;
-    for pet in arc.get().iter() {
+    for pet in arc.iter() {
         legs += pet.num_legs();
     }
     assert!(legs == 12);
 }
 fn check_names(arc: Arc<Vec<~Pet:Share+Send>>) {
-    for pet in arc.get().iter() {
+    for pet in arc.iter() {
         pet.name(|name| {
             assert!(name[0] == 'a' as u8 && name[1] == 'l' as u8);
         })
     }
 }
 fn check_pedigree(arc: Arc<Vec<~Pet:Share+Send>>) {
-    for pet in arc.get().iter() {
+    for pet in arc.iter() {
         assert!(pet.of_good_pedigree());
     }
 }
