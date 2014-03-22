@@ -740,11 +740,16 @@ pub fn last_os_error() -> ~str {
                                      buf.len() as DWORD,
                                      ptr::null());
             if res == 0 {
-                fail!("[{}] FormatMessage failure", errno());
+                // Sometimes FormatMessageW can fail e.g. system doesn't like langId,
+                let fm_err = errno();
+                return format!("OS Error {} (FormatMessageW() returned error {})", err, fm_err);
             }
 
-            str::from_utf16(str::truncate_utf16_at_nul(buf))
-                .expect("FormatMessageW returned invalid UTF-16")
+            let msg = str::from_utf16(str::truncate_utf16_at_nul(buf));
+            match msg {
+                Some(msg) => format!("OS Error {}: {}", err, msg),
+                None => format!("OS Error {} (FormatMessageW() returned invalid UTF-16)", err),
+            }
         }
     }
 
