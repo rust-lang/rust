@@ -237,6 +237,7 @@ need_ok "failed to remove install probe"
 "${CFG_SRC_DIR}/bin/rustc" --version > /dev/null
 need_ok "can't run these binaries on this platform"
 
+
 # First, uninstall from the installation prefix
 # FIXME: Hardcoded 'rustlib' ignores CFG_RUSTLIBDIR
 if [ -f "${CFG_PREFIX}/lib/rustlib/manifest" ]
@@ -251,6 +252,12 @@ then
     msg "uninstall ${CFG_PREFIX}/lib/rustlib"
     rm -r "${CFG_PREFIX}/lib/rustlib"
     need_ok "failed to remove rustlib"
+else
+    if [ -n "${CFG_UNINSTALL}" ]
+    then
+        err "unable to find manifest at ${CFG_PREFIX}/lib/rustlib"
+        exit 0
+    fi
 fi
 
 # If we're only uninstalling then exit
