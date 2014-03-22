@@ -838,7 +838,6 @@ pub type BuiltinBounds = EnumSet<BuiltinBound>;
 pub enum BuiltinBound {
     BoundStatic,
     BoundSend,
-    BoundFreeze,
     BoundSized,
     BoundPod,
     BoundShare,
@@ -852,7 +851,6 @@ pub fn AllBuiltinBounds() -> BuiltinBounds {
     let mut set = EnumSet::empty();
     set.add(BoundStatic);
     set.add(BoundSend);
-    set.add(BoundFreeze);
     set.add(BoundSized);
     set.add(BoundShare);
     set
@@ -1892,9 +1890,6 @@ def_type_content_sets!(
         //       that it neither reaches nor owns a managed pointer.
         Nonsendable                         = 0b0000_0111__0000_0100__0000,
 
-        // Things that prevent values from being considered freezable
-        Nonfreezable                        = 0b0000_1000__0000_0000__0000,
-
         // Things that prevent values from being considered 'static
         Nonstatic                           = 0b0000_0010__0000_0000__0000,
 
@@ -1929,7 +1924,6 @@ impl TypeContents {
     pub fn meets_bound(&self, cx: &ctxt, bb: BuiltinBound) -> bool {
         match bb {
             BoundStatic => self.is_static(cx),
-            BoundFreeze => self.is_freezable(cx),
             BoundSend => self.is_sendable(cx),
             BoundSized => self.is_sized(cx),
             BoundPod => self.is_pod(cx),
@@ -1963,10 +1957,6 @@ impl TypeContents {
 
     pub fn owns_owned(&self) -> bool {
         self.intersects(TC::OwnsOwned)
-    }
-
-    pub fn is_freezable(&self, _: &ctxt) -> bool {
-        !self.intersects(TC::Nonfreezable)
     }
 
     pub fn is_sized(&self, _: &ctxt) -> bool {
@@ -2073,10 +2063,6 @@ pub fn type_is_sendable(cx: &ctxt, t: ty::t) -> bool {
     type_contents(cx, t).is_sendable(cx)
 }
 
-pub fn type_is_freezable(cx: &ctxt, t: ty::t) -> bool {
-    type_contents(cx, t).is_freezable(cx)
-}
-
 pub fn type_interior_is_unsafe(cx: &ctxt, t: ty::t) -> bool {
     type_contents(cx, t).interior_unsafe()
 }
@@ -2132,7 +2118,7 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
         cache.insert(ty_id, TC::None);
 
         let result = match get(ty).sty {
-            // Scalar and unique types are sendable, freezable, and durable
+            // Scalar and unique types are sendable, and durable
             ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
             ty_bare_fn(_) | ty::ty_char => {
                 TC::None
@@ -2270,9 +2256,7 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
                         did: ast::DefId,
                         tc: TypeContents)
                         -> TypeContents {
-        if Some(did) == cx.lang_items.no_freeze_bound() {
-            tc | TC::ReachesMutable
-        } else if Some(did) == cx.lang_items.no_send_bound() {
+        if Some(did) == cx.lang_items.no_send_bound() {
             tc | TC::ReachesNonsendAnnot
         } else if Some(did) == cx.lang_items.managed_bound() {
             tc | TC::Managed
@@ -2357,7 +2341,6 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
             tc = tc - match bound {
                 BoundStatic => TC::Nonstatic,
                 BoundSend => TC::Nonsendable,
-                BoundFreeze => TC::Nonfreezable,
                 BoundSized => TC::Nonsized,
                 BoundPod => TC::Nonpod,
                 BoundShare => TC::Nonsharable,

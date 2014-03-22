@@ -16,12 +16,12 @@
 // Mostly tests correctness of metadata.
 
 extern crate trait_superkinds_in_metadata;
-use trait_superkinds_in_metadata::{RequiresRequiresFreezeAndSend, RequiresFreeze};
+use trait_superkinds_in_metadata::{RequiresRequiresShareAndSend, RequiresShare};
 
 struct X<T>(T);
 
-impl <T:Freeze> RequiresFreeze for X<T> { }
+impl <T:Share> RequiresShare for X<T> { }
 
-impl <T:Freeze> RequiresRequiresFreezeAndSend for X<T> { } //~ ERROR cannot implement this trait
+impl <T:Share> RequiresRequiresShareAndSend for X<T> { } //~ ERROR cannot implement this trait
 
 fn main() { }

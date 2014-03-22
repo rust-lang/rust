@@ -291,7 +291,7 @@ pub struct Receiver<T> {
     priv inner: Flavor<T>,
     priv receives: Cell<uint>,
     // can't share in an arc
-    priv marker: marker::NoFreeze,
+    priv marker: marker::NoShare,
 }
 
 /// An iterator over messages on a receiver, this iterator will block
@@ -307,7 +307,7 @@ pub struct Sender<T> {
     priv inner: Flavor<T>,
     priv sends: Cell<uint>,
     // can't share in an arc
-    priv marker: marker::NoFreeze,
+    priv marker: marker::NoShare,
 }
 
 /// This enumeration is the list of the possible reasons that try_recv could not
@@ -340,7 +340,7 @@ pub fn channel<T: Send>() -> (Sender<T>, Receiver<T>) {
 
 impl<T: Send> Sender<T> {
     fn my_new(inner: Flavor<T>) -> Sender<T> {
-        Sender { inner: inner, sends: Cell::new(0), marker: marker::NoFreeze }
+        Sender { inner: inner, sends: Cell::new(0), marker: marker::NoShare }
     }
 
     /// Sends a value along this channel to be received by the corresponding
@@ -478,7 +478,7 @@ impl<T: Send> Drop for Sender<T> {
 
 impl<T: Send> Receiver<T> {
     fn my_new(inner: Flavor<T>) -> Receiver<T> {
-        Receiver { inner: inner, receives: Cell::new(0), marker: marker::NoFreeze }
+        Receiver { inner: inner, receives: Cell::new(0), marker: marker::NoShare }
     }
 
     /// Blocks waiting for a value on this receiver

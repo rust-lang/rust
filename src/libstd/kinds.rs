@@ -26,12 +26,6 @@ pub trait Send {
     // empty.
 }
 
-/// Types that are either immutable or have inherited mutability.
-#[lang="freeze"]
-pub trait Freeze {
-    // empty.
-}
-
 /// Types with a constant size known at compile-time.
 #[lang="sized"]
 pub trait Sized {
@@ -224,14 +218,6 @@ pub mod marker {
     #[lang="invariant_lifetime"]
     #[deriving(Eq,Clone)]
     pub struct InvariantLifetime<'a>;
-
-    /// A type which is considered "not freezable", meaning that
-    /// its contents could change even if stored in an immutable
-    /// context or it is the referent of an `&T` pointer. This is
-    /// typically embedded in other types, such as `Cell`.
-    #[lang="no_freeze_bound"]
-    #[deriving(Eq,Clone)]
-    pub struct NoFreeze;
 
     /// A type which is considered "not sendable", meaning that it cannot
     /// be safely sent between tasks, even if it is owned. This is
