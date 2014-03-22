@@ -81,6 +81,16 @@
 #[cfg(stage0)]
 pub use vec_ng = vec;
 
+// Run tests with libgreen instead of libnative.
+//
+// FIXME: This egregiously hacks around starting the test runner in a different
+//        threading mode than the default by reaching into the auto-generated
+//        '__test' module.
+#[cfg(test)] #[start]
+fn start(argc: int, argv: **u8) -> int {
+    green::start(argc, argv, __test::main)
+}
+
 pub mod macros;
 
 mod rtdeps;

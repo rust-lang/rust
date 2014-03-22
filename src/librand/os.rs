@@ -11,123 +11,177 @@
 //! Interfaces to the operating system provided random number
 //! generators.
 
-use Rng;
+pub use self::imp::OSRng;
 
 #[cfg(unix)]
-use reader::ReaderRng;
-#[cfg(unix)]
-use std::io::File;
+mod imp {
+    use Rng;
+    use reader::ReaderRng;
+    use std::io::File;
 
-#[cfg(windows)]
-use std::cast;
-#[cfg(windows)]
-use std::libc::{c_long, DWORD, BYTE};
-#[cfg(windows)]
-type HCRYPTPROV = c_long;
-// the extern functions imported from the runtime on Windows are
-// implemented so that they either succeed or abort(), so we can just
-// assume they work when we call them.
-
-/// A random number generator that retrieves randomness straight from
-/// the operating system. Platform sources:
-///
-/// - Unix-like systems (Linux, Android, Mac OSX): read directly from
-///   `/dev/urandom`.
-/// - Windows: calls `CryptGenRandom`, using the default cryptographic
-///   service provider with the `PROV_RSA_FULL` type.
-///
-/// This does not block.
-#[cfg(unix)]
-pub struct OSRng {
-    priv inner: ReaderRng<File>
-}
-/// A random number generator that retrieves randomness straight from
-/// the operating system. Platform sources:
-///
-/// - Unix-like systems (Linux, Android, Mac OSX): read directly from
-///   `/dev/urandom`.
-/// - Windows: calls `CryptGenRandom`, using the default cryptographic
-///   service provider with the `PROV_RSA_FULL` type.
-///
-/// This does not block.
-#[cfg(windows)]
-pub struct OSRng {
-    priv hcryptprov: HCRYPTPROV
-}
-
-impl OSRng {
-    /// Create a new `OSRng`.
+    /// A random number generator that retrieves randomness straight from
+    /// the operating system. Platform sources:
+    ///
+    /// - Unix-like systems (Linux, Android, Mac OSX): read directly from
+    ///   `/dev/urandom`.
+    /// - Windows: calls `CryptGenRandom`, using the default cryptographic
+    ///   service provider with the `PROV_RSA_FULL` type.
+    ///
+    /// This does not block.
     #[cfg(unix)]
-    pub fn new() -> OSRng {
-        let reader = File::open(&Path::new("/dev/urandom"));
-        let reader = reader.ok().expect("Error opening /dev/urandom");
-        let reader_rng = ReaderRng::new(reader);
-
-        OSRng { inner: reader_rng }
+    pub struct OSRng {
+        priv inner: ReaderRng<File>
     }
 
-    /// Create a new `OSRng`.
-    #[cfg(windows)]
-    pub fn new() -> OSRng {
-        extern { fn rust_win32_rand_acquire(phProv: *mut HCRYPTPROV); }
+    impl OSRng {
+        /// Create a new `OSRng`.
+        pub fn new() -> OSRng {
+            let reader = File::open(&Path::new("/dev/urandom"));
+            let reader = reader.ok().expect("Error opening /dev/urandom");
+            let reader_rng = ReaderRng::new(reader);
 
-        let mut hcp = 0;
-        unsafe {rust_win32_rand_acquire(&mut hcp)};
-
-        OSRng { hcryptprov: hcp }
-    }
-}
-
-#[cfg(unix)]
-impl Rng for OSRng {
-    fn next_u32(&mut self) -> u32 {
-        self.inner.next_u32()
-    }
-    fn next_u64(&mut self) -> u64 {
-        self.inner.next_u64()
-    }
-    fn fill_bytes(&mut self, v: &mut [u8]) {
-        self.inner.fill_bytes(v)
-    }
-}
-
-#[cfg(windows)]
-impl Rng for OSRng {
-    fn next_u32(&mut self) -> u32 {
-        let mut v = [0u8, .. 4];
-        self.fill_bytes(v);
-        unsafe { cast::transmute(v) }
-    }
-    fn next_u64(&mut self) -> u64 {
-        let mut v = [0u8, .. 8];
-        self.fill_bytes(v);
-        unsafe { cast::transmute(v) }
-    }
-    fn fill_bytes(&mut self, v: &mut [u8]) {
-        extern {
-            fn rust_win32_rand_gen(hProv: HCRYPTPROV, dwLen: DWORD,
-                                   pbBuffer: *mut BYTE);
+            OSRng { inner: reader_rng }
         }
+    }
 
-        unsafe {rust_win32_rand_gen(self.hcryptprov, v.len() as DWORD, v.as_mut_ptr())}
+    impl Rng for OSRng {
+        fn next_u32(&mut self) -> u32 {
+            self.inner.next_u32()
+        }
+        fn next_u64(&mut self) -> u64 {
+            self.inner.next_u64()
+        }
+        fn fill_bytes(&mut self, v: &mut [u8]) {
+            self.inner.fill_bytes(v)
+        }
     }
 }
 
-impl Drop for OSRng {
-    #[cfg(unix)]
-    fn drop(&mut self) {
-        // ensure that OSRng is not implicitly copyable on all
-        // platforms, for consistency.
+#[cfg(windows)]
+mod imp {
+    use Rng;
+    use std::cast;
+    use std::libc::{c_ulong, DWORD, BYTE, LPCSTR, BOOL};
+    use std::os;
+    use std::rt::stack;
+
+    type HCRYPTPROV = c_ulong;
+
+    /// A random number generator that retrieves randomness straight from
+    /// the operating system. Platform sources:
+    ///
+    /// - Unix-like systems (Linux, Android, Mac OSX): read directly from
+    ///   `/dev/urandom`.
+    /// - Windows: calls `CryptGenRandom`, using the default cryptographic
+    ///   service provider with the `PROV_RSA_FULL` type.
+    ///
+    /// This does not block.
+    pub struct OSRng {
+        priv hcryptprov: HCRYPTPROV
     }
 
-    #[cfg(windows)]
-    fn drop(&mut self) {
-        extern { fn rust_win32_rand_release(hProv: HCRYPTPROV); }
+    static PROV_RSA_FULL: DWORD = 1;
+    static CRYPT_SILENT: DWORD = 64;
+    static CRYPT_VERIFYCONTEXT: DWORD = 0xF0000000;
+    static NTE_BAD_SIGNATURE: DWORD = 0x80090006;
 
-        unsafe {rust_win32_rand_release(self.hcryptprov)}
+    extern "system" {
+        fn CryptAcquireContextA(phProv: *mut HCRYPTPROV,
+                                pszContainer: LPCSTR,
+                                pszProvider: LPCSTR,
+                                dwProvType: DWORD,
+                                dwFlags: DWORD) -> BOOL;
+        fn CryptGenRandom(hProv: HCRYPTPROV,
+                          dwLen: DWORD,
+                          pbBuffer: *mut BYTE) -> BOOL;
+        fn CryptReleaseContext(hProv: HCRYPTPROV, dwFlags: DWORD) -> BOOL;
+    }
+
+    impl OSRng {
+        /// Create a new `OSRng`.
+        pub fn new() -> OSRng {
+            let mut hcp = 0;
+            let mut ret = unsafe {
+                CryptAcquireContextA(&mut hcp, 0 as LPCSTR, 0 as LPCSTR,
+                                     PROV_RSA_FULL,
+                                     CRYPT_VERIFYCONTEXT | CRYPT_SILENT)
+            };
+
+            // It turns out that if we can't acquire a context with the
+            // NTE_BAD_SIGNATURE error code, the documentation states:
+            //
+            //     The provider DLL signature could not be verified. Either the
+            //     DLL or the digital signature has been tampered with.
+            //
+            // Sounds fishy, no? As it turns out, our signature can be bad
+            // because our Thread Information Block (TIB) isn't exactly what it
+            // expects. As to why, I have no idea. The only data we store in the
+            // TIB is the stack limit for each thread, but apparently that's
+            // enough to make the signature valid.
+            //
+            // Furthermore, this error only happens the *first* time we call
+            // CryptAcquireContext, so we don't have to worry about future
+            // calls.
+            //
+            // Anyway, the fix employed here is that if we see this error, we
+            // pray that we're not close to the end of the stack, temporarily
+            // set the stack limit to 0 (what the TIB originally was), acquire a
+            // context, and then reset the stack limit.
+            //
+            // Again, I'm not sure why this is the fix, nor why we're getting
+            // this error. All I can say is that this seems to allow libnative
+            // to progress where it otherwise would be hindered. Who knew?
+            if ret == 0 && os::errno() as DWORD == NTE_BAD_SIGNATURE {
+                unsafe {
+                    let limit = stack::get_sp_limit();
+                    stack::record_sp_limit(0);
+                    ret = CryptAcquireContextA(&mut hcp, 0 as LPCSTR, 0 as LPCSTR,
+                                               PROV_RSA_FULL,
+                                               CRYPT_VERIFYCONTEXT | CRYPT_SILENT);
+                    stack::record_sp_limit(limit);
+                }
+            }
+
+            if ret == 0 {
+                fail!("couldn't create context: {}", os::last_os_error());
+            }
+            OSRng { hcryptprov: hcp }
+        }
+    }
+
+    impl Rng for OSRng {
+        fn next_u32(&mut self) -> u32 {
+            let mut v = [0u8, .. 4];
+            self.fill_bytes(v);
+            unsafe { cast::transmute(v) }
+        }
+        fn next_u64(&mut self) -> u64 {
+            let mut v = [0u8, .. 8];
+            self.fill_bytes(v);
+            unsafe { cast::transmute(v) }
+        }
+        fn fill_bytes(&mut self, v: &mut [u8]) {
+            let ret = unsafe {
+                CryptGenRandom(self.hcryptprov, v.len() as DWORD,
+                               v.as_mut_ptr())
+            };
+            if ret == 0 {
+                fail!("couldn't generate random bytes: {}", os::last_os_error());
+            }
+        }
+    }
+
+    impl Drop for OSRng {
+        fn drop(&mut self) {
+            let ret = unsafe {
+                CryptReleaseContext(self.hcryptprov, 0)
+            };
+            if ret == 0 {
+                fail!("couldn't release context: {}", os::last_os_error());
+            }
+        }
     }
 }
-
 
 #[cfg(test)]
 mod test {
