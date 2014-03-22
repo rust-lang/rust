@@ -18,31 +18,29 @@
 extern crate sync;
 extern crate time;
 
-use sync::RWArc;
+use sync::{RWLock, Arc};
 use sync::Future;
 use std::os;
 use std::uint;
 
 // A poor man's pipe.
-type pipe = RWArc<Vec<uint> >;
+type pipe = Arc<RWLock<Vec<uint>>>;
 
 fn send(p: &pipe, msg: uint) {
-    p.write_cond(|state, cond| {
-        state.push(msg);
-        cond.signal();
-    })
+    let mut arr = p.write();
+    arr.push(msg);
+    arr.cond.signal();
 }
 fn recv(p: &pipe) -> uint {
-    p.write_cond(|state, cond| {
-        while state.is_empty() {
-            cond.wait();
-        }
-        state.pop().unwrap()
-    })
+    let mut arr = p.write();
+    while arr.is_empty() {
+        arr.cond.wait();
+    }
+    arr.pop().unwrap()
 }
 
 fn init() -> (pipe,pipe) {
-    let x = RWArc::new(Vec::new());
+    let x = Arc::new(RWLock::new(Vec::new()));
     ((&x).clone(), x)
 }
 

@@ -1265,7 +1265,7 @@ fn item_trait(w: &mut Writer, it: &clean::Item,
     }
 
     local_data::get(cache_key, |cache| {
-        let cache = cache.unwrap().get();
+        let cache = cache.unwrap();
         match cache.implementors.find(&it.id) {
             Some(implementors) => {
                 try!(write!(w, "
@@ -1496,7 +1496,7 @@ fn render_struct(w: &mut Writer, it: &clean::Item,
 
 fn render_methods(w: &mut Writer, it: &clean::Item) -> fmt::Result {
     local_data::get(cache_key, |cache| {
-        let c = cache.unwrap().get();
+        let c = cache.unwrap();
         match c.impls.find(&it.id) {
             Some(v) => {
                 let mut non_trait = v.iter().filter(|p| {
@@ -1576,7 +1576,7 @@ fn render_impl(w: &mut Writer, i: &clean::Impl,
             Some(id) => id,
         };
         try!(local_data::get(cache_key, |cache| {
-            let cache = cache.unwrap().get();
+            let cache = cache.unwrap();
             match cache.traits.find(&trait_id) {
                 Some(t) => {
                     let name = meth.name.clone();
@@ -1606,7 +1606,7 @@ fn render_impl(w: &mut Writer, i: &clean::Impl,
         None => {}
         Some(id) => {
             try!(local_data::get(cache_key, |cache| {
-                let cache = cache.unwrap().get();
+                let cache = cache.unwrap();
                 match cache.traits.find(&id) {
                     Some(t) => {
                         for method in t.methods.iter() {
