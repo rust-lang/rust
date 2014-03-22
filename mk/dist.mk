@@ -22,7 +22,7 @@
 # * dist-tar-bins - Ad-hoc Unix binary installers
 # * dist-docs - Stage docs for upload
 
-PKG_NAME = $(CFG_PACKAGE_NAME)
+PKG_NAME := $(CFG_PACKAGE_NAME)
 
 PKG_GITMODULES := $(S)src/libuv $(S)src/llvm $(S)src/gyp $(S)src/compiler-rt
 PKG_FILES := \
