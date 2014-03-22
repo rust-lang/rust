@@ -937,7 +937,7 @@ impl<'a> Iterator<UTF16Item> for UTF16Items<'a> {
 ///          0x0073, 0xDD1E, 0x0069, 0x0063,
 ///          0xD834];
 ///
-/// assert_eq!(str::utf16_items(v).to_owned_vec(),
+/// assert_eq!(str::utf16_items(v).collect::<~[_]>(),
 ///            ~[ScalarValue('𝄞'),
 ///              ScalarValue('m'), ScalarValue('u'), ScalarValue('s'),
 ///              LoneSurrogate(0xDD1E),

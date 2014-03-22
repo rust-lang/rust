@@ -197,7 +197,7 @@ fn visit_item(e: &Env, i: &ast::Item) {
                 } else {
                     None
                 })
-                .to_owned_vec();
+                .collect::<~[&ast::Attribute]>();
             for m in link_args.iter() {
                 match m.value_str() {
                     Some(linkarg) => e.sess.cstore.add_used_link_args(linkarg.get()),
@@ -212,7 +212,7 @@ fn visit_item(e: &Env, i: &ast::Item) {
                 } else {
                     None
                 })
-                .to_owned_vec();
+                .collect::<~[&ast::Attribute]>();
             for m in link_args.iter() {
                 match m.meta_item_list() {
                     Some(items) => {

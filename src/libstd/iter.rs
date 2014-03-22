@@ -463,21 +463,6 @@ pub trait Iterator<A> {
         FromIterator::from_iterator(self)
     }
 
-    /// Loops through the entire iterator, collecting all of the elements into
-    /// a unique vector. This is simply collect() specialized for vectors.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// let a = [1, 2, 3, 4, 5];
-    /// let b: ~[int] = a.iter().map(|&x| x).to_owned_vec();
-    /// assert!(a == b);
-    /// ```
-    #[inline]
-    fn to_owned_vec(&mut self) -> ~[A] {
-        self.collect()
-    }
-
     /// Loops through `n` iterations, returning the `n`th element of the
     /// iterator.
     ///

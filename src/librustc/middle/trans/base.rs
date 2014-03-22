@@ -236,7 +236,7 @@ fn get_extern_rust_fn(ccx: &CrateContext, inputs: &[ty::t], output: ty::t,
 
     let f = decl_rust_fn(ccx, false, inputs, output, name);
     csearch::get_item_attrs(&ccx.sess().cstore, did, |meta_items| {
-        set_llvm_fn_attrs(meta_items.iter().map(|&x| attr::mk_attr(x)).to_owned_vec(), f)
+        set_llvm_fn_attrs(meta_items.iter().map(|&x| attr::mk_attr(x)).collect::<~[_]>(), f)
     });
 
     ccx.externs.borrow_mut().insert(name.to_owned(), f);
