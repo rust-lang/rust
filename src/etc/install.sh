@@ -234,10 +234,6 @@ fi
 rm "${CFG_PREFIX}/lib/rust-install-probe"
 need_ok "failed to remove install probe"
 
-# Sanity check: can we run these binaries?
-"${CFG_SRC_DIR}/bin/rustc" --version > /dev/null
-need_ok "can't run these binaries on this platform"
-
 
 # First, uninstall from the installation prefix.
 # Errors are warnings - try to rm everything in the manifest even if some fail.
