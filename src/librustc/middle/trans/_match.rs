@@ -1185,7 +1185,7 @@ struct DynamicFailureHandler<'a> {
     bcx: &'a Block<'a>,
     sp: Span,
     msg: InternedString,
-    finished: @Cell<Option<BasicBlockRef>>,
+    finished: Cell<Option<BasicBlockRef>>,
 }
 
 impl<'a> DynamicFailureHandler<'a> {
@@ -1927,7 +1927,7 @@ fn trans_match_inner<'a>(scope_cx: &'a Block<'a>,
     let chk = {
         if ty::type_is_empty(tcx, t) {
             // Special case for empty types
-            let fail_cx = @Cell::new(None);
+            let fail_cx = Cell::new(None);
             let fail_handler = ~DynamicFailureHandler {
                 bcx: scope_cx,
                 sp: discr_expr.span,
