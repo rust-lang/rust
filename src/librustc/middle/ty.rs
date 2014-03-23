@@ -62,7 +62,7 @@ pub static INITIAL_DISCRIMINANT_VALUE: Disr = 0;
 
 // Data types
 
-#[deriving(Eq, Hash)]
+#[deriving(Eq, TotalEq, Hash)]
 pub struct field {
     ident: ast::Ident,
     mt: mt
@@ -123,20 +123,20 @@ pub struct Impl {
     ident: Ident,
     methods: Vec<@Method> }
 
-#[deriving(Clone, Eq, Hash)]
+#[deriving(Clone, Eq, TotalEq, Hash)]
 pub struct mt {
     ty: t,
     mutbl: ast::Mutability,
 }
 
-#[deriving(Clone, Eq, Encodable, Decodable, Hash, Show)]
+#[deriving(Clone, Eq, TotalEq, Encodable, Decodable, Hash, Show)]
 pub enum vstore {
     vstore_fixed(uint),
     vstore_uniq,
     vstore_slice(Region)
 }
 
-#[deriving(Clone, Eq, Hash, Encodable, Decodable, Show)]
+#[deriving(Clone, Eq, TotalEq, Hash, Encodable, Decodable, Show)]
 pub enum TraitStore {
     UniqTraitStore,             // ~Trait
     RegionTraitStore(Region),   // &Trait
@@ -150,7 +150,7 @@ pub struct field_ty {
 
 // Contains information needed to resolve types and (in the future) look up
 // the types of AST nodes.
-#[deriving(Eq, Hash)]
+#[deriving(Eq, TotalEq, Hash)]
 pub struct creader_cache_key {
     cnum: CrateNum,
     pos: uint,
@@ -176,6 +176,8 @@ impl cmp::Eq for intern_key {
         !self.eq(other)
     }
 }
+
+impl TotalEq for intern_key {}
 
 impl<W:Writer> Hash<W> for intern_key {
     fn hash(&self, s: &mut W) {
@@ -382,7 +384,7 @@ pub struct t_box_ {
 // alive, and using ty::get is unsafe when the ctxt is no longer alive.
 enum t_opaque {}
 
-#[deriving(Clone, Eq, Hash)]
+#[deriving(Clone, Eq, TotalEq, Hash)]
 pub struct t { priv inner: *t_opaque }
 
 impl fmt::Show for t {
@@ -413,14 +415,14 @@ pub fn type_has_regions(t: t) -> bool {
 }
 pub fn type_id(t: t) -> uint { get(t).id }
 
-#[deriving(Clone, Eq, Hash)]
+#[deriving(Clone, Eq, TotalEq, Hash)]
 pub struct BareFnTy {
     purity: ast::Purity,
     abis: AbiSet,
     sig: FnSig
 }
 
-#[deriving(Clone, Eq, Hash)]
+#[deriving(Clone, Eq, TotalEq, Hash)]
 pub struct ClosureTy {
     purity: ast::Purity,
     sigil: ast::Sigil,
@@ -442,7 +444,7 @@ pub struct ClosureTy {
  * - `output` is the return type.
  * - `variadic` indicates whether this is a varidic function. (only true for foreign fns)
  */
-#[deriving(Clone, Eq, Hash)]
+#[deriving(Clone, Eq, TotalEq, Hash)]
 pub struct FnSig {
     binder_id: ast::NodeId,
     inputs: Vec<t>,
@@ -450,14 +452,14 @@ pub struct FnSig {
     variadic: bool
 }
 
-#[deriving(Clone, Eq, Hash)]
+#[deriving(Clone, Eq, TotalEq, Hash)]
 pub struct param_ty {
     idx: uint,
     def_id: DefId
 }
 
 /// Representation of regions:
-#[deriving(Clone, Eq, Hash, Encodable, Decodable, Show)]
+#[deriving(Clone, Eq, TotalEq, Hash, Encodable, Decodable, Show)]
 pub enum Region {
     // Region bound in a type or fn declaration which will be
     // substituted 'early' -- that is, at the same time when type
@@ -498,13 +500,13 @@ pub enum Region {
  * the original var id (that is, the root variable that is referenced
  * by the upvar) and the id of the closure expression.
  */
-#[deriving(Clone, Eq, Hash)]
+#[deriving(Clone, Eq, TotalEq, Hash)]
 pub struct UpvarId {
     var_id: ast::NodeId,
     closure_expr_id: ast::NodeId,
 }
 
-#[deriving(Clone, Eq, Hash)]
+#[deriving(Clone, Eq, TotalEq, Hash)]
 pub enum BorrowKind {
     /// Data must be immutable and is aliasable.
     ImmBorrow,
@@ -642,7 +644,7 @@ pub enum BoundRegion {
  * Represents the values to use when substituting lifetime parameters.
  * If the value is `ErasedRegions`, then this subst is occurring during
  * trans, and all region parameters will be replaced with `ty::ReStatic`. */
-#[deriving(Clone, Eq, Hash)]
+#[deriving(Clone, Eq, TotalEq, Hash)]
 pub enum RegionSubsts {
     ErasedRegions,
     NonerasedRegions(OwnedSlice<ty::Region>)
@@ -665,7 +667,7 @@ pub enum RegionSubsts {
  * - `self_ty` is the type to which `self` should be remapped, if any.  The
  *   `self` type is rather funny in that it can only appear on traits and is
  *   always substituted away to the implementing type for a trait. */
-#[deriving(Clone, Eq, Hash)]
+#[deriving(Clone, Eq, TotalEq, Hash)]
 pub struct substs {
     self_ty: Option<ty::t>,
     tps: Vec<t>,
@@ -720,7 +722,7 @@ mod primitives {
 
 // NB: If you change this, you'll probably want to change the corresponding
 // AST structure in libsyntax/ast.rs as well.
-#[deriving(Clone, Eq, Hash)]
+#[deriving(Clone, Eq, TotalEq, Hash)]
 pub enum sty {
     ty_nil,
     ty_bot,
@@ -755,7 +757,7 @@ pub enum sty {
     ty_unboxed_vec(mt),
 }
 
-#[deriving(Clone, Eq, Hash)]
+#[deriving(Clone, Eq, TotalEq, Hash)]
 pub struct TyTrait {
     def_id: DefId,
     substs: substs,
@@ -764,7 +766,7 @@ pub struct TyTrait {
     bounds: BuiltinBounds
 }
 
-#[deriving(Eq, Hash)]
+#[deriving(Eq, TotalEq, Hash)]
 pub struct TraitRef {
     def_id: DefId,
     substs: substs
@@ -826,14 +828,14 @@ pub enum type_err {
     terr_variadic_mismatch(expected_found<bool>)
 }
 
-#[deriving(Eq, Hash)]
+#[deriving(Eq, TotalEq, Hash)]
 pub struct ParamBounds {
     builtin_bounds: BuiltinBounds,
     trait_bounds: Vec<@TraitRef> }
 
 pub type BuiltinBounds = EnumSet<BuiltinBound>;
 
-#[deriving(Clone, Encodable, Eq, Decodable, Hash, Show)]
+#[deriving(Clone, Encodable, Eq, TotalEq, Decodable, Hash, Show)]
 #[repr(uint)]
 pub enum BuiltinBound {
     BoundStatic,
@@ -865,28 +867,28 @@ impl CLike for BuiltinBound {
     }
 }
 
-#[deriving(Clone, Eq, Hash)]
+#[deriving(Clone, Eq, TotalEq, Hash)]
 pub struct TyVid(uint);
 
-#[deriving(Clone, Eq, Hash)]
+#[deriving(Clone, Eq, TotalEq, Hash)]
 pub struct IntVid(uint);
 
-#[deriving(Clone, Eq, Hash)]
+#[deriving(Clone, Eq, TotalEq, Hash)]
 pub struct FloatVid(uint);
 
-#[deriving(Clone, Eq, Encodable, Decodable, Hash)]
+#[deriving(Clone, Eq, TotalEq, Encodable, Decodable, Hash)]
 pub struct RegionVid {
     id: uint
 }
 
-#[deriving(Clone, Eq, Hash)]
+#[deriving(Clone, Eq, TotalEq, Hash)]
 pub enum InferTy {
     TyVar(TyVid),
     IntVar(IntVid),
     FloatVar(FloatVid)
 }
 
-#[deriving(Clone, Encodable, Decodable, Hash, Show)]
+#[deriving(Clone, Encodable, Decodable, TotalEq, Hash, Show)]
 pub enum InferRegion {
     ReVar(RegionVid),
     ReSkolemized(uint, BoundRegion)

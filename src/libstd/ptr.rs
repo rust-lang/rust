@@ -19,7 +19,7 @@ use mem;
 use option::{Option, Some, None};
 use intrinsics;
 
-#[cfg(not(test))] use cmp::{Eq, Ord};
+#[cfg(not(test))] use cmp::{Eq, TotalEq, Ord};
 
 /// Return the offset of the first null pointer in `buf`.
 #[inline]
@@ -273,6 +273,9 @@ impl<T> Eq for *T {
 }
 
 #[cfg(not(test))]
+impl<T> TotalEq for *T {}
+
+#[cfg(not(test))]
 impl<T> Eq for *mut T {
     #[inline]
     fn eq(&self, other: &*mut T) -> bool {
@@ -281,6 +284,9 @@ impl<T> Eq for *mut T {
     #[inline]
     fn ne(&self, other: &*mut T) -> bool { !self.eq(other) }
 }
+
+#[cfg(not(test))]
+impl<T> TotalEq for *mut T {}
 
 // Equivalence for pointers
 #[cfg(not(test))]
