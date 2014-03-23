@@ -19,13 +19,13 @@ Higher level communication abstractions.
 use std::comm;
 
 /// An extension of `pipes::stream` that allows both sending and receiving.
-pub struct DuplexStream<T, U> {
-    priv tx: Sender<T>,
-    priv rx: Receiver<U>,
+pub struct DuplexStream<S, R> {
+    priv tx: Sender<S>,
+    priv rx: Receiver<R>,
 }
 
 /// Creates a bidirectional stream.
-pub fn duplex<T: Send, U: Send>() -> (DuplexStream<T, U>, DuplexStream<U, T>) {
+pub fn duplex<S: Send, R: Send>() -> (DuplexStream<S, R>, DuplexStream<R, S>) {
     let (tx1, rx1) = channel();
     let (tx2, rx2) = channel();
     (DuplexStream { tx: tx1, rx: rx2 },
@@ -33,54 +33,54 @@ pub fn duplex<T: Send, U: Send>() -> (DuplexStream<T, U>, DuplexStream<U, T>) {
 }
 
 // Allow these methods to be used without import:
-impl<T:Send,U:Send> DuplexStream<T, U> {
-    pub fn send(&self, x: T) {
+impl<S:Send,R:Send> DuplexStream<S, R> {
+    pub fn send(&self, x: S) {
         self.tx.send(x)
     }
-    pub fn try_send(&self, x: T) -> bool {
+    pub fn try_send(&self, x: S) -> bool {
         self.tx.try_send(x)
     }
-    pub fn recv(&self) -> U {
+    pub fn recv(&self) -> R {
         self.rx.recv()
     }
-    pub fn try_recv(&self) -> comm::TryRecvResult<U> {
+    pub fn try_recv(&self) -> comm::TryRecvResult<R> {
         self.rx.try_recv()
     }
-    pub fn recv_opt(&self) -> Option<U> {
+    pub fn recv_opt(&self) -> Option<R> {
         self.rx.recv_opt()
     }
 }
 
 /// An extension of `pipes::stream` that provides synchronous message sending.
-pub struct SyncSender<T> { priv duplex_stream: DuplexStream<T, ()> }
+pub struct SyncSender<S> { priv duplex_stream: DuplexStream<S, ()> }
 /// An extension of `pipes::stream` that acknowledges each message received.
-pub struct SyncReceiver<T> { priv duplex_stream: DuplexStream<(), T> }
+pub struct SyncReceiver<R> { priv duplex_stream: DuplexStream<(), R> }
 
-impl<T: Send> SyncSender<T> {
-    pub fn send(&self, val: T) {
+impl<S: Send> SyncSender<S> {
+    pub fn send(&self, val: S) {
         assert!(self.try_send(val), "SyncSender.send: receiving port closed");
     }
 
     /// Sends a message, or report if the receiver has closed the connection
     /// before receiving.
-    pub fn try_send(&self, val: T) -> bool {
+    pub fn try_send(&self, val: S) -> bool {
         self.duplex_stream.try_send(val) && self.duplex_stream.recv_opt().is_some()
     }
 }
 
-impl<T: Send> SyncReceiver<T> {
-    pub fn recv(&self) -> T {
+impl<R: Send> SyncReceiver<R> {
+    pub fn recv(&self) -> R {
         self.recv_opt().expect("SyncReceiver.recv: sending channel closed")
     }
 
-    pub fn recv_opt(&self) -> Option<T> {
+    pub fn recv_opt(&self) -> Option<R> {
         self.duplex_stream.recv_opt().map(|val| {
             self.duplex_stream.try_send(());
             val
         })
     }
 
-    pub fn try_recv(&self) -> comm::TryRecvResult<T> {
+    pub fn try_recv(&self) -> comm::TryRecvResult<R> {
         match self.duplex_stream.try_recv() {
             comm::Data(t) => { self.duplex_stream.try_send(()); comm::Data(t) }
             state => state,
