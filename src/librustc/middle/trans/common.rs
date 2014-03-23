@@ -829,7 +829,7 @@ pub fn node_id_type_params(bcx: &Block, node: ExprOrMethodCall) -> Vec<ty::t> {
     }
 }
 
-pub fn node_vtables(bcx: &Block, id: ast::NodeId)
+pub fn node_vtables(bcx: &Block, id: typeck::MethodCall)
                  -> Option<typeck::vtable_res> {
     let vtable_map = bcx.ccx().maps.vtable_map.borrow();
     let raw_vtables = vtable_map.find(&id);
