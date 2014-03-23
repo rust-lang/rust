@@ -1127,13 +1127,27 @@ fn check_deprecated_owned_vector(cx: &Context, e: &ast::Expr) {
 
 fn check_item_non_camel_case_types(cx: &Context, it: &ast::Item) {
     fn is_camel_case(ident: ast::Ident) -> bool {
+        // Returns true if char after underscore is invalid.
+        // Accepts trailing underscores to separate types.
+        fn invalid_following_underscore(ident: &str) -> bool {
+            for i in range(0, ident.char_len() - 1) {
+                if ident.char_at(i) != '_' { continue; }
+                if !"_0123456789".contains_char(ident.char_at(i + 1)) {
+                    return true;
+                }
+            }
+
+            false
+        }
+
         let ident = token::get_ident(ident);
         assert!(!ident.get().is_empty());
-        let ident = ident.get().trim_chars(&'_');
+        let ident = ident.get();
 
         // start with a non-lowercase letter rather than non-uppercase
         // ones (some scripts don't have a concept of upper/lowercase)
-        !ident.char_at(0).is_lowercase() && !ident.contains_char('_')
+        !ident.char_at(0).is_lowercase()
+        && !invalid_following_underscore(ident)
     }
 
     fn check_case(cx: &Context, sort: &str, ident: ast::Ident, span: Span) {
