@@ -581,41 +581,48 @@ impl tr for moves::CaptureVar {
 // Encoding and decoding of MethodCallee
 
 trait read_method_callee_helper {
-    fn read_method_callee(&mut self, xcx: &ExtendedDecodeContext) -> MethodCallee;
+    fn read_method_callee(&mut self, xcx: &ExtendedDecodeContext) -> (u32, MethodCallee);
 }
 
 fn encode_method_callee(ecx: &e::EncodeContext,
                         ebml_w: &mut writer::Encoder,
+                        autoderef: u32,
                         method: &MethodCallee) {
-    ebml_w.emit_struct("MethodCallee", 3, |ebml_w| {
-        ebml_w.emit_struct_field("origin", 0u, |ebml_w| {
+    ebml_w.emit_struct("MethodCallee", 4, |ebml_w| {
+        ebml_w.emit_struct_field("autoderef", 0u, |ebml_w| {
+            autoderef.encode(ebml_w);
+        });
+        ebml_w.emit_struct_field("origin", 1u, |ebml_w| {
             method.origin.encode(ebml_w);
         });
-        ebml_w.emit_struct_field("ty", 1u, |ebml_w| {
+        ebml_w.emit_struct_field("ty", 2u, |ebml_w| {
             ebml_w.emit_ty(ecx, method.ty);
         });
-        ebml_w.emit_struct_field("substs", 2u, |ebml_w| {
+        ebml_w.emit_struct_field("substs", 3u, |ebml_w| {
             ebml_w.emit_substs(ecx, &method.substs);
         });
     })
 }
 
 impl<'a> read_method_callee_helper for reader::Decoder<'a> {
-    fn read_method_callee(&mut self, xcx: &ExtendedDecodeContext) -> MethodCallee {
-        self.read_struct("MethodCallee", 3, |this| {
-            MethodCallee {
-                origin: this.read_struct_field("origin", 0, |this| {
+    fn read_method_callee(&mut self, xcx: &ExtendedDecodeContext) -> (u32, MethodCallee) {
+        self.read_struct("MethodCallee", 4, |this| {
+            let autoderef = this.read_struct_field("autoderef", 0, |this| {
+                Decodable::decode(this)
+            });
+            (autoderef, MethodCallee {
+                origin: this.read_struct_field("origin", 1, |this| {
                     let method_origin: MethodOrigin =
                         Decodable::decode(this);
                     method_origin.tr(xcx)
                 }),
-                ty: this.read_struct_field("ty", 1, |this| {
+                ty: this.read_struct_field("ty", 2, |this| {
                     this.read_ty(xcx)
                 }),
-                substs: this.read_struct_field("substs", 2, |this| {
+                substs: this.read_struct_field("substs", 3, |this| {
                     this.read_substs(xcx)
                 })
-            }
+            })
         })
     }
 }
@@ -646,6 +653,20 @@ impl tr for MethodOrigin {
 
 // ______________________________________________________________________
 // Encoding and decoding vtable_res
+
+fn encode_vtable_res_with_key(ecx: &e::EncodeContext,
+                              ebml_w: &mut writer::Encoder,
+                              autoderef: u32,
+                              dr: typeck::vtable_res) {
+    ebml_w.emit_struct("VtableWithKey", 2, |ebml_w| {
+        ebml_w.emit_struct_field("autoderef", 0u, |ebml_w| {
+            autoderef.encode(ebml_w);
+        });
+        ebml_w.emit_struct_field("vtable_res", 1u, |ebml_w| {
+            encode_vtable_res(ecx, ebml_w, dr);
+        });
+    })
+}
 
 pub fn encode_vtable_res(ecx: &e::EncodeContext,
                      ebml_w: &mut writer::Encoder,
@@ -701,6 +722,10 @@ pub fn encode_vtable_origin(ecx: &e::EncodeContext,
 }
 
 pub trait vtable_decoder_helpers {
+    fn read_vtable_res_with_key(&mut self,
+                                tcx: &ty::ctxt,
+                                cdata: @cstore::crate_metadata)
+                                -> (u32, typeck::vtable_res);
     fn read_vtable_res(&mut self,
                        tcx: &ty::ctxt, cdata: @cstore::crate_metadata)
                       -> typeck::vtable_res;
@@ -713,6 +738,20 @@ pub trait vtable_decoder_helpers {
 }
 
 impl<'a> vtable_decoder_helpers for reader::Decoder<'a> {
+    fn read_vtable_res_with_key(&mut self,
+                                tcx: &ty::ctxt,
+                                cdata: @cstore::crate_metadata)
+                                -> (u32, typeck::vtable_res) {
+        self.read_struct("VtableWithKey", 2, |this| {
+            let autoderef = this.read_struct_field("autoderef", 0, |this| {
+                Decodable::decode(this)
+            });
+            (autoderef, this.read_struct_field("vtable_res", 1, |this| {
+                this.read_vtable_res(tcx, cdata)
+            }))
+        })
+    }
+
     fn read_vtable_res(&mut self,
                        tcx: &ty::ctxt, cdata: @cstore::crate_metadata)
                       -> typeck::vtable_res {
@@ -1018,21 +1057,48 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
         ebml_w.tag(c::tag_table_method_map, |ebml_w| {
             ebml_w.id(id);
             ebml_w.tag(c::tag_table_val, |ebml_w| {
-                encode_method_callee(ecx, ebml_w, method)
+                encode_method_callee(ecx, ebml_w, method_call.autoderef, method)
             })
         })
     }
 
-    for &dr in maps.vtable_map.borrow().find(&id).iter() {
+    for &dr in maps.vtable_map.borrow().find(&method_call).iter() {
         ebml_w.tag(c::tag_table_vtable_map, |ebml_w| {
             ebml_w.id(id);
             ebml_w.tag(c::tag_table_val, |ebml_w| {
-                encode_vtable_res(ecx, ebml_w, *dr);
+                encode_vtable_res_with_key(ecx, ebml_w, method_call.autoderef, *dr);
             })
         })
     }
 
     for adj in tcx.adjustments.borrow().find(&id).iter() {
+        match ***adj {
+            ty::AutoDerefRef(adj) => {
+                for autoderef in range(0, adj.autoderefs) {
+                    let method_call = MethodCall::autoderef(id, autoderef as u32);
+                    for &method in maps.method_map.borrow().find(&method_call).iter() {
+                        ebml_w.tag(c::tag_table_method_map, |ebml_w| {
+                            ebml_w.id(id);
+                            ebml_w.tag(c::tag_table_val, |ebml_w| {
+                                encode_method_callee(ecx, ebml_w, method_call.autoderef, method)
+                            })
+                        })
+                    }
+
+                    for &dr in maps.vtable_map.borrow().find(&method_call).iter() {
+                        ebml_w.tag(c::tag_table_vtable_map, |ebml_w| {
+                            ebml_w.id(id);
+                            ebml_w.tag(c::tag_table_val, |ebml_w| {
+                                encode_vtable_res_with_key(ecx, ebml_w,
+                                                           method_call.autoderef, *dr);
+                            })
+                        })
+                    }
+                }
+            }
+            _ => {}
+        }
+
         ebml_w.tag(c::tag_table_adjustments, |ebml_w| {
             ebml_w.id(id);
             ebml_w.tag(c::tag_table_val, |ebml_w| {
@@ -1336,15 +1402,22 @@ fn decode_side_tables(xcx: &ExtendedDecodeContext,
                         dcx.tcx.ty_param_defs.borrow_mut().insert(id, bounds);
                     }
                     c::tag_table_method_map => {
-                        let method = val_dsr.read_method_callee(xcx);
-                        let method_call = MethodCall::expr(id);
+                        let (autoderef, method) = val_dsr.read_method_callee(xcx);
+                        let method_call = MethodCall {
+                            expr_id: id,
+                            autoderef: autoderef
+                        };
                         dcx.maps.method_map.borrow_mut().insert(method_call, method);
                     }
                     c::tag_table_vtable_map => {
-                        let vtable_res =
-                            val_dsr.read_vtable_res(xcx.dcx.tcx,
-                                                    xcx.dcx.cdata);
-                        dcx.maps.vtable_map.borrow_mut().insert(id, vtable_res);
+                        let (autoderef, vtable_res) =
+                            val_dsr.read_vtable_res_with_key(xcx.dcx.tcx,
+                                                             xcx.dcx.cdata);
+                        let vtable_key = MethodCall {
+                            expr_id: id,
+                            autoderef: autoderef
+                        };
+                        dcx.maps.vtable_map.borrow_mut().insert(vtable_key, vtable_res);
                     }
                     c::tag_table_adjustments => {
                         let adj: @ty::AutoAdjustment = @val_dsr.read_auto_adjustment(xcx);

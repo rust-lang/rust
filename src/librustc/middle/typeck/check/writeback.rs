@@ -21,8 +21,7 @@ use middle::typeck::infer::{force_all, resolve_all, resolve_region};
 use middle::typeck::infer::resolve_type;
 use middle::typeck::infer;
 use middle::typeck::{MethodCall, MethodCallee};
-use middle::typeck::{vtable_res, vtable_origin};
-use middle::typeck::{vtable_static, vtable_param};
+use middle::typeck::{vtable_res, vtable_static, vtable_param};
 use middle::typeck::write_substs_to_tcx;
 use middle::typeck::write_ty_to_tcx;
 use util::ppaux;
@@ -100,38 +99,34 @@ fn resolve_method_map_entry(wbcx: &mut WbCtxt, sp: Span, method_call: MethodCall
     }
 }
 
-fn resolve_vtable_map_entry(fcx: &FnCtxt, sp: Span, id: ast::NodeId) {
+fn resolve_vtable_map_entry(fcx: &FnCtxt, sp: Span, vtable_key: MethodCall) {
     // Resolve any vtable map entry
-    match fcx.inh.vtable_map.borrow().find_copy(&id) {
+    match fcx.inh.vtable_map.borrow().find_copy(&vtable_key) {
         Some(origins) => {
             let r_origins = resolve_origins(fcx, sp, origins);
-            fcx.ccx.vtable_map.borrow_mut().insert(id, r_origins);
-            debug!("writeback::resolve_vtable_map_entry(id={}, vtables={:?})",
-                    id, r_origins.repr(fcx.tcx()));
+            fcx.ccx.vtable_map.borrow_mut().insert(vtable_key, r_origins);
+            debug!("writeback::resolve_vtable_map_entry(vtable_key={}, vtables={:?})",
+                    vtable_key, r_origins.repr(fcx.tcx()));
         }
         None => {}
     }
 
     fn resolve_origins(fcx: &FnCtxt, sp: Span,
                        vtbls: vtable_res) -> vtable_res {
-        @vtbls.map(|os| @os.map(|o| resolve_origin(fcx, sp, o)))
-    }
-
-    fn resolve_origin(fcx: &FnCtxt,
-                      sp: Span,
-                      origin: &vtable_origin) -> vtable_origin {
-        match origin {
-            &vtable_static(def_id, ref tys, origins) => {
-                let r_tys = resolve_type_vars_in_types(fcx,
-                                                       sp,
-                                                       tys.as_slice());
-                let r_origins = resolve_origins(fcx, sp, origins);
-                vtable_static(def_id, r_tys, r_origins)
+        @vtbls.map(|os| @os.map(|origin| {
+            match origin {
+                &vtable_static(def_id, ref tys, origins) => {
+                    let r_tys = resolve_type_vars_in_types(fcx,
+                                                           sp,
+                                                           tys.as_slice());
+                    let r_origins = resolve_origins(fcx, sp, origins);
+                    vtable_static(def_id, r_tys, r_origins)
+                }
+                &vtable_param(n, b) => {
+                    vtable_param(n, b)
+                }
             }
-            &vtable_param(n, b) => {
-                vtable_param(n, b)
-            }
-        }
+        }))
     }
 }
 
@@ -183,6 +178,7 @@ fn resolve_type_vars_for_node(wbcx: &mut WbCtxt, sp: Span, id: ast::NodeId)
                     for autoderef in range(0, adj.autoderefs) {
                         let method_call = MethodCall::autoderef(id, autoderef as u32);
                         resolve_method_map_entry(wbcx, sp, method_call);
+                        resolve_vtable_map_entry(wbcx.fcx, sp, method_call);
                     }
 
                     let fixup_region = |r| {
@@ -273,7 +269,7 @@ fn visit_expr(e: &ast::Expr, wbcx: &mut WbCtxt) {
 
     resolve_type_vars_for_node(wbcx, e.span, e.id);
     resolve_method_map_entry(wbcx, e.span, MethodCall::expr(e.id));
-    resolve_vtable_map_entry(wbcx.fcx, e.span, e.id);
+    resolve_vtable_map_entry(wbcx.fcx, e.span, MethodCall::expr(e.id));
 
     match e.node {
         ast::ExprFnBlock(ref decl, _) | ast::ExprProc(ref decl, _) => {

@@ -68,7 +68,7 @@ use middle::ty;
 use util::common::time;
 use util::ppaux::Repr;
 use util::ppaux;
-use util::nodemap::{DefIdMap, FnvHashMap, NodeMap};
+use util::nodemap::{DefIdMap, FnvHashMap};
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -148,7 +148,7 @@ pub struct MethodCallee {
     substs: ty::substs
 }
 
-#[deriving(Clone, Eq, Hash)]
+#[deriving(Clone, Eq, Hash, Show)]
 pub struct MethodCall {
     expr_id: ast::NodeId,
     autoderef: u32
@@ -216,7 +216,7 @@ impl Repr for vtable_origin {
     }
 }
 
-pub type vtable_map = @RefCell<NodeMap<vtable_res>>;
+pub type vtable_map = @RefCell<FnvHashMap<MethodCall, vtable_res>>;
 
 
 // Information about the vtable resolutions for a trait impl.
@@ -461,7 +461,7 @@ pub fn check_crate(tcx: &ty::ctxt,
     let ccx = CrateCtxt {
         trait_map: trait_map,
         method_map: @RefCell::new(FnvHashMap::new()),
-        vtable_map: @RefCell::new(NodeMap::new()),
+        vtable_map: @RefCell::new(FnvHashMap::new()),
         tcx: tcx
     };
 
