@@ -826,7 +826,7 @@ mod test {
         let max_val = 100;
 
         let mut r = task_rng();
-        let vals = range(min_val, max_val).to_owned_vec();
+        let vals = range(min_val, max_val).collect::<~[int]>();
         let small_sample = r.sample(vals.iter(), 5);
         let large_sample = r.sample(vals.iter(), vals.len() + 5);
 

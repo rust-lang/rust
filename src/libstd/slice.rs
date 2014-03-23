@@ -436,7 +436,7 @@ impl ElementSwaps {
             emit_reset: true,
             sdir: range(0, length)
                     .map(|i| SizeDirection{ size: i, dir: Neg })
-                    .to_owned_vec()
+                    .collect::<~[_]>()
         }
     }
 }
@@ -3539,7 +3539,7 @@ mod tests {
                         let n = task_rng().gen::<uint>() % 10;
                         counts[n] += 1;
                         (n, counts[n])
-                    }).to_owned_vec();
+                    }).collect::<~[(uint, int)]>();
 
                 // only sort on the first element, so an unstable sort
                 // may mix up the counts.
@@ -4207,7 +4207,7 @@ mod tests {
         assert_eq!(xs.capacity(), 128);
         xs.shrink_to_fit();
         assert_eq!(xs.capacity(), 100);
-        assert_eq!(xs, range(0, 100).to_owned_vec());
+        assert_eq!(xs, range(0, 100).collect::<~[_]>());
     }
 
     #[test]
