@@ -170,16 +170,11 @@ pub fn trans_fn_ref(bcx: &Block, def_id: ast::DefId, node: ExprOrMethodCall) -> 
     let _icx = push_ctxt("trans_fn_ref");
 
     let type_params = node_id_type_params(bcx, node);
-    let vtables = match node {
-        ExprId(id) => node_vtables(bcx, id),
-        MethodCall(ref method_call) => {
-            if method_call.autoderef == 0 {
-                node_vtables(bcx, method_call.expr_id)
-            } else {
-                None
-            }
-        }
+    let vtable_key = match node {
+        ExprId(id) => MethodCall::expr(id),
+        MethodCall(method_call) => method_call
     };
+    let vtables = node_vtables(bcx, vtable_key);
     debug!("trans_fn_ref(def_id={}, node={:?}, type_params={}, vtables={})",
            def_id.repr(bcx.tcx()), node, type_params.repr(bcx.tcx()),
            vtables.repr(bcx.tcx()));

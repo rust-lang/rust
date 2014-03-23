@@ -516,10 +516,10 @@ fn connect_trait_tps(vcx: &VtableContext,
     relate_trait_refs(vcx, span, impl_trait_ref, trait_ref);
 }
 
-fn insert_vtables(fcx: &FnCtxt, expr_id: ast::NodeId, vtables: vtable_res) {
-    debug!("insert_vtables(expr_id={}, vtables={:?})",
-           expr_id, vtables.repr(fcx.tcx()));
-    fcx.inh.vtable_map.borrow_mut().insert(expr_id, vtables);
+fn insert_vtables(fcx: &FnCtxt, vtable_key: MethodCall, vtables: vtable_res) {
+    debug!("insert_vtables(vtable_key={}, vtables={:?})",
+           vtable_key, vtables.repr(fcx.tcx()));
+    fcx.inh.vtable_map.borrow_mut().insert(vtable_key, vtables);
 }
 
 pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
@@ -591,7 +591,7 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
                                                      is_early);
 
                       if !is_early {
-                          insert_vtables(fcx, ex.id, @vec!(vtables));
+                          insert_vtables(fcx, MethodCall::expr(ex.id), @vec!(vtables));
                       }
 
                       // Now, if this is &trait, we need to link the
@@ -648,7 +648,7 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
                                            item_ty.generics.type_param_defs(),
                                            substs, is_early);
                 if !is_early {
-                    insert_vtables(fcx, ex.id, vtbls);
+                    insert_vtables(fcx, MethodCall::expr(ex.id), vtbls);
                 }
             }
             true
@@ -673,7 +673,7 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
                                            type_param_defs.as_slice(),
                                            &substs, is_early);
                 if !is_early {
-                    insert_vtables(fcx, ex.id, vtbls);
+                    insert_vtables(fcx, MethodCall::expr(ex.id), vtbls);
                 }
             }
           }
@@ -692,6 +692,30 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
     match fcx.inh.adjustments.borrow().find(&ex.id) {
         Some(adjustment) => {
             match **adjustment {
+                AutoDerefRef(adj) => {
+                    for autoderef in range(0, adj.autoderefs) {
+                        let method_call = MethodCall::autoderef(ex.id, autoderef as u32);
+                        match fcx.inh.method_map.borrow().find(&method_call) {
+                            Some(method) => {
+                                debug!("vtable resolution on parameter bounds for autoderef {}",
+                                       ex.repr(fcx.tcx()));
+                                let type_param_defs =
+                                    ty::method_call_type_param_defs(cx.tcx, method.origin);
+                                if has_trait_bounds(type_param_defs.deref().as_slice()) {
+                                    let vcx = fcx.vtable_context();
+                                    let vtbls = lookup_vtables(&vcx, ex.span,
+                                                               type_param_defs.deref()
+                                                               .as_slice(),
+                                                               &method.substs, is_early);
+                                    if !is_early {
+                                        insert_vtables(fcx, method_call, vtbls);
+                                    }
+                                }
+                            }
+                            None => {}
+                        }
+                    }
+                }
                 AutoObject(ref sigil,
                            ref region,
                            m,
@@ -713,7 +737,7 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
                                                                b);
                     resolve_object_cast(ex, object_ty);
                 }
-                AutoAddEnv(..) | AutoDerefRef(..) => {}
+                AutoAddEnv(..) => {}
             }
         }
         None => {}
