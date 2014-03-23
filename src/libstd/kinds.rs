@@ -41,16 +41,6 @@ pub trait Pod {
 }
 
 /// Types that can be safely shared between threads, hence thread-safe.
-#[cfg(stage0)]
-pub trait Share {
-    // Empty
-}
-
-#[cfg(stage0)]
-impl<T> Share for T {}
-
-/// Types that can be safely shared between threads, hence thread-safe.
-#[cfg(not(stage0))]
 #[lang="share"]
 pub trait Share {
     // Empty
