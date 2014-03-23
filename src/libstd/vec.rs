@@ -339,12 +339,7 @@ impl<T: Ord> Ord for Vec<T> {
     }
 }
 
-impl<T: TotalEq> TotalEq for Vec<T> {
-    #[inline]
-    fn equals(&self, other: &Vec<T>) -> bool {
-        self.as_slice().equals(&other.as_slice())
-    }
-}
+impl<T: TotalEq> TotalEq for Vec<T> {}
 
 impl<T: TotalOrd> TotalOrd for Vec<T> {
     #[inline]

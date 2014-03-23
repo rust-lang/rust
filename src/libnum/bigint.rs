@@ -92,15 +92,11 @@ pub struct BigUint {
 
 impl Eq for BigUint {
     #[inline]
-    fn eq(&self, other: &BigUint) -> bool { self.equals(other) }
-}
-
-impl TotalEq for BigUint {
-    #[inline]
-    fn equals(&self, other: &BigUint) -> bool {
+    fn eq(&self, other: &BigUint) -> bool {
         match self.cmp(other) { Equal => true, _ => false }
     }
 }
+impl TotalEq for BigUint {}
 
 impl Ord for BigUint {
     #[inline]
@@ -852,30 +848,8 @@ fn get_radix_base(radix: uint) -> (uint, uint) {
 }
 
 /// A Sign is a `BigInt`'s composing element.
-#[deriving(Eq, Clone, Show)]
+#[deriving(Eq, Ord, TotalEq, TotalOrd, Clone, Show)]
 pub enum Sign { Minus, Zero, Plus }
-
-impl Ord for Sign {
-    #[inline]
-    fn lt(&self, other: &Sign) -> bool {
-        match self.cmp(other) { Less => true, _ => false}
-    }
-}
-
-impl TotalEq for Sign {
-    #[inline]
-    fn equals(&self, other: &Sign) -> bool { *self == *other }
-}
-impl TotalOrd for Sign {
-    #[inline]
-    fn cmp(&self, other: &Sign) -> Ordering {
-        match (*self, *other) {
-          (Minus, Minus) | (Zero,  Zero) | (Plus, Plus) => Equal,
-          (Minus, Zero)  | (Minus, Plus) | (Zero, Plus) => Less,
-          _                                             => Greater
-        }
-    }
-}
 
 impl Neg<Sign> for Sign {
     /// Negate Sign value.
@@ -898,15 +872,12 @@ pub struct BigInt {
 
 impl Eq for BigInt {
     #[inline]
-    fn eq(&self, other: &BigInt) -> bool { self.equals(other) }
-}
-
-impl TotalEq for BigInt {
-    #[inline]
-    fn equals(&self, other: &BigInt) -> bool {
+    fn eq(&self, other: &BigInt) -> bool {
         match self.cmp(other) { Equal => true, _ => false }
     }
 }
+
+impl TotalEq for BigInt {}
 
 impl Ord for BigInt {
     #[inline]

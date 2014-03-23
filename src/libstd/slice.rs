@@ -649,17 +649,9 @@ pub mod traits {
         fn ne(&self, other: &~[T]) -> bool { !self.eq(other) }
     }
 
-    impl<'a,T:TotalEq> TotalEq for &'a [T] {
-        fn equals(&self, other: & &'a [T]) -> bool {
-            self.len() == other.len() &&
-                order::equals(self.iter(), other.iter())
-        }
-    }
+    impl<'a,T:TotalEq> TotalEq for &'a [T] {}
 
-    impl<T:TotalEq> TotalEq for ~[T] {
-        #[inline]
-        fn equals(&self, other: &~[T]) -> bool { self.as_slice().equals(&other.as_slice()) }
-    }
+    impl<T:TotalEq> TotalEq for ~[T] {}
 
     impl<'a,T:Eq, V: Vector<T>> Equiv<V> for &'a [T] {
         #[inline]
