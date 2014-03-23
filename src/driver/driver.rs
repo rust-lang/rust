@@ -8,10 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[no_uv]; // remove this after stage0
-#[allow(attribute_usage)]; // remove this after stage0
-extern crate native; // remove this after stage0
-
 #[cfg(rustdoc)]
 extern crate this = "rustdoc";
 

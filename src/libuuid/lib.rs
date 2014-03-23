@@ -64,10 +64,6 @@ Examples of string representations:
 
 #[feature(default_type_params)];
 
-// NOTE remove the following two attributes after the next snapshot.
-#[allow(unrecognized_lint)];
-#[allow(default_type_param_usage)];
-
 // test harness access
 #[cfg(test)]
 extern crate test;
