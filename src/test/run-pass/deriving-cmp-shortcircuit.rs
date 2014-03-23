@@ -21,9 +21,7 @@ impl Ord for FailCmp {
     fn lt(&self, _: &FailCmp) -> bool { fail!("lt") }
 }
 
-impl TotalEq for FailCmp {
-    fn equals(&self, _: &FailCmp) -> bool { fail!("equals") }
-}
+impl TotalEq for FailCmp {}
 
 impl TotalOrd for FailCmp {
     fn cmp(&self, _: &FailCmp) -> Ordering { fail!("cmp") }
@@ -41,6 +39,5 @@ pub fn main() {
 
     assert!(a != b);
     assert!(a < b);
-    assert!(!a.equals(&b));
     assert_eq!(a.cmp(&b), ::std::cmp::Less);
 }

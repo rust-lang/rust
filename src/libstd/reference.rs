@@ -54,8 +54,4 @@ impl<'a, T: TotalOrd> TotalOrd for &'a T {
 }
 
 #[cfg(not(test))]
-impl<'a, T: TotalEq> TotalEq for &'a T {
-    #[inline]
-    fn equals(&self, other: & &'a T) -> bool { (**self).equals(*other) }
-}
-
+impl<'a, T: TotalEq> TotalEq for &'a T {}

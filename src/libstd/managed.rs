@@ -45,10 +45,7 @@ impl<T: TotalOrd> TotalOrd for @T {
 }
 
 #[cfg(not(test))]
-impl<T: TotalEq> TotalEq for @T {
-    #[inline]
-    fn equals(&self, other: &@T) -> bool { (**self).equals(*other) }
-}
+impl<T: TotalEq> TotalEq for @T {}
 
 #[test]
 fn test() {

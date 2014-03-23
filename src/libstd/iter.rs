@@ -2180,13 +2180,13 @@ pub mod order {
     use option::{Some, None};
     use super::Iterator;
 
-    /// Compare `a` and `b` for equality using `TotalOrd`
+    /// Compare `a` and `b` for equality using `TotalEq`
     pub fn equals<A: TotalEq, T: Iterator<A>>(mut a: T, mut b: T) -> bool {
         loop {
             match (a.next(), b.next()) {
                 (None, None) => return true,
                 (None, _) | (_, None) => return false,
-                (Some(x), Some(y)) => if !x.equals(&y) { return false },
+                (Some(x), Some(y)) => if x != y { return false },
             }
         }
     }

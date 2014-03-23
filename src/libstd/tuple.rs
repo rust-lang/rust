@@ -75,12 +75,7 @@ macro_rules! tuple_impls {
             }
 
             #[cfg(not(test))]
-            impl<$($T:TotalEq),+> TotalEq for ($($T,)+) {
-                #[inline]
-                fn equals(&self, other: &($($T,)+)) -> bool {
-                    $(self.$refN().equals(other.$refN()))&&+
-                }
-            }
+            impl<$($T:TotalEq),+> TotalEq for ($($T,)+) {}
 
             #[cfg(not(test))]
             impl<$($T:Ord + Eq),+> Ord for ($($T,)+) {
@@ -337,12 +332,6 @@ mod tests {
         assert!(!((1.0, 2.0) >= (nan, 3.0)));
         assert!(((1.0, 2.0) < (2.0, nan)));
         assert!(!((2.0, 2.0) < (2.0, nan)));
-
-        // TotalEq
-        assert!(small.equals(&small));
-        assert!(big.equals(&big));
-        assert!(!small.equals(&big));
-        assert!(!big.equals(&small));
 
         // TotalOrd
         assert!(small.cmp(&small) == Equal);
