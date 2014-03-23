@@ -28,7 +28,6 @@ This API is completely unstable and subject to change.
 
 #[feature(macro_rules, globs, managed_boxes, default_type_params, phase,
           quote)];
-#[allow(deprecated_owned_vector)]; // NOTE: remove after stage0
 #[allow(deprecated)];
 
 extern crate serialize;
