@@ -1205,8 +1205,8 @@ fn item_trait(w: &mut Writer, it: &clean::Item,
                   it.name.get_ref().as_slice(),
                   t.generics,
                   parents));
-    let required = t.methods.iter().filter(|m| m.is_req()).to_owned_vec();
-    let provided = t.methods.iter().filter(|m| !m.is_req()).to_owned_vec();
+    let required = t.methods.iter().filter(|m| m.is_req()).collect::<~[&clean::TraitMethod]>();
+    let provided = t.methods.iter().filter(|m| !m.is_req()).collect::<~[&clean::TraitMethod]>();
 
     if t.methods.len() == 0 {
         try!(write!(w, "\\{ \\}"));
@@ -1502,11 +1502,11 @@ fn render_methods(w: &mut Writer, it: &clean::Item) -> fmt::Result {
                 let mut non_trait = v.iter().filter(|p| {
                     p.ref0().trait_.is_none()
                 });
-                let non_trait = non_trait.to_owned_vec();
+                let non_trait = non_trait.collect::<~[&(clean::Impl, Option<~str>)]>();
                 let mut traits = v.iter().filter(|p| {
                     p.ref0().trait_.is_some()
                 });
-                let traits = traits.to_owned_vec();
+                let traits = traits.collect::<~[&(clean::Impl, Option<~str>)]>();
 
                 if non_trait.len() > 0 {
                     try!(write!(w, "<h2 id='methods'>Methods</h2>"));

@@ -223,7 +223,7 @@ impl Pattern {
      */
     pub fn new(pattern: &str) -> Pattern {
 
-        let chars = pattern.chars().to_owned_vec();
+        let chars = pattern.chars().collect::<~[_]>();
         let mut tokens = Vec::new();
         let mut i = 0;
 

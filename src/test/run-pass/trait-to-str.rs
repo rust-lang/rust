@@ -21,7 +21,7 @@ impl to_str for int {
 
 impl<T:to_str> to_str for Vec<T> {
     fn to_string(&self) -> ~str {
-        format!("[{}]", self.iter().map(|e| e.to_string()).to_owned_vec().connect(", "))
+        format!("[{}]", self.iter().map(|e| e.to_string()).collect::<~[~str]>().connect(", "))
     }
 }
 

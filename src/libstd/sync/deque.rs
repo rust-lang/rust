@@ -494,7 +494,7 @@ mod tests {
                     }
                 }
             })
-        }).to_owned_vec();
+        }).collect::<~[Thread<()>]>();
 
         while remaining.load(SeqCst) > 0 {
             match w.pop() {
@@ -525,7 +525,7 @@ mod tests {
             Thread::start(proc() {
                 stampede(w, s, 4, 10000);
             })
-        }).to_owned_vec();
+        }).collect::<~[Thread<()>]>();
 
         for thread in threads.move_iter() {
             thread.join();
@@ -556,7 +556,7 @@ mod tests {
                     }
                 }
             })
-        }).to_owned_vec();
+        }).collect::<~[Thread<()>]>();
 
         let mut rng = rand::task_rng();
         let mut expected = 0;
