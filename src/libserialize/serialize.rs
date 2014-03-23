@@ -477,153 +477,43 @@ impl<D:Decoder,T:Decodable<D>> Decodable<D> for Option<T> {
     }
 }
 
-impl<S:Encoder,T0:Encodable<S>,T1:Encodable<S>> Encodable<S> for (T0, T1) {
-    fn encode(&self, s: &mut S) {
-        match *self {
-            (ref t0, ref t1) => {
-                s.emit_seq(2, |s| {
-                    s.emit_seq_elt(0, |s| t0.encode(s));
-                    s.emit_seq_elt(1, |s| t1.encode(s));
+macro_rules! peel(($name:ident, $($other:ident,)*) => (tuple!($($other,)*)))
+
+macro_rules! tuple (
+    () => ();
+    ( $($name:ident,)+ ) => (
+        impl<D:Decoder,$($name:Decodable<D>),*> Decodable<D> for ($($name,)*) {
+            #[allow(uppercase_variables)]
+            fn decode(d: &mut D) -> ($($name,)*) {
+                d.read_tuple(|d, amt| {
+                    let mut i = 0;
+                    let ret = ($(d.read_tuple_arg({ i+=1; i-1 }, |d| -> $name {
+                        Decodable::decode(d)
+                    }),)*);
+                    assert!(amt == i,
+                            "expected tuple of length `{}`, found tuple \
+                             of length `{}`", i, amt);
+                    return ret;
                 })
             }
         }
-    }
-}
-
-impl<D:Decoder,T0:Decodable<D>,T1:Decodable<D>> Decodable<D> for (T0, T1) {
-    fn decode(d: &mut D) -> (T0, T1) {
-        d.read_seq(|d, len| {
-            assert_eq!(len, 2);
-            (
-                d.read_seq_elt(0, |d| Decodable::decode(d)),
-                d.read_seq_elt(1, |d| Decodable::decode(d))
-            )
-        })
-    }
-}
-
-impl<
-    S: Encoder,
-    T0: Encodable<S>,
-    T1: Encodable<S>,
-    T2: Encodable<S>
-> Encodable<S> for (T0, T1, T2) {
-    fn encode(&self, s: &mut S) {
-        match *self {
-            (ref t0, ref t1, ref t2) => {
-                s.emit_seq(3, |s| {
-                    s.emit_seq_elt(0, |s| t0.encode(s));
-                    s.emit_seq_elt(1, |s| t1.encode(s));
-                    s.emit_seq_elt(2, |s| t2.encode(s));
+        impl<S:Encoder,$($name:Encodable<S>),*> Encodable<S> for ($($name,)*) {
+            #[allow(uppercase_variables)]
+            fn encode(&self, s: &mut S) {
+                let ($(ref $name,)*) = *self;
+                let mut n = 0;
+                $(let $name = $name; n += 1;)*
+                s.emit_tuple(n, |s| {
+                    let mut i = 0;
+                    $(s.emit_seq_elt({ i+=1; i-1 }, |s| $name.encode(s));)*
                 })
             }
         }
-    }
-}
+        peel!($($name,)*)
+    )
+)
 
-impl<
-    D: Decoder,
-    T0: Decodable<D>,
-    T1: Decodable<D>,
-    T2: Decodable<D>
-> Decodable<D> for (T0, T1, T2) {
-    fn decode(d: &mut D) -> (T0, T1, T2) {
-        d.read_seq(|d, len| {
-            assert_eq!(len, 3);
-            (
-                d.read_seq_elt(0, |d| Decodable::decode(d)),
-                d.read_seq_elt(1, |d| Decodable::decode(d)),
-                d.read_seq_elt(2, |d| Decodable::decode(d))
-            )
-        })
-    }
-}
-
-impl<
-    S: Encoder,
-    T0: Encodable<S>,
-    T1: Encodable<S>,
-    T2: Encodable<S>,
-    T3: Encodable<S>
-> Encodable<S> for (T0, T1, T2, T3) {
-    fn encode(&self, s: &mut S) {
-        match *self {
-            (ref t0, ref t1, ref t2, ref t3) => {
-                s.emit_seq(4, |s| {
-                    s.emit_seq_elt(0, |s| t0.encode(s));
-                    s.emit_seq_elt(1, |s| t1.encode(s));
-                    s.emit_seq_elt(2, |s| t2.encode(s));
-                    s.emit_seq_elt(3, |s| t3.encode(s));
-                })
-            }
-        }
-    }
-}
-
-impl<
-    D: Decoder,
-    T0: Decodable<D>,
-    T1: Decodable<D>,
-    T2: Decodable<D>,
-    T3: Decodable<D>
-> Decodable<D> for (T0, T1, T2, T3) {
-    fn decode(d: &mut D) -> (T0, T1, T2, T3) {
-        d.read_seq(|d, len| {
-            assert_eq!(len, 4);
-            (
-                d.read_seq_elt(0, |d| Decodable::decode(d)),
-                d.read_seq_elt(1, |d| Decodable::decode(d)),
-                d.read_seq_elt(2, |d| Decodable::decode(d)),
-                d.read_seq_elt(3, |d| Decodable::decode(d))
-            )
-        })
-    }
-}
-
-impl<
-    S: Encoder,
-    T0: Encodable<S>,
-    T1: Encodable<S>,
-    T2: Encodable<S>,
-    T3: Encodable<S>,
-    T4: Encodable<S>
-> Encodable<S> for (T0, T1, T2, T3, T4) {
-    fn encode(&self, s: &mut S) {
-        match *self {
-            (ref t0, ref t1, ref t2, ref t3, ref t4) => {
-                s.emit_seq(5, |s| {
-                    s.emit_seq_elt(0, |s| t0.encode(s));
-                    s.emit_seq_elt(1, |s| t1.encode(s));
-                    s.emit_seq_elt(2, |s| t2.encode(s));
-                    s.emit_seq_elt(3, |s| t3.encode(s));
-                    s.emit_seq_elt(4, |s| t4.encode(s));
-                })
-            }
-        }
-    }
-}
-
-impl<
-    D: Decoder,
-    T0: Decodable<D>,
-    T1: Decodable<D>,
-    T2: Decodable<D>,
-    T3: Decodable<D>,
-    T4: Decodable<D>
-> Decodable<D> for (T0, T1, T2, T3, T4) {
-    fn decode(d: &mut D) -> (T0, T1, T2, T3, T4) {
-        d.read_seq(|d, len| {
-            assert_eq!(len, 5);
-            (
-                d.read_seq_elt(0, |d| Decodable::decode(d)),
-                d.read_seq_elt(1, |d| Decodable::decode(d)),
-                d.read_seq_elt(2, |d| Decodable::decode(d)),
-                d.read_seq_elt(3, |d| Decodable::decode(d)),
-                d.read_seq_elt(4, |d| Decodable::decode(d))
-            )
-        })
-    }
-}
+tuple! { T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, }
 
 impl<E: Encoder> Encodable<E> for path::posix::Path {
     fn encode(&self, e: &mut E) {
