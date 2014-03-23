@@ -33,9 +33,6 @@ pub fn main() {
             assert_eq!(*ts1 == *ts2, eq);
             assert_eq!(*ts1 != *ts2, !eq);
 
-            // TotalEq
-            assert_eq!(ts1.equals(ts2), eq);
-
             // Ord
             assert_eq!(*ts1 < *ts2, lt);
             assert_eq!(*ts1 > *ts2, gt);

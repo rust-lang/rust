@@ -19,9 +19,18 @@ pub fn expand_deriving_totaleq(cx: &mut ExtCtxt,
                                mitem: @MetaItem,
                                item: @Item,
                                push: |@Item|) {
-    fn cs_equals(cx: &mut ExtCtxt, span: Span, substr: &Substructure) -> @Expr {
-        cs_and(|cx, span, _, _| cx.expr_bool(span, false),
-               cx, span, substr)
+    fn cs_total_eq_assert(cx: &mut ExtCtxt, span: Span, substr: &Substructure) -> @Expr {
+        cs_same_method(|cx, span, exprs| {
+            // create `a.<method>(); b.<method>(); c.<method>(); ...`
+            // (where method is `assert_receiver_is_total_eq`)
+            let stmts = exprs.move_iter().map(|e| cx.stmt_expr(e)).collect();
+            let block = cx.block(span, stmts, None);
+            cx.expr_block(block)
+        },
+                       |cx, sp, _, _| cx.span_bug(sp, "non matching enums in deriving(TotalEq)?"),
+                       cx,
+                       span,
+                       substr)
     }
 
     let trait_def = TraitDef {
@@ -32,14 +41,14 @@ pub fn expand_deriving_totaleq(cx: &mut ExtCtxt,
         generics: LifetimeBounds::empty(),
         methods: vec!(
             MethodDef {
-                name: "equals",
+                name: "assert_receiver_is_total_eq",
                 generics: LifetimeBounds::empty(),
                 explicit_self: borrowed_explicit_self(),
-                args: vec!(borrowed_self()),
-                ret_ty: Literal(Path::new(vec!("bool"))),
+                args: vec!(),
+                ret_ty: nil_ty(),
                 inline: true,
                 const_nonmatching: true,
-                combine_substructure: cs_equals
+                combine_substructure: cs_total_eq_assert
             }
         )
     };
