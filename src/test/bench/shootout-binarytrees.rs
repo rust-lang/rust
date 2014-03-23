@@ -76,7 +76,7 @@ fn main() {
                 format!("{}\t trees of depth {}\t check: {}",
                         iterations * 2, depth, chk)
             })
-        }).to_owned_vec();
+        }).collect::<~[Future<~str>]>();
 
     for message in messages.mut_iter() {
         println!("{}", *message.get_ref());
