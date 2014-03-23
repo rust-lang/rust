@@ -628,7 +628,7 @@ impl rtio::RtioRawSocket for RawSocket {
     }
 
     fn sendto(&mut self, buf: &[u8], dst: ~raw::NetworkAddress)
-        -> IoResult<int>
+        -> IoResult<uint>
     {
         let (sockaddr, slen) = netsupport::network_addr_to_sockaddr(dst);
         let addr = (&sockaddr as *libc::sockaddr_storage) as *libc::sockaddr;
@@ -644,7 +644,7 @@ impl rtio::RtioRawSocket for RawSocket {
         return if len < 0 {
             Err(netsupport::last_error())
         } else {
-            Ok(len as int)
+            Ok(len as uint)
         };
     }
 }

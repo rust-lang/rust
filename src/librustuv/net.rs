@@ -806,12 +806,12 @@ impl rtio::RtioRawSocket for RawSocketWatcher {
     }
 
     fn sendto(&mut self, buf: &[u8], dst: ~raw::NetworkAddress)
-        -> Result<int, IoError>
+        -> Result<uint, IoError>
     {
         struct Ctx<'b> {
             task: Option<BlockedTask>,
             buf: &'b [u8],
-            result: Option<int>,
+            result: Option<Result<uint, IoError>>,
             socket: Option<uvll::uv_os_socket_t>,
             addr: ~raw::NetworkAddress,
         }
@@ -831,11 +831,7 @@ impl rtio::RtioRawSocket for RawSocketWatcher {
                 wait_until_woken_after(&mut cx.task, &self.uv_loop(), || {
                     unsafe { uvll::set_data_for_uv_handle(self.handle, &cx) }
                 });
-                match cx.result.take_unwrap() {
-                    n if n < 0 =>
-                        Err(netsupport::translate_error(n as i32, true)),
-                    n => Ok(n)
-                }
+                cx.result.unwrap()
             }
             n => Err(uv_error_to_io_error(UvError(n)))
         };
@@ -847,7 +843,7 @@ impl rtio::RtioRawSocket for RawSocketWatcher {
                 cast::transmute(uvll::get_data_for_uv_handle(handle))
             };
             if status < 0 {
-                cx.result = Some(status as int);
+                cx.result = Some(Err(uv_error_to_io_error(UvError(status))));
                 wakeup(&mut cx.task);
                 return;
             }
@@ -872,9 +868,9 @@ impl rtio::RtioRawSocket for RawSocketWatcher {
             };
 
             cx.result = if len < 0 {
-                            Some(-errno() as int)
+                            Some(Err(netsupport::last_error()))
                         } else {
-                            Some(len as int)
+                            Some(Ok(len as uint))
                         };
 
             wakeup(&mut cx.task);

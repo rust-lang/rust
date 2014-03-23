@@ -40,7 +40,7 @@ impl RawSocket {
         self.obj.recvfrom(buf)
     }
 
-    pub fn sendto(&mut self, buf: &[u8], dst: ~NetworkAddress) -> IoResult<int> {
+    pub fn sendto(&mut self, buf: &[u8], dst: ~NetworkAddress) -> IoResult<uint> {
         self.obj.sendto(buf, dst)
     }
 }
