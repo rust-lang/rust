@@ -50,12 +50,9 @@ use sync;
 use sync::{Mutex, RWLock};
 
 use std::cast;
-use std::kinds::marker;
+use std::kinds::{Share, marker};
 use std::sync::arc::UnsafeArc;
 use std::task;
-
-#[cfg(stage0)]
-use std::kinds::Share;
 
 /// As sync::condvar, a mechanism for unlock-and-descheduling and
 /// signaling, for use with the Arc types.

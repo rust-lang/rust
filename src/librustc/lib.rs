@@ -30,7 +30,6 @@ This API is completely unstable and subject to change.
 #[allow(deprecated)];
 #[feature(macro_rules, globs, struct_variant, managed_boxes, quote,
           default_type_params, phase)];
-#[allow(deprecated_owned_vector)]; // NOTE: remove after stage0
 
 extern crate flate;
 extern crate arena;

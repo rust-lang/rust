@@ -45,18 +45,7 @@ use kinds::marker;
 ///
 /// **NOTE:** Unsafe<T> fields are public to allow static initializers. It is not recommended
 /// to access its fields directly, `get` should be used instead.
-#[cfg(not(stage0))]
 #[lang="unsafe"]
-pub struct Unsafe<T> {
-    /// Wrapped value
-    value: T,
-
-    /// Invariance marker
-    marker1: marker::InvariantType<T>
-}
-
-/// Unsafe type for stage0
-#[cfg(stage0)]
 pub struct Unsafe<T> {
     /// Wrapped value
     value: T,
