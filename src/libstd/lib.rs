@@ -134,7 +134,7 @@ pub mod ascii;
 
 pub mod ptr;
 pub mod owned;
-pub mod managed;
+mod managed;
 mod reference;
 pub mod rc;
 pub mod gc;
