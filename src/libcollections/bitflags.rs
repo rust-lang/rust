@@ -72,6 +72,11 @@
 //! }
 //! ~~~
 //!
+//! # Derived traits
+//!
+//! The `Eq`, `TotalEq`, and `Clone` traits are automatically derived for the
+//! `struct` using the `deriving` attribute.
+//!
 //! # Operators
 //!
 //! The following operator traits are implemented for the generated `struct`:
