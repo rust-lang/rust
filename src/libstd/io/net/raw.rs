@@ -11,6 +11,7 @@
 // FIXME
 #[allow(missing_doc)];
 
+use container::Container;
 use fmt;
 use io::net::ip::{IpAddr, Ipv4Addr, Ipv6Addr};
 use io::{IoResult};
@@ -789,13 +790,13 @@ pub trait UdpPacket : Packet {
         // Checksum UDP header/packet
         i = self.offset();
         let len = self.offset() + self.get_length() as uint;
-        while i < len {
+        while i < len && i + 1 < self.packet().len() {
             let word = self.packet()[i] as u32 << 8 | self.packet()[i + 1] as u32;
             sum = sum + word;
             i = i + 2;
         }
         // If the length is odd, make sure to checksum the final byte
-        if len & 1 != 0 {
+        if len & 1 != 0 && len <= self.packet().len() {
             sum = sum + (self.packet()[len - 1] as u32 << 8);
         }
         while sum >> 16 != 0 {
@@ -827,13 +828,13 @@ pub trait UdpPacket : Packet {
         // Checksum UDP header/packet
         i = self.offset();
         len = self.offset() + self.get_length() as uint;
-        while i < len {
+        while i < len && i + 1 < self.packet().len() {
             let word = self.packet()[i] as u32 << 8 | self.packet()[i + 1] as u32;
             sum = sum + word;
             i = i + 2;
         }
         // If the length is odd, make sure to checksum the final byte
-        if len & 1 != 0 {
+        if len & 1 != 0 && len <= self.packet().len() {
             sum = sum + self.packet()[len - 1] as u32 << 8;
         }
 
