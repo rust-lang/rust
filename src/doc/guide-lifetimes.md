@@ -559,9 +559,14 @@ points at a static constant).
 
 # Named lifetimes
 
-Let's look at named lifetimes in more detail. Named lifetimes allow
-for grouping of parameters by lifetime. For example, consider this
-function:
+Lifetimes can be named and referenced. For example, the special lifetime 
+`'static`, which does not go out of scope, can be used to create global
+variables and communicate between tasks (see the manual for usecases).
+
+## Parameter Lifetimes
+
+Named lifetimes allow for grouping of parameters by lifetime. 
+For example, consider this function:
 
 ~~~
 # struct Point {x: f64, y: f64}; // as before
@@ -654,6 +659,20 @@ fn select<'r, T>(shape: &Shape, threshold: f64,
 ~~~
 
 This is equivalent to the previous definition.
+
+## Labeled Control Structures
+
+Named lifetime notation can also be used to control the flow of execution:
+
+~~~
+'h: for i in range(0,10) {
+    'g: loop {
+        if i % 2 == 0 { continue 'h; }
+        if i == 9 { break 'h; }
+        break 'g;
+    }
+}
+~~~
 
 # Conclusion
 
