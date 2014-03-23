@@ -15,7 +15,6 @@ all:
 	rm $(TMPDIR)/bar
 	$(RUSTC) foo.rs --emit=asm,ir,bc,obj,link --crate-type=staticlib
 	rm $(TMPDIR)/bar.ll
-	rm $(TMPDIR)/bar.bc
 	rm $(TMPDIR)/bar.s
 	rm $(TMPDIR)/bar.o
 	rm $(TMPDIR)/$(call STATICLIB_GLOB,bar)
@@ -37,6 +36,9 @@ all:
 	rm $(TMPDIR)/foo
 	$(RUSTC) foo.rs --crate-type=bin -o $(TMPDIR)/foo
 	rm $(TMPDIR)/foo
+	mv $(TMPDIR)/bar.bc $(TMPDIR)/foo.bc
 	$(RUSTC) foo.rs --emit=bc,link --crate-type=rlib
+	cmp $(TMPDIR)/foo.bc $(TMPDIR)/bar.bc
 	rm $(TMPDIR)/bar.bc
+	rm $(TMPDIR)/foo.bc
 	rm $(TMPDIR)/$(call RLIB_GLOB,bar)
