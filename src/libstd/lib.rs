@@ -58,7 +58,6 @@
 #[no_std];
 
 #[deny(missing_doc)];
-#[allow(deprecated_owned_vector)]; // NOTE: remove after stage0
 
 // When testing libstd, bring in libuv as the I/O backend so tests can print
 // things and all of the std::io tests have an I/O interface to run on top
@@ -77,9 +76,6 @@
 #[cfg(test)] pub use ops = realstd::ops;
 #[cfg(test)] pub use cmp = realstd::cmp;
 #[cfg(test)] pub use ty = realstd::ty;
-
-#[cfg(stage0)]
-pub use vec_ng = vec;
 
 // Run tests with libgreen instead of libnative.
 //

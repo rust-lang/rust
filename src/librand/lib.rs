@@ -71,7 +71,6 @@ println!("{:?}", tuple_ptr)
       html_root_url = "http://static.rust-lang.org/doc/master")];
 
 #[feature(macro_rules, managed_boxes, phase)];
-#[allow(deprecated_owned_vector)]; // NOTE: remove after stage0
 
 #[cfg(test)]
 #[phase(syntax, link)] extern crate log;
