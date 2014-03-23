@@ -14,7 +14,7 @@ use std::fmt::Show;
 #[deriving(Eq)]
 pub enum Os { OsWin32, OsMacos, OsLinux, OsAndroid, OsFreebsd, }
 
-#[deriving(Eq, Hash)]
+#[deriving(Eq, TotalEq, Hash)]
 pub enum Abi {
     // NB: This ordering MUST match the AbiDatas array below.
     // (This is ensured by the test indices_are_correct().)
@@ -65,7 +65,7 @@ pub enum AbiArchitecture {
     Archs(u32)  // Multiple architectures (bitset)
 }
 
-#[deriving(Clone, Eq, Encodable, Decodable, Hash)]
+#[deriving(Clone, Eq, TotalEq, Encodable, Decodable, Hash)]
 pub struct AbiSet {
     priv bits: u32   // each bit represents one of the abis below
 }

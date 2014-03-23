@@ -23,7 +23,7 @@ use parse::parser::Parser;
 use parse::token;
 
 /// The specific types of unsupported syntax
-#[deriving(Eq, Hash)]
+#[deriving(Eq, TotalEq, Hash)]
 pub enum ObsoleteSyntax {
     ObsoleteSwap,
     ObsoleteUnsafeBlock,

@@ -26,7 +26,7 @@ pointers, and then storing the parent pointers as `Weak` pointers.
 use cast::transmute;
 use cell::Cell;
 use clone::Clone;
-use cmp::{Eq, Ord};
+use cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering};
 use kinds::marker;
 use ops::{Deref, Drop};
 use option::{Option, Some, None};
@@ -127,6 +127,8 @@ impl<T: Eq> Eq for Rc<T> {
     fn ne(&self, other: &Rc<T>) -> bool { **self != **other }
 }
 
+impl<T: TotalEq> TotalEq for Rc<T> {}
+
 impl<T: Ord> Ord for Rc<T> {
     #[inline(always)]
     fn lt(&self, other: &Rc<T>) -> bool { **self < **other }
@@ -139,6 +141,11 @@ impl<T: Ord> Ord for Rc<T> {
 
     #[inline(always)]
     fn ge(&self, other: &Rc<T>) -> bool { **self >= **other }
+}
+
+impl<T: TotalOrd> TotalOrd for Rc<T> {
+    #[inline]
+    fn cmp(&self, other: &Rc<T>) -> Ordering { (**self).cmp(&**other) }
 }
 
 /// Weak reference to a reference-counted box

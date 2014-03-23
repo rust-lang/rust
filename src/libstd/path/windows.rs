@@ -15,7 +15,7 @@ use c_str::{CString, ToCStr};
 use cast;
 use clone::Clone;
 use container::Container;
-use cmp::Eq;
+use cmp::{Eq, TotalEq};
 use from_str::FromStr;
 use io::Writer;
 use iter::{AdditiveIterator, DoubleEndedIterator, Extendable, Rev, Iterator, Map};
@@ -92,6 +92,8 @@ impl Eq for Path {
         self.repr == other.repr
     }
 }
+
+impl TotalEq for Path {}
 
 impl FromStr for Path {
     fn from_str(s: &str) -> Option<Path> {
