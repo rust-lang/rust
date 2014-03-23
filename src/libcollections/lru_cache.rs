@@ -74,6 +74,8 @@ impl<K: Eq> Eq for KeyRef<K> {
     }
 }
 
+impl<K: TotalEq> TotalEq for KeyRef<K> {}
+
 impl<K, V> LruEntry<K, V> {
     fn new() -> LruEntry<K, V> {
         LruEntry {
@@ -94,7 +96,7 @@ impl<K, V> LruEntry<K, V> {
     }
 }
 
-impl<K: Hash + Eq, V> LruCache<K, V> {
+impl<K: Hash + TotalEq, V> LruCache<K, V> {
     /// Create an LRU Cache that holds at most `capacity` items.
     pub fn new(capacity: uint) -> LruCache<K, V> {
         let cache = LruCache {
@@ -218,7 +220,7 @@ impl<K: Hash + Eq, V> LruCache<K, V> {
     }
 }
 
-impl<A: fmt::Show + Hash + Eq, B: fmt::Show> fmt::Show for LruCache<A, B> {
+impl<A: fmt::Show + Hash + TotalEq, B: fmt::Show> fmt::Show for LruCache<A, B> {
     /// Return a string that lists the key-value pairs from most-recently
     /// used to least-recently used.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -247,14 +249,14 @@ impl<A: fmt::Show + Hash + Eq, B: fmt::Show> fmt::Show for LruCache<A, B> {
     }
 }
 
-impl<K: Hash + Eq, V> Container for LruCache<K, V> {
+impl<K: Hash + TotalEq, V> Container for LruCache<K, V> {
     /// Return the number of key-value pairs in the cache.
     fn len(&self) -> uint {
         self.map.len()
     }
 }
 
-impl<K: Hash + Eq, V> Mutable for LruCache<K, V> {
+impl<K: Hash + TotalEq, V> Mutable for LruCache<K, V> {
     /// Clear the cache of all key-value pairs.
     fn clear(&mut self) {
         self.map.clear();

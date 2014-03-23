@@ -165,7 +165,7 @@ impl<
 
 impl<
     E: Encoder,
-    K: Encodable<E> + Hash<S> + Eq,
+    K: Encodable<E> + Hash<S> + TotalEq,
     V: Encodable<E>,
     S,
     H: Hasher<S>
@@ -184,7 +184,7 @@ impl<
 
 impl<
     D: Decoder,
-    K: Decodable<D> + Hash<S> + Eq,
+    K: Decodable<D> + Hash<S> + TotalEq,
     V: Decodable<D>,
     S,
     H: Hasher<S> + Default
@@ -205,7 +205,7 @@ impl<
 
 impl<
     E: Encoder,
-    T: Encodable<E> + Hash<S> + Eq,
+    T: Encodable<E> + Hash<S> + TotalEq,
     S,
     H: Hasher<S>
 > Encodable<E> for HashSet<T, H> {
@@ -222,7 +222,7 @@ impl<
 
 impl<
     D: Decoder,
-    T: Decodable<D> + Hash<S> + Eq,
+    T: Decodable<D> + Hash<S> + TotalEq,
     S,
     H: Hasher<S> + Default
 > Decodable<D> for HashSet<T, H> {

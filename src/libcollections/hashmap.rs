@@ -12,7 +12,7 @@
 
 use std::container::{Container, Mutable, Map, MutableMap, Set, MutableSet};
 use std::clone::Clone;
-use std::cmp::{Eq, Equiv, max};
+use std::cmp::{Eq, TotalEq, Equiv, max};
 use std::default::Default;
 use std::fmt;
 use std::fmt::Show;
@@ -140,6 +140,7 @@ mod table {
     }
 
     /// A hash that is not zero, since we use that to represent empty buckets.
+    #[deriving(Eq)]
     pub struct SafeHash {
         priv hash: u64,
     }
@@ -147,10 +148,6 @@ mod table {
     impl SafeHash {
         /// Peek at the hash value, which is guaranteed to be non-zero.
         pub fn inspect(&self) -> u64 { self.hash }
-    }
-
-    impl Eq for SafeHash {
-        fn eq(&self, other: &SafeHash) -> bool { self.hash == other.hash }
     }
 
     /// We need to remove hashes of 0. That's reserved for empty buckets.
@@ -698,7 +695,7 @@ fn grow_at(capacity: uint, load_factor: Fraction) -> uint {
     fraction_mul(capacity, load_factor)
 }
 
-impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
+impl<K: TotalEq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// Get the number of elements which will force the capacity to shrink.
     /// When size == self.shrink_at(), we halve the capacity.
     fn shrink_at(&self) -> uint {
@@ -799,12 +796,12 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     }
 }
 
-impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> Container for HashMap<K, V, H> {
+impl<K: TotalEq + Hash<S>, V, S, H: Hasher<S>> Container for HashMap<K, V, H> {
     /// Return the number of elements in the map
     fn len(&self) -> uint { self.table.size() }
 }
 
-impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> Mutable for HashMap<K, V, H> {
+impl<K: TotalEq + Hash<S>, V, S, H: Hasher<S>> Mutable for HashMap<K, V, H> {
     /// Clear the map, removing all key-value pairs.
     fn clear(&mut self) {
         self.minimum_capacity = self.table.size();
@@ -819,7 +816,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> Mutable for HashMap<K, V, H> {
 }
 
 
-impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> Map<K, V> for HashMap<K, V, H> {
+impl<K: TotalEq + Hash<S>, V, S, H: Hasher<S>> Map<K, V> for HashMap<K, V, H> {
     fn find<'a>(&'a self, k: &K) -> Option<&'a V> {
         self.search(k).map(|idx| {
             let (_, v) = self.table.read(&idx);
@@ -832,7 +829,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> Map<K, V> for HashMap<K, V, H> {
     }
 }
 
-impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> MutableMap<K, V> for HashMap<K, V, H> {
+impl<K: TotalEq + Hash<S>, V, S, H: Hasher<S>> MutableMap<K, V> for HashMap<K, V, H> {
     fn find_mut<'a>(&'a mut self, k: &K) -> Option<&'a mut V> {
         match self.search(k) {
             None => None,
@@ -969,7 +966,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> MutableMap<K, V> for HashMap<K, V, H> 
     }
 }
 
-impl<K: Hash + Eq, V> HashMap<K, V, sip::SipHasher> {
+impl<K: Hash + TotalEq, V> HashMap<K, V, sip::SipHasher> {
     /// Create an empty HashMap.
     pub fn new() -> HashMap<K, V, sip::SipHasher> {
         HashMap::with_capacity(INITIAL_CAPACITY)
@@ -984,7 +981,7 @@ impl<K: Hash + Eq, V> HashMap<K, V, sip::SipHasher> {
     }
 }
 
-impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
+impl<K: TotalEq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     pub fn with_hasher(hasher: H) -> HashMap<K, V, H> {
         HashMap::with_capacity_and_hasher(INITIAL_CAPACITY, hasher)
     }
@@ -1296,7 +1293,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     }
 }
 
-impl<K: Eq + Hash<S>, V: Clone, S, H: Hasher<S>> HashMap<K, V, H> {
+impl<K: TotalEq + Hash<S>, V: Clone, S, H: Hasher<S>> HashMap<K, V, H> {
     /// Like `find`, but returns a copy of the value.
     pub fn find_copy(&self, k: &K) -> Option<V> {
         self.find(k).map(|v| (*v).clone())
@@ -1308,7 +1305,7 @@ impl<K: Eq + Hash<S>, V: Clone, S, H: Hasher<S>> HashMap<K, V, H> {
     }
 }
 
-impl<K: Eq + Hash<S>, V: Eq, S, H: Hasher<S>> Eq for HashMap<K, V, H> {
+impl<K: TotalEq + Hash<S>, V: Eq, S, H: Hasher<S>> Eq for HashMap<K, V, H> {
     fn eq(&self, other: &HashMap<K, V, H>) -> bool {
         if self.len() != other.len() { return false; }
 
@@ -1321,7 +1318,7 @@ impl<K: Eq + Hash<S>, V: Eq, S, H: Hasher<S>> Eq for HashMap<K, V, H> {
     }
 }
 
-impl<K: Eq + Hash<S> + Show, V: Show, S, H: Hasher<S>> Show for HashMap<K, V, H> {
+impl<K: TotalEq + Hash<S> + Show, V: Show, S, H: Hasher<S>> Show for HashMap<K, V, H> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(f.buf, r"\{"));
 
@@ -1334,7 +1331,7 @@ impl<K: Eq + Hash<S> + Show, V: Show, S, H: Hasher<S>> Show for HashMap<K, V, H>
     }
 }
 
-impl<K: Eq + Hash<S>, V, S, H: Hasher<S> + Default> Default for HashMap<K, V, H> {
+impl<K: TotalEq + Hash<S>, V, S, H: Hasher<S> + Default> Default for HashMap<K, V, H> {
     fn default() -> HashMap<K, V, H> {
         HashMap::with_capacity_and_hasher(INITIAL_CAPACITY, Default::default())
     }
@@ -1358,7 +1355,7 @@ pub type Keys<'a, K, V> =
 pub type Values<'a, K, V> =
     iter::Map<'static, (&'a K, &'a V), &'a V, Entries<'a, K, V>>;
 
-impl<K: Eq + Hash<S>, V, S, H: Hasher<S> + Default> FromIterator<(K, V)> for HashMap<K, V, H> {
+impl<K: TotalEq + Hash<S>, V, S, H: Hasher<S> + Default> FromIterator<(K, V)> for HashMap<K, V, H> {
     fn from_iterator<T: Iterator<(K, V)>>(iter: &mut T) -> HashMap<K, V, H> {
         let (lower, _) = iter.size_hint();
         let mut map = HashMap::with_capacity_and_hasher(lower, Default::default());
@@ -1367,7 +1364,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S> + Default> FromIterator<(K, V)> for Has
     }
 }
 
-impl<K: Eq + Hash<S>, V, S, H: Hasher<S> + Default> Extendable<(K, V)> for HashMap<K, V, H> {
+impl<K: TotalEq + Hash<S>, V, S, H: Hasher<S> + Default> Extendable<(K, V)> for HashMap<K, V, H> {
     fn extend<T: Iterator<(K, V)>>(&mut self, iter: &mut T) {
         for (k, v) in *iter {
             self.insert(k, v);
@@ -1391,7 +1388,7 @@ pub struct HashSet<T, H = sip::SipHasher> {
     priv map: HashMap<T, (), H>
 }
 
-impl<T: Eq + Hash<S>, S, H: Hasher<S>> Eq for HashSet<T, H> {
+impl<T: TotalEq + Hash<S>, S, H: Hasher<S>> Eq for HashSet<T, H> {
     // FIXME #11998: Since the value is a (), and `find` returns a Some(&()),
     // we trigger #11998 when matching on it. I've fallen back to manual
     // iteration until this is fixed.
@@ -1402,17 +1399,17 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> Eq for HashSet<T, H> {
     }
 }
 
-impl<T: Eq + Hash<S>, S, H: Hasher<S>> Container for HashSet<T, H> {
+impl<T: TotalEq + Hash<S>, S, H: Hasher<S>> Container for HashSet<T, H> {
     /// Return the number of elements in the set
     fn len(&self) -> uint { self.map.len() }
 }
 
-impl<T: Eq + Hash<S>, S, H: Hasher<S>> Mutable for HashSet<T, H> {
+impl<T: TotalEq + Hash<S>, S, H: Hasher<S>> Mutable for HashSet<T, H> {
     /// Clear the set, removing all values.
     fn clear(&mut self) { self.map.clear() }
 }
 
-impl<T: Eq + Hash<S>, S, H: Hasher<S>> Set<T> for HashSet<T, H> {
+impl<T: TotalEq + Hash<S>, S, H: Hasher<S>> Set<T> for HashSet<T, H> {
     /// Return true if the set contains a value
     fn contains(&self, value: &T) -> bool { self.map.search(value).is_some() }
 
@@ -1433,7 +1430,7 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> Set<T> for HashSet<T, H> {
     }
 }
 
-impl<T: Eq + Hash<S>, S, H: Hasher<S>> MutableSet<T> for HashSet<T, H> {
+impl<T: TotalEq + Hash<S>, S, H: Hasher<S>> MutableSet<T> for HashSet<T, H> {
     /// Add a value to the set. Return true if the value was not already
     /// present in the set.
     fn insert(&mut self, value: T) -> bool { self.map.insert(value, ()) }
@@ -1443,7 +1440,7 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> MutableSet<T> for HashSet<T, H> {
     fn remove(&mut self, value: &T) -> bool { self.map.remove(value) }
 }
 
-impl<T: Hash + Eq> HashSet<T, sip::SipHasher> {
+impl<T: Hash + TotalEq> HashSet<T, sip::SipHasher> {
     /// Create an empty HashSet
     pub fn new() -> HashSet<T, sip::SipHasher> {
         HashSet::with_capacity(INITIAL_CAPACITY)
@@ -1456,7 +1453,7 @@ impl<T: Hash + Eq> HashSet<T, sip::SipHasher> {
     }
 }
 
-impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
+impl<T: TotalEq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     pub fn with_hasher(hasher: H) -> HashSet<T, H> {
         HashSet::with_capacity_and_hasher(INITIAL_CAPACITY, hasher)
     }
@@ -1529,7 +1526,7 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
 
 }
 
-impl<T: Eq + Hash<S> + fmt::Show, S, H: Hasher<S>> fmt::Show for HashSet<T, H> {
+impl<T: TotalEq + Hash<S> + fmt::Show, S, H: Hasher<S>> fmt::Show for HashSet<T, H> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(f.buf, r"\{"));
 
@@ -1542,7 +1539,7 @@ impl<T: Eq + Hash<S> + fmt::Show, S, H: Hasher<S>> fmt::Show for HashSet<T, H> {
     }
 }
 
-impl<T: Eq + Hash<S>, S, H: Hasher<S> + Default> FromIterator<T> for HashSet<T, H> {
+impl<T: TotalEq + Hash<S>, S, H: Hasher<S> + Default> FromIterator<T> for HashSet<T, H> {
     fn from_iterator<I: Iterator<T>>(iter: &mut I) -> HashSet<T, H> {
         let (lower, _) = iter.size_hint();
         let mut set = HashSet::with_capacity_and_hasher(lower, Default::default());
@@ -1551,7 +1548,7 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S> + Default> FromIterator<T> for HashSet<T, 
     }
 }
 
-impl<T: Eq + Hash<S>, S, H: Hasher<S> + Default> Extendable<T> for HashSet<T, H> {
+impl<T: TotalEq + Hash<S>, S, H: Hasher<S> + Default> Extendable<T> for HashSet<T, H> {
     fn extend<I: Iterator<T>>(&mut self, iter: &mut I) {
         for k in *iter {
             self.insert(k);
@@ -1559,7 +1556,7 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S> + Default> Extendable<T> for HashSet<T, H>
     }
 }
 
-impl<T: Eq + Hash> Default for HashSet<T, sip::SipHasher> {
+impl<T: TotalEq + Hash> Default for HashSet<T, sip::SipHasher> {
     fn default() -> HashSet<T> { HashSet::new() }
 }
 
@@ -1601,7 +1598,7 @@ mod test_map {
 
     local_data_key!(drop_vector: vec::Vec<int>)
 
-    #[deriving(Hash, Eq)]
+    #[deriving(Hash, Eq, TotalEq)]
     struct Dropable {
         k: int
     }
