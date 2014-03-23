@@ -38,6 +38,40 @@
 //! }
 //! ~~~
 //!
+//! The generated `struct`s can also be extended with type and trait implementations:
+//!
+//! ~~~rust
+//! #[feature(phase)];
+//! #[phase(syntax)] extern crate collections;
+//!
+//! use std::fmt;
+//!
+//! bitflags!(Flags: u32 {
+//!     FlagA   = 0x00000001,
+//!     FlagB   = 0x00000010
+//! })
+//!
+//! impl Flags {
+//!     pub fn clear(&mut self) {
+//!         self.bits = 0;  // The `bits` field can be accessed from within the
+//!                         // same module where the `bitflags!` macro was invoked.
+//!     }
+//! }
+//!
+//! impl fmt::Show for Flags {
+//!     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+//!         write!(f.buf, "hi!")
+//!     }
+//! }
+//!
+//! fn main() {
+//!     let mut flags = FlagA | FlagB;
+//!     flags.clear();
+//!     assert!(flags.is_empty());
+//!     assert_eq!(format!("{}", flags), ~"hi!");
+//! }
+//! ~~~
+//!
 //! # Operators
 //!
 //! The following operator traits are implemented for the generated `struct`:
