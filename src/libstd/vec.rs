@@ -1360,7 +1360,6 @@ mod tests {
     use mem::{drop, size_of};
     use ops::Drop;
     use option::{Some, None};
-    use ptr;
     use container::Container;
     use slice::{Vector, MutableVector, ImmutableVector};
 
