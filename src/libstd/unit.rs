@@ -37,10 +37,7 @@ impl TotalOrd for () {
 }
 
 #[cfg(not(test))]
-impl TotalEq for () {
-    #[inline]
-    fn equals(&self, _other: &()) -> bool { true }
-}
+impl TotalEq for () {}
 
 #[cfg(not(test))]
 impl Default for () {

@@ -1262,16 +1262,11 @@ impl<'a> IntoMaybeOwned<'a> for MaybeOwned<'a> {
 impl<'a> Eq for MaybeOwned<'a> {
     #[inline]
     fn eq(&self, other: &MaybeOwned) -> bool {
-        self.as_slice().equals(&other.as_slice())
+        self.as_slice() == other.as_slice()
     }
 }
 
-impl<'a> TotalEq for MaybeOwned<'a> {
-    #[inline]
-    fn equals(&self, other: &MaybeOwned) -> bool {
-        self.as_slice().equals(&other.as_slice())
-    }
-}
+impl<'a> TotalEq for MaybeOwned<'a> {}
 
 impl<'a> Ord for MaybeOwned<'a> {
     #[inline]
@@ -1290,7 +1285,7 @@ impl<'a> TotalOrd for MaybeOwned<'a> {
 impl<'a, S: Str> Equiv<S> for MaybeOwned<'a> {
     #[inline]
     fn equiv(&self, other: &S) -> bool {
-        self.as_slice().equals(&other.as_slice())
+        self.as_slice() == other.as_slice()
     }
 }
 
@@ -1577,19 +1572,9 @@ pub mod traits {
         }
     }
 
-    impl<'a> TotalEq for &'a str {
-        #[inline]
-        fn equals(&self, other: & &'a str) -> bool {
-            eq_slice((*self), (*other))
-        }
-    }
+    impl<'a> TotalEq for &'a str {}
 
-    impl TotalEq for ~str {
-        #[inline]
-        fn equals(&self, other: &~str) -> bool {
-            eq_slice((*self), (*other))
-        }
-    }
+    impl TotalEq for ~str {}
 
     impl<'a> Ord for &'a str {
         #[inline]
@@ -4450,11 +4435,9 @@ mod tests {
         assert_eq!(Owned(~""), Default::default());
 
         assert!(s.cmp(&o) == Equal);
-        assert!(s.equals(&o));
         assert!(s.equiv(&o));
 
         assert!(o.cmp(&s) == Equal);
-        assert!(o.equals(&s));
         assert!(o.equiv(&s));
     }
 
