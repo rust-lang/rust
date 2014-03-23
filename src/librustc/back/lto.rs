@@ -52,9 +52,9 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
 
         let archive = ArchiveRO::open(&path).expect("wanted an rlib");
         debug!("reading {}", name);
-        let bc = time(sess.time_passes(), format!("read {}.bc", name), (), |_|
-                      archive.read(format!("{}.bc", name)));
-        let bc = bc.expect("missing bytecode in archive!");
+        let bc = time(sess.time_passes(), format!("read {}.bc.deflate", name), (), |_|
+                      archive.read(format!("{}.bc.deflate", name)));
+        let bc = bc.expect("missing compressed bytecode in archive!");
         let bc = time(sess.time_passes(), format!("inflate {}.bc", name), (), |_|
                       flate::inflate_bytes(bc));
         let ptr = bc.as_slice().as_ptr();
