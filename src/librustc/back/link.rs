@@ -937,8 +937,9 @@ fn link_rlib<'a>(sess: &'a Session,
             // For LTO purposes, the bytecode of this library is also inserted
             // into the archive.
             let bc = obj_filename.with_extension("bc");
+            let bc_deflated = obj_filename.with_extension("bc.deflate");
             match fs::File::open(&bc).read_to_end().and_then(|data| {
-                fs::File::create(&bc).write(flate::deflate_bytes(data).as_slice())
+                fs::File::create(&bc_deflated).write(flate::deflate_bytes(data).as_slice())
             }) {
                 Ok(()) => {}
                 Err(e) => {
@@ -946,7 +947,8 @@ fn link_rlib<'a>(sess: &'a Session,
                     sess.abort_if_errors()
                 }
             }
-            a.add_file(&bc, false);
+            a.add_file(&bc_deflated, false);
+            remove(sess, &bc_deflated);
             if !sess.opts.cg.save_temps &&
                !sess.opts.output_types.contains(&OutputTypeBitcode) {
                 remove(sess, &bc);
