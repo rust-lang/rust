@@ -24,11 +24,13 @@
  * discouraged.
  */
 
+use cast::transmute;
 use clone::Clone;
 use container::Container;
 use default::Default;
 use io::{IoResult, Writer};
 use iter::Iterator;
+use mem::to_le64;
 use result::Ok;
 use slice::ImmutableVector;
 
@@ -43,7 +45,7 @@ pub struct SipState {
     priv v1: u64,
     priv v2: u64,
     priv v3: u64,
-    priv tail: [u8, ..8], // unprocessed bytes
+    priv tail: u64, // unprocessed bytes, stored in little endian format
     priv ntail: uint,  // how many bytes in tail are valid
 }
 
@@ -53,14 +55,7 @@ pub struct SipState {
 
 macro_rules! u8to64_le (
     ($buf:expr, $i:expr) =>
-    ($buf[0+$i] as u64 |
-     $buf[1+$i] as u64 << 8 |
-     $buf[2+$i] as u64 << 16 |
-     $buf[3+$i] as u64 << 24 |
-     $buf[4+$i] as u64 << 32 |
-     $buf[5+$i] as u64 << 40 |
-     $buf[6+$i] as u64 << 48 |
-     $buf[7+$i] as u64 << 56)
+    (unsafe { to_le64(*transmute::<*u8, *u64>($buf.slice_from($i).as_ptr()) as i64) as u64 })
 )
 
 macro_rules! rotl (
@@ -98,7 +93,7 @@ impl SipState {
             v1: 0,
             v2: 0,
             v3: 0,
-            tail: [ 0, 0, 0, 0, 0, 0, 0, 0 ],
+            tail: 0,
             ntail: 0,
         };
         state.reset();
@@ -114,6 +109,7 @@ impl SipState {
         self.v2 = self.k0 ^ 0x6c7967656e657261;
         self.v3 = self.k1 ^ 0x7465646279746573;
         self.ntail = 0;
+        self.tail = 0;
     }
 
     /// Return the computed hash.
@@ -124,15 +120,7 @@ impl SipState {
         let mut v2 = self.v2;
         let mut v3 = self.v3;
 
-        let mut b : u64 = (self.length as u64 & 0xff) << 56;
-
-        if self.ntail > 0 { b |= self.tail[0] as u64 <<  0; }
-        if self.ntail > 1 { b |= self.tail[1] as u64 <<  8; }
-        if self.ntail > 2 { b |= self.tail[2] as u64 << 16; }
-        if self.ntail > 3 { b |= self.tail[3] as u64 << 24; }
-        if self.ntail > 4 { b |= self.tail[4] as u64 << 32; }
-        if self.ntail > 5 { b |= self.tail[5] as u64 << 40; }
-        if self.ntail > 6 { b |= self.tail[6] as u64 << 48; }
+        let b : u64 = ((self.length as u64 & 0xff) << 56) | self.tail;
 
         v3 ^= b;
         compress!(v0, v1, v2, v3);
@@ -163,7 +151,7 @@ impl Writer for SipState {
             if length < needed {
                 let mut t = 0;
                 while t < length {
-                    self.tail[self.ntail+t] = msg[t];
+                    self.tail |= msg[t] as u64 << 8*(self.ntail+t);
                     t += 1;
                 }
                 self.ntail += length;
@@ -172,11 +160,11 @@ impl Writer for SipState {
 
             let mut t = 0;
             while t < needed {
-                self.tail[self.ntail+t] = msg[t];
+                self.tail |= msg[t] as u64 << 8*(self.ntail+t);
                 t += 1;
             }
 
-            let m = u8to64_le!(self.tail, 0);
+            let m = self.tail;
 
             self.v3 ^= m;
             compress!(self.v0, self.v1, self.v2, self.v3);
@@ -184,6 +172,7 @@ impl Writer for SipState {
             self.v0 ^= m;
 
             self.ntail = 0;
+            self.tail = 0;
         }
 
         // Buffered tail is now flushed, process new input.
@@ -205,10 +194,98 @@ impl Writer for SipState {
 
         let mut t = 0u;
         while t < left {
-            self.tail[t] = msg[i+t];
+            self.tail |= msg[i+t] as u64 << 8*t;
             t += 1
         }
         self.ntail = left;
+
+        Ok(())
+    }
+
+    #[inline]
+    fn write_u8(&mut self, n: u8) -> IoResult<()> {
+        self.tail |= n as u64 << 8*self.ntail;
+        self.ntail += 1;
+
+        if self.ntail == 8 {
+            let m = self.tail;
+
+            self.v3 ^= m;
+            compress!(self.v0, self.v1, self.v2, self.v3);
+            compress!(self.v0, self.v1, self.v2, self.v3);
+            self.v0 ^= m;
+
+            self.tail = 0;
+            self.ntail = 0;
+        }
+
+        self.length += 1;
+
+        Ok(())
+    }
+
+    #[inline]
+    fn write_le_u16(&mut self, n: u16) -> IoResult<()> {
+        self.tail |= n as u64 << 8*self.ntail;
+        self.ntail += 2;
+
+        if self.ntail >= 8 {
+            let m = self.tail;
+
+            self.v3 ^= m;
+            compress!(self.v0, self.v1, self.v2, self.v3);
+            compress!(self.v0, self.v1, self.v2, self.v3);
+            self.v0 ^= m;
+
+            self.tail = n as u64 >> 64 - 8*self.ntail;
+            self.ntail -= 8;
+        }
+
+        self.length += 2;
+
+        Ok(())
+    }
+
+    #[inline]
+    fn write_le_u32(&mut self, n: u32) -> IoResult<()> {
+        self.tail |= n as u64 << 8*self.ntail;
+        self.ntail += 4;
+
+        if self.ntail >= 8 {
+            let m = self.tail;
+
+            self.v3 ^= m;
+            compress!(self.v0, self.v1, self.v2, self.v3);
+            compress!(self.v0, self.v1, self.v2, self.v3);
+            self.v0 ^= m;
+
+            self.tail = n as u64 >> 64 - 8*self.ntail;
+            self.ntail -= 8;
+        }
+
+        self.length += 4;
+
+        Ok(())
+    }
+
+    #[inline]
+    fn write_le_u64(&mut self, n: u64) -> IoResult<()> {
+        self.tail |= n << 8*self.ntail;
+
+        let m = self.tail;
+
+        self.v3 ^= m;
+        compress!(self.v0, self.v1, self.v2, self.v3);
+        compress!(self.v0, self.v1, self.v2, self.v3);
+        self.v0 ^= m;
+
+        if self.ntail == 0 {
+            self.tail = 0;
+        } else {
+            self.tail = n >> 64 - 8*self.ntail;
+        }
+
+        self.length += 8;
 
         Ok(())
     }
@@ -287,8 +364,10 @@ pub fn hash_with_keys<T: Hash<SipState>>(k0: u64, k1: u64, value: &T) -> u64 {
 #[cfg(test)]
 mod tests {
     extern crate test;
+    use cast::transmute;
     use io::Writer;
     use iter::Iterator;
+    use mem::to_le64;
     use num::ToStrRadix;
     use option::{Some, None};
     use str::{Str, OwnedStr};
@@ -520,6 +599,19 @@ mod tests {
         let s = "foo";
         bh.iter(|| {
             assert_eq!(hash(&s), 16262950014981195938);
+        })
+    }
+
+    #[bench]
+    fn bench_long_str(bh: &mut BenchHarness) {
+        let s = "Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor \
+                incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud \
+                exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute \
+                irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla \
+                pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui \
+                officia deserunt mollit anim id est laborum.";
+        bh.iter(|| {
+            assert_eq!(hash(&s), 17717065544121360093);
         })
     }
 
