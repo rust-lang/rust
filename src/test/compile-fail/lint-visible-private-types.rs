@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[feature(struct_variant)];
-#[deny(visible_private_types)];
-#[allow(dead_code)];
-#[crate_type="lib"];
+#![feature(struct_variant)]
+#![deny(visible_private_types)]
+#![allow(dead_code)]
+#![crate_type="lib"]
 
 struct Private<T>;
 pub struct Public<T>;

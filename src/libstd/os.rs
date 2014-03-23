@@ -26,7 +26,7 @@
  * to write OS-ignorant code by default.
  */
 
-#[allow(missing_doc)];
+#![allow(missing_doc)]
 
 #[cfg(target_os = "macos")]
 #[cfg(windows)]

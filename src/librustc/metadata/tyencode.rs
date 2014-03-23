@@ -10,8 +10,8 @@
 
 // Type encoding
 
-#[allow(unused_must_use)]; // as with encoding, everything is a no-fail MemWriter
-#[allow(non_camel_case_types)];
+#![allow(unused_must_use)] // as with encoding, everything is a no-fail MemWriter
+#![allow(non_camel_case_types)]
 
 use std::cell::RefCell;
 use collections::HashMap;

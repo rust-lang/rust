@@ -43,7 +43,7 @@
  * ```
  */
 
-#[allow(missing_doc, dead_code)];
+#![allow(missing_doc, dead_code)]
 
 
 use sync;

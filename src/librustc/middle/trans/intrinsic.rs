@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[allow(non_uppercase_pattern_statics)];
+#![allow(non_uppercase_pattern_statics)]
 
 use arena::TypedArena;
 use lib::llvm::{SequentiallyConsistent, Acquire, Release, Xchg};

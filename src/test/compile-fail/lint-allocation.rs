@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[deny(unnecessary_allocation)];
+#![deny(unnecessary_allocation)]
 
 fn f(_: &int) {}
 fn g(_: &mut int) {}

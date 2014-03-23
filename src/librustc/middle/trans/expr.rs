@@ -31,7 +31,7 @@
  * See doc.rs for more comments.
  */
 
-#[allow(non_camel_case_types)];
+#![allow(non_camel_case_types)]
 
 use back::abi;
 use lib::llvm::{ValueRef, llvm};

@@ -99,7 +99,7 @@ There are a number of free functions that create or take vectors, for example:
 
 */
 
-#[warn(non_camel_case_types)];
+#![warn(non_camel_case_types)]
 
 use cast;
 use cast::transmute;

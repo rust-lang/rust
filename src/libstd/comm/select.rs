@@ -43,7 +43,7 @@
 //! }
 //! ```
 
-#[allow(dead_code)];
+#![allow(dead_code)]
 
 use cast;
 use cell::Cell;

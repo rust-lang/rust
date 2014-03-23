@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[deny(unknown_features)];
+#![deny(unknown_features)]
 
-#[feature(this_is_not_a_feature)]; //~ ERROR: unknown feature
+#![feature(this_is_not_a_feature)] //~ ERROR: unknown feature
 
 fn main() {}

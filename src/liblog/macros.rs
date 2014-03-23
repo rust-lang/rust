@@ -10,7 +10,7 @@
 
 //! Logging macros
 
-#[macro_escape];
+#![macro_escape]
 
 /// The standard logging macro
 ///

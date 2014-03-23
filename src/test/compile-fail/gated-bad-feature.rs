@@ -8,16 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[feature(
+#![feature(
     foo_bar_baz,
     foo(bar),
     foo = "baz"
-)];
+)]
 //~^^^ ERROR: malformed feature
 //~^^^ ERROR: malformed feature
 
-#[feature]; //~ ERROR: malformed feature
-#[feature = "foo"]; //~ ERROR: malformed feature
+#![feature] //~ ERROR: malformed feature
+#![feature = "foo"] //~ ERROR: malformed feature
 
-#[feature(test_removed_feature)]; //~ ERROR: feature has been removed
-#[feature(test_accepted_feature)]; //~ WARNING: feature has added
+#![feature(test_removed_feature)] //~ ERROR: feature has been removed
+#![feature(test_accepted_feature)] //~ WARNING: feature has added

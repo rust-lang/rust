@@ -10,7 +10,7 @@
 
 // Searching for information from the cstore
 
-#[allow(non_camel_case_types)];
+#![allow(non_camel_case_types)]
 
 use metadata::common::*;
 use metadata::cstore;

@@ -10,7 +10,7 @@
 
 // Make sure that globs only bring in public things.
 
-#[feature(globs)];
+#![feature(globs)]
 
 use bar::*;
 

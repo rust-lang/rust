@@ -11,10 +11,10 @@
 // When denying at the crate level, be sure to not get random warnings from the
 // injected intrinsics by the compiler.
 
-#[deny(attribute_usage)];
+#![deny(attribute_usage)]
 
 mod a {
-    #[crate_type = "bin"]; //~ ERROR: crate-level attribute
+    #![crate_type = "bin"] //~ ERROR: crate-level attribute
 }
 
 #[crate_type = "bin"] fn main() {} //~ ERROR: crate-level attribute

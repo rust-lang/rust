@@ -14,7 +14,7 @@ Higher level communication abstractions.
 
 */
 
-#[allow(missing_doc)];
+#![allow(missing_doc)]
 
 use std::comm;
 

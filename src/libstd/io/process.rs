@@ -10,7 +10,7 @@
 
 //! Bindings for executing child processes
 
-#[deny(missing_doc)];
+#![deny(missing_doc)]
 
 use prelude::*;
 
