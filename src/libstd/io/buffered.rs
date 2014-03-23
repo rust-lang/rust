@@ -19,13 +19,14 @@ use option::{Some, None, Option};
 use result::{Ok, Err};
 use slice::{OwnedVector, ImmutableVector, MutableVector};
 use slice;
+use vec::Vec;
 
 /// Wraps a Reader and buffers input from it
 ///
-/// It can be excessively inefficient to work directly with a `Reader` or
-/// `Writer`. Every call to `read` or `write` on `TcpStream` results in a
-/// system call, for example. This module provides structures that wrap
-/// `Readers`, `Writers`, and `Streams` and buffer input and output to them.
+/// It can be excessively inefficient to work directly with a `Reader`. For
+/// example, every call to `read` on `TcpStream` results in a system call. A
+/// `BufferedReader` performs large, infrequent reads on the underlying
+/// `Reader` and maintains an in-memory buffer of the results.
 ///
 /// # Example
 ///
@@ -43,10 +44,9 @@ use slice;
 /// ```
 pub struct BufferedReader<R> {
     priv inner: R,
-    priv buf: ~[u8],
+    priv buf: Vec<u8>,
     priv pos: uint,
     priv cap: uint,
-    priv eof: bool,
 }
 
 impl<R: Reader> BufferedReader<R> {
@@ -58,14 +58,13 @@ impl<R: Reader> BufferedReader<R> {
         // everything up-front. This allows creation of BufferedReader instances
         // to be very cheap (large mallocs are not nearly as expensive as large
         // callocs).
-        let mut buf = slice::with_capacity(cap);
+        let mut buf = Vec::with_capacity(cap);
         unsafe { buf.set_len(cap); }
         BufferedReader {
             inner: inner,
             buf: buf,
             pos: 0,
             cap: 0,
-            eof: false,
         }
     }
 
@@ -80,7 +79,7 @@ impl<R: Reader> BufferedReader<R> {
     /// underlying reader because that could possibly corrupt the buffer.
     pub fn get_ref<'a>(&'a self) -> &'a R { &self.inner }
 
-    /// Unwraps this buffer, returning the underlying reader.
+    /// Unwraps this `BufferedReader`, returning the underlying reader.
     ///
     /// Note that any leftover data in the internal buffer is lost.
     pub fn unwrap(self) -> R { self.inner }
@@ -89,7 +88,7 @@ impl<R: Reader> BufferedReader<R> {
 impl<R: Reader> Buffer for BufferedReader<R> {
     fn fill<'a>(&'a mut self) -> IoResult<&'a [u8]> {
         if self.pos == self.cap {
-            self.cap = try!(self.inner.read(self.buf));
+            self.cap = try!(self.inner.read(self.buf.as_mut_slice()));
             self.pos = 0;
         }
         Ok(self.buf.slice(self.pos, self.cap))
@@ -116,6 +115,11 @@ impl<R: Reader> Reader for BufferedReader<R> {
 
 /// Wraps a Writer and buffers output to it
 ///
+/// It can be excessively inefficient to work directly with a `Writer`. For
+/// example, every call to `write` on `TcpStream` results in a system call. A
+/// `BufferedWriter` keeps an in memory buffer of data and writes it to the
+/// underlying `Writer` in large, infrequent batches.
+///
 /// This writer will be flushed when it is dropped.
 ///
 /// # Example
@@ -132,7 +136,7 @@ impl<R: Reader> Reader for BufferedReader<R> {
 /// ```
 pub struct BufferedWriter<W> {
     priv inner: Option<W>,
-    priv buf: ~[u8],
+    priv buf: Vec<u8>,
     priv pos: uint
 }
 
@@ -140,7 +144,7 @@ impl<W: Writer> BufferedWriter<W> {
     /// Creates a new `BufferedWriter` with the specified buffer capacity
     pub fn with_capacity(cap: uint, inner: W) -> BufferedWriter<W> {
         // See comments in BufferedReader for why this uses unsafe code.
-        let mut buf = slice::with_capacity(cap);
+        let mut buf = Vec::with_capacity(cap);
         unsafe { buf.set_len(cap); }
         BufferedWriter {
             inner: Some(inner),
@@ -170,7 +174,7 @@ impl<W: Writer> BufferedWriter<W> {
     /// underlying reader because that could possibly corrupt the buffer.
     pub fn get_ref<'a>(&'a self) -> &'a W { self.inner.get_ref() }
 
-    /// Unwraps this buffer, returning the underlying writer.
+    /// Unwraps this `BufferedWriter`, returning the underlying writer.
     ///
     /// The buffer is flushed before returning the writer.
     pub fn unwrap(mut self) -> W {
@@ -234,7 +238,7 @@ impl<W: Writer> LineBufferedWriter<W> {
     /// underlying reader because that could possibly corrupt the buffer.
     pub fn get_ref<'a>(&'a self) -> &'a W { self.inner.get_ref() }
 
-    /// Unwraps this buffer, returning the underlying writer.
+    /// Unwraps this `LineBufferedWriter`, returning the underlying writer.
     ///
     /// The internal buffer is flushed before returning the writer.
     pub fn unwrap(self) -> W { self.inner.unwrap() }
@@ -272,6 +276,11 @@ impl<W: Reader> Reader for InternalBufferedWriter<W> {
 }
 
 /// Wraps a Stream and buffers input and output to and from it.
+///
+/// It can be excessively inefficient to work directly with a `Stream`. For
+/// example, every call to `read` or `write` on `TcpStream` results in a system
+/// call. A `BufferedStream` keeps in memory buffers of data, making large,
+/// infrequent calls to `read` and `write` on the underlying `Stream`.
 ///
 /// The output half will be flushed when this stream is dropped.
 ///
@@ -325,7 +334,7 @@ impl<S: Stream> BufferedStream<S> {
         w.get_ref()
     }
 
-    /// Unwraps this buffer, returning the underlying stream.
+    /// Unwraps this `BufferedStream`, returning the underlying stream.
     ///
     /// The internal buffer is flushed before returning the stream. Any leftover
     /// data in the read buffer is lost.
