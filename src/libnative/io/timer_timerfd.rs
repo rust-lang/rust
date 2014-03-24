@@ -28,6 +28,8 @@
 //!
 //! As with timer_other, all units in this file are in units of millseconds.
 
+extern crate netsupport;
+
 use std::comm::Data;
 use std::libc;
 use std::ptr;
@@ -175,7 +177,7 @@ impl Timer {
     pub fn new() -> IoResult<Timer> {
         timer_helper::boot(helper);
         match unsafe { imp::timerfd_create(imp::CLOCK_MONOTONIC, 0) } {
-            -1 => Err(super::last_error()),
+            -1 => Err(netsupport::last_error()),
             n => Ok(Timer { fd: FileDesc::new(n, true), on_worker: false, }),
         }
     }

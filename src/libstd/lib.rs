@@ -66,6 +66,7 @@
 #[cfg(test)] extern crate native;
 #[cfg(test)] extern crate green;
 #[cfg(test)] #[phase(syntax, link)] extern crate log;
+#[cfg(test)] extern crate netsupport;
 
 // Make and rand accessible for benchmarking/testcases
 #[cfg(test)] extern crate rand;
@@ -217,19 +218,28 @@ pub mod rt;
 // can be resolved within libstd.
 #[doc(hidden)]
 mod std {
+    pub use cast;
     pub use clone;
     pub use cmp;
     pub use comm;
+    pub use container;
     pub use fmt;
     pub use hash;
     pub use io;
+    pub use iter;
     pub use kinds;
     pub use local_data;
+    pub use num;
     pub use option;
     pub use os;
+    pub use prelude;
+    pub use result;
     pub use rt;
     pub use str;
+    pub use task;
     pub use to_str;
     pub use ty;
     pub use unstable;
+    pub use vec;
+    pub use vec_ng;
 }

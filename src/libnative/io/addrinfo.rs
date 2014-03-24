@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+extern crate netsupport;
+
 use ai = std::io::net::addrinfo;
 use std::c_str::CString;
 use std::cast;
@@ -96,10 +98,8 @@ extern "system" {
 
 #[cfg(windows)]
 fn get_error(_: c_int) -> IoError {
-    use super::translate_error;
-
     unsafe {
-        translate_error(WSAGetLastError() as i32, true)
+        netsupport::translate_error(WSAGetLastError() as i32, true)
     }
 }
 

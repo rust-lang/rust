@@ -33,6 +33,8 @@ macro_rules! iotest (
             use io::net::tcp::*;
             use io::net::ip::*;
             use io::net::udp::*;
+            use io::net::raw::*;
+            use io::net::raw::test::*;
             #[cfg(unix)]
             use io::net::unix::*;
             use io::timer::*;

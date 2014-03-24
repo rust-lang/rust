@@ -20,6 +20,8 @@
 //! Other than that, the implementation is pretty straightforward in terms of
 //! the other two implementations of timers with nothing *that* new showing up.
 
+extern crate netsupport;
+
 use std::comm::Data;
 use std::libc;
 use std::ptr;
@@ -98,7 +100,7 @@ impl Timer {
             imp::CreateWaitableTimerA(ptr::mut_null(), 0, ptr::null())
         };
         if obj.is_null() {
-            Err(super::last_error())
+            Err(netsupport::last_error())
         } else {
             Ok(Timer { obj: obj, on_worker: false, })
         }

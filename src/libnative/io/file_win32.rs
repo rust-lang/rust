@@ -10,6 +10,8 @@
 
 //! Blocking win32-based file I/O
 
+extern crate netsupport;
+
 use std::c_str::CString;
 use std::cast;
 use std::io::IoError;
@@ -63,7 +65,7 @@ impl FileDesc {
         if ret != 0 {
             Ok(read as uint)
         } else {
-            Err(super::last_error())
+            Err(netsupport::last_error())
         }
     }
     pub fn inner_write(&mut self, buf: &[u8]) -> Result<(), IoError> {
@@ -80,7 +82,7 @@ impl FileDesc {
                 remaining -= amt as uint;
                 cur = unsafe { cur.offset(amt as int) };
             } else {
-                return Err(super::last_error())
+                return Err(netsupport::last_error())
             }
         }
         Ok(())
@@ -130,7 +132,7 @@ impl rtio::RtioFileStream for FileDesc {
         if ret != 0 {
             Ok(read as int)
         } else {
-            Err(super::last_error())
+            Err(netsupport::last_error())
         }
     }
     fn pwrite(&mut self, buf: &[u8], mut offset: u64) -> Result<(), IoError> {
@@ -151,7 +153,7 @@ impl rtio::RtioFileStream for FileDesc {
                 cur = unsafe { cur.offset(amt as int) };
                 offset += amt as u64;
             } else {
-                return Err(super::last_error())
+                return Err(netsupport::last_error())
             }
         }
         Ok(())
@@ -166,7 +168,7 @@ impl rtio::RtioFileStream for FileDesc {
             let mut newpos = 0;
             match libc::SetFilePointerEx(self.handle(), pos, &mut newpos,
                                          whence) {
-                0 => Err(super::last_error()),
+                0 => Err(netsupport::last_error()),
                 _ => Ok(newpos as u64),
             }
         }
@@ -190,7 +192,7 @@ impl rtio::RtioFileStream for FileDesc {
         let _ = try!(self.seek(offset, io::SeekSet));
         let ret = unsafe {
             match libc::SetEndOfFile(self.handle()) {
-                0 => Err(super::last_error()),
+                0 => Err(netsupport::last_error()),
                 _ => Ok(())
             }
         };
@@ -300,14 +302,14 @@ pub fn open(path: &CString, fm: io::FileMode, fa: io::FileAccess)
                           ptr::mut_null())
     });
     if handle == libc::INVALID_HANDLE_VALUE as libc::HANDLE {
-        Err(super::last_error())
+        Err(netsupport::last_error())
     } else {
         let fd = unsafe {
             libc::open_osfhandle(handle as libc::intptr_t, flags)
         };
         if fd < 0 {
             let _ = unsafe { libc::CloseHandle(handle) };
-            Err(super::last_error())
+            Err(netsupport::last_error())
         } else {
             Ok(FileDesc::new(fd, true))
         }
@@ -366,7 +368,7 @@ pub fn readdir(p: &CString) -> IoResult<~[Path]> {
             libc::free(wfd_ptr as *mut c_void);
             Ok(prune(p, paths))
         } else {
-            Err(super::last_error())
+            Err(netsupport::last_error())
         }
     })
 }
@@ -420,7 +422,7 @@ pub fn readlink(p: &CString) -> IoResult<Path> {
         })
     };
     if handle as int == libc::INVALID_HANDLE_VALUE as int {
-        return Err(super::last_error())
+        return Err(netsupport::last_error())
     }
     // Specify (sz - 1) because the documentation states that it's the size
     // without the null pointer
@@ -433,7 +435,7 @@ pub fn readlink(p: &CString) -> IoResult<Path> {
     let ret = match ret {
         Some(ref s) if s.starts_with(r"\\?\") => Ok(Path::new(s.slice_from(4))),
         Some(s) => Ok(Path::new(s)),
-        None => Err(super::last_error()),
+        None => Err(netsupport::last_error()),
     };
     assert!(unsafe { libc::CloseHandle(handle) } != 0);
     return ret;
@@ -494,7 +496,7 @@ pub fn stat(p: &CString) -> IoResult<io::FileStat> {
     as_utf16_p(p.as_str().unwrap(), |up| {
         match unsafe { libc::wstat(up, &mut stat) } {
             0 => Ok(mkstat(&stat, p)),
-            _ => Err(super::last_error()),
+            _ => Err(netsupport::last_error()),
         }
     })
 }

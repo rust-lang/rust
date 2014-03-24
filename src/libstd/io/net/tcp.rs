@@ -183,7 +183,7 @@ mod test {
             Ok(..) => fail!(),
             Err(e) => assert_eq!(e.kind, PermissionDenied),
         }
-    } #[ignore(cfg(windows))] #[ignore(cfg(target_os = "android"))])
+    } #[ignore(cfg(windows))] #[ignore(cfg(target_os = "android"))] #[ignore(cfg(hasroot))])
 
     iotest!(fn connect_error() {
         let addr = SocketAddr { ip: Ipv4Addr(0, 0, 0, 0), port: 1 };

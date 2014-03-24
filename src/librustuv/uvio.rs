@@ -12,6 +12,7 @@ use std::c_str::CString;
 use std::cast;
 use std::io::IoError;
 use std::io::net::ip::SocketAddr;
+use std::io::net::raw::{Protocol};
 use std::io::process::ProcessConfig;
 use std::io::signal::Signum;
 use std::io::{FileMode, FileAccess, Open, Append, Truncate, Read, Write,
@@ -36,7 +37,7 @@ use file::{FsRequest, FileWatcher};
 use queue::QueuePool;
 use homing::HomeHandle;
 use idle::IdleWatcher;
-use net::{TcpWatcher, TcpListener, UdpWatcher};
+use net::{RawSocketWatcher, TcpWatcher, TcpListener, UdpWatcher};
 use pipe::{PipeWatcher, PipeListener};
 use process::Process;
 use signal::SignalWatcher;
@@ -177,6 +178,11 @@ impl IoFactory for UvIoFactory {
                           hint: Option<ai::Hint>) -> Result<~[ai::Info], IoError> {
         let r = GetAddrInfoRequest::run(&self.loop_, host, servname, hint);
         r.map_err(uv_error_to_io_error)
+    }
+
+    fn raw_socket_new(&mut self, protocol: Protocol) -> Result<~rtio::RtioRawSocket, IoError> {
+        RawSocketWatcher::new(self, protocol)
+            .map(|rsw| ~rsw as ~rtio::RtioRawSocket)
     }
 
     fn fs_from_raw_fd(&mut self, fd: c_int,

@@ -37,7 +37,7 @@
 #
 #   DEPS_<crate>
 #	These lists are the dependencies of the <crate> that is to be built.
-#	Rust dependencies are listed bare (i.e. std, green) and native
+#	Rust dependencies are listed bare (i.e. std, extra, green) and native
 #	dependencies have a "native:" prefix (i.e. native:sundown). All deps
 #	will be built before the crate itself is built.
 #
@@ -51,15 +51,15 @@
 
 TARGET_CRATES := std green rustuv native flate arena glob term semver \
                  uuid serialize sync getopts collections num test time rand \
-		 workcache url log
+		 workcache url log netsupport
 HOST_CRATES := syntax rustc rustdoc fourcc hexfloat
 CRATES := $(TARGET_CRATES) $(HOST_CRATES)
 TOOLS := compiletest rustdoc rustc
 
 DEPS_std := native:rustrt native:compiler-rt native:backtrace
 DEPS_green := std rand native:context_switch
-DEPS_rustuv := std native:uv native:uv_support
-DEPS_native := std
+DEPS_rustuv := std native:uv native:uv_support netsupport
+DEPS_native := std netsupport
 DEPS_syntax := std term serialize collections log
 DEPS_rustc := syntax native:rustllvm flate arena serialize sync getopts \
               collections time log
@@ -84,6 +84,7 @@ DEPS_rand := std
 DEPS_url := std collections
 DEPS_workcache := std serialize collections log
 DEPS_log := std sync
+DEPS_netsupport := std
 
 TOOL_DEPS_compiletest := test green rustuv getopts
 TOOL_DEPS_rustdoc := rustdoc native

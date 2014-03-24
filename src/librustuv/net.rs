@@ -8,15 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+extern crate netsupport;
+
 use std::cast;
 use std::io::IoError;
 use std::io::net::ip;
+use std::io::net::raw;
 use std::libc::{size_t, ssize_t, c_int, c_void, c_uint};
 use std::libc;
 use std::mem;
+use std::os::errno;
 use std::ptr;
 use std::rt::rtio;
 use std::rt::task::BlockedTask;
+use std::intrinsics;
 
 use access::Access;
 use homing::{HomingIO, HomeHandle};
@@ -31,93 +36,6 @@ use uvll;
 ////////////////////////////////////////////////////////////////////////////////
 /// Generic functions related to dealing with sockaddr things
 ////////////////////////////////////////////////////////////////////////////////
-
-pub fn htons(u: u16) -> u16 { mem::to_be16(u as i16) as u16 }
-pub fn ntohs(u: u16) -> u16 { mem::from_be16(u as i16) as u16 }
-
-pub fn sockaddr_to_addr(storage: &libc::sockaddr_storage,
-                        len: uint) -> ip::SocketAddr {
-    match storage.ss_family as c_int {
-        libc::AF_INET => {
-            assert!(len as uint >= mem::size_of::<libc::sockaddr_in>());
-            let storage: &libc::sockaddr_in = unsafe {
-                cast::transmute(storage)
-            };
-            let addr = storage.sin_addr.s_addr as u32;
-            let a = (addr >>  0) as u8;
-            let b = (addr >>  8) as u8;
-            let c = (addr >> 16) as u8;
-            let d = (addr >> 24) as u8;
-            ip::SocketAddr {
-                ip: ip::Ipv4Addr(a, b, c, d),
-                port: ntohs(storage.sin_port),
-            }
-        }
-        libc::AF_INET6 => {
-            assert!(len as uint >= mem::size_of::<libc::sockaddr_in6>());
-            let storage: &libc::sockaddr_in6 = unsafe {
-                cast::transmute(storage)
-            };
-            let a = ntohs(storage.sin6_addr.s6_addr[0]);
-            let b = ntohs(storage.sin6_addr.s6_addr[1]);
-            let c = ntohs(storage.sin6_addr.s6_addr[2]);
-            let d = ntohs(storage.sin6_addr.s6_addr[3]);
-            let e = ntohs(storage.sin6_addr.s6_addr[4]);
-            let f = ntohs(storage.sin6_addr.s6_addr[5]);
-            let g = ntohs(storage.sin6_addr.s6_addr[6]);
-            let h = ntohs(storage.sin6_addr.s6_addr[7]);
-            ip::SocketAddr {
-                ip: ip::Ipv6Addr(a, b, c, d, e, f, g, h),
-                port: ntohs(storage.sin6_port),
-            }
-        }
-        n => {
-            fail!("unknown family {}", n);
-        }
-    }
-}
-
-fn addr_to_sockaddr(addr: ip::SocketAddr) -> (libc::sockaddr_storage, uint) {
-    unsafe {
-        let mut storage: libc::sockaddr_storage = mem::init();
-        let len = match addr.ip {
-            ip::Ipv4Addr(a, b, c, d) => {
-                let storage: &mut libc::sockaddr_in =
-                    cast::transmute(&mut storage);
-                (*storage).sin_family = libc::AF_INET as libc::sa_family_t;
-                (*storage).sin_port = htons(addr.port);
-                (*storage).sin_addr = libc::in_addr {
-                    s_addr: (d as u32 << 24) |
-                            (c as u32 << 16) |
-                            (b as u32 <<  8) |
-                            (a as u32 <<  0)
-                };
-                mem::size_of::<libc::sockaddr_in>()
-            }
-            ip::Ipv6Addr(a, b, c, d, e, f, g, h) => {
-                let storage: &mut libc::sockaddr_in6 =
-                    cast::transmute(&mut storage);
-                storage.sin6_family = libc::AF_INET6 as libc::sa_family_t;
-                storage.sin6_port = htons(addr.port);
-                storage.sin6_addr = libc::in6_addr {
-                    s6_addr: [
-                        htons(a),
-                        htons(b),
-                        htons(c),
-                        htons(d),
-                        htons(e),
-                        htons(f),
-                        htons(g),
-                        htons(h),
-                    ]
-                };
-                mem::size_of::<libc::sockaddr_in6>()
-            }
-        };
-        return (storage, len);
-    }
-}
-
 enum SocketNameKind {
     TcpPeer,
     Tcp,
@@ -140,7 +58,7 @@ fn socket_name(sk: SocketNameKind,
     match unsafe {
         getsockname(handle, sockaddr_p as *mut libc::sockaddr, &mut namelen)
     } {
-        0 => Ok(sockaddr_to_addr(&sockaddr, namelen as uint)),
+        0 => Ok(netsupport::sockaddr_to_addr(&sockaddr, namelen as uint).unwrap()),
         n => Err(uv_error_to_io_error(UvError(n)))
     }
 }
@@ -204,7 +122,7 @@ impl TcpWatcher {
         struct Ctx { status: c_int, task: Option<BlockedTask> }
 
         let tcp = TcpWatcher::new(io);
-        let (addr, _len) = addr_to_sockaddr(address);
+        let (addr, _len) = netsupport::addr_to_sockaddr(address);
         let mut req = Request::new(uvll::UV_CONNECT);
         let result = unsafe {
             let addr_p = &addr as *libc::sockaddr_storage;
@@ -369,7 +287,7 @@ impl TcpListener {
             outgoing: tx,
             incoming: rx,
         };
-        let (addr, _len) = addr_to_sockaddr(address);
+        let (addr, _len) = netsupport::addr_to_sockaddr(address);
         let res = unsafe {
             let addr_p = &addr as *libc::sockaddr_storage;
             uvll::uv_tcp_bind(l.handle, addr_p as *libc::sockaddr)
@@ -494,7 +412,7 @@ impl UdpWatcher {
         assert_eq!(unsafe {
             uvll::uv_udp_init(io.uv_loop(), udp.handle)
         }, 0);
-        let (addr, _len) = addr_to_sockaddr(address);
+        let (addr, _len) = netsupport::addr_to_sockaddr(address);
         let result = unsafe {
             let addr_p = &addr as *libc::sockaddr_storage;
             uvll::uv_udp_bind(udp.handle, addr_p as *libc::sockaddr, 0u32)
@@ -593,7 +511,7 @@ impl rtio::RtioUdpSocket for UdpWatcher {
                 None
             } else {
                 let len = mem::size_of::<libc::sockaddr_storage>();
-                Some(sockaddr_to_addr(unsafe { cast::transmute(addr) }, len))
+                Some(netsupport::sockaddr_to_addr(unsafe { cast::transmute(addr) }, len).unwrap())
             };
             cx.result = Some((nread, addr));
             wakeup(&mut cx.task);
@@ -609,7 +527,7 @@ impl rtio::RtioUdpSocket for UdpWatcher {
 
         let mut req = Request::new(uvll::UV_UDP_SEND);
         let buf = slice_to_uv_buf(buf);
-        let (addr, _len) = addr_to_sockaddr(dst);
+        let (addr, _len) = netsupport::addr_to_sockaddr(dst);
         let result = unsafe {
             let addr_p = &addr as *libc::sockaddr_storage;
             uvll::uv_udp_send(req.handle, self.handle, [buf],
@@ -726,6 +644,236 @@ impl Drop for UdpWatcher {
         let _m = self.fire_homing_missile();
         if self.refcount.decrement() {
             self.close();
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// Raw socket implementation
+////////////////////////////////////////////////////////////////////////////////
+
+pub struct RawSocketWatcher {
+    handle: *uvll::uv_poll_t,
+    socket: uvll::uv_os_socket_t,
+    home: HomeHandle,
+}
+
+#[cfg(windows)]
+fn make_nonblocking(socket: libc::SOCKET) -> Option<IoError> {
+    let one: libc::c_ulong = 1;
+    if unsafe { libc::ioctlsocket(socket, libc::FIONBIO, &one as *libc::c_ulong) } != 0 {
+        Some(netsupport::last_error())
+    } else {
+        None
+    }
+}
+
+#[cfg(not(windows))]
+fn make_nonblocking(socket: c_int) -> Option<IoError> {
+    let flags = unsafe { libc::fcntl(socket, libc::F_GETFL, 0) };
+    if flags == -1 {
+        return Some(netsupport::last_error());
+    }
+    if unsafe { libc::fcntl(socket, libc::F_SETFL, flags | libc::O_NONBLOCK) } == -1 {
+        return Some(netsupport::last_error());
+    }
+    return None;
+}
+
+impl RawSocketWatcher {
+    pub fn new(io: &mut UvIoFactory, protocol: raw::Protocol)
+        -> Result<RawSocketWatcher, IoError>
+    {
+        let (domain, typ, proto) = netsupport::protocol_to_libc(protocol);
+        let handle = unsafe { uvll::malloc_handle(uvll::UV_POLL) };
+        let socket = unsafe { libc::socket(domain, typ, proto) };
+        if socket == -1 {
+            return Err(netsupport::last_error());
+        }
+
+        let raw = RawSocketWatcher {
+            handle: handle,
+            home: io.make_handle(),
+            socket: socket
+        };
+
+        // Make socket non-blocking - required for libuv
+        match make_nonblocking(raw.socket) {
+            Some(e) => return Err(e),
+            None => ()
+        }
+
+        assert_eq!(unsafe {
+            uvll::uv_poll_init_socket(io.uv_loop(), raw.handle, raw.socket)
+        }, 0);
+        return Ok(raw);
+    }
+}
+
+impl UvHandle<uvll::uv_poll_t> for RawSocketWatcher {
+    fn uv_handle(&self) -> *uvll::uv_poll_t { self.handle }
+}
+
+impl Drop for RawSocketWatcher {
+    fn drop(&mut self) {
+        let _m = self.fire_homing_missile();
+        self.close();
+    }
+}
+
+impl HomingIO for RawSocketWatcher {
+    fn home<'r>(&'r mut self) -> &'r mut HomeHandle { &mut self.home }
+}
+
+impl rtio::RtioRawSocket for RawSocketWatcher {
+    fn recvfrom(&mut self, buf: &mut [u8])
+        -> Result<(uint, Option<~raw::NetworkAddress>), IoError>
+    {
+        struct Ctx<'b> {
+            task: Option<BlockedTask>,
+            buf: &'b [u8],
+            result: Option<(ssize_t, Option<~raw::NetworkAddress>)>,
+            socket: Option<uvll::uv_os_socket_t>,
+        }
+        let _m = self.fire_homing_missile();
+        let a = match unsafe {
+            uvll::uv_poll_start(self.handle, uvll::UV_READABLE as c_int, recv_cb)
+        } {
+            0 => {
+                let mut cx = Ctx {
+                    task: None,
+                    buf: buf,
+                    result: None,
+                    socket: Some(self.socket),
+                };
+                wait_until_woken_after(&mut cx.task, &self.uv_loop(), || {
+                    unsafe { uvll::set_data_for_uv_handle(self.handle, &cx) }
+                });
+                match cx.result.take_unwrap() {
+                    (n, _) if n < 0 =>
+                        Err(netsupport::translate_error(n as i32, true)),
+                    (n, addr) => Ok((n as uint, Some(addr.unwrap())))
+                }
+            }
+            n => Err(uv_error_to_io_error(UvError(n)))
+        };
+        return a;
+
+        extern fn recv_cb(handle: *uvll::uv_poll_t, status: c_int, events: c_int) {
+            assert!((events & (uvll::UV_READABLE as c_int)) != 0);
+            let cx: &mut Ctx = unsafe {
+                cast::transmute(uvll::get_data_for_uv_handle(handle))
+            };
+
+            if status < 0 {
+                cx.result = Some((status as ssize_t, None));
+                wakeup(&mut cx.task);
+                return;
+            }
+
+            unsafe {
+                assert_eq!(uvll::uv_poll_stop(handle), 0)
+            }
+
+            let mut caddr = unsafe { intrinsics::init::<libc::sockaddr_storage>() };
+            let mut caddrlen = unsafe {
+                                   intrinsics::size_of::<libc::sockaddr_storage>()
+                               } as libc::socklen_t;
+            let len = match cx.socket {
+                Some(sock) => unsafe {
+                    let addr = &mut caddr as *mut libc::sockaddr_storage;
+                    libc::recvfrom(sock,
+                                   cx.buf.as_ptr() as *mut c_void,
+                                   netsupport::net_buflen(cx.buf),
+                                   0,
+                                   addr as *mut libc::sockaddr,
+                                   &mut caddrlen)
+                },
+                _   => -1
+            };
+            if len == -1 {
+                cx.result = Some((-errno() as ssize_t, None));
+                wakeup(&mut cx.task);
+                return;
+            }
+            let addr = netsupport::sockaddr_to_network_addr(
+                (&caddr as *libc::sockaddr_storage) as *libc::sockaddr, true
+            );
+            cx.result = Some((len as ssize_t, addr));
+
+            wakeup(&mut cx.task);
+        }
+    }
+
+    fn sendto(&mut self, buf: &[u8], dst: ~raw::NetworkAddress)
+        -> Result<uint, IoError>
+    {
+        struct Ctx<'b> {
+            task: Option<BlockedTask>,
+            buf: &'b [u8],
+            result: Option<Result<uint, IoError>>,
+            socket: Option<uvll::uv_os_socket_t>,
+            addr: ~raw::NetworkAddress,
+        }
+        let _m = self.fire_homing_missile();
+
+        let a = match unsafe {
+            uvll::uv_poll_start(self.handle, uvll::UV_WRITABLE as c_int, send_cb)
+        } {
+            0 => {
+                let mut cx = Ctx {
+                    task: None,
+                    buf: buf,
+                    result: None,
+                    socket: Some(self.socket),
+                    addr: dst
+                };
+                wait_until_woken_after(&mut cx.task, &self.uv_loop(), || {
+                    unsafe { uvll::set_data_for_uv_handle(self.handle, &cx) }
+                });
+                cx.result.unwrap()
+            }
+            n => Err(uv_error_to_io_error(UvError(n)))
+        };
+        return a;
+
+        extern fn send_cb(handle: *uvll::uv_poll_t, status: c_int, events: c_int) {
+            assert!((events & (uvll::UV_WRITABLE as c_int)) != 0);
+            let cx: &mut Ctx = unsafe {
+                cast::transmute(uvll::get_data_for_uv_handle(handle))
+            };
+            if status < 0 {
+                cx.result = Some(Err(uv_error_to_io_error(UvError(status))));
+                wakeup(&mut cx.task);
+                return;
+            }
+
+            unsafe {
+                assert_eq!(uvll::uv_poll_stop(handle), 0)
+            }
+
+            let len = match cx.socket {
+                Some(sock) => {
+                    let (addr, len) = netsupport::network_addr_to_sockaddr(cx.addr.clone());
+                    unsafe {
+                        libc::sendto(sock,
+                            cx.buf.as_ptr() as *c_void,
+                            netsupport::net_buflen(cx.buf),
+                            0,
+                            (&addr as *libc::sockaddr_storage) as *libc::sockaddr,
+                            len as libc::socklen_t)
+                    }
+                },
+                _   => -1
+            };
+
+            cx.result = if len < 0 {
+                            Some(Err(netsupport::last_error()))
+                        } else {
+                            Some(Ok(len as uint))
+                        };
+
+            wakeup(&mut cx.task);
         }
     }
 }

@@ -8,13 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+extern crate netsupport;
+
 use std::cast;
 use std::io::net::ip;
+use std::io::net::raw;
 use std::io;
 use std::libc;
 use std::mem;
 use std::rt::rtio;
 use std::sync::arc::UnsafeArc;
+use std::intrinsics;
 
 use super::{IoResult, retry, keep_going};
 
@@ -25,68 +29,6 @@ use super::{IoResult, retry, keep_going};
 #[cfg(windows)] pub type sock_t = libc::SOCKET;
 #[cfg(unix)]    pub type sock_t = super::file::fd_t;
 
-pub fn htons(u: u16) -> u16 {
-    mem::to_be16(u as i16) as u16
-}
-pub fn ntohs(u: u16) -> u16 {
-    mem::from_be16(u as i16) as u16
-}
-
-enum InAddr {
-    InAddr(libc::in_addr),
-    In6Addr(libc::in6_addr),
-}
-
-fn ip_to_inaddr(ip: ip::IpAddr) -> InAddr {
-    match ip {
-        ip::Ipv4Addr(a, b, c, d) => {
-            InAddr(libc::in_addr {
-                s_addr: (d as u32 << 24) |
-                        (c as u32 << 16) |
-                        (b as u32 <<  8) |
-                        (a as u32 <<  0)
-            })
-        }
-        ip::Ipv6Addr(a, b, c, d, e, f, g, h) => {
-            In6Addr(libc::in6_addr {
-                s6_addr: [
-                    htons(a),
-                    htons(b),
-                    htons(c),
-                    htons(d),
-                    htons(e),
-                    htons(f),
-                    htons(g),
-                    htons(h),
-                ]
-            })
-        }
-    }
-}
-
-fn addr_to_sockaddr(addr: ip::SocketAddr) -> (libc::sockaddr_storage, uint) {
-    unsafe {
-        let storage: libc::sockaddr_storage = mem::init();
-        let len = match ip_to_inaddr(addr.ip) {
-            InAddr(inaddr) => {
-                let storage: *mut libc::sockaddr_in = cast::transmute(&storage);
-                (*storage).sin_family = libc::AF_INET as libc::sa_family_t;
-                (*storage).sin_port = htons(addr.port);
-                (*storage).sin_addr = inaddr;
-                mem::size_of::<libc::sockaddr_in>()
-            }
-            In6Addr(inaddr) => {
-                let storage: *mut libc::sockaddr_in6 = cast::transmute(&storage);
-                (*storage).sin6_family = libc::AF_INET6 as libc::sa_family_t;
-                (*storage).sin6_port = htons(addr.port);
-                (*storage).sin6_addr = inaddr;
-                mem::size_of::<libc::sockaddr_in6>()
-            }
-        };
-        return (storage, len);
-    }
-}
-
 fn socket(addr: ip::SocketAddr, ty: libc::c_int) -> IoResult<sock_t> {
     unsafe {
         let fam = match addr.ip {
@@ -94,7 +36,7 @@ fn socket(addr: ip::SocketAddr, ty: libc::c_int) -> IoResult<sock_t> {
             ip::Ipv6Addr(..) => libc::AF_INET6,
         };
         match libc::socket(fam, ty, 0) {
-            -1 => Err(super::last_error()),
+            -1 => Err(netsupport::last_error()),
             fd => Ok(fd),
         }
     }
@@ -120,12 +62,12 @@ fn last_error() -> io::IoError {
     extern "system" {
         fn WSAGetLastError() -> libc::c_int;
     }
-    super::translate_error(unsafe { WSAGetLastError() }, true)
+    netsupport::translate_error(unsafe { WSAGetLastError() }, true)
 }
 
 #[cfg(not(windows))]
 fn last_error() -> io::IoError {
-    super::last_error()
+    netsupport::last_error()
 }
 
 #[cfg(windows)] unsafe fn close(sock: sock_t) { let _ = libc::closesocket(sock); }
@@ -165,7 +107,7 @@ pub fn sockaddr_to_addr(storage: &libc::sockaddr_storage,
             let d = (addr >> 24) as u8;
             Ok(ip::SocketAddr {
                 ip: ip::Ipv4Addr(a, b, c, d),
-                port: ntohs(storage.sin_port),
+                port: netsupport::ntohs(storage.sin_port),
             })
         }
         libc::AF_INET6 => {
@@ -173,17 +115,17 @@ pub fn sockaddr_to_addr(storage: &libc::sockaddr_storage,
             let storage: &libc::sockaddr_in6 = unsafe {
                 cast::transmute(storage)
             };
-            let a = ntohs(storage.sin6_addr.s6_addr[0]);
-            let b = ntohs(storage.sin6_addr.s6_addr[1]);
-            let c = ntohs(storage.sin6_addr.s6_addr[2]);
-            let d = ntohs(storage.sin6_addr.s6_addr[3]);
-            let e = ntohs(storage.sin6_addr.s6_addr[4]);
-            let f = ntohs(storage.sin6_addr.s6_addr[5]);
-            let g = ntohs(storage.sin6_addr.s6_addr[6]);
-            let h = ntohs(storage.sin6_addr.s6_addr[7]);
+            let a = netsupport::ntohs(storage.sin6_addr.s6_addr[0]);
+            let b = netsupport::ntohs(storage.sin6_addr.s6_addr[1]);
+            let c = netsupport::ntohs(storage.sin6_addr.s6_addr[2]);
+            let d = netsupport::ntohs(storage.sin6_addr.s6_addr[3]);
+            let e = netsupport::ntohs(storage.sin6_addr.s6_addr[4]);
+            let f = netsupport::ntohs(storage.sin6_addr.s6_addr[5]);
+            let g = netsupport::ntohs(storage.sin6_addr.s6_addr[6]);
+            let h = netsupport::ntohs(storage.sin6_addr.s6_addr[7]);
             Ok(ip::SocketAddr {
                 ip: ip::Ipv6Addr(a, b, c, d, e, f, g, h),
-                port: ntohs(storage.sin6_port),
+                port: netsupport::ntohs(storage.sin6_port),
             })
         }
         _ => {
@@ -248,7 +190,7 @@ impl TcpStream {
     pub fn connect(addr: ip::SocketAddr) -> IoResult<TcpStream> {
         unsafe {
             socket(addr, libc::SOCK_STREAM).and_then(|fd| {
-                let (addr, len) = addr_to_sockaddr(addr);
+                let (addr, len) = netsupport::addr_to_sockaddr(addr);
                 let addrp = &addr as *libc::sockaddr_storage;
                 let inner = Inner { fd: fd };
                 let ret = TcpStream { inner: UnsafeArc::new(inner) };
@@ -327,7 +269,7 @@ impl rtio::RtioTcpStream for TcpStream {
                        0) as i64
         });
         if ret < 0 {
-            Err(super::last_error())
+            Err(netsupport::last_error())
         } else {
             Ok(())
         }
@@ -380,7 +322,7 @@ impl TcpListener {
     pub fn bind(addr: ip::SocketAddr) -> IoResult<TcpListener> {
         unsafe {
             socket(addr, libc::SOCK_STREAM).and_then(|fd| {
-                let (addr, len) = addr_to_sockaddr(addr);
+                let (addr, len) = netsupport::addr_to_sockaddr(addr);
                 let addrp = &addr as *libc::sockaddr_storage;
                 let inner = Inner { fd: fd };
                 let ret = TcpListener { inner: UnsafeArc::new(inner) };
@@ -481,7 +423,7 @@ impl UdpSocket {
     pub fn bind(addr: ip::SocketAddr) -> IoResult<UdpSocket> {
         unsafe {
             socket(addr, libc::SOCK_DGRAM).and_then(|fd| {
-                let (addr, len) = addr_to_sockaddr(addr);
+                let (addr, len) = netsupport::addr_to_sockaddr(addr);
                 let addrp = &addr as *libc::sockaddr_storage;
                 let inner = Inner { fd: fd };
                 let ret = UdpSocket { inner: UnsafeArc::new(inner) };
@@ -511,8 +453,8 @@ impl UdpSocket {
 
     pub fn set_membership(&mut self, addr: ip::IpAddr,
                           opt: libc::c_int) -> IoResult<()> {
-        match ip_to_inaddr(addr) {
-            InAddr(addr) => {
+        match netsupport::ip_to_inaddr(addr) {
+            netsupport::InAddr(addr) => {
                 let mreq = libc::ip_mreq {
                     imr_multiaddr: addr,
                     // interface == INADDR_ANY
@@ -520,7 +462,7 @@ impl UdpSocket {
                 };
                 setsockopt(self.fd(), libc::IPPROTO_IP, opt, mreq)
             }
-            In6Addr(addr) => {
+            netsupport::In6Addr(addr) => {
                 let mreq = libc::ip6_mreq {
                     ipv6mr_multiaddr: addr,
                     ipv6mr_interface: 0,
@@ -562,7 +504,7 @@ impl rtio::RtioUdpSocket for UdpSocket {
         }
     }
     fn sendto(&mut self, buf: &[u8], dst: ip::SocketAddr) -> IoResult<()> {
-        let (dst, len) = addr_to_sockaddr(dst);
+        let (dst, len) = netsupport::addr_to_sockaddr(dst);
         let dstp = &dst as *libc::sockaddr_storage;
         unsafe {
             let ret = retry(|| {
@@ -634,3 +576,80 @@ impl rtio::RtioUdpSocket for UdpSocket {
         ~UdpSocket { inner: self.inner.clone() } as ~rtio::RtioUdpSocket
     }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// Raw socket
+////////////////////////////////////////////////////////////////////////////////
+
+pub struct RawSocket {
+    priv fd: sock_t,
+}
+
+
+impl RawSocket {
+    pub fn new(protocol: raw::Protocol) -> IoResult<RawSocket>
+    {
+        let (domain, typ, proto) = netsupport::protocol_to_libc(protocol);
+        let sock = unsafe { libc::socket(domain, typ, proto) };
+        if sock == -1 {
+            return Err(netsupport::last_error());
+        }
+
+        let socket = RawSocket { fd: sock };
+
+        return Ok(socket);
+    }
+}
+
+impl rtio::RtioRawSocket for RawSocket {
+    fn recvfrom(&mut self, buf: &mut [u8])
+        -> IoResult<(uint, Option<~raw::NetworkAddress>)>
+    {
+        let mut caddr: libc::sockaddr_storage = unsafe { intrinsics::init() };
+        let mut caddrlen = unsafe {
+                                intrinsics::size_of::<libc::sockaddr_storage>()
+                           } as libc::socklen_t;
+        let len = unsafe {
+                    let addr = &mut caddr as *mut libc::sockaddr_storage;
+                    retry( || libc::recvfrom(self.fd,
+                                   buf.as_ptr() as *mut libc::c_void,
+                                   netsupport::net_buflen(buf),
+                                   0,
+                                   addr as *mut libc::sockaddr,
+                                   &mut caddrlen))
+                  };
+        if len == -1 {
+            return Err(netsupport::last_error());
+        }
+
+        return Ok((len as uint, netsupport::sockaddr_to_network_addr(
+            (&caddr as *libc::sockaddr_storage) as *libc::sockaddr, true)
+        ));
+    }
+
+    fn sendto(&mut self, buf: &[u8], dst: ~raw::NetworkAddress)
+        -> IoResult<uint>
+    {
+        let (sockaddr, slen) = netsupport::network_addr_to_sockaddr(dst);
+        let addr = (&sockaddr as *libc::sockaddr_storage) as *libc::sockaddr;
+        let len = unsafe {
+                    retry( || libc::sendto(self.fd,
+                                 buf.as_ptr() as *libc::c_void,
+                                 netsupport::net_buflen(buf),
+                                 0,
+                                 addr,
+                                 slen as libc::socklen_t))
+                  };
+
+        return if len < 0 {
+            Err(netsupport::last_error())
+        } else {
+            Ok(len as uint)
+        };
+    }
+}
+
+impl Drop for RawSocket {
+    fn drop(&mut self) { unsafe { close(self.fd) } }
+}
+

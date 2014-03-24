@@ -24,6 +24,7 @@ use ai = io::net::addrinfo;
 use io;
 use io::{IoError, IoResult};
 use io::net::ip::{IpAddr, SocketAddr};
+use io::net::raw::{NetworkAddress, Protocol};
 use io::process::{ProcessConfig, ProcessExit};
 use io::signal::Signum;
 use io::{FileMode, FileAccess, FileStat, FilePermission};
@@ -151,6 +152,7 @@ pub trait IoFactory {
     fn unix_connect(&mut self, path: &CString) -> Result<~RtioPipe, IoError>;
     fn get_host_addresses(&mut self, host: Option<&str>, servname: Option<&str>,
                           hint: Option<ai::Hint>) -> Result<~[ai::Info], IoError>;
+    fn raw_socket_new(&mut self, protocol: Protocol) -> Result<~RtioRawSocket, IoError>;
 
     // filesystem operations
     fn fs_from_raw_fd(&mut self, fd: c_int, close: CloseBehavior) -> ~RtioFileStream;
@@ -230,6 +232,11 @@ pub trait RtioUdpSocket : RtioSocket {
     fn ignore_broadcasts(&mut self) -> Result<(), IoError>;
 
     fn clone(&self) -> ~RtioUdpSocket;
+}
+
+pub trait RtioRawSocket {
+    fn recvfrom(&mut self, buf: &mut [u8]) -> Result<(uint, Option<~NetworkAddress>), IoError>;
+    fn sendto(&mut self, buf: &[u8], dst: ~NetworkAddress) -> Result<uint, IoError>;
 }
 
 pub trait RtioTimer {
