@@ -86,72 +86,9 @@ fn unimpl() -> IoError {
     }
 }
 
-fn translate_error(errno: i32, detail: bool) -> IoError {
-    #[cfg(windows)]
-    fn get_err(errno: i32) -> (io::IoErrorKind, &'static str) {
-        match errno {
-            libc::EOF => (io::EndOfFile, "end of file"),
-            libc::ERROR_NO_DATA => (io::BrokenPipe, "the pipe is being closed"),
-            libc::ERROR_FILE_NOT_FOUND => (io::FileNotFound, "file not found"),
-            libc::ERROR_INVALID_NAME => (io::InvalidInput, "invalid file name"),
-            libc::WSAECONNREFUSED => (io::ConnectionRefused, "connection refused"),
-            libc::WSAECONNRESET => (io::ConnectionReset, "connection reset"),
-            libc::WSAEACCES => (io::PermissionDenied, "permission denied"),
-            libc::WSAEWOULDBLOCK => {
-                (io::ResourceUnavailable, "resource temporarily unavailable")
-            }
-            libc::WSAENOTCONN => (io::NotConnected, "not connected"),
-            libc::WSAECONNABORTED => (io::ConnectionAborted, "connection aborted"),
-            libc::WSAEADDRNOTAVAIL => (io::ConnectionRefused, "address not available"),
-            libc::WSAEADDRINUSE => (io::ConnectionRefused, "address in use"),
-            libc::ERROR_BROKEN_PIPE => (io::EndOfFile, "the pipe has ended"),
-
-            // libuv maps this error code to EISDIR. we do too. if it is found
-            // to be incorrect, we can add in some more machinery to only
-            // return this message when ERROR_INVALID_FUNCTION after certain
-            // win32 calls.
-            libc::ERROR_INVALID_FUNCTION => (io::InvalidInput,
-                                             "illegal operation on a directory"),
-
-            _ => (io::OtherIoError, "unknown error")
-        }
-    }
-
-    #[cfg(not(windows))]
-    fn get_err(errno: i32) -> (io::IoErrorKind, &'static str) {
-        // FIXME: this should probably be a bit more descriptive...
-        match errno {
-            libc::EOF => (io::EndOfFile, "end of file"),
-            libc::ECONNREFUSED => (io::ConnectionRefused, "connection refused"),
-            libc::ECONNRESET => (io::ConnectionReset, "connection reset"),
-            libc::EPERM | libc::EACCES =>
-                (io::PermissionDenied, "permission denied"),
-            libc::EPIPE => (io::BrokenPipe, "broken pipe"),
-            libc::ENOTCONN => (io::NotConnected, "not connected"),
-            libc::ECONNABORTED => (io::ConnectionAborted, "connection aborted"),
-            libc::EADDRNOTAVAIL => (io::ConnectionRefused, "address not available"),
-            libc::EADDRINUSE => (io::ConnectionRefused, "address in use"),
-            libc::ENOENT => (io::FileNotFound, "no such file or directory"),
-            libc::EISDIR => (io::InvalidInput, "illegal operation on a directory"),
-
-            // These two constants can have the same value on some systems, but
-            // different values on others, so we can't use a match clause
-            x if x == libc::EAGAIN || x == libc::EWOULDBLOCK =>
-                (io::ResourceUnavailable, "resource temporarily unavailable"),
-
-            _ => (io::OtherIoError, "unknown error")
-        }
-    }
-
-    let (kind, desc) = get_err(errno);
-    IoError {
-        kind: kind,
-        desc: desc,
-        detail: if detail {Some(os::last_os_error())} else {None},
-    }
+fn last_error() -> IoError {
+    IoError::last_error()
 }
-
-fn last_error() -> IoError { translate_error(os::errno() as i32, true) }
 
 // unix has nonzero values as errors
 fn mkerr_libc(ret: libc::c_int) -> IoResult<()> {
