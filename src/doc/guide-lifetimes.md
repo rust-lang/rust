@@ -559,13 +559,13 @@ points at a static constant).
 
 # Named lifetimes
 
-Lifetimes can be named and referenced. For example, the special lifetime 
+Lifetimes can be named and referenced. For example, the special lifetime
 `'static`, which does not go out of scope, can be used to create global
 variables and communicate between tasks (see the manual for usecases).
 
 ## Parameter Lifetimes
 
-Named lifetimes allow for grouping of parameters by lifetime. 
+Named lifetimes allow for grouping of parameters by lifetime.
 For example, consider this function:
 
 ~~~
@@ -673,6 +673,11 @@ Named lifetime notation can also be used to control the flow of execution:
     }
 }
 ~~~
+
+> ***Note:*** Labelled breaks are not currently supported within `while` loops.
+
+Named labels are hygienic and can be used safely within macros.
+See the macros guide section on hygiene for more details.
 
 # Conclusion
 
