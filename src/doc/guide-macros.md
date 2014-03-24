@@ -398,6 +398,38 @@ position (in particular, not as an argument to yet another macro invocation),
 the expander will then proceed to evaluate `m2!()` (along with any other macro
 invocations `m1!(m2!())` produced).
 
+# Hygiene
+
+To prevent clashes, rust implements
+[hygienic macros](http://en.wikipedia.org/wiki/Hygienic_macro).
+
+As an example, `loop` and `for-loop` labels (discussed in the lifetimes guide)
+will not clash. The following code will print "Hello!" only once:
+
+~~~
+#[feature(macro_rules)];
+
+macro_rules! loop_x (
+    ($e: expr) => (
+        // $e will not interact with this 'x
+        'x: loop {
+            println!("Hello!");
+            $e
+        }
+    );
+)
+
+fn main() {
+    'x: loop {
+        loop_x!(break 'x);
+        println!("I am never printed.");
+    }
+}
+~~~
+
+The two `'x` names did not clash, which would have caused the loop
+to print "I am never printed" and to run forever.
+
 # A final note
 
 Macros, as currently implemented, are not for the faint of heart. Even
