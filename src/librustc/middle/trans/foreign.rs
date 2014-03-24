@@ -134,28 +134,6 @@ pub fn register_static(ccx: &CrateContext,
     let ty = ty::node_id_to_type(ccx.tcx(), foreign_item.id);
     let llty = type_of::type_of(ccx, ty);
 
-    // Treat the crate map static specially in order to
-    // a weak-linkage-like functionality where it's
-    // dynamically resolved at runtime. If we're
-    // building a library, then we declare the static
-    // with weak linkage, but if we're building a
-    // library then we've already declared the crate map
-    // so use that instead.
-    if attr::contains_name(foreign_item.attrs.as_slice(), "crate_map") {
-        return if ccx.sess().building_library.get() {
-            let s = "_rust_crate_map_toplevel";
-            let g = unsafe {
-                s.with_c_str(|buf| {
-                    llvm::LLVMAddGlobal(ccx.llmod, llty.to_ref(), buf)
-                })
-            };
-            lib::llvm::SetLinkage(g, lib::llvm::ExternalWeakLinkage);
-            g
-        } else {
-            ccx.crate_map
-        }
-    }
-
     let ident = link_name(foreign_item);
     match attr::first_attr_value_str_by_name(foreign_item.attrs.as_slice(),
                                              "linkage") {

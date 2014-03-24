@@ -22,7 +22,6 @@ use middle::trans::base;
 use middle::trans::builder::Builder;
 use middle::trans::common::{C_i32, C_null};
 use middle::trans::common::{mono_id,ExternMap,tydesc_info,BuilderRef_res,Stats};
-use middle::trans::base::{decl_crate_map};
 use middle::trans::debuginfo;
 use middle::trans::type_::Type;
 use middle::ty;
@@ -105,8 +104,6 @@ pub struct CrateContext {
     int_type: Type,
     opaque_vec_type: Type,
     builder: BuilderRef_res,
-    crate_map: ValueRef,
-    crate_map_name: ~str,
     // Set when at least one function uses GC. Needed so that
     // decl_gc_metadata knows whether to link to the module metadata, which
     // is not emitted by LLVM's GC pass when no functions use GC.
@@ -200,8 +197,6 @@ impl CrateContext {
                 int_type: Type::from_ref(ptr::null()),
                 opaque_vec_type: Type::from_ref(ptr::null()),
                 builder: BuilderRef_res(llvm::LLVMCreateBuilderInContext(llcx)),
-                crate_map: ptr::null(),
-                crate_map_name: ~"",
                 uses_gc: false,
                 dbg_cx: dbg_cx,
             };
@@ -214,8 +209,6 @@ impl CrateContext {
             let mut str_slice_ty = Type::named_struct(&ccx, "str_slice");
             str_slice_ty.set_struct_body([Type::i8p(&ccx), ccx.int_type], false);
             ccx.tn.associate_type("str_slice", &str_slice_ty);
-
-            decl_crate_map(&mut ccx);
 
             base::declare_intrinsics(&mut ccx);
 

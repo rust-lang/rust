@@ -76,7 +76,7 @@ use std::c_str::ToCStr;
 use std::cell::{Cell, RefCell};
 use std::libc::c_uint;
 use std::local_data;
-use syntax::abi::{X86, X86_64, Arm, Mips, Rust, RustIntrinsic, OsWin32};
+use syntax::abi::{X86, X86_64, Arm, Mips, Rust, RustIntrinsic};
 use syntax::ast_map::PathName;
 use syntax::ast_util::{local_def, is_local};
 use syntax::attr::AttrMetaMethods;
@@ -2316,65 +2316,6 @@ pub fn symname(name: &str, hash: &str, vers: &str) -> ~str {
     link::exported_name(ast_map::Values(path.iter()).chain(None), hash, vers)
 }
 
-pub fn decl_crate_map(ccx: &mut CrateContext) {
-    let mut n_subcrates = 1;
-    while ccx.sess().cstore.have_crate_data(n_subcrates) {
-        n_subcrates += 1;
-    }
-    let is_top = !ccx.sess().building_library.get() || ccx.sess().opts.cg.gen_crate_map;
-    let sym_name = if is_top {
-        ~"_rust_crate_map_toplevel"
-    } else {
-        symname("_rust_crate_map_" + ccx.link_meta.crateid.name,
-                ccx.link_meta.crate_hash.as_str(),
-                ccx.link_meta.crateid.version_or_default())
-    };
-
-    let maptype = Type::struct_(ccx, [
-        Type::i32(ccx),        // version
-        ccx.int_type.ptr_to(), // event loop factory
-    ], false);
-    let map = sym_name.with_c_str(|buf| {
-        unsafe {
-            llvm::LLVMAddGlobal(ccx.llmod, maptype.to_ref(), buf)
-        }
-    });
-    lib::llvm::SetLinkage(map, lib::llvm::ExternalLinkage);
-
-    // On windows we'd like to export the toplevel cratemap
-    // such that we can find it from libstd.
-    if ccx.sess().targ_cfg.os == OsWin32 && is_top {
-        unsafe { llvm::LLVMRustSetDLLExportStorageClass(map) }
-    }
-
-    ccx.crate_map_name = sym_name;
-    ccx.crate_map = map;
-}
-
-pub fn fill_crate_map(ccx: &CrateContext, map: ValueRef) {
-    let event_loop_factory = match ccx.tcx.lang_items.event_loop_factory() {
-        Some(did) => unsafe {
-            if is_local(did) {
-                llvm::LLVMConstPointerCast(get_item_val(ccx, did.node),
-                                           ccx.int_type.ptr_to().to_ref())
-            } else {
-                let name = csearch::get_symbol(&ccx.sess().cstore, did);
-                let global = name.with_c_str(|buf| {
-                    llvm::LLVMAddGlobal(ccx.llmod, ccx.int_type.to_ref(), buf)
-                });
-                global
-            }
-        },
-        None => C_null(ccx.int_type.ptr_to())
-    };
-    unsafe {
-        llvm::LLVMSetInitializer(map, C_struct(ccx,
-            [C_i32(ccx, 2),
-            event_loop_factory,
-        ], false));
-    }
-}
-
 pub fn crate_ctxt_to_encode_parms<'r>(cx: &'r CrateContext, ie: encoder::EncodeInlinedItem<'r>)
     -> encoder::EncodeParams<'r> {
 
@@ -2467,26 +2408,6 @@ pub fn trans_crate(krate: ast::Crate,
         trans_mod(&ccx, &krate.module);
     }
 
-    fill_crate_map(&ccx, ccx.crate_map);
-
-    // win32: wart with exporting crate_map symbol
-    // We set the crate map (_rust_crate_map_toplevel) to use dll_export
-    // linkage but that ends up causing the linker to look for a
-    // __rust_crate_map_toplevel symbol (extra underscore) which it will
-    // subsequently fail to find. So to mitigate that we just introduce
-    // an alias from the symbol it expects to the one that actually exists.
-    if ccx.sess().targ_cfg.os == OsWin32 && !ccx.sess().building_library.get() {
-
-        let maptype = val_ty(ccx.crate_map).to_ref();
-
-        "__rust_crate_map_toplevel".with_c_str(|buf| {
-            unsafe {
-                llvm::LLVMAddAlias(ccx.llmod, maptype,
-                                   ccx.crate_map, buf);
-            }
-        })
-    }
-
     glue::emit_tydescs(&ccx);
     if ccx.sess().opts.debuginfo != NoDebugInfo {
         debuginfo::finalize(&ccx);
@@ -2537,7 +2458,6 @@ pub fn trans_crate(krate: ast::Crate,
     // symbol. This symbol is required for use by the libmorestack library that
     // we link in, so we must ensure that this symbol is not internalized (if
     // defined in the crate).
-    reachable.push(ccx.crate_map_name.to_owned());
     reachable.push(~"main");
     reachable.push(~"rust_stack_exhausted");
     reachable.push(~"rust_eh_personality"); // referenced from .eh_frame section on some platforms
