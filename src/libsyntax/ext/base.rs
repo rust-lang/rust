@@ -119,12 +119,30 @@ impl MacResult {
     pub fn raw_dummy_expr(sp: codemap::Span) -> @ast::Expr {
         @ast::Expr {
             id: ast::DUMMY_NODE_ID,
-            node: ast::ExprTup(Vec::new()),
-            span: sp
+            node: ast::ExprLit(@codemap::respan(sp, ast::LitNil)),
+            span: sp,
         }
     }
     pub fn dummy_expr(sp: codemap::Span) -> MacResult {
         MRExpr(MacResult::raw_dummy_expr(sp))
+    }
+    pub fn dummy_any(sp: codemap::Span) -> MacResult {
+        MRAny(~DummyMacResult { sp: sp })
+    }
+}
+struct DummyMacResult {
+    sp: codemap::Span
+}
+impl AnyMacro for DummyMacResult {
+    fn make_expr(&self) -> @ast::Expr {
+        MacResult::raw_dummy_expr(self.sp)
+    }
+    fn make_items(&self) -> SmallVector<@ast::Item> {
+        SmallVector::zero()
+    }
+    fn make_stmt(&self) -> @ast::Stmt {
+        @codemap::respan(self.sp,
+                         ast::StmtExpr(MacResult::raw_dummy_expr(self.sp), ast::DUMMY_NODE_ID))
     }
 }
 
