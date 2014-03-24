@@ -360,6 +360,23 @@ pub trait Reader {
         }
     }
 
+    /// Fills the provided slice with bytes from this reader
+    ///
+    /// This will continue to call `read` until the slice has been completely
+    /// filled with bytes.
+    ///
+    /// # Error
+    ///
+    /// If an error occurs at any point, that error is returned, and no further
+    /// bytes are read.
+    fn fill(&mut self, buf: &mut [u8]) -> IoResult<()> {
+        let mut read = 0;
+        while read < buf.len() {
+            read += try!(self.read(buf.mut_slice_from(read)));
+        }
+        Ok(())
+    }
+
     /// Reads exactly `len` bytes and appends them to a vector.
     ///
     /// May push fewer than the requested number of bytes on error
@@ -1045,7 +1062,7 @@ pub trait Buffer: Reader {
     /// This function will return an I/O error if the underlying reader was
     /// read, but returned an error. Note that it is not an error to return a
     /// 0-length buffer.
-    fn fill<'a>(&'a mut self) -> IoResult<&'a [u8]>;
+    fn fill_buf<'a>(&'a mut self) -> IoResult<&'a [u8]>;
 
     /// Tells this buffer that `amt` bytes have been consumed from the buffer,
     /// so they should no longer be returned in calls to `fill` or `read`.
@@ -1116,7 +1133,7 @@ pub trait Buffer: Reader {
         let mut used;
         loop {
             {
-                let available = match self.fill() {
+                let available = match self.fill_buf() {
                     Ok(n) => n,
                     Err(ref e) if res.len() > 0 && e.kind == EndOfFile => {
                         used = 0;

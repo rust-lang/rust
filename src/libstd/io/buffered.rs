@@ -86,7 +86,7 @@ impl<R: Reader> BufferedReader<R> {
 }
 
 impl<R: Reader> Buffer for BufferedReader<R> {
-    fn fill<'a>(&'a mut self) -> IoResult<&'a [u8]> {
+    fn fill_buf<'a>(&'a mut self) -> IoResult<&'a [u8]> {
         if self.pos == self.cap {
             self.cap = try!(self.inner.read(self.buf.as_mut_slice()));
             self.pos = 0;
@@ -103,7 +103,7 @@ impl<R: Reader> Buffer for BufferedReader<R> {
 impl<R: Reader> Reader for BufferedReader<R> {
     fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
         let nread = {
-            let available = try!(self.fill());
+            let available = try!(self.fill_buf());
             let nread = cmp::min(available.len(), buf.len());
             slice::bytes::copy_memory(buf, available.slice_to(nread));
             nread
@@ -345,7 +345,7 @@ impl<S: Stream> BufferedStream<S> {
 }
 
 impl<S: Stream> Buffer for BufferedStream<S> {
-    fn fill<'a>(&'a mut self) -> IoResult<&'a [u8]> { self.inner.fill() }
+    fn fill_buf<'a>(&'a mut self) -> IoResult<&'a [u8]> { self.inner.fill_buf() }
     fn consume(&mut self, amt: uint) { self.inner.consume(amt) }
 }
 
