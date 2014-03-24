@@ -80,6 +80,7 @@ use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util;
 use syntax::ast_util::name_to_dummy_lifetime;
+use syntax::owned_slice::OwnedSlice;
 use syntax::parse::token;
 use syntax::print::pprust;
 use util::ppaux::UserString;
@@ -678,6 +679,17 @@ impl<'a> ErrorReporting for InferCtxt<'a> {
     }
 }
 
+struct RebuildPathInfo<'a> {
+    path: &'a ast::Path,
+    // indexes to insert lifetime on path.lifetimes
+    indexes: Vec<uint>,
+    // number of lifetimes we expect to see on the type referred by `path`
+    // (e.g., expected=1 for struct Foo<'a>)
+    expected: uint,
+    anon_nums: &'a HashSet<uint>,
+    region_names: &'a HashSet<ast::Name>
+}
+
 struct Rebuilder<'a> {
     tcx: &'a ty::ctxt,
     fn_decl: ast::P<ast::FnDecl>,
@@ -708,6 +720,7 @@ impl<'a> Rebuilder<'a> {
     fn rebuild(&self) -> (Vec<ast::Arg>, ast::P<ast::Ty>, ast::Generics) {
         let mut inputs = self.fn_decl.inputs.clone();
         let mut output = self.fn_decl.output;
+        let mut ty_params = self.generics.ty_params.clone();
         for sr in self.same_regions.iter() {
             self.cur_anon.set(0);
             self.offset_cur_anon();
@@ -718,12 +731,14 @@ impl<'a> Rebuilder<'a> {
                                           &anon_nums, &region_names);
             output = self.rebuild_arg_ty_or_output(output, lifetime,
                                                    &anon_nums, &region_names);
+            ty_params = self.rebuild_ty_params(ty_params, lifetime,
+                                               &region_names);
         }
         let generated_lifetimes = self.life_giver.get_generated_lifetimes();
         let all_region_names = self.extract_all_region_names();
         let generics = self.rebuild_generics(self.generics,
                                              generated_lifetimes,
-                                             &all_region_names);
+                                             &all_region_names, ty_params);
         (inputs, output, generics)
     }
 
@@ -782,10 +797,62 @@ impl<'a> Rebuilder<'a> {
         self.inserted_anons.borrow_mut().insert(anon);
     }
 
+    fn rebuild_ty_params(&self,
+                         ty_params: OwnedSlice<ast::TyParam>,
+                         lifetime: ast::Lifetime,
+                         region_names: &HashSet<ast::Name>)
+                         -> OwnedSlice<ast::TyParam> {
+        ty_params.map(|ty_param| {
+            let bounds = self.rebuild_ty_param_bounds(ty_param.bounds.clone(),
+                                                      lifetime,
+                                                      region_names);
+            ast::TyParam {
+                ident: ty_param.ident,
+                id: ty_param.id,
+                bounds: bounds,
+                default: ty_param.default,
+            }
+        })
+    }
+
+    fn rebuild_ty_param_bounds(&self,
+                               ty_param_bounds: OwnedSlice<ast::TyParamBound>,
+                               lifetime: ast::Lifetime,
+                               region_names: &HashSet<ast::Name>)
+                               -> OwnedSlice<ast::TyParamBound> {
+        ty_param_bounds.map(|tpb| {
+            match tpb {
+                &ast::RegionTyParamBound => ast::RegionTyParamBound,
+                &ast::TraitTyParamBound(ref tr) => {
+                    let last_seg = tr.path.segments.last().unwrap();
+                    let mut insert = Vec::new();
+                    for (i, lt) in last_seg.lifetimes.iter().enumerate() {
+                        if region_names.contains(&lt.name) {
+                            insert.push(i);
+                        }
+                    }
+                    let rebuild_info = RebuildPathInfo {
+                        path: &tr.path,
+                        indexes: insert,
+                        expected: last_seg.lifetimes.len(),
+                        anon_nums: &HashSet::new(),
+                        region_names: region_names
+                    };
+                    let new_path = self.rebuild_path(rebuild_info, lifetime);
+                    ast::TraitTyParamBound(ast::TraitRef {
+                        path: new_path,
+                        ref_id: tr.ref_id,
+                    })
+                }
+            }
+        })
+    }
+
     fn rebuild_generics(&self,
                         generics: &ast::Generics,
                         add: Vec<ast::Lifetime>,
-                        remove: &HashSet<ast::Name>)
+                        remove: &HashSet<ast::Name>,
+                        ty_params: OwnedSlice<ast::TyParam>)
                         -> ast::Generics {
         let mut lifetimes = Vec::new();
         for lt in add.iter() {
@@ -798,7 +865,7 @@ impl<'a> Rebuilder<'a> {
         }
         ast::Generics {
             lifetimes: lifetimes,
-            ty_params: generics.ty_params.clone()
+            ty_params: ty_params
         }
     }
 
@@ -886,11 +953,16 @@ impl<'a> Rebuilder<'a> {
                                     }
                                 }
                             }
-                            for i in insert.iter() {
-                                new_ty = self.rebuild_ty(new_ty, cur_ty,
-                                                         lifetime,
-                                                         Some((*i, expected)));
-                            }
+                            let rebuild_info = RebuildPathInfo {
+                                path: path,
+                                indexes: insert,
+                                expected: expected,
+                                anon_nums: anon_nums,
+                                region_names: region_names
+                            };
+                            new_ty = self.rebuild_ty(new_ty, cur_ty,
+                                                     lifetime,
+                                                     Some(rebuild_info));
                         }
                         _ => ()
                     }
@@ -906,7 +978,7 @@ impl<'a> Rebuilder<'a> {
                   from: ast::P<ast::Ty>,
                   to: ast::P<ast::Ty>,
                   lifetime: ast::Lifetime,
-                  index_opt: Option<(uint, uint)>)
+                  rebuild_path_info: Option<RebuildPathInfo>)
                   -> ast::P<ast::Ty> {
 
         fn build_to(from: ast::P<ast::Ty>,
@@ -950,13 +1022,12 @@ impl<'a> Rebuilder<'a> {
 
         let new_ty_node = match to.node {
             ast::TyRptr(_, mut_ty) => ast::TyRptr(Some(lifetime), mut_ty),
-            ast::TyPath(ref path, ref bounds, id) => {
-                let (index, expected) = match index_opt {
-                    Some((i, e)) => (i, e),
+            ast::TyPath(_, ref bounds, id) => {
+                let rebuild_info = match rebuild_path_info {
+                    Some(ri) => ri,
                     None => fail!("expect index_opt in rebuild_ty/ast::TyPath")
                 };
-                let new_path = self.rebuild_path(path, index,
-                                                 expected, lifetime);
+                let new_path = self.rebuild_path(rebuild_info, lifetime);
                 ast::TyPath(new_path, bounds.clone(), id)
             }
             _ => fail!("expect ast::TyRptr or ast::TyPath")
@@ -970,34 +1041,49 @@ impl<'a> Rebuilder<'a> {
     }
 
     fn rebuild_path(&self,
-                    path: &ast::Path,
-                    index: uint,
-                    expected: uint,
+                    rebuild_info: RebuildPathInfo,
                     lifetime: ast::Lifetime)
                     -> ast::Path {
+        let RebuildPathInfo {
+            path: path,
+            indexes: indexes,
+            expected: expected,
+            anon_nums: anon_nums,
+            region_names: region_names,
+        } = rebuild_info;
+
         let last_seg = path.segments.last().unwrap();
         let mut new_lts = Vec::new();
         if last_seg.lifetimes.len() == 0 {
-            for i in range(0, expected) {
-                if i == index {
-                    new_lts.push(lifetime);
-                } else {
-                    new_lts.push(self.life_giver.give_lifetime());
+            // traverse once to see if there's a need to insert lifetime
+            let need_insert = range(0, expected).any(|i| {
+                indexes.contains(&i)
+            });
+            if need_insert {
+                for i in range(0, expected) {
+                    if indexes.contains(&i) {
+                        new_lts.push(lifetime);
+                    } else {
+                        new_lts.push(self.life_giver.give_lifetime());
+                    }
                 }
             }
         } else {
             for (i, lt) in last_seg.lifetimes.iter().enumerate() {
-                if i == index {
+                if indexes.contains(&i) {
                     new_lts.push(lifetime);
                 } else {
                     new_lts.push(*lt);
                 }
             }
         }
+        let new_types = last_seg.types.map(|&t| {
+            self.rebuild_arg_ty_or_output(t, lifetime, anon_nums, region_names)
+        });
         let new_seg = ast::PathSegment {
             identifier: last_seg.identifier,
             lifetimes: new_lts,
-            types: last_seg.types.clone(),
+            types: new_types,
         };
         let mut new_segs = Vec::new();
         new_segs.push_all(path.segments.init());
