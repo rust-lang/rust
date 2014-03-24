@@ -865,7 +865,7 @@ static RAND_BENCH_N: u64 = 100;
 mod bench {
     extern crate test;
     use self::test::BenchHarness;
-    use {XorShiftRng, StdRng, IsaacRng, Isaac64Rng, Rng, RAND_BENCH_N};
+    use {XorShiftRng, StdRng, IsaacRng, Isaac64Rng, Rng, RAND_BENCH_N, task_rng};
     use std::mem::size_of;
 
     #[bench]
@@ -904,6 +904,17 @@ mod bench {
     #[bench]
     fn rand_std(bh: &mut BenchHarness) {
         let mut rng = StdRng::new();
+        bh.iter(|| {
+            for _ in range(0, RAND_BENCH_N) {
+                rng.gen::<uint>();
+            }
+        });
+        bh.bytes = size_of::<uint>() as u64 * RAND_BENCH_N;
+    }
+
+    #[bench]
+    fn rand_task_rng(bh: &mut BenchHarness) {
+        let rng = task_rng();
         bh.iter(|| {
             for _ in range(0, RAND_BENCH_N) {
                 rng.gen::<uint>();
