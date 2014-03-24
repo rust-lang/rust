@@ -192,6 +192,6 @@ $(foreach host,$(CFG_HOST),\
 
 prepare-maybe-clean:
 	$(if $(findstring true,$(PREPARE_CLEAN)),\
-      @$(call E, cleaning destination $@),)
+      @$(call E, cleaning destination $(PREPARE_DEST_DIR)),)
 	$(if $(findstring true,$(PREPARE_CLEAN)),\
       $(Q)rm -rf $(PREPARE_DEST_DIR),)
