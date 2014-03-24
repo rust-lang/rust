@@ -91,6 +91,27 @@ pub enum RvalueMode {
     ByValue,
 }
 
+#[deriving(Clone)]
+pub struct PodValue {
+    // Don't allow constructing the structure outside this module.
+    priv contents: ()
+}
+
+/// A reference to a lvalue or a Pod immediate value.
+pub enum LvalueOrPod {
+    LvalueDatum(Datum<Lvalue>),
+    PodValueDatum(Datum<PodValue>)
+}
+
+impl LvalueOrPod {
+    pub fn to_expr_datum(self) -> Datum<Expr> {
+        match self {
+            LvalueDatum(l) => l.to_expr_datum(),
+            PodValueDatum(p) => p.to_expr_datum()
+        }
+    }
+}
+
 pub fn Datum<K:KindOps>(val: ValueRef, ty: ty::t, kind: K) -> Datum<K> {
     Datum { val: val, ty: ty, kind: kind }
 }
@@ -99,6 +120,11 @@ pub fn DatumBlock<'a, K>(bcx: &'a Block<'a>,
                          datum: Datum<K>)
                          -> DatumBlock<'a, K> {
     DatumBlock { bcx: bcx, datum: datum }
+}
+
+pub fn pod_value(tcx: &ty::ctxt, val: ValueRef, ty: ty::t) -> Datum<PodValue> {
+    assert!(!ty::type_needs_drop(tcx, ty) && !ty::type_moves_by_default(tcx, ty));
+    Datum(val, ty, PodValue { contents: () })
 }
 
 pub fn immediate_rvalue(val: ValueRef, ty: ty::t) -> Datum<Rvalue> {
@@ -268,6 +294,24 @@ impl KindOps for Lvalue {
 
     fn to_expr_kind(self) -> Expr {
         LvalueExpr
+    }
+}
+
+impl KindOps for PodValue {
+    fn post_store<'a>(&self,
+                      bcx: &'a Block<'a>,
+                      _val: ValueRef,
+                      _ty: ty::t)
+                      -> &'a Block<'a> {
+        bcx
+    }
+
+    fn is_by_ref(&self) -> bool {
+        false
+    }
+
+    fn to_expr_kind(self) -> Expr {
+        RvalueExpr(Rvalue(ByValue))
     }
 }
 
@@ -687,10 +731,22 @@ impl<'a, K:KindOps> DatumBlock<'a, K> {
     }
 }
 
+impl<'a> DatumBlock<'a, Rvalue> {
+    pub fn to_appropriate_datumblock(self) -> DatumBlock<'a, Rvalue> {
+        let DatumBlock { bcx, datum } = self;
+        datum.to_appropriate_datum(bcx)
+    }
+}
+
 impl<'a> DatumBlock<'a, Expr> {
     pub fn assert_by_ref(self) -> DatumBlock<'a, Expr> {
         assert!(self.datum.kind.is_by_ref());
         self
+    }
+
+    pub fn to_rvalue_datumblock(self, name: &'static str) -> DatumBlock<'a, Rvalue> {
+        let DatumBlock { bcx, datum } = self;
+        datum.to_rvalue_datum(bcx, name)
     }
 
     pub fn store_to(self, dst: ValueRef) -> &'a Block<'a> {
