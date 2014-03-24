@@ -708,8 +708,9 @@ pub fn trans_call_inner<'a>(
 
         debug!("trans_callee_inner: first_arg_offset={}", first_arg_offset);
 
-        for (idx, &t) in ty::ty_fn_args(callee_ty).iter().enumerate().map(|(i, v)| (i+first_arg_offset, v)) {
-            use middle::ty::{FreeRegion, BrAnon, ReFree, ReLateBound};
+        for (idx, &t) in ty::ty_fn_args(callee_ty).iter().enumerate()
+                                                  .map(|(i, v)| (i+first_arg_offset, v)) {
+            use middle::ty::{BrAnon, ReLateBound};
             if !type_is_immediate(ccx, t) {
                 // if it's not immediate, we have a program-invisible pointer,
                 // which it can't possibly capture
@@ -720,10 +721,9 @@ pub fn trans_call_inner<'a>(
 
             let t_ = ty::get(t);
             match t_.sty {
-                ty::ty_rptr(ReFree(FreeRegion { scope_id: _, bound_region: BrAnon(_) }), _) |
-                    ty::ty_rptr(ReLateBound(_, BrAnon(_)), _) => {
-
-                    debug!("trans_callee_inner: argument {} nocapture because of anonymous lifetime", idx);
+                ty::ty_rptr(ReLateBound(_, BrAnon(_)), _) => {
+                    debug!("trans_callee_inner: argument {} nocapture because \
+                           of anonymous lifetime", idx);
                     attrs.push((idx, NoCaptureAttribute));
                 },
                 _ => { }
