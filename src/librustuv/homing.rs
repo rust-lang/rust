@@ -167,7 +167,7 @@ mod test {
         let (tx, rx) = channel();
         let mut pool = SchedPool::new(PoolConfig {
             threads: 1,
-            event_loop_factory: None,
+            event_loop_factory: ::event_loop,
         });
 
         pool.spawn(TaskOpts::new(), proc() {
@@ -188,7 +188,7 @@ mod test {
         let (tx, rx) = channel();
         let mut pool = SchedPool::new(PoolConfig {
             threads: 1,
-            event_loop_factory: None,
+            event_loop_factory: ::event_loop,
         });
 
         pool.spawn(TaskOpts::new(), proc() {
