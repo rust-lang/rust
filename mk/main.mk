@@ -63,7 +63,6 @@ ALL_OBJ_FILES :=
 
 MKFILE_DEPS := config.stamp $(call rwildcard,$(CFG_SRC_DIR)mk/,*)
 MKFILES_FOR_TARBALL:=$(MKFILE_DEPS)
-$(info $(MKFILES_FOR_TARBALL))
 ifneq ($(NO_MKFILE_DEPS),)
 MKFILE_DEPS :=
 endif
