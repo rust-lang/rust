@@ -46,12 +46,15 @@ impl IsaacRng {
     /// Create an ISAAC random number generator with a random seed.
     pub fn new() -> IsaacRng {
         let mut rng = EMPTY;
-
+        let mut os_rng = match OSRng::new() {
+            Ok(r) => r,
+            Err(e) => fail!("IsaacRng::new: creating OSRng failed: {}", e)
+        };
         unsafe {
             let ptr = rng.rsl.as_mut_ptr();
 
             raw::mut_buf_as_slice(ptr as *mut u8, mem::size_of_val(&rng.rsl), |slice| {
-                OSRng::new().fill_bytes(slice);
+                os_rng.fill_bytes(slice);
             })
         }
 
@@ -251,12 +254,15 @@ impl Isaac64Rng {
     /// seed.
     pub fn new() -> Isaac64Rng {
         let mut rng = EMPTY_64;
-
+        let mut os_rng = match OSRng::new() {
+            Ok(r) => r,
+            Err(e) => fail!("Isaac64Rng::new: creating OSRng failed: {}", e)
+        };
         unsafe {
             let ptr = rng.rsl.as_mut_ptr();
 
             raw::mut_buf_as_slice(ptr as *mut u8, mem::size_of_val(&rng.rsl), |slice| {
-                OSRng::new().fill_bytes(slice);
+                os_rng.fill_bytes(slice);
             })
         }
 

@@ -540,7 +540,10 @@ impl XorShiftRng {
     pub fn new() -> XorShiftRng {
         let mut s = [0u8, ..16];
         loop {
-            let mut r = OSRng::new();
+            let mut r = match OSRng::new() {
+                Ok(r) => r,
+                Err(e) => fail!("XorShiftRng::new: creating OSRng failed: {}", e)
+            };
             r.fill_bytes(s);
 
             if !s.iter().all(|x| *x == 0) {
