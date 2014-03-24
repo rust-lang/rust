@@ -23,6 +23,7 @@ use middle::trans::base::push_ctxt;
 use middle::trans::closure;
 use middle::trans::common::*;
 use middle::trans::consts;
+use middle::trans::datum::*;
 use middle::trans::expr;
 use middle::trans::inline;
 use middle::trans::machine;
@@ -618,10 +619,14 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr,
                 Some(ast::DefFn(def_id, _purity)) => {
                     if !ast_util::is_local(def_id) {
                         let ty = csearch::get_type(cx.tcx(), def_id).ty;
-                        (base::trans_external_path(cx, def_id, ty), true)
+                        (base::trans_external_path(cx, def_id, ty).val, true)
                     } else {
-                        assert!(ast_util::is_local(def_id));
-                        (base::get_item_val(cx, def_id.node), true)
+                        match base::get_item_val(cx, def_id.node) {
+                            LvalueDatum(_) => {
+                                cx.sess().bug("found Lvalue instead of PodValue for fn");
+                            }
+                            PodValueDatum(datum) => (datum.val, true)
+                        }
                     }
                 }
                 Some(ast::DefStatic(def_id, false)) => {
@@ -636,13 +641,9 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr,
                     (adt::trans_const(cx, repr, vinfo.disr_val, []), true)
                 }
                 Some(ast::DefStruct(_)) => {
-                    let ety = ty::expr_ty(cx.tcx(), e);
-                    let llty = type_of::type_of(cx, ety);
-                    (C_null(llty), true)
+                    (C_null(type_of::type_of(cx, ty::expr_ty(cx.tcx(), e))), true)
                 }
-                _ => {
-                    cx.sess().span_bug(e.span, "expected a const, fn, struct, or variant def")
-                }
+                _ => cx.sess().span_bug(e.span, "expected a const, fn, struct, or variant def")
             }
           }
           ast::ExprCall(callee, ref args) => {
@@ -680,13 +681,18 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr,
 pub fn trans_const(ccx: &CrateContext, m: ast::Mutability, id: ast::NodeId) {
     unsafe {
         let _icx = push_ctxt("trans_const");
-        let g = base::get_item_val(ccx, id);
+        let llref = match base::get_item_val(ccx, id) {
+            LvalueDatum(datum) => datum.val,
+            PodValueDatum(_) => {
+                ccx.sess().bug("found PodValue instead of Lvalue for static");
+            }
+        };
         // At this point, get_item_val has already translated the
         // constant's initializer to determine its LLVM type.
         let v = ccx.const_values.borrow().get_copy(&id);
-        llvm::LLVMSetInitializer(g, v);
+        llvm::LLVMSetInitializer(llref, v);
         if m != ast::MutMutable {
-            llvm::LLVMSetGlobalConstant(g, True);
+            llvm::LLVMSetGlobalConstant(llref, True);
         }
     }
 }

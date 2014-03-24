@@ -332,11 +332,10 @@ pub fn trans_uniq_vstore<'a>(bcx: &'a Block<'a>,
                                             Some(lit.span),
                                             "",
                                             StrDupUniqFnLangItem);
-                    let bcx = callee::trans_lang_call(
-                        bcx,
-                        alloc_fn,
-                        [ llptrval, llsizeval ],
-                        Some(expr::SaveIn(lldestval.val))).bcx;
+                    let bcx = callee::trans_lang_call(bcx, alloc_fn, [
+                        pod_value(bcx.tcx(), llptrval, ty::mk_imm_ptr(bcx.tcx(), ty::mk_u8())),
+                        pod_value(bcx.tcx(), llsizeval, ty::mk_uint())
+                    ], Some(expr::SaveIn(lldestval.val))).bcx;
                     return DatumBlock(bcx, lldestval).to_expr_datumblock();
                 }
                 _ => {}

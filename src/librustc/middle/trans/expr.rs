@@ -191,7 +191,7 @@ fn apply_adjustments<'a>(bcx: &'a Block<'a>,
                 }
                 Some(AutoUnsafe(..)) | // region + unsafe ptrs have same repr
                 Some(AutoPtr(..)) => {
-                    unpack_datum!(bcx, auto_ref(bcx, datum, expr))
+                    unpack_datum!(bcx, auto_ref(bcx, datum, expr.id))
                 }
                 Some(AutoBorrowVec(..)) => {
                     unpack_datum!(bcx, auto_slice(bcx, expr, datum))
@@ -294,7 +294,7 @@ fn apply_adjustments<'a>(bcx: &'a Block<'a>,
                           datum: Datum<Expr>)
                           -> DatumBlock<'a, Expr> {
         let DatumBlock { bcx, datum } = auto_slice(bcx, expr, datum);
-        auto_ref(bcx, datum, expr)
+        auto_ref(bcx, datum, expr.id)
     }
 
     fn auto_borrow_obj<'a>(bcx: &'a Block<'a>,
@@ -539,53 +539,44 @@ fn trans_def<'a>(bcx: &'a Block<'a>,
         ast::DefStatic(did, _) => {
             let const_ty = expr_ty(bcx, ref_expr);
 
-            fn get_did(ccx: &CrateContext, did: ast::DefId)
-                       -> ast::DefId {
-                if did.krate != ast::LOCAL_CRATE {
-                    inline::maybe_instantiate_inline(ccx, did)
-                } else {
-                    did
-                }
-            }
+            let did = if did.krate != ast::LOCAL_CRATE {
+                inline::maybe_instantiate_inline(bcx.ccx(), did)
+            } else {
+                did
+            };
 
-            fn get_val<'a>(bcx: &'a Block<'a>, did: ast::DefId, const_ty: ty::t)
-                       -> ValueRef {
-                // For external constants, we don't inline.
-                if did.krate == ast::LOCAL_CRATE {
-                    // The LLVM global has the type of its initializer,
-                    // which may not be equal to the enum's type for
-                    // non-C-like enums.
-                    let val = base::get_item_val(bcx.ccx(), did.node);
-                    let pty = type_of::type_of(bcx.ccx(), const_ty).ptr_to();
-                    PointerCast(bcx, val, pty)
-                } else {
-                    match bcx.ccx().extern_const_values.borrow().find(&did) {
-                        None => {}  // Continue.
-                        Some(llval) => {
-                            return *llval;
-                        }
+            // For external constants, we don't inline.
+            if did.krate == ast::LOCAL_CRATE {
+                // The LLVM global has the type of its initializer,
+                // which may not be equal to the enum's type for
+                // non-C-like enums.
+                let llref = match get_item_val(bcx.ccx(), did.node) {
+                    LvalueDatum(datum) => datum.val,
+                    PodValueDatum(_) => {
+                        bcx.sess().bug("found PodValue instead of Lvalue for static");
                     }
-
-                    unsafe {
-                        let llty = type_of::type_of(bcx.ccx(), const_ty);
-                        let symbol = csearch::get_symbol(
-                            &bcx.ccx().sess().cstore,
-                            did);
-                        let llval = symbol.with_c_str(|buf| {
-                                llvm::LLVMAddGlobal(bcx.ccx().llmod,
-                                                    llty.to_ref(),
-                                                    buf)
-                            });
-                        bcx.ccx().extern_const_values.borrow_mut()
-                           .insert(did, llval);
-                        llval
+                };
+                let pty = type_of::type_of(bcx.ccx(), const_ty).ptr_to();
+                let llref = PointerCast(bcx, llref, pty);
+                DatumBlock(bcx, Datum(llref, const_ty, LvalueExpr))
+            } else {
+                match bcx.ccx().extern_const_values.borrow().find(&did) {
+                    None => {}  // Continue.
+                    Some(&llval) => {
+                        return DatumBlock(bcx, Datum(llval, const_ty, LvalueExpr));
                     }
                 }
-            }
 
-            let did = get_did(bcx.ccx(), did);
-            let val = get_val(bcx, did, const_ty);
-            DatumBlock(bcx, Datum(val, const_ty, LvalueExpr))
+                unsafe {
+                    let llty = type_of::type_of(bcx.ccx(), const_ty);
+                    let symbol = csearch::get_symbol(&bcx.sess().cstore, did);
+                    let llval = symbol.with_c_str(|buf| {
+                        llvm::LLVMAddGlobal(bcx.ccx().llmod, llty.to_ref(), buf)
+                    });
+                    bcx.ccx().extern_const_values.borrow_mut().insert(did, llval);
+                    DatumBlock(bcx, Datum(llval, const_ty, LvalueExpr))
+                }
+            }
         }
         _ => {
             DatumBlock(bcx, trans_local_var(bcx, def).to_expr_datum())
@@ -738,14 +729,23 @@ fn trans_rvalue_dps_unadjusted<'a>(bcx: &'a Block<'a>,
             closure::trans_expr_fn(bcx, sigil, decl, body, expr.id, dest)
         }
         ast::ExprCall(f, ref args) => {
-            callee::trans_call(bcx, expr, f, callee::ArgExprs(args.as_slice()), dest)
+            let (bcx, callee) = callee::trans(bcx, f);
+            callee::trans_call(bcx,
+                               Some(expr_info(expr)),
+                               callee,
+                               args.iter(),
+                               |bcx, &arg| trans(bcx, arg),
+                               Some(dest)).bcx
         }
         ast::ExprMethodCall(_, _, ref args) => {
-            callee::trans_method_call(bcx,
-                                      expr,
-                                      *args.get(0),
-                                      callee::ArgExprs(args.as_slice()),
-                                      dest)
+            let method_call = MethodCall::expr(expr.id);
+            callee::trans_call(
+                bcx,
+                Some(expr_info(expr)),
+                meth::trans_method_callee(bcx, method_call),
+                args.iter(),
+                |bcx, &arg| trans(bcx, arg),
+                Some(dest)).bcx
         }
         ast::ExprBinary(_, lhs, rhs) => {
             // if not overloaded, would be RvalueDatumExpr
@@ -815,9 +815,8 @@ fn trans_def_dps_unadjusted<'a>(
             let variant_info = ty::enum_variant_with_id(bcx.tcx(), tid, vid);
             if variant_info.args.len() > 0u {
                 // N-ary variant.
-                let llfn = callee::trans_fn_ref(bcx, vid, ExprId(ref_expr.id));
-                Store(bcx, llfn, lldest);
-                return bcx;
+                let callee = callee::trans_fn_ref(bcx, vid, ExprId(ref_expr.id));
+                callee.store_to(bcx, lldest)
             } else {
                 // Nullary variant.
                 let ty = expr_ty(bcx, ref_expr);
@@ -851,15 +850,14 @@ fn trans_def_fn_unadjusted<'a>(bcx: &'a Block<'a>,
                                def: ast::Def) -> DatumBlock<'a, Expr> {
     let _icx = push_ctxt("trans_def_datum_unadjusted");
 
-    let llfn = match def {
+    DatumBlock(bcx, match def {
         ast::DefFn(did, _) |
         ast::DefStruct(did) | ast::DefVariant(_, did, _) |
         ast::DefStaticMethod(did, ast::FromImpl(_), _) => {
             callee::trans_fn_ref(bcx, did, ExprId(ref_expr.id))
         }
         ast::DefStaticMethod(impl_did, ast::FromTrait(trait_did), _) => {
-            meth::trans_static_method_callee(bcx, impl_did,
-                                             trait_did, ref_expr.id)
+            meth::trans_static_method_callee(bcx, impl_did, trait_did, ref_expr.id)
         }
         _ => {
             bcx.tcx().sess.span_bug(ref_expr.span, format!(
@@ -867,10 +865,7 @@ fn trans_def_fn_unadjusted<'a>(bcx: &'a Block<'a>,
                     def,
                     ref_expr.repr(bcx.tcx())));
         }
-    };
-
-    let fn_ty = expr_ty(bcx, ref_expr);
-    DatumBlock(bcx, Datum(llfn, fn_ty, RvalueExpr(Rvalue(ByValue))))
+    }).to_expr_datumblock()
 }
 
 pub fn trans_local_var<'a>(bcx: &'a Block<'a>,
@@ -1451,7 +1446,7 @@ fn trans_binary<'a>(bcx: &'a Block<'a>,
     }
 }
 
-fn trans_overloaded_op<'a, 'b>(
+fn trans_overloaded_op<'a>(
                        bcx: &'a Block<'a>,
                        expr: &ast::Expr,
                        method_call: MethodCall,
@@ -1459,18 +1454,21 @@ fn trans_overloaded_op<'a, 'b>(
                        rhs: Option<(Datum<Expr>, ast::NodeId)>,
                        dest: Option<Dest>)
                        -> Result<'a> {
-    let method_ty = bcx.ccx().maps.method_map.borrow().get(&method_call).ty;
-    callee::trans_call_inner(bcx,
-                             Some(expr_info(expr)),
-                             monomorphize_type(bcx, method_ty),
-                             |bcx, arg_cleanup_scope| {
-                                meth::trans_method_callee(bcx,
-                                                          method_call,
-                                                          None,
-                                                          arg_cleanup_scope)
-                             },
-                             callee::ArgOverloadedOp(lhs, rhs),
-                             dest)
+    let mut bcx = bcx;
+    let rhs = match rhs {
+        Some((rhs_datum, rhs_id)) => {
+            // FIXME(#3548) use the adjustments table
+            Some(unpack_datum!(bcx, auto_ref(bcx, rhs_datum, rhs_id)))
+        }
+        None => None
+    };
+
+    callee::trans_call(bcx,
+                       Some(expr_info(expr)),
+                       meth::trans_method_callee(bcx, method_call),
+                       Some(lhs).move_iter().chain(rhs.move_iter()),
+                       |bcx, arg_datum| DatumBlock(bcx, arg_datum),
+                       dest)
 }
 
 fn int_cast(bcx: &Block,
@@ -1649,13 +1647,13 @@ fn trans_assign_op<'a>(
 
 fn auto_ref<'a>(bcx: &'a Block<'a>,
                 datum: Datum<Expr>,
-                expr: &ast::Expr)
+                expr_id: ast::NodeId)
                 -> DatumBlock<'a, Expr> {
     let mut bcx = bcx;
 
     // Ensure cleanup of `datum` if not already scheduled and obtain
     // a "by ref" pointer.
-    let lv_datum = unpack_datum!(bcx, datum.to_lvalue_datum(bcx, "autoref", expr.id));
+    let lv_datum = unpack_datum!(bcx, datum.to_lvalue_datum(bcx, "autoref", expr_id));
 
     // Compute final type. Note that we are loose with the region and
     // mutability, since those things don't matter in trans.
@@ -1718,7 +1716,7 @@ fn deref_once<'a>(bcx: &'a Block<'a>,
                 datum
             } else {
                 // Always perform an AutoPtr when applying an overloaded auto-deref.
-                unpack_datum!(bcx, auto_ref(bcx, datum, expr))
+                unpack_datum!(bcx, auto_ref(bcx, datum, expr.id))
             };
             let val = unpack_result!(bcx, trans_overloaded_op(bcx, expr, method_call,
                                                               datum, None, None));

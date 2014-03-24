@@ -1286,7 +1286,12 @@ fn compare_values<'a>(
             let did = langcall(cx, None,
                                format!("comparison of `{}`", cx.ty_to_str(rhs_t)),
                                StrEqFnLangItem);
-            let result = callee::trans_lang_call(cx, did, [lhs, rhs], None);
+            let result = callee::trans_call(cx, None,
+                callee::Fn(callee::trans_fn_ref_with_vtables(cx, did, ExprId(0), [], None)),
+                [lhs, rhs].iter(), |bcx, &val| {
+                    DatumBlock(bcx, Datum(val, rhs_t, RvalueExpr(Rvalue(ByRef))))
+                },
+                None);
             Result {
                 bcx: result.bcx,
                 val: bool_to_i1(result.bcx, result.val)

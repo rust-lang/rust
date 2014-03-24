@@ -48,15 +48,13 @@ pub fn trans_inline_asm<'a>(bcx: &'a Block<'a>, ia: &ast::InlineAsm)
     // Now the input operands
     let inputs = ia.inputs.map(|&(ref c, input)| {
         constraints.push((*c).clone());
-
-        let in_datum = unpack_datum!(bcx, expr::trans(bcx, input));
-        unpack_result!(bcx, {
-            callee::trans_arg_datum(bcx,
-                                   expr_ty(bcx, input),
-                                   in_datum,
-                                   cleanup::CustomScope(temp_scope),
-                                   callee::DontAutorefArg)
-        })
+        let input = expr::trans(bcx, input);
+        let input_ty = input.datum.ty;
+        let input = unpack_datum!(bcx, {
+            callee::trans_arg_datum(input, input_ty,
+                                    cleanup::CustomScope(temp_scope))
+        });
+        input.val
     });
 
     // no failure occurred preparing operands, no need to cleanup

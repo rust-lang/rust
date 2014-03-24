@@ -19,6 +19,7 @@ use middle::trans::build::*;
 use middle::trans::builder::noname;
 use middle::trans::cabi;
 use middle::trans::common::*;
+use middle::trans::datum::*;
 use middle::trans::machine;
 use middle::trans::type_::Type;
 use middle::trans::type_of::*;
@@ -32,8 +33,7 @@ use syntax::abi::{RustIntrinsic, Rust, Stdcall, Fastcall, System};
 use syntax::codemap::Span;
 use syntax::parse::token::{InternedString, special_idents};
 use syntax::parse::token;
-use syntax::{ast};
-use syntax::{attr, ast_map};
+use syntax::{ast, attr, ast_map};
 use util::ppaux::{Repr, UserString};
 
 ///////////////////////////////////////////////////////////////////////////
@@ -255,8 +255,7 @@ pub fn trans_native_call<'a>(
                          callee_ty: ty::t,
                          llfn: ValueRef,
                          llretptr: ValueRef,
-                         llargs_rust: &[ValueRef],
-                         passed_arg_tys: Vec<ty::t> )
+                         arg_datums: Vec<Datum<Rvalue>>)
                          -> &'a Block<'a> {
     /*!
      * Prepares a call to a native function. This requires adapting
@@ -267,14 +266,14 @@ pub fn trans_native_call<'a>(
      * - `callee_ty`: Rust type for the function we are calling
      * - `llfn`: the function pointer we are calling
      * - `llretptr`: where to store the return value of the function
-     * - `llargs_rust`: a list of the argument values, prepared
-     *   as they would be if calling a Rust function
-     * - `passed_arg_tys`: Rust type for the arguments. Normally we
-     *   can derive these from callee_ty but in the case of variadic
-     *   functions passed_arg_tys will include the Rust type of all
-     *   the arguments including the ones not specified in the fn's signature.
+     * - `arg_datums`: a list of the argument datums, prepared as
+     *   they would be if calling a Rust function. Note that in the
+     *   case of variadic functions, the datums' types will include
+     *   the Rust type of all the arguments including the ones not
+     *   specified in the fn's signature.
      */
 
+    let mut bcx = bcx;
     let ccx = bcx.ccx();
     let tcx = bcx.tcx();
 
@@ -289,14 +288,14 @@ pub fn trans_native_call<'a>(
         ty::ty_bare_fn(ref fn_ty) => (fn_ty.abis, fn_ty.sig.clone()),
         _ => ccx.sess().bug("trans_native_call called on non-function type")
     };
-    let llsig = foreign_signature(ccx, &fn_sig, passed_arg_tys.as_slice());
+    let llsig = foreign_signature(ccx, &fn_sig, arg_datums.iter().map(|arg| arg.ty));
     let ret_def = !return_type_is_void(bcx.ccx(), fn_sig.output);
     let fn_type = cabi::compute_abi_info(ccx,
                                          llsig.llarg_tys.as_slice(),
                                          llsig.llret_ty,
                                          ret_def);
 
-    let arg_tys: &[cabi::ArgType] = fn_type.arg_tys.as_slice();
+    let arg_tys = fn_type.arg_tys.as_slice();
 
     let mut llargs_foreign = Vec::new();
 
@@ -317,42 +316,23 @@ pub fn trans_native_call<'a>(
         }
     }
 
-    for (i, &llarg_rust) in llargs_rust.iter().enumerate() {
-        let mut llarg_rust = llarg_rust;
-
+    for (i, arg_datum) in arg_datums.move_iter().enumerate() {
         if arg_tys[i].is_ignore() {
             continue;
         }
 
-        // Does Rust pass this argument by pointer?
-        let rust_indirect = type_of::arg_is_indirect(ccx,
-                                                     *passed_arg_tys.get(i));
-
-        debug!("argument {}, llarg_rust={}, rust_indirect={}, arg_ty={}",
-               i,
-               ccx.tn.val_to_str(llarg_rust),
-               rust_indirect,
-               ccx.tn.type_to_str(arg_tys[i].ty));
+        debug!("argument {}: {}", i, arg_datum.to_str(ccx));
 
         // Ensure that we always have the Rust value indirectly,
         // because it makes bitcasting easier.
-        if !rust_indirect {
-            let scratch =
-                base::alloca(bcx,
-                             type_of::type_of(ccx, *passed_arg_tys.get(i)),
-                             "__arg");
-            Store(bcx, llarg_rust, scratch);
-            llarg_rust = scratch;
-        }
-
-        debug!("llarg_rust={} (after indirection)",
-               ccx.tn.val_to_str(llarg_rust));
+        let arg_datum = unpack_datum!(bcx, arg_datum.to_ref_datum(bcx));
+        debug!("arg_datum={} (after indirection)", arg_datum.to_str(ccx));
 
         // Check whether we need to do any casting
-        match arg_tys[i].cast {
-            Some(ty) => llarg_rust = BitCast(bcx, llarg_rust, ty.ptr_to()),
-            None => ()
-        }
+        let llarg_rust = match arg_tys[i].cast {
+            Some(ty) => BitCast(bcx, arg_datum.val, ty.ptr_to()),
+            None => arg_datum.val
+        };
 
         debug!("llarg_rust={} (after casting)",
                ccx.tn.val_to_str(llarg_rust));
@@ -500,7 +480,7 @@ pub fn register_rust_fn_with_foreign_abi(ccx: &CrateContext,
                                          sp: Span,
                                          sym: ~str,
                                          node_id: ast::NodeId)
-                                         -> ValueRef {
+                                         -> Datum<PodValue> {
     let _icx = push_ctxt("foreign::register_foreign_fn");
 
     let tys = foreign_types_for_id(ccx, node_id);
@@ -517,7 +497,7 @@ pub fn register_rust_fn_with_foreign_abi(ccx: &CrateContext,
     add_argument_attributes(&tys, llfn);
     debug!("register_rust_fn_with_foreign_abi(node_id={:?}, llfn_ty={}, llfn={})",
            node_id, ccx.tn.type_to_str(llfn_ty), ccx.tn.val_to_str(llfn));
-    llfn
+    pod_value(ccx.tcx(), llfn, t)
 }
 
 pub fn trans_rust_fn_with_foreign_abi(ccx: &CrateContext,
@@ -829,8 +809,10 @@ pub fn link_name(i: &ast::ForeignItem) -> InternedString {
     }
 }
 
-fn foreign_signature(ccx: &CrateContext, fn_sig: &ty::FnSig, arg_tys: &[ty::t])
-                     -> LlvmSignature {
+fn foreign_signature<I: Iterator<ty::t>>(ccx: &CrateContext,
+                                         fn_sig: &ty::FnSig,
+                                         arg_tys: I)
+                                         -> LlvmSignature {
     /*!
      * The ForeignSignature is the LLVM types of the arguments/return type
      * of a function.  Note that these LLVM types are not quite the same
@@ -839,11 +821,9 @@ fn foreign_signature(ccx: &CrateContext, fn_sig: &ty::FnSig, arg_tys: &[ty::t])
      * values by pointer like we do.
      */
 
-    let llarg_tys = arg_tys.iter().map(|&arg| type_of(ccx, arg)).collect();
-    let llret_ty = type_of::type_of(ccx, fn_sig.output);
     LlvmSignature {
-        llarg_tys: llarg_tys,
-        llret_ty: llret_ty,
+        llarg_tys: arg_tys.map(|arg| type_of(ccx, arg)).collect(),
+        llret_ty: type_of::type_of(ccx, fn_sig.output),
         sret: type_of::return_uses_outptr(ccx, fn_sig.output),
     }
 }
@@ -859,7 +839,7 @@ fn foreign_types_for_fn_ty(ccx: &CrateContext,
         ty::ty_bare_fn(ref fn_ty) => fn_ty.sig.clone(),
         _ => ccx.sess().bug("foreign_types_for_fn_ty called on non-function type")
     };
-    let llsig = foreign_signature(ccx, &fn_sig, fn_sig.inputs.as_slice());
+    let llsig = foreign_signature(ccx, &fn_sig, fn_sig.inputs.iter().map(|arg| *arg));
     let ret_def = !return_type_is_void(ccx, fn_sig.output);
     let fn_ty = cabi::compute_abi_info(ccx,
                                        llsig.llarg_tys.as_slice(),

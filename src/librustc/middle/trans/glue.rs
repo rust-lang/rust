@@ -25,6 +25,7 @@ use middle::trans::callee;
 use middle::trans::cleanup;
 use middle::trans::cleanup::CleanupMethods;
 use middle::trans::common::*;
+use middle::trans::datum::*;
 use middle::trans::expr;
 use middle::trans::machine::*;
 use middle::trans::reflect;
@@ -44,18 +45,20 @@ use syntax::parse::token;
 
 pub fn trans_free<'a>(cx: &'a Block<'a>, v: ValueRef) -> &'a Block<'a> {
     let _icx = push_ctxt("trans_free");
+    let ptr = PointerCast(cx, v, Type::i8p(cx.ccx()));
     callee::trans_lang_call(cx,
         langcall(cx, None, "", FreeFnLangItem),
-        [PointerCast(cx, v, Type::i8p(cx.ccx()))],
+        [pod_value(cx.tcx(), ptr, ty::mk_imm_ptr(cx.tcx(), ty::mk_u8()))],
         Some(expr::Ignore)).bcx
 }
 
 pub fn trans_exchange_free<'a>(cx: &'a Block<'a>, v: ValueRef)
                            -> &'a Block<'a> {
     let _icx = push_ctxt("trans_exchange_free");
+    let ptr = PointerCast(cx, v, Type::i8p(cx.ccx()));
     callee::trans_lang_call(cx,
         langcall(cx, None, "", ExchangeFreeFnLangItem),
-        [PointerCast(cx, v, Type::i8p(cx.ccx()))],
+        [pod_value(cx.tcx(), ptr, ty::mk_imm_ptr(cx.tcx(), ty::mk_u8()))],
         Some(expr::Ignore)).bcx
 }
 
@@ -210,7 +213,8 @@ fn make_visit_glue<'a>(bcx: &'a Block<'a>, v: ValueRef, t: ty::t)
         }
     };
     let v = PointerCast(bcx, v, type_of(bcx.ccx(), object_ty).ptr_to());
-    bcx = reflect::emit_calls_to_trait_visit_ty(bcx, t, v, visitor_trait.def_id);
+    let visitor = Datum(v, object_ty, Lvalue);
+    bcx = reflect::emit_calls_to_trait_visit_ty(bcx, t, visitor, visitor_trait.def_id);
     bcx
 }
 

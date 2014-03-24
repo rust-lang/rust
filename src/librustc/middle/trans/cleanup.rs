@@ -666,7 +666,7 @@ impl<'a> CleanupHelperMethods<'a> for FunctionContext<'a> {
         let llpersonality = callee::trans_fn_ref(pad_bcx, def_id, ExprId(0));
 
         // The only landing pad clause will be 'cleanup'
-        let llretval = build::LandingPad(pad_bcx, llretty, llpersonality, 1u);
+        let llretval = build::LandingPad(pad_bcx, llretty, llpersonality.val, 1u);
 
         // The landing pad block is a cleanup
         build::SetCleanup(pad_bcx, llretval);
