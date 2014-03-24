@@ -8,23 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait A<T> {}
-struct B<'a, T>(&'a A<T>);
+// Test that lifetimes can't escape through owned trait casts
 
-trait X<'a> {}
-impl<'a, T> X<'a> for B<'a, T> {}
+trait X {}
+impl<'a> X for &'a X {}
 
-fn f<'a, T, U>(v: &'a A<T>) -> ~X<'a>: {
-    ~B(v) as ~X<'a>: //~ ERROR value may contain references; add `'static` bound to `T`
+fn foo(x: &X) -> ~X: {
+    ~x as ~X:
+    //~^ ERROR lifetime of the source pointer does not outlive lifetime bound of the object type
 }
 
-fn g<'a, T, U>(v: &'a A<U>) -> ~X<'a>: {
-    ~B(v) as ~X<'a>: //~ ERROR value may contain references; add `'static` bound to `U`
+fn main() {
 }
-
-fn h<'a, T: 'static>(v: &'a A<T>) -> ~X<'a>: {
-    ~B(v) as ~X<'a>: // ok
-}
-
-fn main() {}
-

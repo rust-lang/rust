@@ -98,20 +98,20 @@ pub type IdentMacroExpanderFn =
 pub type MacroCrateRegistrationFun =
     fn(|ast::Name, SyntaxExtension|);
 
-pub trait AnyMacro {
+pub trait AnyMacro<'a> {
     fn make_expr(&self) -> @ast::Expr;
     fn make_items(&self) -> SmallVector<@ast::Item>;
     fn make_stmt(&self) -> @ast::Stmt;
 }
 
 
-pub enum MacResult {
+pub enum MacResult<'a> {
     MRExpr(@ast::Expr),
     MRItem(@ast::Item),
-    MRAny(~AnyMacro:),
+    MRAny(~AnyMacro<'a>:),
     MRDef(MacroDef),
 }
-impl MacResult {
+impl<'a> MacResult<'a> {
     /// Create an empty expression MacResult; useful for satisfying
     /// type signatures after emitting a non-fatal error (which stop
     /// compilation well before the validity (or otherwise)) of the
@@ -123,7 +123,7 @@ impl MacResult {
             span: sp,
         }
     }
-    pub fn dummy_expr(sp: codemap::Span) -> MacResult {
+    pub fn dummy_expr(sp: codemap::Span) -> MacResult<'a> {
         MRExpr(MacResult::raw_dummy_expr(sp))
     }
     pub fn dummy_any(sp: codemap::Span) -> MacResult {
@@ -133,7 +133,7 @@ impl MacResult {
 struct DummyMacResult {
     sp: codemap::Span
 }
-impl AnyMacro for DummyMacResult {
+impl<'a> AnyMacro<'a> for DummyMacResult {
     fn make_expr(&self) -> @ast::Expr {
         MacResult::raw_dummy_expr(self.sp)
     }

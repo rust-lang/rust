@@ -8,23 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait A<T> {}
-struct B<'a, T>(&'a A<T>);
+// Test that trait lifetime params aren't constrained to static lifetime
+// when casting something to owned trait
 
 trait X<'a> {}
-impl<'a, T> X<'a> for B<'a, T> {}
+impl<'a> X<'a> for &'a X<'a> {}
 
-fn f<'a, T, U>(v: &'a A<T>) -> ~X<'a>: {
-    ~B(v) as ~X<'a>: //~ ERROR value may contain references; add `'static` bound to `T`
+fn foo<'a>(x: &'a X<'a>) -> ~X<'a>: {
+    ~x as ~X<'a>:
 }
 
-fn g<'a, T, U>(v: &'a A<U>) -> ~X<'a>: {
-    ~B(v) as ~X<'a>: //~ ERROR value may contain references; add `'static` bound to `U`
+pub fn main() {
 }
-
-fn h<'a, T: 'static>(v: &'a A<T>) -> ~X<'a>: {
-    ~B(v) as ~X<'a>: // ok
-}
-
-fn main() {}
-

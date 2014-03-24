@@ -8,23 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait A<T> {}
-struct B<'a, T>(&'a A<T>);
+// Test that lifetimes can't escape through owned trait coercions
 
-trait X<'a> {}
-impl<'a, T> X<'a> for B<'a, T> {}
+trait A {}
+impl<'a> A for &'a A {}
 
-fn f<'a, T, U>(v: &'a A<T>) -> ~X<'a>: {
-    ~B(v) as ~X<'a>: //~ ERROR value may contain references; add `'static` bound to `T`
+struct B;
+impl A for B {}
+impl<'a> A for &'a B {}
+
+fn main() {
+    let _tmp = {
+        let bb = B;
+        let pb = ~&bb; //~ ERROR `bb` does not live long enough
+        let aa: ~A: = pb;
+        aa
+    };
 }
-
-fn g<'a, T, U>(v: &'a A<U>) -> ~X<'a>: {
-    ~B(v) as ~X<'a>: //~ ERROR value may contain references; add `'static` bound to `U`
-}
-
-fn h<'a, T: 'static>(v: &'a A<T>) -> ~X<'a>: {
-    ~B(v) as ~X<'a>: // ok
-}
-
-fn main() {}
-

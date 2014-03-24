@@ -419,24 +419,9 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
                         infer::AutoBorrow(expr.span));
                 }
             }
-            ty::AutoObject(ast::BorrowedSigil, Some(trait_region), _, _, _, _) => {
-                // Determine if we are casting `expr` to an trait
-                // instance.  If so, we have to be sure that the type of
-                // the source obeys the trait's region bound.
-                //
-                // Note: there is a subtle point here concerning type
-                // parameters.  It is possible that the type of `source`
-                // contains type parameters, which in turn may contain
-                // regions that are not visible to us (only the caller
-                // knows about them).  The kind checker is ultimately
-                // responsible for guaranteeing region safety in that
-                // particular case.  There is an extensive comment on the
-                // function check_cast_for_escaping_regions() in kind.rs
-                // explaining how it goes about doing that.
-
-                let source_ty = rcx.fcx.expr_ty(expr);
-                constrain_regions_in_type(rcx, trait_region,
-                                            infer::RelateObjectBound(expr.span), source_ty);
+            ty::AutoObject(_, maybe_region, _, _, _, ref substs) => {
+                let source_ty = rcx.resolve_node_type(expr.id);
+                constrain_trait_cast(rcx, expr, maybe_region, substs, source_ty);
             }
             _ => {}
         }
@@ -540,13 +525,15 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
             // explaining how it goes about doing that.
             let target_ty = rcx.resolve_node_type(expr.id);
             match ty::get(target_ty).sty {
-                ty::ty_trait(~ty::TyTrait { store: ty::RegionTraitStore(trait_region), .. }) => {
+                ty::ty_trait(~ty::TyTrait { store: trait_store, substs: ref substs, .. }) => {
                     let source_ty = rcx.resolve_expr_type_adjusted(source);
-                    constrain_regions_in_type(
-                        rcx,
-                        trait_region,
-                        infer::RelateObjectBound(expr.span),
-                        source_ty);
+
+                    let trait_region = match trait_store {
+                        ty::RegionTraitStore(r) => Some(r),
+                        ty::UniqTraitStore => None
+                    };
+
+                    constrain_trait_cast(rcx, expr, trait_region, substs, source_ty);
                 }
                 _ => ()
             }
@@ -930,6 +917,56 @@ fn constrain_index(rcx: &mut Rcx,
         }
 
         _ => {}
+    }
+}
+
+fn constrain_trait_cast(rcx: &mut Rcx,
+                        expr: &ast::Expr,
+                        trait_region: Option<ty::Region>,
+                        trait_substs: &ty::substs,
+                        source_ty: ty::t) {
+    // If we are casting `source` to a trait
+    // instance, we have to be sure that the type of
+    // the source obeys the trait's region bound.
+    //
+    // Note: there is a subtle point here concerning type
+    // parameters.  It is possible that the type of `source`
+    // contains type parameters, which in turn may contain
+    // regions that are not visible to us (only the caller
+    // knows about them).  The kind checker is ultimately
+    // responsible for guaranteeing region safety in that
+    // particular case.  There is an extensive comment on the
+    // function check_cast_for_escaping_regions() in kind.rs
+    // explaining how it goes about doing that.
+
+    debug!("constrain_trait_cast(expr={:?}, trait_region={:?}, trait_substs={:?}, source_ty={:?}",
+            expr, trait_region, trait_substs, ty::get(source_ty));
+
+    let mut regions = Vec::new();
+
+    match trait_substs.regions {
+        ty::NonerasedRegions(ref regs) => {
+            for r in regs.iter() {
+                regions.push(*r);
+            }
+        }
+        ty::ErasedRegions => ()
+    }
+
+    match trait_region {
+        Some(region) => {
+            regions.push(region);
+        }
+        None => {
+            // casting to owned trait with no lifetime params in trait def
+            if regions.is_empty() {
+                regions.push(ty::ReStatic);
+            }
+        }
+    }
+
+    for r in regions.iter() {
+        constrain_regions_in_type(rcx, *r, infer::RelateObjectBound(expr.span), source_ty);
     }
 }
 

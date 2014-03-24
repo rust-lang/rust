@@ -57,7 +57,7 @@ impl<'a> ParserAnyMacro<'a> {
     }
 }
 
-impl<'a> AnyMacro for ParserAnyMacro<'a> {
+impl<'a> AnyMacro<'a> for ParserAnyMacro<'a> {
     fn make_expr(&self) -> @ast::Expr {
         let ret = self.parser.borrow_mut().parse_expr();
         self.ensure_complete_parse(true);
@@ -106,7 +106,7 @@ impl MacroExpander for MacroRulesMacroExpander {
 }
 
 // Given `lhses` and `rhses`, this is the new macro we create
-fn generic_extension(cx: &ExtCtxt,
+fn generic_extension<'a>(cx: &'a ExtCtxt,
                      sp: Span,
                      name: Ident,
                      arg: &[ast::TokenTree],

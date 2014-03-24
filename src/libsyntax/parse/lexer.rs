@@ -24,7 +24,7 @@ use std::str;
 
 pub use ext::tt::transcribe::{TtReader, new_tt_reader};
 
-pub trait Reader {
+pub trait Reader<'a> {
     fn is_eof(&self) -> bool;
     fn next_token(&mut self) -> TokenAndSpan;
     fn fatal(&self, ~str) -> !;
@@ -89,7 +89,7 @@ pub fn new_low_level_string_reader<'a>(span_diagnostic: &'a SpanHandler,
     r
 }
 
-impl<'a> Reader for StringReader<'a> {
+impl<'a> Reader<'a> for StringReader<'a> {
     fn is_eof(&self) -> bool { is_eof(self) }
     // return the next token. EFFECT: advances the string_reader.
     fn next_token(&mut self) -> TokenAndSpan {
@@ -113,7 +113,7 @@ impl<'a> Reader for StringReader<'a> {
     }
 }
 
-impl<'a> Reader for TtReader<'a> {
+impl<'a> Reader<'a> for TtReader<'a> {
     fn is_eof(&self) -> bool {
         self.cur_tok == token::EOF
     }
