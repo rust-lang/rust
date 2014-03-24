@@ -120,7 +120,7 @@ fn last_error() -> io::IoError {
     extern "system" {
         fn WSAGetLastError() -> libc::c_int;
     }
-    super::translate_error(unsafe { WSAGetLastError() }, true)
+    io::IoError::from_errno(unsafe { WSAGetLastError() } as uint, true)
 }
 
 #[cfg(not(windows))]
