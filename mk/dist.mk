@@ -244,6 +244,7 @@ dist-docs: docs compiler-docs
 	$(Q) mkdir -p dist/doc/
 	$(Q) cp -r doc dist/doc/$(CFG_PACKAGE_VERS)
 
+distcheck-docs: dist-docs
 
 ######################################################################
 # Primary targets (dist, distcheck)
@@ -264,7 +265,7 @@ else
 
 dist: dist-tar-src dist-osx dist-tar-bins dist-docs
 
-distcheck: distcheck-tar-src distcheck-osx distcheck-tar-bins
+distcheck: distcheck-tar-src distcheck-osx distcheck-tar-bins distcheck-docs
 	$(Q)rm -Rf tmp/distcheck
 	@echo
 	@echo -----------------------------------------------
