@@ -20,6 +20,7 @@
       html_root_url = "http://static.rust-lang.org/doc/master")];
 
 #[feature(macro_rules)];
+#[deny(missing_doc)];
 
 extern crate collections;
 
@@ -34,7 +35,9 @@ pub mod terminfo;
 
 // FIXME (#2807): Windows support.
 
+/// Terminal color definitions
 pub mod color {
+    /// Number for a terminal color
     pub type Color = u16;
 
     pub static BLACK:   Color = 0u16;
@@ -56,8 +59,10 @@ pub mod color {
     pub static BRIGHT_WHITE:   Color = 15u16;
 }
 
+/// Terminal attributes
 pub mod attr {
     /// Terminal attributes for use with term.attr().
+    ///
     /// Most attributes can only be turned on and must be turned off with term.reset().
     /// The ones that can be turned off explicitly take a boolean value.
     /// Color is also represented as an attribute for convenience.
@@ -103,6 +108,8 @@ fn cap_for_attr(attr: attr::Attr) -> &'static str {
     }
 }
 
+/// A Terminal that knows how many colors it supports, with a reference to its
+/// parsed TermInfo database record.
 pub struct Terminal<T> {
     priv num_colors: u16,
     priv out: T,
@@ -110,6 +117,14 @@ pub struct Terminal<T> {
 }
 
 impl<T: Writer> Terminal<T> {
+    /// Returns a wrapped output stream (`Terminal<T>`) as a `Result`.
+    ///
+    /// Returns `Err()` if the TERM environment variable is undefined.
+    /// TERM should be set to something like `xterm-color` or `screen-256color`.
+    ///
+    /// Returns `Err()` on failure to open the terminfo database correctly.
+    /// Also, in the event that the individual terminfo database entry can not
+    /// be parsed.
     pub fn new(out: T) -> Result<Terminal<T>, ~str> {
         let term = match os::getenv("TERM") {
             Some(t) => t,
@@ -143,8 +158,8 @@ impl<T: Writer> Terminal<T> {
     /// If the color is a bright color, but the terminal only supports 8 colors,
     /// the corresponding normal color will be used instead.
     ///
-    /// Returns Ok(true) if the color was set, Ok(false) otherwise, and Err(e)
-    /// if there was an I/O error
+    /// Returns `Ok(true)` if the color was set, `Ok(false)` otherwise, and `Err(e)`
+    /// if there was an I/O error.
     pub fn fg(&mut self, color: color::Color) -> io::IoResult<bool> {
         let color = self.dim_if_necessary(color);
         if self.num_colors > color {
@@ -166,8 +181,8 @@ impl<T: Writer> Terminal<T> {
     /// If the color is a bright color, but the terminal only supports 8 colors,
     /// the corresponding normal color will be used instead.
     ///
-    /// Returns Ok(true) if the color was set, Ok(false) otherwise, and Err(e)
-    /// if there was an I/O error
+    /// Returns `Ok(true)` if the color was set, `Ok(false)` otherwise, and `Err(e)`
+    /// if there was an I/O error.
     pub fn bg(&mut self, color: color::Color) -> io::IoResult<bool> {
         let color = self.dim_if_necessary(color);
         if self.num_colors > color {
@@ -186,8 +201,8 @@ impl<T: Writer> Terminal<T> {
     }
 
     /// Sets the given terminal attribute, if supported.
-    /// Returns Ok(true) if the attribute was supported, Ok(false) otherwise,
-    /// and Err(e) if there was an I/O error.
+    /// Returns `Ok(true)` if the attribute was supported, `Ok(false)` otherwise,
+    /// and `Err(e)` if there was an I/O error.
     pub fn attr(&mut self, attr: attr::Attr) -> io::IoResult<bool> {
         match attr {
             attr::ForegroundColor(c) => self.fg(c),
@@ -223,6 +238,7 @@ impl<T: Writer> Terminal<T> {
     }
 
     /// Resets all terminal attributes and color to the default.
+    /// Returns `Ok()`.
     pub fn reset(&mut self) -> io::IoResult<()> {
         let mut cap = self.ti.strings.find_equiv(&("sgr0"));
         if cap.is_none() {
@@ -248,10 +264,13 @@ impl<T: Writer> Terminal<T> {
         } else { color }
     }
 
+    /// Returns the contained stream
     pub fn unwrap(self) -> T { self.out }
 
+    /// Gets an immutable reference to the stream inside
     pub fn get_ref<'a>(&'a self) -> &'a T { &self.out }
 
+    /// Gets a mutable reference to the stream inside
     pub fn get_mut<'a>(&'a mut self) -> &'a mut T { &mut self.out }
 }
 
