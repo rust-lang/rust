@@ -494,7 +494,7 @@ mod tests {
     fn spawn_opts(opts: TaskOpts, f: proc()) {
         let mut pool = SchedPool::new(PoolConfig {
             threads: 1,
-            event_loop_factory: None,
+            event_loop_factory: ::rustuv::event_loop,
         });
         pool.spawn(opts, f);
         pool.shutdown();

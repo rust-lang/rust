@@ -49,7 +49,7 @@ macro_rules! iotest (
 
 #[cfg(test)] #[start]
 fn start(argc: int, argv: **u8) -> int {
-    green::start(argc, argv, __test::main)
+    green::start(argc, argv, rustuv::event_loop, __test::main)
 }
 
 iotest!(fn test_destroy_once() {

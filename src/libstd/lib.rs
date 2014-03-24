@@ -84,7 +84,7 @@
 //        '__test' module.
 #[cfg(test)] #[start]
 fn start(argc: int, argv: **u8) -> int {
-    green::start(argc, argv, __test::main)
+    green::start(argc, argv, rustuv::event_loop, __test::main)
 }
 
 pub mod macros;

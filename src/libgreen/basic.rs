@@ -237,7 +237,7 @@ mod test {
     fn pool() -> SchedPool {
         SchedPool::new(PoolConfig {
             threads: 1,
-            event_loop_factory: Some(basic::event_loop),
+            event_loop_factory: basic::event_loop,
         })
     }
 
@@ -267,7 +267,7 @@ mod test {
     fn multi_thread() {
         let mut pool = SchedPool::new(PoolConfig {
             threads: 2,
-            event_loop_factory: Some(basic::event_loop),
+            event_loop_factory: basic::event_loop,
         });
 
         for _ in range(0, 20) {
