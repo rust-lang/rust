@@ -3446,8 +3446,9 @@ The kinds are:
     This kind includes scalars and immutable references,
     as well as structural types containing other `Pod` types.
 `'static`
-  : Types of this kind do not contain any references;
-    this can be a useful guarantee for code
+  : Types of this kind do not contain any references (except for
+    references with the `static` lifetime, which are allowed).
+    This can be a useful guarantee for code
     that breaks borrowing assumptions
     using [`unsafe` operations](#unsafe-functions).
 `Drop`
