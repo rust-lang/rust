@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[allow(missing_doc)];
+//! Terminfo database interface.
 
 use collections::HashMap;
 
-/// A parsed terminfo entry.
+/// A parsed terminfo database entry.
 pub struct TermInfo {
     /// Names for the terminal
     priv names: Vec<~str> ,
@@ -25,7 +25,10 @@ pub struct TermInfo {
 }
 
 pub mod searcher;
+
+/// TermInfo format parsing.
 pub mod parser {
+    //! ncurses-compatible compiled terminfo format parsing (term(5))
     pub mod compiled;
 }
 pub mod parm;

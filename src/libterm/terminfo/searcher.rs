@@ -8,8 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/// Implement ncurses-compatible database discovery
-/// Does not support hashed database, only filesystem!
+//! ncurses-compatible database discovery
+//!
+//! Does not support hashed database, only filesystem!
 
 use std::io::File;
 use std::os::getenv;
