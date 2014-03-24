@@ -123,6 +123,8 @@ $(PKG_EXE): rust.iss modpath.iss LICENSE.txt rust-logo.ico \
 	@$(call E, ISCC: $@)
 	$(Q)"$(CFG_ISCC)" $<
 
+$(eval $(call DEF_PREPARE,win))
+
 dist-prepare-win: PREPARE_HOST=$(CFG_BUILD)
 dist-prepare-win: PREPARE_TARGETS=$(CFG_BUILD)
 dist-prepare-win: PREPARE_DEST_DIR=tmp/dist/win
@@ -131,7 +133,7 @@ dist-prepare-win: PREPARE_BIN_CMD=$(DEFAULT_PREPARE_BIN_CMD)
 dist-prepare-win: PREPARE_LIB_CMD=$(DEFAULT_PREPARE_LIB_CMD)
 dist-prepare-win: PREPARE_MAN_CMD=$(DEFAULT_PREPARE_MAN_CMD)
 dist-prepare-win: PREPARE_CLEAN=true
-dist-prepare-win: prepare-base
+dist-prepare-win: prepare-base-win
 
 endif
 
@@ -146,6 +148,9 @@ distcheck-win: dist-win
 ifeq ($(CFG_OSTYPE), apple-darwin)
 
 define DEF_OSX_PKG
+
+$$(eval $$(call DEF_PREPARE,osx-$(1)))
+
 dist-prepare-osx-$(1): PREPARE_HOST=$(1)
 dist-prepare-osx-$(1): PREPARE_TARGETS=$(1)
 dist-prepare-osx-$(1): PREPARE_DEST_DIR=tmp/dist/pkgroot-$(1)
@@ -153,7 +158,7 @@ dist-prepare-osx-$(1): PREPARE_DIR_CMD=$(DEFAULT_PREPARE_DIR_CMD)
 dist-prepare-osx-$(1): PREPARE_BIN_CMD=$(DEFAULT_PREPARE_BIN_CMD)
 dist-prepare-osx-$(1): PREPARE_LIB_CMD=$(DEFAULT_PREPARE_LIB_CMD)
 dist-prepare-osx-$(1): PREPARE_MAN_CMD=$(DEFAULT_PREPARE_MAN_CMD)
-dist-prepare-osx-$(1): prepare-base
+dist-prepare-osx-$(1): prepare-base-osx-$(1)
 
 dist/$(PKG_NAME)-$(1).pkg: $(S)src/etc/pkg/Distribution.xml LICENSE.txt dist-prepare-osx-$(1)
 	@$$(call E, making OS X pkg)
@@ -182,6 +187,9 @@ distcheck-osx: dist-osx
 ######################################################################
 
 define DEF_INSTALLER
+
+$$(eval $$(call DEF_PREPARE,dir-$(1)))
+
 dist-install-dir-$(1): PREPARE_HOST=$(1)
 dist-install-dir-$(1): PREPARE_TARGETS=$(1)
 dist-install-dir-$(1): PREPARE_DEST_DIR=tmp/dist/$$(PKG_NAME)-$(1)
@@ -190,7 +198,7 @@ dist-install-dir-$(1): PREPARE_BIN_CMD=$(DEFAULT_PREPARE_BIN_CMD)
 dist-install-dir-$(1): PREPARE_LIB_CMD=$(DEFAULT_PREPARE_LIB_CMD)
 dist-install-dir-$(1): PREPARE_MAN_CMD=$(DEFAULT_PREPARE_MAN_CMD)
 dist-install-dir-$(1): PREPARE_CLEAN=true
-dist-install-dir-$(1): prepare-base
+dist-install-dir-$(1): prepare-base-dir-$(1)
 	$$(Q)(cd $$(PREPARE_DEST_DIR)/ && find -type f) \
       > $$(PREPARE_DEST_DIR)/$$(CFG_LIBDIR_RELATIVE)/$$(CFG_RUSTLIBDIR)/manifest
 	$$(Q)$$(PREPARE_MAN_CMD) $$(S)COPYRIGHT $$(PREPARE_DEST_DIR)
