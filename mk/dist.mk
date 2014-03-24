@@ -22,7 +22,7 @@
 # * dist-tar-bins - Ad-hoc Unix binary installers
 # * dist-docs - Stage docs for upload
 
-PKG_NAME := $(CFG_PACKAGE_NAME)
+PKG_NAME = $(CFG_PACKAGE_NAME)
 
 # License suitable for displaying in a popup
 LICENSE.txt: $(S)COPYRIGHT $(S)LICENSE-APACHE $(S)LICENSE-MIT
