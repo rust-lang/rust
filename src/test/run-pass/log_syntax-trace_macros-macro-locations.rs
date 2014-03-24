@@ -8,11 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
-    print!(test!());
-    //~^ ERROR: macro undefined: 'test'
-    //~^^ ERROR: format argument must be a string literal
+// ignore-fast feature doesn't work
+#[feature(trace_macros, log_syntax)];
 
-    concat!(test!());
-    //~^ ERROR: macro undefined: 'test'
+// make sure these macros can be used as in the various places that
+// macros can occur.
+
+// items
+trace_macros!(false)
+log_syntax!()
+
+fn main() {
+
+    // statements
+    trace_macros!(false);
+    log_syntax!();
+
+    // expressions
+    (trace_macros!(false),
+     log_syntax!());
 }
