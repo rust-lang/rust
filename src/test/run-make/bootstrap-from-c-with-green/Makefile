@@ -1,7 +1,7 @@
 -include ../tools.mk
 
 all:
-	$(RUSTC) lib.rs -C gen-crate-map
+	$(RUSTC) lib.rs
 	ln -nsf $(call DYLIB,boot-*) $(call DYLIB,boot)
 	$(CC) main.c -o $(call RUN,main) -lboot
 	$(call RUN,main)
