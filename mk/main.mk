@@ -13,9 +13,25 @@
 ######################################################################
 
 # The version number
-CFG_RELEASE = 0.10-pre
+CFG_RELEASE_NUM=0.10
+CFG_RELEASE_LABEL=-pre
 
-# The version string plus commit information
+ifndef CFG_NIGHTLY
+# This is the normal version string
+CFG_RELEASE=$(CFG_RELEASE_NUM)$(CFG_RELEASE_LABEL)
+CFG_PACKAGE_VERS=$(CFG_RELEASE)
+else
+# Modify the version label for nightly builds
+CFG_RELEASE=$(CFG_RELEASE_NUM)$(CFG_RELEASE_LABEL)-nightly
+# When building nightly distributables just reuse the same "rust-nightly" name
+# so when we upload we'll always override the previous nighly. This doesn't actually
+# impact the version reported by rustc - it's just for file naming.
+CFG_PACKAGE_VERS=nightly
+endif
+# The name of the package to use for creating tarballs, installers etc.
+CFG_PACKAGE_NAME=rust-$(CFG_PACKAGE_VERS)
+
+# The version string plus commit information - this is what rustc reports
 CFG_VERSION = $(CFG_RELEASE)
 CFG_GIT_DIR := $(CFG_SRC_DIR).git
 # since $(CFG_GIT) may contain spaces (especially on Windows),
@@ -32,9 +48,9 @@ ifneq ($(wildcard $(subst $(SPACE),\$(SPACE),$(CFG_GIT_DIR))),)
 endif
 endif
 
-# windows exe's need numeric versions - don't use anything but
+# Windows exe's need numeric versions - don't use anything but
 # numbers and dots here
-CFG_VERSION_WIN = $(subst -pre,,$(CFG_RELEASE))
+CFG_VERSION_WIN = $(CFG_RELEASE_NUM)
 
 
 ######################################################################
@@ -45,10 +61,10 @@ CFG_VERSION_WIN = $(subst -pre,,$(CFG_RELEASE))
 # and include all of the .d files in one fell swoop.
 ALL_OBJ_FILES :=
 
+MKFILE_DEPS := config.stamp $(call rwildcard,$(CFG_SRC_DIR)mk/,*)
+MKFILES_FOR_TARBALL:=$(MKFILE_DEPS)
 ifneq ($(NO_MKFILE_DEPS),)
 MKFILE_DEPS :=
-else
-MKFILE_DEPS := config.stamp $(call rwildcard,$(CFG_SRC_DIR)mk/,*)
 endif
 NON_BUILD_HOST = $(filter-out $(CFG_BUILD),$(CFG_HOST))
 NON_BUILD_TARGET = $(filter-out $(CFG_BUILD),$(CFG_TARGET))
@@ -259,6 +275,7 @@ export CFG_BUILD_DIR
 export CFG_VERSION
 export CFG_VERSION_WIN
 export CFG_RELEASE
+export CFG_PACKAGE_NAME
 export CFG_BUILD
 export CFG_LLVM_ROOT
 export CFG_ENABLE_MINGW_CROSS
