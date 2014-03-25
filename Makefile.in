@@ -177,10 +177,10 @@ include config.mk
 
 # Just a few macros used everywhere
 include $(CFG_SRC_DIR)mk/util.mk
-# All crates and their dependencies
-include $(CFG_SRC_DIR)mk/crates.mk
 # Reconfiguring when the makefiles or submodules change
 include $(CFG_SRC_DIR)mk/reconfig.mk
+# All crates and their dependencies
+include $(CFG_SRC_DIR)mk/crates.mk
 # Various bits of setup, common macros, and top-level rules
 include $(CFG_SRC_DIR)mk/main.mk
 # C and assembly components that are not LLVM
