@@ -580,9 +580,9 @@ mod test {
     fn smoke_cond() {
         static mut lock: StaticNativeMutex = NATIVE_MUTEX_INIT;
         unsafe {
-            let mut guard = lock.lock();
+            let guard = lock.lock();
             let t = Thread::start(proc() {
-                let mut guard = lock.lock();
+                let guard = lock.lock();
                 guard.signal();
             });
             guard.wait();

@@ -648,4 +648,40 @@ mod test {
         tx1.send(());
         rx2.recv();
     })
+
+    test!(fn sync1() {
+        let (tx, rx) = sync_channel(1);
+        tx.send(1);
+        select! {
+            n = rx.recv() => { assert_eq!(n, 1); }
+        }
+    })
+
+    test!(fn sync2() {
+        let (tx, rx) = sync_channel(0);
+        spawn(proc() {
+            for _ in range(0, 100) { task::deschedule() }
+            tx.send(1);
+        });
+        select! {
+            n = rx.recv() => { assert_eq!(n, 1); }
+        }
+    })
+
+    test!(fn sync3() {
+        let (tx1, rx1) = sync_channel(0);
+        let (tx2, rx2) = channel();
+        spawn(proc() { tx1.send(1); });
+        spawn(proc() { tx2.send(2); });
+        select! {
+            n = rx1.recv() => {
+                assert_eq!(n, 1);
+                assert_eq!(rx2.recv(), 2);
+            },
+            n = rx2.recv() => {
+                assert_eq!(n, 2);
+                assert_eq!(rx1.recv(), 1);
+            }
+        }
+    })
 }

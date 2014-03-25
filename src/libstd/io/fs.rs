@@ -1282,10 +1282,10 @@ mod test {
     }
 
     iotest!(fn binary_file() {
-        use rand::{Rng, task_rng};
+        use rand::{StdRng, Rng};
 
         let mut bytes = [0, ..1024];
-        task_rng().fill_bytes(bytes);
+        StdRng::new().fill_bytes(bytes);
 
         let tmpdir = tmpdir();
 
