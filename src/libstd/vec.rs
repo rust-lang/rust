@@ -1355,13 +1355,8 @@ impl<T> Drop for MoveItems<T> {
 
 #[cfg(test)]
 mod tests {
-    use super::Vec;
-    use iter::{Iterator, range, Extendable};
-    use mem::{drop, size_of};
-    use ops::Drop;
-    use option::{Some, None};
-    use container::Container;
-    use slice::{Vector, MutableVector, ImmutableVector};
+    use prelude::*;
+    use mem::size_of;
 
     #[test]
     fn test_small_vec_struct() {

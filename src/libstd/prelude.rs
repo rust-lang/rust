@@ -62,7 +62,7 @@ pub use slice::{Vector, VectorVector, CloneableVector, ImmutableVector};
 pub use vec::Vec;
 
 // Reexported runtime types
-pub use comm::{channel, Sender, Receiver};
+pub use comm::{sync_channel, channel, SyncSender, Sender, Receiver};
 pub use task::spawn;
 
 // Reexported statics

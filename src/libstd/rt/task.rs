@@ -433,8 +433,8 @@ mod test {
 
     #[test]
     fn rng() {
-        use rand::{Rng, task_rng};
-        let mut r = task_rng();
+        use rand::{StdRng, Rng};
+        let mut r = StdRng::new();
         let _ = r.next_u32();
     }
 
