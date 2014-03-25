@@ -43,7 +43,8 @@ clean-misc:
 	$(Q)rm -f $(RUSTLLVM_LIB_OBJS) $(RUSTLLVM_OBJS_OBJS) $(RUSTLLVM_DEF)
 	$(Q)rm -Rf $(GENERATED)
 	$(Q)rm -Rf tmp/*
-	$(Q)rm -Rf rust-stage0-*.tar.bz2 $(PKG_NAME)-*.tar.gz $(PKG_NAME)-*.exe dist
+	$(Q)rm -Rf rust-stage0-*.tar.bz2 $(PKG_NAME)-*.tar.gz $(PKG_NAME)-*.exe
+	$(Q)rm -Rf dist/*
 	$(Q)rm -Rf doc
 
 define CLEAN_GENERIC

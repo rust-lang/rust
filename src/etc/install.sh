@@ -224,41 +224,62 @@ step_msg "validating $CFG_SELF args"
 validate_opt
 
 # Sanity check: can we can write to the destination?
+umask 022 && mkdir -p "${CFG_PREFIX}/lib"
+need_ok "directory creation failed"
 touch "${CFG_PREFIX}/lib/rust-install-probe" 2> /dev/null
 if [ $? -ne 0 ]
 then
     err "can't write to destination. try again with 'sudo'."
 fi
-rm -r "${CFG_PREFIX}/lib/rust-install-probe"
+rm "${CFG_PREFIX}/lib/rust-install-probe"
 need_ok "failed to remove install probe"
 
-# Sanity check: can we run these binaries?
-"${CFG_SRC_DIR}/bin/rustc" --version > /dev/null
-need_ok "can't run these binaries on this platform"
 
-# First, uninstall from the installation prefix
+# First, uninstall from the installation prefix.
+# Errors are warnings - try to rm everything in the manifest even if some fail.
 # FIXME: Hardcoded 'rustlib' ignores CFG_RUSTLIBDIR
 if [ -f "${CFG_PREFIX}/lib/rustlib/manifest" ]
 then
+    # Iterate through installed manifest and remove files
     while read p; do
-        msg "uninstall ${CFG_PREFIX}/$p"
-        rm "${CFG_PREFIX}/$p"
-        need_ok "failed to remove file"
+        msg "removing ${CFG_PREFIX}/$p"
+        if [ -f "${CFG_PREFIX}/$p" ]
+        then
+            rm "${CFG_PREFIX}/$p"
+            if [ $? -ne 0 ]
+            then
+                warn "failed to remove ${CFG_PREFIX}/$p"
+            fi
+        else
+            warn "supposedly installed file ${CFG_PREFIX}/$p does not exist!"
+        fi
     done < "${CFG_PREFIX}/lib/rustlib/manifest"
 
     # Remove 'rustlib' directory
-    msg "uninstall ${CFG_PREFIX}/lib/rustlib"
+    msg "removing ${CFG_PREFIX}/lib/rustlib"
     rm -r "${CFG_PREFIX}/lib/rustlib"
-    need_ok "failed to remove rustlib"
+    if [ $? -ne 0 ]
+    then
+        warn "failed to remove rustlib"
+    fi
+else
+    if [ -n "${CFG_UNINSTALL}" ]
+    then
+        err "unable to find installation manifest at ${CFG_PREFIX}/lib/rustlib"
+    fi
 fi
 
 # If we're only uninstalling then exit
 if [ -n "${CFG_UNINSTALL}" ]
 then
+    echo
+    echo "    Rust is uninstalled. Have a nice day."
+    echo
     exit 0
 fi
 
-# Iterate through the new manifest and install files
+
+# Now install, iterate through the new manifest and copy files
 while read p; do
 
     umask 022 && mkdir -p "${CFG_PREFIX}/$(dirname $p)"
