@@ -370,14 +370,14 @@ mod bench {
     use self::test::BenchHarness;
     use std::mem::size_of;
     use distributions::IndependentSample;
-    use {StdRng, RAND_BENCH_N};
+    use {XorShiftRng, RAND_BENCH_N};
     use super::Gamma;
 
 
     #[bench]
     fn bench_gamma_large_shape(bh: &mut BenchHarness) {
         let gamma = Gamma::new(10., 1.0);
-        let mut rng = StdRng::new();
+        let mut rng = XorShiftRng::new().unwrap();
 
         bh.iter(|| {
             for _ in range(0, RAND_BENCH_N) {
@@ -390,7 +390,7 @@ mod bench {
     #[bench]
     fn bench_gamma_small_shape(bh: &mut BenchHarness) {
         let gamma = Gamma::new(0.1, 1.0);
-        let mut rng = StdRng::new();
+        let mut rng = XorShiftRng::new().unwrap();
 
         bh.iter(|| {
             for _ in range(0, RAND_BENCH_N) {

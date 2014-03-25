@@ -100,12 +100,12 @@ impl<S, R: SeedableRng<S>, Rsdr: Reseeder<R>>
 /// # Example
 ///
 /// ```rust
-/// use rand::{Rng, SeedableRng};
+/// use rand::{Rng, SeedableRng, StdRng};
 /// use rand::reseeding::{Reseeder, ReseedingRng};
 ///
 /// struct TickTockReseeder { tick: bool }
-/// impl Reseeder<rand::StdRng> for TickTockReseeder {
-///     fn reseed(&mut self, rng: &mut rand::StdRng) {
+/// impl Reseeder<StdRng> for TickTockReseeder {
+///     fn reseed(&mut self, rng: &mut StdRng) {
 ///         let val = if self.tick {0} else {1};
 ///         rng.reseed(&[val]);
 ///         self.tick = !self.tick;
@@ -113,7 +113,9 @@ impl<S, R: SeedableRng<S>, Rsdr: Reseeder<R>>
 /// }
 /// fn main() {
 ///     let rsdr = TickTockReseeder { tick: true };
-///     let mut rng = ReseedingRng::new(rand::StdRng::new(), 10, rsdr);
+///
+///     let inner = StdRng::new().unwrap();
+///     let mut rng = ReseedingRng::new(inner, 10, rsdr);
 ///
 ///     // this will repeat, because it gets reseeded very regularly.
 ///     println!("{}", rng.gen_ascii_str(100));
