@@ -14,8 +14,6 @@
 //! The destination and binding addresses can either be an IPv4 or IPv6
 //! address. There is no corresponding notion of a server because UDP is a
 //! datagram protocol.
-//!
-//! A UDP connection implements the `Reader` and `Writer` traits.
 
 use clone::Clone;
 use result::{Ok, Err};
@@ -24,6 +22,36 @@ use io::{Reader, Writer, IoResult};
 use rt::rtio::{RtioSocket, RtioUdpSocket, IoFactory, LocalIo};
 
 /// A User Datagram Protocol socket.
+///
+/// This is an implementation of a bound UDP socket. This supports both IPv4 and
+/// IPv6 addresses, and there is no corresponding notion of a server because UDP
+/// is a datagram protocol.
+///
+/// # Example
+///
+/// ```rust,no_run
+/// # #[allow(unused_must_use)];
+/// use std::io::net::udp::UdpSocket;
+/// use std::io::net::ip::{Ipv4Addr, SocketAddr};
+///
+/// let addr = SocketAddr { ip: Ipv4Addr(127, 0, 0, 1), port: 34254 };
+/// let mut socket = match UdpSocket::bind(addr) {
+///     Ok(s) => s,
+///     Err(e) => fail!("couldn't bind socket: {}", e),
+/// };
+///
+/// let mut buf = [0, ..10];
+/// match socket.recvfrom(buf) {
+///     Ok((amt, src)) => {
+///         // Send a reply to the socket we received data from
+///         let buf = buf.mut_slice_to(amt);
+///         buf.reverse();
+///         socket.sendto(buf, src);
+///     }
+///     Err(e) => println!("couldn't receive a datagram: {}", e)
+/// }
+/// drop(socket); // close the socket
+/// ```
 pub struct UdpSocket {
     priv obj: ~RtioUdpSocket
 }

@@ -340,11 +340,11 @@ pub enum FPCategory {
 }
 
 /// Operations on primitive floating point numbers.
-///
-/// TODO(#5527): In a future version of Rust, many of these functions will become constants.
-///
-/// FIXME(#8888): Several of these functions have a parameter named `unused_self`. Removing it
-/// requires #8888 to be fixed.
+// FIXME(#5527): In a future version of Rust, many of these functions will
+//               become constants.
+//
+// FIXME(#8888): Several of these functions have a parameter named
+//               `unused_self`. Removing it requires #8888 to be fixed.
 pub trait Float: Signed + Round + Primitive {
     /// Returns the maximum of the two numbers.
     fn max(self, other: Self) -> Self;

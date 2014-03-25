@@ -302,7 +302,6 @@ impl fmt::Show for IoError {
 
 /// A list specifying general categories of I/O error.
 #[deriving(Eq, Clone, Show)]
-#[allow(missing_doc)]
 pub enum IoErrorKind {
     /// Any I/O error not part of this list.
     OtherIoError,
@@ -1428,7 +1427,6 @@ pub struct FileStat {
 /// structure. This information is not necessarily platform independent, and may
 /// have different meanings or no meaning at all on some platforms.
 #[unstable]
-#[allow(missing_doc)]
 #[deriving(Hash)]
 pub struct UnstableFileStat {
     /// The ID of the device containing the file.

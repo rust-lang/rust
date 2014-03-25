@@ -367,18 +367,16 @@ pub fn unsetenv(n: &str) {
 }
 
 /// A low-level OS in-memory pipe.
-///
-/// This type is deprecated in favor of the types in `std::io::pipe`.
 pub struct Pipe {
-    /// A file descriptor representing the input end of the pipe.
+    /// A file descriptor representing the reading end of the pipe. Data written
+    /// on the `out` file descriptor can be read from this file descriptor.
     input: c_int,
-    /// A file descriptor representing the output end of the pipe.
+    /// A file descriptor representing the write end of the pipe. Data written
+    /// to this file descriptor can be read from the `input` file descriptor.
     out: c_int,
 }
 
 /// Creates a new low-level OS in-memory pipe.
-///
-/// This function is deprecated in favor of the types in `std::io::pipe`.
 #[cfg(unix)]
 pub fn pipe() -> Pipe {
     unsafe {
@@ -390,8 +388,6 @@ pub fn pipe() -> Pipe {
 }
 
 /// Creates a new low-level OS in-memory pipe.
-///
-/// This function is deprecated in favor of the types in `std::io::pipe`.
 #[cfg(windows)]
 pub fn pipe() -> Pipe {
     unsafe {
