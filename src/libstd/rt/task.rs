@@ -434,7 +434,7 @@ mod test {
     #[test]
     fn rng() {
         use rand::{StdRng, Rng};
-        let mut r = StdRng::new();
+        let mut r = StdRng::new().unwrap();
         let _ = r.next_u32();
     }
 
