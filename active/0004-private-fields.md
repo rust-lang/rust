@@ -1,3 +1,7 @@
+- Start Date: 2014-03-11
+- RFC PR #: 1
+- Rust Issue #: 8122
+
 # Summary
 
 This is an RFC to make all struct fields private by default. This includes both
