@@ -40,7 +40,7 @@ impl Runtime for SimpleTask {
         // See libnative/task.rs for what's going on here with the `awoken`
         // field and the while loop around wait()
         unsafe {
-            let mut guard = (*me).lock.lock();
+            let guard = (*me).lock.lock();
             (*me).awoken = false;
             match f(task) {
                 Ok(()) => {
@@ -60,7 +60,7 @@ impl Runtime for SimpleTask {
         to_wake.put_runtime(self as ~Runtime);
         unsafe {
             cast::forget(to_wake);
-            let mut guard = (*me).lock.lock();
+            let guard = (*me).lock.lock();
             (*me).awoken = true;
             guard.signal();
         }

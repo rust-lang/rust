@@ -15,7 +15,8 @@
 
 use std::int;
 use std::sync::atomics;
-use sync::mutex::{StaticMutex, MUTEX_INIT};
+
+use mutex::{StaticMutex, MUTEX_INIT};
 
 /// A type which can be used to run a one-time global initialization. This type
 /// is *unsafe* to use because it is built on top of the `Mutex` in this module.
@@ -62,7 +63,7 @@ impl Once {
     ///
     /// When this function returns, it is guaranteed that some initialization
     /// has run and completed (it may not be the closure specified).
-    pub fn doit(&mut self, f: ||) {
+    pub fn doit(&self, f: ||) {
         // Implementation-wise, this would seem like a fairly trivial primitive.
         // The stickler part is where our mutexes currently require an
         // allocation, and usage of a `Once` should't leak this allocation.
@@ -101,14 +102,13 @@ impl Once {
         // If the count is negative, then someone else finished the job,
         // otherwise we run the job and record how many people will try to grab
         // this lock
-        {
-            let _guard = self.mutex.lock();
-            if self.cnt.load(atomics::SeqCst) > 0 {
-                f();
-                let prev = self.cnt.swap(int::MIN, atomics::SeqCst);
-                self.lock_cnt.store(prev, atomics::SeqCst);
-            }
+        let guard = self.mutex.lock();
+        if self.cnt.load(atomics::SeqCst) > 0 {
+            f();
+            let prev = self.cnt.swap(int::MIN, atomics::SeqCst);
+            self.lock_cnt.store(prev, atomics::SeqCst);
         }
+        drop(guard);
 
         // Last one out cleans up after everyone else, no leaks!
         if self.lock_cnt.fetch_add(-1, atomics::SeqCst) == 1 {

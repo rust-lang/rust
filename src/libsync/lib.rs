@@ -20,18 +20,28 @@
       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
       html_root_url = "http://static.rust-lang.org/doc/master")];
 #[feature(phase)];
+#[deny(missing_doc, deprecated_owned_vector)];
 
-#[cfg(test)] #[phase(syntax, link)] extern crate log;
+#[cfg(test)]
+#[phase(syntax, link)] extern crate log;
 
-pub use arc::{Arc, MutexArc, RWArc, RWWriteMode, RWReadMode, ArcCondvar, CowArc};
-pub use sync::{Mutex, RWLock, Condvar, Semaphore, RWLockWriteMode,
-               RWLockReadMode, Barrier, one, mutex};
 pub use comm::{DuplexStream, SyncSender, SyncReceiver, rendezvous, duplex};
 pub use task_pool::TaskPool;
 pub use future::Future;
+pub use arc::{Arc, Weak};
+pub use lock::{Mutex, MutexGuard, Condvar, Barrier,
+               RWLock, RWLockReadGuard, RWLockWriteGuard};
+
+// The mutex/rwlock in this module are not meant for reexport
+pub use raw::{Semaphore, SemaphoreGuard};
 
 mod arc;
-mod sync;
 mod comm;
-mod task_pool;
 mod future;
+mod lock;
+mod mpsc_intrusive;
+mod task_pool;
+
+pub mod raw;
+pub mod mutex;
+pub mod one;

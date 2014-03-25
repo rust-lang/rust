@@ -75,7 +75,7 @@ pub fn send(req: Req) {
 fn shutdown() {
     // Request a shutdown, and then wait for the task to exit
     unsafe {
-        let mut guard = TIMER_HELPER_EXIT.lock();
+        let guard = TIMER_HELPER_EXIT.lock();
         send(Shutdown);
         guard.wait();
         drop(guard);

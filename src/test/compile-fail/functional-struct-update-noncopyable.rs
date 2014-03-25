@@ -17,7 +17,7 @@ use sync::Arc;
 struct A { y: Arc<int>, x: Arc<int> }
 
 impl Drop for A {
-    fn drop(&mut self) { println!("x={:?}", self.x.get()); }
+    fn drop(&mut self) { println!("x={}", *self.x); }
 }
 fn main() {
     let a = A { y: Arc::new(1), x: Arc::new(2) };

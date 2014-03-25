@@ -69,7 +69,7 @@ static OS_DEFAULT_STACK_ESTIMATE: uint = 1 << 20;
 static OS_DEFAULT_STACK_ESTIMATE: uint = 2 * (1 << 20);
 
 #[lang = "start"]
-#[cfg(not(test), not(stage0))]
+#[cfg(not(test))]
 pub fn lang_start(main: *u8, argc: int, argv: **u8) -> int {
     use std::cast;
     start(argc, argv, proc() {

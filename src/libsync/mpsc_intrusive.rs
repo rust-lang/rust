@@ -35,6 +35,7 @@
 
 use std::cast;
 use std::sync::atomics;
+use std::ty::Unsafe;
 
 // NB: all links are done as AtomicUint instead of AtomicPtr to allow for static
 // initialization.
@@ -50,7 +51,7 @@ pub struct DummyNode {
 
 pub struct Queue<T> {
     head: atomics::AtomicUint,
-    tail: *mut Node<T>,
+    tail: Unsafe<*mut Node<T>>,
     stub: DummyNode,
 }
 
@@ -58,14 +59,14 @@ impl<T: Send> Queue<T> {
     pub fn new() -> Queue<T> {
         Queue {
             head: atomics::AtomicUint::new(0),
-            tail: 0 as *mut Node<T>,
+            tail: Unsafe::new(0 as *mut Node<T>),
             stub: DummyNode {
                 next: atomics::AtomicUint::new(0),
             },
         }
     }
 
-    pub unsafe fn push(&mut self, node: *mut Node<T>) {
+    pub unsafe fn push(&self, node: *mut Node<T>) {
         (*node).next.store(0, atomics::Release);
         let prev = self.head.swap(node as uint, atomics::AcqRel);
 
@@ -93,8 +94,8 @@ impl<T: Send> Queue<T> {
     /// Right now consumers of this queue must be ready for this fact. Just
     /// because `pop` returns `None` does not mean that there is not data
     /// on the queue.
-    pub unsafe fn pop(&mut self) -> Option<*mut Node<T>> {
-        let tail = self.tail;
+    pub unsafe fn pop(&self) -> Option<*mut Node<T>> {
+        let tail = *self.tail.get();
         let mut tail = if !tail.is_null() {tail} else {
             cast::transmute(&self.stub)
         };
@@ -103,12 +104,12 @@ impl<T: Send> Queue<T> {
             if next.is_null() {
                 return None;
             }
-            self.tail = next;
+            *self.tail.get() = next;
             tail = next;
             next = (*next).next(atomics::Relaxed);
         }
         if !next.is_null() {
-            self.tail = next;
+            *self.tail.get() = next;
             return Some(tail);
         }
         let head = self.head.load(atomics::Acquire) as *mut Node<T>;
@@ -119,7 +120,7 @@ impl<T: Send> Queue<T> {
         self.push(stub);
         next = (*tail).next(atomics::Relaxed);
         if !next.is_null() {
-            self.tail = next;
+            *self.tail.get() = next;
             return Some(tail);
         }
         return None
@@ -133,7 +134,7 @@ impl<T: Send> Node<T> {
             next: atomics::AtomicUint::new(0),
         }
     }
-    pub unsafe fn next(&mut self, ord: atomics::Ordering) -> *mut Node<T> {
+    pub unsafe fn next(&self, ord: atomics::Ordering) -> *mut Node<T> {
         cast::transmute::<uint, *mut Node<T>>(self.next.load(ord))
     }
 }
