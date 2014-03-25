@@ -9,11 +9,11 @@
 // except according to those terms.
 
 use ast;
-use ast::{TokenTree, TTDelim, TTTok, TTSeq, TTNonterminal, Ident};
+use ast::{TokenTree, TTDelim, TTTok, TTSeq, TTNonterminal, TTMatchCount, Ident, TyU};
 use codemap::{Span, DUMMY_SP};
 use diagnostic::SpanHandler;
 use ext::tt::macro_parser::{NamedMatch, MatchedSeq, MatchedNonterminal};
-use parse::token::{EOF, INTERPOLATED, IDENT, Token, NtIdent};
+use parse::token::{EOF, INTERPOLATED, IDENT, LIT_UINT, Token, NtIdent};
 use parse::token;
 use parse::lexer::TokenAndSpan;
 
@@ -97,7 +97,6 @@ pub fn dup_tt_reader<'a>(r: &TtReader<'a>) -> TtReader<'a> {
     }
 }
 
-
 fn lookup_cur_matched_by_matched(r: &TtReader, start: @NamedMatch)
                                  -> @NamedMatch {
     fn red(ad: @NamedMatch, idx: &uint) -> @NamedMatch {
@@ -110,6 +109,13 @@ fn lookup_cur_matched_by_matched(r: &TtReader, start: @NamedMatch)
         }
     }
     r.repeat_idx.borrow().iter().fold(start, red)
+}
+
+fn count_matches(start: @NamedMatch) -> uint {
+    match *start {
+        MatchedNonterminal(_) => 1,
+        MatchedSeq(ref ads, _) => ads.iter().fold(0, |s, &m| s + count_matches(m))
+    }
 }
 
 fn lookup_cur_matched(r: &TtReader, name: Ident) -> @NamedMatch {
@@ -161,7 +167,8 @@ fn lockstep_iter_size(t: &TokenTree, r: &TtReader) -> LockstepIterSize {
         TTNonterminal(_, name) => match *lookup_cur_matched(r, name) {
             MatchedNonterminal(_) => LisUnconstrained,
             MatchedSeq(ref ads, _) => LisConstraint(ads.len(), name)
-        }
+        },
+        TTMatchCount(_, _) => LisUnconstrained
     }
 }
 
@@ -302,6 +309,13 @@ pub fn tt_next_token(r: &TtReader) -> TokenAndSpan {
                             token::get_ident(ident)));
               }
             }
+          }
+          TTMatchCount(sp, ident) => {
+            let count = count_matches(lookup_cur_matched(r, ident));
+            r.cur_span.set(sp);
+            r.cur_tok.set(LIT_UINT(count as u64, TyU));
+            r.stack.get().idx.set(r.stack.get().idx.get() + 1u);
+            return ret_val;
           }
         }
     }

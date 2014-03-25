@@ -266,6 +266,7 @@ macro_rules! try(
 )
 
 /// Create a `std::vec::Vec` containing the arguments.
+#[cfg(stage0)]
 #[macro_export]
 macro_rules! vec(
     ($($e:expr),*) => ({
@@ -276,6 +277,17 @@ macro_rules! vec(
     })
 )
 
+/// Create a `std::vec::Vec` containing the arguments.
+#[cfg(not(stage0))]
+#[macro_export]
+macro_rules! vec(
+    ($($e:expr),*) => ({
+        // leading _ to allow empty construction without a warning.
+        let mut _temp = ::std::vec::Vec::with_capacity(#($e));
+        $(_temp.push($e);)*
+        _temp
+    })
+)
 
 /// A macro to select an event from a number of ports.
 ///
