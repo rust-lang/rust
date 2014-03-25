@@ -14,7 +14,8 @@ use std::from_str::FromStr;
 use std::iter::count;
 use std::cmp::min;
 use std::os;
-use sync::RWArc;
+use std::slice::from_elem;
+use sync::{Arc, RWLock};
 
 fn A(i: uint, j: uint) -> f64 {
     ((i + j) * (i + j + 1) / 2 + i + 1) as f64
@@ -28,17 +29,16 @@ fn dot(v: &[f64], u: &[f64]) -> f64 {
     sum
 }
 
-fn mult(v: RWArc<Vec<f64>>,
-        out: RWArc<Vec<f64>>,
+fn mult(v: Arc<RWLock<Vec<f64>>>, out: Arc<RWLock<Vec<f64>>>,
         f: fn(&Vec<f64>, uint) -> f64) {
-    // We launch in different tasks the work to be done.  To finish
+    // We lanch in different tasks the work to be done.  To finish
     // this fuction, we need to wait for the completion of every
     // tasks.  To do that, we give to each tasks a wait_chan that we
     // drop at the end of the work.  At the end of this function, we
     // wait until the channel hang up.
     let (tx, rx) = channel();
 
-    let len = out.read(|out| out.len());
+    let len = out.read().len();
     let chunk = len / 100 + 1;
     for chk in count(0, chunk) {
         if chk >= len {break;}
@@ -47,8 +47,8 @@ fn mult(v: RWArc<Vec<f64>>,
         let out = out.clone();
         spawn(proc() {
             for i in range(chk, min(len, chk + chunk)) {
-                let val = v.read(|v| f(v, i));
-                out.write(|out| *out.get_mut(i) = val);
+                let val = f(&*v.read(), i);
+                *out.write().get_mut(i) = val;
             }
             drop(tx)
         });
@@ -67,7 +67,7 @@ fn mult_Av_impl(v: &Vec<f64> , i: uint) -> f64 {
     sum
 }
 
-fn mult_Av(v: RWArc<Vec<f64> >, out: RWArc<Vec<f64> >) {
+fn mult_Av(v: Arc<RWLock<Vec<f64>>>, out: Arc<RWLock<Vec<f64>>>) {
     mult(v, out, mult_Av_impl);
 }
 
@@ -79,11 +79,12 @@ fn mult_Atv_impl(v: &Vec<f64> , i: uint) -> f64 {
     sum
 }
 
-fn mult_Atv(v: RWArc<Vec<f64> >, out: RWArc<Vec<f64> >) {
+fn mult_Atv(v: Arc<RWLock<Vec<f64>>>, out: Arc<RWLock<Vec<f64>>>) {
     mult(v, out, mult_Atv_impl);
 }
 
-fn mult_AtAv(v: RWArc<Vec<f64> >, out: RWArc<Vec<f64> >, tmp: RWArc<Vec<f64> >) {
+fn mult_AtAv(v: Arc<RWLock<Vec<f64>>>, out: Arc<RWLock<Vec<f64>>>,
+             tmp: Arc<RWLock<Vec<f64>>>) {
     mult_Av(v, tmp.clone());
     mult_Atv(tmp, out);
 }
@@ -97,16 +98,16 @@ fn main() {
     } else {
         FromStr::from_str(args[1]).unwrap()
     };
-    let u = RWArc::new(Vec::from_elem(n, 1.));
-    let v = RWArc::new(Vec::from_elem(n, 1.));
-    let tmp = RWArc::new(Vec::from_elem(n, 1.));
+    let u = Arc::new(RWLock::new(Vec::from_elem(n, 1.)));
+    let v = Arc::new(RWLock::new(Vec::from_elem(n, 1.)));
+    let tmp = Arc::new(RWLock::new(Vec::from_elem(n, 1.)));
     for _ in range(0, 10) {
         mult_AtAv(u.clone(), v.clone(), tmp.clone());
         mult_AtAv(v.clone(), u.clone(), tmp.clone());
     }
 
-    u.read(|u| v.read(|v| {
-        println!("{:.9f}",
-                 (dot(u.as_slice(), v.as_slice()) / dot(v.as_slice(), v.as_slice())).sqrt());
-    }))
+    let u = u.read();
+    let v = v.read();
+    println!("{:.9f}", (dot(u.as_slice(), v.as_slice()) /
+                        dot(v.as_slice(), v.as_slice())).sqrt());
 }

@@ -86,7 +86,7 @@ pub struct NativeMutex {
 /// then.
 #[must_use]
 pub struct LockGuard<'a> {
-    priv lock: &'a mut StaticNativeMutex
+    priv lock: &'a StaticNativeMutex
 }
 
 pub static NATIVE_MUTEX_INIT: StaticNativeMutex = StaticNativeMutex {
@@ -106,6 +106,7 @@ impl StaticNativeMutex {
     /// already hold the lock.
     ///
     /// # Example
+    ///
     /// ```rust
     /// use std::unstable::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
     /// static mut LOCK: StaticNativeMutex = NATIVE_MUTEX_INIT;
@@ -114,7 +115,7 @@ impl StaticNativeMutex {
     ///     // critical section...
     /// } // automatically unlocked in `_guard`'s destructor
     /// ```
-    pub unsafe fn lock<'a>(&'a mut self) -> LockGuard<'a> {
+    pub unsafe fn lock<'a>(&'a self) -> LockGuard<'a> {
         self.inner.lock();
 
         LockGuard { lock: self }
@@ -122,7 +123,7 @@ impl StaticNativeMutex {
 
     /// Attempts to acquire the lock. The value returned is `Some` if
     /// the attempt succeeded.
-    pub unsafe fn trylock<'a>(&'a mut self) -> Option<LockGuard<'a>> {
+    pub unsafe fn trylock<'a>(&'a self) -> Option<LockGuard<'a>> {
         if self.inner.trylock() {
             Some(LockGuard { lock: self })
         } else {
@@ -134,7 +135,7 @@ impl StaticNativeMutex {
     ///
     /// These needs to be paired with a call to `.unlock_noguard`. Prefer using
     /// `.lock`.
-    pub unsafe fn lock_noguard(&mut self) { self.inner.lock() }
+    pub unsafe fn lock_noguard(&self) { self.inner.lock() }
 
     /// Attempts to acquire the lock without creating a
     /// `LockGuard`. The value returned is whether the lock was
@@ -142,28 +143,28 @@ impl StaticNativeMutex {
     ///
     /// If `true` is returned, this needs to be paired with a call to
     /// `.unlock_noguard`. Prefer using `.trylock`.
-    pub unsafe fn trylock_noguard(&mut self) -> bool {
+    pub unsafe fn trylock_noguard(&self) -> bool {
         self.inner.trylock()
     }
 
     /// Unlocks the lock. This assumes that the current thread already holds the
     /// lock.
-    pub unsafe fn unlock_noguard(&mut self) { self.inner.unlock() }
+    pub unsafe fn unlock_noguard(&self) { self.inner.unlock() }
 
     /// Block on the internal condition variable.
     ///
     /// This function assumes that the lock is already held. Prefer
     /// using `LockGuard.wait` since that guarantees that the lock is
     /// held.
-    pub unsafe fn wait_noguard(&mut self) { self.inner.wait() }
+    pub unsafe fn wait_noguard(&self) { self.inner.wait() }
 
     /// Signals a thread in `wait` to wake up
-    pub unsafe fn signal_noguard(&mut self) { self.inner.signal() }
+    pub unsafe fn signal_noguard(&self) { self.inner.signal() }
 
     /// This function is especially unsafe because there are no guarantees made
     /// that no other thread is currently holding the lock or waiting on the
     /// condition variable contained inside.
-    pub unsafe fn destroy(&mut self) { self.inner.destroy() }
+    pub unsafe fn destroy(&self) { self.inner.destroy() }
 }
 
 impl NativeMutex {
@@ -190,13 +191,13 @@ impl NativeMutex {
     ///     } // automatically unlocked in `_guard`'s destructor
     /// }
     /// ```
-    pub unsafe fn lock<'a>(&'a mut self) -> LockGuard<'a> {
+    pub unsafe fn lock<'a>(&'a self) -> LockGuard<'a> {
         self.inner.lock()
     }
 
     /// Attempts to acquire the lock. The value returned is `Some` if
     /// the attempt succeeded.
-    pub unsafe fn trylock<'a>(&'a mut self) -> Option<LockGuard<'a>> {
+    pub unsafe fn trylock<'a>(&'a self) -> Option<LockGuard<'a>> {
         self.inner.trylock()
     }
 
@@ -204,7 +205,7 @@ impl NativeMutex {
     ///
     /// These needs to be paired with a call to `.unlock_noguard`. Prefer using
     /// `.lock`.
-    pub unsafe fn lock_noguard(&mut self) { self.inner.lock_noguard() }
+    pub unsafe fn lock_noguard(&self) { self.inner.lock_noguard() }
 
     /// Attempts to acquire the lock without creating a
     /// `LockGuard`. The value returned is whether the lock was
@@ -212,23 +213,23 @@ impl NativeMutex {
     ///
     /// If `true` is returned, this needs to be paired with a call to
     /// `.unlock_noguard`. Prefer using `.trylock`.
-    pub unsafe fn trylock_noguard(&mut self) -> bool {
+    pub unsafe fn trylock_noguard(&self) -> bool {
         self.inner.trylock_noguard()
     }
 
     /// Unlocks the lock. This assumes that the current thread already holds the
     /// lock.
-    pub unsafe fn unlock_noguard(&mut self) { self.inner.unlock_noguard() }
+    pub unsafe fn unlock_noguard(&self) { self.inner.unlock_noguard() }
 
     /// Block on the internal condition variable.
     ///
     /// This function assumes that the lock is already held. Prefer
     /// using `LockGuard.wait` since that guarantees that the lock is
     /// held.
-    pub unsafe fn wait_noguard(&mut self) { self.inner.wait_noguard() }
+    pub unsafe fn wait_noguard(&self) { self.inner.wait_noguard() }
 
     /// Signals a thread in `wait` to wake up
-    pub unsafe fn signal_noguard(&mut self) { self.inner.signal_noguard() }
+    pub unsafe fn signal_noguard(&self) { self.inner.signal_noguard() }
 }
 
 impl Drop for NativeMutex {
@@ -239,12 +240,12 @@ impl Drop for NativeMutex {
 
 impl<'a> LockGuard<'a> {
     /// Block on the internal condition variable.
-    pub unsafe fn wait(&mut self) {
+    pub unsafe fn wait(&self) {
         self.lock.wait_noguard()
     }
 
     /// Signals a thread in `wait` to wake up.
-    pub unsafe fn signal(&mut self) {
+    pub unsafe fn signal(&self) {
         self.lock.signal_noguard()
     }
 }
@@ -262,6 +263,8 @@ mod imp {
     use self::os::{PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER,
                    pthread_mutex_t, pthread_cond_t};
     use mem;
+    use ty::Unsafe;
+    use kinds::marker;
 
     type pthread_mutexattr_t = libc::c_void;
     type pthread_condattr_t = libc::c_void;
@@ -369,40 +372,46 @@ mod imp {
     }
 
     pub struct Mutex {
-        priv lock: pthread_mutex_t,
-        priv cond: pthread_cond_t,
+        priv lock: Unsafe<pthread_mutex_t>,
+        priv cond: Unsafe<pthread_cond_t>,
     }
 
     pub static MUTEX_INIT: Mutex = Mutex {
-        lock: PTHREAD_MUTEX_INITIALIZER,
-        cond: PTHREAD_COND_INITIALIZER,
+        lock: Unsafe {
+            value: PTHREAD_MUTEX_INITIALIZER,
+            marker1: marker::InvariantType,
+        },
+        cond: Unsafe {
+            value: PTHREAD_COND_INITIALIZER,
+            marker1: marker::InvariantType,
+        },
     };
 
     impl Mutex {
         pub unsafe fn new() -> Mutex {
-            let mut m = Mutex {
-                lock: mem::init(),
-                cond: mem::init(),
+            let m = Mutex {
+                lock: Unsafe::new(mem::init()),
+                cond: Unsafe::new(mem::init()),
             };
 
-            pthread_mutex_init(&mut m.lock, 0 as *libc::c_void);
-            pthread_cond_init(&mut m.cond, 0 as *libc::c_void);
+            pthread_mutex_init(m.lock.get(), 0 as *libc::c_void);
+            pthread_cond_init(m.cond.get(), 0 as *libc::c_void);
 
             return m;
         }
 
-        pub unsafe fn lock(&mut self) { pthread_mutex_lock(&mut self.lock); }
-        pub unsafe fn unlock(&mut self) { pthread_mutex_unlock(&mut self.lock); }
-        pub unsafe fn signal(&mut self) { pthread_cond_signal(&mut self.cond); }
-        pub unsafe fn wait(&mut self) {
-            pthread_cond_wait(&mut self.cond, &mut self.lock);
+        pub unsafe fn lock(&self) { pthread_mutex_lock(self.lock.get()); }
+        pub unsafe fn unlock(&self) { pthread_mutex_unlock(self.lock.get()); }
+        pub unsafe fn signal(&self) { pthread_cond_signal(self.cond.get()); }
+        pub unsafe fn wait(&self) {
+            pthread_cond_wait(self.cond.get(), self.lock.get());
         }
-        pub unsafe fn trylock(&mut self) -> bool {
-            pthread_mutex_trylock(&mut self.lock) == 0
+        pub unsafe fn trylock(&self) -> bool {
+            pthread_mutex_trylock(self.lock.get()) == 0
         }
-        pub unsafe fn destroy(&mut self) {
-            pthread_mutex_destroy(&mut self.lock);
-            pthread_cond_destroy(&mut self.cond);
+        pub unsafe fn destroy(&self) {
+            pthread_mutex_destroy(self.lock.get());
+            pthread_cond_destroy(self.cond.get());
         }
     }
 
@@ -454,37 +463,37 @@ mod imp {
                 cond: atomics::AtomicUint::new(init_cond()),
             }
         }
-        pub unsafe fn lock(&mut self) {
+        pub unsafe fn lock(&self) {
             EnterCriticalSection(self.getlock() as LPCRITICAL_SECTION)
         }
-        pub unsafe fn trylock(&mut self) -> bool {
+        pub unsafe fn trylock(&self) -> bool {
             TryEnterCriticalSection(self.getlock() as LPCRITICAL_SECTION) != 0
         }
-        pub unsafe fn unlock(&mut self) {
+        pub unsafe fn unlock(&self) {
             LeaveCriticalSection(self.getlock() as LPCRITICAL_SECTION)
         }
 
-        pub unsafe fn wait(&mut self) {
+        pub unsafe fn wait(&self) {
             self.unlock();
             WaitForSingleObject(self.getcond() as HANDLE, libc::INFINITE);
             self.lock();
         }
 
-        pub unsafe fn signal(&mut self) {
+        pub unsafe fn signal(&self) {
             assert!(SetEvent(self.getcond() as HANDLE) != 0);
         }
 
         /// This function is especially unsafe because there are no guarantees made
         /// that no other thread is currently holding the lock or waiting on the
         /// condition variable contained inside.
-        pub unsafe fn destroy(&mut self) {
+        pub unsafe fn destroy(&self) {
             let lock = self.lock.swap(0, atomics::SeqCst);
             let cond = self.cond.swap(0, atomics::SeqCst);
             if lock != 0 { free_lock(lock) }
             if cond != 0 { free_cond(cond) }
         }
 
-        unsafe fn getlock(&mut self) -> *mut c_void {
+        unsafe fn getlock(&self) -> *mut c_void {
             match self.lock.load(atomics::SeqCst) {
                 0 => {}
                 n => return n as *mut c_void
@@ -498,7 +507,7 @@ mod imp {
             return self.lock.load(atomics::SeqCst) as *mut c_void;
         }
 
-        unsafe fn getcond(&mut self) -> *mut c_void {
+        unsafe fn getcond(&self) -> *mut c_void {
             match self.cond.load(atomics::SeqCst) {
                 0 => {}
                 n => return n as *mut c_void

@@ -14,9 +14,4 @@ extern crate this = "rustdoc";
 #[cfg(rustc)]
 extern crate this = "rustc";
 
-#[cfg(not(stage0))]
 fn main() { this::main() }
-
-#[cfg(stage0)]
-#[start]
-fn start(argc: int, argv: **u8) -> int { native::start(argc, argv, this::main) }

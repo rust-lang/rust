@@ -68,7 +68,7 @@ pub enum Failure {
 impl<T: Send> Packet<T> {
     // Creation of a packet *must* be followed by a call to inherit_blocker
     pub fn new() -> Packet<T> {
-        let mut p = Packet {
+        let p = Packet {
             queue: mpsc::Queue::new(),
             cnt: atomics::AtomicInt::new(0),
             steals: 0,
