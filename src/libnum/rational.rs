@@ -87,10 +87,10 @@ impl<T: Clone + Integer + Ord>
     fn reduce(&mut self) {
         let g : T = self.numer.gcd(&self.denom);
 
-        // FIXME(#6050): overloaded operators force moves with generic types
+        // FIXME(#5992): assignment operator overloads
         // self.numer /= g;
         self.numer = self.numer / g;
-        // FIXME(#6050): overloaded operators force moves with generic types
+        // FIXME(#5992): assignment operator overloads
         // self.denom /= g;
         self.denom = self.denom / g;
 

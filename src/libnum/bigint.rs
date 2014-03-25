@@ -406,11 +406,11 @@ impl Integer for BigUint {
                 let mut d0 = d0;
                 let mut prod = b * d0;
                 while prod > m {
-                    // FIXME(#6050): overloaded operators force moves with generic types
+                    // FIXME(#5992): assignment operator overloads
                     // d0 -= d_unit
                     d0   = d0 - d_unit;
-                    // FIXME(#6050): overloaded operators force moves with generic types
-                    // prod = prod - b_unit;
+                    // FIXME(#5992): assignment operator overloads
+                    // prod -= b_unit;
                     prod = prod - b_unit
                 }
                 if d0.is_zero() {
@@ -418,10 +418,10 @@ impl Integer for BigUint {
                     continue;
                 }
                 n = 1;
-                // FIXME(#6102): Assignment operator for BigInt causes ICE
+                // FIXME(#5992): assignment operator overloads
                 // d += d0;
                 d = d + d0;
-                // FIXME(#6102): Assignment operator for BigInt causes ICE
+                // FIXME(#5992): assignment operator overloads
                 // m -= prod;
                 m = m - prod;
             }
@@ -724,8 +724,7 @@ impl BigUint {
                     let d: Option<BigUint> = FromPrimitive::from_uint(d);
                     match d {
                         Some(d) => {
-                            // FIXME(#6102): Assignment operator for BigInt
-                            // causes ICE:
+                            // FIXME(#5992): assignment operator overloads
                             // n += d * power;
                             n = n + d * power;
                         }
@@ -738,7 +737,7 @@ impl BigUint {
                 return Some(n);
             }
             end -= unit_len;
-            // FIXME(#6050): overloaded operators force moves with generic types
+            // FIXME(#5992): assignment operator overloads
             // power *= base_num;
             power = power * base_num;
         }
@@ -2068,7 +2067,7 @@ mod biguint_tests {
         fn factor(n: uint) -> BigUint {
             let mut f: BigUint = One::one();
             for i in range(2, n + 1) {
-                // FIXME(#6102): Assignment operator for BigInt causes ICE
+                // FIXME(#5992): assignment operator overloads
                 // f *= FromPrimitive::from_uint(i);
                 f = f * FromPrimitive::from_uint(i).unwrap();
             }

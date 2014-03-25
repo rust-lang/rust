@@ -91,7 +91,7 @@ impl<'a> Archive<'a> {
     pub fn read(&self, file: &str) -> Vec<u8> {
         // Apparently if "ar p" is used on windows, it generates a corrupt file
         // which has bad headers and LLVM will immediately choke on it
-        if cfg!(windows) && cfg!(windows) { // FIXME(#10734) double-and
+        if cfg!(windows) {
             let loc = TempDir::new("rsar").unwrap();
             let archive = os::make_absolute(&self.dst);
             run_ar(self.sess, "x", Some(loc.path()), [&archive,
