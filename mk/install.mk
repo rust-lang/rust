@@ -15,6 +15,8 @@
 # The stage we install from
 ISTAGE = $(PREPARE_STAGE)
 
+$(eval $(call DEF_PREPARE,mkfile-install))
+
 install: PREPARE_HOST=$(CFG_BUILD)
 install: PREPARE_TARGETS=$(CFG_TARGET)
 install: PREPARE_DIR_CMD=$(DEFAULT_PREPARE_DIR_CMD)
@@ -28,7 +30,7 @@ install: PREPARE_SOURCE_MAN_DIR=$(S)/man
 install: PREPARE_DEST_BIN_DIR=$(DESTDIR)$(CFG_PREFIX)/bin
 install: PREPARE_DEST_LIB_DIR=$(DESTDIR)$(CFG_LIBDIR)
 install: PREPARE_DEST_MAN_DIR=$(DESTDIR)$(CFG_MANDIR)/man1
-install: prepare-everything
+install: prepare-everything-mkfile-install
 
 
 # Uninstall code
