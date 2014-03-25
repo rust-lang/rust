@@ -97,7 +97,7 @@ rust_uv_req_type_max() {
   return UV_REQ_TYPE_MAX;
 }
 
-int
+ssize_t
 rust_uv_get_result_from_fs_req(uv_fs_t* req) {
   return req->result;
 }

@@ -12,7 +12,7 @@ use std::c_str::CString;
 use std::c_str;
 use std::cast::transmute;
 use std::cast;
-use std::libc::{c_int, c_char, c_void, size_t};
+use std::libc::{c_int, c_char, c_void, size_t, ssize_t};
 use std::libc;
 use std::rt::task::BlockedTask;
 use std::io::{FileStat, IoError};
@@ -74,11 +74,32 @@ impl FsRequest {
     pub fn write(loop_: &Loop, fd: c_int, buf: &[u8], offset: i64)
         -> Result<(), UvError>
     {
-        execute_nop(|req, cb| unsafe {
-            uvll::uv_fs_write(loop_.handle, req,
-                              fd, buf.as_ptr() as *c_void,
-                              buf.len() as size_t, offset, cb)
-        })
+        // In libuv, uv_fs_write is basically just shelling out to a write()
+        // syscall at some point, with very little fluff around it. This means
+        // that write() could actually be a short write, so we need to be sure
+        // to call it continuously if we get a short write back. This method is
+        // expected to write the full data if it returns success.
+        let mut written = 0;
+        while written < buf.len() {
+            let offset = if offset == -1 {
+                offset
+            } else {
+                offset + written as i64
+            };
+            match execute(|req, cb| unsafe {
+                uvll::uv_fs_write(loop_.handle,
+                                  req,
+                                  fd,
+                                  buf.as_ptr().offset(written as int) as *c_void,
+                                  (buf.len() - written) as size_t,
+                                  offset,
+                                  cb)
+            }).map(|req| req.get_result()) {
+                Err(e) => return Err(e),
+                Ok(n) => { written += n as uint; }
+            }
+        }
+        Ok(())
     }
 
     pub fn read(loop_: &Loop, fd: c_int, buf: &mut [u8], offset: i64)
@@ -227,7 +248,7 @@ impl FsRequest {
         })
     }
 
-    pub fn get_result(&self) -> c_int {
+    pub fn get_result(&self) -> ssize_t {
         unsafe { uvll::get_result_from_fs_req(self.req) }
     }
 
@@ -309,7 +330,7 @@ fn execute(f: |*uvll::uv_fs_t, uvll::uv_fs_cb| -> c_int)
                 unsafe { uvll::set_data_for_req(req.req, &slot) }
             });
             match req.get_result() {
-                n if n < 0 => Err(UvError(n)),
+                n if n < 0 => Err(UvError(n as i32)),
                 _ => Ok(req),
             }
         }
