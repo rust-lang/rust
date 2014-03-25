@@ -331,7 +331,9 @@ impl Process {
     /// signals (SIGTERM/SIGKILL/SIGINT) are translated to `TerminateProcess`.
     ///
     /// Additionally, a signal number of 0 can check for existence of the target
-    /// process.
+    /// process. Note, though, that on some platforms signals will continue to
+    /// be successfully delivered if the child has exited, but not yet been
+    /// reaped.
     pub fn kill(id: libc::pid_t, signal: int) -> IoResult<()> {
         LocalIo::maybe_raise(|io| io.kill(id, signal))
     }
@@ -342,8 +344,16 @@ impl Process {
     /// Sends the specified signal to the child process, returning whether the
     /// signal could be delivered or not.
     ///
-    /// Note that this is purely a wrapper around libuv's `uv_process_kill`
-    /// function.
+    /// Note that signal 0 is interpreted as a poll to check whether the child
+    /// process is still alive or not. If an error is returned, then the child
+    /// process has exited.
+    ///
+    /// On some unix platforms signals will continue to be received after a
+    /// child has exited but not yet been reaped. In order to report the status
+    /// of signal delivery correctly, unix implementations may invoke
+    /// `waitpid()` with `WNOHANG` in order to reap the child as necessary.
+    ///
+    /// # Errors
     ///
     /// If the signal delivery fails, the corresponding error is returned.
     pub fn signal(&mut self, signal: int) -> IoResult<()> {
@@ -832,5 +842,18 @@ mod tests {
         assert!(Process::kill(p.id(), 0).is_ok());
         p.signal_kill().unwrap();
         assert!(!p.wait().success());
+    })
+
+    iotest!(fn test_zero() {
+        let mut p = sleeper();
+        p.signal_kill().unwrap();
+        for _ in range(0, 20) {
+            if p.signal(0).is_err() {
+                assert!(!p.wait().success());
+                return
+            }
+            timer::sleep(100);
+        }
+        fail!("never saw the child go away");
     })
 }
