@@ -42,8 +42,11 @@ pub struct Bytes<'r, T> {
 }
 
 impl<'r, R: Reader> Bytes<'r, R> {
+    /// Constructs a new byte iterator from the given Reader instance.
     pub fn new(r: &'r mut R) -> Bytes<'r, R> {
-        Bytes { reader: r }
+        Bytes {
+            reader: r,
+        }
     }
 }
 
@@ -58,6 +61,20 @@ impl<'r, R: Reader> Iterator<IoResult<u8>> for Bytes<'r, R> {
     }
 }
 
+/// Converts an 8-bit to 64-bit unsigned value to a little-endian byte
+/// representation of the given size. If the size is not big enough to
+/// represent the value, then the high-order bytes are truncated.
+///
+/// Arguments:
+///
+/// * `n`: The value to convert.
+/// * `size`: The size of the value, in bytes. This must be 8 or less, or task
+///           failure occurs. If this is less than 8, then a value of that
+///           many bytes is produced. For example, if `size` is 4, then a
+///           32-bit byte representation is produced.
+/// * `f`: A callback that receives the value.
+///
+/// This function returns the value returned by the callback, for convenience.
 pub fn u64_to_le_bytes<T>(n: u64, size: uint, f: |v: &[u8]| -> T) -> T {
     use mem::{to_le16, to_le32, to_le64};
     use cast::transmute;
@@ -84,6 +101,20 @@ pub fn u64_to_le_bytes<T>(n: u64, size: uint, f: |v: &[u8]| -> T) -> T {
     }
 }
 
+/// Converts an 8-bit to 64-bit unsigned value to a big-endian byte
+/// representation of the given size. If the size is not big enough to
+/// represent the value, then the high-order bytes are truncated.
+///
+/// Arguments:
+///
+/// * `n`: The value to convert.
+/// * `size`: The size of the value, in bytes. This must be 8 or less, or task
+///           failure occurs. If this is less than 8, then a value of that
+///           many bytes is produced. For example, if `size` is 4, then a
+///           32-bit byte representation is produced.
+/// * `f`: A callback that receives the value.
+///
+/// This function returns the value returned by the callback, for convenience.
 pub fn u64_to_be_bytes<T>(n: u64, size: uint, f: |v: &[u8]| -> T) -> T {
     use mem::{to_be16, to_be32, to_be64};
     use cast::transmute;
@@ -108,10 +139,18 @@ pub fn u64_to_be_bytes<T>(n: u64, size: uint, f: |v: &[u8]| -> T) -> T {
     }
 }
 
-pub fn u64_from_be_bytes(data: &[u8],
-                         start: uint,
-                         size: uint)
-                      -> u64 {
+/// Extracts an 8-bit to 64-bit unsigned big-endian value from the given byte
+/// buffer and returns it as a 64-bit value.
+///
+/// Arguments:
+///
+/// * `data`: The buffer in which to extract the value.
+/// * `start`: The offset at which to extract the value.
+/// * `size`: The size of the value in bytes to extract. This must be 8 or
+///           less, or task failure occurs. If this is less than 8, then only
+///           that many bytes are parsed. For example, if `size` is 4, then a
+///           32-bit value is parsed.
+pub fn u64_from_be_bytes(data: &[u8], start: uint, size: uint) -> u64 {
     use ptr::{copy_nonoverlapping_memory};
     use mem::from_be64;
     use slice::MutableVector;

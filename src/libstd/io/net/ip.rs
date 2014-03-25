@@ -8,6 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! Internet Protocol (IP) addresses.
+//!
+//! This module contains functions useful for parsing, formatting, and
+//! manipulating IP addresses.
+
 #[allow(missing_doc)];
 
 use container::Container;

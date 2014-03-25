@@ -404,29 +404,163 @@ pub fn len_utf8_bytes(c: char) -> uint {
     }
 }
 
-#[allow(missing_doc)]
+/// Useful functions for Unicode characters.
 pub trait Char {
+    /// Returns whether the specified character is considered a Unicode
+    /// alphabetic code point.
     fn is_alphabetic(&self) -> bool;
+
+    /// Returns whether the specified character satisfies the 'XID_Start'
+    /// Unicode property.
+    ///
+    /// 'XID_Start' is a Unicode Derived Property specified in
+    /// [UAX #31](http://unicode.org/reports/tr31/#NFKC_Modifications),
+    /// mostly similar to ID_Start but modified for closure under NFKx.
     fn is_XID_start(&self) -> bool;
+
+    /// Returns whether the specified `char` satisfies the 'XID_Continue'
+    /// Unicode property.
+    ///
+    /// 'XID_Continue' is a Unicode Derived Property specified in
+    /// [UAX #31](http://unicode.org/reports/tr31/#NFKC_Modifications),
+    /// mostly similar to 'ID_Continue' but modified for closure under NFKx.
     fn is_XID_continue(&self) -> bool;
+
+
+    /// Indicates whether a character is in lowercase.
+    ///
+    /// This is defined according to the terms of the Unicode Derived Core
+    /// Property `Lowercase`.
     fn is_lowercase(&self) -> bool;
+
+    /// Indicates whether a character is in uppercase.
+    ///
+    /// This is defined according to the terms of the Unicode Derived Core
+    /// Property `Uppercase`.
     fn is_uppercase(&self) -> bool;
+
+    /// Indicates whether a character is whitespace.
+    ///
+    /// Whitespace is defined in terms of the Unicode Property `White_Space`.
     fn is_whitespace(&self) -> bool;
+
+    /// Indicates whether a character is alphanumeric.
+    ///
+    /// Alphanumericness is defined in terms of the Unicode General Categories
+    /// 'Nd', 'Nl', 'No' and the Derived Core Property 'Alphabetic'.
     fn is_alphanumeric(&self) -> bool;
+
+    /// Indicates whether a character is a control code point.
+    ///
+    /// Control code points are defined in terms of the Unicode General
+    /// Category `Cc`.
     fn is_control(&self) -> bool;
+
+    /// Indicates whether the character is numeric (Nd, Nl, or No).
     fn is_digit(&self) -> bool;
+
+    /// Checks if a `char` parses as a numeric digit in the given radix.
+    ///
+    /// Compared to `is_digit()`, this function only recognizes the characters
+    /// `0-9`, `a-z` and `A-Z`.
+    ///
+    /// # Return value
+    ///
+    /// Returns `true` if `c` is a valid digit under `radix`, and `false`
+    /// otherwise.
+    ///
+    /// # Failure
+    ///
+    /// Fails if given a radix > 36.
     fn is_digit_radix(&self, radix: uint) -> bool;
+
+    /// Converts a character to the corresponding digit.
+    ///
+    /// # Return value
+    ///
+    /// If `c` is between '0' and '9', the corresponding value between 0 and
+    /// 9. If `c` is 'a' or 'A', 10. If `c` is 'b' or 'B', 11, etc. Returns
+    /// none if the character does not refer to a digit in the given radix.
+    ///
+    /// # Failure
+    ///
+    /// Fails if given a radix outside the range [0..36].
     fn to_digit(&self, radix: uint) -> Option<uint>;
+
+    /// Converts a character to its lowercase equivalent.
+    ///
+    /// The case-folding performed is the common or simple mapping. See
+    /// `to_uppercase()` for references and more information.
+    ///
+    /// # Return value
+    ///
+    /// Returns the lowercase equivalent of the character, or the character
+    /// itself if no conversion is possible.
     fn to_lowercase(&self) -> char;
+
+    /// Converts a character to its uppercase equivalent.
+    ///
+    /// The case-folding performed is the common or simple mapping: it maps
+    /// one unicode codepoint (one character in Rust) to its uppercase
+    /// equivalent according to the Unicode database [1]. The additional
+    /// `SpecialCasing.txt` is not considered here, as it expands to multiple
+    /// codepoints in some cases.
+    ///
+    /// A full reference can be found here [2].
+    ///
+    /// # Return value
+    ///
+    /// Returns the uppercase equivalent of the character, or the character
+    /// itself if no conversion was made.
+    ///
+    /// [1]: ftp://ftp.unicode.org/Public/UNIDATA/UnicodeData.txt
+    ///
+    /// [2]: http://www.unicode.org/versions/Unicode4.0.0/ch03.pdf#G33992
     fn to_uppercase(&self) -> char;
+
+    /// Converts a number to the character representing it.
+    ///
+    /// # Return value
+    ///
+    /// Returns `Some(char)` if `num` represents one digit under `radix`,
+    /// using one character of `0-9` or `a-z`, or `None` if it doesn't.
+    ///
+    /// # Failure
+    ///
+    /// Fails if given a radix > 36.
     fn from_digit(num: uint, radix: uint) -> Option<char>;
+
+    /// Returns the hexadecimal Unicode escape of a character.
+    ///
+    /// The rules are as follows:
+    ///
+    /// * Characters in [0,0xff] get 2-digit escapes: `\\xNN`
+    /// * Characters in [0x100,0xffff] get 4-digit escapes: `\\uNNNN`.
+    /// * Characters above 0x10000 get 8-digit escapes: `\\UNNNNNNNN`.
     fn escape_unicode(&self, f: |char|);
+
+    /// Returns a 'default' ASCII and C++11-like literal escape of a
+    /// character.
+    ///
+    /// The default is chosen with a bias toward producing literals that are
+    /// legal in a variety of languages, including C++11 and similar C-family
+    /// languages. The exact rules are:
+    ///
+    /// * Tab, CR and LF are escaped as '\t', '\r' and '\n' respectively.
+    /// * Single-quote, double-quote and backslash chars are backslash-
+    ///   escaped.
+    /// * Any other chars in the range [0x20,0x7e] are not escaped.
+    /// * Any other chars are given hex unicode escapes; see `escape_unicode`.
     fn escape_default(&self, f: |char|);
+
+    /// Returns the amount of bytes this character would need if encoded in
+    /// UTF-8.
     fn len_utf8_bytes(&self) -> uint;
 
-    /// Encodes this `char` as utf-8 into the provided byte-buffer
+    /// Encodes this character as UTF-8 into the provided byte buffer.
     ///
-    /// The buffer must be at least 4 bytes long or a runtime failure will occur.
+    /// The buffer must be at least 4 bytes long or a runtime failure will
+    /// occur.
     ///
     /// This will then return the number of characters written to the slice.
     fn encode_utf8(&self, dst: &mut [u8]) -> uint;
