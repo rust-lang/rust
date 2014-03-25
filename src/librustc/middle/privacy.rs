@@ -1001,10 +1001,6 @@ impl<'a> SanePrivacyVisitor<'a> {
             };
             for f in def.fields.iter() {
                match f.node.kind {
-                    ast::NamedField(_, ast::Public) if public_def => {
-                        tcx.sess.span_err(f.span, "unnecessary `pub` \
-                                                   visibility");
-                    }
                     ast::NamedField(_, ast::Private) if !public_def => {
                         tcx.sess.span_err(f.span, "unnecessary `priv` \
                                                    visibility");
