@@ -156,7 +156,9 @@ prepare-base-$(1): PREPARE_SOURCE_MAN_DIR=$$(S)/man
 prepare-base-$(1): PREPARE_DEST_BIN_DIR=$$(PREPARE_DEST_DIR)/bin
 prepare-base-$(1): PREPARE_DEST_LIB_DIR=$$(PREPARE_DEST_DIR)/$$(CFG_LIBDIR_RELATIVE)
 prepare-base-$(1): PREPARE_DEST_MAN_DIR=$$(PREPARE_DEST_DIR)/share/man/man1
-prepare-base-$(1): prepare-host-$(1) prepare-targets-$(1)
+prepare-base-$(1): prepare-everything-$(1)
+
+prepare-everything-$(1): prepare-host-$(1) prepare-targets-$(1)
 
 prepare-host-$(1): prepare-host-tools-$(1)
 
