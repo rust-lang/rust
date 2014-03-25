@@ -174,12 +174,18 @@ pub enum ItemEnum {
     StaticItem(Static),
     TraitItem(Trait),
     ImplItem(Impl),
+    /// `use` and `extern crate`
     ViewItemItem(ViewItem),
+    /// A method signature only. Used for required methods in traits (ie,
+    /// non-default-methods).
     TyMethodItem(TyMethod),
+    /// A method with a body.
     MethodItem(Method),
     StructFieldItem(StructField),
     VariantItem(Variant),
+    /// `fn`s from an extern block
     ForeignFunctionItem(Function),
+    /// `static`s from an extern block
     ForeignStaticItem(Static),
     MacroItem(Macro),
 }
@@ -1014,11 +1020,23 @@ pub struct Impl {
     generics: Generics,
     trait_: Option<Type>,
     for_: Type,
-    methods: Vec<Item> ,
+    methods: Vec<Item>,
+    derived: bool,
 }
 
 impl Clean<Item> for doctree::Impl {
     fn clean(&self) -> Item {
+        let mut derived = false;
+        for attr in self.attrs.iter() {
+            match attr.node.value.node {
+                ast::MetaWord(ref s) => {
+                    if s.get() == "automatically_derived" {
+                        derived = true;
+                    }
+                }
+                _ => {}
+            }
+        }
         Item {
             name: None,
             attrs: self.attrs.clean(),
@@ -1030,6 +1048,7 @@ impl Clean<Item> for doctree::Impl {
                 trait_: self.trait_.clean(),
                 for_: self.for_.clean(),
                 methods: self.methods.clean(),
+                derived: derived,
             }),
         }
     }
