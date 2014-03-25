@@ -3985,7 +3985,7 @@ impl<'a> Parser<'a> {
                 let attrs = p.parse_outer_attributes();
                 let lo = p.span.lo;
                 let struct_field_ = ast::StructField_ {
-                    kind: UnnamedField,
+                    kind: UnnamedField(p.parse_visibility()),
                     id: ast::DUMMY_NODE_ID,
                     ty: p.parse_ty(false),
                     attrs: attrs,
