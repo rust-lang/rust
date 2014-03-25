@@ -559,16 +559,16 @@ mod test {
     }
 
     #[test]
-    fn io_fill() {
-        let mut r = MemReader::new(vec!(1, 2, 3, 4, 5, 6, 7, 8));
+    fn io_read_at_least() {
+        let mut r = MemReader::new(vec![1, 2, 3, 4, 5, 6, 7, 8]);
         let mut buf = [0, ..3];
-        assert_eq!(r.fill(buf), Ok(()));
+        assert!(r.read_at_least(buf.len(), buf).is_ok());
         assert_eq!(buf.as_slice(), &[1, 2, 3]);
-        assert_eq!(r.fill(buf.mut_slice_to(0)), Ok(()));
+        assert!(r.read_at_least(0, buf.mut_slice_to(0)).is_ok());
         assert_eq!(buf.as_slice(), &[1, 2, 3]);
-        assert_eq!(r.fill(buf), Ok(()));
+        assert!(r.read_at_least(buf.len(), buf).is_ok());
         assert_eq!(buf.as_slice(), &[4, 5, 6]);
-        assert!(r.fill(buf).is_err());
+        assert!(r.read_at_least(buf.len(), buf).is_err());
         assert_eq!(buf.as_slice(), &[7, 8, 6]);
     }
 }
