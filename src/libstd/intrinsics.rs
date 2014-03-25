@@ -164,7 +164,6 @@ pub trait TyVisitor {
     fn visit_self(&mut self) -> bool;
 }
 
-
 extern "rust-intrinsic" {
 
     // NB: These intrinsics take unsafe pointers because they mutate aliased

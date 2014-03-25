@@ -207,16 +207,6 @@ pub mod sleeper_list;
 pub mod stack;
 pub mod task;
 
-#[lang = "start"]
-#[cfg(not(test), stage0)]
-pub fn lang_start(main: *u8, argc: int, argv: **u8) -> int {
-    use std::cast;
-    start(argc, argv, proc() {
-        let main: extern "Rust" fn() = unsafe { cast::transmute(main) };
-        main();
-    })
-}
-
 /// Set up a default runtime configuration, given compiler-supplied arguments.
 ///
 /// This function will block until the entire pool of M:N schedulers have

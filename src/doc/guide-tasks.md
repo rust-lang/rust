@@ -359,7 +359,7 @@ fn main() {
 
         spawn(proc() {
             let local_arc : Arc<~[f64]> = rx.recv();
-            let task_numbers = local_arc.get();
+            let task_numbers = &*local_arc;
             println!("{}-norm = {}", num, pnorm(task_numbers, num));
         });
     }
@@ -411,7 +411,7 @@ Each task recovers the underlying data by
 # let (tx, rx) = channel();
 # tx.send(numbers_arc.clone());
 # let local_arc : Arc<~[f64]> = rx.recv();
-let task_numbers = local_arc.get();
+let task_numbers = &*local_arc;
 # }
 ~~~
 
