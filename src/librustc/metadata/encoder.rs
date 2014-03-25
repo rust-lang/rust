@@ -310,8 +310,9 @@ fn encode_struct_fields(ebml_w: &mut writer::Encoder,
                encode_def_id(ebml_w, local_def(f.node.id));
                ebml_w.end_tag();
             }
-            UnnamedField => {
+            UnnamedField(vis) => {
                 ebml_w.start_tag(tag_item_unnamed_field);
+                encode_struct_field_family(ebml_w, vis);
                 encode_def_id(ebml_w, local_def(f.node.id));
                 ebml_w.end_tag();
             }
@@ -513,8 +514,7 @@ fn each_auxiliary_node_id(item: @Item, callback: |NodeId| -> bool) -> bool {
             // If this is a newtype struct, return the constructor.
             match struct_def.ctor_id {
                 Some(ctor_id) if struct_def.fields.len() > 0 &&
-                        struct_def.fields.get(0).node.kind ==
-                        ast::UnnamedField => {
+                        struct_def.fields.get(0).node.kind.is_unnamed() => {
                     continue_ = callback(ctor_id);
                 }
                 _ => {}
@@ -690,7 +690,7 @@ fn encode_info_for_struct(ecx: &EncodeContext,
     for field in fields.iter() {
         let (nm, vis) = match field.node.kind {
             NamedField(nm, vis) => (nm, vis),
-            UnnamedField => (special_idents::unnamed_field, Inherited)
+            UnnamedField(vis) => (special_idents::unnamed_field, vis)
         };
 
         let id = field.node.id;

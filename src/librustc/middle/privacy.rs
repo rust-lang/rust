@@ -1005,7 +1005,7 @@ impl<'a> SanePrivacyVisitor<'a> {
                         tcx.sess.span_err(f.span, "unnecessary `priv` \
                                                    visibility");
                     }
-                    ast::NamedField(..) | ast::UnnamedField => {}
+                    ast::NamedField(..) | ast::UnnamedField(..) => {}
                 }
             }
         };
@@ -1102,7 +1102,7 @@ impl<'a> SanePrivacyVisitor<'a> {
             for f in def.fields.iter() {
                match f.node.kind {
                     ast::NamedField(_, p) => check_inherited(f.span, p),
-                    ast::UnnamedField => {}
+                    ast::UnnamedField(..) => {}
                 }
             }
         };
