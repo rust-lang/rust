@@ -918,6 +918,9 @@ impl<'a> fmt::Show for Item<'a> {
             None => {}
         }
 
+        // Write the breadcrumb trail header for the top
+        try!(write!(fmt.buf, "<h1 class='fqn'>"));
+
         if self.cx.include_sources {
             let mut path = Vec::new();
             clean_srcpath(self.item.source.filename.as_bytes(), |component| {
@@ -931,15 +934,13 @@ impl<'a> fmt::Show for Item<'a> {
             try!(write!(fmt.buf,
                           "<a class='source'
                               href='{root}src/{krate}/{path}.html\\#{href}'>\
-                              [src]</a>",
+                              view source</a>",
                           root = self.cx.root_path,
                           krate = self.cx.layout.krate,
                           path = path.connect("/"),
                           href = href));
         }
 
-        // Write the breadcrumb trail header for the top
-        try!(write!(fmt.buf, "<h1 class='fqn'>"));
         match self.item.inner {
             clean::ModuleItem(ref m) => if m.is_crate {
                     try!(write!(fmt.buf, "Crate "));

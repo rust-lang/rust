@@ -19,50 +19,86 @@
 
 /* General structure and fonts */
 
+/**
+ * We start off with Richard Rutter's 62.5% number. This makes the default px size
+ * of text of 16px into 10px, which is much easier to work with regarding em units.
+ *
+ * Because em units are compounded (i.e., a child will compound it's text size up
+ * it's parent tree.), it becomes a little cumbersome when dealing with nested elements.
+ *
+ * "rem" units are rooted. Thus, they are only compounded by it's most root element;
+ * the `html` tag.
+ */
+html {
+    font-size: 62.5%; /** Base height of 10px **/
+}
+
 body {
+    color: #333;
     min-height: 100%;
     min-width: 500px;
     height: 100%;
-    font: 13px "Helvetica Neue", Helvetica, Arial, sans-serif;
-    line-height: 165%;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    line-height: 1.5;
     position: relative;
     height: auto;
     padding-bottom: 20px;
 }
 
-h1, .sidebar .location {
-    font: 700 22px "Oswald", Arial, sans-serif;
-}
-h2, h3, h4 {
-    font: 700 16px "Oswald", Arial, sans-serif;
-    text-transform: uppercase;
-}
-h2 code, h3 code, h4 code {
-    text-transform: none;
-    font-size: 1.2em;
+h1, h2, h3, h4 {
+    color: black;
+    font-weight: 400;
+    margin: 30px 0 20px 0;
+    line-height: 1.5;
+    padding-bottom: 4px;
 }
 
-code, pre, h1.fqn {
+/** 
+ * Normalize uses 2em, which is a compound unit. We're working with rem, root em,
+ * which is not compound.
+ */
+h1 {
+    font-size: 2rem;
+}
+
+/**
+ * An `h2` is defaulted to 1.5em, but we're working with `rem`s.
+ */
+h2 {
+    font-size: 2rem;
+    line-height: 1.5;
+}
+
+h1.fqn { 
+    background: #F5F5F5;
+    border-radius: 9px;
+    height: 5.8rem;
+    line-height: 5.8rem;
+    font-size: 2.3rem;
+    padding-left: 20px;
+    color: #444;
+    text-transform: lowercase;
+    position: relative;   
+}
+
+h2, h3, h4 { border-bottom: 1px dashed #eee; }
+h2 code, h3 code, h4 code { font-size: 1.8rem; }
+
+code, pre { 
     font-family: "Inconsolata", Menlo, Monaco, Consolas, "DejaVu Sans Mono", monospace;
 }
-code, pre {
-    color: #333;
-}
-pre {
-    font-size: 15px;
-}
-h1.fqn {
-    font-size: 26px;
-    font-weight: normal;
+
+p {
+    font-size: 1.5rem;
+    line-height: 1.7;
 }
 
-nav {
-    font: 700 26px "Oswald", "Helvetica Neue", Helvetica, Arial, sans-serif;
-    text-transform: uppercase;
-}
+pre { font-size: 16px; font-size: 1.6rem; }
+
 nav.sub {
     padding-top: 10px;
     font-size: 16px;
+    font-size: 1.6rem;
     text-transform: uppercase;
 }
 
@@ -79,50 +115,54 @@ nav.sub {
 /* Everything else */
 
 .js-only, .hidden { display: none; }
+.sidebar { padding: 10px; }
+.sidebar img { margin: 20px auto; display: block; }
 
-.sidebar {
-    background: #e9e9e9;
-    padding: 10px;
-}
-.sidebar img {
-    margin: 20px auto;
-    display: block;
+.sidebar .location {
+    font-size: 17px;
+    font-size: 1.6rem;
+    margin: 30px 0 20px 0;
+    background: #F5F5F5;
+    text-align: center;
+    border-radius: 5px;
+    color: #333;
 }
 
-.sidebar .location { margin-bottom: 10px; }
 .sidebar .block, pre { background: #fff; }
-.sidebar .block, pre, .content { border-bottom: 2px solid black; }
-.trait { border-color: #fcae2b !important; }
-.mod { border-color: #809fc7 !important; }
-.enum { border-color: #93bc99 !important; }
-.struct { border-color: #e53700 !important; }
-.fn { border-color: #a2777f !important; }
 
 .block {
     padding: 10px;
     margin-bottom: 10px;
 }
-.block h2 { margin-top: 0; }
+
+.block h2 { 
+    margin-top: 0;
+    text-align: center;
+}
+
 .block a {
     display: inline-block;
-    width: 100%;
     text-overflow: ellipsis;
     overflow: hidden;
     line-height: 15px;
+    padding-left: 5px;
+    padding-bottom: 6px;
+    font-size: 14px;
+    font-size: 1.4rem;
+    transition: border 500ms ease-out;
 }
 
 .content {
-    background: #f3f3f3;
-    padding: 20px 20px 20px 40px;
+    padding: 20px 40px;
 }
-.content h1 { margin-top: 0; }
-.content h1, .content h2 { margin-left: -20px; }
+
 .content pre { padding: 20px; }
 .content.source pre.rust {
     white-space: pre;
     overflow: auto;
     padding-left: 0;
 }
+
 .content pre.line-numbers { float: left; border: none; }
 .line-numbers span { color: #c67e2d; }
 .line-numbers .line-highlighted {
@@ -134,6 +174,7 @@ nav.sub {
     color: #000 !important;
     background-color: #ccc;
 }
+
 .content .highlighted a { color: #000 !important; }
 .content .highlighted.trait { background-color: #fece7e; }
 .content .highlighted.mod { background-color: #afc6e4; }
@@ -147,6 +188,7 @@ nav.sub {
     white-space: nowrap;
     text-overflow: ellipsis;
 }
+
 .docblock.short p {
     overflow: hidden;
     text-overflow: ellipsis;
@@ -155,20 +197,41 @@ nav.sub {
 
 .docblock h1, .docblock h2, .docblock h3, .docblock h4, .docblock h5 {
     margin-left: 0;
+    margin: 40px 0 10px 0;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #DDD;
 }
-.docblock h1 { font-size: 1.1em; }
-.docblock h2 { font-size: 1.05em; }
-.docblock h3, .docblock h4, .docblock h5 { font-size: 1em; }
 
-.content .source { float: right; }
+.docblock h1 { font-size: 2.5rem; }
+.docblock h2 { font-size: 2rem; }
+.docblock h3 { font-size: 1.8rem; }
+.docblock h4, .docblock h5 { font-size: 1.4rem; }
+
+.content .source { 
+    font-weight: 500;
+    padding: 9px 15px;
+    font-size: 1.5rem;
+    position: absolute;
+    right: 10px;
+    display: inline-block;
+    height: 100%;
+    line-height: 2.5;
+}
+
+.content .source:hover {
+    text-decoration: underline;
+}
+
 .content table {
     border-spacing: 0 5px;
     border-collapse: separate;
+    font-size: 1.3rem;
 }
+
 .content td { vertical-align: top; }
 .content td:first-child { padding-right: 20px; }
 .content td p:first-child { margin-top: 0; }
-.content td h1, .content td h2 { margin-left: 0; font-size: 1.1em; }
+.content td h1, .content td h2 { margin-left: 0; font-size: 1.1rem; }
 
 .content .item-list {
     list-style-type: none;
@@ -185,37 +248,38 @@ nav.sub {
     column-count: 5;
     column-gap: 2.5em;
 }
+
 .content .multi-column li { width: 100%; display: inline-block; }
 
-.content .method { font-size: 1em; }
 .content .methods { margin-left: 20px; }
 .content .methods .docblock { margin-left: 20px; }
 
 nav {
-    border-bottom: 1px solid #e0e0e0;
-    padding-bottom: 10px;
     margin-bottom: 10px;
 }
+
 nav.main {
     padding: 20px 0;
     text-align: center;
 }
+
 nav.main .current {
     border-top: 1px solid #000;
     border-bottom: 1px solid #000;
 }
+
 nav.main .separator {
     border: 1px solid #000;
     display: inline-block;
     height: 23px;
     margin: 0 20px;
 }
+
 nav.sum { text-align: right; }
 nav.sub form { display: inline; }
 
 nav, .content {
     margin-left: 220px;
-    margin-right: 20px;
 }
 
 a {
@@ -224,28 +288,88 @@ a {
     background: transparent;
 }
 
-.content a, .block a.current { font-weight: bold; }
+ul {
+    font-size: 1.5rem;
+    line-height: 1.9;
+}
 
-.content a.trait, .block a.current.trait { color: #ed9603; }
-.content a.mod, .block a.current.mod { color: #4d76ae; }
-.content a.enum, .block a.current.enum { color: #5e9766; }
-.content a.struct, .block a.current.struct { color: #e53700; }
-.content a.fn, .block a.current.fn { color: #8c6067; }
-.content .fnname { color: #8c6067; }
+.content a.trait, .block a.current.trait { color: #FFA000; font-size: 1.5rem; }
+.content a.mod, .block a.current.mod { color: #377BD8; font-size: 1.5rem; }
+.content a.enum, .block a.current.enum { color: #5ED66E; font-size: 1.5rem; }
+.content a.ffi, .block a.ffi { font-size: 1.5rem; }
+.content a.typedef, .block a.typedef { font-size: 1.5rem; }
+.content a.struct, .block a.current.struct { color: #e53700; font-size: 1.5rem; }
+.content a.fn, .block a.current.fn { color: #CE3D54; font-size: 1.5rem; }
+.content .fnname { color: #CE3D54; font-size: 1.5rem; }
+
+h1.fqn a.mod, h1.fqn a.trait, h1.fqn a.enum, 
+h1.fqn a.struct, h1.fqn a.fn, h1.fqn a.ffi, h1.fqn a.typedef {
+    font-size: 2.3rem;
+}
 
 .search-container {
-    padding-right: 10px;
-    overflow: hidden;
+    width: 80%;
+    margin: 0 auto;
+    text-align: center;
+    border-bottom: 1px dashed #eee;
+    padding-bottom: 14px;
+    font-size: 1.6rem;
 }
+
 .search-input {
+    width: 100%;
+    outline: none;
+    /* Override Normalize.css: we have margins and do
+     not want to overflow - the `moz` attribute is necessary
+     until Firefox 29, too early to drop at this point */
+    -moz-box-sizing: border-box !important;
+    box-sizing: border-box !important;
+    display: inline-block;
     border: 2px solid #e9e9e9;
     border-radius: 2px;
-    width: 100%;
+    width: 80%;
+    box-sizing: content-box;
+    color: #555;
+    margin-top: 5px;
+    padding: 11px 16px;
+    font-weight: 300;
+    box-shadow: 0 0 0 1px #e0e0e0, 0 0 0 2px transparent;
+
+    transition: background-color 50ms linear;
+    transition: border 500ms ease-out;
+    transition: box-shadow 500ms ease-out;
+    transition: width 300ms ease-out;
 }
-.do-search {
-    float: right;
-    width: 62px;
+
+.search-input:focus {
+    border-color: #66afe9;
+    outline: 0;
+    box-shadow: 0 0 0 1px #66afe9, 0 0 0 1px #66afe9;
 }
+
+.search {
+    display: inline-block;
+    width: 100px;
+    cursor: pointer;
+    font-family: Helvetica Neue;
+    font-weight: 200;
+    color: #fff;
+    padding: 10px 10px;
+    border: 2px solid #e0e0e0;
+    margin-top: 4px;
+    text-align: center;
+    background: silver;
+    border-radius: 4px;
+}
+
+.search:hover {
+    background: #4484CA;
+}
+
+.search-results {
+    font-size: 1.4rem;
+}
+
 .search-results .desc {
     white-space: nowrap;
     text-overflow: ellipsis;
@@ -278,6 +402,7 @@ a {
     display: block;
     margin-top: -1px;
 }
+
 #help dd { margin: 5px 33px; }
 #help .infos { padding-left: 0; }
 #help h1 { margin-top: 0; }
@@ -288,19 +413,20 @@ a {
 }
 
 .stability {
-    border-left: 5px solid #000;
     border-radius: 3px;
-    padding: 0 3px;
-    float: right;
-    background: #fff;
-    text-transform: lowercase;
+    padding: 8px 3px 8px 10px;
+    display: block;
+    margin-bottom: 10px;
+    font-size: 1.5rem;
+    color: #fff;
 }
-.stability.Deprecated { border-color: #D60027; color: #880017; }
-.stability.Experimental { border-color: #EC5315; color: #a53c0e; }
-.stability.Unstable { border-color: #FFD700; color: #b39800; }
-.stability.Stable { border-color: #AEC516; color: #7c8b10; }
-.stability.Frozen { border-color: #009431; color: #007726; }
-.stability.Locked { border-color: #0084B6; color: #00668c; }
+
+.stability.Deprecated { background: #D60027; }
+.stability.Experimental { background: #EC5315; }
+.stability.Unstable { background: #FFD700; }
+.stability.Stable { background: #AEC516; }
+.stability.Frozen { background: #009431; }
+.stability.Locked { background: #0084B6; }
 
 :target { background: #FDFFD3; }
 
@@ -324,4 +450,27 @@ h4.section-link:hover a:after,
 h5.section-link:hover a:after,
 h6.section-link:hover a:after {
   content: ' § ';
+}
+
+/** Media Queries **/
+@media (max-width: 810px) {
+    .sidebar {
+        display: none;
+    }
+
+    nav, .content {
+        margin: 0;
+    }
+}
+
+@media (max-width: 1140px) {
+    .search-input {
+        width: 60%;
+    }
+}
+
+@media (max-width: 720px) {
+    .search-container {
+        width: 100%;
+    }
 }

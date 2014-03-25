@@ -33,9 +33,12 @@ pub fn render<T: fmt::Show, S: fmt::Show>(
 <html lang=\"en\">
 <head>
     <meta charset=\"utf-8\" />
+    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />
+    <meta name=\"description\" content=\"The {krate} library documentation.\">
+
     <title>{title}</title>
 
-    <link href='http://fonts.googleapis.com/css?family=Oswald:700|Inconsolata:400,700'
+    <link href='http://fonts.googleapis.com/css?family=Inconsolata:400,700'
           rel='stylesheet' type='text/css'>
     <link rel=\"stylesheet\" type=\"text/css\" href=\"{root_path}main.css\">
 
@@ -51,7 +54,7 @@ pub fn render<T: fmt::Show, S: fmt::Show>(
 
     <section class=\"sidebar\">
         {logo, select, none{} other{
-            <a href='{root_path}{krate}/index.html'><img src='#' alt=''/></a>
+            <a href='{root_path}{krate}/index.html'><img src='#' alt='' width='100' /></a>
         }}
 
         {sidebar}
@@ -59,12 +62,12 @@ pub fn render<T: fmt::Show, S: fmt::Show>(
 
     <nav class=\"sub\">
         <form class=\"search-form js-only\">
-            <button class=\"do-search\">Search</button>
             <div class=\"search-container\">
                 <input class=\"search-input\" name=\"search\"
                        autocomplete=\"off\"
                        placeholder=\"Search documentation...\"
                        type=\"search\" />
+                <button class=\"search\">Search</button>
             </div>
         </form>
     </nav>
