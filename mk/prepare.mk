@@ -28,23 +28,6 @@ else
 PREPARE_STAGE=2
 endif
 
-prepare: PREPARE_DIR_CMD=$(DEFAULT_PREPARE_DIR_CMD)
-prepare: PREPARE_BIN_CMD=$(DEFAULT_PREPARE_BIN_CMD)
-prepare: PREPARE_LIB_CMD=$(DEFAULT_PREPARE_LIB_CMD)
-prepare: PREPARE_MAN_CMD=$(DEFAULT_PREPARE_MAN_CMD)
-prepare: prepare-base
-
-prepare-base: PREPARE_SOURCE_DIR=$(PREPARE_HOST)/stage$(PREPARE_STAGE)
-prepare-base: PREPARE_SOURCE_BIN_DIR=$(PREPARE_SOURCE_DIR)/bin
-prepare-base: PREPARE_SOURCE_LIB_DIR=$(PREPARE_SOURCE_DIR)/$(CFG_LIBDIR_RELATIVE)
-prepare-base: PREPARE_SOURCE_MAN_DIR=$(S)/man
-prepare-base: PREPARE_DEST_BIN_DIR=$(PREPARE_DEST_DIR)/bin
-prepare-base: PREPARE_DEST_LIB_DIR=$(PREPARE_DEST_DIR)/$(CFG_LIBDIR_RELATIVE)
-prepare-base: PREPARE_DEST_MAN_DIR=$(PREPARE_DEST_DIR)/man/man1
-prepare-base: prepare-host prepare-targets
-
-prepare-everything: prepare-host prepare-targets
-
 DEFAULT_PREPARE_DIR_CMD = umask 022 && mkdir -p
 DEFAULT_PREPARE_BIN_CMD = install -m755
 DEFAULT_PREPARE_LIB_CMD = install -m644
@@ -93,29 +76,17 @@ define PREPARE_MAN
 	$(Q)$(PREPARE_MAN_CMD) $(PREPARE_SOURCE_MAN_DIR)/$(1) $(PREPARE_DEST_MAN_DIR)/$(1)
 endef
 
-
 PREPARE_TOOLS = $(filter-out compiletest, $(TOOLS))
 
-prepare-host: prepare-host-tools
-
-prepare-host-tools: \
-        $(foreach tool, $(PREPARE_TOOLS),\
-          $(foreach host,$(CFG_HOST),\
-            prepare-host-tool-$(tool)-$(PREPARE_STAGE)-$(host)))
-
-prepare-host-dirs: prepare-maybe-clean
-	$(call PREPARE_DIR,$(PREPARE_DEST_BIN_DIR))
-	$(call PREPARE_DIR,$(PREPARE_DEST_LIB_DIR))
-	$(call PREPARE_DIR,$(PREPARE_DEST_MAN_DIR))
 
 # $(1) is tool
 # $(2) is stage
 # $(3) is host
+# $(4) tag
 define DEF_PREPARE_HOST_TOOL
-prepare-host-tool-$(1)-$(2)-$(3): prepare-maybe-clean \
-                                  $$(foreach dep,$$(TOOL_DEPS_$(1)),prepare-host-lib-$$(dep)-$(2)-$(3)) \
-                                  $$(HBIN$(2)_H_$(3))/$(1)$$(X_$(3)) \
-                                  prepare-host-dirs
+prepare-host-tool-$(1)-$(2)-$(3)-$(4): prepare-maybe-clean-$(4) \
+                                  $$(foreach dep,$$(TOOL_DEPS_$(1)),prepare-host-lib-$$(dep)-$(2)-$(3)-$(4)) \
+                                  prepare-host-dirs-$(4)
 	$$(if $$(findstring $(2), $$(PREPARE_STAGE)),\
       $$(if $$(findstring $(3), $$(PREPARE_HOST)),\
         $$(call PREPARE_BIN,$(1)$$(X_$$(PREPARE_HOST))),),)
@@ -124,45 +95,35 @@ prepare-host-tool-$(1)-$(2)-$(3): prepare-maybe-clean \
         $$(call PREPARE_MAN,$(1).1),),)
 endef
 
-$(foreach tool,$(PREPARE_TOOLS),\
-  $(foreach host,$(CFG_HOST),\
-      $(eval $(call DEF_PREPARE_HOST_TOOL,$(tool),$(PREPARE_STAGE),$(host)))))
-
 # For host libraries only install dylibs, not rlibs since the host libs are only
 # used to support rustc and rustc uses dynamic linking
 #
 # $(1) is tool
 # $(2) is stage
 # $(3) is host
+# $(4) tag
 define DEF_PREPARE_HOST_LIB
-prepare-host-lib-$(1)-$(2)-$(3): PREPARE_WORKING_SOURCE_LIB_DIR=$$(PREPARE_SOURCE_LIB_DIR)
-prepare-host-lib-$(1)-$(2)-$(3): PREPARE_WORKING_DEST_LIB_DIR=$$(PREPARE_DEST_LIB_DIR)
-prepare-host-lib-$(1)-$(2)-$(3): prepare-maybe-clean \
-                                 $$(foreach dep,$$(RUST_DEPS_$(1)),prepare-host-lib-$$(dep)-$(2)-$(3))\
+prepare-host-lib-$(1)-$(2)-$(3)-$(4): PREPARE_WORKING_SOURCE_LIB_DIR=$$(PREPARE_SOURCE_LIB_DIR)
+prepare-host-lib-$(1)-$(2)-$(3)-$(4): PREPARE_WORKING_DEST_LIB_DIR=$$(PREPARE_DEST_LIB_DIR)
+prepare-host-lib-$(1)-$(2)-$(3)-$(4): prepare-maybe-clean-$(4) \
+                                 $$(foreach dep,$$(RUST_DEPS_$(1)),prepare-host-lib-$$(dep)-$(2)-$(3)-$(4))\
                                  $$(HLIB$(2)_H_$(3))/stamp.$(1) \
-                                 prepare-host-dirs
+                                 prepare-host-dirs-$(4)
 	$$(if $$(findstring $(2), $$(PREPARE_STAGE)),\
       $$(if $$(findstring $(3), $$(PREPARE_HOST)),\
         $$(call PREPARE_LIB,$$(call CFG_LIB_GLOB_$$(PREPARE_HOST),$(1))),),)
 endef
 
-$(foreach lib,$(CRATES),\
-  $(foreach host,$(CFG_HOST),\
-    $(eval $(call DEF_PREPARE_HOST_LIB,$(lib),$(PREPARE_STAGE),$(host)))))
-
-prepare-targets:\
-        $(foreach host,$(CFG_HOST),\
-           $(foreach target,$(CFG_TARGET),\
-             prepare-target-$(target)-host-$(host)-$(PREPARE_STAGE)))
 
 # $(1) is stage
 # $(2) is target
 # $(3) is host
+# $(4) tag
 define DEF_PREPARE_TARGET_N
 # Rebind PREPARE_*_LIB_DIR to point to rustlib, then install the libs for the targets
-prepare-target-$(2)-host-$(3)-$(1): PREPARE_WORKING_SOURCE_LIB_DIR=$$(PREPARE_SOURCE_LIB_DIR)/$$(CFG_RUSTLIBDIR)/$(2)/lib
-prepare-target-$(2)-host-$(3)-$(1): PREPARE_WORKING_DEST_LIB_DIR=$$(PREPARE_DEST_LIB_DIR)/$$(CFG_RUSTLIBDIR)/$(2)/lib
-prepare-target-$(2)-host-$(3)-$(1): prepare-maybe-clean \
+prepare-target-$(2)-host-$(3)-$(1)-$(4): PREPARE_WORKING_SOURCE_LIB_DIR=$$(PREPARE_SOURCE_LIB_DIR)/$$(CFG_RUSTLIBDIR)/$(2)/lib
+prepare-target-$(2)-host-$(3)-$(1)-$(4): PREPARE_WORKING_DEST_LIB_DIR=$$(PREPARE_DEST_LIB_DIR)/$$(CFG_RUSTLIBDIR)/$(2)/lib
+prepare-target-$(2)-host-$(3)-$(1)-$(4): prepare-maybe-clean-$(4) \
         $$(foreach crate,$$(TARGET_CRATES), \
           $$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$$(crate)) \
         $$(if $$(findstring $(2),$$(CFG_HOST)), \
@@ -186,12 +147,53 @@ prepare-target-$(2)-host-$(3)-$(1): prepare-maybe-clean \
           $$(call PREPARE_LIB,libcompiler-rt.a),),),)
 endef
 
-$(foreach host,$(CFG_HOST),\
-  $(foreach target,$(CFG_TARGET), \
-    $(eval $(call DEF_PREPARE_TARGET_N,$(PREPARE_STAGE),$(target),$(host)))))
+define DEF_PREPARE
 
-prepare-maybe-clean:
-	$(if $(findstring true,$(PREPARE_CLEAN)),\
-      @$(call E, cleaning destination $@),)
-	$(if $(findstring true,$(PREPARE_CLEAN)),\
-      $(Q)rm -rf $(PREPARE_DEST_DIR),)
+prepare-base-$(1): PREPARE_SOURCE_DIR=$$(PREPARE_HOST)/stage$$(PREPARE_STAGE)
+prepare-base-$(1): PREPARE_SOURCE_BIN_DIR=$$(PREPARE_SOURCE_DIR)/bin
+prepare-base-$(1): PREPARE_SOURCE_LIB_DIR=$$(PREPARE_SOURCE_DIR)/$$(CFG_LIBDIR_RELATIVE)
+prepare-base-$(1): PREPARE_SOURCE_MAN_DIR=$$(S)/man
+prepare-base-$(1): PREPARE_DEST_BIN_DIR=$$(PREPARE_DEST_DIR)/bin
+prepare-base-$(1): PREPARE_DEST_LIB_DIR=$$(PREPARE_DEST_DIR)/$$(CFG_LIBDIR_RELATIVE)
+prepare-base-$(1): PREPARE_DEST_MAN_DIR=$$(PREPARE_DEST_DIR)/share/man/man1
+prepare-base-$(1): prepare-host-$(1) prepare-targets-$(1)
+
+prepare-host-$(1): prepare-host-tools-$(1)
+
+prepare-host-tools-$(1): \
+        $$(foreach tool, $$(PREPARE_TOOLS),\
+          $$(foreach host,$$(CFG_HOST),\
+            prepare-host-tool-$$(tool)-$$(PREPARE_STAGE)-$$(host)-$(1)))
+
+prepare-host-dirs-$(1): prepare-maybe-clean-$(1)
+	$$(call PREPARE_DIR,$$(PREPARE_DEST_BIN_DIR))
+	$$(call PREPARE_DIR,$$(PREPARE_DEST_LIB_DIR))
+	$$(call PREPARE_DIR,$$(PREPARE_DEST_MAN_DIR))
+
+$$(foreach tool,$$(PREPARE_TOOLS),\
+  $$(foreach host,$$(CFG_HOST),\
+      $$(eval $$(call DEF_PREPARE_HOST_TOOL,$$(tool),$$(PREPARE_STAGE),$$(host),$(1)))))
+
+$$(foreach lib,$$(CRATES),\
+  $$(foreach host,$$(CFG_HOST),\
+    $$(eval $$(call DEF_PREPARE_HOST_LIB,$$(lib),$$(PREPARE_STAGE),$$(host),$(1)))))
+
+prepare-targets-$(1):\
+        $$(foreach host,$$(CFG_HOST),\
+           $$(foreach target,$$(CFG_TARGET),\
+             prepare-target-$$(target)-host-$$(host)-$$(PREPARE_STAGE)-$(1)))
+
+$$(foreach host,$$(CFG_HOST),\
+  $$(foreach target,$$(CFG_TARGET), \
+    $$(eval $$(call DEF_PREPARE_TARGET_N,$$(PREPARE_STAGE),$$(target),$$(host),$(1)))))
+
+prepare-maybe-clean-$(1):
+	$$(if $$(findstring true,$$(PREPARE_CLEAN)),\
+      @$$(call E, cleaning destination $$(PREPARE_DEST_DIR)),)
+	$$(if $$(findstring true,$$(PREPARE_CLEAN)),\
+      $$(Q)rm -rf $$(PREPARE_DEST_DIR),)
+
+
+endef
+
+

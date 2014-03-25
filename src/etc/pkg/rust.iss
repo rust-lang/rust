@@ -1,5 +1,6 @@
 #define CFG_VERSION_WIN GetEnv("CFG_VERSION_WIN")
 #define CFG_RELEASE GetEnv("CFG_RELEASE")
+#define CFG_PACKAGE_NAME GetEnv("CFG_PACKAGE_NAME")
 
 [Setup]
 
@@ -17,9 +18,9 @@ DisableProgramGroupPage=true
 DisableReadyPage=true
 DisableStartupPrompt=true
 
-OutputDir=.\
+OutputDir=.\dist\
 SourceDir=.\
-OutputBaseFilename=rust-{#CFG_RELEASE}-install
+OutputBaseFilename={#CFG_PACKAGE_NAME}-install
 DefaultDirName={pf32}\Rust
 
 Compression=lzma2/ultra
