@@ -161,29 +161,6 @@ fn gather_loans_in_local(this: &mut GatherLoanCtxt,
     visit::walk_local(this, local, ());
 }
 
-pub fn gather_loans_in_static_initializer(bccx: &mut BorrowckCtxt, expr: &ast::Expr) {
-
-    debug!("gather_loans_in_item(expr={})", expr.repr(bccx.tcx));
-
-    let mut glcx = GatherLoanCtxt {
-        bccx: bccx,
-        id_range: IdRange::max(),
-        all_loans: Vec::new(),
-        item_ub: expr.id,
-        repeating_ids: vec!(expr.id),
-        move_data: MoveData::new()
-    };
-
-    // FIXME #13005 This should also walk the
-    // expression.
-    match expr.node {
-        ast::ExprAddrOf(..) => {
-            glcx.visit_expr(expr, ());
-        }
-        _ => {}
-    }
-}
-
 fn gather_loans_in_expr(this: &mut GatherLoanCtxt,
                         ex: &ast::Expr) {
     let bccx = this.bccx;
@@ -322,6 +299,58 @@ fn with_assignee_loan_path(bccx: &BorrowckCtxt, expr: &ast::Expr, op: |@LoanPath
             // This can occur with e.g. `*foo() = 5`.  In such
             // cases, there is no need to check for conflicts
             // with moves etc, just ignore.
+        }
+    }
+}
+
+
+/// Implements the A-* rules in doc.rs.
+fn check_aliasability(bccx: &BorrowckCtxt,
+                      borrow_span: Span,
+                      loan_cause: LoanCause,
+                      cmt: mc::cmt,
+                      req_kind: ty::BorrowKind)
+                      -> Result<(),()> {
+
+    match (cmt.freely_aliasable(bccx.tcx), req_kind) {
+        (None, _) => {
+            /* Uniquely accessible path -- OK for `&` and `&mut` */
+            Ok(())
+        }
+        (Some(mc::AliasableStatic(safety)), ty::ImmBorrow) => {
+            // Borrow of an immutable static item:
+            match safety {
+                mc::InteriorUnsafe => {
+                    // If the static item contains an Unsafe<T>, it has interior mutability.
+                    // In such cases, we cannot permit it to be borrowed, because the
+                    // static item resides in immutable memory and mutating it would
+                    // cause segfaults.
+                    bccx.tcx.sess.span_err(borrow_span,
+                                           format!("borrow of immutable static items with \
+                                                    unsafe interior is not allowed"));
+                    Err(())
+                }
+                mc::InteriorSafe => {
+                    // Immutable static can be borrowed, no problem.
+                    Ok(())
+                }
+            }
+        }
+        (Some(mc::AliasableStaticMut(..)), _) => {
+            // Even touching a static mut is considered unsafe. We assume the
+            // user knows what they're doing in these cases.
+            Ok(())
+        }
+        (Some(alias_cause), ty::UniqueImmBorrow) |
+        (Some(alias_cause), ty::MutBorrow) => {
+            bccx.report_aliasability_violation(
+                        borrow_span,
+                        BorrowViolation(loan_cause),
+                        alias_cause);
+            Err(())
+        }
+        (_, _) => {
+            Ok(())
         }
     }
 }
@@ -676,57 +705,6 @@ impl<'a> GatherLoanCtxt<'a> {
                 }
             }
         }
-
-        fn check_aliasability(bccx: &BorrowckCtxt,
-                              borrow_span: Span,
-                              loan_cause: LoanCause,
-                              cmt: mc::cmt,
-                              req_kind: ty::BorrowKind)
-                              -> Result<(),()> {
-            //! Implements the A-* rules in doc.rs.
-
-            match (cmt.freely_aliasable(bccx.tcx), req_kind) {
-                (None, _) => {
-                    /* Uniquely accessible path -- OK for `&` and `&mut` */
-                    Ok(())
-                }
-                (Some(mc::AliasableStatic(safety)), ty::ImmBorrow) => {
-                    // Borrow of an immutable static item:
-                    match safety {
-                        mc::InteriorUnsafe => {
-                            // If the static item contains an Unsafe<T>, it has interior mutability.
-                            // In such cases, we cannot permit it to be borrowed, because the
-                            // static item resides in immutable memory and mutating it would
-                            // cause segfaults.
-                            bccx.tcx.sess.span_err(borrow_span,
-                                                   format!("borrow of immutable static items with \
-                                                            unsafe interior is not allowed"));
-                            Err(())
-                        }
-                        mc::InteriorSafe => {
-                            // Immutable static can be borrowed, no problem.
-                            Ok(())
-                        }
-                    }
-                }
-                (Some(mc::AliasableStaticMut(..)), _) => {
-                    // Even touching a static mut is considered unsafe. We assume the
-                    // user knows what they're doing in these cases.
-                    Ok(())
-                }
-                (Some(alias_cause), ty::UniqueImmBorrow) |
-                (Some(alias_cause), ty::MutBorrow) => {
-                    bccx.report_aliasability_violation(
-                                borrow_span,
-                                BorrowViolation(loan_cause),
-                                alias_cause);
-                    Err(())
-                }
-                (_, _) => {
-                    Ok(())
-                }
-            }
-        }
     }
 
     fn restriction_set(&self, req_kind: ty::BorrowKind) -> RestrictionSet {
@@ -947,4 +925,45 @@ impl<'a> GatherLoanCtxt<'a> {
     pub fn pat_is_binding(&self, pat: &ast::Pat) -> bool {
         pat_util::pat_is_binding(self.bccx.tcx.def_map, pat)
     }
+}
+
+/// Context used while gathering loans on static initializers
+///
+/// This visitor walks static initializer's expressions and makes
+/// sure the loans being taken are sound.
+struct StaticInitializerCtxt<'a> {
+    bccx: &'a BorrowckCtxt<'a>,
+    id_range: IdRange,
+    item_ub: ast::NodeId,
+}
+
+impl<'a> visit::Visitor<()> for StaticInitializerCtxt<'a> {
+    fn visit_expr(&mut self, ex: &Expr, _: ()) {
+        match ex.node {
+            ast::ExprAddrOf(mutbl, base) => {
+                let base_cmt = self.bccx.cat_expr(base);
+                let borrow_kind = ty::BorrowKind::from_mutbl(mutbl);
+                // Check that we don't allow borrows of unsafe static items.
+                if check_aliasability(self.bccx, ex.span, AddrOf, base_cmt, borrow_kind).is_err() {
+                    return; // reported an error, no sense in reporting more.
+                }
+            }
+            _ => {}
+        }
+
+        visit::walk_expr(self, ex, ());
+    }
+}
+
+pub fn gather_loans_in_static_initializer(bccx: &mut BorrowckCtxt, expr: &ast::Expr) {
+
+    debug!("gather_loans_in_static_initializer(expr={})", expr.repr(bccx.tcx));
+
+    let mut sicx = StaticInitializerCtxt {
+        bccx: bccx,
+        id_range: IdRange::max(),
+        item_ub: expr.id,
+    };
+
+    sicx.visit_expr(expr, ());
 }
