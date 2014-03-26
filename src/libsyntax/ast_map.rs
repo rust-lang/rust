@@ -68,7 +68,7 @@ impl<'a> Iterator<PathElem> for LinkedPath<'a> {
 #[deriving(Clone)]
 pub struct Values<'a, T>(slice::Items<'a, T>);
 
-impl<'a, T: Pod> Iterator<T> for Values<'a, T> {
+impl<'a, T: Copy> Iterator<T> for Values<'a, T> {
     fn next(&mut self) -> Option<T> {
         let &Values(ref mut items) = self;
         items.next().map(|&x| x)

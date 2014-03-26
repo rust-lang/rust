@@ -15,4 +15,4 @@
 
 pub trait RequiresShare : Share { }
 pub trait RequiresRequiresShareAndSend : RequiresShare + Send { }
-pub trait RequiresPod : Pod { }
+pub trait RequiresCopy : Copy { }
