@@ -8,8 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// FIXME
-#[allow(missing_doc)];
+//! Raw layer two to four network connections
+//!
+//! This module enables the creation of raw network sockets to send and receive
+//! packets at OSI layers two, three and four.
+
+#[deny(missing_doc)];
 
 use container::Container;
 use fmt;
@@ -25,55 +29,96 @@ use vec::{Vector, ImmutableVector};
 #[cfg(test)]
 use vec::MutableVector;
 
+/// A structure which represents a raw socket
+///
+/// # Example
+///
+/// Simple packet logger.
+///
+/// ```rust
+///  use std::io::net::raw::{DataLinkProtocol, EthernetProtocol, RawSocket};
+///
+///  let proto = DataLinkProtocol(EthernetProtocol);
+///  let mut socket = RawSocket::new(proto).unwrap();
+///  loop {
+///      let mut buf = [0u8, ..4096];
+///      let (len, addr) = socket.recvfrom(buf.as_mut_slice()).unwrap();
+///      handle_packet(addr, buf.slice_to(len));
+///  }
+/// ```
 pub struct RawSocket {
     priv obj: ~RtioRawSocket
 }
 
 impl RawSocket {
+    /// Create a new RawSocket using the specified protocol
+    ///
+    /// If no error is encountered, then Ok(socket) is returned.
     pub fn new(protocol: Protocol) -> IoResult<RawSocket> {
         LocalIo::maybe_raise(|io| {
             io.raw_socket_new(protocol).map(|s| RawSocket { obj: s })
         })
     }
 
+    /// Receive data from a socket
+    ///
+    /// Returns Ok(length_of_received_data, network_address) on success.
     pub fn recvfrom(&mut self, buf: &mut [u8]) -> IoResult<(uint, Option<~NetworkAddress>)> {
         self.obj.recvfrom(buf)
     }
 
+    /// Send data on the socket
+    ///
+    /// Returns length of sent data on success
     pub fn sendto(&mut self, buf: &[u8], dst: ~NetworkAddress) -> IoResult<uint> {
         self.obj.sendto(buf, dst)
     }
 }
 
 
+/// Represents a network interface and its associated addresses
 #[deriving(Clone, Eq, Show)]
 pub struct NetworkInterface {
+    /// The name of the interface
     name: ~str,
+    /// The interface index (operating system specific)
     index: u32,
+    /// A MAC address for the interface
     mac: Option<MacAddr>,
+    /// An IPv4 address for the interface
     ipv4: Option<IpAddr>,
+    /// An IPv6 address for the interface
     ipv6: Option<IpAddr>,
+    /// Operating system specific flags for the interface
     flags: u32,
 }
 
 impl NetworkInterface {
+    /// Retreive the MAC address associated with the interface
     pub fn mac_address(&self) -> MacAddr {
         self.mac.unwrap()
     }
 
+    /// Is the interface a loopback interface?
     pub fn is_loopback(&self) -> bool {
         self.flags & (libc::IFF_LOOPBACK as u32) != 0
     }
 }
 
+/// Represents a network address. This is either an IP address or a network
+/// interface
 #[deriving(Clone, Eq, Show)]
 pub enum NetworkAddress {
+    /// An IP address
     IpAddress(IpAddr),
+    /// A network interface
     NetworkAddress(~NetworkInterface)
 }
 
+/// A MAC address
 #[deriving(Eq, Clone)]
 pub enum MacAddr {
+    /// A MAC address
     MacAddr(u8, u8, u8, u8, u8, u8)
 }
 
@@ -87,16 +132,21 @@ impl fmt::Show for MacAddr {
     }
 }
 
+/// Represents a generic network packet
 pub trait Packet {
+    /// Retreive the underlying buffer for the packet
     fn packet<'p>(&'p self) -> &'p [u8];
+    /// Retreive the offset into the buffer that the packet starts at
     fn offset(&self) -> uint;
 }
 
+/// A structure which represents an Ethernet header
 pub struct EthernetHeader<'p> {
     priv packet: &'p [u8],
     priv offset: uint
 }
 
+/// A structure representing an Ethernet header which can be mutated
 pub struct MutableEthernetHeader<'p> {
     priv packet: &'p mut [u8],
     priv offset: uint
@@ -116,7 +166,10 @@ impl<'p> Packet for MutableEthernetHeader<'p> {
     fn offset(&self) -> uint { self.offset }
 }
 
+/// A trait implemented by anything which provides the ability to retrieve
+/// fields of an Ethernet packet
 pub trait EthernetPacket : Packet {
+    /// Get the source address for an Ethernet packet
     fn get_source(&self) -> MacAddr {
         MacAddr(
             self.packet()[self.offset() + 6],
@@ -128,6 +181,7 @@ pub trait EthernetPacket : Packet {
         )
     }
 
+    /// Get the destination address for an Ethernet packet
     fn get_destination(&self) -> MacAddr {
         MacAddr(
             self.packet()[self.offset() + 0],
@@ -139,6 +193,7 @@ pub trait EthernetPacket : Packet {
         )
     }
 
+    /// Get the Ethertype field of an Ethernet packet
     fn get_ethertype(&self) -> u16 {
         (self.packet()[self.offset() + 12] as u16 << 8) | (self.packet()[self.offset() + 13] as u16)
     }
@@ -148,16 +203,21 @@ impl<'p> EthernetPacket for EthernetHeader<'p> {}
 impl<'p> EthernetPacket for MutableEthernetHeader<'p> {}
 
 impl<'p> EthernetHeader<'p> {
+    /// Construct a new Ethernet header backed by the given buffer with the
+    /// provided offset
     pub fn new(packet: &'p [u8], offset: uint) -> EthernetHeader<'p> {
         EthernetHeader { packet: packet, offset: offset }
     }
 }
 
 impl<'p> MutableEthernetHeader<'p> {
+    /// Construct a new mutable Ethernet header backed by the given buffer with
+    /// the provided offset
     pub fn new(packet: &'p mut [u8], offset: uint) -> MutableEthernetHeader<'p> {
         MutableEthernetHeader { packet: packet, offset: offset }
     }
 
+    /// Set the source address for an Ethernet packet
     pub fn set_source(&mut self, mac: MacAddr) {
         match mac {
             MacAddr(a, b, c, d, e, f) => {
@@ -171,6 +231,7 @@ impl<'p> MutableEthernetHeader<'p> {
         }
     }
 
+    /// Set the destination address for an Ethernet packet
     pub fn set_destination(&mut self, mac: MacAddr) {
         match mac {
             MacAddr(a, b, c, d, e, f) => {
@@ -184,6 +245,7 @@ impl<'p> MutableEthernetHeader<'p> {
         }
     }
 
+    /// Set the Ethertype for an Ethernet packet
     pub fn set_ethertype(&mut self, ethertype: u16) {
         self.packet[self.offset + 12] = (ethertype >> 8) as u8;
         self.packet[self.offset + 13] = (ethertype & 0xFF) as u8;
@@ -214,11 +276,13 @@ fn ethernet_header_test() {
     assert_eq!(refPacket.as_slice(), packet.as_slice());
 }
 
+/// Structure representing an IPv4 header
 pub struct Ipv4Header<'p> {
     priv packet: &'p [u8],
     priv offset: uint
 }
 
+/// Structure representing a mutable IPv4 header
 pub struct MutableIpv4Header<'p> {
     priv packet: &'p mut [u8],
     priv offset: uint
@@ -238,59 +302,73 @@ impl<'p> Packet for MutableIpv4Header<'p> {
     fn offset(&self) -> uint { self.offset }
 }
 
+/// Trait implemented by anything which provides an interface to read IPv4
+/// packets
 pub trait Ipv4Packet : Packet {
+    /// Get the version of the IPv4 packet. Should return 4.
     fn get_version(&self) -> u8 {
         self.packet()[self.offset()] >> 4
     }
 
+    /// Get the header length field of the packet
     fn get_header_length(&self) -> u8 {
         self.packet()[self.offset()] & 0xF
     }
 
+    /// Get the DSCP field of the packet
     fn get_dscp(&self) -> u8 {
         (self.packet()[self.offset() + 1] & 0xFC) >> 2
     }
 
+    /// Get the ECN field of the packet
     fn get_ecn(&self) -> u8 {
         self.packet()[self.offset() + 1] & 3
     }
 
+    /// Get the total length of the packet
     fn get_total_length(&self) -> u16 {
         let b1 = self.packet()[self.offset() + 2] as u16 << 8;
         let b2 = self.packet()[self.offset() + 3] as u16;
         b1 | b2
     }
 
+    /// Get the identification field for the packet
     fn get_identification(&self) -> u16 {
         let b1 = self.packet()[self.offset() + 4] as u16 << 8;
         let b2 = self.packet()[self.offset() + 5] as u16;
         b1 | b2
     }
 
+    /// Get the flags for the packet
     fn get_flags(&self) -> u8 {
         self.packet()[self.offset() + 6] >> 5
     }
 
+    /// Get the fragment offset for the packet
     fn get_fragment_offset(&self) -> u16 {
         let b1 = (self.packet()[self.offset() + 6] & 0x1F) as u16 << 8;
         let b2 = self.packet()[self.offset() + 7] as u16;
         b1 | b2
     }
 
+    /// Get the TTL for the packet
     fn get_ttl(&self) -> u8 {
         self.packet()[self.offset() + 8]
     }
 
+    /// Get the next level protocol for the packet
     fn get_next_level_protocol(&self) -> IpNextHeaderProtocol {
         self.packet()[self.offset() + 9]
     }
 
+    /// Get the checksum field for the packet
     fn get_checksum(&self) -> u16 {
         let cs1 = self.packet()[self.offset() + 10] as u16 << 8;
         let cs2 = self.packet()[self.offset() + 11] as u16;
         cs1 | cs2
     }
 
+    /// Get the source IP address for the packet
     fn get_source(&self) -> IpAddr {
         Ipv4Addr(self.packet()[self.offset() + 12],
                  self.packet()[self.offset() + 13],
@@ -298,6 +376,7 @@ pub trait Ipv4Packet : Packet {
                  self.packet()[self.offset() + 15])
     }
 
+    /// Get the destination field for the packet
     fn get_destination(&self) -> IpAddr {
         Ipv4Addr(self.packet()[self.offset() + 16],
                  self.packet()[self.offset() + 17],
@@ -305,6 +384,7 @@ pub trait Ipv4Packet : Packet {
                  self.packet()[self.offset() + 19])
     }
 
+    /// Calculate the checksum for the packet
     fn calculate_checksum(&mut self) -> u16 {
         let len = self.offset() + self.get_header_length() as uint * 4;
         let mut sum = 0u32;
@@ -325,50 +405,62 @@ impl<'p> Ipv4Packet for Ipv4Header<'p> {}
 impl<'p> Ipv4Packet for MutableIpv4Header<'p> {}
 
 impl<'p> Ipv4Header<'p> {
+    /// Construct a new IPv4 header backed by the given buffer with
+    /// the provided offset
     pub fn new(packet: &'p [u8], offset: uint) -> Ipv4Header<'p> {
         Ipv4Header { packet: packet, offset: offset }
     }
 }
 impl<'p> MutableIpv4Header<'p> {
+    /// Construct a new mutable IPv4 header backed by the given buffer with
+    /// the provided offset
     pub fn new(packet: &'p mut [u8], offset: uint) -> MutableIpv4Header<'p> {
         MutableIpv4Header { packet: packet, offset: offset }
     }
 
+    /// Set the version field for the packet
     pub fn set_version(&mut self, version: u8) {
         let ver = version << 4;
         self.packet[self.offset] = (self.packet[self.offset] & 0x0F) | ver;
     }
 
+    /// Set the header length field for the packet
     pub fn set_header_length(&mut self, ihl: u8) {
         let len = ihl & 0xF;
         self.packet[self.offset] = (self.packet[self.offset] & 0xF0) | len;
     }
 
+    /// Set the DSCP field for the packet
     pub fn set_dscp(&mut self, dscp: u8) {
         let cp = dscp & 0xFC;
         self.packet[self.offset + 1] = (self.packet[self.offset + 1] & 3) | (cp << 2);
     }
 
+    /// Set the ECN field for the packet
     pub fn set_ecn(&mut self, ecn: u8) {
         let cn = ecn & 3;
         self.packet[self.offset + 1] = (self.packet[self.offset + 1] & 0xFC) | cn;
     }
 
+    /// Set the total length field for the packet
     pub fn set_total_length(&mut self, len: u16) {
         self.packet[self.offset + 2] = (len >> 8) as u8;
         self.packet[self.offset + 3] = (len & 0xFF) as u8;
     }
 
+    /// Set the identification field for the packet
     pub fn set_identification(&mut self, identification: u16) {
         self.packet[self.offset + 4] = (identification >> 8) as u8;
         self.packet[self.offset + 5] = (identification & 0x00FF) as u8;
     }
 
+    /// Set the flags field for the packet
     pub fn set_flags(&mut self, flags: u8) {
         let fs = (flags & 7) << 5;
         self.packet[self.offset + 6] = (self.packet[self.offset + 6] & 0x1F) | fs;
     }
 
+    /// Set the fragment offset field for the packet
     pub fn set_fragment_offset(&mut self, offset: u16) {
         let fo = offset & 0x1FFF;
         self.packet[self.offset + 6] = (self.packet[self.offset + 6] & 0xE0) |
@@ -376,14 +468,17 @@ impl<'p> MutableIpv4Header<'p> {
         self.packet[self.offset + 7] = (fo & 0xFF) as u8;
     }
 
+    /// Set the TTL field for the packet
     pub fn set_ttl(&mut self, ttl: u8) {
         self.packet[self.offset + 8] = ttl;
     }
 
+    /// Set the next level protocol field for the packet
     pub fn set_next_level_protocol(&mut self, protocol: IpNextHeaderProtocol) {
         self.packet[self.offset + 9] = protocol;
     }
 
+    /// Set the checksum field for the packet
     pub fn set_checksum(&mut self, checksum: u16) {
         let cs1 = ((checksum & 0xFF00) >> 8) as u8;
         let cs2 = (checksum & 0x00FF) as u8;
@@ -391,6 +486,7 @@ impl<'p> MutableIpv4Header<'p> {
         self.packet[self.offset + 11] = cs2;
     }
 
+    /// Set the source address for the packet
     pub fn set_source(&mut self, ip: IpAddr) {
         match ip {
             Ipv4Addr(a, b, c, d) => {
@@ -403,6 +499,7 @@ impl<'p> MutableIpv4Header<'p> {
         }
     }
 
+    /// Set the destination field for the packet
     pub fn set_destination(&mut self, ip: IpAddr) {
         match ip {
             Ipv4Addr(a, b, c, d) => {
@@ -415,6 +512,8 @@ impl<'p> MutableIpv4Header<'p> {
         }
     }
 
+    /// Calculate the checksum of the packet and then set the field to the value
+    /// calculated
     pub fn checksum(&mut self) {
         let checksum = self.calculate_checksum();
         self.set_checksum(checksum);
@@ -479,11 +578,13 @@ fn ipv4_header_test() {
     assert_eq!(refPacket.as_slice(), packet.as_slice());
 }
 
+/// Structure representing an IPv6 header
 pub struct Ipv6Header<'p> {
     priv packet: &'p [u8],
     priv offset: uint
 }
 
+/// Structure representing a mutable IPv6 header
 pub struct MutableIpv6Header<'p> {
     priv packet: &'p mut [u8],
     priv offset: uint
@@ -503,17 +604,22 @@ impl<'p> Packet for MutableIpv6Header<'p> {
     fn offset(&self) -> uint { self.offset }
 }
 
+/// Trait implemented by anything which provides an interface to read IPv6
+/// packets
 pub trait Ipv6Packet : Packet {
+    /// Get the version field for the packet. Should usually be 6.
     fn get_version(&self) -> u8 {
         self.packet()[self.offset()] >> 4
     }
 
+    /// Get the traffic class field for the packet
     fn get_traffic_class(&self) -> u8 {
         let tc1 = (self.packet()[self.offset() + 0] & 0x0F) << 4;
         let tc2 = self.packet()[self.offset() + 1] >> 4;
         tc1 | tc2
     }
 
+    /// Get the flow label field for the packet
     fn get_flow_label(&self) -> u32 {
         let fl1 = (self.packet()[self.offset() + 1] as u32 & 0xF) << 16;
         let fl2 =  self.packet()[self.offset() + 2] as u32 << 8;
@@ -521,20 +627,24 @@ pub trait Ipv6Packet : Packet {
         fl1 | fl2 | fl3
     }
 
+    /// Get the payload length field for the packet
     fn get_payload_length(&self) -> u16 {
         let len1 = self.packet()[self.offset() + 4] as u16 << 8;
         let len2 = self.packet()[self.offset() + 5] as u16;
         len1 | len2
     }
 
+    /// Get the next header field for the packet
     fn get_next_header(&self) -> IpNextHeaderProtocol {
         self.packet()[self.offset() + 6]
     }
 
+    /// Get the hop limit field for the packet
     fn get_hop_limit(&self) -> u8 {
         self.packet()[self.offset() + 7]
     }
 
+    /// Get the source IP address for the packet
     fn get_source(&self) -> IpAddr {
         let packet = self.packet();
         let offset = self.offset();
@@ -551,6 +661,7 @@ pub trait Ipv6Packet : Packet {
         Ipv6Addr(a, b, c, d, e, f, g, h)
     }
 
+    /// Get the destination IP address for the packet
     fn get_destination(&self) -> IpAddr {
         let packet = self.packet();
         let offset = self.offset();
@@ -572,27 +683,34 @@ impl<'p> Ipv6Packet for Ipv6Header<'p> {}
 impl<'p> Ipv6Packet for MutableIpv6Header<'p> {}
 
 impl<'p> Ipv6Header<'p> {
+    /// Construct a new IPv6 header backed by the given buffer with
+    /// the provided offset
     pub fn new(packet: &'p [u8], offset: uint) -> Ipv6Header<'p> {
         Ipv6Header { packet: packet, offset: offset }
     }
 }
 
 impl<'p> MutableIpv6Header<'p> {
+    /// Construct a new mutable IPv6 header backed by the given buffer with
+    /// the provided offset
     pub fn new(packet: &'p mut [u8], offset: uint) -> MutableIpv6Header<'p> {
         MutableIpv6Header { packet: packet, offset: offset }
     }
 
+    /// Set the version field for the packet
     pub fn set_version(&mut self, version: u8) {
         let ver = version << 4;
         self.packet[self.offset] = (self.packet[self.offset] & 0x0F) | ver;
     }
 
+    /// Set the traffic class field for the packet
     pub fn set_traffic_class(&mut self, tc: u8) {
         self.packet[self.offset + 0] = (self.packet[self.offset] & 0xF0) | (tc >> 4);
         self.packet[self.offset + 1] = ((tc & 0x0F) << 4) |
                                         ((self.packet[self.offset + 1] & 0xF0) >> 4);
     }
 
+    /// Set the flow label field for the packet
     pub fn set_flow_label(&mut self, label: u32) {
         let lbl = ((label & 0xF0000) >> 16) as u8;
         self.packet[self.offset + 1] = (self.packet[self.offset + 1] & 0xF0) | lbl;
@@ -600,19 +718,23 @@ impl<'p> MutableIpv6Header<'p> {
         self.packet[self.offset + 3] = (label & 0x00FF) as u8;
     }
 
+    /// Set the payload length field for the packet
     pub fn set_payload_length(&mut self, len: u16) {
         self.packet[self.offset + 4] = (len >> 8) as u8;
         self.packet[self.offset + 5] = (len & 0xFF) as u8;
     }
 
+    /// Set the next header field for the packet
     pub fn set_next_header(&mut self, protocol: IpNextHeaderProtocol) {
         self.packet[self.offset + 6] = protocol;
     }
 
+    /// Set the hop limit field for the packet
     pub fn set_hop_limit(&mut self, limit: u8) {
         self.packet[self.offset + 7] = limit;
     }
 
+    /// Set the source IP address for the packet
     pub fn set_source(&mut self, ip: IpAddr) {
         match ip {
             Ipv6Addr(a, b, c, d, e, f, g, h) => {
@@ -637,6 +759,7 @@ impl<'p> MutableIpv6Header<'p> {
         }
     }
 
+    /// Set the destination IP address for the packet
     pub fn set_destination(&mut self, ip: IpAddr) {
         match ip {
             Ipv6Addr(a, b, c, d, e, f, g, h) => {
@@ -719,10 +842,13 @@ fn ipv6_header_test() {
     assert_eq!(refPacket.as_slice(), packet.as_slice());
 }
 
+/// Structure representing a UDP header
 pub struct UdpHeader<'p> {
     priv packet: &'p [u8],
     priv offset: uint
 }
+
+/// Structure representing a mutable UDP header
 pub struct MutableUdpHeader<'p> {
     priv packet: &'p mut [u8],
     priv offset: uint
@@ -742,31 +868,38 @@ impl<'p> Packet for MutableUdpHeader<'p> {
     fn offset(&self) -> uint { self.offset }
 }
 
+/// Trait implemented by anything which provides an interface to read UDP
+/// packets
 pub trait UdpPacket : Packet {
+    /// Get the source port for the packet
     fn get_source(&self) -> u16 {
         let s1 = self.packet()[self.offset() + 0] as u16 << 8;
         let s2 = self.packet()[self.offset() + 1] as u16;
         s1 | s2
     }
 
+    /// Get the destination port for the packet
     fn get_destination(&self) -> u16 {
         let d1 = self.packet()[self.offset() + 2] as u16 << 8;
         let d2 = self.packet()[self.offset() + 3] as u16;
         d1 | d2
     }
 
+    /// Get the length field for the packet
     fn get_length(&self) -> u16 {
         let l1 = self.packet()[self.offset() + 4] as u16 << 8;
         let l2 = self.packet()[self.offset() + 5] as u16;
         l1 | l2
     }
 
+    /// Get the checksum field for the packet
     fn get_checksum(&self) -> u16 {
         let c1 = self.packet()[self.offset() + 6] as u16 << 8;
         let c2 = self.packet()[self.offset() + 7] as u16;
         c1 | c2
     }
 
+    /// Calculate the checksum for a packet built on IPv4
     fn calculate_ipv4_checksum(&self, offset: uint) -> u16 {
         let mut sum = 0u32;
         let mut i = offset;
@@ -806,6 +939,7 @@ pub trait UdpPacket : Packet {
         return !sum as u16;
     }
 
+    /// Calculate the checksum for a packet built on IPv6
     fn calculate_ipv6_checksum(&self, offset: uint) -> u16 {
         let mut sum = 0u32;
         let mut i = offset + 8;
@@ -851,36 +985,45 @@ impl<'p> UdpPacket for UdpHeader<'p> {}
 impl<'p> UdpPacket for MutableUdpHeader<'p> {}
 
 impl<'p> UdpHeader<'p> {
+    /// Construct a new UDP header backed by the given buffer with
+    /// the provided offset
     pub fn new(packet: &'p [u8], offset: uint) -> UdpHeader<'p> {
         UdpHeader { packet: packet, offset: offset }
     }
 }
 
 impl<'p> MutableUdpHeader<'p> {
+    /// Construct a new mutable UDP header backed by the given buffer with
+    /// the provided offset
     pub fn new(packet: &'p mut [u8], offset: uint) -> MutableUdpHeader<'p> {
         MutableUdpHeader { packet: packet, offset: offset }
     }
 
+    /// Set the source port for the packet
     pub fn set_source(&mut self, port: u16) {
         self.packet[self.offset + 0] = (port >> 8) as u8;
         self.packet[self.offset + 1] = (port & 0xFF) as u8;
     }
 
+    /// Set the destination port for the packet
     pub fn set_destination(&mut self, port: u16) {
         self.packet[self.offset + 2] = (port >> 8) as u8;
         self.packet[self.offset + 3] = (port & 0xFF) as u8;
     }
 
+    /// Set the length field for the packet
     pub fn set_length(&mut self, len: u16) {
         self.packet[self.offset + 4] = (len >> 8) as u8;
         self.packet[self.offset + 5] = (len & 0xFF) as u8;
     }
 
+    /// Set the checksum field for the packet
     pub fn set_checksum(&mut self, checksum: u16) {
         self.packet[self.offset + 6] = (checksum >> 8) as u8;
         self.packet[self.offset + 7] = (checksum & 0xFF) as u8;
     }
 
+    /// Calculate a checksum for a packet backed by IPv6, then set the field
     pub fn ipv4_checksum(&mut self, offset: uint) {
         let checksum = self.calculate_ipv4_checksum(offset);
         // RFC 768, a checksum of zero is transmitted as all ones
@@ -891,6 +1034,7 @@ impl<'p> MutableUdpHeader<'p> {
         }
     }
 
+    /// Calculate a checksum for a packet backed by IPv6 then, set the field
     pub fn ipv6_checksum(&mut self, offset: uint) {
         let checksum = self.calculate_ipv6_checksum(offset);
         if checksum != 0 {
@@ -980,32 +1124,45 @@ fn udp_header_ipv6_test() {
 }
 
 
+/// Represents a low-level protocol
 pub enum Protocol {
+    /// A data-link layer protocol such as ethernet
     DataLinkProtocol(DataLinkProto),
+    /// A network protocol such as IPv4
     NetworkProtocol(NetworkProto),
+    /// A transport protocol such as UDP
     TransportProtocol(TransportProto)
 }
 
+/// Represents a data-link layer protocol
 pub enum DataLinkProto {
+    /// Represents a plain Ethernet protocol
     EthernetProtocol,
+    /// Represents an Ethernet protocol with some fields filled automatically
     CookedEthernetProtocol(EtherType)
 }
 
+/// Represents a network level protocol
 pub enum NetworkProto {
+    /// An IPv4 network protocol
     Ipv4NetworkProtocol,
+    /// An IPv6 network protocol
     Ipv6NetworkProtocol
 }
 
+/// Represents a transport layer protocol
 pub enum TransportProto {
+    /// Represents a transport protocol built on top of IPv4
     Ipv4TransportProtocol(IpNextHeaderProtocol),
+    /// Represents a transport protocol built on top of IPv6
     Ipv6TransportProtocol(IpNextHeaderProtocol)
 }
 
-// EtherTypes defined at:
-// http://www.iana.org/assignments/ieee-802-numbers/ieee-802-numbers.xhtml
-// These values should be used in the Ethernet EtherType field
-//
-// A handful of these have been selected since most are archaic and unused.
+/// EtherTypes defined at:
+/// http://www.iana.org/assignments/ieee-802-numbers/ieee-802-numbers.xhtml
+/// These values should be used in the Ethernet EtherType field
+///
+/// A handful of these have been selected since most are archaic and unused.
 pub mod EtherTypes {
     pub static Ipv4: u16      = 0x0800;
     pub static Arp: u16       = 0x0806;
@@ -1016,11 +1173,11 @@ pub mod EtherTypes {
 
 pub type EtherType = u16;
 
-// Protocol numbers as defined at:
-// http://www.iana.org/assignments/protocol-numbers/protocol-numbers.xhtml
-// Above protocol numbers last updated: 2014-01-16
-// These values should be used in either the IPv4 Next Level Protocol field
-// or the IPv6 Next Header field.
+/// Protocol numbers as defined at:
+/// http://www.iana.org/assignments/protocol-numbers/protocol-numbers.xhtml
+/// Above protocol numbers last updated: 2014-01-16
+/// These values should be used in either the IPv4 Next Level Protocol field
+/// or the IPv6 Next Header field.
 pub mod IpNextHeaderProtocols {
     pub static Hopopt: u8         =   0; // IPv6 Hop-by-Hop Option [RFC2460]
     pub static Icmp: u8           =   1; // Internet Control Message [RFC792]
