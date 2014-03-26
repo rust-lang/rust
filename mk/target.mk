@@ -11,7 +11,7 @@
 # This is the compile-time target-triple for the compiler. For the compiler at
 # runtime, this should be considered the host-triple. More explanation for why
 # this exists can be found on issue #2400
-export CFG_COMPILER
+export CFG_COMPILER_HOST_TRIPLE
 
 # The standard libraries should be held up to a higher standard than any old
 # code, make sure that these common warnings are denied by default. These can
@@ -68,7 +68,7 @@ $(foreach host,$(CFG_HOST),						    \
 # $(4) is the crate name
 define RUST_TARGET_STAGE_N
 
-$$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$(4): CFG_COMPILER = $(2)
+$$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$(4): CFG_COMPILER_HOST_TRIPLE = $(2)
 $$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$(4):				    \
 		$$(CRATEFILE_$(4))				    \
 		$$(CRATE_FULLDEPS_$(1)_T_$(2)_H_$(3)_$(4))	    \
