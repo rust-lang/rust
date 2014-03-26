@@ -104,7 +104,7 @@ ifdef CFG_WINDOWSY_$(1)
                stage2/$$(CFG_LIBDIR_RELATIVE), \
                $$(if $$(findstring stage3,$$(1)), \
                     stage3/$$(CFG_LIBDIR_RELATIVE), \
-               )))))/$$(CFG_RUSTLIBDIR)/$$(CFG_BUILD)/lib
+               )))))/rustlib/$$(CFG_BUILD)/lib
   CFG_RUN_TEST_$(1)=$$(call CFG_RUN_$(1),$$(call CFG_TESTLIB_$(1),$$(1),$$(3)),$$(1))
 endif
 

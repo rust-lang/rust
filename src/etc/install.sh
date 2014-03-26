@@ -237,7 +237,6 @@ need_ok "failed to remove install probe"
 
 # First, uninstall from the installation prefix.
 # Errors are warnings - try to rm everything in the manifest even if some fail.
-# FIXME: Hardcoded 'rustlib' ignores CFG_RUSTLIBDIR
 if [ -f "${CFG_PREFIX}/lib/rustlib/manifest" ]
 then
     # Iterate through installed manifest and remove files
