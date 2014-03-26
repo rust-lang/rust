@@ -25,7 +25,7 @@ mod inner {
     pub struct B {
         a: int,
         priv b: int,
-        pub c: int, //~ ERROR: unnecessary `pub` visibility
+        pub c: int,
     }
 }
 

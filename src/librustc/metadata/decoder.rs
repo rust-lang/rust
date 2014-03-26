@@ -1019,10 +1019,11 @@ pub fn get_struct_fields(intr: @IdentInterner, cdata: Cmd, id: ast::NodeId)
     });
     reader::tagged_docs(item, tag_item_unnamed_field, |an_item| {
         let did = item_def_id(an_item, cdata);
+        let f = item_family(an_item);
         result.push(ty::field_ty {
             name: special_idents::unnamed_field.name,
             id: did,
-            vis: ast::Inherited,
+            vis: struct_field_family_to_visibility(f),
         });
         true
     });
