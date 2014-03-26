@@ -2103,7 +2103,8 @@ a `&T` pointer. `MutexArc` is an example of a *sharable* type with internal muta
 These are types that do not contain any data whose lifetime is bound to
 a particular stack frame. These are types that do not contain any
 references, or types where the only contained references
-have the `'static` lifetime.
+have the `'static` lifetime. (For more on named lifetimes and their uses, 
+see the [references and lifetimes guide][lifetimes].)
 
 > ***Note:*** These two traits were referred to as 'kinds' in earlier
 > iterations of the language, and often still are.
