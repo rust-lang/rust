@@ -195,6 +195,7 @@ impl<'a> ErrorReporting for InferCtxt<'a> {
     // failed (so the return value of this method should not be used)
     fn process_errors(&self, errors: &Vec<RegionResolutionError>)
                       -> Vec<RegionResolutionError> {
+        debug!("process_errors()");
         let mut var_origins = Vec::new();
         let mut trace_origins = Vec::new();
         let mut same_regions = Vec::new();
@@ -202,6 +203,7 @@ impl<'a> ErrorReporting for InferCtxt<'a> {
         for error in errors.iter() {
             match *error {
                 ConcreteFailure(origin, sub, sup) => {
+                    debug!("processing ConcreteFailure")
                     let trace = match origin {
                         infer::Subtype(trace) => Some(trace),
                         _ => None,
@@ -218,6 +220,7 @@ impl<'a> ErrorReporting for InferCtxt<'a> {
                     }
                 }
                 SubSupConflict(var_origin, _, sub_r, _, sup_r) => {
+                    debug!("processing SubSupConflict")
                     match free_regions_from_same_fn(self.tcx, sub_r, sup_r) {
                         Some(ref same_frs) => {
                             var_origins.push(var_origin);
@@ -237,10 +240,13 @@ impl<'a> ErrorReporting for InferCtxt<'a> {
                 // declaration, we want to make sure that they are, in fact,
                 // from the same scope
                 if sr.scope_id != common_scope_id {
+                    debug!("returning empty result from process_errors because
+                            {} != {}", sr.scope_id, common_scope_id);
                     return vec!();
                 }
             }
             let pe = ProcessedErrors(var_origins, trace_origins, same_regions);
+            debug!("errors processed: {:?}", pe);
             processed_errors.push(pe);
         }
         return processed_errors;
@@ -256,6 +262,7 @@ impl<'a> ErrorReporting for InferCtxt<'a> {
                                      sub: Region,
                                      sup: Region)
                                      -> Option<FreeRegionsFromSameFn> {
+            debug!("free_regions_from_same_fn(sub={:?}, sup={:?})", sub, sup);
             let (scope_id, fr1, fr2) = match (sub, sup) {
                 (ReFree(fr1), ReFree(fr2)) => {
                     if fr1.scope_id != fr2.scope_id {
@@ -284,7 +291,10 @@ impl<'a> ErrorReporting for InferCtxt<'a> {
                     },
                     _ => None
                 },
-                None => None
+                None => {
+                    debug!("no parent node of scope_id {}", scope_id)
+                    None
+                }
             }
         }
 
