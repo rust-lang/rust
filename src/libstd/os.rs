@@ -65,6 +65,7 @@ pub fn close(fd: int) -> int {
 pub static TMPBUF_SZ : uint = 1000u;
 static BUF_BYTES : uint = 2048u;
 
+/// Returns the current working directory.
 #[cfg(unix)]
 pub fn getcwd() -> Path {
     use c_str::CString;
@@ -78,6 +79,7 @@ pub fn getcwd() -> Path {
     }
 }
 
+/// Returns the current working directory.
 #[cfg(windows)]
 pub fn getcwd() -> Path {
     use libc::DWORD;
@@ -364,11 +366,17 @@ pub fn unsetenv(n: &str) {
     _unsetenv(n);
 }
 
+/// A low-level OS in-memory pipe.
 pub struct Pipe {
+    /// A file descriptor representing the reading end of the pipe. Data written
+    /// on the `out` file descriptor can be read from this file descriptor.
     input: c_int,
-    out: c_int
+    /// A file descriptor representing the write end of the pipe. Data written
+    /// to this file descriptor can be read from the `input` file descriptor.
+    out: c_int,
 }
 
+/// Creates a new low-level OS in-memory pipe.
 #[cfg(unix)]
 pub fn pipe() -> Pipe {
     unsafe {
@@ -379,6 +387,7 @@ pub fn pipe() -> Pipe {
     }
 }
 
+/// Creates a new low-level OS in-memory pipe.
 #[cfg(windows)]
 pub fn pipe() -> Pipe {
     unsafe {
@@ -908,6 +917,7 @@ fn round_up(from: uint, to: uint) -> uint {
     }
 }
 
+/// Returns the page size of the current architecture in bytes.
 #[cfg(unix)]
 pub fn page_size() -> uint {
     unsafe {
@@ -915,6 +925,7 @@ pub fn page_size() -> uint {
     }
 }
 
+/// Returns the page size of the current architecture in bytes.
 #[cfg(windows)]
 pub fn page_size() -> uint {
     unsafe {
@@ -1274,8 +1285,8 @@ impl Drop for MemoryMap {
     }
 }
 
+/// Various useful system-specific constants.
 pub mod consts {
-
     #[cfg(unix)]
     pub use os::consts::unix::*;
 
@@ -1309,70 +1320,175 @@ pub mod consts {
     #[cfg(target_arch = "mips")]
     pub use os::consts::mips::*;
 
+    /// Constants for Unix systems.
     pub mod unix {
+        /// A string describing the family that this operating system belongs
+        /// to: in this case, `unix`.
         pub static FAMILY: &'static str = "unix";
     }
 
+    /// Constants for Windows systems.
     pub mod windows {
+        /// A string describing the family that this operating system belongs
+        /// to: in this case, `windows`.
         pub static FAMILY: &'static str = "windows";
     }
 
+    /// Constants for Mac OS systems.
     pub mod macos {
+        /// A string describing the specific operating system in use: in this
+        /// case, `macos`.
         pub static SYSNAME: &'static str = "macos";
+
+        /// Specifies the filename prefix used for shared libraries on this
+        /// platform: in this case, `lib`.
         pub static DLL_PREFIX: &'static str = "lib";
+
+        /// Specifies the filename suffix used for shared libraries on this
+        /// platform: in this case, `.dylib`.
         pub static DLL_SUFFIX: &'static str = ".dylib";
+
+        /// Specifies the file extension used for shared libraries on this
+        /// platform that goes after the dot: in this case, `dylib`.
         pub static DLL_EXTENSION: &'static str = "dylib";
+
+        /// Specifies the filename suffix used for executable binaries on this
+        /// platform: in this case, the empty string.
         pub static EXE_SUFFIX: &'static str = "";
+
+        /// Specifies the file extension, if any, used for executable binaries
+        /// on this platform: in this case, the empty string.
         pub static EXE_EXTENSION: &'static str = "";
     }
 
+    /// Constants for FreeBSD systems.
     pub mod freebsd {
+        /// A string describing the specific operating system in use: in this
+        /// case, `freebsd`.
         pub static SYSNAME: &'static str = "freebsd";
+
+        /// Specifies the filename prefix used for shared libraries on this
+        /// platform: in this case, `lib`.
         pub static DLL_PREFIX: &'static str = "lib";
+
+        /// Specifies the filename suffix used for shared libraries on this
+        /// platform: in this case, `.so`.
         pub static DLL_SUFFIX: &'static str = ".so";
+
+        /// Specifies the file extension used for shared libraries on this
+        /// platform that goes after the dot: in this case, `so`.
         pub static DLL_EXTENSION: &'static str = "so";
+
+        /// Specifies the filename suffix used for executable binaries on this
+        /// platform: in this case, the empty string.
         pub static EXE_SUFFIX: &'static str = "";
+
+        /// Specifies the file extension, if any, used for executable binaries
+        /// on this platform: in this case, the empty string.
         pub static EXE_EXTENSION: &'static str = "";
     }
 
+    /// Constants for GNU/Linux systems.
     pub mod linux {
+        /// A string describing the specific operating system in use: in this
+        /// case, `linux`.
         pub static SYSNAME: &'static str = "linux";
+
+        /// Specifies the filename prefix used for shared libraries on this
+        /// platform: in this case, `lib`.
         pub static DLL_PREFIX: &'static str = "lib";
+
+        /// Specifies the filename suffix used for shared libraries on this
+        /// platform: in this case, `.so`.
         pub static DLL_SUFFIX: &'static str = ".so";
+
+        /// Specifies the file extension used for shared libraries on this
+        /// platform that goes after the dot: in this case, `so`.
         pub static DLL_EXTENSION: &'static str = "so";
+
+        /// Specifies the filename suffix used for executable binaries on this
+        /// platform: in this case, the empty string.
         pub static EXE_SUFFIX: &'static str = "";
+
+        /// Specifies the file extension, if any, used for executable binaries
+        /// on this platform: in this case, the empty string.
         pub static EXE_EXTENSION: &'static str = "";
     }
 
+    /// Constants for Android systems.
     pub mod android {
+        /// A string describing the specific operating system in use: in this
+        /// case, `android`.
         pub static SYSNAME: &'static str = "android";
+
+        /// Specifies the filename prefix used for shared libraries on this
+        /// platform: in this case, `lib`.
         pub static DLL_PREFIX: &'static str = "lib";
+
+        /// Specifies the filename suffix used for shared libraries on this
+        /// platform: in this case, `.so`.
         pub static DLL_SUFFIX: &'static str = ".so";
+
+        /// Specifies the file extension used for shared libraries on this
+        /// platform that goes after the dot: in this case, `so`.
         pub static DLL_EXTENSION: &'static str = "so";
+
+        /// Specifies the filename suffix used for executable binaries on this
+        /// platform: in this case, the empty string.
         pub static EXE_SUFFIX: &'static str = "";
+
+        /// Specifies the file extension, if any, used for executable binaries
+        /// on this platform: in this case, the empty string.
         pub static EXE_EXTENSION: &'static str = "";
     }
 
+    /// Constants for 32-bit or 64-bit Windows systems.
     pub mod win32 {
+        /// A string describing the specific operating system in use: in this
+        /// case, `win32`.
         pub static SYSNAME: &'static str = "win32";
+
+        /// Specifies the filename prefix used for shared libraries on this
+        /// platform: in this case, the empty string.
         pub static DLL_PREFIX: &'static str = "";
+
+        /// Specifies the filename suffix used for shared libraries on this
+        /// platform: in this case, `.dll`.
         pub static DLL_SUFFIX: &'static str = ".dll";
+
+        /// Specifies the file extension used for shared libraries on this
+        /// platform that goes after the dot: in this case, `dll`.
         pub static DLL_EXTENSION: &'static str = "dll";
+
+        /// Specifies the filename suffix used for executable binaries on this
+        /// platform: in this case, `.exe`.
         pub static EXE_SUFFIX: &'static str = ".exe";
+
+        /// Specifies the file extension, if any, used for executable binaries
+        /// on this platform: in this case, `exe`.
         pub static EXE_EXTENSION: &'static str = "exe";
     }
 
-
+    /// Constants for Intel Architecture-32 (x86) architectures.
     pub mod x86 {
+        /// A string describing the architecture in use: in this case, `x86`.
         pub static ARCH: &'static str = "x86";
     }
+    /// Constants for Intel 64/AMD64 (x86-64) architectures.
     pub mod x86_64 {
+        /// A string describing the architecture in use: in this case,
+        /// `x86_64`.
         pub static ARCH: &'static str = "x86_64";
     }
+    /// Constants for Advanced RISC Machine (ARM) architectures.
     pub mod arm {
+        /// A string describing the architecture in use: in this case, `ARM`.
         pub static ARCH: &'static str = "arm";
     }
+    /// Constants for Microprocessor without Interlocked Pipeline Stages
+    /// (MIPS) architectures.
     pub mod mips {
+        /// A string describing the architecture in use: in this case, `MIPS`.
         pub static ARCH: &'static str = "mips";
     }
 }
