@@ -116,7 +116,7 @@ pub static NAN: f32 = 0.0_f32/0.0_f32;
 pub static INFINITY: f32 = 1.0_f32/0.0_f32;
 pub static NEG_INFINITY: f32 = -1.0_f32/0.0_f32;
 
-/* Module: consts */
+/// Various useful constants.
 pub mod consts {
     // FIXME (requires Issue #1433 to fix): replace with mathematical
     // staticants from cmath.
