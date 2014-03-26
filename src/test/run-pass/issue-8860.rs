@@ -18,7 +18,7 @@ static mut DROP_T: int = 0i;
 
 #[start]
 fn start(argc: int, argv: **u8) -> int {
-    let ret = green::start(argc, argv, main);
+    let ret = green::start(argc, argv, green::basic::event_loop, main);
     unsafe {
         assert_eq!(2, DROP);
         assert_eq!(1, DROP_S);

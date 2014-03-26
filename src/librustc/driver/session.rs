@@ -451,8 +451,6 @@ cgoptions!(
         "don't run LLVM's SLP vectorization pass"),
     soft_float: bool = (false, parse_bool,
         "generate software floating point library calls"),
-    gen_crate_map: bool = (false, parse_bool,
-        "force generation of a toplevel crate map"),
     prefer_dynamic: bool = (false, parse_bool,
         "prefer dynamic linking to static linking"),
     no_integrated_as: bool = (false, parse_bool,
