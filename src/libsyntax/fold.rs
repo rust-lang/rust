@@ -134,7 +134,7 @@ pub trait Folder {
         node.move_iter().map(|node| {
             @Spanned {
                 node: node,
-                span: d.span,
+                span: self.new_span(d.span),
             }
         }).collect()
     }
