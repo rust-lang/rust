@@ -20,7 +20,9 @@ use io::IoResult;
 use libc;
 use rt::rtio::{RtioPipe, LocalIo};
 
+/// A synchronous, in-memory pipe.
 pub struct PipeStream {
+    /// The internal, opaque runtime pipe object.
     priv obj: ~RtioPipe,
 }
 
