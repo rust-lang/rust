@@ -39,7 +39,7 @@ r##"<!DOCTYPE html>
           rel='stylesheet' type='text/css'>
     <link rel="stylesheet" type="text/css" href="{root_path}main.css">
 
-    {favicon, select, none{} other{<link rel="shortcut icon" href="\#" />}}
+    {favicon, select, none{} other{<link rel="shortcut icon" href="#" />}}
 </head>
 <body>
     <!--[if lte IE 8]>
@@ -51,7 +51,7 @@ r##"<!DOCTYPE html>
 
     <section class="sidebar">
         {logo, select, none{} other{
-            <a href='{root_path}{krate}/index.html'><img src='\#' alt=''/></a>
+            <a href='{root_path}{krate}/index.html'><img src='#' alt=''/></a>
         }}
 
         {sidebar}
