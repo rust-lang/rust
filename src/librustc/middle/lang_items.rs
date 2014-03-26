@@ -254,8 +254,6 @@ lets_do_this! {
     TyVisitorTraitLangItem,          "ty_visitor",              ty_visitor;
     OpaqueStructLangItem,            "opaque",                  opaque;
 
-    EventLoopFactoryLangItem,        "event_loop_factory",      event_loop_factory;
-
     TypeIdLangItem,                  "type_id",                 type_id;
 
     EhPersonalityLangItem,           "eh_personality",          eh_personality_fn;

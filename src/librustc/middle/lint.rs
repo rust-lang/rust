@@ -980,7 +980,7 @@ static other_attrs: &'static [&'static str] = &[
     "thread_local", // for statics
     "allow", "deny", "forbid", "warn", // lint options
     "deprecated", "experimental", "unstable", "stable", "locked", "frozen", //item stability
-    "crate_map", "cfg", "doc", "export_name", "link_section",
+    "cfg", "doc", "export_name", "link_section",
     "no_mangle", "static_assert", "unsafe_no_drop_flag", "packed",
     "simd", "repr", "deriving", "unsafe_destructor", "link", "phase",
     "macro_export", "must_use", "automatically_derived",

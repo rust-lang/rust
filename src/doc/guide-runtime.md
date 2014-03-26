@@ -223,27 +223,49 @@ Having a default decision made in the compiler is done out of necessity and
 convenience. The compiler's decision of runtime to link to is *not* an
 endorsement of one over the other. As always, this decision can be overridden.
 
-For example, this program will be linked to "the default runtime"
+For example, this program will be linked to "the default runtime". The current
+default runtime is to use libnative.
 
 ~~~{.rust}
 fn main() {}
 ~~~
 
-Whereas this program explicitly opts into using a particular runtime
+### Force booting with libgreen
+
+In this example, the `main` function will be booted with I/O support powered by
+libuv. This is done by linking to the `rustuv` crate and specifying the
+`rustuv::event_loop` function as the event loop factory.
+
+To create a pool of green tasks which have no I/O support, you may shed the
+`rustuv` dependency and use the `green::basic::event_loop` function instead of
+`rustuv::event_loop`. All tasks will have no I/O support, but they will still be
+able to deschedule/reschedule (use channels, locks, etc).
 
 ~~~{.rust}
 extern crate green;
+extern crate rustuv;
 
 #[start]
 fn start(argc: int, argv: **u8) -> int {
-    green::start(argc, argv, main)
+    green::start(argc, argv, rustuv::event_loop, main)
 }
 
 fn main() {}
 ~~~
 
-Both libgreen/libnative provide a top-level `start` function which is used to
-boot an initial Rust task in that specified runtime.
+### Force booting with libnative
+
+This program's `main` function will always be booted with libnative, running
+inside of an OS thread.
+
+~~~{.rust}
+extern crate native;
+
+#[start]
+fn start(argc: int, argv: **u8) -> int { native::start(argc, argv, main) }
+
+fn main() {}
+~~~
 
 # Finding the runtime
 

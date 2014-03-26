@@ -5,7 +5,7 @@ ifneq ($(shell uname),Darwin)
 endif
 
 all:
-	$(RUSTC) foo.rs -C gen-crate-map -Z lto
+	$(RUSTC) foo.rs -Z lto
 	ln -s $(call STATICLIB,foo-*) $(call STATICLIB,foo)
 	$(CC) bar.c -lfoo -o $(call RUN,bar) $(EXTRAFLAGS) -lstdc++
 	$(call RUN,bar)

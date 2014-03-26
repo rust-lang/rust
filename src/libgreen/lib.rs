@@ -116,10 +116,31 @@
 //! extern crate green;
 //!
 //! #[start]
-//! fn start(argc: int, argv: **u8) -> int { green::start(argc, argv, main) }
+//! fn start(argc: int, argv: **u8) -> int {
+//!     green::start(argc, argv, green::basic::event_loop, main)
+//! }
 //!
 //! fn main() {
 //!     // this code is running in a pool of schedulers
+//! }
+//! ```
+//!
+//! > **Note**: This `main` funciton in this example does *not* have I/O
+//! >           support. The basic event loop does not provide any support
+//!
+//! # Starting with I/O support in libgreen
+//!
+//! ```rust
+//! extern crate green;
+//! extern crate rustuv;
+//!
+//! #[start]
+//! fn start(argc: int, argv: **u8) -> int {
+//!     green::start(argc, argv, rustuv::event_loop, main)
+//! }
+//!
+//! fn main() {
+//!     // this code is running in a pool of schedulers all powered by libuv
 //! }
 //! ```
 //!
@@ -176,11 +197,11 @@
 #[allow(visible_private_types)];
 
 #[cfg(test)] #[phase(syntax, link)] extern crate log;
+#[cfg(test)] extern crate rustuv;
 extern crate rand;
 
 use std::mem::replace;
 use std::os;
-use std::rt::crate_map;
 use std::rt::rtio;
 use std::rt::thread::Thread;
 use std::rt;
@@ -225,12 +246,14 @@ pub mod task;
 ///
 /// The return value is used as the process return code. 0 on success, 101 on
 /// error.
-pub fn start(argc: int, argv: **u8, main: proc()) -> int {
+pub fn start(argc: int, argv: **u8,
+             event_loop_factory: fn() -> ~rtio::EventLoop,
+             main: proc()) -> int {
     rt::init(argc, argv);
     let mut main = Some(main);
     let mut ret = None;
     simple::task().run(|| {
-        ret = Some(run(main.take_unwrap()));
+        ret = Some(run(event_loop_factory, main.take_unwrap()));
     });
     // unsafe is ok b/c we're sure that the runtime is gone
     unsafe { rt::cleanup() }
@@ -245,10 +268,12 @@ pub fn start(argc: int, argv: **u8, main: proc()) -> int {
 ///
 /// This function will not return until all schedulers in the associated pool
 /// have returned.
-pub fn run(main: proc()) -> int {
+pub fn run(event_loop_factory: fn() -> ~rtio::EventLoop, main: proc()) -> int {
     // Create a scheduler pool and spawn the main task into this pool. We will
     // get notified over a channel when the main task exits.
-    let mut pool = SchedPool::new(PoolConfig::new());
+    let mut cfg = PoolConfig::new();
+    cfg.event_loop_factory = event_loop_factory;
+    let mut pool = SchedPool::new(cfg);
     let (tx, rx) = channel();
     let mut opts = TaskOpts::new();
     opts.notify_chan = Some(tx);
@@ -273,7 +298,7 @@ pub struct PoolConfig {
     threads: uint,
     /// A factory function used to create new event loops. If this is not
     /// specified then the default event loop factory is used.
-    event_loop_factory: Option<fn() -> ~rtio::EventLoop>,
+    event_loop_factory: fn() -> ~rtio::EventLoop,
 }
 
 impl PoolConfig {
@@ -282,7 +307,7 @@ impl PoolConfig {
     pub fn new() -> PoolConfig {
         PoolConfig {
             threads: rt::default_sched_threads(),
-            event_loop_factory: None,
+            event_loop_factory: basic::event_loop,
         }
     }
 }
@@ -324,7 +349,6 @@ impl SchedPool {
             threads: nscheds,
             event_loop_factory: factory
         } = config;
-        let factory = factory.unwrap_or(default_event_loop_factory());
         assert!(nscheds > 0);
 
         // The pool of schedulers that will be returned from this function
@@ -492,21 +516,4 @@ impl Drop for SchedPool {
             fail!("dropping a M:N scheduler pool that wasn't shut down");
         }
     }
-}
-
-fn default_event_loop_factory() -> fn() -> ~rtio::EventLoop {
-    match crate_map::get_crate_map() {
-        None => {}
-        Some(map) => {
-            match map.event_loop_factory {
-                None => {}
-                Some(factory) => return factory
-            }
-        }
-    }
-
-    // If the crate map didn't specify a factory to create an event loop, then
-    // instead just use a basic event loop missing all I/O services to at least
-    // get the scheduler running.
-    return basic::event_loop;
 }
