@@ -200,7 +200,8 @@ dist-install-dir-$(1): PREPARE_MAN_CMD=$(DEFAULT_PREPARE_MAN_CMD)
 dist-install-dir-$(1): PREPARE_CLEAN=true
 dist-install-dir-$(1): prepare-base-dir-$(1)
 	$$(Q)(cd $$(PREPARE_DEST_DIR)/ && find -type f | sed 's/^\.\///') \
-      > $$(PREPARE_DEST_DIR)/$$(CFG_LIBDIR_RELATIVE)/rustlib/manifest
+      > tmp/manifest-$(1) # NB Use a tmp file so `find` doesn't *find the manifest*
+	$$(Q)cp tmp/manifest-$(1) $$(PREPARE_DEST_DIR)/$$(CFG_LIBDIR_RELATIVE)/rustlib/manifest
 	$$(Q)$$(PREPARE_MAN_CMD) $$(S)COPYRIGHT $$(PREPARE_DEST_DIR)
 	$$(Q)$$(PREPARE_MAN_CMD) $$(S)LICENSE-APACHE $$(PREPARE_DEST_DIR)
 	$$(Q)$$(PREPARE_MAN_CMD) $$(S)LICENSE-MIT $$(PREPARE_DEST_DIR)
