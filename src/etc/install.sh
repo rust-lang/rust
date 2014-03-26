@@ -229,15 +229,16 @@ validate_opt
 
 # Sanity check: can we can write to the destination?
 umask 022 && mkdir -p "${CFG_LIBDIR}"
-need_ok "directory creation failed"
+need_ok "can't write to destination. consider `sudo`."
 touch "${CFG_LIBDIR}/rust-install-probe" 2> /dev/null
 if [ $? -ne 0 ]
 then
-    err "can't write to destination. try again with 'sudo'."
+    err "can't write to destination. consider `sudo`."
 fi
 rm "${CFG_LIBDIR}/rust-install-probe"
 need_ok "failed to remove install probe"
 
+# The file name of the manifest we're going to create during install
 INSTALLED_MANIFEST="${CFG_LIBDIR}/rustlib/manifest"
 
 # First, uninstall from the installation prefix.
@@ -267,6 +268,7 @@ then
         warn "failed to remove rustlib"
     fi
 else
+    # There's no manifest. If we were asked to uninstall, then that's a problem.
     if [ -n "${CFG_UNINSTALL}" ]
     then
         err "unable to find installation manifest at ${CFG_LIBDIR}/rustlib"
@@ -304,7 +306,7 @@ while read p; do
         FILE_INSTALL_PATH="${CFG_MANDIR}/$pp"
     fi
 
-    # Make sure ther's a directory for it
+    # Make sure there's a directory for it
     umask 022 && mkdir -p "$(dirname ${FILE_INSTALL_PATH})"
     need_ok "directory creation failed"
 
@@ -330,7 +332,7 @@ while read p; do
     need_ok "failed to update manifest"
 
 # The manifest lists all files to install
-done < "${CFG_SRC_DIR}/lib/rustlib/manifest"
+done < "${CFG_SRC_DIR}/lib/rustlib/manifest.in"
 
 echo
 echo "    Rust is ready to roll."
