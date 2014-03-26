@@ -43,12 +43,12 @@ fn main() {
     } else {
         let silent = Process::output(args[0], [~"silent"]).unwrap();
         assert!(!silent.status.success());
-        let error = str::from_utf8_lossy(silent.error);
+        let error = str::from_utf8_lossy(silent.error.as_slice());
         assert!(error.as_slice().contains("has overflowed its stack"));
 
         let loud = Process::output(args[0], [~"loud"]).unwrap();
         assert!(!loud.status.success());
-        let error = str::from_utf8_lossy(silent.error);
+        let error = str::from_utf8_lossy(silent.error.as_slice());
         assert!(error.as_slice().contains("has overflowed its stack"));
     }
 }

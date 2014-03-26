@@ -55,7 +55,7 @@ fn main() {
         // can't exec it directly
         let result = Process::output("sh", [~"-c", rustc + " " + main_file_str]).unwrap();
 
-        let err = str::from_utf8_lossy(result.error);
+        let err = str::from_utf8_lossy(result.error.as_slice());
 
         // the span should end the line (e.g no extra ~'s)
         let expected_span = "^" + "~".repeat(n - 1) + "\n";

@@ -479,7 +479,7 @@ impl<'a, T:Send +
 fn test() {
     use std::os;
     use std::io::{fs, Process};
-    use std::str::from_utf8_owned;
+    use std::str::from_utf8;
 
     // Create a path to a new file 'filename' in the directory in which
     // this test is running.
@@ -505,7 +505,7 @@ fn test() {
         let pth = pth.clone();
 
         let contents = File::open(&pth).read_to_end().unwrap();
-        let file_content = from_utf8_owned(contents).unwrap();
+        let file_content = from_utf8(contents.as_slice()).unwrap().to_owned();
 
         // FIXME (#9639): This needs to handle non-utf8 paths
         prep.declare_input("file", pth.as_str().unwrap(), file_content);

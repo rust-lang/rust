@@ -225,8 +225,8 @@ use str::{StrSlice, OwnedStr};
 use str;
 use uint;
 use unstable::finally::try_finally;
-use slice::{OwnedVector, MutableVector, ImmutableVector, OwnedCloneableVector};
-use slice;
+use slice::{Vector, OwnedVector, MutableVector, ImmutableVector, OwnedCloneableVector};
+use vec::Vec;
 
 // Reexports
 pub use self::stdio::stdin;
@@ -486,9 +486,9 @@ pub trait Reader {
     /// or EOF. If `Ok(())` is returned, then all of the requested bytes were
     /// pushed on to the vector, otherwise the amount `len` bytes couldn't be
     /// read (an error was encountered), and the error is returned.
-    fn push_exact(&mut self, buf: &mut ~[u8], len: uint) -> IoResult<()> {
+    fn push_exact(&mut self, buf: &mut Vec<u8>, len: uint) -> IoResult<()> {
         struct State<'a> {
-            buf: &'a mut ~[u8],
+            buf: &'a mut Vec<u8>,
             total_read: uint
         }
 
@@ -526,8 +526,8 @@ pub trait Reader {
     /// have already been consumed from the underlying reader, and they are lost
     /// (not returned as part of the error). If this is unacceptable, then it is
     /// recommended to use the `push_exact` or `read` methods.
-    fn read_exact(&mut self, len: uint) -> IoResult<~[u8]> {
-        let mut buf = slice::with_capacity(len);
+    fn read_exact(&mut self, len: uint) -> IoResult<Vec<u8>> {
+        let mut buf = Vec::with_capacity(len);
         match self.push_exact(&mut buf, len) {
             Ok(()) => Ok(buf),
             Err(e) => Err(e),
@@ -542,8 +542,8 @@ pub trait Reader {
     /// discarded when an error is returned.
     ///
     /// When EOF is encountered, all bytes read up to that point are returned.
-    fn read_to_end(&mut self) -> IoResult<~[u8]> {
-        let mut buf = slice::with_capacity(DEFAULT_BUF_SIZE);
+    fn read_to_end(&mut self) -> IoResult<Vec<u8>> {
+        let mut buf = Vec::with_capacity(DEFAULT_BUF_SIZE);
         loop {
             match self.push_exact(&mut buf, DEFAULT_BUF_SIZE) {
                 Ok(()) => {}
@@ -564,8 +564,8 @@ pub trait Reader {
     /// UTF-8 bytes.
     fn read_to_str(&mut self) -> IoResult<~str> {
         self.read_to_end().and_then(|s| {
-            match str::from_utf8_owned(s) {
-                Some(s) => Ok(s),
+            match str::from_utf8(s.as_slice()) {
+                Some(s) => Ok(s.to_owned()),
                 None => Err(standard_error(InvalidInput)),
             }
         })
@@ -1198,8 +1198,8 @@ pub trait Buffer: Reader {
     /// valid UTF-8 sequence of bytes.
     fn read_line(&mut self) -> IoResult<~str> {
         self.read_until('\n' as u8).and_then(|line|
-            match str::from_utf8_owned(line) {
-                Some(s) => Ok(s),
+            match str::from_utf8(line.as_slice()) {
+                Some(s) => Ok(s.to_owned()),
                 None => Err(standard_error(InvalidInput)),
             }
         )
@@ -1230,8 +1230,8 @@ pub trait Buffer: Reader {
     /// have been read, otherwise the pending byte buffer is returned. This
     /// is the reason that the byte buffer returned may not always contain the
     /// delimiter.
-    fn read_until(&mut self, byte: u8) -> IoResult<~[u8]> {
-        let mut res = ~[];
+    fn read_until(&mut self, byte: u8) -> IoResult<Vec<u8>> {
+        let mut res = Vec::new();
 
         let mut used;
         loop {

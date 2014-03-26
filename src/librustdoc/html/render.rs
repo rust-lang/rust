@@ -487,7 +487,7 @@ impl<'a> SourceCollector<'a> {
                        filename.ends_with("macros>") => return Ok(()),
             Err(e) => return Err(e)
         };
-        let contents = str::from_utf8_owned(contents).unwrap();
+        let contents = str::from_utf8(contents.as_slice()).unwrap();
 
         // Remove the utf-8 BOM if any
         let contents = if contents.starts_with("\ufeff") {

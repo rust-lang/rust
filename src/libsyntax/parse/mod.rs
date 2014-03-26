@@ -228,9 +228,10 @@ pub fn file_to_filemap(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
             unreachable!()
         }
     };
-    match str::from_utf8_owned(bytes) {
+    match str::from_utf8(bytes.as_slice()) {
         Some(s) => {
-            return string_to_filemap(sess, s, path.as_str().unwrap().to_str())
+            return string_to_filemap(sess, s.to_owned(),
+                                     path.as_str().unwrap().to_str())
         }
         None => err(format!("{} is not UTF-8 encoded", path.display())),
     }
@@ -292,7 +293,7 @@ mod test {
         let mut writer = MemWriter::new();
         let mut encoder = json::Encoder::new(&mut writer as &mut io::Writer);
         let _ = val.encode(&mut encoder);
-        str::from_utf8_owned(writer.unwrap()).unwrap()
+        str::from_utf8(writer.unwrap().as_slice()).unwrap().to_owned()
     }
 
     // produce a codemap::span
