@@ -1436,9 +1436,10 @@ impl<'a> LookupContext<'a> {
 
 impl Repr for Candidate {
     fn repr(&self, tcx: &ty::ctxt) -> ~str {
-        format!("Candidate(rcvr_ty={}, rcvr_substs={}, origin={:?})",
+        format!("Candidate(rcvr_ty={}, rcvr_substs={}, method_ty={}, origin={:?})",
                 self.rcvr_match_condition.repr(tcx),
                 self.rcvr_substs.repr(tcx),
+                self.method_ty.repr(tcx),
                 self.origin)
     }
 }
