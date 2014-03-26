@@ -235,8 +235,14 @@ pub fn rust_path() -> Vec<Path> {
 
 // The name of the directory rustc expects libraries to be located.
 // On Unix should be "lib", on windows "bin"
+#[cfg(unix)]
 pub fn libdir() -> ~str {
-    (env!("CFG_LIBDIR_RELATIVE")).to_owned()
+    ~"lib"
+}
+
+#[cfg(windows)]
+pub fn libdir() -> ~str {
+    ~"bin"
 }
 
 // The name of rustc's own place to organize libraries.
