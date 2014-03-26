@@ -3900,7 +3900,7 @@ impl VariantInfo {
                 let arg_names = fields.iter().map(|field| {
                     match field.node.kind {
                         NamedField(ident, _) => ident,
-                        UnnamedField => cx.sess.bug(
+                        UnnamedField(..) => cx.sess.bug(
                             "enum_variants: all fields in struct must have a name")
                     }
                 }).collect();
@@ -4264,11 +4264,11 @@ fn struct_field_tys(fields: &[StructField]) -> Vec<field_ty> {
                     vis: visibility,
                 }
             }
-            UnnamedField => {
+            UnnamedField(visibility) => {
                 field_ty {
                     name: syntax::parse::token::special_idents::unnamed_field.name,
                     id: ast_util::local_def(field.node.id),
-                    vis: ast::Public,
+                    vis: visibility,
                 }
             }
         }

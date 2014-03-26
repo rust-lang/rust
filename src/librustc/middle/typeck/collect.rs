@@ -695,8 +695,7 @@ pub fn convert_struct(ccx: &CrateCtxt,
                 write_ty_to_tcx(tcx, ctor_id, selfty);
 
                 tcx.tcache.borrow_mut().insert(local_def(ctor_id), tpt);
-            } else if struct_def.fields.get(0).node.kind ==
-                    ast::UnnamedField {
+            } else if struct_def.fields.get(0).node.kind.is_unnamed() {
                 // Tuple-like.
                 let inputs = struct_def.fields.map(
                         |field| tcx.tcache.borrow().get(

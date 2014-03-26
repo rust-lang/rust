@@ -290,8 +290,7 @@ pub fn split_trait_methods(trait_methods: &[TraitMethod])
 
 pub fn struct_field_visibility(field: ast::StructField) -> Visibility {
     match field.node.kind {
-        ast::NamedField(_, visibility) => visibility,
-        ast::UnnamedField => ast::Public
+        ast::NamedField(_, v) | ast::UnnamedField(v) => v
     }
 }
 
