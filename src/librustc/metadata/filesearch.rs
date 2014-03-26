@@ -242,5 +242,5 @@ pub fn libdir() -> ~str {
 // The name of rustc's own place to organize libraries.
 // Used to be "rustc", now the default is "rustlib"
 pub fn rustlibdir() -> ~str {
-    (env!("CFG_RUSTLIBDIR")).to_owned()
+    ~"rustlib"
 }
