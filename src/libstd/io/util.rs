@@ -207,7 +207,7 @@ mod test {
         let mut r = MemReader::new(~[0, 1, 2]);
         {
             let mut r = LimitReader::new(r.by_ref(), 4);
-            assert_eq!(~[0, 1, 2], r.read_to_end().unwrap());
+            assert_eq!(vec!(0, 1, 2), r.read_to_end().unwrap());
         }
     }
 
@@ -216,9 +216,9 @@ mod test {
         let mut r = MemReader::new(~[0, 1, 2]);
         {
             let mut r = LimitReader::new(r.by_ref(), 2);
-            assert_eq!(~[0, 1], r.read_to_end().unwrap());
+            assert_eq!(vec!(0, 1), r.read_to_end().unwrap());
         }
-        assert_eq!(~[2], r.read_to_end().unwrap());
+        assert_eq!(vec!(2), r.read_to_end().unwrap());
     }
 
     #[test]
@@ -228,7 +228,7 @@ mod test {
         assert_eq!(3, r.limit());
         assert_eq!(0, r.read_byte().unwrap());
         assert_eq!(2, r.limit());
-        assert_eq!(~[1, 2], r.read_to_end().unwrap());
+        assert_eq!(vec!(1, 2), r.read_to_end().unwrap());
         assert_eq!(0, r.limit());
     }
 
@@ -288,14 +288,14 @@ mod test {
         let rs = ~[MemReader::new(~[0, 1]), MemReader::new(~[]),
                    MemReader::new(~[2, 3])];
         let mut r = ChainedReader::new(rs.move_iter());
-        assert_eq!(~[0, 1, 2, 3], r.read_to_end().unwrap());
+        assert_eq!(vec!(0, 1, 2, 3), r.read_to_end().unwrap());
     }
 
     #[test]
     fn test_tee_reader() {
         let mut r = TeeReader::new(MemReader::new(~[0, 1, 2]),
                                    MemWriter::new());
-        assert_eq!(~[0, 1, 2], r.read_to_end().unwrap());
+        assert_eq!(vec!(0, 1, 2), r.read_to_end().unwrap());
         let (_, w) = r.unwrap();
         assert_eq!(~[0, 1, 2], w.unwrap());
     }

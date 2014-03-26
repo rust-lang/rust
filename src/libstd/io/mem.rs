@@ -129,7 +129,7 @@ impl Seek for MemWriter {
 ///
 /// let mut r = MemReader::new(~[0, 1, 2]);
 ///
-/// assert_eq!(r.read_to_end().unwrap(), ~[0, 1, 2]);
+/// assert_eq!(r.read_to_end().unwrap(), vec!(0, 1, 2));
 /// ```
 pub struct MemReader {
     buf: ~[u8],
@@ -272,7 +272,7 @@ impl<'a> Seek for BufWriter<'a> {
 /// let mut buf = [0, 1, 2, 3];
 /// let mut r = BufReader::new(buf);
 ///
-/// assert_eq!(r.read_to_end().unwrap(), ~[0, 1, 2, 3]);
+/// assert_eq!(r.read_to_end().unwrap(), vec!(0, 1, 2, 3));
 /// ```
 pub struct BufReader<'a> {
     buf: &'a [u8],
@@ -441,8 +441,8 @@ mod test {
         assert_eq!(buf.slice(0, 3), &[5, 6, 7]);
         assert!(reader.read(buf).is_err());
         let mut reader = MemReader::new(~[0, 1, 2, 3, 4, 5, 6, 7]);
-        assert_eq!(reader.read_until(3).unwrap(), ~[0, 1, 2, 3]);
-        assert_eq!(reader.read_until(3).unwrap(), ~[4, 5, 6, 7]);
+        assert_eq!(reader.read_until(3).unwrap(), vec!(0, 1, 2, 3));
+        assert_eq!(reader.read_until(3).unwrap(), vec!(4, 5, 6, 7));
         assert!(reader.read(buf).is_err());
     }
 
@@ -465,8 +465,8 @@ mod test {
         assert_eq!(buf.slice(0, 3), &[5, 6, 7]);
         assert!(reader.read(buf).is_err());
         let mut reader = BufReader::new(in_buf);
-        assert_eq!(reader.read_until(3).unwrap(), ~[0, 1, 2, 3]);
-        assert_eq!(reader.read_until(3).unwrap(), ~[4, 5, 6, 7]);
+        assert_eq!(reader.read_until(3).unwrap(), vec!(0, 1, 2, 3));
+        assert_eq!(reader.read_until(3).unwrap(), vec!(4, 5, 6, 7));
         assert!(reader.read(buf).is_err());
     }
 

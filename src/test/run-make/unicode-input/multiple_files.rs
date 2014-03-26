@@ -58,7 +58,7 @@ fn main() {
         // rustc is passed to us with --out-dir and -L etc., so we
         // can't exec it directly
         let result = Process::output("sh", [~"-c", rustc + " " + main_file_str]).unwrap();
-        let err = str::from_utf8_lossy(result.error);
+        let err = str::from_utf8_lossy(result.error.as_slice());
 
         // positive test so that this test will be updated when the
         // compiler changes.

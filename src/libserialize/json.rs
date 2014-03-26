@@ -1282,8 +1282,8 @@ pub fn from_reader(rdr: &mut io::Reader) -> DecodeResult<Json> {
         Ok(c) => c,
         Err(e) => return Err(IoError(e))
     };
-    let s = match str::from_utf8_owned(contents) {
-        Some(s) => s,
+    let s = match str::from_utf8(contents.as_slice()) {
+        Some(s) => s.to_owned(),
         None => return Err(ParseError(~"contents not utf-8", 0, 0))
     };
     let mut parser = Parser::new(s.chars());

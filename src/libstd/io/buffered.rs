@@ -504,10 +504,10 @@ mod test {
     fn test_read_until() {
         let inner = MemReader::new(~[0, 1, 2, 1, 0]);
         let mut reader = BufferedReader::with_capacity(2, inner);
-        assert_eq!(reader.read_until(0), Ok(~[0]));
-        assert_eq!(reader.read_until(2), Ok(~[1, 2]));
-        assert_eq!(reader.read_until(1), Ok(~[1]));
-        assert_eq!(reader.read_until(8), Ok(~[0]));
+        assert_eq!(reader.read_until(0), Ok(vec!(0)));
+        assert_eq!(reader.read_until(2), Ok(vec!(1, 2)));
+        assert_eq!(reader.read_until(1), Ok(vec!(1)));
+        assert_eq!(reader.read_until(8), Ok(vec!(0)));
         assert!(reader.read_until(9).is_err());
     }
 

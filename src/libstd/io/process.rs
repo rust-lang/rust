@@ -142,9 +142,9 @@ pub struct ProcessOutput {
     /// The status (exit code) of the process.
     pub status: ProcessExit,
     /// The data that the process wrote to stdout.
-    pub output: ~[u8],
+    pub output: Vec<u8>,
     /// The data that the process wrote to stderr.
-    pub error: ~[u8],
+    pub error: Vec<u8>,
 }
 
 /// Describes what to do with a standard io stream for a child process.
@@ -277,8 +277,8 @@ impl Process {
     /// };
     ///
     /// println!("status: {}", output.status);
-    /// println!("stdout: {}", str::from_utf8_lossy(output.output));
-    /// println!("stderr: {}", str::from_utf8_lossy(output.error));
+    /// println!("stdout: {}", str::from_utf8_lossy(output.output.as_slice()));
+    /// println!("stderr: {}", str::from_utf8_lossy(output.error.as_slice()));
     /// ```
     pub fn output(prog: &str, args: &[~str]) -> IoResult<ProcessOutput> {
         Process::new(prog, args).map(|mut p| p.wait_with_output())
@@ -387,14 +387,14 @@ impl Process {
     /// The stdin handle to the child is closed before waiting.
     pub fn wait_with_output(&mut self) -> ProcessOutput {
         drop(self.stdin.take());
-        fn read(stream: Option<io::PipeStream>) -> Receiver<IoResult<~[u8]>> {
+        fn read(stream: Option<io::PipeStream>) -> Receiver<IoResult<Vec<u8>>> {
             let (tx, rx) = channel();
             match stream {
                 Some(stream) => spawn(proc() {
                     let mut stream = stream;
                     tx.send(stream.read_to_end())
                 }),
-                None => tx.send(Ok(~[]))
+                None => tx.send(Ok(Vec::new()))
             }
             rx
         }
@@ -404,8 +404,8 @@ impl Process {
         let status = self.wait();
 
         ProcessOutput { status: status,
-                        output: stdout.recv().ok().unwrap_or(~[]),
-                        error:  stderr.recv().ok().unwrap_or(~[]) }
+                        output: stdout.recv().ok().unwrap_or(Vec::new()),
+                        error:  stderr.recv().ok().unwrap_or(Vec::new()) }
     }
 }
 
@@ -614,13 +614,13 @@ mod tests {
 
         let ProcessOutput {status, output, error}
              = Process::output("echo", [~"hello"]).unwrap();
-        let output_str = str::from_utf8_owned(output).unwrap();
+        let output_str = str::from_utf8(output.as_slice()).unwrap();
 
         assert!(status.success());
         assert_eq!(output_str.trim().to_owned(), ~"hello");
         // FIXME #7224
         if !running_on_valgrind() {
-            assert_eq!(error, ~[]);
+            assert_eq!(error, Vec::new());
         }
     })
 
@@ -630,7 +630,7 @@ mod tests {
              = Process::output("mkdir", [~"."]).unwrap();
 
         assert!(status.matches_exit_status(1));
-        assert_eq!(output, ~[]);
+        assert_eq!(output, Vec::new());
         assert!(!error.is_empty());
     })
 
@@ -652,13 +652,13 @@ mod tests {
 
         let mut prog = Process::new("echo", [~"hello"]).unwrap();
         let ProcessOutput {status, output, error} = prog.wait_with_output();
-        let output_str = str::from_utf8_owned(output).unwrap();
+        let output_str = str::from_utf8(output.as_slice()).unwrap();
 
         assert!(status.success());
         assert_eq!(output_str.trim().to_owned(), ~"hello");
         // FIXME #7224
         if !running_on_valgrind() {
-            assert_eq!(error, ~[]);
+            assert_eq!(error, Vec::new());
         }
     })
 
@@ -667,22 +667,22 @@ mod tests {
         let mut prog = Process::new("echo", [~"hello"]).unwrap();
         let ProcessOutput {status, output, error} = prog.wait_with_output();
 
-        let output_str = str::from_utf8_owned(output).unwrap();
+        let output_str = str::from_utf8(output.as_slice()).unwrap();
 
         assert!(status.success());
         assert_eq!(output_str.trim().to_owned(), ~"hello");
         // FIXME #7224
         if !running_on_valgrind() {
-            assert_eq!(error, ~[]);
+            assert_eq!(error, Vec::new());
         }
 
         let ProcessOutput {status, output, error} = prog.wait_with_output();
 
         assert!(status.success());
-        assert_eq!(output, ~[]);
+        assert_eq!(output, Vec::new());
         // FIXME #7224
         if !running_on_valgrind() {
-            assert_eq!(error, ~[]);
+            assert_eq!(error, Vec::new());
         }
     })
 
@@ -718,7 +718,7 @@ mod tests {
         use os;
         let mut prog = run_pwd(None);
 
-        let output = str::from_utf8_owned(prog.wait_with_output().output).unwrap();
+        let output = str::from_utf8(prog.wait_with_output().output.as_slice()).unwrap().to_owned();
         let parent_dir = os::getcwd();
         let child_dir = Path::new(output.trim());
 
@@ -736,7 +736,7 @@ mod tests {
         let parent_dir = os::getcwd().dir_path();
         let mut prog = run_pwd(Some(&parent_dir));
 
-        let output = str::from_utf8_owned(prog.wait_with_output().output).unwrap();
+        let output = str::from_utf8(prog.wait_with_output().output.as_slice()).unwrap().to_owned();
         let child_dir = Path::new(output.trim());
 
         let parent_stat = parent_dir.stat().unwrap();
@@ -780,7 +780,7 @@ mod tests {
         if running_on_valgrind() { return; }
 
         let mut prog = run_env(None);
-        let output = str::from_utf8_owned(prog.wait_with_output().output).unwrap();
+        let output = str::from_utf8(prog.wait_with_output().output.as_slice()).unwrap().to_owned();
 
         let r = os::env();
         for &(ref k, ref v) in r.iter() {
@@ -794,7 +794,7 @@ mod tests {
         if running_on_valgrind() { return; }
 
         let mut prog = run_env(None);
-        let output = str::from_utf8_owned(prog.wait_with_output().output).unwrap();
+        let output = str::from_utf8(prog.wait_with_output().output.as_slice()).unwrap().to_owned();
 
         let r = os::env();
         for &(ref k, ref v) in r.iter() {
@@ -811,7 +811,7 @@ mod tests {
 
         let mut prog = run_env(Some(new_env));
         let result = prog.wait_with_output();
-        let output = str::from_utf8_lossy(result.output).into_owned();
+        let output = str::from_utf8_lossy(result.output.as_slice()).into_owned();
 
         assert!(output.contains("RUN_TEST_NEW_ENV=123"),
                 "didn't find RUN_TEST_NEW_ENV inside of:\n\n{}", output);
