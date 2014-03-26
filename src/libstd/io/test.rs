@@ -19,7 +19,7 @@ use std::io::net::ip::*;
 use sync::atomics::{AtomicUint, INIT_ATOMIC_UINT, Relaxed};
 
 macro_rules! iotest (
-    { fn $name:ident() $b:block $($a:attr)* } => (
+    { fn $name:ident() $b:block $(#[$a:meta])* } => (
         mod $name {
             #[allow(unused_imports)];
 
@@ -43,8 +43,8 @@ macro_rules! iotest (
 
             fn f() $b
 
-            $($a)* #[test] fn green() { f() }
-            $($a)* #[test] fn native() {
+            $(#[$a])* #[test] fn green() { f() }
+            $(#[$a])* #[test] fn native() {
                 use native;
                 let (tx, rx) = channel();
                 native::task::spawn(proc() { tx.send(f()) });

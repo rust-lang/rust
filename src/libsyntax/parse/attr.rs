@@ -34,9 +34,6 @@ impl<'a> ParserAttr for Parser<'a> {
             debug!("parse_outer_attributes: self.token={:?}",
                    self.token);
             match self.token {
-              token::INTERPOLATED(token::NtAttr(..)) => {
-                attrs.push(self.parse_attribute(false));
-              }
               token::POUND => {
                 attrs.push(self.parse_attribute(false));
               }
@@ -66,11 +63,6 @@ impl<'a> ParserAttr for Parser<'a> {
         debug!("parse_attributes: permit_inner={:?} self.token={:?}",
                permit_inner, self.token);
         let (span, value, mut style) = match self.token {
-            INTERPOLATED(token::NtAttr(attr)) => {
-                assert!(attr.node.style == ast::AttrOuter);
-                self.bump();
-                (attr.span, attr.node.value, ast::AttrOuter)
-            }
             token::POUND => {
                 let lo = self.span.lo;
                 self.bump();
@@ -133,9 +125,6 @@ impl<'a> ParserAttr for Parser<'a> {
         let mut next_outer_attrs: Vec<ast::Attribute> = Vec::new();
         loop {
             let attr = match self.token {
-                token::INTERPOLATED(token::NtAttr(..)) => {
-                    self.parse_attribute(true)
-                }
                 token::POUND => {
                     self.parse_attribute(true)
                 }
@@ -163,6 +152,14 @@ impl<'a> ParserAttr for Parser<'a> {
     // | IDENT = lit
     // | IDENT meta_seq
     fn parse_meta_item(&mut self) -> @ast::MetaItem {
+        match self.token {
+            token::INTERPOLATED(token::NtMeta(e)) => {
+                self.bump();
+                return e
+            }
+            _ => {}
+        }
+
         let lo = self.span.lo;
         let ident = self.parse_ident();
         let name = self.id_to_interned_str(ident);
