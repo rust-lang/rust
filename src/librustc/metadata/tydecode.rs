@@ -591,7 +591,7 @@ fn parse_bounds(st: &mut PState, conv: conv_did) -> ty::ParamBounds {
                 param_bounds.builtin_bounds.add(ty::BoundSized);
             }
             'P' => {
-                param_bounds.builtin_bounds.add(ty::BoundPod);
+                param_bounds.builtin_bounds.add(ty::BoundCopy);
             }
             'T' => {
                 param_bounds.builtin_bounds.add(ty::BoundShare);

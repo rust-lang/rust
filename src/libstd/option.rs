@@ -684,7 +684,7 @@ mod tests {
 
     #[test] #[should_fail]
     fn test_option_too_much_dance() {
-        let mut y = Some(marker::NoPod);
+        let mut y = Some(marker::NoCopy);
         let _y2 = y.take_unwrap();
         let _y3 = y.take_unwrap();
     }

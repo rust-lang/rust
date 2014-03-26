@@ -16,7 +16,7 @@
 
 extern crate trait_superkinds_in_metadata;
 use trait_superkinds_in_metadata::{RequiresRequiresShareAndSend, RequiresShare};
-use trait_superkinds_in_metadata::{RequiresPod};
+use trait_superkinds_in_metadata::{RequiresCopy};
 
 struct X<T>(T);
 
@@ -24,6 +24,6 @@ impl <T:Share> RequiresShare for X<T> { }
 
 impl <T:Share+Send> RequiresRequiresShareAndSend for X<T> { }
 
-impl <T:Pod> RequiresPod for X<T> { }
+impl <T:Copy> RequiresCopy for X<T> { }
 
 pub fn main() { }
