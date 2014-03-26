@@ -86,6 +86,7 @@ PREPARE_TOOLS = $(filter-out compiletest, $(TOOLS))
 define DEF_PREPARE_HOST_TOOL
 prepare-host-tool-$(1)-$(2)-$(3)-$(4): prepare-maybe-clean-$(4) \
                                   $$(foreach dep,$$(TOOL_DEPS_$(1)),prepare-host-lib-$$(dep)-$(2)-$(3)-$(4)) \
+                                  $$(HBIN$(2)_H_$(3))/$(1)$$(X_$(3)) \
                                   prepare-host-dirs-$(4)
 	$$(if $$(findstring $(2), $$(PREPARE_STAGE)),\
       $$(if $$(findstring $(3), $$(PREPARE_HOST)),\
