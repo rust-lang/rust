@@ -20,6 +20,7 @@ library.
 
 use ast::{Item, MetaItem, MetaList, MetaNameValue, MetaWord};
 use ext::base::ExtCtxt;
+use codemap;
 use codemap::Span;
 
 pub mod clone;
@@ -65,7 +66,17 @@ pub fn expand_meta_deriving(cx: &mut ExtCtxt,
                     MetaNameValue(ref tname, _) |
                     MetaList(ref tname, _) |
                     MetaWord(ref tname) => {
-                        macro_rules! expand(($func:path) => ($func(cx, titem.span,
+                        let mut span = titem.span;
+                        span.expn_info = Some(@codemap::ExpnInfo {
+                            call_site: span,
+                            callee: codemap::NameAndSpan {
+                                name: format!("deriving({})", tname.get()),
+                                format: codemap::MacroAttribute,
+                                span: None,
+                            }
+                        });
+
+                        macro_rules! expand(($func:path) => ($func(cx, span,
                                                                    titem, item,
                                                                    |i| push(i))));
                         match tname.get() {

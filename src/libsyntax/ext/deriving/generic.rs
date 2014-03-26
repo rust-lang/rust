@@ -408,6 +408,7 @@ impl<'a> TraitDef<'a> {
                          InternedString::new("automatically_derived")));
         let opt_trait_ref = Some(trait_ref);
         let ident = ast_util::impl_pretty_name(&opt_trait_ref, self_type);
+        assert!(self.span.expn_info.is_some(), "Should have expansion info")
         cx.item(
             self.span,
             ident,
@@ -613,6 +614,7 @@ impl<'a> MethodDef<'a> {
             Vec::new()
         };
 
+        assert!(trait_.span.expn_info.is_some(), "Should have expansion info")
         // Create the method.
         @ast::Method {
             ident: method_ident,
