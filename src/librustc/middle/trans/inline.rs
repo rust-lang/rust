@@ -13,6 +13,7 @@ use metadata::csearch;
 use middle::astencode;
 use middle::trans::base::{push_ctxt, trans_item, get_item_val, trans_fn};
 use middle::trans::common::*;
+use middle::trans::datum::*;
 use middle::ty;
 
 use syntax::ast;
@@ -63,12 +64,17 @@ pub fn maybe_instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
             // provides
             match item.node {
                 ast::ItemStatic(..) => {
-                    let g = get_item_val(ccx, item.id);
+                    let llref = match get_item_val(ccx, item.id) {
+                        LvalueDatum(datum) => datum.val,
+                        PodValueDatum(_) => {
+                            ccx.sess().bug("found PodValue instead of Lvalue for static");
+                        }
+                    };
                     // see the comment in get_item_val() as to why this check is
                     // performed here.
                     if !attr::contains_name(item.attrs.as_slice(),
                                             "address_insignificant") {
-                        SetLinkage(g, AvailableExternallyLinkage);
+                        SetLinkage(llref, AvailableExternallyLinkage);
                     }
                 }
                 _ => {}
@@ -130,7 +136,12 @@ pub fn maybe_instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
                 mth.generics.ty_params.len();
 
           if num_type_params == 0 {
-              let llfn = get_item_val(ccx, mth.id);
+              let llfn = match get_item_val(ccx, mth.id) {
+                  LvalueDatum(_) => {
+                      ccx.sess().bug("found Lvalue instead of PodValue for method");
+                  }
+                  PodValueDatum(datum) => datum.val
+              };
               trans_fn(ccx, mth.decl, mth.body, llfn, None, mth.id, []);
           }
           local_def(mth.id)

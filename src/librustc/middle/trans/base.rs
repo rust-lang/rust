@@ -356,7 +356,7 @@ pub fn malloc_raw_dyn<'a>(
         let r = callee::trans_lang_call(
             bcx,
             require_alloc_fn(bcx, t, ExchangeMallocFnLangItem),
-            [size],
+            [datum::pod_value(ccx.tcx(), size, ty::mk_uint())],
             None);
         rslt(r.bcx, PointerCast(r.bcx, r.val, llty_value.ptr_to()))
     } else {
@@ -378,13 +378,16 @@ pub fn malloc_raw_dyn<'a>(
 
         // Allocate space:
         let drop_glue = glue::get_drop_glue(ccx, t);
+        let drop_glue = PointerCast(bcx, drop_glue,
+                                    Type::glue_fn(ccx, Type::i8p(ccx)).ptr_to());
         let r = callee::trans_lang_call(
             bcx,
             langcall,
             [
-                PointerCast(bcx, drop_glue, Type::glue_fn(ccx, Type::i8p(ccx)).ptr_to()),
-                size,
-                llalign
+                datum::pod_value(ccx.tcx(), drop_glue,
+                                 ty::mk_imm_ptr(ccx.tcx(), ty::mk_nil())),
+                datum::pod_value(ccx.tcx(), size, ty::mk_uint()),
+                datum::pod_value(ccx.tcx(), llalign, ty::mk_uint())
             ],
             None);
         rslt(r.bcx, PointerCast(r.bcx, r.val, llty))
@@ -535,11 +538,14 @@ pub fn get_res_dtor(ccx: &CrateContext,
         };
 
         let vtables = typeck::check::vtable::trans_resolve_method(ccx.tcx(), did.node, &tsubsts);
-        let (val, _) = monomorphize::monomorphic_fn(ccx, did, &tsubsts, vtables, None, None);
-
-        val
+        monomorphize::monomorphic_fn(ccx, did, &tsubsts, vtables, None, None).val
     } else if did.krate == ast::LOCAL_CRATE {
-        get_item_val(ccx, did.node)
+        match get_item_val(ccx, did.node) {
+            datum::LvalueDatum(_) => {
+                ccx.sess().bug("found Lvalue instead of PodValue for drop method");
+            }
+            datum::PodValueDatum(datum) => datum.val
+        }
     } else {
         let tcx = ccx.tcx();
         let name = csearch::get_symbol(&ccx.sess().cstore, did);
@@ -857,9 +863,10 @@ pub fn fail_if_zero<'a>(
     })
 }
 
-pub fn trans_external_path(ccx: &CrateContext, did: ast::DefId, t: ty::t) -> ValueRef {
+pub fn trans_external_path(ccx: &CrateContext, did: ast::DefId, t: ty::t)
+                           -> datum::Datum<datum::PodValue> {
     let name = csearch::get_symbol(&ccx.sess().cstore, did);
-    match ty::get(t).sty {
+    let llval = match ty::get(t).sty {
         ty::ty_bare_fn(ref fn_ty) => {
             match fn_ty.abis.for_target(ccx.sess().targ_cfg.os,
                                         ccx.sess().targ_cfg.arch) {
@@ -891,7 +898,8 @@ pub fn trans_external_path(ccx: &CrateContext, did: ast::DefId, t: ty::t) -> Val
             get_extern_const(&mut *ccx.externs.borrow_mut(), ccx.llmod, name,
                              llty)
         }
-    }
+    };
+    datum::pod_value(ccx.tcx(), llval, t)
 }
 
 pub fn invoke<'a>(
@@ -1621,7 +1629,12 @@ pub fn trans_enum_def(ccx: &CrateContext, enum_definition: &ast::EnumDef,
 
         match variant.node.kind {
             ast::TupleVariantKind(ref args) if args.len() > 0 => {
-                let llfn = get_item_val(ccx, variant.node.id);
+                let llfn = match get_item_val(ccx, variant.node.id) {
+                    datum::LvalueDatum(_) => {
+                        ccx.sess().bug("found Lvalue instead of PodValue for method");
+                    }
+                    datum::PodValueDatum(datum) => datum.val
+                };
                 trans_enum_variant(ccx, id, variant, args.as_slice(),
                                    disr_val, None, llfn);
             }
@@ -1650,11 +1663,22 @@ pub fn trans_item(ccx: &CrateContext, item: &ast::Item) {
     match item.node {
       ast::ItemFn(decl, purity, _abis, ref generics, body) => {
         if purity == ast::ExternFn  {
-            let llfndecl = get_item_val(ccx, item.id);
+            let llfn = match get_item_val(ccx, item.id) {
+                datum::LvalueDatum(_) => {
+                    ccx.sess().bug("found Lvalue instead of PodValue for fn");
+                }
+                datum::PodValueDatum(datum) => datum.val
+            };
             foreign::trans_rust_fn_with_foreign_abi(
-                ccx, decl, body, item.attrs.as_slice(), llfndecl, item.id);
+                ccx, decl, body, item.attrs.as_slice(),
+                llfn, item.id);
         } else if !generics.is_type_parameterized() {
-            let llfn = get_item_val(ccx, item.id);
+            let llfn = match get_item_val(ccx, item.id) {
+                datum::LvalueDatum(_) => {
+                    ccx.sess().bug("found Lvalue instead of PodValue for fn");
+                }
+                datum::PodValueDatum(datum) => datum.val
+            };
             trans_fn(ccx,
                      decl,
                      body,
@@ -1727,9 +1751,14 @@ pub fn trans_struct_def(ccx: &CrateContext, struct_def: @ast::StructDef) {
         // We only need to translate a constructor if there are fields;
         // otherwise this is a unit-like struct.
         Some(ctor_id) if struct_def.fields.len() > 0 => {
-            let llfndecl = get_item_val(ccx, ctor_id);
+            let llfn = match get_item_val(ccx, ctor_id) {
+                datum::LvalueDatum(_) => {
+                    ccx.sess().bug("found Lvalue instead of PodValue for struct ctor");
+                }
+                datum::PodValueDatum(datum) => datum.val
+            };
             trans_tuple_struct(ccx, struct_def.fields.as_slice(),
-                               ctor_id, None, llfndecl);
+                               ctor_id, None, llfn);
         }
         Some(_) | None => {}
     }
@@ -1765,7 +1794,7 @@ fn register_fn(ccx: &CrateContext,
                sym: ~str,
                node_id: ast::NodeId,
                node_type: ty::t)
-               -> ValueRef {
+               -> datum::Datum<datum::PodValue> {
     let f = match ty::get(node_type).sty {
         ty::ty_bare_fn(ref f) => {
             assert!(f.abis.is_rust() || f.abis.is_intrinsic());
@@ -1780,7 +1809,7 @@ fn register_fn(ccx: &CrateContext,
                             f.sig.output,
                             sym);
     finish_register_fn(ccx, sp, sym, node_id, llfn);
-    llfn
+    datum::pod_value(ccx.tcx(), llfn, node_type)
 }
 
 // only use this for foreign function ABIs and glue, use `register_fn` for Rust functions
@@ -1841,7 +1870,12 @@ pub fn create_entry_wrapper(ccx: &CrateContext,
                     Err(s) => { ccx.sess().fatal(s); }
                 };
                 let start_fn = if start_def_id.krate == ast::LOCAL_CRATE {
-                    get_item_val(ccx, start_def_id.node)
+                    match get_item_val(ccx, start_def_id.node) {
+                        datum::LvalueDatum(_) => {
+                            ccx.sess().bug("found Lvalue instead of PodValue for start fn");
+                        }
+                        datum::PodValueDatum(datum) => datum
+                    }
                 } else {
                     let start_fn_type = csearch::get_type(ccx.tcx(),
                                                           start_def_id).ty;
@@ -1859,7 +1893,7 @@ pub fn create_entry_wrapper(ccx: &CrateContext,
                         llvm::LLVMGetParam(llfn, 1)
                      )
                 };
-                (start_fn, args)
+                (start_fn.val, args)
             } else {
                 debug!("using user-defined start fn");
                 let args = vec!(
@@ -1899,22 +1933,21 @@ fn exported_name(ccx: &CrateContext, id: ast::NodeId,
     }
 }
 
-pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
+pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> datum::LvalueOrPod {
     debug!("get_item_val(id=`{:?}`)", id);
 
-    match ccx.item_vals.borrow().find_copy(&id) {
-        Some(v) => return v,
+    match ccx.item_vals.borrow().find(&id) {
+        Some(&datum) => return datum,
         None => {}
     }
 
     let mut foreign = false;
-    let item = ccx.tcx.map.get(id);
-    let val = match item {
+    let datum = match ccx.tcx.map.get(id) {
         ast_map::NodeItem(i) => {
             let ty = ty::node_id_to_type(ccx.tcx(), i.id);
             let sym = exported_name(ccx, id, ty, i.attrs.as_slice());
 
-            let v = match i.node {
+            let datum = match i.node {
                 ast::ItemStatic(_, _, expr) => {
                     // If this static came from an external crate, then
                     // we need to get the symbol from csearch instead of
@@ -1936,7 +1969,6 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
                     // LLVM type is not fully determined by the Rust type.
                     let (v, inlineable) = consts::const_expr(ccx, expr, is_local);
                     ccx.const_values.borrow_mut().insert(id, v);
-                    let mut inlineable = inlineable;
 
                     unsafe {
                         let llty = llvm::LLVMTypeOf(v);
@@ -1950,6 +1982,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
 
                         // Apply the `unnamed_addr` attribute if
                         // requested
+                        let mut inlineable = inlineable;
                         if attr::contains_name(i.attrs.as_slice(),
                                                "address_insignificant") {
                             if ccx.reachable.contains(&id) {
@@ -1984,17 +2017,17 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
 
                         if !inlineable {
                             debug!("{} not inlined", sym);
-                            ccx.non_inlineable_statics.borrow_mut()
-                                                      .insert(id);
+                            ccx.non_inlineable_statics.borrow_mut().insert(id);
                         }
 
                         ccx.item_symbols.borrow_mut().insert(i.id, sym);
-                        g
+
+                        datum::LvalueDatum(datum::Datum(g, ty, datum::Lvalue))
                     }
                 }
 
                 ast::ItemFn(_, purity, _, _, _) => {
-                    let llfn = if purity != ast::ExternFn {
+                    let datum = if purity != ast::ExternFn {
                         register_fn(ccx, i.span, sym, i.id, ty)
                     } else {
                         foreign::register_rust_fn_with_foreign_abi(ccx,
@@ -2002,24 +2035,31 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
                                                                    sym,
                                                                    i.id)
                     };
-                    set_llvm_fn_attrs(i.attrs.as_slice(), llfn);
-                    llfn
+                    set_llvm_fn_attrs(i.attrs.as_slice(), datum.val);
+                    datum::PodValueDatum(datum)
                 }
 
                 _ => fail!("get_item_val: weird result in table")
             };
 
-            match attr::first_attr_value_str_by_name(i.attrs.as_slice(),
+            match attr::first_attr_value_str_by_name(i.attrs
+                                                      .as_slice(),
                                                      "link_section") {
-                Some(sect) => unsafe {
-                    sect.get().with_c_str(|buf| {
-                        llvm::LLVMSetSection(v, buf);
-                    })
+                Some(sect) => {
+                    let val = match datum {
+                        datum::LvalueDatum(datum) => datum.val,
+                        datum::PodValueDatum(datum) => datum.val
+                    };
+                    unsafe {
+                        sect.get().with_c_str(|buf| {
+                            llvm::LLVMSetSection(val, buf);
+                        })
+                    }
                 },
                 None => ()
             }
 
-            v
+            datum
         }
 
         ast_map::NodeTraitMethod(trait_method) => {
@@ -2030,77 +2070,81 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
                                    get_item_val()");
                 }
                 ast::Provided(m) => {
-                    register_method(ccx, id, m)
+                    datum::PodValueDatum(register_method(ccx, id, m))
                 }
             }
         }
 
         ast_map::NodeMethod(m) => {
-            register_method(ccx, id, m)
+            datum::PodValueDatum(register_method(ccx, id, m))
         }
 
         ast_map::NodeForeignItem(ni) => {
+            let ty = ty::node_id_to_type(ccx.tcx(), ni.id);
             foreign = true;
 
             match ni.node {
                 ast::ForeignItemFn(..) => {
                     let abis = ccx.tcx.map.get_foreign_abis(id);
-                    foreign::register_foreign_item_fn(ccx, abis, ni)
+                    let llfn = foreign::register_foreign_item_fn(ccx, abis, ni);
+                    datum::PodValueDatum(datum::pod_value(ccx.tcx(), llfn, ty))
                 }
                 ast::ForeignItemStatic(..) => {
-                    foreign::register_static(ccx, ni)
+                    let llref = foreign::register_static(ccx, ni);
+                    datum::LvalueDatum(datum::Datum(llref, ty, datum::Lvalue))
                 }
             }
         }
 
         ast_map::NodeVariant(ref v) => {
-            let llfn;
-            let args = match v.node.kind {
-                ast::TupleVariantKind(ref args) => args,
+            match v.node.kind {
+                ast::TupleVariantKind(ref args) => {
+                    assert!(args.len() != 0u);
+                    let ty = ty::node_id_to_type(ccx.tcx(), id);
+                    let parent = ccx.tcx.map.get_parent(id);
+                    let enm = ccx.tcx.map.expect_item(parent);
+                    let sym = exported_name(ccx,
+                                            id,
+                                            ty,
+                                            enm.attrs.as_slice());
+
+                    let datum = match enm.node {
+                        ast::ItemEnum(_, _) => {
+                            register_fn(ccx, (*v).span, sym, id, ty)
+                        }
+                        _ => fail!("NodeVariant, shouldn't happen")
+                    };
+                    set_inline_hint(datum.val);
+                    datum::PodValueDatum(datum)
+                }
                 ast::StructVariantKind(_) => {
                     fail!("struct variant kind unexpected in get_item_val")
                 }
-            };
-            assert!(args.len() != 0u);
-            let ty = ty::node_id_to_type(ccx.tcx(), id);
-            let parent = ccx.tcx.map.get_parent(id);
-            let enm = ccx.tcx.map.expect_item(parent);
-            let sym = exported_name(ccx,
-                                    id,
-                                    ty,
-                                    enm.attrs.as_slice());
-
-            llfn = match enm.node {
-                ast::ItemEnum(_, _) => {
-                    register_fn(ccx, (*v).span, sym, id, ty)
-                }
-                _ => fail!("NodeVariant, shouldn't happen")
-            };
-            set_inline_hint(llfn);
-            llfn
+            }
         }
 
         ast_map::NodeStructCtor(struct_def) => {
             // Only register the constructor if this is a tuple-like struct.
-            let ctor_id = match struct_def.ctor_id {
+            match struct_def.ctor_id {
                 None => {
                     ccx.sess().bug("attempt to register a constructor of \
                                     a non-tuple-like struct")
                 }
-                Some(ctor_id) => ctor_id,
-            };
-            let parent = ccx.tcx.map.get_parent(id);
-            let struct_item = ccx.tcx.map.expect_item(parent);
-            let ty = ty::node_id_to_type(ccx.tcx(), ctor_id);
-            let sym = exported_name(ccx,
-                                    id,
-                                    ty,
-                                    struct_item.attrs
-                                               .as_slice());
-            let llfn = register_fn(ccx, struct_item.span,
-                                   sym, ctor_id, ty);
-            set_inline_hint(llfn);
-            llfn
+                Some(ctor_id) => {
+                    let parent = ccx.tcx.map.get_parent(id);
+                    let struct_item = ccx.tcx.map.expect_item(parent);
+                    let ty = ty::node_id_to_type(ccx.tcx(), ctor_id);
+                    let sym = exported_name(ccx,
+                                            id,
+                                            ty,
+                                            struct_item.attrs
+                                                       .as_slice());
+                    let datum = register_fn(ccx, struct_item.span,
+                                            sym, ctor_id, ty);
+                    set_inline_hint(datum.val);
+                    datum::PodValueDatum(datum)
+                }
+            }
         }
 
         ref variant => {
@@ -2113,22 +2157,26 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
     // linkage b/c that doesn't quite make sense. Otherwise items can
     // have internal linkage if they're not reachable.
     if !foreign && !ccx.reachable.contains(&id) {
+        let val = match datum {
+            datum::LvalueDatum(datum) => datum.val,
+            datum::PodValueDatum(datum) => datum.val
+        };
         lib::llvm::SetLinkage(val, lib::llvm::InternalLinkage);
     }
 
-    ccx.item_vals.borrow_mut().insert(id, val);
-    val
+    ccx.item_vals.borrow_mut().insert(id, datum);
+    datum
 }
 
 fn register_method(ccx: &CrateContext, id: ast::NodeId,
-                   m: &ast::Method) -> ValueRef {
+                   m: &ast::Method) -> datum::Datum<datum::PodValue> {
     let mty = ty::node_id_to_type(ccx.tcx(), id);
 
     let sym = exported_name(ccx, id, mty, m.attrs.as_slice());
 
-    let llfn = register_fn(ccx, m.span, sym, id, mty);
-    set_llvm_fn_attrs(m.attrs.as_slice(), llfn);
-    llfn
+    let datum = register_fn(ccx, m.span, sym, id, mty);
+    set_llvm_fn_attrs(m.attrs.as_slice(), datum.val);
+    datum
 }
 
 pub fn vp2i(cx: &Block, v: ValueRef) -> ValueRef {
@@ -2355,8 +2403,13 @@ pub fn fill_crate_map(ccx: &CrateContext, map: ValueRef) {
     let event_loop_factory = match ccx.tcx.lang_items.event_loop_factory() {
         Some(did) => unsafe {
             if is_local(did) {
-                llvm::LLVMConstPointerCast(get_item_val(ccx, did.node),
-                                           ccx.int_type.ptr_to().to_ref())
+                let llfn = match get_item_val(ccx, did.node) {
+                    datum::LvalueDatum(_) => {
+                        ccx.sess().bug("found Lvalue instead of PodValue for event loop factory");
+                    }
+                    datum::PodValueDatum(datum) => datum.val
+                };
+                llvm::LLVMConstPointerCast(llfn, ccx.int_type.ptr_to().to_ref())
             } else {
                 let name = csearch::get_symbol(&ccx.sess().cstore, did);
                 let global = name.with_c_str(|buf| {

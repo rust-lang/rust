@@ -19,10 +19,11 @@ use middle::astencode;
 use middle::resolve;
 use middle::trans::adt;
 use middle::trans::base;
+use middle::trans::base::{decl_crate_map};
 use middle::trans::builder::Builder;
 use middle::trans::common::{C_i32, C_null};
 use middle::trans::common::{mono_id,ExternMap,tydesc_info,BuilderRef_res,Stats};
-use middle::trans::base::{decl_crate_map};
+use middle::trans::datum::{Datum, PodValue, LvalueOrPod};
 use middle::trans::debuginfo;
 use middle::trans::type_::Type;
 use middle::ty;
@@ -45,7 +46,7 @@ pub struct CrateContext {
     tn: TypeNames,
     externs: RefCell<ExternMap>,
     intrinsics: HashMap<&'static str, ValueRef>,
-    item_vals: RefCell<NodeMap<ValueRef>>,
+    item_vals: RefCell<NodeMap<LvalueOrPod>>,
     exp_map2: resolve::ExportMap2,
     reachable: NodeSet,
     item_symbols: RefCell<NodeMap<~str>>,
@@ -65,7 +66,7 @@ pub struct CrateContext {
     // that is generated
     non_inlineable_statics: RefCell<NodeSet>,
     // Cache instances of monomorphized functions
-    monomorphized: RefCell<HashMap<mono_id, ValueRef>>,
+    monomorphized: RefCell<HashMap<mono_id, Datum<PodValue>>>,
     monomorphizing: RefCell<DefIdMap<uint>>,
     // Cache generated vtables
     vtables: RefCell<HashMap<(ty::t, mono_id), ValueRef>>,

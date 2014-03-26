@@ -11,12 +11,12 @@
 
 use back::link::mangle_exported_name;
 use driver::session;
-use lib::llvm::ValueRef;
 use middle::trans::base::{set_llvm_fn_attrs, set_inline_hint};
 use middle::trans::base::{trans_enum_variant, push_ctxt, get_item_val};
 use middle::trans::base::{trans_fn, decl_internal_rust_fn};
 use middle::trans::base;
 use middle::trans::common::*;
+use middle::trans::datum::*;
 use middle::trans::meth;
 use middle::trans::intrinsic;
 use middle::ty;
@@ -33,7 +33,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
                       vtables: Option<typeck::vtable_res>,
                       self_vtables: Option<typeck::vtable_param_res>,
                       ref_id: Option<ast::NodeId>)
-    -> (ValueRef, bool) {
+                      -> Datum<PodValue> {
     debug!("monomorphic_fn(\
             fn_id={}, \
             real_substs={}, \
@@ -48,7 +48,6 @@ pub fn monomorphic_fn(ccx: &CrateContext,
 
     assert!(real_substs.tps.iter().all(|t| !ty::type_needs_infer(*t)));
     let _icx = push_ctxt("monomorphic_fn");
-    let mut must_cast = false;
 
     let psubsts = @param_substs {
         tys: real_substs.tps.clone(),
@@ -61,10 +60,6 @@ pub fn monomorphic_fn(ccx: &CrateContext,
     for s in psubsts.tys.iter() { assert!(!ty::type_has_params(*s)); }
 
     let hash_id = make_mono_id(ccx, fn_id, &*psubsts);
-    if hash_id.params.iter().any(
-                |p| match *p { mono_precise(_, _) => false, _ => true }) {
-        must_cast = true;
-    }
 
     debug!("monomorphic_fn(\
             fn_id={}, \
@@ -75,12 +70,12 @@ pub fn monomorphic_fn(ccx: &CrateContext,
            hash_id);
 
     match ccx.monomorphized.borrow().find(&hash_id) {
-        Some(&val) => {
+        Some(&datum) => {
             debug!("leaving monomorphic fn {}",
-            ty::item_path_str(ccx.tcx(), fn_id));
-            return (val, must_cast);
+                   ty::item_path_str(ccx.tcx(), fn_id));
+            return datum;
         }
-        None => ()
+        None => {}
     }
 
     let tpt = ty::lookup_item_type(ccx.tcx(), fn_id);
@@ -101,7 +96,12 @@ pub fn monomorphic_fn(ccx: &CrateContext,
         ast_map::NodeForeignItem(_) => {
             if !ccx.tcx.map.get_foreign_abis(fn_id.node).is_intrinsic() {
                 // Foreign externs don't have to be monomorphized.
-                return (get_item_val(ccx, fn_id.node), true);
+                match get_item_val(ccx, fn_id.node) {
+                    LvalueDatum(_) => {
+                        ccx.sess().bug("found Lvalue instead of PodValue for extern fn");
+                    }
+                    PodValueDatum(datum) => return datum
+                }
             }
         }
         ast_map::NodeTraitMethod(method) => {
@@ -158,61 +158,55 @@ pub fn monomorphic_fn(ccx: &CrateContext,
 
     ccx.stats.n_monos.set(ccx.stats.n_monos.get() + 1);
 
-    let depth;
-    {
-        let mut monomorphizing = ccx.monomorphizing.borrow_mut();
-        depth = match monomorphizing.find(&fn_id) {
-            Some(&d) => d, None => 0
-        };
+    let depth = *ccx.monomorphizing.borrow().find(&fn_id).unwrap_or(&0);
 
-        // Random cut-off -- code that needs to instantiate the same function
-        // recursively more than thirty times can probably safely be assumed
-        // to be causing an infinite expansion.
-        if depth > ccx.sess().recursion_limit.get() {
-            ccx.sess().span_fatal(ccx.tcx.map.span(fn_id.node),
-                "reached the recursion limit during monomorphization");
-        }
-
-        monomorphizing.insert(fn_id, depth + 1);
+    // Random cut-off -- code that needs to instantiate the same function
+    // recursively more than thirty times can probably safely be assumed
+    // to be causing an infinite expansion.
+    if depth > ccx.sess().recursion_limit.get() {
+        ccx.sess().span_fatal(ccx.tcx.map.span(fn_id.node),
+            "reached the recursion limit during monomorphization");
     }
+
+    ccx.monomorphizing.borrow_mut().insert(fn_id, depth + 1);
 
     let s = ccx.tcx.map.with_path(fn_id.node, |path| {
         mangle_exported_name(ccx, path, mono_ty, fn_id.node)
     });
     debug!("monomorphize_fn mangled to {}", s);
 
-    let mk_lldecl = || {
+    let mk_decl = || {
         let lldecl = decl_internal_rust_fn(ccx, false,
                                            f.sig.inputs.as_slice(),
                                            f.sig.output, s);
-        ccx.monomorphized.borrow_mut().insert(hash_id, lldecl);
-        lldecl
+        let decl = pod_value(ccx.tcx(), lldecl, mono_ty);
+        ccx.monomorphized.borrow_mut().insert(hash_id, decl);
+        decl
     };
 
-    let lldecl = match map_node {
+    let decl = match map_node {
         ast_map::NodeItem(i) => {
             match *i {
-              ast::Item {
-                  node: ast::ItemFn(decl, _, _, _, body),
-                  ..
-              } => {
-                  let d = mk_lldecl();
-                  set_llvm_fn_attrs(i.attrs.as_slice(), d);
-                  trans_fn(ccx, decl, body, d, Some(psubsts), fn_id.node, []);
-                  d
-              }
-              _ => {
-                ccx.sess().bug("Can't monomorphize this kind of item")
-              }
+                ast::Item {
+                    node: ast::ItemFn(decl, _, _, _, body),
+                    ..
+                } => {
+                    let d = mk_decl();
+                    set_llvm_fn_attrs(i.attrs.as_slice(), d.val);
+                    trans_fn(ccx, decl, body, d.val, Some(psubsts), fn_id.node, []);
+                    d
+                }
+                _ => ccx.sess().bug("Can't monomorphize this kind of item")
             }
         }
         ast_map::NodeForeignItem(i) => {
-            let simple = intrinsic::get_simple_intrinsic(ccx, i);
-            match simple {
-                Some(decl) => decl,
+            match intrinsic::get_simple_intrinsic(ccx, i) {
+                Some(decl) => {
+                    pod_value(ccx.tcx(), decl, mono_ty)
+                }
                 None => {
-                    let d = mk_lldecl();
-                    intrinsic::trans_intrinsic(ccx, d, i, psubsts, ref_id);
+                    let d = mk_decl();
+                    intrinsic::trans_intrinsic(ccx, d.val, i, psubsts, ref_id);
                     d
                 }
             }
@@ -221,8 +215,8 @@ pub fn monomorphic_fn(ccx: &CrateContext,
             let parent = ccx.tcx.map.get_parent(fn_id.node);
             let tvs = ty::enum_variants(ccx.tcx(), local_def(parent));
             let this_tv = *tvs.iter().find(|tv| { tv.id.node == fn_id.node}).unwrap();
-            let d = mk_lldecl();
-            set_inline_hint(d);
+            let d = mk_decl();
+            set_inline_hint(d.val);
             match v.node.kind {
                 ast::TupleVariantKind(ref args) => {
                     trans_enum_variant(ccx,
@@ -231,7 +225,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
                                        args.as_slice(),
                                        this_tv.disr_val,
                                        Some(psubsts),
-                                       d);
+                                       d.val);
                 }
                 ast::StructVariantKind(_) =>
                     ccx.sess().bug("can't monomorphize struct variants"),
@@ -239,17 +233,17 @@ pub fn monomorphic_fn(ccx: &CrateContext,
             d
         }
         ast_map::NodeMethod(mth) => {
-            let d = mk_lldecl();
-            set_llvm_fn_attrs(mth.attrs.as_slice(), d);
-            trans_fn(ccx, mth.decl, mth.body, d, Some(psubsts), mth.id, []);
+            let d = mk_decl();
+            set_llvm_fn_attrs(mth.attrs.as_slice(), d.val);
+            trans_fn(ccx, mth.decl, mth.body, d.val, Some(psubsts), mth.id, []);
             d
         }
         ast_map::NodeTraitMethod(method) => {
             match *method {
                 ast::Provided(mth) => {
-                    let d = mk_lldecl();
-                    set_llvm_fn_attrs(mth.attrs.as_slice(), d);
-                    trans_fn(ccx, mth.decl, mth.body, d, Some(psubsts), mth.id, []);
+                    let d = mk_decl();
+                    set_llvm_fn_attrs(mth.attrs.as_slice(), d.val);
+                    trans_fn(ccx, mth.decl, mth.body, d.val, Some(psubsts), mth.id, []);
                     d
                 }
                 _ => {
@@ -259,14 +253,14 @@ pub fn monomorphic_fn(ccx: &CrateContext,
             }
         }
         ast_map::NodeStructCtor(struct_def) => {
-            let d = mk_lldecl();
-            set_inline_hint(d);
+            let d = mk_decl();
+            set_inline_hint(d.val);
             base::trans_tuple_struct(ccx,
                                      struct_def.fields.as_slice(),
                                      struct_def.ctor_id.expect("ast-mapped tuple struct \
                                                                 didn't have a ctor id"),
                                      Some(psubsts),
-                                     d);
+                                     d.val);
             d
         }
 
@@ -283,7 +277,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
     ccx.monomorphizing.borrow_mut().insert(fn_id, depth);
 
     debug!("leaving monomorphic fn {}", ty::item_path_str(ccx.tcx(), fn_id));
-    (lldecl, must_cast)
+    decl
 }
 
 pub fn make_mono_id(ccx: &CrateContext,
@@ -292,23 +286,17 @@ pub fn make_mono_id(ccx: &CrateContext,
     // FIXME (possibly #5801): Need a lot of type hints to get
     // .collect() to work.
     let substs_iter = substs.self_ty.iter().chain(substs.tys.iter());
-    let precise_param_ids: Vec<(ty::t, Option<@Vec<mono_id> >)> = match substs.vtables {
-      Some(vts) => {
-        debug!("make_mono_id vtables={} substs={}",
-               vts.repr(ccx.tcx()), substs.tys.repr(ccx.tcx()));
-        let vts_iter = substs.self_vtables.iter().chain(vts.iter());
-        vts_iter.zip(substs_iter).map(|(vtable, subst)| {
-            let v = vtable.map(|vt| meth::vtable_id(ccx, vt));
-            (*subst, if !v.is_empty() { Some(@v) } else { None })
-        }).collect()
-      }
-      None => substs_iter.map(|subst| (*subst, None::<@Vec<mono_id> >)).collect()
+    let param_ids: Vec<MonoParamId> = match substs.vtables {
+        Some(vts) => {
+            debug!("make_mono_id vtables={} substs={}",
+                   vts.repr(ccx.tcx()), substs.tys.repr(ccx.tcx()));
+            let vts_iter = substs.self_vtables.iter().chain(vts.iter());
+            vts_iter.zip(substs_iter).map(|(vtable, subst)| {
+                let v = vtable.map(|vt| meth::vtable_id(ccx, vt));
+                MonoParamId(*subst, if !v.is_empty() { Some(@v) } else { None })
+            }).collect()
+        }
+        None => substs_iter.map(|subst| MonoParamId(*subst, None)).collect()
     };
-
-
-    let param_ids = precise_param_ids.iter().map(|x| {
-        let (a, b) = *x;
-        mono_precise(a, b)
-    }).collect();
     @mono_id_ {def: item, params: param_ids}
 }

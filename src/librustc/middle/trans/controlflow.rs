@@ -15,13 +15,14 @@ use middle::trans::base::*;
 use middle::trans::build::*;
 use middle::trans::callee;
 use middle::trans::common::*;
+use middle::trans::datum::*;
 use middle::trans::debuginfo;
 use middle::trans::cleanup;
 use middle::trans::cleanup::CleanupMethods;
 use middle::trans::expr;
-use util::ppaux::Repr;
-
 use middle::trans::type_::Type;
+use middle::ty;
+use util::ppaux::Repr;
 
 use syntax::ast;
 use syntax::ast::Ident;
@@ -325,6 +326,17 @@ pub fn trans_ret<'a>(bcx: &'a Block<'a>,
     return bcx;
 }
 
+fn filename_and_line_num_from_span(bcx: &Block, sp: Span)
+                                   -> (Datum<PodValue>, Datum<PodValue>) {
+    let loc = bcx.sess().codemap().lookup_char_pos(sp.lo);
+    let filename_cstr = C_cstr(bcx.ccx(),
+                               token::intern_and_get_ident(loc.file.deref().name));
+    let filename = PointerCast(bcx, filename_cstr, Type::i8p(bcx.ccx()));
+    let line = C_int(bcx.ccx(), loc.line as int);
+    (pod_value(bcx.tcx(), filename, ty::mk_imm_ptr(bcx.tcx(), ty::mk_u8())),
+     pod_value(bcx.tcx(), line, ty::mk_int()))
+}
+
 pub fn trans_fail<'a>(
                   bcx: &'a Block<'a>,
                   sp: Span,
@@ -333,17 +345,14 @@ pub fn trans_fail<'a>(
     let ccx = bcx.ccx();
     let v_fail_str = C_cstr(ccx, fail_str);
     let _icx = push_ctxt("trans_fail_value");
-    let loc = bcx.sess().codemap().lookup_char_pos(sp.lo);
-    let v_filename = C_cstr(ccx, token::intern_and_get_ident(loc.file.name));
-    let v_line = loc.line as int;
+
+    let (filename, line) = filename_and_line_num_from_span(bcx, sp);
     let v_str = PointerCast(bcx, v_fail_str, Type::i8p(ccx));
-    let v_filename = PointerCast(bcx, v_filename, Type::i8p(ccx));
-    let args = vec!(v_str, v_filename, C_int(ccx, v_line));
     let did = langcall(bcx, Some(sp), "", FailFnLangItem);
-    let bcx = callee::trans_lang_call(bcx,
-                                      did,
-                                      args.as_slice(),
-                                      Some(expr::Ignore)).bcx;
+    let bcx = callee::trans_lang_call(bcx, did, [
+        pod_value(bcx.tcx(), v_str, ty::mk_imm_ptr(ccx.tcx(), ty::mk_u8())),
+        filename, line
+    ], Some(expr::Ignore)).bcx;
     Unreachable(bcx);
     return bcx;
 }
@@ -356,12 +365,12 @@ pub fn trans_fail_bounds_check<'a>(
                                -> &'a Block<'a> {
     let _icx = push_ctxt("trans_fail_bounds_check");
     let (filename, line) = filename_and_line_num_from_span(bcx, sp);
-    let args = vec!(filename, line, index, len);
     let did = langcall(bcx, Some(sp), "", FailBoundsCheckFnLangItem);
-    let bcx = callee::trans_lang_call(bcx,
-                                      did,
-                                      args.as_slice(),
-                                      Some(expr::Ignore)).bcx;
+    let bcx = callee::trans_lang_call(bcx, did, [
+        filename, line,
+        pod_value(bcx.tcx(), index, ty::mk_int()),
+        pod_value(bcx.tcx(), len, ty::mk_int())
+    ], Some(expr::Ignore)).bcx;
     Unreachable(bcx);
     return bcx;
 }

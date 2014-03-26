@@ -711,14 +711,7 @@ pub fn is_null(val: ValueRef) -> bool {
 
 // Used to identify cached monomorphized functions and vtables
 #[deriving(Eq, TotalEq, Hash)]
-pub enum mono_param_id {
-    mono_precise(ty::t, Option<@Vec<mono_id> >),
-    mono_any,
-    mono_repr(uint /* size */,
-              uint /* align */,
-              MonoDataClass,
-              datum::RvalueMode),
-}
+pub struct MonoParamId(ty::t, Option<@Vec<mono_id>>);
 
 #[deriving(Eq, TotalEq, Hash)]
 pub enum MonoDataClass {
@@ -745,7 +738,8 @@ pub fn mono_data_classify(t: ty::t) -> MonoDataClass {
 #[deriving(Eq, TotalEq, Hash)]
 pub struct mono_id_ {
     def: ast::DefId,
-    params: Vec<mono_param_id> }
+    params: Vec<MonoParamId>
+}
 
 pub type mono_id = @mono_id_;
 
@@ -931,16 +925,6 @@ pub fn dummy_substs(tps: Vec<ty::t> ) -> ty::substs {
         self_ty: None,
         tps: tps
     }
-}
-
-pub fn filename_and_line_num_from_span(bcx: &Block, span: Span)
-                                       -> (ValueRef, ValueRef) {
-    let loc = bcx.sess().codemap().lookup_char_pos(span.lo);
-    let filename_cstr = C_cstr(bcx.ccx(),
-                               token::intern_and_get_ident(loc.file.name));
-    let filename = build::PointerCast(bcx, filename_cstr, Type::i8p(bcx.ccx()));
-    let line = C_int(bcx.ccx(), loc.line as int);
-    (filename, line)
 }
 
 // Casts a Rust bool value to an i1.

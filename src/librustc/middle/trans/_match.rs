@@ -199,7 +199,7 @@ use driver::session::FullDebugInfo;
 use lib::llvm::{llvm, ValueRef, BasicBlockRef};
 use middle::const_eval;
 use middle::borrowck::root_map_key;
-use middle::lang_items::{UniqStrEqFnLangItem, StrEqFnLangItem};
+use middle::lang_items::StrEqFnLangItem;
 use middle::pat_util::*;
 use middle::resolve::DefMap;
 use middle::trans::adt;
@@ -1278,30 +1278,20 @@ fn compare_values<'a>(
                   -> Result<'a> {
     let _icx = push_ctxt("compare_values");
     if ty::type_is_scalar(rhs_t) {
-      let rs = compare_scalar_types(cx, lhs, rhs, rhs_t, ast::BiEq);
-      return rslt(rs.bcx, rs.val);
+        return compare_scalar_types(cx, lhs, rhs, rhs_t, ast::BiEq);
     }
 
     match ty::get(rhs_t).sty {
-        ty::ty_str(ty::vstore_uniq) => {
-            let scratch_lhs = alloca(cx, val_ty(lhs), "__lhs");
-            Store(cx, lhs, scratch_lhs);
-            let scratch_rhs = alloca(cx, val_ty(rhs), "__rhs");
-            Store(cx, rhs, scratch_rhs);
-            let did = langcall(cx, None,
-                               format!("comparison of `{}`", cx.ty_to_str(rhs_t)),
-                               UniqStrEqFnLangItem);
-            let result = callee::trans_lang_call(cx, did, [scratch_lhs, scratch_rhs], None);
-            Result {
-                bcx: result.bcx,
-                val: bool_to_i1(result.bcx, result.val)
-            }
-        }
         ty::ty_str(_) => {
             let did = langcall(cx, None,
                                format!("comparison of `{}`", cx.ty_to_str(rhs_t)),
                                StrEqFnLangItem);
-            let result = callee::trans_lang_call(cx, did, [lhs, rhs], None);
+            let result = callee::trans_call(cx, None,
+                callee::Fn(callee::trans_fn_ref_with_vtables(cx, did, ExprId(0), [], None)),
+                [lhs, rhs].iter(), |bcx, &val| {
+                    DatumBlock(bcx, Datum(val, rhs_t, RvalueExpr(Rvalue(ByRef))))
+                },
+                None);
             Result {
                 bcx: result.bcx,
                 val: bool_to_i1(result.bcx, result.val)
