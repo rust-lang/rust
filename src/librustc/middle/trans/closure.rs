@@ -476,7 +476,7 @@ pub fn get_wrapper_for_bare_fn(ccx: &CrateContext,
         }
         None => {}
     }
-    llargs.extend(&mut args.iter().map(|arg| arg.val));
+    llargs.extend(args.iter().map(|arg| arg.val));
 
     let retval = Call(bcx, fn_ptr, llargs.as_slice(), []);
     if type_is_zero_size(ccx, f.sig.output) || fcx.llretptr.get().is_some() {

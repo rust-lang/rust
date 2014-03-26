@@ -3019,7 +3019,7 @@ impl Clone for ~str {
 
 impl FromIterator<char> for ~str {
     #[inline]
-    fn from_iterator<T: Iterator<char>>(iterator: &mut T) -> ~str {
+    fn from_iterator<T: Iterator<char>>(iterator: T) -> ~str {
         let (lower, _) = iterator.size_hint();
         let mut buf = with_capacity(lower);
         buf.extend(iterator);
@@ -3029,11 +3029,11 @@ impl FromIterator<char> for ~str {
 
 impl Extendable<char> for ~str {
     #[inline]
-    fn extend<T: Iterator<char>>(&mut self, iterator: &mut T) {
+    fn extend<T: Iterator<char>>(&mut self, mut iterator: T) {
         let (lower, _) = iterator.size_hint();
         let reserve = lower + self.len();
         self.reserve(reserve);
-        for ch in *iterator {
+        for ch in iterator {
             self.push_char(ch)
         }
     }
@@ -3219,7 +3219,7 @@ mod tests {
         let mut cpy = data.clone();
         let other = "abc";
         let mut it = other.chars();
-        cpy.extend(&mut it);
+        cpy.extend(it);
         assert_eq!(cpy, data + other);
     }
 

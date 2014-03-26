@@ -365,10 +365,10 @@ impl<'a> TraitDef<'a> {
         let mut ty_params = ty_params.into_vec();
 
         // Copy the lifetimes
-        lifetimes.extend(&mut generics.lifetimes.iter().map(|l| *l));
+        lifetimes.extend(generics.lifetimes.iter().map(|l| *l));
 
         // Create the type parameters.
-        ty_params.extend(&mut generics.ty_params.iter().map(|ty_param| {
+        ty_params.extend(generics.ty_params.iter().map(|ty_param| {
             // I don't think this can be moved out of the loop, since
             // a TyParamBound requires an ast id
             let mut bounds =

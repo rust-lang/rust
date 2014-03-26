@@ -153,7 +153,7 @@ impl Iterator<Path> for Paths {
                     // so we don't need to check the children
                     return Some(path);
                 } else {
-                    self.todo.extend(&mut list_dir_sorted(&path).move_iter().map(|x|(x,idx+1)));
+                    self.todo.extend(list_dir_sorted(&path).move_iter().map(|x|(x,idx+1)));
                 }
             }
         }
