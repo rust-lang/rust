@@ -205,6 +205,7 @@ The keywords are the following strings:
 ~~~~ {.notrust .keyword}
 as
 break
+crate
 do
 else enum extern
 false fn for
