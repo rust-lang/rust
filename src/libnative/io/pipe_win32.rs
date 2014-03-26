@@ -335,12 +335,12 @@ impl rtio::RtioPipe for UnixStream {
         Ok(())
     }
 
-    fn clone(&self) -> ~rtio::RtioPipe {
+    fn clone(&self) -> ~rtio::RtioPipe:Send {
         ~UnixStream {
             inner: self.inner.clone(),
             read: None,
             write: None,
-        } as ~rtio::RtioPipe
+        } as ~rtio::RtioPipe:Send
     }
 }
 
@@ -383,8 +383,8 @@ impl Drop for UnixListener {
 }
 
 impl rtio::RtioUnixListener for UnixListener {
-    fn listen(~self) -> IoResult<~rtio::RtioUnixAcceptor> {
-        self.native_listen().map(|a| ~a as ~rtio::RtioUnixAcceptor)
+    fn listen(~self) -> IoResult<~rtio::RtioUnixAcceptor:Send> {
+        self.native_listen().map(|a| ~a as ~rtio::RtioUnixAcceptor:Send)
     }
 }
 
@@ -485,8 +485,8 @@ impl UnixAcceptor {
 }
 
 impl rtio::RtioUnixAcceptor for UnixAcceptor {
-    fn accept(&mut self) -> IoResult<~rtio::RtioPipe> {
-        self.native_accept().map(|s| ~s as ~rtio::RtioPipe)
+    fn accept(&mut self) -> IoResult<~rtio::RtioPipe:Send> {
+        self.native_accept().map(|s| ~s as ~rtio::RtioPipe:Send)
     }
 }
 
