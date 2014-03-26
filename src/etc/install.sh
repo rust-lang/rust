@@ -213,6 +213,10 @@ VAL_OPTIONS=""
 
 flag uninstall "only uninstall from the installation prefix"
 valopt prefix "/usr/local" "set installation prefix"
+# NB This isn't quite the same definition as in `configure`.
+# just using 'lib' instead of CFG_LIBDIR_RELATIVE
+valopt libdir "${CFG_PREFIX}/lib" "install libraries"
+valopt mandir "${CFG_PREFIX}/share/man" "install man pages in PATH"
 
 if [ $HELP -eq 1 ]
 then
@@ -224,39 +228,40 @@ step_msg "validating $CFG_SELF args"
 validate_opt
 
 # Sanity check: can we can write to the destination?
-umask 022 && mkdir -p "${CFG_PREFIX}/lib"
+umask 022 && mkdir -p "${CFG_LIBDIR}"
 need_ok "directory creation failed"
-touch "${CFG_PREFIX}/lib/rust-install-probe" 2> /dev/null
+touch "${CFG_LIBDIR}/rust-install-probe" 2> /dev/null
 if [ $? -ne 0 ]
 then
     err "can't write to destination. try again with 'sudo'."
 fi
-rm "${CFG_PREFIX}/lib/rust-install-probe"
+rm "${CFG_LIBDIR}/rust-install-probe"
 need_ok "failed to remove install probe"
 
+INSTALLED_MANIFEST="${CFG_LIBDIR}/rustlib/manifest"
 
 # First, uninstall from the installation prefix.
 # Errors are warnings - try to rm everything in the manifest even if some fail.
-if [ -f "${CFG_PREFIX}/lib/rustlib/manifest" ]
+if [ -f "${INSTALLED_MANIFEST}" ]
 then
     # Iterate through installed manifest and remove files
     while read p; do
-        msg "removing ${CFG_PREFIX}/$p"
-        if [ -f "${CFG_PREFIX}/$p" ]
+        # The installed manifest contains absolute paths
+        msg "removing $p"
+        if [ -f "$p" ]
         then
-            rm "${CFG_PREFIX}/$p"
+            rm "$p"
             if [ $? -ne 0 ]
             then
-                warn "failed to remove ${CFG_PREFIX}/$p"
+                warn "failed to remove $p"
             fi
         else
-            warn "supposedly installed file ${CFG_PREFIX}/$p does not exist!"
+            warn "supposedly installed file $p does not exist!"
         fi
-    done < "${CFG_PREFIX}/lib/rustlib/manifest"
+    done < "${INSTALLED_MANIFEST}"
 
     # Remove 'rustlib' directory
-    msg "removing ${CFG_PREFIX}/lib/rustlib"
-    rm -r "${CFG_PREFIX}/lib/rustlib"
+    rm -r "${CFG_LIBDIR}/rustlib"
     if [ $? -ne 0 ]
     then
         warn "failed to remove rustlib"
@@ -264,7 +269,7 @@ then
 else
     if [ -n "${CFG_UNINSTALL}" ]
     then
-        err "unable to find installation manifest at ${CFG_PREFIX}/lib/rustlib"
+        err "unable to find installation manifest at ${CFG_LIBDIR}/rustlib"
     fi
 fi
 
@@ -277,21 +282,52 @@ then
     exit 0
 fi
 
+# Create the installed manifest, which we will fill in with absolute file paths
+mkdir -p "${CFG_LIBDIR}/rustlib"
+touch "${INSTALLED_MANIFEST}"
 
 # Now install, iterate through the new manifest and copy files
 while read p; do
 
-    umask 022 && mkdir -p "${CFG_PREFIX}/$(dirname $p)"
+    # Decide the destination of the file
+    FILE_INSTALL_PATH="${CFG_PREFIX}/$p"
+
+    if echo "$p" | grep "^lib/" > /dev/null
+    then
+        pp=`echo $p | sed 's/^lib\///'`
+        FILE_INSTALL_PATH="${CFG_LIBDIR}/$pp"
+    fi
+
+    if echo "$p" | grep "^share/man/" > /dev/null
+    then
+        pp=`echo $p | sed 's/^share\/man\///'`
+        FILE_INSTALL_PATH="${CFG_MANDIR}/$pp"
+    fi
+
+    # Make sure ther's a directory for it
+    umask 022 && mkdir -p "$(dirname ${FILE_INSTALL_PATH})"
     need_ok "directory creation failed"
 
-    msg "${CFG_PREFIX}/$p"
-    if echo "$p" | grep "/bin/" > /dev/null
+    # Make the path absolute so we can uninstall it later without
+    # starting from the installation cwd
+    FILE_INSTALL_PATH_DIRNAME="$(dirname ${FILE_INSTALL_PATH})"
+    FILE_INSTALL_PATH_BASENAME="$(basename ${FILE_INSTALL_PATH})"
+    FILE_INSTALL_ABS_PATH="$(cd ${FILE_INSTALL_PATH_DIRNAME} && pwd)"
+    FILE_INSTALL_PATH="${FILE_INSTALL_ABS_PATH}/${FILE_INSTALL_PATH_BASENAME}"
+
+    # Install the file
+    msg "${FILE_INSTALL_PATH}"
+    if echo "$p" | grep "^bin/" > /dev/null
     then
-        install -m755 "${CFG_SRC_DIR}/$p" "${CFG_PREFIX}/$p"
+        install -m755 "${CFG_SRC_DIR}/$p" "${FILE_INSTALL_PATH}"
     else
-        install -m644 "${CFG_SRC_DIR}/$p" "${CFG_PREFIX}/$p"
+        install -m644 "${CFG_SRC_DIR}/$p" "${FILE_INSTALL_PATH}"
     fi
     need_ok "file creation failed"
+
+    # Update the manifest
+    echo "${FILE_INSTALL_PATH}" >> "${INSTALLED_MANIFEST}"
+    need_ok "failed to update manifest"
 
 # The manifest lists all files to install
 done < "${CFG_SRC_DIR}/lib/rustlib/manifest"
