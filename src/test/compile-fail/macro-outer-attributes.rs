@@ -11,8 +11,8 @@
 #[feature(macro_rules)];
 
 macro_rules! test ( ($nm:ident,
-                     $a:attr,
-                     $i:item) => (mod $nm { $a $i }); )
+                     #[$a:meta],
+                     $i:item) => (mod $nm { #[$a] $i }); )
 
 test!(a,
       #[cfg(qux)],

@@ -252,7 +252,7 @@ use sync::arc::UnsafeArc;
 pub use comm::select::{Select, Handle};
 
 macro_rules! test (
-    { fn $name:ident() $b:block $($a:attr)*} => (
+    { fn $name:ident() $b:block $(#[$a:meta])*} => (
         mod $name {
             #[allow(unused_imports)];
 
@@ -265,8 +265,8 @@ macro_rules! test (
 
             fn f() $b
 
-            $($a)* #[test] fn uv() { f() }
-            $($a)* #[test] fn native() {
+            $(#[$a])* #[test] fn uv() { f() }
+            $(#[$a])* #[test] fn native() {
                 use native;
                 let (tx, rx) = channel();
                 native::task::spawn(proc() { tx.send(f()) });
