@@ -28,7 +28,9 @@ use std::io::process;
 use std::io::signal::{Listener, Interrupt};
 
 #[start]
-fn start(argc: int, argv: **u8) -> int { green::start(argc, argv, main) }
+fn start(argc: int, argv: **u8) -> int {
+    green::start(argc, argv, rustuv::event_loop, main)
+}
 
 fn main() {
     unsafe { libc::setsid(); }

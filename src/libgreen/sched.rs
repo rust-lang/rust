@@ -1003,6 +1003,8 @@ fn new_sched_rng() -> XorShiftRng {
 
 #[cfg(test)]
 mod test {
+    use rustuv;
+
     use std::comm;
     use std::task::TaskOpts;
     use std::rt::Runtime;
@@ -1017,7 +1019,7 @@ mod test {
     fn pool() -> SchedPool {
         SchedPool::new(PoolConfig {
             threads: 1,
-            event_loop_factory: Some(basic::event_loop),
+            event_loop_factory: basic::event_loop,
         })
     }
 
@@ -1262,7 +1264,7 @@ mod test {
 
         let mut pool = SchedPool::new(PoolConfig {
             threads: 2,
-            event_loop_factory: None,
+            event_loop_factory: rustuv::event_loop,
         });
 
         // This is a regression test that when there are no schedulable tasks in
@@ -1413,7 +1415,7 @@ mod test {
     fn dont_starve_1() {
         let mut pool = SchedPool::new(PoolConfig {
             threads: 2, // this must be > 1
-            event_loop_factory: Some(basic::event_loop),
+            event_loop_factory: basic::event_loop,
         });
         pool.spawn(TaskOpts::new(), proc() {
             let (tx, rx) = channel();

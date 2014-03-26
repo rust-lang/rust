@@ -104,9 +104,6 @@ pub mod env;
 /// The local, managed heap
 pub mod local_heap;
 
-/// Crate map
-pub mod crate_map;
-
 /// The runtime needs to be able to put a pointer into thread-local storage.
 mod local_ptr;
 

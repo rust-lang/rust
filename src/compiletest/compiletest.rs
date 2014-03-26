@@ -43,7 +43,9 @@ pub mod common;
 pub mod errors;
 
 #[start]
-fn start(argc: int, argv: **u8) -> int { green::start(argc, argv, main) }
+fn start(argc: int, argv: **u8) -> int {
+    green::start(argc, argv, rustuv::event_loop, main)
+}
 
 pub fn main() {
     let args = os::args();
