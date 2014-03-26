@@ -539,7 +539,7 @@ impl GenericPath for Path {
                     (Some(a), None) => {
                         comps.push(a);
                         if !a_verb {
-                            comps.extend(&mut ita);
+                            comps.extend(ita.by_ref());
                             break;
                         }
                     }
@@ -561,7 +561,7 @@ impl GenericPath for Path {
                         }
                         comps.push(a);
                         if !a_verb {
-                            comps.extend(&mut ita);
+                            comps.extend(ita.by_ref());
                             break;
                         }
                     }
