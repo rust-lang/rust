@@ -426,7 +426,7 @@ pub unsafe fn set_stdio_container_stream(c: *uv_stdio_container_t,
 }
 
 // data access helpers
-pub unsafe fn get_result_from_fs_req(req: *uv_fs_t) -> c_int {
+pub unsafe fn get_result_from_fs_req(req: *uv_fs_t) -> ssize_t {
     rust_uv_get_result_from_fs_req(req)
 }
 pub unsafe fn get_ptr_from_fs_req(req: *uv_fs_t) -> *libc::c_void {
@@ -501,7 +501,7 @@ extern {
     fn rust_uv_get_udp_handle_from_send_req(req: *uv_udp_send_t) -> *uv_udp_t;
 
     fn rust_uv_populate_uv_stat(req_in: *uv_fs_t, stat_out: *uv_stat_t);
-    fn rust_uv_get_result_from_fs_req(req: *uv_fs_t) -> c_int;
+    fn rust_uv_get_result_from_fs_req(req: *uv_fs_t) -> ssize_t;
     fn rust_uv_get_ptr_from_fs_req(req: *uv_fs_t) -> *libc::c_void;
     fn rust_uv_get_path_from_fs_req(req: *uv_fs_t) -> *c_char;
     fn rust_uv_get_loop_from_fs_req(req: *uv_fs_t) -> *uv_loop_t;
