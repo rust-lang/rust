@@ -743,7 +743,8 @@ impl<'a> State<'a> {
                     |s, field| {
                         match field.node.kind {
                             ast::NamedField(..) => fail!("unexpected named field"),
-                            ast::UnnamedField => {
+                            ast::UnnamedField(vis) => {
+                                try!(s.print_visibility(vis));
                                 try!(s.maybe_print_comment(field.span.lo));
                                 s.print_type(field.node.ty)
                             }
@@ -762,7 +763,7 @@ impl<'a> State<'a> {
 
             for field in struct_def.fields.iter() {
                 match field.node.kind {
-                    ast::UnnamedField => fail!("unexpected unnamed field"),
+                    ast::UnnamedField(..) => fail!("unexpected unnamed field"),
                     ast::NamedField(ident, visibility) => {
                         try!(self.hardbreak_if_not_bol());
                         try!(self.maybe_print_comment(field.span.lo));

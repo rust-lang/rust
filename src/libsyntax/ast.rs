@@ -1080,7 +1080,16 @@ pub type StructField = Spanned<StructField_>;
 #[deriving(Clone, Eq, TotalEq, Encodable, Decodable, Hash)]
 pub enum StructFieldKind {
     NamedField(Ident, Visibility),
-    UnnamedField // element of a tuple-like struct
+    UnnamedField(Visibility), // element of a tuple-like struct
+}
+
+impl StructFieldKind {
+    pub fn is_unnamed(&self) -> bool {
+        match *self {
+            UnnamedField(..) => true,
+            NamedField(..) => false,
+        }
+    }
 }
 
 #[deriving(Eq, TotalEq, Encodable, Decodable, Hash)]

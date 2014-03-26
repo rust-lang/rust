@@ -1007,7 +1007,7 @@ impl<'a> TraitDef<'a> {
             let sp = self.set_expn_info(cx, field.span);
             match field.node.kind {
                 ast::NamedField(ident, _) => named_idents.push((ident, sp)),
-                ast::UnnamedField => just_spans.push(sp),
+                ast::UnnamedField(..) => just_spans.push(sp),
             }
         }
 
@@ -1061,8 +1061,8 @@ impl<'a> TraitDef<'a> {
                     struct_type = Record;
                     Some(ident)
                 }
-                ast::UnnamedField if (struct_type == Unknown ||
-                                      struct_type == Tuple) => {
+                ast::UnnamedField(..) if (struct_type == Unknown ||
+                                          struct_type == Tuple) => {
                     struct_type = Tuple;
                     None
                 }
