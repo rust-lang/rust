@@ -282,7 +282,7 @@ pub fn expand_item(it: @ast::Item, fld: &mut MacroExpander)
                 let mut items: SmallVector<@ast::Item> = SmallVector::zero();
                 dec_fn(fld.cx, attr.span, attr.node.value, it,
                        |item| items.push(item));
-                decorator_items.extend(&mut items.move_iter()
+                decorator_items.extend(items.move_iter()
                     .flat_map(|item| expand_item(item, fld).move_iter()));
 
                 fld.cx.bt_pop();

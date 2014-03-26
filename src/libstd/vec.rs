@@ -305,10 +305,10 @@ impl<T:Clone> Clone for Vec<T> {
 }
 
 impl<T> FromIterator<T> for Vec<T> {
-    fn from_iterator<I:Iterator<T>>(iterator: &mut I) -> Vec<T> {
+    fn from_iterator<I:Iterator<T>>(mut iterator: I) -> Vec<T> {
         let (lower, _) = iterator.size_hint();
         let mut vector = Vec::with_capacity(lower);
-        for element in *iterator {
+        for element in iterator {
             vector.push(element)
         }
         vector
@@ -316,10 +316,10 @@ impl<T> FromIterator<T> for Vec<T> {
 }
 
 impl<T> Extendable<T> for Vec<T> {
-    fn extend<I: Iterator<T>>(&mut self, iterator: &mut I) {
+    fn extend<I: Iterator<T>>(&mut self, mut iterator: I) {
         let (lower, _) = iterator.size_hint();
         self.reserve_additional(lower);
-        for element in *iterator {
+        for element in iterator {
             self.push(element)
         }
     }
@@ -1429,12 +1429,12 @@ mod tests {
         let mut v = Vec::new();
         let mut w = Vec::new();
 
-        v.extend(&mut range(0, 3));
+        v.extend(range(0, 3));
         for i in range(0, 3) { w.push(i) }
 
         assert_eq!(v, w);
 
-        v.extend(&mut range(3, 10));
+        v.extend(range(3, 10));
         for i in range(3, 10) { w.push(i) }
 
         assert_eq!(v, w);

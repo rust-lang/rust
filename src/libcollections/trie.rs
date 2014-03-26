@@ -261,7 +261,7 @@ impl<T> TrieMap<T> {
 }
 
 impl<T> FromIterator<(uint, T)> for TrieMap<T> {
-    fn from_iterator<Iter: Iterator<(uint, T)>>(iter: &mut Iter) -> TrieMap<T> {
+    fn from_iterator<Iter: Iterator<(uint, T)>>(iter: Iter) -> TrieMap<T> {
         let mut map = TrieMap::new();
         map.extend(iter);
         map
@@ -269,8 +269,8 @@ impl<T> FromIterator<(uint, T)> for TrieMap<T> {
 }
 
 impl<T> Extendable<(uint, T)> for TrieMap<T> {
-    fn extend<Iter: Iterator<(uint, T)>>(&mut self, iter: &mut Iter) {
-        for (k, v) in *iter {
+    fn extend<Iter: Iterator<(uint, T)>>(&mut self, mut iter: Iter) {
+        for (k, v) in iter {
             self.insert(k, v);
         }
     }
@@ -346,7 +346,7 @@ impl TrieSet {
 }
 
 impl FromIterator<uint> for TrieSet {
-    fn from_iterator<Iter: Iterator<uint>>(iter: &mut Iter) -> TrieSet {
+    fn from_iterator<Iter: Iterator<uint>>(iter: Iter) -> TrieSet {
         let mut set = TrieSet::new();
         set.extend(iter);
         set
@@ -354,8 +354,8 @@ impl FromIterator<uint> for TrieSet {
 }
 
 impl Extendable<uint> for TrieSet {
-    fn extend<Iter: Iterator<uint>>(&mut self, iter: &mut Iter) {
-        for elem in *iter {
+    fn extend<Iter: Iterator<uint>>(&mut self, mut iter: Iter) {
+        for elem in iter {
             self.insert(elem);
         }
     }

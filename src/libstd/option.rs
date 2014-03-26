@@ -593,7 +593,7 @@ pub fn collect<T, Iter: Iterator<Option<T>>, V: FromIterator<T>>(iter: Iter) -> 
         }
     });
 
-    let v: V = FromIterator::from_iterator(&mut iter);
+    let v: V = FromIterator::from_iterator(iter.by_ref());
 
     if iter.state {
         None
