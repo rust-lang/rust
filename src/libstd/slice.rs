@@ -3442,19 +3442,21 @@ mod tests {
 
     #[test]
     fn test_sort() {
+        use realstd::slice::Vector;
+        use realstd::clone::Clone;
         for len in range(4u, 25) {
             for _ in range(0, 100) {
                 let mut v = task_rng().gen_vec::<uint>(len);
                 let mut v1 = v.clone();
 
-                v.sort();
-                assert!(v.windows(2).all(|w| w[0] <= w[1]));
+                v.as_mut_slice().sort();
+                assert!(v.as_slice().windows(2).all(|w| w[0] <= w[1]));
 
-                v1.sort_by(|a, b| a.cmp(b));
-                assert!(v1.windows(2).all(|w| w[0] <= w[1]));
+                v1.as_mut_slice().sort_by(|a, b| a.cmp(b));
+                assert!(v1.as_slice().windows(2).all(|w| w[0] <= w[1]));
 
-                v1.sort_by(|a, b| b.cmp(a));
-                assert!(v1.windows(2).all(|w| w[0] >= w[1]));
+                v1.as_mut_slice().sort_by(|a, b| b.cmp(a));
+                assert!(v1.as_slice().windows(2).all(|w| w[0] >= w[1]));
             }
         }
 
@@ -4487,8 +4489,8 @@ mod bench {
     fn sort_random_small(bh: &mut BenchHarness) {
         let mut rng = weak_rng();
         bh.iter(|| {
-            let mut v: ~[u64] = rng.gen_vec(5);
-            v.sort();
+            let mut v = rng.gen_vec::<u64>(5);
+            v.as_mut_slice().sort();
         });
         bh.bytes = 5 * mem::size_of::<u64>() as u64;
     }
@@ -4497,8 +4499,8 @@ mod bench {
     fn sort_random_medium(bh: &mut BenchHarness) {
         let mut rng = weak_rng();
         bh.iter(|| {
-            let mut v: ~[u64] = rng.gen_vec(100);
-            v.sort();
+            let mut v = rng.gen_vec::<u64>(100);
+            v.as_mut_slice().sort();
         });
         bh.bytes = 100 * mem::size_of::<u64>() as u64;
     }
@@ -4507,8 +4509,8 @@ mod bench {
     fn sort_random_large(bh: &mut BenchHarness) {
         let mut rng = weak_rng();
         bh.iter(|| {
-            let mut v: ~[u64] = rng.gen_vec(10000);
-            v.sort();
+            let mut v = rng.gen_vec::<u64>(10000);
+            v.as_mut_slice().sort();
         });
         bh.bytes = 10000 * mem::size_of::<u64>() as u64;
     }
@@ -4528,7 +4530,7 @@ mod bench {
     fn sort_big_random_small(bh: &mut BenchHarness) {
         let mut rng = weak_rng();
         bh.iter(|| {
-            let mut v: ~[BigSortable] = rng.gen_vec(5);
+            let mut v = rng.gen_vec::<BigSortable>(5);
             v.sort();
         });
         bh.bytes = 5 * mem::size_of::<BigSortable>() as u64;
@@ -4538,7 +4540,7 @@ mod bench {
     fn sort_big_random_medium(bh: &mut BenchHarness) {
         let mut rng = weak_rng();
         bh.iter(|| {
-            let mut v: ~[BigSortable] = rng.gen_vec(100);
+            let mut v = rng.gen_vec::<BigSortable>(100);
             v.sort();
         });
         bh.bytes = 100 * mem::size_of::<BigSortable>() as u64;
@@ -4548,7 +4550,7 @@ mod bench {
     fn sort_big_random_large(bh: &mut BenchHarness) {
         let mut rng = weak_rng();
         bh.iter(|| {
-            let mut v: ~[BigSortable] = rng.gen_vec(10000);
+            let mut v = rng.gen_vec::<BigSortable>(10000);
             v.sort();
         });
         bh.bytes = 10000 * mem::size_of::<BigSortable>() as u64;

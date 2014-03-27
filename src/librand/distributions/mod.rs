@@ -91,9 +91,9 @@ pub struct Weighted<T> {
 /// ```rust
 /// use rand::distributions::{Weighted, WeightedChoice, IndependentSample};
 ///
-/// let wc = WeightedChoice::new(~[Weighted { weight: 2, item: 'a' },
-///                                Weighted { weight: 4, item: 'b' },
-///                                Weighted { weight: 1, item: 'c' }]);
+/// let wc = WeightedChoice::new(vec!(Weighted { weight: 2, item: 'a' },
+///                                   Weighted { weight: 4, item: 'b' },
+///                                   Weighted { weight: 1, item: 'c' }));
 /// let mut rng = rand::task_rng();
 /// for _ in range(0, 16) {
 ///      // on average prints 'a' 4 times, 'b' 8 and 'c' twice.
@@ -101,8 +101,8 @@ pub struct Weighted<T> {
 /// }
 /// ```
 pub struct WeightedChoice<T> {
-    pub items: ~[Weighted<T>],
-    pub weight_range: Range<uint>
+    items: Vec<Weighted<T>>,
+    weight_range: Range<uint>
 }
 
 impl<T: Clone> WeightedChoice<T> {
@@ -112,7 +112,7 @@ impl<T: Clone> WeightedChoice<T> {
     /// - `v` is empty
     /// - the total weight is 0
     /// - the total weight is larger than a `uint` can contain.
-    pub fn new(mut items: ~[Weighted<T>]) -> WeightedChoice<T> {
+    pub fn new(mut items: Vec<Weighted<T>>) -> WeightedChoice<T> {
         // strictly speaking, this is subsumed by the total weight == 0 case
         assert!(!items.is_empty(), "WeightedChoice::new called with no items");
 
@@ -153,8 +153,8 @@ impl<T: Clone> IndependentSample<T> for WeightedChoice<T> {
         let sample_weight = self.weight_range.ind_sample(rng);
 
         // short circuit when it's the first item
-        if sample_weight < self.items[0].weight {
-            return self.items[0].item.clone();
+        if sample_weight < self.items.get(0).weight {
+            return self.items.get(0).item.clone();
         }
 
         let mut idx = 0;
@@ -169,7 +169,7 @@ impl<T: Clone> IndependentSample<T> for WeightedChoice<T> {
         // one is exactly the total weight.)
         while modifier > 1 {
             let i = idx + modifier / 2;
-            if self.items[i].weight <= sample_weight {
+            if self.items.get(i).weight <= sample_weight {
                 // we're small, so look to the right, but allow this
                 // exact element still.
                 idx = i;
@@ -182,7 +182,7 @@ impl<T: Clone> IndependentSample<T> for WeightedChoice<T> {
             }
             modifier /= 2;
         }
-        return self.items[idx + 1].item.clone();
+        return self.items.get(idx + 1).item.clone();
     }
 }
 
@@ -297,54 +297,54 @@ mod tests {
             }}
         );
 
-        t!(~[Weighted { weight: 1, item: 10}], ~[10]);
+        t!(vec!(Weighted { weight: 1, item: 10}), [10]);
 
         // skip some
-        t!(~[Weighted { weight: 0, item: 20},
-             Weighted { weight: 2, item: 21},
-             Weighted { weight: 0, item: 22},
-             Weighted { weight: 1, item: 23}],
-           ~[21,21, 23]);
+        t!(vec!(Weighted { weight: 0, item: 20},
+                Weighted { weight: 2, item: 21},
+                Weighted { weight: 0, item: 22},
+                Weighted { weight: 1, item: 23}),
+           [21,21, 23]);
 
         // different weights
-        t!(~[Weighted { weight: 4, item: 30},
-             Weighted { weight: 3, item: 31}],
-           ~[30,30,30,30, 31,31,31]);
+        t!(vec!(Weighted { weight: 4, item: 30},
+                Weighted { weight: 3, item: 31}),
+           [30,30,30,30, 31,31,31]);
 
         // check that we're binary searching
         // correctly with some vectors of odd
         // length.
-        t!(~[Weighted { weight: 1, item: 40},
-             Weighted { weight: 1, item: 41},
-             Weighted { weight: 1, item: 42},
-             Weighted { weight: 1, item: 43},
-             Weighted { weight: 1, item: 44}],
-           ~[40, 41, 42, 43, 44]);
-        t!(~[Weighted { weight: 1, item: 50},
-             Weighted { weight: 1, item: 51},
-             Weighted { weight: 1, item: 52},
-             Weighted { weight: 1, item: 53},
-             Weighted { weight: 1, item: 54},
-             Weighted { weight: 1, item: 55},
-             Weighted { weight: 1, item: 56}],
-           ~[50, 51, 52, 53, 54, 55, 56]);
+        t!(vec!(Weighted { weight: 1, item: 40},
+                Weighted { weight: 1, item: 41},
+                Weighted { weight: 1, item: 42},
+                Weighted { weight: 1, item: 43},
+                Weighted { weight: 1, item: 44}),
+           [40, 41, 42, 43, 44]);
+        t!(vec!(Weighted { weight: 1, item: 50},
+                Weighted { weight: 1, item: 51},
+                Weighted { weight: 1, item: 52},
+                Weighted { weight: 1, item: 53},
+                Weighted { weight: 1, item: 54},
+                Weighted { weight: 1, item: 55},
+                Weighted { weight: 1, item: 56}),
+           [50, 51, 52, 53, 54, 55, 56]);
     }
 
     #[test] #[should_fail]
     fn test_weighted_choice_no_items() {
-        WeightedChoice::<int>::new(~[]);
+        WeightedChoice::<int>::new(vec!());
     }
     #[test] #[should_fail]
     fn test_weighted_choice_zero_weight() {
-        WeightedChoice::new(~[Weighted { weight: 0, item: 0},
-                              Weighted { weight: 0, item: 1}]);
+        WeightedChoice::new(vec!(Weighted { weight: 0, item: 0},
+                                 Weighted { weight: 0, item: 1}));
     }
     #[test] #[should_fail]
     fn test_weighted_choice_weight_overflows() {
         let x = (-1) as uint / 2; // x + x + 2 is the overflow
-        WeightedChoice::new(~[Weighted { weight: x, item: 0 },
-                              Weighted { weight: 1, item: 1 },
-                              Weighted { weight: x, item: 2 },
-                              Weighted { weight: 1, item: 3 }]);
+        WeightedChoice::new(vec!(Weighted { weight: x, item: 0 },
+                                 Weighted { weight: 1, item: 1 },
+                                 Weighted { weight: x, item: 2 },
+                                 Weighted { weight: 1, item: 3 }));
     }
 }

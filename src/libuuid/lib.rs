@@ -196,7 +196,7 @@ impl Uuid {
     pub fn new_v4() -> Uuid {
         let ub = rand::task_rng().gen_vec(16);
         let mut uuid = Uuid{ bytes: [0, .. 16] };
-        slice::bytes::copy_memory(uuid.bytes, ub);
+        slice::bytes::copy_memory(uuid.bytes, ub.as_slice());
         uuid.set_variant(VariantRFC4122);
         uuid.set_version(Version4Random);
         uuid
@@ -510,7 +510,7 @@ impl rand::Rand for Uuid {
     fn rand<R: rand::Rng>(rng: &mut R) -> Uuid {
         let ub = rng.gen_vec(16);
         let mut uuid = Uuid{ bytes: [0, .. 16] };
-        slice::bytes::copy_memory(uuid.bytes, ub);
+        slice::bytes::copy_memory(uuid.bytes, ub.as_slice());
         uuid.set_variant(VariantRFC4122);
         uuid.set_version(Version4Random);
         uuid
