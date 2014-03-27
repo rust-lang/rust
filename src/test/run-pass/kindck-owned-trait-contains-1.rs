@@ -16,9 +16,9 @@ impl<A:Clone + 'static> repeat<A> for ~A {
     }
 }
 
-fn repeater<A:Clone + 'static>(v: ~A) -> ~repeat:<A> {
+fn repeater<A:Clone + 'static>(v: ~A) -> ~repeat<A>: {
     // Note: owned kind is not necessary as A appears in the trait type
-    ~v as ~repeat:<A> // No
+    ~v as ~repeat<A>: // No
 }
 
 pub fn main() {
