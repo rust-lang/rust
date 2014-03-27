@@ -20,9 +20,9 @@ use std::str;
 // Common data structures
 #[deriving(Clone)]
 pub struct Doc<'a> {
-    data: &'a [u8],
-    start: uint,
-    end: uint,
+    pub data: &'a [u8],
+    pub start: uint,
+    pub end: uint,
 }
 
 impl<'doc> Doc<'doc> {
@@ -40,8 +40,8 @@ impl<'doc> Doc<'doc> {
 }
 
 pub struct TaggedDoc<'a> {
-    priv tag: uint,
-    doc: Doc<'a>,
+    tag: uint,
+    pub doc: Doc<'a>,
 }
 
 pub enum EbmlEncoderTag {
@@ -117,8 +117,8 @@ pub mod reader {
     )
 
     pub struct Res {
-        val: uint,
-        next: uint
+        pub val: uint,
+        pub next: uint
     }
 
     #[inline(never)]
@@ -291,8 +291,8 @@ pub mod reader {
     pub fn doc_as_i64(d: Doc) -> i64 { doc_as_u64(d) as i64 }
 
     pub struct Decoder<'a> {
-        priv parent: Doc<'a>,
-        priv pos: uint,
+        parent: Doc<'a>,
+        pos: uint,
     }
 
     pub fn Decoder<'a>(d: Doc<'a>) -> Decoder<'a> {
@@ -635,8 +635,8 @@ pub mod writer {
 
     // ebml writing
     pub struct Encoder<'a, W> {
-        writer: &'a mut W,
-        priv size_positions: ~[uint],
+        pub writer: &'a mut W,
+        size_positions: ~[uint],
     }
 
     fn write_sized_vuint<W: Writer>(w: &mut W, n: uint, size: uint) -> EncodeResult {
