@@ -681,7 +681,7 @@ pub fn pretty_print_input(sess: Session,
     };
 
     let src_name = source_name(input);
-    let src = sess.codemap().get_filemap(src_name).src.as_bytes().to_owned();
+    let src = Vec::from_slice(sess.codemap().get_filemap(src_name).src.as_bytes());
     let mut rdr = MemReader::new(src);
 
     match ppm {
