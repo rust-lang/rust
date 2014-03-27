@@ -227,16 +227,28 @@ fi
 step_msg "validating $CFG_SELF args"
 validate_opt
 
+
+# OK, let's get installing ...
+
 # Sanity check: can we can write to the destination?
 umask 022 && mkdir -p "${CFG_LIBDIR}"
-need_ok "can't write to destination. consider `sudo`."
+need_ok "can't write to destination. consider 'sudo'."
 touch "${CFG_LIBDIR}/rust-install-probe" 2> /dev/null
 if [ $? -ne 0 ]
 then
-    err "can't write to destination. consider `sudo`."
+    err "can't write to destination. consider 'sudo'."
 fi
 rm "${CFG_LIBDIR}/rust-install-probe"
 need_ok "failed to remove install probe"
+
+# Sanity check: don't install to the directory containing the installer.
+# That would surely cause chaos.
+INSTALLER_DIR="$(cd $(dirname $0) && pwd)"
+PREFIX_DIR="$(cd ${CFG_PREFIX} && pwd)"
+if [ "${INSTALLER_DIR}" = "${PREFIX_DIR}" ]
+then
+    err "can't install to same directory as installer"
+fi
 
 # The file name of the manifest we're going to create during install
 INSTALLED_MANIFEST="${CFG_LIBDIR}/rustlib/manifest"
