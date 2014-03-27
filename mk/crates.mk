@@ -105,8 +105,7 @@ COMPILER_DOC_CRATES := rustc syntax
 # $(1) is the crate to generate variables for
 define RUST_CRATE
 CRATEFILE_$(1) := $$(S)src/lib$(1)/lib.rs
-RSINPUTS_$(1) := $$(wildcard $$(addprefix $(S)src/lib$(1), \
-				*.rs */*.rs */*/*.rs */*/*/*.rs))
+RSINPUTS_$(1) := $$(call rwildcard,$(S)src/lib$(1)/,*.rs)
 RUST_DEPS_$(1) := $$(filter-out native:%,$$(DEPS_$(1)))
 NATIVE_DEPS_$(1) := $$(patsubst native:%,%,$$(filter native:%,$$(DEPS_$(1))))
 endef
@@ -117,8 +116,7 @@ $(foreach crate,$(CRATES),$(eval $(call RUST_CRATE,$(crate))))
 #
 # $(1) is the crate to generate variables for
 define RUST_TOOL
-TOOL_INPUTS_$(1) := $$(wildcard $$(addprefix $$(dir $$(TOOL_SOURCE_$(1))), \
-				*.rs */*.rs */*/*.rs */*/*/*.rs))
+TOOL_INPUTS_$(1) := $$(call rwildcard,$$(dir $$(TOOL_SOURCE_$(1))),*.rs)
 endef
 
 $(foreach crate,$(TOOLS),$(eval $(call RUST_TOOL,$(crate))))
