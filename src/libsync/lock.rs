@@ -79,12 +79,12 @@ impl<'b> Inner<'b> {
 /// A condition variable, a mechanism for unlock-and-descheduling and
 /// signaling, for use with the lock types.
 pub struct Condvar<'a> {
-    priv name: &'static str,
+    name: &'static str,
     // n.b. Inner must be after PoisonOnFail because we must set the poison flag
     //      *inside* the mutex, and struct fields are destroyed top-to-bottom
     //      (destroy the lock guard last).
-    priv poison: PoisonOnFail<'a>,
-    priv inner: Inner<'a>,
+    poison: PoisonOnFail<'a>,
+    inner: Inner<'a>,
 }
 
 impl<'a> Condvar<'a> {
@@ -166,18 +166,18 @@ impl<'a> Condvar<'a> {
 /// }
 /// ```
 pub struct Mutex<T> {
-    priv lock: raw::Mutex,
-    priv failed: Unsafe<bool>,
-    priv data: Unsafe<T>,
+    lock: raw::Mutex,
+    failed: Unsafe<bool>,
+    data: Unsafe<T>,
 }
 
 /// An guard which is created by locking a mutex. Through this guard the
 /// underlying data can be accessed.
 pub struct MutexGuard<'a, T> {
-    priv data: &'a mut T,
+    data: &'a mut T,
     /// Inner condition variable connected to the locked mutex that this guard
     /// was created from. This can be used for atomic-unlock-and-deschedule.
-    cond: Condvar<'a>,
+    pub cond: Condvar<'a>,
 }
 
 impl<T: Send> Mutex<T> {
@@ -265,25 +265,25 @@ impl<'a, T> DerefMut<T> for MutexGuard<'a, T> {
 /// println!("{}", *val);
 /// ```
 pub struct RWLock<T> {
-    priv lock: raw::RWLock,
-    priv failed: Unsafe<bool>,
-    priv data: Unsafe<T>,
+    lock: raw::RWLock,
+    failed: Unsafe<bool>,
+    data: Unsafe<T>,
 }
 
 /// A guard which is created by locking an rwlock in write mode. Through this
 /// guard the underlying data can be accessed.
 pub struct RWLockWriteGuard<'a, T> {
-    priv data: &'a mut T,
+    data: &'a mut T,
     /// Inner condition variable that can be used to sleep on the write mode of
     /// this rwlock.
-    cond: Condvar<'a>,
+    pub cond: Condvar<'a>,
 }
 
 /// A guard which is created by locking an rwlock in read mode. Through this
 /// guard the underlying data can be accessed.
 pub struct RWLockReadGuard<'a, T> {
-    priv data: &'a T,
-    priv guard: raw::RWLockReadGuard<'a>,
+    data: &'a T,
+    guard: raw::RWLockReadGuard<'a>,
 }
 
 impl<T: Send + Share> RWLock<T> {
@@ -397,8 +397,8 @@ impl<'a, T> DerefMut<T> for RWLockWriteGuard<'a, T> {
 /// }
 /// ```
 pub struct Barrier {
-    priv lock: Mutex<BarrierState>,
-    priv num_tasks: uint,
+    lock: Mutex<BarrierState>,
+    num_tasks: uint,
 }
 
 // The inner state of a double barrier

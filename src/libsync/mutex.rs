@@ -94,7 +94,7 @@ pub static NATIVE_BLOCKED: uint = 1 << 2;
 /// drop(guard); // unlock the lock
 /// ```
 pub struct Mutex {
-    priv lock: StaticMutex,
+    lock: StaticMutex,
 }
 
 #[deriving(Eq, Show)]
@@ -128,28 +128,28 @@ enum Flavor {
 /// ```
 pub struct StaticMutex {
     /// Current set of flags on this mutex
-    priv state: atomics::AtomicUint,
+    state: atomics::AtomicUint,
     /// an OS mutex used by native threads
-    priv lock: mutex::StaticNativeMutex,
+    lock: mutex::StaticNativeMutex,
 
     /// Type of locking operation currently on this mutex
-    priv flavor: Unsafe<Flavor>,
+    flavor: Unsafe<Flavor>,
     /// uint-cast of the green thread waiting for this mutex
-    priv green_blocker: Unsafe<uint>,
+    green_blocker: Unsafe<uint>,
     /// uint-cast of the native thread waiting for this mutex
-    priv native_blocker: Unsafe<uint>,
+    native_blocker: Unsafe<uint>,
 
     /// A concurrent mpsc queue used by green threads, along with a count used
     /// to figure out when to dequeue and enqueue.
-    priv q: q::Queue<uint>,
-    priv green_cnt: atomics::AtomicUint,
+    q: q::Queue<uint>,
+    green_cnt: atomics::AtomicUint,
 }
 
 /// An RAII implementation of a "scoped lock" of a mutex. When this structure is
 /// dropped (falls out of scope), the lock will be unlocked.
 #[must_use]
 pub struct Guard<'a> {
-    priv lock: &'a StaticMutex,
+    lock: &'a StaticMutex,
 }
 
 /// Static initialization of a mutex. This constant can be used to initialize

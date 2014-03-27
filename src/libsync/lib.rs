@@ -20,7 +20,11 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://static.rust-lang.org/doc/master")]
 #![feature(phase)]
-#![deny(missing_doc, deprecated_owned_vector)]
+#![deny(deprecated_owned_vector)]
+
+// #![deny(missing_doc)] // NOTE: uncomment after a stage0 snap
+#![allow(missing_doc)] // NOTE: remove after a stage0 snap
+#![allow(visible_private_types)] // NOTE: remove after a stage0 snap
 
 #[cfg(test)]
 #[phase(syntax, link)] extern crate log;

@@ -20,8 +20,8 @@ use std::comm;
 
 /// An extension of `pipes::stream` that allows both sending and receiving.
 pub struct DuplexStream<S, R> {
-    priv tx: Sender<S>,
-    priv rx: Receiver<R>,
+    tx: Sender<S>,
+    rx: Receiver<R>,
 }
 
 /// Creates a bidirectional stream.

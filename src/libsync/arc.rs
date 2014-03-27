@@ -46,7 +46,7 @@ use std::sync::atomics;
 /// ```
 #[unsafe_no_drop_flag]
 pub struct Arc<T> {
-    priv x: *mut ArcInner<T>,
+    x: *mut ArcInner<T>,
 }
 
 /// A weak pointer to an `Arc`.
@@ -55,7 +55,7 @@ pub struct Arc<T> {
 /// used to break cycles between `Arc` pointers.
 #[unsafe_no_drop_flag]
 pub struct Weak<T> {
-    priv x: *mut ArcInner<T>,
+    x: *mut ArcInner<T>,
 }
 
 struct ArcInner<T> {

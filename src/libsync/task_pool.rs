@@ -21,8 +21,8 @@ enum Msg<T> {
 }
 
 pub struct TaskPool<T> {
-    priv channels: Vec<Sender<Msg<T>>>,
-    priv next_index: uint,
+    channels: Vec<Sender<Msg<T>>>,
+    next_index: uint,
 }
 
 #[unsafe_destructor]
