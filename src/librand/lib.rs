@@ -293,21 +293,7 @@ pub trait Rng {
         }
     }
 
-    /// Shuffle a vec
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use rand::{task_rng, Rng};
-    ///
-    /// println!("{}", task_rng().shuffle(vec!(1,2,3)));
-    /// ```
-    fn shuffle<T>(&mut self, mut values: Vec<T>) -> Vec<T> {
-        self.shuffle_mut(values.as_mut_slice());
-        values
-    }
-
-    /// Shuffle a mutable vector in place.
+    /// Shuffle a mutable slice in place.
     ///
     /// # Example
     ///
@@ -316,12 +302,12 @@ pub trait Rng {
     ///
     /// let mut rng = task_rng();
     /// let mut y = [1,2,3];
-    /// rng.shuffle_mut(y);
-    /// println!("{:?}", y);
-    /// rng.shuffle_mut(y);
-    /// println!("{:?}", y);
+    /// rng.shuffle(y);
+    /// println!("{}", y.as_slice());
+    /// rng.shuffle(y);
+    /// println!("{}", y.as_slice());
     /// ```
-    fn shuffle_mut<T>(&mut self, values: &mut [T]) {
+    fn shuffle<T>(&mut self, values: &mut [T]) {
         let mut i = values.len();
         while i >= 2u {
             // invariant: elements with index >= i have been locked in place.
@@ -329,6 +315,12 @@ pub trait Rng {
             // lock element i in place.
             values.swap(i, self.gen_range(0u, i + 1u));
         }
+    }
+
+    /// Shuffle a mutable slice in place.
+    #[deprecated="renamed to `.shuffle`"]
+    fn shuffle_mut<T>(&mut self, values: &mut [T]) {
+        self.shuffle(values)
     }
 
     /// Randomly sample up to `n` elements from an iterator.
@@ -811,16 +803,28 @@ mod test {
     #[test]
     fn test_shuffle() {
         let mut r = task_rng();
-        let empty = Vec::<int>::new();
-        assert_eq!(r.shuffle(vec!()), empty);
-        assert_eq!(r.shuffle(vec!(1, 1, 1)), vec!(1, 1, 1));
+        let mut empty: &mut [int] = &mut [];
+        r.shuffle(empty);
+        let mut one = [1];
+        r.shuffle(one);
+        assert_eq!(one.as_slice(), &[1]);
+
+        let mut two = [1, 2];
+        r.shuffle(two);
+        assert!(two == [1, 2] || two == [2, 1]);
+
+        let mut x = [1, 1, 1];
+        r.shuffle(x);
+        assert_eq!(x.as_slice(), &[1, 1, 1]);
     }
 
     #[test]
     fn test_task_rng() {
         let mut r = task_rng();
         r.gen::<int>();
-        assert_eq!(r.shuffle(vec!(1, 1, 1)), vec!(1, 1, 1));
+        let mut v = [1, 1, 1];
+        r.shuffle(v);
+        assert_eq!(v.as_slice(), &[1, 1, 1]);
         assert_eq!(r.gen_range(0u, 1u), 0u);
     }
 
@@ -934,7 +938,7 @@ mod bench {
         let mut rng = XorShiftRng::new().unwrap();
         let x : &mut[uint] = [1,..100];
         bh.iter(|| {
-            rng.shuffle_mut(x);
+            rng.shuffle(x);
         })
     }
 }
