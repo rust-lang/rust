@@ -246,6 +246,8 @@ fn get_extern_rust_fn(ccx: &CrateContext, inputs: &[ty::t], output: ty::t,
 pub fn decl_rust_fn(ccx: &CrateContext, has_env: bool,
                     inputs: &[ty::t], output: ty::t,
                     name: &str) -> ValueRef {
+    use middle::ty::{BrAnon, ReLateBound};
+
     let llfty = type_of_rust_fn(ccx, has_env, inputs, output);
     let llfn = decl_cdecl_fn(ccx.llmod, name, llfty, output);
 
@@ -265,7 +267,16 @@ pub fn decl_rust_fn(ccx: &CrateContext, has_env: bool,
                 unsafe {
                     llvm::LLVMAddAttribute(llarg, lib::llvm::NoAliasAttribute as c_uint);
                 }
-            }
+            },
+            // When a reference in an argument has no named lifetime, it's
+            // impossible for that reference to escape this function(ie, be
+            // returned).
+            ty::ty_rptr(ReLateBound(_, BrAnon(_)), _) => {
+                debug!("marking argument of {} as nocapture because of anonymous lifetime", name);
+                unsafe {
+                    llvm::LLVMAddAttribute(llarg, lib::llvm::NoCaptureAttribute as c_uint);
+                }
+            },
             _ => {
                 // For non-immediate arguments the callee gets its own copy of
                 // the value on the stack, so there are no aliases
