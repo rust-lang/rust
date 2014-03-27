@@ -1526,7 +1526,7 @@ impl<'a> State<'a> {
         }
 
         let mut first = true;
-        for (i, segment) in path.segments.iter().enumerate() {
+        for segment in path.segments.iter() {
             if first {
                 first = false
             } else {
@@ -1534,14 +1534,6 @@ impl<'a> State<'a> {
             }
 
             try!(self.print_ident(segment.identifier));
-
-            // If this is the last segment, print the bounds.
-            if i == path.segments.len() - 1 {
-                match *opt_bounds {
-                    None => {}
-                    Some(ref bounds) => try!(self.print_bounds(bounds, true)),
-                }
-            }
 
             if !segment.lifetimes.is_empty() || !segment.types.is_empty() {
                 if colons_before_params {
@@ -1571,7 +1563,11 @@ impl<'a> State<'a> {
                 try!(word(&mut self.s, ">"))
             }
         }
-        Ok(())
+
+        match *opt_bounds {
+            None => Ok(()),
+            Some(ref bounds) => self.print_bounds(bounds, true),
+        }
     }
 
     fn print_path(&mut self, path: &ast::Path,
