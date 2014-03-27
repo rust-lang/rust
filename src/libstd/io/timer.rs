@@ -63,7 +63,7 @@ use rt::rtio::{IoFactory, LocalIo, RtioTimer};
 /// # }
 /// ```
 pub struct Timer {
-    priv obj: ~RtioTimer:Send,
+    obj: ~RtioTimer:Send,
 }
 
 /// Sleep the current task for `msecs` milliseconds.

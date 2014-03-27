@@ -67,8 +67,8 @@ struct Node<T> {
 /// may be safely shared so long as it is guaranteed that there is only one
 /// popper at a time (many pushers are allowed).
 pub struct Queue<T> {
-    priv head: AtomicPtr<Node<T>>,
-    priv tail: *mut Node<T>,
+    head: AtomicPtr<Node<T>>,
+    tail: *mut Node<T>,
 }
 
 impl<T> Node<T> {

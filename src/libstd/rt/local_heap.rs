@@ -33,14 +33,14 @@ static MAGIC: u32 = 0xbadc0ffe;
 pub type Box = raw::Box<()>;
 
 pub struct MemoryRegion {
-    priv allocations: Vec<*AllocHeader>,
-    priv live_allocations: uint,
+    allocations: Vec<*AllocHeader>,
+    live_allocations: uint,
 }
 
 pub struct LocalHeap {
-    priv memory_region: MemoryRegion,
+    memory_region: MemoryRegion,
 
-    priv live_allocs: *mut raw::Box<()>,
+    live_allocs: *mut raw::Box<()>,
 }
 
 impl LocalHeap {

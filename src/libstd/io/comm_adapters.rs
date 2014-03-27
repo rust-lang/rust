@@ -36,10 +36,10 @@ use slice::{bytes, CloneableVector, MutableVector, ImmutableVector};
 /// }
 /// ```
 pub struct ChanReader {
-    priv buf: Option<~[u8]>,  // A buffer of bytes received but not consumed.
-    priv pos: uint,           // How many of the buffered bytes have already be consumed.
-    priv rx: Receiver<~[u8]>,   // The rx to pull data from.
-    priv closed: bool,        // Whether the pipe this rx connects to has been closed.
+    buf: Option<~[u8]>,  // A buffer of bytes received but not consumed.
+    pos: uint,           // How many of the buffered bytes have already be consumed.
+    rx: Receiver<~[u8]>,   // The rx to pull data from.
+    closed: bool,        // Whether the pipe this rx connects to has been closed.
 }
 
 impl ChanReader {
@@ -98,7 +98,7 @@ impl Reader for ChanReader {
 /// writer.write("hello, world".as_bytes());
 /// ```
 pub struct ChanWriter {
-    priv tx: Sender<~[u8]>,
+    tx: Sender<~[u8]>,
 }
 
 impl ChanWriter {

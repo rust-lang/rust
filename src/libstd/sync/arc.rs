@@ -35,7 +35,7 @@ use ty::Unsafe;
 /// Enforces no shared-memory safety.
 #[unsafe_no_drop_flag]
 pub struct UnsafeArc<T> {
-    priv data: *mut ArcData<T>,
+    data: *mut ArcData<T>,
 }
 
 struct ArcData<T> {

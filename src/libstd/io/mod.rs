@@ -283,11 +283,11 @@ pub type IoResult<T> = Result<T, IoError>;
 pub struct IoError {
     /// An enumeration which can be matched against for determining the flavor
     /// of error.
-    kind: IoErrorKind,
+    pub kind: IoErrorKind,
     /// A human-readable description about the error
-    desc: &'static str,
+    pub desc: &'static str,
     /// Detailed information about this error, not always available
-    detail: Option<~str>
+    pub detail: Option<~str>
 }
 
 impl fmt::Show for IoError {
@@ -1023,7 +1023,7 @@ impl<T: Reader + Writer> Stream for T {}
 /// Any error other than `EndOfFile` that is produced by the underlying Reader
 /// is returned by the iterator and should be handled by the caller.
 pub struct Lines<'r, T> {
-    priv buffer: &'r mut T,
+    buffer: &'r mut T,
 }
 
 impl<'r, T: Buffer> Iterator<IoResult<~str>> for Lines<'r, T> {
@@ -1050,7 +1050,7 @@ impl<'r, T: Buffer> Iterator<IoResult<~str>> for Lines<'r, T> {
 /// Any error other than `EndOfFile` that is produced by the underlying Reader
 /// is returned by the iterator and should be handled by the caller.
 pub struct Chars<'r, T> {
-    priv buffer: &'r mut T
+    buffer: &'r mut T
 }
 
 impl<'r, T: Buffer> Iterator<IoResult<char>> for Chars<'r, T> {
@@ -1290,7 +1290,7 @@ pub trait Acceptor<T> {
 /// connection attempt was successful.  A successful connection will be wrapped
 /// in `Ok`. A failed connection is represented as an `Err`.
 pub struct IncomingConnections<'a, A> {
-    priv inc: &'a mut A,
+    inc: &'a mut A,
 }
 
 impl<'a, T, A: Acceptor<T>> Iterator<IoResult<T>> for IncomingConnections<'a, A> {
@@ -1389,13 +1389,13 @@ pub enum FileType {
 #[deriving(Hash)]
 pub struct FileStat {
     /// The path that this stat structure is describing
-    path: Path,
+    pub path: Path,
     /// The size of the file, in bytes
-    size: u64,
+    pub size: u64,
     /// The kind of file this path points to (directory, file, pipe, etc.)
-    kind: FileType,
+    pub kind: FileType,
     /// The file permissions currently on the file
-    perm: FilePermission,
+    pub perm: FilePermission,
 
     // FIXME(#10301): These time fields are pretty useless without an actual
     //                time representation, what are the milliseconds relative
@@ -1403,13 +1403,13 @@ pub struct FileStat {
 
     /// The time that the file was created at, in platform-dependent
     /// milliseconds
-    created: u64,
+    pub created: u64,
     /// The time that this file was last modified, in platform-dependent
     /// milliseconds
-    modified: u64,
+    pub modified: u64,
     /// The time that this file was last accessed, in platform-dependent
     /// milliseconds
-    accessed: u64,
+    pub accessed: u64,
 
     /// Information returned by stat() which is not guaranteed to be
     /// platform-independent. This information may be useful on some platforms,
@@ -1419,7 +1419,7 @@ pub struct FileStat {
     /// Usage of this field is discouraged, but if access is desired then the
     /// fields are located here.
     #[unstable]
-    unstable: UnstableFileStat,
+    pub unstable: UnstableFileStat,
 }
 
 /// This structure represents all of the possible information which can be
@@ -1430,25 +1430,25 @@ pub struct FileStat {
 #[deriving(Hash)]
 pub struct UnstableFileStat {
     /// The ID of the device containing the file.
-    device: u64,
+    pub device: u64,
     /// The file serial number.
-    inode: u64,
+    pub inode: u64,
     /// The device ID.
-    rdev: u64,
+    pub rdev: u64,
     /// The number of hard links to this file.
-    nlink: u64,
+    pub nlink: u64,
     /// The user ID of the file.
-    uid: u64,
+    pub uid: u64,
     /// The group ID of the file.
-    gid: u64,
+    pub gid: u64,
     /// The optimal block size for I/O.
-    blksize: u64,
+    pub blksize: u64,
     /// The blocks allocated for this file.
-    blocks: u64,
+    pub blocks: u64,
     /// User-defined flags for the file.
-    flags: u64,
+    pub flags: u64,
     /// The file generation number.
-    gen: u64,
+    pub gen: u64,
 }
 
 /// A set of permissions for a file or directory is represented by a set of

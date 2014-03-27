@@ -44,9 +44,9 @@ use raw;
 
 /// The type representing a foreign chunk of memory
 pub struct CVec<T> {
-    priv base: *mut T,
-    priv len: uint,
-    priv dtor: Option<proc:Send()>,
+    base: *mut T,
+    len: uint,
+    dtor: Option<proc:Send()>,
 }
 
 #[unsafe_destructor]

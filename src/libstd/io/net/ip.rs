@@ -58,8 +58,8 @@ impl fmt::Show for IpAddr {
 
 #[deriving(Eq, TotalEq, Clone, Hash)]
 pub struct SocketAddr {
-    ip: IpAddr,
-    port: Port,
+    pub ip: IpAddr,
+    pub port: Port,
 }
 
 impl fmt::Show for SocketAddr {

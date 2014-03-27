@@ -38,7 +38,7 @@ use ptr::RawPtr;
 /// Any error other than `EndOfFile` that is produced by the underlying Reader
 /// is returned by the iterator and should be handled by the caller.
 pub struct Bytes<'r, T> {
-    priv reader: &'r mut T,
+    reader: &'r mut T,
 }
 
 impl<'r, R: Reader> Bytes<'r, R> {

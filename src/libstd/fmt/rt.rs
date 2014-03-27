@@ -28,17 +28,17 @@ pub enum Piece<'a> {
 }
 
 pub struct Argument<'a> {
-    position: Position,
-    format: FormatSpec,
-    method: Option<&'a Method<'a>>
+    pub position: Position,
+    pub format: FormatSpec,
+    pub method: Option<&'a Method<'a>>
 }
 
 pub struct FormatSpec {
-    fill: char,
-    align: parse::Alignment,
-    flags: uint,
-    precision: Count,
-    width: Count,
+    pub fill: char,
+    pub align: parse::Alignment,
+    pub flags: uint,
+    pub precision: Count,
+    pub width: Count,
 }
 
 pub enum Count {
@@ -60,11 +60,11 @@ pub enum PluralSelector {
 }
 
 pub struct PluralArm<'a> {
-    selector: PluralSelector,
-    result: &'a [Piece<'a>],
+    pub selector: PluralSelector,
+    pub result: &'a [Piece<'a>],
 }
 
 pub struct SelectArm<'a> {
-    selector: &'a str,
-    result: &'a [Piece<'a>],
+    pub selector: &'a str,
+    pub result: &'a [Piece<'a>],
 }

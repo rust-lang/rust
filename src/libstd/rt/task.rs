@@ -43,18 +43,18 @@ use unstable::finally::Finally;
 /// in the struct. This contains a pointer to another struct that holds
 /// the type-specific state.
 pub struct Task {
-    heap: LocalHeap,
-    gc: GarbageCollector,
-    storage: LocalStorage,
-    unwinder: Unwinder,
-    death: Death,
-    destroyed: bool,
-    name: Option<SendStr>,
+    pub heap: LocalHeap,
+    pub gc: GarbageCollector,
+    pub storage: LocalStorage,
+    pub unwinder: Unwinder,
+    pub death: Death,
+    pub destroyed: bool,
+    pub name: Option<SendStr>,
 
-    stdout: Option<~Writer:Send>,
-    stderr: Option<~Writer:Send>,
+    pub stdout: Option<~Writer:Send>,
+    pub stderr: Option<~Writer:Send>,
 
-    priv imp: Option<~Runtime:Send>,
+    imp: Option<~Runtime:Send>,
 }
 
 pub struct GarbageCollector;
@@ -77,11 +77,11 @@ pub enum DeathAction {
 
 /// Per-task state related to task death, killing, failure, etc.
 pub struct Death {
-    on_exit: Option<DeathAction>,
+    pub on_exit: Option<DeathAction>,
 }
 
 pub struct BlockedTasks {
-    priv inner: UnsafeArc<AtomicUint>,
+    inner: UnsafeArc<AtomicUint>,
 }
 
 impl Task {

@@ -54,7 +54,7 @@ use rt::rtio::{RtioSocket, RtioUdpSocket, IoFactory, LocalIo};
 /// drop(socket); // close the socket
 /// ```
 pub struct UdpSocket {
-    priv obj: ~RtioUdpSocket:Send
+    obj: ~RtioUdpSocket:Send
 }
 
 impl UdpSocket {
@@ -115,8 +115,8 @@ impl Clone for UdpSocket {
 /// A type that allows convenient usage of a UDP stream connected to one
 /// address via the `Reader` and `Writer` traits.
 pub struct UdpStream {
-    priv socket: UdpSocket,
-    priv connected_to: SocketAddr
+    socket: UdpSocket,
+    connected_to: SocketAddr
 }
 
 impl UdpStream {

@@ -81,15 +81,15 @@ pub enum Signum {
 /// ```
 pub struct Listener {
     /// A map from signums to handles to keep the handles in memory
-    priv handles: ~[(Signum, ~RtioSignal)],
+    handles: ~[(Signum, ~RtioSignal)],
     /// This is where all the handles send signums, which are received by
     /// the clients from the receiver.
-    priv tx: Sender<Signum>,
+    tx: Sender<Signum>,
 
     /// Clients of Listener can `recv()` on this receiver. This is exposed to
     /// allow selection over it as well as manipulation of the receiver
     /// directly.
-    rx: Receiver<Signum>,
+    pub rx: Receiver<Signum>,
 }
 
 impl Listener {

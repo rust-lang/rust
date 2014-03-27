@@ -78,9 +78,9 @@ use vec::Vec;
 /// configured at creation time, via the `FileAccess` parameter to
 /// `File::open_mode()`.
 pub struct File {
-    priv fd: ~RtioFileStream:Send,
-    priv path: Path,
-    priv last_nread: int,
+    fd: ~RtioFileStream:Send,
+    path: Path,
+    last_nread: int,
 }
 
 impl File {
@@ -498,7 +498,7 @@ pub fn walk_dir(path: &Path) -> IoResult<Directories> {
 
 /// An iterator which walks over a directory
 pub struct Directories {
-    priv stack: ~[Path],
+    stack: ~[Path],
 }
 
 impl Iterator<Path> for Directories {

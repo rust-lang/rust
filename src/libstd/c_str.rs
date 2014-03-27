@@ -86,8 +86,8 @@ use raw::Slice;
 /// This structure wraps a `*libc::c_char`, and will automatically free the
 /// memory it is pointing to when it goes out of scope.
 pub struct CString {
-    priv buf: *libc::c_char,
-    priv owns_buffer_: bool,
+    buf: *libc::c_char,
+    owns_buffer_: bool,
 }
 
 impl Clone for CString {
@@ -373,8 +373,8 @@ fn check_for_null(v: &[u8], buf: *mut libc::c_char) {
 ///
 /// Use with the `std::iter` module.
 pub struct CChars<'a> {
-    priv ptr: *libc::c_char,
-    priv marker: marker::ContravariantLifetime<'a>,
+    ptr: *libc::c_char,
+    marker: marker::ContravariantLifetime<'a>,
 }
 
 impl<'a> Iterator<libc::c_char> for CChars<'a> {
