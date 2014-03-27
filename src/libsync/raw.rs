@@ -209,16 +209,16 @@ enum ReacquireOrderLock<'a> {
 pub struct Condvar<'a> {
     // The 'Sem' object associated with this condvar. This is the one that's
     // atomically-unlocked-and-descheduled upon and reacquired during wakeup.
-    priv sem: &'a Sem<Vec<WaitQueue> >,
+    sem: &'a Sem<Vec<WaitQueue> >,
     // This is (can be) an extra semaphore which is held around the reacquire
     // operation on the first one. This is only used in cvars associated with
     // rwlocks, and is needed to ensure that, when a downgrader is trying to
     // hand off the access lock (which would be the first field, here), a 2nd
     // writer waking up from a cvar wait can't race with a reader to steal it,
     // See the comment in write_cond for more detail.
-    priv order: ReacquireOrderLock<'a>,
+    order: ReacquireOrderLock<'a>,
     // Make sure condvars are non-copyable.
-    priv nocopy: marker::NoCopy,
+    nocopy: marker::NoCopy,
 }
 
 impl<'a> Condvar<'a> {
@@ -362,14 +362,14 @@ struct SemCondGuard<'a> {
 
 /// A counting, blocking, bounded-waiting semaphore.
 pub struct Semaphore {
-    priv sem: Sem<()>,
+    sem: Sem<()>,
 }
 
 /// An RAII guard used to represent an acquired resource to a semaphore. When
 /// dropped, this value will release the resource back to the semaphore.
 #[must_use]
 pub struct SemaphoreGuard<'a> {
-    priv guard: SemGuard<'a, ()>,
+    guard: SemGuard<'a, ()>,
 }
 
 impl Semaphore {
@@ -404,7 +404,7 @@ impl Semaphore {
 /// A task which fails while holding a mutex will unlock the mutex as it
 /// unwinds.
 pub struct Mutex {
-    priv sem: Sem<Vec<WaitQueue>>,
+    sem: Sem<Vec<WaitQueue>>,
 }
 
 /// An RAII structure which is used to gain access to a mutex's condition
@@ -412,10 +412,10 @@ pub struct Mutex {
 /// corresponding mutex is also unlocked.
 #[must_use]
 pub struct MutexGuard<'a> {
-    priv guard: SemGuard<'a, Vec<WaitQueue>>,
+    guard: SemGuard<'a, Vec<WaitQueue>>,
     /// Inner condition variable which is connected to the outer mutex, and can
     /// be used for atomic-unlock-and-deschedule.
-    cond: Condvar<'a>,
+    pub cond: Condvar<'a>,
 }
 
 impl Mutex {
@@ -452,8 +452,8 @@ impl Mutex {
 /// A task which fails while holding an rwlock will unlock the rwlock as it
 /// unwinds.
 pub struct RWLock {
-    priv order_lock:  Semaphore,
-    priv access_lock: Sem<Vec<WaitQueue>>,
+    order_lock:  Semaphore,
+    access_lock: Sem<Vec<WaitQueue>>,
 
     // The only way the count flag is ever accessed is with xadd. Since it is
     // a read-modify-write operation, multiple xadds on different cores will
@@ -462,14 +462,14 @@ pub struct RWLock {
     //
     // FIXME(#6598): The atomics module has no relaxed ordering flag, so I use
     // acquire/release orderings superfluously. Change these someday.
-    priv read_count: atomics::AtomicUint,
+    read_count: atomics::AtomicUint,
 }
 
 /// An RAII helper which is created by acquiring a read lock on an RWLock. When
 /// dropped, this will unlock the RWLock.
 #[must_use]
 pub struct RWLockReadGuard<'a> {
-    priv lock: &'a RWLock,
+    lock: &'a RWLock,
 }
 
 /// An RAII helper which is created by acquiring a write lock on an RWLock. When
@@ -478,10 +478,10 @@ pub struct RWLockReadGuard<'a> {
 /// A value of this type can also be consumed to downgrade to a read-only lock.
 #[must_use]
 pub struct RWLockWriteGuard<'a> {
-    priv lock: &'a RWLock,
+    lock: &'a RWLock,
     /// Inner condition variable that is connected to the write-mode of the
     /// outer rwlock.
-    cond: Condvar<'a>,
+    pub cond: Condvar<'a>,
 }
 
 impl RWLock {
