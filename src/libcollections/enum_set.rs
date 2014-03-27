@@ -20,7 +20,7 @@ use std::num::Bitwise;
 pub struct EnumSet<E> {
     // We must maintain the invariant that no bits are set
     // for which no variant exists
-    priv bits: uint
+    bits: uint
 }
 
 /// An interface for casting C-like enum to uint and back.
@@ -102,8 +102,8 @@ impl<E:CLike> BitAnd<EnumSet<E>, EnumSet<E>> for EnumSet<E> {
 
 /// An iterator over an EnumSet
 pub struct Items<E> {
-    priv index: uint,
-    priv bits: uint,
+    index: uint,
+    bits: uint,
 }
 
 impl<E:CLike> Items<E> {

@@ -32,9 +32,9 @@ use deque::Deque;
 
 /// A doubly-linked list.
 pub struct DList<T> {
-    priv length: uint,
-    priv list_head: Link<T>,
-    priv list_tail: Rawlink<Node<T>>,
+    length: uint,
+    list_head: Link<T>,
+    list_tail: Rawlink<Node<T>>,
 }
 
 type Link<T> = Option<~Node<T>>;
@@ -48,9 +48,9 @@ struct Node<T> {
 
 /// Double-ended DList iterator
 pub struct Items<'a, T> {
-    priv head: &'a Link<T>,
-    priv tail: Rawlink<Node<T>>,
-    priv nelem: uint,
+    head: &'a Link<T>,
+    tail: Rawlink<Node<T>>,
+    nelem: uint,
 }
 
 // FIXME #11820: the &'a Option<> of the Link stops clone working.
@@ -60,16 +60,16 @@ impl<'a, T> Clone for Items<'a, T> {
 
 /// Double-ended mutable DList iterator
 pub struct MutItems<'a, T> {
-    priv list: &'a mut DList<T>,
-    priv head: Rawlink<Node<T>>,
-    priv tail: Rawlink<Node<T>>,
-    priv nelem: uint,
+    list: &'a mut DList<T>,
+    head: Rawlink<Node<T>>,
+    tail: Rawlink<Node<T>>,
+    nelem: uint,
 }
 
 /// DList consuming iterator
 #[deriving(Clone)]
 pub struct MoveItems<T> {
-    priv list: DList<T>
+    list: DList<T>
 }
 
 /// Rawlink is a type like Option<T> but for holding a raw pointer

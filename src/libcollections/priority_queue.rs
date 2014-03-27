@@ -19,7 +19,7 @@ use std::slice;
 /// A priority queue implemented with a binary heap
 #[deriving(Clone)]
 pub struct PriorityQueue<T> {
-    priv data: ~[T],
+    data: ~[T],
 }
 
 impl<T:Ord> Container for PriorityQueue<T> {
@@ -181,7 +181,7 @@ impl<T:Ord> PriorityQueue<T> {
 
 /// PriorityQueue iterator
 pub struct Items <'a, T> {
-    priv iter: slice::Items<'a, T>,
+    iter: slice::Items<'a, T>,
 }
 
 impl<'a, T> Iterator<&'a T> for Items<'a, T> {
