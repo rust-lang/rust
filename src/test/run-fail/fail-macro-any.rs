@@ -11,5 +11,5 @@
 // error-pattern:failed at '~Any'
 
 fn main() {
-    fail!(~413 as ~::std::any::Any);
+    fail!(~413 as ~::std::any::Any:Send);
 }

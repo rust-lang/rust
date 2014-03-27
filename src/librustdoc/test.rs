@@ -118,7 +118,7 @@ fn runtest(test: &str, cratename: &str, libs: HashSet<Path>, should_fail: bool,
     let old = io::stdio::set_stderr(~w1);
     spawn(proc() {
         let mut p = io::ChanReader::new(rx);
-        let mut err = old.unwrap_or(~io::stderr() as ~Writer);
+        let mut err = old.unwrap_or(~io::stderr() as ~Writer:Send);
         io::util::copy(&mut p, &mut err).unwrap();
     });
     let emitter = diagnostic::EmitterWriter::new(~w2);

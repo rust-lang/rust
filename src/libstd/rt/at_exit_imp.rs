@@ -14,13 +14,14 @@
 
 use cast;
 use iter::Iterator;
+use kinds::Send;
 use mem;
 use option::{Some, None};
 use ptr::RawPtr;
 use unstable::sync::Exclusive;
 use slice::OwnedVector;
 
-type Queue = Exclusive<~[proc()]>;
+type Queue = Exclusive<~[proc:Send()]>;
 
 // You'll note that these variables are *not* atomic, and this is done on
 // purpose. This module is designed to have init() called *once* in a
@@ -39,7 +40,7 @@ pub fn init() {
     }
 }
 
-pub fn push(f: proc()) {
+pub fn push(f: proc:Send()) {
     unsafe {
         rtassert!(!RUNNING);
         rtassert!(!QUEUE.is_null());

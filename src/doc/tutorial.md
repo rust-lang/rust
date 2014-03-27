@@ -2103,7 +2103,7 @@ a `&T` pointer. `MutexArc` is an example of a *sharable* type with internal muta
 These are types that do not contain any data whose lifetime is bound to
 a particular stack frame. These are types that do not contain any
 references, or types where the only contained references
-have the `'static` lifetime. (For more on named lifetimes and their uses, 
+have the `'static` lifetime. (For more on named lifetimes and their uses,
 see the [references and lifetimes guide][lifetimes].)
 
 > ***Note:*** These two traits were referred to as 'kinds' in earlier
@@ -2430,23 +2430,25 @@ select the method to call at runtime.
 
 This usage of traits is similar to Java interfaces.
 
-By default, each of the three storage classes for traits enforce a
-particular set of built-in kinds that their contents must fulfill in
-order to be packaged up in a trait object of that storage class.
+There are some built-in bounds, such as `Send` and `Share`, which are properties
+of the components of types. By design, trait objects don't know the exact type
+of their contents and so the compiler cannot reason about those properties.
 
-* The contents of owned traits (`~Trait`) must fulfill the `Send` bound.
-* The contents of reference traits (`&Trait`) are not constrained by any bound.
+You can instruct the compiler, however, that the contents of a trait object must
+acribe to a particular bound with a trailing colon (`:`). These are examples of
+valid types:
 
-Consequently, the trait objects themselves automatically fulfill their
-respective kind bounds. However, this default behavior can be overridden by
-specifying a list of bounds on the trait type, for example, by writing `~Trait:`
-(which indicates that the contents of the owned trait need not fulfill any
-bounds), or by writing `~Trait:Send+Share`, which indicates that in addition
-to fulfilling `Send`, contents must also fulfill `Share`, and as a consequence,
-the trait itself fulfills `Share`.
+~~~rust
+trait Foo {}
+trait Bar<T> {}
 
-* `~Trait:Send` is equivalent to `~Trait`.
-* `&Trait:` is equivalent to `&Trait`.
+fn sendable_foo(f: ~Foo:Send) { /* ... */ }
+fn shareable_bar<T: Share>(b: &Bar<T>: Share) { /* ... */ }
+~~~
+
+When no colon is specified (such as the type `~Foo`), it is inferred that the
+value ascribes to no bounds. They must be added manually if any bounds are
+necessary for usage.
 
 Builtin kind bounds can also be specified on closure types in the same way (for
 example, by writing `fn:Send()`), and the default behaviours are the same as

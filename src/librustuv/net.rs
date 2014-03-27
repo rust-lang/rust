@@ -167,8 +167,8 @@ pub struct TcpListener {
     home: HomeHandle,
     handle: *uvll::uv_pipe_t,
     priv closing_task: Option<BlockedTask>,
-    priv outgoing: Sender<Result<~rtio::RtioTcpStream, IoError>>,
-    priv incoming: Receiver<Result<~rtio::RtioTcpStream, IoError>>,
+    priv outgoing: Sender<Result<~rtio::RtioTcpStream:Send, IoError>>,
+    priv incoming: Receiver<Result<~rtio::RtioTcpStream:Send, IoError>>,
 }
 
 pub struct TcpAcceptor {
@@ -295,7 +295,7 @@ impl rtio::RtioTcpStream for TcpWatcher {
         })
     }
 
-    fn clone(&self) -> ~rtio::RtioTcpStream {
+    fn clone(&self) -> ~rtio::RtioTcpStream:Send {
         ~TcpWatcher {
             handle: self.handle,
             stream: StreamWatcher::new(self.handle),
@@ -303,7 +303,7 @@ impl rtio::RtioTcpStream for TcpWatcher {
             refcount: self.refcount.clone(),
             write_access: self.write_access.clone(),
             read_access: self.read_access.clone(),
-        } as ~rtio::RtioTcpStream
+        } as ~rtio::RtioTcpStream:Send
     }
 
     fn close_write(&mut self) -> Result<(), IoError> {
@@ -397,14 +397,14 @@ impl rtio::RtioSocket for TcpListener {
 }
 
 impl rtio::RtioTcpListener for TcpListener {
-    fn listen(~self) -> Result<~rtio::RtioTcpAcceptor, IoError> {
+    fn listen(~self) -> Result<~rtio::RtioTcpAcceptor:Send, IoError> {
         // create the acceptor object from ourselves
         let mut acceptor = ~TcpAcceptor { listener: self };
 
         let _m = acceptor.fire_homing_missile();
         // FIXME: the 128 backlog should be configurable
         match unsafe { uvll::uv_listen(acceptor.listener.handle, 128, listen_cb) } {
-            0 => Ok(acceptor as ~rtio::RtioTcpAcceptor),
+            0 => Ok(acceptor as ~rtio::RtioTcpAcceptor:Send),
             n => Err(uv_error_to_io_error(UvError(n))),
         }
     }
@@ -420,7 +420,7 @@ extern fn listen_cb(server: *uvll::uv_stream_t, status: c_int) {
             });
             let client = TcpWatcher::new_home(&loop_, tcp.home().clone());
             assert_eq!(unsafe { uvll::uv_accept(server, client.handle) }, 0);
-            Ok(~client as ~rtio::RtioTcpStream)
+            Ok(~client as ~rtio::RtioTcpStream:Send)
         }
         n => Err(uv_error_to_io_error(UvError(n)))
     };
@@ -448,7 +448,7 @@ impl rtio::RtioSocket for TcpAcceptor {
 }
 
 impl rtio::RtioTcpAcceptor for TcpAcceptor {
-    fn accept(&mut self) -> Result<~rtio::RtioTcpStream, IoError> {
+    fn accept(&mut self) -> Result<~rtio::RtioTcpStream:Send, IoError> {
         self.listener.incoming.recv()
     }
 
@@ -709,14 +709,14 @@ impl rtio::RtioUdpSocket for UdpWatcher {
         })
     }
 
-    fn clone(&self) -> ~rtio::RtioUdpSocket {
+    fn clone(&self) -> ~rtio::RtioUdpSocket:Send {
         ~UdpWatcher {
             handle: self.handle,
             home: self.home.clone(),
             refcount: self.refcount.clone(),
             write_access: self.write_access.clone(),
             read_access: self.read_access.clone(),
-        } as ~rtio::RtioUdpSocket
+        } as ~rtio::RtioUdpSocket:Send
     }
 }
 

@@ -348,8 +348,8 @@ impl rtio::RtioTcpStream for TcpStream {
         self.set_keepalive(None)
     }
 
-    fn clone(&self) -> ~rtio::RtioTcpStream {
-        ~TcpStream { inner: self.inner.clone() } as ~rtio::RtioTcpStream
+    fn clone(&self) -> ~rtio::RtioTcpStream:Send {
+        ~TcpStream { inner: self.inner.clone() } as ~rtio::RtioTcpStream:Send
     }
     fn close_write(&mut self) -> IoResult<()> {
         super::mkerr_libc(unsafe {
@@ -418,8 +418,8 @@ impl TcpListener {
 }
 
 impl rtio::RtioTcpListener for TcpListener {
-    fn listen(~self) -> IoResult<~rtio::RtioTcpAcceptor> {
-        self.native_listen(128).map(|a| ~a as ~rtio::RtioTcpAcceptor)
+    fn listen(~self) -> IoResult<~rtio::RtioTcpAcceptor:Send> {
+        self.native_listen(128).map(|a| ~a as ~rtio::RtioTcpAcceptor:Send)
     }
 }
 
@@ -461,8 +461,8 @@ impl rtio::RtioSocket for TcpAcceptor {
 }
 
 impl rtio::RtioTcpAcceptor for TcpAcceptor {
-    fn accept(&mut self) -> IoResult<~rtio::RtioTcpStream> {
-        self.native_accept().map(|s| ~s as ~rtio::RtioTcpStream)
+    fn accept(&mut self) -> IoResult<~rtio::RtioTcpStream:Send> {
+        self.native_accept().map(|s| ~s as ~rtio::RtioTcpStream:Send)
     }
 
     fn accept_simultaneously(&mut self) -> IoResult<()> { Ok(()) }
@@ -630,7 +630,7 @@ impl rtio::RtioUdpSocket for UdpSocket {
         self.set_broadcast(false)
     }
 
-    fn clone(&self) -> ~rtio::RtioUdpSocket {
-        ~UdpSocket { inner: self.inner.clone() } as ~rtio::RtioUdpSocket
+    fn clone(&self) -> ~rtio::RtioUdpSocket:Send {
+        ~UdpSocket { inner: self.inner.clone() } as ~rtio::RtioUdpSocket:Send
     }
 }

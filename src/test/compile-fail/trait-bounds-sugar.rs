@@ -12,7 +12,7 @@
 
 trait Foo {}
 
-fn a(_x: ~Foo) { // should be same as ~Foo:Send
+fn a(_x: ~Foo:Send) {
 }
 
 fn b(_x: &'static Foo) { // should be same as &'static Foo:'static

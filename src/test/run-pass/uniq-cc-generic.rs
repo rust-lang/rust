@@ -19,12 +19,11 @@ enum maybe_pointy {
 
 struct Pointy {
     a : maybe_pointy,
-    d : proc() -> uint,
+    d : proc:Send() -> uint,
 }
 
-fn make_uniq_closure<A:Send>(a: A) -> proc() -> uint {
-    let result: proc() -> uint = proc() &a as *A as uint;
-    result
+fn make_uniq_closure<A:Send>(a: A) -> proc:Send() -> uint {
+    proc() { &a as *A as uint }
 }
 
 fn empty_pointy() -> @RefCell<Pointy> {

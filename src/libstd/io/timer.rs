@@ -18,8 +18,9 @@ and create receivers which will receive notifications after a period of time.
 */
 
 use comm::Receiver;
-use rt::rtio::{IoFactory, LocalIo, RtioTimer};
 use io::IoResult;
+use kinds::Send;
+use rt::rtio::{IoFactory, LocalIo, RtioTimer};
 
 /// A synchronous timer object
 ///
@@ -62,7 +63,7 @@ use io::IoResult;
 /// # }
 /// ```
 pub struct Timer {
-    priv obj: ~RtioTimer
+    priv obj: ~RtioTimer:Send,
 }
 
 /// Sleep the current task for `msecs` milliseconds.

@@ -55,7 +55,7 @@ use str::{Str, SendStr, IntoMaybeOwned};
 ///
 /// If you wish for this result's delivery to block until all
 /// children tasks complete, recommend using a result future.
-pub type TaskResult = Result<(), ~Any>;
+pub type TaskResult = Result<(), ~Any:Send>;
 
 /// Task configuration options
 pub struct TaskOpts {
@@ -66,9 +66,9 @@ pub struct TaskOpts {
     /// The size of the stack for the spawned task
     stack_size: Option<uint>,
     /// Task-local stdout
-    stdout: Option<~Writer>,
+    stdout: Option<~Writer:Send>,
     /// Task-local stderr
-    stderr: Option<~Writer>,
+    stderr: Option<~Writer:Send>,
 }
 
 /**
@@ -86,7 +86,7 @@ pub struct TaskOpts {
 pub struct TaskBuilder {
     /// Options to spawn the new task with
     opts: TaskOpts,
-    priv gen_body: Option<proc(v: proc()) -> proc()>,
+    priv gen_body: Option<proc:Send(v: proc:Send()) -> proc:Send()>,
     priv nopod: Option<marker::NoPod>,
 }
 
@@ -150,22 +150,14 @@ impl TaskBuilder {
      * generator by applying the task body which results from the
      * existing body generator to the new body generator.
      */
-    pub fn with_wrapper(mut self, wrapper: proc(v: proc()) -> proc()) -> TaskBuilder {
-        let prev_gen_body = self.gen_body.take();
-        let prev_gen_body = match prev_gen_body {
-            Some(gen) => gen,
-            None => {
-                let f: proc(proc()) -> proc() = proc(body) body;
-                f
-            }
+    pub fn with_wrapper(mut self,
+                        wrapper: proc:Send(v: proc:Send()) -> proc:Send())
+        -> TaskBuilder
+    {
+        self.gen_body = match self.gen_body.take() {
+            Some(prev) => Some(proc(body) { wrapper(prev(body)) }),
+            None => Some(wrapper)
         };
-        let next_gen_body = {
-            let f: proc(proc()) -> proc() = proc(body) {
-                wrapper(prev_gen_body(body))
-            };
-            f
-        };
-        self.gen_body = Some(next_gen_body);
         self
     }
 
@@ -176,7 +168,7 @@ impl TaskBuilder {
      * the provided unique closure. The task has the properties and behavior
      * specified by the task_builder.
      */
-    pub fn spawn(mut self, f: proc()) {
+    pub fn spawn(mut self, f: proc:Send()) {
         let gen_body = self.gen_body.take();
         let f = match gen_body {
             Some(gen) => gen(f),
@@ -199,7 +191,7 @@ impl TaskBuilder {
      * # Failure
      * Fails if a future_result was already set for this task.
      */
-    pub fn try<T:Send>(mut self, f: proc() -> T) -> Result<T, ~Any> {
+    pub fn try<T:Send>(mut self, f: proc:Send() -> T) -> Result<T, ~Any:Send> {
         let (tx, rx) = channel();
 
         let result = self.future_result();
@@ -241,12 +233,12 @@ impl TaskOpts {
 /// the provided unique closure.
 ///
 /// This function is equivalent to `task().spawn(f)`.
-pub fn spawn(f: proc()) {
+pub fn spawn(f: proc:Send()) {
     let task = task();
     task.spawn(f)
 }
 
-pub fn try<T:Send>(f: proc() -> T) -> Result<T, ~Any> {
+pub fn try<T:Send>(f: proc:Send() -> T) -> Result<T, ~Any:Send> {
     /*!
      * Execute a function in another task and return either the return value
      * of the function or result::err.
@@ -346,7 +338,7 @@ fn test_run_basic() {
 fn test_with_wrapper() {
     let (tx, rx) = channel();
     task().with_wrapper(proc(body) {
-        let result: proc() = proc() {
+        let result: proc:Send() = proc() {
             body();
             tx.send(());
         };
@@ -432,7 +424,7 @@ fn test_spawn_sched_childs_on_default_sched() {
 }
 
 #[cfg(test)]
-fn avoid_copying_the_body(spawnfn: |v: proc()|) {
+fn avoid_copying_the_body(spawnfn: |v: proc:Send()|) {
     let (tx, rx) = channel::<uint>();
 
     let x = ~1;
@@ -478,7 +470,7 @@ fn test_child_doesnt_ref_parent() {
     // (well, it would if the constant were 8000+ - I lowered it to be more
     // valgrind-friendly. try this at home, instead..!)
     static generations: uint = 16;
-    fn child_no(x: uint) -> proc() {
+    fn child_no(x: uint) -> proc:Send() {
         return proc() {
             if x < generations {
                 task().spawn(child_no(x+1));
@@ -524,10 +516,10 @@ fn test_try_fail_message_owned_str() {
 #[test]
 fn test_try_fail_message_any() {
     match try(proc() {
-        fail!(~413u16 as ~Any);
+        fail!(~413u16 as ~Any:Send);
     }) {
         Err(e) => {
-            type T = ~Any;
+            type T = ~Any:Send;
             assert!(e.is::<T>());
             let any = e.move::<T>().unwrap();
             assert!(any.is::<u16>());
