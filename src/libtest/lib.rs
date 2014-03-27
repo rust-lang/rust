@@ -147,30 +147,30 @@ impl TestFn {
 /// set-up & tear-down before running a piece of code repeatedly via a
 /// call to `iter`.
 pub struct BenchHarness {
-    priv iterations: u64,
-    priv ns_start: u64,
-    priv ns_end: u64,
-    bytes: u64
+    iterations: u64,
+    ns_start: u64,
+    ns_end: u64,
+    pub bytes: u64,
 }
 
 // The definition of a single test. A test runner will run a list of
 // these.
 #[deriving(Clone)]
 pub struct TestDesc {
-    name: TestName,
-    ignore: bool,
-    should_fail: bool
+    pub name: TestName,
+    pub ignore: bool,
+    pub should_fail: bool,
 }
 
 pub struct TestDescAndFn {
-    desc: TestDesc,
-    testfn: TestFn,
+    pub desc: TestDesc,
+    pub testfn: TestFn,
 }
 
 #[deriving(Clone, Encodable, Decodable, Eq, Show)]
 pub struct Metric {
-    priv value: f64,
-    priv noise: f64
+    value: f64,
+    noise: f64
 }
 
 impl Metric {
@@ -242,15 +242,15 @@ pub fn test_main_static(args: &[~str], tests: &[TestDescAndFn]) {
 }
 
 pub struct TestOpts {
-    filter: Option<~str>,
-    run_ignored: bool,
-    run_tests: bool,
-    run_benchmarks: bool,
-    ratchet_metrics: Option<Path>,
-    ratchet_noise_percent: Option<f64>,
-    save_metrics: Option<Path>,
-    test_shard: Option<(uint,uint)>,
-    logfile: Option<Path>
+    pub filter: Option<~str>,
+    pub run_ignored: bool,
+    pub run_tests: bool,
+    pub run_benchmarks: bool,
+    pub ratchet_metrics: Option<Path>,
+    pub ratchet_noise_percent: Option<f64>,
+    pub save_metrics: Option<Path>,
+    pub test_shard: Option<(uint,uint)>,
+    pub logfile: Option<Path>
 }
 
 /// Result of parsing the options.
@@ -375,8 +375,8 @@ pub fn opt_shard(maybestr: Option<~str>) -> Option<(uint,uint)> {
 
 #[deriving(Clone, Eq)]
 pub struct BenchSamples {
-    priv ns_iter_summ: stats::Summary,
-    priv mb_s: uint
+    ns_iter_summ: stats::Summary,
+    mb_s: uint,
 }
 
 #[deriving(Clone, Eq)]
