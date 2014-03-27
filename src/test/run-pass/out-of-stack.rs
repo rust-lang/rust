@@ -28,6 +28,7 @@ fn silent_recurse() {
 fn loud_recurse() {
     println!("hello!");
     loud_recurse();
+    black_box(()); // don't optimize this into a tail call. please.
 }
 
 fn main() {
