@@ -215,7 +215,7 @@ fn keep_going(data: &[u8], f: |*u8, uint| -> i64) -> i64 {
 /// Implementation of rt::rtio's IoFactory trait to generate handles to the
 /// native I/O functionality.
 pub struct IoFactory {
-    priv cannot_construct_outside_of_this_module: ()
+    cannot_construct_outside_of_this_module: ()
 }
 
 impl IoFactory {
