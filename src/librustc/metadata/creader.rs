@@ -23,6 +23,7 @@ use metadata::loader;
 use metadata::loader::Os;
 
 use std::cell::RefCell;
+use std::rc::Rc;
 use collections::HashMap;
 use syntax::ast;
 use syntax::abi;
@@ -41,7 +42,7 @@ use syntax::visit;
 pub fn read_crates(sess: &Session,
                    krate: &ast::Crate,
                    os: loader::Os,
-                   intr: @IdentInterner) {
+                   intr: Rc<IdentInterner>) {
     let mut e = Env {
         sess: sess,
         os: os,
@@ -114,7 +115,7 @@ struct Env<'a> {
     os: loader::Os,
     crate_cache: @RefCell<Vec<cache_entry>>,
     next_crate_num: ast::CrateNum,
-    intr: @IdentInterner
+    intr: Rc<IdentInterner>
 }
 
 fn visit_crate(e: &Env, c: &ast::Crate) {
@@ -295,7 +296,7 @@ fn resolve_crate(e: &mut Env,
                 id_hash: id_hash,
                 hash: hash.map(|a| &*a),
                 os: e.os,
-                intr: e.intr,
+                intr: e.intr.clone(),
                 rejected_via_hash: false,
             };
             let loader::Library {

@@ -31,8 +31,8 @@ use std::char;
 use std::str;
 use std::io;
 use std::io::{IoResult, MemWriter};
+use std::rc::Rc;
 
-// The &mut State is stored here to prevent recursive type.
 pub enum AnnNode<'a> {
     NodeBlock(&'a ast::Block),
     NodeItem(&'a ast::Item),
@@ -57,7 +57,7 @@ pub struct CurrentCommentAndLiteral {
 pub struct State<'a> {
     s: pp::Printer,
     cm: Option<&'a CodeMap>,
-    intr: @token::IdentInterner,
+    intr: Rc<token::IdentInterner>,
     comments: Option<Vec<comments::Comment> >,
     literals: Option<Vec<comments::Literal> >,
     cur_cmnt_and_lit: CurrentCommentAndLiteral,
