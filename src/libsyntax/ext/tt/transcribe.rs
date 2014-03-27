@@ -35,7 +35,7 @@ pub struct TtReader<'a> {
     // the unzipped tree:
     priv stack: Vec<TtFrame>,
     /* for MBE-style macro transcription */
-    priv interpolations: HashMap<Ident, @NamedMatch>,
+    priv interpolations: HashMap<Ident, Rc<NamedMatch>>,
     priv repeat_idx: Vec<uint>,
     priv repeat_len: Vec<uint>,
     /* cached: */
@@ -47,7 +47,7 @@ pub struct TtReader<'a> {
  *  `src` contains no `TTSeq`s and `TTNonterminal`s, `interp` can (and
  *  should) be none. */
 pub fn new_tt_reader<'a>(sp_diag: &'a SpanHandler,
-                         interp: Option<HashMap<Ident, @NamedMatch>>,
+                         interp: Option<HashMap<Ident, Rc<NamedMatch>>>,
                          src: Vec<ast::TokenTree> )
                          -> TtReader<'a> {
     let mut r = TtReader {
@@ -72,19 +72,19 @@ pub fn new_tt_reader<'a>(sp_diag: &'a SpanHandler,
     r
 }
 
-fn lookup_cur_matched_by_matched(r: &TtReader, start: @NamedMatch) -> @NamedMatch {
+fn lookup_cur_matched_by_matched(r: &TtReader, start: Rc<NamedMatch>) -> Rc<NamedMatch> {
     r.repeat_idx.iter().fold(start, |ad, idx| {
         match *ad {
             MatchedNonterminal(_) => {
                 // end of the line; duplicate henceforth
-                ad
+                ad.clone()
             }
-            MatchedSeq(ref ads, _) => *ads.get(*idx)
+            MatchedSeq(ref ads, _) => ads.get(*idx).clone()
         }
     })
 }
 
-fn lookup_cur_matched(r: &TtReader, name: Ident) -> @NamedMatch {
+fn lookup_cur_matched(r: &TtReader, name: Ident) -> Rc<NamedMatch> {
     let matched_opt = r.interpolations.find_copy(&name);
     match matched_opt {
         Some(s) => lookup_cur_matched_by_matched(r, s),
