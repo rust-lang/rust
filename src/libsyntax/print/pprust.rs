@@ -26,7 +26,6 @@ use print::pp::{Breaks, Consistent, Inconsistent, eof};
 use print::pp;
 
 use std::cast;
-use std::cell::RefCell;
 use std::char;
 use std::str;
 use std::io;
@@ -61,7 +60,7 @@ pub struct State<'a> {
     comments: Option<Vec<comments::Comment> >,
     literals: Option<Vec<comments::Literal> >,
     cur_cmnt_and_lit: CurrentCommentAndLiteral,
-    boxes: RefCell<Vec<pp::Breaks> >,
+    boxes: Vec<pp::Breaks>,
     ann: &'a PpAnn
 }
 
@@ -82,7 +81,7 @@ pub fn rust_printer_annotated<'a>(writer: ~io::Writer,
             cur_cmnt: 0,
             cur_lit: 0
         },
-        boxes: RefCell::new(Vec::new()),
+        boxes: Vec::new(),
         ann: ann
     }
 }
@@ -124,7 +123,7 @@ pub fn print_crate<'a>(cm: &'a CodeMap,
             cur_cmnt: 0,
             cur_lit: 0
         },
-        boxes: RefCell::new(Vec::new()),
+        boxes: Vec::new(),
         ann: ann
     };
     try!(s.print_mod(&krate.module, krate.attrs.as_slice()));
@@ -238,23 +237,23 @@ pub fn visibility_qualified(vis: ast::Visibility, s: &str) -> ~str {
 
 impl<'a> State<'a> {
     pub fn ibox(&mut self, u: uint) -> IoResult<()> {
-        self.boxes.borrow_mut().push(pp::Inconsistent);
+        self.boxes.push(pp::Inconsistent);
         pp::ibox(&mut self.s, u)
     }
 
     pub fn end(&mut self) -> IoResult<()> {
-        self.boxes.borrow_mut().pop().unwrap();
+        self.boxes.pop().unwrap();
         pp::end(&mut self.s)
     }
 
     pub fn cbox(&mut self, u: uint) -> IoResult<()> {
-        self.boxes.borrow_mut().push(pp::Consistent);
+        self.boxes.push(pp::Consistent);
         pp::cbox(&mut self.s, u)
     }
 
     // "raw box"
     pub fn rbox(&mut self, u: uint, b: pp::Breaks) -> IoResult<()> {
-        self.boxes.borrow_mut().push(b);
+        self.boxes.push(b);
         pp::rbox(&mut self.s, u, b)
     }
 
@@ -321,8 +320,8 @@ impl<'a> State<'a> {
         self.s.last_token().is_eof() || self.s.last_token().is_hardbreak_tok()
     }
 
-    pub fn in_cbox(&mut self) -> bool {
-        match self.boxes.borrow().last() {
+    pub fn in_cbox(&self) -> bool {
+        match self.boxes.last() {
             Some(&last_box) => last_box == pp::Consistent,
             None => false
         }
