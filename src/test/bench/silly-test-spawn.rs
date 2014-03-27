@@ -8,7 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Useful smoketest for scheduler performance.
+// This is (hopefully) a quick test to get a good idea about spawning
+// performance in libgreen. Note that this uses the rustuv event loop rather
+// than the basic event loop in order to get a better real world idea about the
+// performance of a task spawn.
+
+extern crate green;
+extern crate rustuv;
+
+#[start]
+fn start(argc: int, argv: **u8) -> int {
+    green::start(argc, argv, rustuv::event_loop, main)
+}
+
 fn main() {
     for _ in range(1, 100_000) {
         spawn(proc() {})
