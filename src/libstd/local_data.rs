@@ -41,11 +41,12 @@ local_data::get(key_vector, |opt| assert_eq!(*opt.unwrap(), ~[4]));
 // magic.
 
 use cast;
-use option::{None, Option, Some};
-use slice::{ImmutableVector, MutableVector, OwnedVector};
 use iter::{Iterator};
-use rt::task::{Task, LocalStorage};
+use kinds::Send;
 use mem::replace;
+use option::{None, Option, Some};
+use rt::task::{Task, LocalStorage};
+use slice::{ImmutableVector, MutableVector, OwnedVector};
 
 /**
  * Indexes a task-local data slot. This pointer is used for comparison to
@@ -89,7 +90,7 @@ impl<T: 'static> LocalData for T {}
 //      a proper map.
 #[doc(hidden)]
 pub type Map = ~[Option<(*u8, TLSValue, LoanState)>];
-type TLSValue = ~LocalData;
+type TLSValue = ~LocalData:Send;
 
 // Gets the map from the runtime. Lazily initialises if not done so already.
 unsafe fn get_local_map() -> &mut Map {
@@ -328,7 +329,7 @@ pub fn set<T: 'static>(key: Key<T>, data: T) {
     // transmute here to add the Send bound back on. This doesn't actually
     // matter because TLS will always own the data (until its moved out) and
     // we're not actually sending it to other schedulers or anything.
-    let data: ~LocalData = unsafe { cast::transmute(data) };
+    let data: ~LocalData:Send = unsafe { cast::transmute(data) };
     match insertion_position(map, keyval) {
         Some(i) => { map[i] = Some((keyval, data, NoLoan)); }
         None => { map.push(Some((keyval, data, NoLoan))); }

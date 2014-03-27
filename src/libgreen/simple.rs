@@ -34,7 +34,7 @@ impl Runtime for SimpleTask {
 
         let me = &mut *self as *mut SimpleTask;
         let cur_dupe = &*cur_task as *Task;
-        cur_task.put_runtime(self as ~Runtime);
+        cur_task.put_runtime(self);
         let task = BlockedTask::block(cur_task);
 
         // See libnative/task.rs for what's going on here with the `awoken`
@@ -57,7 +57,7 @@ impl Runtime for SimpleTask {
     }
     fn reawaken(mut ~self, mut to_wake: ~Task) {
         let me = &mut *self as *mut SimpleTask;
-        to_wake.put_runtime(self as ~Runtime);
+        to_wake.put_runtime(self);
         unsafe {
             cast::forget(to_wake);
             let guard = (*me).lock.lock();
@@ -86,6 +86,6 @@ pub fn task() -> ~Task {
     task.put_runtime(~SimpleTask {
         lock: unsafe {NativeMutex::new()},
         awoken: false,
-    } as ~Runtime);
+    });
     return task;
 }

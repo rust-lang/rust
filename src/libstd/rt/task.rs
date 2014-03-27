@@ -20,6 +20,7 @@ use clone::Clone;
 use comm::Sender;
 use io::Writer;
 use iter::{Iterator, Take};
+use kinds::Send;
 use local_data;
 use ops::Drop;
 use option::{Option, Some, None};
@@ -50,10 +51,10 @@ pub struct Task {
     destroyed: bool,
     name: Option<SendStr>,
 
-    stdout: Option<~Writer>,
-    stderr: Option<~Writer>,
+    stdout: Option<~Writer:Send>,
+    stderr: Option<~Writer:Send>,
 
-    priv imp: Option<~Runtime>,
+    priv imp: Option<~Runtime:Send>,
 }
 
 pub struct GarbageCollector;
@@ -69,7 +70,7 @@ pub enum BlockedTask {
 pub enum DeathAction {
     /// Action to be done with the exit code. If set, also makes the task wait
     /// until all its watched children exit before collecting the status.
-    Execute(proc(TaskResult)),
+    Execute(proc:Send(TaskResult)),
     /// A channel to send the result of the task on when the task exits
     SendMessage(Sender<TaskResult>),
 }
@@ -195,7 +196,7 @@ impl Task {
     /// Inserts a runtime object into this task, transferring ownership to the
     /// task. It is illegal to replace a previous runtime object in this task
     /// with this argument.
-    pub fn put_runtime(&mut self, ops: ~Runtime) {
+    pub fn put_runtime(&mut self, ops: ~Runtime:Send) {
         assert!(self.imp.is_none());
         self.imp = Some(ops);
     }
@@ -225,7 +226,7 @@ impl Task {
                 Ok(t) => Some(t),
                 Err(t) => {
                     let (_, obj): (uint, uint) = cast::transmute(t);
-                    let obj: ~Runtime = cast::transmute((vtable, obj));
+                    let obj: ~Runtime:Send = cast::transmute((vtable, obj));
                     self.put_runtime(obj);
                     None
                 }
@@ -235,7 +236,7 @@ impl Task {
 
     /// Spawns a sibling to this task. The newly spawned task is configured with
     /// the `opts` structure and will run `f` as the body of its code.
-    pub fn spawn_sibling(mut ~self, opts: TaskOpts, f: proc()) {
+    pub fn spawn_sibling(mut ~self, opts: TaskOpts, f: proc:Send()) {
         let ops = self.imp.take_unwrap();
         ops.spawn_sibling(self, opts, f)
     }

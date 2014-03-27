@@ -76,7 +76,7 @@ use uw = rt::libunwind;
 
 pub struct Unwinder {
     priv unwinding: bool,
-    priv cause: Option<~Any>
+    priv cause: Option<~Any:Send>
 }
 
 impl Unwinder {
@@ -126,7 +126,7 @@ impl Unwinder {
         }
     }
 
-    pub fn begin_unwind(&mut self, cause: ~Any) -> ! {
+    pub fn begin_unwind(&mut self, cause: ~Any:Send) -> ! {
         rtdebug!("begin_unwind()");
 
         self.unwinding = true;
@@ -372,7 +372,7 @@ pub fn begin_unwind<M: Any + Send>(msg: M, file: &'static str, line: uint) -> ! 
 /// Do this split took the LLVM IR line counts of `fn main() { fail!()
 /// }` from ~1900/3700 (-O/no opts) to 180/590.
 #[inline(never)] #[cold] // this is the slow path, please never inline this
-fn begin_unwind_inner(msg: ~Any, file: &'static str, line: uint) -> ! {
+fn begin_unwind_inner(msg: ~Any:Send, file: &'static str, line: uint) -> ! {
     let mut task;
     {
         let msg_s = match msg.as_ref::<&'static str>() {

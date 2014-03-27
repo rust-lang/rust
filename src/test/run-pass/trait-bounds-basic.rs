@@ -26,7 +26,7 @@ fn d(x: ~Foo:Send) {
 }
 
 fn e(x: ~Foo) { // sugar for ~Foo:Owned
-    b(x);
+    a(x);
 }
 
 pub fn main() { }

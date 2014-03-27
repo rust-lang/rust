@@ -13,16 +13,17 @@ use cast;
 use comm::{Sender, Receiver};
 use libc::c_int;
 use libc;
+use kinds::Send;
 use ops::Drop;
 use option::{Option, Some, None};
 use path::Path;
-use result::{Result, Err};
-use rt::task::Task;
+use result::Err;
 use rt::local::Local;
+use rt::task::Task;
 
 use ai = io::net::addrinfo;
 use io;
-use io::{IoError, IoResult};
+use io::IoResult;
 use io::net::ip::{IpAddr, SocketAddr};
 use io::process::{ProcessConfig, ProcessExit};
 use io::signal::Signum;
@@ -35,9 +36,10 @@ pub trait Callback {
 
 pub trait EventLoop {
     fn run(&mut self);
-    fn callback(&mut self, proc());
-    fn pausable_idle_callback(&mut self, ~Callback) -> ~PausableIdleCallback;
-    fn remote_callback(&mut self, ~Callback) -> ~RemoteCallback;
+    fn callback(&mut self, arg: proc:Send());
+    fn pausable_idle_callback(&mut self,
+                              ~Callback:Send) -> ~PausableIdleCallback:Send;
+    fn remote_callback(&mut self, ~Callback:Send) -> ~RemoteCallback:Send;
 
     /// The asynchronous I/O services. Not all event loops may provide one.
     fn io<'a>(&'a mut self) -> Option<&'a mut IoFactory>;
@@ -143,93 +145,94 @@ impl<'a> LocalIo<'a> {
 
 pub trait IoFactory {
     // networking
-    fn tcp_connect(&mut self, addr: SocketAddr) -> Result<~RtioTcpStream, IoError>;
-    fn tcp_bind(&mut self, addr: SocketAddr) -> Result<~RtioTcpListener, IoError>;
-    fn udp_bind(&mut self, addr: SocketAddr) -> Result<~RtioUdpSocket, IoError>;
-    fn unix_bind(&mut self, path: &CString) ->
-        Result<~RtioUnixListener, IoError>;
-    fn unix_connect(&mut self, path: &CString) -> Result<~RtioPipe, IoError>;
+    fn tcp_connect(&mut self, addr: SocketAddr) -> IoResult<~RtioTcpStream:Send>;
+    fn tcp_bind(&mut self, addr: SocketAddr) -> IoResult<~RtioTcpListener:Send>;
+    fn udp_bind(&mut self, addr: SocketAddr) -> IoResult<~RtioUdpSocket:Send>;
+    fn unix_bind(&mut self, path: &CString)
+        -> IoResult<~RtioUnixListener:Send>;
+    fn unix_connect(&mut self, path: &CString) -> IoResult<~RtioPipe:Send>;
     fn get_host_addresses(&mut self, host: Option<&str>, servname: Option<&str>,
-                          hint: Option<ai::Hint>) -> Result<~[ai::Info], IoError>;
+                          hint: Option<ai::Hint>) -> IoResult<~[ai::Info]>;
 
     // filesystem operations
-    fn fs_from_raw_fd(&mut self, fd: c_int, close: CloseBehavior) -> ~RtioFileStream;
+    fn fs_from_raw_fd(&mut self, fd: c_int, close: CloseBehavior)
+        -> ~RtioFileStream:Send;
     fn fs_open(&mut self, path: &CString, fm: FileMode, fa: FileAccess)
-        -> Result<~RtioFileStream, IoError>;
-    fn fs_unlink(&mut self, path: &CString) -> Result<(), IoError>;
-    fn fs_stat(&mut self, path: &CString) -> Result<FileStat, IoError>;
+        -> IoResult<~RtioFileStream:Send>;
+    fn fs_unlink(&mut self, path: &CString) -> IoResult<()>;
+    fn fs_stat(&mut self, path: &CString) -> IoResult<FileStat>;
     fn fs_mkdir(&mut self, path: &CString,
-                mode: FilePermission) -> Result<(), IoError>;
+                mode: FilePermission) -> IoResult<()>;
     fn fs_chmod(&mut self, path: &CString,
-                mode: FilePermission) -> Result<(), IoError>;
-    fn fs_rmdir(&mut self, path: &CString) -> Result<(), IoError>;
-    fn fs_rename(&mut self, path: &CString, to: &CString) -> Result<(), IoError>;
+                mode: FilePermission) -> IoResult<()>;
+    fn fs_rmdir(&mut self, path: &CString) -> IoResult<()>;
+    fn fs_rename(&mut self, path: &CString, to: &CString) -> IoResult<()>;
     fn fs_readdir(&mut self, path: &CString, flags: c_int) ->
-        Result<~[Path], IoError>;
-    fn fs_lstat(&mut self, path: &CString) -> Result<FileStat, IoError>;
+        IoResult<~[Path]>;
+    fn fs_lstat(&mut self, path: &CString) -> IoResult<FileStat>;
     fn fs_chown(&mut self, path: &CString, uid: int, gid: int) ->
-        Result<(), IoError>;
-    fn fs_readlink(&mut self, path: &CString) -> Result<Path, IoError>;
-    fn fs_symlink(&mut self, src: &CString, dst: &CString) -> Result<(), IoError>;
-    fn fs_link(&mut self, src: &CString, dst: &CString) -> Result<(), IoError>;
+        IoResult<()>;
+    fn fs_readlink(&mut self, path: &CString) -> IoResult<Path>;
+    fn fs_symlink(&mut self, src: &CString, dst: &CString) -> IoResult<()>;
+    fn fs_link(&mut self, src: &CString, dst: &CString) -> IoResult<()>;
     fn fs_utime(&mut self, src: &CString, atime: u64, mtime: u64) ->
-        Result<(), IoError>;
+        IoResult<()>;
 
     // misc
-    fn timer_init(&mut self) -> Result<~RtioTimer, IoError>;
+    fn timer_init(&mut self) -> IoResult<~RtioTimer:Send>;
     fn spawn(&mut self, config: ProcessConfig)
-            -> Result<(~RtioProcess, ~[Option<~RtioPipe>]), IoError>;
-    fn kill(&mut self, pid: libc::pid_t, signal: int) -> Result<(), IoError>;
-    fn pipe_open(&mut self, fd: c_int) -> Result<~RtioPipe, IoError>;
+            -> IoResult<(~RtioProcess:Send, ~[Option<~RtioPipe:Send>])>;
+    fn kill(&mut self, pid: libc::pid_t, signal: int) -> IoResult<()>;
+    fn pipe_open(&mut self, fd: c_int) -> IoResult<~RtioPipe:Send>;
     fn tty_open(&mut self, fd: c_int, readable: bool)
-            -> Result<~RtioTTY, IoError>;
+            -> IoResult<~RtioTTY:Send>;
     fn signal(&mut self, signal: Signum, channel: Sender<Signum>)
-        -> Result<~RtioSignal, IoError>;
+        -> IoResult<~RtioSignal:Send>;
 }
 
 pub trait RtioTcpListener : RtioSocket {
-    fn listen(~self) -> Result<~RtioTcpAcceptor, IoError>;
+    fn listen(~self) -> IoResult<~RtioTcpAcceptor:Send>;
 }
 
 pub trait RtioTcpAcceptor : RtioSocket {
-    fn accept(&mut self) -> Result<~RtioTcpStream, IoError>;
-    fn accept_simultaneously(&mut self) -> Result<(), IoError>;
-    fn dont_accept_simultaneously(&mut self) -> Result<(), IoError>;
+    fn accept(&mut self) -> IoResult<~RtioTcpStream:Send>;
+    fn accept_simultaneously(&mut self) -> IoResult<()>;
+    fn dont_accept_simultaneously(&mut self) -> IoResult<()>;
 }
 
 pub trait RtioTcpStream : RtioSocket {
-    fn read(&mut self, buf: &mut [u8]) -> Result<uint, IoError>;
-    fn write(&mut self, buf: &[u8]) -> Result<(), IoError>;
-    fn peer_name(&mut self) -> Result<SocketAddr, IoError>;
-    fn control_congestion(&mut self) -> Result<(), IoError>;
-    fn nodelay(&mut self) -> Result<(), IoError>;
-    fn keepalive(&mut self, delay_in_seconds: uint) -> Result<(), IoError>;
-    fn letdie(&mut self) -> Result<(), IoError>;
-    fn clone(&self) -> ~RtioTcpStream;
-    fn close_write(&mut self) -> Result<(), IoError>;
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint>;
+    fn write(&mut self, buf: &[u8]) -> IoResult<()>;
+    fn peer_name(&mut self) -> IoResult<SocketAddr>;
+    fn control_congestion(&mut self) -> IoResult<()>;
+    fn nodelay(&mut self) -> IoResult<()>;
+    fn keepalive(&mut self, delay_in_seconds: uint) -> IoResult<()>;
+    fn letdie(&mut self) -> IoResult<()>;
+    fn clone(&self) -> ~RtioTcpStream:Send;
+    fn close_write(&mut self) -> IoResult<()>;
 }
 
 pub trait RtioSocket {
-    fn socket_name(&mut self) -> Result<SocketAddr, IoError>;
+    fn socket_name(&mut self) -> IoResult<SocketAddr>;
 }
 
 pub trait RtioUdpSocket : RtioSocket {
-    fn recvfrom(&mut self, buf: &mut [u8]) -> Result<(uint, SocketAddr), IoError>;
-    fn sendto(&mut self, buf: &[u8], dst: SocketAddr) -> Result<(), IoError>;
+    fn recvfrom(&mut self, buf: &mut [u8]) -> IoResult<(uint, SocketAddr)>;
+    fn sendto(&mut self, buf: &[u8], dst: SocketAddr) -> IoResult<()>;
 
-    fn join_multicast(&mut self, multi: IpAddr) -> Result<(), IoError>;
-    fn leave_multicast(&mut self, multi: IpAddr) -> Result<(), IoError>;
+    fn join_multicast(&mut self, multi: IpAddr) -> IoResult<()>;
+    fn leave_multicast(&mut self, multi: IpAddr) -> IoResult<()>;
 
-    fn loop_multicast_locally(&mut self) -> Result<(), IoError>;
-    fn dont_loop_multicast_locally(&mut self) -> Result<(), IoError>;
+    fn loop_multicast_locally(&mut self) -> IoResult<()>;
+    fn dont_loop_multicast_locally(&mut self) -> IoResult<()>;
 
-    fn multicast_time_to_live(&mut self, ttl: int) -> Result<(), IoError>;
-    fn time_to_live(&mut self, ttl: int) -> Result<(), IoError>;
+    fn multicast_time_to_live(&mut self, ttl: int) -> IoResult<()>;
+    fn time_to_live(&mut self, ttl: int) -> IoResult<()>;
 
-    fn hear_broadcasts(&mut self) -> Result<(), IoError>;
-    fn ignore_broadcasts(&mut self) -> Result<(), IoError>;
+    fn hear_broadcasts(&mut self) -> IoResult<()>;
+    fn ignore_broadcasts(&mut self) -> IoResult<()>;
 
-    fn clone(&self) -> ~RtioUdpSocket;
+    fn clone(&self) -> ~RtioUdpSocket:Send;
 }
 
 pub trait RtioTimer {
@@ -239,42 +242,42 @@ pub trait RtioTimer {
 }
 
 pub trait RtioFileStream {
-    fn read(&mut self, buf: &mut [u8]) -> Result<int, IoError>;
-    fn write(&mut self, buf: &[u8]) -> Result<(), IoError>;
-    fn pread(&mut self, buf: &mut [u8], offset: u64) -> Result<int, IoError>;
-    fn pwrite(&mut self, buf: &[u8], offset: u64) -> Result<(), IoError>;
-    fn seek(&mut self, pos: i64, whence: SeekStyle) -> Result<u64, IoError>;
-    fn tell(&self) -> Result<u64, IoError>;
-    fn fsync(&mut self) -> Result<(), IoError>;
-    fn datasync(&mut self) -> Result<(), IoError>;
-    fn truncate(&mut self, offset: i64) -> Result<(), IoError>;
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<int>;
+    fn write(&mut self, buf: &[u8]) -> IoResult<()>;
+    fn pread(&mut self, buf: &mut [u8], offset: u64) -> IoResult<int>;
+    fn pwrite(&mut self, buf: &[u8], offset: u64) -> IoResult<()>;
+    fn seek(&mut self, pos: i64, whence: SeekStyle) -> IoResult<u64>;
+    fn tell(&self) -> IoResult<u64>;
+    fn fsync(&mut self) -> IoResult<()>;
+    fn datasync(&mut self) -> IoResult<()>;
+    fn truncate(&mut self, offset: i64) -> IoResult<()>;
 }
 
 pub trait RtioProcess {
     fn id(&self) -> libc::pid_t;
-    fn kill(&mut self, signal: int) -> Result<(), IoError>;
+    fn kill(&mut self, signal: int) -> IoResult<()>;
     fn wait(&mut self) -> ProcessExit;
 }
 
 pub trait RtioPipe {
-    fn read(&mut self, buf: &mut [u8]) -> Result<uint, IoError>;
-    fn write(&mut self, buf: &[u8]) -> Result<(), IoError>;
-    fn clone(&self) -> ~RtioPipe;
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint>;
+    fn write(&mut self, buf: &[u8]) -> IoResult<()>;
+    fn clone(&self) -> ~RtioPipe:Send;
 }
 
 pub trait RtioUnixListener {
-    fn listen(~self) -> Result<~RtioUnixAcceptor, IoError>;
+    fn listen(~self) -> IoResult<~RtioUnixAcceptor:Send>;
 }
 
 pub trait RtioUnixAcceptor {
-    fn accept(&mut self) -> Result<~RtioPipe, IoError>;
+    fn accept(&mut self) -> IoResult<~RtioPipe:Send>;
 }
 
 pub trait RtioTTY {
-    fn read(&mut self, buf: &mut [u8]) -> Result<uint, IoError>;
-    fn write(&mut self, buf: &[u8]) -> Result<(), IoError>;
-    fn set_raw(&mut self, raw: bool) -> Result<(), IoError>;
-    fn get_winsize(&mut self) -> Result<(int, int), IoError>;
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint>;
+    fn write(&mut self, buf: &[u8]) -> IoResult<()>;
+    fn set_raw(&mut self, raw: bool) -> IoResult<()>;
+    fn get_winsize(&mut self) -> IoResult<(int, int)>;
     fn isatty(&self) -> bool;
 }
 

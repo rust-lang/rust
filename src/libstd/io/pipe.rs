@@ -23,7 +23,7 @@ use rt::rtio::{RtioPipe, LocalIo};
 /// A synchronous, in-memory pipe.
 pub struct PipeStream {
     /// The internal, opaque runtime pipe object.
-    priv obj: ~RtioPipe,
+    priv obj: ~RtioPipe:Send,
 }
 
 impl PipeStream {
@@ -51,7 +51,7 @@ impl PipeStream {
     }
 
     #[doc(hidden)]
-    pub fn new(inner: ~RtioPipe) -> PipeStream {
+    pub fn new(inner: ~RtioPipe:Send) -> PipeStream {
         PipeStream { obj: inner }
     }
 }

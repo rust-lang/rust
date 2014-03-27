@@ -53,7 +53,7 @@ use rt::rtio::{RtioProcess, IoFactory, LocalIo};
 /// assert!(child.wait().success());
 /// ```
 pub struct Process {
-    priv handle: ~RtioProcess,
+    priv handle: ~RtioProcess:Send,
 
     /// Handle to the child's stdin, if the `stdin` field of this process's
     /// `ProcessConfig` was `CreatePipe`. By default, this handle is `Some`.

@@ -287,7 +287,7 @@ impl GreenTask {
 
     pub fn swap(mut ~self) -> ~Task {
         let mut task = self.task.take_unwrap();
-        task.put_runtime(self as ~Runtime);
+        task.put_runtime(self);
         return task;
     }
 
@@ -482,7 +482,6 @@ impl Runtime for GreenTask {
 
 #[cfg(test)]
 mod tests {
-    use std::rt::Runtime;
     use std::rt::local::Local;
     use std::rt::task::Task;
     use std::task;
@@ -576,7 +575,7 @@ mod tests {
                 let mut task: ~Task = Local::take();
                 match task.maybe_take_runtime::<GreenTask>() {
                     Some(ops) => {
-                        task.put_runtime(ops as ~Runtime);
+                        task.put_runtime(ops);
                     }
                     None => fail!(),
                 }

@@ -28,10 +28,11 @@ use prelude::*;
 
 use c_str::ToCStr;
 use clone::Clone;
-use rt::rtio::{IoFactory, LocalIo, RtioUnixListener};
-use rt::rtio::{RtioUnixAcceptor, RtioPipe};
 use io::pipe::PipeStream;
 use io::{Listener, Acceptor, Reader, Writer, IoResult};
+use kinds::Send;
+use rt::rtio::{IoFactory, LocalIo, RtioUnixListener};
+use rt::rtio::{RtioUnixAcceptor, RtioPipe};
 
 /// A stream which communicates over a named pipe.
 pub struct UnixStream {
@@ -39,7 +40,7 @@ pub struct UnixStream {
 }
 
 impl UnixStream {
-    fn new(obj: ~RtioPipe) -> UnixStream {
+    fn new(obj: ~RtioPipe:Send) -> UnixStream {
         UnixStream { obj: PipeStream::new(obj) }
     }
 
@@ -82,7 +83,7 @@ impl Writer for UnixStream {
 /// A value that can listen for incoming named pipe connection requests.
 pub struct UnixListener {
     /// The internal, opaque runtime Unix listener.
-    priv obj: ~RtioUnixListener,
+    priv obj: ~RtioUnixListener:Send,
 }
 
 impl UnixListener {
@@ -124,7 +125,7 @@ impl Listener<UnixStream, UnixAcceptor> for UnixListener {
 /// A value that can accept named pipe connections, returned from `listen()`.
 pub struct UnixAcceptor {
     /// The internal, opaque runtime Unix acceptor.
-    priv obj: ~RtioUnixAcceptor,
+    priv obj: ~RtioUnixAcceptor:Send,
 }
 
 impl Acceptor<UnixStream> for UnixAcceptor {
@@ -140,7 +141,7 @@ mod tests {
     use io::*;
     use io::test::*;
 
-    pub fn smalltest(server: proc(UnixStream), client: proc(UnixStream)) {
+    pub fn smalltest(server: proc:Send(UnixStream), client: proc:Send(UnixStream)) {
         let path1 = next_test_unix();
         let path2 = path1.clone();
 
