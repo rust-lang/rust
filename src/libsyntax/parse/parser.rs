@@ -329,7 +329,7 @@ pub struct Parser<'a> {
     restriction: restriction,
     quote_depth: uint, // not (yet) related to the quasiquoter
     reader: ~Reader:,
-    interner: @token::IdentInterner,
+    interner: Rc<token::IdentInterner>,
     /// The set of seen errors about obsolete syntax. Used to suppress
     /// extra detail when the same error is seen twice
     obsolete_set: HashSet<ObsoleteSyntax>,

@@ -63,7 +63,7 @@ pub fn each_child_of_item(cstore: &cstore::CStore,
     let get_crate_data: decoder::GetCrateDataCb = |cnum| {
         cstore.get_crate_data(cnum)
     };
-    decoder::each_child_of_item(cstore.intr,
+    decoder::each_child_of_item(cstore.intr.clone(),
                                 crate_data,
                                 def_id.node,
                                 get_crate_data,
@@ -80,7 +80,7 @@ pub fn each_top_level_item_of_crate(cstore: &cstore::CStore,
     let get_crate_data: decoder::GetCrateDataCb = |cnum| {
         cstore.get_crate_data(cnum)
     };
-    decoder::each_top_level_item_of_crate(cstore.intr,
+    decoder::each_top_level_item_of_crate(cstore.intr.clone(),
                                           crate_data,
                                           get_crate_data,
                                           callback)
@@ -118,19 +118,19 @@ pub fn get_enum_variants(tcx: &ty::ctxt, def: ast::DefId)
                       -> Vec<@ty::VariantInfo> {
     let cstore = &tcx.sess.cstore;
     let cdata = cstore.get_crate_data(def.krate);
-    return decoder::get_enum_variants(cstore.intr, cdata, def.node, tcx)
+    return decoder::get_enum_variants(cstore.intr.clone(), cdata, def.node, tcx)
 }
 
 /// Returns information about the given implementation.
 pub fn get_impl(tcx: &ty::ctxt, impl_def_id: ast::DefId)
                 -> ty::Impl {
     let cdata = tcx.sess.cstore.get_crate_data(impl_def_id.krate);
-    decoder::get_impl(tcx.sess.cstore.intr, cdata, impl_def_id.node, tcx)
+    decoder::get_impl(tcx.sess.cstore.intr.clone(), cdata, impl_def_id.node, tcx)
 }
 
 pub fn get_method(tcx: &ty::ctxt, def: ast::DefId) -> ty::Method {
     let cdata = tcx.sess.cstore.get_crate_data(def.krate);
-    decoder::get_method(tcx.sess.cstore.intr, cdata, def.node, tcx)
+    decoder::get_method(tcx.sess.cstore.intr.clone(), cdata, def.node, tcx)
 }
 
 pub fn get_method_name_and_explicit_self(cstore: &cstore::CStore,
@@ -138,7 +138,7 @@ pub fn get_method_name_and_explicit_self(cstore: &cstore::CStore,
                                      -> (ast::Ident, ast::ExplicitSelf_)
 {
     let cdata = cstore.get_crate_data(def.krate);
-    decoder::get_method_name_and_explicit_self(cstore.intr, cdata, def.node)
+    decoder::get_method_name_and_explicit_self(cstore.intr.clone(), cdata, def.node)
 }
 
 pub fn get_trait_method_def_ids(cstore: &cstore::CStore,
@@ -158,7 +158,7 @@ pub fn get_provided_trait_methods(tcx: &ty::ctxt,
                                -> Vec<@ty::Method> {
     let cstore = &tcx.sess.cstore;
     let cdata = cstore.get_crate_data(def.krate);
-    decoder::get_provided_trait_methods(cstore.intr, cdata, def.node, tcx)
+    decoder::get_provided_trait_methods(cstore.intr.clone(), cdata, def.node, tcx)
 }
 
 pub fn get_supertraits(tcx: &ty::ctxt, def: ast::DefId) -> Vec<@ty::TraitRef> {
@@ -177,7 +177,7 @@ pub fn get_static_methods_if_impl(cstore: &cstore::CStore,
                                   def: ast::DefId)
                                -> Option<Vec<StaticMethodInfo> > {
     let cdata = cstore.get_crate_data(def.krate);
-    decoder::get_static_methods_if_impl(cstore.intr, cdata, def.node)
+    decoder::get_static_methods_if_impl(cstore.intr.clone(), cdata, def.node)
 }
 
 pub fn get_item_attrs(cstore: &cstore::CStore,
@@ -191,7 +191,7 @@ pub fn get_struct_fields(cstore: &cstore::CStore,
                          def: ast::DefId)
                       -> Vec<ty::field_ty> {
     let cdata = cstore.get_crate_data(def.krate);
-    decoder::get_struct_fields(cstore.intr, cdata, def.node)
+    decoder::get_struct_fields(cstore.intr.clone(), cdata, def.node)
 }
 
 pub fn get_type(tcx: &ty::ctxt,
@@ -251,7 +251,7 @@ pub fn get_impl_method(cstore: &cstore::CStore,
                        mname: ast::Ident)
                     -> Option<ast::DefId> {
     let cdata = cstore.get_crate_data(def.krate);
-    decoder::get_impl_method(cstore.intr, cdata, def.node, mname)
+    decoder::get_impl_method(cstore.intr.clone(), cdata, def.node, mname)
 }
 
 pub fn get_item_visibility(cstore: &cstore::CStore,

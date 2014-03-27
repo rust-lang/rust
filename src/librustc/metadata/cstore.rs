@@ -19,6 +19,7 @@ use metadata::loader;
 
 use std::cell::RefCell;
 use std::c_vec::CVec;
+use std::rc::Rc;
 use collections::HashMap;
 use syntax::ast;
 use syntax::parse::token::IdentInterner;
@@ -70,14 +71,14 @@ pub struct CStore {
     priv used_crate_sources: RefCell<Vec<CrateSource> >,
     priv used_libraries: RefCell<Vec<(~str, NativeLibaryKind)> >,
     priv used_link_args: RefCell<Vec<~str> >,
-    intr: @IdentInterner
+    intr: Rc<IdentInterner>
 }
 
 // Map from NodeId's of local extern crate statements to crate numbers
 type extern_mod_crate_map = HashMap<ast::NodeId, ast::CrateNum>;
 
 impl CStore {
-    pub fn new(intr: @IdentInterner) -> CStore {
+    pub fn new(intr: Rc<IdentInterner>) -> CStore {
         CStore {
             metas: RefCell::new(HashMap::new()),
             extern_mod_crate_map: RefCell::new(HashMap::new()),
