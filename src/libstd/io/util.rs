@@ -85,12 +85,12 @@ impl Reader for NullReader {
 
 /// A `Writer` which multiplexes writes to a set of `Writers`.
 pub struct MultiWriter {
-    writers: ~[~Writer]
+    writers: Vec<~Writer>
 }
 
 impl MultiWriter {
     /// Creates a new `MultiWriter`
-    pub fn new(writers: ~[~Writer]) -> MultiWriter {
+    pub fn new(writers: Vec<~Writer>) -> MultiWriter {
         MultiWriter { writers: writers }
     }
 }
@@ -273,8 +273,8 @@ mod test {
             }
         }
 
-        let mut multi = MultiWriter::new(~[~TestWriter as ~Writer,
-                                           ~TestWriter as ~Writer]);
+        let mut multi = MultiWriter::new(vec!(~TestWriter as ~Writer,
+                                              ~TestWriter as ~Writer));
         multi.write([1, 2, 3]).unwrap();
         assert_eq!(2, unsafe { writes });
         assert_eq!(0, unsafe { flushes });
@@ -285,8 +285,8 @@ mod test {
 
     #[test]
     fn test_chained_reader() {
-        let rs = ~[MemReader::new(vec!(0, 1)), MemReader::new(vec!()),
-                   MemReader::new(vec!(2, 3))];
+        let rs = vec!(MemReader::new(vec!(0, 1)), MemReader::new(vec!()),
+                      MemReader::new(vec!(2, 3)));
         let mut r = ChainedReader::new(rs.move_iter());
         assert_eq!(vec!(0, 1, 2, 3), r.read_to_end().unwrap());
     }
