@@ -13,8 +13,8 @@ use parse::token;
 // SeqSep : a sequence separator (token)
 // and whether a trailing separator is allowed.
 pub struct SeqSep {
-    sep: Option<token::Token>,
-    trailing_sep_allowed: bool
+    pub sep: Option<token::Token>,
+    pub trailing_sep_allowed: bool
 }
 
 pub fn seq_sep_trailing_disallowed(t: token::Token) -> SeqSep {

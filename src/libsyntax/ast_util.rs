@@ -325,8 +325,8 @@ pub fn empty_generics() -> Generics {
 
 #[deriving(Encodable, Decodable)]
 pub struct IdRange {
-    min: NodeId,
-    max: NodeId,
+    pub min: NodeId,
+    pub max: NodeId,
 }
 
 impl IdRange {
@@ -352,9 +352,9 @@ pub trait IdVisitingOperation {
 }
 
 pub struct IdVisitor<'a, O> {
-    operation: &'a O,
-    pass_through_items: bool,
-    visited_outermost: bool,
+    pub operation: &'a O,
+    pub pass_through_items: bool,
+    pub visited_outermost: bool,
 }
 
 impl<'a, O: IdVisitingOperation> IdVisitor<'a, O> {

@@ -31,16 +31,16 @@ struct TtFrame {
 
 #[deriving(Clone)]
 pub struct TtReader<'a> {
-    sp_diag: &'a SpanHandler,
+    pub sp_diag: &'a SpanHandler,
     // the unzipped tree:
-    priv stack: Vec<TtFrame>,
+    stack: Vec<TtFrame>,
     /* for MBE-style macro transcription */
-    priv interpolations: HashMap<Ident, Rc<NamedMatch>>,
-    priv repeat_idx: Vec<uint>,
-    priv repeat_len: Vec<uint>,
+    interpolations: HashMap<Ident, Rc<NamedMatch>>,
+    repeat_idx: Vec<uint>,
+    repeat_len: Vec<uint>,
     /* cached: */
-    cur_tok: Token,
-    cur_span: Span,
+    pub cur_tok: Token,
+    pub cur_span: Span,
 }
 
 /** This can do Macro-By-Example transcription. On the other hand, if

@@ -39,7 +39,7 @@ pub mod obsolete;
 
 // info about a parsing session.
 pub struct ParseSess {
-    span_diagnostic: SpanHandler, // better be the same as the one in the reader!
+    pub span_diagnostic: SpanHandler, // better be the same as the one in the reader!
     /// Used to determine and report recursive mod inclusions
     included_mod_stack: RefCell<Vec<Path>>,
 }
