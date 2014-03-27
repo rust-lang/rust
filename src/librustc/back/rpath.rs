@@ -54,8 +54,9 @@ pub fn get_rpath_flags(sess: &Session, out_filename: &Path) -> Vec<~str> {
 }
 
 fn get_sysroot_absolute_rt_lib(sess: &Session) -> Path {
-    let r = filesearch::relative_target_lib_path(sess.opts.target_triple);
-    let mut p = sess.filesearch().sysroot.join(&r);
+    let sysroot = sess.filesearch().sysroot;
+    let r = filesearch::relative_target_lib_path(sysroot, sess.opts.target_triple);
+    let mut p = sysroot.join(&r);
     p.push(os::dll_filename("rustrt"));
     p
 }
@@ -91,7 +92,7 @@ fn get_rpaths(os: abi::Os,
     let abs_rpaths = get_absolute_rpaths(libs);
 
     // And a final backup rpath to the global library location.
-    let fallback_rpaths = vec!(get_install_prefix_rpath(target_triple));
+    let fallback_rpaths = vec!(get_install_prefix_rpath(sysroot, target_triple));
 
     fn log_rpaths(desc: &str, rpaths: &[~str]) {
         debug!("{} rpaths:", desc);
@@ -156,10 +157,10 @@ pub fn get_absolute_rpath(lib: &Path) -> ~str {
     p.as_str().expect("non-utf8 component in rpath").to_owned()
 }
 
-pub fn get_install_prefix_rpath(target_triple: &str) -> ~str {
+pub fn get_install_prefix_rpath(sysroot: &Path, target_triple: &str) -> ~str {
     let install_prefix = env!("CFG_PREFIX");
 
-    let tlib = filesearch::relative_target_lib_path(target_triple);
+    let tlib = filesearch::relative_target_lib_path(sysroot, target_triple);
     let mut path = Path::new(install_prefix);
     path.push(&tlib);
     let path = os::make_absolute(&path);
@@ -195,7 +196,8 @@ mod test {
 
     #[test]
     fn test_prefix_rpath() {
-        let res = get_install_prefix_rpath("triple");
+        let sysroot = filesearch::get_or_default_sysroot();
+        let res = get_install_prefix_rpath(&sysroot, "triple");
         let mut d = Path::new(env!("CFG_PREFIX"));
         d.push("lib");
         d.push(filesearch::rustlibdir());
@@ -208,7 +210,8 @@ mod test {
 
     #[test]
     fn test_prefix_rpath_abs() {
-        let res = get_install_prefix_rpath("triple");
+        let sysroot = filesearch::get_or_default_sysroot();
+        let res = get_install_prefix_rpath(&sysroot, "triple");
         assert!(Path::new(res).is_absolute());
     }
 
