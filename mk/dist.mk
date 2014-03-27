@@ -199,7 +199,7 @@ dist-install-dir-$(1): PREPARE_LIB_CMD=$(DEFAULT_PREPARE_LIB_CMD)
 dist-install-dir-$(1): PREPARE_MAN_CMD=$(DEFAULT_PREPARE_MAN_CMD)
 dist-install-dir-$(1): PREPARE_CLEAN=true
 dist-install-dir-$(1): prepare-base-dir-$(1)
-	$$(Q)(cd $$(PREPARE_DEST_DIR)/ && find -type f | sed 's/^\.\///') \
+	$$(Q)(cd $$(PREPARE_DEST_DIR)/ && find . -type f | sed 's/^\.\///') \
       > tmp/dist/manifest-$(1).in
 	$$(Q)mv tmp/dist/manifest-$(1).in $$(PREPARE_DEST_DIR)/$$(CFG_LIBDIR_RELATIVE)/rustlib/manifest.in
 # Add remaining non-installed files
