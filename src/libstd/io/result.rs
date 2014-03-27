@@ -87,7 +87,7 @@ mod test {
         let mut writer: io::IoResult<MemWriter> = Ok(MemWriter::new());
         writer.write([0, 1, 2]).unwrap();
         writer.flush().unwrap();
-        assert_eq!(writer.unwrap().unwrap(), ~[0, 1, 2]);
+        assert_eq!(writer.unwrap().unwrap(), vec!(0, 1, 2));
     }
 
     #[test]
@@ -108,7 +108,7 @@ mod test {
     #[test]
     fn test_option_reader() {
         let mut reader: io::IoResult<MemReader> =
-            Ok(MemReader::new(~[0, 1, 2, 3]));
+            Ok(MemReader::new(vec!(0, 1, 2, 3)));
         let mut buf = [0, 0];
         reader.read(buf).unwrap();
         assert_eq!(buf.as_slice(), &[0, 1]);

@@ -267,7 +267,7 @@ mod test {
 
     #[test]
     fn read_byte() {
-        let mut reader = MemReader::new(~[10]);
+        let mut reader = MemReader::new(vec!(10));
         let byte = reader.read_byte();
         assert!(byte == Ok(10));
     }
@@ -321,7 +321,7 @@ mod test {
 
     #[test]
     fn read_bytes() {
-        let mut reader = MemReader::new(~[10, 11, 12, 13]);
+        let mut reader = MemReader::new(vec!(10, 11, 12, 13));
         let bytes = reader.read_exact(4).unwrap();
         assert!(bytes == vec!(10, 11, 12, 13));
     }
@@ -337,13 +337,13 @@ mod test {
 
     #[test]
     fn read_bytes_eof() {
-        let mut reader = MemReader::new(~[10, 11]);
+        let mut reader = MemReader::new(vec!(10, 11));
         assert!(reader.read_exact(4).is_err());
     }
 
     #[test]
     fn push_exact() {
-        let mut reader = MemReader::new(~[10, 11, 12, 13]);
+        let mut reader = MemReader::new(vec!(10, 11, 12, 13));
         let mut buf = vec!(8, 9);
         reader.push_exact(&mut buf, 4).unwrap();
         assert!(buf == vec!(8, 9, 10, 11, 12, 13));
@@ -361,7 +361,7 @@ mod test {
 
     #[test]
     fn push_exact_eof() {
-        let mut reader = MemReader::new(~[10, 11]);
+        let mut reader = MemReader::new(vec!(10, 11));
         let mut buf = vec!(8, 9);
         assert!(reader.push_exact(&mut buf, 4).is_err());
         assert!(buf == vec!(8, 9, 10, 11));

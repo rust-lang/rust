@@ -256,7 +256,7 @@ fn json_encode<'a, T:Encodable<json::Encoder<'a>, io::IoError>>(t: &T) -> ~str {
     let mut writer = MemWriter::new();
     let mut encoder = json::Encoder::new(&mut writer as &mut io::Writer);
     let _ = t.encode(&mut encoder);
-    str::from_utf8_owned(writer.unwrap()).unwrap()
+    str::from_utf8(writer.unwrap().as_slice()).unwrap().to_owned()
 }
 
 // FIXME(#5121)

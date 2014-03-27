@@ -312,7 +312,7 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
         }
         try!(write!(&mut w, "\\};"));
 
-        str::from_utf8_owned(w.unwrap()).unwrap()
+        str::from_utf8(w.unwrap().as_slice()).unwrap().to_owned()
     };
 
     // Write out the shared files. Note that these are shared among all rustdoc
