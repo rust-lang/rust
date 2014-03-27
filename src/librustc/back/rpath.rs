@@ -197,7 +197,7 @@ mod test {
     #[test]
     fn test_prefix_rpath() {
         let sysroot = filesearch::get_or_default_sysroot();
-        let res = get_install_prefix_rpath(sysroot, "triple");
+        let res = get_install_prefix_rpath(&sysroot, "triple");
         let mut d = Path::new(env!("CFG_PREFIX"));
         d.push("lib");
         d.push(filesearch::rustlibdir());
@@ -211,7 +211,7 @@ mod test {
     #[test]
     fn test_prefix_rpath_abs() {
         let sysroot = filesearch::get_or_default_sysroot();
-        let res = get_install_prefix_rpath(sysroot, "triple");
+        let res = get_install_prefix_rpath(&sysroot, "triple");
         assert!(Path::new(res).is_absolute());
     }
 
