@@ -245,7 +245,7 @@ fn find_libdir(sysroot: &Path) -> ~str {
     // of the directory where librustc is located, rather than where the rustc
     // binary is.
 
-    if sysroot.join(primary_libdir_name()).exists() {
+    if sysroot.join(primary_libdir_name()).join(rustlibdir()).exists() {
         return primary_libdir_name();
     } else {
         return secondary_libdir_name();
