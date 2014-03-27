@@ -20,7 +20,10 @@
        html_root_url = "http://static.rust-lang.org/doc/master")]
 
 #![feature(macro_rules)]
-#![deny(missing_doc)]
+
+// #![deny(missing_doc)] // NOTE: uncomment after a stage0 snap
+#![allow(missing_doc)] // NOTE: remove after a stage0 snap
+#![allow(visible_private_types)] // NOTE: remove after a stage0 snap
 
 extern crate collections;
 
@@ -111,9 +114,9 @@ fn cap_for_attr(attr: attr::Attr) -> &'static str {
 /// A Terminal that knows how many colors it supports, with a reference to its
 /// parsed TermInfo database record.
 pub struct Terminal<T> {
-    priv num_colors: u16,
-    priv out: T,
-    priv ti: ~TermInfo
+    num_colors: u16,
+    out: T,
+    ti: ~TermInfo
 }
 
 impl<T: Writer> Terminal<T> {
