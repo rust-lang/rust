@@ -111,13 +111,6 @@ pub enum PathParsingMode {
     LifetimeAndTypesAndBounds,
 }
 
-/// A pair of a path segment and group of type parameter bounds. (See `ast.rs`
-/// for the definition of a path segment.)
-struct PathSegmentAndBoundSet {
-    segment: ast::PathSegment,
-    bound_set: Option<OwnedSlice<TyParamBound>>,
-}
-
 /// A path paired with optional type bounds.
 pub struct PathAndBounds {
     path: ast::Path,
@@ -1514,24 +1507,14 @@ impl<'a> Parser<'a> {
             // First, parse an identifier.
             let identifier = self.parse_ident();
 
-            // Next, parse a colon and bounded type parameters, if applicable.
-            let bound_set = if mode == LifetimeAndTypesAndBounds {
-                self.parse_optional_ty_param_bounds()
-            } else {
-                None
-            };
-
             // Parse the '::' before type parameters if it's required. If
             // it is required and wasn't present, then we're done.
             if mode == LifetimeAndTypesWithColons &&
                     !self.eat(&token::MOD_SEP) {
-                segments.push(PathSegmentAndBoundSet {
-                    segment: ast::PathSegment {
-                        identifier: identifier,
-                        lifetimes: Vec::new(),
-                        types: OwnedSlice::empty(),
-                    },
-                    bound_set: bound_set
+                segments.push(ast::PathSegment {
+                    identifier: identifier,
+                    lifetimes: Vec::new(),
+                    types: OwnedSlice::empty(),
                 });
                 break
             }
@@ -1548,13 +1531,10 @@ impl<'a> Parser<'a> {
             };
 
             // Assemble and push the result.
-            segments.push(PathSegmentAndBoundSet {
-                segment: ast::PathSegment {
-                    identifier: identifier,
-                    lifetimes: lifetimes,
-                    types: types,
-                },
-                bound_set: bound_set
+            segments.push(ast::PathSegment {
+                identifier: identifier,
+                lifetimes: lifetimes,
+                types: types,
             });
 
             // We're done if we don't see a '::', unless the mode required
@@ -1567,42 +1547,25 @@ impl<'a> Parser<'a> {
             }
         }
 
+        // Next, parse a colon and bounded type parameters, if applicable.
+        let bounds = if mode == LifetimeAndTypesAndBounds {
+            self.parse_optional_ty_param_bounds()
+        } else {
+            None
+        };
+
         // Assemble the span.
         let span = mk_sp(lo, self.last_span.hi);
 
-        // Assemble the path segments.
-        let mut path_segments = Vec::new();
-        let mut bounds = None;
-        let last_segment_index = segments.len() - 1;
-        for (i, segment_and_bounds) in segments.move_iter().enumerate() {
-            let PathSegmentAndBoundSet {
-                segment: segment,
-                bound_set: bound_set
-            } = segment_and_bounds;
-            path_segments.push(segment);
-
-            if bound_set.is_some() {
-                if i != last_segment_index {
-                    self.span_err(span,
-                                  "type parameter bounds are allowed only \
-                                   before the last segment in a path")
-                }
-
-                bounds = bound_set
-            }
-        }
-
         // Assemble the result.
-        let path_and_bounds = PathAndBounds {
+        PathAndBounds {
             path: ast::Path {
                 span: span,
                 global: is_global,
-                segments: path_segments,
+                segments: segments,
             },
             bounds: bounds,
-        };
-
-        path_and_bounds
+        }
     }
 
     /// parses 0 or 1 lifetime

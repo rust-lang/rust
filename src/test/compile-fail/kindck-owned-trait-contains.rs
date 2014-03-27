@@ -14,8 +14,8 @@ impl<A:Clone> Repeat<A> for A {
     fn get(&self) -> A { self.clone() }
 }
 
-fn repeater<A:Clone>(v: A) -> ~Repeat:<A> {
-    ~v as ~Repeat:<A> // No
+fn repeater<A:Clone>(v: A) -> ~Repeat<A>: {
+    ~v as ~Repeat<A>: // No
 }
 
 fn main() {
