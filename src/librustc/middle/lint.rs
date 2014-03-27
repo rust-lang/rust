@@ -1506,7 +1506,7 @@ fn check_missing_doc_ty_method(cx: &Context, tm: &ast::TypeMethod) {
 
 fn check_missing_doc_struct_field(cx: &Context, sf: &ast::StructField) {
     match sf.node.kind {
-        ast::NamedField(_, vis) if vis != ast::Private =>
+        ast::NamedField(_, vis) if vis == ast::Public =>
             check_missing_doc_attrs(cx,
                                     Some(cx.cur_struct_def_id),
                                     sf.node.attrs.as_slice(),
