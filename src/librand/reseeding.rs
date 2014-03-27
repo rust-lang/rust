@@ -205,8 +205,8 @@ mod test {
     #[test]
     fn test_rng_fill_bytes() {
         use task_rng;
-        let mut v = ~[0u8, .. fill_bytes_v_len];
-        task_rng().fill_bytes(v);
+        let mut v = Vec::from_elem(fill_bytes_v_len, 0u8);
+        task_rng().fill_bytes(v.as_mut_slice());
 
         // Sanity test: if we've gotten here, `fill_bytes` has not infinitely
         // recursed.

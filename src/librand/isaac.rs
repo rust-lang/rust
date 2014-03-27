@@ -441,7 +441,6 @@ impl<'a> SeedableRng<&'a [u64]> for Isaac64Rng {
 mod test {
     use super::{IsaacRng, Isaac64Rng};
     use {Rng, SeedableRng, task_rng};
-    use std::slice;
 
     #[test]
     fn test_rng_32_rand_seeded() {
@@ -479,7 +478,7 @@ mod test {
         let mut r: IsaacRng = SeedableRng::from_seed(s.as_slice());
         let string1 = r.gen_ascii_str(100);
 
-        r.reseed(s);
+        r.reseed(s.as_slice());
 
         let string2 = r.gen_ascii_str(100);
         assert_eq!(string1, string2);
@@ -490,7 +489,7 @@ mod test {
         let mut r: Isaac64Rng = SeedableRng::from_seed(s.as_slice());
         let string1 = r.gen_ascii_str(100);
 
-        r.reseed(s);
+        r.reseed(s.as_slice());
 
         let string2 = r.gen_ascii_str(100);
         assert_eq!(string1, string2);
@@ -501,43 +500,43 @@ mod test {
         let seed = &[1, 23, 456, 7890, 12345];
         let mut ra: IsaacRng = SeedableRng::from_seed(seed);
         // Regression test that isaac is actually using the above vector
-        let v = slice::from_fn(10, |_| ra.next_u32());
+        let v = Vec::from_fn(10, |_| ra.next_u32());
         assert_eq!(v,
-                   ~[2558573138, 873787463, 263499565, 2103644246, 3595684709,
-                     4203127393, 264982119, 2765226902, 2737944514, 3900253796]);
+                   vec!(2558573138, 873787463, 263499565, 2103644246, 3595684709,
+                        4203127393, 264982119, 2765226902, 2737944514, 3900253796));
 
         let seed = &[12345, 67890, 54321, 9876];
         let mut rb: IsaacRng = SeedableRng::from_seed(seed);
         // skip forward to the 10000th number
         for _ in range(0, 10000) { rb.next_u32(); }
 
-        let v = slice::from_fn(10, |_| rb.next_u32());
+        let v = Vec::from_fn(10, |_| rb.next_u32());
         assert_eq!(v,
-                   ~[3676831399, 3183332890, 2834741178, 3854698763, 2717568474,
-                     1576568959, 3507990155, 179069555, 141456972, 2478885421]);
+                   vec!(3676831399, 3183332890, 2834741178, 3854698763, 2717568474,
+                        1576568959, 3507990155, 179069555, 141456972, 2478885421));
     }
     #[test]
     fn test_rng_64_true_values() {
         let seed = &[1, 23, 456, 7890, 12345];
         let mut ra: Isaac64Rng = SeedableRng::from_seed(seed);
         // Regression test that isaac is actually using the above vector
-        let v = slice::from_fn(10, |_| ra.next_u64());
+        let v = Vec::from_fn(10, |_| ra.next_u64());
         assert_eq!(v,
-                   ~[547121783600835980, 14377643087320773276, 17351601304698403469,
-                     1238879483818134882, 11952566807690396487, 13970131091560099343,
-                     4469761996653280935, 15552757044682284409, 6860251611068737823,
-                     13722198873481261842]);
+                   vec!(547121783600835980, 14377643087320773276, 17351601304698403469,
+                        1238879483818134882, 11952566807690396487, 13970131091560099343,
+                        4469761996653280935, 15552757044682284409, 6860251611068737823,
+                        13722198873481261842));
 
         let seed = &[12345, 67890, 54321, 9876];
         let mut rb: Isaac64Rng = SeedableRng::from_seed(seed);
         // skip forward to the 10000th number
         for _ in range(0, 10000) { rb.next_u64(); }
 
-        let v = slice::from_fn(10, |_| rb.next_u64());
+        let v = Vec::from_fn(10, |_| rb.next_u64());
         assert_eq!(v,
-                   ~[18143823860592706164, 8491801882678285927, 2699425367717515619,
-                     17196852593171130876, 2606123525235546165, 15790932315217671084,
-                     596345674630742204, 9947027391921273664, 11788097613744130851,
-                     10391409374914919106]);
+                   vec!(18143823860592706164, 8491801882678285927, 2699425367717515619,
+                        17196852593171130876, 2606123525235546165, 15790932315217671084,
+                        596345674630742204, 9947027391921273664, 11788097613744130851,
+                        10391409374914919106));
     }
 }

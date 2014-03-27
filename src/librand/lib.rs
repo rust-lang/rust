@@ -73,6 +73,7 @@ println!("{:?}", tuple_ptr)
 #![feature(macro_rules, managed_boxes, phase)]
 
 #![allow(visible_private_types)] // NOTE: remove after a stage0 snap
+#![deny(deprecated_owned_vector)]
 
 #[cfg(test)]
 #[phase(syntax, link)] extern crate log;
@@ -82,7 +83,6 @@ use std::io::IoResult;
 use std::kinds::marker;
 use std::local_data;
 use std::str;
-use std::slice;
 
 pub use isaac::{IsaacRng, Isaac64Rng};
 pub use os::OSRng;
@@ -199,12 +199,12 @@ pub trait Rng {
     /// use rand::{task_rng, Rng};
     ///
     /// let mut rng = task_rng();
-    /// let x: ~[uint] = rng.gen_vec(10);
-    /// println!("{:?}", x);
-    /// println!("{:?}", rng.gen_vec::<(f64, bool)>(5));
+    /// let x: Vec<uint> = rng.gen_vec(10);
+    /// println!("{}", x);
+    /// println!("{}", rng.gen_vec::<(f64, bool)>(5));
     /// ```
-    fn gen_vec<T: Rand>(&mut self, len: uint) -> ~[T] {
-        slice::from_fn(len, |_| self.gen())
+    fn gen_vec<T: Rand>(&mut self, len: uint) -> Vec<T> {
+        Vec::from_fn(len, |_| self.gen())
     }
 
     /// Generate a random value in the range [`low`, `high`). Fails if
@@ -300,12 +300,11 @@ pub trait Rng {
     /// ```rust
     /// use rand::{task_rng, Rng};
     ///
-    /// println!("{:?}", task_rng().shuffle(~[1,2,3]));
+    /// println!("{}", task_rng().shuffle(vec!(1,2,3)));
     /// ```
-    fn shuffle<T>(&mut self, values: ~[T]) -> ~[T] {
-        let mut v = values;
-        self.shuffle_mut(v);
-        v
+    fn shuffle<T>(&mut self, mut values: Vec<T>) -> Vec<T> {
+        self.shuffle_mut(values.as_mut_slice());
+        values
     }
 
     /// Shuffle a mutable vector in place.
@@ -341,10 +340,10 @@ pub trait Rng {
     ///
     /// let mut rng = task_rng();
     /// let sample = rng.sample(range(1, 100), 5);
-    /// println!("{:?}", sample);
+    /// println!("{}", sample);
     /// ```
-    fn sample<A, T: Iterator<A>>(&mut self, iter: T, n: uint) -> ~[A] {
-        let mut reservoir : ~[A] = slice::with_capacity(n);
+    fn sample<A, T: Iterator<A>>(&mut self, iter: T, n: uint) -> Vec<A> {
+        let mut reservoir = Vec::with_capacity(n);
         for (i, elem) in iter.enumerate() {
             if i < n {
                 reservoir.push(elem);
@@ -353,7 +352,7 @@ pub trait Rng {
 
             let k = self.gen_range(0, i + 1);
             if k < reservoir.len() {
-                reservoir[k] = elem
+                *reservoir.get_mut(k) = elem
             }
         }
         reservoir
@@ -695,7 +694,6 @@ pub struct Closed01<F>(F);
 
 #[cfg(test)]
 mod test {
-    use std::slice;
     use super::{Rng, task_rng, random, SeedableRng, StdRng};
 
     struct ConstRng { i: u64 }
@@ -714,8 +712,8 @@ mod test {
         let lengths = [0, 1, 2, 3, 4, 5, 6, 7,
                        80, 81, 82, 83, 84, 85, 86, 87];
         for &n in lengths.iter() {
-            let mut v = slice::from_elem(n, 0u8);
-            r.fill_bytes(v);
+            let mut v = Vec::from_elem(n, 0u8);
+            r.fill_bytes(v.as_mut_slice());
 
             // use this to get nicer error messages.
             for (i, &byte) in v.iter().enumerate() {
@@ -813,16 +811,16 @@ mod test {
     #[test]
     fn test_shuffle() {
         let mut r = task_rng();
-        let empty: ~[int] = ~[];
-        assert_eq!(r.shuffle(~[]), empty);
-        assert_eq!(r.shuffle(~[1, 1, 1]), ~[1, 1, 1]);
+        let empty = Vec::<int>::new();
+        assert_eq!(r.shuffle(vec!()), empty);
+        assert_eq!(r.shuffle(vec!(1, 1, 1)), vec!(1, 1, 1));
     }
 
     #[test]
     fn test_task_rng() {
         let mut r = task_rng();
         r.gen::<int>();
-        assert_eq!(r.shuffle(~[1, 1, 1]), ~[1, 1, 1]);
+        assert_eq!(r.shuffle(vec!(1, 1, 1)), vec!(1, 1, 1));
         assert_eq!(r.gen_range(0u, 1u), 0u);
     }
 
@@ -844,7 +842,7 @@ mod test {
         let max_val = 100;
 
         let mut r = task_rng();
-        let vals = range(min_val, max_val).collect::<~[int]>();
+        let vals = range(min_val, max_val).collect::<Vec<int>>();
         let small_sample = r.sample(vals.iter(), 5);
         let large_sample = r.sample(vals.iter(), vals.len() + 5);
 
@@ -870,7 +868,7 @@ mod test {
         let mut r: StdRng = SeedableRng::from_seed(s.as_slice());
         let string1 = r.gen_ascii_str(100);
 
-        r.reseed(s);
+        r.reseed(s.as_slice());
 
         let string2 = r.gen_ascii_str(100);
         assert_eq!(string1, string2);
