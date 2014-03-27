@@ -21,6 +21,7 @@ use parse::parser::{LifetimeAndTypesWithoutColons, Parser};
 use parse::token::{Token, EOF, Nonterminal};
 use parse::token;
 
+use std::rc::Rc;
 use collections::HashMap;
 
 /* This is an Earley-like parser, without support for in-grammar nonterminals,
@@ -102,7 +103,7 @@ pub struct MatcherPos {
     sep: Option<Token>,
     idx: uint,
     up: Option<~MatcherPos>,
-    matches: Vec<Vec<@NamedMatch>>,
+    matches: Vec<Vec<Rc<NamedMatch>>>,
     match_lo: uint, match_hi: uint,
     sp_lo: BytePos,
 }
@@ -165,14 +166,14 @@ pub fn initial_matcher_pos(ms: Vec<Matcher> , sep: Option<Token>, lo: BytePos)
 // ast::Matcher it was derived from.
 
 pub enum NamedMatch {
-    MatchedSeq(Vec<@NamedMatch> , codemap::Span),
+    MatchedSeq(Vec<Rc<NamedMatch>>, codemap::Span),
     MatchedNonterminal(Nonterminal)
 }
 
-pub fn nameize(p_s: &ParseSess, ms: &[Matcher], res: &[@NamedMatch])
-            -> HashMap<Ident, @NamedMatch> {
-    fn n_rec(p_s: &ParseSess, m: &Matcher, res: &[@NamedMatch],
-             ret_val: &mut HashMap<Ident, @NamedMatch>) {
+pub fn nameize(p_s: &ParseSess, ms: &[Matcher], res: &[Rc<NamedMatch>])
+            -> HashMap<Ident, Rc<NamedMatch>> {
+    fn n_rec(p_s: &ParseSess, m: &Matcher, res: &[Rc<NamedMatch>],
+             ret_val: &mut HashMap<Ident, Rc<NamedMatch>>) {
         match *m {
           codemap::Spanned {node: MatchTok(_), .. } => (),
           codemap::Spanned {node: MatchSeq(ref more_ms, _, _, _, _), .. } => {
@@ -189,7 +190,7 @@ pub fn nameize(p_s: &ParseSess, ms: &[Matcher], res: &[@NamedMatch])
                 p_s.span_diagnostic
                    .span_fatal(span, "duplicated bind name: " + string.get())
             }
-            ret_val.insert(bind_name, res[idx]);
+            ret_val.insert(bind_name, res[idx].clone());
           }
         }
     }
@@ -199,7 +200,7 @@ pub fn nameize(p_s: &ParseSess, ms: &[Matcher], res: &[@NamedMatch])
 }
 
 pub enum ParseResult {
-    Success(HashMap<Ident, @NamedMatch>),
+    Success(HashMap<Ident, Rc<NamedMatch>>),
     Failure(codemap::Span, ~str),
     Error(codemap::Span, ~str)
 }
@@ -208,7 +209,7 @@ pub fn parse_or_else(sess: &ParseSess,
                      cfg: ast::CrateConfig,
                      rdr: TtReader,
                      ms: Vec<Matcher> )
-                     -> HashMap<Ident, @NamedMatch> {
+                     -> HashMap<Ident, Rc<NamedMatch>> {
     match parse(sess, cfg, rdr, ms.as_slice()) {
         Success(m) => m,
         Failure(sp, str) => sess.span_diagnostic.span_fatal(sp, str),
@@ -282,8 +283,8 @@ pub fn parse(sess: &ParseSess,
                             let sub = (*ei.matches.get(idx)).clone();
                             new_pos.matches
                                    .get_mut(idx)
-                                   .push(@MatchedSeq(sub, mk_sp(ei.sp_lo,
-                                                                sp.hi)));
+                                   .push(Rc::new(MatchedSeq(sub, mk_sp(ei.sp_lo,
+                                                                       sp.hi))));
                         }
 
                         new_pos.idx += 1;
@@ -325,7 +326,7 @@ pub fn parse(sess: &ParseSess,
                         for idx in range(match_idx_lo, match_idx_hi) {
                             new_ei.matches
                                   .get_mut(idx)
-                                  .push(@MatchedSeq(Vec::new(), sp));
+                                  .push(Rc::new(MatchedSeq(Vec::new(), sp)));
                         }
 
                         cur_eis.push(new_ei);
@@ -401,8 +402,8 @@ pub fn parse(sess: &ParseSess,
                 match ei.elts.get(ei.idx).node {
                   MatchNonterminal(_, name, idx) => {
                     let name_string = token::get_ident(name);
-                    ei.matches.get_mut(idx).push(@MatchedNonterminal(
-                        parse_nt(&mut rust_parser, name_string.get())));
+                    ei.matches.get_mut(idx).push(Rc::new(MatchedNonterminal(
+                        parse_nt(&mut rust_parser, name_string.get()))));
                     ei.idx += 1u;
                   }
                   _ => fail!()
