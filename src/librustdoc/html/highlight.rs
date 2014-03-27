@@ -44,7 +44,7 @@ pub fn highlight(src: &str, class: Option<&str>) -> ~str {
 /// it's used. All source code emission is done as slices from the source map,
 /// not from the tokens themselves, in order to stay true to the original
 /// source.
-fn doit(sess: &parse::ParseSess, lexer: lexer::StringReader, class: Option<&str>,
+fn doit(sess: &parse::ParseSess, mut lexer: lexer::StringReader, class: Option<&str>,
         out: &mut Writer) -> io::IoResult<()> {
     use syntax::parse::lexer::Reader;
 
@@ -55,7 +55,7 @@ fn doit(sess: &parse::ParseSess, lexer: lexer::StringReader, class: Option<&str>
     let mut is_macro_nonterminal = false;
     loop {
         let next = lexer.next_token();
-        let test = if next.tok == t::EOF {lexer.pos.get()} else {next.sp.lo};
+        let test = if next.tok == t::EOF {lexer.pos} else {next.sp.lo};
 
         // The lexer consumes all whitespace and non-doc-comments when iterating
         // between tokens. If this token isn't directly adjacent to our last
