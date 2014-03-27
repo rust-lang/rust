@@ -154,9 +154,9 @@ unsafe fn pipe(name: *u16, init: bool) -> libc::HANDLE {
 ////////////////////////////////////////////////////////////////////////////////
 
 pub struct UnixStream {
-    priv inner: UnsafeArc<Inner>,
-    priv write: Option<Event>,
-    priv read: Option<Event>,
+    inner: UnsafeArc<Inner>,
+    write: Option<Event>,
+    read: Option<Event>,
 }
 
 impl UnixStream {
@@ -349,8 +349,8 @@ impl rtio::RtioPipe for UnixStream {
 ////////////////////////////////////////////////////////////////////////////////
 
 pub struct UnixListener {
-    priv handle: libc::HANDLE,
-    priv name: CString,
+    handle: libc::HANDLE,
+    name: CString,
 }
 
 impl UnixListener {
@@ -389,8 +389,8 @@ impl rtio::RtioUnixListener for UnixListener {
 }
 
 pub struct UnixAcceptor {
-    priv listener: UnixListener,
-    priv event: Event,
+    listener: UnixListener,
+    event: Event,
 }
 
 impl UnixAcceptor {

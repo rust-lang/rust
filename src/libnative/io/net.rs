@@ -237,7 +237,7 @@ pub fn init() {
 ////////////////////////////////////////////////////////////////////////////////
 
 pub struct TcpStream {
-    priv inner: UnsafeArc<Inner>,
+    inner: UnsafeArc<Inner>,
 }
 
 struct Inner {
@@ -373,7 +373,7 @@ impl Drop for Inner {
 ////////////////////////////////////////////////////////////////////////////////
 
 pub struct TcpListener {
-    priv inner: UnsafeArc<Inner>,
+    inner: UnsafeArc<Inner>,
 }
 
 impl TcpListener {
@@ -430,7 +430,7 @@ impl rtio::RtioSocket for TcpListener {
 }
 
 pub struct TcpAcceptor {
-    priv listener: TcpListener,
+    listener: TcpListener,
 }
 
 impl TcpAcceptor {
@@ -474,7 +474,7 @@ impl rtio::RtioTcpAcceptor for TcpAcceptor {
 ////////////////////////////////////////////////////////////////////////////////
 
 pub struct UdpSocket {
-    priv inner: UnsafeArc<Inner>,
+    inner: UnsafeArc<Inner>,
 }
 
 impl UdpSocket {

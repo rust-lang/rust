@@ -40,8 +40,8 @@ use io::IoResult;
 use io::timer_helper;
 
 pub struct Timer {
-    priv fd: FileDesc,
-    priv on_worker: bool,
+    fd: FileDesc,
+    on_worker: bool,
 }
 
 #[allow(visible_private_types)]
@@ -285,24 +285,24 @@ mod imp {
     #[cfg(target_arch = "x86_64")]
     #[packed]
     pub struct epoll_event {
-        events: u32,
-        data: i64,
+        pub events: u32,
+        pub data: i64,
     }
 
     #[cfg(not(target_arch = "x86_64"))]
     pub struct epoll_event {
-        events: u32,
-        data: i64,
+        pub events: u32,
+        pub data: i64,
     }
 
     pub struct timespec {
-        tv_sec: libc::time_t,
-        tv_nsec: libc::c_long,
+        pub tv_sec: libc::time_t,
+        pub tv_nsec: libc::c_long,
     }
 
     pub struct itimerspec {
-        it_interval: timespec,
-        it_value: timespec,
+        pub it_interval: timespec,
+        pub it_value: timespec,
     }
 
     extern {
