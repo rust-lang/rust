@@ -15,13 +15,13 @@ use collections::HashMap;
 /// A parsed terminfo database entry.
 pub struct TermInfo {
     /// Names for the terminal
-    priv names: Vec<~str> ,
+    pub names: Vec<~str> ,
     /// Map of capability name to boolean value
-    priv bools: HashMap<~str, bool>,
+    pub bools: HashMap<~str, bool>,
     /// Map of capability name to numeric value
-    numbers: HashMap<~str, u16>,
+    pub numbers: HashMap<~str, u16>,
     /// Map of capability name to raw (unexpanded) string
-    strings: HashMap<~str, Vec<u8> >
+    pub strings: HashMap<~str, Vec<u8> >
 }
 
 pub mod searcher;
