@@ -30,7 +30,7 @@ mod imp {
     /// This does not block.
     #[cfg(unix)]
     pub struct OSRng {
-        priv inner: ReaderRng<File>
+        inner: ReaderRng<File>
     }
 
     impl OSRng {
@@ -77,7 +77,7 @@ mod imp {
     ///
     /// This does not block.
     pub struct OSRng {
-        priv hcryptprov: HCRYPTPROV
+        hcryptprov: HCRYPTPROV
     }
 
     static PROV_RSA_FULL: DWORD = 1;

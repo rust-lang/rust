@@ -71,9 +71,9 @@ impl<Sup: Rand> IndependentSample<Sup> for RandSample<Sup> {
 /// A value with a particular weight for use with `WeightedChoice`.
 pub struct Weighted<T> {
     /// The numerical weight of this item
-    weight: uint,
+    pub weight: uint,
     /// The actual item which is being weighted
-    item: T,
+    pub item: T,
 }
 
 /// A distribution that selects from a finite collection of weighted items.
@@ -101,8 +101,8 @@ pub struct Weighted<T> {
 /// }
 /// ```
 pub struct WeightedChoice<T> {
-    priv items: ~[Weighted<T>],
-    priv weight_range: Range<uint>
+    pub items: ~[Weighted<T>],
+    pub weight_range: Range<uint>
 }
 
 impl<T: Clone> WeightedChoice<T> {
