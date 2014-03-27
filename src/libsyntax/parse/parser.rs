@@ -80,6 +80,7 @@ use owned_slice::OwnedSlice;
 use collections::HashSet;
 use std::kinds::marker;
 use std::mem::replace;
+use std::rc::Rc;
 use std::vec;
 
 #[allow(non_camel_case_types)]
@@ -2101,7 +2102,7 @@ impl<'a> Parser<'a> {
                     let seq = match seq {
                         Spanned { node, .. } => node,
                     };
-                    TTSeq(mk_sp(sp.lo, p.span.hi), @seq, s, z)
+                    TTSeq(mk_sp(sp.lo, p.span.hi), Rc::new(seq), s, z)
                 } else {
                     TTNonterminal(sp, p.parse_ident())
                 }
@@ -2144,7 +2145,7 @@ impl<'a> Parser<'a> {
                 result.push(parse_any_tt_tok(self));
                 self.open_braces.pop().unwrap();
 
-                TTDelim(@result)
+                TTDelim(Rc::new(result))
             }
             _ => parse_non_delim_tt_tok(self)
         }
