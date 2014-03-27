@@ -232,17 +232,18 @@ ifneq ($(strip $(findstring prepare,$(MAKECMDGOALS)) \
   include $(CFG_SRC_DIR)mk/prepare.mk
 endif
 
+# Source and binary distribution artifacts
+ifneq ($(strip $(findstring dist,$(MAKECMDGOALS)) \
+               $(findstring install,$(MAKECMDGOALS)) \
+               $(findstring clean,$(MAKECMDGOALS))),)
+  CFG_INFO := $(info cfg: including dist rules)
+  include $(CFG_SRC_DIR)mk/dist.mk
+endif
+
 # (Unix) Installation from the build directory
 ifneq ($(findstring install,$(MAKECMDGOALS)),)
   CFG_INFO := $(info cfg: including install rules)
   include $(CFG_SRC_DIR)mk/install.mk
-endif
-
-# Source and binary distribution artifacts
-ifneq ($(strip $(findstring dist,$(MAKECMDGOALS)) \
-               $(findstring clean,$(MAKECMDGOALS))),)
-  CFG_INFO := $(info cfg: including dist rules)
-  include $(CFG_SRC_DIR)mk/dist.mk
 endif
 
 # Cleaning

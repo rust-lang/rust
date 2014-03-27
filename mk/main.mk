@@ -16,7 +16,7 @@
 CFG_RELEASE_NUM=0.10
 CFG_RELEASE_LABEL=-pre
 
-ifndef CFG_NIGHTLY
+ifndef CFG_ENABLE_NIGHTLY
 # This is the normal version string
 CFG_RELEASE=$(CFG_RELEASE_NUM)$(CFG_RELEASE_LABEL)
 CFG_PACKAGE_VERS=$(CFG_RELEASE)
@@ -281,7 +281,6 @@ export CFG_LLVM_ROOT
 export CFG_ENABLE_MINGW_CROSS
 export CFG_PREFIX
 export CFG_LIBDIR
-export CFG_RUSTLIBDIR
 export CFG_LIBDIR_RELATIVE
 export CFG_DISABLE_INJECT_STD_VERSION
 
@@ -302,7 +301,7 @@ HBIN$(1)_H_$(3) = $$(HROOT$(1)_H_$(3))/bin
 HLIB$(1)_H_$(3) = $$(HROOT$(1)_H_$(3))/$$(CFG_LIBDIR_RELATIVE)
 
 # Destinations of artifacts for target architectures
-TROOT$(1)_T_$(2)_H_$(3) = $$(HLIB$(1)_H_$(3))/$$(CFG_RUSTLIBDIR)/$(2)
+TROOT$(1)_T_$(2)_H_$(3) = $$(HLIB$(1)_H_$(3))/rustlib/$(2)
 TBIN$(1)_T_$(2)_H_$(3) = $$(TROOT$(1)_T_$(2)_H_$(3))/bin
 TLIB$(1)_T_$(2)_H_$(3) = $$(TROOT$(1)_T_$(2)_H_$(3))/lib
 

@@ -8,70 +8,19 @@
 # option. This file may not be copied, modified, or distributed
 # except according to those terms.
 
-# FIXME: Docs are currently not installed from the stageN dirs.
-# For consistency it might be desirable for stageN to be an exact
-# mirror of the installation directory structure.
 
-# The stage we install from
-ISTAGE = $(PREPARE_STAGE)
+install: dist-install-dir-$(CFG_BUILD)
+	$(Q)sh tmp/dist/$(PKG_NAME)-$(CFG_BUILD)/install.sh --prefix="$(CFG_PREFIX)" --libdir="$(CFG_LIBDIR)" --mandir="$(CFG_MANDIR)"
+# Remove tmp files while we can because they may have been created under sudo
+	$(Q)rm -R tmp/dist/$(PKG_NAME)-$(CFG_BUILD/
 
-$(eval $(call DEF_PREPARE,mkfile-install))
-
-install: PREPARE_HOST=$(CFG_BUILD)
-install: PREPARE_TARGETS=$(CFG_TARGET)
-install: PREPARE_DIR_CMD=$(DEFAULT_PREPARE_DIR_CMD)
-install: PREPARE_BIN_CMD=$(DEFAULT_PREPARE_BIN_CMD)
-install: PREPARE_LIB_CMD=$(DEFAULT_PREPARE_LIB_CMD)
-install: PREPARE_MAN_CMD=$(DEFAULT_PREPARE_MAN_CMD)
-install: PREPARE_SOURCE_DIR=$(PREPARE_HOST)/stage$(PREPARE_STAGE)
-install: PREPARE_SOURCE_BIN_DIR=$(PREPARE_SOURCE_DIR)/bin
-install: PREPARE_SOURCE_LIB_DIR=$(PREPARE_SOURCE_DIR)/$(CFG_LIBDIR_RELATIVE)
-install: PREPARE_SOURCE_MAN_DIR=$(S)/man
-install: PREPARE_DEST_BIN_DIR=$(DESTDIR)$(CFG_PREFIX)/bin
-install: PREPARE_DEST_LIB_DIR=$(DESTDIR)$(CFG_LIBDIR)
-install: PREPARE_DEST_MAN_DIR=$(DESTDIR)$(CFG_MANDIR)/man1
-install: prepare-everything-mkfile-install
+uninstall: dist-install-dir-$(CFG_BUILD)
+	$(Q)sh tmp/dist/$(PKG_NAME)-$(CFG_BUILD)/install.sh --uninstall --prefix="$(CFG_PREFIX)" --libdir="$(CFG_LIBDIR)" --mandir="$(CFG_MANDIR)"
 
 
-# Uninstall code
-
-PREFIX_ROOT = $(CFG_PREFIX)
-PREFIX_BIN = $(PREFIX_ROOT)/bin
-PREFIX_LIB = $(CFG_LIBDIR)
-
-INSTALL_TOOLS := $(PREPARE_TOOLS)
-
-# Shorthand for build/stageN/bin
-HB = $(HBIN$(ISTAGE)_H_$(CFG_BUILD))
-HB2 = $(HBIN2_H_$(CFG_BUILD))
-# Shorthand for build/stageN/lib
-HL = $(HLIB$(ISTAGE)_H_$(CFG_BUILD))
-# Shorthand for the prefix bin directory
-PHB = $(PREFIX_BIN)
-# Shorthand for the prefix bin directory
-PHL = $(PREFIX_LIB)
-
-HOST_LIB_FROM_HL_GLOB = \
-  $(patsubst $(HL)/%,$(PHL)/%,$(wildcard $(HL)/$(1)))
-
-uninstall: $(foreach tool,$(INSTALL_TOOLS),uninstall-tool-$(tool))
-	$(Q)rm -Rf $(PHL)/$(CFG_RUSTLIBDIR)
-
-define UNINSTALL_TOOL
-uninstall-tool-$(1): $$(foreach dep,$$(TOOL_DEPS_$(1)),uninstall-lib-$$(dep))
-	$$(Q)rm -f $$(PHB)/$(1)$$(X_$$(CFG_BUILD))
-	$$(Q)rm -f $$(CFG_MANDIR)/man1/$(1).1
-endef
-
-$(foreach tool,$(INSTALL_TOOLS),$(eval $(call UNINSTALL_TOOL,$(tool))))
-
-define UNINSTALL_LIB
-uninstall-lib-$(1): $$(foreach dep,$$(RUST_DEPS_$(1)),uninstall-lib-$$(dep))
-	$$(Q)rm -f $$(call HOST_LIB_FROM_HL_GLOB,$$(call CFG_LIB_GLOB_$$(CFG_BUILD),$(1)))
-endef
-
-$(foreach lib,$(CRATES),$(eval $(call UNINSTALL_LIB,$(lib))))
-
+######################################################################
+# Android remote installation
+######################################################################
 
 # Android runtime setup
 # FIXME: This probably belongs somewhere else

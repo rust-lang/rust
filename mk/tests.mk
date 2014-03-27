@@ -104,7 +104,7 @@ ifdef CFG_WINDOWSY_$(1)
                stage2/$$(CFG_LIBDIR_RELATIVE), \
                $$(if $$(findstring stage3,$$(1)), \
                     stage3/$$(CFG_LIBDIR_RELATIVE), \
-               )))))/$$(CFG_RUSTLIBDIR)/$$(CFG_BUILD)/lib
+               )))))/rustlib/$$(CFG_BUILD)/lib
   CFG_RUN_TEST_$(1)=$$(call CFG_RUN_$(1),$$(call CFG_TESTLIB_$(1),$$(1),$$(3)),$$(1))
 endif
 
@@ -350,7 +350,7 @@ else
 TESTDEP_$(1)_$(2)_$(3)_$(4) = $$(RSINPUTS_$(4))
 endif
 
-$(3)/stage$(1)/test/$(4)test-$(2)$$(X_$(2)): CFG_COMPILER = $(2)
+$(3)/stage$(1)/test/$(4)test-$(2)$$(X_$(2)): CFG_COMPILER_HOST_TRIPLE = $(2)
 $(3)/stage$(1)/test/$(4)test-$(2)$$(X_$(2)):				\
 		$$(CRATEFILE_$(4)) \
 		$$(TESTDEP_$(1)_$(2)_$(3)_$(4))
