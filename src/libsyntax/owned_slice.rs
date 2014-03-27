@@ -18,8 +18,8 @@ use serialize::{Encodable, Decodable, Encoder, Decoder};
 #[unsafe_no_drop_flag] // data is set to null on destruction
 pub struct OwnedSlice<T> {
     /// null iff len == 0
-    priv data: *mut T,
-    priv len: uint,
+    data: *mut T,
+    len: uint,
 }
 
 #[unsafe_destructor]

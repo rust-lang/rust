@@ -54,7 +54,7 @@ pub struct CurrentCommentAndLiteral {
 }
 
 pub struct State<'a> {
-    s: pp::Printer,
+    pub s: pp::Printer,
     cm: Option<&'a CodeMap>,
     intr: Rc<token::IdentInterner>,
     comments: Option<Vec<comments::Comment> >,
