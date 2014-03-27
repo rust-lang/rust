@@ -17,12 +17,13 @@ use parse::token::{EOF, INTERPOLATED, IDENT, Token, NtIdent};
 use parse::token;
 use parse::lexer::TokenAndSpan;
 
+use std::rc::Rc;
 use collections::HashMap;
 
 ///an unzipping of `TokenTree`s
 #[deriving(Clone)]
 struct TtFrame {
-    forest: @Vec<ast::TokenTree>,
+    forest: Rc<Vec<ast::TokenTree>>,
     idx: uint,
     dotdotdoted: bool,
     sep: Option<Token>,
@@ -52,7 +53,7 @@ pub fn new_tt_reader<'a>(sp_diag: &'a SpanHandler,
     let mut r = TtReader {
         sp_diag: sp_diag,
         stack: vec!(TtFrame {
-            forest: @src,
+            forest: Rc::new(src),
             idx: 0,
             dotdotdoted: false,
             sep: None,
@@ -212,7 +213,7 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
             }
             TTSeq(sp, tts, sep, zerok) => {
                 // FIXME(pcwalton): Bad copy.
-                match lockstep_iter_size(&TTSeq(sp, tts, sep.clone(), zerok), r) {
+                match lockstep_iter_size(&TTSeq(sp, tts.clone(), sep.clone(), zerok), r) {
                     LisUnconstrained => {
                         r.sp_diag.span_fatal(
                             sp.clone(), /* blame macro writer */

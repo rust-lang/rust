@@ -16,6 +16,8 @@ use parse::token;
 use owned_slice::OwnedSlice;
 use util::small_vector::SmallVector;
 
+use std::rc::Rc;
+
 // We may eventually want to be able to fold over type parameters, too.
 pub trait Folder {
     fn fold_crate(&mut self, c: Crate) -> Crate {
@@ -375,10 +377,10 @@ pub fn fold_tts<T: Folder>(tts: &[TokenTree], fld: &mut T) -> Vec<TokenTree> {
         match *tt {
             TTTok(span, ref tok) =>
             TTTok(span,maybe_fold_ident(tok,fld)),
-            TTDelim(tts) => TTDelim(@fold_tts(tts.as_slice(), fld)),
-            TTSeq(span, pattern, ref sep, is_optional) =>
+            TTDelim(ref tts) => TTDelim(Rc::new(fold_tts(tts.as_slice(), fld))),
+            TTSeq(span, ref pattern, ref sep, is_optional) =>
             TTSeq(span,
-                  @fold_tts(pattern.as_slice(), fld),
+                  Rc::new(fold_tts(pattern.as_slice(), fld)),
                   sep.as_ref().map(|tok|maybe_fold_ident(tok,fld)),
                   is_optional),
             TTNonterminal(sp,ref ident) =>

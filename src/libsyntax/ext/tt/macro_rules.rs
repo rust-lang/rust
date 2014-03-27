@@ -28,6 +28,7 @@ use print;
 use util::small_vector::SmallVector;
 
 use std::cell::RefCell;
+use std::rc::Rc;
 
 struct ParserAnyMacro<'a> {
     parser: RefCell<Parser<'a>>,
@@ -115,9 +116,9 @@ fn generic_extension(cx: &ExtCtxt,
     if cx.trace_macros() {
         println!("{}! \\{ {} \\}",
                  token::get_ident(name),
-                 print::pprust::tt_to_str(&TTDelim(@arg.iter()
-                                                       .map(|x| (*x).clone())
-                                                       .collect())));
+                 print::pprust::tt_to_str(&TTDelim(Rc::new(arg.iter()
+                                                              .map(|x| (*x).clone())
+                                                              .collect()))));
     }
 
     // Which arm's failure should we report? (the one furthest along)
