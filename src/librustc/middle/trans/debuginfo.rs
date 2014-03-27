@@ -533,21 +533,26 @@ pub fn create_argument_metadata(bcx: &Block, arg: &ast::Arg) {
 pub fn set_source_location(fcx: &FunctionContext,
                            node_id: ast::NodeId,
                            span: Span) {
-    if fn_should_be_ignored(fcx) {
-        return;
-    }
+    match fcx.debug_context {
+        DebugInfoDisabled => return,
+        FunctionWithoutDebugInfo => {
+            set_debug_location(fcx.ccx, UnknownLocation);
+            return;
+        }
+        FunctionDebugContext(~ref function_debug_context) => {
+            let cx = fcx.ccx;
 
-    let cx = fcx.ccx;
+            debug!("set_source_location: {}", cx.sess().codemap().span_to_str(span));
 
-    debug!("set_source_location: {}", cx.sess().codemap().span_to_str(span));
+            if function_debug_context.source_locations_enabled.get() {
+                let loc = span_start(cx, span);
+                let scope = scope_metadata(fcx, node_id, span);
 
-    if fcx.debug_context.get_ref(cx, span).source_locations_enabled.get() {
-        let loc = span_start(cx, span);
-        let scope = scope_metadata(fcx, node_id, span);
-
-        set_debug_location(cx, DebugLocation::new(scope, loc.line, loc.col.to_uint()));
-    } else {
-        set_debug_location(cx, UnknownLocation);
+                set_debug_location(cx, DebugLocation::new(scope, loc.line, loc.col.to_uint()));
+            } else {
+                set_debug_location(cx, UnknownLocation);
+            }
+        }
     }
 }
 
@@ -589,6 +594,10 @@ pub fn create_function_debug_context(cx: &CrateContext,
     if cx.sess().opts.debuginfo == NoDebugInfo {
         return DebugInfoDisabled;
     }
+
+    // Clear the debug location so we don't assign them in the function prelude. Do this here
+    // already, in case we do an early exit from this function.
+    set_debug_location(cx, UnknownLocation);
 
     if fn_ast_id == -1 {
         return FunctionWithoutDebugInfo;
@@ -739,9 +748,6 @@ pub fn create_function_debug_context(cx: &CrateContext,
                        top_level_block,
                        fn_metadata,
                        &mut *fn_debug_context.scope_map.borrow_mut());
-
-    // Clear the debug location so we don't assign them in the function prelude
-    set_debug_location(cx, UnknownLocation);
 
     return FunctionDebugContext(fn_debug_context);
 
