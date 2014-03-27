@@ -22,14 +22,14 @@ use std::rt::rtio::{EventLoop, IoFactory, RemoteCallback, PausableIdleCallback,
 use std::unstable::sync::Exclusive;
 
 /// This is the only exported function from this module.
-pub fn event_loop() -> ~EventLoop {
-    ~BasicLoop::new() as ~EventLoop
+pub fn event_loop() -> ~EventLoop:Send {
+    ~BasicLoop::new() as ~EventLoop:Send
 }
 
 struct BasicLoop {
-    work: ~[proc()],                  // pending work
+    work: ~[proc:Send()],             // pending work
     idle: Option<*mut BasicPausable>, // only one is allowed
-    remotes: ~[(uint, ~Callback)],
+    remotes: ~[(uint, ~Callback:Send)],
     next_remote: uint,
     messages: Exclusive<~[Message]>,
 }
@@ -135,26 +135,28 @@ impl EventLoop for BasicLoop {
         }
     }
 
-    fn callback(&mut self, f: proc()) {
+    fn callback(&mut self, f: proc:Send()) {
         self.work.push(f);
     }
 
     // FIXME: Seems like a really weird requirement to have an event loop provide.
-    fn pausable_idle_callback(&mut self, cb: ~Callback) -> ~PausableIdleCallback {
+    fn pausable_idle_callback(&mut self, cb: ~Callback:Send)
+        -> ~PausableIdleCallback:Send
+    {
         let callback = ~BasicPausable::new(self, cb);
         rtassert!(self.idle.is_none());
         unsafe {
             let cb_ptr: &*mut BasicPausable = cast::transmute(&callback);
             self.idle = Some(*cb_ptr);
         }
-        return callback as ~PausableIdleCallback;
+        callback as ~PausableIdleCallback:Send
     }
 
-    fn remote_callback(&mut self, f: ~Callback) -> ~RemoteCallback {
+    fn remote_callback(&mut self, f: ~Callback:Send) -> ~RemoteCallback:Send {
         let id = self.next_remote;
         self.next_remote += 1;
         self.remotes.push((id, f));
-        ~BasicRemote::new(self.messages.clone(), id) as ~RemoteCallback
+        ~BasicRemote::new(self.messages.clone(), id) as ~RemoteCallback:Send
     }
 
     fn io<'a>(&'a mut self) -> Option<&'a mut IoFactory> { None }
@@ -195,12 +197,12 @@ impl Drop for BasicRemote {
 
 struct BasicPausable {
     eloop: *mut BasicLoop,
-    work: ~Callback,
+    work: ~Callback:Send,
     active: bool,
 }
 
 impl BasicPausable {
-    fn new(eloop: &mut BasicLoop, cb: ~Callback) -> BasicPausable {
+    fn new(eloop: &mut BasicLoop, cb: ~Callback:Send) -> BasicPausable {
         BasicPausable {
             active: false,
             work: cb,

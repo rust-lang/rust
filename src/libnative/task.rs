@@ -35,7 +35,7 @@ pub fn new(stack_bounds: (uint, uint)) -> ~Task {
     let mut task = ~Task::new();
     let mut ops = ops();
     ops.stack_bounds = stack_bounds;
-    task.put_runtime(ops as ~rt::Runtime);
+    task.put_runtime(ops);
     return task;
 }
 
@@ -50,13 +50,13 @@ fn ops() -> ~Ops {
 }
 
 /// Spawns a function with the default configuration
-pub fn spawn(f: proc()) {
+pub fn spawn(f: proc:Send()) {
     spawn_opts(TaskOpts::new(), f)
 }
 
 /// Spawns a new task given the configuration options and a procedure to run
 /// inside the task.
-pub fn spawn_opts(opts: TaskOpts, f: proc()) {
+pub fn spawn_opts(opts: TaskOpts, f: proc:Send()) {
     let TaskOpts {
         notify_chan, name, stack_size,
         stderr, stdout,
@@ -98,7 +98,7 @@ pub fn spawn_opts(opts: TaskOpts, f: proc()) {
 
         let mut f = Some(f);
         let mut task = task;
-        task.put_runtime(ops as ~rt::Runtime);
+        task.put_runtime(ops);
         let t = task.run(|| { f.take_unwrap()() });
         drop(t);
         bookkeeping::decrement();
@@ -121,7 +121,7 @@ struct Ops {
 impl rt::Runtime for Ops {
     fn yield_now(~self, mut cur_task: ~Task) {
         // put the task back in TLS and then invoke the OS thread yield
-        cur_task.put_runtime(self as ~rt::Runtime);
+        cur_task.put_runtime(self);
         Local::put(cur_task);
         Thread::yield_now();
     }
@@ -129,7 +129,7 @@ impl rt::Runtime for Ops {
     fn maybe_yield(~self, mut cur_task: ~Task) {
         // just put the task back in TLS, on OS threads we never need to
         // opportunistically yield b/c the OS will do that for us (preemption)
-        cur_task.put_runtime(self as ~rt::Runtime);
+        cur_task.put_runtime(self);
         Local::put(cur_task);
     }
 
@@ -183,7 +183,7 @@ impl rt::Runtime for Ops {
     fn deschedule(mut ~self, times: uint, mut cur_task: ~Task,
                   f: |BlockedTask| -> Result<(), BlockedTask>) {
         let me = &mut *self as *mut Ops;
-        cur_task.put_runtime(self as ~rt::Runtime);
+        cur_task.put_runtime(self);
 
         unsafe {
             let cur_task_dupe = &*cur_task as *Task;
@@ -230,7 +230,7 @@ impl rt::Runtime for Ops {
     fn reawaken(mut ~self, mut to_wake: ~Task) {
         unsafe {
             let me = &mut *self as *mut Ops;
-            to_wake.put_runtime(self as ~rt::Runtime);
+            to_wake.put_runtime(self);
             cast::forget(to_wake);
             let guard = (*me).lock.lock();
             (*me).awoken = true;
@@ -238,8 +238,8 @@ impl rt::Runtime for Ops {
         }
     }
 
-    fn spawn_sibling(~self, mut cur_task: ~Task, opts: TaskOpts, f: proc()) {
-        cur_task.put_runtime(self as ~rt::Runtime);
+    fn spawn_sibling(~self, mut cur_task: ~Task, opts: TaskOpts, f: proc:Send()) {
+        cur_task.put_runtime(self);
         Local::put(cur_task);
 
         task::spawn_opts(opts, f);
@@ -252,7 +252,6 @@ impl rt::Runtime for Ops {
 
 #[cfg(test)]
 mod tests {
-    use std::rt::Runtime;
     use std::rt::local::Local;
     use std::rt::task::Task;
     use std::task;
@@ -335,7 +334,7 @@ mod tests {
                 let mut task: ~Task = Local::take();
                 match task.maybe_take_runtime::<Ops>() {
                     Some(ops) => {
-                        task.put_runtime(ops as ~Runtime);
+                        task.put_runtime(ops);
                     }
                     None => fail!(),
                 }

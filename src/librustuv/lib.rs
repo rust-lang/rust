@@ -126,8 +126,8 @@ pub mod stream;
 ///     // this code is running inside of a green task powered by libuv
 /// }
 /// ```
-pub fn event_loop() -> ~rtio::EventLoop {
-    ~uvio::UvEventLoop::new() as ~rtio::EventLoop
+pub fn event_loop() -> ~rtio::EventLoop:Send {
+    ~uvio::UvEventLoop::new() as ~rtio::EventLoop:Send
 }
 
 /// A type that wraps a uv handle

@@ -32,6 +32,7 @@ use fmt;
 use io::{Reader, Writer, IoResult, IoError, OtherIoError,
          standard_error, EndOfFile, LineBufferedWriter, BufferedReader};
 use libc;
+use kinds::Send;
 use mem::replace;
 use option::{Option, Some, None};
 use prelude::drop;
@@ -71,8 +72,8 @@ use slice::ImmutableVector;
 // tl;dr; TTY works on everything but when windows stdout is redirected, in that
 //        case pipe also doesn't work, but magically file does!
 enum StdSource {
-    TTY(~RtioTTY),
-    File(~RtioFileStream),
+    TTY(~RtioTTY:Send),
+    File(~RtioFileStream:Send),
 }
 
 fn src<T>(fd: libc::c_int, readable: bool, f: |StdSource| -> T) -> T {
@@ -145,8 +146,10 @@ pub fn stderr_raw() -> StdWriter {
     src(libc::STDERR_FILENO, false, |src| StdWriter { inner: src })
 }
 
-fn reset_helper(w: ~Writer,
-                f: |&mut Task, ~Writer| -> Option<~Writer>) -> Option<~Writer> {
+fn reset_helper(w: ~Writer:Send,
+                f: |&mut Task, ~Writer:Send| -> Option<~Writer:Send>)
+    -> Option<~Writer:Send>
+{
     let mut t = Local::borrow(None::<Task>);
     // Be sure to flush any pending output from the writer
     match f(t.get(), w) {
@@ -168,7 +171,7 @@ fn reset_helper(w: ~Writer,
 ///
 /// Note that this does not need to be called for all new tasks; the default
 /// output handle is to the process's stdout stream.
-pub fn set_stdout(stdout: ~Writer) -> Option<~Writer> {
+pub fn set_stdout(stdout: ~Writer:Send) -> Option<~Writer:Send> {
     reset_helper(stdout, |t, w| replace(&mut t.stdout, Some(w)))
 }
 
@@ -180,7 +183,7 @@ pub fn set_stdout(stdout: ~Writer) -> Option<~Writer> {
 ///
 /// Note that this does not need to be called for all new tasks; the default
 /// output handle is to the process's stderr stream.
-pub fn set_stderr(stderr: ~Writer) -> Option<~Writer> {
+pub fn set_stderr(stderr: ~Writer:Send) -> Option<~Writer:Send> {
     reset_helper(stderr, |t, w| replace(&mut t.stderr, Some(w)))
 }
 
@@ -206,7 +209,7 @@ fn with_task_stdout(f: |&mut Writer| -> IoResult<()> ) {
             Local::put(task);
 
             if my_stdout.is_none() {
-                my_stdout = Some(~stdout() as ~Writer);
+                my_stdout = Some(~stdout() as ~Writer:Send);
             }
             let ret = f(*my_stdout.get_mut_ref());
 
@@ -399,7 +402,7 @@ mod tests {
         let (tx, rx) = channel();
         let (mut r, w) = (ChanReader::new(rx), ChanWriter::new(tx));
         spawn(proc() {
-            set_stdout(~w as ~Writer);
+            set_stdout(~w);
             println!("hello!");
         });
         assert_eq!(r.read_to_str().unwrap(), ~"hello!\n");
@@ -411,7 +414,7 @@ mod tests {
         let (tx, rx) = channel();
         let (mut r, w) = (ChanReader::new(rx), ChanWriter::new(tx));
         spawn(proc() {
-            set_stderr(~w as ~Writer);
+            set_stderr(~w);
             fail!("my special message");
         });
         let s = r.read_to_str().unwrap();
