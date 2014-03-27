@@ -75,8 +75,8 @@ use intrinsics;
 use uw = rt::libunwind;
 
 pub struct Unwinder {
-    priv unwinding: bool,
-    priv cause: Option<~Any:Send>
+    unwinding: bool,
+    cause: Option<~Any:Send>
 }
 
 impl Unwinder {

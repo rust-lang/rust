@@ -29,14 +29,14 @@ use managed;
                   task annihilation. For now, cycles need to be broken manually by using `Rc<T>` \
                   with a non-owning `Weak<T>` pointer. A tracing garbage collector is planned."]
 pub struct Gc<T> {
-    priv ptr: @T,
-    priv marker: marker::NoSend,
+    ptr: @T,
+    marker: marker::NoSend,
 }
 
 #[cfg(test)]
 pub struct Gc<T> {
-    priv ptr: @T,
-    priv marker: marker::NoSend,
+    ptr: @T,
+    marker: marker::NoSend,
 }
 
 impl<T: 'static> Gc<T> {

@@ -17,8 +17,8 @@ use slice::bytes::MutableByteVector;
 
 /// Wraps a `Reader`, limiting the number of bytes that can be read from it.
 pub struct LimitReader<R> {
-    priv limit: uint,
-    priv inner: R
+    limit: uint,
+    inner: R
 }
 
 impl<R: Reader> LimitReader<R> {
@@ -85,7 +85,7 @@ impl Reader for NullReader {
 
 /// A `Writer` which multiplexes writes to a set of `Writers`.
 pub struct MultiWriter {
-    priv writers: ~[~Writer]
+    writers: ~[~Writer]
 }
 
 impl MultiWriter {
@@ -118,8 +118,8 @@ impl Writer for MultiWriter {
 /// A `Reader` which chains input from multiple `Readers`, reading each to
 /// completion before moving onto the next.
 pub struct ChainedReader<I, R> {
-    priv readers: I,
-    priv cur_reader: Option<R>,
+    readers: I,
+    cur_reader: Option<R>,
 }
 
 impl<R: Reader, I: Iterator<R>> ChainedReader<I, R> {
@@ -156,8 +156,8 @@ impl<R: Reader, I: Iterator<R>> Reader for ChainedReader<I, R> {
 /// A `Reader` which forwards input from another `Reader`, passing it along to
 /// a `Writer` as well. Similar to the `tee(1)` command.
 pub struct TeeReader<R, W> {
-    priv reader: R,
-    priv writer: W
+    reader: R,
+    writer: W,
 }
 
 impl<R: Reader, W: Writer> TeeReader<R, W> {

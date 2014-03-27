@@ -101,11 +101,11 @@ enum VariantState {
 }
 
 pub struct ReprVisitor<'a> {
-    priv ptr: *u8,
-    priv ptr_stk: ~[*u8],
-    priv var_stk: ~[VariantState],
-    priv writer: &'a mut io::Writer,
-    priv last_err: Option<io::IoError>,
+    ptr: *u8,
+    ptr_stk: ~[*u8],
+    var_stk: ~[VariantState],
+    writer: &'a mut io::Writer,
+    last_err: Option<io::IoError>,
 }
 
 pub fn ReprVisitor<'a>(ptr: *u8,

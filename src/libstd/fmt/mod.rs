@@ -508,20 +508,20 @@ pub type Result = io::IoResult<()>;
 /// traits.
 pub struct Formatter<'a> {
     /// Flags for formatting (packed version of rt::Flag)
-    flags: uint,
+    pub flags: uint,
     /// Character used as 'fill' whenever there is alignment
-    fill: char,
+    pub fill: char,
     /// Boolean indication of whether the output should be left-aligned
-    align: parse::Alignment,
+    pub align: parse::Alignment,
     /// Optionally specified integer width that the output should be
-    width: Option<uint>,
+    pub width: Option<uint>,
     /// Optionally specified precision for numeric types
-    precision: Option<uint>,
+    pub precision: Option<uint>,
 
     /// Output buffer.
-    buf: &'a mut io::Writer,
-    priv curarg: slice::Items<'a, Argument<'a>>,
-    priv args: &'a [Argument<'a>],
+    pub buf: &'a mut io::Writer,
+    curarg: slice::Items<'a, Argument<'a>>,
+    args: &'a [Argument<'a>],
 }
 
 /// This struct represents the generic "argument" which is taken by the Xprintf
@@ -529,8 +529,8 @@ pub struct Formatter<'a> {
 /// compile time it is ensured that the function and the value have the correct
 /// types, and then this struct is used to canonicalize arguments to one type.
 pub struct Argument<'a> {
-    priv formatter: extern "Rust" fn(&any::Void, &mut Formatter) -> Result,
-    priv value: &'a any::Void,
+    formatter: extern "Rust" fn(&any::Void, &mut Formatter) -> Result,
+    value: &'a any::Void,
 }
 
 impl<'a> Arguments<'a> {
@@ -555,8 +555,8 @@ impl<'a> Arguments<'a> {
 /// string at compile-time so usage of the `write` and `format` functions can
 /// be safely performed.
 pub struct Arguments<'a> {
-    priv fmt: &'a [rt::Piece<'a>],
-    priv args: &'a [Argument<'a>],
+    fmt: &'a [rt::Piece<'a>],
+    args: &'a [Argument<'a>],
 }
 
 /// When a format is not otherwise specified, types are formatted by ascribing

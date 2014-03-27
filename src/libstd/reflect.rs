@@ -40,7 +40,7 @@ pub fn align(size: uint, align: uint) -> uint {
 
 /// Adaptor to wrap around visitors implementing MovePtr.
 pub struct MovePtrAdaptor<V> {
-    priv inner: V
+    inner: V
 }
 pub fn MovePtrAdaptor<V:TyVisitor + MovePtr>(v: V) -> MovePtrAdaptor<V> {
     MovePtrAdaptor { inner: v }

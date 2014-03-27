@@ -52,8 +52,8 @@ fn combine(seek: SeekStyle, cur: uint, end: uint, offset: i64) -> IoResult<u64> 
 /// assert_eq!(w.unwrap(), ~[0, 1, 2]);
 /// ```
 pub struct MemWriter {
-    priv buf: ~[u8],
-    priv pos: uint,
+    buf: ~[u8],
+    pos: uint,
 }
 
 impl MemWriter {
@@ -132,8 +132,8 @@ impl Seek for MemWriter {
 /// assert_eq!(r.read_to_end().unwrap(), ~[0, 1, 2]);
 /// ```
 pub struct MemReader {
-    priv buf: ~[u8],
-    priv pos: uint
+    buf: ~[u8],
+    pos: uint
 }
 
 impl MemReader {
@@ -219,8 +219,8 @@ impl Buffer for MemReader {
 /// assert!(buf == [0, 1, 2, 0]);
 /// ```
 pub struct BufWriter<'a> {
-    priv buf: &'a mut [u8],
-    priv pos: uint
+    buf: &'a mut [u8],
+    pos: uint
 }
 
 impl<'a> BufWriter<'a> {
@@ -275,8 +275,8 @@ impl<'a> Seek for BufWriter<'a> {
 /// assert_eq!(r.read_to_end().unwrap(), ~[0, 1, 2, 3]);
 /// ```
 pub struct BufReader<'a> {
-    priv buf: &'a [u8],
-    priv pos: uint
+    buf: &'a [u8],
+    pos: uint
 }
 
 impl<'a> BufReader<'a> {

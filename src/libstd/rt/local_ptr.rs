@@ -31,7 +31,7 @@ pub use self::compiled::*;
 /// Encapsulates a borrowed value. When this value goes out of scope, the
 /// pointer is returned.
 pub struct Borrowed<T> {
-    priv val: *(),
+    val: *(),
 }
 
 #[unsafe_destructor]

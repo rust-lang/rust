@@ -21,18 +21,18 @@ use cast;
 
 /// The representation of a Rust managed box
 pub struct Box<T> {
-    ref_count: uint,
-    drop_glue: fn(ptr: *mut u8),
-    prev: *mut Box<T>,
-    next: *mut Box<T>,
-    data: T
+    pub ref_count: uint,
+    pub drop_glue: fn(ptr: *mut u8),
+    pub prev: *mut Box<T>,
+    pub next: *mut Box<T>,
+    pub data: T,
 }
 
 /// The representation of a Rust vector
 pub struct Vec<T> {
-    fill: uint,
-    alloc: uint,
-    data: T
+    pub fill: uint,
+    pub alloc: uint,
+    pub data: T,
 }
 
 /// The representation of a Rust string
@@ -40,20 +40,20 @@ pub type String = Vec<u8>;
 
 /// The representation of a Rust slice
 pub struct Slice<T> {
-    data: *T,
-    len: uint
+    pub data: *T,
+    pub len: uint,
 }
 
 /// The representation of a Rust closure
 pub struct Closure {
-    code: *(),
-    env: *(),
+    pub code: *(),
+    pub env: *(),
 }
 
 /// The representation of a Rust procedure (`proc()`)
 pub struct Procedure {
-    code: *(),
-    env: *(),
+    pub code: *(),
+    pub env: *(),
 }
 
 /// The representation of a Rust trait object.
@@ -61,8 +61,8 @@ pub struct Procedure {
 /// This struct does not have a `Repr` implementation
 /// because there is no way to refer to all trait objects generically.
 pub struct TraitObject {
-    vtable: *(),
-    data: *(),
+    pub vtable: *(),
+    pub data: *(),
 }
 
 /// This trait is meant to map equivalences between raw structs and their

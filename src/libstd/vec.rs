@@ -56,9 +56,9 @@ use slice::{MutableTotalOrdVector, Vector};
 /// ```
 #[unsafe_no_drop_flag]
 pub struct Vec<T> {
-    priv len: uint,
-    priv cap: uint,
-    priv ptr: *mut T
+    len: uint,
+    cap: uint,
+    ptr: *mut T
 }
 
 impl<T> Vec<T> {
@@ -1308,8 +1308,8 @@ impl<T:fmt::Show> fmt::Show for Vec<T> {
 
 /// An iterator that moves out of a vector.
 pub struct MoveItems<T> {
-    priv allocation: *mut c_void, // the block of memory allocated for the vector
-    priv iter: Items<'static, T>
+    allocation: *mut c_void, // the block of memory allocated for the vector
+    iter: Items<'static, T>
 }
 
 impl<T> Iterator<T> for MoveItems<T> {
