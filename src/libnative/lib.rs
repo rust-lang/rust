@@ -97,6 +97,24 @@ pub fn start(argc: int, argv: **u8, main: proc()) -> int {
     // frames above our current position.
     let my_stack_bottom = my_stack_top + 20000 - OS_DEFAULT_STACK_ESTIMATE;
 
+    // When using libgreen, one of the first things that we do is to turn off
+    // the SIGPIPE signal (set it to ignore). By default, some platforms will
+    // send a *signal* when a EPIPE error would otherwise be delivered. This
+    // runtime doesn't install a SIGPIPE handler, causing it to kill the
+    // program, which isn't exactly what we want!
+    //
+    // Hence, we set SIGPIPE to ignore when the program starts up in order to
+    // prevent this problem.
+    #[cfg(windows)] fn ignore_sigpipe() {}
+    #[cfg(unix)] fn ignore_sigpipe() {
+        use std::libc;
+        use std::libc::funcs::posix01::signal::signal;
+        unsafe {
+            assert!(signal(libc::SIGPIPE, libc::SIG_IGN) != -1);
+        }
+    }
+    ignore_sigpipe();
+
     rt::init(argc, argv);
     let mut exit_code = None;
     let mut main = Some(main);
