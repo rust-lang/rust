@@ -2304,12 +2304,12 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
                 MutItems{ptr: p,
                          end: (p as uint + self.len()) as *mut T,
                          marker: marker::ContravariantLifetime::<'a>,
-                         marker2: marker::NoPod}
+                         marker2: marker::NoCopy}
             } else {
                 MutItems{ptr: p,
                          end: p.offset(self.len() as int),
                          marker: marker::ContravariantLifetime::<'a>,
-                         marker2: marker::NoPod}
+                         marker2: marker::NoCopy}
             }
         }
     }
@@ -2670,7 +2670,7 @@ pub struct MutItems<'a, T> {
     priv ptr: *mut T,
     priv end: *mut T,
     priv marker: marker::ContravariantLifetime<'a>,
-    priv marker2: marker::NoPod
+    priv marker2: marker::NoCopy
 }
 
 macro_rules! iterator {

@@ -296,7 +296,7 @@ extern "rust-intrinsic" {
     /// Create a value initialized to zero.
     ///
     /// `init` is unsafe because it returns a zeroed-out datum,
-    /// which is unsafe unless T is Pod.
+    /// which is unsafe unless T is Copy.
     pub fn init<T>() -> T;
 
     /// Create an uninitialized value.

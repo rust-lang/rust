@@ -14,18 +14,18 @@ use cast;
 use clone::Clone;
 use cmp::Eq;
 use fmt;
-use kinds::{marker, Pod};
+use kinds::{marker, Copy};
 use ops::{Deref, DerefMut, Drop};
 use option::{None, Option, Some};
 use ty::Unsafe;
 
-/// A mutable memory location that admits only `Pod` data.
+/// A mutable memory location that admits only `Copy` data.
 pub struct Cell<T> {
     priv value: Unsafe<T>,
     priv noshare: marker::NoShare,
 }
 
-impl<T:Pod> Cell<T> {
+impl<T:Copy> Cell<T> {
     /// Creates a new `Cell` containing the given value.
     pub fn new(value: T) -> Cell<T> {
         Cell {
@@ -49,13 +49,13 @@ impl<T:Pod> Cell<T> {
     }
 }
 
-impl<T:Pod> Clone for Cell<T> {
+impl<T:Copy> Clone for Cell<T> {
     fn clone(&self) -> Cell<T> {
         Cell::new(self.get())
     }
 }
 
-impl<T:Eq + Pod> Eq for Cell<T> {
+impl<T:Eq + Copy> Eq for Cell<T> {
     fn eq(&self, other: &Cell<T>) -> bool {
         self.get() == other.get()
     }
@@ -71,7 +71,7 @@ impl<T: fmt::Show> fmt::Show for Cell<T> {
 pub struct RefCell<T> {
     priv value: Unsafe<T>,
     priv borrow: BorrowFlag,
-    priv nopod: marker::NoPod,
+    priv nocopy: marker::NoCopy,
     priv noshare: marker::NoShare,
 }
 
@@ -86,7 +86,7 @@ impl<T> RefCell<T> {
     pub fn new(value: T) -> RefCell<T> {
         RefCell {
             value: Unsafe::new(value),
-            nopod: marker::NoPod,
+            nocopy: marker::NoCopy,
             noshare: marker::NoShare,
             borrow: UNUSED,
         }

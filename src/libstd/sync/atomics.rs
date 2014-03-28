@@ -117,25 +117,25 @@ use ty::Unsafe;
 /// An atomic boolean type.
 pub struct AtomicBool {
     priv v: Unsafe<uint>,
-    priv nopod: marker::NoPod
+    priv nocopy: marker::NoCopy
 }
 
 /// A signed atomic integer type, supporting basic atomic arithmetic operations
 pub struct AtomicInt {
     priv v: Unsafe<int>,
-    priv nopod: marker::NoPod
+    priv nocopy: marker::NoCopy
 }
 
 /// An unsigned atomic integer type, supporting basic atomic arithmetic operations
 pub struct AtomicUint {
     priv v: Unsafe<uint>,
-    priv nopod: marker::NoPod
+    priv nocopy: marker::NoCopy
 }
 
 /// An unsafe atomic pointer. Only supports basic atomic operations
 pub struct AtomicPtr<T> {
     priv p: Unsafe<uint>,
-    priv nopod: marker::NoPod
+    priv nocopy: marker::NoCopy
 }
 
 /// An atomic, nullable unique pointer
@@ -180,15 +180,15 @@ pub enum Ordering {
 /// An `AtomicBool` initialized to `false`
 pub static INIT_ATOMIC_BOOL : AtomicBool = AtomicBool { v: Unsafe{value: 0,
                                                                   marker1: marker::InvariantType},
-                                                        nopod: marker::NoPod };
+                                                        nocopy: marker::NoCopy };
 /// An `AtomicInt` initialized to `0`
 pub static INIT_ATOMIC_INT  : AtomicInt  = AtomicInt  { v: Unsafe{value: 0,
                                                                   marker1: marker::InvariantType},
-                                                        nopod: marker::NoPod };
+                                                        nocopy: marker::NoCopy };
 /// An `AtomicUint` initialized to `0`
 pub static INIT_ATOMIC_UINT : AtomicUint = AtomicUint { v: Unsafe{value: 0,
                                                                   marker1: marker::InvariantType},
-                                                        nopod: marker::NoPod };
+                                                        nocopy: marker::NoCopy };
 
 // NB: Needs to be -1 (0b11111111...) to make fetch_nand work correctly
 static UINT_TRUE: uint = -1;
@@ -197,7 +197,7 @@ impl AtomicBool {
     /// Create a new `AtomicBool`
     pub fn new(v: bool) -> AtomicBool {
         let val = if v { UINT_TRUE } else { 0 };
-        AtomicBool { v: Unsafe::new(val), nopod: marker::NoPod }
+        AtomicBool { v: Unsafe::new(val), nocopy: marker::NoCopy }
     }
 
     /// Load the value
@@ -400,7 +400,7 @@ impl AtomicBool {
 impl AtomicInt {
     /// Create a new `AtomicInt`
     pub fn new(v: int) -> AtomicInt {
-        AtomicInt {v: Unsafe::new(v), nopod: marker::NoPod}
+        AtomicInt {v: Unsafe::new(v), nocopy: marker::NoCopy}
     }
 
     /// Load the value
@@ -467,7 +467,7 @@ impl AtomicInt {
 impl AtomicUint {
     /// Create a new `AtomicUint`
     pub fn new(v: uint) -> AtomicUint {
-        AtomicUint { v: Unsafe::new(v), nopod: marker::NoPod }
+        AtomicUint { v: Unsafe::new(v), nocopy: marker::NoCopy }
     }
 
     /// Load the value
@@ -534,7 +534,7 @@ impl AtomicUint {
 impl<T> AtomicPtr<T> {
     /// Create a new `AtomicPtr`
     pub fn new(p: *mut T) -> AtomicPtr<T> {
-        AtomicPtr { p: Unsafe::new(p as uint), nopod: marker::NoPod }
+        AtomicPtr { p: Unsafe::new(p as uint), nocopy: marker::NoCopy }
     }
 
     /// Load the value

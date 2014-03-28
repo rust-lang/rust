@@ -10,9 +10,9 @@
 
 use std::kinds::marker;
 
-fn foo<P:Pod>(p: P) { }
+fn foo<P:Copy>(p: P) { }
 
 fn main()
 {
-    foo(marker::NoPod); //~ ERROR does not fulfill `Pod`
+    foo(marker::NoCopy); //~ ERROR does not fulfill
 }
