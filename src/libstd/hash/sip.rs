@@ -55,7 +55,14 @@ pub struct SipState {
 
 macro_rules! u8to64_le (
     ($buf:expr, $i:expr) =>
-    (unsafe { to_le64(*transmute::<*u8, *u64>($buf.slice_from($i).as_ptr()) as i64) as u64 })
+    ($buf[0+$i] as u64 |
+     $buf[1+$i] as u64 << 8 |
+     $buf[2+$i] as u64 << 16 |
+     $buf[3+$i] as u64 << 24 |
+     $buf[4+$i] as u64 << 32 |
+     $buf[5+$i] as u64 << 40 |
+     $buf[6+$i] as u64 << 48 |
+     $buf[7+$i] as u64 << 56)
 )
 
 macro_rules! rotl (
