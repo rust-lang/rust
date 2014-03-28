@@ -142,6 +142,10 @@ pub trait AstBuilder {
     fn expr_fail(&self, span: Span, msg: InternedString) -> @ast::Expr;
     fn expr_unreachable(&self, span: Span) -> @ast::Expr;
 
+    fn expr_ok(&self, span: Span, expr: @ast::Expr) -> @ast::Expr;
+    fn expr_err(&self, span: Span, expr: @ast::Expr) -> @ast::Expr;
+    fn expr_try(&self, span: Span, head: @ast::Expr) -> @ast::Expr;
+
     fn pat(&self, span: Span, pat: ast::Pat_) -> @ast::Pat;
     fn pat_wild(&self, span: Span) -> @ast::Pat;
     fn pat_lit(&self, span: Span, expr: @ast::Expr) -> @ast::Pat;
@@ -636,6 +640,50 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         self.expr_fail(span,
                        InternedString::new(
                            "internal error: entered unreachable code"))
+    }
+
+    fn expr_ok(&self, sp: Span, expr: @ast::Expr) -> @ast::Expr {
+        let ok = vec!(
+            self.ident_of("std"),
+            self.ident_of("result"),
+            self.ident_of("Ok"));
+        self.expr_call_global(sp, ok, vec!(expr))
+    }
+
+    fn expr_err(&self, sp: Span, expr: @ast::Expr) -> @ast::Expr {
+        let err = vec!(
+            self.ident_of("std"),
+            self.ident_of("result"),
+            self.ident_of("Err"));
+        self.expr_call_global(sp, err, vec!(expr))
+    }
+
+    fn expr_try(&self, sp: Span, head: @ast::Expr) -> @ast::Expr {
+        let ok = self.ident_of("Ok");
+        let ok_path = self.path_ident(sp, ok);
+        let err = self.ident_of("Err");
+        let err_path = self.path_ident(sp, err);
+
+        let binding_variable = self.ident_of("__try_var");
+        let binding_pat = self.pat_ident(sp, binding_variable);
+        let binding_expr = self.expr_ident(sp, binding_variable);
+
+        // Ok(__try_var) pattern
+        let ok_pat = self.pat_enum(sp, ok_path, vec!(binding_pat));
+
+        // Err(__try_var)  (pattern and expression resp.)
+        let err_pat = self.pat_enum(sp, err_path, vec!(binding_pat));
+        let err_inner_expr = self.expr_call_ident(sp, err, vec!(binding_expr));
+        // return Err(__try_var)
+        let err_expr = self.expr(sp, ast::ExprRet(Some(err_inner_expr)));
+
+        // Ok(__try_var) => __try_var
+        let ok_arm = self.arm(sp, vec!(ok_pat), binding_expr);
+        // Err(__try_var) => return Err(__try_var)
+        let err_arm = self.arm(sp, vec!(err_pat), err_expr);
+
+        // match head { Ok() => ..., Err() => ... }
+        self.expr_match(sp, head, vec!(ok_arm, err_arm))
     }
 
 

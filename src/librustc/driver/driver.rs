@@ -168,6 +168,18 @@ impl Input {
     }
 }
 
+// FIXME: remove unwrap_ after snapshot
+#[cfg(stage0)]
+fn unwrap_<T>(t: T) -> T {
+    t
+}
+
+#[cfg(not(stage0))]
+fn unwrap_<T, E>(r: Result<T, E>) -> T {
+    r.unwrap()
+}
+
+
 pub fn phase_1_parse_input(sess: &Session, cfg: ast::CrateConfig, input: &Input)
     -> ast::Crate {
     let krate = time(sess.time_passes(), "parsing", (), |_| {
@@ -187,7 +199,8 @@ pub fn phase_1_parse_input(sess: &Session, cfg: ast::CrateConfig, input: &Input)
     if sess.opts.debugging_opts & session::AST_JSON_NOEXPAND != 0 {
         let mut stdout = io::BufferedWriter::new(io::stdout());
         let mut json = json::PrettyEncoder::new(&mut stdout);
-        krate.encode(&mut json);
+        // unwrapping so IoError isn't ignored
+        unwrap_(krate.encode(&mut json));
     }
 
     if sess.show_span() {
@@ -262,7 +275,8 @@ pub fn phase_2_configure_and_expand(sess: &Session,
     if sess.opts.debugging_opts & session::AST_JSON != 0 {
         let mut stdout = io::BufferedWriter::new(io::stdout());
         let mut json = json::PrettyEncoder::new(&mut stdout);
-        krate.encode(&mut json);
+        // unwrapping so IoError isn't ignored
+        unwrap_(krate.encode(&mut json));
     }
 
     (krate, map)
