@@ -14,10 +14,10 @@ use std::kinds::marker;
 
 struct Foo {
     foo: int,
-    nopod: marker::NoPod
+    nocopy: marker::NoCopy
 }
 
-static BAR: Foo = Foo{foo: 5, nopod: marker::NoPod};
+static BAR: Foo = Foo{foo: 5, nocopy: marker::NoCopy};
 
 
 fn test(f: Foo) {
