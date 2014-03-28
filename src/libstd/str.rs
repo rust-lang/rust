@@ -3218,7 +3218,7 @@ mod tests {
         let data = ~"ประเทศไทย中";
         let mut cpy = data.clone();
         let other = "abc";
-        let mut it = other.chars();
+        let it = other.chars();
         cpy.extend(it);
         assert_eq!(cpy, data + other);
     }
