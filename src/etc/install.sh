@@ -339,6 +339,7 @@ fi
 
 # Create the installed manifest, which we will fill in with absolute file paths
 mkdir -p "${CFG_LIBDIR}/rustlib"
+need_ok "failed to create rustlib"
 touch "${INSTALLED_MANIFEST}"
 need_ok "failed to create installed manifest"
 
