@@ -234,16 +234,16 @@ validate_opt
 # Sanity check: can we run the binaries?
 if [ -z "${CFG_DISABLE_VERIFY}" ]
 then
-	# Don't do this if uninstalling. Failure here won't help in any way.
-	if [ -z "${CFG_UNINSTALL}" ]
-	then
-		msg "verifying platform can run binaries"
-		"${CFG_SRC_DIR}/bin/rustc" --version > /dev/null
-		if [ $? -ne 0 ]
-		then
-			err "can't execute rustc binary on this platform"
-		fi
-	fi
+    # Don't do this if uninstalling. Failure here won't help in any way.
+    if [ -z "${CFG_UNINSTALL}" ]
+    then
+        msg "verifying platform can run binaries"
+        "${CFG_SRC_DIR}/bin/rustc" --version > /dev/null
+        if [ $? -ne 0 ]
+        then
+            err "can't execute rustc binary on this platform"
+        fi
+    fi
 fi
 
 # Sanity check: can we can write to the destination?
@@ -255,7 +255,7 @@ if [ $? -ne 0 ]
 then
     err "can't write to destination. consider \`sudo\`."
 fi
-rm "${CFG_LIBDIR}/rust-install-probe"
+rm -f "${CFG_LIBDIR}/rust-install-probe"
 need_ok "failed to remove install probe"
 
 # Sanity check: don't install to the directory containing the installer.
@@ -281,7 +281,7 @@ then
         msg "removing $p"
         if [ -f "$p" ]
         then
-            rm "$p"
+            rm -f "$p"
             if [ $? -ne 0 ]
             then
                 warn "failed to remove $p"
@@ -291,12 +291,16 @@ then
         fi
     done < "${INSTALLED_MANIFEST}"
 
-	# TODO: Remove the manifest.
-	# If we fail to remove rustlib below, then the installed manifest will
-	# still be full; the installed manifest needs to be empty before install.
+    # If we fail to remove rustlib below, then the installed manifest will
+    # still be full; the installed manifest needs to be empty before install.
+    msg "removing ${CFG_LIBDIR}/rustlib/manifest"
+    rm -f "${CFG_LIBDIR}/rustlib/manifest"
+    # For the above reason, this is a hard error
+    need_ok "failed to remove installed manifest"
 
     # Remove 'rustlib' directory
-    rm -r "${CFG_LIBDIR}/rustlib"
+    msg "removing ${CFG_LIBDIR}/rustlib"
+    rm -Rf "${CFG_LIBDIR}/rustlib"
     if [ $? -ne 0 ]
     then
         warn "failed to remove rustlib"
