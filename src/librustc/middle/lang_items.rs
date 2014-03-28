@@ -86,8 +86,8 @@ impl LanguageItems {
             Some(ty::BoundSend)
         } else if Some(id) == self.sized_trait() {
             Some(ty::BoundSized)
-        } else if Some(id) == self.pod_trait() {
-            Some(ty::BoundPod)
+        } else if Some(id) == self.copy_trait() {
+            Some(ty::BoundCopy)
         } else if Some(id) == self.share_trait() {
             Some(ty::BoundShare)
         } else {
@@ -210,7 +210,7 @@ lets_do_this! {
 //  Variant name,                    Name,                      Method name;
     SendTraitLangItem,               "send",                    send_trait;
     SizedTraitLangItem,              "sized",                   sized_trait;
-    PodTraitLangItem,                "pod",                     pod_trait;
+    CopyTraitLangItem,               "copy",                    copy_trait;
     ShareTraitLangItem,              "share",                   share_trait;
 
     DropTraitLangItem,               "drop",                    drop_trait;
@@ -271,7 +271,7 @@ lets_do_this! {
     InvariantLifetimeItem,           "invariant_lifetime",      invariant_lifetime;
 
     NoSendItem,                      "no_send_bound",           no_send_bound;
-    NoPodItem,                       "no_pod_bound",            no_pod_bound;
+    NoCopyItem,                      "no_copy_bound",           no_copy_bound;
     NoShareItem,                     "no_share_bound",          no_share_bound;
     ManagedItem,                     "managed_bound",           managed_bound;
 }

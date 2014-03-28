@@ -110,7 +110,7 @@ mod table {
     /// Represents an index into a `RawTable` with no key or value in it.
     pub struct EmptyIndex {
         priv idx:   int,
-        priv nopod: marker::NoPod,
+        priv nocopy: marker::NoCopy,
     }
 
     /// Represents an index into a `RawTable` with a key, value, and hash
@@ -118,7 +118,7 @@ mod table {
     pub struct FullIndex {
         priv idx:   int,
         priv hash:  SafeHash,
-        priv nopod: marker::NoPod,
+        priv nocopy: marker::NoCopy,
     }
 
     impl FullIndex {
@@ -237,19 +237,19 @@ mod table {
             let idx  = index as int;
             let hash = unsafe { *self.hashes.offset(idx) };
 
-            let nopod = marker::NoPod;
+            let nocopy = marker::NoCopy;
 
             match hash {
                 EMPTY_BUCKET =>
                     Empty(EmptyIndex {
                         idx: idx,
-                        nopod: nopod
+                        nocopy: nocopy
                     }),
                 full_hash =>
                     Full(FullIndex {
                         idx:   idx,
                         hash:  SafeHash { hash: full_hash },
-                        nopod: nopod,
+                        nocopy: nocopy,
                     })
             }
         }
@@ -320,7 +320,7 @@ mod table {
 
             self.size += 1;
 
-            FullIndex { idx: idx, hash: hash, nopod: marker::NoPod }
+            FullIndex { idx: idx, hash: hash, nocopy: marker::NoCopy }
         }
 
         /// Removes a key and value from the hashtable.
@@ -347,7 +347,7 @@ mod table {
 
                 self.size -= 1;
 
-                (EmptyIndex { idx: idx, nopod: marker::NoPod }, k, v)
+                (EmptyIndex { idx: idx, nocopy: marker::NoCopy }, k, v)
             }
         }
 

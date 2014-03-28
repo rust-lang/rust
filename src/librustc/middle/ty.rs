@@ -842,7 +842,7 @@ pub enum BuiltinBound {
     BoundStatic,
     BoundSend,
     BoundSized,
-    BoundPod,
+    BoundCopy,
     BoundShare,
 }
 
@@ -1905,7 +1905,7 @@ def_type_content_sets!(
         // Things that make values considered not POD (would be same
         // as `Moves`, but for the fact that managed data `@` is
         // not considered POD)
-        Nonpod                              = 0b0000_0000__0000_1111__0000,
+        Noncopy                              = 0b0000_0000__0000_1111__0000,
 
         // Bits to set when a managed value is encountered
         //
@@ -1929,7 +1929,7 @@ impl TypeContents {
             BoundStatic => self.is_static(cx),
             BoundSend => self.is_sendable(cx),
             BoundSized => self.is_sized(cx),
-            BoundPod => self.is_pod(cx),
+            BoundCopy => self.is_copy(cx),
             BoundShare => self.is_sharable(cx),
         }
     }
@@ -1966,8 +1966,8 @@ impl TypeContents {
         !self.intersects(TC::Nonsized)
     }
 
-    pub fn is_pod(&self, _: &ctxt) -> bool {
-        !self.intersects(TC::Nonpod)
+    pub fn is_copy(&self, _: &ctxt) -> bool {
+        !self.intersects(TC::Noncopy)
     }
 
     pub fn interior_unsafe(&self) -> bool {
@@ -2263,7 +2263,7 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
             tc | TC::ReachesNonsendAnnot
         } else if Some(did) == cx.lang_items.managed_bound() {
             tc | TC::Managed
-        } else if Some(did) == cx.lang_items.no_pod_bound() {
+        } else if Some(did) == cx.lang_items.no_copy_bound() {
             tc | TC::OwnsAffine
         } else if Some(did) == cx.lang_items.no_share_bound() {
             tc | TC::ReachesNoShare
@@ -2345,7 +2345,7 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
                 BoundStatic => TC::Nonstatic,
                 BoundSend => TC::Nonsendable,
                 BoundSized => TC::Nonsized,
-                BoundPod => TC::Nonpod,
+                BoundCopy => TC::Noncopy,
                 BoundShare => TC::Nonsharable,
             };
         });

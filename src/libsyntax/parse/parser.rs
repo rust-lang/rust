@@ -306,7 +306,7 @@ pub fn Parser<'a>(sess: &'a ParseSess, cfg: ast::CrateConfig, rdr: ~Reader:)
         obsolete_set: HashSet::new(),
         mod_path_stack: Vec::new(),
         open_braces: Vec::new(),
-        nopod: marker::NoPod
+        nocopy: marker::NoCopy
     }
 }
 
@@ -337,7 +337,7 @@ pub struct Parser<'a> {
     /// Stack of spans of open delimiters. Used for error message.
     open_braces: Vec<Span> ,
     /* do not copy the parser; its state is tied to outside state */
-    priv nopod: marker::NoPod
+    priv nocopy: marker::NoCopy
 }
 
 fn is_plain_ident_or_underscore(t: &token::Token) -> bool {
