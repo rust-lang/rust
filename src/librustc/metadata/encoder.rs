@@ -1345,7 +1345,7 @@ fn encode_info_for_items(ecx: &EncodeContext,
     }
 
     ebml_w.end_tag();
-    return /*bad*/(*index).get();
+    return /*bad*/index.borrow().clone();
 }
 
 
@@ -1365,7 +1365,7 @@ fn create_index<T:Clone + Hash + 'static>(
 
     let mut buckets_frozen = Vec::new();
     for bucket in buckets.iter() {
-        buckets_frozen.push(@/*bad*/(**bucket).get());
+        buckets_frozen.push(@/*bad*/bucket.borrow().clone());
     }
     return buckets_frozen;
 }
