@@ -10,7 +10,11 @@
 
 use std::io::{BufferedReader, File};
 
-pub struct ExpectedError { line: uint, kind: ~str, msg: ~str }
+pub struct ExpectedError {
+    pub line: uint,
+    pub kind: ~str,
+    pub msg: ~str,
+}
 
 // Load any test directives embedded in the file
 pub fn load_errors(testfile: &Path) -> Vec<ExpectedError> {
