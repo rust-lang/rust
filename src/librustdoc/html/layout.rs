@@ -13,15 +13,15 @@ use std::io;
 
 #[deriving(Clone)]
 pub struct Layout {
-    logo: ~str,
-    favicon: ~str,
-    krate: ~str,
+    pub logo: ~str,
+    pub favicon: ~str,
+    pub krate: ~str,
 }
 
 pub struct Page<'a> {
-    title: &'a str,
-    ty: &'a str,
-    root_path: &'a str,
+    pub title: &'a str,
+    pub ty: &'a str,
+    pub root_path: &'a str,
 }
 
 pub fn render<T: fmt::Show, S: fmt::Show>(

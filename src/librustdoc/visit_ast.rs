@@ -21,10 +21,10 @@ use core;
 use doctree::*;
 
 pub struct RustdocVisitor<'a> {
-    module: Module,
-    attrs: Vec<ast::Attribute> ,
-    cx: &'a core::DocContext,
-    analysis: Option<&'a core::CrateAnalysis>,
+    pub module: Module,
+    pub attrs: Vec<ast::Attribute>,
+    pub cx: &'a core::DocContext,
+    pub analysis: Option<&'a core::CrateAnalysis>,
 }
 
 impl<'a> RustdocVisitor<'a> {

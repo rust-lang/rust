@@ -68,26 +68,26 @@ use html::highlight;
 pub struct Context {
     /// Current hierarchy of components leading down to what's currently being
     /// rendered
-    current: Vec<~str> ,
+    pub current: Vec<~str> ,
     /// String representation of how to get back to the root path of the 'doc/'
     /// folder in terms of a relative URL.
-    root_path: ~str,
+    pub root_path: ~str,
     /// The current destination folder of where HTML artifacts should be placed.
     /// This changes as the context descends into the module hierarchy.
-    dst: Path,
+    pub dst: Path,
     /// This describes the layout of each page, and is not modified after
     /// creation of the context (contains info like the favicon)
-    layout: layout::Layout,
+    pub layout: layout::Layout,
     /// This map is a list of what should be displayed on the sidebar of the
     /// current page. The key is the section header (traits, modules,
     /// functions), and the value is the list of containers belonging to this
     /// header. This map will change depending on the surrounding context of the
     /// page.
-    sidebar: HashMap<~str, Vec<~str> >,
+    pub sidebar: HashMap<~str, Vec<~str> >,
     /// This flag indicates whether [src] links should be generated or not. If
     /// the source files are present in the html rendering, then this will be
     /// `true`.
-    include_sources: bool,
+    pub include_sources: bool,
 }
 
 /// Indicates where an external crate can be found.
@@ -122,7 +122,7 @@ pub struct Cache {
     /// Mapping of typaram ids to the name of the type parameter. This is used
     /// when pretty-printing a type (so pretty printing doesn't have to
     /// painfully maintain a context like this)
-    typarams: HashMap<ast::NodeId, ~str>,
+    pub typarams: HashMap<ast::NodeId, ~str>,
 
     /// Maps a type id to all known implementations for that type. This is only
     /// recognized for intra-crate `ResolvedPath` types, and is used to print
@@ -130,43 +130,43 @@ pub struct Cache {
     ///
     /// The values of the map are a list of implementations and documentation
     /// found on that implementation.
-    impls: HashMap<ast::NodeId, Vec<(clean::Impl, Option<~str>)> >,
+    pub impls: HashMap<ast::NodeId, Vec<(clean::Impl, Option<~str>)> >,
 
     /// Maintains a mapping of local crate node ids to the fully qualified name
     /// and "short type description" of that node. This is used when generating
     /// URLs when a type is being linked to. External paths are not located in
     /// this map because the `External` type itself has all the information
     /// necessary.
-    paths: HashMap<ast::NodeId, (Vec<~str> , &'static str)>,
+    pub paths: HashMap<ast::NodeId, (Vec<~str> , &'static str)>,
 
     /// This map contains information about all known traits of this crate.
     /// Implementations of a crate should inherit the documentation of the
     /// parent trait if no extra documentation is specified, and default methods
     /// should show up in documentation about trait implementations.
-    traits: HashMap<ast::NodeId, clean::Trait>,
+    pub traits: HashMap<ast::NodeId, clean::Trait>,
 
     /// When rendering traits, it's often useful to be able to list all
     /// implementors of the trait, and this mapping is exactly, that: a mapping
     /// of trait ids to the list of known implementors of the trait
-    implementors: HashMap<ast::NodeId, Vec<Implementor> >,
+    pub implementors: HashMap<ast::NodeId, Vec<Implementor> >,
 
     /// Cache of where external crate documentation can be found.
-    extern_locations: HashMap<ast::CrateNum, ExternalLocation>,
+    pub extern_locations: HashMap<ast::CrateNum, ExternalLocation>,
 
     // Private fields only used when initially crawling a crate to build a cache
 
-    priv stack: Vec<~str> ,
-    priv parent_stack: Vec<ast::NodeId> ,
-    priv search_index: Vec<IndexItem> ,
-    priv privmod: bool,
-    priv public_items: NodeSet,
+    stack: Vec<~str> ,
+    parent_stack: Vec<ast::NodeId> ,
+    search_index: Vec<IndexItem> ,
+    privmod: bool,
+    public_items: NodeSet,
 
     // In rare case where a structure is defined in one module but implemented
     // in another, if the implementing module is parsed before defining module,
     // then the fully qualified name of the structure isn't presented in `paths`
     // yet when its implementation methods are being indexed. Caches such methods
     // and their parent id here and indexes them at the end of crate parsing.
-    priv orphan_methods: Vec<(ast::NodeId, clean::Item)>,
+    orphan_methods: Vec<(ast::NodeId, clean::Item)>,
 }
 
 /// Helper struct to render all source code to HTML pages
