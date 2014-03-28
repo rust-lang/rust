@@ -1473,7 +1473,7 @@ mod test {
             let mut handle = pool.spawn_sched();
             handle.send(PinnedTask(pool.task(TaskOpts::new(), proc() {
                 unsafe {
-                    let mut guard = LOCK.lock();
+                    let guard = LOCK.lock();
 
                     start_tx.send(());
                     guard.wait();   // block the scheduler thread
@@ -1509,7 +1509,7 @@ mod test {
                 child_tx.send(20);
                 pingpong(&parent_rx, &child_tx);
                 unsafe {
-                    let mut guard = LOCK.lock();
+                    let guard = LOCK.lock();
                     guard.signal();   // wakeup waiting scheduler
                     guard.wait();     // wait for them to grab the lock
                 }
