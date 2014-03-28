@@ -15,9 +15,9 @@ use std::libc;
 
 /// A task's stack. The name "Stack" is a vestige of segmented stacks.
 pub struct Stack {
-    priv buf: MemoryMap,
-    priv min_size: uint,
-    priv valgrind_id: libc::c_uint,
+    buf: MemoryMap,
+    min_size: uint,
+    valgrind_id: libc::c_uint,
 }
 
 // Try to use MAP_STACK on platforms that support it (it's what we're doing
@@ -126,7 +126,7 @@ impl Drop for Stack {
 pub struct StackPool {
     // Ideally this would be some datastructure that preserved ordering on
     // Stack.min_size.
-    priv stacks: ~[Stack],
+    stacks: ~[Stack],
 }
 
 impl StackPool {
