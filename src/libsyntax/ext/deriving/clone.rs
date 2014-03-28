@@ -71,11 +71,11 @@ fn cs_clone(
 
     if all_fields.len() >= 1 && all_fields.get(0).name.is_none() {
         // enum-like
-        let subcalls = all_fields.map(subcall);
+        let subcalls = all_fields.iter().map(subcall).collect();
         cx.expr_call_ident(trait_span, ctor_ident, subcalls)
     } else {
         // struct-like
-        let fields = all_fields.map(|field| {
+        let fields = all_fields.iter().map(|field| {
             let ident = match field.name {
                 Some(i) => i,
                 None => cx.span_bug(trait_span,
@@ -83,7 +83,7 @@ fn cs_clone(
                                             name))
             };
             cx.field_imm(field.span, ident, subcall(field))
-        });
+        }).collect::<Vec<_>>();
 
         if fields.is_empty() {
             // no fields, so construct like `None`

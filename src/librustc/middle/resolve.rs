@@ -4707,18 +4707,20 @@ impl<'a> Resolver<'a> {
                                         path: &Path,
                                         namespace: Namespace)
                                         -> Option<(Def, LastPrivate)> {
-        let module_path_idents = path.segments.init().map(|ps| ps.identifier);
+        let module_path_idents = path.segments.init().iter()
+                                                     .map(|ps| ps.identifier)
+                                                     .collect::<Vec<_>>();
 
         let containing_module;
         let last_private;
         match self.resolve_module_path(self.current_module,
-                                       module_path_idents,
+                                       module_path_idents.as_slice(),
                                        UseLexicalScope,
                                        path.span,
                                        PathSearch) {
             Failed => {
                 let msg = format!("use of undeclared module `{}`",
-                                  self.idents_to_str(module_path_idents));
+                                  self.idents_to_str(module_path_idents.as_slice()));
                 self.resolve_error(path.span, msg);
                 return None;
             }
@@ -4772,21 +4774,23 @@ impl<'a> Resolver<'a> {
                                    path: &Path,
                                    namespace: Namespace)
                                        -> Option<(Def, LastPrivate)> {
-        let module_path_idents = path.segments.init().map(|ps| ps.identifier);
+        let module_path_idents = path.segments.init().iter()
+                                                     .map(|ps| ps.identifier)
+                                                     .collect::<Vec<_>>();
 
         let root_module = self.graph_root.get_module();
 
         let containing_module;
         let last_private;
         match self.resolve_module_path_from_root(root_module,
-                                                 module_path_idents,
+                                                 module_path_idents.as_slice(),
                                                  0,
                                                  path.span,
                                                  PathSearch,
                                                  LastMod(AllPublic)) {
             Failed => {
                 let msg = format!("use of undeclared module `::{}`",
-                                  self.idents_to_str(module_path_idents));
+                                  self.idents_to_str(module_path_idents.as_slice()));
                 self.resolve_error(path.span, msg);
                 return None;
             }

@@ -32,7 +32,7 @@ impl InferStr for ty::t {
 impl InferStr for FnSig {
     fn inf_str(&self, cx: &InferCtxt) -> ~str {
         format!("({}) -> {}",
-             self.inputs.map(|a| a.inf_str(cx)).connect(", "),
+             self.inputs.iter().map(|a| a.inf_str(cx)).collect::<Vec<~str>>().connect(", "),
              self.output.inf_str(cx))
     }
 }

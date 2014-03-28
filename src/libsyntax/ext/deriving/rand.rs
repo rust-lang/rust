@@ -136,15 +136,15 @@ fn rand_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) 
                 if fields.is_empty() {
                     cx.expr_ident(trait_span, ctor_ident)
                 } else {
-                    let exprs = fields.map(|span| rand_call(cx, *span));
+                    let exprs = fields.iter().map(|span| rand_call(cx, *span)).collect();
                     cx.expr_call_ident(trait_span, ctor_ident, exprs)
                 }
             }
             Named(ref fields) => {
-                let rand_fields = fields.map(|&(ident, span)| {
+                let rand_fields = fields.iter().map(|&(ident, span)| {
                     let e = rand_call(cx, span);
                     cx.field_imm(span, ident, e)
-                });
+                }).collect();
                 cx.expr_struct_ident(trait_span, ctor_ident, rand_fields)
             }
         }

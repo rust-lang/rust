@@ -1408,14 +1408,14 @@ pub fn mk_ctor_fn(cx: &ctxt,
                   binder_id: ast::NodeId,
                   input_tys: &[ty::t],
                   output: ty::t) -> t {
-    let input_args = input_tys.map(|t| *t);
+    let input_args = input_tys.iter().map(|t| *t).collect();
     mk_bare_fn(cx,
                BareFnTy {
                    purity: ast::ImpureFn,
                    abis: AbiSet::Rust(),
                    sig: FnSig {
                     binder_id: binder_id,
-                    inputs: Vec::from_slice(input_args),
+                    inputs: input_args,
                     output: output,
                     variadic: false
                    }
@@ -2880,7 +2880,7 @@ pub fn replace_closure_return_type(tcx: &ctxt, fn_type: t, ret_type: t) -> t {
 
 // Returns a vec of all the input and output types of fty.
 pub fn tys_in_fn_sig(sig: &FnSig) -> Vec<t> {
-    vec::append_one(sig.inputs.map(|a| *a), sig.output)
+    vec::append_one(sig.inputs.iter().map(|a| *a).collect(), sig.output)
 }
 
 // Type accessors for AST nodes
@@ -3432,7 +3432,7 @@ pub fn field_idx_strict(tcx: &ctxt, name: ast::Name, fields: &[field])
     tcx.sess.bug(format!(
         "no field named `{}` found in the list of fields `{:?}`",
         token::get_name(name),
-        fields.map(|f| token::get_ident(f.ident).get().to_str())));
+        fields.iter().map(|f| token::get_ident(f.ident).get().to_str()).collect::<Vec<~str>>()));
 }
 
 pub fn method_idx(id: ast::Ident, meths: &[@Method]) -> Option<uint> {
@@ -3724,8 +3724,8 @@ pub fn trait_supertraits(cx: &ctxt, id: ast::DefId) -> @Vec<@TraitRef> {
 
 pub fn trait_ref_supertraits(cx: &ctxt, trait_ref: &ty::TraitRef) -> Vec<@TraitRef> {
     let supertrait_refs = trait_supertraits(cx, trait_ref.def_id);
-    supertrait_refs.map(
-        |supertrait_ref| supertrait_ref.subst(cx, &trait_ref.substs))
+    supertrait_refs.iter().map(
+        |supertrait_ref| supertrait_ref.subst(cx, &trait_ref.substs)).collect()
 }
 
 fn lookup_locally_or_in_crate_store<V:Clone>(
@@ -3768,7 +3768,7 @@ pub fn trait_methods(cx: &ctxt, trait_did: ast::DefId) -> @Vec<@Method> {
         Some(&methods) => methods,
         None => {
             let def_ids = ty::trait_method_def_ids(cx, trait_did);
-            let methods = @def_ids.map(|d| ty::method(cx, *d));
+            let methods = @def_ids.iter().map(|d| ty::method(cx, *d)).collect();
             trait_methods.insert(trait_did, methods);
             methods
         }
@@ -3876,7 +3876,7 @@ impl VariantInfo {
         match ast_variant.node.kind {
             ast::TupleVariantKind(ref args) => {
                 let arg_tys = if args.len() > 0 {
-                    ty_fn_args(ctor_ty).map(|a| *a)
+                    ty_fn_args(ctor_ty).iter().map(|a| *a).collect()
                 } else {
                     Vec::new()
                 };
@@ -3897,7 +3897,7 @@ impl VariantInfo {
 
                 assert!(fields.len() > 0);
 
-                let arg_tys = ty_fn_args(ctor_ty).map(|a| *a);
+                let arg_tys = ty_fn_args(ctor_ty).iter().map(|a| *a).collect();
                 let arg_names = fields.iter().map(|field| {
                     match field.node.kind {
                         NamedField(ident, _) => ident,
@@ -4280,7 +4280,7 @@ fn struct_field_tys(fields: &[StructField]) -> Vec<field_ty> {
 // this. Takes a list of substs with which to instantiate field types.
 pub fn struct_fields(cx: &ctxt, did: ast::DefId, substs: &substs)
                      -> Vec<field> {
-    lookup_struct_fields(cx, did).map(|f| {
+    lookup_struct_fields(cx, did).iter().map(|f| {
        field {
             // FIXME #6993: change type of field to Name and get rid of new()
             ident: ast::Ident::new(f.name),
@@ -4289,7 +4289,7 @@ pub fn struct_fields(cx: &ctxt, did: ast::DefId, substs: &substs)
                 mutbl: MutImmutable
             }
         }
-    })
+    }).collect()
 }
 
 pub fn is_binopable(cx: &ctxt, ty: t, op: ast::BinOp) -> bool {

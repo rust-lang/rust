@@ -71,7 +71,9 @@ pub fn expand_mod(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     -> base::MacResult {
     base::check_zero_tts(cx, sp, tts, "module_path!");
     let string = cx.mod_path()
+                   .iter()
                    .map(|x| token::get_ident(*x).get().to_str())
+                   .collect::<Vec<~str>>()
                    .connect("::");
     base::MRExpr(cx.expr_str(sp, token::intern_and_get_ident(string)))
 }

@@ -348,16 +348,6 @@ pub fn append_one<T>(lhs: ~[T], x: T) -> ~[T] {
 
 // Functional utilities
 
-/**
- * Apply a function to each element of a vector and return a concatenation
- * of each result vector
- */
-pub fn flat_map<T, U>(v: &[T], f: |t: &T| -> ~[U]) -> ~[U] {
-    let mut result = ~[];
-    for elem in v.iter() { result.push_all_move(f(elem)); }
-    result
-}
-
 #[allow(missing_doc)]
 pub trait VectorVector<T> {
     // FIXME #5898: calling these .concat and .connect conflicts with
@@ -902,11 +892,7 @@ pub trait ImmutableVector<'a, T> {
     fn initn(&self, n: uint) -> &'a [T];
     /// Returns the last element of a vector, or `None` if it is empty.
     fn last(&self) -> Option<&'a T>;
-    /**
-     * Apply a function to each element of a vector and return a concatenation
-     * of each result vector
-     */
-    fn flat_map<U>(&self, f: |t: &T| -> ~[U]) -> ~[U];
+
     /// Returns a pointer to the element at the given index, without doing
     /// bounds checking.
     unsafe fn unsafe_ref(self, index: uint) -> &'a T;
@@ -934,11 +920,6 @@ pub trait ImmutableVector<'a, T> {
      * not found.
      */
     fn bsearch(&self, f: |&T| -> Ordering) -> Option<uint>;
-
-    /// Deprecated, use iterators where possible
-    /// (`self.iter().map(f)`). Apply a function to each element
-    /// of a vector and return the results.
-    fn map<U>(&self, |t: &T| -> U) -> ~[U];
 
     /**
      * Returns a mutable reference to the first element in this slice
@@ -1095,11 +1076,6 @@ impl<'a,T> ImmutableVector<'a, T> for &'a [T] {
     }
 
     #[inline]
-    fn flat_map<U>(&self, f: |t: &T| -> ~[U]) -> ~[U] {
-        flat_map(*self, f)
-    }
-
-    #[inline]
     unsafe fn unsafe_ref(self, index: uint) -> &'a T {
         transmute(self.repr().data.offset(index as int))
     }
@@ -1127,10 +1103,6 @@ impl<'a,T> ImmutableVector<'a, T> for &'a [T] {
             lim >>= 1;
         }
         return None;
-    }
-
-    fn map<U>(&self, f: |t: &T| -> U) -> ~[U] {
-        self.iter().map(f).collect()
     }
 
     fn shift_ref(&mut self) -> Option<&'a T> {
@@ -3330,27 +3302,6 @@ mod tests {
     }
 
     #[test]
-    fn test_map() {
-        // Test on-stack map.
-        let v = &[1u, 2u, 3u];
-        let mut w = v.map(square_ref);
-        assert_eq!(w.len(), 3u);
-        assert_eq!(w[0], 1u);
-        assert_eq!(w[1], 4u);
-        assert_eq!(w[2], 9u);
-
-        // Test on-heap map.
-        let v = ~[1u, 2u, 3u, 4u, 5u];
-        w = v.map(square_ref);
-        assert_eq!(w.len(), 5u);
-        assert_eq!(w[0], 1u);
-        assert_eq!(w[1], 4u);
-        assert_eq!(w[2], 9u);
-        assert_eq!(w[3], 16u);
-        assert_eq!(w[4], 25u);
-    }
-
-    #[test]
     fn test_retain() {
         let mut v = ~[1, 2, 3, 4, 5];
         v.retain(is_odd);
@@ -3728,36 +3679,6 @@ mod tests {
             }
             (~0, Rc::new(0))
         })
-    }
-
-    #[test]
-    #[should_fail]
-    fn test_map_fail() {
-        use rc::Rc;
-        let v = [(~0, Rc::new(0)), (~0, Rc::new(0)), (~0, Rc::new(0)), (~0, Rc::new(0))];
-        let mut i = 0;
-        v.map(|_elt| {
-            if i == 2 {
-                fail!()
-            }
-            i += 1;
-            ~[(~0, Rc::new(0))]
-        });
-    }
-
-    #[test]
-    #[should_fail]
-    fn test_flat_map_fail() {
-        use rc::Rc;
-        let v = [(~0, Rc::new(0)), (~0, Rc::new(0)), (~0, Rc::new(0)), (~0, Rc::new(0))];
-        let mut i = 0;
-        flat_map(v, |_elt| {
-            if i == 2 {
-                fail!()
-            }
-            i += 1;
-            ~[(~0, Rc::new(0))]
-        });
     }
 
     #[test]

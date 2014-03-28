@@ -298,7 +298,7 @@ pub fn make_mono_id(ccx: &CrateContext,
                vts.repr(ccx.tcx()), substs.tys.repr(ccx.tcx()));
         let vts_iter = substs.self_vtables.iter().chain(vts.iter());
         vts_iter.zip(substs_iter).map(|(vtable, subst)| {
-            let v = vtable.map(|vt| meth::vtable_id(ccx, vt));
+            let v = vtable.iter().map(|vt| meth::vtable_id(ccx, vt)).collect::<Vec<_>>();
             (*subst, if !v.is_empty() { Some(@v) } else { None })
         }).collect()
       }

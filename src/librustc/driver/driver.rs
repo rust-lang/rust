@@ -943,9 +943,9 @@ pub fn build_session_options(matches: &getopts::Matches) -> session::Options {
         NoDebugInfo
     };
 
-    let addl_lib_search_paths = matches.opt_strs("L").map(|s| {
+    let addl_lib_search_paths = matches.opt_strs("L").iter().map(|s| {
         Path::new(s.as_slice())
-    }).move_iter().collect();
+    }).collect();
 
     let cfg = parse_cfgspecs(matches.opt_strs("cfg").move_iter().collect());
     let test = matches.opt_present("test");
