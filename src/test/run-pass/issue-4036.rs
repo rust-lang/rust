@@ -20,5 +20,5 @@ use serialize::{json, Decodable};
 pub fn main() {
     let json = json::from_str("[1]").unwrap();
     let mut decoder = json::Decoder::new(json);
-    let _x: Vec<int> = Decodable::decode(&mut decoder);
+    let _x: Vec<int> = Decodable::decode(&mut decoder).unwrap();
 }

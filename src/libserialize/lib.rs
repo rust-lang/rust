@@ -34,10 +34,31 @@ extern crate collections;
 pub use self::serialize::{Decoder, Encoder, Decodable, Encodable,
                           DecoderHelpers, EncoderHelpers};
 
+// FIXME: remove _old.rs files after snapshot
+#[cfg(not(stage0))]
 mod serialize;
+#[cfg(not(stage0))]
 mod collection_impls;
 
 pub mod base64;
+#[cfg(not(stage0))]
 pub mod ebml;
 pub mod hex;
+#[cfg(not(stage0))]
+pub mod json;
+
+#[cfg(stage0)]
+#[path="./serialize_old.rs"]
+pub mod serialize;
+
+#[cfg(stage0)]
+#[path="./collection_impls_old.rs"]
+mod collection_impls;
+
+#[cfg(stage0)]
+#[path="./ebml_old.rs"]
+pub mod ebml;
+
+#[cfg(stage0)]
+#[path="./json_old.rs"]
 pub mod json;
