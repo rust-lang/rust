@@ -1527,12 +1527,9 @@ of an item to see whether it should be allowed or not. This is where privacy
 warnings are generated, or otherwise "you used a private item of another module
 and weren't allowed to."
 
-By default, everything in rust is *private*, with two exceptions. The first
-exception is that struct fields are public by default (but the struct itself is
-still private by default), and the remaining exception is that enum variants in
-a `pub` enum are the default visibility of the enum container itself.. You are
-allowed to alter this default visibility with the `pub` keyword (or `priv`
-keyword for struct fields and enum variants). When an item is declared as `pub`,
+By default, everything in rust is *private*, with one exception. Enum variants
+in a `pub` enum are also public by default. You are allowed to alter this
+default visibility with the `priv` keyword. When an item is declared as `pub`,
 it can be thought of as being accessible to the outside world. For example:
 
 ~~~~
@@ -1542,7 +1539,7 @@ struct Foo;
 
 // Declare a public struct with a private field
 pub struct Bar {
-    priv field: int
+    field: int
 }
 
 // Declare a public enum with public and private variants
@@ -2354,7 +2351,7 @@ The following are examples of structure expressions:
 ~~~~
 # struct Point { x: f64, y: f64 }
 # struct TuplePoint(f64, f64);
-# mod game { pub struct User<'a> { name: &'a str, age: uint, score: uint } }
+# mod game { pub struct User<'a> { pub name: &'a str, pub age: uint, pub score: uint } }
 # struct Cookie; fn some_fn<T>(t: T) {}
 Point {x: 10.0, y: 20.0};
 TuplePoint(10.0, 20.0);
@@ -3140,7 +3137,7 @@ The types `char` and `str` hold textual data.
 A value of type `char` is a [Unicode scalar value](
 http://www.unicode.org/glossary/#unicode_scalar_value)
 (ie. a code point that is not a surrogate),
-represented as a 32-bit unsigned word in the 0x0000 to 0xD7FF 
+represented as a 32-bit unsigned word in the 0x0000 to 0xD7FF
 or 0xE000 to 0x10FFFF range.
 A `[char]` vector is effectively an UCS-4 / UTF-32 string.
 
