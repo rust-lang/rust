@@ -20,9 +20,9 @@
 
 #[cfg(test)] #[phase(syntax, link)] extern crate log;
 extern crate serialize;
+extern crate libc;
 
 use std::io::BufReader;
-use std::libc;
 use std::num;
 use std::str;
 
@@ -42,7 +42,7 @@ mod rustrt {
 
 #[cfg(unix, not(target_os = "macos"))]
 mod imp {
-    use std::libc::{c_int, timespec};
+    use libc::{c_int, timespec};
 
     // Apparently android provides this in some other library?
     #[cfg(not(target_os = "android"))]
@@ -56,7 +56,7 @@ mod imp {
 }
 #[cfg(target_os = "macos")]
 mod imp {
-    use std::libc::{timeval, timezone, c_int, mach_timebase_info};
+    use libc::{timeval, timezone, c_int, mach_timebase_info};
 
     extern {
         pub fn gettimeofday(tp: *mut timeval, tzp: *mut timezone) -> c_int;
@@ -1076,7 +1076,7 @@ mod tests {
 
     #[cfg(windows)]
     fn set_time_zone() {
-        use std::libc;
+        use libc;
         // Windows crt doesn't see any environment variable set by
         // `SetEnvironmentVariable`, which `os::setenv` internally uses.
         // It is why we use `putenv` here.

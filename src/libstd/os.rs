@@ -928,8 +928,9 @@ pub fn page_size() -> uint {
 /// Returns the page size of the current architecture in bytes.
 #[cfg(windows)]
 pub fn page_size() -> uint {
+    use mem;
     unsafe {
-        let mut info = libc::SYSTEM_INFO::new();
+        let mut info = mem::uninit();
         libc::GetSystemInfo(&mut info);
 
         return info.dwPageSize as uint;
@@ -1246,8 +1247,9 @@ impl MemoryMap {
     /// Granularity of MapAddr() and MapOffset() parameter values.
     /// This may be greater than the value returned by page_size().
     pub fn granularity() -> uint {
+        use mem;
         unsafe {
-            let mut info = libc::SYSTEM_INFO::new();
+            let mut info = mem::uninit();
             libc::GetSystemInfo(&mut info);
 
             return info.dwAllocationGranularity as uint;

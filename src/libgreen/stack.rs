@@ -11,7 +11,7 @@
 use std::rt::env::max_cached_stacks;
 use std::os::{errno, page_size, MemoryMap, MapReadable, MapWritable,
               MapNonStandardFlags, MapVirtual};
-use std::libc;
+use libc;
 
 /// A task's stack. The name "Stack" is a vestige of segmented stacks.
 pub struct Stack {

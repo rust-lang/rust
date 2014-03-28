@@ -11,11 +11,11 @@
 // This creates a bunch of descheduling tasks that run concurrently
 // while holding onto C stacks
 
-use std::libc;
+extern crate libc;
 use std::task;
 
 mod rustrt {
-    use std::libc;
+    extern crate libc;
 
     #[link(name = "rustrt")]
     extern {

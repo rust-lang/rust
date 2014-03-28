@@ -29,7 +29,7 @@
 //! As with timer_other, all units in this file are in units of millseconds.
 
 use std::comm::Data;
-use std::libc;
+use libc;
 use std::ptr;
 use std::os;
 use std::rt::rtio;
@@ -267,7 +267,7 @@ impl Drop for Timer {
 
 #[allow(dead_code)]
 mod imp {
-    use std::libc;
+    use libc;
 
     pub static CLOCK_MONOTONIC: libc::c_int = 1;
     pub static EPOLL_CTL_ADD: libc::c_int = 1;

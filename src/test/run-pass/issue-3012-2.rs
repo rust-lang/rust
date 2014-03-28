@@ -14,9 +14,9 @@
 #[feature(managed_boxes)];
 
 extern crate socketlib;
+extern crate libc;
 
 use socketlib::socket;
-use std::libc;
 
 pub fn main() {
     let fd: libc::c_int = 1 as libc::c_int;

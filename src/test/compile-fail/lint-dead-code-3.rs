@@ -14,6 +14,8 @@
 
 #[crate_type="lib"];
 
+extern crate libc;
+
 struct Foo; //~ ERROR: code is never used
 impl Foo {
     fn foo(&self) { //~ ERROR: code is never used
@@ -46,7 +48,7 @@ pub fn pub_fn() {
 }
 
 mod blah {
-    use std::libc::size_t;
+    use libc::size_t;
     // not warned because it's used in the parameter of `free` and return of
     // `malloc` below, which are also used.
     enum c_void {}

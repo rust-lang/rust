@@ -1471,11 +1471,13 @@ with the exception that they may not have a body
 and are instead terminated by a semicolon.
 
 ~~~~
-# use std::libc::{c_char, FILE};
+extern crate libc;
+use libc::{c_char, FILE};
 
 extern {
     fn fopen(filename: *c_char, mode: *c_char) -> *FILE;
 }
+# fn main() {}
 ~~~~
 
 Functions within external blocks may be called by Rust code,

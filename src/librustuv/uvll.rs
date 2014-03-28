@@ -29,13 +29,13 @@
 
 #[allow(non_camel_case_types)]; // C types
 
-use std::libc::{size_t, c_int, c_uint, c_void, c_char, c_double};
-use std::libc::{ssize_t, sockaddr, free, addrinfo};
-use std::libc;
+use libc::{size_t, c_int, c_uint, c_void, c_char, c_double};
+use libc::{ssize_t, sockaddr, free, addrinfo};
+use libc;
 use std::rt::global_heap::malloc_raw;
 
 #[cfg(test)]
-use std::libc::uintptr_t;
+use libc::uintptr_t;
 
 pub use self::errors::{EACCES, ECONNREFUSED, ECONNRESET, EPIPE, ECONNABORTED,
                        ECANCELED, EBADF, ENOTCONN, ENOENT, EADDRNOTAVAIL};
@@ -49,7 +49,7 @@ pub static UNKNOWN: c_int = -4094;
 
 #[cfg(windows)]
 pub mod errors {
-    use std::libc::c_int;
+    use libc::c_int;
 
     pub static EACCES: c_int = -4092;
     pub static ECONNREFUSED: c_int = -4078;
@@ -64,8 +64,8 @@ pub mod errors {
 }
 #[cfg(not(windows))]
 pub mod errors {
-    use std::libc;
-    use std::libc::c_int;
+    use libc;
+    use libc::c_int;
 
     pub static EACCES: c_int = -libc::EACCES;
     pub static ECONNREFUSED: c_int = -libc::ECONNREFUSED;

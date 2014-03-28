@@ -12,8 +12,8 @@ use std::c_str::CString;
 use std::c_str;
 use std::cast::transmute;
 use std::cast;
-use std::libc::{c_int, c_char, c_void, size_t, ssize_t};
-use std::libc;
+use libc::{c_int, c_char, c_void, size_t, ssize_t};
+use libc;
 use std::rt::task::BlockedTask;
 use std::io::{FileStat, IoError};
 use std::io;
@@ -434,7 +434,7 @@ impl rtio::RtioFileStream for FileWatcher {
         self.base_write(buf, offset as i64)
     }
     fn seek(&mut self, pos: i64, whence: io::SeekStyle) -> Result<u64, IoError> {
-        use std::libc::{SEEK_SET, SEEK_CUR, SEEK_END};
+        use libc::{SEEK_SET, SEEK_CUR, SEEK_END};
         let whence = match whence {
             io::SeekSet => SEEK_SET,
             io::SeekCur => SEEK_CUR,
@@ -443,7 +443,7 @@ impl rtio::RtioFileStream for FileWatcher {
         self.seek_common(pos, whence)
     }
     fn tell(&self) -> Result<u64, IoError> {
-        use std::libc::SEEK_CUR;
+        use libc::SEEK_CUR;
         // this is temporary
         let self_ = unsafe { cast::transmute_mut(self) };
         self_.seek_common(0, SEEK_CUR)
@@ -465,8 +465,8 @@ impl rtio::RtioFileStream for FileWatcher {
 
 #[cfg(test)]
 mod test {
-    use std::libc::c_int;
-    use std::libc::{O_CREAT, O_RDWR, O_RDONLY, S_IWUSR, S_IRUSR};
+    use libc::c_int;
+    use libc::{O_CREAT, O_RDWR, O_RDONLY, S_IWUSR, S_IRUSR};
     use std::io;
     use std::str;
     use std::slice;

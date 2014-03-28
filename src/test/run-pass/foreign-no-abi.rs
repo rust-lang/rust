@@ -11,7 +11,7 @@
 // ABI is cdecl by default
 
 mod rustrt {
-    use std::libc;
+    extern crate libc;
 
     #[link(name = "rustrt")]
     extern {

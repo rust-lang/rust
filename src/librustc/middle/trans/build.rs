@@ -20,7 +20,7 @@ use syntax::codemap::Span;
 use middle::trans::builder::Builder;
 use middle::trans::type_::Type;
 
-use std::libc::{c_uint, c_ulonglong, c_char};
+use libc::{c_uint, c_ulonglong, c_char};
 
 pub fn terminate(cx: &Block, _: &str) {
     debug!("terminate({})", cx.to_str());
