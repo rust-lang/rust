@@ -20,12 +20,10 @@ mod inner {
     struct A {
         a: int,
         pub b: int,
-        priv c: int, //~ ERROR: unnecessary `priv` visibility
     }
     pub struct B {
-        a: int,
-        priv b: int,
-        pub c: int,
+        pub a: int,
+        b: int,
     }
 }
 
@@ -36,10 +34,8 @@ fn test(a: A, b: inner::A, c: inner::B, d: xc::A, e: xc::B) {
     a.a;
     b.a; //~ ERROR: field `a` is private
     b.b;
-    b.c; //~ ERROR: field `c` is private
     c.a;
     c.b; //~ ERROR: field `b` is private
-    c.c;
 
     d.a; //~ ERROR: field `a` is private
     d.b;

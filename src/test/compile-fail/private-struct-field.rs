@@ -10,7 +10,7 @@
 
 mod cat {
     pub struct Cat {
-        priv meows: uint
+        meows: uint
     }
 
     pub fn new_cat() -> Cat {

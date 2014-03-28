@@ -40,8 +40,8 @@ mod test {
 }
 
 mod foo {
-    pub struct Point{x: int, y: int}
-    pub struct Square{p: Point, h: uint, w: uint}
+    pub struct Point{pub x: int, pub y: int}
+    pub struct Square{pub p: Point, pub h: uint, pub w: uint}
 }
 
 mod bar {

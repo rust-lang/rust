@@ -12,9 +12,9 @@ pub mod kitty {
     use std::fmt;
 
     pub struct cat {
-      priv meows : uint,
-      how_hungry : int,
-      name : ~str,
+      meows : uint,
+      pub how_hungry : int,
+      pub name : ~str,
     }
 
     impl fmt::Show for cat {

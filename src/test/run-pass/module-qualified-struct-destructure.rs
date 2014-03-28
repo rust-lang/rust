@@ -10,8 +10,8 @@
 
 mod m {
     pub struct S {
-        x: int,
-        y: int
+        pub x: int,
+        pub y: int
     }
 }
 

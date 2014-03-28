@@ -11,10 +11,10 @@
 pub mod kitties {
 
     pub struct cat<U> {
-        priv info : Vec<U> ,
-        priv meows : uint,
+        info : Vec<U> ,
+        meows : uint,
 
-        how_hungry : int,
+        pub how_hungry : int,
     }
 
     impl<U> cat<U> {

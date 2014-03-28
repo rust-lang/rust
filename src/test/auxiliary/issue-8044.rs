@@ -11,11 +11,11 @@
 #[feature(struct_variant)];
 
 pub struct BTree<V> {
-    node: TreeItem<V>,
+    pub node: TreeItem<V>,
 }
 
 pub enum TreeItem<V> {
-    TreeLeaf { value: V },
+    TreeLeaf { pub value: V },
 }
 
 pub fn leaf<V>(value: V) -> TreeItem<V> {
