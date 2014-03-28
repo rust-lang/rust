@@ -19,7 +19,7 @@
 use std::sync::arc::UnsafeArc;
 
 pub struct Refcount {
-    priv rc: UnsafeArc<uint>,
+    rc: UnsafeArc<uint>,
 }
 
 impl Refcount {

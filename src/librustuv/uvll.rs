@@ -100,15 +100,15 @@ pub type uv_buf_len_t = libc::c_ulong;
 // see libuv/include/uv-unix.h
 #[cfg(unix)]
 pub struct uv_buf_t {
-    base: *u8,
-    len: uv_buf_len_t,
+    pub base: *u8,
+    pub len: uv_buf_len_t,
 }
 
 // see libuv/include/uv-win.h
 #[cfg(windows)]
 pub struct uv_buf_t {
-    len: uv_buf_len_t,
-    base: *u8,
+    pub len: uv_buf_len_t,
+    pub base: *u8,
 }
 
 #[repr(C)]
@@ -119,23 +119,23 @@ pub enum uv_run_mode {
 }
 
 pub struct uv_process_options_t {
-    exit_cb: uv_exit_cb,
-    file: *libc::c_char,
-    args: **libc::c_char,
-    env: **libc::c_char,
-    cwd: *libc::c_char,
-    flags: libc::c_uint,
-    stdio_count: libc::c_int,
-    stdio: *uv_stdio_container_t,
-    uid: uv_uid_t,
-    gid: uv_gid_t,
+    pub exit_cb: uv_exit_cb,
+    pub file: *libc::c_char,
+    pub args: **libc::c_char,
+    pub env: **libc::c_char,
+    pub cwd: *libc::c_char,
+    pub flags: libc::c_uint,
+    pub stdio_count: libc::c_int,
+    pub stdio: *uv_stdio_container_t,
+    pub uid: uv_uid_t,
+    pub gid: uv_gid_t,
 }
 
 // These fields are private because they must be interfaced with through the
 // functions below.
 pub struct uv_stdio_container_t {
-    priv flags: libc::c_int,
-    priv stream: *uv_stream_t,
+    flags: libc::c_int,
+    stream: *uv_stream_t,
 }
 
 pub type uv_handle_t = c_void;
@@ -160,27 +160,27 @@ pub type uv_signal_t = c_void;
 pub type uv_shutdown_t = c_void;
 
 pub struct uv_timespec_t {
-    tv_sec: libc::c_long,
-    tv_nsec: libc::c_long
+    pub tv_sec: libc::c_long,
+    pub tv_nsec: libc::c_long
 }
 
 pub struct uv_stat_t {
-    st_dev: libc::uint64_t,
-    st_mode: libc::uint64_t,
-    st_nlink: libc::uint64_t,
-    st_uid: libc::uint64_t,
-    st_gid: libc::uint64_t,
-    st_rdev: libc::uint64_t,
-    st_ino: libc::uint64_t,
-    st_size: libc::uint64_t,
-    st_blksize: libc::uint64_t,
-    st_blocks: libc::uint64_t,
-    st_flags: libc::uint64_t,
-    st_gen: libc::uint64_t,
-    st_atim: uv_timespec_t,
-    st_mtim: uv_timespec_t,
-    st_ctim: uv_timespec_t,
-    st_birthtim: uv_timespec_t
+    pub st_dev: libc::uint64_t,
+    pub st_mode: libc::uint64_t,
+    pub st_nlink: libc::uint64_t,
+    pub st_uid: libc::uint64_t,
+    pub st_gid: libc::uint64_t,
+    pub st_rdev: libc::uint64_t,
+    pub st_ino: libc::uint64_t,
+    pub st_size: libc::uint64_t,
+    pub st_blksize: libc::uint64_t,
+    pub st_blocks: libc::uint64_t,
+    pub st_flags: libc::uint64_t,
+    pub st_gen: libc::uint64_t,
+    pub st_atim: uv_timespec_t,
+    pub st_mtim: uv_timespec_t,
+    pub st_ctim: uv_timespec_t,
+    pub st_birthtim: uv_timespec_t
 }
 
 impl uv_stat_t {

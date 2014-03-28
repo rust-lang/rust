@@ -197,8 +197,8 @@ pub trait UvHandle<T> {
 }
 
 pub struct ForbidSwitch {
-    priv msg: &'static str,
-    priv io: uint,
+    msg: &'static str,
+    io: uint,
 }
 
 impl ForbidSwitch {
@@ -261,8 +261,8 @@ fn wakeup(slot: &mut Option<BlockedTask>) {
 }
 
 pub struct Request {
-    handle: *uvll::uv_req_t,
-    priv defused: bool,
+    pub handle: *uvll::uv_req_t,
+    defused: bool,
 }
 
 impl Request {
@@ -313,7 +313,7 @@ impl Drop for Request {
 /// with dtors may not be destructured, but tuple structs can,
 /// but the results are not correct.
 pub struct Loop {
-    priv handle: *uvll::uv_loop_t
+    handle: *uvll::uv_loop_t
 }
 
 impl Loop {
