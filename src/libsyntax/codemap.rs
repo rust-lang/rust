@@ -110,6 +110,8 @@ impl Eq for Span {
 
 impl TotalEq for Span {}
 
+// FIXME: remove stage0 Encodables/Decodables after snapshot
+#[cfg(stage0)]
 impl<S:Encoder> Encodable<S> for Span {
     /* Note #1972 -- spans are encoded but not decoded */
     fn encode(&self, s: &mut S) {
@@ -117,9 +119,25 @@ impl<S:Encoder> Encodable<S> for Span {
     }
 }
 
+#[cfg(stage0)]
 impl<D:Decoder> Decodable<D> for Span {
     fn decode(_d: &mut D) -> Span {
         DUMMY_SP
+    }
+}
+
+#[cfg(not(stage0))]
+impl<S:Encoder<E>, E> Encodable<S, E> for Span {
+    /* Note #1972 -- spans are encoded but not decoded */
+    fn encode(&self, s: &mut S) -> Result<(), E> {
+        s.emit_nil()
+    }
+}
+
+#[cfg(not(stage0))]
+impl<D:Decoder<E>, E> Decodable<D, E> for Span {
+    fn decode(_d: &mut D) -> Result<Span, E> {
+        Ok(DUMMY_SP)
     }
 }
 

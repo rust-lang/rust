@@ -98,15 +98,32 @@ pub type Name = u32;
 /// A mark represents a unique id associated with a macro expansion
 pub type Mrk = u32;
 
+// FIXME: remove stage0 Encodables after snapshot
+#[cfg(stage0)]
 impl<S: Encoder> Encodable<S> for Ident {
     fn encode(&self, s: &mut S) {
         s.emit_str(token::get_ident(*self).get());
     }
 }
 
+#[cfg(stage0)]
 impl<D:Decoder> Decodable<D> for Ident {
     fn decode(d: &mut D) -> Ident {
         str_to_ident(d.read_str())
+    }
+}
+
+#[cfg(not(stage0))]
+impl<S: Encoder<E>, E> Encodable<S, E> for Ident {
+    fn encode(&self, s: &mut S) -> Result<(), E> {
+        s.emit_str(token::get_ident(*self).get())
+    }
+}
+
+#[cfg(not(stage0))]
+impl<D:Decoder<E>, E> Decodable<D, E> for Ident {
+    fn decode(d: &mut D) -> Result<Ident, E> {
+        Ok(str_to_ident(try!(d.read_str())))
     }
 }
 
@@ -1166,7 +1183,9 @@ mod test {
     use super::*;
 
     // are ASTs encodable?
+    // FIXME: remove stage0 test after snapshot
     #[test]
+    #[cfg(stage0)]
     fn check_asts_encodable() {
         let e = Crate {
             module: Mod {view_items: Vec::new(), items: Vec::new()},
@@ -1180,5 +1199,23 @@ mod test {
         };
         // doesn't matter which encoder we use....
         let _f = &e as &serialize::Encodable<json::Encoder>;
+    }
+
+    #[test]
+    #[cfg(not(stage0))]
+    fn check_asts_encodable() {
+        use std::io;
+        let e = Crate {
+            module: Mod {view_items: Vec::new(), items: Vec::new()},
+            attrs: Vec::new(),
+            config: Vec::new(),
+            span: Span {
+                lo: BytePos(10),
+                hi: BytePos(20),
+                expn_info: None,
+            },
+        };
+        // doesn't matter which encoder we use....
+        let _f = &e as &serialize::Encodable<json::Encoder, io::IoError>;
     }
 }

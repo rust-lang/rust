@@ -18,444 +18,465 @@ use std::path;
 use std::rc::Rc;
 use std::slice;
 
-pub trait Encoder {
+pub trait Encoder<E> {
     // Primitive types:
-    fn emit_nil(&mut self);
-    fn emit_uint(&mut self, v: uint);
-    fn emit_u64(&mut self, v: u64);
-    fn emit_u32(&mut self, v: u32);
-    fn emit_u16(&mut self, v: u16);
-    fn emit_u8(&mut self, v: u8);
-    fn emit_int(&mut self, v: int);
-    fn emit_i64(&mut self, v: i64);
-    fn emit_i32(&mut self, v: i32);
-    fn emit_i16(&mut self, v: i16);
-    fn emit_i8(&mut self, v: i8);
-    fn emit_bool(&mut self, v: bool);
-    fn emit_f64(&mut self, v: f64);
-    fn emit_f32(&mut self, v: f32);
-    fn emit_char(&mut self, v: char);
-    fn emit_str(&mut self, v: &str);
+    fn emit_nil(&mut self) -> Result<(), E>;
+    fn emit_uint(&mut self, v: uint) -> Result<(), E>;
+    fn emit_u64(&mut self, v: u64) -> Result<(), E>;
+    fn emit_u32(&mut self, v: u32) -> Result<(), E>;
+    fn emit_u16(&mut self, v: u16) -> Result<(), E>;
+    fn emit_u8(&mut self, v: u8) -> Result<(), E>;
+    fn emit_int(&mut self, v: int) -> Result<(), E>;
+    fn emit_i64(&mut self, v: i64) -> Result<(), E>;
+    fn emit_i32(&mut self, v: i32) -> Result<(), E>;
+    fn emit_i16(&mut self, v: i16) -> Result<(), E>;
+    fn emit_i8(&mut self, v: i8) -> Result<(), E>;
+    fn emit_bool(&mut self, v: bool) -> Result<(), E>;
+    fn emit_f64(&mut self, v: f64) -> Result<(), E>;
+    fn emit_f32(&mut self, v: f32) -> Result<(), E>;
+    fn emit_char(&mut self, v: char) -> Result<(), E>;
+    fn emit_str(&mut self, v: &str) -> Result<(), E>;
 
     // Compound types:
-    fn emit_enum(&mut self, name: &str, f: |&mut Self|);
+    fn emit_enum(&mut self, name: &str, f: |&mut Self| -> Result<(), E>) -> Result<(), E>;
 
     fn emit_enum_variant(&mut self,
                          v_name: &str,
                          v_id: uint,
                          len: uint,
-                         f: |&mut Self|);
-    fn emit_enum_variant_arg(&mut self, a_idx: uint, f: |&mut Self|);
+                         f: |&mut Self| -> Result<(), E>) -> Result<(), E>;
+    fn emit_enum_variant_arg(&mut self,
+                             a_idx: uint,
+                             f: |&mut Self| -> Result<(), E>) -> Result<(), E>;
 
     fn emit_enum_struct_variant(&mut self,
                                 v_name: &str,
                                 v_id: uint,
                                 len: uint,
-                                f: |&mut Self|);
+                                f: |&mut Self| -> Result<(), E>) -> Result<(), E>;
     fn emit_enum_struct_variant_field(&mut self,
                                       f_name: &str,
                                       f_idx: uint,
-                                      f: |&mut Self|);
+                                      f: |&mut Self| -> Result<(), E>) -> Result<(), E>;
 
-    fn emit_struct(&mut self, name: &str, len: uint, f: |&mut Self|);
+    fn emit_struct(&mut self,
+                   name: &str,
+                   len: uint,
+                   f: |&mut Self| -> Result<(), E>) -> Result<(), E>;
     fn emit_struct_field(&mut self,
                          f_name: &str,
                          f_idx: uint,
-                         f: |&mut Self|);
+                         f: |&mut Self| -> Result<(), E>) -> Result<(), E>;
 
-    fn emit_tuple(&mut self, len: uint, f: |&mut Self|);
-    fn emit_tuple_arg(&mut self, idx: uint, f: |&mut Self|);
+    fn emit_tuple(&mut self, len: uint, f: |&mut Self| -> Result<(), E>) -> Result<(), E>;
+    fn emit_tuple_arg(&mut self, idx: uint, f: |&mut Self| -> Result<(), E>) -> Result<(), E>;
 
-    fn emit_tuple_struct(&mut self, name: &str, len: uint, f: |&mut Self|);
-    fn emit_tuple_struct_arg(&mut self, f_idx: uint, f: |&mut Self|);
+    fn emit_tuple_struct(&mut self,
+                         name: &str,
+                         len: uint,
+                         f: |&mut Self| -> Result<(), E>) -> Result<(), E>;
+    fn emit_tuple_struct_arg(&mut self,
+                             f_idx: uint,
+                             f: |&mut Self| -> Result<(), E>) -> Result<(), E>;
 
     // Specialized types:
-    fn emit_option(&mut self, f: |&mut Self|);
-    fn emit_option_none(&mut self);
-    fn emit_option_some(&mut self, f: |&mut Self|);
+    fn emit_option(&mut self, f: |&mut Self| -> Result<(), E>) -> Result<(), E>;
+    fn emit_option_none(&mut self) -> Result<(), E>;
+    fn emit_option_some(&mut self, f: |&mut Self| -> Result<(), E>) -> Result<(), E>;
 
-    fn emit_seq(&mut self, len: uint, f: |this: &mut Self|);
-    fn emit_seq_elt(&mut self, idx: uint, f: |this: &mut Self|);
+    fn emit_seq(&mut self, len: uint, f: |this: &mut Self| -> Result<(), E>) -> Result<(), E>;
+    fn emit_seq_elt(&mut self, idx: uint, f: |this: &mut Self| -> Result<(), E>) -> Result<(), E>;
 
-    fn emit_map(&mut self, len: uint, f: |&mut Self|);
-    fn emit_map_elt_key(&mut self, idx: uint, f: |&mut Self|);
-    fn emit_map_elt_val(&mut self, idx: uint, f: |&mut Self|);
+    fn emit_map(&mut self, len: uint, f: |&mut Self| -> Result<(), E>) -> Result<(), E>;
+    fn emit_map_elt_key(&mut self, idx: uint, f: |&mut Self| -> Result<(), E>) -> Result<(), E>;
+    fn emit_map_elt_val(&mut self, idx: uint, f: |&mut Self| -> Result<(), E>) -> Result<(), E>;
 }
 
-pub trait Decoder {
+pub trait Decoder<E> {
     // Primitive types:
-    fn read_nil(&mut self) -> ();
-    fn read_uint(&mut self) -> uint;
-    fn read_u64(&mut self) -> u64;
-    fn read_u32(&mut self) -> u32;
-    fn read_u16(&mut self) -> u16;
-    fn read_u8(&mut self) -> u8;
-    fn read_int(&mut self) -> int;
-    fn read_i64(&mut self) -> i64;
-    fn read_i32(&mut self) -> i32;
-    fn read_i16(&mut self) -> i16;
-    fn read_i8(&mut self) -> i8;
-    fn read_bool(&mut self) -> bool;
-    fn read_f64(&mut self) -> f64;
-    fn read_f32(&mut self) -> f32;
-    fn read_char(&mut self) -> char;
-    fn read_str(&mut self) -> ~str;
+    fn read_nil(&mut self) -> Result<(), E>;
+    fn read_uint(&mut self) -> Result<uint, E>;
+    fn read_u64(&mut self) -> Result<u64, E>;
+    fn read_u32(&mut self) -> Result<u32, E>;
+    fn read_u16(&mut self) -> Result<u16, E>;
+    fn read_u8(&mut self) -> Result<u8, E>;
+    fn read_int(&mut self) -> Result<int, E>;
+    fn read_i64(&mut self) -> Result<i64, E>;
+    fn read_i32(&mut self) -> Result<i32, E>;
+    fn read_i16(&mut self) -> Result<i16, E>;
+    fn read_i8(&mut self) -> Result<i8, E>;
+    fn read_bool(&mut self) -> Result<bool, E>;
+    fn read_f64(&mut self) -> Result<f64, E>;
+    fn read_f32(&mut self) -> Result<f32, E>;
+    fn read_char(&mut self) -> Result<char, E>;
+    fn read_str(&mut self) -> Result<~str, E>;
 
     // Compound types:
-    fn read_enum<T>(&mut self, name: &str, f: |&mut Self| -> T) -> T;
+    fn read_enum<T>(&mut self, name: &str, f: |&mut Self| -> Result<T, E>) -> Result<T, E>;
 
     fn read_enum_variant<T>(&mut self,
                             names: &[&str],
-                            f: |&mut Self, uint| -> T)
-                            -> T;
+                            f: |&mut Self, uint| -> Result<T, E>)
+                            -> Result<T, E>;
     fn read_enum_variant_arg<T>(&mut self,
                                 a_idx: uint,
-                                f: |&mut Self| -> T)
-                                -> T;
+                                f: |&mut Self| -> Result<T, E>)
+                                -> Result<T, E>;
 
     fn read_enum_struct_variant<T>(&mut self,
                                    names: &[&str],
-                                   f: |&mut Self, uint| -> T)
-                                   -> T;
+                                   f: |&mut Self, uint| -> Result<T, E>)
+                                   -> Result<T, E>;
     fn read_enum_struct_variant_field<T>(&mut self,
                                          &f_name: &str,
                                          f_idx: uint,
-                                         f: |&mut Self| -> T)
-                                         -> T;
+                                         f: |&mut Self| -> Result<T, E>)
+                                         -> Result<T, E>;
 
-    fn read_struct<T>(&mut self, s_name: &str, len: uint, f: |&mut Self| -> T)
-                      -> T;
+    fn read_struct<T>(&mut self, s_name: &str, len: uint, f: |&mut Self| -> Result<T, E>)
+                      -> Result<T, E>;
     fn read_struct_field<T>(&mut self,
                             f_name: &str,
                             f_idx: uint,
-                            f: |&mut Self| -> T)
-                            -> T;
+                            f: |&mut Self| -> Result<T, E>)
+                            -> Result<T, E>;
 
-    fn read_tuple<T>(&mut self, f: |&mut Self, uint| -> T) -> T;
-    fn read_tuple_arg<T>(&mut self, a_idx: uint, f: |&mut Self| -> T) -> T;
+    fn read_tuple<T>(&mut self, f: |&mut Self, uint| -> Result<T, E>) -> Result<T, E>;
+    fn read_tuple_arg<T>(&mut self, a_idx: uint, f: |&mut Self| -> Result<T, E>) -> Result<T, E>;
 
     fn read_tuple_struct<T>(&mut self,
                             s_name: &str,
-                            f: |&mut Self, uint| -> T)
-                            -> T;
+                            f: |&mut Self, uint| -> Result<T, E>)
+                            -> Result<T, E>;
     fn read_tuple_struct_arg<T>(&mut self,
                                 a_idx: uint,
-                                f: |&mut Self| -> T)
-                                -> T;
+                                f: |&mut Self| -> Result<T, E>)
+                                -> Result<T, E>;
 
     // Specialized types:
-    fn read_option<T>(&mut self, f: |&mut Self, bool| -> T) -> T;
+    fn read_option<T>(&mut self, f: |&mut Self, bool| -> Result<T, E>) -> Result<T, E>;
 
-    fn read_seq<T>(&mut self, f: |&mut Self, uint| -> T) -> T;
-    fn read_seq_elt<T>(&mut self, idx: uint, f: |&mut Self| -> T) -> T;
+    fn read_seq<T>(&mut self, f: |&mut Self, uint| -> Result<T, E>) -> Result<T, E>;
+    fn read_seq_elt<T>(&mut self, idx: uint, f: |&mut Self| -> Result<T, E>) -> Result<T, E>;
 
-    fn read_map<T>(&mut self, f: |&mut Self, uint| -> T) -> T;
-    fn read_map_elt_key<T>(&mut self, idx: uint, f: |&mut Self| -> T) -> T;
-    fn read_map_elt_val<T>(&mut self, idx: uint, f: |&mut Self| -> T) -> T;
+    fn read_map<T>(&mut self, f: |&mut Self, uint| -> Result<T, E>) -> Result<T, E>;
+    fn read_map_elt_key<T>(&mut self, idx: uint, f: |&mut Self| -> Result<T, E>) -> Result<T, E>;
+    fn read_map_elt_val<T>(&mut self, idx: uint, f: |&mut Self| -> Result<T, E>) -> Result<T, E>;
 }
 
-pub trait Encodable<S:Encoder> {
-    fn encode(&self, s: &mut S);
+pub trait Encodable<S:Encoder<E>, E> {
+    fn encode(&self, s: &mut S) -> Result<(), E>;
 }
 
-pub trait Decodable<D:Decoder> {
-    fn decode(d: &mut D) -> Self;
+pub trait Decodable<D:Decoder<E>, E> {
+    fn decode(d: &mut D) -> Result<Self, E>;
 }
 
-impl<S:Encoder> Encodable<S> for uint {
-    fn encode(&self, s: &mut S) {
+macro_rules! try ( ($e:expr) => (
+    match $e { Ok(v) => v, Err(e) => return Err(e) }
+))
+
+impl<E, S:Encoder<E>> Encodable<S, E> for uint {
+    fn encode(&self, s: &mut S) -> Result<(), E> {
         s.emit_uint(*self)
     }
 }
 
-impl<D:Decoder> Decodable<D> for uint {
-    fn decode(d: &mut D) -> uint {
+impl<E, D:Decoder<E>> Decodable<D, E> for uint {
+    fn decode(d: &mut D) -> Result<uint, E> {
         d.read_uint()
     }
 }
 
-impl<S:Encoder> Encodable<S> for u8 {
-    fn encode(&self, s: &mut S) {
+impl<E, S:Encoder<E>> Encodable<S, E> for u8 {
+    fn encode(&self, s: &mut S) -> Result<(), E> {
         s.emit_u8(*self)
     }
 }
 
-impl<D:Decoder> Decodable<D> for u8 {
-    fn decode(d: &mut D) -> u8 {
+impl<E, D:Decoder<E>> Decodable<D, E> for u8 {
+    fn decode(d: &mut D) -> Result<u8, E> {
         d.read_u8()
     }
 }
 
-impl<S:Encoder> Encodable<S> for u16 {
-    fn encode(&self, s: &mut S) {
+impl<E, S:Encoder<E>> Encodable<S, E> for u16 {
+    fn encode(&self, s: &mut S) -> Result<(), E> {
         s.emit_u16(*self)
     }
 }
 
-impl<D:Decoder> Decodable<D> for u16 {
-    fn decode(d: &mut D) -> u16 {
+impl<E, D:Decoder<E>> Decodable<D, E> for u16 {
+    fn decode(d: &mut D) -> Result<u16, E> {
         d.read_u16()
     }
 }
 
-impl<S:Encoder> Encodable<S> for u32 {
-    fn encode(&self, s: &mut S) {
+impl<E, S:Encoder<E>> Encodable<S, E> for u32 {
+    fn encode(&self, s: &mut S) -> Result<(), E> {
         s.emit_u32(*self)
     }
 }
 
-impl<D:Decoder> Decodable<D> for u32 {
-    fn decode(d: &mut D) -> u32 {
+impl<E, D:Decoder<E>> Decodable<D, E> for u32 {
+    fn decode(d: &mut D) -> Result<u32, E> {
         d.read_u32()
     }
 }
 
-impl<S:Encoder> Encodable<S> for u64 {
-    fn encode(&self, s: &mut S) {
+impl<E, S:Encoder<E>> Encodable<S, E> for u64 {
+    fn encode(&self, s: &mut S) -> Result<(), E> {
         s.emit_u64(*self)
     }
 }
 
-impl<D:Decoder> Decodable<D> for u64 {
-    fn decode(d: &mut D) -> u64 {
+impl<E, D:Decoder<E>> Decodable<D, E> for u64 {
+    fn decode(d: &mut D) -> Result<u64, E> {
         d.read_u64()
     }
 }
 
-impl<S:Encoder> Encodable<S> for int {
-    fn encode(&self, s: &mut S) {
+impl<E, S:Encoder<E>> Encodable<S, E> for int {
+    fn encode(&self, s: &mut S) -> Result<(), E> {
         s.emit_int(*self)
     }
 }
 
-impl<D:Decoder> Decodable<D> for int {
-    fn decode(d: &mut D) -> int {
+impl<E, D:Decoder<E>> Decodable<D, E> for int {
+    fn decode(d: &mut D) -> Result<int, E> {
         d.read_int()
     }
 }
 
-impl<S:Encoder> Encodable<S> for i8 {
-    fn encode(&self, s: &mut S) {
+impl<E, S:Encoder<E>> Encodable<S, E> for i8 {
+    fn encode(&self, s: &mut S) -> Result<(), E> {
         s.emit_i8(*self)
     }
 }
 
-impl<D:Decoder> Decodable<D> for i8 {
-    fn decode(d: &mut D) -> i8 {
+impl<E, D:Decoder<E>> Decodable<D, E> for i8 {
+    fn decode(d: &mut D) -> Result<i8, E> {
         d.read_i8()
     }
 }
 
-impl<S:Encoder> Encodable<S> for i16 {
-    fn encode(&self, s: &mut S) {
+impl<E, S:Encoder<E>> Encodable<S, E> for i16 {
+    fn encode(&self, s: &mut S) -> Result<(), E> {
         s.emit_i16(*self)
     }
 }
 
-impl<D:Decoder> Decodable<D> for i16 {
-    fn decode(d: &mut D) -> i16 {
+impl<E, D:Decoder<E>> Decodable<D, E> for i16 {
+    fn decode(d: &mut D) -> Result<i16, E> {
         d.read_i16()
     }
 }
 
-impl<S:Encoder> Encodable<S> for i32 {
-    fn encode(&self, s: &mut S) {
+impl<E, S:Encoder<E>> Encodable<S, E> for i32 {
+    fn encode(&self, s: &mut S) -> Result<(), E> {
         s.emit_i32(*self)
     }
 }
 
-impl<D:Decoder> Decodable<D> for i32 {
-    fn decode(d: &mut D) -> i32 {
+impl<E, D:Decoder<E>> Decodable<D, E> for i32 {
+    fn decode(d: &mut D) -> Result<i32, E> {
         d.read_i32()
     }
 }
 
-impl<S:Encoder> Encodable<S> for i64 {
-    fn encode(&self, s: &mut S) {
+impl<E, S:Encoder<E>> Encodable<S, E> for i64 {
+    fn encode(&self, s: &mut S) -> Result<(), E> {
         s.emit_i64(*self)
     }
 }
 
-impl<D:Decoder> Decodable<D> for i64 {
-    fn decode(d: &mut D) -> i64 {
+impl<E, D:Decoder<E>> Decodable<D, E> for i64 {
+    fn decode(d: &mut D) -> Result<i64, E> {
         d.read_i64()
     }
 }
 
-impl<'a, S:Encoder> Encodable<S> for &'a str {
-    fn encode(&self, s: &mut S) {
+impl<'a, E, S:Encoder<E>> Encodable<S, E> for &'a str {
+    fn encode(&self, s: &mut S) -> Result<(), E> {
         s.emit_str(*self)
     }
 }
 
-impl<S:Encoder> Encodable<S> for ~str {
-    fn encode(&self, s: &mut S) {
+impl<E, S:Encoder<E>> Encodable<S, E> for ~str {
+    fn encode(&self, s: &mut S) -> Result<(), E> {
         s.emit_str(*self)
     }
 }
 
-impl<D:Decoder> Decodable<D> for ~str {
-    fn decode(d: &mut D) -> ~str {
+impl<E, D:Decoder<E>> Decodable<D, E> for ~str {
+    fn decode(d: &mut D) -> Result<~str, E> {
         d.read_str()
     }
 }
 
-impl<S:Encoder> Encodable<S> for f32 {
-    fn encode(&self, s: &mut S) {
+impl<E, S:Encoder<E>> Encodable<S, E> for f32 {
+    fn encode(&self, s: &mut S) -> Result<(), E> {
         s.emit_f32(*self)
     }
 }
 
-impl<D:Decoder> Decodable<D> for f32 {
-    fn decode(d: &mut D) -> f32 {
+impl<E, D:Decoder<E>> Decodable<D, E> for f32 {
+    fn decode(d: &mut D) -> Result<f32, E> {
         d.read_f32()
     }
 }
 
-impl<S:Encoder> Encodable<S> for f64 {
-    fn encode(&self, s: &mut S) {
+impl<E, S:Encoder<E>> Encodable<S, E> for f64 {
+    fn encode(&self, s: &mut S) -> Result<(), E> {
         s.emit_f64(*self)
     }
 }
 
-impl<D:Decoder> Decodable<D> for f64 {
-    fn decode(d: &mut D) -> f64 {
+impl<E, D:Decoder<E>> Decodable<D, E> for f64 {
+    fn decode(d: &mut D) -> Result<f64, E> {
         d.read_f64()
     }
 }
 
-impl<S:Encoder> Encodable<S> for bool {
-    fn encode(&self, s: &mut S) {
+impl<E, S:Encoder<E>> Encodable<S, E> for bool {
+    fn encode(&self, s: &mut S) -> Result<(), E> {
         s.emit_bool(*self)
     }
 }
 
-impl<D:Decoder> Decodable<D> for bool {
-    fn decode(d: &mut D) -> bool {
+impl<E, D:Decoder<E>> Decodable<D, E> for bool {
+    fn decode(d: &mut D) -> Result<bool, E> {
         d.read_bool()
     }
 }
 
-impl<S:Encoder> Encodable<S> for char {
-    fn encode(&self, s: &mut S) {
+impl<E, S:Encoder<E>> Encodable<S, E> for char {
+    fn encode(&self, s: &mut S) -> Result<(), E> {
         s.emit_char(*self)
     }
 }
 
-impl<D:Decoder> Decodable<D> for char {
-    fn decode(d: &mut D) -> char {
+impl<E, D:Decoder<E>> Decodable<D, E> for char {
+    fn decode(d: &mut D) -> Result<char, E> {
         d.read_char()
     }
 }
 
-impl<S:Encoder> Encodable<S> for () {
-    fn encode(&self, s: &mut S) {
+impl<E, S:Encoder<E>> Encodable<S, E> for () {
+    fn encode(&self, s: &mut S) -> Result<(), E> {
         s.emit_nil()
     }
 }
 
-impl<D:Decoder> Decodable<D> for () {
-    fn decode(d: &mut D) -> () {
+impl<E, D:Decoder<E>> Decodable<D, E> for () {
+    fn decode(d: &mut D) -> Result<(), E> {
         d.read_nil()
     }
 }
 
-impl<'a, S:Encoder,T:Encodable<S>> Encodable<S> for &'a T {
-    fn encode(&self, s: &mut S) {
+impl<'a, E, S:Encoder<E>,T:Encodable<S, E>> Encodable<S, E> for &'a T {
+    fn encode(&self, s: &mut S) -> Result<(), E> {
         (**self).encode(s)
     }
 }
 
-impl<S:Encoder,T:Encodable<S>> Encodable<S> for ~T {
-    fn encode(&self, s: &mut S) {
+impl<E, S:Encoder<E>,T:Encodable<S, E>> Encodable<S, E> for ~T {
+    fn encode(&self, s: &mut S) -> Result<(), E> {
         (**self).encode(s)
     }
 }
 
-impl<D:Decoder,T:Decodable<D>> Decodable<D> for ~T {
-    fn decode(d: &mut D) -> ~T {
-        ~Decodable::decode(d)
+impl<E, D:Decoder<E>,T:Decodable<D, E>> Decodable<D, E> for ~T {
+    fn decode(d: &mut D) -> Result<~T, E> {
+        Ok(~try!(Decodable::decode(d)))
     }
 }
 
-impl<S:Encoder,T:Encodable<S>> Encodable<S> for @T {
-    fn encode(&self, s: &mut S) {
+impl<E, S:Encoder<E>,T:Encodable<S, E>> Encodable<S, E> for @T {
+    fn encode(&self, s: &mut S) -> Result<(), E> {
         (**self).encode(s)
     }
 }
 
-impl<S:Encoder,T:Encodable<S>> Encodable<S> for Rc<T> {
+impl<E, S:Encoder<E>,T:Encodable<S, E>> Encodable<S, E> for Rc<T> {
     #[inline]
-    fn encode(&self, s: &mut S) {
+    fn encode(&self, s: &mut S) -> Result<(), E> {
         (**self).encode(s)
     }
 }
 
-impl<D:Decoder,T:Decodable<D>> Decodable<D> for Rc<T> {
+impl<E, D:Decoder<E>,T:Decodable<D, E>> Decodable<D, E> for Rc<T> {
     #[inline]
-    fn decode(d: &mut D) -> Rc<T> {
-        Rc::new(Decodable::decode(d))
+    fn decode(d: &mut D) -> Result<Rc<T>, E> {
+        Ok(Rc::new(try!(Decodable::decode(d))))
     }
 }
 
-impl<D:Decoder,T:Decodable<D> + 'static> Decodable<D> for @T {
-    fn decode(d: &mut D) -> @T {
-        @Decodable::decode(d)
+impl<E, D:Decoder<E>,T:Decodable<D, E> + 'static> Decodable<D, E> for @T {
+    fn decode(d: &mut D) -> Result<@T, E> {
+        Ok(@try!(Decodable::decode(d)))
     }
 }
 
-impl<'a, S:Encoder,T:Encodable<S>> Encodable<S> for &'a [T] {
-    fn encode(&self, s: &mut S) {
+impl<'a, E, S:Encoder<E>,T:Encodable<S, E>> Encodable<S, E> for &'a [T] {
+    fn encode(&self, s: &mut S) -> Result<(), E> {
         s.emit_seq(self.len(), |s| {
             for (i, e) in self.iter().enumerate() {
-                s.emit_seq_elt(i, |s| e.encode(s))
+                try!(s.emit_seq_elt(i, |s| e.encode(s)))
             }
+            Ok(())
         })
     }
 }
 
-impl<S:Encoder,T:Encodable<S>> Encodable<S> for ~[T] {
-    fn encode(&self, s: &mut S) {
+impl<E, S:Encoder<E>,T:Encodable<S, E>> Encodable<S, E> for ~[T] {
+    fn encode(&self, s: &mut S) -> Result<(), E> {
         s.emit_seq(self.len(), |s| {
             for (i, e) in self.iter().enumerate() {
-                s.emit_seq_elt(i, |s| e.encode(s))
+                try!(s.emit_seq_elt(i, |s| e.encode(s)))
             }
+            Ok(())
         })
     }
 }
 
-impl<D:Decoder,T:Decodable<D>> Decodable<D> for ~[T] {
-    fn decode(d: &mut D) -> ~[T] {
+impl<E, D:Decoder<E>,T:Decodable<D, E>> Decodable<D, E> for ~[T] {
+    fn decode(d: &mut D) -> Result<~[T], E> {
         d.read_seq(|d, len| {
-            slice::from_fn(len, |i| {
-                d.read_seq_elt(i, |d| Decodable::decode(d))
-            })
+            let mut v: ~[T] = slice::with_capacity(len);
+            for i in range(0, len) {
+                v.push(try!(d.read_seq_elt(i, |d| Decodable::decode(d))));
+            }
+            Ok(v)
         })
     }
 }
 
-impl<S:Encoder,T:Encodable<S>> Encodable<S> for Vec<T> {
-    fn encode(&self, s: &mut S) {
+impl<E, S:Encoder<E>,T:Encodable<S, E>> Encodable<S, E> for Vec<T> {
+    fn encode(&self, s: &mut S) -> Result<(), E> {
         s.emit_seq(self.len(), |s| {
             for (i, e) in self.iter().enumerate() {
-                s.emit_seq_elt(i, |s| e.encode(s))
+                try!(s.emit_seq_elt(i, |s| e.encode(s)))
             }
+            Ok(())
         })
     }
 }
 
-impl<D:Decoder,T:Decodable<D>> Decodable<D> for Vec<T> {
-    fn decode(d: &mut D) -> Vec<T> {
+impl<E, D:Decoder<E>,T:Decodable<D, E>> Decodable<D, E> for Vec<T> {
+    fn decode(d: &mut D) -> Result<Vec<T>, E> {
         d.read_seq(|d, len| {
-            Vec::from_fn(len, |i| {
-                d.read_seq_elt(i, |d| Decodable::decode(d))
-            })
+            let mut v = Vec::with_capacity(len);
+            for i in range(0, len) {
+                v.push(try!(d.read_seq_elt(i, |d| Decodable::decode(d))));
+            }
+            Ok(v)
         })
     }
 }
 
-impl<S:Encoder,T:Encodable<S>> Encodable<S> for Option<T> {
-    fn encode(&self, s: &mut S) {
+impl<E, S:Encoder<E>,T:Encodable<S, E>> Encodable<S, E> for Option<T> {
+    fn encode(&self, s: &mut S) -> Result<(), E> {
         s.emit_option(|s| {
             match *self {
                 None => s.emit_option_none(),
@@ -465,13 +486,13 @@ impl<S:Encoder,T:Encodable<S>> Encodable<S> for Option<T> {
     }
 }
 
-impl<D:Decoder,T:Decodable<D>> Decodable<D> for Option<T> {
-    fn decode(d: &mut D) -> Option<T> {
+impl<E, D:Decoder<E>,T:Decodable<D, E>> Decodable<D, E> for Option<T> {
+    fn decode(d: &mut D) -> Result<Option<T>, E> {
         d.read_option(|d, b| {
             if b {
-                Some(Decodable::decode(d))
+                Ok(Some(try!(Decodable::decode(d))))
             } else {
-                None
+                Ok(None)
             }
         })
     }
@@ -482,30 +503,31 @@ macro_rules! peel(($name:ident, $($other:ident,)*) => (tuple!($($other,)*)))
 macro_rules! tuple (
     () => ();
     ( $($name:ident,)+ ) => (
-        impl<D:Decoder,$($name:Decodable<D>),*> Decodable<D> for ($($name,)*) {
+        impl<E, D:Decoder<E>,$($name:Decodable<D, E>),*> Decodable<D,E> for ($($name,)*) {
             #[allow(uppercase_variables)]
-            fn decode(d: &mut D) -> ($($name,)*) {
+            fn decode(d: &mut D) -> Result<($($name,)*), E> {
                 d.read_tuple(|d, amt| {
                     let mut i = 0;
-                    let ret = ($(d.read_tuple_arg({ i+=1; i-1 }, |d| -> $name {
+                    let ret = ($(try!(d.read_tuple_arg({ i+=1; i-1 }, |d| -> Result<$name,E> {
                         Decodable::decode(d)
-                    }),)*);
+                    })),)*);
                     assert!(amt == i,
                             "expected tuple of length `{}`, found tuple \
                              of length `{}`", i, amt);
-                    return ret;
+                    return Ok(ret);
                 })
             }
         }
-        impl<S:Encoder,$($name:Encodable<S>),*> Encodable<S> for ($($name,)*) {
+        impl<E, S:Encoder<E>,$($name:Encodable<S, E>),*> Encodable<S, E> for ($($name,)*) {
             #[allow(uppercase_variables)]
-            fn encode(&self, s: &mut S) {
+            fn encode(&self, s: &mut S) -> Result<(), E> {
                 let ($(ref $name,)*) = *self;
                 let mut n = 0;
                 $(let $name = $name; n += 1;)*
                 s.emit_tuple(n, |s| {
                     let mut i = 0;
-                    $(s.emit_seq_elt({ i+=1; i-1 }, |s| $name.encode(s));)*
+                    $(try!(s.emit_seq_elt({ i+=1; i-1 }, |s| $name.encode(s)));)*
+                    Ok(())
                 })
             }
         }
@@ -515,29 +537,29 @@ macro_rules! tuple (
 
 tuple! { T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, }
 
-impl<E: Encoder> Encodable<E> for path::posix::Path {
-    fn encode(&self, e: &mut E) {
+impl<E, S: Encoder<E>> Encodable<S, E> for path::posix::Path {
+    fn encode(&self, e: &mut S) -> Result<(), E> {
         self.as_vec().encode(e)
     }
 }
 
-impl<D: Decoder> Decodable<D> for path::posix::Path {
-    fn decode(d: &mut D) -> path::posix::Path {
-        let bytes: ~[u8] = Decodable::decode(d);
-        path::posix::Path::new(bytes)
+impl<E, D: Decoder<E>> Decodable<D, E> for path::posix::Path {
+    fn decode(d: &mut D) -> Result<path::posix::Path, E> {
+        let bytes: ~[u8] = try!(Decodable::decode(d));
+        Ok(path::posix::Path::new(bytes))
     }
 }
 
-impl<E: Encoder> Encodable<E> for path::windows::Path {
-    fn encode(&self, e: &mut E) {
+impl<E, S: Encoder<E>> Encodable<S, E> for path::windows::Path {
+    fn encode(&self, e: &mut S) -> Result<(), E> {
         self.as_vec().encode(e)
     }
 }
 
-impl<D: Decoder> Decodable<D> for path::windows::Path {
-    fn decode(d: &mut D) -> path::windows::Path {
-        let bytes: ~[u8] = Decodable::decode(d);
-        path::windows::Path::new(bytes)
+impl<E, D: Decoder<E>> Decodable<D, E> for path::windows::Path {
+    fn decode(d: &mut D) -> Result<path::windows::Path, E> {
+        let bytes: ~[u8] = try!(Decodable::decode(d));
+        Ok(path::windows::Path::new(bytes))
     }
 }
 
@@ -546,32 +568,37 @@ impl<D: Decoder> Decodable<D> for path::windows::Path {
 //
 // In some cases, these should eventually be coded as traits.
 
-pub trait EncoderHelpers {
-    fn emit_from_vec<T>(&mut self, v: &[T], f: |&mut Self, v: &T|);
+pub trait EncoderHelpers<E> {
+    fn emit_from_vec<T>(&mut self,
+                        v: &[T],
+                        f: |&mut Self, v: &T| -> Result<(), E>) -> Result<(), E>;
 }
 
-impl<S:Encoder> EncoderHelpers for S {
-    fn emit_from_vec<T>(&mut self, v: &[T], f: |&mut S, &T|) {
+impl<E, S:Encoder<E>> EncoderHelpers<E> for S {
+    fn emit_from_vec<T>(&mut self, v: &[T], f: |&mut S, &T| -> Result<(), E>) -> Result<(), E> {
         self.emit_seq(v.len(), |this| {
             for (i, e) in v.iter().enumerate() {
-                this.emit_seq_elt(i, |this| {
+                try!(this.emit_seq_elt(i, |this| {
                     f(this, e)
-                })
+                }));
             }
+            Ok(())
         })
     }
 }
 
-pub trait DecoderHelpers {
-    fn read_to_vec<T>(&mut self, f: |&mut Self| -> T) -> ~[T];
+pub trait DecoderHelpers<E> {
+    fn read_to_vec<T>(&mut self, f: |&mut Self| -> Result<T, E>) -> Result<~[T], E>;
 }
 
-impl<D:Decoder> DecoderHelpers for D {
-    fn read_to_vec<T>(&mut self, f: |&mut D| -> T) -> ~[T] {
+impl<E, D:Decoder<E>> DecoderHelpers<E> for D {
+    fn read_to_vec<T>(&mut self, f: |&mut D| -> Result<T, E>) -> Result<~[T], E> {
         self.read_seq(|this, len| {
-            slice::from_fn(len, |i| {
-                this.read_seq_elt(i, |this| f(this))
-            })
+            let mut v = slice::with_capacity(len);
+            for i in range(0, len) {
+                v.push(try!(this.read_seq_elt(i, |this| f(this))));
+            }
+            Ok(v)
         })
     }
 }

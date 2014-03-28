@@ -30,11 +30,15 @@ pub fn expand_deriving_decodable(cx: &mut ExtCtxt,
         span: span,
         attributes: Vec::new(),
         path: Path::new_(vec!("serialize", "Decodable"), None,
-                         vec!(~Literal(Path::new_local("__D"))), true),
+                         vec!(~Literal(Path::new_local("__D")),
+                              ~Literal(Path::new_local("__E"))), true),
         additional_bounds: Vec::new(),
         generics: LifetimeBounds {
             lifetimes: Vec::new(),
-            bounds: vec!(("__D", vec!(Path::new(vec!("serialize", "Decoder"))))),
+            bounds: vec!(("__D", vec!(Path::new_(
+                            vec!("serialize", "Decoder"), None,
+                            vec!(~Literal(Path::new_local("__E"))), true))),
+                         ("__E", vec!()))
         },
         methods: vec!(
             MethodDef {
@@ -43,7 +47,8 @@ pub fn expand_deriving_decodable(cx: &mut ExtCtxt,
                 explicit_self: None,
                 args: vec!(Ptr(~Literal(Path::new_local("__D")),
                             Borrowed(None, MutMutable))),
-                ret_ty: Self,
+                ret_ty: Literal(Path::new_(vec!("std", "result", "Result"), None,
+                                          vec!(~Self, ~Literal(Path::new_local("__E"))), true)),
                 inline: false,
                 const_nonmatching: true,
                 combine_substructure: decodable_substructure,
@@ -78,11 +83,13 @@ fn decodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
                                               substr.type_ident,
                                               summary,
                                               |cx, span, name, field| {
-                cx.expr_method_call(span, blkdecoder, read_struct_field,
-                                    vec!(cx.expr_str(span, name),
-                                      cx.expr_uint(span, field),
-                                      lambdadecode))
+                cx.expr_try(span,
+                    cx.expr_method_call(span, blkdecoder, read_struct_field,
+                                        vec!(cx.expr_str(span, name),
+                                          cx.expr_uint(span, field),
+                                          lambdadecode)))
             });
+            let result = cx.expr_ok(trait_span, result);
             cx.expr_method_call(trait_span,
                                 decoder,
                                 cx.ident_of("read_struct"),
@@ -108,8 +115,9 @@ fn decodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
                                                    parts,
                                                    |cx, span, _, field| {
                     let idx = cx.expr_uint(span, field);
-                    cx.expr_method_call(span, blkdecoder, rvariant_arg,
-                                        vec!(idx, lambdadecode))
+                    cx.expr_try(span,
+                        cx.expr_method_call(span, blkdecoder, rvariant_arg,
+                                            vec!(idx, lambdadecode)))
                 });
 
                 arms.push(cx.arm(v_span,
@@ -119,7 +127,9 @@ fn decodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
 
             arms.push(cx.arm_unreachable(trait_span));
 
-            let result = cx.expr_match(trait_span, cx.expr_ident(trait_span, variant), arms);
+            let result = cx.expr_ok(trait_span,
+                                    cx.expr_match(trait_span,
+                                                  cx.expr_ident(trait_span, variant), arms));
             let lambda = cx.lambda_expr(trait_span, vec!(blkarg, variant), result);
             let variant_vec = cx.expr_vec(trait_span, variants);
             let result = cx.expr_method_call(trait_span, blkdecoder,
