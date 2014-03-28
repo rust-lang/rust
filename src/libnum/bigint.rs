@@ -86,7 +86,7 @@ A `BigUint`-typed value `BigUint { data: ~[a, b, c] }` represents a number
 */
 #[deriving(Clone)]
 pub struct BigUint {
-    priv data: Vec<BigDigit>
+    data: Vec<BigDigit>
 }
 
 impl Eq for BigUint {
@@ -863,8 +863,8 @@ impl Neg<Sign> for Sign {
 /// A big signed integer type.
 #[deriving(Clone)]
 pub struct BigInt {
-    priv sign: Sign,
-    priv data: BigUint
+    sign: Sign,
+    data: BigUint
 }
 
 impl Eq for BigInt {

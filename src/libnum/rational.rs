@@ -22,8 +22,8 @@ use bigint::{BigInt, BigUint, Sign, Plus, Minus};
 #[deriving(Clone)]
 #[allow(missing_doc)]
 pub struct Ratio<T> {
-    priv numer: T,
-    priv denom: T
+    numer: T,
+    denom: T
 }
 
 /// Alias for a `Ratio` of machine-sized integers.
