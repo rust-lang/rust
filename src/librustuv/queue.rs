@@ -46,13 +46,13 @@ struct State {
 /// This structure is intended to be stored next to the event loop, and it is
 /// used to create new `Queue` structures.
 pub struct QueuePool {
-    priv queue: UnsafeArc<State>,
-    priv refcnt: uint,
+    queue: UnsafeArc<State>,
+    refcnt: uint,
 }
 
 /// This type is used to send messages back to the original event loop.
 pub struct Queue {
-    priv queue: UnsafeArc<State>,
+    queue: UnsafeArc<State>,
 }
 
 extern fn async_cb(handle: *uvll::uv_async_t, status: c_int) {
