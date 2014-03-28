@@ -115,6 +115,8 @@ pub enum Lint {
     DeprecatedOwnedVector,
 
     Warnings,
+
+    RawPointerDeriving,
 }
 
 pub fn level_to_str(lv: level) -> &'static str {
@@ -405,6 +407,13 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
         lint: DeprecatedOwnedVector,
         desc: "use of a `~[T]` vector",
         default: allow,
+    }),
+
+    ("raw_pointer_deriving",
+     LintSpec {
+        lint: RawPointerDeriving,
+        desc: "uses of #[deriving] with raw pointers are rarely correct",
+        default: warn,
     }),
 ];
 
@@ -956,6 +965,37 @@ fn check_heap_item(cx: &Context, it: &ast::Item) {
             }
         }
         _ => ()
+    }
+}
+
+struct RawPtrDerivingVisitor<'a> {
+    cx: &'a Context<'a>
+}
+
+impl<'a> Visitor<()> for RawPtrDerivingVisitor<'a> {
+    fn visit_ty(&mut self, ty: &ast::Ty, _: ()) {
+        static MSG: &'static str = "use of `#[deriving]` with a raw pointer";
+        match ty.node {
+            ast::TyPtr(..) => self.cx.span_lint(RawPointerDeriving, ty.span, MSG),
+            _ => {}
+        }
+        visit::walk_ty(self, ty, ());
+    }
+    // explicit override to a no-op to reduce code bloat
+    fn visit_expr(&mut self, _: &ast::Expr, _: ()) {}
+    fn visit_block(&mut self, _: &ast::Block, _: ()) {}
+}
+
+fn check_raw_ptr_deriving(cx: &Context, item: &ast::Item) {
+    if !attr::contains_name(item.attrs.as_slice(), "deriving") {
+        return
+    }
+    match item.node {
+        ast::ItemStruct(..) | ast::ItemEnum(..) => {
+            let mut visitor = RawPtrDerivingVisitor { cx: cx };
+            visit::walk_item(&mut visitor, item, ());
+        }
+        _ => {}
     }
 }
 
@@ -1585,6 +1625,7 @@ impl<'a> Visitor<()> for Context<'a> {
             check_heap_item(cx, it);
             check_missing_doc_item(cx, it);
             check_attrs_usage(cx, it.attrs.as_slice());
+            check_raw_ptr_deriving(cx, it);
 
             cx.visit_ids(|v| v.visit_item(it, ()));
 
