@@ -2356,6 +2356,8 @@ pub mod consts {
 
             pub static CLOCK_REALTIME: c_int = 0;
             pub static CLOCK_MONOTONIC: c_int = 1;
+
+            pub static WNOHANG: c_int = 1;
         }
         pub mod posix08 {
         }
@@ -2802,6 +2804,8 @@ pub mod consts {
 
             pub static CLOCK_REALTIME: c_int = 0;
             pub static CLOCK_MONOTONIC: c_int = 4;
+
+            pub static WNOHANG: c_int = 1;
         }
         pub mod posix08 {
         }
@@ -3187,6 +3191,8 @@ pub mod consts {
             pub static PTHREAD_CREATE_JOINABLE: c_int = 1;
             pub static PTHREAD_CREATE_DETACHED: c_int = 2;
             pub static PTHREAD_STACK_MIN: size_t = 8192;
+
+            pub static WNOHANG: c_int = 1;
         }
         pub mod posix08 {
         }

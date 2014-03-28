@@ -134,6 +134,18 @@ impl rtio::RtioProcess for Process {
     }
 
     fn kill(&mut self, signum: int) -> Result<(), io::IoError> {
+        // On linux (and possibly other unices), a process that has exited will
+        // continue to accept signals because it is "defunct". The delivery of
+        // signals will only fail once the child has been reaped. For this
+        // reason, if the process hasn't exited yet, then we attempt to collect
+        // their status with WNOHANG.
+        if self.exit_code.is_none() {
+            match waitpid_nowait(self.pid) {
+                Some(code) => { self.exit_code = Some(code); }
+                None => {}
+            }
+        }
+
         // if the process has finished, and therefore had waitpid called,
         // and we kill it, then on unix we might ending up killing a
         // newer process that happens to have the same (re-used) id
@@ -662,6 +674,31 @@ fn free_handle(_handle: *()) {
     // unix has no process handle object, just a pid
 }
 
+#[cfg(unix)]
+fn translate_status(status: c_int) -> p::ProcessExit {
+    #[cfg(target_os = "linux")]
+    #[cfg(target_os = "android")]
+    mod imp {
+        pub fn WIFEXITED(status: i32) -> bool { (status & 0xff) == 0 }
+        pub fn WEXITSTATUS(status: i32) -> i32 { (status >> 8) & 0xff }
+        pub fn WTERMSIG(status: i32) -> i32 { status & 0x7f }
+    }
+
+    #[cfg(target_os = "macos")]
+    #[cfg(target_os = "freebsd")]
+    mod imp {
+        pub fn WIFEXITED(status: i32) -> bool { (status & 0x7f) == 0 }
+        pub fn WEXITSTATUS(status: i32) -> i32 { status >> 8 }
+        pub fn WTERMSIG(status: i32) -> i32 { status & 0o177 }
+    }
+
+    if imp::WIFEXITED(status) {
+        p::ExitStatus(imp::WEXITSTATUS(status) as int)
+    } else {
+        p::ExitSignal(imp::WTERMSIG(status) as int)
+    }
+}
+
 /**
  * Waits for a process to exit and returns the exit code, failing
  * if there is no process with the specified id.
@@ -723,33 +760,31 @@ fn waitpid(pid: pid_t) -> p::ProcessExit {
     #[cfg(unix)]
     fn waitpid_os(pid: pid_t) -> p::ProcessExit {
         use std::libc::funcs::posix01::wait;
-
-        #[cfg(target_os = "linux")]
-        #[cfg(target_os = "android")]
-        mod imp {
-            pub fn WIFEXITED(status: i32) -> bool { (status & 0xff) == 0 }
-            pub fn WEXITSTATUS(status: i32) -> i32 { (status >> 8) & 0xff }
-            pub fn WTERMSIG(status: i32) -> i32 { status & 0x7f }
-        }
-
-        #[cfg(target_os = "macos")]
-        #[cfg(target_os = "freebsd")]
-        mod imp {
-            pub fn WIFEXITED(status: i32) -> bool { (status & 0x7f) == 0 }
-            pub fn WEXITSTATUS(status: i32) -> i32 { status >> 8 }
-            pub fn WTERMSIG(status: i32) -> i32 { status & 0o177 }
-        }
-
         let mut status = 0 as c_int;
         match retry(|| unsafe { wait::waitpid(pid, &mut status, 0) }) {
             -1 => fail!("unknown waitpid error: {}", super::last_error()),
-            _ => {
-                if imp::WIFEXITED(status) {
-                    p::ExitStatus(imp::WEXITSTATUS(status) as int)
-                } else {
-                    p::ExitSignal(imp::WTERMSIG(status) as int)
-                }
-            }
+            _ => translate_status(status),
+        }
+    }
+}
+
+fn waitpid_nowait(pid: pid_t) -> Option<p::ProcessExit> {
+    return waitpid_os(pid);
+
+    // This code path isn't necessary on windows
+    #[cfg(windows)]
+    fn waitpid_os(_pid: pid_t) -> Option<p::ProcessExit> { None }
+
+    #[cfg(unix)]
+    fn waitpid_os(pid: pid_t) -> Option<p::ProcessExit> {
+        use std::libc::funcs::posix01::wait;
+        let mut status = 0 as c_int;
+        match retry(|| unsafe {
+            wait::waitpid(pid, &mut status, libc::WNOHANG)
+        }) {
+            n if n == pid => Some(translate_status(status)),
+            0 => None,
+            n => fail!("unknown waitpid error `{}`: {}", n, super::last_error()),
         }
     }
 }
