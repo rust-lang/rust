@@ -1286,6 +1286,6 @@ impl LifeGiver {
     }
 
     fn get_generated_lifetimes(&self) -> Vec<ast::Lifetime> {
-        self.generated.get()
+        self.generated.borrow().clone()
     }
 }
