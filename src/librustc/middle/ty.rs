@@ -384,6 +384,7 @@ pub struct t_box_ {
 // alive, and using ty::get is unsafe when the ctxt is no longer alive.
 enum t_opaque {}
 
+#[allow(raw_pointer_deriving)]
 #[deriving(Clone, Eq, TotalEq, Hash)]
 pub struct t { priv inner: *t_opaque }
 
