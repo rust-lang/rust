@@ -11,8 +11,6 @@
 // This test can't be a unit test in std,
 // because it needs TempDir, which is in extra
 
-// ignore-fast
-
 use std::io::TempDir;
 use std::os;
 use std::libc;

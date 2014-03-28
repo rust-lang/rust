@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // compile-flags: --test --cfg ignorecfg
-// ignore-fast
 
 #[test]
 #[ignore(cfg(ignorecfg))]

@@ -10,7 +10,6 @@
 
 // aux-build:macro_crate_test.rs
 // ignore-stage1
-// ignore-fast
 // ignore-android
 // force-host
 
@@ -19,7 +18,6 @@
 // This implies that both versions are the host architecture, meaning this test
 // must also be compiled with the host arch.
 //
-// Hence, ignore-stage1 because macros are unstable around there, ignore-fast
 // because this doesn't work with that test runner, ignore-android because it
 // can't run host binaries, and force-host to make this test build as the host
 // arch.

@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//ignore-fast
 
 #[start]
 fn start(_argc: int, _argv: **u8) -> int {

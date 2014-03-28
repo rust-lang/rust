@@ -10,7 +10,6 @@
 
 #[feature(managed_boxes)];
 
-// ignore-fast
 
 type compare<'a, T> = 'a |T, T| -> bool;
 

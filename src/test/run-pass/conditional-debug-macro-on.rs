@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-fast compile-flags directive doesn't work for check-fast
 // exec-env:RUST_LOG=conditional-debug-macro-on=4
 
 pub fn main() {

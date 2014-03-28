@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-fast
 // aux-build:crateresolve8-1.rs
 
 #[crate_id="crateresolve8#0.1"];

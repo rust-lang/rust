@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-fast
 // aux-build:issue-7899.rs
 
 extern crate testcrate = "issue-7899";

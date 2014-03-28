@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-fast aux-build
 // aux-build:ambig_impl_2_lib.rs
 extern crate ambig_impl_2_lib;
 use ambig_impl_2_lib::me;

@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // ignore-linux see joyent/libuv#1189
-// ignore-fast
 // ignore-android needs extra network permissions
 // exec-env:RUST_LOG=debug
 

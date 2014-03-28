@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // ignore-test - FIXME(#8538) some kind of problem linking induced by extern "C" fns
-// ignore-fast - check-fast doesn't like this
 
 // Smallest hello world with no runtime
 

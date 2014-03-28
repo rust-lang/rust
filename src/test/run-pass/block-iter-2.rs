@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-fast
 
 
 fn iter_vec<T>(v: Vec<T> , f: |&T|) { for x in v.iter() { f(x); } }

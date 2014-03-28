@@ -18,6 +18,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-freebsd FIXME #12460
+
 #[path = "../compile-fail"]
 mod foo; //~ ERROR: illegal operation on a directory
 

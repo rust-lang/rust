@@ -1,4 +1,3 @@
-// ignore-fast
 
 // Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
