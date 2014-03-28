@@ -26,7 +26,7 @@ pub struct Toc {
     /// # Main
     /// ### A
     /// ## B
-    priv entries: Vec<TocEntry>
+    entries: Vec<TocEntry>
 }
 
 impl Toc {
@@ -37,17 +37,17 @@ impl Toc {
 
 #[deriving(Eq)]
 pub struct TocEntry {
-    priv level: u32,
-    priv sec_number: ~str,
-    priv name: ~str,
-    priv id: ~str,
-    priv children: Toc,
+    level: u32,
+    sec_number: ~str,
+    name: ~str,
+    id: ~str,
+    children: Toc,
 }
 
 /// Progressive construction of a table of contents.
 #[deriving(Eq)]
 pub struct TocBuilder {
-    priv top_level: Toc,
+    top_level: Toc,
     /// The current heirachy of parent headings, the levels are
     /// strictly increasing (i.e. chain[0].level < chain[1].level <
     /// ...) with each entry being the most recent occurance of a
@@ -56,7 +56,7 @@ pub struct TocBuilder {
     /// the most recent one).
     ///
     /// We also have `chain[0].level <= top_level.entries[last]`.
-    priv chain: Vec<TocEntry>
+    chain: Vec<TocEntry>
 }
 
 impl TocBuilder {
