@@ -266,6 +266,8 @@ pub mod types {
                 }
 
                 pub enum timezone {}
+
+                pub type sighandler_t = size_t;
             }
             pub mod bsd44 {
                 use libc::types::os::arch::c95::{c_char, c_int, c_uint};
@@ -637,6 +639,8 @@ pub mod types {
                 }
 
                 pub enum timezone {}
+
+                pub type sighandler_t = size_t;
             }
             pub mod bsd44 {
                 use libc::types::os::arch::c95::{c_char, c_int, c_uint};
@@ -1206,6 +1210,8 @@ pub mod types {
                 }
 
                 pub enum timezone {}
+
+                pub type sighandler_t = size_t;
             }
 
             pub mod bsd44 {
@@ -2292,6 +2298,8 @@ pub mod consts {
             use libc::types::os::arch::c95::{c_int, size_t};
 
             pub static SIGTRAP : c_int = 5;
+            pub static SIGPIPE: c_int = 13;
+            pub static SIG_IGN: size_t = 1;
 
             pub static GLOB_ERR      : c_int = 1 << 0;
             pub static GLOB_MARK     : c_int = 1 << 1;
@@ -2743,6 +2751,8 @@ pub mod consts {
             use libc::types::os::arch::c95::{c_int, size_t};
 
             pub static SIGTRAP : c_int = 5;
+            pub static SIGPIPE: c_int = 13;
+            pub static SIG_IGN: size_t = 1;
 
             pub static GLOB_APPEND   : c_int = 0x0001;
             pub static GLOB_DOOFFS   : c_int = 0x0002;
@@ -3140,6 +3150,8 @@ pub mod consts {
             use libc::types::os::arch::c95::{c_int, size_t};
 
             pub static SIGTRAP : c_int = 5;
+            pub static SIGPIPE: c_int = 13;
+            pub static SIG_IGN: size_t = 1;
 
             pub static GLOB_APPEND   : c_int = 0x0001;
             pub static GLOB_DOOFFS   : c_int = 0x0002;
@@ -3841,6 +3853,24 @@ pub mod funcs {
                 pub fn symlink(path1: *c_char, path2: *c_char) -> c_int;
 
                 pub fn ftruncate(fd: c_int, length: off_t) -> c_int;
+            }
+        }
+
+        pub mod signal {
+            use libc::types::os::arch::c95::c_int;
+            use libc::types::os::common::posix01::sighandler_t;
+
+            #[cfg(not(target_os = "android"))]
+            extern {
+                pub fn signal(signum: c_int,
+                              handler: sighandler_t) -> sighandler_t;
+            }
+
+            #[cfg(target_os = "android")]
+            extern {
+                #[link_name = "bsd_signal"]
+                pub fn signal(signum: c_int,
+                              handler: sighandler_t) -> sighandler_t;
             }
         }
 
