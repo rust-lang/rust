@@ -215,6 +215,7 @@ $$(LIBUV_DIR_$(1))/Release/libuv.a: $$(LIBUV_DEPS) $$(LIBUV_MAKEFILE_$(1)) \
 		BUILDTYPE=Release \
 		NO_LOAD="$$(LIBUV_NO_LOAD)" \
 		V=$$(VERBOSE)
+	$$(Q)touch $$@
 
 endif
 
