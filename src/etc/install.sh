@@ -379,9 +379,11 @@ then
     "${CFG_PREFIX}/bin/rustc" --version > /dev/null
     if [ $? -ne 0 ]
     then
-        err "can't execute installed rustc binary. installation may be broken. " \
-            "if this is expected then rerun install.sh with \`--disable-verify\` " \
-            "or \`make install\` with \`--disable-verify-install\`"
+        ERR="can't execute installed rustc binary. "
+        ERR="${ERR}installation may be broken. "
+        ERR="${ERR}if this is expected then rerun install.sh with \`--disable-verify\` "
+        ERR="${ERR}or \`make install\` with \`--disable-verify-install\`"
+        err "${ERR}"
     fi
 fi
 
