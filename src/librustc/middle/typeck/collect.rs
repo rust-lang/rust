@@ -152,7 +152,7 @@ pub fn get_enum_variant_types(ccx: &CrateCtxt,
         let result_ty = match variant.node.kind {
             ast::TupleVariantKind(ref args) if args.len() > 0 => {
                 let rs = ExplicitRscope;
-                let input_tys = args.map(|va| ccx.to_ty(&rs, va.ty));
+                let input_tys: Vec<_> = args.iter().map(|va| ccx.to_ty(&rs, va.ty)).collect();
                 ty::mk_ctor_fn(tcx, scope, input_tys.as_slice(), enum_ty)
             }
 
@@ -168,8 +168,8 @@ pub fn get_enum_variant_types(ccx: &CrateCtxt,
 
                 convert_struct(ccx, struct_def, tpt, variant.node.id);
 
-                let input_tys = struct_def.fields.map(
-                    |f| ty::node_id_to_type(ccx.tcx, f.node.id));
+                let input_tys: Vec<_> = struct_def.fields.iter().map(
+                    |f| ty::node_id_to_type(ccx.tcx, f.node.id)).collect();
                 ty::mk_ctor_fn(tcx, scope, input_tys.as_slice(), enum_ty)
             }
         };
@@ -222,7 +222,7 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt, trait_id: ast::NodeId) {
                     }
 
                     // Add an entry mapping
-                    let method_def_ids = @ms.map(|m| {
+                    let method_def_ids = @ms.iter().map(|m| {
                         match m {
                             &ast::Required(ref ty_method) => {
                                 local_def(ty_method.id)
@@ -231,13 +231,11 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt, trait_id: ast::NodeId) {
                                 local_def(method.id)
                             }
                         }
-                    });
+                    }).collect();
 
                     let trait_def_id = local_def(trait_id);
                     tcx.trait_method_def_ids.borrow_mut()
-                        .insert(trait_def_id, @method_def_ids.iter()
-                                                             .map(|x| *x)
-                                                             .collect());
+                        .insert(trait_def_id, method_def_ids);
                 }
                 _ => {} // Ignore things that aren't traits.
             }
@@ -697,9 +695,9 @@ pub fn convert_struct(ccx: &CrateCtxt,
                 tcx.tcache.borrow_mut().insert(local_def(ctor_id), tpt);
             } else if struct_def.fields.get(0).node.kind.is_unnamed() {
                 // Tuple-like.
-                let inputs = struct_def.fields.map(
+                let inputs: Vec<_> = struct_def.fields.iter().map(
                         |field| tcx.tcache.borrow().get(
-                            &local_def(field.node.id)).ty);
+                            &local_def(field.node.id)).ty).collect();
                 let ctor_fn_ty = ty::mk_ctor_fn(tcx,
                                                 ctor_id,
                                                 inputs.as_slice(),

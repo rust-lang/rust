@@ -1861,7 +1861,7 @@ impl TypeNames {
     }
 
     pub fn types_to_str(&self, tys: &[Type]) -> ~str {
-        let strs = tys.map(|t| self.type_to_str(*t));
+        let strs: Vec<~str> = tys.iter().map(|t| self.type_to_str(*t)).collect();
         format!("[{}]", strs.connect(","))
     }
 

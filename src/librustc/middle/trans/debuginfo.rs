@@ -733,7 +733,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
         source_locations_enabled: Cell::new(false),
     };
 
-    let arg_pats = fn_decl.inputs.map(|arg_ref| arg_ref.pat);
+    let arg_pats = fn_decl.inputs.iter().map(|arg_ref| arg_ref.pat).collect::<Vec<_>>();
     populate_scope_map(cx,
                        arg_pats.as_slice(),
                        top_level_block,
@@ -1218,7 +1218,7 @@ struct StructMemberDescriptionFactory {
 impl StructMemberDescriptionFactory {
     fn create_member_descriptions(&self, cx: &CrateContext)
                                   -> Vec<MemberDescription> {
-        self.fields.map(|field| {
+        self.fields.iter().map(|field| {
             let name = if field.ident.name == special_idents::unnamed_field.name {
                 ~""
             } else {
@@ -1231,7 +1231,7 @@ impl StructMemberDescriptionFactory {
                 type_metadata: type_metadata(cx, field.mt.ty, self.span),
                 offset: ComputedMemberOffset,
             }
-        })
+        }).collect()
     }
 }
 
@@ -1321,14 +1321,14 @@ struct TupleMemberDescriptionFactory {
 impl TupleMemberDescriptionFactory {
     fn create_member_descriptions(&self, cx: &CrateContext)
                                   -> Vec<MemberDescription> {
-        self.component_types.map(|&component_type| {
+        self.component_types.iter().map(|&component_type| {
             MemberDescription {
                 name: ~"",
                 llvm_type: type_of::type_of(cx, component_type),
                 type_metadata: type_metadata(cx, component_type, self.span),
                 offset: ComputedMemberOffset,
             }
-        })
+        }).collect()
     }
 }
 
@@ -1443,7 +1443,9 @@ fn describe_enum_variant(cx: &CrateContext,
                       -> (DICompositeType, Type, MemberDescriptionFactory) {
     let variant_llvm_type =
         Type::struct_(cx, struct_def.fields
+                                    .iter()
                                     .map(|&t| type_of::type_of(cx, t))
+                                    .collect::<Vec<_>>()
                                     .as_slice(),
                       struct_def.packed);
     // Could some consistency checks here: size, align, field count, discr type
@@ -1464,11 +1466,11 @@ fn describe_enum_variant(cx: &CrateContext,
                                            variant_definition_span);
 
     // Get the argument names from the enum variant info
-    let mut arg_names = match variant_info.arg_names {
+    let mut arg_names: Vec<_> = match variant_info.arg_names {
         Some(ref names) => {
-            names.map(|ident| token::get_ident(*ident).get().to_str())
+            names.iter().map(|ident| token::get_ident(*ident).get().to_str()).collect()
         }
-        None => variant_info.args.map(|_| ~"")
+        None => variant_info.args.iter().map(|_| ~"").collect()
     };
 
     // If this is not a univariant enum, there is also the (unnamed) discriminant field

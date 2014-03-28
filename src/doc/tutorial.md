@@ -1764,7 +1764,10 @@ access local variables in the enclosing scope.
 
 ~~~~
 let mut max = 0;
-[1, 2, 3].map(|x| if *x > max { max = *x });
+let f = |x: int| if x > max { max = x };
+for x in [1, 2, 3].iter() {
+    f(*x);
+}
 ~~~~
 
 Stack closures are very efficient because their environment is

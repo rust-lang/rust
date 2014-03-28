@@ -36,17 +36,17 @@ pub fn trans_inline_asm<'a>(bcx: &'a Block<'a>, ia: &ast::InlineAsm)
     let temp_scope = fcx.push_custom_cleanup_scope();
 
     // Prepare the output operands
-    let outputs = ia.outputs.map(|&(ref c, out)| {
+    let outputs = ia.outputs.iter().map(|&(ref c, out)| {
         constraints.push((*c).clone());
 
         let out_datum = unpack_datum!(bcx, expr::trans(bcx, out));
         output_types.push(type_of::type_of(bcx.ccx(), out_datum.ty));
         out_datum.val
 
-    });
+    }).collect::<Vec<_>>();
 
     // Now the input operands
-    let inputs = ia.inputs.map(|&(ref c, input)| {
+    let inputs = ia.inputs.iter().map(|&(ref c, input)| {
         constraints.push((*c).clone());
 
         let in_datum = unpack_datum!(bcx, expr::trans(bcx, input));
@@ -57,12 +57,15 @@ pub fn trans_inline_asm<'a>(bcx: &'a Block<'a>, ia: &ast::InlineAsm)
                                    cleanup::CustomScope(temp_scope),
                                    callee::DontAutorefArg)
         })
-    });
+    }).collect::<Vec<_>>();
 
     // no failure occurred preparing operands, no need to cleanup
     fcx.pop_custom_cleanup_scope(temp_scope);
 
-    let mut constraints = constraints.map(|s| s.get().to_str()).connect(",");
+    let mut constraints = constraints.iter()
+                                     .map(|s| s.get().to_str())
+                                     .collect::<Vec<~str>>()
+                                     .connect(",");
 
     let mut clobbers = getClobbers();
     if !ia.clobbers.get().is_empty() && !clobbers.is_empty() {

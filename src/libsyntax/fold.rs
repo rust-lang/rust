@@ -41,7 +41,7 @@ pub trait Folder {
                 }
                 ViewPathList(ref path, ref path_list_idents, node_id) => {
                     ViewPathList(self.fold_path(path),
-                                 path_list_idents.map(|path_list_ident| {
+                                 path_list_idents.iter().map(|path_list_ident| {
                                     let id = self.new_id(path_list_ident.node
                                                                         .id);
                                     Spanned {
@@ -54,7 +54,7 @@ pub trait Folder {
                                         span: self.new_span(
                                             path_list_ident.span)
                                     }
-                                 }),
+                                 }).collect(),
                                  self.new_id(node_id))
                 }
             };
@@ -83,7 +83,7 @@ pub trait Folder {
                 kind: sf.node.kind,
                 id: self.new_id(sf.node.id),
                 ty: self.fold_ty(sf.node.ty),
-                attrs: sf.node.attrs.map(|e| fold_attribute_(*e, self))
+                attrs: sf.node.attrs.iter().map(|e| fold_attribute_(*e, self)).collect()
             },
             span: self.new_span(sf.span)
         }
@@ -115,7 +115,7 @@ pub trait Folder {
 
     fn fold_arm(&mut self, a: &Arm) -> Arm {
         Arm {
-            pats: a.pats.map(|x| self.fold_pat(*x)),
+            pats: a.pats.iter().map(|x| self.fold_pat(*x)).collect(),
             guard: a.guard.map(|x| self.fold_expr(x)),
             body: self.fold_expr(a.body),
         }
@@ -163,18 +163,18 @@ pub trait Folder {
                     onceness: f.onceness,
                     bounds: fold_opt_bounds(&f.bounds, self),
                     decl: self.fold_fn_decl(f.decl),
-                    lifetimes: f.lifetimes.map(|l| fold_lifetime(l, self)),
+                    lifetimes: f.lifetimes.iter().map(|l| fold_lifetime(l, self)).collect(),
                 })
             }
             TyBareFn(ref f) => {
                 TyBareFn(@BareFnTy {
-                    lifetimes: f.lifetimes.map(|l| fold_lifetime(l, self)),
+                    lifetimes: f.lifetimes.iter().map(|l| fold_lifetime(l, self)).collect(),
                     purity: f.purity,
                     abis: f.abis,
                     decl: self.fold_fn_decl(f.decl)
                 })
             }
-            TyTup(ref tys) => TyTup(tys.map(|&ty| self.fold_ty(ty))),
+            TyTup(ref tys) => TyTup(tys.iter().map(|&ty| self.fold_ty(ty)).collect()),
             TyPath(ref path, ref bounds, id) => {
                 TyPath(self.fold_path(path),
                        fold_opt_bounds(bounds, self),
@@ -214,8 +214,8 @@ pub trait Folder {
         let kind;
         match v.node.kind {
             TupleVariantKind(ref variant_args) => {
-                kind = TupleVariantKind(variant_args.map(|x|
-                    fold_variant_arg_(x, self)))
+                kind = TupleVariantKind(variant_args.iter().map(|x|
+                    fold_variant_arg_(x, self)).collect())
             }
             StructVariantKind(ref struct_def) => {
                 kind = StructVariantKind(@ast::StructDef {
@@ -226,7 +226,7 @@ pub trait Folder {
             }
         }
 
-        let attrs = v.node.attrs.map(|x| fold_attribute_(*x, self));
+        let attrs = v.node.attrs.iter().map(|x| fold_attribute_(*x, self)).collect();
 
         let de = match v.node.disr_expr {
           Some(e) => Some(self.fold_expr(e)),
@@ -254,11 +254,11 @@ pub trait Folder {
         ast::Path {
             span: self.new_span(p.span),
             global: p.global,
-            segments: p.segments.map(|segment| ast::PathSegment {
+            segments: p.segments.iter().map(|segment| ast::PathSegment {
                 identifier: self.fold_ident(segment.identifier),
-                lifetimes: segment.lifetimes.map(|l| fold_lifetime(l, self)),
-                types: segment.types.map(|&typ| self.fold_ty(typ)),
-            })
+                lifetimes: segment.lifetimes.iter().map(|l| fold_lifetime(l, self)).collect(),
+                types: segment.types.iter().map(|&typ| self.fold_ty(typ)).collect(),
+            }).collect()
         }
     }
 
@@ -323,7 +323,7 @@ fn fold_meta_item_<T: Folder>(mi: @MetaItem, fld: &mut T) -> @MetaItem {
             match mi.node {
                 MetaWord(ref id) => MetaWord((*id).clone()),
                 MetaList(ref id, ref mis) => {
-                    MetaList((*id).clone(), mis.map(|e| fold_meta_item_(*e, fld)))
+                    MetaList((*id).clone(), mis.iter().map(|e| fold_meta_item_(*e, fld)).collect())
                 }
                 MetaNameValue(ref id, ref s) => {
                     MetaNameValue((*id).clone(), (*s).clone())
@@ -402,7 +402,7 @@ fn maybe_fold_ident<T: Folder>(t: &token::Token, fld: &mut T) -> token::Token {
 
 pub fn noop_fold_fn_decl<T: Folder>(decl: &FnDecl, fld: &mut T) -> P<FnDecl> {
     P(FnDecl {
-        inputs: decl.inputs.map(|x| fold_arg_(x, fld)), // bad copy
+        inputs: decl.inputs.iter().map(|x| fold_arg_(x, fld)).collect(), // bad copy
         output: fld.fold_ty(decl.output),
         cf: decl.cf,
         variadic: decl.variadic
@@ -441,7 +441,7 @@ pub fn fold_lifetime<T: Folder>(l: &Lifetime, fld: &mut T) -> Lifetime {
 
 pub fn fold_lifetimes<T: Folder>(lts: &Vec<Lifetime>, fld: &mut T)
                                    -> Vec<Lifetime> {
-    lts.map(|l| fold_lifetime(l, fld))
+    lts.iter().map(|l| fold_lifetime(l, fld)).collect()
 }
 
 pub fn fold_opt_lifetime<T: Folder>(o_lt: &Option<Lifetime>, fld: &mut T)
@@ -456,7 +456,7 @@ pub fn fold_generics<T: Folder>(generics: &Generics, fld: &mut T) -> Generics {
 
 fn fold_struct_def<T: Folder>(struct_def: @StructDef, fld: &mut T) -> @StructDef {
     @ast::StructDef {
-        fields: struct_def.fields.map(|f| fold_struct_field(f, fld)),
+        fields: struct_def.fields.iter().map(|f| fold_struct_field(f, fld)).collect(),
         ctor_id: struct_def.ctor_id.map(|cid| fld.new_id(cid)),
     }
 }
@@ -474,7 +474,7 @@ fn fold_struct_field<T: Folder>(f: &StructField, fld: &mut T) -> StructField {
             kind: f.node.kind,
             id: fld.new_id(f.node.id),
             ty: fld.fold_ty(f.node.ty),
-            attrs: f.node.attrs.map(|a| fold_attribute_(*a, fld)),
+            attrs: f.node.attrs.iter().map(|a| fold_attribute_(*a, fld)).collect(),
         },
         span: fld.new_span(f.span),
     }
@@ -525,14 +525,14 @@ pub fn noop_fold_view_item<T: Folder>(vi: &ViewItem, folder: &mut T)
     };
     ViewItem {
         node: inner_view_item,
-        attrs: vi.attrs.map(|a| fold_attribute_(*a, folder)),
+        attrs: vi.attrs.iter().map(|a| fold_attribute_(*a, folder)).collect(),
         vis: vi.vis,
         span: folder.new_span(vi.span),
     }
 }
 
 pub fn noop_fold_block<T: Folder>(b: P<Block>, folder: &mut T) -> P<Block> {
-    let view_items = b.view_items.map(|x| folder.fold_view_item(x));
+    let view_items = b.view_items.iter().map(|x| folder.fold_view_item(x)).collect();
     let stmts = b.stmts.iter().flat_map(|s| folder.fold_stmt(*s).move_iter()).collect();
     P(Block {
         id: folder.new_id(b.id), // Needs to be first, for ast_map.
@@ -566,9 +566,9 @@ pub fn noop_fold_item_underscore<T: Folder>(i: &Item_, folder: &mut T) -> Item_ 
         ItemEnum(ref enum_definition, ref generics) => {
             ItemEnum(
                 ast::EnumDef {
-                    variants: enum_definition.variants.map(|&x| {
+                    variants: enum_definition.variants.iter().map(|&x| {
                         folder.fold_variant(x)
-                    }),
+                    }).collect(),
                 },
                 fold_generics(generics, folder))
         }
@@ -580,18 +580,18 @@ pub fn noop_fold_item_underscore<T: Folder>(i: &Item_, folder: &mut T) -> Item_ 
             ItemImpl(fold_generics(generics, folder),
                      ifce.as_ref().map(|p| fold_trait_ref(p, folder)),
                      folder.fold_ty(ty),
-                     methods.map(|x| folder.fold_method(*x))
+                     methods.iter().map(|x| folder.fold_method(*x)).collect()
             )
         }
         ItemTrait(ref generics, ref traits, ref methods) => {
-            let methods = methods.map(|method| {
+            let methods = methods.iter().map(|method| {
                 match *method {
                     Required(ref m) => Required(folder.fold_type_method(m)),
                     Provided(method) => Provided(folder.fold_method(method))
                 }
-            });
+            }).collect();
             ItemTrait(fold_generics(generics, folder),
-                      traits.map(|p| fold_trait_ref(p, folder)),
+                      traits.iter().map(|p| fold_trait_ref(p, folder)).collect(),
                       methods)
         }
         ItemMac(ref m) => ItemMac(folder.fold_mac(m)),
@@ -602,7 +602,7 @@ pub fn noop_fold_type_method<T: Folder>(m: &TypeMethod, fld: &mut T) -> TypeMeth
     TypeMethod {
         id: fld.new_id(m.id), // Needs to be first, for ast_map.
         ident: fld.fold_ident(m.ident),
-        attrs: m.attrs.map(|a| fold_attribute_(*a, fld)),
+        attrs: m.attrs.iter().map(|a| fold_attribute_(*a, fld)).collect(),
         purity: m.purity,
         decl: fld.fold_fn_decl(m.decl),
         generics: fold_generics(&m.generics, fld),
@@ -623,8 +623,8 @@ pub fn noop_fold_mod<T: Folder>(m: &Mod, folder: &mut T) -> Mod {
 pub fn noop_fold_crate<T: Folder>(c: Crate, folder: &mut T) -> Crate {
     Crate {
         module: folder.fold_mod(&c.module),
-        attrs: c.attrs.map(|x| fold_attribute_(*x, folder)),
-        config: c.config.map(|x| fold_meta_item_(*x, folder)),
+        attrs: c.attrs.iter().map(|x| fold_attribute_(*x, folder)).collect(),
+        config: c.config.iter().map(|x| fold_meta_item_(*x, folder)).collect(),
         span: folder.new_span(c.span),
     }
 }
@@ -643,7 +643,7 @@ pub fn noop_fold_item<T: Folder>(i: &Item, folder: &mut T) -> SmallVector<@Item>
     SmallVector::one(@Item {
         id: id,
         ident: folder.fold_ident(ident),
-        attrs: i.attrs.map(|e| fold_attribute_(*e, folder)),
+        attrs: i.attrs.iter().map(|e| fold_attribute_(*e, folder)).collect(),
         node: node,
         vis: i.vis,
         span: folder.new_span(i.span)
@@ -654,11 +654,11 @@ pub fn noop_fold_foreign_item<T: Folder>(ni: &ForeignItem, folder: &mut T) -> @F
     @ForeignItem {
         id: folder.new_id(ni.id), // Needs to be first, for ast_map.
         ident: folder.fold_ident(ni.ident),
-        attrs: ni.attrs.map(|x| fold_attribute_(*x, folder)),
+        attrs: ni.attrs.iter().map(|x| fold_attribute_(*x, folder)).collect(),
         node: match ni.node {
             ForeignItemFn(ref fdec, ref generics) => {
                 ForeignItemFn(P(FnDecl {
-                    inputs: fdec.inputs.map(|a| fold_arg_(a, folder)),
+                    inputs: fdec.inputs.iter().map(|a| fold_arg_(a, folder)).collect(),
                     output: folder.fold_ty(fdec.output),
                     cf: fdec.cf,
                     variadic: fdec.variadic
@@ -677,7 +677,7 @@ pub fn noop_fold_method<T: Folder>(m: &Method, folder: &mut T) -> @Method {
     @Method {
         id: folder.new_id(m.id), // Needs to be first, for ast_map.
         ident: folder.fold_ident(m.ident),
-        attrs: m.attrs.map(|a| fold_attribute_(*a, folder)),
+        attrs: m.attrs.iter().map(|a| fold_attribute_(*a, folder)).collect(),
         generics: fold_generics(&m.generics, folder),
         explicit_self: folder.fold_explicit_self(&m.explicit_self),
         purity: m.purity,
@@ -700,28 +700,28 @@ pub fn noop_fold_pat<T: Folder>(p: @Pat, folder: &mut T) -> @Pat {
         PatLit(e) => PatLit(folder.fold_expr(e)),
         PatEnum(ref pth, ref pats) => {
             PatEnum(folder.fold_path(pth),
-                    pats.as_ref().map(|pats| pats.map(|x| folder.fold_pat(*x))))
+                    pats.as_ref().map(|pats| pats.iter().map(|x| folder.fold_pat(*x)).collect()))
         }
         PatStruct(ref pth, ref fields, etc) => {
             let pth_ = folder.fold_path(pth);
-            let fs = fields.map(|f| {
+            let fs = fields.iter().map(|f| {
                 ast::FieldPat {
                     ident: f.ident,
                     pat: folder.fold_pat(f.pat)
                 }
-            });
+            }).collect();
             PatStruct(pth_, fs, etc)
         }
-        PatTup(ref elts) => PatTup(elts.map(|x| folder.fold_pat(*x))),
+        PatTup(ref elts) => PatTup(elts.iter().map(|x| folder.fold_pat(*x)).collect()),
         PatUniq(inner) => PatUniq(folder.fold_pat(inner)),
         PatRegion(inner) => PatRegion(folder.fold_pat(inner)),
         PatRange(e1, e2) => {
             PatRange(folder.fold_expr(e1), folder.fold_expr(e2))
         },
         PatVec(ref before, ref slice, ref after) => {
-            PatVec(before.map(|x| folder.fold_pat(*x)),
+            PatVec(before.iter().map(|x| folder.fold_pat(*x)).collect(),
                     slice.map(|x| folder.fold_pat(x)),
-                    after.map(|x| folder.fold_pat(*x)))
+                    after.iter().map(|x| folder.fold_pat(*x)).collect())
         }
     };
 
@@ -741,21 +741,21 @@ pub fn noop_fold_expr<T: Folder>(e: @Expr, folder: &mut T) -> @Expr {
             ExprBox(folder.fold_expr(p), folder.fold_expr(e))
         }
         ExprVec(ref exprs, mutt) => {
-            ExprVec(exprs.map(|&x| folder.fold_expr(x)), mutt)
+            ExprVec(exprs.iter().map(|&x| folder.fold_expr(x)).collect(), mutt)
         }
         ExprRepeat(expr, count, mutt) => {
             ExprRepeat(folder.fold_expr(expr), folder.fold_expr(count), mutt)
         }
-        ExprTup(ref elts) => ExprTup(elts.map(|x| folder.fold_expr(*x))),
+        ExprTup(ref elts) => ExprTup(elts.iter().map(|x| folder.fold_expr(*x)).collect()),
         ExprCall(f, ref args) => {
             ExprCall(folder.fold_expr(f),
-                     args.map(|&x| folder.fold_expr(x)))
+                     args.iter().map(|&x| folder.fold_expr(x)).collect())
         }
         ExprMethodCall(i, ref tps, ref args) => {
             ExprMethodCall(
                 folder.fold_ident(i),
-                tps.map(|&x| folder.fold_ty(x)),
-                args.map(|&x| folder.fold_expr(x)))
+                tps.iter().map(|&x| folder.fold_ty(x)).collect(),
+                args.iter().map(|&x| folder.fold_expr(x)).collect())
         }
         ExprBinary(binop, lhs, rhs) => {
             ExprBinary(binop,
@@ -790,7 +790,7 @@ pub fn noop_fold_expr<T: Folder>(e: @Expr, folder: &mut T) -> @Expr {
         }
         ExprMatch(expr, ref arms) => {
             ExprMatch(folder.fold_expr(expr),
-                      arms.map(|x| folder.fold_arm(x)))
+                      arms.iter().map(|x| folder.fold_arm(x)).collect())
         }
         ExprFnBlock(decl, body) => {
             ExprFnBlock(folder.fold_fn_decl(decl), folder.fold_block(body))
@@ -810,7 +810,7 @@ pub fn noop_fold_expr<T: Folder>(e: @Expr, folder: &mut T) -> @Expr {
         ExprField(el, id, ref tys) => {
             ExprField(folder.fold_expr(el),
                       folder.fold_ident(id),
-                      tys.map(|&x| folder.fold_ty(x)))
+                      tys.iter().map(|&x| folder.fold_ty(x)).collect())
         }
         ExprIndex(el, er) => {
             ExprIndex(folder.fold_expr(el), folder.fold_expr(er))
@@ -823,19 +823,19 @@ pub fn noop_fold_expr<T: Folder>(e: @Expr, folder: &mut T) -> @Expr {
         }
         ExprInlineAsm(ref a) => {
             ExprInlineAsm(InlineAsm {
-                inputs: a.inputs.map(|&(ref c, input)| {
+                inputs: a.inputs.iter().map(|&(ref c, input)| {
                     ((*c).clone(), folder.fold_expr(input))
-                }),
-                outputs: a.outputs.map(|&(ref c, out)| {
+                }).collect(),
+                outputs: a.outputs.iter().map(|&(ref c, out)| {
                     ((*c).clone(), folder.fold_expr(out))
-                }),
+                }).collect(),
                 .. (*a).clone()
             })
         }
         ExprMac(ref mac) => ExprMac(folder.fold_mac(mac)),
         ExprStruct(ref path, ref fields, maybe_expr) => {
             ExprStruct(folder.fold_path(path),
-                       fields.map(|x| fold_field_(*x, folder)),
+                       fields.iter().map(|x| fold_field_(*x, folder)).collect(),
                        maybe_expr.map(|x| folder.fold_expr(x)))
         },
         ExprParen(ex) => ExprParen(folder.fold_expr(ex))

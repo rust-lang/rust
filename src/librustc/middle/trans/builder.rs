@@ -780,13 +780,13 @@ impl<'a> Builder<'a> {
         let alignstack = if alignstack { lib::llvm::True }
                          else          { lib::llvm::False };
 
-        let argtys = inputs.map(|v| {
+        let argtys = inputs.iter().map(|v| {
             debug!("Asm Input Type: {:?}", self.ccx.tn.val_to_str(*v));
             val_ty(*v)
-        });
+        }).collect::<Vec<_>>();
 
         debug!("Asm Output Type: {:?}", self.ccx.tn.type_to_str(output));
-        let fty = Type::func(argtys, &output);
+        let fty = Type::func(argtys.as_slice(), &output);
         unsafe {
             let v = llvm::LLVMInlineAsm(
                 fty.to_ref(), asm, cons, volatile, alignstack, dia as c_uint);
@@ -800,7 +800,10 @@ impl<'a> Builder<'a> {
 
         debug!("Call {} with args ({})",
                self.ccx.tn.val_to_str(llfn),
-               args.map(|&v| self.ccx.tn.val_to_str(v)).connect(", "));
+               args.iter()
+                   .map(|&v| self.ccx.tn.val_to_str(v))
+                   .collect::<Vec<~str>>()
+                   .connect(", "));
 
         unsafe {
             let v = llvm::LLVMBuildCall(self.llbuilder, llfn, args.as_ptr(),

@@ -683,7 +683,7 @@ impl<'a> InferCtxt<'a> {
     }
 
     pub fn tys_to_str(&self, ts: &[ty::t]) -> ~str {
-        let tstrs = ts.map(|t| self.ty_to_str(*t));
+        let tstrs: Vec<~str> = ts.iter().map(|t| self.ty_to_str(*t)).collect();
         format!("({})", tstrs.connect(", "))
     }
 

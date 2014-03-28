@@ -597,7 +597,7 @@ fn with_argv<T>(prog: &str, args: &[~str], cb: proc:(**libc::c_char) -> T) -> T 
     // Next, convert each of the byte strings into a pointer. This is
     // technically unsafe as the caller could leak these pointers out of our
     // scope.
-    let mut ptrs = tmps.map(|tmp| tmp.with_ref(|buf| buf));
+    let mut ptrs: Vec<_> = tmps.iter().map(|tmp| tmp.with_ref(|buf| buf)).collect();
 
     // Finally, make sure we add a null pointer.
     ptrs.push(ptr::null());
@@ -622,7 +622,9 @@ fn with_envp<T>(env: Option<~[(~str, ~str)]>, cb: proc:(*c_void) -> T) -> T {
             }
 
             // Once again, this is unsafe.
-            let mut ptrs = tmps.map(|tmp| tmp.with_ref(|buf| buf));
+            let mut ptrs: Vec<*libc::c_char> = tmps.iter()
+                                                   .map(|tmp| tmp.with_ref(|buf| buf))
+                                                   .collect();
             ptrs.push(ptr::null());
 
             cb(ptrs.as_ptr() as *c_void)
