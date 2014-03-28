@@ -24,14 +24,14 @@ struct Foo {
 }
 
 pub struct PubFoo { //~ ERROR: missing documentation
-    a: int,      //~ ERROR: missing documentation
-    priv b: int,
+    pub a: int,      //~ ERROR: missing documentation
+    b: int,
 }
 
 #[allow(missing_doc)]
 pub struct PubFoo2 {
-    a: int,
-    c: int,
+    pub a: int,
+    pub c: int,
 }
 
 mod module_no_dox {}
@@ -106,8 +106,8 @@ enum Baz {
 
 pub enum PubBaz { //~ ERROR: missing documentation
     PubBazA { //~ ERROR: missing documentation
-        a: int, //~ ERROR: missing documentation
-        priv b: int
+        pub a: int, //~ ERROR: missing documentation
+        b: int
     },
 
     priv PubBazB
@@ -118,8 +118,8 @@ pub enum PubBaz2 {
     /// dox
     PubBaz2A {
         /// dox
-        a: int,
-        priv b: int
+        pub a: int,
+        b: int
     },
     priv PubBaz2B
 }
@@ -127,8 +127,8 @@ pub enum PubBaz2 {
 #[allow(missing_doc)]
 pub enum PubBaz3 {
     PubBaz3A {
-        a: int,
-        priv b: int
+        pub a: int,
+        b: int
     },
     priv PubBaz3B
 }

@@ -14,6 +14,6 @@ struct A {
 }
 
 pub struct B {
-    a: int,
-    priv b: int,
+    pub a: int,
+    b: int,
 }

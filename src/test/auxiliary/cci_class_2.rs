@@ -10,9 +10,9 @@
 
 pub mod kitties {
     pub struct cat {
-      priv meows : uint,
+      meows : uint,
 
-      how_hungry : int,
+      pub how_hungry : int,
 
     }
 
