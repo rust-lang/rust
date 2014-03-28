@@ -75,11 +75,11 @@ The region maps encode information about region relationships.
   for dynamic checks and/or arbitrary amounts of stack space.
 */
 pub struct RegionMaps {
-    priv scope_map: RefCell<NodeMap<ast::NodeId>>,
-    priv var_map: RefCell<NodeMap<ast::NodeId>>,
-    priv free_region_map: RefCell<HashMap<FreeRegion, Vec<FreeRegion> >>,
-    priv rvalue_scopes: RefCell<NodeMap<ast::NodeId>>,
-    priv terminating_scopes: RefCell<HashSet<ast::NodeId>>,
+    scope_map: RefCell<NodeMap<ast::NodeId>>,
+    var_map: RefCell<NodeMap<ast::NodeId>>,
+    free_region_map: RefCell<HashMap<FreeRegion, Vec<FreeRegion> >>,
+    rvalue_scopes: RefCell<NodeMap<ast::NodeId>>,
+    terminating_scopes: RefCell<HashSet<ast::NodeId>>,
 }
 
 #[deriving(Clone)]

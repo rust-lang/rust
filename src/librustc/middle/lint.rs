@@ -135,9 +135,9 @@ pub enum level {
 
 #[deriving(Clone, Eq, Ord, TotalEq, TotalOrd)]
 pub struct LintSpec {
-    default: level,
-    lint: Lint,
-    desc: &'static str,
+    pub default: level,
+    pub lint: Lint,
+    pub desc: &'static str,
 }
 
 pub type LintDict = HashMap<&'static str, LintSpec>;

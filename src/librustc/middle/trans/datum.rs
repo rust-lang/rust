@@ -41,18 +41,18 @@ use syntax::codemap::Span;
 pub struct Datum<K> {
     /// The llvm value.  This is either a pointer to the Rust value or
     /// the value itself, depending on `kind` below.
-    val: ValueRef,
+    pub val: ValueRef,
 
     /// The rust type of the value.
-    ty: ty::t,
+    pub ty: ty::t,
 
     /// Indicates whether this is by-ref or by-value.
-    kind: K,
+    pub kind: K,
 }
 
 pub struct DatumBlock<'a, K> {
-    bcx: &'a Block<'a>,
-    datum: Datum<K>,
+    pub bcx: &'a Block<'a>,
+    pub datum: Datum<K>,
 }
 
 pub enum Expr {
@@ -70,7 +70,7 @@ pub enum Expr {
 pub struct Lvalue;
 
 pub struct Rvalue {
-    mode: RvalueMode
+    pub mode: RvalueMode
 }
 
 pub fn Rvalue(m: RvalueMode) -> Rvalue {

@@ -37,20 +37,20 @@ be indexed by the direction (see the type `Direction`).
 use std::uint;
 
 pub struct Graph<N,E> {
-    priv nodes: Vec<Node<N>> ,
-    priv edges: Vec<Edge<E>> ,
+    nodes: Vec<Node<N>> ,
+    edges: Vec<Edge<E>> ,
 }
 
 pub struct Node<N> {
-    priv first_edge: [EdgeIndex, ..2], // see module comment
-    data: N,
+    first_edge: [EdgeIndex, ..2], // see module comment
+    pub data: N,
 }
 
 pub struct Edge<E> {
-    priv next_edge: [EdgeIndex, ..2], // see module comment
-    priv source: NodeIndex,
-    priv target: NodeIndex,
-    data: E,
+    next_edge: [EdgeIndex, ..2], // see module comment
+    source: NodeIndex,
+    target: NodeIndex,
+    pub data: E,
 }
 
 #[deriving(Eq)]
@@ -62,7 +62,7 @@ pub struct EdgeIndex(uint);
 pub static InvalidEdgeIndex: EdgeIndex = EdgeIndex(uint::MAX);
 
 // Use a private field here to guarantee no more instances are created:
-pub struct Direction { priv repr: uint }
+pub struct Direction { repr: uint }
 pub static Outgoing: Direction = Direction { repr: 0 };
 pub static Incoming: Direction = Direction { repr: 1 };
 

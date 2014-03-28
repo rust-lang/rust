@@ -74,7 +74,7 @@ enum Status {
 
 /// A set of features to be used by later passes.
 pub struct Features {
-    default_type_params: Cell<bool>
+    pub default_type_params: Cell<bool>
 }
 
 impl Features {

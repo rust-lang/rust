@@ -173,15 +173,15 @@ static DW_ATE_unsigned_char: c_uint = 0x08;
 
 /// A context object for maintaining all state needed by the debuginfo module.
 pub struct CrateDebugContext {
-    priv llcontext: ContextRef,
-    priv builder: DIBuilderRef,
-    priv current_debug_location: Cell<DebugLocation>,
-    priv created_files: RefCell<HashMap<~str, DIFile>>,
-    priv created_types: RefCell<HashMap<uint, DIType>>,
-    priv namespace_map: RefCell<HashMap<Vec<ast::Name> , @NamespaceTreeNode>>,
+    llcontext: ContextRef,
+    builder: DIBuilderRef,
+    current_debug_location: Cell<DebugLocation>,
+    created_files: RefCell<HashMap<~str, DIFile>>,
+    created_types: RefCell<HashMap<uint, DIType>>,
+    namespace_map: RefCell<HashMap<Vec<ast::Name> , @NamespaceTreeNode>>,
     // This collection is used to assert that composite types (structs, enums, ...) have their
     // members only set once:
-    priv composite_types_completed: RefCell<HashSet<DIType>>,
+    composite_types_completed: RefCell<HashSet<DIType>>,
 }
 
 impl CrateDebugContext {

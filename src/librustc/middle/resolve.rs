@@ -55,8 +55,8 @@ pub type TraitMap = NodeMap<Vec<DefId> >;
 pub type ExportMap2 = @RefCell<NodeMap<Vec<Export2> >>;
 
 pub struct Export2 {
-    name: ~str,        // The name of the target.
-    def_id: DefId,     // The definition of the target.
+    pub name: ~str,        // The name of the target.
+    pub def_id: DefId,     // The definition of the target.
 }
 
 // This set contains all exported definitions from external crates. The set does
@@ -73,10 +73,10 @@ pub enum LastPrivate {
     // and whether the import is in fact used for each.
     // If the Option<PrivateDep> fields are None, it means there is no defintion
     // in that namespace.
-    LastImport{value_priv: Option<PrivateDep>,
-               value_used: ImportUse,
-               type_priv: Option<PrivateDep>,
-               type_used: ImportUse},
+    LastImport{pub value_priv: Option<PrivateDep>,
+               pub value_used: ImportUse,
+               pub type_priv: Option<PrivateDep>,
+               pub type_used: ImportUse},
 }
 
 pub enum PrivateDep {
@@ -5408,11 +5408,11 @@ impl<'a> Resolver<'a> {
 }
 
 pub struct CrateMap {
-    def_map: DefMap,
-    exp_map2: ExportMap2,
-    trait_map: TraitMap,
-    external_exports: ExternalExports,
-    last_private_map: LastPrivateMap,
+    pub def_map: DefMap,
+    pub exp_map2: ExportMap2,
+    pub trait_map: TraitMap,
+    pub external_exports: ExternalExports,
+    pub last_private_map: LastPrivateMap,
 }
 
 /// Entry point to crate resolution.

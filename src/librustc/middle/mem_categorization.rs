@@ -90,8 +90,8 @@ pub enum categorization {
 
 #[deriving(Eq)]
 pub struct CopiedUpvar {
-    upvar_id: ast::NodeId,
-    onceness: ast::Onceness,
+    pub upvar_id: ast::NodeId,
+    pub onceness: ast::Onceness,
 }
 
 // different kinds of pointers:
@@ -147,11 +147,11 @@ pub enum MutabilityCategory {
 // fashion. For more details, see the method `cat_pattern`
 #[deriving(Eq)]
 pub struct cmt_ {
-    id: ast::NodeId,          // id of expr/pat producing this value
-    span: Span,                // span of same expr/pat
-    cat: categorization,       // categorization of expr
-    mutbl: MutabilityCategory, // mutability of expr as lvalue
-    ty: ty::t                  // type of the expr (*see WARNING above*)
+    pub id: ast::NodeId,          // id of expr/pat producing this value
+    pub span: Span,                // span of same expr/pat
+    pub cat: categorization,       // categorization of expr
+    pub mutbl: MutabilityCategory, // mutability of expr as lvalue
+    pub ty: ty::t                  // type of the expr (*see WARNING above*)
 }
 
 pub type cmt = @cmt_;
@@ -242,7 +242,7 @@ impl ast_node for ast::Pat {
 }
 
 pub struct MemCategorizationContext<TYPER> {
-    typer: TYPER
+    pub typer: TYPER
 }
 
 pub type McResult<T> = Result<T, ()>;

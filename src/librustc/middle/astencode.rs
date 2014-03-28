@@ -53,10 +53,10 @@ use writer = serialize::ebml::writer;
 
 // Auxiliary maps of things to be encoded
 pub struct Maps {
-    root_map: middle::borrowck::root_map,
-    method_map: middle::typeck::MethodMap,
-    vtable_map: middle::typeck::vtable_map,
-    capture_map: RefCell<middle::moves::CaptureMap>,
+    pub root_map: middle::borrowck::root_map,
+    pub method_map: middle::typeck::MethodMap,
+    pub vtable_map: middle::typeck::vtable_map,
+    pub capture_map: RefCell<middle::moves::CaptureMap>,
 }
 
 struct DecodeContext<'a> {

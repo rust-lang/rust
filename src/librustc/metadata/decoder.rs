@@ -1108,9 +1108,9 @@ pub fn get_crate_attributes(data: &[u8]) -> Vec<ast::Attribute> {
 
 #[deriving(Clone)]
 pub struct CrateDep {
-    cnum: ast::CrateNum,
-    crate_id: CrateId,
-    hash: Svh,
+    pub cnum: ast::CrateNum,
+    pub crate_id: CrateId,
+    pub hash: Svh,
 }
 
 pub fn get_crate_deps(data: &[u8]) -> Vec<CrateDep> {

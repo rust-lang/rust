@@ -82,7 +82,7 @@ pub enum Repr {
      * General-case enums: for each case there is a struct, and they
      * all start with a field for the discriminant.
      */
-    General(IntType, Vec<Struct> ),
+    General(IntType, Vec<Struct>),
     /**
      * Two cases distinguished by a nullable pointer: the case with discriminant
      * `nndiscr` is represented by the struct `nonnull`, where the `ptrfield`th
@@ -94,16 +94,21 @@ pub enum Repr {
      * is represented such that `None` is a null pointer and `Some` is the
      * identity function.
      */
-    NullablePointer{ nonnull: Struct, nndiscr: Disr, ptrfield: uint,
-                     nullfields: Vec<ty::t> }
+    NullablePointer {
+        pub nonnull: Struct,
+        pub nndiscr: Disr,
+        pub ptrfield: uint,
+        pub nullfields: Vec<ty::t>,
+    }
 }
 
 /// For structs, and struct-like parts of anything fancier.
 pub struct Struct {
-    size: u64,
-    align: u64,
-    packed: bool,
-    fields: Vec<ty::t> }
+    pub size: u64,
+    pub align: u64,
+    pub packed: bool,
+    pub fields: Vec<ty::t>,
+}
 
 /**
  * Convenience for `represent_type`.  There should probably be more or

@@ -26,7 +26,7 @@ use std::libc::{c_uint};
 
 #[deriving(Clone, Eq, Show)]
 pub struct Type {
-    priv rf: TypeRef
+    rf: TypeRef
 }
 
 macro_rules! ty (

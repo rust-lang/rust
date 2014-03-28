@@ -75,26 +75,26 @@ pub type fres<T> = Result<T, fixup_err>; // "fixup result"
 pub type CoerceResult = cres<Option<@ty::AutoAdjustment>>;
 
 pub struct InferCtxt<'a> {
-    tcx: &'a ty::ctxt,
+    pub tcx: &'a ty::ctxt,
 
     // We instantiate ValsAndBindings with bounds<ty::t> because the
     // types that might instantiate a general type variable have an
     // order, represented by its upper and lower bounds.
-    ty_var_bindings: RefCell<ValsAndBindings<ty::TyVid, Bounds<ty::t>>>,
-    ty_var_counter: Cell<uint>,
+    pub ty_var_bindings: RefCell<ValsAndBindings<ty::TyVid, Bounds<ty::t>>>,
+    pub ty_var_counter: Cell<uint>,
 
     // Map from integral variable to the kind of integer it represents
-    int_var_bindings: RefCell<ValsAndBindings<ty::IntVid,
+    pub int_var_bindings: RefCell<ValsAndBindings<ty::IntVid,
                                               Option<IntVarValue>>>,
-    int_var_counter: Cell<uint>,
+    pub int_var_counter: Cell<uint>,
 
     // Map from floating variable to the kind of float it represents
-    float_var_bindings: RefCell<ValsAndBindings<ty::FloatVid,
+    pub float_var_bindings: RefCell<ValsAndBindings<ty::FloatVid,
                                                 Option<ast::FloatTy>>>,
-    float_var_counter: Cell<uint>,
+    pub float_var_counter: Cell<uint>,
 
     // For region variables.
-    region_vars: RegionVarBindings<'a>,
+    pub region_vars: RegionVarBindings<'a>,
 }
 
 /// Why did we require that the two types be related?
