@@ -331,9 +331,9 @@ pub trait Combine {
 }
 
 pub struct CombineFields<'a> {
-    infcx: &'a InferCtxt<'a>,
-    a_is_expected: bool,
-    trace: TypeTrace,
+    pub infcx: &'a InferCtxt<'a>,
+    pub a_is_expected: bool,
+    pub trace: TypeTrace,
 }
 
 pub fn expected_found<C:Combine,T>(

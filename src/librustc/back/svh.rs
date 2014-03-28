@@ -54,7 +54,7 @@ use syntax::ast;
 
 #[deriving(Clone, Eq)]
 pub struct Svh {
-    priv hash: ~str,
+    hash: ~str,
 }
 
 impl Svh {

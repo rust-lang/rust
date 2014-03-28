@@ -153,9 +153,9 @@ pub enum CaptureMode {
 
 #[deriving(Encodable, Decodable)]
 pub struct CaptureVar {
-    def: Def,         // Variable being accessed free
-    span: Span,       // Location of an access to this variable
-    mode: CaptureMode // How variable is being accessed
+    pub def: Def,         // Variable being accessed free
+    pub span: Span,       // Location of an access to this variable
+    pub mode: CaptureMode // How variable is being accessed
 }
 
 pub type CaptureMap = NodeMap<Rc<Vec<CaptureVar>>>;
@@ -163,15 +163,15 @@ pub type CaptureMap = NodeMap<Rc<Vec<CaptureVar>>>;
 /** See the section Output on the module comment for explanation. */
 #[deriving(Clone)]
 pub struct MoveMaps {
-    moves_map: NodeSet,
+    pub moves_map: NodeSet,
     /**
      * Set of variable node-ids that are moved.
      *
-     * Note: The `moves_map` stores expression ids that are moves,
+     * pub Note: The `moves_map` stores expression ids that are moves,
      * whereas this set stores the ids of the variables that are
      * moved at some point */
-    moved_variables_set: NodeSet,
-    capture_map: CaptureMap
+    pub moved_variables_set: NodeSet,
+    pub capture_map: CaptureMap
 }
 
 #[deriving(Clone)]

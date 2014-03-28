@@ -35,15 +35,15 @@ pub enum ArgKind {
 /// This is borrowed from clang's ABIInfo.h
 #[deriving(Clone)]
 pub struct ArgType {
-    kind: ArgKind,
+    pub kind: ArgKind,
     /// Original LLVM type
-    ty: Type,
+    pub ty: Type,
     /// Coerced LLVM Type
-    cast: option::Option<Type>,
+    pub cast: option::Option<Type>,
     /// Dummy argument, which is emitted before the real argument
-    pad: option::Option<Type>,
+    pub pad: option::Option<Type>,
     /// LLVM attribute of argument
-    attr: option::Option<Attribute>
+    pub attr: option::Option<Attribute>
 }
 
 impl ArgType {
@@ -99,10 +99,10 @@ impl ArgType {
 /// comments are reverse-engineered and may be inaccurate. -NDM
 pub struct FnType {
     /// The LLVM types of each argument.
-    arg_tys: Vec<ArgType> ,
+    pub arg_tys: Vec<ArgType> ,
 
     /// LLVM return type.
-    ret_ty: ArgType,
+    pub ret_ty: ArgType,
 }
 
 pub fn compute_abi_info(ccx: &CrateContext,

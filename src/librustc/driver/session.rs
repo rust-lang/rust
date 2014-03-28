@@ -31,11 +31,11 @@ use std::cell::{Cell, RefCell};
 use collections::HashSet;
 
 pub struct Config {
-    os: abi::Os,
-    arch: abi::Architecture,
-    target_strs: target_strs::t,
-    int_type: IntTy,
-    uint_type: UintTy,
+    pub os: abi::Os,
+    pub arch: abi::Architecture,
+    pub target_strs: target_strs::t,
+    pub int_type: IntTy,
+    pub uint_type: UintTy,
 }
 
 macro_rules! debugging_opts(
@@ -124,34 +124,34 @@ pub enum DebugInfoLevel {
 pub struct Options {
     // The crate config requested for the session, which may be combined
     // with additional crate configurations during the compile process
-    crate_types: Vec<CrateType> ,
+    pub crate_types: Vec<CrateType> ,
 
-    gc: bool,
-    optimize: OptLevel,
-    debuginfo: DebugInfoLevel,
-    lint_opts: Vec<(lint::Lint, lint::level)> ,
-    output_types: Vec<back::link::OutputType> ,
+    pub gc: bool,
+    pub optimize: OptLevel,
+    pub debuginfo: DebugInfoLevel,
+    pub lint_opts: Vec<(lint::Lint, lint::level)> ,
+    pub output_types: Vec<back::link::OutputType> ,
     // This was mutable for rustpkg, which updates search paths based on the
     // parsed code. It remains mutable in case its replacements wants to use
     // this.
-    addl_lib_search_paths: RefCell<HashSet<Path>>,
-    maybe_sysroot: Option<Path>,
-    target_triple: ~str,
+    pub addl_lib_search_paths: RefCell<HashSet<Path>>,
+    pub maybe_sysroot: Option<Path>,
+    pub target_triple: ~str,
     // User-specified cfg meta items. The compiler itself will add additional
     // items to the crate config, and during parsing the entire crate config
     // will be added to the crate AST node.  This should not be used for
     // anything except building the full crate config prior to parsing.
-    cfg: ast::CrateConfig,
-    test: bool,
-    parse_only: bool,
-    no_trans: bool,
-    no_analysis: bool,
-    debugging_opts: u64,
+    pub cfg: ast::CrateConfig,
+    pub test: bool,
+    pub parse_only: bool,
+    pub no_trans: bool,
+    pub no_analysis: bool,
+    pub debugging_opts: u64,
     /// Whether to write dependency files. It's (enabled, optional filename).
-    write_dependency_info: (bool, Option<Path>),
+    pub write_dependency_info: (bool, Option<Path>),
     /// Crate id-related things to maybe print. It's (crate_id, crate_name, crate_file_name).
-    print_metas: (bool, bool, bool),
-    cg: CodegenOptions,
+    pub print_metas: (bool, bool, bool),
+    pub cg: CodegenOptions,
 }
 
 // The type of entry function, so
@@ -174,28 +174,28 @@ pub enum CrateType {
 }
 
 pub struct Session {
-    targ_cfg: Config,
-    opts: Options,
-    cstore: metadata::cstore::CStore,
-    parse_sess: ParseSess,
+    pub targ_cfg: Config,
+    pub opts: Options,
+    pub cstore: metadata::cstore::CStore,
+    pub parse_sess: ParseSess,
     // For a library crate, this is always none
-    entry_fn: RefCell<Option<(NodeId, codemap::Span)>>,
-    entry_type: Cell<Option<EntryFnType>>,
-    macro_registrar_fn: RefCell<Option<ast::DefId>>,
-    default_sysroot: Option<Path>,
-    building_library: Cell<bool>,
+    pub entry_fn: RefCell<Option<(NodeId, codemap::Span)>>,
+    pub entry_type: Cell<Option<EntryFnType>>,
+    pub macro_registrar_fn: RefCell<Option<ast::DefId>>,
+    pub default_sysroot: Option<Path>,
+    pub building_library: Cell<bool>,
     // The name of the root source file of the crate, in the local file system. The path is always
     // expected to be absolute. `None` means that there is no source file.
-    local_crate_source_file: Option<Path>,
-    working_dir: Path,
-    lints: RefCell<NodeMap<Vec<(lint::Lint, codemap::Span, ~str)>>>,
-    node_id: Cell<ast::NodeId>,
-    crate_types: RefCell<Vec<CrateType>>,
-    features: front::feature_gate::Features,
+    pub local_crate_source_file: Option<Path>,
+    pub working_dir: Path,
+    pub lints: RefCell<NodeMap<Vec<(lint::Lint, codemap::Span, ~str)>>>,
+    pub node_id: Cell<ast::NodeId>,
+    pub crate_types: RefCell<Vec<CrateType>>,
+    pub features: front::feature_gate::Features,
 
     /// The maximum recursion limit for potentially infinitely recursive
     /// operations such as auto-dereference and monomorphization.
-    recursion_limit: Cell<uint>,
+    pub recursion_limit: Cell<uint>,
 }
 
 impl Session {
@@ -365,7 +365,7 @@ macro_rules! cgoptions(
     ($($opt:ident : $t:ty = ($init:expr, $parse:ident, $desc:expr)),* ,) =>
 (
     #[deriving(Clone)]
-    pub struct CodegenOptions { $($opt: $t),* }
+    pub struct CodegenOptions { $(pub $opt: $t),* }
 
     pub fn basic_codegen_options() -> CodegenOptions {
         CodegenOptions { $($opt: $init),* }

@@ -31,6 +31,9 @@ This API is completely unstable and subject to change.
 #![feature(macro_rules, globs, struct_variant, managed_boxes, quote,
            default_type_params, phase)]
 
+#![allow(visible_private_types)] // NOTE: remove after a stage0 snap
+#![allow(unrecognized_lint)] // NOTE: remove after a stage0 snap
+
 extern crate flate;
 extern crate arena;
 extern crate syntax;

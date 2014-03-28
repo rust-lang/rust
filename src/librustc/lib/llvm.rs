@@ -1878,7 +1878,7 @@ impl TypeNames {
 /* Memory-managed interface to target data. */
 
 pub struct target_data_res {
-    td: TargetDataRef,
+    pub td: TargetDataRef,
 }
 
 impl Drop for target_data_res {
@@ -1896,7 +1896,7 @@ pub fn target_data_res(td: TargetDataRef) -> target_data_res {
 }
 
 pub struct TargetData {
-    lltd: TargetDataRef,
+    pub lltd: TargetDataRef,
     dtor: @target_data_res
 }
 
@@ -1914,7 +1914,7 @@ pub fn mk_target_data(string_rep: &str) -> TargetData {
 /* Memory-managed interface to pass managers. */
 
 pub struct pass_manager_res {
-    pm: PassManagerRef,
+    pub pm: PassManagerRef,
 }
 
 impl Drop for pass_manager_res {
@@ -1932,7 +1932,7 @@ pub fn pass_manager_res(pm: PassManagerRef) -> pass_manager_res {
 }
 
 pub struct PassManager {
-    llpm: PassManagerRef,
+    pub llpm: PassManagerRef,
     dtor: @pass_manager_res
 }
 
@@ -1950,7 +1950,7 @@ pub fn mk_pass_manager() -> PassManager {
 /* Memory-managed interface to object files. */
 
 pub struct ObjectFile {
-    llof: ObjectFileRef,
+    pub llof: ObjectFileRef,
 }
 
 impl ObjectFile {
@@ -1981,7 +1981,7 @@ impl Drop for ObjectFile {
 /* Memory-managed interface to section iterators. */
 
 pub struct section_iter_res {
-    si: SectionIteratorRef,
+    pub si: SectionIteratorRef,
 }
 
 impl Drop for section_iter_res {
@@ -1999,7 +1999,7 @@ pub fn section_iter_res(si: SectionIteratorRef) -> section_iter_res {
 }
 
 pub struct SectionIter {
-    llsi: SectionIteratorRef,
+    pub llsi: SectionIteratorRef,
     dtor: @section_iter_res
 }
 

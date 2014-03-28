@@ -26,14 +26,14 @@ pub enum VarValue<V, T> {
 }
 
 pub struct ValsAndBindings<V, T> {
-    vals: SmallIntMap<VarValue<V, T>>,
-    bindings: Vec<(V, VarValue<V, T>)> ,
+    pub vals: SmallIntMap<VarValue<V, T>>,
+    pub bindings: Vec<(V, VarValue<V, T>)> ,
 }
 
 pub struct Node<V, T> {
-    root: V,
-    possible_types: T,
-    rank: uint,
+    pub root: V,
+    pub possible_types: T,
+    pub rank: uint,
 }
 
 pub trait UnifyVid<T> {

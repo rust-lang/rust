@@ -371,7 +371,7 @@ fn resolve_crate_deps(e: &mut Env,
 }
 
 pub struct Loader<'a> {
-    priv env: Env<'a>,
+    env: Env<'a>,
 }
 
 impl<'a> Loader<'a> {
