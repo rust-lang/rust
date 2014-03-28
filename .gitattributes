@@ -5,6 +5,7 @@
 *.h rust
 *.rs rust
 src/etc/pkg/rust-logo.ico binary
+src/etc/pkg/rust-logo.png binary
 src/rt/msvc/* -whitespace
 src/rt/vg/* -whitespace
 src/rt/jemalloc/**/* -whitespace
