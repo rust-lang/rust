@@ -189,6 +189,16 @@ validate_opt () {
     done
 }
 
+absolutify() {
+    FILE_PATH="${1}"
+    FILE_PATH_DIRNAME="$(dirname ${FILE_PATH})"
+    FILE_PATH_BASENAME="$(basename ${FILE_PATH})"
+    FILE_ABS_PATH="$(cd ${FILE_PATH_DIRNAME} && pwd)"
+    FILE_PATH="${FILE_ABS_PATH}/${FILE_PATH_BASENAME}"
+    # This is the return value
+    ABSOLUTIFIED="${FILE_PATH}"
+}
+
 CFG_SRC_DIR="$(cd $(dirname $0) && pwd)/"
 CFG_SELF="$0"
 CFG_ARGS="$@"
@@ -268,8 +278,13 @@ then
     err "can't install to same directory as installer"
 fi
 
+# Using an absolute path to libdir in a few places so that the status
+# messages are consistently using absolute paths.
+absolutify "${CFG_LIBDIR}"
+ABS_LIBDIR="${ABSOLUTIFIED}"
+
 # The file name of the manifest we're going to create during install
-INSTALLED_MANIFEST="${CFG_LIBDIR}/rustlib/manifest"
+INSTALLED_MANIFEST="${ABS_LIBDIR}/rustlib/manifest"
 
 # First, uninstall from the installation prefix.
 # Errors are warnings - try to rm everything in the manifest even if some fail.
@@ -293,14 +308,14 @@ then
 
     # If we fail to remove rustlib below, then the installed manifest will
     # still be full; the installed manifest needs to be empty before install.
-    msg "removing ${CFG_LIBDIR}/rustlib/manifest"
-    rm -f "${CFG_LIBDIR}/rustlib/manifest"
+    msg "removing ${INSTALLED_MANIFEST}"
+    rm -f "${INSTALLED_MANIFEST}"
     # For the above reason, this is a hard error
     need_ok "failed to remove installed manifest"
 
     # Remove 'rustlib' directory
-    msg "removing ${CFG_LIBDIR}/rustlib"
-    rm -Rf "${CFG_LIBDIR}/rustlib"
+    msg "removing ${ABS_LIBDIR}/rustlib"
+    rm -Rf "${ABS_LIBDIR}/rustlib"
     if [ $? -ne 0 ]
     then
         warn "failed to remove rustlib"
@@ -325,6 +340,7 @@ fi
 # Create the installed manifest, which we will fill in with absolute file paths
 mkdir -p "${CFG_LIBDIR}/rustlib"
 touch "${INSTALLED_MANIFEST}"
+need_ok "failed to create installed manifest"
 
 # Now install, iterate through the new manifest and copy files
 while read p; do
@@ -350,10 +366,8 @@ while read p; do
 
     # Make the path absolute so we can uninstall it later without
     # starting from the installation cwd
-    FILE_INSTALL_PATH_DIRNAME="$(dirname ${FILE_INSTALL_PATH})"
-    FILE_INSTALL_PATH_BASENAME="$(basename ${FILE_INSTALL_PATH})"
-    FILE_INSTALL_ABS_PATH="$(cd ${FILE_INSTALL_PATH_DIRNAME} && pwd)"
-    FILE_INSTALL_PATH="${FILE_INSTALL_ABS_PATH}/${FILE_INSTALL_PATH_BASENAME}"
+    absolutify "${FILE_INSTALL_PATH}"
+    FILE_INSTALL_PATH="${ABSOLUTIFIED}"
 
     # Install the file
     msg "${FILE_INSTALL_PATH}"
