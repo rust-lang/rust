@@ -54,7 +54,7 @@ use syntax::{ast, ast_map};
 use syntax::owned_slice::OwnedSlice;
 use syntax::abi::AbiSet;
 use syntax;
-use collections::enum_set::{EnumSet, CLike};
+use std::enum_set::{EnumSet, CLike};
 
 pub type Disr = u64;
 
