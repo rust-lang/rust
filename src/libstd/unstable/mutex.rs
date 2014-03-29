@@ -621,7 +621,7 @@ mod test {
     #[test]
     fn destroy_immediately() {
         unsafe {
-            let mut m = StaticNativeMutex::new();
+            let m = StaticNativeMutex::new();
             m.destroy();
         }
     }

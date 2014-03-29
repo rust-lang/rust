@@ -13,11 +13,15 @@
 extern crate collections;
 extern crate time;
 
-use collections::list::{List, Cons, Nil};
 use time::precise_time_s;
 use std::os;
 use std::task;
 use std::vec;
+
+#[deriving(Clone)]
+enum List<T> {
+    Nil, Cons(T, @List<T>)
+}
 
 enum UniqueList {
     ULNil, ULCons(~UniqueList)
