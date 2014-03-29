@@ -33,14 +33,6 @@ pub trait Sized {
 }
 
 /// Types that can be copied by simply copying bits (i.e. `memcpy`).
-#[cfg(stage0)]
-#[lang="pod"]
-pub trait Copy {
-    // Empty.
-}
-
-/// Types that can be copied by simply copying bits (i.e. `memcpy`).
-#[cfg(not(stage0))]
 #[lang="copy"]
 pub trait Copy {
     // Empty.
@@ -270,16 +262,7 @@ pub mod marker {
     /// A type which is considered "not POD", meaning that it is not
     /// implicitly copyable. This is typically embedded in other types to
     /// ensure that they are never copied, even if they lack a destructor.
-    #[cfg(not(stage0))]
     #[lang="no_copy_bound"]
-    #[deriving(Eq,Clone)]
-    pub struct NoCopy;
-
-    /// A type which is considered "not POD", meaning that it is not
-    /// implicitly copyable. This is typically embedded in other types to
-    /// ensure that they are never copied, even if they lack a destructor.
-    #[cfg(stage0)]
-    #[lang="no_pod_bound"]
     #[deriving(Eq,Clone)]
     pub struct NoCopy;
 

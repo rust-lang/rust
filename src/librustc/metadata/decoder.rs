@@ -47,17 +47,6 @@ use syntax::crateid::CrateId;
 
 pub type Cmd = @crate_metadata;
 
-// FIXME: remove unwrap_ after a snapshot
-#[cfg(stage0)]
-fn unwrap_<T>(t: T) -> T {
-    t
-}
-
-#[cfg(not(stage0))]
-fn unwrap_<T, E>(r: Result<T, E>) -> T {
-    r.unwrap()
-}
-
 // A function that takes a def_id relative to the crate being searched and
 // returns a def_id relative to the compilation environment, i.e. if we hit a
 // def_id for an item defined in another crate, somebody needs to figure out
@@ -70,7 +59,7 @@ fn lookup_hash<'a>(d: ebml::Doc<'a>, eq_fn: |&[u8]| -> bool,
     let table = reader::get_doc(index, tag_index_table);
     let hash_pos = table.start + (hash % 256 * 4) as uint;
     let pos = u64_from_be_bytes(d.data, hash_pos, 4) as uint;
-    let tagged_doc = unwrap_(reader::doc_at(d.data, pos));
+    let tagged_doc = reader::doc_at(d.data, pos).unwrap();
 
     let belt = tag_index_buckets_bucket_elt;
 
@@ -78,7 +67,7 @@ fn lookup_hash<'a>(d: ebml::Doc<'a>, eq_fn: |&[u8]| -> bool,
     reader::tagged_docs(tagged_doc.doc, belt, |elt| {
         let pos = u64_from_be_bytes(elt.data, elt.start, 4) as uint;
         if eq_fn(elt.data.slice(elt.start + 4, elt.end)) {
-            ret = Some(unwrap_(reader::doc_at(d.data, pos)).doc);
+            ret = Some(reader::doc_at(d.data, pos).unwrap().doc);
             false
         } else {
             true
@@ -864,7 +853,7 @@ pub fn get_item_variances(cdata: Cmd, id: ast::NodeId) -> ty::ItemVariances {
     let item_doc = lookup_item(id, data);
     let variance_doc = reader::get_doc(item_doc, tag_item_variances);
     let mut decoder = reader::Decoder(variance_doc);
-    unwrap_(Decodable::decode(&mut decoder))
+    Decodable::decode(&mut decoder).unwrap()
 }
 
 pub fn get_provided_trait_methods(intr: Rc<IdentInterner>, cdata: Cmd,
