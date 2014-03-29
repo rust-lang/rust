@@ -329,6 +329,10 @@ fn check_bare_fn(ccx: &CrateCtxt,
                  id: ast::NodeId,
                  fty: ty::t,
                  param_env: ty::ParameterEnvironment) {
+    // Compute the fty from point of view of inside fn
+    // (replace any type-scheme with a type)
+    let fty = fty.subst(ccx.tcx, &param_env.free_substs);
+
     match ty::get(fty).sty {
         ty::ty_bare_fn(ref fn_ty) => {
             let inh = Inherited::new(ccx.tcx, param_env);
@@ -678,9 +682,7 @@ fn check_method_body(ccx: &CrateCtxt,
             method_generics.region_param_defs(),
             method.body.id);
 
-    // Compute the fty from point of view of inside fn
     let fty = ty::node_id_to_type(ccx.tcx, method.id);
-    let fty = fty.subst(ccx.tcx, &param_env.free_substs);
 
     check_bare_fn(ccx, method.decl, method.body, method.id, fty, param_env);
 }
