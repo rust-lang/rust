@@ -133,44 +133,42 @@ pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
     fail!("not a doc-comment: {}", comment);
 }
 
-fn read_to_eol(rdr: &StringReader) -> ~str {
+fn read_to_eol(rdr: &mut StringReader) -> ~str {
     let mut val = ~"";
     while !rdr.curr_is('\n') && !is_eof(rdr) {
-        val.push_char(rdr.curr.get().unwrap());
+        val.push_char(rdr.curr.unwrap());
         bump(rdr);
     }
     if rdr.curr_is('\n') { bump(rdr); }
     return val;
 }
 
-fn read_one_line_comment(rdr: &StringReader) -> ~str {
+fn read_one_line_comment(rdr: &mut StringReader) -> ~str {
     let val = read_to_eol(rdr);
     assert!((val[0] == '/' as u8 && val[1] == '/' as u8) ||
                  (val[0] == '#' as u8 && val[1] == '!' as u8));
     return val;
 }
 
-fn consume_non_eol_whitespace(rdr: &StringReader) {
-    while is_whitespace(rdr.curr.get()) && !rdr.curr_is('\n') &&
-            !is_eof(rdr) {
+fn consume_non_eol_whitespace(rdr: &mut StringReader) {
+    while is_whitespace(rdr.curr) && !rdr.curr_is('\n') && !is_eof(rdr) {
         bump(rdr);
     }
 }
 
-fn push_blank_line_comment(rdr: &StringReader, comments: &mut Vec<Comment> ) {
+fn push_blank_line_comment(rdr: &StringReader, comments: &mut Vec<Comment>) {
     debug!(">>> blank-line comment");
-    let v: Vec<~str> = Vec::new();
     comments.push(Comment {
         style: BlankLine,
-        lines: v,
-        pos: rdr.last_pos.get(),
+        lines: Vec::new(),
+        pos: rdr.last_pos,
     });
 }
 
-fn consume_whitespace_counting_blank_lines(rdr: &StringReader,
-                                           comments: &mut Vec<Comment> ) {
-    while is_whitespace(rdr.curr.get()) && !is_eof(rdr) {
-        if rdr.col.get() == CharPos(0u) && rdr.curr_is('\n') {
+fn consume_whitespace_counting_blank_lines(rdr: &mut StringReader,
+                                           comments: &mut Vec<Comment>) {
+    while is_whitespace(rdr.curr) && !is_eof(rdr) {
+        if rdr.col == CharPos(0u) && rdr.curr_is('\n') {
             push_blank_line_comment(rdr, &mut *comments);
         }
         bump(rdr);
@@ -178,10 +176,10 @@ fn consume_whitespace_counting_blank_lines(rdr: &StringReader,
 }
 
 
-fn read_shebang_comment(rdr: &StringReader, code_to_the_left: bool,
-                                            comments: &mut Vec<Comment> ) {
+fn read_shebang_comment(rdr: &mut StringReader, code_to_the_left: bool,
+                        comments: &mut Vec<Comment>) {
     debug!(">>> shebang comment");
-    let p = rdr.last_pos.get();
+    let p = rdr.last_pos;
     debug!("<<< shebang comment");
     comments.push(Comment {
         style: if code_to_the_left { Trailing } else { Isolated },
@@ -190,10 +188,10 @@ fn read_shebang_comment(rdr: &StringReader, code_to_the_left: bool,
     });
 }
 
-fn read_line_comments(rdr: &StringReader, code_to_the_left: bool,
-                                          comments: &mut Vec<Comment> ) {
+fn read_line_comments(rdr: &mut StringReader, code_to_the_left: bool,
+                      comments: &mut Vec<Comment>) {
     debug!(">>> line comments");
-    let p = rdr.last_pos.get();
+    let p = rdr.last_pos;
     let mut lines: Vec<~str> = Vec::new();
     while rdr.curr_is('/') && nextch_is(rdr, '/') {
         let line = read_one_line_comment(rdr);
@@ -247,13 +245,13 @@ fn trim_whitespace_prefix_and_push_line(lines: &mut Vec<~str> ,
     lines.push(s1);
 }
 
-fn read_block_comment(rdr: &StringReader,
+fn read_block_comment(rdr: &mut StringReader,
                       code_to_the_left: bool,
                       comments: &mut Vec<Comment> ) {
     debug!(">>> block comment");
-    let p = rdr.last_pos.get();
+    let p = rdr.last_pos;
     let mut lines: Vec<~str> = Vec::new();
-    let col: CharPos = rdr.col.get();
+    let col = rdr.col;
     bump(rdr);
     bump(rdr);
 
@@ -262,7 +260,7 @@ fn read_block_comment(rdr: &StringReader,
     // doc-comments are not really comments, they are attributes
     if (rdr.curr_is('*') && !nextch_is(rdr, '*')) || rdr.curr_is('!') {
         while !(rdr.curr_is('*') && nextch_is(rdr, '/')) && !is_eof(rdr) {
-            curr_line.push_char(rdr.curr.get().unwrap());
+            curr_line.push_char(rdr.curr.unwrap());
             bump(rdr);
         }
         if !is_eof(rdr) {
@@ -286,7 +284,7 @@ fn read_block_comment(rdr: &StringReader,
                 curr_line = ~"";
                 bump(rdr);
             } else {
-                curr_line.push_char(rdr.curr.get().unwrap());
+                curr_line.push_char(rdr.curr.unwrap());
                 if rdr.curr_is('/') && nextch_is(rdr, '*') {
                     bump(rdr);
                     bump(rdr);
@@ -324,7 +322,7 @@ fn peeking_at_comment(rdr: &StringReader) -> bool {
           !lexer::nextnextch_is(rdr, '['));
 }
 
-fn consume_comment(rdr: &StringReader,
+fn consume_comment(rdr: &mut StringReader,
                    code_to_the_left: bool,
                    comments: &mut Vec<Comment> ) {
     debug!(">>> consume comment");
@@ -355,7 +353,7 @@ pub fn gather_comments_and_literals(span_diagnostic:
     let src = str::from_utf8_owned(src).unwrap();
     let cm = CodeMap::new();
     let filemap = cm.new_filemap(path, src);
-    let rdr = lexer::new_low_level_string_reader(span_diagnostic, filemap);
+    let mut rdr = lexer::new_low_level_string_reader(span_diagnostic, filemap);
 
     let mut comments: Vec<Comment> = Vec::new();
     let mut literals: Vec<Literal> = Vec::new();
@@ -363,20 +361,20 @@ pub fn gather_comments_and_literals(span_diagnostic:
     while !is_eof(&rdr) {
         loop {
             let mut code_to_the_left = !first_read;
-            consume_non_eol_whitespace(&rdr);
+            consume_non_eol_whitespace(&mut rdr);
             if rdr.curr_is('\n') {
                 code_to_the_left = false;
-                consume_whitespace_counting_blank_lines(&rdr, &mut comments);
+                consume_whitespace_counting_blank_lines(&mut rdr, &mut comments);
             }
             while peeking_at_comment(&rdr) {
-                consume_comment(&rdr, code_to_the_left, &mut comments);
-                consume_whitespace_counting_blank_lines(&rdr, &mut comments);
+                consume_comment(&mut rdr, code_to_the_left, &mut comments);
+                consume_whitespace_counting_blank_lines(&mut rdr, &mut comments);
             }
             break;
         }
 
 
-        let bstart = rdr.last_pos.get();
+        let bstart = rdr.last_pos;
         rdr.next_token();
         //discard, and look ahead; we're working with internal state
         let TokenAndSpan {tok: tok, sp: sp} = rdr.peek();

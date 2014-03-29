@@ -28,6 +28,7 @@ use print;
 use util::small_vector::SmallVector;
 
 use std::cell::RefCell;
+use std::rc::Rc;
 
 struct ParserAnyMacro<'a> {
     parser: RefCell<Parser<'a>>,
@@ -85,8 +86,8 @@ impl<'a> AnyMacro for ParserAnyMacro<'a> {
 
 struct MacroRulesMacroExpander {
     name: Ident,
-    lhses: @Vec<@NamedMatch> ,
-    rhses: @Vec<@NamedMatch> ,
+    lhses: Vec<Rc<NamedMatch>>,
+    rhses: Vec<Rc<NamedMatch>>,
 }
 
 impl MacroExpander for MacroRulesMacroExpander {
@@ -109,15 +110,15 @@ fn generic_extension(cx: &ExtCtxt,
                      sp: Span,
                      name: Ident,
                      arg: &[ast::TokenTree],
-                     lhses: &[@NamedMatch],
-                     rhses: &[@NamedMatch])
+                     lhses: &[Rc<NamedMatch>],
+                     rhses: &[Rc<NamedMatch>])
                      -> MacResult {
     if cx.trace_macros() {
         println!("{}! \\{ {} \\}",
                  token::get_ident(name),
-                 print::pprust::tt_to_str(&TTDelim(@arg.iter()
-                                                       .map(|x| (*x).clone())
-                                                       .collect())));
+                 print::pprust::tt_to_str(&TTDelim(Rc::new(arg.iter()
+                                                              .map(|x| (*x).clone())
+                                                              .collect()))));
     }
 
     // Which arm's failure should we report? (the one furthest along)
@@ -220,12 +221,12 @@ pub fn add_new_extension(cx: &mut ExtCtxt,
 
     // Extract the arguments:
     let lhses = match **argument_map.get(&lhs_nm) {
-        MatchedSeq(ref s, _) => /* FIXME (#2543) */ @(*s).clone(),
+        MatchedSeq(ref s, _) => /* FIXME (#2543) */ (*s).clone(),
         _ => cx.span_bug(sp, "wrong-structured lhs")
     };
 
     let rhses = match **argument_map.get(&rhs_nm) {
-        MatchedSeq(ref s, _) => /* FIXME (#2543) */ @(*s).clone(),
+        MatchedSeq(ref s, _) => /* FIXME (#2543) */ (*s).clone(),
         _ => cx.span_bug(sp, "wrong-structured rhs")
     };
 

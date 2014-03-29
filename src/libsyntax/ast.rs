@@ -581,14 +581,16 @@ pub enum TokenTree {
     TTTok(Span, ::parse::token::Token),
     // a delimited sequence (the delimiters appear as the first
     // and last elements of the vector)
-    TTDelim(@Vec<TokenTree> ),
+    // FIXME(eddyb) #6308 Use Rc<[TokenTree]> after DST.
+    TTDelim(Rc<Vec<TokenTree>>),
 
     // These only make sense for right-hand-sides of MBE macros:
 
     // a kleene-style repetition sequence with a span, a TTForest,
     // an optional separator, and a boolean where true indicates
     // zero or more (..), and false indicates one or more (+).
-    TTSeq(Span, @Vec<TokenTree> , Option<::parse::token::Token>, bool),
+    // FIXME(eddyb) #6308 Use Rc<[TokenTree]> after DST.
+    TTSeq(Span, Rc<Vec<TokenTree>>, Option<::parse::token::Token>, bool),
 
     // a syntactic variable that will be filled in by macro expansion.
     TTNonterminal(Span, Ident)

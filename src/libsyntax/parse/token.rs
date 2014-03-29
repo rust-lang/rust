@@ -22,6 +22,7 @@ use std::char;
 use std::fmt;
 use std::local_data;
 use std::path::BytesContainer;
+use std::rc::Rc;
 
 #[allow(non_camel_case_types)]
 #[deriving(Clone, Encodable, Decodable, Eq, TotalEq, Hash, Show)]
@@ -531,13 +532,14 @@ pub type IdentInterner = StrInterner;
 
 // if an interner exists in TLS, return it. Otherwise, prepare a
 // fresh one.
-pub fn get_ident_interner() -> @IdentInterner {
-    local_data_key!(key: @::parse::token::IdentInterner)
-    match local_data::get(key, |k| k.map(|k| *k)) {
+// FIXME(eddyb) #8726 This should probably use a task-local reference.
+pub fn get_ident_interner() -> Rc<IdentInterner> {
+    local_data_key!(key: Rc<::parse::token::IdentInterner>)
+    match local_data::get(key, |k| k.map(|k| k.clone())) {
         Some(interner) => interner,
         None => {
-            let interner = @mk_fresh_ident_interner();
-            local_data::set(key, interner);
+            let interner = Rc::new(mk_fresh_ident_interner());
+            local_data::set(key, interner.clone());
             interner
         }
     }
