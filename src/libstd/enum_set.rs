@@ -13,10 +13,10 @@
 //! This module defines a container which uses an efficient bit mask
 //! representation to hold C-like enum variants.
 
-use super::num::Bitwise;
+use num::Bitwise;
 use option::{None, Some, Option};
 use ops::{BitOr,BitAnd,Sub};
-use super::iter::Iterator;
+use iter::Iterator;
 
 #[deriving(Clone, Eq, TotalEq, Hash, Show)]
 /// A specialized Set implementation to use enum types.
