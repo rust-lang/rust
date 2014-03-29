@@ -153,7 +153,7 @@ Some productions are defined by exclusion of particular Unicode characters:
 ~~~~ {.notrust .ebnf .gram}
 comment : block_comment | line_comment ;
 block_comment : "/*" block_comment_body * '*' + '/' ;
-block_comment_body : (block_comment | character) * ;
+block_comment_body : [block_comment | character] * ;
 line_comment : "//" non_eol * ;
 ~~~~
 
@@ -205,6 +205,7 @@ The keywords are the following strings:
 ~~~~ {.notrust .keyword}
 as
 break
+crate
 do
 else enum extern
 false fn for
@@ -496,16 +497,16 @@ All of the above extensions are expressions with values.
 ## Macros
 
 ~~~~ {.notrust .ebnf .gram}
-expr_macro_rules : "macro_rules" '!' ident '(' macro_rule * ')'
-macro_rule : '(' matcher * ')' "=>" '(' transcriber * ')' ';'
+expr_macro_rules : "macro_rules" '!' ident '(' macro_rule * ')' ;
+macro_rule : '(' matcher * ')' "=>" '(' transcriber * ')' ';' ;
 matcher : '(' matcher * ')' | '[' matcher * ']'
         | '{' matcher * '}' | '$' ident ':' ident
         | '$' '(' matcher * ')' sep_token? [ '*' | '+' ]
-        | non_special_token
+        | non_special_token ;
 transcriber : '(' transcriber * ')' | '[' transcriber * ']'
             | '{' transcriber * '}' | '$' ident
             | '$' '(' transcriber * ')' sep_token? [ '*' | '+' ]
-            | non_special_token
+            | non_special_token ;
 ~~~~
 
 User-defined syntax extensions are called "macros",
@@ -802,7 +803,7 @@ use_decl : "pub" ? "use" ident [ '=' path
 
 path_glob : ident [ "::" path_glob ] ?
           | '*'
-          | '{' ident [ ',' ident ] * '}'
+          | '{' ident [ ',' ident ] * '}' ;
 ~~~~
 
 A _use declaration_ creates one or more local name bindings synonymous
@@ -1457,7 +1458,7 @@ impl Seq<bool> for u32 {
 ### External blocks
 
 ~~~~ {.notrust .ebnf .gram}
-extern_block_item : "extern" '{' extern_block '} ;
+extern_block_item : "extern" '{' extern_block '}' ;
 extern_block : [ foreign_fn ] * ;
 ~~~~
 
@@ -1683,7 +1684,7 @@ import public items from their destination, not private items.
 
 ~~~~ {.notrust .ebnf .gram}
 attribute : '#' '[' attr_list ']' ;
-attr_list : attr [ ',' attr_list ]*
+attr_list : attr [ ',' attr_list ]* ;
 attr : ident [ '=' literal
              | '(' attr_list ')' ] ? ;
 ~~~~
@@ -2331,7 +2332,7 @@ struct_expr : expr_path '{' ident ':' expr
                       [ ".." expr ] '}' |
               expr_path '(' expr
                       [ ',' expr ] * ')' |
-              expr_path
+              expr_path ;
 ~~~~
 
 There are several forms of structure expressions.
@@ -2382,7 +2383,7 @@ Point3d {y: 0, z: 10, .. base};
 ~~~~ {.notrust .ebnf .gram}
 block_expr : '{' [ view_item ] *
                  [ stmt ';' | item ] *
-                 [ expr ] '}'
+                 [ expr ] '}' ;
 ~~~~
 
 A _block expression_ is similar to a module in terms of the declarations that
@@ -2409,7 +2410,7 @@ or dynamically dispatching if the left-hand-side expression is an indirect [obje
 ### Field expressions
 
 ~~~~ {.notrust .ebnf .gram}
-field_expr : expr '.' ident
+field_expr : expr '.' ident ;
 ~~~~
 
 A _field expression_ consists of an expression followed by a single dot and an identifier,
@@ -2431,9 +2432,9 @@ it is automatically dereferenced to make the field access possible.
 ### Vector expressions
 
 ~~~~ {.notrust .ebnf .gram}
-vec_expr : '[' "mut" ? vec_elems? ']'
+vec_expr : '[' "mut" ? vec_elems? ']' ;
 
-vec_elems : [expr [',' expr]*] | [expr ',' ".." expr]
+vec_elems : [expr [',' expr]*] | [expr ',' ".." expr] ;
 ~~~~
 
 A [_vector_](#vector-types) _expression_ is written by enclosing zero or
@@ -2453,7 +2454,7 @@ as a [literal](#literals) or a [static item](#static-items).
 ### Index expressions
 
 ~~~~ {.notrust .ebnf .gram}
-idx_expr : expr '[' expr ']'
+idx_expr : expr '[' expr ']' ;
 ~~~~
 
 [Vector](#vector-types)-typed expressions can be indexed by writing a
@@ -2875,7 +2876,7 @@ then any `else` block is executed.
 ~~~~ {.notrust .ebnf .gram}
 match_expr : "match" expr '{' match_arm [ '|' match_arm ] * '}' ;
 
-match_arm : match_pat '=>' [ expr "," | '{' block '}' ] ;
+match_arm : match_pat "=>" [ expr "," | '{' block '}' ] ;
 
 match_pat : pat [ ".." pat ] ? [ "if" expr ] ;
 ~~~~
