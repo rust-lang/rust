@@ -189,6 +189,16 @@ validate_opt () {
     done
 }
 
+absolutify() {
+    FILE_PATH="${1}"
+    FILE_PATH_DIRNAME="$(dirname ${FILE_PATH})"
+    FILE_PATH_BASENAME="$(basename ${FILE_PATH})"
+    FILE_ABS_PATH="$(cd ${FILE_PATH_DIRNAME} && pwd)"
+    FILE_PATH="${FILE_ABS_PATH}/${FILE_PATH_BASENAME}"
+    # This is the return value
+    ABSOLUTIFIED="${FILE_PATH}"
+}
+
 CFG_SRC_DIR="$(cd $(dirname $0) && pwd)/"
 CFG_SELF="$0"
 CFG_ARGS="$@"
@@ -212,6 +222,7 @@ BOOL_OPTIONS=""
 VAL_OPTIONS=""
 
 flag uninstall "only uninstall from the installation prefix"
+opt verify 1 "verify that the installed binaries run correctly"
 valopt prefix "/usr/local" "set installation prefix"
 # NB This isn't quite the same definition as in `configure`.
 # just using 'lib' instead of CFG_LIBDIR_RELATIVE
@@ -230,19 +241,36 @@ validate_opt
 
 # OK, let's get installing ...
 
+# Sanity check: can we run the binaries?
+if [ -z "${CFG_DISABLE_VERIFY}" ]
+then
+    # Don't do this if uninstalling. Failure here won't help in any way.
+    if [ -z "${CFG_UNINSTALL}" ]
+    then
+        msg "verifying platform can run binaries"
+        "${CFG_SRC_DIR}/bin/rustc" --version > /dev/null
+        if [ $? -ne 0 ]
+        then
+            err "can't execute rustc binary on this platform"
+        fi
+    fi
+fi
+
 # Sanity check: can we can write to the destination?
+msg "verifying destination is writable"
 umask 022 && mkdir -p "${CFG_LIBDIR}"
-need_ok "can't write to destination. consider 'sudo'."
-touch "${CFG_LIBDIR}/rust-install-probe" 2> /dev/null
+need_ok "can't write to destination. consider \`sudo\`."
+touch "${CFG_LIBDIR}/rust-install-probe" > /dev/null
 if [ $? -ne 0 ]
 then
-    err "can't write to destination. consider 'sudo'."
+    err "can't write to destination. consider \`sudo\`."
 fi
-rm "${CFG_LIBDIR}/rust-install-probe"
+rm -f "${CFG_LIBDIR}/rust-install-probe"
 need_ok "failed to remove install probe"
 
 # Sanity check: don't install to the directory containing the installer.
 # That would surely cause chaos.
+msg "verifying destination is not the same as source"
 INSTALLER_DIR="$(cd $(dirname $0) && pwd)"
 PREFIX_DIR="$(cd ${CFG_PREFIX} && pwd)"
 if [ "${INSTALLER_DIR}" = "${PREFIX_DIR}" ]
@@ -250,8 +278,13 @@ then
     err "can't install to same directory as installer"
 fi
 
+# Using an absolute path to libdir in a few places so that the status
+# messages are consistently using absolute paths.
+absolutify "${CFG_LIBDIR}"
+ABS_LIBDIR="${ABSOLUTIFIED}"
+
 # The file name of the manifest we're going to create during install
-INSTALLED_MANIFEST="${CFG_LIBDIR}/rustlib/manifest"
+INSTALLED_MANIFEST="${ABS_LIBDIR}/rustlib/manifest"
 
 # First, uninstall from the installation prefix.
 # Errors are warnings - try to rm everything in the manifest even if some fail.
@@ -263,7 +296,7 @@ then
         msg "removing $p"
         if [ -f "$p" ]
         then
-            rm "$p"
+            rm -f "$p"
             if [ $? -ne 0 ]
             then
                 warn "failed to remove $p"
@@ -273,8 +306,16 @@ then
         fi
     done < "${INSTALLED_MANIFEST}"
 
+    # If we fail to remove rustlib below, then the installed manifest will
+    # still be full; the installed manifest needs to be empty before install.
+    msg "removing ${INSTALLED_MANIFEST}"
+    rm -f "${INSTALLED_MANIFEST}"
+    # For the above reason, this is a hard error
+    need_ok "failed to remove installed manifest"
+
     # Remove 'rustlib' directory
-    rm -r "${CFG_LIBDIR}/rustlib"
+    msg "removing ${ABS_LIBDIR}/rustlib"
+    rm -Rf "${ABS_LIBDIR}/rustlib"
     if [ $? -ne 0 ]
     then
         warn "failed to remove rustlib"
@@ -298,7 +339,9 @@ fi
 
 # Create the installed manifest, which we will fill in with absolute file paths
 mkdir -p "${CFG_LIBDIR}/rustlib"
+need_ok "failed to create rustlib"
 touch "${INSTALLED_MANIFEST}"
+need_ok "failed to create installed manifest"
 
 # Now install, iterate through the new manifest and copy files
 while read p; do
@@ -324,10 +367,8 @@ while read p; do
 
     # Make the path absolute so we can uninstall it later without
     # starting from the installation cwd
-    FILE_INSTALL_PATH_DIRNAME="$(dirname ${FILE_INSTALL_PATH})"
-    FILE_INSTALL_PATH_BASENAME="$(basename ${FILE_INSTALL_PATH})"
-    FILE_INSTALL_ABS_PATH="$(cd ${FILE_INSTALL_PATH_DIRNAME} && pwd)"
-    FILE_INSTALL_PATH="${FILE_INSTALL_ABS_PATH}/${FILE_INSTALL_PATH_BASENAME}"
+    absolutify "${FILE_INSTALL_PATH}"
+    FILE_INSTALL_PATH="${ABSOLUTIFIED}"
 
     # Install the file
     msg "${FILE_INSTALL_PATH}"
@@ -345,6 +386,22 @@ while read p; do
 
 # The manifest lists all files to install
 done < "${CFG_SRC_DIR}/lib/rustlib/manifest.in"
+
+# Sanity check: can we run the installed binaries?
+if [ -z "${CFG_DISABLE_VERIFY}" ]
+then
+    msg "verifying installed binaries are executable"
+    "${CFG_PREFIX}/bin/rustc" --version > /dev/null
+    if [ $? -ne 0 ]
+    then
+        ERR="can't execute installed rustc binary. "
+        ERR="${ERR}installation may be broken. "
+        ERR="${ERR}if this is expected then rerun install.sh with \`--disable-verify\` "
+        ERR="${ERR}or \`make install\` with \`--disable-verify-install\`"
+        err "${ERR}"
+    fi
+fi
+
 
 echo
 echo "    Rust is ready to roll."
