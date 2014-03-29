@@ -12,6 +12,17 @@ You should already be already familiar with programming concepts and a programmi
 
 Output to the console using `print`. Use the `println` convenience function instead of `print` to add a newline to the end of the output. Note the `use std::io::print` syntax to include the `print` function from the standard `io` library.
 
+<!-- 
+
+FIXME: I think I need to talk about USE here
+    extern mod std;
+    use std::prelude::*;
+
+see Rust for Rubyists
+
+-->
+
+
 ~~~~
 fn main() {
     use std::io::print;
@@ -50,7 +61,7 @@ fn main() {
 
 # `struct`
 
-Structures are groupings of types, and are introduced by the `struct` keyword. For example, a structure that represents a point on a two dimensional grid is composed of two integers, `x` and `y`. Access the types within the `struct` using the name of the structure instance, a dot `.` and the name of the type inside the structure. In the following example, `p` is the instance of the `Point` structure and `p.x` and `p.y` are the coordinates, with values 1 and 2 respectively. 
+Structures are groupings of types, and are introduced by the `struct` keyword. For example, a structure that represents a point on a two dimensional grid is composed of two integers, `x` and `y`. Access the types within the `struct` using the name of the Point object, a dot `.` and the name of the type inside the structure. In the following example, `p` is the `Point` object, and `p.x` and `p.y` are the coordinates, with values 1 and 2 respectively. 
 
 ~~~~
 struct Point { x: int, y: int }
@@ -63,7 +74,7 @@ fn main() {
 
 FIXME: Should talk about Pointers first. 
 
-Structures in Rust contain the values of the instances, not pointers to the values like most other languages in the C-family. If you copy a structure, you copy the entire structure, not just a pointer to the original structure.
+Structures in Rust contain the values of the types the structure contains, not pointers to the values like most other languages in the C-family. If you copy a structure, you copy the entire structure, not just a pointer to the original structure.
 
 ~~~~
 struct Point { x: int, y: int }
@@ -110,6 +121,8 @@ fn main() {
     
 }
 ~~~~
+
+
 
 <!-- FIXME: rewrite this -->
 

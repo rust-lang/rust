@@ -12,7 +12,7 @@ A *very* brief guide to Rust syntax. It assumes you are already familar with pro
 
 # Functions
 
-Functions in Rust are introduced with the `fn` keyword, optional parameters are specified within brackets as comma separated `name: type` pairs, and `->` indicates the return type. You can ommit the return type for functions that do not return a value. Functions return the top level expression (note the return expression is not terminated with a semi colon).
+Functions in Rust are introduced with the `fn` keyword, optional arguments are specified within parenthesis as comma separated `name: type` pairs, and `->` indicates the return type. You can ommit the return type for functions that do not return a value. Functions return the top level expression (note the return expression is not terminated with a semi colon).
 
 ~~~~
 fn main() {
