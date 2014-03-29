@@ -327,17 +327,6 @@ fn rust_input(cratefile: &str, matches: &getopts::Matches) -> Output {
     return pm.run_plugins(krate);
 }
 
-// FIXME: remove unwrap_ after snapshot
-#[cfg(stage0)]
-fn unwrap_<T>(t: T) -> T {
-    t
-}
-
-#[cfg(not(stage0))]
-fn unwrap_<T, E>(r: Result<T, E>) -> T {
-    r.unwrap()
-}
-
 /// This input format purely deserializes the json output file. No passes are
 /// run over the deserialized output.
 fn json_input(input: &str) -> Result<Output, ~str> {
@@ -363,7 +352,7 @@ fn json_input(input: &str) -> Result<Output, ~str> {
             let krate = match obj.pop(&~"crate") {
                 Some(json) => {
                     let mut d = json::Decoder::new(json);
-                    unwrap_(Decodable::decode(&mut d))
+                    Decodable::decode(&mut d).unwrap()
                 }
                 None => return Err(~"malformed json"),
             };
@@ -395,7 +384,7 @@ fn json_output(krate: clean::Crate, res: Vec<plugins::PluginJson> ,
         let mut w = MemWriter::new();
         {
             let mut encoder = json::Encoder::new(&mut w as &mut io::Writer);
-            unwrap_(krate.encode(&mut encoder));
+            krate.encode(&mut encoder).unwrap();
         }
         str::from_utf8_owned(w.unwrap()).unwrap()
     };
