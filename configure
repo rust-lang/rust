@@ -27,7 +27,7 @@ need_ok() {
 }
 
 need_cmd() {
-    if which $1 >/dev/null 2>&1
+    if command -v $1 >/dev/null 2>&1
     then msg "found $1"
     else err "need $1"
     fi
@@ -83,7 +83,7 @@ probe() {
     local T
     for P
     do
-        T=$(which $P 2>&1)
+        T=$(command -v $P 2>&1)
         if [ $? -eq 0 ]
         then
             VER0=$($P --version 2>/dev/null | head -1 \
