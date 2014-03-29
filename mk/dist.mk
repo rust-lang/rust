@@ -160,11 +160,26 @@ dist-prepare-osx-$(1): PREPARE_LIB_CMD=$(DEFAULT_PREPARE_LIB_CMD)
 dist-prepare-osx-$(1): PREPARE_MAN_CMD=$(DEFAULT_PREPARE_MAN_CMD)
 dist-prepare-osx-$(1): prepare-base-osx-$(1)
 
-dist/$(PKG_NAME)-$(1).pkg: $(S)src/etc/pkg/Distribution.xml LICENSE.txt dist-prepare-osx-$(1)
+dist/$(PKG_NAME)-$(1).pkg: $(S)src/etc/pkg/Distribution.xml LICENSE.txt \
+		dist-prepare-osx-$(1) \
+		tmp/dist/pkgres-$(1)/LICENSE.txt \
+		tmp/dist/pkgres-$(1)/welcome.rtf \
+		tmp/dist/pkgres-$(1)/rust-logo.png
 	@$$(call E, making OS X pkg)
 	$(Q)pkgbuild --identifier org.rust-lang.rust --root tmp/dist/pkgroot-$(1) rust.pkg
-	$(Q)productbuild --distribution $(S)src/etc/pkg/Distribution.xml --resources . dist/$(PKG_NAME)-$(1).pkg
+	$(Q)productbuild --distribution $(S)src/etc/pkg/Distribution.xml \
+	      --resources tmp/dist/pkgres-$(1) dist/$(PKG_NAME)-$(1).pkg
 	$(Q)rm -rf tmp rust.pkg
+
+tmp/dist/pkgres-$(1)/LICENSE.txt: $(S)/LICENSE.txt
+	@$$(call E,pkg resource LICENSE.txt)
+	$(Q)mkdir -p $$(@D)
+	$(Q)cp $$< $$@
+
+tmp/dist/pkgres-$(1)/%: $(S)src/etc/pkg/%
+	@$$(call E,pkg resource $$*)
+	$(Q)mkdir -p $$(@D)
+	$(Q)cp -r $$< $$@
 
 endef
 
