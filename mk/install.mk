@@ -15,12 +15,12 @@ MAYBE_DISABLE_VERIFY=
 endif
 
 install: dist-install-dir-$(CFG_BUILD)
-	$(Q)sh tmp/dist/$(PKG_NAME)-$(CFG_BUILD)/install.sh --prefix="$(CFG_PREFIX)" --libdir="$(CFG_LIBDIR)" --mandir="$(CFG_MANDIR)" "$(MAYBE_DISABLE_VERIFY)"
+	$(Q)sh tmp/dist/$(PKG_NAME)-$(CFG_BUILD)/install.sh --prefix="$(DESTDIR)$(CFG_PREFIX)" --libdir="$(DESTDIR)$(CFG_LIBDIR)" --mandir="$(DESTDIR)$(CFG_MANDIR)" "$(MAYBE_DISABLE_VERIFY)"
 # Remove tmp files while we can because they may have been created under sudo
 	$(Q)rm -R tmp/dist/$(PKG_NAME)-$(CFG_BUILD)
 
 uninstall: dist-install-dir-$(CFG_BUILD)
-	$(Q)sh tmp/dist/$(PKG_NAME)-$(CFG_BUILD)/install.sh --uninstall --prefix="$(CFG_PREFIX)" --libdir="$(CFG_LIBDIR)" --mandir="$(CFG_MANDIR)"
+	$(Q)sh tmp/dist/$(PKG_NAME)-$(CFG_BUILD)/install.sh --uninstall --prefix="$(DESTDIR)$(CFG_PREFIX)" --libdir="$(DESTDIR)$(CFG_LIBDIR)" --mandir="$(DESTDIR)$(CFG_MANDIR)"
 # Remove tmp files while we can because they may have been created under sudo
 	$(Q)rm -R tmp/dist/$(PKG_NAME)-$(CFG_BUILD)
 
