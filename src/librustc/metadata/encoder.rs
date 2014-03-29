@@ -62,11 +62,6 @@ pub enum InlinedItemRef<'a> {
     IIForeignRef(&'a ast::ForeignItem)
 }
 
-// FIXME: remove this Encoder type after a snapshot
-#[cfg(stage0)]
-pub type Encoder<'a> = writer::Encoder<'a>;
-
-#[cfg(not(stage0))]
 pub type Encoder<'a> = writer::Encoder<'a, MemWriter>;
 
 pub type EncodeInlinedItem<'a> = 'a |ecx: &EncodeContext,

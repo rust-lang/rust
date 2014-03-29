@@ -604,29 +604,12 @@ impl<'a> Equiv<&'a str> for InternedString {
     }
 }
 
-// FIXME: remove stage0 Encodables/Decodables after snapshot
-#[cfg(stage0)]
-impl<D:Decoder> Decodable<D> for InternedString {
-    fn decode(d: &mut D) -> InternedString {
-        get_name(get_ident_interner().intern(d.read_str()))
-    }
-}
-
-#[cfg(stage0)]
-impl<E:Encoder> Encodable<E> for InternedString {
-    fn encode(&self, e: &mut E) {
-        e.emit_str(self.string.as_slice())
-    }
-}
-
-#[cfg(not(stage0))]
 impl<D:Decoder<E>, E> Decodable<D, E> for InternedString {
     fn decode(d: &mut D) -> Result<InternedString, E> {
         Ok(get_name(get_ident_interner().intern(try!(d.read_str()))))
     }
 }
 
-#[cfg(not(stage0))]
 impl<S:Encoder<E>, E> Encodable<S, E> for InternedString {
     fn encode(&self, s: &mut S) -> Result<(), E> {
         s.emit_str(self.string.as_slice())

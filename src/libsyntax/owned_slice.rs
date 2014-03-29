@@ -131,29 +131,12 @@ impl<T> FromIterator<T> for OwnedSlice<T> {
     }
 }
 
-// FIXME: remove stage0 Encodables/Decodables after snapshot
-#[cfg(stage0)]
-impl<S: Encoder, T: Encodable<S>> Encodable<S> for OwnedSlice<T> {
-    fn encode(&self, s: &mut S) {
-       self.as_slice().encode(s)
-    }
-}
-
-#[cfg(stage0)]
-impl<D: Decoder, T: Decodable<D>> Decodable<D> for OwnedSlice<T> {
-    fn decode(d: &mut D) -> OwnedSlice<T> {
-        OwnedSlice::from_vec(Decodable::decode(d))
-    }
-}
-
-#[cfg(not(stage0))]
 impl<S: Encoder<E>, T: Encodable<S, E>, E> Encodable<S, E> for OwnedSlice<T> {
     fn encode(&self, s: &mut S) -> Result<(), E> {
        self.as_slice().encode(s)
     }
 }
 
-#[cfg(not(stage0))]
 impl<D: Decoder<E>, T: Decodable<D, E>, E> Decodable<D, E> for OwnedSlice<T> {
     fn decode(d: &mut D) -> Result<OwnedSlice<T>, E> {
         Ok(OwnedSlice::from_vec(match Decodable::decode(d) {
