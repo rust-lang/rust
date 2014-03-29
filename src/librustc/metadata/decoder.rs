@@ -278,7 +278,7 @@ fn item_region_param_defs(item_doc: ebml::Doc, cdata: Cmd)
     reader::tagged_docs(item_doc, tag_region_param_def, |rp_doc| {
             let ident_str_doc = reader::get_doc(rp_doc,
                                                 tag_region_param_def_ident);
-            let ident = item_name(token::get_ident_interner(), ident_str_doc);
+            let ident = item_name(&*token::get_ident_interner(), ident_str_doc);
             let def_id_doc = reader::get_doc(rp_doc,
                                              tag_region_param_def_def_id);
             let def_id = reader::with_doc_data(def_id_doc, parse_def_id);
@@ -460,13 +460,13 @@ pub fn get_impl_vtables(cdata: Cmd,
 }
 
 
-pub fn get_impl_method(intr: @IdentInterner, cdata: Cmd, id: ast::NodeId,
+pub fn get_impl_method(intr: Rc<IdentInterner>, cdata: Cmd, id: ast::NodeId,
                        name: ast::Ident) -> Option<ast::DefId> {
     let items = reader::get_doc(reader::Doc(cdata.data()), tag_items);
     let mut found = None;
     reader::tagged_docs(find_item(id, items), tag_item_impl_method, |mid| {
         let m_did = reader::with_doc_data(mid, parse_def_id);
-        if item_name(intr, find_item(m_did.node, items)) == name {
+        if item_name(&*intr, find_item(m_did.node, items)) == name {
             found = Some(translate_def_id(cdata, m_did));
         }
         true
@@ -509,7 +509,7 @@ pub fn each_lang_item(cdata: Cmd, f: |ast::NodeId, uint| -> bool) -> bool {
     })
 }
 
-fn each_child_of_item_or_crate(intr: @IdentInterner,
+fn each_child_of_item_or_crate(intr: Rc<IdentInterner>,
                                cdata: Cmd,
                                item_doc: ebml::Doc,
                                get_crate_data: GetCrateDataCb,
@@ -536,7 +536,7 @@ fn each_child_of_item_or_crate(intr: @IdentInterner,
             None => {}
             Some(child_item_doc) => {
                 // Hand off the item to the callback.
-                let child_name = item_name(intr, child_item_doc);
+                let child_name = item_name(&*intr, child_item_doc);
                 let def_like = item_to_def_like(child_item_doc,
                                                 child_def_id,
                                                 cdata.cnum);
@@ -577,7 +577,7 @@ fn each_child_of_item_or_crate(intr: @IdentInterner,
                                     // Hand off the static method
                                     // to the callback.
                                     let static_method_name =
-                                        item_name(intr, impl_method_doc);
+                                        item_name(&*intr, impl_method_doc);
                                     let static_method_def_like =
                                         item_to_def_like(impl_method_doc,
                                                          impl_method_def_id,
@@ -638,7 +638,7 @@ fn each_child_of_item_or_crate(intr: @IdentInterner,
 }
 
 /// Iterates over each child of the given item.
-pub fn each_child_of_item(intr: @IdentInterner,
+pub fn each_child_of_item(intr: Rc<IdentInterner>,
                           cdata: Cmd,
                           id: ast::NodeId,
                           get_crate_data: GetCrateDataCb,
@@ -659,7 +659,7 @@ pub fn each_child_of_item(intr: @IdentInterner,
 }
 
 /// Iterates over all the top-level crate items.
-pub fn each_top_level_item_of_crate(intr: @IdentInterner,
+pub fn each_top_level_item_of_crate(intr: Rc<IdentInterner>,
                                     cdata: Cmd,
                                     get_crate_data: GetCrateDataCb,
                                     callback: |DefLike,
@@ -711,7 +711,7 @@ pub fn maybe_get_item_ast(cdata: Cmd, tcx: &ty::ctxt, id: ast::NodeId,
     }
 }
 
-pub fn get_enum_variants(intr: @IdentInterner, cdata: Cmd, id: ast::NodeId,
+pub fn get_enum_variants(intr: Rc<IdentInterner>, cdata: Cmd, id: ast::NodeId,
                      tcx: &ty::ctxt) -> Vec<@ty::VariantInfo> {
     let data = cdata.data();
     let items = reader::get_doc(reader::Doc(data), tag_items);
@@ -723,7 +723,7 @@ pub fn get_enum_variants(intr: @IdentInterner, cdata: Cmd, id: ast::NodeId,
         let item = find_item(did.node, items);
         let ctor_ty = item_type(ast::DefId { krate: cdata.cnum, node: id},
                                 item, tcx, cdata);
-        let name = item_name(intr, item);
+        let name = item_name(&*intr, item);
         let arg_tys = match ty::get(ctor_ty).sty {
           ty::ty_bare_fn(ref f) => f.sig.inputs.clone(),
           _ => Vec::new(), // Nullary enum variant.
@@ -770,12 +770,12 @@ fn get_explicit_self(item: ebml::Doc) -> ast::ExplicitSelf_ {
     }
 }
 
-fn item_impl_methods(intr: @IdentInterner, cdata: Cmd, item: ebml::Doc,
+fn item_impl_methods(intr: Rc<IdentInterner>, cdata: Cmd, item: ebml::Doc,
                      tcx: &ty::ctxt) -> Vec<@ty::Method> {
     let mut rslt = Vec::new();
     reader::tagged_docs(item, tag_item_impl_method, |doc| {
         let m_did = reader::with_doc_data(doc, parse_def_id);
-        rslt.push(@get_method(intr, cdata, m_did.node, tcx));
+        rslt.push(@get_method(intr.clone(), cdata, m_did.node, tcx));
         true
     });
 
@@ -783,7 +783,7 @@ fn item_impl_methods(intr: @IdentInterner, cdata: Cmd, item: ebml::Doc,
 }
 
 /// Returns information about the given implementation.
-pub fn get_impl(intr: @IdentInterner, cdata: Cmd, impl_id: ast::NodeId,
+pub fn get_impl(intr: Rc<IdentInterner>, cdata: Cmd, impl_id: ast::NodeId,
                tcx: &ty::ctxt)
                 -> ty::Impl {
     let data = cdata.data();
@@ -793,23 +793,23 @@ pub fn get_impl(intr: @IdentInterner, cdata: Cmd, impl_id: ast::NodeId,
             krate: cdata.cnum,
             node: impl_id,
         },
-        ident: item_name(intr, impl_item),
+        ident: item_name(&*intr, impl_item),
         methods: item_impl_methods(intr, cdata, impl_item, tcx),
     }
 }
 
 pub fn get_method_name_and_explicit_self(
-    intr: @IdentInterner,
+    intr: Rc<IdentInterner>,
     cdata: Cmd,
     id: ast::NodeId) -> (ast::Ident, ast::ExplicitSelf_)
 {
     let method_doc = lookup_item(id, cdata.data());
-    let name = item_name(intr, method_doc);
+    let name = item_name(&*intr, method_doc);
     let explicit_self = get_explicit_self(method_doc);
     (name, explicit_self)
 }
 
-pub fn get_method(intr: @IdentInterner, cdata: Cmd, id: ast::NodeId,
+pub fn get_method(intr: Rc<IdentInterner>, cdata: Cmd, id: ast::NodeId,
                   tcx: &ty::ctxt) -> ty::Method
 {
     let method_doc = lookup_item(id, cdata.data());
@@ -823,7 +823,7 @@ pub fn get_method(intr: @IdentInterner, cdata: Cmd, id: ast::NodeId,
         _ => ImplContainer(container_id),
     };
 
-    let name = item_name(intr, method_doc);
+    let name = item_name(&*intr, method_doc);
     let type_param_defs = item_ty_param_defs(method_doc, tcx, cdata,
                                              tag_item_method_tps);
     let rp_defs = item_region_param_defs(method_doc, cdata);
@@ -867,7 +867,7 @@ pub fn get_item_variances(cdata: Cmd, id: ast::NodeId) -> ty::ItemVariances {
     unwrap_(Decodable::decode(&mut decoder))
 }
 
-pub fn get_provided_trait_methods(intr: @IdentInterner, cdata: Cmd,
+pub fn get_provided_trait_methods(intr: Rc<IdentInterner>, cdata: Cmd,
                                   id: ast::NodeId, tcx: &ty::ctxt) ->
         Vec<@ty::Method> {
     let data = cdata.data();
@@ -879,7 +879,7 @@ pub fn get_provided_trait_methods(intr: @IdentInterner, cdata: Cmd,
         let mth = lookup_item(did.node, data);
 
         if item_method_sort(mth) == 'p' {
-            result.push(@get_method(intr, cdata, did.node, tcx));
+            result.push(@get_method(intr.clone(), cdata, did.node, tcx));
         }
         true
     });
@@ -921,7 +921,7 @@ pub fn get_type_name_if_impl(cdata: Cmd,
     ret
 }
 
-pub fn get_static_methods_if_impl(intr: @IdentInterner,
+pub fn get_static_methods_if_impl(intr: Rc<IdentInterner>,
                                   cdata: Cmd,
                                   node_id: ast::NodeId)
                                -> Option<Vec<StaticMethodInfo> > {
@@ -957,7 +957,7 @@ pub fn get_static_methods_if_impl(intr: @IdentInterner,
                 }
 
                 static_impl_methods.push(StaticMethodInfo {
-                    ident: item_name(intr, impl_method_doc),
+                    ident: item_name(&*intr, impl_method_doc),
                     def_id: item_def_id(impl_method_doc, cdata),
                     purity: purity,
                     vis: item_visibility(impl_method_doc),
@@ -1009,7 +1009,7 @@ fn struct_field_family_to_visibility(family: Family) -> ast::Visibility {
     }
 }
 
-pub fn get_struct_fields(intr: @IdentInterner, cdata: Cmd, id: ast::NodeId)
+pub fn get_struct_fields(intr: Rc<IdentInterner>, cdata: Cmd, id: ast::NodeId)
     -> Vec<ty::field_ty> {
     let data = cdata.data();
     let item = lookup_item(id, data);
@@ -1018,7 +1018,7 @@ pub fn get_struct_fields(intr: @IdentInterner, cdata: Cmd, id: ast::NodeId)
         let f = item_family(an_item);
         if f == PublicField || f == PrivateField || f == InheritedField {
             // FIXME #6993: name should be of type Name, not Ident
-            let name = item_name(intr, an_item);
+            let name = item_name(&*intr, an_item);
             let did = item_def_id(an_item, cdata);
             result.push(ty::field_ty {
                 name: name.name,

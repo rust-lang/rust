@@ -12,11 +12,10 @@ use ast;
 use codemap::{BytePos, CharPos, CodeMap, Pos, Span};
 use codemap;
 use diagnostic::SpanHandler;
-use ext::tt::transcribe::{dup_tt_reader, tt_next_token};
+use ext::tt::transcribe::tt_next_token;
 use parse::token;
 use parse::token::{str_to_ident};
 
-use std::cell::{Cell, RefCell};
 use std::char;
 use std::mem::replace;
 use std::num::from_str_radix;
@@ -27,11 +26,10 @@ pub use ext::tt::transcribe::{TtReader, new_tt_reader};
 
 pub trait Reader {
     fn is_eof(&self) -> bool;
-    fn next_token(&self) -> TokenAndSpan;
+    fn next_token(&mut self) -> TokenAndSpan;
     fn fatal(&self, ~str) -> !;
     fn span_diag<'a>(&'a self) -> &'a SpanHandler;
     fn peek(&self) -> TokenAndSpan;
-    fn dup(&self) -> ~Reader:;
 }
 
 #[deriving(Clone, Eq, Show)]
@@ -43,30 +41,30 @@ pub struct TokenAndSpan {
 pub struct StringReader<'a> {
     span_diagnostic: &'a SpanHandler,
     // The absolute offset within the codemap of the next character to read
-    pos: Cell<BytePos>,
+    pos: BytePos,
     // The absolute offset within the codemap of the last character read(curr)
-    last_pos: Cell<BytePos>,
+    last_pos: BytePos,
     // The column of the next character to read
-    col: Cell<CharPos>,
+    col: CharPos,
     // The last character to be read
-    curr: Cell<Option<char>>,
+    curr: Option<char>,
     filemap: Rc<codemap::FileMap>,
     /* cached: */
-    peek_tok: RefCell<token::Token>,
-    peek_span: RefCell<Span>,
+    peek_tok: token::Token,
+    peek_span: Span,
 }
 
 impl<'a> StringReader<'a> {
     pub fn curr_is(&self, c: char) -> bool {
-        self.curr.get() == Some(c)
+        self.curr == Some(c)
     }
 }
 
 pub fn new_string_reader<'a>(span_diagnostic: &'a SpanHandler,
                              filemap: Rc<codemap::FileMap>)
                              -> StringReader<'a> {
-    let r = new_low_level_string_reader(span_diagnostic, filemap);
-    string_advance_token(&r); /* fill in peek_* */
+    let mut r = new_low_level_string_reader(span_diagnostic, filemap);
+    string_advance_token(&mut r); /* fill in peek_* */
     r
 }
 
@@ -76,97 +74,79 @@ pub fn new_low_level_string_reader<'a>(span_diagnostic: &'a SpanHandler,
                                        -> StringReader<'a> {
     // Force the initial reader bump to start on a fresh line
     let initial_char = '\n';
-    let r = StringReader {
+    let mut r = StringReader {
         span_diagnostic: span_diagnostic,
-        pos: Cell::new(filemap.start_pos),
-        last_pos: Cell::new(filemap.start_pos),
-        col: Cell::new(CharPos(0)),
-        curr: Cell::new(Some(initial_char)),
+        pos: filemap.start_pos,
+        last_pos: filemap.start_pos,
+        col: CharPos(0),
+        curr: Some(initial_char),
         filemap: filemap,
         /* dummy values; not read */
-        peek_tok: RefCell::new(token::EOF),
-        peek_span: RefCell::new(codemap::DUMMY_SP),
+        peek_tok: token::EOF,
+        peek_span: codemap::DUMMY_SP,
     };
-    bump(&r);
+    bump(&mut r);
     r
-}
-
-// duplicating the string reader is probably a bad idea, in
-// that using them will cause interleaved pushes of line
-// offsets to the underlying filemap...
-fn dup_string_reader<'a>(r: &StringReader<'a>) -> StringReader<'a> {
-    StringReader {
-        span_diagnostic: r.span_diagnostic,
-        pos: Cell::new(r.pos.get()),
-        last_pos: Cell::new(r.last_pos.get()),
-        col: Cell::new(r.col.get()),
-        curr: Cell::new(r.curr.get()),
-        filemap: r.filemap.clone(),
-        peek_tok: r.peek_tok.clone(),
-        peek_span: r.peek_span.clone(),
-    }
 }
 
 impl<'a> Reader for StringReader<'a> {
     fn is_eof(&self) -> bool { is_eof(self) }
     // return the next token. EFFECT: advances the string_reader.
-    fn next_token(&self) -> TokenAndSpan {
+    fn next_token(&mut self) -> TokenAndSpan {
         let ret_val = TokenAndSpan {
-            tok: replace(&mut *self.peek_tok.borrow_mut(), token::UNDERSCORE),
-            sp: self.peek_span.get(),
+            tok: replace(&mut self.peek_tok, token::UNDERSCORE),
+            sp: self.peek_span,
         };
         string_advance_token(self);
         ret_val
     }
     fn fatal(&self, m: ~str) -> ! {
-        self.span_diagnostic.span_fatal(self.peek_span.get(), m)
+        self.span_diagnostic.span_fatal(self.peek_span, m)
     }
     fn span_diag<'a>(&'a self) -> &'a SpanHandler { self.span_diagnostic }
     fn peek(&self) -> TokenAndSpan {
         // FIXME(pcwalton): Bad copy!
         TokenAndSpan {
-            tok: self.peek_tok.get(),
-            sp: self.peek_span.get(),
+            tok: self.peek_tok.clone(),
+            sp: self.peek_span.clone(),
         }
     }
-    fn dup(&self) -> ~Reader: { ~dup_string_reader(self) as ~Reader: }
 }
 
 impl<'a> Reader for TtReader<'a> {
     fn is_eof(&self) -> bool {
-        *self.cur_tok.borrow() == token::EOF
+        self.cur_tok == token::EOF
     }
-    fn next_token(&self) -> TokenAndSpan {
+    fn next_token(&mut self) -> TokenAndSpan {
         let r = tt_next_token(self);
         debug!("TtReader: r={:?}", r);
-        return r;
+        r
     }
     fn fatal(&self, m: ~str) -> ! {
-        self.sp_diag.span_fatal(self.cur_span.get(), m);
+        self.sp_diag.span_fatal(self.cur_span, m);
     }
     fn span_diag<'a>(&'a self) -> &'a SpanHandler { self.sp_diag }
     fn peek(&self) -> TokenAndSpan {
         TokenAndSpan {
-            tok: self.cur_tok.get(),
-            sp: self.cur_span.get(),
+            tok: self.cur_tok.clone(),
+            sp: self.cur_span.clone(),
         }
     }
-    fn dup(&self) -> ~Reader: { ~dup_tt_reader(self) as ~Reader: }
 }
 
 // report a lexical error spanning [`from_pos`, `to_pos`)
-fn fatal_span(rdr: &StringReader,
+fn fatal_span(rdr: &mut StringReader,
               from_pos: BytePos,
               to_pos: BytePos,
               m: ~str)
            -> ! {
-    rdr.peek_span.set(codemap::mk_sp(from_pos, to_pos));
+    rdr.peek_span = codemap::mk_sp(from_pos, to_pos);
     rdr.fatal(m);
 }
 
 // report a lexical error spanning [`from_pos`, `to_pos`), appending an
 // escaped character to the error message
-fn fatal_span_char(rdr: &StringReader,
+fn fatal_span_char(rdr: &mut StringReader,
                    from_pos: BytePos,
                    to_pos: BytePos,
                    m: ~str,
@@ -180,36 +160,35 @@ fn fatal_span_char(rdr: &StringReader,
 
 // report a lexical error spanning [`from_pos`, `to_pos`), appending the
 // offending string to the error message
-fn fatal_span_verbose(rdr: &StringReader,
+fn fatal_span_verbose(rdr: &mut StringReader,
                       from_pos: BytePos,
                       to_pos: BytePos,
                       m: ~str)
                    -> ! {
     let mut m = m;
     m.push_str(": ");
-    let s = rdr.filemap.src.slice(
-                  byte_offset(rdr, from_pos).to_uint(),
-                  byte_offset(rdr, to_pos).to_uint());
-    m.push_str(s);
+    let from = byte_offset(rdr, from_pos).to_uint();
+    let to = byte_offset(rdr, to_pos).to_uint();
+    m.push_str(rdr.filemap.src.slice(from, to));
     fatal_span(rdr, from_pos, to_pos, m);
 }
 
 // EFFECT: advance peek_tok and peek_span to refer to the next token.
 // EFFECT: update the interner, maybe.
-fn string_advance_token(r: &StringReader) {
+fn string_advance_token(r: &mut StringReader) {
     match consume_whitespace_and_comments(r) {
         Some(comment) => {
-            r.peek_span.set(comment.sp);
-            r.peek_tok.set(comment.tok);
+            r.peek_span = comment.sp;
+            r.peek_tok = comment.tok;
         },
         None => {
             if is_eof(r) {
-                r.peek_tok.set(token::EOF);
+                r.peek_tok = token::EOF;
             } else {
-                let start_bytepos = r.last_pos.get();
-                r.peek_tok.set(next_token_inner(r));
-                r.peek_span.set(codemap::mk_sp(start_bytepos,
-                                               r.last_pos.get()));
+                let start_bytepos = r.last_pos;
+                r.peek_tok = next_token_inner(r);
+                r.peek_span = codemap::mk_sp(start_bytepos,
+                                             r.last_pos);
             };
         }
     }
@@ -227,7 +206,7 @@ pub fn with_str_from<T>(
                      start: BytePos,
                      f: |s: &str| -> T)
                      -> T {
-    with_str_from_to(rdr, start, rdr.last_pos.get(), f)
+    with_str_from_to(rdr, start, rdr.last_pos, f)
 }
 
 /// Calls `f` with astring slice of the source text spanning from `start`
@@ -245,36 +224,36 @@ fn with_str_from_to<T>(
 
 // EFFECT: advance the StringReader by one character. If a newline is
 // discovered, add it to the FileMap's list of line start offsets.
-pub fn bump(rdr: &StringReader) {
-    rdr.last_pos.set(rdr.pos.get());
-    let current_byte_offset = byte_offset(rdr, rdr.pos.get()).to_uint();
+pub fn bump(rdr: &mut StringReader) {
+    rdr.last_pos = rdr.pos;
+    let current_byte_offset = byte_offset(rdr, rdr.pos).to_uint();
     if current_byte_offset < rdr.filemap.src.len() {
-        assert!(rdr.curr.get().is_some());
-        let last_char = rdr.curr.get().unwrap();
+        assert!(rdr.curr.is_some());
+        let last_char = rdr.curr.unwrap();
         let next = rdr.filemap.src.char_range_at(current_byte_offset);
         let byte_offset_diff = next.next - current_byte_offset;
-        rdr.pos.set(rdr.pos.get() + Pos::from_uint(byte_offset_diff));
-        rdr.curr.set(Some(next.ch));
-        rdr.col.set(rdr.col.get() + CharPos(1u));
+        rdr.pos = rdr.pos + Pos::from_uint(byte_offset_diff);
+        rdr.curr = Some(next.ch);
+        rdr.col = rdr.col + CharPos(1u);
         if last_char == '\n' {
-            rdr.filemap.next_line(rdr.last_pos.get());
-            rdr.col.set(CharPos(0u));
+            rdr.filemap.next_line(rdr.last_pos);
+            rdr.col = CharPos(0u);
         }
 
         if byte_offset_diff > 1 {
-            rdr.filemap.record_multibyte_char(rdr.last_pos.get(), byte_offset_diff);
+            rdr.filemap.record_multibyte_char(rdr.last_pos, byte_offset_diff);
         }
     } else {
-        rdr.curr.set(None);
+        rdr.curr = None;
     }
 }
 
 pub fn is_eof(rdr: &StringReader) -> bool {
-    rdr.curr.get().is_none()
+    rdr.curr.is_none()
 }
 
 pub fn nextch(rdr: &StringReader) -> Option<char> {
-    let offset = byte_offset(rdr, rdr.pos.get()).to_uint();
+    let offset = byte_offset(rdr, rdr.pos).to_uint();
     if offset < rdr.filemap.src.len() {
         Some(rdr.filemap.src.char_at(offset))
     } else {
@@ -286,7 +265,7 @@ pub fn nextch_is(rdr: &StringReader, c: char) -> bool {
 }
 
 pub fn nextnextch(rdr: &StringReader) -> Option<char> {
-    let offset = byte_offset(rdr, rdr.pos.get()).to_uint();
+    let offset = byte_offset(rdr, rdr.pos).to_uint();
     let s = rdr.filemap.deref().src.as_slice();
     if offset >= s.len() { return None }
     let str::CharRange { next, .. } = s.char_range_at(offset);
@@ -332,9 +311,9 @@ fn is_hex_digit(c: Option<char>) -> bool {
 
 // EFFECT: eats whitespace and comments.
 // returns a Some(sugared-doc-attr) if one exists, None otherwise.
-fn consume_whitespace_and_comments(rdr: &StringReader)
+fn consume_whitespace_and_comments(rdr: &mut StringReader)
                                 -> Option<TokenAndSpan> {
-    while is_whitespace(rdr.curr.get()) { bump(rdr); }
+    while is_whitespace(rdr.curr) { bump(rdr); }
     return consume_any_line_comment(rdr);
 }
 
@@ -345,7 +324,7 @@ pub fn is_line_non_doc_comment(s: &str) -> bool {
 // PRECONDITION: rdr.curr is not whitespace
 // EFFECT: eats any kind of comment.
 // returns a Some(sugared-doc-attr) if one exists, None otherwise
-fn consume_any_line_comment(rdr: &StringReader)
+fn consume_any_line_comment(rdr: &mut StringReader)
                          -> Option<TokenAndSpan> {
     if rdr.curr_is('/') {
         match nextch(rdr) {
@@ -354,7 +333,7 @@ fn consume_any_line_comment(rdr: &StringReader)
                 bump(rdr);
                 // line comments starting with "///" or "//!" are doc-comments
                 if rdr.curr_is('/') || rdr.curr_is('!') {
-                    let start_bpos = rdr.pos.get() - BytePos(3);
+                    let start_bpos = rdr.pos - BytePos(3);
                     while !rdr.curr_is('\n') && !is_eof(rdr) {
                         bump(rdr);
                     }
@@ -363,7 +342,7 @@ fn consume_any_line_comment(rdr: &StringReader)
                         if !is_line_non_doc_comment(string) {
                             Some(TokenAndSpan{
                                 tok: token::DOC_COMMENT(str_to_ident(string)),
-                                sp: codemap::mk_sp(start_bpos, rdr.pos.get())
+                                sp: codemap::mk_sp(start_bpos, rdr.pos)
                             })
                         } else {
                             None
@@ -394,7 +373,7 @@ fn consume_any_line_comment(rdr: &StringReader)
             // we're at the beginning of the file...
             let cmap = CodeMap::new();
             cmap.files.borrow_mut().push(rdr.filemap.clone());
-            let loc = cmap.lookup_char_pos_adj(rdr.last_pos.get());
+            let loc = cmap.lookup_char_pos_adj(rdr.last_pos);
             if loc.line == 1u && loc.col == CharPos(0u) {
                 while !rdr.curr_is('\n') && !is_eof(rdr) { bump(rdr); }
                 return consume_whitespace_and_comments(rdr);
@@ -411,10 +390,10 @@ pub fn is_block_non_doc_comment(s: &str) -> bool {
 }
 
 // might return a sugared-doc-attr
-fn consume_block_comment(rdr: &StringReader) -> Option<TokenAndSpan> {
+fn consume_block_comment(rdr: &mut StringReader) -> Option<TokenAndSpan> {
     // block comments starting with "/**" or "/*!" are doc-comments
     let is_doc_comment = rdr.curr_is('*') || rdr.curr_is('!');
-    let start_bpos = rdr.pos.get() - BytePos(if is_doc_comment {3} else {2});
+    let start_bpos = rdr.pos - BytePos(if is_doc_comment {3} else {2});
 
     let mut level: int = 1;
     while level > 0 {
@@ -424,7 +403,7 @@ fn consume_block_comment(rdr: &StringReader) -> Option<TokenAndSpan> {
             } else {
                 ~"unterminated block comment"
             };
-            fatal_span(rdr, start_bpos, rdr.last_pos.get(), msg);
+            fatal_span(rdr, start_bpos, rdr.last_pos, msg);
         } else if rdr.curr_is('/') && nextch_is(rdr, '*') {
             level += 1;
             bump(rdr);
@@ -444,7 +423,7 @@ fn consume_block_comment(rdr: &StringReader) -> Option<TokenAndSpan> {
             if !is_block_non_doc_comment(string) {
                 Some(TokenAndSpan{
                         tok: token::DOC_COMMENT(str_to_ident(string)),
-                        sp: codemap::mk_sp(start_bpos, rdr.pos.get())
+                        sp: codemap::mk_sp(start_bpos, rdr.pos)
                     })
             } else {
                 None
@@ -458,14 +437,14 @@ fn consume_block_comment(rdr: &StringReader) -> Option<TokenAndSpan> {
     if res.is_some() { res } else { consume_whitespace_and_comments(rdr) }
 }
 
-fn scan_exponent(rdr: &StringReader, start_bpos: BytePos) -> Option<~str> {
+fn scan_exponent(rdr: &mut StringReader, start_bpos: BytePos) -> Option<~str> {
     // \x00 hits the `return None` case immediately, so this is fine.
-    let mut c = rdr.curr.get().unwrap_or('\x00');
+    let mut c = rdr.curr.unwrap_or('\x00');
     let mut rslt = ~"";
     if c == 'e' || c == 'E' {
         rslt.push_char(c);
         bump(rdr);
-        c = rdr.curr.get().unwrap_or('\x00');
+        c = rdr.curr.unwrap_or('\x00');
         if c == '-' || c == '+' {
             rslt.push_char(c);
             bump(rdr);
@@ -474,16 +453,16 @@ fn scan_exponent(rdr: &StringReader, start_bpos: BytePos) -> Option<~str> {
         if exponent.len() > 0u {
             return Some(rslt + exponent);
         } else {
-            fatal_span(rdr, start_bpos, rdr.last_pos.get(),
+            fatal_span(rdr, start_bpos, rdr.last_pos,
                        ~"scan_exponent: bad fp literal");
         }
     } else { return None::<~str>; }
 }
 
-fn scan_digits(rdr: &StringReader, radix: uint) -> ~str {
+fn scan_digits(rdr: &mut StringReader, radix: uint) -> ~str {
     let mut rslt = ~"";
     loop {
-        let c = rdr.curr.get();
+        let c = rdr.curr;
         if c == Some('_') { bump(rdr); continue; }
         match c.and_then(|cc| char::to_digit(cc, radix)) {
           Some(_) => {
@@ -495,7 +474,7 @@ fn scan_digits(rdr: &StringReader, radix: uint) -> ~str {
     };
 }
 
-fn check_float_base(rdr: &StringReader, start_bpos: BytePos, last_bpos: BytePos,
+fn check_float_base(rdr: &mut StringReader, start_bpos: BytePos, last_bpos: BytePos,
                     base: uint) {
     match base {
       16u => fatal_span(rdr, start_bpos, last_bpos,
@@ -508,12 +487,12 @@ fn check_float_base(rdr: &StringReader, start_bpos: BytePos, last_bpos: BytePos,
     }
 }
 
-fn scan_number(c: char, rdr: &StringReader) -> token::Token {
+fn scan_number(c: char, rdr: &mut StringReader) -> token::Token {
     let mut num_str;
     let mut base = 10u;
     let mut c = c;
     let mut n = nextch(rdr).unwrap_or('\x00');
-    let start_bpos = rdr.last_pos.get();
+    let start_bpos = rdr.last_pos;
     if c == '0' && n == 'x' {
         bump(rdr);
         bump(rdr);
@@ -528,7 +507,7 @@ fn scan_number(c: char, rdr: &StringReader) -> token::Token {
         base = 2u;
     }
     num_str = scan_digits(rdr, base);
-    c = rdr.curr.get().unwrap_or('\x00');
+    c = rdr.curr.unwrap_or('\x00');
     nextch(rdr);
     if c == 'u' || c == 'i' {
         enum Result { Signed(ast::IntTy), Unsigned(ast::UintTy) }
@@ -538,7 +517,7 @@ fn scan_number(c: char, rdr: &StringReader) -> token::Token {
             else { Unsigned(ast::TyU) }
         };
         bump(rdr);
-        c = rdr.curr.get().unwrap_or('\x00');
+        c = rdr.curr.unwrap_or('\x00');
         if c == '8' {
             bump(rdr);
             tp = if signed { Signed(ast::TyI8) }
@@ -562,12 +541,12 @@ fn scan_number(c: char, rdr: &StringReader) -> token::Token {
                       else { Unsigned(ast::TyU64) };
         }
         if num_str.len() == 0u {
-            fatal_span(rdr, start_bpos, rdr.last_pos.get(),
+            fatal_span(rdr, start_bpos, rdr.last_pos,
                        ~"no valid digits found for number");
         }
         let parsed = match from_str_radix::<u64>(num_str, base as uint) {
             Some(p) => p,
-            None => fatal_span(rdr, start_bpos, rdr.last_pos.get(),
+            None => fatal_span(rdr, start_bpos, rdr.last_pos,
                                ~"int literal is too large")
         };
 
@@ -594,37 +573,37 @@ fn scan_number(c: char, rdr: &StringReader) -> token::Token {
 
     if rdr.curr_is('f') {
         bump(rdr);
-        c = rdr.curr.get().unwrap_or('\x00');
+        c = rdr.curr.unwrap_or('\x00');
         n = nextch(rdr).unwrap_or('\x00');
         if c == '3' && n == '2' {
             bump(rdr);
             bump(rdr);
-            check_float_base(rdr, start_bpos, rdr.last_pos.get(), base);
+            check_float_base(rdr, start_bpos, rdr.last_pos, base);
             return token::LIT_FLOAT(str_to_ident(num_str), ast::TyF32);
         } else if c == '6' && n == '4' {
             bump(rdr);
             bump(rdr);
-            check_float_base(rdr, start_bpos, rdr.last_pos.get(), base);
+            check_float_base(rdr, start_bpos, rdr.last_pos, base);
             return token::LIT_FLOAT(str_to_ident(num_str), ast::TyF64);
             /* FIXME (#2252): if this is out of range for either a
             32-bit or 64-bit float, it won't be noticed till the
             back-end.  */
         } else {
-            fatal_span(rdr, start_bpos, rdr.last_pos.get(),
+            fatal_span(rdr, start_bpos, rdr.last_pos,
                        ~"expected `f32` or `f64` suffix");
         }
     }
     if is_float {
-        check_float_base(rdr, start_bpos, rdr.last_pos.get(), base);
+        check_float_base(rdr, start_bpos, rdr.last_pos, base);
         return token::LIT_FLOAT_UNSUFFIXED(str_to_ident(num_str));
     } else {
         if num_str.len() == 0u {
-            fatal_span(rdr, start_bpos, rdr.last_pos.get(),
+            fatal_span(rdr, start_bpos, rdr.last_pos,
                        ~"no valid digits found for number");
         }
         let parsed = match from_str_radix::<u64>(num_str, base as uint) {
             Some(p) => p,
-            None => fatal_span(rdr, start_bpos, rdr.last_pos.get(),
+            None => fatal_span(rdr, start_bpos, rdr.last_pos,
                                ~"int literal is too large")
         };
 
@@ -633,14 +612,14 @@ fn scan_number(c: char, rdr: &StringReader) -> token::Token {
     }
 }
 
-fn scan_numeric_escape(rdr: &StringReader, n_hex_digits: uint) -> char {
+fn scan_numeric_escape(rdr: &mut StringReader, n_hex_digits: uint) -> char {
     let mut accum_int = 0;
     let mut i = n_hex_digits;
-    let start_bpos = rdr.last_pos.get();
+    let start_bpos = rdr.last_pos;
     while i != 0u && !is_eof(rdr) {
-        let n = rdr.curr.get();
+        let n = rdr.curr;
         if !is_hex_digit(n) {
-            fatal_span_char(rdr, rdr.last_pos.get(), rdr.pos.get(),
+            fatal_span_char(rdr, rdr.last_pos, rdr.pos,
                             ~"illegal character in numeric character escape",
                             n.unwrap());
         }
@@ -650,13 +629,13 @@ fn scan_numeric_escape(rdr: &StringReader, n_hex_digits: uint) -> char {
         i -= 1u;
     }
     if i != 0 && is_eof(rdr) {
-        fatal_span(rdr, start_bpos, rdr.last_pos.get(),
+        fatal_span(rdr, start_bpos, rdr.last_pos,
                    ~"unterminated numeric character escape");
     }
 
     match char::from_u32(accum_int as u32) {
         Some(x) => x,
-        None => fatal_span(rdr, start_bpos, rdr.last_pos.get(),
+        None => fatal_span(rdr, start_bpos, rdr.last_pos,
                            ~"illegal numeric character escape")
     }
 }
@@ -683,14 +662,14 @@ fn ident_continue(c: Option<char>) -> bool {
 // return the next token from the string
 // EFFECT: advances the input past that token
 // EFFECT: updates the interner
-fn next_token_inner(rdr: &StringReader) -> token::Token {
-    let c = rdr.curr.get();
+fn next_token_inner(rdr: &mut StringReader) -> token::Token {
+    let c = rdr.curr;
     if ident_start(c) && !nextch_is(rdr, '"') && !nextch_is(rdr, '#') {
         // Note: r as in r" or r#" is part of a raw string literal,
         // not an identifier, and is handled further down.
 
-        let start = rdr.last_pos.get();
-        while ident_continue(rdr.curr.get()) {
+        let start = rdr.last_pos;
+        while ident_continue(rdr.curr) {
             bump(rdr);
         }
 
@@ -708,7 +687,7 @@ fn next_token_inner(rdr: &StringReader) -> token::Token {
     if is_dec_digit(c) {
         return scan_number(c.unwrap(), rdr);
     }
-    fn binop(rdr: &StringReader, op: token::BinOp) -> token::Token {
+    fn binop(rdr: &mut StringReader, op: token::BinOp) -> token::Token {
         bump(rdr);
         if rdr.curr_is('=') {
             bump(rdr);
@@ -783,12 +762,12 @@ fn next_token_inner(rdr: &StringReader) -> token::Token {
       }
       '<' => {
         bump(rdr);
-        match rdr.curr.get().unwrap_or('\x00') {
+        match rdr.curr.unwrap_or('\x00') {
           '=' => { bump(rdr); return token::LE; }
           '<' => { return binop(rdr, token::SHL); }
           '-' => {
             bump(rdr);
-            match rdr.curr.get().unwrap_or('\x00') {
+            match rdr.curr.unwrap_or('\x00') {
               '>' => { bump(rdr); return token::DARROW; }
               _ => { return token::LARROW; }
             }
@@ -798,7 +777,7 @@ fn next_token_inner(rdr: &StringReader) -> token::Token {
       }
       '>' => {
         bump(rdr);
-        match rdr.curr.get().unwrap_or('\x00') {
+        match rdr.curr.unwrap_or('\x00') {
           '=' => { bump(rdr); return token::GE; }
           '>' => { return binop(rdr, token::SHR); }
           _ => { return token::GT; }
@@ -807,41 +786,41 @@ fn next_token_inner(rdr: &StringReader) -> token::Token {
       '\'' => {
         // Either a character constant 'a' OR a lifetime name 'abc
         bump(rdr);
-        let start = rdr.last_pos.get();
+        let start = rdr.last_pos;
 
         // the eof will be picked up by the final `'` check below
-        let mut c2 = rdr.curr.get().unwrap_or('\x00');
+        let mut c2 = rdr.curr.unwrap_or('\x00');
         bump(rdr);
 
         // If the character is an ident start not followed by another single
         // quote, then this is a lifetime name:
         if ident_start(Some(c2)) && !rdr.curr_is('\'') {
-            while ident_continue(rdr.curr.get()) {
+            while ident_continue(rdr.curr) {
                 bump(rdr);
             }
-            return with_str_from(rdr, start, |lifetime_name| {
-                let ident = str_to_ident(lifetime_name);
-                let tok = &token::IDENT(ident, false);
+            let ident = with_str_from(rdr, start, |lifetime_name| {
+                str_to_ident(lifetime_name)
+            });
+            let tok = &token::IDENT(ident, false);
 
-                if token::is_keyword(token::keywords::Self, tok) {
-                    fatal_span(rdr, start, rdr.last_pos.get(),
-                               ~"invalid lifetime name: 'self is no longer a special lifetime");
-                } else if token::is_any_keyword(tok) &&
-                    !token::is_keyword(token::keywords::Static, tok) {
-                    fatal_span(rdr, start, rdr.last_pos.get(),
-                               ~"invalid lifetime name");
-                } else {
-                    token::LIFETIME(ident)
-                }
-            })
+            if token::is_keyword(token::keywords::Self, tok) {
+                fatal_span(rdr, start, rdr.last_pos,
+                           ~"invalid lifetime name: 'self is no longer a special lifetime");
+            } else if token::is_any_keyword(tok) &&
+                !token::is_keyword(token::keywords::Static, tok) {
+                fatal_span(rdr, start, rdr.last_pos,
+                           ~"invalid lifetime name");
+            } else {
+                return token::LIFETIME(ident);
+            }
         }
 
         // Otherwise it is a character constant:
         match c2 {
             '\\' => {
                 // '\X' for some X must be a character constant:
-                let escaped = rdr.curr.get();
-                let escaped_pos = rdr.last_pos.get();
+                let escaped = rdr.curr;
+                let escaped_pos = rdr.last_pos;
                 bump(rdr);
                 match escaped {
                     None => {}
@@ -858,7 +837,7 @@ fn next_token_inner(rdr: &StringReader) -> token::Token {
                             'u' => scan_numeric_escape(rdr, 4u),
                             'U' => scan_numeric_escape(rdr, 8u),
                             c2 => {
-                                fatal_span_char(rdr, escaped_pos, rdr.last_pos.get(),
+                                fatal_span_char(rdr, escaped_pos, rdr.last_pos,
                                                 ~"unknown character escape", c2)
                             }
                         }
@@ -866,7 +845,7 @@ fn next_token_inner(rdr: &StringReader) -> token::Token {
                 }
             }
             '\t' | '\n' | '\r' | '\'' => {
-                fatal_span_char(rdr, start, rdr.last_pos.get(),
+                fatal_span_char(rdr, start, rdr.last_pos,
                                 ~"character constant must be escaped", c2);
             }
             _ => {}
@@ -877,7 +856,7 @@ fn next_token_inner(rdr: &StringReader) -> token::Token {
                                // character before position `start` is an
                                // ascii single quote.
                                start - BytePos(1),
-                               rdr.last_pos.get(),
+                               rdr.last_pos,
                                ~"unterminated character constant");
         }
         bump(rdr); // advance curr past token
@@ -885,25 +864,25 @@ fn next_token_inner(rdr: &StringReader) -> token::Token {
       }
       '"' => {
         let mut accum_str = ~"";
-        let start_bpos = rdr.last_pos.get();
+        let start_bpos = rdr.last_pos;
         bump(rdr);
         while !rdr.curr_is('"') {
             if is_eof(rdr) {
-                fatal_span(rdr, start_bpos, rdr.last_pos.get(),
+                fatal_span(rdr, start_bpos, rdr.last_pos,
                            ~"unterminated double quote string");
             }
 
-            let ch = rdr.curr.get().unwrap();
+            let ch = rdr.curr.unwrap();
             bump(rdr);
             match ch {
               '\\' => {
                 if is_eof(rdr) {
-                    fatal_span(rdr, start_bpos, rdr.last_pos.get(),
+                    fatal_span(rdr, start_bpos, rdr.last_pos,
                            ~"unterminated double quote string");
                 }
 
-                let escaped = rdr.curr.get().unwrap();
-                let escaped_pos = rdr.last_pos.get();
+                let escaped = rdr.curr.unwrap();
+                let escaped_pos = rdr.last_pos;
                 bump(rdr);
                 match escaped {
                   'n' => accum_str.push_char('\n'),
@@ -924,7 +903,7 @@ fn next_token_inner(rdr: &StringReader) -> token::Token {
                     accum_str.push_char(scan_numeric_escape(rdr, 8u));
                   }
                   c2 => {
-                    fatal_span_char(rdr, escaped_pos, rdr.last_pos.get(),
+                    fatal_span_char(rdr, escaped_pos, rdr.last_pos,
                                     ~"unknown string escape", c2);
                   }
                 }
@@ -936,7 +915,7 @@ fn next_token_inner(rdr: &StringReader) -> token::Token {
         return token::LIT_STR(str_to_ident(accum_str));
       }
       'r' => {
-        let start_bpos = rdr.last_pos.get();
+        let start_bpos = rdr.last_pos;
         bump(rdr);
         let mut hash_count = 0u;
         while rdr.curr_is('#') {
@@ -945,24 +924,24 @@ fn next_token_inner(rdr: &StringReader) -> token::Token {
         }
 
         if is_eof(rdr) {
-            fatal_span(rdr, start_bpos, rdr.last_pos.get(),
+            fatal_span(rdr, start_bpos, rdr.last_pos,
                        ~"unterminated raw string");
         } else if !rdr.curr_is('"') {
-            fatal_span_char(rdr, start_bpos, rdr.last_pos.get(),
+            fatal_span_char(rdr, start_bpos, rdr.last_pos,
                             ~"only `#` is allowed in raw string delimitation; \
                               found illegal character",
-                            rdr.curr.get().unwrap());
+                            rdr.curr.unwrap());
         }
         bump(rdr);
-        let content_start_bpos = rdr.last_pos.get();
+        let content_start_bpos = rdr.last_pos;
         let mut content_end_bpos;
         'outer: loop {
             if is_eof(rdr) {
-                fatal_span(rdr, start_bpos, rdr.last_pos.get(),
+                fatal_span(rdr, start_bpos, rdr.last_pos,
                            ~"unterminated raw string");
             }
             if rdr.curr_is('"') {
-                content_end_bpos = rdr.last_pos.get();
+                content_end_bpos = rdr.last_pos;
                 for _ in range(0, hash_count) {
                     bump(rdr);
                     if !rdr.curr_is('#') {
@@ -1006,14 +985,14 @@ fn next_token_inner(rdr: &StringReader) -> token::Token {
       '^' => { return binop(rdr, token::CARET); }
       '%' => { return binop(rdr, token::PERCENT); }
       c => {
-          fatal_span_char(rdr, rdr.last_pos.get(), rdr.pos.get(),
+          fatal_span_char(rdr, rdr.last_pos, rdr.pos,
                           ~"unknown start of token", c);
       }
     }
 }
 
-fn consume_whitespace(rdr: &StringReader) {
-    while is_whitespace(rdr.curr.get()) && !is_eof(rdr) { bump(rdr); }
+fn consume_whitespace(rdr: &mut StringReader) {
+    while is_whitespace(rdr.curr) && !is_eof(rdr) { bump(rdr); }
 }
 
 #[cfg(test)]
@@ -1041,7 +1020,7 @@ mod test {
 
     #[test] fn t1 () {
         let span_handler = mk_sh();
-        let string_reader = setup(&span_handler,
+        let mut string_reader = setup(&span_handler,
             ~"/* my source file */ \
               fn main() { println!(\"zebra\"); }\n");
         let id = str_to_ident("fn");
@@ -1051,7 +1030,7 @@ mod test {
             sp:Span {lo:BytePos(21),hi:BytePos(23),expn_info: None}};
         assert_eq!(tok1,tok2);
         // the 'main' id is already read:
-        assert_eq!(string_reader.last_pos.get().clone(), BytePos(28));
+        assert_eq!(string_reader.last_pos.clone(), BytePos(28));
         // read another token:
         let tok3 = string_reader.next_token();
         let tok4 = TokenAndSpan{
@@ -1059,12 +1038,12 @@ mod test {
             sp:Span {lo:BytePos(24),hi:BytePos(28),expn_info: None}};
         assert_eq!(tok3,tok4);
         // the lparen is already read:
-        assert_eq!(string_reader.last_pos.get().clone(), BytePos(29))
+        assert_eq!(string_reader.last_pos.clone(), BytePos(29))
     }
 
     // check that the given reader produces the desired stream
     // of tokens (stop checking after exhausting the expected vec)
-    fn check_tokenization (string_reader: StringReader, expected: Vec<token::Token> ) {
+    fn check_tokenization (mut string_reader: StringReader, expected: Vec<token::Token> ) {
         for expected_tok in expected.iter() {
             assert_eq!(&string_reader.next_token().tok, expected_tok);
         }

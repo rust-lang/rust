@@ -29,6 +29,7 @@ use std::cast;
 use std::cmp;
 use std::io;
 use std::os::consts::{macos, freebsd, linux, android, win32};
+use std::rc::Rc;
 use std::str;
 use std::slice;
 
@@ -52,7 +53,7 @@ pub struct Context<'a> {
     id_hash: &'a str,
     hash: Option<&'a Svh>,
     os: Os,
-    intr: @IdentInterner,
+    intr: Rc<IdentInterner>,
     rejected_via_hash: bool,
 }
 

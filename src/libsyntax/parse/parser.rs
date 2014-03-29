@@ -80,6 +80,7 @@ use owned_slice::OwnedSlice;
 use collections::HashSet;
 use std::kinds::marker;
 use std::mem::replace;
+use std::rc::Rc;
 use std::vec;
 
 #[allow(non_camel_case_types)]
@@ -274,7 +275,7 @@ struct ParsedItemsAndViewItems {
 
 /* ident is handled by common.rs */
 
-pub fn Parser<'a>(sess: &'a ParseSess, cfg: ast::CrateConfig, rdr: ~Reader:)
+pub fn Parser<'a>(sess: &'a ParseSess, cfg: ast::CrateConfig, mut rdr: ~Reader:)
               -> Parser<'a> {
     let tok0 = rdr.next_token();
     let span = tok0.sp;
@@ -328,7 +329,7 @@ pub struct Parser<'a> {
     restriction: restriction,
     quote_depth: uint, // not (yet) related to the quasiquoter
     reader: ~Reader:,
-    interner: @token::IdentInterner,
+    interner: Rc<token::IdentInterner>,
     /// The set of seen errors about obsolete syntax. Used to suppress
     /// extra detail when the same error is seen twice
     obsolete_set: HashSet<ObsoleteSyntax>,
@@ -2104,7 +2105,7 @@ impl<'a> Parser<'a> {
                     let seq = match seq {
                         Spanned { node, .. } => node,
                     };
-                    TTSeq(mk_sp(sp.lo, p.span.hi), @seq, s, z)
+                    TTSeq(mk_sp(sp.lo, p.span.hi), Rc::new(seq), s, z)
                 } else {
                     TTNonterminal(sp, p.parse_ident())
                 }
@@ -2147,7 +2148,7 @@ impl<'a> Parser<'a> {
                 result.push(parse_any_tt_tok(self));
                 self.open_braces.pop().unwrap();
 
-                TTDelim(@result)
+                TTDelim(Rc::new(result))
             }
             _ => parse_non_delim_tt_tok(self)
         }

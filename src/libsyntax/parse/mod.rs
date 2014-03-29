@@ -366,13 +366,13 @@ mod test {
             [ast::TTTok(_,_),
              ast::TTTok(_,token::NOT),
              ast::TTTok(_,_),
-             ast::TTDelim(delim_elts)] => {
+             ast::TTDelim(ref delim_elts)] => {
                 let delim_elts: &[ast::TokenTree] = delim_elts.as_slice();
                 match delim_elts {
                     [ast::TTTok(_,token::LPAREN),
-                     ast::TTDelim(first_set),
+                     ast::TTDelim(ref first_set),
                      ast::TTTok(_,token::FAT_ARROW),
-                     ast::TTDelim(second_set),
+                     ast::TTDelim(ref second_set),
                      ast::TTTok(_,token::RPAREN)] => {
                         let first_set: &[ast::TokenTree] =
                             first_set.as_slice();
