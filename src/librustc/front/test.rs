@@ -282,7 +282,7 @@ fn add_test_module(cx: &TestCtxt, m: &ast::Mod) -> ast::Mod {
 We're going to be building a module that looks more or less like:
 
 mod __test {
-  #[!resolve_unexported]
+  #![!resolve_unexported]
   extern crate test (name = "test", vers = "...");
   fn main() {
     test::test_main_static(::os::args(), tests)
@@ -326,8 +326,8 @@ fn mk_test_module(cx: &TestCtxt) -> @ast::Item {
     // with our list of tests
     let mainfn = (quote_item!(&cx.ext_cx,
         pub fn main() {
-            #[allow(deprecated_owned_vector)];
-            #[main];
+            #![main]
+            #![allow(deprecated_owned_vector)]
             test::test_main_static(::std::os::args(), TESTS);
         }
     )).unwrap();
