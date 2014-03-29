@@ -140,7 +140,7 @@ impl<E:CLike> Iterator<E> for Items<E> {
 #[cfg(test)]
 mod test {
 
-    use super::cast;
+    use cast;
 
     use enum_set::{EnumSet, CLike};
 
