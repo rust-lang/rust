@@ -47,6 +47,11 @@
 // debugger:print padded_struct.data_ptr[1]
 // check:$13 = {x = 13, y = 14, z = 15}
 
+// debugger:print 'vec-slices::MUT_VECT_SLICE'.length
+// check:$14 = 2
+// debugger:print *((int64_t[2]*)('vec-slices::MUT_VECT_SLICE'.data_ptr))
+// check:$15 = {64, 65}
+
 #[allow(unused_variable)];
 
 struct AStruct {
@@ -54,6 +59,9 @@ struct AStruct {
     y: i32,
     z: i16
 }
+
+static VECT_SLICE: &'static [i64] = &[64, 65];
+static mut MUT_VECT_SLICE: &'static [i64] = &[32];
 
 fn main() {
     let empty: &[i64] = &[];
@@ -67,6 +75,10 @@ fn main() {
         AStruct { x: 10, y: 11, z: 12 },
         AStruct { x: 13, y: 14, z: 15 }
     ];
+
+    unsafe {
+        MUT_VECT_SLICE = VECT_SLICE;
+    }
 
     zzz();
 }

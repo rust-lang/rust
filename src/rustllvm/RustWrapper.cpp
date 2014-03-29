@@ -323,6 +323,28 @@ extern "C" LLVMValueRef LLVMDIBuilderCreateLexicalBlock(
         unwrapDI<DIFile>(File), Line, Col));
 }
 
+extern "C" LLVMValueRef LLVMDIBuilderCreateStaticVariable(
+    DIBuilderRef Builder,
+    LLVMValueRef Context,
+    const char* Name,
+    const char* LinkageName,
+    LLVMValueRef File,
+    unsigned LineNo,
+    LLVMValueRef Ty,
+    bool isLocalToUnit,
+    LLVMValueRef Val,
+    LLVMValueRef Decl = NULL) {
+    return wrap(Builder->createStaticVariable(unwrapDI<DIDescriptor>(Context),
+        Name,
+        LinkageName,
+        unwrapDI<DIFile>(File),
+        LineNo,
+        unwrapDI<DIType>(Ty),
+        isLocalToUnit,
+        unwrap(Val),
+        unwrapDI<MDNode*>(Decl)));
+}
+
 extern "C" LLVMValueRef LLVMDIBuilderCreateLocalVariable(
     DIBuilderRef Builder,
     unsigned Tag,
