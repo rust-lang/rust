@@ -586,6 +586,7 @@ LLVMDIBuilderCreate
 LLVMDIBuilderDispose
 LLVMDIBuilderFinalize
 LLVMDIBuilderCreateCompileUnit
+LLVMDIBuilderCreateStaticVariable
 LLVMDIBuilderCreateLocalVariable
 LLVMDIBuilderCreateFunction
 LLVMDIBuilderCreateFile
