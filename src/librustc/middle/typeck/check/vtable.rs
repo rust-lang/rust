@@ -9,6 +9,7 @@
 // except according to those terms.
 
 
+use middle::kind::check_builtin_bounds;
 use middle::ty;
 use middle::ty::{AutoAddEnv, AutoDerefRef, AutoObject, param_ty};
 use middle::ty_fold::TypeFolder;
@@ -26,6 +27,7 @@ use middle::subst::Subst;
 use util::common::indenter;
 use util::ppaux;
 use util::ppaux::Repr;
+use util::ppaux::UserString;
 
 use std::rc::Rc;
 use collections::HashSet;
@@ -121,7 +123,48 @@ fn lookup_vtables_for_param(vcx: &VtableContext,
                             type_param_bounds: &ty::ParamBounds,
                             ty: ty::t,
                             is_early: bool) -> vtable_param_res {
+
+    fn should_check_builtin_bounds(vcx: &VtableContext, ty: ty::t) -> bool {
+        match ty::get(ty).sty {
+            ty::ty_param(param_ty {idx: n, ..}) => {
+                if vcx.param_env.type_param_bounds.len() > n {
+                    true
+                } else {
+                    // more type parameters are being instantiated then were declared,
+                    // so don't check builtin bounds to avoid trying to look-up nonexistent
+                    // type param delaration
+                    false
+                }
+            }
+
+            _ => true
+        }
+    }
+
     let tcx = vcx.tcx();
+
+    // FIXME(#13231): this will likely break once opt-in builtin kinds are implemented
+    if !type_param_bounds.builtin_bounds.is_empty() {
+        match fixup_ty(vcx, span, ty, is_early) {
+            Some(fix_ty) => {
+                if should_check_builtin_bounds(vcx, fix_ty) {
+                    check_builtin_bounds(
+                        vcx.tcx(),
+                        fix_ty,
+                        type_param_bounds.builtin_bounds,
+                        |missing: ty::BuiltinBounds| {
+                            vcx.tcx().sess.span_err(
+                                span,
+                                format!("instantiating a type parameter with an incompatible type \
+                                        `{}`, which does not fulfill `{}`",
+                                        vcx.infcx.ty_to_str(ty),
+                                        missing.user_string(tcx)));
+                        });
+                }
+            }
+            None => {}
+        }
+    }
 
     // ty is the value supplied for the type parameter A...
     let mut param_result = Vec::new();

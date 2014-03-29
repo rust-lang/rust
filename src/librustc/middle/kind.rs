@@ -119,7 +119,7 @@ fn check_impl_of_trait(cx: &mut Context, it: &Item, trait_ref: &TraitRef, self_t
     // If this trait has builtin-kind supertraits, meet them.
     let self_ty: ty::t = ty::node_id_to_type(cx.tcx, it.id);
     debug!("checking impl with self type {:?}", ty::get(self_ty).sty);
-    check_builtin_bounds(cx, self_ty, trait_def.bounds, |missing| {
+    check_builtin_bounds(cx.tcx, self_ty, trait_def.bounds, |missing| {
         cx.tcx.sess.span_err(self_type.span,
             format!("the type `{}', which does not fulfill `{}`, cannot implement this \
                   trait", ty_to_str(cx.tcx, self_ty), missing.user_string(cx.tcx)));
@@ -354,14 +354,14 @@ fn check_ty(cx: &mut Context, aty: &Ty) {
 }
 
 // Calls "any_missing" if any bounds were missing.
-pub fn check_builtin_bounds(cx: &Context,
+pub fn check_builtin_bounds(tcx: &ty::ctxt,
                             ty: ty::t,
                             bounds: ty::BuiltinBounds,
                             any_missing: |ty::BuiltinBounds|) {
-    let kind = ty::type_contents(cx.tcx, ty);
+    let kind = ty::type_contents(tcx, ty);
     let mut missing = ty::EmptyBuiltinBounds();
     for bound in bounds.iter() {
-        if !kind.meets_bound(cx.tcx, bound) {
+        if !kind.meets_bound(tcx, bound) {
             missing.add(bound);
         }
     }
@@ -374,7 +374,7 @@ pub fn check_typaram_bounds(cx: &Context,
                             sp: Span,
                             ty: ty::t,
                             type_param_def: &ty::TypeParameterDef) {
-    check_builtin_bounds(cx,
+    check_builtin_bounds(cx.tcx,
                          ty,
                          type_param_def.bounds.builtin_bounds,
                          |missing| {
@@ -390,7 +390,7 @@ pub fn check_typaram_bounds(cx: &Context,
 pub fn check_freevar_bounds(cx: &Context, sp: Span, ty: ty::t,
                             bounds: ty::BuiltinBounds, referenced_ty: Option<ty::t>)
 {
-    check_builtin_bounds(cx, ty, bounds, |missing| {
+    check_builtin_bounds(cx.tcx, ty, bounds, |missing| {
         // Will be Some if the freevar is implicitly borrowed (stack closure).
         // Emit a less mysterious error message in this case.
         match referenced_ty {
@@ -412,7 +412,7 @@ pub fn check_freevar_bounds(cx: &Context, sp: Span, ty: ty::t,
 
 pub fn check_trait_cast_bounds(cx: &Context, sp: Span, ty: ty::t,
                                bounds: ty::BuiltinBounds) {
-    check_builtin_bounds(cx, ty, bounds, |missing| {
+    check_builtin_bounds(cx.tcx, ty, bounds, |missing| {
         cx.tcx.sess.span_err(sp,
             format!("cannot pack type `{}`, which does not fulfill \
                   `{}`, as a trait bounded by {}",
