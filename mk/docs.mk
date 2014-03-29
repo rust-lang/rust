@@ -232,7 +232,7 @@ ifeq ($(CFG_LLNEXTGEN),)
 else
 .PHONY: verify-grammar
 
-doc/rust.g: rust.md $(S)src/etc/extract_grammar.py
+doc/rust.g: $(D)/rust.md $(S)src/etc/extract_grammar.py
 	@$(call E, extract_grammar: $@)
 	$(Q)$(CFG_PYTHON) $(S)src/etc/extract_grammar.py $< >$@
 
