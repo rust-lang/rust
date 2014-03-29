@@ -8,14 +8,21 @@
 # option. This file may not be copied, modified, or distributed
 # except according to those terms.
 
+ifdef CFG_DISABLE_VERIFY_INSTALL
+MAYBE_DISABLE_VERIFY=--disable-verify
+else
+MAYBE_DISABLE_VERIFY=
+endif
 
 install: dist-install-dir-$(CFG_BUILD)
-	$(Q)sh tmp/dist/$(PKG_NAME)-$(CFG_BUILD)/install.sh --prefix="$(CFG_PREFIX)" --libdir="$(CFG_LIBDIR)" --mandir="$(CFG_MANDIR)"
+	$(Q)sh tmp/dist/$(PKG_NAME)-$(CFG_BUILD)/install.sh --prefix="$(DESTDIR)$(CFG_PREFIX)" --libdir="$(DESTDIR)$(CFG_LIBDIR)" --mandir="$(DESTDIR)$(CFG_MANDIR)" "$(MAYBE_DISABLE_VERIFY)"
 # Remove tmp files while we can because they may have been created under sudo
 	$(Q)rm -R tmp/dist/$(PKG_NAME)-$(CFG_BUILD)
 
 uninstall: dist-install-dir-$(CFG_BUILD)
-	$(Q)sh tmp/dist/$(PKG_NAME)-$(CFG_BUILD)/install.sh --uninstall --prefix="$(CFG_PREFIX)" --libdir="$(CFG_LIBDIR)" --mandir="$(CFG_MANDIR)"
+	$(Q)sh tmp/dist/$(PKG_NAME)-$(CFG_BUILD)/install.sh --uninstall --prefix="$(DESTDIR)$(CFG_PREFIX)" --libdir="$(DESTDIR)$(CFG_LIBDIR)" --mandir="$(DESTDIR)$(CFG_MANDIR)"
+# Remove tmp files while we can because they may have been created under sudo
+	$(Q)rm -R tmp/dist/$(PKG_NAME)-$(CFG_BUILD)
 
 
 ######################################################################
