@@ -274,6 +274,12 @@ case $CFG_OSTYPE in
     MINGW32*)
         CFG_OSTYPE=pc-mingw32
         ;;
+
+    MINGW64*)
+        # msys2, MSYSTEM=MINGW64
+        CFG_OSTYPE=w64-mingw32
+        ;;
+
 # Thad's Cygwin identifers below
 
 #   Vista 32 bit
@@ -407,7 +413,7 @@ valopt mandir "${CFG_PREFIX}/share/man" "install man pages in PATH"
 # --libdir is used to configure the installation directory.
 # FIXME: Thise needs to parameterized over target triples. Do it in platform.mk
 CFG_LIBDIR_RELATIVE=lib
-if [ "$CFG_OSTYPE" = "pc-mingw32" ]
+if [ "$CFG_OSTYPE" = "pc-mingw32" ] || [ "$CFG_OSTYPE" = "w64-mingw32" ]
 then
     CFG_LIBDIR_RELATIVE=bin
 fi
@@ -533,7 +539,7 @@ then
 fi
 
 BIN_SUF=
-if [ $CFG_OSTYPE = "pc-mingw32" ]
+if [ "$CFG_OSTYPE" = "pc-mingw32" ] || [ "$CFG_OSTYPE" = "w64-mingw32" ]
 then
     BIN_SUF=.exe
 fi
