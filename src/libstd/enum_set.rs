@@ -142,6 +142,7 @@ mod test {
 
     use cast;
 
+    use iter::Iterator;
     use enum_set::{EnumSet, CLike};
 
     #[deriving(Eq, Show)]
