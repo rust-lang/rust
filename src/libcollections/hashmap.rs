@@ -1166,28 +1166,48 @@ impl<K: TotalEq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
         fail!("Internal HashMap error: Out of space.");
     }
 
+    /// Inserts an element, returning a reference to that element inside the
+    /// hashtable.
     fn manual_insert_hashed<'a>(&'a mut self, hash: table::SafeHash, k: K, v: V) -> &'a mut V {
         let potential_new_size = self.table.size() + 1;
         self.make_some_room(potential_new_size);
         self.manual_insert_hashed_nocheck(hash, k, v)
     }
 
-    /// Inserts an element, returning a reference to that element inside the
-    /// hashtable.
-    fn manual_insert<'a>(&'a mut self, k: K, v: V) -> &'a mut V {
+    /// Modify and return the value corresponding to the key in the map, or
+    /// insert and return a new value if it doesn't exist.
+    ///
+    /// This method allows for all insertion behaviours of a hashmap, see
+    /// methods like insert, find_or_insert and insert_or_update_with for less
+    /// general and more friendly variations of this.
+    pub fn mangle<'a, A>(&'a mut self, k: K, a: A,
+        not_found: |&K, A| -> V, found: |&K, &mut V, A|) -> &'a mut V {
         let hash = self.make_hash(&k);
-        self.manual_insert_hashed(hash, k, v)
+
+        match self.search_hashed(&hash, &k) {
+            Some(idx) => {
+                let (k_ref, v_ref) = self.table.read_mut(&idx);
+                found(k_ref, v_ref, a);
+                v_ref
+            },
+            None => {
+                let v = not_found(&k, a);
+                self.manual_insert_hashed(hash, k, v)
+            }
+        }
     }
 
     /// Return the value corresponding to the key in the map, or insert
     /// and return the value if it doesn't exist.
     pub fn find_or_insert<'a>(&'a mut self, k: K, v: V) -> &'a mut V {
-        match self.search(&k) {
+        let hash = self.make_hash(&k);
+
+        match self.search_hashed(&hash, &k) {
             Some(idx) => {
                 let (_, v_ref) = self.table.read_mut(&idx);
                 v_ref
             },
-            None => self.manual_insert(k, v)
+            None => self.manual_insert_hashed(hash, k, v)
         }
     }
 
@@ -1195,14 +1215,16 @@ impl<K: TotalEq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// insert, and return a new value if it doesn't exist.
     pub fn find_or_insert_with<'a>(&'a mut self, k: K, f: |&K| -> V)
                                -> &'a mut V {
-        match self.search(&k) {
+        let hash = self.make_hash(&k);
+
+        match self.search_hashed(&hash, &k) {
             Some(idx) => {
                 let (_, v_ref) = self.table.read_mut(&idx);
                 v_ref
             },
             None      => {
                 let v = f(&k);
-                self.manual_insert(k, v)
+                self.manual_insert_hashed(hash, k, v)
             }
         }
     }
@@ -1216,8 +1238,10 @@ impl<K: TotalEq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
                                  v: V,
                                  f: |&K, &mut V|)
                                  -> &'a mut V {
-        match self.search(&k) {
-            None      => self.manual_insert(k, v),
+        let hash = self.make_hash(&k);
+
+        match self.search_hashed(&hash, &k) {
+            None      => self.manual_insert_hashed(hash, k, v),
             Some(idx) => {
                 let (_, v_ref) = self.table.read_mut(&idx);
                 f(&k, v_ref);
@@ -1948,6 +1972,49 @@ mod test_map {
         for &(k, v) in xs.iter() {
             assert_eq!(map.find(&k), Some(&v));
         }
+    }
+
+    #[test]
+    fn test_mangle_found() {
+        let mut was_found = false;
+
+        let mut map: HashMap<int, int> =
+            [(0, 1), (2, 3), (4, 5)].iter().map(|&x| x).collect();
+
+        map.mangle(4, (),
+            |k, ()| {
+                assert!(*k == 4);
+                assert!(false);
+                return 6;
+            },
+            |k, v, ()| {
+                assert!(*k == 4);
+                assert!(*v == 5);
+                was_found = true;
+            });
+
+        assert!(was_found == true);
+    }
+
+    #[test]
+    fn test_mangle_notfound() {
+        let mut was_found = true;
+
+        let mut map: HashMap<int, int> =
+            [(0, 1), (2, 3), (4, 5)].iter().map(|&x| x).collect();
+
+        map.mangle(5, (),
+            |k, ()| {
+                assert!(*k == 5);
+                was_found = false;
+                return 6;
+            },
+            |k, _, ()| {
+                assert!(*k == 5);
+                assert!(false);
+            });
+
+        assert!(was_found == false);
     }
 }
 
