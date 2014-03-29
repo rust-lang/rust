@@ -1018,22 +1018,6 @@ impl ToJson for Metric {
     }
 }
 
-// FIXME: remove decode_ after snapshot
-#[cfg(stage0)]
-fn decode_(json: Json) -> MetricMap {
-    let mut decoder = json::Decoder::new(json);
-    MetricMap(Decodable::decode(&mut decoder))
-}
-
-#[cfg(not(stage0))]
-fn decode_(json: Json) -> MetricMap {
-    let mut decoder = json::Decoder::new(json);
-    MetricMap(match Decodable::decode(&mut decoder) {
-        Ok(t) => t,
-        Err(e) => fail!("failure decoding JSON: {}", e)
-    })
-}
-
 
 impl MetricMap {
 
@@ -1051,7 +1035,11 @@ impl MetricMap {
         assert!(p.exists());
         let mut f = File::open(p).unwrap();
         let value = json::from_reader(&mut f as &mut io::Reader).unwrap();
-        decode_(value)
+        let mut decoder = json::Decoder::new(value);
+        MetricMap(match Decodable::decode(&mut decoder) {
+            Ok(t) => t,
+            Err(e) => fail!("failure decoding JSON: {}", e)
+        })
     }
 
     /// Write MetricDiff to a file.

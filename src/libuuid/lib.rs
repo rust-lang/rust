@@ -490,24 +490,6 @@ impl Eq for Uuid {
 impl TotalEq for Uuid {}
 
 // FIXME #9845: Test these more thoroughly
-// FIXME: remove stage0 Encodable/Decodable after snapshot
-#[cfg(stage0)]
-impl<T: Encoder> Encodable<T> for Uuid {
-    /// Encode a UUID as a hypenated string
-    fn encode(&self, e: &mut T) {
-        e.emit_str(self.to_hyphenated_str())
-    }
-}
-
-#[cfg(stage0)]
-impl<T: Decoder> Decodable<T> for Uuid {
-    /// Decode a UUID from a string
-    fn decode(d: &mut T) -> Uuid {
-        from_str(d.read_str()).unwrap()
-    }
-}
-
-#[cfg(not(stage0))]
 impl<T: Encoder<E>, E> Encodable<T, E> for Uuid {
     /// Encode a UUID as a hypenated string
     fn encode(&self, e: &mut T) -> Result<(), E> {
@@ -515,7 +497,6 @@ impl<T: Encoder<E>, E> Encodable<T, E> for Uuid {
     }
 }
 
-#[cfg(not(stage0))]
 impl<T: Decoder<E>, E> Decodable<T, E> for Uuid {
     /// Decode a UUID from a string
     fn decode(d: &mut T) -> Result<Uuid, E> {
@@ -546,17 +527,6 @@ mod test {
                 Version5Sha1};
     use std::str;
     use std::io::MemWriter;
-
-    // FIXME: remove unwrap_ after snapshot
-    #[cfg(stage0)]
-    fn unwrap_<T>(t: T) -> T {
-        t
-    }
-
-    #[cfg(not(stage0))]
-    fn unwrap_<T, E>(t: Result<T, E>) -> T {
-        t.unwrap()
-    }
 
     #[test]
     fn test_nil() {
@@ -829,7 +799,7 @@ mod test {
         let mut wr = MemWriter::new();
         let _ = u.encode(&mut ebml::writer::Encoder(&mut wr));
         let doc = ebml::reader::Doc(wr.get_ref());
-        let u2 = unwrap_(Decodable::decode(&mut ebml::reader::Decoder(doc)));
+        let u2 = Decodable::decode(&mut ebml::reader::Decoder(doc)).unwrap();
         assert_eq!(u, u2);
     }
 
