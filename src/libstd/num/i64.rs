@@ -40,6 +40,16 @@ impl Bitwise for i64 {
     /// Counts the number of trailing zeros.
     #[inline]
     fn trailing_zeros(&self) -> i64 { unsafe { intrinsics::cttz64(*self) } }
+
+    /// Returns the bitwise reflected representation of the number.
+    fn reflect(&self) -> i64 {
+        let mut r = 0;
+        for i in range(0, 64) {
+            let digit = (*self >> i) & 1;
+            r = r | (digit << (63-i));
+        }
+      return r;
+    }
 }
 
 impl CheckedAdd for i64 {

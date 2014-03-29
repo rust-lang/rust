@@ -39,6 +39,16 @@ impl Bitwise for i16 {
     /// of the number.
     #[inline]
     fn trailing_zeros(&self) -> i16 { unsafe { intrinsics::cttz16(*self) } }
+
+    /// Returns the bitwise reflected representation of the number.
+    fn reflect(&self) -> i16 {
+        let mut r = 0;
+        for i in range(0, 16) {
+            let digit = (*self >> i) & 1;
+            r = r | (digit << (15-i));
+        }
+      return r;
+    }
 }
 
 impl CheckedAdd for i16 {

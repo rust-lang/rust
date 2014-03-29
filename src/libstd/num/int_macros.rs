@@ -375,6 +375,13 @@ mod tests {
     }
 
     #[test]
+    fn test_bitwise_reflect() {
+        assert_eq!((0b01011001 as $T).reflect(), (0b10011010 as $T) << (BITS - 8));
+        assert_eq!((0b01000011 as $T).reflect(), (0b11000010 as $T) << (BITS - 8));
+        assert_eq!((0b11110011 as $T).reflect(), (0b11001111 as $T) << (BITS - 8));
+    }
+
+    #[test]
     fn test_from_str() {
         assert_eq!(from_str::<$T>("0"), Some(0 as $T));
         assert_eq!(from_str::<$T>("3"), Some(3 as $T));
