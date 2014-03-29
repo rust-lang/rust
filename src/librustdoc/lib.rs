@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[crate_id = "rustdoc#0.10-pre"];
-#[desc = "rustdoc, the Rust documentation extractor"];
-#[license = "MIT/ASL2"];
-#[crate_type = "dylib"];
-#[crate_type = "rlib"];
+#![crate_id = "rustdoc#0.10-pre"]
+#![desc = "rustdoc, the Rust documentation extractor"]
+#![license = "MIT/ASL2"]
+#![crate_type = "dylib"]
+#![crate_type = "rlib"]
 
-#[feature(globs, struct_variant, managed_boxes, macro_rules, phase)];
+#![feature(globs, struct_variant, managed_boxes, macro_rules, phase)]
 
 extern crate syntax;
 extern crate rustc;

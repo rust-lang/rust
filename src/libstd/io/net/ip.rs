@@ -13,7 +13,7 @@
 //! This module contains functions useful for parsing, formatting, and
 //! manipulating IP addresses.
 
-#[allow(missing_doc)];
+#![allow(missing_doc)]
 
 use container::Container;
 use fmt;

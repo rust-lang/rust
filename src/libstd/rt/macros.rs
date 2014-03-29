@@ -13,7 +13,7 @@
 //! These macros call functions which are only accessible in the `rt` module, so
 //! they aren't defined anywhere outside of the `rt` module.
 
-#[macro_escape];
+#![macro_escape]
 
 macro_rules! rterrln (
     ($($arg:tt)*) => ( {

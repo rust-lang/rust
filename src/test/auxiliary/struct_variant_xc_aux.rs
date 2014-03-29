@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[crate_id="struct_variant_xc_aux#0.1"];
-#[crate_type = "lib"];
+#![crate_id="struct_variant_xc_aux#0.1"]
+#![crate_type = "lib"]
 
-#[feature(struct_variant)];
+#![feature(struct_variant)]
 
 pub enum Enum {
     Variant { arg: u8 }

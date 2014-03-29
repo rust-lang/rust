@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[allow(dead_code)];
+#![allow(dead_code)]
 fn main() {
     // Original borrow ends at end of function
     let mut x = 1u;

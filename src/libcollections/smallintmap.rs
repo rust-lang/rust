@@ -13,7 +13,7 @@
  * are O(highest integer key).
  */
 
-#[allow(missing_doc)];
+#![allow(missing_doc)]
 
 use std::iter::{Enumerate, FilterMap, Rev};
 use std::mem::replace;

@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[feature(globs)];
-#[deny(unused_imports)];
-#[allow(dead_code)];
+#![feature(globs)]
+#![deny(unused_imports)]
+#![allow(dead_code)]
 
 mod A {
     pub fn p() {}

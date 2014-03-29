@@ -11,8 +11,8 @@
 // When denying at the crate level, be sure to not get random warnings from the
 // injected intrinsics by the compiler.
 
-#[deny(attribute_usage)];
-#[allow(dead_code)];
+#![deny(attribute_usage)]
+#![allow(dead_code)]
 
 #[abi="stdcall"] extern {} //~ ERROR: obsolete attribute
 

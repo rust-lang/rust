@@ -18,18 +18,18 @@ This API is completely unstable and subject to change.
 
 */
 
-#[crate_id = "rustc#0.10-pre"];
-#[comment = "The Rust compiler"];
-#[license = "MIT/ASL2"];
-#[crate_type = "dylib"];
-#[crate_type = "rlib"];
-#[doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
+#![crate_id = "rustc#0.10-pre"]
+#![comment = "The Rust compiler"]
+#![license = "MIT/ASL2"]
+#![crate_type = "dylib"]
+#![crate_type = "rlib"]
+#![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
-      html_root_url = "http://static.rust-lang.org/doc/master")];
+      html_root_url = "http://static.rust-lang.org/doc/master")]
 
-#[allow(deprecated)];
-#[feature(macro_rules, globs, struct_variant, managed_boxes, quote,
-          default_type_params, phase)];
+#![allow(deprecated)]
+#![feature(macro_rules, globs, struct_variant, managed_boxes, quote,
+           default_type_params, phase)]
 
 extern crate flate;
 extern crate arena;

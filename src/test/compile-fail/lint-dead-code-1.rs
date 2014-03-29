@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[no_std];
-#[allow(unused_variable)];
-#[allow(non_camel_case_types)];
-#[allow(visible_private_types)];
-#[deny(dead_code)];
+#![no_std]
+#![allow(unused_variable)]
+#![allow(non_camel_case_types)]
+#![allow(visible_private_types)]
+#![deny(dead_code)]
 
-#[crate_type="lib"];
+#![crate_type="lib"]
 
 pub use foo2::Bar2;
 mod foo {

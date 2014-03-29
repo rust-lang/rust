@@ -14,7 +14,7 @@
 //! green/native threading. This is just a bare-bones enough solution for
 //! librustdoc, it is not production quality at all.
 
-#[allow(non_camel_case_types)];
+#![allow(non_camel_case_types)]
 
 pub use self::imp::Lock;
 

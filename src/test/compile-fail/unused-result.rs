@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[deny(unused_result, unused_must_use)];
-#[allow(dead_code)];
+#![deny(unused_result, unused_must_use)]
+#![allow(dead_code)]
 
 #[must_use]
 enum MustUse { Test }

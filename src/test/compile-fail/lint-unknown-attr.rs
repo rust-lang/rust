@@ -11,9 +11,9 @@
 // When denying at the crate level, be sure to not get random warnings from the
 // injected intrinsics by the compiler.
 
-#[deny(attribute_usage)];
+#![deny(attribute_usage)]
 
-#[mutable_doc]; //~ ERROR: unknown crate attribute
+#![mutable_doc] //~ ERROR: unknown crate attribute
 
 #[dance] mod a {} //~ ERROR: unknown attribute
 

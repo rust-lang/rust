@@ -43,21 +43,21 @@
 //!
 //!     use std::prelude::*;
 
-#[crate_id = "std#0.10-pre"];
-#[comment = "The Rust standard library"];
-#[license = "MIT/ASL2"];
-#[crate_type = "rlib"];
-#[crate_type = "dylib"];
-#[doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
-      html_favicon_url = "http://www.rust-lang.org/favicon.ico",
-      html_root_url = "http://static.rust-lang.org/doc/master")];
-#[feature(macro_rules, globs, asm, managed_boxes, thread_local, link_args,
-          simd, linkage, default_type_params, phase)];
+#![crate_id = "std#0.10-pre"]
+#![comment = "The Rust standard library"]
+#![license = "MIT/ASL2"]
+#![crate_type = "rlib"]
+#![crate_type = "dylib"]
+#![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
+       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
+       html_root_url = "http://static.rust-lang.org/doc/master")]
+#![feature(macro_rules, globs, asm, managed_boxes, thread_local, link_args,
+           simd, linkage, default_type_params, phase)]
 
 // Don't link to std. We are std.
-#[no_std];
+#![no_std]
 
-#[deny(missing_doc)];
+#![deny(missing_doc)]
 
 // When testing libstd, bring in libuv as the I/O backend so tests can print
 // things and all of the std::io tests have an I/O interface to run on top

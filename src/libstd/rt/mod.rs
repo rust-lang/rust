@@ -52,7 +52,7 @@ Several modules in `core` are clients of `rt`:
 */
 
 // FIXME: this should not be here.
-#[allow(missing_doc)];
+#![allow(missing_doc)]
 
 use any::Any;
 use kinds::Send;

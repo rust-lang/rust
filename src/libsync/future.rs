@@ -24,7 +24,7 @@
  * ```
  */
 
-#[allow(missing_doc)];
+#![allow(missing_doc)]
 
 use std::mem::replace;
 

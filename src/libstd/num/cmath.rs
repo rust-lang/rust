@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[allow(missing_doc)];
-#[allow(dead_code)];
+#![allow(missing_doc)]
+#![allow(dead_code)]
 
 //! Bindings for the C math library (for basic mathematic functions)
 

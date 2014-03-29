@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[feature(managed_boxes)];
-#[forbid(managed_heap_memory)];
+#![feature(managed_boxes)]
+#![forbid(managed_heap_memory)]
 
 struct Foo {
     x: @int //~ ERROR type uses managed

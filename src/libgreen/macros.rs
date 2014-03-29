@@ -10,7 +10,7 @@
 
 // FIXME: this file probably shouldn't exist
 
-#[macro_escape];
+#![macro_escape]
 
 use std::fmt;
 

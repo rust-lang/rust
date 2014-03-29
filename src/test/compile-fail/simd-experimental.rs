@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[deny(experimental)];
+#![deny(experimental)]
 
 use std::unstable::simd;
 

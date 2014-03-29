@@ -113,7 +113,7 @@ pub enum Nonterminal {
     NtExpr(@ast::Expr),
     NtTy(  P<ast::Ty>),
     NtIdent(~ast::Ident, bool),
-    NtAttr(@ast::Attribute), // #[foo]
+    NtMeta(@ast::MetaItem), // stuff inside brackets for attributes
     NtPath(~ast::Path),
     NtTT(  @ast::TokenTree), // needs @ed to break a circularity
     NtMatchers(Vec<ast::Matcher> )
@@ -129,7 +129,7 @@ impl fmt::Show for Nonterminal {
             NtExpr(..) => f.pad("NtExpr(..)"),
             NtTy(..) => f.pad("NtTy(..)"),
             NtIdent(..) => f.pad("NtIdent(..)"),
-            NtAttr(..) => f.pad("NtAttr(..)"),
+            NtMeta(..) => f.pad("NtMeta(..)"),
             NtPath(..) => f.pad("NtPath(..)"),
             NtTT(..) => f.pad("NtTT(..)"),
             NtMatchers(..) => f.pad("NtMatchers(..)"),
@@ -241,7 +241,7 @@ pub fn to_str(t: &Token) -> ~str {
       INTERPOLATED(ref nt) => {
         match nt {
             &NtExpr(e) => ::print::pprust::expr_to_str(e),
-            &NtAttr(e) => ::print::pprust::attribute_to_str(e),
+            &NtMeta(e) => ::print::pprust::meta_item_to_str(e),
             _ => {
                 ~"an interpolated " +
                     match *nt {
@@ -249,7 +249,7 @@ pub fn to_str(t: &Token) -> ~str {
                         NtBlock(..) => ~"block",
                         NtStmt(..) => ~"statement",
                         NtPat(..) => ~"pattern",
-                        NtAttr(..) => fail!("should have been handled"),
+                        NtMeta(..) => fail!("should have been handled"),
                         NtExpr(..) => fail!("should have been handled above"),
                         NtTy(..) => ~"type",
                         NtIdent(..) => ~"identifier",

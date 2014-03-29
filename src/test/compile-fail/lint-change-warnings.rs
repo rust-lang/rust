@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[deny(warnings)];
-#[allow(dead_code)];
+#![deny(warnings)]
+#![allow(dead_code)]
 
 fn main() {
     while true {} //~ ERROR: infinite
