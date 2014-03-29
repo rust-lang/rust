@@ -12,15 +12,15 @@
  * Concurrency-enabled mechanisms and primitives.
  */
 
-#[crate_id = "sync#0.10-pre"];
-#[crate_type = "rlib"];
-#[crate_type = "dylib"];
-#[license = "MIT/ASL2"];
-#[doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
-      html_favicon_url = "http://www.rust-lang.org/favicon.ico",
-      html_root_url = "http://static.rust-lang.org/doc/master")];
-#[feature(phase)];
-#[deny(missing_doc, deprecated_owned_vector)];
+#![crate_id = "sync#0.10-pre"]
+#![crate_type = "rlib"]
+#![crate_type = "dylib"]
+#![license = "MIT/ASL2"]
+#![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
+       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
+       html_root_url = "http://static.rust-lang.org/doc/master")]
+#![feature(phase)]
+#![deny(missing_doc, deprecated_owned_vector)]
 
 #[cfg(test)]
 #[phase(syntax, link)] extern crate log;

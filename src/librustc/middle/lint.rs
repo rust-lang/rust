@@ -33,7 +33,7 @@
 //! modify the Context visitor appropriately. If you're adding lints from the
 //! Context itself, span_lint should be used instead of add_lint.
 
-#[allow(non_camel_case_types)];
+#![allow(non_camel_case_types)]
 
 use driver::session;
 use metadata::csearch;

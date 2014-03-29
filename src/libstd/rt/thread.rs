@@ -14,7 +14,7 @@
 //! These functions operate outside of the rust runtime, creating threads
 //! which are not used for scheduling in any way.
 
-#[allow(non_camel_case_types)];
+#![allow(non_camel_case_types)]
 
 use cast;
 use kinds::Send;

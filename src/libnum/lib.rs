@@ -8,17 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[feature(macro_rules)];
+#![feature(macro_rules)]
 
-#[crate_id = "num#0.10-pre"];
-#[crate_type = "rlib"];
-#[crate_type = "dylib"];
-#[license = "MIT/ASL2"];
-#[doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
-      html_favicon_url = "http://www.rust-lang.org/favicon.ico",
-      html_root_url = "http://static.rust-lang.org/doc/master")];
+#![crate_id = "num#0.10-pre"]
+#![crate_type = "rlib"]
+#![crate_type = "dylib"]
+#![license = "MIT/ASL2"]
+#![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
+       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
+       html_root_url = "http://static.rust-lang.org/doc/master")]
 
-#[deny(deprecated_owned_vector)];
+#![deny(deprecated_owned_vector)]
 
 extern crate rand;
 

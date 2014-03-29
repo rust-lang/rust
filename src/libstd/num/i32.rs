@@ -10,7 +10,7 @@
 
 //! Operations and constants for signed 32-bits integers (`i32` type)
 
-#[allow(non_uppercase_statics)];
+#![allow(non_uppercase_statics)]
 
 use prelude::*;
 

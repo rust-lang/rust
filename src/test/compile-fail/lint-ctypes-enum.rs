@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[deny(ctypes)];
-#[allow(dead_code)];
+#![deny(ctypes)]
+#![allow(dead_code)]
 
 enum Z { }
 enum U { A }

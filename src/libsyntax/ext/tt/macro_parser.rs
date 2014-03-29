@@ -441,7 +441,7 @@ pub fn parse_nt(p: &mut Parser, name: &str) -> Nonterminal {
       "path" => {
         token::NtPath(~p.parse_path(LifetimeAndTypesWithoutColons).path)
       }
-      "attr" => token::NtAttr(@p.parse_attribute(false)),
+      "meta" => token::NtMeta(p.parse_meta_item()),
       "tt" => {
         p.quote_depth += 1u; //but in theory, non-quoted tts might be useful
         let res = token::NtTT(@p.parse_token_tree());

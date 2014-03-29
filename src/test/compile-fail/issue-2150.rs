@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[deny(unreachable_code)];
-#[allow(unused_variable)];
-#[allow(dead_code)];
-#[allow(deprecated_owned_vector)];
+#![deny(unreachable_code)]
+#![allow(unused_variable)]
+#![allow(dead_code)]
+#![allow(deprecated_owned_vector)]
 
 
 fn fail_len(v: Vec<int> ) -> uint {

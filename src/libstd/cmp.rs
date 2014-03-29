@@ -20,7 +20,7 @@ and `Eq` to overload the `==` and `!=` operators.
 
 */
 
-#[allow(missing_doc)];
+#![allow(missing_doc)]
 
 /**
 * Trait for values that can be compared for equality and inequality.

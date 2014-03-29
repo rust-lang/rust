@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[allow(dead_code)];
+#![allow(dead_code)]
 
 // Matching against NaN should result in a warning
 

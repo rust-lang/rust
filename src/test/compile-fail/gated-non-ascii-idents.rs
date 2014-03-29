@@ -10,7 +10,7 @@
 
 // ignore-fast feature doesn't work.
 
-#[feature(struct_variant)];
+#![feature(struct_variant)]
 
 extern crate bäz; //~ ERROR non-ascii idents
 

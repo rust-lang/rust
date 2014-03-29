@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[macro_escape];
+#![macro_escape]
 
 macro_rules! unpack_datum(
     ($bcx: ident, $inp: expr) => (

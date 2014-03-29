@@ -16,7 +16,7 @@ collector is task-local so `Gc<T>` is not sendable.
 
 */
 
-#[allow(experimental)];
+#![allow(experimental)]
 
 use kinds::marker;
 use clone::Clone;

@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[feature(globs)];
-#[no_std]; // makes debugging this test *a lot* easier (during resolve)
+#![feature(globs)]
+#![no_std] // makes debugging this test *a lot* easier (during resolve)
 
 mod bar {
     // shouln't bring in too much

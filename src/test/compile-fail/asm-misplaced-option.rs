@@ -11,9 +11,9 @@
 // ignore-fast #[feature] doesn't work with check-fast
 // ignore-android
 
-#[feature(asm)];
+#![feature(asm)]
 
-#[allow(dead_code)];
+#![allow(dead_code)]
 
 #[cfg(target_arch = "x86")]
 #[cfg(target_arch = "x86_64")]

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[no_implicit_prelude];
+#![no_implicit_prelude]
 
 // Test that things from the prelude aren't in scope. Use many of them
 // so that renaming some things won't magically make this test fail

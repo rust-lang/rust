@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[allow(dead_assignment)];
-#[allow(unused_variable)];
-#[allow(dead_code)];
-#[deny(unused_mut)];
+#![allow(dead_assignment)]
+#![allow(unused_variable)]
+#![allow(dead_code)]
+#![deny(unused_mut)]
 
 struct Foo;
 impl Foo {
