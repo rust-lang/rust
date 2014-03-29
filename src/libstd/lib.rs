@@ -161,6 +161,7 @@ pub mod any;
 pub mod option;
 pub mod result;
 pub mod cell;
+pub mod enum_set;
 
 
 /* Tasks and communication */

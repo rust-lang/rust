@@ -13,7 +13,7 @@
 //! This module defines a container which uses an efficient bit mask
 //! representation to hold C-like enum variants.
 
-use std::num::Bitwise;
+use super::num::Bitwise;
 
 #[deriving(Clone, Eq, TotalEq, Hash, Show)]
 /// A specialized Set implementation to use enum types.
@@ -137,7 +137,7 @@ impl<E:CLike> Iterator<E> for Items<E> {
 #[cfg(test)]
 mod test {
 
-    use std::cast;
+    use super::cast;
 
     use enum_set::{EnumSet, CLike};
 
