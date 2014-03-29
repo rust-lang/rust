@@ -14,6 +14,9 @@
 //! representation to hold C-like enum variants.
 
 use super::num::Bitwise;
+use option::{None, Some, Option};
+use ops::{BitOr,BitAnd,Sub};
+use super::iter::Iterator;
 
 #[deriving(Clone, Eq, TotalEq, Hash, Show)]
 /// A specialized Set implementation to use enum types.
