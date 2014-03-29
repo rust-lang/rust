@@ -24,13 +24,12 @@
  * discouraged.
  */
 
-use cast::transmute;
 use clone::Clone;
 use container::Container;
 use default::Default;
 use io::{IoResult, Writer};
 use iter::Iterator;
-use mem::to_le64;
+use mem::size_of_val;
 use result::Ok;
 use slice::ImmutableVector;
 
@@ -79,6 +78,34 @@ macro_rules! compress (
         $v0 += $v3; $v3 = rotl!($v3, 21); $v3 ^= $v0;
         $v2 += $v1; $v1 = rotl!($v1, 17); $v1 ^= $v2;
         $v2 = rotl!($v2, 32);
+    })
+)
+
+macro_rules! make_write_le (
+    () =>
+    ({
+        self.tail |= n as u64 << 8*self.ntail;
+        self.ntail += size_of_val(&n);
+
+        if self.ntail >= 8 {
+            let m = self.tail;
+
+            self.v3 ^= m;
+            compress!(self.v0, self.v1, self.v2, self.v3);
+            compress!(self.v0, self.v1, self.v2, self.v3);
+            self.v0 ^= m;
+
+            self.ntail -= 8;
+            if self.ntail == 0 {
+                self.tail = 0;
+            } else {
+                self.tail = n as u64 >> 64 - 8*self.ntail;
+            }
+        }
+
+        self.length += size_of_val(&n);
+
+        Ok(())
     })
 )
 
@@ -211,90 +238,22 @@ impl Writer for SipState {
 
     #[inline]
     fn write_u8(&mut self, n: u8) -> IoResult<()> {
-        self.tail |= n as u64 << 8*self.ntail;
-        self.ntail += 1;
-
-        if self.ntail == 8 {
-            let m = self.tail;
-
-            self.v3 ^= m;
-            compress!(self.v0, self.v1, self.v2, self.v3);
-            compress!(self.v0, self.v1, self.v2, self.v3);
-            self.v0 ^= m;
-
-            self.tail = 0;
-            self.ntail = 0;
-        }
-
-        self.length += 1;
-
-        Ok(())
+        make_write_le!()
     }
 
     #[inline]
     fn write_le_u16(&mut self, n: u16) -> IoResult<()> {
-        self.tail |= n as u64 << 8*self.ntail;
-        self.ntail += 2;
-
-        if self.ntail >= 8 {
-            let m = self.tail;
-
-            self.v3 ^= m;
-            compress!(self.v0, self.v1, self.v2, self.v3);
-            compress!(self.v0, self.v1, self.v2, self.v3);
-            self.v0 ^= m;
-
-            self.tail = n as u64 >> 64 - 8*self.ntail;
-            self.ntail -= 8;
-        }
-
-        self.length += 2;
-
-        Ok(())
+        make_write_le!()
     }
 
     #[inline]
     fn write_le_u32(&mut self, n: u32) -> IoResult<()> {
-        self.tail |= n as u64 << 8*self.ntail;
-        self.ntail += 4;
-
-        if self.ntail >= 8 {
-            let m = self.tail;
-
-            self.v3 ^= m;
-            compress!(self.v0, self.v1, self.v2, self.v3);
-            compress!(self.v0, self.v1, self.v2, self.v3);
-            self.v0 ^= m;
-
-            self.tail = n as u64 >> 64 - 8*self.ntail;
-            self.ntail -= 8;
-        }
-
-        self.length += 4;
-
-        Ok(())
+        make_write_le!()
     }
 
     #[inline]
     fn write_le_u64(&mut self, n: u64) -> IoResult<()> {
-        self.tail |= n << 8*self.ntail;
-
-        let m = self.tail;
-
-        self.v3 ^= m;
-        compress!(self.v0, self.v1, self.v2, self.v3);
-        compress!(self.v0, self.v1, self.v2, self.v3);
-        self.v0 ^= m;
-
-        if self.ntail == 0 {
-            self.tail = 0;
-        } else {
-            self.tail = n >> 64 - 8*self.ntail;
-        }
-
-        self.length += 8;
-
-        Ok(())
+        make_write_le!()
     }
 }
 
@@ -371,10 +330,8 @@ pub fn hash_with_keys<T: Hash<SipState>>(k0: u64, k1: u64, value: &T) -> u64 {
 #[cfg(test)]
 mod tests {
     extern crate test;
-    use cast::transmute;
     use io::Writer;
     use iter::Iterator;
-    use mem::to_le64;
     use num::ToStrRadix;
     use option::{Some, None};
     use str::{Str, OwnedStr};
