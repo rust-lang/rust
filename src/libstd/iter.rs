@@ -2335,7 +2335,7 @@ mod tests {
 
     #[test]
     fn test_counter_from_iter() {
-        let mut it = count(0, 5).take(10);
+        let it = count(0, 5).take(10);
         let xs: ~[int] = FromIterator::from_iterator(it);
         assert_eq!(xs, ~[0, 5, 10, 15, 20, 25, 30, 35, 40, 45]);
     }
