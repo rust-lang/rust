@@ -13,7 +13,7 @@
 //! Currently these aren't particularly useful, there only exists bindings
 //! enough so that pipes can be created to child processes.
 
-#[allow(missing_doc)];
+#![allow(missing_doc)]
 
 use prelude::*;
 use io::IoResult;

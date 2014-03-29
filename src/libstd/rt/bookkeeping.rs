@@ -18,8 +18,8 @@
 //! each respective runtime to make sure that they call increment() and
 //! decrement() manually.
 
-#[experimental]; // this is a massive code smell
-#[doc(hidden)];
+#![experimental] // this is a massive code smell
+#![doc(hidden)]
 
 use sync::atomics;
 use unstable::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};

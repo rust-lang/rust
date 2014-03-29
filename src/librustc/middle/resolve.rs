@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[allow(non_camel_case_types)];
+#![allow(non_camel_case_types)]
 
 use driver::session::Session;
 use metadata::csearch;

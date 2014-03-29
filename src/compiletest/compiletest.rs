@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[crate_type = "bin"];
-#[feature(phase)];
+#![crate_type = "bin"]
+#![feature(phase)]
 
-#[allow(non_camel_case_types)];
-#[deny(warnings)];
+#![allow(non_camel_case_types)]
+#![deny(warnings)]
 
 extern crate test;
 extern crate getopts;

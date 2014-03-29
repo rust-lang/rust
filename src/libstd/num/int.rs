@@ -10,7 +10,7 @@
 
 //! Operations and constants for architecture-sized signed integers (`int` type)
 
-#[allow(non_uppercase_statics)];
+#![allow(non_uppercase_statics)]
 
 use prelude::*;
 

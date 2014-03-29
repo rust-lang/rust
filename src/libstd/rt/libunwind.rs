@@ -10,8 +10,8 @@
 
 //! Unwind library interface
 
-#[allow(non_camel_case_types)];
-#[allow(dead_code)]; // these are just bindings
+#![allow(non_camel_case_types)]
+#![allow(dead_code)] // these are just bindings
 
 use libc;
 

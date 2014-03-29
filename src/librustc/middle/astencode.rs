@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[allow(non_camel_case_types)];
+#![allow(non_camel_case_types)]
 // FIXME: remove this after snapshot, and Results are handled
-#[allow(unused_must_use)];
+#![allow(unused_must_use)]
 
 use c = metadata::common;
 use cstore = metadata::cstore;

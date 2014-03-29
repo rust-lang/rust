@@ -13,7 +13,7 @@
 //! These are implemented for the primitive numeric types in `std::{u8, u16,
 //! u32, u64, uint, i8, i16, i32, i64, int, f32, f64, float}`.
 
-#[allow(missing_doc)];
+#![allow(missing_doc)]
 
 use clone::Clone;
 use cmp::{Eq, Ord};

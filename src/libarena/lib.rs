@@ -15,15 +15,15 @@
 //! of individual objects while the arena itself is still alive. The benefit
 //! of an arena is very fast allocation; just a pointer bump.
 
-#[crate_id = "arena#0.10-pre"];
-#[crate_type = "rlib"];
-#[crate_type = "dylib"];
-#[license = "MIT/ASL2"];
-#[doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
-      html_favicon_url = "http://www.rust-lang.org/favicon.ico",
-      html_root_url = "http://static.rust-lang.org/doc/master")];
-#[allow(missing_doc)];
-#[feature(managed_boxes)];
+#![crate_id = "arena#0.10-pre"]
+#![crate_type = "rlib"]
+#![crate_type = "dylib"]
+#![license = "MIT/ASL2"]
+#![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
+       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
+       html_root_url = "http://static.rust-lang.org/doc/master")]
+#![allow(missing_doc)]
+#![feature(managed_boxes)]
 
 extern crate collections;
 

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[forbid(owned_heap_memory)];
+#![forbid(owned_heap_memory)]
 
 struct Foo {
     x: ~int //~ ERROR type uses owned

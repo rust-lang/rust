@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[feature(managed_boxes)];
+#![feature(managed_boxes)]
 
 // test that autoderef of a type like this does not
 // cause compiler to loop.  Note that no instances

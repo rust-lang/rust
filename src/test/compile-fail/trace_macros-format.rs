@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // ignore-fast feature doesn't work
-#[feature(macro_rules, trace_macros)];
+#![feature(macro_rules, trace_macros)]
 
 fn main() {
     trace_macros!(); //~ ERROR trace_macros! accepts only `true` or `false`
