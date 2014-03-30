@@ -136,9 +136,9 @@ fn represent_type_uncached(cx: &CrateContext, t: ty::t) -> Repr {
         }
         ty::ty_struct(def_id, ref substs) => {
             let fields = ty::lookup_struct_fields(cx.tcx(), def_id);
-            let mut ftys = fields.map(|field| {
+            let mut ftys = fields.iter().map(|field| {
                 ty::lookup_field_type(cx.tcx(), def_id, field.id, substs)
-            });
+            }).collect::<Vec<_>>();
             let packed = ty::lookup_packed(cx.tcx(), def_id);
             let dtor = ty::ty_dtor(cx.tcx(), def_id).has_drop_flag();
             if dtor { ftys.push(ty::mk_bool()); }
@@ -158,7 +158,7 @@ fn represent_type_uncached(cx: &CrateContext, t: ty::t) -> Repr {
 
             if cases.iter().all(|c| c.tys.len() == 0) {
                 // All bodies empty -> intlike
-                let discrs = cases.map(|c| c.discr);
+                let discrs: Vec<u64> = cases.iter().map(|c| c.discr).collect();
                 let bounds = IntBounds {
                     ulo: *discrs.iter().min().unwrap(),
                     uhi: *discrs.iter().max().unwrap(),
@@ -218,12 +218,12 @@ fn represent_type_uncached(cx: &CrateContext, t: ty::t) -> Repr {
             let bounds = IntBounds { ulo: 0, uhi: (cases.len() - 1) as u64,
                                      slo: 0, shi: (cases.len() - 1) as i64 };
             let ity = range_to_inttype(cx, hint, &bounds);
-            return General(ity, cases.map(|c| {
+            return General(ity, cases.iter().map(|c| {
                 let discr = vec!(ty_of_inttype(ity));
                 mk_struct(cx,
                           vec::append(discr, c.tys.as_slice()).as_slice(),
                           false)
-            }))
+            }).collect())
         }
         _ => cx.sess().bug("adt::represent_type called on non-ADT type")
     }
@@ -270,18 +270,18 @@ impl Case {
 }
 
 fn get_cases(tcx: &ty::ctxt, def_id: ast::DefId, substs: &ty::substs) -> Vec<Case> {
-    ty::enum_variants(tcx, def_id).map(|vi| {
-        let arg_tys = vi.args.map(|&raw_ty| {
+    ty::enum_variants(tcx, def_id).iter().map(|vi| {
+        let arg_tys = vi.args.iter().map(|&raw_ty| {
             ty::subst(tcx, substs, raw_ty)
-        });
+        }).collect();
         Case { discr: vi.disr_val, tys: arg_tys }
-    })
+    }).collect()
 }
 
 
 fn mk_struct(cx: &CrateContext, tys: &[ty::t], packed: bool) -> Struct {
-    let lltys = tys.map(|&ty| type_of::sizing_type_of(cx, ty));
-    let llty_rec = Type::struct_(cx, lltys, packed);
+    let lltys = tys.iter().map(|&ty| type_of::sizing_type_of(cx, ty)).collect::<Vec<_>>();
+    let llty_rec = Type::struct_(cx, lltys.as_slice(), packed);
     Struct {
         size: machine::llsize_of_alloc(cx, llty_rec) /*bad*/as u64,
         align: machine::llalign_of_min(cx, llty_rec) /*bad*/as u64,
@@ -464,9 +464,9 @@ fn generic_type_of(cx: &CrateContext, r: &Repr, name: Option<&str>, sizing: bool
 
 fn struct_llfields(cx: &CrateContext, st: &Struct, sizing: bool) -> Vec<Type> {
     if sizing {
-        st.fields.map(|&ty| type_of::sizing_type_of(cx, ty))
+        st.fields.iter().map(|&ty| type_of::sizing_type_of(cx, ty)).collect()
     } else {
-        st.fields.map(|&ty| type_of::type_of(cx, ty))
+        st.fields.iter().map(|&ty| type_of::type_of(cx, ty)).collect()
     }
 }
 
@@ -700,7 +700,7 @@ fn struct_field_ptr(bcx: &Block, st: &Struct, val: ValueRef, ix: uint,
     let ccx = bcx.ccx();
 
     let val = if needs_cast {
-        let fields = st.fields.map(|&ty| type_of::type_of(ccx, ty));
+        let fields = st.fields.iter().map(|&ty| type_of::type_of(ccx, ty)).collect::<Vec<_>>();
         let real_ty = Type::struct_(ccx, fields.as_slice(), st.packed);
         PointerCast(bcx, val, real_ty.ptr_to())
     } else {
@@ -773,11 +773,11 @@ pub fn trans_const(ccx: &CrateContext, r: &Repr, discr: Disr,
                                                  vals).as_slice(),
                          false)
             } else {
-                let vals = nonnull.fields.map(|&ty| {
+                let vals = nonnull.fields.iter().map(|&ty| {
                     // Always use null even if it's not the `ptrfield`th
                     // field; see #8506.
                     C_null(type_of::sizing_type_of(ccx, ty))
-                }).move_iter().collect::<Vec<ValueRef> >();
+                }).collect::<Vec<ValueRef>>();
                 C_struct(ccx, build_const_struct(ccx,
                                                  nonnull,
                                                  vals.as_slice()).as_slice(),

@@ -113,7 +113,7 @@ fn resolve_vtable_map_entry(fcx: &FnCtxt, sp: Span, vtable_key: MethodCall) {
 
     fn resolve_origins(fcx: &FnCtxt, sp: Span,
                        vtbls: vtable_res) -> vtable_res {
-        @vtbls.map(|os| @os.map(|origin| {
+        @vtbls.iter().map(|os| @os.iter().map(|origin| {
             match origin {
                 &vtable_static(def_id, ref tys, origins) => {
                     let r_tys = resolve_type_vars_in_types(fcx,
@@ -126,7 +126,7 @@ fn resolve_vtable_map_entry(fcx: &FnCtxt, sp: Span, vtable_key: MethodCall) {
                     vtable_param(n, b)
                 }
             }
-        }))
+        }).collect()).collect()
     }
 }
 

@@ -902,13 +902,6 @@ impl<T> Vec<T> {
         }
     }
 
-    ///Apply a function to each element of a vector and return the results.
-    #[inline]
-    #[deprecated="Use `xs.iter().map(closure)` instead."]
-    pub fn map<U>(&self, f: |t: &T| -> U) -> Vec<U> {
-        self.iter().map(f).collect()
-    }
-
     /// Takes ownership of the vector `other`, moving all elements into
     /// the current vector. This does not copy any elements, and it is
     /// illegal to use the `other` vector after calling this method

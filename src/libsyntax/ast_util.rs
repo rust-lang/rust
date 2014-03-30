@@ -25,9 +25,9 @@ use std::u32;
 
 pub fn path_name_i(idents: &[Ident]) -> ~str {
     // FIXME: Bad copies (#2543 -- same for everything else that says "bad")
-    idents.map(|i| {
+    idents.iter().map(|i| {
         token::get_ident(*i).get().to_str()
-    }).connect("::")
+    }).collect::<Vec<~str>>().connect("::")
 }
 
 // totally scary function: ignores all but the last element, should have
@@ -717,13 +717,15 @@ mod test {
     }
 
     #[test] fn idents_name_eq_test() {
-        assert!(segments_name_eq([Ident{name:3,ctxt:4},
-                                   Ident{name:78,ctxt:82}].map(ident_to_segment),
-                                 [Ident{name:3,ctxt:104},
-                                   Ident{name:78,ctxt:182}].map(ident_to_segment)));
-        assert!(!segments_name_eq([Ident{name:3,ctxt:4},
-                                    Ident{name:78,ctxt:82}].map(ident_to_segment),
-                                  [Ident{name:3,ctxt:104},
-                                    Ident{name:77,ctxt:182}].map(ident_to_segment)));
+        assert!(segments_name_eq(
+            [Ident{name:3,ctxt:4}, Ident{name:78,ctxt:82}]
+                .iter().map(ident_to_segment).collect::<Vec<PathSegment>>().as_slice(),
+            [Ident{name:3,ctxt:104}, Ident{name:78,ctxt:182}]
+                .iter().map(ident_to_segment).collect::<Vec<PathSegment>>().as_slice()));
+        assert!(!segments_name_eq(
+            [Ident{name:3,ctxt:4}, Ident{name:78,ctxt:82}]
+                .iter().map(ident_to_segment).collect::<Vec<PathSegment>>().as_slice(),
+            [Ident{name:3,ctxt:104}, Ident{name:77,ctxt:182}]
+                .iter().map(ident_to_segment).collect::<Vec<PathSegment>>().as_slice()));
     }
 }

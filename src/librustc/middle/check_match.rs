@@ -163,7 +163,7 @@ fn raw_pat(p: @Pat) -> @Pat {
 
 fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, pats: Vec<@Pat> ) {
     assert!((!pats.is_empty()));
-    let ext = match is_useful(cx, &pats.map(|p| vec!(*p)), [wild()]) {
+    let ext = match is_useful(cx, &pats.iter().map(|p| vec!(*p)).collect(), [wild()]) {
         not_useful => {
             // This is good, wildcard pattern isn't reachable
             return;
@@ -692,12 +692,12 @@ fn specialize(cx: &MatchCheckCtxt,
                     DefVariant(_, variant_id, _) => {
                         if variant(variant_id) == *ctor_id {
                             let struct_fields = ty::lookup_struct_fields(cx.tcx, variant_id);
-                            let args = struct_fields.map(|sf| {
+                            let args = struct_fields.iter().map(|sf| {
                                 match pattern_fields.iter().find(|f| f.ident.name == sf.name) {
                                     Some(f) => f.pat,
                                     _ => wild()
                                 }
-                            });
+                            }).collect();
                             Some(vec::append(args, r.tail()))
                         } else {
                             None

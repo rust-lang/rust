@@ -70,7 +70,7 @@ pub fn string_to_pat(source_str: ~str) -> @ast::Pat {
 
 // convert a vector of strings to a vector of ast::Ident's
 pub fn strs_to_idents(ids: Vec<&str> ) -> Vec<ast::Ident> {
-    ids.map(|u| token::str_to_ident(*u))
+    ids.iter().map(|u| token::str_to_ident(*u)).collect()
 }
 
 // does the given string match the pattern? whitespace in the first string

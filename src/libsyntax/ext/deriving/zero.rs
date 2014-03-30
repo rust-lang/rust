@@ -73,14 +73,14 @@ fn zero_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) 
                     if fields.is_empty() {
                         cx.expr_ident(trait_span, substr.type_ident)
                     } else {
-                        let exprs = fields.map(|sp| zero_call(*sp));
+                        let exprs = fields.iter().map(|sp| zero_call(*sp)).collect();
                         cx.expr_call_ident(trait_span, substr.type_ident, exprs)
                     }
                 }
                 Named(ref fields) => {
-                    let zero_fields = fields.map(|&(ident, span)| {
+                    let zero_fields = fields.iter().map(|&(ident, span)| {
                         cx.field_imm(span, ident, zero_call(span))
-                    });
+                    }).collect();
                     cx.expr_struct_ident(trait_span, substr.type_ident, zero_fields)
                 }
             }

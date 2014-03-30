@@ -851,7 +851,7 @@ fn foreign_types_for_fn_ty(ccx: &CrateContext,
            ty.repr(ccx.tcx()),
            ccx.tn.types_to_str(llsig.llarg_tys.as_slice()),
            ccx.tn.type_to_str(llsig.llret_ty),
-           ccx.tn.types_to_str(fn_ty.arg_tys.map(|t| t.ty).as_slice()),
+           ccx.tn.types_to_str(fn_ty.arg_tys.iter().map(|t| t.ty).collect::<Vec<_>>().as_slice()),
            ccx.tn.type_to_str(fn_ty.ret_ty.ty),
            ret_def);
 
