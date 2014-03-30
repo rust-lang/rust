@@ -282,7 +282,7 @@
     </context>
 
     <context id="attribute" style-ref="attribute" class="attribute">
-      <start extended="true">\#\[</start>
+      <start extended="true">\#!?\[</start>
       <end>\]</end>
       <include>
         <context ref="def:in-comment"/>
