@@ -13,7 +13,7 @@
 //! The DList allows pushing and popping elements at either end.
 //!
 //! DList implements the trait Deque. It should be imported with `use
-//! extra::container::Deque`.
+//! collections::deque::Deque`.
 
 
 // DList is constructed like a singly-linked list over the field `next`.
