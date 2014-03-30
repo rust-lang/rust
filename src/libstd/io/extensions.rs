@@ -170,6 +170,37 @@ pub fn u64_from_be_bytes(data: &[u8], start: uint, size: uint) -> u64 {
     }
 }
 
+/// Extracts an 8-bit to 64-bit unsigned little-endian value from the given byte
+/// buffer and returns it as a 64-bit value.
+///
+/// Arguments:
+///
+/// * `data`: The buffer in which to extract the value.
+/// * `start`: The offset at which to extract the value.
+/// * `size`: The size of the value in bytes to extract. This must be 8 or
+///           less, or task failure occurs. If this is less than 8, then only
+///           that many bytes are parsed. For example, if `size` is 4, then a
+///           32-bit value is parsed.
+pub fn u64_from_le_bytes(data: &[u8], start: uint, size: uint) -> u64 {
+    use ptr::{copy_nonoverlapping_memory};
+    use mem::from_le64;
+    use slice::MutableVector;
+
+    assert!(size <= 8u);
+
+    if data.len() - start < size {
+        fail!("index out of bounds");
+    }
+
+    let mut buf = [0u8, ..8];
+    unsafe {
+        let ptr = data.as_ptr().offset(start as int);
+        let out = buf.as_mut_ptr();
+        copy_nonoverlapping_memory(out, ptr, size);
+        from_le64(*(out as *i64)) as u64
+    }
+}
+
 #[cfg(test)]
 mod test {
     use prelude::*;
@@ -497,6 +528,35 @@ mod test {
         assert_eq!(u64_from_be_bytes(buf, 1, 6), 0x020304050607);
         assert_eq!(u64_from_be_bytes(buf, 1, 7), 0x02030405060708);
         assert_eq!(u64_from_be_bytes(buf, 1, 8), 0x0203040506070809);
+    }
+
+    #[test]
+    fn test_u64_from_le_bytes() {
+        use super::u64_from_le_bytes;
+
+        let buf = [0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09];
+
+        // Aligned access
+        assert_eq!(u64_from_le_bytes(buf, 0, 0), 0);
+        assert_eq!(u64_from_le_bytes(buf, 0, 1), 0x01);
+        assert_eq!(u64_from_le_bytes(buf, 0, 2), 0x0201);
+        assert_eq!(u64_from_le_bytes(buf, 0, 3), 0x030201);
+        assert_eq!(u64_from_le_bytes(buf, 0, 4), 0x04030201);
+        assert_eq!(u64_from_le_bytes(buf, 0, 5), 0x0504030201);
+        assert_eq!(u64_from_le_bytes(buf, 0, 6), 0x060504030201);
+        assert_eq!(u64_from_le_bytes(buf, 0, 7), 0x07060504030201);
+        assert_eq!(u64_from_le_bytes(buf, 0, 8), 0x0807060504030201);
+
+        // Unaligned access
+        assert_eq!(u64_from_le_bytes(buf, 1, 0), 0);
+        assert_eq!(u64_from_le_bytes(buf, 1, 1), 0x02);
+        assert_eq!(u64_from_le_bytes(buf, 1, 2), 0x0302);
+        assert_eq!(u64_from_le_bytes(buf, 1, 3), 0x040302);
+        assert_eq!(u64_from_le_bytes(buf, 1, 4), 0x05040302);
+        assert_eq!(u64_from_le_bytes(buf, 1, 5), 0x0605040302);
+        assert_eq!(u64_from_le_bytes(buf, 1, 6), 0x070605040302);
+        assert_eq!(u64_from_le_bytes(buf, 1, 7), 0x08070605040302);
+        assert_eq!(u64_from_le_bytes(buf, 1, 8), 0x0908070605040302);
     }
 }
 

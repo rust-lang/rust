@@ -28,6 +28,7 @@ use clone::Clone;
 use container::Container;
 use default::Default;
 use io::{IoResult, Writer};
+use io::extensions::u64_from_le_bytes;
 use iter::Iterator;
 use mem::size_of_val;
 use result::Ok;
@@ -54,14 +55,7 @@ pub struct SipState {
 
 macro_rules! u8to64_le (
     ($buf:expr, $i:expr) =>
-    ($buf[0+$i] as u64 |
-     $buf[1+$i] as u64 << 8 |
-     $buf[2+$i] as u64 << 16 |
-     $buf[3+$i] as u64 << 24 |
-     $buf[4+$i] as u64 << 32 |
-     $buf[5+$i] as u64 << 40 |
-     $buf[6+$i] as u64 << 48 |
-     $buf[7+$i] as u64 << 56)
+    (u64_from_le_bytes($buf, $i, 8))
 )
 
 macro_rules! rotl (
@@ -331,6 +325,7 @@ pub fn hash_with_keys<T: Hash<SipState>>(k0: u64, k1: u64, value: &T) -> u64 {
 mod tests {
     extern crate test;
     use io::Writer;
+    use io::extensions::u64_from_le_bytes;
     use iter::Iterator;
     use num::ToStrRadix;
     use option::{Some, None};
