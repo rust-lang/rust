@@ -135,7 +135,7 @@ syn match     rustStringContinuation display contained /\\\n\s*/
 syn region    rustString      start=+"+ skip=+\\\\\|\\"+ end=+"+ contains=rustSpecial,rustSpecialError,rustStringContinuation,@Spell
 syn region    rustString      start='r\z(#*\)"' end='"\z1' contains=@Spell
 
-syn region    rustAttribute   start="#\[" end="\]" contains=rustString,rustDeriving
+syn region    rustAttribute   start="#!\?\[" end="\]" contains=rustString,rustDeriving
 syn region    rustDeriving    start="deriving(" end=")" contained contains=rustTrait
 
 " Number literals
