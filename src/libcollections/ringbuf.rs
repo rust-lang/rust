@@ -11,7 +11,7 @@
 //! A double-ended queue implemented as a circular buffer
 //!
 //! RingBuf implements the trait Deque. It should be imported with `use
-//! extra::container::Deque`.
+//! collections::deque::Deque`.
 
 use std::cmp;
 use std::slice;

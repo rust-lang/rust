@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Container traits for extra
+//! Container traits for collections
 
 use std::container::Mutable;
 
