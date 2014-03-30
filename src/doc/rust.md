@@ -1722,13 +1722,12 @@ mod bar {
 pub type int8_t = i8;
 ~~~~
 
-> **Note:** In future versions of Rust, user-provided extensions to the compiler
-> will be able to interpret attributes.  When this facility is provided, the
-> compiler will distinguish between language-reserved and user-available
-> attributes.
+> **Note:** At some point in the future, the compiler will distinguish between
+> language-reserved and user-available attributes. Until then, there is
+> effectively no difference between an attribute handled by a loadable syntax
+> extension and the compiler.
 
-At present, only the Rust compiler interprets attributes, so all attribute names
-are effectively reserved. Some significant attributes include:
+Some significant attributes include:
 
 * The `doc` attribute, for documenting code in-place.
 * The `cfg` attribute, for conditional-compilation by build-configuration (see
