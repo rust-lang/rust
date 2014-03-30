@@ -134,7 +134,7 @@ impl<T:Subst> Subst for Vec<T> {
     fn subst_spanned(&self, tcx: &ty::ctxt,
                      substs: &ty::substs,
                      span: Option<Span>) -> Vec<T> {
-        self.map(|t| t.subst_spanned(tcx, substs, span))
+        self.iter().map(|t| t.subst_spanned(tcx, substs, span)).collect()
     }
 }
 impl<T:Subst> Subst for Rc<T> {
@@ -189,7 +189,7 @@ impl Subst for ty::substs {
         ty::substs {
             regions: self.regions.subst_spanned(tcx, substs, span),
             self_ty: self.self_ty.map(|typ| typ.subst_spanned(tcx, substs, span)),
-            tps: self.tps.map(|typ| typ.subst_spanned(tcx, substs, span))
+            tps: self.tps.iter().map(|typ| typ.subst_spanned(tcx, substs, span)).collect()
         }
     }
 }

@@ -69,9 +69,9 @@ impl<'a> Path<'a> {
                    self_ty: Ident,
                    self_generics: &Generics)
                    -> ast::Path {
-        let idents = self.path.map(|s| cx.ident_of(*s) );
+        let idents = self.path.iter().map(|s| cx.ident_of(*s)).collect();
         let lt = mk_lifetimes(cx, span, &self.lifetime);
-        let tys = self.params.map(|t| t.to_ty(cx, span, self_ty, self_generics));
+        let tys = self.params.iter().map(|t| t.to_ty(cx, span, self_ty, self_generics)).collect();
 
         cx.path_all(span, self.global, idents, lt, tys)
     }
@@ -150,7 +150,9 @@ impl<'a> Ty<'a> {
                 let ty = if fields.is_empty() {
                     ast::TyNil
                 } else {
-                    ast::TyTup(fields.map(|f| f.to_ty(cx, span, self_ty, self_generics)))
+                    ast::TyTup(fields.iter()
+                                     .map(|f| f.to_ty(cx, span, self_ty, self_generics))
+                                     .collect())
                 };
 
                 cx.ty(span, ty)
@@ -219,10 +221,10 @@ impl<'a> LifetimeBounds<'a> {
                        self_ty: Ident,
                        self_generics: &Generics)
                        -> Generics {
-        let lifetimes = self.lifetimes.map(|lt| {
+        let lifetimes = self.lifetimes.iter().map(|lt| {
             cx.lifetime(span, cx.ident_of(*lt).name)
-        });
-        let ty_params = self.bounds.map(|t| {
+        }).collect();
+        let ty_params = self.bounds.iter().map(|t| {
             match t {
                 &(ref name, ref bounds) => {
                     mk_ty_param(cx,
@@ -233,7 +235,7 @@ impl<'a> LifetimeBounds<'a> {
                                 self_generics)
                 }
             }
-        });
+        }).collect();
         mk_generics(lifetimes, ty_params)
     }
 }

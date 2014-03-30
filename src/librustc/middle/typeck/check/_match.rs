@@ -147,7 +147,7 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: &ast::Pat, path: &ast::Path,
                         let vinfo =
                             ty::enum_variant_with_id(tcx, enm, var);
                         let var_tpt = ty::lookup_item_type(tcx, var);
-                        vinfo.args.map(|t| {
+                        vinfo.args.iter().map(|t| {
                             if var_tpt.generics.type_param_defs().len() ==
                                 expected_substs.tps.len()
                             {
@@ -157,7 +157,7 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: &ast::Pat, path: &ast::Path,
                                 *t // In this case, an error was already signaled
                                     // anyway
                             }
-                        })
+                        }).collect()
                     };
 
                     kind_name = "variant";
@@ -209,7 +209,7 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: &ast::Pat, path: &ast::Path,
             // Get the expected types of the arguments.
             let class_fields = ty::struct_fields(
                 tcx, struct_def_id, expected_substs);
-            arg_types = class_fields.map(|field| field.mt.ty);
+            arg_types = class_fields.iter().map(|field| field.mt.ty).collect();
 
             kind_name = "structure";
         }

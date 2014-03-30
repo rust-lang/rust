@@ -167,8 +167,8 @@ fn ast_path_substs<AC:AstConv,RS:RegionScope>(
     let expected_num_region_params = decl_generics.region_param_defs().len();
     let supplied_num_region_params = path.segments.last().unwrap().lifetimes.len();
     let regions = if expected_num_region_params == supplied_num_region_params {
-        path.segments.last().unwrap().lifetimes.map(
-            |l| ast_region_to_region(this.tcx(), l))
+        path.segments.last().unwrap().lifetimes.iter().map(
+            |l| ast_region_to_region(this.tcx(), l)).collect::<Vec<_>>()
     } else {
         let anon_regions =
             rscope.anon_regions(path.span, expected_num_region_params);

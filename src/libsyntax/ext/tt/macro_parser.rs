@@ -373,7 +373,7 @@ pub fn parse(sess: &ParseSess,
         } else {
             if (bb_eis.len() > 0u && next_eis.len() > 0u)
                 || bb_eis.len() > 1u {
-                let nts = bb_eis.map(|ei| {
+                let nts = bb_eis.iter().map(|ei| {
                     match ei.elts.get(ei.idx).node {
                       MatchNonterminal(bind, name, _) => {
                         format!("{} ('{}')",
@@ -381,7 +381,7 @@ pub fn parse(sess: &ParseSess,
                                 token::get_ident(bind))
                       }
                       _ => fail!()
-                    } }).connect(" or ");
+                    } }).collect::<Vec<~str>>().connect(" or ");
                 return Error(sp, format!(
                     "local ambiguity: multiple parsing options: \
                      built-in NTs {} or {} other options.",

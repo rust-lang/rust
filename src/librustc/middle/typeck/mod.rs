@@ -258,7 +258,7 @@ pub fn write_substs_to_tcx(tcx: &ty::ctxt,
                            substs: Vec<ty::t> ) {
     if substs.len() > 0u {
         debug!("write_substs_to_tcx({}, {:?})", node_id,
-               substs.map(|t| ppaux::ty_to_str(tcx, *t)));
+               substs.iter().map(|t| ppaux::ty_to_str(tcx, *t)).collect::<Vec<~str>>());
         assert!(substs.iter().all(|t| !ty::type_needs_infer(*t)));
 
         tcx.node_type_substs.borrow_mut().insert(node_id, substs);

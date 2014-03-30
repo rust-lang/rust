@@ -1706,7 +1706,7 @@ impl<A:ToJson,B:ToJson,C:ToJson> ToJson for (A, B, C) {
 }
 
 impl<A:ToJson> ToJson for ~[A] {
-    fn to_json(&self) -> Json { List(self.map(|elt| elt.to_json())) }
+    fn to_json(&self) -> Json { List(self.iter().map(|elt| elt.to_json()).collect()) }
 }
 
 impl<A:ToJson> ToJson for TreeMap<~str, A> {

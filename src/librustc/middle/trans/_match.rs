@@ -1578,10 +1578,10 @@ fn compile_submatch_continue<'r,
             let pat_ty = node_id_type(bcx, pat_id);
             let pat_repr = adt::represent_type(bcx.ccx(), pat_ty);
             expr::with_field_tys(tcx, pat_ty, Some(pat_id), |discr, field_tys| {
-                let rec_vals = rec_fields.map(|field_name| {
+                let rec_vals = rec_fields.iter().map(|field_name| {
                         let ix = ty::field_idx_strict(tcx, field_name.name, field_tys);
                         adt::trans_field_ptr(bcx, pat_repr, val, discr, ix)
-                        });
+                        }).collect();
                 compile_submatch(
                         bcx,
                         enter_rec_or_struct(bcx,

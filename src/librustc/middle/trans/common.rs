@@ -816,7 +816,10 @@ pub fn node_id_type_params(bcx: &Block, node: ExprOrMethodCall) -> Vec<ty::t> {
     if !params.iter().all(|t| !ty::type_needs_infer(*t)) {
         bcx.sess().bug(
             format!("type parameters for node {:?} include inference types: {}",
-                 node, params.map(|t| bcx.ty_to_str(*t)).connect(",")));
+                 node, params.iter()
+                             .map(|t| bcx.ty_to_str(*t))
+                             .collect::<Vec<~str>>()
+                             .connect(",")));
     }
 
     match bcx.fcx.param_substs {

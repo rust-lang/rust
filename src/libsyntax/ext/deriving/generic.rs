@@ -371,12 +371,12 @@ impl<'a> TraitDef<'a> {
         ty_params.extend(generics.ty_params.iter().map(|ty_param| {
             // I don't think this can be moved out of the loop, since
             // a TyParamBound requires an ast id
-            let mut bounds =
+            let mut bounds: Vec<_> =
                 // extra restrictions on the generics parameters to the type being derived upon
-                self.additional_bounds.map(|p| {
+                self.additional_bounds.iter().map(|p| {
                     cx.typarambound(p.to_path(cx, self.span,
                                                   type_ident, generics))
-                });
+                }).collect();
             // require the current trait
             bounds.push(cx.typarambound(trait_path.clone()));
 
@@ -413,7 +413,7 @@ impl<'a> TraitDef<'a> {
             ident,
             vec::append(vec!(attr), self.attributes.as_slice()),
             ast::ItemImpl(trait_generics, opt_trait_ref,
-                          self_type, methods.map(|x| *x)))
+                          self_type, methods))
     }
 
     fn expand_struct_def(&self,
@@ -421,7 +421,7 @@ impl<'a> TraitDef<'a> {
                          struct_def: &StructDef,
                          type_ident: Ident,
                          generics: &Generics) -> @ast::Item {
-        let methods = self.methods.map(|method_def| {
+        let methods = self.methods.iter().map(|method_def| {
             let (explicit_self, self_args, nonself_args, tys) =
                 method_def.split_self_nonself_args(
                     cx, self, type_ident, generics);
@@ -447,7 +447,7 @@ impl<'a> TraitDef<'a> {
                                      type_ident, generics,
                                      explicit_self, tys,
                                      body)
-        });
+        }).collect();
 
         self.create_derived_impl(cx, type_ident, generics, methods)
     }
@@ -457,7 +457,7 @@ impl<'a> TraitDef<'a> {
                        enum_def: &EnumDef,
                        type_ident: Ident,
                        generics: &Generics) -> @ast::Item {
-        let methods = self.methods.map(|method_def| {
+        let methods = self.methods.iter().map(|method_def| {
             let (explicit_self, self_args, nonself_args, tys) =
                 method_def.split_self_nonself_args(cx, self,
                                                    type_ident, generics);
@@ -483,7 +483,7 @@ impl<'a> TraitDef<'a> {
                                      type_ident, generics,
                                      explicit_self, tys,
                                      body)
-        });
+        }).collect();
 
         self.create_derived_impl(cx, type_ident, generics, methods)
     }
@@ -955,18 +955,18 @@ impl<'a> MethodDef<'a> {
                                       self_args: &[@Expr],
                                       nonself_args: &[@Expr])
         -> @Expr {
-        let summary = enum_def.variants.map(|v| {
+        let summary = enum_def.variants.iter().map(|v| {
             let ident = v.node.name;
             let summary = match v.node.kind {
                 ast::TupleVariantKind(ref args) => {
-                    Unnamed(args.map(|va| trait_.set_expn_info(cx, va.ty.span)))
+                    Unnamed(args.iter().map(|va| trait_.set_expn_info(cx, va.ty.span)).collect())
                 }
                 ast::StructVariantKind(struct_def) => {
                     trait_.summarise_struct(cx, struct_def)
                 }
             };
             (ident, v.span, summary)
-        });
+        }).collect();
         self.call_substructure_method(cx, trait_, type_ident,
                                       self_args, nonself_args,
                                       &StaticEnum(enum_def, summary))
@@ -1027,10 +1027,10 @@ impl<'a> TraitDef<'a> {
                           field_paths: Vec<ast::Path> ,
                           mutbl: ast::Mutability)
                           -> Vec<@ast::Pat> {
-        field_paths.map(|path| {
+        field_paths.iter().map(|path| {
             cx.pat(path.span,
                         ast::PatIdent(ast::BindByRef(mutbl), (*path).clone(), None))
-            })
+            }).collect()
     }
 
     fn create_struct_pattern(&self,
@@ -1200,12 +1200,14 @@ pub fn cs_same_method(f: |&mut ExtCtxt, Span, Vec<@Expr> | -> @Expr,
     match *substructure.fields {
         EnumMatching(_, _, ref all_fields) | Struct(ref all_fields) => {
             // call self_n.method(other_1_n, other_2_n, ...)
-            let called = all_fields.map(|field| {
+            let called = all_fields.iter().map(|field| {
                 cx.expr_method_call(field.span,
                                     field.self_,
                                     substructure.method_ident,
-                                    field.other.map(|e| cx.expr_addr_of(field.span, *e)))
-            });
+                                    field.other.iter()
+                                               .map(|e| cx.expr_addr_of(field.span, *e))
+                                               .collect())
+            }).collect();
 
             f(cx, trait_span, called)
         },
