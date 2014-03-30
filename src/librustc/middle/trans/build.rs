@@ -121,7 +121,7 @@ pub fn Invoke(cx: &Block,
     terminate(cx, "Invoke");
     debug!("Invoke({} with arguments ({}))",
            cx.val_to_str(fn_),
-           args.map(|a| cx.val_to_str(*a)).connect(", "));
+           args.iter().map(|a| cx.val_to_str(*a)).collect::<Vec<~str>>().connect(", "));
     B(cx).invoke(fn_, args, then, catch, attributes)
 }
 

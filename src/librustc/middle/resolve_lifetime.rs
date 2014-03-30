@@ -216,7 +216,7 @@ impl<'a> LifetimeContext<'a> {
                referenced_idents={:?} \
                early_count={}",
                n,
-               referenced_idents.map(lifetime_show),
+               referenced_idents.iter().map(lifetime_show).collect::<Vec<token::InternedString>>(),
                early_count);
         if referenced_idents.is_empty() {
             let scope1 = LateScope(n, &generics.lifetimes, scope);

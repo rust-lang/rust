@@ -285,12 +285,12 @@ impl<'a> AsciiStr for &'a [Ascii] {
 
     #[inline]
     fn to_lower(&self) -> ~[Ascii] {
-        self.map(|a| a.to_lower())
+        self.iter().map(|a| a.to_lower()).collect()
     }
 
     #[inline]
     fn to_upper(&self) -> ~[Ascii] {
-        self.map(|a| a.to_upper())
+        self.iter().map(|a| a.to_upper()).collect()
     }
 
     #[inline]

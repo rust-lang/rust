@@ -83,7 +83,7 @@ pub mod rt {
 
     impl<'a> ToSource for &'a [@ast::Item] {
         fn to_source(&self) -> ~str {
-            self.map(|i| i.to_source()).connect("\n\n")
+            self.iter().map(|i| i.to_source()).collect::<Vec<~str>>().connect("\n\n")
         }
     }
 
@@ -95,7 +95,7 @@ pub mod rt {
 
     impl<'a> ToSource for &'a [ast::Ty] {
         fn to_source(&self) -> ~str {
-            self.map(|i| i.to_source()).connect(", ")
+            self.iter().map(|i| i.to_source()).collect::<Vec<~str>>().connect(", ")
         }
     }
 
@@ -339,7 +339,7 @@ pub fn expand_quote_stmt(cx: &mut ExtCtxt,
 }
 
 fn ids_ext(strs: Vec<~str> ) -> Vec<ast::Ident> {
-    strs.map(|str| str_to_ident(*str))
+    strs.iter().map(|str| str_to_ident(*str)).collect()
 }
 
 fn id_ext(str: &str) -> ast::Ident {

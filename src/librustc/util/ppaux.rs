@@ -276,7 +276,7 @@ pub fn vstore_ty_to_str(cx: &ctxt, mt: &mt, vs: ty::vstore) -> ~str {
 }
 
 pub fn vec_map_to_str<T>(ts: &[T], f: |t: &T| -> ~str) -> ~str {
-    let tstrs = ts.map(f);
+    let tstrs = ts.iter().map(f).collect::<Vec<~str>>();
     format!("[{}]", tstrs.connect(", "))
 }
 
@@ -405,7 +405,7 @@ pub fn ty_to_str(cx: &ctxt, typ: t) -> ~str {
                        ket: char,
                        sig: &ty::FnSig) {
         s.push_char(bra);
-        let strs = sig.inputs.map(|a| fn_input_to_str(cx, *a));
+        let strs: Vec<~str> = sig.inputs.iter().map(|a| fn_input_to_str(cx, *a)).collect();
         s.push_str(strs.connect(", "));
         if sig.variadic {
             s.push_str(", ...");
@@ -447,7 +447,7 @@ pub fn ty_to_str(cx: &ctxt, typ: t) -> ~str {
       }
       ty_unboxed_vec(ref tm) => { format!("unboxed_vec<{}>", mt_to_str(cx, tm)) }
       ty_tup(ref elems) => {
-        let strs = elems.map(|elem| ty_to_str(cx, *elem));
+        let strs: Vec<~str> = elems.iter().map(|elem| ty_to_str(cx, *elem)).collect();
         ~"(" + strs.connect(",") + ")"
       }
       ty_closure(ref f) => {

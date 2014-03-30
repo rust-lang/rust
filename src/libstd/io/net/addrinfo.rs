@@ -19,11 +19,12 @@ getaddrinfo()
 
 #![allow(missing_doc)]
 
+use iter::Iterator;
 use io::IoResult;
 use io::net::ip::{SocketAddr, IpAddr};
 use option::{Option, Some, None};
 use rt::rtio::{IoFactory, LocalIo};
-use slice::ImmutableVector;
+use slice::OwnedVector;
 
 /// Hints to the types of sockets that are desired when looking up hosts
 pub enum SocketType {
@@ -73,7 +74,7 @@ pub struct Info {
 /// Easy name resolution. Given a hostname, returns the list of IP addresses for
 /// that hostname.
 pub fn get_host_addresses(host: &str) -> IoResult<~[IpAddr]> {
-    lookup(Some(host), None, None).map(|a| a.map(|i| i.address.ip))
+    lookup(Some(host), None, None).map(|a| a.move_iter().map(|i| i.address.ip).collect())
 }
 
 /// Full-fleged resolution. This function will perform a synchronous call to

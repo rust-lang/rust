@@ -99,7 +99,9 @@ impl AsciiArt {
 impl fmt::Show for AsciiArt {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // Convert each line into a string.
-        let lines = self.lines.map(|line| str::from_chars(line.as_slice()));
+        let lines = self.lines.iter()
+                              .map(|line| str::from_chars(line.as_slice()))
+                              .collect::<Vec<~str>>();
 
         // Concatenate the lines together using a new-line.
         write!(f.buf, "{}", lines.connect("\n"))

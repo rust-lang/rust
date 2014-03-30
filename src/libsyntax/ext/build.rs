@@ -746,7 +746,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
     fn lambda(&self, span: Span, ids: Vec<ast::Ident> , blk: P<ast::Block>) -> @ast::Expr {
         let fn_decl = self.fn_decl(
-            ids.map(|id| self.arg(span, *id, self.ty_infer(span))),
+            ids.iter().map(|id| self.arg(span, *id, self.ty_infer(span))).collect(),
             self.ty_infer(span));
 
         self.expr(span, ast::ExprFnBlock(fn_decl, blk))
@@ -966,16 +966,14 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
 
     fn view_use_list(&self, sp: Span, vis: ast::Visibility,
                      path: Vec<ast::Ident> , imports: &[ast::Ident]) -> ast::ViewItem {
-        let imports = imports.map(|id| {
+        let imports = imports.iter().map(|id| {
             respan(sp, ast::PathListIdent_ { name: *id, id: ast::DUMMY_NODE_ID })
-        });
+        }).collect();
 
         self.view_use(sp, vis,
                       vec!(@respan(sp,
                                 ast::ViewPathList(self.path(sp, path),
-                                                  imports.iter()
-                                                         .map(|x| *x)
-                                                         .collect(),
+                                                  imports,
                                                   ast::DUMMY_NODE_ID))))
     }
 

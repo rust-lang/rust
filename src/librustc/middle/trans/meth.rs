@@ -541,7 +541,7 @@ fn emit_vtable_methods(bcx: &Block,
     ty::populate_implementations_for_trait_if_necessary(bcx.tcx(), trt_id);
 
     let trait_method_def_ids = ty::trait_method_def_ids(tcx, trt_id);
-    trait_method_def_ids.map(|method_def_id| {
+    trait_method_def_ids.iter().map(|method_def_id| {
         let ident = ty::method(tcx, *method_def_id).ident;
         // The substitutions we have are on the impl, so we grab
         // the method type from the impl to substitute into.
@@ -558,7 +558,7 @@ fn emit_vtable_methods(bcx: &Block,
         } else {
             trans_fn_ref_with_vtables(bcx, m_id, ExprId(0), substs, Some(vtables))
         }
-    })
+    }).collect()
 }
 
 pub fn trans_trait_cast<'a>(bcx: &'a Block<'a>,

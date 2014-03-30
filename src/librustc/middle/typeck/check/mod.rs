@@ -449,7 +449,7 @@ fn check_fn<'a>(ccx: &'a CrateCtxt<'a>,
     let ret_ty = fn_sig.output;
 
     debug!("check_fn(arg_tys={:?}, ret_ty={:?})",
-           arg_tys.map(|&a| ppaux::ty_to_str(tcx, a)),
+           arg_tys.iter().map(|&a| ppaux::ty_to_str(tcx, a)).collect::<Vec<~str>>(),
            ppaux::ty_to_str(tcx, ret_ty));
 
     // Create the function context.  This is either derived from scratch or,
@@ -1717,7 +1717,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         };
 
         debug!("check_argument_types: formal_tys={:?}",
-               formal_tys.map(|t| fcx.infcx().ty_to_str(*t)));
+               formal_tys.iter().map(|t| fcx.infcx().ty_to_str(*t)).collect::<Vec<~str>>());
 
         // Check the arguments.
         // We do this in a pretty awful way: first we typecheck any arguments
@@ -1886,10 +1886,10 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                                                 expr.span,
                                                 fcx.expr_ty(rcvr));
 
-        let tps = tps.map(|&ast_ty| fcx.to_ty(ast_ty));
+        let tps = tps.iter().map(|&ast_ty| fcx.to_ty(ast_ty)).collect::<Vec<_>>();
         let fn_ty = match method::lookup(fcx, expr, rcvr,
                                          method_name.name,
-                                         expr_t, tps,
+                                         expr_t, tps.as_slice(),
                                          DontDerefArgs,
                                          CheckTraitsAndInherentMethods,
                                          AutoderefReceiver) {
@@ -2235,7 +2235,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         let fty = if error_happened {
             fty_sig = FnSig {
                 binder_id: ast::CRATE_NODE_ID,
-                inputs: fn_ty.sig.inputs.map(|_| ty::mk_err()),
+                inputs: fn_ty.sig.inputs.iter().map(|_| ty::mk_err()).collect(),
                 output: ty::mk_err(),
                 variadic: false
             };
@@ -2938,11 +2938,11 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
       }
       ast::ExprMethodCall(ident, ref tps, ref args) => {
         check_method_call(fcx, expr, ident, args.as_slice(), tps.as_slice());
-        let arg_tys = args.map(|a| fcx.expr_ty(*a));
-        let (args_bot, args_err) = arg_tys.iter().fold((false, false),
+        let mut arg_tys = args.iter().map(|a| fcx.expr_ty(*a));
+        let (args_bot, args_err) = arg_tys.fold((false, false),
              |(rest_bot, rest_err), a| {
-              (rest_bot || ty::type_is_bot(*a),
-               rest_err || ty::type_is_error(*a))});
+              (rest_bot || ty::type_is_bot(a),
+               rest_err || ty::type_is_error(a))});
         if args_err {
             fcx.write_error(id);
         } else if args_bot {
@@ -3686,8 +3686,8 @@ pub fn instantiate_path(fcx: &FnCtxt,
     let num_expected_regions = tpt.generics.region_param_defs().len();
     let num_supplied_regions = pth.segments.last().unwrap().lifetimes.len();
     let regions = if num_expected_regions == num_supplied_regions {
-        OwnedSlice::from_vec(pth.segments.last().unwrap().lifetimes.map(
-            |l| ast_region_to_region(fcx.tcx(), l)))
+        OwnedSlice::from_vec(pth.segments.last().unwrap().lifetimes.iter().map(
+            |l| ast_region_to_region(fcx.tcx(), l)).collect())
     } else {
         if num_supplied_regions != 0 {
             fcx.ccx.tcx.sess.span_err(

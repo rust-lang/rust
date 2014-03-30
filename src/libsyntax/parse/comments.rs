@@ -104,7 +104,7 @@ pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
         }
 
         if can_trim {
-            lines.map(|line| line.slice(i + 1, line.len()).to_owned())
+            lines.iter().map(|line| line.slice(i + 1, line.len()).to_owned()).collect()
         } else {
             lines
         }
