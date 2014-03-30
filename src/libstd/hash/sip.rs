@@ -53,11 +53,6 @@ pub struct SipState {
 // because they're needed in the following defs;
 // this design could be improved.
 
-macro_rules! u8to64_le (
-    ($buf:expr, $i:expr) =>
-    (u64_from_le_bytes($buf, $i, 8))
-)
-
 macro_rules! rotl (
     ($x:expr, $b:expr) =>
     (($x << $b) | ($x >> (64 - $b)))
@@ -177,22 +172,12 @@ impl Writer for SipState {
             needed = 8 - self.ntail;
 
             if length < needed {
-                let mut t = 0;
-                while t < length {
-                    self.tail |= msg[t] as u64 << 8*(self.ntail+t);
-                    t += 1;
-                }
+                self.tail |= u64_from_le_bytes(msg, 0, length) << 8*self.ntail;
                 self.ntail += length;
                 return Ok(());
             }
 
-            let mut t = 0;
-            while t < needed {
-                self.tail |= msg[t] as u64 << 8*(self.ntail+t);
-                t += 1;
-            }
-
-            let m = self.tail;
+            let m = self.tail | u64_from_le_bytes(msg, 0, needed) << 8*self.ntail;
 
             self.v3 ^= m;
             compress!(self.v0, self.v1, self.v2, self.v3);
@@ -210,7 +195,7 @@ impl Writer for SipState {
 
         let mut i = needed;
         while i < end {
-            let mi = u8to64_le!(msg, i);
+            let mi = u64_from_le_bytes(msg, i, 8);
 
             self.v3 ^= mi;
             compress!(self.v0, self.v1, self.v2, self.v3);
@@ -220,16 +205,16 @@ impl Writer for SipState {
             i += 8;
         }
 
-        let mut t = 0u;
-        while t < left {
-            self.tail |= msg[i+t] as u64 << 8*t;
-            t += 1
-        }
+        self.tail = u64_from_le_bytes(msg, i, left);
         self.ntail = left;
 
         Ok(())
     }
 
+    // We override these functions because by default, they convert `n` to bytes (possibly with an
+    // expensive byte swap) then convert those bytes back into a `u64` (possibly with another byte swap which
+    // reverses the first). Additionally, in these cases, we know that at most one flush will be
+    // needed, and so can optimize appropriately.
     #[inline]
     fn write_u8(&mut self, n: u8) -> IoResult<()> {
         make_write_le!()
@@ -455,7 +440,7 @@ mod tests {
 
         while t < 64 {
             debug!("siphash test {}", t);
-            let vec = u8to64_le!(vecs[t], 0);
+            let vec = u64_from_le_bytes(vecs[t], 0, 8);
             let out = hash_with_keys(k0, k1, &Bytes(buf.as_slice()));
             debug!("got {:?}, expected {:?}", out, vec);
             assert_eq!(vec, out);
