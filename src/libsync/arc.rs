@@ -165,7 +165,7 @@ impl<T: Share + Send> Drop for Arc<T> {
         // Because `fetch_sub` is already atomic, we do not need to synchronize
         // with other threads unless we are going to delete the object. This
         // same logic applies to the below `fetch_sub` to the `weak` count.
-        if self.inner().strong.fetch_sub(1, atomics::Release) != 0 { return }
+        if self.inner().strong.fetch_sub(1, atomics::Release) != 1 { return }
 
         // This fence is needed to prevent reordering of use of the data and
         // deletion of the data. Because it is marked `Release`, the
@@ -190,7 +190,7 @@ impl<T: Share + Send> Drop for Arc<T> {
         // allocation itself (there may still be weak pointers lying around).
         unsafe { drop(ptr::read(&self.inner().data)); }
 
-        if self.inner().weak.fetch_sub(1, atomics::Release) == 0 {
+        if self.inner().weak.fetch_sub(1, atomics::Release) == 1 {
             atomics::fence(atomics::Acquire);
             unsafe { global_heap::exchange_free(self.x as *u8) }
         }
@@ -240,7 +240,7 @@ impl<T: Share + Send> Drop for Weak<T> {
         // If we find out that we were the last weak pointer, then its time to
         // deallocate the data entirely. See the discussion in Arc::drop() about
         // the memory orderings
-        if self.inner().weak.fetch_sub(1, atomics::Release) == 0 {
+        if self.inner().weak.fetch_sub(1, atomics::Release) == 1 {
             atomics::fence(atomics::Acquire);
             unsafe { global_heap::exchange_free(self.x as *u8) }
         }
@@ -251,9 +251,24 @@ impl<T: Share + Send> Drop for Weak<T> {
 #[allow(experimental)]
 mod tests {
     use super::{Arc, Weak};
+    use std::sync::atomics;
+    use std::task;
     use Mutex;
 
-    use std::task;
+    struct Canary(*mut atomics::AtomicUint);
+
+    impl Drop for Canary
+    {
+        fn drop(&mut self) {
+            unsafe {
+                match *self {
+                    Canary(c) => {
+                        (*c).fetch_add(1, atomics::SeqCst);
+                    }
+                }
+            }
+        }
+    }
 
     #[test]
     fn manually_share_arc() {
@@ -348,5 +363,24 @@ mod tests {
         *a.deref().x.lock().deref_mut() = Some(b);
 
         // hopefully we don't double-free (or leak)...
+    }
+
+    #[test]
+    fn drop_arc() {
+        let mut canary = atomics::AtomicUint::new(0);
+        let x = Arc::new(Canary(&mut canary as *mut atomics::AtomicUint));
+        drop(x);
+        assert!(canary.load(atomics::Acquire) == 1);
+    }
+
+    #[test]
+    fn drop_arc_weak() {
+        let mut canary = atomics::AtomicUint::new(0);
+        let arc = Arc::new(Canary(&mut canary as *mut atomics::AtomicUint));
+        let arc_weak = arc.downgrade();
+        assert!(canary.load(atomics::Acquire) == 0);
+        drop(arc);
+        assert!(canary.load(atomics::Acquire) == 1);
+        drop(arc_weak);
     }
 }
