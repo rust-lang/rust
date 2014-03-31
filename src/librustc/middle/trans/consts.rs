@@ -36,7 +36,6 @@ use std::c_str::ToCStr;
 use std::libc::c_uint;
 use std::slice;
 use std::vec::Vec;
-use std::vec;
 use syntax::{ast, ast_util};
 
 pub fn const_lit(cx: &CrateContext, e: &ast::Expr, lit: ast::Lit)
@@ -295,7 +294,7 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr,
         exprs.iter().map(|&e| const_expr(cx, e, is_local))
              .fold((Vec::new(), true),
                    |(l, all_inlineable), (val, inlineable)| {
-                (vec::append_one(l, val), all_inlineable && inlineable)
+                (l.append_one(val), all_inlineable && inlineable)
              })
     };
     unsafe {

@@ -92,7 +92,7 @@ fn vec_plus() {
         if r.gen() {
             v.push_all_move(rv);
         } else {
-            v = vec::append(rv.clone(), v.as_slice());
+            v = rv.clone().append(v.as_slice());
         }
         i += 1;
     }
@@ -106,10 +106,10 @@ fn vec_append() {
     while i < 1500 {
         let rv = Vec::from_elem(r.gen_range(0u, i + 1), i);
         if r.gen() {
-            v = vec::append(v.clone(), rv.as_slice());
+            v = v.clone().append(rv.as_slice());
         }
         else {
-            v = vec::append(rv.clone(), v.as_slice());
+            v = rv.clone().append(v.as_slice());
         }
         i += 1;
     }

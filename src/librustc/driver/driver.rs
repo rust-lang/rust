@@ -37,7 +37,6 @@ use std::io::fs;
 use std::io::MemReader;
 use std::mem::drop;
 use std::os;
-use std::vec;
 use getopts::{optopt, optmulti, optflag, optflagopt};
 use getopts;
 use syntax::ast;
@@ -137,8 +136,7 @@ pub fn build_configuration(sess: &Session) -> ast::CrateConfig {
     } else {
         InternedString::new("nogc")
     });
-    return vec::append(user_cfg.move_iter().collect(),
-                          default_cfg.as_slice());
+    user_cfg.move_iter().collect::<Vec<_>>().append(default_cfg.as_slice())
 }
 
 // Convert strings provided as --cfg [cfgspec] into a crate_cfg
@@ -836,9 +834,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> session::Options {
 
         let level_short = level_name.slice_chars(0, 1);
         let level_short = level_short.to_ascii().to_upper().into_str();
-        let flags = vec::append(matches.opt_strs(level_short)
-                                          .move_iter()
-                                          .collect(),
+        let flags = matches.opt_strs(level_short).move_iter().collect::<Vec<_>>().append(
                                    matches.opt_strs(level_name).as_slice());
         for lint_name in flags.iter() {
             let lint_name = lint_name.replace("-", "_");

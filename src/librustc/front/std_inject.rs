@@ -11,7 +11,6 @@
 
 use driver::session::Session;
 
-use std::vec;
 use syntax::ast;
 use syntax::attr;
 use syntax::codemap::DUMMY_SP;
@@ -173,7 +172,7 @@ impl<'a> fold::Folder for PreludeInjector<'a> {
             span: DUMMY_SP,
         };
 
-        let vis = vec::append(vec!(vi2), module.view_items.as_slice());
+        let vis = (vec!(vi2)).append(module.view_items.as_slice());
 
         // FIXME #2543: Bad copy.
         let new_module = ast::Mod {

@@ -11,7 +11,6 @@
 use std::os;
 use std::str;
 use std::io::process::{ProcessExit, Process, ProcessConfig, ProcessOutput};
-use std::vec;
 
 #[cfg(target_os = "win32")]
 fn target_env(lib_path: &str, prog: &str) -> Vec<(~str,~str)> {
@@ -66,8 +65,7 @@ pub fn run(lib_path: &str,
            env: Vec<(~str, ~str)> ,
            input: Option<~str>) -> Option<Result> {
 
-    let env = vec::append(env.clone(),
-                             target_env(lib_path, prog).as_slice());
+    let env = env.clone().append(target_env(lib_path, prog).as_slice());
     let mut opt_process = Process::configure(ProcessConfig {
         program: prog,
         args: args,
@@ -98,8 +96,7 @@ pub fn run_background(lib_path: &str,
            env: Vec<(~str, ~str)> ,
            input: Option<~str>) -> Option<Process> {
 
-    let env = vec::append(env.clone(),
-                             target_env(lib_path, prog).as_slice());
+    let env = env.clone().append(target_env(lib_path, prog).as_slice());
     let opt_process = Process::configure(ProcessConfig {
         program: prog,
         args: args,
