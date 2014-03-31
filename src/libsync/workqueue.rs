@@ -31,7 +31,7 @@ for _ in range(0, 10) {
 }
 
 // Execute jobs on the queue
-let answers: ~[int] =
+let answers: Vec<int> =
     range(0, 1000)
     .map(|n| queue.push(n))
     .map(|rv| rv.recv())
@@ -200,13 +200,13 @@ mod test {
             spawn(proc() { worker.run(|arg| arg * 2); });
         }
 
-        let return_list: ~[int] =
+        let return_list: Vec<int> =
             range(0, 10)
             .map(|c| queue.push(c))
             .map(|rv| rv.recv())
             .collect();
 
-        assert_eq!(return_list, ~[0, 2, 4, 6, 8, 10, 12, 14, 16, 18]);
+        assert_eq!(return_list, vec!(0, 2, 4, 6, 8, 10, 12, 14, 16, 18));
     }
 
     #[test]
@@ -217,7 +217,7 @@ mod test {
             let worker = queue.worker();
             spawn(proc() { worker.run(|arg| arg * 2); });
         }
-        let mut promise_list: ~[Receiver<int>] = ~[];
+        let mut promise_list: Vec<Receiver<int>> = Vec::new();
         let queue_proxy = queue.proxy();
         for c in range(0, 10) {
             let queue_proxy_clone = queue_proxy.clone();
@@ -231,12 +231,12 @@ mod test {
             });
         }
 
-        let return_list: ~[int] =
+        let return_list: Vec<int> =
             promise_list
             .iter()
             .map(|promise| promise.recv())
             .collect();
-        assert_eq!(return_list, ~[0, 2, 4, 6, 8, 10, 12, 14, 16, 18]);
+        assert_eq!(return_list, vec!(0, 2, 4, 6, 8, 10, 12, 14, 16, 18));
     }
 }
 
@@ -256,7 +256,7 @@ mod bench {
             spawn(proc() { worker.run(|arg| arg * 2); });
         }
         b.iter(|| {
-            let _: ~[int] =
+            let _: Vec<int> =
                 range(0, 50)
                 .map(|_| queue.push(1))
                 .map(|rv| rv.recv())
