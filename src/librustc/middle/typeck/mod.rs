@@ -108,49 +108,49 @@ pub enum MethodOrigin {
 #[deriving(Clone, Encodable, Decodable)]
 pub struct MethodParam {
     // the trait containing the method to be invoked
-    trait_id: ast::DefId,
+    pub trait_id: ast::DefId,
 
     // index of the method to be invoked amongst the trait's methods
-    method_num: uint,
+    pub method_num: uint,
 
     // index of the type parameter (from those that are in scope) that is
     // the type of the receiver
-    param_num: param_index,
+    pub param_num: param_index,
 
     // index of the bound for this type parameter which specifies the trait
-    bound_num: uint,
+    pub bound_num: uint,
 }
 
 // details for a method invoked with a receiver whose type is an object
 #[deriving(Clone, Encodable, Decodable)]
 pub struct MethodObject {
     // the (super)trait containing the method to be invoked
-    trait_id: ast::DefId,
+    pub trait_id: ast::DefId,
 
     // the actual base trait id of the object
-    object_trait_id: ast::DefId,
+    pub object_trait_id: ast::DefId,
 
     // index of the method to be invoked amongst the trait's methods
-    method_num: uint,
+    pub method_num: uint,
 
     // index into the actual runtime vtable.
     // the vtable is formed by concatenating together the method lists of
     // the base object trait and all supertraits;  this is the index into
     // that vtable
-    real_index: uint,
+    pub real_index: uint,
 }
 
 #[deriving(Clone)]
 pub struct MethodCallee {
-    origin: MethodOrigin,
-    ty: ty::t,
-    substs: ty::substs
+    pub origin: MethodOrigin,
+    pub ty: ty::t,
+    pub substs: ty::substs
 }
 
 #[deriving(Clone, Eq, TotalEq, Hash, Show)]
 pub struct MethodCall {
-    expr_id: ast::NodeId,
-    autoderef: u32
+    pub expr_id: ast::NodeId,
+    pub autoderef: u32
 }
 
 impl MethodCall {
@@ -224,9 +224,9 @@ pub type vtable_map = @RefCell<FnvHashMap<MethodCall, vtable_res>>;
 #[deriving(Clone)]
 pub struct impl_res {
     // resolutions for any bounded params on the trait definition
-    trait_vtables: vtable_res,
+    pub trait_vtables: vtable_res,
     // resolutions for the trait /itself/ (and for supertraits)
-    self_vtables: vtable_param_res
+    pub self_vtables: vtable_param_res
 }
 
 impl Repr for impl_res {

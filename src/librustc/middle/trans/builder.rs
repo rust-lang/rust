@@ -23,8 +23,8 @@ use std::libc::{c_uint, c_ulonglong, c_char};
 use syntax::codemap::Span;
 
 pub struct Builder<'a> {
-    llbuilder: BuilderRef,
-    ccx: &'a CrateContext,
+    pub llbuilder: BuilderRef,
+    pub ccx: &'a CrateContext,
 }
 
 // This is a really awful way to get a zero-length c-string, but better (and a

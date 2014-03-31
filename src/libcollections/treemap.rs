@@ -36,8 +36,8 @@ use std::ptr;
 #[allow(missing_doc)]
 #[deriving(Clone)]
 pub struct TreeMap<K, V> {
-    priv root: Option<~TreeNode<K, V>>,
-    priv length: uint
+    root: Option<~TreeNode<K, V>>,
+    length: uint
 }
 
 impl<K: Eq + TotalOrd, V: Eq> Eq for TreeMap<K, V> {
@@ -273,24 +273,24 @@ impl<K: TotalOrd, V> TreeMap<K, V> {
 
 /// Lazy forward iterator over a map
 pub struct Entries<'a, K, V> {
-    priv stack: ~[&'a TreeNode<K, V>],
+    stack: ~[&'a TreeNode<K, V>],
     // See the comment on MutEntries; this is just to allow
     // code-sharing (for this immutable-values iterator it *could* very
     // well be Option<&'a TreeNode<K,V>>).
-    priv node: *TreeNode<K, V>,
-    priv remaining_min: uint,
-    priv remaining_max: uint
+    node: *TreeNode<K, V>,
+    remaining_min: uint,
+    remaining_max: uint
 }
 
 /// Lazy backward iterator over a map
 pub struct RevEntries<'a, K, V> {
-    priv iter: Entries<'a, K, V>,
+    iter: Entries<'a, K, V>,
 }
 
 /// Lazy forward iterator over a map that allows for the mutation of
 /// the values.
 pub struct MutEntries<'a, K, V> {
-    priv stack: ~[&'a mut TreeNode<K, V>],
+    stack: ~[&'a mut TreeNode<K, V>],
     // Unfortunately, we require some unsafe-ness to get around the
     // fact that we would be storing a reference *into* one of the
     // nodes in the stack.
@@ -310,14 +310,14 @@ pub struct MutEntries<'a, K, V> {
     // it under control.
     //
     // (This field can legitimately be null.)
-    priv node: *mut TreeNode<K, V>,
-    priv remaining_min: uint,
-    priv remaining_max: uint
+    node: *mut TreeNode<K, V>,
+    remaining_min: uint,
+    remaining_max: uint
 }
 
 /// Lazy backward iterator over a map
 pub struct RevMutEntries<'a, K, V> {
-    priv iter: MutEntries<'a, K, V>,
+    iter: MutEntries<'a, K, V>,
 }
 
 
@@ -482,8 +482,8 @@ fn mut_deref<K, V>(x: &mut Option<~TreeNode<K, V>>) -> *mut TreeNode<K, V> {
 
 /// Lazy forward iterator over a map that consumes the map while iterating
 pub struct MoveEntries<K, V> {
-    priv stack: ~[TreeNode<K, V>],
-    priv remaining: uint
+    stack: ~[TreeNode<K, V>],
+    remaining: uint
 }
 
 impl<K, V> Iterator<(K, V)> for MoveEntries<K,V> {
@@ -551,7 +551,7 @@ impl<'a, T> Iterator<&'a T> for RevSetItems<'a, T> {
 /// `TotalOrd` trait.
 #[deriving(Clone)]
 pub struct TreeSet<T> {
-    priv map: TreeMap<T, ()>
+    map: TreeMap<T, ()>
 }
 
 impl<T: Eq + TotalOrd> Eq for TreeSet<T> {
@@ -703,36 +703,36 @@ impl<T: TotalOrd> TreeSet<T> {
 
 /// Lazy forward iterator over a set
 pub struct SetItems<'a, T> {
-    priv iter: Entries<'a, T, ()>
+    iter: Entries<'a, T, ()>
 }
 
 /// Lazy backward iterator over a set
 pub struct RevSetItems<'a, T> {
-    priv iter: RevEntries<'a, T, ()>
+    iter: RevEntries<'a, T, ()>
 }
 
 /// Lazy iterator producing elements in the set difference (in-order)
 pub struct DifferenceItems<'a, T> {
-    priv a: Peekable<&'a T, SetItems<'a, T>>,
-    priv b: Peekable<&'a T, SetItems<'a, T>>,
+    a: Peekable<&'a T, SetItems<'a, T>>,
+    b: Peekable<&'a T, SetItems<'a, T>>,
 }
 
 /// Lazy iterator producing elements in the set symmetric difference (in-order)
 pub struct SymDifferenceItems<'a, T> {
-    priv a: Peekable<&'a T, SetItems<'a, T>>,
-    priv b: Peekable<&'a T, SetItems<'a, T>>,
+    a: Peekable<&'a T, SetItems<'a, T>>,
+    b: Peekable<&'a T, SetItems<'a, T>>,
 }
 
 /// Lazy iterator producing elements in the set intersection (in-order)
 pub struct IntersectionItems<'a, T> {
-    priv a: Peekable<&'a T, SetItems<'a, T>>,
-    priv b: Peekable<&'a T, SetItems<'a, T>>,
+    a: Peekable<&'a T, SetItems<'a, T>>,
+    b: Peekable<&'a T, SetItems<'a, T>>,
 }
 
 /// Lazy iterator producing elements in the set intersection (in-order)
 pub struct UnionItems<'a, T> {
-    priv a: Peekable<&'a T, SetItems<'a, T>>,
-    priv b: Peekable<&'a T, SetItems<'a, T>>,
+    a: Peekable<&'a T, SetItems<'a, T>>,
+    b: Peekable<&'a T, SetItems<'a, T>>,
 }
 
 /// Compare `x` and `y`, but return `short` if x is None and `long` if y is None

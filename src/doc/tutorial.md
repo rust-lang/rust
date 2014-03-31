@@ -2657,8 +2657,8 @@ Rust doesn't support encapsulation: both struct fields and methods can
 be private. But this encapsulation is at the module level, not the
 struct level.
 
-For convenience, fields are _public_ by default, and can be made _private_ with
-the `priv` keyword:
+Fields are _private_ by default, and can be made _public_ with
+the `pub` keyword:
 
 ~~~
 mod farm {
@@ -2667,8 +2667,8 @@ mod farm {
 # impl Human { pub fn rest(&self) { } }
 # pub fn make_me_a_farm() -> Farm { Farm { chickens: ~[], farmer: Human(0) } }
     pub struct Farm {
-        priv chickens: ~[Chicken],
-        farmer: Human
+        chickens: ~[Chicken],
+        pub farmer: Human
     }
 
     impl Farm {

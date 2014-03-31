@@ -30,7 +30,7 @@ struct Inner {
 }
 
 pub struct FileDesc {
-    priv inner: UnsafeArc<Inner>
+    inner: UnsafeArc<Inner>
 }
 
 impl FileDesc {
@@ -216,8 +216,8 @@ impl Drop for Inner {
 }
 
 pub struct CFile {
-    priv file: *libc::FILE,
-    priv fd: FileDesc,
+    file: *libc::FILE,
+    fd: FileDesc,
 }
 
 impl CFile {

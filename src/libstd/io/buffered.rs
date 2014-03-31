@@ -43,10 +43,10 @@ use vec::Vec;
 /// }
 /// ```
 pub struct BufferedReader<R> {
-    priv inner: R,
-    priv buf: Vec<u8>,
-    priv pos: uint,
-    priv cap: uint,
+    inner: R,
+    buf: Vec<u8>,
+    pos: uint,
+    cap: uint,
 }
 
 impl<R: Reader> BufferedReader<R> {
@@ -135,9 +135,9 @@ impl<R: Reader> Reader for BufferedReader<R> {
 /// writer.flush();
 /// ```
 pub struct BufferedWriter<W> {
-    priv inner: Option<W>,
-    priv buf: Vec<u8>,
-    priv pos: uint
+    inner: Option<W>,
+    buf: Vec<u8>,
+    pos: uint
 }
 
 impl<W: Writer> BufferedWriter<W> {
@@ -220,7 +220,7 @@ impl<W: Writer> Drop for BufferedWriter<W> {
 ///
 /// This writer will be flushed when it is dropped.
 pub struct LineBufferedWriter<W> {
-    priv inner: BufferedWriter<W>,
+    inner: BufferedWriter<W>,
 }
 
 impl<W: Writer> LineBufferedWriter<W> {
@@ -303,7 +303,7 @@ impl<W: Reader> Reader for InternalBufferedWriter<W> {
 /// }
 /// ```
 pub struct BufferedStream<S> {
-    priv inner: BufferedReader<InternalBufferedWriter<S>>
+    inner: BufferedReader<InternalBufferedWriter<S>>
 }
 
 impl<S: Stream> BufferedStream<S> {
@@ -391,7 +391,7 @@ mod test {
 
     /// A dummy reader intended at testing short-reads propagation.
     pub struct ShortReader {
-        priv lengths: ~[uint],
+        lengths: ~[uint],
     }
 
     impl Reader for ShortReader {

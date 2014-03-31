@@ -40,8 +40,8 @@ pub type RevStrComponents<'a> = Map<'a, &'a [u8], Option<&'a str>,
 /// Represents a POSIX file path
 #[deriving(Clone)]
 pub struct Path {
-    priv repr: ~[u8], // assumed to never be empty or contain NULs
-    priv sepidx: Option<uint> // index of the final separator in repr
+    repr: ~[u8], // assumed to never be empty or contain NULs
+    sepidx: Option<uint> // index of the final separator in repr
 }
 
 /// The standard path separator character

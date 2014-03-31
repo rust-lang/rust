@@ -26,8 +26,8 @@ use syntax::visit::Visitor;
 // (The def_upvar will already have been stripped).
 #[deriving(Encodable, Decodable)]
 pub struct freevar_entry {
-    def: ast::Def, //< The variable being accessed free.
-    span: Span     //< First span where it is accessed (there can be multiple)
+    pub def: ast::Def, //< The variable being accessed free.
+    pub span: Span     //< First span where it is accessed (there can be multiple)
 }
 pub type freevar_info = @Vec<@freevar_entry> ;
 pub type freevar_map = NodeMap<freevar_info>;

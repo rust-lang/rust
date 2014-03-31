@@ -46,27 +46,27 @@ pub enum Os {
 }
 
 pub struct Context<'a> {
-    sess: &'a Session,
-    span: Span,
-    ident: &'a str,
-    crate_id: &'a CrateId,
-    id_hash: &'a str,
-    hash: Option<&'a Svh>,
-    os: Os,
-    intr: Rc<IdentInterner>,
-    rejected_via_hash: bool,
+    pub sess: &'a Session,
+    pub span: Span,
+    pub ident: &'a str,
+    pub crate_id: &'a CrateId,
+    pub id_hash: &'a str,
+    pub hash: Option<&'a Svh>,
+    pub os: Os,
+    pub intr: Rc<IdentInterner>,
+    pub rejected_via_hash: bool,
 }
 
 pub struct Library {
-    dylib: Option<Path>,
-    rlib: Option<Path>,
-    metadata: MetadataBlob,
+    pub dylib: Option<Path>,
+    pub rlib: Option<Path>,
+    pub metadata: MetadataBlob,
 }
 
 pub struct ArchiveMetadata {
-    priv archive: ArchiveRO,
+    archive: ArchiveRO,
     // See comments in ArchiveMetadata::new for why this is static
-    priv data: &'static [u8],
+    data: &'static [u8],
 }
 
 // FIXME(#11857) this should be a "real" realpath

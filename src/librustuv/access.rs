@@ -22,12 +22,12 @@ use std::rt::local::Local;
 use homing::HomingMissile;
 
 pub struct Access {
-    priv inner: UnsafeArc<Inner>,
+    inner: UnsafeArc<Inner>,
 }
 
 pub struct Guard<'a> {
-    priv access: &'a mut Access,
-    priv missile: Option<HomingMissile>,
+    access: &'a mut Access,
+    missile: Option<HomingMissile>,
 }
 
 struct Inner {

@@ -22,10 +22,10 @@ pub struct Coroutine {
     ///
     /// Servo needs this to be public in order to tell SpiderMonkey
     /// about the stack bounds.
-    current_stack_segment: Stack,
+    pub current_stack_segment: Stack,
 
     /// Always valid if the task is alive and not running.
-    saved_context: Context
+    pub saved_context: Context
 }
 
 impl Coroutine {

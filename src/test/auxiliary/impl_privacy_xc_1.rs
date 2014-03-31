@@ -11,7 +11,7 @@
 #[crate_type = "lib"];
 
 pub struct Fish {
-    x: int
+    pub x: int
 }
 
 impl Fish {

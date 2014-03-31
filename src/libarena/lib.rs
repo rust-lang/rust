@@ -25,6 +25,8 @@
 #![allow(missing_doc)]
 #![feature(managed_boxes)]
 
+#![allow(visible_private_types)] // NOTE: remove after a stage0 snap
+
 extern crate collections;
 
 use std::cast::{transmute, transmute_mut, transmute_mut_region};
@@ -83,9 +85,9 @@ pub struct Arena {
     // The head is separated out from the list as a unbenchmarked
     // microoptimization, to avoid needing to case on the list to
     // access the head.
-    priv head: Chunk,
-    priv copy_head: Chunk,
-    priv chunks: RefCell<Vec<Chunk>>,
+    head: Chunk,
+    copy_head: Chunk,
+    chunks: RefCell<Vec<Chunk>>,
 }
 
 impl Arena {
@@ -333,14 +335,14 @@ fn test_arena_destructors_fail() {
 /// run again for these objects.
 pub struct TypedArena<T> {
     /// A pointer to the next object to be allocated.
-    priv ptr: *T,
+    ptr: *T,
 
     /// A pointer to the end of the allocated area. When this pointer is
     /// reached, a new chunk is allocated.
-    priv end: *T,
+    end: *T,
 
     /// A pointer to the first arena segment.
-    priv first: Option<~TypedArenaChunk<T>>,
+    first: Option<~TypedArenaChunk<T>>,
 }
 
 struct TypedArenaChunk<T> {

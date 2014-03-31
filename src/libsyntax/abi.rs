@@ -67,7 +67,7 @@ pub enum AbiArchitecture {
 
 #[deriving(Clone, Eq, TotalEq, Encodable, Decodable, Hash)]
 pub struct AbiSet {
-    priv bits: u32   // each bit represents one of the abis below
+    bits: u32   // each bit represents one of the abis below
 }
 
 static AbiDatas: &'static [AbiData] = &[

@@ -57,7 +57,7 @@ fn target_env(lib_path: &str, prog: &str) -> Vec<(~str,~str)> {
     return env;
 }
 
-pub struct Result {status: ProcessExit, out: ~str, err: ~str}
+pub struct Result {pub status: ProcessExit, pub out: ~str, pub err: ~str}
 
 pub fn run(lib_path: &str,
            prog: &str,

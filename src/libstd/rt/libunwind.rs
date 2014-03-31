@@ -17,8 +17,7 @@ use libc;
 
 #[cfg(not(target_arch = "arm"))]
 #[repr(C)]
-pub enum _Unwind_Action
-{
+pub enum _Unwind_Action {
     _UA_SEARCH_PHASE = 1,
     _UA_CLEANUP_PHASE = 2,
     _UA_HANDLER_FRAME = 4,
@@ -28,14 +27,13 @@ pub enum _Unwind_Action
 
 #[cfg(target_arch = "arm")]
 #[repr(C)]
-pub enum _Unwind_State
-{
-  _US_VIRTUAL_UNWIND_FRAME = 0,
-  _US_UNWIND_FRAME_STARTING = 1,
-  _US_UNWIND_FRAME_RESUME = 2,
-  _US_ACTION_MASK = 3,
-  _US_FORCE_UNWIND = 8,
-  _US_END_OF_STACK = 16
+pub enum _Unwind_State {
+    _US_VIRTUAL_UNWIND_FRAME = 0,
+    _US_UNWIND_FRAME_STARTING = 1,
+    _US_UNWIND_FRAME_RESUME = 2,
+    _US_ACTION_MASK = 3,
+    _US_FORCE_UNWIND = 8,
+    _US_END_OF_STACK = 16
 }
 
 #[repr(C)]
@@ -69,9 +67,9 @@ pub static unwinder_private_data_size: int = 20;
 pub static unwinder_private_data_size: int = 2;
 
 pub struct _Unwind_Exception {
-    exception_class: _Unwind_Exception_Class,
-    exception_cleanup: _Unwind_Exception_Cleanup_Fn,
-    private: [_Unwind_Word, ..unwinder_private_data_size],
+    pub exception_class: _Unwind_Exception_Class,
+    pub exception_cleanup: _Unwind_Exception_Cleanup_Fn,
+    pub private: [_Unwind_Word, ..unwinder_private_data_size],
 }
 
 pub enum _Unwind_Context {}

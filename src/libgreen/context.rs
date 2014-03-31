@@ -22,9 +22,9 @@ use std::raw;
 // then misalign the regs again.
 pub struct Context {
     /// Hold the registers while the task or scheduler is suspended
-    priv regs: ~Registers,
+    regs: ~Registers,
     /// Lower bound and upper bound for the stack
-    priv stack_bounds: Option<(uint, uint)>,
+    stack_bounds: Option<(uint, uint)>,
 }
 
 pub type InitFn = extern "C" fn(uint, *(), *()) -> !;

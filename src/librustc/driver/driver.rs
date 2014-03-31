@@ -270,12 +270,12 @@ pub fn phase_2_configure_and_expand(sess: &Session,
 }
 
 pub struct CrateAnalysis {
-    exp_map2: middle::resolve::ExportMap2,
-    exported_items: middle::privacy::ExportedItems,
-    public_items: middle::privacy::PublicItems,
-    ty_cx: ty::ctxt,
-    maps: astencode::Maps,
-    reachable: NodeSet,
+    pub exp_map2: middle::resolve::ExportMap2,
+    pub exported_items: middle::privacy::ExportedItems,
+    pub public_items: middle::privacy::PublicItems,
+    pub ty_cx: ty::ctxt,
+    pub maps: astencode::Maps,
+    pub reachable: NodeSet,
 }
 
 /// Run the resolution, typechecking, region checking and other
@@ -409,12 +409,12 @@ pub fn phase_3_run_analysis_passes(sess: Session,
 }
 
 pub struct CrateTranslation {
-    context: ContextRef,
-    module: ModuleRef,
-    metadata_module: ModuleRef,
-    link: LinkMeta,
-    metadata: Vec<u8> ,
-    reachable: Vec<~str> ,
+    pub context: ContextRef,
+    pub module: ModuleRef,
+    pub metadata_module: ModuleRef,
+    pub link: LinkMeta,
+    pub metadata: Vec<u8>,
+    pub reachable: Vec<~str>,
 }
 
 /// Run the translation phase to LLVM, after which the AST and analysis can
@@ -1124,9 +1124,9 @@ pub fn optgroups() -> Vec<getopts::OptGroup> {
 }
 
 pub struct OutputFilenames {
-    out_directory: Path,
-    out_filestem: ~str,
-    single_output_file: Option<Path>,
+    pub out_directory: Path,
+    pub out_filestem: ~str,
+    pub single_output_file: Option<Path>,
 }
 
 impl OutputFilenames {

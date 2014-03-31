@@ -78,7 +78,6 @@ use parse::{new_sub_parser_from_file, ParseSess};
 use owned_slice::OwnedSlice;
 
 use collections::HashSet;
-use std::kinds::marker;
 use std::mem::replace;
 use std::rc::Rc;
 
@@ -113,8 +112,8 @@ pub enum PathParsingMode {
 
 /// A path paired with optional type bounds.
 pub struct PathAndBounds {
-    path: ast::Path,
-    bounds: Option<OwnedSlice<TyParamBound>>,
+    pub path: ast::Path,
+    pub bounds: Option<OwnedSlice<TyParamBound>>,
 }
 
 enum ItemOrViewItem {
@@ -306,38 +305,35 @@ pub fn Parser<'a>(sess: &'a ParseSess, cfg: ast::CrateConfig, mut rdr: ~Reader:)
         obsolete_set: HashSet::new(),
         mod_path_stack: Vec::new(),
         open_braces: Vec::new(),
-        nocopy: marker::NoCopy
     }
 }
 
 pub struct Parser<'a> {
-    sess: &'a ParseSess,
-    cfg: CrateConfig,
+    pub sess: &'a ParseSess,
     // the current token:
-    token: token::Token,
+    pub token: token::Token,
     // the span of the current token:
-    span: Span,
+    pub span: Span,
     // the span of the prior token:
-    last_span: Span,
+    pub last_span: Span,
+    pub cfg: CrateConfig,
     // the previous token or None (only stashed sometimes).
-    last_token: Option<~token::Token>,
-    buffer: [TokenAndSpan, ..4],
-    buffer_start: int,
-    buffer_end: int,
-    tokens_consumed: uint,
-    restriction: restriction,
-    quote_depth: uint, // not (yet) related to the quasiquoter
-    reader: ~Reader:,
-    interner: Rc<token::IdentInterner>,
+    pub last_token: Option<~token::Token>,
+    pub buffer: [TokenAndSpan, ..4],
+    pub buffer_start: int,
+    pub buffer_end: int,
+    pub tokens_consumed: uint,
+    pub restriction: restriction,
+    pub quote_depth: uint, // not (yet) related to the quasiquoter
+    pub reader: ~Reader:,
+    pub interner: Rc<token::IdentInterner>,
     /// The set of seen errors about obsolete syntax. Used to suppress
     /// extra detail when the same error is seen twice
-    obsolete_set: HashSet<ObsoleteSyntax>,
+    pub obsolete_set: HashSet<ObsoleteSyntax>,
     /// Used to determine the path to externally loaded source files
-    mod_path_stack: Vec<InternedString> ,
+    pub mod_path_stack: Vec<InternedString>,
     /// Stack of spans of open delimiters. Used for error message.
-    open_braces: Vec<Span> ,
-    /* do not copy the parser; its state is tied to outside state */
-    priv nocopy: marker::NoCopy
+    pub open_braces: Vec<Span>,
 }
 
 fn is_plain_ident_or_underscore(t: &token::Token) -> bool {

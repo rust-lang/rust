@@ -413,9 +413,9 @@ pub fn malloc_raw<'a>(bcx: &'a Block<'a>, t: ty::t, heap: heap)
 }
 
 pub struct MallocResult<'a> {
-    bcx: &'a Block<'a>,
-    smart_ptr: ValueRef,
-    body: ValueRef
+    pub bcx: &'a Block<'a>,
+    pub smart_ptr: ValueRef,
+    pub body: ValueRef
 }
 
 // malloc_general_dyn: usefully wraps malloc_raw_dyn; allocates a smart
@@ -1647,7 +1647,7 @@ pub fn trans_enum_def(ccx: &CrateContext, enum_definition: &ast::EnumDef,
 }
 
 pub struct TransItemVisitor<'a> {
-    ccx: &'a CrateContext,
+    pub ccx: &'a CrateContext,
 }
 
 impl<'a> Visitor<()> for TransItemVisitor<'a> {

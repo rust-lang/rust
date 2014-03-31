@@ -370,10 +370,10 @@ pub fn unsetenv(n: &str) {
 pub struct Pipe {
     /// A file descriptor representing the reading end of the pipe. Data written
     /// on the `out` file descriptor can be read from this file descriptor.
-    input: c_int,
+    pub input: c_int,
     /// A file descriptor representing the write end of the pipe. Data written
     /// to this file descriptor can be read from the `input` file descriptor.
-    out: c_int,
+    pub out: c_int,
 }
 
 /// Creates a new low-level OS in-memory pipe.
@@ -946,11 +946,11 @@ pub fn page_size() -> uint {
 /// let it leave scope by accident if you want it to stick around.
 pub struct MemoryMap {
     /// Pointer to the memory created or modified by this map.
-    data: *mut u8,
+    pub data: *mut u8,
     /// Number of bytes this map applies to
-    len: uint,
+    pub len: uint,
     /// Type of mapping
-    kind: MemoryMapKind
+    pub kind: MemoryMapKind,
 }
 
 /// Type of memory map

@@ -27,14 +27,14 @@ mod imp {
         use std::libc;
 
         pub struct flock {
-            l_type: libc::c_short,
-            l_whence: libc::c_short,
-            l_start: libc::off_t,
-            l_len: libc::off_t,
-            l_pid: libc::pid_t,
+            pub l_type: libc::c_short,
+            pub l_whence: libc::c_short,
+            pub l_start: libc::off_t,
+            pub l_len: libc::off_t,
+            pub l_pid: libc::pid_t,
 
             // not actually here, but brings in line with freebsd
-            l_sysid: libc::c_int,
+            pub l_sysid: libc::c_int,
         }
 
         pub static F_WRLCK: libc::c_short = 1;
@@ -48,12 +48,12 @@ mod imp {
         use std::libc;
 
         pub struct flock {
-            l_start: libc::off_t,
-            l_len: libc::off_t,
-            l_pid: libc::pid_t,
-            l_type: libc::c_short,
-            l_whence: libc::c_short,
-            l_sysid: libc::c_int,
+            pub l_start: libc::off_t,
+            pub l_len: libc::off_t,
+            pub l_pid: libc::pid_t,
+            pub l_type: libc::c_short,
+            pub l_whence: libc::c_short,
+            pub l_sysid: libc::c_int,
         }
 
         pub static F_UNLCK: libc::c_short = 2;
@@ -67,14 +67,14 @@ mod imp {
         use std::libc;
 
         pub struct flock {
-            l_start: libc::off_t,
-            l_len: libc::off_t,
-            l_pid: libc::pid_t,
-            l_type: libc::c_short,
-            l_whence: libc::c_short,
+            pub l_start: libc::off_t,
+            pub l_len: libc::off_t,
+            pub l_pid: libc::pid_t,
+            pub l_type: libc::c_short,
+            pub l_whence: libc::c_short,
 
             // not actually here, but brings in line with freebsd
-            l_sysid: libc::c_int,
+            pub l_sysid: libc::c_int,
         }
 
         pub static F_UNLCK: libc::c_short = 2;
@@ -84,7 +84,7 @@ mod imp {
     }
 
     pub struct Lock {
-        priv fd: libc::c_int,
+        fd: libc::c_int,
     }
 
     impl Lock {
@@ -155,7 +155,7 @@ mod imp {
     }
 
     pub struct Lock {
-        priv handle: libc::HANDLE,
+        handle: libc::HANDLE,
     }
 
     impl Lock {

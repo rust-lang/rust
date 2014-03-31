@@ -275,7 +275,7 @@ Section: Iterators
 #[deriving(Clone)]
 pub struct Chars<'a> {
     /// The slice remaining to be iterated
-    priv string: &'a str,
+    string: &'a str,
 }
 
 impl<'a> Iterator<char> for Chars<'a> {
@@ -320,8 +320,8 @@ impl<'a> DoubleEndedIterator<char> for Chars<'a> {
 #[deriving(Clone)]
 pub struct CharOffsets<'a> {
     /// The original string to be iterated
-    priv string: &'a str,
-    priv iter: Chars<'a>,
+    string: &'a str,
+    iter: Chars<'a>,
 }
 
 impl<'a> Iterator<(uint, char)> for CharOffsets<'a> {
@@ -371,12 +371,12 @@ pub type RevBytes<'a> = Rev<Bytes<'a>>;
 #[deriving(Clone)]
 pub struct CharSplits<'a, Sep> {
     /// The slice remaining to be iterated
-    priv string: &'a str,
-    priv sep: Sep,
+    string: &'a str,
+    sep: Sep,
     /// Whether an empty string at the end is allowed
-    priv allow_trailing_empty: bool,
-    priv only_ascii: bool,
-    priv finished: bool,
+    allow_trailing_empty: bool,
+    only_ascii: bool,
+    finished: bool,
 }
 
 /// An iterator over the substrings of a string, separated by `sep`,
@@ -387,10 +387,10 @@ pub type RevCharSplits<'a, Sep> = Rev<CharSplits<'a, Sep>>;
 /// splitting at most `count` times.
 #[deriving(Clone)]
 pub struct CharSplitsN<'a, Sep> {
-    priv iter: CharSplits<'a, Sep>,
+    iter: CharSplits<'a, Sep>,
     /// The number of splits remaining
-    priv count: uint,
-    priv invert: bool,
+    count: uint,
+    invert: bool,
 }
 
 /// An iterator over the words of a string, separated by a sequence of whitespace
@@ -503,18 +503,18 @@ impl<'a, Sep: CharEq> Iterator<&'a str> for CharSplitsN<'a, Sep> {
 /// substring within a larger string
 #[deriving(Clone)]
 pub struct MatchIndices<'a> {
-    priv haystack: &'a str,
-    priv needle: &'a str,
-    priv position: uint,
+    haystack: &'a str,
+    needle: &'a str,
+    position: uint,
 }
 
 /// An iterator over the substrings of a string separated by a given
 /// search string
 #[deriving(Clone)]
 pub struct StrSplits<'a> {
-    priv it: MatchIndices<'a>,
-    priv last_end: uint,
-    priv finished: bool
+    it: MatchIndices<'a>,
+    last_end: uint,
+    finished: bool
 }
 
 impl<'a> Iterator<(uint, uint)> for MatchIndices<'a> {
@@ -597,10 +597,10 @@ enum NormalizationForm {
 /// Use with the `std::iter` module.
 #[deriving(Clone)]
 pub struct Normalizations<'a> {
-    priv kind: NormalizationForm,
-    priv iter: Chars<'a>,
-    priv buffer: ~[(char, u8)],
-    priv sorted: bool
+    kind: NormalizationForm,
+    iter: Chars<'a>,
+    buffer: ~[(char, u8)],
+    sorted: bool
 }
 
 impl<'a> Iterator<char> for Normalizations<'a> {
@@ -856,7 +856,7 @@ pub fn is_utf16(v: &[u16]) -> bool {
 /// of `u16`s.
 #[deriving(Clone)]
 pub struct UTF16Items<'a> {
-    priv iter: slice::Items<'a, u16>
+    iter: slice::Items<'a, u16>
 }
 /// The possibilities for values decoded from a `u16` stream.
 #[deriving(Eq, TotalEq, Clone, Show)]
@@ -1061,9 +1061,9 @@ pub fn utf8_char_width(b: u8) -> uint {
 /// for iterating over the UTF-8 bytes of a string.
 pub struct CharRange {
     /// Current `char`
-    ch: char,
+    pub ch: char,
     /// Index of the first byte of the next `char`
-    next: uint
+    pub next: uint,
 }
 
 // Return the initial codepoint accumulator for the first byte.

@@ -473,7 +473,7 @@ impl Engine256 {
 
 /// The SHA-256 hash algorithm
 pub struct Sha256 {
-    priv engine: Engine256
+    engine: Engine256
 }
 
 impl Sha256 {

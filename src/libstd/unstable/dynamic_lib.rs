@@ -22,7 +22,7 @@ use ops::*;
 use option::*;
 use result::*;
 
-pub struct DynamicLibrary { priv handle: *u8}
+pub struct DynamicLibrary { handle: *u8}
 
 impl Drop for DynamicLibrary {
     fn drop(&mut self) {

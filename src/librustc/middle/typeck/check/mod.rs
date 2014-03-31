@@ -178,9 +178,9 @@ pub enum FnKind {
 
 #[deriving(Clone)]
 pub struct PurityState {
-    def: ast::NodeId,
-    purity: ast::Purity,
-    priv from_fn: bool
+    pub def: ast::NodeId,
+    pub purity: ast::Purity,
+    from_fn: bool
 }
 
 impl PurityState {

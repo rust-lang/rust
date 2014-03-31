@@ -23,13 +23,13 @@ use uvll;
 // uv_stream_t instance, and all I/O operations assume that it's already located
 // on the appropriate scheduler.
 pub struct StreamWatcher {
-    handle: *uvll::uv_stream_t,
+    pub handle: *uvll::uv_stream_t,
 
     // Cache the last used uv_write_t so we don't have to allocate a new one on
     // every call to uv_write(). Ideally this would be a stack-allocated
     // structure, but currently we don't have mappings for all the structures
     // defined in libuv, so we're foced to malloc this.
-    priv last_write_req: Option<Request>,
+    last_write_req: Option<Request>,
 }
 
 struct ReadContext {

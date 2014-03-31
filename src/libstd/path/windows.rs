@@ -81,9 +81,9 @@ pub type RevComponents<'a> = Map<'a, Option<&'a str>, &'a [u8],
 // preserved by the data structure; let the Windows API error out on them.
 #[deriving(Clone)]
 pub struct Path {
-    priv repr: ~str, // assumed to never be empty
-    priv prefix: Option<PathPrefix>,
-    priv sepidx: Option<uint> // index of the final separator in the non-prefix portion of repr
+    repr: ~str, // assumed to never be empty
+    prefix: Option<PathPrefix>,
+    sepidx: Option<uint> // index of the final separator in the non-prefix portion of repr
 }
 
 impl Eq for Path {

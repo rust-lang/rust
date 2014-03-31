@@ -116,18 +116,18 @@ pub trait Trait {
 impl Trait for MethodTester {}
 
 #[deprecated]
-pub struct DeprecatedStruct { i: int }
+pub struct DeprecatedStruct { pub i: int }
 #[experimental]
-pub struct ExperimentalStruct { i: int }
+pub struct ExperimentalStruct { pub i: int }
 #[unstable]
-pub struct UnstableStruct { i: int }
-pub struct UnmarkedStruct { i: int }
+pub struct UnstableStruct { pub i: int }
+pub struct UnmarkedStruct { pub i: int }
 #[stable]
-pub struct StableStruct { i: int }
+pub struct StableStruct { pub i: int }
 #[frozen]
-pub struct FrozenStruct { i: int }
+pub struct FrozenStruct { pub i: int }
 #[locked]
-pub struct LockedStruct { i: int }
+pub struct LockedStruct { pub i: int }
 
 #[deprecated]
 pub struct DeprecatedUnitStruct;

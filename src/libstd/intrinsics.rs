@@ -53,19 +53,19 @@ pub type GlueFn = extern "Rust" fn(*i8);
 #[cfg(not(test))]
 pub struct TyDesc {
     // sizeof(T)
-    size: uint,
+    pub size: uint,
 
     // alignof(T)
-    align: uint,
+    pub align: uint,
 
     // Called when a value of type `T` is no longer needed
-    drop_glue: GlueFn,
+    pub drop_glue: GlueFn,
 
     // Called by reflection visitor to visit a value of type `T`
-    visit_glue: GlueFn,
+    pub visit_glue: GlueFn,
 
     // Name corresponding to the type
-    name: &'static str
+    pub name: &'static str,
 }
 
 #[lang="opaque"]
@@ -454,7 +454,7 @@ extern "rust-intrinsic" {
 #[deriving(Eq, Hash, Show, TotalEq)]
 #[cfg(not(test))]
 pub struct TypeId {
-    priv t: u64,
+    t: u64,
 }
 
 #[cfg(not(test))]

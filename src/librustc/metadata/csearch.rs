@@ -26,10 +26,10 @@ use syntax::diagnostic::expect;
 use syntax::parse::token;
 
 pub struct StaticMethodInfo {
-    ident: ast::Ident,
-    def_id: ast::DefId,
-    purity: ast::Purity,
-    vis: ast::Visibility,
+    pub ident: ast::Ident,
+    pub def_id: ast::DefId,
+    pub purity: ast::Purity,
+    pub vis: ast::Visibility,
 }
 
 pub fn get_symbol(cstore: &cstore::CStore, def: ast::DefId) -> ~str {

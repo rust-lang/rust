@@ -12,7 +12,7 @@ pub trait Foo { fn f(&self) -> int; }
 pub trait Bar { fn g(&self) -> int; }
 pub trait Baz { fn h(&self) -> int; }
 
-pub struct A { x: int }
+pub struct A { pub x: int }
 
 impl Foo for A { fn f(&self) -> int { 10 } }
 impl Bar for A { fn g(&self) -> int { 20 } }

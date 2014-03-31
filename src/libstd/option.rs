@@ -535,7 +535,7 @@ impl<T> Default for Option<T> {
 /// methods on `Option`.
 #[deriving(Clone)]
 pub struct Item<A> {
-    priv opt: Option<A>
+    opt: Option<A>
 }
 
 impl<A> Iterator<A> for Item<A> {

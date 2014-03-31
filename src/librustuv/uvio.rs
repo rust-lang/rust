@@ -46,7 +46,7 @@ use uvll;
 
 // Obviously an Event Loop is always home.
 pub struct UvEventLoop {
-    priv uvio: UvIoFactory
+    uvio: UvIoFactory
 }
 
 impl UvEventLoop {
@@ -124,8 +124,8 @@ fn test_callback_run_once() {
 }
 
 pub struct UvIoFactory {
-    loop_: Loop,
-    priv handle_pool: Option<~QueuePool>,
+    pub loop_: Loop,
+    handle_pool: Option<~QueuePool>,
 }
 
 impl UvIoFactory {

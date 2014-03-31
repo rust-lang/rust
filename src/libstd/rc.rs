@@ -43,9 +43,9 @@ struct RcBox<T> {
 /// Immutable reference counted pointer type
 #[unsafe_no_drop_flag]
 pub struct Rc<T> {
-    priv ptr: *mut RcBox<T>,
-    priv nosend: marker::NoSend,
-    priv noshare: marker::NoShare
+    ptr: *mut RcBox<T>,
+    nosend: marker::NoSend,
+    noshare: marker::NoShare
 }
 
 impl<T> Rc<T> {
@@ -151,9 +151,9 @@ impl<T: TotalOrd> TotalOrd for Rc<T> {
 /// Weak reference to a reference-counted box
 #[unsafe_no_drop_flag]
 pub struct Weak<T> {
-    priv ptr: *mut RcBox<T>,
-    priv nosend: marker::NoSend,
-    priv noshare: marker::NoShare
+    ptr: *mut RcBox<T>,
+    nosend: marker::NoSend,
+    noshare: marker::NoShare
 }
 
 impl<T> Weak<T> {

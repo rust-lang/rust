@@ -48,8 +48,8 @@ use queue::{Queue, QueuePool};
 /// Handles are clone-able in order to derive new handles from existing handles
 /// (very useful for when accepting a socket from a server).
 pub struct HomeHandle {
-    priv queue: Queue,
-    priv id: uint,
+    queue: Queue,
+    id: uint,
 }
 
 impl HomeHandle {
@@ -126,7 +126,7 @@ pub trait HomingIO {
 /// task back to its appropriate home (if applicable). The field is used to
 /// assert that we are where we think we are.
 pub struct HomingMissile {
-    priv io_home: uint,
+    io_home: uint,
 }
 
 impl HomingMissile {

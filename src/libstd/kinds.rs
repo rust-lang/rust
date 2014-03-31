@@ -193,7 +193,7 @@ pub mod marker {
     /// "interior" mutability:
     ///
     /// ```
-    /// pub struct Cell<T> { priv value: T }
+    /// pub struct Cell<T> { value: T }
     /// # fn main() {}
     /// ```
     ///

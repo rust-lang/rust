@@ -37,30 +37,30 @@ pub enum Piece<'a> {
 #[deriving(Eq)]
 pub struct Argument<'a> {
     /// Where to find this argument
-    position: Position<'a>,
+    pub position: Position<'a>,
     /// How to format the argument
-    format: FormatSpec<'a>,
+    pub format: FormatSpec<'a>,
     /// If not `None`, what method to invoke on the argument
-    method: Option<~Method<'a>>
+    pub method: Option<~Method<'a>>
 }
 
 /// Specification for the formatting of an argument in the format string.
 #[deriving(Eq)]
 pub struct FormatSpec<'a> {
     /// Optionally specified character to fill alignment with
-    fill: Option<char>,
+    pub fill: Option<char>,
     /// Optionally specified alignment
-    align: Alignment,
+    pub align: Alignment,
     /// Packed version of various flags provided
-    flags: uint,
+    pub flags: uint,
     /// The integer precision to use
-    precision: Count<'a>,
+    pub precision: Count<'a>,
     /// The string width requested for the resulting format
-    width: Count<'a>,
+    pub width: Count<'a>,
     /// The descriptor string representing the name of the format desired for
     /// this argument, this can be empty or any number of characters, although
     /// it is required to be one word.
-    ty: &'a str
+    pub ty: &'a str
 }
 
 /// Enum describing where an argument for a format can be located.
@@ -154,9 +154,9 @@ pub enum PluralSelector {
 pub struct PluralArm<'a> {
     /// A selector can either be specified by a keyword or with an integer
     /// literal.
-    selector: PluralSelector,
+    pub selector: PluralSelector,
     /// Array of pieces which are the format of this arm
-    result: ~[Piece<'a>],
+    pub result: ~[Piece<'a>],
 }
 
 /// Enum of the 5 CLDR plural keywords. There is one more, "other", but that
@@ -182,9 +182,9 @@ pub enum PluralKeyword {
 #[deriving(Eq)]
 pub struct SelectArm<'a> {
     /// String selector which guards this arm
-    selector: &'a str,
+    pub selector: &'a str,
     /// Array of pieces which are the format of this arm
-    result: ~[Piece<'a>],
+    pub result: ~[Piece<'a>],
 }
 
 /// The parser structure for interpreting the input format string. This is
@@ -194,11 +194,11 @@ pub struct SelectArm<'a> {
 /// This is a recursive-descent parser for the sake of simplicity, and if
 /// necessary there's probably lots of room for improvement performance-wise.
 pub struct Parser<'a> {
-    priv input: &'a str,
-    priv cur: str::CharOffsets<'a>,
-    priv depth: uint,
+    input: &'a str,
+    cur: str::CharOffsets<'a>,
+    depth: uint,
     /// Error messages accumulated during parsing
-    errors: ~[~str],
+    pub errors: ~[~str],
 }
 
 impl<'a> Iterator<Piece<'a>> for Parser<'a> {

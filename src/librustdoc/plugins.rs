@@ -19,10 +19,10 @@ pub type PluginCallback = fn (clean::Crate) -> PluginResult;
 
 /// Manages loading and running of plugins
 pub struct PluginManager {
-    priv dylibs: Vec<dl::DynamicLibrary> ,
-    priv callbacks: Vec<PluginCallback> ,
+    dylibs: Vec<dl::DynamicLibrary> ,
+    callbacks: Vec<PluginCallback> ,
     /// The directory plugins will be loaded from
-    prefix: Path,
+    pub prefix: Path,
 }
 
 impl PluginManager {

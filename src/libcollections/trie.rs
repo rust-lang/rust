@@ -30,8 +30,8 @@ enum Child<T> {
 
 #[allow(missing_doc)]
 pub struct TrieMap<T> {
-    priv root: TrieNode<T>,
-    priv length: uint
+    root: TrieNode<T>,
+    length: uint
 }
 
 impl<T> Container for TrieMap<T> {
@@ -278,7 +278,7 @@ impl<T> Extendable<(uint, T)> for TrieMap<T> {
 
 #[allow(missing_doc)]
 pub struct TrieSet {
-    priv map: TrieMap<()>
+    map: TrieMap<()>
 }
 
 impl Container for TrieSet {
@@ -474,19 +474,19 @@ fn remove<T>(count: &mut uint, child: &mut Child<T>, key: uint,
 
 /// Forward iterator over a map
 pub struct Entries<'a, T> {
-    priv stack: [slice::Items<'a, Child<T>>, .. NUM_CHUNKS],
-    priv length: uint,
-    priv remaining_min: uint,
-    priv remaining_max: uint
+    stack: [slice::Items<'a, Child<T>>, .. NUM_CHUNKS],
+    length: uint,
+    remaining_min: uint,
+    remaining_max: uint
 }
 
 /// Forward iterator over the key-value pairs of a map, with the
 /// values being mutable.
 pub struct MutEntries<'a, T> {
-    priv stack: [slice::MutItems<'a, Child<T>>, .. NUM_CHUNKS],
-    priv length: uint,
-    priv remaining_min: uint,
-    priv remaining_max: uint
+    stack: [slice::MutItems<'a, Child<T>>, .. NUM_CHUNKS],
+    length: uint,
+    remaining_min: uint,
+    remaining_max: uint
 }
 
 // FIXME #5846: see `addr!` above.
@@ -605,7 +605,7 @@ iterator_impl! { MutEntries, iter = mut_iter, mutability = mut }
 
 /// Forward iterator over a set
 pub struct SetItems<'a> {
-    priv iter: Entries<'a, ()>
+    iter: Entries<'a, ()>
 }
 
 impl<'a> Iterator<uint> for SetItems<'a> {

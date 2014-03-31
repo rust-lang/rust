@@ -46,9 +46,9 @@ use distributions::{Sample, IndependentSample};
 /// }
 /// ```
 pub struct Range<X> {
-    priv low: X,
-    priv range: X,
-    priv accept_zone: X
+    low: X,
+    range: X,
+    accept_zone: X
 }
 
 impl<X: SampleRange + Ord> Range<X> {

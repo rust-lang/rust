@@ -12,7 +12,7 @@
 
 #[crate_type = "lib"];
 
-pub struct NameVal { name: ~str, val: int }
+pub struct NameVal { pub name: ~str, pub val: int }
 
 pub fn struct_nameval() -> NameVal {
     NameVal { name: ~"crateresolve5", val: 10 }

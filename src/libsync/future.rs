@@ -30,7 +30,7 @@ use std::mem::replace;
 
 /// A type encapsulating the result of a computation which may not be complete
 pub struct Future<A> {
-    priv state: FutureState<A>,
+    state: FutureState<A>,
 }
 
 enum FutureState<A> {

@@ -17,8 +17,6 @@
 //! A TCP connection implements the `Reader` and `Writer` traits, while the TCP
 //! listener (socket server) implements the `Listener` and `Acceptor` traits.
 
-#![deny(missing_doc)]
-
 use clone::Clone;
 use io::IoResult;
 use io::net::ip::SocketAddr;
@@ -46,7 +44,7 @@ use rt::rtio::{RtioTcpAcceptor, RtioTcpStream};
 /// drop(stream); // close the connection
 /// ```
 pub struct TcpStream {
-    priv obj: ~RtioTcpStream:Send
+    obj: ~RtioTcpStream:Send
 }
 
 impl TcpStream {
@@ -128,7 +126,7 @@ impl Writer for TcpStream {
 /// # }
 /// ```
 pub struct TcpListener {
-    priv obj: ~RtioTcpListener:Send
+    obj: ~RtioTcpListener:Send
 }
 
 impl TcpListener {
@@ -161,7 +159,7 @@ impl Listener<TcpStream, TcpAcceptor> for TcpListener {
 /// a `TcpListener`'s `listen` method, and this object can be used to accept new
 /// `TcpStream` instances.
 pub struct TcpAcceptor {
-    priv obj: ~RtioTcpAcceptor:Send
+    obj: ~RtioTcpAcceptor:Send
 }
 
 impl Acceptor<TcpStream> for TcpAcceptor {

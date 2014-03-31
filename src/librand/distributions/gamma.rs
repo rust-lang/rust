@@ -236,11 +236,11 @@ impl IndependentSample<f64> for ChiSquared {
 /// println!("{} is from an F(2, 32) distribution", v)
 /// ```
 pub struct FisherF {
-    priv numer: ChiSquared,
-    priv denom: ChiSquared,
+    numer: ChiSquared,
+    denom: ChiSquared,
     // denom_dof / numer_dof so that this can just be a straight
     // multiplication, rather than a division.
-    priv dof_ratio: f64,
+    dof_ratio: f64,
 }
 
 impl FisherF {
@@ -279,8 +279,8 @@ impl IndependentSample<f64> for FisherF {
 /// println!("{} is from a t(11) distribution", v)
 /// ```
 pub struct StudentT {
-    priv chi: ChiSquared,
-    priv dof: f64
+    chi: ChiSquared,
+    dof: f64
 }
 
 impl StudentT {

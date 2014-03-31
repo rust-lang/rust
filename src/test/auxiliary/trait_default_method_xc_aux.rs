@@ -10,7 +10,7 @@
 
 #[crate_id="trait_default_method_xc_aux"];
 
-pub struct Something { x: int }
+pub struct Something { pub x: int }
 
 pub trait A {
     fn f(&self) -> int;

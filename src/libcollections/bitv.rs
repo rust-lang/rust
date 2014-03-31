@@ -227,9 +227,9 @@ enum Op {Union, Intersect, Assign, Difference}
 #[deriving(Clone)]
 pub struct Bitv {
     /// Internal representation of the bit vector (small or large)
-    priv rep: BitvVariant,
+    rep: BitvVariant,
     /// The number of valid bits in the internal representation
-    priv nbits: uint
+    nbits: uint
 }
 
 fn die() -> ! {
@@ -587,9 +587,9 @@ fn iterate_bits(base: uint, bits: uint, f: |uint| -> bool) -> bool {
 
 /// An iterator for `Bitv`.
 pub struct Bits<'a> {
-    priv bitv: &'a Bitv,
-    priv next_idx: uint,
-    priv end_idx: uint,
+    bitv: &'a Bitv,
+    next_idx: uint,
+    end_idx: uint,
 }
 
 impl<'a> Iterator<bool> for Bits<'a> {
@@ -648,12 +648,12 @@ impl<'a> RandomAccessIterator<bool> for Bits<'a> {
 /// as a `uint`.
 #[deriving(Clone)]
 pub struct BitvSet {
-    priv size: uint,
+    size: uint,
 
     // In theory this is a `Bitv` instead of always a `BigBitv`, but knowing that
     // there's an array of storage makes our lives a whole lot easier when
     // performing union/intersection/etc operations
-    priv bitv: BigBitv
+    bitv: BigBitv
 }
 
 impl BitvSet {
@@ -912,8 +912,8 @@ impl BitvSet {
 }
 
 pub struct BitPositions<'a> {
-    priv set: &'a BitvSet,
-    priv next_idx: uint
+    set: &'a BitvSet,
+    next_idx: uint
 }
 
 impl<'a> Iterator<uint> for BitPositions<'a> {

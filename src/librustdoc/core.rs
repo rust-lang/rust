@@ -32,8 +32,8 @@ pub enum MaybeTyped {
 }
 
 pub struct DocContext {
-    krate: ast::Crate,
-    maybe_typed: MaybeTyped
+    pub krate: ast::Crate,
+    pub maybe_typed: MaybeTyped
 }
 
 impl DocContext {
@@ -46,8 +46,8 @@ impl DocContext {
 }
 
 pub struct CrateAnalysis {
-    exported_items: privacy::ExportedItems,
-    public_items: privacy::PublicItems,
+    pub exported_items: privacy::ExportedItems,
+    pub public_items: privacy::PublicItems,
 }
 
 /// Parses, resolves, and typechecks the given crate

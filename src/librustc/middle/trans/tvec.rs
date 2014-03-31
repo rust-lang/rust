@@ -143,11 +143,11 @@ pub fn make_drop_glue_unboxed<'a>(
 }
 
 pub struct VecTypes {
-    vec_ty: ty::t,
-    unit_ty: ty::t,
-    llunit_ty: Type,
-    llunit_size: ValueRef,
-    llunit_alloc_size: u64
+    pub vec_ty: ty::t,
+    pub unit_ty: ty::t,
+    pub llunit_ty: Type,
+    pub llunit_size: ValueRef,
+    pub llunit_alloc_size: u64
 }
 
 impl VecTypes {
