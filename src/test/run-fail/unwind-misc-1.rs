@@ -24,7 +24,7 @@ fn main() {
     for _i in range(0u, 10u) {
         arr.push(@~"key stuff");
         map.insert(arr.clone(),
-                   vec::append(arr.clone(), &[@~"value stuff"]));
+                   arr.clone().append([@~"value stuff"]));
         if arr.len() == 5 {
             fail!();
         }

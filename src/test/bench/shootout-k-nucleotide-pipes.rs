@@ -126,8 +126,7 @@ fn make_sequence_processor(sz: uint,
       line = from_parent.recv();
       if line == Vec::new() { break; }
 
-       carry = windows_with_carry(vec::append(carry,
-                                                 line.as_slice()).as_slice(),
+       carry = windows_with_carry(carry.append(line.as_slice()).as_slice(),
                                   sz,
                                   |window| {
          update_freq(&mut freqs, window);

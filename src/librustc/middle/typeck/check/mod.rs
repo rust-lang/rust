@@ -120,7 +120,6 @@ use std::mem::replace;
 use std::result;
 use std::slice;
 use std::vec::Vec;
-use std::vec;
 use syntax::abi::AbiSet;
 use syntax::ast::{Provided, Required};
 use syntax::ast;
@@ -903,7 +902,7 @@ fn compare_impl_method(tcx: &ty::ctxt,
                 bound_region: ty::BrNamed(l.def_id, l.name)})).
         collect();
     let dummy_substs = ty::substs {
-        tps: vec::append(dummy_impl_tps, dummy_method_tps.as_slice()),
+        tps: dummy_impl_tps.append(dummy_method_tps.as_slice()),
         regions: ty::NonerasedRegions(dummy_impl_regions),
         self_ty: None };
 
@@ -930,7 +929,7 @@ fn compare_impl_method(tcx: &ty::ctxt,
                      self_ty: self_ty } = trait_substs.subst(tcx, &dummy_substs);
         let substs = substs {
             regions: trait_regions,
-            tps: vec::append(trait_tps, dummy_method_tps.as_slice()),
+            tps: trait_tps.append(dummy_method_tps.as_slice()),
             self_ty: self_ty,
         };
         debug!("trait_fty (pre-subst): {} substs={}",

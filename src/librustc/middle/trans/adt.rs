@@ -57,7 +57,6 @@ use middle::trans::type_::Type;
 use middle::trans::type_of;
 use middle::ty;
 use middle::ty::Disr;
-use std::vec;
 use syntax::abi::{X86, X86_64, Arm, Mips};
 use syntax::ast;
 use syntax::attr;
@@ -220,9 +219,7 @@ fn represent_type_uncached(cx: &CrateContext, t: ty::t) -> Repr {
             let ity = range_to_inttype(cx, hint, &bounds);
             return General(ity, cases.iter().map(|c| {
                 let discr = vec!(ty_of_inttype(ity));
-                mk_struct(cx,
-                          vec::append(discr, c.tys.as_slice()).as_slice(),
-                          false)
+                mk_struct(cx, discr.append(c.tys.as_slice()).as_slice(), false)
             }).collect())
         }
         _ => cx.sess().bug("adt::represent_type called on non-ADT type")
@@ -753,12 +750,8 @@ pub fn trans_const(ccx: &CrateContext, r: &Repr, discr: Disr,
             let lldiscr = C_integral(ll_inttype(ccx, ity), discr as u64, true);
             let contents = build_const_struct(ccx,
                                               case,
-                                              vec::append(
-                                                  vec!(lldiscr),
-                                                  vals).as_slice());
-            C_struct(ccx, vec::append(
-                        contents,
-                        &[padding(ccx, max_sz - case.size)]).as_slice(),
+                                              (vec!(lldiscr)).append(vals).as_slice());
+            C_struct(ccx, contents.append([padding(ccx, max_sz - case.size)]).as_slice(),
                      false)
         }
         Univariant(ref st, _dro) => {
