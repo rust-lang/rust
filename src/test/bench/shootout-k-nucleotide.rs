@@ -8,8 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-android see #10393 #13206
 // ignore-pretty
 
+use std::ascii::OwnedStrAsciiExt;
 use std::str;
 use std::slice;
 
@@ -39,8 +41,8 @@ impl Code {
         Code((self.hash() << 2) + (pack_symbol(c) as u64))
     }
 
-    fn rotate(&self, c: u8, frame: i32) -> Code {
-        Code(self.push_char(c).hash() & ((1u64 << (2 * (frame as u64))) - 1))
+    fn rotate(&self, c: u8, frame: uint) -> Code {
+        Code(self.push_char(c).hash() & ((1u64 << (2 * frame)) - 1))
     }
 
     fn pack(string: &str) -> Code {
@@ -48,7 +50,7 @@ impl Code {
     }
 
     // FIXME: Inefficient.
-    fn unpack(&self, frame: i32) -> ~str {
+    fn unpack(&self, frame: uint) -> ~str {
         let mut key = self.hash();
         let mut result = Vec::new();
         for _ in range(0, frame) {
@@ -86,12 +88,12 @@ impl TableCallback for PrintCallback {
 
 struct Entry {
     code: Code,
-    count: i32,
+    count: uint,
     next: Option<~Entry>,
 }
 
 struct Table {
-    count: i32,
+    count: uint,
     items: Vec<Option<~Entry>> }
 
 struct Items<'a> {
@@ -190,10 +192,10 @@ impl<'a> Iterator<&'a Entry> for Items<'a> {
 
 fn pack_symbol(c: u8) -> u8 {
     match c as char {
-        'a' | 'A' => 0,
-        'c' | 'C' => 1,
-        'g' | 'G' => 2,
-        't' | 'T' => 3,
+        'A' => 0,
+        'C' => 1,
+        'G' => 2,
+        'T' => 3,
         _ => fail!("{}", c as char),
     }
 }
@@ -202,67 +204,67 @@ fn unpack_symbol(c: u8) -> u8 {
     TABLE[c]
 }
 
-fn next_char<'a>(mut buf: &'a [u8]) -> &'a [u8] {
-    loop {
-        buf = buf.slice(1, buf.len());
-        if buf.len() == 0 {
-            break;
-        }
-        if buf[0] != (' ' as u8) && buf[0] != ('\t' as u8) &&
-                buf[0] != ('\n' as u8) && buf[0] != 0 {
-            break;
-        }
-    }
-    buf
-}
-
 fn generate_frequencies(frequencies: &mut Table,
                         mut input: &[u8],
-                        frame: i32) {
+                        frame: uint) {
+    if input.len() < frame { return; }
     let mut code = Code(0);
 
     // Pull first frame.
     for _ in range(0, frame) {
         code = code.push_char(input[0]);
-        input = next_char(input);
+        input = input.slice_from(1);
     }
     frequencies.lookup(code, BumpCallback);
 
     while input.len() != 0 && input[0] != ('>' as u8) {
         code = code.rotate(input[0], frame);
         frequencies.lookup(code, BumpCallback);
-        input = next_char(input);
+        input = input.slice_from(1);
     }
 }
 
-fn print_frequencies(frequencies: &Table, frame: i32) {
+fn print_frequencies(frequencies: &Table, frame: uint) {
     let mut vector = Vec::new();
     for entry in frequencies.iter() {
-        vector.push((entry.code, entry.count));
+        vector.push((entry.count, entry.code));
     }
     vector.as_mut_slice().sort();
 
     let mut total_count = 0;
-    for &(_, count) in vector.iter() {
+    for &(count, _) in vector.iter() {
         total_count += count;
     }
 
-    for &(key, count) in vector.iter() {
+    for &(count, key) in vector.iter().rev() {
         println!("{} {:.3f}",
                  key.unpack(frame),
                  (count as f32 * 100.0) / (total_count as f32));
     }
+    println!("");
 }
 
 fn print_occurrences(frequencies: &mut Table, occurrence: &'static str) {
     frequencies.lookup(Code::pack(occurrence), PrintCallback(occurrence))
 }
 
+fn get_sequence<R: Buffer>(r: &mut R, key: &str) -> ~[u8] {
+    let mut res = ~"";
+    for l in r.lines().map(|l| l.ok().unwrap())
+        .skip_while(|l| key != l.slice_to(key.len())).skip(1)
+    {
+        res.push_str(l.trim());
+    }
+    res.into_ascii_upper().into_bytes()
+}
+
 fn main() {
-    let input = include_str!("shootout-k-nucleotide.data");
-    let pos = input.find_str(">THREE").unwrap();
-    let pos2 = pos + input.slice_from(pos).find_str("\n").unwrap();
-    let input = input.slice_from(pos2 + 1).as_bytes();
+    let input = if std::os::getenv("RUST_BENCH").is_some() {
+        let fd = std::io::File::open(&Path::new("shootout-k-nucleotide.data"));
+        get_sequence(&mut std::io::BufferedReader::new(fd), ">THREE")
+    } else {
+        get_sequence(&mut std::io::stdin(), ">THREE")
+    };
 
     let mut frequencies = Table::new();
     generate_frequencies(&mut frequencies, input, 1);
@@ -276,7 +278,7 @@ fn main() {
         frequencies = Table::new();
         generate_frequencies(&mut frequencies,
                              input,
-                             occurrence.len() as i32);
+                             occurrence.len());
         print_occurrences(&mut frequencies, *occurrence);
     }
 }
