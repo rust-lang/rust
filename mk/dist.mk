@@ -79,6 +79,7 @@ $(PKG_TAR): $(PKG_FILES)
          --exclude=*/llvm/test/*/*/*.td \
          --exclude=*/llvm/test/*/*/*.s \
          -c $(UNROOTED_PKG_FILES) | tar -x -C tmp/dist/$(PKG_NAME)
+	@$(call E, making $@)
 	$(Q)tar -czf $(PKG_TAR) -C tmp/dist $(PKG_NAME)
 	$(Q)rm -Rf tmp/dist/$(PKG_NAME)
 
@@ -282,9 +283,19 @@ distcheck: distcheck-win
 
 else
 
-dist: dist-tar-src dist-osx dist-tar-bins dist-docs
+# FIXME #13224: On OS X don't produce tarballs simply because --exclude-vcs don't work.
+# This is a huge hack because I just don't have time to figure out another solution.
+ifeq ($(CFG_OSTYPE), apple-darwin)
+MAYBE_DIST_TAR_SRC=
+MAYBE_DISTCHECK_TAR_SRC=
+else
+MAYBE_DIST_TAR_SRC=dist-tar-src
+MAYBE_DISTCHECK_TAR_SRC=distcheck-tar-src
+endif
 
-distcheck: distcheck-tar-src distcheck-osx distcheck-tar-bins distcheck-docs
+dist: $(MAYBE_DIST_TAR_SRC) dist-osx dist-tar-bins dist-docs
+
+distcheck: $(MAYBE_DISTCHECK_TAR_SRC) distcheck-osx distcheck-tar-bins distcheck-docs
 	$(Q)rm -Rf tmp/distcheck
 	@echo
 	@echo -----------------------------------------------
