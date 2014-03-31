@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -13,7 +13,10 @@
 //! This module defines a container which uses an efficient bit mask
 //! representation to hold C-like enum variants.
 
-use std::num::Bitwise;
+use num::Bitwise;
+use option::{None, Some, Option};
+use ops::{BitOr,BitAnd,Sub};
+use iter::Iterator;
 
 #[deriving(Clone, Eq, TotalEq, Hash, Show)]
 /// A specialized Set implementation to use enum types.
@@ -137,8 +140,9 @@ impl<E:CLike> Iterator<E> for Items<E> {
 #[cfg(test)]
 mod test {
 
-    use std::cast;
+    use cast;
 
+    use iter::Iterator;
     use enum_set::{EnumSet, CLike};
 
     #[deriving(Eq, Show)]

@@ -17,7 +17,7 @@ use std::hash::{Hash, Hasher};
 use {Decodable, Encodable, Decoder, Encoder};
 use collections::{DList, RingBuf, TreeMap, TreeSet, Deque, HashMap, HashSet,
                   TrieMap, TrieSet};
-use collections::enum_set::{EnumSet, CLike};
+use std::enum_set::{EnumSet, CLike};
 
 impl<
     E,
