@@ -504,13 +504,12 @@ matching in order to bind names to the contents of data types.
 
 ~~~~
 use std::f64;
-use std::num::atan;
 fn angle(vector: (f64, f64)) -> f64 {
     let pi = f64::consts::PI;
     match vector {
       (0.0, y) if y < 0.0 => 1.5 * pi,
       (0.0, _) => 0.5 * pi,
-      (x, y) => atan(y / x)
+      (x, y) => (y / x).atan()
     }
 }
 ~~~~
@@ -1430,12 +1429,11 @@ bad, but often copies are expensive. So we’d like to define a function
 that takes the points by pointer. We can use references to do this:
 
 ~~~
-use std::num::sqrt;
 # struct Point { x: f64, y: f64 }
 fn compute_distance(p1: &Point, p2: &Point) -> f64 {
     let x_d = p1.x - p2.x;
     let y_d = p1.y - p2.y;
-    sqrt(x_d * x_d + y_d * y_d)
+    (x_d * x_d + y_d * y_d).sqrt()
 }
 ~~~
 
@@ -2303,7 +2301,7 @@ impl Shape for Circle {
     fn new(area: f64) -> Circle { Circle { radius: (area / PI).sqrt() } }
 }
 impl Shape for Square {
-    fn new(area: f64) -> Square { Square { length: (area).sqrt() } }
+    fn new(area: f64) -> Square { Square { length: area.sqrt() } }
 }
 
 let area = 42.5;
