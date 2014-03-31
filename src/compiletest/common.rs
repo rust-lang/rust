@@ -21,87 +21,87 @@ pub enum mode {
 #[deriving(Clone)]
 pub struct config {
     // The library paths required for running the compiler
-    compile_lib_path: ~str,
+    pub compile_lib_path: ~str,
 
     // The library paths required for running compiled programs
-    run_lib_path: ~str,
+    pub run_lib_path: ~str,
 
     // The rustc executable
-    rustc_path: Path,
+    pub rustc_path: Path,
 
     // The clang executable
-    clang_path: Option<Path>,
+    pub clang_path: Option<Path>,
 
     // The llvm binaries path
-    llvm_bin_path: Option<Path>,
+    pub llvm_bin_path: Option<Path>,
 
     // The directory containing the tests to run
-    src_base: Path,
+    pub src_base: Path,
 
     // The directory where programs should be built
-    build_base: Path,
+    pub build_base: Path,
 
     // Directory for auxiliary libraries
-    aux_base: Path,
+    pub aux_base: Path,
 
     // The name of the stage being built (stage1, etc)
-    stage_id: ~str,
+    pub stage_id: ~str,
 
     // The test mode, compile-fail, run-fail, run-pass
-    mode: mode,
+    pub mode: mode,
 
     // Run ignored tests
-    run_ignored: bool,
+    pub run_ignored: bool,
 
     // Only run tests that match this filter
-    filter: Option<~str>,
+    pub filter: Option<~str>,
 
     // Write out a parseable log of tests that were run
-    logfile: Option<Path>,
+    pub logfile: Option<Path>,
 
     // Write out a json file containing any metrics of the run
-    save_metrics: Option<Path>,
+    pub save_metrics: Option<Path>,
 
     // Write and ratchet a metrics file
-    ratchet_metrics: Option<Path>,
+    pub ratchet_metrics: Option<Path>,
 
     // Percent change in metrics to consider noise
-    ratchet_noise_percent: Option<f64>,
+    pub ratchet_noise_percent: Option<f64>,
 
-    // "Shard" of the testsuite to run: this has the form of
+    // "Shard" of the testsuite to pub run: this has the form of
     // two numbers (a,b), and causes only those tests with
     // positional order equal to a mod b to run.
-    test_shard: Option<(uint,uint)>,
+    pub test_shard: Option<(uint,uint)>,
 
     // A command line to prefix program execution with,
     // for running under valgrind
-    runtool: Option<~str>,
+    pub runtool: Option<~str>,
 
     // Flags to pass to the compiler when building for the host
-    host_rustcflags: Option<~str>,
+    pub host_rustcflags: Option<~str>,
 
     // Flags to pass to the compiler when building for the target
-    target_rustcflags: Option<~str>,
+    pub target_rustcflags: Option<~str>,
 
     // Run tests using the JIT
-    jit: bool,
+    pub jit: bool,
 
     // Target system to be tested
-    target: ~str,
+    pub target: ~str,
 
     // Host triple for the compiler being invoked
-    host: ~str,
+    pub host: ~str,
 
     // Extra parameter to run adb on arm-linux-androideabi
-    adb_path: ~str,
+    pub adb_path: ~str,
 
     // Extra parameter to run test sute on arm-linux-androideabi
-    adb_test_dir: ~str,
+    pub adb_test_dir: ~str,
 
     // status whether android device available or not
-    adb_device_status: bool,
+    pub adb_device_status: bool,
 
     // Explain what's going on
-    verbose: bool
+    pub verbose: bool
 
 }

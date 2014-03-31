@@ -103,8 +103,8 @@ pub fn check_match(fcx: &FnCtxt,
 }
 
 pub struct pat_ctxt<'a> {
-    fcx: &'a FnCtxt<'a>,
-    map: PatIdMap,
+    pub fcx: &'a FnCtxt<'a>,
+    pub map: PatIdMap,
 }
 
 pub fn check_pat_variant(pcx: &pat_ctxt, pat: &ast::Pat, path: &ast::Path,

@@ -42,32 +42,32 @@ pub struct GreenTask {
     /// context and the stack that this task owns. This field is optional to
     /// relinquish ownership back to a scheduler to recycle stacks at a later
     /// date.
-    coroutine: Option<Coroutine>,
+    pub coroutine: Option<Coroutine>,
 
     /// Optional handle back into the home sched pool of this task. This field
     /// is lazily initialized.
-    handle: Option<SchedHandle>,
+    pub handle: Option<SchedHandle>,
 
     /// Slot for maintaining ownership of a scheduler. If a task is running,
     /// this value will be Some(sched) where the task is running on "sched".
-    sched: Option<~Scheduler>,
+    pub sched: Option<~Scheduler>,
 
     /// Temporary ownership slot of a std::rt::task::Task object. This is used
     /// to squirrel that libstd task away while we're performing green task
     /// operations.
-    task: Option<~Task>,
+    pub task: Option<~Task>,
 
     /// Dictates whether this is a sched task or a normal green task
-    task_type: TaskType,
+    pub task_type: TaskType,
 
     /// Home pool that this task was spawned into. This field is lazily
     /// initialized until when the task is initially scheduled, and is used to
     /// make sure that tasks are always woken up in the correct pool of
     /// schedulers.
-    pool_id: uint,
+    pub pool_id: uint,
 
     // See the comments in the scheduler about why this is necessary
-    nasty_deschedule_lock: NativeMutex,
+    pub nasty_deschedule_lock: NativeMutex,
 }
 
 pub enum TaskType {

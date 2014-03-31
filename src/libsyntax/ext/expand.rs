@@ -838,8 +838,8 @@ pub fn new_span(cx: &ExtCtxt, sp: Span) -> Span {
 }
 
 pub struct MacroExpander<'a, 'b> {
-    extsbox: SyntaxEnv,
-    cx: &'a mut ExtCtxt<'b>,
+    pub extsbox: SyntaxEnv,
+    pub cx: &'a mut ExtCtxt<'b>,
 }
 
 impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
@@ -869,9 +869,9 @@ impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
 }
 
 pub struct ExpansionConfig<'a> {
-    loader: &'a mut CrateLoader,
-    deriving_hash_type_parameter: bool,
-    crate_id: CrateId,
+    pub loader: &'a mut CrateLoader,
+    pub deriving_hash_type_parameter: bool,
+    pub crate_id: CrateId,
 }
 
 pub fn expand_crate(parse_sess: &parse::ParseSess,

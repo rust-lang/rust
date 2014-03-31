@@ -54,7 +54,7 @@ struct State<T> {
 }
 
 pub struct Queue<T> {
-    priv state: UnsafeArc<State<T>>,
+    state: UnsafeArc<State<T>>,
 }
 
 impl<T: Send> State<T> {

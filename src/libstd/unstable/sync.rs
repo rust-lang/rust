@@ -30,7 +30,7 @@ struct ExData<T> {
  * need to block or deschedule while accessing shared state, use extra::sync::RWArc.
  */
 pub struct Exclusive<T> {
-    priv x: UnsafeArc<ExData<T>>
+    x: UnsafeArc<ExData<T>>
 }
 
 impl<T:Send> Clone for Exclusive<T> {

@@ -104,8 +104,8 @@ pub enum RegionResolutionError {
 /// 'a and 'b together inside a SameRegions struct
 #[deriving(Clone)]
 pub struct SameRegions {
-    scope_id: ast::NodeId,
-    regions: Vec<BoundRegion>
+    pub scope_id: ast::NodeId,
+    pub regions: Vec<BoundRegion>
 }
 
 impl SameRegions {

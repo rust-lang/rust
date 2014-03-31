@@ -9,7 +9,7 @@
 // except according to those terms.
 
 pub struct Foo {
-    x: int
+    pub x: int
 }
 
 impl Foo {

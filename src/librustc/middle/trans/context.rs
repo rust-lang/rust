@@ -37,39 +37,39 @@ use syntax::ast;
 use syntax::parse::token::InternedString;
 
 pub struct CrateContext {
-    llmod: ModuleRef,
-    llcx: ContextRef,
-    metadata_llmod: ModuleRef,
-    td: TargetData,
-    tn: TypeNames,
-    externs: RefCell<ExternMap>,
-    intrinsics: HashMap<&'static str, ValueRef>,
-    item_vals: RefCell<NodeMap<ValueRef>>,
-    exp_map2: resolve::ExportMap2,
-    reachable: NodeSet,
-    item_symbols: RefCell<NodeMap<~str>>,
-    link_meta: LinkMeta,
-    drop_glues: RefCell<HashMap<ty::t, ValueRef>>,
-    tydescs: RefCell<HashMap<ty::t, @tydesc_info>>,
+    pub llmod: ModuleRef,
+    pub llcx: ContextRef,
+    pub metadata_llmod: ModuleRef,
+    pub td: TargetData,
+    pub tn: TypeNames,
+    pub externs: RefCell<ExternMap>,
+    pub intrinsics: HashMap<&'static str, ValueRef>,
+    pub item_vals: RefCell<NodeMap<ValueRef>>,
+    pub exp_map2: resolve::ExportMap2,
+    pub reachable: NodeSet,
+    pub item_symbols: RefCell<NodeMap<~str>>,
+    pub link_meta: LinkMeta,
+    pub drop_glues: RefCell<HashMap<ty::t, ValueRef>>,
+    pub tydescs: RefCell<HashMap<ty::t, @tydesc_info>>,
     // Set when running emit_tydescs to enforce that no more tydescs are
     // created.
-    finished_tydescs: Cell<bool>,
+    pub finished_tydescs: Cell<bool>,
     // Track mapping of external ids to local items imported for inlining
-    external: RefCell<DefIdMap<Option<ast::NodeId>>>,
+    pub external: RefCell<DefIdMap<Option<ast::NodeId>>>,
     // Backwards version of the `external` map (inlined items to where they
     // came from)
-    external_srcs: RefCell<NodeMap<ast::DefId>>,
+    pub external_srcs: RefCell<NodeMap<ast::DefId>>,
     // A set of static items which cannot be inlined into other crates. This
     // will pevent in IIItem() structures from being encoded into the metadata
     // that is generated
-    non_inlineable_statics: RefCell<NodeSet>,
+    pub non_inlineable_statics: RefCell<NodeSet>,
     // Cache instances of monomorphized functions
-    monomorphized: RefCell<HashMap<mono_id, ValueRef>>,
-    monomorphizing: RefCell<DefIdMap<uint>>,
+    pub monomorphized: RefCell<HashMap<mono_id, ValueRef>>,
+    pub monomorphizing: RefCell<DefIdMap<uint>>,
     // Cache generated vtables
-    vtables: RefCell<HashMap<(ty::t, mono_id), ValueRef>>,
+    pub vtables: RefCell<HashMap<(ty::t, mono_id), ValueRef>>,
     // Cache of constant strings,
-    const_cstr_cache: RefCell<HashMap<InternedString, ValueRef>>,
+    pub const_cstr_cache: RefCell<HashMap<InternedString, ValueRef>>,
 
     // Reverse-direction for const ptrs cast from globals.
     // Key is an int, cast from a ValueRef holding a *T,
@@ -79,36 +79,36 @@ pub struct CrateContext {
     // when we ptrcast, and we have to ptrcast during translation
     // of a [T] const because we form a slice, a [*T,int] pair, not
     // a pointer to an LLVM array type.
-    const_globals: RefCell<HashMap<int, ValueRef>>,
+    pub const_globals: RefCell<HashMap<int, ValueRef>>,
 
     // Cache of emitted const values
-    const_values: RefCell<NodeMap<ValueRef>>,
+    pub const_values: RefCell<NodeMap<ValueRef>>,
 
     // Cache of external const values
-    extern_const_values: RefCell<DefIdMap<ValueRef>>,
+    pub extern_const_values: RefCell<DefIdMap<ValueRef>>,
 
-    impl_method_cache: RefCell<HashMap<(ast::DefId, ast::Name), ast::DefId>>,
+    pub impl_method_cache: RefCell<HashMap<(ast::DefId, ast::Name), ast::DefId>>,
 
     // Cache of closure wrappers for bare fn's.
-    closure_bare_wrapper_cache: RefCell<HashMap<ValueRef, ValueRef>>,
+    pub closure_bare_wrapper_cache: RefCell<HashMap<ValueRef, ValueRef>>,
 
-    lltypes: RefCell<HashMap<ty::t, Type>>,
-    llsizingtypes: RefCell<HashMap<ty::t, Type>>,
-    adt_reprs: RefCell<HashMap<ty::t, @adt::Repr>>,
-    symbol_hasher: RefCell<Sha256>,
-    type_hashcodes: RefCell<HashMap<ty::t, ~str>>,
-    all_llvm_symbols: RefCell<HashSet<~str>>,
-    tcx: ty::ctxt,
-    maps: astencode::Maps,
-    stats: @Stats,
-    int_type: Type,
-    opaque_vec_type: Type,
-    builder: BuilderRef_res,
+    pub lltypes: RefCell<HashMap<ty::t, Type>>,
+    pub llsizingtypes: RefCell<HashMap<ty::t, Type>>,
+    pub adt_reprs: RefCell<HashMap<ty::t, @adt::Repr>>,
+    pub symbol_hasher: RefCell<Sha256>,
+    pub type_hashcodes: RefCell<HashMap<ty::t, ~str>>,
+    pub all_llvm_symbols: RefCell<HashSet<~str>>,
+    pub tcx: ty::ctxt,
+    pub maps: astencode::Maps,
+    pub stats: @Stats,
+    pub int_type: Type,
+    pub opaque_vec_type: Type,
+    pub builder: BuilderRef_res,
     // Set when at least one function uses GC. Needed so that
     // decl_gc_metadata knows whether to link to the module metadata, which
     // is not emitted by LLVM's GC pass when no functions use GC.
-    uses_gc: bool,
-    dbg_cx: Option<debuginfo::CrateDebugContext>,
+    pub uses_gc: bool,
+    pub dbg_cx: Option<debuginfo::CrateDebugContext>,
 }
 
 impl CrateContext {

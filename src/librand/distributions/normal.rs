@@ -82,8 +82,8 @@ impl Rand for StandardNormal {
 /// println!("{} is from a N(2, 9) distribution", v)
 /// ```
 pub struct Normal {
-    priv mean: f64,
-    priv std_dev: f64
+    mean: f64,
+    std_dev: f64,
 }
 
 impl Normal {
@@ -124,7 +124,7 @@ impl IndependentSample<f64> for Normal {
 /// println!("{} is from an ln N(2, 9) distribution", v)
 /// ```
 pub struct LogNormal {
-    priv norm: Normal
+    norm: Normal
 }
 
 impl LogNormal {

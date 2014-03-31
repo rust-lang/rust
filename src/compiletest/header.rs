@@ -14,26 +14,26 @@ use util;
 
 pub struct TestProps {
     // Lines that should be expected, in order, on standard out
-    error_patterns: Vec<~str> ,
+    pub error_patterns: Vec<~str> ,
     // Extra flags to pass to the compiler
-    compile_flags: Option<~str>,
+    pub compile_flags: Option<~str>,
     // If present, the name of a file that this test should match when
     // pretty-printed
-    pp_exact: Option<Path>,
+    pub pp_exact: Option<Path>,
     // Modules from aux directory that should be compiled
-    aux_builds: Vec<~str> ,
+    pub aux_builds: Vec<~str> ,
     // Environment settings to use during execution
-    exec_env: Vec<(~str,~str)> ,
+    pub exec_env: Vec<(~str,~str)> ,
     // Commands to be given to the debugger, when testing debug info
-    debugger_cmds: Vec<~str> ,
+    pub debugger_cmds: Vec<~str> ,
     // Lines to check if they appear in the expected debugger output
-    check_lines: Vec<~str> ,
+    pub check_lines: Vec<~str> ,
     // Flag to force a crate to be built with the host architecture
-    force_host: bool,
+    pub force_host: bool,
     // Check stdout for error-pattern output as well as stderr
-    check_stdout: bool,
+    pub check_stdout: bool,
     // Don't force a --crate-type=dylib flag on the command line
-    no_prefer_dynamic: bool,
+    pub no_prefer_dynamic: bool,
 }
 
 // Load any test directives embedded in the file

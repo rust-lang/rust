@@ -65,8 +65,8 @@ use syntax::visit::Visitor;
 /// A vtable context includes an inference context, a crate context, and a
 /// callback function to call in case of type error.
 pub struct VtableContext<'a> {
-    infcx: &'a infer::InferCtxt<'a>,
-    param_env: &'a ty::ParameterEnvironment,
+    pub infcx: &'a infer::InferCtxt<'a>,
+    pub param_env: &'a ty::ParameterEnvironment,
 }
 
 impl<'a> VtableContext<'a> {

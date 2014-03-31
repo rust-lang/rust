@@ -27,7 +27,7 @@ use Rng;
 /// println!("{:x}", rng.gen::<uint>());
 /// ```
 pub struct ReaderRng<R> {
-    priv reader: R
+    reader: R
 }
 
 impl<R: Reader> ReaderRng<R> {

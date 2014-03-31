@@ -36,15 +36,15 @@ use super::{Hash, Hasher};
 
 /// `SipState` computes a SipHash 2-4 hash over a stream of bytes.
 pub struct SipState {
-    priv k0: u64,
-    priv k1: u64,
-    priv length: uint, // how many bytes we've processed
-    priv v0: u64,      // hash state
-    priv v1: u64,
-    priv v2: u64,
-    priv v3: u64,
-    priv tail: [u8, ..8], // unprocessed bytes
-    priv ntail: uint,  // how many bytes in tail are valid
+    k0: u64,
+    k1: u64,
+    length: uint, // how many bytes we've processed
+    v0: u64,      // hash state
+    v1: u64,
+    v2: u64,
+    v3: u64,
+    tail: [u8, ..8], // unprocessed bytes
+    ntail: uint,  // how many bytes in tail are valid
 }
 
 // sadly, these macro definitions can't appear later,
@@ -231,8 +231,8 @@ impl Default for SipState {
 /// `SipHasher` computes the SipHash algorithm from a stream of bytes.
 #[deriving(Clone)]
 pub struct SipHasher {
-    priv k0: u64,
-    priv k1: u64,
+    k0: u64,
+    k1: u64,
 }
 
 impl SipHasher {

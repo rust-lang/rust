@@ -34,24 +34,24 @@ pub trait Reader {
 
 #[deriving(Clone, Eq, Show)]
 pub struct TokenAndSpan {
-    tok: token::Token,
-    sp: Span,
+    pub tok: token::Token,
+    pub sp: Span,
 }
 
 pub struct StringReader<'a> {
-    span_diagnostic: &'a SpanHandler,
+    pub span_diagnostic: &'a SpanHandler,
     // The absolute offset within the codemap of the next character to read
-    pos: BytePos,
+    pub pos: BytePos,
     // The absolute offset within the codemap of the last character read(curr)
-    last_pos: BytePos,
+    pub last_pos: BytePos,
     // The column of the next character to read
-    col: CharPos,
+    pub col: CharPos,
     // The last character to be read
-    curr: Option<char>,
-    filemap: Rc<codemap::FileMap>,
+    pub curr: Option<char>,
+    pub filemap: Rc<codemap::FileMap>,
     /* cached: */
-    peek_tok: token::Token,
-    peek_span: Span,
+    pub peek_tok: token::Token,
+    pub peek_span: Span,
 }
 
 impl<'a> StringReader<'a> {

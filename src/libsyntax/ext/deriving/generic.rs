@@ -192,75 +192,77 @@ mod ty;
 
 pub struct TraitDef<'a> {
     /// The span for the current #[deriving(Foo)] header.
-    span: Span,
+    pub span: Span,
 
-    attributes: Vec<ast::Attribute> ,
+    pub attributes: Vec<ast::Attribute>,
 
     /// Path of the trait, including any type parameters
-    path: Path<'a>,
+    pub path: Path<'a>,
 
     /// Additional bounds required of any type parameters of the type,
     /// other than the current trait
-    additional_bounds: Vec<Ty<'a>> ,
+    pub additional_bounds: Vec<Ty<'a>>,
 
     /// Any extra lifetimes and/or bounds, e.g. `D: serialize::Decoder`
-    generics: LifetimeBounds<'a>,
+    pub generics: LifetimeBounds<'a>,
 
-    methods: Vec<MethodDef<'a>> }
+    pub methods: Vec<MethodDef<'a>>,
+}
 
 
 pub struct MethodDef<'a> {
     /// name of the method
-    name: &'a str,
+    pub name: &'a str,
     /// List of generics, e.g. `R: rand::Rng`
-    generics: LifetimeBounds<'a>,
+    pub generics: LifetimeBounds<'a>,
 
     /// Whether there is a self argument (outer Option) i.e. whether
     /// this is a static function, and whether it is a pointer (inner
     /// Option)
-    explicit_self: Option<Option<PtrTy<'a>>>,
+    pub explicit_self: Option<Option<PtrTy<'a>>>,
 
     /// Arguments other than the self argument
-    args: Vec<Ty<'a>> ,
+    pub args: Vec<Ty<'a>>,
 
     /// Return type
-    ret_ty: Ty<'a>,
+    pub ret_ty: Ty<'a>,
 
     /// Whether to mark this as #[inline]
-    inline: bool,
+    pub inline: bool,
 
     /// if the value of the nonmatching enums is independent of the
     /// actual enum variants, i.e. can use _ => .. match.
-    const_nonmatching: bool,
+    pub const_nonmatching: bool,
 
-    combine_substructure: CombineSubstructureFunc<'a>
+    pub combine_substructure: CombineSubstructureFunc<'a>,
 }
 
 /// All the data about the data structure/method being derived upon.
 pub struct Substructure<'a> {
     /// ident of self
-    type_ident: Ident,
+    pub type_ident: Ident,
     /// ident of the method
-    method_ident: Ident,
+    pub method_ident: Ident,
     /// dereferenced access to any Self or Ptr(Self, _) arguments
-    self_args: &'a [@Expr],
+    pub self_args: &'a [@Expr],
     /// verbatim access to any other arguments
-    nonself_args: &'a [@Expr],
-    fields: &'a SubstructureFields<'a>
+    pub nonself_args: &'a [@Expr],
+    pub fields: &'a SubstructureFields<'a>
 }
 
 /// Summary of the relevant parts of a struct/enum field.
 pub struct FieldInfo {
-    span: Span,
+    pub span: Span,
     /// None for tuple structs/normal enum variants, Some for normal
     /// structs/struct enum variants.
-    name: Option<Ident>,
+    pub name: Option<Ident>,
     /// The expression corresponding to this field of `self`
     /// (specifically, a reference to it).
-    self_: @Expr,
+    pub self_: @Expr,
     /// The expressions corresponding to references to this field in
     /// the other Self arguments.
-    other: Vec<@Expr> }
+    pub other: Vec<@Expr>,
+}
 
 /// Fields for a static method
 pub enum StaticFields {

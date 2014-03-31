@@ -21,7 +21,7 @@ use std::slice;
 
 #[allow(missing_doc)]
 pub struct SmallIntMap<T> {
-    priv v: ~[Option<T>],
+    v: ~[Option<T>],
 }
 
 impl<V> Container for SmallIntMap<V> {
@@ -234,9 +234,9 @@ macro_rules! double_ended_iterator {
 }
 
 pub struct Entries<'a, T> {
-    priv front: uint,
-    priv back: uint,
-    priv iter: slice::Items<'a, Option<T>>
+    front: uint,
+    back: uint,
+    iter: slice::Items<'a, Option<T>>
 }
 
 iterator!(impl Entries -> (uint, &'a T), get_ref)
@@ -244,9 +244,9 @@ double_ended_iterator!(impl Entries -> (uint, &'a T), get_ref)
 pub type RevEntries<'a, T> = Rev<Entries<'a, T>>;
 
 pub struct MutEntries<'a, T> {
-    priv front: uint,
-    priv back: uint,
-    priv iter: slice::MutItems<'a, Option<T>>
+    front: uint,
+    back: uint,
+    iter: slice::MutItems<'a, Option<T>>
 }
 
 iterator!(impl MutEntries -> (uint, &'a mut T), get_mut_ref)

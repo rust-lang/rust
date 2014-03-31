@@ -40,8 +40,8 @@ pub struct ExplicitBug;
 // accepts span information for source-location
 // reporting.
 pub struct SpanHandler {
-    handler: Handler,
-    cm: codemap::CodeMap,
+    pub handler: Handler,
+    pub cm: codemap::CodeMap,
 }
 
 impl SpanHandler {
@@ -216,7 +216,7 @@ fn print_diagnostic(dst: &mut EmitterWriter,
 }
 
 pub struct EmitterWriter {
-    priv dst: Destination,
+    dst: Destination,
 }
 
 enum Destination {

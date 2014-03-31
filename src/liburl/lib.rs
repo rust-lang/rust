@@ -51,40 +51,40 @@ use collections::HashMap;
 #[deriving(Clone, Eq, TotalEq)]
 pub struct Url {
     /// The scheme part of a URL, such as `https` in the above example.
-    scheme: ~str,
+    pub scheme: ~str,
     /// A URL subcomponent for user authentication.  `username` in the above example.
-    user: Option<UserInfo>,
+    pub user: Option<UserInfo>,
     /// A domain name or IP address.  For example, `example.com`.
-    host: ~str,
+    pub host: ~str,
     /// A TCP port number, for example `8080`.
-    port: Option<~str>,
+    pub port: Option<~str>,
     /// The path component of a URL, for example `/foo/bar`.
-    path: ~str,
+    pub path: ~str,
     /// The query component of a URL.  `vec!((~"baz", ~"qux"))` represents the
     /// fragment `baz=qux` in the above example.
-    query: Query,
+    pub query: Query,
     /// The fragment component, such as `quz`.  Doesn't include the leading `#` character.
-    fragment: Option<~str>
+    pub fragment: Option<~str>
 }
 
 #[deriving(Clone, Eq)]
 pub struct Path {
     /// The path component of a URL, for example `/foo/bar`.
-    path: ~str,
+    pub path: ~str,
     /// The query component of a URL.  `vec!((~"baz", ~"qux"))` represents the
     /// fragment `baz=qux` in the above example.
-    query: Query,
+    pub query: Query,
     /// The fragment component, such as `quz`.  Doesn't include the leading `#` character.
-    fragment: Option<~str>
+    pub fragment: Option<~str>
 }
 
 /// An optional subcomponent of a URI authority component.
 #[deriving(Clone, Eq, TotalEq)]
 pub struct UserInfo {
     /// The user name.
-    user: ~str,
+    pub user: ~str,
     /// Password or other scheme-specific authentication information.
-    pass: Option<~str>
+    pub pass: Option<~str>
 }
 
 /// Represents the query component of a URI.

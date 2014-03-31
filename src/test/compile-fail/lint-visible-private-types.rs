@@ -46,8 +46,8 @@ fn y(_: Private<int>) {}
 
 
 pub struct Foo {
-    x: Private<int>, //~ ERROR private type in exported type signature
-    priv y: Private<int>
+    pub x: Private<int>, //~ ERROR private type in exported type signature
+    y: Private<int>
 }
 
 struct Bar {
@@ -57,8 +57,8 @@ struct Bar {
 pub enum Baz {
     Baz1(Private<int>), //~ ERROR private type in exported type signature
     Baz2 {
-        x: Private<int>, //~ ERROR private type in exported type signature
-        priv y: Private<int>
+        pub x: Private<int>, //~ ERROR private type in exported type signature
+        y: Private<int>
     },
 
     priv Baz3(Private<int>),

@@ -26,14 +26,14 @@ use uvll;
 
 pub struct FsRequest {
     req: *uvll::uv_fs_t,
-    priv fired: bool,
+    fired: bool,
 }
 
 pub struct FileWatcher {
-    priv loop_: Loop,
-    priv fd: c_int,
-    priv close: rtio::CloseBehavior,
-    priv home: HomeHandle,
+    loop_: Loop,
+    fd: c_int,
+    close: rtio::CloseBehavior,
+    home: HomeHandle,
 }
 
 impl FsRequest {

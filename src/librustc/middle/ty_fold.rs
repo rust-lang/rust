@@ -219,8 +219,8 @@ pub fn super_fold_trait_store<T:TypeFolder>(this: &mut T,
 // Some sample folders
 
 pub struct BottomUpFolder<'a> {
-    tcx: &'a ty::ctxt,
-    fldop: 'a |ty::t| -> ty::t,
+    pub tcx: &'a ty::ctxt,
+    pub fldop: 'a |ty::t| -> ty::t,
 }
 
 impl<'a> TypeFolder for BottomUpFolder<'a> {

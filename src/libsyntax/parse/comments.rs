@@ -31,9 +31,9 @@ pub enum CommentStyle {
 
 #[deriving(Clone)]
 pub struct Comment {
-    style: CommentStyle,
-    lines: Vec<~str> ,
-    pos: BytePos
+    pub style: CommentStyle,
+    pub lines: Vec<~str>,
+    pub pos: BytePos,
 }
 
 pub fn is_doc_comment(s: &str) -> bool {
@@ -338,8 +338,8 @@ fn consume_comment(rdr: &mut StringReader,
 
 #[deriving(Clone)]
 pub struct Literal {
-    lit: ~str,
-    pos: BytePos
+    pub lit: ~str,
+    pub pos: BytePos,
 }
 
 // it appears this function is called only from pprust... that's

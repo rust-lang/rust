@@ -23,10 +23,10 @@ use std::fmt::Show;
 
 #[allow(missing_doc)]
 pub struct BTree<K, V> {
-    priv root: Node<K, V>,
-    priv len: uint,
-    priv lower_bound: uint,
-    priv upper_bound: uint
+    root: Node<K, V>,
+    len: uint,
+    lower_bound: uint,
+    upper_bound: uint
 }
 
 impl<K: TotalOrd, V> BTree<K, V> {

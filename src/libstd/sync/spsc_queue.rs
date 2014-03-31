@@ -55,19 +55,19 @@ struct Node<T> {
 /// time.
 pub struct Queue<T> {
     // consumer fields
-    priv tail: *mut Node<T>, // where to pop from
-    priv tail_prev: AtomicPtr<Node<T>>, // where to pop from
+    tail: *mut Node<T>, // where to pop from
+    tail_prev: AtomicPtr<Node<T>>, // where to pop from
 
     // producer fields
-    priv head: *mut Node<T>,      // where to push to
-    priv first: *mut Node<T>,     // where to get new nodes from
-    priv tail_copy: *mut Node<T>, // between first/tail
+    head: *mut Node<T>,      // where to push to
+    first: *mut Node<T>,     // where to get new nodes from
+    tail_copy: *mut Node<T>, // between first/tail
 
     // Cache maintenance fields. Additions and subtractions are stored
     // separately in order to allow them to use nonatomic addition/subtraction.
-    priv cache_bound: uint,
-    priv cache_additions: AtomicUint,
-    priv cache_subtractions: AtomicUint,
+    cache_bound: uint,
+    cache_additions: AtomicUint,
+    cache_subtractions: AtomicUint,
 }
 
 impl<T: Send> Node<T> {

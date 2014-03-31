@@ -57,7 +57,9 @@
 // Don't link to std. We are std.
 #![no_std]
 
-#![deny(missing_doc)]
+// #![deny(missing_doc)] // NOTE: uncomment after a stage0 snap
+#![allow(missing_doc)] // NOTE: remove after a stage0 snap
+#![allow(visible_private_types)] // NOTE: remove after a stage0 snap
 
 // When testing libstd, bring in libuv as the I/O backend so tests can print
 // things and all of the std::io tests have an I/O interface to run on top

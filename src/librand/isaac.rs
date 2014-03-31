@@ -28,12 +28,12 @@ static RAND_SIZE: u32 = 1 << RAND_SIZE_LEN;
 /// [1]: Bob Jenkins, [*ISAAC: A fast cryptographic random number
 /// generator*](http://www.burtleburtle.net/bob/rand/isaacafa.html)
 pub struct IsaacRng {
-    priv cnt: u32,
-    priv rsl: [u32, .. RAND_SIZE],
-    priv mem: [u32, .. RAND_SIZE],
-    priv a: u32,
-    priv b: u32,
-    priv c: u32
+    cnt: u32,
+    rsl: [u32, .. RAND_SIZE],
+    mem: [u32, .. RAND_SIZE],
+    a: u32,
+    b: u32,
+    c: u32
 }
 static EMPTY: IsaacRng = IsaacRng {
     cnt: 0,
@@ -231,12 +231,12 @@ static RAND_SIZE_64: uint = 1 << RAND_SIZE_64_LEN;
 /// [1]: Bob Jenkins, [*ISAAC: A fast cryptographic random number
 /// generator*](http://www.burtleburtle.net/bob/rand/isaacafa.html)
 pub struct Isaac64Rng {
-    priv cnt: uint,
-    priv rsl: [u64, .. RAND_SIZE_64],
-    priv mem: [u64, .. RAND_SIZE_64],
-    priv a: u64,
-    priv b: u64,
-    priv c: u64,
+    cnt: uint,
+    rsl: [u64, .. RAND_SIZE_64],
+    mem: [u64, .. RAND_SIZE_64],
+    a: u64,
+    b: u64,
+    c: u64,
 }
 
 static EMPTY_64: Isaac64Rng = Isaac64Rng {

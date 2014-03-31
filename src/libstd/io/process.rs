@@ -10,8 +10,6 @@
 
 //! Bindings for executing child processes
 
-#![deny(missing_doc)]
-
 use prelude::*;
 
 use fmt;
@@ -53,23 +51,23 @@ use rt::rtio::{RtioProcess, IoFactory, LocalIo};
 /// assert!(child.wait().success());
 /// ```
 pub struct Process {
-    priv handle: ~RtioProcess:Send,
+    handle: ~RtioProcess:Send,
 
     /// Handle to the child's stdin, if the `stdin` field of this process's
     /// `ProcessConfig` was `CreatePipe`. By default, this handle is `Some`.
-    stdin: Option<io::PipeStream>,
+    pub stdin: Option<io::PipeStream>,
 
     /// Handle to the child's stdout, if the `stdout` field of this process's
     /// `ProcessConfig` was `CreatePipe`. By default, this handle is `Some`.
-    stdout: Option<io::PipeStream>,
+    pub stdout: Option<io::PipeStream>,
 
     /// Handle to the child's stderr, if the `stderr` field of this process's
     /// `ProcessConfig` was `CreatePipe`. By default, this handle is `Some`.
-    stderr: Option<io::PipeStream>,
+    pub stderr: Option<io::PipeStream>,
 
     /// Extra I/O handles as configured by the original `ProcessConfig` when
     /// this process was created. This is by default empty.
-    extra_io: ~[Option<io::PipeStream>],
+    pub extra_io: ~[Option<io::PipeStream>],
 }
 
 /// This configuration describes how a new process should be spawned. A blank
@@ -88,33 +86,33 @@ pub struct Process {
 /// ```
 pub struct ProcessConfig<'a> {
     /// Path to the program to run
-    program: &'a str,
+    pub program: &'a str,
 
     /// Arguments to pass to the program (doesn't include the program itself)
-    args: &'a [~str],
+    pub args: &'a [~str],
 
     /// Optional environment to specify for the program. If this is None, then
     /// it will inherit the current process's environment.
-    env: Option<&'a [(~str, ~str)]>,
+    pub env: Option<&'a [(~str, ~str)]>,
 
     /// Optional working directory for the new process. If this is None, then
     /// the current directory of the running process is inherited.
-    cwd: Option<&'a Path>,
+    pub cwd: Option<&'a Path>,
 
     /// Configuration for the child process's stdin handle (file descriptor 0).
     /// This field defaults to `CreatePipe(true, false)` so the input can be
     /// written to.
-    stdin: StdioContainer,
+    pub stdin: StdioContainer,
 
     /// Configuration for the child process's stdout handle (file descriptor 1).
     /// This field defaults to `CreatePipe(false, true)` so the output can be
     /// collected.
-    stdout: StdioContainer,
+    pub stdout: StdioContainer,
 
     /// Configuration for the child process's stdout handle (file descriptor 2).
     /// This field defaults to `CreatePipe(false, true)` so the output can be
     /// collected.
-    stderr: StdioContainer,
+    pub stderr: StdioContainer,
 
     /// Any number of streams/file descriptors/pipes may be attached to this
     /// process. This list enumerates the file descriptors and such for the
@@ -122,31 +120,31 @@ pub struct ProcessConfig<'a> {
     /// 3 and go to the length of this array. The first three file descriptors
     /// (stdin/stdout/stderr) are configured with the `stdin`, `stdout`, and
     /// `stderr` fields.
-    extra_io: &'a [StdioContainer],
+    pub extra_io: &'a [StdioContainer],
 
     /// Sets the child process's user id. This translates to a `setuid` call in
     /// the child process. Setting this value on windows will cause the spawn to
     /// fail. Failure in the `setuid` call on unix will also cause the spawn to
     /// fail.
-    uid: Option<uint>,
+    pub uid: Option<uint>,
 
     /// Similar to `uid`, but sets the group id of the child process. This has
     /// the same semantics as the `uid` field.
-    gid: Option<uint>,
+    pub gid: Option<uint>,
 
     /// If true, the child process is spawned in a detached state. On unix, this
     /// means that the child is the leader of a new process group.
-    detach: bool,
+    pub detach: bool,
 }
 
 /// The output of a finished process.
 pub struct ProcessOutput {
     /// The status (exit code) of the process.
-    status: ProcessExit,
+    pub status: ProcessExit,
     /// The data that the process wrote to stdout.
-    output: ~[u8],
+    pub output: ~[u8],
     /// The data that the process wrote to stderr.
-    error: ~[u8],
+    pub error: ~[u8],
 }
 
 /// Describes what to do with a standard io stream for a child process.

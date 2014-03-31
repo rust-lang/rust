@@ -69,14 +69,14 @@ pub type EncodeInlinedItem<'a> = 'a |ecx: &EncodeContext,
                                      ii: InlinedItemRef|;
 
 pub struct EncodeParams<'a> {
-    diag: &'a SpanHandler,
-    tcx: &'a ty::ctxt,
-    reexports2: middle::resolve::ExportMap2,
-    item_symbols: &'a RefCell<NodeMap<~str>>,
-    non_inlineable_statics: &'a RefCell<NodeSet>,
-    link_meta: &'a LinkMeta,
-    cstore: &'a cstore::CStore,
-    encode_inlined_item: EncodeInlinedItem<'a>,
+    pub diag: &'a SpanHandler,
+    pub tcx: &'a ty::ctxt,
+    pub reexports2: middle::resolve::ExportMap2,
+    pub item_symbols: &'a RefCell<NodeMap<~str>>,
+    pub non_inlineable_statics: &'a RefCell<NodeSet>,
+    pub link_meta: &'a LinkMeta,
+    pub cstore: &'a cstore::CStore,
+    pub encode_inlined_item: EncodeInlinedItem<'a>,
 }
 
 pub struct Stats {
@@ -96,16 +96,16 @@ pub struct Stats {
 }
 
 pub struct EncodeContext<'a> {
-    diag: &'a SpanHandler,
-    tcx: &'a ty::ctxt,
-    stats: @Stats,
-    reexports2: middle::resolve::ExportMap2,
-    item_symbols: &'a RefCell<NodeMap<~str>>,
-    non_inlineable_statics: &'a RefCell<NodeSet>,
-    link_meta: &'a LinkMeta,
-    cstore: &'a cstore::CStore,
-    encode_inlined_item: EncodeInlinedItem<'a>,
-    type_abbrevs: abbrev_map,
+    pub diag: &'a SpanHandler,
+    pub tcx: &'a ty::ctxt,
+    pub stats: @Stats,
+    pub reexports2: middle::resolve::ExportMap2,
+    pub item_symbols: &'a RefCell<NodeMap<~str>>,
+    pub non_inlineable_statics: &'a RefCell<NodeSet>,
+    pub link_meta: &'a LinkMeta,
+    pub cstore: &'a cstore::CStore,
+    pub encode_inlined_item: EncodeInlinedItem<'a>,
+    pub type_abbrevs: abbrev_map,
 }
 
 fn encode_name(ebml_w: &mut Encoder, name: Name) {

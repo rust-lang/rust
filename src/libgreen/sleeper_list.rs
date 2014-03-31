@@ -16,7 +16,7 @@ use std::sync::mpmc_bounded_queue::Queue;
 use sched::SchedHandle;
 
 pub struct SleeperList {
-    priv q: Queue<SchedHandle>,
+    q: Queue<SchedHandle>,
 }
 
 impl SleeperList {

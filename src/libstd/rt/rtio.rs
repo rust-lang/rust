@@ -61,11 +61,11 @@ pub trait RemoteCallback {
 /// libuv (it does translation to windows under the hood).
 pub struct FileOpenConfig {
     /// Path to file to be opened
-    path: Path,
+    pub path: Path,
     /// Flags for file access mode (as per open(2))
-    flags: int,
+    pub flags: int,
     /// File creation mode, ignored unless O_CREAT is passed as part of flags
-    priv mode: int
+    pub mode: int
 }
 
 /// Description of what to do when a file handle is closed
@@ -83,7 +83,7 @@ pub enum CloseBehavior {
 }
 
 pub struct LocalIo<'a> {
-    priv factory: &'a mut IoFactory,
+    factory: &'a mut IoFactory,
 }
 
 #[unsafe_destructor]

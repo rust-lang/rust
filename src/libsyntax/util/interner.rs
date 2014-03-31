@@ -23,8 +23,8 @@ use std::hash::Hash;
 use std::rc::Rc;
 
 pub struct Interner<T> {
-    priv map: RefCell<HashMap<T, Name>>,
-    priv vect: RefCell<Vec<T> >,
+    map: RefCell<HashMap<T, Name>>,
+    vect: RefCell<Vec<T> >,
 }
 
 // when traits can extend traits, we should extend index<Name,T> to get []
@@ -92,7 +92,7 @@ impl<T: TotalEq + Hash + Clone + 'static> Interner<T> {
 
 #[deriving(Clone, Eq, Hash, Ord)]
 pub struct RcStr {
-    priv string: Rc<~str>,
+    string: Rc<~str>,
 }
 
 impl TotalEq for RcStr {}
@@ -134,8 +134,8 @@ impl RcStr {
 // A StrInterner differs from Interner<String> in that it accepts
 // &str rather than RcStr, resulting in less allocation.
 pub struct StrInterner {
-    priv map: RefCell<HashMap<RcStr, Name>>,
-    priv vect: RefCell<Vec<RcStr> >,
+    map: RefCell<HashMap<RcStr, Name>>,
+    vect: RefCell<Vec<RcStr> >,
 }
 
 // when traits can extend traits, we should extend index<Name,T> to get []

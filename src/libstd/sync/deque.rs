@@ -86,14 +86,14 @@ struct Deque<T> {
 ///
 /// There may only be one worker per deque.
 pub struct Worker<T> {
-    priv deque: UnsafeArc<Deque<T>>,
+    deque: UnsafeArc<Deque<T>>,
 }
 
 /// The stealing half of the work-stealing deque. Stealers have access to the
 /// opposite end of the deque from the worker, and they only have access to the
 /// `steal` method.
 pub struct Stealer<T> {
-    priv deque: UnsafeArc<Deque<T>>,
+    deque: UnsafeArc<Deque<T>>,
 }
 
 /// When stealing some data, this is an enumeration of the possible outcomes.
@@ -116,7 +116,7 @@ pub enum Stolen<T> {
 /// will only use this structure when allocating a new buffer or deallocating a
 /// previous one.
 pub struct BufferPool<T> {
-    priv pool: Exclusive<~[~Buffer<T>]>,
+    pool: Exclusive<~[~Buffer<T>]>,
 }
 
 /// An internal buffer used by the chase-lev deque. This structure is actually

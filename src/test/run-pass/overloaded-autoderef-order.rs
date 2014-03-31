@@ -29,8 +29,8 @@ impl<X, Y> Deref<Y> for DerefWrapper<X, Y> {
 
 mod priv_test {
     pub struct DerefWrapperHideX<X, Y> {
-        priv x: X,
-        y: Y
+        x: X,
+        pub y: Y
     }
 
     impl<X, Y> DerefWrapperHideX<X, Y> {

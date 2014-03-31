@@ -184,7 +184,7 @@ pub struct Map {
     ///
     /// Also, indexing is pretty quick when you've got a vector and
     /// plain old integers.
-    priv map: RefCell<Vec<MapEntry> >
+    map: RefCell<Vec<MapEntry> >
 }
 
 impl Map {

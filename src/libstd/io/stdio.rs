@@ -293,7 +293,7 @@ pub fn println_args(fmt: &fmt::Arguments) {
 
 /// Representation of a reader of a standard input stream
 pub struct StdReader {
-    priv inner: StdSource
+    inner: StdSource
 }
 
 impl Reader for StdReader {
@@ -322,7 +322,7 @@ impl Reader for StdReader {
 
 /// Representation of a writer to a standard output stream
 pub struct StdWriter {
-    priv inner: StdSource
+    inner: StdSource
 }
 
 impl StdWriter {

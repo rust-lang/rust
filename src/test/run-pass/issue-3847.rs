@@ -9,7 +9,7 @@
 // except according to those terms.
 
 mod buildings {
-    pub struct Tower { height: uint }
+    pub struct Tower { pub height: uint }
 }
 
 pub fn main() {

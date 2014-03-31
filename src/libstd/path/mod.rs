@@ -488,8 +488,8 @@ pub trait GenericPathUnsafe {
 
 /// Helper struct for printing paths with format!()
 pub struct Display<'a, P> {
-    priv path: &'a P,
-    priv filename: bool
+    path: &'a P,
+    filename: bool
 }
 
 impl<'a, P: GenericPath> fmt::Show for Display<'a, P> {

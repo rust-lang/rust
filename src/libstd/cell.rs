@@ -21,8 +21,8 @@ use ty::Unsafe;
 
 /// A mutable memory location that admits only `Copy` data.
 pub struct Cell<T> {
-    priv value: Unsafe<T>,
-    priv noshare: marker::NoShare,
+    value: Unsafe<T>,
+    noshare: marker::NoShare,
 }
 
 impl<T:Copy> Cell<T> {
@@ -69,10 +69,10 @@ impl<T: fmt::Show> fmt::Show for Cell<T> {
 
 /// A mutable memory location with dynamically checked borrow rules
 pub struct RefCell<T> {
-    priv value: Unsafe<T>,
-    priv borrow: BorrowFlag,
-    priv nocopy: marker::NoCopy,
-    priv noshare: marker::NoShare,
+    value: Unsafe<T>,
+    borrow: BorrowFlag,
+    nocopy: marker::NoCopy,
+    noshare: marker::NoShare,
 }
 
 // Values [1, MAX-1] represent the number of `Ref` active
@@ -202,7 +202,7 @@ impl<T: Eq> Eq for RefCell<T> {
 
 /// Wraps a borrowed reference to a value in a `RefCell` box.
 pub struct Ref<'b, T> {
-    priv parent: &'b RefCell<T>
+    parent: &'b RefCell<T>
 }
 
 #[unsafe_destructor]
@@ -222,7 +222,7 @@ impl<'b, T> Deref<T> for Ref<'b, T> {
 
 /// Wraps a mutable borrowed reference to a value in a `RefCell` box.
 pub struct RefMut<'b, T> {
-    priv parent: &'b mut RefCell<T>
+    parent: &'b mut RefCell<T>
 }
 
 #[unsafe_destructor]

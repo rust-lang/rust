@@ -56,10 +56,10 @@ struct LruEntry<K, V> {
 
 /// An LRU Cache.
 pub struct LruCache<K, V> {
-    priv map: HashMap<KeyRef<K>, ~LruEntry<K, V>>,
-    priv max_size: uint,
-    priv head: *mut LruEntry<K, V>,
-    priv tail: *mut LruEntry<K, V>,
+    map: HashMap<KeyRef<K>, ~LruEntry<K, V>>,
+    max_size: uint,
+    head: *mut LruEntry<K, V>,
+    tail: *mut LruEntry<K, V>,
 }
 
 impl<S, K: Hash<S>> Hash<S> for KeyRef<K> {

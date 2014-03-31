@@ -190,15 +190,15 @@ fn maketest(s: &str, cratename: &str, loose_feature_gating: bool) -> ~str {
 }
 
 pub struct Collector {
-    tests: Vec<testing::TestDescAndFn>,
-    priv names: Vec<~str>,
-    priv libs: HashSet<Path>,
-    priv cnt: uint,
-    priv use_headers: bool,
-    priv current_header: Option<~str>,
-    priv cratename: ~str,
+    pub tests: Vec<testing::TestDescAndFn>,
+    names: Vec<~str>,
+    libs: HashSet<Path>,
+    cnt: uint,
+    use_headers: bool,
+    current_header: Option<~str>,
+    cratename: ~str,
 
-    priv loose_feature_gating: bool
+    loose_feature_gating: bool
 }
 
 impl Collector {

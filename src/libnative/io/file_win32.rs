@@ -34,7 +34,7 @@ struct Inner {
 }
 
 pub struct FileDesc {
-    priv inner: UnsafeArc<Inner>
+    inner: UnsafeArc<Inner>
 }
 
 impl FileDesc {

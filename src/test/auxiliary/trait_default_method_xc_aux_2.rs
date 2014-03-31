@@ -13,7 +13,7 @@
 extern crate aux = "trait_default_method_xc_aux";
 use aux::A;
 
-pub struct a_struct { x: int }
+pub struct a_struct { pub x: int }
 
 impl A for a_struct {
     fn f(&self) -> int { 10 }

@@ -207,8 +207,8 @@ pub struct BorrowStats {
 // is T, which is not a box.
 #[deriving(Eq, TotalEq, Hash)]
 pub struct root_map_key {
-    id: ast::NodeId,
-    derefs: uint
+    pub id: ast::NodeId,
+    pub derefs: uint
 }
 
 pub type BckResult<T> = Result<T, BckError>;
@@ -378,7 +378,7 @@ impl Repr for RestrictionSet {
 // uncovered after a certain number of auto-derefs.
 
 pub struct RootInfo {
-    scope: ast::NodeId,
+    pub scope: ast::NodeId,
 }
 
 pub type root_map = @RefCell<HashMap<root_map_key, RootInfo>>;
