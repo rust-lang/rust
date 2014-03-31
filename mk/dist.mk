@@ -53,6 +53,7 @@ PKG_FILES := \
       driver                                   \
       etc                                      \
       $(foreach crate,$(CRATES),lib$(crate))   \
+      libbacktrace                             \
       rt                                       \
       rustllvm                                 \
       snapshots.txt                            \
