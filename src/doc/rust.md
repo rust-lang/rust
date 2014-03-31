@@ -826,14 +826,14 @@ Use declarations support a number of convenient shortcuts:
 An example of `use` declarations:
 
 ~~~~
-use std::num::sin;
+use std::iter::range_step;
 use std::option::{Some, None};
 
 # fn foo<T>(_: T){}
 
 fn main() {
-    // Equivalent to 'std::num::sin(1.0);'
-    sin(1.0);
+    // Equivalent to 'std::iter::range_step(0, 10, 2);'
+    range_step(0, 10, 2);
 
     // Equivalent to 'foo(~[std::option::Some(1.0), std::option::None]);'
     foo(~[Some(1.0), None]);
