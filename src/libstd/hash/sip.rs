@@ -28,7 +28,9 @@ use clone::Clone;
 use container::Container;
 use default::Default;
 use io::{IoResult, Writer};
+use io::extensions::u64_from_le_bytes;
 use iter::Iterator;
+use mem::size_of_val;
 use result::Ok;
 use slice::ImmutableVector;
 
@@ -43,25 +45,13 @@ pub struct SipState {
     priv v1: u64,
     priv v2: u64,
     priv v3: u64,
-    priv tail: [u8, ..8], // unprocessed bytes
+    priv tail: u64, // unprocessed bytes, stored in little endian format
     priv ntail: uint,  // how many bytes in tail are valid
 }
 
 // sadly, these macro definitions can't appear later,
 // because they're needed in the following defs;
 // this design could be improved.
-
-macro_rules! u8to64_le (
-    ($buf:expr, $i:expr) =>
-    ($buf[0+$i] as u64 |
-     $buf[1+$i] as u64 << 8 |
-     $buf[2+$i] as u64 << 16 |
-     $buf[3+$i] as u64 << 24 |
-     $buf[4+$i] as u64 << 32 |
-     $buf[5+$i] as u64 << 40 |
-     $buf[6+$i] as u64 << 48 |
-     $buf[7+$i] as u64 << 56)
-)
 
 macro_rules! rotl (
     ($x:expr, $b:expr) =>
@@ -77,6 +67,34 @@ macro_rules! compress (
         $v0 += $v3; $v3 = rotl!($v3, 21); $v3 ^= $v0;
         $v2 += $v1; $v1 = rotl!($v1, 17); $v1 ^= $v2;
         $v2 = rotl!($v2, 32);
+    })
+)
+
+macro_rules! make_write_le (
+    () =>
+    ({
+        self.tail |= n as u64 << 8*self.ntail;
+        self.ntail += size_of_val(&n);
+
+        if self.ntail >= 8 {
+            let m = self.tail;
+
+            self.v3 ^= m;
+            compress!(self.v0, self.v1, self.v2, self.v3);
+            compress!(self.v0, self.v1, self.v2, self.v3);
+            self.v0 ^= m;
+
+            self.ntail -= 8;
+            if self.ntail == 0 {
+                self.tail = 0;
+            } else {
+                self.tail = n as u64 >> 64 - 8*self.ntail;
+            }
+        }
+
+        self.length += size_of_val(&n);
+
+        Ok(())
     })
 )
 
@@ -98,7 +116,7 @@ impl SipState {
             v1: 0,
             v2: 0,
             v3: 0,
-            tail: [ 0, 0, 0, 0, 0, 0, 0, 0 ],
+            tail: 0,
             ntail: 0,
         };
         state.reset();
@@ -114,6 +132,7 @@ impl SipState {
         self.v2 = self.k0 ^ 0x6c7967656e657261;
         self.v3 = self.k1 ^ 0x7465646279746573;
         self.ntail = 0;
+        self.tail = 0;
     }
 
     /// Return the computed hash.
@@ -124,15 +143,7 @@ impl SipState {
         let mut v2 = self.v2;
         let mut v3 = self.v3;
 
-        let mut b : u64 = (self.length as u64 & 0xff) << 56;
-
-        if self.ntail > 0 { b |= self.tail[0] as u64 <<  0; }
-        if self.ntail > 1 { b |= self.tail[1] as u64 <<  8; }
-        if self.ntail > 2 { b |= self.tail[2] as u64 << 16; }
-        if self.ntail > 3 { b |= self.tail[3] as u64 << 24; }
-        if self.ntail > 4 { b |= self.tail[4] as u64 << 32; }
-        if self.ntail > 5 { b |= self.tail[5] as u64 << 40; }
-        if self.ntail > 6 { b |= self.tail[6] as u64 << 48; }
+        let b : u64 = ((self.length as u64 & 0xff) << 56) | self.tail;
 
         v3 ^= b;
         compress!(v0, v1, v2, v3);
@@ -161,22 +172,12 @@ impl Writer for SipState {
             needed = 8 - self.ntail;
 
             if length < needed {
-                let mut t = 0;
-                while t < length {
-                    self.tail[self.ntail+t] = msg[t];
-                    t += 1;
-                }
+                self.tail |= u64_from_le_bytes(msg, 0, length) << 8*self.ntail;
                 self.ntail += length;
                 return Ok(());
             }
 
-            let mut t = 0;
-            while t < needed {
-                self.tail[self.ntail+t] = msg[t];
-                t += 1;
-            }
-
-            let m = u8to64_le!(self.tail, 0);
+            let m = self.tail | u64_from_le_bytes(msg, 0, needed) << 8*self.ntail;
 
             self.v3 ^= m;
             compress!(self.v0, self.v1, self.v2, self.v3);
@@ -184,6 +185,7 @@ impl Writer for SipState {
             self.v0 ^= m;
 
             self.ntail = 0;
+            self.tail = 0;
         }
 
         // Buffered tail is now flushed, process new input.
@@ -193,7 +195,7 @@ impl Writer for SipState {
 
         let mut i = needed;
         while i < end {
-            let mi = u8to64_le!(msg, i);
+            let mi = u64_from_le_bytes(msg, i, 8);
 
             self.v3 ^= mi;
             compress!(self.v0, self.v1, self.v2, self.v3);
@@ -203,14 +205,34 @@ impl Writer for SipState {
             i += 8;
         }
 
-        let mut t = 0u;
-        while t < left {
-            self.tail[t] = msg[i+t];
-            t += 1
-        }
+        self.tail = u64_from_le_bytes(msg, i, left);
         self.ntail = left;
 
         Ok(())
+    }
+
+    // We override these functions because by default, they convert `n` to bytes (possibly with an
+    // expensive byte swap) then convert those bytes back into a `u64` (possibly with another byte swap which
+    // reverses the first). Additionally, in these cases, we know that at most one flush will be
+    // needed, and so can optimize appropriately.
+    #[inline]
+    fn write_u8(&mut self, n: u8) -> IoResult<()> {
+        make_write_le!()
+    }
+
+    #[inline]
+    fn write_le_u16(&mut self, n: u16) -> IoResult<()> {
+        make_write_le!()
+    }
+
+    #[inline]
+    fn write_le_u32(&mut self, n: u32) -> IoResult<()> {
+        make_write_le!()
+    }
+
+    #[inline]
+    fn write_le_u64(&mut self, n: u64) -> IoResult<()> {
+        make_write_le!()
     }
 }
 
@@ -288,6 +310,7 @@ pub fn hash_with_keys<T: Hash<SipState>>(k0: u64, k1: u64, value: &T) -> u64 {
 mod tests {
     extern crate test;
     use io::Writer;
+    use io::extensions::u64_from_le_bytes;
     use iter::Iterator;
     use num::ToStrRadix;
     use option::{Some, None};
@@ -417,7 +440,7 @@ mod tests {
 
         while t < 64 {
             debug!("siphash test {}", t);
-            let vec = u8to64_le!(vecs[t], 0);
+            let vec = u64_from_le_bytes(vecs[t], 0, 8);
             let out = hash_with_keys(k0, k1, &Bytes(buf.as_slice()));
             debug!("got {:?}, expected {:?}", out, vec);
             assert_eq!(vec, out);
@@ -520,6 +543,19 @@ mod tests {
         let s = "foo";
         bh.iter(|| {
             assert_eq!(hash(&s), 16262950014981195938);
+        })
+    }
+
+    #[bench]
+    fn bench_long_str(bh: &mut BenchHarness) {
+        let s = "Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor \
+                incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud \
+                exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute \
+                irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla \
+                pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui \
+                officia deserunt mollit anim id est laborum.";
+        bh.iter(|| {
+            assert_eq!(hash(&s), 17717065544121360093);
         })
     }
 
