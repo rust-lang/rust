@@ -445,8 +445,8 @@ pub fn set_llvm_fn_attrs(attrs: &[ast::Attribute], llfn: ValueRef) {
     }
 
     // Add the no-split-stack attribute if requested
-    if contains_name(attrs, "no_split_stack") {
-        set_no_split_stack(llfn);
+    if !contains_name(attrs, "no_split_stack") {
+        set_split_stack(llfn);
     }
 
     if contains_name(attrs, "cold") {
@@ -458,8 +458,8 @@ pub fn set_always_inline(f: ValueRef) {
     lib::llvm::SetFunctionAttribute(f, lib::llvm::AlwaysInlineAttribute)
 }
 
-pub fn set_no_split_stack(f: ValueRef) {
-    "no-split-stack".with_c_str(|buf| {
+pub fn set_split_stack(f: ValueRef) {
+    "split-stack".with_c_str(|buf| {
         unsafe { llvm::LLVMAddFunctionAttrString(f, buf); }
     })
 }

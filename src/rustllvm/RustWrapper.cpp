@@ -129,9 +129,14 @@ extern "C" LLVMValueRef LLVMBuildAtomicCmpXchg(LLVMBuilderRef B,
                                                LLVMValueRef target,
                                                LLVMValueRef old,
                                                LLVMValueRef source,
-                                               AtomicOrdering order) {
+                                               AtomicOrdering order,
+                                               AtomicOrdering failure_order) {
     return wrap(unwrap(B)->CreateAtomicCmpXchg(unwrap(target), unwrap(old),
-                                               unwrap(source), order));
+                                               unwrap(source), order
+#if LLVM_VERSION_MINOR >= 5
+                                               , failure_order
+#endif
+                                               ));
 }
 extern "C" LLVMValueRef LLVMBuildAtomicFence(LLVMBuilderRef B, AtomicOrdering order) {
     return wrap(unwrap(B)->CreateFence(order));
@@ -289,10 +294,9 @@ extern "C" LLVMValueRef LLVMDIBuilderCreateStructType(
         RunTimeLang,
         unwrapDI<DIType>(VTableHolder)
 #if LLVM_VERSION_MINOR >= 5
-        ,UniqueId));
-#else
-        ));
+        ,UniqueId
 #endif
+        ));
 }
 
 extern "C" LLVMValueRef LLVMDIBuilderCreateMemberType(
@@ -318,10 +322,15 @@ extern "C" LLVMValueRef LLVMDIBuilderCreateLexicalBlock(
     LLVMValueRef Scope,
     LLVMValueRef File,
     unsigned Line,
-    unsigned Col) {
+    unsigned Col,
+    unsigned Discriminator) {
     return wrap(Builder->createLexicalBlock(
         unwrapDI<DIDescriptor>(Scope),
-        unwrapDI<DIFile>(File), Line, Col));
+        unwrapDI<DIFile>(File), Line, Col
+#if LLVM_VERSION_MINOR >= 5
+        , Discriminator
+#endif
+        ));
 }
 
 extern "C" LLVMValueRef LLVMDIBuilderCreateStaticVariable(
@@ -477,15 +486,16 @@ extern "C" LLVMValueRef LLVMDIBuilderCreateUnionType(
         unwrapDI<DIArray>(Elements),
         RunTimeLang
 #if LLVM_VERSION_MINOR >= 5
-        ,UniqueId));
-#else
-        ));
+        ,UniqueId
 #endif
+        ));
 }
 
+#if LLVM_VERSION_MINOR < 5
 extern "C" void LLVMSetUnnamedAddr(LLVMValueRef Value, LLVMBool Unnamed) {
     unwrap<GlobalValue>(Value)->setUnnamedAddr(Unnamed);
 }
+#endif
 
 extern "C" LLVMValueRef LLVMDIBuilderCreateTemplateTypeParameter(
     DIBuilderRef Builder,
@@ -620,6 +630,23 @@ LLVMRustLinkInExternalBitcode(LLVMModuleRef dst, char *bc, size_t len) {
 }
 #endif
 
+#if LLVM_VERSION_MINOR >= 5
+extern "C" void*
+LLVMRustOpenArchive(char *path) {
+    std::unique_ptr<MemoryBuffer> buf;
+    error_code err = MemoryBuffer::getFile(path, buf);
+    if (err) {
+        LLVMRustError = err.message().c_str();
+        return NULL;
+    }
+    Archive *ret = new Archive(buf.release(), err);
+    if (err) {
+        LLVMRustError = err.message().c_str();
+        return NULL;
+    }
+    return ret;
+}
+#else
 extern "C" void*
 LLVMRustOpenArchive(char *path) {
     OwningPtr<MemoryBuffer> buf;
@@ -635,6 +662,7 @@ LLVMRustOpenArchive(char *path) {
     }
     return ret;
 }
+#endif
 
 extern "C" const char*
 LLVMRustArchiveReadSection(Archive *ar, char *name, size_t *size) {

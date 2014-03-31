@@ -814,8 +814,9 @@ pub fn Resume(cx: &Block, exn: ValueRef) -> ValueRef {
 // Atomic Operations
 pub fn AtomicCmpXchg(cx: &Block, dst: ValueRef,
                      cmp: ValueRef, src: ValueRef,
-                     order: AtomicOrdering) -> ValueRef {
-    B(cx).atomic_cmpxchg(dst, cmp, src, order)
+                     order: AtomicOrdering,
+                     failure_order: AtomicOrdering) -> ValueRef {
+    B(cx).atomic_cmpxchg(dst, cmp, src, order, failure_order)
 }
 pub fn AtomicRMW(cx: &Block, op: AtomicBinOp,
                  dst: ValueRef, src: ValueRef,

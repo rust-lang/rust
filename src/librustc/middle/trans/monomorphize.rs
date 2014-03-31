@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-use back::link::mangle_exported_name;
+use back::link::exported_name;
 use driver::session;
 use lib::llvm::ValueRef;
 use middle::trans::base::{set_llvm_fn_attrs, set_inline_hint};
@@ -27,6 +26,7 @@ use syntax::abi;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util::local_def;
+use std::hash::sip;
 
 pub fn monomorphic_fn(ccx: &CrateContext,
                       fn_id: ast::DefId,
@@ -178,7 +178,8 @@ pub fn monomorphic_fn(ccx: &CrateContext,
     }
 
     let s = ccx.tcx.map.with_path(fn_id.node, |path| {
-        mangle_exported_name(ccx, path, mono_ty, fn_id.node)
+        exported_name(path, format!("h{}", sip::hash(&(hash_id, mono_ty))),
+                      ccx.link_meta.crateid.version_or_default())
     });
     debug!("monomorphize_fn mangled to {}", s);
 

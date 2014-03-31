@@ -949,9 +949,11 @@ impl<'a> Builder<'a> {
     // Atomic Operations
     pub fn atomic_cmpxchg(&self, dst: ValueRef,
                          cmp: ValueRef, src: ValueRef,
-                         order: AtomicOrdering) -> ValueRef {
+                         order: AtomicOrdering,
+                         failure_order: AtomicOrdering) -> ValueRef {
         unsafe {
-            llvm::LLVMBuildAtomicCmpXchg(self.llbuilder, dst, cmp, src, order)
+            llvm::LLVMBuildAtomicCmpXchg(self.llbuilder, dst, cmp, src,
+                                         order, failure_order)
         }
     }
     pub fn atomic_rmw(&self, op: AtomicBinOp,
