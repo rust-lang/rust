@@ -248,6 +248,7 @@ distcheck-tar-bins: dist-tar-bins
 	$(Q)mkdir -p tmp/distcheck/tarbininstall
 	$(Q)sh tmp/distcheck/$(PKG_NAME)-$(CFG_BUILD)/install.sh --prefix=tmp/distcheck/tarbininstall
 	$(Q)tmp/distcheck/tarbininstall/bin/rustc --version
+	$(Q)sh tmp/distcheck/$(PKG_NAME)-$(CFG_BUILD)/install.sh --prefix=tmp/distcheck/tarbininstall --uninstall
 	$(Q)rm -Rf tmp/distcheck/$(PKG_NAME)-$(CFG_BUILD)
 	$(Q)rm -Rf tmp/distcheck/tarbininstall
 
