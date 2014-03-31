@@ -17,12 +17,12 @@ endif
 install: dist-install-dir-$(CFG_BUILD)
 	$(Q)sh tmp/dist/$(PKG_NAME)-$(CFG_BUILD)/install.sh --prefix="$(DESTDIR)$(CFG_PREFIX)" --libdir="$(DESTDIR)$(CFG_LIBDIR)" --mandir="$(DESTDIR)$(CFG_MANDIR)" "$(MAYBE_DISABLE_VERIFY)"
 # Remove tmp files while we can because they may have been created under sudo
-	$(Q)rm -R tmp/dist/$(PKG_NAME)-$(CFG_BUILD)
+	$(Q)rm -R tmp/dist
 
 uninstall: dist-install-dir-$(CFG_BUILD)
 	$(Q)sh tmp/dist/$(PKG_NAME)-$(CFG_BUILD)/install.sh --uninstall --prefix="$(DESTDIR)$(CFG_PREFIX)" --libdir="$(DESTDIR)$(CFG_LIBDIR)" --mandir="$(DESTDIR)$(CFG_MANDIR)"
 # Remove tmp files while we can because they may have been created under sudo
-	$(Q)rm -R tmp/dist/$(PKG_NAME)-$(CFG_BUILD)
+	$(Q)rm -R tmp/dist
 
 
 ######################################################################
