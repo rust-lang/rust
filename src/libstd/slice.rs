@@ -2891,7 +2891,7 @@ impl<T> Drop for MoveItems<T> {
 pub type RevMoveItems<T> = Rev<MoveItems<T>>;
 
 impl<A> FromIterator<A> for ~[A] {
-    fn from_iterator<T: Iterator<A>>(mut iterator: T) -> ~[A] {
+    fn from_iter<T: Iterator<A>>(mut iterator: T) -> ~[A] {
         let (lower, _) = iterator.size_hint();
         let mut xs = with_capacity(lower);
         for x in iterator {

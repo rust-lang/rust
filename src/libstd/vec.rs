@@ -305,7 +305,7 @@ impl<T:Clone> Clone for Vec<T> {
 }
 
 impl<T> FromIterator<T> for Vec<T> {
-    fn from_iterator<I:Iterator<T>>(mut iterator: I) -> Vec<T> {
+    fn from_iter<I:Iterator<T>>(mut iterator: I) -> Vec<T> {
         let (lower, _) = iterator.size_hint();
         let mut vector = Vec::with_capacity(lower);
         for element in iterator {

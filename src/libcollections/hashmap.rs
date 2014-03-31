@@ -1356,7 +1356,7 @@ pub type Values<'a, K, V> =
     iter::Map<'static, (&'a K, &'a V), &'a V, Entries<'a, K, V>>;
 
 impl<K: TotalEq + Hash<S>, V, S, H: Hasher<S> + Default> FromIterator<(K, V)> for HashMap<K, V, H> {
-    fn from_iterator<T: Iterator<(K, V)>>(iter: T) -> HashMap<K, V, H> {
+    fn from_iter<T: Iterator<(K, V)>>(iter: T) -> HashMap<K, V, H> {
         let (lower, _) = iter.size_hint();
         let mut map = HashMap::with_capacity_and_hasher(lower, Default::default());
         map.extend(iter);
@@ -1540,7 +1540,7 @@ impl<T: TotalEq + Hash<S> + fmt::Show, S, H: Hasher<S>> fmt::Show for HashSet<T,
 }
 
 impl<T: TotalEq + Hash<S>, S, H: Hasher<S> + Default> FromIterator<T> for HashSet<T, H> {
-    fn from_iterator<I: Iterator<T>>(iter: I) -> HashSet<T, H> {
+    fn from_iter<I: Iterator<T>>(iter: I) -> HashSet<T, H> {
         let (lower, _) = iter.size_hint();
         let mut set = HashSet::with_capacity_and_hasher(lower, Default::default());
         set.extend(iter);
