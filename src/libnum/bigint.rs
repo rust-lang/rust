@@ -28,7 +28,6 @@ use rand::Rng;
 use std::str;
 use std::uint;
 use std::{i64, u64};
-use std::vec;
 
 /**
 A `BigDigit` is a `BigUint`'s composing element.
@@ -747,8 +746,7 @@ impl BigUint {
     fn shl_unit(&self, n_unit: uint) -> BigUint {
         if n_unit == 0 || self.is_zero() { return (*self).clone(); }
 
-        return BigUint::new(vec::append(Vec::from_elem(n_unit, ZERO_BIG_DIGIT),
-                                           self.data.as_slice()));
+        BigUint::new(Vec::from_elem(n_unit, ZERO_BIG_DIGIT).append(self.data.as_slice()))
     }
 
     #[inline]

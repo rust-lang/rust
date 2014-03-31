@@ -13,7 +13,7 @@ use std::vec;
 pub fn main() {
     let a: Vec<int> = vec!(1, 2, 3, 4, 5);
     let b: Vec<int> = vec!(6, 7, 8, 9, 0);
-    let v: Vec<int> = vec::append(a, b.as_slice());
+    let v: Vec<int> = a.append(b.as_slice());
     println!("{}", *v.get(9));
     assert_eq!(*v.get(0), 1);
     assert_eq!(*v.get(7), 8);

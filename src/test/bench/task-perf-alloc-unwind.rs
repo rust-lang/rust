@@ -97,8 +97,7 @@ fn recurse_or_fail(depth: int, st: Option<State>) {
                 unique: ~Cons((), @*st.unique),
                 tuple: (@Cons((), st.tuple.ref0().clone()),
                         ~Cons((), @*st.tuple.ref1().clone())),
-                vec: vec::append(st.vec.clone(),
-                     &[@Cons((), *st.vec.last().unwrap())]),
+                vec: st.vec.clone().append(&[@Cons((), *st.vec.last().unwrap())]),
                 res: r(@Cons((), st.res._l))
             }
           }
