@@ -732,8 +732,8 @@ impl<'a> ::Encoder<io::IoError> for PrettyEncoder<'a> {
     }
 }
 
-impl<E: ::Encoder<io::IoError>> Encodable<E, io::IoError> for Json {
-    fn encode(&self, e: &mut E) -> EncodeResult {
+impl<E: ::Encoder<S>, S> Encodable<E, S> for Json {
+    fn encode(&self, e: &mut E) -> Result<(), S> {
         match *self {
             Number(v) => v.encode(e),
             String(ref v) => v.encode(e),
