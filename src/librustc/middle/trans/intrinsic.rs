@@ -223,10 +223,23 @@ pub fn trans_intrinsic(ccx: &CrateContext,
 
         match *split.get(1) {
             "cxchg" => {
+                // See include/llvm/IR/Instructions.h for their implementation
+                // of this, I assume that it's good enough for us to use for
+                // now.
+                let strongest_failure_ordering = match order {
+                    lib::llvm::NotAtomic | lib::llvm::Unordered =>
+                        ccx.sess().fatal("cmpxchg must be atomic"),
+                    lib::llvm::Monotonic | lib::llvm::Release =>
+                        lib::llvm::Monotonic,
+                    lib::llvm::Acquire | lib::llvm::AcquireRelease =>
+                        lib::llvm::Acquire,
+                    lib::llvm::SequentiallyConsistent =>
+                        lib::llvm::SequentiallyConsistent,
+                };
                 let old = AtomicCmpXchg(bcx, get_param(decl, first_real_arg),
                                         get_param(decl, first_real_arg + 1u),
                                         get_param(decl, first_real_arg + 2u),
-                                        order);
+                                        order, strongest_failure_ordering);
                 Ret(bcx, old);
             }
             "load" => {
