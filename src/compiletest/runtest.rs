@@ -33,7 +33,6 @@ use std::os;
 use std::str;
 use std::task;
 use std::slice;
-use std::vec;
 use test::MetricMap;
 
 pub fn run(config: config, testfile: ~str) {
@@ -683,7 +682,7 @@ fn compile_test_(config: &config, props: &TestProps,
     let link_args = vec!(~"-L", aux_dir.as_str().unwrap().to_owned());
     let args = make_compile_args(config,
                                  props,
-                                 vec::append(link_args, extra_args),
+                                 link_args.append(extra_args),
                                  |a, b| ThisFile(make_exe_name(a, b)), testfile);
     compose_and_run_compiler(config, props, testfile, args, None)
 }
@@ -734,8 +733,7 @@ fn compose_and_run_compiler(
         let aux_args =
             make_compile_args(config,
                               &aux_props,
-                              vec::append(crate_type,
-                                             extra_link_args.as_slice()),
+                              crate_type.append(extra_link_args.as_slice()),
                               |a,b| {
                                   let f = make_lib_name(a, b, testfile);
                                   ThisDirectory(f.dir_path())
@@ -1108,8 +1106,7 @@ fn compile_test_and_save_bitcode(config: &config, props: &TestProps,
     let llvm_args = vec!(~"--emit=obj", ~"--crate-type=lib", ~"-C", ~"save-temps");
     let args = make_compile_args(config,
                                  props,
-                                 vec::append(link_args,
-                                                llvm_args.as_slice()),
+                                 link_args.append(llvm_args.as_slice()),
                                  |a, b| ThisFile(make_o_name(a, b)), testfile);
     compose_and_run_compiler(config, props, testfile, args, None)
 }

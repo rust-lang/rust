@@ -598,10 +598,8 @@ mod test {
             assert!(res.is_err(),
                     "Op {} succeeded incorrectly with 0 stack entries", *cap);
             let p = if *cap == "%s" || *cap == "%l" { String(~"foo") } else { Number(97) };
-            let res = expand(vec::append(bytes!("%p1").iter()
-                                                         .map(|x| *x)
-                                                         .collect(),
-                                            cap.as_bytes()).as_slice(),
+            let res = expand(bytes!("%p1").iter().map(|x| *x).collect::<Vec<_>>()
+                             .append(cap.as_bytes()).as_slice(),
                              [p],
                              vars);
             assert!(res.is_ok(),
@@ -612,18 +610,14 @@ mod test {
             let res = expand(cap.as_bytes(), [], vars);
             assert!(res.is_err(),
                     "Binop {} succeeded incorrectly with 0 stack entries", *cap);
-            let res = expand(vec::append(bytes!("%{1}").iter()
-                                                          .map(|x| *x)
-                                                          .collect(),
-                                             cap.as_bytes()).as_slice(),
+            let res = expand(bytes!("%{1}").iter().map(|x| *x).collect::<Vec<_>>()
+                             .append(cap.as_bytes()).as_slice(),
                               [],
                               vars);
             assert!(res.is_err(),
                     "Binop {} succeeded incorrectly with 1 stack entry", *cap);
-            let res = expand(vec::append(bytes!("%{1}%{2}").iter()
-                                                              .map(|x| *x)
-                                                              .collect(),
-                                            cap.as_bytes()).as_slice(),
+            let res = expand(bytes!("%{1}%{2}").iter().map(|x| *x).collect::<Vec<_>>()
+                             .append(cap.as_bytes()).as_slice(),
                              [],
                              vars);
             assert!(res.is_ok(),

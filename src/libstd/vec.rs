@@ -166,6 +166,22 @@ impl<T> Vec<T> {
 }
 
 impl<T: Clone> Vec<T> {
+    /// Iterates over the `second` vector, copying each element and appending it to
+    /// the `first`. Afterwards, the `first` is then returned for use again.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let vec = vec!(1, 2);
+    /// let vec = vec.append([3, 4]);
+    /// assert_eq!(vec, vec!(1, 2, 3, 4));
+    /// ```
+    #[inline]
+    pub fn append(mut self, second: &[T]) -> Vec<T> {
+        self.push_all(second);
+        self
+    }
+
     /// Constructs a `Vec` by cloning elements of a slice.
     ///
     /// # Example
@@ -516,6 +532,22 @@ impl<T> Vec<T> {
             move_val_init(&mut *end, value);
             self.len += 1;
         }
+    }
+
+    /// Appends one element to the vector provided. The vector itself is then
+    /// returned for use again.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let vec = vec!(1, 2);
+    /// let vec = vec.append_one(3);
+    /// assert_eq!(vec, vec!(1, 2, 3));
+    /// ```
+    #[inline]
+    pub fn append_one(mut self, x: T) -> Vec<T> {
+        self.push(x);
+        self
     }
 
     /// Shorten a vector, dropping excess elements.
@@ -1246,38 +1278,6 @@ impl<T> Vector<T> for Vec<T> {
         let slice = Slice { data: self.ptr as *T, len: self.len };
         unsafe { transmute(slice) }
     }
-}
-
-/// Iterates over the `second` vector, copying each element and appending it to
-/// the `first`. Afterwards, the `first` is then returned for use again.
-///
-/// # Example
-///
-/// ```rust
-/// let vec = vec!(1, 2);
-/// let vec = std::vec::append(vec, [3, 4]);
-/// assert_eq!(vec, vec!(1, 2, 3, 4));
-/// ```
-#[inline]
-pub fn append<T:Clone>(mut first: Vec<T>, second: &[T]) -> Vec<T> {
-    first.push_all(second);
-    first
-}
-
-/// Appends one element to the vector provided. The vector itself is then
-/// returned for use again.
-///
-/// # Example
-///
-/// ```rust
-/// let vec = vec!(1, 2);
-/// let vec = std::vec::append_one(vec, 3);
-/// assert_eq!(vec, vec!(1, 2, 3));
-/// ```
-#[inline]
-pub fn append_one<T>(mut lhs: Vec<T>, x: T) -> Vec<T> {
-    lhs.push(x);
-    lhs
 }
 
 #[unsafe_destructor]

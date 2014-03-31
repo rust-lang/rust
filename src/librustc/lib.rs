@@ -54,7 +54,6 @@ use std::io;
 use std::os;
 use std::str;
 use std::task;
-use std::vec;
 use syntax::ast;
 use syntax::diagnostic::Emitter;
 use syntax::diagnostic;
@@ -239,9 +238,7 @@ pub fn run_compiler(args: &[~str]) {
         return;
     }
 
-    let lint_flags = vec::append(matches.opt_strs("W")
-                                           .move_iter()
-                                           .collect(),
+    let lint_flags = matches.opt_strs("W").move_iter().collect::<Vec<_>>().append(
                                     matches.opt_strs("warn").as_slice());
     if lint_flags.iter().any(|x| x == &~"help") {
         describe_warnings();
