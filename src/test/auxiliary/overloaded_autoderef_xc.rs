@@ -11,7 +11,7 @@
 use std::ops::Deref;
 
 struct DerefWithHelper<H, T> {
-    helper: H
+    pub helper: H
 }
 
 trait Helper<T> {

@@ -41,18 +41,18 @@ use std::ty::Unsafe;
 // initialization.
 
 pub struct Node<T> {
-    next: atomics::AtomicUint,
-    data: T,
+    pub next: atomics::AtomicUint,
+    pub data: T,
 }
 
 pub struct DummyNode {
-    next: atomics::AtomicUint,
+    pub next: atomics::AtomicUint,
 }
 
 pub struct Queue<T> {
-    head: atomics::AtomicUint,
-    tail: Unsafe<*mut Node<T>>,
-    stub: DummyNode,
+    pub head: atomics::AtomicUint,
+    pub tail: Unsafe<*mut Node<T>>,
+    pub stub: DummyNode,
 }
 
 impl<T: Send> Queue<T> {

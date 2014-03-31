@@ -244,25 +244,25 @@ pub mod types {
                 pub type pthread_t = c_ulong;
 
                 pub struct glob_t {
-                    gl_pathc: size_t,
-                    gl_pathv: **c_char,
-                    gl_offs:  size_t,
+                    pub gl_pathc: size_t,
+                    pub gl_pathv: **c_char,
+                    pub gl_offs:  size_t,
 
-                    __unused1: *c_void,
-                    __unused2: *c_void,
-                    __unused3: *c_void,
-                    __unused4: *c_void,
-                    __unused5: *c_void,
+                    pub __unused1: *c_void,
+                    pub __unused2: *c_void,
+                    pub __unused3: *c_void,
+                    pub __unused4: *c_void,
+                    pub __unused5: *c_void,
                 }
 
                 pub struct timeval {
-                    tv_sec: time_t,
-                    tv_usec: suseconds_t,
+                    pub tv_sec: time_t,
+                    pub tv_usec: suseconds_t,
                 }
 
                 pub struct timespec {
-                    tv_sec: time_t,
-                    tv_nsec: c_long,
+                    pub tv_sec: time_t,
+                    pub tv_nsec: c_long,
                 }
 
                 pub enum timezone {}
@@ -277,54 +277,54 @@ pub mod types {
                 pub type in_port_t = u16;
                 pub type in_addr_t = u32;
                 pub struct sockaddr {
-                    sa_family: sa_family_t,
-                    sa_data: [u8, ..14],
+                    pub sa_family: sa_family_t,
+                    pub sa_data: [u8, ..14],
                 }
                 pub struct sockaddr_storage {
-                    ss_family: sa_family_t,
-                    __ss_align: i64,
-                    __ss_pad2: [u8, ..112],
+                    pub ss_family: sa_family_t,
+                    pub __ss_align: i64,
+                    pub __ss_pad2: [u8, ..112],
                 }
                 pub struct sockaddr_in {
-                    sin_family: sa_family_t,
-                    sin_port: in_port_t,
-                    sin_addr: in_addr,
-                    sin_zero: [u8, ..8],
+                    pub sin_family: sa_family_t,
+                    pub sin_port: in_port_t,
+                    pub sin_addr: in_addr,
+                    pub sin_zero: [u8, ..8],
                 }
                 pub struct in_addr {
-                    s_addr: in_addr_t,
+                    pub s_addr: in_addr_t,
                 }
                 pub struct sockaddr_in6 {
-                    sin6_family: sa_family_t,
-                    sin6_port: in_port_t,
-                    sin6_flowinfo: u32,
-                    sin6_addr: in6_addr,
-                    sin6_scope_id: u32,
+                    pub sin6_family: sa_family_t,
+                    pub sin6_port: in_port_t,
+                    pub sin6_flowinfo: u32,
+                    pub sin6_addr: in6_addr,
+                    pub sin6_scope_id: u32,
                 }
                 pub struct in6_addr {
-                    s6_addr: [u16, ..8]
+                    pub s6_addr: [u16, ..8]
                 }
                 pub struct ip_mreq {
-                    imr_multiaddr: in_addr,
-                    imr_interface: in_addr,
+                    pub imr_multiaddr: in_addr,
+                    pub imr_interface: in_addr,
                 }
                 pub struct ip6_mreq {
-                    ipv6mr_multiaddr: in6_addr,
-                    ipv6mr_interface: c_uint,
+                    pub ipv6mr_multiaddr: in6_addr,
+                    pub ipv6mr_interface: c_uint,
                 }
                 pub struct addrinfo {
-                    ai_flags: c_int,
-                    ai_family: c_int,
-                    ai_socktype: c_int,
-                    ai_protocol: c_int,
-                    ai_addrlen: socklen_t,
-                    ai_addr: *sockaddr,
-                    ai_canonname: *c_char,
-                    ai_next: *addrinfo
+                    pub ai_flags: c_int,
+                    pub ai_family: c_int,
+                    pub ai_socktype: c_int,
+                    pub ai_protocol: c_int,
+                    pub ai_addrlen: socklen_t,
+                    pub ai_addr: *sockaddr,
+                    pub ai_canonname: *c_char,
+                    pub ai_next: *addrinfo,
                 }
                 pub struct sockaddr_un {
-                    sun_family: sa_family_t,
-                    sun_path: [c_char, ..108]
+                    pub sun_family: sa_family_t,
+                    pub sun_path: [c_char, ..108]
                 }
             }
         }
@@ -395,35 +395,35 @@ pub mod types {
                 pub type blkcnt_t = i32;
 
                 pub struct stat {
-                    st_dev: dev_t,
-                    __pad1: c_short,
-                    st_ino: ino_t,
-                    st_mode: mode_t,
-                    st_nlink: nlink_t,
-                    st_uid: uid_t,
-                    st_gid: gid_t,
-                    st_rdev: dev_t,
-                    __pad2: c_short,
-                    st_size: off_t,
-                    st_blksize: blksize_t,
-                    st_blocks: blkcnt_t,
-                    st_atime: time_t,
-                    st_atime_nsec: c_long,
-                    st_mtime: time_t,
-                    st_mtime_nsec: c_long,
-                    st_ctime: time_t,
-                    st_ctime_nsec: c_long,
-                    __unused4: c_long,
-                    __unused5: c_long,
+                    pub st_dev: dev_t,
+                    pub __pad1: c_short,
+                    pub st_ino: ino_t,
+                    pub st_mode: mode_t,
+                    pub st_nlink: nlink_t,
+                    pub st_uid: uid_t,
+                    pub st_gid: gid_t,
+                    pub st_rdev: dev_t,
+                    pub __pad2: c_short,
+                    pub st_size: off_t,
+                    pub st_blksize: blksize_t,
+                    pub st_blocks: blkcnt_t,
+                    pub st_atime: time_t,
+                    pub st_atime_nsec: c_long,
+                    pub st_mtime: time_t,
+                    pub st_mtime_nsec: c_long,
+                    pub st_ctime: time_t,
+                    pub st_ctime_nsec: c_long,
+                    pub __unused4: c_long,
+                    pub __unused5: c_long,
                 }
 
                 pub struct utimbuf {
-                    actime: time_t,
-                    modtime: time_t,
+                    pub actime: time_t,
+                    pub modtime: time_t,
                 }
 
                 pub struct pthread_attr_t {
-                    __size: [u32, ..9]
+                    pub __size: [u32, ..9]
                 }
             }
             #[cfg(target_arch = "arm")]
@@ -437,34 +437,34 @@ pub mod types {
                 pub type blkcnt_t = u32;
 
                 pub struct stat {
-                    st_dev: c_ulonglong,
-                    __pad0: [c_uchar, ..4],
-                    __st_ino: ino_t,
-                    st_mode: c_uint,
-                    st_nlink: c_uint,
-                    st_uid: uid_t,
-                    st_gid: gid_t,
-                    st_rdev: c_ulonglong,
-                    __pad3: [c_uchar, ..4],
-                    st_size: c_longlong,
-                    st_blksize: blksize_t,
-                    st_blocks: c_ulonglong,
-                    st_atime: time_t,
-                    st_atime_nsec: c_ulong,
-                    st_mtime: time_t,
-                    st_mtime_nsec: c_ulong,
-                    st_ctime: time_t,
-                    st_ctime_nsec: c_ulong,
-                    st_ino: c_ulonglong
+                    pub st_dev: c_ulonglong,
+                    pub __pad0: [c_uchar, ..4],
+                    pub __st_ino: ino_t,
+                    pub st_mode: c_uint,
+                    pub st_nlink: c_uint,
+                    pub st_uid: uid_t,
+                    pub st_gid: gid_t,
+                    pub st_rdev: c_ulonglong,
+                    pub __pad3: [c_uchar, ..4],
+                    pub st_size: c_longlong,
+                    pub st_blksize: blksize_t,
+                    pub st_blocks: c_ulonglong,
+                    pub st_atime: time_t,
+                    pub st_atime_nsec: c_ulong,
+                    pub st_mtime: time_t,
+                    pub st_mtime_nsec: c_ulong,
+                    pub st_ctime: time_t,
+                    pub st_ctime_nsec: c_ulong,
+                    pub st_ino: c_ulonglong,
                 }
 
                 pub struct utimbuf {
-                    actime: time_t,
-                    modtime: time_t,
+                    pub actime: time_t,
+                    pub modtime: time_t,
                 }
 
                 pub struct pthread_attr_t {
-                    __size: [u32, ..9]
+                    pub __size: [u32, ..9]
                 }
             }
             #[cfg(target_arch = "mips")]
@@ -479,35 +479,35 @@ pub mod types {
                 pub type blkcnt_t = i32;
 
                 pub struct stat {
-                    st_dev: c_ulong,
-                    st_pad1: [c_long, ..3],
-                    st_ino: ino_t,
-                    st_mode: mode_t,
-                    st_nlink: nlink_t,
-                    st_uid: uid_t,
-                    st_gid: gid_t,
-                    st_rdev: c_ulong,
-                    st_pad2: [c_long, ..2],
-                    st_size: off_t,
-                    st_pad3: c_long,
-                    st_atime: time_t,
-                    st_atime_nsec: c_long,
-                    st_mtime: time_t,
-                    st_mtime_nsec: c_long,
-                    st_ctime: time_t,
-                    st_ctime_nsec: c_long,
-                    st_blksize: blksize_t,
-                    st_blocks: blkcnt_t,
-                    st_pad5: [c_long, ..14],
+                    pub st_dev: c_ulong,
+                    pub st_pad1: [c_long, ..3],
+                    pub st_ino: ino_t,
+                    pub st_mode: mode_t,
+                    pub st_nlink: nlink_t,
+                    pub st_uid: uid_t,
+                    pub st_gid: gid_t,
+                    pub st_rdev: c_ulong,
+                    pub st_pad2: [c_long, ..2],
+                    pub st_size: off_t,
+                    pub st_pad3: c_long,
+                    pub st_atime: time_t,
+                    pub st_atime_nsec: c_long,
+                    pub st_mtime: time_t,
+                    pub st_mtime_nsec: c_long,
+                    pub st_ctime: time_t,
+                    pub st_ctime_nsec: c_long,
+                    pub st_blksize: blksize_t,
+                    pub st_blocks: blkcnt_t,
+                    pub st_pad5: [c_long, ..14],
                 }
 
                 pub struct utimbuf {
-                    actime: time_t,
-                    modtime: time_t,
+                    pub actime: time_t,
+                    pub modtime: time_t,
                 }
 
                 pub struct pthread_attr_t {
-                    __size: [u32, ..9]
+                    pub __size: [u32, ..9]
                 }
             }
             pub mod posix08 {}
@@ -563,33 +563,33 @@ pub mod types {
                 pub type blksize_t = i64;
                 pub type blkcnt_t = i64;
                 pub struct stat {
-                    st_dev: dev_t,
-                    st_ino: ino_t,
-                    st_nlink: nlink_t,
-                    st_mode: mode_t,
-                    st_uid: uid_t,
-                    st_gid: gid_t,
-                    __pad0: c_int,
-                    st_rdev: dev_t,
-                    st_size: off_t,
-                    st_blksize: blksize_t,
-                    st_blocks: blkcnt_t,
-                    st_atime: time_t,
-                    st_atime_nsec: c_long,
-                    st_mtime: time_t,
-                    st_mtime_nsec: c_long,
-                    st_ctime: time_t,
-                    st_ctime_nsec: c_long,
-                    __unused: [c_long, ..3],
+                    pub st_dev: dev_t,
+                    pub st_ino: ino_t,
+                    pub st_nlink: nlink_t,
+                    pub st_mode: mode_t,
+                    pub st_uid: uid_t,
+                    pub st_gid: gid_t,
+                    pub __pad0: c_int,
+                    pub st_rdev: dev_t,
+                    pub st_size: off_t,
+                    pub st_blksize: blksize_t,
+                    pub st_blocks: blkcnt_t,
+                    pub st_atime: time_t,
+                    pub st_atime_nsec: c_long,
+                    pub st_mtime: time_t,
+                    pub st_mtime_nsec: c_long,
+                    pub st_ctime: time_t,
+                    pub st_ctime_nsec: c_long,
+                    pub __unused: [c_long, ..3],
                 }
 
                 pub struct utimbuf {
-                    actime: time_t,
-                    modtime: time_t,
+                    pub actime: time_t,
+                    pub modtime: time_t,
                 }
 
                 pub struct pthread_attr_t {
-                    __size: [u64, ..7]
+                    pub __size: [u64, ..7]
                 }
             }
             pub mod posix08 {
@@ -613,29 +613,29 @@ pub mod types {
                 pub type pthread_t = uintptr_t;
 
                 pub struct glob_t {
-                    gl_pathc:  size_t,
-                    __unused1: size_t,
-                    gl_offs:   size_t,
-                    __unused2: c_int,
-                    gl_pathv:  **c_char,
+                    pub gl_pathc:  size_t,
+                    pub __unused1: size_t,
+                    pub gl_offs:   size_t,
+                    pub __unused2: c_int,
+                    pub gl_pathv:  **c_char,
 
-                    __unused3: *c_void,
+                    pub __unused3: *c_void,
 
-                    __unused4: *c_void,
-                    __unused5: *c_void,
-                    __unused6: *c_void,
-                    __unused7: *c_void,
-                    __unused8: *c_void,
+                    pub __unused4: *c_void,
+                    pub __unused5: *c_void,
+                    pub __unused6: *c_void,
+                    pub __unused7: *c_void,
+                    pub __unused8: *c_void,
                 }
 
                 pub struct timeval {
-                    tv_sec: time_t,
-                    tv_usec: suseconds_t,
+                    pub tv_sec: time_t,
+                    pub tv_usec: suseconds_t,
                 }
 
                 pub struct timespec {
-                    tv_sec: time_t,
-                    tv_nsec: c_long,
+                    pub tv_sec: time_t,
+                    pub tv_nsec: c_long,
                 }
 
                 pub enum timezone {}
@@ -650,60 +650,60 @@ pub mod types {
                 pub type in_port_t = u16;
                 pub type in_addr_t = u32;
                 pub struct sockaddr {
-                    sa_len: u8,
-                    sa_family: sa_family_t,
-                    sa_data: [u8, ..14],
+                    pub sa_len: u8,
+                    pub sa_family: sa_family_t,
+                    pub sa_data: [u8, ..14],
                 }
                 pub struct sockaddr_storage {
-                    ss_len: u8,
-                    ss_family: sa_family_t,
-                    __ss_pad1: [u8, ..6],
-                    __ss_align: i64,
-                    __ss_pad2: [u8, ..112],
+                    pub ss_len: u8,
+                    pub ss_family: sa_family_t,
+                    pub __ss_pad1: [u8, ..6],
+                    pub __ss_align: i64,
+                    pub __ss_pad2: [u8, ..112],
                 }
                 pub struct sockaddr_in {
-                    sin_len: u8,
-                    sin_family: sa_family_t,
-                    sin_port: in_port_t,
-                    sin_addr: in_addr,
-                    sin_zero: [u8, ..8],
+                    pub sin_len: u8,
+                    pub sin_family: sa_family_t,
+                    pub sin_port: in_port_t,
+                    pub sin_addr: in_addr,
+                    pub sin_zero: [u8, ..8],
                 }
                 pub struct in_addr {
-                    s_addr: in_addr_t,
+                    pub s_addr: in_addr_t,
                 }
                 pub struct sockaddr_in6 {
-                    sin6_len: u8,
-                    sin6_family: sa_family_t,
-                    sin6_port: in_port_t,
-                    sin6_flowinfo: u32,
-                    sin6_addr: in6_addr,
-                    sin6_scope_id: u32,
+                    pub sin6_len: u8,
+                    pub sin6_family: sa_family_t,
+                    pub sin6_port: in_port_t,
+                    pub sin6_flowinfo: u32,
+                    pub sin6_addr: in6_addr,
+                    pub sin6_scope_id: u32,
                 }
                 pub struct in6_addr {
-                    s6_addr: [u16, ..8]
+                    pub s6_addr: [u16, ..8]
                 }
                 pub struct ip_mreq {
-                    imr_multiaddr: in_addr,
-                    imr_interface: in_addr,
+                    pub imr_multiaddr: in_addr,
+                    pub imr_interface: in_addr,
                 }
                 pub struct ip6_mreq {
-                    ipv6mr_multiaddr: in6_addr,
-                    ipv6mr_interface: c_uint,
+                    pub ipv6mr_multiaddr: in6_addr,
+                    pub ipv6mr_interface: c_uint,
                 }
                 pub struct addrinfo {
-                    ai_flags: c_int,
-                    ai_family: c_int,
-                    ai_socktype: c_int,
-                    ai_protocol: c_int,
-                    ai_addrlen: socklen_t,
-                    ai_canonname: *c_char,
-                    ai_addr: *sockaddr,
-                    ai_next: *addrinfo
+                    pub ai_flags: c_int,
+                    pub ai_family: c_int,
+                    pub ai_socktype: c_int,
+                    pub ai_protocol: c_int,
+                    pub ai_addrlen: socklen_t,
+                    pub ai_canonname: *c_char,
+                    pub ai_addr: *sockaddr,
+                    pub ai_next: *addrinfo,
                 }
                 pub struct sockaddr_un {
-                    sun_len: u8,
-                    sun_family: sa_family_t,
-                    sun_path: [c_char, ..104]
+                    pub sun_len: u8,
+                    pub sun_family: sa_family_t,
+                    pub sun_path: [c_char, ..104]
                 }
             }
         }
@@ -759,33 +759,33 @@ pub mod types {
                 pub type blkcnt_t = i64;
                 pub type fflags_t = u32;
                 pub struct stat {
-                    st_dev: dev_t,
-                    st_ino: ino_t,
-                    st_mode: mode_t,
-                    st_nlink: nlink_t,
-                    st_uid: uid_t,
-                    st_gid: gid_t,
-                    st_rdev: dev_t,
-                    st_atime: time_t,
-                    st_atime_nsec: c_long,
-                    st_mtime: time_t,
-                    st_mtime_nsec: c_long,
-                    st_ctime: time_t,
-                    st_ctime_nsec: c_long,
-                    st_size: off_t,
-                    st_blocks: blkcnt_t,
-                    st_blksize: blksize_t,
-                    st_flags: fflags_t,
-                    st_gen: uint32_t,
-                    st_lspare: int32_t,
-                    st_birthtime: time_t,
-                    st_birthtime_nsec: c_long,
-                    __unused: [uint8_t, ..2],
+                    pub st_dev: dev_t,
+                    pub st_ino: ino_t,
+                    pub st_mode: mode_t,
+                    pub st_nlink: nlink_t,
+                    pub st_uid: uid_t,
+                    pub st_gid: gid_t,
+                    pub st_rdev: dev_t,
+                    pub st_atime: time_t,
+                    pub st_atime_nsec: c_long,
+                    pub st_mtime: time_t,
+                    pub st_mtime_nsec: c_long,
+                    pub st_ctime: time_t,
+                    pub st_ctime_nsec: c_long,
+                    pub st_size: off_t,
+                    pub st_blocks: blkcnt_t,
+                    pub st_blksize: blksize_t,
+                    pub st_flags: fflags_t,
+                    pub st_gen: uint32_t,
+                    pub st_lspare: int32_t,
+                    pub st_birthtime: time_t,
+                    pub st_birthtime_nsec: c_long,
+                    pub __unused: [uint8_t, ..2],
                 }
 
                 pub struct utimbuf {
-                    actime: time_t,
-                    modtime: time_t,
+                    pub actime: time_t,
+                    pub modtime: time_t,
                 }
 
                 pub type pthread_attr_t = *c_void;
@@ -809,36 +809,36 @@ pub mod types {
                 use libc::types::os::arch::posix88::{dev_t, ino_t};
                 use libc::types::os::arch::posix88::mode_t;
 
-                // Note: this is the struct called stat64 in win32. Not stat,
+                // pub Note: this is the struct called stat64 in win32. Not stat,
                 // nor stati64.
                 pub struct stat {
-                    st_dev: dev_t,
-                    st_ino: ino_t,
-                    st_mode: mode_t,
-                    st_nlink: c_short,
-                    st_uid: c_short,
-                    st_gid: c_short,
-                    st_rdev: dev_t,
-                    st_size: int64,
-                    st_atime: time64_t,
-                    st_mtime: time64_t,
-                    st_ctime: time64_t,
+                    pub st_dev: dev_t,
+                    pub st_ino: ino_t,
+                    pub st_mode: mode_t,
+                    pub st_nlink: c_short,
+                    pub st_uid: c_short,
+                    pub st_gid: c_short,
+                    pub st_rdev: dev_t,
+                    pub st_size: int64,
+                    pub st_atime: time64_t,
+                    pub st_mtime: time64_t,
+                    pub st_ctime: time64_t,
                 }
 
                 // note that this is called utimbuf64 in win32
                 pub struct utimbuf {
-                    actime: time64_t,
-                    modtime: time64_t,
+                    pub actime: time64_t,
+                    pub modtime: time64_t,
                 }
 
                 pub struct timeval {
-                    tv_sec: time_t,
-                    tv_usec: suseconds_t,
+                    pub tv_sec: time_t,
+                    pub tv_usec: suseconds_t,
                 }
 
                 pub struct timespec {
-                    tv_sec: time_t,
-                    tv_nsec: c_long,
+                    pub tv_sec: time_t,
+                    pub tv_nsec: c_long,
                 }
 
                 pub enum timezone {}
@@ -853,54 +853,54 @@ pub mod types {
                 pub type in_port_t = u16;
                 pub type in_addr_t = u32;
                 pub struct sockaddr {
-                    sa_family: sa_family_t,
-                    sa_data: [u8, ..14],
+                    pub sa_family: sa_family_t,
+                    pub sa_data: [u8, ..14],
                 }
                 pub struct sockaddr_storage {
-                    ss_family: sa_family_t,
-                    __ss_align: i64,
-                    __ss_pad2: [u8, ..112],
+                    pub ss_family: sa_family_t,
+                    pub __ss_align: i64,
+                    pub __ss_pad2: [u8, ..112],
                 }
                 pub struct sockaddr_in {
-                    sin_family: sa_family_t,
-                    sin_port: in_port_t,
-                    sin_addr: in_addr,
-                    sin_zero: [u8, ..8],
+                    pub sin_family: sa_family_t,
+                    pub sin_port: in_port_t,
+                    pub sin_addr: in_addr,
+                    pub sin_zero: [u8, ..8],
                 }
                 pub struct in_addr {
-                    s_addr: in_addr_t,
+                    pub s_addr: in_addr_t,
                 }
                 pub struct sockaddr_in6 {
-                    sin6_family: sa_family_t,
-                    sin6_port: in_port_t,
-                    sin6_flowinfo: u32,
-                    sin6_addr: in6_addr,
-                    sin6_scope_id: u32,
+                    pub sin6_family: sa_family_t,
+                    pub sin6_port: in_port_t,
+                    pub sin6_flowinfo: u32,
+                    pub sin6_addr: in6_addr,
+                    pub sin6_scope_id: u32,
                 }
                 pub struct in6_addr {
-                    s6_addr: [u16, ..8]
+                    pub s6_addr: [u16, ..8]
                 }
                 pub struct ip_mreq {
-                    imr_multiaddr: in_addr,
-                    imr_interface: in_addr,
+                    pub imr_multiaddr: in_addr,
+                    pub imr_interface: in_addr,
                 }
                 pub struct ip6_mreq {
-                    ipv6mr_multiaddr: in6_addr,
-                    ipv6mr_interface: c_uint,
+                    pub ipv6mr_multiaddr: in6_addr,
+                    pub ipv6mr_interface: c_uint,
                 }
                 pub struct addrinfo {
-                    ai_flags: c_int,
-                    ai_family: c_int,
-                    ai_socktype: c_int,
-                    ai_protocol: c_int,
-                    ai_addrlen: size_t,
-                    ai_canonname: *c_char,
-                    ai_addr: *sockaddr,
-                    ai_next: *addrinfo
+                    pub ai_flags: c_int,
+                    pub ai_family: c_int,
+                    pub ai_socktype: c_int,
+                    pub ai_protocol: c_int,
+                    pub ai_addrlen: size_t,
+                    pub ai_canonname: *c_char,
+                    pub ai_addr: *sockaddr,
+                    pub ai_next: *addrinfo,
                 }
                 pub struct sockaddr_un {
-                    sun_family: sa_family_t,
-                    sun_path: [c_char, ..108]
+                    pub sun_family: sa_family_t,
+                    pub sun_path: [c_char, ..108]
                 }
             }
         }
@@ -1038,47 +1038,47 @@ pub mod types {
                 pub type int64 = i64;
 
                 pub struct STARTUPINFO {
-                    cb: DWORD,
-                    lpReserved: LPWSTR,
-                    lpDesktop: LPWSTR,
-                    lpTitle: LPWSTR,
-                    dwX: DWORD,
-                    dwY: DWORD,
-                    dwXSize: DWORD,
-                    dwYSize: DWORD,
-                    dwXCountChars: DWORD,
-                    dwYCountCharts: DWORD,
-                    dwFillAttribute: DWORD,
-                    dwFlags: DWORD,
-                    wShowWindow: WORD,
-                    cbReserved2: WORD,
-                    lpReserved2: LPBYTE,
-                    hStdInput: HANDLE,
-                    hStdOutput: HANDLE,
-                    hStdError: HANDLE
+                    pub cb: DWORD,
+                    pub lpReserved: LPWSTR,
+                    pub lpDesktop: LPWSTR,
+                    pub lpTitle: LPWSTR,
+                    pub dwX: DWORD,
+                    pub dwY: DWORD,
+                    pub dwXSize: DWORD,
+                    pub dwYSize: DWORD,
+                    pub dwXCountChars: DWORD,
+                    pub dwYCountCharts: DWORD,
+                    pub dwFillAttribute: DWORD,
+                    pub dwFlags: DWORD,
+                    pub wShowWindow: WORD,
+                    pub cbReserved2: WORD,
+                    pub lpReserved2: LPBYTE,
+                    pub hStdInput: HANDLE,
+                    pub hStdOutput: HANDLE,
+                    pub hStdError: HANDLE,
                 }
                 pub type LPSTARTUPINFO = *mut STARTUPINFO;
 
                 pub struct PROCESS_INFORMATION {
-                    hProcess: HANDLE,
-                    hThread: HANDLE,
-                    dwProcessId: DWORD,
-                    dwThreadId: DWORD
+                    pub hProcess: HANDLE,
+                    pub hThread: HANDLE,
+                    pub dwProcessId: DWORD,
+                    pub dwThreadId: DWORD,
                 }
                 pub type LPPROCESS_INFORMATION = *mut PROCESS_INFORMATION;
 
                 pub struct SYSTEM_INFO {
-                    wProcessorArchitecture: WORD,
-                    wReserved: WORD,
-                    dwPageSize: DWORD,
-                    lpMinimumApplicationAddress: LPVOID,
-                    lpMaximumApplicationAddress: LPVOID,
-                    dwActiveProcessorMask: DWORD,
-                    dwNumberOfProcessors: DWORD,
-                    dwProcessorType: DWORD,
-                    dwAllocationGranularity: DWORD,
-                    wProcessorLevel: WORD,
-                    wProcessorRevision: WORD
+                    pub wProcessorArchitecture: WORD,
+                    pub wReserved: WORD,
+                    pub dwPageSize: DWORD,
+                    pub lpMinimumApplicationAddress: LPVOID,
+                    pub lpMaximumApplicationAddress: LPVOID,
+                    pub dwActiveProcessorMask: DWORD,
+                    pub dwNumberOfProcessors: DWORD,
+                    pub dwProcessorType: DWORD,
+                    pub dwAllocationGranularity: DWORD,
+                    pub wProcessorLevel: WORD,
+                    pub wProcessorRevision: WORD,
                 }
                 pub type LPSYSTEM_INFO = *mut SYSTEM_INFO;
 
@@ -1101,68 +1101,68 @@ pub mod types {
                 }
 
                 pub struct MEMORY_BASIC_INFORMATION {
-                    BaseAddress: LPVOID,
-                    AllocationBase: LPVOID,
-                    AllocationProtect: DWORD,
-                    RegionSize: SIZE_T,
-                    State: DWORD,
-                    Protect: DWORD,
-                    Type: DWORD
+                    pub BaseAddress: LPVOID,
+                    pub AllocationBase: LPVOID,
+                    pub AllocationProtect: DWORD,
+                    pub RegionSize: SIZE_T,
+                    pub State: DWORD,
+                    pub Protect: DWORD,
+                    pub Type: DWORD,
                 }
                 pub type LPMEMORY_BASIC_INFORMATION = *mut MEMORY_BASIC_INFORMATION;
 
                 pub struct OVERLAPPED {
-                    Internal: *c_ulong,
-                    InternalHigh: *c_ulong,
-                    Offset: DWORD,
-                    OffsetHigh: DWORD,
-                    hEvent: HANDLE,
+                    pub Internal: *c_ulong,
+                    pub InternalHigh: *c_ulong,
+                    pub Offset: DWORD,
+                    pub OffsetHigh: DWORD,
+                    pub hEvent: HANDLE,
                 }
 
                 pub type LPOVERLAPPED = *mut OVERLAPPED;
 
                 pub struct FILETIME {
-                    dwLowDateTime: DWORD,
-                    dwHighDateTime: DWORD,
+                    pub dwLowDateTime: DWORD,
+                    pub dwHighDateTime: DWORD,
                 }
 
                 pub type LPFILETIME = *mut FILETIME;
 
                 pub struct GUID {
-                    Data1: DWORD,
-                    Data2: DWORD,
-                    Data3: DWORD,
-                    Data4: [BYTE, ..8],
+                    pub Data1: DWORD,
+                    pub Data2: DWORD,
+                    pub Data3: DWORD,
+                    pub Data4: [BYTE, ..8],
                 }
 
                 pub struct WSAPROTOCOLCHAIN {
-                    ChainLen: c_int,
-                    ChainEntries: [DWORD, ..MAX_PROTOCOL_CHAIN],
+                    pub ChainLen: c_int,
+                    pub ChainEntries: [DWORD, ..MAX_PROTOCOL_CHAIN],
                 }
 
                 pub type LPWSAPROTOCOLCHAIN = *mut WSAPROTOCOLCHAIN;
 
                 pub struct WSAPROTOCOL_INFO {
-                    dwServiceFlags1: DWORD,
-                    dwServiceFlags2: DWORD,
-                    dwServiceFlags3: DWORD,
-                    dwServiceFlags4: DWORD,
-                    dwProviderFlags: DWORD,
-                    ProviderId: GUID,
-                    dwCatalogEntryId: DWORD,
-                    ProtocolChain: WSAPROTOCOLCHAIN,
-                    iVersion: c_int,
-                    iAddressFamily: c_int,
-                    iMaxSockAddr: c_int,
-                    iMinSockAddr: c_int,
-                    iSocketType: c_int,
-                    iProtocol: c_int,
-                    iProtocolMaxOffset: c_int,
-                    iNetworkByteOrder: c_int,
-                    iSecurityScheme: c_int,
-                    dwMessageSize: DWORD,
-                    dwProviderReserved: DWORD,
-                    szProtocol: [u8, ..WSAPROTOCOL_LEN+1],
+                    pub dwServiceFlags1: DWORD,
+                    pub dwServiceFlags2: DWORD,
+                    pub dwServiceFlags3: DWORD,
+                    pub dwServiceFlags4: DWORD,
+                    pub dwProviderFlags: DWORD,
+                    pub ProviderId: GUID,
+                    pub dwCatalogEntryId: DWORD,
+                    pub ProtocolChain: WSAPROTOCOLCHAIN,
+                    pub iVersion: c_int,
+                    pub iAddressFamily: c_int,
+                    pub iMaxSockAddr: c_int,
+                    pub iMinSockAddr: c_int,
+                    pub iSocketType: c_int,
+                    pub iProtocol: c_int,
+                    pub iProtocolMaxOffset: c_int,
+                    pub iNetworkByteOrder: c_int,
+                    pub iSecurityScheme: c_int,
+                    pub dwMessageSize: DWORD,
+                    pub dwProviderReserved: DWORD,
+                    pub szProtocol: [u8, ..WSAPROTOCOL_LEN+1],
                 }
 
                 pub type LPWSAPROTOCOL_INFO = *mut WSAPROTOCOL_INFO;
@@ -1184,29 +1184,29 @@ pub mod types {
                 pub type pthread_t = uintptr_t;
 
                 pub struct glob_t {
-                    gl_pathc:  size_t,
-                    __unused1: c_int,
-                    gl_offs:   size_t,
-                    __unused2: c_int,
-                    gl_pathv:  **c_char,
+                    pub gl_pathc:  size_t,
+                    pub __unused1: c_int,
+                    pub gl_offs:   size_t,
+                    pub __unused2: c_int,
+                    pub gl_pathv:  **c_char,
 
-                    __unused3: *c_void,
+                    pub __unused3: *c_void,
 
-                    __unused4: *c_void,
-                    __unused5: *c_void,
-                    __unused6: *c_void,
-                    __unused7: *c_void,
-                    __unused8: *c_void,
+                    pub __unused4: *c_void,
+                    pub __unused5: *c_void,
+                    pub __unused6: *c_void,
+                    pub __unused7: *c_void,
+                    pub __unused8: *c_void,
                 }
 
                 pub struct timeval {
-                    tv_sec: time_t,
-                    tv_usec: suseconds_t,
+                    pub tv_sec: time_t,
+                    pub tv_usec: suseconds_t,
                 }
 
                 pub struct timespec {
-                    tv_sec: time_t,
-                    tv_nsec: c_long,
+                    pub tv_sec: time_t,
+                    pub tv_nsec: c_long,
                 }
 
                 pub enum timezone {}
@@ -1222,60 +1222,60 @@ pub mod types {
                 pub type in_port_t = u16;
                 pub type in_addr_t = u32;
                 pub struct sockaddr {
-                    sa_len: u8,
-                    sa_family: sa_family_t,
-                    sa_data: [u8, ..14],
+                    pub sa_len: u8,
+                    pub sa_family: sa_family_t,
+                    pub sa_data: [u8, ..14],
                 }
                 pub struct sockaddr_storage {
-                    ss_len: u8,
-                    ss_family: sa_family_t,
-                    __ss_pad1: [u8, ..6],
-                    __ss_align: i64,
-                    __ss_pad2: [u8, ..112],
+                    pub ss_len: u8,
+                    pub ss_family: sa_family_t,
+                    pub __ss_pad1: [u8, ..6],
+                    pub __ss_align: i64,
+                    pub __ss_pad2: [u8, ..112],
                 }
                 pub struct sockaddr_in {
-                    sin_len: u8,
-                    sin_family: sa_family_t,
-                    sin_port: in_port_t,
-                    sin_addr: in_addr,
-                    sin_zero: [u8, ..8],
+                    pub sin_len: u8,
+                    pub sin_family: sa_family_t,
+                    pub sin_port: in_port_t,
+                    pub sin_addr: in_addr,
+                    pub sin_zero: [u8, ..8],
                 }
                 pub struct in_addr {
-                    s_addr: in_addr_t,
+                    pub s_addr: in_addr_t,
                 }
                 pub struct sockaddr_in6 {
-                    sin6_len: u8,
-                    sin6_family: sa_family_t,
-                    sin6_port: in_port_t,
-                    sin6_flowinfo: u32,
-                    sin6_addr: in6_addr,
-                    sin6_scope_id: u32,
+                    pub sin6_len: u8,
+                    pub sin6_family: sa_family_t,
+                    pub sin6_port: in_port_t,
+                    pub sin6_flowinfo: u32,
+                    pub sin6_addr: in6_addr,
+                    pub sin6_scope_id: u32,
                 }
                 pub struct in6_addr {
-                    s6_addr: [u16, ..8]
+                    pub s6_addr: [u16, ..8]
                 }
                 pub struct ip_mreq {
-                    imr_multiaddr: in_addr,
-                    imr_interface: in_addr,
+                    pub imr_multiaddr: in_addr,
+                    pub imr_interface: in_addr,
                 }
                 pub struct ip6_mreq {
-                    ipv6mr_multiaddr: in6_addr,
-                    ipv6mr_interface: c_uint,
+                    pub ipv6mr_multiaddr: in6_addr,
+                    pub ipv6mr_interface: c_uint,
                 }
                 pub struct addrinfo {
-                    ai_flags: c_int,
-                    ai_family: c_int,
-                    ai_socktype: c_int,
-                    ai_protocol: c_int,
-                    ai_addrlen: socklen_t,
-                    ai_canonname: *c_char,
-                    ai_addr: *sockaddr,
-                    ai_next: *addrinfo
+                    pub ai_flags: c_int,
+                    pub ai_family: c_int,
+                    pub ai_socktype: c_int,
+                    pub ai_protocol: c_int,
+                    pub ai_addrlen: socklen_t,
+                    pub ai_canonname: *c_char,
+                    pub ai_addr: *sockaddr,
+                    pub ai_next: *addrinfo,
                 }
                 pub struct sockaddr_un {
-                    sun_len: u8,
-                    sun_family: sa_family_t,
-                    sun_path: [c_char, ..104]
+                    pub sun_len: u8,
+                    pub sun_family: sa_family_t,
+                    pub sun_path: [c_char, ..104]
                 }
             }
         }
@@ -1330,38 +1330,38 @@ pub mod types {
                 pub type blkcnt_t = i32;
 
                 pub struct stat {
-                    st_dev: dev_t,
-                    st_mode: mode_t,
-                    st_nlink: nlink_t,
-                    st_ino: ino_t,
-                    st_uid: uid_t,
-                    st_gid: gid_t,
-                    st_rdev: dev_t,
-                    st_atime: time_t,
-                    st_atime_nsec: c_long,
-                    st_mtime: time_t,
-                    st_mtime_nsec: c_long,
-                    st_ctime: time_t,
-                    st_ctime_nsec: c_long,
-                    st_birthtime: time_t,
-                    st_birthtime_nsec: c_long,
-                    st_size: off_t,
-                    st_blocks: blkcnt_t,
-                    st_blksize: blksize_t,
-                    st_flags: uint32_t,
-                    st_gen: uint32_t,
-                    st_lspare: int32_t,
-                    st_qspare: [int64_t, ..2],
+                    pub st_dev: dev_t,
+                    pub st_mode: mode_t,
+                    pub st_nlink: nlink_t,
+                    pub st_ino: ino_t,
+                    pub st_uid: uid_t,
+                    pub st_gid: gid_t,
+                    pub st_rdev: dev_t,
+                    pub st_atime: time_t,
+                    pub st_atime_nsec: c_long,
+                    pub st_mtime: time_t,
+                    pub st_mtime_nsec: c_long,
+                    pub st_ctime: time_t,
+                    pub st_ctime_nsec: c_long,
+                    pub st_birthtime: time_t,
+                    pub st_birthtime_nsec: c_long,
+                    pub st_size: off_t,
+                    pub st_blocks: blkcnt_t,
+                    pub st_blksize: blksize_t,
+                    pub st_flags: uint32_t,
+                    pub st_gen: uint32_t,
+                    pub st_lspare: int32_t,
+                    pub st_qspare: [int64_t, ..2],
                 }
 
                 pub struct utimbuf {
-                    actime: time_t,
-                    modtime: time_t,
+                    pub actime: time_t,
+                    pub modtime: time_t,
                 }
 
                 pub struct pthread_attr_t {
-                    __sig: c_long,
-                    __opaque: [c_char, ..36]
+                    pub __sig: c_long,
+                    pub __opaque: [c_char, ..36]
                 }
             }
             pub mod posix08 {
@@ -1370,8 +1370,8 @@ pub mod types {
             }
             pub mod extra {
                 pub struct mach_timebase_info {
-                    numer: u32,
-                    denom: u32,
+                    pub numer: u32,
+                    pub denom: u32,
                 }
 
                 pub type mach_timebase_info_data_t = mach_timebase_info;
@@ -1428,38 +1428,38 @@ pub mod types {
                 pub type blkcnt_t = i32;
 
                 pub struct stat {
-                    st_dev: dev_t,
-                    st_mode: mode_t,
-                    st_nlink: nlink_t,
-                    st_ino: ino_t,
-                    st_uid: uid_t,
-                    st_gid: gid_t,
-                    st_rdev: dev_t,
-                    st_atime: time_t,
-                    st_atime_nsec: c_long,
-                    st_mtime: time_t,
-                    st_mtime_nsec: c_long,
-                    st_ctime: time_t,
-                    st_ctime_nsec: c_long,
-                    st_birthtime: time_t,
-                    st_birthtime_nsec: c_long,
-                    st_size: off_t,
-                    st_blocks: blkcnt_t,
-                    st_blksize: blksize_t,
-                    st_flags: uint32_t,
-                    st_gen: uint32_t,
-                    st_lspare: int32_t,
-                    st_qspare: [int64_t, ..2],
+                    pub st_dev: dev_t,
+                    pub st_mode: mode_t,
+                    pub st_nlink: nlink_t,
+                    pub st_ino: ino_t,
+                    pub st_uid: uid_t,
+                    pub st_gid: gid_t,
+                    pub st_rdev: dev_t,
+                    pub st_atime: time_t,
+                    pub st_atime_nsec: c_long,
+                    pub st_mtime: time_t,
+                    pub st_mtime_nsec: c_long,
+                    pub st_ctime: time_t,
+                    pub st_ctime_nsec: c_long,
+                    pub st_birthtime: time_t,
+                    pub st_birthtime_nsec: c_long,
+                    pub st_size: off_t,
+                    pub st_blocks: blkcnt_t,
+                    pub st_blksize: blksize_t,
+                    pub st_flags: uint32_t,
+                    pub st_gen: uint32_t,
+                    pub st_lspare: int32_t,
+                    pub st_qspare: [int64_t, ..2],
                 }
 
                 pub struct utimbuf {
-                    actime: time_t,
-                    modtime: time_t,
+                    pub actime: time_t,
+                    pub modtime: time_t,
                 }
 
                 pub struct pthread_attr_t {
-                    __sig: c_long,
-                    __opaque: [c_char, ..56]
+                    pub __sig: c_long,
+                    pub __opaque: [c_char, ..56]
                 }
             }
             pub mod posix08 {
@@ -1468,8 +1468,8 @@ pub mod types {
             }
             pub mod extra {
                 pub struct mach_timebase_info {
-                    numer: u32,
-                    denom: u32,
+                    pub numer: u32,
+                    pub denom: u32,
                 }
 
                 pub type mach_timebase_info_data_t = mach_timebase_info;

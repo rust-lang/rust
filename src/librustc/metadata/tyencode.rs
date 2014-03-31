@@ -34,12 +34,12 @@ macro_rules! mywrite( ($wr:expr, $($arg:tt)*) => (
 ) )
 
 pub struct ctxt<'a> {
-    diag: &'a SpanHandler,
+    pub diag: &'a SpanHandler,
     // Def -> str Callback:
-    ds: fn(DefId) -> ~str,
+    pub ds: fn(DefId) -> ~str,
     // The type context.
-    tcx: &'a ty::ctxt,
-    abbrevs: abbrev_ctxt
+    pub tcx: &'a ty::ctxt,
+    pub abbrevs: abbrev_ctxt
 }
 
 // Compact string representation for ty.t values. API ty_str & parse_from_str.

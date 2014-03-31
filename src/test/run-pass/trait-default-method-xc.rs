@@ -24,7 +24,7 @@ fn welp<T>(i: int, _x: &T) -> int {
 }
 
 mod stuff {
-    pub struct thing { x: int }
+    pub struct thing { pub x: int }
 }
 
 impl A for stuff::thing {

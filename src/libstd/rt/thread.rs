@@ -28,9 +28,9 @@ type StartFn = extern "C" fn(*libc::c_void) -> imp::rust_thread_return;
 /// This struct represents a native thread's state. This is used to join on an
 /// existing thread created in the join-able state.
 pub struct Thread<T> {
-    priv native: imp::rust_thread,
-    priv joined: bool,
-    priv packet: ~Option<T>,
+    native: imp::rust_thread,
+    joined: bool,
+    packet: ~Option<T>,
 }
 
 static DEFAULT_STACK_SIZE: uint = 1024 * 1024;

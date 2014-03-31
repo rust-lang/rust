@@ -72,6 +72,8 @@ println!("{:?}", tuple_ptr)
 
 #![feature(macro_rules, managed_boxes, phase)]
 
+#![allow(visible_private_types)] // NOTE: remove after a stage0 snap
+
 #[cfg(test)]
 #[phase(syntax, link)] extern crate log;
 
@@ -407,12 +409,12 @@ pub fn rng() -> StdRng {
 /// The standard RNG. This is designed to be efficient on the current
 /// platform.
 #[cfg(not(target_word_size="64"))]
-pub struct StdRng { priv rng: IsaacRng }
+pub struct StdRng { rng: IsaacRng }
 
 /// The standard RNG. This is designed to be efficient on the current
 /// platform.
 #[cfg(target_word_size="64")]
-pub struct StdRng { priv rng: Isaac64Rng }
+pub struct StdRng { rng: Isaac64Rng }
 
 impl StdRng {
     /// Create a randomly seeded instance of `StdRng`.
@@ -489,10 +491,10 @@ pub fn weak_rng() -> XorShiftRng {
 /// RNGs"](http://www.jstatsoft.org/v08/i14/paper). *Journal of
 /// Statistical Software*. Vol. 8 (Issue 14).
 pub struct XorShiftRng {
-    priv x: u32,
-    priv y: u32,
-    priv z: u32,
-    priv w: u32,
+    x: u32,
+    y: u32,
+    z: u32,
+    w: u32,
 }
 
 impl Rng for XorShiftRng {
@@ -573,8 +575,8 @@ pub struct TaskRng {
     // The use of unsafe code here is OK if the invariants above are
     // satisfied; and it allows us to avoid (unnecessarily) using a
     // GC'd or RC'd pointer.
-    priv rng: *mut TaskRngInner,
-    priv marker: marker::NoSend,
+    rng: *mut TaskRngInner,
+    marker: marker::NoSend,
 }
 
 // used to make space in TLS for a random number generator

@@ -31,21 +31,21 @@ use util::nodemap::NodeMap;
 
 #[deriving(Clone)]
 pub struct DataFlowContext<'a, O> {
-    priv tcx: &'a ty::ctxt,
-    priv method_map: typeck::MethodMap,
+    tcx: &'a ty::ctxt,
+    method_map: typeck::MethodMap,
 
     /// the data flow operator
-    priv oper: O,
+    oper: O,
 
     /// number of bits to propagate per id
-    priv bits_per_id: uint,
+    bits_per_id: uint,
 
     /// number of words we will use to store bits_per_id.
     /// equal to bits_per_id/uint::BITS rounded up.
-    priv words_per_id: uint,
+    words_per_id: uint,
 
     // mapping from node to bitset index.
-    priv nodeid_to_bitset: NodeMap<uint>,
+    nodeid_to_bitset: NodeMap<uint>,
 
     // Bit sets per id.  The following three fields (`gens`, `kills`,
     // and `on_entry`) all have the same structure. For each id in
@@ -54,14 +54,15 @@ pub struct DataFlowContext<'a, O> {
     // the full vector (see the method `compute_id_range()`).
 
     /// bits generated as we exit the scope `id`. Updated by `add_gen()`.
-    priv gens: Vec<uint> ,
+    gens: Vec<uint>,
 
     /// bits killed as we exit the scope `id`. Updated by `add_kill()`.
-    priv kills: Vec<uint> ,
+    kills: Vec<uint>,
 
     /// bits that are valid on entry to the scope `id`. Updated by
     /// `propagate()`.
-    priv on_entry: Vec<uint> }
+    on_entry: Vec<uint>,
+}
 
 /// Parameterization for the precise form of data flow that is used.
 pub trait DataFlowOperator {

@@ -296,10 +296,10 @@ pub fn run(event_loop_factory: fn() -> ~rtio::EventLoop:Send,
 /// Configuration of how an M:N pool of schedulers is spawned.
 pub struct PoolConfig {
     /// The number of schedulers (OS threads) to spawn into this M:N pool.
-    threads: uint,
+    pub threads: uint,
     /// A factory function used to create new event loops. If this is not
     /// specified then the default event loop factory is used.
-    event_loop_factory: fn() -> ~rtio::EventLoop:Send,
+    pub event_loop_factory: fn() -> ~rtio::EventLoop:Send,
 }
 
 impl PoolConfig {
@@ -316,17 +316,17 @@ impl PoolConfig {
 /// A structure representing a handle to a pool of schedulers. This handle is
 /// used to keep the pool alive and also reap the status from the pool.
 pub struct SchedPool {
-    priv id: uint,
-    priv threads: ~[Thread<()>],
-    priv handles: ~[SchedHandle],
-    priv stealers: ~[deque::Stealer<~task::GreenTask>],
-    priv next_friend: uint,
-    priv stack_pool: StackPool,
-    priv deque_pool: deque::BufferPool<~task::GreenTask>,
-    priv sleepers: SleeperList,
-    priv factory: fn() -> ~rtio::EventLoop:Send,
-    priv task_state: TaskState,
-    priv tasks_done: Receiver<()>,
+    id: uint,
+    threads: ~[Thread<()>],
+    handles: ~[SchedHandle],
+    stealers: ~[deque::Stealer<~task::GreenTask>],
+    next_friend: uint,
+    stack_pool: StackPool,
+    deque_pool: deque::BufferPool<~task::GreenTask>,
+    sleepers: SleeperList,
+    factory: fn() -> ~rtio::EventLoop:Send,
+    task_state: TaskState,
+    tasks_done: Receiver<()>,
 }
 
 /// This is an internal state shared among a pool of schedulers. This is used to

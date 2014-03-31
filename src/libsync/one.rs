@@ -41,9 +41,9 @@ use mutex::{StaticMutex, MUTEX_INIT};
 /// }
 /// ```
 pub struct Once {
-    priv mutex: StaticMutex,
-    priv cnt: atomics::AtomicInt,
-    priv lock_cnt: atomics::AtomicInt,
+    mutex: StaticMutex,
+    cnt: atomics::AtomicInt,
+    lock_cnt: atomics::AtomicInt,
 }
 
 /// Initialization value for static `Once` values.

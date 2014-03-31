@@ -57,18 +57,18 @@ pub enum Protocol {
 /// For details on these fields, see their corresponding definitions via
 /// `man -s 3 getaddrinfo`
 pub struct Hint {
-    family: uint,
-    socktype: Option<SocketType>,
-    protocol: Option<Protocol>,
-    flags: uint,
+    pub family: uint,
+    pub socktype: Option<SocketType>,
+    pub protocol: Option<Protocol>,
+    pub flags: uint,
 }
 
 pub struct Info {
-    address: SocketAddr,
-    family: uint,
-    socktype: Option<SocketType>,
-    protocol: Option<Protocol>,
-    flags: uint,
+    pub address: SocketAddr,
+    pub family: uint,
+    pub socktype: Option<SocketType>,
+    pub protocol: Option<Protocol>,
+    pub flags: uint,
 }
 
 /// Easy name resolution. Given a hostname, returns the list of IP addresses for

@@ -152,7 +152,7 @@ impl Use {
 
 /// Iterator for the users of a value
 pub struct Users {
-    priv next: Option<Use>
+    next: Option<Use>
 }
 
 impl Iterator<Value> for Users {

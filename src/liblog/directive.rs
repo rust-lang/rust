@@ -12,8 +12,8 @@ use std::cmp;
 
 #[deriving(Show, Clone)]
 pub struct LogDirective {
-    name: Option<~str>,
-    level: u32,
+    pub name: Option<~str>,
+    pub level: u32,
 }
 
 static LOG_LEVEL_NAMES: [&'static str, ..4] = ["error", "warn", "info",

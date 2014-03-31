@@ -42,7 +42,7 @@ pub struct CleanupScope<'a> {
 }
 
 pub struct CustomScopeIndex {
-    priv index: uint
+    index: uint
 }
 
 pub static EXIT_BREAK: uint = 0;

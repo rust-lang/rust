@@ -29,10 +29,10 @@ pub enum PtrTy<'a> {
 /// A path, e.g. `::std::option::Option::<int>` (global). Has support
 /// for type parameters and a lifetime.
 pub struct Path<'a> {
-    path: Vec<&'a str> ,
-    lifetime: Option<&'a str>,
-    params: Vec<~Ty<'a>> ,
-    global: bool
+    pub path: Vec<&'a str> ,
+    pub lifetime: Option<&'a str>,
+    pub params: Vec<~Ty<'a>> ,
+    pub global: bool,
 }
 
 impl<'a> Path<'a> {
@@ -205,8 +205,8 @@ fn mk_generics(lifetimes: Vec<ast::Lifetime> ,  ty_params: Vec<ast::TyParam> ) -
 
 /// Lifetimes and bounds on type parameters
 pub struct LifetimeBounds<'a> {
-    lifetimes: Vec<&'a str>,
-    bounds: Vec<(&'a str, Vec<Path<'a>>)>,
+    pub lifetimes: Vec<&'a str>,
+    pub bounds: Vec<(&'a str, Vec<Path<'a>>)>,
 }
 
 impl<'a> LifetimeBounds<'a> {

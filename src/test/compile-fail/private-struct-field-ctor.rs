@@ -10,7 +10,7 @@
 
 mod a {
     pub struct Foo {
-        priv x: int
+        x: int
     }
 }
 

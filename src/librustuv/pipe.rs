@@ -26,19 +26,19 @@ use uvll;
 pub struct PipeWatcher {
     stream: StreamWatcher,
     home: HomeHandle,
-    priv defused: bool,
-    priv refcount: Refcount,
+    defused: bool,
+    refcount: Refcount,
 
     // see comments in TcpWatcher for why these exist
-    priv write_access: Access,
-    priv read_access: Access,
+    write_access: Access,
+    read_access: Access,
 }
 
 pub struct PipeListener {
     home: HomeHandle,
     pipe: *uvll::uv_pipe_t,
-    priv outgoing: Sender<Result<~RtioPipe:Send, IoError>>,
-    priv incoming: Receiver<Result<~RtioPipe:Send, IoError>>,
+    outgoing: Sender<Result<~RtioPipe:Send, IoError>>,
+    incoming: Receiver<Result<~RtioPipe:Send, IoError>>,
 }
 
 pub struct PipeAcceptor {

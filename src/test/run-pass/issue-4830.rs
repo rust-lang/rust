@@ -10,7 +10,7 @@
 
 pub struct Scheduler {
     /// The event loop used to drive the scheduler and perform I/O
-    priv event_loop: ~int
+    event_loop: ~int
 }
 
 pub fn main() { }

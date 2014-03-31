@@ -106,7 +106,7 @@ fn bind(addr: &CString, ty: libc::c_int) -> IoResult<Inner> {
 ////////////////////////////////////////////////////////////////////////////////
 
 pub struct UnixStream {
-    priv inner: UnsafeArc<Inner>,
+    inner: UnsafeArc<Inner>,
 }
 
 impl UnixStream {
@@ -160,7 +160,7 @@ impl rtio::RtioPipe for UnixStream {
 ////////////////////////////////////////////////////////////////////////////////
 
 pub struct UnixDatagram {
-    priv inner: UnsafeArc<Inner>,
+    inner: UnsafeArc<Inner>,
 }
 
 impl UnixDatagram {
@@ -231,7 +231,7 @@ impl UnixDatagram {
 ////////////////////////////////////////////////////////////////////////////////
 
 pub struct UnixListener {
-    priv inner: Inner,
+    inner: Inner,
 }
 
 impl UnixListener {
@@ -256,7 +256,7 @@ impl rtio::RtioUnixListener for UnixListener {
 }
 
 pub struct UnixAcceptor {
-    priv listener: UnixListener,
+    listener: UnixListener,
 }
 
 impl UnixAcceptor {

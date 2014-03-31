@@ -200,7 +200,7 @@ use std::ptr;
 // Unique<T> has the same semantics as ~T
 pub struct Unique<T> {
     // It contains a single raw, mutable pointer to the object in question.
-    priv ptr: *mut T
+    ptr: *mut T
 }
 
 // Implement methods for creating and using the values in the box.

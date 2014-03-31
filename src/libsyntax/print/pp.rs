@@ -257,7 +257,7 @@ pub fn mk_printer(out: ~io::Writer, linewidth: uint) -> Printer {
  * called 'print'.
  */
 pub struct Printer {
-    out: ~io::Writer,
+    pub out: ~io::Writer,
     buf_len: uint,
     margin: int, // width of lines we're constrained to
     space: int, // number of spaces left on line

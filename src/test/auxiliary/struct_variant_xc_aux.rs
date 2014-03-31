@@ -14,5 +14,5 @@
 #![feature(struct_variant)]
 
 pub enum Enum {
-    Variant { arg: u8 }
+    Variant { pub arg: u8 }
 }

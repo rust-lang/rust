@@ -28,12 +28,12 @@ use syntax::abi;
 pub static METADATA_FILENAME: &'static str = "rust.metadata.bin";
 
 pub struct Archive<'a> {
-    priv sess: &'a Session,
-    priv dst: Path,
+    sess: &'a Session,
+    dst: Path,
 }
 
 pub struct ArchiveRO {
-    priv ptr: ArchiveRef,
+    ptr: ArchiveRef,
 }
 
 fn run_ar(sess: &Session, args: &str, cwd: Option<&Path>,

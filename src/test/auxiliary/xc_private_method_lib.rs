@@ -11,7 +11,7 @@
 #[crate_type="lib"];
 
 pub struct Struct {
-    x: int
+    pub x: int
 }
 
 impl Struct {

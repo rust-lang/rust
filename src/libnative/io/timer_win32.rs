@@ -29,8 +29,8 @@ use io::timer_helper;
 use io::IoResult;
 
 pub struct Timer {
-    priv obj: libc::HANDLE,
-    priv on_worker: bool,
+    obj: libc::HANDLE,
+    on_worker: bool,
 }
 
 pub enum Req {

@@ -48,9 +48,9 @@ pub enum Param {
 /// Container for static and dynamic variable arrays
 pub struct Variables {
     /// Static variables A-Z
-    priv sta: [Param, ..26],
+    sta: [Param, ..26],
     /// Dynamic variables a-z
-    priv dyn: [Param, ..26]
+    dyn: [Param, ..26]
 }
 
 impl Variables {

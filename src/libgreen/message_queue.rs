@@ -23,11 +23,11 @@ pub fn queue<T: Send>() -> (Consumer<T>, Producer<T>) {
 }
 
 pub struct Producer<T> {
-    priv inner: UnsafeArc<mpsc::Queue<T>>,
+    inner: UnsafeArc<mpsc::Queue<T>>,
 }
 
 pub struct Consumer<T> {
-    priv inner: UnsafeArc<mpsc::Queue<T>>,
+    inner: UnsafeArc<mpsc::Queue<T>>,
 }
 
 impl<T: Send> Consumer<T> {

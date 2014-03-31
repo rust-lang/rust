@@ -11,9 +11,9 @@
 #![allow(non_camel_case_types)]
 
 pub struct t {
-    module_asm: ~str,
-    meta_sect_name: ~str,
-    data_layout: ~str,
-    target_triple: ~str,
-    cc_args: Vec<~str> ,
+    pub module_asm: ~str,
+    pub meta_sect_name: ~str,
+    pub data_layout: ~str,
+    pub target_triple: ~str,
+    pub cc_args: Vec<~str> ,
 }

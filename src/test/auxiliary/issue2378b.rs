@@ -14,7 +14,7 @@ extern crate issue2378a;
 
 use issue2378a::maybe;
 
-pub struct two_maybes<T> {a: maybe<T>, b: maybe<T>}
+pub struct two_maybes<T> {pub a: maybe<T>, pub b: maybe<T>}
 
 impl<T:Clone> Index<uint,(T,T)> for two_maybes<T> {
     fn index(&self, idx: &uint) -> (T, T) {

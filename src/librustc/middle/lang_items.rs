@@ -47,7 +47,7 @@ pub enum LangItem {
 }
 
 pub struct LanguageItems {
-    items: Vec<Option<ast::DefId>> ,
+    pub items: Vec<Option<ast::DefId>> ,
 }
 
 impl LanguageItems {

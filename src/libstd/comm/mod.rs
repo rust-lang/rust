@@ -289,34 +289,34 @@ static RESCHED_FREQ: int = 256;
 /// The receiving-half of Rust's channel type. This half can only be owned by
 /// one task
 pub struct Receiver<T> {
-    priv inner: Flavor<T>,
-    priv receives: Cell<uint>,
+    inner: Flavor<T>,
+    receives: Cell<uint>,
     // can't share in an arc
-    priv marker: marker::NoShare,
+    marker: marker::NoShare,
 }
 
 /// An iterator over messages on a receiver, this iterator will block
 /// whenever `next` is called, waiting for a new message, and `None` will be
 /// returned when the corresponding channel has hung up.
 pub struct Messages<'a, T> {
-    priv rx: &'a Receiver<T>
+    rx: &'a Receiver<T>
 }
 
 /// The sending-half of Rust's asynchronous channel type. This half can only be
 /// owned by one task, but it can be cloned to send to other tasks.
 pub struct Sender<T> {
-    priv inner: Flavor<T>,
-    priv sends: Cell<uint>,
+    inner: Flavor<T>,
+    sends: Cell<uint>,
     // can't share in an arc
-    priv marker: marker::NoShare,
+    marker: marker::NoShare,
 }
 
 /// The sending-half of Rust's synchronous channel type. This half can only be
 /// owned by one task, but it can be cloned to send to other tasks.
 pub struct SyncSender<T> {
-    priv inner: UnsafeArc<sync::Packet<T>>,
+    inner: UnsafeArc<sync::Packet<T>>,
     // can't share in an arc
-    priv marker: marker::NoShare,
+    marker: marker::NoShare,
 }
 
 /// This enumeration is the list of the possible reasons that try_recv could not

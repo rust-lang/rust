@@ -25,9 +25,9 @@ static MINIMUM_CAPACITY: uint = 2u;
 /// RingBuf is a circular buffer that implements Deque.
 #[deriving(Clone)]
 pub struct RingBuf<T> {
-    priv nelts: uint,
-    priv lo: uint,
-    priv elts: ~[Option<T>]
+    nelts: uint,
+    lo: uint,
+    elts: ~[Option<T>]
 }
 
 impl<T> Container for RingBuf<T> {
@@ -230,10 +230,10 @@ impl<T> RingBuf<T> {
 
 /// RingBuf iterator
 pub struct Items<'a, T> {
-    priv lo: uint,
-    priv index: uint,
-    priv rindex: uint,
-    priv elts: &'a [Option<T>],
+    lo: uint,
+    index: uint,
+    rindex: uint,
+    elts: &'a [Option<T>],
 }
 
 impl<'a, T> Iterator<&'a T> for Items<'a, T> {
@@ -285,9 +285,9 @@ impl<'a, T> RandomAccessIterator<&'a T> for Items<'a, T> {
 
 /// RingBuf mutable iterator
 pub struct MutItems<'a, T> {
-    priv remaining1: &'a mut [Option<T>],
-    priv remaining2: &'a mut [Option<T>],
-    priv nelts: uint,
+    remaining1: &'a mut [Option<T>],
+    remaining2: &'a mut [Option<T>],
+    nelts: uint,
 }
 
 impl<'a, T> Iterator<&'a mut T> for MutItems<'a, T> {

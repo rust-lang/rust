@@ -60,15 +60,15 @@ pub type TaskResult = Result<(), ~Any:Send>;
 /// Task configuration options
 pub struct TaskOpts {
     /// Enable lifecycle notifications on the given channel
-    notify_chan: Option<Sender<TaskResult>>,
+    pub notify_chan: Option<Sender<TaskResult>>,
     /// A name for the task-to-be, for identification in failure messages
-    name: Option<SendStr>,
+    pub name: Option<SendStr>,
     /// The size of the stack for the spawned task
-    stack_size: Option<uint>,
+    pub stack_size: Option<uint>,
     /// Task-local stdout
-    stdout: Option<~Writer:Send>,
+    pub stdout: Option<~Writer:Send>,
     /// Task-local stderr
-    stderr: Option<~Writer:Send>,
+    pub stderr: Option<~Writer:Send>,
 }
 
 /**
@@ -85,9 +85,9 @@ pub struct TaskOpts {
 // the run function move them in.
 pub struct TaskBuilder {
     /// Options to spawn the new task with
-    opts: TaskOpts,
-    priv gen_body: Option<proc:Send(v: proc:Send()) -> proc:Send()>,
-    priv nocopy: Option<marker::NoCopy>,
+    pub opts: TaskOpts,
+    gen_body: Option<proc:Send(v: proc:Send()) -> proc:Send()>,
+    nocopy: Option<marker::NoCopy>,
 }
 
 /**

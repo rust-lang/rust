@@ -67,7 +67,7 @@ use ops::Drop;
 /// Prefer the `NativeMutex` type where possible, since that does not
 /// require manual deallocation.
 pub struct StaticNativeMutex {
-    priv inner: imp::Mutex,
+    inner: imp::Mutex,
 }
 
 /// A native mutex with a destructor for clean-up.
@@ -75,7 +75,7 @@ pub struct StaticNativeMutex {
 /// See `StaticNativeMutex` for a version that is suitable for storing in
 /// statics.
 pub struct NativeMutex {
-    priv inner: StaticNativeMutex
+    inner: StaticNativeMutex
 }
 
 /// Automatically unlocks the mutex that it was created from on
@@ -86,7 +86,7 @@ pub struct NativeMutex {
 /// then.
 #[must_use]
 pub struct LockGuard<'a> {
-    priv lock: &'a StaticNativeMutex
+    lock: &'a StaticNativeMutex
 }
 
 pub static NATIVE_MUTEX_INIT: StaticNativeMutex = StaticNativeMutex {
@@ -372,8 +372,8 @@ mod imp {
     }
 
     pub struct Mutex {
-        priv lock: Unsafe<pthread_mutex_t>,
-        priv cond: Unsafe<pthread_cond_t>,
+        lock: Unsafe<pthread_mutex_t>,
+        cond: Unsafe<pthread_cond_t>,
     }
 
     pub static MUTEX_INIT: Mutex = Mutex {
@@ -447,8 +447,8 @@ mod imp {
 
     pub struct Mutex {
         // pointers for the lock/cond handles, atomically updated
-        priv lock: atomics::AtomicUint,
-        priv cond: atomics::AtomicUint,
+        lock: atomics::AtomicUint,
+        cond: atomics::AtomicUint,
     }
 
     pub static MUTEX_INIT: Mutex = Mutex {

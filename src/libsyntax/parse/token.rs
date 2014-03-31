@@ -556,7 +556,7 @@ pub fn get_ident_interner() -> Rc<IdentInterner> {
 /// somehow.
 #[deriving(Clone, Eq, Hash, Ord, TotalEq, TotalOrd)]
 pub struct InternedString {
-    priv string: RcStr,
+    string: RcStr,
 }
 
 impl InternedString {

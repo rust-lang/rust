@@ -30,8 +30,8 @@ use collections::HashMap;
 // ast::MacInvocTT.
 
 pub struct MacroDef {
-    name: ~str,
-    ext: SyntaxExtension
+    pub name: ~str,
+    pub ext: SyntaxExtension
 }
 
 pub type ItemDecorator =
@@ -41,8 +41,8 @@ pub type ItemModifier =
     fn(&mut ExtCtxt, Span, @ast::MetaItem, @ast::Item) -> @ast::Item;
 
 pub struct BasicMacroExpander {
-    expander: MacroExpanderFn,
-    span: Option<Span>
+    pub expander: MacroExpanderFn,
+    pub span: Option<Span>
 }
 
 pub trait MacroExpander {
@@ -68,8 +68,8 @@ impl MacroExpander for BasicMacroExpander {
 }
 
 pub struct BasicIdentMacroExpander {
-    expander: IdentMacroExpanderFn,
-    span: Option<Span>
+    pub expander: IdentMacroExpanderFn,
+    pub span: Option<Span>
 }
 
 pub trait IdentMacroExpander {
@@ -172,9 +172,9 @@ pub enum SyntaxExtension {
 
 pub struct BlockInfo {
     // should macros escape from this scope?
-    macros_escape: bool,
+    pub macros_escape: bool,
     // what are the pending renames?
-    pending_renames: RenameList,
+    pub pending_renames: RenameList,
 }
 
 impl BlockInfo {
@@ -292,8 +292,8 @@ pub fn syntax_expander_table() -> SyntaxEnv {
 }
 
 pub struct MacroCrate {
-    lib: Option<Path>,
-    cnum: ast::CrateNum,
+    pub lib: Option<Path>,
+    pub cnum: ast::CrateNum,
 }
 
 pub trait CrateLoader {
@@ -306,13 +306,13 @@ pub trait CrateLoader {
 // when a macro expansion occurs, the resulting nodes have the backtrace()
 // -> expn_info of their expansion context stored into their span.
 pub struct ExtCtxt<'a> {
-    parse_sess: &'a parse::ParseSess,
-    cfg: ast::CrateConfig,
-    backtrace: Option<@ExpnInfo>,
-    ecfg: expand::ExpansionConfig<'a>,
+    pub parse_sess: &'a parse::ParseSess,
+    pub cfg: ast::CrateConfig,
+    pub backtrace: Option<@ExpnInfo>,
+    pub ecfg: expand::ExpansionConfig<'a>,
 
-    mod_path: Vec<ast::Ident> ,
-    trace_mac: bool
+    pub mod_path: Vec<ast::Ident> ,
+    pub trace_mac: bool,
 }
 
 impl<'a> ExtCtxt<'a> {
@@ -532,7 +532,7 @@ struct MapChainFrame {
 
 // Only generic to make it easy to test
 pub struct SyntaxEnv {
-    priv chain: Vec<MapChainFrame> ,
+    chain: Vec<MapChainFrame> ,
 }
 
 impl SyntaxEnv {

@@ -59,8 +59,8 @@ use io::IoResult;
 use io::timer_helper;
 
 pub struct Timer {
-    priv id: uint,
-    priv inner: Option<~Inner>,
+    id: uint,
+    inner: Option<~Inner>,
 }
 
 struct Inner {

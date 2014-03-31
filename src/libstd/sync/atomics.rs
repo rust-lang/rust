@@ -116,26 +116,26 @@ use ty::Unsafe;
 
 /// An atomic boolean type.
 pub struct AtomicBool {
-    priv v: Unsafe<uint>,
-    priv nocopy: marker::NoCopy
+    v: Unsafe<uint>,
+    nocopy: marker::NoCopy
 }
 
 /// A signed atomic integer type, supporting basic atomic arithmetic operations
 pub struct AtomicInt {
-    priv v: Unsafe<int>,
-    priv nocopy: marker::NoCopy
+    v: Unsafe<int>,
+    nocopy: marker::NoCopy
 }
 
 /// An unsigned atomic integer type, supporting basic atomic arithmetic operations
 pub struct AtomicUint {
-    priv v: Unsafe<uint>,
-    priv nocopy: marker::NoCopy
+    v: Unsafe<uint>,
+    nocopy: marker::NoCopy
 }
 
 /// An unsafe atomic pointer. Only supports basic atomic operations
 pub struct AtomicPtr<T> {
-    priv p: Unsafe<uint>,
-    priv nocopy: marker::NoCopy
+    p: Unsafe<uint>,
+    nocopy: marker::NoCopy
 }
 
 /// An atomic, nullable unique pointer
@@ -144,7 +144,7 @@ pub struct AtomicPtr<T> {
 /// owned heap objects across tasks.
 #[unsafe_no_drop_flag]
 pub struct AtomicOption<T> {
-    priv p: Unsafe<uint>,
+    p: Unsafe<uint>,
 }
 
 /// Atomic memory orderings

@@ -62,10 +62,10 @@ use uint;
 /// The "receiver set" of the select interface. This structure is used to manage
 /// a set of receivers which are being selected over.
 pub struct Select {
-    priv head: *mut Handle<'static, ()>,
-    priv tail: *mut Handle<'static, ()>,
-    priv next_id: Cell<uint>,
-    priv marker1: marker::NoSend,
+    head: *mut Handle<'static, ()>,
+    tail: *mut Handle<'static, ()>,
+    next_id: Cell<uint>,
+    marker1: marker::NoSend,
 }
 
 /// A handle to a receiver which is currently a member of a `Select` set of
@@ -74,16 +74,16 @@ pub struct Select {
 pub struct Handle<'rx, T> {
     /// The ID of this handle, used to compare against the return value of
     /// `Select::wait()`
-    priv id: uint,
-    priv selector: &'rx Select,
-    priv next: *mut Handle<'static, ()>,
-    priv prev: *mut Handle<'static, ()>,
-    priv added: bool,
-    priv packet: &'rx Packet,
+    id: uint,
+    selector: &'rx Select,
+    next: *mut Handle<'static, ()>,
+    prev: *mut Handle<'static, ()>,
+    added: bool,
+    packet: &'rx Packet,
 
     // due to our fun transmutes, we be sure to place this at the end. (nothing
     // previous relies on T)
-    priv rx: &'rx Receiver<T>,
+    rx: &'rx Receiver<T>,
 }
 
 struct Packets { cur: *mut Handle<'static, ()> }

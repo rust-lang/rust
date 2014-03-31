@@ -48,10 +48,10 @@ use kinds::marker;
 #[lang="unsafe"]
 pub struct Unsafe<T> {
     /// Wrapped value
-    value: T,
+    pub value: T,
 
     /// Invariance marker
-    marker1: marker::InvariantType<T>
+    pub marker1: marker::InvariantType<T>
 }
 
 impl<T> Unsafe<T> {

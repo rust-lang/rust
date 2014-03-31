@@ -12,7 +12,7 @@ use a::Foo;
 
 mod a {
     pub struct Foo {
-        priv x: int
+        x: int
     }
 
     pub fn make() -> Foo {

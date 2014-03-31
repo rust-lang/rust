@@ -39,7 +39,12 @@ pub struct Scheduler {
     /// ID number of the pool that this scheduler is a member of. When
     /// reawakening green tasks, this is used to ensure that tasks aren't
     /// reawoken on the wrong pool of schedulers.
-    pool_id: uint,
+    pub pool_id: uint,
+    /// The pool of stacks that this scheduler has cached
+    pub stack_pool: StackPool,
+    /// Bookkeeping for the number of tasks which are currently running around
+    /// inside this pool of schedulers
+    pub task_state: TaskState,
     /// There are N work queues, one per scheduler.
     work_queue: deque::Worker<~GreenTask>,
     /// Work queues for the other schedulers. These are created by
@@ -64,7 +69,6 @@ pub struct Scheduler {
     /// A flag to indicate we've received the shutdown message and should
     /// no longer try to go to sleep, but exit instead.
     no_sleep: bool,
-    stack_pool: StackPool,
     /// The scheduler runs on a special task. When it is not running
     /// it is stored here instead of the work queue.
     sched_task: Option<~GreenTask>,
@@ -87,9 +91,6 @@ pub struct Scheduler {
     /// A flag to tell the scheduler loop it needs to do some stealing
     /// in order to introduce randomness as part of a yield
     steal_for_yield: bool,
-    /// Bookkeeping for the number of tasks which are currently running around
-    /// inside this pool of schedulers
-    task_state: TaskState,
 
     // n.b. currently destructors of an object are run in top-to-bottom in order
     //      of field declaration. Due to its nature, the pausable idle callback
@@ -99,7 +100,7 @@ pub struct Scheduler {
     //      destroyed before it's actually destroyed.
 
     /// The event loop used to drive the scheduler and perform I/O
-    event_loop: ~EventLoop:Send,
+    pub event_loop: ~EventLoop:Send,
 }
 
 /// An indication of how hard to work on a given operation, the difference
@@ -893,9 +894,9 @@ pub enum SchedMessage {
 }
 
 pub struct SchedHandle {
-    priv remote: ~RemoteCallback:Send,
-    priv queue: msgq::Producer<SchedMessage>,
-    sched_id: uint
+    remote: ~RemoteCallback:Send,
+    queue: msgq::Producer<SchedMessage>,
+    pub sched_id: uint
 }
 
 impl SchedHandle {

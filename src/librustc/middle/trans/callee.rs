@@ -54,8 +54,8 @@ use syntax::abi::AbiSet;
 use syntax::ast_map;
 
 pub struct MethodData {
-    llfn: ValueRef,
-    llself: ValueRef,
+    pub llfn: ValueRef,
+    pub llself: ValueRef,
 }
 
 pub enum CalleeData {
@@ -70,8 +70,8 @@ pub enum CalleeData {
 }
 
 pub struct Callee<'a> {
-    bcx: &'a Block<'a>,
-    data: CalleeData
+    pub bcx: &'a Block<'a>,
+    pub data: CalleeData
 }
 
 fn trans<'a>(bcx: &'a Block<'a>, expr: &ast::Expr) -> Callee<'a> {

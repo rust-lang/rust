@@ -24,7 +24,7 @@ use sync::atomics;
 /// A wrapper for a path to temporary directory implementing automatic
 /// scope-based deletion.
 pub struct TempDir {
-    priv path: Option<Path>
+    path: Option<Path>
 }
 
 impl TempDir {

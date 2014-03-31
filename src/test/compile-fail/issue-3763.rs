@@ -12,7 +12,7 @@
 
 mod my_mod {
     pub struct MyStruct {
-        priv priv_field: int
+        priv_field: int
     }
     pub fn MyStruct () -> MyStruct {
         MyStruct {priv_field: 4}

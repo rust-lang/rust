@@ -41,10 +41,11 @@ use std::path::is_sep;
  * pattern - see the `glob` function for more details.
  */
 pub struct Paths {
-    priv root: Path,
-    priv dir_patterns: Vec<Pattern> ,
-    priv options: MatchOptions,
-    priv todo: Vec<(Path,uint)> }
+    root: Path,
+    dir_patterns: Vec<Pattern>,
+    options: MatchOptions,
+    todo: Vec<(Path,uint)>,
+}
 
 ///
 /// Return an iterator that produces all the Paths that match the given pattern,
@@ -176,7 +177,8 @@ fn list_dir_sorted(path: &Path) -> Vec<Path> {
  */
 #[deriving(Clone, Eq, TotalEq, Ord, TotalOrd, Hash, Default)]
 pub struct Pattern {
-    priv tokens: Vec<PatternToken> }
+    tokens: Vec<PatternToken>,
+}
 
 #[deriving(Clone, Eq, TotalEq, Ord, TotalOrd, Hash)]
 enum PatternToken {
@@ -513,13 +515,13 @@ pub struct MatchOptions {
      * currently only considers upper/lower case relationships between ASCII characters,
      * but in future this might be extended to work with Unicode.
      */
-    priv case_sensitive: bool,
+    case_sensitive: bool,
 
     /**
      * If this is true then path-component separator characters (e.g. `/` on Posix)
      * must be matched by a literal `/`, rather than by `*` or `?` or `[...]`
      */
-    priv require_literal_separator: bool,
+    require_literal_separator: bool,
 
     /**
      * If this is true then paths that contain components that start with a `.` will
@@ -527,7 +529,7 @@ pub struct MatchOptions {
      * will not match. This is useful because such files are conventionally considered
      * hidden on Unix systems and it might be desirable to skip them when listing files.
      */
-    priv require_literal_leading_dot: bool
+    require_literal_leading_dot: bool
 }
 
 impl MatchOptions {

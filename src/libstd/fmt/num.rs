@@ -108,7 +108,7 @@ radix!(UpperHex, 16, "0x", x @  0 .. 9 => '0' as u8 + x,
 /// A radix with in the range of `2..36`.
 #[deriving(Clone, Eq)]
 pub struct Radix {
-    priv base: u8,
+    base: u8,
 }
 
 impl Radix {
