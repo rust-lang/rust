@@ -261,7 +261,7 @@ impl<T> TrieMap<T> {
 }
 
 impl<T> FromIterator<(uint, T)> for TrieMap<T> {
-    fn from_iterator<Iter: Iterator<(uint, T)>>(iter: Iter) -> TrieMap<T> {
+    fn from_iter<Iter: Iterator<(uint, T)>>(iter: Iter) -> TrieMap<T> {
         let mut map = TrieMap::new();
         map.extend(iter);
         map
@@ -346,7 +346,7 @@ impl TrieSet {
 }
 
 impl FromIterator<uint> for TrieSet {
-    fn from_iterator<Iter: Iterator<uint>>(iter: Iter) -> TrieSet {
+    fn from_iter<Iter: Iterator<uint>>(iter: Iter) -> TrieSet {
         let mut set = TrieSet::new();
         set.extend(iter);
         set

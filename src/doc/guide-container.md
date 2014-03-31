@@ -278,7 +278,7 @@ vectors is as follows:
 
 ~~~ {.ignore}
 impl<A> FromIterator<A> for ~[A] {
-    pub fn from_iterator<T: Iterator<A>>(iterator: &mut T) -> ~[A] {
+    pub fn from_iter<T: Iterator<A>>(iterator: &mut T) -> ~[A] {
         let (lower, _) = iterator.size_hint();
         let mut xs = with_capacity(lower);
         for x in iterator {
