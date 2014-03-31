@@ -171,7 +171,7 @@ dist/$(PKG_NAME)-$(1).pkg: $(S)src/etc/pkg/Distribution.xml LICENSE.txt \
 	      --resources tmp/dist/pkgres-$(1) dist/$(PKG_NAME)-$(1).pkg
 	$(Q)rm -rf tmp rust.pkg
 
-tmp/dist/pkgres-$(1)/LICENSE.txt: $(S)/LICENSE.txt
+tmp/dist/pkgres-$(1)/LICENSE.txt: LICENSE.txt
 	@$$(call E,pkg resource LICENSE.txt)
 	$(Q)mkdir -p $$(@D)
 	$(Q)cp $$< $$@
