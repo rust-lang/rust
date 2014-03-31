@@ -582,7 +582,7 @@ impl<A> DoubleEndedIterator<A> for MoveItems<A> {
 }
 
 impl<A> FromIterator<A> for DList<A> {
-    fn from_iterator<T: Iterator<A>>(iterator: T) -> DList<A> {
+    fn from_iter<T: Iterator<A>>(iterator: T) -> DList<A> {
         let mut ret = DList::new();
         ret.extend(iterator);
         ret

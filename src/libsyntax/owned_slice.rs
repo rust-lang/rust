@@ -126,7 +126,7 @@ impl<T> Container for OwnedSlice<T> {
 }
 
 impl<T> FromIterator<T> for OwnedSlice<T> {
-    fn from_iterator<I: Iterator<T>>(mut iter: I) -> OwnedSlice<T> {
+    fn from_iter<I: Iterator<T>>(mut iter: I) -> OwnedSlice<T> {
         OwnedSlice::from_vec(iter.collect())
     }
 }

@@ -29,7 +29,7 @@ impl<T> Container for SmallVector<T> {
 }
 
 impl<T> FromIterator<T> for SmallVector<T> {
-    fn from_iterator<I: Iterator<T>>(iter: I) -> SmallVector<T> {
+    fn from_iter<I: Iterator<T>>(iter: I) -> SmallVector<T> {
         let mut v = Zero;
         v.extend(iter);
         v
@@ -167,7 +167,7 @@ mod test {
     }
 
     #[test]
-    fn test_from_iterator() {
+    fn test_from_iter() {
         let v: SmallVector<int> = (vec!(1, 2, 3)).move_iter().collect();
         assert_eq!(3, v.len());
         assert_eq!(&1, v.get(0));

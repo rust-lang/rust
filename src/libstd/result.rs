@@ -230,7 +230,7 @@ pub fn collect<T, E, Iter: Iterator<Result<T, E>>, V: FromIterator<T>>(iter: Ite
         }
     });
 
-    let v: V = FromIterator::from_iterator(iter.by_ref());
+    let v: V = FromIterator::from_iter(iter.by_ref());
 
     match iter.state {
         Some(err) => Err(err),
