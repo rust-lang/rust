@@ -272,7 +272,7 @@ fn should_fail(i: @ast::Item) -> bool {
 fn add_test_module(cx: &TestCtxt, m: &ast::Mod) -> ast::Mod {
     let testmod = mk_test_module(cx);
     ast::Mod {
-        items: vec::append_one(m.items.clone(), testmod),
+        items: m.items.clone().append_one(testmod),
         ..(*m).clone()
     }
 }

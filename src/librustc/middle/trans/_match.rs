@@ -225,7 +225,6 @@ use util::ppaux::{Repr, vec_map_to_str};
 
 use collections::HashMap;
 use std::cell::Cell;
-use std::vec;
 use syntax::ast;
 use syntax::ast::Ident;
 use syntax::ast_util::path_to_ident;
@@ -478,11 +477,9 @@ fn expand_nested_bindings<'r,'b>(
     m.iter().map(|br| {
         match br.pats.get(col).node {
             ast::PatIdent(_, ref path, Some(inner)) => {
-                let pats = vec::append(
-                    Vec::from_slice(br.pats.slice(0u, col)),
-                    vec::append(vec!(inner),
-                                br.pats.slice(col + 1u,
-                                           br.pats.len())).as_slice());
+                let pats = Vec::from_slice(br.pats.slice(0u, col))
+                           .append((vec!(inner))
+                                   .append(br.pats.slice(col + 1u, br.pats.len())).as_slice());
 
                 let mut res = Match {
                     pats: pats,
@@ -527,10 +524,8 @@ fn enter_match<'r,'b>(
     for br in m.iter() {
         match e(*br.pats.get(col)) {
             Some(sub) => {
-                let pats =
-                    vec::append(
-                        vec::append(sub, br.pats.slice(0u, col)),
-                        br.pats.slice(col + 1u, br.pats.len()));
+                let pats = sub.append(br.pats.slice(0u, col))
+                              .append(br.pats.slice(col + 1u, br.pats.len()));
 
                 let this = *br.pats.get(col);
                 let mut bound_ptrs = br.bound_ptrs.clone();
@@ -1557,8 +1552,7 @@ fn compile_submatch_continue<'r,
     let tcx = bcx.tcx();
     let dm = tcx.def_map;
 
-    let vals_left = vec::append(Vec::from_slice(vals.slice(0u, col)),
-                                   vals.slice(col + 1u, vals.len()));
+    let vals_left = Vec::from_slice(vals.slice(0u, col)).append(vals.slice(col + 1u, vals.len()));
     let ccx = bcx.fcx.ccx;
     let mut pat_id = 0;
     for br in m.iter() {
@@ -1581,7 +1575,7 @@ fn compile_submatch_continue<'r,
                 let rec_vals = rec_fields.iter().map(|field_name| {
                         let ix = ty::field_idx_strict(tcx, field_name.name, field_tys);
                         adt::trans_field_ptr(bcx, pat_repr, val, discr, ix)
-                        }).collect();
+                        }).collect::<Vec<_>>();
                 compile_submatch(
                         bcx,
                         enter_rec_or_struct(bcx,
@@ -1590,8 +1584,7 @@ fn compile_submatch_continue<'r,
                                             col,
                                             rec_fields.as_slice(),
                                             val).as_slice(),
-                        vec::append(rec_vals,
-                                       vals_left.as_slice()).as_slice(),
+                        rec_vals.append(vals_left.as_slice()).as_slice(),
                         chk);
             });
             return;
@@ -1616,8 +1609,7 @@ fn compile_submatch_continue<'r,
                                    col,
                                    val,
                                    n_tup_elts).as_slice(),
-                         vec::append(tup_vals,
-                                        vals_left.as_slice()).as_slice(),
+                         tup_vals.append(vals_left.as_slice()).as_slice(),
                          chk);
         return;
     }
@@ -1642,8 +1634,7 @@ fn compile_submatch_continue<'r,
         compile_submatch(bcx,
                          enter_tuple_struct(bcx, dm, m, col, val,
                                             struct_element_count).as_slice(),
-                         vec::append(llstructvals,
-                                        vals_left.as_slice()).as_slice(),
+                         llstructvals.append(vals_left.as_slice()).as_slice(),
                          chk);
         return;
     }
@@ -1652,8 +1643,7 @@ fn compile_submatch_continue<'r,
         let llbox = Load(bcx, val);
         compile_submatch(bcx,
                          enter_uniq(bcx, dm, m, col, val).as_slice(),
-                         vec::append(vec!(llbox),
-                                        vals_left.as_slice()).as_slice(),
+                         (vec!(llbox)).append(vals_left.as_slice()).as_slice(),
                          chk);
         return;
     }
@@ -1662,8 +1652,7 @@ fn compile_submatch_continue<'r,
         let loaded_val = Load(bcx, val);
         compile_submatch(bcx,
                          enter_region(bcx, dm, m, col, val).as_slice(),
-                         vec::append(vec!(loaded_val),
-                                        vals_left.as_slice()).as_slice(),
+                         (vec!(loaded_val)).append(vals_left.as_slice()).as_slice(),
                          chk);
         return;
     }
@@ -1844,7 +1833,7 @@ fn compile_submatch_continue<'r,
             lit(_) | range(_, _) => ()
         }
         let opt_ms = enter_opt(opt_cx, m, opt, col, size, val);
-        let opt_vals = vec::append(unpacked, vals_left.as_slice());
+        let opt_vals = unpacked.append(vals_left.as_slice());
 
         match branch_chk {
             None => {

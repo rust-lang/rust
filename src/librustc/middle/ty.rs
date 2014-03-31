@@ -40,7 +40,6 @@ use std::fmt;
 use std::hash::{Hash, sip};
 use std::ops;
 use std::rc::Rc;
-use std::vec;
 use collections::{HashMap, HashSet};
 use syntax::ast::*;
 use syntax::ast_util::{is_local, lit_is_str};
@@ -2880,7 +2879,7 @@ pub fn replace_closure_return_type(tcx: &ctxt, fn_type: t, ret_type: t) -> t {
 
 // Returns a vec of all the input and output types of fty.
 pub fn tys_in_fn_sig(sig: &FnSig) -> Vec<t> {
-    vec::append_one(sig.inputs.iter().map(|a| *a).collect(), sig.output)
+    sig.inputs.iter().map(|a| *a).collect::<Vec<_>>().append_one(sig.output)
 }
 
 // Type accessors for AST nodes
@@ -3213,11 +3212,8 @@ pub fn method_call_type_param_defs(tcx: &ctxt, origin: typeck::MethodOrigin)
             // trait itself.  This ought to be harmonized.
             let trait_type_param_defs =
                 lookup_trait_def(tcx, trt_id).generics.type_param_defs();
-            Rc::new(vec::append(
-                Vec::from_slice(trait_type_param_defs),
-                ty::trait_method(tcx,
-                                 trt_id,
-                                 n_mth).generics.type_param_defs()))
+            Rc::new(Vec::from_slice(trait_type_param_defs).append(
+                        ty::trait_method(tcx, trt_id, n_mth).generics.type_param_defs()))
         }
     }
 }

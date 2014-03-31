@@ -187,8 +187,6 @@ use codemap::Span;
 use owned_slice::OwnedSlice;
 use parse::token::InternedString;
 
-use std::vec;
-
 pub use self::ty::*;
 mod ty;
 
@@ -411,7 +409,7 @@ impl<'a> TraitDef<'a> {
         cx.item(
             self.span,
             ident,
-            vec::append(vec!(attr), self.attributes.as_slice()),
+            (vec!(attr)).append(self.attributes.as_slice()),
             ast::ItemImpl(trait_generics, opt_trait_ref,
                           self_type, methods))
     }

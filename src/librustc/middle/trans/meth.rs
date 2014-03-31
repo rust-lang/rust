@@ -34,7 +34,6 @@ use util::common::indenter;
 use util::ppaux::Repr;
 
 use std::c_str::ToCStr;
-use std::vec;
 use syntax::parse::token;
 use syntax::{ast, ast_map, visit};
 
@@ -319,8 +318,7 @@ fn combine_impl_and_methods_tps(bcx: &Block,
     let node_substs = node_id_type_params(bcx, node);
     debug!("rcvr_substs={:?}", rcvr_substs.repr(ccx.tcx()));
     let ty_substs
-        = vec::append(Vec::from_slice(rcvr_substs),
-                         node_substs.tailn(node_substs.len() - n_m_tps));
+        = Vec::from_slice(rcvr_substs).append(node_substs.tailn(node_substs.len() - n_m_tps));
     debug!("n_m_tps={:?}", n_m_tps);
     debug!("node_substs={:?}", node_substs.repr(ccx.tcx()));
     debug!("ty_substs={:?}", ty_substs.repr(ccx.tcx()));
@@ -338,8 +336,8 @@ fn combine_impl_and_methods_tps(bcx: &Block,
         None => @Vec::from_elem(node_substs.len(), @Vec::new())
     };
     let vtables
-        = @vec::append(Vec::from_slice(rcvr_origins.as_slice()),
-                          r_m_origins.tailn(r_m_origins.len() - n_m_tps));
+        = @Vec::from_slice(rcvr_origins.as_slice())
+                           .append(r_m_origins.tailn(r_m_origins.len() - n_m_tps));
 
     (ty_substs, vtables)
 }
