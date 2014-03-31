@@ -10,5 +10,5 @@
 
 // no-prefer-dynamic
 
-#[crate_id = "collections#0.10-pre"];
+#[crate_id = "collections#0.10"];
 #[crate_type = "rlib"];

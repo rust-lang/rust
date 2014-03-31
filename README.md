@@ -32,9 +32,9 @@ documentation.
 
     To build from the [tarball] do:
 
-        $ curl -O http://static.rust-lang.org/dist/rust-0.9.tar.gz
-        $ tar -xzf rust-0.9.tar.gz
-        $ cd rust-0.9
+        $ curl -O http://static.rust-lang.org/dist/rust-0.10.tar.gz
+        $ tar -xzf rust-0.10.tar.gz
+        $ cd rust-0.10
 
     Or to build from the [repo] do:
 
@@ -59,8 +59,8 @@ documentation.
 4. Enjoy!
 
 [repo]: https://github.com/mozilla/rust
-[tarball]: http://static.rust-lang.org/dist/rust-0.9.tar.gz
-[tutorial]: http://static.rust-lang.org/doc/0.9/tutorial.html
+[tarball]: http://static.rust-lang.org/dist/rust-0.10.tar.gz
+[tutorial]: http://static.rust-lang.org/doc/0.10/tutorial.html
 
 ## Notes
 

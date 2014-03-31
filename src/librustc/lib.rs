@@ -18,7 +18,7 @@ This API is completely unstable and subject to change.
 
 */
 
-#![crate_id = "rustc#0.10-pre"]
+#![crate_id = "rustc#0.10"]
 #![comment = "The Rust compiler"]
 #![license = "MIT/ASL2"]
 #![crate_type = "dylib"]

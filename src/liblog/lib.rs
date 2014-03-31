@@ -105,7 +105,7 @@ if logging is disabled, none of the components of the log will be executed.
 
 */
 
-#![crate_id = "log#0.10-pre"]
+#![crate_id = "log#0.10"]
 #![license = "MIT/ASL2"]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
