@@ -386,7 +386,7 @@ impl<A: Eq> Eq for RingBuf<A> {
 }
 
 impl<A> FromIterator<A> for RingBuf<A> {
-    fn from_iterator<T: Iterator<A>>(iterator: T) -> RingBuf<A> {
+    fn from_iter<T: Iterator<A>>(iterator: T) -> RingBuf<A> {
         let (lower, _) = iterator.size_hint();
         let mut deq = RingBuf::with_capacity(lower);
         deq.extend(iterator);
@@ -778,7 +778,7 @@ mod tests {
     }
 
     #[test]
-    fn test_from_iterator() {
+    fn test_from_iter() {
         use std::iter;
         let v = ~[1,2,3,4,5,6,7];
         let deq: RingBuf<int> = v.iter().map(|&x| x).collect();
