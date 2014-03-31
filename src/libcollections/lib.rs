@@ -12,7 +12,7 @@
  * Collection types.
  */
 
-#![crate_id = "collections#0.10-pre"]
+#![crate_id = "collections#0.10"]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![license = "MIT/ASL2"]

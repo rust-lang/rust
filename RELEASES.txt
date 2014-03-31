@@ -132,7 +132,7 @@ Version 0.10 (April 2014)
   * Tooling
     * `rustpkg` has been deprecated and removed from the main repository. Its
       replacement, `cargo`, is under development.
-    * Nightly builds of rust are now available (INSERT URL HERE)
+    * Nightly builds of rust are now available
     * The memory usage of rustc has been improved many times throughout this
       release cycle.
     * The build process supports disabling rpath support for the rustc binary
