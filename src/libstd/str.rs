@@ -3019,7 +3019,7 @@ impl Clone for ~str {
 
 impl FromIterator<char> for ~str {
     #[inline]
-    fn from_iterator<T: Iterator<char>>(iterator: T) -> ~str {
+    fn from_iter<T: Iterator<char>>(iterator: T) -> ~str {
         let (lower, _) = iterator.size_hint();
         let mut buf = with_capacity(lower);
         buf.extend(iterator);

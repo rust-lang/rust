@@ -971,7 +971,7 @@ fn remove<K: TotalOrd, V>(node: &mut Option<~TreeNode<K, V>>,
 }
 
 impl<K: TotalOrd, V> FromIterator<(K, V)> for TreeMap<K, V> {
-    fn from_iterator<T: Iterator<(K, V)>>(iter: T) -> TreeMap<K, V> {
+    fn from_iter<T: Iterator<(K, V)>>(iter: T) -> TreeMap<K, V> {
         let mut map = TreeMap::new();
         map.extend(iter);
         map
@@ -988,7 +988,7 @@ impl<K: TotalOrd, V> Extendable<(K, V)> for TreeMap<K, V> {
 }
 
 impl<T: TotalOrd> FromIterator<T> for TreeSet<T> {
-    fn from_iterator<Iter: Iterator<T>>(iter: Iter) -> TreeSet<T> {
+    fn from_iter<Iter: Iterator<T>>(iter: Iter) -> TreeSet<T> {
         let mut set = TreeSet::new();
         set.extend(iter);
         set

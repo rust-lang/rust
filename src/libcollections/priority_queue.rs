@@ -193,7 +193,7 @@ impl<'a, T> Iterator<&'a T> for Items<'a, T> {
 }
 
 impl<T: Ord> FromIterator<T> for PriorityQueue<T> {
-    fn from_iterator<Iter: Iterator<T>>(iter: Iter) -> PriorityQueue<T> {
+    fn from_iter<Iter: Iterator<T>>(iter: Iter) -> PriorityQueue<T> {
         let mut q = PriorityQueue::new();
         q.extend(iter);
         q
