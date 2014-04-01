@@ -25,9 +25,9 @@ use std::num::{Zero,One,ToStrRadix};
 #[deriving(Eq,Clone)]
 pub struct Cmplx<T> {
     /// Real portion of the complex number
-    re: T,
+    pub re: T,
     /// Imaginary portion of the complex number
-    im: T
+    pub im: T
 }
 
 pub type Complex32 = Cmplx<f32>;
