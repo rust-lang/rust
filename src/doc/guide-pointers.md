@@ -332,8 +332,6 @@ sense, they're simple: just keep whatever ownership the data already has. For
 example:
 
 ~~~rust
-use std::num::sqrt;
-
 struct Point {
     x: f32,
     y: f32,
@@ -343,7 +341,7 @@ fn compute_distance(p1: &Point, p2: &Point) -> f32 {
     let x_d = p1.x - p2.x;
     let y_d = p1.y - p2.y;
 
-    sqrt(x_d * x_d + y_d * y_d)
+    (x_d * x_d + y_d * y_d).sqrt()
 }
 
 fn main() {

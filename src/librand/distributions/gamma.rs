@@ -11,7 +11,6 @@
 //! The Gamma and derived distributions.
 
 use std::num::Float;
-use std::num;
 use {Rng, Open01};
 use super::normal::StandardNormal;
 use super::{IndependentSample, Sample, Exp};
@@ -114,7 +113,7 @@ impl GammaLargeShape {
         GammaLargeShape {
             shape: shape,
             scale: scale,
-            c: 1. / num::sqrt(9. * d),
+            c: 1. / (9. * d).sqrt(),
             d: d
         }
     }
@@ -143,7 +142,7 @@ impl IndependentSample<f64> for GammaSmallShape {
     fn ind_sample<R: Rng>(&self, rng: &mut R) -> f64 {
         let Open01(u) = rng.gen::<Open01<f64>>();
 
-        self.large_shape.ind_sample(rng) * num::powf(u, self.inv_shape)
+        self.large_shape.ind_sample(rng) * u.powf(&self.inv_shape)
     }
 }
 impl IndependentSample<f64> for GammaLargeShape {
@@ -160,7 +159,7 @@ impl IndependentSample<f64> for GammaLargeShape {
 
             let x_sqr = x * x;
             if u < 1.0 - 0.0331 * x_sqr * x_sqr ||
-                num::ln(u) < 0.5 * x_sqr + self.d * (1.0 - v + num::ln(v)) {
+                u.ln() < 0.5 * x_sqr + self.d * (1.0 - v + v.ln()) {
                 return self.d * v * self.scale
             }
         }
