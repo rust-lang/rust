@@ -74,22 +74,6 @@ pub fn trans_impl(ccx: &CrateContext,
     }
 }
 
-/// Translates a (possibly monomorphized) method body.
-///
-/// Parameters:
-/// * `method`: the AST node for the method
-/// * `param_substs`: if this is a generic method, the current values for
-///   type parameters and so forth, else None
-/// * `llfn`: the LLVM ValueRef for the method
-///
-pub fn trans_method(ccx: &CrateContext, method: &ast::Method,
-                    param_substs: Option<@param_substs>,
-                    llfn: ValueRef) -> ValueRef {
-    trans_fn(ccx, method.decl, method.body,
-             llfn, param_substs, method.id, []);
-    llfn
-}
-
 pub fn trans_method_callee<'a>(
                            bcx: &'a Block<'a>,
                            method_call: MethodCall,
