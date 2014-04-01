@@ -64,7 +64,7 @@
 
 use middle::ty;
 use middle::typeck;
-use util::ppaux::{ty_to_str, region_ptr_to_str, Repr};
+use util::ppaux::{ty_to_str, Repr};
 
 use syntax::ast::{MutImmutable, MutMutable};
 use syntax::ast;
@@ -674,20 +674,6 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
         }
     }
 
-    /// inherited mutability: used in cases where the mutability of a
-    /// component is inherited from the base it is a part of. For
-    /// example, a record field is mutable if it is declared mutable
-    /// or if the container is mutable.
-    pub fn inherited_mutability(&mut self,
-                                base_m: MutabilityCategory,
-                                interior_m: ast::Mutability)
-                                -> MutabilityCategory {
-        match interior_m {
-            MutImmutable => base_m.inherit(),
-            MutMutable => McDeclared
-        }
-    }
-
     pub fn cat_field<N:ast_node>(&mut self,
                                  node: &N,
                                  base_cmt: cmt,
@@ -1114,13 +1100,6 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
         Ok(())
     }
 
-    pub fn mut_to_str(&mut self, mutbl: ast::Mutability) -> ~str {
-        match mutbl {
-          MutMutable => ~"mutable",
-          MutImmutable => ~"immutable"
-        }
-    }
-
     pub fn cmt_to_str(&self, cmt: cmt) -> ~str {
         match cmt.cat {
           cat_static_item => {
@@ -1174,48 +1153,6 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
           }
         }
     }
-
-    pub fn region_to_str(&self, r: ty::Region) -> ~str {
-        region_ptr_to_str(self.tcx(), r)
-    }
-}
-
-/// The node_id here is the node of the expression that references the field.
-/// This function looks it up in the def map in case the type happens to be
-/// an enum to determine which variant is in use.
-pub fn field_mutbl(tcx: &ty::ctxt,
-                   base_ty: ty::t,
-                   // FIXME #6993: change type to Name
-                   f_name: ast::Ident,
-                   node_id: ast::NodeId)
-                -> Option<ast::Mutability> {
-    // Need to refactor so that struct/enum fields can be treated uniformly.
-    match ty::get(base_ty).sty {
-      ty::ty_struct(did, _) => {
-        let r = ty::lookup_struct_fields(tcx, did);
-        for fld in r.iter() {
-            if fld.name == f_name.name {
-                return Some(ast::MutImmutable);
-            }
-        }
-      }
-      ty::ty_enum(..) => {
-        match tcx.def_map.borrow().get_copy(&node_id) {
-          ast::DefVariant(_, variant_id, _) => {
-            let r = ty::lookup_struct_fields(tcx, variant_id);
-            for fld in r.iter() {
-                if fld.name == f_name.name {
-                    return Some(ast::MutImmutable);
-                }
-            }
-          }
-          _ => {}
-        }
-      }
-      _ => { }
-    }
-
-    return None;
 }
 
 pub enum InteriorSafety {
