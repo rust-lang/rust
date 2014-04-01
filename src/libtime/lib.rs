@@ -67,7 +67,7 @@ mod imp {
 
 /// A record specifying a time value in seconds and nanoseconds.
 #[deriving(Clone, Eq, TotalEq, Ord, TotalOrd, Encodable, Decodable, Show)]
-pub struct Timespec { sec: i64, nsec: i32 }
+pub struct Timespec { pub sec: i64, pub nsec: i32 }
 /*
  * Timespec assumes that pre-epoch Timespecs have negative sec and positive
  * nsec fields. Darwin's and Linux's struct timespec functions handle pre-
@@ -191,46 +191,46 @@ pub fn tzset() {
 #[deriving(Clone, Eq, Encodable, Decodable, Show)]
 pub struct Tm {
     /// Seconds after the minute – [0, 60]
-    tm_sec: i32,
+    pub tm_sec: i32,
 
     /// Minutes after the hour – [0, 59]
-    tm_min: i32,
+    pub tm_min: i32,
 
     /// Hours after midnight – [0, 23]
-    tm_hour: i32,
+    pub tm_hour: i32,
 
     /// Day of the month – [1, 31]
-    tm_mday: i32,
+    pub tm_mday: i32,
 
     /// Months since January – [0, 11]
-    tm_mon: i32,
+    pub tm_mon: i32,
 
     /// Years since 1900
-    tm_year: i32,
+    pub tm_year: i32,
 
     /// Days since Sunday – [0, 6]. 0 = Sunday, 1 = Monday, …, 6 = Saturday.
-    tm_wday: i32,
+    pub tm_wday: i32,
 
     /// Days since January 1 – [0, 365]
-    tm_yday: i32,
+    pub tm_yday: i32,
 
     /// Daylight Saving Time flag.
     ///
     /// This value is positive if Daylight Saving Time is in effect, zero if Daylight Saving Time
     /// is not in effect, and negative if this information is not available.
-    tm_isdst: i32,
+    pub tm_isdst: i32,
 
     /// Identifies the time zone that was used to compute this broken-down time value, including any
     /// adjustment for Daylight Saving Time. This is the number of seconds east of UTC. For example,
     /// for U.S. Pacific Daylight Time, the value is -7*60*60 = -25200.
-    tm_gmtoff: i32,
+    pub tm_gmtoff: i32,
 
     /// Abbreviated name for the time zone that was used to compute this broken-down time value.
     /// For example, U.S. Pacific Daylight Time is "PDT".
-    tm_zone: ~str,
+    pub tm_zone: ~str,
 
     /// Nanoseconds after the second – [0, 10<sup>9</sup> - 1]
-    tm_nsec: i32,
+    pub tm_nsec: i32,
 }
 
 pub fn empty_tm() -> Tm {
