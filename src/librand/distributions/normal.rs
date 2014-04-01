@@ -27,7 +27,7 @@ use distributions::{ziggurat, ziggurat_tables, Sample, IndependentSample};
 /// Generate Normal Random
 /// Samples*](http://www.doornik.com/research/ziggurat.pdf). Nuffield
 /// College, Oxford
-pub struct StandardNormal(f64);
+pub struct StandardNormal(pub f64);
 
 impl Rand for StandardNormal {
     fn rand<R:Rng>(rng: &mut R) -> StandardNormal {

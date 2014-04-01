@@ -12,7 +12,7 @@ use lib::llvm::{llvm, BasicBlockRef};
 use middle::trans::value::{Users, Value};
 use std::iter::{Filter, Map};
 
-pub struct BasicBlock(BasicBlockRef);
+pub struct BasicBlock(pub BasicBlockRef);
 
 pub type Preds<'a> = Map<'a, Value, BasicBlock, Filter<'a, Value, Users>>;
 

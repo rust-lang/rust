@@ -33,13 +33,13 @@ pub trait Pos {
 /// A byte offset. Keep this small (currently 32-bits), as AST contains
 /// a lot of them.
 #[deriving(Clone, Eq, TotalEq, Hash, Ord, Show)]
-pub struct BytePos(u32);
+pub struct BytePos(pub u32);
 
 /// A character offset. Because of multibyte utf8 characters, a byte offset
 /// is not equivalent to a character offset. The CodeMap will convert BytePos
 /// values to CharPos values as necessary.
 #[deriving(Eq, Hash, Ord, Show)]
-pub struct CharPos(uint);
+pub struct CharPos(pub uint);
 
 // FIXME: Lots of boilerplate in these impls, but so far my attempts to fix
 // have been unsuccessful
