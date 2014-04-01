@@ -533,6 +533,10 @@ impl<'a> ConstraintContext<'a> {
         }
     }
 
+    fn is_to_be_inferred(&self, param_id: ast::NodeId) -> bool {
+        self.terms_cx.inferred_map.contains_key(&param_id)
+    }
+
     fn declared_variance(&self,
                          param_def_id: ast::DefId,
                          item_def_id: ast::DefId,
@@ -788,8 +792,10 @@ impl<'a> ConstraintContext<'a> {
                                    variance: VarianceTermPtr<'a>) {
         match region {
             ty::ReEarlyBound(param_id, _, _) => {
-                let index = self.inferred_index(param_id);
-                self.add_constraint(index, variance);
+                if self.is_to_be_inferred(param_id) {
+                    let index = self.inferred_index(param_id);
+                    self.add_constraint(index, variance);
+                }
             }
 
             ty::ReStatic => { }
