@@ -20,7 +20,6 @@ use middle::resolve;
 use middle::trans::adt;
 use middle::trans::base;
 use middle::trans::builder::Builder;
-use middle::trans::common::{C_i32, C_null};
 use middle::trans::common::{mono_id,ExternMap,tydesc_info,BuilderRef_res,Stats};
 use middle::trans::debuginfo;
 use middle::trans::type_::Type;
@@ -30,7 +29,6 @@ use util::nodemap::{NodeMap, NodeSet, DefIdMap};
 
 use std::cell::{Cell, RefCell};
 use std::c_str::ToCStr;
-use std::libc::c_uint;
 use std::ptr;
 use collections::{HashMap, HashSet};
 use syntax::ast;
@@ -230,36 +228,6 @@ impl CrateContext {
 
     pub fn builder<'a>(&'a self) -> Builder<'a> {
         Builder::new(self)
-    }
-
-    pub fn const_inbounds_gepi(&self,
-                               pointer: ValueRef,
-                               indices: &[uint]) -> ValueRef {
-        debug!("const_inbounds_gepi: pointer={} indices={:?}",
-               self.tn.val_to_str(pointer), indices);
-        let v: Vec<ValueRef> =
-            indices.iter().map(|i| C_i32(self, *i as i32)).collect();
-        unsafe {
-            llvm::LLVMConstInBoundsGEP(pointer,
-                                       v.as_ptr(),
-                                       indices.len() as c_uint)
-        }
-    }
-
-    pub fn offsetof_gep(&self,
-                        llptr_ty: Type,
-                        indices: &[uint]) -> ValueRef {
-        /*!
-         * Returns the offset of applying the given GEP indices
-         * to an instance of `llptr_ty`. Similar to `offsetof` in C,
-         * except that `llptr_ty` must be a pointer type.
-         */
-
-        unsafe {
-            let null = C_null(llptr_ty);
-            llvm::LLVMConstPtrToInt(self.const_inbounds_gepi(null, indices),
-                                    self.int_type.to_ref())
-        }
     }
 
     pub fn tydesc_type(&self) -> Type {
