@@ -14,6 +14,7 @@
 
 use std::mem::replace;
 
+use metadata::csearch;
 use middle::lint;
 use middle::resolve;
 use middle::ty;
@@ -358,6 +359,12 @@ enum PrivacyResult {
     DisallowedBy(ast::NodeId),
 }
 
+enum FieldName {
+    UnnamedField(uint), // index
+    // FIXME #6993: change type (and name) from Ident to Name
+    NamedField(ast::Ident),
+}
+
 impl<'a> PrivacyVisitor<'a> {
     // used when debugging
     fn nodestr(&self, id: ast::NodeId) -> ~str {
@@ -560,18 +567,23 @@ impl<'a> PrivacyVisitor<'a> {
     }
 
     // Checks that a field is in scope.
-    // FIXME #6993: change type (and name) from Ident to Name
-    fn check_field(&mut self, span: Span, id: ast::DefId, ident: ast::Ident) {
-        for field in ty::lookup_struct_fields(self.tcx, id).iter() {
-            if field.name != ident.name { continue; }
-            if field.vis == ast::Public { break }
-            if !is_local(field.id) ||
-               !self.private_accessible(field.id.node) {
-                self.tcx.sess.span_err(span,
-                                       format!("field `{}` is private",
-                                               token::get_ident(ident)))
+    fn check_field(&mut self, span: Span, id: ast::DefId,
+                   name: FieldName) {
+        let fields = ty::lookup_struct_fields(self.tcx, id);
+        let field = match name {
+            NamedField(ident) => {
+                fields.iter().find(|f| f.name == ident.name).unwrap()
             }
-            break;
+            UnnamedField(idx) => fields.get(idx)
+        };
+        if field.vis == ast::Public { return }
+        if !is_local(field.id) || !self.private_accessible(field.id.node) {
+            let msg = match name {
+                NamedField(name) => format!("field `{}` is private",
+                                            token::get_ident(name)),
+                UnnamedField(idx) => format!("field \\#{} is private", idx + 1),
+            };
+            self.tcx.sess.span_err(span, msg);
         }
     }
 
@@ -634,10 +646,11 @@ impl<'a> PrivacyVisitor<'a> {
                             _ => {},
                         }
                     }
-                    // If an import is not used in either namespace, we still want to check
-                    // that it could be legal. Therefore we check in both namespaces and only
-                    // report an error if both would be illegal. We only report one error,
-                    // even if it is illegal to import from both namespaces.
+                    // If an import is not used in either namespace, we still
+                    // want to check that it could be legal. Therefore we check
+                    // in both namespaces and only report an error if both would
+                    // be illegal. We only report one error, even if it is
+                    // illegal to import from both namespaces.
                     match (value_priv, check_value, type_priv, check_type) {
                         (Some(p), resolve::Unused, None, _) |
                         (None, _, Some(p), resolve::Unused) => {
@@ -701,7 +714,8 @@ impl<'a> PrivacyVisitor<'a> {
             // is whether the trait itself is accessible or not.
             MethodParam(MethodParam { trait_id: trait_id, .. }) |
             MethodObject(MethodObject { trait_id: trait_id, .. }) => {
-                self.report_error(self.ensure_public(span, trait_id, None, "source trait"));
+                self.report_error(self.ensure_public(span, trait_id, None,
+                                                     "source trait"));
             }
         }
     }
@@ -726,7 +740,7 @@ impl<'a> Visitor<()> for PrivacyVisitor<'a> {
                 match ty::get(ty::expr_ty_adjusted(self.tcx, base,
                                                    &*self.method_map.borrow())).sty {
                     ty::ty_struct(id, _) => {
-                        self.check_field(expr.span, id, ident);
+                        self.check_field(expr.span, id, NamedField(ident));
                     }
                     _ => {}
                 }
@@ -749,7 +763,8 @@ impl<'a> Visitor<()> for PrivacyVisitor<'a> {
                 match ty::get(ty::expr_ty(self.tcx, expr)).sty {
                     ty::ty_struct(id, _) => {
                         for field in (*fields).iter() {
-                            self.check_field(expr.span, id, field.ident.node);
+                            self.check_field(expr.span, id,
+                                             NamedField(field.ident.node));
                         }
                     }
                     ty::ty_enum(_, _) => {
@@ -757,7 +772,7 @@ impl<'a> Visitor<()> for PrivacyVisitor<'a> {
                             ast::DefVariant(_, variant_id, _) => {
                                 for field in fields.iter() {
                                     self.check_field(expr.span, variant_id,
-                                                     field.ident.node);
+                                                     NamedField(field.ident.node));
                                 }
                             }
                             _ => self.tcx.sess.span_bug(expr.span,
@@ -770,6 +785,46 @@ impl<'a> Visitor<()> for PrivacyVisitor<'a> {
                     _ => self.tcx.sess.span_bug(expr.span, "struct expr \
                                                             didn't have \
                                                             struct type?!"),
+                }
+            }
+            ast::ExprPath(..) => {
+                let guard = |did: ast::DefId| {
+                    let fields = ty::lookup_struct_fields(self.tcx, did);
+                    let any_priv = fields.iter().any(|f| {
+                        f.vis != ast::Public && (
+                            !is_local(f.id) ||
+                            !self.private_accessible(f.id.node))
+                    });
+                    if any_priv {
+                        self.tcx.sess.span_err(expr.span,
+                            "cannot invoke tuple struct constructor \
+                             with private fields");
+                    }
+                };
+                match self.tcx.def_map.borrow().find(&expr.id) {
+                    Some(&ast::DefStruct(did)) => {
+                        guard(if is_local(did) {
+                            local_def(self.tcx.map.get_parent(did.node))
+                        } else {
+                            // "tuple structs" with zero fields (such as
+                            // `pub struct Foo;`) don't have a ctor_id, hence
+                            // the unwrap_or to the same struct id.
+                            let maybe_did =
+                                csearch::get_tuple_struct_definition_if_ctor(
+                                    &self.tcx.sess.cstore, did);
+                            maybe_did.unwrap_or(did)
+                        })
+                    }
+                    // Tuple struct constructors across crates are identified as
+                    // DefFn types, so we explicitly handle that case here.
+                    Some(&ast::DefFn(did, _)) if !is_local(did) => {
+                        match csearch::get_tuple_struct_definition_if_ctor(
+                                    &self.tcx.sess.cstore, did) {
+                            Some(did) => guard(did),
+                            None => {}
+                        }
+                    }
+                    _ => {}
                 }
             }
             _ => {}
@@ -821,7 +876,8 @@ impl<'a> Visitor<()> for PrivacyVisitor<'a> {
                 match ty::get(ty::pat_ty(self.tcx, pattern)).sty {
                     ty::ty_struct(id, _) => {
                         for field in fields.iter() {
-                            self.check_field(pattern.span, id, field.ident);
+                            self.check_field(pattern.span, id,
+                                             NamedField(field.ident));
                         }
                     }
                     ty::ty_enum(_, _) => {
@@ -829,7 +885,7 @@ impl<'a> Visitor<()> for PrivacyVisitor<'a> {
                             Some(&ast::DefVariant(_, variant_id, _)) => {
                                 for field in fields.iter() {
                                     self.check_field(pattern.span, variant_id,
-                                                     field.ident);
+                                                     NamedField(field.ident));
                                 }
                             }
                             _ => self.tcx.sess.span_bug(pattern.span,
@@ -843,6 +899,27 @@ impl<'a> Visitor<()> for PrivacyVisitor<'a> {
                                                 "struct pattern didn't have \
                                                  struct type?!"),
                 }
+            }
+
+            // Patterns which bind no fields are allowable (the path is check
+            // elsewhere).
+            ast::PatEnum(_, Some(ref fields)) => {
+                match ty::get(ty::pat_ty(self.tcx, pattern)).sty {
+                    ty::ty_struct(id, _) => {
+                        for (i, field) in fields.iter().enumerate() {
+                            match field.node {
+                                ast::PatWild(..) => continue,
+                                _ => {}
+                            }
+                            self.check_field(field.span, id, UnnamedField(i));
+                        }
+                    }
+                    ty::ty_enum(..) => {
+                        // enum fields have no privacy at this time
+                    }
+                    _ => {}
+                }
+
             }
             _ => {}
         }
