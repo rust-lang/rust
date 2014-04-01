@@ -421,19 +421,6 @@ pub fn mk_coercety(cx: &InferCtxt,
     })
 }
 
-pub fn can_mk_coercety(cx: &InferCtxt, a: ty::t, b: ty::t) -> ures {
-    debug!("can_mk_coercety({} -> {})", a.inf_str(cx), b.inf_str(cx));
-    indent(|| {
-        cx.probe(|| {
-            let trace = TypeTrace {
-                origin: Misc(codemap::DUMMY_SP),
-                values: Types(expected_found(true, a, b))
-            };
-            Coerce(cx.combine_fields(true, trace)).tys(a, b)
-        })
-    }).to_ures()
-}
-
 // See comment on the type `resolve_state` below
 pub fn resolve_type(cx: &InferCtxt,
                     a: ty::t,
@@ -631,10 +618,6 @@ impl<'a> InferCtxt<'a> {
         result
     }
 
-    pub fn next_int_var(&self) -> ty::t {
-        ty::mk_int_var(self.tcx, self.next_int_var_id())
-    }
-
     pub fn next_float_var_id(&self) -> FloatVid {
         let mut float_var_counter = self.float_var_counter.get();
         let mut float_var_bindings = self.float_var_bindings.borrow_mut();
@@ -644,19 +627,8 @@ impl<'a> InferCtxt<'a> {
         result
     }
 
-    pub fn next_float_var(&self) -> ty::t {
-        ty::mk_float_var(self.tcx, self.next_float_var_id())
-    }
-
     pub fn next_region_var(&self, origin: RegionVariableOrigin) -> ty::Region {
         ty::ReInfer(ty::ReVar(self.region_vars.new_region_var(origin)))
-    }
-
-    pub fn next_region_vars(&self,
-                            origin: RegionVariableOrigin,
-                            count: uint)
-                            -> Vec<ty::Region> {
-        Vec::from_fn(count, |_| self.next_region_var(origin))
     }
 
     pub fn region_vars_for_defs(&self,
