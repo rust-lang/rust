@@ -1094,11 +1094,11 @@ mod tests {
 #[cfg(test)]
 mod bench {
     extern crate test;
-    use self::test::BenchHarness;
+    use self::test::Bencher;
     use ebml::reader;
 
     #[bench]
-    pub fn vuint_at_A_aligned(bh: &mut BenchHarness) {
+    pub fn vuint_at_A_aligned(b: &mut Bencher) {
         use std::slice;
         let data = slice::from_fn(4*100, |i| {
             match i % 2 {
@@ -1107,7 +1107,7 @@ mod bench {
             }
         });
         let mut sum = 0u;
-        bh.iter(|| {
+        b.iter(|| {
             let mut i = 0;
             while i < data.len() {
                 sum += reader::vuint_at(data, i).unwrap().val;
@@ -1117,7 +1117,7 @@ mod bench {
     }
 
     #[bench]
-    pub fn vuint_at_A_unaligned(bh: &mut BenchHarness) {
+    pub fn vuint_at_A_unaligned(b: &mut Bencher) {
         use std::slice;
         let data = slice::from_fn(4*100+1, |i| {
             match i % 2 {
@@ -1126,7 +1126,7 @@ mod bench {
             }
         });
         let mut sum = 0u;
-        bh.iter(|| {
+        b.iter(|| {
             let mut i = 1;
             while i < data.len() {
                 sum += reader::vuint_at(data, i).unwrap().val;
@@ -1136,7 +1136,7 @@ mod bench {
     }
 
     #[bench]
-    pub fn vuint_at_D_aligned(bh: &mut BenchHarness) {
+    pub fn vuint_at_D_aligned(b: &mut Bencher) {
         use std::slice;
         let data = slice::from_fn(4*100, |i| {
             match i % 4 {
@@ -1146,7 +1146,7 @@ mod bench {
             }
         });
         let mut sum = 0u;
-        bh.iter(|| {
+        b.iter(|| {
             let mut i = 0;
             while i < data.len() {
                 sum += reader::vuint_at(data, i).unwrap().val;
@@ -1156,7 +1156,7 @@ mod bench {
     }
 
     #[bench]
-    pub fn vuint_at_D_unaligned(bh: &mut BenchHarness) {
+    pub fn vuint_at_D_unaligned(b: &mut Bencher) {
         use std::slice;
         let data = slice::from_fn(4*100+1, |i| {
             match i % 4 {
@@ -1166,7 +1166,7 @@ mod bench {
             }
         });
         let mut sum = 0u;
-        bh.iter(|| {
+        b.iter(|| {
             let mut i = 1;
             while i < data.len() {
                 sum += reader::vuint_at(data, i).unwrap().val;

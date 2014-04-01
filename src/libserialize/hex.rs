@@ -141,7 +141,7 @@ impl<'a> FromHex for &'a str {
 #[cfg(test)]
 mod tests {
     extern crate test;
-    use self::test::BenchHarness;
+    use self::test::Bencher;
     use hex::{FromHex, ToHex};
 
     #[test]
@@ -190,23 +190,23 @@ mod tests {
     }
 
     #[bench]
-    pub fn bench_to_hex(bh: & mut BenchHarness) {
+    pub fn bench_to_hex(b: &mut Bencher) {
         let s = "イロハニホヘト チリヌルヲ ワカヨタレソ ツネナラム \
                  ウヰノオクヤマ ケフコエテ アサキユメミシ ヱヒモセスン";
-        bh.iter(|| {
+        b.iter(|| {
             s.as_bytes().to_hex();
         });
-        bh.bytes = s.len() as u64;
+        b.bytes = s.len() as u64;
     }
 
     #[bench]
-    pub fn bench_from_hex(bh: & mut BenchHarness) {
+    pub fn bench_from_hex(b: &mut Bencher) {
         let s = "イロハニホヘト チリヌルヲ ワカヨタレソ ツネナラム \
                  ウヰノオクヤマ ケフコエテ アサキユメミシ ヱヒモセスン";
-        let b = s.as_bytes().to_hex();
-        bh.iter(|| {
-            b.from_hex().unwrap();
+        let sb = s.as_bytes().to_hex();
+        b.iter(|| {
+            sb.from_hex().unwrap();
         });
-        bh.bytes = b.len() as u64;
+        b.bytes = sb.len() as u64;
     }
 }

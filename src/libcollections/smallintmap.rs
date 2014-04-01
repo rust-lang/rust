@@ -476,59 +476,59 @@ mod test_map {
 #[cfg(test)]
 mod bench {
     extern crate test;
-    use self::test::BenchHarness;
+    use self::test::Bencher;
     use super::SmallIntMap;
     use deque::bench::{insert_rand_n, insert_seq_n, find_rand_n, find_seq_n};
 
     // Find seq
     #[bench]
-    pub fn insert_rand_100(bh: &mut BenchHarness) {
+    pub fn insert_rand_100(b: &mut Bencher) {
         let mut m : SmallIntMap<uint> = SmallIntMap::new();
-        insert_rand_n(100, &mut m, bh);
+        insert_rand_n(100, &mut m, b);
     }
 
     #[bench]
-    pub fn insert_rand_10_000(bh: &mut BenchHarness) {
+    pub fn insert_rand_10_000(b: &mut Bencher) {
         let mut m : SmallIntMap<uint> = SmallIntMap::new();
-        insert_rand_n(10_000, &mut m, bh);
+        insert_rand_n(10_000, &mut m, b);
     }
 
     // Insert seq
     #[bench]
-    pub fn insert_seq_100(bh: &mut BenchHarness) {
+    pub fn insert_seq_100(b: &mut Bencher) {
         let mut m : SmallIntMap<uint> = SmallIntMap::new();
-        insert_seq_n(100, &mut m, bh);
+        insert_seq_n(100, &mut m, b);
     }
 
     #[bench]
-    pub fn insert_seq_10_000(bh: &mut BenchHarness) {
+    pub fn insert_seq_10_000(b: &mut Bencher) {
         let mut m : SmallIntMap<uint> = SmallIntMap::new();
-        insert_seq_n(10_000, &mut m, bh);
+        insert_seq_n(10_000, &mut m, b);
     }
 
     // Find rand
     #[bench]
-    pub fn find_rand_100(bh: &mut BenchHarness) {
+    pub fn find_rand_100(b: &mut Bencher) {
         let mut m : SmallIntMap<uint> = SmallIntMap::new();
-        find_rand_n(100, &mut m, bh);
+        find_rand_n(100, &mut m, b);
     }
 
     #[bench]
-    pub fn find_rand_10_000(bh: &mut BenchHarness) {
+    pub fn find_rand_10_000(b: &mut Bencher) {
         let mut m : SmallIntMap<uint> = SmallIntMap::new();
-        find_rand_n(10_000, &mut m, bh);
+        find_rand_n(10_000, &mut m, b);
     }
 
     // Find seq
     #[bench]
-    pub fn find_seq_100(bh: &mut BenchHarness) {
+    pub fn find_seq_100(b: &mut Bencher) {
         let mut m : SmallIntMap<uint> = SmallIntMap::new();
-        find_seq_n(100, &mut m, bh);
+        find_seq_n(100, &mut m, b);
     }
 
     #[bench]
-    pub fn find_seq_10_000(bh: &mut BenchHarness) {
+    pub fn find_seq_10_000(b: &mut Bencher) {
         let mut m : SmallIntMap<uint> = SmallIntMap::new();
-        find_seq_n(10_000, &mut m, bh);
+        find_seq_n(10_000, &mut m, b);
     }
 }

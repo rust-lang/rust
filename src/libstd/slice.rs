@@ -4273,7 +4273,7 @@ mod tests {
 #[cfg(test)]
 mod bench {
     extern crate test;
-    use self::test::BenchHarness;
+    use self::test::Bencher;
     use mem;
     use prelude::*;
     use ptr;
@@ -4281,12 +4281,12 @@ mod bench {
     use slice;
 
     #[bench]
-    fn iterator(bh: &mut BenchHarness) {
+    fn iterator(b: &mut Bencher) {
         // peculiar numbers to stop LLVM from optimising the summation
         // out.
         let v = slice::from_fn(100, |i| i ^ (i << 1) ^ (i >> 1));
 
-        bh.iter(|| {
+        b.iter(|| {
             let mut sum = 0;
             for x in v.iter() {
                 sum += *x;
@@ -4297,10 +4297,10 @@ mod bench {
     }
 
     #[bench]
-    fn mut_iterator(bh: &mut BenchHarness) {
+    fn mut_iterator(b: &mut Bencher) {
         let mut v = slice::from_elem(100, 0);
 
-        bh.iter(|| {
+        b.iter(|| {
             let mut i = 0;
             for x in v.mut_iter() {
                 *x = i;
@@ -4310,109 +4310,109 @@ mod bench {
     }
 
     #[bench]
-    fn add(bh: &mut BenchHarness) {
+    fn add(b: &mut Bencher) {
         let xs: &[int] = [5, ..10];
         let ys: &[int] = [5, ..10];
-        bh.iter(|| {
+        b.iter(|| {
             xs + ys;
         });
     }
 
     #[bench]
-    fn concat(bh: &mut BenchHarness) {
+    fn concat(b: &mut Bencher) {
         let xss: &[~[uint]] = slice::from_fn(100, |i| range(0, i).collect());
-        bh.iter(|| {
+        b.iter(|| {
             let _ = xss.concat_vec();
         });
     }
 
     #[bench]
-    fn connect(bh: &mut BenchHarness) {
+    fn connect(b: &mut Bencher) {
         let xss: &[~[uint]] = slice::from_fn(100, |i| range(0, i).collect());
-        bh.iter(|| {
+        b.iter(|| {
             let _ = xss.connect_vec(&0);
         });
     }
 
     #[bench]
-    fn push(bh: &mut BenchHarness) {
+    fn push(b: &mut Bencher) {
         let mut vec: ~[uint] = ~[0u];
-        bh.iter(|| {
+        b.iter(|| {
             vec.push(0);
             &vec
         })
     }
 
     #[bench]
-    fn starts_with_same_vector(bh: &mut BenchHarness) {
+    fn starts_with_same_vector(b: &mut Bencher) {
         let vec: ~[uint] = slice::from_fn(100, |i| i);
-        bh.iter(|| {
+        b.iter(|| {
             vec.starts_with(vec)
         })
     }
 
     #[bench]
-    fn starts_with_single_element(bh: &mut BenchHarness) {
+    fn starts_with_single_element(b: &mut Bencher) {
         let vec: ~[uint] = ~[0u];
-        bh.iter(|| {
+        b.iter(|| {
             vec.starts_with(vec)
         })
     }
 
     #[bench]
-    fn starts_with_diff_one_element_at_end(bh: &mut BenchHarness) {
+    fn starts_with_diff_one_element_at_end(b: &mut Bencher) {
         let vec: ~[uint] = slice::from_fn(100, |i| i);
         let mut match_vec: ~[uint] = slice::from_fn(99, |i| i);
         match_vec.push(0);
-        bh.iter(|| {
+        b.iter(|| {
             vec.starts_with(match_vec)
         })
     }
 
     #[bench]
-    fn ends_with_same_vector(bh: &mut BenchHarness) {
+    fn ends_with_same_vector(b: &mut Bencher) {
         let vec: ~[uint] = slice::from_fn(100, |i| i);
-        bh.iter(|| {
+        b.iter(|| {
             vec.ends_with(vec)
         })
     }
 
     #[bench]
-    fn ends_with_single_element(bh: &mut BenchHarness) {
+    fn ends_with_single_element(b: &mut Bencher) {
         let vec: ~[uint] = ~[0u];
-        bh.iter(|| {
+        b.iter(|| {
             vec.ends_with(vec)
         })
     }
 
     #[bench]
-    fn ends_with_diff_one_element_at_beginning(bh: &mut BenchHarness) {
+    fn ends_with_diff_one_element_at_beginning(b: &mut Bencher) {
         let vec: ~[uint] = slice::from_fn(100, |i| i);
         let mut match_vec: ~[uint] = slice::from_fn(100, |i| i);
         match_vec[0] = 200;
-        bh.iter(|| {
+        b.iter(|| {
             vec.starts_with(match_vec)
         })
     }
 
     #[bench]
-    fn contains_last_element(bh: &mut BenchHarness) {
+    fn contains_last_element(b: &mut Bencher) {
         let vec: ~[uint] = slice::from_fn(100, |i| i);
-        bh.iter(|| {
+        b.iter(|| {
             vec.contains(&99u)
         })
     }
 
     #[bench]
-    fn zero_1kb_from_elem(bh: &mut BenchHarness) {
-        bh.iter(|| {
+    fn zero_1kb_from_elem(b: &mut Bencher) {
+        b.iter(|| {
             let _v: ~[u8] = slice::from_elem(1024, 0u8);
         });
     }
 
     #[bench]
-    fn zero_1kb_set_memory(bh: &mut BenchHarness) {
-        bh.iter(|| {
+    fn zero_1kb_set_memory(b: &mut Bencher) {
+        b.iter(|| {
             let mut v: ~[u8] = slice::with_capacity(1024);
             unsafe {
                 let vp = v.as_mut_ptr();
@@ -4424,17 +4424,17 @@ mod bench {
     }
 
     #[bench]
-    fn zero_1kb_fixed_repeat(bh: &mut BenchHarness) {
-        bh.iter(|| {
+    fn zero_1kb_fixed_repeat(b: &mut Bencher) {
+        b.iter(|| {
             ~[0u8, ..1024]
         });
     }
 
     #[bench]
-    fn zero_1kb_loop_set(bh: &mut BenchHarness) {
+    fn zero_1kb_loop_set(b: &mut Bencher) {
         // Slower because the { len, cap, [0 x T] }* repr allows a pointer to the length
         // field to be aliased (in theory) and prevents LLVM from optimizing loads away.
-        bh.iter(|| {
+        b.iter(|| {
             let mut v: ~[u8] = slice::with_capacity(1024);
             unsafe {
                 v.set_len(1024);
@@ -4446,8 +4446,8 @@ mod bench {
     }
 
     #[bench]
-    fn zero_1kb_mut_iter(bh: &mut BenchHarness) {
-        bh.iter(|| {
+    fn zero_1kb_mut_iter(b: &mut Bencher) {
+        b.iter(|| {
             let mut v: ~[u8] = slice::with_capacity(1024);
             unsafe {
                 v.set_len(1024);
@@ -4460,9 +4460,9 @@ mod bench {
     }
 
     #[bench]
-    fn random_inserts(bh: &mut BenchHarness) {
+    fn random_inserts(b: &mut Bencher) {
         let mut rng = weak_rng();
-        bh.iter(|| {
+        b.iter(|| {
                 let mut v = slice::from_elem(30, (0u, 0u));
                 for _ in range(0, 100) {
                     let l = v.len();
@@ -4472,9 +4472,9 @@ mod bench {
             })
     }
     #[bench]
-    fn random_removes(bh: &mut BenchHarness) {
+    fn random_removes(b: &mut Bencher) {
         let mut rng = weak_rng();
-        bh.iter(|| {
+        b.iter(|| {
                 let mut v = slice::from_elem(130, (0u, 0u));
                 for _ in range(0, 100) {
                     let l = v.len();
@@ -4484,82 +4484,82 @@ mod bench {
     }
 
     #[bench]
-    fn sort_random_small(bh: &mut BenchHarness) {
+    fn sort_random_small(b: &mut Bencher) {
         let mut rng = weak_rng();
-        bh.iter(|| {
+        b.iter(|| {
             let mut v = rng.gen_vec::<u64>(5);
             v.as_mut_slice().sort();
         });
-        bh.bytes = 5 * mem::size_of::<u64>() as u64;
+        b.bytes = 5 * mem::size_of::<u64>() as u64;
     }
 
     #[bench]
-    fn sort_random_medium(bh: &mut BenchHarness) {
+    fn sort_random_medium(b: &mut Bencher) {
         let mut rng = weak_rng();
-        bh.iter(|| {
+        b.iter(|| {
             let mut v = rng.gen_vec::<u64>(100);
             v.as_mut_slice().sort();
         });
-        bh.bytes = 100 * mem::size_of::<u64>() as u64;
+        b.bytes = 100 * mem::size_of::<u64>() as u64;
     }
 
     #[bench]
-    fn sort_random_large(bh: &mut BenchHarness) {
+    fn sort_random_large(b: &mut Bencher) {
         let mut rng = weak_rng();
-        bh.iter(|| {
+        b.iter(|| {
             let mut v = rng.gen_vec::<u64>(10000);
             v.as_mut_slice().sort();
         });
-        bh.bytes = 10000 * mem::size_of::<u64>() as u64;
+        b.bytes = 10000 * mem::size_of::<u64>() as u64;
     }
 
     #[bench]
-    fn sort_sorted(bh: &mut BenchHarness) {
+    fn sort_sorted(b: &mut Bencher) {
         let mut v = slice::from_fn(10000, |i| i);
-        bh.iter(|| {
+        b.iter(|| {
             v.sort();
         });
-        bh.bytes = (v.len() * mem::size_of_val(&v[0])) as u64;
+        b.bytes = (v.len() * mem::size_of_val(&v[0])) as u64;
     }
 
     type BigSortable = (u64,u64,u64,u64);
 
     #[bench]
-    fn sort_big_random_small(bh: &mut BenchHarness) {
+    fn sort_big_random_small(b: &mut Bencher) {
         let mut rng = weak_rng();
-        bh.iter(|| {
+        b.iter(|| {
             let mut v = rng.gen_vec::<BigSortable>(5);
             v.sort();
         });
-        bh.bytes = 5 * mem::size_of::<BigSortable>() as u64;
+        b.bytes = 5 * mem::size_of::<BigSortable>() as u64;
     }
 
     #[bench]
-    fn sort_big_random_medium(bh: &mut BenchHarness) {
+    fn sort_big_random_medium(b: &mut Bencher) {
         let mut rng = weak_rng();
-        bh.iter(|| {
+        b.iter(|| {
             let mut v = rng.gen_vec::<BigSortable>(100);
             v.sort();
         });
-        bh.bytes = 100 * mem::size_of::<BigSortable>() as u64;
+        b.bytes = 100 * mem::size_of::<BigSortable>() as u64;
     }
 
     #[bench]
-    fn sort_big_random_large(bh: &mut BenchHarness) {
+    fn sort_big_random_large(b: &mut Bencher) {
         let mut rng = weak_rng();
-        bh.iter(|| {
+        b.iter(|| {
             let mut v = rng.gen_vec::<BigSortable>(10000);
             v.sort();
         });
-        bh.bytes = 10000 * mem::size_of::<BigSortable>() as u64;
+        b.bytes = 10000 * mem::size_of::<BigSortable>() as u64;
     }
 
     #[bench]
-    fn sort_big_sorted(bh: &mut BenchHarness) {
+    fn sort_big_sorted(b: &mut Bencher) {
         let mut v = slice::from_fn(10000u, |i| (i, i, i, i));
-        bh.iter(|| {
+        b.iter(|| {
             v.sort();
         });
-        bh.bytes = (v.len() * mem::size_of_val(&v[0])) as u64;
+        b.bytes = (v.len() * mem::size_of_val(&v[0])) as u64;
     }
 }

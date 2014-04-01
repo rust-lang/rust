@@ -394,74 +394,74 @@ mod bench {
     extern crate test;
 
     mod uint {
-        use super::test::BenchHarness;
+        use super::test::Bencher;
         use fmt::radix;
         use rand::{XorShiftRng, Rng};
 
         #[bench]
-        fn format_bin(bh: &mut BenchHarness) {
+        fn format_bin(b: &mut Bencher) {
             let mut rng = XorShiftRng::new().unwrap();
-            bh.iter(|| { format!("{:t}", rng.gen::<uint>()); })
+            b.iter(|| { format!("{:t}", rng.gen::<uint>()); })
         }
 
         #[bench]
-        fn format_oct(bh: &mut BenchHarness) {
+        fn format_oct(b: &mut Bencher) {
             let mut rng = XorShiftRng::new().unwrap();
-            bh.iter(|| { format!("{:o}", rng.gen::<uint>()); })
+            b.iter(|| { format!("{:o}", rng.gen::<uint>()); })
         }
 
         #[bench]
-        fn format_dec(bh: &mut BenchHarness) {
+        fn format_dec(b: &mut Bencher) {
             let mut rng = XorShiftRng::new().unwrap();
-            bh.iter(|| { format!("{:u}", rng.gen::<uint>()); })
+            b.iter(|| { format!("{:u}", rng.gen::<uint>()); })
         }
 
         #[bench]
-        fn format_hex(bh: &mut BenchHarness) {
+        fn format_hex(b: &mut Bencher) {
             let mut rng = XorShiftRng::new().unwrap();
-            bh.iter(|| { format!("{:x}", rng.gen::<uint>()); })
+            b.iter(|| { format!("{:x}", rng.gen::<uint>()); })
         }
 
         #[bench]
-        fn format_base_36(bh: &mut BenchHarness) {
+        fn format_base_36(b: &mut Bencher) {
             let mut rng = XorShiftRng::new().unwrap();
-            bh.iter(|| { format!("{}", radix(rng.gen::<uint>(), 36)); })
+            b.iter(|| { format!("{}", radix(rng.gen::<uint>(), 36)); })
         }
     }
 
     mod int {
-        use super::test::BenchHarness;
+        use super::test::Bencher;
         use fmt::radix;
         use rand::{XorShiftRng, Rng};
 
         #[bench]
-        fn format_bin(bh: &mut BenchHarness) {
+        fn format_bin(b: &mut Bencher) {
             let mut rng = XorShiftRng::new().unwrap();
-            bh.iter(|| { format!("{:t}", rng.gen::<int>()); })
+            b.iter(|| { format!("{:t}", rng.gen::<int>()); })
         }
 
         #[bench]
-        fn format_oct(bh: &mut BenchHarness) {
+        fn format_oct(b: &mut Bencher) {
             let mut rng = XorShiftRng::new().unwrap();
-            bh.iter(|| { format!("{:o}", rng.gen::<int>()); })
+            b.iter(|| { format!("{:o}", rng.gen::<int>()); })
         }
 
         #[bench]
-        fn format_dec(bh: &mut BenchHarness) {
+        fn format_dec(b: &mut Bencher) {
             let mut rng = XorShiftRng::new().unwrap();
-            bh.iter(|| { format!("{:d}", rng.gen::<int>()); })
+            b.iter(|| { format!("{:d}", rng.gen::<int>()); })
         }
 
         #[bench]
-        fn format_hex(bh: &mut BenchHarness) {
+        fn format_hex(b: &mut Bencher) {
             let mut rng = XorShiftRng::new().unwrap();
-            bh.iter(|| { format!("{:x}", rng.gen::<int>()); })
+            b.iter(|| { format!("{:x}", rng.gen::<int>()); })
         }
 
         #[bench]
-        fn format_base_36(bh: &mut BenchHarness) {
+        fn format_base_36(b: &mut Bencher) {
             let mut rng = XorShiftRng::new().unwrap();
-            bh.iter(|| { format!("{}", radix(rng.gen::<int>(), 36)); })
+            b.iter(|| { format!("{}", radix(rng.gen::<int>(), 36)); })
         }
     }
 }

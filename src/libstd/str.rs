@@ -4099,20 +4099,20 @@ mod tests {
 #[cfg(test)]
 mod bench {
     extern crate test;
-    use self::test::BenchHarness;
+    use self::test::Bencher;
     use super::*;
     use prelude::*;
 
     #[bench]
-    fn char_iterator(bh: &mut BenchHarness) {
+    fn char_iterator(b: &mut Bencher) {
         let s = "ศไทย中华Việt Nam; Mary had a little lamb, Little lamb";
         let len = s.char_len();
 
-        bh.iter(|| assert_eq!(s.chars().len(), len));
+        b.iter(|| assert_eq!(s.chars().len(), len));
     }
 
     #[bench]
-    fn char_iterator_ascii(bh: &mut BenchHarness) {
+    fn char_iterator_ascii(b: &mut Bencher) {
         let s = "Mary had a little lamb, Little lamb
         Mary had a little lamb, Little lamb
         Mary had a little lamb, Little lamb
@@ -4121,42 +4121,42 @@ mod bench {
         Mary had a little lamb, Little lamb";
         let len = s.char_len();
 
-        bh.iter(|| assert_eq!(s.chars().len(), len));
+        b.iter(|| assert_eq!(s.chars().len(), len));
     }
 
     #[bench]
-    fn char_iterator_rev(bh: &mut BenchHarness) {
+    fn char_iterator_rev(b: &mut Bencher) {
         let s = "ศไทย中华Việt Nam; Mary had a little lamb, Little lamb";
         let len = s.char_len();
 
-        bh.iter(|| assert_eq!(s.chars_rev().len(), len));
+        b.iter(|| assert_eq!(s.chars_rev().len(), len));
     }
 
     #[bench]
-    fn char_indicesator(bh: &mut BenchHarness) {
+    fn char_indicesator(b: &mut Bencher) {
         let s = "ศไทย中华Việt Nam; Mary had a little lamb, Little lamb";
         let len = s.char_len();
 
-        bh.iter(|| assert_eq!(s.char_indices().len(), len));
+        b.iter(|| assert_eq!(s.char_indices().len(), len));
     }
 
     #[bench]
-    fn char_indicesator_rev(bh: &mut BenchHarness) {
+    fn char_indicesator_rev(b: &mut Bencher) {
         let s = "ศไทย中华Việt Nam; Mary had a little lamb, Little lamb";
         let len = s.char_len();
 
-        bh.iter(|| assert_eq!(s.char_indices_rev().len(), len));
+        b.iter(|| assert_eq!(s.char_indices_rev().len(), len));
     }
 
     #[bench]
-    fn split_unicode_ascii(bh: &mut BenchHarness) {
+    fn split_unicode_ascii(b: &mut Bencher) {
         let s = "ประเทศไทย中华Việt Namประเทศไทย中华Việt Nam";
 
-        bh.iter(|| assert_eq!(s.split('V').len(), 3));
+        b.iter(|| assert_eq!(s.split('V').len(), 3));
     }
 
     #[bench]
-    fn split_unicode_not_ascii(bh: &mut BenchHarness) {
+    fn split_unicode_not_ascii(b: &mut Bencher) {
         struct NotAscii(char);
         impl CharEq for NotAscii {
             fn matches(&self, c: char) -> bool {
@@ -4167,20 +4167,20 @@ mod bench {
         }
         let s = "ประเทศไทย中华Việt Namประเทศไทย中华Việt Nam";
 
-        bh.iter(|| assert_eq!(s.split(NotAscii('V')).len(), 3));
+        b.iter(|| assert_eq!(s.split(NotAscii('V')).len(), 3));
     }
 
 
     #[bench]
-    fn split_ascii(bh: &mut BenchHarness) {
+    fn split_ascii(b: &mut Bencher) {
         let s = "Mary had a little lamb, Little lamb, little-lamb.";
         let len = s.split(' ').len();
 
-        bh.iter(|| assert_eq!(s.split(' ').len(), len));
+        b.iter(|| assert_eq!(s.split(' ').len(), len));
     }
 
     #[bench]
-    fn split_not_ascii(bh: &mut BenchHarness) {
+    fn split_not_ascii(b: &mut Bencher) {
         struct NotAscii(char);
         impl CharEq for NotAscii {
             #[inline]
@@ -4193,97 +4193,97 @@ mod bench {
         let s = "Mary had a little lamb, Little lamb, little-lamb.";
         let len = s.split(' ').len();
 
-        bh.iter(|| assert_eq!(s.split(NotAscii(' ')).len(), len));
+        b.iter(|| assert_eq!(s.split(NotAscii(' ')).len(), len));
     }
 
     #[bench]
-    fn split_extern_fn(bh: &mut BenchHarness) {
+    fn split_extern_fn(b: &mut Bencher) {
         let s = "Mary had a little lamb, Little lamb, little-lamb.";
         let len = s.split(' ').len();
         fn pred(c: char) -> bool { c == ' ' }
 
-        bh.iter(|| assert_eq!(s.split(pred).len(), len));
+        b.iter(|| assert_eq!(s.split(pred).len(), len));
     }
 
     #[bench]
-    fn split_closure(bh: &mut BenchHarness) {
+    fn split_closure(b: &mut Bencher) {
         let s = "Mary had a little lamb, Little lamb, little-lamb.";
         let len = s.split(' ').len();
 
-        bh.iter(|| assert_eq!(s.split(|c: char| c == ' ').len(), len));
+        b.iter(|| assert_eq!(s.split(|c: char| c == ' ').len(), len));
     }
 
     #[bench]
-    fn split_slice(bh: &mut BenchHarness) {
+    fn split_slice(b: &mut Bencher) {
         let s = "Mary had a little lamb, Little lamb, little-lamb.";
         let len = s.split(' ').len();
 
-        bh.iter(|| assert_eq!(s.split(&[' ']).len(), len));
+        b.iter(|| assert_eq!(s.split(&[' ']).len(), len));
     }
 
     #[bench]
-    fn is_utf8_100_ascii(bh: &mut BenchHarness) {
+    fn is_utf8_100_ascii(b: &mut Bencher) {
 
         let s = bytes!("Hello there, the quick brown fox jumped over the lazy dog! \
                         Lorem ipsum dolor sit amet, consectetur. ");
 
         assert_eq!(100, s.len());
-        bh.iter(|| {
+        b.iter(|| {
             is_utf8(s)
         });
     }
 
     #[bench]
-    fn is_utf8_100_multibyte(bh: &mut BenchHarness) {
+    fn is_utf8_100_multibyte(b: &mut Bencher) {
         let s = bytes!("𐌀𐌖𐌋𐌄𐌑𐌉ปรدولة الكويتทศไทย中华𐍅𐌿𐌻𐍆𐌹𐌻𐌰");
         assert_eq!(100, s.len());
-        bh.iter(|| {
+        b.iter(|| {
             is_utf8(s)
         });
     }
 
     #[bench]
-    fn from_utf8_lossy_100_ascii(bh: &mut BenchHarness) {
+    fn from_utf8_lossy_100_ascii(b: &mut Bencher) {
         let s = bytes!("Hello there, the quick brown fox jumped over the lazy dog! \
                         Lorem ipsum dolor sit amet, consectetur. ");
 
         assert_eq!(100, s.len());
-        bh.iter(|| {
+        b.iter(|| {
             let _ = from_utf8_lossy(s);
         });
     }
 
     #[bench]
-    fn from_utf8_lossy_100_multibyte(bh: &mut BenchHarness) {
+    fn from_utf8_lossy_100_multibyte(b: &mut Bencher) {
         let s = bytes!("𐌀𐌖𐌋𐌄𐌑𐌉ปรدولة الكويتทศไทย中华𐍅𐌿𐌻𐍆𐌹𐌻𐌰");
         assert_eq!(100, s.len());
-        bh.iter(|| {
+        b.iter(|| {
             let _ = from_utf8_lossy(s);
         });
     }
 
     #[bench]
-    fn from_utf8_lossy_invalid(bh: &mut BenchHarness) {
+    fn from_utf8_lossy_invalid(b: &mut Bencher) {
         let s = bytes!("Hello", 0xC0, 0x80, " There", 0xE6, 0x83, " Goodbye");
-        bh.iter(|| {
+        b.iter(|| {
             let _ = from_utf8_lossy(s);
         });
     }
 
     #[bench]
-    fn from_utf8_lossy_100_invalid(bh: &mut BenchHarness) {
+    fn from_utf8_lossy_100_invalid(b: &mut Bencher) {
         let s = ::slice::from_elem(100, 0xF5u8);
-        bh.iter(|| {
+        b.iter(|| {
             let _ = from_utf8_lossy(s);
         });
     }
 
     #[bench]
-    fn bench_connect(bh: &mut BenchHarness) {
+    fn bench_connect(b: &mut Bencher) {
         let s = "ศไทย中华Việt Nam; Mary had a little lamb, Little lamb";
         let sep = "→";
         let v = [s, s, s, s, s, s, s, s, s, s];
-        bh.iter(|| {
+        b.iter(|| {
             assert_eq!(v.connect(sep).len(), s.len() * 10 + sep.len() * 9);
         })
     }
