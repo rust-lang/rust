@@ -10,6 +10,7 @@
 
 #![allow(non_uppercase_pattern_statics)]
 #![allow(non_camel_case_types)]
+#![allow(dead_code)]
 
 use std::c_str::ToCStr;
 use std::cell::RefCell;
@@ -1908,42 +1909,6 @@ pub fn mk_target_data(string_rep: &str) -> TargetData {
     TargetData {
         lltd: lltd,
         dtor: @target_data_res(lltd)
-    }
-}
-
-/* Memory-managed interface to pass managers. */
-
-pub struct pass_manager_res {
-    pub pm: PassManagerRef,
-}
-
-impl Drop for pass_manager_res {
-    fn drop(&mut self) {
-        unsafe {
-            llvm::LLVMDisposePassManager(self.pm);
-        }
-    }
-}
-
-pub fn pass_manager_res(pm: PassManagerRef) -> pass_manager_res {
-    pass_manager_res {
-        pm: pm
-    }
-}
-
-pub struct PassManager {
-    pub llpm: PassManagerRef,
-    dtor: @pass_manager_res
-}
-
-pub fn mk_pass_manager() -> PassManager {
-    unsafe {
-        let llpm = llvm::LLVMCreatePassManager();
-
-        PassManager {
-            llpm: llpm,
-            dtor: @pass_manager_res(llpm)
-        }
     }
 }
 
