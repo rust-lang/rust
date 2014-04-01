@@ -658,7 +658,7 @@ pub fn random<T: Rand>() -> T {
 /// let Open01(val) = random::<Open01<f32>>();
 /// println!("f32 from (0,1): {}", val);
 /// ```
-pub struct Open01<F>(F);
+pub struct Open01<F>(pub F);
 
 /// A wrapper for generating floating point numbers uniformly in the
 /// closed interval `[0,1]` (including both endpoints).
@@ -674,7 +674,7 @@ pub struct Open01<F>(F);
 /// let Closed01(val) = random::<Closed01<f32>>();
 /// println!("f32 from [0,1]: {}", val);
 /// ```
-pub struct Closed01<F>(F);
+pub struct Closed01<F>(pub F);
 
 #[cfg(test)]
 mod test {

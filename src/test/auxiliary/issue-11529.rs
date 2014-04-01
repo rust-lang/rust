@@ -8,4 +8,4 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub struct A<'a>(&'a int);
+pub struct A<'a>(pub &'a int);

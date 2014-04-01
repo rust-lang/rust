@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-pub struct S(());
+pub struct S(pub ());
 
 impl S {
     pub fn foo(&self) { }

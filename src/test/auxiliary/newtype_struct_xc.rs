@@ -10,4 +10,4 @@
 
 #[crate_type="lib"];
 
-pub struct Au(int);
+pub struct Au(pub int);

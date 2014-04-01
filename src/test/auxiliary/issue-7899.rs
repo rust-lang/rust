@@ -8,4 +8,4 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub struct V2<T>(T, T);
+pub struct V2<T>(pub T, pub T);
