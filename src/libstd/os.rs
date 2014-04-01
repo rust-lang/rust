@@ -663,10 +663,12 @@ pub fn errno() -> uint {
     }
 }
 
-/// Get a string representing the platform-dependent last error
-pub fn last_os_error() -> ~str {
+/// Return the string corresponding to an `errno()` value of `errnum`.
+pub fn error_string(errnum: uint) -> ~str {
+    return strerror(errnum);
+
     #[cfg(unix)]
-    fn strerror() -> ~str {
+    fn strerror(errnum: uint) -> ~str {
         #[cfg(target_os = "macos")]
         #[cfg(target_os = "android")]
         #[cfg(target_os = "freebsd")]
@@ -702,7 +704,7 @@ pub fn last_os_error() -> ~str {
 
         let p = buf.as_mut_ptr();
         unsafe {
-            if strerror_r(errno() as c_int, p, buf.len() as libc::size_t) < 0 {
+            if strerror_r(errnum as c_int, p, buf.len() as libc::size_t) < 0 {
                 fail!("strerror_r failure");
             }
 
@@ -711,7 +713,7 @@ pub fn last_os_error() -> ~str {
     }
 
     #[cfg(windows)]
-    fn strerror() -> ~str {
+    fn strerror(errnum: uint) -> ~str {
         use libc::types::os::arch::extra::DWORD;
         use libc::types::os::arch::extra::LPWSTR;
         use libc::types::os::arch::extra::LPVOID;
@@ -735,7 +737,6 @@ pub fn last_os_error() -> ~str {
         // This value is calculated from the macro
         // MAKELANGID(LANG_SYSTEM_DEFAULT, SUBLANG_SYS_DEFAULT)
         let langId = 0x0800 as DWORD;
-        let err = errno() as DWORD;
 
         let mut buf = [0 as WCHAR, ..TMPBUF_SZ];
 
@@ -743,7 +744,7 @@ pub fn last_os_error() -> ~str {
             let res = FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM |
                                      FORMAT_MESSAGE_IGNORE_INSERTS,
                                      ptr::mut_null(),
-                                     err,
+                                     errnum as DWORD,
                                      langId,
                                      buf.as_mut_ptr(),
                                      buf.len() as DWORD,
@@ -751,18 +752,21 @@ pub fn last_os_error() -> ~str {
             if res == 0 {
                 // Sometimes FormatMessageW can fail e.g. system doesn't like langId,
                 let fm_err = errno();
-                return format!("OS Error {} (FormatMessageW() returned error {})", err, fm_err);
+                return format!("OS Error {} (FormatMessageW() returned error {})", errnum, fm_err);
             }
 
             let msg = str::from_utf16(str::truncate_utf16_at_nul(buf));
             match msg {
-                Some(msg) => format!("OS Error {}: {}", err, msg),
-                None => format!("OS Error {} (FormatMessageW() returned invalid UTF-16)", err),
+                Some(msg) => format!("OS Error {}: {}", errnum, msg),
+                None => format!("OS Error {} (FormatMessageW() returned invalid UTF-16)", errnum),
             }
         }
     }
+}
 
-    strerror()
+/// Get a string representing the platform-dependent last error
+pub fn last_os_error() -> ~str {
+    error_string(errno() as uint)
 }
 
 static mut EXIT_STATUS: AtomicInt = INIT_ATOMIC_INT;
