@@ -23,7 +23,6 @@ use std::rc::Rc;
 use collections::HashMap;
 use syntax::ast;
 use syntax::parse::token::IdentInterner;
-use syntax::crateid::CrateId;
 
 // A map from external crate numbers (as decoded from some crate file) to
 // local crate numbers (as generated during this session). Each external
@@ -98,17 +97,8 @@ impl CStore {
         decoder::get_crate_hash(cdata.data())
     }
 
-    pub fn get_crate_id(&self, cnum: ast::CrateNum) -> CrateId {
-        let cdata = self.get_crate_data(cnum);
-        decoder::get_crate_id(cdata.data())
-    }
-
     pub fn set_crate_data(&self, cnum: ast::CrateNum, data: @crate_metadata) {
         self.metas.borrow_mut().insert(cnum, data);
-    }
-
-    pub fn have_crate_data(&self, cnum: ast::CrateNum) -> bool {
-        self.metas.borrow().contains_key(&cnum)
     }
 
     pub fn iter_crate_data(&self, i: |ast::CrateNum, @crate_metadata|) {
