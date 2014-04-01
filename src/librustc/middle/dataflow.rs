@@ -246,31 +246,6 @@ impl<'a, O:DataFlowOperator> DataFlowContext<'a, O> {
         self.each_bit(on_entry, f)
     }
 
-    pub fn each_bit_on_entry(&mut self,
-                             id: ast::NodeId,
-                             f: |uint| -> bool)
-                             -> bool {
-        //! Iterates through each bit that is set on entry to `id`.
-        //! Only useful after `propagate()` has been called.
-
-        let (start, end) = self.compute_id_range(id);
-        let on_entry = self.on_entry.slice(start, end);
-        debug!("each_bit_on_entry(id={:?}, on_entry={})",
-               id, bits_to_str(on_entry));
-        self.each_bit(on_entry, f)
-    }
-
-    pub fn each_gen_bit(&mut self, id: ast::NodeId, f: |uint| -> bool)
-                        -> bool {
-        //! Iterates through each bit in the gen set for `id`.
-
-        let (start, end) = self.compute_id_range(id);
-        let gens = self.gens.slice(start, end);
-        debug!("each_gen_bit(id={:?}, gens={})",
-               id, bits_to_str(gens));
-        self.each_bit(gens, f)
-    }
-
     pub fn each_gen_bit_frozen(&self, id: ast::NodeId, f: |uint| -> bool)
                                -> bool {
         //! Iterates through each bit in the gen set for `id`.
