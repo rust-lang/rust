@@ -73,8 +73,6 @@ pub static tag_crate_dep: uint = 0x19;
 pub static tag_crate_hash: uint = 0x1a;
 pub static tag_crate_crateid: uint = 0x1b;
 
-pub static tag_parent_item: uint = 0x1c;
-
 pub static tag_crate_dep_crateid: uint = 0x1d;
 pub static tag_crate_dep_hash: uint = 0x1e;
 
@@ -94,10 +92,8 @@ pub static tag_path_len: uint = 0x25;
 pub static tag_path_elem_mod: uint = 0x26;
 pub static tag_path_elem_name: uint = 0x27;
 pub static tag_item_field: uint = 0x28;
-pub static tag_struct_mut: uint = 0x29;
 
 pub static tag_item_variances: uint = 0x2a;
-pub static tag_mod_impl_trait: uint = 0x2b;
 /*
   trait items contain tag_item_trait_method elements,
   impl items contain tag_item_impl_method elements, and classes
@@ -108,7 +104,6 @@ pub static tag_mod_impl_trait: uint = 0x2b;
  */
 pub static tag_item_impl_method: uint = 0x2c;
 pub static tag_item_trait_method_explicit_self: uint = 0x2d;
-pub static tag_item_trait_method_self_ty_region: uint = 0x2e;
 
 
 // Reexports are found within module tags. Each reexport contains def_ids
@@ -173,11 +168,7 @@ pub static tag_lang_items_item_id: uint = 0x4a;
 pub static tag_lang_items_item_node_id: uint = 0x4b;
 
 pub static tag_item_unnamed_field: uint = 0x4c;
-pub static tag_items_data_item_struct_ctor: uint = 0x4d;
 pub static tag_items_data_item_visibility: uint = 0x4e;
-
-pub static tag_link_args: uint = 0x4f;
-pub static tag_link_args_arg: uint = 0x50;
 
 pub static tag_item_method_tps: uint = 0x51;
 pub static tag_item_method_fty: uint = 0x52;
