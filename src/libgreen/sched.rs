@@ -967,7 +967,12 @@ impl ClosureConverter for UnsafeTaskReceiver {
 // worry there.
 #[cfg(windows)]
 fn new_sched_rng() -> XorShiftRng {
-    XorShiftRng::new()
+    match XorShiftRng::new() {
+        Ok(r) => r,
+        Err(e) => {
+            rtabort!("sched: failed to create seeded RNG: {}", e)
+        }
+    }
 }
 #[cfg(unix)]
 fn new_sched_rng() -> XorShiftRng {

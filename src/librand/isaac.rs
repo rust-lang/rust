@@ -11,6 +11,7 @@
 //! The ISAAC random number generator.
 
 use {Rng, SeedableRng, OSRng};
+use std::io::IoResult;
 use std::iter::{range_step, Repeat};
 use std::slice::raw;
 use std::mem;
@@ -44,19 +45,23 @@ static EMPTY: IsaacRng = IsaacRng {
 
 impl IsaacRng {
     /// Create an ISAAC random number generator with a random seed.
-    pub fn new() -> IsaacRng {
+    ///
+    /// This reads randomness from the operating system (via `OSRng`)
+    /// which may fail, any error is propagated via the `IoResult`
+    /// return value.
+    pub fn new() -> IoResult<IsaacRng> {
         let mut rng = EMPTY;
-
+        let mut os_rng = try!(OSRng::new());
         unsafe {
             let ptr = rng.rsl.as_mut_ptr();
 
             raw::mut_buf_as_slice(ptr as *mut u8, mem::size_of_val(&rng.rsl), |slice| {
-                OSRng::new().fill_bytes(slice);
+                os_rng.fill_bytes(slice);
             })
         }
 
         rng.init(true);
-        rng
+        Ok(rng)
     }
 
     /// Create an ISAAC random number generator using the default
@@ -249,19 +254,24 @@ static EMPTY_64: Isaac64Rng = Isaac64Rng {
 impl Isaac64Rng {
     /// Create a 64-bit ISAAC random number generator with a random
     /// seed.
-    pub fn new() -> Isaac64Rng {
+    ///
+    /// This reads randomness from the operating system (via `OSRng`)
+    /// which may fail, any error is propagated via the `IoResult`
+    /// return value.
+    pub fn new() -> IoResult<Isaac64Rng> {
         let mut rng = EMPTY_64;
+        let mut os_rng = try!(OSRng::new());
 
         unsafe {
             let ptr = rng.rsl.as_mut_ptr();
 
             raw::mut_buf_as_slice(ptr as *mut u8, mem::size_of_val(&rng.rsl), |slice| {
-                OSRng::new().fill_bytes(slice);
+                os_rng.fill_bytes(slice);
             })
         }
 
         rng.init(true);
-        rng
+        Ok(rng)
     }
 
     /// Create a 64-bit ISAAC random number generator using the
@@ -430,19 +440,19 @@ impl<'a> SeedableRng<&'a [u64]> for Isaac64Rng {
 #[cfg(test)]
 mod test {
     use super::{IsaacRng, Isaac64Rng};
-    use {Rng, SeedableRng, OSRng};
+    use {Rng, SeedableRng, task_rng};
     use std::slice;
 
     #[test]
     fn test_rng_32_rand_seeded() {
-        let s = OSRng::new().gen_vec::<u32>(256);
+        let s = task_rng().gen_vec::<u32>(256);
         let mut ra: IsaacRng = SeedableRng::from_seed(s.as_slice());
         let mut rb: IsaacRng = SeedableRng::from_seed(s.as_slice());
         assert_eq!(ra.gen_ascii_str(100u), rb.gen_ascii_str(100u));
     }
     #[test]
     fn test_rng_64_rand_seeded() {
-        let s = OSRng::new().gen_vec::<u64>(256);
+        let s = task_rng().gen_vec::<u64>(256);
         let mut ra: Isaac64Rng = SeedableRng::from_seed(s.as_slice());
         let mut rb: Isaac64Rng = SeedableRng::from_seed(s.as_slice());
         assert_eq!(ra.gen_ascii_str(100u), rb.gen_ascii_str(100u));
@@ -465,7 +475,7 @@ mod test {
 
     #[test]
     fn test_rng_32_reseed() {
-        let s = OSRng::new().gen_vec::<u32>(256);
+        let s = task_rng().gen_vec::<u32>(256);
         let mut r: IsaacRng = SeedableRng::from_seed(s.as_slice());
         let string1 = r.gen_ascii_str(100);
 
@@ -476,7 +486,7 @@ mod test {
     }
     #[test]
     fn test_rng_64_reseed() {
-        let s = OSRng::new().gen_vec::<u64>(256);
+        let s = task_rng().gen_vec::<u64>(256);
         let mut r: Isaac64Rng = SeedableRng::from_seed(s.as_slice());
         let string1 = r.gen_ascii_str(100);
 

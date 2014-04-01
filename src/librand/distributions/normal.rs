@@ -193,7 +193,7 @@ mod bench {
 
     #[bench]
     fn rand_normal(bh: &mut BenchHarness) {
-        let mut rng = XorShiftRng::new();
+        let mut rng = XorShiftRng::new().unwrap();
         let mut normal = Normal::new(-2.71828, 3.14159);
 
         bh.iter(|| {
