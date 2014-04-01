@@ -264,15 +264,6 @@ pub fn write_substs_to_tcx(tcx: &ty::ctxt,
         tcx.node_type_substs.borrow_mut().insert(node_id, substs);
     }
 }
-pub fn write_tpt_to_tcx(tcx: &ty::ctxt,
-                        node_id: ast::NodeId,
-                        tpt: &ty::ty_param_substs_and_ty) {
-    write_ty_to_tcx(tcx, node_id, tpt.ty);
-    if !tpt.substs.tps.is_empty() {
-        write_substs_to_tcx(tcx, node_id, tpt.substs.tps.clone());
-    }
-}
-
 pub fn lookup_def_tcx(tcx:&ty::ctxt, sp: Span, id: ast::NodeId) -> ast::Def {
     match tcx.def_map.borrow().find(&id) {
         Some(&x) => x,
