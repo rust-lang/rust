@@ -450,17 +450,6 @@ fn check_copy(cx: &Context, ty: ty::t, sp: Span, reason: &str) {
     }
 }
 
-pub fn check_send(cx: &Context, ty: ty::t, sp: Span) -> bool {
-    if !ty::type_is_sendable(cx.tcx, ty) {
-        cx.tcx.sess.span_err(
-            sp, format!("value has non-sendable type `{}`",
-                     ty_to_str(cx.tcx, ty)));
-        false
-    } else {
-        true
-    }
-}
-
 pub fn check_static(tcx: &ty::ctxt, ty: ty::t, sp: Span) -> bool {
     if !ty::type_is_static(tcx, ty) {
         match ty::get(ty).sty {
