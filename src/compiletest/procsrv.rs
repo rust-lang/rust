@@ -13,23 +13,25 @@ use std::str;
 use std::io::process::{ProcessExit, Process, ProcessConfig, ProcessOutput};
 
 #[cfg(target_os = "win32")]
-fn target_env(lib_path: &str, prog: &str) -> Vec<(~str,~str)> {
-
-    let mut env = os::env();
+fn target_env(lib_path: &str, prog: &str) -> Vec<(~str, ~str)> {
+    let env = os::env();
 
     // Make sure we include the aux directory in the path
     assert!(prog.ends_with(".exe"));
     let aux_path = prog.slice(0u, prog.len() - 4u).to_owned() + ".libaux";
 
-    env = env.map(|pair| {
-        let (k,v) = (*pair).clone();
-        if k == ~"PATH" { (~"PATH", v + ";" + lib_path + ";" + aux_path) }
-        else { (k,v) }
-    });
+    let mut new_env: Vec<_> = env.move_iter().map(|(k, v)| {
+        let new_v = if "PATH" == k {
+            format!("{};{};{}", v, lib_path, aux_path)
+        } else {
+            v
+        };
+        (k, new_v)
+    }).collect();
     if prog.ends_with("rustc.exe") {
-        env.push((~"RUST_THREADS", ~"1"));
+        new_env.push((~"RUST_THREADS", ~"1"));
     }
-    return env;
+    return new_env;
 }
 
 #[cfg(target_os = "linux")]
