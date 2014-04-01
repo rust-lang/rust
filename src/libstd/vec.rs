@@ -447,7 +447,7 @@ impl<T> Vec<T> {
     /// assert_eq!(vec.capacity(), 11);
     /// ```
     pub fn reserve_exact(&mut self, capacity: uint) {
-        if capacity >= self.len {
+        if capacity > self.cap {
             let size = capacity.checked_mul(&size_of::<T>()).expect("capacity overflow");
             self.cap = capacity;
             unsafe {
