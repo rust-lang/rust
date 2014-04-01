@@ -493,10 +493,10 @@ pub enum Expr_ {
     ExprVstore(@Expr, ExprVstore),
     // First expr is the place; second expr is the value.
     ExprBox(@Expr, @Expr),
-    ExprVec(Vec<@Expr> , Mutability),
-    ExprCall(@Expr, Vec<@Expr> ),
-    ExprMethodCall(Ident, Vec<P<Ty>> , Vec<@Expr> ),
-    ExprTup(Vec<@Expr> ),
+    ExprVec(Vec<@Expr>, Mutability),
+    ExprCall(@Expr, Vec<@Expr>),
+    ExprMethodCall(Ident, Vec<P<Ty>>, Vec<@Expr>),
+    ExprTup(Vec<@Expr>),
     ExprBinary(BinOp, @Expr, @Expr),
     ExprUnary(UnOp, @Expr),
     ExprLit(@Lit),
@@ -508,14 +508,14 @@ pub enum Expr_ {
     // Conditionless loop (can be exited with break, cont, or ret)
     // FIXME #6993: change to Option<Name>
     ExprLoop(P<Block>, Option<Ident>),
-    ExprMatch(@Expr, Vec<Arm> ),
+    ExprMatch(@Expr, Vec<Arm>),
     ExprFnBlock(P<FnDecl>, P<Block>),
     ExprProc(P<FnDecl>, P<Block>),
     ExprBlock(P<Block>),
 
     ExprAssign(@Expr, @Expr),
     ExprAssignOp(BinOp, @Expr, @Expr),
-    ExprField(@Expr, Ident, Vec<P<Ty>> ),
+    ExprField(@Expr, Ident, Vec<P<Ty>>),
     ExprIndex(@Expr, @Expr),
 
     /// Expression that looks like a "name". For example,
