@@ -687,16 +687,6 @@ pub fn mangle_exported_name(ccx: &CrateContext, path: PathElems,
     exported_name(path, hash, ccx.link_meta.crateid.version_or_default())
 }
 
-pub fn mangle_internal_name_by_type_only(ccx: &CrateContext,
-                                         t: ty::t,
-                                         name: &str) -> ~str {
-    let s = ppaux::ty_to_short_str(ccx.tcx(), t);
-    let path = [PathName(token::intern(name)),
-                PathName(token::intern(s))];
-    let hash = get_symbol_hash(ccx, t);
-    mangle(ast_map::Values(path.iter()), Some(hash.as_slice()), None)
-}
-
 pub fn mangle_internal_name_by_type_and_seq(ccx: &CrateContext,
                                             t: ty::t,
                                             name: &str) -> ~str {
