@@ -14,7 +14,6 @@
 
 use prelude::*;
 
-use cmath;
 use default::Default;
 use from_str::FromStr;
 use libc::{c_double, c_int};
@@ -22,6 +21,56 @@ use num::{FPCategory, FPNaN, FPInfinite , FPZero, FPSubnormal, FPNormal};
 use num::{Zero, One, Bounded, strconv};
 use num;
 use intrinsics;
+
+#[allow(dead_code)]
+mod cmath {
+    use libc::{c_double, c_int};
+
+    #[link_name = "m"]
+    extern {
+        pub fn acos(n: c_double) -> c_double;
+        pub fn asin(n: c_double) -> c_double;
+        pub fn atan(n: c_double) -> c_double;
+        pub fn atan2(a: c_double, b: c_double) -> c_double;
+        pub fn cbrt(n: c_double) -> c_double;
+        pub fn cosh(n: c_double) -> c_double;
+        pub fn erf(n: c_double) -> c_double;
+        pub fn erfc(n: c_double) -> c_double;
+        pub fn expm1(n: c_double) -> c_double;
+        pub fn fdim(a: c_double, b: c_double) -> c_double;
+        pub fn fmax(a: c_double, b: c_double) -> c_double;
+        pub fn fmin(a: c_double, b: c_double) -> c_double;
+        pub fn nextafter(x: c_double, y: c_double) -> c_double;
+        pub fn frexp(n: c_double, value: &mut c_int) -> c_double;
+        pub fn hypot(x: c_double, y: c_double) -> c_double;
+        pub fn ldexp(x: c_double, n: c_int) -> c_double;
+        pub fn logb(n: c_double) -> c_double;
+        pub fn log1p(n: c_double) -> c_double;
+        pub fn ilogb(n: c_double) -> c_int;
+        pub fn modf(n: c_double, iptr: &mut c_double) -> c_double;
+        pub fn sinh(n: c_double) -> c_double;
+        pub fn tan(n: c_double) -> c_double;
+        pub fn tanh(n: c_double) -> c_double;
+        pub fn tgamma(n: c_double) -> c_double;
+
+        // These are commonly only available for doubles
+
+        pub fn j0(n: c_double) -> c_double;
+        pub fn j1(n: c_double) -> c_double;
+        pub fn jn(i: c_int, n: c_double) -> c_double;
+
+        pub fn y0(n: c_double) -> c_double;
+        pub fn y1(n: c_double) -> c_double;
+        pub fn yn(i: c_int, n: c_double) -> c_double;
+
+        #[cfg(unix)]
+        pub fn lgamma_r(n: c_double, sign: &mut c_int) -> c_double;
+        #[cfg(windows)]
+        #[link_name="__lgamma_r"]
+        pub fn lgamma_r(n: c_double, sign: &mut c_int) -> c_double;
+    }
+}
+
 
 macro_rules! delegate(
     (
@@ -66,29 +115,22 @@ delegate!(
     fn nearbyint(n: f64) -> f64 = intrinsics::nearbyintf64,
     fn round(n: f64) -> f64 = intrinsics::roundf64,
 
-    // cmath
-    fn acos(n: c_double) -> c_double = cmath::c_double::acos,
-    fn asin(n: c_double) -> c_double = cmath::c_double::asin,
-    fn atan(n: c_double) -> c_double = cmath::c_double::atan,
-    fn atan2(a: c_double, b: c_double) -> c_double = cmath::c_double::atan2,
-    fn cbrt(n: c_double) -> c_double = cmath::c_double::cbrt,
-    fn cosh(n: c_double) -> c_double = cmath::c_double::cosh,
-    // fn erf(n: c_double) -> c_double = cmath::c_double::erf,
-    // fn erfc(n: c_double) -> c_double = cmath::c_double::erfc,
-    fn exp_m1(n: c_double) -> c_double = cmath::c_double::exp_m1,
-    fn abs_sub(a: c_double, b: c_double) -> c_double = cmath::c_double::abs_sub,
-    fn next_after(x: c_double, y: c_double) -> c_double = cmath::c_double::next_after,
-    fn frexp(n: c_double, value: &mut c_int) -> c_double = cmath::c_double::frexp,
-    fn hypot(x: c_double, y: c_double) -> c_double = cmath::c_double::hypot,
-    fn ldexp(x: c_double, n: c_int) -> c_double = cmath::c_double::ldexp,
-    // fn log_radix(n: c_double) -> c_double = cmath::c_double::log_radix,
-    fn ln_1p(n: c_double) -> c_double = cmath::c_double::ln_1p,
-    // fn ilog_radix(n: c_double) -> c_int = cmath::c_double::ilog_radix,
-    // fn modf(n: c_double, iptr: &mut c_double) -> c_double = cmath::c_double::modf,
-    // fn ldexp_radix(n: c_double, i: c_int) -> c_double = cmath::c_double::ldexp_radix,
-    fn sinh(n: c_double) -> c_double = cmath::c_double::sinh,
-    fn tan(n: c_double) -> c_double = cmath::c_double::tan,
-    fn tanh(n: c_double) -> c_double = cmath::c_double::tanh
+    fn acos(n: c_double) -> c_double = cmath::acos,
+    fn asin(n: c_double) -> c_double = cmath::asin,
+    fn atan(n: c_double) -> c_double = cmath::atan,
+    fn atan2(a: c_double, b: c_double) -> c_double = cmath::atan2,
+    fn cbrt(n: c_double) -> c_double = cmath::cbrt,
+    fn cosh(n: c_double) -> c_double = cmath::cosh,
+    fn exp_m1(n: c_double) -> c_double = cmath::expm1,
+    fn abs_sub(a: c_double, b: c_double) -> c_double = cmath::fdim,
+    fn next_after(x: c_double, y: c_double) -> c_double = cmath::nextafter,
+    fn frexp(n: c_double, value: &mut c_int) -> c_double = cmath::frexp,
+    fn hypot(x: c_double, y: c_double) -> c_double = cmath::hypot,
+    fn ldexp(x: c_double, n: c_int) -> c_double = cmath::ldexp,
+    fn ln_1p(n: c_double) -> c_double = cmath::log1p,
+    fn sinh(n: c_double) -> c_double = cmath::sinh,
+    fn tan(n: c_double) -> c_double = cmath::tan,
+    fn tanh(n: c_double) -> c_double = cmath::tanh
 )
 
 // FIXME (#1433): obtain these in a different way
@@ -307,12 +349,12 @@ impl Primitive for f64 {}
 impl Float for f64 {
     #[inline]
     fn max(self, other: f64) -> f64 {
-        unsafe { cmath::c_double::fmax(self, other) }
+        unsafe { cmath::fmax(self, other) }
     }
 
     #[inline]
     fn min(self, other: f64) -> f64 {
-        unsafe { cmath::c_double::fmin(self, other) }
+        unsafe { cmath::fmin(self, other) }
     }
 
     #[inline]
