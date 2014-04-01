@@ -326,6 +326,7 @@ pub struct RestrictionSet {
     bits: u32
 }
 
+#[allow(dead_code)] // potentially useful
 pub static RESTR_EMPTY: RestrictionSet  = RestrictionSet {bits: 0b0000};
 pub static RESTR_MUTATE: RestrictionSet = RestrictionSet {bits: 0b0001};
 pub static RESTR_FREEZE: RestrictionSet = RestrictionSet {bits: 0b0010};
@@ -333,10 +334,6 @@ pub static RESTR_FREEZE: RestrictionSet = RestrictionSet {bits: 0b0010};
 impl RestrictionSet {
     pub fn intersects(&self, restr: RestrictionSet) -> bool {
         (self.bits & restr.bits) != 0
-    }
-
-    pub fn contains_all(&self, restr: RestrictionSet) -> bool {
-        (self.bits & restr.bits) == restr.bits
     }
 }
 
@@ -861,17 +858,6 @@ impl<'a> BorrowckCtxt<'a> {
 
     pub fn cmt_to_str(&self, cmt: mc::cmt) -> ~str {
         self.mc().cmt_to_str(cmt)
-    }
-
-    pub fn mut_to_str(&self, mutbl: ast::Mutability) -> ~str {
-        self.mc().mut_to_str(mutbl)
-    }
-
-    pub fn mut_to_keyword(&self, mutbl: ast::Mutability) -> &'static str {
-        match mutbl {
-            ast::MutImmutable => "",
-            ast::MutMutable => "mut",
-        }
     }
 }
 
