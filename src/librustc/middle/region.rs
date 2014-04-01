@@ -149,6 +149,7 @@ impl RegionMaps {
         self.scope_map.borrow().find(&id).map(|x| *x)
     }
 
+    #[allow(dead_code)] // used in middle::cfg
     pub fn encl_scope(&self, id: ast::NodeId) -> ast::NodeId {
         //! Returns the narrowest scope that encloses `id`, if any.
         match self.scope_map.borrow().find(&id) {
@@ -201,12 +202,6 @@ impl RegionMaps {
         }
         debug!("temporary_scope({}) = {} [enclosing]", expr_id, id);
         return Some(id);
-    }
-
-    pub fn encl_region(&self, id: ast::NodeId) -> ty::Region {
-        //! Returns the narrowest scope region that encloses `id`, if any.
-
-        ty::ReScope(self.encl_scope(id))
     }
 
     pub fn var_region(&self, id: ast::NodeId) -> ty::Region {
