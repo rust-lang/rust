@@ -14,7 +14,6 @@
 
 use prelude::*;
 
-use cmath;
 use default::Default;
 use from_str::FromStr;
 use libc::{c_float, c_int};
@@ -22,6 +21,46 @@ use num::{FPCategory, FPNaN, FPInfinite , FPZero, FPSubnormal, FPNormal};
 use num::{Zero, One, Bounded, strconv};
 use num;
 use intrinsics;
+
+#[allow(dead_code)]
+mod cmath {
+    use libc::{c_float, c_int};
+
+    #[link_name = "m"]
+    extern {
+        pub fn acosf(n: c_float) -> c_float;
+        pub fn asinf(n: c_float) -> c_float;
+        pub fn atanf(n: c_float) -> c_float;
+        pub fn atan2f(a: c_float, b: c_float) -> c_float;
+        pub fn cbrtf(n: c_float) -> c_float;
+        pub fn coshf(n: c_float) -> c_float;
+        pub fn erff(n: c_float) -> c_float;
+        pub fn erfcf(n: c_float) -> c_float;
+        pub fn expm1f(n: c_float) -> c_float;
+        pub fn fdimf(a: c_float, b: c_float) -> c_float;
+        pub fn frexpf(n: c_float, value: &mut c_int) -> c_float;
+        pub fn fmaxf(a: c_float, b: c_float) -> c_float;
+        pub fn fminf(a: c_float, b: c_float) -> c_float;
+        pub fn nextafterf(x: c_float, y: c_float) -> c_float;
+        pub fn hypotf(x: c_float, y: c_float) -> c_float;
+        pub fn ldexpf(x: c_float, n: c_int) -> c_float;
+        pub fn logbf(n: c_float) -> c_float;
+        pub fn log1pf(n: c_float) -> c_float;
+        pub fn ilogbf(n: c_float) -> c_int;
+        pub fn modff(n: c_float, iptr: &mut c_float) -> c_float;
+        pub fn sinhf(n: c_float) -> c_float;
+        pub fn tanf(n: c_float) -> c_float;
+        pub fn tanhf(n: c_float) -> c_float;
+        pub fn tgammaf(n: c_float) -> c_float;
+
+        #[cfg(unix)]
+        pub fn lgammaf_r(n: c_float, sign: &mut c_int) -> c_float;
+
+        #[cfg(windows)]
+        #[link_name="__lgammaf_r"]
+        pub fn lgammaf_r(n: c_float, sign: &mut c_int) -> c_float;
+    }
+}
 
 macro_rules! delegate(
     (
@@ -66,29 +105,22 @@ delegate!(
     fn nearbyint(n: f32) -> f32 = intrinsics::nearbyintf32,
     fn round(n: f32) -> f32 = intrinsics::roundf32,
 
-    // cmath
-    fn acos(n: c_float) -> c_float = cmath::c_float::acos,
-    fn asin(n: c_float) -> c_float = cmath::c_float::asin,
-    fn atan(n: c_float) -> c_float = cmath::c_float::atan,
-    fn atan2(a: c_float, b: c_float) -> c_float = cmath::c_float::atan2,
-    fn cbrt(n: c_float) -> c_float = cmath::c_float::cbrt,
-    fn cosh(n: c_float) -> c_float = cmath::c_float::cosh,
-    // fn erf(n: c_float) -> c_float = cmath::c_float::erf,
-    // fn erfc(n: c_float) -> c_float = cmath::c_float::erfc,
-    fn exp_m1(n: c_float) -> c_float = cmath::c_float::exp_m1,
-    fn abs_sub(a: c_float, b: c_float) -> c_float = cmath::c_float::abs_sub,
-    fn next_after(x: c_float, y: c_float) -> c_float = cmath::c_float::next_after,
-    fn frexp(n: c_float, value: &mut c_int) -> c_float = cmath::c_float::frexp,
-    fn hypot(x: c_float, y: c_float) -> c_float = cmath::c_float::hypot,
-    fn ldexp(x: c_float, n: c_int) -> c_float = cmath::c_float::ldexp,
-    // fn log_radix(n: c_float) -> c_float = cmath::c_float::log_radix,
-    fn ln_1p(n: c_float) -> c_float = cmath::c_float::ln_1p,
-    // fn ilog_radix(n: c_float) -> c_int = cmath::c_float::ilog_radix,
-    // fn modf(n: c_float, iptr: &mut c_float) -> c_float = cmath::c_float::modf,
-    // fn ldexp_radix(n: c_float, i: c_int) -> c_float = cmath::c_float::ldexp_radix,
-    fn sinh(n: c_float) -> c_float = cmath::c_float::sinh,
-    fn tan(n: c_float) -> c_float = cmath::c_float::tan,
-    fn tanh(n: c_float) -> c_float = cmath::c_float::tanh
+    fn acos(n: c_float) -> c_float = cmath::acosf,
+    fn asin(n: c_float) -> c_float = cmath::asinf,
+    fn atan(n: c_float) -> c_float = cmath::atanf,
+    fn atan2(a: c_float, b: c_float) -> c_float = cmath::atan2f,
+    fn cbrt(n: c_float) -> c_float = cmath::cbrtf,
+    fn cosh(n: c_float) -> c_float = cmath::coshf,
+    fn exp_m1(n: c_float) -> c_float = cmath::expm1f,
+    fn abs_sub(a: c_float, b: c_float) -> c_float = cmath::fdimf,
+    fn next_after(x: c_float, y: c_float) -> c_float = cmath::nextafterf,
+    fn frexp(n: c_float, value: &mut c_int) -> c_float = cmath::frexpf,
+    fn hypot(x: c_float, y: c_float) -> c_float = cmath::hypotf,
+    fn ldexp(x: c_float, n: c_int) -> c_float = cmath::ldexpf,
+    fn ln_1p(n: c_float) -> c_float = cmath::log1pf,
+    fn sinh(n: c_float) -> c_float = cmath::sinhf,
+    fn tan(n: c_float) -> c_float = cmath::tanf,
+    fn tanh(n: c_float) -> c_float = cmath::tanhf
 )
 
 // FIXME(#11621): These constants should be deprecated once CTFE is implemented
@@ -308,12 +340,12 @@ impl Primitive for f32 {}
 impl Float for f32 {
     #[inline]
     fn max(self, other: f32) -> f32 {
-        unsafe { cmath::c_float::fmax(self, other) }
+        unsafe { cmath::fmaxf(self, other) }
     }
 
     #[inline]
     fn min(self, other: f32) -> f32 {
-        unsafe { cmath::c_float::fmin(self, other) }
+        unsafe { cmath::fminf(self, other) }
     }
 
     #[inline]
