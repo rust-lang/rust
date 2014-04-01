@@ -818,28 +818,28 @@ mod test {
 #[cfg(test)]
 mod bench {
     extern crate test;
-    use self::test::BenchHarness;
+    use self::test::Bencher;
     use super::Uuid;
 
     #[bench]
-    pub fn create_uuids(bh: &mut BenchHarness) {
-        bh.iter(|| {
+    pub fn create_uuids(b: &mut Bencher) {
+        b.iter(|| {
             Uuid::new_v4();
         })
     }
 
     #[bench]
-    pub fn uuid_to_str(bh: &mut BenchHarness) {
+    pub fn uuid_to_str(b: &mut Bencher) {
         let u = Uuid::new_v4();
-        bh.iter(|| {
+        b.iter(|| {
             u.to_str();
         })
     }
 
     #[bench]
-    pub fn parse_str(bh: &mut BenchHarness) {
+    pub fn parse_str(b: &mut Bencher) {
         let s = "urn:uuid:F9168C5E-CEB2-4faa-B6BF-329BF39FA1E4";
-        bh.iter(|| {
+        b.iter(|| {
             Uuid::parse_string(s).unwrap();
         })
     }

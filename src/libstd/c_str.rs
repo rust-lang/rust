@@ -670,7 +670,7 @@ mod tests {
 #[cfg(test)]
 mod bench {
     extern crate test;
-    use self::test::BenchHarness;
+    use self::test::Bencher;
     use libc;
     use prelude::*;
 
@@ -696,73 +696,73 @@ mod bench {
         Mary had a little lamb, Little lamb
         Mary had a little lamb, Little lamb";
 
-    fn bench_to_str(bh: &mut BenchHarness, s: &str) {
-        bh.iter(|| {
+    fn bench_to_str(b: &mut Bencher, s: &str) {
+        b.iter(|| {
             let c_str = s.to_c_str();
             c_str.with_ref(|c_str_buf| check(s, c_str_buf))
         })
     }
 
     #[bench]
-    fn bench_to_c_str_short(bh: &mut BenchHarness) {
-        bench_to_str(bh, s_short)
+    fn bench_to_c_str_short(b: &mut Bencher) {
+        bench_to_str(b, s_short)
     }
 
     #[bench]
-    fn bench_to_c_str_medium(bh: &mut BenchHarness) {
-        bench_to_str(bh, s_medium)
+    fn bench_to_c_str_medium(b: &mut Bencher) {
+        bench_to_str(b, s_medium)
     }
 
     #[bench]
-    fn bench_to_c_str_long(bh: &mut BenchHarness) {
-        bench_to_str(bh, s_long)
+    fn bench_to_c_str_long(b: &mut Bencher) {
+        bench_to_str(b, s_long)
     }
 
-    fn bench_to_c_str_unchecked(bh: &mut BenchHarness, s: &str) {
-        bh.iter(|| {
+    fn bench_to_c_str_unchecked(b: &mut Bencher, s: &str) {
+        b.iter(|| {
             let c_str = unsafe { s.to_c_str_unchecked() };
             c_str.with_ref(|c_str_buf| check(s, c_str_buf))
         })
     }
 
     #[bench]
-    fn bench_to_c_str_unchecked_short(bh: &mut BenchHarness) {
-        bench_to_c_str_unchecked(bh, s_short)
+    fn bench_to_c_str_unchecked_short(b: &mut Bencher) {
+        bench_to_c_str_unchecked(b, s_short)
     }
 
     #[bench]
-    fn bench_to_c_str_unchecked_medium(bh: &mut BenchHarness) {
-        bench_to_c_str_unchecked(bh, s_medium)
+    fn bench_to_c_str_unchecked_medium(b: &mut Bencher) {
+        bench_to_c_str_unchecked(b, s_medium)
     }
 
     #[bench]
-    fn bench_to_c_str_unchecked_long(bh: &mut BenchHarness) {
-        bench_to_c_str_unchecked(bh, s_long)
+    fn bench_to_c_str_unchecked_long(b: &mut Bencher) {
+        bench_to_c_str_unchecked(b, s_long)
     }
 
-    fn bench_with_c_str(bh: &mut BenchHarness, s: &str) {
-        bh.iter(|| {
+    fn bench_with_c_str(b: &mut Bencher, s: &str) {
+        b.iter(|| {
             s.with_c_str(|c_str_buf| check(s, c_str_buf))
         })
     }
 
     #[bench]
-    fn bench_with_c_str_short(bh: &mut BenchHarness) {
-        bench_with_c_str(bh, s_short)
+    fn bench_with_c_str_short(b: &mut Bencher) {
+        bench_with_c_str(b, s_short)
     }
 
     #[bench]
-    fn bench_with_c_str_medium(bh: &mut BenchHarness) {
-        bench_with_c_str(bh, s_medium)
+    fn bench_with_c_str_medium(b: &mut Bencher) {
+        bench_with_c_str(b, s_medium)
     }
 
     #[bench]
-    fn bench_with_c_str_long(bh: &mut BenchHarness) {
-        bench_with_c_str(bh, s_long)
+    fn bench_with_c_str_long(b: &mut Bencher) {
+        bench_with_c_str(b, s_long)
     }
 
-    fn bench_with_c_str_unchecked(bh: &mut BenchHarness, s: &str) {
-        bh.iter(|| {
+    fn bench_with_c_str_unchecked(b: &mut Bencher, s: &str) {
+        b.iter(|| {
             unsafe {
                 s.with_c_str_unchecked(|c_str_buf| check(s, c_str_buf))
             }
@@ -770,17 +770,17 @@ mod bench {
     }
 
     #[bench]
-    fn bench_with_c_str_unchecked_short(bh: &mut BenchHarness) {
-        bench_with_c_str_unchecked(bh, s_short)
+    fn bench_with_c_str_unchecked_short(b: &mut Bencher) {
+        bench_with_c_str_unchecked(b, s_short)
     }
 
     #[bench]
-    fn bench_with_c_str_unchecked_medium(bh: &mut BenchHarness) {
-        bench_with_c_str_unchecked(bh, s_medium)
+    fn bench_with_c_str_unchecked_medium(b: &mut Bencher) {
+        bench_with_c_str_unchecked(b, s_medium)
     }
 
     #[bench]
-    fn bench_with_c_str_unchecked_long(bh: &mut BenchHarness) {
-        bench_with_c_str_unchecked(bh, s_long)
+    fn bench_with_c_str_unchecked_long(b: &mut Bencher) {
+        bench_with_c_str_unchecked(b, s_long)
     }
 }

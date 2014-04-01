@@ -185,22 +185,22 @@ mod tests {
 #[cfg(test)]
 mod bench {
     extern crate test;
-    use self::test::BenchHarness;
+    use self::test::Bencher;
     use std::mem::size_of;
     use {XorShiftRng, RAND_BENCH_N};
     use distributions::{Sample};
     use super::Normal;
 
     #[bench]
-    fn rand_normal(bh: &mut BenchHarness) {
+    fn rand_normal(b: &mut Bencher) {
         let mut rng = XorShiftRng::new().unwrap();
         let mut normal = Normal::new(-2.71828, 3.14159);
 
-        bh.iter(|| {
+        b.iter(|| {
             for _ in range(0, RAND_BENCH_N) {
                 normal.sample(&mut rng);
             }
         });
-        bh.bytes = size_of::<f64>() as u64 * RAND_BENCH_N;
+        b.bytes = size_of::<f64>() as u64 * RAND_BENCH_N;
     }
 }

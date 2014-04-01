@@ -170,7 +170,7 @@ runner.
 
 The type signature of a benchmark function differs from a unit test:
 it takes a mutable reference to type
-`test::BenchHarness`. Inside the benchmark function, any
+`test::Bencher`. Inside the benchmark function, any
 time-variable or "setup" code should execute first, followed by a call
 to `iter` on the benchmark harness, passing a closure that contains
 the portion of the benchmark you wish to actually measure the
@@ -189,16 +189,16 @@ For example:
 extern crate test;
 
 use std::slice;
-use test::BenchHarness;
+use test::Bencher;
 
 #[bench]
-fn bench_sum_1024_ints(b: &mut BenchHarness) {
+fn bench_sum_1024_ints(b: &mut Bencher) {
     let v = slice::from_fn(1024, |n| n);
     b.iter(|| {v.iter().fold(0, |old, new| old + *new);} );
 }
 
 #[bench]
-fn initialise_a_vector(b: &mut BenchHarness) {
+fn initialise_a_vector(b: &mut Bencher) {
     b.iter(|| {slice::from_elem(1024, 0u64);} );
     b.bytes = 1024 * 8;
 }
@@ -249,11 +249,11 @@ it entirely.
 ~~~
 # #[allow(unused_imports)];
 extern crate test;
-use test::BenchHarness;
+use test::Bencher;
 
 #[bench]
-fn bench_xor_1000_ints(bh: &mut BenchHarness) {
-    bh.iter(|| {
+fn bench_xor_1000_ints(b: &mut Bencher) {
+    b.iter(|| {
             range(0, 1000).fold(0, |old, new| old ^ new);
         });
 }

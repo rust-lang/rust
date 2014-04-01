@@ -289,21 +289,21 @@ impl<H:Writer> ::hash::Hash<H> for StrBuf {
 #[cfg(test)]
 mod tests {
     extern crate test;
-    use self::test::BenchHarness;
+    use self::test::Bencher;
     use str::{Str, StrSlice};
     use super::StrBuf;
 
     #[bench]
-    fn bench_with_capacity(bh: &mut BenchHarness) {
-        bh.iter(|| {
+    fn bench_with_capacity(b: &mut Bencher) {
+        b.iter(|| {
             StrBuf::with_capacity(100)
         });
     }
 
     #[bench]
-    fn bench_push_str(bh: &mut BenchHarness) {
+    fn bench_push_str(b: &mut Bencher) {
         let s = "ศไทย中华Việt Nam; Mary had a little lamb, Little lamb";
-        bh.iter(|| {
+        b.iter(|| {
             let mut r = StrBuf::new();
             r.push_str(s);
         });

@@ -641,36 +641,36 @@ mod tests {
 #[cfg(test)]
 mod bench {
     extern crate test;
-    use self::test::BenchHarness;
+    use self::test::Bencher;
     use super::{Sha256, FixedBuffer, Digest};
 
     #[bench]
-    pub fn sha256_10(bh: &mut BenchHarness) {
+    pub fn sha256_10(b: &mut Bencher) {
         let mut sh = Sha256::new();
         let bytes = [1u8, ..10];
-        bh.iter(|| {
+        b.iter(|| {
             sh.input(bytes);
         });
-        bh.bytes = bytes.len() as u64;
+        b.bytes = bytes.len() as u64;
     }
 
     #[bench]
-    pub fn sha256_1k(bh: &mut BenchHarness) {
+    pub fn sha256_1k(b: &mut Bencher) {
         let mut sh = Sha256::new();
         let bytes = [1u8, ..1024];
-        bh.iter(|| {
+        b.iter(|| {
             sh.input(bytes);
         });
-        bh.bytes = bytes.len() as u64;
+        b.bytes = bytes.len() as u64;
     }
 
     #[bench]
-    pub fn sha256_64k(bh: &mut BenchHarness) {
+    pub fn sha256_64k(b: &mut Bencher) {
         let mut sh = Sha256::new();
         let bytes = [1u8, ..65536];
-        bh.iter(|| {
+        b.iter(|| {
             sh.input(bytes);
         });
-        bh.bytes = bytes.len() as u64;
+        b.bytes = bytes.len() as u64;
     }
 }

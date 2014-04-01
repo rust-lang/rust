@@ -503,7 +503,7 @@ mod test {
 #[cfg(test)]
 mod bench {
     extern crate test;
-    use self::test::BenchHarness;
+    use self::test::Bencher;
     use container::Container;
 
     macro_rules! u64_from_be_bytes_bench_impl(
@@ -514,7 +514,7 @@ mod bench {
 
             let data = slice::from_fn($stride*100+$start_index, |i| i as u8);
             let mut sum = 0u64;
-            bh.iter(|| {
+            b.iter(|| {
                 let mut i = $start_index;
                 while i < data.len() {
                     sum += u64_from_be_bytes(data, i, $size);
@@ -525,32 +525,32 @@ mod bench {
     )
 
     #[bench]
-    fn u64_from_be_bytes_4_aligned(bh: &mut BenchHarness) {
+    fn u64_from_be_bytes_4_aligned(b: &mut Bencher) {
         u64_from_be_bytes_bench_impl!(4, 4, 0);
     }
 
     #[bench]
-    fn u64_from_be_bytes_4_unaligned(bh: &mut BenchHarness) {
+    fn u64_from_be_bytes_4_unaligned(b: &mut Bencher) {
         u64_from_be_bytes_bench_impl!(4, 4, 1);
     }
 
     #[bench]
-    fn u64_from_be_bytes_7_aligned(bh: &mut BenchHarness) {
+    fn u64_from_be_bytes_7_aligned(b: &mut Bencher) {
         u64_from_be_bytes_bench_impl!(7, 8, 0);
     }
 
     #[bench]
-    fn u64_from_be_bytes_7_unaligned(bh: &mut BenchHarness) {
+    fn u64_from_be_bytes_7_unaligned(b: &mut Bencher) {
         u64_from_be_bytes_bench_impl!(7, 8, 1);
     }
 
     #[bench]
-    fn u64_from_be_bytes_8_aligned(bh: &mut BenchHarness) {
+    fn u64_from_be_bytes_8_aligned(b: &mut Bencher) {
         u64_from_be_bytes_bench_impl!(8, 8, 0);
     }
 
     #[bench]
-    fn u64_from_be_bytes_8_unaligned(bh: &mut BenchHarness) {
+    fn u64_from_be_bytes_8_unaligned(b: &mut Bencher) {
         u64_from_be_bytes_bench_impl!(8, 8, 1);
     }
 }

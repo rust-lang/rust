@@ -326,15 +326,15 @@ pub fn live_allocs() -> *mut Box {
 #[cfg(test)]
 mod bench {
     extern crate test;
-    use self::test::BenchHarness;
+    use self::test::Bencher;
 
     #[bench]
-    fn alloc_managed_small(bh: &mut BenchHarness) {
-        bh.iter(|| { @10; });
+    fn alloc_managed_small(b: &mut Bencher) {
+        b.iter(|| { @10; });
     }
 
     #[bench]
-    fn alloc_managed_big(bh: &mut BenchHarness) {
-        bh.iter(|| { @([10, ..1000]); });
+    fn alloc_managed_big(b: &mut Bencher) {
+        b.iter(|| { @([10, ..1000]); });
     }
 }

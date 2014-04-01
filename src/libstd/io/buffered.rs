@@ -371,7 +371,7 @@ mod test {
     use prelude::*;
     use super::*;
     use super::super::mem::{MemReader, MemWriter, BufReader};
-    use Harness = self::test::BenchHarness;
+    use self::test::Bencher;
 
     /// A type, free to create, primarily intended for benchmarking creation of
     /// wrappers that, just for construction, don't need a Reader/Writer that
@@ -584,22 +584,22 @@ mod test {
     }
 
     #[bench]
-    fn bench_buffered_reader(bh: &mut Harness) {
-        bh.iter(|| {
+    fn bench_buffered_reader(b: &mut Bencher) {
+        b.iter(|| {
             BufferedReader::new(NullStream)
         });
     }
 
     #[bench]
-    fn bench_buffered_writer(bh: &mut Harness) {
-        bh.iter(|| {
+    fn bench_buffered_writer(b: &mut Bencher) {
+        b.iter(|| {
             BufferedWriter::new(NullStream)
         });
     }
 
     #[bench]
-    fn bench_buffered_stream(bh: &mut Harness) {
-        bh.iter(|| {
+    fn bench_buffered_stream(b: &mut Bencher) {
+        b.iter(|| {
             BufferedStream::new(NullStream);
         });
     }
