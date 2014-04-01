@@ -14,7 +14,6 @@ use middle::ty;
 use std::cell::Cell;
 use syntax::ast;
 use syntax::codemap::Span;
-use syntax::owned_slice::OwnedSlice;
 
 /// Defines strategies for handling regions that are omitted.  For
 /// example, if one writes the type `&Foo`, then the lifetime of
@@ -71,11 +70,4 @@ impl RegionScope for BindingRscope {
         Ok(Vec::from_fn(count, |i| ty::ReLateBound(self.binder_id,
                                                    ty::BrAnon(idx + i))))
     }
-}
-
-pub fn bound_type_regions(defs: &[ty::RegionParameterDef])
-                          -> OwnedSlice<ty::Region> {
-    assert!(defs.iter().all(|def| def.def_id.krate == ast::LOCAL_CRATE));
-    defs.iter().enumerate().map(
-        |(i, def)| ty::ReEarlyBound(def.def_id.node, i, def.name)).collect()
 }
