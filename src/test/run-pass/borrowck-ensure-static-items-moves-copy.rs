@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Verifies that static items can't be moved
+// Ensure that moves out of statics don't null the static
 
 use std::kinds::marker;
 
@@ -17,13 +17,21 @@ struct Foo {
     nocopy: marker::NoCopy
 }
 
-static BAR: Foo = Foo{foo: 5, nocopy: marker::NoCopy};
-
-
-fn test(f: Foo) {
-    let _f = Foo{foo: 4, ..f};
+impl Eq for Foo {
+    fn eq(&self, other: &Foo) -> bool {
+        self.foo == other.foo
+    }
 }
 
+impl std::fmt::Show for Foo {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f.buf, "Foo({})", self.foo)
+    }
+}
+
+static BAR: Foo = Foo{foo: 5, nocopy: marker::NoCopy};
+
 fn main() {
-    test(BAR); //~ ERROR cannot move out of static item
+    let x = BAR;
+    assert_eq!(x, BAR);
 }

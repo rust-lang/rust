@@ -117,13 +117,26 @@ fn check_is_legal_to_move_from(bccx: &BorrowckCtxt,
         mc::cat_deref(_, _, mc::BorrowedPtr(..)) |
         mc::cat_deref(_, _, mc::GcPtr) |
         mc::cat_deref(_, _, mc::UnsafePtr(..)) |
-        mc::cat_upvar(..) | mc::cat_static_item |
+        mc::cat_upvar(..) |
         mc::cat_copied_upvar(mc::CopiedUpvar { onceness: ast::Many, .. }) => {
             bccx.span_err(
                 cmt0.span,
                 format!("cannot move out of {}",
                         bccx.cmt_to_str(cmt)));
             false
+        }
+
+        mc::cat_static_item => {
+            match cmt.mutbl {
+                // "Moves" out of static items end-up calling memcpy, so they are allowed.
+                mc::McImmutable => {
+                    true
+                }
+                _ => {
+                    bccx.span_err( cmt0.span, "cannot move out of mutable static items");
+                    false
+                }
+            }
         }
 
         // Can move out of captured upvars only if the destination closure
