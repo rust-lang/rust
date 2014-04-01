@@ -512,48 +512,6 @@ pub fn trans_lang_call<'a>(
                              dest)
 }
 
-pub fn trans_lang_call_with_type_params<'a>(
-                                        bcx: &'a Block<'a>,
-                                        did: ast::DefId,
-                                        args: &[ValueRef],
-                                        type_params: &[ty::t],
-                                        dest: expr::Dest)
-                                        -> &'a Block<'a> {
-    let fty;
-    if did.krate == ast::LOCAL_CRATE {
-        fty = ty::node_id_to_type(bcx.tcx(), did.node);
-    } else {
-        fty = csearch::get_type(bcx.tcx(), did).ty;
-    }
-
-    return callee::trans_call_inner(
-        bcx,
-        None,
-        fty,
-        |bcx, _| {
-            let callee =
-                trans_fn_ref_with_vtables_to_callee(bcx, did, 0,
-                                                    type_params,
-                                                    None);
-
-            let new_llval;
-            match callee.data {
-                Fn(llfn) => {
-                    let substituted = ty::subst_tps(callee.bcx.tcx(),
-                                                    type_params,
-                                                    None,
-                                                    fty);
-                    let llfnty = type_of::type_of(callee.bcx.ccx(),
-                                                      substituted);
-                    new_llval = PointerCast(callee.bcx, llfn, llfnty);
-                }
-                _ => fail!()
-            }
-            Callee { bcx: callee.bcx, data: Fn(new_llval) }
-        },
-        ArgVals(args), Some(dest)).bcx;
-}
-
 pub fn trans_call_inner<'a>(
                         bcx: &'a Block<'a>,
                         call_info: Option<NodeInfo>,
