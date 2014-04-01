@@ -216,6 +216,8 @@ use container::Container;
 use fmt;
 use int;
 use iter::Iterator;
+use libc;
+use os;
 use option::{Option, Some, None};
 use path::Path;
 use result::{Ok, Err, Result};
@@ -288,6 +290,88 @@ pub struct IoError {
     pub desc: &'static str,
     /// Detailed information about this error, not always available
     pub detail: Option<~str>
+}
+
+impl IoError {
+    /// Convert an `errno` value into an `IoError`.
+    ///
+    /// If `detail` is `true`, the `detail` field of the `IoError`
+    /// struct is filled with an allocated string describing the error
+    /// in more detail, retrieved from the operating system.
+    pub fn from_errno(errno: uint, detail: bool) -> IoError {
+        #[cfg(windows)]
+        fn get_err(errno: i32) -> (IoErrorKind, &'static str) {
+            match errno {
+                libc::EOF => (EndOfFile, "end of file"),
+                libc::ERROR_NO_DATA => (BrokenPipe, "the pipe is being closed"),
+                libc::ERROR_FILE_NOT_FOUND => (FileNotFound, "file not found"),
+                libc::ERROR_INVALID_NAME => (InvalidInput, "invalid file name"),
+                libc::WSAECONNREFUSED => (ConnectionRefused, "connection refused"),
+                libc::WSAECONNRESET => (ConnectionReset, "connection reset"),
+                libc::WSAEACCES => (PermissionDenied, "permission denied"),
+                libc::WSAEWOULDBLOCK => {
+                    (ResourceUnavailable, "resource temporarily unavailable")
+                }
+                libc::WSAENOTCONN => (NotConnected, "not connected"),
+                libc::WSAECONNABORTED => (ConnectionAborted, "connection aborted"),
+                libc::WSAEADDRNOTAVAIL => (ConnectionRefused, "address not available"),
+                libc::WSAEADDRINUSE => (ConnectionRefused, "address in use"),
+                libc::ERROR_BROKEN_PIPE => (EndOfFile, "the pipe has ended"),
+
+                // libuv maps this error code to EISDIR. we do too. if it is found
+                // to be incorrect, we can add in some more machinery to only
+                // return this message when ERROR_INVALID_FUNCTION after certain
+                // win32 calls.
+                libc::ERROR_INVALID_FUNCTION => (InvalidInput,
+                                                 "illegal operation on a directory"),
+
+                _ => (OtherIoError, "unknown error")
+            }
+        }
+
+        #[cfg(not(windows))]
+        fn get_err(errno: i32) -> (IoErrorKind, &'static str) {
+            // FIXME: this should probably be a bit more descriptive...
+            match errno {
+                libc::EOF => (EndOfFile, "end of file"),
+                libc::ECONNREFUSED => (ConnectionRefused, "connection refused"),
+                libc::ECONNRESET => (ConnectionReset, "connection reset"),
+                libc::EPERM | libc::EACCES =>
+                    (PermissionDenied, "permission denied"),
+                libc::EPIPE => (BrokenPipe, "broken pipe"),
+                libc::ENOTCONN => (NotConnected, "not connected"),
+                libc::ECONNABORTED => (ConnectionAborted, "connection aborted"),
+                libc::EADDRNOTAVAIL => (ConnectionRefused, "address not available"),
+                libc::EADDRINUSE => (ConnectionRefused, "address in use"),
+                libc::ENOENT => (FileNotFound, "no such file or directory"),
+                libc::EISDIR => (InvalidInput, "illegal operation on a directory"),
+
+                // These two constants can have the same value on some systems, but
+                // different values on others, so we can't use a match clause
+                x if x == libc::EAGAIN || x == libc::EWOULDBLOCK =>
+                    (ResourceUnavailable, "resource temporarily unavailable"),
+
+                _ => (OtherIoError, "unknown error")
+            }
+        }
+
+        let (kind, desc) = get_err(errno as i32);
+        IoError {
+            kind: kind,
+            desc: desc,
+            detail: if detail {Some(os::error_string(errno))} else {None},
+        }
+    }
+
+    /// Retrieve the last error to occur as a (detailed) IoError.
+    ///
+    /// This uses the OS `errno`, and so there should not be any task
+    /// descheduling or migration (other than that performed by the
+    /// operating system) between the call(s) for which errors are
+    /// being checked and the call of this function.
+    pub fn last_error() -> IoError {
+        IoError::from_errno(os::errno() as uint, true)
+    }
 }
 
 impl fmt::Show for IoError {

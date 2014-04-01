@@ -481,7 +481,7 @@ fn spawn_process_os(config: p::ProcessConfig,
                                     (bytes[1] << 16) as i32 |
                                     (bytes[2] <<  8) as i32 |
                                     (bytes[3] <<  0) as i32;
-                        Err(super::translate_error(errno, false))
+                        Err(io::IoError::from_errno(errno as uint, false))
                     }
                     Err(e) => {
                         assert!(e.kind == io::BrokenPipe ||

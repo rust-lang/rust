@@ -17,7 +17,7 @@ pub use self::imp::OSRng;
 mod imp {
     use Rng;
     use reader::ReaderRng;
-    use std::io::File;
+    use std::io::{IoResult, File};
 
     /// A random number generator that retrieves randomness straight from
     /// the operating system. Platform sources:
@@ -35,12 +35,11 @@ mod imp {
 
     impl OSRng {
         /// Create a new `OSRng`.
-        pub fn new() -> OSRng {
-            let reader = File::open(&Path::new("/dev/urandom"));
-            let reader = reader.ok().expect("Error opening /dev/urandom");
+        pub fn new() -> IoResult<OSRng> {
+            let reader = try!(File::open(&Path::new("/dev/urandom")));
             let reader_rng = ReaderRng::new(reader);
 
-            OSRng { inner: reader_rng }
+            Ok(OSRng { inner: reader_rng })
         }
     }
 
@@ -61,6 +60,7 @@ mod imp {
 mod imp {
     use Rng;
     use std::cast;
+    use std::io::{IoResult, IoError};
     use std::libc::{c_ulong, DWORD, BYTE, LPCSTR, BOOL};
     use std::os;
     use std::rt::stack;
@@ -99,7 +99,7 @@ mod imp {
 
     impl OSRng {
         /// Create a new `OSRng`.
-        pub fn new() -> OSRng {
+        pub fn new() -> IoResult<OSRng> {
             let mut hcp = 0;
             let mut ret = unsafe {
                 CryptAcquireContextA(&mut hcp, 0 as LPCSTR, 0 as LPCSTR,
@@ -143,9 +143,10 @@ mod imp {
             }
 
             if ret == 0 {
-                fail!("couldn't create context: {}", os::last_os_error());
+                Err(IoError::last_error())
+            } else {
+                Ok(OSRng { hcryptprov: hcp })
             }
-            OSRng { hcryptprov: hcp }
         }
     }
 
@@ -191,7 +192,7 @@ mod test {
 
     #[test]
     fn test_os_rng() {
-        let mut r = OSRng::new();
+        let mut r = OSRng::new().unwrap();
 
         r.next_u32();
         r.next_u64();
@@ -213,7 +214,7 @@ mod test {
 
                 // deschedule to attempt to interleave things as much
                 // as possible (XXX: is this a good test?)
-                let mut r = OSRng::new();
+                let mut r = OSRng::new().unwrap();
                 task::deschedule();
                 let mut v = [0u8, .. 1000];
 
