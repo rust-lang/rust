@@ -6,7 +6,10 @@ Version 0.10 (April 2014)
   * Language
     * A new RFC process is now in place for modifying the language.
     * Patterns with `@`-pointers have been removed from the language.
-    * Patterns with unique vectors have been removed from the language.
+    * Patterns with unique vectors (`~[T]`) have been removed from the
+      language.
+    * Patterns with unique strings (`~str`) have been removed from the
+      language.
     * `@str` has been removed from the language.
     * `@[T]` has been removed from the language.
     * `@self` has been removed from the language.
@@ -25,9 +28,10 @@ Version 0.10 (April 2014)
       * Camel Case types
       * Uppercase variables
       * Publicly visible private types
+      * `#[deriving]` with raw pointers
     * Unsafe functions can no longer be coerced to closures.
     * Various obscure macros such as `log_syntax!` are now behind feature gates.
-    * The #[simd] attribute is now behind a feature gate.
+    * The `#[simd]` attribute is now behind a feature gate.
     * Visibility is no longer allowed on `extern crate` statements, and
       unnecessary visibility (`priv`) is no longer allowed on `use` statements.
     * Trailing commas are now allowed in argument lists and tuple patterns.
@@ -39,7 +43,7 @@ Version 0.10 (April 2014)
     * The `Share` trait has been added for types that can be shared among
       threads.
     * Labels in macros are now hygienic.
-    * Expresson/statement macro invocations can be delimited with `{}` now.
+    * Expression/statement macro invocations can be delimited with `{}` now.
     * Treatment of types allowed in `static mut` locations has been tweaked.
     * The `*` and `.` operators are now overloadable through the `Deref` and
       `DerefMut` traits.
@@ -132,7 +136,7 @@ Version 0.10 (April 2014)
   * Tooling
     * `rustpkg` has been deprecated and removed from the main repository. Its
       replacement, `cargo`, is under development.
-    * Nightly builds of rust are now available (INSERT URL HERE)
+    * Nightly builds of rust are now available
     * The memory usage of rustc has been improved many times throughout this
       release cycle.
     * The build process supports disabling rpath support for the rustc binary
@@ -145,16 +149,20 @@ Version 0.10 (April 2014)
     * Output flags have been centralized into one `--emit` flag.
     * Crate type flags have been centralized into one `--crate-type` flag.
     * Codegen flags have been consolidated behind a `-C` flag.
-    * `rustdoc` now implements syntax highlighting and rendering markdown files.
-    * `rustdoc --test` now tests all code blocks by default.
-    * `rustdoc` now shows documented macros.
-    * `rustdoc` inlines documentation for reexported types.
-    * `rustdoc` search works across crates now.
     * Linking against outdated crates now has improved error messages.
     * Error messages with lifetimes will often suggest how to annotate the
       function to fix the error.
     * Many more types are documented in the standard library, and new guides
       were written.
+    * Many `rustdoc` improvements:
+      * code blocks are syntax highlighted.
+      * render standalone markdown files.
+      * the --test flag tests all code blocks by default.
+      * exported macros are displayed.
+      * reexported types have their documentation inlined at the location of the
+        first reexport.
+      * search works across crates that have been rendered to the same output
+        directory.
 
 Version 0.9 (January 2014)
 --------------------------
