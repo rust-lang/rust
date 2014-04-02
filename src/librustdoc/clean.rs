@@ -975,7 +975,7 @@ impl Clean<BareFunctionDecl> for ast::BareFnTy {
                 type_params: Vec::new(),
             },
             decl: self.decl.clean(),
-            abi: self.abis.to_str(),
+            abi: self.abi.to_str(),
         }
     }
 }

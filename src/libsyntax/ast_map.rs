@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use abi::AbiSet;
+use abi;
 use ast::*;
 use ast_util;
 use codemap::Span;
@@ -224,19 +224,19 @@ impl Map {
         }
     }
 
-    pub fn get_foreign_abis(&self, id: NodeId) -> AbiSet {
+    pub fn get_foreign_abi(&self, id: NodeId) -> abi::Abi {
         let parent = self.get_parent(id);
-        let abis = match self.find_entry(parent) {
+        let abi = match self.find_entry(parent) {
             Some(EntryItem(_, i)) => match i.node {
-                ItemForeignMod(ref nm) => Some(nm.abis),
+                ItemForeignMod(ref nm) => Some(nm.abi),
                 _ => None
             },
             // Wrong but OK, because the only inlined foreign items are intrinsics.
-            Some(RootInlinedParent(_)) => Some(AbiSet::Intrinsic()),
+            Some(RootInlinedParent(_)) => Some(abi::RustIntrinsic),
             _ => None
         };
-        match abis {
-            Some(abis) => abis,
+        match abi {
+            Some(abi) => abi,
             None => fail!("expected foreign mod or inlined parent, found {}",
                           self.node_to_str(parent))
         }

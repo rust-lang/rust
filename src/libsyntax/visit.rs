@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use abi::AbiSet;
+use abi::Abi;
 use ast::*;
 use ast;
 use codemap::Span;
@@ -29,7 +29,7 @@ use owned_slice::OwnedSlice;
 
 pub enum FnKind<'a> {
     // fn foo() or extern "Abi" fn foo()
-    FkItemFn(Ident, &'a Generics, Purity, AbiSet),
+    FkItemFn(Ident, &'a Generics, Purity, Abi),
 
     // fn foo(&self)
     FkMethod(Ident, &'a Generics, &'a Method),
