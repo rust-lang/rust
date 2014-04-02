@@ -3420,8 +3420,21 @@ x = bo(5,7);
 
 ### Closure types
 
-The type of a closure mapping an input of type `A` to an output of type `B` is `|A| -> B`. A closure with no arguments or return values has type `||`.
+~~~~ {.notrust .ebnf .notation}
+closure_type := [ 'unsafe' ] [ '<' lifetime-list '>' ] '|' arg-list '|'
+                [ ':' bound-list ] [ '->' type ]
+procedure_type := 'proc' [ '<' lifetime-list '>' ] '(' arg-list ')'
+                  [ ':' bound-list ] [ '->' type ]
+lifetime-list := lifetime | lifetime ',' lifetime-list
+arg-list := ident ':' type | ident ':' type ',' arg-list
+bound-list := bound | bound '+' bound-list
+bound := path | lifetime
+~~~~
 
+The type of a closure mapping an input of type `A` to an output of type `B` is
+`|A| -> B`. A closure with no arguments or return values has type `||`.
+Similarly, a procedure mapping `A` to `B` is `proc(A) -> B` and a no-argument
+and no-return value closure has type `proc()`.
 
 An example of creating and calling a closure:
 
@@ -3441,6 +3454,30 @@ fn call_closure(c1: ||, c2: |int| -> int) {
 }
 
 call_closure(closure_no_args, closure_args);
+
+```
+
+Unlike closures, procedures may only be invoked once, but own their
+environment, and are allowed to move out of their environment. Procedures are
+allocated on the heap (unlike closures). An example of creating and calling a
+procedure:
+
+```rust
+let string = ~"Hello";
+
+// Creates a new procedure, passing it to the `spawn` function.
+spawn(proc() {
+  println!("{} world!", string);
+});
+
+// the variable `string` has been moved into the previous procedure, so it is
+// no longer usable.
+
+
+// Create an invoke a procedure. Note that the procedure is *moved* when
+// invoked, so it cannot be invoked again.
+let f = proc(n: int) { n + 22 };
+println!("answer: {}", f(20));
 
 ```
 

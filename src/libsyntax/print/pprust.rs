@@ -1557,7 +1557,7 @@ impl<'a> State<'a> {
 
         match *opt_bounds {
             None => Ok(()),
-            Some(ref bounds) => self.print_bounds(bounds, true),
+            Some(ref bounds) => self.print_bounds(&None, bounds, true),
         }
     }
 
@@ -1813,11 +1813,24 @@ impl<'a> State<'a> {
         self.maybe_print_comment(decl.output.span.lo)
     }
 
-    pub fn print_bounds(&mut self, bounds: &OwnedSlice<ast::TyParamBound>,
+    pub fn print_bounds(&mut self,
+                        region: &Option<ast::Lifetime>,
+                        bounds: &OwnedSlice<ast::TyParamBound>,
                         print_colon_anyway: bool) -> IoResult<()> {
-        if !bounds.is_empty() {
+        if !bounds.is_empty() || region.is_some() {
             try!(word(&mut self.s, ":"));
             let mut first = true;
+            match *region {
+                Some(ref lt) => {
+                    let token = token::get_name(lt.name);
+                    if token.get() != "static" {
+                        try!(self.nbsp());
+                        first = false;
+                        try!(self.print_lifetime(lt));
+                    }
+                }
+                None => {}
+            }
             for bound in bounds.iter() {
                 try!(self.nbsp());
                 if first {
@@ -1866,7 +1879,7 @@ impl<'a> State<'a> {
                         let idx = idx - generics.lifetimes.len();
                         let param = generics.ty_params.get(idx);
                         try!(s.print_ident(param.ident));
-                        try!(s.print_bounds(&param.bounds, false));
+                        try!(s.print_bounds(&None, &param.bounds, false));
                         match param.default {
                             Some(default) => {
                                 try!(space(&mut s.s));
@@ -2027,15 +2040,11 @@ impl<'a> State<'a> {
             try!(word(&mut self.s, "proc"));
         } else if opt_sigil == Some(ast::BorrowedSigil) {
             try!(self.print_extern_opt_abi(opt_abi));
-            for lifetime in opt_region.iter() {
-                try!(self.print_lifetime(lifetime));
-            }
             try!(self.print_purity(purity));
             try!(self.print_onceness(onceness));
         } else {
             try!(self.print_opt_abi_and_extern_if_nondefault(opt_abi));
             try!(self.print_opt_sigil(opt_sigil));
-            try!(self.print_opt_lifetime(opt_region));
             try!(self.print_purity(purity));
             try!(self.print_onceness(onceness));
             try!(word(&mut self.s, "fn"));
@@ -2047,10 +2056,6 @@ impl<'a> State<'a> {
                 try!(self.print_ident(id));
             }
             _ => ()
-        }
-
-        if opt_sigil != Some(ast::BorrowedSigil) {
-            opt_bounds.as_ref().map(|bounds| self.print_bounds(bounds, true));
         }
 
         match generics { Some(g) => try!(self.print_generics(g)), _ => () }
@@ -2066,14 +2071,16 @@ impl<'a> State<'a> {
 
         if opt_sigil == Some(ast::BorrowedSigil) {
             try!(word(&mut self.s, "|"));
-
-            opt_bounds.as_ref().map(|bounds| self.print_bounds(bounds, true));
         } else {
             if decl.variadic {
                 try!(word(&mut self.s, ", ..."));
             }
             try!(self.pclose());
         }
+
+        opt_bounds.as_ref().map(|bounds| {
+            self.print_bounds(opt_region, bounds, true)
+        });
 
         try!(self.maybe_print_comment(decl.output.span.lo));
 
