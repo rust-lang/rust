@@ -164,16 +164,6 @@ impl<T> RefCell<T> {
             None => fail!("RefCell<T> already borrowed")
         }
     }
-
-    /// Sets the value, replacing what was there.
-    ///
-    /// # Failure
-    ///
-    /// Fails if the value is currently borrowed.
-    #[inline]
-    pub fn set(&self, value: T) {
-        *self.borrow_mut() = value;
-    }
 }
 
 impl<T: Clone> Clone for RefCell<T> {

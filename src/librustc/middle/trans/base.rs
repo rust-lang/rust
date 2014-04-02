@@ -1209,7 +1209,7 @@ pub fn init_function<'a>(
                      param_substs: Option<@param_substs>) {
     let entry_bcx = fcx.new_temp_block("entry-block");
 
-    fcx.entry_bcx.set(Some(entry_bcx));
+    *fcx.entry_bcx.borrow_mut() = Some(entry_bcx);
 
     // Use a dummy instruction as the insertion point for all allocas.
     // This is later removed in FunctionContext::cleanup.
