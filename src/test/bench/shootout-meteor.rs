@@ -255,9 +255,9 @@ fn search(
     // for every unused piece
     for id in range(0, 10).filter(|id| board & (1 << (id + 50)) == 0) {
         // for each mask that fits on the board
-        for &m in masks[id].get(i as uint)
-                           .iter()
-                           .filter(|&m| board & *m == 0) {
+        for &m in masks[id as uint].get(i as uint)
+                                   .iter()
+                                   .filter(|&m| board & *m == 0) {
             // This check is too costy.
             //if is_board_unfeasible(board | m, masks) {continue;}
             if !search(masks, board | m, i + 1, Cons(m, &cur), data) {

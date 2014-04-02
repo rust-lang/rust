@@ -780,10 +780,10 @@ impl<'a> Parser<'a> {
                       -> R {
         let dist = distance as int;
         while self.buffer_length() < dist {
-            self.buffer[self.buffer_end] = self.reader.next_token();
+            self.buffer[self.buffer_end as uint] = self.reader.next_token();
             self.buffer_end = (self.buffer_end + 1) & 3;
         }
-        f(&self.buffer[(self.buffer_start + dist - 1) & 3].tok)
+        f(&self.buffer[((self.buffer_start + dist - 1) & 3) as uint].tok)
     }
     pub fn fatal(&mut self, m: &str) -> ! {
         self.sess.span_diagnostic.span_fatal(self.span, m)

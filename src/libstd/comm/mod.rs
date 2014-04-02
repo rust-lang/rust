@@ -254,7 +254,7 @@ pub use comm::select::{Select, Handle};
 macro_rules! test (
     { fn $name:ident() $b:block $(#[$a:meta])*} => (
         mod $name {
-            #[allow(unused_imports)];
+            #![allow(unused_imports)]
 
             use native;
             use comm::*;

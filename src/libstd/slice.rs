@@ -2922,8 +2922,6 @@ mod tests {
 
     fn square(n: uint) -> uint { n * n }
 
-    fn square_ref(n: &uint) -> uint { square(*n) }
-
     fn is_odd(n: &uint) -> bool { *n % 2u == 1u }
 
     #[test]
@@ -4441,7 +4439,7 @@ mod bench {
             unsafe {
                 v.set_len(1024);
             }
-            for i in range(0, 1024) {
+            for i in range(0u, 1024) {
                 v[i] = 0;
             }
         });

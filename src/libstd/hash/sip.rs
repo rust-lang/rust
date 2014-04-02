@@ -432,7 +432,7 @@ mod tests {
             assert!(f == i && f == v);
 
             buf.push(t as u8);
-            state_inc.write_u8(t);
+            state_inc.write_u8(t as u8);
 
             t += 1;
         }

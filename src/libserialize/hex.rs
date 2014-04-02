@@ -41,8 +41,8 @@ impl<'a> ToHex for &'a [u8] {
     fn to_hex(&self) -> ~str {
         let mut v = slice::with_capacity(self.len() * 2);
         for &byte in self.iter() {
-            v.push(CHARS[byte >> 4]);
-            v.push(CHARS[byte & 0xf]);
+            v.push(CHARS[(byte >> 4) as uint]);
+            v.push(CHARS[(byte & 0xf) as uint]);
         }
 
         unsafe {
