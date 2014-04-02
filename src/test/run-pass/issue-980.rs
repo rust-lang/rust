@@ -23,7 +23,7 @@ struct Pointy {
 
 pub fn main() {
     let m = @RefCell::new(Pointy { x : no_pointy });
-    m.set(Pointy {
+    *m.borrow_mut() = Pointy {
         x: yes_pointy(m)
-    });
+    };
 }

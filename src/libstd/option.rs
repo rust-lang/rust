@@ -652,7 +652,7 @@ mod tests {
            fn drop(&mut self) {
                 let ii = &*self.i;
                 let i = ii.borrow().clone();
-                ii.set(i + 1);
+                *ii.borrow_mut() = i + 1;
             }
         }
 

@@ -212,9 +212,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
     let time_passes = sess.time_passes();
 
     sess.building_library.set(session::building_library(&sess.opts, &krate));
-    sess.crate_types.set(session::collect_crate_types(sess,
-                                                      krate.attrs
-                                                           .as_slice()));
+    *sess.crate_types.borrow_mut() = session::collect_crate_types(sess, krate.attrs.as_slice());
 
     time(time_passes, "gated feature checking", (), |_|
          front::feature_gate::check_crate(sess, &krate));
