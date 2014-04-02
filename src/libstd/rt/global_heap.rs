@@ -64,12 +64,21 @@ pub unsafe fn realloc_raw(ptr: *mut u8, size: uint) -> *mut u8 {
     }
 }
 
+// The compiler never calls `exchange_free` on ~ZeroSizeType, so zero-size
+// allocations can point to this `static`. It would be incorrect to use a null
+// pointer, due to enums assuming types like unique pointers are never null.
+static EMPTY: () = ();
+
 /// The allocator for unique pointers without contained managed pointers.
 #[cfg(not(test))]
 #[lang="exchange_malloc"]
 #[inline]
-pub unsafe fn exchange_malloc(size: uint) -> *u8 {
-    malloc_raw(size) as *u8
+pub unsafe fn exchange_malloc(size: uint) -> *mut u8 {
+    if size == 0 {
+        &EMPTY as *() as *mut u8
+    } else {
+        malloc_raw(size)
+    }
 }
 
 // FIXME: #7496

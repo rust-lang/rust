@@ -67,7 +67,7 @@ use middle::typeck::MethodCall;
 use util::common::indenter;
 use util::ppaux::Repr;
 use util::nodemap::NodeMap;
-use middle::trans::machine::llsize_of;
+use middle::trans::machine::{llsize_of, llsize_of_alloc};
 use middle::trans::type_::Type;
 
 use std::slice;
@@ -1200,12 +1200,19 @@ fn trans_boxed_expr<'a>(bcx: &'a Block<'a>,
         let size = llsize_of(bcx.ccx(), llty);
         let Result { bcx: bcx, val: val } = malloc_raw_dyn(bcx, contents_ty,
                                                            heap_exchange, size);
-        let custom_cleanup_scope = fcx.push_custom_cleanup_scope();
-        fcx.schedule_free_value(cleanup::CustomScope(custom_cleanup_scope),
-                                val, heap_exchange);
-        let bcx = trans_into(bcx, contents, SaveIn(val));
-        fcx.pop_custom_cleanup_scope(custom_cleanup_scope);
-        immediate_rvalue_bcx(bcx, val, box_ty).to_expr_datumblock()
+        // Unique boxes do not allocate for zero-size types. The standard library may assume
+        // that `free` is never called on the pointer returned for `~ZeroSizeType`.
+        if llsize_of_alloc(bcx.ccx(), llty) == 0 {
+            let bcx = trans_into(bcx, contents, SaveIn(val));
+            immediate_rvalue_bcx(bcx, val, box_ty).to_expr_datumblock()
+        } else {
+            let custom_cleanup_scope = fcx.push_custom_cleanup_scope();
+            fcx.schedule_free_value(cleanup::CustomScope(custom_cleanup_scope),
+                                    val, heap_exchange);
+            let bcx = trans_into(bcx, contents, SaveIn(val));
+            fcx.pop_custom_cleanup_scope(custom_cleanup_scope);
+            immediate_rvalue_bcx(bcx, val, box_ty).to_expr_datumblock()
+        }
     } else {
         let base::MallocResult { bcx, smart_ptr: bx, body } =
             base::malloc_general(bcx, contents_ty, heap);
