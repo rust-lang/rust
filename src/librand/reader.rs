@@ -68,6 +68,7 @@ impl<R: Reader> Rng for ReaderRng<R> {
 }
 
 #[cfg(test)]
+#[allow(deprecated_owned_vector)]
 mod test {
     use super::ReaderRng;
     use std::io::MemReader;

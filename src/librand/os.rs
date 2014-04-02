@@ -204,7 +204,7 @@ mod test {
     #[test]
     fn test_os_rng_tasks() {
 
-        let mut txs = ~[];
+        let mut txs = vec!();
         for _ in range(0, 20) {
             let (tx, rx) = channel();
             txs.push(tx);
