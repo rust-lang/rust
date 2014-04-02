@@ -2602,6 +2602,13 @@ pub fn type_is_integral(ty: t) -> bool {
     }
 }
 
+pub fn type_is_uint(ty: t) -> bool {
+    match get(ty).sty {
+      ty_infer(IntVar(_)) | ty_uint(ast::TyU) => true,
+      _ => false
+    }
+}
+
 pub fn type_is_char(ty: t) -> bool {
     match get(ty).sty {
         ty_char => true,
