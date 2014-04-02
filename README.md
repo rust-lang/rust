@@ -5,20 +5,19 @@ documentation.
 
 ## Quick Start
 
-### Windows
-
-1. Download and use the [installer and MinGW][win-wiki].
+1. Download a [binary insaller][installer] for your platform.
 2. Read the [tutorial].
-2. Enjoy!
+3. Enjoy!
 
 > ***Note:*** Windows users can read the detailed
 > [getting started][wiki-start] notes on the wiki.
 
+[installer]: http://www.rust-lang.org/install.html
 [tutorial]: http://static.rust-lang.org/doc/tutorial.html
 [wiki-start]: https://github.com/mozilla/rust/wiki/Note-getting-started-developing-Rust
 [win-wiki]: https://github.com/mozilla/rust/wiki/Using-Rust-on-Windows
 
-### Linux / OS X
+## Building from Source
 
 1. Make sure you have installed the dependencies:
     * `g++` 4.4 or `clang++` 3.x
