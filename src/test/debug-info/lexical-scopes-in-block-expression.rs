@@ -211,8 +211,8 @@
 // check:$57 = 10
 // debugger:continue
 
-#[allow(unused_variable)];
-#[allow(dead_assignment)];
+#![allow(unused_variable)]
+#![allow(dead_assignment)]
 
 static mut MUT_INT: int = 0;
 
@@ -366,7 +366,7 @@ fn main() {
         zzz();
         sentinel();
 
-        val
+        val as uint
     }];
 
     zzz();

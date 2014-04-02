@@ -4365,7 +4365,7 @@ pub fn is_binopable(cx: &ctxt, ty: t, op: ast::BinOp) -> bool {
     /*bot*/     [t, t, t, t,     t,   t,  t,   t],
     /*raw ptr*/ [f, f, f, f,     t,   t,  f,   f]];
 
-    return tbl[tycat(cx, ty)][opcat(op)];
+    return tbl[tycat(cx, ty) as uint ][opcat(op) as uint];
 }
 
 pub fn ty_params_to_tys(tcx: &ctxt, generics: &ast::Generics) -> Vec<t> {

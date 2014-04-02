@@ -99,10 +99,10 @@ impl<'a> ToBase64 for &'a [u8] {
                     (self[i + 2] as u32);
 
             // This 24-bit number gets separated into four 6-bit numbers.
-            v.push(bytes[(n >> 18) & 63]);
-            v.push(bytes[(n >> 12) & 63]);
-            v.push(bytes[(n >> 6 ) & 63]);
-            v.push(bytes[n & 63]);
+            v.push(bytes[((n >> 18) & 63) as uint]);
+            v.push(bytes[((n >> 12) & 63) as uint]);
+            v.push(bytes[((n >> 6 ) & 63) as uint]);
+            v.push(bytes[(n & 63) as uint]);
 
             cur_length += 4;
             i += 3;
@@ -125,8 +125,8 @@ impl<'a> ToBase64 for &'a [u8] {
             0 => (),
             1 => {
                 let n = (self[i] as u32) << 16;
-                v.push(bytes[(n >> 18) & 63]);
-                v.push(bytes[(n >> 12) & 63]);
+                v.push(bytes[((n >> 18) & 63) as uint]);
+                v.push(bytes[((n >> 12) & 63) as uint]);
                 if config.pad {
                     v.push('=' as u8);
                     v.push('=' as u8);
@@ -135,9 +135,9 @@ impl<'a> ToBase64 for &'a [u8] {
             2 => {
                 let n = (self[i] as u32) << 16 |
                     (self[i + 1u] as u32) << 8;
-                v.push(bytes[(n >> 18) & 63]);
-                v.push(bytes[(n >> 12) & 63]);
-                v.push(bytes[(n >> 6 ) & 63]);
+                v.push(bytes[((n >> 18) & 63) as uint]);
+                v.push(bytes[((n >> 12) & 63) as uint]);
+                v.push(bytes[((n >> 6 ) & 63) as uint]);
                 if config.pad {
                     v.push('=' as u8);
                 }

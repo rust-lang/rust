@@ -201,7 +201,7 @@ fn pack_symbol(c: u8) -> u8 {
 }
 
 fn unpack_symbol(c: u8) -> u8 {
-    TABLE[c]
+    TABLE[c as uint]
 }
 
 fn generate_frequencies(frequencies: &mut Table,

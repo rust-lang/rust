@@ -223,7 +223,7 @@ pub fn parse(file: &mut io::Reader,
             if b < 0 {
                 return Err(~"error: expected more bools but hit EOF");
             } else if b == 1 {
-                bools_map.insert(bnames[i].to_owned(), true);
+                bools_map.insert(bnames[i as uint].to_owned(), true);
             }
         }
     }
@@ -237,7 +237,7 @@ pub fn parse(file: &mut io::Reader,
         for i in range(0, numbers_count) {
             let n = try!(file.read_le_u16());
             if n != 0xFFFF {
-                numbers_map.insert(nnames[i].to_owned(), n);
+                numbers_map.insert(nnames[i as uint].to_owned(), n);
             }
         }
     }
