@@ -31,10 +31,10 @@ You may also be interested in browsing [GitHub's Rust][github-rust] page.
 
 ## Does it run on Windows?
 
-Yes. All development happens in lock-step on all 3 target platforms. Using MinGW, not Cygwin. Note that the windows implementation currently has some limitations: in particular tasks [cannot unwind on windows][unwind], and all Rust executables [require a MinGW installation at runtime][libgcc].
+Yes. All development happens in lock-step on all 3 target platforms. Using MinGW, not Cygwin. Note that the windows implementation currently has some limitations: in particular 64-bit build is [not fully supported yet][win64], and all executables created by rustc [depends on libgcc DLL at runtime][libgcc].
 
-[unwind]: https://github.com/mozilla/rust/issues/908
-[libgcc]: https://github.com/mozilla/rust/issues/1603
+[win64]: https://github.com/mozilla/rust/issues/1237
+[libgcc]: https://github.com/mozilla/rust/issues/11782
 
 ## Is it OO? How do I do this thing I normally do in an OO language?
 
