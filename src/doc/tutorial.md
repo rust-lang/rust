@@ -2600,8 +2600,6 @@ As you can see, your module hierarchy is now three modules deep: There is the cr
 function, and the module `farm`. The module `farm` also contains two functions and a third module `barn`,
 which contains a function `hay`.
 
-(In case you already stumbled over `extern crate`: It isn't directly related to a bare `mod`, we'll get to it later. )
-
 ## Paths and visibility
 
 We've now defined a nice module hierarchy. But how do we access the items in it from our `main` function?
@@ -3050,7 +3048,6 @@ fn main() {
 }
 ~~~
 
-Despite its name, `extern crate` is a distinct construct from regular `mod` declarations:
 A statement of the form `extern crate foo;` will cause `rustc` to search for the crate `foo`,
 and if it finds a matching binary it lets you use it from inside your crate.
 
