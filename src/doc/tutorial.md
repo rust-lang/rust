@@ -2107,7 +2107,7 @@ references, or types where the only contained references
 have the `'static` lifetime. (For more on named lifetimes and their uses,
 see the [references and lifetimes guide][lifetimes].)
 
-> ***Note:*** These two traits were referred to as 'kinds' in earlier
+> ***Note:*** These built-in traits were referred to as 'kinds' in earlier
 > iterations of the language, and often still are.
 
 Additionally, the `Drop` trait is used to define destructors. This
