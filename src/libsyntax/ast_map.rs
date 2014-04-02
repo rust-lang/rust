@@ -19,9 +19,10 @@ use print::pprust;
 use util::small_vector::SmallVector;
 
 use std::cell::RefCell;
+use std::fmt;
 use std::iter;
 use std::slice;
-use std::fmt;
+use std::strbuf::StrBuf;
 
 #[deriving(Clone, Eq)]
 pub enum PathElem {
@@ -81,14 +82,14 @@ pub type PathElems<'a, 'b> = iter::Chain<Values<'a, PathElem>, LinkedPath<'b>>;
 pub fn path_to_str<PI: Iterator<PathElem>>(mut path: PI) -> ~str {
     let itr = token::get_ident_interner();
 
-    path.fold(~"", |mut s, e| {
+    path.fold(StrBuf::new(), |mut s, e| {
         let e = itr.get(e.name());
         if !s.is_empty() {
             s.push_str("::");
         }
         s.push_str(e.as_slice());
         s
-    })
+    }).into_owned()
 }
 
 #[deriving(Clone)]

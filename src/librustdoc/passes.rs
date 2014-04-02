@@ -8,12 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::cmp;
 use collections::HashSet;
+use rustc::util::nodemap::NodeSet;
+use std::cmp;
 use std::local_data;
+use std::strbuf::StrBuf;
 use std::uint;
 use syntax::ast;
-use rustc::util::nodemap::NodeSet;
 
 use clean;
 use clean::Item;
@@ -235,7 +236,7 @@ pub fn collapse_docs(krate: clean::Crate) -> plugins::PluginResult {
     struct Collapser;
     impl fold::DocFolder for Collapser {
         fn fold_item(&mut self, i: Item) -> Option<Item> {
-            let mut docstr = ~"";
+            let mut docstr = StrBuf::new();
             let mut i = i;
             for attr in i.attrs.iter() {
                 match *attr {
@@ -250,8 +251,8 @@ pub fn collapse_docs(krate: clean::Crate) -> plugins::PluginResult {
                 &clean::NameValue(ref x, _) if "doc" == *x => false,
                 _ => true
             }).map(|x| x.clone()).collect();
-            if "" != docstr {
-                a.push(clean::NameValue(~"doc", docstr));
+            if docstr.len() > 0 {
+                a.push(clean::NameValue(~"doc", docstr.into_owned()));
             }
             i.attrs = a;
             self.fold_item_recur(i)

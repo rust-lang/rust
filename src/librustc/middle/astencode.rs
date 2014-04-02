@@ -40,6 +40,7 @@ use std::cell::RefCell;
 use std::io::Seek;
 use std::io::MemWriter;
 use std::rc::Rc;
+use std::strbuf::StrBuf;
 
 use serialize::ebml::reader;
 use serialize::ebml;
@@ -1192,11 +1193,11 @@ impl<'a> ebml_decoder_decoder_helpers for reader::Decoder<'a> {
         }).unwrap();
 
         fn type_string(doc: ebml::Doc) -> ~str {
-            let mut str = ~"";
+            let mut str = StrBuf::new();
             for i in range(doc.start, doc.end) {
                 str.push_char(doc.data[i] as char);
             }
-            str
+            str.into_owned()
         }
     }
 

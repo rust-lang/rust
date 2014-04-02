@@ -15,6 +15,7 @@ use std::io::{Process, TempDir};
 use std::local_data;
 use std::os;
 use std::str;
+use std::strbuf::StrBuf;
 
 use collections::HashSet;
 use testing;
@@ -167,10 +168,10 @@ fn runtest(test: &str, cratename: &str, libs: HashSet<Path>, should_fail: bool,
 }
 
 fn maketest(s: &str, cratename: &str, loose_feature_gating: bool) -> ~str {
-    let mut prog = ~r"
-#![deny(warnings)]
-#![allow(unused_variable, dead_assignment, unused_mut, attribute_usage, dead_code)]
-";
+    let mut prog = StrBuf::from_str(r"
+#![deny(warnings)];
+#![allow(unused_variable, dead_assignment, unused_mut, attribute_usage, dead_code)];
+");
 
     if loose_feature_gating {
         // FIXME #12773: avoid inserting these when the tutorial & manual
@@ -191,7 +192,7 @@ fn maketest(s: &str, cratename: &str, loose_feature_gating: bool) -> ~str {
         prog.push_str("\n}");
     }
 
-    return prog;
+    return prog.into_owned();
 }
 
 pub struct Collector {

@@ -15,8 +15,9 @@ use std::cmp;
 use std::iter::RandomAccessIterator;
 use std::iter::{Rev, Enumerate, Repeat, Map, Zip};
 use std::ops;
-use std::uint;
 use std::slice;
+use std::strbuf::StrBuf;
+use std::uint;
 
 #[deriving(Clone)]
 struct SmallBitv {
@@ -499,7 +500,7 @@ impl Bitv {
      * character is either '0' or '1'.
      */
      pub fn to_str(&self) -> ~str {
-        let mut rs = ~"";
+        let mut rs = StrBuf::new();
         for i in self.iter() {
             if i {
                 rs.push_char('1');
@@ -507,7 +508,7 @@ impl Bitv {
                 rs.push_char('0');
             }
         };
-        rs
+        rs.into_owned()
      }
 
 

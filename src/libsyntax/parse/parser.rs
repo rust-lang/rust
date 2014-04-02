@@ -79,6 +79,7 @@ use owned_slice::OwnedSlice;
 use collections::HashSet;
 use std::mem::replace;
 use std::rc::Rc;
+use std::strbuf::StrBuf;
 
 #[allow(non_camel_case_types)]
 #[deriving(Eq)]
@@ -4136,14 +4137,14 @@ impl<'a> Parser<'a> {
         let mut included_mod_stack = self.sess.included_mod_stack.borrow_mut();
         match included_mod_stack.iter().position(|p| *p == path) {
             Some(i) => {
-                let mut err = ~"circular modules: ";
+                let mut err = StrBuf::from_str("circular modules: ");
                 let len = included_mod_stack.len();
                 for p in included_mod_stack.slice(i, len).iter() {
                     err.push_str(p.display().as_maybe_owned().as_slice());
                     err.push_str(" -> ");
                 }
                 err.push_str(path.display().as_maybe_owned().as_slice());
-                self.span_fatal(id_sp, err);
+                self.span_fatal(id_sp, err.into_owned());
             }
             None => ()
         }
@@ -4711,14 +4712,14 @@ impl<'a> Parser<'a> {
 
         // FAILURE TO PARSE ITEM
         if visibility != Inherited {
-            let mut s = ~"unmatched visibility `";
+            let mut s = StrBuf::from_str("unmatched visibility `");
             if visibility == Public {
                 s.push_str("pub")
             } else {
                 s.push_str("priv")
             }
             s.push_char('`');
-            self.span_fatal(self.last_span, s);
+            self.span_fatal(self.last_span, s.as_slice());
         }
         return IoviNone(attrs);
     }

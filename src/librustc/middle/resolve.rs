@@ -31,10 +31,11 @@ use syntax::owned_slice::OwnedSlice;
 use syntax::visit;
 use syntax::visit::Visitor;
 
-use std::cell::{Cell, RefCell};
-use std::uint;
-use std::mem::replace;
 use collections::{HashMap, HashSet};
+use std::cell::{Cell, RefCell};
+use std::mem::replace;
+use std::strbuf::StrBuf;
+use std::uint;
 
 // Definition mapping
 pub type DefMap = @RefCell<NodeMap<Def>>;
@@ -2096,7 +2097,7 @@ impl<'a> Resolver<'a> {
 
     fn idents_to_str(&mut self, idents: &[Ident]) -> ~str {
         let mut first = true;
-        let mut result = ~"";
+        let mut result = StrBuf::new();
         for ident in idents.iter() {
             if first {
                 first = false
@@ -2105,7 +2106,7 @@ impl<'a> Resolver<'a> {
             }
             result.push_str(token::get_ident(*ident).get());
         };
-        return result;
+        result.into_owned()
     }
 
     fn path_idents_to_str(&mut self, path: &Path) -> ~str {

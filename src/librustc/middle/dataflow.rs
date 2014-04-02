@@ -18,8 +18,9 @@
 
 
 use std::io;
-use std::uint;
 use std::slice;
+use std::strbuf::StrBuf;
+use std::uint;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::ast_util::IdRange;
@@ -832,7 +833,7 @@ fn mut_bits_to_str(words: &mut [uint]) -> ~str {
 }
 
 fn bits_to_str(words: &[uint]) -> ~str {
-    let mut result = ~"";
+    let mut result = StrBuf::new();
     let mut sep = '[';
 
     // Note: this is a little endian printout of bytes.
@@ -847,7 +848,7 @@ fn bits_to_str(words: &[uint]) -> ~str {
         }
     }
     result.push_char(']');
-    return result;
+    return result.into_owned();
 }
 
 fn copy_bits(in_vec: &[uint], out_vec: &mut [uint]) -> bool {

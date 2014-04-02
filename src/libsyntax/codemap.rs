@@ -21,9 +21,10 @@ source code snippets, etc.
 
 */
 
+use serialize::{Encodable, Decodable, Encoder, Decoder};
 use std::cell::RefCell;
 use std::rc::Rc;
-use serialize::{Encodable, Decodable, Encoder, Decoder};
+use std::strbuf::StrBuf;
 
 pub trait Pos {
     fn from_uint(n: uint) -> Self;
@@ -305,22 +306,22 @@ impl CodeMap {
         // FIXME #12884: no efficient/safe way to remove from the start of a string
         // and reuse the allocation.
         let mut src = if src.starts_with("\ufeff") {
-            src.as_slice().slice_from(3).into_owned()
+            StrBuf::from_str(src.as_slice().slice_from(3))
         } else {
-            src
+            StrBuf::from_owned_str(src)
         };
 
         // Append '\n' in case it's not already there.
         // This is a workaround to prevent CodeMap.lookup_filemap_idx from accidentally
         // overflowing into the next filemap in case the last byte of span is also the last
         // byte of filemap, which leads to incorrect results from CodeMap.span_to_*.
-        if src.len() > 0 && !src.ends_with("\n") {
+        if src.len() > 0 && !src.as_slice().ends_with("\n") {
             src.push_char('\n');
         }
 
         let filemap = Rc::new(FileMap {
             name: filename,
-            src: src,
+            src: src.into_owned(),
             start_pos: Pos::from_uint(start_pos),
             lines: RefCell::new(Vec::new()),
             multibyte_chars: RefCell::new(Vec::new()),
