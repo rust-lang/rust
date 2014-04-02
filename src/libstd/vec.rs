@@ -230,9 +230,7 @@ impl<T: Clone> Vec<T> {
     /// ```
     #[inline]
     pub fn push_all(&mut self, other: &[T]) {
-        for element in other.iter() {
-            self.push((*element).clone())
-        }
+        self.extend(other.iter().map(|e| e.clone()));
     }
 
     /// Grows the `Vec` in-place.
@@ -447,7 +445,7 @@ impl<T> Vec<T> {
     /// assert_eq!(vec.capacity(), 11);
     /// ```
     pub fn reserve_exact(&mut self, capacity: uint) {
-        if capacity >= self.len {
+        if capacity > self.cap {
             let size = capacity.checked_mul(&size_of::<T>()).expect("capacity overflow");
             self.cap = capacity;
             unsafe {
@@ -947,9 +945,7 @@ impl<T> Vec<T> {
     /// assert_eq!(vec, vec!(~1, ~2, ~3, ~4));
     /// ```
     pub fn push_all_move(&mut self, other: Vec<T>) {
-        for element in other.move_iter() {
-            self.push(element)
-        }
+        self.extend(other.move_iter());
     }
 
     /// Returns a mutable slice of `self` between `start` and `end`.
