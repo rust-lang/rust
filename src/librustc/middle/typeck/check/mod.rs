@@ -3151,7 +3151,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                           lvalue_pref, |base_t, _| ty::index(base_t));
               match field_ty {
                   Some(mt) => {
-                      require_integral(fcx, idx.span, idx_t);
+                      check_expr_has_type(fcx, idx, ty::mk_uint());
                       fcx.write_ty(id, mt.ty);
                       fcx.write_autoderef_adjustment(base.id, autoderefs);
                   }
@@ -3193,6 +3193,15 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
            });
 
     unifier();
+}
+
+pub fn require_uint(fcx: &FnCtxt, sp: Span, t: ty::t) {
+    if !type_is_uint(fcx, sp, t) {
+        fcx.type_error_message(sp, |actual| {
+            format!("mismatched types: expected `uint` type but found `{}`",
+                 actual)
+        }, t, None);
+    }
 }
 
 pub fn require_integral(fcx: &FnCtxt, sp: Span, t: ty::t) {
@@ -3852,6 +3861,11 @@ pub fn structure_of<'a>(fcx: &FnCtxt, sp: Span, typ: ty::t)
 pub fn type_is_integral(fcx: &FnCtxt, sp: Span, typ: ty::t) -> bool {
     let typ_s = structurally_resolved_type(fcx, sp, typ);
     return ty::type_is_integral(typ_s);
+}
+
+pub fn type_is_uint(fcx: &FnCtxt, sp: Span, typ: ty::t) -> bool {
+    let typ_s = structurally_resolved_type(fcx, sp, typ);
+    return ty::type_is_uint(typ_s);
 }
 
 pub fn type_is_scalar(fcx: &FnCtxt, sp: Span, typ: ty::t) -> bool {
