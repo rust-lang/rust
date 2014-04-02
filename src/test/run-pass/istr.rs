@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::strbuf::StrBuf;
+
 fn test_stack_assign() {
     let s: ~str = ~"a";
     println!("{}", s.clone());
@@ -43,21 +45,21 @@ fn test_heap_add() {
 }
 
 fn test_append() {
-    let mut s = ~"";
+    let mut s = StrBuf::new();
     s.push_str("a");
-    assert_eq!(s, ~"a");
+    assert_eq!(s.as_slice(), "a");
 
-    let mut s = ~"a";
+    let mut s = StrBuf::from_str("a");
     s.push_str("b");
     println!("{}", s.clone());
-    assert_eq!(s, ~"ab");
+    assert_eq!(s.as_slice(), "ab");
 
-    let mut s = ~"c";
+    let mut s = StrBuf::from_str("c");
     s.push_str("offee");
-    assert!(s == ~"coffee");
+    assert!(s.as_slice() == "coffee");
 
     s.push_str("&tea");
-    assert!(s == ~"coffee&tea");
+    assert!(s.as_slice() == "coffee&tea");
 }
 
 pub fn main() {

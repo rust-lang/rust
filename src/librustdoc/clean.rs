@@ -24,12 +24,13 @@ use rustc::metadata::cstore;
 use rustc::metadata::csearch;
 use rustc::metadata::decoder;
 
+use std::local_data;
+use std::strbuf::StrBuf;
 use std;
 
 use core;
 use doctree;
 use visit_ast;
-use std::local_data;
 
 pub trait Clean<T> {
     fn clean(&self) -> T;
@@ -917,7 +918,7 @@ impl Clean<PathSegment> for ast::PathSegment {
 fn path_to_str(p: &ast::Path) -> ~str {
     use syntax::parse::token;
 
-    let mut s = ~"";
+    let mut s = StrBuf::new();
     let mut first = true;
     for i in p.segments.iter().map(|x| token::get_ident(x.identifier)) {
         if !first || p.global {
@@ -927,7 +928,7 @@ fn path_to_str(p: &ast::Path) -> ~str {
         }
         s.push_str(i.get());
     }
-    s
+    s.into_owned()
 }
 
 impl Clean<~str> for ast::Ident {

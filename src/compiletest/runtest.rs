@@ -31,6 +31,7 @@ use std::io::timer;
 use std::io;
 use std::os;
 use std::str;
+use std::strbuf::StrBuf;
 use std::task;
 use std::slice;
 use test::MetricMap;
@@ -328,10 +329,10 @@ fn run_debuginfo_test(config: &config, props: &TestProps, testfile: &Path) {
             }
 
             let args = split_maybe_args(&config.target_rustcflags);
-            let mut tool_path:~str = ~"";
+            let mut tool_path = StrBuf::new();
             for arg in args.iter() {
                 if arg.contains("android-cross-path=") {
-                    tool_path = arg.replace("android-cross-path=","");
+                    tool_path = StrBuf::from_str(arg.replace("android-cross-path=", ""));
                     break;
                 }
             }
@@ -348,7 +349,7 @@ fn run_debuginfo_test(config: &config, props: &TestProps, testfile: &Path) {
             let gdb_path = tool_path.append("/bin/arm-linux-androideabi-gdb");
             let procsrv::Result{ out, err, status }=
                 procsrv::run("",
-                             gdb_path,
+                             gdb_path.as_slice(),
                              debugger_opts.as_slice(),
                              vec!((~"",~"")),
                              None)

@@ -16,8 +16,9 @@
 //! them in the future to instead emit any format desired.
 
 use std::fmt;
-use std::local_data;
 use std::io;
+use std::local_data;
+use std::strbuf::StrBuf;
 
 use syntax::ast;
 use syntax::ast_util;
@@ -185,7 +186,7 @@ fn path(w: &mut io::Writer, path: &clean::Path, print_all: bool,
     -> fmt::Result
 {
     // The generics will get written to both the title and link
-    let mut generics = ~"";
+    let mut generics = StrBuf::new();
     let last = path.segments.last().unwrap();
     if last.lifetimes.len() > 0 || last.types.len() > 0 {
         let mut counter = 0;
@@ -219,7 +220,7 @@ fn path(w: &mut io::Writer, path: &clean::Path, print_all: bool,
                 let amt = path.segments.len() - 1;
                 match rel_root {
                     Some(root) => {
-                        let mut root = root;
+                        let mut root = StrBuf::from_str(root);
                         for seg in path.segments.slice_to(amt).iter() {
                             if "super" == seg.name || "self" == seg.name {
                                 try!(write!(w, "{}::", seg.name));
@@ -228,7 +229,7 @@ fn path(w: &mut io::Writer, path: &clean::Path, print_all: bool,
                                 root.push_str("/");
                                 try!(write!(w, "<a class='mod'
                                                     href='{}index.html'>{}</a>::",
-                                              root,
+                                              root.as_slice(),
                                               seg.name));
                             }
                         }
@@ -244,7 +245,7 @@ fn path(w: &mut io::Writer, path: &clean::Path, print_all: bool,
             match info(&**cache) {
                 // This is a documented path, link to it!
                 Some((ref fqp, shortty)) if abs_root.is_some() => {
-                    let mut url = abs_root.unwrap();
+                    let mut url = StrBuf::from_str(abs_root.unwrap());
                     let to_link = fqp.slice_to(fqp.len() - 1);
                     for component in to_link.iter() {
                         url.push_str(*component);
@@ -271,7 +272,7 @@ fn path(w: &mut io::Writer, path: &clean::Path, print_all: bool,
                     try!(write!(w, "{}", last.name));
                 }
             }
-            try!(write!(w, "{}", generics));
+            try!(write!(w, "{}", generics.as_slice()));
             Ok(())
         })
     })
@@ -430,7 +431,7 @@ impl fmt::Show for clean::FnDecl {
 impl<'a> fmt::Show for Method<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let Method(selfty, d) = *self;
-        let mut args = ~"";
+        let mut args = StrBuf::new();
         match *selfty {
             clean::SelfStatic => {},
             clean::SelfValue => args.push_str("self"),
@@ -455,7 +456,8 @@ impl<'a> fmt::Show for Method<'a> {
             }
             args.push_str(format!("{}", input.type_));
         }
-        write!(f.buf, "({args}){arrow, select, yes{ -&gt; {ret}} other{}}",
+        write!(f.buf,
+               "({args}){arrow, select, yes{ -&gt; {ret}} other{}}",
                args = args,
                arrow = match d.output { clean::Unit => "no", _ => "yes" },
                ret = d.output)

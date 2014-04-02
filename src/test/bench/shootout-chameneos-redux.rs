@@ -12,6 +12,7 @@
 
 use std::option;
 use std::os;
+use std::strbuf::StrBuf;
 use std::task;
 
 fn print_complements() {
@@ -40,12 +41,12 @@ fn show_color(cc: color) -> ~str {
 }
 
 fn show_color_list(set: Vec<color>) -> ~str {
-    let mut out = ~"";
+    let mut out = StrBuf::new();
     for col in set.iter() {
         out.push_char(' ');
         out.push_str(show_color(*col));
     }
-    return out;
+    return out.to_owned_str();
 }
 
 fn show_digit(nn: uint) -> ~str {

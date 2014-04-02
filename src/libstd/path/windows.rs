@@ -20,9 +20,10 @@ use from_str::FromStr;
 use io::Writer;
 use iter::{AdditiveIterator, DoubleEndedIterator, Extendable, Rev, Iterator, Map};
 use option::{Option, Some, None};
-use str;
-use str::{CharSplits, OwnedStr, Str, StrVector, StrSlice};
 use slice::{Vector, OwnedVector, ImmutableVector};
+use str::{CharSplits, OwnedStr, Str, StrVector, StrSlice};
+use str;
+use strbuf::StrBuf;
 use super::{contains_nul, BytesContainer, GenericPath, GenericPathUnsafe};
 
 /// Iterator that yields successive components of a Path as &str
@@ -175,7 +176,7 @@ impl GenericPathUnsafe for Path {
         let filename = filename.container_as_str().unwrap();
         match self.sepidx_or_prefix_len() {
             None if ".." == self.repr => {
-                let mut s = str::with_capacity(3 + filename.len());
+                let mut s = StrBuf::with_capacity(3 + filename.len());
                 s.push_str("..");
                 s.push_char(SEP);
                 s.push_str(filename);
@@ -185,20 +186,20 @@ impl GenericPathUnsafe for Path {
                 self.update_normalized(filename);
             }
             Some((_,idxa,end)) if self.repr.slice(idxa,end) == ".." => {
-                let mut s = str::with_capacity(end + 1 + filename.len());
+                let mut s = StrBuf::with_capacity(end + 1 + filename.len());
                 s.push_str(self.repr.slice_to(end));
                 s.push_char(SEP);
                 s.push_str(filename);
                 self.update_normalized(s);
             }
             Some((idxb,idxa,_)) if self.prefix == Some(DiskPrefix) && idxa == self.prefix_len() => {
-                let mut s = str::with_capacity(idxb + filename.len());
+                let mut s = StrBuf::with_capacity(idxb + filename.len());
                 s.push_str(self.repr.slice_to(idxb));
                 s.push_str(filename);
                 self.update_normalized(s);
             }
             Some((idxb,_,_)) => {
-                let mut s = str::with_capacity(idxb + 1 + filename.len());
+                let mut s = StrBuf::with_capacity(idxb + 1 + filename.len());
                 s.push_str(self.repr.slice_to(idxb));
                 s.push_char(SEP);
                 s.push_str(filename);
@@ -252,7 +253,7 @@ impl GenericPathUnsafe for Path {
             let path_ = if is_verbatim(me) { Path::normalize__(path, None) }
                         else { None };
             let pathlen = path_.as_ref().map_or(path.len(), |p| p.len());
-            let mut s = str::with_capacity(me.repr.len() + 1 + pathlen);
+            let mut s = StrBuf::with_capacity(me.repr.len() + 1 + pathlen);
             s.push_str(me.repr);
             let plen = me.prefix_len();
             // if me is "C:" we don't want to add a path separator
@@ -699,9 +700,9 @@ impl Path {
             match prefix {
                 Some(VerbatimUNCPrefix(x, 0)) if s.len() == 8 + x => {
                     // the server component has no trailing '\'
-                    let mut s = s.into_owned();
+                    let mut s = StrBuf::from_owned_str(s.into_owned());
                     s.push_char(SEP);
-                    Some(s)
+                    Some(s.into_owned())
                 }
                 _ => None
             }
@@ -764,7 +765,7 @@ impl Path {
                         let n = prefix_.len() +
                                 if is_abs { comps.len() } else { comps.len() - 1} +
                                 comps.iter().map(|v| v.len()).sum();
-                        let mut s = str::with_capacity(n);
+                        let mut s = StrBuf::with_capacity(n);
                         match prefix {
                             Some(DiskPrefix) => {
                                 s.push_char(prefix_[0].to_ascii().to_upper().to_char());
@@ -795,7 +796,7 @@ impl Path {
                             s.push_char(SEP);
                             s.push_str(comp);
                         }
-                        Some(s)
+                        Some(s.into_owned())
                     }
                 }
             }

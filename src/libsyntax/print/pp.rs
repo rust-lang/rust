@@ -62,6 +62,7 @@
  */
 
 use std::io;
+use std::strbuf::StrBuf;
 
 #[deriving(Clone, Eq)]
 pub enum Breaks {
@@ -118,13 +119,17 @@ pub fn tok_str(t: Token) -> ~str {
     }
 }
 
-pub fn buf_str(toks: Vec<Token> , szs: Vec<int> , left: uint, right: uint,
-               lim: uint) -> ~str {
+pub fn buf_str(toks: Vec<Token>,
+               szs: Vec<int>,
+               left: uint,
+               right: uint,
+               lim: uint)
+               -> ~str {
     let n = toks.len();
     assert_eq!(n, szs.len());
     let mut i = left;
     let mut l = lim;
-    let mut s = ~"[";
+    let mut s = StrBuf::from_str("[");
     while i != right && l != 0u {
         l -= 1u;
         if i != left {
@@ -135,7 +140,7 @@ pub fn buf_str(toks: Vec<Token> , szs: Vec<int> , left: uint, right: uint,
         i %= n;
     }
     s.push_char(']');
-    return s;
+    return s.into_owned();
 }
 
 pub enum PrintStackBreak {
