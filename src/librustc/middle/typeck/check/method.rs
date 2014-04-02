@@ -1164,7 +1164,7 @@ impl<'a> LookupContext<'a> {
         let fty = ty::mk_bare_fn(tcx, ty::BareFnTy {
             sig: fn_sig,
             purity: bare_fn_ty.purity,
-            abis: bare_fn_ty.abis.clone(),
+            abi: bare_fn_ty.abi.clone(),
         });
         debug!("after replacing bound regions, fty={}", self.ty_to_str(fty));
 

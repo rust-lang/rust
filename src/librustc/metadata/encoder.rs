@@ -33,7 +33,7 @@ use std::hash::Hash;
 use std::io::MemWriter;
 use std::str;
 use collections::HashMap;
-use syntax::abi::AbiSet;
+use syntax::abi;
 use syntax::ast::*;
 use syntax::ast;
 use syntax::ast_map::{PathElem, PathElems};
@@ -1217,7 +1217,7 @@ fn encode_info_for_foreign_item(ecx: &EncodeContext,
                                 nitem: &ForeignItem,
                                 index: @RefCell<Vec<entry<i64>> >,
                                 path: PathElems,
-                                abi: AbiSet) {
+                                abi: abi::Abi) {
     index.borrow_mut().push(entry {
         val: nitem.id as i64,
         pos: ebml_w.writer.tell().unwrap(),
@@ -1231,7 +1231,7 @@ fn encode_info_for_foreign_item(ecx: &EncodeContext,
         encode_bounds_and_type(ebml_w, ecx,
                                &lookup_item_type(ecx.tcx,local_def(nitem.id)));
         encode_name(ebml_w, nitem.ident.name);
-        if abi.is_intrinsic() {
+        if abi == abi::RustIntrinsic {
             (ecx.encode_inlined_item)(ecx, ebml_w, IIForeignRef(nitem));
         } else {
             encode_symbol(ecx, ebml_w, nitem.id);
@@ -1279,11 +1279,11 @@ fn my_visit_foreign_item(ni: &ForeignItem,
     let mut ebml_w = unsafe {
         ebml_w.unsafe_clone()
     };
-    let abis = ecx.tcx.map.get_foreign_abis(ni.id);
+    let abi = ecx.tcx.map.get_foreign_abi(ni.id);
     ecx.tcx.map.with_path(ni.id, |path| {
         encode_info_for_foreign_item(ecx, &mut ebml_w,
                                      ni, index,
-                                     path, abis);
+                                     path, abi);
     });
 }
 

@@ -67,7 +67,7 @@ use std::result;
 use syntax::ast::{Onceness, Purity};
 use syntax::ast;
 use syntax::owned_slice::OwnedSlice;
-use syntax::abi::AbiSet;
+use syntax::abi;
 
 pub trait Combine {
     fn infcx<'a>(&'a self) -> &'a InferCtxt<'a>;
@@ -195,10 +195,10 @@ pub trait Combine {
     fn bare_fn_tys(&self, a: &ty::BareFnTy,
                    b: &ty::BareFnTy) -> cres<ty::BareFnTy> {
         let purity = if_ok!(self.purities(a.purity, b.purity));
-        let abi = if_ok!(self.abis(a.abis, b.abis));
+        let abi = if_ok!(self.abi(a.abi, b.abi));
         let sig = if_ok!(self.fn_sigs(&a.sig, &b.sig));
         Ok(ty::BareFnTy {purity: purity,
-                abis: abi,
+                abi: abi,
                 sig: sig})
     }
 
@@ -248,7 +248,7 @@ pub trait Combine {
 
     fn purities(&self, a: Purity, b: Purity) -> cres<Purity>;
 
-    fn abis(&self, a: AbiSet, b: AbiSet) -> cres<AbiSet> {
+    fn abi(&self, a: abi::Abi, b: abi::Abi) -> cres<abi::Abi> {
         if a == b {
             Ok(a)
         } else {
