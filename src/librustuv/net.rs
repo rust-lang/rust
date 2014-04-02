@@ -791,7 +791,7 @@ mod test {
                         Ok(10) => {} e => fail!("{:?}", e),
                     }
                     for i in range(0, 10u8) {
-                        assert_eq!(buf[i], i + 1);
+                        assert_eq!(buf[i as uint], i + 1);
                     }
                 }
                 Err(e) => fail!("{:?}", e)
@@ -827,7 +827,7 @@ mod test {
                         Ok(10) => {} e => fail!("{:?}", e),
                     }
                     for i in range(0, 10u8) {
-                        assert_eq!(buf[i], i + 1);
+                        assert_eq!(buf[i as uint], i + 1);
                     }
                 }
                 Err(e) => fail!("{:?}", e)
@@ -859,7 +859,7 @@ mod test {
                         e => fail!("{:?}", e),
                     }
                     for i in range(0, 10u8) {
-                        assert_eq!(buf[i], i + 1);
+                        assert_eq!(buf[i as uint], i + 1);
                     }
                 }
                 Err(e) => fail!("{:?}", e)
@@ -891,7 +891,7 @@ mod test {
                         e => fail!("{:?}", e),
                     }
                     for i in range(0, 10u8) {
-                        assert_eq!(buf[i], i + 1);
+                        assert_eq!(buf[i as uint], i + 1);
                     }
                 }
                 Err(e) => fail!("{:?}", e)

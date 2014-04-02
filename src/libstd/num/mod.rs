@@ -1655,7 +1655,7 @@ mod tests {
     macro_rules! test_next_power_of_two(
         ($test_name:ident, $T:ident) => (
             fn $test_name() {
-                #[test];
+                #![test]
                 assert_eq!(next_power_of_two::<$T>(0), 0);
                 let mut next_power = 1;
                 for i in range::<$T>(1, 40) {
@@ -1675,7 +1675,7 @@ mod tests {
     macro_rules! test_checked_next_power_of_two(
         ($test_name:ident, $T:ident) => (
             fn $test_name() {
-                #[test];
+                #![test]
                 assert_eq!(checked_next_power_of_two::<$T>(0), None);
                 let mut next_power = 1;
                 for i in range::<$T>(1, 40) {

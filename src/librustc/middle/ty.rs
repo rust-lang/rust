@@ -2602,6 +2602,13 @@ pub fn type_is_integral(ty: t) -> bool {
     }
 }
 
+pub fn type_is_uint(ty: t) -> bool {
+    match get(ty).sty {
+      ty_infer(IntVar(_)) | ty_uint(ast::TyU) => true,
+      _ => false
+    }
+}
+
 pub fn type_is_char(ty: t) -> bool {
     match get(ty).sty {
         ty_char => true,
@@ -4358,7 +4365,7 @@ pub fn is_binopable(cx: &ctxt, ty: t, op: ast::BinOp) -> bool {
     /*bot*/     [t, t, t, t,     t,   t,  t,   t],
     /*raw ptr*/ [f, f, f, f,     t,   t,  f,   f]];
 
-    return tbl[tycat(cx, ty)][opcat(op)];
+    return tbl[tycat(cx, ty) as uint ][opcat(op) as uint];
 }
 
 pub fn ty_params_to_tys(tcx: &ctxt, generics: &ast::Generics) -> Vec<t> {
