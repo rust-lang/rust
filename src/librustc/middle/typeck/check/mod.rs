@@ -3333,7 +3333,7 @@ pub fn check_block_with_expected(fcx: &FnCtxt,
         };
     });
 
-    fcx.ps.set(prev);
+    *fcx.ps.borrow_mut() = prev;
 }
 
 pub fn check_const(ccx: &CrateCtxt,

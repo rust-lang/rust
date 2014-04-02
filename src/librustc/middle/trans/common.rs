@@ -322,7 +322,7 @@ impl<'a> FunctionContext<'a> {
                                                      .unwrap());
         }
         // Remove the cycle between fcx and bcx, so memory can be freed
-        self.entry_bcx.set(None);
+        *self.entry_bcx.borrow_mut() = None;
     }
 
     pub fn get_llreturn(&self) -> BasicBlockRef {
