@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use abi::AbiSet;
+use abi;
 use ast::{P, RegionTyParamBound, TraitTyParamBound, Required, Provided};
 use ast;
 use ast_util;
@@ -190,7 +190,7 @@ pub fn fun_to_str(decl: &ast::FnDecl, purity: ast::Purity, name: ast::Ident,
                   opt_explicit_self: Option<ast::ExplicitSelf_>,
                   generics: &ast::Generics) -> ~str {
     to_str(|s| {
-        try!(s.print_fn(decl, Some(purity), AbiSet::Rust(),
+        try!(s.print_fn(decl, Some(purity), abi::Rust,
                         name, generics, opt_explicit_self, ast::Inherited));
         try!(s.end()); // Close the head box
         s.end() // Close the outer box
@@ -478,7 +478,7 @@ impl<'a> State<'a> {
                     lifetimes: f.lifetimes.clone(),
                     ty_params: OwnedSlice::empty()
                 };
-                try!(self.print_ty_fn(Some(f.abis), None, &None,
+                try!(self.print_ty_fn(Some(f.abi), None, &None,
                                    f.purity, ast::Many, f.decl, None, &None,
                                    Some(&generics), None));
             }
@@ -524,7 +524,7 @@ impl<'a> State<'a> {
         try!(self.print_outer_attributes(item.attrs.as_slice()));
         match item.node {
             ast::ForeignItemFn(decl, ref generics) => {
-                try!(self.print_fn(decl, None, AbiSet::Rust(), item.ident, generics,
+                try!(self.print_fn(decl, None, abi::Rust, item.ident, generics,
                 None, item.vis));
                 try!(self.end()); // end head-ibox
                 try!(word(&mut self.s, ";"));
@@ -590,7 +590,7 @@ impl<'a> State<'a> {
             }
             ast::ItemForeignMod(ref nmod) => {
                 try!(self.head("extern"));
-                try!(self.word_nbsp(nmod.abis.to_str()));
+                try!(self.word_nbsp(nmod.abi.to_str()));
                 try!(self.bopen());
                 try!(self.print_foreign_mod(nmod, item.attrs.as_slice()));
                 try!(self.bclose(item.span));
@@ -883,7 +883,7 @@ impl<'a> State<'a> {
         try!(self.hardbreak_if_not_bol());
         try!(self.maybe_print_comment(meth.span.lo));
         try!(self.print_outer_attributes(meth.attrs.as_slice()));
-        try!(self.print_fn(meth.decl, Some(meth.purity), AbiSet::Rust(),
+        try!(self.print_fn(meth.decl, Some(meth.purity), abi::Rust,
                         meth.ident, &meth.generics, Some(meth.explicit_self.node),
                         meth.vis));
         try!(word(&mut self.s, " "));
@@ -1717,14 +1717,14 @@ impl<'a> State<'a> {
     pub fn print_fn(&mut self,
                     decl: &ast::FnDecl,
                     purity: Option<ast::Purity>,
-                    abis: AbiSet,
+                    abi: abi::Abi,
                     name: ast::Ident,
                     generics: &ast::Generics,
                     opt_explicit_self: Option<ast::ExplicitSelf_>,
                     vis: ast::Visibility) -> IoResult<()> {
         try!(self.head(""));
-        try!(self.print_fn_header_info(opt_explicit_self, purity, abis,
-                                    ast::Many, None, vis));
+        try!(self.print_fn_header_info(opt_explicit_self, purity, abi,
+                                       ast::Many, None, vis));
         try!(self.nbsp());
         try!(self.print_ident(name));
         try!(self.print_generics(generics));
@@ -2016,7 +2016,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_ty_fn(&mut self,
-                       opt_abis: Option<AbiSet>,
+                       opt_abi: Option<abi::Abi>,
                        opt_sigil: Option<ast::Sigil>,
                        opt_region: &Option<ast::Lifetime>,
                        purity: ast::Purity,
@@ -2034,14 +2034,14 @@ impl<'a> State<'a> {
         if opt_sigil == Some(ast::OwnedSigil) && onceness == ast::Once {
             try!(word(&mut self.s, "proc"));
         } else if opt_sigil == Some(ast::BorrowedSigil) {
-            try!(self.print_extern_opt_abis(opt_abis));
+            try!(self.print_extern_opt_abi(opt_abi));
             for lifetime in opt_region.iter() {
                 try!(self.print_lifetime(lifetime));
             }
             try!(self.print_purity(purity));
             try!(self.print_onceness(onceness));
         } else {
-            try!(self.print_opt_abis_and_extern_if_nondefault(opt_abis));
+            try!(self.print_opt_abi_and_extern_if_nondefault(opt_abi));
             try!(self.print_opt_sigil(opt_sigil));
             try!(self.print_opt_lifetime(opt_region));
             try!(self.print_purity(purity));
@@ -2303,24 +2303,25 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn print_opt_abis_and_extern_if_nondefault(&mut self,
-                                                   opt_abis: Option<AbiSet>)
+    pub fn print_opt_abi_and_extern_if_nondefault(&mut self,
+                                                  opt_abi: Option<abi::Abi>)
         -> IoResult<()> {
-        match opt_abis {
-            Some(abis) if !abis.is_rust() => {
+        match opt_abi {
+            Some(abi::Rust) => Ok(()),
+            Some(abi) => {
                 try!(self.word_nbsp("extern"));
-                self.word_nbsp(abis.to_str())
+                self.word_nbsp(abi.to_str())
             }
-            Some(_) | None => Ok(())
+            None => Ok(())
         }
     }
 
-    pub fn print_extern_opt_abis(&mut self,
-                                 opt_abis: Option<AbiSet>) -> IoResult<()> {
-        match opt_abis {
-            Some(abis) => {
+    pub fn print_extern_opt_abi(&mut self,
+                                opt_abi: Option<abi::Abi>) -> IoResult<()> {
+        match opt_abi {
+            Some(abi) => {
                 try!(self.word_nbsp("extern"));
-                self.word_nbsp(abis.to_str())
+                self.word_nbsp(abi.to_str())
             }
             None => Ok(())
         }
@@ -2339,15 +2340,15 @@ impl<'a> State<'a> {
     pub fn print_fn_header_info(&mut self,
                                 _opt_explicit_self: Option<ast::ExplicitSelf_>,
                                 opt_purity: Option<ast::Purity>,
-                                abis: AbiSet,
+                                abi: abi::Abi,
                                 onceness: ast::Onceness,
                                 opt_sigil: Option<ast::Sigil>,
                                 vis: ast::Visibility) -> IoResult<()> {
         try!(word(&mut self.s, visibility_qualified(vis, "")));
 
-        if abis != AbiSet::Rust() {
+        if abi != abi::Rust {
             try!(self.word_nbsp("extern"));
-            try!(self.word_nbsp(abis.to_str()));
+            try!(self.word_nbsp(abi.to_str()));
 
             if opt_purity != Some(ast::ExternFn) {
                 try!(self.print_opt_purity(opt_purity));

@@ -657,7 +657,7 @@ mod test {
                                 variadic: false
                             }),
                                     ast::ImpureFn,
-                                    abi::AbiSet::Rust(),
+                                    abi::Rust,
                                     ast::Generics{ // no idea on either of these:
                                         lifetimes: Vec::new(),
                                         ty_params: OwnedSlice::empty(),
