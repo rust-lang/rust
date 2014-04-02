@@ -61,9 +61,9 @@ impl<T:Eq + Copy> Eq for Cell<T> {
     }
 }
 
-impl<T: fmt::Show> fmt::Show for Cell<T> {
+impl<T: Copy + fmt::Show> fmt::Show for Cell<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f.buf, r"Cell \{ value: {} \}", unsafe{*&self.value.get()})
+        write!(f.buf, r"Cell \{ value: {} \}", self.get())
     }
 }
 
@@ -263,6 +263,17 @@ mod test {
         let y = Cell::new((30, 40));
         assert_eq!(y, Cell::new((30, 40)));
         assert_eq!(y.get(), (30, 40));
+    }
+
+    #[test]
+    fn cell_has_sensible_show() {
+        use str::StrSlice;
+
+        let x = Cell::new("foo bar");
+        assert!(format!("{}", x).contains(x.get()));
+
+        x.set("baz qux");
+        assert!(format!("{}", x).contains(x.get()));
     }
 
     #[test]
