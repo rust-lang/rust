@@ -29,7 +29,7 @@ use ast::{ExprMethodCall, ExprParen, ExprPath, ExprProc};
 use ast::{ExprRepeat, ExprRet, ExprStruct, ExprTup, ExprUnary};
 use ast::{ExprVec, ExprVstore, ExprVstoreSlice};
 use ast::{ExprVstoreMutSlice, ExprWhile, ExprForLoop, ExternFn, Field, FnDecl};
-use ast::{ExprVstoreUniq, Onceness, Once, Many};
+use ast::{ExprVstoreUniq, Once, Many};
 use ast::{ForeignItem, ForeignItemStatic, ForeignItemFn, ForeignMod};
 use ast::{Ident, ImpureFn, Inherited, Item, Item_, ItemStatic};
 use ast::{ItemEnum, ItemFn, ItemForeignMod, ItemImpl};
@@ -892,8 +892,44 @@ impl<'a> Parser<'a> {
     // Parses a procedure type (`proc`). The initial `proc` keyword must
     // already have been parsed.
     pub fn parse_proc_type(&mut self) -> Ty_ {
-        let bounds = self.parse_optional_ty_param_bounds();
-        let (decl, lifetimes) = self.parse_ty_fn_decl(false);
+        /*
+
+        proc <'lt> (S) [:Bounds] -> T
+        ^~~^ ^~~~^  ^  ^~~~~~~~^    ^
+         |     |    |      |        |
+         |     |    |      |      Return type
+         |     |    |    Bounds
+         |     |  Argument types
+         |   Lifetimes
+        the `proc` keyword
+
+        */
+
+        // NOTE: remove after the next stage0 snap
+        let (decl, lifetimes, bounds) = if self.token == token::COLON {
+            let (_, bounds) = self.parse_optional_ty_param_bounds(false);
+            let (decl, lifetimes) = self.parse_ty_fn_decl(false);
+            (decl, lifetimes, bounds)
+        } else {
+            let lifetimes = if self.eat(&token::LT) {
+                let lifetimes = self.parse_lifetimes();
+                self.expect_gt();
+                lifetimes
+            } else {
+                Vec::new()
+            };
+
+            let (inputs, variadic) = self.parse_fn_args(false, false);
+            let (_, bounds) = self.parse_optional_ty_param_bounds(false);
+            let (ret_style, ret_ty) = self.parse_ret_ty();
+            let decl = P(FnDecl {
+                inputs: inputs,
+                output: ret_ty,
+                cf: ret_style,
+                variadic: variadic
+            });
+            (decl, lifetimes, bounds)
+        };
         TyClosure(@ClosureTy {
             sigil: OwnedSigil,
             region: None,
@@ -906,102 +942,68 @@ impl<'a> Parser<'a> {
     }
 
     // parse a TyClosure type
-    pub fn parse_ty_closure(&mut self,
-                            opt_sigil: Option<ast::Sigil>,
-                            mut region: Option<ast::Lifetime>)
-                            -> Ty_ {
+    pub fn parse_ty_closure(&mut self) -> Ty_ {
         /*
 
-        (&|~|@) ['r] [unsafe] [once] fn [:Bounds] <'lt> (S) -> T
-        ^~~~~~^ ^~~^ ^~~~~~~^ ^~~~~^    ^~~~~~~~^ ^~~~^ ^~^    ^
-           |     |     |        |           |       |    |     |
-           |     |     |        |           |       |    |   Return type
-           |     |     |        |           |       |  Argument types
-           |     |     |        |           |   Lifetimes
-           |     |     |        |       Closure bounds
-           |     |     |     Once-ness (a.k.a., affine)
-           |     |   Purity
-           | Lifetime bound
-        Allocation type
+        [unsafe] [once] <'lt> |S| [:Bounds] -> T
+        ^~~~~~~^ ^~~~~^ ^~~~^  ^  ^~~~~~~~^    ^
+          |        |      |    |      |        |
+          |        |      |    |      |      Return type
+          |        |      |    |  Closure bounds
+          |        |      |  Argument types
+          |        |    Lifetimes
+          |     Once-ness (a.k.a., affine)
+        Purity
 
         */
 
-        // At this point, the allocation type and lifetime bound have been
-        // parsed.
-
+        // NOTE: remove 'let region' after a stage0 snap
+        let region = self.parse_opt_lifetime();
         let purity = self.parse_unsafety();
-        let onceness = parse_onceness(self);
+        let onceness = if self.eat_keyword(keywords::Once) {Once} else {Many};
 
-        let (sigil, decl, lifetimes, bounds) = match opt_sigil {
-            Some(sigil) => {
-                // Old-style closure syntax (`fn(A)->B`).
-                self.expect_keyword(keywords::Fn);
-                let bounds = self.parse_optional_ty_param_bounds();
-                let (decl, lifetimes) = self.parse_ty_fn_decl(false);
-                (sigil, decl, lifetimes, bounds)
-            }
-            None => {
-                // New-style closure syntax (`<'lt>|A|:K -> B`).
-                let lifetimes = if self.eat(&token::LT) {
-                    let lifetimes = self.parse_lifetimes();
-                    self.expect_gt();
+        let lifetimes = if self.eat(&token::LT) {
+            let lifetimes = self.parse_lifetimes();
+            self.expect_gt();
 
-                    // Re-parse the region here. What a hack.
-                    if region.is_some() {
-                        self.span_err(self.last_span,
-                                      "lifetime declarations must precede \
-                                       the lifetime associated with a \
-                                       closure");
-                    }
-                    region = self.parse_opt_lifetime();
-
-                    lifetimes
-                } else {
-                    Vec::new()
-                };
-
-                let inputs = if self.eat(&token::OROR) {
-                    Vec::new()
-                } else {
-                    self.expect_or();
-                    let inputs = self.parse_seq_to_before_or(
-                        &token::COMMA,
-                        |p| p.parse_arg_general(false));
-                    self.expect_or();
-                    inputs
-                };
-
-                let bounds = self.parse_optional_ty_param_bounds();
-
-                let (return_style, output) = self.parse_ret_ty();
-                let decl = P(FnDecl {
-                    inputs: inputs,
-                    output: output,
-                    cf: return_style,
-                    variadic: false
-                });
-
-                (BorrowedSigil, decl, lifetimes, bounds)
-            }
+            lifetimes
+        } else {
+            Vec::new()
         };
 
-        return TyClosure(@ClosureTy {
-            sigil: sigil,
+        let inputs = if self.eat(&token::OROR) {
+            Vec::new()
+        } else {
+            self.expect_or();
+            let inputs = self.parse_seq_to_before_or(
+                &token::COMMA,
+                |p| p.parse_arg_general(false));
+            self.expect_or();
+            inputs
+        };
+
+        let (new_region, bounds) = self.parse_optional_ty_param_bounds(true);
+
+        // NOTE: this should be removed after a stage0 snap
+        let region = new_region.or(region);
+
+        let (return_style, output) = self.parse_ret_ty();
+        let decl = P(FnDecl {
+            inputs: inputs,
+            output: output,
+            cf: return_style,
+            variadic: false
+        });
+
+        TyClosure(@ClosureTy {
+            sigil: BorrowedSigil,
             region: region,
             purity: purity,
             onceness: onceness,
             bounds: bounds,
             decl: decl,
             lifetimes: lifetimes,
-        });
-
-        fn parse_onceness(this: &mut Parser) -> Onceness {
-            if this.eat_keyword(keywords::Once) {
-                Once
-            } else {
-                Many
-            }
-        }
+        })
     }
 
     pub fn parse_unsafety(&mut self) -> Purity {
@@ -1245,6 +1247,7 @@ impl<'a> Parser<'a> {
                 self.token == token::BINOP(token::OR) ||
                 self.token == token::OROR ||
                 self.token == token::LT ||
+                // NOTE: remove this clause after a stage0 snap
                 Parser::token_is_lifetime(&self.token) {
             // CLOSURE
             //
@@ -1252,9 +1255,7 @@ impl<'a> Parser<'a> {
             // introduce a closure, once procs can have lifetime bounds. We
             // will need to refactor the grammar a little bit at that point.
 
-            let lifetime = self.parse_opt_lifetime();
-            let result = self.parse_ty_closure(None, lifetime);
-            result
+            self.parse_ty_closure()
         } else if self.eat_keyword(keywords::Typeof) {
             // TYPEOF
             // In order to not be ambiguous, the type must be surrounded by parens.
@@ -1288,23 +1289,6 @@ impl<'a> Parser<'a> {
     pub fn parse_box_or_uniq_pointee(&mut self,
                                      sigil: ast::Sigil)
                                      -> Ty_ {
-        // ~'foo fn() or ~fn() are parsed directly as obsolete fn types:
-        match self.token {
-            token::LIFETIME(..) => {
-                let lifetime = self.parse_lifetime();
-                self.obsolete(self.last_span, ObsoleteBoxedClosure);
-                return self.parse_ty_closure(Some(sigil), Some(lifetime));
-            }
-
-            token::IDENT(..) => {
-                if self.token_is_old_style_closure_keyword() {
-                    self.obsolete(self.last_span, ObsoleteBoxedClosure);
-                    return self.parse_ty_closure(Some(sigil), None);
-                }
-            }
-            _ => {}
-        }
-
         // other things are parsed as @/~ + a type.  Note that constructs like
         // ~[] and ~str will be resolved during typeck to slices and so forth,
         // rather than boxed ptrs.  But the special casing of str/vec is not
@@ -1319,11 +1303,6 @@ impl<'a> Parser<'a> {
     pub fn parse_borrowed_pointee(&mut self) -> Ty_ {
         // look for `&'lt` or `&'foo ` and interpret `foo` as the region name:
         let opt_lifetime = self.parse_opt_lifetime();
-
-        if self.token_is_old_style_closure_keyword() {
-            self.obsolete(self.last_span, ObsoleteClosureType);
-            return self.parse_ty_closure(Some(BorrowedSigil), opt_lifetime);
-        }
 
         let mt = self.parse_mt();
         return TyRptr(opt_lifetime, mt);
@@ -1540,7 +1519,8 @@ impl<'a> Parser<'a> {
 
         // Next, parse a colon and bounded type parameters, if applicable.
         let bounds = if mode == LifetimeAndTypesAndBounds {
-            self.parse_optional_ty_param_bounds()
+            let (_, bounds) = self.parse_optional_ty_param_bounds(false);
+            bounds
         } else {
             None
         };
@@ -3376,11 +3356,19 @@ impl<'a> Parser<'a> {
     // Returns "Some(Empty)" if there's a colon but nothing after (e.g. "T:")
     // Returns "Some(stuff)" otherwise (e.g. "T:stuff").
     // NB: The None/Some distinction is important for issue #7264.
-    fn parse_optional_ty_param_bounds(&mut self) -> Option<OwnedSlice<TyParamBound>> {
+    //
+    // Note that the `allow_any_lifetime` argument is a hack for now while the
+    // AST doesn't support arbitrary lifetimes in bounds on type parameters. In
+    // the future, this flag should be removed, and the return value of this
+    // function should be Option<~[TyParamBound]>
+    fn parse_optional_ty_param_bounds(&mut self, allow_any_lifetime: bool)
+        -> (Option<ast::Lifetime>, Option<OwnedSlice<TyParamBound>>)
+    {
         if !self.eat(&token::COLON) {
-            return None;
+            return (None, None);
         }
 
+        let mut ret_lifetime = None;
         let mut result = vec!();
         loop {
             match self.token {
@@ -3388,6 +3376,19 @@ impl<'a> Parser<'a> {
                     let lifetime_interned_string = token::get_ident(lifetime);
                     if lifetime_interned_string.equiv(&("static")) {
                         result.push(RegionTyParamBound);
+                        if allow_any_lifetime && ret_lifetime.is_none() {
+                            ret_lifetime = Some(ast::Lifetime {
+                                id: ast::DUMMY_NODE_ID,
+                                span: self.span,
+                                name: lifetime.name
+                            });
+                        }
+                    } else if allow_any_lifetime && ret_lifetime.is_none() {
+                        ret_lifetime = Some(ast::Lifetime {
+                            id: ast::DUMMY_NODE_ID,
+                            span: self.span,
+                            name: lifetime.name
+                        });
                     } else {
                         self.span_err(self.span,
                                       "`'static` is the only permissible region bound here");
@@ -3406,13 +3407,13 @@ impl<'a> Parser<'a> {
             }
         }
 
-        return Some(OwnedSlice::from_vec(result));
+        return (ret_lifetime, Some(OwnedSlice::from_vec(result)));
     }
 
     // matches typaram = IDENT optbounds ( EQ ty )?
     fn parse_ty_param(&mut self) -> TyParam {
         let ident = self.parse_ident();
-        let opt_bounds = self.parse_optional_ty_param_bounds();
+        let (_, opt_bounds) = self.parse_optional_ty_param_bounds(false);
         // For typarams we don't care about the difference b/w "<T>" and "<T:>".
         let bounds = opt_bounds.unwrap_or_default();
 

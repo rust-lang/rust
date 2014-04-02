@@ -9,7 +9,7 @@
 // except according to those terms.
 
 struct r<'a> {
-    field: 'a ||
+    field: ||: 'a,
 }
 
 pub fn main() {
