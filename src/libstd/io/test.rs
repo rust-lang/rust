@@ -21,7 +21,7 @@ use sync::atomics::{AtomicUint, INIT_ATOMIC_UINT, Relaxed};
 macro_rules! iotest (
     { fn $name:ident() $b:block $(#[$a:meta])* } => (
         mod $name {
-            #[allow(unused_imports)];
+            #![allow(unused_imports)]
 
             use super::super::*;
             use super::*;

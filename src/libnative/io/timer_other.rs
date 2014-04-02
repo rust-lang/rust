@@ -296,7 +296,7 @@ mod imp {
     }
 
     pub fn fd_set(set: &mut fd_set, fd: i32) {
-        set.fds_bits[fd / 32] |= 1 << (fd % 32);
+        set.fds_bits[(fd / 32) as uint] |= 1 << (fd % 32);
     }
 
     extern {
@@ -323,7 +323,7 @@ mod imp {
     }
 
     pub fn fd_set(set: &mut fd_set, fd: i32) {
-        set.fds_bits[fd / 64] |= (1 << (fd % 64)) as u64;
+        set.fds_bits[(fd / 64) as uint] |= (1 << (fd % 64)) as u64;
     }
 
     extern {

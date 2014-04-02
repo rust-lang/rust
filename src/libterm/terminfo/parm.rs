@@ -293,12 +293,12 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
                 if cur >= 'A' && cur <= 'Z' {
                     if stack.len() > 0 {
                         let idx = (cur as u8) - ('A' as u8);
-                        vars.sta[idx] = stack.pop().unwrap();
+                        vars.sta[idx as uint] = stack.pop().unwrap();
                     } else { return Err(~"stack is empty") }
                 } else if cur >= 'a' && cur <= 'z' {
                     if stack.len() > 0 {
                         let idx = (cur as u8) - ('a' as u8);
-                        vars.dyn[idx] = stack.pop().unwrap();
+                        vars.dyn[idx as uint] = stack.pop().unwrap();
                     } else { return Err(~"stack is empty") }
                 } else {
                     return Err(~"bad variable name in %P");
@@ -307,10 +307,10 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
             GetVar => {
                 if cur >= 'A' && cur <= 'Z' {
                     let idx = (cur as u8) - ('A' as u8);
-                    stack.push(vars.sta[idx].clone());
+                    stack.push(vars.sta[idx as uint].clone());
                 } else if cur >= 'a' && cur <= 'z' {
                     let idx = (cur as u8) - ('a' as u8);
-                    stack.push(vars.dyn[idx].clone());
+                    stack.push(vars.dyn[idx as uint].clone());
                 } else {
                     return Err(~"bad variable name in %g");
                 }
@@ -563,7 +563,6 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<Vec<u8> ,~str> {
 mod test {
     use super::{expand,String,Variables,Number};
     use std::result::Ok;
-    use std::vec;
 
     #[test]
     fn test_basic_setabf() {

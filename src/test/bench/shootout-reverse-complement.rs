@@ -29,8 +29,8 @@ fn make_complements() -> [u8, ..256] {
     }
     let lower = 'A' as u8 - 'a' as u8;
     for &(from, to) in transforms.iter() {
-        complements[from as u8] = to as u8;
-        complements[from as u8 - lower] = to as u8;
+        complements[from as uint] = to as u8;
+        complements[(from as u8 - lower) as uint] = to as u8;
     }
     complements
 }
@@ -70,11 +70,11 @@ fn main() {
         loop {
             match (it.next(), it.next_back()) {
                 (Some(front), Some(back)) => {
-                    let tmp = complements[*front];
-                    *front = complements[*back];
+                    let tmp = complements[*front as uint];
+                    *front = complements[*back as uint];
                     *back = tmp;
                 }
-                (Some(last), None) => *last = complements[*last], // last element
+                (Some(last), None) => *last = complements[*last as uint], // last element
                 _ => break // vector exhausted.
             }
         }

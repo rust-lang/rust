@@ -103,7 +103,7 @@ impl IsaacRng {
         if use_rsl {
             macro_rules! memloop (
                 ($arr:expr) => {{
-                    for i in range_step(0u32, RAND_SIZE, 8) {
+                    for i in range_step(0, RAND_SIZE as uint, 8) {
                         a+=$arr[i  ]; b+=$arr[i+1];
                         c+=$arr[i+2]; d+=$arr[i+3];
                         e+=$arr[i+4]; f+=$arr[i+5];
@@ -120,7 +120,7 @@ impl IsaacRng {
             memloop!(self.rsl);
             memloop!(self.mem);
         } else {
-            for i in range_step(0u32, RAND_SIZE, 8) {
+            for i in range_step(0, RAND_SIZE as uint, 8) {
                 mix!();
                 self.mem[i  ]=a; self.mem[i+1]=b;
                 self.mem[i+2]=c; self.mem[i+3]=d;
@@ -143,7 +143,7 @@ impl IsaacRng {
         static MIDPOINT: uint = RAND_SIZE as uint / 2;
 
         macro_rules! ind (($x:expr) => {
-            self.mem[($x >> 2) & (RAND_SIZE - 1)]
+            self.mem[(($x >> 2) & (RAND_SIZE - 1)) as uint]
         });
         macro_rules! rngstep(
             ($j:expr, $shift:expr) => {{
@@ -188,7 +188,7 @@ impl Rng for IsaacRng {
             self.isaac();
         }
         self.cnt -= 1;
-        self.rsl[self.cnt]
+        self.rsl[self.cnt as uint]
     }
 }
 
