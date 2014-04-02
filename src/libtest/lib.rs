@@ -59,6 +59,7 @@ use std::io::{File, ChanReader, ChanWriter};
 use std::io;
 use std::os;
 use std::str;
+use std::strbuf::StrBuf;
 use std::task;
 
 // to be used by rustc to compile tests in libtest
@@ -99,13 +100,19 @@ enum NamePadding { PadNone, PadOnLeft, PadOnRight }
 impl TestDesc {
     fn padded_name(&self, column_count: uint, align: NamePadding) -> ~str {
         use std::num::Saturating;
-        let name = self.name.to_str();
+        let mut name = StrBuf::from_str(self.name.to_str());
         let fill = column_count.saturating_sub(name.len());
-        let pad = " ".repeat(fill);
+        let mut pad = StrBuf::from_owned_str(" ".repeat(fill));
         match align {
-            PadNone => name,
-            PadOnLeft => pad.append(name),
-            PadOnRight => name.append(pad),
+            PadNone => name.into_owned(),
+            PadOnLeft => {
+                pad.push_str(name.as_slice());
+                pad.into_owned()
+            }
+            PadOnRight => {
+                name.push_str(pad.as_slice());
+                name.into_owned()
+            }
         }
     }
 }
@@ -543,7 +550,7 @@ impl<T: Writer> ConsoleTestState<T> {
     pub fn write_failures(&mut self) -> io::IoResult<()> {
         try!(self.write_plain("\nfailures:\n"));
         let mut failures = Vec::new();
-        let mut fail_out  = ~"";
+        let mut fail_out = StrBuf::new();
         for &(ref f, ref stdout) in self.failures.iter() {
             failures.push(f.name.to_str());
             if stdout.len() > 0 {
@@ -556,7 +563,7 @@ impl<T: Writer> ConsoleTestState<T> {
         }
         if fail_out.len() > 0 {
             try!(self.write_plain("\n"));
-            try!(self.write_plain(fail_out));
+            try!(self.write_plain(fail_out.as_slice()));
         }
 
         try!(self.write_plain("\nfailures:\n"));

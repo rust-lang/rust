@@ -1579,6 +1579,8 @@ allocated memory on the heap. A unique vector owns the elements it contains, so
 the elements are mutable if the vector is mutable.
 
 ~~~
+use std::strbuf::StrBuf;
+
 // A dynamically sized vector (unique vector)
 let mut numbers = ~[1, 2, 3];
 numbers.push(4);
@@ -1589,7 +1591,7 @@ let more_numbers: ~[int] = numbers;
 
 // The original `numbers` value can no longer be used, due to move semantics.
 
-let mut string = ~"fo";
+let mut string = StrBuf::from_str("fo");
 string.push_char('o');
 ~~~
 

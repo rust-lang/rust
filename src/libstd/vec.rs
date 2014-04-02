@@ -7,6 +7,7 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+
 //! An owned, growable vector.
 
 use cast::{forget, transmute};
@@ -28,7 +29,7 @@ use ptr;
 use rt::global_heap::{malloc_raw, realloc_raw};
 use raw::Slice;
 use slice::{ImmutableEqVector, ImmutableVector, Items, MutItems, MutableVector};
-use slice::{MutableTotalOrdVector, Vector};
+use slice::{MutableTotalOrdVector, OwnedVector, Vector};
 
 /// An owned, growable vector.
 ///

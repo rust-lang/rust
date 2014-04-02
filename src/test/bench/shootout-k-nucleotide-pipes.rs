@@ -23,6 +23,7 @@ use std::option;
 use std::os;
 use std::io;
 use std::str;
+use std::strbuf::StrBuf;
 use std::task;
 use std::vec;
 
@@ -63,8 +64,7 @@ fn sort_and_fmt(mm: &HashMap<Vec<u8> , uint>, total: uint) -> ~str {
 
    let pairs_sorted = sortKV(pairs);
 
-   let mut buffer = ~"";
-
+   let mut buffer = StrBuf::new();
    for &(ref k, v) in pairs_sorted.iter() {
        unsafe {
            buffer.push_str(format!("{} {:0.3f}\n",
@@ -75,7 +75,7 @@ fn sort_and_fmt(mm: &HashMap<Vec<u8> , uint>, total: uint) -> ~str {
        }
    }
 
-   return buffer;
+   return buffer.to_owned_str();
 }
 
 // given a map, search for the frequency of a pattern

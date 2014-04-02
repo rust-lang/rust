@@ -19,6 +19,7 @@ use parse::token;
 
 use std::io;
 use std::str;
+use std::strbuf::StrBuf;
 use std::uint;
 
 #[deriving(Clone, Eq)]
@@ -134,13 +135,13 @@ pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
 }
 
 fn read_to_eol(rdr: &mut StringReader) -> ~str {
-    let mut val = ~"";
+    let mut val = StrBuf::new();
     while !rdr.curr_is('\n') && !is_eof(rdr) {
         val.push_char(rdr.curr.unwrap());
         bump(rdr);
     }
     if rdr.curr_is('\n') { bump(rdr); }
-    return val;
+    return val.into_owned();
 }
 
 fn read_one_line_comment(rdr: &mut StringReader) -> ~str {
@@ -255,7 +256,7 @@ fn read_block_comment(rdr: &mut StringReader,
     bump(rdr);
     bump(rdr);
 
-    let mut curr_line = ~"/*";
+    let mut curr_line = StrBuf::from_str("/*");
 
     // doc-comments are not really comments, they are attributes
     if (rdr.curr_is('*') && !nextch_is(rdr, '*')) || rdr.curr_is('!') {
@@ -268,9 +269,11 @@ fn read_block_comment(rdr: &mut StringReader,
             bump(rdr);
             bump(rdr);
         }
-        if !is_block_non_doc_comment(curr_line) { return; }
-        assert!(!curr_line.contains_char('\n'));
-        lines.push(curr_line);
+        if !is_block_non_doc_comment(curr_line.as_slice()) {
+            return
+        }
+        assert!(!curr_line.as_slice().contains_char('\n'));
+        lines.push(curr_line.into_owned());
     } else {
         let mut level: int = 1;
         while level > 0 {
@@ -279,9 +282,10 @@ fn read_block_comment(rdr: &mut StringReader,
                 rdr.fatal(~"unterminated block comment");
             }
             if rdr.curr_is('\n') {
-                trim_whitespace_prefix_and_push_line(&mut lines, curr_line,
+                trim_whitespace_prefix_and_push_line(&mut lines,
+                                                     curr_line.into_owned(),
                                                      col);
-                curr_line = ~"";
+                curr_line = StrBuf::new();
                 bump(rdr);
             } else {
                 curr_line.push_char(rdr.curr.unwrap());
@@ -301,7 +305,9 @@ fn read_block_comment(rdr: &mut StringReader,
             }
         }
         if curr_line.len() != 0 {
-            trim_whitespace_prefix_and_push_line(&mut lines, curr_line, col);
+            trim_whitespace_prefix_and_push_line(&mut lines,
+                                                 curr_line.into_owned(),
+                                                 col);
         }
     }
 

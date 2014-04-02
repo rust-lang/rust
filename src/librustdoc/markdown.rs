@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::{str, io};
-
 use collections::HashSet;
+use std::{str, io};
+use std::strbuf::StrBuf;
 
 use getopts;
 use testing;
@@ -62,12 +62,12 @@ fn extract_leading_metadata<'a>(s: &'a str) -> (Vec<&'a str>, &'a str) {
 }
 
 fn load_external_files(names: &[~str]) -> Option<~str> {
-    let mut out = ~"";
+    let mut out = StrBuf::new();
     for name in names.iter() {
         out.push_str(load_or_return!(name.as_slice(), None, None));
         out.push_char('\n');
     }
-    Some(out)
+    Some(out.into_owned())
 }
 
 /// Render `input` (e.g. "foo.md") into an HTML file in `output`
@@ -77,7 +77,7 @@ pub fn render(input: &str, mut output: Path, matches: &getopts::Matches) -> int 
     output.push(input_p.filestem().unwrap());
     output.set_extension("html");
 
-    let mut css = ~"";
+    let mut css = StrBuf::new();
     for name in matches.opt_strs("markdown-css").iter() {
         let s = format!("<link rel=\"stylesheet\" type=\"text/css\" href=\"{}\">\n", name);
         css.push_str(s)

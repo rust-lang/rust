@@ -128,6 +128,7 @@ pub mod tuple;
 pub mod slice;
 pub mod vec;
 pub mod str;
+pub mod strbuf;
 
 pub mod ascii;
 
