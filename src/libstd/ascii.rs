@@ -43,19 +43,19 @@ impl Ascii {
     /// Convert to lowercase.
     #[inline]
     pub fn to_lower(self) -> Ascii {
-        Ascii{chr: ASCII_LOWER_MAP[self.chr]}
+        Ascii{chr: ASCII_LOWER_MAP[self.chr as uint]}
     }
 
     /// Convert to uppercase.
     #[inline]
     pub fn to_upper(self) -> Ascii {
-        Ascii{chr: ASCII_UPPER_MAP[self.chr]}
+        Ascii{chr: ASCII_UPPER_MAP[self.chr as uint]}
     }
 
     /// Compares two ascii characters of equality, ignoring case.
     #[inline]
     pub fn eq_ignore_case(self, other: Ascii) -> bool {
-        ASCII_LOWER_MAP[self.chr] == ASCII_LOWER_MAP[other.chr]
+        ASCII_LOWER_MAP[self.chr as uint] == ASCII_LOWER_MAP[other.chr as uint]
     }
 
     // the following methods are like ctype, and the implementation is inspired by musl
@@ -370,8 +370,12 @@ impl<'a> StrAsciiExt for &'a str {
 
     #[inline]
     fn eq_ignore_ascii_case(&self, other: &str) -> bool {
-        self.len() == other.len() && self.as_bytes().iter().zip(other.as_bytes().iter()).all(
-            |(byte_self, byte_other)| ASCII_LOWER_MAP[*byte_self] == ASCII_LOWER_MAP[*byte_other])
+        self.len() == other.len() &&
+            self.as_bytes().iter().zip(other.as_bytes().iter()).all(
+            |(byte_self, byte_other)| {
+                ASCII_LOWER_MAP[*byte_self as uint] ==
+                    ASCII_LOWER_MAP[*byte_other as uint]
+            })
     }
 }
 
@@ -392,7 +396,7 @@ unsafe fn str_map_bytes(string: ~str, map: &'static [u8]) -> ~str {
     let mut bytes = string.into_bytes();
 
     for b in bytes.mut_iter() {
-        *b = map[*b];
+        *b = map[*b as uint];
     }
 
     str::raw::from_utf8_owned(bytes)
@@ -400,7 +404,7 @@ unsafe fn str_map_bytes(string: ~str, map: &'static [u8]) -> ~str {
 
 #[inline]
 unsafe fn str_copy_map_bytes(string: &str, map: &'static [u8]) -> ~str {
-    let bytes = string.bytes().map(|b| map[b]).collect::<~[_]>();
+    let bytes = string.bytes().map(|b| map[b as uint]).collect::<~[_]>();
 
     str::raw::from_utf8_owned(bytes)
 }

@@ -1600,12 +1600,12 @@ mod test_map {
 
     #[deriving(Hash, Eq, TotalEq)]
     struct Dropable {
-        k: int
+        k: uint
     }
 
 
     impl Dropable {
-        fn new(k: int) -> Dropable {
+        fn new(k: uint) -> Dropable {
             local_data::get_mut(drop_vector,
                 |v| { v.unwrap().as_mut_slice()[k] += 1; });
 
@@ -1628,24 +1628,24 @@ mod test_map {
             let mut m = HashMap::new();
 
             local_data::get(drop_vector, |v| {
-                for i in range(0, 200) {
+                for i in range(0u, 200) {
                     assert_eq!(v.unwrap().as_slice()[i], 0);
                 }
             });
 
-            for i in range(0, 100) {
+            for i in range(0u, 100) {
                 let d1 = Dropable::new(i);
                 let d2 = Dropable::new(i+100);
                 m.insert(d1, d2);
             }
 
             local_data::get(drop_vector, |v| {
-                for i in range(0, 200) {
+                for i in range(0u, 200) {
                     assert_eq!(v.unwrap().as_slice()[i], 1);
                 }
             });
 
-            for i in range(0, 50) {
+            for i in range(0u, 50) {
                 let k = Dropable::new(i);
                 let v = m.pop(&k);
 
@@ -1658,12 +1658,12 @@ mod test_map {
             }
 
             local_data::get(drop_vector, |v| {
-                for i in range(0, 50) {
+                for i in range(0u, 50) {
                     assert_eq!(v.unwrap().as_slice()[i], 0);
                     assert_eq!(v.unwrap().as_slice()[i+100], 0);
                 }
 
-                for i in range(50, 100) {
+                for i in range(50u, 100) {
                     assert_eq!(v.unwrap().as_slice()[i], 1);
                     assert_eq!(v.unwrap().as_slice()[i+100], 1);
                 }
@@ -1671,7 +1671,7 @@ mod test_map {
         }
 
         local_data::get(drop_vector, |v| {
-            for i in range(0, 200) {
+            for i in range(0u, 200) {
                 assert_eq!(v.unwrap().as_slice()[i], 0);
             }
         });

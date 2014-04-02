@@ -1053,7 +1053,7 @@ static UTF8_CHAR_WIDTH: [u8, ..256] = [
 /// Given a first byte, determine how many bytes are in this UTF-8 character
 #[inline]
 pub fn utf8_char_width(b: u8) -> uint {
-    return UTF8_CHAR_WIDTH[b] as uint;
+    return UTF8_CHAR_WIDTH[b as uint] as uint;
 }
 
 /// Struct that contains a `char` and the index of the first byte of
@@ -2636,7 +2636,7 @@ impl<'a> StrSlice<'a> for &'a str {
         // Multibyte case is a fn to allow char_range_at to inline cleanly
         fn multibyte_char_range_at(s: &str, i: uint) -> CharRange {
             let mut val = s[i] as u32;
-            let w = UTF8_CHAR_WIDTH[val] as uint;
+            let w = UTF8_CHAR_WIDTH[val as uint] as uint;
             assert!((w != 0));
 
             val = utf8_first_byte!(val, w);
@@ -2665,7 +2665,7 @@ impl<'a> StrSlice<'a> for &'a str {
             }
 
             let mut val = s[i] as u32;
-            let w = UTF8_CHAR_WIDTH[val] as uint;
+            let w = UTF8_CHAR_WIDTH[val as uint] as uint;
             assert!((w != 0));
 
             val = utf8_first_byte!(val, w);

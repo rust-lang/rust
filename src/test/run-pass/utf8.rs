@@ -44,7 +44,7 @@ pub fn main() {
         for ab in a.bytes() {
             println!("{}", i);
             println!("{}", ab);
-            let bb: u8 = b[i];
+            let bb: u8 = b[i as uint];
             println!("{}", bb);
             assert_eq!(ab, bb);
             i += 1;

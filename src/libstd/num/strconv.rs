@@ -411,23 +411,23 @@ pub fn float_to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Float+Round+
                     // If reached left end of number, have to
                     // insert additional digit:
                     if i < 0
-                    || buf[i] == '-' as u8
-                    || buf[i] == '+' as u8 {
+                    || buf[i as uint] == '-' as u8
+                    || buf[i as uint] == '+' as u8 {
                         buf.insert((i + 1) as uint, value2ascii(1));
                         break;
                     }
 
                     // Skip the '.'
-                    if buf[i] == '.' as u8 { i -= 1; continue; }
+                    if buf[i as uint] == '.' as u8 { i -= 1; continue; }
 
                     // Either increment the digit,
                     // or set to 0 if max and carry the 1.
-                    let current_digit = ascii2value(buf[i]);
+                    let current_digit = ascii2value(buf[i as uint]);
                     if current_digit < (radix - 1) {
-                        buf[i] = value2ascii(current_digit+1);
+                        buf[i as uint] = value2ascii(current_digit+1);
                         break;
                     } else {
-                        buf[i] = value2ascii(0);
+                        buf[i as uint] = value2ascii(0);
                         i -= 1;
                     }
                 }

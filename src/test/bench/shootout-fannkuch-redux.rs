@@ -30,7 +30,7 @@ fn fannkuch_redux(n: i32) -> i32 {
     let mut r = n;
     loop {
         while r != 1 {
-            count[r - 1] = r;
+            count[r as uint - 1] = r;
             r -= 1;
         }
 
@@ -71,13 +71,13 @@ fn fannkuch_redux(n: i32) -> i32 {
             let mut i: i32 = 0;
             while i < r {
                 let j = i + 1;
-                perm1[i] = perm1[j];
+                perm1[i as uint] = perm1[j as uint];
                 i = j;
             }
-            perm1[r] = perm0;
+            perm1[r as uint] = perm0;
 
-            count[r] -= 1;
-            if count[r] > 0 {
+            count[r as uint] -= 1;
+            if count[r as uint] > 0 {
                 break;
             }
             r += 1;
