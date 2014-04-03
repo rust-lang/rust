@@ -28,7 +28,7 @@ enum Child<T> {
     Nothing
 }
 
-#[allow(missing_doc)]
+/// An ordered map implementation for unsigned integer keys using a radix tree.
 pub struct TrieMap<T> {
     root: TrieNode<T>,
     length: uint
@@ -276,7 +276,7 @@ impl<T> Extendable<(uint, T)> for TrieMap<T> {
     }
 }
 
-#[allow(missing_doc)]
+/// An ordered set implementation for unsigned integer keys using a radix tree.
 pub struct TrieSet {
     map: TrieMap<()>
 }

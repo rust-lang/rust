@@ -33,7 +33,26 @@ use std::ptr;
 //   * union: |
 // These would be convenient since the methods work like `each`
 
-#[allow(missing_doc)]
+/// An ordered map implementation.
+///
+/// # Example
+///
+/// ```rust
+/// use collections::TreeMap;
+///
+/// let mut artists = TreeMap::new::<uint, ~str>();
+///
+/// // Add some elements to the map.
+/// artists.insert(1972, ~"ABBA");
+/// artists.insert(1979, ~"Europe");
+/// artists.insert(1986, ~"Roxette");
+/// artists.insert(1992, ~"The Cardigans");
+///
+/// // Iterate over all values greater than a certain value.
+/// for (year, artist) in artists.upper_bound(1980) {
+///     println!("{} => {}", year, aritst);
+/// }
+/// ```
 #[deriving(Clone)]
 pub struct TreeMap<K, V> {
     root: Option<~TreeNode<K, V>>,
@@ -549,6 +568,33 @@ impl<'a, T> Iterator<&'a T> for RevSetItems<'a, T> {
 /// A implementation of the `Set` trait on top of the `TreeMap` container. The
 /// only requirement is that the type of the elements contained ascribes to the
 /// `TotalOrd` trait.
+///
+/// # Example
+///
+/// ```rust
+/// use collections::TreeSet;
+///
+/// let mut vecs = TreeSet::new();
+///
+/// // Add some elements to the set.
+/// vecs.insert(vec!(1, 2, 3));
+/// vecs.insert(vec!(4, 5));
+/// vecs.insert(vec!(6, 7, 8, 9));
+/// vecs.insert(vec!(10, 11));
+///
+/// // Remove an element.
+/// vecs.remove(vec!(4, 5));
+///
+/// // Intersect with another set.
+/// let intersection = vecs.intersection(
+///     vec!(vec!(1, 2), vec!(6, 7, 8, 9), vec!(10, 11)).iter().collect()
+/// );
+///
+/// // Iterate over all values in the set.
+/// for vec in intersection {
+///     println!("{:}", vec);
+/// }
+/// ```
 #[deriving(Clone)]
 pub struct TreeSet<T> {
     map: TreeMap<T, ()>
