@@ -232,4 +232,5 @@ mod std {
     pub use to_str;
     pub use ty;
     pub use unstable;
+    pub use vec;
 }
