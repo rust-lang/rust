@@ -216,8 +216,7 @@ into the pool of schedulers in order to spawn a new task.
 
 With two implementations of the runtime available, a choice obviously needs to
 be made to see which will be used. The compiler itself will always by-default
-link to one of these runtimes. At the time of this writing, the default runtime
-is `libgreen` but in the future this will become `libnative`.
+link to one of these runtimes.
 
 Having a default decision made in the compiler is done out of necessity and
 convenience. The compiler's decision of runtime to link to is *not* an
