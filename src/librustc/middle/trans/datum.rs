@@ -24,12 +24,10 @@ use middle::trans::expr;
 use middle::trans::glue;
 use middle::trans::tvec;
 use middle::trans::type_of;
-use middle::trans::write_guard;
 use middle::ty;
 use util::ppaux::{ty_to_str};
 
 use syntax::ast;
-use syntax::codemap::Span;
 
 /**
  * A `Datum` encapsulates the result of evaluating an expression.  It
@@ -158,10 +156,6 @@ pub fn rvalue_scratch_datum(bcx: &Block,
     let llty = type_of::type_of(bcx.ccx(), ty);
     let scratch = alloca_maybe_zeroed(bcx, llty, name, false);
     Datum(scratch, ty, Rvalue(ByRef))
-}
-
-pub fn is_by_value_type(ccx: &CrateContext, ty: ty::t) -> bool {
-    appropriate_rvalue_mode(ccx, ty) == ByValue
 }
 
 pub fn appropriate_rvalue_mode(ccx: &CrateContext, ty: ty::t) -> RvalueMode {
@@ -389,10 +383,7 @@ impl Datum<Expr> {
         }
     }
 
-    pub fn is_by_ref(&self) -> bool {
-        self.kind.is_by_ref()
-    }
-
+    #[allow(dead_code)] // potentially useful
     pub fn assert_lvalue(self, bcx: &Block) -> Datum<Lvalue> {
         /*!
          * Asserts that this datum *is* an lvalue and returns it.
@@ -632,6 +623,7 @@ impl<K:KindOps> Datum<K> {
         glue::take_ty(bcx, dst, self.ty)
     }
 
+    #[allow(dead_code)] // useful for debugging
     pub fn to_str(&self, ccx: &CrateContext) -> ~str {
         format!("Datum({}, {}, {:?})",
              ccx.tn.val_to_str(self.val),
@@ -643,16 +635,6 @@ impl<K:KindOps> Datum<K> {
         /*! See the `appropriate_rvalue_mode()` function */
 
         appropriate_rvalue_mode(ccx, self.ty)
-    }
-
-    pub fn root_and_write_guard<'a>(
-                                &self,
-                                bcx: &'a Block<'a>,
-                                span: Span,
-                                expr_id: ast::NodeId,
-                                derefs: uint)
-                                -> &'a Block<'a> {
-        write_guard::root_and_write_guard(self, bcx, span, expr_id, derefs)
     }
 
     pub fn to_llscalarish<'a>(self, bcx: &'a Block<'a>) -> ValueRef {
@@ -688,37 +670,11 @@ impl<'a, K:KindOps> DatumBlock<'a, K> {
 }
 
 impl<'a> DatumBlock<'a, Expr> {
-    pub fn assert_by_ref(self) -> DatumBlock<'a, Expr> {
-        assert!(self.datum.kind.is_by_ref());
-        self
-    }
-
-    pub fn store_to(self, dst: ValueRef) -> &'a Block<'a> {
-        let DatumBlock { bcx, datum } = self;
-        datum.store_to(bcx, dst)
-    }
-
     pub fn store_to_dest(self,
                          dest: expr::Dest,
                          expr_id: ast::NodeId) -> &'a Block<'a> {
         let DatumBlock { bcx, datum } = self;
         datum.store_to_dest(bcx, dest, expr_id)
-    }
-
-    pub fn shallow_copy(self, dst: ValueRef) -> &'a Block<'a> {
-        self.datum.shallow_copy(self.bcx, dst)
-    }
-
-    pub fn ccx(&self) -> &'a CrateContext {
-        self.bcx.ccx()
-    }
-
-    pub fn tcx(&self) -> &'a ty::ctxt {
-        self.bcx.tcx()
-    }
-
-    pub fn to_str(&self) -> ~str {
-        self.datum.to_str(self.ccx())
     }
 
     pub fn to_llbool(self) -> Result<'a> {

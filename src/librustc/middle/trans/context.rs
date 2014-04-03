@@ -20,7 +20,6 @@ use middle::resolve;
 use middle::trans::adt;
 use middle::trans::base;
 use middle::trans::builder::Builder;
-use middle::trans::common::{C_i32, C_null};
 use middle::trans::common::{mono_id,ExternMap,tydesc_info,BuilderRef_res,Stats};
 use middle::trans::debuginfo;
 use middle::trans::type_::Type;
@@ -30,7 +29,6 @@ use util::nodemap::{NodeMap, NodeSet, DefIdMap};
 
 use std::cell::{Cell, RefCell};
 use std::c_str::ToCStr;
-use std::libc::c_uint;
 use std::ptr;
 use collections::{HashMap, HashSet};
 use syntax::ast;
@@ -51,45 +49,45 @@ pub struct CrateContext {
     pub link_meta: LinkMeta,
     pub drop_glues: RefCell<HashMap<ty::t, ValueRef>>,
     pub tydescs: RefCell<HashMap<ty::t, @tydesc_info>>,
-    // Set when running emit_tydescs to enforce that no more tydescs are
-    // created.
+    /// Set when running emit_tydescs to enforce that no more tydescs are
+    /// created.
     pub finished_tydescs: Cell<bool>,
-    // Track mapping of external ids to local items imported for inlining
+    /// Track mapping of external ids to local items imported for inlining
     pub external: RefCell<DefIdMap<Option<ast::NodeId>>>,
-    // Backwards version of the `external` map (inlined items to where they
-    // came from)
+    /// Backwards version of the `external` map (inlined items to where they
+    /// came from)
     pub external_srcs: RefCell<NodeMap<ast::DefId>>,
-    // A set of static items which cannot be inlined into other crates. This
-    // will pevent in IIItem() structures from being encoded into the metadata
-    // that is generated
+    /// A set of static items which cannot be inlined into other crates. This
+    /// will pevent in IIItem() structures from being encoded into the metadata
+    /// that is generated
     pub non_inlineable_statics: RefCell<NodeSet>,
-    // Cache instances of monomorphized functions
+    /// Cache instances of monomorphized functions
     pub monomorphized: RefCell<HashMap<mono_id, ValueRef>>,
     pub monomorphizing: RefCell<DefIdMap<uint>>,
-    // Cache generated vtables
+    /// Cache generated vtables
     pub vtables: RefCell<HashMap<(ty::t, mono_id), ValueRef>>,
-    // Cache of constant strings,
+    /// Cache of constant strings,
     pub const_cstr_cache: RefCell<HashMap<InternedString, ValueRef>>,
 
-    // Reverse-direction for const ptrs cast from globals.
-    // Key is an int, cast from a ValueRef holding a *T,
-    // Val is a ValueRef holding a *[T].
-    //
-    // Needed because LLVM loses pointer->pointee association
-    // when we ptrcast, and we have to ptrcast during translation
-    // of a [T] const because we form a slice, a [*T,int] pair, not
-    // a pointer to an LLVM array type.
+    /// Reverse-direction for const ptrs cast from globals.
+    /// Key is an int, cast from a ValueRef holding a *T,
+    /// Val is a ValueRef holding a *[T].
+    ///
+    /// Needed because LLVM loses pointer->pointee association
+    /// when we ptrcast, and we have to ptrcast during translation
+    /// of a [T] const because we form a slice, a [*T,int] pair, not
+    /// a pointer to an LLVM array type.
     pub const_globals: RefCell<HashMap<int, ValueRef>>,
 
-    // Cache of emitted const values
+    /// Cache of emitted const values
     pub const_values: RefCell<NodeMap<ValueRef>>,
 
-    // Cache of external const values
+    /// Cache of external const values
     pub extern_const_values: RefCell<DefIdMap<ValueRef>>,
 
     pub impl_method_cache: RefCell<HashMap<(ast::DefId, ast::Name), ast::DefId>>,
 
-    // Cache of closure wrappers for bare fn's.
+    /// Cache of closure wrappers for bare fn's.
     pub closure_bare_wrapper_cache: RefCell<HashMap<ValueRef, ValueRef>>,
 
     pub lltypes: RefCell<HashMap<ty::t, Type>>,
@@ -104,9 +102,9 @@ pub struct CrateContext {
     pub int_type: Type,
     pub opaque_vec_type: Type,
     pub builder: BuilderRef_res,
-    // Set when at least one function uses GC. Needed so that
-    // decl_gc_metadata knows whether to link to the module metadata, which
-    // is not emitted by LLVM's GC pass when no functions use GC.
+    /// Set when at least one function uses GC. Needed so that
+    /// decl_gc_metadata knows whether to link to the module metadata, which
+    /// is not emitted by LLVM's GC pass when no functions use GC.
     pub uses_gc: bool,
     pub dbg_cx: Option<debuginfo::CrateDebugContext>,
 }
@@ -230,36 +228,6 @@ impl CrateContext {
 
     pub fn builder<'a>(&'a self) -> Builder<'a> {
         Builder::new(self)
-    }
-
-    pub fn const_inbounds_gepi(&self,
-                               pointer: ValueRef,
-                               indices: &[uint]) -> ValueRef {
-        debug!("const_inbounds_gepi: pointer={} indices={:?}",
-               self.tn.val_to_str(pointer), indices);
-        let v: Vec<ValueRef> =
-            indices.iter().map(|i| C_i32(self, *i as i32)).collect();
-        unsafe {
-            llvm::LLVMConstInBoundsGEP(pointer,
-                                       v.as_ptr(),
-                                       indices.len() as c_uint)
-        }
-    }
-
-    pub fn offsetof_gep(&self,
-                        llptr_ty: Type,
-                        indices: &[uint]) -> ValueRef {
-        /*!
-         * Returns the offset of applying the given GEP indices
-         * to an instance of `llptr_ty`. Similar to `offsetof` in C,
-         * except that `llptr_ty` must be a pointer type.
-         */
-
-        unsafe {
-            let null = C_null(llptr_ty);
-            llvm::LLVMConstPtrToInt(self.const_inbounds_gepi(null, indices),
-                                    self.int_type.to_ref())
-        }
     }
 
     pub fn tydesc_type(&self) -> Type {

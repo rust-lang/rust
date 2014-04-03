@@ -411,9 +411,6 @@ pub fn type_has_self(t: t) -> bool { tbox_has_flag(get(t), has_self) }
 pub fn type_needs_infer(t: t) -> bool {
     tbox_has_flag(get(t), needs_infer)
 }
-pub fn type_has_regions(t: t) -> bool {
-    tbox_has_flag(get(t), has_regions)
-}
 pub fn type_id(t: t) -> uint { get(t).id }
 
 #[deriving(Clone, Eq, TotalEq, Hash)]
@@ -1506,10 +1503,6 @@ pub fn walk_regions_and_ty(cx: &ctxt, ty: t, fldr: |r: Region|, fldt: |t: t|)
                                    |t| { fldt(t); t }).fold_ty(ty)
 }
 
-pub fn fold_regions(cx: &ctxt, ty: t, fldr: |r: Region| -> Region) -> t {
-    ty_fold::RegionFolder::regions(cx, fldr).fold_ty(ty)
-}
-
 // Substitute *only* type parameters.  Used in trans where regions are erased.
 pub fn subst_tps(tcx: &ctxt, tps: &[t], self_ty_opt: Option<t>, typ: t) -> t {
     let mut subst = TpsSubst { tcx: tcx, self_ty_opt: self_ty_opt, tps: tps };
@@ -1623,24 +1616,10 @@ pub fn type_is_structural(ty: t) -> bool {
     }
 }
 
-pub fn type_is_sequence(ty: t) -> bool {
-    match get(ty).sty {
-      ty_str(_) | ty_vec(_, _) => true,
-      _ => false
-    }
-}
-
 pub fn type_is_simd(cx: &ctxt, ty: t) -> bool {
     match get(ty).sty {
         ty_struct(did, _) => lookup_simd(cx, did),
         _ => false
-    }
-}
-
-pub fn type_is_str(ty: t) -> bool {
-    match get(ty).sty {
-      ty_str(_) => true,
-      _ => false
     }
 }
 
@@ -1672,20 +1651,6 @@ pub fn simd_size(cx: &ctxt, ty: t) -> uint {
     }
 }
 
-pub fn get_element_type(ty: t, i: uint) -> t {
-    match get(ty).sty {
-      ty_tup(ref ts) => return *ts.get(i),
-      _ => fail!("get_element_type called on invalid type")
-    }
-}
-
-pub fn type_is_box(ty: t) -> bool {
-    match get(ty).sty {
-      ty_box(_) => return true,
-      _ => return false
-    }
-}
-
 pub fn type_is_boxed(ty: t) -> bool {
     match get(ty).sty {
       ty_box(_) => true,
@@ -1700,33 +1665,11 @@ pub fn type_is_region_ptr(ty: t) -> bool {
     }
 }
 
-pub fn type_is_slice(ty: t) -> bool {
-    match get(ty).sty {
-      ty_vec(_, vstore_slice(_)) | ty_str(vstore_slice(_)) => true,
-      _ => return false
-    }
-}
-
-pub fn type_is_unique_box(ty: t) -> bool {
-    match get(ty).sty {
-      ty_uniq(_) => return true,
-      _ => return false
-    }
-}
-
 pub fn type_is_unsafe_ptr(ty: t) -> bool {
     match get(ty).sty {
       ty_ptr(_) => return true,
       _ => return false
     }
-}
-
-pub fn type_is_vec(ty: t) -> bool {
-    return match get(ty).sty {
-          ty_vec(_, _) | ty_unboxed_vec(_) => true,
-          ty_str(_) => true,
-          _ => false
-        };
 }
 
 pub fn type_is_unique(ty: t) -> bool {
@@ -1920,10 +1863,6 @@ def_type_content_sets!(
 )
 
 impl TypeContents {
-    pub fn meets_bounds(&self, cx: &ctxt, bbs: BuiltinBounds) -> bool {
-        bbs.iter().all(|bb| self.meets_bound(cx, bb))
-    }
-
     pub fn meets_bound(&self, cx: &ctxt, bb: BuiltinBound) -> bool {
         match bb {
             BoundStatic => self.is_static(cx),
@@ -2021,10 +1960,6 @@ impl TypeContents {
         v.iter().fold(TC::None, |tc, t| tc | f(t))
     }
 
-    pub fn inverse(&self) -> TypeContents {
-        TypeContents { bits: !self.bits }
-    }
-
     pub fn has_dtor(&self) -> bool {
         self.intersects(TC::OwnsDtor)
     }
@@ -2052,10 +1987,6 @@ impl fmt::Show for TypeContents {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f.buf, "TypeContents({:t})", self.bits)
     }
-}
-
-pub fn type_has_dtor(cx: &ctxt, t: ty::t) -> bool {
-    type_contents(cx, t).has_dtor()
 }
 
 pub fn type_is_static(cx: &ctxt, t: ty::t) -> bool {
@@ -2649,14 +2580,8 @@ pub fn type_is_machine(ty: t) -> bool {
     }
 }
 
-pub fn type_is_enum(ty: t) -> bool {
-    match get(ty).sty {
-      ty_enum(_, _) => return true,
-      _ => return false
-    }
-}
-
 // Is the type's representation size known at compile time?
+#[allow(dead_code)] // leaving in for DST
 pub fn type_is_sized(cx: &ctxt, ty: ty::t) -> bool {
     match get(ty).sty {
         // FIXME(#6308) add trait, vec, str, etc here.
@@ -2686,14 +2611,6 @@ pub fn type_is_c_like_enum(cx: &ctxt, ty: t) -> bool {
         }
         _ => false
     }
-}
-
-pub fn type_param(ty: t) -> Option<uint> {
-    match get(ty).sty {
-      ty_param(p) => return Some(p.idx),
-      _ => {/* fall through */ }
-    }
-    return None;
 }
 
 // Returns the type and mutability of *t.
@@ -2758,10 +2675,6 @@ pub fn node_id_to_type_params(cx: &ctxt, id: ast::NodeId) -> Vec<t> {
     }
 }
 
-fn node_id_has_type_params(cx: &ctxt, id: ast::NodeId) -> bool {
-    cx.node_type_substs.borrow().contains_key(&id)
-}
-
 pub fn fn_is_variadic(fty: t) -> bool {
     match get(fty).sty {
         ty_bare_fn(ref f) => f.sig.variadic,
@@ -2802,16 +2715,6 @@ pub fn ty_closure_sigil(fty: t) -> Sigil {
     }
 }
 
-pub fn ty_fn_purity(fty: t) -> ast::Purity {
-    match get(fty).sty {
-        ty_bare_fn(ref f) => f.purity,
-        ty_closure(ref f) => f.purity,
-        ref s => {
-            fail!("ty_fn_purity() called on non-fn type: {:?}", s)
-        }
-    }
-}
-
 pub fn ty_fn_ret(fty: t) -> t {
     match get(fty).sty {
         ty_bare_fn(ref f) => f.sig.output,
@@ -2830,14 +2733,6 @@ pub fn is_fn_ty(fty: t) -> bool {
     }
 }
 
-pub fn ty_vstore(ty: t) -> vstore {
-    match get(ty).sty {
-        ty_vec(_, vstore) => vstore,
-        ty_str(vstore) => vstore,
-        ref s => fail!("ty_vstore() called on invalid sty: {:?}", s)
-    }
-}
-
 pub fn ty_region(tcx: &ctxt,
                  span: Span,
                  ty: t) -> Region {
@@ -2852,49 +2747,6 @@ pub fn ty_region(tcx: &ctxt,
         }
     }
 }
-
-pub fn replace_fn_sig(cx: &ctxt, fsty: &sty, new_sig: FnSig) -> t {
-    match *fsty {
-        ty_bare_fn(ref f) => mk_bare_fn(cx, BareFnTy {sig: new_sig, ..*f}),
-        ty_closure(ref f) => mk_closure(cx, ClosureTy {sig: new_sig, ..**f}),
-        ref s => {
-            cx.sess.bug(
-                format!("ty_fn_sig() called on non-fn type: {:?}", s));
-        }
-    }
-}
-
-pub fn replace_closure_return_type(tcx: &ctxt, fn_type: t, ret_type: t) -> t {
-    /*!
-     *
-     * Returns a new function type based on `fn_type` but returning a value of
-     * type `ret_type` instead. */
-
-    match ty::get(fn_type).sty {
-        ty::ty_closure(ref fty) => {
-            ty::mk_closure(tcx, ClosureTy {
-                sig: FnSig {output: ret_type, ..fty.sig.clone()},
-                ..(**fty).clone()
-            })
-        }
-        _ => {
-            tcx.sess.bug(format!(
-                "replace_fn_ret() invoked with non-fn-type: {}",
-                ty_to_str(tcx, fn_type)));
-        }
-    }
-}
-
-// Returns a vec of all the input and output types of fty.
-pub fn tys_in_fn_sig(sig: &FnSig) -> Vec<t> {
-    sig.inputs.iter().map(|a| *a).collect::<Vec<_>>().append_one(sig.output)
-}
-
-// Type accessors for AST nodes
-pub fn block_ty(cx: &ctxt, b: &ast::Block) -> t {
-    return node_id_to_type(cx, b.id);
-}
-
 
 // Returns the type of a pattern as a monotype. Like @expr_ty, this function
 // doesn't provide type parameter substitutions.
@@ -3187,6 +3039,7 @@ pub struct ParamsTy {
     pub ty: t
 }
 
+#[allow(dead_code)] // this may be useful?
 pub fn expr_ty_params_and_ty(cx: &ctxt,
                              expr: &ast::Expr)
                           -> ParamsTy {
@@ -3194,10 +3047,6 @@ pub fn expr_ty_params_and_ty(cx: &ctxt,
         params: node_id_to_type_params(cx, expr.id),
         ty: node_id_to_type(cx, expr.id)
     }
-}
-
-pub fn expr_has_ty_params(cx: &ctxt, expr: &ast::Expr) -> bool {
-    return node_id_has_type_params(cx, expr.id);
 }
 
 pub fn method_call_type_param_defs(tcx: &ctxt, origin: typeck::MethodOrigin)
@@ -3421,12 +3270,6 @@ pub fn stmt_node_id(s: &ast::Stmt) -> ast::NodeId {
       }
       ast::StmtMac(..) => fail!("unexpanded macro in trans")
     }
-}
-
-pub fn field_idx(name: ast::Name, fields: &[field]) -> Option<uint> {
-    let mut i = 0u;
-    for f in fields.iter() { if f.ident.name == name { return Some(i); } i += 1u; }
-    return None;
 }
 
 pub fn field_idx_strict(tcx: &ctxt, name: ast::Name, fields: &[field])
@@ -3664,14 +3507,6 @@ pub fn note_and_explain_type_err(cx: &ctxt, err: &type_err) {
     }
 }
 
-pub fn def_has_ty_params(def: ast::Def) -> bool {
-    match def {
-      ast::DefFn(_, _) | ast::DefVariant(_, _, _) | ast::DefStruct(_)
-        => true,
-      _ => false
-    }
-}
-
 pub fn provided_source(cx: &ctxt, id: ast::DefId) -> Option<ast::DefId> {
     cx.provided_method_sources.borrow().find(&id).map(|x| *x)
 }
@@ -3850,8 +3685,8 @@ pub fn try_add_builtin_trait(tcx: &ctxt,
 
 pub fn ty_to_def_id(ty: t) -> Option<ast::DefId> {
     match get(ty).sty {
-      ty_trait(~TyTrait { def_id: id, .. }) | ty_struct(id, _) | ty_enum(id, _) => Some(id),
-      _ => None
+        ty_trait(~TyTrait { def_id: id, .. }) | ty_struct(id, _) | ty_enum(id, _) => Some(id),
+        _ => None
     }
 }
 
@@ -4247,18 +4082,6 @@ pub fn lookup_struct_fields(cx: &ctxt, did: ast::DefId) -> Vec<field_ty> {
     }
 }
 
-pub fn lookup_struct_field(cx: &ctxt,
-                           parent: ast::DefId,
-                           field_id: ast::DefId)
-                        -> field_ty {
-    let r = lookup_struct_fields(cx, parent);
-    match r.iter().find(
-                 |f| f.id.node == field_id.node) {
-        Some(t) => *t,
-        None => cx.sess.bug("struct ID not found in parent's fields")
-    }
-}
-
 fn struct_field_tys(fields: &[StructField]) -> Vec<field_ty> {
     fields.iter().map(|field| {
         match field.node.kind {
@@ -4366,13 +4189,6 @@ pub fn is_binopable(cx: &ctxt, ty: t, op: ast::BinOp) -> bool {
     /*raw ptr*/ [f, f, f, f,     t,   t,  f,   f]];
 
     return tbl[tycat(cx, ty) as uint ][opcat(op) as uint];
-}
-
-pub fn ty_params_to_tys(tcx: &ctxt, generics: &ast::Generics) -> Vec<t> {
-    Vec::from_fn(generics.ty_params.len(), |i| {
-        let id = generics.ty_params.get(i).id;
-        ty::mk_param(tcx, i, ast_util::local_def(id))
-    })
 }
 
 /// Returns an equivalent type with all the typedefs and self regions removed.
@@ -4552,19 +4368,6 @@ pub fn each_bound_trait_and_supertraits(tcx: &ctxt,
         }
     }
     return true;
-}
-
-pub fn count_traits_and_supertraits(tcx: &ctxt,
-                                    type_param_defs: &[TypeParameterDef]) -> uint {
-    let mut total = 0;
-    for type_param_def in type_param_defs.iter() {
-        each_bound_trait_and_supertraits(
-            tcx, type_param_def.bounds.trait_bounds.as_slice(), |_| {
-            total += 1;
-            true
-        });
-    }
-    return total;
 }
 
 pub fn get_tydesc_ty(tcx: &ctxt) -> Result<t, ~str> {
@@ -5048,14 +4851,6 @@ impl BorrowKind {
             MutBorrow => "mutable",
             ImmBorrow => "immutable",
             UniqueImmBorrow => "uniquely immutable",
-        }
-    }
-
-    pub fn to_short_str(&self) -> &'static str {
-        match *self {
-            MutBorrow => "mut",
-            ImmBorrow => "imm",
-            UniqueImmBorrow => "own",
         }
     }
 }

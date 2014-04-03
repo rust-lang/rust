@@ -96,6 +96,7 @@ impl LanguageItems {
     }
 
     $(
+        #[allow(dead_code)]
         pub fn $method(&self) -> Option<ast::DefId> {
             *self.items.get($variant as uint)
         }
