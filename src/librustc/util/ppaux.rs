@@ -23,7 +23,7 @@ use middle::ty::{ty_uniq, ty_trait, ty_int, ty_uint, ty_unboxed_vec, ty_infer};
 use middle::ty;
 use middle::typeck;
 
-use syntax::abi::AbiSet;
+use syntax::abi;
 use syntax::ast_map;
 use syntax::codemap::{Span, Pos};
 use syntax::parse::token;
@@ -253,14 +253,14 @@ pub fn ty_to_str(cx: &ctxt, typ: t) -> ~str {
     }
     fn bare_fn_to_str(cx: &ctxt,
                       purity: ast::Purity,
-                      abis: AbiSet,
+                      abi: abi::Abi,
                       ident: Option<ast::Ident>,
                       sig: &ty::FnSig)
                       -> ~str {
-        let mut s = if abis.is_rust() {
+        let mut s = if abi == abi::Rust {
             ~""
         } else {
-            format!("extern {} ", abis.to_str())
+            format!("extern {} ", abi.to_str())
         };
 
         match purity {
@@ -406,7 +406,7 @@ pub fn ty_to_str(cx: &ctxt, typ: t) -> ~str {
           closure_to_str(cx, *f)
       }
       ty_bare_fn(ref f) => {
-          bare_fn_to_str(cx, f.purity, f.abis, None, &f.sig)
+          bare_fn_to_str(cx, f.purity, f.abi, None, &f.sig)
       }
       ty_infer(infer_ty) => infer_ty.to_str(),
       ty_err => ~"[type error]",
@@ -813,9 +813,9 @@ impl Repr for ast::Visibility {
 
 impl Repr for ty::BareFnTy {
     fn repr(&self, tcx: &ctxt) -> ~str {
-        format!("BareFnTy \\{purity: {:?}, abis: {}, sig: {}\\}",
+        format!("BareFnTy \\{purity: {:?}, abi: {}, sig: {}\\}",
              self.purity,
-             self.abis.to_str(),
+             self.abi.to_str(),
              self.sig.repr(tcx))
     }
 }
@@ -968,13 +968,13 @@ impl UserString for ast::Ident {
     }
 }
 
-impl Repr for AbiSet {
+impl Repr for abi::Abi {
     fn repr(&self, _tcx: &ctxt) -> ~str {
         self.to_str()
     }
 }
 
-impl UserString for AbiSet {
+impl UserString for abi::Abi {
     fn user_string(&self, _tcx: &ctxt) -> ~str {
         self.to_str()
     }

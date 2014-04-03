@@ -34,6 +34,7 @@ use util::common::indenter;
 use util::ppaux::Repr;
 
 use std::c_str::ToCStr;
+use syntax::abi::Rust;
 use syntax::parse::token;
 use syntax::{ast, ast_map, visit};
 
@@ -393,7 +394,7 @@ pub fn trans_trait_callee_from_llval<'a>(bcx: &'a Block<'a>,
     debug!("(translating trait callee) loading method");
     // Replace the self type (&Self or ~Self) with an opaque pointer.
     let llcallee_ty = match ty::get(callee_ty).sty {
-        ty::ty_bare_fn(ref f) if f.abis.is_rust() => {
+        ty::ty_bare_fn(ref f) if f.abi == Rust => {
             type_of_rust_fn(ccx, true, f.sig.inputs.slice_from(1), f.sig.output)
         }
         _ => {

@@ -187,7 +187,7 @@ fn extract_crate_info(e: &Env, i: &ast::ViewItem) -> Option<CrateInfo> {
 fn visit_item(e: &Env, i: &ast::Item) {
     match i.node {
         ast::ItemForeignMod(ref fm) => {
-            if fm.abis.is_rust() || fm.abis.is_intrinsic() {
+            if fm.abi == abi::Rust || fm.abi == abi::RustIntrinsic {
                 return;
             }
 

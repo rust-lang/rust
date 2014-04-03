@@ -11,7 +11,7 @@
 // The Rust abstract syntax tree.
 
 use codemap::{Span, Spanned, DUMMY_SP};
-use abi::AbiSet;
+use abi::Abi;
 use ast_util;
 use owned_slice::OwnedSlice;
 use parse::token::{InternedString, special_idents, str_to_ident};
@@ -807,7 +807,7 @@ pub struct ClosureTy {
 #[deriving(Eq, TotalEq, Encodable, Decodable, Hash)]
 pub struct BareFnTy {
     pub purity: Purity,
-    pub abis: AbiSet,
+    pub abi: Abi,
     pub lifetimes: Vec<Lifetime>,
     pub decl: P<FnDecl>
 }
@@ -941,7 +941,7 @@ pub struct Mod {
 
 #[deriving(Clone, Eq, TotalEq, Encodable, Decodable, Hash)]
 pub struct ForeignMod {
-    pub abis: AbiSet,
+    pub abi: Abi,
     pub view_items: Vec<ViewItem>,
     pub items: Vec<@ForeignItem>,
 }
@@ -1119,7 +1119,7 @@ pub struct Item {
 #[deriving(Clone, Eq, TotalEq, Encodable, Decodable, Hash)]
 pub enum Item_ {
     ItemStatic(P<Ty>, Mutability, @Expr),
-    ItemFn(P<FnDecl>, Purity, AbiSet, Generics, P<Block>),
+    ItemFn(P<FnDecl>, Purity, Abi, Generics, P<Block>),
     ItemMod(Mod),
     ItemForeignMod(ForeignMod),
     ItemTy(P<Ty>, Generics),

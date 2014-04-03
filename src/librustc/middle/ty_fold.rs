@@ -48,7 +48,7 @@ pub trait TypeFolder {
                        fty: &ty::BareFnTy)
                        -> ty::BareFnTy {
         ty::BareFnTy { sig: self.fold_sig(&fty.sig),
-                       abis: fty.abis,
+                       abi: fty.abi,
                        purity: fty.purity }
     }
 
