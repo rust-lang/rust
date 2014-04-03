@@ -31,10 +31,6 @@ pub struct Lub<'f>(CombineFields<'f>);  // least-upper-bound: common supertype
 
 impl<'f> Lub<'f> {
     pub fn get_ref<'a>(&'a self) -> &'a CombineFields<'f> { let Lub(ref v) = *self; v }
-    pub fn bot_ty(&self, b: ty::t) -> cres<ty::t> { Ok(b) }
-    pub fn ty_bot(&self, b: ty::t) -> cres<ty::t> {
-        self.bot_ty(b) // commutative
-    }
 }
 
 impl<'f> Combine for Lub<'f> {

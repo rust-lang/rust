@@ -55,14 +55,6 @@ pub fn get_fill(bcx: &Block, vptr: ValueRef) -> ValueRef {
     Load(bcx, GEPi(bcx, vptr, [0u, abi::vec_elt_fill]))
 }
 
-pub fn set_fill(bcx: &Block, vptr: ValueRef, fill: ValueRef) {
-    Store(bcx, fill, GEPi(bcx, vptr, [0u, abi::vec_elt_fill]));
-}
-
-pub fn get_alloc(bcx: &Block, vptr: ValueRef) -> ValueRef {
-    Load(bcx, GEPi(bcx, vptr, [0u, abi::vec_elt_alloc]))
-}
-
 pub fn get_dataptr(bcx: &Block, vptr: ValueRef) -> ValueRef {
     let _icx = push_ctxt("tvec::get_dataptr");
     GEPi(bcx, vptr, [0u, abi::vec_elt_elems, 0u])
@@ -100,15 +92,6 @@ pub fn alloc_raw<'a>(
         Store(bcx, alloc, GEPi(bcx, body, [0u, abi::vec_elt_alloc]));
         return rslt(bcx, bx);
     }
-}
-
-pub fn alloc_uniq_raw<'a>(
-                      bcx: &'a Block<'a>,
-                      unit_ty: ty::t,
-                      fill: ValueRef,
-                      alloc: ValueRef)
-                      -> Result<'a> {
-    alloc_raw(bcx, unit_ty, fill, alloc, heap_exchange)
 }
 
 pub fn alloc_uniq_vec<'a>(
@@ -691,19 +674,6 @@ pub fn iter_vec_raw<'r,
         Br(body_bcx, header_bcx.llbb);
         next_bcx
     }
-}
-
-pub fn iter_vec_uniq<'r,
-                     'b>(
-                     bcx: &'b Block<'b>,
-                     vptr: ValueRef,
-                     vec_ty: ty::t,
-                     fill: ValueRef,
-                     f: iter_vec_block<'r,'b>)
-                     -> &'b Block<'b> {
-    let _icx = push_ctxt("tvec::iter_vec_uniq");
-    let data_ptr = get_dataptr(bcx, vptr);
-    iter_vec_raw(bcx, data_ptr, vec_ty, fill, f)
 }
 
 pub fn iter_vec_unboxed<'r,

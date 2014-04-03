@@ -37,12 +37,6 @@ pub fn get_symbol(cstore: &cstore::CStore, def: ast::DefId) -> ~str {
     return decoder::get_symbol(cdata, def.node);
 }
 
-pub fn get_type_param_count(cstore: &cstore::CStore, def: ast::DefId)
-                         -> uint {
-    let cdata = cstore.get_crate_data(def.krate).data();
-    return decoder::get_type_param_count(cdata, def.node);
-}
-
 /// Iterates over all the language items in the given crate.
 pub fn each_lang_item(cstore: &cstore::CStore,
                       cnum: ast::CrateNum,
@@ -242,21 +236,6 @@ pub fn get_impl_vtables(tcx: &ty::ctxt,
     let cstore = &tcx.sess.cstore;
     let cdata = cstore.get_crate_data(def.krate);
     decoder::get_impl_vtables(cdata, def.node, tcx)
-}
-
-pub fn get_impl_method(cstore: &cstore::CStore,
-                       def: ast::DefId,
-                       mname: ast::Ident)
-                    -> Option<ast::DefId> {
-    let cdata = cstore.get_crate_data(def.krate);
-    decoder::get_impl_method(cstore.intr.clone(), cdata, def.node, mname)
-}
-
-pub fn get_item_visibility(cstore: &cstore::CStore,
-                           def_id: ast::DefId)
-                        -> ast::Visibility {
-    let cdata = cstore.get_crate_data(def_id.krate);
-    decoder::get_item_visibility(cdata, def_id.node)
 }
 
 pub fn get_native_libraries(cstore: &cstore::CStore,

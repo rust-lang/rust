@@ -79,10 +79,6 @@ impl ArgType {
         }
     }
 
-    pub fn is_direct(&self) -> bool {
-        return self.kind == Direct;
-    }
-
     pub fn is_indirect(&self) -> bool {
         return self.kind == Indirect;
     }

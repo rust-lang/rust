@@ -145,7 +145,3 @@ pub fn get_freevars(tcx: &ty::ctxt, fid: ast::NodeId) -> freevar_info {
         Some(&d) => return d
     }
 }
-
-pub fn has_freevars(tcx: &ty::ctxt, fid: ast::NodeId) -> bool {
-    !get_freevars(tcx, fid).is_empty()
-}

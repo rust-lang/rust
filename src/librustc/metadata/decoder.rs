@@ -279,13 +279,6 @@ fn item_region_param_defs(item_doc: ebml::Doc, cdata: Cmd)
     Rc::new(v)
 }
 
-fn item_ty_param_count(item: ebml::Doc) -> uint {
-    let mut n = 0u;
-    reader::tagged_docs(item, tag_items_data_item_ty_param_bounds,
-                      |_p| { n += 1u; true } );
-    n
-}
-
 fn enum_variant_ids(item: ebml::Doc, cdata: Cmd) -> Vec<ast::DefId> {
     let mut ids: Vec<ast::DefId> = Vec::new();
     let v = tag_items_data_item_variant;
@@ -420,10 +413,6 @@ pub fn get_type(cdata: Cmd, id: ast::NodeId, tcx: &ty::ctxt)
     }
 }
 
-pub fn get_type_param_count(data: &[u8], id: ast::NodeId) -> uint {
-    item_ty_param_count(lookup_item(id, data))
-}
-
 pub fn get_impl_trait(cdata: Cmd,
                       id: ast::NodeId,
                       tcx: &ty::ctxt) -> Option<@ty::TraitRef>
@@ -449,20 +438,6 @@ pub fn get_impl_vtables(cdata: Cmd,
 }
 
 
-pub fn get_impl_method(intr: Rc<IdentInterner>, cdata: Cmd, id: ast::NodeId,
-                       name: ast::Ident) -> Option<ast::DefId> {
-    let items = reader::get_doc(reader::Doc(cdata.data()), tag_items);
-    let mut found = None;
-    reader::tagged_docs(find_item(id, items), tag_item_impl_method, |mid| {
-        let m_did = reader::with_doc_data(mid, parse_def_id);
-        if item_name(&*intr, find_item(m_did.node, items)) == name {
-            found = Some(translate_def_id(cdata, m_did));
-        }
-        true
-    });
-    found
-}
-
 pub fn get_symbol(data: &[u8], id: ast::NodeId) -> ~str {
     return item_symbol(lookup_item(id, data));
 }
@@ -473,14 +448,6 @@ pub enum DefLike {
     DlDef(ast::Def),
     DlImpl(ast::DefId),
     DlField
-}
-
-pub fn def_like_to_def(def_like: DefLike) -> ast::Def {
-    match def_like {
-        DlDef(def) => return def,
-        DlImpl(..) => fail!("found impl in def_like_to_def"),
-        DlField => fail!("found field in def_like_to_def")
-    }
 }
 
 /// Iterates over the language items in the given crate.
@@ -1030,11 +997,6 @@ pub fn get_struct_fields(intr: Rc<IdentInterner>, cdata: Cmd, id: ast::NodeId)
     result
 }
 
-pub fn get_item_visibility(cdata: Cmd, id: ast::NodeId)
-                        -> ast::Visibility {
-    item_visibility(lookup_item(id, cdata.data()))
-}
-
 fn get_meta_items(md: ebml::Doc) -> Vec<@ast::MetaItem> {
     let mut items: Vec<@ast::MetaItem> = Vec::new();
     reader::tagged_docs(md, tag_meta_item_word, |meta_item_doc| {
@@ -1103,7 +1065,7 @@ fn list_crate_attributes(md: ebml::Doc, hash: &Svh,
 }
 
 pub fn get_crate_attributes(data: &[u8]) -> Vec<ast::Attribute> {
-    return get_attributes(reader::Doc(data));
+    get_attributes(reader::Doc(data))
 }
 
 #[deriving(Clone)]

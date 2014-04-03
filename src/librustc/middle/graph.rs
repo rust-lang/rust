@@ -34,6 +34,8 @@ be indexed by the direction (see the type `Direction`).
 
 */
 
+#![allow(dead_code)] // still WIP
+
 use std::uint;
 
 pub struct Graph<N,E> {

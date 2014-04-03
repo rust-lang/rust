@@ -24,7 +24,6 @@ use middle::trans::datum;
 use middle::trans::datum::{Datum, Lvalue};
 use middle::trans::debuginfo;
 use middle::trans::type_::Type;
-use middle::ty::substs;
 use middle::ty;
 use middle::typeck;
 use util::ppaux::Repr;
@@ -456,14 +455,6 @@ impl<'a> Block<'a> {
         e.repr(self.tcx())
     }
 
-    pub fn expr_is_lval(&self, e: &ast::Expr) -> bool {
-        ty::expr_is_lval(self.tcx(), self.ccx().maps.method_map, e)
-    }
-
-    pub fn expr_kind(&self, e: &ast::Expr) -> ty::ExprKind {
-        ty::expr_kind(self.tcx(), self.ccx().maps.method_map, e)
-    }
-
     pub fn def(&self, nid: ast::NodeId) -> ast::Def {
         match self.tcx().def_map.borrow().find(&nid) {
             Some(&v) => v,
@@ -501,13 +492,6 @@ pub fn rslt<'a>(bcx: &'a Block<'a>, val: ValueRef) -> Result<'a> {
     Result {
         bcx: bcx,
         val: val,
-    }
-}
-
-impl<'a> Result<'a> {
-    pub fn unpack(&self, bcx: &mut &'a Block<'a>) -> ValueRef {
-        *bcx = self.bcx;
-        return self.val;
     }
 }
 
@@ -749,22 +733,6 @@ pub struct mono_id_ {
 
 pub type mono_id = @mono_id_;
 
-pub fn umax(cx: &Block, a: ValueRef, b: ValueRef) -> ValueRef {
-    let cond = build::ICmp(cx, lib::llvm::IntULT, a, b);
-    return build::Select(cx, cond, b, a);
-}
-
-pub fn umin(cx: &Block, a: ValueRef, b: ValueRef) -> ValueRef {
-    let cond = build::ICmp(cx, lib::llvm::IntULT, a, b);
-    return build::Select(cx, cond, a, b);
-}
-
-pub fn align_to(cx: &Block, off: ValueRef, align: ValueRef) -> ValueRef {
-    let mask = build::Sub(cx, align, C_int(cx.ccx(), 1));
-    let bumped = build::Add(cx, off, mask);
-    return build::And(cx, bumped, build::Not(cx, mask));
-}
-
 pub fn monomorphize_type(bcx: &Block, t: ty::t) -> ty::t {
     match bcx.fcx.param_substs {
         Some(substs) => {
@@ -926,14 +894,6 @@ pub fn find_vtable(tcx: &ty::ctxt,
         }
     };
     param_bounds.get(n_bound).clone()
-}
-
-pub fn dummy_substs(tps: Vec<ty::t> ) -> ty::substs {
-    substs {
-        regions: ty::ErasedRegions,
-        self_ty: None,
-        tps: tps
-    }
 }
 
 pub fn filename_and_line_num_from_span(bcx: &Block, span: Span)
