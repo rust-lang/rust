@@ -10,7 +10,7 @@
 
 //! Simple ANSI color library
 
-#![crate_id = "term#0.10"]
+#![crate_id = "term#0.11-pre"]
 #![comment = "Simple ANSI color library"]
 #![license = "MIT/ASL2"]
 #![crate_type = "rlib"]
