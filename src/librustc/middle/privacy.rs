@@ -79,7 +79,7 @@ impl Visitor<()> for ParentVisitor {
             // method to the root. In this case, if the trait is private, then
             // parent all the methods to the trait to indicate that they're
             // private.
-            ast::ItemTrait(_, _, ref methods) if item.vis != ast::Public => {
+            ast::ItemTrait(_, _, _, ref methods) if item.vis != ast::Public => {
                 for m in methods.iter() {
                     match *m {
                         ast::Provided(ref m) => self.parents.insert(m.id, item.id),
@@ -274,7 +274,7 @@ impl<'a> Visitor<()> for EmbargoVisitor<'a> {
 
             // Default methods on traits are all public so long as the trait
             // is public
-            ast::ItemTrait(_, _, ref methods) if public_first => {
+            ast::ItemTrait(_, _, _, ref methods) if public_first => {
                 for method in methods.iter() {
                     match *method {
                         ast::Provided(ref m) => {
@@ -1082,7 +1082,7 @@ impl<'a> SanePrivacyVisitor<'a> {
                 }
             }
 
-            ast::ItemTrait(_, _, ref methods) => {
+            ast::ItemTrait(_, _, _, ref methods) => {
                 for m in methods.iter() {
                     match *m {
                         ast::Provided(ref m) => {
@@ -1142,7 +1142,7 @@ impl<'a> SanePrivacyVisitor<'a> {
 
             ast::ItemStruct(ref def, _) => check_struct(def),
 
-            ast::ItemTrait(_, _, ref methods) => {
+            ast::ItemTrait(_, _, _, ref methods) => {
                 for m in methods.iter() {
                     match *m {
                         ast::Required(..) => {}
