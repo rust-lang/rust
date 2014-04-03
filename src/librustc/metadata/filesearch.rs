@@ -84,12 +84,6 @@ impl<'a> FileSearch<'a> {
         make_target_lib_path(self.sysroot, self.target_triple)
     }
 
-    pub fn get_target_lib_file_path(&self, file: &Path) -> Path {
-        let mut p = self.get_target_lib_path();
-        p.push(file);
-        p
-    }
-
     pub fn search(&self, pick: pick) {
         self.for_each_lib_search_path(|lib_search_path| {
             debug!("searching {}", lib_search_path.display());

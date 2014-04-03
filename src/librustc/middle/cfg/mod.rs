@@ -15,6 +15,8 @@ Uses `Graph` as the underlying representation.
 
 */
 
+#![allow(dead_code)] // still a WIP, #6298
+
 use middle::graph;
 use middle::ty;
 use middle::typeck;

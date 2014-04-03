@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(dead_code)] // FFI wrappers
 
 use lib::llvm::llvm;
 use lib::llvm::{CallConv, AtomicBinOp, AtomicOrdering, AsmDialect};

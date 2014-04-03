@@ -46,10 +46,6 @@ impl<'a> Reflector<'a> {
         C_uint(self.bcx.ccx(), u)
     }
 
-    pub fn c_int(&mut self, i: int) -> ValueRef {
-        C_int(self.bcx.ccx(), i)
-    }
-
     pub fn c_bool(&mut self, b: bool) -> ValueRef {
         C_bool(self.bcx.ccx(), b)
     }

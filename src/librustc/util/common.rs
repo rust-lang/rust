@@ -11,7 +11,6 @@
 #![allow(non_camel_case_types)]
 
 use syntax::ast;
-use syntax::codemap::{Span};
 use syntax::visit;
 use syntax::visit::Visitor;
 
@@ -64,12 +63,6 @@ pub fn indenter() -> _indenter {
     _indenter(())
 }
 
-pub fn field_expr(f: ast::Field) -> @ast::Expr { return f.expr; }
-
-pub fn field_exprs(fields: Vec<ast::Field> ) -> Vec<@ast::Expr> {
-    fields.move_iter().map(|f| f.expr).collect()
-}
-
 struct LoopQueryVisitor<'a> {
     p: 'a |&ast::Expr_| -> bool,
     flag: bool,
@@ -120,16 +113,3 @@ pub fn block_query(b: ast::P<ast::Block>, p: |&ast::Expr| -> bool) -> bool {
     visit::walk_block(&mut v, b, ());
     return v.flag;
 }
-
-pub fn local_rhs_span(l: &ast::Local, def: Span) -> Span {
-    match l.init {
-      Some(i) => return i.span,
-      _ => return def
-    }
-}
-
-pub fn pluralize(n: uint, s: ~str) -> ~str {
-    if n == 1 { s }
-    else { format!("{}s", s) }
-}
-

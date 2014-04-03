@@ -52,7 +52,7 @@ use middle::ty::{type_is_bot, IntType, UintType};
 use middle::ty;
 use middle::ty_fold;
 use middle::typeck::infer::{Bounds, cyclic_ty, fixup_err, fres, InferCtxt};
-use middle::typeck::infer::{region_var_bound_by_region_var, unresolved_ty};
+use middle::typeck::infer::unresolved_ty;
 use middle::typeck::infer::to_str::InferStr;
 use middle::typeck::infer::unify::{Root, UnifyInferCtxtMethods};
 use util::common::{indent, indenter};
@@ -64,14 +64,12 @@ pub static resolve_nested_tvar: uint = 0b0000000001;
 pub static resolve_rvar: uint        = 0b0000000010;
 pub static resolve_ivar: uint        = 0b0000000100;
 pub static resolve_fvar: uint        = 0b0000001000;
-pub static resolve_fnvar: uint       = 0b0000010000;
-pub static resolve_all: uint         = 0b0000011111;
+pub static resolve_all: uint         = 0b0000001111;
 pub static force_tvar: uint          = 0b0000100000;
 pub static force_rvar: uint          = 0b0001000000;
 pub static force_ivar: uint          = 0b0010000000;
 pub static force_fvar: uint          = 0b0100000000;
-pub static force_fnvar: uint         = 0b1000000000;
-pub static force_all: uint           = 0b1111100000;
+pub static force_all: uint           = 0b0111100000;
 
 pub static not_regions: uint         = !(force_rvar | resolve_rvar);
 
@@ -202,15 +200,6 @@ impl<'a> ResolveState<'a> {
             return ty::ReInfer(ty::ReVar(rid));
         }
         self.infcx.region_vars.resolve_var(rid)
-    }
-
-    pub fn assert_not_rvar(&mut self, rid: RegionVid, r: ty::Region) {
-        match r {
-          ty::ReInfer(ty::ReVar(rid2)) => {
-            self.err = Some(region_var_bound_by_region_var(rid, rid2));
-          }
-          _ => { }
-        }
     }
 
     pub fn resolve_ty_var(&mut self, vid: TyVid) -> ty::t {

@@ -373,28 +373,6 @@ pub fn eq_regions<C:Combine>(this: &C, a: ty::Region, b: ty::Region)
     })
 }
 
-pub fn eq_opt_regions<C:Combine>(
-    this: &C,
-    a: Option<ty::Region>,
-    b: Option<ty::Region>) -> cres<Option<ty::Region>> {
-
-    match (a, b) {
-        (None, None) => Ok(None),
-        (Some(a), Some(b)) => eq_regions(this, a, b).then(|| Ok(Some(a))),
-        (_, _) => {
-            // If these two substitutions are for the same type (and
-            // they should be), then the type should either
-            // consistently have a region parameter or not have a
-            // region parameter.
-            this.infcx().tcx.sess.bug(
-                format!("substitution a had opt_region {} and \
-                      b had opt_region {}",
-                     a.inf_str(this.infcx()),
-                     b.inf_str(this.infcx())));
-        }
-    }
-}
-
 pub fn super_fn_sigs<C:Combine>(this: &C, a: &ty::FnSig, b: &ty::FnSig) -> cres<ty::FnSig> {
 
     fn argvecs<C:Combine>(this: &C, a_args: &[ty::t], b_args: &[ty::t]) -> cres<Vec<ty::t> > {
