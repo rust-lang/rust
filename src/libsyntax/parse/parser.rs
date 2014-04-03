@@ -3413,6 +3413,7 @@ impl<'a> Parser<'a> {
     // matches typaram = IDENT optbounds ( EQ ty )?
     fn parse_ty_param(&mut self) -> TyParam {
         let ident = self.parse_ident();
+        let span = self.span;
         let (_, opt_bounds) = self.parse_optional_ty_param_bounds(false);
         // For typarams we don't care about the difference b/w "<T>" and "<T:>".
         let bounds = opt_bounds.unwrap_or_default();
@@ -3427,7 +3428,8 @@ impl<'a> Parser<'a> {
             ident: ident,
             id: ast::DUMMY_NODE_ID,
             bounds: bounds,
-            default: default
+            default: default,
+            span: span,
         }
     }
 

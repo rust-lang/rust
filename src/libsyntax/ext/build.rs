@@ -66,6 +66,7 @@ pub trait AstBuilder {
     fn strip_bounds(&self, bounds: &Generics) -> Generics;
 
     fn typaram(&self,
+               span: Span,
                id: ast::Ident,
                bounds: OwnedSlice<ast::TyParamBound>,
                default: Option<P<ast::Ty>>) -> ast::TyParam;
@@ -368,6 +369,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 
     fn typaram(&self,
+               span: Span,
                id: ast::Ident,
                bounds: OwnedSlice<ast::TyParamBound>,
                default: Option<P<ast::Ty>>) -> ast::TyParam {
@@ -375,7 +377,8 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             ident: id,
             id: ast::DUMMY_NODE_ID,
             bounds: bounds,
-            default: default
+            default: default,
+            span: span
         }
     }
 
