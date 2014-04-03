@@ -10,6 +10,7 @@
 
 #include "rustllvm.h"
 #include "llvm/Object/Archive.h"
+#include "llvm/Object/ObjectFile.h"
 
 //===----------------------------------------------------------------------===
 //
@@ -678,4 +679,28 @@ LLVMRustSetDLLExportStorageClass(LLVMValueRef Value) {
 extern "C" int
 LLVMVersionMinor() {
     return LLVM_VERSION_MINOR;
+}
+
+// Note that the two following functions look quite similar to the
+// LLVMGetSectionName function. Sadly, it appears that this function only
+// returns a char* pointer, which isn't guaranteed to be null-terminated. The
+// function provided by LLVM doesn't return the length, so we've created our own
+// function which returns the length as well as the data pointer.
+//
+// For an example of this not returning a null terminated string, see
+// lib/Object/COFFObjectFile.cpp in the getSectionName function. One of the
+// branches explicitly creates a StringRef without a null terminator, and then
+// that's returned.
+
+inline section_iterator *unwrap(LLVMSectionIteratorRef SI) {
+    return reinterpret_cast<section_iterator*>(SI);
+}
+
+extern "C" int
+LLVMRustGetSectionName(LLVMSectionIteratorRef SI, const char **ptr) {
+    StringRef ret;
+    if (error_code ec = (*unwrap(SI))->getName(ret))
+      report_fatal_error(ec.message());
+    *ptr = ret.data();
+    return ret.size();
 }
