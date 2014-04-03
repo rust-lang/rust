@@ -14,12 +14,12 @@
 // debugger:rbreak zzz
 // debugger:run
 // debugger:finish
-// debugger:print string1
-// check:$1 = [...]"some text to include in another file as string 1", length = 48}
-// debugger:print string2
-// check:$2 = [...]"some text to include in another file as string 2", length = 48}
-// debugger:print string3
-// check:$3 = [...]"some text to include in another file as string 3", length = 48}
+// debugger:print string1.length
+// check:$1 = 48
+// debugger:print string2.length
+// check:$2 = 48
+// debugger:print string3.length
+// check:$3 = 48
 // debugger:continue
 
 #[allow(unused_variable)];
