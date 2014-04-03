@@ -23,7 +23,7 @@
  * `glob`/`fnmatch` functions.
  */
 
-#![crate_id = "glob#0.10-pre"]
+#![crate_id = "glob#0.10"]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![license = "MIT/ASL2"]

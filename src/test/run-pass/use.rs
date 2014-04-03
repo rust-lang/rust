@@ -17,7 +17,7 @@
 #[no_std];
 extern crate std;
 extern crate zed = "std";
-extern crate bar = "std#0.10-pre";
+extern crate bar = "std#0.10";
 
 
 use std::str;
