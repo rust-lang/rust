@@ -369,21 +369,21 @@ impl<'a> GatherLocalsVisitor<'a> {
 }
 
 impl<'a> Visitor<()> for GatherLocalsVisitor<'a> {
-        // Add explicitly-declared locals.
+    // Add explicitly-declared locals.
     fn visit_local(&mut self, local: &ast::Local, _: ()) {
-            let o_ty = match local.ty.node {
-              ast::TyInfer => None,
-              _ => Some(self.fcx.to_ty(local.ty))
-            };
-            self.assign(local.id, o_ty);
-            debug!("Local variable {} is assigned type {}",
-                   self.fcx.pat_to_str(local.pat),
-                   self.fcx.infcx().ty_to_str(
-                       self.fcx.inh.locals.borrow().get_copy(&local.id)));
-            visit::walk_local(self, local, ());
-
+        let o_ty = match local.ty.node {
+            ast::TyInfer => None,
+            _ => Some(self.fcx.to_ty(local.ty))
+        };
+        self.assign(local.id, o_ty);
+        debug!("Local variable {} is assigned type {}",
+               self.fcx.pat_to_str(local.pat),
+               self.fcx.infcx().ty_to_str(
+                   self.fcx.inh.locals.borrow().get_copy(&local.id)));
+        visit::walk_local(self, local, ());
     }
-        // Add pattern bindings.
+
+    // Add pattern bindings.
     fn visit_pat(&mut self, p: &ast::Pat, _: ()) {
             match p.node {
               ast::PatIdent(_, ref path, _)
@@ -510,6 +510,26 @@ fn check_fn<'a>(ccx: &'a CrateCtxt<'a>,
     fcx
 }
 
+fn check_fields_sized(tcx: &ty::ctxt,
+                      id: ast::NodeId) {
+    let struct_def = tcx.map.expect_struct(id);
+    // FIXME(#13121) allow the last field to be DST
+    for f in struct_def.fields.iter() {
+        let t = ty::node_id_to_type(tcx, f.node.id);
+        if !ty::type_is_sized(tcx, t) {
+            match f.node.kind {
+                ast::NamedField(ident, _) => {
+                    tcx.sess.span_err(f.span, format!("Dynamically sized type in field {}",
+                                                      token::get_ident(ident)));
+                }
+                ast::UnnamedField(_) => {
+                    tcx.sess.span_err(f.span, "Dynamically sized type in field");
+                }
+            }
+        }
+    }
+}
+
 pub fn check_struct(ccx: &CrateCtxt, id: ast::NodeId, span: Span) {
     let tcx = ccx.tcx;
 
@@ -517,7 +537,10 @@ pub fn check_struct(ccx: &CrateCtxt, id: ast::NodeId, span: Span) {
     check_representable(tcx, span, id, "struct");
 
     // Check that the struct is instantiable
-    check_instantiable(tcx, span, id);
+    if check_instantiable(tcx, span, id) {
+        // This might cause stack overflow if id is not instantiable.
+        check_fields_sized(tcx, id);
+    }
 
     if ty::lookup_simd(tcx, local_def(id)) {
         check_simd(tcx, span, id);
@@ -576,7 +599,7 @@ pub fn check_item(ccx: &CrateCtxt, it: &ast::Item) {
         }
 
       }
-      ast::ItemTrait(_, _, ref trait_methods) => {
+      ast::ItemTrait(_, _, _, ref trait_methods) => {
         let trait_def = ty::lookup_trait_def(ccx.tcx, local_def(it.id));
         for trait_method in (*trait_methods).iter() {
             match *trait_method {
@@ -3398,14 +3421,16 @@ pub fn check_representable(tcx: &ty::ctxt,
 /// is representable, but not instantiable.
 pub fn check_instantiable(tcx: &ty::ctxt,
                           sp: Span,
-                          item_id: ast::NodeId) {
+                          item_id: ast::NodeId) -> bool {
     let item_ty = ty::node_id_to_type(tcx, item_id);
     if !ty::is_instantiable(tcx, item_ty) {
         tcx.sess.span_err(sp, format!("this type cannot be instantiated \
                   without an instance of itself; \
                   consider using `Option<{}>`",
                                    ppaux::ty_to_str(tcx, item_ty)));
+        return false
     }
+    true
 }
 
 pub fn check_simd(tcx: &ty::ctxt, sp: Span, id: ast::NodeId) {

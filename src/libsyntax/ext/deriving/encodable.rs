@@ -82,6 +82,7 @@ would yield functions like:
 ```
 */
 
+use ast;
 use ast::{MetaItem, Item, Expr, ExprRet, MutMutable, LitNil};
 use codemap::Span;
 use ext::base::ExtCtxt;
@@ -103,10 +104,10 @@ pub fn expand_deriving_encodable(cx: &mut ExtCtxt,
         additional_bounds: Vec::new(),
         generics: LifetimeBounds {
             lifetimes: Vec::new(),
-            bounds: vec!(("__S", vec!(Path::new_(
+            bounds: vec!(("__S", ast::StaticSize, vec!(Path::new_(
                             vec!("serialize", "Encoder"), None,
                             vec!(~Literal(Path::new_local("__E"))), true))),
-                         ("__E", vec!()))
+                         ("__E", ast::StaticSize, vec!()))
         },
         methods: vec!(
             MethodDef {

@@ -261,7 +261,7 @@ impl<'a> RustdocVisitor<'a> {
                 };
                 om.statics.push(s);
             },
-            ast::ItemTrait(ref gen, ref tr, ref met) => {
+            ast::ItemTrait(ref gen, _, ref tr, ref met) => {
                 let t = Trait {
                     name: item.ident,
                     methods: met.iter().map(|x| (*x).clone()).collect(),

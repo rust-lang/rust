@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,23 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Tests that the borrow checker checks all components of a path when moving
-// out.
+// Test that bounds are sized-compatible.
 
-#![no_std]
-
-#[lang="sized"]
-pub trait Sized {}
-
-struct S {
-  x : ~int
+trait T {}
+fn f<type Y: T>() {
+//~^ERROR incompatible bounds on type parameter Y, bound T does not allow unsized type
 }
 
-fn f<T>(_: T) {}
-
-fn main() {
-  let a : S = S { x : ~1 };
-  let pb = &a;
-  let S { x: ax } = a;  //~ ERROR cannot move out
-  f(pb);
+pub fn main() {
 }

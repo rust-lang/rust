@@ -169,6 +169,7 @@ pub static tag_lang_items_item_node_id: uint = 0x4b;
 
 pub static tag_item_unnamed_field: uint = 0x4c;
 pub static tag_items_data_item_visibility: uint = 0x4e;
+pub static tag_items_data_item_sized: uint = 0x4f;
 
 pub static tag_item_method_tps: uint = 0x51;
 pub static tag_item_method_fty: uint = 0x52;

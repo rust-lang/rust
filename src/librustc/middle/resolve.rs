@@ -1336,7 +1336,7 @@ impl<'a> Resolver<'a> {
 
             ItemImpl(_, Some(_), _, _) => parent,
 
-            ItemTrait(_, _, ref methods) => {
+            ItemTrait(_, _, _, ref methods) => {
                 let (name_bindings, new_parent) =
                     self.add_child(ident, parent, ForbidDuplicateTypes, sp);
 
@@ -3627,7 +3627,7 @@ impl<'a> Resolver<'a> {
                                             methods.as_slice());
             }
 
-            ItemTrait(ref generics, ref traits, ref methods) => {
+            ItemTrait(ref generics, _, ref traits, ref methods) => {
                 // Create a new rib for the self type.
                 let self_type_rib = @Rib::new(NormalRibKind);
                 self.type_ribs.borrow_mut().push(self_type_rib);
@@ -3834,9 +3834,8 @@ impl<'a> Resolver<'a> {
                 }
                 Some(declaration) => {
                     for argument in declaration.inputs.iter() {
-                        let binding_mode = ArgumentIrrefutableMode;
                         this.resolve_pattern(argument.pat,
-                                             binding_mode,
+                                             ArgumentIrrefutableMode,
                                              None);
 
                         this.resolve_type(argument.ty);
