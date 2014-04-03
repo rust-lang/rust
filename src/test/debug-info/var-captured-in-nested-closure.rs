@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-win32: FIXME #10474
 // ignore-android: FIXME(#10381)
 
 // compile-flags:-g
