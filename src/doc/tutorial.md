@@ -1774,8 +1774,8 @@ pervasively in Rust code.
 
 Owned closures, written `proc`,
 hold on to things that can safely be sent between
-processes. They copy the values they close over, much like managed
-closures, but they also own them: that is, no other code can access
+processes. They copy the values they close over,
+but they also own them: that is, no other code can access
 them. Owned closures are used in concurrent code, particularly
 for spawning [tasks][tasks].
 
@@ -2087,7 +2087,7 @@ and may not be overridden:
 
 * `Send` - Sendable types.
 Types are sendable
-unless they contain managed closures or references.
+unless they contain references.
 
 * `Share` - Types that are *threadsafe*
 These are types that are safe to be used across several threads with access to
