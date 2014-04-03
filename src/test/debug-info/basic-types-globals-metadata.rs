@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-win32: FIXME #13256
 // ignore-android: FIXME(#10381)
 
 // compile-flags:-g
@@ -44,7 +45,9 @@
 // check:type = f64
 // debugger:continue
 
-#[allow(unused_variable)];
+#![allow(unused_variable)]
+#![allow(dead_code)]
+
 
 static B: bool = false;
 static I: int = -1;
