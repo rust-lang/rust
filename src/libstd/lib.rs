@@ -43,7 +43,7 @@
 //!
 //!     use std::prelude::*;
 
-#![crate_id = "std#0.10-pre"]
+#![crate_id = "std#0.10"]
 #![comment = "The Rust standard library"]
 #![license = "MIT/ASL2"]
 #![crate_type = "rlib"]

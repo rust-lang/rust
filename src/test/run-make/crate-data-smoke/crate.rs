@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[crate_id = "foo#0.10-pre"];
+#[crate_id = "foo#0.10"];
 
 // Querying about the crate metadata should *not* parse the entire crate, it
 // only needs the crate attributes (which are guaranteed to be at the top) be

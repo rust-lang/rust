@@ -53,12 +53,12 @@ To generate .pot and .po files, do something like:
 ~~~~
 po4a --copyright-holder="The Rust Project Developers" \
     --package-name="Rust" \
-    --package-version="0.10-pre" \
+    --package-version="0.10" \
     -M UTF-8 -L UTF-8 \
     src/doc/po4a.conf
 ~~~~
 
-(the version number must be changed if it is not 0.10-pre now.)
+(the version number must be changed if it is not 0.10 now.)
 
 Now you can translate documents with .po files, commonly used with gettext. If
 you are not familiar with gettext-based translation, please read the online
