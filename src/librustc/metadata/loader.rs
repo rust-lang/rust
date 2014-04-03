@@ -45,6 +45,10 @@ pub enum Os {
     OsFreebsd
 }
 
+pub struct ViaHash {
+    path: Path,
+}
+
 pub struct Context<'a> {
     pub sess: &'a Session,
     pub span: Span,
@@ -54,7 +58,8 @@ pub struct Context<'a> {
     pub hash: Option<&'a Svh>,
     pub os: Os,
     pub intr: Rc<IdentInterner>,
-    pub rejected_via_hash: bool,
+    /// Some if rejected
+    pub rejected_via_hash: Option<ViaHash>
 }
 
 pub struct Library {
@@ -67,6 +72,25 @@ pub struct ArchiveMetadata {
     archive: ArchiveRO,
     // See comments in ArchiveMetadata::new for why this is static
     data: &'static [u8],
+}
+
+pub struct CratePaths {
+    pub ident: ~str,
+    pub dylib: Option<Path>,
+    pub rlib: Option<Path>
+}
+
+impl CratePaths {
+    fn describe_paths(&self) -> ~str {
+        match (&self.dylib, &self.rlib) {
+            (&None,    &None)
+                => ~"",
+            (&Some(ref p), &None) | (&None, &Some(ref p))
+                => format!("{}", p.display()),
+            (&Some(ref p1), &Some(ref p2))
+                => format!("{}, {}", p1.display(), p2.display()),
+        }
+    }
 }
 
 // FIXME(#11857) this should be a "real" realpath
@@ -82,26 +106,35 @@ fn realpath(p: &Path) -> Path {
 }
 
 impl<'a> Context<'a> {
-    pub fn load_library_crate(&mut self, root_ident: Option<&str>) -> Library {
+    pub fn load_library_crate(&mut self, root: &Option<CratePaths>) -> Library {
         match self.find_library_crate() {
             Some(t) => t,
             None => {
                 self.sess.abort_if_errors();
-                let message = if self.rejected_via_hash {
+                let message = if self.rejected_via_hash.is_some() {
                     format!("found possibly newer version of crate `{}`",
                             self.ident)
                 } else {
                     format!("can't find crate for `{}`", self.ident)
                 };
-                let message = match root_ident {
-                    None => message,
-                    Some(c) => format!("{} which `{}` depends on", message, c),
+                let message = match root {
+                    &None => message,
+                    &Some(ref r) => format!("{} which `{}` depends on",
+                                            message, r.ident)
                 };
                 self.sess.span_err(self.span, message);
 
-                if self.rejected_via_hash {
+                if self.rejected_via_hash.is_some() {
                     self.sess.span_note(self.span, "perhaps this crate needs \
                                                     to be recompiled?");
+                    self.rejected_via_hash.as_ref().map(
+                        |r| self.sess.note(format!(
+                            "crate `{}` at path: {}",
+                            self.ident, r.path.display())));
+                    root.as_ref().map(
+                        |r| self.sess.note(format!(
+                            "crate `{}` at path(s): {}",
+                            r.ident, r.describe_paths())));
                 }
                 self.sess.abort_if_errors();
                 unreachable!()
@@ -291,7 +324,7 @@ impl<'a> Context<'a> {
             info!("{} reading metadata from: {}", flavor, lib.display());
             let metadata = match get_metadata_section(self.os, &lib) {
                 Ok(blob) => {
-                    if self.crate_matches(blob.as_slice()) {
+                    if self.crate_matches(blob.as_slice(), &lib) {
                         blob
                     } else {
                         info!("metadata mismatch");
@@ -326,7 +359,7 @@ impl<'a> Context<'a> {
         return if error > 0 {None} else {ret}
     }
 
-    fn crate_matches(&mut self, crate_data: &[u8]) -> bool {
+    fn crate_matches(&mut self, crate_data: &[u8], libpath: &Path) -> bool {
         match decoder::maybe_get_crate_id(crate_data) {
             Some(ref id) if self.crate_id.matches(id) => {}
             _ => return false
@@ -338,7 +371,8 @@ impl<'a> Context<'a> {
             None => true,
             Some(myhash) => {
                 if *myhash != hash {
-                    self.rejected_via_hash = true;
+                    self.rejected_via_hash =
+                        Some(ViaHash{ path: libpath.clone(), });
                     false
                 } else {
                     true
