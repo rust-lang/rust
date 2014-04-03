@@ -193,12 +193,12 @@ fn indices_are_correct() {
 
 #[test]
 fn pick_uniplatform() {
-    assert_eq!(Stdcall.for_arch(OsLinux, X86), Some(Stdcall));
-    assert_eq!(Stdcall.for_arch(OsLinux, Arm), None);
-    assert_eq!(System.for_arch(OsLinux, X86), Some(C));
-    assert_eq!(System.for_arch(OsWin32, X86), Some(Stdcall));
-    assert_eq!(System.for_arch(OsWin32, X86_64), Some(C));
-    assert_eq!(System.for_arch(OsWin32, Arm), Some(C));
-    assert_eq!(Stdcall.for_arch(OsWin32, X86), Some(Stdcall));
-    assert_eq!(Stdcall.for_arch(OsWin32, X86_64), Some(Stdcall));
+    assert_eq!(Stdcall.for_target(OsLinux, X86), Some(Stdcall));
+    assert_eq!(Stdcall.for_target(OsLinux, Arm), None);
+    assert_eq!(System.for_target(OsLinux, X86), Some(C));
+    assert_eq!(System.for_target(OsWin32, X86), Some(Stdcall));
+    assert_eq!(System.for_target(OsWin32, X86_64), Some(C));
+    assert_eq!(System.for_target(OsWin32, Arm), Some(C));
+    assert_eq!(Stdcall.for_target(OsWin32, X86), Some(Stdcall));
+    assert_eq!(Stdcall.for_target(OsWin32, X86_64), Some(Stdcall));
 }
