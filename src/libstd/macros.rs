@@ -273,7 +273,8 @@ macro_rules! vec(
         let mut _temp = ::std::vec::Vec::new();
         $(_temp.push($e);)*
         _temp
-    })
+    });
+    ($($e:expr),+,) => (vec!($($e),+))
 )
 
 
