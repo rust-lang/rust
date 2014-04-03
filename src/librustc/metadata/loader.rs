@@ -29,9 +29,10 @@ use std::cast;
 use std::cmp;
 use std::io;
 use std::os::consts::{macos, freebsd, linux, android, win32};
+use std::ptr;
 use std::rc::Rc;
-use std::str;
 use std::slice;
+use std::str;
 
 use collections::{HashMap, HashSet};
 use flate;
@@ -439,8 +440,9 @@ fn get_metadata_section_imp(os: Os, filename: &Path) -> Result<MetadataBlob, ~st
         };
         let si = mk_section_iter(of.llof);
         while llvm::LLVMIsSectionIteratorAtEnd(of.llof, si.llsi) == False {
-            let name_buf = llvm::LLVMGetSectionName(si.llsi);
-            let name = str::raw::from_c_str(name_buf);
+            let mut name_buf = ptr::null();
+            let name_len = llvm::LLVMRustGetSectionName(si.llsi, &mut name_buf);
+            let name = str::raw::from_buf_len(name_buf as *u8, name_len as uint);
             debug!("get_metadata_section: name {}", name);
             if read_meta_section_name(os) == name {
                 let cbuf = llvm::LLVMGetSectionContents(si.llsi);
