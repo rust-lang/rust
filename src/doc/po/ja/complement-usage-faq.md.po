@@ -5,7 +5,7 @@
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: Rust 0.10\n"
+"Project-Id-Version: Rust 0.11-pre\n"
 "POT-Creation-Date: 2014-02-03 08:13+0900\n"
 "PO-Revision-Date: 2014-02-03 08:13+0900\n"
 "Last-Translator: Automatically generated\n"
@@ -27,9 +27,9 @@ msgstr "## 構造体"
 #: src/doc/complement-usage-faq.md:18
 #, fuzzy
 #| msgid ""
-#| "[tarball]: http://static.rust-lang.org/dist/rust-0.7.tar.gz [win-exe]: "
-#| "http://static.rust-lang.org/dist/rust-0.7-install.exe"
+#| "[tarball]: http://static.rust-lang.org/dist/rust-nightly.tar.gz [win-exe]: "
+#| "http://static.rust-lang.org/dist/rust-nightly-install.exe"
 msgid "[1]:http://doc.rust-lang.org/doc/master/rust.html#logging-system"
 msgstr ""
-"[tarball]: http://static.rust-lang.org/dist/rust-0.7.tar.gz\n"
-"[win-exe]: http://static.rust-lang.org/dist/rust-0.7-install.exe"
+"[tarball]: http://static.rust-lang.org/dist/rust-nightly.tar.gz\n"
+"[win-exe]: http://static.rust-lang.org/dist/rust-nightly-install.exe"

@@ -5,7 +5,7 @@
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: Rust 0.10\n"
+"Project-Id-Version: Rust 0.11-pre\n"
 "POT-Creation-Date: 2014-02-03 08:13+0900\n"
 "PO-Revision-Date: 2014-01-13 12:01+0900\n"
 "Last-Translator: Automatically generated\n"
@@ -20,14 +20,14 @@ msgstr ""
 #: src/doc/complement-cheatsheet.md:8
 #, fuzzy
 #| msgid ""
-#| "[tarball]: http://static.rust-lang.org/dist/rust-0.7.tar.gz [win-exe]: "
-#| "http://static.rust-lang.org/dist/rust-0.7-install.exe"
+#| "[tarball]: http://static.rust-lang.org/dist/rust-nightly.tar.gz [win-exe]: "
+#| "http://static.rust-lang.org/dist/rust-nightly-install.exe"
 msgid ""
 "Use [`ToStr`](http://static.rust-lang.org/doc/master/std/to_str/trait.ToStr."
 "html)."
 msgstr ""
-"[tarball]: http://static.rust-lang.org/dist/rust-0.7.tar.gz\n"
-"[win-exe]: http://static.rust-lang.org/dist/rust-0.7-install.exe"
+"[tarball]: http://static.rust-lang.org/dist/rust-nightly.tar.gz\n"
+"[win-exe]: http://static.rust-lang.org/dist/rust-nightly-install.exe"
 
 #. type: Plain text
 #: src/doc/complement-cheatsheet.md:13
@@ -46,15 +46,15 @@ msgstr ""
 #: src/doc/complement-cheatsheet.md:17
 #, fuzzy
 #| msgid ""
-#| "[tarball]: http://static.rust-lang.org/dist/rust-0.7.tar.gz [win-exe]: "
-#| "http://static.rust-lang.org/dist/rust-0.7-install.exe"
+#| "[tarball]: http://static.rust-lang.org/dist/rust-nightly.tar.gz [win-exe]: "
+#| "http://static.rust-lang.org/dist/rust-nightly-install.exe"
 msgid ""
 "Use [`FromStr`](http://static.rust-lang.org/doc/master/std/from_str/trait."
 "FromStr.html), and its helper function, [`from_str`](http://static.rust-lang."
 "org/doc/master/std/from_str/fn.from_str.html)."
 msgstr ""
-"[tarball]: http://static.rust-lang.org/dist/rust-0.7.tar.gz\n"
-"[win-exe]: http://static.rust-lang.org/dist/rust-0.7-install.exe"
+"[tarball]: http://static.rust-lang.org/dist/rust-nightly.tar.gz\n"
+"[win-exe]: http://static.rust-lang.org/dist/rust-nightly-install.exe"
 
 #. type: Plain text
 #: src/doc/complement-cheatsheet.md:22
@@ -73,14 +73,14 @@ msgstr ""
 #: src/doc/complement-cheatsheet.md:26
 #, fuzzy
 #| msgid ""
-#| "[tarball]: http://static.rust-lang.org/dist/rust-0.7.tar.gz [win-exe]: "
-#| "http://static.rust-lang.org/dist/rust-0.7-install.exe"
+#| "[tarball]: http://static.rust-lang.org/dist/rust-nightly.tar.gz [win-exe]: "
+#| "http://static.rust-lang.org/dist/rust-nightly-install.exe"
 msgid ""
 "Use [`ToStrRadix`](http://static.rust-lang.org/doc/master/std/num/trait."
 "ToStrRadix.html)."
 msgstr ""
-"[tarball]: http://static.rust-lang.org/dist/rust-0.7.tar.gz\n"
-"[win-exe]: http://static.rust-lang.org/dist/rust-0.7-install.exe"
+"[tarball]: http://static.rust-lang.org/dist/rust-nightly.tar.gz\n"
+"[win-exe]: http://static.rust-lang.org/dist/rust-nightly-install.exe"
 
 #. type: Plain text
 #: src/doc/complement-cheatsheet.md:29
@@ -108,15 +108,15 @@ msgstr ""
 #: src/doc/complement-cheatsheet.md:37
 #, fuzzy
 #| msgid ""
-#| "[tarball]: http://static.rust-lang.org/dist/rust-0.7.tar.gz [win-exe]: "
-#| "http://static.rust-lang.org/dist/rust-0.7-install.exe"
+#| "[tarball]: http://static.rust-lang.org/dist/rust-nightly.tar.gz [win-exe]: "
+#| "http://static.rust-lang.org/dist/rust-nightly-install.exe"
 msgid ""
 "Use [`FromStrRadix`](http://static.rust-lang.org/doc/master/std/num/trait."
 "FromStrRadix.html), and its helper function, [`from_str_radix`](http://"
 "static.rust-lang.org/doc/master/std/num/fn.from_str_radix.html)."
 msgstr ""
-"[tarball]: http://static.rust-lang.org/dist/rust-0.7.tar.gz\n"
-"[win-exe]: http://static.rust-lang.org/dist/rust-0.7-install.exe"
+"[tarball]: http://static.rust-lang.org/dist/rust-nightly.tar.gz\n"
+"[win-exe]: http://static.rust-lang.org/dist/rust-nightly-install.exe"
 
 #. type: Plain text
 #: src/doc/complement-cheatsheet.md:40
@@ -153,16 +153,16 @@ msgstr "## 演算子"
 #: src/doc/complement-cheatsheet.md:50
 #, fuzzy
 #| msgid ""
-#| "[tarball]: http://static.rust-lang.org/dist/rust-0.7.tar.gz [win-exe]: "
-#| "http://static.rust-lang.org/dist/rust-0.7-install.exe"
+#| "[tarball]: http://static.rust-lang.org/dist/rust-nightly.tar.gz [win-exe]: "
+#| "http://static.rust-lang.org/dist/rust-nightly-install.exe"
 msgid ""
 "Use [`File::open`](http://static.rust-lang.org/doc/master/std/io/fs/struct."
 "File.html#method.open) to create a [`File`](http://static.rust-lang.org/doc/"
 "master/std/io/fs/struct.File.html) struct, which implements the [`Reader`]"
 "(http://static.rust-lang.org/doc/master/std/io/trait.Reader.html) trait."
 msgstr ""
-"[tarball]: http://static.rust-lang.org/dist/rust-0.7.tar.gz\n"
-"[win-exe]: http://static.rust-lang.org/dist/rust-0.7-install.exe"
+"[tarball]: http://static.rust-lang.org/dist/rust-nightly.tar.gz\n"
+"[win-exe]: http://static.rust-lang.org/dist/rust-nightly-install.exe"
 
 #. type: Plain text
 #: src/doc/complement-cheatsheet.md:54
@@ -177,15 +177,15 @@ msgstr ""
 #: src/doc/complement-cheatsheet.md:63
 #, fuzzy
 #| msgid ""
-#| "[tarball]: http://static.rust-lang.org/dist/rust-0.7.tar.gz [win-exe]: "
-#| "http://static.rust-lang.org/dist/rust-0.7-install.exe"
+#| "[tarball]: http://static.rust-lang.org/dist/rust-nightly.tar.gz [win-exe]: "
+#| "http://static.rust-lang.org/dist/rust-nightly-install.exe"
 msgid ""
 "Use the [`lines`](http://static.rust-lang.org/doc/master/std/io/trait.Buffer."
 "html#method.lines) method on a [`BufferedReader`](http://static.rust-lang."
 "org/doc/master/std/io/buffered/struct.BufferedReader.html)."
 msgstr ""
-"[tarball]: http://static.rust-lang.org/dist/rust-0.7.tar.gz\n"
-"[win-exe]: http://static.rust-lang.org/dist/rust-0.7-install.exe"
+"[tarball]: http://static.rust-lang.org/dist/rust-nightly.tar.gz\n"
+"[win-exe]: http://static.rust-lang.org/dist/rust-nightly-install.exe"
 
 #. type: Plain text
 #: src/doc/complement-cheatsheet.md:67
@@ -207,14 +207,14 @@ msgstr "## 他のクレートの利用"
 #: src/doc/complement-cheatsheet.md:81
 #, fuzzy
 #| msgid ""
-#| "[tarball]: http://static.rust-lang.org/dist/rust-0.7.tar.gz [win-exe]: "
-#| "http://static.rust-lang.org/dist/rust-0.7-install.exe"
+#| "[tarball]: http://static.rust-lang.org/dist/rust-nightly.tar.gz [win-exe]: "
+#| "http://static.rust-lang.org/dist/rust-nightly-install.exe"
 msgid ""
 "Use the [`find_str`](http://static.rust-lang.org/doc/master/std/str/trait."
 "StrSlice.html#tymethod.find_str) method."
 msgstr ""
-"[tarball]: http://static.rust-lang.org/dist/rust-0.7.tar.gz\n"
-"[win-exe]: http://static.rust-lang.org/dist/rust-0.7-install.exe"
+"[tarball]: http://static.rust-lang.org/dist/rust-nightly.tar.gz\n"
+"[win-exe]: http://static.rust-lang.org/dist/rust-nightly-install.exe"
 
 #. type: Plain text
 #: src/doc/complement-cheatsheet.md:88 src/doc/guide-container.md:4
@@ -226,34 +226,34 @@ msgstr "## 本書の表記について"
 #: src/doc/complement-cheatsheet.md:92
 #, fuzzy
 #| msgid ""
-#| "[tarball]: http://static.rust-lang.org/dist/rust-0.7.tar.gz [win-exe]: "
-#| "http://static.rust-lang.org/dist/rust-0.7-install.exe"
+#| "[tarball]: http://static.rust-lang.org/dist/rust-nightly.tar.gz [win-exe]: "
+#| "http://static.rust-lang.org/dist/rust-nightly-install.exe"
 msgid ""
 "The [`Container`](http://static.rust-lang.org/doc/master/std/container/trait."
 "Container.html) trait provides the `len` method."
 msgstr ""
-"[tarball]: http://static.rust-lang.org/dist/rust-0.7.tar.gz\n"
-"[win-exe]: http://static.rust-lang.org/dist/rust-0.7-install.exe"
+"[tarball]: http://static.rust-lang.org/dist/rust-nightly.tar.gz\n"
+"[win-exe]: http://static.rust-lang.org/dist/rust-nightly-install.exe"
 
 #. type: Plain text
 #: src/doc/complement-cheatsheet.md:104
 #, fuzzy
 #| msgid ""
-#| "[tarball]: http://static.rust-lang.org/dist/rust-0.7.tar.gz [win-exe]: "
-#| "http://static.rust-lang.org/dist/rust-0.7-install.exe"
+#| "[tarball]: http://static.rust-lang.org/dist/rust-nightly.tar.gz [win-exe]: "
+#| "http://static.rust-lang.org/dist/rust-nightly-install.exe"
 msgid ""
 "Use the [`iter`](http://static.rust-lang.org/doc/master/std/vec/trait."
 "ImmutableVector.html#tymethod.iter) method."
 msgstr ""
-"[tarball]: http://static.rust-lang.org/dist/rust-0.7.tar.gz\n"
-"[win-exe]: http://static.rust-lang.org/dist/rust-0.7-install.exe"
+"[tarball]: http://static.rust-lang.org/dist/rust-nightly.tar.gz\n"
+"[win-exe]: http://static.rust-lang.org/dist/rust-nightly-install.exe"
 
 #. type: Plain text
 #: src/doc/complement-cheatsheet.md:113
 #, fuzzy
 #| msgid ""
-#| "[tarball]: http://static.rust-lang.org/dist/rust-0.7.tar.gz [win-exe]: "
-#| "http://static.rust-lang.org/dist/rust-0.7-install.exe"
+#| "[tarball]: http://static.rust-lang.org/dist/rust-nightly.tar.gz [win-exe]: "
+#| "http://static.rust-lang.org/dist/rust-nightly-install.exe"
 msgid ""
 "(See also [`mut_iter`](http://static.rust-lang.org/doc/master/std/vec/trait."
 "MutableVector.html#tymethod.mut_iter) which yields `&mut int` and "
@@ -261,8 +261,8 @@ msgid ""
 "OwnedVector.html#tymethod.move_iter) which yields `int` while consuming the "
 "`values` vector.)"
 msgstr ""
-"[tarball]: http://static.rust-lang.org/dist/rust-0.7.tar.gz\n"
-"[win-exe]: http://static.rust-lang.org/dist/rust-0.7-install.exe"
+"[tarball]: http://static.rust-lang.org/dist/rust-nightly.tar.gz\n"
+"[win-exe]: http://static.rust-lang.org/dist/rust-nightly-install.exe"
 
 #. type: Plain text
 #: src/doc/complement-cheatsheet.md:115 src/doc/rust.md:3019

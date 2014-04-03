@@ -14,7 +14,7 @@ Simple compression
 
 */
 
-#![crate_id = "flate#0.10"]
+#![crate_id = "flate#0.11-pre"]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![license = "MIT/ASL2"]

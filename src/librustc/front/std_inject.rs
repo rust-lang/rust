@@ -22,7 +22,7 @@ use syntax::parse::token::InternedString;
 use syntax::parse::token;
 use syntax::util::small_vector::SmallVector;
 
-pub static VERSION: &'static str = "0.10";
+pub static VERSION: &'static str = "0.11-pre";
 
 pub fn maybe_inject_crates_ref(sess: &Session, krate: ast::Crate)
                                -> ast::Crate {
