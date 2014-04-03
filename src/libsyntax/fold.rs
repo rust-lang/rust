@@ -448,7 +448,8 @@ pub fn fold_ty_param<T: Folder>(tp: &TyParam, fld: &mut T) -> TyParam {
         ident: tp.ident,
         id: id,
         bounds: tp.bounds.map(|x| fold_ty_param_bound(x, fld)),
-        default: tp.default.map(|x| fld.fold_ty(x))
+        default: tp.default.map(|x| fld.fold_ty(x)),
+        span: tp.span
     }
 }
 

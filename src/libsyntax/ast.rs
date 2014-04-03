@@ -181,7 +181,8 @@ pub struct TyParam {
     pub ident: Ident,
     pub id: NodeId,
     pub bounds: OwnedSlice<TyParamBound>,
-    pub default: Option<P<Ty>>
+    pub default: Option<P<Ty>>,
+    pub span: Span
 }
 
 #[deriving(Clone, Eq, TotalEq, Encodable, Decodable, Hash)]
