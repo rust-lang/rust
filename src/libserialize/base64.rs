@@ -23,11 +23,11 @@ pub enum CharacterSet {
 /// Contains configuration parameters for `to_base64`.
 pub struct Config {
     /// Character set to use
-    char_set: CharacterSet,
+    pub char_set: CharacterSet,
     /// True to pad output with `=` characters
-    pad: bool,
+    pub pad: bool,
     /// `Some(len)` to wrap lines at `len`, `None` to disable line wrapping
-    line_length: Option<uint>
+    pub line_length: Option<uint>
 }
 
 /// Configuration for RFC 4648 standard base64 encoding
