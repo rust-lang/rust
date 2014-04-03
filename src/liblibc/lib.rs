@@ -75,6 +75,8 @@
 #![allow(missing_doc)]
 #![allow(uppercase_variables)]
 
+#![feature(link_args)] // NOTE: remove after stage0
+
 #[cfg(test)] extern crate std;
 #[cfg(test)] extern crate test;
 #[cfg(test)] extern crate native;
@@ -195,6 +197,11 @@ pub use funcs::posix88::unistd::{rmdir, unlink, write};
 #[cfg(not(windows))]
 #[link(name = "c")]
 #[link(name = "m")]
+extern {}
+
+// NOTE: remove this after a stage0 snap
+#[cfg(stage0, windows)]
+#[link_args = "-Wl,--enable-long-section-names"]
 extern {}
 
 /// A wrapper for a nullable pointer. Don't use this except for interacting
