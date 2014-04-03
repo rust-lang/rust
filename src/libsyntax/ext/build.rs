@@ -68,6 +68,7 @@ pub trait AstBuilder {
     fn typaram(&self,
                span: Span,
                id: ast::Ident,
+               sized: ast::Sized,
                bounds: OwnedSlice<ast::TyParamBound>,
                default: Option<P<ast::Ty>>) -> ast::TyParam;
 
@@ -371,11 +372,13 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     fn typaram(&self,
                span: Span,
                id: ast::Ident,
+               sized: ast::Sized,
                bounds: OwnedSlice<ast::TyParamBound>,
                default: Option<P<ast::Ty>>) -> ast::TyParam {
         ast::TyParam {
             ident: id,
             id: ast::DUMMY_NODE_ID,
+            sized: sized,
             bounds: bounds,
             default: default,
             span: span

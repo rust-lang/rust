@@ -347,7 +347,7 @@ impl<'a> Visitor<()> for TermsContext<'a> {
         match item.node {
             ast::ItemEnum(_, ref generics) |
             ast::ItemStruct(_, ref generics) |
-            ast::ItemTrait(ref generics, _, _) => {
+            ast::ItemTrait(ref generics, _, _, _) => {
                 for (i, p) in generics.lifetimes.iter().enumerate() {
                     self.add_inferred(item.id, RegionParam, i, p.id);
                 }

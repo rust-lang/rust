@@ -2591,16 +2591,24 @@ pub fn type_is_machine(ty: t) -> bool {
 #[allow(dead_code)] // leaving in for DST
 pub fn type_is_sized(cx: &ctxt, ty: ty::t) -> bool {
     match get(ty).sty {
-        // FIXME(#6308) add trait, vec, str, etc here.
-        ty_param(p) => {
+        ty_param(tp) => {
+            assert_eq!(tp.def_id.krate, ast::LOCAL_CRATE);
+
             let ty_param_defs = cx.ty_param_defs.borrow();
-            let param_def = ty_param_defs.get(&p.def_id.node);
-            if param_def.bounds.builtin_bounds.contains_elem(BoundSized) {
-                return true;
-            }
-            return false;
+            let param_def = ty_param_defs.get(&tp.def_id.node);
+            param_def.bounds.builtin_bounds.contains_elem(BoundSized)
         },
-        _ => return true,
+        ty_self(def_id) => {
+            let trait_def = lookup_trait_def(cx, def_id);
+            trait_def.bounds.contains_elem(BoundSized)
+        },
+        ty_struct(def_id, ref substs) => {
+            let flds = lookup_struct_fields(cx, def_id);
+            let mut tps = flds.iter().map(|f| lookup_field_type(cx, def_id, f.id, substs));
+            !tps.any(|ty| !type_is_sized(cx, ty))
+        }
+        ty_tup(ref ts) => !ts.iter().any(|t| !type_is_sized(cx, *t)),
+        _ => true
     }
 }
 
@@ -3495,7 +3503,7 @@ pub fn provided_trait_methods(cx: &ctxt, id: ast::DefId) -> Vec<Rc<Method>> {
         match cx.map.find(id.node) {
             Some(ast_map::NodeItem(item)) => {
                 match item.node {
-                    ItemTrait(_, _, ref ms) => {
+                    ItemTrait(_, _, _, ref ms) => {
                         let (_, p) = ast_util::split_trait_methods(ms.as_slice());
                         p.iter().map(|m| method(cx, ast_util::local_def(m.id))).collect()
                     }
