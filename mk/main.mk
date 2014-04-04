@@ -13,8 +13,8 @@
 ######################################################################
 
 # The version number
-CFG_RELEASE_NUM=0.10
-CFG_RELEASE_LABEL=
+CFG_RELEASE_NUM=0.11
+CFG_RELEASE_LABEL=-pre
 
 ifndef CFG_ENABLE_NIGHTLY
 # This is the normal version string
