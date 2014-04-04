@@ -29,6 +29,7 @@ extern crate rand;
 #[cfg(test)] extern crate test;
 #[cfg(test)] #[phase(syntax, link)] extern crate log;
 
+pub use std::vec::Vec;
 pub use bitv::Bitv;
 pub use btree::BTree;
 pub use deque::Deque;
