@@ -610,20 +610,20 @@ and may optionally begin with any number of `attributes` that apply to the conta
 Attributes on the anonymous crate module define important metadata that influences
 the behavior of the compiler.
 
-~~~~
-// Package ID
-#[ crate_id = "projx#2.5" ];
+~~~~ {.rust}
+// Crate ID
+#![crate_id = "projx#2.5"]
 
 // Additional metadata attributes
-#[ desc = "Project X" ];
-#[ license = "BSD" ];
-#[ comment = "This is a comment on Project X." ];
+#![desc = "Project X"]
+#![license = "BSD"]
+#![comment = "This is a comment on Project X."]
 
 // Specify the output type
-#[ crate_type = "lib" ];
+#![crate_type = "lib"]
 
 // Turn on a warning
-#[ warn(non_camel_case_types) ];
+#![warn(non_camel_case_types)]
 ~~~~
 
 A crate that contains a `main` function can be compiled to an executable.
@@ -792,7 +792,7 @@ extern crate std; // equivalent to: extern crate std = "std";
 
 extern crate ruststd = "std"; // linking to 'std' under another name
 
-extern crate foo = "some/where/rust-foo#foo:1.0"; // a full package ID for external tools
+extern crate foo = "some/where/rust-foo#foo:1.0"; // a full crate ID for external tools
 ~~~~
 
 ##### Use declarations
@@ -875,7 +875,7 @@ and `extern crate` declarations.
 An example of what will and will not work for `use` items:
 
 ~~~~
-# #[allow(unused_imports)];
+# #![allow(unused_imports)]
 use foo::native::start;  // good: foo is at the root of the crate
 use foo::baz::foobaz;    // good: foo is at the root of the crate
 
@@ -1505,11 +1505,9 @@ specified name.
 extern { }
 ~~~~
 
-The type of a function
-declared in an extern block
-is `extern "abi" fn(A1, ..., An) -> R`,
-where `A1...An` are the declared types of its arguments
-and `R` is the decalred return type.
+The type of a function declared in an extern block is `extern "abi" fn(A1,
+..., An) -> R`, where `A1...An` are the declared types of its arguments and
+`R` is the declared return type.
 
 ## Visibility and Privacy
 
@@ -1680,77 +1678,139 @@ import public items from their destination, not private items.
 ## Attributes
 
 ~~~~ {.notrust .ebnf .gram}
-attribute : '#' '[' attr_list ']' ;
+attribute : '#' '!' ? '[' attr_list ']' ;
 attr_list : attr [ ',' attr_list ]* ;
 attr : ident [ '=' literal
              | '(' attr_list ')' ] ? ;
 ~~~~
 
 Static entities in Rust -- crates, modules and items -- may have _attributes_
-applied to them. ^[Attributes in Rust are modeled on Attributes in ECMA-335,
-C#]
-An attribute is a general, free-form metadatum that is interpreted according to name, convention, and language and compiler version.
-Attributes may appear as any of
+applied to them. Attributes in Rust are modeled on Attributes in ECMA-335,
+with the syntax coming from ECMA-334 (C#). An attribute is a general,
+free-form metadatum that is interpreted according to name, convention, and
+language and compiler version. Attributes may appear as any of:
 
 * A single identifier, the attribute name
-* An identifier followed by the equals sign '=' and a literal, providing a key/value pair
+* An identifier followed by the equals sign '=' and a literal, providing a
+  key/value pair
 * An identifier followed by a parenthesized list of sub-attribute arguments
 
-Attributes terminated by a semi-colon apply to the entity that the attribute is declared
-within. Attributes that are not terminated by a semi-colon apply to the next entity.
+Attributes with a bang ("!") after the hash ("#") apply to the item that the
+attribute is declared within. Attributes that do not have a bang after the
+hash apply to the item that follows the attribute.
 
 An example of attributes:
 
-~~~~ {.ignore}
+~~~~ {.rust}
 // General metadata applied to the enclosing module or crate.
-#[license = "BSD"];
+#![license = "BSD"]
 
 // A function marked as a unit test
 #[test]
 fn test_foo() {
-  ...
+  /* ... */
 }
 
 // A conditionally-compiled module
 #[cfg(target_os="linux")]
 mod bar {
-  ...
+  /* ... */
 }
 
 // A lint attribute used to suppress a warning/error
 #[allow(non_camel_case_types)]
-pub type int8_t = i8;
+type int8_t = i8;
 ~~~~
 
-> **Note:** In future versions of Rust, user-provided extensions to the compiler
-> will be able to interpret attributes.  When this facility is provided, the
-> compiler will distinguish between language-reserved and user-available
-> attributes.
+> **Note:** At some point in the future, the compiler will distinguish between
+> language-reserved and user-available attributes. Until then, there is
+> effectively no difference between an attribute handled by a loadable syntax
+> extension and the compiler.
 
-At present, only the Rust compiler interprets attributes, so all attribute names
-are effectively reserved. Some significant attributes include:
+### Crate-only attributes
 
-* The `doc` attribute, for documenting code in-place.
-* The `cfg` attribute, for conditional-compilation by build-configuration (see
-  [Conditional compilation](#conditional-compilation)).
-* The `crate_id` attribute, for describing the package ID of a crate.
-* The `lang` attribute, for custom definitions of traits and functions that are
-  known to the Rust compiler (see [Language items](#language-items)).
-* The `link` attribute, for describing linkage metadata for a extern blocks.
-* The `test` attribute, for marking functions as unit tests.
-* The `allow`, `warn`, `forbid`, and `deny` attributes, for
-  controlling lint checks (see [Lint check attributes](#lint-check-attributes)).
-* The `deriving` attribute, for automatically generating implementations of
-  certain traits.
-* The `inline` attribute, for expanding functions at caller location (see
-  [Inline attributes](#inline-attributes)).
-* The `static_assert` attribute, for asserting that a static bool is true at
-  compiletime.
-* The `thread_local` attribute, for defining a `static mut` as a thread-local.
-  Note that this is only a low-level building block, and is not local to a
-  *task*, nor does it provide safety.
+- `crate_id` - specify the this crate's crate ID.
+- `crate_type` - see [linkage](#linkage).
+- `feature` - see [compiler features](#compiler-features).
+- `no_main` - disable emitting the `main` symbol. Useful when some other
+  object being linked to defines `main`.
+- `no_start` - disable linking to the `native` crate, which specifies the
+  "start" language item.
+- `no_std` - disable linking to the `std` crate.
 
-Other attributes may be added or removed during development of the language.
+### Module-only attributes
+
+- `macro_escape` - macros defined in this module will be visible in the
+  module's parent, after this module has been included.
+- `no_implicit_prelude` - disable injecting `use std::prelude::*` in this
+  module.
+- `path` - specifies the file to load the module from. `#[path="foo.rs"] mod
+  bar;` is equivalent to `mod bar { /* contents of foo.rs */ }`. The path is
+  taken relative to the directory that the current module is in.
+
+### Function-only attributes
+
+- `macro_registrar` - when using loadable syntax extensions, mark this
+  function as the registration point for the current crate's syntax
+  extensions.
+- `main` - indicates that this function should be passed to the entry point,
+  rather than the function in the crate root named `main`.
+- `start` - indicates that this function should be used as the entry point,
+  overriding the "start" language item.  See the "start" [language
+  item](#language-items) for more details.
+
+### Static-only attributes
+
+- `address_insignificant` - references to this static may alias with
+  references to other statics, potentially of unrelated type.
+- `thread_local` - on a `static mut`, this signals that the value of this
+  static may change depending on the current thread. The exact consequences of
+  this are implementation-defined.
+
+### FFI attributes
+
+On an `extern` block, the following attributes are interpreted:
+
+- `link_args` - specify arguments to the linker, rather than just the library
+  name and type. This is feature gated and the exact behavior is
+  implementation-defined (due to variety of linker invocation syntax).
+- `link` - indicate that a native library should be linked to for the
+  declarations in this block to be linked correctly. See [external
+  blocks](#external-blocks)
+
+On declarations inside an `extern` block, the following attributes are
+interpreted:
+
+- `link_name` - the name of the symbol that this function or static should be
+  imported as.
+- `linkage` - on a static, this specifies the [linkage
+  type](http://llvm.org/docs/LangRef.html#linkage-types).
+
+### Miscellaneous attributes
+
+- `link_section` - on statics and functions, this specifies the section of the
+  object file that this item's contents will be placed into.
+- `macro_export` - export a macro for cross-crate usage.
+- `no_mangle` - on any item, do not apply the standard name mangling. Set the
+  symbol for this item to its identifier.
+- `packed` - on structs or enums, eliminate any padding that would be used to
+  align fields.
+- `repr` - on C-like enums, this sets the underlying type used for
+  representation. Useful for FFI. Takes one argument, which is the primitive
+  type this enum should be represented for, or `C`, which specifies that it
+  should be the default `enum` size of the C ABI for that platform. Note that
+  enum representation in C is undefined, and this may be incorrect when the C
+  code is compiled with certain flags.
+- `simd` - on certain tuple structs, derive the arithmetic operators, which
+  lower to the target's SIMD instructions, if any.
+- `static_assert` - on statics whose type is `bool`, terminates compilation
+  with an error if it is not initialized to `true`.
+- `unsafe_destructor` - allow implementations of the "drop" language item
+  where the type it is implemented for does not implement the "send" language
+  item.
+- `unsafe_no_drop_flag` - on structs, remove the flag that prevents
+  destructors from being run twice. Destructors might be run multiple times on
+  the same object with this attribute.
 
 ### Conditional compilation
 
@@ -1792,9 +1852,7 @@ one of `foo` and `bar` to be defined (this resembles in the disjunctive normal
 form). Additionally, one can reverse a condition by enclosing it in a
 `not(...)`, like e. g. `#[cfg(not(target_os = "win32"))]`.
 
-To pass a configuration option which triggers a `#[cfg(identifier)]` one can use
-`rustc --cfg identifier`. In addition to that, the following configurations are
-pre-defined by the compiler:
+The following configurations must be defined by the implementation:
 
  * `target_arch = "..."`. Target CPU architecture, such as `"x86"`, `"x86_64"`
    `"mips"`, or `"arm"`.
@@ -1806,8 +1864,8 @@ pre-defined by the compiler:
  * `target_os = "..."`. Operating system of the target, examples include
    `"win32"`, `"macos"`, `"linux"`, `"android"` or `"freebsd"`.
  * `target_word_size = "..."`. Target word size in bits. This is set to `"32"`
-   for 32-bit CPU targets, and likewise set to `"64"` for 64-bit CPU targets.
- * `test`. Only set in test builds (`rustc --test`).
+   for targets with 32-bit pointers, and likewise set to `"64"` for 64-bit
+   pointers.
  * `unix`. See `target_family`.
  * `windows`. See `target_family`.
 
@@ -1823,8 +1881,8 @@ For any lint check `C`:
  * `deny(C)` signals an error after encountering a violation of `C`,
  * `allow(C)` overrides the check for `C` so that violations will go
     unreported,
- * `forbid(C)` is the same as `deny(C)`, but also forbids uses of
-   `allow(C)` within the entity.
+ * `forbid(C)` is the same as `deny(C)`, but also forbids changing the lint
+    level afterwards.
 
 The lint checks supported by the compiler can be found via `rustc -W help`,
 along with their default settings.
@@ -1882,11 +1940,11 @@ mod m3 {
 
 ### Language items
 
-Some primitive Rust operations are defined in Rust code,
-rather than being implemented directly in C or assembly language.
-The definitions of these operations have to be easy for the compiler to find.
-The `lang` attribute makes it possible to declare these operations.
-For example, the `str` module in the Rust standard library defines the string equality function:
+Some primitive Rust operations are defined in Rust code, rather than being
+implemented directly in C or assembly language.  The definitions of these
+operations have to be easy for the compiler to find.  The `lang` attribute
+makes it possible to declare these operations.  For example, the `str` module
+in the Rust standard library defines the string equality function:
 
 ~~~~ {.ignore}
 #[lang="str_eq"]
@@ -1901,16 +1959,23 @@ when generating calls to the string equality function.
 
 A complete list of the built-in language items follows:
 
-#### Traits
+#### Built-in Traits
 
-`const`
-  : Cannot be mutated.
-`owned`
-  : Are uniquely owned.
-`durable`
-  : Contain references.
+`send`
+  : Able to be sent across task boundaries.
+`sized`
+  : Has a size known at compile time.
+`copy`
+  : Types that do not move ownership when used by-value.
+`share`
+  : Able to be safely shared between tasks when aliased.
 `drop`
-  : Have finalizers.
+  : Have destructors.
+
+#### Operators
+
+These language items are traits:
+
 `add`
   : Elements can be added (for example, integers and floats).
 `sub`
@@ -1941,17 +2006,54 @@ A complete list of the built-in language items follows:
   : Elements can be compared for equality.
 `ord`
   : Elements have a partial ordering.
+`deref`
+  : `*` can be applied, yielding a reference to another type
+`deref_mut`
+  : `*` can be applied, yielding a mutable reference to another type
 
-#### Operations
+
+These are functions:
 
 `str_eq`
-  : Compare two strings for equality.
+  : Compare two strings (`&str`) for equality.
 `uniq_str_eq`
-  : Compare two owned strings for equality.
-`annihilate`
-  : Destroy a box before freeing it.
-`log_type`
-  : Generically print a string representation of any type.
+  : Compare two owned strings (`~str`) for equality.
+`strdup_uniq`
+  : Return a new unique string
+    containing a copy of the contents of a unique string.
+
+#### Types
+
+`unsafe`
+  : A type whose contents can be mutated through an immutable reference
+`type_id`
+  : The type returned by the `type_id` intrinsic.
+
+#### Marker types
+
+These types help drive the compiler's analysis
+
+`covariant_type`
+  : The type parameter should be considered covariant
+`contravariant_type`
+  : The type parameter should be considered contravariant
+`invariant_type`
+  : The type parameter should be considered invariant
+`covariant_lifetime`
+  : The lifetime parameter should be considered covariant
+`contravariant_lifetime`
+  : The lifetime parameter should be considered contravariant
+`invariant_lifetime`
+  : The lifetime parameter should be considered invariant
+`no_send_bound`
+  : This type does not implement "send", even if eligible
+`no_copy_bound`
+  : This type does not implement "copy", even if eligible
+`no_share_bound`
+  : This type does not implement "share", even if eligible
+`managed_bound`
+  : This type implements "managed"
+
 `fail_`
   : Abort the program with an error.
 `fail_bounds_check`
@@ -1964,15 +2066,6 @@ A complete list of the built-in language items follows:
   : Allocate memory on the managed heap.
 `free`
   : Free memory that was allocated on the managed heap.
-`borrow_as_imm`
-  : Create an immutable reference to a mutable value.
-`return_to_mut`
-  : Release a reference created with `return_to_mut`
-`check_not_borrowed`
-  : Fail if a value has existing references to it.
-`strdup_uniq`
-  : Return a new unique string
-    containing a copy of the contents of a unique string.
 
 > **Note:** This list is likely to become out of date. We should auto-generate it
 > from `librustc/middle/lang_items.rs`.
@@ -2040,6 +2133,7 @@ Supported traits for `deriving` are:
 * `Show`, to format a value using the `{}` formatter.
 
 ### Stability
+
 One can indicate the stability of an API using the following attributes:
 
 * `deprecated`: This item should no longer be used, e.g. it has been
@@ -2066,7 +2160,7 @@ be unstable for the purposes of the lint. One can give an optional
 string that will be displayed when the lint flags the use of an item.
 
 ~~~~ {.ignore}
-#[warn(unstable)];
+#![warn(unstable)]
 
 #[deprecated="replaced by `best`"]
 fn bad() {
@@ -2102,10 +2196,10 @@ necessarily ready for every-day use. These features are often of "prototype
 quality" or "almost production ready", but may not be stable enough to be
 considered a full-fleged language feature.
 
-For this reason, rust recognizes a special crate-level attribute of the form:
+For this reason, Rust recognizes a special crate-level attribute of the form:
 
 ~~~~ {.ignore}
-#[feature(feature1, feature2, feature3)]
+#![feature(feature1, feature2, feature3)]
 ~~~~
 
 This directive informs the compiler that the feature list: `feature1`,
@@ -2113,7 +2207,7 @@ This directive informs the compiler that the feature list: `feature1`,
 crate-level, not at a module-level. Without this directive, all features are
 considered off, and using the features will result in a compiler error.
 
-The currently implemented features of the compiler are:
+The currently implemented features of the reference compiler are:
 
 * `macro_rules` - The definition of new macros. This does not encompass
                   macro-invocation, that is always enabled by default, this only
@@ -3884,7 +3978,7 @@ Rust provides several macros to log information. Here's a simple Rust program
 that demonstrates all four of them:
 
 ~~~~
-#[feature(phase)];
+#![feature(phase)]
 #[phase(syntax, link)] extern crate log;
 
 fn main() {

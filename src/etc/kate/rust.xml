@@ -202,6 +202,7 @@
 			<RegExpr String="[0-9][0-9_]*\.[0-9_]*([eE][+-]?[0-9_]+)?(f32|f64|f)?" attribute="Number" context="#stay"/>
 			<RegExpr String="[0-9][0-9_]*&rustIntSuf;" attribute="Number" context="#stay"/>
 			<Detect2Chars char="#" char1="[" attribute="Attribute" context="Attribute" beginRegion="Attribute"/>
+			<Detect2Chars char="#" char1="!" char2="[" attribute="Attribute" context="Attribute" beginRegion="Attribute"/>
 			<RegExpr String="&rustIdent;::" attribute="Scope"/>
 			<RegExpr String="&rustIdent;!" attribute="Macro"/>
 			<RegExpr String="&apos;&rustIdent;(?!&apos;)" attribute="Lifetime"/>
