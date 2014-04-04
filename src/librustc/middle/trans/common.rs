@@ -565,7 +565,7 @@ pub fn C_u8(ccx: &CrateContext, i: uint) -> ValueRef {
 
 // This is a 'c-like' raw string, which differs from
 // our boxed-and-length-annotated strings.
-pub fn C_cstr(cx: &CrateContext, s: InternedString) -> ValueRef {
+pub fn C_cstr(cx: &CrateContext, s: InternedString, null_terminated: bool) -> ValueRef {
     unsafe {
         match cx.const_cstr_cache.borrow().find(&s) {
             Some(&llval) => return llval,
@@ -575,7 +575,7 @@ pub fn C_cstr(cx: &CrateContext, s: InternedString) -> ValueRef {
         let sc = llvm::LLVMConstStringInContext(cx.llcx,
                                                 s.get().as_ptr() as *c_char,
                                                 s.get().len() as c_uint,
-                                                False);
+                                                !null_terminated as Bool);
 
         let gsym = token::gensym("str");
         let g = format!("str{}", gsym).with_c_str(|buf| {
@@ -595,7 +595,7 @@ pub fn C_cstr(cx: &CrateContext, s: InternedString) -> ValueRef {
 pub fn C_str_slice(cx: &CrateContext, s: InternedString) -> ValueRef {
     unsafe {
         let len = s.get().len();
-        let cs = llvm::LLVMConstPointerCast(C_cstr(cx, s), Type::i8p(cx).to_ref());
+        let cs = llvm::LLVMConstPointerCast(C_cstr(cx, s, false), Type::i8p(cx).to_ref());
         C_struct(cx, [cs, C_uint(cx, len)], false)
     }
 }
@@ -900,7 +900,7 @@ pub fn filename_and_line_num_from_span(bcx: &Block, span: Span)
                                        -> (ValueRef, ValueRef) {
     let loc = bcx.sess().codemap().lookup_char_pos(span.lo);
     let filename_cstr = C_cstr(bcx.ccx(),
-                               token::intern_and_get_ident(loc.file.name));
+                               token::intern_and_get_ident(loc.file.name), true);
     let filename = build::PointerCast(bcx, filename_cstr, Type::i8p(bcx.ccx()));
     let line = C_int(bcx.ccx(), loc.line as int);
     (filename, line)

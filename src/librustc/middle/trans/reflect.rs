@@ -58,7 +58,7 @@ impl<'a> Reflector<'a> {
         let str_ty = ty::mk_str(bcx.tcx(), str_vstore);
         let scratch = rvalue_scratch_datum(bcx, str_ty, "");
         let len = C_uint(bcx.ccx(), s.get().len());
-        let c_str = PointerCast(bcx, C_cstr(bcx.ccx(), s), Type::i8p(bcx.ccx()));
+        let c_str = PointerCast(bcx, C_cstr(bcx.ccx(), s, false), Type::i8p(bcx.ccx()));
         Store(bcx, c_str, GEPi(bcx, scratch.val, [ 0, 0 ]));
         Store(bcx, len, GEPi(bcx, scratch.val, [ 0, 1 ]));
         scratch.val

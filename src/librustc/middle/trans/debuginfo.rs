@@ -2129,7 +2129,7 @@ fn type_metadata(cx: &CrateContext,
             let i8_t = ty::mk_i8();
             match *vstore {
                 ty::vstore_fixed(len) => {
-                    fixed_vec_metadata(cx, i8_t, len + 1, usage_site_span)
+                    fixed_vec_metadata(cx, i8_t, len, usage_site_span)
                 },
                 ty::vstore_uniq  => {
                     let vec_metadata = vec_metadata(cx, i8_t, usage_site_span);
