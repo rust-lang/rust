@@ -14,6 +14,10 @@
 //! once, once the arena itself is destroyed. They do not support deallocation
 //! of individual objects while the arena itself is still alive. The benefit
 //! of an arena is very fast allocation; just a pointer bump.
+//!
+//! This crate has two arenas implemented: TypedArena, which is a simpler
+//! arena but can only hold objects of a single type, and Arena, which is a
+//! more complex, slower Arena which can hold objects of any type.
 
 #![crate_id = "arena#0.11.0-pre"]
 #![crate_type = "rlib"]
@@ -56,41 +60,42 @@ impl Chunk {
     }
 }
 
-// Arenas are used to quickly allocate objects that share a
-// lifetime. The arena uses ~[u8] vectors as a backing store to
-// allocate objects from. For each allocated object, the arena stores
-// a pointer to the type descriptor followed by the
-// object. (Potentially with alignment padding after each of them.)
-// When the arena is destroyed, it iterates through all of its chunks,
-// and uses the tydesc information to trace through the objects,
-// calling the destructors on them.
-// One subtle point that needs to be addressed is how to handle
-// failures while running the user provided initializer function. It
-// is important to not run the destructor on uninitialized objects, but
-// how to detect them is somewhat subtle. Since alloc() can be invoked
-// recursively, it is not sufficient to simply exclude the most recent
-// object. To solve this without requiring extra space, we use the low
-// order bit of the tydesc pointer to encode whether the object it
-// describes has been fully initialized.
-
-// As an optimization, objects with destructors are stored in
-// different chunks than objects without destructors. This reduces
-// overhead when initializing plain-old-data and means we don't need
-// to waste time running the destructors of POD.
+/// A slower reflection-based arena that can allocate objects of any type.
+///
+/// This arena uses Vec<u8> as a backing store to allocate objects from.  For
+/// each allocated object, the arena stores a pointer to the type descriptor
+/// followed by the object. (Potentially with alignment padding after each
+/// element.) When the arena is destroyed, it iterates through all of its
+/// chunks, and uses the tydesc information to trace through the objects,
+/// calling the destructors on them.  One subtle point that needs to be
+/// addressed is how to handle failures while running the user provided
+/// initializer function. It is important to not run the destructor on
+/// uninitialized objects, but how to detect them is somewhat subtle. Since
+/// alloc() can be invoked recursively, it is not sufficient to simply exclude
+/// the most recent object. To solve this without requiring extra space, we
+/// use the low order bit of the tydesc pointer to encode whether the object
+/// it describes has been fully initialized.
+///
+/// As an optimization, objects with destructors are stored in
+/// different chunks than objects without destructors. This reduces
+/// overhead when initializing plain-old-data and means we don't need
+/// to waste time running the destructors of POD.
 pub struct Arena {
     // The head is separated out from the list as a unbenchmarked
-    // microoptimization, to avoid needing to case on the list to
-    // access the head.
+    // microoptimization, to avoid needing to case on the list to access the
+    // head.
     head: Chunk,
     copy_head: Chunk,
     chunks: RefCell<Vec<Chunk>>,
 }
 
 impl Arena {
+    /// Allocate a new Arena with 32 bytes preallocated.
     pub fn new() -> Arena {
         Arena::new_with_size(32u)
     }
 
+    /// Allocate a new Arena with `initial_size` bytes preallocated.
     pub fn new_with_size(initial_size: uint) -> Arena {
         Arena {
             head: chunk(initial_size, false),
@@ -265,7 +270,8 @@ impl Arena {
         }
     }
 
-    // The external interface
+    /// Allocate a new item in the arena, using `op` to initialize the value
+    /// and returning a reference to it.
     #[inline]
     pub fn alloc<'a, T>(&'a self, op: || -> T) -> &'a T {
         unsafe {
@@ -313,7 +319,7 @@ fn test_arena_destructors_fail() {
     });
 }
 
-/// An arena that can hold objects of only one type.
+/// A faster arena that can hold objects of only one type.
 ///
 /// Safety note: Modifying objects in the arena that have already had their
 /// `drop` destructors run can cause leaks, because the destructor will not
@@ -405,13 +411,13 @@ impl<T> TypedArenaChunk<T> {
 }
 
 impl<T> TypedArena<T> {
-    /// Creates a new arena with preallocated space for 8 objects.
+    /// Creates a new TypedArena with preallocated space for 8 objects.
     #[inline]
     pub fn new() -> TypedArena<T> {
         TypedArena::with_capacity(8)
     }
 
-    /// Creates a new arena with preallocated space for the given number of
+    /// Creates a new TypedArena with preallocated space for the given number of
     /// objects.
     #[inline]
     pub fn with_capacity(capacity: uint) -> TypedArena<T> {
@@ -423,7 +429,7 @@ impl<T> TypedArena<T> {
         }
     }
 
-    /// Allocates an object into this arena.
+    /// Allocates an object in the TypedArena, returning a reference to it.
     #[inline]
     pub fn alloc<'a>(&'a self, object: T) -> &'a T {
         unsafe {
