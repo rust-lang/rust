@@ -272,7 +272,7 @@ pub fn trans_lit_str<'a>(
             unsafe {
                 let bytes = str_lit.get().len();
                 let llbytes = C_uint(bcx.ccx(), bytes);
-                let llcstr = C_cstr(bcx.ccx(), str_lit);
+                let llcstr = C_cstr(bcx.ccx(), str_lit, false);
                 let llcstr = llvm::LLVMConstPointerCast(llcstr, Type::i8p(bcx.ccx()).to_ref());
                 Store(bcx, llcstr,
                       GEPi(bcx, lldest, [0u, abi::slice_elt_base]));
@@ -302,7 +302,7 @@ pub fn trans_uniq_vstore<'a>(bcx: &'a Block<'a>,
         ast::ExprLit(lit) => {
             match lit.node {
                 ast::LitStr(ref s, _) => {
-                    let llptrval = C_cstr(bcx.ccx(), (*s).clone());
+                    let llptrval = C_cstr(bcx.ccx(), (*s).clone(), false);
                     let llptrval = PointerCast(bcx,
                                                llptrval,
                                                Type::i8p(bcx.ccx()));
@@ -376,7 +376,7 @@ pub fn write_content<'a>(
                         SaveIn(lldest) => {
                             let bytes = s.get().len();
                             let llbytes = C_uint(bcx.ccx(), bytes);
-                            let llcstr = C_cstr(bcx.ccx(), (*s).clone());
+                            let llcstr = C_cstr(bcx.ccx(), (*s).clone(), false);
                             base::call_memcpy(bcx,
                                               lldest,
                                               llcstr,
