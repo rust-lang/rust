@@ -123,13 +123,13 @@ fn find_item(item: &Item, ctxt: &mut EntryContext) {
 
 fn configure_main(this: &mut EntryContext) {
     if this.start_fn.is_some() {
-        this.session.entry_fn.set(this.start_fn);
+        *this.session.entry_fn.borrow_mut() = this.start_fn;
         this.session.entry_type.set(Some(session::EntryStart));
     } else if this.attr_main_fn.is_some() {
-        this.session.entry_fn.set(this.attr_main_fn);
+        *this.session.entry_fn.borrow_mut() = this.attr_main_fn;
         this.session.entry_type.set(Some(session::EntryMain));
     } else if this.main_fn.is_some() {
-        this.session.entry_fn.set(this.main_fn);
+        *this.session.entry_fn.borrow_mut() = this.main_fn;
         this.session.entry_type.set(Some(session::EntryMain));
     } else {
         if !this.session.building_library.get() {

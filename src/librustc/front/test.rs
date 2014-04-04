@@ -90,7 +90,7 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
     fn fold_item(&mut self, i: @ast::Item) -> SmallVector<@ast::Item> {
         self.cx.path.borrow_mut().push(i.ident);
         debug!("current path: {}",
-               ast_util::path_name_i(self.cx.path.get().as_slice()));
+               ast_util::path_name_i(self.cx.path.borrow().as_slice()));
 
         if is_test_fn(&self.cx, i) || is_bench_fn(&self.cx, i) {
             match i.node {
@@ -104,7 +104,7 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
                     debug!("this is a test function");
                     let test = Test {
                         span: i.span,
-                        path: self.cx.path.get(),
+                        path: self.cx.path.borrow().clone(),
                         bench: is_bench_fn(&self.cx, i),
                         ignore: is_ignored(&self.cx, i),
                         should_fail: should_fail(i)

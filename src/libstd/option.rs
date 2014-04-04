@@ -651,7 +651,8 @@ mod tests {
         impl ::ops::Drop for R {
            fn drop(&mut self) {
                 let ii = &*self.i;
-                ii.set(ii.get() + 1);
+                let i = ii.borrow().clone();
+                *ii.borrow_mut() = i + 1;
             }
         }
 
@@ -667,7 +668,7 @@ mod tests {
             let opt = Some(x);
             let _y = opt.unwrap();
         }
-        assert_eq!(i.get(), 1);
+        assert_eq!(*i.borrow(), 1);
     }
 
     #[test]

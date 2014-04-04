@@ -385,6 +385,10 @@ struct ImportResolution {
     type_id: Cell<NodeId>,
 }
 
+fn get<T: Clone>(cell: &RefCell<T>) -> T {
+    cell.borrow().clone()
+}
+
 impl ImportResolution {
     fn new(id: NodeId, is_public: bool) -> ImportResolution {
         ImportResolution {
@@ -400,8 +404,8 @@ impl ImportResolution {
     fn target_for_namespace(&self, namespace: Namespace)
                                 -> Option<Target> {
         match namespace {
-            TypeNS      => return self.type_target.get(),
-            ValueNS     => return self.value_target.get(),
+            TypeNS      => return self.type_target.borrow().clone(),
+            ValueNS     => return self.value_target.borrow().clone(),
         }
     }
 
@@ -546,22 +550,23 @@ impl NameBindings {
         // Merges the module with the existing type def or creates a new one.
         let module_ = @Module::new(parent_link, def_id, kind, external,
                                        is_public);
-        match self.type_def.get() {
+        let type_def = self.type_def.borrow().clone();
+        match type_def {
             None => {
-                self.type_def.set(Some(TypeNsDef {
+                *self.type_def.borrow_mut() = Some(TypeNsDef {
                     is_public: is_public,
                     module_def: Some(module_),
                     type_def: None,
                     type_span: Some(sp)
-                }));
+                });
             }
             Some(type_def) => {
-                self.type_def.set(Some(TypeNsDef {
+                *self.type_def.borrow_mut() = Some(TypeNsDef {
                     is_public: is_public,
                     module_def: Some(module_),
                     type_span: Some(sp),
                     type_def: type_def.type_def
-                }));
+                });
             }
         }
     }
@@ -574,16 +579,17 @@ impl NameBindings {
                        external: bool,
                        is_public: bool,
                        _sp: Span) {
-        match self.type_def.get() {
+        let type_def = self.type_def.borrow().clone();
+        match type_def {
             None => {
                 let module = @Module::new(parent_link, def_id, kind,
                                               external, is_public);
-                self.type_def.set(Some(TypeNsDef {
+                *self.type_def.borrow_mut() = Some(TypeNsDef {
                     is_public: is_public,
                     module_def: Some(module),
                     type_def: None,
                     type_span: None,
-                }))
+                });
             }
             Some(type_def) => {
                 match type_def.module_def {
@@ -593,12 +599,12 @@ impl NameBindings {
                                                       kind,
                                                       external,
                                                       is_public);
-                        self.type_def.set(Some(TypeNsDef {
+                        *self.type_def.borrow_mut() = Some(TypeNsDef {
                             is_public: is_public,
                             module_def: Some(module),
                             type_def: type_def.type_def,
                             type_span: None,
-                        }))
+                        });
                     }
                     Some(module_def) => module_def.kind.set(kind),
                 }
@@ -609,33 +615,34 @@ impl NameBindings {
     /// Records a type definition.
     fn define_type(&self, def: Def, sp: Span, is_public: bool) {
         // Merges the type with the existing type def or creates a new one.
-        match self.type_def.get() {
+        let type_def = self.type_def.borrow().clone();
+        match type_def {
             None => {
-                self.type_def.set(Some(TypeNsDef {
+                *self.type_def.borrow_mut() = Some(TypeNsDef {
                     module_def: None,
                     type_def: Some(def),
                     type_span: Some(sp),
                     is_public: is_public,
-                }));
+                });
             }
             Some(type_def) => {
-                self.type_def.set(Some(TypeNsDef {
+                *self.type_def.borrow_mut() = Some(TypeNsDef {
                     type_def: Some(def),
                     type_span: Some(sp),
                     module_def: type_def.module_def,
                     is_public: is_public,
-                }));
+                });
             }
         }
     }
 
     /// Records a value definition.
     fn define_value(&self, def: Def, sp: Span, is_public: bool) {
-        self.value_def.set(Some(ValueNsDef {
+        *self.value_def.borrow_mut() = Some(ValueNsDef {
             def: def,
             value_span: Some(sp),
             is_public: is_public,
-        }));
+        });
     }
 
     /// Returns the module node if applicable.
@@ -662,17 +669,17 @@ impl NameBindings {
 
     fn defined_in_namespace(&self, namespace: Namespace) -> bool {
         match namespace {
-            TypeNS   => return self.type_def.get().is_some(),
-            ValueNS  => return self.value_def.get().is_some()
+            TypeNS   => return self.type_def.borrow().is_some(),
+            ValueNS  => return self.value_def.borrow().is_some()
         }
     }
 
     fn defined_in_public_namespace(&self, namespace: Namespace) -> bool {
         match namespace {
-            TypeNS => match self.type_def.get() {
+            TypeNS => match *self.type_def.borrow() {
                 Some(def) => def.is_public, None => false
             },
-            ValueNS => match self.value_def.get() {
+            ValueNS => match *self.value_def.borrow() {
                 Some(def) => def.is_public, None => false
             }
         }
@@ -681,7 +688,7 @@ impl NameBindings {
     fn def_for_namespace(&self, namespace: Namespace) -> Option<Def> {
         match namespace {
             TypeNS => {
-                match self.type_def.get() {
+                match *self.type_def.borrow() {
                     None => None,
                     Some(type_def) => {
                         match type_def.type_def {
@@ -702,7 +709,7 @@ impl NameBindings {
                 }
             }
             ValueNS => {
-                match self.value_def.get() {
+                match *self.value_def.borrow() {
                     None => None,
                     Some(value_def) => Some(value_def.def)
                 }
@@ -714,13 +721,13 @@ impl NameBindings {
         if self.defined_in_namespace(namespace) {
             match namespace {
                 TypeNS  => {
-                    match self.type_def.get() {
+                    match *self.type_def.borrow() {
                         None => None,
                         Some(type_def) => type_def.type_span
                     }
                 }
                 ValueNS => {
-                    match self.value_def.get() {
+                    match *self.value_def.borrow() {
                         None => None,
                         Some(value_def) => value_def.value_span
                     }
@@ -1620,7 +1627,8 @@ impl<'a> Resolver<'a> {
         match def {
           DefMod(def_id) | DefForeignMod(def_id) | DefStruct(def_id) |
           DefTy(def_id) => {
-            match child_name_bindings.type_def.get() {
+            let type_def = child_name_bindings.type_def.borrow().clone();
+            match type_def {
               Some(TypeNsDef { module_def: Some(module_def), .. }) => {
                 debug!("(building reduced graph for external crate) \
                         already created module");
@@ -1812,7 +1820,8 @@ impl<'a> Resolver<'a> {
                                 // Process the static methods. First,
                                 // create the module.
                                 let type_module;
-                                match child_name_bindings.type_def.get() {
+                                let type_def = child_name_bindings.type_def.borrow().clone();
+                                match type_def {
                                     Some(TypeNsDef {
                                         module_def: Some(module_def),
                                         ..
@@ -2408,8 +2417,8 @@ impl<'a> Resolver<'a> {
         match value_result {
             BoundResult(target_module, name_bindings) => {
                 debug!("(resolving single import) found value target");
-                import_resolution.value_target.set(
-                    Some(Target::new(target_module, name_bindings)));
+                *import_resolution.value_target.borrow_mut() =
+                    Some(Target::new(target_module, name_bindings));
                 import_resolution.value_id.set(directive.id);
                 value_used_public = name_bindings.defined_in_public_namespace(ValueNS);
             }
@@ -2421,9 +2430,9 @@ impl<'a> Resolver<'a> {
         match type_result {
             BoundResult(target_module, name_bindings) => {
                 debug!("(resolving single import) found type target: {:?}",
-                       {name_bindings.type_def.get().unwrap().type_def});
-                import_resolution.type_target.set(
-                    Some(Target::new(target_module, name_bindings)));
+                       { name_bindings.type_def.borrow().clone().unwrap().type_def });
+                *import_resolution.type_target.borrow_mut() =
+                    Some(Target::new(target_module, name_bindings));
                 import_resolution.type_id.set(directive.id);
                 type_used_public = name_bindings.defined_in_public_namespace(TypeNS);
             }
@@ -2433,8 +2442,8 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        if import_resolution.value_target.get().is_none() &&
-           import_resolution.type_target.get().is_none() {
+        if import_resolution.value_target.borrow().is_none() &&
+           import_resolution.type_target.borrow().is_none() {
             let msg = format!("unresolved import: there is no \
                                `{}` in `{}`",
                               token::get_ident(source),
@@ -2452,7 +2461,7 @@ impl<'a> Resolver<'a> {
         // record what this import resolves to for later uses in documentation,
         // this may resolve to either a value or a type, but for documentation
         // purposes it's good enough to just favor one over the other.
-        let value_private = match import_resolution.value_target.get() {
+        let value_private = match *import_resolution.value_target.borrow() {
             Some(target) => {
                 let def = target.bindings.def_for_namespace(ValueNS).unwrap();
                 self.def_map.borrow_mut().insert(directive.id, def);
@@ -2463,7 +2472,7 @@ impl<'a> Resolver<'a> {
             // _exists is false.
             None => None,
         };
-        let type_private = match import_resolution.type_target.get() {
+        let type_private = match *import_resolution.type_target.borrow() {
             Some(target) => {
                 let def = target.bindings.def_for_namespace(TypeNS).unwrap();
                 self.def_map.borrow_mut().insert(directive.id, def);
@@ -2513,7 +2522,7 @@ impl<'a> Resolver<'a> {
         for (ident, target_import_resolution) in import_resolutions.iter() {
             debug!("(resolving glob import) writing module resolution \
                     {:?} into `{}`",
-                   target_import_resolution.type_target.get().is_none(),
+                   target_import_resolution.type_target.borrow().is_none(),
                    self.module_to_str(module_));
 
             if !target_import_resolution.is_public.get() {
@@ -2528,10 +2537,10 @@ impl<'a> Resolver<'a> {
                     // Simple: just copy the old import resolution.
                     let new_import_resolution =
                         @ImportResolution::new(id, is_public);
-                    new_import_resolution.value_target.set(
-                        target_import_resolution.value_target.get());
-                    new_import_resolution.type_target.set(
-                        target_import_resolution.type_target.get());
+                    *new_import_resolution.value_target.borrow_mut() =
+                        get(&target_import_resolution.value_target);
+                    *new_import_resolution.type_target.borrow_mut() =
+                        get(&target_import_resolution.type_target);
 
                     import_resolutions.insert
                         (*ident, new_import_resolution);
@@ -2540,22 +2549,20 @@ impl<'a> Resolver<'a> {
                     // Merge the two import resolutions at a finer-grained
                     // level.
 
-                    match target_import_resolution.value_target.get() {
+                    match *target_import_resolution.value_target.borrow() {
                         None => {
                             // Continue.
                         }
                         Some(value_target) => {
-                            dest_import_resolution.value_target.set(
-                                Some(value_target));
+                            *dest_import_resolution.value_target.borrow_mut() = Some(value_target);
                         }
                     }
-                    match target_import_resolution.type_target.get() {
+                    match *target_import_resolution.type_target.borrow() {
                         None => {
                             // Continue.
                         }
                         Some(type_target) => {
-                            dest_import_resolution.type_target.set(
-                                Some(type_target));
+                            *dest_import_resolution.type_target.borrow_mut() = Some(type_target);
                         }
                     }
                     dest_import_resolution.is_public.set(is_public);
@@ -2627,14 +2634,14 @@ impl<'a> Resolver<'a> {
         // Merge the child item into the import resolution.
         if name_bindings.defined_in_public_namespace(ValueNS) {
             debug!("(resolving glob import) ... for value target");
-            dest_import_resolution.value_target.set(
-                Some(Target::new(containing_module, name_bindings)));
+            *dest_import_resolution.value_target.borrow_mut() =
+                Some(Target::new(containing_module, name_bindings));
             dest_import_resolution.value_id.set(id);
         }
         if name_bindings.defined_in_public_namespace(TypeNS) {
             debug!("(resolving glob import) ... for type target");
-            dest_import_resolution.type_target.set(
-                Some(Target::new(containing_module, name_bindings)));
+            *dest_import_resolution.type_target.borrow_mut() =
+                Some(Target::new(containing_module, name_bindings));
             dest_import_resolution.type_id.set(id);
         }
         dest_import_resolution.is_public.set(is_public);
@@ -2692,7 +2699,7 @@ impl<'a> Resolver<'a> {
                 Success((target, used_proxy)) => {
                     // Check to see whether there are type bindings, and, if
                     // so, whether there is a module within.
-                    match target.bindings.type_def.get() {
+                    match *target.bindings.type_def.borrow() {
                         Some(type_def) => {
                             match type_def.module_def {
                                 None => {
@@ -3004,7 +3011,7 @@ impl<'a> Resolver<'a> {
         match resolve_result {
             Success((target, _)) => {
                 let bindings = &*target.bindings;
-                match bindings.type_def.get() {
+                match *bindings.type_def.borrow() {
                     Some(type_def) => {
                         match type_def.module_def {
                             None => {
@@ -4526,8 +4533,8 @@ impl<'a> Resolver<'a> {
                 debug!("(resolve bare identifier pattern) succeeded in \
                          finding {} at {:?}",
                         token::get_ident(name),
-                        target.bindings.value_def.get());
-                match target.bindings.value_def.get() {
+                        target.bindings.value_def.borrow());
+                match *target.bindings.value_def.borrow() {
                     None => {
                         fail!("resolved name in the value namespace to a \
                               set of name bindings with no def?!");

@@ -1128,7 +1128,7 @@ pub fn make_return_pointer(fcx: &FunctionContext, output_type: ty::t)
             llvm::LLVMGetParam(fcx.llfn, 0)
         } else {
             let lloutputtype = type_of::type_of(fcx.ccx, output_type);
-            let bcx = fcx.entry_bcx.get().unwrap();
+            let bcx = fcx.entry_bcx.borrow().clone().unwrap();
             Alloca(bcx, lloutputtype, "__make_return_pointer")
         }
     }
@@ -1209,7 +1209,7 @@ pub fn init_function<'a>(
                      param_substs: Option<@param_substs>) {
     let entry_bcx = fcx.new_temp_block("entry-block");
 
-    fcx.entry_bcx.set(Some(entry_bcx));
+    *fcx.entry_bcx.borrow_mut() = Some(entry_bcx);
 
     // Use a dummy instruction as the insertion point for all allocas.
     // This is later removed in FunctionContext::cleanup.
@@ -1399,7 +1399,7 @@ pub fn trans_closure(ccx: &CrateContext,
 
     // Create the first basic block in the function and keep a handle on it to
     //  pass to finish_fn later.
-    let bcx_top = fcx.entry_bcx.get().unwrap();
+    let bcx_top = fcx.entry_bcx.borrow().clone().unwrap();
     let mut bcx = bcx_top;
     let block_ty = node_id_type(bcx, body.id);
 
@@ -1547,7 +1547,7 @@ fn trans_enum_variant_or_tuple_like_struct(ccx: &CrateContext,
 
     let arg_datums = create_datums_for_fn_args(&fcx, arg_tys.as_slice());
 
-    let bcx = fcx.entry_bcx.get().unwrap();
+    let bcx = fcx.entry_bcx.borrow().clone().unwrap();
 
     if !type_is_zero_size(fcx.ccx, result_ty) {
         let repr = adt::represent_type(ccx, result_ty);
@@ -1752,7 +1752,7 @@ pub fn register_fn_llvmty(ccx: &CrateContext,
 }
 
 pub fn is_entry_fn(sess: &Session, node_id: ast::NodeId) -> bool {
-    match sess.entry_fn.get() {
+    match *sess.entry_fn.borrow() {
         Some((entry_id, _)) => node_id == entry_id,
         None => false
     }
