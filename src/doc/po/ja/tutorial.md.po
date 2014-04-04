@@ -356,17 +356,17 @@ msgstr "上記条件を満たしていれば、以下のような手順でビル
 #: src/doc/tutorial.md:112
 #, fuzzy
 #| msgid ""
-#| "~~~~ {.notrust} $ curl -O http://static.rust-lang.org/dist/rust-0.7.tar."
-#| "gz $ tar -xzf rust-0.7.tar.gz $ cd rust-0.7 $ ./configure $ make && make "
+#| "~~~~ {.notrust} $ curl -O http://static.rust-lang.org/dist/rust-nightly.tar."
+#| "gz $ tar -xzf rust-nightly.tar.gz $ cd rust-nightly $ ./configure $ make && make "
 #| "install ~~~~"
 msgid ""
-"~~~~ {.notrust} $ curl -O http://static.rust-lang.org/dist/rust-0.10.tar.gz $ "
-"tar -xzf rust-0.10.tar.gz $ cd rust-0.10 $ ./configure $ make && make install "
+"~~~~ {.notrust} $ curl -O http://static.rust-lang.org/dist/rust-nightly.tar.gz $ "
+"tar -xzf rust-nightly.tar.gz $ cd rust-nightly $ ./configure $ make && make install "
 "~~~~"
 msgstr ""
 "~~~~ {.notrust}\n"
-"$ curl -O http://static.rust-lang.org/dist/rust-0.7.tar.gz\n"
-"$ tar -xzf rust-0.7.tar.gz $ cd rust-0.7 $ ./configure\n"
+"$ curl -O http://static.rust-lang.org/dist/rust-nightly.tar.gz\n"
+"$ tar -xzf rust-nightly.tar.gz $ cd rust-nightly $ ./configure\n"
 "$ make && make install\n"
 "~~~~"
 
@@ -405,14 +405,14 @@ msgstr ""
 #: src/doc/tutorial.md:125
 #, fuzzy
 #| msgid ""
-#| "[tarball]: http://static.rust-lang.org/dist/rust-0.7.tar.gz [win-exe]: "
-#| "http://static.rust-lang.org/dist/rust-0.7-install.exe"
+#| "[tarball]: http://static.rust-lang.org/dist/rust-nightly.tar.gz [win-exe]: "
+#| "http://static.rust-lang.org/dist/rust-nightly-install.exe"
 msgid ""
-"[tarball]: http://static.rust-lang.org/dist/rust-0.10.tar.gz [win-exe]: "
-"http://static.rust-lang.org/dist/rust-0.10-install.exe"
+"[tarball]: http://static.rust-lang.org/dist/rust-nightly.tar.gz [win-exe]: "
+"http://static.rust-lang.org/dist/rust-nightly-install.exe"
 msgstr ""
-"[tarball]: http://static.rust-lang.org/dist/rust-0.7.tar.gz\n"
-"[win-exe]: http://static.rust-lang.org/dist/rust-0.7-install.exe"
+"[tarball]: http://static.rust-lang.org/dist/rust-nightly.tar.gz\n"
+"[win-exe]: http://static.rust-lang.org/dist/rust-nightly-install.exe"
 
 #. type: Plain text
 #: src/doc/tutorial.md:127
@@ -1002,14 +1002,14 @@ msgstr ""
 #: src/doc/tutorial.md:385
 #, fuzzy
 #| msgid ""
-#| "[tarball]: http://static.rust-lang.org/dist/rust-0.7.tar.gz [win-exe]: "
-#| "http://static.rust-lang.org/dist/rust-0.7-install.exe"
+#| "[tarball]: http://static.rust-lang.org/dist/rust-nightly.tar.gz [win-exe]: "
+#| "http://static.rust-lang.org/dist/rust-nightly-install.exe"
 msgid ""
 "[transmute]: http://static.rust-lang.org/doc/master/std/cast/fn.transmute."
 "html"
 msgstr ""
-"[tarball]: http://static.rust-lang.org/dist/rust-0.7.tar.gz\n"
-"[win-exe]: http://static.rust-lang.org/dist/rust-0.7-install.exe"
+"[tarball]: http://static.rust-lang.org/dist/rust-nightly.tar.gz\n"
+"[win-exe]: http://static.rust-lang.org/dist/rust-nightly-install.exe"
 
 #. type: Plain text
 #: src/doc/tutorial.md:387
@@ -1078,14 +1078,14 @@ msgstr ""
 #: src/doc/tutorial.md:412
 #, fuzzy
 #| msgid ""
-#| "[tarball]: http://static.rust-lang.org/dist/rust-0.7.tar.gz [win-exe]: "
-#| "http://static.rust-lang.org/dist/rust-0.7-install.exe"
+#| "[tarball]: http://static.rust-lang.org/dist/rust-nightly.tar.gz [win-exe]: "
+#| "http://static.rust-lang.org/dist/rust-nightly-install.exe"
 msgid ""
 "[pf]: http://en.cppreference.com/w/cpp/io/c/fprintf [fmt]: http://static."
 "rust-lang.org/doc/master/std/fmt/index.html"
 msgstr ""
-"[tarball]: http://static.rust-lang.org/dist/rust-0.7.tar.gz\n"
-"[win-exe]: http://static.rust-lang.org/dist/rust-0.7-install.exe"
+"[tarball]: http://static.rust-lang.org/dist/rust-nightly.tar.gz\n"
+"[win-exe]: http://static.rust-lang.org/dist/rust-nightly-install.exe"
 
 #. type: Plain text
 #: src/doc/tutorial.md:416
@@ -2161,14 +2161,14 @@ msgstr ""
 #: src/doc/tutorial.md:944
 #, fuzzy
 #| msgid ""
-#| "[tarball]: http://static.rust-lang.org/dist/rust-0.7.tar.gz [win-exe]: "
-#| "http://static.rust-lang.org/dist/rust-0.7-install.exe"
+#| "[tarball]: http://static.rust-lang.org/dist/rust-nightly.tar.gz [win-exe]: "
+#| "http://static.rust-lang.org/dist/rust-nightly-install.exe"
 msgid ""
 "[gc]: http://static.rust-lang.org/doc/master/std/gc/struct.Gc.html [rc]: "
 "http://static.rust-lang.org/doc/master/std/rc/struct.Rc.html"
 msgstr ""
-"[tarball]: http://static.rust-lang.org/dist/rust-0.7.tar.gz\n"
-"[win-exe]: http://static.rust-lang.org/dist/rust-0.7-install.exe"
+"[tarball]: http://static.rust-lang.org/dist/rust-nightly.tar.gz\n"
+"[win-exe]: http://static.rust-lang.org/dist/rust-nightly-install.exe"
 
 #. type: Plain text
 #: src/doc/tutorial.md:946
@@ -2553,14 +2553,14 @@ msgstr ""
 #: src/doc/tutorial.md:1461
 #, fuzzy
 #| msgid ""
-#| "[tarball]: http://static.rust-lang.org/dist/rust-0.7.tar.gz [win-exe]: "
-#| "http://static.rust-lang.org/dist/rust-0.7-install.exe"
+#| "[tarball]: http://static.rust-lang.org/dist/rust-nightly.tar.gz [win-exe]: "
+#| "http://static.rust-lang.org/dist/rust-nightly-install.exe"
 msgid ""
 "[refcell]: http://static.rust-lang.org/doc/master/std/cell/struct.RefCell."
 "html"
 msgstr ""
-"[tarball]: http://static.rust-lang.org/dist/rust-0.7.tar.gz\n"
-"[win-exe]: http://static.rust-lang.org/dist/rust-0.7-install.exe"
+"[tarball]: http://static.rust-lang.org/dist/rust-nightly.tar.gz\n"
+"[win-exe]: http://static.rust-lang.org/dist/rust-nightly-install.exe"
 
 #. type: Plain text
 #: src/doc/tutorial.md:1463

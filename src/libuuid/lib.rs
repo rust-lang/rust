@@ -54,7 +54,7 @@ Examples of string representations:
 
 */
 
-#![crate_id = "uuid#0.10"]
+#![crate_id = "uuid#0.11-pre"]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![license = "MIT/ASL2"]
