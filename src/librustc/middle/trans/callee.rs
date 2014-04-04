@@ -50,7 +50,7 @@ use util::ppaux::Repr;
 use middle::trans::type_::Type;
 
 use syntax::ast;
-use syntax::abi::AbiSet;
+use synabi = syntax::abi;
 use syntax::ast_map;
 
 pub struct MethodData {
@@ -363,7 +363,7 @@ pub fn trans_fn_ref_with_vtables(
 
         match map_node {
             ast_map::NodeForeignItem(_) => {
-                tcx.map.get_foreign_abis(def_id.node).is_intrinsic()
+                tcx.map.get_foreign_abi(def_id.node) == synabi::RustIntrinsic
             }
             _ => false
         }
@@ -572,13 +572,11 @@ pub fn trans_call_inner<'a>(
     };
 
     let (abi, ret_ty) = match ty::get(callee_ty).sty {
-        ty::ty_bare_fn(ref f) => (f.abis, f.sig.output),
-        ty::ty_closure(ref f) => (AbiSet::Rust(), f.sig.output),
+        ty::ty_bare_fn(ref f) => (f.abi, f.sig.output),
+        ty::ty_closure(ref f) => (synabi::Rust, f.sig.output),
         _ => fail!("expected bare rust fn or closure in trans_call_inner")
     };
-    let is_rust_fn =
-        abi.is_rust() ||
-        abi.is_intrinsic();
+    let is_rust_fn = abi == synabi::Rust || abi == synabi::RustIntrinsic;
 
     // Generate a location to store the result. If the user does
     // not care about the result, just make a stack slot.

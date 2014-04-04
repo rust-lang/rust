@@ -19,6 +19,7 @@ use util::ppaux::Repr;
 
 use middle::trans::type_::Type;
 
+use syntax::abi;
 use syntax::ast;
 use syntax::owned_slice::OwnedSlice;
 
@@ -75,7 +76,7 @@ pub fn type_of_fn_from_ty(cx: &CrateContext, fty: ty::t) -> Type {
             type_of_rust_fn(cx, true, f.sig.inputs.as_slice(), f.sig.output)
         }
         ty::ty_bare_fn(ref f) => {
-            if f.abis.is_rust() || f.abis.is_intrinsic() {
+            if f.abi == abi::Rust || f.abi == abi::RustIntrinsic {
                 type_of_rust_fn(cx,
                                 false,
                                 f.sig.inputs.as_slice(),

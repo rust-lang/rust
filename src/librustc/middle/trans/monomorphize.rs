@@ -23,6 +23,7 @@ use middle::ty;
 use middle::typeck;
 use util::ppaux::Repr;
 
+use syntax::abi;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util::local_def;
@@ -99,7 +100,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
 
     match map_node {
         ast_map::NodeForeignItem(_) => {
-            if !ccx.tcx.map.get_foreign_abis(fn_id.node).is_intrinsic() {
+            if ccx.tcx.map.get_foreign_abi(fn_id.node) != abi::RustIntrinsic {
                 // Foreign externs don't have to be monomorphized.
                 return (get_item_val(ccx, fn_id.node), true);
             }
@@ -150,7 +151,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
 
     let f = match ty::get(mono_ty).sty {
         ty::ty_bare_fn(ref f) => {
-            assert!(f.abis.is_rust() || f.abis.is_intrinsic());
+            assert!(f.abi == abi::Rust || f.abi == abi::RustIntrinsic);
             f
         }
         _ => fail!("expected bare rust fn or an intrinsic")

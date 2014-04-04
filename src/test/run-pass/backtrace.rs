@@ -8,8 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-win32 FIXME #13259
 // ignore-fast this is executing itself
-#[no_uv];
+#![no_uv]
 
 extern crate native;
 

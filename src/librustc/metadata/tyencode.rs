@@ -23,7 +23,7 @@ use std::fmt;
 use middle::ty::param_ty;
 use middle::ty;
 
-use syntax::abi::AbiSet;
+use syntax::abi::Abi;
 use syntax::ast;
 use syntax::ast::*;
 use syntax::diagnostic::SpanHandler;
@@ -341,12 +341,9 @@ fn enc_purity(w: &mut MemWriter, p: Purity) {
     }
 }
 
-fn enc_abi_set(w: &mut MemWriter, abis: AbiSet) {
+fn enc_abi(w: &mut MemWriter, abi: Abi) {
     mywrite!(w, "[");
-    abis.each(|abi| {
-        mywrite!(w, "{},", abi.name());
-        true
-    });
+    mywrite!(w, "{}", abi.name());
     mywrite!(w, "]")
 }
 
@@ -359,7 +356,7 @@ fn enc_onceness(w: &mut MemWriter, o: Onceness) {
 
 pub fn enc_bare_fn_ty(w: &mut MemWriter, cx: &ctxt, ft: &ty::BareFnTy) {
     enc_purity(w, ft.purity);
-    enc_abi_set(w, ft.abis);
+    enc_abi(w, ft.abi);
     enc_fn_sig(w, cx, &ft.sig);
 }
 

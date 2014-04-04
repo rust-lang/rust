@@ -170,7 +170,7 @@ pub trait Folder {
                 TyBareFn(@BareFnTy {
                     lifetimes: f.lifetimes.iter().map(|l| fold_lifetime(l, self)).collect(),
                     purity: f.purity,
-                    abis: f.abis,
+                    abi: f.abi,
                     decl: self.fold_fn_decl(f.decl)
                 })
             }
@@ -198,7 +198,7 @@ pub trait Folder {
 
     fn fold_foreign_mod(&mut self, nm: &ForeignMod) -> ForeignMod {
         ast::ForeignMod {
-            abis: nm.abis,
+            abi: nm.abi,
             view_items: nm.view_items
                           .iter()
                           .map(|x| self.fold_view_item(x))

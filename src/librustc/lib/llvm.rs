@@ -1438,8 +1438,6 @@ pub mod llvm {
                                           -> Bool;
         /** Moves the section iterator to point to the next section. */
         pub fn LLVMMoveToNextSection(SI: SectionIteratorRef);
-        /** Returns the current section name. */
-        pub fn LLVMGetSectionName(SI: SectionIteratorRef) -> *c_char;
         /** Returns the current section size. */
         pub fn LLVMGetSectionSize(SI: SectionIteratorRef) -> c_ulonglong;
         /** Returns the current section contents as a string buffer. */
@@ -1784,6 +1782,9 @@ pub mod llvm {
 
         pub fn LLVMRustSetDLLExportStorageClass(V: ValueRef);
         pub fn LLVMVersionMinor() -> c_int;
+
+        pub fn LLVMRustGetSectionName(SI: SectionIteratorRef,
+                                      data: *mut *c_char) -> c_int;
     }
 }
 
