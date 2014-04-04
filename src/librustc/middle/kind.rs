@@ -309,7 +309,7 @@ pub fn check_expr(cx: &mut Context, e: &Expr) {
             let target_ty = ty::expr_ty(cx.tcx, e);
             check_trait_cast(cx, source_ty, target_ty, source.span);
         }
-        ExprRepeat(element, count_expr, _) => {
+        ExprRepeat(element, count_expr) => {
             let count = ty::eval_repeat_count(cx.tcx, count_expr);
             if count > 1 {
                 let element_ty = ty::expr_ty(cx.tcx, element);
