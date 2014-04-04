@@ -71,8 +71,6 @@ println!("{:?}", tuple_ptr)
        html_root_url = "http://static.rust-lang.org/doc/master")]
 
 #![feature(macro_rules, managed_boxes, phase)]
-
-#![allow(visible_private_types)] // NOTE: remove after a stage0 snap
 #![deny(deprecated_owned_vector)]
 
 #[cfg(test)]

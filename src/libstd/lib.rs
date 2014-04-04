@@ -57,9 +57,7 @@
 // Don't link to std. We are std.
 #![no_std]
 
-// #![deny(missing_doc)] // NOTE: uncomment after a stage0 snap
-#![allow(missing_doc)] // NOTE: remove after a stage0 snap
-#![allow(visible_private_types)] // NOTE: remove after a stage0 snap
+#![deny(missing_doc)]
 #![allow(unknown_features)] // NOTE: remove after a stage0 snap
 
 // When testing libstd, bring in libuv as the I/O backend so tests can print

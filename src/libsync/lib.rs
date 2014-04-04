@@ -22,9 +22,7 @@
 #![feature(phase)]
 #![deny(deprecated_owned_vector)]
 
-// #![deny(missing_doc)] // NOTE: uncomment after a stage0 snap
-#![allow(missing_doc)] // NOTE: remove after a stage0 snap
-#![allow(visible_private_types)] // NOTE: remove after a stage0 snap
+#![deny(missing_doc)]
 
 #[cfg(test)]
 #[phase(syntax, link)] extern crate log;
