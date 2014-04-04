@@ -12,6 +12,7 @@
 
 use driver::session::Session;
 use metadata::csearch;
+use metadata::cstore;
 use metadata::decoder::{DefLike, DlDef, DlField, DlImpl};
 use middle::lang_items::LanguageItems;
 use middle::lint::{UnnecessaryQualification, UnusedImports};
@@ -33,6 +34,7 @@ use syntax::visit::Visitor;
 
 use std::cell::{Cell, RefCell};
 use std::uint;
+use std::cmp;
 use std::mem::replace;
 use collections::{HashMap, HashSet};
 
@@ -792,8 +794,9 @@ fn namespace_error_to_str(ns: NamespaceError) -> &'static str {
 }
 
 fn Resolver<'a>(session: &'a Session,
-                lang_items: @LanguageItems,
-                crate_span: Span) -> Resolver<'a> {
+            lang_items: @LanguageItems,
+            crate_span: Span,
+            krate:&'a ast::Crate) -> Resolver<'a> {
     let graph_root = @NameBindings();
 
     graph_root.define_module(NoParentLink,
@@ -813,6 +816,7 @@ fn Resolver<'a>(session: &'a Session,
         // AST.
 
         graph_root: graph_root,
+        resolver_krate:krate,
 
         method_map: @RefCell::new(HashMap::new()),
         structs: HashSet::new(),
@@ -855,6 +859,8 @@ struct Resolver<'a> {
 
     method_map: @RefCell<HashMap<Name, HashSet<DefId>>>,
     structs: HashSet<DefId>,
+
+    resolver_krate: &'a ast::Crate, // for error message search-"did you mean..."
 
     // The number of imports that are currently unresolved.
     unresolved_imports: uint,
@@ -943,7 +949,8 @@ impl<'a, 'b> Visitor<()> for UnusedImportCheckVisitor<'a, 'b> {
 
 impl<'a> Resolver<'a> {
     /// The main name resolution procedure.
-    fn resolve(&mut self, krate: &ast::Crate) {
+    fn resolve(&mut self, krate: &'a ast::Crate) {
+        self.resolver_krate = krate;
         self.build_reduced_graph(krate);
         self.session.abort_if_errors();
 
@@ -2823,7 +2830,7 @@ impl<'a> Resolver<'a> {
                     }
                     UseLexicalScope => {
                         // This is not a crate-relative path. We resolve the
-                        // first component of the path in the current lexical
+                        // first component  of the path in the current lexical
                         // scope and then proceed to resolve below that.
                         let result = self.resolve_module_in_lexical_scope(
                             module_,
@@ -5012,22 +5019,25 @@ impl<'a> Resolver<'a> {
                                             wrong_name));
 
                             }
-                            _ =>
-                               // limit search to 5 to reduce the number
-                               // of stupid suggestions
-                               match self.find_best_match_for_name(wrong_name, 5) {
-                                   Some(m) => {
-                                       self.resolve_error(expr.span,
-                                           format!("unresolved name `{}`. \
-                                                    Did you mean `{}`?",
-                                                    wrong_name, m));
-                                   }
-                                   None => {
-                                       self.resolve_error(expr.span,
-                                            format!("unresolved name `{}`.",
-                                                    wrong_name));
-                                   }
-                               }
+                            _ => {
+                                // limit search to 5 to reduce the number
+                                // of stupid suggestions
+                                match self.find_best_match_for_name(wrong_name, 5) {
+                                    Some(m) => {
+                                        self.resolve_error(expr.span,
+                                            format!("unresolved name `{}`.  \
+                                                     Did you mean `{}`?",
+                                                     wrong_name, m));
+                                    }
+                                    None => {
+                                        self.resolve_error(expr.span,
+                                             format!("unresolved name `{}`.",
+                                                     wrong_name));
+                                    }
+                                }
+                                // additionally display exact symbol matches from other scopes.
+                                self.show_suggestions_from_other_scopes(path);
+                            }
                         }
                     }
                 }
@@ -5412,7 +5422,86 @@ impl<'a> Resolver<'a> {
             debug!("* {}:{}{}", token::get_name(name), value_repr, type_repr);
         }
     }
+
+    // Search other modules for this ident, and advise possible module paths
+    fn show_suggestions_from_other_scopes(&self, path:&Path) {
+
+        let suggestions = self.find_suggestions_from_other_scopes(path);
+
+        if suggestions.len()>0 {
+            let mut note=~"did you mean:-\n";
+            for &(ref name,_) in suggestions.iter() {
+                note.push_str(
+                    "\t\t\t"+ "::"+
+                    name.map(
+                        |i|{token::get_ident(*i).get().to_str()})
+                        .connect("::")+"\n"
+                );
+            }
+            self.session.span_note(path.span, note);
+        }
+    }
+
+    fn find_suggestions_from_other_scopes(&self, path:&Path)->Vec<(Vec<Ident>,uint)> {
+        let mut finder_visitor= FindSymbolVisitor{
+            cstore:&self.session.cstore,
+            curr_path_idents: Vec::new(),
+            path_to_find:path,
+            suggestions: Vec::new(),
+            max_suggestions: 5,
+        };
+        visit::walk_crate(&mut finder_visitor, self.resolver_krate, ());
+        finder_visitor.suggestions
+    }
 }
+
+struct FindSymbolVisitor<'a>{
+    cstore:&'a cstore::CStore,
+    curr_path_idents: Vec<Ident>,
+    path_to_find:&'a Path,
+    suggestions: Vec<(Vec<Ident>,uint)>,
+    max_suggestions: uint,
+}
+
+impl<'a,'r> Visitor<()> for FindSymbolVisitor<'a> {
+    fn visit_item<'a>(&mut self, item:&Item, e: ()) {
+        let find_path_last_seg:&PathSegment = self.path_to_find.segments.last().unwrap();
+
+        self.curr_path_idents.push(item.ident);
+
+        //todo: compare with current 'use' and uprate suggestions with more segs in scope.
+        if find_path_last_seg.identifier.name== item.ident.name  &&
+            self.suggestions.len()  <= (self.max_suggestions) {
+
+            let mut score=0;
+            let mut segs_found=0;
+            for ref find_seg in self.path_to_find.segments.iter() {
+                for (ref index,ref ident) in self.curr_path_idents.iter().enumerate() {
+                    if ident.name==find_seg.identifier.name {score+=*index;segs_found+=1;}
+                }
+            }
+            if segs_found >=self.path_to_find.segments.len() {
+            // sort such that highscore is first.
+                self.suggestions.push((self.curr_path_idents.clone(),score));
+                self.suggestions.sort_by(
+                     |&(_,ref score1),&(_,ref score2)|
+                        if score1<score2 {cmp::Greater}else {cmp::Less});
+ 
+                if self.suggestions.len() > self.max_suggestions {self.suggestions.pop();}
+            }
+        }
+        // visit sub nodes..
+
+        visit::walk_item(self,item,e);
+        self.curr_path_idents.pop();
+    }
+
+    fn visit_mod(&mut self, m: &Mod, _s: Span, _n: NodeId, e: ()) {
+        visit::walk_mod(self, m, e) ;
+    }
+}
+
+
 
 pub struct CrateMap {
     pub def_map: DefMap,
@@ -5427,7 +5516,7 @@ pub fn resolve_crate(session: &Session,
                      lang_items: @LanguageItems,
                      krate: &Crate)
                   -> CrateMap {
-    let mut resolver = Resolver(session, lang_items, krate.span);
+    let mut resolver = Resolver(session, lang_items, krate.span, krate);
     resolver.resolve(krate);
     let Resolver { def_map, export_map2, trait_map, last_private,
                    external_exports, .. } = resolver;
