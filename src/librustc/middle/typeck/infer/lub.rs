@@ -27,7 +27,7 @@ use syntax::ast::{ExternFn, ImpureFn, UnsafeFn};
 use syntax::ast::{Onceness, Purity};
 use util::ppaux::mt_to_str;
 
-pub struct Lub<'f>(CombineFields<'f>);  // least-upper-bound: common supertype
+pub struct Lub<'f>(pub CombineFields<'f>);  // least-upper-bound: common supertype
 
 impl<'f> Lub<'f> {
     pub fn get_ref<'a>(&'a self) -> &'a CombineFields<'f> { let Lub(ref v) = *self; v }

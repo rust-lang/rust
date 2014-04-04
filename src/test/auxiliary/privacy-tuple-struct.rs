@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,17 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-pub struct S(pub ());
-
-impl S {
-    pub fn foo(&self) { }
-}
-
-pub trait T {
-    fn bar(&self);
-}
-
-impl T for S {
-    fn bar(&self) { }
-}
+pub struct A(());
+pub struct B(int);
+pub struct C(pub int, int);
+pub struct D(pub int);

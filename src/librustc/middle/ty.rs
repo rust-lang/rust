@@ -866,13 +866,13 @@ impl CLike for BuiltinBound {
 }
 
 #[deriving(Clone, Eq, TotalEq, Hash)]
-pub struct TyVid(uint);
+pub struct TyVid(pub uint);
 
 #[deriving(Clone, Eq, TotalEq, Hash)]
-pub struct IntVid(uint);
+pub struct IntVid(pub uint);
 
 #[deriving(Clone, Eq, TotalEq, Hash)]
-pub struct FloatVid(uint);
+pub struct FloatVid(pub uint);
 
 #[deriving(Clone, Eq, TotalEq, Encodable, Decodable, Hash)]
 pub struct RegionVid {
