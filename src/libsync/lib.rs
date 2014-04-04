@@ -12,7 +12,7 @@
  * Concurrency-enabled mechanisms and primitives.
  */
 
-#![crate_id = "sync#0.10"]
+#![crate_id = "sync#0.11-pre"]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![license = "MIT/ASL2"]

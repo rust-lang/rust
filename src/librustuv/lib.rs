@@ -34,7 +34,7 @@ via `close` and `delete` methods.
 
 */
 
-#![crate_id = "rustuv#0.10"]
+#![crate_id = "rustuv#0.11-pre"]
 #![license = "MIT/ASL2"]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]

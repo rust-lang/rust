@@ -41,7 +41,7 @@
 //! }
 //! ```
 
-#![crate_id = "native#0.10"]
+#![crate_id = "native#0.11-pre"]
 #![license = "MIT/ASL2"]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
