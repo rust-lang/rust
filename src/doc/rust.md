@@ -875,7 +875,7 @@ and `extern crate` declarations.
 An example of what will and will not work for `use` items:
 
 ~~~~
-# #[allow(unused_imports)];
+# #![allow(unused_imports)]
 use foo::native::start;  // good: foo is at the root of the crate
 use foo::baz::foobaz;    // good: foo is at the root of the crate
 
@@ -1701,7 +1701,7 @@ hash apply to the item that follows the attribute.
 
 An example of attributes:
 
-~~~~
+~~~~ {.rust}
 // General metadata applied to the enclosing module or crate.
 #![license = "BSD"]
 
@@ -1719,7 +1719,7 @@ mod bar {
 
 // A lint attribute used to suppress a warning/error
 #[allow(non_camel_case_types)]
-pub type int8_t = i8;
+type int8_t = i8;
 ~~~~
 
 > **Note:** At some point in the future, the compiler will distinguish between
@@ -2160,7 +2160,7 @@ be unstable for the purposes of the lint. One can give an optional
 string that will be displayed when the lint flags the use of an item.
 
 ~~~~ {.ignore}
-#[warn(unstable)];
+#![warn(unstable)]
 
 #[deprecated="replaced by `best`"]
 fn bad() {
@@ -3978,7 +3978,7 @@ Rust provides several macros to log information. Here's a simple Rust program
 that demonstrates all four of them:
 
 ~~~~
-#[feature(phase)];
+#![feature(phase)]
 #[phase(syntax, link)] extern crate log;
 
 fn main() {
