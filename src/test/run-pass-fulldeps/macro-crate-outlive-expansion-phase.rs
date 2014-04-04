@@ -14,7 +14,7 @@
 // ignore-android
 // ignore-cross-compile #12102
 
-#[feature(phase)];
+#![feature(phase)]
 
 #[phase(syntax)]
 extern crate macro_crate_outlive_expansion_phase;

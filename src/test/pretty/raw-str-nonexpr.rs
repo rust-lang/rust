@@ -11,7 +11,7 @@
 // ignore-fast #[feature] doesn't work with check-fast
 // pp-exact
 
-#[feature(asm)];
+#![feature(asm)]
 
 #[cfg = r#"just parse this"#]
 extern crate blah = r##"blah"##;

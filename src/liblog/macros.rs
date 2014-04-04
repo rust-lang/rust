@@ -21,7 +21,7 @@
 /// # Example
 ///
 /// ```
-/// #[feature(phase)];
+/// #![feature(phase)]
 /// #[phase(syntax, link)] extern crate log;
 ///
 /// # fn main() {
@@ -45,7 +45,7 @@ macro_rules! log(
 /// # Example
 ///
 /// ```
-/// #[feature(phase)];
+/// #![feature(phase)]
 /// #[phase(syntax, link)] extern crate log;
 ///
 /// # fn main() {
@@ -63,7 +63,7 @@ macro_rules! error(
 /// # Example
 ///
 /// ```
-/// #[feature(phase)];
+/// #![feature(phase)]
 /// #[phase(syntax, link)] extern crate log;
 ///
 /// # fn main() {
@@ -81,7 +81,7 @@ macro_rules! warn(
 /// # Example
 ///
 /// ```
-/// #[feature(phase)];
+/// #![feature(phase)]
 /// #[phase(syntax, link)] extern crate log;
 ///
 /// # fn main() {
@@ -101,7 +101,7 @@ macro_rules! info(
 /// # Example
 ///
 /// ```
-/// #[feature(phase)];
+/// #![feature(phase)]
 /// #[phase(syntax, link)] extern crate log;
 ///
 /// # fn main() {
@@ -118,7 +118,7 @@ macro_rules! debug(
 /// # Example
 ///
 /// ```
-/// #[feature(phase)];
+/// #![feature(phase)]
 /// #[phase(syntax, link)] extern crate log;
 ///
 /// # fn main() {

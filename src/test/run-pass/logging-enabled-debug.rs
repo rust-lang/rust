@@ -12,7 +12,7 @@
 // compile-flags:--cfg ndebug
 // exec-env:RUST_LOG=logging-enabled-debug=debug
 
-#[feature(phase)];
+#![feature(phase)]
 #[phase(syntax, link)]
 extern crate log;
 
