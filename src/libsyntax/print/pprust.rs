@@ -1110,25 +1110,17 @@ impl<'a> State<'a> {
                 try!(self.word_space(")"));
                 try!(self.print_expr(e));
             }
-            ast::ExprVec(ref exprs, mutbl) => {
+            ast::ExprVec(ref exprs) => {
                 try!(self.ibox(indent_unit));
                 try!(word(&mut self.s, "["));
-                if mutbl == ast::MutMutable {
-                    try!(word(&mut self.s, "mut"));
-                    if exprs.len() > 0u { try!(self.nbsp()); }
-                }
                 try!(self.commasep_exprs(Inconsistent, exprs.as_slice()));
                 try!(word(&mut self.s, "]"));
                 try!(self.end());
             }
 
-            ast::ExprRepeat(element, count, mutbl) => {
+            ast::ExprRepeat(element, count) => {
                 try!(self.ibox(indent_unit));
                 try!(word(&mut self.s, "["));
-                if mutbl == ast::MutMutable {
-                    try!(word(&mut self.s, "mut"));
-                    try!(self.nbsp());
-                }
                 try!(self.print_expr(element));
                 try!(word(&mut self.s, ","));
                 try!(word(&mut self.s, ".."));

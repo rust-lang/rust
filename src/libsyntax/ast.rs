@@ -493,7 +493,7 @@ pub enum Expr_ {
     ExprVstore(@Expr, ExprVstore),
     // First expr is the place; second expr is the value.
     ExprBox(@Expr, @Expr),
-    ExprVec(Vec<@Expr>, Mutability),
+    ExprVec(Vec<@Expr>),
     ExprCall(@Expr, Vec<@Expr>),
     ExprMethodCall(Ident, Vec<P<Ty>>, Vec<@Expr>),
     ExprTup(Vec<@Expr>),
@@ -536,7 +536,7 @@ pub enum Expr_ {
     ExprStruct(Path, Vec<Field> , Option<@Expr> /* base */),
 
     // A vector literal constructed from one repeated element.
-    ExprRepeat(@Expr /* element */, @Expr /* count */, Mutability),
+    ExprRepeat(@Expr /* element */, @Expr /* count */),
 
     // No-op: used solely so we can pretty-print faithfully
     ExprParen(@Expr)

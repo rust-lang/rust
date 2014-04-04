@@ -724,7 +724,7 @@ fn resolve_local(visitor: &mut RegionResolutionVisitor,
                 visitor.region_maps.record_rvalue_scope(subexpr.id, blk_id);
                 record_rvalue_scope_if_borrow_expr(visitor, subexpr, blk_id);
             }
-            ast::ExprVec(ref subexprs, _) |
+            ast::ExprVec(ref subexprs) |
             ast::ExprTup(ref subexprs) => {
                 for &subexpr in subexprs.iter() {
                     record_rvalue_scope_if_borrow_expr(
