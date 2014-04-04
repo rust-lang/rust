@@ -8,11 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! An efficient hash map for node IDs
+//! An efficient hash map for node IDs.
+//!
+//! The hashmap in libcollections by default uses SipHash which isn't quite as speedy as we want.
+//! In the compiler we're not really worried about DOS attempts, so we just default to a
+//! non-cryptographic hash.
 
 use collections::{HashMap, HashSet};
-use std::hash::{Hasher, Hash};
-use std::io;
+use std::hash::fnv::FnvHasher;
 use syntax::ast;
 
 pub type FnvHashMap<K, V> = HashMap<K, V, FnvHasher>;
@@ -27,16 +30,18 @@ pub type DefIdSet = FnvHashSet<ast::DefId>;
 // Hacks to get good names
 pub mod FnvHashMap {
     use std::hash::Hash;
+    use std::hash::fnv::{FnvHasher, FnvState};
     use collections::HashMap;
-    pub fn new<K: Hash<super::FnvState> + TotalEq, V>() -> super::FnvHashMap<K, V> {
-        HashMap::with_hasher(super::FnvHasher)
+    pub fn new<K: Hash<FnvState> + TotalEq, V>() -> super::FnvHashMap<K, V> {
+        HashMap::with_hasher(FnvHasher)
     }
 }
 pub mod FnvHashSet {
     use std::hash::Hash;
+    use std::hash::fnv::{FnvHasher, FnvState};
     use collections::HashSet;
-    pub fn new<V: Hash<super::FnvState> + TotalEq>() -> super::FnvHashSet<V> {
-        HashSet::with_hasher(super::FnvHasher)
+    pub fn new<V: Hash<FnvState> + TotalEq>() -> super::FnvHashSet<V> {
+        HashSet::with_hasher(FnvHasher)
     }
 }
 pub mod NodeMap {
@@ -50,45 +55,16 @@ pub mod DefIdMap {
     }
 }
 pub mod NodeSet {
+    use std::hash::fnv::FnvHasher;
+    use collections::HashSet;
     pub fn new() -> super::NodeSet {
-        super::FnvHashSet::new()
+        HashSet::with_hasher(FnvHasher)
     }
 }
 pub mod DefIdSet {
+    use std::hash::fnv::FnvHasher;
+    use collections::HashSet;
     pub fn new() -> super::DefIdSet {
-        super::FnvHashSet::new()
-    }
-}
-
-/// A speedy hash algorithm for node ids and def ids. The hashmap in
-/// libcollections by default uses SipHash which isn't quite as speedy as we
-/// want. In the compiler we're not really worried about DOS attempts, so we
-/// just default to a non-cryptographic hash.
-///
-/// This uses FNV hashing, as described here:
-/// http://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function
-#[deriving(Clone)]
-pub struct FnvHasher;
-
-pub struct FnvState(u64);
-
-impl Hasher<FnvState> for FnvHasher {
-    fn hash<T: Hash<FnvState>>(&self, t: &T) -> u64 {
-        let mut state = FnvState(0xcbf29ce484222325);
-        t.hash(&mut state);
-        let FnvState(ret) = state;
-        return ret;
-    }
-}
-
-impl Writer for FnvState {
-    fn write(&mut self, bytes: &[u8]) -> io::IoResult<()> {
-        let FnvState(mut hash) = *self;
-        for byte in bytes.iter() {
-            hash = hash ^ (*byte as u64);
-            hash = hash * 0x100000001b3;
-        }
-        *self = FnvState(hash);
-        Ok(())
+        HashSet::with_hasher(FnvHasher)
     }
 }
