@@ -323,6 +323,9 @@ pub fn phase_3_run_analysis_passes(sess: Session,
     let region_map = time(time_passes, "region resolution", (), |_|
                           middle::region::resolve_crate(&sess, krate));
 
+    time(time_passes, "loop checking", (), |_|
+         middle::check_loop::check_crate(&sess, krate));
+
     let ty_cx = ty::mk_ctxt(sess, def_map, named_region_map, ast_map,
                             freevars, region_map, lang_items);
 
@@ -347,9 +350,6 @@ pub fn phase_3_run_analysis_passes(sess: Session,
 
     time(time_passes, "effect checking", (), |_|
          middle::effect::check_crate(&ty_cx, method_map, krate));
-
-    time(time_passes, "loop checking", (), |_|
-         middle::check_loop::check_crate(&ty_cx, krate));
 
     let middle::moves::MoveMaps {moves_map, moved_variables_set,
                                  capture_map} =

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use middle::ty;
+use driver::session::Session;
 
 use syntax::ast;
 use syntax::codemap::Span;
@@ -21,11 +21,11 @@ enum Context {
 }
 
 struct CheckLoopVisitor<'a> {
-    tcx: &'a ty::ctxt,
+    sess: &'a Session,
 }
 
-pub fn check_crate(tcx: &ty::ctxt, krate: &ast::Crate) {
-    visit::walk_crate(&mut CheckLoopVisitor { tcx: tcx }, krate, Normal)
+pub fn check_crate(sess: &Session, krate: &ast::Crate) {
+    visit::walk_crate(&mut CheckLoopVisitor { sess: sess }, krate, Normal)
 }
 
 impl<'a> Visitor<Context> for CheckLoopVisitor<'a> {
@@ -57,12 +57,10 @@ impl<'a> CheckLoopVisitor<'a> {
         match cx {
             Loop => {}
             Closure => {
-                self.tcx.sess.span_err(span, format!("`{}` inside of a closure",
-                                                     name));
+                self.sess.span_err(span, format!("`{}` inside of a closure", name));
             }
             Normal => {
-                self.tcx.sess.span_err(span, format!("`{}` outside of loop",
-                                                     name));
+                self.sess.span_err(span, format!("`{}` outside of loop", name));
             }
         }
     }
