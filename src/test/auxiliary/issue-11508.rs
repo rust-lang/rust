@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub struct Closed01<F>(F);
+pub struct Closed01<F>(pub F);
 
 pub trait Bar { fn new() -> Self; }
 

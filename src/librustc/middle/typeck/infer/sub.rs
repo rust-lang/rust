@@ -27,7 +27,7 @@ use util::ppaux::bound_region_to_str;
 
 use syntax::ast::{Onceness, Purity};
 
-pub struct Sub<'f>(CombineFields<'f>);  // "subtype", "subregion" etc
+pub struct Sub<'f>(pub CombineFields<'f>);  // "subtype", "subregion" etc
 
 impl<'f> Sub<'f> {
     pub fn get_ref<'a>(&'a self) -> &'a CombineFields<'f> { let Sub(ref v) = *self; v }

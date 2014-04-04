@@ -13,7 +13,7 @@ use middle::trans::basic_block::BasicBlock;
 use middle::trans::common::Block;
 use std::libc::c_uint;
 
-pub struct Value(ValueRef);
+pub struct Value(pub ValueRef);
 
 macro_rules! opt_val ( ($e:expr) => (
     unsafe {

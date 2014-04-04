@@ -14,40 +14,48 @@
 
 #[experimental]
 #[simd]
-pub struct i8x16(i8, i8, i8, i8, i8, i8, i8, i8, i8, i8, i8, i8, i8, i8, i8, i8);
+pub struct i8x16(pub i8, pub i8, pub i8, pub i8,
+                 pub i8, pub i8, pub i8, pub i8,
+                 pub i8, pub i8, pub i8, pub i8,
+                 pub i8, pub i8, pub i8, pub i8);
 
 #[experimental]
 #[simd]
-pub struct i16x8(i16, i16, i16, i16, i16, i16, i16, i16);
+pub struct i16x8(pub i16, pub i16, pub i16, pub i16,
+                 pub i16, pub i16, pub i16, pub i16);
 
 #[experimental]
 #[simd]
-pub struct i32x4(i32, i32, i32, i32);
+pub struct i32x4(pub i32, pub i32, pub i32, pub i32);
 
 #[experimental]
 #[simd]
-pub struct i64x2(i64, i64);
+pub struct i64x2(pub i64, pub i64);
 
 #[experimental]
 #[simd]
-pub struct u8x16(u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8);
+pub struct u8x16(pub u8, pub u8, pub u8, pub u8,
+                 pub u8, pub u8, pub u8, pub u8,
+                 pub u8, pub u8, pub u8, pub u8,
+                 pub u8, pub u8, pub u8, pub u8);
 
 #[experimental]
 #[simd]
-pub struct u16x8(u16, u16, u16, u16, u16, u16, u16, u16);
+pub struct u16x8(pub u16, pub u16, pub u16, pub u16,
+                 pub u16, pub u16, pub u16, pub u16);
 
 #[experimental]
 #[simd]
-pub struct u32x4(u32, u32, u32, u32);
+pub struct u32x4(pub u32, pub u32, pub u32, pub u32);
 
 #[experimental]
 #[simd]
-pub struct u64x2(u64, u64);
+pub struct u64x2(pub u64, pub u64);
 
 #[experimental]
 #[simd]
-pub struct f32x4(f32, f32, f32, f32);
+pub struct f32x4(pub f32, pub f32, pub f32, pub f32);
 
 #[experimental]
 #[simd]
-pub struct f64x2(f64, f64);
+pub struct f64x2(pub f64, pub f64);

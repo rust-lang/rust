@@ -28,12 +28,12 @@ use html::render::{cache_key, current_location_key};
 
 /// Helper to render an optional visibility with a space after it (if the
 /// visibility is preset)
-pub struct VisSpace(Option<ast::Visibility>);
+pub struct VisSpace(pub Option<ast::Visibility>);
 /// Similarly to VisSpace, this structure is used to render a purity with a
 /// space after it.
-pub struct PuritySpace(ast::Purity);
+pub struct PuritySpace(pub ast::Purity);
 /// Wrapper struct for properly emitting a method declaration.
-pub struct Method<'a>(&'a clean::SelfTy, &'a clean::FnDecl);
+pub struct Method<'a>(pub &'a clean::SelfTy, pub &'a clean::FnDecl);
 
 impl VisSpace {
     pub fn get(&self) -> Option<ast::Visibility> {
