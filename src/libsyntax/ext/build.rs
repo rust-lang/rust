@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use abi::AbiSet;
+use abi;
 use ast::{P, Ident};
 use ast;
 use ast_util;
@@ -826,7 +826,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                   Vec::new(),
                   ast::ItemFn(self.fn_decl(inputs, output),
                               ast::ImpureFn,
-                              AbiSet::Rust(),
+                              abi::Rust,
                               generics,
                               body))
     }

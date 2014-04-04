@@ -20,7 +20,6 @@ use middle::ty;
 
 use std::str;
 use std::uint;
-use syntax::abi::AbiSet;
 use syntax::abi;
 use syntax::ast;
 use syntax::ast::*;
@@ -460,18 +459,12 @@ fn parse_purity(c: char) -> Purity {
     }
 }
 
-fn parse_abi_set(st: &mut PState) -> AbiSet {
+fn parse_abi_set(st: &mut PState) -> abi::Abi {
     assert_eq!(next(st), '[');
-    let mut abis = AbiSet::empty();
-    while peek(st) != ']' {
-         scan(st, |c| c == ',', |bytes| {
-                 let abi_str = str::from_utf8(bytes).unwrap().to_owned();
-                 let abi = abi::lookup(abi_str).expect(abi_str);
-                 abis.add(abi);
-              });
-    }
-    assert_eq!(next(st), ']');
-    return abis;
+    scan(st, |c| c == ']', |bytes| {
+        let abi_str = str::from_utf8(bytes).unwrap().to_owned();
+        abi::lookup(abi_str).expect(abi_str)
+    })
 }
 
 fn parse_onceness(c: char) -> ast::Onceness {
@@ -505,7 +498,7 @@ fn parse_bare_fn_ty(st: &mut PState, conv: conv_did) -> ty::BareFnTy {
     let sig = parse_sig(st, |x,y| conv(x,y));
     ty::BareFnTy {
         purity: purity,
-        abis: abi,
+        abi: abi,
         sig: sig
     }
 }

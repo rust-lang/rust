@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-win32: FIXME #13256
 // ignore-android: FIXME(#10381)
 
 // compile-flags:-g
@@ -70,7 +71,8 @@
 // debugger:print 'c-style-enum::MANUAL_THREE'
 // check:$18 = OneMillion
 
-#[allow(unused_variable)];
+#![allow(unused_variable)]
+#![allow(dead_code)]
 
 enum AutoDiscriminant {
     One,

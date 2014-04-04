@@ -48,7 +48,7 @@ use util::ppaux::Repr;
 use std::rc::Rc;
 use collections::HashSet;
 
-use syntax::abi::AbiSet;
+use syntax::abi;
 use syntax::ast::{RegionTyParamBound, TraitTyParamBound};
 use syntax::ast;
 use syntax::ast_map;
@@ -116,8 +116,8 @@ impl<'a> AstConv for CrateCtxt<'a> {
         match self.tcx.map.find(id.node) {
             Some(ast_map::NodeItem(item)) => ty_of_item(self, item),
             Some(ast_map::NodeForeignItem(foreign_item)) => {
-                let abis = self.tcx.map.get_foreign_abis(id.node);
-                ty_of_foreign_item(self, foreign_item, abis)
+                let abi = self.tcx.map.get_foreign_abi(id.node);
+                ty_of_foreign_item(self, foreign_item, abi)
             }
             x => {
                 self.tcx.sess.bug(format!("unexpected sort of node \
@@ -550,10 +550,10 @@ pub fn ensure_no_ty_param_bounds(ccx: &CrateCtxt,
 
 fn ensure_generics_abi(ccx: &CrateCtxt,
                        span: Span,
-                       abis: AbiSet,
+                       abi: abi::Abi,
                        generics: &ast::Generics) {
     if generics.ty_params.len() > 0 &&
-       !(abis.is_rust() || abis.is_intrinsic()) {
+       !(abi == abi::Rust || abi == abi::RustIntrinsic) {
         ccx.tcx.sess.span_err(span,
                               "foreign functions may not use type parameters");
     }
@@ -717,9 +717,9 @@ pub fn convert_foreign(ccx: &CrateCtxt, i: &ast::ForeignItem) {
     // map, and I regard each time that I use it as a personal and
     // moral failing, but at the moment it seems like the only
     // convenient way to extract the ABI. - ndm
-    let abis = ccx.tcx.map.get_foreign_abis(i.id);
+    let abi = ccx.tcx.map.get_foreign_abi(i.id);
 
-    let tpt = ty_of_foreign_item(ccx, i, abis);
+    let tpt = ty_of_foreign_item(ccx, i, abi);
     write_ty_to_tcx(ccx.tcx, i.id, tpt.ty);
 
     ccx.tcx.tcache.borrow_mut().insert(local_def(i.id), tpt);
@@ -891,7 +891,7 @@ pub fn ty_of_item(ccx: &CrateCtxt, it: &ast::Item)
 
 pub fn ty_of_foreign_item(ccx: &CrateCtxt,
                           it: &ast::ForeignItem,
-                          abis: AbiSet) -> ty::ty_param_bounds_and_ty
+                          abi: abi::Abi) -> ty::ty_param_bounds_and_ty
 {
     match it.node {
         ast::ForeignItemFn(fn_decl, ref generics) => {
@@ -899,7 +899,7 @@ pub fn ty_of_foreign_item(ccx: &CrateCtxt,
                                   fn_decl,
                                   local_def(it.id),
                                   generics,
-                                  abis)
+                                  abi)
         }
         ast::ForeignItemStatic(t, _) => {
             ty::ty_param_bounds_and_ty {
@@ -1003,7 +1003,7 @@ pub fn ty_of_foreign_fn_decl(ccx: &CrateCtxt,
                              decl: &ast::FnDecl,
                              def_id: ast::DefId,
                              ast_generics: &ast::Generics,
-                             abis: AbiSet)
+                             abi: abi::Abi)
                           -> ty::ty_param_bounds_and_ty {
 
     for i in decl.inputs.iter() {
@@ -1028,7 +1028,7 @@ pub fn ty_of_foreign_fn_decl(ccx: &CrateCtxt,
     let t_fn = ty::mk_bare_fn(
         ccx.tcx,
         ty::BareFnTy {
-            abis: abis,
+            abi: abi,
             purity: ast::UnsafeFn,
             sig: ty::FnSig {binder_id: def_id.node,
                             inputs: input_tys,

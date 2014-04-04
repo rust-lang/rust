@@ -27,7 +27,7 @@ use middle::ty::FnSig;
 use middle::ty;
 use std::cmp;
 use std::libc::c_uint;
-use syntax::abi::{Cdecl, Aapcs, C, AbiSet, Win64};
+use syntax::abi::{Cdecl, Aapcs, C, Win64, Abi};
 use syntax::abi::{RustIntrinsic, Rust, Stdcall, Fastcall, System};
 use syntax::codemap::Span;
 use syntax::parse::token::{InternedString, special_idents};
@@ -73,10 +73,10 @@ struct LlvmSignature {
 // Calls to external functions
 
 pub fn llvm_calling_convention(ccx: &CrateContext,
-                               abis: AbiSet) -> Option<CallConv> {
+                               abi: Abi) -> Option<CallConv> {
     let os = ccx.sess().targ_cfg.os;
     let arch = ccx.sess().targ_cfg.arch;
-    abis.for_target(os, arch).map(|abi| {
+    abi.for_target(os, arch).map(|abi| {
         match abi {
             RustIntrinsic => {
                 // Intrinsics are emitted by monomorphic fn
@@ -180,27 +180,27 @@ pub fn register_static(ccx: &CrateContext,
     }
 }
 
-pub fn register_foreign_item_fn(ccx: &CrateContext, abis: AbiSet,
+pub fn register_foreign_item_fn(ccx: &CrateContext, abi: Abi,
                                 foreign_item: &ast::ForeignItem) -> ValueRef {
     /*!
      * Registers a foreign function found in a library.
      * Just adds a LLVM global.
      */
 
-    debug!("register_foreign_item_fn(abis={}, \
+    debug!("register_foreign_item_fn(abi={}, \
             path={}, \
             foreign_item.id={})",
-           abis.repr(ccx.tcx()),
+           abi.repr(ccx.tcx()),
            ccx.tcx.map.path_to_str(foreign_item.id),
            foreign_item.id);
 
-    let cc = match llvm_calling_convention(ccx, abis) {
+    let cc = match llvm_calling_convention(ccx, abi) {
         Some(cc) => cc,
         None => {
             ccx.sess().span_fatal(foreign_item.span,
                 format!("ABI `{}` has no suitable calling convention \
                       for target architecture",
-                      abis.user_string(ccx.tcx())));
+                      abi.user_string(ccx.tcx())));
         }
     };
 
@@ -263,8 +263,8 @@ pub fn trans_native_call<'a>(
            ccx.tn.val_to_str(llfn),
            ccx.tn.val_to_str(llretptr));
 
-    let (fn_abis, fn_sig) = match ty::get(callee_ty).sty {
-        ty::ty_bare_fn(ref fn_ty) => (fn_ty.abis, fn_ty.sig.clone()),
+    let (fn_abi, fn_sig) = match ty::get(callee_ty).sty {
+        ty::ty_bare_fn(ref fn_ty) => (fn_ty.abi, fn_ty.sig.clone()),
         _ => ccx.sess().bug("trans_native_call called on non-function type")
     };
     let llsig = foreign_signature(ccx, &fn_sig, passed_arg_tys.as_slice());
@@ -354,14 +354,14 @@ pub fn trans_native_call<'a>(
         llargs_foreign.push(llarg_foreign);
     }
 
-    let cc = match llvm_calling_convention(ccx, fn_abis) {
+    let cc = match llvm_calling_convention(ccx, fn_abi) {
         Some(cc) => cc,
         None => {
             // FIXME(#8357) We really ought to report a span here
             ccx.sess().fatal(
                 format!("ABI string `{}` has no suitable ABI \
                         for target architecture",
-                        fn_abis.user_string(ccx.tcx())));
+                        fn_abi.user_string(ccx.tcx())));
         }
     };
 
@@ -435,9 +435,9 @@ pub fn trans_foreign_mod(ccx: &CrateContext, foreign_mod: &ast::ForeignMod) {
     for &foreign_item in foreign_mod.items.iter() {
         match foreign_item.node {
             ast::ForeignItemFn(..) => {
-                let abis = foreign_mod.abis;
-                if !(abis.is_rust() || abis.is_intrinsic()) {
-                    register_foreign_item_fn(ccx, abis, foreign_item);
+                match foreign_mod.abi {
+                    Rust | RustIntrinsic => {}
+                    abi => { register_foreign_item_fn(ccx, abi, foreign_item); }
                 }
             }
             _ => {}
@@ -486,7 +486,7 @@ pub fn register_rust_fn_with_foreign_abi(ccx: &CrateContext,
     let t = ty::node_id_to_type(ccx.tcx(), node_id);
     let (cconv, output) = match ty::get(t).sty {
         ty::ty_bare_fn(ref fn_ty) => {
-            let c = llvm_calling_convention(ccx, fn_ty.abis);
+            let c = llvm_calling_convention(ccx, fn_ty.abi);
             (c.unwrap_or(lib::llvm::CCallConv), fn_ty.sig.output)
         }
         _ => fail!("expected bare fn in register_rust_fn_with_foreign_abi")
@@ -534,7 +534,7 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: &CrateContext,
         // normal Rust function. This will be the type of the wrappee fn.
         let f = match ty::get(t).sty {
             ty::ty_bare_fn(ref f) => {
-                assert!(!f.abis.is_rust() && !f.abis.is_intrinsic());
+                assert!(f.abi != Rust && f.abi != RustIntrinsic);
                 f
             }
             _ => {
