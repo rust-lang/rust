@@ -12,7 +12,7 @@
 //ignore-stage1
 //ignore-fast
 
-#[feature(phase)];
+#![feature(phase)]
 
 #[phase(syntax)]
 extern crate macro_export_inner_module;

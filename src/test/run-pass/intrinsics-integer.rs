@@ -10,7 +10,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[feature(globs)];
+#![feature(globs)]
 
 mod rusti {
     extern "rust-intrinsic" {

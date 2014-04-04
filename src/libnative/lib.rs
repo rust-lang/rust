@@ -51,8 +51,6 @@
 #![deny(unused_result, unused_must_use)]
 #![allow(non_camel_case_types)]
 
-#![allow(visible_private_types)] // NOTE: remove after a stage0 snap
-
 // NB this crate explicitly does *not* allow glob imports, please seriously
 //    consider whether they're needed before adding that feature here (the
 //    answer is that you don't need them)

@@ -24,7 +24,7 @@
 // can't run host binaries, and force-host to make this test build as the host
 // arch.
 
-#[feature(phase)];
+#![feature(phase)]
 
 #[phase(syntax, link)]
 extern crate macro_crate_test;

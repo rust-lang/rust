@@ -13,7 +13,7 @@
 // ignore-cross-compile #12102
 // ignore-fast
 
-#[feature(phase)];
+#![feature(phase)]
 #[phase(syntax)]
 extern crate hexfloat;
 

@@ -1,5 +1,5 @@
 # Japanese translations for Rust package
-# Copyright (C) 2013 The Rust Project Developers
+# Copyright (C) 2013-2014 The Rust Project Developers
 # This file is distributed under the same license as the Rust package.
 # Automatically generated, 2013.
 #
@@ -886,7 +886,7 @@ msgstr ""
 #: src/doc/rust.md:2008
 #, fuzzy
 #| msgid "~~~~ use std::task::spawn;"
-msgid "~~~~ {.ignore} #[warn(unstable)];"
+msgid "~~~~ {.ignore} #![warn(unstable)]"
 msgstr ""
 "~~~~\n"
 "use std::task::spawn;"

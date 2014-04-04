@@ -392,7 +392,7 @@ pub fn write_content<'a>(
                 }
             }
         }
-        ast::ExprVec(ref elements, _) => {
+        ast::ExprVec(ref elements) => {
             match dest {
                 Ignore => {
                     for element in elements.iter() {
@@ -418,7 +418,7 @@ pub fn write_content<'a>(
             }
             return bcx;
         }
-        ast::ExprRepeat(element, count_expr, _) => {
+        ast::ExprRepeat(element, count_expr) => {
             match dest {
                 Ignore => {
                     return expr::trans_into(bcx, element, Ignore);
@@ -486,8 +486,8 @@ pub fn elements_required(bcx: &Block, content_expr: &ast::Expr) -> uint {
                 }
             }
         },
-        ast::ExprVec(ref es, _) => es.len(),
-        ast::ExprRepeat(_, count_expr, _) => {
+        ast::ExprVec(ref es) => es.len(),
+        ast::ExprRepeat(_, count_expr) => {
             ty::eval_repeat_count(bcx.tcx(), count_expr)
         }
         _ => bcx.tcx().sess.span_bug(content_expr.span,
