@@ -12,7 +12,7 @@
 // immediately, so that we get more errors listed at a time.
 
 #![feature(asm)]
-#![feature(trace_macros)]
+#![feature(trace_macros, concat_idents)]
 
 #[deriving(Default, //~ ERROR
            Rand, //~ ERROR
