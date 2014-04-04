@@ -612,18 +612,18 @@ the behavior of the compiler.
 
 ~~~~
 // Crate ID
-#[ crate_id = "projx#2.5" ];
+#![crate_id = "projx#2.5"]
 
 // Additional metadata attributes
-#[ desc = "Project X" ];
-#[ license = "BSD" ];
-#[ comment = "This is a comment on Project X." ];
+#![desc = "Project X"]
+#![license = "BSD"]
+#![comment = "This is a comment on Project X."]
 
 // Specify the output type
-#[ crate_type = "lib" ];
+#![crate_type = "lib"]
 
 // Turn on a warning
-#[ warn(non_camel_case_types) ];
+#![warn(non_camel_case_types)]
 ~~~~
 
 A crate that contains a `main` function can be compiled to an executable.
