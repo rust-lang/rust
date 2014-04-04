@@ -464,7 +464,7 @@ pub fn get_wrapper_for_bare_fn(ccx: &CrateContext,
     let arena = TypedArena::new();
     let fcx = new_fn_ctxt(ccx, llfn, -1, true, f.sig.output, None, None, &arena);
     init_function(&fcx, true, f.sig.output, None);
-    let bcx = fcx.entry_bcx.get().unwrap();
+    let bcx = fcx.entry_bcx.borrow().clone().unwrap();
 
     let args = create_datums_for_fn_args(&fcx,
                                          ty::ty_fn_args(closure_ty)

@@ -463,7 +463,7 @@ fn make_generic_glue(ccx: &CrateContext,
     // llfn is expected be declared to take a parameter of the appropriate
     // type, so we don't need to explicitly cast the function parameter.
 
-    let bcx = fcx.entry_bcx.get().unwrap();
+    let bcx = fcx.entry_bcx.borrow().clone().unwrap();
     let llrawptr0 = unsafe { llvm::LLVMGetParam(llfn, fcx.arg_pos(0) as c_uint) };
     let bcx = helper(bcx, llrawptr0, t);
     finish_fn(&fcx, bcx);

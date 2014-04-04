@@ -398,7 +398,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
            expr.repr(rcx.fcx.tcx()), rcx.repeating_scope);
 
     let method_call = MethodCall::expr(expr.id);
-    let has_method_map = rcx.fcx.inh.method_map.get().contains_key(&method_call);
+    let has_method_map = rcx.fcx.inh.method_map.borrow().contains_key(&method_call);
 
     // Check any autoderefs or autorefs that appear.
     for &adjustment in rcx.fcx.inh.adjustments.borrow().find(&expr.id).iter() {
@@ -498,7 +498,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
         ast::ExprUnary(ast::UnDeref, base) => {
             // For *a, the lifetime of a must enclose the deref
             let method_call = MethodCall::expr(expr.id);
-            let base_ty = match rcx.fcx.inh.method_map.get().find(&method_call) {
+            let base_ty = match rcx.fcx.inh.method_map.borrow().find(&method_call) {
                 Some(method) => {
                     constrain_call(rcx, None, expr, Some(base), [], true);
                     ty::ty_fn_ret(method.ty)
@@ -852,7 +852,7 @@ fn constrain_autoderefs(rcx: &mut Rcx,
                i, derefs);
 
         let method_call = MethodCall::autoderef(deref_expr.id, i as u32);
-        derefd_ty = match rcx.fcx.inh.method_map.get().find(&method_call) {
+        derefd_ty = match rcx.fcx.inh.method_map.borrow().find(&method_call) {
             Some(method) => {
                 // Treat overloaded autoderefs as if an AutoRef adjustment
                 // was applied on the base type, as that is always the case.

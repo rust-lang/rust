@@ -2209,8 +2209,8 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         fcx.write_ty(expr.id, fty);
 
         let (inherited_purity, id) =
-            ty::determine_inherited_purity((fcx.ps.get().purity,
-                                            fcx.ps.get().def),
+            ty::determine_inherited_purity((fcx.ps.borrow().purity,
+                                            fcx.ps.borrow().def),
                                            (purity, expr.id),
                                            sigil);
 
@@ -3333,7 +3333,7 @@ pub fn check_block_with_expected(fcx: &FnCtxt,
         };
     });
 
-    fcx.ps.set(prev);
+    *fcx.ps.borrow_mut() = prev;
 }
 
 pub fn check_const(ccx: &CrateCtxt,

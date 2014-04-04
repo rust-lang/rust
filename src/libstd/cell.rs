@@ -164,33 +164,11 @@ impl<T> RefCell<T> {
             None => fail!("RefCell<T> already borrowed")
         }
     }
-
-    /// Sets the value, replacing what was there.
-    ///
-    /// # Failure
-    ///
-    /// Fails if the value is currently borrowed.
-    #[inline]
-    pub fn set(&self, value: T) {
-        *self.borrow_mut() = value;
-    }
-}
-
-impl<T:Clone> RefCell<T> {
-    /// Returns a copy of the contained value.
-    ///
-    /// # Failure
-    ///
-    /// Fails if the value is currently mutably borrowed.
-    #[inline]
-    pub fn get(&self) -> T {
-        (*self.borrow()).clone()
-    }
 }
 
 impl<T: Clone> Clone for RefCell<T> {
     fn clone(&self) -> RefCell<T> {
-        RefCell::new(self.get())
+        RefCell::new(self.borrow().clone())
     }
 }
 
@@ -216,7 +194,7 @@ impl<'b, T> Drop for Ref<'b, T> {
 impl<'b, T> Deref<T> for Ref<'b, T> {
     #[inline]
     fn deref<'a>(&'a self) -> &'a T {
-        unsafe{ &*self.parent.value.get() }
+        unsafe { &*self.parent.value.get() }
     }
 }
 
@@ -236,14 +214,14 @@ impl<'b, T> Drop for RefMut<'b, T> {
 impl<'b, T> Deref<T> for RefMut<'b, T> {
     #[inline]
     fn deref<'a>(&'a self) -> &'a T {
-        unsafe{ &*self.parent.value.get() }
+        unsafe { &*self.parent.value.get() }
     }
 }
 
 impl<'b, T> DerefMut<T> for RefMut<'b, T> {
     #[inline]
     fn deref_mut<'a>(&'a mut self) -> &'a mut T {
-        unsafe{ &mut *self.parent.value.get() }
+        unsafe { &mut *self.parent.value.get() }
     }
 }
 
