@@ -57,5 +57,5 @@ fn f() { }
 fn g() { }
 
 fn h() {
-    #[doc = "as do inner ones"];
+    #![doc = "as do inner ones"]
 }

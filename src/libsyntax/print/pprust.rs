@@ -915,9 +915,6 @@ impl<'a> State<'a> {
             match attr.node.style {
                 ast::AttrInner => {
                     try!(self.print_attribute(attr));
-                    if !attr.node.is_sugared_doc {
-                        try!(word(&mut self.s, ";"));
-                    }
                     count += 1;
                 }
                 _ => {/* fallthrough */ }
@@ -935,7 +932,10 @@ impl<'a> State<'a> {
         if attr.node.is_sugared_doc {
             word(&mut self.s, attr.value_str().unwrap().get())
         } else {
-            try!(word(&mut self.s, "#["));
+            match attr.node.style {
+                ast::AttrInner => try!(word(&mut self.s, "#![")),
+                ast::AttrOuter => try!(word(&mut self.s, "#[")),
+            }
             try!(self.print_meta_item(attr.meta()));
             word(&mut self.s, "]")
         }

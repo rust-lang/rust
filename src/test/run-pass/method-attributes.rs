@@ -22,12 +22,12 @@ trait frobable {
 impl frobable for int {
     #[frob_attr1]
     fn frob(&self) {
-        #[frob_attr2];
+        #![frob_attr2]
     }
 
     #[defrob_attr1]
     fn defrob(&self) {
-        #[defrob_attr2];
+        #![defrob_attr2]
     }
 }
 
