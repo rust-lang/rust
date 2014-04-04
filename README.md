@@ -5,7 +5,7 @@ documentation.
 
 ## Quick Start
 
-1. Download a [binary insaller][installer] for your platform.
+1. Download a [binary installer][installer] for your platform.
 2. Read the [tutorial].
 3. Enjoy!
 
