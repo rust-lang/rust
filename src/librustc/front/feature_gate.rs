@@ -49,6 +49,8 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("macro_registrar", Active),
     ("log_syntax", Active),
     ("trace_macros", Active),
+    ("concat_idents", Active),
+
     ("simd", Active),
     ("default_type_params", Active),
     ("quote", Active),
@@ -226,6 +228,11 @@ impl<'a> Visitor<()> for Context<'a> {
 
         else if id == token::str_to_ident("trace_macros") {
             self.gate_feature("trace_macros", path.span, "`trace_macros` is not \
+                stable enough for use and is subject to change");
+        }
+
+        else if id == token::str_to_ident("concat_idents") {
+            self.gate_feature("concat_idents", path.span, "`concat_idents` is not \
                 stable enough for use and is subject to change");
         }
 

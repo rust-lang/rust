@@ -10,6 +10,7 @@
 
 // this now fails (correctly, I claim) because hygiene prevents
 // the assembled identifier from being a reference to the binding.
+#![feature(concat_idents)]
 
 pub fn main() {
     let asdf_fdsa = ~"<.<";
