@@ -610,7 +610,7 @@ and may optionally begin with any number of `attributes` that apply to the conta
 Attributes on the anonymous crate module define important metadata that influences
 the behavior of the compiler.
 
-~~~~
+~~~~ {.rust}
 // Crate ID
 #![crate_id = "projx#2.5"]
 
@@ -1697,7 +1697,7 @@ as any of:
 
 Attributes with a bang ("!") after the hash ("#") apply to the item that the
 attribute is declared within. Attributes that do not have a bang after the
-hash by a semi-colon apply to the next item.
+hash apply to the item that follows the attribute.
 
 An example of attributes:
 
@@ -1729,53 +1729,54 @@ pub type int8_t = i8;
 
 ### Crate-only attributes
 
+- `crate_id` - specify the this crate's crate ID.
 - `crate_type` - see [linkage](#linkage).
 - `feature` - see [compiler features](#compiler-features).
+- `no_main` - disable emitting the `main` symbol. Useful when some other
+  object being linked to defines `main`.
 - `no_start` - disable linking to the `native` crate, which specifies the
   "start" language item.
-- `no_main` - disable emitting the `main` symbol. Useful when some
-  other object being linked to defines `main`.
 - `no_std` - disable linking to the `std` crate.
-- `crate_id` - specify the this crate's crate ID.
 
 ### Module-only attributes
 
-- `path` - specifies the file to load the module from. `#[path="foo.rs"] mod
-  bar;` is equivalent to `mod bar { /* contents of foo.rs */ }`
 - `macro_escape` - macros defined in this module will be visible in the
   module's parent, after this module has been included.
 - `no_implicit_prelude` - disable injecting `use std::prelude::*` in this
   module.
+- `path` - specifies the file to load the module from. `#[path="foo.rs"] mod
+  bar;` is equivalent to `mod bar { /* contents of foo.rs */ }`. The path is
+  taken relative to the directory that the current module is in.
 
 ### Function-only attributes
 
-- `start` - indicates that this function should be used as the entry point,
-  overriding the "start" language item.  See the "start" [language
-  item](#language-items) for more details.
-- `main` - indicates that this function should be passed to the entry point,
-  rather than the function in the crate root named `main`.
 - `macro_registrar` - when using loadable syntax extensions, mark this
   function as the registration point for the current crate's syntax
   extensions.
+- `main` - indicates that this function should be passed to the entry point,
+  rather than the function in the crate root named `main`.
+- `start` - indicates that this function should be used as the entry point,
+  overriding the "start" language item.  See the "start" [language
+  item](#language-items) for more details.
 
 ### Static-only attributes
 
+- `address_insignificant` - references to this static may alias with
+  references to other statics, potentially of unrelated type.
 - `thread_local` - on a `static mut`, this signals that the value of this
   static may change depending on the current thread. The exact consequences of
   this are implementation-defined.
-- `address_insignificant` - references to this static may alias with
-  references to other statics, potentially of unrelated type.
 
 ### FFI attributes
 
 On an `extern` block, the following attributes are interpreted:
 
-- `link` - indicate that a native library should be linked to for the
-  declarations in this block to be linked correctly. See [external
-  blocks](#external-blocks)
 - `link_args` - specify arguments to the linker, rather than just the library
   name and type. This is feature gated and the exact behavior is
   implementation-defined (due to variety of linker invocation syntax).
+- `link` - indicate that a native library should be linked to for the
+  declarations in this block to be linked correctly. See [external
+  blocks](#external-blocks)
 
 On declarations inside an `extern` block, the following attributes are
 interpreted:
@@ -1787,25 +1788,29 @@ interpreted:
 
 ### Miscellaneous attributes
 
-- `simd` - on certain tuple structs, derive the arithmetic operators, which
-  lower to the target's SIMD instructions, if any.
 - `link_section` - on statics and functions, this specifies the section of the
   object file that this item's contents will be placed into.
-- `static_assert` - on statics whose type is `bool`, terminates compilation
-  with an error if it is not initialized to `true`.
-- `repr` - on C-like enums, this sets the underlying type used for
-  representation. Useful for FFI.
+- `macro_export` - export a macro for cross-crate usage.
 - `no_mangle` - on any item, do not apply the standard name mangling. Set the
   symbol for this item to its identifier.
 - `packed` - on structs or enums, eliminate any padding that would be used to
   align fields.
+- `repr` - on C-like enums, this sets the underlying type used for
+  representation. Useful for FFI. Takes one argument, which is the primitive
+  type this enum should be represented for, or `C`, which specifies that it
+  should be the default `enum` size of the C ABI for that platform. Note that
+  enum representation in C is undefined, and this may be incorrect when the C
+  code is compiled with certain flags.
+- `simd` - on certain tuple structs, derive the arithmetic operators, which
+  lower to the target's SIMD instructions, if any.
+- `static_assert` - on statics whose type is `bool`, terminates compilation
+  with an error if it is not initialized to `true`.
 - `unsafe_destructor` - allow implementations of the "drop" language item
   where the type it is implemented for does not implement the "send" language
   item.
 - `unsafe_no_drop_flag` - on structs, remove the flag that prevents
   destructors from being run twice. Destructors might be run multiple times on
   the same object with this attribute.
-- `macro_export` - export a macro for cross-crate usage.
 
 ### Conditional compilation
 
