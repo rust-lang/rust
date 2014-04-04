@@ -22,8 +22,10 @@ use rustc::back::link;
 use rustc::driver::driver;
 use rustc::driver::session;
 use rustc::metadata::creader::Loader;
+use syntax::ast;
+use syntax::codemap::{CodeMap, dummy_spanned};
 use syntax::diagnostic;
-use syntax::codemap::CodeMap;
+use syntax::parse::token;
 
 use core;
 use clean;
@@ -33,7 +35,8 @@ use html::markdown;
 use passes;
 use visit_ast::RustdocVisitor;
 
-pub fn run(input: &str, libs: HashSet<Path>, mut test_args: Vec<~str>) -> int {
+pub fn run(input: &str, cfgs: Vec<~str>,
+           libs: HashSet<Path>, mut test_args: Vec<~str>) -> int {
     let input_path = Path::new(input);
     let input = driver::FileInput(input_path.clone());
 
@@ -54,7 +57,11 @@ pub fn run(input: &str, libs: HashSet<Path>, mut test_args: Vec<~str>) -> int {
                                       Some(input_path),
                                       span_diagnostic_handler);
 
-    let cfg = driver::build_configuration(&sess);
+    let mut cfg = driver::build_configuration(&sess);
+    cfg.extend(cfgs.move_iter().map(|cfg_| {
+        let cfg_ = token::intern_and_get_ident(cfg_);
+        @dummy_spanned(ast::MetaWord(cfg_))
+    }));
     let krate = driver::phase_1_parse_input(&sess, cfg, &input);
     let (krate, _) = driver::phase_2_configure_and_expand(&sess, &mut Loader::new(&sess), krate,
                                                           &from_str("rustdoc-test").unwrap());
@@ -160,17 +167,14 @@ fn runtest(test: &str, cratename: &str, libs: HashSet<Path>, should_fail: bool,
 
 fn maketest(s: &str, cratename: &str, loose_feature_gating: bool) -> ~str {
     let mut prog = ~r"
-#[deny(warnings)];
-#[allow(unused_variable, dead_assignment, unused_mut, attribute_usage, dead_code)];
-
-// FIXME: remove when ~[] disappears from tests.
-#[allow(deprecated_owned_vector)];
+#![deny(warnings)]
+#![allow(unused_variable, dead_assignment, unused_mut, attribute_usage, dead_code)]
 ";
 
     if loose_feature_gating {
         // FIXME #12773: avoid inserting these when the tutorial & manual
         // etc. have been updated to not use them so prolifically.
-        prog.push_str("#[ feature(macro_rules, globs, struct_variant, managed_boxes) ];\n");
+        prog.push_str("#![feature(macro_rules, globs, struct_variant, managed_boxes) ]\n");
     }
 
     if !s.contains("extern crate") {
