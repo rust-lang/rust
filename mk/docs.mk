@@ -271,7 +271,7 @@ endif
 $(2) += doc/$(1)/index.html
 doc/$(1)/index.html: $$(LIB_DOC_DEP_$(1))
 	@$$(call E, rustdoc $$@)
-	$$(Q)$$(RUSTDOC) --cfg stage2 $$<
+	$$(Q)$$(RUSTDOC) --cfg dox --cfg stage2 $$<
 endef
 
 $(foreach crate,$(DOC_CRATES),$(eval $(call DEF_LIB_DOC,$(crate),DOC_TARGETS)))
