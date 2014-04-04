@@ -10,7 +10,7 @@
 
 // ignore-test Can't use syntax crate here
 
-#[feature(quote)];
+#![feature(quote)]
 
 extern crate syntax;
 

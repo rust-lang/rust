@@ -10,7 +10,7 @@
 
 // ignore-fast
 // ignore-android
-#[feature(quote)];
+#![feature(quote)]
 #[deny(unused_variable)];
 
 extern crate syntax;
