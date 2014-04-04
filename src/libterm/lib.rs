@@ -21,9 +21,7 @@
 
 #![feature(macro_rules)]
 
-// #![deny(missing_doc)] // NOTE: uncomment after a stage0 snap
-#![allow(missing_doc)] // NOTE: remove after a stage0 snap
-#![allow(visible_private_types)] // NOTE: remove after a stage0 snap
+#![deny(missing_doc)]
 
 extern crate collections;
 

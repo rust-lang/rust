@@ -11,7 +11,7 @@
 // ignore-fast
 // exec-env:RUST_LOG=logging-enabled=info
 
-#[feature(phase)];
+#![feature(phase)]
 #[phase(syntax, link)]
 extern crate log;
 

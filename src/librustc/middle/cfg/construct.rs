@@ -347,7 +347,7 @@ impl<'a> CFGBuilder<'a> {
                 self.add_node(expr.id, [])
             }
 
-            ast::ExprVec(ref elems, _) => {
+            ast::ExprVec(ref elems) => {
                 self.straightline(expr, pred, elems.as_slice())
             }
 
@@ -379,7 +379,7 @@ impl<'a> CFGBuilder<'a> {
                 self.straightline(expr, base_exit, field_exprs.as_slice())
             }
 
-            ast::ExprRepeat(elem, count, _) => {
+            ast::ExprRepeat(elem, count) => {
                 self.straightline(expr, pred, [elem, count])
             }
 

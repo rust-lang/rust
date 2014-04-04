@@ -13,7 +13,7 @@
 // ignore-pretty
 // ignore-cross-compile
 
-#[feature(phase)];
+#![feature(phase)]
 
 #[phase(syntax)]
 extern crate fourcc;

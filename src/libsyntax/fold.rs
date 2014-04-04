@@ -740,11 +740,11 @@ pub fn noop_fold_expr<T: Folder>(e: @Expr, folder: &mut T) -> @Expr {
         ExprBox(p, e) => {
             ExprBox(folder.fold_expr(p), folder.fold_expr(e))
         }
-        ExprVec(ref exprs, mutt) => {
-            ExprVec(exprs.iter().map(|&x| folder.fold_expr(x)).collect(), mutt)
+        ExprVec(ref exprs) => {
+            ExprVec(exprs.iter().map(|&x| folder.fold_expr(x)).collect())
         }
-        ExprRepeat(expr, count, mutt) => {
-            ExprRepeat(folder.fold_expr(expr), folder.fold_expr(count), mutt)
+        ExprRepeat(expr, count) => {
+            ExprRepeat(folder.fold_expr(expr), folder.fold_expr(count))
         }
         ExprTup(ref elts) => ExprTup(elts.iter().map(|x| folder.fold_expr(*x)).collect()),
         ExprCall(f, ref args) => {

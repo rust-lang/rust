@@ -293,31 +293,45 @@ impl Mutable for TrieSet {
     fn clear(&mut self) { self.map.clear() }
 }
 
+impl Set<uint> for TrieSet {
+    #[inline]
+    fn contains(&self, value: &uint) -> bool {
+        self.map.contains_key(value)
+    }
+
+    #[inline]
+    fn is_disjoint(&self, other: &TrieSet) -> bool {
+        self.iter().all(|v| !other.contains(&v))
+    }
+
+    #[inline]
+    fn is_subset(&self, other: &TrieSet) -> bool {
+        self.iter().all(|v| other.contains(&v))
+    }
+
+    #[inline]
+    fn is_superset(&self, other: &TrieSet) -> bool {
+        other.is_subset(self)
+    }
+}
+
+impl MutableSet<uint> for TrieSet {
+    #[inline]
+    fn insert(&mut self, value: uint) -> bool {
+        self.map.insert(value, ())
+    }
+
+    #[inline]
+    fn remove(&mut self, value: &uint) -> bool {
+        self.map.remove(value)
+    }
+}
+
 impl TrieSet {
     /// Create an empty TrieSet
     #[inline]
     pub fn new() -> TrieSet {
         TrieSet{map: TrieMap::new()}
-    }
-
-    /// Return true if the set contains a value
-    #[inline]
-    pub fn contains(&self, value: &uint) -> bool {
-        self.map.contains_key(value)
-    }
-
-    /// Add a value to the set. Return true if the value was not already
-    /// present in the set.
-    #[inline]
-    pub fn insert(&mut self, value: uint) -> bool {
-        self.map.insert(value, ())
-    }
-
-    /// Remove a value from the set. Return true if the value was
-    /// present in the set.
-    #[inline]
-    pub fn remove(&mut self, value: &uint) -> bool {
-        self.map.remove(value)
     }
 
     /// Visit all values in reverse order

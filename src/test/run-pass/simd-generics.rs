@@ -10,7 +10,7 @@
 
 // ignore-fast
 
-#[feature(simd)];
+#![feature(simd)]
 
 use std::ops;
 
