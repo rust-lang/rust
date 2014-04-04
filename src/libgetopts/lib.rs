@@ -87,8 +87,6 @@
 #![deny(missing_doc)]
 #![deny(deprecated_owned_vector)]
 
-#![allow(visible_private_types)] // NOTE: remove after a stage0 snap
-
 #[cfg(test)] #[phase(syntax, link)] extern crate log;
 
 use std::cmp::Eq;
