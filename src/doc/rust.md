@@ -1678,10 +1678,10 @@ import public items from their destination, not private items.
 ## Attributes
 
 ~~~~ {.notrust .ebnf .gram}
-attribute : '#' '!' ? '[' attr_list ']'
-attr_list : attr [ ',' attr_list ]*
+attribute : '#' '!' ? '[' attr_list ']' ;
+attr_list : attr [ ',' attr_list ]* ;
 attr : ident [ '=' literal
-             | '(' attr_list ')' ] ?
+             | '(' attr_list ')' ] ? ;
 ~~~~
 
 Static entities in Rust -- crates, modules and items -- may have _attributes_
