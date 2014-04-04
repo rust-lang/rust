@@ -1492,8 +1492,8 @@ Rust uses the unary star operator (`*`) to access the contents of a
 box or pointer, similarly to C.
 
 ~~~
-let owned = ~20;
-let borrowed = &30;
+let owned = ~10;
+let borrowed = &20;
 
 let sum = *owned + *borrowed;
 ~~~
