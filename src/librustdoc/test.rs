@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -221,7 +221,7 @@ impl Collector {
         }
     }
 
-    pub fn add_test(&mut self, test: ~str, should_fail: bool, no_run: bool) {
+    pub fn add_test(&mut self, test: ~str, should_fail: bool, no_run: bool, should_ignore: bool) {
         let name = if self.use_headers {
             let s = self.current_header.as_ref().map(|s| s.as_slice()).unwrap_or("");
             format!("{}_{}", s, self.cnt)
@@ -236,7 +236,7 @@ impl Collector {
         self.tests.push(testing::TestDescAndFn {
             desc: testing::TestDesc {
                 name: testing::DynTestName(name),
-                ignore: false,
+                ignore: should_ignore,
                 should_fail: false, // compiler failures are test failures
             },
             testfn: testing::DynTestFn(proc() {
