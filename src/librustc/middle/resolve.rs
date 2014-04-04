@@ -3602,7 +3602,8 @@ impl<'a> Resolver<'a> {
                                                                0,
                                                                NormalRibKind),
                                              |this| {
-                    visit::walk_item(this, item, ());
+                    this.resolve_type_parameters(&generics.ty_params);
+                    visit::walk_enum_def(this, enum_def, generics, ());
                 });
             }
 
@@ -3859,7 +3860,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn resolve_type_parameters(&mut self,
-                                   type_parameters: &OwnedSlice<TyParam>) {
+                               type_parameters: &OwnedSlice<TyParam>) {
         for type_parameter in type_parameters.iter() {
             for bound in type_parameter.bounds.iter() {
                 self.resolve_type_parameter_bound(type_parameter.id, bound);
