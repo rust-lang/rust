@@ -1819,12 +1819,11 @@ impl<'a> Parser<'a> {
             return self.parse_block_expr(lo, UnsafeBlock(ast::UserProvided));
         } else if self.token == token::LBRACKET {
             self.bump();
-            let mutbl = MutImmutable;
 
             if self.token == token::RBRACKET {
                 // Empty vector.
                 self.bump();
-                ex = ExprVec(Vec::new(), mutbl);
+                ex = ExprVec(Vec::new());
             } else {
                 // Nonempty vector.
                 let first_expr = self.parse_expr();
@@ -1835,7 +1834,7 @@ impl<'a> Parser<'a> {
                     self.bump();
                     let count = self.parse_expr();
                     self.expect(&token::RBRACKET);
-                    ex = ExprRepeat(first_expr, count, mutbl);
+                    ex = ExprRepeat(first_expr, count);
                 } else if self.token == token::COMMA {
                     // Vector with two or more elements.
                     self.bump();
@@ -1846,11 +1845,11 @@ impl<'a> Parser<'a> {
                     );
                     let mut exprs = vec!(first_expr);
                     exprs.push_all_move(remaining_exprs);
-                    ex = ExprVec(exprs, mutbl);
+                    ex = ExprVec(exprs);
                 } else {
                     // Vector with one element.
                     self.expect(&token::RBRACKET);
-                    ex = ExprVec(vec!(first_expr), mutbl);
+                    ex = ExprVec(vec!(first_expr));
                 }
             }
             hi = self.last_span.hi;
