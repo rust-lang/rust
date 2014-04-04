@@ -122,7 +122,7 @@
                        ;; but the "else" or "{" should align with the beginning
                        ;; of the expression it's in.)
                        (looking-at "\\<else\\>\\|{")
-                       
+
                        (save-excursion
                          (rust-rewind-irrelevant)
                          ;; Point is now at the end of the previous ine
