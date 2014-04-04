@@ -54,7 +54,7 @@ c.write(
 #[crate_id=\"run_pass_stage2#0.1\"];
 #[crate_id=\"run_pass_stage2#0.1\"];
 #[feature(globs, macro_rules, struct_variant, managed_boxes)];
-#[allow(warnings)];
+#![allow(warnings)]
 extern crate collections;
 """
 )

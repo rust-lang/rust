@@ -11,7 +11,7 @@
 // ignore-pretty
 // ignore-test
 
-#[feature(quote)];
+#![feature(quote)]
 
 extern crate syntax;
 

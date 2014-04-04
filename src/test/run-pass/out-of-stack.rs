@@ -10,7 +10,7 @@
 
 // ignore-fast
 
-#[feature(asm)];
+#![feature(asm)]
 
 use std::io::Process;
 use std::os;

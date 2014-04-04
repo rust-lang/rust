@@ -14,7 +14,7 @@
 // ignore-macos
 // aux-build:linkage1.rs
 
-#[feature(linkage)];
+#![feature(linkage)]
 
 extern crate other = "linkage1";
 

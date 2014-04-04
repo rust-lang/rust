@@ -10,7 +10,7 @@
 
 // ignore-test
 
-#[feature(quote)];
+#![feature(quote)]
 #[feature(managed_boxes)];
 
 extern crate syntax;

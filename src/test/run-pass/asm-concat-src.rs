@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // ignore-fast #[feature] doesn't work with check-fast
-#[feature(asm)];
+#![feature(asm)]
 
 pub fn main() {
     unsafe { asm!(concat!("", "")) };
