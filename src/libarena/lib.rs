@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -23,8 +23,6 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://static.rust-lang.org/doc/master")]
 #![allow(missing_doc)]
-#![feature(managed_boxes)]
-
 #![allow(visible_private_types)] // NOTE: remove after a stage0 snap
 
 extern crate collections;
@@ -301,7 +299,7 @@ fn test_arena_destructors() {
     for i in range(0u, 10) {
         // Arena allocate something with drop glue to make sure it
         // doesn't leak.
-        arena.alloc(|| @i);
+        arena.alloc(|| Rc::new(i));
         // Allocate something with funny size and alignment, to keep
         // things interesting.
         arena.alloc(|| [0u8, 1u8, 2u8]);
@@ -316,13 +314,13 @@ fn test_arena_destructors_fail() {
     for i in range(0u, 10) {
         // Arena allocate something with drop glue to make sure it
         // doesn't leak.
-        arena.alloc(|| { @i });
+        arena.alloc(|| { Rc::new(i) });
         // Allocate something with funny size and alignment, to keep
         // things interesting.
         arena.alloc(|| { [0u8, 1u8, 2u8] });
     }
     // Now, fail while allocating
-    arena.alloc::<@int>(|| {
+    arena.alloc::<Rc<int>>(|| {
         // Now fail.
         fail!();
     });

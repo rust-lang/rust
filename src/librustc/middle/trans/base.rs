@@ -855,8 +855,8 @@ pub fn trans_external_path(ccx: &CrateContext, did: ast::DefId, t: ty::t) -> Val
     let name = csearch::get_symbol(&ccx.sess().cstore, did);
     match ty::get(t).sty {
         ty::ty_bare_fn(ref fn_ty) => {
-            match fn_ty.abis.for_target(ccx.sess().targ_cfg.os,
-                                        ccx.sess().targ_cfg.arch) {
+            match fn_ty.abi.for_target(ccx.sess().targ_cfg.os,
+                                       ccx.sess().targ_cfg.arch) {
                 Some(Rust) | Some(RustIntrinsic) => {
                     get_extern_rust_fn(ccx,
                                        fn_ty.sig.inputs.as_slice(),
@@ -865,7 +865,7 @@ pub fn trans_external_path(ccx: &CrateContext, did: ast::DefId, t: ty::t) -> Val
                                        did)
                 }
                 Some(..) | None => {
-                    let c = foreign::llvm_calling_convention(ccx, fn_ty.abis);
+                    let c = foreign::llvm_calling_convention(ccx, fn_ty.abi);
                     let cconv = c.unwrap_or(lib::llvm::CCallConv);
                     let llty = type_of_fn_from_ty(ccx, t);
                     get_extern_fn(&mut *ccx.externs.borrow_mut(), ccx.llmod,
@@ -1601,7 +1601,7 @@ impl<'a> Visitor<()> for TransItemVisitor<'a> {
 pub fn trans_item(ccx: &CrateContext, item: &ast::Item) {
     let _icx = push_ctxt("trans_item");
     match item.node {
-      ast::ItemFn(decl, purity, _abis, ref generics, body) => {
+      ast::ItemFn(decl, purity, _abi, ref generics, body) => {
         if purity == ast::ExternFn  {
             let llfndecl = get_item_val(ccx, item.id);
             foreign::trans_rust_fn_with_foreign_abi(
@@ -1721,7 +1721,7 @@ fn register_fn(ccx: &CrateContext,
                -> ValueRef {
     let f = match ty::get(node_type).sty {
         ty::ty_bare_fn(ref f) => {
-            assert!(f.abis.is_rust() || f.abis.is_intrinsic());
+            assert!(f.abi == Rust || f.abi == RustIntrinsic);
             f
         }
         _ => fail!("expected bare rust fn or an intrinsic")
@@ -1997,8 +1997,8 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
 
             match ni.node {
                 ast::ForeignItemFn(..) => {
-                    let abis = ccx.tcx.map.get_foreign_abis(id);
-                    foreign::register_foreign_item_fn(ccx, abis, ni)
+                    let abi = ccx.tcx.map.get_foreign_abi(id);
+                    foreign::register_foreign_item_fn(ccx, abi, ni)
                 }
                 ast::ForeignItemStatic(..) => {
                     foreign::register_static(ccx, ni)

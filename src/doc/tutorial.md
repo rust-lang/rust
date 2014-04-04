@@ -2107,7 +2107,7 @@ references, or types where the only contained references
 have the `'static` lifetime. (For more on named lifetimes and their uses,
 see the [references and lifetimes guide][lifetimes].)
 
-> ***Note:*** These two traits were referred to as 'kinds' in earlier
+> ***Note:*** These built-in traits were referred to as 'kinds' in earlier
 > iterations of the language, and often still are.
 
 Additionally, the `Drop` trait is used to define destructors. This
@@ -2600,8 +2600,6 @@ As you can see, your module hierarchy is now three modules deep: There is the cr
 function, and the module `farm`. The module `farm` also contains two functions and a third module `barn`,
 which contains a function `hay`.
 
-(In case you already stumbled over `extern crate`: It isn't directly related to a bare `mod`, we'll get to it later. )
-
 ## Paths and visibility
 
 We've now defined a nice module hierarchy. But how do we access the items in it from our `main` function?
@@ -2843,11 +2841,11 @@ use farm::cow;
 
 The path you give to `use` is per default global, meaning relative to the crate root,
 no matter how deep the module hierarchy is, or whether the module body it's written in
-is contained in its own file (remember: files are irrelevant).
+is contained in its own file. (Remember: files are irrelevant.)
 
-This is different to other languages, where you often only find a single import construct that combines the semantic
+This is different from other languages, where you often only find a single import construct that combines the semantic
 of `mod foo;` and `use`-statements, and which tend to work relative to the source file or use an absolute file path
-- Rubys `require` or C/C++'s `#include` come to mind.
+- Ruby's `require` or C/C++'s `#include` come to mind.
 
 However, it's also possible to import things relative to the module of the `use`-statement:
 Adding a `super::` in front of the path will start in the parent module,
@@ -3027,7 +3025,7 @@ The nested `barn` module is private, but the `pub use` allows users
 of the module `farm` to access a function from `barn` without needing
 to know that `barn` exists.
 
-In other words, you can use them to decouple an public api from their internal implementation.
+In other words, you can use it to decouple a public api from its internal implementation.
 
 ## Using libraries
 
@@ -3050,7 +3048,6 @@ fn main() {
 }
 ~~~
 
-Despite its name, `extern crate` is a distinct construct from regular `mod` declarations:
 A statement of the form `extern crate foo;` will cause `rustc` to search for the crate `foo`,
 and if it finds a matching binary it lets you use it from inside your crate.
 

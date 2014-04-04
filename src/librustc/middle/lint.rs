@@ -59,6 +59,7 @@ use std::u32;
 use std::u64;
 use std::u8;
 use collections::SmallIntMap;
+use syntax::abi;
 use syntax::ast_map;
 use syntax::ast_util::IdVisitingOperation;
 use syntax::attr::{AttrMetaMethods, AttributeMethods};
@@ -892,7 +893,7 @@ fn check_item_ctypes(cx: &Context, it: &ast::Item) {
     }
 
     match it.node {
-      ast::ItemForeignMod(ref nmod) if !nmod.abis.is_intrinsic() => {
+      ast::ItemForeignMod(ref nmod) if nmod.abi != abi::RustIntrinsic => {
         for ni in nmod.items.iter() {
             match ni.node {
                 ast::ForeignItemFn(decl, _) => check_foreign_fn(cx, decl),

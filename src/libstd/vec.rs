@@ -310,11 +310,24 @@ impl<T: Clone> Vec<T> {
 
 impl<T:Clone> Clone for Vec<T> {
     fn clone(&self) -> Vec<T> {
-        let mut vector = Vec::with_capacity(self.len());
-        for element in self.iter() {
-            vector.push((*element).clone())
+        self.iter().map(|x| x.clone()).collect()
+    }
+
+    fn clone_from(&mut self, other: &Vec<T>) {
+        // drop anything in self that will not be overwritten
+        if self.len() > other.len() {
+            self.truncate(other.len())
         }
-        vector
+
+        // reuse the contained values' allocations/resources.
+        for (place, thing) in self.mut_iter().zip(other.iter()) {
+            place.clone_from(thing)
+        }
+
+        // self.len <= other.len due to the truncate above, so the
+        // slice here is always in-bounds.
+        let len = self.len();
+        self.extend(other.slice_from(len).iter().map(|x| x.clone()));
     }
 }
 
@@ -1474,5 +1487,40 @@ mod tests {
         }
 
         assert!(values == Vec::from_slice([2u8, 3, 5, 6, 7]));
+    }
+
+    #[test]
+    fn test_clone() {
+        let v: Vec<int> = vec!();
+        let w = vec!(1, 2, 3);
+
+        assert_eq!(v, v.clone());
+
+        let z = w.clone();
+        assert_eq!(w, z);
+        // they should be disjoint in memory.
+        assert!(w.as_ptr() != z.as_ptr())
+    }
+
+    #[test]
+    fn test_clone_from() {
+        let mut v = vec!();
+        let three = vec!(~1, ~2, ~3);
+        let two = vec!(~4, ~5);
+        // zero, long
+        v.clone_from(&three);
+        assert_eq!(v, three);
+
+        // equal
+        v.clone_from(&three);
+        assert_eq!(v, three);
+
+        // long, short
+        v.clone_from(&two);
+        assert_eq!(v, two);
+
+        // short, long
+        v.clone_from(&three);
+        assert_eq!(v, three)
     }
 }

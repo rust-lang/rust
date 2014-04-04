@@ -120,7 +120,7 @@ use std::mem::replace;
 use std::result;
 use std::slice;
 use std::vec::Vec;
-use syntax::abi::AbiSet;
+use syntax::abi;
 use syntax::ast::{Provided, Required};
 use syntax::ast;
 use syntax::ast_util::local_def;
@@ -599,7 +599,7 @@ pub fn check_item(ccx: &CrateCtxt, it: &ast::Item) {
         check_bounds_are_used(ccx, t.span, &generics.ty_params, tpt_ty);
       }
       ast::ItemForeignMod(ref m) => {
-        if m.abis.is_intrinsic() {
+        if m.abi == abi::RustIntrinsic {
             for item in m.items.iter() {
                 check_intrinsic_type(ccx, *item);
             }
@@ -612,7 +612,7 @@ pub fn check_item(ccx: &CrateCtxt, it: &ast::Item) {
 
                 match item.node {
                     ast::ForeignItemFn(ref fn_decl, _) => {
-                        if fn_decl.variadic && !m.abis.is_c() {
+                        if fn_decl.variadic && m.abi != abi::C {
                             ccx.tcx.sess.span_err(
                                 item.span, "variadic function must have C calling convention");
                         }
@@ -4224,7 +4224,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
     };
     let fty = ty::mk_bare_fn(tcx, ty::BareFnTy {
         purity: ast::UnsafeFn,
-        abis: AbiSet::Intrinsic(),
+        abi: abi::RustIntrinsic,
         sig: FnSig {binder_id: it.id,
                     inputs: inputs,
                     output: output,

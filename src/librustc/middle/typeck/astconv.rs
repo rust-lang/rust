@@ -60,7 +60,7 @@ use middle::typeck::rscope::{RegionScope};
 use middle::typeck::lookup_def_tcx;
 use util::ppaux::Repr;
 
-use syntax::abi::AbiSet;
+use syntax::abi;
 use syntax::{ast, ast_util};
 use syntax::codemap::Span;
 use syntax::owned_slice::OwnedSlice;
@@ -519,12 +519,12 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
                 ty::mk_tup(tcx, flds)
             }
             ast::TyBareFn(ref bf) => {
-                if bf.decl.variadic && !bf.abis.is_c() {
+                if bf.decl.variadic && bf.abi != abi::C {
                     tcx.sess.span_err(ast_ty.span,
                                       "variadic function must have C calling convention");
                 }
                 ty::mk_bare_fn(tcx, ty_of_bare_fn(this, ast_ty.id, bf.purity,
-                                                  bf.abis, bf.decl))
+                                                  bf.abi, bf.decl))
             }
             ast::TyClosure(ref f) => {
                 if f.sigil == ast::ManagedSigil {
@@ -666,20 +666,20 @@ pub fn ty_of_method<AC:AstConv>(
     untransformed_self_ty: ty::t,
     explicit_self: ast::ExplicitSelf,
     decl: &ast::FnDecl) -> ty::BareFnTy {
-    ty_of_method_or_bare_fn(this, id, purity, AbiSet::Rust(), Some(SelfInfo {
+    ty_of_method_or_bare_fn(this, id, purity, abi::Rust, Some(SelfInfo {
         untransformed_self_ty: untransformed_self_ty,
         explicit_self: explicit_self
     }), decl)
 }
 
 pub fn ty_of_bare_fn<AC:AstConv>(this: &AC, id: ast::NodeId,
-                                 purity: ast::Purity, abi: AbiSet,
+                                 purity: ast::Purity, abi: abi::Abi,
                                  decl: &ast::FnDecl) -> ty::BareFnTy {
     ty_of_method_or_bare_fn(this, id, purity, abi, None, decl)
 }
 
 fn ty_of_method_or_bare_fn<AC:AstConv>(this: &AC, id: ast::NodeId,
-                                       purity: ast::Purity, abi: AbiSet,
+                                       purity: ast::Purity, abi: abi::Abi,
                                        opt_self_info: Option<SelfInfo>,
                                        decl: &ast::FnDecl) -> ty::BareFnTy {
     debug!("ty_of_method_or_bare_fn");
@@ -726,7 +726,7 @@ fn ty_of_method_or_bare_fn<AC:AstConv>(this: &AC, id: ast::NodeId,
 
     return ty::BareFnTy {
         purity: purity,
-        abis: abi,
+        abi: abi,
         sig: ty::FnSig {
             binder_id: id,
             inputs: self_and_input_tys,

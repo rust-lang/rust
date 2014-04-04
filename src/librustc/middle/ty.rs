@@ -51,7 +51,7 @@ use syntax::parse::token;
 use syntax::parse::token::InternedString;
 use syntax::{ast, ast_map};
 use syntax::owned_slice::OwnedSlice;
-use syntax::abi::AbiSet;
+use syntax::abi;
 use syntax;
 use collections::enum_set::{EnumSet, CLike};
 
@@ -416,8 +416,8 @@ pub fn type_id(t: t) -> uint { get(t).id }
 #[deriving(Clone, Eq, TotalEq, Hash)]
 pub struct BareFnTy {
     pub purity: ast::Purity,
-    pub abis: AbiSet,
-    pub sig: FnSig
+    pub abi: abi::Abi,
+    pub sig: FnSig,
 }
 
 #[deriving(Clone, Eq, TotalEq, Hash)]
@@ -796,7 +796,7 @@ pub enum type_err {
     terr_mismatch,
     terr_purity_mismatch(expected_found<Purity>),
     terr_onceness_mismatch(expected_found<Onceness>),
-    terr_abi_mismatch(expected_found<AbiSet>),
+    terr_abi_mismatch(expected_found<abi::Abi>),
     terr_mutability,
     terr_sigil_mismatch(expected_found<ast::Sigil>),
     terr_box_mutability,
@@ -1409,7 +1409,7 @@ pub fn mk_ctor_fn(cx: &ctxt,
     mk_bare_fn(cx,
                BareFnTy {
                    purity: ast::ImpureFn,
-                   abis: AbiSet::Rust(),
+                   abi: abi::Rust,
                    sig: FnSig {
                     binder_id: binder_id,
                     inputs: input_args,
@@ -4677,7 +4677,7 @@ pub fn hash_crate_independent(tcx: &ctxt, t: t, svh: &Svh) -> u64 {
             ty_bare_fn(ref b) => {
                 byte!(14);
                 hash!(b.purity);
-                hash!(b.abis);
+                hash!(b.abi);
             }
             ty_closure(ref c) => {
                 byte!(15);
