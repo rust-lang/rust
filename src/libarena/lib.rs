@@ -23,7 +23,6 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://static.rust-lang.org/doc/master")]
 #![allow(missing_doc)]
-#![allow(visible_private_types)] // NOTE: remove after a stage0 snap
 
 extern crate collections;
 

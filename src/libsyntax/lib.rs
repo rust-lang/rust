@@ -30,8 +30,6 @@ This API is completely unstable and subject to change.
            quote)]
 #![allow(deprecated)]
 
-#![allow(visible_private_types)] // NOTE: remove after a stage0 snap
-
 extern crate serialize;
 extern crate term;
 extern crate collections;

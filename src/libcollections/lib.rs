@@ -22,8 +22,6 @@
 
 #![feature(macro_rules, managed_boxes, default_type_params, phase)]
 
-#![allow(visible_private_types)] // NOTE: remove after a stage0 snap
-
 extern crate rand;
 
 #[cfg(test)] extern crate test;
