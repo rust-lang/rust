@@ -11,7 +11,7 @@
 // ignore-fast: check-fast screws up repr paths
 
 #[feature(macro_rules)];
-#[deny(warnings)];
+#![deny(warnings)]
 #[allow(unused_must_use)];
 #[allow(deprecated_owned_vector)];
 

@@ -11,7 +11,7 @@
 // aux-build:macro_crate_def_only.rs
 // ignore-fast
 
-#[feature(phase)];
+#![feature(phase)]
 
 #[phase(syntax)]
 extern crate macro_crate_def_only;

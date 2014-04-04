@@ -10,7 +10,7 @@
 
 // ignore-fast feature doesn't work
 
-#[feature(simd)];
+#![feature(simd)]
 
 #[simd]
 struct RGBA {

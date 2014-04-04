@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -160,7 +160,7 @@ mod test_foreign_items {
         use std::libc;
 
         extern {
-            #[attr];
+            #![attr]
 
             #[attr]
             fn rust_get_test_int() -> libc::intptr_t;

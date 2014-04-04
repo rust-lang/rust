@@ -13,7 +13,7 @@
 // ignore-android needs extra network permissions
 // exec-env:RUST_LOG=debug
 
-#[feature(phase)];
+#![feature(phase)]
 #[phase(syntax, link)]
 extern crate log;
 
