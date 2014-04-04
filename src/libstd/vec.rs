@@ -15,7 +15,7 @@ use cmp::{Ord, Eq, Ordering, TotalEq, TotalOrd};
 use container::{Container, Mutable};
 use default::Default;
 use fmt;
-use iter::{DoubleEndedIterator, FromIterator, Extendable, Iterator};
+use iter::{DoubleEndedIterator, FromIterator, Extendable, Iterator, range};
 use libc::{free, c_void};
 use mem::{size_of, move_val_init};
 use mem;
@@ -1135,6 +1135,56 @@ impl<T> Vec<T> {
     pub fn as_mut_ptr(&mut self) -> *mut T {
         self.as_mut_slice().as_mut_ptr()
     }
+
+    /// Retains only the elements specified by the predicate.
+    ///
+    /// In other words, remove all elements `e` such that `f(&e)` returns false.
+    /// This method operates in place and preserves the order the retained elements.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let mut vec = vec!(1i, 2, 3, 4);
+    /// vec.retain(|x| x%2 == 0);
+    /// assert_eq!(vec, vec!(2, 4));
+    /// ```
+    pub fn retain(&mut self, f: |&T| -> bool) {
+        let len = self.len();
+        let mut del = 0u;
+        {
+            let v = self.as_mut_slice();
+
+            for i in range(0u, len) {
+                if !f(&v[i]) {
+                    del += 1;
+                } else if del > 0 {
+                    v.swap(i-del, i);
+                }
+            }
+        }
+        if del > 0 {
+            self.truncate(len - del);
+        }
+    }
+
+    /// Expands a vector in place, initializing the new elements to the result of a function.
+    ///
+    /// The vector is grown by `n` elements. The i-th new element are initialized to the value
+    /// returned by `f(i)` where `i` is in the range [0, n).
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let mut vec = vec!(0u, 1);
+    /// vec.grow_fn(3, |i| i);
+    /// assert_eq!(vec, vec!(0, 1, 0, 1, 2));
+    /// ```
+    pub fn grow_fn(&mut self, n: uint, f: |uint| -> T) {
+        self.reserve_additional(n);
+        for i in range(0u, n) {
+            self.push(f(i));
+        }
+    }
 }
 
 impl<T:TotalOrd> Vec<T> {
@@ -1522,5 +1572,18 @@ mod tests {
         // short, long
         v.clone_from(&three);
         assert_eq!(v, three)
+    }
+
+    fn test_grow_fn() {
+        let mut v = Vec::from_slice([0u, 1]);
+        v.grow_fn(3, |i| i);
+        assert!(v == Vec::from_slice([0u, 1, 0, 1, 2]));
+    }
+
+    #[test]
+    fn test_retain() {
+        let mut vec = Vec::from_slice([1u, 2, 3, 4]);
+        vec.retain(|x| x%2 == 0);
+        assert!(vec == Vec::from_slice([2u, 4]));
     }
 }

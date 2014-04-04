@@ -10,7 +10,7 @@
 
 // ignore-fast
 
-#[feature(phase)];
+#![feature(phase)]
 
 #[phase(syntax)]
 use std::mem;

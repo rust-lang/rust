@@ -635,10 +635,10 @@ pub fn walk_expr<E: Clone, V: Visitor<E>>(visitor: &mut V, expression: &Expr, en
             visitor.visit_expr(place, env.clone());
             visitor.visit_expr(subexpression, env.clone())
         }
-        ExprVec(ref subexpressions, _) => {
+        ExprVec(ref subexpressions) => {
             walk_exprs(visitor, subexpressions.as_slice(), env.clone())
         }
-        ExprRepeat(element, count, _) => {
+        ExprRepeat(element, count) => {
             visitor.visit_expr(element, env.clone());
             visitor.visit_expr(count, env.clone())
         }

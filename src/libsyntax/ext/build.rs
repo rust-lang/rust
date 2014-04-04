@@ -579,7 +579,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         self.expr(sp, ast::ExprVstore(expr, vst))
     }
     fn expr_vec(&self, sp: Span, exprs: Vec<@ast::Expr> ) -> @ast::Expr {
-        self.expr(sp, ast::ExprVec(exprs, ast::MutImmutable))
+        self.expr(sp, ast::ExprVec(exprs))
     }
     fn expr_vec_ng(&self, sp: Span) -> @ast::Expr {
         self.expr_call_global(sp,

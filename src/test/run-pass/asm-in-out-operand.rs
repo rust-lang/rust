@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // ignore-fast #[feature] doesn't work with check-fast
-#[feature(asm)];
+#![feature(asm)]
 
 #[cfg(target_arch = "x86")]
 #[cfg(target_arch = "x86_64")]

@@ -12,7 +12,7 @@
 // compile-flags: --cfg ndebug
 // exec-env:RUST_LOG=conditional-debug-macro-off=4
 
-#[feature(phase)];
+#![feature(phase)]
 #[phase(syntax, link)]
 extern crate log;
 

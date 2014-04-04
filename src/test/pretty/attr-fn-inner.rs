@@ -14,7 +14,7 @@
 // accidentally carried over to each inner function
 
 fn main() {
-    #[inner_attr];
+    #![inner_attr]
     #[outer_attr]
     fn f() { }
 

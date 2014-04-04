@@ -10,8 +10,8 @@
 
 // ignore-fast
 
-#[allow(experimental)];
-#[feature(simd)];
+#![allow(experimental)]
+#![feature(simd)]
 
 pub fn main() {
     let _o = None::<std::unstable::simd::i32x4>;

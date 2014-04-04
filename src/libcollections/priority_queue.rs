@@ -117,6 +117,11 @@ impl<T:Ord> PriorityQueue<T> {
     /// Create an empty PriorityQueue
     pub fn new() -> PriorityQueue<T> { PriorityQueue{data: ~[],} }
 
+    /// Create an empty PriorityQueue with capacity `capacity`
+    pub fn with_capacity(capacity: uint) -> PriorityQueue<T> {
+        PriorityQueue { data: slice::with_capacity(capacity) }
+    }
+
     /// Create a PriorityQueue from a vector (heapify)
     pub fn from_vec(xs: ~[T]) -> PriorityQueue<T> {
         let mut q = PriorityQueue{data: xs,};
