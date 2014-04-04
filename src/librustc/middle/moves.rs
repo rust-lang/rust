@@ -473,7 +473,7 @@ impl<'a> VisitContext<'a> {
                 self.use_expr(base, expr_mode);
             }
 
-            ExprVec(ref exprs, _) => {
+            ExprVec(ref exprs) => {
                 self.consume_exprs(exprs.as_slice());
             }
 
@@ -539,7 +539,7 @@ impl<'a> VisitContext<'a> {
                 // }
             }
 
-            ExprRepeat(base, count, _) => {
+            ExprRepeat(base, count) => {
                 self.consume_expr(base);
                 self.consume_expr(count);
             }

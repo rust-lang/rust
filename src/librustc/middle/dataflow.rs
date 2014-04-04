@@ -538,11 +538,11 @@ impl<'a, 'b, O:DataFlowOperator> PropagationContext<'a, 'b, O> {
                 self.walk_expr(l, in_out, loop_scopes);
             }
 
-            ast::ExprVec(ref exprs, _) => {
+            ast::ExprVec(ref exprs) => {
                 self.walk_exprs(exprs.as_slice(), in_out, loop_scopes)
             }
 
-            ast::ExprRepeat(l, r, _) => {
+            ast::ExprRepeat(l, r) => {
                 self.walk_expr(l, in_out, loop_scopes);
                 self.walk_expr(r, in_out, loop_scopes);
             }

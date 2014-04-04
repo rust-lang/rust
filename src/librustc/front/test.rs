@@ -404,21 +404,17 @@ fn is_test_crate(krate: &ast::Crate) -> bool {
 }
 
 fn mk_test_descs(cx: &TestCtxt) -> @ast::Expr {
-    let mut descs = Vec::new();
     debug!("building test vector from {} tests", cx.testfns.borrow().len());
-    for test in cx.testfns.borrow().iter() {
-        descs.push(mk_test_desc_and_fn_rec(cx, test));
-    }
-
-    let inner_expr = @ast::Expr {
-        id: ast::DUMMY_NODE_ID,
-        node: ast::ExprVec(descs, ast::MutImmutable),
-        span: DUMMY_SP,
-    };
 
     @ast::Expr {
         id: ast::DUMMY_NODE_ID,
-        node: ast::ExprVstore(inner_expr, ast::ExprVstoreSlice),
+        node: ast::ExprVstore(@ast::Expr {
+            id: ast::DUMMY_NODE_ID,
+            node: ast::ExprVec(cx.testfns.borrow().iter().map(|test| {
+                mk_test_desc_and_fn_rec(cx, test)
+            }).collect()),
+            span: DUMMY_SP,
+        }, ast::ExprVstoreSlice),
         span: DUMMY_SP,
     }
 }

@@ -1109,11 +1109,11 @@ impl<'a> Liveness<'a> {
             self.propagate_through_expr(expr, succ)
           }
 
-          ExprVec(ref exprs, _) => {
+          ExprVec(ref exprs) => {
             self.propagate_through_exprs(exprs.as_slice(), succ)
           }
 
-          ExprRepeat(element, count, _) => {
+          ExprRepeat(element, count) => {
             let succ = self.propagate_through_expr(count, succ);
             self.propagate_through_expr(element, succ)
           }

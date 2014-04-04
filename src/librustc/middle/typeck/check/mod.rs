@@ -2482,13 +2482,13 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
             let tt = ast_expr_vstore_to_vstore(fcx, ev, vst);
             ty::mk_str(tcx, tt)
           }
-          ast::ExprVec(ref args, mutbl) => {
+          ast::ExprVec(ref args) => {
             let tt = ast_expr_vstore_to_vstore(fcx, ev, vst);
             let mut any_error = false;
             let mut any_bot = false;
             let mutability = match vst {
                 ast::ExprVstoreMutSlice => ast::MutMutable,
-                _ => mutbl,
+                _ => ast::MutImmutable,
             };
             let t: ty::t = fcx.infcx().next_ty_var();
             for e in args.iter() {
@@ -2509,13 +2509,13 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                 ty::mk_vec(tcx, ty::mt {ty: t, mutbl: mutability}, tt)
             }
           }
-          ast::ExprRepeat(element, count_expr, mutbl) => {
+          ast::ExprRepeat(element, count_expr) => {
             check_expr_with_hint(fcx, count_expr, ty::mk_uint());
             let _ = ty::eval_repeat_count(fcx, count_expr);
             let tt = ast_expr_vstore_to_vstore(fcx, ev, vst);
             let mutability = match vst {
                 ast::ExprVstoreMutSlice => ast::MutMutable,
-                _ => mutbl,
+                _ => ast::MutImmutable,
             };
             let t: ty::t = fcx.infcx().next_ty_var();
             check_expr_has_type(fcx, element, t);
@@ -3017,16 +3017,16 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
             fcx.write_ty(id, t_1);
         }
       }
-      ast::ExprVec(ref args, mutbl) => {
+      ast::ExprVec(ref args) => {
         let t: ty::t = fcx.infcx().next_ty_var();
         for e in args.iter() {
             check_expr_has_type(fcx, *e, t);
         }
-        let typ = ty::mk_vec(tcx, ty::mt {ty: t, mutbl: mutbl},
+        let typ = ty::mk_vec(tcx, ty::mt {ty: t, mutbl: ast::MutImmutable},
                              ty::vstore_fixed(args.len()));
         fcx.write_ty(id, typ);
       }
-      ast::ExprRepeat(element, count_expr, mutbl) => {
+      ast::ExprRepeat(element, count_expr) => {
         check_expr_with_hint(fcx, count_expr, ty::mk_uint());
         let count = ty::eval_repeat_count(fcx, count_expr);
         let t: ty::t = fcx.infcx().next_ty_var();
@@ -3039,7 +3039,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
             fcx.write_bot(id);
         }
         else {
-            let t = ty::mk_vec(tcx, ty::mt {ty: t, mutbl: mutbl},
+            let t = ty::mk_vec(tcx, ty::mt {ty: t, mutbl: ast::MutImmutable},
                                ty::vstore_fixed(count));
             fcx.write_ty(id, t);
         }
@@ -3864,7 +3864,7 @@ pub fn ast_expr_vstore_to_vstore(fcx: &FnCtxt,
                     // string literals and *empty slices* live in static memory
                     ty::vstore_slice(ty::ReStatic)
                 }
-                ast::ExprVec(ref elements, _) if elements.len() == 0 => {
+                ast::ExprVec(ref elements) if elements.len() == 0 => {
                     // string literals and *empty slices* live in static memory
                     ty::vstore_slice(ty::ReStatic)
                 }

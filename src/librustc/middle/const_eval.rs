@@ -213,7 +213,7 @@ impl<'a> ConstEvalVisitor<'a> {
                 join(self.classify(a), self.classify(b)),
 
             ast::ExprTup(ref es) |
-            ast::ExprVec(ref es, ast::MutImmutable) =>
+            ast::ExprVec(ref es) =>
                 join_all(es.iter().map(|e| self.classify(*e))),
 
             ast::ExprVstore(e, vstore) => {

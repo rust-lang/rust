@@ -557,7 +557,7 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr,
                    inlineable.iter().fold(true, |a, &b| a && b))
               })
           }
-          ast::ExprVec(ref es, ast::MutImmutable) => {
+          ast::ExprVec(ref es) => {
             let (v, _, inlineable) = const_vec(cx,
                                                e,
                                                es.as_slice(),
@@ -573,7 +573,7 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr,
                     _ => { cx.sess().span_bug(e.span, "bad const-slice lit") }
                 }
               }
-              ast::ExprVec(ref es, ast::MutImmutable) => {
+              ast::ExprVec(ref es) => {
                 let (cv, llunitty, _) = const_vec(cx,
                                                   e,
                                                   es.as_slice(),
@@ -592,7 +592,7 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr,
               _ => cx.sess().span_bug(e.span, "bad const-slice expr")
             }
           }
-          ast::ExprRepeat(elem, count, _) => {
+          ast::ExprRepeat(elem, count) => {
             let vec_ty = ty::expr_ty(cx.tcx(), e);
             let unit_ty = ty::sequence_element_type(cx.tcx(), vec_ty);
             let llunitty = type_of::type_of(cx, unit_ty);
