@@ -56,11 +56,11 @@ pub struct Edge<E> {
 }
 
 #[deriving(Eq)]
-pub struct NodeIndex(uint);
+pub struct NodeIndex(pub uint);
 pub static InvalidNodeIndex: NodeIndex = NodeIndex(uint::MAX);
 
 #[deriving(Eq)]
-pub struct EdgeIndex(uint);
+pub struct EdgeIndex(pub uint);
 pub static InvalidEdgeIndex: EdgeIndex = EdgeIndex(uint::MAX);
 
 // Use a private field here to guarantee no more instances are created:

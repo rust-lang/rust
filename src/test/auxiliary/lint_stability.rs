@@ -161,15 +161,15 @@ pub enum Enum {
 }
 
 #[deprecated]
-pub struct DeprecatedTupleStruct(int);
+pub struct DeprecatedTupleStruct(pub int);
 #[experimental]
-pub struct ExperimentalTupleStruct(int);
+pub struct ExperimentalTupleStruct(pub int);
 #[unstable]
-pub struct UnstableTupleStruct(int);
-pub struct UnmarkedTupleStruct(int);
+pub struct UnstableTupleStruct(pub int);
+pub struct UnmarkedTupleStruct(pub int);
 #[stable]
-pub struct StableTupleStruct(int);
+pub struct StableTupleStruct(pub int);
 #[frozen]
-pub struct FrozenTupleStruct(int);
+pub struct FrozenTupleStruct(pub int);
 #[locked]
-pub struct LockedTupleStruct(int);
+pub struct LockedTupleStruct(pub int);

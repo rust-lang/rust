@@ -28,7 +28,7 @@ use distributions::{ziggurat, ziggurat_tables, Sample, IndependentSample};
 /// Generate Normal Random
 /// Samples*](http://www.doornik.com/research/ziggurat.pdf). Nuffield
 /// College, Oxford
-pub struct Exp1(f64);
+pub struct Exp1(pub f64);
 
 // This could be done via `-rng.gen::<f64>().ln()` but that is slower.
 impl Rand for Exp1 {

@@ -28,7 +28,7 @@ use collections::HashMap;
 use util::common::{indenter};
 use util::ppaux::mt_to_str;
 
-pub struct Glb<'f>(CombineFields<'f>);  // "greatest lower bound" (common subtype)
+pub struct Glb<'f>(pub CombineFields<'f>);  // "greatest lower bound" (common subtype)
 
 impl<'f> Glb<'f> {
     pub fn get_ref<'a>(&'a self) -> &'a CombineFields<'f> { let Glb(ref v) = *self; v }

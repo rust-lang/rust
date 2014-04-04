@@ -58,7 +58,7 @@ pub struct Task {
 }
 
 pub struct GarbageCollector;
-pub struct LocalStorage(Option<local_data::Map>);
+pub struct LocalStorage(pub Option<local_data::Map>);
 
 /// A handle to a blocked task. Usually this means having the ~Task pointer by
 /// ownership, but if the task is killable, a killer can steal it at any time.

@@ -42,10 +42,10 @@ use html::highlight;
 /// A unit struct which has the `fmt::Show` trait implemented. When
 /// formatted, this struct will emit the HTML corresponding to the rendered
 /// version of the contained markdown string.
-pub struct Markdown<'a>(&'a str);
+pub struct Markdown<'a>(pub &'a str);
 /// A unit struct like `Markdown`, that renders the markdown with a
 /// table of contents.
-pub struct MarkdownWithToc<'a>(&'a str);
+pub struct MarkdownWithToc<'a>(pub &'a str);
 
 static OUTPUT_UNIT: libc::size_t = 64;
 static MKDEXT_NO_INTRA_EMPHASIS: libc::c_uint = 1 << 0;

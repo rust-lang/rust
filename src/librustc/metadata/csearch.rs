@@ -290,3 +290,11 @@ pub fn get_exported_macros(cstore: &cstore::CStore,
     let cdata = cstore.get_crate_data(crate_num);
     decoder::get_exported_macros(cdata)
 }
+
+pub fn get_tuple_struct_definition_if_ctor(cstore: &cstore::CStore,
+                                           def_id: ast::DefId)
+    -> Option<ast::DefId>
+{
+    let cdata = cstore.get_crate_data(def_id.krate);
+    decoder::get_tuple_struct_definition_if_ctor(cdata, def_id.node)
+}
