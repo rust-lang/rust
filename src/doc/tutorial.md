@@ -1408,20 +1408,17 @@ struct Point {
 ~~~~
 
 We can use this simple definition to allocate points in many different
-ways. For example, in this code, each of these three local variables
+ways. For example, in this code, each of these local variables
 contains a point, but allocated in a different location:
 
 ~~~
 # struct Point { x: f64, y: f64 }
 let on_the_stack : Point  =  Point { x: 3.0, y: 4.0 };
-let managed_box  : @Point = @Point { x: 5.0, y: 1.0 };
 let owned_box    : ~Point = ~Point { x: 7.0, y: 9.0 };
 ~~~
 
 Suppose we want to write a procedure that computes the distance
-between any two points, no matter where they are stored. For example,
-we might like to compute the distance between `on_the_stack` and
-`managed_box`, or between `managed_box` and `owned_box`. One option is
+between any two points, no matter where they are stored. One option is
 to define a function that takes two arguments of type point—that is,
 it takes the points by value. But this will cause the points to be
 copied when we call the function. For points, this is probably not so
@@ -1442,11 +1439,9 @@ Now we can call `compute_distance()` in various ways:
 ~~~
 # struct Point{ x: f64, y: f64 };
 # let on_the_stack : Point  =  Point { x: 3.0, y: 4.0 };
-# let managed_box  : @Point = @Point { x: 5.0, y: 1.0 };
 # let owned_box    : ~Point = ~Point { x: 7.0, y: 9.0 };
 # fn compute_distance(p1: &Point, p2: &Point) -> f64 { 0.0 }
-compute_distance(&on_the_stack, managed_box);
-compute_distance(managed_box, owned_box);
+compute_distance(&on_the_stack, owned_box);
 ~~~
 
 Here the `&` operator is used to take the address of the variable
@@ -1456,11 +1451,11 @@ reference. We also call this _borrowing_ the local variable
 `on_the_stack`, because we are creating an alias: that is, another
 route to the same data.
 
-In the case of the boxes `managed_box` and `owned_box`, however, no
+In the case of `owned_box`, however, no
 explicit action is necessary. The compiler will automatically convert
-a box like `@point` or `~point` to a reference like
+a box `~point` to a reference like
 `&point`. This is another form of borrowing; in this case, the
-contents of the managed/owned box are being lent out.
+contents of the owned box are being lent out.
 
 Whenever a value is borrowed, there are some limitations on what you
 can do with the original. For example, if the contents of a variable
@@ -1497,11 +1492,10 @@ Rust uses the unary star operator (`*`) to access the contents of a
 box or pointer, similarly to C.
 
 ~~~
-let managed = @10;
 let owned = ~20;
 let borrowed = &30;
 
-let sum = *managed + *owned + *borrowed;
+let sum = *owned + *borrowed;
 ~~~
 
 Dereferenced mutable pointers may appear on the left hand side of
@@ -1509,14 +1503,13 @@ assignments. Such an assignment modifies the value that the pointer
 points to.
 
 ~~~
-let managed = @10;
-let mut owned = ~20;
+let mut owned = ~10;
 
-let mut value = 30;
+let mut value = 20;
 let borrowed = &mut value;
 
 *owned = *borrowed + 100;
-*borrowed = *managed + 1000;
+*borrowed = *owned + 1000;
 ~~~
 
 Pointers have high operator precedence, but lower precedence than the
@@ -1781,8 +1774,8 @@ pervasively in Rust code.
 
 Owned closures, written `proc`,
 hold on to things that can safely be sent between
-processes. They copy the values they close over, much like managed
-closures, but they also own them: that is, no other code can access
+processes. They copy the values they close over,
+but they also own them: that is, no other code can access
 them. Owned closures are used in concurrent code, particularly
 for spawning [tasks][tasks].
 
@@ -1911,7 +1904,7 @@ to a reference.
 #    fn draw_value(self) { /* ... */ }
 # }
 # let s = Circle(Point { x: 1.0, y: 2.0 }, 3.0);
-// As with typical function arguments, managed and owned pointers
+// As with typical function arguments, owned pointers
 // are automatically converted to references
 
 (@s).draw_reference();
@@ -2094,7 +2087,7 @@ and may not be overridden:
 
 * `Send` - Sendable types.
 Types are sendable
-unless they contain managed boxes, managed closures, or references.
+unless they contain references.
 
 * `Share` - Types that are *threadsafe*
 These are types that are safe to be used across several threads with access to
