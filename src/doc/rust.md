@@ -206,13 +206,12 @@ The keywords are the following strings:
 as
 break
 crate
-do
 else enum extern
 false fn for
 if impl in
 let loop
 match mod mut
-priv pub
+priv proc pub
 ref return
 self static struct super
 true trait type
@@ -2558,12 +2557,12 @@ task in a _failing state_.
 
 ~~~~ {.ignore}
 # use std::task;
-# do task::spawn {
+# task::spawn(proc() {
 
 ([1, 2, 3, 4])[0];
 (["a", "b"])[10]; // fails
 
-# }
+# })
 ~~~~
 
 ### Unary operator expressions
