@@ -1,16 +1,22 @@
 % The (New) Rust Language Tutorial
 
-An introductory tutorial to the Rust programming language. The tutorial focuses on the strengths and unique aspects of the Rust language, and is intentionally brief. 
+An introductory tutorial to the Rust programming language. The tutorial focuses on Rust's strengths and unique design, and is intentionally brief. 
 
-You should already be already familiar with programming concepts and a programming language from the C-family. The [syntax guide][syntax] is a reference to the nuts and bolts of the language, essentials such as [variables][guide-var], [functions][guide-fn], etc.
+You should already be already familiar with programming concepts, in particular pointers, and a programming language from the C-family. The [syntax guide][syntax] is a reference to the nuts and bolts of the language, essentials such as [variables][guide-var], [functions][guide-fn], [structs][guide-struct] etc.
+
+<!-- FIXME link link to pointers? --> 
 
 [syntax]: guide-syntax.html
 [guide-var]: guide-syntax.html#variables
 [guide-fn]: guide-syntax.html#functions
+[guide-struct]: guide-syntax.html#struct
+
 
 # Output and Input
 
-Output to the console using `print`. Use the `println` convenience function instead of `print` to add a newline to the end of the output. Note the `use std::io::print` syntax to include the `print` function from the standard `io` library.
+Output to the console using `print`. Use the `println` convenience function instead of `print` to add a newline to the end of the output. Note the `use std::io::print` syntax to include the `print` function from the standard `io` library. You can find more information on [use::][guide-use] in the [syntax guide][syntax].
+
+[guide-use]: guide-syntax.html#use
 
 <!-- 
 
@@ -61,7 +67,9 @@ fn main() {
 
 # `struct`
 
-Structures are groupings of types, and are introduced by the `struct` keyword. For example, a structure that represents a point on a two dimensional grid is composed of two integers, `x` and `y`. Access the types within the `struct` using the name of the Point object, a dot `.` and the name of the type inside the structure. In the following example, `p` is the `Point` object, and `p.x` and `p.y` are the coordinates, with values 1 and 2 respectively. 
+So far we've look at simple variables and strings. To represent compound data, use structures, which are groupings of types, and are introduced by the `struct` keyword. For example, a structure that represents a point on a two dimensional grid is composed of two integers, `x` and `y`. You can access the types within the `struct` using dot notation. 
+
+Create a point using a *struct literal* expression `let p = Point { x: 1, y: 2 };`, which assigns the point into the local variable `p`. The data for the point is stored directly on the stack, there is no heap allocation or pointer indirection, which improves performance.
 
 ~~~~
 struct Point { x: int, y: int }
@@ -72,9 +80,68 @@ fn main() {
 }
 ~~~~
 
-FIXME: Should talk about Pointers first. 
+In other words, if you look at the stack frame for the function `main()`, it looks like this:
 
-Structures in Rust contain the values of the types the structure contains, not pointers to the values like most other languages in the C-family. If you copy a structure, you copy the entire structure, not just a pointer to the original structure.
+~~~~
++------+
+| ...  | --+
+| 1    |   | p.x
+| 2    |   | p.y
++------+ --+
+~~~~
+
+<!--
+Those of you who are familiar with C and C++ will find this behavior familiar. In contrast, languages like Java or Ruby always store structures in the heap. This means that the stack frame would look something like this:
+
+```
+(TODO: Make me not look like vomit)
+-----------------     -----------------------------
+| struct p            | 1
+|   x: ---------------|
+|   y: --------------------------
+                                 -----------------------------
+                                 | 2
+                                 -----------------------------
+```
+
+-->
+
+Storing aggregate data inline (ie, one the stack, with no pointer indirection) is critical for improving performance, because cache, malloc/free expensive, pointer chasing and cache invalidation require a complex runtime with garbage collector.
+
+Rust does not introduce pointers unless you specifically specify them. If we define a type `Line` that consists of two `Point`s:
+
+```
+struct Line {
+    p1: Point,
+    p2: Point
+}
+```
+
+The two `Point`s are laid out inline inside the `Line` struct. 
+
+<!-- FIXME: not really sure how this should look -->
+
+~~~~
++------+
+| ...  | --+
+| 1    |   | p.x
+| 2    |   | p.y
++------+ --+
++------+
+| ...  | --+
+| 1    |   | p.x
+| 2    |   | p.y
++------+ --+
+~~~~
+
+<!-- FIXME: reword
+
+ In this way Rust can build up complex aggregate structures with simple storage requirements. (ugh todo fixme)
+
+-->
+
+<!-- 
+FIXME:
 
 ~~~~
 struct Point { x: int, y: int }
@@ -88,19 +155,16 @@ fn main() {
 ~~~~
 
 
-
-<!-- 
-FIXME:
-
-* difference of stack vs heap
-* values of aggregate type (Point is not a pointer to a Point)
 * copying (not compared to moving
 * to modify p.x, you make p mutable
   - don't explain inherited mutability in depth
 
 -->
+<!--
 
 Tuples are structures of types without names, such a point composed of two unnamed integers `struct Point(int,int)`. See [tuples][guide-tup] for more information.
+
+-->
 
 [guide-tup]: guide-syntax.html/tuples
 
@@ -124,11 +188,9 @@ fn main() {
 
 
 
-<!-- FIXME: rewrite this -->
+<!-- FIXME: rewrite this 
 
-Many modern languages represent values as pointers to heap memory by default. In contrast, Rust, like C and C++, represents such types directly. Another way to say this is that aggregate data in Rust are unboxed. * more examples of types inline with other types
-  - e.g. Line { p1, p2 }
-  - show efficiency of inline struct layout
+Many modern languages represent values as pointers to heap memory by default. In contrast, Rust, like C and C++, represents such types directly. Another way to say this is that aggregate data in Rust are unboxed. 
 
 ~~~~
 struct Point { x: int, y: int }
@@ -140,6 +202,8 @@ fn main() {
     println!("{}", q.x); // still prints 1
 }
 ~~~~
+
+-->
 
 #  Move Vs Copy
 
