@@ -54,5 +54,16 @@ fn bar2<'a, 'b, 'c>(x: &Bar<'a, 'b, 'c>) -> (&int, &int, &int) {
     //~^^ ERROR: cannot infer
 }
 
+struct Cat<'x, T> { cat: &'x int, t: T }
+struct Dog<'y> { dog: &'y int }
+fn cat<'x>(x: Cat<'x, Dog>) -> &int {
+//~^ NOTE: consider using an explicit lifetime parameter as shown: fn cat<'a, 'x>(x: Cat<'x, Dog<'a>>) -> &'a int
+    x.t.dog //~ ERROR: mismatched types
+}
+
+fn cat2<'x, 'y>(x: Cat<'x, Dog<'y>>) -> &int {
+//~^ NOTE: consider using an explicit lifetime parameter as shown: fn cat2<'a, 'x>(x: Cat<'x, Dog<'a>>) -> &'a int
+    x.t.dog //~ ERROR: mismatched types
+}
 
 fn main() {}
