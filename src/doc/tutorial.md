@@ -1492,8 +1492,8 @@ Rust uses the unary star operator (`*`) to access the contents of a
 box or pointer, similarly to C.
 
 ~~~
-let owned = ~20;
-let borrowed = &30;
+let owned = ~10;
+let borrowed = &20;
 
 let sum = *owned + *borrowed;
 ~~~
@@ -1520,7 +1520,7 @@ can sometimes make code awkward and parenthesis-filled.
 # struct Point { x: f64, y: f64 }
 # enum Shape { Rectangle(Point, Point) }
 # impl Shape { fn area(&self) -> int { 0 } }
-let start = @Point { x: 10.0, y: 20.0 };
+let start = ~Point { x: 10.0, y: 20.0 };
 let end = ~Point { x: (*start).x + 100.0, y: (*start).y + 100.0 };
 let rect = &Rectangle(*start, *end);
 let area = (*rect).area();
@@ -1534,7 +1534,7 @@ dot), so in most cases, explicitly dereferencing the receiver is not necessary.
 # struct Point { x: f64, y: f64 }
 # enum Shape { Rectangle(Point, Point) }
 # impl Shape { fn area(&self) -> int { 0 } }
-let start = @Point { x: 10.0, y: 20.0 };
+let start = ~Point { x: 10.0, y: 20.0 };
 let end = ~Point { x: start.x + 100.0, y: start.y + 100.0 };
 let rect = &Rectangle(*start, *end);
 let area = rect.area();
@@ -1546,7 +1546,7 @@ something silly like
 
 ~~~
 # struct Point { x: f64, y: f64 }
-let point = &@~Point { x: 10.0, y: 20.0 };
+let point = &~Point { x: 10.0, y: 20.0 };
 println!("{:f}", point.x);
 ~~~
 
@@ -1907,7 +1907,6 @@ to a reference.
 // As with typical function arguments, owned pointers
 // are automatically converted to references
 
-(@s).draw_reference();
 (~s).draw_reference();
 
 // Unlike typical function arguments, the self value will
@@ -1918,7 +1917,7 @@ s.draw_reference();
 (& &s).draw_reference();
 
 // ... and dereferenced and borrowed
-(&@~s).draw_reference();
+(&~s).draw_reference();
 ~~~
 
 Implementations may also define standalone (sometimes called "static")
@@ -2403,7 +2402,7 @@ that, like strings and vectors, objects have dynamic size and may
 only be referred to via one of the pointer types.
 Other pointer types work as well.
 Casts to traits may only be done with compatible pointers so,
-for example, an `@Circle` may not be cast to an `~Drawable`.
+for example, an `&Circle` may not be cast to an `~Drawable`.
 
 ~~~
 # type Circle = int; type Rectangle = int;
@@ -2506,8 +2505,8 @@ use std::f64::consts::PI;
 # impl Circle for CircleStruct { fn radius(&self) -> f64 { (self.area() / PI).sqrt() } }
 # impl Shape for CircleStruct { fn area(&self) -> f64 { PI * square(self.radius) } }
 
-let concrete = @CircleStruct{center:Point{x:3.0,y:4.0},radius:5.0};
-let mycircle: @Circle = concrete as @Circle;
+let concrete = ~CircleStruct{center:Point{x:3.0,y:4.0},radius:5.0};
+let mycircle: ~Circle = concrete as ~Circle;
 let nonsense = mycircle.radius() * mycircle.area();
 ~~~
 
