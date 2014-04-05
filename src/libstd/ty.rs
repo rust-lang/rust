@@ -63,7 +63,7 @@ impl<T> Unsafe<T> {
 
     /// Gets a mutable pointer to the wrapped value
     #[inline]
-    pub unsafe fn get(&self) -> *mut T { cast::transmute(&self.value) }
+    pub unsafe fn get(&self) -> *mut T { cast::transmute_mut_unsafe(&self.value) }
 
     /// Unwraps the value
     #[inline]
