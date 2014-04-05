@@ -298,7 +298,7 @@ fn resolve_crate<'a>(e: &mut Env,
                 hash: hash.map(|a| &*a),
                 os: e.os,
                 intr: e.intr.clone(),
-                rejected_via_hash: None,
+                rejected_via_hash: vec!(),
             };
             let loader::Library {
                 dylib, rlib, metadata
