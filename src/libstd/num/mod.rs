@@ -486,6 +486,11 @@ pub trait Float: Signed + Round + Primitive {
     /// Raise a number to a power.
     fn powf(&self, n: &Self) -> Self;
 
+    /// Raise a number to an integer power.
+    ///
+    /// Using this function is generally faster than using `powf`
+    fn powi(&self, n: i32) -> Self;
+
     /// Take the square root of a number.
     fn sqrt(&self) -> Self;
     /// Take the reciprocal (inverse) square root of a number, `1/sqrt(x)`.
