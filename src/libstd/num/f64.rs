@@ -16,7 +16,7 @@ use prelude::*;
 
 use default::Default;
 use from_str::FromStr;
-use libc::{c_double, c_int};
+use libc::{c_int};
 use num::{FPCategory, FPNaN, FPInfinite , FPZero, FPSubnormal, FPNormal};
 use num::{Zero, One, Bounded, strconv};
 use num;
@@ -70,68 +70,6 @@ mod cmath {
         pub fn lgamma_r(n: c_double, sign: &mut c_int) -> c_double;
     }
 }
-
-
-macro_rules! delegate(
-    (
-        $(
-            fn $name:ident(
-                $(
-                    $arg:ident : $arg_ty:ty
-                ),*
-            ) -> $rv:ty = $bound_name:path
-        ),*
-    ) => (
-        $(
-            #[inline]
-            pub fn $name($( $arg : $arg_ty ),*) -> $rv {
-                unsafe {
-                    $bound_name($( $arg ),*)
-                }
-            }
-        )*
-    )
-)
-
-delegate!(
-    // intrinsics
-    fn sqrt(n: f64) -> f64 = intrinsics::sqrtf64,
-    fn powi(n: f64, e: i32) -> f64 = intrinsics::powif64,
-    fn sin(n: f64) -> f64 = intrinsics::sinf64,
-    fn cos(n: f64) -> f64 = intrinsics::cosf64,
-    fn pow(n: f64, e: f64) -> f64 = intrinsics::powf64,
-    fn exp(n: f64) -> f64 = intrinsics::expf64,
-    fn exp2(n: f64) -> f64 = intrinsics::exp2f64,
-    fn ln(n: f64) -> f64 = intrinsics::logf64,
-    fn log10(n: f64) -> f64 = intrinsics::log10f64,
-    fn log2(n: f64) -> f64 = intrinsics::log2f64,
-    fn mul_add(a: f64, b: f64, c: f64) -> f64 = intrinsics::fmaf64,
-    fn abs(n: f64) -> f64 = intrinsics::fabsf64,
-    fn copysign(x: f64, y: f64) -> f64 = intrinsics::copysignf64,
-    fn floor(x: f64) -> f64 = intrinsics::floorf64,
-    fn ceil(n: f64) -> f64 = intrinsics::ceilf64,
-    fn trunc(n: f64) -> f64 = intrinsics::truncf64,
-    fn rint(n: f64) -> f64 = intrinsics::rintf64,
-    fn nearbyint(n: f64) -> f64 = intrinsics::nearbyintf64,
-    fn round(n: f64) -> f64 = intrinsics::roundf64,
-
-    fn acos(n: c_double) -> c_double = cmath::acos,
-    fn asin(n: c_double) -> c_double = cmath::asin,
-    fn atan(n: c_double) -> c_double = cmath::atan,
-    fn atan2(a: c_double, b: c_double) -> c_double = cmath::atan2,
-    fn cbrt(n: c_double) -> c_double = cmath::cbrt,
-    fn cosh(n: c_double) -> c_double = cmath::cosh,
-    fn exp_m1(n: c_double) -> c_double = cmath::expm1,
-    fn abs_sub(a: c_double, b: c_double) -> c_double = cmath::fdim,
-    fn next_after(x: c_double, y: c_double) -> c_double = cmath::nextafter,
-    fn frexp(n: c_double, value: &mut c_int) -> c_double = cmath::frexp,
-    fn hypot(x: c_double, y: c_double) -> c_double = cmath::hypot,
-    fn ldexp(x: c_double, n: c_int) -> c_double = cmath::ldexp,
-    fn ln_1p(n: c_double) -> c_double = cmath::log1p,
-    fn sinh(n: c_double) -> c_double = cmath::sinh,
-    fn tan(n: c_double) -> c_double = cmath::tan,
-    fn tanh(n: c_double) -> c_double = cmath::tanh
-)
 
 // FIXME (#1433): obtain these in a different way
 
@@ -283,12 +221,12 @@ impl Neg<f64> for f64 {
 impl Signed for f64 {
     /// Computes the absolute value. Returns `NAN` if the number is `NAN`.
     #[inline]
-    fn abs(&self) -> f64 { abs(*self) }
+    fn abs(&self) -> f64 { unsafe{intrinsics::fabsf64(*self)} }
 
     /// The positive difference of two numbers. Returns `0.0` if the number is less than or
     /// equal to `other`, otherwise the difference between`self` and `other` is returned.
     #[inline]
-    fn abs_sub(&self, other: &f64) -> f64 { abs_sub(*self, *other) }
+    fn abs_sub(&self, other: &f64) -> f64 { unsafe{cmath::fdim(*self, *other)} }
 
     /// # Returns
     ///
@@ -297,7 +235,7 @@ impl Signed for f64 {
     /// - `NAN` if the number is NaN
     #[inline]
     fn signum(&self) -> f64 {
-        if self.is_nan() { NAN } else { copysign(1.0, *self) }
+        if self.is_nan() { NAN } else { unsafe{intrinsics::copysignf64(1.0, *self)} }
     }
 
     /// Returns `true` if the number is positive, including `+0.0` and `INFINITY`
@@ -312,19 +250,19 @@ impl Signed for f64 {
 impl Round for f64 {
     /// Round half-way cases toward `NEG_INFINITY`
     #[inline]
-    fn floor(&self) -> f64 { floor(*self) }
+    fn floor(&self) -> f64 { unsafe{intrinsics::floorf64(*self)} }
 
     /// Round half-way cases toward `INFINITY`
     #[inline]
-    fn ceil(&self) -> f64 { ceil(*self) }
+    fn ceil(&self) -> f64 { unsafe{intrinsics::ceilf64(*self)} }
 
     /// Round half-way cases away from `0.0`
     #[inline]
-    fn round(&self) -> f64 { round(*self) }
+    fn round(&self) -> f64 { unsafe{intrinsics::roundf64(*self)} }
 
     /// The integer part of the number (rounds towards `0.0`)
     #[inline]
-    fn trunc(&self) -> f64 { trunc(*self) }
+    fn trunc(&self) -> f64 { unsafe{intrinsics::truncf64(*self)} }
 
     /// The fractional part of the number, satisfying:
     ///
@@ -430,9 +368,7 @@ impl Float for f64 {
 
     /// Constructs a floating point number by multiplying `x` by 2 raised to the power of `exp`
     #[inline]
-    fn ldexp(x: f64, exp: int) -> f64 {
-        ldexp(x, exp as c_int)
-    }
+    fn ldexp(x: f64, exp: int) -> f64 { unsafe{cmath::ldexp(x, exp as c_int)} }
 
     /// Breaks the number into a normalized fraction and a base-2 exponent, satisfying:
     ///
@@ -440,34 +376,32 @@ impl Float for f64 {
     /// - `0.5 <= abs(x) < 1.0`
     #[inline]
     fn frexp(&self) -> (f64, int) {
-        let mut exp = 0;
-        let x = frexp(*self, &mut exp);
-        (x, exp as int)
+        unsafe {
+            let mut exp = 0;
+            let x = cmath::frexp(*self, &mut exp);
+            (x, exp as int)
+        }
     }
 
     /// Returns the exponential of the number, minus `1`, in a way that is accurate
     /// even if the number is close to zero
     #[inline]
-    fn exp_m1(&self) -> f64 { exp_m1(*self) }
+    fn exp_m1(&self) -> f64 { unsafe{cmath::expm1(*self)} }
 
     /// Returns the natural logarithm of the number plus `1` (`ln(1+n)`) more accurately
     /// than if the operations were performed separately
     #[inline]
-    fn ln_1p(&self) -> f64 { ln_1p(*self) }
+    fn ln_1p(&self) -> f64 { unsafe{cmath::log1p(*self)} }
 
     /// Fused multiply-add. Computes `(self * a) + b` with only one rounding error. This
     /// produces a more accurate result with better performance than a separate multiplication
     /// operation followed by an add.
     #[inline]
-    fn mul_add(&self, a: f64, b: f64) -> f64 {
-        mul_add(*self, a, b)
-    }
+    fn mul_add(&self, a: f64, b: f64) -> f64 { unsafe{intrinsics::fmaf64(*self, a, b)} }
 
     /// Returns the next representable floating-point value in the direction of `other`
     #[inline]
-    fn next_after(&self, other: f64) -> f64 {
-        next_after(*self, other)
-    }
+    fn next_after(&self, other: f64) -> f64 { unsafe{cmath::nextafter(*self, other)} }
 
     /// Returns the mantissa, exponent and sign as integers.
     fn integer_decode(&self) -> (u64, i16, i8) {
@@ -559,40 +493,43 @@ impl Float for f64 {
     fn recip(&self) -> f64 { 1.0 / *self }
 
     #[inline]
-    fn powf(&self, n: &f64) -> f64 { pow(*self, *n) }
+    fn powf(&self, n: &f64) -> f64 { unsafe{intrinsics::powf64(*self, *n)} }
 
     #[inline]
-    fn sqrt(&self) -> f64 { sqrt(*self) }
+    fn powi(&self, n: i32) -> f64 { unsafe{intrinsics::powif64(*self, n)} }
+
+    #[inline]
+    fn sqrt(&self) -> f64 { unsafe{intrinsics::sqrtf64(*self)} }
 
     #[inline]
     fn rsqrt(&self) -> f64 { self.sqrt().recip() }
 
     #[inline]
-    fn cbrt(&self) -> f64 { cbrt(*self) }
+    fn cbrt(&self) -> f64 { unsafe{cmath::cbrt(*self)} }
 
     #[inline]
-    fn hypot(&self, other: &f64) -> f64 { hypot(*self, *other) }
+    fn hypot(&self, other: &f64) -> f64 { unsafe{cmath::hypot(*self, *other)} }
 
     #[inline]
-    fn sin(&self) -> f64 { sin(*self) }
+    fn sin(&self) -> f64 { unsafe{intrinsics::sinf64(*self)} }
 
     #[inline]
-    fn cos(&self) -> f64 { cos(*self) }
+    fn cos(&self) -> f64 { unsafe{intrinsics::cosf64(*self)} }
 
     #[inline]
-    fn tan(&self) -> f64 { tan(*self) }
+    fn tan(&self) -> f64 { unsafe{cmath::tan(*self)} }
 
     #[inline]
-    fn asin(&self) -> f64 { asin(*self) }
+    fn asin(&self) -> f64 { unsafe{cmath::asin(*self)} }
 
     #[inline]
-    fn acos(&self) -> f64 { acos(*self) }
+    fn acos(&self) -> f64 { unsafe{cmath::acos(*self)} }
 
     #[inline]
-    fn atan(&self) -> f64 { atan(*self) }
+    fn atan(&self) -> f64 { unsafe{cmath::atan(*self)} }
 
     #[inline]
-    fn atan2(&self, other: &f64) -> f64 { atan2(*self, *other) }
+    fn atan2(&self, other: &f64) -> f64 { unsafe{cmath::atan2(*self, *other)} }
 
     /// Simultaneously computes the sine and cosine of the number
     #[inline]
@@ -602,15 +539,15 @@ impl Float for f64 {
 
     /// Returns the exponential of the number
     #[inline]
-    fn exp(&self) -> f64 { exp(*self) }
+    fn exp(&self) -> f64 { unsafe{intrinsics::expf64(*self)} }
 
     /// Returns 2 raised to the power of the number
     #[inline]
-    fn exp2(&self) -> f64 { exp2(*self) }
+    fn exp2(&self) -> f64 { unsafe{intrinsics::exp2f64(*self)} }
 
     /// Returns the natural logarithm of the number
     #[inline]
-    fn ln(&self) -> f64 { ln(*self) }
+    fn ln(&self) -> f64 { unsafe{intrinsics::logf64(*self)} }
 
     /// Returns the logarithm of the number with respect to an arbitrary base
     #[inline]
@@ -618,20 +555,20 @@ impl Float for f64 {
 
     /// Returns the base 2 logarithm of the number
     #[inline]
-    fn log2(&self) -> f64 { log2(*self) }
+    fn log2(&self) -> f64 { unsafe{intrinsics::log2f64(*self)} }
 
     /// Returns the base 10 logarithm of the number
     #[inline]
-    fn log10(&self) -> f64 { log10(*self) }
+    fn log10(&self) -> f64 { unsafe{intrinsics::log10f64(*self)} }
 
     #[inline]
-    fn sinh(&self) -> f64 { sinh(*self) }
+    fn sinh(&self) -> f64 { unsafe{cmath::sinh(*self)} }
 
     #[inline]
-    fn cosh(&self) -> f64 { cosh(*self) }
+    fn cosh(&self) -> f64 { unsafe{cmath::cosh(*self)} }
 
     #[inline]
-    fn tanh(&self) -> f64 { tanh(*self) }
+    fn tanh(&self) -> f64 { unsafe{cmath::tanh(*self)} }
 
     /// Inverse hyperbolic sine
     ///
