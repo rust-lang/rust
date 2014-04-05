@@ -14,7 +14,6 @@
 //! collections::deque::Deque`.
 
 use std::cmp;
-use std::slice;
 use std::iter::{Rev, RandomAccessIterator};
 
 use deque::Deque;
@@ -27,7 +26,7 @@ static MINIMUM_CAPACITY: uint = 2u;
 pub struct RingBuf<T> {
     nelts: uint,
     lo: uint,
-    elts: ~[Option<T>]
+    elts: Vec<Option<T>>
 }
 
 impl<T> Container for RingBuf<T> {
@@ -67,7 +66,7 @@ impl<T> Deque<T> for RingBuf<T> {
 
     /// Remove and return the first element in the RingBuf, or None if it is empty
     fn pop_front(&mut self) -> Option<T> {
-        let result = self.elts[self.lo].take();
+        let result = self.elts.get_mut(self.lo).take();
         if result.is_some() {
             self.lo = (self.lo + 1u) % self.elts.len();
             self.nelts -= 1u;
@@ -80,7 +79,7 @@ impl<T> Deque<T> for RingBuf<T> {
         if self.nelts > 0 {
             self.nelts -= 1;
             let hi = self.raw_index(self.nelts);
-            self.elts[hi].take()
+            self.elts.get_mut(hi).take()
         } else {
             None
         }
@@ -94,7 +93,7 @@ impl<T> Deque<T> for RingBuf<T> {
         if self.lo == 0u {
             self.lo = self.elts.len() - 1u;
         } else { self.lo -= 1u; }
-        self.elts[self.lo] = Some(t);
+        *self.elts.get_mut(self.lo) = Some(t);
         self.nelts += 1u;
     }
 
@@ -104,7 +103,7 @@ impl<T> Deque<T> for RingBuf<T> {
             grow(self.nelts, &mut self.lo, &mut self.elts);
         }
         let hi = self.raw_index(self.nelts);
-        self.elts[hi] = Some(t);
+        *self.elts.get_mut(hi) = Some(t);
         self.nelts += 1u;
     }
 }
@@ -118,7 +117,7 @@ impl<T> RingBuf<T> {
     /// Create an empty RingBuf with space for at least `n` elements.
     pub fn with_capacity(n: uint) -> RingBuf<T> {
         RingBuf{nelts: 0, lo: 0,
-              elts: slice::from_fn(cmp::max(MINIMUM_CAPACITY, n), |_| None)}
+              elts: Vec::from_fn(cmp::max(MINIMUM_CAPACITY, n), |_| None)}
     }
 
     /// Retrieve an element in the RingBuf by index
@@ -126,7 +125,7 @@ impl<T> RingBuf<T> {
     /// Fails if there is no element with the given index
     pub fn get<'a>(&'a self, i: uint) -> &'a T {
         let idx = self.raw_index(i);
-        match self.elts[idx] {
+        match *self.elts.get(idx) {
             None => fail!(),
             Some(ref v) => v
         }
@@ -137,7 +136,7 @@ impl<T> RingBuf<T> {
     /// Fails if there is no element with the given index
     pub fn get_mut<'a>(&'a mut self, i: uint) -> &'a mut T {
         let idx = self.raw_index(i);
-        match self.elts[idx] {
+        match *self.elts.get_mut(idx) {
             None => fail!(),
             Some(ref mut v) => v
         }
@@ -153,7 +152,7 @@ impl<T> RingBuf<T> {
         assert!(j < self.len());
         let ri = self.raw_index(i);
         let rj = self.raw_index(j);
-        self.elts.swap(ri, rj);
+        self.elts.as_mut_slice().swap(ri, rj);
     }
 
     /// Return index in underlying vec for a given logical element index
@@ -188,7 +187,7 @@ impl<T> RingBuf<T> {
 
     /// Front-to-back iterator.
     pub fn iter<'a>(&'a self) -> Items<'a, T> {
-        Items{index: 0, rindex: self.nelts, lo: self.lo, elts: self.elts}
+        Items{index: 0, rindex: self.nelts, lo: self.lo, elts: self.elts.as_slice()}
     }
 
     /// Back-to-front iterator.
@@ -333,7 +332,7 @@ impl<'a, T> ExactSize<&'a mut T> for MutItems<'a, T> {}
 
 /// Grow is only called on full elts, so nelts is also len(elts), unlike
 /// elsewhere.
-fn grow<T>(nelts: uint, loptr: &mut uint, elts: &mut ~[Option<T>]) {
+fn grow<T>(nelts: uint, loptr: &mut uint, elts: &mut Vec<Option<T>>) {
     assert_eq!(nelts, elts.len());
     let lo = *loptr;
     let newlen = nelts * 2;
@@ -356,11 +355,11 @@ fn grow<T>(nelts: uint, loptr: &mut uint, elts: &mut ~[Option<T>]) {
     assert!(newlen - nelts/2 >= nelts);
     if lo <= (nelts - lo) { // A
         for i in range(0u, lo) {
-            elts.swap(i, nelts + i);
+            elts.as_mut_slice().swap(i, nelts + i);
         }
     } else {                // B
         for i in range(lo, nelts) {
-            elts.swap(i, newlen - nelts + i);
+            elts.as_mut_slice().swap(i, newlen - nelts + i);
         }
         *loptr += newlen - nelts;
     }
@@ -671,7 +670,7 @@ mod tests {
         let mut d: RingBuf<int> = range(0, 5).collect();
         d.pop_front();
         d.swap(0, 3);
-        assert_eq!(d.iter().map(|&x|x).collect::<~[int]>(), ~[4, 2, 3, 1]);
+        assert_eq!(d.iter().map(|&x|x).collect::<Vec<int>>(), vec!(4, 2, 3, 1));
     }
 
     #[test]
@@ -683,12 +682,12 @@ mod tests {
         for i in range(0, 5) {
             d.push_back(i);
         }
-        assert_eq!(d.iter().collect::<~[&int]>(), ~[&0,&1,&2,&3,&4]);
+        assert_eq!(d.iter().collect::<Vec<&int>>().as_slice(), &[&0,&1,&2,&3,&4]);
 
         for i in range(6, 9) {
             d.push_front(i);
         }
-        assert_eq!(d.iter().collect::<~[&int]>(), ~[&8,&7,&6,&0,&1,&2,&3,&4]);
+        assert_eq!(d.iter().collect::<Vec<&int>>().as_slice(), &[&8,&7,&6,&0,&1,&2,&3,&4]);
 
         let mut it = d.iter();
         let mut len = d.len();
@@ -708,12 +707,12 @@ mod tests {
         for i in range(0, 5) {
             d.push_back(i);
         }
-        assert_eq!(d.rev_iter().collect::<~[&int]>(), ~[&4,&3,&2,&1,&0]);
+        assert_eq!(d.rev_iter().collect::<Vec<&int>>().as_slice(), &[&4,&3,&2,&1,&0]);
 
         for i in range(6, 9) {
             d.push_front(i);
         }
-        assert_eq!(d.rev_iter().collect::<~[&int]>(), ~[&4,&3,&2,&1,&0,&6,&7,&8]);
+        assert_eq!(d.rev_iter().collect::<Vec<&int>>().as_slice(), &[&4,&3,&2,&1,&0,&6,&7,&8]);
     }
 
     #[test]
@@ -727,8 +726,8 @@ mod tests {
         assert_eq!(d.pop_front(), Some(1));
         d.push_back(4);
 
-        assert_eq!(d.mut_rev_iter().map(|x| *x).collect::<~[int]>(),
-                   ~[4, 3, 2]);
+        assert_eq!(d.mut_rev_iter().map(|x| *x).collect::<Vec<int>>(),
+                   vec!(4, 3, 2));
     }
 
     #[test]
@@ -780,9 +779,9 @@ mod tests {
     #[test]
     fn test_from_iter() {
         use std::iter;
-        let v = ~[1,2,3,4,5,6,7];
+        let v = vec!(1,2,3,4,5,6,7);
         let deq: RingBuf<int> = v.iter().map(|&x| x).collect();
-        let u: ~[int] = deq.iter().map(|&x| x).collect();
+        let u: Vec<int> = deq.iter().map(|&x| x).collect();
         assert_eq!(u, v);
 
         let mut seq = iter::count(0u, 2).take(256);

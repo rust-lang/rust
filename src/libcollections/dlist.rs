@@ -739,12 +739,12 @@ mod tests {
             check_links(&m);
         }
 
-        let v = ~[1,2,3,4,5];
-        let u = ~[9,8,1,2,3,4,5];
-        let mut m = list_from(v);
-        m.append(list_from(u));
+        let v = vec![1,2,3,4,5];
+        let u = vec![9,8,1,2,3,4,5];
+        let mut m = list_from(v.as_slice());
+        m.append(list_from(u.as_slice()));
         check_links(&m);
-        let sum = v + u;
+        let sum = v.append(u.as_slice());
         assert_eq!(sum.len(), m.len());
         for elt in sum.move_iter() {
             assert_eq!(m.pop_front(), Some(elt))
@@ -763,12 +763,12 @@ mod tests {
             check_links(&m);
         }
 
-        let v = ~[1,2,3,4,5];
-        let u = ~[9,8,1,2,3,4,5];
-        let mut m = list_from(v);
-        m.prepend(list_from(u));
+        let v = vec![1,2,3,4,5];
+        let u = vec![9,8,1,2,3,4,5];
+        let mut m = list_from(v.as_slice());
+        m.prepend(list_from(u.as_slice()));
         check_links(&m);
-        let sum = u + v;
+        let sum = u.append(v.as_slice());
         assert_eq!(sum.len(), m.len());
         for elt in sum.move_iter() {
             assert_eq!(m.pop_front(), Some(elt))
@@ -783,11 +783,11 @@ mod tests {
         n.rotate_forward(); check_links(&n);
         assert_eq!(n.len(), 0);
 
-        let v = ~[1,2,3,4,5];
-        let mut m = list_from(v);
+        let v = vec![1,2,3,4,5];
+        let mut m = list_from(v.as_slice());
         m.rotate_backward(); check_links(&m);
         m.rotate_forward(); check_links(&m);
-        assert_eq!(v.iter().collect::<~[&int]>(), m.iter().collect());
+        assert_eq!(v.iter().collect::<Vec<&int>>(), m.iter().collect());
         m.rotate_forward(); check_links(&m);
         m.rotate_forward(); check_links(&m);
         m.pop_front(); check_links(&m);
@@ -795,7 +795,7 @@ mod tests {
         m.rotate_backward(); check_links(&m);
         m.push_front(9); check_links(&m);
         m.rotate_forward(); check_links(&m);
-        assert_eq!(~[3,9,5,1,2], m.move_iter().collect());
+        assert_eq!(vec![3,9,5,1,2], m.move_iter().collect());
     }
 
     #[test]
@@ -925,7 +925,7 @@ mod tests {
         }
         check_links(&m);
         assert_eq!(m.len(), 3 + len * 2);
-        assert_eq!(m.move_iter().collect::<~[int]>(), ~[-2,0,1,2,3,4,5,6,7,8,9,0,1]);
+        assert_eq!(m.move_iter().collect::<Vec<int>>(), vec![-2,0,1,2,3,4,5,6,7,8,9,0,1]);
     }
 
     #[test]
@@ -936,8 +936,8 @@ mod tests {
         m.merge(n, |a, b| a <= b);
         assert_eq!(m.len(), len);
         check_links(&m);
-        let res = m.move_iter().collect::<~[int]>();
-        assert_eq!(res, ~[-1, 0, 0, 0, 1, 3, 5, 6, 7, 2, 7, 7, 9]);
+        let res = m.move_iter().collect::<Vec<int>>();
+        assert_eq!(res, vec![-1, 0, 0, 0, 1, 3, 5, 6, 7, 2, 7, 7, 9]);
     }
 
     #[test]
@@ -952,7 +952,7 @@ mod tests {
         m.push_back(4);
         m.insert_ordered(3);
         check_links(&m);
-        assert_eq!(~[2,3,4], m.move_iter().collect::<~[int]>());
+        assert_eq!(vec![2,3,4], m.move_iter().collect::<Vec<int>>());
     }
 
     #[test]
@@ -974,7 +974,7 @@ mod tests {
         let n = list_from([1,2,3]);
         spawn(proc() {
             check_links(&n);
-            assert_eq!(~[&1,&2,&3], n.iter().collect::<~[&int]>());
+            assert_eq!(&[&1,&2,&3], n.iter().collect::<Vec<&int>>().as_slice());
         });
     }
 
@@ -1047,7 +1047,7 @@ mod tests {
     #[cfg(test)]
     fn fuzz_test(sz: int) {
         let mut m: DList<int> = DList::new();
-        let mut v = ~[];
+        let mut v = vec![];
         for i in range(0, sz) {
             check_links(&m);
             let r: u8 = rand::random();

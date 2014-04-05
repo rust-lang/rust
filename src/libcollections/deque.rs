@@ -44,7 +44,6 @@ pub mod bench {
     extern crate test;
     use self::test::BenchHarness;
     use std::container::MutableMap;
-    use std::slice;
     use rand;
     use rand::Rng;
 
@@ -90,18 +89,18 @@ pub mod bench {
                                                 bh: &mut BenchHarness) {
         // setup
         let mut rng = rand::weak_rng();
-        let mut keys = slice::from_fn(n, |_| rng.gen::<uint>() % n);
+        let mut keys = Vec::from_fn(n, |_| rng.gen::<uint>() % n);
 
         for k in keys.iter() {
             map.insert(*k, 1);
         }
 
-        rng.shuffle(keys);
+        rng.shuffle(keys.as_mut_slice());
 
         // measure
         let mut i = 0;
         bh.iter(|| {
-            map.find(&(keys[i]));
+            map.find(keys.get(i));
             i = (i + 1) % n;
         })
     }
