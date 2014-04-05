@@ -923,7 +923,7 @@ fn compare_impl_method(tcx: &ty::ctxt,
         result::Err(ref terr) => {
             tcx.sess.span_err(
                 impl_m_span,
-                format!("method `{}` has an incompatible type: {}",
+                format!("method `{}` has an incompatible type for trait: {}",
                         token::get_ident(trait_m.ident),
                         ty::type_err_to_str(tcx, terr)));
             ty::note_and_explain_type_err(tcx, terr);
