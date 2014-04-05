@@ -846,7 +846,7 @@ fn link_binary_output(sess: &Session,
 
     match crate_type {
         session::CrateTypeRlib => {
-            link_rlib(sess, Some(trans), &obj_filename, &out_filename);
+            link_rlib(sess, Some((trans, id)), &obj_filename, &out_filename);
         }
         session::CrateTypeStaticlib => {
             link_staticlib(sess, &obj_filename, &out_filename);
@@ -869,7 +869,8 @@ fn link_binary_output(sess: &Session,
 // all of the object files from native libraries. This is done by unzipping
 // native libraries and inserting all of the contents into this archive.
 fn link_rlib<'a>(sess: &'a Session,
-                 trans: Option<&CrateTranslation>, // None == no metadata/bytecode
+                 // None == no metadata/bytecode
+                 trans: Option<(&CrateTranslation, &CrateId)>,
                  obj_filename: &Path,
                  out_filename: &Path) -> Archive<'a> {
     let mut a = Archive::create(sess, out_filename, obj_filename);
@@ -905,7 +906,7 @@ fn link_rlib<'a>(sess: &'a Session,
     // Basically, all this means is that this code should not move above the
     // code above.
     match trans {
-        Some(trans) => {
+        Some((trans, id)) => {
             // Instead of putting the metadata in an object file section, rlibs
             // contain the metadata in a separate file. We use a temp directory
             // here so concurrent builds in the same directory don't try to use
@@ -925,11 +926,15 @@ fn link_rlib<'a>(sess: &'a Session,
             remove(sess, &metadata);
 
             // For LTO purposes, the bytecode of this library is also inserted
-            // into the archive.
+            // into the archive. Note that we ensure that the bytecode has the
+            // same name as the crate id's name because it's how we'll search
+            // for the bytecode later on.
             let bc = obj_filename.with_extension("bc");
-            let bc_deflated = obj_filename.with_extension("bc.deflate");
+            let bc_deflated = tmpdir.path().join(id.name.as_slice())
+                                    .with_extension("bc.deflate");
             match fs::File::open(&bc).read_to_end().and_then(|data| {
-                fs::File::create(&bc_deflated).write(flate::deflate_bytes(data).as_slice())
+                let bytes = flate::deflate_bytes(data);
+                fs::File::create(&bc_deflated).write(bytes.as_slice())
             }) {
                 Ok(()) => {}
                 Err(e) => {
@@ -938,7 +943,6 @@ fn link_rlib<'a>(sess: &'a Session,
                 }
             }
             a.add_file(&bc_deflated, false);
-            remove(sess, &bc_deflated);
             if !sess.opts.cg.save_temps &&
                !sess.opts.output_types.contains(&OutputTypeBitcode) {
                 remove(sess, &bc);
