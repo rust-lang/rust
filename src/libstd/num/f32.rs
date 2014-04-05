@@ -16,7 +16,7 @@ use prelude::*;
 
 use default::Default;
 use from_str::FromStr;
-use libc::{c_float, c_int};
+use libc::{c_int};
 use num::{FPCategory, FPNaN, FPInfinite , FPZero, FPSubnormal, FPNormal};
 use num::{Zero, One, Bounded, strconv};
 use num;
@@ -61,67 +61,6 @@ mod cmath {
         pub fn lgammaf_r(n: c_float, sign: &mut c_int) -> c_float;
     }
 }
-
-macro_rules! delegate(
-    (
-        $(
-            fn $name:ident(
-                $(
-                    $arg:ident : $arg_ty:ty
-                ),*
-            ) -> $rv:ty = $bound_name:path
-        ),*
-    ) => (
-        $(
-            #[inline]
-            pub fn $name($( $arg : $arg_ty ),*) -> $rv {
-                unsafe {
-                    $bound_name($( $arg ),*)
-                }
-            }
-        )*
-    )
-)
-
-delegate!(
-    // intrinsics
-    fn sqrt(n: f32) -> f32 = intrinsics::sqrtf32,
-    fn powi(n: f32, e: i32) -> f32 = intrinsics::powif32,
-    fn sin(n: f32) -> f32 = intrinsics::sinf32,
-    fn cos(n: f32) -> f32 = intrinsics::cosf32,
-    fn pow(n: f32, e: f32) -> f32 = intrinsics::powf32,
-    fn exp(n: f32) -> f32 = intrinsics::expf32,
-    fn exp2(n: f32) -> f32 = intrinsics::exp2f32,
-    fn ln(n: f32) -> f32 = intrinsics::logf32,
-    fn log10(n: f32) -> f32 = intrinsics::log10f32,
-    fn log2(n: f32) -> f32 = intrinsics::log2f32,
-    fn mul_add(a: f32, b: f32, c: f32) -> f32 = intrinsics::fmaf32,
-    fn abs(n: f32) -> f32 = intrinsics::fabsf32,
-    fn copysign(x: f32, y: f32) -> f32 = intrinsics::copysignf32,
-    fn floor(x: f32) -> f32 = intrinsics::floorf32,
-    fn ceil(n: f32) -> f32 = intrinsics::ceilf32,
-    fn trunc(n: f32) -> f32 = intrinsics::truncf32,
-    fn rint(n: f32) -> f32 = intrinsics::rintf32,
-    fn nearbyint(n: f32) -> f32 = intrinsics::nearbyintf32,
-    fn round(n: f32) -> f32 = intrinsics::roundf32,
-
-    fn acos(n: c_float) -> c_float = cmath::acosf,
-    fn asin(n: c_float) -> c_float = cmath::asinf,
-    fn atan(n: c_float) -> c_float = cmath::atanf,
-    fn atan2(a: c_float, b: c_float) -> c_float = cmath::atan2f,
-    fn cbrt(n: c_float) -> c_float = cmath::cbrtf,
-    fn cosh(n: c_float) -> c_float = cmath::coshf,
-    fn exp_m1(n: c_float) -> c_float = cmath::expm1f,
-    fn abs_sub(a: c_float, b: c_float) -> c_float = cmath::fdimf,
-    fn next_after(x: c_float, y: c_float) -> c_float = cmath::nextafterf,
-    fn frexp(n: c_float, value: &mut c_int) -> c_float = cmath::frexpf,
-    fn hypot(x: c_float, y: c_float) -> c_float = cmath::hypotf,
-    fn ldexp(x: c_float, n: c_int) -> c_float = cmath::ldexpf,
-    fn ln_1p(n: c_float) -> c_float = cmath::log1pf,
-    fn sinh(n: c_float) -> c_float = cmath::sinhf,
-    fn tan(n: c_float) -> c_float = cmath::tanf,
-    fn tanh(n: c_float) -> c_float = cmath::tanhf
-)
 
 // FIXME(#11621): These constants should be deprecated once CTFE is implemented
 // in favour of calling their respective functions in `Bounded` and `Float`.
@@ -274,12 +213,12 @@ impl Neg<f32> for f32 {
 impl Signed for f32 {
     /// Computes the absolute value. Returns `NAN` if the number is `NAN`.
     #[inline]
-    fn abs(&self) -> f32 { abs(*self) }
+    fn abs(&self) -> f32 { unsafe{intrinsics::fabsf32(*self)} }
 
     /// The positive difference of two numbers. Returns `0.0` if the number is less than or
     /// equal to `other`, otherwise the difference between`self` and `other` is returned.
     #[inline]
-    fn abs_sub(&self, other: &f32) -> f32 { abs_sub(*self, *other) }
+    fn abs_sub(&self, other: &f32) -> f32 { unsafe{cmath::fdimf(*self, *other)} }
 
     /// # Returns
     ///
@@ -288,7 +227,7 @@ impl Signed for f32 {
     /// - `NAN` if the number is NaN
     #[inline]
     fn signum(&self) -> f32 {
-        if self.is_nan() { NAN } else { copysign(1.0, *self) }
+        if self.is_nan() { NAN } else { unsafe{intrinsics::copysignf32(1.0, *self)} }
     }
 
     /// Returns `true` if the number is positive, including `+0.0` and `INFINITY`
@@ -303,19 +242,19 @@ impl Signed for f32 {
 impl Round for f32 {
     /// Round half-way cases toward `NEG_INFINITY`
     #[inline]
-    fn floor(&self) -> f32 { floor(*self) }
+    fn floor(&self) -> f32 { unsafe{intrinsics::floorf32(*self)} }
 
     /// Round half-way cases toward `INFINITY`
     #[inline]
-    fn ceil(&self) -> f32 { ceil(*self) }
+    fn ceil(&self) -> f32 { unsafe{intrinsics::ceilf32(*self)} }
 
     /// Round half-way cases away from `0.0`
     #[inline]
-    fn round(&self) -> f32 { round(*self) }
+    fn round(&self) -> f32 { unsafe{intrinsics::roundf32(*self)} }
 
     /// The integer part of the number (rounds towards `0.0`)
     #[inline]
-    fn trunc(&self) -> f32 { trunc(*self) }
+    fn trunc(&self) -> f32 { unsafe{intrinsics::truncf32(*self)} }
 
     /// The fractional part of the number, satisfying:
     ///
@@ -338,6 +277,8 @@ impl Bounded for f32 {
 impl Primitive for f32 {}
 
 impl Float for f32 {
+    fn powi(&self, n: i32) -> f32 { unsafe{intrinsics::powif32(*self, n)} }
+
     #[inline]
     fn max(self, other: f32) -> f32 {
         unsafe { cmath::fmaxf(self, other) }
@@ -421,9 +362,7 @@ impl Float for f32 {
 
     /// Constructs a floating point number by multiplying `x` by 2 raised to the power of `exp`
     #[inline]
-    fn ldexp(x: f32, exp: int) -> f32 {
-        ldexp(x, exp as c_int)
-    }
+    fn ldexp(x: f32, exp: int) -> f32 { unsafe{cmath::ldexpf(x, exp as c_int)} }
 
     /// Breaks the number into a normalized fraction and a base-2 exponent, satisfying:
     ///
@@ -431,34 +370,32 @@ impl Float for f32 {
     /// - `0.5 <= abs(x) < 1.0`
     #[inline]
     fn frexp(&self) -> (f32, int) {
-        let mut exp = 0;
-        let x = frexp(*self, &mut exp);
-        (x, exp as int)
+        unsafe {
+            let mut exp = 0;
+            let x = cmath::frexpf(*self, &mut exp);
+            (x, exp as int)
+        }
     }
 
     /// Returns the exponential of the number, minus `1`, in a way that is accurate
     /// even if the number is close to zero
     #[inline]
-    fn exp_m1(&self) -> f32 { exp_m1(*self) }
+    fn exp_m1(&self) -> f32 { unsafe{cmath::expm1f(*self)} }
 
     /// Returns the natural logarithm of the number plus `1` (`ln(1+n)`) more accurately
     /// than if the operations were performed separately
     #[inline]
-    fn ln_1p(&self) -> f32 { ln_1p(*self) }
+    fn ln_1p(&self) -> f32 { unsafe{cmath::log1pf(*self)} }
 
     /// Fused multiply-add. Computes `(self * a) + b` with only one rounding error. This
     /// produces a more accurate result with better performance than a separate multiplication
     /// operation followed by an add.
     #[inline]
-    fn mul_add(&self, a: f32, b: f32) -> f32 {
-        mul_add(*self, a, b)
-    }
+    fn mul_add(&self, a: f32, b: f32) -> f32 { unsafe{intrinsics::fmaf32(*self, a, b)} }
 
     /// Returns the next representable floating-point value in the direction of `other`
     #[inline]
-    fn next_after(&self, other: f32) -> f32 {
-        next_after(*self, other)
-    }
+    fn next_after(&self, other: f32) -> f32 { unsafe{cmath::nextafterf(*self, other)} }
 
     /// Returns the mantissa, exponent and sign as integers.
     fn integer_decode(&self) -> (u64, i16, i8) {
@@ -550,40 +487,40 @@ impl Float for f32 {
     fn recip(&self) -> f32 { 1.0 / *self }
 
     #[inline]
-    fn powf(&self, n: &f32) -> f32 { pow(*self, *n) }
+    fn powf(&self, n: &f32) -> f32 { unsafe{intrinsics::powf32(*self, *n)} }
 
     #[inline]
-    fn sqrt(&self) -> f32 { sqrt(*self) }
+    fn sqrt(&self) -> f32 { unsafe{intrinsics::sqrtf32(*self)} }
 
     #[inline]
     fn rsqrt(&self) -> f32 { self.sqrt().recip() }
 
     #[inline]
-    fn cbrt(&self) -> f32 { cbrt(*self) }
+    fn cbrt(&self) -> f32 { unsafe{cmath::cbrtf(*self)} }
 
     #[inline]
-    fn hypot(&self, other: &f32) -> f32 { hypot(*self, *other) }
+    fn hypot(&self, other: &f32) -> f32 { unsafe{cmath::hypotf(*self, *other)} }
 
     #[inline]
-    fn sin(&self) -> f32 { sin(*self) }
+    fn sin(&self) -> f32 { unsafe{intrinsics::sinf32(*self)} }
 
     #[inline]
-    fn cos(&self) -> f32 { cos(*self) }
+    fn cos(&self) -> f32 { unsafe{intrinsics::cosf32(*self)} }
 
     #[inline]
-    fn tan(&self) -> f32 { tan(*self) }
+    fn tan(&self) -> f32 { unsafe{cmath::tanf(*self)} }
 
     #[inline]
-    fn asin(&self) -> f32 { asin(*self) }
+    fn asin(&self) -> f32 { unsafe{cmath::asinf(*self)} }
 
     #[inline]
-    fn acos(&self) -> f32 { acos(*self) }
+    fn acos(&self) -> f32 { unsafe{cmath::acosf(*self)} }
 
     #[inline]
-    fn atan(&self) -> f32 { atan(*self) }
+    fn atan(&self) -> f32 { unsafe{cmath::atanf(*self)} }
 
     #[inline]
-    fn atan2(&self, other: &f32) -> f32 { atan2(*self, *other) }
+    fn atan2(&self, other: &f32) -> f32 { unsafe{cmath::atan2f(*self, *other)} }
 
     /// Simultaneously computes the sine and cosine of the number
     #[inline]
@@ -593,15 +530,15 @@ impl Float for f32 {
 
     /// Returns the exponential of the number
     #[inline]
-    fn exp(&self) -> f32 { exp(*self) }
+    fn exp(&self) -> f32 { unsafe{intrinsics::expf32(*self)} }
 
     /// Returns 2 raised to the power of the number
     #[inline]
-    fn exp2(&self) -> f32 { exp2(*self) }
+    fn exp2(&self) -> f32 { unsafe{intrinsics::exp2f32(*self)} }
 
     /// Returns the natural logarithm of the number
     #[inline]
-    fn ln(&self) -> f32 { ln(*self) }
+    fn ln(&self) -> f32 { unsafe{intrinsics::logf32(*self)} }
 
     /// Returns the logarithm of the number with respect to an arbitrary base
     #[inline]
@@ -609,20 +546,20 @@ impl Float for f32 {
 
     /// Returns the base 2 logarithm of the number
     #[inline]
-    fn log2(&self) -> f32 { log2(*self) }
+    fn log2(&self) -> f32 { unsafe{intrinsics::log2f32(*self)} }
 
     /// Returns the base 10 logarithm of the number
     #[inline]
-    fn log10(&self) -> f32 { log10(*self) }
+    fn log10(&self) -> f32 { unsafe{intrinsics::log10f32(*self)} }
 
     #[inline]
-    fn sinh(&self) -> f32 { sinh(*self) }
+    fn sinh(&self) -> f32 { unsafe{cmath::sinhf(*self)} }
 
     #[inline]
-    fn cosh(&self) -> f32 { cosh(*self) }
+    fn cosh(&self) -> f32 { unsafe{cmath::coshf(*self)} }
 
     #[inline]
-    fn tanh(&self) -> f32 { tanh(*self) }
+    fn tanh(&self) -> f32 { unsafe{cmath::tanhf(*self)} }
 
     /// Inverse hyperbolic sine
     ///
