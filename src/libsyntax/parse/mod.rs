@@ -702,7 +702,6 @@ pub fn integer_lit(s: &str, sd: &SpanHandler, sp: Span) -> ast::Lit_ {
 mod test {
     use super::*;
     use serialize::json;
-    use std::gc::GC;
     use codemap::{Span, BytePos, Spanned};
     use owned_slice::OwnedSlice;
     use ast;
@@ -711,6 +710,7 @@ mod test {
     use attr::AttrMetaMethods;
     use parse::parser::Parser;
     use parse::token::{str_to_ident};
+    use ptr::P;
     use util::parser_testing::{string_to_tts, string_to_parser};
     use util::parser_testing::{string_to_expr, string_to_item};
     use util::parser_testing::string_to_stmt;
@@ -1023,10 +1023,10 @@ mod test {
                       P(ast::Item{ident:str_to_ident("a"),
                             attrs:Vec::new(),
                             id: ast::DUMMY_NODE_ID,
-                            node: ast::ItemFn(ast::P(ast::FnDecl {
+                            node: ast::ItemFn(P(ast::FnDecl {
                                 inputs: vec!(ast::Arg{
-                                    ty: ast::P(ast::Ty{id: ast::DUMMY_NODE_ID,
-                                                       node: ast::TyPath(ast::Path{
+                                    ty: P(ast::Ty{id: ast::DUMMY_NODE_ID,
+                                                  node: ast::TyPath(ast::Path{
                                         span:sp(10,13),
                                         global:false,
                                         segments: vec!(
@@ -1053,9 +1053,9 @@ mod test {
                                     }),
                                         id: ast::DUMMY_NODE_ID
                                     }),
-                                output: ast::P(ast::Ty{id: ast::DUMMY_NODE_ID,
-                                                       node: ast::TyNil,
-                                                       span:sp(15,15)}), // not sure
+                                output: P(ast::Ty{id: ast::DUMMY_NODE_ID,
+                                                  node: ast::TyNil,
+                                                  span:sp(15,15)}), // not sure
                                 cf: ast::Return,
                                 variadic: false
                             }),
@@ -1069,7 +1069,7 @@ mod test {
                                             predicates: Vec::new(),
                                         }
                                     },
-                                    ast::P(ast::Block {
+                                    P(ast::Block {
                                         view_items: Vec::new(),
                                         stmts: vec!(P(Spanned{
                                             node: ast::StmtSemi(P(ast::Expr{
