@@ -45,7 +45,7 @@ pub enum Os {
     OsFreebsd
 }
 
-pub struct ViaHash {
+pub struct HashMismatch {
     path: Path,
 }
 
@@ -58,8 +58,7 @@ pub struct Context<'a> {
     pub hash: Option<&'a Svh>,
     pub os: Os,
     pub intr: Rc<IdentInterner>,
-    /// Some if rejected
-    pub rejected_via_hash: Option<ViaHash>
+    pub rejected_via_hash: Vec<HashMismatch>
 }
 
 pub struct Library {
@@ -81,14 +80,12 @@ pub struct CratePaths {
 }
 
 impl CratePaths {
-    fn describe_paths(&self) -> ~str {
+    fn paths(&self) -> Vec<Path> {
         match (&self.dylib, &self.rlib) {
-            (&None,    &None)
-                => ~"",
-            (&Some(ref p), &None) | (&None, &Some(ref p))
-                => format!("{}", p.display()),
-            (&Some(ref p1), &Some(ref p2))
-                => format!("{}, {}", p1.display(), p2.display()),
+            (&None,    &None)              => vec!(),
+            (&Some(ref p), &None) |
+            (&None, &Some(ref p))          => vec!(p.clone()),
+            (&Some(ref p1), &Some(ref p2)) => vec!(p1.clone(), p2.clone()),
         }
     }
 }
@@ -111,7 +108,7 @@ impl<'a> Context<'a> {
             Some(t) => t,
             None => {
                 self.sess.abort_if_errors();
-                let message = if self.rejected_via_hash.is_some() {
+                let message = if self.rejected_via_hash.len() > 0 {
                     format!("found possibly newer version of crate `{}`",
                             self.ident)
                 } else {
@@ -124,17 +121,25 @@ impl<'a> Context<'a> {
                 };
                 self.sess.span_err(self.span, message);
 
-                if self.rejected_via_hash.is_some() {
+                if self.rejected_via_hash.len() > 0 {
                     self.sess.span_note(self.span, "perhaps this crate needs \
                                                     to be recompiled?");
-                    self.rejected_via_hash.as_ref().map(
-                        |r| self.sess.note(format!(
-                            "crate `{}` at path: {}",
-                            self.ident, r.path.display())));
-                    root.as_ref().map(
-                        |r| self.sess.note(format!(
-                            "crate `{}` at path(s): {}",
-                            r.ident, r.describe_paths())));
+                    let mismatches = self.rejected_via_hash.iter();
+                    for (i, &HashMismatch{ ref path }) in mismatches.enumerate() {
+                        self.sess.fileline_note(self.span,
+                            format!("crate `{}` path \\#{}: {}",
+                                    self.ident, i+1, path.display()));
+                    }
+                    match root {
+                        &None => {}
+                        &Some(ref r) => {
+                            for (i, path) in r.paths().iter().enumerate() {
+                                self.sess.fileline_note(self.span,
+                                    format!("crate `{}` path \\#{}: {}",
+                                            r.ident, i+1, path.display()));
+                            }
+                        }
+                    }
                 }
                 self.sess.abort_if_errors();
                 unreachable!()
@@ -371,8 +376,7 @@ impl<'a> Context<'a> {
             None => true,
             Some(myhash) => {
                 if *myhash != hash {
-                    self.rejected_via_hash =
-                        Some(ViaHash{ path: libpath.clone(), });
+                    self.rejected_via_hash.push(HashMismatch{ path: libpath.clone() });
                     false
                 } else {
                     true
