@@ -165,12 +165,12 @@ that one can still write things like `#[deriving(Eq)]`).
     # // what's actually being documented.
     # fn fib(n: int) { n + 2 }
 
-    do spawn { fib(200); }
+    spawn(proc() { fib(200); })
     ```
     */
     # fn foo() {}
 
-The documentation online would look like `do spawn { fib(200); }`, but when
+The documentation online would look like `spawn(proc() { fib(200); })`, but when
 testing this code, the `fib` function will be included (so it can compile).
 
 ## Running tests (advanced)
