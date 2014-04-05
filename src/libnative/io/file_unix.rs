@@ -17,6 +17,7 @@ use std::io;
 use libc::{c_int, c_void};
 use libc;
 use std::mem;
+use std::os;
 use std::rt::rtio;
 use std::slice;
 
@@ -54,9 +55,11 @@ impl FileDesc {
     //               rtio traits in scope
     pub fn inner_read(&mut self, buf: &mut [u8]) -> Result<uint, IoError> {
         let ret = retry(|| unsafe {
-            libc::read(self.fd(),
-                       buf.as_mut_ptr() as *mut libc::c_void,
-                       buf.len() as libc::size_t) as libc::c_int
+            blocking(self.fd(), |fd| {
+                libc::read(fd,
+                        buf.as_mut_ptr() as *mut libc::c_void,
+                        buf.len() as libc::size_t) as i64
+            }) as libc::c_int
         });
         if ret == 0 {
             Err(io::standard_error(io::EndOfFile))
@@ -69,8 +72,10 @@ impl FileDesc {
     pub fn inner_write(&mut self, buf: &[u8]) -> Result<(), IoError> {
         let ret = keep_going(buf, |buf, len| {
             unsafe {
-                libc::write(self.fd(), buf as *libc::c_void,
-                            len as libc::size_t) as i64
+                blocking(self.fd(), |fd| {
+                    libc::write(fd, buf as *libc::c_void,
+                                len as libc::size_t) as i64
+                })
             }
         });
         if ret < 0 {
@@ -84,6 +89,48 @@ impl FileDesc {
         // This unsafety is fine because we're just reading off the file
         // descriptor, no one is modifying this.
         unsafe { (*self.inner.get()).fd }
+    }
+}
+
+// libc read/write can return EAGAIN or EWOULDBLOCK if the fd has O_NONBLOCK set.
+// However, we're expecting blocking reads/writes. So if we get either of those errors
+// we need to unset O_NONBLOCK and try again.
+unsafe fn blocking(fd: fd_t, f: |fd_t| -> i64) -> i64 {
+    loop {
+        match f(fd) {
+            -1 => {
+                let e = os::errno() as int;
+                if e == libc::EAGAIN as int || e == libc::EWOULDBLOCK as int {
+                    // the fd is marked as nonblock. Turn it off.
+                    let mut flags = libc::fcntl(fd, libc::F_GETFL);
+                    if flags == -1 { return -1 }
+                    if flags & libc::O_NONBLOCK == 0 {
+                        // O_NONBLOCK doesn't seem to be set. Did something else turn it off?
+                        // Or does this system provide an O_NDELAY (which isn't POSIX) that differs
+                        // from O_NONBLOCK? Try again without the loop.
+                        return f(fd);
+                        // Alternatively, something else could have unset the O_NONBLOCK flag in
+                        // between our read/write call and the fcntl. But for that to happen, and
+                        // then for something to subsequently turn it back on again before our
+                        // single retry above, would be quite bizarre and should never happen in
+                        // practice.
+                    }
+                    flags &= !libc::O_NONBLOCK;
+                    if libc::fcntl(fd, libc::F_SETFL, flags) == -1 {
+                        // fcntl() failed. POSIX says this should only happen due to EBADF, which
+                        // would be the same error any subsequent read/write returns. But Linux
+                        // seems to define EPERM as well. Just to be safe, lets re-issue the
+                        // read/write and return. In the EPERM case it's plausible that the
+                        // read/write would then return EAGAIN, but I don't believe we can actually
+                        // hit the EPERM error code so that's a moot point.
+                        return f(fd);
+                    }
+                } else {
+                    return -1
+                }
+            }
+            n => return n
+        }
     }
 }
 
