@@ -9,14 +9,12 @@
 // except according to those terms.
 
 use ast;
-use ast::P;
 use parse::{new_parse_sess};
 use parse::{ParseSess,string_to_filemap,filemap_to_tts};
 use parse::{new_parser_from_source_str};
 use parse::parser::Parser;
 use parse::token;
-
-use std::gc::Gc;
+use ptr::P;
 
 /// Map a string to tts, using a made-up filename:
 pub fn string_to_tts(source_str: String) -> Vec<ast::TokenTree> {

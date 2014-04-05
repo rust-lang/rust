@@ -2786,6 +2786,7 @@ mod test {
     use ast_util;
     use codemap;
     use parse::token;
+    use ptr::P;
 
     #[test]
     fn test_fun_to_string() {
@@ -2793,9 +2794,9 @@ mod test {
 
         let decl = ast::FnDecl {
             inputs: Vec::new(),
-            output: ast::P(ast::Ty {id: 0,
-                                    node: ast::TyNil,
-                                    span: codemap::DUMMY_SP}),
+            output: P(ast::Ty {id: 0,
+                               node: ast::TyNil,
+                               span: codemap::DUMMY_SP}),
             cf: ast::Return,
             variadic: false
         };
