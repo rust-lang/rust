@@ -22,6 +22,8 @@
 
 #![feature(macro_rules, managed_boxes, default_type_params, phase)]
 
+#![deny(deprecated_owned_vector)]
+
 extern crate rand;
 
 #[cfg(test)] extern crate test;

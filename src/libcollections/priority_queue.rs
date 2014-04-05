@@ -19,7 +19,7 @@ use std::slice;
 /// A priority queue implemented with a binary heap
 #[deriving(Clone)]
 pub struct PriorityQueue<T> {
-    data: ~[T],
+    data: Vec<T>,
 }
 
 impl<T:Ord> Container for PriorityQueue<T> {
@@ -40,7 +40,7 @@ impl<T:Ord> PriorityQueue<T> {
     }
 
     /// Returns the greatest item in the queue - fails if empty
-    pub fn top<'a>(&'a self) -> &'a T { &self.data[0] }
+    pub fn top<'a>(&'a self) -> &'a T { self.data.get(0) }
 
     /// Returns the greatest item in the queue - None if empty
     pub fn maybe_top<'a>(&'a self) -> Option<&'a T> {
@@ -64,7 +64,7 @@ impl<T:Ord> PriorityQueue<T> {
     pub fn pop(&mut self) -> T {
         let mut item = self.data.pop().unwrap();
         if !self.is_empty() {
-            swap(&mut item, &mut self.data[0]);
+            swap(&mut item, self.data.get_mut(0));
             self.siftdown(0);
         }
         item
@@ -84,8 +84,8 @@ impl<T:Ord> PriorityQueue<T> {
 
     /// Optimized version of a push followed by a pop
     pub fn push_pop(&mut self, mut item: T) -> T {
-        if !self.is_empty() && self.data[0] > item {
-            swap(&mut item, &mut self.data[0]);
+        if !self.is_empty() && *self.top() > item {
+            swap(&mut item, self.data.get_mut(0));
             self.siftdown(0);
         }
         item
@@ -93,37 +93,37 @@ impl<T:Ord> PriorityQueue<T> {
 
     /// Optimized version of a pop followed by a push - fails if empty
     pub fn replace(&mut self, mut item: T) -> T {
-        swap(&mut item, &mut self.data[0]);
+        swap(&mut item, self.data.get_mut(0));
         self.siftdown(0);
         item
     }
 
     /// Consume the PriorityQueue and return the underlying vector
-    pub fn to_vec(self) -> ~[T] { let PriorityQueue{data: v} = self; v }
+    pub fn to_vec(self) -> Vec<T> { let PriorityQueue{data: v} = self; v }
 
     /// Consume the PriorityQueue and return a vector in sorted
     /// (ascending) order
-    pub fn to_sorted_vec(self) -> ~[T] {
+    pub fn to_sorted_vec(self) -> Vec<T> {
         let mut q = self;
         let mut end = q.len();
         while end > 1 {
             end -= 1;
-            q.data.swap(0, end);
+            q.data.as_mut_slice().swap(0, end);
             q.siftdown_range(0, end)
         }
         q.to_vec()
     }
 
     /// Create an empty PriorityQueue
-    pub fn new() -> PriorityQueue<T> { PriorityQueue{data: ~[],} }
+    pub fn new() -> PriorityQueue<T> { PriorityQueue{data: vec!(),} }
 
     /// Create an empty PriorityQueue with capacity `capacity`
     pub fn with_capacity(capacity: uint) -> PriorityQueue<T> {
-        PriorityQueue { data: slice::with_capacity(capacity) }
+        PriorityQueue { data: Vec::with_capacity(capacity) }
     }
 
     /// Create a PriorityQueue from a vector (heapify)
-    pub fn from_vec(xs: ~[T]) -> PriorityQueue<T> {
+    pub fn from_vec(xs: Vec<T>) -> PriorityQueue<T> {
         let mut q = PriorityQueue{data: xs,};
         let mut n = q.len() / 2;
         while n > 0 {
@@ -140,40 +140,40 @@ impl<T:Ord> PriorityQueue<T> {
     // compared to using swaps, which involves twice as many moves.
     fn siftup(&mut self, start: uint, mut pos: uint) {
         unsafe {
-            let new = replace(&mut self.data[pos], init());
+            let new = replace(self.data.get_mut(pos), init());
 
             while pos > start {
                 let parent = (pos - 1) >> 1;
-                if new > self.data[parent] {
-                    let x = replace(&mut self.data[parent], init());
-                    move_val_init(&mut self.data[pos], x);
+                if new > *self.data.get(parent) {
+                    let x = replace(self.data.get_mut(parent), init());
+                    move_val_init(self.data.get_mut(pos), x);
                     pos = parent;
                     continue
                 }
                 break
             }
-            move_val_init(&mut self.data[pos], new);
+            move_val_init(self.data.get_mut(pos), new);
         }
     }
 
     fn siftdown_range(&mut self, mut pos: uint, end: uint) {
         unsafe {
             let start = pos;
-            let new = replace(&mut self.data[pos], init());
+            let new = replace(self.data.get_mut(pos), init());
 
             let mut child = 2 * pos + 1;
             while child < end {
                 let right = child + 1;
-                if right < end && !(self.data[child] > self.data[right]) {
+                if right < end && !(*self.data.get(child) > *self.data.get(right)) {
                     child = right;
                 }
-                let x = replace(&mut self.data[child], init());
-                move_val_init(&mut self.data[pos], x);
+                let x = replace(self.data.get_mut(child), init());
+                move_val_init(self.data.get_mut(pos), x);
                 pos = child;
                 child = 2 * pos + 1;
             }
 
-            move_val_init(&mut self.data[pos], new);
+            move_val_init(self.data.get_mut(pos), new);
             self.siftup(start, pos);
         }
     }
@@ -224,8 +224,8 @@ mod tests {
 
     #[test]
     fn test_iterator() {
-        let data = ~[5, 9, 3];
-        let iterout = ~[9, 5, 3];
+        let data = vec!(5, 9, 3);
+        let iterout = [9, 5, 3];
         let pq = PriorityQueue::from_vec(data);
         let mut i = 0;
         for el in pq.iter() {
@@ -236,7 +236,7 @@ mod tests {
 
     #[test]
     fn test_top_and_pop() {
-        let data = ~[2u, 4, 6, 2, 1, 8, 10, 3, 5, 7, 0, 9, 1];
+        let data = vec!(2u, 4, 6, 2, 1, 8, 10, 3, 5, 7, 0, 9, 1);
         let mut sorted = data.clone();
         sorted.sort();
         let mut heap = PriorityQueue::from_vec(data);
@@ -248,7 +248,7 @@ mod tests {
 
     #[test]
     fn test_push() {
-        let mut heap = PriorityQueue::from_vec(~[2, 4, 9]);
+        let mut heap = PriorityQueue::from_vec(vec!(2, 4, 9));
         assert_eq!(heap.len(), 3);
         assert!(*heap.top() == 9);
         heap.push(11);
@@ -270,7 +270,7 @@ mod tests {
 
     #[test]
     fn test_push_unique() {
-        let mut heap = PriorityQueue::from_vec(~[~2, ~4, ~9]);
+        let mut heap = PriorityQueue::from_vec(vec!(~2, ~4, ~9));
         assert_eq!(heap.len(), 3);
         assert!(*heap.top() == ~9);
         heap.push(~11);
@@ -292,7 +292,7 @@ mod tests {
 
     #[test]
     fn test_push_pop() {
-        let mut heap = PriorityQueue::from_vec(~[5, 5, 2, 1, 3]);
+        let mut heap = PriorityQueue::from_vec(vec!(5, 5, 2, 1, 3));
         assert_eq!(heap.len(), 5);
         assert_eq!(heap.push_pop(6), 6);
         assert_eq!(heap.len(), 5);
@@ -306,7 +306,7 @@ mod tests {
 
     #[test]
     fn test_replace() {
-        let mut heap = PriorityQueue::from_vec(~[5, 5, 2, 1, 3]);
+        let mut heap = PriorityQueue::from_vec(vec!(5, 5, 2, 1, 3));
         assert_eq!(heap.len(), 5);
         assert_eq!(heap.replace(6), 5);
         assert_eq!(heap.len(), 5);
@@ -318,7 +318,7 @@ mod tests {
         assert_eq!(heap.len(), 5);
     }
 
-    fn check_to_vec(mut data: ~[int]) {
+    fn check_to_vec(mut data: Vec<int>) {
         let heap = PriorityQueue::from_vec(data.clone());
         let mut v = heap.clone().to_vec();
         v.sort();
@@ -330,19 +330,19 @@ mod tests {
 
     #[test]
     fn test_to_vec() {
-        check_to_vec(~[]);
-        check_to_vec(~[5]);
-        check_to_vec(~[3, 2]);
-        check_to_vec(~[2, 3]);
-        check_to_vec(~[5, 1, 2]);
-        check_to_vec(~[1, 100, 2, 3]);
-        check_to_vec(~[1, 3, 5, 7, 9, 2, 4, 6, 8, 0]);
-        check_to_vec(~[2, 4, 6, 2, 1, 8, 10, 3, 5, 7, 0, 9, 1]);
-        check_to_vec(~[9, 11, 9, 9, 9, 9, 11, 2, 3, 4, 11, 9, 0, 0, 0, 0]);
-        check_to_vec(~[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
-        check_to_vec(~[10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]);
-        check_to_vec(~[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 0, 0, 1, 2]);
-        check_to_vec(~[5, 4, 3, 2, 1, 5, 4, 3, 2, 1, 5, 4, 3, 2, 1]);
+        check_to_vec(vec!());
+        check_to_vec(vec!(5));
+        check_to_vec(vec!(3, 2));
+        check_to_vec(vec!(2, 3));
+        check_to_vec(vec!(5, 1, 2));
+        check_to_vec(vec!(1, 100, 2, 3));
+        check_to_vec(vec!(1, 3, 5, 7, 9, 2, 4, 6, 8, 0));
+        check_to_vec(vec!(2, 4, 6, 2, 1, 8, 10, 3, 5, 7, 0, 9, 1));
+        check_to_vec(vec!(9, 11, 9, 9, 9, 9, 11, 2, 3, 4, 11, 9, 0, 0, 0, 0));
+        check_to_vec(vec!(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10));
+        check_to_vec(vec!(10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0));
+        check_to_vec(vec!(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 0, 0, 1, 2));
+        check_to_vec(vec!(5, 4, 3, 2, 1, 5, 4, 3, 2, 1, 5, 4, 3, 2, 1));
     }
 
     #[test]
@@ -380,9 +380,9 @@ mod tests {
 
     #[test]
     fn test_from_iter() {
-        let xs = ~[9u, 8, 7, 6, 5, 4, 3, 2, 1];
+        let xs = vec!(9u, 8, 7, 6, 5, 4, 3, 2, 1);
 
-        let mut q: PriorityQueue<uint> = xs.rev_iter().map(|&x| x).collect();
+        let mut q: PriorityQueue<uint> = xs.as_slice().rev_iter().map(|&x| x).collect();
 
         for &x in xs.iter() {
             assert_eq!(q.pop(), x);
