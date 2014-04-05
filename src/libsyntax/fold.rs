@@ -1236,7 +1236,7 @@ mod test {
         fn fold_ident(&mut self, _: ast::Ident) -> ast::Ident {
             token::str_to_ident("zz")
         }
-        fn fold_mac(&mut self, macro: &ast::Mac) -> ast::Mac {
+        fn fold_mac(&mut self, macro: ast::Mac) -> ast::Mac {
             fold::noop_fold_mac(macro, self)
         }
     }
