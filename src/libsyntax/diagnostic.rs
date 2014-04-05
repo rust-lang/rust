@@ -20,11 +20,37 @@ use term;
 // maximum number of lines we will print for each error; arbitrary.
 static MAX_LINES: uint = 6u;
 
+#[deriving(Clone)]
+pub enum RenderSpan {
+    /// A FullSpan renders with both with an initial line for the
+    /// message, prefixed by file:linenum, followed by a summary of
+    /// the source code covered by the span.
+    FullSpan(Span),
+
+    /// A FileLine renders with just a line for the message prefixed
+    /// by file:linenum.
+    FileLine(Span),
+}
+
+impl RenderSpan {
+    fn span(self) -> Span {
+        match self {
+            FullSpan(s) | FileLine(s) => s
+        }
+    }
+    fn is_full_span(&self) -> bool {
+        match self {
+            &FullSpan(..) => true,
+            &FileLine(..) => false,
+        }
+    }
+}
+
 pub trait Emitter {
     fn emit(&mut self, cmsp: Option<(&codemap::CodeMap, Span)>,
             msg: &str, lvl: Level);
     fn custom_emit(&mut self, cm: &codemap::CodeMap,
-                   sp: Span, msg: &str, lvl: Level);
+                   sp: RenderSpan, msg: &str, lvl: Level);
 }
 
 /// This structure is used to signify that a task has failed with a fatal error
@@ -60,7 +86,10 @@ impl SpanHandler {
         self.handler.emit(Some((&self.cm, sp)), msg, Note);
     }
     pub fn span_end_note(&self, sp: Span, msg: &str) {
-        self.handler.custom_emit(&self.cm, sp, msg, Note);
+        self.handler.custom_emit(&self.cm, FullSpan(sp), msg, Note);
+    }
+    pub fn fileline_note(&self, sp: Span, msg: &str) {
+        self.handler.custom_emit(&self.cm, FileLine(sp), msg, Note);
     }
     pub fn span_bug(&self, sp: Span, msg: &str) -> ! {
         self.handler.emit(Some((&self.cm, sp)), msg, Bug);
@@ -132,7 +161,7 @@ impl Handler {
         self.emit.borrow_mut().emit(cmsp, msg, lvl);
     }
     pub fn custom_emit(&self, cm: &codemap::CodeMap,
-                       sp: Span, msg: &str, lvl: Level) {
+                       sp: RenderSpan, msg: &str, lvl: Level) {
         self.emit.borrow_mut().custom_emit(cm, sp, msg, lvl);
     }
 }
@@ -258,7 +287,7 @@ impl Emitter for EmitterWriter {
             msg: &str,
             lvl: Level) {
         let error = match cmsp {
-            Some((cm, sp)) => emit(self, cm, sp, msg, lvl, false),
+            Some((cm, sp)) => emit(self, cm, FullSpan(sp), msg, lvl, false),
             None => print_diagnostic(self, "", lvl, msg),
         };
 
@@ -269,7 +298,7 @@ impl Emitter for EmitterWriter {
     }
 
     fn custom_emit(&mut self, cm: &codemap::CodeMap,
-                   sp: Span, msg: &str, lvl: Level) {
+                   sp: RenderSpan, msg: &str, lvl: Level) {
         match emit(self, cm, sp, msg, lvl, true) {
             Ok(()) => {}
             Err(e) => fail!("failed to print diagnostics: {}", e),
@@ -277,8 +306,9 @@ impl Emitter for EmitterWriter {
     }
 }
 
-fn emit(dst: &mut EmitterWriter, cm: &codemap::CodeMap, sp: Span,
+fn emit(dst: &mut EmitterWriter, cm: &codemap::CodeMap, rsp: RenderSpan,
         msg: &str, lvl: Level, custom: bool) -> io::IoResult<()> {
+    let sp = rsp.span();
     let ss = cm.span_to_str(sp);
     let lines = cm.span_to_lines(sp);
     if custom {
@@ -288,10 +318,14 @@ fn emit(dst: &mut EmitterWriter, cm: &codemap::CodeMap, sp: Span,
         let span_end = Span { lo: sp.hi, hi: sp.hi, expn_info: sp.expn_info};
         let ses = cm.span_to_str(span_end);
         try!(print_diagnostic(dst, ses, lvl, msg));
-        try!(custom_highlight_lines(dst, cm, sp, lvl, lines));
+        if rsp.is_full_span() {
+            try!(custom_highlight_lines(dst, cm, sp, lvl, lines));
+        }
     } else {
         try!(print_diagnostic(dst, ss, lvl, msg));
-        try!(highlight_lines(dst, cm, sp, lvl, lines));
+        if rsp.is_full_span() {
+            try!(highlight_lines(dst, cm, sp, lvl, lines));
+        }
     }
     print_macro_backtrace(dst, cm, sp)
 }
