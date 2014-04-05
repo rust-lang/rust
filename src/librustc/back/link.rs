@@ -152,13 +152,26 @@ pub mod write {
                              (sess.targ_cfg.os == abi::OsMacos &&
                               sess.targ_cfg.arch == abi::X86_64);
 
+            let reloc_model = match sess.opts.cg.relocation_model.as_slice() {
+                "pic" => lib::llvm::RelocPIC,
+                "static" => lib::llvm::RelocStatic,
+                "default" => lib::llvm::RelocDefault,
+                "dynamic-no-pic" => lib::llvm::RelocDynamicNoPic,
+                _ => {
+                    sess.err(format!("{} is not a valid relocation mode",
+                             sess.opts.cg.relocation_model));
+                    sess.abort_if_errors();
+                    return;
+                }
+            };
+
             let tm = sess.targ_cfg.target_strs.target_triple.with_c_str(|t| {
                 sess.opts.cg.target_cpu.with_c_str(|cpu| {
                     target_feature(sess).with_c_str(|features| {
                         llvm::LLVMRustCreateTargetMachine(
                             t, cpu, features,
                             lib::llvm::CodeModelDefault,
-                            lib::llvm::RelocPIC,
+                            reloc_model,
                             opt_level,
                             true,
                             use_softfp,
