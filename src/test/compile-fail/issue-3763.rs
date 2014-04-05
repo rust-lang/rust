@@ -24,11 +24,15 @@ mod my_mod {
 
 fn main() {
     let my_struct = my_mod::MyStruct();
-    let _woohoo = (&my_struct).priv_field; //~ ERROR field `priv_field` is private
-    let _woohoo = (~my_struct).priv_field; //~ ERROR field `priv_field` is private
-    let _woohoo = (@my_struct).priv_field; //~ ERROR field `priv_field` is private
+    let _woohoo = (&my_struct).priv_field;
+    //~^ ERROR field `priv_field` of struct `my_mod::MyStruct` is private
+    let _woohoo = (~my_struct).priv_field;
+    //~^ ERROR field `priv_field` of struct `my_mod::MyStruct` is private
+    let _woohoo = (@my_struct).priv_field;
+    //~^ ERROR field `priv_field` of struct `my_mod::MyStruct` is private
     (&my_struct).happyfun();               //~ ERROR method `happyfun` is private
     (~my_struct).happyfun();               //~ ERROR method `happyfun` is private
     (@my_struct).happyfun();               //~ ERROR method `happyfun` is private
-    let nope = my_struct.priv_field;       //~ ERROR field `priv_field` is private
+    let nope = my_struct.priv_field;
+    //~^ ERROR field `priv_field` of struct `my_mod::MyStruct` is private
 }

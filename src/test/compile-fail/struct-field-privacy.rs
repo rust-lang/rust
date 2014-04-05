@@ -32,16 +32,16 @@ fn test(a: A, b: inner::A, c: inner::B, d: xc::A, e: xc::B) {
     //~^^ ERROR: struct `A` is private
 
     a.a;
-    b.a; //~ ERROR: field `a` is private
+    b.a; //~ ERROR: field `a` of struct `inner::A` is private
     b.b;
     c.a;
-    c.b; //~ ERROR: field `b` is private
+    c.b; //~ ERROR: field `b` of struct `inner::B` is private
 
-    d.a; //~ ERROR: field `a` is private
+    d.a; //~ ERROR: field `a` of struct `struct-field-privacy::A` is private
     d.b;
 
     e.a;
-    e.b; //~ ERROR: field `b` is private
+    e.b; //~ ERROR: field `b` of struct `struct-field-privacy::B` is private
 }
 
 fn main() {}

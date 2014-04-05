@@ -14,5 +14,6 @@ use cci_class::kitties::cat;
 
 fn main() {
   let nyan : cat = cat(52u, 99);
-  assert!((nyan.meows == 52u));   //~ ERROR field `meows` is private
+  assert!((nyan.meows == 52u));
+  //~^ ERROR field `meows` of struct `cci_class::kitties::cat` is private
 }

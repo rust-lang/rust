@@ -22,6 +22,6 @@ mod a {
 
 fn main() {
     match a::make() {
-        Foo { x: _ } => {}  //~ ERROR field `x` is private
+        Foo { x: _ } => {}  //~ ERROR field `x` of struct `a::Foo` is private
     }
 }
