@@ -79,17 +79,17 @@ impl fmt::Show for Identifier {
 #[deriving(Clone)]
 pub struct Version {
     /// The major version, to be incremented on incompatible changes.
-    major: uint,
+    pub major: uint,
     /// The minor version, to be incremented when functionality is added in a
     /// backwards-compatible manner.
-    minor: uint,
+    pub minor: uint,
     /// The patch version, to be incremented when backwards-compatible bug
     /// fixes are made.
-    patch: uint,
+    pub patch: uint,
     /// The pre-release version identifier, if one exists.
-    pre: Vec<Identifier>,
+    pub pre: Vec<Identifier>,
     /// The build metadata, ignored when determining version precedence.
-    build: Vec<Identifier>,
+    pub build: Vec<Identifier>,
 }
 
 impl fmt::Show for Version {
