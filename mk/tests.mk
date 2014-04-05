@@ -370,8 +370,6 @@ $(foreach host,$(CFG_HOST), \
 define DEF_TEST_CRATE_RULES
 check-stage$(1)-T-$(2)-H-$(3)-$(4)-exec: $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4))
 
-check-stage$(1)-T-$(2)-H-$(3)-$(4)-exec: $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4))
-
 $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4)): \
 		$(3)/stage$(1)/test/$(4)test-$(2)$$(X_$(2))
 	@$$(call E, run: $$<)
@@ -503,6 +501,10 @@ CTEST_BUILD_BASE_codegen = codegen
 CTEST_MODE_codegen = codegen
 CTEST_RUNTOOL_codegen = $(CTEST_RUNTOOL)
 
+# CTEST_DISABLE_$(TEST_GROUP), if set, will cause the test group to be
+# disabled and the associated message to be printed as a warning
+# during attempts to run those tests.
+
 ifeq ($(CFG_GDB),)
 CTEST_DISABLE_debuginfo = "no gdb found"
 endif
@@ -514,6 +516,14 @@ endif
 ifeq ($(CFG_OSTYPE),apple-darwin)
 CTEST_DISABLE_debuginfo = "gdb on darwing needs root"
 endif
+
+# CTEST_DISABLE_NONSELFHOST_$(TEST_GROUP), if set, will cause that
+# test group to be disabled *unless* the target is able to build a
+# compiler (i.e. when the target triple is in the set of of host
+# triples).  The associated message will be printed as a warning
+# during attempts to run those tests.
+
+CTEST_DISABLE_NONSELFHOST_rpass-full = "run-pass-full suite is unavailable when cross-compiling."
 
 define DEF_CTEST_VARS
 
@@ -560,7 +570,7 @@ CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3) :=						\
         $$(CTEST_TESTARGS)
 
 CTEST_DEPS_rpass_$(1)-T-$(2)-H-$(3) = $$(RPASS_TESTS)
-CTEST_DEPS_rpass_full_$(1)-T-$(2)-H-$(3) = $$(RPASS_FULL_TESTS) $$(TLIBRUSTC_DEFAULT$(1)_T_$(2)_H_$(3))
+CTEST_DEPS_rpass-full_$(1)-T-$(2)-H-$(3) = $$(RPASS_FULL_TESTS) $$(CSREQ$(1)_T_$(2)_H_$(3))
 CTEST_DEPS_rfail_$(1)-T-$(2)-H-$(3) = $$(RFAIL_TESTS)
 CTEST_DEPS_cfail_$(1)-T-$(2)-H-$(3) = $$(CFAIL_TESTS)
 CTEST_DEPS_bench_$(1)-T-$(2)-H-$(3) = $$(BENCH_TESTS)
@@ -587,8 +597,28 @@ CTEST_ARGS$(1)-T-$(2)-H-$(3)-$(4) := \
 
 check-stage$(1)-T-$(2)-H-$(3)-$(4)-exec: $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4))
 
-ifeq ($$(CTEST_DISABLE_$(4)),)
+# CTEST_DONT_RUN_$(1)-T-$(2)-H-$(3)-$(4)
+# Goal: leave this variable as empty string if we should run the test.
+# Otherwise, set it to the reason we are not running the test.
+# (Encoded as a separate variable because GNU make does not have a
+# good way to express OR on ifeq commands)
 
+ifneq ($$(CTEST_DISABLE_$(4)),)
+# Test suite is disabled for all configured targets.
+CTEST_DONT_RUN_$(1)-T-$(2)-H-$(3)-$(4) := $$(CTEST_DISABLE_$(4))
+else
+# else, check if non-self-hosted target (i.e. target not-in hosts) ...
+ifeq ($$(findstring $(2),$$(CFG_HOST)),)
+# ... if so, then check if this test suite is disabled for non-selfhosts.
+ifneq ($$(CTEST_DISABLE_NONSELFHOST_$(4)),)
+# Test suite is disabled for this target.
+CTEST_DONT_RUN_$(1)-T-$(2)-H-$(3)-$(4) := $$(CTEST_DISABLE_NONSELFHOST_$(4))
+endif
+endif
+# Neither DISABLE nor DISABLE_NONSELFHOST is set ==> okay, run the test.
+endif
+
+ifeq ($$(CTEST_DONT_RUN_$(1)-T-$(2)-H-$(3)-$(4)),)
 $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4)): \
 		$$(TEST_SREQ$(1)_T_$(2)_H_$(3)) \
                 $$(CTEST_DEPS_$(4)_$(1)-T-$(2)-H-$(3))
@@ -600,11 +630,9 @@ $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4)): \
 
 else
 
-$$(call TEST_OK_FILE,$(1),$(2),$(3),$(4)): \
-		$$(TEST_SREQ$(1)_T_$(2)_H_$(3)) \
-                $$(CTEST_DEPS_$(4)_$(1)-T-$(2)-H-$(3))
+$$(call TEST_OK_FILE,$(1),$(2),$(3),$(4)):
 	@$$(call E, run $(4) [$(2)]: $$<)
-	@$$(call E, warning: tests disabled: $$(CTEST_DISABLE_$(4)))
+	@$$(call E, warning: tests disabled: $$(CTEST_DONT_RUN_$(1)-T-$(2)-H-$(3)-$(4)))
 	touch $$@
 
 endif
