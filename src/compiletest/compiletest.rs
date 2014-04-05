@@ -11,6 +11,9 @@
 #![crate_type = "bin"]
 #![feature(phase)]
 
+// we use our own (green) start below; do not link in libnative; issue #13247.
+#![no_start]
+
 #![allow(non_camel_case_types)]
 #![deny(warnings)]
 
