@@ -1088,7 +1088,8 @@ fn extract_vec_elems<'a>(
     let _icx = push_ctxt("match::extract_vec_elems");
     let vec_datum = match_datum(bcx, val, pat_id);
     let (base, len) = vec_datum.get_vec_base_and_len(bcx);
-    let vt = tvec::vec_types(bcx, node_id_type(bcx, pat_id));
+    let vec_ty = node_id_type(bcx, pat_id);
+    let vt = tvec::vec_types(bcx, ty::sequence_element_type(bcx.tcx(), vec_ty));
 
     let mut elems = Vec::from_fn(elem_count, |i| {
         match slice {
@@ -1681,8 +1682,8 @@ fn compile_submatch_continue<'r,
                 kind = compare;
             },
             vec_len(..) => {
-                let vt = tvec::vec_types(bcx, node_id_type(bcx, pat_id));
-                let (_, len) = tvec::get_base_and_len(bcx, val, vt.vec_ty);
+                let vec_ty = node_id_type(bcx, pat_id);
+                let (_, len) = tvec::get_base_and_len(bcx, val, vec_ty);
                 test_val = len;
                 kind = compare_vec_len;
             }

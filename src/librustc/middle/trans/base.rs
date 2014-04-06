@@ -37,7 +37,6 @@ use lib;
 use metadata::{csearch, encoder};
 use middle::astencode;
 use middle::lang_items::{LangItem, ExchangeMallocFnLangItem, StartFnLangItem};
-use middle::lang_items::{MallocFnLangItem, ClosureExchangeMallocFnLangItem};
 use middle::trans::_match;
 use middle::trans::adt;
 use middle::trans::build::*;
@@ -336,111 +335,64 @@ pub fn at_box_body(bcx: &Block, body_t: ty::t, boxptr: ValueRef) -> ValueRef {
     GEPi(bcx, boxptr, [0u, abi::box_field_body])
 }
 
-// malloc_raw_dyn: allocates a box to contain a given type, but with a
-// potentially dynamic size.
-pub fn malloc_raw_dyn<'a>(
-                      bcx: &'a Block<'a>,
-                      t: ty::t,
-                      heap: heap,
-                      size: ValueRef)
-                      -> Result<'a> {
-    let _icx = push_ctxt("malloc_raw");
-    let ccx = bcx.ccx();
-
-    fn require_alloc_fn(bcx: &Block, t: ty::t, it: LangItem) -> ast::DefId {
-        let li = &bcx.tcx().lang_items;
-        match li.require(it) {
-            Ok(id) => id,
-            Err(s) => {
-                bcx.sess().fatal(format!("allocation of `{}` {}",
-                                         bcx.ty_to_str(t), s));
-            }
+fn require_alloc_fn(bcx: &Block, info_ty: ty::t, it: LangItem) -> ast::DefId {
+    match bcx.tcx().lang_items.require(it) {
+        Ok(id) => id,
+        Err(s) => {
+            bcx.sess().fatal(format!("allocation of `{}` {}",
+                                     bcx.ty_to_str(info_ty), s));
         }
     }
-
-    if heap == heap_exchange {
-        let llty_value = type_of::type_of(ccx, t);
-
-        // Allocate space:
-        let r = callee::trans_lang_call(
-            bcx,
-            require_alloc_fn(bcx, t, ExchangeMallocFnLangItem),
-            [size],
-            None);
-        rslt(r.bcx, PointerCast(r.bcx, r.val, llty_value.ptr_to()))
-    } else {
-        // we treat ~fn as @ here, which isn't ideal
-        let langcall = match heap {
-            heap_managed => {
-                require_alloc_fn(bcx, t, MallocFnLangItem)
-            }
-            heap_exchange_closure => {
-                require_alloc_fn(bcx, t, ClosureExchangeMallocFnLangItem)
-            }
-            _ => fail!("heap_exchange already handled")
-        };
-
-        // Grab the TypeRef type of box_ptr_ty.
-        let box_ptr_ty = ty::mk_box(bcx.tcx(), t);
-        let llty = type_of(ccx, box_ptr_ty);
-        let llalign = C_uint(ccx, llalign_of_min(ccx, llty) as uint);
-
-        // Allocate space:
-        let drop_glue = glue::get_drop_glue(ccx, t);
-        let r = callee::trans_lang_call(
-            bcx,
-            langcall,
-            [
-                PointerCast(bcx, drop_glue, Type::glue_fn(ccx, Type::i8p(ccx)).ptr_to()),
-                size,
-                llalign
-            ],
-            None);
-        rslt(r.bcx, PointerCast(r.bcx, r.val, llty))
-    }
 }
 
-// malloc_raw: expects an unboxed type and returns a pointer to
-// enough space for a box of that type.  This includes a rust_opaque_box
-// header.
-pub fn malloc_raw<'a>(bcx: &'a Block<'a>, t: ty::t, heap: heap)
-                  -> Result<'a> {
-    let ty = type_of(bcx.ccx(), t);
-    let size = llsize_of(bcx.ccx(), ty);
-    malloc_raw_dyn(bcx, t, heap, size)
-}
+// The following malloc_raw_dyn* functions allocate a box to contain
+// a given type, but with a potentially dynamic size.
 
-pub struct MallocResult<'a> {
-    pub bcx: &'a Block<'a>,
-    pub smart_ptr: ValueRef,
-    pub body: ValueRef
-}
-
-// malloc_general_dyn: usefully wraps malloc_raw_dyn; allocates a smart
-// pointer, and pulls out the body
-pub fn malloc_general_dyn<'a>(
-                          bcx: &'a Block<'a>,
-                          t: ty::t,
-                          heap: heap,
+pub fn malloc_raw_dyn<'a>(bcx: &'a Block<'a>,
+                          ptr_ty: ty::t,
                           size: ValueRef)
-                          -> MallocResult<'a> {
-    assert!(heap != heap_exchange);
-    let _icx = push_ctxt("malloc_general");
-    let Result {bcx: bcx, val: llbox} = malloc_raw_dyn(bcx, t, heap, size);
-    let body = GEPi(bcx, llbox, [0u, abi::box_field_body]);
+                          -> Result<'a> {
+    let _icx = push_ctxt("malloc_raw_exchange");
+    let ccx = bcx.ccx();
 
-    MallocResult {
-        bcx: bcx,
-        smart_ptr: llbox,
-        body: body,
-    }
+    // Allocate space:
+    let r = callee::trans_lang_call(bcx,
+        require_alloc_fn(bcx, ptr_ty, ExchangeMallocFnLangItem),
+        [size],
+        None);
+
+    let llty_ptr = type_of::type_of(ccx, ptr_ty);
+    rslt(r.bcx, PointerCast(r.bcx, r.val, llty_ptr))
 }
 
-pub fn malloc_general<'a>(bcx: &'a Block<'a>, t: ty::t, heap: heap)
-                      -> MallocResult<'a> {
-    let ty = type_of(bcx.ccx(), t);
-    assert!(heap != heap_exchange);
-    malloc_general_dyn(bcx, t, heap, llsize_of(bcx.ccx(), ty))
+pub fn malloc_raw_dyn_managed<'a>(
+                      bcx: &'a Block<'a>,
+                      t: ty::t,
+                      alloc_fn: LangItem,
+                      size: ValueRef)
+                      -> Result<'a> {
+    let _icx = push_ctxt("malloc_raw_managed");
+    let ccx = bcx.ccx();
+
+    let langcall = require_alloc_fn(bcx, t, alloc_fn);
+
+    // Grab the TypeRef type of box_ptr_ty.
+    let box_ptr_ty = ty::mk_box(bcx.tcx(), t);
+    let llty = type_of(ccx, box_ptr_ty);
+    let llalign = C_uint(ccx, llalign_of_min(ccx, llty) as uint);
+
+    // Allocate space:
+    let drop_glue = glue::get_drop_glue(ccx, t);
+    let r = callee::trans_lang_call(
+        bcx,
+        langcall,
+        [
+            PointerCast(bcx, drop_glue, Type::glue_fn(ccx, Type::i8p(ccx)).ptr_to()),
+            size,
+            llalign
+        ],
+        None);
+    rslt(r.bcx, PointerCast(r.bcx, r.val, llty))
 }
 
 // Type descriptor and type glue stuff
@@ -708,7 +660,8 @@ pub fn iter_structural_ty<'r,
       ty::ty_str(ty::vstore_fixed(_)) |
       ty::ty_vec(_, ty::vstore_fixed(_)) => {
         let (base, len) = tvec::get_base_and_byte_len(cx, av, t);
-        cx = tvec::iter_vec_raw(cx, base, t, len, f);
+        let unit_ty = ty::sequence_element_type(cx.tcx(), t);
+        cx = tvec::iter_vec_raw(cx, base, unit_ty, len, f);
       }
       ty::ty_tup(ref args) => {
           let repr = adt::represent_type(cx.ccx(), t);

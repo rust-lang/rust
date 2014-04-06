@@ -386,14 +386,6 @@ impl<'a> FunctionContext<'a> {
     }
 }
 
-// Heap selectors. Indicate which heap something should go on.
-#[deriving(Eq)]
-pub enum heap {
-    heap_managed,
-    heap_exchange,
-    heap_exchange_closure
-}
-
 // Basic block context.  We create a block context for each basic block
 // (single-entry, single-exit sequence of instructions) we generate from Rust
 // code.  Each basic block we generate is attached to a function, typically

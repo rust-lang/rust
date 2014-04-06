@@ -341,15 +341,6 @@ impl<'a> TyVisitor for ReprVisitor<'a> {
         })
     }
 
-    // Type no longer exists, vestigial function.
-    fn visit_vec(&mut self, _mtbl: uint, _inner: *TyDesc) -> bool { fail!(); }
-
-    fn visit_unboxed_vec(&mut self, mtbl: uint, inner: *TyDesc) -> bool {
-        self.get::<raw::Vec<()>>(|this, b| {
-            this.write_unboxed_vec_repr(mtbl, b, inner)
-        })
-    }
-
     fn visit_evec_box(&mut self, mtbl: uint, inner: *TyDesc) -> bool {
         self.get::<&raw::Box<raw::Vec<()>>>(|this, b| {
             try!(this, this.writer.write(['@' as u8]));

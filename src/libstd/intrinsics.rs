@@ -108,8 +108,6 @@ pub trait TyVisitor {
     fn visit_ptr(&mut self, mtbl: uint, inner: *TyDesc) -> bool;
     fn visit_rptr(&mut self, mtbl: uint, inner: *TyDesc) -> bool;
 
-    fn visit_vec(&mut self, mtbl: uint, inner: *TyDesc) -> bool;
-    fn visit_unboxed_vec(&mut self, mtbl: uint, inner: *TyDesc) -> bool;
     fn visit_evec_box(&mut self, mtbl: uint, inner: *TyDesc) -> bool;
     fn visit_evec_uniq(&mut self, mtbl: uint, inner: *TyDesc) -> bool;
     fn visit_evec_slice(&mut self, mtbl: uint, inner: *TyDesc) -> bool;
