@@ -4595,16 +4595,6 @@ pub fn hash_crate_independent(tcx: &ctxt, t: t, svh: &Svh) -> u64 {
             }
         }
     };
-    let vstore = |state: &mut sip::SipState, v: Vstore| {
-        match v {
-            VstoreFixed(_) => 0u8.hash(state),
-            VstoreUniq => 1u8.hash(state),
-            VstoreSlice(r) => {
-                2u8.hash(state);
-                region(state, r);
-            }
-        }
-    };
     let did = |state: &mut sip::SipState, did: DefId| {
         let h = if ast_util::is_local(did) {
             svh.clone()
@@ -4652,7 +4642,7 @@ pub fn hash_crate_independent(tcx: &ctxt, t: t, svh: &Svh) -> u64 {
             ty_vec(m, v) => {
                 byte!(11);
                 mt(&mut state, m);
-                vstore(&mut state, v);
+                hash!(v);
             }
             ty_ptr(m) => {
                 byte!(12);
