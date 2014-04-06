@@ -11,8 +11,8 @@
 use std::cast;
 use std::io::IoError;
 use std::io::net::ip;
-use std::libc::{size_t, ssize_t, c_int, c_void, c_uint};
-use std::libc;
+use libc::{size_t, ssize_t, c_int, c_void, c_uint};
+use libc;
 use std::mem;
 use std::ptr;
 use std::rt::rtio;

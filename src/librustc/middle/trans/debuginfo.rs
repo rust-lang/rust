@@ -145,7 +145,7 @@ use std::c_str::{CString, ToCStr};
 use std::cell::{Cell, RefCell};
 use collections::HashMap;
 use collections::HashSet;
-use std::libc::{c_uint, c_ulonglong, c_longlong};
+use libc::{c_uint, c_ulonglong, c_longlong};
 use std::ptr;
 use std::sync::atomics;
 use std::slice;

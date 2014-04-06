@@ -11,7 +11,7 @@
 use std::cast;
 use std::io::net::ip;
 use std::io;
-use std::libc;
+use libc;
 use std::mem;
 use std::rt::rtio;
 use std::sync::arc::UnsafeArc;

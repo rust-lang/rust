@@ -17,10 +17,10 @@ use std::io::signal::Signum;
 use std::io::{FileMode, FileAccess, Open, Append, Truncate, Read, Write,
               ReadWrite, FileStat};
 use std::io;
-use std::libc::c_int;
-use std::libc::{O_CREAT, O_APPEND, O_TRUNC, O_RDWR, O_RDONLY, O_WRONLY, S_IRUSR,
+use libc::c_int;
+use libc::{O_CREAT, O_APPEND, O_TRUNC, O_RDWR, O_RDONLY, O_WRONLY, S_IRUSR,
                 S_IWUSR};
-use std::libc;
+use libc;
 use std::path::Path;
 use std::rt::rtio;
 use std::rt::rtio::IoFactory;

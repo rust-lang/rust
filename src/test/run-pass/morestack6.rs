@@ -18,7 +18,7 @@ extern crate rand;
 use std::task;
 
 mod rustrt {
-    use std::libc;
+    extern crate libc;
 
     extern {
         pub fn debug_get_stk_seg() -> *u8;

@@ -26,6 +26,7 @@ extern crate testing = "test";
 extern crate time;
 #[phase(syntax, link)]
 extern crate log;
+extern crate libc;
 
 use std::local_data;
 use std::io;

@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+extern crate libc;
 use std::cast;
-use std::libc;
 use std::mem;
 
 struct arena(());

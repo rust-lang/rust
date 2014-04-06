@@ -39,25 +39,28 @@ unnecessary amounts of allocations.
 An example of creating and using a C string would be:
 
 ```rust
-use std::libc;
+extern crate libc;
+
 extern {
     fn puts(s: *libc::c_char);
 }
 
-let my_string = "Hello, world!";
+fn main() {
+    let my_string = "Hello, world!";
 
-// Allocate the C string with an explicit local that owns the string. The
-// `c_buffer` pointer will be deallocated when `my_c_string` goes out of scope.
-let my_c_string = my_string.to_c_str();
-my_c_string.with_ref(|c_buffer| {
-    unsafe { puts(c_buffer); }
-});
+    // Allocate the C string with an explicit local that owns the string. The
+    // `c_buffer` pointer will be deallocated when `my_c_string` goes out of scope.
+    let my_c_string = my_string.to_c_str();
+    my_c_string.with_ref(|c_buffer| {
+        unsafe { puts(c_buffer); }
+    });
 
-// Don't save off the allocation of the C string, the `c_buffer` will be
-// deallocated when this block returns!
-my_string.with_c_str(|c_buffer| {
-    unsafe { puts(c_buffer); }
-});
+    // Don't save off the allocation of the C string, the `c_buffer` will be
+    // deallocated when this block returns!
+    my_string.with_c_str(|c_buffer| {
+        unsafe { puts(c_buffer); }
+    });
+}
  ```
 
 */
@@ -266,11 +269,13 @@ pub trait ToCStr {
     /// # Example
     ///
     /// ```rust
-    /// use std::libc;
+    /// extern crate libc;
     ///
-    /// let s = "PATH".with_c_str(|path| unsafe {
-    ///     libc::getenv(path)
-    /// });
+    /// fn main() {
+    ///     let s = "PATH".with_c_str(|path| unsafe {
+    ///         libc::getenv(path)
+    ///     });
+    /// }
     /// ```
     ///
     /// # Failure

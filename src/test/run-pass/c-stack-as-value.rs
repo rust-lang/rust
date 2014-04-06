@@ -9,7 +9,7 @@
 // except according to those terms.
 
 mod rustrt {
-    use std::libc;
+    extern crate libc;
 
     #[link(name = "rustrt")]
     extern {

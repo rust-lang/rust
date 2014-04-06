@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use std::cast;
-use std::libc::{c_int, c_void};
+use libc::{c_int, c_void};
 
 use uvll;
 use super::{Loop, UvHandle};

@@ -47,7 +47,7 @@
 //! Note that all time units in this file are in *milliseconds*.
 
 use std::comm::Data;
-use std::libc;
+use libc;
 use std::mem;
 use std::os;
 use std::ptr;
@@ -287,7 +287,7 @@ impl Drop for Timer {
 
 #[cfg(target_os = "macos")]
 mod imp {
-    use std::libc;
+    use libc;
 
     pub static FD_SETSIZE: uint = 1024;
 
@@ -314,7 +314,7 @@ mod imp {
 #[cfg(target_os = "android")]
 #[cfg(target_os = "freebsd")]
 mod imp {
-    use std::libc;
+    use libc;
 
     pub static FD_SETSIZE: uint = 1024;
 

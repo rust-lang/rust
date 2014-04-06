@@ -52,7 +52,7 @@ macro_rules! rtabort (
 
 pub fn dumb_println(args: &fmt::Arguments) {
     use std::io;
-    use std::libc;
+    use libc;
 
     struct Stderr;
     impl io::Writer for Stderr {

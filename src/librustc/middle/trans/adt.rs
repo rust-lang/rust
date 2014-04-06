@@ -44,7 +44,7 @@
  */
 
 use std::container::Map;
-use std::libc::c_ulonglong;
+use libc::c_ulonglong;
 use std::option::{Option, Some, None};
 use std::num::{Bitwise};
 

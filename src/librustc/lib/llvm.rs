@@ -15,7 +15,7 @@
 use std::c_str::ToCStr;
 use std::cell::RefCell;
 use collections::HashMap;
-use std::libc::{c_uint, c_ushort, c_void, free};
+use libc::{c_uint, c_ushort, c_void, free};
 use std::str::raw::from_c_str;
 
 use middle::trans::type_::Type;
@@ -307,7 +307,7 @@ pub mod llvm {
     use super::{ValueRef, TargetMachineRef, FileType, ArchiveRef};
     use super::{CodeGenModel, RelocMode, CodeGenOptLevel};
     use super::debuginfo::*;
-    use std::libc::{c_char, c_int, c_longlong, c_ushort, c_uint, c_ulonglong,
+    use libc::{c_char, c_int, c_longlong, c_ushort, c_uint, c_ulonglong,
                     size_t};
 
     // Link to our native llvm bindings (things that we need to use the C++ api
