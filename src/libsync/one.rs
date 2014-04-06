@@ -16,7 +16,7 @@
 use std::int;
 use std::sync::atomics;
 
-use mutex::{StaticMutex, MUTEX_INIT};
+use sync::mutex::{StaticMutex, MUTEX_INIT};
 
 /// A type which can be used to run a one-time global initialization. This type
 /// is *unsafe* to use because it is built on top of the `Mutex` in this module.
@@ -42,14 +42,14 @@ use mutex::{StaticMutex, MUTEX_INIT};
 /// ```
 pub struct Once {
     mutex: StaticMutex,
-    cnt: atomics::AtomicInt,
+    state: atomics::AtomicInt,
     lock_cnt: atomics::AtomicInt,
 }
 
 /// Initialization value for static `Once` values.
 pub static ONCE_INIT: Once = Once {
     mutex: MUTEX_INIT,
-    cnt: atomics::INIT_ATOMIC_INT,
+    state: atomics::INIT_ATOMIC_INT,
     lock_cnt: atomics::INIT_ATOMIC_INT,
 };
 
@@ -63,56 +63,57 @@ impl Once {
     ///
     /// When this function returns, it is guaranteed that some initialization
     /// has run and completed (it may not be the closure specified).
+    #[inline]
     pub fn doit(&self, f: ||) {
         // Implementation-wise, this would seem like a fairly trivial primitive.
         // The stickler part is where our mutexes currently require an
-        // allocation, and usage of a `Once` should't leak this allocation.
+        // allocation, and usage of a `Once` shouldn't leak this allocation.
         //
         // This means that there must be a deterministic destroyer of the mutex
         // contained within (because it's not needed after the initialization
         // has run).
         //
-        // The general scheme here is to gate all future threads once
-        // initialization has completed with a "very negative" count, and to
-        // allow through threads to lock the mutex if they see a non negative
-        // count. For all threads grabbing the mutex, exactly one of them should
-        // be responsible for unlocking the mutex, and this should only be done
-        // once everyone else is done with the mutex.
-        //
-        // This atomicity is achieved by swapping a very negative value into the
-        // shared count when the initialization routine has completed. This will
-        // read the number of threads which will at some point attempt to
-        // acquire the mutex. This count is then squirreled away in a separate
-        // variable, and the last person on the way out of the mutex is then
-        // responsible for destroying the mutex.
-        //
-        // It is crucial that the negative value is swapped in *after* the
-        // initialization routine has completed because otherwise new threads
-        // calling `doit` will return immediately before the initialization has
-        // completed.
+        // The general algorithm here is we keep a state value that indicates whether
+        // we've finished the work. This lets us avoid the expensive atomic
+        // read-modify-writes and mutex if there's no need. If we haven't finished
+        // the work, then we use a second value to keep track of how many outstanding
+        // threads are trying to use the mutex. When the last thread releases the
+        // mutex it drops the lock count to a "very negative" value to indicate to
+        // other threads that the mutex is gone.
 
-        let prev = self.cnt.fetch_add(1, atomics::SeqCst);
-        if prev < 0 {
-            // Make sure we never overflow, we'll never have int::MIN
-            // simultaneous calls to `doit` to make this value go back to 0
-            self.cnt.store(int::MIN, atomics::SeqCst);
-            return
+        let state = self.state.load(atomics::Acquire);
+        if state != 2 {
+            self.doit_slow(f)
         }
+    }
 
+    #[inline(never)]
+    fn doit_slow(&self, f: ||) {
         // If the count is negative, then someone else finished the job,
         // otherwise we run the job and record how many people will try to grab
         // this lock
+        if self.lock_cnt.fetch_add(1, atomics::Acquire) < 0 {
+            // Make sure we never overflow.
+            self.lock_cnt.store(int::MIN, atomics::Relaxed);
+            return
+        }
+
         let guard = self.mutex.lock();
-        if self.cnt.load(atomics::SeqCst) > 0 {
+        if self.state.compare_and_swap(0, 1, atomics::Relaxed) == 0 {
+            // we're the first one here
             f();
-            let prev = self.cnt.swap(int::MIN, atomics::SeqCst);
-            self.lock_cnt.store(prev, atomics::SeqCst);
+            self.state.store(2, atomics::Release);
         }
         drop(guard);
 
         // Last one out cleans up after everyone else, no leaks!
-        if self.lock_cnt.fetch_add(-1, atomics::SeqCst) == 1 {
-            unsafe { self.mutex.destroy() }
+        if self.lock_cnt.fetch_add(-1, atomics::Release) == 1 {
+            // we just decremented it to 0, now make sure we can drop it to int::MIN.
+            // If this fails, someone else just waltzed in and took the mutex
+            if self.lock_cnt.compare_and_swap(0, int::MIN, atomics::AcqRel) == 0 {
+                // good, we really were the last ones out
+                unsafe { self.mutex.destroy() }
+            }
         }
     }
 }
