@@ -458,6 +458,8 @@ cgoptions!(
         "prefer dynamic linking to static linking"),
     no_integrated_as: bool = (false, parse_bool,
         "use an external assembler rather than LLVM's integrated one"),
+    relocation_model: ~str = (~"pic", parse_string,
+         "choose the relocation model to use (llc -relocation-model for details)"),
 )
 
 // Seems out of place, but it uses session, so I'm putting it here
