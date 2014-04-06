@@ -76,6 +76,7 @@ use middle::typeck::infer::region_inference::ProcessedErrors;
 use middle::typeck::infer::region_inference::SameRegions;
 use std::cell::{Cell, RefCell};
 use std::char::from_u32;
+use std::strbuf::StrBuf;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util;
@@ -1361,13 +1362,13 @@ impl LifeGiver {
 
         // 0 .. 25 generates a .. z, 26 .. 51 generates aa .. zz, and so on
         fn num_to_str(counter: uint) -> ~str {
-            let mut s = ~"";
+            let mut s = StrBuf::new();
             let (n, r) = (counter/26 + 1, counter % 26);
             let letter: char = from_u32((r+97) as u32).unwrap();
             for _ in range(0, n) {
                 s.push_char(letter);
             }
-            return s;
+            s.into_owned()
         }
     }
 

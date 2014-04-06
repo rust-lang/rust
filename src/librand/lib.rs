@@ -80,7 +80,7 @@ use std::cast;
 use std::io::IoResult;
 use std::kinds::marker;
 use std::local_data;
-use std::str;
+use std::strbuf::StrBuf;
 
 pub use isaac::{IsaacRng, Isaac64Rng};
 pub use os::OSRng;
@@ -258,11 +258,11 @@ pub trait Rng {
         static GEN_ASCII_STR_CHARSET: &'static [u8] = bytes!("ABCDEFGHIJKLMNOPQRSTUVWXYZ\
                                                              abcdefghijklmnopqrstuvwxyz\
                                                              0123456789");
-        let mut s = str::with_capacity(len);
+        let mut s = StrBuf::with_capacity(len);
         for _ in range(0, len) {
             s.push_char(self.choose(GEN_ASCII_STR_CHARSET) as char)
         }
-        s
+        s.into_owned()
     }
 
     /// Choose an item randomly, failing if `values` is empty.

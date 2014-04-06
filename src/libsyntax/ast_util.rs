@@ -21,6 +21,7 @@ use visit;
 
 use std::cell::Cell;
 use std::cmp;
+use std::strbuf::StrBuf;
 use std::u32;
 
 pub fn path_name_i(idents: &[Ident]) -> ~str {
@@ -235,7 +236,7 @@ pub fn unguarded_pat(a: &Arm) -> Option<Vec<@Pat> > {
 /// listed as `__extensions__::method_name::hash`, with no indication
 /// of the type).
 pub fn impl_pretty_name(trait_ref: &Option<TraitRef>, ty: &Ty) -> Ident {
-    let mut pretty = pprust::ty_to_str(ty);
+    let mut pretty = StrBuf::from_owned_str(pprust::ty_to_str(ty));
     match *trait_ref {
         Some(ref trait_ref) => {
             pretty.push_char('.');
@@ -243,7 +244,7 @@ pub fn impl_pretty_name(trait_ref: &Option<TraitRef>, ty: &Ty) -> Ident {
         }
         None => {}
     }
-    token::gensym_ident(pretty)
+    token::gensym_ident(pretty.as_slice())
 }
 
 pub fn public_methods(ms: Vec<@Method> ) -> Vec<@Method> {

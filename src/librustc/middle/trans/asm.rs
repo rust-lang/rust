@@ -23,6 +23,7 @@ use middle::trans::type_of;
 use middle::trans::type_::Type;
 
 use std::c_str::ToCStr;
+use std::strbuf::StrBuf;
 use syntax::ast;
 
 // Take an inline assembly expression and splat it out via LLVM
@@ -62,14 +63,17 @@ pub fn trans_inline_asm<'a>(bcx: &'a Block<'a>, ia: &ast::InlineAsm)
     // no failure occurred preparing operands, no need to cleanup
     fcx.pop_custom_cleanup_scope(temp_scope);
 
-    let mut constraints = constraints.iter()
-                                     .map(|s| s.get().to_str())
-                                     .collect::<Vec<~str>>()
-                                     .connect(",");
+    let mut constraints =
+        StrBuf::from_str(constraints.iter()
+                                    .map(|s| s.get().to_str())
+                                    .collect::<Vec<~str>>()
+                                    .connect(","));
 
-    let mut clobbers = getClobbers();
+    let mut clobbers = StrBuf::from_str(getClobbers());
     if !ia.clobbers.get().is_empty() && !clobbers.is_empty() {
-        clobbers = format!("{},{}", ia.clobbers.get(), clobbers);
+        clobbers = StrBuf::from_owned_str(format!("{},{}",
+                                                  ia.clobbers.get(),
+                                                  clobbers));
     } else {
         clobbers.push_str(ia.clobbers.get());
     }
@@ -77,12 +81,12 @@ pub fn trans_inline_asm<'a>(bcx: &'a Block<'a>, ia: &ast::InlineAsm)
     // Add the clobbers to our constraints list
     if clobbers.len() != 0 && constraints.len() != 0 {
         constraints.push_char(',');
-        constraints.push_str(clobbers);
+        constraints.push_str(clobbers.as_slice());
     } else {
-        constraints.push_str(clobbers);
+        constraints.push_str(clobbers.as_slice());
     }
 
-    debug!("Asm Constraints: {:?}", constraints);
+    debug!("Asm Constraints: {:?}", constraints.as_slice());
 
     let num_outputs = outputs.len();
 
@@ -101,7 +105,7 @@ pub fn trans_inline_asm<'a>(bcx: &'a Block<'a>, ia: &ast::InlineAsm)
     };
 
     let r = ia.asm.get().with_c_str(|a| {
-        constraints.with_c_str(|c| {
+        constraints.as_slice().with_c_str(|c| {
             InlineAsmCall(bcx,
                           a,
                           c,

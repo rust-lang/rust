@@ -19,6 +19,7 @@
 use middle::ty;
 
 use std::str;
+use std::strbuf::StrBuf;
 use std::uint;
 use syntax::abi;
 use syntax::ast;
@@ -276,14 +277,14 @@ fn parse_opt<T>(st: &mut PState, f: |&mut PState| -> T) -> Option<T> {
 }
 
 fn parse_str(st: &mut PState, term: char) -> ~str {
-    let mut result = ~"";
+    let mut result = StrBuf::new();
     while peek(st) != term {
         unsafe {
-            str::raw::push_byte(&mut result, next_byte(st));
+            result.push_bytes([next_byte(st)])
         }
     }
     next(st);
-    return result;
+    return result.into_owned();
 }
 
 fn parse_trait_ref(st: &mut PState, conv: conv_did) -> ty::TraitRef {

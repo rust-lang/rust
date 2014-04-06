@@ -35,6 +35,7 @@ use std::cell::Cell;
 use std::{cmp, os, path};
 use std::io::fs;
 use std::path::is_sep;
+use std::strbuf::StrBuf;
 
 /**
  * An iterator that yields Paths from the filesystem that match a particular
@@ -288,7 +289,7 @@ impl Pattern {
      * match the input string and nothing else.
      */
     pub fn escape(s: &str) -> ~str {
-        let mut escaped = ~"";
+        let mut escaped = StrBuf::new();
         for c in s.chars() {
             match c {
                 // note that ! does not need escaping because it is only special inside brackets
@@ -302,7 +303,7 @@ impl Pattern {
                 }
             }
         }
-        escaped
+        escaped.into_owned()
     }
 
     /**

@@ -13,6 +13,7 @@
 
 use std::ascii::OwnedStrAsciiExt;
 use std::str;
+use std::strbuf::StrBuf;
 use std::slice;
 
 static TABLE: [u8, ..4] = [ 'A' as u8, 'C' as u8, 'G' as u8, 'T' as u8 ];
@@ -249,13 +250,13 @@ fn print_occurrences(frequencies: &mut Table, occurrence: &'static str) {
 }
 
 fn get_sequence<R: Buffer>(r: &mut R, key: &str) -> ~[u8] {
-    let mut res = ~"";
+    let mut res = StrBuf::new();
     for l in r.lines().map(|l| l.ok().unwrap())
         .skip_while(|l| key != l.slice_to(key.len())).skip(1)
     {
         res.push_str(l.trim());
     }
-    res.into_ascii_upper().into_bytes()
+    res.to_owned_str().into_ascii_upper().into_bytes()
 }
 
 fn main() {
