@@ -1015,7 +1015,7 @@ mod tests {
             use std::io::MemWriter;
             let mut m = MemWriter::new();
             write_boxplot(&mut m as &mut io::Writer, s, 30).unwrap();
-            let out = str::from_utf8_owned(m.unwrap()).unwrap();
+            let out = str::from_utf8(m.unwrap().as_slice()).unwrap().to_owned();
             assert_eq!(out, expected);
         }
 

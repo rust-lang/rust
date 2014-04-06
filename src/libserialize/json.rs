@@ -309,7 +309,7 @@ impl<'a> Encoder<'a> {
     }
 
     /// Encode the specified struct into a json [u8]
-    pub fn buffer_encode<T:Encodable<Encoder<'a>, io::IoError>>(to_encode_object: &T) -> ~[u8]  {
+    pub fn buffer_encode<T:Encodable<Encoder<'a>, io::IoError>>(to_encode_object: &T) -> Vec<u8>  {
        //Serialize the object in a string using a writer
         let mut m = MemWriter::new();
         {
@@ -322,8 +322,8 @@ impl<'a> Encoder<'a> {
 
     /// Encode the specified struct into a json str
     pub fn str_encode<T:Encodable<Encoder<'a>, io::IoError>>(to_encode_object: &T) -> ~str  {
-        let buff:~[u8] = Encoder::buffer_encode(to_encode_object);
-        str::from_utf8_owned(buff).unwrap()
+        let buff = Encoder::buffer_encode(to_encode_object);
+        str::from_utf8(buff.as_slice()).unwrap().to_owned()
     }
 }
 
@@ -484,7 +484,7 @@ impl<'a> ::Encoder<io::IoError> for Encoder<'a> {
         let mut check_encoder = Encoder::new(&mut buf);
         try!(f(&mut check_encoder));
         let buf = buf.unwrap();
-        let out = from_utf8(buf).unwrap();
+        let out = from_utf8(buf.as_slice()).unwrap();
         let needs_wrapping = out.char_at(0) != '"' &&
             out.char_at_reverse(out.len()) != '"';
         if needs_wrapping { try!(write!(self.wr, "\"")); }
@@ -715,7 +715,7 @@ impl<'a> ::Encoder<io::IoError> for PrettyEncoder<'a> {
         let mut check_encoder = PrettyEncoder::new(&mut buf);
         try!(f(&mut check_encoder));
         let buf = buf.unwrap();
-        let out = from_utf8(buf).unwrap();
+        let out = from_utf8(buf.as_slice()).unwrap();
         let needs_wrapping = out.char_at(0) != '"' &&
             out.char_at_reverse(out.len()) != '"';
         if needs_wrapping { try!(write!(self.wr, "\"")); }
@@ -763,7 +763,7 @@ impl Json {
     pub fn to_pretty_str(&self) -> ~str {
         let mut s = MemWriter::new();
         self.to_pretty_writer(&mut s as &mut io::Writer).unwrap();
-        str::from_utf8_owned(s.unwrap()).unwrap()
+        str::from_utf8(s.unwrap().as_slice()).unwrap().to_owned()
     }
 
      /// If the Json value is an Object, returns the value associated with the provided key.
@@ -1282,8 +1282,8 @@ pub fn from_reader(rdr: &mut io::Reader) -> DecodeResult<Json> {
         Ok(c) => c,
         Err(e) => return Err(IoError(e))
     };
-    let s = match str::from_utf8_owned(contents) {
-        Some(s) => s,
+    let s = match str::from_utf8(contents.as_slice()) {
+        Some(s) => s.to_owned(),
         None => return Err(ParseError(~"contents not utf-8", 0, 0))
     };
     let mut parser = Parser::new(s.chars());
@@ -1927,7 +1927,7 @@ mod tests {
 
         let mut m = MemWriter::new();
         f(&mut m as &mut io::Writer);
-        str::from_utf8_owned(m.unwrap()).unwrap()
+        str::from_utf8(m.unwrap().as_slice()).unwrap().to_owned()
     }
 
     #[test]
@@ -2528,7 +2528,7 @@ mod tests {
             hm.encode(&mut encoder).unwrap();
         }
         let bytes = mem_buf.unwrap();
-        let json_str = from_utf8(bytes).unwrap();
+        let json_str = from_utf8(bytes.as_slice()).unwrap();
         match from_str(json_str) {
             Err(_) => fail!("Unable to parse json_str: {:?}", json_str),
             _ => {} // it parsed and we are good to go
@@ -2548,7 +2548,7 @@ mod tests {
             hm.encode(&mut encoder).unwrap();
         }
         let bytes = mem_buf.unwrap();
-        let json_str = from_utf8(bytes).unwrap();
+        let json_str = from_utf8(bytes.as_slice()).unwrap();
         match from_str(json_str) {
             Err(_) => fail!("Unable to parse json_str: {:?}", json_str),
             _ => {} // it parsed and we are good to go

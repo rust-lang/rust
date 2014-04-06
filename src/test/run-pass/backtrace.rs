@@ -53,7 +53,7 @@ fn runtest(me: &str) {
     }).unwrap();
     let out = p.wait_with_output();
     assert!(!out.status.success());
-    let s = str::from_utf8(out.error).unwrap();
+    let s = str::from_utf8(out.error.as_slice()).unwrap();
     assert!(s.contains("stack backtrace") && s.contains("foo::h"),
             "bad output: {}", s);
 
@@ -65,7 +65,7 @@ fn runtest(me: &str) {
     }).unwrap();
     let out = p.wait_with_output();
     assert!(!out.status.success());
-    let s = str::from_utf8(out.error).unwrap();
+    let s = str::from_utf8(out.error.as_slice()).unwrap();
     assert!(!s.contains("stack backtrace") && !s.contains("foo::h"),
             "bad output2: {}", s);
 
@@ -77,7 +77,7 @@ fn runtest(me: &str) {
     }).unwrap();
     let out = p.wait_with_output();
     assert!(!out.status.success());
-    let s = str::from_utf8(out.error).unwrap();
+    let s = str::from_utf8(out.error.as_slice()).unwrap();
     assert!(s.contains("stack backtrace") && s.contains("double::h"),
             "bad output3: {}", s);
 
@@ -90,7 +90,7 @@ fn runtest(me: &str) {
     }).unwrap();
     let out = p.wait_with_output();
     assert!(!out.status.success());
-    let s = str::from_utf8(out.error).unwrap();
+    let s = str::from_utf8(out.error.as_slice()).unwrap();
     let mut i = 0;
     for _ in range(0, 2) {
         i += s.slice_from(i + 10).find_str("stack backtrace").unwrap() + 10;

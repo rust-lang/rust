@@ -23,7 +23,7 @@ use Rng;
 /// use rand::{reader, Rng};
 /// use std::io::MemReader;
 ///
-/// let mut rng = reader::ReaderRng::new(MemReader::new(~[1,2,3,4,5,6,7,8]));
+/// let mut rng = reader::ReaderRng::new(MemReader::new(vec!(1,2,3,4,5,6,7,8)));
 /// println!("{:x}", rng.gen::<uint>());
 /// ```
 pub struct ReaderRng<R> {
@@ -80,7 +80,7 @@ mod test {
         // transmute from the target to avoid endianness concerns.
         let v = ~[1u64, 2u64, 3u64];
         let bytes: ~[u8] = unsafe {cast::transmute(v)};
-        let mut rng = ReaderRng::new(MemReader::new(bytes));
+        let mut rng = ReaderRng::new(MemReader::new(bytes.move_iter().collect()));
 
         assert_eq!(rng.next_u64(), 1);
         assert_eq!(rng.next_u64(), 2);
@@ -91,7 +91,7 @@ mod test {
         // transmute from the target to avoid endianness concerns.
         let v = ~[1u32, 2u32, 3u32];
         let bytes: ~[u8] = unsafe {cast::transmute(v)};
-        let mut rng = ReaderRng::new(MemReader::new(bytes));
+        let mut rng = ReaderRng::new(MemReader::new(bytes.move_iter().collect()));
 
         assert_eq!(rng.next_u32(), 1);
         assert_eq!(rng.next_u32(), 2);
@@ -102,7 +102,7 @@ mod test {
         let v = [1u8, 2, 3, 4, 5, 6, 7, 8];
         let mut w = [0u8, .. 8];
 
-        let mut rng = ReaderRng::new(MemReader::new(v.to_owned()));
+        let mut rng = ReaderRng::new(MemReader::new(Vec::from_slice(v)));
         rng.fill_bytes(w);
 
         assert!(v == w);
@@ -111,7 +111,7 @@ mod test {
     #[test]
     #[should_fail]
     fn test_reader_rng_insufficient_bytes() {
-        let mut rng = ReaderRng::new(MemReader::new(~[]));
+        let mut rng = ReaderRng::new(MemReader::new(vec!()));
         let mut v = [0u8, .. 3];
         rng.fill_bytes(v);
     }

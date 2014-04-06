@@ -159,7 +159,8 @@ fn runtest(test: &str, cratename: &str, libs: HashSet<Path>, should_fail: bool,
             if should_fail && out.status.success() {
                 fail!("test executable succeeded when it should have failed");
             } else if !should_fail && !out.status.success() {
-                fail!("test executable failed:\n{}", str::from_utf8(out.error));
+                fail!("test executable failed:\n{}",
+                      str::from_utf8(out.error.as_slice()));
             }
         }
     }

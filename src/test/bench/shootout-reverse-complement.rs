@@ -44,7 +44,7 @@ fn main() {
     };
     let mut data = data.unwrap();
 
-    for seq in data.mut_split(|c| *c == '>' as u8) {
+    for seq in data.as_mut_slice().mut_split(|c| *c == '>' as u8) {
         // skip header and last \n
         let begin = match seq.iter().position(|c| *c == '\n' as u8) {
             None => continue,
@@ -80,5 +80,5 @@ fn main() {
         }
     }
 
-    stdout().write(data).unwrap();
+    stdout().write(data.as_slice()).unwrap();
 }

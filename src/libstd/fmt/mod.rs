@@ -490,7 +490,7 @@ use repr;
 use result::{Ok, Err};
 use str::StrSlice;
 use str;
-use slice::ImmutableVector;
+use slice::{Vector, ImmutableVector};
 use slice;
 
 pub use self::num::radix;
@@ -795,7 +795,7 @@ pub fn format(args: &Arguments) -> ~str {
 pub unsafe fn format_unsafe(fmt: &[rt::Piece], args: &[Argument]) -> ~str {
     let mut output = MemWriter::new();
     write_unsafe(&mut output as &mut io::Writer, fmt, args).unwrap();
-    return str::from_utf8_owned(output.unwrap()).unwrap();
+    return str::from_utf8(output.unwrap().as_slice()).unwrap().to_owned();
 }
 
 impl<'a> Formatter<'a> {

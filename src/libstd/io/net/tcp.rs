@@ -718,14 +718,14 @@ mod test {
         spawn(proc() {
             let mut a = a;
             let mut c = a.accept().unwrap();
-            assert_eq!(c.read_to_end(), Ok(~[]));
+            assert_eq!(c.read_to_end(), Ok(vec!()));
             c.write([1]).unwrap();
         });
 
         let mut s = TcpStream::connect(addr).unwrap();
         assert!(s.obj.close_write().is_ok());
         assert!(s.write([1]).is_err());
-        assert_eq!(s.read_to_end(), Ok(~[1]));
+        assert_eq!(s.read_to_end(), Ok(vec!(1)));
     })
 }
 

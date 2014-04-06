@@ -153,7 +153,7 @@ fn run_pretty_test(config: &config, props: &TestProps, testfile: &Path) {
         match props.pp_exact { Some(_) => 1, None => 2 };
 
     let src = File::open(testfile).read_to_end().unwrap();
-    let src = str::from_utf8_owned(src).unwrap();
+    let src = str::from_utf8(src.as_slice()).unwrap().to_owned();
     let mut srcs = vec!(src);
 
     let mut round = 0;
@@ -177,7 +177,7 @@ fn run_pretty_test(config: &config, props: &TestProps, testfile: &Path) {
         Some(ref file) => {
             let filepath = testfile.dir_path().join(file);
             let s = File::open(&filepath).read_to_end().unwrap();
-            str::from_utf8_owned(s).unwrap()
+            str::from_utf8(s.as_slice()).unwrap().to_owned()
           }
           None => { (*srcs.get(srcs.len() - 2u)).clone() }
         };
@@ -1163,7 +1163,7 @@ fn disassemble_extract(config: &config, _props: &TestProps,
 
 fn count_extracted_lines(p: &Path) -> uint {
     let x = File::open(&p.with_extension("ll")).read_to_end().unwrap();
-    let x = str::from_utf8_owned(x).unwrap();
+    let x = str::from_utf8(x.as_slice()).unwrap();
     x.lines().len()
 }
 
