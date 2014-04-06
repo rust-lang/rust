@@ -278,7 +278,7 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
     fn schedule_free_value(&self,
                            cleanup_scope: ScopeId,
                            val: ValueRef,
-                           heap: common::heap) {
+                           heap: Heap) {
         /*!
          * Schedules a call to `free(val)`. Note that this is a shallow
          * operation.
@@ -814,9 +814,14 @@ impl Cleanup for DropValue {
     }
 }
 
+pub enum Heap {
+    HeapManaged,
+    HeapExchange
+}
+
 pub struct FreeValue {
     ptr: ValueRef,
-    heap: common::heap,
+    heap: Heap,
 }
 
 impl Cleanup for FreeValue {
@@ -826,10 +831,10 @@ impl Cleanup for FreeValue {
 
     fn trans<'a>(&self, bcx: &'a Block<'a>) -> &'a Block<'a> {
         match self.heap {
-            common::heap_managed => {
+            HeapManaged => {
                 glue::trans_free(bcx, self.ptr)
             }
-            common::heap_exchange | common::heap_exchange_closure => {
+            HeapExchange => {
                 glue::trans_exchange_free(bcx, self.ptr)
             }
         }
@@ -901,7 +906,7 @@ pub trait CleanupMethods<'a> {
     fn schedule_free_value(&self,
                            cleanup_scope: ScopeId,
                            val: ValueRef,
-                           heap: common::heap);
+                           heap: Heap);
     fn schedule_clean(&self,
                       cleanup_scope: ScopeId,
                       cleanup: ~Cleanup);

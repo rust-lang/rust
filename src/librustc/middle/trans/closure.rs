@@ -13,6 +13,7 @@ use back::abi;
 use back::link::mangle_internal_name_by_path_and_seq;
 use driver::session::FullDebugInfo;
 use lib::llvm::ValueRef;
+use middle::lang_items::ClosureExchangeMallocFnLangItem;
 use middle::moves;
 use middle::trans::base::*;
 use middle::trans::build::*;
@@ -20,6 +21,7 @@ use middle::trans::common::*;
 use middle::trans::datum::{Datum, DatumBlock, Expr, Lvalue, rvalue_scratch_datum};
 use middle::trans::debuginfo;
 use middle::trans::expr;
+use middle::trans::machine::llsize_of;
 use middle::trans::type_of::*;
 use middle::trans::type_::Type;
 use middle::ty;
@@ -168,7 +170,10 @@ fn allocate_cbox<'a>(bcx: &'a Block<'a>,
             tcx.sess.bug("trying to trans allocation of @fn")
         }
         ast::OwnedSigil => {
-            malloc_raw(bcx, cdata_ty, heap_exchange_closure)
+            let ty = type_of(bcx.ccx(), cdata_ty);
+            let size = llsize_of(bcx.ccx(), ty);
+            // we treat proc as @ here, which isn't ideal
+            malloc_raw_dyn_managed(bcx, cdata_ty, ClosureExchangeMallocFnLangItem, size)
         }
         ast::BorrowedSigil => {
             let cbox_ty = tuplify_box_ty(tcx, cdata_ty);
