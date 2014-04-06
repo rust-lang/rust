@@ -12,7 +12,7 @@
 // statics cannot. This ensures that there's some form of error if this is
 // attempted.
 
-use std::libc;
+extern crate libc;
 
 extern {
     static mut rust_dbg_static_mut: libc::c_int;

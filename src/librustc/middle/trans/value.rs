@@ -11,7 +11,7 @@
 use lib::llvm::{llvm, UseRef, ValueRef};
 use middle::trans::basic_block::BasicBlock;
 use middle::trans::common::Block;
-use std::libc::c_uint;
+use libc::c_uint;
 
 pub struct Value(pub ValueRef);
 

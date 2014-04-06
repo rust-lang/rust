@@ -8,8 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+extern crate libc;
+
 use std::cast;
-use std::libc;
 use std::unstable::run_in_bare_thread;
 
 #[link(name = "rustrt")]

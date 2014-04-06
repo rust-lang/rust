@@ -21,7 +21,7 @@
 #![allow(dead_code)]
 
 use std::cast;
-use std::libc::{c_void, c_int};
+use libc::{c_void, c_int};
 use std::rt::task::BlockedTask;
 use std::unstable::mutex::NativeMutex;
 use std::sync::arc::UnsafeArc;

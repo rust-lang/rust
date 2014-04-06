@@ -10,7 +10,7 @@
 
 #![deny(ctypes)]
 
-use std::libc;
+extern crate libc;
 
 extern {
     pub fn bare_type1(size: int); //~ ERROR: found rust type

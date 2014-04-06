@@ -30,11 +30,12 @@ use std::result::{Ok, Err};
 use std::slice::ImmutableVector;
 
 mod table {
+    extern crate libc;
+
     use std::clone::Clone;
     use std::cmp::Eq;
     use std::hash::{Hash, Hasher};
     use std::kinds::marker;
-    use std::libc;
     use std::num::CheckedMul;
     use std::option::{Option, Some, None};
     use std::prelude::Drop;

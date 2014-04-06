@@ -27,8 +27,8 @@ use std::io::IoError;
 use std::io::net::ip::SocketAddr;
 use std::io::process::ProcessConfig;
 use std::io::signal::Signum;
-use std::libc::c_int;
-use std::libc;
+use libc::c_int;
+use libc;
 use std::os;
 use std::rt::rtio;
 use std::rt::rtio::{RtioTcpStream, RtioTcpListener, RtioUdpSocket,

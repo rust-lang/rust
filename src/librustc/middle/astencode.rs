@@ -34,7 +34,7 @@ use syntax::fold::Folder;
 use syntax::parse::token;
 use syntax;
 
-use std::libc;
+use libc;
 use std::cast;
 use std::cell::RefCell;
 use std::io::Seek;

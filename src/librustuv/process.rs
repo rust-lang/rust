@@ -10,8 +10,8 @@
 
 use std::io::IoError;
 use std::io::process;
-use std::libc::c_int;
-use std::libc;
+use libc::c_int;
+use libc;
 use std::ptr;
 use std::rt::rtio::RtioProcess;
 use std::rt::task::BlockedTask;

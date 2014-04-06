@@ -21,7 +21,7 @@ use syntax::abi::{X86, X86_64, Arm, Mips};
 use std::c_str::ToCStr;
 use std::cast;
 
-use std::libc::{c_uint};
+use libc::{c_uint};
 
 #[deriving(Clone, Eq, Show)]
 pub struct Type {

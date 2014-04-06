@@ -102,7 +102,7 @@ pub mod write {
 
     use std::c_str::ToCStr;
     use std::io::Process;
-    use std::libc::{c_uint, c_int};
+    use libc::{c_uint, c_int};
     use std::str;
 
     // On android, we by default compile for armv7 processors. This enables
@@ -1127,6 +1127,33 @@ fn link_args(sess: &Session,
         // DWARF stack unwinding will not work.
         // This behavior may be overridden by --link-args "-static-libgcc"
         args.push(~"-shared-libgcc");
+
+        // And here, we see obscure linker flags #45. On windows, it has been
+        // found to be necessary to have this flag to compile liblibc.
+        //
+        // First a bit of background. On Windows, the file format is not ELF,
+        // but COFF (at least according to LLVM). COFF doesn't officially allow
+        // for section names over 8 characters, apparently. Our metadata
+        // section, ".note.rustc", you'll note is over 8 characters.
+        //
+        // On more recent versions of gcc on mingw, apparently the section name
+        // is *not* truncated, but rather stored elsewhere in a separate lookup
+        // table. On older versions of gcc, they apparently always truncated the
+        // section names (at least in some cases). Truncating the section name
+        // actually creates "invalid" objects [1] [2], but only for some
+        // introspection tools, not in terms of whether it can be loaded.
+        //
+        // Long story shory, passing this flag forces the linker to *not*
+        // truncate section names (so we can find the metadata section after
+        // it's compiled). The real kicker is that rust compiled just fine on
+        // windows for quite a long time *without* this flag, so I have no idea
+        // why it suddenly started failing for liblibc. Regardless, we
+        // definitely don't want section name truncation, so we're keeping this
+        // flag for windows.
+        //
+        // [1] - https://sourceware.org/bugzilla/show_bug.cgi?id=13130
+        // [2] - https://code.google.com/p/go/issues/detail?id=2139
+        args.push(~"-Wl,--enable-long-section-names");
     }
 
     if sess.targ_cfg.os == abi::OsAndroid {

@@ -12,7 +12,7 @@
 #[crate_type = "lib"];
 
 pub mod socket {
-    use std::libc;
+    extern crate libc;
 
     pub struct socket_handle {
         sockfd: libc::c_int,

@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::libc;
+extern crate libc;
 
 mod rustrt {
-    use std::libc;
+    extern crate libc;
 
     #[link(name = "rustrt")]
     extern {
