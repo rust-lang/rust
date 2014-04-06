@@ -14,7 +14,7 @@ use std::c_str::CString;
 use std::cast;
 use std::io::IoError;
 use std::io;
-use std::libc::{c_int, c_void};
+use std::libc::{c_int, DWORD, wchar_t};
 use std::libc;
 use std::mem;
 use std::os::win32::{as_utf16_p, fill_utf16_buf_and_decode};
@@ -22,7 +22,6 @@ use std::ptr;
 use std::rt::rtio;
 use std::str;
 use std::sync::arc::UnsafeArc;
-use std::slice;
 
 use io::IoResult;
 
@@ -324,8 +323,6 @@ pub fn mkdir(p: &CString, _mode: io::FilePermission) -> IoResult<()> {
 }
 
 pub fn readdir(p: &CString) -> IoResult<~[Path]> {
-    use rt::global_heap::malloc_raw;
-
     fn prune(root: &CString, dirs: ~[Path]) -> ~[Path] {
         let root = unsafe { CString::new(root.with_ref(|p| p), false) };
         let root = Path::new(root);
@@ -335,35 +332,64 @@ pub fn readdir(p: &CString) -> IoResult<~[Path]> {
         }).map(|path| root.join(path)).collect()
     }
 
-    extern {
-        fn rust_list_dir_wfd_size() -> libc::size_t;
-        fn rust_list_dir_wfd_fp_buf(wfd: *libc::c_void) -> *u16;
+    struct FILETIME {
+        dwLowDateTime: DWORD,
+        dwHighDateTime: DWORD,
     }
+
+    struct WIN32_FIND_DATAW {
+        dwFileAttributes: DWORD,
+        ftCreationTime: FILETIME,
+        ftLastAccessTime: FILETIME,
+        ftLastWriteTime: FILETIME,
+        nFileSizeHigh: DWORD,
+        nFileSizeLow: DWORD,
+        dwReserved0: DWORD,
+        dwReserved1: DWORD,
+        cFileName: [wchar_t, ..260], // #define MAX_PATH 260
+        cAlternateFileName: [wchar_t, ..14],
+    }
+
     let star = Path::new(unsafe {
         CString::new(p.with_ref(|p| p), false)
     }).join("*");
-    as_utf16_p(star.as_str().unwrap(), |path_ptr| unsafe {
-        let wfd_ptr = malloc_raw(rust_list_dir_wfd_size() as uint);
-        let find_handle = libc::FindFirstFileW(path_ptr, wfd_ptr as libc::HANDLE);
+    as_utf16_p(star.as_str().unwrap(), |path_ptr| {
+        let mut wfd = WIN32_FIND_DATAW {
+            dwFileAttributes: 0,
+            ftCreationTime: FILETIME { dwLowDateTime: 0, dwHighDateTime: 0 },
+            ftLastAccessTime: FILETIME { dwLowDateTime: 0, dwHighDateTime: 0 },
+            ftLastWriteTime: FILETIME { dwLowDateTime: 0, dwHighDateTime: 0 },
+            nFileSizeHigh: 0,
+            nFileSizeLow: 0,
+            dwReserved0: 0,
+            dwReserved1: 0,
+            cFileName: [0, ..260],
+            cAlternateFileName: [0, ..14],
+        };
+        let find_handle = unsafe {
+            libc::FindFirstFileW(path_ptr, cast::transmute(&mut wfd))
+        };
         if find_handle as libc::c_int != libc::INVALID_HANDLE_VALUE {
             let mut paths = ~[];
-            let mut more_files = 1 as libc::c_int;
-            while more_files != 0 {
-                let fp_buf = rust_list_dir_wfd_fp_buf(wfd_ptr as *c_void);
-                if fp_buf as uint == 0 {
-                    fail!("os::list_dir() failure: got null ptr from wfd");
-                } else {
-                    let fp_vec = slice::from_buf(fp_buf, libc::wcslen(fp_buf) as uint);
-                    let fp_trimmed = str::truncate_utf16_at_nul(fp_vec);
-                    let fp_str = str::from_utf16(fp_trimmed)
-                            .expect("rust_list_dir_wfd_fp_buf returned invalid UTF-16");
-                    paths.push(Path::new(fp_str));
+            loop {
+                match str::from_utf16(str::truncate_utf16_at_nul(wfd.cFileName)) {
+                    Some(filename) => {
+                        paths.push(Path::new(filename));
+                    }
+                    None => {
+                        // FIXME #12056: skip non-utf16 filenames.
+                    }
                 }
-                more_files = libc::FindNextFileW(find_handle,
-                                                 wfd_ptr as libc::HANDLE);
+                let more_files = unsafe {
+                    libc::FindNextFileW(find_handle, cast::transmute(&mut wfd))
+                };
+                if more_files == 0 {
+                    break;
+                }
             }
-            assert!(libc::FindClose(find_handle) != 0);
-            libc::free(wfd_ptr as *mut c_void);
+            unsafe {
+                assert!(libc::FindClose(find_handle) != 0);
+            }
             Ok(prune(p, paths))
         } else {
             Err(super::last_error())
