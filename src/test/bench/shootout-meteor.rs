@@ -15,11 +15,11 @@
 
 // returns an infinite iterator of repeated applications of f to x,
 // i.e. [x, f(x), f(f(x)), ...], as haskell iterate function.
-fn iterate<'a, T>(x: T, f: 'a |&T| -> T) -> Iterate<'a, T> {
+fn iterate<'a, T>(x: T, f: |&T|: 'a -> T) -> Iterate<'a, T> {
     Iterate {f: f, next: x}
 }
 struct Iterate<'a, T> {
-    f: 'a |&T| -> T,
+    f: |&T|: 'a -> T,
     next: T
 }
 impl<'a, T> Iterator<T> for Iterate<'a, T> {

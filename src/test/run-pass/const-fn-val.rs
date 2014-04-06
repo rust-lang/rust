@@ -12,7 +12,7 @@ fn foo() -> int {
     return 0xca7f000d;
 }
 
-struct Bar<'a> { f: 'a || -> int }
+struct Bar<'a> { f: ||: 'a -> int }
 
 static mut b : Bar<'static> = Bar { f: foo };
 

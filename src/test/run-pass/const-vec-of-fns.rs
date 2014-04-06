@@ -17,7 +17,7 @@
 
 fn f() { }
 static bare_fns: &'static [fn()] = &[f, f];
-struct S<'a>('a ||);
+struct S<'a>(||:'a);
 static mut closures: &'static [S<'static>] = &[S(f), S(f)];
 
 pub fn main() {

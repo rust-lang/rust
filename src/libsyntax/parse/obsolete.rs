@@ -36,8 +36,6 @@ pub enum ObsoleteSyntax {
     ObsoleteEnumWildcard,
     ObsoleteStructWildcard,
     ObsoleteVecDotDotWildcard,
-    ObsoleteBoxedClosure,
-    ObsoleteClosureType,
     ObsoleteMultipleImport,
     ObsoleteManagedPattern,
     ObsoleteManagedString,
@@ -110,16 +108,6 @@ impl<'a> ParserObsoleteMethods for Parser<'a> {
             ObsoleteVecDotDotWildcard => (
                 "vec slice wildcard",
                 "use `..` instead of `.._` for matching slices"
-            ),
-            ObsoleteBoxedClosure => (
-                "managed or owned closure",
-                "managed closures have been removed and owned closures are \
-                 now written `proc()`"
-            ),
-            ObsoleteClosureType => (
-                "closure type",
-                "closures are now written `|A| -> B` rather than `&fn(A) -> \
-                 B`."
             ),
             ObsoleteMultipleImport => (
                 "multiple imports",
