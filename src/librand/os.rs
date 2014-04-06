@@ -58,12 +58,14 @@ mod imp {
 
 #[cfg(windows)]
 mod imp {
+    extern crate libc;
+
     use Rng;
     use std::cast;
     use std::io::{IoResult, IoError};
-    use std::libc::{c_ulong, DWORD, BYTE, LPCSTR, BOOL};
     use std::os;
     use std::rt::stack;
+    use self::libc::{c_ulong, DWORD, BYTE, LPCSTR, BOOL};
 
     type HCRYPTPROV = c_ulong;
 

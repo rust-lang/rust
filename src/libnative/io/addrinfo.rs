@@ -12,8 +12,8 @@ use ai = std::io::net::addrinfo;
 use std::c_str::CString;
 use std::cast;
 use std::io::IoError;
-use std::libc;
-use std::libc::{c_char, c_int};
+use libc;
+use libc::{c_char, c_int};
 use std::ptr::{null, mut_null};
 
 use super::net::sockaddr_to_addr;

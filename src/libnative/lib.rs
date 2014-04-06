@@ -55,6 +55,8 @@
 //    consider whether they're needed before adding that feature here (the
 //    answer is that you don't need them)
 
+extern crate libc;
+
 use std::os;
 use std::rt;
 use std::str;
@@ -107,8 +109,8 @@ pub fn start(argc: int, argv: **u8, main: proc()) -> int {
     // prevent this problem.
     #[cfg(windows)] fn ignore_sigpipe() {}
     #[cfg(unix)] fn ignore_sigpipe() {
-        use std::libc;
-        use std::libc::funcs::posix01::signal::signal;
+        use libc;
+        use libc::funcs::posix01::signal::signal;
         unsafe {
             assert!(signal(libc::SIGPIPE, libc::SIG_IGN) != -1);
         }

@@ -16,8 +16,8 @@
 #![feature(phase)]
 #[phase(syntax, link)]
 extern crate log;
+extern crate libc;
 
-use std::libc;
 use std::io::net::ip::{Ipv4Addr, SocketAddr};
 use std::io::net::tcp::{TcpListener, TcpStream};
 use std::io::{Acceptor, Listener};

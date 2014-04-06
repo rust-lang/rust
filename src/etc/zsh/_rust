@@ -40,7 +40,7 @@ _rustc_opts_switches=(
 )
 _rustc_opts_lint=(
     'attribute-usage[detects bad use of attributes]'
-    'ctypes[proper use of std::libc types in foreign modules]'
+    'ctypes[proper use of libc types in foreign modules]'
     'dead-assignment[detect assignments that will never be read]'
     'dead-code[detect piece of code that will never be used]'
     'default-type-param-usage[prevents explicitly setting a type parameter with a default]'

@@ -4,6 +4,9 @@ ifneq ($(shell uname),Darwin)
 	EXTRAFLAGS := -lm -lrt -ldl -lpthread
 endif
 
+# Apparently older versions of GCC segfault if -g is passed...
+CC := $(CC:-g=)
+
 all:
 	$(RUSTC) foo.rs -Z lto
 	ln -s $(call STATICLIB,foo-*) $(call STATICLIB,foo)

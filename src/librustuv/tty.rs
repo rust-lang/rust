@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use libc;
 use std::io::IoError;
-use std::libc;
 use std::ptr;
 use std::rt::rtio::RtioTTY;
 

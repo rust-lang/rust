@@ -38,7 +38,7 @@ use util::ppaux;
 use arena::TypedArena;
 use std::c_str::ToCStr;
 use std::cell::Cell;
-use std::libc::c_uint;
+use libc::c_uint;
 use syntax::ast;
 use syntax::parse::token;
 

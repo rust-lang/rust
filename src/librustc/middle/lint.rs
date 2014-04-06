@@ -154,7 +154,7 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
     ("ctypes",
      LintSpec {
         lint: CTypes,
-        desc: "proper use of std::libc types in foreign modules",
+        desc: "proper use of libc types in foreign modules",
         default: warn
      }),
 

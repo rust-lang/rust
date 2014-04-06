@@ -16,11 +16,11 @@
 // See the hack in upcall_call_shim_on_c_stack where it messes
 // with the stack limit.
 
-use std::libc;
+extern crate libc;
 use std::task;
 
 mod rustrt {
-    use std::libc;
+    extern crate libc;
 
     extern {
         pub fn rust_get_argc() -> libc::c_int;
