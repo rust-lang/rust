@@ -73,8 +73,6 @@ impl TyVisitor for MyVisitor {
     fn visit_ptr(&mut self, _mtbl: uint, _inner: *TyDesc) -> bool { true }
     fn visit_rptr(&mut self, _mtbl: uint, _inner: *TyDesc) -> bool { true }
 
-    fn visit_vec(&mut self, _mtbl: uint, _inner: *TyDesc) -> bool { true }
-    fn visit_unboxed_vec(&mut self, _mtbl: uint, _inner: *TyDesc) -> bool { true }
     fn visit_evec_box(&mut self, _mtbl: uint, _inner: *TyDesc) -> bool { true }
     fn visit_evec_uniq(&mut self, _mtbl: uint, inner: *TyDesc) -> bool {
         self.types.push(~"[");

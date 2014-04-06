@@ -290,10 +290,13 @@ fn make_drop_glue<'a>(bcx: &'a Block<'a>, v0: ValueRef, t: ty::t) -> &'a Block<'
             })
         }
         ty::ty_vec(_, ty::vstore_uniq) | ty::ty_str(ty::vstore_uniq) => {
-            make_drop_glue(bcx, v0, tvec::expand_boxed_vec_ty(bcx.tcx(), t))
-        }
-        ty::ty_unboxed_vec(_) => {
-            tvec::make_drop_glue_unboxed(bcx, v0, t)
+            let llbox = Load(bcx, v0);
+            let not_null = IsNotNull(bcx, llbox);
+            with_cond(bcx, not_null, |bcx| {
+                let unit_ty = ty::sequence_element_type(bcx.tcx(), t);
+                let bcx = tvec::make_drop_glue_unboxed(bcx, llbox, unit_ty);
+                trans_exchange_free(bcx, llbox)
+            })
         }
         ty::ty_struct(did, ref substs) => {
             let tcx = bcx.tcx();

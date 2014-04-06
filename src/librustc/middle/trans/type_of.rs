@@ -137,10 +137,6 @@ pub fn sizing_type_of(cx: &CrateContext, t: ty::t) -> Type {
             Type::array(&sizing_type_of(cx, mt.ty), size as u64)
         }
 
-        ty::ty_unboxed_vec(mt) => {
-            Type::vec(cx, &sizing_type_of(cx, mt.ty))
-        }
-
         ty::ty_tup(..) | ty::ty_enum(..) => {
             let repr = adt::represent_type(cx, t);
             adt::sizing_type_of(cx, repr)
@@ -223,9 +219,6 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
       }
       ty::ty_vec(ref mt, ty::vstore_uniq) => {
           Type::vec(cx, &type_of(cx, mt.ty)).ptr_to()
-      }
-      ty::ty_unboxed_vec(ref mt) => {
-          Type::vec(cx, &type_of(cx, mt.ty))
       }
       ty::ty_ptr(ref mt) => type_of(cx, mt.ty).ptr_to(),
       ty::ty_rptr(_, ref mt) => type_of(cx, mt.ty).ptr_to(),
