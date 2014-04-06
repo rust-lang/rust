@@ -10,8 +10,9 @@
 
 // aux-build:lang-item-public.rs
 // ignore-android
+// ignore-win32 #13361
 
-#[no_std];
+#![no_std]
 
 extern crate lang_lib = "lang-item-public";
 
