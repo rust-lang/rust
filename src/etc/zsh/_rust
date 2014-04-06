@@ -36,6 +36,7 @@ _rustc_opts_switches=(
     --target'[Target triple cpu-manufacturer-kernel\[-os\] to compile]'
     --target-cpu'[Select target processor (llc -mcpu=help for details)]'
     --target-feature'[Target specific attributes (llc -mattr=help for details)]'
+    --relocation-model'[Relocation model (llc --help for details)]'
     {-v,--version}'[Print version info and exit]'
 )
 _rustc_opts_lint=(
