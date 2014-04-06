@@ -12,8 +12,8 @@ fn bar(blk: ||:'static) {
 }
 
 fn foo(x: &()) {
-    bar(|| {
-        let _ = x; //~ ERROR does not fulfill `'static`
+    bar(|| { //~ ERROR cannot infer an appropriate lifetime
+        let _ = x;
     })
 }
 

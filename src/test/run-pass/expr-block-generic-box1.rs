@@ -10,7 +10,7 @@
 
 #[feature(managed_boxes)];
 
-type compare<T> = 'static |@T, @T| -> bool;
+type compare<T> = |@T, @T|: 'static -> bool;
 
 fn test_generic<T>(expected: @T, eq: compare<T>) {
     let actual: @T = { expected };

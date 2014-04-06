@@ -10,7 +10,7 @@
 
 pub trait OpInt<'a> { fn call<'a>(&'a self, int, int) -> int; }
 
-impl<'a> OpInt<'a> for 'a |int, int| -> int {
+impl<'a> OpInt<'a> for |int, int|: 'a -> int {
     fn call(&self, a:int, b:int) -> int {
         (*self)(a, b)
     }
