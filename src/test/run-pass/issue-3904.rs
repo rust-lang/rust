@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-type ErrPrinter<'a> = 'a |&str, &str|;
+type ErrPrinter<'a> = |&str, &str|: 'a;
 
 fn example_err(prog: &str, arg: &str) {
     println!("{}: {}", prog, arg)
