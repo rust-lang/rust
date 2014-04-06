@@ -62,7 +62,18 @@ pub trait Eq {
     fn ne(&self, other: &Self) -> bool { !self.eq(other) }
 }
 
-/// Trait for equality comparisons where `a == b` and `a != b` are strict inverses.
+/**
+ * Trait for equality comparisons which are [equivalence relations](
+ * https://en.wikipedia.org/wiki/Equivalence_relation).
+ *
+ * This means, that in addition to `a == b` and `a != b` being strict inverses,
+ * the equality must be (for all `a`, `b` and `c`):
+ *
+ * - reflexive: `a == a`;
+ * - symmetric: `a == b` implies `b == a`; and
+ * - transitive: `a == b` and `b == c` implies `a == c`.
+ */
+
 pub trait TotalEq: Eq {
     // FIXME #13101: this method is used solely by #[deriving] to
     // assert that every component of a type implements #[deriving]
@@ -111,7 +122,17 @@ pub enum Ordering {
    Greater = 1
 }
 
-/// Trait for types that form a total order.
+/**
+ * Trait for types that form a [total order](
+ * https://en.wikipedia.org/wiki/Total_order).
+ *
+ * An order is a total order if it is (for all `a`, `b` and `c`):
+ *
+ * - total and antisymmetric: exactly one of `a < b`, `a == b` or `a > b`
+ *   is true; and
+ * - transitive, `a < b` and `b < c` implies `a < c`. The same must hold for
+ *   both `==` and `>`.
+ */
 pub trait TotalOrd: TotalEq + Ord {
     /// This method returns an ordering between `self` and `other` values.
     ///
