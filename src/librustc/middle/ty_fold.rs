@@ -148,9 +148,6 @@ pub fn super_fold_sty<T:TypeFolder>(this: &mut T,
         ty::ty_ptr(ref tm) => {
             ty::ty_ptr(this.fold_mt(tm))
         }
-        ty::ty_unboxed_vec(ref tm) => {
-            ty::ty_unboxed_vec(this.fold_mt(tm))
-        }
         ty::ty_vec(ref tm, vst) => {
             ty::ty_vec(this.fold_mt(tm), this.fold_vstore(vst))
         }
