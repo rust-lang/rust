@@ -18,7 +18,6 @@ Runtime type reflection
 
 use intrinsics::{Disr, Opaque, TyDesc, TyVisitor};
 use mem;
-use raw;
 
 /**
  * Trait for visitor that wishes to reflect on data. To use this, create a
@@ -236,19 +235,6 @@ impl<V:TyVisitor + MovePtr> TyVisitor for MovePtrAdaptor<V> {
         self.align_to::<&'static u8>();
         if ! self.inner.visit_rptr(mtbl, inner) { return false; }
         self.bump_past::<&'static u8>();
-        true
-    }
-
-    fn visit_unboxed_vec(&mut self, mtbl: uint, inner: *TyDesc) -> bool {
-        self.align_to::<raw::Vec<()>>();
-        if ! self.inner.visit_vec(mtbl, inner) { return false; }
-        true
-    }
-
-    fn visit_vec(&mut self, mtbl: uint, inner: *TyDesc) -> bool {
-        self.align_to::<~[u8]>();
-        if ! self.inner.visit_vec(mtbl, inner) { return false; }
-        self.bump_past::<~[u8]>();
         true
     }
 

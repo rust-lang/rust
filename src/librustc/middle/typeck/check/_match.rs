@@ -637,9 +637,6 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
             };
             (mt, region_var)
           }
-          ty::ty_unboxed_vec(mt) => {
-            (mt, default_region_var)
-          },
           _ => {
               for &elt in before.iter() {
                   check_pat(pcx, elt, ty::mk_err());

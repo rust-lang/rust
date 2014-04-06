@@ -707,7 +707,7 @@ impl<'a> ConstraintContext<'a> {
                 self.add_constraints_from_sig(sig, variance);
             }
 
-            ty::ty_infer(..) | ty::ty_err | ty::ty_unboxed_vec(..) => {
+            ty::ty_infer(..) | ty::ty_err => {
                 self.tcx().sess.bug(
                     format!("unexpected type encountered in \
                             variance inference: {}",
