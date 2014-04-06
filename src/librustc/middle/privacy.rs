@@ -576,15 +576,37 @@ impl<'a> PrivacyVisitor<'a> {
             }
             UnnamedField(idx) => fields.get(idx)
         };
-        if field.vis == ast::Public { return }
-        if !is_local(field.id) || !self.private_accessible(field.id.node) {
-            let msg = match name {
-                NamedField(name) => format!("field `{}` is private",
-                                            token::get_ident(name)),
-                UnnamedField(idx) => format!("field \\#{} is private", idx + 1),
-            };
-            self.tcx.sess.span_err(span, msg);
+        if field.vis == ast::Public ||
+            (is_local(field.id) && self.private_accessible(field.id.node)) {
+            return
         }
+
+        let struct_type = ty::lookup_item_type(self.tcx, id).ty;
+        let struct_desc = match ty::get(struct_type).sty {
+            ty::ty_struct(_, _) => format!("struct `{}`", ty::item_path_str(self.tcx, id)),
+            ty::ty_bare_fn(ty::BareFnTy { sig: ty::FnSig { output, .. }, .. }) => {
+                // Struct `id` is really a struct variant of an enum,
+                // and we're really looking at the variant's constructor
+                // function. So get the return type for a detailed error
+                // message.
+                let enum_id = match ty::get(output).sty {
+                    ty::ty_enum(id, _) => id,
+                    _ => self.tcx.sess.span_bug(span, "enum variant doesn't \
+                                                       belong to an enum")
+                };
+                format!("variant `{}` of enum `{}`",
+                        ty::with_path(self.tcx, id, |mut p| p.last().unwrap()),
+                        ty::item_path_str(self.tcx, enum_id))
+            }
+            _ => self.tcx.sess.span_bug(span, "can't find struct for field")
+        };
+        let msg = match name {
+            NamedField(name) => format!("field `{}` of {} is private",
+                                        token::get_ident(name), struct_desc),
+            UnnamedField(idx) => format!("field \\#{} of {} is private",
+                                         idx + 1, struct_desc),
+        };
+        self.tcx.sess.span_err(span, msg);
     }
 
     // Given the ID of a method, checks to ensure it's in scope.
