@@ -67,6 +67,10 @@ li {list-style-type: none; }
 
 # External resources
 
-* The Rust [IRC channel](http://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust) - `#rust` on irc.mozilla.org
+* The Rust IRC channels on [irc.mozilla.org](http://irc.mozilla.org/)
+    * [`#rust`](http://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust) - general discussion
+    * [`#rust-gamedev`](http://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust-gamedev) - game development
+    * [`#rust-internals`](http://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust-internals) - compiler and libraries
+    * [`#rust-osdev`](http://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust-osdev) - operating system development
 * The Rust community on [Reddit](http://reddit.com/r/rust)
 * The Rust [wiki](http://github.com/mozilla/rust/wiki)
