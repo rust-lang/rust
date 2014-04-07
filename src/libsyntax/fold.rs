@@ -158,7 +158,7 @@ pub trait Folder {
             TyClosure(ref f) => {
                 TyClosure(@ClosureTy {
                     sigil: f.sigil,
-                    purity: f.purity,
+                    fn_style: f.fn_style,
                     region: fold_opt_lifetime(&f.region, self),
                     onceness: f.onceness,
                     bounds: fold_opt_bounds(&f.bounds, self),
@@ -169,7 +169,7 @@ pub trait Folder {
             TyBareFn(ref f) => {
                 TyBareFn(@BareFnTy {
                     lifetimes: f.lifetimes.iter().map(|l| fold_lifetime(l, self)).collect(),
-                    purity: f.purity,
+                    fn_style: f.fn_style,
                     abi: f.abi,
                     decl: self.fold_fn_decl(f.decl)
                 })
@@ -549,10 +549,10 @@ pub fn noop_fold_item_underscore<T: Folder>(i: &Item_, folder: &mut T) -> Item_ 
         ItemStatic(t, m, e) => {
             ItemStatic(folder.fold_ty(t), m, folder.fold_expr(e))
         }
-        ItemFn(decl, purity, abi, ref generics, body) => {
+        ItemFn(decl, fn_style, abi, ref generics, body) => {
             ItemFn(
                 folder.fold_fn_decl(decl),
-                purity,
+                fn_style,
                 abi,
                 fold_generics(generics, folder),
                 folder.fold_block(body)
@@ -603,7 +603,7 @@ pub fn noop_fold_type_method<T: Folder>(m: &TypeMethod, fld: &mut T) -> TypeMeth
         id: fld.new_id(m.id), // Needs to be first, for ast_map.
         ident: fld.fold_ident(m.ident),
         attrs: m.attrs.iter().map(|a| fold_attribute_(*a, fld)).collect(),
-        purity: m.purity,
+        fn_style: m.fn_style,
         decl: fld.fold_fn_decl(m.decl),
         generics: fold_generics(&m.generics, fld),
         explicit_self: fld.fold_explicit_self(&m.explicit_self),
@@ -680,7 +680,7 @@ pub fn noop_fold_method<T: Folder>(m: &Method, folder: &mut T) -> @Method {
         attrs: m.attrs.iter().map(|a| fold_attribute_(*a, folder)).collect(),
         generics: fold_generics(&m.generics, folder),
         explicit_self: folder.fold_explicit_self(&m.explicit_self),
-        purity: m.purity,
+        fn_style: m.fn_style,
         decl: folder.fold_fn_decl(m.decl),
         body: folder.fold_block(m.body),
         span: folder.new_span(m.span),

@@ -415,14 +415,14 @@ pub fn type_id(t: t) -> uint { get(t).id }
 
 #[deriving(Clone, Eq, TotalEq, Hash)]
 pub struct BareFnTy {
-    pub purity: ast::Purity,
+    pub fn_style: ast::FnStyle,
     pub abi: abi::Abi,
     pub sig: FnSig,
 }
 
 #[deriving(Clone, Eq, TotalEq, Hash)]
 pub struct ClosureTy {
-    pub purity: ast::Purity,
+    pub fn_style: ast::FnStyle,
     pub sigil: ast::Sigil,
     pub onceness: ast::Onceness,
     pub region: Region,
@@ -791,7 +791,7 @@ pub struct expected_found<T> {
 #[deriving(Clone, Show)]
 pub enum type_err {
     terr_mismatch,
-    terr_purity_mismatch(expected_found<Purity>),
+    terr_fn_style_mismatch(expected_found<FnStyle>),
     terr_onceness_mismatch(expected_found<Onceness>),
     terr_abi_mismatch(expected_found<abi::Abi>),
     terr_mutability,
@@ -1397,7 +1397,7 @@ pub fn mk_ctor_fn(cx: &ctxt,
     let input_args = input_tys.iter().map(|t| *t).collect();
     mk_bare_fn(cx,
                BareFnTy {
-                   purity: ast::ImpureFn,
+                   fn_style: ast::NormalFn,
                    abi: abi::Rust,
                    sig: FnSig {
                     binder_id: binder_id,
@@ -2843,7 +2843,7 @@ pub fn adjust_ty(cx: &ctxt,
                         ty::ty_bare_fn(ref b) => {
                             ty::mk_closure(
                                 cx,
-                                ty::ClosureTy {purity: b.purity,
+                                ty::ClosureTy {fn_style: b.fn_style,
                                                sigil: s,
                                                onceness: ast::Many,
                                                region: r,
@@ -3340,7 +3340,7 @@ pub fn type_err_to_str(cx: &ctxt, err: &type_err) -> ~str {
 
     match *err {
         terr_mismatch => ~"types differ",
-        terr_purity_mismatch(values) => {
+        terr_fn_style_mismatch(values) => {
             format!("expected {} fn but found {} fn",
                  values.expected.to_str(), values.found.to_str())
         }
@@ -4297,16 +4297,16 @@ pub fn eval_repeat_count<T: ExprTyProvider>(tcx: &T, count_expr: &ast::Expr) -> 
     }
 }
 
-// Determine what purity to check a nested function under
-pub fn determine_inherited_purity(parent: (ast::Purity, ast::NodeId),
-                                  child: (ast::Purity, ast::NodeId),
+// Determine what the style to check a nested function under
+pub fn determine_inherited_style(parent: (ast::FnStyle, ast::NodeId),
+                                  child: (ast::FnStyle, ast::NodeId),
                                   child_sigil: ast::Sigil)
-                                    -> (ast::Purity, ast::NodeId) {
+                                    -> (ast::FnStyle, ast::NodeId) {
     // If the closure is a stack closure and hasn't had some non-standard
-    // purity inferred for it, then check it under its parent's purity.
+    // style inferred for it, then check it under its parent's style.
     // Otherwise, use its own
     match child_sigil {
-        ast::BorrowedSigil if child.val0() == ast::ImpureFn => parent,
+        ast::BorrowedSigil if child.val0() == ast::NormalFn => parent,
         _ => child
     }
 }
@@ -4665,12 +4665,12 @@ pub fn hash_crate_independent(tcx: &ctxt, t: t, svh: &Svh) -> u64 {
             }
             ty_bare_fn(ref b) => {
                 byte!(14);
-                hash!(b.purity);
+                hash!(b.fn_style);
                 hash!(b.abi);
             }
             ty_closure(ref c) => {
                 byte!(15);
-                hash!(c.purity);
+                hash!(c.fn_style);
                 hash!(c.sigil);
                 hash!(c.onceness);
                 hash!(c.bounds);

@@ -210,8 +210,8 @@ pub enum MethodProvenance {
 
 #[deriving(Clone, Eq, TotalEq, Encodable, Decodable, Hash)]
 pub enum Def {
-    DefFn(DefId, Purity),
-    DefStaticMethod(/* method */ DefId, MethodProvenance, Purity),
+    DefFn(DefId, FnStyle),
+    DefStaticMethod(/* method */ DefId, MethodProvenance, FnStyle),
     DefSelfTy(/* trait id */ NodeId),
     DefMod(DefId),
     DefForeignMod(DefId),
@@ -696,7 +696,7 @@ pub struct TypeField {
 pub struct TypeMethod {
     pub ident: Ident,
     pub attrs: Vec<Attribute>,
-    pub purity: Purity,
+    pub fn_style: FnStyle,
     pub decl: P<FnDecl>,
     pub generics: Generics,
     pub explicit_self: ExplicitSelf,
@@ -794,7 +794,7 @@ pub struct ClosureTy {
     pub sigil: Sigil,
     pub region: Option<Lifetime>,
     pub lifetimes: Vec<Lifetime>,
-    pub purity: Purity,
+    pub fn_style: FnStyle,
     pub onceness: Onceness,
     pub decl: P<FnDecl>,
     // Optional optvec distinguishes between "fn()" and "fn:()" so we can
@@ -806,7 +806,7 @@ pub struct ClosureTy {
 
 #[deriving(Eq, TotalEq, Encodable, Decodable, Hash)]
 pub struct BareFnTy {
-    pub purity: Purity,
+    pub fn_style: FnStyle,
     pub abi: Abi,
     pub lifetimes: Vec<Lifetime>,
     pub decl: P<FnDecl>
@@ -886,16 +886,16 @@ pub struct FnDecl {
 }
 
 #[deriving(Clone, Eq, TotalEq, Encodable, Decodable, Hash)]
-pub enum Purity {
+pub enum FnStyle {
     UnsafeFn, // declared with "unsafe fn"
-    ImpureFn, // declared with "fn"
+    NormalFn, // declared with "fn"
     ExternFn, // declared with "extern fn"
 }
 
-impl fmt::Show for Purity {
+impl fmt::Show for FnStyle {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            ImpureFn => "impure".fmt(f),
+            NormalFn => "normal".fmt(f),
             UnsafeFn => "unsafe".fmt(f),
             ExternFn => "extern".fmt(f),
         }
@@ -925,7 +925,7 @@ pub struct Method {
     pub attrs: Vec<Attribute>,
     pub generics: Generics,
     pub explicit_self: ExplicitSelf,
-    pub purity: Purity,
+    pub fn_style: FnStyle,
     pub decl: P<FnDecl>,
     pub body: P<Block>,
     pub id: NodeId,
@@ -1119,7 +1119,7 @@ pub struct Item {
 #[deriving(Clone, Eq, TotalEq, Encodable, Decodable, Hash)]
 pub enum Item_ {
     ItemStatic(P<Ty>, Mutability, @Expr),
-    ItemFn(P<FnDecl>, Purity, Abi, Generics, P<Block>),
+    ItemFn(P<FnDecl>, FnStyle, Abi, Generics, P<Block>),
     ItemMod(Mod),
     ItemForeignMod(ForeignMod),
     ItemTy(P<Ty>, Generics),

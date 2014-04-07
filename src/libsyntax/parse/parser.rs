@@ -14,7 +14,7 @@ use abi;
 use ast::{Sigil, BorrowedSigil, ManagedSigil, OwnedSigil};
 use ast::{BareFnTy, ClosureTy};
 use ast::{RegionTyParamBound, TraitTyParamBound};
-use ast::{Provided, Public, Purity};
+use ast::{Provided, Public, FnStyle};
 use ast::{Mod, BiAdd, Arg, Arm, Attribute, BindByRef, BindByValue};
 use ast::{BiBitAnd, BiBitOr, BiBitXor, Block};
 use ast::{BlockCheckMode, UnBox};
@@ -31,7 +31,7 @@ use ast::{ExprVec, ExprVstore, ExprVstoreSlice};
 use ast::{ExprVstoreMutSlice, ExprWhile, ExprForLoop, ExternFn, Field, FnDecl};
 use ast::{ExprVstoreUniq, Once, Many};
 use ast::{ForeignItem, ForeignItemStatic, ForeignItemFn, ForeignMod};
-use ast::{Ident, ImpureFn, Inherited, Item, Item_, ItemStatic};
+use ast::{Ident, NormalFn, Inherited, Item, Item_, ItemStatic};
 use ast::{ItemEnum, ItemFn, ItemForeignMod, ItemImpl};
 use ast::{ItemMac, ItemMod, ItemStruct, ItemTrait, ItemTy, Lit, Lit_};
 use ast::{LitBool, LitFloat, LitFloatUnsuffixed, LitInt, LitChar};
@@ -867,7 +867,7 @@ impl<'a> Parser<'a> {
                   |      |           |  Argument types
                   |      |       Lifetimes
                   |      |
-                  |    Purity
+                  |    Function Style
                  ABI
 
         */
@@ -878,12 +878,12 @@ impl<'a> Parser<'a> {
             abi::Rust
         };
 
-        let purity = self.parse_unsafety();
+        let fn_style = self.parse_unsafety();
         self.expect_keyword(keywords::Fn);
         let (decl, lifetimes) = self.parse_ty_fn_decl(true);
         return TyBareFn(@BareFnTy {
             abi: abi,
-            purity: purity,
+            fn_style: fn_style,
             lifetimes: lifetimes,
             decl: decl
         });
@@ -925,7 +925,7 @@ impl<'a> Parser<'a> {
         TyClosure(@ClosureTy {
             sigil: OwnedSigil,
             region: None,
-            purity: ImpureFn,
+            fn_style: NormalFn,
             onceness: Once,
             bounds: bounds,
             decl: decl,
@@ -945,11 +945,11 @@ impl<'a> Parser<'a> {
           |        |      |  Argument types
           |        |    Lifetimes
           |     Once-ness (a.k.a., affine)
-        Purity
+        Function Style
 
         */
 
-        let purity = self.parse_unsafety();
+        let fn_style = self.parse_unsafety();
         let onceness = if self.eat_keyword(keywords::Once) {Once} else {Many};
 
         let lifetimes = if self.eat(&token::LT) {
@@ -985,7 +985,7 @@ impl<'a> Parser<'a> {
         TyClosure(@ClosureTy {
             sigil: BorrowedSigil,
             region: region,
-            purity: purity,
+            fn_style: fn_style,
             onceness: onceness,
             bounds: bounds,
             decl: decl,
@@ -993,11 +993,11 @@ impl<'a> Parser<'a> {
         })
     }
 
-    pub fn parse_unsafety(&mut self) -> Purity {
+    pub fn parse_unsafety(&mut self) -> FnStyle {
         if self.eat_keyword(keywords::Unsafe) {
             return UnsafeFn;
         } else {
-            return ImpureFn;
+            return NormalFn;
         }
     }
 
@@ -1045,7 +1045,7 @@ impl<'a> Parser<'a> {
 
             let vis_span = p.span;
             let vis = p.parse_visibility();
-            let pur = p.parse_fn_purity();
+            let style = p.parse_fn_style();
             // NB: at the moment, trait methods are public by default; this
             // could change.
             let ident = p.parse_ident();
@@ -1071,7 +1071,7 @@ impl<'a> Parser<'a> {
                 Required(TypeMethod {
                     ident: ident,
                     attrs: attrs,
-                    purity: pur,
+                    fn_style: style,
                     decl: d,
                     generics: generics,
                     explicit_self: explicit_self,
@@ -1089,7 +1089,7 @@ impl<'a> Parser<'a> {
                     attrs: attrs,
                     generics: generics,
                     explicit_self: explicit_self,
-                    purity: pur,
+                    fn_style: style,
                     decl: d,
                     body: body,
                     id: ast::DUMMY_NODE_ID,
@@ -3754,11 +3754,11 @@ impl<'a> Parser<'a> {
     }
 
     // parse an item-position function declaration.
-    fn parse_item_fn(&mut self, purity: Purity, abi: abi::Abi) -> ItemInfo {
+    fn parse_item_fn(&mut self, fn_style: FnStyle, abi: abi::Abi) -> ItemInfo {
         let (ident, generics) = self.parse_fn_header();
         let decl = self.parse_fn_decl(false);
         let (inner_attrs, body) = self.parse_inner_attrs_and_block();
-        (ident, ItemFn(decl, purity, abi, generics, body), Some(inner_attrs))
+        (ident, ItemFn(decl, fn_style, abi, generics, body), Some(inner_attrs))
     }
 
     // parse a method in a trait impl, starting with `attrs` attributes.
@@ -3772,7 +3772,7 @@ impl<'a> Parser<'a> {
         let lo = self.span.lo;
 
         let visa = self.parse_visibility();
-        let pur = self.parse_fn_purity();
+        let fn_style = self.parse_fn_style();
         let ident = self.parse_ident();
         let generics = self.parse_generics();
         let (explicit_self, decl) = self.parse_fn_decl_with_self(|p| {
@@ -3787,7 +3787,7 @@ impl<'a> Parser<'a> {
             attrs: attrs,
             generics: generics,
             explicit_self: explicit_self,
-            purity: pur,
+            fn_style: fn_style,
             decl: decl,
             body: body,
             id: ast::DUMMY_NODE_ID,
@@ -4169,8 +4169,8 @@ impl<'a> Parser<'a> {
         let lo = self.span.lo;
 
         // Parse obsolete purity.
-        let purity = self.parse_fn_purity();
-        if purity != ImpureFn {
+        let fn_style = self.parse_fn_style();
+        if fn_style != NormalFn {
             self.obsolete(self.last_span, ObsoleteUnsafeExternFn);
         }
 
@@ -4208,8 +4208,8 @@ impl<'a> Parser<'a> {
     }
 
     // parse safe/unsafe and fn
-    fn parse_fn_purity(&mut self) -> Purity {
-        if self.eat_keyword(keywords::Fn) { ImpureFn }
+    fn parse_fn_style(&mut self) -> FnStyle {
+        if self.eat_keyword(keywords::Fn) { NormalFn }
         else if self.eat_keyword(keywords::Unsafe) {
             self.expect_keyword(keywords::Fn);
             UnsafeFn
@@ -4540,7 +4540,7 @@ impl<'a> Parser<'a> {
             // FUNCTION ITEM
             self.bump();
             let (ident, item_, extra_attrs) =
-                self.parse_item_fn(ImpureFn, abi::Rust);
+                self.parse_item_fn(NormalFn, abi::Rust);
             let item = self.mk_item(lo,
                                     self.last_span.hi,
                                     ident,

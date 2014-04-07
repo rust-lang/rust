@@ -17,7 +17,7 @@ trait Mumbo {
 impl Mumbo for uint {
     // Cannot have a larger effect than the trait:
     unsafe fn jumbo(&self, x: @uint) { *self + *x; }
-    //~^ ERROR expected impure fn but found unsafe fn
+    //~^ ERROR expected normal fn but found unsafe fn
 }
 
 fn main() {}
