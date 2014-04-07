@@ -8,27 +8,46 @@
 .text
 .code 32
 .arm
+#if defined(__APPLE__)
+.align 2
+#else
 .align
+#endif
 
 .global rust_stack_exhausted
 .global __morestack
+
+#if defined(__APPLE__)
+.private_extern __morestack
+#else
 .hidden __morestack
+#endif
 
 // r4 and r5 are scratch registers for __morestack due to llvm
 // ARMFrameLowering::adjustForSegmentedStacks() implementation.
- .type __morestack,%function
+#if !defined(__APPLE__)
+   .type __morestack,%function
+#endif
+
+#if defined(__APPLE__)
+#define UNWIND @
+#else
+#define UNWIND
+#endif
+
 __morestack:
-	.fnstart
-	// Save frame pointer and return address
-	.save {r4, r5}
-	.save {lr}
-	.save {r6, fp, lr}
+    UNWIND .fnstart
+
+    // Save frame pointer and return address
+    UNWIND .save {r4, r5}
+    UNWIND .save {lr}
+    UNWIND .save {r6, fp, lr}
     push {r6, fp, lr}
 
-	.movsp r6
-	mov r6, sp
-	.setfp fp, sp, #4
-	add fp, sp, #4
+    UNWIND .movsp r6
+    mov r6, sp
+    UNWIND .setfp fp, sp, #4
+    add fp, sp, #4
 
     // Save argument registers of the original function
     push {r0, r1, r2, r3, lr}
@@ -37,4 +56,4 @@ __morestack:
     bl rust_stack_exhausted@plt
 
     // the above function ensures that it never returns
-    .fnend
+    UNWIND  .fnend
