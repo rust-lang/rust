@@ -19,6 +19,7 @@ pub mod finally;
 pub mod simd;
 pub mod sync;
 pub mod mutex;
+pub mod volatile;
 
 /**
 
