@@ -294,6 +294,11 @@ mod imp {
         static __PTHREAD_MUTEX_SIZE__: uint = 40;
         #[cfg(target_arch = "x86")]
         static __PTHREAD_COND_SIZE__: uint = 24;
+        #[cfg(target_arch = "arm")]
+        static __PTHREAD_MUTEX_SIZE__: uint = 40;
+        #[cfg(target_arch = "arm")]
+        static __PTHREAD_COND_SIZE__: uint = 24;
+
         static _PTHREAD_MUTEX_SIG_init: libc::c_long = 0x32AAABA7;
         static _PTHREAD_COND_SIG_init: libc::c_long = 0x3CB0B1BB;
 
