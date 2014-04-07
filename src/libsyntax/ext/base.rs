@@ -293,13 +293,12 @@ pub fn syntax_expander_table() -> SyntaxEnv {
 
 pub struct MacroCrate {
     pub lib: Option<Path>,
-    pub cnum: ast::CrateNum,
+    pub macros: Vec<~str>,
+    pub registrar_symbol: Option<~str>,
 }
 
 pub trait CrateLoader {
     fn load_crate(&mut self, krate: &ast::ViewItem) -> MacroCrate;
-    fn get_exported_macros(&mut self, crate_num: ast::CrateNum) -> Vec<~str> ;
-    fn get_registrar_symbol(&mut self, crate_num: ast::CrateNum) -> Option<~str>;
 }
 
 // One of these is made during expansion and incrementally updated as we go;
