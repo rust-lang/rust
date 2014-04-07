@@ -99,7 +99,15 @@ fn src<T>(fd: libc::c_int, readable: bool, f: |StdSource| -> T) -> T {
 ///
 /// See `stdout()` for more notes about this function.
 pub fn stdin() -> BufferedReader<StdReader> {
-    BufferedReader::new(stdin_raw())
+    // The default buffer capacity is 64k, but apparently windows doesn't like
+    // 64k reads on stdin. See #13304 for details, but the idea is that on
+    // windows we use a slighly smaller buffer that's been seen to be
+    // acceptable.
+    if cfg!(windows) {
+        BufferedReader::with_capacity(8 * 1024, stdin_raw())
+    } else {
+        BufferedReader::new(stdin_raw())
+    }
 }
 
 /// Creates a new non-blocking handle to the stdin of the current process.
