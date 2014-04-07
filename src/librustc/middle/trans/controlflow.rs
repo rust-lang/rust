@@ -19,6 +19,7 @@ use middle::trans::debuginfo;
 use middle::trans::cleanup;
 use middle::trans::cleanup::CleanupMethods;
 use middle::trans::expr;
+use middle::ty;
 use util::ppaux::Repr;
 
 use middle::trans::type_::Type;
@@ -49,7 +50,7 @@ pub fn trans_stmt<'a>(cx: &'a Block<'a>,
 
     match s.node {
         ast::StmtExpr(e, _) | ast::StmtSemi(e, _) => {
-            bcx = expr::trans_into(cx, e, expr::Ignore);
+            bcx = trans_stmt_semi(bcx, e);
         }
         ast::StmtDecl(d, _) => {
             match d.node {
@@ -69,6 +70,16 @@ pub fn trans_stmt<'a>(cx: &'a Block<'a>,
         bcx, ast_util::stmt_id(s));
 
     return bcx;
+}
+
+pub fn trans_stmt_semi<'a>(cx: &'a Block<'a>, e: &ast::Expr) -> &'a Block<'a> {
+    let _icx = push_ctxt("trans_stmt_semi");
+    let ty = expr_ty(cx, e);
+    if ty::type_needs_drop(cx.tcx(), ty) {
+        expr::trans_to_lvalue(cx, e, "stmt").bcx
+    } else {
+        expr::trans_into(cx, e, expr::Ignore)
+    }
 }
 
 pub fn trans_block<'a>(bcx: &'a Block<'a>,
