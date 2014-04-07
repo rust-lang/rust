@@ -4,7 +4,7 @@
 
 # Summary
 
-They way our intrinsics work forces them to be wrapped in order to
+The way our intrinsics work forces them to be wrapped in order to
 behave like normal functions. As a result, rustc is forced to inline a
 great number of tiny intrinsic wrappers, which is bad for both
 compile-time performance and runtime performance without
