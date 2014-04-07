@@ -3415,7 +3415,7 @@ fn add(x: int, y: int) -> int {
 
 let mut x = add(5,7);
 
-type Binop<'a> = 'a |int,int| -> int;
+type Binop<'a> = |int,int|: 'a -> int;
 let bo: Binop = add;
 x = bo(5,7);
 ~~~~

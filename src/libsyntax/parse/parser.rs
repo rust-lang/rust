@@ -905,31 +905,23 @@ impl<'a> Parser<'a> {
 
         */
 
-        // NOTE: remove after the next stage0 snap
-        let (decl, lifetimes, bounds) = if self.token == token::COLON {
-            let (_, bounds) = self.parse_optional_ty_param_bounds(false);
-            let (decl, lifetimes) = self.parse_ty_fn_decl(false);
-            (decl, lifetimes, bounds)
+        let lifetimes = if self.eat(&token::LT) {
+            let lifetimes = self.parse_lifetimes();
+            self.expect_gt();
+            lifetimes
         } else {
-            let lifetimes = if self.eat(&token::LT) {
-                let lifetimes = self.parse_lifetimes();
-                self.expect_gt();
-                lifetimes
-            } else {
-                Vec::new()
-            };
-
-            let (inputs, variadic) = self.parse_fn_args(false, false);
-            let (_, bounds) = self.parse_optional_ty_param_bounds(false);
-            let (ret_style, ret_ty) = self.parse_ret_ty();
-            let decl = P(FnDecl {
-                inputs: inputs,
-                output: ret_ty,
-                cf: ret_style,
-                variadic: variadic
-            });
-            (decl, lifetimes, bounds)
+            Vec::new()
         };
+
+        let (inputs, variadic) = self.parse_fn_args(false, false);
+        let (_, bounds) = self.parse_optional_ty_param_bounds(false);
+        let (ret_style, ret_ty) = self.parse_ret_ty();
+        let decl = P(FnDecl {
+            inputs: inputs,
+            output: ret_ty,
+            cf: ret_style,
+            variadic: variadic
+        });
         TyClosure(@ClosureTy {
             sigil: OwnedSigil,
             region: None,
@@ -957,8 +949,6 @@ impl<'a> Parser<'a> {
 
         */
 
-        // NOTE: remove 'let region' after a stage0 snap
-        let region = self.parse_opt_lifetime();
         let purity = self.parse_unsafety();
         let onceness = if self.eat_keyword(keywords::Once) {Once} else {Many};
 
@@ -982,10 +972,7 @@ impl<'a> Parser<'a> {
             inputs
         };
 
-        let (new_region, bounds) = self.parse_optional_ty_param_bounds(true);
-
-        // NOTE: this should be removed after a stage0 snap
-        let region = new_region.or(region);
+        let (region, bounds) = self.parse_optional_ty_param_bounds(true);
 
         let (return_style, output) = self.parse_ret_ty();
         let decl = P(FnDecl {
@@ -1246,9 +1233,7 @@ impl<'a> Parser<'a> {
         } else if self.token_is_closure_keyword() ||
                 self.token == token::BINOP(token::OR) ||
                 self.token == token::OROR ||
-                self.token == token::LT ||
-                // NOTE: remove this clause after a stage0 snap
-                Parser::token_is_lifetime(&self.token) {
+                self.token == token::LT {
             // CLOSURE
             //
             // FIXME(pcwalton): Eventually `token::LT` will not unambiguously

@@ -28,7 +28,7 @@ for it to terminate.
 The executing thread has no access to a task pointer and will be using
 a normal large stack.
 */
-pub fn run_in_bare_thread(f: proc:Send()) {
+pub fn run_in_bare_thread(f: proc():Send) {
     use rt::thread::Thread;
     Thread::start(f).join()
 }

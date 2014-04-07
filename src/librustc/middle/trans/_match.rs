@@ -503,7 +503,7 @@ fn assert_is_binding_or_wild(bcx: &Block, p: @ast::Pat) {
     }
 }
 
-type enter_pat<'a> = 'a |@ast::Pat| -> Option<Vec<@ast::Pat>>;
+type enter_pat<'a> = |@ast::Pat|: 'a -> Option<Vec<@ast::Pat>>;
 
 fn enter_match<'r,'b>(
                bcx: &'b Block<'b>,

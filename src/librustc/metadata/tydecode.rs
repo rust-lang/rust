@@ -54,7 +54,7 @@ pub enum DefIdSource {
     RegionParameter,
 }
 pub type conv_did<'a> =
-    'a |source: DefIdSource, ast::DefId| -> ast::DefId;
+    |source: DefIdSource, ast::DefId|: 'a -> ast::DefId;
 
 pub struct PState<'a> {
     data: &'a [u8],

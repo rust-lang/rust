@@ -50,13 +50,13 @@ fn ops() -> ~Ops {
 }
 
 /// Spawns a function with the default configuration
-pub fn spawn(f: proc:Send()) {
+pub fn spawn(f: proc():Send) {
     spawn_opts(TaskOpts::new(), f)
 }
 
 /// Spawns a new task given the configuration options and a procedure to run
 /// inside the task.
-pub fn spawn_opts(opts: TaskOpts, f: proc:Send()) {
+pub fn spawn_opts(opts: TaskOpts, f: proc():Send) {
     let TaskOpts {
         notify_chan, name, stack_size,
         stderr, stdout,
@@ -238,7 +238,7 @@ impl rt::Runtime for Ops {
         }
     }
 
-    fn spawn_sibling(~self, mut cur_task: ~Task, opts: TaskOpts, f: proc:Send()) {
+    fn spawn_sibling(~self, mut cur_task: ~Task, opts: TaskOpts, f: proc():Send) {
         cur_task.put_runtime(self);
         Local::put(cur_task);
 

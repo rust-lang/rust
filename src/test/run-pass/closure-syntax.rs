@@ -61,7 +61,7 @@ fn bar<'b>() {
     foo::<proc<'a>(int, f32, &'a int):'static + Share -> &'a int>();
 
     // issue #11209
-    let _: 'b ||; // for comparison
+    let _: ||: 'b; // for comparison
     let _: <'a> ||;
 
     let _: Option<||:'b>;
@@ -69,7 +69,7 @@ fn bar<'b>() {
     let _: Option< <'a>||>;
 
     // issue #11210
-    let _: 'static ||;
+    let _: ||: 'static;
 }
 
 pub fn main() {
