@@ -1935,5 +1935,5 @@ mod sync_tests {
             assert_eq!(tx.try_send(1), Sent);
         });
         assert_eq!(rx.recv(), 1);
-    })
+    } #[ignore(reason = "flaky on libnative")])
 }
