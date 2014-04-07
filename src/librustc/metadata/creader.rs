@@ -114,22 +114,25 @@ fn visit_crate(e: &Env, c: &ast::Crate) {
     }
 }
 
-fn visit_view_item(e: &mut Env, i: &ast::ViewItem) {
-    let should_load = i.attrs.iter().all(|attr| {
+fn should_link(i: &ast::ViewItem) -> bool {
+    i.attrs.iter().all(|attr| {
         attr.name().get() != "phase" ||
             attr.meta_item_list().map_or(false, |phases| {
                 attr::contains_name(phases.as_slice(), "link")
             })
-    });
+    })
+}
 
-    if !should_load {
+fn visit_view_item(e: &mut Env, i: &ast::ViewItem) {
+    if !should_link(i) {
         return;
     }
 
     match extract_crate_info(e, i) {
         Some(info) => {
-            let cnum = resolve_crate(e, &None, info.ident, &info.crate_id, None,
-                                     i.span);
+            let (cnum, _, _) = resolve_crate(e, &None, info.ident,
+                                             &info.crate_id, None, true,
+                                             i.span);
             e.sess.cstore.add_extern_mod_stmt_cnum(info.id, cnum);
         }
         None => ()
@@ -140,6 +143,7 @@ struct CrateInfo {
     ident: ~str,
     crate_id: CrateId,
     id: ast::NodeId,
+    should_link: bool,
 }
 
 fn extract_crate_info(e: &Env, i: &ast::ViewItem) -> Option<CrateInfo> {
@@ -165,6 +169,7 @@ fn extract_crate_info(e: &Env, i: &ast::ViewItem) -> Option<CrateInfo> {
                 ident: ident.get().to_str(),
                 crate_id: crate_id,
                 id: id,
+                should_link: should_link(i),
             })
         }
         _ => None
@@ -274,8 +279,10 @@ fn resolve_crate<'a>(e: &mut Env,
                      ident: &str,
                      crate_id: &CrateId,
                      hash: Option<&Svh>,
+                     should_link: bool,
                      span: Span)
-                     -> ast::CrateNum {
+                     -> (ast::CrateNum, @cstore::crate_metadata,
+                         cstore::CrateSource) {
     match existing_match(e, crate_id, hash) {
         None => {
             let id_hash = link::crate_id_hash(crate_id);
@@ -312,8 +319,11 @@ fn resolve_crate<'a>(e: &mut Env,
             let root = if root.is_some() { root } else { &crate_paths };
 
             // Now resolve the crates referenced by this crate
-            let cnum_map = resolve_crate_deps(e, root, metadata.as_slice(),
-                                              span);
+            let cnum_map = if should_link {
+                resolve_crate_deps(e, root, metadata.as_slice(), span)
+            } else {
+                @RefCell::new(HashMap::new())
+            };
 
             let cmeta = @cstore::crate_metadata {
                 name: load_ctxt.crate_id.name.to_owned(),
@@ -323,15 +333,21 @@ fn resolve_crate<'a>(e: &mut Env,
                 span: span,
             };
 
-            e.sess.cstore.set_crate_data(cnum, cmeta);
-            e.sess.cstore.add_used_crate_source(cstore::CrateSource {
+            let source = cstore::CrateSource {
                 dylib: dylib,
                 rlib: rlib,
                 cnum: cnum,
-            });
-            cnum
+            };
+
+            if should_link {
+                e.sess.cstore.set_crate_data(cnum, cmeta);
+                e.sess.cstore.add_used_crate_source(source.clone());
+            }
+            (cnum, cmeta, source)
         }
-        Some(cnum) => cnum
+        Some(cnum) => (cnum,
+                       e.sess.cstore.get_crate_data(cnum),
+                       e.sess.cstore.get_used_crate_source(cnum).unwrap())
     }
 }
 
@@ -348,11 +364,12 @@ fn resolve_crate_deps(e: &mut Env,
     for dep in r.iter() {
         let extrn_cnum = dep.cnum;
         debug!("resolving dep crate {} hash: `{}`", dep.crate_id, dep.hash);
-        let local_cnum = resolve_crate(e, root,
-                                       dep.crate_id.name.as_slice(),
-                                       &dep.crate_id,
-                                       Some(&dep.hash),
-                                       span);
+        let (local_cnum, _, _) = resolve_crate(e, root,
+                                               dep.crate_id.name.as_slice(),
+                                               &dep.crate_id,
+                                               Some(&dep.hash),
+                                               true,
+                                               span);
         cnum_map.insert(extrn_cnum, local_cnum);
     }
     return @RefCell::new(cnum_map);
@@ -380,23 +397,17 @@ impl<'a> Loader<'a> {
 impl<'a> CrateLoader for Loader<'a> {
     fn load_crate(&mut self, krate: &ast::ViewItem) -> MacroCrate {
         let info = extract_crate_info(&self.env, krate).unwrap();
-        let cnum = resolve_crate(&mut self.env, &None, info.ident,
-                                 &info.crate_id, None, krate.span);
-        let library = self.env.sess.cstore.get_used_crate_source(cnum).unwrap();
+        let (cnum, data, library) = resolve_crate(&mut self.env, &None,
+                                                  info.ident, &info.crate_id,
+                                                  None, true, krate.span);
+        let macros = decoder::get_exported_macros(data);
+        let cstore = &self.env.sess.cstore;
+        let registrar = csearch::get_macro_registrar_fn(cstore, cnum)
+                            .map(|did| csearch::get_symbol(cstore, did));
         MacroCrate {
             lib: library.dylib,
-            cnum: cnum,
+            macros: macros.move_iter().collect(),
+            registrar_symbol: registrar,
         }
-    }
-
-    fn get_exported_macros(&mut self, cnum: ast::CrateNum) -> Vec<~str> {
-        csearch::get_exported_macros(&self.env.sess.cstore, cnum).move_iter()
-                                                                 .collect()
-    }
-
-    fn get_registrar_symbol(&mut self, cnum: ast::CrateNum) -> Option<~str> {
-        let cstore = &self.env.sess.cstore;
-        csearch::get_macro_registrar_fn(cstore, cnum)
-            .map(|did| csearch::get_symbol(cstore, did))
     }
 }
