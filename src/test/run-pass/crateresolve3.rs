@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-fast
 // aux-build:crateresolve3-1.rs
 // aux-build:crateresolve3-2.rs
 

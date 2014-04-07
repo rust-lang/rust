@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-fast
 // aux-build:xcrate_static_addresses.rs
 
 extern crate xcrate_static_addresses;

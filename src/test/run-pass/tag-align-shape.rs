@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-fast: check-fast screws up repr paths
 
 enum a_tag {
     a_tag(u64)

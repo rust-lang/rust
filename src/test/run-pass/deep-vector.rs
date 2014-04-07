@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // ignore-test
-// ignore-fast
 //
 // Too big for our poor macro infrastructure.
 

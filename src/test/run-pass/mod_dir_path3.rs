@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // ignore-pretty
-// ignore-fast
 
 #[path = "mod_dir_simple"]
 mod pancakes {

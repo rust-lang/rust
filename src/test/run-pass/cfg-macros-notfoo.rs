@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-fast compile-flags directive doesn't work for check-fast
 // compile-flags:
 
 // check that cfg correctly chooses between the macro impls (see also

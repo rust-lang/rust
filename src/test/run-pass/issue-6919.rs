@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // aux-build:iss.rs
-// ignore-fast
 
 #[crate_id="issue-6919"];
 extern crate issue6919_3;

@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-fast
 //aux-build:extern-crosscrate-source.rs
 
 extern crate externcallback = "externcallback#0.1";

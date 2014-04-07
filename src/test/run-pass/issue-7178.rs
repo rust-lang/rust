@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-fast
 // aux-build:issue-7178.rs
 
 extern crate cross_crate_self = "issue-7178";

@@ -10,7 +10,6 @@
 
 #[feature(managed_boxes)];
 
-// ignore-fast
 // aux-build:issue-2631-a.rs
 
 extern crate collections;

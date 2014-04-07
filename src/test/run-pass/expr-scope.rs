@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // Regression test for issue #762
-// ignore-fast
 
 pub fn f() { }
 pub fn main() { return ::f(); }

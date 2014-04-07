@@ -4,6 +4,8 @@ ifneq ($(shell uname),Darwin)
 	EXTRAFLAGS := -lm -lrt -ldl -lpthread
 endif
 
+# FIXME
+ifneq ($(shell uname),FreeBSD)
 all:
 	$(RUSTC) foo.rs
 	ln -s $(call STATICLIB,foo-*) $(call STATICLIB,foo)
@@ -11,3 +13,8 @@ all:
 	$(call RUN,bar)
 	rm $(call STATICLIB,foo*)
 	$(call RUN,bar)
+
+else
+all:
+
+endif

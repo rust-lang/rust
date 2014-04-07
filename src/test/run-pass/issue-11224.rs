@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // aux-build:issue-11224.rs
-// ignore-fast
 
 extern crate unused = "issue-11224";
 

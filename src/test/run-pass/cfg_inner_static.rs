@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // aux-build:cfg_inner_static.rs
-// ignore-fast
 
 extern crate cfg_inner_static;
 

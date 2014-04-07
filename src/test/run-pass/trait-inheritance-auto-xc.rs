@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-fast
 // aux-build:trait_inheritance_auto_xc_aux.rs
 
 extern crate aux = "trait_inheritance_auto_xc_aux";

@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // aux-build:xcrate_unit_struct.rs
-// ignore-fast
 extern crate xcrate_unit_struct;
 
 static s1: xcrate_unit_struct::Struct = xcrate_unit_struct::Struct;

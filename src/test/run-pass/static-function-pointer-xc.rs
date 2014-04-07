@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-fast
 // aux-build:static-function-pointer-aux.rs
 extern crate aux = "static-function-pointer-aux";
 

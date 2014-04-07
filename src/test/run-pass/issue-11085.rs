@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // compile-flags: --cfg foo
-// ignore-fast
 
 #[feature(struct_variant)];
 

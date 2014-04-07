@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-fast
+// ignore-win32
 // exec-env:RUST_LOG=debug
 
 use std::cell::Cell;

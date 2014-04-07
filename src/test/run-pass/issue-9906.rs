@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-fast check-fast doesn't like extern crate
 // aux-build:issue-9906.rs
 
 extern crate testmod = "issue-9906";

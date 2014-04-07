@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[no_std];
+#![no_std]
 
 #[lang="fail_"]
 fn fail(_: *i8, _: *i8, _: uint) -> ! { loop {} }

@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-fast
 // aux-build:pub_use_xcrate1.rs
 // aux-build:pub_use_xcrate2.rs
 

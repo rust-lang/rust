@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-fast check-fast doesn't like aux-build
 // aux-build:issue_9123.rs
 
 extern crate issue_9123;

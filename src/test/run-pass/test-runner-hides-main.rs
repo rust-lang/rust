@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // compile-flags:--test
-// ignore-fast
 // ignore-win32 #10872
 
 // Building as a test runner means that a synthetic main will be run,

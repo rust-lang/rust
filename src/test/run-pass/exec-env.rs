@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-fast (exec-env not supported in fast mode)
 // exec-env:TEST_EXEC_ENV=22
 
 use std::os;

@@ -10,7 +10,6 @@
 
 // aux-build:macro_crate_outlive_expansion_phase.rs
 // ignore-stage1
-// ignore-fast
 // ignore-android
 // ignore-cross-compile #12102
 

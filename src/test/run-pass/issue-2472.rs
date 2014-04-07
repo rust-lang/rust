@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // aux-build:issue_2472_b.rs
-// ignore-fast
 
 extern crate issue_2472_b;
 

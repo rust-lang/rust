@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // ignore-win32
-// ignore-fast
 // ignore-android
 // ignore-macos
 // aux-build:linkage1.rs
