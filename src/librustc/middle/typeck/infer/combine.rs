@@ -64,7 +64,7 @@ use util::ppaux::Repr;
 
 use std::result;
 
-use syntax::ast::{Onceness, Purity};
+use syntax::ast::{Onceness, FnStyle};
 use syntax::ast;
 use syntax::owned_slice::OwnedSlice;
 use syntax::abi;
@@ -194,10 +194,10 @@ pub trait Combine {
 
     fn bare_fn_tys(&self, a: &ty::BareFnTy,
                    b: &ty::BareFnTy) -> cres<ty::BareFnTy> {
-        let purity = if_ok!(self.purities(a.purity, b.purity));
+        let fn_style = if_ok!(self.fn_styles(a.fn_style, b.fn_style));
         let abi = if_ok!(self.abi(a.abi, b.abi));
         let sig = if_ok!(self.fn_sigs(&a.sig, &b.sig));
-        Ok(ty::BareFnTy {purity: purity,
+        Ok(ty::BareFnTy {fn_style: fn_style,
                 abi: abi,
                 sig: sig})
     }
@@ -207,11 +207,11 @@ pub trait Combine {
 
         let p = if_ok!(self.sigils(a.sigil, b.sigil));
         let r = if_ok!(self.contraregions(a.region, b.region));
-        let purity = if_ok!(self.purities(a.purity, b.purity));
+        let fn_style = if_ok!(self.fn_styles(a.fn_style, b.fn_style));
         let onceness = if_ok!(self.oncenesses(a.onceness, b.onceness));
         let bounds = if_ok!(self.bounds(a.bounds, b.bounds));
         let sig = if_ok!(self.fn_sigs(&a.sig, &b.sig));
-        Ok(ty::ClosureTy {purity: purity,
+        Ok(ty::ClosureTy {fn_style: fn_style,
                 sigil: p,
                 onceness: onceness,
                 region: r,
@@ -246,7 +246,7 @@ pub trait Combine {
         }
     }
 
-    fn purities(&self, a: Purity, b: Purity) -> cres<Purity>;
+    fn fn_styles(&self, a: FnStyle, b: FnStyle) -> cres<FnStyle>;
 
     fn abi(&self, a: abi::Abi, b: abi::Abi) -> cres<abi::Abi> {
         if a == b {

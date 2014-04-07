@@ -25,7 +25,7 @@ use middle::typeck::infer::{TypeTrace, Subtype};
 use util::common::{indenter};
 use util::ppaux::bound_region_to_str;
 
-use syntax::ast::{Onceness, Purity};
+use syntax::ast::{Onceness, FnStyle};
 
 pub struct Sub<'f>(pub CombineFields<'f>);  // "subtype", "subregion" etc
 
@@ -87,9 +87,9 @@ impl<'f> Combine for Sub<'f> {
         }
     }
 
-    fn purities(&self, a: Purity, b: Purity) -> cres<Purity> {
-        self.lub().purities(a, b).compare(b, || {
-            ty::terr_purity_mismatch(expected_found(self, a, b))
+    fn fn_styles(&self, a: FnStyle, b: FnStyle) -> cres<FnStyle> {
+        self.lub().fn_styles(a, b).compare(b, || {
+            ty::terr_fn_style_mismatch(expected_found(self, a, b))
         })
     }
 

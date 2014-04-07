@@ -264,7 +264,7 @@ pub fn trait_method_to_ty_method(method: &TraitMethod) -> TypeMethod {
             TypeMethod {
                 ident: m.ident,
                 attrs: m.attrs.clone(),
-                purity: m.purity,
+                fn_style: m.fn_style,
                 decl: m.decl,
                 generics: m.generics.clone(),
                 explicit_self: m.explicit_self,

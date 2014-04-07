@@ -29,9 +29,9 @@ use html::render::{cache_key, current_location_key};
 /// Helper to render an optional visibility with a space after it (if the
 /// visibility is preset)
 pub struct VisSpace(pub Option<ast::Visibility>);
-/// Similarly to VisSpace, this structure is used to render a purity with a
+/// Similarly to VisSpace, this structure is used to render a function style with a
 /// space after it.
-pub struct PuritySpace(pub ast::Purity);
+pub struct FnStyleSpace(pub ast::FnStyle);
 /// Wrapper struct for properly emitting a method declaration.
 pub struct Method<'a>(pub &'a clean::SelfTy, pub &'a clean::FnDecl);
 
@@ -41,9 +41,9 @@ impl VisSpace {
     }
 }
 
-impl PuritySpace {
-    pub fn get(&self) -> ast::Purity {
-        let PuritySpace(v) = *self; v
+impl FnStyleSpace {
+    pub fn get(&self) -> ast::FnStyle {
+        let FnStyleSpace(v) = *self; v
     }
 }
 
@@ -343,7 +343,7 @@ impl fmt::Show for clean::Type {
                 };
 
                 write!(f.buf, "{}{}{arrow, select, yes{ -&gt; {ret}} other{}}",
-                       PuritySpace(decl.purity),
+                       FnStyleSpace(decl.fn_style),
                        match decl.sigil {
                            ast::OwnedSigil => format!("proc({})", decl.decl.inputs),
                            ast::BorrowedSigil => format!("{}|{}|", region, decl.decl.inputs),
@@ -355,7 +355,7 @@ impl fmt::Show for clean::Type {
             }
             clean::BareFunction(ref decl) => {
                 write!(f.buf, "{}{}fn{}{}",
-                       PuritySpace(decl.purity),
+                       FnStyleSpace(decl.fn_style),
                        match decl.abi {
                            ref x if "" == *x => ~"",
                            ref x if "\"Rust\"" == *x => ~"",
@@ -472,12 +472,12 @@ impl fmt::Show for VisSpace {
     }
 }
 
-impl fmt::Show for PuritySpace {
+impl fmt::Show for FnStyleSpace {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.get() {
             ast::UnsafeFn => write!(f.buf, "unsafe "),
             ast::ExternFn => write!(f.buf, "extern "),
-            ast::ImpureFn => Ok(())
+            ast::NormalFn => Ok(())
         }
     }
 }

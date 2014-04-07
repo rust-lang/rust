@@ -51,7 +51,7 @@ use rustc::util::nodemap::NodeSet;
 use clean;
 use doctree;
 use fold::DocFolder;
-use html::format::{VisSpace, Method, PuritySpace};
+use html::format::{VisSpace, Method, FnStyleSpace};
 use html::layout;
 use html::markdown;
 use html::markdown::Markdown;
@@ -1191,10 +1191,10 @@ fn item_module(w: &mut Writer, cx: &Context,
 
 fn item_function(w: &mut Writer, it: &clean::Item,
                  f: &clean::Function) -> fmt::Result {
-    try!(write!(w, "<pre class='rust fn'>{vis}{purity}fn \
+    try!(write!(w, "<pre class='rust fn'>{vis}{fn_style}fn \
                     {name}{generics}{decl}</pre>",
            vis = VisSpace(it.visibility),
-           purity = PuritySpace(f.purity),
+           fn_style = FnStyleSpace(f.fn_style),
            name = it.name.get_ref().as_slice(),
            generics = f.generics,
            decl = f.decl));
@@ -1305,12 +1305,12 @@ fn item_trait(w: &mut Writer, it: &clean::Item,
 }
 
 fn render_method(w: &mut Writer, meth: &clean::Item) -> fmt::Result {
-    fn fun(w: &mut Writer, it: &clean::Item, purity: ast::Purity,
+    fn fun(w: &mut Writer, it: &clean::Item, fn_style: ast::FnStyle,
            g: &clean::Generics, selfty: &clean::SelfTy,
            d: &clean::FnDecl) -> fmt::Result {
         write!(w, "{}fn <a href='\\#{ty}.{name}' class='fnname'>{name}</a>\
                    {generics}{decl}",
-               match purity {
+               match fn_style {
                    ast::UnsafeFn => "unsafe ",
                    _ => "",
                },
@@ -1321,10 +1321,10 @@ fn render_method(w: &mut Writer, meth: &clean::Item) -> fmt::Result {
     }
     match meth.inner {
         clean::TyMethodItem(ref m) => {
-            fun(w, meth, m.purity, &m.generics, &m.self_, &m.decl)
+            fun(w, meth, m.fn_style, &m.generics, &m.self_, &m.decl)
         }
         clean::MethodItem(ref m) => {
-            fun(w, meth, m.purity, &m.generics, &m.self_, &m.decl)
+            fun(w, meth, m.fn_style, &m.generics, &m.self_, &m.decl)
         }
         _ => unreachable!()
     }

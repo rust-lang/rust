@@ -619,7 +619,7 @@ impl<'a> MethodDef<'a> {
             attrs: attrs,
             generics: fn_generics,
             explicit_self: explicit_self,
-            purity: ast::ImpureFn,
+            fn_style: ast::NormalFn,
             decl: fn_decl,
             body: body_block,
             id: ast::DUMMY_NODE_ID,
