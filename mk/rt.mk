@@ -54,7 +54,7 @@ NATIVE_DEPS_rustrt_$(1) := rust_builtin.c \
 			rust_android_dummy.c \
 			rust_test_helpers.c \
 			rust_try.ll \
-			arch/$$(HOST_$(1))/record_sp.S
+			arch/$$(HOST_$(1))/record_sp.S 
 NATIVE_DEPS_morestack_$(1) := arch/$$(HOST_$(1))/morestack.S
 NATIVE_DEPS_context_switch_$(1) := \
 			arch/$$(HOST_$(1))/_context.S
@@ -243,7 +243,6 @@ $$(LIBUV_DIR_$(1))/Release/libuv.a: $$(LIBUV_DEPS) $$(LIBUV_MAKEFILE_$(1)) \
 		NO_LOAD="$$(LIBUV_NO_LOAD)" \
 		V=$$(VERBOSE)
 	$$(Q)touch $$@
-
 endif
 
 ################################################################################

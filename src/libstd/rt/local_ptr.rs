@@ -23,10 +23,11 @@ use ptr::RawPtr;
 
 #[cfg(windows)]               // mingw-w32 doesn't like thread_local things
 #[cfg(target_os = "android")] // see #10686
+#[cfg(target_os = "macos", target_arch = "arm")]
 pub use self::native::{init, cleanup, put, take, try_take, unsafe_take, exists,
                        unsafe_borrow, try_unsafe_borrow};
 
-#[cfg(not(windows), not(target_os = "android"))]
+#[cfg(not(windows), not(target_os = "android"), not(target_os = "macos", target_arch = "arm"))]
 pub use self::compiled::{init, cleanup, put, take, try_take, unsafe_take, exists,
                          unsafe_borrow, try_unsafe_borrow};
 
@@ -80,7 +81,7 @@ pub unsafe fn borrow<T>() -> Borrowed<T> {
 /// implemented using LLVM's thread_local attribute which isn't necessarily
 /// working on all platforms. This implementation is faster, however, so we use
 /// it wherever possible.
-#[cfg(not(windows), not(target_os = "android"))]
+#[cfg(not(windows), not(target_os = "android"), not(target_os = "macos", target_arch = "arm"))]
 pub mod compiled {
     use cast;
     use option::{Option, Some, None};

@@ -119,7 +119,10 @@ pub mod write {
                 } else {
                     sess.opts.cg.target_feature.as_slice()
                 }
-            }
+            },
+            abi::OsMacos if sess.targ_cfg.arch == abi::Arm => {
+                "+v7,+thumb2,+vfp3,+neon"
+            },
             _ => sess.opts.cg.target_feature.as_slice()
         }
     }
@@ -823,14 +826,18 @@ pub fn filename_for_input(sess: &Session, crate_type: session::CrateType,
             out_filename.with_filename(format!("lib{}.rlib", libname))
         }
         session::CrateTypeDylib => {
-            let (prefix, suffix) = match sess.targ_cfg.os {
-                abi::OsWin32 => (win32::DLL_PREFIX, win32::DLL_SUFFIX),
-                abi::OsMacos => (macos::DLL_PREFIX, macos::DLL_SUFFIX),
-                abi::OsLinux => (linux::DLL_PREFIX, linux::DLL_SUFFIX),
-                abi::OsAndroid => (android::DLL_PREFIX, android::DLL_SUFFIX),
-                abi::OsFreebsd => (freebsd::DLL_PREFIX, freebsd::DLL_SUFFIX),
-            };
-            out_filename.with_filename(format!("{}{}{}", prefix, libname, suffix))
+            if sess.targ_cfg.os == abi::OsMacos && sess.targ_cfg.arch == abi::Arm {
+                out_filename.with_filename(format!("lib{}.a", libname))
+            } else {
+                let (prefix, suffix) = match sess.targ_cfg.os {
+                    abi::OsWin32 => (win32::DLL_PREFIX, win32::DLL_SUFFIX),
+                    abi::OsMacos => (macos::DLL_PREFIX, macos::DLL_SUFFIX),
+                    abi::OsLinux => (linux::DLL_PREFIX, linux::DLL_SUFFIX),
+                    abi::OsAndroid => (android::DLL_PREFIX, android::DLL_SUFFIX),
+                    abi::OsFreebsd => (freebsd::DLL_PREFIX, freebsd::DLL_SUFFIX),
+                };
+                out_filename.with_filename(format!("{}{}{}", prefix, libname, suffix))
+            }
         }
         session::CrateTypeStaticlib => {
             out_filename.with_filename(format!("lib{}.a", libname))
@@ -879,7 +886,13 @@ fn link_binary_output(sess: &Session,
             link_natively(sess, false, &obj_filename, &out_filename);
         }
         session::CrateTypeDylib => {
-            link_natively(sess, true, &obj_filename, &out_filename);
+            if sess.targ_cfg.os == abi::OsMacos && sess.targ_cfg.arch == abi::Arm {
+                sess.note(format!("No dylib for iOS -> saving static library {} to {}", obj_filename.display(), out_filename.display()));
+                link_staticlib(sess, &obj_filename, &out_filename);
+            }
+            else {
+                link_natively(sess, true, &obj_filename, &out_filename);
+            }
         }
     }
 

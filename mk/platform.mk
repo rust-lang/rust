@@ -191,6 +191,9 @@ CFG_RUN_i686-unknown-linux-gnu=$(2)
 CFG_RUN_TARG_i686-unknown-linux-gnu=$(call CFG_RUN_i686-unknown-linux-gnu,,$(2))
 
 # arm-apple-ios configuration
+## -float-abi=hard -mattr=+vfp3,+v7 -> LLC
+##  -float-abi=hard -mattr=+vfp3,+v7,+thumb2 -mcpu=cortex-a8 -march=arm -> LLC
+## -mcpu=cortex-a8 -mfpu=vfp3 -march=armv7 -> cflags
 CFG_SDK_NAME_arm-apple-ios = iphoneos
 CFG_SDK_ARCHS_arm-apple-ios = armv7
 CFG_IOS_SDK = $(shell xcrun --show-sdk-path -sdk iphoneos 2>/dev/null)
@@ -203,14 +206,14 @@ CFG_LIB_NAME_arm-apple-ios = lib$(1).a
 CFG_LIB_GLOB_arm-apple-ios = lib$(1)-*.a
 CFG_STATIC_LIB_NAME_arm-apple-ios=lib$(1).a
 CFG_LIB_DSYM_GLOB_arm-apple-ios = lib$(1)-*.a.dSYM
-CFG_GCCISH_CFLAGS_arm-apple-ios := -Wall -Werror -g -fPIC $(CFG_IOS_FLAGS) -mfpu=vfp3 -arch armv7 -mcpu=cortex-a8 -march=armv7
+CFG_GCCISH_CFLAGS_arm-apple-ios := -Wall -Werror -g -fPIC $(CFG_IOS_FLAGS) -mfpu=vfp3 -arch armv7
 CFG_GCCISH_CXXFLAGS_arm-apple-ios := -fno-rtti $(CFG_IOS_FLAGS)
 CFG_GCCISH_LINK_FLAGS_arm-apple-ios := -lpthread -L$(CFG_IOS_SDK)/usr/lib -Wl,-no_compact_unwind
 CFG_GCCISH_DEF_FLAG_arm-apple-ios := -Wl,-exported_symbols_list,
 CFG_GCCISH_PRE_LIB_FLAGS_arm-apple-ios :=
 CFG_GCCISH_POST_LIB_FLAGS_arm-apple-ios :=
 CFG_DEF_SUFFIX_arm-apple-ios := .darwin.def
-CFG_LLC_FLAGS_arm-apple-ios := -mfpu=vfp3 -arch armv7 -mcpu=cortex-a8 -march=armv7
+CFG_LLC_FLAGS_arm-apple-ios := -mattr=+vfp3,+v7,+thumb2,+neon -march=arm
 CFG_INSTALL_NAME_arm-apple-ios = -Wl,-install_name,@rpath/$(1)
 CFG_LIBUV_LINK_FLAGS_arm-apple-ios =
 CFG_EXE_SUFFIX_arm-apple-ios :=
@@ -220,6 +223,8 @@ CFG_PATH_MUNGE_arm-apple-ios := true
 CFG_LDPATH_arm-apple-ios :=
 CFG_RUN_arm-apple-ios = $(2)
 CFG_RUN_TARG_arm-apple-ios = $(call CFG_RUN_arm-apple-ios,,$(2))
+RUSTC_FLAGS_arm-apple-ios := -C relocation_model=pic
+RUSTC_CROSS_FLAGS_arm-apple-ios :=-C relocation_model=pic
 
 # i386-apple-ios configuration
 CFG_SDK_NAME_i386-apple-ios = iphonesimulator
