@@ -1102,10 +1102,10 @@ impl<'a> ErrorReportingHelpers for InferCtxt<'a> {
                                 output: ast::P<ast::Ty>,
                                 item: ast::P<ast::Item>,
                                 generics: ast::Generics) {
-        let (fn_decl, purity, ident) = match item.node {
+        let (fn_decl, fn_style, ident) = match item.node {
             // FIXME: handling method
-            ast::ItemFn(ref fn_decl, ref purity, _, _, _) => {
-                (fn_decl, purity, item.ident)
+            ast::ItemFn(ref fn_decl, ref fn_style, _, _, _) => {
+                (fn_decl, fn_style, item.ident)
             },
             _ => fail!("Expect function or method")
 
@@ -1117,7 +1117,7 @@ impl<'a> ErrorReportingHelpers for InferCtxt<'a> {
             variadic: fn_decl.variadic
         };
         let suggested_fn =
-            pprust::fun_to_str(&fd, *purity, ident, None, &generics);
+            pprust::fun_to_str(&fd, *fn_style, ident, None, &generics);
         let msg = format!("consider using an explicit lifetime \
                            parameter as shown: {}", suggested_fn);
         self.tcx.sess.span_note(item.span, msg);

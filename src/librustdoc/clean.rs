@@ -356,7 +356,7 @@ impl Clean<Generics> for ast::Generics {
 pub struct Method {
     pub generics: Generics,
     pub self_: SelfTy,
-    pub purity: ast::Purity,
+    pub fn_style: ast::FnStyle,
     pub decl: FnDecl,
 }
 
@@ -383,7 +383,7 @@ impl Clean<Item> for ast::Method {
             inner: MethodItem(Method {
                 generics: self.generics.clean(),
                 self_: self.explicit_self.clean(),
-                purity: self.purity.clone(),
+                fn_style: self.fn_style.clone(),
                 decl: decl,
             }),
         }
@@ -392,7 +392,7 @@ impl Clean<Item> for ast::Method {
 
 #[deriving(Clone, Encodable, Decodable)]
 pub struct TyMethod {
-    pub purity: ast::Purity,
+    pub fn_style: ast::FnStyle,
     pub decl: FnDecl,
     pub generics: Generics,
     pub self_: SelfTy,
@@ -419,7 +419,7 @@ impl Clean<Item> for ast::TypeMethod {
             id: self.id,
             visibility: None,
             inner: TyMethodItem(TyMethod {
-                purity: self.purity.clone(),
+                fn_style: self.fn_style.clone(),
                 decl: decl,
                 self_: self.explicit_self.clean(),
                 generics: self.generics.clean(),
@@ -451,7 +451,7 @@ impl Clean<SelfTy> for ast::ExplicitSelf {
 pub struct Function {
     pub decl: FnDecl,
     pub generics: Generics,
-    pub purity: ast::Purity,
+    pub fn_style: ast::FnStyle,
 }
 
 impl Clean<Item> for doctree::Function {
@@ -465,7 +465,7 @@ impl Clean<Item> for doctree::Function {
             inner: FunctionItem(Function {
                 decl: self.decl.clean(),
                 generics: self.generics.clean(),
-                purity: self.purity,
+                fn_style: self.fn_style,
             }),
         }
     }
@@ -478,7 +478,7 @@ pub struct ClosureDecl {
     pub lifetimes: Vec<Lifetime>,
     pub decl: FnDecl,
     pub onceness: ast::Onceness,
-    pub purity: ast::Purity,
+    pub fn_style: ast::FnStyle,
     pub bounds: Vec<TyParamBound>,
 }
 
@@ -490,7 +490,7 @@ impl Clean<ClosureDecl> for ast::ClosureTy {
             lifetimes: self.lifetimes.clean().move_iter().collect(),
             decl: self.decl.clean(),
             onceness: self.onceness,
-            purity: self.purity,
+            fn_style: self.fn_style,
             bounds: match self.bounds {
                 Some(ref x) => x.clean().move_iter().collect(),
                 None        => Vec::new()
@@ -960,7 +960,7 @@ impl Clean<Item> for doctree::Typedef {
 
 #[deriving(Clone, Encodable, Decodable)]
 pub struct BareFunctionDecl {
-    pub purity: ast::Purity,
+    pub fn_style: ast::FnStyle,
     pub generics: Generics,
     pub decl: FnDecl,
     pub abi: ~str,
@@ -969,7 +969,7 @@ pub struct BareFunctionDecl {
 impl Clean<BareFunctionDecl> for ast::BareFnTy {
     fn clean(&self) -> BareFunctionDecl {
         BareFunctionDecl {
-            purity: self.purity,
+            fn_style: self.fn_style,
             generics: Generics {
                 lifetimes: self.lifetimes.clean().move_iter().collect(),
                 type_params: Vec::new(),
@@ -1164,7 +1164,7 @@ impl Clean<Item> for ast::ForeignItem {
                 ForeignFunctionItem(Function {
                     decl: decl.clean(),
                     generics: generics.clean(),
-                    purity: ast::ExternFn,
+                    fn_style: ast::ExternFn,
                 })
             }
             ast::ForeignItemStatic(ref ty, mutbl) => {

@@ -49,7 +49,7 @@ pub trait TypeFolder {
                        -> ty::BareFnTy {
         ty::BareFnTy { sig: self.fold_sig(&fty.sig),
                        abi: fty.abi,
-                       purity: fty.purity }
+                       fn_style: fty.fn_style }
     }
 
     fn fold_closure_ty(&mut self,
@@ -58,7 +58,7 @@ pub trait TypeFolder {
         ty::ClosureTy {
             region: self.fold_region(fty.region),
             sig: self.fold_sig(&fty.sig),
-            purity: fty.purity,
+            fn_style: fty.fn_style,
             sigil: fty.sigil,
             onceness: fty.onceness,
             bounds: fty.bounds,

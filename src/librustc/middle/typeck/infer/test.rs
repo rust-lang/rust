@@ -182,7 +182,7 @@ impl Env {
         let inputs = input_tys.map(|t| {mode: ast::expl(ast::by_copy),
                                         ty: *t});
         ty::mk_fn(self.tcx, FnTyBase {
-            meta: FnMeta {purity: ast::ImpureFn,
+            meta: FnMeta {fn_style: ast::NormalFn,
                           proto: ast::ProtoBare,
                           onceness: ast::Many,
                           region: ty::ReStatic,

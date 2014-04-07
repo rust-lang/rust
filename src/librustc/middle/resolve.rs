@@ -1182,11 +1182,11 @@ impl<'a> Resolver<'a> {
                     (DefStatic(local_def(item.id), mutbl), sp, is_public);
                 parent
             }
-            ItemFn(_, purity, _, _, _) => {
+            ItemFn(_, fn_style, _, _, _) => {
               let (name_bindings, new_parent) =
                 self.add_child(ident, parent, ForbidDuplicateValues, sp);
 
-                let def = DefFn(local_def(item.id), purity);
+                let def = DefFn(local_def(item.id), fn_style);
                 name_bindings.define_value(def, sp, is_public);
                 new_parent
             }
@@ -1313,7 +1313,7 @@ impl<'a> Resolver<'a> {
                                     DefStaticMethod(local_def(method.id),
                                                       FromImpl(local_def(
                                                         item.id)),
-                                                      method.purity)
+                                                      method.fn_style)
                                 }
                                 _ => {
                                     // Non-static methods become
@@ -1364,7 +1364,7 @@ impl<'a> Resolver<'a> {
                             // Static methods become `def_static_method`s.
                             DefStaticMethod(local_def(ty_m.id),
                                               FromTrait(local_def(item.id)),
-                                              ty_m.purity)
+                                              ty_m.fn_style)
                         }
                         _ => {
                             // Non-static methods become `def_method`s.
@@ -1869,7 +1869,7 @@ impl<'a> Resolver<'a> {
                                                        DUMMY_SP);
                                     let def = DefFn(
                                         static_method_info.def_id,
-                                        static_method_info.purity);
+                                        static_method_info.fn_style);
 
                                     method_name_bindings.define_value(
                                         def, DUMMY_SP,
