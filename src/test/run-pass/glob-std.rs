@@ -138,6 +138,8 @@ pub fn main() {
     assert_eq!(glob_vec("nonexistent/../bbb"), Vec::new());
     assert_eq!(glob_vec("aaa/tomato/tomato.txt/.."), Vec::new());
 
+    assert_eq!(glob_vec("aaa/tomato/tomato.txt/"), Vec::new());
+
     assert_eq!(glob_vec("aa[a]"), vec!(abs_path("aaa")));
     assert_eq!(glob_vec("aa[abc]"), vec!(abs_path("aaa")));
     assert_eq!(glob_vec("a[bca]a"), vec!(abs_path("aaa")));
