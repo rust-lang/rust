@@ -76,7 +76,7 @@ fn lookup_hash<'a>(d: ebml::Doc<'a>, eq_fn: |&[u8]| -> bool,
     ret
 }
 
-pub type GetCrateDataCb<'a> = 'a |ast::CrateNum| -> Cmd;
+pub type GetCrateDataCb<'a> = |ast::CrateNum|: 'a -> Cmd;
 
 pub fn maybe_find_item<'a>(item_id: ast::NodeId,
                            items: ebml::Doc<'a>) -> Option<ebml::Doc<'a>> {
@@ -637,11 +637,11 @@ pub fn get_item_path(cdata: Cmd, id: ast::NodeId) -> Vec<ast_map::PathElem> {
     item_path(lookup_item(id, cdata.data()))
 }
 
-pub type DecodeInlinedItem<'a> = 'a |cdata: @cstore::crate_metadata,
-                                     tcx: &ty::ctxt,
-                                     path: Vec<ast_map::PathElem>,
-                                     par_doc: ebml::Doc|
-                                     -> Result<ast::InlinedItem, Vec<ast_map::PathElem> >;
+pub type DecodeInlinedItem<'a> = |cdata: @cstore::crate_metadata,
+                                  tcx: &ty::ctxt,
+                                  path: Vec<ast_map::PathElem>,
+                                  par_doc: ebml::Doc|: 'a
+                                  -> Result<ast::InlinedItem, Vec<ast_map::PathElem> >;
 
 pub fn maybe_get_item_ast(cdata: Cmd, tcx: &ty::ctxt, id: ast::NodeId,
                           decode_inlined_item: DecodeInlinedItem)

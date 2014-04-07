@@ -23,7 +23,7 @@ pub enum FileMatch { FileMatches, FileDoesntMatch }
 
 /// Functions with type `pick` take a parent directory as well as
 /// a file found in that directory.
-pub type pick<'a> = 'a |path: &Path| -> FileMatch;
+pub type pick<'a> = |path: &Path|: 'a -> FileMatch;
 
 pub struct FileSearch<'a> {
     pub sysroot: &'a Path,

@@ -801,7 +801,7 @@ mod test {
     #[test]
     fn test_shuffle() {
         let mut r = task_rng();
-        let mut empty: &mut [int] = &mut [];
+        let empty: &mut [int] = &mut [];
         r.shuffle(empty);
         let mut one = [1];
         r.shuffle(one);

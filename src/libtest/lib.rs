@@ -123,7 +123,7 @@ pub enum TestFn {
     StaticTestFn(fn()),
     StaticBenchFn(fn(&mut BenchHarness)),
     StaticMetricFn(proc(&mut MetricMap)),
-    DynTestFn(proc:Send()),
+    DynTestFn(proc():Send),
     DynMetricFn(proc(&mut MetricMap)),
     DynBenchFn(~TDynBenchFn)
 }
@@ -948,7 +948,7 @@ pub fn run_test(force_ignore: bool,
     #[allow(deprecated_owned_vector)]
     fn run_test_inner(desc: TestDesc,
                       monitor_ch: Sender<MonitorMsg>,
-                      testfn: proc:Send()) {
+                      testfn: proc():Send) {
         spawn(proc() {
             let (tx, rx) = channel();
             let mut reader = ChanReader::new(rx);

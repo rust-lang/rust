@@ -70,7 +70,7 @@ pub enum BlockedTask {
 pub enum DeathAction {
     /// Action to be done with the exit code. If set, also makes the task wait
     /// until all its watched children exit before collecting the status.
-    Execute(proc:Send(TaskResult)),
+    Execute(proc(TaskResult):Send),
     /// A channel to send the result of the task on when the task exits
     SendMessage(Sender<TaskResult>),
 }
@@ -236,7 +236,7 @@ impl Task {
 
     /// Spawns a sibling to this task. The newly spawned task is configured with
     /// the `opts` structure and will run `f` as the body of its code.
-    pub fn spawn_sibling(mut ~self, opts: TaskOpts, f: proc:Send()) {
+    pub fn spawn_sibling(mut ~self, opts: TaskOpts, f: proc():Send) {
         let ops = self.imp.take_unwrap();
         ops.spawn_sibling(self, opts, f)
     }

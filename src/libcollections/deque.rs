@@ -96,7 +96,7 @@ pub mod bench {
             map.insert(*k, 1);
         }
 
-        rng.shuffle_mut(keys);
+        rng.shuffle(keys);
 
         // measure
         let mut i = 0;
