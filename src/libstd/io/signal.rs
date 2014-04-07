@@ -23,6 +23,7 @@ use clone::Clone;
 use comm::{Sender, Receiver, channel};
 use io;
 use iter::Iterator;
+use kinds::Send;
 use mem::drop;
 use option::{Some, None};
 use result::{Ok, Err};
@@ -63,25 +64,23 @@ pub enum Signum {
 ///
 /// # Example
 ///
-/// ```rust,ignore
+/// ```rust,no_run
+/// # #![allow(unused_must_use)]
 /// use std::io::signal::{Listener, Interrupt};
 ///
 /// let mut listener = Listener::new();
 /// listener.register(Interrupt);
 ///
-/// spawn({
-///     loop {
-///         match listener.rx.recv() {
-///             Interrupt => println!("Got Interrupt'ed"),
-///             _ => (),
-///         }
+/// loop {
+///     match listener.rx.recv() {
+///         Interrupt => println!("Got Interrupt'ed"),
+///         _ => (),
 ///     }
-/// });
-///
+/// }
 /// ```
 pub struct Listener {
     /// A map from signums to handles to keep the handles in memory
-    handles: ~[(Signum, ~RtioSignal)],
+    handles: ~[(Signum, ~RtioSignal:Send)],
     /// This is where all the handles send signums, which are received by
     /// the clients from the receiver.
     tx: Sender<Signum>,
