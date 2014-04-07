@@ -8,50 +8,47 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
+//! Defines the `Ord` and `Eq` comparison traits.
+//!
+//! This module defines both `Ord` and `Eq` traits which are used by the
+//! compiler to implement comparison operators. Rust programs may implement
+//!`Ord` to overload the `<`, `<=`, `>`, and `>=` operators, and may implement
+//! `Eq` to overload the `==` and `!=` operators.
+//!
+//! For example, to define a type with a customized definition for the Eq
+//! operators, you could do the following:
+//!
+//! ```rust
+//! // Our type.
+//! struct SketchyNum {
+//!     num : int
+//! }
+//!
+//! // Our implementation of `Eq` to support `==` and `!=`.
+//! impl Eq for SketchyNum {
+//!     // Our custom eq allows numbers which are near eachother to be equal! :D
+//!     fn eq(&self, other: &SketchyNum) -> bool {
+//!         (self.num - other.num).abs() < 5
+//!     }
+//! }
+//!
+//! // Now these binary operators will work when applied!
+//! assert!(SketchyNum {num: 37} == SketchyNum {num: 34});
+//! assert!(SketchyNum {num: 25} != SketchyNum {num: 57});
+//! ```
 
-Defines the `Ord` and `Eq` comparison traits.
-
-This module defines both `Ord` and `Eq` traits which are used by the compiler
-to implement comparison operators.
-Rust programs may implement `Ord` to overload the `<`, `<=`, `>`, and `>=` operators,
-and may implement `Eq` to overload the `==` and `!=` operators.
-
-For example, to define a type with a customized definition for the Eq operators,
-you could do the following:
-
-```rust
-// Our type.
-struct SketchyNum {
-    num : int
-}
-
-// Our implementation of `Eq` to support `==` and `!=`.
-impl Eq for SketchyNum {
-    // Our custom eq allows numbers which are near eachother to be equal! :D
-    fn eq(&self, other: &SketchyNum) -> bool {
-        (self.num - other.num).abs() < 5
-    }
-}
-
-// Now these binary operators will work when applied!
-assert!(SketchyNum {num: 37} == SketchyNum {num: 34});
-assert!(SketchyNum {num: 25} != SketchyNum {num: 57});
-```
-
-*/
-
-/**
-* Trait for values that can be compared for equality and inequality.
-*
-* This trait allows partial equality, where types can be unordered instead of strictly equal or
-* unequal. For example, with the built-in floating-point types `a == b` and `a != b` will both
-* evaluate to false if either `a` or `b` is NaN (cf. IEEE 754-2008 section 5.11).
-*
-* Eq only requires the `eq` method to be implemented; `ne` is its negation by default.
-*
-* Eventually, this will be implemented by default for types that implement `TotalEq`.
-*/
+/// Trait for values that can be compared for equality and inequality.
+///
+/// This trait allows partial equality, where types can be unordered instead of
+/// strictly equal or unequal. For example, with the built-in floating-point
+/// types `a == b` and `a != b` will both evaluate to false if either `a` or
+/// `b` is NaN (cf. IEEE 754-2008 section 5.11).
+///
+/// Eq only requires the `eq` method to be implemented; `ne` is its negation by
+/// default.
+///
+/// Eventually, this will be implemented by default for types that implement
+/// `TotalEq`.
 #[lang="eq"]
 pub trait Eq {
     /// This method tests for `self` and `other` values to be equal, and is used by `==`.
@@ -62,7 +59,15 @@ pub trait Eq {
     fn ne(&self, other: &Self) -> bool { !self.eq(other) }
 }
 
-/// Trait for equality comparisons where `a == b` and `a != b` are strict inverses.
+/// Trait for equality comparisons which are [equivalence relations](
+/// https://en.wikipedia.org/wiki/Equivalence_relation).
+///
+/// This means, that in addition to `a == b` and `a != b` being strict
+/// inverses, the equality must be (for all `a`, `b` and `c`):
+///
+/// - reflexive: `a == a`;
+/// - symmetric: `a == b` implies `b == a`; and
+/// - transitive: `a == b` and `b == c` implies `a == c`.
 pub trait TotalEq: Eq {
     // FIXME #13101: this method is used solely by #[deriving] to
     // assert that every component of a type implements #[deriving]
@@ -111,7 +116,15 @@ pub enum Ordering {
    Greater = 1
 }
 
-/// Trait for types that form a total order.
+/// Trait for types that form a [total order](
+/// https://en.wikipedia.org/wiki/Total_order).
+///
+/// An order is a total order if it is (for all `a`, `b` and `c`):
+///
+/// - total and antisymmetric: exactly one of `a < b`, `a == b` or `a > b` is
+///   true; and
+/// - transitive, `a < b` and `b < c` implies `a < c`. The same must hold for
+///   both `==` and `>`.
 pub trait TotalOrd: TotalEq + Ord {
     /// This method returns an ordering between `self` and `other` values.
     ///
@@ -168,13 +181,11 @@ totalord_impl!(uint)
 
 totalord_impl!(char)
 
-/**
- * Combine orderings, lexically.
- *
- * For example for a type `(int, int)`, two comparisons could be done.
- * If the first ordering is different, the first ordering is all that must be returned.
- * If the first ordering is equal, then second ordering is returned.
-*/
+/// Combine orderings, lexically.
+///
+/// For example for a type `(int, int)`, two comparisons could be done.
+/// If the first ordering is different, the first ordering is all that must be returned.
+/// If the first ordering is equal, then second ordering is returned.
 #[inline]
 pub fn lexical_ordering(o1: Ordering, o2: Ordering) -> Ordering {
     match o1 {
@@ -183,16 +194,14 @@ pub fn lexical_ordering(o1: Ordering, o2: Ordering) -> Ordering {
     }
 }
 
-/**
-* Trait for values that can be compared for a sort-order.
-*
-* Ord only requires implementation of the `lt` method,
-* with the others generated from default implementations.
-*
-* However it remains possible to implement the others separately,
-* for compatibility with floating-point NaN semantics
-* (cf. IEEE 754-2008 section 5.11).
-*/
+/// Trait for values that can be compared for a sort-order.
+///
+/// Ord only requires implementation of the `lt` method,
+/// with the others generated from default implementations.
+///
+/// However it remains possible to implement the others separately,
+/// for compatibility with floating-point NaN semantics
+/// (cf. IEEE 754-2008 section 5.11).
 #[lang="ord"]
 pub trait Ord: Eq {
     /// This method tests less than (for `self` and `other`) and is used by the `<` operator.
