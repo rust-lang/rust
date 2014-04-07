@@ -2854,7 +2854,8 @@ mod tests {
         A(f64),
         B(~str)
     }
-    fn check_err<T: Decodable<Decoder, DecoderError>>(to_parse: &'static str, expected: DecoderError) {
+    fn check_err<T: Decodable<Decoder, DecoderError>>(to_parse: &'static str,
+                                                      expected: DecoderError) {
         let res: DecodeResult<T> = match from_str(to_parse) {
             Err(e) => Err(ParseError(e)),
             Ok(json) => Decodable::decode(&mut Decoder::new(json))
