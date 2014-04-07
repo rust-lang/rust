@@ -524,7 +524,37 @@ fn spawn_process_os(config: p::ProcessConfig,
                     Ok(..) => fail!("short read on the cloexec pipe"),
                 };
             }
-            drop(input);
+            // And at this point we've reached a special time in the life of the
+            // child. The child must now be considered hamstrung and unable to
+            // do anything other than syscalls really. Consider the following
+            // scenario:
+            //
+            //      1. Thread A of process 1 grabs the malloc() mutex
+            //      2. Thread B of process 1 forks(), creating thread C
+            //      3. Thread C of process 2 then attempts to malloc()
+            //      4. The memory of process 2 is the same as the memory of
+            //         process 1, so the mutex is locked.
+            //
+            // This situation looks a lot like deadlock, right? It turns out
+            // that this is what pthread_atfork() takes care of, which is
+            // presumably implemented across platforms. The first thing that
+            // threads to *before* forking is to do things like grab the malloc
+            // mutex, and then after the fork they unlock it.
+            //
+            // Despite this information, libnative's spawn has been witnessed to
+            // deadlock on both OSX and FreeBSD. I'm not entirely sure why, but
+            // all collected backtraces point at malloc/free traffic in the
+            // child spawned process.
+            //
+            // For this reason, the block of code below should contain 0
+            // invocations of either malloc of free (or their related friends).
+            //
+            // As an example of not having malloc/free traffic, we don't close
+            // this file descriptor by dropping the FileDesc (which contains an
+            // allocation). Instead we just close it manually. This will never
+            // have the drop glue anyway because this code never returns (the
+            // child will either exec() or invoke libc::exit)
+            let _ = libc::close(input.fd());
 
             fn fail(output: &mut file::FileDesc) -> ! {
                 let errno = os::errno();
