@@ -59,8 +59,10 @@ fn run_ar(sess: &Session, args: &str, cwd: Option<&Path>,
             if !o.status.success() {
                 sess.err(format!("{} {} failed with: {}", ar, args.connect(" "),
                                  o.status));
-                sess.note(format!("stdout ---\n{}", str::from_utf8(o.output).unwrap()));
-                sess.note(format!("stderr ---\n{}", str::from_utf8(o.error).unwrap()));
+                sess.note(format!("stdout ---\n{}",
+                                  str::from_utf8(o.output.as_slice()).unwrap()));
+                sess.note(format!("stderr ---\n{}",
+                                  str::from_utf8(o.error.as_slice()).unwrap()));
                 sess.abort_if_errors();
             }
             o
@@ -129,7 +131,7 @@ impl<'a> Archive<'a> {
     /// Lists all files in an archive
     pub fn files(&self) -> Vec<~str> {
         let output = run_ar(self.sess, "t", None, [&self.dst]);
-        let output = str::from_utf8(output.output).unwrap();
+        let output = str::from_utf8(output.output.as_slice()).unwrap();
         // use lines_any because windows delimits output with `\r\n` instead of
         // just `\n`
         output.lines_any().map(|s| s.to_owned()).collect()

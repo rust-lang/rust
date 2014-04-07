@@ -34,7 +34,7 @@ pub fn highlight(src: &str, class: Option<&str>) -> ~str {
          lexer::new_string_reader(&sess.span_diagnostic, fm),
          class,
          &mut out).unwrap();
-    str::from_utf8_lossy(out.unwrap()).into_owned()
+    str::from_utf8_lossy(out.unwrap().as_slice()).into_owned()
 }
 
 /// Exhausts the `lexer` writing the output into `out`.

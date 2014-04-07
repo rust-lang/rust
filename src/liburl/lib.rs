@@ -460,7 +460,7 @@ pub fn query_to_str(query: &Query) -> ~str {
         write!(&mut writer, "{}={}", encode_component(*k),
                encode_component(*v));
     }
-    str::from_utf8_lossy(writer.unwrap()).into_owned()
+    str::from_utf8_lossy(writer.unwrap().as_slice()).into_owned()
 }
 
 /**

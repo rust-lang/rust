@@ -405,7 +405,7 @@ mod test {
 
     #[test]
     fn test_buffered_reader() {
-        let inner = MemReader::new(~[0, 1, 2, 3, 4]);
+        let inner = MemReader::new(vec!(0, 1, 2, 3, 4));
         let mut reader = BufferedReader::with_capacity(2, inner);
 
         let mut buf = [0, 0, 0];
@@ -502,12 +502,12 @@ mod test {
 
     #[test]
     fn test_read_until() {
-        let inner = MemReader::new(~[0, 1, 2, 1, 0]);
+        let inner = MemReader::new(vec!(0, 1, 2, 1, 0));
         let mut reader = BufferedReader::with_capacity(2, inner);
-        assert_eq!(reader.read_until(0), Ok(~[0]));
-        assert_eq!(reader.read_until(2), Ok(~[1, 2]));
-        assert_eq!(reader.read_until(1), Ok(~[1]));
-        assert_eq!(reader.read_until(8), Ok(~[0]));
+        assert_eq!(reader.read_until(0), Ok(vec!(0)));
+        assert_eq!(reader.read_until(2), Ok(vec!(1, 2)));
+        assert_eq!(reader.read_until(1), Ok(vec!(1)));
+        assert_eq!(reader.read_until(8), Ok(vec!(0)));
         assert!(reader.read_until(9).is_err());
     }
 
@@ -533,7 +533,7 @@ mod test {
 
     #[test]
     fn test_read_line() {
-        let in_buf = MemReader::new(bytes!("a\nb\nc").to_owned());
+        let in_buf = MemReader::new(Vec::from_slice(bytes!("a\nb\nc")));
         let mut reader = BufferedReader::with_capacity(2, in_buf);
         assert_eq!(reader.read_line(), Ok(~"a\n"));
         assert_eq!(reader.read_line(), Ok(~"b\n"));
@@ -543,7 +543,7 @@ mod test {
 
     #[test]
     fn test_lines() {
-        let in_buf = MemReader::new(bytes!("a\nb\nc").to_owned());
+        let in_buf = MemReader::new(Vec::from_slice(bytes!("a\nb\nc")));
         let mut reader = BufferedReader::with_capacity(2, in_buf);
         let mut it = reader.lines();
         assert_eq!(it.next(), Some(Ok(~"a\n")));

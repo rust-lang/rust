@@ -389,7 +389,7 @@ fn json_output(krate: clean::Crate, res: Vec<plugins::PluginJson> ,
             let mut encoder = json::Encoder::new(&mut w as &mut io::Writer);
             krate.encode(&mut encoder).unwrap();
         }
-        str::from_utf8_owned(w.unwrap()).unwrap()
+        str::from_utf8(w.unwrap().as_slice()).unwrap().to_owned()
     };
     let crate_json = match json::from_str(crate_json_str) {
         Ok(j) => j,

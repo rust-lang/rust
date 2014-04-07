@@ -756,7 +756,7 @@ mod test {
     macro_rules! t( ($a:expr, $b:expr) => ({
         let mut m = MemWriter::new();
         super::demangle(&mut m, $a).unwrap();
-        assert_eq!(str::from_utf8_owned(m.unwrap()).unwrap(), $b.to_owned());
+        assert_eq!(str::from_utf8(m.unwrap().as_slice()).unwrap().to_owned(), $b.to_owned());
     }) )
 
     #[test]

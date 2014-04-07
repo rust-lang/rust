@@ -312,7 +312,7 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
         }
         try!(write!(&mut w, "\\};"));
 
-        str::from_utf8_owned(w.unwrap()).unwrap()
+        str::from_utf8(w.unwrap().as_slice()).unwrap().to_owned()
     };
 
     // Write out the shared files. Note that these are shared among all rustdoc
@@ -487,7 +487,7 @@ impl<'a> SourceCollector<'a> {
                        filename.ends_with("macros>") => return Ok(()),
             Err(e) => return Err(e)
         };
-        let contents = str::from_utf8_owned(contents).unwrap();
+        let contents = str::from_utf8(contents.as_slice()).unwrap();
 
         // Remove the utf-8 BOM if any
         let contents = if contents.starts_with("\ufeff") {

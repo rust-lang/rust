@@ -28,7 +28,7 @@ use reflect::{MovePtr, align};
 use result::{Ok, Err};
 use str::StrSlice;
 use to_str::ToStr;
-use slice::OwnedVector;
+use slice::{Vector, OwnedVector};
 use intrinsics::{Disr, Opaque, TyDesc, TyVisitor, get_tydesc, visit_tydesc};
 use raw;
 
@@ -608,7 +608,7 @@ pub fn repr_to_str<T>(t: &T) -> ~str {
 
     let mut result = io::MemWriter::new();
     write_repr(&mut result as &mut io::Writer, t).unwrap();
-    str::from_utf8_owned(result.unwrap()).unwrap()
+    str::from_utf8(result.unwrap().as_slice()).unwrap().to_owned()
 }
 
 #[cfg(test)]
@@ -626,7 +626,7 @@ fn test_repr() {
     fn exact_test<T>(t: &T, e:&str) {
         let mut m = io::MemWriter::new();
         write_repr(&mut m as &mut io::Writer, t).unwrap();
-        let s = str::from_utf8_owned(m.unwrap()).unwrap();
+        let s = str::from_utf8(m.unwrap().as_slice()).unwrap().to_owned();
         assert_eq!(s.as_slice(), e);
     }
 

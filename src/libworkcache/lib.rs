@@ -256,7 +256,7 @@ fn json_encode<'a, T:Encodable<json::Encoder<'a>, io::IoError>>(t: &T) -> ~str {
     let mut writer = MemWriter::new();
     let mut encoder = json::Encoder::new(&mut writer as &mut io::Writer);
     let _ = t.encode(&mut encoder);
-    str::from_utf8_owned(writer.unwrap()).unwrap()
+    str::from_utf8(writer.unwrap().as_slice()).unwrap().to_owned()
 }
 
 // FIXME(#5121)
@@ -479,7 +479,7 @@ impl<'a, T:Send +
 fn test() {
     use std::os;
     use std::io::{fs, Process};
-    use std::str::from_utf8_owned;
+    use std::str::from_utf8;
 
     // Create a path to a new file 'filename' in the directory in which
     // this test is running.
@@ -505,7 +505,7 @@ fn test() {
         let pth = pth.clone();
 
         let contents = File::open(&pth).read_to_end().unwrap();
-        let file_content = from_utf8_owned(contents).unwrap();
+        let file_content = from_utf8(contents.as_slice()).unwrap().to_owned();
 
         // FIXME (#9639): This needs to handle non-utf8 paths
         prep.declare_input("file", pth.as_str().unwrap(), file_content);

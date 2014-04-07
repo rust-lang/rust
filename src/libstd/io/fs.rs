@@ -1074,7 +1074,7 @@ mod test {
         check!(copy(&input, &output));
 
         assert_eq!(check!(File::open(&output).read_to_end()),
-                   (bytes!("foo")).to_owned());
+                   (Vec::from_slice(bytes!("foo"))));
     })
 
     iotest!(fn copy_file_src_dir() {
@@ -1114,7 +1114,7 @@ mod test {
         }
         assert_eq!(check!(stat(&out)).size, check!(stat(&input)).size);
         assert_eq!(check!(File::open(&out).read_to_end()),
-                   (bytes!("foobar")).to_owned());
+                   (Vec::from_slice(bytes!("foobar"))));
     })
 
     #[cfg(not(windows))] // apparently windows doesn't like symlinks
@@ -1146,7 +1146,7 @@ mod test {
         }
         assert_eq!(check!(stat(&out)).size, check!(stat(&input)).size);
         assert_eq!(check!(File::open(&out).read_to_end()),
-                   (bytes!("foobar")).to_owned());
+                   (Vec::from_slice(bytes!("foobar"))));
 
         // can't link to yourself
         match link(&input, &input) {
@@ -1206,7 +1206,7 @@ mod test {
         check!(file.fsync());
         assert_eq!(check!(stat(&path)).size, 10);
         assert_eq!(check!(File::open(&path).read_to_end()),
-                   (bytes!("foobar", 0, 0, 0, 0)).to_owned());
+                   (Vec::from_slice(bytes!("foobar", 0, 0, 0, 0))));
 
         // Truncate to a smaller length, don't seek, and then write something.
         // Ensure that the intermediate zeroes are all filled in (we're seeked
@@ -1217,7 +1217,7 @@ mod test {
         check!(file.fsync());
         assert_eq!(check!(stat(&path)).size, 9);
         assert_eq!(check!(File::open(&path).read_to_end()),
-                   (bytes!("fo", 0, 0, 0, 0, "wut")).to_owned());
+                   (Vec::from_slice(bytes!("fo", 0, 0, 0, 0, "wut"))));
         drop(file);
     })
 

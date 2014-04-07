@@ -267,7 +267,7 @@ mod test {
 
     #[test]
     fn read_byte() {
-        let mut reader = MemReader::new(~[10]);
+        let mut reader = MemReader::new(vec!(10));
         let byte = reader.read_byte();
         assert!(byte == Ok(10));
     }
@@ -321,9 +321,9 @@ mod test {
 
     #[test]
     fn read_bytes() {
-        let mut reader = MemReader::new(~[10, 11, 12, 13]);
+        let mut reader = MemReader::new(vec!(10, 11, 12, 13));
         let bytes = reader.read_exact(4).unwrap();
-        assert!(bytes == ~[10, 11, 12, 13]);
+        assert!(bytes == vec!(10, 11, 12, 13));
     }
 
     #[test]
@@ -332,21 +332,21 @@ mod test {
             count: 0,
         };
         let bytes = reader.read_exact(4).unwrap();
-        assert!(bytes == ~[10, 11, 12, 13]);
+        assert!(bytes == vec!(10, 11, 12, 13));
     }
 
     #[test]
     fn read_bytes_eof() {
-        let mut reader = MemReader::new(~[10, 11]);
+        let mut reader = MemReader::new(vec!(10, 11));
         assert!(reader.read_exact(4).is_err());
     }
 
     #[test]
     fn push_exact() {
-        let mut reader = MemReader::new(~[10, 11, 12, 13]);
-        let mut buf = ~[8, 9];
+        let mut reader = MemReader::new(vec!(10, 11, 12, 13));
+        let mut buf = vec!(8, 9);
         reader.push_exact(&mut buf, 4).unwrap();
-        assert!(buf == ~[8, 9, 10, 11, 12, 13]);
+        assert!(buf == vec!(8, 9, 10, 11, 12, 13));
     }
 
     #[test]
@@ -354,17 +354,17 @@ mod test {
         let mut reader = PartialReader {
             count: 0,
         };
-        let mut buf = ~[8, 9];
+        let mut buf = vec!(8, 9);
         reader.push_exact(&mut buf, 4).unwrap();
-        assert!(buf == ~[8, 9, 10, 11, 12, 13]);
+        assert!(buf == vec!(8, 9, 10, 11, 12, 13));
     }
 
     #[test]
     fn push_exact_eof() {
-        let mut reader = MemReader::new(~[10, 11]);
-        let mut buf = ~[8, 9];
+        let mut reader = MemReader::new(vec!(10, 11));
+        let mut buf = vec!(8, 9);
         assert!(reader.push_exact(&mut buf, 4).is_err());
-        assert!(buf == ~[8, 9, 10, 11]);
+        assert!(buf == vec!(8, 9, 10, 11));
     }
 
     #[test]
@@ -372,9 +372,9 @@ mod test {
         let mut reader = ErroringLaterReader {
             count: 0,
         };
-        let mut buf = ~[8, 9];
+        let mut buf = vec!(8, 9);
         assert!(reader.push_exact(&mut buf, 4).is_err());
-        assert!(buf == ~[8, 9, 10]);
+        assert!(buf == vec!(8, 9, 10));
     }
 
     #[test]
@@ -383,7 +383,7 @@ mod test {
             count: 0,
         };
         let buf = reader.read_to_end().unwrap();
-        assert!(buf == ~[10, 11, 12, 13]);
+        assert!(buf == vec!(10, 11, 12, 13));
     }
 
     #[test]
@@ -393,7 +393,7 @@ mod test {
             count: 0,
         };
         let buf = reader.read_to_end().unwrap();
-        assert!(buf == ~[10, 11]);
+        assert!(buf == vec!(10, 11));
     }
 
     #[test]

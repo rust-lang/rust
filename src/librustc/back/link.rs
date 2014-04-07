@@ -350,7 +350,9 @@ pub mod write {
                 if !prog.status.success() {
                     sess.err(format!("linking with `{}` failed: {}", cc, prog.status));
                     sess.note(format!("{} arguments: '{}'", cc, args.connect("' '")));
-                    sess.note(str::from_utf8_owned(prog.error + prog.output).unwrap());
+                    let mut note = prog.error.clone();
+                    note.push_all(prog.output.as_slice());
+                    sess.note(str::from_utf8(note.as_slice()).unwrap().to_owned());
                     sess.abort_if_errors();
                 }
             },
@@ -942,7 +944,8 @@ fn link_rlib<'a>(sess: &'a Session,
             let bc = obj_filename.with_extension("bc");
             let bc_deflated = obj_filename.with_extension("bc.deflate");
             match fs::File::open(&bc).read_to_end().and_then(|data| {
-                fs::File::create(&bc_deflated).write(flate::deflate_bytes(data).as_slice())
+                fs::File::create(&bc_deflated)
+                    .write(flate::deflate_bytes(data.as_slice()).as_slice())
             }) {
                 Ok(()) => {}
                 Err(e) => {
@@ -1038,7 +1041,9 @@ fn link_natively(sess: &Session, dylib: bool, obj_filename: &Path,
             if !prog.status.success() {
                 sess.err(format!("linking with `{}` failed: {}", cc_prog, prog.status));
                 sess.note(format!("{} arguments: '{}'", cc_prog, cc_args.connect("' '")));
-                sess.note(str::from_utf8_owned(prog.error + prog.output).unwrap());
+                let mut output = prog.error.clone();
+                output.push_all(prog.output.as_slice());
+                sess.note(str::from_utf8(output.as_slice()).unwrap().to_owned());
                 sess.abort_if_errors();
             }
         },
