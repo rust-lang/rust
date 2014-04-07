@@ -18,6 +18,7 @@ use driver::{driver, session};
 use driver::session::Session;
 use metadata::csearch;
 use metadata::cstore;
+use metadata::cstore::CStore;
 use metadata::decoder;
 use metadata::loader;
 use metadata::loader::Os;
@@ -38,6 +39,13 @@ use syntax::parse::token;
 use syntax::crateid::CrateId;
 use syntax::visit;
 
+struct Env<'a> {
+    sess: &'a Session,
+    os: loader::Os,
+    next_crate_num: ast::CrateNum,
+    intr: Rc<IdentInterner>
+}
+
 // Traverses an AST, reading all the information about use'd crates and extern
 // libraries necessary for later resolving, typechecking, linking, etc.
 pub fn read_crates(sess: &Session,
@@ -47,16 +55,13 @@ pub fn read_crates(sess: &Session,
     let mut e = Env {
         sess: sess,
         os: os,
-        crate_cache: @RefCell::new(Vec::new()),
-        next_crate_num: 1,
+        next_crate_num: sess.cstore.next_crate_num(),
         intr: intr
     };
     visit_crate(&e, krate);
     visit::walk_crate(&mut e, krate, ());
-    dump_crates(e.crate_cache.borrow().as_slice());
-    warn_if_multiple_versions(&mut e,
-                              sess.diagnostic(),
-                              e.crate_cache.borrow().as_slice());
+    dump_crates(&sess.cstore);
+    warn_if_multiple_versions(sess.diagnostic(), &sess.cstore)
 }
 
 impl<'a> visit::Visitor<()> for Env<'a> {
@@ -70,53 +75,34 @@ impl<'a> visit::Visitor<()> for Env<'a> {
     }
 }
 
-#[deriving(Clone)]
-struct cache_entry {
-    cnum: ast::CrateNum,
-    span: Span,
-    hash: Svh,
-    crate_id: CrateId,
-}
-
-fn dump_crates(crate_cache: &[cache_entry]) {
+fn dump_crates(cstore: &CStore) {
     debug!("resolved crates:");
-    for entry in crate_cache.iter() {
-        debug!("cnum: {:?}", entry.cnum);
-        debug!("span: {:?}", entry.span);
-        debug!("hash: {:?}", entry.hash);
-    }
+    cstore.iter_crate_data(|_, data| {
+        debug!("crate_id: {}", data.crate_id());
+        debug!("  cnum: {}", data.cnum);
+        debug!("  hash: {}", data.hash());
+    })
 }
 
-fn warn_if_multiple_versions(e: &mut Env,
-                             diag: &SpanHandler,
-                             crate_cache: &[cache_entry]) {
-    if crate_cache.len() != 0u {
-        let name = crate_cache[crate_cache.len() - 1].crate_id.name.clone();
+fn warn_if_multiple_versions(diag: &SpanHandler, cstore: &CStore) {
+    let mut map = HashMap::new();
 
-        let (matches, non_matches) = crate_cache.partitioned(|entry|
-            name == entry.crate_id.name);
+    cstore.iter_crate_data(|cnum, data| {
+        let crateid = data.crate_id();
+        let key = (crateid.name.clone(), crateid.path.clone());
+        map.find_or_insert_with(key, |_| Vec::new()).push(cnum);
+    });
 
-        assert!(!matches.is_empty());
-
-        if matches.len() != 1u {
-            diag.handler().warn(
-                format!("using multiple versions of crate `{}`", name));
-            for match_ in matches.iter() {
-                diag.span_note(match_.span, "used here");
-                loader::note_crateid_attr(diag, &match_.crate_id);
-            }
+    for ((name, _), dupes) in map.move_iter() {
+        if dupes.len() == 1 { continue }
+        diag.handler().warn(
+            format!("using multiple versions of crate `{}`", name));
+        for dupe in dupes.move_iter() {
+            let data = cstore.get_crate_data(dupe);
+            diag.span_note(data.span, "used here");
+            loader::note_crateid_attr(diag, &data.crate_id());
         }
-
-        warn_if_multiple_versions(e, diag, non_matches);
     }
-}
-
-struct Env<'a> {
-    sess: &'a Session,
-    os: loader::Os,
-    crate_cache: @RefCell<Vec<cache_entry>>,
-    next_crate_num: ast::CrateNum,
-    intr: Rc<IdentInterner>
 }
 
 fn visit_crate(e: &Env, c: &ast::Crate) {
@@ -269,14 +255,18 @@ fn visit_item(e: &Env, i: &ast::Item) {
 
 fn existing_match(e: &Env, crate_id: &CrateId,
                   hash: Option<&Svh>) -> Option<ast::CrateNum> {
-    for c in e.crate_cache.borrow().iter() {
-        if !crate_id.matches(&c.crate_id) { continue }
-        match hash {
-            Some(hash) if *hash != c.hash => {}
-            Some(..) | None => return Some(c.cnum)
+    let mut ret = None;
+    e.sess.cstore.iter_crate_data(|cnum, data| {
+        let other_id = data.crate_id();
+        if crate_id.matches(&other_id) {
+            let other_hash = data.hash();
+            match hash {
+                Some(hash) if *hash != other_hash => {}
+                Some(..) | None => { ret = Some(cnum); }
+            }
         }
-    }
-    None
+    });
+    return ret;
 }
 
 fn resolve_crate<'a>(e: &mut Env,
@@ -304,17 +294,8 @@ fn resolve_crate<'a>(e: &mut Env,
                 dylib, rlib, metadata
             } = load_ctxt.load_library_crate(root);
 
-            let crate_id = decoder::get_crate_id(metadata.as_slice());
-            let hash = decoder::get_crate_hash(metadata.as_slice());
-
             // Claim this crate number and cache it
             let cnum = e.next_crate_num;
-            e.crate_cache.borrow_mut().push(cache_entry {
-                cnum: cnum,
-                span: span,
-                hash: hash,
-                crate_id: crate_id,
-            });
             e.next_crate_num += 1;
 
             // Stash paths for top-most crate locally if necessary.
@@ -331,16 +312,15 @@ fn resolve_crate<'a>(e: &mut Env,
             let root = if root.is_some() { root } else { &crate_paths };
 
             // Now resolve the crates referenced by this crate
-            let cnum_map = resolve_crate_deps(e,
-            root,
-            metadata.as_slice(),
-            span);
+            let cnum_map = resolve_crate_deps(e, root, metadata.as_slice(),
+                                              span);
 
             let cmeta = @cstore::crate_metadata {
                 name: load_ctxt.crate_id.name.to_owned(),
                 data: metadata,
                 cnum_map: cnum_map,
-                cnum: cnum
+                cnum: cnum,
+                span: span,
             };
 
             e.sess.cstore.set_crate_data(cnum, cmeta);
@@ -390,8 +370,7 @@ impl<'a> Loader<'a> {
             env: Env {
                 sess: sess,
                 os: os,
-                crate_cache: @RefCell::new(Vec::new()),
-                next_crate_num: 1,
+                next_crate_num: sess.cstore.next_crate_num(),
                 intr: token::get_ident_interner(),
             }
         }
@@ -406,7 +385,7 @@ impl<'a> CrateLoader for Loader<'a> {
         let library = self.env.sess.cstore.get_used_crate_source(cnum).unwrap();
         MacroCrate {
             lib: library.dylib,
-            cnum: cnum
+            cnum: cnum,
         }
     }
 
