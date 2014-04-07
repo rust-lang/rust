@@ -317,14 +317,22 @@ impl<'a> Context<'a> {
     // read the metadata from it if `*slot` is `None`. If the metadata couldn't
     // be read, it is assumed that the file isn't a valid rust library (no
     // errors are emitted).
-    //
-    // FIXME(#10786): for an optimization, we only read one of the library's
-    //                metadata sections. In theory we should read both, but
-    //                reading dylib metadata is quite slow.
     fn extract_one(&mut self, m: HashSet<Path>, flavor: &str,
                    slot: &mut Option<MetadataBlob>) -> Option<Path> {
         let mut ret = None::<Path>;
         let mut error = 0;
+
+        if slot.is_some() {
+            // FIXME(#10786): for an optimization, we only read one of the
+            //                library's metadata sections. In theory we should
+            //                read both, but reading dylib metadata is quite
+            //                slow.
+            if m.len() == 0 {
+                return None
+            } else if m.len() == 1 {
+                return Some(m.move_iter().next().unwrap())
+            }
+        }
 
         for lib in m.move_iter() {
             info!("{} reading metadata from: {}", flavor, lib.display());
