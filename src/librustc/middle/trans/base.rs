@@ -936,7 +936,7 @@ pub fn init_local<'a>(bcx: &'a Block<'a>, local: &ast::Local)
         // Handle let _ = e; just like e;
         match local.init {
             Some(init) => {
-              return expr::trans_into(bcx, init, expr::Ignore);
+                return controlflow::trans_stmt_semi(bcx, init)
             }
             None => { return bcx; }
         }
