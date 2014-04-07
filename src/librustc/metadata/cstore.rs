@@ -22,6 +22,8 @@ use std::c_vec::CVec;
 use std::rc::Rc;
 use collections::HashMap;
 use syntax::ast;
+use syntax::crateid::CrateId;
+use syntax::codemap::Span;
 use syntax::parse::token::IdentInterner;
 
 // A map from external crate numbers (as decoded from some crate file) to
@@ -40,6 +42,7 @@ pub struct crate_metadata {
     pub data: MetadataBlob,
     pub cnum_map: cnum_map,
     pub cnum: ast::CrateNum,
+    pub span: Span,
 }
 
 #[deriving(Eq)]
@@ -88,6 +91,10 @@ impl CStore {
         }
     }
 
+    pub fn next_crate_num(&self) -> ast::CrateNum {
+        self.metas.borrow().len() as ast::CrateNum + 1
+    }
+
     pub fn get_crate_data(&self, cnum: ast::CrateNum) -> @crate_metadata {
         *self.metas.borrow().get(&cnum)
     }
@@ -119,6 +126,9 @@ impl CStore {
         self.used_crate_sources.borrow_mut()
             .iter().find(|source| source.cnum == cnum)
             .map(|source| source.clone())
+    }
+
+    pub fn dump_phase_syntax_crates(&self) {
     }
 
     pub fn reset(&self) {
@@ -202,6 +212,8 @@ impl CStore {
 
 impl crate_metadata {
     pub fn data<'a>(&'a self) -> &'a [u8] { self.data.as_slice() }
+    pub fn crate_id(&self) -> CrateId { decoder::get_crate_id(self.data()) }
+    pub fn hash(&self) -> Svh { decoder::get_crate_hash(self.data()) }
 }
 
 impl MetadataBlob {
