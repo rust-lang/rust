@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-fast feature doesn't work
-#[feature(trace_macros, log_syntax)];
+#![feature(trace_macros, log_syntax)]
 
 // make sure these macros can be used as in the various places that
 // macros can occur.

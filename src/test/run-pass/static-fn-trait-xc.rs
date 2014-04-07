@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // aux-build:static_fn_trait_xc_aux.rs
-// ignore-fast
 
 extern crate mycore = "static_fn_trait_xc_aux";
 

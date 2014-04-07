@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-fast
 extern crate sync;
+
 use sync::Arc;
 fn dispose(_x: Arc<bool>) { }
 

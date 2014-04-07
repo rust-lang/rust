@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-fast feature doesn't work.
 
 #[forbid(non_camel_case_types)];
 #[forbid(non_uppercase_statics)];

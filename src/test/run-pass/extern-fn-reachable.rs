@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-fast
 // ignore-win32 dynamic_lib can read dllexported symbols only
 // ignore-linux apparently dlsym doesn't work on program symbols?
 // ignore-android apparently dlsym doesn't work on program symbols?

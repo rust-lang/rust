@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-fast
 // aux-build:kinds_in_metadata.rs
 
 /* Any copyright is dedicated to the Public Domain.

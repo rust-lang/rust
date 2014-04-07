@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-fast - check-fast doesn't understand aux-build
 // aux-build:cci_intrinsic.rs
 
 extern crate cci_intrinsic;

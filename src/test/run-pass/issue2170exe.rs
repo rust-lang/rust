@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-fast - check-fail fast doesn't under aux-build
 // aux-build:issue2170lib.rs
 extern crate issue2170lib;
 

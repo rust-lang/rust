@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-fast
 // aux-build:priv-impl-prim-ty.rs
 
 extern crate bar = "priv-impl-prim-ty";

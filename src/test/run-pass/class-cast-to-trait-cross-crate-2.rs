@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-fast
 // aux-build:cci_class_cast.rs
 extern crate cci_class_cast;
 use std::to_str::ToStr;

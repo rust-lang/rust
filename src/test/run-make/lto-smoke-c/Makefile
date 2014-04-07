@@ -1,7 +1,12 @@
 -include ../tools.mk
 
-ifneq ($(shell uname),Darwin)
+ifeq ($(shell uname),Darwin)
+else
+ifeq ($(shell uname),FreeBSD)
+	EXTRAFLAGS := -lm -lpthread -lgcc_s
+else
 	EXTRAFLAGS := -lm -lrt -ldl -lpthread
+endif
 endif
 
 # Apparently older versions of GCC segfault if -g is passed...

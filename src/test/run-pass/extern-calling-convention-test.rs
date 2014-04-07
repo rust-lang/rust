@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-fast: aux-build not compatible with fast
 // aux-build:extern_calling_convention.rs
 
 extern crate extern_calling_convention;

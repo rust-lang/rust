@@ -16,4 +16,6 @@ fn decode() -> ~str {
     ~""
 }
 
-pub fn main() {}
+pub fn main() {
+    println!("{}", decode());
+}

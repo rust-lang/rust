@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // ignore-linux see joyent/libuv#1189
-// ignore-fast
 // ignore-android needs extra network permissions
 // exec-env:RUST_LOG=debug
 
@@ -17,10 +16,18 @@
 #[phase(syntax, link)]
 extern crate log;
 extern crate libc;
+extern crate green;
+extern crate rustuv;
 
 use std::io::net::ip::{Ipv4Addr, SocketAddr};
 use std::io::net::tcp::{TcpListener, TcpStream};
 use std::io::{Acceptor, Listener};
+use std::task;
+
+#[start]
+fn start(argc: int, argv: **u8) -> int {
+    green::start(argc, argv, rustuv::event_loop, main)
+}
 
 fn main() {
     // This test has a chance to time out, try to not let it time out
@@ -54,7 +61,9 @@ fn main() {
     let (tx, rx) = channel();
     for _ in range(0, 1000) {
         let tx = tx.clone();
-        spawn(proc() {
+        let mut builder = task::task();
+        builder.opts.stack_size = Some(32 * 1024);
+        builder.spawn(proc() {
             match TcpStream::connect(addr) {
                 Ok(stream) => {
                     let mut stream = stream;

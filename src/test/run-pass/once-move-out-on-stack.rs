@@ -10,7 +10,6 @@
 
 // Testing guarantees provided by once functions.
 
-// ignore-fast
 
 #![feature(once_fns)]
 extern crate sync;

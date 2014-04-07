@@ -11,7 +11,6 @@
 // ignore-stage1
 // ignore-pretty
 // ignore-cross-compile #12102
-// ignore-fast
 
 #![feature(phase)]
 #[phase(syntax)]

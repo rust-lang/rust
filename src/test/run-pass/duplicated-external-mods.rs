@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-fast
 // aux-build:anon-extern-mod-cross-crate-1.rs
 // aux-build:anon-extern-mod-cross-crate-1.rs
 extern crate anonexternmod;

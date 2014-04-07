@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-fast compile-flags doesn't work with fast-check
 // compile-flags: --cfg foo --cfg bar(baz) --cfg qux="foo"
 
 pub fn main() {
