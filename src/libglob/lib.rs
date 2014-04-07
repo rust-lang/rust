@@ -43,6 +43,7 @@ use std::path::is_sep;
 pub struct Paths {
     root: Path,
     dir_patterns: Vec<Pattern>,
+    require_dir: bool,
     options: MatchOptions,
     todo: Vec<(Path,uint)>,
 }
@@ -106,6 +107,7 @@ pub fn glob_with(pattern: &str, options: MatchOptions) -> Paths {
             return Paths {
                 root: root,
                 dir_patterns: Vec::new(),
+                require_dir: false,
                 options: options,
                 todo: Vec::new(),
             };
@@ -118,6 +120,7 @@ pub fn glob_with(pattern: &str, options: MatchOptions) -> Paths {
                        .split_terminator(is_sep)
                        .map(|s| Pattern::new(s))
                        .collect::<Vec<Pattern>>();
+    let require_dir = pattern.chars().next_back().map(is_sep) == Some(true);
 
     let mut todo = Vec::new();
     if dir_patterns.len() > 0 {
@@ -130,6 +133,7 @@ pub fn glob_with(pattern: &str, options: MatchOptions) -> Paths {
     Paths {
         root: root,
         dir_patterns: dir_patterns,
+        require_dir: require_dir,
         options: options,
         todo: todo,
     }
@@ -146,7 +150,10 @@ impl Iterator<Path> for Paths {
             let (path,idx) = self.todo.pop().unwrap();
             // idx -1: was already checked by fill_todo, maybe path was '.' or
             // '..' that we can't match here because of normalization.
-            if idx == -1 as uint { return Some(path); }
+            if idx == -1 as uint {
+                if self.require_dir && !path.is_dir() { continue; }
+                return Some(path);
+            }
             let ref pattern = *self.dir_patterns.get(idx);
 
             if pattern.matches_with(match path.filename_str() {
@@ -161,7 +168,10 @@ impl Iterator<Path> for Paths {
                 if idx == self.dir_patterns.len() - 1 {
                     // it is not possible for a pattern to match a directory *AND* its children
                     // so we don't need to check the children
-                    return Some(path);
+
+                    if !self.require_dir || path.is_dir() {
+                        return Some(path);
+                    }
                 } else {
                     fill_todo(&mut self.todo, self.dir_patterns.as_slice(),
                               idx + 1, &path, self.options);
