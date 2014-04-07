@@ -41,11 +41,11 @@ directly as part of the public API.
 have the "Rust" ABI then the problem is solved.
 
 Under this scheme intrinsics will be declared as `extern "Rust"` functions
-and identified as intrinsics with the `#[intrinsic]` attribute:
+and identified as intrinsics with the `#[lang = "..."]` attribute:
 
 ```
 extern "Rust" {
-    #[intrinsic]
+    #[lang = "transmute"]
     fn transmute<T, U>(T) -> U;
 }
 ```
@@ -54,13 +54,24 @@ The compiler will type check and translate intrinsics the same as today.
 Additionally, when trans sees a "Rust" extern tagged as an intrinsic
 it will not emit a function declaration to LLVM bitcode.
 
+Because intrinsics will be lang items, they can no longer be redeclared
+arbitrary number of times. This will require a small amount of existing
+library code to be refactored, and all intrinsics to be exposed through public
+abstractions.
+
+Currently, "Rust" foreign functions may not be generic; this change
+will require a special case that allows intrinsics to be generic.
+
 # Alternatives
 
-1. Instead of the new `#[intrinsic]` attribute we could make intrinsics
-lang items. This would require either forcing them to be 'singletons'
-or create a new type of lang item that can be multiply-declared.
+1. Instead of making intrinsics lang items we could create a slightly
+different mechanism, like an `#[intrinsic]` attribute, that would
+continue letting intrinsics to be redeclared.
 
-2. We could also make "rust-intrinsic" coerce or otherwise be the same
+2. While using lang items to identify intrinsics, intrinsic lang items
+*could* be allowed to be redeclared.
+
+3. We could also make "rust-intrinsic" coerce or otherwise be the same
 as "Rust" externs and normal Rust functions.
 
 # Unresolved questions
