@@ -285,8 +285,41 @@ pub fn run_compiler(args: &[~str]) {
 
     let sopts = d::build_session_options(matches);
     let sess = d::build_session(sopts, input_file_path);
+    // get the output dir, if there is one
+    // make sure that the directory structure
+    // exists, e.g. if -out-dir is ./foo/bar/baz, each needs to exist
+    // otherwise error out early
     let odir = matches.opt_str("out-dir").map(|o| Path::new(o));
+    match odir {
+        Some(ref odir) => {
+            if !odir.exists() {
+                d::early_error(format!("output directory {} does not exist",
+                               odir.display()))
+            }
+            // if it exists, is it a file?
+            if !odir.is_dir() {
+                d::early_error(format!("specified output directory {} is not a directory",
+                               odir.display()))
+            }
+        }
+        None => {/* continue */ }
+    }
     let ofile = matches.opt_str("o").map(|o| Path::new(o));
+    match ofile {
+        Some(ref ofile) => {
+            // does the directory for -o exist?
+            if !ofile.dir_path().exists() {
+                d::early_error(format!("specified output location's directory {} does not exist",
+                                       ofile.display()))
+            }
+            // does a file exist at -o and is it a directory?
+            if ofile.is_dir() {
+                d::early_error(format!("specified output location {} is a directory",
+                                       ofile.display()))
+            }
+        }
+        None => {/* continue */ }
+    }
     let cfg = d::build_configuration(&sess);
     let pretty = matches.opt_default("pretty", "normal").map(|a| {
         d::parse_pretty(&sess, a)
