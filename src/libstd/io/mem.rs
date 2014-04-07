@@ -18,6 +18,7 @@ use io;
 use io::{Reader, Writer, Seek, Buffer, IoError, SeekStyle, IoResult};
 use slice;
 use slice::{Vector, ImmutableVector, MutableVector, OwnedCloneableVector};
+use vec::Vec;
 
 fn combine(seek: SeekStyle, cur: uint, end: uint, offset: i64) -> IoResult<u64> {
     // compute offset as signed and clamp to prevent overflow
@@ -49,10 +50,10 @@ fn combine(seek: SeekStyle, cur: uint, end: uint, offset: i64) -> IoResult<u64> 
 /// let mut w = MemWriter::new();
 /// w.write([0, 1, 2]);
 ///
-/// assert_eq!(w.unwrap(), ~[0, 1, 2]);
+/// assert_eq!(w.unwrap(), vec!(0, 1, 2));
 /// ```
 pub struct MemWriter {
-    buf: ~[u8],
+    buf: Vec<u8>,
     pos: uint,
 }
 
@@ -64,7 +65,7 @@ impl MemWriter {
     /// Create a new `MemWriter`, allocating at least `n` bytes for
     /// the internal buffer.
     pub fn with_capacity(n: uint) -> MemWriter {
-        MemWriter { buf: slice::with_capacity(n), pos: 0 }
+        MemWriter { buf: Vec::with_capacity(n), pos: 0 }
     }
 
     /// Acquires an immutable reference to the underlying buffer of this
@@ -75,7 +76,7 @@ impl MemWriter {
     pub fn get_ref<'a>(&'a self) -> &'a [u8] { self.buf.as_slice() }
 
     /// Unwraps this `MemWriter`, returning the underlying buffer
-    pub fn unwrap(self) -> ~[u8] { self.buf }
+    pub fn unwrap(self) -> Vec<u8> { self.buf }
 }
 
 impl Writer for MemWriter {
@@ -127,19 +128,19 @@ impl Seek for MemWriter {
 /// # #[allow(unused_must_use)];
 /// use std::io::MemReader;
 ///
-/// let mut r = MemReader::new(~[0, 1, 2]);
+/// let mut r = MemReader::new(vec!(0, 1, 2));
 ///
-/// assert_eq!(r.read_to_end().unwrap(), ~[0, 1, 2]);
+/// assert_eq!(r.read_to_end().unwrap(), vec!(0, 1, 2));
 /// ```
 pub struct MemReader {
-    buf: ~[u8],
+    buf: Vec<u8>,
     pos: uint
 }
 
 impl MemReader {
     /// Creates a new `MemReader` which will read the buffer given. The buffer
     /// can be re-acquired through `unwrap`
-    pub fn new(buf: ~[u8]) -> MemReader {
+    pub fn new(buf: Vec<u8>) -> MemReader {
         MemReader {
             buf: buf,
             pos: 0
@@ -159,7 +160,7 @@ impl MemReader {
     pub fn get_ref<'a>(&'a self) -> &'a [u8] { self.buf.as_slice() }
 
     /// Unwraps this `MemReader`, returning the underlying buffer
-    pub fn unwrap(self) -> ~[u8] { self.buf }
+    pub fn unwrap(self) -> Vec<u8> { self.buf }
 }
 
 impl Reader for MemReader {
@@ -272,7 +273,7 @@ impl<'a> Seek for BufWriter<'a> {
 /// let mut buf = [0, 1, 2, 3];
 /// let mut r = BufReader::new(buf);
 ///
-/// assert_eq!(r.read_to_end().unwrap(), ~[0, 1, 2, 3]);
+/// assert_eq!(r.read_to_end().unwrap(), vec!(0, 1, 2, 3));
 /// ```
 pub struct BufReader<'a> {
     buf: &'a [u8],
@@ -425,7 +426,7 @@ mod test {
 
     #[test]
     fn test_mem_reader() {
-        let mut reader = MemReader::new(~[0, 1, 2, 3, 4, 5, 6, 7]);
+        let mut reader = MemReader::new(vec!(0, 1, 2, 3, 4, 5, 6, 7));
         let mut buf = [];
         assert_eq!(reader.read(buf), Ok(0));
         assert_eq!(reader.tell(), Ok(0));
@@ -440,9 +441,9 @@ mod test {
         assert_eq!(reader.read(buf), Ok(3));
         assert_eq!(buf.slice(0, 3), &[5, 6, 7]);
         assert!(reader.read(buf).is_err());
-        let mut reader = MemReader::new(~[0, 1, 2, 3, 4, 5, 6, 7]);
-        assert_eq!(reader.read_until(3).unwrap(), ~[0, 1, 2, 3]);
-        assert_eq!(reader.read_until(3).unwrap(), ~[4, 5, 6, 7]);
+        let mut reader = MemReader::new(vec!(0, 1, 2, 3, 4, 5, 6, 7));
+        assert_eq!(reader.read_until(3).unwrap(), vec!(0, 1, 2, 3));
+        assert_eq!(reader.read_until(3).unwrap(), vec!(4, 5, 6, 7));
         assert!(reader.read(buf).is_err());
     }
 
@@ -465,8 +466,8 @@ mod test {
         assert_eq!(buf.slice(0, 3), &[5, 6, 7]);
         assert!(reader.read(buf).is_err());
         let mut reader = BufReader::new(in_buf);
-        assert_eq!(reader.read_until(3).unwrap(), ~[0, 1, 2, 3]);
-        assert_eq!(reader.read_until(3).unwrap(), ~[4, 5, 6, 7]);
+        assert_eq!(reader.read_until(3).unwrap(), vec!(0, 1, 2, 3));
+        assert_eq!(reader.read_until(3).unwrap(), vec!(4, 5, 6, 7));
         assert!(reader.read(buf).is_err());
     }
 
@@ -525,7 +526,7 @@ mod test {
         r.seek(10, SeekSet).unwrap();
         assert!(r.read(&mut []).is_err());
 
-        let mut r = MemReader::new(~[10]);
+        let mut r = MemReader::new(vec!(10));
         r.seek(10, SeekSet).unwrap();
         assert!(r.read(&mut []).is_err());
 
@@ -545,7 +546,7 @@ mod test {
         let mut r = BufReader::new(buf);
         assert!(r.seek(-1, SeekSet).is_err());
 
-        let mut r = MemReader::new(~[10]);
+        let mut r = MemReader::new(vec!(10));
         assert!(r.seek(-1, SeekSet).is_err());
 
         let mut r = MemWriter::new();
@@ -558,7 +559,7 @@ mod test {
 
     #[test]
     fn io_fill() {
-        let mut r = MemReader::new(~[1, 2, 3, 4, 5, 6, 7, 8]);
+        let mut r = MemReader::new(vec!(1, 2, 3, 4, 5, 6, 7, 8));
         let mut buf = [0, ..3];
         assert_eq!(r.fill(buf), Ok(()));
         assert_eq!(buf.as_slice(), &[1, 2, 3]);

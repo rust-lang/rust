@@ -84,8 +84,8 @@ pub fn run(lib_path: &str,
 
             Some(Result {
                 status: status,
-                out: str::from_utf8_owned(output).unwrap(),
-                err: str::from_utf8_owned(error).unwrap()
+                out: str::from_utf8(output.as_slice()).unwrap().to_owned(),
+                err: str::from_utf8(error.as_slice()).unwrap().to_owned()
             })
         },
         Err(..) => None

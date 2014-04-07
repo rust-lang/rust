@@ -96,7 +96,7 @@ Use the [`lines`](http://static.rust-lang.org/doc/master/std/io/trait.Buffer.htm
 use std::io::BufferedReader;
 # use std::io::MemReader;
 
-# let reader = MemReader::new(~[]);
+# let reader = MemReader::new(vec!());
 
 let mut reader = BufferedReader::new(reader);
 for line in reader.lines() {

@@ -22,7 +22,7 @@ use test::Collector;
 fn load_string(input: &Path) -> io::IoResult<Option<~str>> {
     let mut f = try!(io::File::open(input));
     let d = try!(f.read_to_end());
-    Ok(str::from_utf8_owned(d))
+    Ok(str::from_utf8(d.as_slice()).map(|s| s.to_owned()))
 }
 macro_rules! load_or_return {
     ($input: expr, $cant_read: expr, $not_utf8: expr) => {
