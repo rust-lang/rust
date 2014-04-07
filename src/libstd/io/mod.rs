@@ -632,28 +632,28 @@ pub trait Reader {
 
     /// Reads a little-endian unsigned integer.
     ///
-    /// The number of bytes returned is system-dependant.
+    /// The number of bytes returned is system-dependent.
     fn read_le_uint(&mut self) -> IoResult<uint> {
         self.read_le_uint_n(uint::BYTES).map(|i| i as uint)
     }
 
     /// Reads a little-endian integer.
     ///
-    /// The number of bytes returned is system-dependant.
+    /// The number of bytes returned is system-dependent.
     fn read_le_int(&mut self) -> IoResult<int> {
         self.read_le_int_n(int::BYTES).map(|i| i as int)
     }
 
     /// Reads a big-endian unsigned integer.
     ///
-    /// The number of bytes returned is system-dependant.
+    /// The number of bytes returned is system-dependent.
     fn read_be_uint(&mut self) -> IoResult<uint> {
         self.read_be_uint_n(uint::BYTES).map(|i| i as uint)
     }
 
     /// Reads a big-endian integer.
     ///
-    /// The number of bytes returned is system-dependant.
+    /// The number of bytes returned is system-dependent.
     fn read_be_int(&mut self) -> IoResult<int> {
         self.read_be_int_n(int::BYTES).map(|i| i as int)
     }
