@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // aux-build:nested_item.rs
-// ignore-fast
 
 extern crate nested_item;
 

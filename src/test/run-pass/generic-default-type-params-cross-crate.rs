@@ -10,7 +10,6 @@
 
 // aux-build:default_type_params_xc.rs
 
-// ignore-fast #[feature] doesn't work with check-fast
 #[feature(default_type_params)];
 
 extern crate default_type_params_xc;

@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // aux-build:extern_mod_ordering_lib.rs
-// ignore-fast
 
 extern crate extern_mod_ordering_lib;
 

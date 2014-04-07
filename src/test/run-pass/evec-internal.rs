@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // ignore-test
-// ignore-fast
 
 // Doesn't work; needs a design decision.
 

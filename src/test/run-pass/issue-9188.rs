@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // aux-build:issue_9188.rs
-// ignore-fast check-fast doesn't like aux-build
 
 extern crate issue_9188;
 

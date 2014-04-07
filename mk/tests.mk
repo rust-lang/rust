@@ -183,6 +183,9 @@ check-ref: cleantestlibs cleantmptestlogs check-stage2-rpass \
 check-docs: cleantestlibs cleantmptestlogs check-stage2-docs
 	$(Q)$(CFG_PYTHON) $(S)src/etc/check-summary.py tmp/*.log
 
+# NOTE: Remove after reprogramming windows bots
+check-fast: check-lite
+
 .PHONY: cleantmptestlogs cleantestlibs
 
 cleantmptestlogs:
@@ -875,68 +878,8 @@ $(foreach crate,$(TEST_CRATES), \
  $(eval $(call DEF_CHECK_CRATE,$(crate))))
 
 ######################################################################
-# check-fast rules
+# RMAKE rules
 ######################################################################
-
-FT := run_pass_stage2
-FT_LIB := $(call CFG_LIB_NAME_$(CFG_BUILD),$(FT))
-FT_DRIVER := $(FT)_driver
-
-GENERATED += tmp/$(FT).rc tmp/$(FT_DRIVER).rs
-
-tmp/$(FT).rc tmp/$(FT_DRIVER).rs: \
-		$(RPASS_TESTS) \
-		$(S)src/etc/combine-tests.py
-	@$(call E, check: building combined stage2 test runner)
-	$(Q)$(CFG_PYTHON) $(S)src/etc/combine-tests.py
-
-define DEF_CHECK_FAST_FOR_T_H
-# $(1) unused
-# $(2) target triple
-# $(3) host triple
-
-$$(TLIB2_T_$(2)_H_$(3))/$$(FT_LIB): \
-		tmp/$$(FT).rc \
-		$$(SREQ2_T_$(2)_H_$(3))
-	@$$(call E, oxidize: $$@)
-	$$(STAGE2_T_$(2)_H_$(3)) --crate-type=dylib --out-dir $$(@D) $$< \
-	  -L "$$(RT_OUTPUT_DIR_$(2))"
-
-$(3)/test/$$(FT_DRIVER)-$(2)$$(X_$(2)): \
-		tmp/$$(FT_DRIVER).rs \
-		$$(TLIB2_T_$(2)_H_$(3))/$$(FT_LIB) \
-		$$(SREQ2_T_$(2)_H_$(3))
-	@$$(call E, oxidize: $$@ $$<)
-	$$(STAGE2_T_$(2)_H_$(3)) -o $$@ $$< \
-	  -L "$$(RT_OUTPUT_DIR_$(2))"
-
-$(3)/test/$$(FT_DRIVER)-$(2).out: \
-		$(3)/test/$$(FT_DRIVER)-$(2)$$(X_$(2)) \
-		$$(SREQ2_T_$(2)_H_$(3))
-	$$(Q)$$(call CFG_RUN_TEST_$(2),$$<,$(2),$(3)) \
-	--logfile tmp/$$(FT_DRIVER)-$(2).log
-
-check-fast-T-$(2)-H-$(3):     			\
-	$(3)/test/$$(FT_DRIVER)-$(2).out
-
-endef
-
-$(foreach host,$(CFG_HOST), \
- $(eval $(foreach target,$(CFG_TARGET), \
-   $(eval $(call DEF_CHECK_FAST_FOR_T_H,,$(target),$(host))))))
-
-check-fast: tidy check-fast-H-$(CFG_BUILD) \
-	    $(foreach crate,$(TARGET_CRATES),check-stage2-$(crate))
-	$(Q)$(CFG_PYTHON) $(S)src/etc/check-summary.py tmp/*.log
-
-define DEF_CHECK_FAST_FOR_H
-
-check-fast-H-$(1): 		check-fast-T-$(1)-H-$(1)
-
-endef
-
-$(foreach host,$(CFG_HOST),			\
- $(eval $(call DEF_CHECK_FAST_FOR_H,$(host))))
 
 RMAKE_TESTS := $(shell ls -d $(S)src/test/run-make/*/)
 RMAKE_TESTS := $(RMAKE_TESTS:$(S)src/test/run-make/%/=%)
@@ -961,6 +904,7 @@ $(3)/test/run-make/%-$(1)-T-$(2)-H-$(3).ok: \
 	@rm -rf $(3)/test/run-make/$$*
 	@mkdir -p $(3)/test/run-make/$$*
 	$$(Q)$$(CFG_PYTHON) $(S)src/etc/maketest.py $$(dir $$<) \
+        $$(MAKE) \
 	    $$(HBIN$(1)_H_$(3))/rustc$$(X_$(3)) \
 	    $(3)/test/run-make/$$* \
 	    "$$(CC_$(3)) $$(CFG_GCCISH_CFLAGS_$(3))" \

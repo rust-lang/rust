@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-fast
 
 // Tests for if as expressions with dynamic type sizes
 type compare<T> = |T, T|: 'static -> bool;

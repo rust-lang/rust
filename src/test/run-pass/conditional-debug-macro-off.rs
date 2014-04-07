@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-fast exec-env directive doesn't work for check-fast
 // compile-flags: --cfg ndebug
 // exec-env:RUST_LOG=conditional-debug-macro-off=4
 

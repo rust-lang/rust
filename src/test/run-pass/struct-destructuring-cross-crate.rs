@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-fast
 // aux-build:struct_destructuring_cross_crate.rs
 
 extern crate struct_destructuring_cross_crate;

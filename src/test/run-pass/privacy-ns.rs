@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-fast
 
 // Check we do the correct privacy checks when we import a name and there is an
 // item with that name in both the value and type namespaces.

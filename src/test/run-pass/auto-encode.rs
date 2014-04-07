@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // ignore-test FIXME(#5121)
-// ignore-fast
 
 #[feature(managed_boxes)];
 

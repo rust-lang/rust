@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // aux-build:issue-11508.rs
-// ignore-fast
 
 extern crate rand = "issue-11508";
 

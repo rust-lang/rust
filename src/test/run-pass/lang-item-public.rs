@@ -9,10 +9,10 @@
 // except according to those terms.
 
 // aux-build:lang-item-public.rs
-// ignore-fast
 // ignore-android
+// ignore-win32 #13361
 
-#[no_std];
+#![no_std]
 
 extern crate lang_lib = "lang-item-public";
 

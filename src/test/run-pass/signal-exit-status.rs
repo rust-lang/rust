@@ -18,7 +18,7 @@
 // option. this file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-fast calling itself doesn't work on check-fast
+// ignore-win32
 
 use std::os;
 use std::io::process::{Process, ExitSignal, ExitStatus};

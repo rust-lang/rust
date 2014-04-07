@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-fast
 // aux-build:overloaded_autoderef_xc.rs
 
 extern crate overloaded_autoderef_xc;
