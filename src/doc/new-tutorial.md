@@ -133,7 +133,9 @@ The two `Point`s are similarly laid out inline inside the `Line` struct, which a
 
 ## Stack vs. Heap
 
-Rust does not introduce pointers to the heap unless you specify that you require them, using the `~` symbol. To access the contents of the pointer, use the `*` symbol. Heap memory is freed when the variable goes out of scope.
+<!-- FIXME: this is not correct right? BOX vs stack vs heap? -->
+
+Rust does not introduce pointers to the heap unless you specify that you require them, using the `~` symbol. To access the contents of the pointer, use the `*` symbol to dereference it. Heap memory is freed when the variable goes out of scope.
 
 ~~~~
 fn main() {
