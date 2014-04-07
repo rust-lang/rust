@@ -270,6 +270,11 @@ $$(BACKTRACE_LIB_$(1)):
 	touch $$@
 
 else
+ifeq ($$(findstring ios,$$(OSTYPE_$(1))),ios)
+$$(BACKTRACE_LIB_$(1)):
+	touch $$@
+else
+
 ifeq ($$(CFG_WINDOWSY_$(1)),1)
 $$(BACKTRACE_LIB_$(1)):
 	touch $$@
@@ -315,6 +320,7 @@ $$(BACKTRACE_LIB_$(1)): $$(BACKTRACE_BUILD_DIR_$(1))/Makefile $$(MKFILE_DEPS)
 	$$(Q)cp $$(BACKTRACE_BUILD_DIR_$(1))/.libs/libbacktrace.a $$@
 
 endif # endif for windowsy
+endif # endif for ios
 endif # endif for darwin
 
 endef

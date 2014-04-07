@@ -744,6 +744,7 @@ static os_names : &'static [(&'static str, abi::Os)] = &'static [
     ("mingw32", abi::OsWin32),
     ("win32",   abi::OsWin32),
     ("darwin",  abi::OsMacos),
+    ("ios",     abi::OsMacos),
     ("android", abi::OsAndroid),
     ("linux",   abi::OsLinux),
     ("freebsd", abi::OsFreebsd)];
