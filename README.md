@@ -59,7 +59,7 @@ documentation.
 
 [repo]: https://github.com/mozilla/rust
 [tarball]: http://static.rust-lang.org/dist/rust-nightly.tar.gz
-[tutorial]: http://static.rust-lang.org/doc/nightly/tutorial.html
+[tutorial]: http://static.rust-lang.org/doc/master/tutorial.html
 
 ## Notes
 
