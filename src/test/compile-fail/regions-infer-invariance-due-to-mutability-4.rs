@@ -11,7 +11,7 @@
 #![feature(managed_boxes)]
 
 struct invariant<'a> {
-    f: 'static || -> &mut &'a int
+    f: ||: 'static -> &mut &'a int
 }
 
 fn to_same_lifetime<'r>(bi: invariant<'r>) {

@@ -27,7 +27,7 @@ pub fn event_loop() -> ~EventLoop:Send {
 }
 
 struct BasicLoop {
-    work: ~[proc:Send()],             // pending work
+    work: ~[proc():Send],             // pending work
     idle: Option<*mut BasicPausable>, // only one is allowed
     remotes: ~[(uint, ~Callback:Send)],
     next_remote: uint,
@@ -135,7 +135,7 @@ impl EventLoop for BasicLoop {
         }
     }
 
-    fn callback(&mut self, f: proc:Send()) {
+    fn callback(&mut self, f: proc():Send) {
         self.work.push(f);
     }
 

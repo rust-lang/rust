@@ -35,7 +35,7 @@ fn test_tempdir() {
 
 fn test_rm_tempdir() {
     let (tx, rx) = channel();
-    let f: proc:Send() = proc() {
+    let f: proc():Send = proc() {
         let tmp = TempDir::new("test_rm_tempdir").unwrap();
         tx.send(tmp.path().clone());
         fail!("fail to unwind past `tmp`");
@@ -46,7 +46,7 @@ fn test_rm_tempdir() {
 
     let tmp = TempDir::new("test_rm_tempdir").unwrap();
     let path = tmp.path().clone();
-    let f: proc:Send() = proc() {
+    let f: proc():Send = proc() {
         let _tmp = tmp;
         fail!("fail to unwind past `tmp`");
     };

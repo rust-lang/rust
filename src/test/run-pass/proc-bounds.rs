@@ -17,18 +17,18 @@ fn is_static<T: 'static>() {}
 
 pub fn main() {
     foo::<proc()>();
-    foo::<proc:()>();
-    foo::<proc:Send()>();
-    foo::<proc:Send + Share()>();
-    foo::<proc:'static + Send + Share()>();
+    foo::<proc()>();
+    foo::<proc():Send>();
+    foo::<proc():Send + Share>();
+    foo::<proc():'static + Send + Share>();
 
-    is_send::<proc:Send()>();
-    is_freeze::<proc:Share()>();
-    is_static::<proc:'static()>();
+    is_send::<proc():Send>();
+    is_freeze::<proc():Share>();
+    is_static::<proc():'static>();
 
 
     let a = 3;
-    bar::<proc:()>(proc() {
+    bar::<proc():>(proc() {
         let b = &a;
         println!("{}", *b);
     });

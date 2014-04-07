@@ -16,7 +16,7 @@
 use std::task;
 
 enum Msg<T> {
-    Execute(proc:Send(&T)),
+    Execute(proc(&T):Send),
     Quit
 }
 
@@ -41,7 +41,7 @@ impl<T> TaskPool<T> {
     /// returns a function which, given the index of the task, should return
     /// local data to be kept around in that task.
     pub fn new(n_tasks: uint,
-               init_fn_factory: || -> proc:Send(uint) -> T)
+               init_fn_factory: || -> proc(uint):Send -> T)
                -> TaskPool<T> {
         assert!(n_tasks >= 1);
 
@@ -73,7 +73,7 @@ impl<T> TaskPool<T> {
 
     /// Executes the function `f` on a task in the pool. The function
     /// receives a reference to the local data returned by the `init_fn`.
-    pub fn execute(&mut self, f: proc:Send(&T)) {
+    pub fn execute(&mut self, f: proc(&T):Send) {
         self.channels.get(self.next_index).send(Execute(f));
         self.next_index += 1;
         if self.next_index == self.channels.len() { self.next_index = 0; }
@@ -82,8 +82,8 @@ impl<T> TaskPool<T> {
 
 #[test]
 fn test_task_pool() {
-    let f: || -> proc:Send(uint) -> uint = || {
-        let g: proc:Send(uint) -> uint = proc(i) i;
+    let f: || -> proc(uint):Send -> uint = || {
+        let g: proc(uint):Send -> uint = proc(i) i;
         g
     };
     let mut pool = TaskPool::new(4, f);

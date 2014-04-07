@@ -16,7 +16,7 @@ struct R<'a> {
     // This struct is needed to create the
     // otherwise infinite type of a fn that
     // accepts itself as argument:
-    c: 'a |&R, bool|
+    c: |&R, bool|: 'a
 }
 
 fn innocent_looking_victim() {
