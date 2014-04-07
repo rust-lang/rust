@@ -54,43 +54,49 @@ static LZ_NORM : c_int = 0x80;  // LZ with 128 probes, "normal"
 static TINFL_FLAG_PARSE_ZLIB_HEADER : c_int = 0x1; // parse zlib header and adler32 checksum
 static TDEFL_WRITE_ZLIB_HEADER : c_int = 0x01000; // write zlib header and adler32 checksum
 
-fn deflate_bytes_internal(bytes: &[u8], flags: c_int) -> CVec<u8> {
+fn deflate_bytes_internal(bytes: &[u8], flags: c_int) -> Option<CVec<u8>> {
     unsafe {
         let mut outsz : size_t = 0;
         let res = rustrt::tdefl_compress_mem_to_heap(bytes.as_ptr() as *c_void,
                                                      bytes.len() as size_t,
                                                      &mut outsz,
                                                      flags);
-        assert!(!res.is_null());
-        CVec::new_with_dtor(res as *mut u8, outsz as uint, proc() libc::free(res))
+        if !res.is_null() {
+            Some(CVec::new_with_dtor(res as *mut u8, outsz as uint, proc() libc::free(res)))
+        } else {
+            None
+        }
     }
 }
 
-pub fn deflate_bytes(bytes: &[u8]) -> CVec<u8> {
+pub fn deflate_bytes(bytes: &[u8]) -> Option<CVec<u8>> {
     deflate_bytes_internal(bytes, LZ_NORM)
 }
 
-pub fn deflate_bytes_zlib(bytes: &[u8]) -> CVec<u8> {
+pub fn deflate_bytes_zlib(bytes: &[u8]) -> Option<CVec<u8>> {
     deflate_bytes_internal(bytes, LZ_NORM | TDEFL_WRITE_ZLIB_HEADER)
 }
 
-fn inflate_bytes_internal(bytes: &[u8], flags: c_int) -> CVec<u8> {
+fn inflate_bytes_internal(bytes: &[u8], flags: c_int) -> Option<CVec<u8>> {
     unsafe {
         let mut outsz : size_t = 0;
         let res = rustrt::tinfl_decompress_mem_to_heap(bytes.as_ptr() as *c_void,
                                                        bytes.len() as size_t,
                                                        &mut outsz,
                                                        flags);
-        assert!(!res.is_null());
-        CVec::new_with_dtor(res as *mut u8, outsz as uint, proc() libc::free(res))
+        if !res.is_null() {
+            Some(CVec::new_with_dtor(res as *mut u8, outsz as uint, proc() libc::free(res)))
+        } else {
+            None
+        }
     }
 }
 
-pub fn inflate_bytes(bytes: &[u8]) -> CVec<u8> {
+pub fn inflate_bytes(bytes: &[u8]) -> Option<CVec<u8>> {
     inflate_bytes_internal(bytes, 0)
 }
 
-pub fn inflate_bytes_zlib(bytes: &[u8]) -> CVec<u8> {
+pub fn inflate_bytes_zlib(bytes: &[u8]) -> Option<CVec<u8>> {
     inflate_bytes_internal(bytes, TINFL_FLAG_PARSE_ZLIB_HEADER)
 }
 
@@ -117,8 +123,8 @@ mod tests {
             }
             debug!("de/inflate of {} bytes of random word-sequences",
                    input.len());
-            let cmp = deflate_bytes(input);
-            let out = inflate_bytes(cmp.as_slice());
+            let cmp = deflate_bytes(input).expect("deflation failed");
+            let out = inflate_bytes(cmp.as_slice()).expect("inflation failed");
             debug!("{} bytes deflated to {} ({:.1f}% size)",
                    input.len(), cmp.len(),
                    100.0 * ((cmp.len() as f64) / (input.len() as f64)));
@@ -129,8 +135,8 @@ mod tests {
     #[test]
     fn test_zlib_flate() {
         let bytes = vec!(1, 2, 3, 4, 5);
-        let deflated = deflate_bytes(bytes.as_slice());
-        let inflated = inflate_bytes(deflated.as_slice());
+        let deflated = deflate_bytes(bytes.as_slice()).expect("deflation failed");
+        let inflated = inflate_bytes(deflated.as_slice()).expect("inflation failed");
         assert_eq!(inflated.as_slice(), bytes.as_slice());
     }
 }

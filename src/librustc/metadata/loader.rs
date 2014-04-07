@@ -494,14 +494,17 @@ fn get_metadata_section_imp(os: Os, filename: &Path) -> Result<MetadataBlob, ~st
                 let version_ok = slice::raw::buf_as_slice(cvbuf, minsz,
                     |buf0| buf0 == encoder::metadata_encoding_version);
                 if !version_ok { return Err(format!("incompatible metadata version found: '{}'",
-                                                    filename.display()));}
+                                                    filename.display())); }
 
                 let cvbuf1 = cvbuf.offset(vlen as int);
                 debug!("inflating {} bytes of compressed metadata",
                        csz - vlen);
                 slice::raw::buf_as_slice(cvbuf1, csz-vlen, |bytes| {
-                    let inflated = flate::inflate_bytes(bytes);
-                    found = Ok(MetadataVec(inflated));
+                    match flate::inflate_bytes(bytes) {
+                        Some(inflated) => found = Ok(MetadataVec(inflated)),
+                        None => found = Err(format!("failed to decompress metadata for: '{}'",
+                                                    filename.display()))
+                    }
                 });
                 if found.is_ok() {
                     return found;
