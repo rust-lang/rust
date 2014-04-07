@@ -167,6 +167,8 @@ pub mod write {
             };
 
             let tm = sess.targ_cfg.target_strs.target_triple.with_c_str(|t| {
+                let is_iOS = sess.targ_cfg.os == abi::OsMacos &&
+                             sess.targ_cfg.arch == abi::Arm;
                 sess.opts.cg.target_cpu.with_c_str(|cpu| {
                     target_feature(sess).with_c_str(|features| {
                         llvm::LLVMRustCreateTargetMachine(
@@ -174,7 +176,7 @@ pub mod write {
                             lib::llvm::CodeModelDefault,
                             reloc_model,
                             opt_level,
-                            true,
+                            !is_iOS, // disable segmented stack on iOS only
                             use_softfp,
                             no_fp_elim
                         )
