@@ -144,6 +144,12 @@ impl NamespaceResult {
             _ => false
         }
     }
+    fn is_unbound(&self) -> bool {
+        match *self {
+            UnboundResult => true,
+            _ => false
+        }
+    }
 }
 
 enum NameDefinition {
@@ -2449,8 +2455,7 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        if import_resolution.value_target.borrow().is_none() &&
-           import_resolution.type_target.borrow().is_none() {
+        if value_result.is_unbound() && type_result.is_unbound() {
             let msg = format!("unresolved import: there is no \
                                `{}` in `{}`",
                               token::get_ident(source),

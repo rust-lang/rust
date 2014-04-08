@@ -146,7 +146,7 @@ pub use types::os::arch::c95::{c_ushort, clock_t, ptrdiff_t};
 pub use types::os::arch::c95::{size_t, time_t};
 pub use types::os::arch::c99::{c_longlong, c_ulonglong, intptr_t};
 pub use types::os::arch::c99::{uintptr_t};
-pub use types::os::arch::posix88::{dev_t, dirent_t, ino_t, mode_t};
+pub use types::os::arch::posix88::{dev_t, ino_t, mode_t};
 pub use types::os::arch::posix88::{off_t, pid_t, ssize_t};
 
 pub use consts::os::c95::{_IOFBF, _IOLBF, _IONBF, BUFSIZ, EOF};
