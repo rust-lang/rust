@@ -9,11 +9,13 @@
 // except according to those terms.
 
 fn main() {
-    let r = {
-        let x = ~42;
-        let f = proc() &x; //~ ERROR: `x` does not live long enough
-        f()
-    };
-
-    drop(r);
+    let (tx, rx) = channel();
+    spawn(proc() {
+        loop {
+            let tx = tx;
+            //~^ ERROR: use of moved value: `tx`
+            tx.send(1);
+        }
+    });
 }
+

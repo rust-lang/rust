@@ -9,11 +9,11 @@
 // except according to those terms.
 
 fn main() {
-    let r = {
-        let x = ~42;
-        let f = proc() &x; //~ ERROR: `x` does not live long enough
-        f()
+    let x = ~1;
+    let f: proc() = proc() {
+        let _a = x;
+        drop(x);
+        //~^ ERROR: use of moved value: `x`
     };
-
-    drop(r);
+    f();
 }
