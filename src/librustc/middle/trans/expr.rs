@@ -1802,11 +1802,15 @@ fn deref_once<'a>(bcx: &'a Block<'a>,
             RvalueExpr(Rvalue { mode: ByRef }) => {
                 let scope = cleanup::temporary_scope(bcx.tcx(), expr.id);
                 let ptr = Load(bcx, datum.val);
-                bcx.fcx.schedule_free_value(scope, ptr, cleanup::HeapExchange);
+                if !type_is_zero_size(bcx.ccx(), content_ty) {
+                    bcx.fcx.schedule_free_value(scope, ptr, cleanup::HeapExchange);
+                }
             }
             RvalueExpr(Rvalue { mode: ByValue }) => {
                 let scope = cleanup::temporary_scope(bcx.tcx(), expr.id);
-                bcx.fcx.schedule_free_value(scope, datum.val, cleanup::HeapExchange);
+                if !type_is_zero_size(bcx.ccx(), content_ty) {
+                    bcx.fcx.schedule_free_value(scope, datum.val, cleanup::HeapExchange);
+                }
             }
             LvalueExpr => { }
         }
