@@ -8,7 +8,87 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Unsafe pointer utility functions
+//! Conveniences for working with unsafe pointers, the `*T`, and `*mut T` types.
+//!
+//! Working with unsafe pointers in Rust is fairly uncommon,
+//! and often limited to some narrow use cases: holding
+//! an unsafe pointer when safe pointers are unsuitable;
+//! checking for null; and converting back to safe pointers.
+//! As a result, there is not yet an abundance of library code
+//! for working with unsafe poniters, and in particular,
+//! since pointer math is fairly uncommon in Rust, it is not
+//! all that convenient.
+//!
+//! Use the [`null` function](fn.null.html) to create null pointers,
+//! the [`is_null`](trait.RawPtr.html#tymethod.is_null)
+//! and [`is_not_null`](trait.RawPtr.html#method.is_not_null)
+//! methods of the [`RawPtr` trait](trait.RawPtr.html) to check for null.
+//! The `RawPtr` trait is imported by the prelude, so `is_null` etc.
+//! work everywhere.
+//!
+//! # Common ways to create unsafe pointers
+//!
+//! ## 1. Coerce a reference (`&T`) or mutable reference (`&mut T`).
+//!
+//! ```
+//! let my_num: int = 10;
+//! let my_num_ptr: *int = &my_num;
+//! let mut my_speed: int = 88;
+//! let my_speed_ptr: *mut int = &mut my_speed;
+//! ```
+//!
+//! This does not take ownership of the original allocation
+//! and requires no resource management later,
+//! but you must not use the pointer after its lifetime.
+//!
+//! ## 2. Transmute an owned box (`~T`).
+//!
+//! The `transmute` function takes, by value, whatever it's given
+//! and returns it as whatever type is requested, as long as the
+//! types are the same size. Because `~T` and `*T` have the same
+//! representation they can be trivially,
+//! though unsafely, transformed from one type to the other.
+//!
+//! ```
+//! use std::cast;
+//!
+//! unsafe {
+//!     let my_num: ~int = ~10;
+//!     let my_num: *int = cast::transmute(my_num);
+//!     let my_speed: ~int = ~88;
+//!     let my_speed: *mut int = cast::transmute(my_speed);
+//!
+//!     // By taking ownership of the original `~T` though
+//!     // we are obligated to transmute it back later to be destroyed.
+//!     drop(cast::transmute::<_, ~int>(my_speed));
+//!     drop(cast::transmute::<_, ~int>(my_num));
+//! }
+//! ```
+//!
+//! Note that here the call to `drop` is for clarity - it indicates
+//! that we are done with the given value and it should be destroyed.
+//!
+//! ## 3. Get it from C.
+//!
+//! ```
+//! extern crate libc;
+//!
+//! use std::mem;
+//!
+//! fn main() {
+//!     unsafe {
+//!         let my_num: *mut int = libc::malloc(mem::size_of::<int>() as libc::size_t) as *mut int;
+//!         if my_num.is_null() {
+//!             fail!("failed to allocate memory");
+//!         }
+//!         libc::free(my_num as *mut libc::c_void);
+//!     }
+//! }
+//! ```
+//!
+//! Usually you wouldn't literally use `malloc` and `free` from Rust,
+//! but C APIs hand out a lot of pointers generally, so are a common source
+//! of unsafe pointers in Rust.
 
 use cast;
 use clone::Clone;
@@ -51,31 +131,97 @@ pub unsafe fn position<T>(buf: *T, f: |&T| -> bool) -> uint {
     }
 }
 
-/// Create an unsafe null pointer
+/// Create an null pointer.
+///
+/// # Example
+///
+/// ```
+/// use std::ptr;
+///
+/// let p: *int = ptr::null();
+/// assert!(p.is_null());
+/// ```
 #[inline]
 pub fn null<T>() -> *T { 0 as *T }
 
-/// Create an unsafe mutable null pointer
+/// Create an unsafe mutable null pointer.
+///
+/// # Example
+///
+/// ```
+/// use std::ptr;
+///
+/// let p: *mut int = ptr::mut_null();
+/// assert!(p.is_null());
+/// ```
 #[inline]
 pub fn mut_null<T>() -> *mut T { 0 as *mut T }
 
-/**
- * Copies data from one location to another.
- *
- * Copies `count` elements (not bytes) from `src` to `dst`. The source
- * and destination may overlap.
- */
+/// Copies data from one location to another.
+///
+/// Copies `count` elements (not bytes) from `src` to `dst`. The source
+/// and destination may overlap.
+///
+/// `copy_memory` is semantically equivalent to C's `memmove`.
+///
+/// # Example
+///
+/// Efficiently create a Rust vector from an unsafe buffer:
+///
+/// ```
+/// use std::ptr;
+/// use std::slice;
+///
+/// unsafe fn from_buf_raw<T>(ptr: *T, elts: uint) -> ~[T] {
+///     let mut dst = slice::with_capacity(elts);
+///     dst.set_len(elts);
+///     ptr::copy_memory(dst.as_mut_ptr(), ptr, elts);
+///     dst
+/// }
+/// ```
+///
 #[inline]
 pub unsafe fn copy_memory<T>(dst: *mut T, src: *T, count: uint) {
     intrinsics::copy_memory(dst, src, count)
 }
 
-/**
- * Copies data from one location to another.
- *
- * Copies `count` elements (not bytes) from `src` to `dst`. The source
- * and destination may *not* overlap.
- */
+/// Copies data from one location to another.
+///
+/// Copies `count` elements (not bytes) from `src` to `dst`. The source
+/// and destination may *not* overlap.
+///
+/// `copy_nonoverlapping_memory` is semantically equivalent to C's `memcpy`.
+///
+/// # Example
+///
+/// A safe swap function:
+///
+/// ```
+/// use std::cast;
+/// use std::mem;
+/// use std::ptr;
+///
+/// fn swap<T>(x: &mut T, y: &mut T) {
+///     unsafe {
+///         // Give ourselves some scratch space to work with
+///         let mut t: T = mem::uninit();
+///
+///         // Perform the swap, `&mut` pointers never alias
+///         ptr::copy_nonoverlapping_memory(&mut t, &*x, 1);
+///         ptr::copy_nonoverlapping_memory(x, &*y, 1);
+///         ptr::copy_nonoverlapping_memory(y, &t, 1);
+///
+///         // y and t now point to the same thing, but we need to completely forget `tmp`
+///         // because it's no longer relevant.
+///         cast::forget(t);
+///     }
+/// }
+/// ```
+///
+/// # Safety Note
+///
+/// If the source and destination overlap then the behavior of this
+/// function is undefined.
 #[inline]
 pub unsafe fn copy_nonoverlapping_memory<T>(dst: *mut T,
                                             src: *T,
@@ -83,27 +229,21 @@ pub unsafe fn copy_nonoverlapping_memory<T>(dst: *mut T,
     intrinsics::copy_nonoverlapping_memory(dst, src, count)
 }
 
-/**
- * Invokes memset on the specified pointer, setting `count * size_of::<T>()`
- * bytes of memory starting at `dst` to `c`.
- */
+/// Invokes memset on the specified pointer, setting `count * size_of::<T>()`
+/// bytes of memory starting at `dst` to `c`.
 #[inline]
 pub unsafe fn set_memory<T>(dst: *mut T, c: u8, count: uint) {
     intrinsics::set_memory(dst, c, count)
 }
 
-/**
- * Zeroes out `count * size_of::<T>` bytes of memory at `dst`
- */
+/// Zeroes out `count * size_of::<T>` bytes of memory at `dst`
 #[inline]
 pub unsafe fn zero_memory<T>(dst: *mut T, count: uint) {
     set_memory(dst, 0, count);
 }
 
-/**
- * Swap the values at two mutable locations of the same type, without
- * deinitialising either. They may overlap.
- */
+/// Swap the values at two mutable locations of the same type, without
+/// deinitialising either. They may overlap.
 #[inline]
 pub unsafe fn swap<T>(x: *mut T, y: *mut T) {
     // Give ourselves some scratch space to work with
@@ -120,19 +260,15 @@ pub unsafe fn swap<T>(x: *mut T, y: *mut T) {
     cast::forget(tmp);
 }
 
-/**
- * Replace the value at a mutable location with a new one, returning the old
- * value, without deinitialising either.
- */
+/// Replace the value at a mutable location with a new one, returning the old
+/// value, without deinitialising either.
 #[inline]
 pub unsafe fn replace<T>(dest: *mut T, mut src: T) -> T {
     mem::swap(cast::transmute(dest), &mut src); // cannot overlap
     src
 }
 
-/**
- * Reads the value from `*src` and returns it.
- */
+/// Reads the value from `*src` and returns it.
 #[inline(always)]
 pub unsafe fn read<T>(src: *T) -> T {
     let mut tmp: T = mem::uninit();
@@ -140,10 +276,8 @@ pub unsafe fn read<T>(src: *T) -> T {
     tmp
 }
 
-/**
- * Reads the value from `*src` and nulls it out.
- * This currently prevents destructors from executing.
- */
+/// Reads the value from `*src` and nulls it out.
+/// This currently prevents destructors from executing.
 #[inline(always)]
 pub unsafe fn read_and_zero<T>(dest: *mut T) -> T {
     // Copy the data out from `dest`:
@@ -155,13 +289,9 @@ pub unsafe fn read_and_zero<T>(dest: *mut T) -> T {
     tmp
 }
 
-/**
-  Given a **T (pointer to an array of pointers),
-  iterate through each *T, up to the provided `len`,
-  passing to the provided callback function
-
-  SAFETY NOTE: Pointer-arithmetic. Dragons be here.
-*/
+/// Given a **T (pointer to an array of pointers),
+/// iterate through each *T, up to the provided `len`,
+/// passing to the provided callback function
 pub unsafe fn array_each_with_len<T>(arr: **T, len: uint, cb: |*T|) {
     if arr.is_null() {
         fail!("ptr::array_each_with_len failure: arr input is null pointer");
@@ -173,15 +303,14 @@ pub unsafe fn array_each_with_len<T>(arr: **T, len: uint, cb: |*T|) {
     }
 }
 
-/**
-  Given a null-pointer-terminated **T (pointer to
-  an array of pointers), iterate through each *T,
-  passing to the provided callback function
-
-  SAFETY NOTE: This will only work with a null-terminated
-  pointer array. Barely less-dodgy Pointer Arithmetic.
-  Dragons be here.
-*/
+/// Given a null-pointer-terminated **T (pointer to
+/// an array of pointers), iterate through each *T,
+/// passing to the provided callback function
+///
+/// # Safety Note
+///
+/// This will only work with a null-terminated
+/// pointer array.
 pub unsafe fn array_each<T>(arr: **T, cb: |*T|) {
     if arr.is_null()  {
         fail!("ptr::array_each_with_len failure: arr input is null pointer");

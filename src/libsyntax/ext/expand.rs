@@ -487,7 +487,8 @@ pub fn expand_view_item(vi: &ast::ViewItem,
 }
 
 fn load_extern_macros(krate: &ast::ViewItem, fld: &mut MacroExpander) {
-    let MacroCrate { lib, cnum } = fld.cx.ecfg.loader.load_crate(krate);
+    let MacroCrate { lib, macros, registrar_symbol } =
+        fld.cx.ecfg.loader.load_crate(krate);
 
     let crate_name = match krate.node {
         ast::ViewItemExternCrate(name, _, _) => name,
@@ -495,8 +496,7 @@ fn load_extern_macros(krate: &ast::ViewItem, fld: &mut MacroExpander) {
     };
     let name = format!("<{} macros>", token::get_ident(crate_name));
 
-    let exported_macros = fld.cx.ecfg.loader.get_exported_macros(cnum);
-    for source in exported_macros.iter() {
+    for source in macros.iter() {
         let item = parse::parse_item_from_source_str(name.clone(),
                                                      (*source).clone(),
                                                      fld.cx.cfg(),
@@ -512,7 +512,7 @@ fn load_extern_macros(krate: &ast::ViewItem, fld: &mut MacroExpander) {
     // Make sure the path contains a / or the linker will search for it.
     let path = os::make_absolute(&path);
 
-    let registrar = match fld.cx.ecfg.loader.get_registrar_symbol(cnum) {
+    let registrar = match registrar_symbol {
         Some(registrar) => registrar,
         None => return
     };
@@ -1017,14 +1017,6 @@ mod test {
 
     impl CrateLoader for ErrLoader {
         fn load_crate(&mut self, _: &ast::ViewItem) -> MacroCrate {
-            fail!("lolwut")
-        }
-
-        fn get_exported_macros(&mut self, _: ast::CrateNum) -> Vec<~str> {
-            fail!("lolwut")
-        }
-
-        fn get_registrar_symbol(&mut self, _: ast::CrateNum) -> Option<~str> {
             fail!("lolwut")
         }
     }

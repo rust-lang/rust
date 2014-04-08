@@ -64,7 +64,7 @@ pub fn indenter() -> _indenter {
 }
 
 struct LoopQueryVisitor<'a> {
-    p: 'a |&ast::Expr_| -> bool,
+    p: |&ast::Expr_|: 'a -> bool,
     flag: bool,
 }
 
@@ -92,7 +92,7 @@ pub fn loop_query(b: &ast::Block, p: |&ast::Expr_| -> bool) -> bool {
 }
 
 struct BlockQueryVisitor<'a> {
-    p: 'a |&ast::Expr| -> bool,
+    p: |&ast::Expr|: 'a -> bool,
     flag: bool,
 }
 

@@ -235,7 +235,7 @@ pub fn mut_ref_slice<'a, A>(s: &'a mut A) -> &'a mut [A] {
 pub struct Splits<'a, T> {
     v: &'a [T],
     n: uint,
-    pred: 'a |t: &T| -> bool,
+    pred: |t: &T|: 'a -> bool,
     finished: bool
 }
 
@@ -284,7 +284,7 @@ impl<'a, T> Iterator<&'a [T]> for Splits<'a, T> {
 pub struct RevSplits<'a, T> {
     v: &'a [T],
     n: uint,
-    pred: 'a |t: &T| -> bool,
+    pred: |t: &T|: 'a -> bool,
     finished: bool
 }
 
@@ -810,23 +810,23 @@ pub trait ImmutableVector<'a, T> {
     /// Returns an iterator over the subslices of the vector which are
     /// separated by elements that match `pred`.  The matched element
     /// is not contained in the subslices.
-    fn split(self, pred: 'a |&T| -> bool) -> Splits<'a, T>;
+    fn split(self, pred: |&T|: 'a -> bool) -> Splits<'a, T>;
     /// Returns an iterator over the subslices of the vector which are
     /// separated by elements that match `pred`, limited to splitting
     /// at most `n` times.  The matched element is not contained in
     /// the subslices.
-    fn splitn(self, n: uint, pred: 'a |&T| -> bool) -> Splits<'a, T>;
+    fn splitn(self, n: uint, pred: |&T|: 'a -> bool) -> Splits<'a, T>;
     /// Returns an iterator over the subslices of the vector which are
     /// separated by elements that match `pred`. This starts at the
     /// end of the vector and works backwards.  The matched element is
     /// not contained in the subslices.
-    fn rsplit(self, pred: 'a |&T| -> bool) -> RevSplits<'a, T>;
+    fn rsplit(self, pred: |&T|: 'a -> bool) -> RevSplits<'a, T>;
     /// Returns an iterator over the subslices of the vector which are
     /// separated by elements that match `pred` limited to splitting
     /// at most `n` times. This starts at the end of the vector and
     /// works backwards.  The matched element is not contained in the
     /// subslices.
-    fn rsplitn(self,  n: uint, pred: 'a |&T| -> bool) -> RevSplits<'a, T>;
+    fn rsplitn(self,  n: uint, pred: |&T|: 'a -> bool) -> RevSplits<'a, T>;
 
     /**
      * Returns an iterator over all contiguous windows of length
@@ -1003,12 +1003,12 @@ impl<'a,T> ImmutableVector<'a, T> for &'a [T] {
     }
 
     #[inline]
-    fn split(self, pred: 'a |&T| -> bool) -> Splits<'a, T> {
+    fn split(self, pred: |&T|: 'a -> bool) -> Splits<'a, T> {
         self.splitn(uint::MAX, pred)
     }
 
     #[inline]
-    fn splitn(self, n: uint, pred: 'a |&T| -> bool) -> Splits<'a, T> {
+    fn splitn(self, n: uint, pred: |&T|: 'a -> bool) -> Splits<'a, T> {
         Splits {
             v: self,
             n: n,
@@ -1018,12 +1018,12 @@ impl<'a,T> ImmutableVector<'a, T> for &'a [T] {
     }
 
     #[inline]
-    fn rsplit(self, pred: 'a |&T| -> bool) -> RevSplits<'a, T> {
+    fn rsplit(self, pred: |&T|: 'a -> bool) -> RevSplits<'a, T> {
         self.rsplitn(uint::MAX, pred)
     }
 
     #[inline]
-    fn rsplitn(self, n: uint, pred: 'a |&T| -> bool) -> RevSplits<'a, T> {
+    fn rsplitn(self, n: uint, pred: |&T|: 'a -> bool) -> RevSplits<'a, T> {
         RevSplits {
             v: self,
             n: n,
@@ -2027,7 +2027,7 @@ pub trait MutableVector<'a, T> {
     /// Returns an iterator over the mutable subslices of the vector
     /// which are separated by elements that match `pred`.  The
     /// matched element is not contained in the subslices.
-    fn mut_split(self, pred: 'a |&T| -> bool) -> MutSplits<'a, T>;
+    fn mut_split(self, pred: |&T|: 'a -> bool) -> MutSplits<'a, T>;
 
     /**
      * Returns an iterator over `size` elements of the vector at a time.
@@ -2299,7 +2299,7 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
     }
 
     #[inline]
-    fn mut_split(self, pred: 'a |&T| -> bool) -> MutSplits<'a, T> {
+    fn mut_split(self, pred: |&T|: 'a -> bool) -> MutSplits<'a, T> {
         MutSplits { v: self, pred: pred, finished: false }
     }
 
@@ -2736,7 +2736,7 @@ pub type RevMutItems<'a, T> = Rev<MutItems<'a, T>>;
 /// by elements that match `pred`.
 pub struct MutSplits<'a, T> {
     v: &'a mut [T],
-    pred: 'a |t: &T| -> bool,
+    pred: |t: &T|: 'a -> bool,
     finished: bool
 }
 

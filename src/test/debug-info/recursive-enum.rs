@@ -26,7 +26,7 @@ struct WindowCallbacks<'a> {
     pos_callback: Option<WindowPosCallback<'a>>,
 }
 
-pub type WindowPosCallback<'a> = 'a |&Window, i32, i32|;
+pub type WindowPosCallback<'a> = |&Window, i32, i32|: 'a;
 
 fn main() {
     let x = WindowCallbacks { pos_callback: None };

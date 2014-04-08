@@ -613,7 +613,7 @@ pub trait EachViewItem {
 }
 
 struct EachViewItemData<'a> {
-    callback: 'a |&ast::ViewItem| -> bool,
+    callback: |&ast::ViewItem|: 'a -> bool,
 }
 
 impl<'a> Visitor<()> for EachViewItemData<'a> {

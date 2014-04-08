@@ -13,13 +13,13 @@ fn is_freeze<T: Share>() {}
 fn is_static<T: 'static>() {}
 
 fn main() {
-    is_send::<proc:()>();
+    is_send::<proc()>();
     //~^ ERROR: instantiating a type parameter with an incompatible type
 
-    is_freeze::<proc:()>();
+    is_freeze::<proc()>();
     //~^ ERROR: instantiating a type parameter with an incompatible type
 
-    is_static::<proc:()>();
+    is_static::<proc()>();
     //~^ ERROR: instantiating a type parameter with an incompatible type
 }
 

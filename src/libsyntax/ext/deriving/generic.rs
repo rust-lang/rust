@@ -303,7 +303,7 @@ Combine the values of all the fields together. The last argument is
 all the fields of all the structures, see above for details.
 */
 pub type CombineSubstructureFunc<'a> =
-    'a |&mut ExtCtxt, Span, &Substructure| -> @Expr;
+    |&mut ExtCtxt, Span, &Substructure|: 'a -> @Expr;
 
 /**
 Deal with non-matching enum variants, the arguments are a list
@@ -311,10 +311,10 @@ representing each variant: (variant index, ast::Variant instance,
 [variant fields]), and a list of the nonself args of the type
 */
 pub type EnumNonMatchFunc<'a> =
-    'a |&mut ExtCtxt,
+    |&mut ExtCtxt,
            Span,
            &[(uint, P<ast::Variant>, Vec<(Span, Option<Ident>, @Expr)> )],
-           &[@Expr]|
+           &[@Expr]|: 'a
            -> @Expr;
 
 

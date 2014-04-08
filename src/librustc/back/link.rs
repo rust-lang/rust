@@ -945,11 +945,14 @@ fn link_rlib<'a>(sess: &'a Session,
             let bc_deflated = obj_filename.with_extension("bc.deflate");
             match fs::File::open(&bc).read_to_end().and_then(|data| {
                 fs::File::create(&bc_deflated)
-                    .write(flate::deflate_bytes(data.as_slice()).as_slice())
+                    .write(match flate::deflate_bytes(data.as_slice()) {
+                        Some(compressed) => compressed,
+                        None => sess.fatal("failed to compress bytecode")
+                     }.as_slice())
             }) {
                 Ok(()) => {}
                 Err(e) => {
-                    sess.err(format!("failed to compress bytecode: {}", e));
+                    sess.err(format!("failed to write compressed bytecode: {}", e));
                     sess.abort_if_errors()
                 }
             }

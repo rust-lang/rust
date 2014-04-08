@@ -12,13 +12,13 @@ use std::task;
 
 static generations: uint = 1024+256+128+49;
 
-fn spawn(f: proc:Send()) {
+fn spawn(f: proc():Send) {
     let mut t = task::task();
     t.opts.stack_size = Some(32 * 1024);
     t.spawn(f);
 }
 
-fn child_no(x: uint) -> proc:Send() {
+fn child_no(x: uint) -> proc():Send {
     proc() {
         if x < generations {
             spawn(child_no(x+1));

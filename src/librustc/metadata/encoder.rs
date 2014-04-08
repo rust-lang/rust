@@ -64,9 +64,9 @@ pub enum InlinedItemRef<'a> {
 
 pub type Encoder<'a> = writer::Encoder<'a, MemWriter>;
 
-pub type EncodeInlinedItem<'a> = 'a |ecx: &EncodeContext,
-                                     ebml_w: &mut Encoder,
-                                     ii: InlinedItemRef|;
+pub type EncodeInlinedItem<'a> = |ecx: &EncodeContext,
+                                  ebml_w: &mut Encoder,
+                                  ii: InlinedItemRef|: 'a;
 
 pub struct EncodeParams<'a> {
     pub diag: &'a SpanHandler,

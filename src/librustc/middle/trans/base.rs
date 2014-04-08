@@ -613,7 +613,7 @@ pub fn compare_scalar_values<'a>(
 }
 
 pub type val_and_ty_fn<'r,'b> =
-    'r |&'b Block<'b>, ValueRef, ty::t| -> &'b Block<'b>;
+    |&'b Block<'b>, ValueRef, ty::t|: 'r -> &'b Block<'b>;
 
 // Iterates through the elements of a structural type.
 pub fn iter_structural_ty<'r,
@@ -2236,7 +2236,10 @@ pub fn write_metadata(cx: &CrateContext, krate: &ast::Crate) -> Vec<u8> {
     let encode_parms = crate_ctxt_to_encode_parms(cx, encode_inlined_item);
     let metadata = encoder::encode_metadata(encode_parms, krate);
     let compressed = encoder::metadata_encoding_version +
-                        flate::deflate_bytes(metadata.as_slice()).as_slice();
+                        match flate::deflate_bytes(metadata.as_slice()) {
+                            Some(compressed) => compressed,
+                            None => cx.sess().fatal(format!("failed to compress metadata", ))
+                        }.as_slice();
     let llmeta = C_bytes(cx, compressed);
     let llconst = C_struct(cx, [llmeta], false);
     let name = format!("rust_metadata_{}_{}_{}", cx.link_meta.crateid.name,

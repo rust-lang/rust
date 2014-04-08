@@ -432,7 +432,7 @@ operators](#binary-operator-expressions), or [keywords](#keywords).
 ## Paths
 
 ~~~~ {.notrust .ebnf .gram}
-expr_path : ident [ "::" expr_path_tail ] + ;
+expr_path : [ "::" ] ident [ "::" expr_path_tail ] + ;
 expr_path_tail : '<' type_expr [ ',' type_expr ] + '>'
                | expr_path ;
 
@@ -474,6 +474,51 @@ type T = HashMap<int,~str>;  // Type arguments used in a type expression
 let x = id::<int>(10);         // Type arguments used in a call expression
 # }
 ~~~~
+
+Paths can be denoted with various leading qualifiers to change the meaning of
+how it is resolved:
+
+* Paths starting with `::` are considered to be global paths where the
+  components of the path start being resolved from the crate root. Each
+  identifier in the path must resolve to an item.
+
+  ```rust
+  mod a {
+      pub fn foo() {}
+  }
+  mod b {
+      pub fn foo() {
+          ::a::foo(); // call a's foo function
+      }
+  }
+  # fn main() {}
+  ```
+
+* Paths starting with the keyword `super` begin resolution relative to the
+  parent module. Each further identifier must resolve to an item
+
+  ```rust
+  mod a {
+      pub fn foo() {}
+  }
+  mod b {
+      pub fn foo() {
+          super::a::foo(); // call a's foo function
+      }
+  }
+  # fn main() {}
+  ```
+
+* Paths starting with the keyword `self` begin resolution relative to the
+  current module. Each further identifier must resolve to an item.
+
+  ```rust
+  fn foo() {}
+  fn bar() {
+      self::foo();
+  }
+  # fn main() {}
+  ```
 
 # Syntax extensions
 
@@ -3415,7 +3460,7 @@ fn add(x: int, y: int) -> int {
 
 let mut x = add(5,7);
 
-type Binop<'a> = 'a |int,int| -> int;
+type Binop<'a> = |int,int|: 'a -> int;
 let bo: Binop = add;
 x = bo(5,7);
 ~~~~
