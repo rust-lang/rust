@@ -1982,6 +1982,7 @@ impl<'a> Resolver<'a> {
                         // the source of this name is different now
                         resolution.type_id.set(id);
                         resolution.value_id.set(id);
+                        resolution.is_public.set(is_public);
                     }
                     None => {
                         debug!("(building import directive) creating new");
