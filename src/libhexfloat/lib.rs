@@ -57,9 +57,8 @@ use syntax::ext::base;
 use syntax::ext::base::{ExtCtxt, MacExpr};
 use syntax::ext::build::AstBuilder;
 use syntax::parse::token;
+use syntax::ptr::P;
 use rustc::plugin::Registry;
-
-use std::gc::Gc;
 
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {
@@ -122,7 +121,7 @@ pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
 
     let s = match expr.node {
         // expression is a literal
-        ast::ExprLit(lit) => match lit.node {
+        ast::ExprLit(ref lit) => match lit.node {
             // string literal
             ast::LitStr(ref s, _) => {
                 s.clone()
@@ -167,7 +166,7 @@ struct Ident {
 }
 
 fn parse_tts(cx: &ExtCtxt,
-             tts: &[ast::TokenTree]) -> (Gc<ast::Expr>, Option<Ident>) {
+             tts: &[ast::TokenTree]) -> (P<ast::Expr>, Option<Ident>) {
     let p = &mut cx.new_parser_from_tts(tts);
     let ex = p.parse_expr();
     let id = if p.token == token::EOF {
