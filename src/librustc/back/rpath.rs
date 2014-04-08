@@ -12,9 +12,10 @@
 use driver::session::Session;
 use metadata::cstore;
 use metadata::filesearch;
+use util::fs;
 
 use collections::HashSet;
-use std::{os, slice};
+use std::os;
 use syntax::abi;
 
 fn not_win32(os: abi::Os) -> bool {
@@ -121,9 +122,9 @@ pub fn get_rpath_relative_to_output(os: abi::Os,
         abi::OsWin32 => unreachable!()
     };
 
-    let mut lib = os::make_absolute(lib);
+    let mut lib = fs::realpath(&os::make_absolute(lib)).unwrap();
     lib.pop();
-    let mut output = os::make_absolute(output);
+    let mut output = fs::realpath(&os::make_absolute(output)).unwrap();
     output.pop();
     let relative = lib.path_relative_from(&output);
     let relative = relative.expect("could not create rpath relative to output");
