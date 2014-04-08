@@ -152,7 +152,7 @@ struct Foo {
 }
 
 struct FooClosure<'a> {
-    myfunc: 'a |int, uint| -> i32
+    myfunc: |int, uint|: 'a -> i32
 }
 
 fn a(a: int, b: uint) -> i32 {

@@ -46,7 +46,7 @@ use raw;
 pub struct CVec<T> {
     base: *mut T,
     len: uint,
-    dtor: Option<proc:Send()>,
+    dtor: Option<proc():Send>,
 }
 
 #[unsafe_destructor]
@@ -90,7 +90,7 @@ impl<T> CVec<T> {
     /// * dtor - A proc to run when the value is destructed, useful
     ///          for freeing the buffer, etc.
     pub unsafe fn new_with_dtor(base: *mut T, len: uint,
-                                dtor: proc:Send()) -> CVec<T> {
+                                dtor: proc():Send) -> CVec<T> {
         assert!(base != ptr::mut_null());
         CVec {
             base: base,

@@ -36,7 +36,7 @@ pub trait Callback {
 
 pub trait EventLoop {
     fn run(&mut self);
-    fn callback(&mut self, arg: proc:Send());
+    fn callback(&mut self, arg: proc():Send);
     fn pausable_idle_callback(&mut self,
                               ~Callback:Send) -> ~PausableIdleCallback:Send;
     fn remote_callback(&mut self, ~Callback:Send) -> ~RemoteCallback:Send;

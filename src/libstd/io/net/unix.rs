@@ -141,7 +141,7 @@ mod tests {
     use io::*;
     use io::test::*;
 
-    pub fn smalltest(server: proc:Send(UnixStream), client: proc:Send(UnixStream)) {
+    pub fn smalltest(server: proc(UnixStream):Send, client: proc(UnixStream):Send) {
         let path1 = next_test_unix();
         let path2 = path1.clone();
 

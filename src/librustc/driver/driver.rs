@@ -241,8 +241,6 @@ pub fn phase_2_configure_and_expand(sess: &Session,
                                           cfg,
                                           krate)
     });
-    // dump the syntax-time crates
-    sess.cstore.reset();
 
     // strip again, in case expansion added anything with a #[cfg].
     krate = time(time_passes, "configuration 2", krate, |krate|

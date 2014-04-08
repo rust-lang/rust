@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn env<'a>(_: &'a uint, blk: |p: 'a |||) {
+fn env<'a>(_: &'a uint, blk: |p: ||: 'a|) {
     // Test that the closure here cannot be assigned
     // the lifetime `'a`, which outlives the current
     // block.
@@ -21,7 +21,7 @@ fn env<'a>(_: &'a uint, blk: |p: 'a |||) {
     blk(|| *statep = 1); //~ ERROR cannot infer
 }
 
-fn no_env_no_for<'a>(_: &'a uint, blk: |p: 'a |||) {
+fn no_env_no_for<'a>(_: &'a uint, blk: |p: |||: 'a) {
     // Test that a closure with no free variables CAN
     // outlive the block in which it is created.
     //

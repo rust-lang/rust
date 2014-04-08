@@ -1574,6 +1574,7 @@ mod tests {
         assert_eq!(v, three)
     }
 
+    #[test]
     fn test_grow_fn() {
         let mut v = Vec::from_slice([0u, 1]);
         v.grow_fn(3, |i| i);
