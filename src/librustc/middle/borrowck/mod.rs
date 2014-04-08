@@ -274,12 +274,13 @@ pub fn opt_loan_path(cmt: mc::cmt) -> Option<@LoanPath> {
     match cmt.cat {
         mc::cat_rvalue(..) |
         mc::cat_static_item |
-        mc::cat_copied_upvar(_) => {
+        mc::cat_copied_upvar(mc::CopiedUpvar { onceness: ast::Many, .. }) => {
             None
         }
 
         mc::cat_local(id) |
         mc::cat_arg(id) |
+        mc::cat_copied_upvar(mc::CopiedUpvar { upvar_id: id, .. }) |
         mc::cat_upvar(ty::UpvarId {var_id: id, ..}, _) => {
             Some(@LpVar(id))
         }
