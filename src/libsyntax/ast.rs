@@ -730,6 +730,7 @@ impl fmt::Show for UintTy {
 pub enum FloatTy {
     TyF32,
     TyF64,
+    TyF128
 }
 
 impl fmt::Show for FloatTy {

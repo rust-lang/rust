@@ -52,11 +52,13 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://static.rust-lang.org/doc/master")]
 #![feature(macro_rules, globs, asm, managed_boxes, thread_local, link_args,
-           simd, linkage, default_type_params, phase, concat_idents)]
+           simd, linkage, default_type_params, phase, concat_idents, quad_precision_float)]
 
 // Don't link to std. We are std.
 #![no_std]
 
+// NOTE: remove after snapshot
+#![allow(unknown_features)]
 #![deny(missing_doc)]
 
 // When testing libstd, bring in libuv as the I/O backend so tests can print

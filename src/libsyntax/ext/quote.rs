@@ -436,7 +436,8 @@ fn mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> @ast::Expr {
         LIT_FLOAT(fident, fty) => {
             let s_fty = match fty {
                 ast::TyF32 => "TyF32".to_owned(),
-                ast::TyF64 => "TyF64".to_owned()
+                ast::TyF64 => "TyF64".to_owned(),
+                ast::TyF128 => "TyF128".to_owned()
             };
             let e_fty = cx.expr_ident(sp, id_ext(s_fty));
 
