@@ -1170,7 +1170,8 @@ fn basic_type_metadata(cx: &CrateContext, t: ty::t) -> DIType {
         },
         ty::ty_float(float_ty) => match float_ty {
             ast::TyF32 => ("f32".to_owned(), DW_ATE_float),
-            ast::TyF64 => ("f64".to_owned(), DW_ATE_float)
+            ast::TyF64 => ("f64".to_owned(), DW_ATE_float),
+            ast::TyF128 => ("f128".to_owned(), DW_ATE_float)
         },
         _ => cx.sess().bug("debuginfo::basic_type_metadata - t is invalid type")
     };

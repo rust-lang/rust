@@ -341,6 +341,13 @@ pub fn ast_ty_to_prim_ty(tcx: &ty::ctxt, ast_ty: &ast::Ty) -> Option<ty::t> {
                             Some(ty::mk_mach_uint(uit))
                         }
                         ast::TyFloat(ft) => {
+                            if ft == ast::TyF128 && !tcx.sess.features.quad_precision_float.get() {
+                                tcx.sess.span_err(path.span, "quadruple precision floats are \
+                                                              missing complete runtime support");
+                                tcx.sess.span_note(path.span, "add \
+                                                               #[feature(quad_precision_float)] \
+                                                               to the crate attributes to enable");
+                            }
                             check_path_args(tcx, path, NO_TPS | NO_REGIONS);
                             Some(ty::mk_mach_float(ft))
                         }
