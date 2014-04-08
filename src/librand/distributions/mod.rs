@@ -209,8 +209,8 @@ fn ziggurat<R:Rng>(
             symmetric: bool,
             x_tab: ziggurat_tables::ZigTable,
             f_tab: ziggurat_tables::ZigTable,
-            pdf: 'static |f64| -> f64,
-            zero_case: 'static |&mut R, f64| -> f64)
+            pdf: |f64|: 'static -> f64,
+            zero_case: |&mut R, f64|: 'static -> f64)
             -> f64 {
     static SCALE: f64 = (1u64 << 53) as f64;
     loop {

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn wants_static_fn(_x: 'static ||) {}
+fn wants_static_fn(_x: ||: 'static) {}
 
 fn main() {
     let i = 3;

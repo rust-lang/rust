@@ -19,10 +19,10 @@ enum maybe_pointy {
 
 struct Pointy {
     a : maybe_pointy,
-    d : proc:Send() -> uint,
+    d : proc():Send -> uint,
 }
 
-fn make_uniq_closure<A:Send>(a: A) -> proc:Send() -> uint {
+fn make_uniq_closure<A:Send>(a: A) -> proc():Send -> uint {
     proc() { &a as *A as uint }
 }
 

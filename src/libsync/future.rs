@@ -34,7 +34,7 @@ pub struct Future<A> {
 }
 
 enum FutureState<A> {
-    Pending(proc:Send() -> A),
+    Pending(proc():Send -> A),
     Evaluating,
     Forced(A)
 }
@@ -90,7 +90,7 @@ impl<A> Future<A> {
         Future {state: Forced(val)}
     }
 
-    pub fn from_fn(f: proc:Send() -> A) -> Future<A> {
+    pub fn from_fn(f: proc():Send -> A) -> Future<A> {
         /*!
          * Create a future from a function.
          *
@@ -117,7 +117,7 @@ impl<A:Send> Future<A> {
         })
     }
 
-    pub fn spawn(blk: proc:Send() -> A) -> Future<A> {
+    pub fn spawn(blk: proc():Send -> A) -> Future<A> {
         /*!
          * Create a future from a unique closure.
          *

@@ -16,7 +16,7 @@ fn main() {
     let cheese = ~"roquefort";
     let carrots = @~"crunchy";
 
-    let result: 'static |@~str, |~str|| = (|tasties, macerate| {
+    let result: |@~str, |~str||: 'static = (|tasties, macerate| {
         macerate((*tasties).clone());
     });
     result(carrots, |food| {

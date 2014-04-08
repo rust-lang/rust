@@ -21,7 +21,7 @@ use ptr::RawPtr;
 use unstable::sync::Exclusive;
 use slice::OwnedVector;
 
-type Queue = Exclusive<~[proc:Send()]>;
+type Queue = Exclusive<~[proc():Send]>;
 
 // You'll note that these variables are *not* atomic, and this is done on
 // purpose. This module is designed to have init() called *once* in a
@@ -40,7 +40,7 @@ pub fn init() {
     }
 }
 
-pub fn push(f: proc:Send()) {
+pub fn push(f: proc():Send) {
     unsafe {
         rtassert!(!RUNNING);
         rtassert!(!QUEUE.is_null());

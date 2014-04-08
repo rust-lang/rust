@@ -613,7 +613,7 @@ pub fn compare_scalar_values<'a>(
 }
 
 pub type val_and_ty_fn<'r,'b> =
-    'r |&'b Block<'b>, ValueRef, ty::t| -> &'b Block<'b>;
+    |&'b Block<'b>, ValueRef, ty::t|: 'r -> &'b Block<'b>;
 
 // Iterates through the elements of a structural type.
 pub fn iter_structural_ty<'r,

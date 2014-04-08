@@ -525,7 +525,7 @@ pub fn get_base_and_len(bcx: &Block,
 }
 
 pub type iter_vec_block<'r,'b> =
-    'r |&'b Block<'b>, ValueRef, ty::t| -> &'b Block<'b>;
+    |&'b Block<'b>, ValueRef, ty::t|: 'r -> &'b Block<'b>;
 
 pub fn iter_vec_loop<'r,
                      'b>(
