@@ -124,12 +124,10 @@ impl<T: Share + Send> Clone for Arc<T> {
     }
 }
 
-// FIXME(#13042): this should have T: Send, and use self.inner()
-impl<T> Deref<T> for Arc<T> {
+impl<T: Send + Share> Deref<T> for Arc<T> {
     #[inline]
     fn deref<'a>(&'a self) -> &'a T {
-        let inner = unsafe { &*self.x };
-        &inner.data
+        &self.inner().data
     }
 }
 

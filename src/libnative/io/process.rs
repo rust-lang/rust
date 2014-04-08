@@ -639,7 +639,7 @@ fn spawn_process_os(config: p::ProcessConfig,
 }
 
 #[cfg(unix)]
-fn with_argv<T>(prog: &str, args: &[~str], cb: proc:(**libc::c_char) -> T) -> T {
+fn with_argv<T>(prog: &str, args: &[~str], cb: proc(**libc::c_char) -> T) -> T {
     use std::slice;
 
     // We can't directly convert `str`s into `*char`s, as someone needs to hold
@@ -665,7 +665,7 @@ fn with_argv<T>(prog: &str, args: &[~str], cb: proc:(**libc::c_char) -> T) -> T 
 }
 
 #[cfg(unix)]
-fn with_envp<T>(env: Option<~[(~str, ~str)]>, cb: proc:(*c_void) -> T) -> T {
+fn with_envp<T>(env: Option<~[(~str, ~str)]>, cb: proc(*c_void) -> T) -> T {
     use std::slice;
 
     // On posixy systems we can pass a char** for envp, which is a

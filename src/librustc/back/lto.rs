@@ -56,7 +56,10 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
                       archive.read(format!("{}.bc.deflate", name)));
         let bc = bc.expect("missing compressed bytecode in archive!");
         let bc = time(sess.time_passes(), format!("inflate {}.bc", name), (), |_|
-                      flate::inflate_bytes(bc));
+                      match flate::inflate_bytes(bc) {
+                          Some(bc) => bc,
+                          None => sess.fatal(format!("failed to decompress bc of `{}`", name))
+                      });
         let ptr = bc.as_slice().as_ptr();
         debug!("linking {}", name);
         time(sess.time_passes(), format!("ll link {}", name), (), |()| unsafe {

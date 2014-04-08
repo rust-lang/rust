@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #![feature(globs)]
-#![crate_id = "libc#0.10-pre"]
+#![crate_id = "libc#0.11-pre"]
 #![experimental]
 #![no_std] // we don't need std, and we can't have std, since it doesn't exist
            // yet. std depends on us.
@@ -74,8 +74,6 @@
 #![allow(non_uppercase_statics)]
 #![allow(missing_doc)]
 #![allow(uppercase_variables)]
-
-#![feature(link_args)] // NOTE: remove after stage0
 
 #[cfg(test)] extern crate std;
 #[cfg(test)] extern crate test;
@@ -197,11 +195,6 @@ pub use funcs::posix88::unistd::{rmdir, unlink, write};
 #[cfg(not(windows))]
 #[link(name = "c")]
 #[link(name = "m")]
-extern {}
-
-// NOTE: remove this after a stage0 snap
-#[cfg(stage0, windows)]
-#[link_args = "-Wl,--enable-long-section-names"]
 extern {}
 
 /// A wrapper for a nullable pointer. Don't use this except for interacting

@@ -86,7 +86,7 @@ pub fn relate_nested_regions(tcx: &ty::ctxt,
     struct RegionRelator<'a> {
         tcx: &'a ty::ctxt,
         stack: Vec<ty::Region>,
-        relate_op: 'a |ty::Region, ty::Region|,
+        relate_op: |ty::Region, ty::Region|: 'a,
     }
 
     // FIXME(#10151) -- Define more precisely when a region is
