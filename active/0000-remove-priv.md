@@ -19,7 +19,7 @@ remaining case, private enum variants, can be rewritten as such:
 //     priv Baz,
 // }
 
-enum Foo {
+pub enum Foo {
     Bar,
     Baz(BazInner)
 }
