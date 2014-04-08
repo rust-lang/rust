@@ -257,7 +257,7 @@ pub fn walk_item<E: Clone, V: Visitor<E>>(visitor: &mut V, item: &Item, env: E) 
                                      item.id,
                                      env)
         }
-        ItemTrait(ref generics, ref trait_paths, ref methods) => {
+        ItemTrait(ref generics, _, ref trait_paths, ref methods) => {
             visitor.visit_generics(generics, env.clone());
             for trait_path in trait_paths.iter() {
                 visitor.visit_path(&trait_path.path,

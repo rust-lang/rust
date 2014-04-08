@@ -380,7 +380,11 @@ impl<'a> TraitDef<'a> {
             // require the current trait
             bounds.push(cx.typarambound(trait_path.clone()));
 
-            cx.typaram(ty_param.ident, OwnedSlice::from_vec(bounds), None)
+            cx.typaram(self.span,
+                       ty_param.ident,
+                       ty_param.sized,
+                       OwnedSlice::from_vec(bounds),
+                       None)
         }));
         let trait_generics = Generics {
             lifetimes: lifetimes,

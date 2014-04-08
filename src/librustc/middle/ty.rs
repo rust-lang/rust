@@ -2574,16 +2574,24 @@ pub fn type_is_machine(ty: t) -> bool {
 #[allow(dead_code)] // leaving in for DST
 pub fn type_is_sized(cx: &ctxt, ty: ty::t) -> bool {
     match get(ty).sty {
-        // FIXME(#6308) add trait, vec, str, etc here.
-        ty_param(p) => {
+        ty_param(tp) => {
+            assert_eq!(tp.def_id.krate, ast::LOCAL_CRATE);
+
             let ty_param_defs = cx.ty_param_defs.borrow();
-            let param_def = ty_param_defs.get(&p.def_id.node);
-            if param_def.bounds.builtin_bounds.contains_elem(BoundSized) {
-                return true;
-            }
-            return false;
+            let param_def = ty_param_defs.get(&tp.def_id.node);
+            param_def.bounds.builtin_bounds.contains_elem(BoundSized)
         },
-        _ => return true,
+        ty_self(def_id) => {
+            let trait_def = lookup_trait_def(cx, def_id);
+            trait_def.bounds.contains_elem(BoundSized)
+        },
+        ty_struct(def_id, ref substs) => {
+            let flds = lookup_struct_fields(cx, def_id);
+            let mut tps = flds.iter().map(|f| lookup_field_type(cx, def_id, f.id, substs));
+            !tps.any(|ty| !type_is_sized(cx, ty))
+        }
+        ty_tup(ref ts) => !ts.iter().any(|t| !type_is_sized(cx, *t)),
+        _ => true
     }
 }
 
@@ -3506,7 +3514,7 @@ pub fn provided_trait_methods(cx: &ctxt, id: ast::DefId) -> Vec<@Method> {
             match cx.map.find(id.node) {
                 Some(ast_map::NodeItem(item)) => {
                     match item.node {
-                        ItemTrait(_, _, ref ms) => {
+                        ItemTrait(_, _, _, ref ms) => {
                             let (_, p) =
                                 ast_util::split_trait_methods(ms.as_slice());
                             p.iter()
@@ -4040,32 +4048,8 @@ pub fn lookup_field_type(tcx: &ctxt,
 // Fails if the id is not bound to a struct.
 pub fn lookup_struct_fields(cx: &ctxt, did: ast::DefId) -> Vec<field_ty> {
     if did.krate == ast::LOCAL_CRATE {
-        match cx.map.find(did.node) {
-            Some(ast_map::NodeItem(i)) => {
-                match i.node {
-                    ast::ItemStruct(struct_def, _) => {
-                        struct_field_tys(struct_def.fields.as_slice())
-                    }
-                    _ => cx.sess.bug("struct ID bound to non-struct")
-                }
-            }
-            Some(ast_map::NodeVariant(ref variant)) => {
-                match (*variant).node.kind {
-                    ast::StructVariantKind(struct_def) => {
-                        struct_field_tys(struct_def.fields.as_slice())
-                    }
-                    _ => {
-                        cx.sess.bug("struct ID bound to enum variant that \
-                                    isn't struct-like")
-                    }
-                }
-            }
-            _ => {
-                cx.sess.bug(
-                    format!("struct ID not bound to an item: {}",
-                        cx.map.node_to_str(did.node)));
-            }
-        }
+        let struct_def = cx.map.expect_struct(did.node);
+        struct_field_tys(struct_def.fields.as_slice())
     } else {
         csearch::get_struct_fields(&cx.sess.cstore, did)
     }

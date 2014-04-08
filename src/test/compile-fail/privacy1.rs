@@ -11,6 +11,9 @@
 #![feature(globs)]
 #![no_std] // makes debugging this test *a lot* easier (during resolve)
 
+#[lang="sized"]
+pub trait Sized {}
+
 mod bar {
     // shouln't bring in too much
     pub use self::glob::*;

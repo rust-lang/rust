@@ -13,6 +13,7 @@ The compiler code necessary for `#[deriving(Decodable)]`. See
 encodable.rs for more.
 */
 
+use ast;
 use ast::{MetaItem, Item, Expr, MutMutable, Ident};
 use codemap::Span;
 use ext::base::ExtCtxt;
@@ -35,10 +36,10 @@ pub fn expand_deriving_decodable(cx: &mut ExtCtxt,
         additional_bounds: Vec::new(),
         generics: LifetimeBounds {
             lifetimes: Vec::new(),
-            bounds: vec!(("__D", vec!(Path::new_(
+            bounds: vec!(("__D", ast::StaticSize, vec!(Path::new_(
                             vec!("serialize", "Decoder"), None,
                             vec!(~Literal(Path::new_local("__E"))), true))),
-                         ("__E", vec!()))
+                         ("__E", ast::StaticSize, vec!()))
         },
         methods: vec!(
             MethodDef {
