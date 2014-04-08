@@ -16,6 +16,7 @@
 use libc;
 
 #[cfg(not(target_arch = "arm"))]
+#[cfg(target_os = "macos")]
 #[repr(C)]
 pub enum _Unwind_Action {
     _UA_SEARCH_PHASE = 1,
@@ -93,9 +94,13 @@ extern {}
 extern {}
 
 extern "C" {
+    #[cfg(not(target_os = "macos", target_arch = "arm"))]
     pub fn _Unwind_RaiseException(exception: *_Unwind_Exception)
                 -> _Unwind_Reason_Code;
+    #[cfg(not(target_os = "macos", target_arch = "arm"))]
     pub fn _Unwind_DeleteException(exception: *_Unwind_Exception);
+
+    #[cfg(not(target_os = "macos", target_arch = "arm"))]
     pub fn _Unwind_Backtrace(trace: _Unwind_Trace_Fn,
                              trace_argument: *libc::c_void)
                 -> _Unwind_Reason_Code;
@@ -106,6 +111,26 @@ extern "C" {
     #[cfg(not(target_os = "android"),
           not(target_os = "linux", target_arch = "arm"))]
     pub fn _Unwind_FindEnclosingFunction(pc: *libc::c_void) -> *libc::c_void;
+}
+
+// On iOS there is no exception unwinding yet
+#[cfg(target_os = "macos", target_arch = "arm")]
+pub unsafe fn _Unwind_RaiseException(_: *_Unwind_Exception)
+            -> _Unwind_Reason_Code {
+    _URC_FAILURE
+}
+
+#[cfg(target_os = "macos", target_arch = "arm")]
+pub unsafe fn _Unwind_DeleteException(_: *_Unwind_Exception)
+{
+}
+
+#[cfg(target_os = "macos", target_arch = "arm")]
+pub unsafe fn _Unwind_Backtrace(_: _Unwind_Trace_Fn,
+                         _: *libc::c_void)
+            -> _Unwind_Reason_Code
+{
+    _URC_FAILURE
 }
 
 // On android, the function _Unwind_GetIP is a macro, and this is the expansion

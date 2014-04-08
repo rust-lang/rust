@@ -239,16 +239,71 @@ pub mod eabi {
         }
         else { // cleanup phase
             unsafe {
-                 __gcc_personality_v0(version, actions, exception_class, ue_header,
+                __gcc_personality_v0(version, actions, exception_class, ue_header,
+                                   context)
+            }
+        }
+    }
+}
+
+#[cfg(target_os = "macos", target_arch = "arm", not(test))]
+#[doc(hidden)]
+#[allow(visible_private_types)]
+pub mod eabi {
+    use uw = rt::libunwind;
+    use libc::c_int;
+
+    extern "C" {
+        #[cfg(target_os = "macos", target_arch = "arm")]
+        fn __gcc_personality_sj0(version: c_int,
+                                actions: uw::_Unwind_Action,
+                                exception_class: uw::_Unwind_Exception_Class,
+                                ue_header: *uw::_Unwind_Exception,
+                                context: *uw::_Unwind_Context)
+            -> uw::_Unwind_Reason_Code;
+    }
+
+    #[lang="eh_personality"]
+    #[no_mangle] // so we can reference it by name from middle/trans/base.rs
+    pub extern "C" fn rust_eh_personality(
+        version: c_int,
+        actions: uw::_Unwind_Action,
+        exception_class: uw::_Unwind_Exception_Class,
+        ue_header: *uw::_Unwind_Exception,
+        context: *uw::_Unwind_Context
+    ) -> uw::_Unwind_Reason_Code
+    {
+        unsafe {
+            __gcc_personality_sj0(version, actions, exception_class, ue_header,
+                                      context)
+        }
+    }
+
+    #[no_mangle] // referenced from rust_try.ll
+    pub extern "C" fn rust_eh_personality_catch(
+        version: c_int,
+        actions: uw::_Unwind_Action,
+        exception_class: uw::_Unwind_Exception_Class,
+        ue_header: *uw::_Unwind_Exception,
+        context: *uw::_Unwind_Context
+    ) -> uw::_Unwind_Reason_Code
+    {
+        if (actions as c_int & uw::_UA_SEARCH_PHASE as c_int) != 0 { // search phase
+            uw::_URC_HANDLER_FOUND // catch!
+        }
+        else { // cleanup phase
+            unsafe {
+                __gcc_personality_sj0(version, actions, exception_class, ue_header,
                                       context)
             }
         }
     }
 }
 
+
 // ARM EHABI uses a slightly different personality routine signature,
 // but otherwise works the same.
-#[cfg(target_arch = "arm", not(test))]
+#[cfg(target_arch = "arm", not(test), not(target_os = "macos"))]
 #[allow(visible_private_types)]
 pub mod eabi {
     use uw = rt::libunwind;
