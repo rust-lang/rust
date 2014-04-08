@@ -2608,6 +2608,10 @@ pub fn type_is_sized(cx: &ctxt, ty: ty::t) -> bool {
             !tps.any(|ty| !type_is_sized(cx, ty))
         }
         ty_tup(ref ts) => !ts.iter().any(|t| !type_is_sized(cx, *t)),
+        ty_enum(did, ref substs) => {
+            let variants = substd_enum_variants(cx, did, substs);
+            !variants.iter().any(|v| v.args.iter().any(|t| !type_is_sized(cx, *t)))
+        }
         _ => true
     }
 }

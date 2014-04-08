@@ -7,6 +7,7 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+#![feature(struct_variant)]
 
 // Test sized-ness checking in substitution.
 
@@ -76,6 +77,21 @@ trait T6<X: T> {
 trait T7<type X: T> {
     fn m1(x: &T4<X>); // not an error (for now)
     fn m2(x: &T5<X>);
+}
+
+// The last field in a struct or variant may be unsized
+struct S2<type X> {
+    f: X,
+}
+struct S3<type X> {
+    f1: int,
+    f2: X,
+}
+enum E<type X> {
+    V1(X),
+    V2{x: X},
+    V3(int, X),
+    V4{u: int, x: X},
 }
 
 pub fn main() {

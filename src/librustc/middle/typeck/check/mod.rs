@@ -317,8 +317,22 @@ impl<'a> Visitor<()> for CheckItemTypesVisitor<'a> {
     }
 }
 
+struct CheckItemSizedTypesVisitor<'a> { ccx: &'a CrateCtxt<'a> }
+
+impl<'a> Visitor<()> for CheckItemSizedTypesVisitor<'a> {
+    fn visit_item(&mut self, i: &ast::Item, _: ()) {
+        check_item_sized(self.ccx, i);
+        visit::walk_item(self, i, ());
+    }
+}
+
 pub fn check_item_types(ccx: &CrateCtxt, krate: &ast::Crate) {
     let mut visit = CheckItemTypesVisitor { ccx: ccx };
+    visit::walk_crate(&mut visit, krate, ());
+
+    ccx.tcx.sess.abort_if_errors();
+
+    let mut visit = CheckItemSizedTypesVisitor { ccx: ccx };
     visit::walk_crate(&mut visit, krate, ());
 }
 
@@ -562,19 +576,19 @@ fn check_for_field_shadowing(tcx: &ty::ctxt,
 }
 
 fn check_fields_sized(tcx: &ty::ctxt,
-                      id: ast::NodeId) {
-    let struct_def = tcx.map.expect_struct(id);
-    // FIXME(#13121) allow the last field to be DST
-    for f in struct_def.fields.iter() {
+                      struct_def: @ast::StructDef) {
+    let len = struct_def.fields.len();
+    for i in range(0, len) {
+        let f = struct_def.fields.get(i);
         let t = ty::node_id_to_type(tcx, f.node.id);
-        if !ty::type_is_sized(tcx, t) {
+        if !ty::type_is_sized(tcx, t) && i < (len - 1) {
             match f.node.kind {
                 ast::NamedField(ident, _) => {
-                    tcx.sess.span_err(f.span, format!("Dynamically sized type in field {}",
+                    tcx.sess.span_err(f.span, format!("type of field {} is dynamically sized",
                                                       token::get_ident(ident)));
                 }
                 ast::UnnamedField(_) => {
-                    tcx.sess.span_err(f.span, "Dynamically sized type in field");
+                    tcx.sess.span_err(f.span, "dynamically sized type in field");
                 }
             }
         }
@@ -584,20 +598,32 @@ fn check_fields_sized(tcx: &ty::ctxt,
 pub fn check_struct(ccx: &CrateCtxt, id: ast::NodeId, span: Span) {
     let tcx = ccx.tcx;
 
-    // Check that the struct is representable
     check_representable(tcx, span, id, "struct");
-
-    // Check that the struct is instantiable
-    if check_instantiable(tcx, span, id) {
-        // This might cause stack overflow if id is not instantiable.
-        check_fields_sized(tcx, id);
-    }
+    check_instantiable(tcx, span, id);
 
     // Check there are no overlapping fields in super-structs
     check_for_field_shadowing(tcx, local_def(id));
 
     if ty::lookup_simd(tcx, local_def(id)) {
         check_simd(tcx, span, id);
+    }
+}
+
+pub fn check_item_sized(ccx: &CrateCtxt, it: &ast::Item) {
+    debug!("check_item(it.id={}, it.ident={})",
+           it.id,
+           ty::item_path_str(ccx.tcx, local_def(it.id)));
+    let _indenter = indenter();
+
+    match it.node {
+        ast::ItemEnum(ref enum_definition, _) => {
+            check_enum_variants_sized(ccx,
+                                      enum_definition.variants.as_slice());
+        }
+        ast::ItemStruct(..) => {
+            check_fields_sized(ccx.tcx, ccx.tcx.map.expect_struct(it.id));
+        }
+        _ => {}
     }
 }
 
@@ -3459,7 +3485,7 @@ pub fn check_const_with_ty(fcx: &FnCtxt,
 pub fn check_representable(tcx: &ty::ctxt,
                            sp: Span,
                            item_id: ast::NodeId,
-                           designation: &str) {
+                           designation: &str) -> bool {
     let rty = ty::node_id_to_type(tcx, item_id);
 
     // Check that it is possible to represent this type. This call identifies
@@ -3473,9 +3499,11 @@ pub fn check_representable(tcx: &ty::ctxt,
           sp, format!("illegal recursive {} type; \
                        wrap the inner value in a box to make it representable",
                       designation));
+        return false
       }
       ty::Representable | ty::ContainsRecursive => (),
     }
+    return true
 }
 
 /// Checks whether a type can be created without an instance of itself.
@@ -3529,6 +3557,29 @@ pub fn check_simd(tcx: &ty::ctxt, sp: Span, id: ast::NodeId) {
             }
         }
         _ => ()
+    }
+}
+
+pub fn check_enum_variants_sized(ccx: &CrateCtxt,
+                                 vs: &[ast::P<ast::Variant>]) {
+    for &v in vs.iter() {
+        match v.node.kind {
+            ast::TupleVariantKind(ref args) if args.len() > 0 => {
+                let ctor_ty = ty::node_id_to_type(ccx.tcx, v.node.id);
+                let arg_tys: Vec<ty::t> = ty::ty_fn_args(ctor_ty).iter().map(|a| *a).collect();
+                for i in range(0, args.len()) {
+                    let t = arg_tys.get(i);
+                    // Allow the last field in an enum to be unsized.
+                    if !ty::type_is_sized(ccx.tcx, *t) && i < args.len() -1 {
+                        ccx.tcx.sess.span_err(args.get(i).ty.span,
+                                              format!("type {} is dynamically sized",
+                                                      ppaux::ty_to_str(ccx.tcx, *t)));
+                    }
+                }
+            },
+            ast::StructVariantKind(struct_def) => check_fields_sized(ccx.tcx, struct_def),
+            _ => {}
+        }
     }
 }
 
@@ -3652,7 +3703,6 @@ pub fn check_enum_variants(ccx: &CrateCtxt,
     // cache so that ty::enum_variants won't repeat this work
     ccx.tcx.enum_var_cache.borrow_mut().insert(local_def(id), Rc::new(variants));
 
-    // Check that it is possible to represent this enum.
     check_representable(ccx.tcx, sp, id, "enum");
 
     // Check that it is possible to instantiate this enum:

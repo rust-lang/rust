@@ -25,6 +25,35 @@ fn f3<type X: T>(x: &X) {
 fn f4<X: T>(x: &X) {
 }
 
+// Test with unsized enum.
+enum E<type X> {
+    V(X),
+}
+
+fn f5<Y>(x: &Y) {}
+fn f6<type X>(x: &X) {}
+fn f7<type X>(x1: &E<X>, x2: &E<X>) {
+    f5(x1); //~ERROR instantiating a type parameter with an incompatible type `E<X>`, which does not
+    f6(x2); // ok
+}
+
+
+// Test with unsized struct.
+struct S<type X> {
+    x: X,
+}
+
+fn f8<type X>(x1: &S<X>, x2: &S<X>) {
+    f5(x1); //~ERROR instantiating a type parameter with an incompatible type `S<X>`, which does not
+    f6(x2); // ok
+}
+
+// Test some tuples.
+fn f9<type X>(x1: ~S<X>, x2: ~E<X>) {
+    f5(&(*x1, 34)); //~ERROR instantiating a type parameter with an incompatible type `(S<X>,int)`,
+    f5(&(32, *x2)); //~ERROR instantiating a type parameter with an incompatible type `(int,E<X>)`,
+}
+
 // I would like these to fail eventually.
 /*
 // impl - bounded
