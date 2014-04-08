@@ -237,7 +237,7 @@ impl<'a> BufWriter<'a> {
 
 impl<'a> Writer for BufWriter<'a> {
     fn write(&mut self, buf: &[u8]) -> IoResult<()> {
-        // raises a condition if the entire write does not fit in the buffer
+        // return an error if the entire write does not fit in the buffer
         let max_size = self.buf.len();
         if self.pos >= max_size || (self.pos + buf.len()) > max_size {
             return Err(IoError {
