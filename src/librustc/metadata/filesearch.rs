@@ -15,6 +15,8 @@ use std::os;
 use std::io::fs;
 use collections::HashSet;
 
+use myfs = util::fs;
+
 pub enum FileMatch { FileMatches, FileDoesntMatch }
 
 // A module for searching for libraries
@@ -156,17 +158,10 @@ fn make_rustpkg_target_lib_path(sysroot: &Path,
 pub fn get_or_default_sysroot() -> Path {
     // Follow symlinks.  If the resolved path is relative, make it absolute.
     fn canonicalize(path: Option<Path>) -> Option<Path> {
-        path.and_then(|mut path|
-            match fs::readlink(&path) {
-                Ok(canon) => {
-                    if canon.is_absolute() {
-                        Some(canon)
-                    } else {
-                        path.pop();
-                        Some(path.join(canon))
-                    }
-                },
-                Err(..) => Some(path),
+        path.and_then(|path|
+            match myfs::realpath(&path) {
+                Ok(canon) => Some(canon),
+                Err(e) => fail!("failed to get realpath: {}", e),
             })
     }
 
