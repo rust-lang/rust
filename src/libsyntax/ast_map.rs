@@ -283,6 +283,13 @@ impl Map {
         }
     }
 
+    pub fn expect_variant(&self, id: NodeId) -> P<Variant> {
+        match self.find(id) {
+            Some(NodeVariant(variant)) => variant,
+            _ => fail!(format!("expected variant, found {}", self.node_to_str(id))),
+        }
+    }
+
     pub fn expect_foreign_item(&self, id: NodeId) -> @ForeignItem {
         match self.find(id) {
             Some(NodeForeignItem(item)) => item,

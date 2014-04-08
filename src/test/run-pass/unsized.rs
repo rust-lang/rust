@@ -19,6 +19,7 @@ trait T6<Y, type X> {}
 trait T7<type X, type Y> {}
 trait T8<type X: T2> {}
 struct S1<type X>;
+enum E<type X> {}
 impl <type X> T1 for S1<X> {}
 fn f<type X>() {}
 
