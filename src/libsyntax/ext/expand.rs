@@ -1019,14 +1019,6 @@ mod test {
         fn load_crate(&mut self, _: &ast::ViewItem) -> MacroCrate {
             fail!("lolwut")
         }
-
-        fn get_exported_macros(&mut self, _: ast::CrateNum) -> Vec<~str> {
-            fail!("lolwut")
-        }
-
-        fn get_registrar_symbol(&mut self, _: ast::CrateNum) -> Option<~str> {
-            fail!("lolwut")
-        }
     }
 
     // these following tests are quite fragile, in that they don't test what
