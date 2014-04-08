@@ -293,7 +293,7 @@ pub fn run_compiler(args: &[~str]) {
     });
     match pretty {
         Some::<d::PpMode>(ppm) => {
-            d::pretty_print_input(sess, cfg, &input, ppm);
+            d::pretty_print_input(sess, cfg, &input, ppm, ofile);
             return;
         }
         None::<d::PpMode> => {/* continue */ }

@@ -664,7 +664,8 @@ impl pprust::PpAnn for TypedAnnotation {
 pub fn pretty_print_input(sess: Session,
                           cfg: ast::CrateConfig,
                           input: &Input,
-                          ppm: PpMode) {
+                          ppm: PpMode,
+                          ofile: Option<Path>) {
     let krate = phase_1_parse_input(&sess, cfg, input);
     let id = link::find_crate_id(krate.attrs.as_slice(), input.filestem());
 
@@ -682,6 +683,17 @@ pub fn pretty_print_input(sess: Session,
     let src = Vec::from_slice(sess.codemap().get_filemap(src_name).src.as_bytes());
     let mut rdr = MemReader::new(src);
 
+    let out = match ofile {
+        None => ~io::stdout() as ~Writer,
+        Some(p) => {
+            let r = io::File::create(&p);
+            match r {
+                Ok(w) => ~w as ~Writer,
+                Err(e) => fail!("print-print failed to open {} due to {}",
+                                p.display(), e),
+            }
+        }
+    };
     match ppm {
         PpmIdentified | PpmExpandedIdentified => {
             pprust::print_crate(sess.codemap(),
@@ -689,7 +701,7 @@ pub fn pretty_print_input(sess: Session,
                                 &krate,
                                 src_name,
                                 &mut rdr,
-                                ~io::stdout(),
+                                out,
                                 &IdentifiedAnnotation,
                                 is_expanded)
         }
@@ -704,7 +716,7 @@ pub fn pretty_print_input(sess: Session,
                                 &krate,
                                 src_name,
                                 &mut rdr,
-                                ~io::stdout(),
+                                out,
                                 &annotation,
                                 is_expanded)
         }
@@ -714,7 +726,7 @@ pub fn pretty_print_input(sess: Session,
                                 &krate,
                                 src_name,
                                 &mut rdr,
-                                ~io::stdout(),
+                                out,
                                 &pprust::NoAnn,
                                 is_expanded)
         }
