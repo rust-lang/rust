@@ -158,7 +158,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// See individual Path impls for additional restrictions.
     #[inline]
     fn new<T: BytesContainer>(path: T) -> Self {
-        assert!(!contains_nul(path.container_as_bytes()));
+        assert!(!contains_nul(&path));
         unsafe { GenericPathUnsafe::new_unchecked(path) }
     }
 
@@ -166,7 +166,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// The resulting Path will always be normalized.
     #[inline]
     fn new_opt<T: BytesContainer>(path: T) -> Option<Self> {
-        if contains_nul(path.container_as_bytes()) {
+        if contains_nul(&path) {
             None
         } else {
             Some(unsafe { GenericPathUnsafe::new_unchecked(path) })
@@ -274,7 +274,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// Fails the task if the filename contains a NUL.
     #[inline]
     fn set_filename<T: BytesContainer>(&mut self, filename: T) {
-        assert!(!contains_nul(filename.container_as_bytes()));
+        assert!(!contains_nul(&filename));
         unsafe { self.set_filename_unchecked(filename) }
     }
     /// Replaces the extension with the given byte vector or string.
@@ -286,7 +286,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     ///
     /// Fails the task if the extension contains a NUL.
     fn set_extension<T: BytesContainer>(&mut self, extension: T) {
-        assert!(!contains_nul(extension.container_as_bytes()));
+        assert!(!contains_nul(&extension));
         // borrowck causes problems here too
         let val = {
             match self.filename() {
@@ -376,7 +376,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// Fails the task if the path contains a NUL.
     #[inline]
     fn push<T: BytesContainer>(&mut self, path: T) {
-        assert!(!contains_nul(path.container_as_bytes()));
+        assert!(!contains_nul(&path));
         unsafe { self.push_unchecked(path) }
     }
     /// Pushes multiple paths (as byte vectors or strings) onto `self`.
@@ -589,8 +589,8 @@ impl<'a> BytesContainer for str::MaybeOwned<'a> {
 }
 
 #[inline(always)]
-fn contains_nul(v: &[u8]) -> bool {
-    v.iter().any(|&x| x == 0)
+fn contains_nul<T: BytesContainer>(v: &T) -> bool {
+    v.container_as_bytes().iter().any(|&x| x == 0)
 }
 
 #[cfg(test)]
