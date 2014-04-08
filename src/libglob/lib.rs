@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -43,6 +43,7 @@ use std::path::is_sep;
 pub struct Paths {
     root: Path,
     dir_patterns: Vec<Pattern>,
+    require_dir: bool,
     options: MatchOptions,
     todo: Vec<(Path,uint)>,
 }
@@ -51,7 +52,7 @@ pub struct Paths {
 /// Return an iterator that produces all the Paths that match the given pattern,
 /// which may be absolute or relative to the current working directory.
 ///
-/// is method uses the default match options and is equivalent to calling
+/// This method uses the default match options and is equivalent to calling
 /// `glob_with(pattern, MatchOptions::new())`. Use `glob_with` directly if you
 /// want to use non-default match options.
 ///
@@ -106,6 +107,7 @@ pub fn glob_with(pattern: &str, options: MatchOptions) -> Paths {
             return Paths {
                 root: root,
                 dir_patterns: Vec::new(),
+                require_dir: false,
                 options: options,
                 todo: Vec::new(),
             };
@@ -117,13 +119,21 @@ pub fn glob_with(pattern: &str, options: MatchOptions) -> Paths {
     let dir_patterns = pattern.slice_from(cmp::min(root_len, pattern.len()))
                        .split_terminator(is_sep)
                        .map(|s| Pattern::new(s))
-                       .collect();
+                       .collect::<Vec<Pattern>>();
+    let require_dir = pattern.chars().next_back().map(is_sep) == Some(true);
 
-    let todo = list_dir_sorted(&root).move_iter().map(|x|(x,0u)).collect();
+    let mut todo = Vec::new();
+    if dir_patterns.len() > 0 {
+        // Shouldn't happen, but we're using -1 as a special index.
+        assert!(dir_patterns.len() < -1 as uint);
+
+        fill_todo(&mut todo, dir_patterns.as_slice(), 0, &root, options);
+    }
 
     Paths {
         root: root,
         dir_patterns: dir_patterns,
+        require_dir: require_dir,
         options: options,
         todo: todo,
     }
@@ -138,6 +148,12 @@ impl Iterator<Path> for Paths {
             }
 
             let (path,idx) = self.todo.pop().unwrap();
+            // idx -1: was already checked by fill_todo, maybe path was '.' or
+            // '..' that we can't match here because of normalization.
+            if idx == -1 as uint {
+                if self.require_dir && !path.is_dir() { continue; }
+                return Some(path);
+            }
             let ref pattern = *self.dir_patterns.get(idx);
 
             if pattern.matches_with(match path.filename_str() {
@@ -152,9 +168,13 @@ impl Iterator<Path> for Paths {
                 if idx == self.dir_patterns.len() - 1 {
                     // it is not possible for a pattern to match a directory *AND* its children
                     // so we don't need to check the children
-                    return Some(path);
+
+                    if !self.require_dir || path.is_dir() {
+                        return Some(path);
+                    }
                 } else {
-                    self.todo.extend(list_dir_sorted(&path).move_iter().map(|x|(x,idx+1)));
+                    fill_todo(&mut self.todo, self.dir_patterns.as_slice(),
+                              idx + 1, &path, self.options);
                 }
             }
         }
@@ -162,13 +182,13 @@ impl Iterator<Path> for Paths {
 
 }
 
-fn list_dir_sorted(path: &Path) -> Vec<Path> {
+fn list_dir_sorted(path: &Path) -> Option<Vec<Path>> {
     match fs::readdir(path) {
         Ok(mut children) => {
             children.sort_by(|p1, p2| p2.filename().cmp(&p1.filename()));
-            children.move_iter().collect()
+            Some(children.move_iter().collect())
         }
-        Err(..) => Vec::new()
+        Err(..) => None
     }
 }
 
@@ -435,6 +455,72 @@ impl Pattern {
 
 }
 
+// Fills `todo` with paths under `path` to be matched by `patterns[idx]`,
+// special-casing patterns to match `.` and `..`, and avoiding `readdir()`
+// calls when there are no metacharacters in the pattern.
+fn fill_todo(todo: &mut Vec<(Path, uint)>, patterns: &[Pattern], idx: uint, path: &Path,
+             options: MatchOptions) {
+    // convert a pattern that's just many Char(_) to a string
+    fn pattern_as_str(pattern: &Pattern) -> Option<~str> {
+        let mut s = ~"";
+        for token in pattern.tokens.iter() {
+            match *token {
+                Char(c) => s.push_char(c),
+                _ => return None
+            }
+        }
+        return Some(s);
+    }
+
+    let add = |todo: &mut Vec<_>, next_path: Path| {
+        if idx + 1 == patterns.len() {
+            // We know it's good, so don't make the iterator match this path
+            // against the pattern again. In particular, it can't match
+            // . or .. globs since these never show up as path components.
+            todo.push((next_path, -1 as uint));
+        } else {
+            fill_todo(todo, patterns, idx + 1, &next_path, options);
+        }
+    };
+
+    let pattern = &patterns[idx];
+
+    match pattern_as_str(pattern) {
+        Some(s) => {
+            // This pattern component doesn't have any metacharacters, so we
+            // don't need to read the current directory to know where to
+            // continue. So instead of passing control back to the iterator,
+            // we can just check for that one entry and potentially recurse
+            // right away.
+            let special = "." == s || ".." == s;
+            let next_path = path.join(s);
+            if (special && path.is_dir()) || (!special && next_path.exists()) {
+                add(todo, next_path);
+            }
+        },
+        None => {
+            match list_dir_sorted(path) {
+                Some(entries) => {
+                    todo.extend(entries.move_iter().map(|x|(x, idx)));
+
+                    // Matching the special directory entries . and .. that refer to
+                    // the current and parent directory respectively requires that
+                    // the pattern has a leading dot, even if the `MatchOptions` field
+                    // `require_literal_leading_dot` is not set.
+                    if pattern.tokens.len() > 0 && pattern.tokens.get(0) == &Char('.') {
+                        for &special in [".", ".."].iter() {
+                            if pattern.matches_with(special, options) {
+                                add(todo, path.join(special));
+                            }
+                        }
+                    }
+                }
+                None => {}
+            }
+        }
+    }
+}
+
 fn parse_char_specifiers(s: &[char]) -> Vec<CharSpecifier> {
     let mut cs = Vec::new();
     let mut i = 0;
@@ -567,7 +653,7 @@ mod test {
     fn test_absolute_pattern() {
         // assume that the filesystem is not empty!
         assert!(glob("/*").next().is_some());
-        assert!(glob("//").next().is_none());
+        assert!(glob("//").next().is_some());
 
         // check windows absolute paths with host/device components
         let root_with_device = os::getcwd().root_path().unwrap().join("*");
