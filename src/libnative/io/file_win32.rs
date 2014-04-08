@@ -324,7 +324,7 @@ pub fn mkdir(p: &CString, _mode: io::FilePermission) -> IoResult<()> {
 }
 
 pub fn readdir(p: &CString) -> IoResult<Vec<Path>> {
-    use rt::global_heap::malloc_raw;
+    use std::rt::global_heap::malloc_raw;
 
     fn prune(root: &CString, dirs: Vec<Path>) -> Vec<Path> {
         let root = unsafe { CString::new(root.with_ref(|p| p), false) };
