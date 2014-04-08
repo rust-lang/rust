@@ -132,9 +132,14 @@ impl<T: Send> Packet<T> {
                 }
             }
 
-            // Otherwise we just sent some data on a non-waiting queue, so just
-            // make sure the world is sane and carry on!
-            n => { assert!(n >= 0); UpSuccess }
+            // Otherwise we just sent some data on a non-waiting queue. Be sure
+            // that we're not moving towards exhausting the address space, and
+            // then carry on.
+            n => {
+                assert!(n >= 0);
+                super::assert_sane_bound::<T>(n as uint);
+                UpSuccess
+            }
         }
     }
 

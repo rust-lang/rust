@@ -238,6 +238,7 @@
 use cast;
 use cell::Cell;
 use clone::Clone;
+use cmp;
 use iter::Iterator;
 use kinds::Send;
 use kinds::marker;
@@ -248,6 +249,7 @@ use result::{Ok, Err, Result};
 use rt::local::Local;
 use rt::task::{Task, BlockedTask};
 use sync::arc::UnsafeArc;
+use uint;
 
 pub use comm::select::{Select, Handle};
 
@@ -360,12 +362,51 @@ enum Flavor<T> {
     Sync(UnsafeArc<sync::Packet<T>>),
 }
 
-/// Creates a new channel, returning the sender/receiver halves. All data sent
-/// on the sender will become available on the receiver. See the documentation
-/// of `Receiver` and `Sender` to see what's possible with them.
+/// Creates a new asynchronous, unbounded channel.
+///
+/// The return value is the sender/receiver pair which can be deconstructed to
+/// move ownership separately. All data sent on the sender will become
+/// available on the receiver.  See the documentation of `Receiver` and
+/// `Sender` to see what's possible with them.
+///
+/// The `Receiver` returned will always block in `recv` waiting for new values,
+/// but the `Sender` will never block when sending values (this is an
+/// asynchronous channel). Additionally, the `Sender` will never fail if the
+/// receiver has not disconnected, because the channel is unbounded.
+///
+/// # Example
+///
+/// ```
+/// let (tx, rx) = channel();
+///
+/// spawn(proc() {
+///     tx.send(100);
+/// });
+///
+/// println!("received: {}", rx.recv());
+/// ```
 pub fn channel<T: Send>() -> (Sender<T>, Receiver<T>) {
     let (a, b) = UnsafeArc::new2(oneshot::Packet::new());
-    (Sender::my_new(Oneshot(b)), Receiver::my_new(Oneshot(a)))
+    (Sender::new(Oneshot(b)), Receiver::new(Oneshot(a)))
+}
+
+/// Creates a new asynchronous, unbounded channel which disables asserts about
+/// the size of the channel.
+///
+/// The asynchronous channels in Rust will normally assert that the size of the
+/// channel is under a certain "very high" threshold, but using this function
+/// disables this assertion, enabling a truly unbounded number of sends.
+///
+/// It is not recommended to use this method, the `channel()` constructor is
+/// likely what you want.
+#[experimental]
+pub fn unchecked_channel<T: Send>() -> (Sender<T>, Receiver<T>) {
+    let mut packet = shared::Packet::new();
+    packet.inherit_blocker(None); // finish upgrade protocol
+    packet.bound_checks = false;  // disable assertions
+
+    let (a, b) = UnsafeArc::new2(packet);
+    (Sender::new(Shared(a)), Receiver::new(Shared(b)))
 }
 
 /// Creates a new synchronous, bounded channel.
@@ -409,7 +450,7 @@ pub fn sync_channel<T: Send>(bound: uint) -> (SyncSender<T>, Receiver<T>) {
 ////////////////////////////////////////////////////////////////////////////////
 
 impl<T: Send> Sender<T> {
-    fn my_new(inner: Flavor<T>) -> Sender<T> {
+    fn new(inner: Flavor<T>) -> Sender<T> {
         Sender { inner: inner, sends: Cell::new(0), marker: marker::NoShare }
     }
 
@@ -475,7 +516,7 @@ impl<T: Send> Sender<T> {
                         return (*p).send(t);
                     } else {
                         let (a, b) = UnsafeArc::new2(stream::Packet::new());
-                        match (*p).upgrade(Receiver::my_new(Stream(b))) {
+                        match (*p).upgrade(Receiver::new(Stream(b))) {
                             oneshot::UpSuccess => {
                                 (*a.get()).send(t);
                                 (a, true)
@@ -496,7 +537,7 @@ impl<T: Send> Sender<T> {
         };
 
         unsafe {
-            let mut tmp = Sender::my_new(Stream(new_inner));
+            let mut tmp = Sender::new(Stream(new_inner));
             mem::swap(&mut cast::transmute_mut(self).inner, &mut tmp.inner);
         }
         return ret;
@@ -508,21 +549,21 @@ impl<T: Send> Clone for Sender<T> {
         let (packet, sleeper) = match self.inner {
             Oneshot(ref p) => {
                 let (a, b) = UnsafeArc::new2(shared::Packet::new());
-                match unsafe { (*p.get()).upgrade(Receiver::my_new(Shared(a))) } {
+                match unsafe { (*p.get()).upgrade(Receiver::new(Shared(a))) } {
                     oneshot::UpSuccess | oneshot::UpDisconnected => (b, None),
                     oneshot::UpWoke(task) => (b, Some(task))
                 }
             }
             Stream(ref p) => {
                 let (a, b) = UnsafeArc::new2(shared::Packet::new());
-                match unsafe { (*p.get()).upgrade(Receiver::my_new(Shared(a))) } {
+                match unsafe { (*p.get()).upgrade(Receiver::new(Shared(a))) } {
                     stream::UpSuccess | stream::UpDisconnected => (b, None),
                     stream::UpWoke(task) => (b, Some(task)),
                 }
             }
             Shared(ref p) => {
                 unsafe { (*p.get()).clone_chan(); }
-                return Sender::my_new(Shared(p.clone()));
+                return Sender::new(Shared(p.clone()));
             }
             Sync(..) => unreachable!(),
         };
@@ -530,10 +571,10 @@ impl<T: Send> Clone for Sender<T> {
         unsafe {
             (*packet.get()).inherit_blocker(sleeper);
 
-            let mut tmp = Sender::my_new(Shared(packet.clone()));
+            let mut tmp = Sender::new(Shared(packet.clone()));
             mem::swap(&mut cast::transmute_mut(self).inner, &mut tmp.inner);
         }
-        Sender::my_new(Shared(packet))
+        Sender::new(Shared(packet))
     }
 }
 
@@ -639,7 +680,7 @@ impl<T: Send> Drop for SyncSender<T> {
 ////////////////////////////////////////////////////////////////////////////////
 
 impl<T: Send> Receiver<T> {
-    fn my_new(inner: Flavor<T>) -> Receiver<T> {
+    fn new(inner: Flavor<T>) -> Receiver<T> {
         Receiver { inner: inner, receives: Cell::new(0), marker: marker::NoShare }
     }
 
@@ -886,6 +927,17 @@ impl<T: Send> Drop for Receiver<T> {
             Sync(ref mut p) => unsafe { (*p.get()).drop_port(); },
         }
     }
+}
+
+fn assert_sane_bound<T>(amt: uint) {
+    // Assume that either taking up half the address space with messages or
+    // having some "very large number" of messages constitues overflowing.
+    //
+    // Currently, this "very large number" is around 500 million. This was
+    // arbitrarily chosen. On OSX, it took about a 80 seconds of sending 1s on a
+    // channel to reach this limit.
+    let limit = cmp::min(uint::MAX / 2 / mem::nonzero_size_of::<T>(), 2 << 28);
+    assert!(amt < limit);
 }
 
 #[cfg(test)]
