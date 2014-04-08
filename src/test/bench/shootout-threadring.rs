@@ -15,7 +15,7 @@ use std::os;
 fn start(n_tasks: int, token: int) {
     let (tx, mut rx) = channel();
     tx.send(token);
-    //  XXX could not get this to work with a range closure
+    //  FIXME could not get this to work with a range closure
     let mut i = 2;
     while i <= n_tasks {
         let (tx, next_rx) = channel();
