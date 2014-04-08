@@ -127,6 +127,7 @@ pub mod util {
     pub mod ppaux;
     pub mod sha2;
     pub mod nodemap;
+    pub mod fs;
 }
 
 pub mod lib {
