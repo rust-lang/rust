@@ -32,7 +32,6 @@ use util::nodemap::NodeMap;
 #[deriving(Clone)]
 pub struct DataFlowContext<'a, O> {
     tcx: &'a ty::ctxt,
-    method_map: typeck::MethodMap,
 
     /// the data flow operator
     oper: O,
@@ -123,7 +122,6 @@ impl<'a, O:DataFlowOperator> pprust::PpAnn for DataFlowContext<'a, O> {
 
 impl<'a, O:DataFlowOperator> DataFlowContext<'a, O> {
     pub fn new(tcx: &'a ty::ctxt,
-               method_map: typeck::MethodMap,
                oper: O,
                id_range: IdRange,
                bits_per_id: uint) -> DataFlowContext<'a, O> {
@@ -138,7 +136,6 @@ impl<'a, O:DataFlowOperator> DataFlowContext<'a, O> {
 
         DataFlowContext {
             tcx: tcx,
-            method_map: method_map,
             words_per_id: words_per_id,
             nodeid_to_bitset: NodeMap::new(),
             bits_per_id: bits_per_id,
@@ -784,7 +781,7 @@ impl<'a, 'b, O:DataFlowOperator> PropagationContext<'a, 'b, O> {
 
     fn is_method_call(&self, expr: &ast::Expr) -> bool {
         let method_call = typeck::MethodCall::expr(expr.id);
-        self.dfcx.method_map.borrow().contains_key(&method_call)
+        self.dfcx.tcx.method_map.borrow().contains_key(&method_call)
     }
 
     fn reset(&mut self, bits: &mut [uint]) {

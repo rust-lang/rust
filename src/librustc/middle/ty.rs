@@ -22,7 +22,7 @@ use middle::resolve_lifetime;
 use middle::ty;
 use middle::subst::Subst;
 use middle::typeck;
-use middle::typeck::{MethodCall, MethodCallee, MethodMap};
+use middle::typeck::MethodCall;
 use middle::ty_fold;
 use middle::ty_fold::TypeFolder;
 use middle;
@@ -359,6 +359,9 @@ pub struct ctxt {
     // and variants that are found.
     pub extern_const_statics: RefCell<DefIdMap<Option<@ast::Expr>>>,
     pub extern_const_variants: RefCell<DefIdMap<Option<@ast::Expr>>>,
+
+    pub method_map: typeck::MethodMap,
+    pub vtable_map: typeck::vtable_map,
 }
 
 pub enum tbox_flag {
@@ -1131,6 +1134,8 @@ pub fn mk_ctxt(s: Session,
         upvar_borrow_map: RefCell::new(HashMap::new()),
         extern_const_statics: RefCell::new(DefIdMap::new()),
         extern_const_variants: RefCell::new(DefIdMap::new()),
+        method_map: @RefCell::new(FnvHashMap::new()),
+        vtable_map: @RefCell::new(FnvHashMap::new()),
     }
 }
 
@@ -2789,10 +2794,7 @@ pub fn expr_ty_opt(cx: &ctxt, expr: &ast::Expr) -> Option<t> {
     return node_id_to_type_opt(cx, expr.id);
 }
 
-pub fn expr_ty_adjusted(cx: &ctxt,
-                        expr: &ast::Expr,
-                        method_map: &FnvHashMap<MethodCall, MethodCallee>)
-                        -> t {
+pub fn expr_ty_adjusted(cx: &ctxt, expr: &ast::Expr) -> t {
     /*!
      *
      * Returns the type of `expr`, considering any `AutoAdjustment`
@@ -2809,7 +2811,7 @@ pub fn expr_ty_adjusted(cx: &ctxt,
     let unadjusted_ty = expr_ty(cx, expr);
     let adjustment = cx.adjustments.borrow().find_copy(&expr.id);
     adjust_ty(cx, expr.span, expr.id, unadjusted_ty, adjustment, |method_call| {
-        method_map.find(&method_call).map(|method| method.ty)
+        cx.method_map.borrow().find(&method_call).map(|method| method.ty)
     })
 }
 
@@ -2856,7 +2858,7 @@ pub fn adjust_ty(cx: &ctxt,
                  expr_id: ast::NodeId,
                  unadjusted_ty: ty::t,
                  adjustment: Option<@AutoAdjustment>,
-                 method_type: |MethodCall| -> Option<ty::t>)
+                 method_type: |typeck::MethodCall| -> Option<ty::t>)
                  -> ty::t {
     /*! See `expr_ty_adjusted` */
 
@@ -2888,7 +2890,8 @@ pub fn adjust_ty(cx: &ctxt,
 
                     if !ty::type_is_error(adjusted_ty) {
                         for i in range(0, adj.autoderefs) {
-                            match method_type(MethodCall::autoderef(expr_id, i as u32)) {
+                            let method_call = typeck::MethodCall::autoderef(expr_id, i as u32);
+                            match method_type(method_call) {
                                 Some(method_ty) => {
                                     adjusted_ty = ty_fn_ret(method_ty);
                                 }
@@ -3066,10 +3069,8 @@ pub fn resolve_expr(tcx: &ctxt, expr: &ast::Expr) -> ast::Def {
     }
 }
 
-pub fn expr_is_lval(tcx: &ctxt,
-                    method_map: MethodMap,
-                    e: &ast::Expr) -> bool {
-    match expr_kind(tcx, method_map, e) {
+pub fn expr_is_lval(tcx: &ctxt, e: &ast::Expr) -> bool {
+    match expr_kind(tcx, e) {
         LvalueExpr => true,
         RvalueDpsExpr | RvalueDatumExpr | RvalueStmtExpr => false
     }
@@ -3087,10 +3088,8 @@ pub enum ExprKind {
     RvalueStmtExpr
 }
 
-pub fn expr_kind(tcx: &ctxt,
-                 method_map: MethodMap,
-                 expr: &ast::Expr) -> ExprKind {
-    if method_map.borrow().contains_key(&MethodCall::expr(expr.id)) {
+pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
+    if tcx.method_map.borrow().contains_key(&typeck::MethodCall::expr(expr.id)) {
         // Overloaded operations are generally calls, and hence they are
         // generated via DPS, but there are two exceptions:
         return match expr.node {
@@ -3234,7 +3233,7 @@ pub fn expr_kind(tcx: &ctxt,
             }
         }
 
-        ast::ExprParen(e) => expr_kind(tcx, method_map, e),
+        ast::ExprParen(e) => expr_kind(tcx, e),
 
         ast::ExprMac(..) => {
             tcx.sess.span_bug(

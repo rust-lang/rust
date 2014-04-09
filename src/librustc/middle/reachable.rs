@@ -84,9 +84,6 @@ fn method_might_be_inlined(tcx: &ty::ctxt, method: &ast::Method,
 struct ReachableContext<'a> {
     // The type context.
     tcx: &'a ty::ctxt,
-    // The method map, which links node IDs of method call expressions to the
-    // methods they've been resolved to.
-    method_map: typeck::MethodMap,
     // The set of items which must be exported in the linkage sense.
     reachable_symbols: NodeSet,
     // A worklist of item IDs. Each item ID in this worklist will be inlined
@@ -133,7 +130,7 @@ impl<'a> Visitor<()> for ReachableContext<'a> {
             }
             ast::ExprMethodCall(..) => {
                 let method_call = typeck::MethodCall::expr(expr.id);
-                match self.method_map.borrow().get(&method_call).origin {
+                match self.tcx.method_map.borrow().get(&method_call).origin {
                     typeck::MethodStatic(def_id) => {
                         if is_local(def_id) {
                             if self.def_id_represents_local_inlined_item(def_id) {
@@ -159,10 +156,9 @@ impl<'a> Visitor<()> for ReachableContext<'a> {
 
 impl<'a> ReachableContext<'a> {
     // Creates a new reachability computation context.
-    fn new(tcx: &'a ty::ctxt, method_map: typeck::MethodMap) -> ReachableContext<'a> {
+    fn new(tcx: &'a ty::ctxt) -> ReachableContext<'a> {
         ReachableContext {
             tcx: tcx,
-            method_map: method_map,
             reachable_symbols: NodeSet::new(),
             worklist: Vec::new(),
         }
@@ -339,10 +335,9 @@ impl<'a> ReachableContext<'a> {
 }
 
 pub fn find_reachable(tcx: &ty::ctxt,
-                      method_map: typeck::MethodMap,
                       exported_items: &privacy::ExportedItems)
                       -> NodeSet {
-    let mut reachable_context = ReachableContext::new(tcx, method_map);
+    let mut reachable_context = ReachableContext::new(tcx);
 
     // Step 1: Seed the worklist with all nodes which were found to be public as
     //         a result of the privacy pass along with all local lang items. If

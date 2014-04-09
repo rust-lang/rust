@@ -437,9 +437,6 @@ struct Context<'a> {
     cur: SmallIntMap<(level, LintSource)>,
     // context we're checking in (used to access fields like sess)
     tcx: &'a ty::ctxt,
-    // maps from an expression id that corresponds to a method call to the
-    // details of the method to be invoked
-    method_map: typeck::MethodMap,
     // Items exported by the crate; used by the missing_doc lint.
     exported_items: &'a privacy::ExportedItems,
     // The id of the current `ast::StructDef` being walked.
@@ -1537,7 +1534,7 @@ fn check_stability(cx: &Context, e: &ast::Expr) {
         }
         ast::ExprMethodCall(..) => {
             let method_call = typeck::MethodCall::expr(e.id);
-            match cx.method_map.borrow().find(&method_call) {
+            match cx.tcx.method_map.borrow().find(&method_call) {
                 Some(method) => {
                     match method.origin {
                         typeck::MethodStatic(def_id) => {
@@ -1775,14 +1772,12 @@ impl<'a> IdVisitingOperation for Context<'a> {
 }
 
 pub fn check_crate(tcx: &ty::ctxt,
-                   method_map: typeck::MethodMap,
                    exported_items: &privacy::ExportedItems,
                    krate: &ast::Crate) {
     let mut cx = Context {
         dict: @get_lint_dict(),
         cur: SmallIntMap::new(),
         tcx: tcx,
-        method_map: method_map,
         exported_items: exported_items,
         cur_struct_def_id: -1,
         is_doc_hidden: false,

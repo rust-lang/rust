@@ -50,18 +50,15 @@ fn should_explore(tcx: &ty::ctxt, def_id: ast::DefId) -> bool {
 
 struct MarkSymbolVisitor<'a> {
     worklist: Vec<ast::NodeId>,
-    method_map: typeck::MethodMap,
     tcx: &'a ty::ctxt,
     live_symbols: ~HashSet<ast::NodeId>,
 }
 
 impl<'a> MarkSymbolVisitor<'a> {
     fn new(tcx: &'a ty::ctxt,
-           method_map: typeck::MethodMap,
            worklist: Vec<ast::NodeId>) -> MarkSymbolVisitor<'a> {
         MarkSymbolVisitor {
             worklist: worklist,
-            method_map: method_map,
             tcx: tcx,
             live_symbols: ~HashSet::new(),
         }
@@ -93,7 +90,7 @@ impl<'a> MarkSymbolVisitor<'a> {
     fn lookup_and_handle_method(&mut self, id: ast::NodeId,
                                 span: codemap::Span) {
         let method_call = typeck::MethodCall::expr(id);
-        match self.method_map.borrow().find(&method_call) {
+        match self.tcx.method_map.borrow().find(&method_call) {
             Some(method) => {
                 match method.origin {
                     typeck::MethodStatic(def_id) => {
@@ -285,14 +282,13 @@ fn create_and_seed_worklist(tcx: &ty::ctxt,
 }
 
 fn find_live(tcx: &ty::ctxt,
-             method_map: typeck::MethodMap,
              exported_items: &privacy::ExportedItems,
              reachable_symbols: &NodeSet,
              krate: &ast::Crate)
              -> ~HashSet<ast::NodeId> {
     let worklist = create_and_seed_worklist(tcx, exported_items,
                                             reachable_symbols, krate);
-    let mut symbol_visitor = MarkSymbolVisitor::new(tcx, method_map, worklist);
+    let mut symbol_visitor = MarkSymbolVisitor::new(tcx, worklist);
     symbol_visitor.mark_live_symbols();
     symbol_visitor.live_symbols
 }
@@ -406,11 +402,10 @@ impl<'a> Visitor<()> for DeadVisitor<'a> {
 }
 
 pub fn check_crate(tcx: &ty::ctxt,
-                   method_map: typeck::MethodMap,
                    exported_items: &privacy::ExportedItems,
                    reachable_symbols: &NodeSet,
                    krate: &ast::Crate) {
-    let live_symbols = find_live(tcx, method_map, exported_items,
+    let live_symbols = find_live(tcx, exported_items,
                                  reachable_symbols, krate);
     let mut visitor = DeadVisitor { tcx: tcx, live_symbols: live_symbols };
     visit::walk_crate(&mut visitor, krate, ());

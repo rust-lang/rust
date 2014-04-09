@@ -2688,7 +2688,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         demand::suptype(fcx, expr.span, result_t, lhs_t);
 
         let tcx = fcx.tcx();
-        if !ty::expr_is_lval(tcx, fcx.ccx.method_map, lhs) {
+        if !ty::expr_is_lval(tcx, lhs) {
             tcx.sess.span_err(lhs.span, "illegal left-hand side expression");
         }
 
@@ -2865,7 +2865,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         check_expr_with_lvalue_pref(fcx, lhs, PreferMutLvalue);
 
         let tcx = fcx.tcx();
-        if !ty::expr_is_lval(tcx, fcx.ccx.method_map, lhs) {
+        if !ty::expr_is_lval(tcx, lhs) {
             tcx.sess.span_err(lhs.span, "illegal left-hand side expression");
         }
 

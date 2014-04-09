@@ -242,8 +242,6 @@ pub type impl_vtable_map = RefCell<DefIdMap<impl_res>>;
 pub struct CrateCtxt<'a> {
     // A mapping from method call sites to traits that have that method.
     trait_map: resolve::TraitMap,
-    method_map: MethodMap,
-    vtable_map: vtable_map,
     tcx: &'a ty::ctxt
 }
 
@@ -445,13 +443,10 @@ fn check_for_entry_fn(ccx: &CrateCtxt) {
 
 pub fn check_crate(tcx: &ty::ctxt,
                    trait_map: resolve::TraitMap,
-                   krate: &ast::Crate)
-                -> (MethodMap, vtable_map) {
+                   krate: &ast::Crate) {
     let time_passes = tcx.sess.time_passes();
     let ccx = CrateCtxt {
         trait_map: trait_map,
-        method_map: @RefCell::new(FnvHashMap::new()),
-        vtable_map: @RefCell::new(FnvHashMap::new()),
         tcx: tcx
     };
 
@@ -473,5 +468,4 @@ pub fn check_crate(tcx: &ty::ctxt,
 
     check_for_entry_fn(&ccx);
     tcx.sess.abort_if_errors();
-    (ccx.method_map, ccx.vtable_map)
 }

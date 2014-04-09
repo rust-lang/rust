@@ -106,7 +106,6 @@
 use middle::lint::{UnusedVariable, DeadAssignment};
 use middle::pat_util;
 use middle::ty;
-use middle::typeck;
 use middle::moves;
 use util::nodemap::NodeMap;
 
@@ -171,10 +170,9 @@ impl<'a> Visitor<()> for IrMaps<'a> {
 }
 
 pub fn check_crate(tcx: &ty::ctxt,
-                   method_map: typeck::MethodMap,
                    capture_map: &moves::CaptureMap,
                    krate: &Crate) {
-    visit::walk_crate(&mut IrMaps(tcx, method_map, capture_map), krate, ());
+    visit::walk_crate(&mut IrMaps(tcx, capture_map), krate, ());
     tcx.sess.abort_if_errors();
 }
 
@@ -247,7 +245,6 @@ enum VarKind {
 
 struct IrMaps<'a> {
     tcx: &'a ty::ctxt,
-    method_map: typeck::MethodMap,
     capture_map: &'a moves::CaptureMap,
 
     num_live_nodes: uint,
@@ -260,12 +257,10 @@ struct IrMaps<'a> {
 }
 
 fn IrMaps<'a>(tcx: &'a ty::ctxt,
-              method_map: typeck::MethodMap,
               capture_map: &'a moves::CaptureMap)
               -> IrMaps<'a> {
     IrMaps {
         tcx: tcx,
-        method_map: method_map,
         capture_map: capture_map,
         num_live_nodes: 0,
         num_vars: 0,
@@ -366,7 +361,7 @@ fn visit_fn(ir: &mut IrMaps,
     let _i = ::util::common::indenter();
 
     // swap in a new set of IR maps for this function body:
-    let mut fn_maps = IrMaps(ir.tcx, ir.method_map, ir.capture_map);
+    let mut fn_maps = IrMaps(ir.tcx, ir.capture_map);
 
     unsafe {
         debug!("creating fn_maps: {}", transmute::<&IrMaps, *IrMaps>(&fn_maps));

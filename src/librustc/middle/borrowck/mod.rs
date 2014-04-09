@@ -76,7 +76,6 @@ impl<'a> Visitor<()> for BorrowckCtxt<'a> {
 }
 
 pub fn check_crate(tcx: &ty::ctxt,
-                   method_map: typeck::MethodMap,
                    moves_map: &NodeSet,
                    moved_variables_set: &NodeSet,
                    capture_map: &moves::CaptureMap,
@@ -84,7 +83,6 @@ pub fn check_crate(tcx: &ty::ctxt,
                    -> root_map {
     let mut bccx = BorrowckCtxt {
         tcx: tcx,
-        method_map: method_map,
         moves_map: moves_map,
         moved_variables_set: moved_variables_set,
         capture_map: capture_map,
@@ -149,7 +147,6 @@ fn borrowck_fn(this: &mut BorrowckCtxt,
         gather_loans::gather_loans_in_fn(this, decl, body);
     let mut loan_dfcx =
         DataFlowContext::new(this.tcx,
-                             this.method_map,
                              LoanDataFlowOperator,
                              id_range,
                              all_loans.len());
@@ -161,7 +158,6 @@ fn borrowck_fn(this: &mut BorrowckCtxt,
 
     let flowed_moves = move_data::FlowedMoveData::new(move_data,
                                                       this.tcx,
-                                                      this.method_map,
                                                       id_range,
                                                       body);
 
@@ -176,7 +172,6 @@ fn borrowck_fn(this: &mut BorrowckCtxt,
 
 pub struct BorrowckCtxt<'a> {
     tcx: &'a ty::ctxt,
-    method_map: typeck::MethodMap,
     moves_map: &'a NodeSet,
     moved_variables_set: &'a NodeSet,
     capture_map: &'a moves::CaptureMap,
@@ -437,12 +432,9 @@ impl<'a> BorrowckCtxt<'a> {
         self.moves_map.contains(&id)
     }
 
-    pub fn mc(&self) -> mc::MemCategorizationContext<TcxTyper<'a>> {
+    pub fn mc(&self) -> mc::MemCategorizationContext<&'a ty::ctxt> {
         mc::MemCategorizationContext {
-            typer: TcxTyper {
-                tcx: self.tcx,
-                method_map: self.method_map
-            }
+            typer: self.tcx,
         }
     }
 
@@ -572,8 +564,7 @@ impl<'a> BorrowckCtxt<'a> {
             move_data::MoveExpr => {
                 let (expr_ty, expr_span) = match self.tcx.map.find(move.id) {
                     Some(ast_map::NodeExpr(expr)) => {
-                        (ty::expr_ty_adjusted(self.tcx, expr,
-                                              &*self.method_map.borrow()), expr.span)
+                        (ty::expr_ty_adjusted(self.tcx, expr), expr.span)
                     }
                     r => self.tcx.sess.bug(format!("MoveExpr({:?}) maps to {:?}, not Expr",
                                                    move.id, r))
@@ -599,8 +590,7 @@ impl<'a> BorrowckCtxt<'a> {
             move_data::Captured => {
                 let (expr_ty, expr_span) = match self.tcx.map.find(move.id) {
                     Some(ast_map::NodeExpr(expr)) => {
-                        (ty::expr_ty_adjusted(self.tcx, expr,
-                                              &*self.method_map.borrow()), expr.span)
+                        (ty::expr_ty_adjusted(self.tcx, expr), expr.span)
                     }
                     r => self.tcx.sess.bug(format!("Captured({:?}) maps to {:?}, not Expr",
                                                    move.id, r))
@@ -915,18 +905,13 @@ impl Repr for LoanPath {
 
 ///////////////////////////////////////////////////////////////////////////
 
-pub struct TcxTyper<'a> {
-    tcx: &'a ty::ctxt,
-    method_map: typeck::MethodMap,
-}
-
-impl<'a> mc::Typer for TcxTyper<'a> {
+impl<'a> mc::Typer for &'a ty::ctxt {
     fn tcx<'a>(&'a self) -> &'a ty::ctxt {
-        self.tcx
+        *self
     }
 
     fn node_ty(&mut self, id: ast::NodeId) -> mc::McResult<ty::t> {
-        Ok(ty::node_id_to_type(self.tcx, id))
+        Ok(ty::node_id_to_type(*self, id))
     }
 
     fn node_method_ty(&self, method_call: typeck::MethodCall) -> Option<ty::t> {
@@ -934,7 +919,7 @@ impl<'a> mc::Typer for TcxTyper<'a> {
     }
 
     fn adjustment(&mut self, id: ast::NodeId) -> Option<@ty::AutoAdjustment> {
-        self.tcx.adjustments.borrow().find_copy(&id)
+        self.adjustments.borrow().find_copy(&id)
     }
 
     fn is_method_call(&mut self, id: ast::NodeId) -> bool {
@@ -942,10 +927,10 @@ impl<'a> mc::Typer for TcxTyper<'a> {
     }
 
     fn temporary_scope(&mut self, id: ast::NodeId) -> Option<ast::NodeId> {
-        self.tcx.region_maps.temporary_scope(id)
+        self.region_maps.temporary_scope(id)
     }
 
     fn upvar_borrow(&mut self, id: ty::UpvarId) -> ty::UpvarBorrow {
-        self.tcx.upvar_borrow_map.borrow().get_copy(&id)
+        self.upvar_borrow_map.borrow().get_copy(&id)
     }
 }

@@ -83,7 +83,7 @@ pub fn trans_method_callee<'a>(
                            -> Callee<'a> {
     let _icx = push_ctxt("meth::trans_method_callee");
 
-    let (origin, method_ty) = match bcx.ccx().maps.method_map
+    let (origin, method_ty) = match bcx.tcx().method_map
                                        .borrow().find(&method_call) {
         Some(method) => {
             debug!("trans_method_callee({:?}, method={})",
@@ -193,7 +193,7 @@ pub fn trans_static_method_callee(bcx: &Block,
             name={}", method_id, expr_id, token::get_name(mname));
 
     let vtable_key = MethodCall::expr(expr_id);
-    let vtbls = ccx.maps.vtable_map.borrow().get_copy(&vtable_key);
+    let vtbls = ccx.tcx.vtable_map.borrow().get_copy(&vtable_key);
     let vtbls = resolve_vtables_in_fn_ctxt(bcx.fcx, vtbls);
 
     match vtbls.get(bound_index).get(0) {
@@ -576,7 +576,7 @@ pub fn trans_trait_cast<'a>(bcx: &'a Block<'a>,
     bcx = datum.store_to(bcx, llboxdest);
 
     // Store the vtable into the second half of pair.
-    let res = *ccx.maps.vtable_map.borrow().get(&MethodCall::expr(id));
+    let res = *ccx.tcx.vtable_map.borrow().get(&MethodCall::expr(id));
     let origins = *resolve_vtables_in_fn_ctxt(bcx.fcx, res).get(0);
     let vtable = get_vtable(bcx, v_ty, origins);
     let llvtabledest = GEPi(bcx, lldest, [0u, abi::trt_field_vtable]);

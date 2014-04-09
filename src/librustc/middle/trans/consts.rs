@@ -187,8 +187,7 @@ pub fn const_expr(cx: &CrateContext, e: &ast::Expr, is_local: bool) -> (ValueRef
     let mut llconst = llconst;
     let mut inlineable = inlineable;
     let ety = ty::expr_ty(cx.tcx(), e);
-    let ety_adjusted = ty::expr_ty_adjusted(cx.tcx(), e,
-                                            &*cx.maps.method_map.borrow());
+    let ety_adjusted = ty::expr_ty_adjusted(cx.tcx(), e);
     let opt_adj = cx.tcx.adjustments.borrow().find_copy(&e.id);
     match opt_adj {
         None => { }
@@ -414,8 +413,7 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr,
             }, true)
           }
           ast::ExprField(base, field, _) => {
-              let bt = ty::expr_ty_adjusted(cx.tcx(), base,
-                                            &*cx.maps.method_map.borrow());
+              let bt = ty::expr_ty_adjusted(cx.tcx(), base);
               let brepr = adt::represent_type(cx, bt);
               let (bv, inlineable) = const_expr(cx, base, is_local);
               expr::with_field_tys(cx.tcx(), bt, None, |discr, field_tys| {
@@ -425,8 +423,7 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr,
           }
 
           ast::ExprIndex(base, index) => {
-              let bt = ty::expr_ty_adjusted(cx.tcx(), base,
-                                            &*cx.maps.method_map.borrow());
+              let bt = ty::expr_ty_adjusted(cx.tcx(), base);
               let (bv, inlineable) = const_expr(cx, base, is_local);
               let iv = match const_eval::eval_const_expr(cx.tcx(), index) {
                   const_eval::const_int(i) => i as u64,
