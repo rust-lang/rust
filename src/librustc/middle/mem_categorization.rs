@@ -686,19 +686,8 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
         }
     }
 
-    pub fn cat_deref_fn_or_obj<N:ast_node>(&mut self,
-                                           node: &N,
-                                           base_cmt: cmt,
-                                           deref_cnt: uint)
-                                           -> cmt {
-        // Bit of a hack: the "dereference" of a function pointer like
-        // `@fn()` is a mere logical concept. We interpret it as
-        // dereferencing the environment pointer; of course, we don't
-        // know what type lies at the other end, so we just call it
-        // `()` (the empty tuple).
-
-        let opaque_ty = ty::mk_tup(self.tcx(), Vec::new());
-        self.cat_deref_common(node, base_cmt, deref_cnt, opaque_ty)
+    pub fn cat_deref_obj<N:ast_node>(&mut self, node: &N, base_cmt: cmt) -> cmt {
+        self.cat_deref_common(node, base_cmt, 0, ty::mk_nil())
     }
 
     fn cat_deref<N:ast_node>(&mut self,
