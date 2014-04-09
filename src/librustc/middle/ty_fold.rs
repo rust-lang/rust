@@ -68,7 +68,7 @@ pub trait TypeFolder {
         r
     }
 
-    fn fold_vstore<M>(&mut self, vstore: ty::Vstore<M>) -> ty::Vstore<M> {
+    fn fold_vstore(&mut self, vstore: ty::Vstore) -> ty::Vstore {
         super_fold_vstore(self, vstore)
     }
 
@@ -147,8 +147,8 @@ pub fn super_fold_sty<T:TypeFolder>(this: &mut T,
         ty::ty_ptr(ref tm) => {
             ty::ty_ptr(this.fold_mt(tm))
         }
-        ty::ty_vec(ty, vst) => {
-            ty::ty_vec(this.fold_ty(ty), this.fold_vstore(vst))
+        ty::ty_vec(ref tm, sz) => {
+            ty::ty_vec(this.fold_mt(tm), sz)
         }
         ty::ty_enum(tid, ref substs) => {
             ty::ty_enum(tid, this.fold_substs(substs))
@@ -191,13 +191,13 @@ pub fn super_fold_sty<T:TypeFolder>(this: &mut T,
     }
 }
 
-pub fn super_fold_vstore<T:TypeFolder, M>(this: &mut T,
-                                          vstore: ty::Vstore<M>)
-                                          -> ty::Vstore<M> {
+pub fn super_fold_vstore<T:TypeFolder>(this: &mut T,
+                                       vstore: ty::Vstore)
+                                       -> ty::Vstore {
     match vstore {
         ty::VstoreFixed(i) => ty::VstoreFixed(i),
         ty::VstoreUniq => ty::VstoreUniq,
-        ty::VstoreSlice(r, m) => ty::VstoreSlice(this.fold_region(r), m),
+        ty::VstoreSlice(r) => ty::VstoreSlice(this.fold_region(r)),
     }
 }
 

@@ -389,6 +389,12 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
         }
     }
 
+    fn ast_ty_to_mt<AC:AstConv, RS:RegionScope>(this: &AC,
+                                                rscope: &RS,
+                                                ty: &ast::Ty) -> ty::mt {
+        ty::mt {ty: ast_ty_to_ty(this, rscope, ty), mutbl: ast::MutImmutable}
+    }
+
     // Handle ~, and & being able to mean strs and vecs.
     // If a_seq_ty is a str or a vec, make it a str/vec.
     // Also handle first-class trait types.
@@ -396,18 +402,20 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
                   RS:RegionScope>(
                   this: &AC,
                   rscope: &RS,
-                  a_seq_ty: &ast::Ty,
+                  a_seq_ty: &ast::MutTy,
                   ptr_ty: PointerTy,
                   constr: |ty::t| -> ty::t)
                   -> ty::t {
         let tcx = this.tcx();
         debug!("mk_pointer(ptr_ty={:?})", ptr_ty);
 
-        match a_seq_ty.node {
+        match a_seq_ty.ty.node {
             ast::TyVec(ty) => {
-                let vst = ptr_ty.expect_vstore(tcx, a_seq_ty.span, "vectors");
-                debug!("&[]: vst={:?}", vst);
-                return ty::mk_vec(tcx, ast_ty_to_ty(this, rscope, ty), vst);
+                let mut mt = ast_ty_to_mt(this, rscope, ty);
+                if a_seq_ty.mutbl == ast::MutMutable {
+                    mt.mutbl = ast::MutMutable;
+                }
+                return constr(ty::mk_vec(tcx, mt, None));
             }
             ast::TyPath(ref path, ref bounds, id) => {
                 // Note that the "bounds must be empty if path is not a trait"
@@ -421,8 +429,8 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
                             ty::VstoreUniq => {
                                 return ty::mk_str(tcx, ty::VstoreUniq);
                             }
-                            ty::VstoreSlice(r, ast::MutImmutable) => {
-                                return ty::mk_str(tcx, ty::VstoreSlice(r, ()));
+                            ty::VstoreSlice(r) => {
+                                return ty::mk_str(tcx, ty::VstoreSlice(r));
                             }
                             _ => {}
                         }
@@ -432,8 +440,8 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
                             this, rscope, trait_def_id, None, path);
                         let trait_store = match ptr_ty {
                             VStore(ty::VstoreUniq) => ty::UniqTraitStore,
-                            VStore(ty::VstoreSlice(r, m)) => {
-                                ty::RegionTraitStore(r, m)
+                            VStore(ty::VstoreSlice(r)) => {
+                                ty::RegionTraitStore(r, a_seq_ty.mutbl)
                             }
                             _ => {
                                 tcx.sess.span_err(
@@ -456,7 +464,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
             _ => {}
         }
 
-        constr(ast_ty_to_ty(this, rscope, a_seq_ty))
+        constr(ast_ty_to_ty(this, rscope, a_seq_ty.ty))
     }
 
     let tcx = this.tcx();
@@ -479,16 +487,19 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
             ast::TyNil => ty::mk_nil(),
             ast::TyBot => ty::mk_bot(),
             ast::TyBox(ty) => {
-                mk_pointer(this, rscope, ty, Box, |ty| ty::mk_box(tcx, ty))
+                let mt = ast::MutTy { ty: ty, mutbl: ast::MutImmutable };
+                mk_pointer(this, rscope, &mt, Box, |ty| ty::mk_box(tcx, ty))
             }
             ast::TyUniq(ty) => {
-                mk_pointer(this, rscope, ty, VStore(ty::VstoreUniq),
+                let mt = ast::MutTy { ty: ty, mutbl: ast::MutImmutable };
+                mk_pointer(this, rscope, &mt, VStore(ty::VstoreUniq),
                            |ty| ty::mk_uniq(tcx, ty))
             }
             ast::TyVec(ty) => {
                 tcx.sess.span_err(ast_ty.span, "bare `[]` is not a type");
                 // return /something/ so they can at least get more errors
-                ty::mk_vec(tcx, ast_ty_to_ty(this, rscope, ty), ty::VstoreUniq)
+                let vec_ty = ty::mk_vec(tcx, ast_ty_to_mt(this, rscope, ty), None);
+                ty::mk_uniq(tcx, vec_ty)
             }
             ast::TyPtr(ref mt) => {
                 ty::mk_ptr(tcx, ty::mt {
@@ -499,7 +510,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
             ast::TyRptr(ref region, ref mt) => {
                 let r = opt_ast_region_to_region(this, rscope, ast_ty.span, region);
                 debug!("ty_rptr r={}", r.repr(this.tcx()));
-                mk_pointer(this, rscope, &*mt.ty, VStore(ty::VstoreSlice(r, mt.mutbl)),
+                mk_pointer(this, rscope, mt, VStore(ty::VstoreSlice(r)),
                            |ty| ty::mk_rptr(tcx, r, ty::mt {ty: ty, mutbl: mt.mutbl}))
             }
             ast::TyTup(ref fields) => {
@@ -612,11 +623,11 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
                     Ok(ref r) => {
                         match *r {
                             const_eval::const_int(i) =>
-                                ty::mk_vec(tcx, ast_ty_to_ty(this, rscope, ty),
-                                           ty::VstoreFixed(i as uint)),
+                                ty::mk_vec(tcx, ast_ty_to_mt(this, rscope, ty),
+                                           Some(i as uint)),
                             const_eval::const_uint(i) =>
-                                ty::mk_vec(tcx, ast_ty_to_ty(this, rscope, ty),
-                                           ty::VstoreFixed(i as uint)),
+                                ty::mk_vec(tcx, ast_ty_to_mt(this, rscope, ty),
+                                           Some(i as uint)),
                             _ => {
                                 tcx.sess.span_fatal(
                                     ast_ty.span, "expected constant expr for vector length");

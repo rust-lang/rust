@@ -170,7 +170,6 @@ pub fn opt_deref_kind(t: ty::t) -> Option<deref_kind> {
     match ty::get(t).sty {
         ty::ty_uniq(_) |
         ty::ty_trait(~ty::TyTrait { store: ty::UniqTraitStore, .. }) |
-        ty::ty_vec(_, ty::VstoreUniq) |
         ty::ty_str(ty::VstoreUniq) |
         ty::ty_closure(~ty::ClosureTy {store: ty::UniqTraitStore, ..}) => {
             Some(deref_ptr(OwnedPtr))
@@ -180,13 +179,12 @@ pub fn opt_deref_kind(t: ty::t) -> Option<deref_kind> {
             let kind = ty::BorrowKind::from_mutbl(mt.mutbl);
             Some(deref_ptr(BorrowedPtr(kind, r)))
         }
-        ty::ty_vec(_, ty::VstoreSlice(r, mutbl)) |
         ty::ty_trait(~ty::TyTrait { store: ty::RegionTraitStore(r, mutbl), .. }) => {
             let kind = ty::BorrowKind::from_mutbl(mutbl);
             Some(deref_ptr(BorrowedPtr(kind, r)))
         }
 
-        ty::ty_str(ty::VstoreSlice(r, ())) |
+        ty::ty_str(ty::VstoreSlice(r)) |
         ty::ty_closure(~ty::ClosureTy {store: ty::RegionTraitStore(r, _), ..}) => {
             Some(deref_ptr(BorrowedPtr(ty::ImmBorrow, r)))
         }
@@ -204,7 +202,7 @@ pub fn opt_deref_kind(t: ty::t) -> Option<deref_kind> {
             Some(deref_interior(InteriorField(PositionalField(0))))
         }
 
-        ty::ty_vec(_, ty::VstoreFixed(_)) |
+        ty::ty_vec(_, Some(_)) |
         ty::ty_str(ty::VstoreFixed(_)) => {
             Some(deref_interior(InteriorElement(element_kind(t))))
         }
@@ -483,8 +481,8 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
                    expr_ty: ty::t,
                    def: ast::Def)
                    -> McResult<cmt> {
-        debug!("cat_def: id={} expr={}",
-               id, expr_ty.repr(self.tcx()));
+        debug!("cat_def: id={} expr={} def={:?}",
+               id, expr_ty.repr(self.tcx()), def);
 
         match def {
           ast::DefStruct(..) | ast::DefVariant(..) => {
@@ -785,7 +783,7 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
         //!   the implicit index deref, if any (see above)
 
         let element_ty = match ty::index(base_cmt.ty) {
-          Some(ty) => ty,
+          Some(ref mt) => mt.ty,
           None => {
             self.tcx().sess.span_bug(
                 elt.span(),
@@ -868,13 +866,10 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
              */
 
             match ty::get(slice_ty).sty {
-                ty::ty_vec(_, ty::VstoreSlice(slice_r, mutbl)) => {
-                    (mutbl, slice_r)
-                }
-
-                ty::ty_rptr(_, ref mt) => {
-                    vec_slice_info(tcx, pat, mt.ty)
-                }
+                ty::ty_rptr(r, ref mt) => match ty::get(mt.ty).sty {
+                    ty::ty_vec(slice_mt, None) => (slice_mt.mutbl, r),
+                    _ => vec_slice_info(tcx, pat, mt.ty),
+                },
 
                 _ => {
                     tcx.sess.span_bug(
@@ -1307,6 +1302,11 @@ impl Repr for InteriorKind {
 
 fn element_kind(t: ty::t) -> ElementKind {
     match ty::get(t).sty {
+        ty::ty_rptr(_, ty::mt{ty:ty, ..}) |
+        ty::ty_uniq(ty) => match ty::get(ty).sty {
+            ty::ty_vec(_, None) => VecElement,
+            _ => OtherElement
+        },
         ty::ty_vec(..) => VecElement,
         ty::ty_str(..) => StrElement,
         _ => OtherElement

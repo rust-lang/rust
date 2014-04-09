@@ -93,6 +93,7 @@ use middle::typeck::{MethodStatic, MethodObject};
 use middle::typeck::{param_numbered, param_self, param_index};
 use middle::typeck::check::regionmanip::replace_late_bound_regions_in_fn_sig;
 use util::common::indenter;
+use util::ppaux;
 use util::ppaux::Repr;
 
 use collections::HashSet;
@@ -332,6 +333,7 @@ impl<'a> LookupContext<'a> {
     fn search(&self, self_ty: ty::t) -> Option<MethodCallee> {
         let span = self.self_expr.map_or(self.span, |e| e.span);
         let self_expr_id = self.self_expr.map(|e| e.id);
+
         let (self_ty, autoderefs, result) =
             check::autoderef(
                 self.fcx, span, self_ty, self_expr_id, PreferMutLvalue,
@@ -721,7 +723,7 @@ impl<'a> LookupContext<'a> {
             None => None,
             Some(method) => {
                 debug!("(searching for autoderef'd method) writing \
-                       adjustment {:?}", adjustment);
+                       adjustment {:?} for {}", adjustment, self.ty_to_str( self_ty));
                 match adjustment {
                     Some((self_expr_id, adj)) => {
                         self.fcx.write_adjustment(self_expr_id, adj);
@@ -765,19 +767,16 @@ impl<'a> LookupContext<'a> {
             ty::ty_rptr(_, self_mt) => {
                 let region =
                     self.infcx().next_region_var(infer::Autoref(self.span));
+                let (extra_derefs, auto) = match ty::get(self_mt.ty).sty {
+                    ty::ty_vec(_, None) => (0, ty::AutoBorrowVec(region, self_mt.mutbl)),
+                    _ => (1, ty::AutoPtr(region, self_mt.mutbl)),
+                };
                 (ty::mk_rptr(tcx, region, self_mt),
                  ty::AutoDerefRef {
-                     autoderefs: autoderefs+1,
-                     autoref: Some(ty::AutoPtr(region, self_mt.mutbl))})
+                     autoderefs: autoderefs + extra_derefs,
+                     autoref: Some(auto)})
             }
-            ty::ty_vec(self_ty, VstoreSlice(_, mutbl)) => {
-                let region =
-                    self.infcx().next_region_var(infer::Autoref(self.span));
-                (ty::mk_vec(tcx, self_ty, VstoreSlice(region, mutbl)),
-                 ty::AutoDerefRef {
-                     autoderefs: autoderefs,
-                     autoref: Some(ty::AutoBorrowVec(region, mutbl))})
-            }
+
             ty::ty_trait(~ty::TyTrait {
                 def_id, ref substs, store: ty::RegionTraitStore(_, mutbl), bounds
             }) => {
@@ -808,6 +807,35 @@ impl<'a> LookupContext<'a> {
         }
     }
 
+    fn auto_slice_vec(&self, mt: ty::mt, autoderefs: uint) -> Option<MethodCallee> {
+        let tcx = self.tcx();
+        debug!("auto_slice_vec {}", ppaux::ty_to_str(tcx, mt.ty));
+
+        // First try to borrow to a slice
+        let entry = self.search_for_some_kind_of_autorefd_method(
+            AutoBorrowVec, autoderefs, [MutImmutable, MutMutable],
+            |m,r| ty::mk_slice(tcx, r,
+                               ty::mt {ty:mt.ty, mutbl:m}));
+
+        if entry.is_some() {
+            return entry;
+        }
+
+        // Then try to borrow to a slice *and* borrow a pointer.
+        self.search_for_some_kind_of_autorefd_method(
+            AutoBorrowVecRef, autoderefs, [MutImmutable, MutMutable],
+            |m,r| {
+                let slice_ty = ty::mk_slice(tcx, r,
+                                            ty::mt {ty:mt.ty, mutbl:m});
+                // NB: we do not try to autoref to a mutable
+                // pointer. That would be creating a pointer
+                // to a temporary pointer (the borrowed
+                // slice), so any update the callee makes to
+                // it can't be observed.
+                ty::mk_rptr(tcx, r, ty::mt {ty:slice_ty, mutbl:MutImmutable})
+            })
+    }
+
     fn search_for_autosliced_method(&self,
                                     self_ty: ty::t,
                                     autoderefs: uint)
@@ -818,44 +846,32 @@ impl<'a> LookupContext<'a> {
          */
 
         let tcx = self.tcx();
+        debug!("search_for_autosliced_method {}", ppaux::ty_to_str(tcx, self_ty));
+
         let sty = ty::get(self_ty).sty.clone();
         match sty {
-            ty_vec(ty, VstoreUniq) |
-            ty_vec(ty, VstoreSlice(..)) |
-            ty_vec(ty, VstoreFixed(_)) => {
-                // First try to borrow to a slice
-                let entry = self.search_for_some_kind_of_autorefd_method(
-                    AutoBorrowVec, autoderefs, [MutImmutable, MutMutable],
-                    |m,r| ty::mk_vec(tcx, ty, VstoreSlice(r, m)));
-
-                if entry.is_some() { return entry; }
-
-                // Then try to borrow to a slice *and* borrow a pointer.
-                self.search_for_some_kind_of_autorefd_method(
-                    AutoBorrowVecRef, autoderefs, [MutImmutable, MutMutable],
-                    |m,r| {
-                        let slice_ty = ty::mk_vec(tcx, ty, VstoreSlice(r, m));
-                        // NB: we do not try to autoref to a mutable
-                        // pointer. That would be creating a pointer
-                        // to a temporary pointer (the borrowed
-                        // slice), so any update the callee makes to
-                        // it can't be observed.
-                        ty::mk_rptr(tcx, r, ty::mt {ty:slice_ty, mutbl:MutImmutable})
-                    })
-            }
+            ty_rptr(_, mt) => match ty::get(mt.ty).sty {
+                ty_vec(mt, None) => self.auto_slice_vec(mt, autoderefs),
+                _ => None
+            },
+            ty_uniq(t) => match ty::get(t).sty {
+                ty_vec(mt, None) => self.auto_slice_vec(mt, autoderefs),
+                _ => None
+            },
+            ty_vec(mt, Some(_)) => self.auto_slice_vec(mt, autoderefs),
 
             ty_str(VstoreUniq) |
             ty_str(VstoreFixed(_)) => {
                 let entry = self.search_for_some_kind_of_autorefd_method(
                     AutoBorrowVec, autoderefs, [MutImmutable],
-                    |_m,r| ty::mk_str(tcx, VstoreSlice(r, ())));
+                    |_m,r| ty::mk_str(tcx, VstoreSlice(r)));
 
                 if entry.is_some() { return entry; }
 
                 self.search_for_some_kind_of_autorefd_method(
                     AutoBorrowVecRef, autoderefs, [MutImmutable],
                     |m,r| {
-                        let slice_ty = ty::mk_str(tcx, VstoreSlice(r, ()));
+                        let slice_ty = ty::mk_str(tcx, VstoreSlice(r));
                         ty::mk_rptr(tcx, r, ty::mt {ty:slice_ty, mutbl:m})
                     })
             }
@@ -1163,7 +1179,7 @@ impl<'a> LookupContext<'a> {
         });
         debug!("after replacing bound regions, fty={}", self.ty_to_str(fty));
 
-        // before we only checked whether self_ty could be a subtype
+        // Before, we only checked whether self_ty could be a subtype
         // of rcvr_ty; now we actually make it so (this may cause
         // variables to unify etc).  Since we checked beforehand, and
         // nothing has changed in the meantime, this unification
@@ -1293,8 +1309,11 @@ impl<'a> LookupContext<'a> {
                 debug!("(is relevant?) explicit self is a region");
                 match ty::get(rcvr_ty).sty {
                     ty::ty_rptr(_, mt) => {
-                        mutability_matches(mt.mutbl, m) &&
-                        rcvr_matches_ty(self.fcx, mt.ty, candidate)
+                        match ty::get(mt.ty).sty {
+                            ty::ty_vec(_, None) => false,
+                            _ => mutability_matches(mt.mutbl, m) &&
+                                 rcvr_matches_ty(self.fcx, mt.ty, candidate),
+                        }
                     }
 
                     ty::ty_trait(~ty::TyTrait {
@@ -1312,7 +1331,10 @@ impl<'a> LookupContext<'a> {
                 debug!("(is relevant?) explicit self is a unique pointer");
                 match ty::get(rcvr_ty).sty {
                     ty::ty_uniq(typ) => {
-                        rcvr_matches_ty(self.fcx, typ, candidate)
+                        match ty::get(typ).sty {
+                            ty::ty_vec(_, None) => false,
+                            _ => rcvr_matches_ty(self.fcx, typ, candidate),
+                        }
                     }
 
                     ty::ty_trait(~ty::TyTrait {
