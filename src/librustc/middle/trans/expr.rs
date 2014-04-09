@@ -513,7 +513,7 @@ fn trans_index<'a>(bcx: &'a Block<'a>,
     debug!("trans_index: len {}", bcx.val_to_str(len));
 
     let bounds_check = ICmp(bcx, lib::llvm::IntUGE, ix_val, len);
-    let expect = ccx.intrinsics.get_copy(&("llvm.expect.i1"));
+    let expect = ccx.get_intrinsic(&("llvm.expect.i1"));
     let expected = Call(bcx, expect, [bounds_check, C_i1(ccx, false)], []);
     let bcx = with_cond(bcx, expected, |bcx| {
             controlflow::trans_fail_bounds_check(bcx, index_expr.span, ix_val, len)

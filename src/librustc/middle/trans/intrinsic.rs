@@ -79,7 +79,7 @@ pub fn get_simple_intrinsic(ccx: &CrateContext, item: &ast::ForeignItem) -> Opti
         "bswap64" => "llvm.bswap.i64",
         _ => return None
     };
-    Some(ccx.intrinsics.get_copy(&name))
+    Some(ccx.get_intrinsic(&name))
 }
 
 pub fn trans_intrinsic(ccx: &CrateContext,
@@ -93,7 +93,7 @@ pub fn trans_intrinsic(ccx: &CrateContext,
         let first_real_arg = bcx.fcx.arg_pos(0u);
         let a = get_param(bcx.fcx.llfn, first_real_arg);
         let b = get_param(bcx.fcx.llfn, first_real_arg + 1);
-        let llfn = bcx.ccx().intrinsics.get_copy(&name);
+        let llfn = bcx.ccx().get_intrinsic(&name);
 
         // convert `i1` to a `bool`, and write to the out parameter
         let val = Call(bcx, llfn, [a, b], []);
@@ -155,7 +155,7 @@ pub fn trans_intrinsic(ccx: &CrateContext,
         let src_ptr = PointerCast(bcx, get_param(decl, first_real_arg + 1), Type::i8p(ccx));
         let count = get_param(decl, first_real_arg + 2);
         let volatile = C_i1(ccx, false);
-        let llfn = ccx.intrinsics.get_copy(&name);
+        let llfn = ccx.get_intrinsic(&name);
         Call(bcx, llfn, [dst_ptr, src_ptr, Mul(bcx, size, count), align, volatile], []);
         RetVoid(bcx);
     }
@@ -177,7 +177,7 @@ pub fn trans_intrinsic(ccx: &CrateContext,
         let val = get_param(decl, first_real_arg + 1);
         let count = get_param(decl, first_real_arg + 2);
         let volatile = C_i1(ccx, false);
-        let llfn = ccx.intrinsics.get_copy(&name);
+        let llfn = ccx.get_intrinsic(&name);
         Call(bcx, llfn, [dst_ptr, val, Mul(bcx, size, count), align, volatile], []);
         RetVoid(bcx);
     }
@@ -185,7 +185,7 @@ pub fn trans_intrinsic(ccx: &CrateContext,
     fn count_zeros_intrinsic(bcx: &Block, name: &'static str) {
         let x = get_param(bcx.fcx.llfn, bcx.fcx.arg_pos(0u));
         let y = C_i1(bcx.ccx(), false);
-        let llfn = bcx.ccx().intrinsics.get_copy(&name);
+        let llfn = bcx.ccx().get_intrinsic(&name);
         let llcall = Call(bcx, llfn, [x, y], []);
         Ret(bcx, llcall);
     }
@@ -274,12 +274,12 @@ pub fn trans_intrinsic(ccx: &CrateContext,
 
     match name.get() {
         "abort" => {
-            let llfn = bcx.ccx().intrinsics.get_copy(&("llvm.trap"));
+            let llfn = bcx.ccx().get_intrinsic(&("llvm.trap"));
             Call(bcx, llfn, [], []);
             Unreachable(bcx);
         }
         "breakpoint" => {
-            let llfn = bcx.ccx().intrinsics.get_copy(&("llvm.debugtrap"));
+            let llfn = bcx.ccx().get_intrinsic(&("llvm.debugtrap"));
             Call(bcx, llfn, [], []);
             RetVoid(bcx);
         }
