@@ -234,7 +234,7 @@ impl IoFactory for UvIoFactory {
         r.map_err(uv_error_to_io_error)
     }
     fn fs_readdir(&mut self, path: &CString, flags: c_int)
-        -> Result<~[Path], IoError>
+        -> Result<Vec<Path>, IoError>
     {
         let r = FsRequest::readdir(&self.loop_, path, flags);
         r.map_err(uv_error_to_io_error)
