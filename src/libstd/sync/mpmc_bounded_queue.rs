@@ -35,7 +35,7 @@ use num::next_power_of_two;
 use option::{Option, Some, None};
 use sync::arc::UnsafeArc;
 use sync::atomics::{AtomicUint,Relaxed,Release,Acquire};
-use slice;
+use vec::Vec;
 
 struct Node<T> {
     sequence: AtomicUint,
@@ -44,7 +44,7 @@ struct Node<T> {
 
 struct State<T> {
     pad0: [u8, ..64],
-    buffer: ~[Node<T>],
+    buffer: Vec<Node<T>>,
     mask: uint,
     pad1: [u8, ..64],
     enqueue_pos: AtomicUint,
@@ -69,7 +69,7 @@ impl<T: Send> State<T> {
         } else {
             capacity
         };
-        let buffer = slice::from_fn(capacity, |i| {
+        let buffer = Vec::from_fn(capacity, |i| {
             Node { sequence:AtomicUint::new(i), value: None }
         });
         State{
@@ -88,7 +88,7 @@ impl<T: Send> State<T> {
         let mask = self.mask;
         let mut pos = self.enqueue_pos.load(Relaxed);
         loop {
-            let node = &mut self.buffer[pos & mask];
+            let node = self.buffer.get_mut(pos & mask);
             let seq = node.sequence.load(Acquire);
             let diff: int = seq as int - pos as int;
 
@@ -114,7 +114,7 @@ impl<T: Send> State<T> {
         let mask = self.mask;
         let mut pos = self.dequeue_pos.load(Relaxed);
         loop {
-            let node = &mut self.buffer[pos & mask];
+            let node = self.buffer.get_mut(pos & mask);
             let seq = node.sequence.load(Acquire);
             let diff: int = seq as int - (pos + 1) as int;
             if diff == 0 {
@@ -186,7 +186,7 @@ mod tests {
             });
         }
 
-        let mut completion_rxs = ~[];
+        let mut completion_rxs = vec![];
         for _ in range(0, nthreads) {
             let (tx, rx) = channel();
             completion_rxs.push(rx);
