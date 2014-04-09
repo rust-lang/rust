@@ -102,11 +102,11 @@ fn helper(input: libc::c_int, messages: Receiver<Req>) {
     // active timers are those which are able to be selected upon (and it's a
     // sorted list, and dead timers are those which have expired, but ownership
     // hasn't yet been transferred back to the timer itself.
-    let mut active: ~[~Inner] = ~[];
-    let mut dead = ~[];
+    let mut active: Vec<~Inner> = vec![];
+    let mut dead = vec![];
 
     // inserts a timer into an array of timers (sorted by firing time)
-    fn insert(t: ~Inner, active: &mut ~[~Inner]) {
+    fn insert(t: ~Inner, active: &mut Vec<~Inner>) {
         match active.iter().position(|tm| tm.target > t.target) {
             Some(pos) => { active.insert(pos, t); }
             None => { active.push(t); }
@@ -114,7 +114,7 @@ fn helper(input: libc::c_int, messages: Receiver<Req>) {
     }
 
     // signals the first requests in the queue, possible re-enqueueing it.
-    fn signal(active: &mut ~[~Inner], dead: &mut ~[(uint, ~Inner)]) {
+    fn signal(active: &mut Vec<~Inner>, dead: &mut Vec<(uint, ~Inner)>) {
         let mut timer = match active.shift() {
             Some(timer) => timer, None => return
         };
@@ -137,7 +137,7 @@ fn helper(input: libc::c_int, messages: Receiver<Req>) {
             let now = now();
             // If this request has already expired, then signal it and go
             // through another iteration
-            if active[0].target <= now {
+            if active.get(0).target <= now {
                 signal(&mut active, &mut dead);
                 continue;
             }
@@ -145,7 +145,7 @@ fn helper(input: libc::c_int, messages: Receiver<Req>) {
             // The actual timeout listed in the requests array is an
             // absolute date, so here we translate the absolute time to a
             // relative time.
-            let tm = active[0].target - now;
+            let tm = active.get(0).target - now;
             timeout.tv_sec = (tm / 1000) as libc::time_t;
             timeout.tv_usec = ((tm % 1000) * 1000) as libc::suseconds_t;
             &timeout as *libc::timeval
