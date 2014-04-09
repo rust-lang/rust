@@ -309,12 +309,23 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
     let index = {
         let mut w = MemWriter::new();
         try!(write!(&mut w, r#"searchIndex['{}'] = \{"items":["#, krate.name));
+
+        let mut lastpath = ~"";
         for (i, item) in cache.search_index.iter().enumerate() {
+            // Omit the path if it is same to that of the prior item.
+            let path;
+            if lastpath == item.path {
+                path = "";
+            } else {
+                lastpath = item.path.clone();
+                path = item.path.as_slice();
+            };
+
             if i > 0 {
                 try!(write!(&mut w, ","));
             }
             try!(write!(&mut w, r#"[{:u},"{}","{}",{}"#,
-                        item.ty, item.name, item.path,
+                        item.ty, item.name, path,
                         item.desc.to_json().to_str()));
             match item.parent {
                 Some(nodeid) => {
@@ -325,7 +336,9 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
             }
             try!(write!(&mut w, "]"));
         }
+
         try!(write!(&mut w, r#"],"paths":["#));
+
         for (i, &nodeid) in pathid_to_nodeid.iter().enumerate() {
             let &(ref fqp, short) = cache.paths.find(&nodeid).unwrap();
             if i > 0 {
@@ -334,6 +347,7 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
             try!(write!(&mut w, r#"[{:u},"{}"]"#,
                         short, *fqp.last().unwrap()));
         }
+
         try!(write!(&mut w, r"]\};"));
 
         str::from_utf8(w.unwrap().as_slice()).unwrap().to_owned()

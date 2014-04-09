@@ -539,7 +539,7 @@
 
                 // an array of [(Number) item type,
                 //              (String) name,
-                //              (String) full path,
+                //              (String) full path or empty string for previous path,
                 //              (String) description,
                 //              (optional Number) the parent path index to `paths`]
                 var items = rawSearchIndex[crate].items;
@@ -561,10 +561,11 @@
                 // all other search operations have access to this cached data for
                 // faster analysis operations
                 var len = items.length;
+                var lastPath = "";
                 for (var i = 0; i < len; i += 1) {
                     var rawRow = items[i];
                     var row = {crate: crate, ty: rawRow[0], name: rawRow[1],
-                               path: rawRow[2], desc: rawRow[3],
+                               path: rawRow[2] || lastPath, desc: rawRow[3],
                                parent: paths[rawRow[4]]};
                     searchIndex.push(row);
                     if (typeof row.name === "string") {
@@ -573,6 +574,7 @@
                     } else {
                         searchWords.push("");
                     }
+                    lastPath = row.path;
                 }
             }
             return searchWords;
