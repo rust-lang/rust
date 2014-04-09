@@ -47,7 +47,6 @@ use syntax::visit::Visitor;
 #[deriving(Clone)]
 pub struct Context<'a> {
     tcx: &'a ty::ctxt,
-    method_map: typeck::MethodMap,
 }
 
 impl<'a> Visitor<()> for Context<'a> {
@@ -70,11 +69,9 @@ impl<'a> Visitor<()> for Context<'a> {
 }
 
 pub fn check_crate(tcx: &ty::ctxt,
-                   method_map: typeck::MethodMap,
                    krate: &Crate) {
     let mut ctx = Context {
         tcx: tcx,
-        method_map: method_map,
     };
     visit::walk_crate(&mut ctx, krate, ());
     tcx.sess.abort_if_errors();
@@ -240,7 +237,7 @@ pub fn check_expr(cx: &mut Context, e: &Expr) {
 
     // Handle any kind bounds on type parameters
     {
-        let method_map = cx.method_map.borrow();
+        let method_map = cx.tcx.method_map.borrow();
         let method = method_map.find(&typeck::MethodCall::expr(e.id));
         let node_type_substs = cx.tcx.node_type_substs.borrow();
         let r = match method {
@@ -312,8 +309,7 @@ pub fn check_expr(cx: &mut Context, e: &Expr) {
             match **adjustment {
                 ty::AutoObject(..) => {
                     let source_ty = ty::expr_ty(cx.tcx, e);
-                    let target_ty = ty::expr_ty_adjusted(cx.tcx, e,
-                                                         &*cx.method_map.borrow());
+                    let target_ty = ty::expr_ty_adjusted(cx.tcx, e);
                     check_trait_cast(cx, source_ty, target_ty, e.span);
                 }
                 ty::AutoAddEnv(..) |

@@ -22,7 +22,6 @@ use middle::borrowck::*;
 use middle::dataflow::DataFlowContext;
 use middle::dataflow::DataFlowOperator;
 use middle::ty;
-use middle::typeck;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::codemap::Span;
@@ -511,19 +510,16 @@ impl MoveData {
 impl<'a> FlowedMoveData<'a> {
     pub fn new(move_data: MoveData,
                tcx: &'a ty::ctxt,
-               method_map: typeck::MethodMap,
                id_range: ast_util::IdRange,
                body: &ast::Block)
                -> FlowedMoveData<'a> {
         let mut dfcx_moves =
             DataFlowContext::new(tcx,
-                                 method_map,
                                  MoveDataFlowOperator,
                                  id_range,
                                  move_data.moves.borrow().len());
         let mut dfcx_assign =
             DataFlowContext::new(tcx,
-                                 method_map,
                                  AssignDataFlowOperator,
                                  id_range,
                                  move_data.var_assignments.borrow().len());

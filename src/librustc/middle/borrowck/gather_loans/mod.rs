@@ -188,7 +188,7 @@ fn gather_loans_in_expr(this: &mut GatherLoanCtxt,
     }
 
     // Special checks for various kinds of expressions:
-    let method_map = this.bccx.method_map.borrow();
+    let method_map = this.bccx.tcx.method_map.borrow();
     match ex.node {
       ast::ExprAddrOf(mutbl, base) => {
         let base_cmt = this.bccx.cat_expr(base);
@@ -375,7 +375,7 @@ impl<'a> GatherLoanCtxt<'a> {
     pub fn guarantee_autoderefs(&mut self,
                                 expr: &ast::Expr,
                                 autoderefs: uint) {
-        let method_map = self.bccx.method_map.borrow();
+        let method_map = self.bccx.tcx.method_map.borrow();
         for i in range(0, autoderefs) {
             match method_map.find(&MethodCall::autoderef(expr.id, i as u32)) {
                 Some(method) => {

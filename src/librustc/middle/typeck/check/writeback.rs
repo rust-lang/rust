@@ -93,7 +93,7 @@ fn resolve_method_map_entry(wbcx: &mut WbCtxt, sp: Span, method_call: MethodCall
                     self_ty: None
                 }
             };
-            fcx.ccx.method_map.borrow_mut().insert(method_call, new_method);
+            tcx.method_map.borrow_mut().insert(method_call, new_method);
         }
         None => {}
     }
@@ -104,7 +104,7 @@ fn resolve_vtable_map_entry(fcx: &FnCtxt, sp: Span, vtable_key: MethodCall) {
     match fcx.inh.vtable_map.borrow().find_copy(&vtable_key) {
         Some(origins) => {
             let r_origins = resolve_origins(fcx, sp, origins);
-            fcx.ccx.vtable_map.borrow_mut().insert(vtable_key, r_origins);
+            fcx.tcx().vtable_map.borrow_mut().insert(vtable_key, r_origins);
             debug!("writeback::resolve_vtable_map_entry(vtable_key={}, vtables={:?})",
                     vtable_key, r_origins.repr(fcx.tcx()));
         }

@@ -55,8 +55,6 @@ use writer = serialize::ebml::writer;
 // Auxiliary maps of things to be encoded
 pub struct Maps {
     pub root_map: middle::borrowck::root_map,
-    pub method_map: middle::typeck::MethodMap,
-    pub vtable_map: middle::typeck::vtable_map,
     pub capture_map: RefCell<middle::moves::CaptureMap>,
 }
 
@@ -1052,7 +1050,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
     }
 
     let method_call = MethodCall::expr(id);
-    for &method in maps.method_map.borrow().find(&method_call).iter() {
+    for &method in tcx.method_map.borrow().find(&method_call).iter() {
         ebml_w.tag(c::tag_table_method_map, |ebml_w| {
             ebml_w.id(id);
             ebml_w.tag(c::tag_table_val, |ebml_w| {
@@ -1061,7 +1059,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
         })
     }
 
-    for &dr in maps.vtable_map.borrow().find(&method_call).iter() {
+    for &dr in tcx.vtable_map.borrow().find(&method_call).iter() {
         ebml_w.tag(c::tag_table_vtable_map, |ebml_w| {
             ebml_w.id(id);
             ebml_w.tag(c::tag_table_val, |ebml_w| {
@@ -1075,7 +1073,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
             ty::AutoDerefRef(adj) => {
                 for autoderef in range(0, adj.autoderefs) {
                     let method_call = MethodCall::autoderef(id, autoderef as u32);
-                    for &method in maps.method_map.borrow().find(&method_call).iter() {
+                    for &method in tcx.method_map.borrow().find(&method_call).iter() {
                         ebml_w.tag(c::tag_table_method_map, |ebml_w| {
                             ebml_w.id(id);
                             ebml_w.tag(c::tag_table_val, |ebml_w| {
@@ -1084,7 +1082,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
                         })
                     }
 
-                    for &dr in maps.vtable_map.borrow().find(&method_call).iter() {
+                    for &dr in tcx.vtable_map.borrow().find(&method_call).iter() {
                         ebml_w.tag(c::tag_table_vtable_map, |ebml_w| {
                             ebml_w.id(id);
                             ebml_w.tag(c::tag_table_val, |ebml_w| {
@@ -1398,7 +1396,7 @@ fn decode_side_tables(xcx: &ExtendedDecodeContext,
                             expr_id: id,
                             autoderef: autoderef
                         };
-                        dcx.maps.method_map.borrow_mut().insert(method_call, method);
+                        dcx.tcx.method_map.borrow_mut().insert(method_call, method);
                     }
                     c::tag_table_vtable_map => {
                         let (autoderef, vtable_res) =
@@ -1408,7 +1406,7 @@ fn decode_side_tables(xcx: &ExtendedDecodeContext,
                             expr_id: id,
                             autoderef: autoderef
                         };
-                        dcx.maps.vtable_map.borrow_mut().insert(vtable_key, vtable_res);
+                        dcx.tcx.vtable_map.borrow_mut().insert(vtable_key, vtable_res);
                     }
                     c::tag_table_adjustments => {
                         let adj: @ty::AutoAdjustment = @val_dsr.read_auto_adjustment(xcx);

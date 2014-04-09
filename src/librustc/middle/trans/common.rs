@@ -754,9 +754,7 @@ pub fn expr_ty(bcx: &Block, ex: &ast::Expr) -> ty::t {
 }
 
 pub fn expr_ty_adjusted(bcx: &Block, ex: &ast::Expr) -> ty::t {
-    let tcx = bcx.tcx();
-    let t = ty::expr_ty_adjusted(tcx, ex, &*bcx.ccx().maps.method_map.borrow());
-    monomorphize_type(bcx, t)
+    monomorphize_type(bcx, ty::expr_ty_adjusted(bcx.tcx(), ex))
 }
 
 // Key used to lookup values supplied for type parameters in an expr.
@@ -774,7 +772,7 @@ pub fn node_id_type_params(bcx: &Block, node: ExprOrMethodCall) -> Vec<ty::t> {
     let params = match node {
         ExprId(id) => ty::node_id_to_type_params(tcx, id),
         MethodCall(method_call) => {
-            bcx.ccx().maps.method_map.borrow().get(&method_call).substs.tps.clone()
+            tcx.method_map.borrow().get(&method_call).substs.tps.clone()
         }
     };
 
@@ -799,7 +797,7 @@ pub fn node_id_type_params(bcx: &Block, node: ExprOrMethodCall) -> Vec<ty::t> {
 
 pub fn node_vtables(bcx: &Block, id: typeck::MethodCall)
                  -> Option<typeck::vtable_res> {
-    let vtable_map = bcx.ccx().maps.vtable_map.borrow();
+    let vtable_map = bcx.tcx().vtable_map.borrow();
     let raw_vtables = vtable_map.find(&id);
     raw_vtables.map(|vts| resolve_vtables_in_fn_ctxt(bcx.fcx, *vts))
 }

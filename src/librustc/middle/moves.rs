@@ -130,7 +130,7 @@ and so on.
 use middle::pat_util::{pat_bindings};
 use middle::freevars;
 use middle::ty;
-use middle::typeck::{MethodCall, MethodMap};
+use middle::typeck::MethodCall;
 use util::ppaux;
 use util::ppaux::Repr;
 use util::common::indenter;
@@ -177,7 +177,6 @@ pub struct MoveMaps {
 #[deriving(Clone)]
 struct VisitContext<'a> {
     tcx: &'a ty::ctxt,
-    method_map: MethodMap,
     move_maps: MoveMaps
 }
 
@@ -202,13 +201,9 @@ impl<'a> visit::Visitor<()> for VisitContext<'a> {
     fn visit_ty(&mut self, _t: &Ty, _: ()) {}
 }
 
-pub fn compute_moves(tcx: &ty::ctxt,
-                     method_map: MethodMap,
-                     krate: &Crate) -> MoveMaps
-{
+pub fn compute_moves(tcx: &ty::ctxt, krate: &Crate) -> MoveMaps {
     let mut visit_cx = VisitContext {
         tcx: tcx,
-        method_map: method_map,
         move_maps: MoveMaps {
             moves_map: NodeSet::new(),
             moved_variables_set: NodeSet::new(),
@@ -274,8 +269,7 @@ impl<'a> VisitContext<'a> {
         debug!("consume_expr(expr={})",
                expr.repr(self.tcx));
 
-        let expr_ty = ty::expr_ty_adjusted(self.tcx, expr,
-                                           &*self.method_map.borrow());
+        let expr_ty = ty::expr_ty_adjusted(self.tcx, expr);
         if ty::type_moves_by_default(self.tcx, expr_ty) {
             self.move_maps.moves_map.insert(expr.id);
             self.use_expr(expr, Move);
@@ -577,7 +571,7 @@ impl<'a> VisitContext<'a> {
                                    arg_exprs: &[@Expr])
                                    -> bool {
         let method_call = MethodCall::expr(expr.id);
-        if !self.method_map.borrow().contains_key(&method_call) {
+        if !self.tcx.method_map.borrow().contains_key(&method_call) {
             return false;
         }
 

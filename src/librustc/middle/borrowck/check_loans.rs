@@ -806,7 +806,7 @@ fn check_loans_in_expr<'a>(this: &mut CheckLoanCtxt<'a>,
     this.check_for_conflicting_loans(expr.id);
     this.check_move_out_from_expr(expr);
 
-    let method_map = this.bccx.method_map.borrow();
+    let method_map = this.bccx.tcx.method_map.borrow();
     match expr.node {
       ast::ExprPath(..) => {
           if !this.move_data.is_assignee(expr.id) {

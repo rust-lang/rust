@@ -118,7 +118,7 @@ pub fn trans_into<'a>(bcx: &'a Block<'a>,
 
     bcx.fcx.push_ast_cleanup_scope(expr.id);
 
-    let kind = ty::expr_kind(bcx.tcx(), bcx.ccx().maps.method_map, expr);
+    let kind = ty::expr_kind(bcx.tcx(), expr);
     bcx = match kind {
         ty::LvalueExpr | ty::RvalueDatumExpr => {
             trans_unadjusted(bcx, expr).store_to_dest(dest, expr.id)
@@ -205,8 +205,7 @@ fn apply_adjustments<'a>(bcx: &'a Block<'a>,
             };
         }
         AutoObject(..) => {
-            let adjusted_ty = ty::expr_ty_adjusted(bcx.tcx(), expr,
-                                                   &*bcx.ccx().maps.method_map.borrow());
+            let adjusted_ty = ty::expr_ty_adjusted(bcx.tcx(), expr);
             let scratch = rvalue_scratch_datum(bcx, adjusted_ty, "__adjust");
             bcx = meth::trans_trait_cast(
                 bcx, datum, expr.id, SaveIn(scratch.val));
@@ -323,7 +322,7 @@ fn trans_unadjusted<'a>(bcx: &'a Block<'a>,
 
     debuginfo::set_source_location(bcx.fcx, expr.id, expr.span);
 
-    return match ty::expr_kind(bcx.tcx(), bcx.ccx().maps.method_map, expr) {
+    return match ty::expr_kind(bcx.tcx(), expr) {
         ty::LvalueExpr | ty::RvalueDatumExpr => {
             let datum = unpack_datum!(bcx, {
                 trans_datum_unadjusted(bcx, expr)
@@ -1118,7 +1117,7 @@ fn trans_unary<'a>(bcx: &'a Block<'a>,
     // Otherwise, we should be in the RvalueDpsExpr path.
     assert!(
         op == ast::UnDeref ||
-        !ccx.maps.method_map.borrow().contains_key(&method_call));
+        !ccx.tcx.method_map.borrow().contains_key(&method_call));
 
     let un_ty = expr_ty(bcx, expr);
 
@@ -1403,7 +1402,7 @@ fn trans_binary<'a>(bcx: &'a Block<'a>,
     let ccx = bcx.ccx();
 
     // if overloaded, would be RvalueDpsExpr
-    assert!(!ccx.maps.method_map.borrow().contains_key(&MethodCall::expr(expr.id)));
+    assert!(!ccx.tcx.method_map.borrow().contains_key(&MethodCall::expr(expr.id)));
 
     match op {
         ast::BiAnd => {
@@ -1443,7 +1442,7 @@ fn trans_overloaded_op<'a, 'b>(
                        rhs: Option<(Datum<Expr>, ast::NodeId)>,
                        dest: Option<Dest>)
                        -> Result<'a> {
-    let method_ty = bcx.ccx().maps.method_map.borrow().get(&method_call).ty;
+    let method_ty = bcx.tcx().method_map.borrow().get(&method_call).ty;
     callee::trans_call_inner(bcx,
                              Some(expr_info(expr)),
                              monomorphize_type(bcx, method_ty),
@@ -1614,7 +1613,7 @@ fn trans_assign_op<'a>(
     debug!("trans_assign_op(expr={})", bcx.expr_to_str(expr));
 
     // User-defined operator methods cannot be used with `+=` etc right now
-    assert!(!bcx.ccx().maps.method_map.borrow().contains_key(&MethodCall::expr(expr.id)));
+    assert!(!bcx.tcx().method_map.borrow().contains_key(&MethodCall::expr(expr.id)));
 
     // Evaluate LHS (destination), which should be an lvalue
     let dst_datum = unpack_datum!(bcx, trans_to_lvalue(bcx, dst, "assign_op"));
@@ -1692,7 +1691,7 @@ fn deref_once<'a>(bcx: &'a Block<'a>,
         expr_id: expr.id,
         autoderef: derefs as u32
     };
-    let method_ty = ccx.maps.method_map.borrow()
+    let method_ty = ccx.tcx.method_map.borrow()
                        .find(&method_call).map(|method| method.ty);
     let datum = match method_ty {
         Some(method_ty) => {
