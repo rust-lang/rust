@@ -262,6 +262,9 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
     });
     cache.stack.push(krate.name.clone());
     krate = cache.fold_crate(krate);
+
+    let mut nodeid_to_pathid = HashMap::new();
+    let mut pathid_to_nodeid = Vec::new();
     {
         let Cache { search_index: ref mut index,
                     orphan_methods: ref meths, paths: ref mut paths, ..} = cache;
@@ -283,17 +286,21 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
             }
         };
 
-        // Prune the paths that do not appear in the index.
-        let mut unseen: HashSet<ast::NodeId> = paths.keys().map(|&id| id).collect();
+        // Reduce `NodeId` in paths into smaller sequential numbers,
+        // and prune the paths that do not appear in the index.
         for item in index.iter() {
             match item.parent {
-                Some(ref pid) => { unseen.remove(pid); }
+                Some(nodeid) => {
+                    if !nodeid_to_pathid.contains_key(&nodeid) {
+                        let pathid = pathid_to_nodeid.len();
+                        nodeid_to_pathid.insert(nodeid, pathid);
+                        pathid_to_nodeid.push(nodeid);
+                    }
+                }
                 None => {}
             }
         }
-        for pid in unseen.iter() {
-            paths.remove(pid);
-        }
+        assert_eq!(nodeid_to_pathid.len(), pathid_to_nodeid.len());
     }
 
     // Publish the search index
@@ -308,23 +315,25 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
                         item.ty, item.name, item.path,
                         item.desc.to_json().to_str()));
             match item.parent {
-                Some(id) => {
-                    try!(write!(&mut w, ",parent:'{}'", id));
+                Some(nodeid) => {
+                    let pathid = *nodeid_to_pathid.find(&nodeid).unwrap();
+                    try!(write!(&mut w, ",parent:{}", pathid));
                 }
                 None => {}
             }
             try!(write!(&mut w, "\\}"));
         }
         try!(write!(&mut w, "];"));
-        try!(write!(&mut w, "allPaths['{}'] = \\{", krate.name));
-        for (i, (&id, &(ref fqp, short))) in cache.paths.iter().enumerate() {
+        try!(write!(&mut w, "allPaths['{}'] = [", krate.name));
+        for (i, &nodeid) in pathid_to_nodeid.iter().enumerate() {
+            let &(ref fqp, short) = cache.paths.find(&nodeid).unwrap();
             if i > 0 {
                 try!(write!(&mut w, ","));
             }
-            try!(write!(&mut w, "'{}':\\{type:'{}',name:'{}'\\}",
-                        id, short, *fqp.last().unwrap()));
+            try!(write!(&mut w, "\\{type:'{}',name:'{}'\\}",
+                        short, *fqp.last().unwrap()));
         }
-        try!(write!(&mut w, "\\};"));
+        try!(write!(&mut w, "];"));
 
         str::from_utf8(w.unwrap().as_slice()).unwrap().to_owned()
     };
