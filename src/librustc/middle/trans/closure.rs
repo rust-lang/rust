@@ -38,17 +38,14 @@ use syntax::ast_util;
 // roughly as follows:
 //
 // struct rust_opaque_box {         // see rust_internal.h
-//   unsigned ref_count;            // only used for @fn()
-//   type_desc *tydesc;             // describes closure_data struct
-//   rust_opaque_box *prev;         // (used internally by memory alloc)
-//   rust_opaque_box *next;         // (used internally by memory alloc)
+//   unsigned ref_count;            // obsolete (part of @T's header)
+//   fn(void*) *drop_glue;          // destructor (for proc)
+//   rust_opaque_box *prev;         // obsolete (part of @T's header)
+//   rust_opaque_box *next;         // obsolete (part of @T's header)
 //   struct closure_data {
-//       type_desc *bound_tdescs[]; // bound descriptors
-//       struct {
-//         upvar1_t upvar1;
-//         ...
-//         upvarN_t upvarN;
-//       } bound_data;
+//       upvar1_t upvar1;
+//       ...
+//       upvarN_t upvarN;
 //    }
 // };
 //
