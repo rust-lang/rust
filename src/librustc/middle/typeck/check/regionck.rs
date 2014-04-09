@@ -1123,13 +1123,8 @@ fn link_autoref(rcx: &mut Rcx,
             link_region(mc.typer, expr.span, r, m, cmt_index);
         }
 
-        ty::AutoBorrowFn(r) => {
-            let cmt_deref = mc.cat_deref_fn_or_obj(expr, expr_cmt, 0);
-            link_region(mc.typer, expr.span, r, ast::MutImmutable, cmt_deref);
-        }
-
         ty::AutoBorrowObj(r, m) => {
-            let cmt_deref = mc.cat_deref_fn_or_obj(expr, expr_cmt, 0);
+            let cmt_deref = mc.cat_deref_obj(expr, expr_cmt);
             link_region(mc.typer, expr.span, r, m, cmt_deref);
         }
 

@@ -239,9 +239,6 @@ pub enum AutoRef {
     /// Convert from ~[]/&[] to &&[] (or str)
     AutoBorrowVecRef(Region, ast::Mutability),
 
-    /// Convert from @fn()/~fn()/|| to ||
-    AutoBorrowFn(Region),
-
     /// Convert from T to *T
     AutoUnsafe(ast::Mutability),
 
@@ -2906,10 +2903,6 @@ pub fn adjust_ty(cx: &ctxt,
                                     })
                                 }
 
-                                AutoBorrowFn(r) => {
-                                    borrow_fn(cx, span, r, adjusted_ty)
-                                }
-
                                 AutoUnsafe(m) => {
                                     mk_ptr(cx, mt {ty: adjusted_ty, mutbl: m})
                                 }
@@ -2951,24 +2944,6 @@ pub fn adjust_ty(cx: &ctxt,
         }
     }
 
-    fn borrow_fn(cx: &ctxt, span: Span, r: Region, ty: ty::t) -> ty::t {
-        match get(ty).sty {
-            ty_closure(ref fty) => {
-                ty::mk_closure(cx, ClosureTy {
-                    store: RegionTraitStore(r, ast::MutMutable),
-                    ..(**fty).clone()
-                })
-            }
-
-            ref s => {
-                cx.sess.span_bug(
-                    span,
-                    format!("borrow-fn associated with bad sty: {:?}",
-                         s));
-            }
-        }
-    }
-
     fn borrow_obj(cx: &ctxt, span: Span, r: Region,
                   m: ast::Mutability, ty: ty::t) -> ty::t {
         match get(ty).sty {
@@ -2992,7 +2967,6 @@ impl AutoRef {
             ty::AutoPtr(r, m) => ty::AutoPtr(f(r), m),
             ty::AutoBorrowVec(r, m) => ty::AutoBorrowVec(f(r), m),
             ty::AutoBorrowVecRef(r, m) => ty::AutoBorrowVecRef(f(r), m),
-            ty::AutoBorrowFn(r) => ty::AutoBorrowFn(f(r)),
             ty::AutoUnsafe(m) => ty::AutoUnsafe(m),
             ty::AutoBorrowObj(r, m) => ty::AutoBorrowObj(f(r), m),
         }

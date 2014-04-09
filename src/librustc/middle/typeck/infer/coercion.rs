@@ -65,8 +65,7 @@ we may want to adjust precisely when coercions occur.
 */
 
 
-use middle::ty::{AutoPtr, AutoBorrowVec, AutoBorrowFn, AutoBorrowObj};
-use middle::ty::{AutoDerefRef};
+use middle::ty::{AutoPtr, AutoBorrowVec, AutoBorrowObj, AutoDerefRef};
 use middle::ty::{VstoreSlice, VstoreUniq};
 use middle::ty::{mt};
 use middle::ty;
@@ -342,31 +341,14 @@ impl<'f> Coerce<'f> {
                a.inf_str(self.get_ref().infcx), sty_a,
                b.inf_str(self.get_ref().infcx));
 
-        let fn_ty = match *sty_a {
-            ty::ty_closure(ref f) if f.store == ty::UniqTraitStore => {
-                (*f).clone()
-            }
+        match *sty_a {
             ty::ty_bare_fn(ref f) => {
-                return self.coerce_from_bare_fn(a, f, b);
+                self.coerce_from_bare_fn(a, f, b)
             }
             _ => {
-                return self.subtype(a, b);
+                self.subtype(a, b)
             }
-        };
-
-        let r_borrow = self.get_ref().infcx.next_region_var(Coercion(self.get_ref().trace));
-        let a_borrowed = ty::mk_closure(
-            self.get_ref().infcx.tcx,
-            ty::ClosureTy {
-                store: ty::RegionTraitStore(r_borrow, ast::MutMutable),
-                .. *fn_ty
-            });
-
-        if_ok!(self.subtype(a_borrowed, b));
-        Ok(Some(@AutoDerefRef(AutoDerefRef {
-            autoderefs: 0,
-            autoref: Some(AutoBorrowFn(r_borrow))
-        })))
+        }
     }
 
     fn coerce_from_bare_fn(&self, a: ty::t, fn_ty_a: &ty::BareFnTy, b: ty::t)
