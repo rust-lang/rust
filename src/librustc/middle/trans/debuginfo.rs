@@ -2202,27 +2202,27 @@ fn type_metadata(cx: &CrateContext,
         ty::ty_box(typ) => {
             create_pointer_to_box_metadata(cx, t, typ)
         },
-        ty::ty_vec(ty, ref vstore) => {
-            match *vstore {
-                ty::VstoreFixed(len) => {
-                    fixed_vec_metadata(cx, ty, len, usage_site_span)
-                }
-                ty::VstoreUniq => {
-                    let vec_metadata = vec_metadata(cx, ty, usage_site_span);
+        ty::ty_vec(ref mt, Some(len)) => fixed_vec_metadata(cx, mt.ty, len, usage_site_span),
+        ty::ty_uniq(typ) => {
+            match ty::get(typ).sty {
+                ty::ty_vec(ref mt, None) => {
+                    let vec_metadata = vec_metadata(cx, mt.ty, usage_site_span);
                     pointer_type_metadata(cx, t, vec_metadata)
                 }
-                ty::VstoreSlice(..) => {
-                    vec_slice_metadata(cx, t, ty, usage_site_span)
+                _ => {
+                    let pointee = type_metadata(cx, typ, usage_site_span);
+                    pointer_type_metadata(cx, t, pointee)
                 }
             }
-        },
-        ty::ty_uniq(typ) => {
-            let pointee = type_metadata(cx, typ, usage_site_span);
-            pointer_type_metadata(cx, t, pointee)
         }
         ty::ty_ptr(ref mt) | ty::ty_rptr(_, ref mt) => {
-            let pointee = type_metadata(cx, mt.ty, usage_site_span);
-            pointer_type_metadata(cx, t, pointee)
+            match ty::get(mt.ty).sty {
+                ty::ty_vec(ref mt, None) => vec_slice_metadata(cx, t, mt.ty, usage_site_span),
+                _ => {
+                    let pointee = type_metadata(cx, mt.ty, usage_site_span);
+                    pointer_type_metadata(cx, t, pointee)
+                }
+            }
         },
         ty::ty_bare_fn(ref barefnty) => {
             subroutine_type_metadata(cx, &barefnty.sig, usage_site_span)

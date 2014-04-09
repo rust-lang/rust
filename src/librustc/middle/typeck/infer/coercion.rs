@@ -102,20 +102,24 @@ impl<'f> Coerce<'f> {
         // See above for details.
         match ty::get(b).sty {
             ty::ty_rptr(_, mt_b) => {
-                return self.unpack_actual_value(a, |sty_a| {
-                    self.coerce_borrowed_pointer(a, sty_a, b, mt_b)
-                });
+                match ty::get(mt_b.ty).sty {
+                    ty::ty_vec(mt_b, None) => {
+                        return self.unpack_actual_value(a, |sty_a| {
+                            self.coerce_borrowed_vector(a, sty_a, b, mt_b.mutbl)
+                        });
+                    }
+                    ty::ty_vec(_, _) => {},
+                    _ => {
+                        return self.unpack_actual_value(a, |sty_a| {
+                            self.coerce_borrowed_pointer(a, sty_a, b, mt_b)
+                        });
+                    }
+                };
             }
 
             ty::ty_str(VstoreSlice(..)) => {
                 return self.unpack_actual_value(a, |sty_a| {
                     self.coerce_borrowed_string(a, sty_a, b)
-                });
-            }
-
-            ty::ty_vec(_, VstoreSlice(_, mutbl_b)) => {
-                return self.unpack_actual_value(a, |sty_a| {
-                    self.coerce_borrowed_vector(a, sty_a, b, mutbl_b)
                 });
             }
 
@@ -266,7 +270,7 @@ impl<'f> Coerce<'f> {
         };
 
         let r_a = self.get_ref().infcx.next_region_var(Coercion(self.get_ref().trace));
-        let a_borrowed = ty::mk_str(self.get_ref().infcx.tcx, VstoreSlice(r_a, ()));
+        let a_borrowed = ty::mk_str(self.get_ref().infcx.tcx, VstoreSlice(r_a));
         if_ok!(self.subtype(a_borrowed, b));
         Ok(Some(@AutoDerefRef(AutoDerefRef {
             autoderefs: 0,
@@ -287,14 +291,21 @@ impl<'f> Coerce<'f> {
         let sub = Sub(*self.get_ref());
         let r_borrow = self.get_ref().infcx.next_region_var(Coercion(self.get_ref().trace));
         let ty_inner = match *sty_a {
-            ty::ty_vec(ty, _) => ty,
+            ty::ty_uniq(t) | ty::ty_ptr(ty::mt{ty: t, ..}) |
+            ty::ty_rptr(_, ty::mt{ty: t, ..}) => match ty::get(t).sty {
+                ty::ty_vec(mt, None) => mt.ty,
+                _ => {
+                    return self.subtype(a, b);
+                }
+            },
+            ty::ty_vec(mt, _) => mt.ty,
             _ => {
                 return self.subtype(a, b);
             }
         };
 
-        let a_borrowed = ty::mk_vec(self.get_ref().infcx.tcx, ty_inner,
-                                    VstoreSlice(r_borrow, mutbl_b));
+        let a_borrowed = ty::mk_slice(self.get_ref().infcx.tcx, r_borrow,
+                                      mt {ty: ty_inner, mutbl: mutbl_b});
         if_ok!(sub.tys(a_borrowed, b));
         Ok(Some(@AutoDerefRef(AutoDerefRef {
             autoderefs: 0,

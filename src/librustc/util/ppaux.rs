@@ -395,22 +395,22 @@ pub fn ty_to_str(cx: &ctxt, typ: t) -> ~str {
         let bound_str = bounds.repr(cx);
         format!("{}{}{}{}", trait_store_to_str(cx, store), ty, bound_sep, bound_str)
       }
-      ty_vec(ty, vs) => {
-        match vs {
-            ty::VstoreFixed(n) => {
-                format!("[{}, .. {}]", ty_to_str(cx, ty), n)
-            }
-            _ => {
-                format!("{}[{}]", vs.repr(cx), ty_to_str(cx, ty))
-            }
-        }
-      }
       ty_str(vs) => {
         match vs {
             ty::VstoreFixed(n) => format!("str/{}", n),
             ty::VstoreUniq => "~str".to_owned(),
-            ty::VstoreSlice(r, ()) => format!("{}str", region_ptr_to_str(cx, r))
+            ty::VstoreSlice(r) => format!("{}str", region_ptr_to_str(cx, r))
         }
+      }
+      ty_vec(ref mt, sz) => {
+          match sz {
+              Some(n) => {
+                  format!("[{}, .. {}]", mt_to_str(cx, mt), n)
+              }
+              None => {
+                  format!("[{}]", ty_to_str(cx, mt.ty))
+              }
+          }
       }
     }
 }
@@ -853,19 +853,7 @@ impl Repr for ty::Vstore {
         match *self {
             ty::VstoreFixed(n) => format!("{}", n),
             ty::VstoreUniq => "~".to_owned(),
-            ty::VstoreSlice(r, m) => {
-                format!("{}{}", region_ptr_to_str(tcx, r), mutability_to_str(m))
-            }
-        }
-    }
-}
-
-impl Repr for ty::Vstore<()> {
-    fn repr(&self, tcx: &ctxt) -> ~str {
-        match *self {
-            ty::VstoreFixed(n) => format!("{}", n),
-            ty::VstoreUniq => "~".to_owned(),
-            ty::VstoreSlice(r, ()) => region_ptr_to_str(tcx, r)
+            ty::VstoreSlice(r) => region_ptr_to_str(tcx, r)
         }
     }
 }
