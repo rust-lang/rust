@@ -27,11 +27,11 @@ pub fn event_loop() -> ~EventLoop:Send {
 }
 
 struct BasicLoop {
-    work: ~[proc():Send],             // pending work
+    work: Vec<proc():Send>,             // pending work
     idle: Option<*mut BasicPausable>, // only one is allowed
-    remotes: ~[(uint, ~Callback:Send)],
+    remotes: Vec<(uint, ~Callback:Send)>,
     next_remote: uint,
-    messages: Exclusive<~[Message]>,
+    messages: Exclusive<Vec<Message>>,
 }
 
 enum Message { RunRemote(uint), RemoveRemote(uint) }
@@ -39,18 +39,18 @@ enum Message { RunRemote(uint), RemoveRemote(uint) }
 impl BasicLoop {
     fn new() -> BasicLoop {
         BasicLoop {
-            work: ~[],
+            work: vec![],
             idle: None,
             next_remote: 0,
-            remotes: ~[],
-            messages: Exclusive::new(~[]),
+            remotes: vec![],
+            messages: Exclusive::new(vec![]),
         }
     }
 
     /// Process everything in the work queue (continually)
     fn work(&mut self) {
         while self.work.len() > 0 {
-            for work in replace(&mut self.work, ~[]).move_iter() {
+            for work in replace(&mut self.work, vec![]).move_iter() {
                 work();
             }
         }
@@ -60,7 +60,7 @@ impl BasicLoop {
         let messages = unsafe {
             self.messages.with(|messages| {
                 if messages.len() > 0 {
-                    Some(replace(messages, ~[]))
+                    Some(replace(messages, vec![]))
                 } else {
                     None
                 }
@@ -165,12 +165,12 @@ impl EventLoop for BasicLoop {
 }
 
 struct BasicRemote {
-    queue: Exclusive<~[Message]>,
+    queue: Exclusive<Vec<Message>>,
     id: uint,
 }
 
 impl BasicRemote {
-    fn new(queue: Exclusive<~[Message]>, id: uint) -> BasicRemote {
+    fn new(queue: Exclusive<Vec<Message>>, id: uint) -> BasicRemote {
         BasicRemote { queue: queue, id: id }
     }
 }
