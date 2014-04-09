@@ -294,7 +294,7 @@
                     if ((validate) &&
                         (name.toLowerCase().indexOf(keys[i]) > -1 ||
                          path.toLowerCase().indexOf(keys[i]) > -1 ||
-                         parent.name.toLowerCase().indexOf(keys[i]) > -1))
+                         parent[1].toLowerCase().indexOf(keys[i]) > -1))
                     {
                         validate = true;
                     } else {
@@ -423,12 +423,14 @@
                             '">' + name + '</a>';
                     } else if (item.parent !== undefined) {
                         var myparent = allPaths[item.crate][item.parent];
+                        var parentType = myparent[0];
+                        var parentName = myparent[1];
                         var anchor = '#' + type + '.' + name;
-                        output += item.path + '::' + myparent.name +
+                        output += item.path + '::' + parentName +
                             '::<a href="' + rootPath +
                             item.path.replace(/::/g, '/') +
-                            '/' + itemTypes[myparent.type] +
-                            '.' + myparent.name +
+                            '/' + itemTypes[parentType] +
+                            '.' + parentName +
                             '.html' + anchor +
                             '" class="' + type +
                             '">' + name + '</a>';
@@ -545,10 +547,12 @@
                 // all other search operations have access to this cached data for
                 // faster analysis operations
                 for (i = 0; i < len; i += 1) {
-                    rawSearchIndex[crate][i].crate = crate;
-                    searchIndex.push(rawSearchIndex[crate][i]);
-                    if (typeof rawSearchIndex[crate][i].name === "string") {
-                        var word = rawSearchIndex[crate][i].name.toLowerCase();
+                    var rawRow = rawSearchIndex[crate][i];
+                    var row = {crate: crate, ty: rawRow[0], name: rawRow[1],
+                               path: rawRow[2], desc: rawRow[3], parent: rawRow[4]};
+                    searchIndex.push(row);
+                    if (typeof row.name === "string") {
+                        var word = row.name.toLowerCase();
                         searchWords.push(word);
                     } else {
                         searchWords.push("");

@@ -313,17 +313,17 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
             if i > 0 {
                 try!(write!(&mut w, ","));
             }
-            try!(write!(&mut w, "\\{ty:{:u},name:\"{}\",path:\"{}\",desc:{}",
+            try!(write!(&mut w, r#"[{:u},"{}","{}",{}"#,
                         item.ty, item.name, item.path,
                         item.desc.to_json().to_str()));
             match item.parent {
                 Some(nodeid) => {
                     let pathid = *nodeid_to_pathid.find(&nodeid).unwrap();
-                    try!(write!(&mut w, ",parent:{}", pathid));
+                    try!(write!(&mut w, ",{}", pathid));
                 }
                 None => {}
             }
-            try!(write!(&mut w, "\\}"));
+            try!(write!(&mut w, "]"));
         }
         try!(write!(&mut w, "];"));
         try!(write!(&mut w, "allPaths['{}'] = [", krate.name));
@@ -332,7 +332,7 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
             if i > 0 {
                 try!(write!(&mut w, ","));
             }
-            try!(write!(&mut w, "\\{type:{:u},name:'{}'\\}",
+            try!(write!(&mut w, r#"[{:u},"{}"]"#,
                         short, *fqp.last().unwrap()));
         }
         try!(write!(&mut w, "];"));
