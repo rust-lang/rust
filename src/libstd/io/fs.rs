@@ -483,7 +483,7 @@ pub fn rmdir(path: &Path) -> IoResult<()> {
 /// Will return an error if the provided `from` doesn't exist, the process lacks
 /// permissions to view the contents or if the `path` points at a non-directory
 /// file
-pub fn readdir(path: &Path) -> IoResult<~[Path]> {
+pub fn readdir(path: &Path) -> IoResult<Vec<Path>> {
     LocalIo::maybe_raise(|io| {
         io.fs_readdir(&path.to_c_str(), 0)
     })
@@ -498,7 +498,7 @@ pub fn walk_dir(path: &Path) -> IoResult<Directories> {
 
 /// An iterator which walks over a directory
 pub struct Directories {
-    stack: ~[Path],
+    stack: Vec<Path>,
 }
 
 impl Iterator<Path> for Directories {
