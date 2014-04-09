@@ -10,7 +10,6 @@
 
 //! Types dealing with dynamic mutability
 
-use cast;
 use clone::Clone;
 use cmp::Eq;
 use fmt;
@@ -70,7 +69,7 @@ impl<T: Copy + fmt::Show> fmt::Show for Cell<T> {
 /// A mutable memory location with dynamically checked borrow rules
 pub struct RefCell<T> {
     value: Unsafe<T>,
-    borrow: BorrowFlag,
+    borrow: Cell<BorrowFlag>,
     nocopy: marker::NoCopy,
     noshare: marker::NoShare,
 }
@@ -86,20 +85,16 @@ impl<T> RefCell<T> {
     pub fn new(value: T) -> RefCell<T> {
         RefCell {
             value: Unsafe::new(value),
+            borrow: Cell::new(UNUSED),
             nocopy: marker::NoCopy,
             noshare: marker::NoShare,
-            borrow: UNUSED,
         }
     }
 
     /// Consumes the `RefCell`, returning the wrapped value.
     pub fn unwrap(self) -> T {
-        assert!(self.borrow == UNUSED);
+        assert!(self.borrow.get() == UNUSED);
         unsafe{self.value.unwrap()}
-    }
-
-    unsafe fn as_mut<'a>(&'a self) -> &'a mut RefCell<T> {
-        cast::transmute_mut(self)
     }
 
     /// Attempts to immutably borrow the wrapped value.
@@ -109,10 +104,10 @@ impl<T> RefCell<T> {
     ///
     /// Returns `None` if the value is currently mutably borrowed.
     pub fn try_borrow<'a>(&'a self) -> Option<Ref<'a, T>> {
-        match self.borrow {
+        match self.borrow.get() {
             WRITING => None,
-            _ => {
-                unsafe { self.as_mut().borrow += 1; }
+            borrow => {
+                self.borrow.set(borrow + 1);
                 Some(Ref { parent: self })
             }
         }
@@ -140,11 +135,10 @@ impl<T> RefCell<T> {
     ///
     /// Returns `None` if the value is currently borrowed.
     pub fn try_borrow_mut<'a>(&'a self) -> Option<RefMut<'a, T>> {
-        match self.borrow {
-            UNUSED => unsafe {
-                let mut_self = self.as_mut();
-                mut_self.borrow = WRITING;
-                Some(RefMut { parent: mut_self })
+        match self.borrow.get() {
+            UNUSED => {
+                self.borrow.set(WRITING);
+                Some(RefMut { parent: self })
             },
             _ => None
         }
@@ -186,8 +180,9 @@ pub struct Ref<'b, T> {
 #[unsafe_destructor]
 impl<'b, T> Drop for Ref<'b, T> {
     fn drop(&mut self) {
-        assert!(self.parent.borrow != WRITING && self.parent.borrow != UNUSED);
-        unsafe { self.parent.as_mut().borrow -= 1; }
+        let borrow = self.parent.borrow.get();
+        assert!(borrow != WRITING && borrow != UNUSED);
+        self.parent.borrow.set(borrow - 1);
     }
 }
 
@@ -200,14 +195,15 @@ impl<'b, T> Deref<T> for Ref<'b, T> {
 
 /// Wraps a mutable borrowed reference to a value in a `RefCell` box.
 pub struct RefMut<'b, T> {
-    parent: &'b mut RefCell<T>
+    parent: &'b RefCell<T>
 }
 
 #[unsafe_destructor]
 impl<'b, T> Drop for RefMut<'b, T> {
     fn drop(&mut self) {
-        assert!(self.parent.borrow == WRITING);
-        self.parent.borrow = UNUSED;
+        let borrow = self.parent.borrow.get();
+        assert!(borrow == WRITING);
+        self.parent.borrow.set(UNUSED);
     }
 }
 
