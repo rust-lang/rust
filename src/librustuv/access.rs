@@ -31,7 +31,7 @@ pub struct Guard<'a> {
 }
 
 struct Inner {
-    queue: ~[BlockedTask],
+    queue: Vec<BlockedTask>,
     held: bool,
 }
 
@@ -39,7 +39,7 @@ impl Access {
     pub fn new() -> Access {
         Access {
             inner: UnsafeArc::new(Inner {
-                queue: ~[],
+                queue: vec![],
                 held: false,
             })
         }

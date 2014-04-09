@@ -170,14 +170,14 @@ impl<'a> Stats for &'a [f64] {
     // FIXME #11059 handle NaN, inf and overflow
     #[allow(deprecated_owned_vector)]
     fn sum(self) -> f64 {
-        let mut partials : ~[f64] = ~[];
+        let mut partials = vec![];
 
         for &mut x in self.iter() {
             let mut j = 0;
             // This inner loop applies `hi`/`lo` summation to each
             // partial so that the list of partial sums remains exact.
             for i in range(0, partials.len()) {
-                let mut y = partials[i];
+                let mut y = *partials.get(i);
                 if num::abs(x) < num::abs(y) {
                     mem::swap(&mut x, &mut y);
                 }
@@ -186,7 +186,7 @@ impl<'a> Stats for &'a [f64] {
                 let hi = x + y;
                 let lo = y - (hi - x);
                 if lo != 0f64 {
-                    partials[j] = lo;
+                    *partials.get_mut(j) = lo;
                     j += 1;
                 }
                 x = hi;
@@ -194,7 +194,7 @@ impl<'a> Stats for &'a [f64] {
             if j >= partials.len() {
                 partials.push(x);
             } else {
-                partials[j] = x;
+                *partials.get_mut(j) = x;
                 partials.truncate(j+1);
             }
         }
