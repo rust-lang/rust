@@ -135,7 +135,7 @@
         function execQuery(query, max, searchWords) {
             var valLower = query.query.toLowerCase(),
                 val = valLower,
-                typeFilter = query.type,
+                typeFilter = itemTypeFromName(query.type),
                 results = [],
                 split = valLower.split("::");
 
@@ -156,7 +156,7 @@
                 for (var i = 0; i < nSearchWords; i += 1) {
                     if (searchWords[i] === val) {
                         // filter type: ... queries
-                        if (!typeFilter || typeFilter === searchIndex[i].ty) {
+                        if (typeFilter < 0 || typeFilter === searchIndex[i].ty) {
                             results.push({id: i, index: -1});
                         }
                     }
@@ -174,7 +174,7 @@
                             searchWords[j].replace(/_/g, "").indexOf(val) > -1)
                         {
                             // filter type: ... queries
-                            if (!typeFilter || typeFilter === searchIndex[j].ty) {
+                            if (typeFilter < 0 || typeFilter === searchIndex[j].ty) {
                                 results.push({id: j, index: searchWords[j].replace(/_/g, "").indexOf(val)});
                             }
                         }
@@ -405,7 +405,7 @@
 
                     shown.push(item);
                     name = item.name;
-                    type = item.ty;
+                    type = itemTypes[item.ty];
 
                     output += '<tr class="' + type + ' result"><td>';
 
@@ -427,7 +427,7 @@
                         output += item.path + '::' + myparent.name +
                             '::<a href="' + rootPath +
                             item.path.replace(/::/g, '/') +
-                            '/' + myparent.type +
+                            '/' + itemTypes[myparent.type] +
                             '.' + myparent.name +
                             '.html' + anchor +
                             '" class="' + type +
@@ -503,6 +503,32 @@
             }
 
             showResults(results);
+        }
+
+        // This mapping table should match the discriminants of
+        // `rustdoc::html::item_type::ItemType` type in Rust.
+        var itemTypes = ["mod",
+                         "struct",
+                         "enum",
+                         "fn",
+                         "typedef",
+                         "static",
+                         "trait",
+                         "impl",
+                         "viewitem",
+                         "tymethod",
+                         "method",
+                         "structfield",
+                         "variant",
+                         "ffi",
+                         "ffs",
+                         "macro"];
+
+        function itemTypeFromName(typename) {
+            for (var i = 0; i < itemTypes.length; ++i) {
+                if (itemTypes[i] === typename) return i;
+            }
+            return -1;
         }
 
         function buildIndex(rawSearchIndex) {

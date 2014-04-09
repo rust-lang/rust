@@ -41,6 +41,7 @@ pub mod fold;
 pub mod html {
     pub mod highlight;
     pub mod escape;
+    pub mod item_type;
     pub mod format;
     pub mod layout;
     pub mod markdown;
