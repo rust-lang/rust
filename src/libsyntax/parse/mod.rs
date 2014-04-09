@@ -686,7 +686,7 @@ mod test {
                                                       }),
                                                 span: sp(17,18)},
                                                 ast::DUMMY_NODE_ID),
-                                            span: sp(17,18)}),
+                                            span: sp(17,19)}),
                                         expr: None,
                                         id: ast::DUMMY_NODE_ID,
                                         rules: ast::DefaultBlock, // no idea

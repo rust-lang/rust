@@ -3260,9 +3260,14 @@ impl<'a> Parser<'a> {
                             match self.token {
                                 token::SEMI => {
                                     self.bump();
+                                    let span_with_semi = Span {
+                                        lo: stmt.span.lo,
+                                        hi: self.last_span.hi,
+                                        expn_info: stmt.span.expn_info,
+                                    };
                                     stmts.push(@codemap::Spanned {
                                         node: StmtSemi(e, stmt_id),
-                                        span: stmt.span,
+                                        span: span_with_semi,
                                     });
                                 }
                                 token::RBRACE => {
@@ -3275,32 +3280,25 @@ impl<'a> Parser<'a> {
                         }
                         StmtMac(ref m, _) => {
                             // statement macro; might be an expr
-                            let has_semi;
                             match self.token {
                                 token::SEMI => {
-                                    has_semi = true;
+                                    self.bump();
+                                    stmts.push(@codemap::Spanned {
+                                        node: StmtMac((*m).clone(), true),
+                                        span: stmt.span,
+                                    });
                                 }
                                 token::RBRACE => {
                                     // if a block ends in `m!(arg)` without
                                     // a `;`, it must be an expr
-                                    has_semi = false;
                                     expr = Some(
                                         self.mk_mac_expr(stmt.span.lo,
                                                          stmt.span.hi,
                                                          m.node.clone()));
                                 }
                                 _ => {
-                                    has_semi = false;
                                     stmts.push(stmt);
                                 }
-                            }
-
-                            if has_semi {
-                                self.bump();
-                                stmts.push(@codemap::Spanned {
-                                    node: StmtMac((*m).clone(), true),
-                                    span: stmt.span,
-                                });
                             }
                         }
                         _ => { // all other kinds of statements:
