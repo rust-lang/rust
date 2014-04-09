@@ -76,7 +76,7 @@ use syntax::parse::token;
 pub enum categorization {
     cat_rvalue(ty::Region),            // temporary val, argument is its scope
     cat_static_item,
-    cat_copied_upvar(CopiedUpvar),     // upvar copied into @fn or ~fn env
+    cat_copied_upvar(CopiedUpvar),     // upvar copied into proc env
     cat_upvar(ty::UpvarId, ty::UpvarBorrow), // by ref upvar from stack closure
     cat_local(ast::NodeId),            // local variable
     cat_arg(ast::NodeId),              // formal argument
@@ -1092,7 +1092,7 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
               ~"static item"
           }
           cat_copied_upvar(_) => {
-              ~"captured outer variable in a heap closure"
+              ~"captured outer variable in a proc"
           }
           cat_rvalue(..) => {
               ~"non-lvalue"
