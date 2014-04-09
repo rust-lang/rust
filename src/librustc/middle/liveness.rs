@@ -117,7 +117,7 @@ use std::rc::Rc;
 use std::str;
 use std::uint;
 use syntax::ast::*;
-use syntax::codemap::Span;
+use syntax::codemap::{BytePos, original_sp, Span};
 use syntax::parse::token::special_idents;
 use syntax::parse::token;
 use syntax::print::pprust::{expr_to_str, block_to_str};
@@ -1473,10 +1473,11 @@ impl<'a> Liveness<'a> {
                 };
                 if ends_with_stmt {
                     let last_stmt = body.stmts.last().unwrap();
+                    let original_span = original_sp(last_stmt.span, sp);
                     let span_semicolon = Span {
-                        lo: last_stmt.span.hi,
-                        hi: last_stmt.span.hi,
-                        expn_info: last_stmt.span.expn_info
+                        lo: original_span.hi - BytePos(1),
+                        hi: original_span.hi,
+                        expn_info: original_span.expn_info
                     };
                     self.ir.tcx.sess.span_note(
                         span_semicolon, "consider removing this semicolon:");
