@@ -308,7 +308,7 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
     // Publish the search index
     let index = {
         let mut w = MemWriter::new();
-        try!(write!(&mut w, "searchIndex['{}'] = [", krate.name));
+        try!(write!(&mut w, r#"searchIndex['{}'] = \{"items":["#, krate.name));
         for (i, item) in cache.search_index.iter().enumerate() {
             if i > 0 {
                 try!(write!(&mut w, ","));
@@ -325,8 +325,7 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
             }
             try!(write!(&mut w, "]"));
         }
-        try!(write!(&mut w, "];"));
-        try!(write!(&mut w, "allPaths['{}'] = [", krate.name));
+        try!(write!(&mut w, r#"],"paths":["#));
         for (i, &nodeid) in pathid_to_nodeid.iter().enumerate() {
             let &(ref fqp, short) = cache.paths.find(&nodeid).unwrap();
             if i > 0 {
@@ -335,7 +334,7 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
             try!(write!(&mut w, r#"[{:u},"{}"]"#,
                         short, *fqp.last().unwrap()));
         }
-        try!(write!(&mut w, "];"));
+        try!(write!(&mut w, r"]\};"));
 
         str::from_utf8(w.unwrap().as_slice()).unwrap().to_owned()
     };
@@ -371,7 +370,7 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
             }
         }
         let mut w = try!(File::create(&dst));
-        try!(writeln!(&mut w, r"var searchIndex = \{\}; var allPaths = \{\};"));
+        try!(writeln!(&mut w, r"var searchIndex = \{\};"));
         for index in all_indexes.iter() {
             try!(writeln!(&mut w, "{}", *index));
         }
