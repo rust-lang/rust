@@ -40,8 +40,8 @@ pub enum Req {
 }
 
 fn helper(input: libc::HANDLE, messages: Receiver<Req>) {
-    let mut objs = ~[input];
-    let mut chans = ~[];
+    let mut objs = vec![input];
+    let mut chans = vec![];
 
     'outer: loop {
         let idx = unsafe {
@@ -78,7 +78,7 @@ fn helper(input: libc::HANDLE, messages: Receiver<Req>) {
             }
         } else {
             let remove = {
-                match &chans[idx as uint - 1] {
+                match chans.get(idx as uint - 1) {
                     &(ref c, oneshot) => !c.try_send(()) || oneshot
                 }
             };
