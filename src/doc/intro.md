@@ -1,28 +1,29 @@
 % A 30-minute Introduction to Rust
 
-Rust is a systems programming language that focuses on strong compile-time correctness guarantees.
-It improves upon the ideas other systems languages like C++, D,
-and Cyclone by providing very strong guarantees and explicit control over the life cycle of memory.
+Rust is a systems programming language that combines strong compile-time correctness guarantees with fast performance.
+It improves upon the ideas of other systems languages like C++
+by providing guaranteed memory safety (no crashes, no data races) and complete control over the lifecycle of memory.
 Strong memory guarantees make writing correct concurrent Rust code easier than in other languages.
-This might sound very complex, but it's easier than it sounds!
 This tutorial will give you an idea of what Rust is like in about thirty minutes.
-It expects that you're at least vaguely familiar with a previous 'curly brace' language.
+It expects that you're at least vaguely familiar with a previous 'curly brace' language,
+but does not require prior experience with systems programming.
 The concepts are more important than the syntax,
 so don't worry if you don't get every last detail:
-the [tutorial](http://static.rust-lang.org/doc/master/tutorial.html) can help you out with that later.
+the [tutorial](tutorial.html) can help you out with that later.
 
 Let's talk about the most important concept in Rust, "ownership,"
 and its implications on a task that programmers usually find very difficult: concurrency.
 
-## Ownership
+# The power of ownership
 
 Ownership is central to Rust,
-and is one of its more interesting and unique features.
-"Ownership" refers to which parts of your code are allowed to modify various parts of memory.
+and is the feature from which many of Rust's powerful capabilities are derived.
+"Ownership" refers to which parts of your code are allowed read,
+write, and ultimately release, memory.
 Let's start by looking at some C++ code:
 
-```
-int *dangling(void)
+```notrust
+int* dangling(void)
 {
     int i = 1234;
     return &i;
@@ -30,7 +31,7 @@ int *dangling(void)
 
 int add_one(void)
 {
-    int *num = dangling();
+    int* num = dangling();
     return *num + 1;
 }
 ```
@@ -48,13 +49,11 @@ it can happen quite often in C++ code.
 There's a similar problem when memory on the heap is allocated with `malloc` (or `new`),
 then freed with `free` (or `delete`),
 yet your code attempts to do something with the pointer to that memory.
-More modern C++ uses RAII with constructors/destructors,
-but it amounts to the same thing.
 This problem is called a 'dangling pointer,'
 and it's not possible to write Rust code that has it.
-Let's try:
+Let's try writing it in Rust:
 
-```
+```ignore
 fn dangling() -> &int {
     let i = 1234;
     return &i;
@@ -64,25 +63,28 @@ fn add_one() -> int {
     let num = dangling();
     return *num + 1;
 }
+
+fn main() {
+    add_one();
+}
 ```
 
-When you try to compile this program, you'll get an interesting (and long) error message:
+Save this program as `dangling.rs`. When you try to compile this program with `rustc dangling.rs`, you'll get an interesting (and long) error message:
 
-```
-temp.rs:3:11: 3:13 error: borrowed value does not live long enough
-temp.rs:3     return &i;
-
-temp.rs:1:22: 4:1 note: borrowed pointer must be valid for the anonymous lifetime #1 defined on the block at 1:22...
-temp.rs:1 fn dangling() -> &int {
-temp.rs:2     let i = 1234;
-temp.rs:3     return &i;
-temp.rs:4 }
-                            
-temp.rs:1:22: 4:1 note: ...but borrowed value is only valid for the block at 1:22
-temp.rs:1 fn dangling() -> &int {      
-temp.rs:2     let i = 1234;            
-temp.rs:3     return &i;               
-temp.rs:4  }                            
+```notrust
+dangling.rs:3:12: 3:14 error: `i` does not live long enough
+dangling.rs:3     return &i;
+                         ^~
+dangling.rs:1:23: 4:2 note: reference must be valid for the anonymous lifetime #1 defined on the block at 1:22...
+dangling.rs:1 fn dangling() -> &int {
+dangling.rs:2     let i = 1234;
+dangling.rs:3     return &i;
+dangling.rs:4 }
+dangling.rs:1:23: 4:2 note: ...but borrowed value is only valid for the block at 1:22
+dangling.rs:1 fn dangling() -> &int {
+dangling.rs:2     let i = 1234;
+dangling.rs:3     return &i;
+dangling.rs:4 }
 error: aborting due to previous error
 ```
 
@@ -104,24 +106,24 @@ This concept applies directly to Rust code as well:
 some code "owns" a particular pointer to memory.
 It's the sole owner of that pointer.
 It can also lend that memory out to some other code for a while:
-the code "borrows" it.
-It borrows it for a certain period of time, called a "lifetime."
+that code "borrows" the memory,
+and it borrows it for a precise period of time,
+called a "lifetime."
 
 That's all there is to it.
 That doesn't seem so hard, right?
 Let's go back to that error message:
-`error: borrowed value does not live long enough`.
+`error: 'i' does not live long enough`.
 We tried to loan out a particular variable, `i`,
-using Rust's borrowed pointers: the `&`.
-But Rust knew that the variable would be invalid after the function returns,
+using a reference (the `&` operator) but Rust knew that the variable would be invalid after the function returns,
 and so it tells us that:
-`borrowed pointer must be valid for the anonymous lifetime #1... but borrowed value is only valid for the block`.
+`reference must be valid for the anonymous lifetime #1...`.
 Neat!
 
 That's a great example for stack memory,
 but what about heap memory?
 Rust has a second kind of pointer,
-a 'unique' pointer,
+an 'owned box',
 that you can create with a `~`.
 Check it out:
 
@@ -137,24 +139,28 @@ fn add_one() -> int {
 }
 ```
 
-This code will successfully compile.
-Note that instead of a stack allocated `1234`,
-we use an owned pointer to that value instead: `~1234`.
+Now instead of a stack allocated `1234`,
+we have a heap allocated `~1234`.
+Whereas `&` borrows a pointer to existing memory,
+creating an owned box allocates memory on the heap and places a value in it,
+giving you the sole pointer to that memory.
 You can roughly compare these two lines:
 
 ```
-// rust
+// Rust
 let i = ~1234;
+```
 
+```notrust
 // C++
 int *i = new int;
 *i = 1234;
 ```
 
-Rust is able to infer the size of the type,
-then allocates the correct amount of memory and sets it to the value you asked for.
+Rust infers the correct type,
+allocates the correct amount of memory and sets it to the value you asked for.
 This means that it's impossible to allocate uninitialized memory:
-Rust does not have the concept of null.
+*Rust does not have the concept of null*.
 Hooray!
 There's one other difference between this line of Rust and the C++:
 The Rust compiler also figures out the lifetime of `i`,
@@ -166,10 +172,10 @@ so there's no runtime overhead.
 You'll get (basically) the exact same code that you'd get if you wrote the correct C++,
 but it's impossible to write the incorrect version, thanks to the compiler.
 
-You've seen one way that ownership and lifetimes are useful to prevent code that would normally be dangerous in a less-strict language,
+You've seen one way that ownership and borrowing are useful to prevent code that would normally be dangerous in a less-strict language,
 but let's talk about another: concurrency.
 
-## Concurrency
+# Owning concurrency
 
 Concurrency is an incredibly hot topic in the software world right now.
 It's always been an interesting area of study for computer scientists,
@@ -177,155 +183,219 @@ but as usage of the Internet explodes,
 people are looking to improve the number of users a given service can handle.
 Concurrency is one way of achieving this goal.
 There is a pretty big drawback to concurrent code, though:
-it can be hard to reason about,
-because it is non-deterministic.
+it can be hard to reason about, because it is non-deterministic.
 There are a few different approaches to writing good concurrent code,
-but let's talk about how Rust's notions of ownership and lifetimes can assist with achieving correct but concurrent code.
+but let's talk about how Rust's notions of ownership and lifetimes contribute to correct but concurrent code.
 
-First, let's go over a simple concurrency example in Rust.
-Rust allows you to spin up 'tasks,'
-which are lightweight, 'green' threads.
-These tasks do not have any shared memory, and so,
-we communicate between tasks with a 'channel'.
-Like this:
+First, let's go over a simple concurrency example.
+Rust makes it easy to create "tasks",
+otherwise known as "threads".
+Typically, tasks do not share memory but instead communicate amongst each other with 'channels', like this:
 
 ```
 fn main() {
-    let numbers = [1,2,3];
+    let numbers = ~[1,2,3];
 
-    let (port, chan)  = Chan::new();
-    chan.send(numbers);
+    let (tx, rx)  = channel();
+    tx.send(numbers);
 
-    do spawn {
-        let numbers = port.recv();
-        println!("{:d}", numbers[0]);
+    spawn(proc() {
+        let numbers = rx.recv();
+        println!("{}", numbers[0]);
+    })
+}
+```
+
+In this example, we create a boxed array of numbers.
+We then make a 'channel',
+Rust's primary means of passing messages between tasks.
+The `channel` function returns two different ends of the channel:
+a `Sender` and `Receiver` (commonly abbreviated `tx` and `rx`).
+The `spawn` function spins up a new task,
+given a *heap allocated closure* to run.
+As you can see in the code,
+we call `chan.send()` from the original task,
+passing in our boxed array,
+and we call `rx.recv()` (short for 'receive') inside of the new task:
+values given to the `Sender` via the `send` method come out the other end via the `recv` method on the `Receiver`.
+
+Now here's the exciting part:
+because `numbers` is an owned type,
+when it is sent across the channel,
+it is actually *moved*,
+transfering ownership of `numbers` between tasks.
+This ownership transfer is *very fast* -
+in this case simply copying a pointer -
+while also ensuring that the original owning task cannot create data races by continuing to read or write to `numbers` in parallel with the new owner.
+
+To prove that Rust performs the ownership transfer,
+try to modify the previous example to continue using the variable `numbers`:
+
+```ignore
+fn main() {
+    let numbers = ~[1,2,3];
+
+    let (tx, rx)  = channel();
+    tx.send(numbers);
+
+    spawn(proc() {
+        let numbers = rx.recv();
+        println!("{}", numbers[0]);
+    });
+
+    // Try to print a number from the original task
+    println!("{}", numbers[0]);
+}
+```
+
+This will result an error indicating that the value is no longer in scope:
+
+```notrust
+concurrency.rs:12:20: 12:27 error: use of moved value: 'numbers'
+concurrency.rs:12     println!("{}", numbers[0]);
+                                     ^~~~~~~
+```
+
+Since only one task can own a boxed array at a time,
+if instead of distributing our `numbers` array to a single task we wanted to distribute it to many tasks,
+we would need to copy the array for each.
+Let's see an example that uses the `clone` method to create copies of the data:
+
+```
+fn main() {
+    let numbers = ~[1,2,3];
+
+    for num in range(0, 3) {
+        let (tx, rx)  = channel();
+        // Use `clone` to send a *copy* of the array
+        tx.send(numbers.clone());
+
+        spawn(proc() {
+            let numbers = rx.recv();
+            println!("{:d}", numbers[num as uint]);
+        })
     }
 }
 ```
 
-In this example, we create a vector of numbers.
-We then make a new `Chan`,
-which is the name of the package Rust implements channels with.
-This returns two different ends of the channel:
-a channel and a port.
-You send data into the channel end, and it comes out the port end.
-The `spawn` function spins up a new task.
-As you can see in the code,
-we call `port.recv()` (short for 'receive') inside of the new task,
-and we call `chan.send()` outside,
-passing in our vector.
-We then print the first element of the vector.
+This is similar to the code we had before,
+except now we loop three times,
+making three tasks,
+and *cloning* `numbers` before sending it.
 
-This works out because Rust copies the vector when it is sent through the channel.
-That way, if it were mutable, there wouldn't be a race condition.
-However, if we're making a lot of tasks, or if our data is very large,
-making a copy for each task inflates our memory usage with no real benefit.
-
-Enter Arc.
-Arc stands for 'atomically reference counted,'
-and it's a way to share immutable data between multiple tasks.
+However, if we're making a lot of tasks,
+or if our data is very large,
+creating a copy for each task requires a lot of work and a lot of extra memory for little benefit.
+In practice, we might not want to do this because of the cost.
+Enter `Arc`,
+an atomically reference counted box ("A.R.C." == "atomically reference counted").
+`Arc` is the most common way to *share* data between tasks.
 Here's some code:
 
 ```
-extern mod extra;
-use extra::arc::Arc;
+extern crate sync;
+use sync::Arc;
 
 fn main() {
-    let numbers = [1,2,3];
-
-    let numbers_arc = Arc::new(numbers);
+    let numbers = ~[1,2,3];
+    let numbers = Arc::new(numbers);
 
     for num in range(0, 3) {
-        let (port, chan)  = Chan::new();
-        chan.send(numbers_arc.clone());
+        let (tx, rx)  = channel();
+        tx.send(numbers.clone());
 
-        do spawn {
-            let local_arc = port.recv();
-            let task_numbers = local_arc.get();
-            println!("{:d}", task_numbers[num]);
-        }
+        spawn(proc() {
+            let numbers = rx.recv();
+            println!("{:d}", numbers[num as uint]);
+        })
     }
 }
 ```
 
-This is very similar to the code we had before,
-except now we loop three times,
-making three tasks,
-and sending an `Arc` between them.
-`Arc::new` creates a new Arc,
-`.clone()` makes a new reference to that Arc,
-and `.get()` gets the value out of the Arc.
-So we make a new reference for each task,
-send that reference down the channel,
-and then use the reference to print out a number.
-Now we're not copying our vector.
+This is almost exactly the same,
+except that this time `numbers` is first put into an `Arc`.
+`Arc::new` creates the `Arc`,
+`.clone()` makes another `Arc` that referrs to the same contents.
+So we clone the `Arc` for each task,
+send that clone down the channel,
+and then use it to print out a number.
+Now instead of copying an entire array to send it to our multiple tasks we are just copying a pointer (the `Arc`) and *sharing* the array.
+
+How can this work though?
+Surely if we're sharing data then can't we cause data races if one task writes to the array while others read?
+
+Well, Rust is super-smart and will only let you put data into an `Arc` that is provably safe to share.
+In this case, it's safe to share the array *as long as it's immutable*,
+i.e. many tasks may read the data in parallel as long as none can write.
+So for this type and many others `Arc` will only give you an immutable view of the data.
 
 Arcs are great for immutable data,
 but what about mutable data?
-Shared mutable state is the bane of the concurrent programmer.
-You can use a mutex to protect shared mutable state,
-but if you forget to acquire the mutex, bad things can happen.
+Shared mutable state is the bane of the concurrent programmer:
+you can use a mutex to protect shared mutable state,
+but if you forget to acquire the mutex, bad things can happen, including crashes.
+Rust provides mutexes but makes it impossible to use them in a way that subverts memory safety.
 
-Rust provides a tool for shared mutable state: `RWArc`.
-This variant of an Arc allows the contents of the Arc to be mutated.
-Check it out:
+Let's take the same example yet again,
+and modify it to mutate the shared state:
 
 ```
-extern mod extra;
-use extra::arc::RWArc;
+extern crate sync;
+use sync::{Arc, Mutex};
 
 fn main() {
-    let numbers = [1,2,3];
-
-    let numbers_arc = RWArc::new(numbers);
+    let numbers = ~[1,2,3];
+    let numbers_lock = Arc::new(Mutex::new(numbers));
 
     for num in range(0, 3) {
-        let (port, chan)  = Chan::new();
-        chan.send(numbers_arc.clone());
+        let (tx, rx)  = channel();
+        tx.send(numbers_lock.clone());
 
-        do spawn {
-            let local_arc = port.recv();
+        spawn(proc() {
+            let numbers_lock = rx.recv();
 
-            local_arc.write(|nums| {
-                nums[num] += 1
-            });
+            // Take the lock, along with exclusive access to the underlying array
+            let mut numbers = numbers_lock.lock();
+            numbers[num as uint] += 1;
 
-            local_arc.read(|nums| {
-                println!("{:d}", nums[num]);
-            })
-        }
+            println!("{}", numbers[num as uint]);
+
+            // When `numbers` goes out of scope the lock is dropped
+        })
     }
 }
 ```
 
-We now use the `RWArc` package to get a read/write Arc.
-The read/write Arc has a slightly different API than `Arc`:
-`read` and `write` allow you to, well, read and write the data.
-They both take closures as arguments,
-and the read/write Arc will, in the case of write,
-acquire a mutex,
-and then pass the data to this closure.
-After the closure does its thing, the mutex is released.
+This example is starting to get more subtle,
+but it hints at the powerful compositionality of Rust's concurrent types.
+This time we've put our array of numbers inside a `Mutex` and then put *that* inside the `Arc`.
+Like immutable data,
+`Mutex`es are sharable,
+but unlike immutable data,
+data inside a `Mutex` may be mutated as long as the mutex is locked.
 
-You can see how this makes it impossible to mutate the state without remembering to aquire the lock.
-We gain the efficiency of shared mutable state,
-while retaining the safety of disallowing shared mutable state.
+The `lock` method here returns not your original array or a pointer thereof,
+but a `MutexGuard`,
+a type that is responsible for releasing the lock when it goes out of scope.
+This same `MutexGuard` can transparently be treated as if it were the value the `Mutex` contains,
+as you can see in the subsequent indexing operation that performs the mutation.
 
-But wait, how is that possible?
-We can't both allow and disallow mutable state.
-What gives?
+OK, let's stop there before we get too deep.
 
-## A footnote: unsafe
+# A footnote: unsafe
 
-So, the Rust language does not allow for shared mutable state,
-yet I just showed you some code that has it.
-How's this possible? The answer: `unsafe`.
+The Rust compiler and libraries are entirely written in Rust;
+we say that Rust is "self-hosting".
+If Rust makes it impossible to unsafely share data between threads,
+and Rust is written in Rust,
+then how does it implement concurrent types like `Arc` and `Mutex`?
+The answer: `unsafe`.
 
 You see, while the Rust compiler is very smart,
 and saves you from making mistakes you might normally make,
 it's not an artificial intelligence.
-Because we're smarter than the compiler,
-sometimes, we need to over-ride this safe behavior.
+Because we're smarter than the compiler -
+sometimes - we need to over-ride this safe behavior.
 For this purpose, Rust has an `unsafe` keyword.
 Within an `unsafe` block,
 Rust turns off many of its safety checks.
@@ -337,28 +407,24 @@ If one of the major goals of Rust was safety,
 why allow that safety to be turned off?
 Well, there are really only three main reasons to do it:
 interfacing with external code,
-such as doing FFI into a C library,
-performance (in certain cases),
+such as doing FFI into a C library;
+performance (in certain cases);
 and to provide a safe abstraction around operations that normally would not be safe.
-Our Arcs are an example of this last purpose.
-We can safely hand out multiple references to the `Arc`,
-because we are sure the data is immutable,
-and therefore it is safe to share.
-We can hand out multiple references to the `RWArc`,
-because we know that we've wrapped the data in a mutex,
-and therefore it is safe to share.
+Our `Arc`s are an example of this last purpose.
+We can safely hand out multiple pointers to the contents of the `Arc`,
+because we are sure the data is safe to share.
 But the Rust compiler can't know that we've made these choices,
 so _inside_ the implementation of the Arcs,
 we use `unsafe` blocks to do (normally) dangerous things.
 But we expose a safe interface,
-which means that the Arcs are impossible to use incorrectly.
+which means that the `Arc`s are impossible to use incorrectly.
 
-This is how Rust's type system allows you to not make some of the mistakes that make concurrent programming difficult,
+This is how Rust's type system prevents you from making some of the mistakes that make concurrent programming difficult,
 yet get the efficiency of languages such as C++.
 
-## That's all, folks
+# That's all, folks
 
 I hope that this taste of Rust has given you an idea if Rust is the right language for you.
 If that's true,
-I encourage you to check out [the tutorial](http://static.rust-lang.org/doc/0.9/tutorial.html) for a full,
+I encourage you to check out [the tutorial](tutorial.html) for a full,
 in-depth exploration of Rust's syntax and concepts.
