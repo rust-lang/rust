@@ -31,6 +31,7 @@ use to_str::ToStr;
 use slice::{Vector, OwnedVector};
 use intrinsics::{Disr, Opaque, TyDesc, TyVisitor, get_tydesc, visit_tydesc};
 use raw;
+use vec::Vec;
 
 macro_rules! try( ($me:expr, $e:expr) => (
     match $e {
@@ -102,8 +103,8 @@ enum VariantState {
 
 pub struct ReprVisitor<'a> {
     ptr: *u8,
-    ptr_stk: ~[*u8],
-    var_stk: ~[VariantState],
+    ptr_stk: Vec<*u8>,
+    var_stk: Vec<VariantState>,
     writer: &'a mut io::Writer,
     last_err: Option<io::IoError>,
 }
@@ -112,8 +113,8 @@ pub fn ReprVisitor<'a>(ptr: *u8,
                        writer: &'a mut io::Writer) -> ReprVisitor<'a> {
     ReprVisitor {
         ptr: ptr,
-        ptr_stk: ~[],
-        var_stk: ~[],
+        ptr_stk: vec!(),
+        var_stk: vec!(),
         writer: writer,
         last_err: None,
     }
@@ -154,8 +155,8 @@ impl<'a> ReprVisitor<'a> {
             // issues we have to recreate it here.
             let u = ReprVisitor {
                 ptr: ptr,
-                ptr_stk: ~[],
-                var_stk: ~[],
+                ptr_stk: vec!(),
+                var_stk: vec!(),
                 writer: ::cast::transmute_copy(&self.writer),
                 last_err: None,
             };
@@ -505,7 +506,7 @@ impl<'a> TyVisitor for ReprVisitor<'a> {
                                 _offset: uint,
                                 inner: *TyDesc)
                                 -> bool {
-        match self.var_stk[self.var_stk.len() - 1] {
+        match *self.var_stk.get(self.var_stk.len() - 1) {
             Matched => {
                 if i != 0 {
                     try!(self, self.writer.write(", ".as_bytes()));
@@ -523,7 +524,7 @@ impl<'a> TyVisitor for ReprVisitor<'a> {
                                 _disr_val: Disr,
                                 n_fields: uint,
                                 _name: &str) -> bool {
-        match self.var_stk[self.var_stk.len() - 1] {
+        match *self.var_stk.get(self.var_stk.len() - 1) {
             Matched => {
                 if n_fields > 0 {
                     try!(self, self.writer.write([')' as u8]));

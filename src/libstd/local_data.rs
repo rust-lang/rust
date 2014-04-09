@@ -47,6 +47,7 @@ use mem::replace;
 use option::{None, Option, Some};
 use rt::task::{Task, LocalStorage};
 use slice::{ImmutableVector, MutableVector, OwnedVector};
+use vec::Vec;
 
 /**
  * Indexes a task-local data slot. This pointer is used for comparison to
@@ -89,7 +90,7 @@ impl<T: 'static> LocalData for T {}
 // n.b. If TLS is used heavily in future, this could be made more efficient with
 //      a proper map.
 #[doc(hidden)]
-pub type Map = ~[Option<(*u8, TLSValue, LoanState)>];
+pub type Map = Vec<Option<(*u8, TLSValue, LoanState)>>;
 type TLSValue = ~LocalData:Send;
 
 // Gets the map from the runtime. Lazily initialises if not done so already.
@@ -106,7 +107,7 @@ unsafe fn get_local_map() -> &mut Map {
         // If this is the first time we've accessed TLS, perform similar
         // actions to the oldsched way of doing things.
         &LocalStorage(ref mut slot) => {
-            *slot = Some(~[]);
+            *slot = Some(vec!());
             match *slot {
                 Some(ref mut map_ptr) => { return map_ptr }
                 None => abort()
@@ -237,7 +238,7 @@ fn get_with<T:'static,
         Some(i) => {
             let ret;
             let mut return_loan = false;
-            match map[i] {
+            match *map.get_mut(i) {
                 Some((_, ref data, ref mut loan)) => {
                     match (state, *loan) {
                         (_, NoLoan) => {
@@ -271,7 +272,7 @@ fn get_with<T:'static,
             // in turn relocated the vector. Hence we do another lookup here to
             // fixup the loans.
             if return_loan {
-                match map[i] {
+                match *map.get_mut(i) {
                     Some((_, _, ref mut loan)) => { *loan = NoLoan; }
                     None => abort()
                 }
@@ -331,7 +332,7 @@ pub fn set<T: 'static>(key: Key<T>, data: T) {
     // we're not actually sending it to other schedulers or anything.
     let data: ~LocalData:Send = unsafe { cast::transmute(data) };
     match insertion_position(map, keyval) {
-        Some(i) => { map[i] = Some((keyval, data, NoLoan)); }
+        Some(i) => { *map.get_mut(i) = Some((keyval, data, NoLoan)); }
         None => { map.push(Some((keyval, data, NoLoan))); }
     }
 }
