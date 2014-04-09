@@ -242,9 +242,9 @@ impl<'a, 'b> Context<'a, 'b> {
                             }
                         }
                     }
-                    self.verify_pieces(arm.result);
+                    self.verify_pieces(arm.result.as_slice());
                 }
-                self.verify_pieces(*default);
+                self.verify_pieces(default.as_slice());
             }
             parse::Select(ref arms, ref default) => {
                 self.verify_arg_type(pos, String);
@@ -258,9 +258,9 @@ impl<'a, 'b> Context<'a, 'b> {
                         self.ecx.span_err(self.fmtsp,
                                           "empty selector in `select`");
                     }
-                    self.verify_pieces(arm.result);
+                    self.verify_pieces(arm.result.as_slice());
                 }
-                self.verify_pieces(*default);
+                self.verify_pieces(default.as_slice());
             }
         }
         self.nest_level -= 1;
