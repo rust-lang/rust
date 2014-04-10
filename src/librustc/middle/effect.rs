@@ -29,8 +29,8 @@ enum UnsafeContext {
 
 fn type_is_unsafe_function(ty: ty::t) -> bool {
     match ty::get(ty).sty {
-        ty::ty_bare_fn(ref f) => f.purity == ast::UnsafeFn,
-        ty::ty_closure(ref f) => f.purity == ast::UnsafeFn,
+        ty::ty_bare_fn(ref f) => f.fn_style == ast::UnsafeFn,
+        ty::ty_closure(ref f) => f.fn_style == ast::UnsafeFn,
         _ => false,
     }
 }
@@ -84,10 +84,10 @@ impl<'a> Visitor<()> for EffectCheckVisitor<'a> {
                 block: &ast::Block, span: Span, node_id: ast::NodeId, _:()) {
 
         let (is_item_fn, is_unsafe_fn) = match *fn_kind {
-            visit::FkItemFn(_, _, purity, _) =>
-                (true, purity == ast::UnsafeFn),
+            visit::FkItemFn(_, _, fn_style, _) =>
+                (true, fn_style == ast::UnsafeFn),
             visit::FkMethod(_, _, method) =>
-                (true, method.purity == ast::UnsafeFn),
+                (true, method.fn_style == ast::UnsafeFn),
             _ => (false, false),
         };
 

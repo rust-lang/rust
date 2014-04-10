@@ -186,11 +186,11 @@ pub fn path_to_str(p: &ast::Path) -> ~str {
     to_str(|s| s.print_path(p, false))
 }
 
-pub fn fun_to_str(decl: &ast::FnDecl, purity: ast::Purity, name: ast::Ident,
+pub fn fun_to_str(decl: &ast::FnDecl, fn_style: ast::FnStyle, name: ast::Ident,
                   opt_explicit_self: Option<ast::ExplicitSelf_>,
                   generics: &ast::Generics) -> ~str {
     to_str(|s| {
-        try!(s.print_fn(decl, Some(purity), abi::Rust,
+        try!(s.print_fn(decl, Some(fn_style), abi::Rust,
                         name, generics, opt_explicit_self, ast::Inherited));
         try!(s.end()); // Close the head box
         s.end() // Close the outer box
@@ -479,7 +479,7 @@ impl<'a> State<'a> {
                     ty_params: OwnedSlice::empty()
                 };
                 try!(self.print_ty_fn(Some(f.abi), None, &None,
-                                   f.purity, ast::Many, f.decl, None, &None,
+                                   f.fn_style, ast::Many, f.decl, None, &None,
                                    Some(&generics), None));
             }
             ast::TyClosure(f) => {
@@ -488,7 +488,7 @@ impl<'a> State<'a> {
                     ty_params: OwnedSlice::empty()
                 };
                 try!(self.print_ty_fn(None, Some(f.sigil), &f.region,
-                                   f.purity, f.onceness, f.decl, None, &f.bounds,
+                                   f.fn_style, f.onceness, f.decl, None, &f.bounds,
                                    Some(&generics), None));
             }
             ast::TyPath(ref path, ref bounds, _) => {
@@ -567,10 +567,10 @@ impl<'a> State<'a> {
                 try!(word(&mut self.s, ";"));
                 try!(self.end()); // end the outer cbox
             }
-            ast::ItemFn(decl, purity, abi, ref typarams, body) => {
+            ast::ItemFn(decl, fn_style, abi, ref typarams, body) => {
                 try!(self.print_fn(
                     decl,
-                    Some(purity),
+                    Some(fn_style),
                     abi,
                     item.ident,
                     typarams,
@@ -861,7 +861,7 @@ impl<'a> State<'a> {
         try!(self.print_ty_fn(None,
                               None,
                               &None,
-                              m.purity,
+                              m.fn_style,
                               ast::Many,
                               m.decl,
                               Some(m.ident),
@@ -883,7 +883,7 @@ impl<'a> State<'a> {
         try!(self.hardbreak_if_not_bol());
         try!(self.maybe_print_comment(meth.span.lo));
         try!(self.print_outer_attributes(meth.attrs.as_slice()));
-        try!(self.print_fn(meth.decl, Some(meth.purity), abi::Rust,
+        try!(self.print_fn(meth.decl, Some(meth.fn_style), abi::Rust,
                         meth.ident, &meth.generics, Some(meth.explicit_self.node),
                         meth.vis));
         try!(word(&mut self.s, " "));
@@ -1708,14 +1708,14 @@ impl<'a> State<'a> {
 
     pub fn print_fn(&mut self,
                     decl: &ast::FnDecl,
-                    purity: Option<ast::Purity>,
+                    fn_style: Option<ast::FnStyle>,
                     abi: abi::Abi,
                     name: ast::Ident,
                     generics: &ast::Generics,
                     opt_explicit_self: Option<ast::ExplicitSelf_>,
                     vis: ast::Visibility) -> IoResult<()> {
         try!(self.head(""));
-        try!(self.print_fn_header_info(opt_explicit_self, purity, abi,
+        try!(self.print_fn_header_info(opt_explicit_self, fn_style, abi,
                                        ast::Many, None, vis));
         try!(self.nbsp());
         try!(self.print_ident(name));
@@ -2024,7 +2024,7 @@ impl<'a> State<'a> {
                        opt_abi: Option<abi::Abi>,
                        opt_sigil: Option<ast::Sigil>,
                        opt_region: &Option<ast::Lifetime>,
-                       purity: ast::Purity,
+                       fn_style: ast::FnStyle,
                        onceness: ast::Onceness,
                        decl: &ast::FnDecl,
                        id: Option<ast::Ident>,
@@ -2040,12 +2040,12 @@ impl<'a> State<'a> {
             try!(word(&mut self.s, "proc"));
         } else if opt_sigil == Some(ast::BorrowedSigil) {
             try!(self.print_extern_opt_abi(opt_abi));
-            try!(self.print_purity(purity));
+            try!(self.print_fn_style(fn_style));
             try!(self.print_onceness(onceness));
         } else {
             try!(self.print_opt_abi_and_extern_if_nondefault(opt_abi));
             try!(self.print_opt_sigil(opt_sigil));
-            try!(self.print_purity(purity));
+            try!(self.print_fn_style(fn_style));
             try!(self.print_onceness(onceness));
             try!(word(&mut self.s, "fn"));
         }
@@ -2294,10 +2294,10 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn print_opt_purity(&mut self,
-                            opt_purity: Option<ast::Purity>) -> IoResult<()> {
-        match opt_purity {
-            Some(purity) => self.print_purity(purity),
+    pub fn print_opt_fn_style(&mut self,
+                            opt_fn_style: Option<ast::FnStyle>) -> IoResult<()> {
+        match opt_fn_style {
+            Some(fn_style) => self.print_fn_style(fn_style),
             None => Ok(())
         }
     }
@@ -2338,7 +2338,7 @@ impl<'a> State<'a> {
 
     pub fn print_fn_header_info(&mut self,
                                 _opt_explicit_self: Option<ast::ExplicitSelf_>,
-                                opt_purity: Option<ast::Purity>,
+                                opt_fn_style: Option<ast::FnStyle>,
                                 abi: abi::Abi,
                                 onceness: ast::Onceness,
                                 opt_sigil: Option<ast::Sigil>,
@@ -2349,11 +2349,11 @@ impl<'a> State<'a> {
             try!(self.word_nbsp("extern"));
             try!(self.word_nbsp(abi.to_str()));
 
-            if opt_purity != Some(ast::ExternFn) {
-                try!(self.print_opt_purity(opt_purity));
+            if opt_fn_style != Some(ast::ExternFn) {
+                try!(self.print_opt_fn_style(opt_fn_style));
             }
         } else {
-            try!(self.print_opt_purity(opt_purity));
+            try!(self.print_opt_fn_style(opt_fn_style));
         }
 
         try!(self.print_onceness(onceness));
@@ -2361,9 +2361,9 @@ impl<'a> State<'a> {
         self.print_opt_sigil(opt_sigil)
     }
 
-    pub fn print_purity(&mut self, p: ast::Purity) -> IoResult<()> {
-        match p {
-            ast::ImpureFn => Ok(()),
+    pub fn print_fn_style(&mut self, s: ast::FnStyle) -> IoResult<()> {
+        match s {
+            ast::NormalFn => Ok(()),
             ast::UnsafeFn => self.word_nbsp("unsafe"),
             ast::ExternFn => self.word_nbsp("extern")
         }
@@ -2399,7 +2399,7 @@ mod test {
             variadic: false
         };
         let generics = ast_util::empty_generics();
-        assert_eq!(&fun_to_str(&decl, ast::ImpureFn, abba_ident,
+        assert_eq!(&fun_to_str(&decl, ast::NormalFn, abba_ident,
                                None, &generics),
                    &~"fn abba()");
     }

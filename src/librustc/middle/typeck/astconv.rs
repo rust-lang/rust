@@ -523,7 +523,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
                     tcx.sess.span_err(ast_ty.span,
                                       "variadic function must have C calling convention");
                 }
-                ty::mk_bare_fn(tcx, ty_of_bare_fn(this, ast_ty.id, bf.purity,
+                ty::mk_bare_fn(tcx, ty_of_bare_fn(this, ast_ty.id, bf.fn_style,
                                                   bf.abi, bf.decl))
             }
             ast::TyClosure(ref f) => {
@@ -543,7 +543,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
                                             rscope,
                                             ast_ty.id,
                                             f.sigil,
-                                            f.purity,
+                                            f.fn_style,
                                             f.onceness,
                                             bounds,
                                             &f.region,
@@ -572,9 +572,8 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
                         let path_str = path_to_str(path);
                         tcx.sess.span_err(
                             ast_ty.span,
-                            format!("reference to trait `{}` where a type is expected; \
-                                    try `@{}`, `~{}`, or `&{}`",
-                                    path_str, path_str, path_str, path_str));
+                            format!("reference to trait `{name}` where a type is expected; \
+                                    try `~{name}` or `&{name}`", name=path_str));
                         ty::mk_err()
                     }
                     ast::DefTy(did) | ast::DefStruct(did) => {
@@ -662,24 +661,24 @@ struct SelfInfo {
 pub fn ty_of_method<AC:AstConv>(
     this: &AC,
     id: ast::NodeId,
-    purity: ast::Purity,
+    fn_style: ast::FnStyle,
     untransformed_self_ty: ty::t,
     explicit_self: ast::ExplicitSelf,
     decl: &ast::FnDecl) -> ty::BareFnTy {
-    ty_of_method_or_bare_fn(this, id, purity, abi::Rust, Some(SelfInfo {
+    ty_of_method_or_bare_fn(this, id, fn_style, abi::Rust, Some(SelfInfo {
         untransformed_self_ty: untransformed_self_ty,
         explicit_self: explicit_self
     }), decl)
 }
 
 pub fn ty_of_bare_fn<AC:AstConv>(this: &AC, id: ast::NodeId,
-                                 purity: ast::Purity, abi: abi::Abi,
+                                 fn_style: ast::FnStyle, abi: abi::Abi,
                                  decl: &ast::FnDecl) -> ty::BareFnTy {
-    ty_of_method_or_bare_fn(this, id, purity, abi, None, decl)
+    ty_of_method_or_bare_fn(this, id, fn_style, abi, None, decl)
 }
 
 fn ty_of_method_or_bare_fn<AC:AstConv>(this: &AC, id: ast::NodeId,
-                                       purity: ast::Purity, abi: abi::Abi,
+                                       fn_style: ast::FnStyle, abi: abi::Abi,
                                        opt_self_info: Option<SelfInfo>,
                                        decl: &ast::FnDecl) -> ty::BareFnTy {
     debug!("ty_of_method_or_bare_fn");
@@ -725,7 +724,7 @@ fn ty_of_method_or_bare_fn<AC:AstConv>(this: &AC, id: ast::NodeId,
     };
 
     return ty::BareFnTy {
-        purity: purity,
+        fn_style: fn_style,
         abi: abi,
         sig: ty::FnSig {
             binder_id: id,
@@ -741,7 +740,7 @@ pub fn ty_of_closure<AC:AstConv,RS:RegionScope>(
     rscope: &RS,
     id: ast::NodeId,
     sigil: ast::Sigil,
-    purity: ast::Purity,
+    fn_style: ast::FnStyle,
     onceness: ast::Onceness,
     bounds: ty::BuiltinBounds,
     opt_lifetime: &Option<ast::Lifetime>,
@@ -798,7 +797,7 @@ pub fn ty_of_closure<AC:AstConv,RS:RegionScope>(
     };
 
     ty::ClosureTy {
-        purity: purity,
+        fn_style: fn_style,
         sigil: sigil,
         onceness: onceness,
         region: bound_region,

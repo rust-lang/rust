@@ -385,7 +385,7 @@ impl<'f> Coerce<'f> {
             debug!("coerce_from_bare_fn(a={}, b={})",
                    a.inf_str(self.get_ref().infcx), b.inf_str(self.get_ref().infcx));
 
-            if fn_ty_a.abi != abi::Rust || fn_ty_a.purity != ast::ImpureFn {
+            if fn_ty_a.abi != abi::Rust || fn_ty_a.fn_style != ast::NormalFn {
                 return self.subtype(a, b);
             }
 

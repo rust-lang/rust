@@ -1063,7 +1063,7 @@ fn check_attrs_usage(cx: &Context, attrs: &[ast::Attribute]) {
             if name.equiv(crate_attr) {
                 let msg = match attr.node.style {
                     ast::AttrOuter => "crate-level attribute should be an inner attribute: \
-                                       add semicolon at end",
+                                       add an exclamation mark: #![foo]",
                     ast::AttrInner => "crate-level attribute should be in the root module",
                 };
                 cx.span_lint(AttributeUsage, attr.span, msg);

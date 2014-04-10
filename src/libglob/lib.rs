@@ -31,6 +31,8 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://static.rust-lang.org/doc/master")]
 
+#![deny(deprecated_owned_vector)]
+
 use std::cell::Cell;
 use std::{cmp, os, path};
 use std::io::fs;
@@ -245,26 +247,26 @@ impl Pattern {
      */
     pub fn new(pattern: &str) -> Pattern {
 
-        let chars = pattern.chars().collect::<~[_]>();
+        let chars = pattern.chars().collect::<Vec<_>>();
         let mut tokens = Vec::new();
         let mut i = 0;
 
         while i < chars.len() {
-            match chars[i] {
+            match *chars.get(i) {
                 '?' => {
                     tokens.push(AnyChar);
                     i += 1;
                 }
                 '*' => {
                     // *, **, ***, ****, ... are all equivalent
-                    while i < chars.len() && chars[i] == '*' {
+                    while i < chars.len() && *chars.get(i) == '*' {
                         i += 1;
                     }
                     tokens.push(AnySequence);
                 }
                 '[' => {
 
-                    if i <= chars.len() - 4 && chars[i + 1] == '!' {
+                    if i <= chars.len() - 4 && *chars.get(i + 1) == '!' {
                         match chars.slice_from(i + 3).position_elem(&']') {
                             None => (),
                             Some(j) => {
@@ -276,7 +278,7 @@ impl Pattern {
                             }
                         }
                     }
-                    else if i <= chars.len() - 3 && chars[i + 1] != '!' {
+                    else if i <= chars.len() - 3 && *chars.get(i + 1) != '!' {
                         match chars.slice_from(i + 2).position_elem(&']') {
                             None => (),
                             Some(j) => {

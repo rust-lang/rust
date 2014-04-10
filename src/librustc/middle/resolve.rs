@@ -144,6 +144,12 @@ impl NamespaceResult {
             _ => false
         }
     }
+    fn is_unbound(&self) -> bool {
+        match *self {
+            UnboundResult => true,
+            _ => false
+        }
+    }
 }
 
 enum NameDefinition {
@@ -1182,11 +1188,11 @@ impl<'a> Resolver<'a> {
                     (DefStatic(local_def(item.id), mutbl), sp, is_public);
                 parent
             }
-            ItemFn(_, purity, _, _, _) => {
+            ItemFn(_, fn_style, _, _, _) => {
               let (name_bindings, new_parent) =
                 self.add_child(ident, parent, ForbidDuplicateValues, sp);
 
-                let def = DefFn(local_def(item.id), purity);
+                let def = DefFn(local_def(item.id), fn_style);
                 name_bindings.define_value(def, sp, is_public);
                 new_parent
             }
@@ -1313,7 +1319,7 @@ impl<'a> Resolver<'a> {
                                     DefStaticMethod(local_def(method.id),
                                                       FromImpl(local_def(
                                                         item.id)),
-                                                      method.purity)
+                                                      method.fn_style)
                                 }
                                 _ => {
                                     // Non-static methods become
@@ -1364,7 +1370,7 @@ impl<'a> Resolver<'a> {
                             // Static methods become `def_static_method`s.
                             DefStaticMethod(local_def(ty_m.id),
                                               FromTrait(local_def(item.id)),
-                                              ty_m.purity)
+                                              ty_m.fn_style)
                         }
                         _ => {
                             // Non-static methods become `def_method`s.
@@ -1869,7 +1875,7 @@ impl<'a> Resolver<'a> {
                                                        DUMMY_SP);
                                     let def = DefFn(
                                         static_method_info.def_id,
-                                        static_method_info.purity);
+                                        static_method_info.fn_style);
 
                                     method_name_bindings.define_value(
                                         def, DUMMY_SP,
@@ -1976,6 +1982,7 @@ impl<'a> Resolver<'a> {
                         // the source of this name is different now
                         resolution.type_id.set(id);
                         resolution.value_id.set(id);
+                        resolution.is_public.set(is_public);
                     }
                     None => {
                         debug!("(building import directive) creating new");
@@ -2286,10 +2293,12 @@ impl<'a> Resolver<'a> {
             }
             Some(child_name_bindings) => {
                 if child_name_bindings.defined_in_namespace(ValueNS) {
+                    debug!("(resolving single import) found value binding");
                     value_result = BoundResult(containing_module,
                                                *child_name_bindings);
                 }
                 if child_name_bindings.defined_in_namespace(TypeNS) {
+                    debug!("(resolving single import) found type binding");
                     type_result = BoundResult(containing_module,
                                               *child_name_bindings);
                 }
@@ -2320,6 +2329,7 @@ impl<'a> Resolver<'a> {
                                                           .borrow();
                 match import_resolutions.find(&source.name) {
                     None => {
+                        debug!("(resolving single import) no import");
                         // The containing module definitely doesn't have an
                         // exported import with the name in question. We can
                         // therefore accurately report that the names are
@@ -2353,6 +2363,8 @@ impl<'a> Resolver<'a> {
                                     return UnboundResult;
                                 }
                                 Some(target) => {
+                                    debug!("(resolving single import) found \
+                                            import in ns {:?}", namespace);
                                     let id = import_resolution.id(namespace);
                                     this.used_imports.insert((id, namespace));
                                     return BoundResult(target.target_module,
@@ -2396,6 +2408,8 @@ impl<'a> Resolver<'a> {
                                        .find_copy(&source.name) {
                     None => {} // Continue.
                     Some(module) => {
+                        debug!("(resolving single import) found external \
+                                module");
                         let name_bindings =
                             @Resolver::create_name_bindings_from_module(
                                 module);
@@ -2442,8 +2456,7 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        if import_resolution.value_target.borrow().is_none() &&
-           import_resolution.type_target.borrow().is_none() {
+        if value_result.is_unbound() && type_result.is_unbound() {
             let msg = format!("unresolved import: there is no \
                                `{}` in `{}`",
                               token::get_ident(source),
@@ -2669,7 +2682,8 @@ impl<'a> Resolver<'a> {
             match self.resolve_name_in_module(search_module,
                                               name,
                                               TypeNS,
-                                              name_search_type) {
+                                              name_search_type,
+                                              false) {
                 Failed => {
                     let segment_name = token::get_ident(name);
                     let module_name = self.module_to_str(search_module);
@@ -2977,7 +2991,8 @@ impl<'a> Resolver<'a> {
             match self.resolve_name_in_module(search_module,
                                               name,
                                               namespace,
-                                              PathSearch) {
+                                              PathSearch,
+                                              true) {
                 Failed => {
                     // Continue up the search chain.
                 }
@@ -3141,7 +3156,8 @@ impl<'a> Resolver<'a> {
                               module_: @Module,
                               name: Ident,
                               namespace: Namespace,
-                              name_search_type: NameSearchType)
+                              name_search_type: NameSearchType,
+                              allow_private_imports: bool)
                               -> ResolveResult<(Target, bool)> {
         debug!("(resolving name in module) resolving `{}` in `{}`",
                token::get_ident(name),
@@ -3172,7 +3188,9 @@ impl<'a> Resolver<'a> {
 
         // Check the list of resolved imports.
         match module_.import_resolutions.borrow().find(&name.name) {
-            Some(import_resolution) => {
+            Some(import_resolution) if allow_private_imports ||
+                                       import_resolution.is_public.get() => {
+
                 if import_resolution.is_public.get() &&
                         import_resolution.outstanding_references.get() != 0 {
                     debug!("(resolving name in module) import \
@@ -3193,7 +3211,7 @@ impl<'a> Resolver<'a> {
                     }
                 }
             }
-            None => {} // Continue.
+            Some(..) | None => {} // Continue.
         }
 
         // Finally, search through external children.

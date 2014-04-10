@@ -29,6 +29,7 @@ use option::{Some, None};
 use result::{Ok, Err};
 use rt::rtio::{IoFactory, LocalIo, RtioSignal};
 use slice::{ImmutableVector, OwnedVector};
+use vec::Vec;
 
 /// Signals that can be sent and received
 #[repr(int)]
@@ -80,7 +81,7 @@ pub enum Signum {
 /// ```
 pub struct Listener {
     /// A map from signums to handles to keep the handles in memory
-    handles: ~[(Signum, ~RtioSignal:Send)],
+    handles: Vec<(Signum, ~RtioSignal:Send)>,
     /// This is where all the handles send signums, which are received by
     /// the clients from the receiver.
     tx: Sender<Signum>,
@@ -99,7 +100,7 @@ impl Listener {
         Listener {
             tx: tx,
             rx: rx,
-            handles: ~[],
+            handles: vec!(),
         }
     }
 

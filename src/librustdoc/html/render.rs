@@ -51,7 +51,7 @@ use rustc::util::nodemap::NodeSet;
 use clean;
 use doctree;
 use fold::DocFolder;
-use html::format::{VisSpace, Method, PuritySpace};
+use html::format::{VisSpace, Method, FnStyleSpace};
 use html::layout;
 use html::markdown;
 use html::markdown::Markdown;
@@ -262,10 +262,11 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
     cache.stack.push(krate.name.clone());
     krate = cache.fold_crate(krate);
     {
+        let Cache { search_index: ref mut index,
+                    orphan_methods: ref meths, paths: ref mut paths, ..} = cache;
+
         // Attach all orphan methods to the type's definition if the type
         // has since been learned.
-        let Cache { search_index: ref mut index,
-                    orphan_methods: ref meths, paths: ref paths, ..} = cache;
         for &(ref pid, ref item) in meths.iter() {
             match paths.find(pid) {
                 Some(&(ref fqp, _)) => {
@@ -280,6 +281,18 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
                 None => {}
             }
         };
+
+        // Prune the paths that do not appear in the index.
+        let mut unseen: HashSet<ast::NodeId> = paths.keys().map(|&id| id).collect();
+        for item in index.iter() {
+            match item.parent {
+                Some(ref pid) => { unseen.remove(pid); }
+                None => {}
+            }
+        }
+        for pid in unseen.iter() {
+            paths.remove(pid);
+        }
     }
 
     // Publish the search index
@@ -1178,10 +1191,10 @@ fn item_module(w: &mut Writer, cx: &Context,
 
 fn item_function(w: &mut Writer, it: &clean::Item,
                  f: &clean::Function) -> fmt::Result {
-    try!(write!(w, "<pre class='rust fn'>{vis}{purity}fn \
+    try!(write!(w, "<pre class='rust fn'>{vis}{fn_style}fn \
                     {name}{generics}{decl}</pre>",
            vis = VisSpace(it.visibility),
-           purity = PuritySpace(f.purity),
+           fn_style = FnStyleSpace(f.fn_style),
            name = it.name.get_ref().as_slice(),
            generics = f.generics,
            decl = f.decl));
@@ -1205,8 +1218,8 @@ fn item_trait(w: &mut Writer, it: &clean::Item,
                   it.name.get_ref().as_slice(),
                   t.generics,
                   parents));
-    let required = t.methods.iter().filter(|m| m.is_req()).collect::<~[&clean::TraitMethod]>();
-    let provided = t.methods.iter().filter(|m| !m.is_req()).collect::<~[&clean::TraitMethod]>();
+    let required = t.methods.iter().filter(|m| m.is_req()).collect::<Vec<&clean::TraitMethod>>();
+    let provided = t.methods.iter().filter(|m| !m.is_req()).collect::<Vec<&clean::TraitMethod>>();
 
     if t.methods.len() == 0 {
         try!(write!(w, "\\{ \\}"));
@@ -1292,12 +1305,12 @@ fn item_trait(w: &mut Writer, it: &clean::Item,
 }
 
 fn render_method(w: &mut Writer, meth: &clean::Item) -> fmt::Result {
-    fn fun(w: &mut Writer, it: &clean::Item, purity: ast::Purity,
+    fn fun(w: &mut Writer, it: &clean::Item, fn_style: ast::FnStyle,
            g: &clean::Generics, selfty: &clean::SelfTy,
            d: &clean::FnDecl) -> fmt::Result {
         write!(w, "{}fn <a href='\\#{ty}.{name}' class='fnname'>{name}</a>\
                    {generics}{decl}",
-               match purity {
+               match fn_style {
                    ast::UnsafeFn => "unsafe ",
                    _ => "",
                },
@@ -1308,10 +1321,10 @@ fn render_method(w: &mut Writer, meth: &clean::Item) -> fmt::Result {
     }
     match meth.inner {
         clean::TyMethodItem(ref m) => {
-            fun(w, meth, m.purity, &m.generics, &m.self_, &m.decl)
+            fun(w, meth, m.fn_style, &m.generics, &m.self_, &m.decl)
         }
         clean::MethodItem(ref m) => {
-            fun(w, meth, m.purity, &m.generics, &m.self_, &m.decl)
+            fun(w, meth, m.fn_style, &m.generics, &m.self_, &m.decl)
         }
         _ => unreachable!()
     }
@@ -1502,11 +1515,11 @@ fn render_methods(w: &mut Writer, it: &clean::Item) -> fmt::Result {
                 let mut non_trait = v.iter().filter(|p| {
                     p.ref0().trait_.is_none()
                 });
-                let non_trait = non_trait.collect::<~[&(clean::Impl, Option<~str>)]>();
+                let non_trait = non_trait.collect::<Vec<&(clean::Impl, Option<~str>)>>();
                 let mut traits = v.iter().filter(|p| {
                     p.ref0().trait_.is_some()
                 });
-                let traits = traits.collect::<~[&(clean::Impl, Option<~str>)]>();
+                let traits = traits.collect::<Vec<&(clean::Impl, Option<~str>)>>();
 
                 if non_trait.len() > 0 {
                     try!(write!(w, "<h2 id='methods'>Methods</h2>"));

@@ -657,7 +657,7 @@ mod test {
                                 cf: ast::Return,
                                 variadic: false
                             }),
-                                    ast::ImpureFn,
+                                    ast::NormalFn,
                                     abi::Rust,
                                     ast::Generics{ // no idea on either of these:
                                         lifetimes: Vec::new(),
