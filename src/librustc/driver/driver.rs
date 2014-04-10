@@ -299,7 +299,7 @@ pub fn phase_3_run_analysis_passes(sess: Session,
         last_private_map: last_private_map
     } =
         time(time_passes, "resolution", (), |_|
-             middle::resolve::resolve_crate(&sess, lang_items, krate));
+             middle::resolve::resolve_crate(&sess, &lang_items, krate));
 
     // Discard MTWT tables that aren't required past resolution.
     syntax::ext::mtwt::clear_tables();

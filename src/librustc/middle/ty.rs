@@ -299,7 +299,7 @@ pub struct ctxt {
     pub ty_param_defs: RefCell<NodeMap<TypeParameterDef>>,
     pub adjustments: RefCell<NodeMap<AutoAdjustment>>,
     pub normalized_cache: RefCell<HashMap<t, t>>,
-    pub lang_items: @middle::lang_items::LanguageItems,
+    pub lang_items: middle::lang_items::LanguageItems,
     // A mapping of fake provided method def_ids to the default implementation
     pub provided_method_sources: RefCell<DefIdMap<ast::DefId>>,
     pub supertraits: RefCell<DefIdMap<@Vec<@TraitRef> >>,
@@ -1086,7 +1086,7 @@ pub fn mk_ctxt(s: Session,
                map: ast_map::Map,
                freevars: freevars::freevar_map,
                region_maps: middle::region::RegionMaps,
-               lang_items: @middle::lang_items::LanguageItems)
+               lang_items: middle::lang_items::LanguageItems)
             -> ctxt {
     ctxt {
         named_region_map: named_region_map,
