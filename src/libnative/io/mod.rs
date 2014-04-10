@@ -217,7 +217,7 @@ impl rtio::IoFactory for IoFactory {
     fn fs_rename(&mut self, path: &CString, to: &CString) -> IoResult<()> {
         file::rename(path, to)
     }
-    fn fs_readdir(&mut self, path: &CString, _flags: c_int) -> IoResult<~[Path]> {
+    fn fs_readdir(&mut self, path: &CString, _flags: c_int) -> IoResult<Vec<Path>> {
         file::readdir(path)
     }
     fn fs_lstat(&mut self, path: &CString) -> IoResult<io::FileStat> {

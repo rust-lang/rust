@@ -252,7 +252,7 @@ pub fn ty_to_str(cx: &ctxt, typ: t) -> ~str {
         ty_to_str(cx, input)
     }
     fn bare_fn_to_str(cx: &ctxt,
-                      purity: ast::Purity,
+                      fn_style: ast::FnStyle,
                       abi: abi::Abi,
                       ident: Option<ast::Ident>,
                       sig: &ty::FnSig)
@@ -263,10 +263,10 @@ pub fn ty_to_str(cx: &ctxt, typ: t) -> ~str {
             format!("extern {} ", abi.to_str())
         };
 
-        match purity {
-            ast::ImpureFn => {}
+        match fn_style {
+            ast::NormalFn => {}
             _ => {
-                s.push_str(purity.to_str());
+                s.push_str(fn_style.to_str());
                 s.push_char(' ');
             }
         };
@@ -305,10 +305,10 @@ pub fn ty_to_str(cx: &ctxt, typ: t) -> ~str {
             }
         }
 
-        match cty.purity {
-            ast::ImpureFn => {}
+        match cty.fn_style {
+            ast::NormalFn => {}
             _ => {
-                s.push_str(cty.purity.to_str());
+                s.push_str(cty.fn_style.to_str());
                 s.push_char(' ');
             }
         };
@@ -405,7 +405,7 @@ pub fn ty_to_str(cx: &ctxt, typ: t) -> ~str {
           closure_to_str(cx, *f)
       }
       ty_bare_fn(ref f) => {
-          bare_fn_to_str(cx, f.purity, f.abi, None, &f.sig)
+          bare_fn_to_str(cx, f.fn_style, f.abi, None, &f.sig)
       }
       ty_infer(infer_ty) => infer_ty.to_str(),
       ty_err => ~"[type error]",
@@ -812,8 +812,8 @@ impl Repr for ast::Visibility {
 
 impl Repr for ty::BareFnTy {
     fn repr(&self, tcx: &ctxt) -> ~str {
-        format!("BareFnTy \\{purity: {:?}, abi: {}, sig: {}\\}",
-             self.purity,
+        format!("BareFnTy \\{fn_style: {:?}, abi: {}, sig: {}\\}",
+             self.fn_style,
              self.abi.to_str(),
              self.sig.repr(tcx))
     }

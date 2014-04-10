@@ -21,7 +21,7 @@ use option::{Option, Some, None};
 use result::{Ok, Err};
 use io;
 use io::{IoError, IoResult, Reader};
-use slice::{OwnedVector, ImmutableVector};
+use slice::{OwnedVector, ImmutableVector, Vector};
 use ptr::RawPtr;
 
 /// An iterator that reads a single byte on each iteration,
@@ -88,7 +88,7 @@ pub fn u64_to_le_bytes<T>(n: u64, size: uint, f: |v: &[u8]| -> T) -> T {
       8u => f(unsafe { transmute::<i64, [u8, ..8]>(to_le64(n as i64)) }),
       _ => {
 
-        let mut bytes: ~[u8] = ~[];
+        let mut bytes = vec!();
         let mut i = size;
         let mut n = n;
         while i > 0u {
@@ -96,7 +96,7 @@ pub fn u64_to_le_bytes<T>(n: u64, size: uint, f: |v: &[u8]| -> T) -> T {
             n >>= 8_u64;
             i -= 1u;
         }
-        f(bytes)
+        f(bytes.as_slice())
       }
     }
 }
@@ -127,14 +127,14 @@ pub fn u64_to_be_bytes<T>(n: u64, size: uint, f: |v: &[u8]| -> T) -> T {
       4u => f(unsafe { transmute::<i32, [u8, ..4]>(to_be32(n as i32)) }),
       8u => f(unsafe { transmute::<i64, [u8, ..8]>(to_be64(n as i64)) }),
       _ => {
-        let mut bytes: ~[u8] = ~[];
+        let mut bytes = vec!();
         let mut i = size;
         while i > 0u {
             let shift = ((i - 1u) * 8u) as u64;
             bytes.push((n >> shift) as u8);
             i -= 1u;
         }
-        f(bytes)
+        f(bytes.as_slice())
       }
     }
 }

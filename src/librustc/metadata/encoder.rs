@@ -758,12 +758,12 @@ fn encode_method_ty_fields(ecx: &EncodeContext,
     encode_method_fty(ecx, ebml_w, &method_ty.fty);
     encode_visibility(ebml_w, method_ty.vis);
     encode_explicit_self(ebml_w, method_ty.explicit_self);
-    let purity = method_ty.fty.purity;
+    let fn_style = method_ty.fty.fn_style;
     match method_ty.explicit_self {
         ast::SelfStatic => {
-            encode_family(ebml_w, purity_static_method_family(purity));
+            encode_family(ebml_w, fn_style_static_method_family(fn_style));
         }
-        _ => encode_family(ebml_w, purity_fn_family(purity))
+        _ => encode_family(ebml_w, style_fn_family(fn_style))
     }
     encode_provided_source(ebml_w, method_ty.provided_source);
 }
@@ -811,18 +811,18 @@ fn encode_info_for_method(ecx: &EncodeContext,
     ebml_w.end_tag();
 }
 
-fn purity_fn_family(p: Purity) -> char {
-    match p {
+fn style_fn_family(s: FnStyle) -> char {
+    match s {
         UnsafeFn => 'u',
-        ImpureFn => 'f',
+        NormalFn => 'f',
         ExternFn => 'e'
     }
 }
 
-fn purity_static_method_family(p: Purity) -> char {
-    match p {
+fn fn_style_static_method_family(s: FnStyle) -> char {
+    match s {
         UnsafeFn => 'U',
-        ImpureFn => 'F',
+        NormalFn => 'F',
         _ => fail!("extern fn can't be static")
     }
 }
@@ -911,11 +911,11 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_visibility(ebml_w, vis);
         ebml_w.end_tag();
       }
-      ItemFn(_, purity, _, ref generics, _) => {
+      ItemFn(_, fn_style, _, ref generics, _) => {
         add_to_index(item, ebml_w, index);
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, def_id);
-        encode_family(ebml_w, purity_fn_family(purity));
+        encode_family(ebml_w, style_fn_family(fn_style));
         let tps_len = generics.ty_params.len();
         encode_bounds_and_type(ebml_w, ecx, &lookup_item_type(tcx, def_id));
         encode_name(ebml_w, item.ident.name);
@@ -1165,8 +1165,8 @@ fn encode_info_for_item(ecx: &EncodeContext,
             match method_ty.explicit_self {
                 SelfStatic => {
                     encode_family(ebml_w,
-                                  purity_static_method_family(
-                                      method_ty.fty.purity));
+                                  fn_style_static_method_family(
+                                      method_ty.fty.fn_style));
 
                     let tpt = ty::lookup_item_type(tcx, method_def_id);
                     encode_bounds_and_type(ebml_w, ecx, &tpt);
@@ -1174,8 +1174,8 @@ fn encode_info_for_item(ecx: &EncodeContext,
 
                 _ => {
                     encode_family(ebml_w,
-                                  purity_fn_family(
-                                      method_ty.fty.purity));
+                                  style_fn_family(
+                                      method_ty.fty.fn_style));
                 }
             }
 
@@ -1227,7 +1227,7 @@ fn encode_info_for_foreign_item(ecx: &EncodeContext,
     encode_def_id(ebml_w, local_def(nitem.id));
     match nitem.node {
       ForeignItemFn(..) => {
-        encode_family(ebml_w, purity_fn_family(ImpureFn));
+        encode_family(ebml_w, style_fn_family(NormalFn));
         encode_bounds_and_type(ebml_w, ecx,
                                &lookup_item_type(ecx.tcx,local_def(nitem.id)));
         encode_name(ebml_w, nitem.ident.name);

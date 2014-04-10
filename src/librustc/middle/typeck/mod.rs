@@ -357,7 +357,7 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
                 _ => ()
             }
             let se_ty = ty::mk_bare_fn(tcx, ty::BareFnTy {
-                purity: ast::ImpureFn,
+                fn_style: ast::NormalFn,
                 abi: abi::Rust,
                 sig: ty::FnSig {
                     binder_id: main_id,
@@ -403,7 +403,7 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
             }
 
             let se_ty = ty::mk_bare_fn(tcx, ty::BareFnTy {
-                purity: ast::ImpureFn,
+                fn_style: ast::NormalFn,
                 abi: abi::Rust,
                 sig: ty::FnSig {
                     binder_id: start_id,

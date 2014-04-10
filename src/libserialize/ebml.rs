@@ -636,7 +636,7 @@ pub mod writer {
     // ebml writing
     pub struct Encoder<'a, W> {
         pub writer: &'a mut W,
-        size_positions: ~[uint],
+        size_positions: Vec<uint>,
     }
 
     fn write_sized_vuint<W: Writer>(w: &mut W, n: uint, size: uint) -> EncodeResult {
@@ -668,10 +668,9 @@ pub mod writer {
     }
 
     pub fn Encoder<'a, W: Writer + Seek>(w: &'a mut W) -> Encoder<'a, W> {
-        let size_positions: ~[uint] = ~[];
         Encoder {
             writer: w,
-            size_positions: size_positions,
+            size_positions: vec!(),
         }
     }
 

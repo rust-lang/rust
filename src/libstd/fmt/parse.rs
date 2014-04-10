@@ -131,13 +131,13 @@ pub enum Method<'a> {
     ///
     /// The final element of this enum is the default "other" case which is
     /// always required to be specified.
-    Plural(Option<uint>, ~[PluralArm<'a>], ~[Piece<'a>]),
+    Plural(Option<uint>, Vec<PluralArm<'a>>, Vec<Piece<'a>>),
 
     /// A select method selects over a string. Each arm is a different string
     /// which can be selected for.
     ///
     /// As with `Plural`, a default "other" case is required as well.
-    Select(~[SelectArm<'a>], ~[Piece<'a>]),
+    Select(Vec<SelectArm<'a>>, Vec<Piece<'a>>),
 }
 
 /// A selector for what pluralization a plural method should take
@@ -156,7 +156,7 @@ pub struct PluralArm<'a> {
     /// literal.
     pub selector: PluralSelector,
     /// Array of pieces which are the format of this arm
-    pub result: ~[Piece<'a>],
+    pub result: Vec<Piece<'a>>,
 }
 
 /// Enum of the 5 CLDR plural keywords. There is one more, "other", but that
@@ -184,7 +184,7 @@ pub struct SelectArm<'a> {
     /// String selector which guards this arm
     pub selector: &'a str,
     /// Array of pieces which are the format of this arm
-    pub result: ~[Piece<'a>],
+    pub result: Vec<Piece<'a>>,
 }
 
 /// The parser structure for interpreting the input format string. This is
@@ -198,7 +198,7 @@ pub struct Parser<'a> {
     cur: str::CharOffsets<'a>,
     depth: uint,
     /// Error messages accumulated during parsing
-    pub errors: ~[~str],
+    pub errors: Vec<~str>,
 }
 
 impl<'a> Iterator<Piece<'a>> for Parser<'a> {
@@ -236,7 +236,7 @@ impl<'a> Parser<'a> {
             input: s,
             cur: s.char_indices(),
             depth: 0,
-            errors: ~[],
+            errors: vec!(),
         }
     }
 
@@ -463,7 +463,7 @@ impl<'a> Parser<'a> {
     /// Parses a 'select' statement (after the initial 'select' word)
     fn select(&mut self) -> ~Method<'a> {
         let mut other = None;
-        let mut arms = ~[];
+        let mut arms = vec!();
         // Consume arms one at a time
         loop {
             self.ws();
@@ -496,7 +496,7 @@ impl<'a> Parser<'a> {
             Some(arm) => { arm }
             None => {
                 self.err("`select` statement must provide an `other` case");
-                ~[]
+                vec!()
             }
         };
         ~Select(arms, other)
@@ -506,7 +506,7 @@ impl<'a> Parser<'a> {
     fn plural(&mut self) -> ~Method<'a> {
         let mut offset = None;
         let mut other = None;
-        let mut arms = ~[];
+        let mut arms = vec!();
 
         // First, attempt to parse the 'offset:' field. We know the set of
         // selector words which can appear in plural arms, and the only ones
@@ -594,7 +594,7 @@ impl<'a> Parser<'a> {
             Some(arm) => { arm }
             None => {
                 self.err("`plural` statement must provide an `other` case");
-                ~[]
+                vec!()
             }
         };
         ~Plural(offset, arms, other)
@@ -684,9 +684,9 @@ mod tests {
     use super::*;
     use prelude::*;
 
-    fn same(fmt: &'static str, p: ~[Piece<'static>]) {
+    fn same(fmt: &'static str, p: &[Piece<'static>]) {
         let mut parser = Parser::new(fmt);
-        assert!(p == parser.collect());
+        assert!(p == parser.collect::<Vec<Piece<'static>>>().as_slice());
     }
 
     fn fmtdflt() -> FormatSpec<'static> {
@@ -708,12 +708,12 @@ mod tests {
 
     #[test]
     fn simple() {
-        same("asdf", ~[String("asdf")]);
-        same("a\\{b", ~[String("a"), String("{b")]);
-        same("a\\#b", ~[String("a"), String("#b")]);
-        same("a\\}b", ~[String("a"), String("}b")]);
-        same("a\\}", ~[String("a"), String("}")]);
-        same("\\}", ~[String("}")]);
+        same("asdf", [String("asdf")]);
+        same("a\\{b", [String("a"), String("{b")]);
+        same("a\\#b", [String("a"), String("#b")]);
+        same("a\\}b", [String("a"), String("}b")]);
+        same("a\\}", [String("a"), String("}")]);
+        same("\\}", [String("}")]);
     }
 
     #[test] fn invalid01() { musterr("{") }
@@ -725,7 +725,7 @@ mod tests {
 
     #[test]
     fn format_nothing() {
-        same("{}", ~[Argument(Argument {
+        same("{}", [Argument(Argument {
             position: ArgumentNext,
             format: fmtdflt(),
             method: None,
@@ -733,7 +733,7 @@ mod tests {
     }
     #[test]
     fn format_position() {
-        same("{3}", ~[Argument(Argument {
+        same("{3}", [Argument(Argument {
             position: ArgumentIs(3),
             format: fmtdflt(),
             method: None,
@@ -741,7 +741,7 @@ mod tests {
     }
     #[test]
     fn format_position_nothing_else() {
-        same("{3:}", ~[Argument(Argument {
+        same("{3:}", [Argument(Argument {
             position: ArgumentIs(3),
             format: fmtdflt(),
             method: None,
@@ -749,7 +749,7 @@ mod tests {
     }
     #[test]
     fn format_type() {
-        same("{3:a}", ~[Argument(Argument {
+        same("{3:a}", [Argument(Argument {
             position: ArgumentIs(3),
             format: FormatSpec {
                 fill: None,
@@ -764,7 +764,7 @@ mod tests {
     }
     #[test]
     fn format_align_fill() {
-        same("{3:>}", ~[Argument(Argument {
+        same("{3:>}", [Argument(Argument {
             position: ArgumentIs(3),
             format: FormatSpec {
                 fill: None,
@@ -776,7 +776,7 @@ mod tests {
             },
             method: None,
         })]);
-        same("{3:0<}", ~[Argument(Argument {
+        same("{3:0<}", [Argument(Argument {
             position: ArgumentIs(3),
             format: FormatSpec {
                 fill: Some('0'),
@@ -788,7 +788,7 @@ mod tests {
             },
             method: None,
         })]);
-        same("{3:*<abcd}", ~[Argument(Argument {
+        same("{3:*<abcd}", [Argument(Argument {
             position: ArgumentIs(3),
             format: FormatSpec {
                 fill: Some('*'),
@@ -803,7 +803,7 @@ mod tests {
     }
     #[test]
     fn format_counts() {
-        same("{:10s}", ~[Argument(Argument {
+        same("{:10s}", [Argument(Argument {
             position: ArgumentNext,
             format: FormatSpec {
                 fill: None,
@@ -815,7 +815,7 @@ mod tests {
             },
             method: None,
         })]);
-        same("{:10$.10s}", ~[Argument(Argument {
+        same("{:10$.10s}", [Argument(Argument {
             position: ArgumentNext,
             format: FormatSpec {
                 fill: None,
@@ -827,7 +827,7 @@ mod tests {
             },
             method: None,
         })]);
-        same("{:.*s}", ~[Argument(Argument {
+        same("{:.*s}", [Argument(Argument {
             position: ArgumentNext,
             format: FormatSpec {
                 fill: None,
@@ -839,7 +839,7 @@ mod tests {
             },
             method: None,
         })]);
-        same("{:.10$s}", ~[Argument(Argument {
+        same("{:.10$s}", [Argument(Argument {
             position: ArgumentNext,
             format: FormatSpec {
                 fill: None,
@@ -851,7 +851,7 @@ mod tests {
             },
             method: None,
         })]);
-        same("{:a$.b$s}", ~[Argument(Argument {
+        same("{:a$.b$s}", [Argument(Argument {
             position: ArgumentNext,
             format: FormatSpec {
                 fill: None,
@@ -866,7 +866,7 @@ mod tests {
     }
     #[test]
     fn format_flags() {
-        same("{:-}", ~[Argument(Argument {
+        same("{:-}", [Argument(Argument {
             position: ArgumentNext,
             format: FormatSpec {
                 fill: None,
@@ -878,7 +878,7 @@ mod tests {
             },
             method: None,
         })]);
-        same("{:+#}", ~[Argument(Argument {
+        same("{:+#}", [Argument(Argument {
             position: ArgumentNext,
             format: FormatSpec {
                 fill: None,
@@ -893,7 +893,7 @@ mod tests {
     }
     #[test]
     fn format_mixture() {
-        same("abcd {3:a} efg", ~[String("abcd "), Argument(Argument {
+        same("abcd {3:a} efg", [String("abcd "), Argument(Argument {
             position: ArgumentIs(3),
             format: FormatSpec {
                 fill: None,
@@ -909,42 +909,42 @@ mod tests {
 
     #[test]
     fn select_simple() {
-        same("{, select, other { haha } }", ~[Argument(Argument{
+        same("{, select, other { haha } }", [Argument(Argument{
             position: ArgumentNext,
             format: fmtdflt(),
-            method: Some(~Select(~[], ~[String(" haha ")]))
+            method: Some(~Select(vec![], vec![String(" haha ")]))
         })]);
-        same("{1, select, other { haha } }", ~[Argument(Argument{
+        same("{1, select, other { haha } }", [Argument(Argument{
             position: ArgumentIs(1),
             format: fmtdflt(),
-            method: Some(~Select(~[], ~[String(" haha ")]))
+            method: Some(~Select(vec![], vec![String(" haha ")]))
         })]);
-        same("{1, select, other {#} }", ~[Argument(Argument{
+        same("{1, select, other {#} }", [Argument(Argument{
             position: ArgumentIs(1),
             format: fmtdflt(),
-            method: Some(~Select(~[], ~[CurrentArgument]))
+            method: Some(~Select(vec![], vec![CurrentArgument]))
         })]);
-        same("{1, select, other {{2, select, other {lol}}} }", ~[Argument(Argument{
+        same("{1, select, other {{2, select, other {lol}}} }", [Argument(Argument{
             position: ArgumentIs(1),
             format: fmtdflt(),
-            method: Some(~Select(~[], ~[Argument(Argument{
+            method: Some(~Select(vec![], vec![Argument(Argument{
                 position: ArgumentIs(2),
                 format: fmtdflt(),
-                method: Some(~Select(~[], ~[String("lol")]))
+                method: Some(~Select(vec![], vec![String("lol")]))
             })])) // wat
         })]);
     }
 
     #[test]
     fn select_cases() {
-        same("{1, select, a{1} b{2} c{3} other{4} }", ~[Argument(Argument{
+        same("{1, select, a{1} b{2} c{3} other{4} }", [Argument(Argument{
             position: ArgumentIs(1),
             format: fmtdflt(),
-            method: Some(~Select(~[
-                SelectArm{ selector: "a", result: ~[String("1")] },
-                SelectArm{ selector: "b", result: ~[String("2")] },
-                SelectArm{ selector: "c", result: ~[String("3")] },
-            ], ~[String("4")]))
+            method: Some(~Select(vec![
+                SelectArm{ selector: "a", result: vec![String("1")] },
+                SelectArm{ selector: "b", result: vec![String("2")] },
+                SelectArm{ selector: "c", result: vec![String("3")] },
+            ], vec![String("4")]))
         })]);
     }
 
@@ -961,25 +961,25 @@ mod tests {
 
     #[test]
     fn plural_simple() {
-        same("{, plural, other { haha } }", ~[Argument(Argument{
+        same("{, plural, other { haha } }", [Argument(Argument{
             position: ArgumentNext,
             format: fmtdflt(),
-            method: Some(~Plural(None, ~[], ~[String(" haha ")]))
+            method: Some(~Plural(None, vec![], vec![String(" haha ")]))
         })]);
-        same("{:, plural, other { haha } }", ~[Argument(Argument{
+        same("{:, plural, other { haha } }", [Argument(Argument{
             position: ArgumentNext,
             format: fmtdflt(),
-            method: Some(~Plural(None, ~[], ~[String(" haha ")]))
+            method: Some(~Plural(None, vec![], vec![String(" haha ")]))
         })]);
         same("{, plural, offset:1 =2{2} =3{3} many{yes} other{haha} }",
-        ~[Argument(Argument{
+        [Argument(Argument{
             position: ArgumentNext,
             format: fmtdflt(),
-            method: Some(~Plural(Some(1), ~[
-                PluralArm{ selector: Literal(2), result: ~[String("2")] },
-                PluralArm{ selector: Literal(3), result: ~[String("3")] },
-                PluralArm{ selector: Keyword(Many), result: ~[String("yes")] }
-            ], ~[String("haha")]))
+            method: Some(~Plural(Some(1), vec![
+                PluralArm{ selector: Literal(2), result: vec![String("2")] },
+                PluralArm{ selector: Literal(3), result: vec![String("3")] },
+                PluralArm{ selector: Keyword(Many), result: vec![String("yes")] }
+            ], vec![String("haha")]))
         })]);
     }
 }

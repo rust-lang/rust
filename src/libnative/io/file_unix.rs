@@ -340,11 +340,11 @@ pub fn mkdir(p: &CString, mode: io::FilePermission) -> IoResult<()> {
     }))
 }
 
-pub fn readdir(p: &CString) -> IoResult<~[Path]> {
+pub fn readdir(p: &CString) -> IoResult<Vec<Path>> {
     use libc::{dirent_t};
     use libc::{opendir, readdir_r, closedir};
 
-    fn prune(root: &CString, dirs: ~[Path]) -> ~[Path] {
+    fn prune(root: &CString, dirs: Vec<Path>) -> Vec<Path> {
         let root = unsafe { CString::new(root.with_ref(|p| p), false) };
         let root = Path::new(root);
 
@@ -365,7 +365,7 @@ pub fn readdir(p: &CString) -> IoResult<~[Path]> {
     let dir_ptr = p.with_ref(|buf| unsafe { opendir(buf) });
 
     if dir_ptr as uint != 0 {
-        let mut paths = ~[];
+        let mut paths = vec!();
         let mut entry_ptr = 0 as *mut dirent_t;
         while unsafe { readdir_r(dir_ptr, ptr, &mut entry_ptr) == 0 } {
             if entry_ptr.is_null() { break }
@@ -571,4 +571,3 @@ mod tests {
         }
     }
 }
-

@@ -53,7 +53,7 @@
 //!
 //!     let program = args[0].clone();
 //!
-//!     let opts = ~[
+//!     let opts = [
 //!         optopt("o", "", "set output file name", "NAME"),
 //!         optflag("h", "help", "print this help menu")
 //!     ];

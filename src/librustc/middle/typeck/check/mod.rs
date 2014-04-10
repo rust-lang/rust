@@ -177,32 +177,32 @@ pub enum FnKind {
 }
 
 #[deriving(Clone)]
-pub struct PurityState {
+pub struct FnStyleState {
     pub def: ast::NodeId,
-    pub purity: ast::Purity,
+    pub fn_style: ast::FnStyle,
     from_fn: bool
 }
 
-impl PurityState {
-    pub fn function(purity: ast::Purity, def: ast::NodeId) -> PurityState {
-        PurityState { def: def, purity: purity, from_fn: true }
+impl FnStyleState {
+    pub fn function(fn_style: ast::FnStyle, def: ast::NodeId) -> FnStyleState {
+        FnStyleState { def: def, fn_style: fn_style, from_fn: true }
     }
 
-    pub fn recurse(&mut self, blk: &ast::Block) -> PurityState {
-        match self.purity {
+    pub fn recurse(&mut self, blk: &ast::Block) -> FnStyleState {
+        match self.fn_style {
             // If this unsafe, then if the outer function was already marked as
             // unsafe we shouldn't attribute the unsafe'ness to the block. This
             // way the block can be warned about instead of ignoring this
             // extraneous block (functions are never warned about).
             ast::UnsafeFn if self.from_fn => *self,
 
-            purity => {
-                let (purity, def) = match blk.rules {
+            fn_style => {
+                let (fn_style, def) = match blk.rules {
                     ast::UnsafeBlock(..) => (ast::UnsafeFn, blk.id),
-                    ast::DefaultBlock => (purity, self.def),
+                    ast::DefaultBlock => (fn_style, self.def),
                 };
-                PurityState{ def: def,
-                             purity: purity,
+                FnStyleState{ def: def,
+                             fn_style: fn_style,
                              from_fn: false }
             }
         }
@@ -227,7 +227,7 @@ pub struct FnCtxt<'a> {
     err_count_on_creation: uint,
 
     ret_ty: ty::t,
-    ps: RefCell<PurityState>,
+    ps: RefCell<FnStyleState>,
 
     // Sometimes we generate region pointers where the precise region
     // to use is not known. For example, an expression like `&x.f`
@@ -281,7 +281,7 @@ fn blank_fn_ctxt<'a>(ccx: &'a CrateCtxt<'a>,
     FnCtxt {
         err_count_on_creation: ccx.tcx.sess.err_count(),
         ret_ty: rty,
-        ps: RefCell::new(PurityState::function(ast::ImpureFn, 0)),
+        ps: RefCell::new(FnStyleState::function(ast::NormalFn, 0)),
         region_lb: Cell::new(region_bnd),
         fn_kind: Vanilla,
         inh: inh,
@@ -335,7 +335,7 @@ fn check_bare_fn(ccx: &CrateCtxt,
     match ty::get(fty).sty {
         ty::ty_bare_fn(ref fn_ty) => {
             let inh = Inherited::new(ccx.tcx, param_env);
-            let fcx = check_fn(ccx, fn_ty.purity, &fn_ty.sig,
+            let fcx = check_fn(ccx, fn_ty.fn_style, &fn_ty.sig,
                                decl, id, body, Vanilla, &inh);
 
             vtable::resolve_in_block(&fcx, body);
@@ -415,7 +415,7 @@ impl<'a> Visitor<()> for GatherLocalsVisitor<'a> {
 }
 
 fn check_fn<'a>(ccx: &'a CrateCtxt<'a>,
-                purity: ast::Purity,
+                fn_style: ast::FnStyle,
                 fn_sig: &ty::FnSig,
                 decl: &ast::FnDecl,
                 id: ast::NodeId,
@@ -456,7 +456,7 @@ fn check_fn<'a>(ccx: &'a CrateCtxt<'a>,
     let fcx = FnCtxt {
         err_count_on_creation: err_count_on_creation,
         ret_ty: ret_ty,
-        ps: RefCell::new(PurityState::function(purity, id)),
+        ps: RefCell::new(FnStyleState::function(fn_style, id)),
         region_lb: Cell::new(body.id),
         fn_kind: fn_kind,
         inh: inherited,
@@ -2127,7 +2127,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         // fresh bound regions for any bound regions we find in the
         // expected types so as to avoid capture.
         //
-        // Also try to pick up inferred purity and sigil, defaulting
+        // Also try to pick up inferred style and sigil, defaulting
         // to impure and block. Note that we only will use those for
         // block syntax lambdas; that is, lambdas without explicit
         // sigils.
@@ -2136,7 +2136,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                                            |x| Some((*x).clone()));
         let error_happened = false;
         let (expected_sig,
-             expected_purity,
+             expected_style,
              expected_sigil,
              expected_onceness,
              expected_bounds) = {
@@ -2146,7 +2146,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                         replace_late_bound_regions_in_fn_sig(
                             tcx, &cenv.sig,
                             |_| fcx.inh.infcx.fresh_bound_region(expr.id));
-                    (Some(sig), cenv.purity, cenv.sigil,
+                    (Some(sig), cenv.fn_style, cenv.sigil,
                      cenv.onceness, cenv.bounds)
                 }
                 _ => {
@@ -2162,7 +2162,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                         }
                         _ => ()
                     }
-                    (None, ast::ImpureFn, sigil,
+                    (None, ast::NormalFn, sigil,
                      onceness, bounds)
                 }
             }
@@ -2170,9 +2170,9 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
 
         // If the proto is specified, use that, otherwise select a
         // proto based on inference.
-        let (sigil, purity) = match ast_sigil_opt {
-            Some(p) => (p, ast::ImpureFn),
-            None => (expected_sigil, expected_purity)
+        let (sigil, fn_style) = match ast_sigil_opt {
+            Some(p) => (p, ast::NormalFn),
+            None => (expected_sigil, expected_style)
         };
 
         // construct the function type
@@ -2180,7 +2180,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                                            fcx.infcx(),
                                            expr.id,
                                            sigil,
-                                           purity,
+                                           fn_style,
                                            expected_onceness,
                                            expected_bounds,
                                            &None,
@@ -2208,13 +2208,13 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
 
         fcx.write_ty(expr.id, fty);
 
-        let (inherited_purity, id) =
-            ty::determine_inherited_purity((fcx.ps.borrow().purity,
+        let (inherited_style, id) =
+            ty::determine_inherited_style((fcx.ps.borrow().fn_style,
                                             fcx.ps.borrow().def),
-                                           (purity, expr.id),
+                                           (fn_style, expr.id),
                                            sigil);
 
-        check_fn(fcx.ccx, inherited_purity, &fty_sig,
+        check_fn(fcx.ccx, inherited_style, &fty_sig,
                  decl, id, body, fn_kind, fcx.inh);
     }
 
@@ -3272,8 +3272,8 @@ pub fn check_block_with_expected(fcx: &FnCtxt,
                                  expected: Option<ty::t>) {
     let prev = {
         let mut fcx_ps = fcx.ps.borrow_mut();
-        let purity_state = fcx_ps.recurse(blk);
-        replace(&mut *fcx_ps, purity_state)
+        let fn_style_state = fcx_ps.recurse(blk);
+        replace(&mut *fcx_ps, fn_style_state)
     };
 
     fcx.with_region_lb(blk.id, || {
@@ -4223,7 +4223,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
         }
     };
     let fty = ty::mk_bare_fn(tcx, ty::BareFnTy {
-        purity: ast::UnsafeFn,
+        fn_style: ast::UnsafeFn,
         abi: abi::RustIntrinsic,
         sig: FnSig {binder_id: it.id,
                     inputs: inputs,

@@ -20,6 +20,7 @@ use path::Path;
 use result::Err;
 use rt::local::Local;
 use rt::task::Task;
+use vec::Vec;
 
 use ai = io::net::addrinfo;
 use io;
@@ -168,7 +169,7 @@ pub trait IoFactory {
     fn fs_rmdir(&mut self, path: &CString) -> IoResult<()>;
     fn fs_rename(&mut self, path: &CString, to: &CString) -> IoResult<()>;
     fn fs_readdir(&mut self, path: &CString, flags: c_int) ->
-        IoResult<~[Path]>;
+        IoResult<Vec<Path>>;
     fn fs_lstat(&mut self, path: &CString) -> IoResult<FileStat>;
     fn fs_chown(&mut self, path: &CString, uid: int, gid: int) ->
         IoResult<()>;

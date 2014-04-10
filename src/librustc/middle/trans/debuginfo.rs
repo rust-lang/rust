@@ -130,6 +130,7 @@ use driver::session::{FullDebugInfo, LimitedDebugInfo, NoDebugInfo};
 use lib::llvm::llvm;
 use lib::llvm::{ModuleRef, ContextRef, ValueRef};
 use lib::llvm::debuginfo::*;
+use metadata::csearch;
 use middle::trans::adt;
 use middle::trans::common::*;
 use middle::trans::datum::{Datum, Lvalue};
@@ -178,6 +179,7 @@ pub struct CrateDebugContext {
     current_debug_location: Cell<DebugLocation>,
     created_files: RefCell<HashMap<~str, DIFile>>,
     created_types: RefCell<HashMap<uint, DIType>>,
+    created_enum_disr_types: RefCell<HashMap<ast::DefId, DIType>>,
     namespace_map: RefCell<HashMap<Vec<ast::Name> , @NamespaceTreeNode>>,
     // This collection is used to assert that composite types (structs, enums, ...) have their
     // members only set once:
@@ -196,6 +198,7 @@ impl CrateDebugContext {
             current_debug_location: Cell::new(UnknownLocation),
             created_files: RefCell::new(HashMap::new()),
             created_types: RefCell::new(HashMap::new()),
+            created_enum_disr_types: RefCell::new(HashMap::new()),
             namespace_map: RefCell::new(HashMap::new()),
             composite_types_completed: RefCell::new(HashSet::new()),
         };
@@ -287,6 +290,13 @@ pub fn create_global_var_metadata(cx: &CrateContext,
                                   node_id: ast::NodeId,
                                   global: ValueRef) {
     if cx.dbg_cx.is_none() {
+        return;
+    }
+
+    // Don't create debuginfo for globals inlined from other crates. The other crate should already
+    // contain debuginfo for it. More importantly, the global might not even exist in un-inlined
+    // form anywhere which would lead to a linker errors.
+    if cx.external_srcs.borrow().contains_key(&node_id) {
         return;
     }
 
@@ -533,21 +543,26 @@ pub fn create_argument_metadata(bcx: &Block, arg: &ast::Arg) {
 pub fn set_source_location(fcx: &FunctionContext,
                            node_id: ast::NodeId,
                            span: Span) {
-    if fn_should_be_ignored(fcx) {
-        return;
-    }
+    match fcx.debug_context {
+        DebugInfoDisabled => return,
+        FunctionWithoutDebugInfo => {
+            set_debug_location(fcx.ccx, UnknownLocation);
+            return;
+        }
+        FunctionDebugContext(~ref function_debug_context) => {
+            let cx = fcx.ccx;
 
-    let cx = fcx.ccx;
+            debug!("set_source_location: {}", cx.sess().codemap().span_to_str(span));
 
-    debug!("set_source_location: {}", cx.sess().codemap().span_to_str(span));
+            if function_debug_context.source_locations_enabled.get() {
+                let loc = span_start(cx, span);
+                let scope = scope_metadata(fcx, node_id, span);
 
-    if fcx.debug_context.get_ref(cx, span).source_locations_enabled.get() {
-        let loc = span_start(cx, span);
-        let scope = scope_metadata(fcx, node_id, span);
-
-        set_debug_location(cx, DebugLocation::new(scope, loc.line, loc.col.to_uint()));
-    } else {
-        set_debug_location(cx, UnknownLocation);
+                set_debug_location(cx, DebugLocation::new(scope, loc.line, loc.col.to_uint()));
+            } else {
+                set_debug_location(cx, UnknownLocation);
+            }
+        }
     }
 }
 
@@ -589,6 +604,10 @@ pub fn create_function_debug_context(cx: &CrateContext,
     if cx.sess().opts.debuginfo == NoDebugInfo {
         return DebugInfoDisabled;
     }
+
+    // Clear the debug location so we don't assign them in the function prelude. Do this here
+    // already, in case we do an early exit from this function.
+    set_debug_location(cx, UnknownLocation);
 
     if fn_ast_id == -1 {
         return FunctionWithoutDebugInfo;
@@ -739,9 +758,6 @@ pub fn create_function_debug_context(cx: &CrateContext,
                        top_level_block,
                        fn_metadata,
                        &mut *fn_debug_context.scope_map.borrow_mut());
-
-    // Clear the debug location so we don't assign them in the function prelude
-    set_debug_location(cx, UnknownLocation);
 
     return FunctionDebugContext(fn_debug_context);
 
@@ -1536,24 +1552,45 @@ fn prepare_enum_metadata(cx: &CrateContext,
         .collect();
 
     let discriminant_type_metadata = |inttype| {
-        let discriminant_llvm_type = adt::ll_inttype(cx, inttype);
-        let (discriminant_size, discriminant_align) = size_and_align_of(cx, discriminant_llvm_type);
-        let discriminant_base_type_metadata = type_metadata(cx, adt::ty_of_inttype(inttype),
-                                                            codemap::DUMMY_SP);
-        enum_name.with_c_str(|enum_name| {
-            unsafe {
-                llvm::LLVMDIBuilderCreateEnumerationType(
-                    DIB(cx),
-                    containing_scope,
-                    enum_name,
-                    file_metadata,
-                    loc.line as c_uint,
-                    bytes_to_bits(discriminant_size),
-                    bytes_to_bits(discriminant_align),
-                    create_DIArray(DIB(cx), enumerators_metadata.as_slice()),
-                    discriminant_base_type_metadata)
+        // We can reuse the type of the discriminant for all monomorphized instances of an enum
+        // because it doesn't depend on any type parameters. The def_id, uniquely identifying the
+        // enum's polytype acts as key in this cache.
+        let cached_discriminant_type_metadata = debug_context(cx).created_enum_disr_types
+                                                                 .borrow()
+                                                                 .find_copy(&enum_def_id);
+        match cached_discriminant_type_metadata {
+            Some(discriminant_type_metadata) => discriminant_type_metadata,
+            None => {
+                let discriminant_llvm_type = adt::ll_inttype(cx, inttype);
+                let (discriminant_size, discriminant_align) =
+                    size_and_align_of(cx, discriminant_llvm_type);
+                let discriminant_base_type_metadata = type_metadata(cx,
+                                                                    adt::ty_of_inttype(inttype),
+                                                                    codemap::DUMMY_SP);
+                let discriminant_name = get_enum_discriminant_name(cx, enum_def_id);
+
+                let discriminant_type_metadata = discriminant_name.get().with_c_str(|name| {
+                    unsafe {
+                        llvm::LLVMDIBuilderCreateEnumerationType(
+                            DIB(cx),
+                            containing_scope,
+                            name,
+                            file_metadata,
+                            loc.line as c_uint,
+                            bytes_to_bits(discriminant_size),
+                            bytes_to_bits(discriminant_align),
+                            create_DIArray(DIB(cx), enumerators_metadata.as_slice()),
+                            discriminant_base_type_metadata)
+                    }
+                });
+
+                debug_context(cx).created_enum_disr_types
+                                 .borrow_mut()
+                                 .insert(enum_def_id, discriminant_type_metadata);
+
+                discriminant_type_metadata
             }
-        })
+        }
     };
 
     let type_rep = adt::represent_type(cx, enum_type);
@@ -1642,6 +1679,16 @@ fn prepare_enum_metadata(cx: &CrateContext,
             }
         }
     };
+
+    fn get_enum_discriminant_name(cx: &CrateContext, def_id: ast::DefId) -> token::InternedString {
+        let name = if def_id.krate == ast::LOCAL_CRATE {
+            cx.tcx.map.get_path_elem(def_id.node).name()
+        } else {
+            csearch::get_item_path(&cx.tcx, def_id).last().unwrap().name()
+        };
+
+        token::get_name(name)
+    }
 }
 
 enum MemberOffset {
