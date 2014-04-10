@@ -17,11 +17,11 @@
 
 use std::iter::{Enumerate, FilterMap, Rev};
 use std::mem::replace;
-use std::slice;
+use std::{vec, slice};
 
 #[allow(missing_doc)]
 pub struct SmallIntMap<T> {
-    v: ~[Option<T>],
+    v: Vec<Option<T>>,
 }
 
 impl<V> Container for SmallIntMap<V> {
@@ -45,7 +45,7 @@ impl<V> Map<uint, V> for SmallIntMap<V> {
     /// Return a reference to the value corresponding to the key
     fn find<'a>(&'a self, key: &uint) -> Option<&'a V> {
         if *key < self.v.len() {
-            match self.v[*key] {
+            match *self.v.get(*key) {
               Some(ref value) => Some(value),
               None => None
             }
@@ -59,7 +59,7 @@ impl<V> MutableMap<uint, V> for SmallIntMap<V> {
     /// Return a mutable reference to the value corresponding to the key
     fn find_mut<'a>(&'a mut self, key: &uint) -> Option<&'a mut V> {
         if *key < self.v.len() {
-            match self.v[*key] {
+            match *self.v.get_mut(*key) {
               Some(ref mut value) => Some(value),
               None => None
             }
@@ -77,7 +77,7 @@ impl<V> MutableMap<uint, V> for SmallIntMap<V> {
         if len <= key {
             self.v.grow_fn(key - len + 1, |_| None);
         }
-        self.v[key] = Some(value);
+        *self.v.get_mut(key) = Some(value);
         !exists
     }
 
@@ -104,17 +104,17 @@ impl<V> MutableMap<uint, V> for SmallIntMap<V> {
         if *key >= self.v.len() {
             return None;
         }
-        self.v[*key].take()
+        self.v.get_mut(*key).take()
     }
 }
 
 impl<V> SmallIntMap<V> {
     /// Create an empty SmallIntMap
-    pub fn new() -> SmallIntMap<V> { SmallIntMap{v: ~[]} }
+    pub fn new() -> SmallIntMap<V> { SmallIntMap{v: vec!()} }
 
     /// Create an empty SmallIntMap with capacity `capacity`
     pub fn with_capacity(capacity: uint) -> SmallIntMap<V> {
-        SmallIntMap { v: slice::with_capacity(capacity) }
+        SmallIntMap { v: Vec::with_capacity(capacity) }
     }
 
     pub fn get<'a>(&'a self, key: &uint) -> &'a V {
@@ -158,9 +158,9 @@ impl<V> SmallIntMap<V> {
     /// Empties the hash map, moving all values into the specified closure
     pub fn move_iter(&mut self)
         -> FilterMap<(uint, Option<V>), (uint, V),
-                Enumerate<slice::MoveItems<Option<V>>>>
+                Enumerate<vec::MoveItems<Option<V>>>>
     {
-        let values = replace(&mut self.v, ~[]);
+        let values = replace(&mut self.v, vec!());
         values.move_iter().enumerate().filter_map(|(i, v)| {
             v.map(|v| (i, v))
         })
