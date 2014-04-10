@@ -262,10 +262,11 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
     cache.stack.push(krate.name.clone());
     krate = cache.fold_crate(krate);
     {
+        let Cache { search_index: ref mut index,
+                    orphan_methods: ref meths, paths: ref mut paths, ..} = cache;
+
         // Attach all orphan methods to the type's definition if the type
         // has since been learned.
-        let Cache { search_index: ref mut index,
-                    orphan_methods: ref meths, paths: ref paths, ..} = cache;
         for &(ref pid, ref item) in meths.iter() {
             match paths.find(pid) {
                 Some(&(ref fqp, _)) => {
@@ -280,6 +281,18 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
                 None => {}
             }
         };
+
+        // Prune the paths that do not appear in the index.
+        let mut unseen: HashSet<ast::NodeId> = paths.keys().map(|&id| id).collect();
+        for item in index.iter() {
+            match item.parent {
+                Some(ref pid) => { unseen.remove(pid); }
+                None => {}
+            }
+        }
+        for pid in unseen.iter() {
+            paths.remove(pid);
+        }
     }
 
     // Publish the search index

@@ -269,6 +269,7 @@ LIB_DOC_DEP_$(1) = $$(CRATEFILE_$(1)) $$(RSINPUTS_$(1))
 endif
 
 $(2) += doc/$(1)/index.html
+doc/$(1)/index.html: CFG_COMPILER_HOST_TRIPLE = $(CFG_TARGET)
 doc/$(1)/index.html: $$(LIB_DOC_DEP_$(1))
 	@$$(call E, rustdoc $$@)
 	$$(Q)$$(RUSTDOC) --cfg dox --cfg stage2 $$<
