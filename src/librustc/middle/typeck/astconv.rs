@@ -572,9 +572,8 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
                         let path_str = path_to_str(path);
                         tcx.sess.span_err(
                             ast_ty.span,
-                            format!("reference to trait `{}` where a type is expected; \
-                                    try `@{}`, `~{}`, or `&{}`",
-                                    path_str, path_str, path_str, path_str));
+                            format!("reference to trait `{name}` where a type is expected; \
+                                    try `~{name}` or `&{name}`", name=path_str));
                         ty::mk_err()
                     }
                     ast::DefTy(did) | ast::DefStruct(did) => {
