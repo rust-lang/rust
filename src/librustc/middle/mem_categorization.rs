@@ -64,6 +64,7 @@
 
 use middle::ty;
 use middle::typeck;
+use util::nodemap::NodeMap;
 use util::ppaux::{ty_to_str, Repr};
 
 use syntax::ast::{MutImmutable, MutMutable};
@@ -71,6 +72,8 @@ use syntax::ast;
 use syntax::codemap::Span;
 use syntax::print::pprust;
 use syntax::parse::token;
+
+use std::cell::RefCell;
 
 #[deriving(Eq)]
 pub enum categorization {
@@ -265,10 +268,10 @@ pub trait Typer {
     fn tcx<'a>(&'a self) -> &'a ty::ctxt;
     fn node_ty(&mut self, id: ast::NodeId) -> McResult<ty::t>;
     fn node_method_ty(&self, method_call: typeck::MethodCall) -> Option<ty::t>;
-    fn adjustment(&mut self, node_id: ast::NodeId) -> Option<@ty::AutoAdjustment>;
     fn is_method_call(&mut self, id: ast::NodeId) -> bool;
     fn temporary_scope(&mut self, rvalue_id: ast::NodeId) -> Option<ast::NodeId>;
     fn upvar_borrow(&mut self, upvar_id: ty::UpvarId) -> ty::UpvarBorrow;
+    fn adjustments<'a>(&'a self) -> &'a RefCell<NodeMap<ty::AutoAdjustment>>;
 }
 
 impl MutabilityCategory {
@@ -360,8 +363,8 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
 
     fn expr_ty_adjusted(&mut self, expr: &ast::Expr) -> McResult<ty::t> {
         let unadjusted_ty = if_ok!(self.expr_ty(expr));
-        let adjustment = self.adjustment(expr.id);
-        Ok(ty::adjust_ty(self.tcx(), expr.span, expr.id, unadjusted_ty, adjustment,
+        Ok(ty::adjust_ty(self.tcx(), expr.span, expr.id, unadjusted_ty,
+                         self.typer.adjustments().borrow().find(&expr.id),
                          |method_call| self.typer.node_method_ty(method_call)))
     }
 
@@ -374,7 +377,7 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
     }
 
     pub fn cat_expr(&mut self, expr: &ast::Expr) -> McResult<cmt> {
-        match self.adjustment(expr.id) {
+        match self.typer.adjustments().borrow().find(&expr.id) {
             None => {
                 // No adjustments.
                 self.cat_expr_unadjusted(expr)

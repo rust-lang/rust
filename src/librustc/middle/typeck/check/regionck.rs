@@ -131,6 +131,7 @@ use middle::typeck::infer::resolve_type;
 use middle::typeck::infer;
 use middle::typeck::MethodCall;
 use middle::pat_util;
+use util::nodemap::NodeMap;
 use util::ppaux::{ty_to_str, region_to_str, Repr};
 
 use syntax::ast::{DefArg, DefBinding, DefLocal, DefUpvar};
@@ -139,6 +140,8 @@ use syntax::ast_util;
 use syntax::codemap::Span;
 use syntax::visit;
 use syntax::visit::Visitor;
+
+use std::cell::RefCell;
 
 // If mem categorization results in an error, it's because the type
 // check failed (or will fail, when the error is uncovered and
@@ -252,8 +255,8 @@ impl<'a> Rcx<'a> {
             ty_unadjusted
         } else {
             let tcx = self.fcx.tcx();
-            let adjustment = self.fcx.inh.adjustments.borrow().find_copy(&expr.id);
-            ty::adjust_ty(tcx, expr.span, expr.id, ty_unadjusted, adjustment,
+            ty::adjust_ty(tcx, expr.span, expr.id, ty_unadjusted,
+                          self.fcx.inh.adjustments.borrow().find(&expr.id),
                           |method_call| self.resolve_method_type(method_call))
         }
     }
@@ -273,8 +276,8 @@ impl<'a, 'b> mc::Typer for &'a mut Rcx<'b> {
         self.resolve_method_type(method_call)
     }
 
-    fn adjustment(&mut self, id: ast::NodeId) -> Option<@ty::AutoAdjustment> {
-        self.fcx.inh.adjustments.borrow().find_copy(&id)
+    fn adjustments<'a>(&'a self) -> &'a RefCell<NodeMap<ty::AutoAdjustment>> {
+        &self.fcx.inh.adjustments
     }
 
     fn is_method_call(&mut self, id: ast::NodeId) -> bool {
@@ -402,7 +405,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
     // Check any autoderefs or autorefs that appear.
     for &adjustment in rcx.fcx.inh.adjustments.borrow().find(&expr.id).iter() {
         debug!("adjustment={:?}", adjustment);
-        match **adjustment {
+        match *adjustment {
             ty::AutoDerefRef(ty::AutoDerefRef {autoderefs, autoref: opt_autoref}) => {
                 let expr_ty = rcx.resolve_node_type(expr.id);
                 constrain_autoderefs(rcx, expr, autoderefs, expr_ty);
@@ -960,13 +963,13 @@ fn constrain_regions_in_type_of_node(
     // is going to fail anyway, so just stop here and let typeck
     // report errors later on in the writeback phase.
     let ty0 = rcx.resolve_node_type(id);
-    let adjustment = rcx.fcx.inh.adjustments.borrow().find_copy(&id);
-    let ty = ty::adjust_ty(tcx, origin.span(), id, ty0, adjustment,
+    let ty = ty::adjust_ty(tcx, origin.span(), id, ty0,
+                           rcx.fcx.inh.adjustments.borrow().find(&id),
                            |method_call| rcx.resolve_method_type(method_call));
     debug!("constrain_regions_in_type_of_node(\
-            ty={}, ty0={}, id={}, minimum_lifetime={:?}, adjustment={:?})",
+            ty={}, ty0={}, id={}, minimum_lifetime={:?})",
            ty_to_str(tcx, ty), ty_to_str(tcx, ty0),
-           id, minimum_lifetime, adjustment);
+           id, minimum_lifetime);
     constrain_regions_in_type(rcx, minimum_lifetime, origin, ty)
 }
 

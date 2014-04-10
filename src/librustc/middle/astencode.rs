@@ -1062,8 +1062,8 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
         })
     }
 
-    for adj in tcx.adjustments.borrow().find(&id).iter() {
-        match ***adj {
+    for &adj in tcx.adjustments.borrow().find(&id).iter() {
+        match *adj {
             ty::AutoDerefRef(adj) => {
                 for autoderef in range(0, adj.autoderefs) {
                     let method_call = MethodCall::autoderef(id, autoderef as u32);
@@ -1093,7 +1093,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
         ebml_w.tag(c::tag_table_adjustments, |ebml_w| {
             ebml_w.id(id);
             ebml_w.tag(c::tag_table_val, |ebml_w| {
-                ebml_w.emit_auto_adjustment(ecx, **adj);
+                ebml_w.emit_auto_adjustment(ecx, adj);
             })
         })
     }
@@ -1403,7 +1403,7 @@ fn decode_side_tables(xcx: &ExtendedDecodeContext,
                         dcx.tcx.vtable_map.borrow_mut().insert(vtable_key, vtable_res);
                     }
                     c::tag_table_adjustments => {
-                        let adj: @ty::AutoAdjustment = @val_dsr.read_auto_adjustment(xcx);
+                        let adj: ty::AutoAdjustment = val_dsr.read_auto_adjustment(xcx);
                         dcx.tcx.adjustments.borrow_mut().insert(id, adj);
                     }
                     c::tag_table_capture_map => {

@@ -212,6 +212,7 @@ pub enum Variance {
     Bivariant,      // T<A> <: T<B>            -- e.g., unused type parameter
 }
 
+#[deriving(Clone)]
 pub enum AutoAdjustment {
     AutoAddEnv(ty::TraitStore),
     AutoDerefRef(AutoDerefRef),
@@ -221,13 +222,13 @@ pub enum AutoAdjustment {
                ty::substs /* Trait substitutions */)
 }
 
-#[deriving(Decodable, Encodable)]
+#[deriving(Clone, Decodable, Encodable)]
 pub struct AutoDerefRef {
     pub autoderefs: uint,
     pub autoref: Option<AutoRef>
 }
 
-#[deriving(Decodable, Encodable, Eq, Show)]
+#[deriving(Clone, Decodable, Encodable, Eq, Show)]
 pub enum AutoRef {
     /// Convert from T to &T
     AutoPtr(Region, ast::Mutability),
@@ -296,7 +297,7 @@ pub struct ctxt {
     pub ast_ty_to_ty_cache: RefCell<NodeMap<ast_ty_to_ty_cache_entry>>,
     pub enum_var_cache: RefCell<DefIdMap<@Vec<@VariantInfo> >>,
     pub ty_param_defs: RefCell<NodeMap<TypeParameterDef>>,
-    pub adjustments: RefCell<NodeMap<@AutoAdjustment>>,
+    pub adjustments: RefCell<NodeMap<AutoAdjustment>>,
     pub normalized_cache: RefCell<HashMap<t, t>>,
     pub lang_items: @middle::lang_items::LanguageItems,
     // A mapping of fake provided method def_ids to the default implementation
@@ -2808,11 +2809,9 @@ pub fn expr_ty_adjusted(cx: &ctxt, expr: &ast::Expr) -> t {
      * task at hand! -nmatsakis
      */
 
-    let unadjusted_ty = expr_ty(cx, expr);
-    let adjustment = cx.adjustments.borrow().find_copy(&expr.id);
-    adjust_ty(cx, expr.span, expr.id, unadjusted_ty, adjustment, |method_call| {
-        cx.method_map.borrow().find(&method_call).map(|method| method.ty)
-    })
+    adjust_ty(cx, expr.span, expr.id, expr_ty(cx, expr),
+              cx.adjustments.borrow().find(&expr.id),
+              |method_call| cx.method_map.borrow().find(&method_call).map(|method| method.ty))
 }
 
 pub fn expr_span(cx: &ctxt, id: NodeId) -> Span {
@@ -2857,7 +2856,7 @@ pub fn adjust_ty(cx: &ctxt,
                  span: Span,
                  expr_id: ast::NodeId,
                  unadjusted_ty: ty::t,
-                 adjustment: Option<@AutoAdjustment>,
+                 adjustment: Option<&AutoAdjustment>,
                  method_type: |typeck::MethodCall| -> Option<ty::t>)
                  -> ty::t {
     /*! See `expr_ty_adjusted` */

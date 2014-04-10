@@ -1387,7 +1387,7 @@ fn check_unnecessary_allocation(cx: &Context, e: &ast::Expr) {
         cx.span_lint(UnnecessaryAllocation, e.span, msg);
     };
 
-    match cx.tcx.adjustments.borrow().find_copy(&e.id) {
+    match cx.tcx.adjustments.borrow().find(&e.id) {
         Some(adjustment) => {
             match *adjustment {
                 ty::AutoDerefRef(ty::AutoDerefRef { autoref, .. }) => {

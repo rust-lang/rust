@@ -72,7 +72,7 @@ pub struct Bounds<T> {
 pub type cres<T> = Result<T,ty::type_err>; // "combine result"
 pub type ures = cres<()>; // "unify result"
 pub type fres<T> = Result<T, fixup_err>; // "fixup result"
-pub type CoerceResult = cres<Option<@ty::AutoAdjustment>>;
+pub type CoerceResult = cres<Option<ty::AutoAdjustment>>;
 
 pub struct InferCtxt<'a> {
     pub tcx: &'a ty::ctxt,

@@ -682,7 +682,7 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
     // Search for auto-adjustments to find trait coercions
     match fcx.inh.adjustments.borrow().find(&ex.id) {
         Some(adjustment) => {
-            match **adjustment {
+            match *adjustment {
                 AutoDerefRef(adj) => {
                     for autoderef in range(0, adj.autoderefs) {
                         let method_call = MethodCall::autoderef(ex.id, autoderef as u32);

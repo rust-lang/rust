@@ -161,7 +161,7 @@ pub struct Inherited<'a> {
     // Temporary tables:
     node_types: RefCell<NodeMap<ty::t>>,
     node_type_substs: RefCell<NodeMap<ty::substs>>,
-    adjustments: RefCell<NodeMap<@ty::AutoAdjustment>>,
+    adjustments: RefCell<NodeMap<ty::AutoAdjustment>>,
     method_map: MethodMap,
     vtable_map: vtable_map,
     upvar_borrow_map: RefCell<ty::UpvarBorrowMap>,
@@ -1076,7 +1076,7 @@ impl<'a> FnCtxt<'a> {
         if derefs == 0 { return; }
         self.write_adjustment(
             node_id,
-            @ty::AutoDerefRef(ty::AutoDerefRef {
+            ty::AutoDerefRef(ty::AutoDerefRef {
                 autoderefs: derefs,
                 autoref: None })
         );
@@ -1084,7 +1084,7 @@ impl<'a> FnCtxt<'a> {
 
     pub fn write_adjustment(&self,
                             node_id: ast::NodeId,
-                            adj: @ty::AutoAdjustment) {
+                            adj: ty::AutoAdjustment) {
         debug!("write_adjustment(node_id={:?}, adj={:?})", node_id, adj);
         self.inh.adjustments.borrow_mut().insert(node_id, adj);
     }

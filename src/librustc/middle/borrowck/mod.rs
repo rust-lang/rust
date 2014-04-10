@@ -18,7 +18,7 @@ use middle::typeck;
 use middle::moves;
 use middle::dataflow::DataFlowContext;
 use middle::dataflow::DataFlowOperator;
-use util::nodemap::NodeSet;
+use util::nodemap::{NodeMap, NodeSet};
 use util::ppaux::{note_and_explain_region, Repr, UserString};
 
 use std::cell::{Cell, RefCell};
@@ -918,8 +918,8 @@ impl<'a> mc::Typer for &'a ty::ctxt {
         self.method_map.borrow().find(&method_call).map(|method| method.ty)
     }
 
-    fn adjustment(&mut self, id: ast::NodeId) -> Option<@ty::AutoAdjustment> {
-        self.adjustments.borrow().find_copy(&id)
+    fn adjustments<'a>(&'a self) -> &'a RefCell<NodeMap<ty::AutoAdjustment>> {
+        &self.adjustments
     }
 
     fn is_method_call(&mut self, id: ast::NodeId) -> bool {

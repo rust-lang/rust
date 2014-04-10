@@ -247,7 +247,7 @@ impl<'f> Coerce<'f> {
                                      r_borrow,
                                      mt {ty: inner_ty, mutbl: mt_b.mutbl});
         if_ok!(sub.tys(a_borrowed, b));
-        Ok(Some(@AutoDerefRef(AutoDerefRef {
+        Ok(Some(AutoDerefRef(AutoDerefRef {
             autoderefs: 1,
             autoref: Some(AutoPtr(r_borrow, mt_b.mutbl))
         })))
@@ -272,7 +272,7 @@ impl<'f> Coerce<'f> {
         let r_a = self.get_ref().infcx.next_region_var(Coercion(self.get_ref().trace));
         let a_borrowed = ty::mk_str(self.get_ref().infcx.tcx, VstoreSlice(r_a));
         if_ok!(self.subtype(a_borrowed, b));
-        Ok(Some(@AutoDerefRef(AutoDerefRef {
+        Ok(Some(AutoDerefRef(AutoDerefRef {
             autoderefs: 0,
             autoref: Some(AutoBorrowVec(r_a, MutImmutable))
         })))
@@ -307,7 +307,7 @@ impl<'f> Coerce<'f> {
         let a_borrowed = ty::mk_slice(self.get_ref().infcx.tcx, r_borrow,
                                       mt {ty: ty_inner, mutbl: mutbl_b});
         if_ok!(sub.tys(a_borrowed, b));
-        Ok(Some(@AutoDerefRef(AutoDerefRef {
+        Ok(Some(AutoDerefRef(AutoDerefRef {
             autoderefs: 0,
             autoref: Some(AutoBorrowVec(r_borrow, mutbl_b))
         })))
@@ -337,7 +337,7 @@ impl<'f> Coerce<'f> {
         };
 
         if_ok!(self.subtype(a_borrowed, b));
-        Ok(Some(@AutoDerefRef(AutoDerefRef {
+        Ok(Some(AutoDerefRef(AutoDerefRef {
             autoderefs: 0,
             autoref: Some(AutoBorrowObj(r_a, b_mutbl))
         })))
@@ -384,7 +384,7 @@ impl<'f> Coerce<'f> {
                 _ => return self.subtype(a, b)
             };
 
-            let adj = @ty::AutoAddEnv(fn_ty_b.store);
+            let adj = ty::AutoAddEnv(fn_ty_b.store);
             let a_closure = ty::mk_closure(self.get_ref().infcx.tcx,
                                            ty::ClosureTy {
                                                 sig: fn_ty_a.sig.clone(),
@@ -419,7 +419,7 @@ impl<'f> Coerce<'f> {
         // although references and unsafe ptrs have the same
         // representation, we still register an AutoDerefRef so that
         // regionck knows that the region for `a` must be valid here
-        Ok(Some(@AutoDerefRef(AutoDerefRef {
+        Ok(Some(AutoDerefRef(AutoDerefRef {
             autoderefs: 1,
             autoref: Some(ty::AutoUnsafe(mt_b.mutbl))
         })))
@@ -438,7 +438,7 @@ impl<'f> Coerce<'f> {
                a.inf_str(self.get_ref().infcx), sty_a,
                b.inf_str(self.get_ref().infcx));
 
-        Ok(Some(@ty::AutoObject(trait_store, bounds,
-                                trait_def_id, trait_substs.clone())))
+        Ok(Some(ty::AutoObject(trait_store, bounds,
+                               trait_def_id, trait_substs.clone())))
     }
 }
