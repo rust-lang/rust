@@ -716,19 +716,18 @@ impl<'a> ConstraintContext<'a> {
         }
     }
 
-    /// Adds constraints appropriate for a vector with vstore `vstore`
+    /// Adds constraints appropriate for a vector with Vstore `vstore`
     /// appearing in a context with ambient variance `variance`
     fn add_constraints_from_vstore(&mut self,
-                                   vstore: ty::vstore,
+                                   vstore: ty::Vstore,
                                    variance: VarianceTermPtr<'a>) {
         match vstore {
-            ty::vstore_slice(r) => {
+            ty::VstoreSlice(r) => {
                 let contra = self.contravariant(variance);
                 self.add_constraints_from_region(r, contra);
             }
 
-            ty::vstore_fixed(_) | ty::vstore_uniq => {
-            }
+            ty::VstoreFixed(_) | ty::VstoreUniq => {}
         }
     }
 

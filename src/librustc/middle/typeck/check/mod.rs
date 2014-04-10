@@ -1287,10 +1287,10 @@ pub fn check_lit(fcx: &FnCtxt, lit: &ast::Lit) -> ty::t {
     let tcx = fcx.ccx.tcx;
 
     match lit.node {
-        ast::LitStr(..) => ty::mk_str(tcx, ty::vstore_slice(ty::ReStatic)),
+        ast::LitStr(..) => ty::mk_str(tcx, ty::VstoreSlice(ty::ReStatic)),
         ast::LitBinary(..) => {
             ty::mk_vec(tcx, ty::mt{ ty: ty::mk_u8(), mutbl: ast::MutImmutable },
-                       ty::vstore_slice(ty::ReStatic))
+                       ty::VstoreSlice(ty::ReStatic))
         }
         ast::LitChar(_) => ty::mk_char(),
         ast::LitInt(_, t) => ty::mk_mach_int(t),
@@ -3023,7 +3023,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
             check_expr_has_type(fcx, *e, t);
         }
         let typ = ty::mk_vec(tcx, ty::mt {ty: t, mutbl: ast::MutImmutable},
-                             ty::vstore_fixed(args.len()));
+                             ty::VstoreFixed(args.len()));
         fcx.write_ty(id, typ);
       }
       ast::ExprRepeat(element, count_expr) => {
@@ -3040,7 +3040,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         }
         else {
             let t = ty::mk_vec(tcx, ty::mt {ty: t, mutbl: ast::MutImmutable},
-                               ty::vstore_fixed(count));
+                               ty::VstoreFixed(count));
             fcx.write_ty(id, t);
         }
       }
@@ -3855,18 +3855,18 @@ pub fn type_is_c_like_enum(fcx: &FnCtxt, sp: Span, typ: ty::t) -> bool {
 pub fn ast_expr_vstore_to_vstore(fcx: &FnCtxt,
                                  e: &ast::Expr,
                                  v: ast::ExprVstore)
-                              -> ty::vstore {
+                              -> ty::Vstore {
     match v {
-        ast::ExprVstoreUniq => ty::vstore_uniq,
+        ast::ExprVstoreUniq => ty::VstoreUniq,
         ast::ExprVstoreSlice | ast::ExprVstoreMutSlice => {
             match e.node {
                 ast::ExprLit(..) => {
                     // string literals and *empty slices* live in static memory
-                    ty::vstore_slice(ty::ReStatic)
+                    ty::VstoreSlice(ty::ReStatic)
                 }
                 ast::ExprVec(ref elements) if elements.len() == 0 => {
                     // string literals and *empty slices* live in static memory
-                    ty::vstore_slice(ty::ReStatic)
+                    ty::VstoreSlice(ty::ReStatic)
                 }
                 ast::ExprRepeat(..) |
                 ast::ExprVec(..) => {
@@ -3874,11 +3874,11 @@ pub fn ast_expr_vstore_to_vstore(fcx: &FnCtxt,
                     match fcx.tcx().region_maps.temporary_scope(e.id) {
                         Some(scope) => {
                             let r = ty::ReScope(scope);
-                            ty::vstore_slice(r)
+                            ty::VstoreSlice(r)
                         }
                         None => {
                             // this slice occurs in a static somewhere
-                            ty::vstore_slice(ty::ReStatic)
+                            ty::VstoreSlice(ty::ReStatic)
                         }
                     }
                 }

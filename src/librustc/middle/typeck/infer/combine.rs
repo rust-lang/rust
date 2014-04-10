@@ -264,15 +264,15 @@ pub trait Combine {
 
     fn vstores(&self,
                vk: ty::terr_vstore_kind,
-               a: ty::vstore,
-               b: ty::vstore)
-               -> cres<ty::vstore> {
+               a: ty::Vstore,
+               b: ty::Vstore)
+               -> cres<ty::Vstore> {
         debug!("{}.vstores(a={:?}, b={:?})", self.tag(), a, b);
 
         match (a, b) {
-            (ty::vstore_slice(a_r), ty::vstore_slice(b_r)) => {
+            (ty::VstoreSlice(a_r), ty::VstoreSlice(b_r)) => {
                 self.contraregions(a_r, b_r).and_then(|r| {
-                    Ok(ty::vstore_slice(r))
+                    Ok(ty::VstoreSlice(r))
                 })
             }
 

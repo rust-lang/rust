@@ -145,19 +145,19 @@ fn parse_sigil(st: &mut PState) -> ast::Sigil {
     }
 }
 
-fn parse_vstore(st: &mut PState, conv: conv_did) -> ty::vstore {
+fn parse_vstore(st: &mut PState, conv: conv_did) -> ty::Vstore {
     assert_eq!(next(st), '/');
 
     let c = peek(st);
     if '0' <= c && c <= '9' {
         let n = parse_uint(st);
         assert_eq!(next(st), '|');
-        return ty::vstore_fixed(n);
+        return ty::VstoreFixed(n);
     }
 
     match next(st) {
-      '~' => ty::vstore_uniq,
-      '&' => ty::vstore_slice(parse_region(st, conv)),
+      '~' => ty::VstoreUniq,
+      '&' => ty::VstoreSlice(parse_region(st, conv)),
       c => st.tcx.sess.bug(format!("parse_vstore(): bad input '{}'", c))
     }
 }

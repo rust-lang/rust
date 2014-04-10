@@ -823,7 +823,7 @@ impl<'a> get_ty_str_ctxt for e::EncodeContext<'a> {
 
 trait ebml_writer_helpers {
     fn emit_ty(&mut self, ecx: &e::EncodeContext, ty: ty::t);
-    fn emit_vstore(&mut self, ecx: &e::EncodeContext, vstore: ty::vstore);
+    fn emit_vstore(&mut self, ecx: &e::EncodeContext, vstore: ty::Vstore);
     fn emit_tys(&mut self, ecx: &e::EncodeContext, tys: &[ty::t]);
     fn emit_type_param_def(&mut self,
                            ecx: &e::EncodeContext,
@@ -840,7 +840,7 @@ impl<'a> ebml_writer_helpers for Encoder<'a> {
         self.emit_opaque(|this| Ok(e::write_type(ecx, this, ty)));
     }
 
-    fn emit_vstore(&mut self, ecx: &e::EncodeContext, vstore: ty::vstore) {
+    fn emit_vstore(&mut self, ecx: &e::EncodeContext, vstore: ty::Vstore) {
         self.emit_opaque(|this| Ok(e::write_vstore(ecx, this, vstore)));
     }
 

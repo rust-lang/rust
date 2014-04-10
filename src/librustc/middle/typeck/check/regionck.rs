@@ -923,8 +923,8 @@ fn constrain_index(rcx: &mut Rcx,
 
     let r_index_expr = ty::ReScope(index_expr.id);
     match ty::get(indexed_ty).sty {
-        ty::ty_str(ty::vstore_slice(r_ptr)) |
-        ty::ty_vec(_, ty::vstore_slice(r_ptr)) => {
+        ty::ty_str(ty::VstoreSlice(r_ptr)) |
+        ty::ty_vec(_, ty::VstoreSlice(r_ptr)) => {
             rcx.fcx.mk_subr(true, infer::IndexSlice(index_expr.span),
                             r_index_expr, r_ptr);
         }

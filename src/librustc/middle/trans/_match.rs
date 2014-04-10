@@ -1111,7 +1111,7 @@ fn extract_vec_elems<'a>(
         let slice_len = Sub(bcx, len, slice_len_offset);
         let slice_ty = ty::mk_vec(bcx.tcx(),
             ty::mt {ty: vt.unit_ty, mutbl: ast::MutImmutable},
-            ty::vstore_slice(ty::ReStatic)
+            ty::VstoreSlice(ty::ReStatic)
         );
         let scratch = rvalue_scratch_datum(bcx, slice_ty, "");
         Store(bcx, slice_begin,
@@ -1319,7 +1319,7 @@ fn compare_values<'a>(
     }
 
     match ty::get(rhs_t).sty {
-        ty::ty_str(ty::vstore_uniq) => {
+        ty::ty_str(ty::VstoreUniq) => {
             let scratch_lhs = alloca(cx, val_ty(lhs), "__lhs");
             Store(cx, lhs, scratch_lhs);
             let scratch_rhs = alloca(cx, val_ty(rhs), "__rhs");

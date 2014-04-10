@@ -356,7 +356,7 @@ pub fn ast_ty_to_prim_ty(tcx: &ty::ctxt, ast_ty: &ast::Ty) -> Option<ty::t> {
                             tcx.sess.span_err(ast_ty.span,
                                               "bare `str` is not a type");
                             // return /something/ so they can at least get more errors
-                            Some(ty::mk_str(tcx, ty::vstore_uniq))
+                            Some(ty::mk_str(tcx, ty::VstoreUniq))
                         }
                     }
                 }
@@ -386,15 +386,15 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
 
     enum PointerTy {
         Box,
-        VStore(ty::vstore)
+        VStore(ty::Vstore)
     }
     impl PointerTy {
-        fn expect_vstore(&self, tcx: &ty::ctxt, span: Span, ty: &str) -> ty::vstore {
+        fn expect_vstore(&self, tcx: &ty::ctxt, span: Span, ty: &str) -> ty::Vstore {
             match *self {
                 Box => {
                     tcx.sess.span_err(span, format!("managed {} are not supported", ty));
                     // everything can be ~, so this is a worth substitute
-                    ty::vstore_uniq
+                    ty::VstoreUniq
                 }
                 VStore(vst) => vst
             }
@@ -440,8 +440,8 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
                         let result = ast_path_to_trait_ref(
                             this, rscope, trait_def_id, None, path);
                         let trait_store = match ptr_ty {
-                            VStore(ty::vstore_uniq) => ty::UniqTraitStore,
-                            VStore(ty::vstore_slice(r)) => {
+                            VStore(ty::VstoreUniq) => ty::UniqTraitStore,
+                            VStore(ty::VstoreSlice(r)) => {
                                 ty::RegionTraitStore(r)
                             }
                             _ => {
@@ -495,13 +495,13 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
             }
             ast::TyUniq(ty) => {
                 let mt = ast::MutTy { ty: ty, mutbl: ast::MutImmutable };
-                mk_pointer(this, rscope, &mt, VStore(ty::vstore_uniq),
+                mk_pointer(this, rscope, &mt, VStore(ty::VstoreUniq),
                            |tmt| ty::mk_uniq(tcx, tmt.ty))
             }
             ast::TyVec(ty) => {
                 tcx.sess.span_err(ast_ty.span, "bare `[]` is not a type");
                 // return /something/ so they can at least get more errors
-                ty::mk_vec(tcx, ast_ty_to_mt(this, rscope, ty), ty::vstore_uniq)
+                ty::mk_vec(tcx, ast_ty_to_mt(this, rscope, ty), ty::VstoreUniq)
             }
             ast::TyPtr(ref mt) => {
                 ty::mk_ptr(tcx, ast_mt_to_mt(this, rscope, mt))
@@ -509,7 +509,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
             ast::TyRptr(ref region, ref mt) => {
                 let r = opt_ast_region_to_region(this, rscope, ast_ty.span, region);
                 debug!("ty_rptr r={}", r.repr(this.tcx()));
-                mk_pointer(this, rscope, mt, VStore(ty::vstore_slice(r)),
+                mk_pointer(this, rscope, mt, VStore(ty::VstoreSlice(r)),
                            |tmt| ty::mk_rptr(tcx, r, tmt))
             }
             ast::TyTup(ref fields) => {
@@ -612,10 +612,10 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
                         match *r {
                             const_eval::const_int(i) =>
                                 ty::mk_vec(tcx, ast_ty_to_mt(this, rscope, ty),
-                                           ty::vstore_fixed(i as uint)),
+                                           ty::VstoreFixed(i as uint)),
                             const_eval::const_uint(i) =>
                                 ty::mk_vec(tcx, ast_ty_to_mt(this, rscope, ty),
-                                           ty::vstore_fixed(i as uint)),
+                                           ty::VstoreFixed(i as uint)),
                             _ => {
                                 tcx.sess.span_fatal(
                                     ast_ty.span, "expected constant expr for vector length");

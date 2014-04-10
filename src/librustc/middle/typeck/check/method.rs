@@ -770,10 +770,10 @@ impl<'a> LookupContext<'a> {
                      autoderefs: autoderefs+1,
                      autoref: Some(ty::AutoPtr(region, self_mt.mutbl))})
             }
-            ty::ty_vec(self_mt, vstore_slice(_)) => {
+            ty::ty_vec(self_mt, VstoreSlice(_)) => {
                 let region =
                     self.infcx().next_region_var(infer::Autoref(self.span));
-                (ty::mk_vec(tcx, self_mt, vstore_slice(region)),
+                (ty::mk_vec(tcx, self_mt, VstoreSlice(region)),
                  ty::AutoDerefRef {
                      autoderefs: autoderefs,
                      autoref: Some(ty::AutoBorrowVec(region, self_mt.mutbl))})
@@ -821,15 +821,15 @@ impl<'a> LookupContext<'a> {
         let tcx = self.tcx();
         let sty = ty::get(self_ty).sty.clone();
         match sty {
-            ty_vec(mt, vstore_uniq) |
-            ty_vec(mt, vstore_slice(_)) | // NDM(#3148)
-            ty_vec(mt, vstore_fixed(_)) => {
+            ty_vec(mt, VstoreUniq) |
+            ty_vec(mt, VstoreSlice(_)) |
+            ty_vec(mt, VstoreFixed(_)) => {
                 // First try to borrow to a slice
                 let entry = self.search_for_some_kind_of_autorefd_method(
                     AutoBorrowVec, autoderefs, [MutImmutable, MutMutable],
                     |m,r| ty::mk_vec(tcx,
                                      ty::mt {ty:mt.ty, mutbl:m},
-                                     vstore_slice(r)));
+                                     VstoreSlice(r)));
 
                 if entry.is_some() { return entry; }
 
@@ -839,7 +839,7 @@ impl<'a> LookupContext<'a> {
                     |m,r| {
                         let slice_ty = ty::mk_vec(tcx,
                                                   ty::mt {ty:mt.ty, mutbl:m},
-                                                  vstore_slice(r));
+                                                  VstoreSlice(r));
                         // NB: we do not try to autoref to a mutable
                         // pointer. That would be creating a pointer
                         // to a temporary pointer (the borrowed
@@ -849,18 +849,18 @@ impl<'a> LookupContext<'a> {
                     })
             }
 
-            ty_str(vstore_uniq) |
-            ty_str(vstore_fixed(_)) => {
+            ty_str(VstoreUniq) |
+            ty_str(VstoreFixed(_)) => {
                 let entry = self.search_for_some_kind_of_autorefd_method(
                     AutoBorrowVec, autoderefs, [MutImmutable],
-                    |_m,r| ty::mk_str(tcx, vstore_slice(r)));
+                    |_m,r| ty::mk_str(tcx, VstoreSlice(r)));
 
                 if entry.is_some() { return entry; }
 
                 self.search_for_some_kind_of_autorefd_method(
                     AutoBorrowVecRef, autoderefs, [MutImmutable],
                     |m,r| {
-                        let slice_ty = ty::mk_str(tcx, vstore_slice(r));
+                        let slice_ty = ty::mk_str(tcx, VstoreSlice(r));
                         ty::mk_rptr(tcx, r, ty::mt {ty:slice_ty, mutbl:m})
                     })
             }
