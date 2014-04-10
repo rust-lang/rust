@@ -15,17 +15,11 @@
 
 extern crate collections;
 
-use std::cmp::Ord;
-use std::comm;
 use collections::HashMap;
 use std::mem::replace;
 use std::option;
 use std::os;
-use std::io;
-use std::str;
 use std::strbuf::StrBuf;
-use std::task;
-use std::vec;
 
 fn f64_cmp(x: f64, y: f64) -> Ordering {
     // arbitrarily decide that NaNs are larger than everything.
@@ -66,16 +60,14 @@ fn sort_and_fmt(mm: &HashMap<Vec<u8> , uint>, total: uint) -> ~str {
 
    let mut buffer = StrBuf::new();
    for &(ref k, v) in pairs_sorted.iter() {
-       unsafe {
-           buffer.push_str(format!("{} {:0.3f}\n",
-                                   k.as_slice()
-                                    .to_ascii()
-                                    .to_upper()
-                                    .into_str(), v));
-       }
+       buffer.push_str(format!("{} {:0.3f}\n",
+                               k.as_slice()
+                               .to_ascii()
+                               .to_upper()
+                               .into_str(), v));
    }
 
-   return buffer.to_owned_str();
+   return buffer.into_owned();
 }
 
 // given a map, search for the frequency of a pattern

@@ -402,7 +402,7 @@ fn make_command_line(prog: &str, args: &[~str]) -> ~str {
         cmd.push_char(' ');
         append_arg(&mut cmd, *arg);
     }
-    return cmd.to_owned_str();
+    return cmd.into_owned();
 
     fn append_arg(cmd: &mut StrBuf, arg: &str) {
         let quote = arg.chars().any(|c| c == ' ' || c == '\t');
