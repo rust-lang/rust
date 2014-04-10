@@ -910,7 +910,7 @@ impl<'a> mc::Typer for &'a ty::ctxt {
         *self
     }
 
-    fn node_ty(&mut self, id: ast::NodeId) -> mc::McResult<ty::t> {
+    fn node_ty(&self, id: ast::NodeId) -> mc::McResult<ty::t> {
         Ok(ty::node_id_to_type(*self, id))
     }
 
@@ -922,15 +922,15 @@ impl<'a> mc::Typer for &'a ty::ctxt {
         &self.adjustments
     }
 
-    fn is_method_call(&mut self, id: ast::NodeId) -> bool {
+    fn is_method_call(&self, id: ast::NodeId) -> bool {
         self.method_map.borrow().contains_key(&typeck::MethodCall::expr(id))
     }
 
-    fn temporary_scope(&mut self, id: ast::NodeId) -> Option<ast::NodeId> {
+    fn temporary_scope(&self, id: ast::NodeId) -> Option<ast::NodeId> {
         self.region_maps.temporary_scope(id)
     }
 
-    fn upvar_borrow(&mut self, id: ty::UpvarId) -> ty::UpvarBorrow {
+    fn upvar_borrow(&self, id: ty::UpvarId) -> ty::UpvarBorrow {
         self.upvar_borrow_map.borrow().get_copy(&id)
     }
 }

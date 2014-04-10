@@ -381,8 +381,7 @@ impl<'a> GatherLoanCtxt<'a> {
                 Some(method) => {
                     // Treat overloaded autoderefs as if an AutoRef adjustment
                     // was applied on the base type, as that is always the case.
-                    let mut mc = self.bccx.mc();
-                    let cmt = match mc.cat_expr_autoderefd(expr, i) {
+                    let cmt = match self.bccx.mc().cat_expr_autoderefd(expr, i) {
                         Ok(v) => v,
                         Err(()) => self.tcx().sess.span_bug(expr.span, "Err from mc")
                     };
@@ -431,7 +430,7 @@ impl<'a> GatherLoanCtxt<'a> {
                     autoref: Some(ref autoref),
                     autoderefs}) => {
                 self.guarantee_autoderefs(expr, autoderefs);
-                let mut mc = self.bccx.mc();
+                let mc = self.bccx.mc();
                 let cmt = match mc.cat_expr_autoderefd(expr, autoderefs) {
                     Ok(v) => v,
                     Err(()) => self.tcx().sess.span_bug(expr.span, "Err from mc")
@@ -793,7 +792,7 @@ impl<'a> GatherLoanCtxt<'a> {
          * `gather_pat()`.
          */
 
-        let mut mc = self.bccx.mc();
+        let mc = self.bccx.mc();
         for arg in decl.inputs.iter() {
             let arg_ty = ty::node_id_to_type(self.tcx(), arg.pat.id);
 
