@@ -234,7 +234,7 @@ pub fn write_type(ecx: &EncodeContext,
 
 pub fn write_vstore(ecx: &EncodeContext,
                     ebml_w: &mut Encoder,
-                    vstore: ty::vstore) {
+                    vstore: ty::Vstore) {
     let ty_str_ctxt = &tyencode::ctxt {
         diag: ecx.diag,
         ds: def_to_str,

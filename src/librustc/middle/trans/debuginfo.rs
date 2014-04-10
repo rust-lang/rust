@@ -2128,14 +2128,14 @@ fn type_metadata(cx: &CrateContext,
         ty::ty_str(ref vstore) => {
             let i8_t = ty::mk_i8();
             match *vstore {
-                ty::vstore_fixed(len) => {
+                ty::VstoreFixed(len) => {
                     fixed_vec_metadata(cx, i8_t, len, usage_site_span)
                 },
-                ty::vstore_uniq  => {
+                ty::VstoreUniq  => {
                     let vec_metadata = vec_metadata(cx, i8_t, usage_site_span);
                     pointer_type_metadata(cx, t, vec_metadata)
                 }
-                ty::vstore_slice(_region) => {
+                ty::VstoreSlice(_region) => {
                     vec_slice_metadata(cx, t, i8_t, usage_site_span)
                 }
             }
@@ -2148,14 +2148,14 @@ fn type_metadata(cx: &CrateContext,
         },
         ty::ty_vec(ref mt, ref vstore) => {
             match *vstore {
-                ty::vstore_fixed(len) => {
+                ty::VstoreFixed(len) => {
                     fixed_vec_metadata(cx, mt.ty, len, usage_site_span)
                 }
-                ty::vstore_uniq => {
+                ty::VstoreUniq => {
                     let vec_metadata = vec_metadata(cx, mt.ty, usage_site_span);
                     pointer_type_metadata(cx, t, vec_metadata)
                 }
-                ty::vstore_slice(_) => {
+                ty::VstoreSlice(_) => {
                     vec_slice_metadata(cx, t, mt.ty, usage_site_span)
                 }
             }

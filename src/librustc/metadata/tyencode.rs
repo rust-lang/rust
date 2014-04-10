@@ -204,12 +204,12 @@ fn enc_bound_region(w: &mut MemWriter, cx: &ctxt, br: ty::BoundRegion) {
     }
 }
 
-pub fn enc_vstore(w: &mut MemWriter, cx: &ctxt, v: ty::vstore) {
+pub fn enc_vstore(w: &mut MemWriter, cx: &ctxt, v: ty::Vstore) {
     mywrite!(w, "/");
     match v {
-        ty::vstore_fixed(u) => mywrite!(w, "{}|", u),
-        ty::vstore_uniq => mywrite!(w, "~"),
-        ty::vstore_slice(r) => {
+        ty::VstoreFixed(u) => mywrite!(w, "{}|", u),
+        ty::VstoreUniq => mywrite!(w, "~"),
+        ty::VstoreSlice(r) => {
             mywrite!(w, "&");
             enc_region(w, cx, r);
         }

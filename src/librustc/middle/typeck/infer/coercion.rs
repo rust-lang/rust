@@ -67,7 +67,7 @@ we may want to adjust precisely when coercions occur.
 
 use middle::ty::{AutoPtr, AutoBorrowVec, AutoBorrowFn, AutoBorrowObj};
 use middle::ty::{AutoDerefRef};
-use middle::ty::{vstore_slice, vstore_uniq};
+use middle::ty::{VstoreSlice, VstoreUniq};
 use middle::ty::{mt};
 use middle::ty;
 use middle::typeck::infer::{CoerceResult, resolve_type, Coercion};
@@ -108,13 +108,13 @@ impl<'f> Coerce<'f> {
                 });
             }
 
-            ty::ty_str(vstore_slice(_)) => {
+            ty::ty_str(VstoreSlice(_)) => {
                 return self.unpack_actual_value(a, |sty_a| {
                     self.coerce_borrowed_string(a, sty_a, b)
                 });
             }
 
-            ty::ty_vec(mt_b, vstore_slice(_)) => {
+            ty::ty_vec(mt_b, VstoreSlice(_)) => {
                 return self.unpack_actual_value(a, |sty_a| {
                     self.coerce_borrowed_vector(a, sty_a, b, mt_b)
                 });
@@ -260,14 +260,14 @@ impl<'f> Coerce<'f> {
                b.inf_str(self.get_ref().infcx));
 
         match *sty_a {
-            ty::ty_str(vstore_uniq) => {}
+            ty::ty_str(VstoreUniq) => {}
             _ => {
                 return self.subtype(a, b);
             }
         };
 
         let r_a = self.get_ref().infcx.next_region_var(Coercion(self.get_ref().trace));
-        let a_borrowed = ty::mk_str(self.get_ref().infcx.tcx, vstore_slice(r_a));
+        let a_borrowed = ty::mk_str(self.get_ref().infcx.tcx, VstoreSlice(r_a));
         if_ok!(self.subtype(a_borrowed, b));
         Ok(Some(@AutoDerefRef(AutoDerefRef {
             autoderefs: 0,
@@ -296,7 +296,7 @@ impl<'f> Coerce<'f> {
 
         let a_borrowed = ty::mk_vec(self.get_ref().infcx.tcx,
                                     mt {ty: ty_inner, mutbl: mt_b.mutbl},
-                                    vstore_slice(r_borrow));
+                                    VstoreSlice(r_borrow));
         if_ok!(sub.tys(a_borrowed, b));
         Ok(Some(@AutoDerefRef(AutoDerefRef {
             autoderefs: 0,

@@ -620,8 +620,8 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
                                                          expected) {
           ty::ty_vec(mt, vstore) => {
             let region_var = match vstore {
-                ty::vstore_slice(r) => r,
-                ty::vstore_uniq => {
+                ty::VstoreSlice(r) => r,
+                ty::VstoreUniq => {
                     fcx.type_error_message(pat.span,
                                            |_| {
                                             ~"unique vector patterns are no \
@@ -631,7 +631,7 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
                                            None);
                     default_region_var
                 }
-                ty::vstore_fixed(_) => {
+                ty::VstoreFixed(_) => {
                     default_region_var
                 }
             };
@@ -668,7 +668,7 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
             Some(slice_pat) => {
                 let slice_ty = ty::mk_vec(tcx,
                     ty::mt {ty: elt_type.ty, mutbl: elt_type.mutbl},
-                    ty::vstore_slice(region_var)
+                    ty::VstoreSlice(region_var)
                 );
                 check_pat(pcx, slice_pat, slice_ty);
             }

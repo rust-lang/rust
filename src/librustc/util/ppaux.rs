@@ -205,24 +205,24 @@ pub fn mt_to_str_wrapped(cx: &ctxt, before: &str, m: &mt, after: &str) -> ~str {
     return format!("{}{}{}{}", mstr, before, ty_to_str(cx, m.ty), after);
 }
 
-pub fn vstore_to_str(cx: &ctxt, vs: ty::vstore) -> ~str {
+pub fn vstore_to_str(cx: &ctxt, vs: ty::Vstore) -> ~str {
     match vs {
-      ty::vstore_fixed(n) => format!("{}", n),
-      ty::vstore_uniq => ~"~",
-      ty::vstore_slice(r) => region_ptr_to_str(cx, r)
+        ty::VstoreFixed(n) => format!("{}", n),
+        ty::VstoreUniq => ~"~",
+        ty::VstoreSlice(r) => region_ptr_to_str(cx, r)
     }
 }
 
 pub fn trait_store_to_str(cx: &ctxt, s: ty::TraitStore) -> ~str {
     match s {
-      ty::UniqTraitStore => ~"~",
-      ty::RegionTraitStore(r) => region_ptr_to_str(cx, r)
+        ty::UniqTraitStore => ~"~",
+        ty::RegionTraitStore(r) => region_ptr_to_str(cx, r)
     }
 }
 
-pub fn vstore_ty_to_str(cx: &ctxt, mt: &mt, vs: ty::vstore) -> ~str {
+pub fn vstore_ty_to_str(cx: &ctxt, mt: &mt, vs: ty::Vstore) -> ~str {
     match vs {
-        ty::vstore_fixed(_) => {
+        ty::VstoreFixed(_) => {
             format!("[{}, .. {}]", mt_to_str(cx, mt), vstore_to_str(cx, vs))
         }
         _ => {
@@ -885,7 +885,7 @@ impl Repr for ty::TraitStore {
     }
 }
 
-impl Repr for ty::vstore {
+impl Repr for ty::Vstore {
     fn repr(&self, tcx: &ctxt) -> ~str {
         vstore_to_str(tcx, *self)
     }

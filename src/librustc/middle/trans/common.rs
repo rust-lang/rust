@@ -712,7 +712,7 @@ pub fn mono_data_classify(t: ty::t) -> MonoDataClass {
     match ty::get(t).sty {
         ty::ty_float(_) => MonoFloat,
         ty::ty_rptr(..) | ty::ty_uniq(..) | ty::ty_box(..) |
-        ty::ty_str(ty::vstore_uniq) | ty::ty_vec(_, ty::vstore_uniq) |
+        ty::ty_str(ty::VstoreUniq) | ty::ty_vec(_, ty::VstoreUniq) |
         ty::ty_bare_fn(..) => MonoNonNull,
         // Is that everything?  Would closures or slices qualify?
         _ => MonoBits

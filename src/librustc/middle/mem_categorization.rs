@@ -170,14 +170,14 @@ pub fn opt_deref_kind(t: ty::t) -> Option<deref_kind> {
     match ty::get(t).sty {
         ty::ty_uniq(_) |
         ty::ty_trait(~ty::TyTrait { store: ty::UniqTraitStore, .. }) |
-        ty::ty_vec(_, ty::vstore_uniq) |
-        ty::ty_str(ty::vstore_uniq) |
+        ty::ty_vec(_, ty::VstoreUniq) |
+        ty::ty_str(ty::VstoreUniq) |
         ty::ty_closure(~ty::ClosureTy {sigil: ast::OwnedSigil, ..}) => {
             Some(deref_ptr(OwnedPtr))
         }
 
         ty::ty_rptr(r, mt) |
-        ty::ty_vec(mt, ty::vstore_slice(r)) => {
+        ty::ty_vec(mt, ty::VstoreSlice(r)) => {
             let kind = ty::BorrowKind::from_mutbl(mt.mutbl);
             Some(deref_ptr(BorrowedPtr(kind, r)))
         }
@@ -187,7 +187,7 @@ pub fn opt_deref_kind(t: ty::t) -> Option<deref_kind> {
             Some(deref_ptr(BorrowedPtr(kind, r)))
         }
 
-        ty::ty_str(ty::vstore_slice(r)) |
+        ty::ty_str(ty::VstoreSlice(r)) |
         ty::ty_closure(~ty::ClosureTy {sigil: ast::BorrowedSigil,
                                       region: r, ..}) => {
             Some(deref_ptr(BorrowedPtr(ty::ImmBorrow, r)))
@@ -206,8 +206,8 @@ pub fn opt_deref_kind(t: ty::t) -> Option<deref_kind> {
             Some(deref_interior(InteriorField(PositionalField(0))))
         }
 
-        ty::ty_vec(_, ty::vstore_fixed(_)) |
-        ty::ty_str(ty::vstore_fixed(_)) => {
+        ty::ty_vec(_, ty::VstoreFixed(_)) |
+        ty::ty_str(ty::VstoreFixed(_)) => {
             Some(deref_interior(InteriorElement(element_kind(t))))
         }
 
@@ -882,7 +882,7 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
              */
 
             match ty::get(slice_ty).sty {
-                ty::ty_vec(slice_mt, ty::vstore_slice(slice_r)) => {
+                ty::ty_vec(slice_mt, ty::VstoreSlice(slice_r)) => {
                     (slice_mt.mutbl, slice_r)
                 }
 
