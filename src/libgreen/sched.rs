@@ -49,7 +49,7 @@ pub struct Scheduler {
     work_queue: deque::Worker<~GreenTask>,
     /// Work queues for the other schedulers. These are created by
     /// cloning the core work queues.
-    work_queues: ~[deque::Stealer<~GreenTask>],
+    work_queues: Vec<deque::Stealer<~GreenTask>>,
     /// The queue of incoming messages from other schedulers.
     /// These are enqueued by SchedHandles after which a remote callback
     /// is triggered to handle the message.
@@ -125,7 +125,7 @@ impl Scheduler {
     pub fn new(pool_id: uint,
                event_loop: ~EventLoop:Send,
                work_queue: deque::Worker<~GreenTask>,
-               work_queues: ~[deque::Stealer<~GreenTask>],
+               work_queues: Vec<deque::Stealer<~GreenTask>>,
                sleeper_list: SleeperList,
                state: TaskState)
         -> Scheduler {
@@ -138,7 +138,7 @@ impl Scheduler {
     pub fn new_special(pool_id: uint,
                        event_loop: ~EventLoop:Send,
                        work_queue: deque::Worker<~GreenTask>,
-                       work_queues: ~[deque::Stealer<~GreenTask>],
+                       work_queues: Vec<deque::Stealer<~GreenTask>>,
                        sleeper_list: SleeperList,
                        run_anything: bool,
                        friend: Option<SchedHandle>,
@@ -502,7 +502,7 @@ impl Scheduler {
         let len = work_queues.len();
         let start_index = self.rng.gen_range(0, len);
         for index in range(0, len).map(|i| (i + start_index) % len) {
-            match work_queues[index].steal() {
+            match work_queues.get_mut(index).steal() {
                 deque::Data(task) => {
                     rtdebug!("found task by stealing");
                     return Some(task)
@@ -1137,7 +1137,7 @@ mod test {
             let mut pool = BufferPool::new();
             let (normal_worker, normal_stealer) = pool.deque();
             let (special_worker, special_stealer) = pool.deque();
-            let queues = ~[normal_stealer, special_stealer];
+            let queues = vec![normal_stealer, special_stealer];
             let (_p, state) = TaskState::new();
 
             // Our normal scheduler
@@ -1326,7 +1326,7 @@ mod test {
     #[test]
     fn multithreading() {
         run(proc() {
-            let mut rxs = ~[];
+            let mut rxs = vec![];
             for _ in range(0, 10) {
                 let (tx, rx) = channel();
                 spawn(proc() {

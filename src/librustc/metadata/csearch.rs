@@ -28,7 +28,7 @@ use syntax::parse::token;
 pub struct StaticMethodInfo {
     pub ident: ast::Ident,
     pub def_id: ast::DefId,
-    pub purity: ast::Purity,
+    pub fn_style: ast::FnStyle,
     pub vis: ast::Visibility,
 }
 

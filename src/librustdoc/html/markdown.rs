@@ -133,7 +133,7 @@ pub fn render(w: &mut io::Writer, s: &str, print_toc: bool) -> fmt::Result {
             slice::raw::buf_as_slice((*text).data, (*text).size as uint, |text| {
                 let text = str::from_utf8(text).unwrap();
                 let mut lines = text.lines().filter(|l| stripped_filtered_line(*l).is_none());
-                let text = lines.collect::<~[&str]>().connect("\n");
+                let text = lines.collect::<Vec<&str>>().connect("\n");
 
                 let buf = buf {
                     data: text.as_bytes().as_ptr(),
@@ -186,7 +186,7 @@ pub fn render(w: &mut io::Writer, s: &str, print_toc: bool) -> fmt::Result {
                 Some(s) => s.to_lower().into_str(),
                 None => s.to_owned()
             }
-        }).collect::<~[~str]>().connect("-");
+        }).collect::<Vec<~str>>().connect("-");
 
         let opaque = unsafe {&mut *(opaque as *mut my_opaque)};
 
@@ -285,7 +285,7 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
                 let tests = &mut *(opaque as *mut ::test::Collector);
                 let text = str::from_utf8(text).unwrap();
                 let mut lines = text.lines().map(|l| stripped_filtered_line(l).unwrap_or(l));
-                let text = lines.collect::<~[&str]>().connect("\n");
+                let text = lines.collect::<Vec<&str>>().connect("\n");
                 tests.add_test(text, should_fail, no_run, ignore);
             })
         }

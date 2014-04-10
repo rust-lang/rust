@@ -117,13 +117,13 @@ mod tests {
             words.push(r.gen_vec::<u8>(range));
         }
         for _ in range(0, 20) {
-            let mut input = ~[];
+            let mut input = vec![];
             for _ in range(0, 2000) {
                 input.push_all(r.choose(words.as_slice()).as_slice());
             }
             debug!("de/inflate of {} bytes of random word-sequences",
                    input.len());
-            let cmp = deflate_bytes(input).expect("deflation failed");
+            let cmp = deflate_bytes(input.as_slice()).expect("deflation failed");
             let out = inflate_bytes(cmp.as_slice()).expect("inflation failed");
             debug!("{} bytes deflated to {} ({:.1f}% size)",
                    input.len(), cmp.len(),

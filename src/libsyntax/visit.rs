@@ -29,7 +29,7 @@ use owned_slice::OwnedSlice;
 
 pub enum FnKind<'a> {
     // fn foo() or extern "Abi" fn foo()
-    FkItemFn(Ident, &'a Generics, Purity, Abi),
+    FkItemFn(Ident, &'a Generics, FnStyle, Abi),
 
     // fn foo(&self)
     FkMethod(Ident, &'a Generics, &'a Method),
@@ -207,8 +207,8 @@ pub fn walk_item<E: Clone, V: Visitor<E>>(visitor: &mut V, item: &Item, env: E) 
             visitor.visit_ty(typ, env.clone());
             visitor.visit_expr(expr, env);
         }
-        ItemFn(declaration, purity, abi, ref generics, body) => {
-            visitor.visit_fn(&FkItemFn(item.ident, generics, purity, abi),
+        ItemFn(declaration, fn_style, abi, ref generics, body) => {
+            visitor.visit_fn(&FkItemFn(item.ident, generics, fn_style, abi),
                              declaration,
                              body,
                              item.span,

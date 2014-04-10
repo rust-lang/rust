@@ -449,12 +449,12 @@ fn parse_hex(st: &mut PState) -> uint {
     };
 }
 
-fn parse_purity(c: char) -> Purity {
+fn parse_fn_style(c: char) -> FnStyle {
     match c {
         'u' => UnsafeFn,
-        'i' => ImpureFn,
+        'n' => NormalFn,
         'c' => ExternFn,
-        _ => fail!("parse_purity: bad purity {}", c)
+        _ => fail!("parse_fn_style: bad fn_style {}", c)
     }
 }
 
@@ -476,13 +476,13 @@ fn parse_onceness(c: char) -> ast::Onceness {
 
 fn parse_closure_ty(st: &mut PState, conv: conv_did) -> ty::ClosureTy {
     let sigil = parse_sigil(st);
-    let purity = parse_purity(next(st));
+    let fn_style = parse_fn_style(next(st));
     let onceness = parse_onceness(next(st));
     let region = parse_region(st, |x,y| conv(x,y));
     let bounds = parse_bounds(st, |x,y| conv(x,y));
     let sig = parse_sig(st, |x,y| conv(x,y));
     ty::ClosureTy {
-        purity: purity,
+        fn_style: fn_style,
         sigil: sigil,
         onceness: onceness,
         region: region,
@@ -492,11 +492,11 @@ fn parse_closure_ty(st: &mut PState, conv: conv_did) -> ty::ClosureTy {
 }
 
 fn parse_bare_fn_ty(st: &mut PState, conv: conv_did) -> ty::BareFnTy {
-    let purity = parse_purity(next(st));
+    let fn_style = parse_fn_style(next(st));
     let abi = parse_abi_set(st);
     let sig = parse_sig(st, |x,y| conv(x,y));
     ty::BareFnTy {
-        purity: purity,
+        fn_style: fn_style,
         abi: abi,
         sig: sig
     }

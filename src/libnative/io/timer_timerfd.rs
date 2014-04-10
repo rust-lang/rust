@@ -76,7 +76,7 @@ fn helper(input: libc::c_int, messages: Receiver<Req>) {
 
     add(efd, input);
     let events: [imp::epoll_event, ..16] = unsafe { mem::init() };
-    let mut list: ~[(libc::c_int, Sender<()>, bool)] = ~[];
+    let mut list: Vec<(libc::c_int, Sender<()>, bool)> = vec![];
     'outer: loop {
         let n = match unsafe {
             imp::epoll_wait(efd, events.as_ptr(),
@@ -104,9 +104,9 @@ fn helper(input: libc::c_int, messages: Receiver<Req>) {
                 //      times?
                 let _ = FileDesc::new(fd, false).inner_read(bits).unwrap();
                 let (remove, i) = {
-                    match list.bsearch(|&(f, _, _)| f.cmp(&fd)) {
+                    match list.as_slice().bsearch(|&(f, _, _)| f.cmp(&fd)) {
                         Some(i) => {
-                            let (_, ref c, oneshot) = list[i];
+                            let (_, ref c, oneshot) = *list.get(i);
                             (!c.try_send(()) || oneshot, i)
                         }
                         None => fail!("fd not active: {}", fd),
@@ -128,9 +128,9 @@ fn helper(input: libc::c_int, messages: Receiver<Req>) {
 
                     // If we haven't previously seen the file descriptor, then
                     // we need to add it to the epoll set.
-                    match list.bsearch(|&(f, _, _)| f.cmp(&fd)) {
+                    match list.as_slice().bsearch(|&(f, _, _)| f.cmp(&fd)) {
                         Some(i) => {
-                            drop(mem::replace(&mut list[i], (fd, chan, one)));
+                            drop(mem::replace(list.get_mut(i), (fd, chan, one)));
                         }
                         None => {
                             match list.iter().position(|&(f, _, _)| f >= fd) {
@@ -150,7 +150,7 @@ fn helper(input: libc::c_int, messages: Receiver<Req>) {
                 }
 
                 Data(RemoveTimer(fd, chan)) => {
-                    match list.bsearch(|&(f, _, _)| f.cmp(&fd)) {
+                    match list.as_slice().bsearch(|&(f, _, _)| f.cmp(&fd)) {
                         Some(i) => {
                             drop(list.remove(i));
                             del(efd, fd);

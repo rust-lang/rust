@@ -152,13 +152,13 @@ impl FsRequest {
     }
 
     pub fn readdir(loop_: &Loop, path: &CString, flags: c_int)
-        -> Result<~[Path], UvError>
+        -> Result<Vec<Path>, UvError>
     {
         execute(|req, cb| unsafe {
             uvll::uv_fs_readdir(loop_.handle,
                                 req, path.with_ref(|p| p), flags, cb)
         }).map(|req| unsafe {
-            let mut paths = ~[];
+            let mut paths = vec!();
             let path = CString::new(path.with_ref(|p| p), false);
             let parent = Path::new(path);
             let _ = c_str::from_c_multistring(req.get_ptr() as *libc::c_char,

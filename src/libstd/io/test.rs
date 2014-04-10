@@ -39,7 +39,6 @@ macro_rules! iotest (
             use io::process::*;
             use unstable::running_on_valgrind;
             use str;
-            use util;
 
             fn f() $b
 

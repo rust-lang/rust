@@ -323,10 +323,10 @@ pub fn mkdir(p: &CString, _mode: io::FilePermission) -> IoResult<()> {
     })
 }
 
-pub fn readdir(p: &CString) -> IoResult<~[Path]> {
-    use rt::global_heap::malloc_raw;
+pub fn readdir(p: &CString) -> IoResult<Vec<Path>> {
+    use std::rt::global_heap::malloc_raw;
 
-    fn prune(root: &CString, dirs: ~[Path]) -> ~[Path] {
+    fn prune(root: &CString, dirs: Vec<Path>) -> Vec<Path> {
         let root = unsafe { CString::new(root.with_ref(|p| p), false) };
         let root = Path::new(root);
 
@@ -346,7 +346,7 @@ pub fn readdir(p: &CString) -> IoResult<~[Path]> {
         let wfd_ptr = malloc_raw(rust_list_dir_wfd_size() as uint);
         let find_handle = libc::FindFirstFileW(path_ptr, wfd_ptr as libc::HANDLE);
         if find_handle as libc::c_int != libc::INVALID_HANDLE_VALUE {
-            let mut paths = ~[];
+            let mut paths = vec!();
             let mut more_files = 1 as libc::c_int;
             while more_files != 0 {
                 let fp_buf = rust_list_dir_wfd_fp_buf(wfd_ptr as *c_void);

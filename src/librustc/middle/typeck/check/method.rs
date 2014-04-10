@@ -1163,7 +1163,7 @@ impl<'a> LookupContext<'a> {
         let transformed_self_ty = *fn_sig.inputs.get(0);
         let fty = ty::mk_bare_fn(tcx, ty::BareFnTy {
             sig: fn_sig,
-            purity: bare_fn_ty.purity,
+            fn_style: bare_fn_ty.fn_style,
             abi: bare_fn_ty.abi.clone(),
         });
         debug!("after replacing bound regions, fty={}", self.ty_to_str(fty));

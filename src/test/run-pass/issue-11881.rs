@@ -8,13 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate ser = "serialize";
+extern crate serialize;
 
-use serialize = self::ser;
- //necessary for deriving(Encodable)
-use ser::{Encodable, Encoder};
-use ser::json;
-use ser::ebml::writer;
+use serialize::{Encodable, Encoder};
+use serialize::json;
+use serialize::ebml::writer;
 use std::io::MemWriter;
 use std::str::from_utf8_owned;
 

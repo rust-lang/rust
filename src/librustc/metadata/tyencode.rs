@@ -332,9 +332,9 @@ fn enc_sigil(w: &mut MemWriter, sigil: Sigil) {
     }
 }
 
-fn enc_purity(w: &mut MemWriter, p: Purity) {
+fn enc_fn_style(w: &mut MemWriter, p: FnStyle) {
     match p {
-        ImpureFn => mywrite!(w, "i"),
+        NormalFn => mywrite!(w, "n"),
         UnsafeFn => mywrite!(w, "u"),
         ExternFn => mywrite!(w, "c")
     }
@@ -354,14 +354,14 @@ fn enc_onceness(w: &mut MemWriter, o: Onceness) {
 }
 
 pub fn enc_bare_fn_ty(w: &mut MemWriter, cx: &ctxt, ft: &ty::BareFnTy) {
-    enc_purity(w, ft.purity);
+    enc_fn_style(w, ft.fn_style);
     enc_abi(w, ft.abi);
     enc_fn_sig(w, cx, &ft.sig);
 }
 
 fn enc_closure_ty(w: &mut MemWriter, cx: &ctxt, ft: &ty::ClosureTy) {
     enc_sigil(w, ft.sigil);
-    enc_purity(w, ft.purity);
+    enc_fn_style(w, ft.fn_style);
     enc_onceness(w, ft.onceness);
     enc_region(w, cx, ft.region);
     let bounds = ty::ParamBounds {builtin_bounds: ft.bounds,
