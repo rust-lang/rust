@@ -81,7 +81,7 @@ many locations.
 #### Strings
 
 In a post-DST world, the string type will actually be a library-defined type,
-`Str` (or similarly named). Strings will no longer be a lanuage item or a
+`Str` (or similarly named). Strings will no longer be a lanuage feature or a
 language-defined type. This implies that any methods on strings must be in the
 same crate that defined the `Str` type, or done through extension traits.
 
@@ -129,7 +129,7 @@ Inclusion of this module is the reason why I/O is included in the module as well
 to no overhead required in terms of dependencies.
 
 Neither `print!` nor `format!` macros to be a part of this library, but the
-`write!` macro to be present.
+`write!` macro would be present.
 
 #### I/O
 
@@ -397,7 +397,8 @@ various environments seems beneficial.
 * Compile times. It's possible that having so many upstream crates for each rust
   crate will increase compile times through reading metadata and invoking the
   system linker. Would sharding crates still be worth it? Could possible
-  problems that arise be overcome?
+  problems that arise be overcome? Would extra monomorphization in all these
+  crates end up causing more binary bloat?
 
 * Binary bloat. Another possible side effect of having many upstream crates
   would be increasing binary bloat of each rust program. Our current linkage
