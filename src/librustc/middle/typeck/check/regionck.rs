@@ -158,7 +158,6 @@ macro_rules! ignore_err(
 
 pub struct Rcx<'a> {
     fcx: &'a FnCtxt<'a>,
-    errors_reported: uint,
 
     // id of innermost fn or loop
     repeating_scope: ast::NodeId,
@@ -294,8 +293,7 @@ impl<'a, 'b> mc::Typer for &'a mut Rcx<'b> {
 }
 
 pub fn regionck_expr(fcx: &FnCtxt, e: &ast::Expr) {
-    let mut rcx = Rcx { fcx: fcx, errors_reported: 0,
-                         repeating_scope: e.id };
+    let mut rcx = Rcx { fcx: fcx, repeating_scope: e.id };
     let rcx = &mut rcx;
     if fcx.err_count_since_creation() == 0 {
         // regionck assumes typeck succeeded
@@ -305,8 +303,7 @@ pub fn regionck_expr(fcx: &FnCtxt, e: &ast::Expr) {
 }
 
 pub fn regionck_fn(fcx: &FnCtxt, blk: &ast::Block) {
-    let mut rcx = Rcx { fcx: fcx, errors_reported: 0,
-                         repeating_scope: blk.id };
+    let mut rcx = Rcx { fcx: fcx, repeating_scope: blk.id };
     let rcx = &mut rcx;
     if fcx.err_count_since_creation() == 0 {
         // regionck assumes typeck succeeded
@@ -951,8 +948,7 @@ fn constrain_regions_in_type_of_node(
     rcx: &mut Rcx,
     id: ast::NodeId,
     minimum_lifetime: ty::Region,
-    origin: infer::SubregionOrigin) -> bool
-{
+    origin: infer::SubregionOrigin) {
     //! Guarantees that any lifetimes which appear in the type of
     //! the node `id` (after applying adjustments) are valid for at
     //! least `minimum_lifetime`
@@ -970,15 +966,14 @@ fn constrain_regions_in_type_of_node(
             ty={}, ty0={}, id={}, minimum_lifetime={:?})",
            ty_to_str(tcx, ty), ty_to_str(tcx, ty0),
            id, minimum_lifetime);
-    constrain_regions_in_type(rcx, minimum_lifetime, origin, ty)
+    constrain_regions_in_type(rcx, minimum_lifetime, origin, ty);
 }
 
 fn constrain_regions_in_type(
     rcx: &mut Rcx,
     minimum_lifetime: ty::Region,
     origin: infer::SubregionOrigin,
-    ty: ty::t) -> bool
-{
+    ty: ty::t) {
     /*!
      * Requires that any regions which appear in `ty` must be
      * superregions of `minimum_lifetime`.  Also enforces the constraint
@@ -993,7 +988,6 @@ fn constrain_regions_in_type(
      * code that R corresponds to."
      */
 
-    let e = rcx.errors_reported;
     let tcx = rcx.fcx.ccx.tcx;
 
     debug!("constrain_regions_in_type(minimum_lifetime={}, ty={})",
@@ -1020,8 +1014,6 @@ fn constrain_regions_in_type(
                 r_sub, r_sup);
         }
     });
-
-    return e == rcx.errors_reported;
 }
 
 fn link_addr_of(rcx: &mut Rcx, expr: &ast::Expr,
