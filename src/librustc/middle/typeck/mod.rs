@@ -171,11 +171,11 @@ impl MethodCall {
 
 // maps from an expression id that corresponds to a method call to the details
 // of the method to be invoked
-pub type MethodMap = @RefCell<FnvHashMap<MethodCall, MethodCallee>>;
+pub type MethodMap = RefCell<FnvHashMap<MethodCall, MethodCallee>>;
 
-pub type vtable_param_res = @Vec<vtable_origin> ;
+pub type vtable_param_res = Vec<vtable_origin>;
 // Resolutions for bounds of all parameters, left to right, for a given path.
-pub type vtable_res = @Vec<vtable_param_res> ;
+pub type vtable_res = Vec<vtable_param_res>;
 
 #[deriving(Clone)]
 pub enum vtable_origin {
@@ -184,7 +184,7 @@ pub enum vtable_origin {
       from whence comes the vtable, and tys are the type substs.
       vtable_res is the vtable itself
      */
-    vtable_static(ast::DefId, Vec<ty::t> , vtable_res),
+    vtable_static(ast::DefId, Vec<ty::t>, vtable_res),
 
     /*
       Dynamic vtable, comes from a parameter that has a bound on it:
@@ -215,7 +215,7 @@ impl Repr for vtable_origin {
     }
 }
 
-pub type vtable_map = @RefCell<FnvHashMap<MethodCall, vtable_res>>;
+pub type vtable_map = RefCell<FnvHashMap<MethodCall, vtable_res>>;
 
 
 // Information about the vtable resolutions for a trait impl.

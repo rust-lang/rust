@@ -146,8 +146,8 @@ fn encode_impl_vtables(ebml_w: &mut Encoder,
                        ecx: &EncodeContext,
                        vtables: &typeck::impl_res) {
     ebml_w.start_tag(tag_item_impl_vtables);
-    astencode::encode_vtable_res(ecx, ebml_w, vtables.trait_vtables);
-    astencode::encode_vtable_param_res(ecx, ebml_w, vtables.self_vtables);
+    astencode::encode_vtable_res(ecx, ebml_w, &vtables.trait_vtables);
+    astencode::encode_vtable_param_res(ecx, ebml_w, &vtables.self_vtables);
     ebml_w.end_tag();
 }
 

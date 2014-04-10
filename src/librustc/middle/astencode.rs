@@ -658,7 +658,7 @@ impl tr for MethodOrigin {
 fn encode_vtable_res_with_key(ecx: &e::EncodeContext,
                               ebml_w: &mut Encoder,
                               autoderef: u32,
-                              dr: typeck::vtable_res) {
+                              dr: &typeck::vtable_res) {
     ebml_w.emit_struct("VtableWithKey", 2, |ebml_w| {
         ebml_w.emit_struct_field("autoderef", 0u, |ebml_w| {
             autoderef.encode(ebml_w)
@@ -671,19 +671,19 @@ fn encode_vtable_res_with_key(ecx: &e::EncodeContext,
 
 pub fn encode_vtable_res(ecx: &e::EncodeContext,
                      ebml_w: &mut Encoder,
-                     dr: typeck::vtable_res) {
+                     dr: &typeck::vtable_res) {
     // can't autogenerate this code because automatic code of
     // ty::t doesn't work, and there is no way (atm) to have
     // hand-written encoding routines combine with auto-generated
     // ones.  perhaps we should fix this.
     ebml_w.emit_from_vec(dr.as_slice(), |ebml_w, param_tables| {
-        Ok(encode_vtable_param_res(ecx, ebml_w, *param_tables))
+        Ok(encode_vtable_param_res(ecx, ebml_w, param_tables))
     }).unwrap()
 }
 
 pub fn encode_vtable_param_res(ecx: &e::EncodeContext,
                      ebml_w: &mut Encoder,
-                     param_tables: typeck::vtable_param_res) {
+                     param_tables: &typeck::vtable_param_res) {
     ebml_w.emit_from_vec(param_tables.as_slice(), |ebml_w, vtable_origin| {
         Ok(encode_vtable_origin(ecx, ebml_w, vtable_origin))
     }).unwrap()
@@ -695,7 +695,7 @@ pub fn encode_vtable_origin(ecx: &e::EncodeContext,
                         vtable_origin: &typeck::vtable_origin) {
     ebml_w.emit_enum("vtable_origin", |ebml_w| {
         match *vtable_origin {
-          typeck::vtable_static(def_id, ref tys, vtable_res) => {
+          typeck::vtable_static(def_id, ref tys, ref vtable_res) => {
             ebml_w.emit_enum_variant("vtable_static", 0u, 3u, |ebml_w| {
                 ebml_w.emit_enum_variant_arg(0u, |ebml_w| {
                     Ok(ebml_w.emit_def_id(def_id))
@@ -756,21 +756,15 @@ impl<'a> vtable_decoder_helpers for reader::Decoder<'a> {
     fn read_vtable_res(&mut self,
                        tcx: &ty::ctxt, cdata: @cstore::crate_metadata)
                       -> typeck::vtable_res {
-        @self.read_to_vec(|this|
-                          Ok(this.read_vtable_param_res(tcx, cdata)))
-             .unwrap()
-             .move_iter()
-             .collect()
+        self.read_to_vec(|this| Ok(this.read_vtable_param_res(tcx, cdata)))
+             .unwrap().move_iter().collect()
     }
 
     fn read_vtable_param_res(&mut self,
                              tcx: &ty::ctxt, cdata: @cstore::crate_metadata)
                       -> typeck::vtable_param_res {
-        @self.read_to_vec(|this|
-                          Ok(this.read_vtable_origin(tcx, cdata)))
-             .unwrap()
-             .move_iter()
-             .collect()
+        self.read_to_vec(|this| Ok(this.read_vtable_origin(tcx, cdata)))
+             .unwrap().move_iter().collect()
     }
 
     fn read_vtable_origin(&mut self,
@@ -1063,7 +1057,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
         ebml_w.tag(c::tag_table_vtable_map, |ebml_w| {
             ebml_w.id(id);
             ebml_w.tag(c::tag_table_val, |ebml_w| {
-                encode_vtable_res_with_key(ecx, ebml_w, method_call.autoderef, *dr);
+                encode_vtable_res_with_key(ecx, ebml_w, method_call.autoderef, dr);
             })
         })
     }
@@ -1087,7 +1081,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
                             ebml_w.id(id);
                             ebml_w.tag(c::tag_table_val, |ebml_w| {
                                 encode_vtable_res_with_key(ecx, ebml_w,
-                                                           method_call.autoderef, *dr);
+                                                           method_call.autoderef, dr);
                             })
                         })
                     }

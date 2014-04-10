@@ -176,14 +176,14 @@ pub fn trans_fn_ref(bcx: &Block, def_id: ast::DefId, node: ExprOrMethodCall) -> 
            def_id.repr(bcx.tcx()), node, type_params.repr(bcx.tcx()),
            vtables.repr(bcx.tcx()));
     trans_fn_ref_with_vtables(bcx, def_id, node,
-                              type_params.as_slice(),
+                              type_params,
                               vtables)
 }
 
 fn trans_fn_ref_with_vtables_to_callee<'a>(bcx: &'a Block<'a>,
                                            def_id: ast::DefId,
                                            ref_id: ast::NodeId,
-                                           type_params: &[ty::t],
+                                           type_params: Vec<ty::t>,
                                            vtables: Option<typeck::vtable_res>)
                                            -> Callee<'a> {
     Callee {bcx: bcx,
@@ -206,29 +206,32 @@ fn resolve_default_method_vtables(bcx: &Block,
     let param_substs = Some(@param_substs {
         tys: substs.tps.clone(),
         self_ty: substs.self_ty,
-        vtables: impl_vtables,
+        vtables: impl_vtables.clone(),
         self_vtables: None
     });
 
-    let trait_vtables_fixed = resolve_vtables_under_param_substs(
-        bcx.tcx(), param_substs, impl_res.trait_vtables);
+    let mut param_vtables = resolve_vtables_under_param_substs(
+        bcx.tcx(), param_substs, impl_res.trait_vtables.as_slice());
 
     // Now we pull any vtables for parameters on the actual method.
     let num_method_vtables = method.generics.type_param_defs().len();
-    let method_vtables = match impl_vtables {
-        Some(vtables) => {
+    match impl_vtables {
+        Some(ref vtables) => {
             let num_impl_type_parameters =
                 vtables.len() - num_method_vtables;
-            Vec::from_slice(vtables.tailn(num_impl_type_parameters))
+            param_vtables.push_all(vtables.tailn(num_impl_type_parameters))
         },
-        None => Vec::from_elem(num_method_vtables, @Vec::new())
-    };
-
-    let method_vtables = method_vtables.as_slice();
-    let param_vtables = @((*trait_vtables_fixed).clone().append(method_vtables));
+        None => {
+            param_vtables.extend(range(0, num_method_vtables).map(
+                |_| -> typeck::vtable_param_res {
+                    Vec::new()
+                }
+            ))
+        }
+    }
 
     let self_vtables = resolve_param_vtables_under_param_substs(
-        bcx.tcx(), param_substs, impl_res.self_vtables);
+        bcx.tcx(), param_substs, impl_res.self_vtables.as_slice());
 
     (param_vtables, self_vtables)
 }
@@ -238,7 +241,7 @@ pub fn trans_fn_ref_with_vtables(
         bcx: &Block,       //
         def_id: ast::DefId,   // def id of fn
         node: ExprOrMethodCall,  // node id of use of fn; may be zero if N/A
-        type_params: &[ty::t], // values for fn's ty params
+        type_params: Vec<ty::t>, // values for fn's ty params
         vtables: Option<typeck::vtable_res>) // vtables for the call
      -> ValueRef {
     /*!
@@ -273,9 +276,11 @@ pub fn trans_fn_ref_with_vtables(
     // Polytype of the function item (may have type params)
     let fn_tpt = ty::lookup_item_type(tcx, def_id);
 
-    let substs = ty::substs { regions: ty::ErasedRegions,
-                              self_ty: None,
-                              tps: /*bad*/ Vec::from_slice(type_params) };
+    let substs = ty::substs {
+        regions: ty::ErasedRegions,
+        self_ty: None,
+        tps: type_params
+    };
 
     // Load the info for the appropriate trait if necessary.
     match ty::trait_of_method(tcx, def_id) {
@@ -318,19 +323,20 @@ pub fn trans_fn_ref_with_vtables(
             // And compose them
             let new_substs = first_subst.subst(tcx, &substs);
 
+            debug!("trans_fn_with_vtables - default method: \
+                    substs = {}, trait_subst = {}, \
+                    first_subst = {}, new_subst = {}, \
+                    vtables = {}",
+                   substs.repr(tcx), trait_ref.substs.repr(tcx),
+                   first_subst.repr(tcx), new_substs.repr(tcx),
+                   vtables.repr(tcx));
 
             let (param_vtables, self_vtables) =
                 resolve_default_method_vtables(bcx, impl_id,
                                                method, &substs, vtables);
 
             debug!("trans_fn_with_vtables - default method: \
-                    substs = {}, trait_subst = {}, \
-                    first_subst = {}, new_subst = {}, \
-                    vtables = {}, \
                     self_vtable = {}, param_vtables = {}",
-                   substs.repr(tcx), trait_ref.substs.repr(tcx),
-                   first_subst.repr(tcx), new_substs.repr(tcx),
-                   vtables.repr(tcx),
                    self_vtables.repr(tcx), param_vtables.repr(tcx));
 
             (true, source_id,
@@ -352,7 +358,7 @@ pub fn trans_fn_ref_with_vtables(
     // intrinsic, or is a default method.  In particular, if we see an
     // intrinsic that is inlined from a different crate, we want to reemit the
     // intrinsic instead of trying to call it in the other crate.
-    let must_monomorphise = if type_params.len() > 0 || is_default {
+    let must_monomorphise = if substs.tps.len() > 0 || is_default {
         true
     } else if def_id.krate == ast::LOCAL_CRATE {
         let map_node = session::expect(
@@ -504,7 +510,7 @@ pub fn trans_lang_call<'a>(
                                 trans_fn_ref_with_vtables_to_callee(bcx,
                                                                     did,
                                                                     0,
-                                                                    [],
+                                                                    vec!(),
                                                                     None)
                              },
                              ArgVals(args),

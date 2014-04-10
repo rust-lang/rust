@@ -797,15 +797,16 @@ pub fn node_id_type_params(bcx: &Block, node: ExprOrMethodCall) -> Vec<ty::t> {
 
 pub fn node_vtables(bcx: &Block, id: typeck::MethodCall)
                  -> Option<typeck::vtable_res> {
-    let vtable_map = bcx.tcx().vtable_map.borrow();
-    let raw_vtables = vtable_map.find(&id);
-    raw_vtables.map(|vts| resolve_vtables_in_fn_ctxt(bcx.fcx, *vts))
+    bcx.tcx().vtable_map.borrow().find(&id).map(|vts| {
+        resolve_vtables_in_fn_ctxt(bcx.fcx, vts.as_slice())
+    })
 }
 
 // Apply the typaram substitutions in the FunctionContext to some
 // vtables. This should eliminate any vtable_params.
-pub fn resolve_vtables_in_fn_ctxt(fcx: &FunctionContext, vts: typeck::vtable_res)
-    -> typeck::vtable_res {
+pub fn resolve_vtables_in_fn_ctxt(fcx: &FunctionContext,
+                                  vts: &[typeck::vtable_param_res])
+                                  -> typeck::vtable_res {
     resolve_vtables_under_param_substs(fcx.ccx.tcx(),
                                        fcx.param_substs,
                                        vts)
@@ -813,25 +814,25 @@ pub fn resolve_vtables_in_fn_ctxt(fcx: &FunctionContext, vts: typeck::vtable_res
 
 pub fn resolve_vtables_under_param_substs(tcx: &ty::ctxt,
                                           param_substs: Option<@param_substs>,
-                                          vts: typeck::vtable_res)
-    -> typeck::vtable_res {
-    @vts.iter().map(|ds|
+                                          vts: &[typeck::vtable_param_res])
+                                          -> typeck::vtable_res {
+    vts.iter().map(|ds| {
       resolve_param_vtables_under_param_substs(tcx,
                                                param_substs,
-                                               *ds))
-        .collect()
+                                               ds.as_slice())
+    }).collect()
 }
 
 pub fn resolve_param_vtables_under_param_substs(
     tcx: &ty::ctxt,
     param_substs: Option<@param_substs>,
-    ds: typeck::vtable_param_res)
+    ds: &[typeck::vtable_origin])
     -> typeck::vtable_param_res {
-    @ds.iter().map(
-        |d| resolve_vtable_under_param_substs(tcx,
-                                              param_substs,
-                                              d))
-        .collect()
+    ds.iter().map(|d| {
+        resolve_vtable_under_param_substs(tcx,
+                                          param_substs,
+                                          d)
+    }).collect()
 }
 
 
@@ -841,7 +842,7 @@ pub fn resolve_vtable_under_param_substs(tcx: &ty::ctxt,
                                          vt: &typeck::vtable_origin)
                                          -> typeck::vtable_origin {
     match *vt {
-        typeck::vtable_static(trait_id, ref tys, sub) => {
+        typeck::vtable_static(trait_id, ref tys, ref sub) => {
             let tys = match param_substs {
                 Some(substs) => {
                     tys.iter().map(|t| {
@@ -855,7 +856,7 @@ pub fn resolve_vtable_under_param_substs(tcx: &ty::ctxt,
             };
             typeck::vtable_static(
                 trait_id, tys,
-                resolve_vtables_under_param_substs(tcx, param_substs, sub))
+                resolve_vtables_under_param_substs(tcx, param_substs, sub.as_slice()))
         }
         typeck::vtable_param(n_param, n_bound) => {
             match param_substs {
@@ -881,11 +882,11 @@ pub fn find_vtable(tcx: &ty::ctxt,
            n_param, n_bound, ps.repr(tcx));
 
     let param_bounds = match n_param {
-        typeck::param_self => ps.self_vtables.expect("self vtables missing"),
+        typeck::param_self => ps.self_vtables.as_ref().expect("self vtables missing"),
         typeck::param_numbered(n) => {
-            let tables = ps.vtables
+            let tables = ps.vtables.as_ref()
                 .expect("vtables missing where they are needed");
-            *tables.get(n)
+            tables.get(n)
         }
     };
     param_bounds.get(n_bound).clone()
