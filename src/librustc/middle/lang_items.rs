@@ -195,12 +195,12 @@ pub fn extract(attrs: &[ast::Attribute]) -> Option<InternedString> {
 }
 
 pub fn collect_language_items(krate: &ast::Crate,
-                              session: &Session) -> @LanguageItems {
+                              session: &Session) -> LanguageItems {
     let mut collector = LanguageItemCollector::new(session);
     collector.collect(krate);
     let LanguageItemCollector { items, .. } = collector;
     session.abort_if_errors();
-    @items
+    items
 }
 
 // End of the macro

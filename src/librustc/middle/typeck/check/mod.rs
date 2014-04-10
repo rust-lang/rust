@@ -2100,7 +2100,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                         op: ast::BinOp,
                         rhs: @ast::Expr) -> ty::t {
         let tcx = fcx.ccx.tcx;
-        let lang = tcx.lang_items;
+        let lang = &tcx.lang_items;
         let (name, trait_did) = match op {
             ast::BiAdd => ("add", lang.add_trait()),
             ast::BiSub => ("sub", lang.sub_trait()),
