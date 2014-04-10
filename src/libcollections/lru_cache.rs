@@ -294,10 +294,10 @@ mod tests {
 
     #[test]
     fn test_put_update() {
-        let mut cache: LruCache<~str, ~[u8]> = LruCache::new(1);
-        cache.put(~"1", ~[10, 10]);
-        cache.put(~"1", ~[10, 19]);
-        assert_opt_eq(cache.get(&~"1"), ~[10, 19]);
+        let mut cache: LruCache<~str, Vec<u8>> = LruCache::new(1);
+        cache.put(~"1", vec![10, 10]);
+        cache.put(~"1", vec![10, 19]);
+        assert_opt_eq(cache.get(&~"1"), vec![10, 19]);
         assert_eq!(cache.len(), 1);
     }
 

@@ -81,7 +81,7 @@ mod table {
     /// You can kind of think of this module/data structure as a safe wrapper
     /// around just the "table" part of the hashtable. It enforces some
     /// invariants at the type level and employs some performance trickery,
-    /// but in general is just a tricked out `~[Option<u64, K, V>]`.
+    /// but in general is just a tricked out `Vec<Option<u64, K, V>>`.
     ///
     /// FIXME(cgaebel):
     ///
@@ -1833,8 +1833,8 @@ mod test_map {
             hm
         };
 
-        let v = hm.move_iter().collect::<~[(char, int)]>();
-        assert!([('a', 1), ('b', 2)] == v || [('b', 2), ('a', 1)] == v);
+        let v = hm.move_iter().collect::<Vec<(char, int)>>();
+        assert!([('a', 1), ('b', 2)] == v.as_slice() || [('b', 2), ('a', 1)] == v.as_slice());
     }
 
     #[test]
@@ -1856,9 +1856,9 @@ mod test_map {
 
     #[test]
     fn test_keys() {
-        let vec = ~[(1, 'a'), (2, 'b'), (3, 'c')];
+        let vec = vec![(1, 'a'), (2, 'b'), (3, 'c')];
         let map = vec.move_iter().collect::<HashMap<int, char>>();
-        let keys = map.keys().map(|&k| k).collect::<~[int]>();
+        let keys = map.keys().map(|&k| k).collect::<Vec<int>>();
         assert_eq!(keys.len(), 3);
         assert!(keys.contains(&1));
         assert!(keys.contains(&2));
@@ -1867,9 +1867,9 @@ mod test_map {
 
     #[test]
     fn test_values() {
-        let vec = ~[(1, 'a'), (2, 'b'), (3, 'c')];
+        let vec = vec![(1, 'a'), (2, 'b'), (3, 'c')];
         let map = vec.move_iter().collect::<HashMap<int, char>>();
-        let values = map.values().map(|&v| v).collect::<~[char]>();
+        let values = map.values().map(|&v| v).collect::<Vec<char>>();
         assert_eq!(values.len(), 3);
         assert!(values.contains(&'a'));
         assert!(values.contains(&'b'));
@@ -1942,7 +1942,7 @@ mod test_map {
 
     #[test]
     fn test_from_iter() {
-        let xs = ~[(1, 1), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6)];
+        let xs = [(1, 1), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6)];
 
         let map: HashMap<int, int> = xs.iter().map(|&x| x).collect();
 
@@ -2133,7 +2133,7 @@ mod test_set {
 
     #[test]
     fn test_from_iter() {
-        let xs = ~[1, 2, 3, 4, 5, 6, 7, 8, 9];
+        let xs = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 
         let set: HashSet<int> = xs.iter().map(|&x| x).collect();
 
@@ -2153,8 +2153,8 @@ mod test_set {
             hs
         };
 
-        let v = hs.move_iter().collect::<~[char]>();
-        assert!(['a', 'b'] == v || ['b', 'a'] == v);
+        let v = hs.move_iter().collect::<Vec<char>>();
+        assert!(['a', 'b'] == v.as_slice() || ['b', 'a'] == v.as_slice());
     }
 
     #[test]

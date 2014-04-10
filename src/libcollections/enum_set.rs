@@ -246,24 +246,24 @@ mod test {
     fn test_iterator() {
         let mut e1: EnumSet<Foo> = EnumSet::empty();
 
-        let elems: ~[Foo] = e1.iter().collect();
-        assert_eq!(~[], elems)
+        let elems: Vec<Foo> = e1.iter().collect();
+        assert!(elems.is_empty())
 
         e1.add(A);
-        let elems: ~[Foo] = e1.iter().collect();
-        assert_eq!(~[A], elems)
+        let elems = e1.iter().collect();
+        assert_eq!(vec![A], elems)
 
         e1.add(C);
-        let elems: ~[Foo] = e1.iter().collect();
-        assert_eq!(~[A,C], elems)
+        let elems = e1.iter().collect();
+        assert_eq!(vec![A,C], elems)
 
         e1.add(C);
-        let elems: ~[Foo] = e1.iter().collect();
-        assert_eq!(~[A,C], elems)
+        let elems = e1.iter().collect();
+        assert_eq!(vec![A,C], elems)
 
         e1.add(B);
-        let elems: ~[Foo] = e1.iter().collect();
-        assert_eq!(~[A,B,C], elems)
+        let elems = e1.iter().collect();
+        assert_eq!(vec![A,B,C], elems)
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -280,15 +280,15 @@ mod test {
         e2.add(C);
 
         let e_union = e1 | e2;
-        let elems: ~[Foo] = e_union.iter().collect();
-        assert_eq!(~[A,B,C], elems)
+        let elems = e_union.iter().collect();
+        assert_eq!(vec![A,B,C], elems)
 
         let e_intersection = e1 & e2;
-        let elems: ~[Foo] = e_intersection.iter().collect();
-        assert_eq!(~[C], elems)
+        let elems = e_intersection.iter().collect();
+        assert_eq!(vec![C], elems)
 
         let e_subtract = e1 - e2;
-        let elems: ~[Foo] = e_subtract.iter().collect();
-        assert_eq!(~[A], elems)
+        let elems = e_subtract.iter().collect();
+        assert_eq!(vec![A], elems)
     }
 }
