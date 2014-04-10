@@ -296,7 +296,7 @@ pub fn make_mono_id(ccx: &CrateContext,
     // .collect() to work.
     let substs_iter = substs.self_ty.iter().chain(substs.tys.iter());
     let precise_param_ids: Vec<(ty::t, Option<@Vec<mono_id> >)> = match substs.vtables {
-      Some(vts) => {
+      Some(ref vts) => {
         debug!("make_mono_id vtables={} substs={}",
                vts.repr(ccx.tcx()), substs.tys.repr(ccx.tcx()));
         let vts_iter = substs.self_vtables.iter().chain(vts.iter());

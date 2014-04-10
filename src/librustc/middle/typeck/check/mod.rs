@@ -265,8 +265,8 @@ impl<'a> Inherited<'a> {
             node_types: RefCell::new(NodeMap::new()),
             node_type_substs: RefCell::new(NodeMap::new()),
             adjustments: RefCell::new(NodeMap::new()),
-            method_map: @RefCell::new(FnvHashMap::new()),
-            vtable_map: @RefCell::new(FnvHashMap::new()),
+            method_map: RefCell::new(FnvHashMap::new()),
+            vtable_map: RefCell::new(FnvHashMap::new()),
             upvar_borrow_map: RefCell::new(HashMap::new()),
         }
     }

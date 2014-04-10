@@ -29,7 +29,6 @@ use util::ppaux::Repr;
 
 use collections::HashSet;
 use std::cell::RefCell;
-use std::result;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::codemap::Span;
@@ -112,7 +111,7 @@ fn lookup_vtables(vcx: &VtableContext,
            type_param_defs.repr(vcx.tcx()),
            substs.repr(vcx.tcx()),
            result.repr(vcx.tcx()));
-    @result
+    result
 }
 
 fn lookup_vtables_for_param(vcx: &VtableContext,
@@ -170,7 +169,7 @@ fn lookup_vtables_for_param(vcx: &VtableContext,
            ty.repr(vcx.tcx()),
            param_result.repr(vcx.tcx()));
 
-    return @param_result;
+    param_result
 }
 
 fn relate_trait_refs(vcx: &VtableContext,
@@ -189,8 +188,8 @@ fn relate_trait_refs(vcx: &VtableContext,
                                    infer::RelateTraitRefs(span),
                                    act_trait_ref,
                                    exp_trait_ref) {
-        result::Ok(()) => {} // Ok.
-        result::Err(ref err) => {
+        Ok(()) => {} // Ok.
+        Err(ref err) => {
             // There is an error, but we need to do some work to make
             // the message good.
             // Resolve any type vars in the trait refs
@@ -368,8 +367,8 @@ fn search_for_vtable(vcx: &VtableContext,
                               infer::RelateSelfType(span),
                               ty,
                               for_ty) {
-            result::Err(_) => continue,
-            result::Ok(()) => ()
+            Err(_) => continue,
+            Ok(()) => ()
         }
 
         // Now, in the previous example, for_ty is bound to
@@ -583,7 +582,7 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
                                                      is_early);
 
                       if !is_early {
-                          insert_vtables(fcx, MethodCall::expr(ex.id), @vec!(vtables));
+                          insert_vtables(fcx, MethodCall::expr(ex.id), vec!(vtables));
                       }
 
                       // Now, if this is &trait, we need to link the
@@ -743,7 +742,7 @@ pub fn resolve_impl(tcx: &ty::ctxt,
         [],
         impl_item.id);
 
-    let impl_trait_ref = @impl_trait_ref.subst(tcx, &param_env.free_substs);
+    let impl_trait_ref = impl_trait_ref.subst(tcx, &param_env.free_substs);
 
     let infcx = &infer::new_infer_ctxt(tcx);
     let vcx = VtableContext { infcx: infcx, param_env: &param_env };
@@ -761,7 +760,7 @@ pub fn resolve_impl(tcx: &ty::ctxt,
     // but that falls out of doing this.
     let param_bounds = ty::ParamBounds {
         builtin_bounds: ty::EmptyBuiltinBounds(),
-        trait_bounds: vec!(impl_trait_ref)
+        trait_bounds: vec!(@impl_trait_ref)
     };
     let t = ty::node_id_to_type(tcx, impl_item.id);
     let t = t.subst(tcx, &param_env.free_substs);

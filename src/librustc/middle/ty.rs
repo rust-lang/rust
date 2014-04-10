@@ -1134,8 +1134,8 @@ pub fn mk_ctxt(s: Session,
         upvar_borrow_map: RefCell::new(HashMap::new()),
         extern_const_statics: RefCell::new(DefIdMap::new()),
         extern_const_variants: RefCell::new(DefIdMap::new()),
-        method_map: @RefCell::new(FnvHashMap::new()),
-        vtable_map: @RefCell::new(FnvHashMap::new()),
+        method_map: RefCell::new(FnvHashMap::new()),
+        vtable_map: RefCell::new(FnvHashMap::new()),
     }
 }
 
