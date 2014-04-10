@@ -113,7 +113,7 @@ pub struct Function {
     pub id: NodeId,
     pub name: Ident,
     pub vis: ast::Visibility,
-    pub purity: ast::Purity,
+    pub fn_style: ast::FnStyle,
     pub where: Span,
     pub generics: ast::Generics,
 }

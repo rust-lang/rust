@@ -211,7 +211,7 @@ impl<'a> Reflector<'a> {
           // FIXME (#2594): fetch constants out of intrinsic
           // FIXME (#4809): visitor should break out bare fns from other fns
           ty::ty_closure(ref fty) => {
-            let pureval = ast_purity_constant(fty.purity);
+            let pureval = ast_fn_style_constant(fty.fn_style);
             let sigilval = ast_sigil_constant(fty.sigil);
             let retval = if ty::type_is_bot(fty.sig.output) {0u} else {1u};
             let extra = vec!(self.c_uint(pureval),
@@ -226,7 +226,7 @@ impl<'a> Reflector<'a> {
           // FIXME (#2594): fetch constants out of intrinsic:: for the
           // numbers.
           ty::ty_bare_fn(ref fty) => {
-            let pureval = ast_purity_constant(fty.purity);
+            let pureval = ast_fn_style_constant(fty.fn_style);
             let sigilval = 0u;
             let retval = if ty::type_is_bot(fty.sig.output) {0u} else {1u};
             let extra = vec!(self.c_uint(pureval),
@@ -399,10 +399,10 @@ pub fn ast_sigil_constant(sigil: ast::Sigil) -> uint {
     }
 }
 
-pub fn ast_purity_constant(purity: ast::Purity) -> uint {
-    match purity {
+pub fn ast_fn_style_constant(fn_style: ast::FnStyle) -> uint {
+    match fn_style {
         ast::UnsafeFn => 1u,
-        ast::ImpureFn => 2u,
+        ast::NormalFn => 2u,
         ast::ExternFn => 3u
     }
 }
