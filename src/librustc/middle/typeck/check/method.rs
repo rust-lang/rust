@@ -715,7 +715,7 @@ impl<'a> LookupContext<'a> {
         // an explicit adjustment, but rather we hardwire the single deref
         // that occurs in trans and mem_categorization.
         let adjustment = match self.self_expr {
-            Some(expr) => Some((expr.id, @ty::AutoDerefRef(auto_deref_ref))),
+            Some(expr) => Some((expr.id, ty::AutoDerefRef(auto_deref_ref))),
             None => return None
         };
 
@@ -962,7 +962,7 @@ impl<'a> LookupContext<'a> {
                         Some(self_expr_id) => {
                             self.fcx.write_adjustment(
                                 self_expr_id,
-                                @ty::AutoDerefRef(ty::AutoDerefRef {
+                                ty::AutoDerefRef(ty::AutoDerefRef {
                                     autoderefs: autoderefs,
                                     autoref: Some(kind(region, *mutbl))
                                 }));

@@ -192,7 +192,7 @@ pub fn const_expr(cx: &CrateContext, e: &ast::Expr, is_local: bool) -> (ValueRef
     match opt_adj {
         None => { }
         Some(adj) => {
-            match *adj {
+            match adj {
                 ty::AutoAddEnv(ty::RegionTraitStore(ty::ReStatic, _)) => {
                     let def = ty::resolve_expr(cx.tcx(), e);
                     let wrapper = closure::get_wrapper_for_bare_fn(cx,

@@ -306,7 +306,7 @@ pub fn check_expr(cx: &mut Context, e: &Expr) {
     // Search for auto-adjustments to find trait coercions.
     match cx.tcx.adjustments.borrow().find(&e.id) {
         Some(adjustment) => {
-            match **adjustment {
+            match *adjustment {
                 ty::AutoObject(..) => {
                     let source_ty = ty::expr_ty(cx.tcx, e);
                     let target_ty = ty::expr_ty_adjusted(cx.tcx, e);

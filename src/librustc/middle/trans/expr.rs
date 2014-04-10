@@ -175,7 +175,7 @@ fn apply_adjustments<'a>(bcx: &'a Block<'a>,
     };
     debug!("unadjusted datum for expr {}: {}",
            expr.id, datum.to_str(bcx.ccx()));
-    match *adjustment {
+    match adjustment {
         AutoAddEnv(..) => {
             datum = unpack_datum!(bcx, add_env(bcx, expr, datum));
         }

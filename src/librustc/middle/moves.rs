@@ -312,7 +312,7 @@ impl<'a> VisitContext<'a> {
         // reading the underlying expression, not moving it.
         let comp_mode = match self.tcx.adjustments.borrow().find(&expr.id) {
             Some(adjustment) => {
-                match **adjustment {
+                match *adjustment {
                     ty::AutoDerefRef(ty::AutoDerefRef {
                         autoref: Some(_),
                         ..

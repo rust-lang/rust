@@ -177,7 +177,7 @@ fn gather_loans_in_expr(this: &mut GatherLoanCtxt,
 
     // If this expression is borrowed, have to ensure it remains valid:
     for &adjustments in tcx.adjustments.borrow().find(&ex.id).iter() {
-        this.guarantee_adjustments(ex, *adjustments);
+        this.guarantee_adjustments(ex, adjustments);
     }
 
     // If this expression is a move, gather it:

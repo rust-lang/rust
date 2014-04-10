@@ -127,7 +127,7 @@ fn resolve_type_vars_for_node(wbcx: &mut WbCtxt, sp: Span, id: ast::NodeId) {
         None => None,
 
         Some(adjustment) => {
-            Some(match *adjustment {
+            Some(match adjustment {
                 ty::AutoAddEnv(store) => {
                     let r = match store {
                         ty::RegionTraitStore(r, _) => r,
@@ -205,7 +205,7 @@ fn resolve_type_vars_for_node(wbcx: &mut WbCtxt, sp: Span, id: ast::NodeId) {
            id, resolved_adj);
     match resolved_adj {
         Some(adj) => {
-            tcx.adjustments.borrow_mut().insert(id, @adj);
+            tcx.adjustments.borrow_mut().insert(id, adj);
         }
         None => {}
     }
