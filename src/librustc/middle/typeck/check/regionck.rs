@@ -236,7 +236,7 @@ impl<'a> Rcx<'a> {
     }
 
     /// Try to resolve the type for the given node.
-    fn resolve_node_type(&mut self, id: ast::NodeId) -> ty::t {
+    fn resolve_node_type(&self, id: ast::NodeId) -> ty::t {
         let t = self.fcx.node_ty(id);
         self.resolve_type(t)
     }
@@ -261,12 +261,12 @@ impl<'a> Rcx<'a> {
     }
 }
 
-impl<'a, 'b> mc::Typer for &'a mut Rcx<'b> {
+impl<'a, 'b> mc::Typer for &'a Rcx<'b> {
     fn tcx<'a>(&'a self) -> &'a ty::ctxt {
         self.fcx.tcx()
     }
 
-    fn node_ty(&mut self, id: ast::NodeId) -> mc::McResult<ty::t> {
+    fn node_ty(&self, id: ast::NodeId) -> mc::McResult<ty::t> {
         let t = self.resolve_node_type(id);
         if ty::type_is_error(t) {Err(())} else {Ok(t)}
     }
@@ -279,15 +279,15 @@ impl<'a, 'b> mc::Typer for &'a mut Rcx<'b> {
         &self.fcx.inh.adjustments
     }
 
-    fn is_method_call(&mut self, id: ast::NodeId) -> bool {
+    fn is_method_call(&self, id: ast::NodeId) -> bool {
         self.fcx.inh.method_map.borrow().contains_key(&MethodCall::expr(id))
     }
 
-    fn temporary_scope(&mut self, id: ast::NodeId) -> Option<ast::NodeId> {
+    fn temporary_scope(&self, id: ast::NodeId) -> Option<ast::NodeId> {
         self.tcx().region_maps.temporary_scope(id)
     }
 
-    fn upvar_borrow(&mut self, id: ty::UpvarId) -> ty::UpvarBorrow {
+    fn upvar_borrow(&self, id: ty::UpvarId) -> ty::UpvarBorrow {
         self.fcx.inh.upvar_borrow_map.borrow().get_copy(&id)
     }
 }
@@ -870,7 +870,7 @@ fn constrain_autoderefs(rcx: &mut Rcx,
                                 method.ty.repr(rcx.tcx())))
                 };
                 {
-                    let mut mc = mc::MemCategorizationContext { typer: &mut *rcx };
+                    let mc = mc::MemCategorizationContext { typer: &*rcx };
                     let self_cmt = ignore_err!(mc.cat_expr_autoderefd(deref_expr, i));
                     link_region(mc.typer, deref_expr.span, r, m, self_cmt);
                 }
@@ -1027,13 +1027,13 @@ fn link_addr_of(rcx: &mut Rcx, expr: &ast::Expr,
     debug!("link_addr_of(base=?)");
 
     let cmt = {
-        let mut mc = mc::MemCategorizationContext { typer: &mut *rcx };
+        let mc = mc::MemCategorizationContext { typer: &*rcx };
         ignore_err!(mc.cat_expr(base))
     };
     link_region_from_node_type(rcx, expr.span, expr.id, mutability, cmt);
 }
 
-fn link_local(rcx: &mut Rcx, local: &ast::Local) {
+fn link_local(rcx: &Rcx, local: &ast::Local) {
     /*!
      * Computes the guarantors for any ref bindings in a `let` and
      * then ensures that the lifetime of the resulting pointer is
@@ -1045,12 +1045,12 @@ fn link_local(rcx: &mut Rcx, local: &ast::Local) {
         None => { return; }
         Some(expr) => expr,
     };
-    let mut mc = mc::MemCategorizationContext { typer: rcx };
+    let mc = mc::MemCategorizationContext { typer: rcx };
     let discr_cmt = ignore_err!(mc.cat_expr(init_expr));
-    link_pattern(&mut mc, discr_cmt, local.pat);
+    link_pattern(mc, discr_cmt, local.pat);
 }
 
-fn link_match(rcx: &mut Rcx, discr: &ast::Expr, arms: &[ast::Arm]) {
+fn link_match(rcx: &Rcx, discr: &ast::Expr, arms: &[ast::Arm]) {
     /*!
      * Computes the guarantors for any ref bindings in a match and
      * then ensures that the lifetime of the resulting pointer is
@@ -1058,19 +1058,19 @@ fn link_match(rcx: &mut Rcx, discr: &ast::Expr, arms: &[ast::Arm]) {
      */
 
     debug!("regionck::for_match()");
-    let mut mc = mc::MemCategorizationContext { typer: rcx };
+    let mc = mc::MemCategorizationContext { typer: rcx };
     let discr_cmt = ignore_err!(mc.cat_expr(discr));
     debug!("discr_cmt={}", discr_cmt.repr(mc.typer.tcx()));
     for arm in arms.iter() {
         for &root_pat in arm.pats.iter() {
-            link_pattern(&mut mc, discr_cmt, root_pat);
+            link_pattern(mc, discr_cmt, root_pat);
         }
     }
 }
 
-fn link_pattern(mc: &mut mc::MemCategorizationContext<&mut Rcx>,
+fn link_pattern(mc: mc::MemCategorizationContext<&Rcx>,
                 discr_cmt: mc::cmt,
-                root_pat: @ast::Pat) {
+                root_pat: &ast::Pat) {
     /*!
      * Link lifetimes of any ref bindings in `root_pat` to
      * the pointers found in the discriminant, if needed.
@@ -1100,7 +1100,7 @@ fn link_pattern(mc: &mut mc::MemCategorizationContext<&mut Rcx>,
         });
 }
 
-fn link_autoref(rcx: &mut Rcx,
+fn link_autoref(rcx: &Rcx,
                 expr: &ast::Expr,
                 autoderefs: uint,
                 autoref: &ty::AutoRef) {
@@ -1110,7 +1110,7 @@ fn link_autoref(rcx: &mut Rcx,
      */
 
     debug!("link_autoref(autoref={:?})", autoref);
-    let mut mc = mc::MemCategorizationContext { typer: rcx };
+    let mc = mc::MemCategorizationContext { typer: rcx };
     let expr_cmt = ignore_err!(mc.cat_expr_autoderefd(expr, autoderefs));
     debug!("expr_cmt={}", expr_cmt.repr(mc.typer.tcx()));
 
@@ -1133,7 +1133,7 @@ fn link_autoref(rcx: &mut Rcx,
     }
 }
 
-fn link_by_ref(rcx: &mut Rcx,
+fn link_by_ref(rcx: &Rcx,
                expr: &ast::Expr,
                callee_scope: ast::NodeId) {
     /*!
@@ -1145,13 +1145,13 @@ fn link_by_ref(rcx: &mut Rcx,
     let tcx = rcx.tcx();
     debug!("link_by_ref(expr={}, callee_scope={})",
            expr.repr(tcx), callee_scope);
-    let mut mc = mc::MemCategorizationContext { typer: rcx };
+    let mc = mc::MemCategorizationContext { typer: rcx };
     let expr_cmt = ignore_err!(mc.cat_expr(expr));
     let region_min = ty::ReScope(callee_scope);
     link_region(mc.typer, expr.span, region_min, ast::MutImmutable, expr_cmt);
 }
 
-fn link_region_from_node_type(rcx: &mut Rcx,
+fn link_region_from_node_type(rcx: &Rcx,
                               span: Span,
                               id: ast::NodeId,
                               mutbl: ast::Mutability,
@@ -1171,7 +1171,7 @@ fn link_region_from_node_type(rcx: &mut Rcx,
     }
 }
 
-fn link_region(rcx: &mut Rcx,
+fn link_region(rcx: &Rcx,
                span: Span,
                region_min: ty::Region,
                mutbl: ast::Mutability,
@@ -1282,7 +1282,7 @@ fn link_region(rcx: &mut Rcx,
     }
 }
 
-fn adjust_borrow_kind_for_assignment_lhs(rcx: &mut Rcx,
+fn adjust_borrow_kind_for_assignment_lhs(rcx: &Rcx,
                                          lhs: &ast::Expr) {
     /*!
      * Adjusts the inferred borrow_kind as needed to account
@@ -1290,12 +1290,12 @@ fn adjust_borrow_kind_for_assignment_lhs(rcx: &mut Rcx,
      * expression.
      */
 
-    let mut mc = mc::MemCategorizationContext { typer: rcx };
+    let mc = mc::MemCategorizationContext { typer: rcx };
     let cmt = ignore_err!(mc.cat_expr(lhs));
     adjust_upvar_borrow_kind_for_mut(mc.typer, cmt);
 }
 
-fn adjust_upvar_borrow_kind_for_mut(rcx: &mut Rcx,
+fn adjust_upvar_borrow_kind_for_mut(rcx: &Rcx,
                                     cmt: mc::cmt) {
     let mut cmt = cmt;
     loop {
@@ -1350,8 +1350,7 @@ fn adjust_upvar_borrow_kind_for_mut(rcx: &mut Rcx,
     }
 }
 
-fn adjust_upvar_borrow_kind_for_unique(rcx: &mut Rcx,
-                                       cmt: mc::cmt) {
+fn adjust_upvar_borrow_kind_for_unique(rcx: &Rcx, cmt: mc::cmt) {
     let mut cmt = cmt;
     loop {
         debug!("adjust_upvar_borrow_kind_for_unique(cmt={})",

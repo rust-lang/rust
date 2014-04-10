@@ -266,12 +266,12 @@ pub type McResult<T> = Result<T, ()>;
  */
 pub trait Typer {
     fn tcx<'a>(&'a self) -> &'a ty::ctxt;
-    fn node_ty(&mut self, id: ast::NodeId) -> McResult<ty::t>;
+    fn node_ty(&self, id: ast::NodeId) -> McResult<ty::t>;
     fn node_method_ty(&self, method_call: typeck::MethodCall) -> Option<ty::t>;
-    fn is_method_call(&mut self, id: ast::NodeId) -> bool;
-    fn temporary_scope(&mut self, rvalue_id: ast::NodeId) -> Option<ast::NodeId>;
-    fn upvar_borrow(&mut self, upvar_id: ty::UpvarId) -> ty::UpvarBorrow;
     fn adjustments<'a>(&'a self) -> &'a RefCell<NodeMap<ty::AutoAdjustment>>;
+    fn is_method_call(&self, id: ast::NodeId) -> bool;
+    fn temporary_scope(&self, rvalue_id: ast::NodeId) -> Option<ast::NodeId>;
+    fn upvar_borrow(&self, upvar_id: ty::UpvarId) -> ty::UpvarBorrow;
 }
 
 impl MutabilityCategory {
@@ -353,30 +353,26 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
         self.typer.tcx()
     }
 
-    fn adjustment(&mut self, id: ast::NodeId) -> Option<@ty::AutoAdjustment> {
-        self.typer.adjustment(id)
-    }
-
-    fn expr_ty(&mut self, expr: &ast::Expr) -> McResult<ty::t> {
+    fn expr_ty(&self, expr: &ast::Expr) -> McResult<ty::t> {
         self.typer.node_ty(expr.id)
     }
 
-    fn expr_ty_adjusted(&mut self, expr: &ast::Expr) -> McResult<ty::t> {
+    fn expr_ty_adjusted(&self, expr: &ast::Expr) -> McResult<ty::t> {
         let unadjusted_ty = if_ok!(self.expr_ty(expr));
         Ok(ty::adjust_ty(self.tcx(), expr.span, expr.id, unadjusted_ty,
                          self.typer.adjustments().borrow().find(&expr.id),
                          |method_call| self.typer.node_method_ty(method_call)))
     }
 
-    fn node_ty(&mut self, id: ast::NodeId) -> McResult<ty::t> {
+    fn node_ty(&self, id: ast::NodeId) -> McResult<ty::t> {
         self.typer.node_ty(id)
     }
 
-    fn pat_ty(&mut self, pat: @ast::Pat) -> McResult<ty::t> {
+    fn pat_ty(&self, pat: @ast::Pat) -> McResult<ty::t> {
         self.typer.node_ty(pat.id)
     }
 
-    pub fn cat_expr(&mut self, expr: &ast::Expr) -> McResult<cmt> {
+    pub fn cat_expr(&self, expr: &ast::Expr) -> McResult<cmt> {
         match self.typer.adjustments().borrow().find(&expr.id) {
             None => {
                 // No adjustments.
@@ -420,7 +416,7 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
         }
     }
 
-    pub fn cat_expr_autoderefd(&mut self, expr: &ast::Expr, autoderefs: uint)
+    pub fn cat_expr_autoderefd(&self, expr: &ast::Expr, autoderefs: uint)
                                -> McResult<cmt> {
         let mut cmt = if_ok!(self.cat_expr_unadjusted(expr));
         for deref in range(1u, autoderefs + 1) {
@@ -429,7 +425,7 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
         return Ok(cmt);
     }
 
-    pub fn cat_expr_unadjusted(&mut self, expr: &ast::Expr) -> McResult<cmt> {
+    pub fn cat_expr_unadjusted(&self, expr: &ast::Expr) -> McResult<cmt> {
         debug!("cat_expr: id={} expr={}", expr.id, expr.repr(self.tcx()));
 
         let expr_ty = if_ok!(self.expr_ty(expr));
@@ -478,7 +474,7 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
         }
     }
 
-    pub fn cat_def(&mut self,
+    pub fn cat_def(&self,
                    id: ast::NodeId,
                    span: Span,
                    expr_ty: ty::t,
@@ -593,7 +589,7 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
         }
     }
 
-    fn cat_upvar(&mut self,
+    fn cat_upvar(&self,
                  id: ast::NodeId,
                  span: Span,
                  var_id: ast::NodeId,
@@ -643,7 +639,7 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
         Ok(deref_cmt)
     }
 
-    pub fn cat_rvalue_node(&mut self,
+    pub fn cat_rvalue_node(&self,
                            id: ast::NodeId,
                            span: Span,
                            expr_ty: ty::t)
@@ -658,7 +654,7 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
         }
     }
 
-    pub fn cat_rvalue(&mut self,
+    pub fn cat_rvalue(&self,
                       cmt_id: ast::NodeId,
                       span: Span,
                       temp_scope: ty::Region,
@@ -672,7 +668,7 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
         }
     }
 
-    pub fn cat_field<N:ast_node>(&mut self,
+    pub fn cat_field<N:ast_node>(&self,
                                  node: &N,
                                  base_cmt: cmt,
                                  f_name: ast::Ident,
@@ -687,11 +683,11 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
         }
     }
 
-    pub fn cat_deref_obj<N:ast_node>(&mut self, node: &N, base_cmt: cmt) -> cmt {
+    pub fn cat_deref_obj<N:ast_node>(&self, node: &N, base_cmt: cmt) -> cmt {
         self.cat_deref_common(node, base_cmt, 0, ty::mk_nil())
     }
 
-    fn cat_deref<N:ast_node>(&mut self,
+    fn cat_deref<N:ast_node>(&self,
                              node: &N,
                              base_cmt: cmt,
                              deref_cnt: uint)
@@ -723,7 +719,7 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
         }
     }
 
-    fn cat_deref_common<N:ast_node>(&mut self,
+    fn cat_deref_common<N:ast_node>(&self,
                                     node: &N,
                                     base_cmt: cmt,
                                     deref_cnt: uint,
@@ -749,7 +745,7 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
         }
     }
 
-    pub fn cat_index<N:ast_node>(&mut self,
+    pub fn cat_index<N:ast_node>(&self,
                                  elt: &N,
                                  base_cmt: cmt,
                                  derefs: uint)
@@ -836,7 +832,7 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
         }
     }
 
-    pub fn cat_slice_pattern(&mut self,
+    pub fn cat_slice_pattern(&self,
                              vec_cmt: cmt,
                              slice_pat: @ast::Pat)
                              -> McResult<(cmt, ast::Mutability, ty::Region)> {
@@ -883,7 +879,7 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
         }
     }
 
-    pub fn cat_imm_interior<N:ast_node>(&mut self,
+    pub fn cat_imm_interior<N:ast_node>(&self,
                                         node: &N,
                                         base_cmt: cmt,
                                         interior_ty: ty::t,
@@ -898,7 +894,7 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
         }
     }
 
-    pub fn cat_downcast<N:ast_node>(&mut self,
+    pub fn cat_downcast<N:ast_node>(&self,
                                     node: &N,
                                     base_cmt: cmt,
                                     downcast_ty: ty::t)
@@ -912,12 +908,12 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
         }
     }
 
-    pub fn cat_pattern(&mut self,
+    pub fn cat_pattern(&self,
                        cmt: cmt,
-                       pat: @ast::Pat,
-                       op: |&mut MemCategorizationContext<TYPER>,
+                       pat: &ast::Pat,
+                       op: |&MemCategorizationContext<TYPER>,
                             cmt,
-                            @ast::Pat|)
+                            &ast::Pat|)
                        -> McResult<()> {
         // Here, `cmt` is the categorization for the value being
         // matched and pat is the pattern it is being matched against.
