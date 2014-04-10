@@ -33,12 +33,12 @@ fn server(requests: &Receiver<request>, responses: &Sender<uint>) {
     let mut done = false;
     while !done {
         match requests.recv_opt() {
-          Some(get_count) => { responses.send(count.clone()); }
-          Some(bytes(b)) => {
+          Ok(get_count) => { responses.send(count.clone()); }
+          Ok(bytes(b)) => {
             //println!("server: received {:?} bytes", b);
             count += b;
           }
-          None => { done = true; }
+          Err(..) => { done = true; }
           _ => { }
         }
     }

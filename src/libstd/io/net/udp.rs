@@ -422,13 +422,13 @@ mod test {
         spawn(proc() {
             let mut sock3 = sock3;
             match sock3.sendto([1], addr2) {
-                Ok(..) => { let _ = tx2.try_send(()); }
+                Ok(..) => { let _ = tx2.send_opt(()); }
                 Err(..) => {}
             }
             done.send(());
         });
         match sock1.sendto([2], addr2) {
-            Ok(..) => { let _ = tx.try_send(()); }
+            Ok(..) => { let _ = tx.send_opt(()); }
             Err(..) => {}
         }
         drop(tx);

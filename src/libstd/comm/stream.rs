@@ -87,25 +87,27 @@ impl<T: Send> Packet<T> {
     }
 
 
-    pub fn send(&mut self, t: T) -> bool {
+    pub fn send(&mut self, t: T) -> Result<(), T> {
+        // If the other port has deterministically gone away, then definitely
+        // must return the data back up the stack. Otherwise, the data is
+        // considered as being sent.
+        if self.port_dropped.load(atomics::SeqCst) { return Err(t) }
+
         match self.do_send(Data(t)) {
-            UpSuccess => true,
-            UpDisconnected => false,
-            UpWoke(task) => {
-                task.wake().map(|t| t.reawaken());
-                true
-            }
+            UpSuccess | UpDisconnected => {},
+            UpWoke(task) => { task.wake().map(|t| t.reawaken()); }
         }
+        Ok(())
     }
     pub fn upgrade(&mut self, up: Receiver<T>) -> UpgradeResult {
+        // If the port has gone away, then there's no need to proceed any
+        // further.
+        if self.port_dropped.load(atomics::SeqCst) { return UpDisconnected }
+
         self.do_send(GoUp(up))
     }
 
     fn do_send(&mut self, t: Message<T>) -> UpgradeResult {
-        // Use an acquire/release ordering to maintain the same position with
-        // respect to the atomic loads below
-        if self.port_dropped.load(atomics::SeqCst) { return UpDisconnected }
-
         self.queue.push(t);
         match self.cnt.fetch_add(1, atomics::SeqCst) {
             // As described in the mod's doc comment, -1 == wakeup

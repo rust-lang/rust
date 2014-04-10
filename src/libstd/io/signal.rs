@@ -149,6 +149,7 @@ impl Listener {
 
 #[cfg(test, unix)]
 mod test_unix {
+    use prelude::*;
     use libc;
     use comm::Empty;
     use io::timer;
@@ -199,7 +200,7 @@ mod test_unix {
         s2.unregister(Interrupt);
         sigint();
         timer::sleep(10);
-        assert_eq!(s2.rx.try_recv(), Empty);
+        assert_eq!(s2.rx.try_recv(), Err(Empty));
     }
 }
 

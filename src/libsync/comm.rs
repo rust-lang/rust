@@ -37,16 +37,16 @@ impl<S:Send,R:Send> DuplexStream<S, R> {
     pub fn send(&self, x: S) {
         self.tx.send(x)
     }
-    pub fn try_send(&self, x: S) -> bool {
-        self.tx.try_send(x)
+    pub fn send_opt(&self, x: S) -> Result<(), S> {
+        self.tx.send_opt(x)
     }
     pub fn recv(&self) -> R {
         self.rx.recv()
     }
-    pub fn try_recv(&self) -> comm::TryRecvResult<R> {
+    pub fn try_recv(&self) -> Result<R, comm::TryRecvError> {
         self.rx.try_recv()
     }
-    pub fn recv_opt(&self) -> Option<R> {
+    pub fn recv_opt(&self) -> Result<R, ()> {
         self.rx.recv_opt()
     }
 }
