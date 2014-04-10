@@ -20,9 +20,9 @@ pub fn main() {
     });
     loop {
         match rx.try_recv() {
-            comm::Data(()) => break,
-            comm::Empty => {}
-            comm::Disconnected => unreachable!()
+            Ok(()) => break,
+            Err(comm::Empty) => {}
+            Err(comm::Disconnected) => unreachable!()
         }
     }
 }

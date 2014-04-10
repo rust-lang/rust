@@ -800,7 +800,7 @@ mod tests {
         // At this point, all spawned tasks should be blocked,
         // so we shouldn't get anything from the port
         assert!(match rx.try_recv() {
-            Empty => true,
+            Err(Empty) => true,
             _ => false,
         });
 

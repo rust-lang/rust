@@ -385,7 +385,7 @@ impl Death {
     pub fn collect_failure(&mut self, result: TaskResult) {
         match self.on_exit.take() {
             Some(Execute(f)) => f(result),
-            Some(SendMessage(ch)) => { ch.try_send(result); }
+            Some(SendMessage(ch)) => { let _ = ch.send_opt(result); }
             None => {}
         }
     }

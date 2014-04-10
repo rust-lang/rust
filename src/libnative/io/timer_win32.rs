@@ -20,7 +20,6 @@
 //! Other than that, the implementation is pretty straightforward in terms of
 //! the other two implementations of timers with nothing *that* new showing up.
 
-use std::comm::Data;
 use libc;
 use std::ptr;
 use std::rt::rtio;
@@ -54,11 +53,11 @@ fn helper(input: libc::HANDLE, messages: Receiver<Req>) {
         if idx == 0 {
             loop {
                 match messages.try_recv() {
-                    Data(NewTimer(obj, c, one)) => {
+                    Ok(NewTimer(obj, c, one)) => {
                         objs.push(obj);
                         chans.push((c, one));
                     }
-                    Data(RemoveTimer(obj, c)) => {
+                    Ok(RemoveTimer(obj, c)) => {
                         c.send(());
                         match objs.iter().position(|&o| o == obj) {
                             Some(i) => {
@@ -68,7 +67,7 @@ fn helper(input: libc::HANDLE, messages: Receiver<Req>) {
                             None => {}
                         }
                     }
-                    Data(Shutdown) => {
+                    Ok(Shutdown) => {
                         assert_eq!(objs.len(), 1);
                         assert_eq!(chans.len(), 0);
                         break 'outer;
@@ -79,7 +78,7 @@ fn helper(input: libc::HANDLE, messages: Receiver<Req>) {
         } else {
             let remove = {
                 match chans.get(idx as uint - 1) {
-                    &(ref c, oneshot) => !c.try_send(()) || oneshot
+                    &(ref c, oneshot) => c.send_opt(()).is_err() || oneshot
                 }
             };
             if remove {
