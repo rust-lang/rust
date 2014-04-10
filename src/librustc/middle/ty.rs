@@ -130,16 +130,24 @@ pub struct mt {
 }
 
 #[deriving(Clone, Eq, TotalEq, Encodable, Decodable, Hash, Show)]
-pub enum Vstore {
+/// Describes the "storage mode" of a `[]`, whether it's fixed length or a slice.
+///
+/// Set M to () to disable mutable slices.
+pub enum Vstore<M = ast::Mutability> {
+    /// [T, ..N]
     VstoreFixed(uint),
+    /// ~[T]
     VstoreUniq,
-    VstoreSlice(Region)
+    /// &[T] and &mut [T]
+    VstoreSlice(Region, M)
 }
 
 #[deriving(Clone, Eq, TotalEq, Hash, Encodable, Decodable, Show)]
 pub enum TraitStore {
-    UniqTraitStore,             // ~Trait
-    RegionTraitStore(Region),   // &Trait
+    /// ~Trait
+    UniqTraitStore,
+    /// &Trait and &mut Trait
+    RegionTraitStore(Region, ast::Mutability),
 }
 
 pub struct field_ty {
@@ -729,11 +737,11 @@ pub enum sty {
     ty_int(ast::IntTy),
     ty_uint(ast::UintTy),
     ty_float(ast::FloatTy),
-    ty_str(Vstore),
     ty_enum(DefId, substs),
     ty_box(t),
     ty_uniq(t),
-    ty_vec(mt, Vstore),
+    ty_str(Vstore<()>),
+    ty_vec(t, Vstore),
     ty_ptr(mt),
     ty_rptr(Region, mt),
     ty_bare_fn(BareFnTy),
@@ -757,7 +765,6 @@ pub struct TyTrait {
     pub def_id: DefId,
     pub substs: substs,
     pub store: TraitStore,
-    pub mutability: ast::Mutability,
     pub bounds: BuiltinBounds
 }
 
