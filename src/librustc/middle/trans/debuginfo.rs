@@ -293,6 +293,13 @@ pub fn create_global_var_metadata(cx: &CrateContext,
         return;
     }
 
+    // Don't create debuginfo for globals inlined from other crates. The other crate should already
+    // contain debuginfo for it. More importantly, the global might not even exist in un-inlined
+    // form anywhere which would lead to a linker errors.
+    if cx.external_srcs.borrow().contains_key(&node_id) {
+        return;
+    }
+
     let var_item = cx.tcx.map.get(node_id);
 
     let (ident, span) = match var_item {
