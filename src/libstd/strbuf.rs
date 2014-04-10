@@ -20,9 +20,11 @@ use iter::{Extendable, FromIterator, Iterator, range};
 use option::{None, Option, Some};
 use ptr::RawPtr;
 use slice::{OwnedVector, Vector};
+use str;
 use str::{OwnedStr, Str, StrSlice};
 use vec::Vec;
 
+/// A growable string stored as a UTF-8 encoded buffer.
 #[deriving(Clone, Eq, Ord, TotalEq, TotalOrd)]
 pub struct StrBuf {
     vec: Vec<u8>,
@@ -69,6 +71,23 @@ impl StrBuf {
         }
     }
 
+    /// Tries to create a new string buffer from the given byte
+    /// vector, validating that the vector is UTF-8 encoded.
+    #[inline]
+    pub fn from_utf8(vec: Vec<u8>) -> Option<StrBuf> {
+        if str::is_utf8(vec.as_slice()) {
+            Some(StrBuf { vec: vec })
+        } else {
+            None
+        }
+    }
+
+    /// Return the underlying byte buffer, encoded as UTF-8.
+    #[inline]
+    pub fn into_bytes(self) -> Vec<u8> {
+        self.vec
+    }
+
     /// Pushes the given string onto this buffer; then, returns `self` so that it can be used
     /// again.
     #[inline]
@@ -100,6 +119,7 @@ impl StrBuf {
         self.vec.push_all(string.as_bytes())
     }
 
+    /// Push `ch` onto the given string `count` times.
     #[inline]
     pub fn grow(&mut self, count: uint, ch: char) {
         for _ in range(0, count) {
@@ -352,4 +372,3 @@ mod tests {
         s.truncate(1);
     }
 }
-

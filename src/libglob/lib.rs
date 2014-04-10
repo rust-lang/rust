@@ -462,8 +462,8 @@ impl Pattern {
 fn fill_todo(todo: &mut Vec<(Path, uint)>, patterns: &[Pattern], idx: uint, path: &Path,
              options: MatchOptions) {
     // convert a pattern that's just many Char(_) to a string
-    fn pattern_as_str(pattern: &Pattern) -> Option<~str> {
-        let mut s = ~"";
+    fn pattern_as_str(pattern: &Pattern) -> Option<StrBuf> {
+        let mut s = StrBuf::new();
         for token in pattern.tokens.iter() {
             match *token {
                 Char(c) => s.push_char(c),
@@ -493,8 +493,8 @@ fn fill_todo(todo: &mut Vec<(Path, uint)>, patterns: &[Pattern], idx: uint, path
             // continue. So instead of passing control back to the iterator,
             // we can just check for that one entry and potentially recurse
             // right away.
-            let special = "." == s || ".." == s;
-            let next_path = path.join(s);
+            let special = "." == s.as_slice() || ".." == s.as_slice();
+            let next_path = path.join(s.as_slice());
             if (special && path.is_dir()) || (!special && next_path.exists()) {
                 add(todo, next_path);
             }

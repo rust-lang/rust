@@ -291,7 +291,7 @@ mod tests {
     use iter::Iterator;
     use num::ToStrRadix;
     use option::{Some, None};
-    use str::{Str, OwnedStr};
+    use str::Str;
     use strbuf::StrBuf;
     use slice::{Vector, ImmutableVector, OwnedVector};
     use self::test::BenchHarness;

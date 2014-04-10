@@ -1595,6 +1595,7 @@ pub type SetAlgebraItems<'a, T, H> =
 mod test_map {
     use super::HashMap;
     use std::cmp::Equiv;
+    use std::hash::Hash;
     use std::iter::{Iterator,range_inclusive,range_step_inclusive};
     use std::local_data;
     use std::vec;
@@ -1605,6 +1606,12 @@ mod test_map {
         fn equiv(&self, other: &int) -> bool {
             let KindaIntLike(this) = *self;
             this == *other
+        }
+    }
+    impl<S: Writer> Hash<S> for KindaIntLike {
+        fn hash(&self, state: &mut S) {
+            let KindaIntLike(this) = *self;
+            this.hash(state)
         }
     }
 
@@ -1848,11 +1855,12 @@ mod test_map {
     }
 
     #[test]
+    #[allow(experimental)]
     fn test_pop_equiv() {
         let mut m = HashMap::new();
         m.insert(1, 2);
-        assert_eq!(m.pop_equiv(&KindaIntLike(1), Some(2)));
-        assert_eq!(m.pop_equiv(&KindaIntLike(1), None));
+        assert_eq!(m.pop_equiv(&KindaIntLike(1)), Some(2));
+        assert_eq!(m.pop_equiv(&KindaIntLike(1)), None);
     }
 
     #[test]
