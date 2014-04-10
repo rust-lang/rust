@@ -139,7 +139,7 @@ impl<K: TotalOrd, V> TreeMap<K, V> {
     /// Requires that it be frozen (immutable).
     pub fn iter<'a>(&'a self) -> Entries<'a, K, V> {
         Entries {
-            stack: ~[],
+            stack: vec!(),
             node: deref(&self.root),
             remaining_min: self.length,
             remaining_max: self.length
@@ -156,7 +156,7 @@ impl<K: TotalOrd, V> TreeMap<K, V> {
     /// map, with the values being mutable.
     pub fn mut_iter<'a>(&'a mut self) -> MutEntries<'a, K, V> {
         MutEntries {
-            stack: ~[],
+            stack: vec!(),
             node: mut_deref(&mut self.root),
             remaining_min: self.length,
             remaining_max: self.length
@@ -173,8 +173,8 @@ impl<K: TotalOrd, V> TreeMap<K, V> {
     pub fn move_iter(self) -> MoveEntries<K, V> {
         let TreeMap { root: root, length: length } = self;
         let stk = match root {
-            None => ~[],
-            Some(~tn) => ~[tn]
+            None => vec!(),
+            Some(~tn) => vec!(tn)
         };
         MoveEntries {
             stack: stk,
@@ -222,7 +222,7 @@ impl<K: TotalOrd, V> TreeMap<K, V> {
     /// `traverse_left`/`traverse_right`/`traverse_complete`.
     fn iter_for_traversal<'a>(&'a self) -> Entries<'a, K, V> {
         Entries {
-            stack: ~[],
+            stack: vec!(),
             node: deref(&self.root),
             remaining_min: 0,
             remaining_max: self.length
@@ -245,7 +245,7 @@ impl<K: TotalOrd, V> TreeMap<K, V> {
     /// `traverse_left`/`traverse_right`/`traverse_complete`.
     fn mut_iter_for_traversal<'a>(&'a mut self) -> MutEntries<'a, K, V> {
         MutEntries {
-            stack: ~[],
+            stack: vec!(),
             node: mut_deref(&mut self.root),
             remaining_min: 0,
             remaining_max: self.length
@@ -273,7 +273,7 @@ impl<K: TotalOrd, V> TreeMap<K, V> {
 
 /// Lazy forward iterator over a map
 pub struct Entries<'a, K, V> {
-    stack: ~[&'a TreeNode<K, V>],
+    stack: Vec<&'a TreeNode<K, V>>,
     // See the comment on MutEntries; this is just to allow
     // code-sharing (for this immutable-values iterator it *could* very
     // well be Option<&'a TreeNode<K,V>>).
@@ -290,7 +290,7 @@ pub struct RevEntries<'a, K, V> {
 /// Lazy forward iterator over a map that allows for the mutation of
 /// the values.
 pub struct MutEntries<'a, K, V> {
-    stack: ~[&'a mut TreeNode<K, V>],
+    stack: Vec<&'a mut TreeNode<K, V>>,
     // Unfortunately, we require some unsafe-ness to get around the
     // fact that we would be storing a reference *into* one of the
     // nodes in the stack.
@@ -482,7 +482,7 @@ fn mut_deref<K, V>(x: &mut Option<~TreeNode<K, V>>) -> *mut TreeNode<K, V> {
 
 /// Lazy forward iterator over a map that consumes the map while iterating
 pub struct MoveEntries<K, V> {
-    stack: ~[TreeNode<K, V>],
+    stack: Vec<TreeNode<K, V>>,
     remaining: uint
 }
 
@@ -1143,9 +1143,9 @@ mod test_treemap {
     #[test]
     fn test_rand_int() {
         let mut map: TreeMap<int,int> = TreeMap::new();
-        let mut ctrl = ~[];
+        let mut ctrl = vec![];
 
-        check_equal(ctrl, &map);
+        check_equal(ctrl.as_slice(), &map);
         assert!(map.find(&5).is_none());
 
         let mut rng: rand::IsaacRng = rand::SeedableRng::from_seed(&[42]);
@@ -1158,7 +1158,7 @@ mod test_treemap {
                     assert!(map.insert(k, v));
                     ctrl.push((k, v));
                     check_structure(&map);
-                    check_equal(ctrl, &map);
+                    check_equal(ctrl.as_slice(), &map);
                 }
             }
 
@@ -1167,7 +1167,7 @@ mod test_treemap {
                 let (key, _) = ctrl.remove(r).unwrap();
                 assert!(map.remove(&key));
                 check_structure(&map);
-                check_equal(ctrl, &map);
+                check_equal(ctrl.as_slice(), &map);
             }
         }
     }
@@ -1414,7 +1414,7 @@ mod test_treemap {
 
     #[test]
     fn test_from_iter() {
-        let xs = ~[(1, 1), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6)];
+        let xs = [(1, 1), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6)];
 
         let map: TreeMap<int, int> = xs.iter().map(|&x| x).collect();
 
@@ -1725,7 +1725,7 @@ mod test_set {
 
     #[test]
     fn test_from_iter() {
-        let xs = ~[1, 2, 3, 4, 5, 6, 7, 8, 9];
+        let xs = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 
         let set: TreeSet<int> = xs.iter().map(|&x| x).collect();
 
