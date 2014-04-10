@@ -17,6 +17,7 @@
        html_root_url = "http://static.rust-lang.org/doc/master")]
 #![feature(phase)]
 #![allow(visible_private_types)]
+#![deny(deprecated_owned_vector)]
 
 #[phase(syntax, link)] extern crate log;
 extern crate serialize;
@@ -319,8 +320,8 @@ impl Exec {
     }
 
     // returns pairs of (kind, name)
-    pub fn lookup_discovered_inputs(&self) -> ~[(~str, ~str)] {
-        let mut rs = ~[];
+    pub fn lookup_discovered_inputs(&self) -> Vec<(~str, ~str)> {
+        let mut rs = vec![];
         let WorkMap(ref discovered_inputs) = self.discovered_inputs;
         for (k, v) in discovered_inputs.iter() {
             let KindMap(ref vmap) = *v;
@@ -341,8 +342,8 @@ impl<'a> Prep<'a> {
         }
     }
 
-    pub fn lookup_declared_inputs(&self) -> ~[~str] {
-        let mut rs = ~[];
+    pub fn lookup_declared_inputs(&self) -> Vec<~str> {
+        let mut rs = vec![];
         let WorkMap(ref declared_inputs) = self.declared_inputs;
         for (_, v) in declared_inputs.iter() {
             let KindMap(ref vmap) = *v;
