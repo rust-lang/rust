@@ -21,14 +21,14 @@
 
 extern crate collections;
 
+use collections::HashMap;
 use std::cmp::Eq;
 use std::fmt;
+use std::from_str::FromStr;
 use std::hash::Hash;
 use std::io::BufReader;
-use std::from_str::FromStr;
+use std::strbuf::StrBuf;
 use std::uint;
-
-use collections::HashMap;
 
 /// A Uniform Resource Locator (URL).  A URL is a form of URI (Uniform Resource
 /// Identifier) that includes network location information, such as hostname or
@@ -133,7 +133,7 @@ impl UserInfo {
 
 fn encode_inner(s: &str, full_url: bool) -> ~str {
     let mut rdr = BufReader::new(s.as_bytes());
-    let mut out = ~"";
+    let mut out = StrBuf::new();
 
     loop {
         let mut buf = [0];
@@ -171,7 +171,7 @@ fn encode_inner(s: &str, full_url: bool) -> ~str {
         }
     }
 
-    out
+    out.into_owned()
 }
 
 /**
@@ -206,7 +206,7 @@ pub fn encode_component(s: &str) -> ~str {
 
 fn decode_inner(s: &str, full_url: bool) -> ~str {
     let mut rdr = BufReader::new(s.as_bytes());
-    let mut out = ~"";
+    let mut out = StrBuf::new();
 
     loop {
         let mut buf = [0];
@@ -247,7 +247,7 @@ fn decode_inner(s: &str, full_url: bool) -> ~str {
         }
     }
 
-    out
+    out.into_owned()
 }
 
 /**
@@ -277,7 +277,7 @@ pub fn decode_component(s: &str) -> ~str {
 
 fn encode_plus(s: &str) -> ~str {
     let mut rdr = BufReader::new(s.as_bytes());
-    let mut out = ~"";
+    let mut out = StrBuf::new();
 
     loop {
         let mut buf = [0];
@@ -294,14 +294,14 @@ fn encode_plus(s: &str) -> ~str {
         }
     }
 
-    out
+    out.into_owned()
 }
 
 /**
  * Encode a hashmap to the 'application/x-www-form-urlencoded' media type.
  */
 pub fn encode_form_urlencoded(m: &HashMap<~str, Vec<~str>>) -> ~str {
-    let mut out = ~"";
+    let mut out = StrBuf::new();
     let mut first = true;
 
     for (key, values) in m.iter() {
@@ -319,18 +319,19 @@ pub fn encode_form_urlencoded(m: &HashMap<~str, Vec<~str>>) -> ~str {
         }
     }
 
-    out
+    out.into_owned()
 }
 
 /**
  * Decode a string encoded with the 'application/x-www-form-urlencoded' media
  * type into a hashmap.
  */
+#[allow(experimental)]
 pub fn decode_form_urlencoded(s: &[u8]) -> HashMap<~str, Vec<~str>> {
     let mut rdr = BufReader::new(s);
-    let mut m = HashMap::new();
-    let mut key = ~"";
-    let mut value = ~"";
+    let mut m: HashMap<~str,Vec<~str>> = HashMap::new();
+    let mut key = StrBuf::new();
+    let mut value = StrBuf::new();
     let mut parsing_key = true;
 
     loop {
@@ -341,19 +342,19 @@ pub fn decode_form_urlencoded(s: &[u8]) -> HashMap<~str, Vec<~str>> {
         };
         match ch {
             '&' | ';' => {
-                if key != ~"" && value != ~"" {
-                    let mut values = match m.pop(&key) {
+                if key.len() > 0 && value.len() > 0 {
+                    let mut values = match m.pop_equiv(&key.as_slice()) {
                         Some(values) => values,
                         None => vec!(),
                     };
 
-                    values.push(value);
-                    m.insert(key, values);
+                    values.push(value.into_owned());
+                    m.insert(key.into_owned(), values);
                 }
 
                 parsing_key = true;
-                key = ~"";
-                value = ~"";
+                key = StrBuf::new();
+                value = StrBuf::new();
             }
             '=' => parsing_key = false,
             ch => {
@@ -379,14 +380,14 @@ pub fn decode_form_urlencoded(s: &[u8]) -> HashMap<~str, Vec<~str>> {
         }
     }
 
-    if key != ~"" && value != ~"" {
-        let mut values = match m.pop(&key) {
+    if key.len() > 0 && value.len() > 0 {
+        let mut values = match m.pop_equiv(&key.as_slice()) {
             Some(values) => values,
             None => vec!(),
         };
 
-        values.push(value);
-        m.insert(key, values);
+        values.push(value.into_owned());
+        m.insert(key.into_owned(), values);
     }
 
     m

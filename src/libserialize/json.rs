@@ -231,14 +231,15 @@ fn main() {
 
 */
 
+use collections::HashMap;
 use std::char;
 use std::f64;
-use collections::HashMap;
-use std::io;
+use std::fmt;
 use std::io::MemWriter;
+use std::io;
 use std::num;
 use std::str;
-use std::fmt;
+use std::strbuf::StrBuf;
 
 use Encodable;
 use collections::TreeMap;
@@ -271,7 +272,7 @@ pub type EncodeResult = io::IoResult<()>;
 pub type DecodeResult<T> = Result<T, Error>;
 
 fn escape_str(s: &str) -> ~str {
-    let mut escaped = ~"\"";
+    let mut escaped = StrBuf::from_str("\"");
     for c in s.chars() {
         match c {
           '"' => escaped.push_str("\\\""),
@@ -284,16 +285,16 @@ fn escape_str(s: &str) -> ~str {
           _ => escaped.push_char(c),
         }
     };
-
     escaped.push_char('"');
-
-    escaped
+    escaped.into_owned()
 }
 
 fn spaces(n: uint) -> ~str {
-    let mut ss = ~"";
-    for _ in range(0, n) { ss.push_str(" "); }
-    return ss;
+    let mut ss = StrBuf::new();
+    for _ in range(0, n) {
+        ss.push_str(" ");
+    }
+    return ss.into_owned();
 }
 
 /// A structure for implementing serialization to JSON.
@@ -1130,7 +1131,7 @@ impl<T : Iterator<char>> Parser<T> {
 
     fn parse_str(&mut self) -> DecodeResult<~str> {
         let mut escape = false;
-        let mut res = ~"";
+        let mut res = StrBuf::new();
 
         loop {
             self.bump();
@@ -1184,7 +1185,10 @@ impl<T : Iterator<char>> Parser<T> {
                 escape = true;
             } else {
                 match self.ch {
-                    Some('"') => { self.bump(); return Ok(res); },
+                    Some('"') => {
+                        self.bump();
+                        return Ok(res.into_owned());
+                    },
                     Some(c) => res.push_char(c),
                     None => unreachable!()
                 }

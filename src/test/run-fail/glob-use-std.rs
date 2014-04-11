@@ -16,7 +16,7 @@
 use std::*;
 
 fn main() {
-    str::with_capacity(10); // avoid an unused import message
+    str::from_byte('a' as u8); // avoid an unused import message
 
     fail!("fail works")
 }

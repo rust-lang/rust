@@ -25,7 +25,7 @@ use std::num::CheckedDiv;
 use std::num::{Bitwise, ToPrimitive, FromPrimitive};
 use std::num::{Zero, One, ToStrRadix, FromStrRadix};
 use rand::Rng;
-use std::str;
+use std::strbuf::StrBuf;
 use std::uint;
 use std::{i64, u64};
 
@@ -666,13 +666,13 @@ impl ToStrRadix for BigUint {
 
         fn fill_concat(v: &[BigDigit], radix: uint, l: uint) -> ~str {
             if v.is_empty() { return ~"0" }
-            let mut s = str::with_capacity(v.len() * l);
+            let mut s = StrBuf::with_capacity(v.len() * l);
             for n in v.rev_iter() {
                 let ss = (*n as uint).to_str_radix(radix);
                 s.push_str("0".repeat(l - ss.len()));
                 s.push_str(ss);
             }
-            s.trim_left_chars(&'0').to_owned()
+            s.as_slice().trim_left_chars(&'0').to_owned()
         }
     }
 }

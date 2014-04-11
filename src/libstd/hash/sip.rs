@@ -291,7 +291,8 @@ mod tests {
     use iter::Iterator;
     use num::ToStrRadix;
     use option::{Some, None};
-    use str::{Str, OwnedStr};
+    use str::Str;
+    use strbuf::StrBuf;
     use slice::{Vector, ImmutableVector, OwnedVector};
     use self::test::BenchHarness;
 
@@ -387,11 +388,11 @@ mod tests {
         let mut state_full = SipState::new_with_keys(k0, k1);
 
         fn to_hex_str(r: &[u8, ..8]) -> ~str {
-            let mut s = ~"";
+            let mut s = StrBuf::new();
             for b in r.iter() {
                 s.push_str((*b as uint).to_str_radix(16u));
             }
-            s
+            s.into_owned()
         }
 
         fn result_bytes(h: u64) -> ~[u8] {
@@ -408,11 +409,11 @@ mod tests {
 
         fn result_str(h: u64) -> ~str {
             let r = result_bytes(h);
-            let mut s = ~"";
+            let mut s = StrBuf::new();
             for b in r.iter() {
                 s.push_str((*b as uint).to_str_radix(16u));
             }
-            s
+            s.into_owned()
         }
 
         while t < 64 {

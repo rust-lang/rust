@@ -30,7 +30,8 @@ use iter::{Iterator, range_step};
 use str::StrSlice;
 use unicode::{derived_property, property, general_category, decompose, conversions};
 
-#[cfg(test)] use str::OwnedStr;
+#[cfg(test)] use str::Str;
+#[cfg(test)] use strbuf::StrBuf;
 
 #[cfg(not(test))] use cmp::{Eq, Ord};
 #[cfg(not(test))] use default::Default;
@@ -747,9 +748,9 @@ fn test_is_digit() {
 #[test]
 fn test_escape_default() {
     fn string(c: char) -> ~str {
-        let mut result = ~"";
+        let mut result = StrBuf::new();
         escape_default(c, |c| { result.push_char(c); });
-        return result;
+        return result.into_owned();
     }
     assert_eq!(string('\n'), ~"\\n");
     assert_eq!(string('\r'), ~"\\r");
@@ -769,9 +770,9 @@ fn test_escape_default() {
 #[test]
 fn test_escape_unicode() {
     fn string(c: char) -> ~str {
-        let mut result = ~"";
+        let mut result = StrBuf::new();
         escape_unicode(c, |c| { result.push_char(c); });
-        return result;
+        return result.into_owned();
     }
     assert_eq!(string('\x00'), ~"\\x00");
     assert_eq!(string('\n'), ~"\\x0a");

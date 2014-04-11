@@ -8,8 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::strbuf::StrBuf;
+
 struct StringBuffer {
-    s: ~str
+    s: StrBuf,
 }
 
 impl StringBuffer {
@@ -18,14 +20,16 @@ impl StringBuffer {
     }
 }
 
-fn to_str(sb: StringBuffer) -> ~str {
+fn to_str(sb: StringBuffer) -> StrBuf {
     sb.s
 }
 
 pub fn main() {
-    let mut sb = StringBuffer {s: ~""};
+    let mut sb = StringBuffer {
+        s: StrBuf::new(),
+    };
     sb.append("Hello, ");
     sb.append("World!");
     let str = to_str(sb);
-    assert_eq!(str, ~"Hello, World!");
+    assert_eq!(str.as_slice(), "Hello, World!");
 }

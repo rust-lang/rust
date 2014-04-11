@@ -23,6 +23,7 @@ use std::fmt;
 use std::local_data;
 use std::path::BytesContainer;
 use std::rc::Rc;
+use std::strbuf::StrBuf;
 
 #[allow(non_camel_case_types)]
 #[deriving(Clone, Encodable, Decodable, Eq, TotalEq, Hash, Show)]
@@ -193,12 +194,12 @@ pub fn to_str(t: &Token) -> ~str {
 
       /* Literals */
       LIT_CHAR(c) => {
-          let mut res = ~"'";
+          let mut res = StrBuf::from_str("'");
           char::from_u32(c).unwrap().escape_default(|c| {
               res.push_char(c);
           });
           res.push_char('\'');
-          res
+          res.into_owned()
       }
       LIT_INT(i, t) => {
           i.to_str() + ast_util::int_ty_to_str(t)
@@ -208,18 +209,19 @@ pub fn to_str(t: &Token) -> ~str {
       }
       LIT_INT_UNSUFFIXED(i) => { i.to_str() }
       LIT_FLOAT(s, t) => {
-        let mut body = get_ident(s).get().to_str();
-        if body.ends_with(".") {
+        let mut body = StrBuf::from_str(get_ident(s).get());
+        if body.as_slice().ends_with(".") {
             body.push_char('0');  // `10.f` is not a float literal
         }
-        body + ast_util::float_ty_to_str(t)
+        body.push_str(ast_util::float_ty_to_str(t));
+        body.into_owned()
       }
       LIT_FLOAT_UNSUFFIXED(s) => {
-        let mut body = get_ident(s).get().to_str();
-        if body.ends_with(".") {
+        let mut body = StrBuf::from_str(get_ident(s).get());
+        if body.as_slice().ends_with(".") {
             body.push_char('0');  // `10.f` is not a float literal
         }
-        body
+        body.into_owned()
       }
       LIT_STR(s) => {
           format!("\"{}\"", get_ident(s).get().escape_default())
