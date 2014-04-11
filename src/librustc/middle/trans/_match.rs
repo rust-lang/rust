@@ -1109,10 +1109,8 @@ fn extract_vec_elems<'a>(
         let slice_begin = tvec::pointer_add_byte(bcx, base, slice_byte_offset);
         let slice_len_offset = C_uint(bcx.ccx(), elem_count - 1u);
         let slice_len = Sub(bcx, len, slice_len_offset);
-        let slice_ty = ty::mk_vec(bcx.tcx(),
-            ty::mt {ty: vt.unit_ty, mutbl: ast::MutImmutable},
-            ty::VstoreSlice(ty::ReStatic)
-        );
+        let slice_ty = ty::mk_vec(bcx.tcx(), vt.unit_ty,
+                                  ty::VstoreSlice(ty::ReStatic, ast::MutImmutable));
         let scratch = rvalue_scratch_datum(bcx, slice_ty, "");
         Store(bcx, slice_begin,
               GEPi(bcx, scratch.val, [0u, abi::slice_elt_base]));

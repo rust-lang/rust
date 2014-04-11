@@ -615,12 +615,12 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
             fcx.infcx().next_region_var(
                 infer::PatternRegion(pat.span));
 
-        let (elt_type, region_var) = match *structure_of(fcx,
-                                                         pat.span,
-                                                         expected) {
-          ty::ty_vec(mt, vstore) => {
-            let region_var = match vstore {
-                ty::VstoreSlice(r) => r,
+        let (elt_type, region_var, mutbl) = match *structure_of(fcx,
+                                                                pat.span,
+                                                                expected) {
+          ty::ty_vec(ty, vstore) => {
+            match vstore {
+                ty::VstoreSlice(r, m) => (ty, r, m),
                 ty::VstoreUniq => {
                     fcx.type_error_message(pat.span,
                                            |_| {
@@ -629,13 +629,12 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
                                            },
                                            expected,
                                            None);
-                    default_region_var
+                    (ty, default_region_var, ast::MutImmutable)
                 }
                 ty::VstoreFixed(_) => {
-                    default_region_var
+                    (ty, default_region_var, ast::MutImmutable)
                 }
-            };
-            (mt, region_var)
+            }
           }
           _ => {
               for &elt in before.iter() {
@@ -662,20 +661,20 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
           }
         };
         for elt in before.iter() {
-            check_pat(pcx, *elt, elt_type.ty);
+            check_pat(pcx, *elt, elt_type);
         }
         match slice {
             Some(slice_pat) => {
                 let slice_ty = ty::mk_vec(tcx,
-                    ty::mt {ty: elt_type.ty, mutbl: elt_type.mutbl},
-                    ty::VstoreSlice(region_var)
+                    elt_type,
+                    ty::VstoreSlice(region_var, mutbl)
                 );
                 check_pat(pcx, slice_pat, slice_ty);
             }
             None => ()
         }
         for elt in after.iter() {
-            check_pat(pcx, *elt, elt_type.ty);
+            check_pat(pcx, *elt, elt_type);
         }
         fcx.write_ty(pat.id, expected);
       }
