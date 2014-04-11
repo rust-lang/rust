@@ -21,12 +21,11 @@ also be used. See that function for more details.
 
 ```
 use std::unstable::finally::Finally;
-# fn always_run_this() {}
 
 (|| {
     // ...
 }).finally(|| {
-    always_run_this();
+    // this code is always run
 })
 ```
 */
@@ -158,4 +157,3 @@ fn test_compact() {
     do_some_fallible_work.finally(
         but_always_run_this_function);
 }
-

@@ -157,7 +157,7 @@ pub struct AtomicOption<T> {
 ///
 /// Rust's memory orderings are the same as in C++[1].
 ///
-/// [1]: http://gcc.gnu.org/wiki/Atomic/GCCMM/AtomicSync
+/// 1: http://gcc.gnu.org/wiki/Atomic/GCCMM/AtomicSync
 pub enum Ordering {
     /// No ordering constraints, only atomic operations
     Relaxed,
