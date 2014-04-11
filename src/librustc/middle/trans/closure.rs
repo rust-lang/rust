@@ -158,24 +158,21 @@ fn tuplify_box_ty(tcx: &ty::ctxt, t: ty::t) -> ty::t {
 }
 
 fn allocate_cbox<'a>(bcx: &'a Block<'a>,
-                     sigil: ast::Sigil,
+                     store: ty::TraitStore,
                      cdata_ty: ty::t)
                      -> Result<'a> {
     let _icx = push_ctxt("closure::allocate_cbox");
     let tcx = bcx.tcx();
 
     // Allocate and initialize the box:
-    match sigil {
-        ast::ManagedSigil => {
-            tcx.sess.bug("trying to trans allocation of @fn")
-        }
-        ast::OwnedSigil => {
+    match store {
+        ty::UniqTraitStore => {
             let ty = type_of(bcx.ccx(), cdata_ty);
             let size = llsize_of(bcx.ccx(), ty);
             // we treat proc as @ here, which isn't ideal
             malloc_raw_dyn_managed(bcx, cdata_ty, ClosureExchangeMallocFnLangItem, size)
         }
-        ast::BorrowedSigil => {
+        ty::RegionTraitStore(..) => {
             let cbox_ty = tuplify_box_ty(tcx, cdata_ty);
             let llbox = alloc_ty(bcx, cbox_ty, "__closure");
             rslt(bcx, llbox)
@@ -196,7 +193,7 @@ pub struct ClosureResult<'a> {
 pub fn store_environment<'a>(
                          bcx: &'a Block<'a>,
                          bound_values: Vec<EnvValue> ,
-                         sigil: ast::Sigil)
+                         store: ty::TraitStore)
                          -> ClosureResult<'a> {
     let _icx = push_ctxt("closure::store_environment");
     let ccx = bcx.ccx();
@@ -220,7 +217,7 @@ pub fn store_environment<'a>(
     }
 
     // allocate closure in the heap
-    let Result {bcx: bcx, val: llbox} = allocate_cbox(bcx, sigil, cdata_ty);
+    let Result {bcx: bcx, val: llbox} = allocate_cbox(bcx, store, cdata_ty);
 
     let llbox = PointerCast(bcx, llbox, llboxptr_ty);
     debug!("tuplify_box_ty = {}", ty_to_str(tcx, cbox_ty));
@@ -254,7 +251,7 @@ pub fn store_environment<'a>(
 // collects the upvars and packages them up for store_environment.
 fn build_closure<'a>(bcx0: &'a Block<'a>,
                      cap_vars: &[moves::CaptureVar],
-                     sigil: ast::Sigil)
+                     store: ty::TraitStore)
                      -> ClosureResult<'a> {
     let _icx = push_ctxt("closure::build_closure");
 
@@ -268,7 +265,11 @@ fn build_closure<'a>(bcx0: &'a Block<'a>,
         let datum = expr::trans_local_var(bcx, cap_var.def);
         match cap_var.mode {
             moves::CapRef => {
-                assert_eq!(sigil, ast::BorrowedSigil);
+                let is_region_closure = match store {
+                    ty::RegionTraitStore(..) => true,
+                    ty::UniqTraitStore => false
+                };
+                assert!(is_region_closure);
                 env_vals.push(EnvValue {action: EnvRef,
                                         datum: datum});
             }
@@ -283,7 +284,7 @@ fn build_closure<'a>(bcx0: &'a Block<'a>,
         }
     }
 
-    return store_environment(bcx, env_vals, sigil);
+    store_environment(bcx, env_vals, store)
 }
 
 // Given an enclosing block context, a new function context, a closure type,
@@ -291,7 +292,7 @@ fn build_closure<'a>(bcx0: &'a Block<'a>,
 // with the upvars and type descriptors.
 fn load_environment<'a>(bcx: &'a Block<'a>, cdata_ty: ty::t,
                         cap_vars: &[moves::CaptureVar],
-                        sigil: ast::Sigil) -> &'a Block<'a> {
+                        store: ty::TraitStore) -> &'a Block<'a> {
     let _icx = push_ctxt("closure::load_environment");
 
     // Don't bother to create the block if there's nothing to load
@@ -316,9 +317,9 @@ fn load_environment<'a>(bcx: &'a Block<'a>, cdata_ty: ty::t,
     let mut i = 0u;
     for cap_var in cap_vars.iter() {
         let mut upvarptr = GEPi(bcx, llcdata, [0u, i]);
-        match sigil {
-            ast::BorrowedSigil => { upvarptr = Load(bcx, upvarptr); }
-            ast::ManagedSigil | ast::OwnedSigil => {}
+        match store {
+            ty::RegionTraitStore(..) => { upvarptr = Load(bcx, upvarptr); }
+            ty::UniqTraitStore => {}
         }
         let def_id = ast_util::def_id_of_def(cap_var.def);
 
@@ -331,7 +332,7 @@ fn load_environment<'a>(bcx: &'a Block<'a>, cdata_ty: ty::t,
                 cdata_ty,
                 env_pointer_alloca,
                 i,
-                sigil,
+                store,
                 cap_var.span);
         }
 
@@ -349,7 +350,7 @@ fn fill_fn_pair(bcx: &Block, pair: ValueRef, llfn: ValueRef, llenvptr: ValueRef)
 
 pub fn trans_expr_fn<'a>(
                      bcx: &'a Block<'a>,
-                     sigil: ast::Sigil,
+                     store: ty::TraitStore,
                      decl: &ast::FnDecl,
                      body: &ast::Block,
                      id: ast::NodeId,
@@ -359,7 +360,7 @@ pub fn trans_expr_fn<'a>(
      *
      * Translates the body of a closure expression.
      *
-     * - `sigil`
+     * - `store`
      * - `decl`
      * - `body`
      * - `id`: The id of the closure expression.
@@ -399,11 +400,11 @@ pub fn trans_expr_fn<'a>(
 
     let cap_vars = ccx.maps.capture_map.borrow().get_copy(&id);
     let ClosureResult {llbox, cdata_ty, bcx} =
-        build_closure(bcx, cap_vars.as_slice(), sigil);
+        build_closure(bcx, cap_vars.as_slice(), store);
     trans_closure(ccx, decl, body, llfn,
                   bcx.fcx.param_substs, id,
                   [], ty::ty_fn_ret(fty),
-                  |bcx| load_environment(bcx, cdata_ty, cap_vars.as_slice(), sigil));
+                  |bcx| load_environment(bcx, cdata_ty, cap_vars.as_slice(), store));
     fill_fn_pair(bcx, dest_addr, llfn, llbox);
 
     bcx

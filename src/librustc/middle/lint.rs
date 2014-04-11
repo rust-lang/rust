@@ -919,10 +919,8 @@ fn check_heap_type(cx: &Context, span: Span, ty: ty::t) {
                 }
                 ty::ty_uniq(_) | ty::ty_str(ty::VstoreUniq) |
                 ty::ty_vec(_, ty::VstoreUniq) |
-                ty::ty_trait(~ty::TyTrait { store: ty::UniqTraitStore, .. }) => {
-                    n_uniq += 1;
-                }
-                ty::ty_closure(ref c) if c.sigil == ast::OwnedSigil => {
+                ty::ty_trait(~ty::TyTrait { store: ty::UniqTraitStore, .. }) |
+                ty::ty_closure(~ty::ClosureTy { store: ty::UniqTraitStore, .. }) => {
                     n_uniq += 1;
                 }
 

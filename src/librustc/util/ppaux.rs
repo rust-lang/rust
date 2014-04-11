@@ -266,21 +266,11 @@ pub fn ty_to_str(cx: &ctxt, typ: t) -> ~str {
     }
 
     fn closure_to_str(cx: &ctxt, cty: &ty::ClosureTy) -> ~str {
-        let is_proc =
-            (cty.sigil, cty.onceness) == (ast::OwnedSigil, ast::Once);
-        let is_borrowed_closure = cty.sigil == ast::BorrowedSigil;
+        let mut s = StrBuf::new();
 
-        let mut s = if is_proc || is_borrowed_closure {
-            StrBuf::new()
-        } else {
-            StrBuf::from_owned_str(cty.sigil.to_str())
-        };
-
-        match (cty.sigil, cty.region) {
-            (ast::ManagedSigil, ty::ReStatic) |
-            (ast::OwnedSigil, ty::ReStatic) => {}
-
-            (_, region) => {
+        match cty.store {
+            ty::UniqTraitStore => {}
+            ty::RegionTraitStore(region, _) => {
                 s.push_str(region_to_str(cx, "", true, region));
             }
         }
@@ -293,40 +283,24 @@ pub fn ty_to_str(cx: &ctxt, typ: t) -> ~str {
             }
         };
 
-        if is_proc {
-            s.push_str("proc");
-        } else {
-            match cty.onceness {
-                ast::Many => {}
-                ast::Once => {
-                    s.push_str(cty.onceness.to_str());
-                    s.push_char(' ');
+        match cty.store {
+            ty::UniqTraitStore => {
+                assert_eq!(cty.onceness, ast::Once);
+                s.push_str("proc");
+                push_sig_to_str(cx, &mut s, '(', ')', &cty.sig);
+            }
+            ty::RegionTraitStore(..) => {
+                match cty.onceness {
+                    ast::Many => {}
+                    ast::Once => s.push_str("once ")
                 }
-            };
-
-            if !is_borrowed_closure {
-                s.push_str("fn");
+                push_sig_to_str(cx, &mut s, '|', '|', &cty.sig);
             }
         }
 
-        if !is_borrowed_closure {
-            // Print bounds before `fn` if this is not a borrowed closure.
-            if !cty.bounds.is_empty() {
-                s.push_str(":");
-                s.push_str(cty.bounds.repr(cx));
-            }
-
-            push_sig_to_str(cx, &mut s, '(', ')', &cty.sig);
-        } else {
-            // Print bounds after the signature if this is a borrowed closure.
-            push_sig_to_str(cx, &mut s, '|', '|', &cty.sig);
-
-            if is_borrowed_closure {
-                if !cty.bounds.is_empty() {
-                    s.push_str(":");
-                    s.push_str(cty.bounds.repr(cx));
-                }
-            }
+        if !cty.bounds.is_empty() {
+            s.push_str(":");
+            s.push_str(cty.bounds.repr(cx));
         }
 
         s.into_owned()

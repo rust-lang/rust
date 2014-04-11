@@ -120,7 +120,7 @@ impl<'f> Coerce<'f> {
                 });
             }
 
-            ty::ty_closure(~ty::ClosureTy {sigil: ast::BorrowedSigil, ..}) => {
+            ty::ty_closure(~ty::ClosureTy {store: ty::RegionTraitStore(..), ..}) => {
                 return self.unpack_actual_value(a, |sty_a| {
                     self.coerce_borrowed_fn(a, sty_a, b)
                 });
@@ -343,8 +343,7 @@ impl<'f> Coerce<'f> {
                b.inf_str(self.get_ref().infcx));
 
         let fn_ty = match *sty_a {
-            ty::ty_closure(ref f) if f.sigil == ast::ManagedSigil ||
-                                     f.sigil == ast::OwnedSigil => {
+            ty::ty_closure(ref f) if f.store == ty::UniqTraitStore => {
                 (*f).clone()
             }
             ty::ty_bare_fn(ref f) => {
@@ -359,8 +358,7 @@ impl<'f> Coerce<'f> {
         let a_borrowed = ty::mk_closure(
             self.get_ref().infcx.tcx,
             ty::ClosureTy {
-                sigil: ast::BorrowedSigil,
-                region: r_borrow,
+                store: ty::RegionTraitStore(r_borrow, ast::MutMutable),
                 .. *fn_ty
             });
 
@@ -393,7 +391,7 @@ impl<'f> Coerce<'f> {
                 _ => return self.subtype(a, b)
             };
 
-            let adj = @ty::AutoAddEnv(fn_ty_b.region, fn_ty_b.sigil);
+            let adj = @ty::AutoAddEnv(fn_ty_b.store);
             let a_closure = ty::mk_closure(self.get_ref().infcx.tcx,
                                            ty::ClosureTy {
                                                 sig: fn_ty_a.sig.clone(),

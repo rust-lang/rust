@@ -197,27 +197,13 @@ fn with_appropriate_checker(cx: &Context,
     let fty = ty::node_id_to_type(cx.tcx, id);
     match ty::get(fty).sty {
         ty::ty_closure(~ty::ClosureTy {
-            sigil: OwnedSigil,
-            bounds: bounds,
-            ..
-        }) => {
-            b(|cx, fv| check_for_uniq(cx, fv, bounds))
-        }
+            store: ty::UniqTraitStore, bounds, ..
+        }) => b(|cx, fv| check_for_uniq(cx, fv, bounds)),
+
         ty::ty_closure(~ty::ClosureTy {
-            sigil: ManagedSigil,
-            ..
-        }) => {
-            // can't happen
-            fail!("internal error: saw closure with managed sigil (@fn)");
-        }
-        ty::ty_closure(~ty::ClosureTy {
-            sigil: BorrowedSigil,
-            bounds: bounds,
-            region: region,
-            ..
-        }) => {
-            b(|cx, fv| check_for_block(cx, fv, bounds, region))
-        }
+            store: ty::RegionTraitStore(region, _), bounds, ..
+        }) => b(|cx, fv| check_for_block(cx, fv, bounds, region)),
+
         ty::ty_bare_fn(_) => {
             b(check_for_bare)
         }

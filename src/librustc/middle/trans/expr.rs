@@ -731,10 +731,10 @@ fn trans_rvalue_dps_unadjusted<'a>(bcx: &'a Block<'a>,
         ast::ExprFnBlock(decl, body) |
         ast::ExprProc(decl, body) => {
             let expr_ty = expr_ty(bcx, expr);
-            let sigil = ty::ty_closure_sigil(expr_ty);
+            let store = ty::ty_closure_store(expr_ty);
             debug!("translating block function {} with type {}",
                    expr_to_str(expr), expr_ty.repr(tcx));
-            closure::trans_expr_fn(bcx, sigil, decl, body, expr.id, dest)
+            closure::trans_expr_fn(bcx, store, decl, body, expr.id, dest)
         }
         ast::ExprCall(f, ref args) => {
             callee::trans_call(bcx, expr, f, callee::ArgExprs(args.as_slice()), dest)

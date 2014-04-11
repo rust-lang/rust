@@ -205,18 +205,32 @@ pub trait Combine {
     fn closure_tys(&self, a: &ty::ClosureTy,
                    b: &ty::ClosureTy) -> cres<ty::ClosureTy> {
 
-        let p = if_ok!(self.sigils(a.sigil, b.sigil));
-        let r = if_ok!(self.contraregions(a.region, b.region));
+        let store = match (a.store, b.store) {
+            (ty::RegionTraitStore(a_r, a_m),
+             ty::RegionTraitStore(b_r, b_m)) if a_m == b_m => {
+                let r = if_ok!(self.contraregions(a_r, b_r));
+                ty::RegionTraitStore(r, a_m)
+            }
+
+            _ if a.store == b.store => {
+                a.store
+            }
+
+            _ => {
+                return Err(ty::terr_sigil_mismatch(expected_found(self, a.store, b.store)))
+            }
+        };
         let fn_style = if_ok!(self.fn_styles(a.fn_style, b.fn_style));
         let onceness = if_ok!(self.oncenesses(a.onceness, b.onceness));
         let bounds = if_ok!(self.bounds(a.bounds, b.bounds));
         let sig = if_ok!(self.fn_sigs(&a.sig, &b.sig));
-        Ok(ty::ClosureTy {fn_style: fn_style,
-                sigil: p,
-                onceness: onceness,
-                region: r,
-                bounds: bounds,
-                sig: sig})
+        Ok(ty::ClosureTy {
+            fn_style: fn_style,
+            onceness: onceness,
+            store: store,
+            bounds: bounds,
+            sig: sig
+        })
     }
 
     fn fn_sigs(&self, a: &ty::FnSig, b: &ty::FnSig) -> cres<ty::FnSig>;
@@ -236,14 +250,6 @@ pub trait Combine {
 
     fn args(&self, a: ty::t, b: ty::t) -> cres<ty::t> {
         self.contratys(a, b).and_then(|t| Ok(t))
-    }
-
-    fn sigils(&self, p1: ast::Sigil, p2: ast::Sigil) -> cres<ast::Sigil> {
-        if p1 == p2 {
-            Ok(p1)
-        } else {
-            Err(ty::terr_sigil_mismatch(expected_found(self, p1, p2)))
-        }
     }
 
     fn fn_styles(&self, a: FnStyle, b: FnStyle) -> cres<FnStyle>;
