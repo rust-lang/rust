@@ -306,11 +306,11 @@ mod bench {
 
     use any::{Any, AnyRefExt};
     use option::Some;
-    use self::test::BenchHarness;
+    use self::test::Bencher;
 
     #[bench]
-    fn bench_as_ref(bh: &mut BenchHarness) {
-        bh.iter(|| {
+    fn bench_as_ref(b: &mut Bencher) {
+        b.iter(|| {
             let mut x = 0; let mut y = &mut x as &mut Any;
             test::black_box(&mut y);
             test::black_box(y.as_ref::<int>() == Some(&0));

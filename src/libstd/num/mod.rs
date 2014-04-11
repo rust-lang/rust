@@ -1773,13 +1773,13 @@ mod tests {
 #[cfg(test)]
 mod bench {
     extern crate test;
-    use self::test::BenchHarness;
+    use self::test::Bencher;
     use num;
     use slice;
     use prelude::*;
 
     #[bench]
-    fn bench_pow_function(b: &mut BenchHarness) {
+    fn bench_pow_function(b: &mut Bencher) {
         let v = slice::from_fn(1024, |n| n);
         b.iter(|| {v.iter().fold(0, |old, new| num::pow(old, *new));});
     }

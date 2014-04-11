@@ -117,18 +117,18 @@ pub unsafe fn exchange_free(ptr: *u8) {
 #[cfg(test)]
 mod bench {
     extern crate test;
-    use self::test::BenchHarness;
+    use self::test::Bencher;
 
     #[bench]
-    fn alloc_owned_small(bh: &mut BenchHarness) {
-        bh.iter(|| {
+    fn alloc_owned_small(b: &mut Bencher) {
+        b.iter(|| {
             ~10
         })
     }
 
     #[bench]
-    fn alloc_owned_big(bh: &mut BenchHarness) {
-        bh.iter(|| {
+    fn alloc_owned_big(b: &mut Bencher) {
+        b.iter(|| {
             ~[10, ..1000]
         })
     }

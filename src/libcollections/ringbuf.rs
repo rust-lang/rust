@@ -404,7 +404,7 @@ impl<A> Extendable<A> for RingBuf<A> {
 #[cfg(test)]
 mod tests {
     extern crate test;
-    use self::test::BenchHarness;
+    use self::test::Bencher;
     use deque::Deque;
     use std::clone::Clone;
     use std::cmp::Eq;
@@ -546,14 +546,14 @@ mod tests {
     }
 
     #[bench]
-    fn bench_new(b: &mut test::BenchHarness) {
+    fn bench_new(b: &mut test::Bencher) {
         b.iter(|| {
             let _: RingBuf<u64> = RingBuf::new();
         })
     }
 
     #[bench]
-    fn bench_push_back(b: &mut test::BenchHarness) {
+    fn bench_push_back(b: &mut test::Bencher) {
         let mut deq = RingBuf::new();
         b.iter(|| {
             deq.push_back(0);
@@ -561,7 +561,7 @@ mod tests {
     }
 
     #[bench]
-    fn bench_push_front(b: &mut test::BenchHarness) {
+    fn bench_push_front(b: &mut test::Bencher) {
         let mut deq = RingBuf::new();
         b.iter(|| {
             deq.push_front(0);
@@ -569,7 +569,7 @@ mod tests {
     }
 
     #[bench]
-    fn bench_grow(b: &mut test::BenchHarness) {
+    fn bench_grow(b: &mut test::Bencher) {
         let mut deq = RingBuf::new();
         b.iter(|| {
             for _ in range(0, 65) {
