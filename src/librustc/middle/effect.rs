@@ -20,7 +20,7 @@ use syntax::codemap::Span;
 use syntax::visit;
 use syntax::visit::Visitor;
 
-#[deriving(Eq)]
+#[deriving(Eq, Clone)]
 enum UnsafeContext {
     SafeContext,
     UnsafeFn,
@@ -35,18 +35,22 @@ fn type_is_unsafe_function(ty: ty::t) -> bool {
     }
 }
 
+#[deriving(Eq, Clone)]
+struct EffectEnv {
+    /// Whether we're in an unsafe context.
+    unsafe_context: UnsafeContext
+}
+
 struct EffectCheckVisitor<'a> {
     tcx: &'a ty::ctxt,
 
     /// The method map.
     method_map: MethodMap,
-    /// Whether we're in an unsafe context.
-    unsafe_context: UnsafeContext,
 }
 
 impl<'a> EffectCheckVisitor<'a> {
-    fn require_unsafe(&mut self, span: Span, description: &str) {
-        match self.unsafe_context {
+    fn require_unsafe(&mut self, span: Span, env: &EffectEnv, description: &str) {
+        match env.unsafe_context {
             SafeContext => {
                 // Report an error.
                 self.tcx.sess.span_err(span,
@@ -79,9 +83,9 @@ impl<'a> EffectCheckVisitor<'a> {
     }
 }
 
-impl<'a> Visitor<()> for EffectCheckVisitor<'a> {
+impl<'a> Visitor<EffectEnv> for EffectCheckVisitor<'a> {
     fn visit_fn(&mut self, fn_kind: &visit::FnKind, fn_decl: &ast::FnDecl,
-                block: &ast::Block, span: Span, node_id: ast::NodeId, _:()) {
+                block: &ast::Block, span: Span, node_id: ast::NodeId, env: EffectEnv) {
 
         let (is_item_fn, is_unsafe_fn) = match *fn_kind {
             visit::FkItemFn(_, _, fn_style, _) =>
@@ -91,20 +95,19 @@ impl<'a> Visitor<()> for EffectCheckVisitor<'a> {
             _ => (false, false),
         };
 
-        let old_unsafe_context = self.unsafe_context;
+        let mut env = env;
+
         if is_unsafe_fn {
-            self.unsafe_context = UnsafeFn
+            env.unsafe_context = UnsafeFn;
         } else if is_item_fn {
-            self.unsafe_context = SafeContext
+            env.unsafe_context = SafeContext;
         }
 
-        visit::walk_fn(self, fn_kind, fn_decl, block, span, node_id, ());
-
-        self.unsafe_context = old_unsafe_context
+        visit::walk_fn(self, fn_kind, fn_decl, block, span, node_id, env);
     }
 
-    fn visit_block(&mut self, block: &ast::Block, _:()) {
-        let old_unsafe_context = self.unsafe_context;
+    fn visit_block(&mut self, block: &ast::Block, env: EffectEnv) {
+        let mut env = env;
         match block.rules {
             ast::DefaultBlock => {}
             ast::UnsafeBlock(source) => {
@@ -123,18 +126,16 @@ impl<'a> Visitor<()> for EffectCheckVisitor<'a> {
                 // external blocks (e.g. `unsafe { println("") }`,
                 // expands to `unsafe { ... unsafe { ... } }` where
                 // the inner one is compiler generated).
-                if self.unsafe_context == SafeContext || source == ast::CompilerGenerated {
-                    self.unsafe_context = UnsafeBlock(block.id)
+                if env.unsafe_context == SafeContext || source == ast::CompilerGenerated {
+                    env.unsafe_context = UnsafeBlock(block.id);
                 }
             }
         }
 
-        visit::walk_block(self, block, ());
-
-        self.unsafe_context = old_unsafe_context
+        visit::walk_block(self, block, env);
     }
 
-    fn visit_expr(&mut self, expr: &ast::Expr, _:()) {
+    fn visit_expr(&mut self, expr: &ast::Expr, env: EffectEnv) {
         match expr.node {
             ast::ExprMethodCall(_, _, _) => {
                 let method_call = MethodCall::expr(expr.id);
@@ -142,7 +143,7 @@ impl<'a> Visitor<()> for EffectCheckVisitor<'a> {
                 debug!("effect: method call case, base type is {}",
                        ppaux::ty_to_str(self.tcx, base_type));
                 if type_is_unsafe_function(base_type) {
-                    self.require_unsafe(expr.span,
+                    self.require_unsafe(expr.span, &env,
                                         "invocation of unsafe method")
                 }
             }
@@ -151,7 +152,7 @@ impl<'a> Visitor<()> for EffectCheckVisitor<'a> {
                 debug!("effect: call case, base type is {}",
                        ppaux::ty_to_str(self.tcx, base_type));
                 if type_is_unsafe_function(base_type) {
-                    self.require_unsafe(expr.span, "call to unsafe function")
+                    self.require_unsafe(expr.span, &env, "call to unsafe function")
                 }
             }
             ast::ExprUnary(ast::UnDeref, base) => {
@@ -160,7 +161,7 @@ impl<'a> Visitor<()> for EffectCheckVisitor<'a> {
                         ppaux::ty_to_str(self.tcx, base_type));
                 match ty::get(base_type).sty {
                     ty::ty_ptr(_) => {
-                        self.require_unsafe(expr.span,
+                        self.require_unsafe(expr.span, &env,
                                             "dereference of unsafe pointer")
                     }
                     _ => {}
@@ -173,12 +174,12 @@ impl<'a> Visitor<()> for EffectCheckVisitor<'a> {
                 self.check_str_index(base);
             }
             ast::ExprInlineAsm(..) => {
-                self.require_unsafe(expr.span, "use of inline assembly")
+                self.require_unsafe(expr.span, &env, "use of inline assembly")
             }
             ast::ExprPath(..) => {
                 match ty::resolve_expr(self.tcx, expr) {
                     ast::DefStatic(_, true) => {
-                        self.require_unsafe(expr.span, "use of mutable static")
+                        self.require_unsafe(expr.span, &env, "use of mutable static")
                     }
                     _ => {}
                 }
@@ -186,7 +187,7 @@ impl<'a> Visitor<()> for EffectCheckVisitor<'a> {
             _ => {}
         }
 
-        visit::walk_expr(self, expr, ());
+        visit::walk_expr(self, expr, env);
     }
 }
 
@@ -194,8 +195,9 @@ pub fn check_crate(tcx: &ty::ctxt, method_map: MethodMap, krate: &ast::Crate) {
     let mut visitor = EffectCheckVisitor {
         tcx: tcx,
         method_map: method_map,
-        unsafe_context: SafeContext,
     };
 
-    visit::walk_crate(&mut visitor, krate, ());
+    let env = EffectEnv{unsafe_context: SafeContext};
+
+    visit::walk_crate(&mut visitor, krate, env);
 }
