@@ -17,6 +17,7 @@ use util::ppaux;
 
 use syntax::ast;
 use syntax::codemap::Span;
+use syntax::print::pprust;
 use syntax::visit;
 use syntax::visit::Visitor;
 
@@ -38,7 +39,11 @@ fn type_is_unsafe_function(ty: ty::t) -> bool {
 #[deriving(Eq, Clone)]
 struct EffectEnv {
     /// Whether we're in an unsafe context.
-    unsafe_context: UnsafeContext
+    unsafe_context: UnsafeContext,
+
+    /// Whether mut static usage should
+    /// be forbidden regardless.
+    allow_share: bool,
 }
 
 struct EffectCheckVisitor<'a> {
@@ -79,6 +84,13 @@ impl<'a> EffectCheckVisitor<'a> {
                     "modification of string types is not allowed");
             }
             _ => {}
+        }
+    }
+
+    fn expr_is_mut_static(&mut self, e: &ast::Expr) -> bool {
+        match self.tcx.def_map.borrow().find(&e.id) {
+            Some(&ast::DefStatic(_, true)) => true,
+            _ => false
         }
     }
 }
@@ -136,8 +148,11 @@ impl<'a> Visitor<EffectEnv> for EffectCheckVisitor<'a> {
     }
 
     fn visit_expr(&mut self, expr: &ast::Expr, env: EffectEnv) {
+        let mut env = env;
+        debug!("visit_expr(expr={}, allow_share={})",
+               pprust::expr_to_str(expr), env.allow_share);
         match expr.node {
-            ast::ExprMethodCall(_, _, _) => {
+            ast::ExprMethodCall(_, _, ref args) => {
                 let method_call = MethodCall::expr(expr.id);
                 let base_type = self.method_map.borrow().get(&method_call).ty;
                 debug!("effect: method call case, base type is {}",
@@ -146,6 +161,30 @@ impl<'a> Visitor<EffectEnv> for EffectCheckVisitor<'a> {
                     self.require_unsafe(expr.span, &env,
                                         "invocation of unsafe method")
                 }
+
+                // This is a method call, hence we just check the first
+                // expression in the call args which corresponds `Self`
+                if self.expr_is_mut_static(*args.get(0)) {
+                    let adj_ty = ty::expr_ty_adjusted(self.tcx, *args.get(0),
+                                                      &*self.method_map.borrow());
+                    match ty::get(adj_ty).sty {
+                        ty::ty_rptr(_, mt) if mt.mutbl == ast::MutMutable => {
+                            self.require_unsafe(expr.span, &env,
+                                                "mutable borrow of mutable static");
+                        }
+                        _ => {}
+                    }
+                }
+
+                env.allow_share = true;
+            }
+            ast::ExprIndex(base, index) => {
+                self.visit_expr(base, env.clone());
+
+                // It is safe to access share static mut
+                // in index expressions.
+                env.allow_share = true;
+                return self.visit_expr(index, env);
             }
             ast::ExprCall(base, _) => {
                 let base_type = ty::node_id_to_type(self.tcx, base.id);
@@ -154,6 +193,8 @@ impl<'a> Visitor<EffectEnv> for EffectCheckVisitor<'a> {
                 if type_is_unsafe_function(base_type) {
                     self.require_unsafe(expr.span, &env, "call to unsafe function")
                 }
+
+                env.allow_share = true;
             }
             ast::ExprUnary(ast::UnDeref, base) => {
                 let base_type = ty::node_id_to_type(self.tcx, base.id);
@@ -167,21 +208,42 @@ impl<'a> Visitor<EffectEnv> for EffectCheckVisitor<'a> {
                     _ => {}
                 }
             }
-            ast::ExprAssign(base, _) | ast::ExprAssignOp(_, base, _) => {
-                self.check_str_index(base);
+            ast::ExprAssign(lhs, rhs) | ast::ExprAssignOp(_, lhs, rhs) => {
+                self.check_str_index(lhs);
+
+                debug!("assign(rhs={}, lhs={})",
+                       pprust::expr_to_str(rhs),
+                       pprust::expr_to_str(lhs))
+
+                env.allow_share = true;
+                self.visit_expr(rhs, env.clone());
+
+                // we want to ignore `Share` statics
+                // *just* in the LHS of the assignment.
+                env.allow_share = false;
+                return self.visit_expr(lhs, env);
+            }
+            ast::ExprAddrOf(ast::MutImmutable, _) => {
+                env.allow_share =  true;
             }
             ast::ExprAddrOf(ast::MutMutable, base) => {
+                 if self.expr_is_mut_static(base) {
+                     self.require_unsafe(expr.span, &env,
+                                         "mutable borrow of mutable static");
+                 }
+
                 self.check_str_index(base);
+                env.allow_share = true;
             }
             ast::ExprInlineAsm(..) => {
                 self.require_unsafe(expr.span, &env, "use of inline assembly")
             }
             ast::ExprPath(..) => {
-                match ty::resolve_expr(self.tcx, expr) {
-                    ast::DefStatic(_, true) => {
-                        self.require_unsafe(expr.span, &env, "use of mutable static")
+                if self.expr_is_mut_static(expr) {
+                    let ety = ty::node_id_to_type(self.tcx, expr.id);
+                    if !env.allow_share || !ty::type_is_sharable(self.tcx, ety) {
+                        self.require_unsafe(expr.span, &env, "this use of mutable static");
                     }
-                    _ => {}
                 }
             }
             _ => {}
@@ -197,7 +259,10 @@ pub fn check_crate(tcx: &ty::ctxt, method_map: MethodMap, krate: &ast::Crate) {
         method_map: method_map,
     };
 
-    let env = EffectEnv{unsafe_context: SafeContext};
+    let env = EffectEnv{
+        allow_share: false,
+        unsafe_context: SafeContext,
+    };
 
     visit::walk_crate(&mut visitor, krate, env);
 }

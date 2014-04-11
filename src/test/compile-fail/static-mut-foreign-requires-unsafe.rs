@@ -8,14 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate libc;
+
+
+mod test {
+    use std::kinds::marker;
+
+    pub struct NonSharable {
+        pub field: uint,
+        noshare: marker::NoShare
+    }
+}
 
 extern {
-    static mut a: libc::c_int;
+    static mut a: test::NonSharable;
 }
 
 fn main() {
-    a += 3;     //~ ERROR: requires unsafe
-    a = 4;      //~ ERROR: requires unsafe
-    let _b = a; //~ ERROR: requires unsafe
+    a.field += 3;     //~ ERROR: this use of mutable static requires unsafe function or block
+    a.field = 4;      //~ ERROR: this use of mutable static requires unsafe function or block
+    let _b = a;       //~ ERROR: this use of mutable static requires unsafe function or block
 }
