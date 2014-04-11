@@ -598,7 +598,12 @@ impl<T> Vec<T> {
     /// ```
     #[inline]
     pub fn as_mut_slice<'a>(&'a mut self) -> &'a mut [T] {
-        let slice = Slice { data: self.ptr as *T, len: self.len };
+        // See the comment in as_slice() for what's going on here.
+        let slice = if mem::size_of::<T>() == 0 {
+            Slice { data: 1 as *T, len: self.len }
+        } else {
+            Slice { data: self.ptr as *T, len: self.len }
+        };
         unsafe { transmute(slice) }
     }
 
@@ -1335,7 +1340,15 @@ impl<T> Vector<T> for Vec<T> {
     /// ```
     #[inline]
     fn as_slice<'a>(&'a self) -> &'a [T] {
-        let slice = Slice { data: self.ptr as *T, len: self.len };
+        // If we have a 0-sized vector, then the base pointer should not be NULL
+        // because an iterator over the slice will attempt to yield the base
+        // pointer as the first element in the vector, but this will end up
+        // being Some(NULL) which is optimized to None.
+        let slice = if mem::size_of::<T>() == 0 {
+            Slice { data: 1 as *T, len: self.len }
+        } else {
+            Slice { data: self.ptr as *T, len: self.len }
+        };
         unsafe { transmute(slice) }
     }
 }
@@ -1587,5 +1600,36 @@ mod tests {
         let mut vec = Vec::from_slice([1u, 2, 3, 4]);
         vec.retain(|x| x%2 == 0);
         assert!(vec == Vec::from_slice([2u, 4]));
+    }
+
+    #[test]
+    fn zero_sized_values() {
+        let mut v = Vec::new();
+        assert_eq!(v.len(), 0);
+        v.push(());
+        assert_eq!(v.len(), 1);
+        v.push(());
+        assert_eq!(v.len(), 2);
+        assert_eq!(v.pop(), Some(()));
+        assert_eq!(v.pop(), Some(()));
+        assert_eq!(v.pop(), None);
+
+        assert_eq!(v.iter().len(), 0);
+        v.push(());
+        assert_eq!(v.iter().len(), 1);
+        v.push(());
+        assert_eq!(v.iter().len(), 2);
+
+        for &() in v.iter() {}
+
+        assert_eq!(v.mut_iter().len(), 2);
+        v.push(());
+        assert_eq!(v.mut_iter().len(), 3);
+        v.push(());
+        assert_eq!(v.mut_iter().len(), 4);
+
+        for &() in v.mut_iter() {}
+        unsafe { v.set_len(0); }
+        assert_eq!(v.mut_iter().len(), 0);
     }
 }
