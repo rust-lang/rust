@@ -2555,22 +2555,9 @@ impl<'a> StrSlice<'a> for &'a str {
     fn to_utf16(&self) -> ~[u16] {
         let mut u = ~[];
         for ch in self.chars() {
-            // Arithmetic with u32 literals is easier on the eyes than chars.
-            let mut ch = ch as u32;
-
-            if (ch & 0xFFFF_u32) == ch {
-                // The BMP falls through (assuming non-surrogate, as it
-                // should)
-                assert!(ch <= 0xD7FF_u32 || ch >= 0xE000_u32);
-                u.push(ch as u16)
-            } else {
-                // Supplementary planes break into surrogates.
-                assert!(ch >= 0x1_0000_u32 && ch <= 0x10_FFFF_u32);
-                ch -= 0x1_0000_u32;
-                let w1 = 0xD800_u16 | ((ch >> 10) as u16);
-                let w2 = 0xDC00_u16 | ((ch as u16) & 0x3FF_u16);
-                u.push_all([w1, w2])
-            }
+            let mut buf = [0u16, ..2];
+            let n = ch.encode_utf16(buf /* as mut slice! */);
+            u.push_all(buf.slice_to(n));
         }
         u
     }
