@@ -27,10 +27,11 @@ use print::pp;
 
 use std::cast;
 use std::char;
-use std::str;
-use std::io;
 use std::io::{IoResult, MemWriter};
+use std::io;
 use std::rc::Rc;
+use std::str;
+use std::strbuf::StrBuf;
 
 pub enum AnnNode<'a> {
     NodeBlock(&'a ast::Block),
@@ -2156,10 +2157,10 @@ impl<'a> State<'a> {
         match lit.node {
             ast::LitStr(ref st, style) => self.print_string(st.get(), style),
             ast::LitChar(ch) => {
-                let mut res = ~"'";
+                let mut res = StrBuf::from_str("'");
                 char::from_u32(ch).unwrap().escape_default(|c| res.push_char(c));
                 res.push_char('\'');
-                word(&mut self.s, res)
+                word(&mut self.s, res.into_owned())
             }
             ast::LitInt(i, t) => {
                 word(&mut self.s, format!("{}{}", i, ast_util::int_ty_to_str(t)))

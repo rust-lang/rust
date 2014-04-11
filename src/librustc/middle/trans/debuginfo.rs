@@ -148,8 +148,9 @@ use collections::HashMap;
 use collections::HashSet;
 use libc::{c_uint, c_ulonglong, c_longlong};
 use std::ptr;
-use std::sync::atomics;
 use std::slice;
+use std::strbuf::StrBuf;
+use std::sync::atomics;
 use syntax::codemap::{Span, Pos};
 use syntax::{abi, ast, codemap, ast_util, ast_map};
 use syntax::owned_slice::OwnedSlice;
@@ -697,7 +698,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
     };
 
     // get_template_parameters() will append a `<...>` clause to the function name if necessary.
-    let mut function_name = token::get_ident(ident).get().to_str();
+    let mut function_name = StrBuf::from_str(token::get_ident(ident).get());
     let template_parameters = get_template_parameters(cx,
                                                       generics,
                                                       param_substs,
@@ -709,11 +710,12 @@ pub fn create_function_debug_context(cx: &CrateContext,
     // ast_map, or construct a path using the enclosing function).
     let (linkage_name, containing_scope) = if has_path {
         let namespace_node = namespace_for_item(cx, ast_util::local_def(fn_ast_id));
-        let linkage_name = namespace_node.mangled_name_of_contained_item(function_name);
+        let linkage_name = namespace_node.mangled_name_of_contained_item(
+            function_name.as_slice());
         let containing_scope = namespace_node.scope;
         (linkage_name, containing_scope)
     } else {
-        (function_name.clone(), file_metadata)
+        (function_name.as_slice().to_owned(), file_metadata)
     };
 
     // Clang sets this parameter to the opening brace of the function's block, so let's do this too.
@@ -721,7 +723,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
 
     let is_local_to_unit = is_node_local_to_unit(cx, fn_ast_id);
 
-    let fn_metadata = function_name.with_c_str(|function_name| {
+    let fn_metadata = function_name.as_slice().with_c_str(|function_name| {
                           linkage_name.with_c_str(|linkage_name| {
             unsafe {
                 llvm::LLVMDIBuilderCreateFunction(
@@ -819,8 +821,8 @@ pub fn create_function_debug_context(cx: &CrateContext,
                                generics: &ast::Generics,
                                param_substs: Option<@param_substs>,
                                file_metadata: DIFile,
-                               name_to_append_suffix_to: &mut ~str)
-                            -> DIArray {
+                               name_to_append_suffix_to: &mut StrBuf)
+                               -> DIArray {
         let self_type = match param_substs {
             Some(param_substs) => param_substs.self_ty,
             _ => None
@@ -2826,7 +2828,7 @@ struct NamespaceTreeNode {
 
 impl NamespaceTreeNode {
     fn mangled_name_of_contained_item(&self, item_name: &str) -> ~str {
-        fn fill_nested(node: &NamespaceTreeNode, output: &mut ~str) {
+        fn fill_nested(node: &NamespaceTreeNode, output: &mut StrBuf) {
             match node.parent {
                 Some(parent) => fill_nested(parent, output),
                 None => {}
@@ -2836,12 +2838,12 @@ impl NamespaceTreeNode {
             output.push_str(string.get());
         }
 
-        let mut name = ~"_ZN";
+        let mut name = StrBuf::from_str("_ZN");
         fill_nested(self, &mut name);
         name.push_str(format!("{}", item_name.len()));
         name.push_str(item_name);
         name.push_char('E');
-        name
+        name.into_owned()
     }
 }
 

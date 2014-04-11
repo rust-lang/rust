@@ -24,6 +24,7 @@ extern crate libc;
 
 use std::io::BufReader;
 use std::num;
+use std::strbuf::StrBuf;
 use std::str;
 
 static NSEC_PER_SEC: i32 = 1_000_000_000_i32;
@@ -236,7 +237,10 @@ pub struct Tm {
 pub fn empty_tm() -> Tm {
     // 64 is the max size of the timezone buffer allocated on windows
     // in rust_localtime. In glibc the max timezone size is supposedly 3.
-    let zone = str::with_capacity(64);
+    let mut zone = StrBuf::new();
+    for _ in range(0, 64) {
+        zone.push_char(' ')
+    }
     Tm {
         tm_sec: 0_i32,
         tm_min: 0_i32,
@@ -248,7 +252,7 @@ pub fn empty_tm() -> Tm {
         tm_yday: 0_i32,
         tm_isdst: 0_i32,
         tm_gmtoff: 0_i32,
-        tm_zone: zone,
+        tm_zone: zone.into_owned(),
         tm_nsec: 0_i32,
     }
 }

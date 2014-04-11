@@ -33,13 +33,14 @@
 //! These tasks are not parallelized (they haven't been a bottleneck yet), and
 //! both occur before the crate is rendered.
 
-use std::fmt;
-use std::local_data;
-use std::io;
-use std::io::{fs, File, BufferedWriter, MemWriter, BufferedReader};
-use std::str;
-use std::slice;
 use collections::{HashMap, HashSet};
+use std::fmt;
+use std::io::{fs, File, BufferedWriter, MemWriter, BufferedReader};
+use std::io;
+use std::local_data;
+use std::slice;
+use std::str;
+use std::strbuf::StrBuf;
 
 use sync::Arc;
 use serialize::json::ToJson;
@@ -71,7 +72,7 @@ pub struct Context {
     pub current: Vec<~str> ,
     /// String representation of how to get back to the root path of the 'doc/'
     /// folder in terms of a relative URL.
-    pub root_path: ~str,
+    pub root_path: StrBuf,
     /// The current destination folder of where HTML artifacts should be placed.
     /// This changes as the context descends into the module hierarchy.
     pub dst: Path,
@@ -209,7 +210,7 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
     let mut cx = Context {
         dst: dst,
         current: Vec::new(),
-        root_path: ~"",
+        root_path: StrBuf::new(),
         sidebar: HashMap::new(),
         layout: layout::Layout {
             logo: ~"",
@@ -511,7 +512,7 @@ impl<'a> SourceCollector<'a> {
 
         // Create the intermediate directories
         let mut cur = self.dst.clone();
-        let mut root_path = ~"../../";
+        let mut root_path = StrBuf::from_str("../../");
         clean_srcpath(p.dirname(), |component| {
             cur.push(component);
             mkdir(&cur).unwrap();
@@ -525,7 +526,7 @@ impl<'a> SourceCollector<'a> {
         let page = layout::Page {
             title: title,
             ty: "source",
-            root_path: root_path,
+            root_path: root_path.as_slice(),
         };
         try!(layout::render(&mut w as &mut Writer, &self.cx.layout,
                               &page, &(""), &Source(contents)));
@@ -826,16 +827,18 @@ impl Context {
             // does make formatting *a lot* nicer.
             local_data::set(current_location_key, cx.current.clone());
 
-            let mut title = cx.current.connect("::");
+            let mut title = StrBuf::from_str(cx.current.connect("::"));
             if pushname {
-                if title.len() > 0 { title.push_str("::"); }
+                if title.len() > 0 {
+                    title.push_str("::");
+                }
                 title.push_str(*it.name.get_ref());
             }
             title.push_str(" - Rust");
             let page = layout::Page {
                 ty: shortty(it),
-                root_path: cx.root_path,
-                title: title,
+                root_path: cx.root_path.as_slice(),
+                title: title.as_slice(),
             };
 
             markdown::reset_headers();
@@ -968,7 +971,7 @@ impl<'a> fmt::Show for Item<'a> {
         let cur = self.cx.current.as_slice();
         let amt = if self.ismodule() { cur.len() - 1 } else { cur.len() };
         for (i, component) in cur.iter().enumerate().take(amt) {
-            let mut trail = ~"";
+            let mut trail = StrBuf::new();
             for _ in range(0, cur.len() - i - 1) {
                 trail.push_str("../");
             }
@@ -1002,10 +1005,10 @@ fn item_path(item: &clean::Item) -> ~str {
 }
 
 fn full_path(cx: &Context, item: &clean::Item) -> ~str {
-    let mut s = cx.current.connect("::");
+    let mut s = StrBuf::from_str(cx.current.connect("::"));
     s.push_str("::");
     s.push_str(item.name.get_ref().as_slice());
-    return s;
+    return s.into_owned();
 }
 
 fn blank<'a>(s: Option<&'a str>) -> &'a str {
@@ -1203,7 +1206,7 @@ fn item_function(w: &mut Writer, it: &clean::Item,
 
 fn item_trait(w: &mut Writer, it: &clean::Item,
               t: &clean::Trait) -> fmt::Result {
-    let mut parents = ~"";
+    let mut parents = StrBuf::new();
     if t.parents.len() > 0 {
         parents.push_str(": ");
         for (i, p) in t.parents.iter().enumerate() {
@@ -1677,7 +1680,9 @@ impl<'a> fmt::Show for Sidebar<'a> {
                 try!(write!(fmt.buf, "&\\#8203;::"));
             }
             try!(write!(fmt.buf, "<a href='{}index.html'>{}</a>",
-                          cx.root_path.slice_to((cx.current.len() - i - 1) * 3),
+                          cx.root_path
+                            .as_slice()
+                            .slice_to((cx.current.len() - i - 1) * 3),
                           *name));
         }
         try!(write!(fmt.buf, "</p>"));

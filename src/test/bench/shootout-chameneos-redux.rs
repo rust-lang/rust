@@ -12,6 +12,7 @@
 
 use std::option;
 use std::os;
+use std::strbuf::StrBuf;
 use std::task;
 
 fn print_complements() {
@@ -31,53 +32,62 @@ struct CreatureInfo {
     color: color
 }
 
-fn show_color(cc: color) -> ~str {
+fn show_color(cc: color) -> &'static str {
     match cc {
-        Red    => {~"red"}
-        Yellow => {~"yellow"}
-        Blue   => {~"blue"}
+        Red    => "red",
+        Yellow => "yellow",
+        Blue   => "blue"
     }
 }
 
-fn show_color_list(set: Vec<color>) -> ~str {
-    let mut out = ~"";
+fn show_color_list(set: Vec<color>) -> StrBuf {
+    let mut out = StrBuf::new();
     for col in set.iter() {
         out.push_char(' ');
         out.push_str(show_color(*col));
     }
-    return out;
+    out
 }
 
-fn show_digit(nn: uint) -> ~str {
+fn show_digit(nn: uint) -> &'static str {
     match nn {
-        0 => {~"zero"}
-        1 => {~"one"}
-        2 => {~"two"}
-        3 => {~"three"}
-        4 => {~"four"}
-        5 => {~"five"}
-        6 => {~"six"}
-        7 => {~"seven"}
-        8 => {~"eight"}
-        9 => {~"nine"}
+        0 => {"zero"}
+        1 => {"one"}
+        2 => {"two"}
+        3 => {"three"}
+        4 => {"four"}
+        5 => {"five"}
+        6 => {"six"}
+        7 => {"seven"}
+        8 => {"eight"}
+        9 => {"nine"}
         _ => {fail!("expected digits from 0 to 9...")}
     }
 }
 
-fn show_number(nn: uint) -> ~str {
-    let mut out = ~"";
+fn show_number(nn: uint) -> StrBuf {
+    let mut out = vec![];
     let mut num = nn;
     let mut dig;
-
-    if num == 0 { out = show_digit(0) };
+    let mut len = 0;
+    if num == 0 { out.push(show_digit(0)) };
 
     while num != 0 {
         dig = num % 10;
         num = num / 10;
-        out = show_digit(dig) + " " + out;
+        out.push(" ");
+        let s = show_digit(dig);
+        out.push(s);
+        len += 1 + s.len();
     }
+    len += 1;
+    out.push(" ");
 
-    return ~" " + out;
+    let mut ret = StrBuf::with_capacity(len);
+    for s in out.iter().rev() {
+        ret.push_str(*s);
+    }
+    ret
 }
 
 fn transform(aa: color, bb: color) -> color {
@@ -124,7 +134,7 @@ fn creature(
             option::None => {
                 // log creatures met and evil clones of self
                 let report = format!("{} {}",
-                                     creatures_met, show_number(evil_clones_met));
+                                     creatures_met, show_number(evil_clones_met).as_slice());
                 to_rendezvous_log.send(report);
                 break;
             }

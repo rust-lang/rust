@@ -42,6 +42,7 @@ use std::cmp;
 use std::fmt;
 use std::fmt::Show;
 use std::option::{Option, Some, None};
+use std::strbuf::StrBuf;
 
 /// An identifier in the pre-release or build metadata. If the identifier can
 /// be parsed as a decimal value, it will be represented with `Numeric`.
@@ -158,7 +159,7 @@ impl cmp::Ord for Version {
 
 fn take_nonempty_prefix<T:Iterator<char>>(rdr: &mut T, pred: |char| -> bool)
                         -> (~str, Option<char>) {
-    let mut buf = ~"";
+    let mut buf = StrBuf::new();
     let mut ch = rdr.next();
     loop {
         match ch {
@@ -170,7 +171,7 @@ fn take_nonempty_prefix<T:Iterator<char>>(rdr: &mut T, pred: |char| -> bool)
             }
         }
     }
-    (buf, ch)
+    (buf.into_owned(), ch)
 }
 
 fn take_num<T: Iterator<char>>(rdr: &mut T) -> Option<(uint, Option<char>)> {

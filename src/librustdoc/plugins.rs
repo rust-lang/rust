@@ -10,8 +10,9 @@
 
 use clean;
 
-use serialize::json;
 use dl = std::unstable::dynamic_lib;
+use serialize::json;
+use std::strbuf::StrBuf;
 
 pub type PluginJson = Option<(~str, json::Json)>;
 pub type PluginResult = (clean::Crate, PluginJson);
@@ -70,21 +71,23 @@ impl PluginManager {
 }
 
 #[cfg(target_os="win32")]
-fn libname(mut n: ~str) -> ~str {
+fn libname(n: ~str) -> ~str {
+    let mut n = StrBuf::from_owned_str(n);
     n.push_str(".dll");
-    n
+    n.into_owned()
 }
 
 #[cfg(target_os="macos")]
-fn libname(mut n: ~str) -> ~str {
+fn libname(n: ~str) -> ~str {
+    let mut n = StrBuf::from_owned_str(n);
     n.push_str(".dylib");
-    n
+    n.into_owned()
 }
 
 #[cfg(not(target_os="win32"), not(target_os="macos"))]
 fn libname(n: ~str) -> ~str {
-    let mut i = ~"lib";
+    let mut i = StrBuf::from_str("lib");
     i.push_str(n);
     i.push_str(".so");
-    i
+    i.into_owned()
 }

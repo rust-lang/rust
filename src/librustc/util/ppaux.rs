@@ -23,6 +23,7 @@ use middle::ty::{ty_uniq, ty_trait, ty_int, ty_uint, ty_infer};
 use middle::ty;
 use middle::typeck;
 
+use std::strbuf::StrBuf;
 use syntax::abi;
 use syntax::ast_map;
 use syntax::codemap::{Span, Pos};
@@ -258,9 +259,9 @@ pub fn ty_to_str(cx: &ctxt, typ: t) -> ~str {
                       sig: &ty::FnSig)
                       -> ~str {
         let mut s = if abi == abi::Rust {
-            ~""
+            StrBuf::new()
         } else {
-            format!("extern {} ", abi.to_str())
+            StrBuf::from_owned_str(format!("extern {} ", abi.to_str()))
         };
 
         match fn_style {
@@ -283,17 +284,18 @@ pub fn ty_to_str(cx: &ctxt, typ: t) -> ~str {
 
         push_sig_to_str(cx, &mut s, '(', ')', sig);
 
-        return s;
+        s.into_owned()
     }
+
     fn closure_to_str(cx: &ctxt, cty: &ty::ClosureTy) -> ~str {
         let is_proc =
             (cty.sigil, cty.onceness) == (ast::OwnedSigil, ast::Once);
         let is_borrowed_closure = cty.sigil == ast::BorrowedSigil;
 
         let mut s = if is_proc || is_borrowed_closure {
-            ~""
+            StrBuf::new()
         } else {
-            cty.sigil.to_str()
+            StrBuf::from_owned_str(cty.sigil.to_str())
         };
 
         match (cty.sigil, cty.region) {
@@ -349,10 +351,11 @@ pub fn ty_to_str(cx: &ctxt, typ: t) -> ~str {
             }
         }
 
-        return s;
+        s.into_owned()
     }
+
     fn push_sig_to_str(cx: &ctxt,
-                       s: &mut ~str,
+                       s: &mut StrBuf,
                        bra: char,
                        ket: char,
                        sig: &ty::FnSig) {
