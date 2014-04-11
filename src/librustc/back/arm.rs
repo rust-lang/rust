@@ -10,7 +10,7 @@
 
 use back::target_strs;
 use metadata::loader::meta_section_name;
-use syntax::abi;
+use machine::abi;
 
 pub fn get_target_strs(target_triple: ~str, target_os: abi::Os) -> target_strs::t {
     let cc_args = if target_triple.contains("thumb") {

@@ -35,6 +35,7 @@ use syntax::parse::token::{IdentInterner, InternedString};
 use syntax::parse::token;
 use syntax::crateid::CrateId;
 use syntax::visit;
+use machine;
 
 struct Env<'a> {
     sess: &'a Session,
@@ -212,7 +213,7 @@ fn visit_item(e: &Env, i: &ast::Item) {
                             Some(k) => {
                                 if k.equiv(&("static")) {
                                     cstore::NativeStatic
-                                } else if e.sess.target_os() == abi::OsMacos &&
+                                } else if e.sess.target_os() == machine::abi::OsMacos &&
                                           k.equiv(&("framework")) {
                                     cstore::NativeFramework
                                 } else if k.equiv(&("framework")) {

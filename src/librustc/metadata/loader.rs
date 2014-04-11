@@ -23,7 +23,7 @@ use syntax::diagnostic::SpanHandler;
 use syntax::parse::token::IdentInterner;
 use syntax::crateid::CrateId;
 use syntax::attr::AttrMetaMethods;
-use syntax::abi::{Os, OsLinux, OsMacos, OsWin32, OsAndroid, OsFreebsd};
+use machine::abi::{Os, OsLinux, OsMacos, OsWin32, OsAndroid, OsFreebsd};
 
 use std::c_str::ToCStr;
 use std::cast;

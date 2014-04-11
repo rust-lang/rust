@@ -40,7 +40,7 @@ extern crate getopts;
 extern crate collections;
 extern crate time;
 extern crate libc;
-extern crate mach_triple;
+extern crate machine;
 
 #[phase(syntax, link)]
 extern crate log;

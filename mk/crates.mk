@@ -52,7 +52,7 @@
 TARGET_CRATES := libc std green rustuv native flate arena glob term semver \
                  uuid serialize sync getopts collections num test time rand \
 		 workcache url log
-HOST_CRATES := syntax rustc rustdoc fourcc hexfloat mach_triple
+HOST_CRATES := syntax rustc rustdoc fourcc hexfloat machine
 CRATES := $(TARGET_CRATES) $(HOST_CRATES)
 TOOLS := compiletest rustdoc rustc
 
@@ -60,9 +60,9 @@ DEPS_std := libc native:rustrt native:compiler-rt native:backtrace
 DEPS_green := std rand native:context_switch
 DEPS_rustuv := std native:uv native:uv_support
 DEPS_native := std
-DEPS_syntax := std term serialize collections log
+DEPS_syntax := std term serialize collections log machine
 DEPS_rustc := syntax native:rustllvm flate arena serialize sync getopts \
-              collections time log mach_triple
+              collections time log machine
 DEPS_rustdoc := rustc native:sundown serialize sync getopts collections \
                 test time
 DEPS_flate := std native:miniz
@@ -84,9 +84,9 @@ DEPS_rand := std
 DEPS_url := std collections
 DEPS_workcache := std serialize collections log
 DEPS_log := std sync
-DEPS_mach_triple := std syntax
+DEPS_machine := std
 
-TOOL_DEPS_compiletest := test green rustuv getopts mach_triple
+TOOL_DEPS_compiletest := test green rustuv getopts machine
 TOOL_DEPS_rustdoc := rustdoc native
 TOOL_DEPS_rustc := rustc native
 TOOL_SOURCE_compiletest := $(S)src/compiletest/compiletest.rs

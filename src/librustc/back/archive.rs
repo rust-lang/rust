@@ -23,7 +23,7 @@ use std::os;
 use std::io::process::{ProcessConfig, Process, ProcessOutput};
 use std::str;
 use std::raw;
-use syntax::abi;
+use machine::abi;
 
 pub static METADATA_FILENAME: &'static str = "rust.metadata.bin";
 

@@ -12,12 +12,12 @@
 use driver::session::Session;
 use metadata::cstore;
 use metadata::filesearch;
-use mach_triple;
+use machine::triple;
 use util::fs;
 
 use collections::HashSet;
 use std::os;
-use syntax::abi;
+use machine::abi;
 
 fn not_win32(os: abi::Os) -> bool {
   os != abi::OsWin32
@@ -66,7 +66,7 @@ fn get_rpaths(os: abi::Os,
               sysroot: &Path,
               output: &Path,
               libs: &[Path],
-              target_triple: &mach_triple::Triple) -> Vec<~str> {
+              target_triple: &triple::Triple) -> Vec<~str> {
     debug!("sysroot: {}", sysroot.display());
     debug!("output: {}", output.display());
     debug!("libs:");
@@ -133,7 +133,7 @@ pub fn get_rpath_relative_to_output(os: abi::Os,
     prefix+"/"+relative.as_str().expect("non-utf8 component in path")
 }
 
-pub fn get_install_prefix_rpath(sysroot: &Path, target_triple: &mach_triple::Triple) -> ~str {
+pub fn get_install_prefix_rpath(sysroot: &Path, target_triple: &triple::Triple) -> ~str {
     let install_prefix = env!("CFG_PREFIX");
 
     let tlib = filesearch::relative_target_lib_path(sysroot, target_triple);
@@ -162,8 +162,8 @@ mod test {
 
     use back::rpath::get_install_prefix_rpath;
     use back::rpath::{minimize_rpaths, rpaths_to_flags, get_rpath_relative_to_output};
-    use mach_triple::Triple;
-    use syntax::abi;
+    use machine::triple::Triple;
+    use machine::abi;
     use metadata::filesearch;
 
     fn triple() -> Triple {

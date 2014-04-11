@@ -28,7 +28,7 @@ use middle;
 use util::common::time;
 use util::ppaux;
 use util::nodemap::{NodeMap, NodeSet};
-use mach_triple;
+use machine::triple;
 
 use serialize::{json, Encodable};
 
@@ -42,7 +42,6 @@ use std::from_str::FromStr;
 use getopts::{optopt, optmulti, optflag, optflagopt};
 use getopts;
 use syntax::ast;
-use syntax::abi;
 use syntax::attr;
 use syntax::attr::{AttrMetaMethods};
 use syntax::codemap;
@@ -82,6 +81,7 @@ pub fn source_name(input: &Input) -> ~str {
 
 pub fn default_configuration(sess: &Session) ->
    ast::CrateConfig {
+    use machine::abi;
     let tos = match sess.target_os() {
         abi::OsWin32 =>   InternedString::new("win32"),
         abi::OsMacos =>   InternedString::new("macos"),
@@ -754,7 +754,8 @@ pub fn pretty_print_input(sess: Session,
 }
 
 pub fn build_target_config(sopts: &session::Options) -> session::Config {
-    let triple: mach_triple::Triple =
+    use machine::abi;
+    let triple: triple::Triple =
         match FromStr::from_str(sopts.target_triple) {
             Some(triple) => triple,
             None => early_error(format!("unknown architecture or missing operating system: `{}`",

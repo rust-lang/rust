@@ -16,7 +16,7 @@ use lib::llvm::{Float, Double, X86_FP80, PPC_FP128, FP128};
 use middle::trans::context::CrateContext;
 
 use syntax::ast;
-use syntax::abi::{X86, X86_64, Arm, Mips};
+use machine::abi::{X86, X86_64, Arm, Mips};
 
 use std::c_str::ToCStr;
 use std::cast;

@@ -8,21 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![crate_id = "mach_triple#0.11-pre"]
-#![license = "MIT/ASL2"]
-#![crate_type = "rlib"]
-#![crate_type = "dylib"]
-#![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
-       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
-       html_root_url = "http://static.rust-lang.org/doc/master")]
-
-extern crate syntax;
-
 use std::result::{Result, Ok, Err};
 use std::from_str::FromStr;
 use std::{cmp, fmt, default};
 use std::os::consts::{macos, freebsd, linux, android, win32};
-use syntax::abi;
+use abi;
 
 pub type KnownType<T> = Result<T, ~str>;
 pub trait Known<T> {
@@ -157,6 +147,20 @@ impl Triple {
             abi::OsFreebsd => (freebsd::DLL_PREFIX, freebsd::DLL_SUFFIX),
         }
     }
+
+    // Are we targeting Android?
+    pub fn is_android(&self) -> bool {
+        use abi::OsAndroid;
+
+        self.os == Ok(OsAndroid) &&
+            self.env == Some(Ok(AndroidEAbiEnv))
+    }
+    // Are we targeting Android and Arm?
+    pub fn is_android_on_arm(&self) -> bool {
+        use abi::Arm;
+
+        self.arch == Arm && self.is_android()
+    }
 }
 
 impl FromStr for Triple {
@@ -250,7 +254,7 @@ mod test {
                 UnknownVendor,
                 GnuEnv, GnuDefault,
                 AndroidEAbiEnv, MsvcEnv};
-    use syntax::abi;
+    use abi;
     use std::to_str::ToStr;
     use std::from_str::FromStr;
     use std::fmt::Show;

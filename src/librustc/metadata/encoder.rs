@@ -24,7 +24,7 @@ use middle::ty;
 use middle::typeck;
 use middle;
 use util::nodemap::{NodeMap, NodeSet};
-use mach_triple;
+use machine::triple;
 
 use serialize::Encodable;
 use std::cast;
@@ -1708,7 +1708,7 @@ fn encode_crate_id(ebml_w: &mut Encoder, crate_id: &CrateId) {
     ebml_w.end_tag();
 }
 
-fn encode_crate_target(ebml_w: &mut Encoder, triple: &mach_triple::Triple) {
+fn encode_crate_target(ebml_w: &mut Encoder, triple: &triple::Triple) {
     ebml_w.start_tag(tag_crate_target);
     ebml_w.writer.write(triple.full.as_bytes());
     ebml_w.end_tag();

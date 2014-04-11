@@ -14,7 +14,7 @@ use std::cell::RefCell;
 use std::{os, clone};
 use std::io::fs;
 use collections::HashSet;
-use mach_triple::Triple;
+use machine::triple::Triple;
 
 use myfs = util::fs;
 

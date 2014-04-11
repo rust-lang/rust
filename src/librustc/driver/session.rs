@@ -27,7 +27,7 @@ use syntax::parse::ParseSess;
 use syntax::{abi, ast, codemap};
 use syntax;
 
-use mach_triple::Triple;
+use machine::triple::Triple;
 
 use std::cell::{Cell, RefCell};
 use std::default::Default;

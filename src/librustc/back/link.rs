@@ -25,7 +25,7 @@ use middle::ty;
 use util::common::time;
 use util::ppaux;
 use util::sha2::{Digest, Sha256};
-use mach_triple;
+use machine::triple;
 
 use std::c_str::{ToCStr, CString};
 use std::char;
@@ -36,7 +36,7 @@ use std::str;
 use std::strbuf::StrBuf;
 use flate;
 use serialize::hex::ToHex;
-use syntax::abi;
+use machine::abi;
 use syntax::ast;
 use syntax::ast_map::{PathElem, PathElems, PathName};
 use syntax::ast_map;
@@ -99,7 +99,6 @@ pub mod write {
     use lib::llvm::{ModuleRef, TargetMachineRef, PassManagerRef};
     use lib;
     use util::common::time;
-    use syntax::abi;
 
     use std::c_str::ToCStr;
     use std::io::Process;
@@ -112,6 +111,7 @@ pub mod write {
     // cases, so if any sort of target feature is specified we don't append v7
     // to the feature list.
     fn target_feature<'a>(sess: &'a Session) -> &'a str {
+        use machine::abi;
         match sess.target_os() {
             abi::OsAndroid => {
                 if "" == sess.opts.cg.target_feature {
@@ -128,6 +128,7 @@ pub mod write {
                       trans: &CrateTranslation,
                       output_types: &[OutputType],
                       output: &OutputFilenames) {
+        use machine::abi;
         let llmod = trans.module;
         let llcx = trans.context;
         unsafe {
@@ -532,7 +533,7 @@ pub fn crate_id_hash(crate_id: &CrateId) -> ~str {
 
 pub fn build_link_meta(krate: &ast::Crate,
                        out_filestem: &str,
-                       target: mach_triple::Triple) -> LinkMeta {
+                       target: triple::Triple) -> LinkMeta {
     let r = LinkMeta {
         crateid: find_crate_id(krate.attrs.as_slice(), out_filestem),
         crate_hash: Svh::calculate(krate),

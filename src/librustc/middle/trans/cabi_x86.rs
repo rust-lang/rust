@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-use syntax::abi::{OsWin32, OsMacos};
+use machine::abi::{OsWin32, OsMacos};
 use lib::llvm::*;
 use super::cabi::*;
 use super::common::*;
