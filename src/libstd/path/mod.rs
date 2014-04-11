@@ -158,7 +158,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// See individual Path impls for additional restrictions.
     #[inline]
     fn new<T: BytesContainer>(path: T) -> Self {
-        assert!(!contains_nul(path.container_as_bytes()));
+        assert!(!contains_nul(&path));
         unsafe { GenericPathUnsafe::new_unchecked(path) }
     }
 
@@ -166,7 +166,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// The resulting Path will always be normalized.
     #[inline]
     fn new_opt<T: BytesContainer>(path: T) -> Option<Self> {
-        if contains_nul(path.container_as_bytes()) {
+        if contains_nul(&path) {
             None
         } else {
             Some(unsafe { GenericPathUnsafe::new_unchecked(path) })
@@ -274,7 +274,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// Fails the task if the filename contains a NUL.
     #[inline]
     fn set_filename<T: BytesContainer>(&mut self, filename: T) {
-        assert!(!contains_nul(filename.container_as_bytes()));
+        assert!(!contains_nul(&filename));
         unsafe { self.set_filename_unchecked(filename) }
     }
     /// Replaces the extension with the given byte vector or string.
@@ -286,43 +286,30 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     ///
     /// Fails the task if the extension contains a NUL.
     fn set_extension<T: BytesContainer>(&mut self, extension: T) {
-        assert!(!contains_nul(extension.container_as_bytes()));
-        // borrowck causes problems here too
-        let val = {
-            match self.filename() {
-                None => None,
-                Some(name) => {
-                    let dot = '.' as u8;
-                    match name.rposition_elem(&dot) {
-                        None | Some(0) => {
-                            if extension.container_as_bytes().is_empty() {
-                                None
-                            } else {
-                                let mut v;
-                                let extension = extension.container_as_bytes();
-                                v = slice::with_capacity(name.len() + extension.len() + 1);
-                                v.push_all(name);
-                                v.push(dot);
-                                v.push_all(extension);
-                                Some(v)
-                            }
-                        }
-                        Some(idx) => {
-                            if extension.container_as_bytes().is_empty() {
-                                Some(name.slice_to(idx).to_owned())
-                            } else {
-                                let mut v;
-                                let extension = extension.container_as_bytes();
-                                v = slice::with_capacity(idx + extension.len() + 1);
-                                v.push_all(name.slice_to(idx+1));
-                                v.push_all(extension);
-                                Some(v)
-                            }
-                        }
-                    }
+        assert!(!contains_nul(&extension));
+
+        let val = self.filename().and_then(|name| {
+            let dot = '.' as u8;
+            let extlen = extension.container_as_bytes().len();
+            match (name.rposition_elem(&dot), extlen) {
+                (None, 0) | (Some(0), 0) => None,
+                (Some(idx), 0) => Some(name.slice_to(idx).to_owned()),
+                (idx, extlen) => {
+                    let idx = match idx {
+                        None | Some(0) => name.len(),
+                        Some(val) => val
+                    };
+
+                    let mut v;
+                    v = slice::with_capacity(idx + extlen + 1);
+                    v.push_all(name.slice_to(idx));
+                    v.push(dot);
+                    v.push_all(extension.container_as_bytes());
+                    Some(v)
                 }
             }
-        };
+        });
+
         match val {
             None => (),
             Some(v) => unsafe { self.set_filename_unchecked(v) }
@@ -376,7 +363,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// Fails the task if the path contains a NUL.
     #[inline]
     fn push<T: BytesContainer>(&mut self, path: T) {
-        assert!(!contains_nul(path.container_as_bytes()));
+        assert!(!contains_nul(&path));
         unsafe { self.push_unchecked(path) }
     }
     /// Pushes multiple paths (as byte vectors or strings) onto `self`.
@@ -589,8 +576,8 @@ impl<'a> BytesContainer for str::MaybeOwned<'a> {
 }
 
 #[inline(always)]
-fn contains_nul(v: &[u8]) -> bool {
-    v.iter().any(|&x| x == 0)
+fn contains_nul<T: BytesContainer>(v: &T) -> bool {
+    v.container_as_bytes().iter().any(|&x| x == 0)
 }
 
 #[cfg(test)]
