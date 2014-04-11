@@ -245,6 +245,7 @@ mod imp {
         let arg: *libc::c_void = cast::transmute(p);
         assert_eq!(pthread_create(&mut native, &attr,
                                   super::thread_start, arg), 0);
+        assert_eq!(pthread_attr_destroy(&mut attr), 0);
         native
     }
 
@@ -303,6 +304,7 @@ mod imp {
         fn pthread_join(native: libc::pthread_t,
                         value: **libc::c_void) -> libc::c_int;
         fn pthread_attr_init(attr: *mut libc::pthread_attr_t) -> libc::c_int;
+        fn pthread_attr_destroy(attr: *mut libc::pthread_attr_t) -> libc::c_int;
         fn pthread_attr_setstacksize(attr: *mut libc::pthread_attr_t,
                                      stack_size: libc::size_t) -> libc::c_int;
         fn pthread_attr_setdetachstate(attr: *mut libc::pthread_attr_t,
