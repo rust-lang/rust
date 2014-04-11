@@ -140,9 +140,9 @@ extern fn timer_cb(handle: *uvll::uv_timer_t, status: c_int) {
             let task = timer.blocker.take_unwrap();
             let _ = task.wake().map(|t| t.reawaken());
         }
-        SendOnce(chan) => { let _ = chan.try_send(()); }
+        SendOnce(chan) => { let _ = chan.send_opt(()); }
         SendMany(chan, id) => {
-            let _ = chan.try_send(());
+            let _ = chan.send_opt(());
 
             // Note that the above operation could have performed some form of
             // scheduling. This means that the timer may have decided to insert
@@ -196,8 +196,8 @@ mod test {
         let oport = timer.oneshot(1);
         let pport = timer.period(1);
         timer.sleep(1);
-        assert_eq!(oport.recv_opt(), None);
-        assert_eq!(pport.recv_opt(), None);
+        assert_eq!(oport.recv_opt(), Err(()));
+        assert_eq!(pport.recv_opt(), Err(()));
         timer.oneshot(1).recv();
     }
 
@@ -284,7 +284,7 @@ mod test {
             let mut timer = TimerWatcher::new(local_loop());
             timer.oneshot(1000)
         };
-        assert_eq!(port.recv_opt(), None);
+        assert_eq!(port.recv_opt(), Err(()));
     }
 
     #[test]
@@ -293,7 +293,7 @@ mod test {
             let mut timer = TimerWatcher::new(local_loop());
             timer.period(1000)
         };
-        assert_eq!(port.recv_opt(), None);
+        assert_eq!(port.recv_opt(), Err(()));
     }
 
     #[test]

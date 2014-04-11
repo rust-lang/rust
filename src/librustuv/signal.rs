@@ -51,7 +51,7 @@ impl SignalWatcher {
 extern fn signal_cb(handle: *uvll::uv_signal_t, signum: c_int) {
     let s: &mut SignalWatcher = unsafe { UvHandle::from_uv_handle(&handle) };
     assert_eq!(signum as int, s.signal as int);
-    s.channel.try_send(s.signal);
+    let _ = s.channel.send_opt(s.signal);
 }
 
 impl HomingIO for SignalWatcher {

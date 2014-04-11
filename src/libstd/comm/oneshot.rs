@@ -90,7 +90,7 @@ impl<T: Send> Packet<T> {
         }
     }
 
-    pub fn send(&mut self, t: T) -> bool {
+    pub fn send(&mut self, t: T) -> Result<(), T> {
         // Sanity check
         match self.upgrade {
             NothingSent => {}
@@ -102,14 +102,12 @@ impl<T: Send> Packet<T> {
 
         match self.state.swap(DATA, atomics::SeqCst) {
             // Sent the data, no one was waiting
-            EMPTY => true,
+            EMPTY => Ok(()),
 
-            // Couldn't send the data, the port hung up first. We need to be
-            // sure to deallocate the sent data (to not leave it stuck in the
-            // queue)
+            // Couldn't send the data, the port hung up first. Return the data
+            // back up the stack.
             DISCONNECTED => {
-                self.data.take_unwrap();
-                false
+                Err(self.data.take_unwrap())
             }
 
             // Not possible, these are one-use channels
@@ -121,7 +119,7 @@ impl<T: Send> Packet<T> {
             n => unsafe {
                 let t = BlockedTask::cast_from_uint(n);
                 t.wake().map(|t| t.reawaken());
-                true
+                Ok(())
             }
         }
     }

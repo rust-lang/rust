@@ -201,22 +201,22 @@ impl<T: Send> Packet<T> {
         }
     }
 
-    pub fn try_send(&self, t: T) -> super::TrySendResult<T> {
+    pub fn try_send(&self, t: T) -> Result<(), super::TrySendError<T>> {
         let (guard, state) = self.lock();
         if state.disconnected {
-            super::RecvDisconnected(t)
+            Err(super::RecvDisconnected(t))
         } else if state.buf.size() == state.buf.cap() {
-            super::Full(t)
+            Err(super::Full(t))
         } else if state.cap == 0 {
             // With capacity 0, even though we have buffer space we can't
             // transfer the data unless there's a receiver waiting.
             match mem::replace(&mut state.blocker, NoneBlocked) {
-                NoneBlocked => super::Full(t),
+                NoneBlocked => Err(super::Full(t)),
                 BlockedSender(..) => unreachable!(),
                 BlockedReceiver(task) => {
                     state.buf.enqueue(t);
                     wakeup(task, guard);
-                    super::Sent
+                    Ok(())
                 }
             }
         } else {
@@ -224,7 +224,7 @@ impl<T: Send> Packet<T> {
             // just enqueue the data for later retrieval.
             assert!(state.buf.size() < state.buf.cap());
             state.buf.enqueue(t);
-            super::Sent
+            Ok(())
         }
     }
 
@@ -232,7 +232,7 @@ impl<T: Send> Packet<T> {
     //
     // When reading this, remember that there can only ever be one receiver at
     // time.
-    pub fn recv(&self) -> Option<T> {
+    pub fn recv(&self) -> Result<T, ()> {
         let (guard, state) = self.lock();
 
         // Wait for the buffer to have something in it. No need for a while loop
@@ -242,13 +242,13 @@ impl<T: Send> Packet<T> {
             wait(&mut state.blocker, BlockedReceiver, &self.lock);
             waited = true;
         }
-        if state.disconnected && state.buf.size() == 0 { return None }
+        if state.disconnected && state.buf.size() == 0 { return Err(()) }
 
         // Pick up the data, wake up our neighbors, and carry on
         assert!(state.buf.size() > 0);
         let ret = state.buf.dequeue();
         self.wakeup_senders(waited, guard, state);
-        return Some(ret);
+        return Ok(ret);
     }
 
     pub fn try_recv(&self) -> Result<T, Failure> {

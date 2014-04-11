@@ -236,7 +236,7 @@ impl<'rx, T: Send> Handle<'rx, T> {
     /// Block to receive a value on the underlying receiver, returning `Some` on
     /// success or `None` if the channel disconnects. This function has the same
     /// semantics as `Receiver.recv_opt`
-    pub fn recv_opt(&mut self) -> Option<T> { self.rx.recv_opt() }
+    pub fn recv_opt(&mut self) -> Result<T, ()> { self.rx.recv_opt() }
 
     /// Adds this handle to the receiver set that the handle was created from. This
     /// method can be called multiple times, but it has no effect if `add` was
@@ -338,12 +338,12 @@ mod test {
         )
         drop(tx1);
         select! (
-            foo = rx1.recv_opt() => { assert_eq!(foo, None); },
+            foo = rx1.recv_opt() => { assert_eq!(foo, Err(())); },
             _bar = rx2.recv() => { fail!() }
         )
         drop(tx2);
         select! (
-            bar = rx2.recv_opt() => { assert_eq!(bar, None); }
+            bar = rx2.recv_opt() => { assert_eq!(bar, Err(())); }
         )
     })
 
@@ -370,7 +370,7 @@ mod test {
 
         select! (
             _a1 = rx1.recv_opt() => { fail!() },
-            a2 = rx2.recv_opt() => { assert_eq!(a2, None); }
+            a2 = rx2.recv_opt() => { assert_eq!(a2, Err(())); }
         )
     })
 
@@ -392,7 +392,7 @@ mod test {
         )
         tx3.send(1);
         select! (
-            a = rx1.recv_opt() => { assert_eq!(a, None); },
+            a = rx1.recv_opt() => { assert_eq!(a, Err(())); },
             _b = rx2.recv() => { fail!() }
         )
     })
@@ -417,8 +417,8 @@ mod test {
             a = rx1.recv() => { assert_eq!(a, 1); },
             a = rx2.recv() => { assert_eq!(a, 2); }
         )
-        assert_eq!(rx1.try_recv(), Empty);
-        assert_eq!(rx2.try_recv(), Empty);
+        assert_eq!(rx1.try_recv(), Err(Empty));
+        assert_eq!(rx2.try_recv(), Err(Empty));
         tx3.send(());
     })
 
@@ -456,7 +456,7 @@ mod test {
         spawn(proc() {
             rx3.recv();
             tx1.clone();
-            assert_eq!(rx3.try_recv(), Empty);
+            assert_eq!(rx3.try_recv(), Err(Empty));
             tx1.send(2);
             rx3.recv();
         });
@@ -477,7 +477,7 @@ mod test {
         spawn(proc() {
             rx3.recv();
             tx1.clone();
-            assert_eq!(rx3.try_recv(), Empty);
+            assert_eq!(rx3.try_recv(), Err(Empty));
             tx1.send(2);
             rx3.recv();
         });

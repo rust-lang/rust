@@ -1011,7 +1011,6 @@ fn new_sched_rng() -> XorShiftRng {
 mod test {
     use rustuv;
 
-    use std::comm;
     use std::task::TaskOpts;
     use std::rt::task::Task;
     use std::rt::local::Local;
@@ -1428,7 +1427,7 @@ mod test {
             // This task should not be able to starve the sender;
             // The sender should get stolen to another thread.
             spawn(proc() {
-                while rx.try_recv() != comm::Data(()) { }
+                while rx.try_recv().is_err() { }
             });
 
             tx.send(());
@@ -1445,7 +1444,7 @@ mod test {
             // This task should not be able to starve the other task.
             // The sends should eventually yield.
             spawn(proc() {
-                while rx1.try_recv() != comm::Data(()) {
+                while rx1.try_recv().is_err() {
                     tx2.send(());
                 }
             });
@@ -1499,7 +1498,7 @@ mod test {
                     let mut val = 20;
                     while val > 0 {
                         val = po.recv();
-                        ch.try_send(val - 1);
+                        let _ = ch.send_opt(val - 1);
                     }
                 }
 

@@ -1065,7 +1065,7 @@ mod test {
             }
             reads += 1;
 
-            tx2.try_send(());
+            let _ = tx2.send_opt(());
         }
 
         // Make sure we had multiple reads
