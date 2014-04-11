@@ -118,22 +118,22 @@ mod test {
 #[cfg(test)]
 mod bench {
     extern crate test;
-    use self::test::BenchHarness;
+    use self::test::Bencher;
     use std::mem::size_of;
     use {XorShiftRng, RAND_BENCH_N};
     use super::Exp;
     use distributions::Sample;
 
     #[bench]
-    fn rand_exp(bh: &mut BenchHarness) {
+    fn rand_exp(b: &mut Bencher) {
         let mut rng = XorShiftRng::new().unwrap();
         let mut exp = Exp::new(2.71828 * 3.14159);
 
-        bh.iter(|| {
+        b.iter(|| {
             for _ in range(0, RAND_BENCH_N) {
                 exp.sample(&mut rng);
             }
         });
-        bh.bytes = size_of::<f64>() as u64 * RAND_BENCH_N;
+        b.bytes = size_of::<f64>() as u64 * RAND_BENCH_N;
     }
 }

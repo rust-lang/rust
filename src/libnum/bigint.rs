@@ -2742,7 +2742,7 @@ mod bigint_tests {
 #[cfg(test)]
 mod bench {
     extern crate test;
-    use self::test::BenchHarness;
+    use self::test::Bencher;
     use super::BigUint;
     use std::iter;
     use std::mem::replace;
@@ -2767,35 +2767,35 @@ mod bench {
     }
 
     #[bench]
-    fn factorial_100(bh: &mut BenchHarness) {
-        bh.iter(|| {
+    fn factorial_100(b: &mut Bencher) {
+        b.iter(|| {
             factorial(100);
         });
     }
 
     #[bench]
-    fn fib_100(bh: &mut BenchHarness) {
-        bh.iter(|| {
+    fn fib_100(b: &mut Bencher) {
+        b.iter(|| {
             fib(100);
         });
     }
 
     #[bench]
-    fn to_str(bh: &mut BenchHarness) {
+    fn to_str(b: &mut Bencher) {
         let fac = factorial(100);
         let fib = fib(100);
-        bh.iter(|| {
+        b.iter(|| {
             fac.to_str();
         });
-        bh.iter(|| {
+        b.iter(|| {
             fib.to_str();
         });
     }
 
     #[bench]
-    fn shr(bh: &mut BenchHarness) {
+    fn shr(b: &mut Bencher) {
         let n = { let one : BigUint = One::one(); one << 1000 };
-        bh.iter(|| {
+        b.iter(|| {
             let mut m = n.clone();
             for _ in range(0, 10) {
                 m = m >> 1;

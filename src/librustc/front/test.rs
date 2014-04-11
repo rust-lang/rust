@@ -247,7 +247,7 @@ fn is_bench_fn(cx: &TestCtxt, i: @ast::Item) -> bool {
     if has_bench_attr && !has_test_signature(i) {
         let sess = cx.sess;
         sess.span_err(i.span, "functions used as benches must have signature \
-                      `fn(&mut BenchHarness) -> ()`");
+                      `fn(&mut Bencher) -> ()`");
     }
 
     return has_bench_attr && has_test_signature(i);

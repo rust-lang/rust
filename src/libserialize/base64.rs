@@ -264,7 +264,7 @@ impl<'a> FromBase64 for &'a str {
 mod tests {
     extern crate test;
     extern crate rand;
-    use self::test::BenchHarness;
+    use self::test::Bencher;
     use base64::{Config, FromBase64, ToBase64, STANDARD, URL_SAFE};
 
     #[test]
@@ -347,24 +347,24 @@ mod tests {
     }
 
     #[bench]
-    pub fn bench_to_base64(bh: & mut BenchHarness) {
+    pub fn bench_to_base64(b: &mut Bencher) {
         let s = "イロハニホヘト チリヌルヲ ワカヨタレソ ツネナラム \
                  ウヰノオクヤマ ケフコエテ アサキユメミシ ヱヒモセスン";
-        bh.iter(|| {
+        b.iter(|| {
             s.as_bytes().to_base64(STANDARD);
         });
-        bh.bytes = s.len() as u64;
+        b.bytes = s.len() as u64;
     }
 
     #[bench]
-    pub fn bench_from_base64(bh: & mut BenchHarness) {
+    pub fn bench_from_base64(b: &mut Bencher) {
         let s = "イロハニホヘト チリヌルヲ ワカヨタレソ ツネナラム \
                  ウヰノオクヤマ ケフコエテ アサキユメミシ ヱヒモセスン";
-        let b = s.as_bytes().to_base64(STANDARD);
-        bh.iter(|| {
-            b.from_base64().unwrap();
+        let sb = s.as_bytes().to_base64(STANDARD);
+        b.iter(|| {
+            sb.from_base64().unwrap();
         });
-        bh.bytes = b.len() as u64;
+        b.bytes = sb.len() as u64;
     }
 
 }
