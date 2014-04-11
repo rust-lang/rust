@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-use back::{target_strs, triple};
+use back::target_strs;
 use back;
 use driver::driver::host_triple;
 use front;
@@ -27,12 +27,14 @@ use syntax::parse::ParseSess;
 use syntax::{abi, ast, codemap};
 use syntax;
 
+use mach_triple::Triple;
+
 use std::cell::{Cell, RefCell};
 use std::default::Default;
 use collections::HashSet;
 
 pub struct Config {
-    pub target: triple::Triple,
+    pub target: Triple,
     pub target_strs: target_strs::t,
     pub int_type: IntTy,
     pub uint_type: UintTy,
@@ -209,7 +211,7 @@ impl HostFileSearch {
     // Create a filesearch object for passing to metadata subsystems.
     pub fn filesearch<'a>(&'a self) -> filesearch::FileSearch<'a> {
         filesearch::FileSearch::new(&self.sysroot,
-                                    triple::Triple::host_triple(),
+                                    Default::default(),
                                     &self.search_paths)
     }
 }
@@ -386,7 +388,7 @@ impl Session {
     pub fn target_arch(&self) -> abi::Architecture {
         self.targ_cfg.arch()
     }
-    pub fn target_triple<'a>(&'a self) -> &'a triple::Triple {
+    pub fn target_triple<'a>(&'a self) -> &'a Triple {
         &self.targ_cfg.target
     }
     pub fn cross_compiling(&self) -> bool {

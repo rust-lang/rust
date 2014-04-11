@@ -13,7 +13,7 @@
 use std::cast;
 use syntax::crateid::CrateId;
 use back::svh::Svh;
-use back::triple;
+use mach_triple;
 
 // EBML enum definitions and utils shared by the encoder and decoder
 
@@ -205,5 +205,5 @@ pub static tag_crate_target: uint = 0x66;
 pub struct LinkMeta {
     pub crateid: CrateId,
     pub crate_hash: Svh,
-    pub target: triple::Triple,
+    pub target: mach_triple::Triple,
 }

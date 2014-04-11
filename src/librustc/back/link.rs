@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use back::archive::{Archive, METADATA_FILENAME};
-use back::{rpath, triple};
+use back::rpath;
 use back::svh::Svh;
 use driver::driver::{CrateTranslation, OutputFilenames};
 use driver::session::{NoDebugInfo, Session};
@@ -25,6 +25,7 @@ use middle::ty;
 use util::common::time;
 use util::ppaux;
 use util::sha2::{Digest, Sha256};
+use mach_triple;
 
 use std::c_str::{ToCStr, CString};
 use std::char;
@@ -531,7 +532,7 @@ pub fn crate_id_hash(crate_id: &CrateId) -> ~str {
 
 pub fn build_link_meta(krate: &ast::Crate,
                        out_filestem: &str,
-                       target: triple::Triple) -> LinkMeta {
+                       target: mach_triple::Triple) -> LinkMeta {
     let r = LinkMeta {
         crateid: find_crate_id(krate.attrs.as_slice(), out_filestem),
         crate_hash: Svh::calculate(krate),

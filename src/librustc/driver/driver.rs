@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-use back::{link, triple};
+use back::link;
 use back::{arm, x86, x86_64, mips};
 use driver::session::{Aggressive, CrateTypeExecutable, CrateType,
                       FullDebugInfo, LimitedDebugInfo, NoDebugInfo};
@@ -28,6 +28,7 @@ use middle;
 use util::common::time;
 use util::ppaux;
 use util::nodemap::{NodeMap, NodeSet};
+use mach_triple;
 
 use serialize::{json, Encodable};
 
@@ -753,7 +754,7 @@ pub fn pretty_print_input(sess: Session,
 }
 
 pub fn build_target_config(sopts: &session::Options) -> session::Config {
-    let triple: triple::Triple =
+    let triple: mach_triple::Triple =
         match FromStr::from_str(sopts.target_triple) {
             Some(triple) => triple,
             None => early_error(format!("unknown architecture or missing operating system: `{}`",

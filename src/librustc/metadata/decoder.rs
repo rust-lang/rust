@@ -13,7 +13,6 @@
 #![allow(non_camel_case_types)]
 
 use back::svh::Svh;
-use back::triple;
 use metadata::cstore::crate_metadata;
 use metadata::common::*;
 use metadata::csearch::StaticMethodInfo;
@@ -26,6 +25,7 @@ use middle::ty::{ImplContainer, TraitContainer};
 use middle::ty;
 use middle::typeck;
 use middle::astencode::vtable_decoder_helpers;
+use mach_triple;
 
 use std::u64;
 use std::hash;
@@ -1133,13 +1133,13 @@ pub fn get_crate_id(data: &[u8]) -> CrateId {
     from_str(hashdoc.as_str_slice()).unwrap()
 }
 
-pub fn maybe_get_crate_target(data: &[u8]) -> Option<triple::Triple> {
+pub fn maybe_get_crate_target(data: &[u8]) -> Option<mach_triple::Triple> {
     let cratedoc = reader::Doc(data);
     reader::maybe_get_doc(cratedoc, tag_crate_target).and_then(|doc| {
         from_str(doc.as_str_slice())
     })
 }
-pub fn get_crate_target(data: &[u8]) -> triple::Triple {
+pub fn get_crate_target(data: &[u8]) -> mach_triple::Triple {
     let cratedoc = reader::Doc(data);
     let doc = reader::get_doc(cratedoc, tag_crate_target);
     from_str(doc.as_str_slice()).unwrap()

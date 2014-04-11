@@ -40,6 +40,7 @@ extern crate getopts;
 extern crate collections;
 extern crate time;
 extern crate libc;
+extern crate mach_triple;
 
 #[phase(syntax, link)]
 extern crate log;
@@ -114,7 +115,6 @@ pub mod back {
     pub mod rpath;
     pub mod svh;
     pub mod target_strs;
-    pub mod triple;
     pub mod x86;
     pub mod x86_64;
 }
