@@ -529,10 +529,13 @@ pub fn crate_id_hash(crate_id: &CrateId) -> ~str {
     truncated_hash_result(&mut s).slice_to(8).to_owned()
 }
 
-pub fn build_link_meta(krate: &ast::Crate, out_filestem: &str) -> LinkMeta {
+pub fn build_link_meta(krate: &ast::Crate,
+                       out_filestem: &str,
+                       target: triple::Triple) -> LinkMeta {
     let r = LinkMeta {
         crateid: find_crate_id(krate.attrs.as_slice(), out_filestem),
         crate_hash: Svh::calculate(krate),
+        target: target
     };
     info!("{}", r);
     return r;

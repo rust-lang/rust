@@ -28,6 +28,7 @@ use syntax::{abi, ast, codemap};
 use syntax;
 
 use std::cell::{Cell, RefCell};
+use std::default::Default;
 use collections::HashSet;
 
 pub struct Config {
@@ -178,6 +179,39 @@ pub enum CrateType {
     CrateTypeDylib,
     CrateTypeRlib,
     CrateTypeStaticlib,
+}
+// Serves mostly as a lifetime/storage boat.
+pub struct HostFileSearch {
+    sysroot: Path,
+    search_paths: RefCell<HashSet<Path>>,
+}
+impl HostFileSearch {
+    // Create a loader solely for the host. This is used for
+    // syntax phase crates referenced by our crate. We do this in order to
+    // prevent errors from having multiple crates in -L paths later on
+    // (particularly problematic when targeting non-host targets).
+    // We accomplish this with this minor hack. More specifically,
+    // we use a bogus sysroot and add the path for rustc's set of libs
+    // (ie /usr/local/lib/ on Unix) to addl_lib_search_paths.
+    fn new(sess: &Session) -> HostFileSearch {
+        HostFileSearch {
+            search_paths: RefCell::new
+                ({
+                    let mut set = (*sess.opts.addl_lib_search_paths.borrow()).clone();
+                    set.insert(sess.host_lib_path());
+                    set
+                }),
+            // ensure we don't silently (and possibly maliciously) load crates from
+            // our fake sysroot:
+            sysroot: Path::new("/dev/null"),
+        }
+    }
+    // Create a filesearch object for passing to metadata subsystems.
+    pub fn filesearch<'a>(&'a self) -> filesearch::FileSearch<'a> {
+        filesearch::FileSearch::new(&self.sysroot,
+                                    triple::Triple::host_triple(),
+                                    &self.search_paths)
+    }
 }
 
 pub struct Session {
@@ -331,17 +365,20 @@ impl Session {
                         .expect("missing sysroot and default_sysroot in Session")
         }
     }
+    pub fn target_filesearch<'a>(&'a self) -> filesearch::FileSearch<'a> {
+        filesearch::FileSearch::new(
+            self.sysroot(),
+            self.target_triple().clone(),
+            &self.opts.addl_lib_search_paths)
+    }
+    pub fn host_filesearch(&self) -> HostFileSearch {
+        HostFileSearch::new(self)
+    }
     pub fn target_lib_path(&self) -> Path {
         filesearch::make_target_lib_path(self.sysroot(), self.target_triple())
     }
     pub fn host_lib_path(&self) -> Path {
         filesearch::get_host_lib_path(self.sysroot())
-    }
-    pub fn filesearch<'a>(&'a self) -> filesearch::FileSearch<'a> {
-        filesearch::FileSearch::new(
-            self.sysroot(),
-            self.opts.target_triple,
-            &self.opts.addl_lib_search_paths)
     }
     pub fn target_os(&self) -> abi::Os {
         self.targ_cfg.os()
@@ -351,6 +388,9 @@ impl Session {
     }
     pub fn target_triple<'a>(&'a self) -> &'a triple::Triple {
         &self.targ_cfg.target
+    }
+    pub fn cross_compiling(&self) -> bool {
+        *self.target_triple() != Default::default()
     }
 }
 

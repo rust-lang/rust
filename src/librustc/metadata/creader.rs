@@ -18,7 +18,7 @@ use driver::session::Session;
 use metadata::cstore;
 use metadata::cstore::CStore;
 use metadata::decoder;
-use metadata::loader;
+use metadata::{loader, filesearch};
 use metadata::loader::CratePaths;
 
 use std::cell::RefCell;
@@ -38,7 +38,7 @@ use syntax::visit;
 
 struct Env<'a> {
     sess: &'a Session,
-    os: abi::Os,
+    search: filesearch::FileSearch<'a>,
     next_crate_num: ast::CrateNum,
     intr: Rc<IdentInterner>
 }
@@ -47,11 +47,10 @@ struct Env<'a> {
 // libraries necessary for later resolving, typechecking, linking, etc.
 pub fn read_crates(sess: &Session,
                    krate: &ast::Crate,
-                   os: abi::Os,
                    intr: Rc<IdentInterner>) {
     let mut e = Env {
         sess: sess,
-        os: os,
+        search: sess.target_filesearch(),
         next_crate_num: sess.cstore.next_crate_num(),
         intr: intr
     };
@@ -285,12 +284,12 @@ fn resolve_crate<'a>(e: &mut Env,
             let id_hash = link::crate_id_hash(crate_id);
             let mut load_ctxt = loader::Context {
                 sess: e.sess,
+                search: e.search.clone(),
                 span: span,
                 ident: ident,
                 crate_id: crate_id,
                 id_hash: id_hash,
                 hash: hash.map(|a| &*a),
-                os: e.os,
                 intr: e.intr.clone(),
                 rejected_via_hash: vec!(),
             };
@@ -377,11 +376,12 @@ pub struct Loader<'a> {
 }
 
 impl<'a> Loader<'a> {
-    pub fn new(sess: &'a Session) -> Loader<'a> {
+    pub fn new(sess: &'a Session,
+               search: filesearch::FileSearch<'a>) -> Loader<'a> {
         Loader {
             env: Env {
                 sess: sess,
-                os: sess.target_os(),
+                search: search,
                 next_crate_num: sess.cstore.next_crate_num(),
                 intr: token::get_ident_interner(),
             }

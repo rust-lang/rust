@@ -13,6 +13,7 @@
 #![allow(non_camel_case_types)]
 
 use back::svh::Svh;
+use back::triple;
 use metadata::cstore::crate_metadata;
 use metadata::common::*;
 use metadata::csearch::StaticMethodInfo;
@@ -1130,6 +1131,18 @@ pub fn get_crate_id(data: &[u8]) -> CrateId {
     let cratedoc = reader::Doc(data);
     let hashdoc = reader::get_doc(cratedoc, tag_crate_crateid);
     from_str(hashdoc.as_str_slice()).unwrap()
+}
+
+pub fn maybe_get_crate_target(data: &[u8]) -> Option<triple::Triple> {
+    let cratedoc = reader::Doc(data);
+    reader::maybe_get_doc(cratedoc, tag_crate_target).and_then(|doc| {
+        from_str(doc.as_str_slice())
+    })
+}
+pub fn get_crate_target(data: &[u8]) -> triple::Triple {
+    let cratedoc = reader::Doc(data);
+    let doc = reader::get_doc(cratedoc, tag_crate_target);
+    from_str(doc.as_str_slice()).unwrap()
 }
 
 pub fn list_crate_metadata(bytes: &[u8], out: &mut io::Writer) -> io::IoResult<()> {

@@ -17,7 +17,7 @@ use lib::llvm::{False, llvm, ObjectFile, mk_section_iter};
 use metadata::cstore::{MetadataBlob, MetadataVec, MetadataArchive};
 use metadata::decoder;
 use metadata::encoder;
-use metadata::filesearch::{FileMatches, FileDoesntMatch};
+use metadata::filesearch::{FileMatches, FileDoesntMatch, FileSearch};
 use syntax::codemap::Span;
 use syntax::diagnostic::SpanHandler;
 use syntax::parse::token::IdentInterner;
@@ -44,6 +44,12 @@ pub struct HashMismatch {
 
 pub struct Context<'a> {
     pub sess: &'a Session,
+
+    // The locations searched by this context. During syntax extension expansion
+    // we use rustc's set of libs (ie /usr/local/lib/ on Unix) plus the paths specified
+    // with -L. Whereas during the link phase we search as usual in the target lib plus
+    // cli paths.
+    pub search: FileSearch<'a>,
     pub span: Span,
     pub ident: &'a str,
     pub crate_id: &'a CrateId,
@@ -140,8 +146,7 @@ impl<'a> Context<'a> {
     }
 
     fn find_library_crate(&mut self) -> Option<Library> {
-        let filesearch = self.sess.filesearch();
-        let (dyprefix, dysuffix) = self.sess.target_triple().dylibname();
+        let (dyprefix, dysuffix) = self.search.target_triple.dylibname();
 
         // want: crate_name.dir_part() + prefix + crate_name.file_part + "-"
         let dylib_prefix = format!("{}{}-", dyprefix, self.crate_id.name);
@@ -162,7 +167,7 @@ impl<'a> Context<'a> {
         // of the crate id (path/name/id).
         //
         // The goal of this step is to look at as little metadata as possible.
-        filesearch.search(|path| {
+        self.search.search(|path| {
             let file = match path.filename_str() {
                 None => return FileDoesntMatch,
                 Some(file) => file,
@@ -325,7 +330,7 @@ impl<'a> Context<'a> {
             }
         }
 
-        let os = self.sess.target_os();
+        let os = self.search.target_triple.expect_known_os();
         for lib in m.move_iter() {
             info!("{} reading metadata from: {}", flavor, lib.display());
             let metadata = match get_metadata_section(os, &lib) {
@@ -369,6 +374,11 @@ impl<'a> Context<'a> {
         match decoder::maybe_get_crate_id(crate_data) {
             Some(ref id) if self.crate_id.matches(id) => {}
             _ => return false
+        }
+        match decoder::maybe_get_crate_target(crate_data) {
+            Some(ref triple) if *triple != self.search.target_triple => return false,
+            // note: don't fail this check if the crate lacks target triple metadata.
+            _ => {},
         }
         let hash = match decoder::maybe_get_crate_hash(crate_data) {
             Some(hash) => hash, None => return false

@@ -37,6 +37,7 @@ use std::io::fs;
 use std::io::MemReader;
 use std::mem::drop;
 use std::os;
+use std::from_str::FromStr;
 use getopts::{optopt, optmulti, optflag, optflagopt};
 use getopts;
 use syntax::ast;
@@ -247,7 +248,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
                  front::config::strip_unconfigured_items(krate));
 
     krate = time(time_passes, "maybe building test harness", krate, |krate|
-                 front::test::modify_for_testing(sess, krate));
+                 front::test::modify_for_testing(sess, krate, loader));
 
     krate = time(time_passes, "prelude injection", krate, |krate|
                  front::std_inject::maybe_inject_prelude(sess, krate));
@@ -566,11 +567,29 @@ pub fn compile_input(sess: Session, cfg: ast::CrateConfig, input: &Input,
                                                  output,
                                                  krate.attrs.as_slice(),
                                                  &sess);
-            let loader = &mut Loader::new(&sess);
+            // Keep this here for the lifetime.
+            let syntax_search = sess.host_filesearch();
+            let loader = &mut Loader::new(&sess,
+                                          // If we aren't cross compiling,
+                                          // don't load anything from rustc's
+                                          // set of crates. This will save us
+                                          // later during the link phase
+                                          // for crates like std.
+                                          if sess.cross_compiling() {
+                                              syntax_search.filesearch()
+                                          } else {
+                                              sess.target_filesearch()
+                                          });
             let id = link::find_crate_id(krate.attrs.as_slice(),
                                          outputs.out_filestem);
             let (expanded_crate, ast_map) = phase_2_configure_and_expand(&sess, loader,
                                                                          krate, &id);
+            // While cross compiling, always reset cstore. Otherwise we'll transfer
+            // some host crate dependencies which may or may not (Bad) be available
+            // on the cross' platform.
+            if sess.cross_compiling() {
+                sess.cstore.reset();
+            }
             (outputs, expanded_crate, ast_map)
         };
         write_out_deps(&sess, input, &outputs, &expanded_crate).unwrap();
@@ -669,7 +688,8 @@ pub fn pretty_print_input(sess: Session,
 
     let (krate, ast_map, is_expanded) = match ppm {
         PpmExpanded | PpmExpandedIdentified | PpmTyped => {
-            let loader = &mut Loader::new(&sess);
+            let syntax_search = sess.host_filesearch();
+            let loader = &mut Loader::new(&sess, syntax_search.filesearch());
             let (krate, ast_map) = phase_2_configure_and_expand(&sess, loader,
                                                                 krate, &id);
             (krate, Some(ast_map), true)

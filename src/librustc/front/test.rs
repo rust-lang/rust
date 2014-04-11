@@ -58,14 +58,15 @@ struct TestCtxt<'a> {
 // Traverse the crate, collecting all the test functions, eliding any
 // existing main functions, and synthesizing a main test harness
 pub fn modify_for_testing(sess: &Session,
-                          krate: ast::Crate) -> ast::Crate {
+                          krate: ast::Crate,
+                          loader: &mut Loader) -> ast::Crate {
     // We generate the test harness when building in the 'test'
     // configuration, either with the '--test' or '--cfg test'
     // command line options.
     let should_test = attr::contains_name(krate.config.as_slice(), "test");
 
     if should_test {
-        generate_test_harness(sess, krate)
+        generate_test_harness(sess, krate, loader)
     } else {
         strip_test_functions(krate)
     }
@@ -151,9 +152,10 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
     }
 }
 
-fn generate_test_harness(sess: &Session, krate: ast::Crate)
+fn generate_test_harness(sess: &Session,
+                         krate: ast::Crate,
+                         loader: &mut Loader)
                          -> ast::Crate {
-    let loader = &mut Loader::new(sess);
     let mut cx: TestCtxt = TestCtxt {
         sess: sess,
         ext_cx: ExtCtxt::new(&sess.parse_sess, sess.opts.cfg.clone(),
