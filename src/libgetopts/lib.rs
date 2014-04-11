@@ -92,6 +92,7 @@
 use std::cmp::Eq;
 use std::result::{Err, Ok};
 use std::result;
+use std::strbuf::StrBuf;
 
 /// Name of an option. Either a string or a single char.
 #[deriving(Clone, Eq)]
@@ -664,7 +665,7 @@ pub fn usage(brief: &str, opts: &[OptGroup]) -> ~str {
                      hasarg: hasarg,
                      ..} = (*optref).clone();
 
-        let mut row = " ".repeat(4);
+        let mut row = StrBuf::from_owned_str(" ".repeat(4));
 
         // short option
         match short_name.len() {
@@ -700,7 +701,7 @@ pub fn usage(brief: &str, opts: &[OptGroup]) -> ~str {
 
         // FIXME: #5516 should be graphemes not codepoints
         // here we just need to indent the start of the description
-        let rowlen = row.char_len();
+        let rowlen = row.as_slice().char_len();
         if rowlen < 24 {
             for _ in range(0, 24 - rowlen) {
                 row.push_char(' ');
@@ -710,7 +711,7 @@ pub fn usage(brief: &str, opts: &[OptGroup]) -> ~str {
         }
 
         // Normalize desc to contain words separated by one space character
-        let mut desc_normalized_whitespace = ~"";
+        let mut desc_normalized_whitespace = StrBuf::new();
         for word in desc.words() {
             desc_normalized_whitespace.push_str(word);
             desc_normalized_whitespace.push_char(' ');
@@ -718,7 +719,9 @@ pub fn usage(brief: &str, opts: &[OptGroup]) -> ~str {
 
         // FIXME: #5516 should be graphemes not codepoints
         let mut desc_rows = Vec::new();
-        each_split_within(desc_normalized_whitespace, 54, |substr| {
+        each_split_within(desc_normalized_whitespace.as_slice(),
+                          54,
+                          |substr| {
             desc_rows.push(substr.to_owned());
             true
         });
@@ -727,14 +730,14 @@ pub fn usage(brief: &str, opts: &[OptGroup]) -> ~str {
         // wrapped description
         row.push_str(desc_rows.connect(desc_sep));
 
-        row
+        row.into_owned()
     });
 
     format!("{}\n\nOptions:\n{}\n", brief, rows.collect::<Vec<~str> >().connect("\n"))
 }
 
 fn format_option(opt: &OptGroup) -> ~str {
-    let mut line = ~"";
+    let mut line = StrBuf::new();
 
     if opt.occur != Req {
         line.push_char('[');
@@ -767,15 +770,14 @@ fn format_option(opt: &OptGroup) -> ~str {
         line.push_str("..");
     }
 
-    line
+    line.into_owned()
 }
 
 /// Derive a short one-line usage summary from a set of long options.
 pub fn short_usage(program_name: &str, opts: &[OptGroup]) -> ~str {
-    let mut line = ~"Usage: " + program_name + " ";
+    let mut line = StrBuf::from_str("Usage: " + program_name + " ");
     line.push_str(opts.iter().map(format_option).collect::<Vec<~str>>().connect(" "));
-
-    line
+    line.into_owned()
 }
 
 

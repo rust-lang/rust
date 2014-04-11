@@ -28,11 +28,12 @@ use util::sha2::{Digest, Sha256};
 
 use std::c_str::{ToCStr, CString};
 use std::char;
+use std::io::{fs, TempDir, Process};
+use std::io;
 use std::os::consts::{macos, freebsd, linux, android, win32};
 use std::ptr;
 use std::str;
-use std::io;
-use std::io::{fs, TempDir, Process};
+use std::strbuf::StrBuf;
 use flate;
 use serialize::hex::ToHex;
 use syntax::abi;
@@ -546,8 +547,11 @@ fn truncated_hash_result(symbol_hasher: &mut Sha256) -> ~str {
 
 
 // This calculates STH for a symbol, as defined above
-fn symbol_hash(tcx: &ty::ctxt, symbol_hasher: &mut Sha256,
-               t: ty::t, link_meta: &LinkMeta) -> ~str {
+fn symbol_hash(tcx: &ty::ctxt,
+               symbol_hasher: &mut Sha256,
+               t: ty::t,
+               link_meta: &LinkMeta)
+               -> ~str {
     // NB: do *not* use abbrevs here as we want the symbol names
     // to be independent of one another in the crate.
 
@@ -557,10 +561,10 @@ fn symbol_hash(tcx: &ty::ctxt, symbol_hasher: &mut Sha256,
     symbol_hasher.input_str(link_meta.crate_hash.as_str());
     symbol_hasher.input_str("-");
     symbol_hasher.input_str(encoder::encoded_ty(tcx, t));
-    let mut hash = truncated_hash_result(symbol_hasher);
     // Prefix with 'h' so that it never blends into adjacent digits
-    hash.unshift_char('h');
-    hash
+    let mut hash = StrBuf::from_str("h");
+    hash.push_str(truncated_hash_result(symbol_hasher));
+    hash.into_owned()
 }
 
 fn get_symbol_hash(ccx: &CrateContext, t: ty::t) -> ~str {
@@ -580,7 +584,7 @@ fn get_symbol_hash(ccx: &CrateContext, t: ty::t) -> ~str {
 // gas doesn't!
 // gas accepts the following characters in symbols: a-z, A-Z, 0-9, ., _, $
 pub fn sanitize(s: &str) -> ~str {
-    let mut result = ~"";
+    let mut result = StrBuf::new();
     for c in s.chars() {
         match c {
             // Escape these with $ sequences
@@ -605,15 +609,16 @@ pub fn sanitize(s: &str) -> ~str {
             | '_' | '.' | '$' => result.push_char(c),
 
             _ => {
-                let mut tstr = ~"";
+                let mut tstr = StrBuf::new();
                 char::escape_unicode(c, |c| tstr.push_char(c));
                 result.push_char('$');
-                result.push_str(tstr.slice_from(1));
+                result.push_str(tstr.as_slice().slice_from(1));
             }
         }
     }
 
     // Underscore-qualify anything that didn't start as an ident.
+    let result = result.into_owned();
     if result.len() > 0u &&
         result[0] != '_' as u8 &&
         ! char::is_XID_start(result[0] as char) {
@@ -640,9 +645,9 @@ pub fn mangle<PI: Iterator<PathElem>>(mut path: PI,
     // To be able to work on all platforms and get *some* reasonable output, we
     // use C++ name-mangling.
 
-    let mut n = ~"_ZN"; // _Z == Begin name-sequence, N == nested
+    let mut n = StrBuf::from_str("_ZN"); // _Z == Begin name-sequence, N == nested
 
-    fn push(n: &mut ~str, s: &str) {
+    fn push(n: &mut StrBuf, s: &str) {
         let sani = sanitize(s);
         n.push_str(format!("{}{}", sani.len(), sani));
     }
@@ -662,7 +667,7 @@ pub fn mangle<PI: Iterator<PathElem>>(mut path: PI,
     }
 
     n.push_char('E'); // End name-sequence.
-    n
+    n.into_owned()
 }
 
 pub fn exported_name(path: PathElems, hash: &str, vers: &str) -> ~str {
@@ -679,7 +684,7 @@ pub fn exported_name(path: PathElems, hash: &str, vers: &str) -> ~str {
 
 pub fn mangle_exported_name(ccx: &CrateContext, path: PathElems,
                             t: ty::t, id: ast::NodeId) -> ~str {
-    let mut hash = get_symbol_hash(ccx, t);
+    let mut hash = StrBuf::from_owned_str(get_symbol_hash(ccx, t));
 
     // Paths can be completely identical for different nodes,
     // e.g. `fn foo() { { fn a() {} } { fn a() {} } }`, so we
@@ -699,7 +704,9 @@ pub fn mangle_exported_name(ccx: &CrateContext, path: PathElems,
     hash.push_char(EXTRA_CHARS[extra2] as char);
     hash.push_char(EXTRA_CHARS[extra3] as char);
 
-    exported_name(path, hash, ccx.link_meta.crateid.version_or_default())
+    exported_name(path,
+                  hash.as_slice(),
+                  ccx.link_meta.crateid.version_or_default())
 }
 
 pub fn mangle_internal_name_by_type_and_seq(ccx: &CrateContext,

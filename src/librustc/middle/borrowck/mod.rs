@@ -24,7 +24,8 @@ use util::ppaux::{note_and_explain_region, Repr, UserString};
 use std::cell::{Cell, RefCell};
 use collections::HashMap;
 use std::ops::{BitOr, BitAnd};
-use std::result::{Result};
+use std::result::Result;
+use std::strbuf::StrBuf;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util;
@@ -802,7 +803,7 @@ impl<'a> BorrowckCtxt<'a> {
 
     pub fn append_loan_path_to_str(&self,
                                    loan_path: &LoanPath,
-                                   out: &mut ~str) {
+                                   out: &mut StrBuf) {
         match *loan_path {
             LpVar(id) => {
                 out.push_str(ty::local_var_name_str(self.tcx, id).get());
@@ -836,7 +837,7 @@ impl<'a> BorrowckCtxt<'a> {
 
     pub fn append_autoderefd_loan_path_to_str(&self,
                                               loan_path: &LoanPath,
-                                              out: &mut ~str) {
+                                              out: &mut StrBuf) {
         match *loan_path {
             LpExtend(lp_base, _, LpDeref(_)) => {
                 // For a path like `(*x).f` or `(*x)[3]`, autoderef
@@ -852,9 +853,9 @@ impl<'a> BorrowckCtxt<'a> {
     }
 
     pub fn loan_path_to_str(&self, loan_path: &LoanPath) -> ~str {
-        let mut result = ~"";
+        let mut result = StrBuf::new();
         self.append_loan_path_to_str(loan_path, &mut result);
-        result
+        result.into_owned()
     }
 
     pub fn cmt_to_str(&self, cmt: mc::cmt) -> ~str {

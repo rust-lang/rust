@@ -17,6 +17,7 @@ use std::cell::{RefCell, Cell};
 use std::fmt;
 use std::io;
 use std::iter::range;
+use std::strbuf::StrBuf;
 use term;
 
 // maximum number of lines we will print for each error; arbitrary.
@@ -368,11 +369,13 @@ fn highlight_lines(err: &mut EmitterWriter,
 
         // indent past |name:## | and the 0-offset column location
         let left = fm.name.len() + digits + lo.col.to_uint() + 3u;
-        let mut s = ~"";
+        let mut s = StrBuf::new();
         // Skip is the number of characters we need to skip because they are
         // part of the 'filename:line ' part of the previous line.
         let skip = fm.name.len() + digits + 3u;
-        for _ in range(0, skip) { s.push_char(' '); }
+        for _ in range(0, skip) {
+            s.push_char(' ');
+        }
         let orig = fm.get_line(*lines.lines.get(0) as int);
         for pos in range(0u, left-skip) {
             let cur_char = orig[pos] as char;
@@ -386,14 +389,16 @@ fn highlight_lines(err: &mut EmitterWriter,
             };
         }
         try!(write!(&mut err.dst, "{}", s));
-        let mut s = ~"^";
+        let mut s = StrBuf::from_str("^");
         let hi = cm.lookup_char_pos(sp.hi);
         if hi.col != lo.col {
             // the ^ already takes up one space
             let num_squigglies = hi.col.to_uint()-lo.col.to_uint()-1u;
-            for _ in range(0, num_squigglies) { s.push_char('~'); }
+            for _ in range(0, num_squigglies) {
+                s.push_char('~');
+            }
         }
-        try!(print_maybe_styled(err, s + "\n",
+        try!(print_maybe_styled(err, s.into_owned() + "\n",
                                 term::attr::ForegroundColor(lvl.color())));
     }
     Ok(())
@@ -409,7 +414,8 @@ fn custom_highlight_lines(w: &mut EmitterWriter,
                           cm: &codemap::CodeMap,
                           sp: Span,
                           lvl: Level,
-                          lines: codemap::FileLines) -> io::IoResult<()> {
+                          lines: codemap::FileLines)
+                          -> io::IoResult<()> {
     let fm = &*lines.file;
 
     let lines = lines.lines.as_slice();
@@ -430,15 +436,21 @@ fn custom_highlight_lines(w: &mut EmitterWriter,
     let hi = cm.lookup_char_pos(sp.hi);
     // Span seems to use half-opened interval, so subtract 1
     let skip = last_line_start.len() + hi.col.to_uint() - 1;
-    let mut s = ~"";
-    for _ in range(0, skip) { s.push_char(' '); }
+    let mut s = StrBuf::new();
+    for _ in range(0, skip) {
+        s.push_char(' ');
+    }
     s.push_char('^');
-    print_maybe_styled(w, s + "\n", term::attr::ForegroundColor(lvl.color()))
+    s.push_char('\n');
+    print_maybe_styled(w,
+                       s.into_owned(),
+                       term::attr::ForegroundColor(lvl.color()))
 }
 
 fn print_macro_backtrace(w: &mut EmitterWriter,
                          cm: &codemap::CodeMap,
-                         sp: Span) -> io::IoResult<()> {
+                         sp: Span)
+                         -> io::IoResult<()> {
     for ei in sp.expn_info.iter() {
         let ss = ei.callee.span.as_ref().map_or(~"", |span| cm.span_to_str(*span));
         let (pre, post) = match ei.callee.format {

@@ -21,6 +21,7 @@ use std::mem::replace;
 use std::num::from_str_radix;
 use std::rc::Rc;
 use std::str;
+use std::strbuf::StrBuf;
 
 pub use ext::tt::transcribe::{TtReader, new_tt_reader};
 
@@ -152,10 +153,10 @@ fn fatal_span_char(rdr: &mut StringReader,
                    m: ~str,
                    c: char)
                 -> ! {
-    let mut m = m;
+    let mut m = StrBuf::from_owned_str(m);
     m.push_str(": ");
     char::escape_default(c, |c| m.push_char(c));
-    fatal_span(rdr, from_pos, to_pos, m);
+    fatal_span(rdr, from_pos, to_pos, m.into_owned());
 }
 
 // report a lexical error spanning [`from_pos`, `to_pos`), appending the
@@ -165,12 +166,12 @@ fn fatal_span_verbose(rdr: &mut StringReader,
                       to_pos: BytePos,
                       m: ~str)
                    -> ! {
-    let mut m = m;
+    let mut m = StrBuf::from_owned_str(m);
     m.push_str(": ");
     let from = byte_offset(rdr, from_pos).to_uint();
     let to = byte_offset(rdr, to_pos).to_uint();
     m.push_str(rdr.filemap.src.slice(from, to));
-    fatal_span(rdr, from_pos, to_pos, m);
+    fatal_span(rdr, from_pos, to_pos, m.into_owned());
 }
 
 // EFFECT: advance peek_tok and peek_span to refer to the next token.
@@ -440,7 +441,7 @@ fn consume_block_comment(rdr: &mut StringReader) -> Option<TokenAndSpan> {
 fn scan_exponent(rdr: &mut StringReader, start_bpos: BytePos) -> Option<~str> {
     // \x00 hits the `return None` case immediately, so this is fine.
     let mut c = rdr.curr.unwrap_or('\x00');
-    let mut rslt = ~"";
+    let mut rslt = StrBuf::new();
     if c == 'e' || c == 'E' {
         rslt.push_char(c);
         bump(rdr);
@@ -451,7 +452,8 @@ fn scan_exponent(rdr: &mut StringReader, start_bpos: BytePos) -> Option<~str> {
         }
         let exponent = scan_digits(rdr, 10u);
         if exponent.len() > 0u {
-            return Some(rslt + exponent);
+            rslt.push_str(exponent);
+            return Some(rslt.into_owned());
         } else {
             fatal_span(rdr, start_bpos, rdr.last_pos,
                        ~"scan_exponent: bad fp literal");
@@ -460,7 +462,7 @@ fn scan_exponent(rdr: &mut StringReader, start_bpos: BytePos) -> Option<~str> {
 }
 
 fn scan_digits(rdr: &mut StringReader, radix: uint) -> ~str {
-    let mut rslt = ~"";
+    let mut rslt = StrBuf::new();
     loop {
         let c = rdr.curr;
         if c == Some('_') { bump(rdr); continue; }
@@ -469,7 +471,7 @@ fn scan_digits(rdr: &mut StringReader, radix: uint) -> ~str {
             rslt.push_char(c.unwrap());
             bump(rdr);
           }
-          _ => return rslt
+          _ => return rslt.into_owned()
         }
     };
 }
@@ -506,7 +508,7 @@ fn scan_number(c: char, rdr: &mut StringReader) -> token::Token {
         bump(rdr);
         base = 2u;
     }
-    num_str = scan_digits(rdr, base);
+    num_str = StrBuf::from_owned_str(scan_digits(rdr, base));
     c = rdr.curr.unwrap_or('\x00');
     nextch(rdr);
     if c == 'u' || c == 'i' {
@@ -544,7 +546,8 @@ fn scan_number(c: char, rdr: &mut StringReader) -> token::Token {
             fatal_span(rdr, start_bpos, rdr.last_pos,
                        ~"no valid digits found for number");
         }
-        let parsed = match from_str_radix::<u64>(num_str, base as uint) {
+        let parsed = match from_str_radix::<u64>(num_str.as_slice(),
+                                                 base as uint) {
             Some(p) => p,
             None => fatal_span(rdr, start_bpos, rdr.last_pos,
                                ~"int literal is too large")
@@ -579,12 +582,14 @@ fn scan_number(c: char, rdr: &mut StringReader) -> token::Token {
             bump(rdr);
             bump(rdr);
             check_float_base(rdr, start_bpos, rdr.last_pos, base);
-            return token::LIT_FLOAT(str_to_ident(num_str), ast::TyF32);
+            return token::LIT_FLOAT(str_to_ident(num_str.into_owned()),
+                                    ast::TyF32);
         } else if c == '6' && n == '4' {
             bump(rdr);
             bump(rdr);
             check_float_base(rdr, start_bpos, rdr.last_pos, base);
-            return token::LIT_FLOAT(str_to_ident(num_str), ast::TyF64);
+            return token::LIT_FLOAT(str_to_ident(num_str.into_owned()),
+                                    ast::TyF64);
             /* FIXME (#2252): if this is out of range for either a
             32-bit or 64-bit float, it won't be noticed till the
             back-end.  */
@@ -595,19 +600,22 @@ fn scan_number(c: char, rdr: &mut StringReader) -> token::Token {
     }
     if is_float {
         check_float_base(rdr, start_bpos, rdr.last_pos, base);
-        return token::LIT_FLOAT_UNSUFFIXED(str_to_ident(num_str));
+        return token::LIT_FLOAT_UNSUFFIXED(str_to_ident(
+                num_str.into_owned()));
     } else {
         if num_str.len() == 0u {
             fatal_span(rdr, start_bpos, rdr.last_pos,
                        ~"no valid digits found for number");
         }
-        let parsed = match from_str_radix::<u64>(num_str, base as uint) {
+        let parsed = match from_str_radix::<u64>(num_str.as_slice(),
+                                                 base as uint) {
             Some(p) => p,
             None => fatal_span(rdr, start_bpos, rdr.last_pos,
                                ~"int literal is too large")
         };
 
-        debug!("lexing {} as an unsuffixed integer literal", num_str);
+        debug!("lexing {} as an unsuffixed integer literal",
+               num_str.as_slice());
         return token::LIT_INT_UNSUFFIXED(parsed as i64);
     }
 }
@@ -863,7 +871,7 @@ fn next_token_inner(rdr: &mut StringReader) -> token::Token {
         return token::LIT_CHAR(c2 as u32);
       }
       '"' => {
-        let mut accum_str = ~"";
+        let mut accum_str = StrBuf::new();
         let start_bpos = rdr.last_pos;
         bump(rdr);
         while !rdr.curr_is('"') {
@@ -912,7 +920,7 @@ fn next_token_inner(rdr: &mut StringReader) -> token::Token {
             }
         }
         bump(rdr);
-        return token::LIT_STR(str_to_ident(accum_str));
+        return token::LIT_STR(str_to_ident(accum_str.as_slice()));
       }
       'r' => {
         let start_bpos = rdr.last_pos;

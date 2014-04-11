@@ -20,6 +20,7 @@ use super::IoResult;
 use super::file;
 
 #[cfg(windows)] use std::cast;
+#[cfg(windows)] use std::strbuf::StrBuf;
 #[cfg(not(windows))] use super::retry;
 
 /**
@@ -395,15 +396,15 @@ fn zeroed_process_information() -> libc::types::os::arch::extra::PROCESS_INFORMA
 
 #[cfg(windows)]
 fn make_command_line(prog: &str, args: &[~str]) -> ~str {
-    let mut cmd = ~"";
+    let mut cmd = StrBuf::new();
     append_arg(&mut cmd, prog);
     for arg in args.iter() {
         cmd.push_char(' ');
         append_arg(&mut cmd, *arg);
     }
-    return cmd;
+    return cmd.into_owned();
 
-    fn append_arg(cmd: &mut ~str, arg: &str) {
+    fn append_arg(cmd: &mut StrBuf, arg: &str) {
         let quote = arg.chars().any(|c| c == ' ' || c == '\t');
         if quote {
             cmd.push_char('"');
@@ -416,7 +417,7 @@ fn make_command_line(prog: &str, args: &[~str]) -> ~str {
         }
     }
 
-    fn append_char_at(cmd: &mut ~str, arg: &str, i: uint) {
+    fn append_char_at(cmd: &mut StrBuf, arg: &str, i: uint) {
         match arg[i] as char {
             '"' => {
                 // Escape quotes.

@@ -16,9 +16,11 @@ use owned_slice::OwnedSlice;
 use parse::token;
 use parse::token::{str_to_ident};
 
+use std::strbuf::StrBuf;
+
 pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     -> base::MacResult {
-    let mut res_str = ~"";
+    let mut res_str = StrBuf::new();
     for (i, e) in tts.iter().enumerate() {
         if i & 1 == 1 {
             match *e {
@@ -40,7 +42,7 @@ pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
             }
         }
     }
-    let res = str_to_ident(res_str);
+    let res = str_to_ident(res_str.into_owned());
 
     let e = @ast::Expr {
         id: ast::DUMMY_NODE_ID,
