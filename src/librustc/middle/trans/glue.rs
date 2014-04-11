@@ -93,7 +93,7 @@ fn get_drop_glue_type(ccx: &CrateContext, t: ty::t) -> ty::t {
             }
         }
 
-        ty::ty_vec(mt, ty::VstoreUniq) if !ty::type_needs_drop(tcx, mt.ty) =>
+        ty::ty_vec(ty, ty::VstoreUniq) if !ty::type_needs_drop(tcx, ty) =>
             ty::mk_uniq(tcx, ty::mk_i8()),
 
         _ => t

@@ -680,7 +680,6 @@ impl<'a> InferCtxt<'a> {
                                   trait_ref.def_id,
                                   trait_ref.substs.clone(),
                                   ty::UniqTraitStore,
-                                  ast::MutImmutable,
                                   ty::EmptyBuiltinBounds());
         let dummy1 = self.resolve_type_vars_if_possible(dummy0);
         match ty::get(dummy1).sty {

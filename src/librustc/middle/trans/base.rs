@@ -657,10 +657,10 @@ pub fn iter_structural_ty<'r,
               }
           })
       }
-      ty::ty_str(ty::VstoreFixed(_)) |
-      ty::ty_vec(_, ty::VstoreFixed(_)) => {
-        let (base, len) = tvec::get_base_and_byte_len(cx, av, t);
+      ty::ty_str(ty::VstoreFixed(n)) |
+      ty::ty_vec(_, ty::VstoreFixed(n)) => {
         let unit_ty = ty::sequence_element_type(cx.tcx(), t);
+        let (base, len) = tvec::get_fixed_base_and_byte_len(cx, av, unit_ty, n);
         cx = tvec::iter_vec_raw(cx, base, unit_ty, len, f);
       }
       ty::ty_tup(ref args) => {

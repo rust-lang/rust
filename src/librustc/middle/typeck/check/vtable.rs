@@ -468,8 +468,7 @@ fn fixup_substs(vcx: &VtableContext,
     // use a dummy type just to package up the substs that need fixing up
     let t = ty::mk_trait(tcx,
                          id, substs,
-                         ty::RegionTraitStore(ty::ReStatic),
-                         ast::MutImmutable,
+                         ty::RegionTraitStore(ty::ReStatic, ast::MutImmutable),
                          ty::EmptyBuiltinBounds());
     fixup_ty(vcx, span, t, is_early).map(|t_f| {
         match ty::get(t_f).sty {
@@ -532,8 +531,7 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
       match ty::get(target_ty).sty {
           // Bounds of type's contents are not checked here, but in kind.rs.
           ty::ty_trait(~ty::TyTrait {
-              def_id: target_def_id, substs: ref target_substs, store: store,
-              mutability: target_mutbl, bounds: _bounds
+              def_id: target_def_id, substs: ref target_substs, store, ..
           }) => {
               fn mutability_allowed(a_mutbl: ast::Mutability,
                                     b_mutbl: ast::Mutability) -> bool {
@@ -547,15 +545,8 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
               let ty = structurally_resolved_type(fcx, ex.span,
                                                   fcx.expr_ty(src));
               match (&ty::get(ty).sty, store) {
-                  (&ty::ty_uniq(..), ty::UniqTraitStore)
-                    if !mutability_allowed(ast::MutImmutable,
-                                           target_mutbl) => {
-                      fcx.tcx().sess.span_err(ex.span,
-                                              format!("types differ in mutability"));
-                  }
-
-                  (&ty::ty_rptr(_, mt), ty::RegionTraitStore(..))
-                    if !mutability_allowed(mt.mutbl, target_mutbl) => {
+                  (&ty::ty_rptr(_, mt), ty::RegionTraitStore(_, mutbl))
+                    if !mutability_allowed(mt.mutbl, mutbl) => {
                       fcx.tcx().sess.span_err(ex.span,
                                               format!("types differ in mutability"));
                   }
@@ -598,7 +589,7 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
                       // regions.
                       match (&ty::get(ty).sty, store) {
                           (&ty::ty_rptr(ra, _),
-                           ty::RegionTraitStore(rb)) => {
+                           ty::RegionTraitStore(rb, _)) => {
                               infer::mk_subr(fcx.infcx(),
                                              false,
                                              infer::RelateObjectBound(
@@ -618,7 +609,7 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
                                ty::ty_sort_str(fcx.tcx(), ty)));
                   }
 
-                  (_, ty::RegionTraitStore(_)) => {
+                  (_, ty::RegionTraitStore(..)) => {
                       fcx.ccx.tcx.sess.span_err(
                           ex.span,
                           format!("can only cast an &-pointer \
@@ -716,10 +707,8 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
                         }
                     }
                 }
-                AutoObject(ref sigil,
-                           ref region,
-                           m,
-                           b,
+                AutoObject(store,
+                           bounds,
                            def_id,
                            ref substs) => {
                     debug!("doing trait adjustment for expr {} {} \
@@ -728,13 +717,9 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
                            ex.repr(fcx.tcx()),
                            is_early);
 
-                    let object_ty = ty::trait_adjustment_to_ty(cx.tcx,
-                                                               sigil,
-                                                               region,
-                                                               def_id,
-                                                               substs,
-                                                               m,
-                                                               b);
+                    let object_ty = ty::mk_trait(cx.tcx, def_id,
+                                                 substs.clone(),
+                                                 store, bounds);
                     resolve_object_cast(ex, object_ty);
                 }
                 AutoAddEnv(..) => {}

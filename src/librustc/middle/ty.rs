@@ -27,7 +27,7 @@ use middle::ty_fold;
 use middle::ty_fold::TypeFolder;
 use middle;
 use util::ppaux::{note_and_explain_region, bound_region_ptr_to_str};
-use util::ppaux::{trait_store_to_str, ty_to_str, vstore_to_str};
+use util::ppaux::{trait_store_to_str, ty_to_str};
 use util::ppaux::{Repr, UserString};
 use util::common::{indenter};
 use util::nodemap::{NodeMap, NodeSet, DefIdMap, DefIdSet, FnvHashMap};
@@ -216,8 +216,7 @@ pub enum Variance {
 pub enum AutoAdjustment {
     AutoAddEnv(ty::Region, ast::Sigil),
     AutoDerefRef(AutoDerefRef),
-    AutoObject(ast::Sigil, Option<ty::Region>,
-               ast::Mutability,
+    AutoObject(ty::TraitStore,
                ty::BuiltinBounds,
                ast::DefId, /* Trait ID */
                ty::substs /* Trait substitutions */)
@@ -818,7 +817,7 @@ pub enum type_err {
     terr_regions_no_overlap(Region, Region),
     terr_regions_insufficiently_polymorphic(BoundRegion, Region),
     terr_regions_overly_polymorphic(BoundRegion, Region),
-    terr_vstores_differ(terr_vstore_kind, expected_found<Vstore>),
+    terr_vstores_differ(terr_vstore_kind, expected_found<Vstore<()>>),
     terr_trait_stores_differ(terr_vstore_kind, expected_found<TraitStore>),
     terr_in_field(@type_err, ast::Ident),
     terr_sorts(expected_found<t>),
@@ -1184,12 +1183,12 @@ pub fn mk_t(cx: &ctxt, st: sty) -> t {
         return f;
     }
     match &st {
-      &ty_str(VstoreSlice(r)) => {
+      &ty_str(VstoreSlice(r, ())) => {
         flags |= rflags(r);
       }
-      &ty_vec(ref mt, VstoreSlice(r)) => {
+      &ty_vec(ty, VstoreSlice(r, _)) => {
         flags |= rflags(r);
-        flags |= get(mt.ty).flags;
+        flags |= get(ty).flags;
       }
       &ty_nil | &ty_bool | &ty_char | &ty_int(_) | &ty_float(_) | &ty_uint(_) |
       &ty_str(_) => {}
@@ -1209,16 +1208,16 @@ pub fn mk_t(cx: &ctxt, st: sty) -> t {
       &ty_trait(~ty::TyTrait { ref substs, .. }) => {
           flags |= sflags(substs);
           match st {
-              ty_trait(~ty::TyTrait { store: RegionTraitStore(r), .. }) => {
+              ty_trait(~ty::TyTrait { store: RegionTraitStore(r, _), .. }) => {
                     flags |= rflags(r);
                 }
               _ => {}
           }
       }
-      &ty_box(tt) | &ty_uniq(tt) => {
+      &ty_box(tt) | &ty_uniq(tt) | &ty_vec(tt, _) => {
         flags |= get(tt).flags
       }
-      &ty_vec(ref m, _) | &ty_ptr(ref m) => {
+      &ty_ptr(ref m) => {
         flags |= get(m.ty).flags;
       }
       &ty_rptr(r, ref m) => {
@@ -1347,8 +1346,8 @@ pub fn mk_mach_float(tm: ast::FloatTy) -> t {
 #[inline]
 pub fn mk_char() -> t { mk_prim_t(&primitives::TY_CHAR) }
 
-pub fn mk_str(cx: &ctxt, t: Vstore) -> t {
-    mk_t(cx, ty_str(t))
+pub fn mk_str(cx: &ctxt, v: Vstore<()>) -> t {
+    mk_t(cx, ty_str(v))
 }
 
 pub fn mk_enum(cx: &ctxt, did: ast::DefId, substs: substs) -> t {
@@ -1383,8 +1382,8 @@ pub fn mk_nil_ptr(cx: &ctxt) -> t {
     mk_ptr(cx, mt {ty: mk_nil(), mutbl: ast::MutImmutable})
 }
 
-pub fn mk_vec(cx: &ctxt, tm: mt, t: Vstore) -> t {
-    mk_t(cx, ty_vec(tm, t))
+pub fn mk_vec(cx: &ctxt, ty: t, v: Vstore) -> t {
+    mk_t(cx, ty_vec(ty, v))
 }
 
 pub fn mk_tup(cx: &ctxt, ts: Vec<t>) -> t { mk_t(cx, ty_tup(ts)) }
@@ -1420,7 +1419,6 @@ pub fn mk_trait(cx: &ctxt,
                 did: ast::DefId,
                 substs: substs,
                 store: TraitStore,
-                mutability: ast::Mutability,
                 bounds: BuiltinBounds)
              -> t {
     // take a copy of substs so that we own the vectors inside
@@ -1428,7 +1426,6 @@ pub fn mk_trait(cx: &ctxt,
         def_id: did,
         substs: substs,
         store: store,
-        mutability: mutability,
         bounds: bounds
     };
     mk_t(cx, ty_trait(inner))
@@ -1465,8 +1462,8 @@ pub fn maybe_walk_ty(ty: t, f: |t| -> bool) {
         ty_nil | ty_bot | ty_bool | ty_char | ty_int(_) | ty_uint(_) | ty_float(_) |
         ty_str(_) | ty_self(_) |
         ty_infer(_) | ty_param(_) | ty_err => {}
-        ty_box(ty) | ty_uniq(ty) => maybe_walk_ty(ty, f),
-        ty_vec(ref tm, _) | ty_ptr(ref tm) | ty_rptr(_, ref tm) => {
+        ty_box(ty) | ty_uniq(ty) | ty_vec(ty, _) => maybe_walk_ty(ty, f),
+        ty_ptr(ref tm) | ty_rptr(_, ref tm) => {
             maybe_walk_ty(tm.ty, f);
         }
         ty_enum(_, ref substs) | ty_struct(_, ref substs) |
@@ -1605,7 +1602,7 @@ pub fn type_is_structural(ty: t) -> bool {
     match get(ty).sty {
       ty_struct(..) | ty_tup(_) | ty_enum(..) | ty_closure(_) | ty_trait(..) |
       ty_vec(_, VstoreFixed(_)) | ty_str(VstoreFixed(_)) |
-      ty_vec(_, VstoreSlice(_)) | ty_str(VstoreSlice(_))
+      ty_vec(_, VstoreSlice(..)) | ty_str(VstoreSlice(..))
       => true,
       _ => false
     }
@@ -1621,7 +1618,7 @@ pub fn type_is_simd(cx: &ctxt, ty: t) -> bool {
 pub fn sequence_element_type(cx: &ctxt, ty: t) -> t {
     match get(ty).sty {
         ty_str(_) => mk_mach_uint(ast::TyU8),
-        ty_vec(mt, _) => mt.ty,
+        ty_vec(ty, _) => ty,
         _ => cx.sess.bug("sequence_element_type called on non-sequence value"),
     }
 }
@@ -2073,8 +2070,8 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
                 tc_ty(cx, typ, cache).owned_pointer()
             }
 
-            ty_trait(~ty::TyTrait { store, mutability, bounds, .. }) => {
-                object_contents(cx, store, mutability, bounds)
+            ty_trait(~ty::TyTrait { store, bounds, .. }) => {
+                object_contents(cx, store, bounds)
             }
 
             ty_ptr(ref mt) => {
@@ -2086,20 +2083,19 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
                     borrowed_contents(r, mt.mutbl))
             }
 
-            ty_vec(mt, VstoreUniq) => {
-                tc_mt(cx, mt, cache).owned_pointer()
+            ty_vec(ty, VstoreUniq) => {
+                tc_ty(cx, ty, cache).owned_pointer()
             }
 
-            ty_vec(ref mt, VstoreSlice(r)) => {
-                tc_ty(cx, mt.ty, cache).reference(
-                    borrowed_contents(r, mt.mutbl))
+            ty_vec(ty, VstoreSlice(r, mutbl)) => {
+                tc_ty(cx, ty, cache).reference(borrowed_contents(r, mutbl))
             }
 
-            ty_vec(mt, VstoreFixed(_)) => {
-                tc_mt(cx, mt, cache)
+            ty_vec(ty, VstoreFixed(_)) => {
+                tc_ty(cx, ty, cache)
             }
 
-            ty_str(VstoreSlice(r)) => {
+            ty_str(VstoreSlice(r, ())) => {
                 borrowed_contents(r, ast::MutImmutable)
             }
 
@@ -2223,9 +2219,8 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
         // even more stuff.
         let st = match cty.sigil {
             ast::BorrowedSigil =>
-                object_contents(cx, RegionTraitStore(cty.region), MutMutable, cty.bounds),
-            ast::OwnedSigil =>
-                object_contents(cx, UniqTraitStore, MutImmutable, cty.bounds),
+                object_contents(cx, RegionTraitStore(cty.region, MutMutable), cty.bounds),
+            ast::OwnedSigil => object_contents(cx, UniqTraitStore, cty.bounds),
             ast::ManagedSigil => unreachable!()
         };
 
@@ -2246,18 +2241,16 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
 
     fn object_contents(cx: &ctxt,
                        store: TraitStore,
-                       mutbl: ast::Mutability,
                        bounds: BuiltinBounds)
                        -> TypeContents {
         // These are the type contents of the (opaque) interior
-        let contents = TC::ReachesMutable.when(mutbl == ast::MutMutable) |
-            kind_bounds_to_contents(cx, bounds, []);
+        let contents = kind_bounds_to_contents(cx, bounds, []);
 
         match store {
             UniqTraitStore => {
                 contents.owned_pointer()
             }
-            RegionTraitStore(r) => {
+            RegionTraitStore(r, mutbl) => {
                 contents.reference(borrowed_contents(r, mutbl))
             }
         }
@@ -2336,7 +2329,7 @@ pub fn is_instantiable(cx: &ctxt, r_ty: t) -> bool {
             // normal vectors, since they don't necessarily have the
             // possibilty to have length zero.
             ty_vec(_, VstoreFixed(0)) => false, // don't need no contents
-            ty_vec(mt, VstoreFixed(_)) => type_requires(cx, seen, r_ty, mt.ty),
+            ty_vec(ty, VstoreFixed(_)) => type_requires(cx, seen, r_ty, ty),
 
             ty_nil |
             ty_bot |
@@ -2473,8 +2466,8 @@ pub fn is_type_representable(cx: &ctxt, ty: t) -> Representability {
             }
             // Fixed-length vectors.
             // FIXME(#11924) Behavior undecided for zero-length vectors.
-            ty_vec(mt, VstoreFixed(_)) => {
-                type_structurally_recursive(cx, seen, mt.ty)
+            ty_vec(ty, VstoreFixed(_)) => {
+                type_structurally_recursive(cx, seen, ty)
             }
 
             // Push struct and enum def-ids onto `seen` before recursing.
@@ -2626,11 +2619,11 @@ pub fn deref(t: t, explicit: bool) -> Option<mt> {
     }
 }
 
-// Returns the type and mutability of t[i]
-pub fn index(t: t) -> Option<mt> {
+// Returns the type of t[i]
+pub fn index(t: t) -> Option<t> {
     match get(t).sty {
-        ty_vec(mt, _) => Some(mt),
-        ty_str(_) => Some(mt {ty: mk_u8(), mutbl: ast::MutImmutable}),
+        ty_vec(ty, _) => Some(ty),
+        ty_str(_) => Some(mk_u8()),
         _ => None
     }
 }
@@ -2735,8 +2728,8 @@ pub fn ty_region(tcx: &ctxt,
                  ty: t) -> Region {
     match get(ty).sty {
         ty_rptr(r, _) => r,
-        ty_vec(_, VstoreSlice(r)) => r,
-        ty_str(VstoreSlice(r)) => r,
+        ty_vec(_, VstoreSlice(r, _)) => r,
+        ty_str(VstoreSlice(r, ())) => r,
         ref s => {
             tcx.sess.span_bug(
                 span,
@@ -2934,14 +2927,8 @@ pub fn adjust_ty(cx: &ctxt,
                     }
                 }
 
-                AutoObject(ref sigil, ref region, m, b, def_id, ref substs) => {
-                    trait_adjustment_to_ty(cx,
-                                           sigil,
-                                           region,
-                                           def_id,
-                                           substs,
-                                           m,
-                                           b)
+                AutoObject(store, bounds, def_id, ref substs) => {
+                    mk_trait(cx, def_id, substs.clone(), store, bounds)
                 }
             }
         }
@@ -2952,12 +2939,12 @@ pub fn adjust_ty(cx: &ctxt,
                   r: Region, m: ast::Mutability,
                   ty: ty::t) -> ty::t {
         match get(ty).sty {
-            ty_vec(mt, _) => {
-                ty::mk_vec(cx, mt {ty: mt.ty, mutbl: m}, VstoreSlice(r))
+            ty_vec(ty, _) => {
+                ty::mk_vec(cx, ty, VstoreSlice(r, m))
             }
 
             ty_str(_) => {
-                ty::mk_str(cx, VstoreSlice(r))
+                ty::mk_str(cx, VstoreSlice(r, ()))
             }
 
             ref s => {
@@ -2993,7 +2980,7 @@ pub fn adjust_ty(cx: &ctxt,
         match get(ty).sty {
             ty_trait(~ty::TyTrait {def_id, ref substs, bounds, .. }) => {
                 ty::mk_trait(cx, def_id, substs.clone(),
-                             RegionTraitStore(r), m, bounds)
+                             RegionTraitStore(r, m), bounds)
             }
             ref s => {
                 cx.sess.span_bug(
@@ -3003,19 +2990,6 @@ pub fn adjust_ty(cx: &ctxt,
             }
         }
     }
-}
-
-pub fn trait_adjustment_to_ty(cx: &ctxt, sigil: &ast::Sigil, region: &Option<Region>,
-                              def_id: ast::DefId, substs: &substs, m: ast::Mutability,
-                              bounds: BuiltinBounds) -> t {
-
-    let trait_store = match *sigil {
-        BorrowedSigil => RegionTraitStore(region.expect("expected valid region")),
-        OwnedSigil => UniqTraitStore,
-        ManagedSigil => unreachable!()
-    };
-
-    mk_trait(cx, def_id, substs.clone(), trait_store, m, bounds)
 }
 
 impl AutoRef {
@@ -3416,8 +3390,8 @@ pub fn type_err_to_str(cx: &ctxt, err: &type_err) -> ~str {
         terr_vstores_differ(k, ref values) => {
             format!("{} storage differs: expected `{}` but found `{}`",
                  terr_vstore_kind_to_str(k),
-                 vstore_to_str(cx, (*values).expected),
-                 vstore_to_str(cx, (*values).found))
+                 (*values).expected.repr(cx),
+                 (*values).found.repr(cx))
         }
         terr_trait_stores_differ(_, ref values) => {
             format!("trait storage differs: expected `{}` but found `{}`",
@@ -4208,10 +4182,10 @@ pub fn normalize_ty(cx: &ctxt, t: t) -> t {
             return t_norm;
         }
 
-        fn fold_vstore(&mut self, vstore: Vstore) -> Vstore {
+        fn fold_vstore<M>(&mut self, vstore: Vstore<M>) -> Vstore<M> {
             match vstore {
                 VstoreFixed(..) | VstoreUniq => vstore,
-                VstoreSlice(_) => VstoreSlice(ReStatic)
+                VstoreSlice(_, m) => VstoreSlice(ReStatic, m)
             }
         }
 
@@ -4396,8 +4370,7 @@ pub fn visitor_object_ty(tcx: &ctxt,
         mk_trait(tcx,
                  trait_ref.def_id,
                  trait_ref.substs.clone(),
-                 RegionTraitStore(region),
-                 ast::MutMutable,
+                 RegionTraitStore(region, ast::MutMutable),
                  EmptyBuiltinBounds())))
 }
 
@@ -4646,9 +4619,8 @@ pub fn hash_crate_independent(tcx: &ctxt, t: t, svh: &Svh) -> u64 {
             ty_uniq(_) => {
                 byte!(10);
             }
-            ty_vec(m, v) => {
+            ty_vec(_, v) => {
                 byte!(11);
-                mt(&mut state, m);
                 hash!(v);
             }
             ty_ptr(m) => {
@@ -4673,17 +4645,17 @@ pub fn hash_crate_independent(tcx: &ctxt, t: t, svh: &Svh) -> u64 {
                 hash!(c.bounds);
                 region(&mut state, c.region);
             }
-            ty_trait(~ty::TyTrait { def_id: d, store, mutability: m, bounds, .. }) => {
+            ty_trait(~ty::TyTrait { def_id: d, store, bounds, .. }) => {
                 byte!(17);
                 did(&mut state, d);
                 match store {
                     UniqTraitStore => byte!(0),
-                    RegionTraitStore(r) => {
+                    RegionTraitStore(r, m) => {
                         byte!(1)
                         region(&mut state, r);
+                        hash!(m);
                     }
                 }
-                hash!(m);
                 hash!(bounds);
             }
             ty_struct(d, _) => {
