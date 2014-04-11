@@ -631,14 +631,7 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::Item) {
                             parent_visibility);
 
             for trait_ref in opt_trait_ref.iter() {
-                let trait_ref = instantiate_trait_ref(ccx, trait_ref, selfty);
-
-                // Prevent the builtin kind traits from being manually implemented.
-                if tcx.lang_items.to_builtin_kind(trait_ref.def_id).is_some() {
-                    tcx.sess.span_err(it.span,
-                        "cannot provide an explicit implementation \
-                         for a builtin kind");
-                }
+                instantiate_trait_ref(ccx, trait_ref, selfty);
             }
         },
         ast::ItemTrait(ref generics, _, _, ref trait_methods) => {
