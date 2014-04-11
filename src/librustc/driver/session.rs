@@ -560,15 +560,3 @@ pub fn collect_crate_types(session: &Session,
         return base;
     }
 }
-
-pub fn sess_os_to_meta_os(os: abi::Os) -> metadata::loader::Os {
-    use metadata::loader;
-
-    match os {
-        abi::OsWin32 => loader::OsWin32,
-        abi::OsLinux => loader::OsLinux,
-        abi::OsAndroid => loader::OsAndroid,
-        abi::OsMacos => loader::OsMacos,
-        abi::OsFreebsd => loader::OsFreebsd
-    }
-}

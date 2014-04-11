@@ -14,13 +14,11 @@
 
 use back::link;
 use back::svh::Svh;
-use driver::{driver, session};
 use driver::session::Session;
 use metadata::cstore;
 use metadata::cstore::CStore;
 use metadata::decoder;
 use metadata::loader;
-use metadata::loader::Os;
 use metadata::loader::CratePaths;
 
 use std::cell::RefCell;
@@ -40,7 +38,7 @@ use syntax::visit;
 
 struct Env<'a> {
     sess: &'a Session,
-    os: loader::Os,
+    os: abi::Os,
     next_crate_num: ast::CrateNum,
     intr: Rc<IdentInterner>
 }
@@ -49,7 +47,7 @@ struct Env<'a> {
 // libraries necessary for later resolving, typechecking, linking, etc.
 pub fn read_crates(sess: &Session,
                    krate: &ast::Crate,
-                   os: loader::Os,
+                   os: abi::Os,
                    intr: Rc<IdentInterner>) {
     let mut e = Env {
         sess: sess,

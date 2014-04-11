@@ -1186,8 +1186,7 @@ pub fn early_error(msg: &str) -> ! {
 
 pub fn list_metadata(sess: &Session, path: &Path,
                      out: &mut io::Writer) -> io::IoResult<()> {
-    metadata::loader::list_file_metadata(
-        session::sess_os_to_meta_os(sess.target_os()), path, out)
+    metadata::loader::list_file_metadata(sess.target_os(), path, out)
 }
 
 #[cfg(test)]

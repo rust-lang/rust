@@ -23,12 +23,12 @@ use syntax::diagnostic::SpanHandler;
 use syntax::parse::token::IdentInterner;
 use syntax::crateid::CrateId;
 use syntax::attr::AttrMetaMethods;
+use syntax::abi::{Os, OsLinux, OsMacos, OsWin32, OsAndroid, OsFreebsd};
 
 use std::c_str::ToCStr;
 use std::cast;
 use std::cmp;
 use std::io;
-use std::os::consts::{macos, freebsd, linux, android, win32};
 use std::ptr;
 use std::rc::Rc;
 use std::slice;
@@ -37,14 +37,6 @@ use std::str;
 use collections::{HashMap, HashSet};
 use flate;
 use time;
-
-pub enum Os {
-    OsMacos,
-    OsWin32,
-    OsLinux,
-    OsAndroid,
-    OsFreebsd
-}
 
 pub struct HashMismatch {
     path: Path,
@@ -57,7 +49,6 @@ pub struct Context<'a> {
     pub crate_id: &'a CrateId,
     pub id_hash: &'a str,
     pub hash: Option<&'a Svh>,
-    pub os: Os,
     pub intr: Rc<IdentInterner>,
     pub rejected_via_hash: Vec<HashMismatch>
 }
@@ -150,7 +141,7 @@ impl<'a> Context<'a> {
 
     fn find_library_crate(&mut self) -> Option<Library> {
         let filesearch = self.sess.filesearch();
-        let (dyprefix, dysuffix) = self.dylibname();
+        let (dyprefix, dysuffix) = self.sess.target_triple().dylibname();
 
         // want: crate_name.dir_part() + prefix + crate_name.file_part + "-"
         let dylib_prefix = format!("{}{}-", dyprefix, self.crate_id.name);
@@ -334,9 +325,10 @@ impl<'a> Context<'a> {
             }
         }
 
+        let os = self.sess.target_os();
         for lib in m.move_iter() {
             info!("{} reading metadata from: {}", flavor, lib.display());
-            let metadata = match get_metadata_section(self.os, &lib) {
+            let metadata = match get_metadata_section(os, &lib) {
                 Ok(blob) => {
                     if self.crate_matches(blob.as_slice(), &lib) {
                         blob
@@ -391,18 +383,6 @@ impl<'a> Context<'a> {
                     true
                 }
             }
-        }
-    }
-
-    // Returns the corresponding (prefix, suffix) that files need to have for
-    // dynamic libraries
-    fn dylibname(&self) -> (&'static str, &'static str) {
-        match self.os {
-            OsWin32 => (win32::DLL_PREFIX, win32::DLL_SUFFIX),
-            OsMacos => (macos::DLL_PREFIX, macos::DLL_SUFFIX),
-            OsLinux => (linux::DLL_PREFIX, linux::DLL_SUFFIX),
-            OsAndroid => (android::DLL_PREFIX, android::DLL_SUFFIX),
-            OsFreebsd => (freebsd::DLL_PREFIX, freebsd::DLL_SUFFIX),
         }
     }
 }
