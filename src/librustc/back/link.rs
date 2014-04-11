@@ -1487,15 +1487,24 @@ fn add_upstream_rust_crates(args: &mut Vec<~str>, sess: &Session,
 //    crate as well.
 //
 // The use case for this is a little subtle. In theory the native
-// dependencies of a crate a purely an implementation detail of the crate
+// dependencies of a crate are purely an implementation detail of the crate
 // itself, but the problem arises with generic and inlined functions. If a
 // generic function calls a native function, then the generic function must
 // be instantiated in the target crate, meaning that the native symbol must
 // also be resolved in the target crate.
 fn add_upstream_native_libraries(args: &mut Vec<~str>, sess: &Session) {
-    let cstore = &sess.cstore;
-    cstore.iter_crate_data(|cnum, _| {
-        let libs = csearch::get_native_libraries(cstore, cnum);
+    // Be sure to use a topological sorting of crates becuase there may be
+    // interdependencies between native libraries. When passing -nodefaultlibs,
+    // for example, almost all native libraries depend on libc, so we have to
+    // make sure that's all the way at the right (liblibc is near the base of
+    // the dependency chain).
+    //
+    // This passes RequireStatic, but the actual requirement doesn't matter,
+    // we're just getting an ordering of crate numbers, we're not worried about
+    // the paths.
+    let crates = sess.cstore.get_used_crates(cstore::RequireStatic);
+    for (cnum, _) in crates.move_iter() {
+        let libs = csearch::get_native_libraries(&sess.cstore, cnum);
         for &(kind, ref lib) in libs.iter() {
             match kind {
                 cstore::NativeUnknown => args.push("-l" + *lib),
@@ -1508,5 +1517,5 @@ fn add_upstream_native_libraries(args: &mut Vec<~str>, sess: &Session) {
                 }
             }
         }
-    });
+    }
 }
