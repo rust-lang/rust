@@ -214,7 +214,7 @@ pub enum Variance {
 }
 
 pub enum AutoAdjustment {
-    AutoAddEnv(ty::Region, ast::Sigil),
+    AutoAddEnv(ty::TraitStore),
     AutoDerefRef(AutoDerefRef),
     AutoObject(ty::TraitStore,
                ty::BuiltinBounds,
@@ -430,9 +430,8 @@ pub struct BareFnTy {
 #[deriving(Clone, Eq, TotalEq, Hash)]
 pub struct ClosureTy {
     pub fn_style: ast::FnStyle,
-    pub sigil: ast::Sigil,
     pub onceness: ast::Onceness,
-    pub region: Region,
+    pub store: TraitStore,
     pub bounds: BuiltinBounds,
     pub sig: FnSig,
 }
@@ -801,7 +800,7 @@ pub enum type_err {
     terr_onceness_mismatch(expected_found<Onceness>),
     terr_abi_mismatch(expected_found<abi::Abi>),
     terr_mutability,
-    terr_sigil_mismatch(expected_found<ast::Sigil>),
+    terr_sigil_mismatch(expected_found<TraitStore>),
     terr_box_mutability,
     terr_ptr_mutability,
     terr_ref_mutability,
@@ -1204,11 +1203,13 @@ pub fn mk_t(cx: &ctxt, st: sty) -> t {
       &ty_param(_) => flags |= has_params as uint,
       &ty_infer(_) => flags |= needs_infer as uint,
       &ty_self(_) => flags |= has_self as uint,
-      &ty_enum(_, ref substs) | &ty_struct(_, ref substs) |
-      &ty_trait(~ty::TyTrait { ref substs, .. }) => {
+      &ty_enum(_, ref substs) | &ty_struct(_, ref substs) => {
           flags |= sflags(substs);
-          match st {
-              ty_trait(~ty::TyTrait { store: RegionTraitStore(r, _), .. }) => {
+      }
+      &ty_trait(~ty::TyTrait { ref substs, store, .. }) => {
+          flags |= sflags(substs);
+          match store {
+              RegionTraitStore(r, _) => {
                     flags |= rflags(r);
                 }
               _ => {}
@@ -1232,7 +1233,12 @@ pub fn mk_t(cx: &ctxt, st: sty) -> t {
         flags &= !(has_ty_bot as uint);
       }
       &ty_closure(ref f) => {
-        flags |= rflags(f.region);
+        match f.store {
+            RegionTraitStore(r, _) => {
+                flags |= rflags(r);
+            }
+            _ => {}
+        }
         for a in f.sig.inputs.iter() { flags |= get(*a).flags; }
         flags |= get(f.sig.output).flags;
         // T -> _|_ is *not* _|_ !
@@ -2217,17 +2223,7 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
     fn closure_contents(cx: &ctxt, cty: &ClosureTy) -> TypeContents {
         // Closure contents are just like trait contents, but with potentially
         // even more stuff.
-        let st = match cty.sigil {
-            ast::BorrowedSigil =>
-                object_contents(cx, RegionTraitStore(cty.region, MutMutable), cty.bounds),
-            ast::OwnedSigil => object_contents(cx, UniqTraitStore, cty.bounds),
-            ast::ManagedSigil => unreachable!()
-        };
-
-        // FIXME(#3569): This borrowed_contents call should be taken care of in
-        // object_contents, after ~Traits and @Traits can have region bounds too.
-        // This one here is redundant for &fns but important for ~fns and @fns.
-        let rt = borrowed_contents(cty.region, ast::MutImmutable);
+        let st = object_contents(cx, cty.store, cty.bounds);
 
         // This also prohibits "@once fn" from being copied, which allows it to
         // be called. Neither way really makes much sense.
@@ -2236,7 +2232,7 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
             ast::Many => TC::None,
         };
 
-        st | rt | ot
+        st | ot
     }
 
     fn object_contents(cx: &ctxt,
@@ -2696,11 +2692,11 @@ pub fn ty_fn_args(fty: t) -> Vec<t> {
     }
 }
 
-pub fn ty_closure_sigil(fty: t) -> Sigil {
+pub fn ty_closure_store(fty: t) -> TraitStore {
     match get(fty).sty {
-        ty_closure(ref f) => f.sigil,
+        ty_closure(ref f) => f.store,
         ref s => {
-            fail!("ty_closure_sigil() called on non-closure type: {:?}", s)
+            fail!("ty_closure_store() called on non-closure type: {:?}", s)
         }
     }
 }
@@ -2838,15 +2834,14 @@ pub fn adjust_ty(cx: &ctxt,
     return match adjustment {
         Some(adjustment) => {
             match *adjustment {
-                AutoAddEnv(r, s) => {
+                AutoAddEnv(store) => {
                     match ty::get(unadjusted_ty).sty {
                         ty::ty_bare_fn(ref b) => {
                             ty::mk_closure(
                                 cx,
                                 ty::ClosureTy {fn_style: b.fn_style,
-                                               sigil: s,
                                                onceness: ast::Many,
-                                               region: r,
+                                               store: store,
                                                bounds: ty::AllBuiltinBounds(),
                                                sig: b.sig.clone()})
                         }
@@ -2960,8 +2955,7 @@ pub fn adjust_ty(cx: &ctxt,
         match get(ty).sty {
             ty_closure(ref fty) => {
                 ty::mk_closure(cx, ClosureTy {
-                    sigil: BorrowedSigil,
-                    region: r,
+                    store: RegionTraitStore(r, ast::MutMutable),
                     ..(**fty).clone()
                 })
             }
@@ -4278,20 +4272,6 @@ pub fn eval_repeat_count<T: ExprTyProvider>(tcx: &T, count_expr: &ast::Expr) -> 
     }
 }
 
-// Determine what the style to check a nested function under
-pub fn determine_inherited_style(parent: (ast::FnStyle, ast::NodeId),
-                                  child: (ast::FnStyle, ast::NodeId),
-                                  child_sigil: ast::Sigil)
-                                    -> (ast::FnStyle, ast::NodeId) {
-    // If the closure is a stack closure and hasn't had some non-standard
-    // style inferred for it, then check it under its parent's style.
-    // Otherwise, use its own
-    match child_sigil {
-        ast::BorrowedSigil if child.val0() == ast::NormalFn => parent,
-        _ => child
-    }
-}
-
 // Iterate over a type parameter's bounded traits and any supertraits
 // of those traits, ignoring kinds.
 // Here, the supertraits are the transitive closure of the supertrait
@@ -4640,10 +4620,16 @@ pub fn hash_crate_independent(tcx: &ctxt, t: t, svh: &Svh) -> u64 {
             ty_closure(ref c) => {
                 byte!(15);
                 hash!(c.fn_style);
-                hash!(c.sigil);
                 hash!(c.onceness);
                 hash!(c.bounds);
-                region(&mut state, c.region);
+                match c.store {
+                    UniqTraitStore => byte!(0),
+                    RegionTraitStore(r, m) => {
+                        byte!(1)
+                        region(&mut state, r);
+                        assert_eq!(m, ast::MutMutable);
+                    }
+                }
             }
             ty_trait(~ty::TyTrait { def_id: d, store, bounds, .. }) => {
                 byte!(17);

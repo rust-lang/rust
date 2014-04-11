@@ -172,7 +172,7 @@ pub fn opt_deref_kind(t: ty::t) -> Option<deref_kind> {
         ty::ty_trait(~ty::TyTrait { store: ty::UniqTraitStore, .. }) |
         ty::ty_vec(_, ty::VstoreUniq) |
         ty::ty_str(ty::VstoreUniq) |
-        ty::ty_closure(~ty::ClosureTy {sigil: ast::OwnedSigil, ..}) => {
+        ty::ty_closure(~ty::ClosureTy {store: ty::UniqTraitStore, ..}) => {
             Some(deref_ptr(OwnedPtr))
         }
 
@@ -187,8 +187,7 @@ pub fn opt_deref_kind(t: ty::t) -> Option<deref_kind> {
         }
 
         ty::ty_str(ty::VstoreSlice(r, ())) |
-        ty::ty_closure(~ty::ClosureTy {sigil: ast::BorrowedSigil,
-                                      region: r, ..}) => {
+        ty::ty_closure(~ty::ClosureTy {store: ty::RegionTraitStore(r, _), ..}) => {
             Some(deref_ptr(BorrowedPtr(ty::ImmBorrow, r)))
         }
 
@@ -540,15 +539,14 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
                       // Decide whether to use implicit reference or by copy/move
                       // capture for the upvar. This, combined with the onceness,
                       // determines whether the closure can move out of it.
-                      let var_is_refd = match (closure_ty.sigil, closure_ty.onceness) {
+                      let var_is_refd = match (closure_ty.store, closure_ty.onceness) {
                           // Many-shot stack closures can never move out.
-                          (ast::BorrowedSigil, ast::Many) => true,
+                          (ty::RegionTraitStore(..), ast::Many) => true,
                           // 1-shot stack closures can move out.
-                          (ast::BorrowedSigil, ast::Once) => false,
+                          (ty::RegionTraitStore(..), ast::Once) => false,
                           // Heap closures always capture by copy/move, and can
                           // move out if they are once.
-                          (ast::OwnedSigil, _) |
-                          (ast::ManagedSigil, _) => false,
+                          (ty::UniqTraitStore, _) => false,
 
                       };
                       if var_is_refd {

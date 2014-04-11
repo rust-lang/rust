@@ -327,14 +327,6 @@ fn enc_sty(w: &mut MemWriter, cx: &ctxt, st: &ty::sty) {
     }
 }
 
-fn enc_sigil(w: &mut MemWriter, sigil: Sigil) {
-    match sigil {
-        ManagedSigil => mywrite!(w, "@"),
-        OwnedSigil => mywrite!(w, "~"),
-        BorrowedSigil => mywrite!(w, "&"),
-    }
-}
-
 fn enc_fn_style(w: &mut MemWriter, p: FnStyle) {
     match p {
         NormalFn => mywrite!(w, "n"),
@@ -363,10 +355,9 @@ pub fn enc_bare_fn_ty(w: &mut MemWriter, cx: &ctxt, ft: &ty::BareFnTy) {
 }
 
 fn enc_closure_ty(w: &mut MemWriter, cx: &ctxt, ft: &ty::ClosureTy) {
-    enc_sigil(w, ft.sigil);
     enc_fn_style(w, ft.fn_style);
     enc_onceness(w, ft.onceness);
-    enc_region(w, cx, ft.region);
+    enc_trait_store(w, cx, ft.store);
     let bounds = ty::ParamBounds {builtin_bounds: ft.bounds,
                                   trait_bounds: Vec::new()};
     enc_bounds(w, cx, &bounds);
