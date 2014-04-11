@@ -159,6 +159,7 @@ pub fn abs_sub<T: Signed>(x: T, y: T) -> T {
 /// - `-1` if the number is negative
 #[inline(always)] pub fn signum<T: Signed>(value: T) -> T { value.signum() }
 
+/// A trait for values which cannot be negative
 pub trait Unsigned: Num {}
 
 /// A collection of rounding operations.
@@ -205,6 +206,7 @@ pub fn pow<T: One + Mul<T, T>>(mut base: T, mut exp: uint) -> T {
     }
 }
 
+/// Numbers which have upper and lower bounds
 pub trait Bounded {
     // FIXME (#5527): These should be associated constants
     fn min_value() -> Self;
@@ -1046,10 +1048,12 @@ impl_num_cast!(int,   to_int)
 impl_num_cast!(f32,   to_f32)
 impl_num_cast!(f64,   to_f64)
 
+/// A generic trait for converting a value to a string with a radix (base)
 pub trait ToStrRadix {
     fn to_str_radix(&self, radix: uint) -> ~str;
 }
 
+/// A generic trait for converting a string with a radix (base) to a value
 pub trait FromStrRadix {
     fn from_str_radix(str: &str, radix: uint) -> Option<Self>;
 }
