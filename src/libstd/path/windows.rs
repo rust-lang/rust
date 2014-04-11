@@ -306,14 +306,13 @@ impl GenericPathUnsafe for Path {
 impl GenericPath for Path {
     #[inline]
     fn new_opt<T: BytesContainer>(path: T) -> Option<Path> {
-        let s = path.container_as_str();
-        match s {
+        match path.container_as_str() {
             None => None,
-            Some(s) => {
-                if contains_nul(s.as_bytes()) {
+            Some(ref s) => {
+                if contains_nul(s) {
                     None
                 } else {
-                    Some(unsafe { GenericPathUnsafe::new_unchecked(s) })
+                    Some(unsafe { GenericPathUnsafe::new_unchecked(*s) })
                 }
             }
         }
