@@ -183,6 +183,18 @@ pub fn generics_to_str(generics: &ast::Generics) -> ~str {
     to_str(|s| s.print_generics(generics))
 }
 
+pub fn ty_method_to_str(p: &ast::TypeMethod) -> ~str {
+    to_str(|s| s.print_ty_method(p))
+}
+
+pub fn method_to_str(p: &ast::Method) -> ~str {
+    to_str(|s| s.print_method(p))
+}
+
+pub fn fn_block_to_str(p: &ast::FnDecl) -> ~str {
+    to_str(|s| s.print_fn_block_args(p))
+}
+
 pub fn path_to_str(p: &ast::Path) -> ~str {
     to_str(|s| s.print_path(p, false))
 }
