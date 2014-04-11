@@ -33,6 +33,15 @@ pub struct FileSearch<'a> {
     pub addl_lib_search_paths: &'a RefCell<HashSet<Path>>,
     pub target_triple: Triple,
 }
+impl<'a> clone::Clone for FileSearch<'a> {
+    fn clone(&self) -> FileSearch<'a> {
+        FileSearch {
+            sysroot: self.sysroot,
+            addl_lib_search_paths: self.addl_lib_search_paths,
+            target_triple: self.target_triple.clone(),
+        }
+    }
+}
 
 impl<'a> FileSearch<'a> {
     pub fn for_each_lib_search_path(&self, f: |&Path| -> FileMatch) {
