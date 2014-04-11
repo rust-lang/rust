@@ -26,6 +26,9 @@ pub trait Send {
     // empty.
 }
 
+#[cfg(not(stage0))]
+impl<T:Send> Send for *T { }
+
 /// Types with a constant size known at compile-time.
 #[lang="sized"]
 pub trait Sized {
@@ -37,6 +40,13 @@ pub trait Sized {
 pub trait Copy {
     // Empty.
 }
+
+#[cfg(not(stage0))]
+impl<T> Copy for *T { }
+
+#[cfg(not(stage0))]
+impl<'a, T> Copy for &'a T { }
+
 
 /// Types that can be safely shared between tasks when aliased.
 ///
@@ -87,6 +97,15 @@ pub trait Copy {
 pub trait Share {
     // Empty
 }
+
+#[cfg(not(stage0))]
+impl<T:Share> Share for *T { }
+
+#[cfg(not(stage0))]
+impl<'a,T:Share> Share for &'a T { }
+
+#[cfg(not(stage0))]
+impl<'a,T:Share> Share for &'a mut T { }
 
 /// Marker types are special types that are used with unsafe code to
 /// inform the compiler of special constraints. Marker types should

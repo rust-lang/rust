@@ -14,6 +14,15 @@
 
 macro_rules! uint_module (($T:ty) => (
 
+#[cfg(not(stage0))]
+impl Send for $T { }
+
+#[cfg(not(stage0))]
+impl Share for $T { }
+
+#[cfg(not(stage0))]
+impl Copy for $T { }
+
 // String conversion functions and impl str -> num
 
 /// Parse a byte slice as a number in the given base
