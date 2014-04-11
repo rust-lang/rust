@@ -1253,127 +1253,127 @@ mod tests {
 #[cfg(test)]
 mod bench {
     extern crate test;
-    use self::test::BenchHarness;
+    use self::test::Bencher;
     use super::*;
     use prelude::*;
 
     #[bench]
-    fn join_home_dir(bh: &mut BenchHarness) {
+    fn join_home_dir(b: &mut Bencher) {
         let posix_path = Path::new("/");
-        bh.iter(|| {
+        b.iter(|| {
             posix_path.join("home");
         });
     }
 
     #[bench]
-    fn join_abs_path_home_dir(bh: &mut BenchHarness) {
+    fn join_abs_path_home_dir(b: &mut Bencher) {
         let posix_path = Path::new("/");
-        bh.iter(|| {
+        b.iter(|| {
             posix_path.join("/home");
         });
     }
 
     #[bench]
-    fn join_many_home_dir(bh: &mut BenchHarness) {
+    fn join_many_home_dir(b: &mut Bencher) {
         let posix_path = Path::new("/");
-        bh.iter(|| {
+        b.iter(|| {
             posix_path.join_many(&["home"]);
         });
     }
 
     #[bench]
-    fn join_many_abs_path_home_dir(bh: &mut BenchHarness) {
+    fn join_many_abs_path_home_dir(b: &mut Bencher) {
         let posix_path = Path::new("/");
-        bh.iter(|| {
+        b.iter(|| {
             posix_path.join_many(&["/home"]);
         });
     }
 
     #[bench]
-    fn push_home_dir(bh: &mut BenchHarness) {
+    fn push_home_dir(b: &mut Bencher) {
         let mut posix_path = Path::new("/");
-        bh.iter(|| {
+        b.iter(|| {
             posix_path.push("home");
         });
     }
 
     #[bench]
-    fn push_abs_path_home_dir(bh: &mut BenchHarness) {
+    fn push_abs_path_home_dir(b: &mut Bencher) {
         let mut posix_path = Path::new("/");
-        bh.iter(|| {
+        b.iter(|| {
             posix_path.push("/home");
         });
     }
 
     #[bench]
-    fn push_many_home_dir(bh: &mut BenchHarness) {
+    fn push_many_home_dir(b: &mut Bencher) {
         let mut posix_path = Path::new("/");
-        bh.iter(|| {
+        b.iter(|| {
             posix_path.push_many(&["home"]);
         });
     }
 
     #[bench]
-    fn push_many_abs_path_home_dir(bh: &mut BenchHarness) {
+    fn push_many_abs_path_home_dir(b: &mut Bencher) {
         let mut posix_path = Path::new("/");
-        bh.iter(|| {
+        b.iter(|| {
             posix_path.push_many(&["/home"]);
         });
     }
 
     #[bench]
-    fn ends_with_path_home_dir(bh: &mut BenchHarness) {
+    fn ends_with_path_home_dir(b: &mut Bencher) {
         let posix_home_path = Path::new("/home");
-        bh.iter(|| {
+        b.iter(|| {
             posix_home_path.ends_with_path(&Path::new("home"));
         });
     }
 
     #[bench]
-    fn ends_with_path_missmatch_jome_home(bh: &mut BenchHarness) {
+    fn ends_with_path_missmatch_jome_home(b: &mut Bencher) {
         let posix_home_path = Path::new("/home");
-        bh.iter(|| {
+        b.iter(|| {
             posix_home_path.ends_with_path(&Path::new("jome"));
         });
     }
 
     #[bench]
-    fn is_ancestor_of_path_with_10_dirs(bh: &mut BenchHarness) {
+    fn is_ancestor_of_path_with_10_dirs(b: &mut Bencher) {
         let path = Path::new("/home/1/2/3/4/5/6/7/8/9");
         let mut sub = path.clone();
         sub.pop();
-        bh.iter(|| {
+        b.iter(|| {
             path.is_ancestor_of(&sub);
         });
     }
 
     #[bench]
-    fn path_relative_from_forward(bh: &mut BenchHarness) {
+    fn path_relative_from_forward(b: &mut Bencher) {
         let path = Path::new("/a/b/c");
         let mut other = path.clone();
         other.pop();
-        bh.iter(|| {
+        b.iter(|| {
             path.path_relative_from(&other);
         });
     }
 
     #[bench]
-    fn path_relative_from_same_level(bh: &mut BenchHarness) {
+    fn path_relative_from_same_level(b: &mut Bencher) {
         let path = Path::new("/a/b/c");
         let mut other = path.clone();
         other.pop();
         other.push("d");
-        bh.iter(|| {
+        b.iter(|| {
             path.path_relative_from(&other);
         });
     }
 
     #[bench]
-    fn path_relative_from_backward(bh: &mut BenchHarness) {
+    fn path_relative_from_backward(b: &mut Bencher) {
         let path = Path::new("/a/b");
         let mut other = path.clone();
         other.push("c");
-        bh.iter(|| {
+        b.iter(|| {
             path.path_relative_from(&other);
         });
     }

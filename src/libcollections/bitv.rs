@@ -940,7 +940,7 @@ impl<'a> Iterator<uint> for BitPositions<'a> {
 #[cfg(test)]
 mod tests {
     extern crate test;
-    use self::test::BenchHarness;
+    use self::test::Bencher;
 
     use bitv::{Bitv, SmallBitv, BigBitv, BitvSet, from_bools, from_fn,
                from_bytes};
@@ -1557,7 +1557,7 @@ mod tests {
     }
 
     #[bench]
-    fn bench_uint_small(b: &mut BenchHarness) {
+    fn bench_uint_small(b: &mut Bencher) {
         let mut r = rng();
         let mut bitv = 0 as uint;
         b.iter(|| {
@@ -1567,7 +1567,7 @@ mod tests {
     }
 
     #[bench]
-    fn bench_small_bitv_small(b: &mut BenchHarness) {
+    fn bench_small_bitv_small(b: &mut Bencher) {
         let mut r = rng();
         let mut bitv = SmallBitv::new(uint::BITS);
         b.iter(|| {
@@ -1577,7 +1577,7 @@ mod tests {
     }
 
     #[bench]
-    fn bench_big_bitv_small(b: &mut BenchHarness) {
+    fn bench_big_bitv_small(b: &mut Bencher) {
         let mut r = rng();
         let mut bitv = BigBitv::new(vec!(0));
         b.iter(|| {
@@ -1587,7 +1587,7 @@ mod tests {
     }
 
     #[bench]
-    fn bench_big_bitv_big(b: &mut BenchHarness) {
+    fn bench_big_bitv_big(b: &mut Bencher) {
         let mut r = rng();
         let mut storage = vec!();
         storage.grow(BENCH_BITS / uint::BITS, &0u);
@@ -1599,7 +1599,7 @@ mod tests {
     }
 
     #[bench]
-    fn bench_bitv_big(b: &mut BenchHarness) {
+    fn bench_bitv_big(b: &mut Bencher) {
         let mut r = rng();
         let mut bitv = Bitv::new(BENCH_BITS, false);
         b.iter(|| {
@@ -1609,7 +1609,7 @@ mod tests {
     }
 
     #[bench]
-    fn bench_bitv_small(b: &mut BenchHarness) {
+    fn bench_bitv_small(b: &mut Bencher) {
         let mut r = rng();
         let mut bitv = Bitv::new(uint::BITS, false);
         b.iter(|| {
@@ -1619,7 +1619,7 @@ mod tests {
     }
 
     #[bench]
-    fn bench_bitv_set_small(b: &mut BenchHarness) {
+    fn bench_bitv_set_small(b: &mut Bencher) {
         let mut r = rng();
         let mut bitv = BitvSet::new();
         b.iter(|| {
@@ -1629,7 +1629,7 @@ mod tests {
     }
 
     #[bench]
-    fn bench_bitv_set_big(b: &mut BenchHarness) {
+    fn bench_bitv_set_big(b: &mut Bencher) {
         let mut r = rng();
         let mut bitv = BitvSet::new();
         b.iter(|| {
@@ -1639,7 +1639,7 @@ mod tests {
     }
 
     #[bench]
-    fn bench_bitv_big_union(b: &mut BenchHarness) {
+    fn bench_bitv_big_union(b: &mut Bencher) {
         let mut b1 = Bitv::new(BENCH_BITS, false);
         let b2 = Bitv::new(BENCH_BITS, false);
         b.iter(|| {
@@ -1648,7 +1648,7 @@ mod tests {
     }
 
     #[bench]
-    fn bench_btv_small_iter(b: &mut BenchHarness) {
+    fn bench_btv_small_iter(b: &mut Bencher) {
         let bitv = Bitv::new(uint::BITS, false);
         b.iter(|| {
             let mut _sum = 0;
@@ -1659,7 +1659,7 @@ mod tests {
     }
 
     #[bench]
-    fn bench_bitv_big_iter(b: &mut BenchHarness) {
+    fn bench_bitv_big_iter(b: &mut Bencher) {
         let bitv = Bitv::new(BENCH_BITS, false);
         b.iter(|| {
             let mut _sum = 0;
@@ -1670,7 +1670,7 @@ mod tests {
     }
 
     #[bench]
-    fn bench_bitvset_iter(b: &mut BenchHarness) {
+    fn bench_bitvset_iter(b: &mut Bencher) {
         let bitv = BitvSet::from_bitv(from_fn(BENCH_BITS,
                                               |idx| {idx % 3 == 0}));
         b.iter(|| {

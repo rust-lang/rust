@@ -631,7 +631,7 @@ impl<A: Clone> Clone for DList<A> {
 #[cfg(test)]
 mod tests {
     extern crate test;
-    use self::test::BenchHarness;
+    use self::test::Bencher;
     use deque::Deque;
     use rand;
     use super::{DList, Node, ListInsertion};
@@ -1082,7 +1082,7 @@ mod tests {
     }
 
     #[bench]
-    fn bench_collect_into(b: &mut test::BenchHarness) {
+    fn bench_collect_into(b: &mut test::Bencher) {
         let v = &[0, ..64];
         b.iter(|| {
             let _: DList<int> = v.iter().map(|x| *x).collect();
@@ -1090,7 +1090,7 @@ mod tests {
     }
 
     #[bench]
-    fn bench_push_front(b: &mut test::BenchHarness) {
+    fn bench_push_front(b: &mut test::Bencher) {
         let mut m: DList<int> = DList::new();
         b.iter(|| {
             m.push_front(0);
@@ -1098,7 +1098,7 @@ mod tests {
     }
 
     #[bench]
-    fn bench_push_back(b: &mut test::BenchHarness) {
+    fn bench_push_back(b: &mut test::Bencher) {
         let mut m: DList<int> = DList::new();
         b.iter(|| {
             m.push_back(0);
@@ -1106,7 +1106,7 @@ mod tests {
     }
 
     #[bench]
-    fn bench_push_back_pop_back(b: &mut test::BenchHarness) {
+    fn bench_push_back_pop_back(b: &mut test::Bencher) {
         let mut m: DList<int> = DList::new();
         b.iter(|| {
             m.push_back(0);
@@ -1115,7 +1115,7 @@ mod tests {
     }
 
     #[bench]
-    fn bench_push_front_pop_front(b: &mut test::BenchHarness) {
+    fn bench_push_front_pop_front(b: &mut test::Bencher) {
         let mut m: DList<int> = DList::new();
         b.iter(|| {
             m.push_front(0);
@@ -1124,7 +1124,7 @@ mod tests {
     }
 
     #[bench]
-    fn bench_rotate_forward(b: &mut test::BenchHarness) {
+    fn bench_rotate_forward(b: &mut test::Bencher) {
         let mut m: DList<int> = DList::new();
         m.push_front(0);
         m.push_front(1);
@@ -1134,7 +1134,7 @@ mod tests {
     }
 
     #[bench]
-    fn bench_rotate_backward(b: &mut test::BenchHarness) {
+    fn bench_rotate_backward(b: &mut test::Bencher) {
         let mut m: DList<int> = DList::new();
         m.push_front(0);
         m.push_front(1);
@@ -1144,7 +1144,7 @@ mod tests {
     }
 
     #[bench]
-    fn bench_iter(b: &mut test::BenchHarness) {
+    fn bench_iter(b: &mut test::Bencher) {
         let v = &[0, ..128];
         let m: DList<int> = v.iter().map(|&x|x).collect();
         b.iter(|| {
@@ -1152,7 +1152,7 @@ mod tests {
         })
     }
     #[bench]
-    fn bench_iter_mut(b: &mut test::BenchHarness) {
+    fn bench_iter_mut(b: &mut test::Bencher) {
         let v = &[0, ..128];
         let mut m: DList<int> = v.iter().map(|&x|x).collect();
         b.iter(|| {
@@ -1160,7 +1160,7 @@ mod tests {
         })
     }
     #[bench]
-    fn bench_iter_rev(b: &mut test::BenchHarness) {
+    fn bench_iter_rev(b: &mut test::Bencher) {
         let v = &[0, ..128];
         let m: DList<int> = v.iter().map(|&x|x).collect();
         b.iter(|| {
@@ -1168,7 +1168,7 @@ mod tests {
         })
     }
     #[bench]
-    fn bench_iter_mut_rev(b: &mut test::BenchHarness) {
+    fn bench_iter_mut_rev(b: &mut test::Bencher) {
         let v = &[0, ..128];
         let mut m: DList<int> = v.iter().map(|&x|x).collect();
         b.iter(|| {
