@@ -23,7 +23,7 @@ fn not_win32(os: abi::Os) -> bool {
 }
 
 pub fn get_rpath_flags(sess: &Session, out_filename: &Path) -> Vec<~str> {
-    let os = sess.targ_cfg.os;
+    let os = sess.target_os();
 
     // No rpath on windows
     if os == abi::OsWin32 {
@@ -32,7 +32,7 @@ pub fn get_rpath_flags(sess: &Session, out_filename: &Path) -> Vec<~str> {
 
     let mut flags = Vec::new();
 
-    if sess.targ_cfg.os == abi::OsFreebsd {
+    if sess.target_os() == abi::OsFreebsd {
         flags.push_all([~"-Wl,-rpath,/usr/local/lib/gcc46",
                         ~"-Wl,-rpath,/usr/local/lib/gcc44",
                         ~"-Wl,-z,origin"]);

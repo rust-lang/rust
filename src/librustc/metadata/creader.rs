@@ -215,7 +215,7 @@ fn visit_item(e: &Env, i: &ast::Item) {
                             Some(k) => {
                                 if k.equiv(&("static")) {
                                     cstore::NativeStatic
-                                } else if e.sess.targ_cfg.os == abi::OsMacos &&
+                                } else if e.sess.target_os() == abi::OsMacos &&
                                           k.equiv(&("framework")) {
                                     cstore::NativeFramework
                                 } else if k.equiv(&("framework")) {
@@ -380,12 +380,10 @@ pub struct Loader<'a> {
 
 impl<'a> Loader<'a> {
     pub fn new(sess: &'a Session) -> Loader<'a> {
-        let os = driver::get_os(driver::host_triple()).unwrap();
-        let os = session::sess_os_to_meta_os(os);
         Loader {
             env: Env {
                 sess: sess,
-                os: os,
+                os: sess.target_os(),
                 next_crate_num: sess.cstore.next_crate_num(),
                 intr: token::get_ident_interner(),
             }

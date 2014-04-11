@@ -175,7 +175,7 @@ impl<'a> Archive<'a> {
     }
 
     fn find_library(&self, name: &str) -> Path {
-        let (osprefix, osext) = match self.sess.targ_cfg.os {
+        let (osprefix, osext) = match self.sess.target_os() {
             abi::OsWin32 => ("", "lib"), _ => ("lib", "a"),
         };
         // On Windows, static libraries sometimes show up as libfoo.a and other

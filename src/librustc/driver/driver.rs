@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-use back::link;
+use back::{link, triple};
 use back::{arm, x86, x86_64, mips};
 use driver::session::{Aggressive, CrateTypeExecutable, CrateType,
                       FullDebugInfo, LimitedDebugInfo, NoDebugInfo};
@@ -80,7 +80,7 @@ pub fn source_name(input: &Input) -> ~str {
 
 pub fn default_configuration(sess: &Session) ->
    ast::CrateConfig {
-    let tos = match sess.targ_cfg.os {
+    let tos = match sess.target_os() {
         abi::OsWin32 =>   InternedString::new("win32"),
         abi::OsMacos =>   InternedString::new("macos"),
         abi::OsLinux =>   InternedString::new("linux"),
@@ -90,14 +90,14 @@ pub fn default_configuration(sess: &Session) ->
 
     // ARM is bi-endian, however using NDK seems to default
     // to little-endian unless a flag is provided.
-    let (end,arch,wordsz) = match sess.targ_cfg.arch {
+    let (end,arch,wordsz) = match sess.target_arch() {
         abi::X86 =>    ("little", "x86",    "32"),
         abi::X86_64 => ("little", "x86_64", "64"),
         abi::Arm =>    ("little", "arm",    "32"),
         abi::Mips =>   ("big",    "mips",   "32")
     };
 
-    let fam = match sess.targ_cfg.os {
+    let fam = match sess.target_os() {
         abi::OsWin32 => InternedString::new("windows"),
         _ => InternedString::new("unix")
     };
@@ -284,9 +284,7 @@ pub fn phase_3_run_analysis_passes(sess: Session,
     let time_passes = sess.time_passes();
 
     time(time_passes, "external crate/lib resolution", (), |_|
-         creader::read_crates(&sess, krate,
-                              session::sess_os_to_meta_os(sess.targ_cfg.os),
-                              token::get_ident_interner()));
+         creader::read_crates(&sess, krate, token::get_ident_interner()));
 
     let lang_items = time(time_passes, "language item collection", (), |_|
                           middle::lang_items::collect_language_items(krate, &sess));
@@ -734,66 +732,32 @@ pub fn pretty_print_input(sess: Session,
 
 }
 
-pub fn get_os(triple: &str) -> Option<abi::Os> {
-    for &(name, os) in os_names.iter() {
-        if triple.contains(name) { return Some(os) }
-    }
-    None
-}
-static os_names : &'static [(&'static str, abi::Os)] = &'static [
-    ("mingw32", abi::OsWin32),
-    ("win32",   abi::OsWin32),
-    ("darwin",  abi::OsMacos),
-    ("android", abi::OsAndroid),
-    ("linux",   abi::OsLinux),
-    ("freebsd", abi::OsFreebsd)];
-
-pub fn get_arch(triple: &str) -> Option<abi::Architecture> {
-    for &(arch, abi) in architecture_abis.iter() {
-        if triple.contains(arch) { return Some(abi) }
-    }
-    None
-}
-static architecture_abis : &'static [(&'static str, abi::Architecture)] = &'static [
-    ("i386",   abi::X86),
-    ("i486",   abi::X86),
-    ("i586",   abi::X86),
-    ("i686",   abi::X86),
-    ("i786",   abi::X86),
-
-    ("x86_64", abi::X86_64),
-
-    ("arm",    abi::Arm),
-    ("xscale", abi::Arm),
-    ("thumb",  abi::Arm),
-
-    ("mips",   abi::Mips)];
-
 pub fn build_target_config(sopts: &session::Options) -> session::Config {
-    let os = match get_os(sopts.target_triple) {
-      Some(os) => os,
-      None => early_error("unknown operating system")
+    let triple: triple::Triple =
+        match FromStr::from_str(sopts.target_triple) {
+            Some(triple) => triple,
+            None => early_error(format!("unknown architecture or missing operating system: `{}`",
+                                        sopts.target_triple)),
+        };
+    let os = match triple.os {
+      Ok(ref os) => os.clone(),
+      Err(ref os_str) => early_error("unknown operating system: " + *os_str),
     };
-    let arch = match get_arch(sopts.target_triple) {
-      Some(arch) => arch,
-      None => early_error("unknown architecture: " + sopts.target_triple)
-    };
-    let (int_type, uint_type) = match arch {
+    let (int_type, uint_type) = match triple.arch {
       abi::X86 => (ast::TyI32, ast::TyU32),
       abi::X86_64 => (ast::TyI64, ast::TyU64),
       abi::Arm => (ast::TyI32, ast::TyU32),
       abi::Mips => (ast::TyI32, ast::TyU32)
     };
     let target_triple = sopts.target_triple.clone();
-    let target_strs = match arch {
+    let target_strs = match triple.arch {
       abi::X86 => x86::get_target_strs(target_triple, os),
       abi::X86_64 => x86_64::get_target_strs(target_triple, os),
       abi::Arm => arm::get_target_strs(target_triple, os),
       abi::Mips => mips::get_target_strs(target_triple, os)
     };
     session::Config {
-        os: os,
-        arch: arch,
+        target: triple,
         target_strs: target_strs,
         int_type: int_type,
         uint_type: uint_type,
@@ -1223,7 +1187,7 @@ pub fn early_error(msg: &str) -> ! {
 pub fn list_metadata(sess: &Session, path: &Path,
                      out: &mut io::Writer) -> io::IoResult<()> {
     metadata::loader::list_file_metadata(
-        session::sess_os_to_meta_os(sess.targ_cfg.os), path, out)
+        session::sess_os_to_meta_os(sess.target_os()), path, out)
 }
 
 #[cfg(test)]

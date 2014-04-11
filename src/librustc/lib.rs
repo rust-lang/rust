@@ -114,6 +114,7 @@ pub mod back {
     pub mod rpath;
     pub mod svh;
     pub mod target_strs;
+    pub mod triple;
     pub mod x86;
     pub mod x86_64;
 }

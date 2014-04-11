@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-use back::target_strs;
+use back::{target_strs, triple};
 use back;
 use driver::driver::host_triple;
 use front;
@@ -31,11 +31,18 @@ use std::cell::{Cell, RefCell};
 use collections::HashSet;
 
 pub struct Config {
-    pub os: abi::Os,
-    pub arch: abi::Architecture,
+    pub target: triple::Triple,
     pub target_strs: target_strs::t,
     pub int_type: IntTy,
     pub uint_type: UintTy,
+}
+impl Config {
+    pub fn os(&self) -> abi::Os {
+        self.target.expect_known_os()
+    }
+    pub fn arch(&self) -> abi::Architecture {
+        self.target.arch.clone()
+    }
 }
 
 macro_rules! debugging_opts(
@@ -327,6 +334,15 @@ impl Session {
             sysroot,
             self.opts.target_triple,
             &self.opts.addl_lib_search_paths)
+    }
+    pub fn target_os(&self) -> abi::Os {
+        self.targ_cfg.os()
+    }
+    pub fn target_arch(&self) -> abi::Architecture {
+        self.targ_cfg.arch()
+    }
+    pub fn target_triple<'a>(&'a self) -> &'a triple::Triple {
+        &self.targ_cfg.target
     }
 }
 

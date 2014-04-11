@@ -808,8 +808,8 @@ pub fn trans_external_path(ccx: &CrateContext, did: ast::DefId, t: ty::t) -> Val
     let name = csearch::get_symbol(&ccx.sess().cstore, did);
     match ty::get(t).sty {
         ty::ty_bare_fn(ref fn_ty) => {
-            match fn_ty.abi.for_target(ccx.sess().targ_cfg.os,
-                                       ccx.sess().targ_cfg.arch) {
+            match fn_ty.abi.for_target(ccx.sess().target_os(),
+                                       ccx.sess().target_arch()) {
                 Some(Rust) | Some(RustIntrinsic) => {
                     get_extern_rust_fn(ccx,
                                        fn_ty.sig.inputs.as_slice(),
@@ -973,7 +973,7 @@ pub fn with_cond<'a>(
 pub fn call_memcpy(cx: &Block, dst: ValueRef, src: ValueRef, n_bytes: ValueRef, align: u32) {
     let _icx = push_ctxt("call_memcpy");
     let ccx = cx.ccx();
-    let key = match ccx.sess().targ_cfg.arch {
+    let key = match ccx.sess().target_arch() {
         X86 | Arm | Mips => "llvm.memcpy.p0i8.p0i8.i32",
         X86_64 => "llvm.memcpy.p0i8.p0i8.i64"
     };
@@ -1017,7 +1017,7 @@ fn memzero(b: &Builder, llptr: ValueRef, ty: Type) {
     let _icx = push_ctxt("memzero");
     let ccx = b.ccx;
 
-    let intrinsic_key = match ccx.sess().targ_cfg.arch {
+    let intrinsic_key = match ccx.sess().target_arch() {
         X86 | Arm | Mips => "llvm.memset.p0i8.i32",
         X86_64 => "llvm.memset.p0i8.i64"
     };

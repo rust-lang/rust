@@ -101,7 +101,7 @@ impl Type {
     }
 
     pub fn int(ccx: &CrateContext) -> Type {
-        match ccx.tcx.sess.targ_cfg.arch {
+        match ccx.tcx.sess.target_arch() {
             X86 | Arm | Mips => Type::i32(ccx),
             X86_64 => Type::i64(ccx)
         }
