@@ -28,6 +28,18 @@ impl from_str::FromStr for Os {
     }
 }
 
+impl fmt::Show for Os {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            &OsWin32   => "win32".fmt(f),
+            &OsMacos   => "darwin".fmt(f),
+            &OsLinux   => "linux".fmt(f),
+            &OsAndroid => "android".fmt(f),
+            &OsFreebsd => "freebsd".fmt(f),
+        }
+    }
+}
+
 #[deriving(Eq, TotalEq, Hash, Encodable, Decodable, Clone)]
 pub enum Abi {
     // NB: This ordering MUST match the AbiDatas array below.
