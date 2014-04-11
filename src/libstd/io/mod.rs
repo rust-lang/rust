@@ -97,8 +97,8 @@ Some examples of obvious things you might want to do
     ```rust
     # fn main() { }
     # fn foo() {
-    # #[allow(unused_must_use, dead_code)];
-    use std::io::net::tcp::TcpListener;
+    # #![allow(dead_code)]
+    use std::io::{TcpListener, TcpStream};
     use std::io::net::ip::{Ipv4Addr, SocketAddr};
     use std::io::{Acceptor, Listener};
 
@@ -108,12 +108,19 @@ Some examples of obvious things you might want to do
     // bind the listener to the specified address
     let mut acceptor = listener.listen();
 
-    // accept connections and process them
-    # fn handle_client<T>(_: T) {}
+    fn handle_client(mut stream: TcpStream) {
+        // ...
+    # &mut stream; // silence unused mutability/variable warning
+    }
+    // accept connections and process them, spawning a new tasks for each one
     for stream in acceptor.incoming() {
-        spawn(proc() {
-            handle_client(stream);
-        });
+        match stream {
+            Err(e) => { /* connection failed */ }
+            Ok(stream) => spawn(proc() {
+                // connection succeeded
+                handle_client(stream)
+            })
+        }
     }
 
     // close the socket server

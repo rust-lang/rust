@@ -276,16 +276,22 @@ references information on the stack. Under the hood, all of
 the related macros are implemented in terms of this. First
 off, some example usage is:
 
-```ignore
+```
 use std::fmt;
+use std::io;
 
-# fn lol<T>() -> T { fail!() }
-# let my_writer: &mut ::std::io::Writer = lol();
-# let my_fn: fn(&fmt::Arguments) = lol();
-
+# #[allow(unused_must_use)]
+# fn main() {
 format_args!(fmt::format, "this returns {}", "~str");
-format_args!(|args| { fmt::write(my_writer, args) }, "some {}", "args");
-format_args!(my_fn, "format {}", "string");
+
+let some_writer: &mut io::Writer = &mut io::stdout();
+format_args!(|args| { fmt::write(some_writer, args) }, "print with a {}", "closure");
+
+fn my_fmt_fn(args: &fmt::Arguments) {
+    fmt::write(&mut io::stdout(), args);
+}
+format_args!(my_fmt_fn, "or a {} too", "function");
+# }
 ```
 
 The first argument of the `format_args!` macro is a function (or closure) which
