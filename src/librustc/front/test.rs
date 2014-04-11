@@ -28,6 +28,7 @@ use syntax::attr;
 use syntax::codemap::{DUMMY_SP, Span, ExpnInfo, NameAndSpan, MacroAttribute};
 use syntax::codemap;
 use syntax::ext::base::ExtCtxt;
+use syntax::ext::base::CrateLoader;
 use syntax::ext::expand::ExpansionConfig;
 use syntax::fold::Folder;
 use syntax::fold;
@@ -59,7 +60,7 @@ struct TestCtxt<'a> {
 // existing main functions, and synthesizing a main test harness
 pub fn modify_for_testing(sess: &Session,
                           krate: ast::Crate,
-                          loader: &mut Loader) -> ast::Crate {
+                          loader: &mut CrateLoader) -> ast::Crate {
     // We generate the test harness when building in the 'test'
     // configuration, either with the '--test' or '--cfg test'
     // command line options.
@@ -154,7 +155,7 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
 
 fn generate_test_harness(sess: &Session,
                          krate: ast::Crate,
-                         loader: &mut Loader)
+                         loader: &mut CrateLoader)
                          -> ast::Crate {
     let mut cx: TestCtxt = TestCtxt {
         sess: sess,
