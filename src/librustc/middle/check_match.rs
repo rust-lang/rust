@@ -279,7 +279,7 @@ fn is_useful(cx: &MatchCheckCtxt, m: &matrix, v: &[@Pat]) -> useful {
                 }
                 not_useful
               }
-              ty::ty_vec(_, ty::vstore_fixed(n)) => {
+              ty::ty_vec(_, ty::VstoreFixed(n)) => {
                 is_useful_specialized(cx, m, v, vec(n), n, left_ty)
               }
               ty::ty_vec(..) => {
@@ -441,7 +441,7 @@ fn missing_ctor(cx: &MatchCheckCtxt,
         else if true_found { Some(val(const_bool(false))) }
         else { Some(val(const_bool(true))) }
       }
-      ty::ty_vec(_, ty::vstore_fixed(n)) => {
+      ty::ty_vec(_, ty::VstoreFixed(n)) => {
         let mut missing = true;
         let mut wrong = false;
         for r in m.iter() {

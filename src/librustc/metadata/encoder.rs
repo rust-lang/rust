@@ -232,18 +232,6 @@ pub fn write_type(ecx: &EncodeContext,
     tyencode::enc_ty(ebml_w.writer, ty_str_ctxt, typ);
 }
 
-pub fn write_vstore(ecx: &EncodeContext,
-                    ebml_w: &mut Encoder,
-                    vstore: ty::vstore) {
-    let ty_str_ctxt = &tyencode::ctxt {
-        diag: ecx.diag,
-        ds: def_to_str,
-        tcx: ecx.tcx,
-        abbrevs: tyencode::ac_use_abbrevs(ecx.type_abbrevs)
-    };
-    tyencode::enc_vstore(ebml_w.writer, ty_str_ctxt, vstore);
-}
-
 fn encode_type(ecx: &EncodeContext,
                ebml_w: &mut Encoder,
                typ: ty::t) {

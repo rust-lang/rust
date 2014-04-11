@@ -69,7 +69,7 @@ pub trait TypeFolder {
         r
     }
 
-    fn fold_vstore(&mut self, vstore: ty::vstore) -> ty::vstore {
+    fn fold_vstore<M>(&mut self, vstore: ty::Vstore<M>) -> ty::Vstore<M> {
         super_fold_vstore(self, vstore)
     }
 
@@ -148,18 +148,17 @@ pub fn super_fold_sty<T:TypeFolder>(this: &mut T,
         ty::ty_ptr(ref tm) => {
             ty::ty_ptr(this.fold_mt(tm))
         }
-        ty::ty_vec(ref tm, vst) => {
-            ty::ty_vec(this.fold_mt(tm), this.fold_vstore(vst))
+        ty::ty_vec(ty, vst) => {
+            ty::ty_vec(this.fold_ty(ty), this.fold_vstore(vst))
         }
         ty::ty_enum(tid, ref substs) => {
             ty::ty_enum(tid, this.fold_substs(substs))
         }
-        ty::ty_trait(~ty::TyTrait { def_id, ref substs, store, mutability, bounds }) => {
+        ty::ty_trait(~ty::TyTrait { def_id, ref substs, store, bounds }) => {
             ty::ty_trait(~ty::TyTrait{
                 def_id: def_id,
                 substs: this.fold_substs(substs),
                 store: this.fold_trait_store(store),
-                mutability: mutability,
                 bounds: bounds
             })
         }
@@ -193,13 +192,13 @@ pub fn super_fold_sty<T:TypeFolder>(this: &mut T,
     }
 }
 
-pub fn super_fold_vstore<T:TypeFolder>(this: &mut T,
-                                       vstore: ty::vstore)
-                                       -> ty::vstore {
+pub fn super_fold_vstore<T:TypeFolder, M>(this: &mut T,
+                                          vstore: ty::Vstore<M>)
+                                          -> ty::Vstore<M> {
     match vstore {
-        ty::vstore_fixed(i) => ty::vstore_fixed(i),
-        ty::vstore_uniq => ty::vstore_uniq,
-        ty::vstore_slice(r) => ty::vstore_slice(this.fold_region(r)),
+        ty::VstoreFixed(i) => ty::VstoreFixed(i),
+        ty::VstoreUniq => ty::VstoreUniq,
+        ty::VstoreSlice(r, m) => ty::VstoreSlice(this.fold_region(r), m),
     }
 }
 
@@ -207,8 +206,10 @@ pub fn super_fold_trait_store<T:TypeFolder>(this: &mut T,
                                             trait_store: ty::TraitStore)
                                             -> ty::TraitStore {
     match trait_store {
-        ty::UniqTraitStore      => ty::UniqTraitStore,
-        ty::RegionTraitStore(r) => ty::RegionTraitStore(this.fold_region(r)),
+        ty::UniqTraitStore => ty::UniqTraitStore,
+        ty::RegionTraitStore(r, m) => {
+            ty::RegionTraitStore(this.fold_region(r), m)
+        }
     }
 }
 

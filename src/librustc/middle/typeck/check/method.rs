@@ -264,12 +264,12 @@ fn construct_transformed_self_ty_for_object(
                 ty::ty_rptr(r, mt) => { // must be SelfRegion
                     let r = r.subst(tcx, &substs); // handle Early-Bound lifetime
                     ty::mk_trait(tcx, trait_def_id, substs,
-                                 RegionTraitStore(r), mt.mutbl,
+                                 RegionTraitStore(r, mt.mutbl),
                                  ty::EmptyBuiltinBounds())
                 }
                 ty::ty_uniq(_) => { // must be SelfUniq
                     ty::mk_trait(tcx, trait_def_id, substs,
-                                 UniqTraitStore, ast::MutImmutable,
+                                 UniqTraitStore,
                                  ty::EmptyBuiltinBounds())
                 }
                 _ => {
@@ -770,22 +770,21 @@ impl<'a> LookupContext<'a> {
                      autoderefs: autoderefs+1,
                      autoref: Some(ty::AutoPtr(region, self_mt.mutbl))})
             }
-            ty::ty_vec(self_mt, vstore_slice(_)) => {
+            ty::ty_vec(self_ty, VstoreSlice(_, mutbl)) => {
                 let region =
                     self.infcx().next_region_var(infer::Autoref(self.span));
-                (ty::mk_vec(tcx, self_mt, vstore_slice(region)),
+                (ty::mk_vec(tcx, self_ty, VstoreSlice(region, mutbl)),
                  ty::AutoDerefRef {
                      autoderefs: autoderefs,
-                     autoref: Some(ty::AutoBorrowVec(region, self_mt.mutbl))})
+                     autoref: Some(ty::AutoBorrowVec(region, mutbl))})
             }
             ty::ty_trait(~ty::TyTrait {
-                def_id, ref substs, store: ty::RegionTraitStore(_), mutability: mutbl, bounds
+                def_id, ref substs, store: ty::RegionTraitStore(_, mutbl), bounds
             }) => {
                 let region =
                     self.infcx().next_region_var(infer::Autoref(self.span));
                 (ty::mk_trait(tcx, def_id, substs.clone(),
-                              ty::RegionTraitStore(region),
-                              mutbl, bounds),
+                              ty::RegionTraitStore(region, mutbl), bounds),
                  ty::AutoDerefRef {
                      autoderefs: autoderefs,
                      autoref: Some(ty::AutoBorrowObj(region, mutbl))})
@@ -821,15 +820,13 @@ impl<'a> LookupContext<'a> {
         let tcx = self.tcx();
         let sty = ty::get(self_ty).sty.clone();
         match sty {
-            ty_vec(mt, vstore_uniq) |
-            ty_vec(mt, vstore_slice(_)) | // NDM(#3148)
-            ty_vec(mt, vstore_fixed(_)) => {
+            ty_vec(ty, VstoreUniq) |
+            ty_vec(ty, VstoreSlice(..)) |
+            ty_vec(ty, VstoreFixed(_)) => {
                 // First try to borrow to a slice
                 let entry = self.search_for_some_kind_of_autorefd_method(
                     AutoBorrowVec, autoderefs, [MutImmutable, MutMutable],
-                    |m,r| ty::mk_vec(tcx,
-                                     ty::mt {ty:mt.ty, mutbl:m},
-                                     vstore_slice(r)));
+                    |m,r| ty::mk_vec(tcx, ty, VstoreSlice(r, m)));
 
                 if entry.is_some() { return entry; }
 
@@ -837,9 +834,7 @@ impl<'a> LookupContext<'a> {
                 self.search_for_some_kind_of_autorefd_method(
                     AutoBorrowVecRef, autoderefs, [MutImmutable, MutMutable],
                     |m,r| {
-                        let slice_ty = ty::mk_vec(tcx,
-                                                  ty::mt {ty:mt.ty, mutbl:m},
-                                                  vstore_slice(r));
+                        let slice_ty = ty::mk_vec(tcx, ty, VstoreSlice(r, m));
                         // NB: we do not try to autoref to a mutable
                         // pointer. That would be creating a pointer
                         // to a temporary pointer (the borrowed
@@ -849,18 +844,18 @@ impl<'a> LookupContext<'a> {
                     })
             }
 
-            ty_str(vstore_uniq) |
-            ty_str(vstore_fixed(_)) => {
+            ty_str(VstoreUniq) |
+            ty_str(VstoreFixed(_)) => {
                 let entry = self.search_for_some_kind_of_autorefd_method(
                     AutoBorrowVec, autoderefs, [MutImmutable],
-                    |_m,r| ty::mk_str(tcx, vstore_slice(r)));
+                    |_m,r| ty::mk_str(tcx, VstoreSlice(r, ())));
 
                 if entry.is_some() { return entry; }
 
                 self.search_for_some_kind_of_autorefd_method(
                     AutoBorrowVecRef, autoderefs, [MutImmutable],
                     |m,r| {
-                        let slice_ty = ty::mk_str(tcx, vstore_slice(r));
+                        let slice_ty = ty::mk_str(tcx, VstoreSlice(r, ()));
                         ty::mk_rptr(tcx, r, ty::mt {ty:slice_ty, mutbl:m})
                     })
             }
@@ -870,9 +865,9 @@ impl<'a> LookupContext<'a> {
 
                 self.search_for_some_kind_of_autorefd_method(
                     AutoBorrowObj, autoderefs, [MutImmutable, MutMutable],
-                    |trt_mut, reg| {
+                    |m, r| {
                         ty::mk_trait(tcx, trt_did, trt_substs.clone(),
-                                     RegionTraitStore(reg), trt_mut, b)
+                                     RegionTraitStore(r, m), b)
                     })
             }
 
@@ -1303,7 +1298,7 @@ impl<'a> LookupContext<'a> {
                     }
 
                     ty::ty_trait(~ty::TyTrait {
-                        def_id: self_did, store: RegionTraitStore(_), mutability: self_m, ..
+                        def_id: self_did, store: RegionTraitStore(_, self_m), ..
                     }) => {
                         mutability_matches(self_m, m) &&
                         rcvr_matches_object(self_did, candidate)

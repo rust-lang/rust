@@ -246,7 +246,7 @@ pub fn const_expr(cx: &CrateContext, e: &ast::Expr, is_local: bool) -> (ValueRef
                                     assert_eq!(abi::slice_elt_base, 0);
                                     assert_eq!(abi::slice_elt_len, 1);
                                     match ty::get(ty).sty {
-                                        ty::ty_vec(_, ty::vstore_fixed(len)) => {
+                                        ty::ty_vec(_, ty::VstoreFixed(len)) => {
                                             llconst = C_struct(cx, [
                                                 llptr,
                                                 C_uint(cx, len)
@@ -434,20 +434,14 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr,
                                           "index is not an integer-constant expression")
               };
               let (arr, len) = match ty::get(bt).sty {
-                  ty::ty_vec(_, vstore) | ty::ty_str(vstore) =>
-                      match vstore {
-                      ty::vstore_fixed(u) =>
-                          (bv, C_uint(cx, u)),
-
-                      ty::vstore_slice(_) => {
-                          let e1 = const_get_elt(cx, bv, [0]);
-                          (const_deref_ptr(cx, e1), const_get_elt(cx, bv, [1]))
-                      },
-                      _ => cx.sess().span_bug(base.span,
-                                              "index-expr base must be fixed-size or slice")
+                  ty::ty_vec(_, ty::VstoreFixed(u)) => (bv, C_uint(cx, u)),
+                  ty::ty_vec(_, ty::VstoreSlice(..)) |
+                  ty::ty_str(ty::VstoreSlice(..)) => {
+                    let e1 = const_get_elt(cx, bv, [0]);
+                    (const_deref_ptr(cx, e1), const_get_elt(cx, bv, [1]))
                   },
-                  _ =>  cx.sess().span_bug(base.span,
-                                           "index-expr base must be a vector or string type")
+                  _ => cx.sess().span_bug(base.span,
+                        "index-expr base must be a fixed-size vector or a slice")
               };
 
               let len = llvm::LLVMConstIntGetZExtValue(len) as u64;

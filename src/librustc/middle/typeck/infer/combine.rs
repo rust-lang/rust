@@ -263,16 +263,16 @@ pub trait Combine {
     fn regions(&self, a: ty::Region, b: ty::Region) -> cres<ty::Region>;
 
     fn vstores(&self,
-               vk: ty::terr_vstore_kind,
-               a: ty::vstore,
-               b: ty::vstore)
-               -> cres<ty::vstore> {
+                vk: ty::terr_vstore_kind,
+                a: ty::Vstore<()>,
+                b: ty::Vstore<()>)
+                -> cres<ty::Vstore<()>> {
         debug!("{}.vstores(a={:?}, b={:?})", self.tag(), a, b);
 
         match (a, b) {
-            (ty::vstore_slice(a_r), ty::vstore_slice(b_r)) => {
+            (ty::VstoreSlice(a_r, _), ty::VstoreSlice(b_r, _)) => {
                 self.contraregions(a_r, b_r).and_then(|r| {
-                    Ok(ty::vstore_slice(r))
+                    Ok(ty::VstoreSlice(r, ()))
                 })
             }
 
@@ -294,9 +294,10 @@ pub trait Combine {
         debug!("{}.trait_stores(a={:?}, b={:?})", self.tag(), a, b);
 
         match (a, b) {
-            (ty::RegionTraitStore(a_r), ty::RegionTraitStore(b_r)) => {
+            (ty::RegionTraitStore(a_r, a_m),
+             ty::RegionTraitStore(b_r, b_m)) if a_m == b_m => {
                 self.contraregions(a_r, b_r).and_then(|r| {
-                    Ok(ty::RegionTraitStore(r))
+                    Ok(ty::RegionTraitStore(r, a_m))
                 })
             }
 
@@ -480,7 +481,7 @@ pub fn super_tys<C:Combine>(this: &C, a: ty::t, b: ty::t) -> cres<ty::t> {
 
       (&ty::ty_trait(ref a_),
        &ty::ty_trait(ref b_))
-      if a_.def_id == b_.def_id && a_.mutability == b_.mutability => {
+      if a_.def_id == b_.def_id => {
           debug!("Trying to match traits {:?} and {:?}", a, b);
           let substs = if_ok!(this.substs(a_.def_id, &a_.substs, &b_.substs));
           let s = if_ok!(this.trait_stores(ty::terr_trait, a_.store, b_.store));
@@ -489,7 +490,6 @@ pub fn super_tys<C:Combine>(this: &C, a: ty::t, b: ty::t) -> cres<ty::t> {
                           a_.def_id,
                           substs.clone(),
                           s,
-                          a_.mutability,
                           bounds))
       }
 
@@ -517,10 +517,34 @@ pub fn super_tys<C:Combine>(this: &C, a: ty::t, b: ty::t) -> cres<ty::t> {
           Ok(ty::mk_rptr(tcx, r, mt))
       }
 
-      (&ty::ty_vec(ref a_mt, vs_a), &ty::ty_vec(ref b_mt, vs_b)) => {
-        this.mts(a_mt, b_mt).and_then(|mt| {
+      (&ty::ty_vec(a_inner, vs_a), &ty::ty_vec(b_inner, vs_b)) => {
+        // This could be nicer if we didn't have to go through .mts(a, b).
+        let (vs_a, mutbl_a) = match vs_a {
+            ty::VstoreFixed(n) => (ty::VstoreFixed(n), ast::MutImmutable),
+            ty::VstoreSlice(r, m) => (ty::VstoreSlice(r, ()), m),
+            ty::VstoreUniq => (ty::VstoreUniq, ast::MutImmutable)
+        };
+        let (vs_b, mutbl_b) = match vs_b {
+            ty::VstoreFixed(n) => (ty::VstoreFixed(n), ast::MutImmutable),
+            ty::VstoreSlice(r, m) => (ty::VstoreSlice(r, ()), m),
+            ty::VstoreUniq => (ty::VstoreUniq, ast::MutImmutable)
+        };
+        let a_mt = ty::mt {
+            ty: a_inner,
+            mutbl: mutbl_a
+        };
+        let b_mt = ty::mt {
+            ty: b_inner,
+            mutbl: mutbl_b
+        };
+        this.mts(&a_mt, &b_mt).and_then(|mt| {
             this.vstores(ty::terr_vec, vs_a, vs_b).and_then(|vs| {
-                Ok(ty::mk_vec(tcx, mt, vs))
+                let store = match vs {
+                    ty::VstoreFixed(n) => ty::VstoreFixed(n),
+                    ty::VstoreSlice(r, _) => ty::VstoreSlice(r, mt.mutbl),
+                    ty::VstoreUniq => ty::VstoreUniq
+                };
+                Ok(ty::mk_vec(tcx, mt.ty, store))
             })
         })
       }
