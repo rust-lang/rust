@@ -12,8 +12,8 @@
 .align
 #endif
 
-.globl rust_swap_registers
-rust_swap_registers:
+.globl _rust_swap_registers
+_rust_swap_registers:
 	str r0, [r0, #0]
 	str r3, [r0, #12]
 	str r4, [r0, #16]
@@ -53,8 +53,8 @@ rust_swap_registers:
 	mov pc, lr
 
 // For reasons of this existence, see the comments in x86_64/_context.S
-.globl rust_bootstrap_green_task
-rust_bootstrap_green_task:
+.globl _rust_bootstrap_green_task
+_rust_bootstrap_green_task:
         mov r0, r0
         mov r1, r3
         mov r2, r4
