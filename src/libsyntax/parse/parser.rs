@@ -273,7 +273,7 @@ struct ParsedItemsAndViewItems {
 
 /* ident is handled by common.rs */
 
-pub fn Parser<'a>(sess: &'a ParseSess, cfg: ast::CrateConfig, mut rdr: ~Reader:)
+pub fn Parser<'a>(sess: &'a ParseSess, cfg: ast::CrateConfig, mut rdr: ~Reader<'a>:)
               -> Parser<'a> {
     let tok0 = rdr.next_token();
     let span = tok0.sp;
@@ -325,7 +325,7 @@ pub struct Parser<'a> {
     pub tokens_consumed: uint,
     pub restriction: restriction,
     pub quote_depth: uint, // not (yet) related to the quasiquoter
-    pub reader: ~Reader:,
+    pub reader: ~Reader<'a>:,
     pub interner: Rc<token::IdentInterner>,
     /// The set of seen errors about obsolete syntax. Used to suppress
     /// extra detail when the same error is seen twice
