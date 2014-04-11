@@ -27,6 +27,7 @@ use unstable::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
 static mut TASK_COUNT: atomics::AtomicUint = atomics::INIT_ATOMIC_UINT;
 static mut TASK_LOCK: StaticNativeMutex = NATIVE_MUTEX_INIT;
 
+#[allow(unused_unsafe)] // NOTE: Remove after next snapshot (and the unsafe block)
 pub fn increment() {
     let _ = unsafe { TASK_COUNT.fetch_add(1, atomics::SeqCst) };
 }

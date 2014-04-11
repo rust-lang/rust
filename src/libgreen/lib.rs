@@ -344,6 +344,7 @@ impl SchedPool {
     ///
     /// This will configure the pool according to the `config` parameter, and
     /// initially run `main` inside the pool of schedulers.
+    #[allow(unused_unsafe)] // NOTE: Remove after next snapshot (and the unsafe block)
     pub fn new(config: PoolConfig) -> SchedPool {
         static mut POOL_ID: AtomicUint = INIT_ATOMIC_UINT;
 

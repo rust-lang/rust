@@ -2307,6 +2307,7 @@ fn cache_id_for_type(t: ty::t) -> uint {
 
 // Used to avoid LLVM metadata uniquing problems. See `create_struct_stub()` and
 // `prepare_enum_metadata()`.
+#[allow(unused_unsafe)] // NOTE: Remove after next snapshot (and the unsafe block)
 fn generate_unique_type_id(prefix: &'static str) -> ~str {
     unsafe {
         static mut unique_id_counter: atomics::AtomicUint = atomics::INIT_ATOMIC_UINT;

@@ -204,6 +204,7 @@ fn test_format_args() {
     t!(s, "hello world");
 }
 
+#[allow(unused_unsafe)] // NOTE: Remove after next snapshot (and the unsafe block)
 fn test_order() {
     // Make sure format!() arguments are always evaluated in a left-to-right
     // ordering

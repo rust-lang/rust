@@ -213,6 +213,7 @@ pub fn log(level: u32, args: &fmt::Arguments) {
 /// safely
 #[doc(hidden)]
 #[inline(always)]
+#[allow(unused_unsafe)] // NOTE: Remove after next snapshot (and the unsafe block)
 pub fn log_level() -> u32 { unsafe { LOG_LEVEL } }
 
 /// Replaces the task-local logger with the specified logger, returning the old
@@ -227,6 +228,7 @@ pub fn set_logger(logger: ~Logger:Send) -> Option<~Logger:Send> {
 /// logging. This is the second layer of defense about determining whether a
 /// module's log statement should be emitted or not.
 #[doc(hidden)]
+#[allow(unused_unsafe)] // NOTE: Remove after next snapshot (and the unsafe block)
 pub fn mod_enabled(level: u32, module: &str) -> bool {
     static mut INIT: Once = ONCE_INIT;
     unsafe { INIT.doit(init); }

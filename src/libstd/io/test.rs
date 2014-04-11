@@ -54,6 +54,7 @@ macro_rules! iotest (
 )
 
 /// Get a port number, starting at 9600, for use in tests
+#[allow(unused_unsafe)] // NOTE: Remove after next snapshot (and the unsafe block)
 pub fn next_test_port() -> u16 {
     static mut next_offset: AtomicUint = INIT_ATOMIC_UINT;
     unsafe {
@@ -62,6 +63,7 @@ pub fn next_test_port() -> u16 {
 }
 
 /// Get a temporary path which could be the location of a unix socket
+#[allow(unused_unsafe)] // NOTE: Remove after next snapshot (and the unsafe block)
 pub fn next_test_unix() -> Path {
     static mut COUNT: AtomicUint = INIT_ATOMIC_UINT;
     // base port and pid are an attempt to be unique between multiple

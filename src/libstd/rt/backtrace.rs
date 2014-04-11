@@ -25,6 +25,7 @@ pub use self::imp::write;
 
 // For now logging is turned off by default, and this function checks to see
 // whether the magical environment variable is present to see if it's turned on.
+#[allow(unused_unsafe)] // NOTE: Remove after next snapshot (and the unsafe block)
 pub fn log_enabled() -> bool {
     static mut ENABLED: atomics::AtomicInt = atomics::INIT_ATOMIC_INT;
     unsafe {

@@ -1989,6 +1989,10 @@ pub fn type_is_sendable(cx: &ctxt, t: ty::t) -> bool {
     type_contents(cx, t).is_sendable(cx)
 }
 
+pub fn type_is_sharable(cx: &ctxt, t: ty::t) -> bool {
+    type_contents(cx, t).is_sharable(cx)
+}
+
 pub fn type_interior_is_unsafe(cx: &ctxt, t: ty::t) -> bool {
     type_contents(cx, t).interior_unsafe()
 }

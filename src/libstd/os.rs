@@ -781,12 +781,14 @@ static mut EXIT_STATUS: AtomicInt = INIT_ATOMIC_INT;
  *
  * Note that this is not synchronized against modifications of other threads.
  */
+#[allow(unused_unsafe)] // NOTE: Remove after next snapshot (and the unsafe block)
 pub fn set_exit_status(code: int) {
     unsafe { EXIT_STATUS.store(code, SeqCst) }
 }
 
 /// Fetches the process's current exit code. This defaults to 0 and can change
 /// by calling `set_exit_status`.
+#[allow(unused_unsafe)] // NOTE: Remove after next snapshot (and the unsafe block)
 pub fn get_exit_status() -> int {
     unsafe { EXIT_STATUS.load(SeqCst) }
 }

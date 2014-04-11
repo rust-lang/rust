@@ -22,6 +22,7 @@ static mut MIN_STACK: uint = 2 * 1024 * 1024;
 static mut MAX_CACHED_STACKS: uint = 10;
 static mut DEBUG_BORROW: bool = false;
 
+#[allow(unused_unsafe)] // NOTE: Remove after next snapshot (and the unsafe block)
 pub fn init() {
     unsafe {
         match os::getenv("RUST_MIN_STACK") {
@@ -43,14 +44,17 @@ pub fn init() {
     }
 }
 
+#[allow(unused_unsafe)] // NOTE: Remove after next snapshot (and the unsafe block)
 pub fn min_stack() -> uint {
     unsafe { MIN_STACK }
 }
 
+#[allow(unused_unsafe)] // NOTE: Remove after next snapshot (and the unsafe block)
 pub fn max_cached_stacks() -> uint {
     unsafe { MAX_CACHED_STACKS }
 }
 
+#[allow(unused_unsafe)] // NOTE: Remove after next snapshot (and the unsafe block)
 pub fn debug_borrow() -> bool {
     unsafe { DEBUG_BORROW }
 }

@@ -200,6 +200,7 @@ pub mod compiled {
 
     /// Check whether there is a thread-local pointer installed.
     #[inline(never)] // see comments above
+    #[allow(unused_unsafe)] // NOTE: Remove after next snapshot (and the unsafe block)
     pub fn exists() -> bool {
         unsafe {
             RT_TLS_PTR.is_not_null()
@@ -367,6 +368,7 @@ pub mod native {
     #[inline]
     #[cfg(not(test))]
     #[allow(visible_private_types)]
+    #[allow(unused_unsafe)] // NOTE: Remove after next snapshot (and the unsafe block)
     pub fn maybe_tls_key() -> Option<tls::Key> {
         unsafe {
             // NB: This is a little racy because, while the key is
