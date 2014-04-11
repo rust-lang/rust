@@ -40,12 +40,12 @@ There are five macros that the logging subsystem uses:
 * `warn!(...)` - a macro hard-wired to the log level of `WARN`
 * `error!(...)` - a macro hard-wired to the log level of `ERROR`
 
-All of these macros use std::the same style of syntax as the `format!` syntax
+All of these macros use the same style of syntax as the `format!` syntax
 extension. Details about the syntax can be found in the documentation of
 `std::fmt` along with the Rust tutorial/manual.
 
 If you want to check at runtime if a given logging level is enabled (e.g. if the
-information you would want to log is expensive to produce), you can use std::the
+information you would want to log is expensive to produce), you can use the
 following macro:
 
 * `log_enabled!(level)` - returns true if logging of the given level is enabled
@@ -63,7 +63,7 @@ path::to::module=log_level
 
 The path to the module is rooted in the name of the crate it was compiled for,
 so if your program is contained in a file `hello.rs`, for example, to turn on
-logging for this file you would use std::a value of `RUST_LOG=hello`.
+logging for this file you would use a value of `RUST_LOG=hello`.
 Furthermore, this path is a prefix-search, so all modules nested in the
 specified module will also have logging enabled.
 
