@@ -279,18 +279,17 @@ fn path(w: &mut io::Writer, path: &clean::Path, print_all: bool,
 }
 
 /// Helper to render type parameters
-fn typarams(w: &mut io::Writer,
+fn tybounds(w: &mut io::Writer,
             typarams: &Option<Vec<clean::TyParamBound> >) -> fmt::Result {
     match *typarams {
         Some(ref params) => {
-            try!(write!(w, "&lt;"));
+            try!(write!(w, ":"));
             for (i, param) in params.iter().enumerate() {
                 if i > 0 {
-                    try!(write!(w, ", "));
+                    try!(write!(w, " + "));
                 }
                 try!(write!(w, "{}", *param));
             }
-            try!(write!(w, "&gt;"));
             Ok(())
         }
         None => Ok(())
@@ -308,13 +307,13 @@ impl fmt::Show for clean::Type {
             }
             clean::ResolvedPath{id, typarams: ref tp, path: ref path} => {
                 try!(resolved_path(f.buf, id, path, false));
-                typarams(f.buf, tp)
+                tybounds(f.buf, tp)
             }
             clean::ExternalPath{path: ref path, typarams: ref tp,
                                 fqn: ref fqn, kind, krate} => {
                 try!(external_path(f.buf, path, false, fqn.as_slice(), kind,
                                      krate))
-                typarams(f.buf, tp)
+                tybounds(f.buf, tp)
             }
             clean::Self(..) => f.buf.write("Self".as_bytes()),
             clean::Primitive(prim) => {
@@ -338,26 +337,59 @@ impl fmt::Show for clean::Type {
                 f.buf.write(s.as_bytes())
             }
             clean::Closure(ref decl, ref region) => {
-                let region = match *region {
-                    Some(ref region) => format!("{} ", *region),
-                    None => ~"",
-                };
-
-                write!(f.buf, "{}{}|{}|{arrow, select, yes{ -&gt; {ret}} other{}}",
-                       FnStyleSpace(decl.fn_style),
-                       region,
-                       decl.decl.inputs,
+                write!(f.buf, "{style}{lifetimes}|{args}|{bounds}\
+                               {arrow, select, yes{ -&gt; {ret}} other{}}",
+                       style = FnStyleSpace(decl.fn_style),
+                       lifetimes = if decl.lifetimes.len() == 0 {
+                           ~""
+                       } else {
+                           format!("&lt;{:#}&gt;", decl.lifetimes)
+                       },
+                       args = decl.decl.inputs,
                        arrow = match decl.decl.output { clean::Unit => "no", _ => "yes" },
-                       ret = decl.decl.output)
-                // FIXME: where are bounds and lifetimes printed?!
+                       ret = decl.decl.output,
+                       bounds = {
+                           let mut ret = StrBuf::new();
+                           match *region {
+                               Some(ref lt) => {
+                                   ret.push_str(format!(": {}", *lt));
+                               }
+                               None => {}
+                           }
+                           for bound in decl.bounds.iter() {
+                                match *bound {
+                                    clean::RegionBound => {}
+                                    clean::TraitBound(ref t) => {
+                                        if ret.len() == 0 {
+                                            ret.push_str(": ");
+                                        } else {
+                                            ret.push_str(" + ");
+                                        }
+                                        ret.push_str(format!("{}", *t));
+                                    }
+                                }
+                           }
+                           ret.into_owned()
+                       })
             }
             clean::Proc(ref decl) => {
-                write!(f.buf, "{}proc({}){arrow, select, yes{ -&gt; {ret}} other{}}",
-                       FnStyleSpace(decl.fn_style),
-                       decl.decl.inputs,
+                write!(f.buf, "{style}{lifetimes}proc({args}){bounds}\
+                               {arrow, select, yes{ -&gt; {ret}} other{}}",
+                       style = FnStyleSpace(decl.fn_style),
+                       lifetimes = if decl.lifetimes.len() == 0 {
+                           ~""
+                       } else {
+                           format!("&lt;{:#}&gt;", decl.lifetimes)
+                       },
+                       args = decl.decl.inputs,
+                       bounds = if decl.bounds.len() == 0 {
+                           ~""
+                       } else {
+                           let mut m = decl.bounds.iter().map(|s| s.to_str());
+                           ": " + m.collect::<~[~str]>().connect(" + ")
+                       },
                        arrow = match decl.decl.output { clean::Unit => "no", _ => "yes" },
                        ret = decl.decl.output)
-                // FIXME: where are bounds and lifetimes printed?!
             }
             clean::BareFunction(ref decl) => {
                 write!(f.buf, "{}{}fn{}{}",

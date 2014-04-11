@@ -2601,7 +2601,9 @@ impl<A: Clone> Clone for ~[A] {
 
 impl<'a, T: fmt::Show> fmt::Show for &'a [T] {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f.buf, "["));
+        if f.flags & (1 << (fmt::parse::FlagAlternate as uint)) == 0 {
+            try!(write!(f.buf, "["));
+        }
         let mut is_first = true;
         for x in self.iter() {
             if is_first {
@@ -2611,7 +2613,10 @@ impl<'a, T: fmt::Show> fmt::Show for &'a [T] {
             }
             try!(write!(f.buf, "{}", *x))
         }
-        write!(f.buf, "]")
+        if f.flags & (1 << (fmt::parse::FlagAlternate as uint)) == 0 {
+            try!(write!(f.buf, "]"));
+        }
+        Ok(())
     }
 }
 
