@@ -419,7 +419,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
                         infer::AutoBorrow(expr.span));
                 }
             }
-            ty::AutoObject(ast::BorrowedSigil, Some(trait_region), _, _, _, _) => {
+            ty::AutoObject(ty::RegionTraitStore(trait_region, _), _, _, _) => {
                 // Determine if we are casting `expr` to an trait
                 // instance.  If so, we have to be sure that the type of
                 // the source obeys the trait's region bound.
@@ -540,7 +540,9 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
             // explaining how it goes about doing that.
             let target_ty = rcx.resolve_node_type(expr.id);
             match ty::get(target_ty).sty {
-                ty::ty_trait(~ty::TyTrait { store: ty::RegionTraitStore(trait_region), .. }) => {
+                ty::ty_trait(~ty::TyTrait {
+                    store: ty::RegionTraitStore(trait_region, _), ..
+                }) => {
                     let source_ty = rcx.resolve_expr_type_adjusted(source);
                     constrain_regions_in_type(
                         rcx,
@@ -923,8 +925,8 @@ fn constrain_index(rcx: &mut Rcx,
 
     let r_index_expr = ty::ReScope(index_expr.id);
     match ty::get(indexed_ty).sty {
-        ty::ty_str(ty::vstore_slice(r_ptr)) |
-        ty::ty_vec(_, ty::vstore_slice(r_ptr)) => {
+        ty::ty_str(ty::VstoreSlice(r_ptr, ())) |
+        ty::ty_vec(_, ty::VstoreSlice(r_ptr, _)) => {
             rcx.fcx.mk_subr(true, infer::IndexSlice(index_expr.span),
                             r_index_expr, r_ptr);
         }

@@ -116,15 +116,15 @@ pub fn sizing_type_of(cx: &CrateContext, t: ty::t) -> Type {
         ty::ty_uint(t) => Type::uint_from_ty(cx, t),
         ty::ty_float(t) => Type::float_from_ty(cx, t),
 
-        ty::ty_str(ty::vstore_uniq) |
-        ty::ty_vec(_, ty::vstore_uniq) |
+        ty::ty_str(ty::VstoreUniq) |
+        ty::ty_vec(_, ty::VstoreUniq) |
         ty::ty_box(..) |
         ty::ty_uniq(..) |
         ty::ty_ptr(..) |
         ty::ty_rptr(..) => Type::i8p(cx),
 
-        ty::ty_str(ty::vstore_slice(..)) |
-        ty::ty_vec(_, ty::vstore_slice(..)) => {
+        ty::ty_str(ty::VstoreSlice(..)) |
+        ty::ty_vec(_, ty::VstoreSlice(..)) => {
             Type::struct_(cx, [Type::i8p(cx), Type::i8p(cx)], false)
         }
 
@@ -132,9 +132,9 @@ pub fn sizing_type_of(cx: &CrateContext, t: ty::t) -> Type {
         ty::ty_closure(..) => Type::struct_(cx, [Type::i8p(cx), Type::i8p(cx)], false),
         ty::ty_trait(..) => Type::opaque_trait(cx),
 
-        ty::ty_str(ty::vstore_fixed(size)) => Type::array(&Type::i8(cx), size as u64),
-        ty::ty_vec(mt, ty::vstore_fixed(size)) => {
-            Type::array(&sizing_type_of(cx, mt.ty), size as u64)
+        ty::ty_str(ty::VstoreFixed(size)) => Type::array(&Type::i8(cx), size as u64),
+        ty::ty_vec(ty, ty::VstoreFixed(size)) => {
+            Type::array(&sizing_type_of(cx, ty), size as u64)
         }
 
         ty::ty_tup(..) | ty::ty_enum(..) => {
@@ -199,7 +199,7 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
       ty::ty_int(t) => Type::int_from_ty(cx, t),
       ty::ty_uint(t) => Type::uint_from_ty(cx, t),
       ty::ty_float(t) => Type::float_from_ty(cx, t),
-      ty::ty_str(ty::vstore_uniq) => {
+      ty::ty_str(ty::VstoreUniq) => {
         Type::vec(cx, &Type::i8(cx)).ptr_to()
       }
       ty::ty_enum(did, ref substs) => {
@@ -217,29 +217,29 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
       ty::ty_uniq(typ) => {
           type_of(cx, typ).ptr_to()
       }
-      ty::ty_vec(ref mt, ty::vstore_uniq) => {
-          Type::vec(cx, &type_of(cx, mt.ty)).ptr_to()
+      ty::ty_vec(ty, ty::VstoreUniq) => {
+          Type::vec(cx, &type_of(cx, ty)).ptr_to()
       }
       ty::ty_ptr(ref mt) => type_of(cx, mt.ty).ptr_to(),
       ty::ty_rptr(_, ref mt) => type_of(cx, mt.ty).ptr_to(),
 
-      ty::ty_vec(ref mt, ty::vstore_slice(_)) => {
-          let p_ty = type_of(cx, mt.ty).ptr_to();
+      ty::ty_vec(ty, ty::VstoreSlice(..)) => {
+          let p_ty = type_of(cx, ty).ptr_to();
           let u_ty = Type::uint_from_ty(cx, ast::TyU);
           Type::struct_(cx, [p_ty, u_ty], false)
       }
 
-      ty::ty_str(ty::vstore_slice(_)) => {
+      ty::ty_str(ty::VstoreSlice(..)) => {
           // This means we get a nicer name in the output
           cx.tn.find_type("str_slice").unwrap()
       }
 
-      ty::ty_str(ty::vstore_fixed(n)) => {
+      ty::ty_str(ty::VstoreFixed(n)) => {
           Type::array(&Type::i8(cx), (n + 1u) as u64)
       }
 
-      ty::ty_vec(ref mt, ty::vstore_fixed(n)) => {
-          Type::array(&type_of(cx, mt.ty), n as u64)
+      ty::ty_vec(ty, ty::VstoreFixed(n)) => {
+          Type::array(&type_of(cx, ty), n as u64)
       }
 
       ty::ty_bare_fn(_) => {

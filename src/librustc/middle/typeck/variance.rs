@@ -645,9 +645,16 @@ impl<'a> ConstraintContext<'a> {
                 self.add_constraints_from_vstore(vstore, variance);
             }
 
-            ty::ty_vec(ref mt, vstore) => {
+            ty::ty_vec(ty, vstore) => {
                 self.add_constraints_from_vstore(vstore, variance);
-                self.add_constraints_from_mt(mt, variance);
+                let mt = ty::mt {
+                    ty: ty,
+                    mutbl: match vstore {
+                        ty::VstoreSlice(_, m) => m,
+                        _ => ast::MutImmutable
+                    }
+                };
+                self.add_constraints_from_mt(&mt, variance);
             }
 
             ty::ty_uniq(typ) | ty::ty_box(typ) => {
@@ -716,19 +723,18 @@ impl<'a> ConstraintContext<'a> {
         }
     }
 
-    /// Adds constraints appropriate for a vector with vstore `vstore`
+    /// Adds constraints appropriate for a vector with Vstore `vstore`
     /// appearing in a context with ambient variance `variance`
-    fn add_constraints_from_vstore(&mut self,
-                                   vstore: ty::vstore,
-                                   variance: VarianceTermPtr<'a>) {
+    fn add_constraints_from_vstore<M>(&mut self,
+                                      vstore: ty::Vstore<M>,
+                                      variance: VarianceTermPtr<'a>) {
         match vstore {
-            ty::vstore_slice(r) => {
+            ty::VstoreSlice(r, _) => {
                 let contra = self.contravariant(variance);
                 self.add_constraints_from_region(r, contra);
             }
 
-            ty::vstore_fixed(_) | ty::vstore_uniq => {
-            }
+            ty::VstoreFixed(_) | ty::VstoreUniq => {}
         }
     }
 

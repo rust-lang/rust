@@ -2098,7 +2098,6 @@ fn trait_metadata(cx: &CrateContext,
                   trait_type: ty::t,
                   substs: &ty::substs,
                   trait_store: ty::TraitStore,
-                  mutability: ast::Mutability,
                   _: &ty::BuiltinBounds)
                -> DIType {
     // The implementation provided here is a stub. It makes sure that the trait type is
@@ -2107,7 +2106,6 @@ fn trait_metadata(cx: &CrateContext,
     let last = ty::with_path(cx.tcx(), def_id, |mut path| path.last().unwrap());
     let ident_string = token::get_name(last.name());
     let name = ppaux::trait_store_to_str(cx.tcx(), trait_store) +
-               ppaux::mutability_to_str(mutability) +
                ident_string.get();
     // Add type and region parameters
     let name = ppaux::parameterized(cx.tcx(), name, &substs.regions,
@@ -2120,13 +2118,13 @@ fn trait_metadata(cx: &CrateContext,
 
     let trait_llvm_type = type_of::type_of(cx, trait_type);
 
-    return composite_type_metadata(cx,
-                                   trait_llvm_type,
-                                   name,
-                                   [],
-                                   containing_scope,
-                                   file_metadata,
-                                   definition_span);
+    composite_type_metadata(cx,
+                            trait_llvm_type,
+                            name,
+                            [],
+                            containing_scope,
+                            file_metadata,
+                            definition_span)
 }
 
 fn type_metadata(cx: &CrateContext,
@@ -2177,14 +2175,14 @@ fn type_metadata(cx: &CrateContext,
         ty::ty_str(ref vstore) => {
             let i8_t = ty::mk_i8();
             match *vstore {
-                ty::vstore_fixed(len) => {
+                ty::VstoreFixed(len) => {
                     fixed_vec_metadata(cx, i8_t, len, usage_site_span)
                 },
-                ty::vstore_uniq  => {
+                ty::VstoreUniq  => {
                     let vec_metadata = vec_metadata(cx, i8_t, usage_site_span);
                     pointer_type_metadata(cx, t, vec_metadata)
                 }
-                ty::vstore_slice(_region) => {
+                ty::VstoreSlice(..) => {
                     vec_slice_metadata(cx, t, i8_t, usage_site_span)
                 }
             }
@@ -2195,17 +2193,17 @@ fn type_metadata(cx: &CrateContext,
         ty::ty_box(typ) => {
             create_pointer_to_box_metadata(cx, t, typ)
         },
-        ty::ty_vec(ref mt, ref vstore) => {
+        ty::ty_vec(ty, ref vstore) => {
             match *vstore {
-                ty::vstore_fixed(len) => {
-                    fixed_vec_metadata(cx, mt.ty, len, usage_site_span)
+                ty::VstoreFixed(len) => {
+                    fixed_vec_metadata(cx, ty, len, usage_site_span)
                 }
-                ty::vstore_uniq => {
-                    let vec_metadata = vec_metadata(cx, mt.ty, usage_site_span);
+                ty::VstoreUniq => {
+                    let vec_metadata = vec_metadata(cx, ty, usage_site_span);
                     pointer_type_metadata(cx, t, vec_metadata)
                 }
-                ty::vstore_slice(_) => {
-                    vec_slice_metadata(cx, t, mt.ty, usage_site_span)
+                ty::VstoreSlice(..) => {
+                    vec_slice_metadata(cx, t, ty, usage_site_span)
                 }
             }
         },
@@ -2223,10 +2221,8 @@ fn type_metadata(cx: &CrateContext,
         ty::ty_closure(ref closurety) => {
             subroutine_type_metadata(cx, &closurety.sig, usage_site_span)
         },
-        ty::ty_trait(~ty::TyTrait { def_id, ref substs,
-                                store: trait_store, mutability,
-                                ref bounds }) => {
-            trait_metadata(cx, def_id, t, substs, trait_store, mutability, bounds)
+        ty::ty_trait(~ty::TyTrait { def_id, ref substs, store, ref bounds }) => {
+            trait_metadata(cx, def_id, t, substs, store, bounds)
         },
         ty::ty_struct(def_id, ref substs) => {
             if ty::type_is_simd(cx.tcx(), t) {
