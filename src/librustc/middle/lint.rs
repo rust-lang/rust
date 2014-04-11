@@ -917,8 +917,8 @@ fn check_heap_type(cx: &Context, span: Span, ty: ty::t) {
                 ty::ty_box(_) => {
                     n_box += 1;
                 }
-                ty::ty_uniq(_) | ty::ty_str(ty::vstore_uniq) |
-                ty::ty_vec(_, ty::vstore_uniq) |
+                ty::ty_uniq(_) | ty::ty_str(ty::VstoreUniq) |
+                ty::ty_vec(_, ty::VstoreUniq) |
                 ty::ty_trait(~ty::TyTrait { store: ty::UniqTraitStore, .. }) => {
                     n_uniq += 1;
                 }
@@ -1158,7 +1158,7 @@ fn check_unused_result(cx: &Context, s: &ast::Stmt) {
 fn check_deprecated_owned_vector(cx: &Context, e: &ast::Expr) {
     let t = ty::expr_ty(cx.tcx, e);
     match ty::get(t).sty {
-        ty::ty_vec(_, ty::vstore_uniq) => {
+        ty::ty_vec(_, ty::VstoreUniq) => {
             cx.span_lint(DeprecatedOwnedVector, e.span,
                          "use of deprecated `~[]` vector; replaced by `std::vec::Vec`")
         }

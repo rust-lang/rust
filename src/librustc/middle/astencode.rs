@@ -514,6 +514,17 @@ impl tr for ty::BoundRegion {
     }
 }
 
+impl tr for ty::TraitStore {
+    fn tr(&self, xcx: &ExtendedDecodeContext) -> ty::TraitStore {
+        match *self {
+            ty::RegionTraitStore(r, m) => {
+                ty::RegionTraitStore(r.tr(xcx), m)
+            }
+            ty::UniqTraitStore => ty::UniqTraitStore
+        }
+    }
+}
+
 // ______________________________________________________________________
 // Encoding and decoding of freevar information
 
@@ -824,7 +835,6 @@ impl<'a> get_ty_str_ctxt for e::EncodeContext<'a> {
 
 trait ebml_writer_helpers {
     fn emit_ty(&mut self, ecx: &e::EncodeContext, ty: ty::t);
-    fn emit_vstore(&mut self, ecx: &e::EncodeContext, vstore: ty::vstore);
     fn emit_tys(&mut self, ecx: &e::EncodeContext, tys: &[ty::t]);
     fn emit_type_param_def(&mut self,
                            ecx: &e::EncodeContext,
@@ -839,10 +849,6 @@ trait ebml_writer_helpers {
 impl<'a> ebml_writer_helpers for Encoder<'a> {
     fn emit_ty(&mut self, ecx: &e::EncodeContext, ty: ty::t) {
         self.emit_opaque(|this| Ok(e::write_type(ecx, this, ty)));
-    }
-
-    fn emit_vstore(&mut self, ecx: &e::EncodeContext, vstore: ty::vstore) {
-        self.emit_opaque(|this| Ok(e::write_vstore(ecx, this, vstore)));
     }
 
     fn emit_tys(&mut self, ecx: &e::EncodeContext, tys: &[ty::t]) {
@@ -904,14 +910,12 @@ impl<'a> ebml_writer_helpers for Encoder<'a> {
                     })
                 }
 
-                ty::AutoObject(sigil, region, m, b, def_id, ref substs) => {
-                    this.emit_enum_variant("AutoObject", 2, 6, |this| {
-                        this.emit_enum_variant_arg(0, |this| sigil.encode(this));
-                        this.emit_enum_variant_arg(1, |this| region.encode(this));
-                        this.emit_enum_variant_arg(2, |this| m.encode(this));
-                        this.emit_enum_variant_arg(3, |this| b.encode(this));
-                        this.emit_enum_variant_arg(4, |this| def_id.encode(this));
-                        this.emit_enum_variant_arg(5, |this| Ok(this.emit_substs(ecx, substs)))
+                ty::AutoObject(store, b, def_id, ref substs) => {
+                    this.emit_enum_variant("AutoObject", 2, 4, |this| {
+                        this.emit_enum_variant_arg(0, |this| store.encode(this));
+                        this.emit_enum_variant_arg(1, |this| b.encode(this));
+                        this.emit_enum_variant_arg(2, |this| def_id.encode(this));
+                        this.emit_enum_variant_arg(3, |this| Ok(this.emit_substs(ecx, substs)))
                     })
                 }
             }
@@ -1280,25 +1284,16 @@ impl<'a> ebml_decoder_decoder_helpers for reader::Decoder<'a> {
                         ty::AutoDerefRef(auto_deref_ref.tr(xcx))
                     }
                     2 => {
-                        let sigil: ast::Sigil =
+                        let store: ty::TraitStore =
                             this.read_enum_variant_arg(0, |this| Decodable::decode(this)).unwrap();
-                        let region: Option<ty::Region> =
-                            this.read_enum_variant_arg(1, |this| Decodable::decode(this)).unwrap();
-                        let m: ast::Mutability =
-                            this.read_enum_variant_arg(2, |this| Decodable::decode(this)).unwrap();
                         let b: ty::BuiltinBounds =
-                            this.read_enum_variant_arg(3, |this| Decodable::decode(this)).unwrap();
+                            this.read_enum_variant_arg(1, |this| Decodable::decode(this)).unwrap();
                         let def_id: ast::DefId =
-                            this.read_enum_variant_arg(4, |this| Decodable::decode(this)).unwrap();
-                        let substs = this.read_enum_variant_arg(5, |this| Ok(this.read_substs(xcx)))
+                            this.read_enum_variant_arg(2, |this| Decodable::decode(this)).unwrap();
+                        let substs = this.read_enum_variant_arg(3, |this| Ok(this.read_substs(xcx)))
                                     .unwrap();
 
-                        let region = match region {
-                            Some(r) => Some(r.tr(xcx)),
-                            None => None
-                        };
-
-                        ty::AutoObject(sigil, region, m, b, def_id.tr(xcx), substs)
+                        ty::AutoObject(store.tr(xcx), b, def_id.tr(xcx), substs)
                     }
                     _ => fail!("bad enum variant for ty::AutoAdjustment")
                 })

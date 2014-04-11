@@ -93,7 +93,7 @@ fn get_drop_glue_type(ccx: &CrateContext, t: ty::t) -> ty::t {
             }
         }
 
-        ty::ty_vec(mt, ty::vstore_uniq) if !ty::type_needs_drop(tcx, mt.ty) =>
+        ty::ty_vec(ty, ty::VstoreUniq) if !ty::type_needs_drop(tcx, ty) =>
             ty::mk_uniq(tcx, ty::mk_i8()),
 
         _ => t
@@ -289,7 +289,7 @@ fn make_drop_glue<'a>(bcx: &'a Block<'a>, v0: ValueRef, t: ty::t) -> &'a Block<'
                 trans_exchange_free(bcx, llbox)
             })
         }
-        ty::ty_vec(_, ty::vstore_uniq) | ty::ty_str(ty::vstore_uniq) => {
+        ty::ty_vec(_, ty::VstoreUniq) | ty::ty_str(ty::VstoreUniq) => {
             let llbox = Load(bcx, v0);
             let not_null = IsNotNull(bcx, llbox);
             with_cond(bcx, not_null, |bcx| {

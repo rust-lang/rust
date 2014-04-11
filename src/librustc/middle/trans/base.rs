@@ -188,7 +188,7 @@ fn decl_fn(llmod: ModuleRef, name: &str, cc: lib::llvm::CallConv,
         // FIXME #6750 ~Trait cannot be directly marked as
         // noalias because the actual object pointer is nested.
         ty::ty_uniq(..) | // ty::ty_trait(_, _, ty::UniqTraitStore, _, _) |
-        ty::ty_vec(_, ty::vstore_uniq) | ty::ty_str(ty::vstore_uniq) => {
+        ty::ty_vec(_, ty::VstoreUniq) | ty::ty_str(ty::VstoreUniq) => {
             unsafe {
                 llvm::LLVMAddReturnAttribute(llfn, lib::llvm::NoAliasAttribute as c_uint);
             }
@@ -259,7 +259,7 @@ pub fn decl_rust_fn(ccx: &CrateContext, has_env: bool,
             // FIXME #6750 ~Trait cannot be directly marked as
             // noalias because the actual object pointer is nested.
             ty::ty_uniq(..) | // ty::ty_trait(_, _, ty::UniqTraitStore, _, _) |
-            ty::ty_vec(_, ty::vstore_uniq) | ty::ty_str(ty::vstore_uniq) |
+            ty::ty_vec(_, ty::VstoreUniq) | ty::ty_str(ty::VstoreUniq) |
             ty::ty_closure(~ty::ClosureTy {sigil: ast::OwnedSigil, ..}) => {
                 unsafe {
                     llvm::LLVMAddAttribute(llarg, lib::llvm::NoAliasAttribute as c_uint);
@@ -657,10 +657,10 @@ pub fn iter_structural_ty<'r,
               }
           })
       }
-      ty::ty_str(ty::vstore_fixed(_)) |
-      ty::ty_vec(_, ty::vstore_fixed(_)) => {
-        let (base, len) = tvec::get_base_and_byte_len(cx, av, t);
+      ty::ty_str(ty::VstoreFixed(n)) |
+      ty::ty_vec(_, ty::VstoreFixed(n)) => {
         let unit_ty = ty::sequence_element_type(cx.tcx(), t);
+        let (base, len) = tvec::get_fixed_base_and_byte_len(cx, av, unit_ty, n);
         cx = tvec::iter_vec_raw(cx, base, unit_ty, len, f);
       }
       ty::ty_tup(ref args) => {

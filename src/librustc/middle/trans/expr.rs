@@ -263,9 +263,8 @@ fn apply_adjustments<'a>(bcx: &'a Block<'a>,
 
         // this type may have a different region/mutability than the
         // real one, but it will have the same runtime representation
-        let slice_ty = ty::mk_vec(tcx,
-                                  ty::mt { ty: unit_ty, mutbl: ast::MutImmutable },
-                                  ty::vstore_slice(ty::ReStatic));
+        let slice_ty = ty::mk_vec(tcx, unit_ty,
+                                  ty::VstoreSlice(ty::ReStatic, ast::MutImmutable));
 
         let scratch = rvalue_scratch_datum(bcx, slice_ty, "__adjust");
         Store(bcx, base, GEPi(bcx, scratch.val, [0u, abi::slice_elt_base]));

@@ -67,7 +67,7 @@ we may want to adjust precisely when coercions occur.
 
 use middle::ty::{AutoPtr, AutoBorrowVec, AutoBorrowFn, AutoBorrowObj};
 use middle::ty::{AutoDerefRef};
-use middle::ty::{vstore_slice, vstore_uniq};
+use middle::ty::{VstoreSlice, VstoreUniq};
 use middle::ty::{mt};
 use middle::ty;
 use middle::typeck::infer::{CoerceResult, resolve_type, Coercion};
@@ -108,15 +108,15 @@ impl<'f> Coerce<'f> {
                 });
             }
 
-            ty::ty_str(vstore_slice(_)) => {
+            ty::ty_str(VstoreSlice(..)) => {
                 return self.unpack_actual_value(a, |sty_a| {
                     self.coerce_borrowed_string(a, sty_a, b)
                 });
             }
 
-            ty::ty_vec(mt_b, vstore_slice(_)) => {
+            ty::ty_vec(_, VstoreSlice(_, mutbl_b)) => {
                 return self.unpack_actual_value(a, |sty_a| {
-                    self.coerce_borrowed_vector(a, sty_a, b, mt_b)
+                    self.coerce_borrowed_vector(a, sty_a, b, mutbl_b)
                 });
             }
 
@@ -133,13 +133,13 @@ impl<'f> Coerce<'f> {
             }
 
             ty::ty_trait(~ty::TyTrait {
-                def_id, ref substs, store: ty::UniqTraitStore, mutability: m, bounds
+                def_id, ref substs, store: ty::UniqTraitStore, bounds
             }) => {
                 let result = self.unpack_actual_value(a, |sty_a| {
                     match *sty_a {
                         ty::ty_uniq(..) => {
                             self.coerce_object(a, sty_a, b, def_id, substs,
-                                               ty::UniqTraitStore, m, bounds)
+                                               ty::UniqTraitStore, bounds)
                         }
                         _ => Err(ty::terr_mismatch)
                     }
@@ -152,13 +152,13 @@ impl<'f> Coerce<'f> {
             }
 
             ty::ty_trait(~ty::TyTrait {
-                def_id, ref substs, store: ty::RegionTraitStore(region), mutability: m, bounds
+                def_id, ref substs, store: ty::RegionTraitStore(region, m), bounds
             }) => {
                 let result = self.unpack_actual_value(a, |sty_a| {
                     match *sty_a {
                         ty::ty_rptr(..) => {
                             self.coerce_object(a, sty_a, b, def_id, substs,
-                                               ty::RegionTraitStore(region), m, bounds)
+                                               ty::RegionTraitStore(region, m), bounds)
                         }
                         _ => self.coerce_borrowed_object(a, sty_a, b, m)
                     }
@@ -260,14 +260,14 @@ impl<'f> Coerce<'f> {
                b.inf_str(self.get_ref().infcx));
 
         match *sty_a {
-            ty::ty_str(vstore_uniq) => {}
+            ty::ty_str(VstoreUniq) => {}
             _ => {
                 return self.subtype(a, b);
             }
         };
 
         let r_a = self.get_ref().infcx.next_region_var(Coercion(self.get_ref().trace));
-        let a_borrowed = ty::mk_str(self.get_ref().infcx.tcx, vstore_slice(r_a));
+        let a_borrowed = ty::mk_str(self.get_ref().infcx.tcx, VstoreSlice(r_a, ()));
         if_ok!(self.subtype(a_borrowed, b));
         Ok(Some(@AutoDerefRef(AutoDerefRef {
             autoderefs: 0,
@@ -279,7 +279,7 @@ impl<'f> Coerce<'f> {
                                   a: ty::t,
                                   sty_a: &ty::sty,
                                   b: ty::t,
-                                  mt_b: ty::mt)
+                                  mutbl_b: ast::Mutability)
                                   -> CoerceResult {
         debug!("coerce_borrowed_vector(a={}, sty_a={:?}, b={})",
                a.inf_str(self.get_ref().infcx), sty_a,
@@ -288,19 +288,18 @@ impl<'f> Coerce<'f> {
         let sub = Sub(*self.get_ref());
         let r_borrow = self.get_ref().infcx.next_region_var(Coercion(self.get_ref().trace));
         let ty_inner = match *sty_a {
-            ty::ty_vec(mt, _) => mt.ty,
+            ty::ty_vec(ty, _) => ty,
             _ => {
                 return self.subtype(a, b);
             }
         };
 
-        let a_borrowed = ty::mk_vec(self.get_ref().infcx.tcx,
-                                    mt {ty: ty_inner, mutbl: mt_b.mutbl},
-                                    vstore_slice(r_borrow));
+        let a_borrowed = ty::mk_vec(self.get_ref().infcx.tcx, ty_inner,
+                                    VstoreSlice(r_borrow, mutbl_b));
         if_ok!(sub.tys(a_borrowed, b));
         Ok(Some(@AutoDerefRef(AutoDerefRef {
             autoderefs: 0,
-            autoref: Some(AutoBorrowVec(r_borrow, mt_b.mutbl))
+            autoref: Some(AutoBorrowVec(r_borrow, mutbl_b))
         })))
     }
 
@@ -320,7 +319,7 @@ impl<'f> Coerce<'f> {
         let a_borrowed = match *sty_a {
             ty::ty_trait(~ty::TyTrait { def_id, ref substs, bounds, .. }) => {
                 ty::mk_trait(tcx, def_id, substs.clone(),
-                             ty::RegionTraitStore(r_a), b_mutbl, bounds)
+                             ty::RegionTraitStore(r_a, b_mutbl), bounds)
             }
             _ => {
                 return self.subtype(a, b);
@@ -442,21 +441,13 @@ impl<'f> Coerce<'f> {
                          trait_def_id: ast::DefId,
                          trait_substs: &ty::substs,
                          trait_store: ty::TraitStore,
-                         m: ast::Mutability,
                          bounds: ty::BuiltinBounds) -> CoerceResult {
 
         debug!("coerce_object(a={}, sty_a={:?}, b={})",
                a.inf_str(self.get_ref().infcx), sty_a,
                b.inf_str(self.get_ref().infcx));
 
-        let (sigil, region) = match trait_store {
-            ty::UniqTraitStore => (ast::OwnedSigil, None),
-            ty::RegionTraitStore(region) => (ast::BorrowedSigil, Some(region))
-        };
-
-        let adjustment = @ty::AutoObject(sigil, region, m, bounds,
-                                         trait_def_id, trait_substs.clone());
-
-        Ok(Some(adjustment))
+        Ok(Some(@ty::AutoObject(trait_store, bounds,
+                                trait_def_id, trait_substs.clone())))
     }
 }

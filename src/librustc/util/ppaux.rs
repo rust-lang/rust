@@ -198,36 +198,14 @@ pub fn mutability_to_str(m: ast::Mutability) -> ~str {
 }
 
 pub fn mt_to_str(cx: &ctxt, m: &mt) -> ~str {
-    mt_to_str_wrapped(cx, "", m, "")
-}
-
-pub fn mt_to_str_wrapped(cx: &ctxt, before: &str, m: &mt, after: &str) -> ~str {
-    let mstr = mutability_to_str(m.mutbl);
-    return format!("{}{}{}{}", mstr, before, ty_to_str(cx, m.ty), after);
-}
-
-pub fn vstore_to_str(cx: &ctxt, vs: ty::vstore) -> ~str {
-    match vs {
-      ty::vstore_fixed(n) => format!("{}", n),
-      ty::vstore_uniq => ~"~",
-      ty::vstore_slice(r) => region_ptr_to_str(cx, r)
-    }
+    format!("{}{}", mutability_to_str(m.mutbl), ty_to_str(cx, m.ty))
 }
 
 pub fn trait_store_to_str(cx: &ctxt, s: ty::TraitStore) -> ~str {
     match s {
-      ty::UniqTraitStore => ~"~",
-      ty::RegionTraitStore(r) => region_ptr_to_str(cx, r)
-    }
-}
-
-pub fn vstore_ty_to_str(cx: &ctxt, mt: &mt, vs: ty::vstore) -> ~str {
-    match vs {
-        ty::vstore_fixed(_) => {
-            format!("[{}, .. {}]", mt_to_str(cx, mt), vstore_to_str(cx, vs))
-        }
-        _ => {
-            format!("{}{}", vstore_to_str(cx, vs), mt_to_str_wrapped(cx, "[", mt, "]"))
+        ty::UniqTraitStore => ~"~",
+        ty::RegionTraitStore(r, m) => {
+            format!("{}{}", region_ptr_to_str(cx, r), mutability_to_str(m))
         }
     }
 }
@@ -435,20 +413,32 @@ pub fn ty_to_str(cx: &ctxt, typ: t) -> ~str {
                       false)
       }
       ty_trait(~ty::TyTrait {
-          def_id: did, ref substs, store: s, mutability: mutbl, ref bounds
+          def_id: did, ref substs, store, ref bounds
       }) => {
         let base = ty::item_path_str(cx, did);
         let ty = parameterized(cx, base, &substs.regions,
                                substs.tps.as_slice(), did, true);
         let bound_sep = if bounds.is_empty() { "" } else { ":" };
         let bound_str = bounds.repr(cx);
-        format!("{}{}{}{}{}", trait_store_to_str(cx, s), mutability_to_str(mutbl), ty,
-                           bound_sep, bound_str)
+        format!("{}{}{}{}", trait_store_to_str(cx, store), ty, bound_sep, bound_str)
       }
-      ty_vec(ref mt, vs) => {
-        vstore_ty_to_str(cx, mt, vs)
+      ty_vec(ty, vs) => {
+        match vs {
+            ty::VstoreFixed(n) => {
+                format!("[{}, .. {}]", ty_to_str(cx, ty), n)
+            }
+            _ => {
+                format!("{}[{}]", vs.repr(cx), ty_to_str(cx, ty))
+            }
+        }
       }
-      ty_str(vs) => format!("{}{}", vstore_to_str(cx, vs), "str")
+      ty_str(vs) => {
+        match vs {
+            ty::VstoreFixed(n) => format!("str/{}", n),
+            ty::VstoreUniq => ~"~str",
+            ty::VstoreSlice(r, ()) => format!("{}str", region_ptr_to_str(cx, r))
+        }
+      }
     }
 }
 
@@ -881,16 +871,29 @@ impl Repr for ty::RegionVid {
 
 impl Repr for ty::TraitStore {
     fn repr(&self, tcx: &ctxt) -> ~str {
-        match self {
-            &ty::UniqTraitStore => ~"~Trait",
-            &ty::RegionTraitStore(r) => format!("&{} Trait", r.repr(tcx))
+        trait_store_to_str(tcx, *self)
+    }
+}
+
+impl Repr for ty::Vstore {
+    fn repr(&self, tcx: &ctxt) -> ~str {
+        match *self {
+            ty::VstoreFixed(n) => format!("{}", n),
+            ty::VstoreUniq => ~"~",
+            ty::VstoreSlice(r, m) => {
+                format!("{}{}", region_ptr_to_str(tcx, r), mutability_to_str(m))
+            }
         }
     }
 }
 
-impl Repr for ty::vstore {
+impl Repr for ty::Vstore<()> {
     fn repr(&self, tcx: &ctxt) -> ~str {
-        vstore_to_str(tcx, *self)
+        match *self {
+            ty::VstoreFixed(n) => format!("{}", n),
+            ty::VstoreUniq => ~"~",
+            ty::VstoreSlice(r, ()) => region_ptr_to_str(tcx, r)
+        }
     }
 }
 

@@ -204,14 +204,17 @@ fn enc_bound_region(w: &mut MemWriter, cx: &ctxt, br: ty::BoundRegion) {
     }
 }
 
-pub fn enc_vstore(w: &mut MemWriter, cx: &ctxt, v: ty::vstore) {
+pub fn enc_vstore<M>(w: &mut MemWriter, cx: &ctxt,
+                     v: ty::Vstore<M>,
+                     enc_mut: |&mut MemWriter, M|) {
     mywrite!(w, "/");
     match v {
-        ty::vstore_fixed(u) => mywrite!(w, "{}|", u),
-        ty::vstore_uniq => mywrite!(w, "~"),
-        ty::vstore_slice(r) => {
+        ty::VstoreFixed(u) => mywrite!(w, "{}|", u),
+        ty::VstoreUniq => mywrite!(w, "~"),
+        ty::VstoreSlice(r, m) => {
             mywrite!(w, "&");
             enc_region(w, cx, r);
+            enc_mut(w, m);
         }
     }
 }
@@ -224,9 +227,10 @@ pub fn enc_trait_ref(w: &mut MemWriter, cx: &ctxt, s: &ty::TraitRef) {
 pub fn enc_trait_store(w: &mut MemWriter, cx: &ctxt, s: ty::TraitStore) {
     match s {
         ty::UniqTraitStore => mywrite!(w, "~"),
-        ty::RegionTraitStore(re) => {
+        ty::RegionTraitStore(re, m) => {
             mywrite!(w, "&");
             enc_region(w, cx, re);
+            enc_mutability(w, m);
         }
     }
 }
@@ -266,11 +270,10 @@ fn enc_sty(w: &mut MemWriter, cx: &ctxt, st: &ty::sty) {
             enc_substs(w, cx, substs);
             mywrite!(w, "]");
         }
-        ty::ty_trait(~ty::TyTrait { def_id, ref substs, store, mutability, bounds }) => {
+        ty::ty_trait(~ty::TyTrait { def_id, ref substs, store, bounds }) => {
             mywrite!(w, "x[{}|", (cx.ds)(def_id));
             enc_substs(w, cx, substs);
             enc_trait_store(w, cx, store);
-            enc_mutability(w, mutability);
             let bounds = ty::ParamBounds {builtin_bounds: bounds,
                                           trait_bounds: Vec::new()};
             enc_bounds(w, cx, &bounds);
@@ -289,14 +292,14 @@ fn enc_sty(w: &mut MemWriter, cx: &ctxt, st: &ty::sty) {
             enc_region(w, cx, r);
             enc_mt(w, cx, mt);
         }
-        ty::ty_vec(mt, v) => {
+        ty::ty_vec(ty, v) => {
             mywrite!(w, "V");
-            enc_mt(w, cx, mt);
-            enc_vstore(w, cx, v);
+            enc_ty(w, cx, ty);
+            enc_vstore(w, cx, v, enc_mutability);
         }
         ty::ty_str(v) => {
             mywrite!(w, "v");
-            enc_vstore(w, cx, v);
+            enc_vstore(w, cx, v, |_, ()| {});
         }
         ty::ty_closure(ref f) => {
             mywrite!(w, "f");

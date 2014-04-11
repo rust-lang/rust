@@ -146,27 +146,28 @@ fn parse_sigil(st: &mut PState) -> ast::Sigil {
     }
 }
 
-fn parse_vstore(st: &mut PState, conv: conv_did) -> ty::vstore {
+fn parse_vstore<M>(st: &mut PState, conv: conv_did,
+                   parse_mut: |&mut PState| -> M) -> ty::Vstore<M> {
     assert_eq!(next(st), '/');
 
     let c = peek(st);
     if '0' <= c && c <= '9' {
         let n = parse_uint(st);
         assert_eq!(next(st), '|');
-        return ty::vstore_fixed(n);
+        return ty::VstoreFixed(n);
     }
 
     match next(st) {
-      '~' => ty::vstore_uniq,
-      '&' => ty::vstore_slice(parse_region(st, conv)),
-      c => st.tcx.sess.bug(format!("parse_vstore(): bad input '{}'", c))
+        '~' => ty::VstoreUniq,
+        '&' => ty::VstoreSlice(parse_region(st, conv), parse_mut(st)),
+        c => st.tcx.sess.bug(format!("parse_vstore(): bad input '{}'", c))
     }
 }
 
 fn parse_trait_store(st: &mut PState, conv: conv_did) -> ty::TraitStore {
     match next(st) {
         '~' => ty::UniqTraitStore,
-        '&' => ty::RegionTraitStore(parse_region(st, conv)),
+        '&' => ty::RegionTraitStore(parse_region(st, conv), parse_mutability(st)),
         c => st.tcx.sess.bug(format!("parse_trait_store(): bad input '{}'", c))
     }
 }
@@ -328,10 +329,9 @@ fn parse_ty(st: &mut PState, conv: conv_did) -> ty::t {
         let def = parse_def(st, NominalType, |x,y| conv(x,y));
         let substs = parse_substs(st, |x,y| conv(x,y));
         let store = parse_trait_store(st, |x,y| conv(x,y));
-        let mt = parse_mutability(st);
         let bounds = parse_bounds(st, |x,y| conv(x,y));
         assert_eq!(next(st), ']');
-        return ty::mk_trait(st.tcx, def, substs, store, mt, bounds.builtin_bounds);
+        return ty::mk_trait(st.tcx, def, substs, store, bounds.builtin_bounds);
       }
       'p' => {
         let did = parse_def(st, TypeParameter, |x,y| conv(x,y));
@@ -351,12 +351,12 @@ fn parse_ty(st: &mut PState, conv: conv_did) -> ty::t {
         return ty::mk_rptr(st.tcx, r, mt);
       }
       'V' => {
-        let mt = parse_mt(st, |x,y| conv(x,y));
-        let v = parse_vstore(st, |x,y| conv(x,y));
-        return ty::mk_vec(st.tcx, mt, v);
+        let ty = parse_ty(st, |x,y| conv(x,y));
+        let v = parse_vstore(st, |x,y| conv(x,y), parse_mutability);
+        return ty::mk_vec(st.tcx, ty, v);
       }
       'v' => {
-        let v = parse_vstore(st, |x,y| conv(x,y));
+        let v = parse_vstore(st, |x,y| conv(x,y), |_| ());
         return ty::mk_str(st.tcx, v);
       }
       'T' => {

@@ -54,7 +54,7 @@ impl<'a> Reflector<'a> {
         // We're careful to not use first class aggregates here because that
         // will kick us off fast isel. (Issue #4352.)
         let bcx = self.bcx;
-        let str_vstore = ty::vstore_slice(ty::ReStatic);
+        let str_vstore = ty::VstoreSlice(ty::ReStatic, ());
         let str_ty = ty::mk_str(bcx.tcx(), str_vstore);
         let scratch = rvalue_scratch_datum(bcx, str_ty, "");
         let len = C_uint(bcx.ccx(), s.get().len());
@@ -121,17 +121,17 @@ impl<'a> Reflector<'a> {
         self.visit("leave_" + bracket_name, extra);
     }
 
-    pub fn vstore_name_and_extra(&mut self,
-                                 t: ty::t,
-                                 vstore: ty::vstore)
-                                 -> (~str, Vec<ValueRef> ) {
+    pub fn vstore_name_and_extra<M>(&mut self,
+                                    t: ty::t,
+                                    vstore: ty::Vstore<M>)
+                                    -> (~str, Vec<ValueRef> ) {
         match vstore {
-            ty::vstore_fixed(n) => {
+            ty::VstoreFixed(n) => {
                 let extra = (vec!(self.c_uint(n))).append(self.c_size_and_align(t).as_slice());
                 (~"fixed", extra)
             }
-            ty::vstore_slice(_) => (~"slice", Vec::new()),
-            ty::vstore_uniq => (~"uniq", Vec::new()),
+            ty::VstoreSlice(..) => (~"slice", Vec::new()),
+            ty::VstoreUniq => (~"uniq", Vec::new()),
         }
     }
 
@@ -168,9 +168,15 @@ impl<'a> Reflector<'a> {
               let (name, extra) = self.vstore_name_and_extra(t, vst);
               self.visit(~"estr_" + name, extra.as_slice())
           }
-          ty::ty_vec(ref mt, vst) => {
+          ty::ty_vec(ty, vst) => {
               let (name, extra) = self.vstore_name_and_extra(t, vst);
-              let extra = extra.append(self.c_mt(mt).as_slice());
+              let extra = extra.append(self.c_mt(&ty::mt {
+                  ty: ty,
+                  mutbl: match vst {
+                      ty::VstoreSlice(_, m) => m,
+                      _ => ast::MutImmutable
+                  }
+              }).as_slice());
               self.visit(~"evec_" + name, extra.as_slice())
           }
           // Should remove mt from box and uniq.
