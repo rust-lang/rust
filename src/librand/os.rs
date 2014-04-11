@@ -13,7 +13,7 @@
 
 pub use self::imp::OSRng;
 
-#[cfg(unix)]
+#[cfg(unix,not(target_os = "macos", target_arch = "arm"))]
 mod imp {
     use Rng;
     use reader::ReaderRng;
@@ -26,7 +26,7 @@ mod imp {
     ///   `/dev/urandom`.
     /// - Windows: calls `CryptGenRandom`, using the default cryptographic
     ///   service provider with the `PROV_RSA_FULL` type.
-    ///
+    /// - iOS: calls SecRandomCopyBytes as /dev/(u)random is sandboxed
     /// This does not block.
     #[cfg(unix)]
     pub struct OSRng {
@@ -52,6 +52,59 @@ mod imp {
         }
         fn fill_bytes(&mut self, v: &mut [u8]) {
             self.inner.fill_bytes(v)
+        }
+    }
+}
+
+#[cfg(target_os = "macos", target_arch = "arm")]
+#[link(name = "Security.framework")]
+mod imp {
+    extern crate libc;
+
+    use Rng;
+    use std::cast;
+    use std::io::{IoResult};
+    use std::os;
+    use self::libc::{c_int, size_t, c_uint};
+
+    pub struct OSRng;
+
+    static kSecRandomDefault: c_uint = 0;
+
+    extern "C" {
+        fn SecRandomCopyBytes(rnd: c_uint, count: size_t, bytes: *mut u8) -> c_int;
+    }
+
+    impl OSRng {
+        /// Create a new `OSRng`.
+        pub fn new() -> IoResult<OSRng> {
+            Ok(OSRng)
+        }
+    }
+
+    impl Rng for OSRng {
+        fn next_u32(&mut self) -> u32 {
+            let mut v = [0u8, .. 4];
+            self.fill_bytes(v);
+            unsafe { cast::transmute(v) }
+        }
+        fn next_u64(&mut self) -> u64 {
+            let mut v = [0u8, .. 8];
+            self.fill_bytes(v);
+            unsafe { cast::transmute(v) }
+        }
+        fn fill_bytes(&mut self, v: &mut [u8]) {
+            let ret = unsafe {
+                SecRandomCopyBytes(kSecRandomDefault, v.len() as size_t, v.as_mut_ptr())
+            };
+            if ret == -1 {
+                fail!("couldn't generate random bytes: {}", os::last_os_error());
+            }
+        }
+    }
+
+    impl Drop for OSRng {
+        fn drop(&mut self) {
         }
     }
 }
