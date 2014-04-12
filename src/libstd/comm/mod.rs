@@ -496,7 +496,7 @@ impl<T: Send> Sender<T> {
                                 // This send cannot fail because the task is
                                 // asleep (we're looking at it), so the receiver
                                 // can't go away.
-                                (*a.get()).send(t).unwrap();
+                                (*a.get()).send(t).ok().unwrap();
                                 task.wake().map(|t| t.reawaken());
                                 (a, Ok(()))
                             }
