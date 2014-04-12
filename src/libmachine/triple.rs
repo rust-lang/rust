@@ -250,14 +250,13 @@ impl cmp::Eq for Triple {
 
 #[cfg(test)]
 mod test {
-    use super::{Triple, Known,
+    use super::{Triple,
                 UnknownVendor,
                 GnuEnv, GnuDefault,
                 AndroidEAbiEnv, MsvcEnv};
     use abi;
     use std::to_str::ToStr;
     use std::from_str::FromStr;
-    use std::fmt::Show;
 
     #[test]
     fn x86_64_unknown_linux_gnu() {
@@ -322,7 +321,7 @@ mod test {
     #[test] #[should_fail]
     fn unknownarch_unknown_linux_gnu() {
         let original = "unknownarch-unknown-linux-gnu";
-        let triple: Triple = FromStr::from_str(original).unwrap();
+        let _: Triple = FromStr::from_str(original).unwrap();
     }
     #[test]
     fn x86_64_ununknown_linux_gnu() {
@@ -383,11 +382,11 @@ mod test {
     #[test] #[should_fail]
     fn blank() {
         let original = "";
-        let triple: Triple = FromStr::from_str(original).unwrap();
+        let _: Triple = FromStr::from_str(original).unwrap();
     }
     #[test] #[should_fail]
     fn blank_hyphen() {
         let original = "-";
-        let triple: Triple = FromStr::from_str(original).unwrap();
+        let _: Triple = FromStr::from_str(original).unwrap();
     }
 }
