@@ -137,7 +137,7 @@ mod test {
         let rx1 = timer.oneshot(10000);
         let rx = timer.oneshot(1);
         rx.recv();
-        assert_eq!(rx1.recv_opt(), None);
+        assert_eq!(rx1.recv_opt(), Err(()));
     })
 
     iotest!(fn test_io_timer_oneshot_then_sleep() {
@@ -145,7 +145,7 @@ mod test {
         let rx = timer.oneshot(100000000000);
         timer.sleep(1); // this should inalidate rx
 
-        assert_eq!(rx.recv_opt(), None);
+        assert_eq!(rx.recv_opt(), Err(()));
     })
 
     iotest!(fn test_io_timer_sleep_periodic() {
@@ -170,11 +170,11 @@ mod test {
 
         let rx = timer.oneshot(1);
         rx.recv();
-        assert!(rx.recv_opt().is_none());
+        assert!(rx.recv_opt().is_err());
 
         let rx = timer.oneshot(1);
         rx.recv();
-        assert!(rx.recv_opt().is_none());
+        assert!(rx.recv_opt().is_err());
     })
 
     iotest!(fn override() {
@@ -182,8 +182,8 @@ mod test {
         let orx = timer.oneshot(100);
         let prx = timer.periodic(100);
         timer.sleep(1);
-        assert_eq!(orx.recv_opt(), None);
-        assert_eq!(prx.recv_opt(), None);
+        assert_eq!(orx.recv_opt(), Err(()));
+        assert_eq!(prx.recv_opt(), Err(()));
         timer.oneshot(1).recv();
     })
 
@@ -226,7 +226,7 @@ mod test {
         let timer_rx = timer.periodic(1000);
 
         spawn(proc() {
-            timer_rx.recv_opt();
+            let _ = timer_rx.recv_opt();
         });
 
         // when we drop the TimerWatcher we're going to destroy the channel,
@@ -239,7 +239,7 @@ mod test {
         let timer_rx = timer.periodic(1000);
 
         spawn(proc() {
-            timer_rx.recv_opt();
+            let _ = timer_rx.recv_opt();
         });
 
         timer.oneshot(1);
@@ -251,7 +251,7 @@ mod test {
         let timer_rx = timer.periodic(1000);
 
         spawn(proc() {
-            timer_rx.recv_opt();
+            let _ = timer_rx.recv_opt();
         });
 
         timer.sleep(1);
@@ -262,7 +262,7 @@ mod test {
             let mut timer = Timer::new().unwrap();
             timer.oneshot(1000)
         };
-        assert_eq!(rx.recv_opt(), None);
+        assert_eq!(rx.recv_opt(), Err(()));
     })
 
     iotest!(fn sender_goes_away_period() {
@@ -270,7 +270,7 @@ mod test {
             let mut timer = Timer::new().unwrap();
             timer.periodic(1000)
         };
-        assert_eq!(rx.recv_opt(), None);
+        assert_eq!(rx.recv_opt(), Err(()));
     })
 
     iotest!(fn receiver_goes_away_oneshot() {

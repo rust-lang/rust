@@ -28,7 +28,6 @@
 //!
 //! As with timer_other, all units in this file are in units of millseconds.
 
-use std::comm::Data;
 use libc;
 use std::ptr;
 use std::os;
@@ -107,7 +106,7 @@ fn helper(input: libc::c_int, messages: Receiver<Req>) {
                     match list.as_slice().bsearch(|&(f, _, _)| f.cmp(&fd)) {
                         Some(i) => {
                             let (_, ref c, oneshot) = *list.get(i);
-                            (!c.try_send(()) || oneshot, i)
+                            (c.send_opt(()).is_err() || oneshot, i)
                         }
                         None => fail!("fd not active: {}", fd),
                     }
@@ -121,7 +120,7 @@ fn helper(input: libc::c_int, messages: Receiver<Req>) {
 
         while incoming {
             match messages.try_recv() {
-                Data(NewTimer(fd, chan, one, timeval)) => {
+                Ok(NewTimer(fd, chan, one, timeval)) => {
                     // acknowledge we have the new channel, we will never send
                     // another message to the old channel
                     chan.send(());
@@ -149,7 +148,7 @@ fn helper(input: libc::c_int, messages: Receiver<Req>) {
                     assert_eq!(ret, 0);
                 }
 
-                Data(RemoveTimer(fd, chan)) => {
+                Ok(RemoveTimer(fd, chan)) => {
                     match list.as_slice().bsearch(|&(f, _, _)| f.cmp(&fd)) {
                         Some(i) => {
                             drop(list.remove(i));
@@ -160,7 +159,7 @@ fn helper(input: libc::c_int, messages: Receiver<Req>) {
                     chan.send(());
                 }
 
-                Data(Shutdown) => {
+                Ok(Shutdown) => {
                     assert!(list.len() == 0);
                     break 'outer;
                 }

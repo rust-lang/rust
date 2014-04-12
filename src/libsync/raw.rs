@@ -16,7 +16,6 @@
 //! containing data.
 
 use std::cast;
-use std::comm;
 use std::kinds::marker;
 use std::mem::replace;
 use std::sync::atomics;
@@ -46,10 +45,10 @@ impl WaitQueue {
     // Signals one live task from the queue.
     fn signal(&self) -> bool {
         match self.head.try_recv() {
-            comm::Data(ch) => {
+            Ok(ch) => {
                 // Send a wakeup signal. If the waiter was killed, its port will
                 // have closed. Keep trying until we get a live task.
-                if ch.try_send(()) {
+                if ch.send_opt(()).is_ok() {
                     true
                 } else {
                     self.signal()
@@ -63,8 +62,8 @@ impl WaitQueue {
         let mut count = 0;
         loop {
             match self.head.try_recv() {
-                comm::Data(ch) => {
-                    if ch.try_send(()) {
+                Ok(ch) => {
+                    if ch.send_opt(()).is_ok() {
                         count += 1;
                     }
                 }
@@ -76,7 +75,7 @@ impl WaitQueue {
 
     fn wait_end(&self) -> WaitEnd {
         let (signal_end, wait_end) = channel();
-        assert!(self.tail.try_send(signal_end));
+        self.tail.send(signal_end);
         wait_end
     }
 }
