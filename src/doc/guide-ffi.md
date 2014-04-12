@@ -11,14 +11,16 @@ snappy includes a C interface (documented in
 The following is a minimal example of calling a foreign function which will
 compile if snappy is installed:
 
-~~~~ {.ignore}
+~~~~
 extern crate libc;
 use libc::size_t;
 
 #[link(name = "snappy")]
+# #[cfg(ignore_this)]
 extern {
     fn snappy_max_compressed_length(source_length: size_t) -> size_t;
 }
+# unsafe fn snappy_max_compressed_length(a: size_t) -> size_t { a }
 
 fn main() {
     let x = unsafe { snappy_max_compressed_length(100) };
@@ -78,7 +80,11 @@ vectors as pointers to memory. Rust's vectors are guaranteed to be a contiguous 
 length is number of elements currently contained, and the capacity is the total size in elements of
 the allocated memory. The length is less than or equal to the capacity.
 
-~~~~ {.ignore}
+~~~~
+# extern crate libc;
+# use libc::{c_int, size_t};
+# unsafe fn snappy_validate_compressed_buffer(_: *u8, _: size_t) -> c_int { 0 }
+# fn main() {}
 pub fn validate_compressed_buffer(src: &[u8]) -> bool {
     unsafe {
         snappy_validate_compressed_buffer(src.as_ptr(), src.len() as size_t) == 0
@@ -98,14 +104,20 @@ required capacity to hold the compressed output. The vector can then be passed t
 `snappy_compress` function as an output parameter. An output parameter is also passed to retrieve
 the true length after compression for setting the length.
 
-~~~~ {.ignore}
-pub fn compress(src: &[u8]) -> ~[u8] {
+~~~~
+# extern crate libc;
+# use libc::{size_t, c_int};
+# unsafe fn snappy_compress(a: *u8, b: size_t, c: *mut u8,
+#                           d: *mut size_t) -> c_int { 0 }
+# unsafe fn snappy_max_compressed_length(a: size_t) -> size_t { a }
+# fn main() {}
+pub fn compress(src: &[u8]) -> Vec<u8> {
     unsafe {
         let srclen = src.len() as size_t;
         let psrc = src.as_ptr();
 
         let mut dstlen = snappy_max_compressed_length(srclen);
-        let mut dst = slice::with_capacity(dstlen as uint);
+        let mut dst = Vec::with_capacity(dstlen as uint);
         let pdst = dst.as_mut_ptr();
 
         snappy_compress(psrc, srclen, pdst, &mut dstlen);
@@ -118,8 +130,18 @@ pub fn compress(src: &[u8]) -> ~[u8] {
 Decompression is similar, because snappy stores the uncompressed size as part of the compression
 format and `snappy_uncompressed_length` will retrieve the exact buffer size required.
 
-~~~~ {.ignore}
-pub fn uncompress(src: &[u8]) -> Option<~[u8]> {
+~~~~
+# extern crate libc;
+# use libc::{size_t, c_int};
+# unsafe fn snappy_uncompress(compressed: *u8,
+#                             compressed_length: size_t,
+#                             uncompressed: *mut u8,
+#                             uncompressed_length: *mut size_t) -> c_int { 0 }
+# unsafe fn snappy_uncompressed_length(compressed: *u8,
+#                                      compressed_length: size_t,
+#                                      result: *mut size_t) -> c_int { 0 }
+# fn main() {}
+pub fn uncompress(src: &[u8]) -> Option<Vec<u8>> {
     unsafe {
         let srclen = src.len() as size_t;
         let psrc = src.as_ptr();
@@ -127,7 +149,7 @@ pub fn uncompress(src: &[u8]) -> Option<~[u8]> {
         let mut dstlen: size_t = 0;
         snappy_uncompressed_length(psrc, srclen, &mut dstlen);
 
-        let mut dst = slice::with_capacity(dstlen as uint);
+        let mut dst = Vec::with_capacity(dstlen as uint);
         let pdst = dst.as_mut_ptr();
 
         if snappy_uncompress(psrc, srclen, pdst, &mut dstlen) == 0 {
@@ -187,16 +209,19 @@ A basic example is:
 
 Rust code:
 
-~~~~ {.ignore}
+~~~~
 extern fn callback(a:i32) {
     println!("I'm called from C with value {0}", a);
 }
 
 #[link(name = "extlib")]
+# #[cfg(ignore)]
 extern {
-   fn register_callback(cb: extern "C" fn(i32)) -> i32;
+   fn register_callback(cb: extern fn(i32)) -> i32;
    fn trigger_callback();
 }
+# unsafe fn register_callback(cb: extern fn(i32)) -> i32 { 0 }
+# unsafe fn trigger_callback() { }
 
 fn main() {
     unsafe {
@@ -240,33 +265,39 @@ referenced Rust object.
 
 Rust code:
 
-~~~~ {.ignore}
+~~~~
 
 struct RustObject {
     a: i32,
     // other members
 }
 
-extern fn callback(target: *RustObject, a:i32) {
+extern fn callback(target: *mut RustObject, a:i32) {
     println!("I'm called from C with value {0}", a);
-    (*target).a = a; // Update the value in RustObject with the value received from the callback
+    unsafe {
+        // Update the value in RustObject with the value received from the callback
+        (*target).a = a;
+    }
 }
 
 #[link(name = "extlib")]
+# #[cfg(ignore)]
 extern {
-   fn register_callback(target: *RustObject, cb: extern "C" fn(*RustObject, i32)) -> i32;
+   fn register_callback(target: *mut RustObject,
+                        cb: extern fn(*mut RustObject, i32)) -> i32;
    fn trigger_callback();
 }
+# unsafe fn register_callback(a: *mut RustObject,
+#                             b: extern fn(*mut RustObject, i32)) -> i32 { 0 }
+# unsafe fn trigger_callback() {}
 
 fn main() {
     // Create the object that will be referenced in the callback
-    let rust_object = ~RustObject{a: 5, ...};
+    let mut rust_object = ~RustObject{ a: 5 };
 
     unsafe {
-        // Gets a raw pointer to the object
-        let target_addr:*RustObject = ptr::to_unsafe_ptr(rust_object);
-        register_callback(target_addr, callback);
-        trigger_callback(); // Triggers the callback
+        register_callback(&mut *rust_object, callback);
+        trigger_callback();
     }
 }
 ~~~~
@@ -403,13 +434,15 @@ Foreign APIs often export a global variable which could do something like track
 global state. In order to access these variables, you declare them in `extern`
 blocks with the `static` keyword:
 
-~~~{.ignore}
+~~~
 extern crate libc;
 
 #[link(name = "readline")]
+# #[cfg(ignore)]
 extern {
     static rl_readline_version: libc::c_int;
 }
+# static rl_readline_version: libc::c_int = 0;
 
 fn main() {
     println!("You have readline version {} installed.",
@@ -421,21 +454,23 @@ Alternatively, you may need to alter global state provided by a foreign
 interface. To do this, statics can be declared with `mut` so rust can mutate
 them.
 
-~~~{.ignore}
+~~~
 extern crate libc;
 use std::ptr;
 
 #[link(name = "readline")]
+# #[cfg(ignore)]
 extern {
     static mut rl_prompt: *libc::c_char;
 }
+# static mut rl_prompt: *libc::c_char = 0 as *libc::c_char;
 
 fn main() {
-    do "[my-awesome-shell] $".as_c_str |buf| {
+    "[my-awesome-shell] $".with_c_str(|buf| {
         unsafe { rl_prompt = buf; }
         // get a line, process it
         unsafe { rl_prompt = ptr::null(); }
-    }
+    });
 }
 ~~~
 
