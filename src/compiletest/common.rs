@@ -118,3 +118,8 @@ impl config {
     }
 }
 
+#[deriving(Clone, Eq, Hash, TotalEq)]
+pub enum BuildFor {
+    TargetBuild,
+    HostBuild,
+}

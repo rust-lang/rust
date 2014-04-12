@@ -13,6 +13,7 @@ use common::mode_compile_fail;
 use common::mode_pretty;
 use common::mode_run_fail;
 use common::mode_run_pass;
+use common::{BuildFor, TargetBuild, HostBuild};
 use errors;
 use header::TestProps;
 use header::load_props;
@@ -669,6 +670,7 @@ fn compile_test_(config: &config, props: &TestProps,
     // FIXME (#9639): This needs to handle non-utf8 paths
     let link_args = vec!(~"-L", aux_dir.as_str().unwrap().to_owned());
     let args = make_compile_args(config,
+                                 TargetBuild,
                                  props,
                                  link_args.append(extra_args),
                                  |a, b| ThisFile(make_exe_name(a, b)), testfile);
@@ -766,7 +768,7 @@ fn compose_and_run_compiler(
                                      config.compile_lib_path, None);
         if !auxres.status.success() {
             fatal_ProcRes(
-                format!("auxiliary build of {} failed to compile (target): ",
+                format!("auxiliary build of {} failed to compile (host): ",
                      abs_ab.display()),
                 &auxres);
         }
@@ -802,16 +804,16 @@ enum TargetLocation {
 }
 
 fn make_compile_args(config: &config,
+                     build_for: BuildFor,
                      props: &TestProps,
                      extras: Vec<~str> ,
                      xform: |&config, &Path| -> TargetLocation,
                      testfile: &Path)
                      -> ProcArgs {
     let xform_file = xform(config, testfile);
-    let target = if props.force_host {
-        config.host.as_slice()
-    } else {
-        config.target.as_slice()
+    let target = match build_for {
+        TargetBuild => config.target.full.as_slice(),
+        HostBuild   => config.host.full.as_slice(),
     };
     // FIXME (#9639): This needs to handle non-utf8 paths
     let mut args = vec!(testfile.as_str().unwrap().to_owned(),
@@ -827,11 +829,10 @@ fn make_compile_args(config: &config,
         ThisDirectory(path) => { args.push(~"--out-dir"); path }
     };
     args.push(path.as_str().unwrap().to_owned());
-    if props.force_host {
-        args.push_all_move(split_maybe_args(&config.host_rustcflags));
-    } else {
-        args.push_all_move(split_maybe_args(&config.target_rustcflags));
-    }
+    match build_for {
+        HostBuild => args.push_all_move(split_maybe_args(&config.host_rustcflags)),
+        TargetBuild => args.push_all_move(split_maybe_args(&config.target_rustcflags)),
+    };
     args.push_all_move(split_maybe_args(&props.compile_flags));
     return ProcArgs {prog: config.rustc_path.as_str().unwrap().to_owned(), args: args};
 }
@@ -1126,6 +1127,7 @@ fn compile_test_and_save_bitcode(config: &config, props: &TestProps,
     let link_args = vec!(~"-L", aux_dir.as_str().unwrap().to_owned());
     let llvm_args = vec!(~"--emit=obj", ~"--crate-type=lib", ~"-C", ~"save-temps");
     let args = make_compile_args(config,
+                                 TargetBuild,
                                  props,
                                  link_args.append(llvm_args.as_slice()),
                                  |a, b| ThisFile(make_o_name(a, b)), testfile);
