@@ -21,11 +21,10 @@ use cast;
 use ops::Drop;
 use ptr::RawPtr;
 
-#[cfg(windows)]               // mingw-w32 doesn't like thread_local things
 #[cfg(target_os = "android")] // see #10686
 pub use self::native::*;
 
-#[cfg(not(windows), not(target_os = "android"))]
+#[cfg(not(target_os = "android"))]
 pub use self::compiled::*;
 
 /// Encapsulates a borrowed value. When this value goes out of scope, the
@@ -76,7 +75,7 @@ pub unsafe fn borrow<T>() -> Borrowed<T> {
 /// implemented using LLVM's thread_local attribute which isn't necessarily
 /// working on all platforms. This implementation is faster, however, so we use
 /// it wherever possible.
-#[cfg(not(windows), not(target_os = "android"))]
+#[cfg(not(target_os = "android"))]
 pub mod compiled {
     use cast;
     use option::{Option, Some, None};
