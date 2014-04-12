@@ -1332,7 +1332,6 @@ Traits are implemented for specific types through separate [implementations](#im
 ~~~~
 # type Surface = int;
 # type BoundingBox = int;
-
 trait Shape {
     fn draw(&self, Surface);
     fn bounding_box(&self) -> BoundingBox;
@@ -1363,7 +1362,6 @@ For example:
 ~~~~
 # type Surface = int;
 # trait Shape { fn draw(&self, Surface); }
-
 fn draw_twice<T: Shape>(surface: Surface, sh: T) {
     sh.draw(surface);
     sh.draw(surface);
@@ -1379,7 +1377,6 @@ to pointers to the trait name, used as a type.
 # trait Shape { }
 # impl Shape for int { }
 # let mycircle = 0;
-
 let myshape: ~Shape = ~mycircle as ~Shape;
 ~~~~
 
@@ -1440,7 +1437,6 @@ Likewise, supertrait methods may also be called on trait objects.
 # impl Shape for int { fn area(&self) -> f64 { 0.0 } }
 # impl Circle for int { fn radius(&self) -> f64 { 0.0 } }
 # let mycircle = 0;
-
 let mycircle: Circle = ~mycircle as ~Circle;
 let nonsense = mycircle.radius() * mycircle.area();
 ~~~~
@@ -1457,7 +1453,6 @@ Implementations are defined with the keyword `impl`.
 # struct BoundingBox {x: f64, y: f64, width: f64, height: f64};
 # trait Shape { fn draw(&self, Surface); fn bounding_box(&self) -> BoundingBox; }
 # fn do_draw_circle(s: Surface, c: Circle) { }
-
 struct Circle {
     radius: f64,
     center: Point,
@@ -1490,7 +1485,6 @@ Implementation parameters are written after the `impl` keyword.
 
 ~~~~
 # trait Seq<T> { }
-
 impl<T> Seq<T> for ~[T] {
    /* ... */
 }
@@ -3758,7 +3752,7 @@ initialized; this is enforced by the compiler.
 ### Owned boxes
 
 An  _owned box_ is a reference to a heap allocation holding another value, which is constructed
-by the prefix *tilde* sigil `~`
+by the prefix *tilde* sigil `~`.
 
 An example of an owned box type and value:
 
