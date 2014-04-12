@@ -118,7 +118,7 @@ PKG_EXE = dist/$(PKG_NAME)-install.exe
 %.ico: $(S)src/etc/pkg/%.ico
 	cp $< $@
 
-$(PKG_EXE): rust.iss modpath.iss LICENSE.txt rust-logo.ico \
+$(PKG_EXE): rust.iss modpath.iss upgrade.iss LICENSE.txt rust-logo.ico \
             $(CSREQ3_T_$(CFG_BUILD)_H_$(CFG_BUILD)) \
             dist-prepare-win
 	$(CFG_PYTHON) $(S)src/etc/copy-runtime-deps.py tmp/dist/win/bin

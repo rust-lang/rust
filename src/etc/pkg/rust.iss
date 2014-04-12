@@ -49,4 +49,15 @@ begin
 	setArrayLength(Result, 1)
 	Result[0] := ExpandConstant('{app}\bin');
 end;
+
 #include "modpath.iss"
+#include "upgrade.iss"
+
+// Both modpath.iss and upgrade.iss want to overload CurStepChanged.
+// This version does the overload then delegates to each.
+
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
+  UpgradeCurStepChanged(CurStep);
+  ModPathCurStepChanged(CurStep);
+end;
