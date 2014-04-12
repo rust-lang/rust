@@ -242,16 +242,17 @@ fn lookup_vtable(vcx: &VtableContext,
     // bounds to see if they include the trait we are looking for.
     let vtable_opt = match ty::get(ty).sty {
         ty::ty_param(param_ty {idx: n, ..}) => {
-            let type_param_bounds: &[@ty::TraitRef] =
-                vcx.param_env
-                   .type_param_bounds
-                   .get(n)
-                   .trait_bounds
-                   .as_slice();
-            lookup_vtable_from_bounds(vcx, span,
-                                      type_param_bounds,
-                                      param_numbered(n),
-                                      trait_ref)
+            let env_bounds = &vcx.param_env.type_param_bounds;
+            if env_bounds.len() > n {
+                let type_param_bounds: &[@ty::TraitRef] =
+                    env_bounds.get(n).trait_bounds.as_slice();
+                lookup_vtable_from_bounds(vcx, span,
+                                          type_param_bounds,
+                                          param_numbered(n),
+                                          trait_ref)
+            } else {
+                None
+            }
         }
 
         ty::ty_self(_) => {
