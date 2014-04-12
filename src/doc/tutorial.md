@@ -51,13 +51,13 @@ fragments of programs that don't compile on their own. To try them
 out, you might have to wrap them in `fn main() { ... }`, and make sure
 they don't contain references to names that aren't actually defined.
 
-> ***Warning:*** Rust is a language under ongoing development. Notes
+> *Warning:* Rust is a language under ongoing development. Notes
 > about potential changes to the language, implementation
 > deficiencies, and other caveats appear offset in blockquotes.
 
 # Getting started
 
-> ***Warning:*** The tarball and installer links are for the most recent
+> *Warning:* The tarball and installer links are for the most recent
 > release, not master. To use master, you **must** build from [git].
 
 The Rust compiler currently must be built from a [tarball] or [git], unless
@@ -79,7 +79,7 @@ Snapshot binaries are currently built and tested on several platforms:
 You may find that other platforms work, but these are our "tier 1"
 supported build environments that are most likely to work.
 
-> ***Note:*** Windows users should read the detailed
+> *Note:* Windows users should read the detailed
 > [Getting started][wiki-start] notes on the wiki. Even when using
 > the binary installer, the Windows build requires a MinGW installation,
 > the precise details of which are not discussed here.
@@ -130,7 +130,7 @@ fn main() {
     println!("hello?");
 }
 ~~~~
-> ***Note:*** An identifier followed by an exclamation point, like
+> *Note:* An identifier followed by an exclamation point, like
 > `println!`, is a macro invocation.  Macros are explained
 > [later](#syntax-extensions); for now just remember to include the
 > exclamation point.
@@ -498,7 +498,7 @@ omitted.
 A powerful application of pattern matching is *destructuring*:
 matching in order to bind names to the contents of data types.
 
-> ***Note:*** The following code makes use of tuples (`(f64, f64)`) which
+> *Note:* The following code makes use of tuples (`(f64, f64)`) which
 > are explained in section 5.3. For now you can think of tuples as a list of
 > items.
 
@@ -781,7 +781,7 @@ fn area(sh: Shape) -> f64 {
 }
 ~~~~
 
-> ***Note:*** This feature of the compiler is currently gated behind the
+> *Note:* This feature of the compiler is currently gated behind the
 > `#[feature(struct_variant)]` directive. More about these directives can be
 > found in the manual.
 
@@ -841,7 +841,6 @@ values can be extracted with pattern matching:
 
 ~~~
 # struct Inches(int);
-
 let length_with_unit = Inches(10);
 let Inches(integer_length) = length_with_unit;
 println!("length is {} inches", integer_length);
@@ -1061,7 +1060,7 @@ list -> | Cons | 1 | ~ | -> | Cons | 2 | ~ | -> | Cons | 3 | ~ | -> | Nil       
         +--------------+    +--------------+    +--------------+    +--------------+
 ~~~
 
-> ***Note:*** the above diagram shows the logical contents of the enum. The actual
+> *Note:* the above diagram shows the logical contents of the enum. The actual
 > memory layout of the enum may vary. For example, for the `List` enum shown
 > above, Rust guarantees that there will be no enum tag field in the actual
 > structure. See the language reference for more details.
@@ -1209,7 +1208,7 @@ let ys = Cons(5, ~Cons(10, ~Nil));
 assert!(eq(&xs, &ys));
 ~~~
 
-> ***Note:*** Rust doesn't guarantee [tail-call](http://en.wikipedia.org/wiki/Tail_call) optimization,
+> *Note:* Rust doesn't guarantee [tail-call](http://en.wikipedia.org/wiki/Tail_call) optimization,
 > but LLVM is able to handle a simple case like this with optimizations enabled.
 
 ## Lists of other types
@@ -1220,7 +1219,7 @@ element type.
 
 The `u32` in the previous definition can be substituted with a type parameter:
 
-> ***Note:*** The following code introduces generics, which are explained in a
+> *Note:* The following code introduces generics, which are explained in a
 > [dedicated section](#generics).
 
 ~~~
@@ -1794,7 +1793,7 @@ spawn(proc() {
 });
 ~~~~
 
-> ***Note:*** If you want to see the output of `debug!` statements, you will need to turn on
+> *Note:* If you want to see the output of `debug!` statements, you will need to turn on
 > `debug!` logging.  To enable `debug!` logging, set the RUST_LOG environment
 > variable to the name of your crate, which, for a file named `foo.rs`, will be
 > `foo` (e.g., with bash, `export RUST_LOG=foo`).
@@ -1816,7 +1815,7 @@ call_twice(closure);
 call_twice(function);
 ~~~~
 
-> ***Note:*** Both the syntax and the semantics will be changing
+> *Note:* Both the syntax and the semantics will be changing
 > in small ways. At the moment they can be unsound in some
 > scenarios, particularly with non-copyable types.
 
@@ -2011,7 +2010,7 @@ a function that returns `Option<T>` instead of `T`.
 fn radius(shape: Shape) -> Option<f64> {
     match shape {
         Circle(_, radius) => Some(radius),
-        Rectangle(..)      => None
+        Rectangle(..)     => None
     }
 }
 ~~~~
@@ -2101,7 +2100,7 @@ references, or types where the only contained references
 have the `'static` lifetime. (For more on named lifetimes and their uses,
 see the [references and lifetimes guide][lifetimes].)
 
-> ***Note:*** These built-in traits were referred to as 'kinds' in earlier
+> *Note:* These built-in traits were referred to as 'kinds' in earlier
 > iterations of the language, and often still are.
 
 Additionally, the `Drop` trait is used to define destructors. This
@@ -2512,7 +2511,7 @@ let mycircle: ~Circle = concrete as ~Circle;
 let nonsense = mycircle.radius() * mycircle.area();
 ~~~
 
-> ***Note:*** Trait inheritance does not actually work with objects yet
+> *Note:* Trait inheritance does not actually work with objects yet
 
 ## Deriving implementations for traits
 
@@ -2966,7 +2965,7 @@ use farm::*;
 # fn main() { cow(); chicken() }
 ~~~
 
-> ***Note:*** This feature of the compiler is currently gated behind the
+> *Note:* This feature of the compiler is currently gated behind the
 > `#[feature(globs)]` directive. More about these directives can be found in
 > the manual.
 

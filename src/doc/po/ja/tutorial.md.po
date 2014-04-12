@@ -196,11 +196,11 @@ msgstr ""
 #. type: Plain text
 #: src/doc/tutorial.md:57
 msgid ""
-"> ***Warning:*** Rust is a language under ongoing development. Notes > about "
+"> *Warning:* Rust is a language under ongoing development. Notes > about "
 "potential changes to the language, implementation > deficiencies, and other "
 "caveats appear offset in blockquotes."
 msgstr ""
-"> ***警告:*** Rust は開発途上の言語です。将来予定されている言語への変更や、実"
+"> *警告:* Rust は開発途上の言語です。将来予定されている言語への変更や、実"
 "装上の不備、その他の注意事項など、 blockquote の段落 (この段落もそうです) に"
 "注意してください。"
 
@@ -287,13 +287,13 @@ msgstr ""
 #. type: Plain text
 #: src/doc/tutorial.md:88
 msgid ""
-"> ***Note:*** Windows users should read the detailed > \"[getting started]"
+"> *Note:* Windows users should read the detailed > \"[getting started]"
 "[wiki-start]\" notes on the wiki. Even when using > the binary installer, "
 "the Windows build requires a MinGW installation, > the precise details of "
 "which are not discussed here. Finally, `rustc` may > need to be [referred to "
 "as `rustc.exe`][bug-3319]. It's a bummer, we > know."
 msgstr ""
-"> ***注意:*** Windows ユーザーは wiki の [getting started][wiki-start] の記事"
+"> *注意:* Windows ユーザーは wiki の [getting started][wiki-start] の記事"
 "を読んでください。 本書では詳細を説明しませんが、インストーラを利用する場合で"
 "も、MinGW のインストールなど、追加の手順が必要です。また、コンパイラは "
 "`rustc` ではなく、 [`rustc.exe` として呼び出す必要がある][bug-3319] かもしれ"
@@ -1254,11 +1254,11 @@ msgstr ""
 #. type: Plain text
 #: src/doc/tutorial.md:504
 msgid ""
-"> ***Note:*** The following code makes use of tuples (`(f64, f64)`) which > "
+"> *Note:* The following code makes use of tuples (`(f64, f64)`) which > "
 "are explained in section 5.3. For now you can think of tuples as a list of > "
 "items."
 msgstr ""
-"> ***注意:*** 以下のコード例では5.3 節で説明されるタプル (`(f64, f64)`) を"
+"> *注意:* 以下のコード例では5.3 節で説明されるタプル (`(f64, f64)`) を"
 "使っています。現時点では、タプルは項目のリストのようなものだとみなしてくださ"
 "い。"
 
@@ -3005,11 +3005,11 @@ msgstr ""
 #. type: Plain text
 #: src/doc/tutorial.md:1774
 msgid ""
-"> ***Note:*** Both the syntax and the semantics will be changing > in small "
+"> *Note:* Both the syntax and the semantics will be changing > in small "
 "ways. At the moment they can be unsound in some > scenarios, particularly "
 "with non-copyable types."
 msgstr ""
-"> ***注意*** コードの文法と意味は将来的に変更されるかもしれません。現時点では"
+"> *注意* コードの文法と意味は将来的に変更されるかもしれません。現時点では"
 "いくつかの状況、特にコピーできない型が関連するケースにおいて望ましくない振る"
 "舞いが起こされる場合があります。"
 
@@ -3660,10 +3660,10 @@ msgstr ""
 #. type: Plain text
 #: src/doc/tutorial.md:2099
 msgid ""
-"> ***Note:*** These two traits were referred to as 'kinds' in earlier > "
+"> *Note:* These two traits were referred to as 'kinds' in earlier > "
 "iterations of the language, and often still are."
 msgstr ""
-"> ***注意*** これら2つのトレイトは、以前は 「種」 (kind) と呼ばれており、現在"
+"> *注意* これら2つのトレイトは、以前は 「種」 (kind) と呼ばれており、現在"
 "でもそう呼ばれる場合があります。"
 
 #. type: Plain text
@@ -4374,9 +4374,9 @@ msgstr ""
 
 #. type: Plain text
 #: src/doc/tutorial.md:2511
-msgid "> ***Note:*** Trait inheritance does not actually work with objects yet"
+msgid "> *Note:* Trait inheritance does not actually work with objects yet"
 msgstr ""
-"> ***注意*** トレイトの継承は、実際にはまだオブジェクトに対しては動作しませ"
+"> *注意* トレイトの継承は、実際にはまだオブジェクトに対しては動作しませ"
 "ん。"
 
 #. type: Plain text
