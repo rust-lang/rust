@@ -24,6 +24,8 @@ use slice::{Vector, OwnedVector, ImmutableVector};
 use str::{CharSplits, OwnedStr, Str, StrVector, StrSlice};
 use str;
 use strbuf::StrBuf;
+use vec::Vec;
+
 use super::{contains_nul, BytesContainer, GenericPath, GenericPathUnsafe};
 
 /// Iterator that yields successive components of a Path as &str
@@ -128,7 +130,7 @@ impl BytesContainer for Path {
         self.as_vec()
     }
     #[inline]
-    fn container_into_owned_bytes(self) -> ~[u8] {
+    fn container_into_owned_bytes(self) -> Vec<u8> {
         self.into_vec()
     }
     #[inline]
@@ -331,8 +333,8 @@ impl GenericPath for Path {
     }
 
     #[inline]
-    fn into_vec(self) -> ~[u8] {
-        self.repr.into_bytes()
+    fn into_vec(self) -> Vec<u8> {
+        Vec::from_slice(self.repr.as_bytes())
     }
 
     #[inline]
@@ -526,7 +528,7 @@ impl GenericPath for Path {
         } else {
             let mut ita = self.str_components().map(|x|x.unwrap());
             let mut itb = base.str_components().map(|x|x.unwrap());
-            let mut comps = ~[];
+            let mut comps = vec![];
 
             let a_verb = is_verbatim(self);
             let b_verb = is_verbatim(base);
@@ -711,12 +713,12 @@ impl Path {
             match (comps.is_some(),prefix) {
                 (false, Some(DiskPrefix)) => {
                     if s[0] >= 'a' as u8 && s[0] <= 'z' as u8 {
-                        comps = Some(~[]);
+                        comps = Some(vec![]);
                     }
                 }
                 (false, Some(VerbatimDiskPrefix)) => {
                     if s[4] >= 'a' as u8 && s[0] <= 'z' as u8 {
-                        comps = Some(~[]);
+                        comps = Some(vec![]);
                     }
                 }
                 _ => ()
@@ -1023,7 +1025,7 @@ fn parse_prefix<'a>(mut path: &'a str) -> Option<PathPrefix> {
 }
 
 // None result means the string didn't need normalizing
-fn normalize_helper<'a>(s: &'a str, prefix: Option<PathPrefix>) -> (bool,Option<~[&'a str]>) {
+fn normalize_helper<'a>(s: &'a str, prefix: Option<PathPrefix>) -> (bool, Option<Vec<&'a str>>) {
     let f = if !prefix_is_verbatim(prefix) { is_sep } else { is_sep_verbatim };
     let is_abs = s.len() > prefix_len(prefix) && f(s.char_at(prefix_len(prefix)));
     let s_ = s.slice_from(prefix_len(prefix));
@@ -1032,11 +1034,11 @@ fn normalize_helper<'a>(s: &'a str, prefix: Option<PathPrefix>) -> (bool,Option<
     if is_abs && s_.is_empty() {
         return (is_abs, match prefix {
             Some(DiskPrefix) | None => (if is_sep_verbatim(s.char_at(prefix_len(prefix))) { None }
-                                        else { Some(~[]) }),
-            Some(_) => Some(~[]), // need to trim the trailing separator
+                                        else { Some(vec![]) }),
+            Some(_) => Some(vec![]), // need to trim the trailing separator
         });
     }
-    let mut comps: ~[&'a str] = ~[];
+    let mut comps: Vec<&'a str> = vec![];
     let mut n_up = 0u;
     let mut changed = false;
     for comp in s_.split(f) {
