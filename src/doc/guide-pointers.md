@@ -250,7 +250,7 @@ struct.
 # Managed Pointers
 
 > **Note**: the `@` form of managed pointers is deprecated and behind a
-> feature gate (it requires a `#[feature(managed_pointers)];` attribute on
+> feature gate (it requires a `#![feature(managed_pointers)]` attribute on
 > the crate root; remember the semicolon!). There are replacements, currently 
 > there is `std::rc::Rc` and `std::gc::Gc` for shared ownership via reference
 > counting and garbage collection respectively.
