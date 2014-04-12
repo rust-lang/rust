@@ -63,6 +63,8 @@ println!("path exists: {}", path.exists());
 
 */
 
+#![deny(deprecated_owned_vector)]
+
 use container::Container;
 use c_str::CString;
 use clone::Clone;

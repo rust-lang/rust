@@ -1225,9 +1225,8 @@ mod tests {
         t!(s: Path::new("foo\\..\\..\\.."), "..\\..");
         t!(s: Path::new("foo\\..\\..\\bar"), "..\\bar");
 
-        assert_eq!(Path::new(b!("foo\\bar")).into_vec(), b!("foo\\bar").to_owned());
-        assert_eq!(Path::new(b!("\\foo\\..\\..\\bar")).into_vec(),
-                   b!("\\bar").to_owned());
+        assert_eq!(Path::new(b!("foo\\bar")).into_vec().as_slice(), b!("foo\\bar"));
+        assert_eq!(Path::new(b!("\\foo\\..\\..\\bar")).into_vec().as_slice(), b!("\\bar"));
 
         t!(s: Path::new("\\\\a"), "\\a");
         t!(s: Path::new("\\\\a\\"), "\\a");
@@ -1581,7 +1580,8 @@ mod tests {
         t!(s: "a\\b\\c", [~"d", ~"e"], "a\\b\\c\\d\\e");
         t!(v: b!("a\\b\\c"), [b!("d"), b!("e")], b!("a\\b\\c\\d\\e"));
         t!(v: b!("a\\b\\c"), [b!("d"), b!("\\e"), b!("f")], b!("\\e\\f"));
-        t!(v: b!("a\\b\\c"), [b!("d").to_owned(), b!("e").to_owned()], b!("a\\b\\c\\d\\e"));
+        t!(v: b!("a\\b\\c"), [Vec::from_slice(b!("d")), Vec::from_slice(b!("e"))],
+           b!("a\\b\\c\\d\\e"));
     }
 
     #[test]
@@ -1720,7 +1720,8 @@ mod tests {
         t!(s: "a\\b\\c", ["d", "\\e", "f"], "\\e\\f");
         t!(s: "a\\b\\c", [~"d", ~"e"], "a\\b\\c\\d\\e");
         t!(v: b!("a\\b\\c"), [b!("d"), b!("e")], b!("a\\b\\c\\d\\e"));
-        t!(v: b!("a\\b\\c"), [b!("d").to_owned(), b!("e").to_owned()], b!("a\\b\\c\\d\\e"));
+        t!(v: b!("a\\b\\c"), [Vec::from_slice(b!("d")), Vec::from_slice(b!("e"))],
+           b!("a\\b\\c\\d\\e"));
     }
 
     #[test]
@@ -2235,33 +2236,25 @@ mod tests {
                 {
                     let path = Path::new($path);
                     let comps = path.str_components().map(|x|x.unwrap())
-                                .collect::<~[&str]>();
+                                .collect::<Vec<&str>>();
                     let exp: &[&str] = $exp;
-                    assert!(comps.as_slice() == exp,
-                            "str_components: Expected {:?}, found {:?}",
-                            comps.as_slice(), exp);
+                    assert_eq!(comps.as_slice(), exp);
                     let comps = path.rev_str_components().map(|x|x.unwrap())
-                                .collect::<~[&str]>();
-                    let exp = exp.rev_iter().map(|&x|x).collect::<~[&str]>();
-                    assert!(comps.as_slice() == exp,
-                            "rev_str_components: Expected {:?}, found {:?}",
-                            comps.as_slice(), exp);
+                                .collect::<Vec<&str>>();
+                    let exp = exp.rev_iter().map(|&x|x).collect::<Vec<&str>>();
+                    assert_eq!(comps, exp);
                 }
             );
             (v: [$($arg:expr),+], $exp:expr) => (
                 {
                     let path = Path::new(b!($($arg),+));
-                    let comps = path.str_components().map(|x|x.unwrap()).collect::<~[&str]>();
+                    let comps = path.str_components().map(|x|x.unwrap()).collect::<Vec<&str>>();
                     let exp: &[&str] = $exp;
-                    assert!(comps.as_slice() == exp,
-                            "str_components: Expected {:?}, found {:?}",
-                            comps.as_slice(), exp);
+                    assert_eq!(comps.as_slice(), exp);
                     let comps = path.rev_str_components().map(|x|x.unwrap())
-                                .collect::<~[&str]>();
-                    let exp = exp.rev_iter().map(|&x|x).collect::<~[&str]>();
-                    assert!(comps.as_slice() == exp,
-                            "rev_str_components: Expected {:?}, found {:?}",
-                            comps.as_slice(), exp);
+                                .collect::<Vec<&str>>();
+                    let exp = exp.rev_iter().map(|&x|x).collect::<Vec<&str>>();
+                    assert_eq!(comps, exp);
                 }
             )
         )
@@ -2312,15 +2305,12 @@ mod tests {
             (s: $path:expr, $exp:expr) => (
                 {
                     let path = Path::new($path);
-                    let comps = path.components().collect::<~[&[u8]]>();
+                    let comps = path.components().collect::<Vec<&[u8]>>();
                     let exp: &[&[u8]] = $exp;
-                    assert!(comps.as_slice() == exp, "components: Expected {:?}, found {:?}",
-                            comps.as_slice(), exp);
-                    let comps = path.rev_components().collect::<~[&[u8]]>();
-                    let exp = exp.rev_iter().map(|&x|x).collect::<~[&[u8]]>();
-                    assert!(comps.as_slice() == exp,
-                            "rev_components: Expected {:?}, found {:?}",
-                            comps.as_slice(), exp);
+                    assert_eq!(comps.as_slice(), exp);
+                    let comps = path.rev_components().collect::<Vec<&[u8]>>();
+                    let exp = exp.rev_iter().map(|&x|x).collect::<Vec<&[u8]>>();
+                    assert_eq!(comps, exp);
                 }
             )
         )
