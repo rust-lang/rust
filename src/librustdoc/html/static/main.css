@@ -9,6 +9,37 @@
  * option. This file may not be copied, modified, or distributed
  * except according to those terms.
  */
+@font-face {
+    font-family: 'Fira Sans';
+    font-style: normal;
+    font-weight: 400;
+    src: local('Fira Sans'), url("http://rust-lang.org/fonts/FiraSans-Regular.woff") format('woff');
+}
+@font-face {
+    font-family: 'Fira Sans';
+    font-style: normal;
+    font-weight: 500;
+    src: local('Fira Sans Medium'), url("http://rust-lang.org/fonts/FiraSans-Medium.woff") format('woff');
+}
+@font-face {
+    font-family: 'Heuristica';
+    font-style: normal;
+    font-weight: 400;
+    src: local('Heuristica Regular'), url("http://rust-lang.org/fonts/Heuristica-Regular.woff") format('woff');
+}
+@font-face {
+    font-family: 'Heuristica';
+    font-style: italic;
+    font-weight: 400;
+    src: local('Heuristica Italic'), url("http://rust-lang.org/fonts/Heuristica-Italic.woff") format('woff');
+}
+@font-face {
+    font-family: 'Heuristica';
+    font-style: normal;
+    font-weight: 700;
+    src: local('Heuristica Bold'), url("http://rust-lang.org/fonts/Heuristica-Bold.woff") format('woff');
+}
+
 @import "normalize.css";
 
 * {
@@ -21,13 +52,12 @@
 
 body {
     color: #333;
-    min-height: 100%;
     min-width: 500px;
-    height: 100%;
-    font: 15px "Helvetica Neue", Helvetica, Arial, sans-serif;
-    line-height: 150%;
+    font: 18px "Heuristica", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    line-height: 1.4;
+    margin: 0;
     position: relative;
-    height: auto;
+    padding: 10px 15px 20px 15px;
     padding-bottom: 20px;
 }
 
@@ -44,13 +74,23 @@ h1.fqn {
 h2, h3, h4 {
     border-bottom: 1px solid #DDDDDD;
 }
-h2 code, h3 code, h4 code {
-
+h2 code, h3 code, h4 code, .block a {
     font-size: 1.2em;
+}
+h1, h2, h3, h4, section.sidebar, a.source, .content a, .search-input {
+    font-family: "Fira Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+ul {
+    padding-left: 25px;
+}
+
+p {
+    margin: 0 0 1em 0;
 }
 
 code, pre {
-    font-family: "Inconsolata", Menlo, Monaco, Consolas, "DejaVu Sans Mono", monospace;
+    font-family: Menlo, Monaco, Consolas, Inconsolata, "DejaVu Sans Mono", monospace;
 }
 pre {
     font-size: 15px;
@@ -92,8 +132,6 @@ nav.sub {
     color: #333;
 }
 
-.sidebar .block, pre { background: #fff; }
-
 .block {
     padding: 10px;
     margin-bottom: 10px;
@@ -111,11 +149,12 @@ nav.sub {
     padding-left: 5px;
     padding-bottom: 6px;
     font-size: 14px;
+    font-weight: 300;
     transition: border 500ms ease-out;
 }
 
 .content {
-    padding: 20px 40px;
+    padding: 20px 0;
 }
 
 .content pre { padding: 20px; }
@@ -165,10 +204,9 @@ nav.sub {
 .docblock h2 { font-size: 1.15em; }
 .docblock h3, .docblock h4, .docblock h5 { font-size: 1em; }
 
-.content .source { 
+.content .source {
     float: right;
-    font-weight: 500;
-    padding: 9px 15px;
+    font-size: 23px;
 }
 
 .content table {
@@ -224,7 +262,7 @@ nav.sum { text-align: right; }
 nav.sub form { display: inline; }
 
 nav, .content {
-    margin-left: 220px;
+    margin-left: 230px;
 }
 
 a {
@@ -254,18 +292,18 @@ a {
     margin-top: 5px;
     padding: 10px 16px;
     font-size: 17px;
-    font-weight: 300;
     box-shadow: 0 0 0 1px #e0e0e0, 0 0 0 2px transparent;
-    transition: background-color 50ms linear;
-    transition: border 500ms ease-out;
-    transition: box-shadow 500ms ease-out;
+    transition: border-color 300ms ease;
+    transition: border-radius 300ms ease-in-out;
+    transition: box-shadow 300ms ease-in-out;
 }
 
 .search-input:focus {
     border-color: #66afe9;
+    border-radius: 2px;
     border: 0;
     outline: 0;
-    box-shadow: 0 0 0 1px #078dd8, 0 0 0 2px #078dd8;
+    box-shadow: 0 0 8px #078dd8;
 }
 
 .search-results .desc {
@@ -327,7 +365,7 @@ a {
 
 :target { background: #FDFFD3; }
 
-pre.rust, pre.line-numbers { background-color: #FDFDFD; }
+pre.rust, pre.line-numbers { background-color: #F5F5F5; }
 
 /* Code highlighting */
 pre.rust .kw { color: #8959A8; }
@@ -361,7 +399,6 @@ h6.section-link:hover a:after {
     }
 
     nav.sub {
-        width: 85.5%;
         margin: 0 auto;
     }
 }
