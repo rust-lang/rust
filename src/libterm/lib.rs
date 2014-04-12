@@ -132,21 +132,22 @@ impl<T: Writer> Terminal<T> {
             None => return Err(~"TERM environment variable undefined")
         };
 
-        let entry = open(term);
-        if entry.is_err() {
-            if "cygwin" == term { // msys terminal
-                return Ok(Terminal {out: out, ti: msys_terminfo(), num_colors: 8});
+        let mut file = match open(term) {
+            Ok(file) => file,
+            Err(err) => {
+                if "cygwin" == term { // msys terminal
+                    return Ok(Terminal {
+                        out: out,
+                        ti: msys_terminfo(),
+                        num_colors: 8
+                    });
+                }
+                return Err(err);
             }
-            return Err(entry.unwrap_err());
-        }
+        };
 
-        let mut file = entry.unwrap();
-        let ti = parse(&mut file, false);
-        if ti.is_err() {
-            return Err(ti.unwrap_err());
-        }
+        let inf = try!(parse(&mut file, false));
 
-        let inf = ti.unwrap();
         let nc = if inf.strings.find_equiv(&("setaf")).is_some()
                  && inf.strings.find_equiv(&("setab")).is_some() {
                      inf.numbers.find_equiv(&("colors")).map_or(0, |&n| n)

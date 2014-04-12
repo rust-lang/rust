@@ -266,7 +266,7 @@ trait def_id_encoder_helpers {
 
 impl<S:serialize::Encoder<E>, E> def_id_encoder_helpers for S {
     fn emit_def_id(&mut self, did: ast::DefId) {
-        did.encode(self).unwrap()
+        did.encode(self).ok().unwrap()
     }
 }
 
@@ -278,13 +278,13 @@ trait def_id_decoder_helpers {
 
 impl<D:serialize::Decoder<E>, E> def_id_decoder_helpers for D {
     fn read_def_id(&mut self, xcx: &ExtendedDecodeContext) -> ast::DefId {
-        let did: ast::DefId = Decodable::decode(self).unwrap();
+        let did: ast::DefId = Decodable::decode(self).ok().unwrap();
         did.tr(xcx)
     }
 
     fn read_def_id_noxcx(&mut self,
                          cdata: @cstore::crate_metadata) -> ast::DefId {
-        let did: ast::DefId = Decodable::decode(self).unwrap();
+        let did: ast::DefId = Decodable::decode(self).ok().unwrap();
         decoder::translate_def_id(cdata, did)
     }
 }
