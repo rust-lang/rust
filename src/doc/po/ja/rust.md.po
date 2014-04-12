@@ -252,7 +252,7 @@ msgstr "# モジュールとクレート"
 #: src/doc/rust.md:627
 #, fuzzy
 #| msgid "// Turn on a warning #[warn(non_camel_case_types)]"
-msgid "// Turn on a warning #[ warn(non_camel_case_types) ]; ~~~~"
+msgid "// Turn on a warning #![ warn(non_camel_case_types) ] ~~~~"
 msgstr ""
 "// 警告を有効にする\n"
 "#[warn(non_camel_case_types)]"

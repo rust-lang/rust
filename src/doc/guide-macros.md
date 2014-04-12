@@ -407,7 +407,7 @@ As an example, `loop` and `for-loop` labels (discussed in the lifetimes guide)
 will not clash. The following code will print "Hello!" only once:
 
 ~~~
-#[feature(macro_rules)];
+#![feature(macro_rules)]
 
 macro_rules! loop_x (
     ($e: expr) => (
