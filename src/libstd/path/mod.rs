@@ -71,6 +71,7 @@ use iter::Iterator;
 use option::{Option, None, Some};
 use str;
 use str::{MaybeOwned, Str, StrSlice, from_utf8_lossy};
+use strbuf::StrBuf;
 use slice::{OwnedCloneableVector, OwnedVector, Vector};
 use slice::{ImmutableEqVector, ImmutableVector};
 use vec::Vec;
@@ -527,6 +528,22 @@ impl BytesContainer for ~str {
     }
     #[inline]
     fn is_str(_: Option<~str>) -> bool { true }
+}
+impl BytesContainer for StrBuf {
+    #[inline]
+    fn container_as_bytes<'a>(&'a self) -> &'a [u8] {
+        self.as_bytes()
+    }
+    #[inline]
+    fn container_into_owned_bytes(self) -> Vec<u8> {
+        self.into_bytes()
+    }
+    #[inline]
+    fn container_as_str<'a>(&'a self) -> Option<&'a str> {
+        Some(self.as_slice())
+    }
+    #[inline]
+    fn is_str(_: Option<StrBuf>) -> bool { true }
 }
 
 impl<'a> BytesContainer for &'a [u8] {
