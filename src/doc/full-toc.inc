@@ -1,6 +1,11 @@
 <style>
   /* Display the full TOC */
-  #TOC ul ul {
+  nav {
+    column-count: auto;
+    -moz-column-count: auto;
+    -webkit-column-count: auto;
+  }
+  nav ul ul {
     display: block;
     padding-left: 2em;
   }
