@@ -46,7 +46,6 @@
 //!
 //! Note that all time units in this file are in *milliseconds*.
 
-use std::comm::Data;
 use libc;
 use std::mem;
 use std::os;
@@ -119,7 +118,7 @@ fn helper(input: libc::c_int, messages: Receiver<Req>) {
             Some(timer) => timer, None => return
         };
         let tx = timer.tx.take_unwrap();
-        if tx.try_send(()) && timer.repeat {
+        if tx.send_opt(()).is_ok() && timer.repeat {
             timer.tx = Some(tx);
             timer.target += timer.interval;
             insert(timer, active);
@@ -162,14 +161,14 @@ fn helper(input: libc::c_int, messages: Receiver<Req>) {
             1 => {
                 loop {
                     match messages.try_recv() {
-                        Data(Shutdown) => {
+                        Ok(Shutdown) => {
                             assert!(active.len() == 0);
                             break 'outer;
                         }
 
-                        Data(NewTimer(timer)) => insert(timer, &mut active),
+                        Ok(NewTimer(timer)) => insert(timer, &mut active),
 
-                        Data(RemoveTimer(id, ack)) => {
+                        Ok(RemoveTimer(id, ack)) => {
                             match dead.iter().position(|&(i, _)| id == i) {
                                 Some(i) => {
                                     let (_, i) = dead.remove(i).unwrap();

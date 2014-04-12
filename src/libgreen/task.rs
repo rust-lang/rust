@@ -515,7 +515,7 @@ mod tests {
             let _tx = tx;
             fail!()
         });
-        assert_eq!(rx.recv_opt(), None);
+        assert_eq!(rx.recv_opt(), Err(()));
     }
 
     #[test]

@@ -131,9 +131,9 @@ impl<T: Send> Packet<T> {
         unsafe { self.select_lock.unlock_noguard() }
     }
 
-    pub fn send(&mut self, t: T) -> bool {
+    pub fn send(&mut self, t: T) -> Result<(), T> {
         // See Port::drop for what's going on
-        if self.port_dropped.load(atomics::SeqCst) { return false }
+        if self.port_dropped.load(atomics::SeqCst) { return Err(t) }
 
         // Note that the multiple sender case is a little tricker
         // semantically than the single sender case. The logic for
@@ -161,7 +161,7 @@ impl<T: Send> Packet<T> {
         // received". Once we get beyond this check, we have permanently
         // entered the realm of "this may be received"
         if self.cnt.load(atomics::SeqCst) < DISCONNECTED + FUDGE {
-            return false
+            return Err(t)
         }
 
         self.queue.push(t);
@@ -213,7 +213,7 @@ impl<T: Send> Packet<T> {
             _ => {}
         }
 
-        true
+        Ok(())
     }
 
     pub fn recv(&mut self) -> Result<T, Failure> {

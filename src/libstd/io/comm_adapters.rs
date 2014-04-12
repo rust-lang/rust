@@ -73,7 +73,7 @@ impl Reader for ChanReader {
                 break;
             }
             self.pos = 0;
-            self.buf = self.rx.recv_opt();
+            self.buf = self.rx.recv_opt().ok();
             self.closed = self.buf.is_none();
         }
         if self.closed && num_read == 0 {
@@ -116,15 +116,13 @@ impl Clone for ChanWriter {
 
 impl Writer for ChanWriter {
     fn write(&mut self, buf: &[u8]) -> IoResult<()> {
-        if !self.tx.try_send(buf.to_owned()) {
-            Err(io::IoError {
+        self.tx.send_opt(buf.to_owned()).map_err(|_| {
+            io::IoError {
                 kind: io::BrokenPipe,
                 desc: "Pipe closed",
                 detail: None
-            })
-        } else {
-            Ok(())
-        }
+            }
+        })
     }
 }
 
