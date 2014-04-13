@@ -2171,10 +2171,10 @@ impl<'a> State<'a> {
                 word(&mut self.s, res.into_owned())
             }
             ast::LitInt(i, t) => {
-                word(&mut self.s, format!("{}{}", i, ast_util::int_ty_to_str(t)))
+                word(&mut self.s, ast_util::int_ty_to_str(t, Some(i)))
             }
             ast::LitUint(u, t) => {
-                word(&mut self.s, format!("{}{}", u, ast_util::uint_ty_to_str(t)))
+                word(&mut self.s, ast_util::uint_ty_to_str(t, Some(u)))
             }
             ast::LitIntUnsuffixed(i) => {
                 word(&mut self.s, format!("{}", i))
