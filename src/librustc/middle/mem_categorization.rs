@@ -76,7 +76,7 @@ use syntax::parse::token;
 pub enum categorization {
     cat_rvalue(ty::Region),            // temporary val, argument is its scope
     cat_static_item,
-    cat_copied_upvar(CopiedUpvar),     // upvar copied into @fn or ~fn env
+    cat_copied_upvar(CopiedUpvar),     // upvar copied into proc env
     cat_upvar(ty::UpvarId, ty::UpvarBorrow), // by ref upvar from stack closure
     cat_local(ast::NodeId),            // local variable
     cat_arg(ast::NodeId),              // formal argument
@@ -172,7 +172,7 @@ pub fn opt_deref_kind(t: ty::t) -> Option<deref_kind> {
         ty::ty_trait(~ty::TyTrait { store: ty::UniqTraitStore, .. }) |
         ty::ty_vec(_, ty::VstoreUniq) |
         ty::ty_str(ty::VstoreUniq) |
-        ty::ty_closure(~ty::ClosureTy {sigil: ast::OwnedSigil, ..}) => {
+        ty::ty_closure(~ty::ClosureTy {store: ty::UniqTraitStore, ..}) => {
             Some(deref_ptr(OwnedPtr))
         }
 
@@ -187,8 +187,7 @@ pub fn opt_deref_kind(t: ty::t) -> Option<deref_kind> {
         }
 
         ty::ty_str(ty::VstoreSlice(r, ())) |
-        ty::ty_closure(~ty::ClosureTy {sigil: ast::BorrowedSigil,
-                                      region: r, ..}) => {
+        ty::ty_closure(~ty::ClosureTy {store: ty::RegionTraitStore(r, _), ..}) => {
             Some(deref_ptr(BorrowedPtr(ty::ImmBorrow, r)))
         }
 
@@ -540,15 +539,14 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
                       // Decide whether to use implicit reference or by copy/move
                       // capture for the upvar. This, combined with the onceness,
                       // determines whether the closure can move out of it.
-                      let var_is_refd = match (closure_ty.sigil, closure_ty.onceness) {
+                      let var_is_refd = match (closure_ty.store, closure_ty.onceness) {
                           // Many-shot stack closures can never move out.
-                          (ast::BorrowedSigil, ast::Many) => true,
+                          (ty::RegionTraitStore(..), ast::Many) => true,
                           // 1-shot stack closures can move out.
-                          (ast::BorrowedSigil, ast::Once) => false,
+                          (ty::RegionTraitStore(..), ast::Once) => false,
                           // Heap closures always capture by copy/move, and can
                           // move out if they are once.
-                          (ast::OwnedSigil, _) |
-                          (ast::ManagedSigil, _) => false,
+                          (ty::UniqTraitStore, _) => false,
 
                       };
                       if var_is_refd {
@@ -688,19 +686,8 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
         }
     }
 
-    pub fn cat_deref_fn_or_obj<N:ast_node>(&mut self,
-                                           node: &N,
-                                           base_cmt: cmt,
-                                           deref_cnt: uint)
-                                           -> cmt {
-        // Bit of a hack: the "dereference" of a function pointer like
-        // `@fn()` is a mere logical concept. We interpret it as
-        // dereferencing the environment pointer; of course, we don't
-        // know what type lies at the other end, so we just call it
-        // `()` (the empty tuple).
-
-        let opaque_ty = ty::mk_tup(self.tcx(), Vec::new());
-        self.cat_deref_common(node, base_cmt, deref_cnt, opaque_ty)
+    pub fn cat_deref_obj<N:ast_node>(&mut self, node: &N, base_cmt: cmt) -> cmt {
+        self.cat_deref_common(node, base_cmt, 0, ty::mk_nil())
     }
 
     fn cat_deref<N:ast_node>(&mut self,
@@ -1105,7 +1092,7 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
               ~"static item"
           }
           cat_copied_upvar(_) => {
-              ~"captured outer variable in a heap closure"
+              ~"captured outer variable in a proc"
           }
           cat_rvalue(..) => {
               ~"non-lvalue"

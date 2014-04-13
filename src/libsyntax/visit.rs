@@ -328,7 +328,7 @@ pub fn walk_ty<E: Clone, V: Visitor<E>>(visitor: &mut V, typ: &Ty, env: E) {
                 visitor.visit_ty(tuple_element_type, env.clone())
             }
         }
-        TyClosure(ref function_declaration) => {
+        TyClosure(ref function_declaration, ref region) => {
             for argument in function_declaration.decl.inputs.iter() {
                 visitor.visit_ty(argument.ty, env.clone())
             }
@@ -338,8 +338,19 @@ pub fn walk_ty<E: Clone, V: Visitor<E>>(visitor: &mut V, typ: &Ty, env: E) {
             }
             visitor.visit_opt_lifetime_ref(
                 typ.span,
-                &function_declaration.region,
+                region,
                 env.clone());
+            walk_lifetime_decls(visitor, &function_declaration.lifetimes,
+                                env.clone());
+        }
+        TyProc(ref function_declaration) => {
+            for argument in function_declaration.decl.inputs.iter() {
+                visitor.visit_ty(argument.ty, env.clone())
+            }
+            visitor.visit_ty(function_declaration.decl.output, env.clone());
+            for bounds in function_declaration.bounds.iter() {
+                walk_ty_param_bounds(visitor, bounds, env.clone())
+            }
             walk_lifetime_decls(visitor, &function_declaration.lifetimes,
                                 env.clone());
         }

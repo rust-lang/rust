@@ -483,14 +483,23 @@ impl<'a> State<'a> {
                                    f.fn_style, ast::Many, f.decl, None, &None,
                                    Some(&generics), None));
             }
-            ast::TyClosure(f) => {
+            ast::TyClosure(f, ref region) => {
                 let generics = ast::Generics {
                     lifetimes: f.lifetimes.clone(),
                     ty_params: OwnedSlice::empty()
                 };
-                try!(self.print_ty_fn(None, Some(f.sigil), &f.region,
-                                   f.fn_style, f.onceness, f.decl, None, &f.bounds,
-                                   Some(&generics), None));
+                try!(self.print_ty_fn(None, Some('&'), region, f.fn_style,
+                                      f.onceness, f.decl, None, &f.bounds,
+                                      Some(&generics), None));
+            }
+            ast::TyProc(f) => {
+                let generics = ast::Generics {
+                    lifetimes: f.lifetimes.clone(),
+                    ty_params: OwnedSlice::empty()
+                };
+                try!(self.print_ty_fn(None, Some('~'), &None, f.fn_style,
+                                      f.onceness, f.decl, None, &f.bounds,
+                                      Some(&generics), None));
             }
             ast::TyPath(ref path, ref bounds, _) => {
                 try!(self.print_bounded_path(path, bounds));
@@ -1716,8 +1725,7 @@ impl<'a> State<'a> {
                     opt_explicit_self: Option<ast::ExplicitSelf_>,
                     vis: ast::Visibility) -> IoResult<()> {
         try!(self.head(""));
-        try!(self.print_fn_header_info(opt_explicit_self, fn_style, abi,
-                                       ast::Many, None, vis));
+        try!(self.print_fn_header_info(opt_explicit_self, fn_style, abi, vis));
         try!(self.nbsp());
         try!(self.print_ident(name));
         try!(self.print_generics(generics));
@@ -2023,7 +2031,7 @@ impl<'a> State<'a> {
 
     pub fn print_ty_fn(&mut self,
                        opt_abi: Option<abi::Abi>,
-                       opt_sigil: Option<ast::Sigil>,
+                       opt_sigil: Option<char>,
                        opt_region: &Option<ast::Lifetime>,
                        fn_style: ast::FnStyle,
                        onceness: ast::Onceness,
@@ -2037,15 +2045,15 @@ impl<'a> State<'a> {
 
         // Duplicates the logic in `print_fn_header_info()`.  This is because that
         // function prints the sigil in the wrong place.  That should be fixed.
-        if opt_sigil == Some(ast::OwnedSigil) && onceness == ast::Once {
+        if opt_sigil == Some('~') && onceness == ast::Once {
             try!(word(&mut self.s, "proc"));
-        } else if opt_sigil == Some(ast::BorrowedSigil) {
+        } else if opt_sigil == Some('&') {
             try!(self.print_extern_opt_abi(opt_abi));
             try!(self.print_fn_style(fn_style));
             try!(self.print_onceness(onceness));
         } else {
+            assert!(opt_sigil.is_none());
             try!(self.print_opt_abi_and_extern_if_nondefault(opt_abi));
-            try!(self.print_opt_sigil(opt_sigil));
             try!(self.print_fn_style(fn_style));
             try!(self.print_onceness(onceness));
             try!(word(&mut self.s, "fn"));
@@ -2062,7 +2070,7 @@ impl<'a> State<'a> {
         match generics { Some(g) => try!(self.print_generics(g)), _ => () }
         try!(zerobreak(&mut self.s));
 
-        if opt_sigil == Some(ast::BorrowedSigil) {
+        if opt_sigil == Some('&') {
             try!(word(&mut self.s, "|"));
         } else {
             try!(self.popen());
@@ -2070,7 +2078,7 @@ impl<'a> State<'a> {
 
         try!(self.print_fn_args(decl, opt_explicit_self));
 
-        if opt_sigil == Some(ast::BorrowedSigil) {
+        if opt_sigil == Some('&') {
             try!(word(&mut self.s, "|"));
         } else {
             if decl.variadic {
@@ -2327,22 +2335,10 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn print_opt_sigil(&mut self,
-                           opt_sigil: Option<ast::Sigil>) -> IoResult<()> {
-        match opt_sigil {
-            Some(ast::BorrowedSigil) => word(&mut self.s, "&"),
-            Some(ast::OwnedSigil) => word(&mut self.s, "~"),
-            Some(ast::ManagedSigil) => word(&mut self.s, "@"),
-            None => Ok(())
-        }
-    }
-
     pub fn print_fn_header_info(&mut self,
                                 _opt_explicit_self: Option<ast::ExplicitSelf_>,
                                 opt_fn_style: Option<ast::FnStyle>,
                                 abi: abi::Abi,
-                                onceness: ast::Onceness,
-                                opt_sigil: Option<ast::Sigil>,
                                 vis: ast::Visibility) -> IoResult<()> {
         try!(word(&mut self.s, visibility_qualified(vis, "")));
 
@@ -2357,9 +2353,7 @@ impl<'a> State<'a> {
             try!(self.print_opt_fn_style(opt_fn_style));
         }
 
-        try!(self.print_onceness(onceness));
-        try!(word(&mut self.s, "fn"));
-        self.print_opt_sigil(opt_sigil)
+        word(&mut self.s, "fn")
     }
 
     pub fn print_fn_style(&mut self, s: ast::FnStyle) -> IoResult<()> {

@@ -704,11 +704,13 @@ impl<'a> ConstraintContext<'a> {
                 self.add_constraint(index, variance);
             }
 
-            ty::ty_bare_fn(ty::BareFnTy { sig: ref sig, .. }) => {
+            ty::ty_bare_fn(ty::BareFnTy { ref sig, .. }) |
+            ty::ty_closure(~ty::ClosureTy { ref sig, store: ty::UniqTraitStore, .. }) => {
                 self.add_constraints_from_sig(sig, variance);
             }
 
-            ty::ty_closure(~ty::ClosureTy { sig: ref sig, region, .. }) => {
+            ty::ty_closure(~ty::ClosureTy { ref sig,
+                    store: ty::RegionTraitStore(region, _), .. }) => {
                 let contra = self.contravariant(variance);
                 self.add_constraints_from_region(region, contra);
                 self.add_constraints_from_sig(sig, variance);

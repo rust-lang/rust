@@ -56,10 +56,9 @@ pub trait TypeFolder {
                        fty: &ty::ClosureTy)
                        -> ty::ClosureTy {
         ty::ClosureTy {
-            region: self.fold_region(fty.region),
+            store: self.fold_trait_store(fty.store),
             sig: self.fold_sig(&fty.sig),
             fn_style: fty.fn_style,
-            sigil: fty.sigil,
             onceness: fty.onceness,
             bounds: fty.bounds,
         }

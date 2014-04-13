@@ -323,7 +323,7 @@ fn make_drop_glue<'a>(bcx: &'a Block<'a>, v0: ValueRef, t: ty::t) -> &'a Block<'
                 bcx
             })
         }
-        ty::ty_closure(ref f) if f.sigil == ast::OwnedSigil => {
+        ty::ty_closure(ref f) if f.store == ty::UniqTraitStore => {
             let box_cell_v = GEPi(bcx, v0, [0u, abi::fn_field_box]);
             let env = Load(bcx, box_cell_v);
             let env_ptr_ty = Type::at_box(bcx.ccx(), Type::i8(bcx.ccx())).ptr_to();

@@ -337,19 +337,24 @@ impl fmt::Show for clean::Type {
                 };
                 f.buf.write(s.as_bytes())
             }
-            clean::Closure(ref decl) => {
-                let region = match decl.region {
+            clean::Closure(ref decl, ref region) => {
+                let region = match *region {
                     Some(ref region) => format!("{} ", *region),
                     None => ~"",
                 };
 
-                write!(f.buf, "{}{}{arrow, select, yes{ -&gt; {ret}} other{}}",
+                write!(f.buf, "{}{}|{}|{arrow, select, yes{ -&gt; {ret}} other{}}",
                        FnStyleSpace(decl.fn_style),
-                       match decl.sigil {
-                           ast::OwnedSigil => format!("proc({})", decl.decl.inputs),
-                           ast::BorrowedSigil => format!("{}|{}|", region, decl.decl.inputs),
-                           ast::ManagedSigil => format!("@{}fn({})", region, decl.decl.inputs),
-                       },
+                       region,
+                       decl.decl.inputs,
+                       arrow = match decl.decl.output { clean::Unit => "no", _ => "yes" },
+                       ret = decl.decl.output)
+                // FIXME: where are bounds and lifetimes printed?!
+            }
+            clean::Proc(ref decl) => {
+                write!(f.buf, "{}proc({}){arrow, select, yes{ -&gt; {ret}} other{}}",
+                       FnStyleSpace(decl.fn_style),
+                       decl.decl.inputs,
                        arrow = match decl.decl.output { clean::Unit => "no", _ => "yes" },
                        ret = decl.decl.output)
                 // FIXME: where are bounds and lifetimes printed?!

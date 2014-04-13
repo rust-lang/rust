@@ -394,7 +394,7 @@ pub fn create_captured_var_metadata(bcx: &Block,
                                     env_data_type: ty::t,
                                     env_pointer: ValueRef,
                                     env_index: uint,
-                                    closure_sigil: ast::Sigil,
+                                    closure_store: ty::TraitStore,
                                     span: Span) {
     if fn_should_be_ignored(bcx.fcx) {
         return;
@@ -443,11 +443,11 @@ pub fn create_captured_var_metadata(bcx: &Block,
          llvm::LLVMDIBuilderCreateOpDeref(Type::i64(cx).to_ref())]
     };
 
-    let address_op_count = match closure_sigil {
-        ast::BorrowedSigil => {
+    let address_op_count = match closure_store {
+        ty::RegionTraitStore(..) => {
             address_operations.len()
         }
-        ast::ManagedSigil | ast::OwnedSigil => {
+        ty::UniqTraitStore => {
             address_operations.len() - 1
         }
     };

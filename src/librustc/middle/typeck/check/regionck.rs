@@ -133,7 +133,6 @@ use middle::typeck::MethodCall;
 use middle::pat_util;
 use util::ppaux::{ty_to_str, region_to_str, Repr};
 
-use syntax::ast::{ManagedSigil, OwnedSigil, BorrowedSigil};
 use syntax::ast::{DefArg, DefBinding, DefLocal, DefUpvar};
 use syntax::ast;
 use syntax::ast_util;
@@ -175,9 +174,9 @@ fn region_of_def(fcx: &FnCtxt, def: ast::Def) -> ty::Region {
             tcx.region_maps.var_region(node_id)
         }
         DefUpvar(_, subdef, closure_id, body_id) => {
-            match ty::ty_closure_sigil(fcx.node_ty(closure_id)) {
-                BorrowedSigil => region_of_def(fcx, *subdef),
-                ManagedSigil | OwnedSigil => ReScope(body_id)
+            match ty::ty_closure_store(fcx.node_ty(closure_id)) {
+                ty::RegionTraitStore(..) => region_of_def(fcx, *subdef),
+                ty::UniqTraitStore => ReScope(body_id)
             }
         }
         _ => {
@@ -611,7 +610,7 @@ fn check_expr_fn_block(rcx: &mut Rcx,
     let function_type = rcx.resolve_node_type(expr.id);
     match ty::get(function_type).sty {
         ty::ty_closure(~ty::ClosureTy {
-                sigil: ast::BorrowedSigil, region: region, ..}) => {
+                store: ty::RegionTraitStore(region, _), ..}) => {
             let freevars = freevars::get_freevars(tcx, expr.id);
             if freevars.is_empty() {
                 // No free variables means that the environment
@@ -635,7 +634,7 @@ fn check_expr_fn_block(rcx: &mut Rcx,
     rcx.set_repeating_scope(repeating_scope);
 
     match ty::get(function_type).sty {
-        ty::ty_closure(~ty::ClosureTy {sigil: ast::BorrowedSigil, ..}) => {
+        ty::ty_closure(~ty::ClosureTy {store: ty::RegionTraitStore(..), ..}) => {
             let freevars = freevars::get_freevars(tcx, expr.id);
             propagate_upupvar_borrow_kind(rcx, expr, freevars);
         }
@@ -749,8 +748,12 @@ fn constrain_callee(rcx: &mut Rcx,
     match ty::get(callee_ty).sty {
         ty::ty_bare_fn(..) => { }
         ty::ty_closure(ref closure_ty) => {
+            let region = match closure_ty.store {
+                ty::RegionTraitStore(r, _) => r,
+                ty::UniqTraitStore => ty::ReStatic
+            };
             rcx.fcx.mk_subr(true, infer::InvokeClosure(callee_expr.span),
-                            call_region, closure_ty.region);
+                            call_region, region);
         }
         _ => {
             // this should not happen, but it does if the program is
@@ -1120,13 +1123,8 @@ fn link_autoref(rcx: &mut Rcx,
             link_region(mc.typer, expr.span, r, m, cmt_index);
         }
 
-        ty::AutoBorrowFn(r) => {
-            let cmt_deref = mc.cat_deref_fn_or_obj(expr, expr_cmt, 0);
-            link_region(mc.typer, expr.span, r, ast::MutImmutable, cmt_deref);
-        }
-
         ty::AutoBorrowObj(r, m) => {
-            let cmt_deref = mc.cat_deref_fn_or_obj(expr, expr_cmt, 0);
+            let cmt_deref = mc.cat_deref_obj(expr, expr_cmt);
             link_region(mc.typer, expr.span, r, m, cmt_deref);
         }
 

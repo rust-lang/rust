@@ -650,30 +650,30 @@ impl<'a> VisitContext<'a> {
         let _indenter = indenter();
 
         let fn_ty = ty::node_id_to_type(self.tcx, fn_expr_id);
-        let sigil = ty::ty_closure_sigil(fn_ty);
         let freevars = freevars::get_freevars(self.tcx, fn_expr_id);
-        let v = if sigil == BorrowedSigil {
-            // || captures everything by ref
-            freevars.iter()
-                    .map(|fvar| CaptureVar {def: fvar.def, span: fvar.span, mode: CapRef})
-                    .collect()
-        } else {
-            // @fn() and ~fn() capture by copy or by move depending on type
-            freevars.iter()
-                    .map(|fvar| {
-                let fvar_def_id = ast_util::def_id_of_def(fvar.def).node;
-                let fvar_ty = ty::node_id_to_type(self.tcx, fvar_def_id);
-                debug!("fvar_def_id={:?} fvar_ty={}",
-                       fvar_def_id, ppaux::ty_to_str(self.tcx, fvar_ty));
-                let mode = if ty::type_moves_by_default(self.tcx, fvar_ty) {
-                    CapMove
-                } else {
-                    CapCopy
-                };
-                CaptureVar {def: fvar.def, span: fvar.span, mode:mode}
-
+        Rc::new(match ty::ty_closure_store(fn_ty) {
+            ty::RegionTraitStore(..) => {
+                // || captures everything by ref
+                freevars.iter()
+                        .map(|fvar| CaptureVar {def: fvar.def, span: fvar.span, mode: CapRef})
+                        .collect()
+            }
+            ty::UniqTraitStore => {
+                // proc captures by copy or by move depending on type
+                freevars.iter()
+                        .map(|fvar| {
+                    let fvar_def_id = ast_util::def_id_of_def(fvar.def).node;
+                    let fvar_ty = ty::node_id_to_type(self.tcx, fvar_def_id);
+                    debug!("fvar_def_id={:?} fvar_ty={}",
+                        fvar_def_id, ppaux::ty_to_str(self.tcx, fvar_ty));
+                    let mode = if ty::type_moves_by_default(self.tcx, fvar_ty) {
+                        CapMove
+                    } else {
+                        CapCopy
+                    };
+                    CaptureVar {def: fvar.def, span: fvar.span, mode:mode}
                 }).collect()
-        };
-        Rc::new(v)
+            }
+        })
     }
 }

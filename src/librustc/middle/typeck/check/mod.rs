@@ -2116,7 +2116,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
 
     fn check_expr_fn(fcx: &FnCtxt,
                      expr: &ast::Expr,
-                     ast_sigil_opt: Option<ast::Sigil>,
+                     store: ty::TraitStore,
                      decl: &ast::FnDecl,
                      body: ast::P<ast::Block>,
                      fn_kind: FnKind,
@@ -2126,18 +2126,11 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         // Find the expected input/output types (if any). Substitute
         // fresh bound regions for any bound regions we find in the
         // expected types so as to avoid capture.
-        //
-        // Also try to pick up inferred style and sigil, defaulting
-        // to impure and block. Note that we only will use those for
-        // block syntax lambdas; that is, lambdas without explicit
-        // sigils.
         let expected_sty = unpack_expected(fcx,
                                            expected,
                                            |x| Some((*x).clone()));
         let error_happened = false;
         let (expected_sig,
-             expected_style,
-             expected_sigil,
              expected_onceness,
              expected_bounds) = {
             match expected_sty {
@@ -2146,47 +2139,32 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                         replace_late_bound_regions_in_fn_sig(
                             tcx, &cenv.sig,
                             |_| fcx.inh.infcx.fresh_bound_region(expr.id));
-                    (Some(sig), cenv.fn_style, cenv.sigil,
-                     cenv.onceness, cenv.bounds)
+                    (Some(sig), cenv.onceness, cenv.bounds)
                 }
                 _ => {
                     // Not an error! Means we're inferring the closure type
-                    let mut sigil = ast::BorrowedSigil;
-                    let mut onceness = ast::Many;
                     let mut bounds = ty::EmptyBuiltinBounds();
-                    match expr.node {
+                    let onceness = match expr.node {
                         ast::ExprProc(..) => {
-                            sigil = ast::OwnedSigil;
-                            onceness = ast::Once;
                             bounds.add(ty::BoundSend);
+                            ast::Once
                         }
-                        _ => ()
-                    }
-                    (None, ast::NormalFn, sigil,
-                     onceness, bounds)
+                        _ => ast::Many
+                    };
+                    (None, onceness, bounds)
                 }
             }
         };
 
-        // If the proto is specified, use that, otherwise select a
-        // proto based on inference.
-        let (sigil, fn_style) = match ast_sigil_opt {
-            Some(p) => (p, ast::NormalFn),
-            None => (expected_sigil, expected_style)
-        };
-
         // construct the function type
         let fn_ty = astconv::ty_of_closure(fcx,
-                                           fcx.infcx(),
                                            expr.id,
-                                           sigil,
-                                           fn_style,
+                                           ast::NormalFn,
                                            expected_onceness,
                                            expected_bounds,
-                                           &None,
+                                           store,
                                            decl,
-                                           expected_sig,
-                                           expr.span);
+                                           expected_sig);
 
         let fty_sig;
         let fty = if error_happened {
@@ -2198,9 +2176,8 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
             };
             ty::mk_err()
         } else {
-            let fn_ty_copy = fn_ty.clone();
             fty_sig = fn_ty.sig.clone();
-            ty::mk_closure(tcx, fn_ty_copy)
+            ty::mk_closure(tcx, fn_ty.clone())
         };
 
         debug!("check_expr_fn_with_unifier fty={}",
@@ -2208,11 +2185,14 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
 
         fcx.write_ty(expr.id, fty);
 
-        let (inherited_style, id) =
-            ty::determine_inherited_style((fcx.ps.borrow().fn_style,
-                                            fcx.ps.borrow().def),
-                                           (fn_style, expr.id),
-                                           sigil);
+        // If the closure is a stack closure and hasn't had some non-standard
+        // style inferred for it, then check it under its parent's style.
+        // Otherwise, use its own
+        let (inherited_style, id) = match store {
+            ty::RegionTraitStore(..) => (fcx.ps.borrow().fn_style,
+                                         fcx.ps.borrow().def),
+            ty::UniqTraitStore => (ast::NormalFn, expr.id)
+        };
 
         check_fn(fcx.ccx, inherited_style, &fty_sig,
                  decl, id, body, fn_kind, fcx.inh);
@@ -2856,9 +2836,13 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         _match::check_match(fcx, expr, discrim, arms.as_slice());
       }
       ast::ExprFnBlock(decl, body) => {
+        let region = astconv::opt_ast_region_to_region(fcx,
+                                                       fcx.infcx(),
+                                                       expr.span,
+                                                       &None);
         check_expr_fn(fcx,
                       expr,
-                      Some(ast::BorrowedSigil),
+                      ty::RegionTraitStore(region, ast::MutMutable),
                       decl,
                       body,
                       Vanilla,
@@ -2867,7 +2851,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
       ast::ExprProc(decl, body) => {
         check_expr_fn(fcx,
                       expr,
-                      Some(ast::OwnedSigil),
+                      ty::UniqTraitStore,
                       decl,
                       body,
                       Vanilla,

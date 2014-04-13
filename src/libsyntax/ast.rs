@@ -360,23 +360,6 @@ pub enum Mutability {
 }
 
 #[deriving(Clone, Eq, TotalEq, Encodable, Decodable, Hash)]
-pub enum Sigil {
-    BorrowedSigil,
-    OwnedSigil,
-    ManagedSigil
-}
-
-impl fmt::Show for Sigil {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            BorrowedSigil => "&".fmt(f),
-            OwnedSigil => "~".fmt(f),
-            ManagedSigil => "@".fmt(f),
-         }
-    }
-}
-
-#[deriving(Clone, Eq, TotalEq, Encodable, Decodable, Hash)]
 pub enum ExprVstore {
     ExprVstoreUniq,                 // ~[1,2,3,4]
     ExprVstoreSlice,                // &[1,2,3,4]
@@ -791,8 +774,6 @@ impl fmt::Show for Onceness {
 
 #[deriving(Eq, TotalEq, Encodable, Decodable, Hash)]
 pub struct ClosureTy {
-    pub sigil: Sigil,
-    pub region: Option<Lifetime>,
     pub lifetimes: Vec<Lifetime>,
     pub fn_style: FnStyle,
     pub onceness: Onceness,
@@ -822,7 +803,8 @@ pub enum Ty_ {
     TyFixedLengthVec(P<Ty>, @Expr),
     TyPtr(MutTy),
     TyRptr(Option<Lifetime>, MutTy),
-    TyClosure(@ClosureTy),
+    TyClosure(@ClosureTy, Option<Lifetime>),
+    TyProc(@ClosureTy),
     TyBareFn(@BareFnTy),
     TyTup(Vec<P<Ty>> ),
     TyPath(Path, Option<OwnedSlice<TyParamBound>>, NodeId), // for #7264; see above
