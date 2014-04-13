@@ -240,3 +240,5 @@ I personally think there's great value in keeping the standard regexp
 implementation small, simple and fast. People who have more specialized needs 
 can always pick one of the existing C or C++ libraries.
 
+For now, we could mark the API as `#[unstable]` or `#[experimental]`.
+
