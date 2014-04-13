@@ -211,7 +211,7 @@ this was discussed in issue
 [#3591](https://github.com/mozilla/rust/issues/3591) and it seems like people 
 favor a native Rust implementation if it's to be included in the Rust 
 distribution. (Does the `re!` macro require it? If so, that's a huge 
-advantage.)
+advantage.) Also, a native implementation makes it maximally portable.
 
 Finally, it is always possible to persist without a regexp library.
 
