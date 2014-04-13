@@ -312,17 +312,20 @@ mod imp {
 
 #[cfg(target_os = "android")]
 #[cfg(target_os = "freebsd")]
+#[cfg(target_os = "linux")]
 mod imp {
     use libc;
+    use std::uint;
 
     pub static FD_SETSIZE: uint = 1024;
 
     pub struct fd_set {
-        fds_bits: [u64, ..(FD_SETSIZE / 64)]
+        fds_bits: [uint, ..(FD_SETSIZE / uint::BITS)]
     }
 
     pub fn fd_set(set: &mut fd_set, fd: i32) {
-        set.fds_bits[(fd / 64) as uint] |= (1 << (fd % 64)) as u64;
+        let fd = fd as uint;
+        set.fds_bits[fd / uint::BITS] |= 1 << (fd % uint::BITS);
     }
 
     extern {
