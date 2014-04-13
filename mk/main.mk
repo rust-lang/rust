@@ -349,14 +349,12 @@ EXTRAFLAGS_STAGE$(1) = $$(RUSTFLAGS_STAGE$(1))
 
 CFGFLAG$(1)_T_$(2)_H_$(3) = stage$(1)
 
-# Pass --cfg stage0 only for the build->host part of stage0;
-# if you're building a cross config, the host->* parts are
-# effectively stage1, since it uses the just-built stage0.
-ifeq ($(1),0)
-ifneq ($(strip $(CFG_BUILD)),$(strip $(3)))
-CFGFLAG$(1)_T_$(2)_H_$(3) = stage1
-endif
-endif
+endef
+
+# Same macro/variables as above, but defined in a separate loop so it can use
+# all the varibles above for all archs. The RPATH_VAR setup sometimes needs to
+# reach across triples to get things in order.
+define SREQ_CMDS
 
 ifeq ($$(OSTYPE_$(3)),apple-darwin)
   RPATH_VAR$(1)_T_$(2)_H_$(3) := \
@@ -364,6 +362,31 @@ ifeq ($$(OSTYPE_$(3)),apple-darwin)
 else
   RPATH_VAR$(1)_T_$(2)_H_$(3) := \
       LD_LIBRARY_PATH="$$$$LD_LIBRARY_PATH:$$(CURDIR)/$$(HLIB$(1)_H_$(3))"
+endif
+
+# Pass --cfg stage0 only for the build->host part of stage0;
+# if you're building a cross config, the host->* parts are
+# effectively stage1, since it uses the just-built stage0.
+#
+# This logic is similar to how the LD_LIBRARY_PATH variable must
+# change be slightly different when doing cross compilations.
+# The build doesn't copy over all target libraries into
+# a new directory, so we need to point the library path at
+# the build directory where all the target libraries came
+# from (the stage0 build host). Otherwise the relative rpaths
+# inside of the rustc binary won't get resolved correctly.
+ifeq ($(1),0)
+ifneq ($(strip $(CFG_BUILD)),$(strip $(3)))
+CFGFLAG$(1)_T_$(2)_H_$(3) = stage1
+
+ifeq ($$(OSTYPE_$(3)),apple-darwin)
+  RPATH_VAR$(1)_T_$(2)_H_$(3) := \
+      DYLD_LIBRARY_PATH="$$$$DYLD_LIBRARY_PATH:$$(CURDIR)/$$(TLIB1_T_$(2)_H_$(CFG_BUILD))"
+else
+  RPATH_VAR$(1)_T_$(2)_H_$(3) := \
+      LD_LIBRARY_PATH="$$$$LD_LIBRARY_PATH:$$(CURDIR)/$$(TLIB1_T_$(2)_H_$(CFG_BUILD))"
+endif
+endif
 endif
 
 STAGE$(1)_T_$(2)_H_$(3) := 						\
@@ -389,6 +412,11 @@ $(foreach build,$(CFG_HOST), \
  $(eval $(foreach target,$(CFG_TARGET), \
   $(eval $(foreach stage,$(STAGES), \
    $(eval $(call SREQ,$(stage),$(target),$(build))))))))
+
+$(foreach build,$(CFG_HOST), \
+ $(eval $(foreach target,$(CFG_TARGET), \
+  $(eval $(foreach stage,$(STAGES), \
+   $(eval $(call SREQ_CMDS,$(stage),$(target),$(build))))))))
 
 ######################################################################
 # rustc-H-targets
