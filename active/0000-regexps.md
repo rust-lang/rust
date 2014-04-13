@@ -5,7 +5,7 @@
 # Summary
 
 Add a `regexp` crate to the Rust distribution in addition to a small 
-`regexp_re` crate that provides a syntax extension for compiling regular 
+`regexp_macros` crate that provides a syntax extension for compiling regular 
 expressions during the compilation of a Rust program.
 
 The implementation that supports this RFC is ready to receive 
@@ -166,10 +166,10 @@ Another option is for the `re!` macro to produce a non-static value, but I
 found this difficult to do with zero-runtime cost. Either way, the ability to 
 statically declare a regexp is pretty cool I think.
 
-Note that the syntax extension is the reason for the `regexp_re` crate. It's 
+Note that the syntax extension is the reason for the `regexp_macros` crate. It's 
 very small and contains the macro registration function. I'm not sure how this 
 fits into the Rust distribution, but my vote is to document the `re!` macro in 
-the `regexp` crate and hide the `regexp_re` crate from public documentation. 
+the `regexp` crate and hide the `regexp_macros` crate from public documentation. 
 (Or link it to the `regexp` crate.)
 
 It seems like the `re!` macro will become a bit nicer to use once
@@ -217,7 +217,7 @@ Finally, it is always possible to persist without a regexp library.
 
 # Unresolved questions
 
-Firstly, I'm not entirely clear on how the `regexp_re` crate will be handled.
+Firstly, I'm not entirely clear on how the `regexp_macros` crate will be handled.
 I gave a suggestion above, but I'm not sure if it's a good one. Is there any 
 precedent?
 
