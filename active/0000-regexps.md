@@ -83,6 +83,9 @@ UTF8 codepoint boundaries by construction of the VM). My reason for this is
 that byte indices result in a lower cost abstraction. If character indices are 
 desired, then a mapping can be maintained by the client at their discretion.
 
+Additionally, this makes it consistent with the `std::str` API, which also 
+exposes byte indices.
+
 ## Word boundaries, word characters and Unicode
 
 The `\w` character class and the zero-width word boundary assertion `\b` are 
