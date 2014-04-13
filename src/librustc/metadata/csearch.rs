@@ -279,7 +279,7 @@ pub fn get_trait_of_method(cstore: &cstore::CStore,
 
 pub fn get_macro_registrar_fn(cstore: &cstore::CStore,
                               crate_num: ast::CrateNum)
-                              -> Option<ast::DefId> {
+                              -> Option<ast::NodeId> {
     let cdata = cstore.get_crate_data(crate_num);
     decoder::get_macro_registrar_fn(cdata)
 }
