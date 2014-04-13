@@ -187,6 +187,22 @@ implementation does nothing to mitigate against this, but I think a simple hard
 limit on the number of instructions allowed would work fine. (Should it be 
 configurable?)
 
+## Name
+
+The name of the crate being proposed is `regexp` and the type describing a 
+compiled regular expression is `Regexp`. I think an equally good name would be 
+`regex` (and `Regex`). Either name seems to be frequently used, e.g., "regexes" 
+or "regexps" in colloquial use. I chose `regexp` over `regex` because it 
+matches the name used for the corresponding package in Go's standard library.
+
+Other possible names are `regexpr` (and `Regexpr`) or something with 
+underscores: `reg_exp` (and `RegExp`). However, I perceive these to be more 
+ugly and less commonly used than either `regexp` or `regex`.
+
+Finally, we could use `re` (like Python), but I think the name could be 
+ambiguous since it's so short. `regexp` (or `regex`) unequivocally identifies 
+the crate as providing regular expressions.
+
 ## Summary
 
 My implementation is pretty much a port of most of RE2. The syntax should be 
