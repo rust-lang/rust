@@ -141,7 +141,11 @@ fn resolve_type_vars_for_node(wbcx: &mut WbCtxt, sp: Span, id: ast::NodeId)
 
         Some(adjustment) => {
             match *adjustment {
-                ty::AutoAddEnv(r, s) => {
+                ty::AutoAddEnv(store) => {
+                    let r = match store {
+                        ty::RegionTraitStore(r, _) => r,
+                        ty::UniqTraitStore => ty::ReStatic
+                    };
                     match resolve_region(fcx.infcx(),
                                          r,
                                          resolve_all | force_all) {
@@ -166,7 +170,12 @@ fn resolve_type_vars_for_node(wbcx: &mut WbCtxt, sp: Span, id: ast::NodeId)
                                         "cannot coerce non-statically resolved bare fn")
                             }
 
-                            let resolved_adj = @ty::AutoAddEnv(r1, s);
+                            let resolved_adj = @ty::AutoAddEnv(match store {
+                                ty::RegionTraitStore(..) => {
+                                    ty::RegionTraitStore(r1, ast::MutMutable)
+                                }
+                                ty::UniqTraitStore => ty::UniqTraitStore
+                            });
                             debug!("Adjustments for node {}: {:?}",
                                    id, resolved_adj);
                             tcx.adjustments.borrow_mut().insert(id, resolved_adj);

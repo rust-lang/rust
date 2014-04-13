@@ -451,17 +451,8 @@ impl<'a> GatherLoanCtxt<'a> {
                                              r,
                                              AutoRef)
                     }
-                    ty::AutoBorrowFn(r) => {
-                        let cmt_deref = mc.cat_deref_fn_or_obj(expr, cmt, 0);
-                        self.guarantee_valid(expr.id,
-                                             expr.span,
-                                             cmt_deref,
-                                             ast::MutImmutable,
-                                             r,
-                                             AutoRef)
-                    }
                     ty::AutoBorrowObj(r, m) => {
-                        let cmt_deref = mc.cat_deref_fn_or_obj(expr, cmt, 0);
+                        let cmt_deref = mc.cat_deref_obj(expr, cmt);
                         self.guarantee_valid(expr.id,
                                              expr.span,
                                              cmt_deref,

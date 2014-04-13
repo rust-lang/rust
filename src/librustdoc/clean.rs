@@ -474,8 +474,6 @@ impl Clean<Item> for doctree::Function {
 
 #[deriving(Clone, Encodable, Decodable)]
 pub struct ClosureDecl {
-    pub sigil: ast::Sigil,
-    pub region: Option<Lifetime>,
     pub lifetimes: Vec<Lifetime>,
     pub decl: FnDecl,
     pub onceness: ast::Onceness,
@@ -486,8 +484,6 @@ pub struct ClosureDecl {
 impl Clean<ClosureDecl> for ast::ClosureTy {
     fn clean(&self) -> ClosureDecl {
         ClosureDecl {
-            sigil: self.sigil,
-            region: self.region.clean(),
             lifetimes: self.lifetimes.clean().move_iter().collect(),
             decl: self.decl.clean(),
             onceness: self.onceness,
@@ -652,7 +648,8 @@ pub enum Type {
     Self(ast::NodeId),
     /// Primitives are just the fixed-size numeric types (plus int/uint/float), and char.
     Primitive(ast::PrimTy),
-    Closure(~ClosureDecl),
+    Closure(~ClosureDecl, Option<Lifetime>),
+    Proc(~ClosureDecl),
     /// extern "ABI" fn
     BareFunction(~BareFunctionDecl),
     Tuple(Vec<Type> ),
@@ -706,7 +703,8 @@ impl Clean<Type> for ast::Ty {
                              tpbs.clean().map(|x| x.move_iter().collect()),
                              id)
             }
-            TyClosure(ref c) => Closure(~c.clean()),
+            TyClosure(ref c, region) => Closure(~c.clean(), region.clean()),
+            TyProc(ref c) => Proc(~c.clean()),
             TyBareFn(ref barefn) => BareFunction(~barefn.clean()),
             TyBot => Bottom,
             ref x => fail!("Unimplemented type {:?}", x),

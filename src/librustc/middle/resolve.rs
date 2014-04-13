@@ -4274,7 +4274,7 @@ impl<'a> Resolver<'a> {
                 });
             }
 
-            TyClosure(c) => {
+            TyClosure(c, _) | TyProc(c) => {
                 c.bounds.as_ref().map(|bounds| {
                     for bound in bounds.iter() {
                         self.resolve_type_parameter_bound(ty.id, bound);

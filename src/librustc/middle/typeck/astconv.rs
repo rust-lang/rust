@@ -112,7 +112,7 @@ pub fn ast_region_to_region(tcx: &ty::ctxt, lifetime: &ast::Lifetime)
     r
 }
 
-fn opt_ast_region_to_region<AC:AstConv,RS:RegionScope>(
+pub fn opt_ast_region_to_region<AC:AstConv,RS:RegionScope>(
     this: &AC,
     rscope: &RS,
     default_span: Span,
@@ -516,33 +516,42 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
                 ty::mk_bare_fn(tcx, ty_of_bare_fn(this, ast_ty.id, bf.fn_style,
                                                   bf.abi, bf.decl))
             }
-            ast::TyClosure(ref f) => {
-                if f.sigil == ast::ManagedSigil {
-                    tcx.sess.span_err(ast_ty.span,
-                                      "managed closures are not supported");
-                }
+            ast::TyClosure(ref f, ref region) => {
 
-                let bounds = conv_builtin_bounds(this.tcx(), &f.bounds, match f.sigil {
-                        // Use corresponding trait store to figure out default bounds
-                        // if none were specified.
-                        ast::BorrowedSigil => {
-                            // dummy region
-                            ty::RegionTraitStore(ty::ReEmpty, ast::MutMutable)
-                        }
-                        ast::OwnedSigil    => ty::UniqTraitStore,
-                        ast::ManagedSigil  => return ty::mk_err()
-                    });
+                // resolve the function bound region in the original region
+                // scope `rscope`, not the scope of the function parameters
+                let bound_region = opt_ast_region_to_region(this, rscope,
+                                                            ast_ty.span, region);
+
+                let store = ty::RegionTraitStore(bound_region, ast::MutMutable);
+
+                // Use corresponding trait store to figure out default bounds
+                // if none were specified.
+                let bounds = conv_builtin_bounds(this.tcx(), &f.bounds, store);
+
                 let fn_decl = ty_of_closure(this,
-                                            rscope,
                                             ast_ty.id,
-                                            f.sigil,
                                             f.fn_style,
                                             f.onceness,
                                             bounds,
-                                            &f.region,
+                                            store,
                                             f.decl,
-                                            None,
-                                            ast_ty.span);
+                                            None);
+                ty::mk_closure(tcx, fn_decl)
+            }
+            ast::TyProc(ref f) => {
+                // Use corresponding trait store to figure out default bounds
+                // if none were specified.
+                let bounds = conv_builtin_bounds(this.tcx(), &f.bounds, ty::UniqTraitStore);
+
+                let fn_decl = ty_of_closure(this,
+                                            ast_ty.id,
+                                            f.fn_style,
+                                            f.onceness,
+                                            bounds,
+                                            ty::UniqTraitStore,
+                                            f.decl,
+                                            None);
                 ty::mk_closure(tcx, fn_decl)
             }
             ast::TyPath(ref path, ref bounds, id) => {
@@ -728,42 +737,18 @@ fn ty_of_method_or_bare_fn<AC:AstConv>(this: &AC, id: ast::NodeId,
     };
 }
 
-pub fn ty_of_closure<AC:AstConv,RS:RegionScope>(
+pub fn ty_of_closure<AC:AstConv>(
     this: &AC,
-    rscope: &RS,
     id: ast::NodeId,
-    sigil: ast::Sigil,
     fn_style: ast::FnStyle,
     onceness: ast::Onceness,
     bounds: ty::BuiltinBounds,
-    opt_lifetime: &Option<ast::Lifetime>,
+    store: ty::TraitStore,
     decl: &ast::FnDecl,
-    expected_sig: Option<ty::FnSig>,
-    span: Span)
+    expected_sig: Option<ty::FnSig>)
     -> ty::ClosureTy
 {
     debug!("ty_of_fn_decl");
-
-    // resolve the function bound region in the original region
-    // scope `rscope`, not the scope of the function parameters
-    let bound_region = match opt_lifetime {
-        &Some(ref lifetime) => {
-            ast_region_to_region(this.tcx(), lifetime)
-        }
-        &None => {
-            match sigil {
-                ast::OwnedSigil | ast::ManagedSigil => {
-                    // @fn(), ~fn() default to static as the bound
-                    // on their upvars:
-                    ty::ReStatic
-                }
-                ast::BorrowedSigil => {
-                    // || defaults as normal for an omitted lifetime:
-                    opt_ast_region_to_region(this, rscope, span, opt_lifetime)
-                }
-            }
-        }
-    };
 
     // new region names that appear inside of the fn decl are bound to
     // that function type
@@ -791,9 +776,8 @@ pub fn ty_of_closure<AC:AstConv,RS:RegionScope>(
 
     ty::ClosureTy {
         fn_style: fn_style,
-        sigil: sigil,
         onceness: onceness,
-        region: bound_region,
+        store: store,
         bounds: bounds,
         sig: ty::FnSig {binder_id: id,
                         inputs: input_tys,

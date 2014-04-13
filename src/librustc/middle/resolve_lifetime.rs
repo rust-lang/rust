@@ -112,7 +112,9 @@ impl<'a, 'b> Visitor<Scope<'a>> for LifetimeContext<'b> {
 
     fn visit_ty(&mut self, ty: &ast::Ty, scope: Scope<'a>) {
         match ty.node {
-            ast::TyClosure(c) => push_fn_scope(self, ty, scope, &c.lifetimes),
+            ast::TyClosure(c, _) | ast::TyProc(c) => {
+                push_fn_scope(self, ty, scope, &c.lifetimes);
+            }
             ast::TyBareFn(c) => push_fn_scope(self, ty, scope, &c.lifetimes),
             _ => visit::walk_ty(self, ty, scope),
         }
