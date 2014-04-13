@@ -630,7 +630,7 @@ impl Scheduler {
         unsafe {
 
             let sched: &mut Scheduler =
-                cast::transmute_mut_region(*next_task.sched.get_mut_ref());
+                cast::transmute_mut_lifetime(*next_task.sched.get_mut_ref());
 
             let current_task: &mut GreenTask = match sched.cleanup_job {
                 Some(CleanupJob { task: ref mut task, .. }) => &mut **task,
@@ -681,8 +681,8 @@ impl Scheduler {
         let next_task_context =
                 &mut next_task.coroutine.get_mut_ref().saved_context;
         unsafe {
-            (cast::transmute_mut_region(current_task_context),
-             cast::transmute_mut_region(next_task_context))
+            (cast::transmute_mut_lifetime(current_task_context),
+             cast::transmute_mut_lifetime(next_task_context))
         }
     }
 
