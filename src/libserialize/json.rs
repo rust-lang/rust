@@ -239,6 +239,7 @@ use std::io::MemWriter;
 use std::io;
 use std::num;
 use std::str;
+use std::str::ScalarValue;
 use std::strbuf::StrBuf;
 
 use Encodable;
@@ -1129,6 +1130,35 @@ impl<T : Iterator<char>> Parser<T> {
         Ok(res)
     }
 
+    fn decode_hex_escape(&mut self) -> DecodeResult<u16> {
+        let mut i = 0u;
+        let mut n = 0u16;
+        while i < 4u && !self.eof() {
+            self.bump();
+            n = match self.ch_or_null() {
+                c @ '0' .. '9' => n * 16_u16 + ((c as u16) - ('0' as u16)),
+                'a' | 'A' => n * 16_u16 + 10_u16,
+                'b' | 'B' => n * 16_u16 + 11_u16,
+                'c' | 'C' => n * 16_u16 + 12_u16,
+                'd' | 'D' => n * 16_u16 + 13_u16,
+                'e' | 'E' => n * 16_u16 + 14_u16,
+                'f' | 'F' => n * 16_u16 + 15_u16,
+                _ => return self.error(
+                    ~"invalid \\u escape (unrecognized hex)")
+            };
+
+            i += 1u;
+        }
+
+        // Error out if we didn't parse 4 digits.
+        if i != 4u {
+            return self.error(
+                ~"invalid \\u escape (not four digits)");
+        }
+
+        Ok(n)
+    }
+
     fn parse_str(&mut self) -> DecodeResult<~str> {
         let mut escape = false;
         let mut res = StrBuf::new();
@@ -1149,35 +1179,35 @@ impl<T : Iterator<char>> Parser<T> {
                     'n' => res.push_char('\n'),
                     'r' => res.push_char('\r'),
                     't' => res.push_char('\t'),
-                    'u' => {
-                        // Parse \u1234.
-                        let mut i = 0u;
-                        let mut n = 0u;
-                        while i < 4u && !self.eof() {
-                            self.bump();
-                            n = match self.ch_or_null() {
-                                c @ '0' .. '9' => n * 16u + (c as uint) - ('0' as uint),
-                                'a' | 'A' => n * 16u + 10u,
-                                'b' | 'B' => n * 16u + 11u,
-                                'c' | 'C' => n * 16u + 12u,
-                                'd' | 'D' => n * 16u + 13u,
-                                'e' | 'E' => n * 16u + 14u,
-                                'f' | 'F' => n * 16u + 15u,
+                    'u' => match try!(self.decode_hex_escape()) {
+                        0xDC00 .. 0xDFFF => return self.error(
+                                ~"lone trailing surrogate in hex escape"),
+
+                        // Non-BMP characters are encoded as a sequence of
+                        // two hex escapes, representing UTF-16 surrogates.
+                        n1 @ 0xD800 .. 0xDBFF => {
+                            let c1 = self.next_char();
+                            let c2 = self.next_char();
+                            match (c1, c2) {
+                                (Some('\\'), Some('u')) => (),
                                 _ => return self.error(
-                                    ~"invalid \\u escape (unrecognized hex)")
-                            };
+                                    ~"unexpected end of non-BMP hex escape"),
+                            }
 
-                            i += 1u;
+                            let buf = [n1, try!(self.decode_hex_escape())];
+                            match str::utf16_items(buf.as_slice()).next() {
+                                Some(ScalarValue(c)) => res.push_char(c),
+                                _ => return self.error(
+                                    ~"lone leading surrogate in hex escape"),
+                            }
                         }
 
-                        // Error out if we didn't parse 4 digits.
-                        if i != 4u {
-                            return self.error(
-                                ~"invalid \\u escape (not four digits)");
-                        }
-
-                        res.push_char(char::from_u32(n as u32).unwrap());
-                    }
+                        n => match char::from_u32(n as u32) {
+                            Some(c) => res.push_char(c),
+                            None => return self.error(
+                                format!("invalid Unicode codepoint {:u}", n)),
+                        },
+                    },
                     _ => return self.error(~"invalid escape"),
                 }
                 escape = false;
@@ -2139,6 +2169,16 @@ mod tests {
         assert_eq!(from_str(" \"foo\" "), Ok(String(~"foo")));
         assert_eq!(from_str("\"\\u12ab\""), Ok(String(~"\u12ab")));
         assert_eq!(from_str("\"\\uAB12\""), Ok(String(~"\uAB12")));
+
+        // Non-BMP escapes.  The exact error messages and positions are kind of
+        // arbitrary.
+        assert_eq!(from_str("\"\\ud83d\\udca9\""), Ok(String(~"\U0001F4A9")));
+        assert!(from_str("\"\\ud83d\"").is_err());
+        assert!(from_str("\"\\udca9\"").is_err());
+        assert!(from_str("\"\\ud83d\\ud83d\"").is_err());
+        assert!(from_str("\"\\ud83dx\"").is_err());
+        assert!(from_str("\"\\udca9\\udca9\"").is_err());
+        assert!(from_str("\"\\udca9x\"").is_err());
     }
 
     #[test]
