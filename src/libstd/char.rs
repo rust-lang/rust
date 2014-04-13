@@ -32,6 +32,7 @@ use unicode::{derived_property, property, general_category, decompose, conversio
 
 #[cfg(test)] use str::Str;
 #[cfg(test)] use strbuf::StrBuf;
+#[cfg(test)] use slice::ImmutableVector;
 
 #[cfg(not(test))] use cmp::{Eq, Ord};
 #[cfg(not(test))] use default::Default;
@@ -560,11 +561,19 @@ pub trait Char {
 
     /// Encodes this character as UTF-8 into the provided byte buffer.
     ///
-    /// The buffer must be at least 4 bytes long or a runtime failure will
+    /// The buffer must be at least 4 bytes long or a runtime failure may
     /// occur.
     ///
-    /// This will then return the number of characters written to the slice.
+    /// This will then return the number of bytes written to the slice.
     fn encode_utf8(&self, dst: &mut [u8]) -> uint;
+
+    /// Encodes this character as UTF-16 into the provided `u16` buffer.
+    ///
+    /// The buffer must be at least 2 elements long or a runtime failure may
+    /// occur.
+    ///
+    /// This will then return the number of `u16`s written to the slice.
+    fn encode_utf16(&self, dst: &mut [u16]) -> uint;
 }
 
 impl Char for char {
@@ -602,7 +611,7 @@ impl Char for char {
 
     fn len_utf8_bytes(&self) -> uint { len_utf8_bytes(*self) }
 
-    fn encode_utf8<'a>(&self, dst: &'a mut [u8]) -> uint {
+    fn encode_utf8(&self, dst: &mut [u8]) -> uint {
         let code = *self as uint;
         if code < MAX_ONE_B {
             dst[0] = code as u8;
@@ -622,6 +631,24 @@ impl Char for char {
             dst[2] = (code >> 6u & 63u | TAG_CONT) as u8;
             dst[3] = (code & 63u | TAG_CONT) as u8;
             return 4;
+        }
+    }
+
+    fn encode_utf16(&self, dst: &mut [u16]) -> uint {
+        let mut ch = *self as uint;
+        if (ch & 0xFFFF_u) == ch {
+            // The BMP falls through (assuming non-surrogate, as it
+            // should)
+            assert!(ch <= 0xD7FF_u || ch >= 0xE000_u);
+            dst[0] = ch as u16;
+            1
+        } else {
+            // Supplementary planes break into surrogates.
+            assert!(ch >= 0x1_0000_u && ch <= 0x10_FFFF_u);
+            ch -= 0x1_0000_u;
+            dst[0] = 0xD800_u16 | ((ch >> 10) as u16);
+            dst[1] = 0xDC00_u16 | ((ch as u16) & 0x3FF_u16);
+            2
         }
     }
 }
@@ -787,4 +814,32 @@ fn test_to_str() {
     use to_str::ToStr;
     let s = 't'.to_str();
     assert_eq!(s, ~"t");
+}
+
+#[test]
+fn test_encode_utf8() {
+    fn check(input: char, expect: &[u8]) {
+        let mut buf = [0u8, ..4];
+        let n = input.encode_utf8(buf /* as mut slice! */);
+        assert_eq!(buf.slice_to(n), expect);
+    }
+
+    check('x', [0x78]);
+    check('\u00e9', [0xc3, 0xa9]);
+    check('\ua66e', [0xea, 0x99, 0xae]);
+    check('\U0001f4a9', [0xf0, 0x9f, 0x92, 0xa9]);
+}
+
+#[test]
+fn test_encode_utf16() {
+    fn check(input: char, expect: &[u16]) {
+        let mut buf = [0u16, ..2];
+        let n = input.encode_utf16(buf /* as mut slice! */);
+        assert_eq!(buf.slice_to(n), expect);
+    }
+
+    check('x', [0x0078]);
+    check('\u00e9', [0x00e9]);
+    check('\ua66e', [0xa66e]);
+    check('\U0001f4a9', [0xd83d, 0xdca9]);
 }
