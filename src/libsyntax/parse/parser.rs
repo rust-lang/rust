@@ -11,7 +11,6 @@
 #![macro_escape]
 
 use abi;
-use ast::{Sigil, BorrowedSigil, ManagedSigil, OwnedSigil};
 use ast::{BareFnTy, ClosureTy};
 use ast::{RegionTyParamBound, TraitTyParamBound};
 use ast::{Provided, Public, FnStyle};
@@ -49,8 +48,8 @@ use ast::StrStyle;
 use ast::{SelfRegion, SelfStatic, SelfUniq, SelfValue};
 use ast::{TokenTree, TraitMethod, TraitRef, TTDelim, TTSeq, TTTok};
 use ast::{TTNonterminal, TupleVariantKind, Ty, Ty_, TyBot, TyBox};
-use ast::{TypeField, TyFixedLengthVec, TyClosure, TyBareFn, TyTypeof};
-use ast::{TyInfer, TypeMethod};
+use ast::{TypeField, TyFixedLengthVec, TyClosure, TyProc, TyBareFn};
+use ast::{TyTypeof, TyInfer, TypeMethod};
 use ast::{TyNil, TyParam, TyParamBound, TyPath, TyPtr, TyRptr};
 use ast::{TyTup, TyU32, TyUniq, TyVec, UnUniq};
 use ast::{UnnamedField, UnsafeBlock, UnsafeFn, ViewItem};
@@ -923,9 +922,7 @@ impl<'a> Parser<'a> {
             cf: ret_style,
             variadic: variadic
         });
-        TyClosure(@ClosureTy {
-            sigil: OwnedSigil,
-            region: None,
+        TyProc(@ClosureTy {
             fn_style: NormalFn,
             onceness: Once,
             bounds: bounds,
@@ -984,14 +981,12 @@ impl<'a> Parser<'a> {
         });
 
         TyClosure(@ClosureTy {
-            sigil: BorrowedSigil,
-            region: region,
             fn_style: fn_style,
             onceness: onceness,
             bounds: bounds,
             decl: decl,
             lifetimes: lifetimes,
-        })
+        }, region)
     }
 
     pub fn parse_unsafety(&mut self) -> FnStyle {
@@ -1201,11 +1196,11 @@ impl<'a> Parser<'a> {
         } else if self.token == token::AT {
             // MANAGED POINTER
             self.bump();
-            self.parse_box_or_uniq_pointee(ManagedSigil)
+            TyBox(self.parse_ty(false))
         } else if self.token == token::TILDE {
             // OWNED POINTER
             self.bump();
-            self.parse_box_or_uniq_pointee(OwnedSigil)
+            TyUniq(self.parse_ty(false))
         } else if self.token == token::BINOP(token::STAR) {
             // STAR POINTER (bare pointer?)
             self.bump();
@@ -1269,21 +1264,6 @@ impl<'a> Parser<'a> {
 
         let sp = mk_sp(lo, self.last_span.hi);
         P(Ty {id: ast::DUMMY_NODE_ID, node: t, span: sp})
-    }
-
-    // parse the type following a @ or a ~
-    pub fn parse_box_or_uniq_pointee(&mut self,
-                                     sigil: ast::Sigil)
-                                     -> Ty_ {
-        // other things are parsed as @/~ + a type.  Note that constructs like
-        // ~[] and ~str will be resolved during typeck to slices and so forth,
-        // rather than boxed ptrs.  But the special casing of str/vec is not
-        // reflected in the AST type.
-        if sigil == OwnedSigil {
-            TyUniq(self.parse_ty(false))
-        } else {
-            TyBox(self.parse_ty(false))
-        }
     }
 
     pub fn parse_borrowed_pointee(&mut self) -> Ty_ {

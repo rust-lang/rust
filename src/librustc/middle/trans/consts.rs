@@ -191,7 +191,7 @@ pub fn const_expr(cx: &CrateContext, e: &ast::Expr, is_local: bool) -> (ValueRef
         None => { }
         Some(adj) => {
             match *adj {
-                ty::AutoAddEnv(ty::ReStatic, ast::BorrowedSigil) => {
+                ty::AutoAddEnv(ty::RegionTraitStore(ty::ReStatic, _)) => {
                     let def = ty::resolve_expr(cx.tcx(), e);
                     let wrapper = closure::get_wrapper_for_bare_fn(cx,
                                                                    ety_adjusted,
@@ -200,13 +200,11 @@ pub fn const_expr(cx: &CrateContext, e: &ast::Expr, is_local: bool) -> (ValueRef
                                                                    is_local);
                     llconst = C_struct(cx, [wrapper, C_null(Type::i8p(cx))], false)
                 }
-                ty::AutoAddEnv(ref r, ref s) => {
+                ty::AutoAddEnv(store) => {
                     cx.sess()
                       .span_bug(e.span,
-                                format!("unexpected static function: region \
-                                         {:?} sigil {:?}",
-                                        *r,
-                                        *s))
+                                format!("unexpected static function: {:?}",
+                                        store))
                 }
                 ty::AutoObject(..) => {
                     cx.sess()

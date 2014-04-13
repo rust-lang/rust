@@ -62,7 +62,7 @@ use middle::trans::type_of;
 use middle::trans::write_guard;
 use middle::ty::struct_fields;
 use middle::ty::{AutoBorrowObj, AutoDerefRef, AutoAddEnv, AutoObject, AutoUnsafe};
-use middle::ty::{AutoPtr, AutoBorrowVec, AutoBorrowVecRef, AutoBorrowFn};
+use middle::ty::{AutoPtr, AutoBorrowVec, AutoBorrowVecRef};
 use middle::ty;
 use middle::typeck::MethodCall;
 use util::common::indenter;
@@ -200,14 +200,6 @@ fn apply_adjustments<'a>(bcx: &'a Block<'a>,
                 Some(AutoBorrowVecRef(..)) => {
                     unpack_datum!(bcx, auto_slice_and_ref(bcx, expr, datum))
                 }
-                Some(AutoBorrowFn(..)) => {
-                    let adjusted_ty = ty::adjust_ty(bcx.tcx(), expr.span, expr.id, datum.ty,
-                                                    Some(adjustment), |method_call| {
-                        bcx.ccx().maps.method_map.borrow()
-                           .find(&method_call).map(|method| method.ty)
-                    });
-                    unpack_datum!(bcx, auto_borrow_fn(bcx, adjusted_ty, datum))
-                }
                 Some(AutoBorrowObj(..)) => {
                     unpack_datum!(bcx, auto_borrow_obj(bcx, expr, datum))
                 }
@@ -224,20 +216,6 @@ fn apply_adjustments<'a>(bcx: &'a Block<'a>,
     }
     debug!("after adjustments, datum={}", datum.to_str(bcx.ccx()));
     return DatumBlock {bcx: bcx, datum: datum};
-
-    fn auto_borrow_fn<'a>(
-                      bcx: &'a Block<'a>,
-                      adjusted_ty: ty::t,
-                      datum: Datum<Expr>)
-                      -> DatumBlock<'a, Expr> {
-        // Currently, all closure types are represented precisely the
-        // same, so no runtime adjustment is required, but we still
-        // must patchup the type.
-        DatumBlock {bcx: bcx,
-                    datum: Datum {val: datum.val,
-                                  ty: adjusted_ty,
-                                  kind: datum.kind}}
-    }
 
     fn auto_slice<'a>(
                   bcx: &'a Block<'a>,
@@ -731,10 +709,10 @@ fn trans_rvalue_dps_unadjusted<'a>(bcx: &'a Block<'a>,
         ast::ExprFnBlock(decl, body) |
         ast::ExprProc(decl, body) => {
             let expr_ty = expr_ty(bcx, expr);
-            let sigil = ty::ty_closure_sigil(expr_ty);
+            let store = ty::ty_closure_store(expr_ty);
             debug!("translating block function {} with type {}",
                    expr_to_str(expr), expr_ty.repr(tcx));
-            closure::trans_expr_fn(bcx, sigil, decl, body, expr.id, dest)
+            closure::trans_expr_fn(bcx, store, decl, body, expr.id, dest)
         }
         ast::ExprCall(f, ref args) => {
             callee::trans_call(bcx, expr, f, callee::ArgExprs(args.as_slice()), dest)

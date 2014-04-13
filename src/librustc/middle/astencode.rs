@@ -897,10 +897,9 @@ impl<'a> ebml_writer_helpers for Encoder<'a> {
     fn emit_auto_adjustment(&mut self, ecx: &e::EncodeContext, adj: &ty::AutoAdjustment) {
         self.emit_enum("AutoAdjustment", |this| {
             match *adj {
-                ty::AutoAddEnv(region, sigil) => {
-                    this.emit_enum_variant("AutoAddEnv", 0, 2, |this| {
-                        this.emit_enum_variant_arg(0, |this| region.encode(this));
-                        this.emit_enum_variant_arg(1, |this| sigil.encode(this))
+                ty::AutoAddEnv(store) => {
+                    this.emit_enum_variant("AutoAddEnv", 0, 1, |this| {
+                        this.emit_enum_variant_arg(0, |this| store.encode(this))
                     })
                 }
 
@@ -1270,12 +1269,10 @@ impl<'a> ebml_decoder_decoder_helpers for reader::Decoder<'a> {
             this.read_enum_variant(variants, |this, i| {
                 Ok(match i {
                     0 => {
-                        let region: ty::Region =
+                        let store: ty::TraitStore =
                             this.read_enum_variant_arg(0, |this| Decodable::decode(this)).unwrap();
-                        let sigil: ast::Sigil =
-                            this.read_enum_variant_arg(1, |this| Decodable::decode(this)).unwrap();
 
-                        ty:: AutoAddEnv(region.tr(xcx), sigil)
+                        ty:: AutoAddEnv(store.tr(xcx))
                     }
                     1 => {
                         let auto_deref_ref: ty::AutoDerefRef =

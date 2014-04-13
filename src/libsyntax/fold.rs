@@ -155,11 +155,18 @@ pub trait Folder {
             TyRptr(ref region, ref mt) => {
                 TyRptr(fold_opt_lifetime(region, self), fold_mt(mt, self))
             }
-            TyClosure(ref f) => {
+            TyClosure(ref f, ref region) => {
                 TyClosure(@ClosureTy {
-                    sigil: f.sigil,
                     fn_style: f.fn_style,
-                    region: fold_opt_lifetime(&f.region, self),
+                    onceness: f.onceness,
+                    bounds: fold_opt_bounds(&f.bounds, self),
+                    decl: self.fold_fn_decl(f.decl),
+                    lifetimes: f.lifetimes.iter().map(|l| fold_lifetime(l, self)).collect(),
+                }, fold_opt_lifetime(region, self))
+            }
+            TyProc(ref f) => {
+                TyProc(@ClosureTy {
+                    fn_style: f.fn_style,
                     onceness: f.onceness,
                     bounds: fold_opt_bounds(&f.bounds, self),
                     decl: self.fold_fn_decl(f.decl),

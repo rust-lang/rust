@@ -137,15 +137,6 @@ pub fn parse_substs_data(data: &[u8], crate_num: ast::CrateNum, pos: uint, tcx: 
     parse_substs(&mut st, conv)
 }
 
-fn parse_sigil(st: &mut PState) -> ast::Sigil {
-    match next(st) {
-        '@' => ast::ManagedSigil,
-        '~' => ast::OwnedSigil,
-        '&' => ast::BorrowedSigil,
-        c => st.tcx.sess.bug(format!("parse_sigil(): bad input '{}'", c))
-    }
-}
-
 fn parse_vstore<M>(st: &mut PState, conv: conv_did,
                    parse_mut: |&mut PState| -> M) -> ty::Vstore<M> {
     assert_eq!(next(st), '/');
@@ -476,17 +467,15 @@ fn parse_onceness(c: char) -> ast::Onceness {
 }
 
 fn parse_closure_ty(st: &mut PState, conv: conv_did) -> ty::ClosureTy {
-    let sigil = parse_sigil(st);
     let fn_style = parse_fn_style(next(st));
     let onceness = parse_onceness(next(st));
-    let region = parse_region(st, |x,y| conv(x,y));
+    let store = parse_trait_store(st, |x,y| conv(x,y));
     let bounds = parse_bounds(st, |x,y| conv(x,y));
     let sig = parse_sig(st, |x,y| conv(x,y));
     ty::ClosureTy {
         fn_style: fn_style,
-        sigil: sigil,
         onceness: onceness,
-        region: region,
+        store: store,
         bounds: bounds.builtin_bounds,
         sig: sig
     }

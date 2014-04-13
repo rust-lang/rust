@@ -218,7 +218,10 @@ impl<'a> Reflector<'a> {
           // FIXME (#4809): visitor should break out bare fns from other fns
           ty::ty_closure(ref fty) => {
             let pureval = ast_fn_style_constant(fty.fn_style);
-            let sigilval = ast_sigil_constant(fty.sigil);
+            let sigilval = match fty.store {
+                ty::UniqTraitStore => 2u,
+                ty::RegionTraitStore(..) => 4u,
+            };
             let retval = if ty::type_is_bot(fty.sig.output) {0u} else {1u};
             let extra = vec!(self.c_uint(pureval),
                           self.c_uint(sigilval),
@@ -395,14 +398,6 @@ pub fn emit_calls_to_trait_visit_ty<'a>(
     r.visit_ty(t);
     Br(r.bcx, final.llbb);
     return final;
-}
-
-pub fn ast_sigil_constant(sigil: ast::Sigil) -> uint {
-    match sigil {
-        ast::OwnedSigil => 2u,
-        ast::ManagedSigil => 3u,
-        ast::BorrowedSigil => 4u,
-    }
 }
 
 pub fn ast_fn_style_constant(fn_style: ast::FnStyle) -> uint {
