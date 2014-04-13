@@ -160,7 +160,7 @@ fn reset_helper(w: ~Writer:Send,
 {
     let mut t = Local::borrow(None::<Task>);
     // Be sure to flush any pending output from the writer
-    match f(t.get(), w) {
+    match f(&mut *t, w) {
         Some(mut w) => {
             drop(t);
             // FIXME: is failing right here?
@@ -230,9 +230,7 @@ fn with_task_stdout(f: |&mut Writer| -> IoResult<()> ) {
             // To protect against this, we do a little dance in which we
             // temporarily take the task, swap the handles, put the task in TLS,
             // and only then drop the previous handle.
-            let mut t = Local::borrow(None::<Task>);
-            let prev = replace(&mut t.get().stdout, my_stdout);
-            drop(t);
+            let prev = replace(&mut Local::borrow(None::<Task>).stdout, my_stdout);
             drop(prev);
             ret
         }

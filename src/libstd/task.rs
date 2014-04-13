@@ -257,8 +257,8 @@ pub fn try<T:Send>(f: proc():Send -> T) -> Result<T, ~Any:Send> {
 pub fn with_task_name<U>(blk: |Option<&str>| -> U) -> U {
     use rt::task::Task;
 
-    let mut task = Local::borrow(None::<Task>);
-    match task.get().name {
+    let task = Local::borrow(None::<Task>);
+    match task.name {
         Some(ref name) => blk(Some(name.as_slice())),
         None => blk(None)
     }
@@ -276,11 +276,8 @@ pub fn deschedule() {
 
 pub fn failing() -> bool {
     //! True if the running task has failed
-
     use rt::task::Task;
-
-    let mut local = Local::borrow(None::<Task>);
-    local.get().unwinder.unwinding()
+    Local::borrow(None::<Task>).unwinder.unwinding()
 }
 
 // The following 8 tests test the following 2^3 combinations:
