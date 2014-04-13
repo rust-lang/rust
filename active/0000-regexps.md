@@ -172,6 +172,9 @@ fits into the Rust distribution, but my vote is to document the `re!` macro in
 the `regexp` crate and hide the `regexp_re` crate from public documentation. 
 (Or link it to the `regexp` crate.)
 
+It seems like the `re!` macro will become a bit nicer to use once
+[#11640](https://github.com/mozilla/rust/issues/11640) is fixed.
+
 ## Untrusted input
 
 Given worst case `O(mn)` time complexity, I don't think it's worth worrying 
