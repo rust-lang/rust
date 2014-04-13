@@ -30,7 +30,8 @@ search text and are frequently used. For example, many programming languages
 include some kind of support for regular expressions in its standard library.
 
 The outcome of this RFC is to include a regular expression library in the Rust 
-distribution.
+distribution and resolve issue
+[#3591](https://github.com/mozilla/rust/issues/3591).
 
 # Detailed design
 
