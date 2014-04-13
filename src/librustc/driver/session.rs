@@ -181,7 +181,7 @@ pub struct Session {
     // For a library crate, this is always none
     pub entry_fn: RefCell<Option<(NodeId, codemap::Span)>>,
     pub entry_type: Cell<Option<EntryFnType>>,
-    pub macro_registrar_fn: RefCell<Option<ast::DefId>>,
+    pub macro_registrar_fn: Cell<Option<ast::NodeId>>,
     pub default_sysroot: Option<Path>,
     pub building_library: Cell<bool>,
     // The name of the root source file of the crate, in the local file system. The path is always

@@ -1565,12 +1565,8 @@ fn encode_native_libraries(ecx: &EncodeContext, ebml_w: &mut Encoder) {
 }
 
 fn encode_macro_registrar_fn(ecx: &EncodeContext, ebml_w: &mut Encoder) {
-    match *ecx.tcx.sess.macro_registrar_fn.borrow() {
-        Some(did) => {
-            ebml_w.start_tag(tag_macro_registrar_fn);
-            encode_def_id(ebml_w, did);
-            ebml_w.end_tag();
-        }
+    match ecx.tcx.sess.macro_registrar_fn.get() {
+        Some(id) => { ebml_w.wr_tagged_u32(tag_macro_registrar_fn, id); }
         None => {}
     }
 }

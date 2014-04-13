@@ -1235,9 +1235,9 @@ pub fn get_native_libraries(cdata: Cmd) -> Vec<(cstore::NativeLibaryKind, ~str)>
     return result;
 }
 
-pub fn get_macro_registrar_fn(cdata: Cmd) -> Option<ast::DefId> {
+pub fn get_macro_registrar_fn(cdata: Cmd) -> Option<ast::NodeId> {
     reader::maybe_get_doc(reader::Doc(cdata.data()), tag_macro_registrar_fn)
-        .map(|doc| item_def_id(doc, cdata))
+        .map(|doc| FromPrimitive::from_u32(reader::doc_as_u32(doc)).unwrap())
 }
 
 pub fn get_exported_macros(cdata: Cmd) -> Vec<~str> {
