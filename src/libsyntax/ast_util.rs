@@ -132,13 +132,21 @@ pub fn is_path(e: @Expr) -> bool {
     return match e.node { ExprPath(_) => true, _ => false };
 }
 
-pub fn int_ty_to_str(t: IntTy) -> ~str {
-    match t {
-        TyI => ~"",
-        TyI8 => ~"i8",
-        TyI16 => ~"i16",
-        TyI32 => ~"i32",
-        TyI64 => ~"i64"
+// Get a string representation of a signed int type, with its value.
+// We want to avoid "45int" and "-3int" in favor of "45" and "-3"
+pub fn int_ty_to_str(t: IntTy, val: Option<i64>) -> ~str {
+    let s = match t {
+        TyI if val.is_some() => "",
+        TyI => "int",
+        TyI8 => "i8",
+        TyI16 => "i16",
+        TyI32 => "i32",
+        TyI64 => "i64"
+    };
+
+    match val {
+        Some(n) => format!("{}{}", n, s),
+        None => s.to_owned()
     }
 }
 
@@ -151,13 +159,21 @@ pub fn int_ty_max(t: IntTy) -> u64 {
     }
 }
 
-pub fn uint_ty_to_str(t: UintTy) -> ~str {
-    match t {
-        TyU => ~"u",
-        TyU8 => ~"u8",
-        TyU16 => ~"u16",
-        TyU32 => ~"u32",
-        TyU64 => ~"u64"
+// Get a string representation of an unsigned int type, with its value.
+// We want to avoid "42uint" in favor of "42u"
+pub fn uint_ty_to_str(t: UintTy, val: Option<u64>) -> ~str {
+    let s = match t {
+        TyU if val.is_some() => "u",
+        TyU => "uint",
+        TyU8 => "u8",
+        TyU16 => "u16",
+        TyU32 => "u32",
+        TyU64 => "u64"
+    };
+
+    match val {
+        Some(n) => format!("{}{}", n, s),
+        None => s.to_owned()
     }
 }
 
