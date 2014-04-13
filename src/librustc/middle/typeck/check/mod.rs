@@ -3698,7 +3698,7 @@ pub fn instantiate_path(fcx: &FnCtxt,
             && !fcx.tcx().sess.features.default_type_params.get() {
             fcx.tcx().sess.span_err(pth.span, "default type parameters are \
                                                experimental and possibly buggy");
-            fcx.tcx().sess.span_note(pth.span, "add #[feature(default_type_params)] \
+            fcx.tcx().sess.span_note(pth.span, "add #![feature(default_type_params)] \
                                                 to the crate attributes to enable");
         }
 
