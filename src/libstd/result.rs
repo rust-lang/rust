@@ -12,6 +12,7 @@
 
 use clone::Clone;
 use cmp::Eq;
+use std::fmt::Show;
 use iter::{Iterator, FromIterator};
 use option::{None, Option, Some};
 
@@ -174,20 +175,6 @@ impl<T, E> Result<T, E> {
         }
     }
 
-    /////////////////////////////////////////////////////////////////////////
-    // Common special cases
-    /////////////////////////////////////////////////////////////////////////
-
-    /// Unwraps a result, yielding the content of an `Ok`.
-    /// Fails if the value is an `Err`.
-    #[inline]
-    pub fn unwrap(self) -> T {
-        match self {
-            Ok(t) => t,
-            Err(_) => fail!("called `Result::unwrap()` on an `Err` value")
-        }
-    }
-
     /// Unwraps a result, yielding the content of an `Ok`.
     /// Else it returns `optb`.
     #[inline]
@@ -207,13 +194,31 @@ impl<T, E> Result<T, E> {
             Err(e) => op(e)
         }
     }
+}
 
+impl<T, E: Show> Result<T, E> {
+    /// Unwraps a result, yielding the content of an `Ok`.
+    ///
+    /// Fails if the value is an `Err`.
+    #[inline]
+    pub fn unwrap(self) -> T {
+        match self {
+            Ok(t) => t,
+            Err(e) =>
+                fail!("called `Result::unwrap()` on an `Err` value: {}", e)
+        }
+    }
+}
+
+impl<T: Show, E> Result<T, E> {
     /// Unwraps a result, yielding the content of an `Err`.
+    ///
     /// Fails if the value is an `Ok`.
     #[inline]
     pub fn unwrap_err(self) -> E {
         match self {
-            Ok(_) => fail!("called `Result::unwrap_err()` on an `Ok` value"),
+            Ok(t) =>
+                fail!("called `Result::unwrap_err()` on an `Ok` value: {}", t),
             Err(e) => e
         }
     }
