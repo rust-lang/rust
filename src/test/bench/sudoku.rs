@@ -16,7 +16,7 @@ use std::io;
 use std::io::stdio::StdReader;
 use std::io::BufferedReader;
 use std::os;
-use std::intrinsics::cttz16;
+use std::num::Bitwise;
 
 // Computes a single solution to a given 9x9 sudoku
 //
@@ -187,9 +187,7 @@ impl Colors {
         if (0u16 == val) {
             return 0u8;
         } else {
-            unsafe {
-                return cttz16(val as i16) as u8;
-            }
+            return val.trailing_zeros() as u8
         }
     }
 
