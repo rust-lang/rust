@@ -27,7 +27,7 @@ Some examples that demonstrate different aspects of the language:
 
 You may also be interested in browsing [GitHub's Rust][github-rust] page.
 
-[github-rust]: https://github.com/languages/Rust
+[github-rust]: https://github.com/trending?l=rust
 
 ## Does it run on Windows?
 
