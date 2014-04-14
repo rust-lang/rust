@@ -63,6 +63,8 @@ println!("path exists: {}", path.exists());
 
 */
 
+#![deny(deprecated_owned_vector)]
+
 use container::Container;
 use c_str::CString;
 use clone::Clone;
@@ -70,10 +72,11 @@ use fmt;
 use iter::Iterator;
 use option::{Option, None, Some};
 use str;
-use str::{MaybeOwned, OwnedStr, Str, StrSlice, from_utf8_lossy};
-use slice;
-use slice::{CloneableVector, OwnedCloneableVector, OwnedVector, Vector};
+use str::{MaybeOwned, Str, StrSlice, from_utf8_lossy};
+use strbuf::StrBuf;
+use slice::{OwnedCloneableVector, OwnedVector, Vector};
 use slice::{ImmutableEqVector, ImmutableVector};
+use vec::Vec;
 
 /// Typedef for POSIX file paths.
 /// See `posix::Path` for more info.
@@ -184,7 +187,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     fn as_vec<'a>(&'a self) -> &'a [u8];
 
     /// Converts the Path into an owned byte vector
-    fn into_vec(self) -> ~[u8];
+    fn into_vec(self) -> Vec<u8>;
 
     /// Returns an object that implements `Show` for printing paths
     ///
@@ -293,7 +296,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
             let extlen = extension.container_as_bytes().len();
             match (name.rposition_elem(&dot), extlen) {
                 (None, 0) | (Some(0), 0) => None,
-                (Some(idx), 0) => Some(name.slice_to(idx).to_owned()),
+                (Some(idx), 0) => Some(Vec::from_slice(name.slice_to(idx))),
                 (idx, extlen) => {
                     let idx = match idx {
                         None | Some(0) => name.len(),
@@ -301,7 +304,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
                     };
 
                     let mut v;
-                    v = slice::with_capacity(idx + extlen + 1);
+                    v = Vec::with_capacity(idx + extlen + 1);
                     v.push_all(name.slice_to(idx));
                     v.push(dot);
                     v.push_all(extension.container_as_bytes());
@@ -441,10 +444,10 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
 pub trait BytesContainer {
     /// Returns a &[u8] representing the receiver
     fn container_as_bytes<'a>(&'a self) -> &'a [u8];
-    /// Consumes the receiver and converts it into ~[u8]
+    /// Consumes the receiver and converts it into Vec<u8>
     #[inline]
-    fn container_into_owned_bytes(self) -> ~[u8] {
-        self.container_as_bytes().to_owned()
+    fn container_into_owned_bytes(self) -> Vec<u8> {
+        Vec::from_slice(self.container_as_bytes())
     }
     /// Returns the receiver interpreted as a utf-8 string, if possible
     #[inline]
@@ -522,7 +525,19 @@ impl BytesContainer for ~str {
         self.as_bytes()
     }
     #[inline]
-    fn container_into_owned_bytes(self) -> ~[u8] {
+    fn container_as_str<'a>(&'a self) -> Option<&'a str> {
+        Some(self.as_slice())
+    }
+    #[inline]
+    fn is_str(_: Option<~str>) -> bool { true }
+}
+impl BytesContainer for StrBuf {
+    #[inline]
+    fn container_as_bytes<'a>(&'a self) -> &'a [u8] {
+        self.as_bytes()
+    }
+    #[inline]
+    fn container_into_owned_bytes(self) -> Vec<u8> {
         self.into_bytes()
     }
     #[inline]
@@ -530,7 +545,7 @@ impl BytesContainer for ~str {
         Some(self.as_slice())
     }
     #[inline]
-    fn is_str(_: Option<~str>) -> bool { true }
+    fn is_str(_: Option<StrBuf>) -> bool { true }
 }
 
 impl<'a> BytesContainer for &'a [u8] {
@@ -545,8 +560,15 @@ impl BytesContainer for ~[u8] {
     fn container_as_bytes<'a>(&'a self) -> &'a [u8] {
         self.as_slice()
     }
+}
+
+impl BytesContainer for Vec<u8> {
     #[inline]
-    fn container_into_owned_bytes(self) -> ~[u8] {
+    fn container_as_bytes<'a>(&'a self) -> &'a [u8] {
+        self.as_slice()
+    }
+    #[inline]
+    fn container_into_owned_bytes(self) -> Vec<u8> {
         self
     }
 }
@@ -562,10 +584,6 @@ impl<'a> BytesContainer for str::MaybeOwned<'a> {
     #[inline]
     fn container_as_bytes<'b>(&'b self) -> &'b [u8] {
         self.as_slice().as_bytes()
-    }
-    #[inline]
-    fn container_into_owned_bytes(self) -> ~[u8] {
-        self.into_owned().into_bytes()
     }
     #[inline]
     fn container_as_str<'b>(&'b self) -> Option<&'b str> {
