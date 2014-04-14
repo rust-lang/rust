@@ -163,7 +163,7 @@ fn check_item(cx: &mut Context, item: &Item) {
 // closure.
 fn with_appropriate_checker(cx: &Context,
                             id: NodeId,
-                            b: |checker: |&Context, @freevar_entry||) {
+                            b: |checker: |&Context, &freevar_entry||) {
     fn check_for_uniq(cx: &Context, fv: &freevar_entry, bounds: ty::BuiltinBounds) {
         // all captured data must be owned, regardless of whether it is
         // moved in or copied in.
@@ -184,7 +184,7 @@ fn with_appropriate_checker(cx: &Context,
                              bounds, Some(var_t));
     }
 
-    fn check_for_bare(cx: &Context, fv: @freevar_entry) {
+    fn check_for_bare(cx: &Context, fv: &freevar_entry) {
         cx.tcx.sess.span_err(
             fv.span,
             "can't capture dynamic environment in a fn item; \
@@ -223,10 +223,11 @@ fn check_fn(
 
     // Check kinds on free variables:
     with_appropriate_checker(cx, fn_id, |chk| {
-        let r = freevars::get_freevars(cx.tcx, fn_id);
-        for fv in r.iter() {
-            chk(cx, *fv);
-        }
+        freevars::with_freevars(cx.tcx, fn_id, |r| {
+            for fv in r.iter() {
+                chk(cx, fv);
+            }
+        })
     });
 
     visit::walk_fn(cx, fk, decl, body, sp, fn_id, ());

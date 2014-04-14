@@ -29,12 +29,11 @@ pub struct freevar_entry {
     pub def: ast::Def, //< The variable being accessed free.
     pub span: Span     //< First span where it is accessed (there can be multiple)
 }
-pub type freevar_info = @Vec<@freevar_entry> ;
-pub type freevar_map = NodeMap<freevar_info>;
+pub type freevar_map = NodeMap<Vec<freevar_entry>>;
 
 struct CollectFreevarsVisitor<'a> {
     seen: NodeSet,
-    refs: Vec<@freevar_entry>,
+    refs: Vec<freevar_entry>,
     def_map: &'a resolve::DefMap,
 }
 
@@ -65,7 +64,7 @@ impl<'a> Visitor<int> for CollectFreevarsVisitor<'a> {
                         if i == depth { // Made it to end of loop
                             let dnum = ast_util::def_id_of_def(def).node;
                             if !self.seen.contains(&dnum) {
-                                self.refs.push(@freevar_entry {
+                                self.refs.push(freevar_entry {
                                     def: def,
                                     span: expr.span,
                                 });
@@ -87,7 +86,7 @@ impl<'a> Visitor<int> for CollectFreevarsVisitor<'a> {
 // Since we want to be able to collect upvars in some arbitrary piece
 // of the AST, we take a walker function that we invoke with a visitor
 // in order to start the search.
-fn collect_freevars(def_map: &resolve::DefMap, blk: &ast::Block) -> freevar_info {
+fn collect_freevars(def_map: &resolve::DefMap, blk: &ast::Block) -> Vec<freevar_entry> {
     let mut v = CollectFreevarsVisitor {
         seen: NodeSet::new(),
         refs: Vec::new(),
@@ -95,7 +94,7 @@ fn collect_freevars(def_map: &resolve::DefMap, blk: &ast::Block) -> freevar_info
     };
 
     v.visit_block(blk, 1);
-    @v.refs
+    v.refs
 }
 
 struct AnnotateFreevarsVisitor<'a> {
@@ -128,9 +127,9 @@ pub fn annotate_freevars(def_map: &resolve::DefMap, krate: &ast::Crate) ->
     visitor.freevars
 }
 
-pub fn get_freevars(tcx: &ty::ctxt, fid: ast::NodeId) -> freevar_info {
+pub fn with_freevars<T>(tcx: &ty::ctxt, fid: ast::NodeId, f: |&[freevar_entry]| -> T) -> T {
     match tcx.freevars.borrow().find(&fid) {
-        None => fail!("get_freevars: {} has no freevars", fid),
-        Some(&d) => return d
+        None => fail!("with_freevars: {} has no freevars", fid),
+        Some(d) => f(d.as_slice())
     }
 }
