@@ -4851,13 +4851,13 @@ msgstr ""
 #. type: Plain text
 #: src/doc/tutorial.md:3134
 #, fuzzy
-#| msgid "// Make a library (\"bin\" is the default)  #[crate_type = \"lib\"];"
+#| msgid "// Make a library (\"bin\" is the default)  #![crate_type = \"lib\"]"
 msgid ""
 "// This crate is a library (\"bin\" is the default)  #[crate_id = "
-"\"farm#2.5\"]; #[crate_type = \"lib\"];"
+"\"farm#2.5\"]; #![crate_type = \"lib\"]"
 msgstr ""
 "// ライブラリを作成する (\"bin\" がデフォルト値)\n"
-"#[crate_type = \"lib\"];"
+"#![crate_type = \"lib\"]"
 
 #. type: Plain text
 #: src/doc/tutorial.md:3139
@@ -4888,15 +4888,15 @@ msgstr ""
 #: src/doc/tutorial.md:3153
 #, fuzzy
 #| msgid ""
-#| "~~~~ // world.rs #[link(name = \"world\", vers = \"1.0\")]; pub fn "
+#| "~~~~ // world.rs #![link(name = \"world\", vers = \"1.0\")] pub fn "
 #| "explore() -> &str { \"world\" } ~~~~"
 msgid ""
-"~~~~ // `world.rs` #[crate_id = \"world#0.42\"]; # extern crate extra; pub fn "
+"~~~~ // `world.rs` #![crate_id = \"world#0.42\"] # extern crate extra; pub fn "
 "explore() -> &'static str { \"world\" } # fn main() {} ~~~~"
 msgstr ""
 "~~~~\n"
 "// world.rs\n"
-"#[link(name = \"world\", vers = \"1.0\")];\n"
+"#![link(name = \"world\", vers = \"1.0\")]\n"
 "pub fn explore() -> &str { \"world\" }\n"
 "~~~~"
 

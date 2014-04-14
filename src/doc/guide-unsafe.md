@@ -424,14 +424,14 @@ Current valid options are:
 # Avoiding the standard library
 
 By default, `std` is linked to every Rust crate. In some contexts,
-this is undesirable, and can be avoided with the `#[no_std];`
+this is undesirable, and can be avoided with the `#![no_std]`
 attribute attached to the crate.
 
 ```ignore
 # // FIXME #12903: linking failures due to no_std
 // the minimal library
-#[crate_type="lib"];
-#[no_std];
+#![crate_type="lib"]
+#![no_std]
 
 # // fn main() {} tricked you, rustdoc!
 ```
@@ -446,7 +446,7 @@ in the same format as a C:
 
 ```ignore
 # // FIXME #12903: linking failures due to no_std
-#[no_std];
+#![no_std]
 
 extern "rust-intrinsic" { fn abort() -> !; }
 #[no_mangle] pub extern fn rust_stack_exhausted() {
@@ -462,14 +462,14 @@ fn start(_argc: int, _argv: **u8) -> int {
 ```
 
 To override the compiler-inserted `main` shim, one has to disable it
-with `#[no_main];` and then create the appropriate symbol with the
+with `#![no_main]` and then create the appropriate symbol with the
 correct ABI and the correct name, which requires overriding the
 compiler's name mangling too:
 
 ```ignore
 # // FIXME #12903: linking failures due to no_std
-#[no_std];
-#[no_main];
+#![no_std]
+#![no_main]
 
 extern "rust-intrinsic" { fn abort() -> !; }
 #[no_mangle] pub extern fn rust_stack_exhausted() {
@@ -543,7 +543,7 @@ sugar for dynamic allocations via `malloc` and `free`:
 
 ```ignore
 # // FIXME #12903: linking failures due to no_std
-#[no_std];
+#![no_std]
 
 #[allow(ctypes)] // `uint` == `size_t` on Rust's platforms
 extern {

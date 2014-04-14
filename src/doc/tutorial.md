@@ -3096,8 +3096,8 @@ Therefore, if you plan to compile your crate as a library, you should annotate i
 ~~~~
 // `lib.rs`
 
-# #[crate_type = "lib"];
-#[crate_id = "farm#2.5"];
+# #![crate_type = "lib"]
+#![crate_id = "farm#2.5"]
 
 // ...
 # fn farm() {}
@@ -3121,8 +3121,8 @@ or setting the crate type (library or executable) explicitly:
 // ...
 
 // This crate is a library ("bin" is the default)
-#[crate_id = "farm#2.5"];
-#[crate_type = "lib"];
+#![crate_id = "farm#2.5"]
+#![crate_type = "lib"]
 
 // Turn on a warning
 #[warn(non_camel_case_types)]
@@ -3137,7 +3137,7 @@ We define two crates, and use one of them as a library in the other.
 
 ~~~~
 // `world.rs`
-#[crate_id = "world#0.42"];
+#![crate_id = "world#0.42"]
 
 # mod secret_module_to_make_this_test_run {
 pub fn explore() -> &'static str { "world" }
@@ -3211,12 +3211,12 @@ Both auto-insertions can be disabled with an attribute if necessary:
 
 ~~~
 // In the crate root:
-#[no_std];
+#![no_std]
 ~~~
 
 ~~~
 // In any module:
-#[no_implicit_prelude];
+#![no_implicit_prelude]
 ~~~
 
 See the [API documentation][stddoc] for details.
