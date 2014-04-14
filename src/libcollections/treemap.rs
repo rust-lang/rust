@@ -573,74 +573,54 @@ impl<T: Ord + TotalOrd> Ord for TreeSet<T> {
 }
 
 impl<T: TotalOrd> Container for TreeSet<T> {
-    /// Return the number of elements in the set
     #[inline]
     fn len(&self) -> uint { self.map.len() }
-
-    /// Return true if the set contains no elements
-    #[inline]
-    fn is_empty(&self) -> bool { self.map.is_empty() }
 }
 
 impl<T: TotalOrd> Mutable for TreeSet<T> {
-    /// Clear the set, removing all values.
     #[inline]
     fn clear(&mut self) { self.map.clear() }
 }
 
 impl<T: TotalOrd> Set<T> for TreeSet<T> {
-    /// Return true if the set contains a value
     #[inline]
     fn contains(&self, value: &T) -> bool {
         self.map.contains_key(value)
     }
 
-    /// Return true if the set has no elements in common with `other`.
-    /// This is equivalent to checking for an empty intersection.
     fn is_disjoint(&self, other: &TreeSet<T>) -> bool {
         self.intersection(other).next().is_none()
     }
 
-    /// Return true if the set is a subset of another
-    #[inline]
     fn is_subset(&self, other: &TreeSet<T>) -> bool {
-        other.is_superset(self)
-    }
-
-    /// Return true if the set is a superset of another
-    fn is_superset(&self, other: &TreeSet<T>) -> bool {
         let mut x = self.iter();
         let mut y = other.iter();
         let mut a = x.next();
         let mut b = y.next();
-        while b.is_some() {
-            if a.is_none() {
-                return false
+        while a.is_some() {
+            if b.is_none() {
+                return false;
             }
 
             let a1 = a.unwrap();
             let b1 = b.unwrap();
 
-            match a1.cmp(b1) {
-              Less => (),
-              Greater => return false,
-              Equal => b = y.next(),
+            match b1.cmp(a1) {
+                Less => (),
+                Greater => return false,
+                Equal => a = x.next(),
             }
 
-            a = x.next();
+            b = y.next();
         }
         true
     }
 }
 
 impl<T: TotalOrd> MutableSet<T> for TreeSet<T> {
-    /// Add a value to the set. Return true if the value was not already
-    /// present in the set.
     #[inline]
     fn insert(&mut self, value: T) -> bool { self.map.insert(value, ()) }
 
-    /// Remove a value from the set. Return true if the value was
-    /// present in the set.
     #[inline]
     fn remove(&mut self, value: &T) -> bool { self.map.remove(value) }
 }

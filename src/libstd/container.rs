@@ -88,7 +88,9 @@ pub trait Set<T>: Container {
     fn is_subset(&self, other: &Self) -> bool;
 
     /// Return true if the set is a superset of another
-    fn is_superset(&self, other: &Self) -> bool;
+    fn is_superset(&self, other: &Self) -> bool {
+        other.is_subset(self)
+    }
 
     // FIXME #8154: Add difference, sym. difference, intersection and union iterators
 }
