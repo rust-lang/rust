@@ -89,10 +89,8 @@ exposes byte indices.
 
 ## Word boundaries, word characters and Unicode
 
-The `\w` character class and the zero-width word boundary assertion `\b` are 
-defined in terms of the ASCII character set. I'm not aware of any 
-implementation that defines these in terms of proper Unicode character classes. 
-Do we want to be the first?
+At least Python and D define word characters, word boundaries and space 
+characters with Unicode character classes. I propose we do the same.
 
 ## Leftmost-first
 
