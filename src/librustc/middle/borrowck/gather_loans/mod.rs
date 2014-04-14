@@ -36,6 +36,8 @@ use syntax::visit;
 use syntax::visit::{Visitor, FnKind};
 use syntax::ast::{Expr, FnDecl, Block, NodeId, Stmt, Pat, Local};
 
+use std::rc::Rc;
+
 mod lifetime;
 mod restrictions;
 mod gather_moves;
@@ -296,7 +298,7 @@ fn gather_loans_in_expr(this: &mut GatherLoanCtxt,
     }
 }
 
-fn with_assignee_loan_path(bccx: &BorrowckCtxt, expr: &ast::Expr, op: |@LoanPath|) {
+fn with_assignee_loan_path(bccx: &BorrowckCtxt, expr: &ast::Expr, op: |Rc<LoanPath>|) {
     let cmt = bccx.cat_expr(expr);
     match opt_loan_path(cmt) {
         Some(lp) => op(lp),
@@ -611,11 +613,11 @@ impl<'a> GatherLoanCtxt<'a> {
                 let gen_scope = self.compute_gen_scope(borrow_id, loan_scope);
                 debug!("gen_scope = {:?}", gen_scope);
 
-                let kill_scope = self.compute_kill_scope(loan_scope, loan_path);
+                let kill_scope = self.compute_kill_scope(loan_scope, &*loan_path);
                 debug!("kill_scope = {:?}", kill_scope);
 
                 if req_kind == ty::MutBorrow {
-                    self.mark_loan_path_as_mutated(loan_path);
+                    self.mark_loan_path_as_mutated(&*loan_path);
                 }
 
                 Loan {
@@ -717,7 +719,7 @@ impl<'a> GatherLoanCtxt<'a> {
         }
     }
 
-    pub fn mark_loan_path_as_mutated(&self, loan_path: @LoanPath) {
+    pub fn mark_loan_path_as_mutated(&self, loan_path: &LoanPath) {
         //! For mutable loans of content whose mutability derives
         //! from a local variable, mark the mutability decl as necessary.
 
@@ -725,8 +727,8 @@ impl<'a> GatherLoanCtxt<'a> {
             LpVar(local_id) => {
                 self.tcx().used_mut_nodes.borrow_mut().insert(local_id);
             }
-            LpExtend(base, mc::McInherited, _) => {
-                self.mark_loan_path_as_mutated(base);
+            LpExtend(ref base, mc::McInherited, _) => {
+                self.mark_loan_path_as_mutated(&**base);
             }
             LpExtend(_, mc::McDeclared, _) |
             LpExtend(_, mc::McImmutable, _) => {
@@ -751,7 +753,7 @@ impl<'a> GatherLoanCtxt<'a> {
         }
     }
 
-    pub fn compute_kill_scope(&self, loan_scope: ast::NodeId, lp: @LoanPath)
+    pub fn compute_kill_scope(&self, loan_scope: ast::NodeId, lp: &LoanPath)
                               -> ast::NodeId {
         //! Determine when the loan restrictions go out of scope.
         //! This is either when the lifetime expires or when the
@@ -826,7 +828,7 @@ impl<'a> GatherLoanCtxt<'a> {
                                                     &self.move_data,
                                                     id,
                                                     span,
-                                                    @LpVar(id),
+                                                    Rc::new(LpVar(id)),
                                                     id);
                 });
 

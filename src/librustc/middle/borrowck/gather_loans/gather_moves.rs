@@ -30,12 +30,14 @@ struct GatherMoveInfo {
     span_path_opt: Option<MoveSpanAndPath>
 }
 
+use std::rc::Rc;
+
 pub fn gather_decl(bccx: &BorrowckCtxt,
                    move_data: &MoveData,
                    decl_id: ast::NodeId,
                    _decl_span: Span,
                    var_id: ast::NodeId) {
-    let loan_path = @LpVar(var_id);
+    let loan_path = Rc::new(LpVar(var_id));
     move_data.add_move(bccx.tcx, loan_path, decl_id, Declared);
 }
 
@@ -131,7 +133,7 @@ pub fn gather_assignment(bccx: &BorrowckCtxt,
                          move_data: &MoveData,
                          assignment_id: ast::NodeId,
                          assignment_span: Span,
-                         assignee_loan_path: @LoanPath,
+                         assignee_loan_path: Rc<LoanPath>,
                          assignee_id: ast::NodeId) {
     move_data.add_assignment(bccx.tcx,
                              assignee_loan_path,
@@ -145,7 +147,7 @@ pub fn gather_move_and_assignment(bccx: &BorrowckCtxt,
                                   move_data: &MoveData,
                                   assignment_id: ast::NodeId,
                                   assignment_span: Span,
-                                  assignee_loan_path: @LoanPath,
+                                  assignee_loan_path: Rc<LoanPath>,
                                   assignee_id: ast::NodeId) {
     move_data.add_assignment(bccx.tcx,
                              assignee_loan_path,
