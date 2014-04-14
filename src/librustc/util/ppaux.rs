@@ -365,8 +365,9 @@ pub fn ty_to_str(cx: &ctxt, typ: t) -> ~str {
       ty_param(param_ty {idx: id, def_id: did}) => {
           let ident = match cx.ty_param_defs.borrow().find(&did.node) {
               Some(def) => token::get_ident(def.ident).get().to_str(),
-              // This should not happen...
-              None => format!("BUG[{:?}]", id)
+              // This can only happen when a type mismatch error happens and
+              // the actual type has more type parameters than the expected one.
+              None => format!("<generic \\#{}>", id)
           };
           if !cx.sess.verbose() {
               ident
