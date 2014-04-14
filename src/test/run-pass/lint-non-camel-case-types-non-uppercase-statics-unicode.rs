@@ -9,9 +9,9 @@
 // except according to those terms.
 
 
-#[forbid(non_camel_case_types)];
-#[forbid(non_uppercase_statics)];
-#[feature(non_ascii_idents)];
+#![forbid(non_camel_case_types)]
+#![forbid(non_uppercase_statics)]
+#![feature(non_ascii_idents)]
 
 // Some scripts (e.g. hiragana) don't have a concept of
 // upper/lowercase

@@ -51,7 +51,7 @@
 // check:$14 = 3.5
 // debugger:continue
 
-#[allow(unused_variable)];
+#![allow(unused_variable)]
 
 static B: bool = false;
 static I: int = -1;

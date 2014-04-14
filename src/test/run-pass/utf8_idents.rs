@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-#[feature(non_ascii_idents)];
+#![feature(non_ascii_idents)]
 
 use std::num;
 

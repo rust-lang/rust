@@ -10,7 +10,7 @@
 
 // regression test for issue #5625
 
-#[feature(struct_variant)];
+#![feature(struct_variant)]
 
 enum E {
     Foo{f : int},

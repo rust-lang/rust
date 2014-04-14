@@ -10,7 +10,7 @@
 
 // compile-flags: --cfg foo
 
-#[feature(macro_rules)];
+#![feature(macro_rules)]
 
 #[cfg(foo)]
 macro_rules! foo( () => (1) )

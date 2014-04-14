@@ -86,7 +86,7 @@
 // debugger:detach
 // debugger:quit
 
-#[allow(unused_variable)];
+#![allow(unused_variable)]
 
 static mut B: bool = false;
 static mut I: int = -1;

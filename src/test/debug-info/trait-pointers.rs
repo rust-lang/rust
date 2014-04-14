@@ -13,7 +13,7 @@
 // compile-flags:-g
 // debugger:run
 
-#[allow(unused_variable)];
+#![allow(unused_variable)]
 
 trait Trait {
     fn method(&self) -> int { 0 }

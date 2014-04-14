@@ -10,7 +10,7 @@
 
 // ignore-android: FIXME(#10381)
 
-#[feature(managed_boxes)];
+#![feature(managed_boxes)]
 
 // Gdb doesn't know about UTF-32 character encoding and will print a rust char as only
 // its numerical value.
@@ -61,7 +61,7 @@
 // debugger:print *f64_ref
 // check:$14 = 3.5
 
-#[allow(unused_variable)];
+#![allow(unused_variable)]
 
 fn main() {
     let bool_box: @bool = @true;

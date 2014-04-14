@@ -52,7 +52,7 @@ impl UnixStream {
     /// # Example
     ///
     /// ```rust
-    /// # #[allow(unused_must_use)];
+    /// # #![allow(unused_must_use)]
     /// use std::io::net::unix::UnixStream;
     ///
     /// let server = Path::new("path/to/my/socket");
@@ -98,7 +98,7 @@ impl UnixListener {
     /// ```
     /// # fn main() {}
     /// # fn foo() {
-    /// # #[allow(unused_must_use)];
+    /// # #![allow(unused_must_use)]
     /// use std::io::net::unix::UnixListener;
     /// use std::io::{Listener, Acceptor};
     ///

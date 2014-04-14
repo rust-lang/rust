@@ -46,7 +46,7 @@ Some examples of obvious things you might want to do
 * Write a line to a file
 
     ```rust
-    # #[allow(unused_must_use)];
+    # #![allow(unused_must_use)]
     use std::io::File;
 
     let mut file = File::create(&Path::new("message.txt"));
@@ -82,7 +82,7 @@ Some examples of obvious things you might want to do
 * Make a simple TCP client connection and request
 
     ```rust,should_fail
-    # #[allow(unused_must_use)];
+    # #![allow(unused_must_use)]
     use std::io::net::ip::SocketAddr;
     use std::io::net::tcp::TcpStream;
 
@@ -159,7 +159,7 @@ be an error.
 If you wanted to handle the error though you might write:
 
 ```rust
-# #[allow(unused_must_use)];
+# #![allow(unused_must_use)]
 use std::io::File;
 
 match File::create(&Path::new("diary.txt")).write(bytes!("Met a girl.\n")) {

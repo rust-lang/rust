@@ -12,7 +12,7 @@
 
 // exec-env:RUST_POISON_ON_FREE=1
 
-#[feature(managed_boxes)];
+#![feature(managed_boxes)]
 
 fn borrow(x: &int, f: |x: &int|) {
     let before = *x;

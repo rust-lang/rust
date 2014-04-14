@@ -126,7 +126,7 @@ impl<'a> fold::Folder for PreludeInjector<'a> {
     fn fold_crate(&mut self, krate: ast::Crate) -> ast::Crate {
         if !no_prelude(krate.attrs.as_slice()) {
             // only add `use std::prelude::*;` if there wasn't a
-            // `#[no_implicit_prelude];` at the crate level.
+            // `#![no_implicit_prelude]` at the crate level.
             ast::Crate {
                 module: self.fold_mod(&krate.module),
                 ..krate
@@ -138,7 +138,7 @@ impl<'a> fold::Folder for PreludeInjector<'a> {
 
     fn fold_item(&mut self, item: @ast::Item) -> SmallVector<@ast::Item> {
         if !no_prelude(item.attrs.as_slice()) {
-            // only recur if there wasn't `#[no_implicit_prelude];`
+            // only recur if there wasn't `#![no_implicit_prelude]`
             // on this item, i.e. this means that the prelude is not
             // implicitly imported though the whole subtree
             fold::noop_fold_item(item, self)

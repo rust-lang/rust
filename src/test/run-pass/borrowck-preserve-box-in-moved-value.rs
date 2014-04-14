@@ -13,7 +13,7 @@
 // Test that we root `x` even though it is found in immutable memory,
 // because it is moved.
 
-#[feature(managed_boxes)];
+#![feature(managed_boxes)]
 
 fn free<T>(x: @T) {}
 

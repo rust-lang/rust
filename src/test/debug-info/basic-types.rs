@@ -49,7 +49,7 @@
 // debugger:print f64
 // check:$14 = 3.5
 
-#[allow(unused_variable)];
+#![allow(unused_variable)]
 
 fn main() {
     let b: bool = false;

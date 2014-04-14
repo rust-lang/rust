@@ -37,7 +37,7 @@ TEMPLATE = """// Copyright {year} The Rust Project Developers. See the COPYRIGHT
 
 // This file was auto-generated using 'src/etc/generate-keyword-span-tests.py'
 
-#[feature(struct_variant)];
+#![feature(struct_variant)]
 extern crate rand;
 
 {error_deriving}

@@ -9,8 +9,8 @@
 // except according to those terms.
 
 // default link meta for 'package_id' will be equal to filestem
-#[crate_id="crateresolve8#0.1"];
+#![crate_id="crateresolve8#0.1"]
 
-#[crate_type = "lib"];
+#![crate_type = "lib"]
 
 pub fn f() -> int { 20 }

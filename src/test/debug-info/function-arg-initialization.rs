@@ -130,7 +130,7 @@
 // check:$32 = 45
 // debugger:continue
 
-#[allow(unused_variable)];
+#![allow(unused_variable)]
 
 
 

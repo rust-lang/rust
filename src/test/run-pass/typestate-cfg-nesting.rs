@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[allow(dead_assignment)];
-#[allow(unused_variable)];
+#![allow(dead_assignment)]
+#![allow(unused_variable)]
 
 fn f() {
     let x = 10; let mut y = 11;

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[allow(unused_must_use, dead_code)];
+#![allow(unused_must_use, dead_code)]
 
 use std::io::MemWriter;
 

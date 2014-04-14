@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[allow(dead_assignment)];
+#![allow(dead_assignment)]
 
 fn id<T>(x: T) -> T { return x; }
 

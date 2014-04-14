@@ -10,7 +10,7 @@
 
 // error-pattern: unreachable statement
 
-#[deny(unreachable_code)];
+#![deny(unreachable_code)]
 
 fn f() -> ! {
     return fail!();
