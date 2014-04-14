@@ -310,10 +310,10 @@ pub fn phase_3_run_analysis_passes(sess: Session,
     time(time_passes, "looking for entry point", (),
          |_| middle::entry::find_entry_point(&sess, krate, &ast_map));
 
-    *sess.macro_registrar_fn.borrow_mut() =
+    sess.macro_registrar_fn.set(
         time(time_passes, "looking for macro registrar", (), |_|
             syntax::ext::registrar::find_macro_registrar(
-                sess.diagnostic(), krate));
+                sess.diagnostic(), krate)));
 
     let freevars = time(time_passes, "freevar finding", (), |_|
                         freevars::annotate_freevars(def_map, krate));
@@ -1054,7 +1054,7 @@ pub fn build_session_(sopts: session::Options,
         // For a library crate, this is always none
         entry_fn: RefCell::new(None),
         entry_type: Cell::new(None),
-        macro_registrar_fn: RefCell::new(None),
+        macro_registrar_fn: Cell::new(None),
         default_sysroot: default_sysroot,
         building_library: Cell::new(false),
         local_crate_source_file: local_crate_source_file,
