@@ -201,19 +201,30 @@ impl rt::Runtime for Ops {
                     Err(task) => { cast::forget(task.wake()); }
                 }
             } else {
-                let mut iter = task.make_selectable(times);
+                let iter = task.make_selectable(times);
                 let guard = (*me).lock.lock();
                 (*me).awoken = false;
-                let success = iter.all(|task| {
-                    match f(task) {
-                        Ok(()) => true,
-                        Err(task) => {
-                            cast::forget(task.wake());
-                            false
+
+                // Apply the given closure to all of the "selectable tasks",
+                // bailing on the first one that produces an error. Note that
+                // care must be taken such that when an error is occurred, we
+                // may not own the task, so we may still have to wait for the
+                // task to become available. In other words, if task.wake()
+                // returns `None`, then someone else has ownership and we must
+                // wait for their signal.
+                match iter.map(f).filter_map(|a| a.err()).next() {
+                    None => {}
+                    Some(task) => {
+                        match task.wake() {
+                            Some(task) => {
+                                cast::forget(task);
+                                (*me).awoken = true;
+                            }
+                            None => {}
                         }
                     }
-                });
-                while success && !(*me).awoken {
+                }
+                while !(*me).awoken {
                     guard.wait();
                 }
             }
