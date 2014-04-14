@@ -185,7 +185,7 @@ amount.
 For example:
 
 ~~~
-# #[allow(unused_imports)];
+# #![allow(unused_imports)]
 extern crate test;
 
 use std::slice;
@@ -247,7 +247,7 @@ recognize that some calculation has no external effects and remove
 it entirely.
 
 ~~~
-# #[allow(unused_imports)];
+# #![allow(unused_imports)]
 extern crate test;
 use test::Bencher;
 
