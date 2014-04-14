@@ -146,13 +146,13 @@ This basically makes up the entirety of the public API, in addition to perhaps
 a `quote` function that escapes a string so that it may be used as a literal in 
 an expression.
 
-## The `re!` macro
+## The `regexp!` macro
 
-With syntax extensions, it's possible to write an `re!` macro that compiles an 
-expression when a Rust program is compiled. In my case, it seemed simplest to 
-compile it to *static* data. For example:
+With syntax extensions, it's possible to write an `regexp!` macro that compiles 
+an expression when a Rust program is compiled. In my case, it seemed simplest 
+to compile it to *static* data. For example:
 
-    static re: Regexp = re!("a*");
+    static re: Regexp = regexp!("a*");
 
 At first this seemed difficult to accommodate, but it turned out to be 
 relatively easy with a type like this:
@@ -162,17 +162,17 @@ relatively easy with a type like this:
         Static(&'static [T]),
     }
 
-Another option is for the `re!` macro to produce a non-static value, but I 
+Another option is for the `regexp!` macro to produce a non-static value, but I 
 found this difficult to do with zero-runtime cost. Either way, the ability to 
 statically declare a regexp is pretty cool I think.
 
 Note that the syntax extension is the reason for the `regexp_macros` crate. It's 
 very small and contains the macro registration function. I'm not sure how this 
-fits into the Rust distribution, but my vote is to document the `re!` macro in 
-the `regexp` crate and hide the `regexp_macros` crate from public documentation. 
-(Or link it to the `regexp` crate.)
+fits into the Rust distribution, but my vote is to document the `regexp!` macro 
+in the `regexp` crate and hide the `regexp_macros` crate from public 
+documentation.  (Or link it to the `regexp` crate.)
 
-It seems like the `re!` macro will become a bit nicer to use once
+It seems like the `regexp!` macro will become a bit nicer to use once
 [#11640](https://github.com/mozilla/rust/issues/11640) is fixed.
 
 ## Untrusted input
@@ -203,6 +203,9 @@ Finally, we could use `re` (like Python), but I think the name could be
 ambiguous since it's so short. `regexp` (or `regex`) unequivocally identifies 
 the crate as providing regular expressions.
 
+For consistency's sake, I propose that the syntax extension provided be named
+the same as the crate. So in this case, `regexp!`.
+
 ## Summary
 
 My implementation is pretty much a port of most of RE2. The syntax should be 
@@ -226,7 +229,7 @@ Another alternative is using a binding to an existing regexp library. I think
 this was discussed in issue 
 [#3591](https://github.com/mozilla/rust/issues/3591) and it seems like people 
 favor a native Rust implementation if it's to be included in the Rust 
-distribution. (Does the `re!` macro require it? If so, that's a huge 
+distribution. (Does the `regexp!` macro require it? If so, that's a huge 
 advantage.) Also, a native implementation makes it maximally portable.
 
 Finally, it is always possible to persist without a regexp library.
