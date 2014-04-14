@@ -16,7 +16,6 @@ use back::link;
 use back::svh::Svh;
 use driver::{driver, session};
 use driver::session::Session;
-use metadata::csearch;
 use metadata::cstore;
 use metadata::cstore::CStore;
 use metadata::decoder;
@@ -397,13 +396,14 @@ impl<'a> Loader<'a> {
 impl<'a> CrateLoader for Loader<'a> {
     fn load_crate(&mut self, krate: &ast::ViewItem) -> MacroCrate {
         let info = extract_crate_info(&self.env, krate).unwrap();
-        let (cnum, data, library) = resolve_crate(&mut self.env, &None,
-                                                  info.ident, &info.crate_id,
-                                                  None, true, krate.span);
+        let (_, data, library) = resolve_crate(&mut self.env, &None,
+                                               info.ident, &info.crate_id,
+                                               None, info.should_link,
+                                               krate.span);
         let macros = decoder::get_exported_macros(data);
-        let cstore = &self.env.sess.cstore;
-        let registrar = csearch::get_macro_registrar_fn(cstore, cnum)
-                            .map(|did| csearch::get_symbol(cstore, did));
+        let registrar = decoder::get_macro_registrar_fn(data).map(|id| {
+            decoder::get_symbol(data.data.as_slice(), id)
+        });
         MacroCrate {
             lib: library.dylib,
             macros: macros.move_iter().collect(),
