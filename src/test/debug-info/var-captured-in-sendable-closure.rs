@@ -22,7 +22,7 @@
 // debugger:print *owned
 // check:$3 = 5
 
-#[allow(unused_variable)];
+#![allow(unused_variable)]
 
 struct Struct {
     a: int,

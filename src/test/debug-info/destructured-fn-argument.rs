@@ -181,7 +181,7 @@
 // check:$49 = 62
 // debugger:continue
 
-#[allow(unused_variable)];
+#![allow(unused_variable)]
 
 struct Struct {
     a: i64,

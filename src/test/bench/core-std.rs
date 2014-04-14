@@ -10,7 +10,7 @@
 
 // Microbenchmarks for various functions in std and extra
 
-#[feature(macro_rules)];
+#![feature(macro_rules)]
 
 extern crate rand;
 extern crate time;

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[deny(type_limits)];
+#![deny(type_limits)]
 
 pub fn main() {
     let i: uint = 0;

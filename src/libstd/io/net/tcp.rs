@@ -31,7 +31,7 @@ use rt::rtio::{RtioTcpAcceptor, RtioTcpStream};
 /// # Example
 ///
 /// ```rust
-/// # #[allow(unused_must_use)];
+/// # #![allow(unused_must_use)]
 /// use std::io::net::tcp::TcpStream;
 /// use std::io::net::ip::{Ipv4Addr, SocketAddr};
 ///

@@ -10,7 +10,7 @@
 
 // aux-build:cci_nested_lib.rs
 
-#[feature(globs, managed_boxes)];
+#![feature(globs, managed_boxes)]
 
 extern crate cci_nested_lib;
 use cci_nested_lib::*;

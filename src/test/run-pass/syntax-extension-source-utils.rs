@@ -11,7 +11,7 @@
 // This test is brittle!
 // ignore-pretty - the pretty tests lose path information, breaking include!
 
-#[feature(macro_rules)];
+#![feature(macro_rules)]
 
 pub mod m1 {
     pub mod m2 {

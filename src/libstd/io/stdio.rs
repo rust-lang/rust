@@ -18,7 +18,7 @@ about the stream or terminal to which it is attached.
 # Example
 
 ```rust
-# #[allow(unused_must_use)];
+# #![allow(unused_must_use)]
 use std::io;
 
 let mut out = io::stdout();

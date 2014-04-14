@@ -10,7 +10,7 @@
 
 // ignore-android: FIXME(#10381)
 
-#[feature(managed_boxes)];
+#![feature(managed_boxes)]
 
 // compile-flags:-g
 // debugger:rbreak zzz
@@ -29,7 +29,7 @@
 // debugger:print unique.ptr[3]->val
 // check:$4 = 13
 
-#[allow(unused_variable)];
+#![allow(unused_variable)]
 
 fn main() {
 

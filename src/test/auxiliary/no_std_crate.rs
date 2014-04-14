@@ -8,6 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[no_std];
+#![no_std]
 
 pub fn foo() {}

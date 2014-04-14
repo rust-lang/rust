@@ -24,7 +24,7 @@
 // debugger:print *the_c_ref
 // check:$3 = TheC
 
-#[allow(unused_variable)];
+#![allow(unused_variable)]
 
 enum ABC { TheA, TheB, TheC }
 

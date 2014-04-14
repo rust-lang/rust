@@ -13,7 +13,7 @@
 // check that cfg correctly chooses between the macro impls (see also
 // cfg-macros-foo.rs)
 
-#[feature(macro_rules)];
+#![feature(macro_rules)]
 
 #[cfg(foo)]
 #[macro_escape]

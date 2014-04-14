@@ -15,7 +15,7 @@
 // memory, which makes for some *confusing* logs. That's why these are here
 // instead of in std.
 
-#[feature(macro_rules)];
+#![feature(macro_rules)]
 extern crate libc;
 
 extern crate native;
@@ -31,7 +31,7 @@ macro_rules! succeed( ($e:expr) => (
 macro_rules! iotest (
     { fn $name:ident() $b:block $($a:attr)* } => (
         mod $name {
-            #[allow(unused_imports)];
+            #![allow(unused_imports)]
 
             use std::io::timer;
             use libc;

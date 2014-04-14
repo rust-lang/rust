@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[crate_id="crateresolve2#0.3"];
+#![crate_id="crateresolve2#0.3"]
 
-#[crate_type = "lib"];
+#![crate_type = "lib"]
 
 pub fn f() -> int { 30 }

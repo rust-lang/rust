@@ -10,7 +10,7 @@
 
 /* Tests conditional rooting of the box y */
 
-#[feature(managed_boxes)];
+#![feature(managed_boxes)]
 
 fn testfn(cond: bool) {
     let mut x = @3;

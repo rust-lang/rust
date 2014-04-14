@@ -10,7 +10,7 @@
 
 // ignore-android: FIXME(#10381)
 
-#[feature(managed_boxes)];
+#![feature(managed_boxes)]
 
 // compile-flags:-g
 // debugger:rbreak zzz
@@ -29,7 +29,7 @@
 // debugger:print *unique_val_ref
 // check:$4 = {-17, -22}
 
-#[allow(unused_variable)];
+#![allow(unused_variable)]
 
 fn main() {
     let stack_val: (i16, f32) = (-14, -19f32);

@@ -72,8 +72,8 @@
 // debugger:print 'simple-struct::PADDING_AT_END'
 // check:$18 = {x = -27, y = 28}
 
-#[allow(unused_variable)];
-#[allow(dead_code)];
+#![allow(unused_variable)]
+#![allow(dead_code)]
 
 struct NoPadding16 {
     x: u16,

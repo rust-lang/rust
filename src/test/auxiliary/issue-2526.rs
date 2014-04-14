@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[crate_id="issue_2526#0.2"];
-#[crate_type = "lib"];
+#![crate_id="issue_2526#0.2"]
+#![crate_type = "lib"]
 
 struct arc_destruct<T> {
   _data: int,

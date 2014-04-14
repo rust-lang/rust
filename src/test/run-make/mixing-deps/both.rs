@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[crate_type = "rlib"];
-#[crate_type = "dylib"];
+#![crate_type = "rlib"]
+#![crate_type = "dylib"]
 
 pub static foo: int = 4;

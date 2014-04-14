@@ -21,7 +21,7 @@
 // debugger:print vec::VECT
 // check:$2 = {4, 5, 6}
 
-#[allow(unused_variable)];
+#![allow(unused_variable)]
 
 static mut VECT: [i32, ..3] = [1, 2, 3];
 

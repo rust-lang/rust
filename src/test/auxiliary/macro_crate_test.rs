@@ -10,7 +10,7 @@
 
 // force-host
 
-#[feature(globs, macro_registrar, macro_rules, quote, managed_boxes)];
+#![feature(globs, macro_registrar, macro_rules, quote, managed_boxes)]
 
 extern crate syntax;
 

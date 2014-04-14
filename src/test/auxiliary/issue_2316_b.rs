@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[allow(unused_imports)];
+#![allow(unused_imports)]
 #![feature(globs)]
 
 extern crate issue_2316_a;

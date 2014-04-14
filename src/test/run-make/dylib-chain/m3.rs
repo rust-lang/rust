@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[crate_type = "dylib"];
+#![crate_type = "dylib"]
 extern crate m2;
 
 pub fn m3() { m2::m2() }

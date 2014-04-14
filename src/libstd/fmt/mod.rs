@@ -250,7 +250,7 @@ strings and instead directly write the output. Under the hood, this function is
 actually invoking the `write` function defined in this module. Example usage is:
 
 ```rust
-# #[allow(unused_must_use)];
+# #![allow(unused_must_use)]
 use std::io;
 
 let mut w = io::MemWriter::new();
@@ -699,7 +699,7 @@ uniform_fn_call_workaround! {
 /// # Example
 ///
 /// ```rust
-/// # #[allow(unused_must_use)];
+/// # #![allow(unused_must_use)]
 /// use std::fmt;
 /// use std::io;
 ///

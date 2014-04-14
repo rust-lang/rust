@@ -28,7 +28,7 @@ particular bits of it, etc.
 # Example
 
 ```rust
-# #[allow(unused_must_use)];
+# #![allow(unused_must_use)]
 use std::io::{File, fs};
 
 let path = Path::new("foo.txt");
@@ -162,7 +162,7 @@ impl File {
     /// # Example
     ///
     /// ```rust
-    /// # #[allow(unused_must_use)];
+    /// # #![allow(unused_must_use)]
     /// use std::io::File;
     ///
     /// let mut f = File::create(&Path::new("foo.txt"));
@@ -220,7 +220,7 @@ impl File {
 /// # Example
 ///
 /// ```rust
-/// # #[allow(unused_must_use)];
+/// # #![allow(unused_must_use)]
 /// use std::io::fs;
 ///
 /// let p = Path::new("/some/file/path.txt");
@@ -290,7 +290,7 @@ pub fn lstat(path: &Path) -> IoResult<FileStat> {
 /// # Example
 ///
 /// ```rust
-/// # #[allow(unused_must_use)];
+/// # #![allow(unused_must_use)]
 /// use std::io::fs;
 ///
 /// fs::rename(&Path::new("foo"), &Path::new("bar"));
@@ -314,7 +314,7 @@ pub fn rename(from: &Path, to: &Path) -> IoResult<()> {
 /// # Example
 ///
 /// ```rust
-/// # #[allow(unused_must_use)];
+/// # #![allow(unused_must_use)]
 /// use std::io::fs;
 ///
 /// fs::copy(&Path::new("foo.txt"), &Path::new("bar.txt"));
@@ -364,7 +364,7 @@ pub fn copy(from: &Path, to: &Path) -> IoResult<()> {
 /// # Example
 ///
 /// ```rust
-/// # #[allow(unused_must_use)];
+/// # #![allow(unused_must_use)]
 /// use std::io;
 /// use std::io::fs;
 ///
@@ -416,7 +416,7 @@ pub fn readlink(path: &Path) -> IoResult<Path> {
 /// # Example
 ///
 /// ```rust
-/// # #[allow(unused_must_use)];
+/// # #![allow(unused_must_use)]
 /// use std::io;
 /// use std::io::fs;
 ///
@@ -437,7 +437,7 @@ pub fn mkdir(path: &Path, mode: FilePermission) -> IoResult<()> {
 /// # Example
 ///
 /// ```rust
-/// # #[allow(unused_must_use)];
+/// # #![allow(unused_must_use)]
 /// use std::io::fs;
 ///
 /// let p = Path::new("/some/dir");

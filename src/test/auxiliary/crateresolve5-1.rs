@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[crate_id="crateresolve5#0.1"];
+#![crate_id="crateresolve5#0.1"]
 
-#[crate_type = "lib"];
+#![crate_type = "lib"]
 
 pub struct NameVal { pub name: ~str, pub val: int }
 

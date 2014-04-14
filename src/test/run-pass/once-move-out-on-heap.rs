@@ -11,7 +11,7 @@
 // Testing guarantees provided by once functions.
 
 
-#[feature(once_fns)];
+#![feature(once_fns)]
 extern crate sync;
 use sync::Arc;
 

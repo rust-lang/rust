@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[crate_type = "rlib"];
+#![crate_type = "rlib"]
 extern crate m2;
 
 pub fn m3() { m2::m2() }

@@ -10,7 +10,7 @@
 
 // aux-build:crateresolve8-1.rs
 
-#[crate_id="crateresolve8#0.1"];
+#![crate_id="crateresolve8#0.1"]
 
 extern crate crateresolve8 = "crateresolve8#0.1";
 //extern crate crateresolve8(vers = "0.1");

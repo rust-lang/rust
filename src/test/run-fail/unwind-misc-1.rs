@@ -11,7 +11,7 @@
 // exec-env:RUST_NEWRT=1
 // error-pattern:fail
 
-#[feature(managed_boxes)];
+#![feature(managed_boxes)]
 
 extern crate collections;
 
