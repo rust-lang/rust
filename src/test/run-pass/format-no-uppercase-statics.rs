@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[deny(non_uppercase_statics)];
+#![deny(non_uppercase_statics)]
 
 pub fn main() {
     println!("I generate statics with {0, select, other{#}}", "weird names");

@@ -11,7 +11,7 @@
 // Test that the lifetime of rvalues in for loops is extended
 // to the for loop itself.
 
-#[feature(macro_rules)];
+#![feature(macro_rules)]
 
 use std::ops::Drop;
 

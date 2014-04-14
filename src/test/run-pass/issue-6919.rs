@@ -10,7 +10,7 @@
 
 // aux-build:iss.rs
 
-#[crate_id="issue-6919"];
+#![crate_id="issue-6919"]
 extern crate issue6919_3;
 
 pub fn main() {

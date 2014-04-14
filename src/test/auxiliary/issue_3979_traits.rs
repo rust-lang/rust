@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[crate_id="issue_3979_traits#0.1"];
+#![crate_id="issue_3979_traits#0.1"]
 
-#[crate_type = "lib"];
+#![crate_type = "lib"]
 
 pub trait Positioned {
   fn SetX(&mut self, int);

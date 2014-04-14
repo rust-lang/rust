@@ -21,7 +21,7 @@
 // debugger:print second
 // check:$2 = {<No data fields>}
 
-#[allow(unused_variable)];
+#![allow(unused_variable)]
 
 enum ANilEnum {}
 enum AnotherNilEnum {}

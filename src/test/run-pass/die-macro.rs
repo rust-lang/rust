@@ -10,7 +10,7 @@
 
 // Just testing that fail!() type checks in statement or expr
 
-#[allow(unreachable_code)];
+#![allow(unreachable_code)]
 
 fn f() {
     fail!();

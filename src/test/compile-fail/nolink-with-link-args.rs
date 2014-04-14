@@ -14,7 +14,7 @@
 So we try to compile with junk link_args and make sure they are visible in
 the compiler output. */
 
-#[feature(link_args)];
+#![feature(link_args)]
 
 #[link_args = "aFdEfSeVEEE"]
 extern {}

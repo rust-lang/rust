@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[allow(unused_mut)];
+#![allow(unused_mut)]
 
 
 pub fn main() { let mut _v: Vec<int> = Vec::new(); }

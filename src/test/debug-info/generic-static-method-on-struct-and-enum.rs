@@ -32,7 +32,7 @@
 // check:$5 = 5
 // debugger:continue
 
-#[feature(struct_variant)];
+#![feature(struct_variant)]
 
 struct Struct {
     x: int

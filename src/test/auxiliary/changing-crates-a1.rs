@@ -8,6 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[crate_id = "a"];
+#![crate_id = "a"]
 
 pub fn foo<T>() {}

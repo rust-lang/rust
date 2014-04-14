@@ -29,7 +29,7 @@
 // debugger:print univariant
 // check:$4 = {-1}
 
-#[allow(unused_variable)];
+#![allow(unused_variable)]
 
 // The first element is to ensure proper alignment, irrespective of the machines word size. Since
 // the size of the discriminant value is machine dependent, this has be taken into account when

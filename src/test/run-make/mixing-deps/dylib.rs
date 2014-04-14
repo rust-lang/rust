@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[crate_type = "dylib"];
+#![crate_type = "dylib"]
 extern crate both;
 
 use std::cast;

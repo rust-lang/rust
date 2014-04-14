@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[feature(struct_variant, macro_rules)];
+#![feature(struct_variant, macro_rules)]
 
 #[deriving(Show)]
 struct Unit;

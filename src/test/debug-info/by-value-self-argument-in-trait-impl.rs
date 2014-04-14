@@ -10,7 +10,7 @@
 
 // ignore-android: FIXME(#10381)
 
-#[feature(managed_boxes)];
+#![feature(managed_boxes)]
 
 // compile-flags:-g
 // debugger:rbreak zzz

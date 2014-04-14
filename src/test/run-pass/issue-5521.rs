@@ -10,7 +10,7 @@
 
 // aux-build:issue-5521.rs
 
-#[feature(managed_boxes)];
+#![feature(managed_boxes)]
 
 extern crate foo = "issue-5521";
 

@@ -64,7 +64,7 @@
 // check:$15 = -10
 // debugger:continue
 
-#[feature(struct_variant)];
+#![feature(struct_variant)]
 
 enum Enum {
     Variant1 { x: u16, y: u16 },

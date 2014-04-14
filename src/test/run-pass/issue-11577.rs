@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[feature(struct_variant)];
+#![feature(struct_variant)]
 
 // Destructuring struct variants would ICE where regular structs wouldn't
 

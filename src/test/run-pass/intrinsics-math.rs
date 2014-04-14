@@ -9,7 +9,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[feature(globs, macro_rules)];
+#![feature(globs, macro_rules)]
 
 macro_rules! assert_approx_eq(
     ($a:expr, $b:expr) => ({

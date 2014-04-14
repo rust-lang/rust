@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[feature(managed_boxes)];
-#[allow(dead_assignment)];
-#[allow(unused_variable)];
+#![feature(managed_boxes)]
+#![allow(dead_assignment)]
+#![allow(unused_variable)]
 
 struct A { a: int, b: int }
 struct Abox { a: @int, b: @int }

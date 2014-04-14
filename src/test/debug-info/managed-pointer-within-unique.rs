@@ -10,7 +10,7 @@
 
 // ignore-android: FIXME(#10381)
 
-#[feature(managed_boxes)];
+#![feature(managed_boxes)]
 
 // compile-flags:-g
 // debugger:set print pretty off
@@ -27,7 +27,7 @@
 // debugger:print managed_within_unique->y->val
 // check:$3 = -4
 
-#[allow(unused_variable)];
+#![allow(unused_variable)]
 
 struct ContainsManaged {
     x: int,

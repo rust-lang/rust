@@ -28,8 +28,8 @@
 // debugger:print managed->val
 // check:$6 = 7
 
-#[feature(managed_boxes)];
-#[allow(unused_variable)];
+#![feature(managed_boxes)]
+#![allow(unused_variable)]
 
 struct Struct {
     a: int,

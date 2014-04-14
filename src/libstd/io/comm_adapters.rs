@@ -89,7 +89,7 @@ impl Reader for ChanReader {
 /// # Example
 ///
 /// ```
-/// # #[allow(unused_must_use)];
+/// # #![allow(unused_must_use)]
 /// use std::io::ChanWriter;
 ///
 /// let (tx, rx) = channel();

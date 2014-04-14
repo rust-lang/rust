@@ -7,8 +7,8 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-#[crate_id="lint_stability#0.1"];
-#[crate_type = "lib"];
+#![crate_id="lint_stability#0.1"]
+#![crate_type = "lib"]
 
 #[deprecated]
 pub fn deprecated() {}

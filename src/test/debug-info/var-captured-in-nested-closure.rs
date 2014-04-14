@@ -48,8 +48,8 @@
 // check:$14 = 8
 // debugger:continue
 
-#[feature(managed_boxes)];
-#[allow(unused_variable)];
+#![feature(managed_boxes)]
+#![allow(unused_variable)]
 
 struct Struct {
     a: int,

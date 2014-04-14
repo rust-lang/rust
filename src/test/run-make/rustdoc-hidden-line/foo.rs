@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[crate_id="foo#0.1"];
+#![crate_id="foo#0.1"]
 
 /// The '# ' lines should be removed from the output, but the #[deriving] should be
 /// retained.

@@ -10,5 +10,5 @@
 
 // error-pattern: missing documentation for crate
 
-#[deny(missing_doc)];
-#[crate_type="lib"];
+#![deny(missing_doc)]
+#![crate_type="lib"]

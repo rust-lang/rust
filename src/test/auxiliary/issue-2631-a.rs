@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[feature(managed_boxes)];
-#[crate_id="req"];
-#[crate_type = "lib"];
+#![feature(managed_boxes)]
+#![crate_id="req"]
+#![crate_type = "lib"]
 
 extern crate collections;
 

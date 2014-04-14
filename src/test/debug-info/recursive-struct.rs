@@ -10,7 +10,7 @@
 
 // ignore-android: FIXME(#10381)
 
-#[feature(managed_boxes)];
+#![feature(managed_boxes)]
 
 // compile-flags:-g
 // debugger:set print pretty off
@@ -102,8 +102,8 @@
 
 // debugger:continue
 
-#[allow(unused_variable)];
-#[feature(struct_variant)];
+#![allow(unused_variable)]
+#![feature(struct_variant)]
 
 enum Opt<T> {
     Empty,

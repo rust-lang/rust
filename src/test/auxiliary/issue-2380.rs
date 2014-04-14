@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[crate_id="a"];
-#[crate_type = "lib"];
+#![crate_id="a"]
+#![crate_type = "lib"]
 
 pub trait i<T> { }
 

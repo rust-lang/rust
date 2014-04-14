@@ -14,7 +14,7 @@
 
 // error-pattern: dylib output requested, but some depenencies could not
 
-#[crate_type = "dylib"];
+#![crate_type = "dylib"]
 
 extern crate a = "issue-12133-rlib";
 extern crate b = "issue-12133-dylib";

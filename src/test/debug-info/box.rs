@@ -24,8 +24,8 @@
 // debugger:print d->val
 // check:$4 = false
 
-#[feature(managed_boxes)];
-#[allow(unused_variable)];
+#![feature(managed_boxes)]
+#![allow(unused_variable)]
 
 fn main() {
     let a = ~1;

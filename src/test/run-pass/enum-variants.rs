@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[allow(dead_assignment)];
-#[allow(unused_variable)];
-#[feature(struct_variant)];
+#![allow(dead_assignment)]
+#![allow(unused_variable)]
+#![feature(struct_variant)]
 
 enum Animal {
     Dog (~str, f64),
