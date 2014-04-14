@@ -20,6 +20,7 @@ use attr;
 use color;
 use Terminal;
 
+/// A Terminal implementation which uses the Win32 Console API.
 pub struct WinConsole<T> {
     buf: T,
     foreground: color::Color,
