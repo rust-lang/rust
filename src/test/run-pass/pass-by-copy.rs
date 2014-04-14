@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[feature(managed_boxes)];
+#![feature(managed_boxes)]
 
 fn magic(x: A) { println!("{:?}", x); }
 fn magic2(x: @int) { println!("{:?}", x); }

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[crate_id="trait_default_method_xc_aux"];
+#![crate_id="trait_default_method_xc_aux"]
 
 pub struct Something { pub x: int }
 

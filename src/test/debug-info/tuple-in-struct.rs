@@ -41,7 +41,7 @@
 // debugger:print mixed_padding
 // check:$10 = {x = {{40, 41, 42}, {43, 44}}, y = {45, 46, 47, 48}}
 
-#[allow(unused_variable)];
+#![allow(unused_variable)]
 
 struct NoPadding1 {
     x: (i32, i32),

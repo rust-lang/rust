@@ -12,7 +12,7 @@
 
 // Smallest hello world with no runtime
 
-#[no_std];
+#![no_std]
 
 // This is an unfortunate thing to have to do on linux :(
 #[cfg(target_os = "linux")]

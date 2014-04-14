@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[crate_type = "staticlib"];
+#![crate_type = "staticlib"]
 
 #[link(name = "foo", kind = "static")]
 extern {}

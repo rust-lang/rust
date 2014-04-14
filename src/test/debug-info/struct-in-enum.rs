@@ -26,7 +26,7 @@
 // debugger:print univariant
 // check:$3 = {{x = 123, y = 456, z = 789}}
 
-#[allow(unused_variable)];
+#![allow(unused_variable)]
 
 struct Struct {
     x: u32,

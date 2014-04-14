@@ -10,7 +10,7 @@
 
 // ignore-pretty
 
-#[feature(macro_rules)];
+#![feature(macro_rules)]
 
 pub trait bomb { fn boom(&self, Ident); }
 pub struct S;

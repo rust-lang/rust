@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[feature(managed_boxes)];
+#![feature(managed_boxes)]
 
 // Exercises a bug in the shape code that was exposed
 // on x86_64: when there is a enum embedded in an

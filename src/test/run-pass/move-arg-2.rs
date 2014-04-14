@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[feature(managed_boxes)];
+#![feature(managed_boxes)]
 
 
 fn test(foo: @Vec<int> ) { assert!((*foo.get(0) == 10)); }

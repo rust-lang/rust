@@ -31,7 +31,7 @@ use rt::rtio::{RtioSocket, RtioUdpSocket, IoFactory, LocalIo};
 /// # Example
 ///
 /// ```rust,no_run
-/// # #[allow(unused_must_use)];
+/// # #![allow(unused_must_use)]
 /// use std::io::net::udp::UdpSocket;
 /// use std::io::net::ip::{Ipv4Addr, SocketAddr};
 ///

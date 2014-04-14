@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[no_std];
+#![no_std]
 
 // error-pattern:requires `start` lang_item
 

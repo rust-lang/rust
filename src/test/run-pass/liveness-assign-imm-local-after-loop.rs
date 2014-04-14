@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[allow(dead_assignment)];
-#[allow(unreachable_code)];
-#[allow(unused_variable)];
+#![allow(dead_assignment)]
+#![allow(unreachable_code)]
+#![allow(unused_variable)]
 
 fn test(_cond: bool) {
     let v: int;

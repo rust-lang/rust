@@ -10,7 +10,7 @@
 
 // error-pattern: multiple macro registration functions found
 
-#[feature(macro_registrar)];
+#![feature(macro_registrar)]
 
 // the registration function isn't typechecked yet
 #[macro_registrar]

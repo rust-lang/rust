@@ -12,7 +12,7 @@
 // statement or end of block, as appropriate given the temporary
 // lifetime rules.
 
-#[feature(macro_rules)];
+#![feature(macro_rules)]
 
 use std::ops::Drop;
 

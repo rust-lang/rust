@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// #[warn(deprecated_mode)];
+// #![warn(deprecated_mode)]
 
 use middle::ty;
 use middle::ty_fold;

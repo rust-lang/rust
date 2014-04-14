@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[feature(managed_boxes)];
-#[allow(unnecessary_allocation)];
+#![feature(managed_boxes)]
+#![allow(unnecessary_allocation)]
 
 // Tests for a previous bug that occured due to an interaction
 // between struct field initialization and the auto-coercion

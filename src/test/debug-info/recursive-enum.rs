@@ -16,7 +16,7 @@
 // Test whether compiling a recursive enum definition crashes debug info generation. The test case
 // is taken from issue #11083.
 
-#[allow(unused_variable)];
+#![allow(unused_variable)]
 
 pub struct Window<'a> {
     callbacks: WindowCallbacks<'a>

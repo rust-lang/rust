@@ -10,7 +10,7 @@
 
 // aux-build:cci_borrow_lib.rs
 
-#[feature(managed_boxes)];
+#![feature(managed_boxes)]
 
 extern crate cci_borrow_lib;
 use cci_borrow_lib::foo;

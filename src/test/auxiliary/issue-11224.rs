@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[deny(dead_code)];
+#![deny(dead_code)]
 
 mod inner {
     pub trait Trait {

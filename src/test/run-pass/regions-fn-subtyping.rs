@@ -10,8 +10,8 @@
 
 // Issue #2263.
 
-#[allow(dead_assignment)];
-#[allow(unused_variable)];
+#![allow(dead_assignment)]
+#![allow(unused_variable)]
 
 // Should pass region checking.
 fn ok(f: |x: &uint|) {

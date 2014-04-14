@@ -44,7 +44,7 @@ fn combine(seek: SeekStyle, cur: uint, end: uint, offset: i64) -> IoResult<u64> 
 /// # Example
 ///
 /// ```rust
-/// # #[allow(unused_must_use)];
+/// # #![allow(unused_must_use)]
 /// use std::io::MemWriter;
 ///
 /// let mut w = MemWriter::new();
@@ -125,7 +125,7 @@ impl Seek for MemWriter {
 /// # Example
 ///
 /// ```rust
-/// # #[allow(unused_must_use)];
+/// # #![allow(unused_must_use)]
 /// use std::io::MemReader;
 ///
 /// let mut r = MemReader::new(vec!(0, 1, 2));
@@ -209,7 +209,7 @@ impl Buffer for MemReader {
 /// # Example
 ///
 /// ```rust
-/// # #[allow(unused_must_use)];
+/// # #![allow(unused_must_use)]
 /// use std::io::BufWriter;
 ///
 /// let mut buf = [0, ..4];
@@ -267,7 +267,7 @@ impl<'a> Seek for BufWriter<'a> {
 /// # Example
 ///
 /// ```rust
-/// # #[allow(unused_must_use)];
+/// # #![allow(unused_must_use)]
 /// use std::io::BufReader;
 ///
 /// let mut buf = [0, 1, 2, 3];

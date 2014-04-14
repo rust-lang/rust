@@ -10,8 +10,8 @@
 
 // aux-build:crateresolve4a-1.rs
 // aux-build:crateresolve4a-2.rs
-#[crate_id="crateresolve4b#0.2"];
-#[crate_type = "lib"];
+#![crate_id="crateresolve4b#0.2"]
+#![crate_type = "lib"]
 
 extern crate crateresolve4a = "crateresolve4a#0.1";
 

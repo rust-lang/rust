@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-#[feature(struct_variant)];
+#![feature(struct_variant)]
 
 extern crate rand;
 
