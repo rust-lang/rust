@@ -20,13 +20,7 @@
 #   PREPARE_TARGETS - the target triples, space separated
 #   PREPARE_DEST_DIR - the directory to put the image
 
-
-# On windows we install from stage3, but on unix only stage2
-ifdef CFG_WINDOWSY_$(CFG_BUILD)
-PREPARE_STAGE=3
-else
 PREPARE_STAGE=2
-endif
 
 DEFAULT_PREPARE_DIR_CMD = umask 022 && mkdir -p
 DEFAULT_PREPARE_BIN_CMD = install -m755
