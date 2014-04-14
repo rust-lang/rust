@@ -229,6 +229,13 @@ impl StrBuf {
         *self = self.as_slice().slice(1, len).into_strbuf();
         Some(byte)
     }
+
+    /// Views the string buffer as a mutable sequence of bytes.
+    ///
+    /// Callers must preserve the valid UTF-8 property.
+    pub unsafe fn as_mut_vec<'a>(&'a mut self) -> &'a mut Vec<u8> {
+        &mut self.vec
+    }
 }
 
 impl Container for StrBuf {
@@ -271,6 +278,9 @@ impl Str for StrBuf {
             cast::transmute::<~[u8],~str>(vec.move_iter().collect())
         }
     }
+
+    #[inline]
+    fn into_strbuf(self) -> StrBuf { self }
 }
 
 impl fmt::Show for StrBuf {
