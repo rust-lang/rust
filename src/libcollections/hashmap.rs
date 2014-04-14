@@ -1424,43 +1424,28 @@ impl<T: TotalEq + Hash<S>, S, H: Hasher<S>> Eq for HashSet<T, H> {
 }
 
 impl<T: TotalEq + Hash<S>, S, H: Hasher<S>> Container for HashSet<T, H> {
-    /// Return the number of elements in the set
     fn len(&self) -> uint { self.map.len() }
 }
 
 impl<T: TotalEq + Hash<S>, S, H: Hasher<S>> Mutable for HashSet<T, H> {
-    /// Clear the set, removing all values.
     fn clear(&mut self) { self.map.clear() }
 }
 
 impl<T: TotalEq + Hash<S>, S, H: Hasher<S>> Set<T> for HashSet<T, H> {
-    /// Return true if the set contains a value
     fn contains(&self, value: &T) -> bool { self.map.search(value).is_some() }
 
-    /// Return true if the set has no elements in common with `other`.
-    /// This is equivalent to checking for an empty intersection.
     fn is_disjoint(&self, other: &HashSet<T, H>) -> bool {
         self.iter().all(|v| !other.contains(v))
     }
 
-    /// Return true if the set is a subset of another
     fn is_subset(&self, other: &HashSet<T, H>) -> bool {
         self.iter().all(|v| other.contains(v))
-    }
-
-    /// Return true if the set is a superset of another
-    fn is_superset(&self, other: &HashSet<T, H>) -> bool {
-        other.is_subset(self)
     }
 }
 
 impl<T: TotalEq + Hash<S>, S, H: Hasher<S>> MutableSet<T> for HashSet<T, H> {
-    /// Add a value to the set. Return true if the value was not already
-    /// present in the set.
     fn insert(&mut self, value: T) -> bool { self.map.insert(value, ()) }
 
-    /// Remove a value from the set. Return true if the value was
-    /// present in the set.
     fn remove(&mut self, value: &T) -> bool { self.map.remove(value) }
 }
 
