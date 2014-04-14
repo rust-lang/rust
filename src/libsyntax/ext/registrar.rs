@@ -36,7 +36,7 @@ impl Visitor<()> for MacroRegistrarContext {
 }
 
 pub fn find_macro_registrar(diagnostic: &diagnostic::SpanHandler,
-                            krate: &ast::Crate) -> Option<ast::DefId> {
+                            krate: &ast::Crate) -> Option<ast::NodeId> {
     let mut ctx = MacroRegistrarContext { registrars: Vec::new() };
     visit::walk_crate(&mut ctx, krate, ());
 
@@ -44,10 +44,7 @@ pub fn find_macro_registrar(diagnostic: &diagnostic::SpanHandler,
         0 => None,
         1 => {
             let (node_id, _) = ctx.registrars.pop().unwrap();
-            Some(ast::DefId {
-                krate: ast::LOCAL_CRATE,
-                node: node_id
-            })
+            Some(node_id)
         },
         _ => {
             diagnostic.handler().err("multiple macro registration functions found");
