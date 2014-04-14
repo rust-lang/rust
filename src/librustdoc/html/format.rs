@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -24,6 +24,8 @@ use syntax::ast;
 use syntax::ast_util;
 
 use clean;
+use html::item_type;
+use html::item_type::ItemType;
 use html::render;
 use html::render::{cache_key, current_location_key};
 
@@ -172,17 +174,17 @@ fn external_path(w: &mut io::Writer, p: &clean::Path, print_all: bool,
         },
         |_cache| {
             Some((Vec::from_slice(fqn), match kind {
-                clean::TypeStruct => "struct",
-                clean::TypeEnum => "enum",
-                clean::TypeFunction => "fn",
-                clean::TypeTrait => "trait",
+                clean::TypeStruct => item_type::Struct,
+                clean::TypeEnum => item_type::Enum,
+                clean::TypeFunction => item_type::Function,
+                clean::TypeTrait => item_type::Trait,
             }))
         })
 }
 
 fn path(w: &mut io::Writer, path: &clean::Path, print_all: bool,
         root: |&render::Cache, &[~str]| -> Option<~str>,
-        info: |&render::Cache| -> Option<(Vec<~str> , &'static str)>)
+        info: |&render::Cache| -> Option<(Vec<~str> , ItemType)>)
     -> fmt::Result
 {
     // The generics will get written to both the title and link
@@ -252,12 +254,12 @@ fn path(w: &mut io::Writer, path: &clean::Path, print_all: bool,
                         url.push_str("/");
                     }
                     match shortty {
-                        "mod" => {
+                        item_type::Module => {
                             url.push_str(*fqp.last().unwrap());
                             url.push_str("/index.html");
                         }
                         _ => {
-                            url.push_str(shortty);
+                            url.push_str(shortty.to_static_str());
                             url.push_str(".");
                             url.push_str(*fqp.last().unwrap());
                             url.push_str(".html");
