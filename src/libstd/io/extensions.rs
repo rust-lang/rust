@@ -83,9 +83,9 @@ pub fn u64_to_le_bytes<T>(n: u64, size: uint, f: |v: &[u8]| -> T) -> T {
     assert!(size <= 8u);
     match size {
       1u => f(&[n as u8]),
-      2u => f(unsafe { transmute::<i16, [u8, ..2]>(to_le16(n as i16)) }),
-      4u => f(unsafe { transmute::<i32, [u8, ..4]>(to_le32(n as i32)) }),
-      8u => f(unsafe { transmute::<i64, [u8, ..8]>(to_le64(n as i64)) }),
+      2u => f(unsafe { transmute::<_, [u8, ..2]>(to_le16(n as u16)) }),
+      4u => f(unsafe { transmute::<_, [u8, ..4]>(to_le32(n as u32)) }),
+      8u => f(unsafe { transmute::<_, [u8, ..8]>(to_le64(n)) }),
       _ => {
 
         let mut bytes = vec!();
@@ -123,9 +123,9 @@ pub fn u64_to_be_bytes<T>(n: u64, size: uint, f: |v: &[u8]| -> T) -> T {
     assert!(size <= 8u);
     match size {
       1u => f(&[n as u8]),
-      2u => f(unsafe { transmute::<i16, [u8, ..2]>(to_be16(n as i16)) }),
-      4u => f(unsafe { transmute::<i32, [u8, ..4]>(to_be32(n as i32)) }),
-      8u => f(unsafe { transmute::<i64, [u8, ..8]>(to_be64(n as i64)) }),
+      2u => f(unsafe { transmute::<_, [u8, ..2]>(to_be16(n as u16)) }),
+      4u => f(unsafe { transmute::<_, [u8, ..4]>(to_be32(n as u32)) }),
+      8u => f(unsafe { transmute::<_, [u8, ..8]>(to_be64(n)) }),
       _ => {
         let mut bytes = vec!();
         let mut i = size;
@@ -166,7 +166,7 @@ pub fn u64_from_be_bytes(data: &[u8], start: uint, size: uint) -> u64 {
         let ptr = data.as_ptr().offset(start as int);
         let out = buf.as_mut_ptr();
         copy_nonoverlapping_memory(out.offset((8 - size) as int), ptr, size);
-        from_be64(*(out as *i64)) as u64
+        from_be64(*(out as *u64))
     }
 }
 
