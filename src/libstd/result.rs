@@ -188,6 +188,26 @@ impl<T, E> Result<T, E> {
         }
     }
 
+    /// Unwraps a result, yielding the content of an `Ok`.
+    /// Else it returns `optb`.
+    #[inline]
+    pub fn unwrap_or(self, optb: T) -> T {
+        match self {
+            Ok(t) => t,
+            Err(_) => optb
+        }
+    }
+
+    /// Unwraps a result, yielding the content of an `Ok`.
+    /// If the value is an `Err` then it calls `op` with its value.
+    #[inline]
+    pub fn unwrap_or_handle(self, op: |E| -> T) -> T {
+        match self {
+            Ok(t) => t,
+            Err(e) => op(e)
+        }
+    }
+
     /// Unwraps a result, yielding the content of an `Err`.
     /// Fails if the value is an `Ok`.
     #[inline]
@@ -388,5 +408,46 @@ mod tests {
 
         assert_eq!(format!("{}", ok), ~"Ok(100)");
         assert_eq!(format!("{}", err), ~"Err(Err)");
+    }
+
+    #[test]
+    pub fn test_unwrap_or() {
+        let ok: Result<int, ~str> = Ok(100);
+        let ok_err: Result<int, ~str> = Err(~"Err");
+
+        assert_eq!(ok.unwrap_or(50), 100);
+        assert_eq!(ok_err.unwrap_or(50), 50);
+    }
+
+    #[test]
+    pub fn test_unwrap_or_else() {
+        fn handler(msg: ~str) -> int {
+            if msg == ~"I got this." {
+                50
+            } else {
+                fail!("BadBad")
+            }
+        }
+
+        let ok: Result<int, ~str> = Ok(100);
+        let ok_err: Result<int, ~str> = Err(~"I got this.");
+
+        assert_eq!(ok.unwrap_or_handle(handler), 100);
+        assert_eq!(ok_err.unwrap_or_handle(handler), 50);
+    }
+
+    #[test]
+    #[should_fail]
+    pub fn test_unwrap_or_else_failure() {
+        fn handler(msg: ~str) -> int {
+            if msg == ~"I got this." {
+                50
+            } else {
+                fail!("BadBad")
+            }
+        }
+
+        let bad_err: Result<int, ~str> = Err(~"Unrecoverable mess.");
+        let _ : int = bad_err.unwrap_or_handle(handler);
     }
 }
