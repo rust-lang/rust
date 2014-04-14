@@ -423,16 +423,12 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
   '-' to '_' in command-line flags
  */
 pub fn get_lint_dict() -> LintDict {
-    let mut map = HashMap::new();
-    for &(k, v) in lint_table.iter() {
-        map.insert(k, v);
-    }
-    return map;
+    lint_table.iter().map(|&(k, v)| (k, v)).collect()
 }
 
 struct Context<'a> {
     // All known lint modes (string versions)
-    dict: @LintDict,
+    dict: LintDict,
     // Current levels of each lint warning
     cur: SmallIntMap<(level, LintSource)>,
     // context we're checking in (used to access fields like sess)
@@ -1775,7 +1771,7 @@ pub fn check_crate(tcx: &ty::ctxt,
                    exported_items: &privacy::ExportedItems,
                    krate: &ast::Crate) {
     let mut cx = Context {
-        dict: @get_lint_dict(),
+        dict: get_lint_dict(),
         cur: SmallIntMap::new(),
         tcx: tcx,
         exported_items: exported_items,
@@ -1788,7 +1784,9 @@ pub fn check_crate(tcx: &ty::ctxt,
     // Install default lint levels, followed by the command line levels, and
     // then actually visit the whole crate.
     for (_, spec) in cx.dict.iter() {
-        cx.set_level(spec.lint, spec.default, Default);
+        if spec.default != allow {
+            cx.cur.insert(spec.lint as uint, (spec.default, Default));
+        }
     }
     for &(lint, level) in tcx.sess.opts.lint_opts.iter() {
         cx.set_level(lint, level, CommandLine);
