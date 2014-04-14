@@ -526,7 +526,7 @@ impl tr for ty::TraitStore {
 // ______________________________________________________________________
 // Encoding and decoding of freevar information
 
-fn encode_freevar_entry(ebml_w: &mut Encoder, fv: @freevar_entry) {
+fn encode_freevar_entry(ebml_w: &mut Encoder, fv: &freevar_entry) {
     (*fv).encode(ebml_w).unwrap();
 }
 
@@ -1018,7 +1018,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
             ebml_w.id(id);
             ebml_w.tag(c::tag_table_val, |ebml_w| {
                 ebml_w.emit_from_vec(fv.as_slice(), |ebml_w, fv_entry| {
-                    Ok(encode_freevar_entry(ebml_w, *fv_entry))
+                    Ok(encode_freevar_entry(ebml_w, fv_entry))
                 });
             })
         })
@@ -1370,8 +1370,8 @@ fn decode_side_tables(xcx: &ExtendedDecodeContext,
                         dcx.tcx.node_type_substs.borrow_mut().insert(id, tys);
                     }
                     c::tag_table_freevars => {
-                        let fv_info = @val_dsr.read_to_vec(|val_dsr| {
-                            Ok(@val_dsr.read_freevar_entry(xcx))
+                        let fv_info = val_dsr.read_to_vec(|val_dsr| {
+                            Ok(val_dsr.read_freevar_entry(xcx))
                         }).unwrap().move_iter().collect();
                         dcx.tcx.freevars.borrow_mut().insert(id, fv_info);
                     }

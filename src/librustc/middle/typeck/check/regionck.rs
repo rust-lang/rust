@@ -611,20 +611,21 @@ fn check_expr_fn_block(rcx: &mut Rcx,
     match ty::get(function_type).sty {
         ty::ty_closure(~ty::ClosureTy {
                 store: ty::RegionTraitStore(region, _), ..}) => {
-            let freevars = freevars::get_freevars(tcx, expr.id);
-            if freevars.is_empty() {
-                // No free variables means that the environment
-                // will be NULL at runtime and hence the closure
-                // has static lifetime.
-            } else {
-                // Closure must not outlive the variables it closes over.
-                constrain_free_variables(rcx, region, expr, freevars);
+            freevars::with_freevars(tcx, expr.id, |freevars| {
+                if freevars.is_empty() {
+                    // No free variables means that the environment
+                    // will be NULL at runtime and hence the closure
+                    // has static lifetime.
+                } else {
+                    // Closure must not outlive the variables it closes over.
+                    constrain_free_variables(rcx, region, expr, freevars);
 
-                // Closure cannot outlive the appropriate temporary scope.
-                let s = rcx.repeating_scope;
-                rcx.fcx.mk_subr(true, infer::InfStackClosure(expr.span),
-                                region, ty::ReScope(s));
-            }
+                    // Closure cannot outlive the appropriate temporary scope.
+                    let s = rcx.repeating_scope;
+                    rcx.fcx.mk_subr(true, infer::InfStackClosure(expr.span),
+                                    region, ty::ReScope(s));
+                }
+            });
         }
         _ => ()
     }
@@ -635,8 +636,9 @@ fn check_expr_fn_block(rcx: &mut Rcx,
 
     match ty::get(function_type).sty {
         ty::ty_closure(~ty::ClosureTy {store: ty::RegionTraitStore(..), ..}) => {
-            let freevars = freevars::get_freevars(tcx, expr.id);
-            propagate_upupvar_borrow_kind(rcx, expr, freevars);
+            freevars::with_freevars(tcx, expr.id, |freevars| {
+                propagate_upupvar_borrow_kind(rcx, expr, freevars);
+            });
         }
         _ => ()
     }
@@ -644,7 +646,7 @@ fn check_expr_fn_block(rcx: &mut Rcx,
     fn constrain_free_variables(rcx: &mut Rcx,
                                 region: ty::Region,
                                 expr: &ast::Expr,
-                                freevars: freevars::freevar_info) {
+                                freevars: &[freevars::freevar_entry]) {
         /*!
          * Make sure that all free variables referenced inside the closure
          * outlive the closure itself. Also, create an entry in the
@@ -690,7 +692,7 @@ fn check_expr_fn_block(rcx: &mut Rcx,
 
     fn propagate_upupvar_borrow_kind(rcx: &mut Rcx,
                                      expr: &ast::Expr,
-                                     freevars: freevars::freevar_info) {
+                                     freevars: &[freevars::freevar_entry]) {
         let tcx = rcx.fcx.ccx.tcx;
         debug!("propagate_upupvar_borrow_kind({})", expr.repr(tcx));
         for freevar in freevars.iter() {
