@@ -9,8 +9,8 @@
 // except according to those terms.
 
 
-#[forbid(non_camel_case_types)];
-#[forbid(non_uppercase_statics)];
+#![forbid(non_camel_case_types)]
+#![forbid(non_uppercase_statics)]
 
 static mut bar: int = 2;
 

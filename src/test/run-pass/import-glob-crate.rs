@@ -10,7 +10,7 @@
 // except according to those terms.
 
 #![feature(globs)]
-#[allow(dead_assignment)];
+#![allow(dead_assignment)]
 
 use std::mem::*;
 

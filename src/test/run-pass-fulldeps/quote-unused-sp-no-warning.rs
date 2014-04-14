@@ -10,7 +10,7 @@
 
 // ignore-android
 #![feature(quote)]
-#[deny(unused_variable)];
+#![deny(unused_variable)]
 
 extern crate syntax;
 

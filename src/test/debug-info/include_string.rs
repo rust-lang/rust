@@ -22,7 +22,7 @@
 // check:$3 = 48
 // debugger:continue
 
-#[allow(unused_variable)];
+#![allow(unused_variable)]
 
 // This test case makes sure that debug info does not ICE when include_str is
 // used multiple times (see issue #11322).

@@ -10,9 +10,9 @@
 // except according to those terms.
 
 
-#[allow(unused_imports)];
+#![allow(unused_imports)]
 
-#[no_std];
+#![no_std]
 extern crate std;
 extern crate zed = "std";
 extern crate bar = "std#0.11-pre";

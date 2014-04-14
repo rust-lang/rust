@@ -10,7 +10,7 @@
 
 // force-host
 
-#[feature(macro_registrar)];
+#![feature(macro_registrar)]
 
 extern crate syntax;
 

@@ -8,14 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[deny(missing_doc)];
-#[doc="module"];
+#![deny(missing_doc)]
+#![doc="module"]
 
 #[doc="struct"]
 pub struct Foo;
 
 pub fn foo() {
-    #[doc="fn"];
+    #![doc="fn"]
 }
 
 #[doc="main"]

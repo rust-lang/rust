@@ -65,7 +65,7 @@
 // check:$15 = 400
 // debugger:continue
 
-#[feature(macro_rules)];
+#![feature(macro_rules)]
 
 macro_rules! trivial(
     ($e1:expr) => ($e1)

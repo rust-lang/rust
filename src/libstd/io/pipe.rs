@@ -37,7 +37,7 @@ impl PipeStream {
     /// # Example
     ///
     /// ```rust
-    /// # #[allow(unused_must_use)];
+    /// # #![allow(unused_must_use)]
     /// extern crate libc;
     ///
     /// use std::io::pipe::PipeStream;

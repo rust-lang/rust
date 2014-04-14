@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[crate_id="cci_no_inline_lib"];
+#![crate_id="cci_no_inline_lib"]
 
 
 // same as cci_iter_lib, more-or-less, but not marked inline

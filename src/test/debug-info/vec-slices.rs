@@ -53,7 +53,7 @@
 // debugger:print *((int64_t[2]*)('vec-slices::MUT_VECT_SLICE'.data_ptr))
 // check:$15 = {64, 65}
 
-#[allow(unused_variable)];
+#![allow(unused_variable)]
 
 struct AStruct {
     x: i16,

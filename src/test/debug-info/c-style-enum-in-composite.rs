@@ -36,7 +36,7 @@
 // debugger:print struct_with_drop
 // check:$7 = {{a = OneHundred, b = Vienna}, 9}
 
-#[allow(unused_variable)];
+#![allow(unused_variable)]
 
 enum AnEnum {
     OneHundred = 100,

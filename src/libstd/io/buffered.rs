@@ -125,7 +125,7 @@ impl<R: Reader> Reader for BufferedReader<R> {
 /// # Example
 ///
 /// ```rust
-/// # #[allow(unused_must_use)];
+/// # #![allow(unused_must_use)]
 /// use std::io::{BufferedWriter, File};
 ///
 /// let file = File::open(&Path::new("message.txt"));
@@ -287,7 +287,7 @@ impl<W: Reader> Reader for InternalBufferedWriter<W> {
 /// # Example
 ///
 /// ```rust
-/// # #[allow(unused_must_use)];
+/// # #![allow(unused_must_use)]
 /// use std::io::{BufferedStream, File};
 ///
 /// let file = File::open(&Path::new("message.txt"));

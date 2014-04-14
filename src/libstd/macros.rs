@@ -29,7 +29,7 @@
 /// # Example
 ///
 /// ```should_fail
-/// # #[allow(unreachable_code)];
+/// # #![allow(unreachable_code)]
 /// fail!();
 /// fail!("this is a terrible mistake!");
 /// fail!(4); // fail with the value of 4 to be collected elsewhere
@@ -188,7 +188,7 @@ macro_rules! format(
 /// # Example
 ///
 /// ```
-/// # #[allow(unused_must_use)];
+/// # #![allow(unused_must_use)]
 /// use std::io::MemWriter;
 ///
 /// let mut w = MemWriter::new();

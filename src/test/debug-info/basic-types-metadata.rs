@@ -48,7 +48,7 @@
 // check:[...]![...]_yyy([...])([...]);
 // debugger:continue
 
-#[allow(unused_variable)];
+#![allow(unused_variable)]
 
 fn main() {
     let unit: () = ();

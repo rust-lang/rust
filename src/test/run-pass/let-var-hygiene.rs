@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[feature(macro_rules)];
+#![feature(macro_rules)]
 
 // shouldn't affect evaluation of $ex:
 macro_rules! bad_macro (($ex:expr) => ({let _x = 9; $ex}))

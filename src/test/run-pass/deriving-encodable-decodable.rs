@@ -13,7 +13,7 @@
 
 // ignore-test FIXME(#5121)
 
-#[feature(struct_variant, managed_boxes)];
+#![feature(struct_variant, managed_boxes)]
 
 extern crate rand;
 extern crate serialize;

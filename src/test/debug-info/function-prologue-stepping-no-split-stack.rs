@@ -127,7 +127,7 @@
 // check:$32 = 45
 // debugger:continue
 
-#[allow(unused_variable)];
+#![allow(unused_variable)]
 
 #[no_split_stack]
 fn immediate_args(a: int, b: bool, c: f64) {

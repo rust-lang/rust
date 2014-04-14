@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[allow(unused_variable)];
+#![allow(unused_variable)]
 
 struct T { f: extern "Rust" fn() }
 struct S { f: extern "Rust" fn() }

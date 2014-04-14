@@ -10,7 +10,7 @@
 
 // ignore-test FIXME(#5121)
 
-#[feature(managed_boxes)];
+#![feature(managed_boxes)]
 
 extern crate time;
 extern crate serialize;

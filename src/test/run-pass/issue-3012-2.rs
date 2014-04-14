@@ -10,7 +10,7 @@
 
 // aux-build:issue-3012-1.rs
 
-#[feature(managed_boxes)];
+#![feature(managed_boxes)]
 
 extern crate socketlib;
 extern crate libc;

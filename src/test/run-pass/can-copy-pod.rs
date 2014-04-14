@@ -13,7 +13,7 @@
 
 // Tests that type parameters with the `Copy` are implicitly copyable.
 
-#[allow(dead_code)];
+#![allow(dead_code)]
 
 fn can_copy_copy<T:Copy>(v: T) {
     let _a = v;

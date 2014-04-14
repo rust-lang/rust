@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-#[allow(dead_assignment)];
+#![allow(dead_assignment)]
 
 use std::task;
 

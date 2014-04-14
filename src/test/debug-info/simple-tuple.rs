@@ -69,8 +69,8 @@
 // debugger:print 'simple-tuple::PADDING_AT_END'
 // check:$21 = {116, 117}
 
-#[allow(unused_variable)];
-#[allow(dead_code)];
+#![allow(unused_variable)]
+#![allow(dead_code)]
 
 static mut NO_PADDING_8: (i8, u8) = (-50, 50);
 static mut NO_PADDING_16: (i16, i16, u16) = (-1, 2, 3);

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[feature(managed_boxes)];
+#![feature(managed_boxes)]
 
 fn assert_repr_eq<T>(obj : T, expected : ~str) {
     assert_eq!(expected, format!("{:?}", obj));

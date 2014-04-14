@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-#[feature(managed_boxes)];
+#![feature(managed_boxes)]
 
 fn p_foo<T>(_pinned: T) { }
 fn s_foo<T>(_shared: T) { }
