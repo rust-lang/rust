@@ -52,6 +52,8 @@ use rustc::util::nodemap::NodeSet;
 use clean;
 use doctree;
 use fold::DocFolder;
+use html::item_type;
+use html::item_type::{ItemType, shortty};
 use html::format::{VisSpace, Method, FnStyleSpace};
 use html::layout;
 use html::markdown;
@@ -138,7 +140,7 @@ pub struct Cache {
     /// URLs when a type is being linked to. External paths are not located in
     /// this map because the `External` type itself has all the information
     /// necessary.
-    pub paths: HashMap<ast::NodeId, (Vec<~str> , &'static str)>,
+    pub paths: HashMap<ast::NodeId, (Vec<~str> , ItemType)>,
 
     /// This map contains information about all known traits of this crate.
     /// Implementations of a crate should inherit the documentation of the
@@ -193,7 +195,7 @@ struct Sidebar<'a> { cx: &'a Context, item: &'a clean::Item, }
 /// Struct representing one entry in the JS search index. These are all emitted
 /// by hand to a large JS file at the end of cache-creation.
 struct IndexItem {
-    ty: &'static str,
+    ty: ItemType,
     name: ~str,
     path: ~str,
     desc: ~str,
@@ -262,6 +264,9 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
     });
     cache.stack.push(krate.name.clone());
     krate = cache.fold_crate(krate);
+
+    let mut nodeid_to_pathid = HashMap::new();
+    let mut pathid_to_nodeid = Vec::new();
     {
         let Cache { search_index: ref mut index,
                     orphan_methods: ref meths, paths: ref mut paths, ..} = cache;
@@ -283,48 +288,67 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
             }
         };
 
-        // Prune the paths that do not appear in the index.
-        let mut unseen: HashSet<ast::NodeId> = paths.keys().map(|&id| id).collect();
+        // Reduce `NodeId` in paths into smaller sequential numbers,
+        // and prune the paths that do not appear in the index.
         for item in index.iter() {
             match item.parent {
-                Some(ref pid) => { unseen.remove(pid); }
+                Some(nodeid) => {
+                    if !nodeid_to_pathid.contains_key(&nodeid) {
+                        let pathid = pathid_to_nodeid.len();
+                        nodeid_to_pathid.insert(nodeid, pathid);
+                        pathid_to_nodeid.push(nodeid);
+                    }
+                }
                 None => {}
             }
         }
-        for pid in unseen.iter() {
-            paths.remove(pid);
-        }
+        assert_eq!(nodeid_to_pathid.len(), pathid_to_nodeid.len());
     }
 
     // Publish the search index
     let index = {
         let mut w = MemWriter::new();
-        try!(write!(&mut w, "searchIndex['{}'] = [", krate.name));
+        try!(write!(&mut w, r#"searchIndex['{}'] = \{"items":["#, krate.name));
+
+        let mut lastpath = ~"";
         for (i, item) in cache.search_index.iter().enumerate() {
+            // Omit the path if it is same to that of the prior item.
+            let path;
+            if lastpath == item.path {
+                path = "";
+            } else {
+                lastpath = item.path.clone();
+                path = item.path.as_slice();
+            };
+
             if i > 0 {
                 try!(write!(&mut w, ","));
             }
-            try!(write!(&mut w, "\\{ty:\"{}\",name:\"{}\",path:\"{}\",desc:{}",
-                        item.ty, item.name, item.path,
+            try!(write!(&mut w, r#"[{:u},"{}","{}",{}"#,
+                        item.ty, item.name, path,
                         item.desc.to_json().to_str()));
             match item.parent {
-                Some(id) => {
-                    try!(write!(&mut w, ",parent:'{}'", id));
+                Some(nodeid) => {
+                    let pathid = *nodeid_to_pathid.find(&nodeid).unwrap();
+                    try!(write!(&mut w, ",{}", pathid));
                 }
                 None => {}
             }
-            try!(write!(&mut w, "\\}"));
+            try!(write!(&mut w, "]"));
         }
-        try!(write!(&mut w, "];"));
-        try!(write!(&mut w, "allPaths['{}'] = \\{", krate.name));
-        for (i, (&id, &(ref fqp, short))) in cache.paths.iter().enumerate() {
+
+        try!(write!(&mut w, r#"],"paths":["#));
+
+        for (i, &nodeid) in pathid_to_nodeid.iter().enumerate() {
+            let &(ref fqp, short) = cache.paths.find(&nodeid).unwrap();
             if i > 0 {
                 try!(write!(&mut w, ","));
             }
-            try!(write!(&mut w, "'{}':\\{type:'{}',name:'{}'\\}",
-                        id, short, *fqp.last().unwrap()));
+            try!(write!(&mut w, r#"[{:u},"{}"]"#,
+                        short, *fqp.last().unwrap()));
         }
-        try!(write!(&mut w, "\\};"));
+
+        try!(write!(&mut w, r"]\};"));
 
         str::from_utf8(w.unwrap().as_slice()).unwrap().to_owned()
     };
@@ -360,7 +384,7 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
             }
         }
         let mut w = try!(File::create(&dst));
-        try!(writeln!(&mut w, r"var searchIndex = \{\}; var allPaths = \{\};"));
+        try!(writeln!(&mut w, r"var searchIndex = \{\};"));
         for index in all_indexes.iter() {
             try!(writeln!(&mut w, "{}", *index));
         }
@@ -613,12 +637,13 @@ impl DocFolder for Cache {
                         } else {
                             let last = self.parent_stack.last().unwrap();
                             let path = match self.paths.find(last) {
-                                Some(&(_, "trait")) =>
+                                Some(&(_, item_type::Trait)) =>
                                     Some(self.stack.slice_to(self.stack.len() - 1)),
                                 // The current stack not necessarily has correlation for
                                 // where the type was defined. On the other hand,
                                 // `paths` always has the right information if present.
-                                Some(&(ref fqp, "struct")) | Some(&(ref fqp, "enum")) =>
+                                Some(&(ref fqp, item_type::Struct)) |
+                                Some(&(ref fqp, item_type::Enum)) =>
                                     Some(fqp.slice_to(fqp.len() - 1)),
                                 Some(..) => Some(self.stack.as_slice()),
                                 None => None
@@ -678,7 +703,7 @@ impl DocFolder for Cache {
             clean::VariantItem(..) => {
                 let mut stack = self.stack.clone();
                 stack.pop();
-                self.paths.insert(item.id, (stack, "enum"));
+                self.paths.insert(item.id, (stack, item_type::Enum));
             }
             _ => {}
         }
@@ -836,7 +861,7 @@ impl Context {
             }
             title.push_str(" - Rust");
             let page = layout::Page {
-                ty: shortty(it),
+                ty: shortty(it).to_static_str(),
                 root_path: cx.root_path.as_slice(),
                 title: title.as_slice(),
             };
@@ -887,27 +912,6 @@ impl Context {
 
             _ => Ok(())
         }
-    }
-}
-
-fn shortty(item: &clean::Item) -> &'static str {
-    match item.inner {
-        clean::ModuleItem(..)          => "mod",
-        clean::StructItem(..)          => "struct",
-        clean::EnumItem(..)            => "enum",
-        clean::FunctionItem(..)        => "fn",
-        clean::TypedefItem(..)         => "typedef",
-        clean::StaticItem(..)          => "static",
-        clean::TraitItem(..)           => "trait",
-        clean::ImplItem(..)            => "impl",
-        clean::ViewItemItem(..)        => "viewitem",
-        clean::TyMethodItem(..)        => "tymethod",
-        clean::MethodItem(..)          => "method",
-        clean::StructFieldItem(..)     => "structfield",
-        clean::VariantItem(..)         => "variant",
-        clean::ForeignFunctionItem(..) => "ffi",
-        clean::ForeignStaticItem(..)   => "ffs",
-        clean::MacroItem(..)           => "macro",
     }
 }
 
@@ -1000,7 +1004,7 @@ impl<'a> fmt::Show for Item<'a> {
 fn item_path(item: &clean::Item) -> ~str {
     match item.inner {
         clean::ModuleItem(..) => *item.name.get_ref() + "/index.html",
-        _ => shortty(item) + "." + *item.name.get_ref() + ".html"
+        _ => shortty(item).to_static_str() + "." + *item.name.get_ref() + ".html"
     }
 }
 
@@ -1086,13 +1090,13 @@ fn item_module(w: &mut Writer, cx: &Context,
     indices.sort_by(|&i1, &i2| cmp(&items[i1], &items[i2], i1, i2));
 
     debug!("{:?}", indices);
-    let mut curty = "";
+    let mut curty = None;
     for &idx in indices.iter() {
         let myitem = &items[idx];
 
-        let myty = shortty(myitem);
+        let myty = Some(shortty(myitem));
         if myty != curty {
-            if curty != "" {
+            if curty.is_some() {
                 try!(write!(w, "</table>"));
             }
             curty = myty;
@@ -1695,8 +1699,9 @@ impl<'a> fmt::Show for Sidebar<'a> {
             };
             try!(write!(w, "<div class='block {}'><h2>{}</h2>", short, longty));
             for item in items.iter() {
+                let curty = shortty(cur).to_static_str();
                 let class = if cur.name.get_ref() == item &&
-                               short == shortty(cur) { "current" } else { "" };
+                               short == curty { "current" } else { "" };
                 try!(write!(w, "<a class='{ty} {class}' href='{curty, select,
                                 mod{../}
                                 other{}
@@ -1707,7 +1712,7 @@ impl<'a> fmt::Show for Sidebar<'a> {
                        ty = short,
                        tysel = short,
                        class = class,
-                       curty = shortty(cur),
+                       curty = curty,
                        name = item.as_slice()));
             }
             try!(write!(w, "</div>"));
@@ -1726,7 +1731,7 @@ impl<'a> fmt::Show for Sidebar<'a> {
 fn build_sidebar(m: &clean::Module) -> HashMap<~str, Vec<~str> > {
     let mut map = HashMap::new();
     for item in m.items.iter() {
-        let short = shortty(item);
+        let short = shortty(item).to_static_str();
         let myname = match item.name {
             None => continue,
             Some(ref s) => s.to_owned(),

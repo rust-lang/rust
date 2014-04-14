@@ -9,7 +9,7 @@
 // except according to those terms.
 
 /*jslint browser: true, es5: true */
-/*globals $: true, rootPath: true, allPaths: true */
+/*globals $: true, rootPath: true */
 
 (function() {
     "use strict";
@@ -135,7 +135,7 @@
         function execQuery(query, max, searchWords) {
             var valLower = query.query.toLowerCase(),
                 val = valLower,
-                typeFilter = query.type,
+                typeFilter = itemTypeFromName(query.type),
                 results = [],
                 split = valLower.split("::");
 
@@ -156,7 +156,7 @@
                 for (var i = 0; i < nSearchWords; i += 1) {
                     if (searchWords[i] === val) {
                         // filter type: ... queries
-                        if (!typeFilter || typeFilter === searchIndex[i].ty) {
+                        if (typeFilter < 0 || typeFilter === searchIndex[i].ty) {
                             results.push({id: i, index: -1});
                         }
                     }
@@ -174,7 +174,7 @@
                             searchWords[j].replace(/_/g, "").indexOf(val) > -1)
                         {
                             // filter type: ... queries
-                            if (!typeFilter || typeFilter === searchIndex[j].ty) {
+                            if (typeFilter < 0 || typeFilter === searchIndex[j].ty) {
                                 results.push({id: j, index: searchWords[j].replace(/_/g, "").indexOf(val)});
                             }
                         }
@@ -258,7 +258,7 @@
                 var result = results[i],
                     name = result.item.name.toLowerCase(),
                     path = result.item.path.toLowerCase(),
-                    parent = allPaths[result.item.crate][result.item.parent];
+                    parent = result.item.parent;
 
                 var valid = validateResult(name, path, split, parent);
                 if (!valid) {
@@ -405,7 +405,7 @@
 
                     shown.push(item);
                     name = item.name;
-                    type = item.ty;
+                    type = itemTypes[item.ty];
 
                     output += '<tr class="' + type + ' result"><td>';
 
@@ -422,12 +422,12 @@
                             '/index.html" class="' + type +
                             '">' + name + '</a>';
                     } else if (item.parent !== undefined) {
-                        var myparent = allPaths[item.crate][item.parent];
+                        var myparent = item.parent;
                         var anchor = '#' + type + '.' + name;
                         output += item.path + '::' + myparent.name +
                             '::<a href="' + rootPath +
                             item.path.replace(/::/g, '/') +
-                            '/' + myparent.type +
+                            '/' + itemTypes[myparent.ty] +
                             '.' + myparent.name +
                             '.html' + anchor +
                             '" class="' + type +
@@ -505,28 +505,76 @@
             showResults(results);
         }
 
+        // This mapping table should match the discriminants of
+        // `rustdoc::html::item_type::ItemType` type in Rust.
+        var itemTypes = ["mod",
+                         "struct",
+                         "enum",
+                         "fn",
+                         "typedef",
+                         "static",
+                         "trait",
+                         "impl",
+                         "viewitem",
+                         "tymethod",
+                         "method",
+                         "structfield",
+                         "variant",
+                         "ffi",
+                         "ffs",
+                         "macro"];
+
+        function itemTypeFromName(typename) {
+            for (var i = 0; i < itemTypes.length; ++i) {
+                if (itemTypes[i] === typename) return i;
+            }
+            return -1;
+        }
+
         function buildIndex(rawSearchIndex) {
             searchIndex = [];
             var searchWords = [];
             for (var crate in rawSearchIndex) {
                 if (!rawSearchIndex.hasOwnProperty(crate)) { continue }
-                var len = rawSearchIndex[crate].length;
-                var i = 0;
 
+                // an array of [(Number) item type,
+                //              (String) name,
+                //              (String) full path or empty string for previous path,
+                //              (String) description,
+                //              (optional Number) the parent path index to `paths`]
+                var items = rawSearchIndex[crate].items;
+                // an array of [(Number) item type,
+                //              (String) name]
+                var paths = rawSearchIndex[crate].paths;
+
+                // convert `paths` into an object form
+                var len = paths.length;
+                for (var i = 0; i < len; ++i) {
+                    paths[i] = {ty: paths[i][0], name: paths[i][1]};
+                }
+
+                // convert `items` into an object form, and construct word indices.
+                //
                 // before any analysis is performed lets gather the search terms to
                 // search against apart from the rest of the data.  This is a quick
                 // operation that is cached for the life of the page state so that
                 // all other search operations have access to this cached data for
                 // faster analysis operations
-                for (i = 0; i < len; i += 1) {
-                    rawSearchIndex[crate][i].crate = crate;
-                    searchIndex.push(rawSearchIndex[crate][i]);
-                    if (typeof rawSearchIndex[crate][i].name === "string") {
-                        var word = rawSearchIndex[crate][i].name.toLowerCase();
+                var len = items.length;
+                var lastPath = "";
+                for (var i = 0; i < len; i += 1) {
+                    var rawRow = items[i];
+                    var row = {crate: crate, ty: rawRow[0], name: rawRow[1],
+                               path: rawRow[2] || lastPath, desc: rawRow[3],
+                               parent: paths[rawRow[4]]};
+                    searchIndex.push(row);
+                    if (typeof row.name === "string") {
+                        var word = row.name.toLowerCase();
                         searchWords.push(word);
                     } else {
                         searchWords.push("");
                     }
+                    lastPath = row.path;
                 }
             }
             return searchWords;
