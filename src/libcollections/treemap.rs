@@ -64,24 +64,13 @@ fn lt<K: Ord + TotalOrd, V: Ord>(a: &TreeMap<K, V>,
 impl<K: Ord + TotalOrd, V: Ord> Ord for TreeMap<K, V> {
     #[inline]
     fn lt(&self, other: &TreeMap<K, V>) -> bool { lt(self, other) }
-    #[inline]
-    fn le(&self, other: &TreeMap<K, V>) -> bool { !lt(other, self) }
-    #[inline]
-    fn ge(&self, other: &TreeMap<K, V>) -> bool { !lt(self, other) }
-    #[inline]
-    fn gt(&self, other: &TreeMap<K, V>) -> bool { lt(other, self) }
 }
 
 impl<K: TotalOrd, V> Container for TreeMap<K, V> {
-    /// Return the number of elements in the map
     fn len(&self) -> uint { self.length }
-
-    /// Return true if the map contains no elements
-    fn is_empty(&self) -> bool { self.root.is_none() }
 }
 
 impl<K: TotalOrd, V> Mutable for TreeMap<K, V> {
-    /// Clear the map, removing all key-value pairs.
     fn clear(&mut self) {
         self.root = None;
         self.length = 0
@@ -89,7 +78,6 @@ impl<K: TotalOrd, V> Mutable for TreeMap<K, V> {
 }
 
 impl<K: TotalOrd, V> Map<K, V> for TreeMap<K, V> {
-    /// Return a reference to the value corresponding to the key
     fn find<'a>(&'a self, key: &K) -> Option<&'a V> {
         let mut current: &'a Option<~TreeNode<K, V>> = &self.root;
         loop {
@@ -108,22 +96,17 @@ impl<K: TotalOrd, V> Map<K, V> for TreeMap<K, V> {
 }
 
 impl<K: TotalOrd, V> MutableMap<K, V> for TreeMap<K, V> {
-    /// Return a mutable reference to the value corresponding to the key
     #[inline]
     fn find_mut<'a>(&'a mut self, key: &K) -> Option<&'a mut V> {
         find_mut(&mut self.root, key)
     }
 
-    /// Insert a key-value pair from the map. If the key already had a value
-    /// present in the map, that value is returned. Otherwise None is returned.
     fn swap(&mut self, key: K, value: V) -> Option<V> {
         let ret = insert(&mut self.root, key, value);
         if ret.is_none() { self.length += 1 }
         ret
     }
 
-    /// Removes a key from the map, returning the value at the key if the key
-    /// was previously in the map.
     fn pop(&mut self, key: &K) -> Option<V> {
         let ret = remove(&mut self.root, key);
         if ret.is_some() { self.length -= 1 }
@@ -531,7 +514,6 @@ impl<K, V> Iterator<(K, V)> for MoveEntries<K,V> {
 }
 
 impl<'a, T> Iterator<&'a T> for SetItems<'a, T> {
-    /// Advance the iterator to the next node (in order). If there are no more nodes, return `None`.
     #[inline]
     fn next(&mut self) -> Option<&'a T> {
         self.iter.next().map(|(value, _)| value)
@@ -539,7 +521,6 @@ impl<'a, T> Iterator<&'a T> for SetItems<'a, T> {
 }
 
 impl<'a, T> Iterator<&'a T> for RevSetItems<'a, T> {
-    /// Advance the iterator to the next node (in order). If there are no more nodes, return `None`.
     #[inline]
     fn next(&mut self) -> Option<&'a T> {
         self.iter.next().map(|(value, _)| value)
@@ -557,19 +538,11 @@ pub struct TreeSet<T> {
 impl<T: Eq + TotalOrd> Eq for TreeSet<T> {
     #[inline]
     fn eq(&self, other: &TreeSet<T>) -> bool { self.map == other.map }
-    #[inline]
-    fn ne(&self, other: &TreeSet<T>) -> bool { self.map != other.map }
 }
 
 impl<T: Ord + TotalOrd> Ord for TreeSet<T> {
     #[inline]
     fn lt(&self, other: &TreeSet<T>) -> bool { self.map < other.map }
-    #[inline]
-    fn le(&self, other: &TreeSet<T>) -> bool { self.map <= other.map }
-    #[inline]
-    fn ge(&self, other: &TreeSet<T>) -> bool { self.map >= other.map }
-    #[inline]
-    fn gt(&self, other: &TreeSet<T>) -> bool { self.map > other.map }
 }
 
 impl<T: TotalOrd> Container for TreeSet<T> {
