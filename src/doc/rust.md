@@ -4056,10 +4056,6 @@ crate name the crate is given a default name that matches the source file,
 with the extension removed. In that case, to turn on logging for a program
 compiled from, e.g. `helloworld.rs`, `RUST_LOG` should be set to `helloworld`.
 
-As a convenience, the logging spec can also be set to a special pseudo-crate,
-`::help`. In this case, when the application starts, the runtime will
-simply output a list of loaded modules containing log expressions, then exit.
-
 #### Logging Expressions
 
 Rust provides several macros to log information. Here's a simple Rust program
