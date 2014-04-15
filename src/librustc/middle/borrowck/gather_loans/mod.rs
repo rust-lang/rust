@@ -230,7 +230,7 @@ fn gather_loans_in_expr(this: &mut GatherLoanCtxt,
         let cmt = this.bccx.cat_expr(ex_v);
         for arm in arms.iter() {
             for pat in arm.pats.iter() {
-                this.gather_pat(cmt, *pat, Some((arm.body.id, ex.id)));
+                this.gather_pat(cmt.clone(), *pat, Some((arm.body.id, ex.id)));
             }
         }
         visit::walk_expr(this, ex, ());
@@ -300,7 +300,7 @@ fn gather_loans_in_expr(this: &mut GatherLoanCtxt,
 
 fn with_assignee_loan_path(bccx: &BorrowckCtxt, expr: &ast::Expr, op: |Rc<LoanPath>|) {
     let cmt = bccx.cat_expr(expr);
-    match opt_loan_path(cmt) {
+    match opt_loan_path(&cmt) {
         Some(lp) => op(lp),
         None => {
             // This can occur with e.g. `*foo() = 5`.  In such
@@ -552,20 +552,20 @@ impl<'a> GatherLoanCtxt<'a> {
         // Check that the lifetime of the borrow does not exceed
         // the lifetime of the data being borrowed.
         if lifetime::guarantee_lifetime(self.bccx, self.item_ub, root_ub,
-                                        borrow_span, cause, cmt, loan_region,
+                                        borrow_span, cause, cmt.clone(), loan_region,
                                         req_kind).is_err() {
             return; // reported an error, no sense in reporting more.
         }
 
         // Check that we don't allow mutable borrows of non-mutable data.
         if check_mutability(self.bccx, borrow_span, cause,
-                            cmt, req_kind).is_err() {
+                            cmt.clone(), req_kind).is_err() {
             return; // reported an error, no sense in reporting more.
         }
 
         // Check that we don't allow mutable borrows of aliasable data.
         if check_aliasability(self.bccx, borrow_span, cause,
-                              cmt, req_kind).is_err() {
+                              cmt.clone(), req_kind).is_err() {
             return; // reported an error, no sense in reporting more.
         }
 
@@ -573,7 +573,7 @@ impl<'a> GatherLoanCtxt<'a> {
         // loan is safe.
         let restr = restrictions::compute_restrictions(
             self.bccx, borrow_span, cause,
-            cmt, loan_region, self.restriction_set(req_kind));
+            cmt.clone(), loan_region, self.restriction_set(req_kind));
 
         // Create the loan record (if needed).
         let loan = match restr {

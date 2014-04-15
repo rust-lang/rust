@@ -79,7 +79,7 @@ pub struct GroupedMoveErrors {
 fn report_move_errors(bccx: &BorrowckCtxt, errors: &Vec<MoveError>) {
     let grouped_errors = group_errors_with_same_origin(errors);
     for error in grouped_errors.iter() {
-        report_cannot_move_out_of(bccx, error.move_from);
+        report_cannot_move_out_of(bccx, error.move_from.clone());
         let mut is_first_note = true;
         for move_to in error.move_to_places.iter() {
             note_move_destination(bccx, move_to.span,
@@ -112,7 +112,7 @@ fn group_errors_with_same_origin(errors: &Vec<MoveError>)
             }
         }
         grouped_errors.push(GroupedMoveErrors {
-            move_from: error.move_from,
+            move_from: error.move_from.clone(),
             move_to_places: move_to
         })
     }
@@ -128,11 +128,11 @@ fn report_cannot_move_out_of(bccx: &BorrowckCtxt, move_from: mc::cmt) {
             bccx.span_err(
                 move_from.span,
                 format!("cannot move out of {}",
-                        bccx.cmt_to_str(move_from)));
+                        bccx.cmt_to_str(&*move_from)));
         }
 
-        mc::cat_downcast(b) |
-        mc::cat_interior(b, _) => {
+        mc::cat_downcast(ref b) |
+        mc::cat_interior(ref b, _) => {
             match ty::get(b.ty).sty {
                 ty::ty_struct(did, _)
                 | ty::ty_enum(did, _) if ty::has_dtor(bccx.tcx, did) => {

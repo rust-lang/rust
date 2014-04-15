@@ -225,7 +225,7 @@ impl LoanPath {
     }
 }
 
-pub fn opt_loan_path(cmt: mc::cmt) -> Option<Rc<LoanPath>> {
+pub fn opt_loan_path(cmt: &mc::cmt) -> Option<Rc<LoanPath>> {
     //! Computes the `LoanPath` (if any) for a `cmt`.
     //! Note that this logic is somewhat duplicated in
     //! the method `compute()` found in `gather_loans::restrictions`,
@@ -246,20 +246,20 @@ pub fn opt_loan_path(cmt: mc::cmt) -> Option<Rc<LoanPath>> {
             Some(Rc::new(LpVar(id)))
         }
 
-        mc::cat_deref(cmt_base, _, pk) => {
+        mc::cat_deref(ref cmt_base, _, pk) => {
             opt_loan_path(cmt_base).map(|lp| {
                 Rc::new(LpExtend(lp, cmt.mutbl, LpDeref(pk)))
             })
         }
 
-        mc::cat_interior(cmt_base, ik) => {
+        mc::cat_interior(ref cmt_base, ik) => {
             opt_loan_path(cmt_base).map(|lp| {
                 Rc::new(LpExtend(lp, cmt.mutbl, LpInterior(ik)))
             })
         }
 
-        mc::cat_downcast(cmt_base) |
-        mc::cat_discr(cmt_base, _) => {
+        mc::cat_downcast(ref cmt_base) |
+        mc::cat_discr(ref cmt_base, _) => {
             opt_loan_path(cmt_base)
         }
     }
@@ -469,14 +469,16 @@ impl<'a> BorrowckCtxt<'a> {
     }
 
     pub fn cat_discr(&self, cmt: mc::cmt, match_id: ast::NodeId) -> mc::cmt {
-        @mc::cmt_ {cat:mc::cat_discr(cmt, match_id),
-                   mutbl:cmt.mutbl.inherit(),
-                   ..*cmt}
+        Rc::new(mc::cmt_ {
+            cat: mc::cat_discr(cmt.clone(), match_id),
+            mutbl: cmt.mutbl.inherit(),
+            ..*cmt
+        })
     }
 
     pub fn cat_pattern(&self,
                        cmt: mc::cmt,
-                       pat: @ast::Pat,
+                       pat: &ast::Pat,
                        op: |mc::cmt, &ast::Pat|) {
         let r = self.mc().cat_pattern(cmt, pat, |_,x,y| op(x,y));
         assert!(r.is_ok());
@@ -485,7 +487,7 @@ impl<'a> BorrowckCtxt<'a> {
     pub fn report(&self, err: BckError) {
         self.span_err(
             err.span,
-            self.bckerr_to_str(err));
+            self.bckerr_to_str(&err));
         self.note_and_explain_bckerr(err);
     }
 
@@ -607,16 +609,16 @@ impl<'a> BorrowckCtxt<'a> {
         self.tcx.sess.span_end_note(s, m);
     }
 
-    pub fn bckerr_to_str(&self, err: BckError) -> ~str {
+    pub fn bckerr_to_str(&self, err: &BckError) -> ~str {
         match err.code {
             err_mutbl => {
-                let descr = match opt_loan_path(err.cmt) {
+                let descr = match opt_loan_path(&err.cmt) {
                     None => format!("{} {}",
                                     err.cmt.mutbl.to_user_str(),
-                                    self.cmt_to_str(err.cmt)),
+                                    self.cmt_to_str(&*err.cmt)),
                     Some(lp) => format!("{} {} `{}`",
                                         err.cmt.mutbl.to_user_str(),
-                                        self.cmt_to_str(err.cmt),
+                                        self.cmt_to_str(&*err.cmt),
                                         self.loan_path_to_str(&*lp)),
                 };
 
@@ -633,16 +635,16 @@ impl<'a> BorrowckCtxt<'a> {
                 format!("cannot root managed value long enough")
             }
             err_out_of_scope(..) => {
-                let msg = match opt_loan_path(err.cmt) {
+                let msg = match opt_loan_path(&err.cmt) {
                     None => format!("borrowed value"),
                     Some(lp) => format!("`{}`", self.loan_path_to_str(&*lp)),
                 };
                 format!("{} does not live long enough", msg)
             }
             err_borrowed_pointer_too_short(..) => {
-                let descr = match opt_loan_path(err.cmt) {
+                let descr = match opt_loan_path(&err.cmt) {
                     Some(lp) => format!("`{}`", self.loan_path_to_str(&*lp)),
-                    None => self.cmt_to_str(err.cmt),
+                    None => self.cmt_to_str(&*err.cmt),
                 };
 
                 format!("lifetime of {} is too short to guarantee \
@@ -734,9 +736,9 @@ impl<'a> BorrowckCtxt<'a> {
             }
 
             err_borrowed_pointer_too_short(loan_scope, ptr_scope, _) => {
-                let descr = match opt_loan_path(err.cmt) {
+                let descr = match opt_loan_path(&err.cmt) {
                     Some(lp) => format!("`{}`", self.loan_path_to_str(&*lp)),
-                    None => self.cmt_to_str(err.cmt),
+                    None => self.cmt_to_str(&*err.cmt),
                 };
                 note_and_explain_region(
                     self.tcx,
@@ -809,7 +811,7 @@ impl<'a> BorrowckCtxt<'a> {
         result.into_owned()
     }
 
-    pub fn cmt_to_str(&self, cmt: mc::cmt) -> ~str {
+    pub fn cmt_to_str(&self, cmt: &mc::cmt_) -> ~str {
         self.mc().cmt_to_str(cmt)
     }
 }
