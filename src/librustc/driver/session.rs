@@ -498,43 +498,51 @@ pub fn collect_crate_types(session: &Session,
     if session.opts.test {
         return vec!(CrateTypeExecutable)
     }
+
+    // Only check command line flags if present. If no types are specified by
+    // command line, then reuse the empty `base` Vec to hold the types that
+    // will be found in crate attributes.
     let mut base = session.opts.crate_types.clone();
-    let iter = attrs.iter().filter_map(|a| {
-        if a.name().equiv(&("crate_type")) {
-            match a.value_str() {
-                Some(ref n) if n.equiv(&("rlib")) => Some(CrateTypeRlib),
-                Some(ref n) if n.equiv(&("dylib")) => Some(CrateTypeDylib),
-                Some(ref n) if n.equiv(&("lib")) => {
-                    Some(default_lib_output())
+    if base.len() > 0 {
+        return base
+    } else {
+        let iter = attrs.iter().filter_map(|a| {
+            if a.name().equiv(&("crate_type")) {
+                match a.value_str() {
+                    Some(ref n) if n.equiv(&("rlib")) => Some(CrateTypeRlib),
+                    Some(ref n) if n.equiv(&("dylib")) => Some(CrateTypeDylib),
+                    Some(ref n) if n.equiv(&("lib")) => {
+                        Some(default_lib_output())
+                    }
+                    Some(ref n) if n.equiv(&("staticlib")) => {
+                        Some(CrateTypeStaticlib)
+                    }
+                    Some(ref n) if n.equiv(&("bin")) => Some(CrateTypeExecutable),
+                    Some(_) => {
+                        session.add_lint(lint::UnknownCrateType,
+                                         ast::CRATE_NODE_ID,
+                                         a.span,
+                                         ~"invalid `crate_type` value");
+                        None
+                    }
+                    _ => {
+                        session.add_lint(lint::UnknownCrateType, ast::CRATE_NODE_ID,
+                                        a.span, ~"`crate_type` requires a value");
+                        None
+                    }
                 }
-                Some(ref n) if n.equiv(&("staticlib")) => {
-                    Some(CrateTypeStaticlib)
-                }
-                Some(ref n) if n.equiv(&("bin")) => Some(CrateTypeExecutable),
-                Some(_) => {
-                    session.add_lint(lint::UnknownCrateType,
-                                     ast::CRATE_NODE_ID,
-                                     a.span,
-                                     ~"invalid `crate_type` value");
-                    None
-                }
-                _ => {
-                    session.add_lint(lint::UnknownCrateType, ast::CRATE_NODE_ID,
-                                    a.span, ~"`crate_type` requires a value");
-                    None
-                }
+            } else {
+                None
             }
-        } else {
-            None
+        });
+        base.extend(iter);
+        if base.len() == 0 {
+            base.push(CrateTypeExecutable);
         }
-    });
-    base.extend(iter);
-    if base.len() == 0 {
-        base.push(CrateTypeExecutable);
+        base.as_mut_slice().sort();
+        base.dedup();
+        return base;
     }
-    base.as_mut_slice().sort();
-    base.dedup();
-    return base;
 }
 
 pub fn sess_os_to_meta_os(os: abi::Os) -> metadata::loader::Os {
