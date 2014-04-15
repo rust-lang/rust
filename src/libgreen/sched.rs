@@ -1035,10 +1035,10 @@ mod test {
 
     fn sched_id() -> uint {
         let mut task = Local::borrow(None::<Task>);
-        match task.get().maybe_take_runtime::<GreenTask>() {
+        match task.maybe_take_runtime::<GreenTask>() {
             Some(green) => {
                 let ret = green.sched.get_ref().sched_id();
-                task.get().put_runtime(green);
+                task.put_runtime(green);
                 return ret;
             }
             None => fail!()
