@@ -2416,13 +2416,13 @@ pub enum Representability {
 
 /// Check whether a type is representable. This means it cannot contain unboxed
 /// structural recursion. This check is needed for structs and enums.
-pub fn is_type_representable(cx: &ctxt, ty: t) -> Representability {
+pub fn is_type_representable(cx: &ctxt, sp: Span, ty: t) -> Representability {
 
     // Iterate until something non-representable is found
-    fn find_nonrepresentable<It: Iterator<t>>(cx: &ctxt, seen: &mut Vec<DefId>,
+    fn find_nonrepresentable<It: Iterator<t>>(cx: &ctxt, sp: Span, seen: &mut Vec<DefId>,
                                               mut iter: It) -> Representability {
         for ty in iter {
-            let r = type_structurally_recursive(cx, seen, ty);
+            let r = type_structurally_recursive(cx, sp, seen, ty);
             if r != Representable {
                  return r
             }
@@ -2432,7 +2432,7 @@ pub fn is_type_representable(cx: &ctxt, ty: t) -> Representability {
 
     // Does the type `ty` directly (without indirection through a pointer)
     // contain any types on stack `seen`?
-    fn type_structurally_recursive(cx: &ctxt, seen: &mut Vec<DefId>,
+    fn type_structurally_recursive(cx: &ctxt, sp: Span, seen: &mut Vec<DefId>,
                                    ty: t) -> Representability {
         debug!("type_structurally_recursive: {}",
                ::util::ppaux::ty_to_str(cx, ty));
@@ -2455,19 +2455,19 @@ pub fn is_type_representable(cx: &ctxt, ty: t) -> Representability {
         match get(ty).sty {
             // Tuples
             ty_tup(ref ts) => {
-                find_nonrepresentable(cx, seen, ts.iter().map(|t| *t))
+                find_nonrepresentable(cx, sp, seen, ts.iter().map(|t| *t))
             }
             // Fixed-length vectors.
             // FIXME(#11924) Behavior undecided for zero-length vectors.
             ty_vec(ty, VstoreFixed(_)) => {
-                type_structurally_recursive(cx, seen, ty)
+                type_structurally_recursive(cx, sp, seen, ty)
             }
 
             // Push struct and enum def-ids onto `seen` before recursing.
             ty_struct(did, ref substs) => {
                 seen.push(did);
                 let fields = struct_fields(cx, did, substs);
-                let r = find_nonrepresentable(cx, seen,
+                let r = find_nonrepresentable(cx, sp, seen,
                                               fields.iter().map(|f| f.mt.ty));
                 seen.pop();
                 r
@@ -2478,8 +2478,10 @@ pub fn is_type_representable(cx: &ctxt, ty: t) -> Representability {
 
                 let mut r = Representable;
                 for variant in vs.iter() {
-                    let iter = variant.args.iter().map(|aty| subst(cx, substs, *aty));
-                    r = find_nonrepresentable(cx, seen, iter);
+                    let iter = variant.args.iter().map(|aty| {
+                        aty.subst_spanned(cx, substs, Some(sp))
+                    });
+                    r = find_nonrepresentable(cx, sp, seen, iter);
 
                     if r != Representable { break }
                 }
@@ -2499,7 +2501,7 @@ pub fn is_type_representable(cx: &ctxt, ty: t) -> Representability {
     // contains a different, structurally recursive type, maintain a stack
     // of seen types and check recursion for each of them (issues #3008, #3779).
     let mut seen: Vec<DefId> = Vec::new();
-    type_structurally_recursive(cx, &mut seen, ty)
+    type_structurally_recursive(cx, sp, &mut seen, ty)
 }
 
 pub fn type_is_trait(ty: t) -> bool {
