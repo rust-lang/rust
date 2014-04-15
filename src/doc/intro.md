@@ -36,6 +36,9 @@ int add_one(void)
 }
 ```
 
+**Note: obviously this is very simple and non-idiomatic C++.
+You wouldn't write it in practice; it is for illustrative purposes.**
+
 This function allocates an integer on the stack,
 and stores it in a variable, `i`.
 It then returns a reference to the variable `i`.
