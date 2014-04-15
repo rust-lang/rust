@@ -7,6 +7,7 @@
 li {list-style-type: none; }
 </style>
 
+* [A 30-minute Intro to Rust](intro.html)
 * [The Rust tutorial](tutorial.html)  (* [PDF](tutorial.pdf))
 * [The Rust reference manual](rust.html) (* [PDF](rust.pdf))
 
