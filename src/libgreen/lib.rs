@@ -144,6 +144,19 @@
 //! }
 //! ```
 //!
+//! The above code can also be shortened with a macro from libgreen.
+//!
+//! ```
+//! #![feature(phase)]
+//! #[phase(syntax)] extern crate green;
+//!
+//! green_start!(main)
+//!
+//! fn main() {
+//!     // run inside of a green pool
+//! }
+//! ```
+//!
 //! # Using a scheduler pool
 //!
 //! ```rust
@@ -228,6 +241,33 @@ pub mod sched;
 pub mod sleeper_list;
 pub mod stack;
 pub mod task;
+
+/// A helper macro for booting a program with libgreen
+///
+/// # Example
+///
+/// ```
+/// #![feature(phase)]
+/// #[phase(syntax)] extern crate green;
+///
+/// green_start!(main)
+///
+/// fn main() {
+///     // running with libgreen
+/// }
+/// ```
+#[macro_export]
+macro_rules! green_start( ($f:ident) => (
+    mod __start {
+        extern crate green;
+        extern crate rustuv;
+
+        #[start]
+        fn start(argc: int, argv: **u8) -> int {
+            green::start(argc, argv, rustuv::event_loop, super::$f)
+        }
+    }
+) )
 
 /// Set up a default runtime configuration, given compiler-supplied arguments.
 ///
