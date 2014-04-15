@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Ensure that moves out of static items is forbidden
+// Ensure that moves out of immutable static items is allowed
 
 use std::kinds::marker;
 
@@ -25,5 +25,5 @@ fn test(f: Foo) {
 }
 
 fn main() {
-    test(BAR); //~ ERROR cannot move out of static item
+    test(BAR);
 }
