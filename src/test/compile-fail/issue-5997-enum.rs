@@ -8,10 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: missing type param `Z` in the substitution of `Z`
-
 fn f<Z>() -> bool {
     enum E { V(Z) }
+    //~^ ERROR missing type param `Z` in the substitution of `Z`
 
     true
 }
