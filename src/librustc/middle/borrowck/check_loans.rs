@@ -390,10 +390,9 @@ impl<'a> CheckLoanCtxt<'a> {
         // Mutable values can be assigned, as long as they obey loans
         // and aliasing restrictions:
         if cmt.mutbl.is_mutable() {
-            if check_for_aliasable_mutable_writes(self, expr, cmt) {
+            if check_for_aliasable_mutable_writes(self, expr, cmt.clone()) {
                 if check_for_assignment_to_restricted_or_frozen_location(
-                    self, expr, cmt)
-                {
+                    self, expr, cmt.clone()) {
                     // Safe, but record for lint pass later:
                     mark_variable_as_used_mut(self, cmt);
                 }
@@ -403,9 +402,9 @@ impl<'a> CheckLoanCtxt<'a> {
 
         // For immutable local variables, assignments are legal
         // if they cannot already have been assigned
-        if self.is_local_variable(cmt) {
+        if self.is_local_variable(cmt.clone()) {
             assert!(cmt.mutbl.is_immutable()); // no "const" locals
-            let lp = opt_loan_path(cmt).unwrap();
+            let lp = opt_loan_path(&cmt).unwrap();
             self.move_data.each_assignment_of(expr.id, &lp, |assign| {
                 self.bccx.report_reassigned_immutable_variable(
                     expr.span,
@@ -417,13 +416,13 @@ impl<'a> CheckLoanCtxt<'a> {
         }
 
         // Otherwise, just a plain error.
-        match opt_loan_path(cmt) {
+        match opt_loan_path(&cmt) {
             Some(lp) => {
                 self.bccx.span_err(
                     expr.span,
                     format!("cannot assign to {} {} `{}`",
                             cmt.mutbl.to_user_str(),
-                            self.bccx.cmt_to_str(cmt),
+                            self.bccx.cmt_to_str(&*cmt),
                             self.bccx.loan_path_to_str(&*lp)));
             }
             None => {
@@ -431,7 +430,7 @@ impl<'a> CheckLoanCtxt<'a> {
                     expr.span,
                     format!("cannot assign to {} {}",
                             cmt.mutbl.to_user_str(),
-                            self.bccx.cmt_to_str(cmt)));
+                            self.bccx.cmt_to_str(&*cmt)));
             }
         }
         return;
@@ -448,7 +447,7 @@ impl<'a> CheckLoanCtxt<'a> {
             loop {
                 debug!("mark_writes_through_upvars_as_used_mut(cmt={})",
                        cmt.repr(this.tcx()));
-                match cmt.cat {
+                match cmt.cat.clone() {
                     mc::cat_local(id) | mc::cat_arg(id) => {
                         this.tcx().used_mut_nodes.borrow_mut().insert(id);
                         return;
@@ -496,10 +495,10 @@ impl<'a> CheckLoanCtxt<'a> {
             debug!("check_for_aliasable_mutable_writes(cmt={}, guarantor={})",
                    cmt.repr(this.tcx()), guarantor.repr(this.tcx()));
             match guarantor.cat {
-                mc::cat_deref(b, _, mc::BorrowedPtr(ty::MutBorrow, _)) => {
+                mc::cat_deref(ref b, _, mc::BorrowedPtr(ty::MutBorrow, _)) => {
                     // Statically prohibit writes to `&mut` when aliasable
 
-                    check_for_aliasability_violation(this, expr, b);
+                    check_for_aliasability_violation(this, expr, b.clone());
                 }
 
                 _ => {}
@@ -537,7 +536,7 @@ impl<'a> CheckLoanCtxt<'a> {
             //! Check for assignments that violate the terms of an
             //! outstanding loan.
 
-            let loan_path = match opt_loan_path(cmt) {
+            let loan_path = match opt_loan_path(&cmt) {
                 Some(lp) => lp,
                 None => { return true; /* no loan path, can't be any loans */ }
             };
@@ -814,7 +813,7 @@ fn check_loans_in_expr<'a>(this: &mut CheckLoanCtxt<'a>,
           if !this.move_data.is_assignee(expr.id) {
               let cmt = this.bccx.cat_expr_unadjusted(expr);
               debug!("path cmt={}", cmt.repr(this.tcx()));
-              for lp in opt_loan_path(cmt).iter() {
+              for lp in opt_loan_path(&cmt).iter() {
                   this.check_if_path_is_moved(expr.id, expr.span, MovedInUse, lp);
               }
           }

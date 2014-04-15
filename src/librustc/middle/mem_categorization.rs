@@ -74,8 +74,9 @@ use syntax::print::pprust;
 use syntax::parse::token;
 
 use std::cell::RefCell;
+use std::rc::Rc;
 
-#[deriving(Eq)]
+#[deriving(Clone, Eq)]
 pub enum categorization {
     cat_rvalue(ty::Region),            // temporary val, argument is its scope
     cat_static_item,
@@ -91,14 +92,14 @@ pub enum categorization {
     // (*1) downcast is only required if the enum has more than one variant
 }
 
-#[deriving(Eq)]
+#[deriving(Clone, Eq)]
 pub struct CopiedUpvar {
     pub upvar_id: ast::NodeId,
     pub onceness: ast::Onceness,
 }
 
 // different kinds of pointers:
-#[deriving(Eq, TotalEq, Hash)]
+#[deriving(Clone, Eq, TotalEq, Hash)]
 pub enum PointerKind {
     OwnedPtr,
     GcPtr,
@@ -108,26 +109,26 @@ pub enum PointerKind {
 
 // We use the term "interior" to mean "something reachable from the
 // base without a pointer dereference", e.g. a field
-#[deriving(Eq, TotalEq, Hash)]
+#[deriving(Clone, Eq, TotalEq, Hash)]
 pub enum InteriorKind {
     InteriorField(FieldName),
     InteriorElement(ElementKind),
 }
 
-#[deriving(Eq, TotalEq, Hash)]
+#[deriving(Clone, Eq, TotalEq, Hash)]
 pub enum FieldName {
     NamedField(ast::Name),
     PositionalField(uint)
 }
 
-#[deriving(Eq, TotalEq, Hash)]
+#[deriving(Clone, Eq, TotalEq, Hash)]
 pub enum ElementKind {
     VecElement,
     StrElement,
     OtherElement,
 }
 
-#[deriving(Eq, TotalEq, Hash, Show)]
+#[deriving(Clone, Eq, TotalEq, Hash, Show)]
 pub enum MutabilityCategory {
     McImmutable, // Immutable.
     McDeclared,  // Directly declared as mutable.
@@ -148,7 +149,7 @@ pub enum MutabilityCategory {
 // dereference, but its type is the type *before* the dereference
 // (`@T`). So use `cmt.type` to find the type of the value in a consistent
 // fashion. For more details, see the method `cat_pattern`
-#[deriving(Eq)]
+#[deriving(Clone, Eq)]
 pub struct cmt_ {
     pub id: ast::NodeId,          // id of expr/pat producing this value
     pub span: Span,                // span of same expr/pat
@@ -157,7 +158,7 @@ pub struct cmt_ {
     pub ty: ty::t                  // type of the expr (*see WARNING above*)
 }
 
-pub type cmt = @cmt_;
+pub type cmt = Rc<cmt_>;
 
 // We pun on *T to mean both actual deref of a ptr as well
 // as accessing of components:
@@ -368,7 +369,7 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
         self.typer.node_ty(id)
     }
 
-    fn pat_ty(&self, pat: @ast::Pat) -> McResult<ty::t> {
+    fn pat_ty(&self, pat: &ast::Pat) -> McResult<ty::t> {
         self.typer.node_ty(pat.id)
     }
 
@@ -385,8 +386,9 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
                         // Implicity casts a concrete object to trait object
                         // so just patch up the type
                         let expr_ty = if_ok!(self.expr_ty_adjusted(expr));
-                        let expr_cmt = if_ok!(self.cat_expr_unadjusted(expr));
-                        Ok(@cmt_ {ty: expr_ty, ..*expr_cmt})
+                        let mut expr_cmt = (*if_ok!(self.cat_expr_unadjusted(expr))).clone();
+                        expr_cmt.ty = expr_ty;
+                        Ok(Rc::new(expr_cmt))
                     }
 
                     ty::AutoAddEnv(..) => {
@@ -492,23 +494,23 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
           ast::DefUse(_) | ast::DefTrait(_) | ast::DefTy(_) | ast::DefPrimTy(_) |
           ast::DefTyParam(..) | ast::DefTyParamBinder(..) | ast::DefRegion(_) |
           ast::DefLabel(_) | ast::DefSelfTy(..) | ast::DefMethod(..) => {
-              Ok(@cmt_ {
+              Ok(Rc::new(cmt_ {
                   id:id,
                   span:span,
                   cat:cat_static_item,
                   mutbl: McImmutable,
                   ty:expr_ty
-              })
+              }))
           }
 
           ast::DefStatic(_, true) => {
-              Ok(@cmt_ {
+              Ok(Rc::new(cmt_ {
                   id:id,
                   span:span,
                   cat:cat_static_item,
                   mutbl: McDeclared,
                   ty:expr_ty
-              })
+              }))
           }
 
           ast::DefArg(vid, binding_mode) => {
@@ -520,13 +522,13 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
                 ast::BindByValue(ast::MutMutable) => McDeclared,
                 _ => McImmutable
             };
-            Ok(@cmt_ {
+            Ok(Rc::new(cmt_ {
                 id: id,
                 span: span,
                 cat: cat_arg(vid),
                 mutbl: m,
                 ty:expr_ty
-            })
+            }))
           }
 
           ast::DefUpvar(var_id, _, fn_node_id, _) => {
@@ -550,7 +552,7 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
                           self.cat_upvar(id, span, var_id, fn_node_id)
                       } else {
                           // FIXME #2152 allow mutation of moved upvars
-                          Ok(@cmt_ {
+                          Ok(Rc::new(cmt_ {
                               id:id,
                               span:span,
                               cat:cat_copied_upvar(CopiedUpvar {
@@ -558,7 +560,7 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
                                   onceness: closure_ty.onceness}),
                               mutbl:McImmutable,
                               ty:expr_ty
-                          })
+                          }))
                       }
                   }
                   _ => {
@@ -578,13 +580,13 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
                 _ => McImmutable
             };
 
-            Ok(@cmt_ {
+            Ok(Rc::new(cmt_ {
                 id: id,
                 span: span,
                 cat: cat_local(vid),
                 mutbl: m,
                 ty: expr_ty
-            })
+            }))
           }
         }
     }
@@ -618,23 +620,23 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
         // give err type. Nobody should be inspecting this type anyhow.
         let upvar_ty = ty::mk_err();
 
-        let base_cmt = @cmt_ {
+        let base_cmt = Rc::new(cmt_ {
             id:id,
             span:span,
             cat:cat_upvar(upvar_id, upvar_borrow),
             mutbl:McImmutable,
             ty:upvar_ty,
-        };
+        });
 
         let ptr = BorrowedPtr(upvar_borrow.kind, upvar_borrow.region);
 
-        let deref_cmt = @cmt_ {
+        let deref_cmt = Rc::new(cmt_ {
             id:id,
             span:span,
             cat:cat_deref(base_cmt, 0, ptr),
             mutbl:MutabilityCategory::from_borrow_kind(upvar_borrow.kind),
             ty:var_ty,
-        };
+        });
 
         Ok(deref_cmt)
     }
@@ -659,13 +661,13 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
                       span: Span,
                       temp_scope: ty::Region,
                       expr_ty: ty::t) -> cmt {
-        @cmt_ {
+        Rc::new(cmt_ {
             id:cmt_id,
             span:span,
             cat:cat_rvalue(temp_scope),
             mutbl:McDeclared,
             ty:expr_ty
-        }
+        })
     }
 
     pub fn cat_field<N:ast_node>(&self,
@@ -674,13 +676,13 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
                                  f_name: ast::Ident,
                                  f_ty: ty::t)
                                  -> cmt {
-        @cmt_ {
+        Rc::new(cmt_ {
             id: node.id(),
             span: node.span(),
-            cat: cat_interior(base_cmt, InteriorField(NamedField(f_name.name))),
             mutbl: base_cmt.mutbl.inherit(),
+            cat: cat_interior(base_cmt, InteriorField(NamedField(f_name.name))),
             ty: f_ty
-        }
+        })
     }
 
     pub fn cat_deref_obj<N:ast_node>(&self, node: &N, base_cmt: cmt) -> cmt {
@@ -736,13 +738,13 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
                 (base_cmt.mutbl.inherit(), cat_interior(base_cmt, interior))
             }
         };
-        @cmt_ {
+        Rc::new(cmt_ {
             id: node.id(),
             span: node.span(),
             cat: cat,
             mutbl: m,
             ty: deref_ty
-        }
+        })
     }
 
     pub fn cat_index<N:ast_node>(&self,
@@ -798,13 +800,13 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
             let m = MutabilityCategory::from_pointer_kind(base_cmt.mutbl, ptr);
 
             // the deref is explicit in the resulting cmt
-            let deref_cmt = @cmt_ {
+            let deref_cmt = Rc::new(cmt_ {
                 id:elt.id(),
                 span:elt.span(),
-                cat:cat_deref(base_cmt, derefs, ptr),
+                cat:cat_deref(base_cmt.clone(), derefs, ptr),
                 mutbl:m,
                 ty:element_ty
-            };
+            });
 
             interior(elt, deref_cmt, base_cmt.ty, m.inherit(), element_ty)
           }
@@ -812,7 +814,7 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
           deref_interior(_) => {
             // fixed-length vectors have no deref
             let m = base_cmt.mutbl.inherit();
-            interior(elt, base_cmt, base_cmt.ty, m, element_ty)
+            interior(elt, base_cmt.clone(), base_cmt.ty, m, element_ty)
           }
         };
 
@@ -822,19 +824,19 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
                                  mutbl: MutabilityCategory,
                                  element_ty: ty::t) -> cmt
         {
-            @cmt_ {
+            Rc::new(cmt_ {
                 id:elt.id(),
                 span:elt.span(),
                 cat:cat_interior(of_cmt, InteriorElement(element_kind(vec_ty))),
                 mutbl:mutbl,
                 ty:element_ty
-            }
+            })
         }
     }
 
     pub fn cat_slice_pattern(&self,
                              vec_cmt: cmt,
-                             slice_pat: @ast::Pat)
+                             slice_pat: &ast::Pat)
                              -> McResult<(cmt, ast::Mutability, ty::Region)> {
         /*!
          * Given a pattern P like: `[_, ..Q, _]`, where `vec_cmt` is
@@ -854,7 +856,7 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
         return Ok((cmt_slice, slice_mutbl, slice_r));
 
         fn vec_slice_info(tcx: &ty::ctxt,
-                          pat: @ast::Pat,
+                          pat: &ast::Pat,
                           slice_ty: ty::t)
                           -> (ast::Mutability, ty::Region) {
             /*!
@@ -885,13 +887,13 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
                                         interior_ty: ty::t,
                                         interior: InteriorKind)
                                         -> cmt {
-        @cmt_ {
+        Rc::new(cmt_ {
             id: node.id(),
             span: node.span(),
-            cat: cat_interior(base_cmt, interior),
             mutbl: base_cmt.mutbl.inherit(),
+            cat: cat_interior(base_cmt, interior),
             ty: interior_ty
-        }
+        })
     }
 
     pub fn cat_downcast<N:ast_node>(&self,
@@ -899,13 +901,13 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
                                     base_cmt: cmt,
                                     downcast_ty: ty::t)
                                     -> cmt {
-        @cmt_ {
+        Rc::new(cmt_ {
             id: node.id(),
             span: node.span(),
-            cat: cat_downcast(base_cmt),
             mutbl: base_cmt.mutbl.inherit(),
+            cat: cat_downcast(base_cmt),
             ty: downcast_ty
-        }
+        })
     }
 
     pub fn cat_pattern(&self,
@@ -964,7 +966,7 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
                pat.id, pprust::pat_to_str(pat),
                cmt.repr(self.tcx()));
 
-        op(self, cmt, pat);
+        op(self, cmt.clone(), pat);
 
         match pat.node {
           ast::PatWild | ast::PatWildMulti => {
@@ -983,7 +985,7 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
                         if ty::enum_is_univariant(self.tcx(), enum_did) {
                             cmt // univariant, no downcast needed
                         } else {
-                            self.cat_downcast(pat, cmt, cmt.ty)
+                            self.cat_downcast(pat, cmt.clone(), cmt.ty)
                         }
                     };
 
@@ -992,7 +994,7 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
 
                         let subcmt =
                             self.cat_imm_interior(
-                                pat, downcast_cmt, subpat_ty,
+                                pat, downcast_cmt.clone(), subpat_ty,
                                 InteriorField(PositionalField(i)));
 
                         if_ok!(self.cat_pattern(subcmt, subpat, |x,y,z| op(x,y,z)));
@@ -1004,14 +1006,14 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
                         let subpat_ty = if_ok!(self.pat_ty(subpat)); // see (*2)
                         let cmt_field =
                             self.cat_imm_interior(
-                                pat, cmt, subpat_ty,
+                                pat, cmt.clone(), subpat_ty,
                                 InteriorField(PositionalField(i)));
                         if_ok!(self.cat_pattern(cmt_field, subpat, |x,y,z| op(x,y,z)));
                     }
                 }
                 Some(&ast::DefStatic(..)) => {
                     for &subpat in subpats.iter() {
-                        if_ok!(self.cat_pattern(cmt, subpat, |x,y,z| op(x,y,z)));
+                        if_ok!(self.cat_pattern(cmt.clone(), subpat, |x,y,z| op(x,y,z)));
                     }
                 }
                 _ => {
@@ -1034,7 +1036,7 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
             // {f1: p1, ..., fN: pN}
             for fp in field_pats.iter() {
                 let field_ty = if_ok!(self.pat_ty(fp.pat)); // see (*2)
-                let cmt_field = self.cat_field(pat, cmt, fp.ident, field_ty);
+                let cmt_field = self.cat_field(pat, cmt.clone(), fp.ident, field_ty);
                 if_ok!(self.cat_pattern(cmt_field, fp.pat, |x,y,z| op(x,y,z)));
             }
           }
@@ -1045,7 +1047,7 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
                 let subpat_ty = if_ok!(self.pat_ty(subpat)); // see (*2)
                 let subcmt =
                     self.cat_imm_interior(
-                        pat, cmt, subpat_ty,
+                        pat, cmt.clone(), subpat_ty,
                         InteriorField(PositionalField(i)));
                 if_ok!(self.cat_pattern(subcmt, subpat, |x,y,z| op(x,y,z)));
             }
@@ -1060,7 +1062,7 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
           ast::PatVec(ref before, slice, ref after) => {
               let elt_cmt = self.cat_index(pat, cmt, 0);
               for &before_pat in before.iter() {
-                  if_ok!(self.cat_pattern(elt_cmt, before_pat, |x,y,z| op(x,y,z)));
+                  if_ok!(self.cat_pattern(elt_cmt.clone(), before_pat, |x,y,z| op(x,y,z)));
               }
               for &slice_pat in slice.iter() {
                   let slice_ty = if_ok!(self.pat_ty(slice_pat));
@@ -1068,7 +1070,7 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
                   if_ok!(self.cat_pattern(slice_cmt, slice_pat, |x,y,z| op(x,y,z)));
               }
               for &after_pat in after.iter() {
-                  if_ok!(self.cat_pattern(elt_cmt, after_pat, |x,y,z| op(x,y,z)));
+                  if_ok!(self.cat_pattern(elt_cmt.clone(), after_pat, |x,y,z| op(x,y,z)));
               }
           }
 
@@ -1080,7 +1082,7 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
         Ok(())
     }
 
-    pub fn cmt_to_str(&self, cmt: cmt) -> ~str {
+    pub fn cmt_to_str(&self, cmt: &cmt_) -> ~str {
         match cmt.cat {
           cat_static_item => {
               "static item".to_owned()
@@ -1097,7 +1099,7 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
           cat_arg(..) => {
               "argument".to_owned()
           }
-          cat_deref(base, _, pk) => {
+          cat_deref(ref base, _, pk) => {
               match base.cat {
                   cat_upvar(..) => {
                       format!("captured outer variable")
@@ -1125,11 +1127,11 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
           cat_upvar(..) => {
               "captured outer variable".to_owned()
           }
-          cat_discr(cmt, _) => {
-            self.cmt_to_str(cmt)
+          cat_discr(ref cmt, _) => {
+            self.cmt_to_str(&**cmt)
           }
-          cat_downcast(cmt) => {
-            self.cmt_to_str(cmt)
+          cat_downcast(ref cmt) => {
+            self.cmt_to_str(&**cmt)
           }
         }
     }
@@ -1149,7 +1151,7 @@ pub enum AliasableReason {
 }
 
 impl cmt_ {
-    pub fn guarantor(self) -> cmt {
+    pub fn guarantor(&self) -> cmt {
         //! Returns `self` after stripping away any owned pointer derefs or
         //! interior content. The return value is basically the `cmt` which
         //! determines how long the value in `self` remains live.
@@ -1164,12 +1166,12 @@ impl cmt_ {
             cat_deref(_, _, GcPtr(..)) |
             cat_deref(_, _, BorrowedPtr(..)) |
             cat_upvar(..) => {
-                @self
+                Rc::new((*self).clone())
             }
-            cat_downcast(b) |
-            cat_discr(b, _) |
-            cat_interior(b, _) |
-            cat_deref(b, _, OwnedPtr) => {
+            cat_downcast(ref b) |
+            cat_discr(ref b, _) |
+            cat_interior(ref b, _) |
+            cat_deref(ref b, _, OwnedPtr) => {
                 b.guarantor()
             }
         }
@@ -1186,12 +1188,12 @@ impl cmt_ {
         // aliased and eventually recused.
 
         match self.cat {
-            cat_deref(b, _, BorrowedPtr(ty::MutBorrow, _)) |
-            cat_deref(b, _, BorrowedPtr(ty::UniqueImmBorrow, _)) |
-            cat_downcast(b) |
-            cat_deref(b, _, OwnedPtr) |
-            cat_interior(b, _) |
-            cat_discr(b, _) => {
+            cat_deref(ref b, _, BorrowedPtr(ty::MutBorrow, _)) |
+            cat_deref(ref b, _, BorrowedPtr(ty::UniqueImmBorrow, _)) |
+            cat_downcast(ref b) |
+            cat_deref(ref b, _, OwnedPtr) |
+            cat_interior(ref b, _) |
+            cat_discr(ref b, _) => {
                 // Aliasability depends on base cmt
                 b.freely_aliasable(ctxt)
             }
@@ -1255,21 +1257,21 @@ impl Repr for categorization {
             cat_arg(..) => {
                 format!("{:?}", *self)
             }
-            cat_deref(cmt, derefs, ptr) => {
+            cat_deref(ref cmt, derefs, ptr) => {
                 format!("{}-{}{}->",
                         cmt.cat.repr(tcx),
                         ptr_sigil(ptr),
                         derefs)
             }
-            cat_interior(cmt, interior) => {
+            cat_interior(ref cmt, interior) => {
                 format!("{}.{}",
                      cmt.cat.repr(tcx),
                      interior.repr(tcx))
             }
-            cat_downcast(cmt) => {
+            cat_downcast(ref cmt) => {
                 format!("{}->(enum)", cmt.cat.repr(tcx))
             }
-            cat_discr(cmt, _) => {
+            cat_discr(ref cmt, _) => {
                 cmt.cat.repr(tcx)
             }
         }

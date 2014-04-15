@@ -35,7 +35,7 @@ pub fn compute_restrictions(bccx: &BorrowckCtxt,
         bccx: bccx,
         span: span,
         cause: cause,
-        cmt_original: cmt,
+        cmt_original: cmt.clone(),
         loan_region: loan_region,
     };
 
@@ -61,7 +61,7 @@ impl<'a> RestrictionsContext<'a> {
                cmt.repr(self.bccx.tcx),
                restrictions.repr(self.bccx.tcx));
 
-        match cmt.cat {
+        match cmt.cat.clone() {
             mc::cat_rvalue(..) => {
                 // Effectively, rvalues are stored into a
                 // non-aliasable temporary on the stack. Since they

@@ -1065,7 +1065,7 @@ fn link_match(rcx: &Rcx, discr: &ast::Expr, arms: &[ast::Arm]) {
     debug!("discr_cmt={}", discr_cmt.repr(mc.typer.tcx()));
     for arm in arms.iter() {
         for &root_pat in arm.pats.iter() {
-            link_pattern(mc, discr_cmt, root_pat);
+            link_pattern(mc, discr_cmt.clone(), root_pat);
         }
     }
 }
@@ -1194,7 +1194,7 @@ fn link_region(rcx: &Rcx,
                region_min.repr(rcx.tcx()),
                mutbl.repr(rcx.tcx()),
                cmt_borrowed.repr(rcx.tcx()));
-        match cmt_borrowed.cat {
+        match cmt_borrowed.cat.clone() {
             mc::cat_deref(base, _, mc::BorrowedPtr(_, r_borrowed)) => {
                 // References to an upvar `x` are translated to
                 // `*x`, since that is what happens in the
@@ -1304,7 +1304,7 @@ fn adjust_upvar_borrow_kind_for_mut(rcx: &Rcx,
         debug!("adjust_upvar_borrow_kind_for_mut(cmt={})",
                cmt.repr(rcx.tcx()));
 
-        match cmt.cat {
+        match cmt.cat.clone() {
             mc::cat_deref(base, _, mc::OwnedPtr) |
             mc::cat_interior(base, _) |
             mc::cat_downcast(base) |
@@ -1328,14 +1328,14 @@ fn adjust_upvar_borrow_kind_for_mut(rcx: &Rcx,
                         return adjust_upvar_borrow_kind(*upvar_id, ub, ty::MutBorrow);
                     }
 
-                    _ => {
-                        // assignment to deref of an `&mut`
-                        // borrowed pointer implies that the
-                        // pointer itself must be unique, but not
-                        // necessarily *mutable*
-                        return adjust_upvar_borrow_kind_for_unique(rcx, base);
-                    }
+                    _ => {}
                 }
+
+                // assignment to deref of an `&mut`
+                // borrowed pointer implies that the
+                // pointer itself must be unique, but not
+                // necessarily *mutable*
+                return adjust_upvar_borrow_kind_for_unique(rcx, base);
             }
 
             mc::cat_deref(_, _, mc::UnsafePtr(..)) |
@@ -1358,7 +1358,7 @@ fn adjust_upvar_borrow_kind_for_unique(rcx: &Rcx, cmt: mc::cmt) {
         debug!("adjust_upvar_borrow_kind_for_unique(cmt={})",
                cmt.repr(rcx.tcx()));
 
-        match cmt.cat {
+        match cmt.cat.clone() {
             mc::cat_deref(base, _, mc::OwnedPtr) |
             mc::cat_interior(base, _) |
             mc::cat_downcast(base) |
@@ -1381,12 +1381,12 @@ fn adjust_upvar_borrow_kind_for_unique(rcx: &Rcx, cmt: mc::cmt) {
                         return adjust_upvar_borrow_kind(*upvar_id, ub, ty::UniqueImmBorrow);
                     }
 
-                    _ => {
-                        // for a borrowed pointer to be unique, its
-                        // base must be unique
-                        return adjust_upvar_borrow_kind_for_unique(rcx, base);
-                    }
+                    _ => {}
                 }
+
+                // for a borrowed pointer to be unique, its
+                // base must be unique
+                return adjust_upvar_borrow_kind_for_unique(rcx, base);
             }
 
             mc::cat_deref(_, _, mc::UnsafePtr(..)) |
