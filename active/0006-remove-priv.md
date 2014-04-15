@@ -1,6 +1,6 @@
 - Start Date: 2014-03-31
-- RFC PR #: (leave this empty)
-- Rust Issue #: (leave this empty)
+- RFC PR #: 26
+- Rust Issue #: 13535
 
 # Summary
 
