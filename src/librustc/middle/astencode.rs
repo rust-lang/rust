@@ -54,7 +54,6 @@ use writer = serialize::ebml::writer;
 
 // Auxiliary maps of things to be encoded
 pub struct Maps {
-    pub root_map: middle::borrowck::root_map,
     pub capture_map: RefCell<middle::moves::CaptureMap>,
 }
 
