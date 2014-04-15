@@ -60,7 +60,7 @@ pub fn llvm_err(sess: &Session, msg: ~str) -> ! {
         if cstr == ptr::null() {
             sess.fatal(msg);
         } else {
-            let err = CString::new(cstr, false);
+            let err = CString::new(cstr, true);
             let err = str::from_utf8_lossy(err.as_bytes());
             sess.fatal(msg + ": " + err.as_slice());
         }

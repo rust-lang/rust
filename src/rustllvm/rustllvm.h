@@ -68,4 +68,4 @@
 #include <unistd.h>
 #endif
 
-extern const char* LLVMRustError;
+void LLVMRustSetLastError(const char*);
