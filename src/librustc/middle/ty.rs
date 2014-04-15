@@ -4565,7 +4565,7 @@ pub fn hash_crate_independent(tcx: &ctxt, t: t, svh: &Svh) -> u64 {
             }
             ty_enum(d, _) => {
                 byte!(8);
-                hash!(d)
+                did(&mut state, d);
             }
             ty_box(_) => {
                 byte!(9);
