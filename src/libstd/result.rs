@@ -35,7 +35,7 @@
 //!
 //! fn parse_version(header: &[u8]) -> Result<Version, &'static str> {
 //!     if header.len() < 1 {
-//!         return Err("invalid header length");;
+//!         return Err("invalid header length");
 //!     }
 //!     match header[0] {
 //!         1 => Ok(Version1),
@@ -77,18 +77,19 @@
 //! // Use `or_else` to handle the error.
 //! let bad_result: Result<int, int> = bad_result.or_else(|i| Ok(11));
 //!
-//! // Convert to an `Option` to call e.g. `unwrap`.
+//! // Consume the result and return the contents with `unwrap`.
 //! let final_awesome_result = good_result.ok().unwrap();
 //! ~~~
 //!
 //! # Results must be used
 //!
-//! A common problem with using return values to indicate errors
-//! is that it is easy to ignore the return value, thus failing
-//! to handle the error. By possessing the `#[must_use]` attribute,
-//! the compiler will warn when a `Result` type is ignored. This
-//! makes `Result` especially useful with functions that may
-//! encounter errors but don't otherwise return a useful value.
+//! A common problem with using return values to indicate errors is
+//! that it is easy to ignore the return value, thus failing to handle
+//! the error. Result is annotated with the #[must_use] attribute,
+//! which will cause the compiler to issue a warning when a Result
+//! value is ignored. This makes `Result` especially useful with
+//! functions that may encounter errors but don't otherwise return a
+//! useful value.
 //!
 //! Consider the `write_line` method defined for I/O types
 //! by the [`Writer`](../io/trait.Writer.html) trait:
@@ -126,28 +127,22 @@
 //! success with `expect`. This will fail if the write fails, proving
 //! a marginally useful message indicating why:
 //!
-//! ~~~
-//! # // not running this test because it creates a file
-//! # fn do_not_run_test() {
+//! ~~~no_run
 //! use std::io::{File, Open, Write};
 //!
 //! let mut file = File::open_mode(&Path::new("valuable_data.txt"), Open, Write);
 //! file.write_line("important message").ok().expect("failed to write message");
 //! drop(file);
-//! # }
 //! ~~~
 //!
 //! You might also simply assert success:
 //!
-//! ~~~
-//! # // not running this test because it creates a file
-//! # fn do_not_run_test() {
+//! ~~~no_run
 //! # use std::io::{File, Open, Write};
 //!
 //! # let mut file = File::open_mode(&Path::new("valuable_data.txt"), Open, Write);
 //! assert!(file.write_line("important message").is_ok());
 //! # drop(file);
-//! # }
 //! ~~~
 //!
 //! Or propagate the error up the call stack with `try!`:
@@ -215,10 +210,12 @@
 //! `Err` is returned early from the enclosing function. Its simple definition
 //! makes it clear:
 //!
-//! ~~~ignore
+//! ~~~
+//! # #![feature(macro_rules)]
 //! macro_rules! try(
 //!     ($e:expr) => (match $e { Ok(e) => e, Err(e) => return Err(e) })
 //! )
+//! # fn main() { }
 //! ~~~
 //!
 //! `try!` is imported by the prelude, and is available everywhere.
