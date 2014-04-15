@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Smallest hello world with no runtime
+// ignore-android
+
+// Smallest "hello world" with a libc runtime
 
 #![no_std]
 
