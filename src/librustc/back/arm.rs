@@ -17,8 +17,7 @@ pub fn get_target_strs(target_triple: ~str, target_os: abi::Os) -> target_strs::
     let cc_args = if target_triple.contains("thumb") {
         vec!(~"-mthumb")
     } else {
-      if target_os == abi::OsMacos {
-        //vec!(~"-marm")
+      if target_os == abi::OsiOS {
         vec!(~"-marm", ~"-arch armv7", ~"-mcpu=cortex-a8", ~"-mfpu=vfp3")
       } else {
         vec!(~"-marm")
@@ -31,6 +30,14 @@ pub fn get_target_strs(target_triple: ~str, target_os: abi::Os) -> target_strs::
 
         data_layout: match target_os {
           abi::OsMacos => {
+            ~"e-p:32:32:32" +
+                "-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64" +
+                "-f32:32:32-f64:64:64" +
+                "-v64:64:64-v128:64:128" +
+                "-a0:0:64-n32"
+          }
+
+          abi::OsiOS => {
             ~"e-p:32:32:32" +
                 "-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64" +
                 "-f32:32:32-f64:64:64" +

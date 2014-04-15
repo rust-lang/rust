@@ -13,7 +13,7 @@
 
 pub use self::imp::OSRng;
 
-#[cfg(unix,not(target_os = "macos", target_arch = "arm"))]
+#[cfg(unix, not(target_os = "ios"))]
 mod imp {
     use Rng;
     use reader::ReaderRng;
@@ -56,7 +56,7 @@ mod imp {
     }
 }
 
-#[cfg(target_os = "macos", target_arch = "arm")]
+#[cfg(target_os = "ios")]
 #[link(name = "Security.framework")]
 mod imp {
     extern crate libc;

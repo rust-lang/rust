@@ -318,6 +318,7 @@ mod imp {
     }
 
     #[cfg(target_os = "macos")]
+    #[cfg(target_os = "ios")] // TODO: [iOS] check if it ever will work
     fn print(w: &mut Writer, idx: int, addr: *libc::c_void) -> IoResult<()> {
         use intrinsics;
         struct Dl_info {
@@ -341,7 +342,7 @@ mod imp {
         }
     }
 
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(not(target_os = "macos"), not(target_os = "ios"))]
     fn print(w: &mut Writer, idx: int, addr: *libc::c_void) -> IoResult<()> {
         use container::Container;
         use iter::Iterator;

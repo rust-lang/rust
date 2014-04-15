@@ -285,6 +285,7 @@ impl Drop for Timer {
 }
 
 #[cfg(target_os = "macos")]
+#[cfg(target_os = "ios")]
 mod imp {
     use libc;
 

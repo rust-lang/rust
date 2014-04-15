@@ -43,7 +43,8 @@ pub enum Os {
     OsWin32,
     OsLinux,
     OsAndroid,
-    OsFreebsd
+    OsFreebsd,
+    OsiOS
 }
 
 pub struct HashMismatch {
@@ -403,6 +404,7 @@ impl<'a> Context<'a> {
             OsLinux => (linux::DLL_PREFIX, linux::DLL_SUFFIX),
             OsAndroid => (android::DLL_PREFIX, android::DLL_SUFFIX),
             OsFreebsd => (freebsd::DLL_PREFIX, freebsd::DLL_SUFFIX),
+            OsiOS => (macos::DLL_PREFIX, macos::DLL_SUFFIX), // TODO: ask about this...
         }
     }
 }
@@ -527,6 +529,7 @@ fn get_metadata_section_imp(os: Os, filename: &Path) -> Result<MetadataBlob, ~st
 pub fn meta_section_name(os: Os) -> &'static str {
     match os {
         OsMacos => "__DATA,__note.rustc",
+        OsiOS => "__DATA,__note.rustc",
         OsWin32 => ".note.rustc",
         OsLinux => ".note.rustc",
         OsAndroid => ".note.rustc",
@@ -537,6 +540,7 @@ pub fn meta_section_name(os: Os) -> &'static str {
 pub fn read_meta_section_name(os: Os) -> &'static str {
     match os {
         OsMacos => "__note.rustc",
+        OsiOS => "__note.rustc",
         OsWin32 => ".note.rustc",
         OsLinux => ".note.rustc",
         OsAndroid => ".note.rustc",

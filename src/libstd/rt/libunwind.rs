@@ -16,7 +16,7 @@
 use libc;
 
 #[cfg(not(target_arch = "arm"))]
-#[cfg(target_os = "macos")]
+#[cfg(target_os = "ios")]
 #[repr(C)]
 pub enum _Unwind_Action {
     _UA_SEARCH_PHASE = 1,
@@ -94,13 +94,13 @@ extern {}
 extern {}
 
 extern "C" {
-    #[cfg(not(target_os = "macos", target_arch = "arm"))]
+    #[cfg(not(target_os = "ios"))]
     pub fn _Unwind_RaiseException(exception: *_Unwind_Exception)
                 -> _Unwind_Reason_Code;
-    #[cfg(not(target_os = "macos", target_arch = "arm"))]
+    #[cfg(not(target_os = "ios"))]
     pub fn _Unwind_DeleteException(exception: *_Unwind_Exception);
 
-    #[cfg(not(target_os = "macos", target_arch = "arm"))]
+    #[cfg(not(target_os = "ios"))]
     pub fn _Unwind_Backtrace(trace: _Unwind_Trace_Fn,
                              trace_argument: *libc::c_void)
                 -> _Unwind_Reason_Code;
@@ -114,18 +114,18 @@ extern "C" {
 }
 
 // On iOS there is no exception unwinding yet
-#[cfg(target_os = "macos", target_arch = "arm")]
+#[cfg(target_os = "ios")]
 pub unsafe fn _Unwind_RaiseException(_: *_Unwind_Exception)
             -> _Unwind_Reason_Code {
     _URC_FAILURE
 }
 
-#[cfg(target_os = "macos", target_arch = "arm")]
+#[cfg(target_os = "ios")]
 pub unsafe fn _Unwind_DeleteException(_: *_Unwind_Exception)
 {
 }
 
-#[cfg(target_os = "macos", target_arch = "arm")]
+#[cfg(target_os = "ios")]
 pub unsafe fn _Unwind_Backtrace(_: _Unwind_Trace_Fn,
                          _: *libc::c_void)
             -> _Unwind_Reason_Code

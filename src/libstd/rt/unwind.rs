@@ -246,7 +246,7 @@ pub mod eabi {
     }
 }
 
-#[cfg(target_os = "macos", target_arch = "arm", not(test))]
+#[cfg(target_os = "ios", target_arch = "arm", not(test))]
 #[doc(hidden)]
 #[allow(visible_private_types)]
 pub mod eabi {
@@ -254,7 +254,7 @@ pub mod eabi {
     use libc::c_int;
 
     extern "C" {
-        #[cfg(target_os = "macos", target_arch = "arm")]
+        #[cfg(target_os = "ios", target_arch = "arm")]
         fn __gcc_personality_sj0(version: c_int,
                                 actions: uw::_Unwind_Action,
                                 exception_class: uw::_Unwind_Exception_Class,
@@ -303,7 +303,7 @@ pub mod eabi {
 
 // ARM EHABI uses a slightly different personality routine signature,
 // but otherwise works the same.
-#[cfg(target_arch = "arm", not(test), not(target_os = "macos"))]
+#[cfg(target_arch = "arm", not(test), not(target_os = "ios"))]
 #[allow(visible_private_types)]
 pub mod eabi {
     use uw = rt::libunwind;

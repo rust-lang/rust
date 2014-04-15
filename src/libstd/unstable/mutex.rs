@@ -282,6 +282,7 @@ mod imp {
     }
 
     #[cfg(target_os = "macos")]
+    #[cfg(target_os = "ios")]
     mod os {
         use libc;
 

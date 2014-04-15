@@ -21,7 +21,7 @@ pub fn get_target_strs(target_triple: ~str, target_os: abi::Os) -> target_strs::
         meta_sect_name: meta_section_name(sess_os_to_meta_os(target_os)).to_owned(),
 
         data_layout: match target_os {
-          abi::OsMacos => {
+          abi::OsMacos | abi::OsiOS => {
             ~"e-p:32:32:32-i1:8:8-i8:8:8-i16:16:16" +
                 "-i32:32:32-i64:32:64" +
                 "-f32:32:32-f64:32:64-v64:64:64" +

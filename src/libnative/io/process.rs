@@ -478,6 +478,7 @@ fn spawn_process_os(config: p::ProcessConfig,
         extern { fn ioctl(fd: c_int, req: c_ulong) -> c_int; }
 
         #[cfg(target_os = "macos")]
+        #[cfg(target_os = "ios")]
         #[cfg(target_os = "freebsd")]
         static FIOCLEX: c_ulong = 0x20006601;
         #[cfg(target_os = "linux")]
@@ -747,6 +748,7 @@ fn translate_status(status: c_int) -> p::ProcessExit {
     }
 
     #[cfg(target_os = "macos")]
+    #[cfg(target_os = "ios")]
     #[cfg(target_os = "freebsd")]
     mod imp {
         pub fn WIFEXITED(status: i32) -> bool { (status & 0x7f) == 0 }

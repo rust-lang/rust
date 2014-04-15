@@ -120,7 +120,7 @@ pub mod write {
                     sess.opts.cg.target_feature.as_slice()
                 }
             },
-            abi::OsMacos if sess.targ_cfg.arch == abi::Arm => {
+            abi::OsiOS if sess.targ_cfg.arch == abi::Arm => {
                 "+v7,+thumb2,+vfp3,+neon"
             },
             _ => sess.opts.cg.target_feature.as_slice()
@@ -170,8 +170,9 @@ pub mod write {
             };
 
             let tm = sess.targ_cfg.target_strs.target_triple.with_c_str(|t| {
-                let is_iOS = sess.targ_cfg.os == abi::OsMacos &&
-                             sess.targ_cfg.arch == abi::Arm;
+                // No segmented stack support on iOS yet
+                let supports_segmented_stack = !(sess.targ_cfg.os == abi::OsiOS &&
+                                                 sess.targ_cfg.arch == abi::Arm);
                 sess.opts.cg.target_cpu.with_c_str(|cpu| {
                     target_feature(sess).with_c_str(|features| {
                         llvm::LLVMRustCreateTargetMachine(
@@ -179,7 +180,7 @@ pub mod write {
                             lib::llvm::CodeModelDefault,
                             reloc_model,
                             opt_level,
-                            !is_iOS, // disable segmented stack on iOS only
+                            supports_segmented_stack,
                             use_softfp,
                             no_fp_elim
                         )
@@ -826,7 +827,8 @@ pub fn filename_for_input(sess: &Session, crate_type: session::CrateType,
             out_filename.with_filename(format!("lib{}.rlib", libname))
         }
         session::CrateTypeDylib => {
-            if sess.targ_cfg.os == abi::OsMacos && sess.targ_cfg.arch == abi::Arm {
+            // There is no support of DyLibs on iOS
+            if sess.targ_cfg.os == abi::OsiOS {
                 out_filename.with_filename(format!("lib{}.a", libname))
             } else {
                 let (prefix, suffix) = match sess.targ_cfg.os {
@@ -835,6 +837,7 @@ pub fn filename_for_input(sess: &Session, crate_type: session::CrateType,
                     abi::OsLinux => (linux::DLL_PREFIX, linux::DLL_SUFFIX),
                     abi::OsAndroid => (android::DLL_PREFIX, android::DLL_SUFFIX),
                     abi::OsFreebsd => (freebsd::DLL_PREFIX, freebsd::DLL_SUFFIX),
+                    abi::OsiOS => unreachable!(),
                 };
                 out_filename.with_filename(format!("{}{}{}", prefix, libname, suffix))
             }
@@ -886,7 +889,7 @@ fn link_binary_output(sess: &Session,
             link_natively(sess, false, &obj_filename, &out_filename);
         }
         session::CrateTypeDylib => {
-            if sess.targ_cfg.os == abi::OsMacos && sess.targ_cfg.arch == abi::Arm {
+            if sess.targ_cfg.os == abi::OsiOS {
                 sess.note(format!("No dylib for iOS -> saving static library {} to {}", obj_filename.display(), out_filename.display()));
                 link_staticlib(sess, &obj_filename, &out_filename);
             }
@@ -989,7 +992,7 @@ fn link_rlib<'a>(sess: &'a Session,
             // symbol table of the archive. This currently dies on OSX (see
             // #11162), and isn't necessary there anyway
             match sess.targ_cfg.os {
-                abi::OsMacos => {}
+                abi::OsMacos | abi::OsiOS => {}
                 _ => { a.update_symbols(); }
             }
         }
@@ -1081,7 +1084,8 @@ fn link_natively(sess: &Session, dylib: bool, obj_filename: &Path,
 
     // On OSX, debuggers need this utility to get run to do some munging of
     // the symbols
-    if sess.targ_cfg.os == abi::OsMacos && (sess.opts.debuginfo != NoDebugInfo) {
+    if (sess.targ_cfg.os == abi::OsMacos || sess.targ_cfg.os == abi::OsiOS)
+        && (sess.opts.debuginfo != NoDebugInfo) {
         // FIXME (#9639): This needs to handle non-utf8 paths
         match Process::status("dsymutil",
                                   [out_filename.as_str().unwrap().to_owned()]) {
