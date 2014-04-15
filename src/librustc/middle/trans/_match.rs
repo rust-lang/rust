@@ -198,7 +198,6 @@ use back::abi;
 use driver::session::FullDebugInfo;
 use lib::llvm::{llvm, ValueRef, BasicBlockRef};
 use middle::const_eval;
-use middle::borrowck::root_map_key;
 use middle::lang_items::{UniqStrEqFnLangItem, StrEqFnLangItem};
 use middle::pat_util::*;
 use middle::resolve::DefMap;
@@ -1156,14 +1155,6 @@ fn collect_record_or_struct_fields<'a>(
     }
 }
 
-fn pats_require_rooting(bcx: &Block, m: &[Match], col: uint) -> bool {
-    m.iter().any(|br| {
-        let pat_id = br.pats.get(col).id;
-        let key = root_map_key {id: pat_id, derefs: 0u };
-        bcx.ccx().maps.root_map.contains_key(&key)
-    })
-}
-
 // Macro for deciding whether any of the remaining matches fit a given kind of
 // pattern.  Note that, because the macro is well-typed, either ALL of the
 // matches should fit that sort of pattern or NONE (however, some of the
@@ -1550,10 +1541,6 @@ fn compile_submatch_continue<'a, 'b>(
             pat_id = br.pats.get(col).id;
         }
     }
-
-    // If we are not matching against an `@T`, we should not be
-    // required to root any values.
-    assert!(!pats_require_rooting(bcx, m, col));
 
     match collect_record_or_struct_fields(bcx, m, col) {
         Some(ref rec_fields) => {
