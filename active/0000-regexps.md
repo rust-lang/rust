@@ -259,3 +259,23 @@ can always pick one of the existing C or C++ libraries.
 
 For now, we could mark the API as `#[unstable]` or `#[experimental]`.
 
+# Future work
+
+I think most of the future work for this crate is to increase the performance, 
+either by implementing different matching algorithms (e.g., a DFA) or by 
+compiling a regular expression to native Rust code.
+
+With regard to native compilation, there are a few notes:
+
+* If and when a DFA is implemented, care must be taken, as the size of the code 
+  required can grow rapidly.
+* Adding native compilation will very likely change the interface of the crate 
+  in a meaningful way, particularly if we want the interface to be consistent 
+  between natively compiled and dynamically compiled regexps. (i.e., Make 
+  `Regexp` a trait.)
+
+Other future work (that is probably more important) includes more Unicode 
+support, specifically for simple case folding. Also, words and word boundaries 
+should also be Unicode friendly, but I plan to have this done before I submit a 
+PR.
+
