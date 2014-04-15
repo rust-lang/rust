@@ -90,7 +90,7 @@ impl<'a> GuaranteeLifetimeContext<'a> {
                 Ok(())
             }
 
-            mc::cat_deref(ref base, derefs, mc::GcPtr) => {
+            mc::cat_deref(ref base, _, mc::GcPtr) => {
                 let base_scope = self.scope(base);
 
                 // L-Deref-Managed-Imm-User-Root
@@ -102,7 +102,7 @@ impl<'a> GuaranteeLifetimeContext<'a> {
                 if !omit_root {
                     // L-Deref-Managed-Imm-Compiler-Root
                     // L-Deref-Managed-Mut-Compiler-Root
-                    self.check_root(cmt, base, derefs, discr_scope)
+                    Err(())
                 } else {
                     debug!("omitting root, base={}, base_scope={:?}",
                            base.repr(self.tcx()), base_scope);
@@ -185,61 +185,6 @@ impl<'a> GuaranteeLifetimeContext<'a> {
             mc::cat_rvalue(..) => true,
             _ => false
         }
-    }
-
-    fn check_root(&self,
-                  cmt_deref: &mc::cmt,
-                  cmt_base: &mc::cmt,
-                  derefs: uint,
-                  discr_scope: Option<ast::NodeId>) -> R {
-        debug!("check_root(cmt_deref={}, cmt_base={}, derefs={:?}, \
-                discr_scope={:?})",
-               cmt_deref.repr(self.tcx()),
-               cmt_base.repr(self.tcx()),
-               derefs,
-               discr_scope);
-
-        // Make sure that the loan does not exceed the maximum time
-        // that we can root the value, dynamically.
-        let root_region = ty::ReScope(self.root_scope_id);
-        if !self.bccx.is_subregion_of(self.loan_region, root_region) {
-            return Err(self.report_error(
-                err_out_of_root_scope(root_region, self.loan_region)));
-        }
-
-        // Extract the scope id that indicates how long the rooting is required
-        let root_scope = match self.loan_region {
-            ty::ReScope(id) => id,
-            _ => {
-                // the check above should fail for anything is not ReScope
-                self.bccx.tcx.sess.span_bug(
-                    cmt_base.span,
-                    format!("cannot issue root for scope region: {:?}",
-                         self.loan_region));
-            }
-        };
-
-        // If inside of a match arm, expand the rooting to the entire
-        // match. See the detailed discussion in `check()` above.
-        let root_scope = match discr_scope {
-            None => root_scope,
-            Some(id) => {
-                if self.bccx.is_subscope_of(root_scope, id) {
-                    id
-                } else {
-                    root_scope
-                }
-            }
-        };
-
-        // Add a record of what is required
-        let rm_key = root_map_key {id: cmt_deref.id, derefs: derefs};
-        let root_info = RootInfo {scope: root_scope};
-
-        self.bccx.root_map.borrow_mut().insert(rm_key, root_info);
-
-        debug!("root_key: {:?} root_info: {:?}", rm_key, root_info);
-        Ok(())
     }
 
     fn check_scope(&self, max_scope: ty::Region) -> R {
