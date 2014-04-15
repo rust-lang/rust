@@ -516,7 +516,10 @@ pub mod write {
 
 pub fn find_crate_id(attrs: &[ast::Attribute], out_filestem: &str) -> CrateId {
     match attr::find_crateid(attrs) {
-        None => from_str(out_filestem).unwrap(),
+        None => from_str(out_filestem).unwrap_or_else(|| {
+            let mut s = out_filestem.chars().filter(|c| c.is_XID_continue());
+            from_str(s.collect::<~str>()).or(from_str("rust-out")).unwrap()
+        }),
         Some(s) => s,
     }
 }
