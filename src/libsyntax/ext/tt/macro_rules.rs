@@ -12,7 +12,7 @@ use ast::{Ident, Matcher_, Matcher, MatchTok, MatchNonterminal, MatchSeq};
 use ast::{TTDelim};
 use ast;
 use codemap::{Span, Spanned, DUMMY_SP};
-use ext::base::{AnyMacro, ExtCtxt, MacResult, MRAny, MRDef, MacroDef};
+use ext::base::{ExtCtxt, MacResult, MacroDef};
 use ext::base::{NormalTT, MacroExpander};
 use ext::base;
 use ext::tt::macro_parser::{Success, Error, Failure};
@@ -57,13 +57,13 @@ impl<'a> ParserAnyMacro<'a> {
     }
 }
 
-impl<'a> AnyMacro for ParserAnyMacro<'a> {
-    fn make_expr(&self) -> @ast::Expr {
+impl<'a> MacResult for ParserAnyMacro<'a> {
+    fn make_expr(&self) -> Option<@ast::Expr> {
         let ret = self.parser.borrow_mut().parse_expr();
         self.ensure_complete_parse(true);
-        ret
+        Some(ret)
     }
-    fn make_items(&self) -> SmallVector<@ast::Item> {
+    fn make_items(&self) -> Option<SmallVector<@ast::Item>> {
         let mut ret = SmallVector::zero();
         loop {
             let mut parser = self.parser.borrow_mut();
@@ -74,13 +74,13 @@ impl<'a> AnyMacro for ParserAnyMacro<'a> {
             }
         }
         self.ensure_complete_parse(false);
-        ret
+        Some(ret)
     }
-    fn make_stmt(&self) -> @ast::Stmt {
+    fn make_stmt(&self) -> Option<@ast::Stmt> {
         let attrs = self.parser.borrow_mut().parse_outer_attributes();
         let ret = self.parser.borrow_mut().parse_stmt(attrs);
         self.ensure_complete_parse(true);
-        ret
+        Some(ret)
     }
 }
 
@@ -95,13 +95,22 @@ impl MacroExpander for MacroRulesMacroExpander {
               cx: &mut ExtCtxt,
               sp: Span,
               arg: &[ast::TokenTree])
-              -> MacResult {
+              -> ~MacResult {
         generic_extension(cx,
                           sp,
                           self.name,
                           arg,
                           self.lhses.as_slice(),
                           self.rhses.as_slice())
+    }
+}
+
+struct MacroRulesDefiner {
+    def: RefCell<Option<MacroDef>>
+}
+impl MacResult for MacroRulesDefiner {
+    fn make_def(&self) -> Option<MacroDef> {
+        Some(self.def.borrow_mut().take().expect("MacroRulesDefiner expanded twice"))
     }
 }
 
@@ -112,7 +121,7 @@ fn generic_extension(cx: &ExtCtxt,
                      arg: &[ast::TokenTree],
                      lhses: &[Rc<NamedMatch>],
                      rhses: &[Rc<NamedMatch>])
-                     -> MacResult {
+                     -> ~MacResult {
     if cx.trace_macros() {
         println!("{}! \\{ {} \\}",
                  token::get_ident(name),
@@ -160,9 +169,9 @@ fn generic_extension(cx: &ExtCtxt,
                 let p = Parser(cx.parse_sess(), cx.cfg(), ~trncbr);
                 // Let the context choose how to interpret the result.
                 // Weird, but useful for X-macros.
-                return MRAny(~ParserAnyMacro {
+                return ~ParserAnyMacro {
                     parser: RefCell::new(p),
-                })
+                } as ~MacResult
               }
               Failure(sp, ref msg) => if sp.lo >= best_fail_spot.lo {
                 best_fail_spot = sp;
@@ -184,7 +193,7 @@ pub fn add_new_extension(cx: &mut ExtCtxt,
                          sp: Span,
                          name: Ident,
                          arg: Vec<ast::TokenTree> )
-                         -> base::MacResult {
+                         -> ~base::MacResult {
     // these spans won't matter, anyways
     fn ms(m: Matcher_) -> Matcher {
         Spanned {
@@ -236,8 +245,10 @@ pub fn add_new_extension(cx: &mut ExtCtxt,
         rhses: rhses,
     };
 
-    return MRDef(MacroDef {
-        name: token::get_ident(name).to_str(),
-        ext: NormalTT(exp, Some(sp))
-    });
+    ~MacroRulesDefiner {
+        def: RefCell::new(Some(MacroDef {
+            name: token::get_ident(name).to_str(),
+            ext: NormalTT(exp, Some(sp))
+        }))
+    } as ~MacResult
 }

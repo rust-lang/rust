@@ -17,7 +17,7 @@ use parse::token::{keywords, is_keyword};
 pub fn expand_trace_macros(cx: &mut ExtCtxt,
                            sp: Span,
                            tt: &[ast::TokenTree])
-                        -> base::MacResult {
+                        -> ~base::MacResult {
     match tt {
         [ast::TTTok(_, ref tok)] if is_keyword(keywords::True, tok) => {
             cx.set_trace_macros(true);
@@ -28,5 +28,5 @@ pub fn expand_trace_macros(cx: &mut ExtCtxt,
         _ => cx.span_err(sp, "trace_macros! accepts only `true` or `false`"),
     }
 
-    base::MacResult::dummy_any(sp)
+    base::DummyResult::any(sp)
 }

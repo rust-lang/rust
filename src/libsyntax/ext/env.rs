@@ -24,9 +24,9 @@ use parse::token;
 use std::os;
 
 pub fn expand_option_env(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
-    -> base::MacResult {
+    -> ~base::MacResult {
     let var = match get_single_str_from_tts(cx, sp, tts, "option_env!") {
-        None => return MacResult::dummy_expr(sp),
+        None => return DummyResult::expr(sp),
         Some(v) => v
     };
 
@@ -56,24 +56,24 @@ pub fn expand_option_env(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                                           s))))
       }
     };
-    MRExpr(e)
+    MacExpr::new(e)
 }
 
 pub fn expand_env(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
-    -> base::MacResult {
+    -> ~base::MacResult {
     let exprs = match get_exprs_from_tts(cx, sp, tts) {
         Some(ref exprs) if exprs.len() == 0 => {
             cx.span_err(sp, "env! takes 1 or 2 arguments");
-            return MacResult::dummy_expr(sp);
+            return DummyResult::expr(sp);
         }
-        None => return MacResult::dummy_expr(sp),
+        None => return DummyResult::expr(sp),
         Some(exprs) => exprs
     };
 
     let var = match expr_to_str(cx,
                                 *exprs.get(0),
                                 "expected string literal") {
-        None => return MacResult::dummy_expr(sp),
+        None => return DummyResult::expr(sp),
         Some((v, _style)) => v
     };
     let msg = match exprs.len() {
@@ -84,13 +84,13 @@ pub fn expand_env(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
         }
         2 => {
             match expr_to_str(cx, *exprs.get(1), "expected string literal") {
-                None => return MacResult::dummy_expr(sp),
+                None => return DummyResult::expr(sp),
                 Some((s, _style)) => s
             }
         }
         _ => {
             cx.span_err(sp, "env! takes 1 or 2 arguments");
-            return MacResult::dummy_expr(sp);
+            return DummyResult::expr(sp);
         }
     };
 
@@ -101,5 +101,5 @@ pub fn expand_env(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
         }
         Some(s) => cx.expr_str(sp, token::intern_and_get_ident(s))
     };
-    MRExpr(e)
+    MacExpr::new(e)
 }
