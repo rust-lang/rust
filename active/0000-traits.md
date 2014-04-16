@@ -472,7 +472,7 @@ just describe how *trait method search* works and then express the
 The core method search looks like this:
 
     METHOD-SEARCH(R, m):
-        let TRAITS = the set of consisting of any in-scope trait T where:
+        let TRAITS = the set consisting of any in-scope trait T where:
             1. T has a method m and
             2. R implements T<...> for any values of Ty's type parameters
         
