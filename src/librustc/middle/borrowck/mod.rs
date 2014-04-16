@@ -334,7 +334,6 @@ impl Repr for RestrictionSet {
 #[deriving(Eq)]
 pub enum bckerr_code {
     err_mutbl,
-    err_out_of_root_scope(ty::Region, ty::Region), // superscope, subscope
     err_out_of_scope(ty::Region, ty::Region), // superscope, subscope
     err_borrowed_pointer_too_short(
         ty::Region, ty::Region, RestrictionSet), // loan, ptr
@@ -616,9 +615,6 @@ impl<'a> BorrowckCtxt<'a> {
                     }
                 }
             }
-            err_out_of_root_scope(..) => {
-                format!("cannot root managed value long enough")
-            }
             err_out_of_scope(..) => {
                 let msg = match opt_loan_path(&err.cmt) {
                     None => format!("borrowed value"),
@@ -693,19 +689,6 @@ impl<'a> BorrowckCtxt<'a> {
         let code = err.code;
         match code {
             err_mutbl(..) => { }
-
-            err_out_of_root_scope(super_scope, sub_scope) => {
-                note_and_explain_region(
-                    self.tcx,
-                    "managed value would have to be rooted for ",
-                    sub_scope,
-                    "...");
-                note_and_explain_region(
-                    self.tcx,
-                    "...but can only be rooted for ",
-                    super_scope,
-                    "");
-            }
 
             err_out_of_scope(super_scope, sub_scope) => {
                 note_and_explain_region(
