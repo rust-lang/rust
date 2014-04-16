@@ -247,6 +247,15 @@ pub fn visibility_qualified(vis: ast::Visibility, s: &str) -> StrBuf {
     }
 }
 
+fn needs_parentheses(expr: &ast::Expr) -> bool {
+    match expr.node {
+        ast::ExprAssign(..) | ast::ExprBinary(..) |
+        ast::ExprFnBlock(..) | ast::ExprProc(..) |
+        ast::ExprAssignOp(..) | ast::ExprCast(..) => true,
+        _ => false,
+    }
+}
+
 impl<'a> State<'a> {
     pub fn ibox(&mut self, u: uint) -> IoResult<()> {
         self.boxes.push(pp::Inconsistent);
@@ -1136,6 +1145,18 @@ impl<'a> State<'a> {
         self.pclose()
     }
 
+    pub fn print_expr_maybe_paren(&mut self, expr: &ast::Expr) -> IoResult<()> {
+        let needs_par = needs_parentheses(expr);
+        if needs_par {
+            try!(self.popen());
+        }
+        try!(self.print_expr(expr));
+        if needs_par {
+            try!(self.pclose());
+        }
+        Ok(())
+    }
+
     pub fn print_expr(&mut self, expr: &ast::Expr) -> IoResult<()> {
         try!(self.maybe_print_comment(expr.span.lo));
         try!(self.ibox(indent_unit));
@@ -1209,7 +1230,7 @@ impl<'a> State<'a> {
                 try!(self.pclose());
             }
             ast::ExprCall(func, ref args) => {
-                try!(self.print_expr(func));
+                try!(self.print_expr_maybe_paren(func));
                 try!(self.print_call_post(args.as_slice()));
             }
             ast::ExprMethodCall(ident, ref tys, ref args) => {
@@ -1233,17 +1254,38 @@ impl<'a> State<'a> {
             }
             ast::ExprUnary(op, expr) => {
                 try!(word(&mut self.s, ast_util::unop_to_str(op)));
-                try!(self.print_expr(expr));
+                try!(self.print_expr_maybe_paren(expr));
             }
             ast::ExprAddrOf(m, expr) => {
                 try!(word(&mut self.s, "&"));
+
+                // `ExprAddrOf(ExprLit("str"))` should be `&&"str"` instead of `&"str"`
+                // since `&"str"` is `ExprVstore(ExprLit("str"))` which has same meaning to
+                // `"str"`.
+                // In many cases adding parentheses (`&("str")`) would help, but it become invalid
+                // if expr is in `PatLit()`.
+                let needs_extra_amp = match expr.node {
+                    ast::ExprLit(lit) => {
+                        match lit.node {
+                            ast::LitStr(..) => true,
+                            _ => false,
+                        }
+                    }
+                    ast::ExprVec(..) => true,
+                    _ => false,
+                };
+                if needs_extra_amp {
+                    try!(word(&mut self.s, "&"));
+                }
+
                 try!(self.print_mutability(m));
                 // Avoid `& &e` => `&&e`.
                 match (m, &expr.node) {
                     (ast::MutImmutable, &ast::ExprAddrOf(..)) => try!(space(&mut self.s)),
                     _ => { }
                 }
-                try!(self.print_expr(expr));
+
+                try!(self.print_expr_maybe_paren(expr));
             }
             ast::ExprLit(lit) => try!(self.print_literal(lit)),
             ast::ExprCast(expr, ty) => {
