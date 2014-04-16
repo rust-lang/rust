@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:attempt to use a type argument out of scope
+// error-pattern:can't use type parameters from outer function; try using
 fn hd<U>(v: Vec<U> ) -> U {
     fn hd1(w: [U]) -> U { return w[0]; }
 
