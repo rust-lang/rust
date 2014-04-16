@@ -338,8 +338,6 @@ like to write out a declarative and non-algorithmic specification for
 the rules too, but that is work in progress and beyond the scope of
 this RFC. Instead, I'll try to explain in "plain English".
 
-*Note:* I have implemented a 
-
 ## Trait syntax
 
 Use the `in` keyword to designate *input* type parameters \[[1](#1)]:
