@@ -65,9 +65,6 @@ struct GuaranteeLifetimeContext<'a> {
 }
 
 impl<'a> GuaranteeLifetimeContext<'a> {
-    fn tcx(&self) -> &'a ty::ctxt {
-        self.bccx.tcx
-    }
 
     fn check(&self, cmt: &mc::cmt, discr_scope: Option<ast::NodeId>) -> R {
         //! Main routine. Walks down `cmt` until we find the "guarantor".
@@ -90,29 +87,10 @@ impl<'a> GuaranteeLifetimeContext<'a> {
                 Ok(())
             }
 
-            mc::cat_deref(ref base, _, mc::GcPtr) => {
-                let base_scope = self.scope(base);
-
-                // L-Deref-Managed-Imm-User-Root
-                let omit_root =
-                    self.bccx.is_subregion_of(self.loan_region, base_scope) &&
-                    self.is_rvalue_or_immutable(base) &&
-                    !self.is_moved(base);
-
-                if !omit_root {
-                    // L-Deref-Managed-Imm-Compiler-Root
-                    // L-Deref-Managed-Mut-Compiler-Root
-                    Err(())
-                } else {
-                    debug!("omitting root, base={}, base_scope={:?}",
-                           base.repr(self.tcx()), base_scope);
-                    Ok(())
-                }
-            }
-
             mc::cat_downcast(ref base) |
             mc::cat_deref(ref base, _, mc::OwnedPtr) |     // L-Deref-Send
-            mc::cat_interior(ref base, _) => {             // L-Field
+            mc::cat_interior(ref base, _) |                // L-Field
+            mc::cat_deref(ref base, _, mc::GcPtr) => {
                 self.check(base, discr_scope)
             }
 
@@ -174,19 +152,6 @@ impl<'a> GuaranteeLifetimeContext<'a> {
         }
     }
 
-    fn is_rvalue_or_immutable(&self,
-                              cmt: &mc::cmt) -> bool {
-        //! We can omit the root on an `@T` value if the location
-        //! that holds the box is either (1) an rvalue, in which case
-        //! it is in a non-user-accessible temporary, or (2) an immutable
-        //! lvalue.
-
-        cmt.mutbl.is_immutable() || match cmt.guarantor().cat {
-            mc::cat_rvalue(..) => true,
-            _ => false
-        }
-    }
-
     fn check_scope(&self, max_scope: ty::Region) -> R {
         //! Reports an error if `loan_region` is larger than `valid_scope`
 
@@ -194,32 +159,6 @@ impl<'a> GuaranteeLifetimeContext<'a> {
             Err(self.report_error(err_out_of_scope(max_scope, self.loan_region)))
         } else {
             Ok(())
-        }
-    }
-
-    fn is_moved(&self, cmt: &mc::cmt) -> bool {
-        //! True if `cmt` is something that is potentially moved
-        //! out of the current stack frame.
-
-        match cmt.guarantor().cat {
-            mc::cat_local(id) |
-            mc::cat_arg(id) => {
-                self.bccx.moved_variables_set.contains(&id)
-            }
-            mc::cat_rvalue(..) |
-            mc::cat_static_item |
-            mc::cat_copied_upvar(..) |
-            mc::cat_deref(..) |
-            mc::cat_upvar(..) => {
-                false
-            }
-            ref r @ mc::cat_downcast(..) |
-            ref r @ mc::cat_interior(..) |
-            ref r @ mc::cat_discr(..) => {
-                self.tcx().sess.span_bug(
-                    cmt.span,
-                    format!("illegal guarantor category: {:?}", r));
-            }
         }
     }
 
