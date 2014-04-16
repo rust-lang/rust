@@ -377,7 +377,9 @@ personal preference, if we can achieve it).
 The coherence rules fall into two categories: the *orphan* restriction
 and the *overlapping implementations* restriction.
 
-<a name=orphan> *Orphan check*: Every implementation must meet one of
+<a name=orphan> 
+
+*Orphan check*: Every implementation must meet one of
 the following conditions:
 
 1. The trait being implemented (if any) must be defined in the current crate.
