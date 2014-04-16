@@ -83,6 +83,7 @@ $$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$(4):				    \
 		$$(WFLAGS_ST$(1)) \
 		-L "$$(RT_OUTPUT_DIR_$(2))" \
 		-L "$$(LLVM_LIBDIR_$(2))" \
+		-L "$$(dir $$(LLVM_STDCPP_LOCATION_$(2)))" \
 		--out-dir $$(@D) $$<
 	@touch $$@
 	$$(call LIST_ALL_OLD_GLOB_MATCHES,\
