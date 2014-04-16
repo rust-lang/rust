@@ -1313,17 +1313,20 @@ impl<'a> State<'a> {
                 try!(self.print_fn_block_args(decl));
                 try!(space(&mut self.s));
                 // }
-                assert!(body.stmts.is_empty());
-                assert!(body.expr.is_some());
-                // we extract the block, so as not to create another set of boxes
-                match body.expr.unwrap().node {
-                    ast::ExprBlock(blk) => {
-                        try!(self.print_block_unclosed(blk));
-                    }
-                    _ => {
-                        // this is a bare expression
-                        try!(self.print_expr(body.expr.unwrap()));
-                        try!(self.end()); // need to close a box
+
+                if !body.stmts.is_empty() || !body.expr.is_some() {
+                    try!(self.print_block_unclosed(body));
+                } else {
+                    // we extract the block, so as not to create another set of boxes
+                    match body.expr.unwrap().node {
+                        ast::ExprBlock(blk) => {
+                            try!(self.print_block_unclosed(blk));
+                        }
+                        _ => {
+                            // this is a bare expression
+                            try!(self.print_expr(body.expr.unwrap()));
+                            try!(self.end()); // need to close a box
+                        }
                     }
                 }
                 // a box will be closed by print_expr, but we didn't want an overall
