@@ -10,6 +10,7 @@
 
 // compile-flags:--test
 // ignore-win32 #10872
+// ignore-pretty: does not work well with `--test`
 
 // Building as a test runner means that a synthetic main will be run,
 // not ours
