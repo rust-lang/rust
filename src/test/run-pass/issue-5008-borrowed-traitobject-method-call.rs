@@ -25,7 +25,7 @@ name: ~str,
 }
 
 impl Thing {
-    fn new() -> Thing { Thing { name: ~"dummy" } }
+    fn new() -> Thing { Thing { name: "dummy".to_owned() } }
 }
 
 impl Debuggable for Thing {

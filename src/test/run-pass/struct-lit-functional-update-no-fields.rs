@@ -25,8 +25,8 @@ pub fn main() {
     assert_eq!(foo, foo_);
 
     let foo = Foo {
-        bar: ~"one",
-        baz: ~"two"
+        bar: "one".to_owned(),
+        baz: "two".to_owned()
     };
 
     let foo_ = foo.clone();

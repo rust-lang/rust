@@ -194,13 +194,13 @@ fn open(Door(name): Door<Closed>) -> Door<Open> {
     Door::<Open>(name)
 }
 
-let _ = close(Door::<Open>(~"front"));
+let _ = close(Door::<Open>("front".to_owned()));
 ~~~
 
 Attempting to close a closed door is prevented statically:
 
 ~~~ {.ignore}
-let _ = close(Door::<Closed>(~"front")); // error: mismatched types: expected `main::Door<main::Open>` but found `main::Door<main::Closed>`
+let _ = close(Door::<Closed>("front".to_owned())); // error: mismatched types: expected `main::Door<main::Open>` but found `main::Door<main::Closed>`
 ~~~
 
 # FFI (Foreign Function Interface)

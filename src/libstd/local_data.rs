@@ -354,38 +354,39 @@ mod tests {
     use prelude::*;
     use super::*;
     use task;
+    use str::StrSlice;
 
     #[test]
     fn test_tls_multitask() {
         static my_key: Key<~str> = &Key;
-        set(my_key, ~"parent data");
+        set(my_key, "parent data".to_owned());
         task::spawn(proc() {
             // TLS shouldn't carry over.
             assert!(get(my_key, |k| k.map(|k| (*k).clone())).is_none());
-            set(my_key, ~"child data");
+            set(my_key, "child data".to_owned());
             assert!(get(my_key, |k| k.map(|k| (*k).clone())).unwrap() ==
-                    ~"child data");
+                    "child data".to_owned());
             // should be cleaned up for us
         });
         // Must work multiple times
-        assert!(get(my_key, |k| k.map(|k| (*k).clone())).unwrap() == ~"parent data");
-        assert!(get(my_key, |k| k.map(|k| (*k).clone())).unwrap() == ~"parent data");
-        assert!(get(my_key, |k| k.map(|k| (*k).clone())).unwrap() == ~"parent data");
+        assert!(get(my_key, |k| k.map(|k| (*k).clone())).unwrap() == "parent data".to_owned());
+        assert!(get(my_key, |k| k.map(|k| (*k).clone())).unwrap() == "parent data".to_owned());
+        assert!(get(my_key, |k| k.map(|k| (*k).clone())).unwrap() == "parent data".to_owned());
     }
 
     #[test]
     fn test_tls_overwrite() {
         static my_key: Key<~str> = &Key;
-        set(my_key, ~"first data");
-        set(my_key, ~"next data"); // Shouldn't leak.
-        assert!(get(my_key, |k| k.map(|k| (*k).clone())).unwrap() == ~"next data");
+        set(my_key, "first data".to_owned());
+        set(my_key, "next data".to_owned()); // Shouldn't leak.
+        assert!(get(my_key, |k| k.map(|k| (*k).clone())).unwrap() == "next data".to_owned());
     }
 
     #[test]
     fn test_tls_pop() {
         static my_key: Key<~str> = &Key;
-        set(my_key, ~"weasel");
-        assert!(pop(my_key).unwrap() == ~"weasel");
+        set(my_key, "weasel".to_owned());
+        assert!(pop(my_key).unwrap() == "weasel".to_owned());
         // Pop must remove the data from the map.
         assert!(pop(my_key).is_none());
     }
@@ -396,17 +397,17 @@ mod tests {
         modify(my_key, |data| {
             match data {
                 Some(ref val) => fail!("unwelcome value: {}", *val),
-                None           => Some(~"first data")
+                None           => Some("first data".to_owned())
             }
         });
         modify(my_key, |data| {
             match data.as_ref().map(|s| s.as_slice()) {
-                Some("first data") => Some(~"next data"),
+                Some("first data") => Some("next data".to_owned()),
                 Some(ref val)       => fail!("wrong value: {}", *val),
                 None                 => fail!("missing value")
             }
         });
-        assert!(pop(my_key).unwrap() == ~"next data");
+        assert!(pop(my_key).unwrap() == "next data".to_owned());
     }
 
     #[test]
@@ -419,7 +420,7 @@ mod tests {
         // a stack smaller than 1 MB.
         static my_key: Key<~str> = &Key;
         task::spawn(proc() {
-            set(my_key, ~"hax");
+            set(my_key, "hax".to_owned());
         });
     }
 
@@ -429,7 +430,7 @@ mod tests {
         static box_key: Key<@()> = &Key;
         static int_key: Key<int> = &Key;
         task::spawn(proc() {
-            set(str_key, ~"string data");
+            set(str_key, "string data".to_owned());
             set(box_key, @());
             set(int_key, 42);
         });
@@ -442,8 +443,8 @@ mod tests {
         static box_key: Key<@()> = &Key;
         static int_key: Key<int> = &Key;
         task::spawn(proc() {
-            set(str_key, ~"string data");
-            set(str_key, ~"string data 2");
+            set(str_key, "string data".to_owned());
+            set(str_key, "string data 2".to_owned());
             set(box_key, @());
             set(box_key, @());
             set(int_key, 42);
@@ -460,11 +461,11 @@ mod tests {
         static str_key: Key<~str> = &Key;
         static box_key: Key<@()> = &Key;
         static int_key: Key<int> = &Key;
-        set(str_key, ~"parent data");
+        set(str_key, "parent data".to_owned());
         set(box_key, @());
         task::spawn(proc() {
             // spawn_linked
-            set(str_key, ~"string data");
+            set(str_key, "string data".to_owned());
             set(box_key, @());
             set(int_key, 42);
             fail!();

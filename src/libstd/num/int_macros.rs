@@ -298,6 +298,7 @@ mod tests {
     use num::Bitwise;
     use num::CheckedDiv;
     use num::ToStrRadix;
+    use str::StrSlice;
 
     #[test]
     fn test_overflows() {
@@ -419,39 +420,39 @@ mod tests {
 
     #[test]
     fn test_to_str() {
-        assert_eq!((0 as $T).to_str_radix(10u), ~"0");
-        assert_eq!((1 as $T).to_str_radix(10u), ~"1");
-        assert_eq!((-1 as $T).to_str_radix(10u), ~"-1");
-        assert_eq!((127 as $T).to_str_radix(16u), ~"7f");
-        assert_eq!((100 as $T).to_str_radix(10u), ~"100");
+        assert_eq!((0 as $T).to_str_radix(10u), "0".to_owned());
+        assert_eq!((1 as $T).to_str_radix(10u), "1".to_owned());
+        assert_eq!((-1 as $T).to_str_radix(10u), "-1".to_owned());
+        assert_eq!((127 as $T).to_str_radix(16u), "7f".to_owned());
+        assert_eq!((100 as $T).to_str_radix(10u), "100".to_owned());
 
     }
 
     #[test]
     fn test_int_to_str_overflow() {
         let mut i8_val: i8 = 127_i8;
-        assert_eq!(i8_val.to_str(), ~"127");
+        assert_eq!(i8_val.to_str(), "127".to_owned());
 
         i8_val += 1 as i8;
-        assert_eq!(i8_val.to_str(), ~"-128");
+        assert_eq!(i8_val.to_str(), "-128".to_owned());
 
         let mut i16_val: i16 = 32_767_i16;
-        assert_eq!(i16_val.to_str(), ~"32767");
+        assert_eq!(i16_val.to_str(), "32767".to_owned());
 
         i16_val += 1 as i16;
-        assert_eq!(i16_val.to_str(), ~"-32768");
+        assert_eq!(i16_val.to_str(), "-32768".to_owned());
 
         let mut i32_val: i32 = 2_147_483_647_i32;
-        assert_eq!(i32_val.to_str(), ~"2147483647");
+        assert_eq!(i32_val.to_str(), "2147483647".to_owned());
 
         i32_val += 1 as i32;
-        assert_eq!(i32_val.to_str(), ~"-2147483648");
+        assert_eq!(i32_val.to_str(), "-2147483648".to_owned());
 
         let mut i64_val: i64 = 9_223_372_036_854_775_807_i64;
-        assert_eq!(i64_val.to_str(), ~"9223372036854775807");
+        assert_eq!(i64_val.to_str(), "9223372036854775807".to_owned());
 
         i64_val += 1 as i64;
-        assert_eq!(i64_val.to_str(), ~"-9223372036854775808");
+        assert_eq!(i64_val.to_str(), "-9223372036854775808".to_owned());
     }
 
     #[test]

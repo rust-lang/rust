@@ -24,8 +24,8 @@ impl Barks for Dog {
 
 
 pub fn main() {
-    let snoopy = ~Dog{name: ~"snoopy"};
-    let bubbles = ~Dog{name: ~"bubbles"};
+    let snoopy = ~Dog{name: "snoopy".to_owned()};
+    let bubbles = ~Dog{name: "bubbles".to_owned()};
     let barker = [snoopy as ~Barks, bubbles as ~Barks];
 
     for pup in barker.iter() {

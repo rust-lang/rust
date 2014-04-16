@@ -411,7 +411,7 @@ mod tests {
             set_stdout(~w);
             println!("hello!");
         });
-        assert_eq!(r.read_to_str().unwrap(), ~"hello!\n");
+        assert_eq!(r.read_to_str().unwrap(), "hello!\n".to_owned());
     })
 
     iotest!(fn capture_stderr() {

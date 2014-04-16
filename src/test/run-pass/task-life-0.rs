@@ -11,7 +11,7 @@
 use std::task;
 
 pub fn main() {
-    task::spawn(proc() child(~"Hello") );
+    task::spawn(proc() child("Hello".to_owned()) );
 }
 
 fn child(_s: ~str) {

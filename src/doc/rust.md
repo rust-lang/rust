@@ -1241,8 +1241,8 @@ enum Animal {
     Cat { name: ~str, weight: f64 }
 }
 
-let mut a: Animal = Dog(~"Cocoa", 37.2);
-a = Cat{ name: ~"Spotty", weight: 2.7 };
+let mut a: Animal = Dog("Cocoa".to_owned(), 37.2);
+a = Cat{ name: "Spotty".to_owned(), weight: 2.7 };
 ~~~~
 
 In this example, `Cat` is a _struct-like enum variant_,
@@ -3510,7 +3510,7 @@ allocated on the heap (unlike closures). An example of creating and calling a
 procedure:
 
 ```rust
-let string = ~"Hello";
+let string = "Hello".to_owned();
 
 // Creates a new procedure, passing it to the `spawn` function.
 spawn(proc() {

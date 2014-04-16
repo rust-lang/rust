@@ -19,7 +19,7 @@ fn arg_closure() {
 }
 
 fn let_pat() {
-    let &_x = &~"hi";
+    let &_x = &"hi".to_owned();
     //~^ ERROR cannot move out of dereference of `&`-pointer
 }
 

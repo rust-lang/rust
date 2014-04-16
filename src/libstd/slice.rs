@@ -1247,7 +1247,7 @@ pub trait OwnedVector<T> {
     /// # Examples
     ///
     /// ```rust
-    /// let v = ~[~"a", ~"b"];
+    /// let v = ~["a".to_owned(), "b".to_owned()];
     /// for s in v.move_iter() {
     ///   // s has type ~str, not &~str
     ///   println!("{}", s);
@@ -1353,13 +1353,13 @@ pub trait OwnedVector<T> {
     ///
     /// # Example
     /// ```rust
-    /// let mut v = ~[~"foo", ~"bar", ~"baz", ~"qux"];
+    /// let mut v = ~["foo".to_owned(), "bar".to_owned(), "baz".to_owned(), "qux".to_owned()];
     ///
-    /// assert_eq!(v.swap_remove(1), Some(~"bar"));
-    /// assert_eq!(v, ~[~"foo", ~"qux", ~"baz"]);
+    /// assert_eq!(v.swap_remove(1), Some("bar".to_owned()));
+    /// assert_eq!(v, ~["foo".to_owned(), "qux".to_owned(), "baz".to_owned()]);
     ///
-    /// assert_eq!(v.swap_remove(0), Some(~"foo"));
-    /// assert_eq!(v, ~[~"baz", ~"qux"]);
+    /// assert_eq!(v.swap_remove(0), Some("foo".to_owned()));
+    /// assert_eq!(v, ~["baz".to_owned(), "qux".to_owned()]);
     ///
     /// assert_eq!(v.swap_remove(2), None);
     /// ```
@@ -2214,15 +2214,15 @@ pub trait MutableVector<'a, T> {
     /// # Example
     ///
     /// ```rust
-    /// let mut v = ~[~"foo", ~"bar", ~"baz"];
+    /// let mut v = ~["foo".to_owned(), "bar".to_owned(), "baz".to_owned()];
     ///
     /// unsafe {
-    ///     // `~"baz"` is deallocated.
-    ///     v.unsafe_set(2, ~"qux");
+    ///     // `"baz".to_owned()` is deallocated.
+    ///     v.unsafe_set(2, "qux".to_owned());
     ///
     ///     // Out of bounds: could cause a crash, or overwriting
     ///     // other data, or something else.
-    ///     // v.unsafe_set(10, ~"oops");
+    ///     // v.unsafe_set(10, "oops".to_owned());
     /// }
     /// ```
     unsafe fn unsafe_set(self, index: uint, val: T);
@@ -2234,10 +2234,10 @@ pub trait MutableVector<'a, T> {
     /// # Example
     ///
     /// ```rust
-    /// let mut v = [~"foo", ~"bar"];
+    /// let mut v = ["foo".to_owned(), "bar".to_owned()];
     ///
-    /// // memory leak! `~"bar"` is not deallocated.
-    /// unsafe { v.init_elem(1, ~"baz"); }
+    /// // memory leak! `"bar".to_owned()` is not deallocated.
+    /// unsafe { v.init_elem(1, "baz".to_owned()); }
     /// ```
     unsafe fn init_elem(self, i: uint, val: T);
 
@@ -3364,7 +3364,7 @@ mod tests {
             assert_eq!(it.next(), None);
         }
         {
-            let v = [~"Hello"];
+            let v = ["Hello".to_owned()];
             let mut it = v.permutations();
             assert_eq!(it.next(), None);
         }
@@ -4018,10 +4018,10 @@ mod tests {
             })
         )
         let empty: ~[int] = ~[];
-        test_show_vec!(empty, ~"[]");
-        test_show_vec!(~[1], ~"[1]");
-        test_show_vec!(~[1, 2, 3], ~"[1, 2, 3]");
-        test_show_vec!(~[~[], ~[1u], ~[1u, 1u]], ~"[[], [1], [1, 1]]");
+        test_show_vec!(empty, "[]".to_owned());
+        test_show_vec!(~[1], "[1]".to_owned());
+        test_show_vec!(~[1, 2, 3], "[1, 2, 3]".to_owned());
+        test_show_vec!(~[~[], ~[1u], ~[1u, 1u]], "[[], [1], [1, 1]]".to_owned());
     }
 
     #[test]
@@ -4120,11 +4120,11 @@ mod tests {
 
         let xs = ~[Foo, Foo, Foo];
         assert_eq!(format!("{:?}", xs.slice(0, 2).to_owned()),
-                   ~"~[slice::tests::Foo, slice::tests::Foo]");
+                   "~[slice::tests::Foo, slice::tests::Foo]".to_owned());
 
         let xs: [Foo, ..3] = [Foo, Foo, Foo];
         assert_eq!(format!("{:?}", xs.slice(0, 2).to_owned()),
-                   ~"~[slice::tests::Foo, slice::tests::Foo]");
+                   "~[slice::tests::Foo, slice::tests::Foo]".to_owned());
         cnt = 0;
         for f in xs.iter() {
             assert!(*f == Foo);

@@ -118,9 +118,9 @@ pub fn explain_region_and_span(cx: &ctxt, region: ty::Region)
         }
       }
 
-      ReStatic => { (~"the static lifetime", None) }
+      ReStatic => { ("the static lifetime".to_owned(), None) }
 
-      ReEmpty => { (~"the empty lifetime", None) }
+      ReEmpty => { ("the empty lifetime".to_owned(), None) }
 
       // I believe these cases should not occur (except when debugging,
       // perhaps)
@@ -192,8 +192,8 @@ pub fn region_to_str(cx: &ctxt, prefix: &str, space: bool, region: Region) -> ~s
 
 pub fn mutability_to_str(m: ast::Mutability) -> ~str {
     match m {
-        ast::MutMutable => ~"mut ",
-        ast::MutImmutable => ~"",
+        ast::MutMutable => "mut ".to_owned(),
+        ast::MutImmutable => "".to_owned(),
     }
 }
 
@@ -203,7 +203,7 @@ pub fn mt_to_str(cx: &ctxt, m: &mt) -> ~str {
 
 pub fn trait_store_to_str(cx: &ctxt, s: ty::TraitStore) -> ~str {
     match s {
-        ty::UniqTraitStore => ~"~",
+        ty::UniqTraitStore => "~".to_owned(),
         ty::RegionTraitStore(r, m) => {
             format!("{}{}", region_ptr_to_str(cx, r), mutability_to_str(m))
         }
@@ -337,22 +337,22 @@ pub fn ty_to_str(cx: &ctxt, typ: t) -> ~str {
 
     // pretty print the structural type representation:
     return match ty::get(typ).sty {
-      ty_nil => ~"()",
-      ty_bot => ~"!",
-      ty_bool => ~"bool",
-      ty_char => ~"char",
+      ty_nil => "()".to_owned(),
+      ty_bot => "!".to_owned(),
+      ty_bool => "bool".to_owned(),
+      ty_char => "char".to_owned(),
       ty_int(t) => ast_util::int_ty_to_str(t, None),
       ty_uint(t) => ast_util::uint_ty_to_str(t, None),
       ty_float(t) => ast_util::float_ty_to_str(t),
-      ty_box(typ) => ~"@" + ty_to_str(cx, typ),
-      ty_uniq(typ) => ~"~" + ty_to_str(cx, typ),
-      ty_ptr(ref tm) => ~"*" + mt_to_str(cx, tm),
+      ty_box(typ) => "@".to_owned() + ty_to_str(cx, typ),
+      ty_uniq(typ) => "~".to_owned() + ty_to_str(cx, typ),
+      ty_ptr(ref tm) => "*".to_owned() + mt_to_str(cx, tm),
       ty_rptr(r, ref tm) => {
         region_ptr_to_str(cx, r) + mt_to_str(cx, tm)
       }
       ty_tup(ref elems) => {
         let strs: Vec<~str> = elems.iter().map(|elem| ty_to_str(cx, *elem)).collect();
-        ~"(" + strs.connect(",") + ")"
+        "(".to_owned() + strs.connect(",") + ")"
       }
       ty_closure(ref f) => {
           closure_to_str(cx, *f)
@@ -361,7 +361,7 @@ pub fn ty_to_str(cx: &ctxt, typ: t) -> ~str {
           bare_fn_to_str(cx, f.fn_style, f.abi, None, &f.sig)
       }
       ty_infer(infer_ty) => infer_ty.to_str(),
-      ty_err => ~"[type error]",
+      ty_err => "[type error]".to_owned(),
       ty_param(param_ty {idx: id, def_id: did}) => {
           let ident = match cx.ty_param_defs.borrow().find(&did.node) {
               Some(def) => token::get_ident(def.ident).get().to_str(),
@@ -375,7 +375,7 @@ pub fn ty_to_str(cx: &ctxt, typ: t) -> ~str {
             format!("{}:{:?}", ident, did)
           }
       }
-      ty_self(..) => ~"Self",
+      ty_self(..) => "Self".to_owned(),
       ty_enum(did, ref substs) | ty_struct(did, ref substs) => {
         let base = ty::item_path_str(cx, did);
         parameterized(cx,
@@ -408,7 +408,7 @@ pub fn ty_to_str(cx: &ctxt, typ: t) -> ~str {
       ty_str(vs) => {
         match vs {
             ty::VstoreFixed(n) => format!("str/{}", n),
-            ty::VstoreUniq => ~"~str",
+            ty::VstoreUniq => "~str".to_owned(),
             ty::VstoreSlice(r, ()) => format!("{}str", region_ptr_to_str(cx, r))
         }
       }
@@ -477,7 +477,7 @@ pub fn ty_to_short_str(cx: &ctxt, typ: t) -> ~str {
 impl<T:Repr> Repr for Option<T> {
     fn repr(&self, tcx: &ctxt) -> ~str {
         match self {
-            &None => ~"None",
+            &None => "None".to_owned(),
             &Some(ref t) => t.repr(tcx),
         }
     }
@@ -494,7 +494,7 @@ impl<T:Repr,U:Repr> Repr for Result<T,U> {
 
 impl Repr for () {
     fn repr(&self, _tcx: &ctxt) -> ~str {
-        ~"()"
+        "()".to_owned()
     }
 }
 
@@ -568,7 +568,7 @@ impl Repr for ty::substs {
 impl Repr for ty::RegionSubsts {
     fn repr(&self, tcx: &ctxt) -> ~str {
         match *self {
-            ty::ErasedRegions => ~"erased",
+            ty::ErasedRegions => "erased".to_owned(),
             ty::NonerasedRegions(ref regions) => regions.repr(tcx)
         }
     }
@@ -579,11 +579,11 @@ impl Repr for ty::ParamBounds {
         let mut res = Vec::new();
         for b in self.builtin_bounds.iter() {
             res.push(match b {
-                ty::BoundStatic => ~"'static",
-                ty::BoundSend => ~"Send",
-                ty::BoundSized => ~"Sized",
-                ty::BoundCopy => ~"Pod",
-                ty::BoundShare => ~"Share",
+                ty::BoundStatic => "'static".to_owned(),
+                ty::BoundSend => "Send".to_owned(),
+                ty::BoundSized => "Sized".to_owned(),
+                ty::BoundCopy => "Pod".to_owned(),
+                ty::BoundShare => "Share".to_owned(),
             });
         }
         for t in self.trait_bounds.iter() {
@@ -852,7 +852,7 @@ impl Repr for ty::Vstore {
     fn repr(&self, tcx: &ctxt) -> ~str {
         match *self {
             ty::VstoreFixed(n) => format!("{}", n),
-            ty::VstoreUniq => ~"~",
+            ty::VstoreUniq => "~".to_owned(),
             ty::VstoreSlice(r, m) => {
                 format!("{}{}", region_ptr_to_str(tcx, r), mutability_to_str(m))
             }
@@ -864,7 +864,7 @@ impl Repr for ty::Vstore<()> {
     fn repr(&self, tcx: &ctxt) -> ~str {
         match *self {
             ty::VstoreFixed(n) => format!("{}", n),
-            ty::VstoreUniq => ~"~",
+            ty::VstoreUniq => "~".to_owned(),
             ty::VstoreSlice(r, ()) => region_ptr_to_str(tcx, r)
         }
     }
@@ -879,11 +879,11 @@ impl Repr for ty::BuiltinBound {
 impl UserString for ty::BuiltinBound {
     fn user_string(&self, _tcx: &ctxt) -> ~str {
         match *self {
-            ty::BoundStatic => ~"'static",
-            ty::BoundSend => ~"Send",
-            ty::BoundSized => ~"Sized",
-            ty::BoundCopy => ~"Pod",
-            ty::BoundShare => ~"Share",
+            ty::BoundStatic => "'static".to_owned(),
+            ty::BoundSend => "Send".to_owned(),
+            ty::BoundSized => "Sized".to_owned(),
+            ty::BoundCopy => "Pod".to_owned(),
+            ty::BoundShare => "Share".to_owned(),
         }
     }
 }
@@ -909,7 +909,7 @@ impl<A:UserString> UserString for @A {
 
 impl UserString for ty::BuiltinBounds {
     fn user_string(&self, tcx: &ctxt) -> ~str {
-        if self.is_empty() { ~"<no-bounds>" } else {
+        if self.is_empty() { "<no-bounds>".to_owned() } else {
             let mut result = Vec::new();
             for bb in self.iter() {
                 result.push(bb.user_string(tcx));

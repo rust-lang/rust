@@ -238,7 +238,7 @@ fn trim_whitespace_prefix_and_push_line(lines: &mut Vec<~str> ,
         Some(col) => {
             if col < len {
                 s.slice(col, len).to_owned()
-            } else {  ~"" }
+            } else {  "".to_owned() }
         }
         None => s,
     };
@@ -279,7 +279,7 @@ fn read_block_comment(rdr: &mut StringReader,
         while level > 0 {
             debug!("=== block comment level {}", level);
             if is_eof(rdr) {
-                rdr.fatal(~"unterminated block comment");
+                rdr.fatal("unterminated block comment".to_owned());
             }
             if rdr.curr_is('\n') {
                 trim_whitespace_prefix_and_push_line(&mut lines,
@@ -405,41 +405,41 @@ mod test {
     #[test] fn test_block_doc_comment_1() {
         let comment = "/**\n * Test \n **  Test\n *   Test\n*/";
         let stripped = strip_doc_comment_decoration(comment);
-        assert_eq!(stripped, ~" Test \n*  Test\n   Test");
+        assert_eq!(stripped, " Test \n*  Test\n   Test".to_owned());
     }
 
     #[test] fn test_block_doc_comment_2() {
         let comment = "/**\n * Test\n *  Test\n*/";
         let stripped = strip_doc_comment_decoration(comment);
-        assert_eq!(stripped, ~" Test\n  Test");
+        assert_eq!(stripped, " Test\n  Test".to_owned());
     }
 
     #[test] fn test_block_doc_comment_3() {
         let comment = "/**\n let a: *int;\n *a = 5;\n*/";
         let stripped = strip_doc_comment_decoration(comment);
-        assert_eq!(stripped, ~" let a: *int;\n *a = 5;");
+        assert_eq!(stripped, " let a: *int;\n *a = 5;".to_owned());
     }
 
     #[test] fn test_block_doc_comment_4() {
         let comment = "/*******************\n test\n *********************/";
         let stripped = strip_doc_comment_decoration(comment);
-        assert_eq!(stripped, ~" test");
+        assert_eq!(stripped, " test".to_owned());
     }
 
     #[test] fn test_line_doc_comment() {
         let stripped = strip_doc_comment_decoration("/// test");
-        assert_eq!(stripped, ~" test");
+        assert_eq!(stripped, " test".to_owned());
         let stripped = strip_doc_comment_decoration("///! test");
-        assert_eq!(stripped, ~" test");
+        assert_eq!(stripped, " test".to_owned());
         let stripped = strip_doc_comment_decoration("// test");
-        assert_eq!(stripped, ~" test");
+        assert_eq!(stripped, " test".to_owned());
         let stripped = strip_doc_comment_decoration("// test");
-        assert_eq!(stripped, ~" test");
+        assert_eq!(stripped, " test".to_owned());
         let stripped = strip_doc_comment_decoration("///test");
-        assert_eq!(stripped, ~"test");
+        assert_eq!(stripped, "test".to_owned());
         let stripped = strip_doc_comment_decoration("///!test");
-        assert_eq!(stripped, ~"test");
+        assert_eq!(stripped, "test".to_owned());
         let stripped = strip_doc_comment_decoration("//test");
-        assert_eq!(stripped, ~"test");
+        assert_eq!(stripped, "test".to_owned());
     }
 }

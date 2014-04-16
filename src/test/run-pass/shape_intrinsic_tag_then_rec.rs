@@ -59,7 +59,7 @@ pub fn main() {
     let t: @ty = @Spanned { data: 3u, span: sp };
     let p_: Path_ = Path_ {
         global: true,
-        idents: vec!(~"hi"),
+        idents: vec!("hi".to_owned()),
         types: vec!(t),
     };
     let p: path = Spanned { data: p_, span: sp };

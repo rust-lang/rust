@@ -354,7 +354,7 @@ impl CodeMap {
 
     pub fn span_to_str(&self, sp: Span) -> ~str {
         if self.files.borrow().len() == 0 && sp == DUMMY_SP {
-            return ~"no-location";
+            return "no-location".to_owned();
         }
 
         let lo = self.lookup_char_pos_adj(sp.lo);
@@ -515,19 +515,19 @@ mod test {
     #[test]
     fn t1 () {
         let cm = CodeMap::new();
-        let fm = cm.new_filemap(~"blork.rs",~"first line.\nsecond line");
+        let fm = cm.new_filemap("blork.rs".to_owned(),"first line.\nsecond line".to_owned());
         fm.next_line(BytePos(0));
-        assert_eq!(&fm.get_line(0),&~"first line.");
+        assert_eq!(&fm.get_line(0),&"first line.".to_owned());
         // TESTING BROKEN BEHAVIOR:
         fm.next_line(BytePos(10));
-        assert_eq!(&fm.get_line(1),&~".");
+        assert_eq!(&fm.get_line(1),&".".to_owned());
     }
 
     #[test]
     #[should_fail]
     fn t2 () {
         let cm = CodeMap::new();
-        let fm = cm.new_filemap(~"blork.rs",~"first line.\nsecond line");
+        let fm = cm.new_filemap("blork.rs".to_owned(),"first line.\nsecond line".to_owned());
         // TESTING *REALLY* BROKEN BEHAVIOR:
         fm.next_line(BytePos(0));
         fm.next_line(BytePos(10));
@@ -536,9 +536,9 @@ mod test {
 
     fn init_code_map() -> CodeMap {
         let cm = CodeMap::new();
-        let fm1 = cm.new_filemap(~"blork.rs",~"first line.\nsecond line");
-        let fm2 = cm.new_filemap(~"empty.rs",~"");
-        let fm3 = cm.new_filemap(~"blork2.rs",~"first line.\nsecond line");
+        let fm1 = cm.new_filemap("blork.rs".to_owned(),"first line.\nsecond line".to_owned());
+        let fm2 = cm.new_filemap("empty.rs".to_owned(),"".to_owned());
+        let fm3 = cm.new_filemap("blork2.rs".to_owned(),"first line.\nsecond line".to_owned());
 
         fm1.next_line(BytePos(0));
         fm1.next_line(BytePos(12));
@@ -555,11 +555,11 @@ mod test {
         let cm = init_code_map();
 
         let fmabp1 = cm.lookup_byte_offset(BytePos(22));
-        assert_eq!(fmabp1.fm.name, ~"blork.rs");
+        assert_eq!(fmabp1.fm.name, "blork.rs".to_owned());
         assert_eq!(fmabp1.pos, BytePos(22));
 
         let fmabp2 = cm.lookup_byte_offset(BytePos(24));
-        assert_eq!(fmabp2.fm.name, ~"blork2.rs");
+        assert_eq!(fmabp2.fm.name, "blork2.rs".to_owned());
         assert_eq!(fmabp2.pos, BytePos(0));
     }
 
@@ -581,12 +581,12 @@ mod test {
         let cm = init_code_map();
 
         let loc1 = cm.lookup_char_pos(BytePos(22));
-        assert_eq!(loc1.file.name, ~"blork.rs");
+        assert_eq!(loc1.file.name, "blork.rs".to_owned());
         assert_eq!(loc1.line, 2);
         assert_eq!(loc1.col, CharPos(10));
 
         let loc2 = cm.lookup_char_pos(BytePos(24));
-        assert_eq!(loc2.file.name, ~"blork2.rs");
+        assert_eq!(loc2.file.name, "blork2.rs".to_owned());
         assert_eq!(loc2.line, 1);
         assert_eq!(loc2.col, CharPos(0));
     }
@@ -594,8 +594,8 @@ mod test {
     fn init_code_map_mbc() -> CodeMap {
         let cm = CodeMap::new();
         // € is a three byte utf8 char.
-        let fm1 = cm.new_filemap(~"blork.rs",~"fir€st €€€€ line.\nsecond line");
-        let fm2 = cm.new_filemap(~"blork2.rs",~"first line€€.\n€ second line");
+        let fm1 = cm.new_filemap("blork.rs".to_owned(),"fir€st €€€€ line.\nsecond line".to_owned());
+        let fm2 = cm.new_filemap("blork2.rs".to_owned(),"first line€€.\n€ second line".to_owned());
 
         fm1.next_line(BytePos(0));
         fm1.next_line(BytePos(22));
@@ -639,7 +639,7 @@ mod test {
         let span = Span {lo: BytePos(12), hi: BytePos(23), expn_info: None};
         let file_lines = cm.span_to_lines(span);
 
-        assert_eq!(file_lines.file.name, ~"blork.rs");
+        assert_eq!(file_lines.file.name, "blork.rs".to_owned());
         assert_eq!(file_lines.lines.len(), 1);
         assert_eq!(*file_lines.lines.get(0), 1u);
     }
@@ -651,7 +651,7 @@ mod test {
         let span = Span {lo: BytePos(12), hi: BytePos(23), expn_info: None};
         let snippet = cm.span_to_snippet(span);
 
-        assert_eq!(snippet, Some(~"second line"));
+        assert_eq!(snippet, Some("second line".to_owned()));
     }
 
     #[test]
@@ -661,6 +661,6 @@ mod test {
         let span = Span {lo: BytePos(12), hi: BytePos(23), expn_info: None};
         let sstr =  cm.span_to_str(span);
 
-        assert_eq!(sstr, ~"blork.rs:2:1: 2:12");
+        assert_eq!(sstr, "blork.rs:2:1: 2:12".to_owned());
     }
 }

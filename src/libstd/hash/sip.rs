@@ -363,7 +363,7 @@ mod tests {
     use iter::Iterator;
     use num::ToStrRadix;
     use option::{Some, None};
-    use str::Str;
+    use str::{Str,StrSlice};
     use strbuf::StrBuf;
     use slice::{Vector, ImmutableVector, OwnedVector};
     use self::test::Bencher;
@@ -645,7 +645,7 @@ officia deserunt mollit anim id est laborum.";
         let compound = Compound {
             x: 1,
             y: 2,
-            z: ~"foobarbaz",
+            z: "foobarbaz".to_owned(),
         };
         b.iter(|| {
             assert_eq!(hash(&compound), 15783192367317361799);

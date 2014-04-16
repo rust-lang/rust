@@ -10,4 +10,4 @@
 
 // error-pattern:`^` cannot be applied to type `~str`
 
-fn main() { let x = ~"a" ^ ~"b"; }
+fn main() { let x = "a".to_owned() ^ "b".to_owned(); }

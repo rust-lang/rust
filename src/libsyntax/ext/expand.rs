@@ -1019,11 +1019,11 @@ mod test {
     // make sure that macros can leave scope
     #[should_fail]
     #[test] fn macros_cant_escape_fns_test () {
-        let src = ~"fn bogus() {macro_rules! z (() => (3+4))}\
-                    fn inty() -> int { z!() }";
+        let src = "fn bogus() {macro_rules! z (() => (3+4))}\
+                   fn inty() -> int { z!() }".to_owned();
         let sess = parse::new_parse_sess();
         let crate_ast = parse::parse_crate_from_source_str(
-            ~"<test>",
+            "<test>".to_owned(),
             src,
             Vec::new(), &sess);
         // should fail:
@@ -1039,11 +1039,11 @@ mod test {
     // make sure that macros can leave scope for modules
     #[should_fail]
     #[test] fn macros_cant_escape_mods_test () {
-        let src = ~"mod foo {macro_rules! z (() => (3+4))}\
-                    fn inty() -> int { z!() }";
+        let src = "mod foo {macro_rules! z (() => (3+4))}\
+                   fn inty() -> int { z!() }".to_owned();
         let sess = parse::new_parse_sess();
         let crate_ast = parse::parse_crate_from_source_str(
-            ~"<test>",
+            "<test>".to_owned(),
             src,
             Vec::new(), &sess);
         // should fail:
@@ -1058,11 +1058,11 @@ mod test {
 
     // macro_escape modules shouldn't cause macros to leave scope
     #[test] fn macros_can_escape_flattened_mods_test () {
-        let src = ~"#[macro_escape] mod foo {macro_rules! z (() => (3+4))}\
-                    fn inty() -> int { z!() }";
+        let src = "#[macro_escape] mod foo {macro_rules! z (() => (3+4))}\
+                   fn inty() -> int { z!() }".to_owned();
         let sess = parse::new_parse_sess();
         let crate_ast = parse::parse_crate_from_source_str(
-            ~"<test>",
+            "<test>".to_owned(),
             src,
             Vec::new(), &sess);
         // should fail:
@@ -1130,7 +1130,7 @@ mod test {
     //}
 
     #[test] fn macro_tokens_should_match(){
-        expand_crate_str(~"macro_rules! m((a)=>(13)) fn main(){m!(a);}");
+        expand_crate_str("macro_rules! m((a)=>(13)) fn main(){m!(a);}".to_owned());
     }
 
     // renaming tests expand a crate and then check that the bindings match
@@ -1260,10 +1260,10 @@ mod test {
     }
 
     #[test] fn fmt_in_macro_used_inside_module_macro() {
-        let crate_str = ~"macro_rules! fmt_wrap(($b:expr)=>($b.to_str()))
+        let crate_str = "macro_rules! fmt_wrap(($b:expr)=>($b.to_str()))
 macro_rules! foo_module (() => (mod generated { fn a() { let xx = 147; fmt_wrap!(xx);}}))
 foo_module!()
-";
+".to_owned();
         let cr = expand_crate_str(crate_str);
         // find the xx binding
         let mut name_finder = new_name_finder(Vec::new());
@@ -1309,7 +1309,7 @@ foo_module!()
 
     #[test]
     fn pat_idents(){
-        let pat = string_to_pat(~"(a,Foo{x:c @ (b,9),y:Bar(4,d)})");
+        let pat = string_to_pat("(a,Foo{x:c @ (b,9),y:Bar(4,d)})".to_owned());
         let mut pat_idents = new_name_finder(Vec::new());
         pat_idents.visit_pat(pat, ());
         assert_eq!(pat_idents.ident_accumulator,

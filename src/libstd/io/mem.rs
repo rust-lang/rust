@@ -339,6 +339,7 @@ mod test {
     use super::*;
     use io::*;
     use io;
+    use str::StrSlice;
 
     #[test]
     fn test_mem_writer() {
@@ -496,7 +497,7 @@ mod test {
         writer.write_line("testing").unwrap();
         writer.write_str("testing").unwrap();
         let mut r = BufReader::new(writer.get_ref());
-        assert_eq!(r.read_to_str().unwrap(), ~"testingtesting\ntesting");
+        assert_eq!(r.read_to_str().unwrap(), "testingtesting\ntesting".to_owned());
     }
 
     #[test]
@@ -506,7 +507,7 @@ mod test {
         writer.write_char('\n').unwrap();
         writer.write_char('ệ').unwrap();
         let mut r = BufReader::new(writer.get_ref());
-        assert_eq!(r.read_to_str().unwrap(), ~"a\nệ");
+        assert_eq!(r.read_to_str().unwrap(), "a\nệ".to_owned());
     }
 
     #[test]

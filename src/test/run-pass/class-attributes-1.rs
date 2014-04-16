@@ -23,4 +23,4 @@ impl Drop for cat {
 #[cat_maker]
 fn cat(name: ~str) -> cat { cat{name: name,} }
 
-pub fn main() { let _kitty = cat(~"Spotty"); }
+pub fn main() { let _kitty = cat("Spotty".to_owned()); }

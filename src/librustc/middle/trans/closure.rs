@@ -117,9 +117,9 @@ pub struct EnvValue {
 impl EnvAction {
     pub fn to_str(&self) -> ~str {
         match *self {
-            EnvCopy => ~"EnvCopy",
-            EnvMove => ~"EnvMove",
-            EnvRef => ~"EnvRef"
+            EnvCopy => "EnvCopy".to_owned(),
+            EnvMove => "EnvMove".to_owned(),
+            EnvRef => "EnvRef".to_owned()
         }
     }
 }
