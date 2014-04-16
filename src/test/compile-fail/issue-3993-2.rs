@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use zoo::{duck, goose}; //~ ERROR: variant `goose` is private
+use zoo::{duck, goose};
 
 mod zoo {
     pub enum bird {
         pub duck, //~ ERROR: unnecessary `pub` visibility
-        priv goose
+        goose
     }
 }
 

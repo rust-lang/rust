@@ -607,7 +607,6 @@ fn encode_struct_field_family(ebml_w: &mut Encoder,
                               visibility: Visibility) {
     encode_family(ebml_w, match visibility {
         Public => 'g',
-        Private => 'j',
         Inherited => 'N'
     });
 }
@@ -616,7 +615,6 @@ fn encode_visibility(ebml_w: &mut Encoder, visibility: Visibility) {
     ebml_w.start_tag(tag_items_data_item_visibility);
     let ch = match visibility {
         Public => 'y',
-        Private => 'n',
         Inherited => 'i',
     };
     ebml_w.wr_str(str::from_char(ch));

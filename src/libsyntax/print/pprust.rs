@@ -230,7 +230,6 @@ pub fn variant_to_str(var: &ast::Variant) -> ~str {
 
 pub fn visibility_qualified(vis: ast::Visibility, s: &str) -> ~str {
     match vis {
-        ast::Private => format!("priv {}", s),
         ast::Public => format!("pub {}", s),
         ast::Inherited => s.to_owned()
     }
@@ -731,7 +730,6 @@ impl<'a> State<'a> {
 
     pub fn print_visibility(&mut self, vis: ast::Visibility) -> IoResult<()> {
         match vis {
-            ast::Private => self.word_nbsp("priv"),
             ast::Public => self.word_nbsp("pub"),
             ast::Inherited => Ok(())
         }
