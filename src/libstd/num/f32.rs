@@ -1037,7 +1037,7 @@ mod tests {
         assert_eq!(0f32.abs_sub(&INFINITY), 0f32);
     }
 
-    #[test] #[ignore(cfg(windows))] // FIXME #8663
+    #[test]
     fn test_abs_sub_nowin() {
         assert!(NAN.abs_sub(&-1f32).is_nan());
         assert!(1f32.abs_sub(&NAN).is_nan());

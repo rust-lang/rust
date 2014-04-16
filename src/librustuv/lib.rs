@@ -462,7 +462,7 @@ fn local_loop() -> &'static mut uvio::UvIoFactory {
     unsafe {
         cast::transmute({
             let mut task = Local::borrow(None::<Task>);
-            let mut io = task.get().local_io().unwrap();
+            let mut io = task.local_io().unwrap();
             let (_vtable, uvio): (uint, &'static mut uvio::UvIoFactory) =
                 cast::transmute(io.get());
             uvio

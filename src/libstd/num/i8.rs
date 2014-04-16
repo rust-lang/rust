@@ -28,17 +28,17 @@ int_module!(i8, 8)
 impl Bitwise for i8 {
     /// Returns the number of ones in the binary representation of the number.
     #[inline]
-    fn count_ones(&self) -> i8 { unsafe { intrinsics::ctpop8(*self) } }
+    fn count_ones(&self) -> i8 { unsafe { intrinsics::ctpop8(*self as u8) as i8 } }
 
     /// Returns the number of leading zeros in the in the binary representation
     /// of the number.
     #[inline]
-    fn leading_zeros(&self) -> i8 { unsafe { intrinsics::ctlz8(*self) } }
+    fn leading_zeros(&self) -> i8 { unsafe { intrinsics::ctlz8(*self as u8) as i8 } }
 
     /// Returns the number of trailing zeros in the in the binary representation
     /// of the number.
     #[inline]
-    fn trailing_zeros(&self) -> i8 { unsafe { intrinsics::cttz8(*self) } }
+    fn trailing_zeros(&self) -> i8 { unsafe { intrinsics::cttz8(*self as u8) as i8 } }
 }
 
 impl CheckedAdd for i8 {

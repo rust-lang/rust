@@ -30,16 +30,16 @@ int_module!(i64, 64)
 impl Bitwise for i64 {
     /// Returns the number of ones in the binary representation of the number.
     #[inline]
-    fn count_ones(&self) -> i64 { unsafe { intrinsics::ctpop64(*self) } }
+    fn count_ones(&self) -> i64 { unsafe { intrinsics::ctpop64(*self as u64) as i64 } }
 
     /// Returns the number of leading zeros in the in the binary representation
     /// of the number.
     #[inline]
-    fn leading_zeros(&self) -> i64 { unsafe { intrinsics::ctlz64(*self) } }
+    fn leading_zeros(&self) -> i64 { unsafe { intrinsics::ctlz64(*self as u64) as i64 } }
 
     /// Counts the number of trailing zeros.
     #[inline]
-    fn trailing_zeros(&self) -> i64 { unsafe { intrinsics::cttz64(*self) } }
+    fn trailing_zeros(&self) -> i64 { unsafe { intrinsics::cttz64(*self as u64) as i64 } }
 }
 
 impl CheckedAdd for i64 {
