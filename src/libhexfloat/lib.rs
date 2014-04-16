@@ -53,7 +53,7 @@ use syntax::ast;
 use syntax::ast::Name;
 use syntax::codemap::{Span, mk_sp};
 use syntax::ext::base;
-use syntax::ext::base::{SyntaxExtension, BasicMacroExpander, NormalTT, ExtCtxt, MRExpr};
+use syntax::ext::base::{SyntaxExtension, BasicMacroExpander, NormalTT, ExtCtxt, MacExpr};
 use syntax::ext::build::AstBuilder;
 use syntax::parse;
 use syntax::parse::token;
@@ -97,7 +97,7 @@ fn hex_float_lit_err(s: &str) -> Option<(uint, ~str)> {
     }
 }
 
-pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree]) -> base::MacResult {
+pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree]) -> ~base::MacResult {
     let (expr, ty_lit) = parse_tts(cx, tts);
 
     let ty = match ty_lit {
@@ -121,12 +121,12 @@ pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree]) -> 
             }
             _ => {
                 cx.span_err(expr.span, "unsupported literal in hexfloat!");
-                return base::MacResult::dummy_expr(sp);
+                return base::DummyResult::expr(sp);
             }
         },
         _ => {
             cx.span_err(expr.span, "non-literal in hexfloat!");
-            return base::MacResult::dummy_expr(sp);
+            return base::DummyResult::expr(sp);
         }
     };
 
@@ -137,7 +137,7 @@ pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree]) -> 
                 let pos = expr.span.lo + syntax::codemap::Pos::from_uint(err_pos + 1);
                 let span = syntax::codemap::mk_sp(pos,pos);
                 cx.span_err(span, format!("invalid hex float literal in hexfloat!: {}", err_str));
-                return base::MacResult::dummy_expr(sp);
+                return base::DummyResult::expr(sp);
             }
             _ => ()
         }
@@ -147,7 +147,7 @@ pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree]) -> 
         None => ast::LitFloatUnsuffixed(s),
         Some (ty) => ast::LitFloat(s, ty)
     };
-    MRExpr(cx.expr_lit(sp, lit))
+    MacExpr::new(cx.expr_lit(sp, lit))
 }
 
 struct Ident {

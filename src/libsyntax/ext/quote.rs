@@ -289,53 +289,53 @@ pub mod rt {
 
 pub fn expand_quote_tokens(cx: &mut ExtCtxt,
                            sp: Span,
-                           tts: &[ast::TokenTree]) -> base::MacResult {
+                           tts: &[ast::TokenTree]) -> ~base::MacResult {
     let (cx_expr, expr) = expand_tts(cx, sp, tts);
     let expanded = expand_wrapper(cx, sp, cx_expr, expr);
-    base::MRExpr(expanded)
+    base::MacExpr::new(expanded)
 }
 
 pub fn expand_quote_expr(cx: &mut ExtCtxt,
                          sp: Span,
-                         tts: &[ast::TokenTree]) -> base::MacResult {
+                         tts: &[ast::TokenTree]) -> ~base::MacResult {
     let expanded = expand_parse_call(cx, sp, "parse_expr", Vec::new(), tts);
-    base::MRExpr(expanded)
+    base::MacExpr::new(expanded)
 }
 
 pub fn expand_quote_item(cx: &mut ExtCtxt,
                          sp: Span,
-                         tts: &[ast::TokenTree]) -> base::MacResult {
+                         tts: &[ast::TokenTree]) -> ~base::MacResult {
     let e_attrs = cx.expr_vec_ng(sp);
     let expanded = expand_parse_call(cx, sp, "parse_item",
                                     vec!(e_attrs), tts);
-    base::MRExpr(expanded)
+    base::MacExpr::new(expanded)
 }
 
 pub fn expand_quote_pat(cx: &mut ExtCtxt,
                         sp: Span,
-                        tts: &[ast::TokenTree]) -> base::MacResult {
+                        tts: &[ast::TokenTree]) -> ~base::MacResult {
     let e_refutable = cx.expr_lit(sp, ast::LitBool(true));
     let expanded = expand_parse_call(cx, sp, "parse_pat",
                                     vec!(e_refutable), tts);
-    base::MRExpr(expanded)
+    base::MacExpr::new(expanded)
 }
 
 pub fn expand_quote_ty(cx: &mut ExtCtxt,
                        sp: Span,
-                       tts: &[ast::TokenTree]) -> base::MacResult {
+                       tts: &[ast::TokenTree]) -> ~base::MacResult {
     let e_param_colons = cx.expr_lit(sp, ast::LitBool(false));
     let expanded = expand_parse_call(cx, sp, "parse_ty",
                                      vec!(e_param_colons), tts);
-    base::MRExpr(expanded)
+    base::MacExpr::new(expanded)
 }
 
 pub fn expand_quote_stmt(cx: &mut ExtCtxt,
                          sp: Span,
-                         tts: &[ast::TokenTree]) -> base::MacResult {
+                         tts: &[ast::TokenTree]) -> ~base::MacResult {
     let e_attrs = cx.expr_vec_ng(sp);
     let expanded = expand_parse_call(cx, sp, "parse_stmt",
                                     vec!(e_attrs), tts);
-    base::MRExpr(expanded)
+    base::MacExpr::new(expanded)
 }
 
 fn ids_ext(strs: Vec<~str> ) -> Vec<ast::Ident> {
