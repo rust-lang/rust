@@ -14,6 +14,7 @@
 // error-pattern:should be a positive integer
 // compile-flags: --test
 // exec-env:RUST_TEST_TASKS=foo
+// ignore-pretty: does not work well with `--test`
 
 #[test]
 fn do_nothing() {}
