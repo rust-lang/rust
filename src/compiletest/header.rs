@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use common::config;
+use common::Config;
 use common;
 use util;
 
@@ -110,11 +110,11 @@ pub fn load_props(testfile: &Path) -> TestProps {
     }
 }
 
-pub fn is_test_ignored(config: &config, testfile: &Path) -> bool {
-    fn ignore_target(config: &config) -> ~str {
+pub fn is_test_ignored(config: &Config, testfile: &Path) -> bool {
+    fn ignore_target(config: &Config) -> ~str {
         "ignore-".to_owned() + util::get_os(config.target)
     }
-    fn ignore_stage(config: &config) -> ~str {
+    fn ignore_stage(config: &Config) -> ~str {
         "ignore-".to_owned() + config.stage_id.split('-').next().unwrap()
     }
 
@@ -122,7 +122,7 @@ pub fn is_test_ignored(config: &config, testfile: &Path) -> bool {
         if parse_name_directive(ln, "ignore-test") { false }
         else if parse_name_directive(ln, ignore_target(config)) { false }
         else if parse_name_directive(ln, ignore_stage(config)) { false }
-        else if config.mode == common::mode_pretty &&
+        else if config.mode == common::Pretty &&
             parse_name_directive(ln, "ignore-pretty") { false }
         else if config.target != config.host &&
             parse_name_directive(ln, "ignore-cross-compile") { false }

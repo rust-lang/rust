@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use common::{config, mode_compile_fail, mode_pretty, mode_run_fail, mode_run_pass};
+use common::Config;
+use common::{CompileFail, Pretty, RunFail, RunPass};
 use errors;
 use header::TestProps;
 use header;
@@ -30,7 +31,7 @@ use std::strbuf::StrBuf;
 use std::task;
 use test::MetricMap;
 
-pub fn run(config: config, testfile: ~str) {
+pub fn run(config: Config, testfile: ~str) {
 
     match config.target.as_slice() {
 
@@ -47,7 +48,7 @@ pub fn run(config: config, testfile: ~str) {
     run_metrics(config, testfile, &mut _mm);
 }
 
-pub fn run_metrics(config: config, testfile: ~str, mm: &mut MetricMap) {
+pub fn run_metrics(config: Config, testfile: ~str, mm: &mut MetricMap) {
     if config.verbose {
         // We're going to be dumping a lot of info. Start on a new line.
         print!("\n\n");
@@ -57,17 +58,17 @@ pub fn run_metrics(config: config, testfile: ~str, mm: &mut MetricMap) {
     let props = header::load_props(&testfile);
     debug!("loaded props");
     match config.mode {
-      mode_compile_fail => run_cfail_test(&config, &props, &testfile),
-      mode_run_fail => run_rfail_test(&config, &props, &testfile),
-      mode_run_pass => run_rpass_test(&config, &props, &testfile),
-      mode_pretty => run_pretty_test(&config, &props, &testfile),
-      mode_debug_info_gdb => run_debuginfo_gdb_test(&config, &props, &testfile),
-      mode_debug_info_lldb => run_debuginfo_lldb_test(&config, &props, &testfile),
-      mode_codegen => run_codegen_test(&config, &props, &testfile, mm)
+      CompileFail => run_cfail_test(&config, &props, &testfile),
+      RunFail => run_rfail_test(&config, &props, &testfile),
+      RunPass => run_rpass_test(&config, &props, &testfile),
+      Pretty => run_pretty_test(&config, &props, &testfile),
+      DebugInfoGdb => run_debuginfo_gdb_test(&config, &props, &testfile),
+      DebugInfoLldb => run_debuginfo_lldb_test(&config, &props, &testfile),
+      Codegen => run_codegen_test(&config, &props, &testfile, mm)
     }
 }
 
-fn run_cfail_test(config: &config, props: &TestProps, testfile: &Path) {
+fn run_cfail_test(config: &Config, props: &TestProps, testfile: &Path) {
     let proc_res = compile_test(config, props, testfile);
 
     if proc_res.status.success() {
@@ -88,7 +89,7 @@ fn run_cfail_test(config: &config, props: &TestProps, testfile: &Path) {
     check_no_compiler_crash(&proc_res);
 }
 
-fn run_rfail_test(config: &config, props: &TestProps, testfile: &Path) {
+fn run_rfail_test(config: &Config, props: &TestProps, testfile: &Path) {
     let proc_res = if !config.jit {
         let proc_res = compile_test(config, props, testfile);
 
@@ -121,7 +122,7 @@ fn check_correct_failure_status(proc_res: &ProcRes) {
     }
 }
 
-fn run_rpass_test(config: &config, props: &TestProps, testfile: &Path) {
+fn run_rpass_test(config: &Config, props: &TestProps, testfile: &Path) {
     if !config.jit {
         let mut proc_res = compile_test(config, props, testfile);
 
@@ -141,7 +142,7 @@ fn run_rpass_test(config: &config, props: &TestProps, testfile: &Path) {
     }
 }
 
-fn run_pretty_test(config: &config, props: &TestProps, testfile: &Path) {
+fn run_pretty_test(config: &Config, props: &TestProps, testfile: &Path) {
     if props.pp_exact.is_some() {
         logv(config, "testing for exact pretty-printing".to_owned());
     } else { logv(config, "testing for converging pretty-printing".to_owned()); }
@@ -198,12 +199,12 @@ fn run_pretty_test(config: &config, props: &TestProps, testfile: &Path) {
 
     return;
 
-    fn print_source(config: &config, testfile: &Path, src: ~str) -> ProcRes {
+    fn print_source(config: &Config, testfile: &Path, src: ~str) -> ProcRes {
         compose_and_run(config, testfile, make_pp_args(config, testfile),
                         Vec::new(), config.compile_lib_path, Some(src))
     }
 
-    fn make_pp_args(config: &config, _testfile: &Path) -> ProcArgs {
+    fn make_pp_args(config: &Config, _testfile: &Path) -> ProcArgs {
         let args = vec!("-".to_owned(), "--pretty".to_owned(), "normal".to_owned(),
                      "--target=".to_owned() + config.target);
         // FIXME (#9639): This needs to handle non-utf8 paths
@@ -228,13 +229,13 @@ actual:\n\
         }
     }
 
-    fn typecheck_source(config: &config, props: &TestProps,
+    fn typecheck_source(config: &Config, props: &TestProps,
                         testfile: &Path, src: ~str) -> ProcRes {
         let args = make_typecheck_args(config, props, testfile);
         compose_and_run_compiler(config, props, testfile, args, Some(src))
     }
 
-    fn make_typecheck_args(config: &config, props: &TestProps, testfile: &Path) -> ProcArgs {
+    fn make_typecheck_args(config: &Config, props: &TestProps, testfile: &Path) -> ProcArgs {
         let aux_dir = aux_output_dir_name(config, testfile);
         let target = if props.force_host {
             config.host.as_slice()
@@ -255,8 +256,8 @@ actual:\n\
     }
 }
 
-fn run_debuginfo_gdb_test(config: &config, props: &TestProps, testfile: &Path) {
-    let mut config = config {
+fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
+    let mut config = Config {
         target_rustcflags: cleanup_debug_info_options(&config.target_rustcflags),
         host_rustcflags: cleanup_debug_info_options(&config.host_rustcflags),
         .. config.clone()
@@ -834,16 +835,16 @@ struct ProcArgs {prog: ~str, args: Vec<~str> }
 
 struct ProcRes {status: ProcessExit, stdout: ~str, stderr: ~str, cmdline: ~str}
 
-fn compile_test(config: &config, props: &TestProps,
+fn compile_test(config: &Config, props: &TestProps,
                 testfile: &Path) -> ProcRes {
     compile_test_(config, props, testfile, [])
 }
 
-fn jit_test(config: &config, props: &TestProps, testfile: &Path) -> ProcRes {
+fn jit_test(config: &Config, props: &TestProps, testfile: &Path) -> ProcRes {
     compile_test_(config, props, testfile, ["--jit".to_owned()])
 }
 
-fn compile_test_(config: &config, props: &TestProps,
+fn compile_test_(config: &Config, props: &TestProps,
                  testfile: &Path, extra_args: &[~str]) -> ProcRes {
     let aux_dir = aux_output_dir_name(config, testfile);
     // FIXME (#9639): This needs to handle non-utf8 paths
@@ -855,7 +856,7 @@ fn compile_test_(config: &config, props: &TestProps,
     compose_and_run_compiler(config, props, testfile, args, None)
 }
 
-fn exec_compiled_test(config: &config, props: &TestProps,
+fn exec_compiled_test(config: &Config, props: &TestProps,
                       testfile: &Path) -> ProcRes {
 
     let env = props.exec_env.clone();
@@ -876,7 +877,7 @@ fn exec_compiled_test(config: &config, props: &TestProps,
 }
 
 fn compose_and_run_compiler(
-    config: &config,
+    config: &Config,
     props: &TestProps,
     testfile: &Path,
     args: ProcArgs,
@@ -934,7 +935,7 @@ fn ensure_dir(path: &Path) {
     fs::mkdir(path, io::UserRWX).unwrap();
 }
 
-fn compose_and_run(config: &config, testfile: &Path,
+fn compose_and_run(config: &Config, testfile: &Path,
                    ProcArgs{ args, prog }: ProcArgs,
                    procenv: Vec<(~str, ~str)> ,
                    lib_path: &str,
@@ -948,10 +949,10 @@ enum TargetLocation {
     ThisDirectory(Path),
 }
 
-fn make_compile_args(config: &config,
+fn make_compile_args(config: &Config,
                      props: &TestProps,
                      extras: Vec<~str> ,
-                     xform: |&config, &Path| -> TargetLocation,
+                     xform: |&Config, &Path| -> TargetLocation,
                      testfile: &Path)
                      -> ProcArgs {
     let xform_file = xform(config, testfile);
@@ -983,14 +984,14 @@ fn make_compile_args(config: &config,
     return ProcArgs {prog: config.rustc_path.as_str().unwrap().to_owned(), args: args};
 }
 
-fn make_lib_name(config: &config, auxfile: &Path, testfile: &Path) -> Path {
+fn make_lib_name(config: &Config, auxfile: &Path, testfile: &Path) -> Path {
     // what we return here is not particularly important, as it
     // happens; rustc ignores everything except for the directory.
     let auxname = output_testname(auxfile);
     aux_output_dir_name(config, testfile).join(&auxname)
 }
 
-fn make_exe_name(config: &config, testfile: &Path) -> Path {
+fn make_exe_name(config: &Config, testfile: &Path) -> Path {
     let mut f = output_base_name(config, testfile);
     if !os::consts::EXE_SUFFIX.is_empty() {
         match f.filename().map(|s| Vec::from_slice(s).append(os::consts::EXE_SUFFIX.as_bytes())) {
@@ -1001,7 +1002,7 @@ fn make_exe_name(config: &config, testfile: &Path) -> Path {
     f
 }
 
-fn make_run_args(config: &config, props: &TestProps, testfile: &Path) ->
+fn make_run_args(config: &Config, props: &TestProps, testfile: &Path) ->
    ProcArgs {
     // If we've got another tool to run under (valgrind),
     // then split apart its command
@@ -1029,7 +1030,7 @@ fn split_maybe_args(argstr: &Option<~str>) -> Vec<~str> {
     }
 }
 
-fn program_output(config: &config, testfile: &Path, lib_path: &str, prog: ~str,
+fn program_output(config: &Config, testfile: &Path, lib_path: &str, prog: ~str,
                   args: Vec<~str> , env: Vec<(~str, ~str)> ,
                   input: Option<~str>) -> ProcRes {
     let cmdline =
@@ -1069,23 +1070,23 @@ fn lib_path_cmd_prefix(path: &str) -> ~str {
     format!("{}=\"{}\"", util::lib_path_env_var(), util::make_new_path(path))
 }
 
-fn dump_output(config: &config, testfile: &Path, out: &str, err: &str) {
+fn dump_output(config: &Config, testfile: &Path, out: &str, err: &str) {
     dump_output_file(config, testfile, out, "out");
     dump_output_file(config, testfile, err, "err");
     maybe_dump_to_stdout(config, out, err);
 }
 
-fn dump_output_file(config: &config, testfile: &Path,
+fn dump_output_file(config: &Config, testfile: &Path,
                     out: &str, extension: &str) {
     let outfile = make_out_name(config, testfile, extension);
     File::create(&outfile).write(out.as_bytes()).unwrap();
 }
 
-fn make_out_name(config: &config, testfile: &Path, extension: &str) -> Path {
+fn make_out_name(config: &Config, testfile: &Path, extension: &str) -> Path {
     output_base_name(config, testfile).with_extension(extension)
 }
 
-fn aux_output_dir_name(config: &config, testfile: &Path) -> Path {
+fn aux_output_dir_name(config: &Config, testfile: &Path) -> Path {
     let mut f = output_base_name(config, testfile);
     match f.filename().map(|s| Vec::from_slice(s).append(bytes!(".libaux"))) {
         Some(v) => f.set_filename(v),
@@ -1098,13 +1099,13 @@ fn output_testname(testfile: &Path) -> Path {
     Path::new(testfile.filestem().unwrap())
 }
 
-fn output_base_name(config: &config, testfile: &Path) -> Path {
+fn output_base_name(config: &Config, testfile: &Path) -> Path {
     config.build_base
         .join(&output_testname(testfile))
         .with_extension(config.stage_id.as_slice())
 }
 
-fn maybe_dump_to_stdout(config: &config, out: &str, err: &str) {
+fn maybe_dump_to_stdout(config: &Config, out: &str, err: &str) {
     if config.verbose {
         println!("------{}------------------------------", "stdout");
         println!("{}", out);
@@ -1137,7 +1138,7 @@ stderr:\n\
     fail!();
 }
 
-fn _arm_exec_compiled_test(config: &config, props: &TestProps,
+fn _arm_exec_compiled_test(config: &Config, props: &TestProps,
                       testfile: &Path, env: Vec<(~str, ~str)> ) -> ProcRes {
 
     let args = make_run_args(config, props, testfile);
@@ -1237,7 +1238,7 @@ fn _arm_exec_compiled_test(config: &config, props: &TestProps,
     }
 }
 
-fn _arm_push_aux_shared_library(config: &config, testfile: &Path) {
+fn _arm_push_aux_shared_library(config: &Config, testfile: &Path) {
     let tdir = aux_output_dir_name(config, testfile);
 
     let dirs = fs::readdir(&tdir).unwrap();
@@ -1260,7 +1261,7 @@ fn _arm_push_aux_shared_library(config: &config, testfile: &Path) {
 
 // codegen tests (vs. clang)
 
-fn make_o_name(config: &config, testfile: &Path) -> Path {
+fn make_o_name(config: &Config, testfile: &Path) -> Path {
     output_base_name(config, testfile).with_extension("o")
 }
 
@@ -1273,7 +1274,7 @@ fn append_suffix_to_stem(p: &Path, suffix: &str) -> Path {
     }
 }
 
-fn compile_test_and_save_bitcode(config: &config, props: &TestProps,
+fn compile_test_and_save_bitcode(config: &Config, props: &TestProps,
                                  testfile: &Path) -> ProcRes {
     let aux_dir = aux_output_dir_name(config, testfile);
     // FIXME (#9639): This needs to handle non-utf8 paths
@@ -1287,7 +1288,7 @@ fn compile_test_and_save_bitcode(config: &config, props: &TestProps,
     compose_and_run_compiler(config, props, testfile, args, None)
 }
 
-fn compile_cc_with_clang_and_save_bitcode(config: &config, _props: &TestProps,
+fn compile_cc_with_clang_and_save_bitcode(config: &Config, _props: &TestProps,
                                           testfile: &Path) -> ProcRes {
     let bitcodefile = output_base_name(config, testfile).with_extension("bc");
     let bitcodefile = append_suffix_to_stem(&bitcodefile, "clang");
@@ -1303,7 +1304,7 @@ fn compile_cc_with_clang_and_save_bitcode(config: &config, _props: &TestProps,
     compose_and_run(config, testfile, proc_args, Vec::new(), "", None)
 }
 
-fn extract_function_from_bitcode(config: &config, _props: &TestProps,
+fn extract_function_from_bitcode(config: &Config, _props: &TestProps,
                                  fname: &str, testfile: &Path,
                                  suffix: &str) -> ProcRes {
     let bitcodefile = output_base_name(config, testfile).with_extension("bc");
@@ -1320,7 +1321,7 @@ fn extract_function_from_bitcode(config: &config, _props: &TestProps,
     compose_and_run(config, testfile, proc_args, Vec::new(), "", None)
 }
 
-fn disassemble_extract(config: &config, _props: &TestProps,
+fn disassemble_extract(config: &Config, _props: &TestProps,
                        testfile: &Path, suffix: &str) -> ProcRes {
     let bitcodefile = output_base_name(config, testfile).with_extension("bc");
     let bitcodefile = append_suffix_to_stem(&bitcodefile, suffix);
@@ -1344,7 +1345,7 @@ fn count_extracted_lines(p: &Path) -> uint {
 }
 
 
-fn run_codegen_test(config: &config, props: &TestProps,
+fn run_codegen_test(config: &Config, props: &TestProps,
                     testfile: &Path, mm: &mut MetricMap) {
 
     if config.llvm_bin_path.is_none() {
