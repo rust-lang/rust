@@ -16,19 +16,32 @@
 //! module are the building blocks for synchronization in rust.
 //!
 //! This module provides message-based communication over channels, concretely
-//! defined as two types:
+//! defined among three types:
 //!
 //! * `Sender`
+//! * `SyncSender`
 //! * `Receiver`
 //!
-//! A `Sender` is used to send data to a `Receiver`. A `Sender` is clone-able
-//! such that many tasks can send simultaneously to one receiver. These
-//! channels are *task blocking*, not *thread blocking*. This means that if one
-//! task is blocked on a channel, other tasks can continue to make progress.
+//! A `Sender` or `SyncSender` is used to send data to a `Receiver`. Both
+//! senders are clone-able such that many tasks can send simultaneously to one
+//! receiver.  These channels are *task blocking*, not *thread blocking*. This
+//! means that if one task is blocked on a channel, other tasks can continue to
+//! make progress.
 //!
-//! Rust channels can be used as if they have an infinite internal buffer. What
-//! this means is that the `send` operation will never block. `Receiver`s, on
-//! the other hand, will block the task if there is no data to be received.
+//! Rust channels come in one of two flavors:
+//!
+//! 1. An asynchronous, infinitely buffered channel. The `channel()` function
+//!    will return a `(Sender, Receiver)` tuple where all sends will be
+//!    **asynchronous** (they never block). The channel conceptually has an
+//!    infinite buffer.
+//!
+//! 2. A synchronous, bounded channel. The `sync_channel()` function will return
+//!    a `(SyncSender, Receiver)` tuple where the storage for pending messages
+//!    is a pre-allocated buffer of a fixed size. All sends will be
+//!    **synchronous** by blocking until there is buffer space available. Note
+//!    that a bound of 0 is allowed, causing the channel to become a
+//!    "rendezvous" channel where each sender atomically hands off a message to
+//!    a receiver.
 //!
 //! ## Failure Propagation
 //!
@@ -38,32 +51,40 @@
 //! `fail!`. The purpose of this is to allow propagation of failure among tasks
 //! that are linked to one another via channels.
 //!
-//! There are methods on both of `Sender` and `Receiver` to perform their
+//! There are methods on both of senders and receivers to perform their
 //! respective operations without failing, however.
 //!
-//! ## Outside the Runtime
+//! ## Runtime Requirements
 //!
-//! All channels and ports work seamlessly inside and outside of the rust
-//! runtime. This means that code may use channels to communicate information
-//! inside and outside of the runtime. For example, if rust were embedded as an
-//! FFI module in another application, the rust runtime would probably be
-//! running in its own external thread pool. Channels created can communicate
-//! from the native application threads to the rust threads through the use of
-//! native mutexes and condition variables.
+//! The channel types defined in this module generally have very few runtime
+//! requirements in order to operate. The major requirement they have is for a
+//! local rust `Task` to be available if any *blocking* operation is performed.
 //!
-//! What this means is that if a native thread is using a channel, execution
-//! will be blocked accordingly by blocking the OS thread.
+//! If a local `Task` is not available (for example an FFI callback), then the
+//! `send` operation is safe on a `Sender` (as well as a `send_opt`) as well as
+//! the `try_send` method on a `SyncSender`, but no other operations are
+//! guaranteed to be safe.
+//!
+//! Additionally, channels can interoperate between runtimes. If one task in a
+//! program is running on libnative and another is running on libgreen, they can
+//! still communicate with one another using channels.
 //!
 //! # Example
 //!
-//! ```rust,should_fail
+//! Simple usage:
+//!
+//! ```
 //! // Create a simple streaming channel
 //! let (tx, rx) = channel();
 //! spawn(proc() {
 //!     tx.send(10);
 //! });
 //! assert_eq!(rx.recv(), 10);
+//! ```
 //!
+//! Shared usage:
+//!
+//! ```
 //! // Create a shared channel which can be sent along from many tasks
 //! let (tx, rx) = channel();
 //! for i in range(0, 10) {
@@ -77,11 +98,26 @@
 //!     let j = rx.recv();
 //!     assert!(0 <= j && j < 10);
 //! }
+//! ```
 //!
+//! Propagating failure:
+//!
+//! ```should_fail
 //! // The call to recv() will fail!() because the channel has already hung
 //! // up (or been deallocated)
 //! let (tx, rx) = channel::<int>();
 //! drop(tx);
+//! rx.recv();
+//! ```
+//!
+//! Synchronous channels:
+//!
+//! ```
+//! let (tx, rx) = sync_channel(0);
+//! spawn(proc() {
+//!     // This will wait for the parent task to start receiving
+//!     tx.send(53);
+//! });
 //! rx.recv();
 //! ```
 
@@ -354,9 +390,27 @@ enum Flavor<T> {
     Sync(UnsafeArc<sync::Packet<T>>),
 }
 
-/// Creates a new channel, returning the sender/receiver halves. All data sent
-/// on the sender will become available on the receiver. See the documentation
-/// of `Receiver` and `Sender` to see what's possible with them.
+/// Creates a new asynchronous channel, returning the sender/receiver halves.
+///
+/// All data sent on the sender will become available on the receiver, and no
+/// send will block the calling task (this channel has an "infinite buffer").
+///
+/// # Example
+///
+/// ```
+/// let (tx, rx) = channel();
+///
+/// // Spawn off an expensive computation
+/// spawn(proc() {
+/// #   fn expensive_computation() {}
+///     tx.send(expensive_computation());
+/// });
+///
+/// // Do some useful work for awhile
+///
+/// // Let's see what that answer was
+/// println!("{}", rx.recv());
+/// ```
 pub fn channel<T: Send>() -> (Sender<T>, Receiver<T>) {
     let (a, b) = UnsafeArc::new2(oneshot::Packet::new());
     (Sender::new(Oneshot(b)), Receiver::new(Oneshot(a)))
