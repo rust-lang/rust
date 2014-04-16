@@ -26,7 +26,7 @@
 
 extern crate collections;
 
-use std::cast::{transmute, transmute_mut, transmute_mut_region};
+use std::cast::{transmute, transmute_mut, transmute_mut_lifetime};
 use std::cast;
 use std::cell::{Cell, RefCell};
 use std::mem;
@@ -186,7 +186,7 @@ impl Arena {
     #[inline]
     fn alloc_copy_inner(&mut self, n_bytes: uint, align: uint) -> *u8 {
         unsafe {
-            let this = transmute_mut_region(self);
+            let this = transmute_mut_lifetime(self);
             let start = round_up(this.copy_head.fill.get(), align);
             let end = start + n_bytes;
             if end > self.chunk_size() {
@@ -233,7 +233,7 @@ impl Arena {
             let after_tydesc;
 
             {
-                let head = transmute_mut_region(&mut self.head);
+                let head = transmute_mut_lifetime(&mut self.head);
 
                 tydesc_start = head.fill.get();
                 after_tydesc = head.fill.get() + mem::size_of::<*TyDesc>();
@@ -245,7 +245,7 @@ impl Arena {
                 return self.alloc_noncopy_grow(n_bytes, align);
             }
 
-            let head = transmute_mut_region(&mut self.head);
+            let head = transmute_mut_lifetime(&mut self.head);
             head.fill.set(round_up(end, mem::pref_align_of::<*TyDesc>()));
 
             //debug!("idx = {}, size = {}, align = {}, fill = {}",
