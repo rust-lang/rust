@@ -67,18 +67,10 @@ impl Visitor<()> for ParentVisitor {
             // they inherit privacy
             ast::ItemEnum(ref def, _) => {
                 for variant in def.variants.iter() {
-                    // If variants are private, then their logical "parent" is
-                    // the enclosing module because everyone in the enclosing
-                    // module can still use the private variant
-                    if variant.node.vis == ast::Private {
-                        self.parents.insert(variant.node.id, self.curparent);
-
-                    // Otherwise, if the variant is public, then the parent is
-                    // considered the enclosing enum because the enum will
-                    // dictate the privacy visibility of this variant instead.
-                    } else {
-                        self.parents.insert(variant.node.id, item.id);
-                    }
+                    // The parent is considered the enclosing enum because the
+                    // enum will dictate the privacy visibility of this variant
+                    // instead.
+                    self.parents.insert(variant.node.id, item.id);
                 }
             }
 
@@ -224,9 +216,7 @@ impl<'a> Visitor<()> for EmbargoVisitor<'a> {
             // public all variants are public unless they're explicitly priv
             ast::ItemEnum(ref def, _) if public_first => {
                 for variant in def.variants.iter() {
-                    if variant.node.vis != ast::Private {
-                        self.exported_items.insert(variant.node.id);
-                    }
+                    self.exported_items.insert(variant.node.id);
                 }
             }
 
@@ -462,10 +452,7 @@ impl<'a> PrivacyVisitor<'a> {
                 Some(ast_map::NodeForeignItem(_)) => {
                     self.tcx.map.get_foreign_vis(closest_private_id)
                 }
-                Some(ast_map::NodeVariant(ref v)) => {
-                    // sadly enum variants still inherit visibility, so only
-                    // break out of this is explicitly private
-                    if v.node.vis == ast::Private { break }
+                Some(ast_map::NodeVariant(..)) => {
                     ast::Public // need to move up a level (to the enum)
                 }
                 _ => ast::Public,
@@ -997,10 +984,6 @@ impl<'a> Visitor<()> for SanePrivacyVisitor<'a> {
     fn visit_view_item(&mut self, i: &ast::ViewItem, _: ()) {
         match i.vis {
             ast::Inherited => {}
-            ast::Private => {
-                self.tcx.sess.span_err(i.span, "unnecessary visibility \
-                                                qualifier");
-            }
             ast::Public => {
                 if self.in_fn {
                     self.tcx.sess.span_err(i.span, "unnecessary `pub`, imports \
@@ -1036,25 +1019,6 @@ impl<'a> SanePrivacyVisitor<'a> {
                 }
             }
         };
-        let check_not_priv = |sp: Span, vis: ast::Visibility, note: &str| {
-            if vis == ast::Private {
-                tcx.sess.span_err(sp, "unnecessary `priv` qualifier");
-                if note.len() > 0 {
-                    tcx.sess.span_note(sp, note);
-                }
-            }
-        };
-        let check_struct = |def: &@ast::StructDef| {
-            for f in def.fields.iter() {
-                match f.node.kind {
-                    ast::NamedField(_, ast::Private) => {
-                        tcx.sess.span_err(f.span, "unnecessary `priv` \
-                                                   visibility");
-                    }
-                    ast::NamedField(..) | ast::UnnamedField(..) => {}
-                }
-            }
-        };
         match item.node {
             // implementations of traits don't need visibility qualifiers because
             // that's controlled by having the trait in scope.
@@ -1067,22 +1031,14 @@ impl<'a> SanePrivacyVisitor<'a> {
                 }
             }
 
-            ast::ItemImpl(_, _, _, ref methods) => {
+            ast::ItemImpl(..) => {
                 check_inherited(item.span, item.vis,
                                 "place qualifiers on individual methods instead");
-                for i in methods.iter() {
-                    check_not_priv(i.span, i.vis, "functions are private by \
-                                                   default");
-                }
             }
-            ast::ItemForeignMod(ref fm) => {
+            ast::ItemForeignMod(..) => {
                 check_inherited(item.span, item.vis,
                                 "place qualifiers on individual functions \
                                  instead");
-                for i in fm.items.iter() {
-                    check_not_priv(i.span, i.vis, "functions are private by \
-                                                   default");
-                }
             }
 
             ast::ItemEnum(ref def, _) => {
@@ -1094,23 +1050,10 @@ impl<'a> SanePrivacyVisitor<'a> {
                                                            visibility");
                             }
                         }
-                        ast::Private => {
-                            if item.vis != ast::Public {
-                                tcx.sess.span_err(v.span, "unnecessary `priv` \
-                                                           visibility");
-                            }
-                        }
                         ast::Inherited => {}
-                    }
-
-                    match v.node.kind {
-                        ast::StructVariantKind(ref s) => check_struct(s),
-                        ast::TupleVariantKind(..) => {}
                     }
                 }
             }
-
-            ast::ItemStruct(ref def, _) => check_struct(def),
 
             ast::ItemTrait(_, _, ref methods) => {
                 for m in methods.iter() {
@@ -1124,12 +1067,9 @@ impl<'a> SanePrivacyVisitor<'a> {
                 }
             }
 
-            ast::ItemStatic(..) |
+            ast::ItemStatic(..) | ast::ItemStruct(..) |
             ast::ItemFn(..) | ast::ItemMod(..) | ast::ItemTy(..) |
-            ast::ItemMac(..) => {
-                check_not_priv(item.span, item.vis, "items are private by \
-                                                     default");
-            }
+            ast::ItemMac(..) => {}
         }
     }
 

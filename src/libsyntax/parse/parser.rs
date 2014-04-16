@@ -39,7 +39,7 @@ use ast::{MutImmutable, MutMutable, Mac_, MacInvocTT, Matcher, MatchNonterminal}
 use ast::{MatchSeq, MatchTok, Method, MutTy, BiMul, Mutability};
 use ast::{NamedField, UnNeg, NoReturn, UnNot, P, Pat, PatEnum};
 use ast::{PatIdent, PatLit, PatRange, PatRegion, PatStruct};
-use ast::{PatTup, PatUniq, PatWild, PatWildMulti, Private};
+use ast::{PatTup, PatUniq, PatWild, PatWildMulti};
 use ast::{BiRem, Required};
 use ast::{RetStyle, Return, BiShl, BiShr, Stmt, StmtDecl};
 use ast::{StmtExpr, StmtSemi, StmtMac, StructDef, StructField};
@@ -3953,10 +3953,6 @@ impl<'a> Parser<'a> {
 
         let attrs = self.parse_outer_attributes();
 
-        if self.eat_keyword(keywords::Priv) {
-            return self.parse_single_struct_field(Private, attrs);
-        }
-
         if self.eat_keyword(keywords::Pub) {
            return self.parse_single_struct_field(Public, attrs);
         }
@@ -3967,7 +3963,6 @@ impl<'a> Parser<'a> {
     // parse visiility: PUB, PRIV, or nothing
     fn parse_visibility(&mut self) -> Visibility {
         if self.eat_keyword(keywords::Pub) { Public }
-        else if self.eat_keyword(keywords::Priv) { Private }
         else { Inherited }
     }
 

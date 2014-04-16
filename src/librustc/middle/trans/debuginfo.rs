@@ -206,15 +206,19 @@ impl CrateDebugContext {
     }
 }
 
-pub enum FunctionDebugContext {
-    priv FunctionDebugContext(~FunctionDebugContextData),
-    priv DebugInfoDisabled,
-    priv FunctionWithoutDebugInfo,
+pub struct FunctionDebugContext {
+    repr: FunctionDebugContextRepr,
+}
+
+enum FunctionDebugContextRepr {
+    FunctionDebugContext(~FunctionDebugContextData),
+    DebugInfoDisabled,
+    FunctionWithoutDebugInfo,
 }
 
 impl FunctionDebugContext {
     fn get_ref<'a>(&'a self, cx: &CrateContext, span: Span) -> &'a FunctionDebugContextData {
-        match *self {
+        match self.repr {
             FunctionDebugContext(~ref data) => data,
             DebugInfoDisabled => {
                 cx.sess().span_bug(span, FunctionDebugContext::debuginfo_disabled_message());
@@ -544,7 +548,7 @@ pub fn create_argument_metadata(bcx: &Block, arg: &ast::Arg) {
 pub fn set_source_location(fcx: &FunctionContext,
                            node_id: ast::NodeId,
                            span: Span) {
-    match fcx.debug_context {
+    match fcx.debug_context.repr {
         DebugInfoDisabled => return,
         FunctionWithoutDebugInfo => {
             set_debug_location(fcx.ccx, UnknownLocation);
@@ -585,7 +589,7 @@ pub fn clear_source_location(fcx: &FunctionContext) {
 /// and must therefore be called before the first real statement/expression of the function is
 /// translated.
 pub fn start_emitting_source_locations(fcx: &FunctionContext) {
-    match fcx.debug_context {
+    match fcx.debug_context.repr {
         FunctionDebugContext(~ref data) => {
             data.source_locations_enabled.set(true)
         },
@@ -603,7 +607,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
                                      param_substs: Option<@param_substs>,
                                      llfn: ValueRef) -> FunctionDebugContext {
     if cx.sess().opts.debuginfo == NoDebugInfo {
-        return DebugInfoDisabled;
+        return FunctionDebugContext { repr: DebugInfoDisabled };
     }
 
     // Clear the debug location so we don't assign them in the function prelude. Do this here
@@ -611,7 +615,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
     set_debug_location(cx, UnknownLocation);
 
     if fn_ast_id == -1 {
-        return FunctionWithoutDebugInfo;
+        return FunctionDebugContext { repr: FunctionWithoutDebugInfo };
     }
 
     let empty_generics = ast::Generics { lifetimes: Vec::new(), ty_params: OwnedSlice::empty() };
@@ -678,7 +682,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
         ast_map::NodeForeignItem(..) |
         ast_map::NodeVariant(..) |
         ast_map::NodeStructCtor(..) => {
-            return FunctionWithoutDebugInfo;
+            return FunctionDebugContext { repr: FunctionWithoutDebugInfo };
         }
         _ => cx.sess().bug(format!("create_function_debug_context: \
                                     unexpected sort of node: {:?}", fnitem))
@@ -686,7 +690,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
 
     // This can be the case for functions inlined from another crate
     if span == codemap::DUMMY_SP {
-        return FunctionWithoutDebugInfo;
+        return FunctionDebugContext { repr: FunctionWithoutDebugInfo };
     }
 
     let loc = span_start(cx, span);
@@ -761,7 +765,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
                        fn_metadata,
                        &mut *fn_debug_context.scope_map.borrow_mut());
 
-    return FunctionDebugContext(fn_debug_context);
+    return FunctionDebugContext { repr: FunctionDebugContext(fn_debug_context) };
 
     fn get_function_signature(cx: &CrateContext,
                               fn_ast_id: ast::NodeId,
@@ -2335,7 +2339,7 @@ fn DIB(cx: &CrateContext) -> DIBuilderRef {
 }
 
 fn fn_should_be_ignored(fcx: &FunctionContext) -> bool {
-    match fcx.debug_context {
+    match fcx.debug_context.repr {
         FunctionDebugContext(_) => false,
         _ => true
     }

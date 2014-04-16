@@ -1038,7 +1038,6 @@ pub struct TraitRef {
 #[deriving(Clone, Eq, TotalEq, Encodable, Decodable, Hash)]
 pub enum Visibility {
     Public,
-    Private,
     Inherited,
 }
 
@@ -1046,7 +1045,7 @@ impl Visibility {
     pub fn inherit_from(&self, parent_visibility: Visibility) -> Visibility {
         match self {
             &Inherited => parent_visibility,
-            &Public | &Private => *self
+            &Public => *self
         }
     }
 }
