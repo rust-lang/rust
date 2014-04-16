@@ -300,10 +300,6 @@ fn resolve_crate<'a>(e: &mut Env,
                 dylib, rlib, metadata
             } = load_ctxt.load_library_crate(root);
 
-            // Claim this crate number and cache it
-            let cnum = e.next_crate_num;
-            e.next_crate_num += 1;
-
             // Stash paths for top-most crate locally if necessary.
             let crate_paths = if root.is_none() {
                 Some(CratePaths {
@@ -322,6 +318,17 @@ fn resolve_crate<'a>(e: &mut Env,
                 resolve_crate_deps(e, root, metadata.as_slice(), span)
             } else {
                 @RefCell::new(HashMap::new())
+            };
+
+            // Claim this crate number and cache it if we're linking to the
+            // crate, otherwise it's a syntax-only crate and we don't need to
+            // reserve a number
+            let cnum = if should_link {
+                let n = e.next_crate_num;
+                e.next_crate_num += 1;
+                n
+            } else {
+                -1
             };
 
             let cmeta = @cstore::crate_metadata {
