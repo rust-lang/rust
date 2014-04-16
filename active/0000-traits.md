@@ -822,7 +822,20 @@ is the `Iterator` trait:
 
     trait Iterator<E> { ... }
     
-It is common to want to write a function that iterates over 
+It is common to want to write a function that takes an iterator of
+some specific type, e.g. char. With a fundep-style approach, this can
+easily be expressed:
+
+    fn foo<I:Iterator<Char>>(...) { ... }
+    
+If using associated types, the equivalent would require some sort
+of `where` clause:
+
+    trait Iterator { type E; }
+    fn foo<I:Iterator>(...) where I::E == Char { ... }
+    
+Past experience also suggests that it's harder to figure out how to
+integrate this substitution into the type system rules themselves.
 
 # Footnotes
 
