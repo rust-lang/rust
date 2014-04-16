@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-pretty: `--pretty expand` creates unnecessary `unsafe` block
 
 #![feature(macro_rules, managed_boxes)]
 #![deny(warnings)]
