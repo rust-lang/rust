@@ -182,7 +182,7 @@ fn helper(input: libc::c_int, messages: Receiver<Req>) {
                             let t = active.remove(i).unwrap();
                             ack.send(t);
                         }
-                        _ => break
+                        Err(..) => break
                     }
                 }
 

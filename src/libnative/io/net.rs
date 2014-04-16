@@ -26,10 +26,10 @@ use super::{IoResult, retry, keep_going};
 #[cfg(unix)]    pub type sock_t = super::file::fd_t;
 
 pub fn htons(u: u16) -> u16 {
-    mem::to_be16(u as i16) as u16
+    mem::to_be16(u)
 }
 pub fn ntohs(u: u16) -> u16 {
-    mem::from_be16(u as i16) as u16
+    mem::from_be16(u)
 }
 
 enum InAddr {

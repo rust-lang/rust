@@ -220,9 +220,9 @@ impl Uuid {
                 data4: [0, ..8]
         };
 
-        fields.data1 = to_be32(d1 as i32) as u32;
-        fields.data2 = to_be16(d2 as i16) as u16;
-        fields.data3 = to_be16(d3 as i16) as u16;
+        fields.data1 = to_be32(d1);
+        fields.data2 = to_be16(d2);
+        fields.data3 = to_be16(d3);
         slice::bytes::copy_memory(fields.data4, d4);
 
         unsafe {
@@ -343,9 +343,9 @@ impl Uuid {
         unsafe {
             uf = transmute_copy(&self.bytes);
         }
-        uf.data1 = to_be32(uf.data1 as i32) as u32;
-        uf.data2 = to_be16(uf.data2 as i16) as u16;
-        uf.data3 = to_be16(uf.data3 as i16) as u16;
+        uf.data1 = to_be32(uf.data1);
+        uf.data2 = to_be16(uf.data2);
+        uf.data3 = to_be16(uf.data3);
         let s = format!("{:08x}-{:04x}-{:04x}-{:02x}{:02x}-\
                          {:02x}{:02x}{:02x}{:02x}{:02x}{:02x}",
             uf.data1,

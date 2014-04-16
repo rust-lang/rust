@@ -18,15 +18,17 @@
 #![allow(dead_code)]
 
 use cast;
-use ops::Drop;
+use ops::{Drop, Deref, DerefMut};
 use ptr::RawPtr;
 
 #[cfg(windows)]               // mingw-w32 doesn't like thread_local things
 #[cfg(target_os = "android")] // see #10686
-pub use self::native::*;
+pub use self::native::{init, cleanup, put, take, try_take, unsafe_take, exists,
+                       unsafe_borrow, try_unsafe_borrow};
 
 #[cfg(not(windows), not(target_os = "android"))]
-pub use self::compiled::*;
+pub use self::compiled::{init, cleanup, put, take, try_take, unsafe_take, exists,
+                         unsafe_borrow, try_unsafe_borrow};
 
 /// Encapsulates a borrowed value. When this value goes out of scope, the
 /// pointer is returned.
@@ -48,13 +50,15 @@ impl<T> Drop for Borrowed<T> {
     }
 }
 
-impl<T> Borrowed<T> {
-    pub fn get<'a>(&'a mut self) -> &'a mut T {
-        unsafe {
-            let val_ptr: &mut ~T = cast::transmute(&mut self.val);
-            let val_ptr: &'a mut T = *val_ptr;
-            val_ptr
-        }
+impl<T> Deref<T> for Borrowed<T> {
+    fn deref<'a>(&'a self) -> &'a T {
+        unsafe { &*(self.val as *T) }
+    }
+}
+
+impl<T> DerefMut<T> for Borrowed<T> {
+    fn deref_mut<'a>(&'a mut self) -> &'a mut T {
+        unsafe { &mut *(self.val as *mut T) }
     }
 }
 
