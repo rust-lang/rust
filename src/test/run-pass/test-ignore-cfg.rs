@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // compile-flags: --test --cfg ignorecfg
+// ignore-pretty: does not work well with `--test`
 
 #[test]
 #[ignore(cfg(ignorecfg))]

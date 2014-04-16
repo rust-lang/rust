@@ -157,9 +157,7 @@ fn run_pretty_test(config: &Config, props: &TestProps, testfile: &Path) {
     let mut round = 0;
     while round < rounds {
         logv(config, format!("pretty-printing round {}", round));
-        let proc_res = print_source(config,
-                                    testfile,
-                                    (*srcs.get(round)).clone());
+        let proc_res = print_source(config, props, testfile, (*srcs.get(round)).clone(), "normal");
 
         if !proc_res.status.success() {
             fatal_ProcRes(format!("pretty-printing failed in round {}", round),
@@ -197,16 +195,41 @@ fn run_pretty_test(config: &Config, props: &TestProps, testfile: &Path) {
         fatal_ProcRes(~"pretty-printed source does not typecheck", &proc_res);
     }
 
+    // additionally, run `--pretty expanded` and try to build it.
+    let proc_res = print_source(config, props, testfile, (*srcs.get(round)).clone(), "expanded");
+    if !proc_res.status.success() {
+        fatal_ProcRes(format!("pretty-printing (expanded) failed"), &proc_res);
+    }
+
+    let ProcRes{ stdout: expanded_src, .. } = proc_res;
+    let proc_res = typecheck_source(config, props, testfile, expanded_src);
+    if !proc_res.status.success() {
+        fatal_ProcRes(format!("pretty-printed source (expanded) does not typecheck"), &proc_res);
+    }
+
     return;
 
-    fn print_source(config: &Config, testfile: &Path, src: ~str) -> ProcRes {
-        compose_and_run(config, testfile, make_pp_args(config, testfile),
+    fn print_source(config: &Config,
+                    props: &TestProps,
+                    testfile: &Path,
+                    src: ~str,
+                    pretty_type: &str) -> ProcRes {
+        compose_and_run(config, testfile,
+                        make_pp_args(config, props, testfile, pretty_type.to_owned()),
                         Vec::new(), config.compile_lib_path, Some(src))
     }
 
-    fn make_pp_args(config: &Config, _testfile: &Path) -> ProcArgs {
-        let args = vec!(~"-", ~"--pretty", ~"normal",
-                     ~"--target=" + config.target);
+    fn make_pp_args(config: &Config,
+                    props: &TestProps,
+                    testfile: &Path,
+                    pretty_type: ~str) -> ProcArgs {
+        let aux_dir = aux_output_dir_name(config, testfile);
+        let mut args = vec!(~"-", ~"--pretty", pretty_type,
+                     ~"--target=" + config.target,
+                     ~"-L",
+                     aux_dir.as_str().unwrap().to_owned());
+        args.push_all_move(split_maybe_args(&config.target_rustcflags));
+        args.push_all_move(split_maybe_args(&props.compile_flags));
         // FIXME (#9639): This needs to handle non-utf8 paths
         return ProcArgs {prog: config.rustc_path.as_str().unwrap().to_owned(), args: args};
     }
