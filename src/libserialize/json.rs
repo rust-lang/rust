@@ -68,7 +68,7 @@ use serialize::{json, Encodable};
  }
 
 fn main() {
-    let to_encode_object = TestStruct{data_str:~"example of string to encode"};
+    let to_encode_object = TestStruct{data_str:"example of string to encode".to_owned()};
     let mut m = io::MemWriter::new();
     {
         let mut encoder = json::Encoder::new(&mut m as &mut std::io::Writer);
@@ -85,7 +85,7 @@ into a string (~str) or buffer (~[u8]): `str_encode(&m)` and `buffer_encode(&m)`
 
 ```rust
 use serialize::json;
-let to_encode_object = ~"example of string to encode";
+let to_encode_object = "example of string to encode".to_owned();
 let encoded_str: ~str = json::Encoder::str_encode(&to_encode_object);
 ```
 
@@ -114,14 +114,14 @@ pub struct MyStruct  {
 impl ToJson for MyStruct {
     fn to_json( &self ) -> json::Json {
         let mut d = ~TreeMap::new();
-        d.insert(~"attr1", self.attr1.to_json());
-        d.insert(~"attr2", self.attr2.to_json());
+        d.insert("attr1".to_owned(), self.attr1.to_json());
+        d.insert("attr2".to_owned(), self.attr2.to_json());
         json::Object(d)
     }
 }
 
 fn main() {
-    let test2: MyStruct = MyStruct {attr1: 1, attr2:~"test"};
+    let test2: MyStruct = MyStruct {attr1: 1, attr2:"test".to_owned()};
     let tjson: json::Json = test2.to_json();
     let json_str: ~str = tjson.to_str();
 }
@@ -141,7 +141,7 @@ pub struct MyStruct  {
 
 fn main() {
     let json_str_to_decode: ~str =
-            ~"{\"attr1\":1,\"attr2\":\"toto\"}";
+            "{\"attr1\":1,\"attr2\":\"toto\"}".to_owned();
     let json_object = json::from_str(json_str_to_decode);
     let mut decoder = json::Decoder::new(json_object.unwrap());
     let decoded_object: MyStruct = match Decodable::decode(&mut decoder) {
@@ -173,7 +173,7 @@ use serialize::{json, Encodable, Decodable};
 // It calls the generated `Encodable` impl.
 fn main() {
     let to_encode_object = TestStruct1
-         {data_int: 1, data_str:~"toto", data_vector:~[2,3,4,5]};
+         {data_int: 1, data_str:"toto".to_owned(), data_vector:~[2,3,4,5]};
     let encoded_str: ~str = json::Encoder::str_encode(&to_encode_object);
 
     // To deserialize use the `json::from_str` and `json::Decoder`
@@ -207,9 +207,9 @@ pub struct TestStruct1  {
 impl ToJson for TestStruct1 {
     fn to_json( &self ) -> json::Json {
         let mut d = ~TreeMap::new();
-        d.insert(~"data_int", self.data_int.to_json());
-        d.insert(~"data_str", self.data_str.to_json());
-        d.insert(~"data_vector", self.data_vector.to_json());
+        d.insert("data_int".to_owned(), self.data_int.to_json());
+        d.insert("data_str".to_owned(), self.data_str.to_json());
+        d.insert("data_vector".to_owned(), self.data_vector.to_json());
         json::Object(d)
     }
 }
@@ -217,7 +217,8 @@ impl ToJson for TestStruct1 {
 fn main() {
     // Serialization using our impl of to_json
 
-    let test2: TestStruct1 = TestStruct1 {data_int: 1, data_str:~"toto", data_vector:~[2,3,4,5]};
+    let test2: TestStruct1 = TestStruct1 {data_int: 1, data_str:"toto".to_owned(),
+                                          data_vector:~[2,3,4,5]};
     let tjson: json::Json = test2.to_json();
     let json_str: ~str = tjson.to_str();
 
@@ -931,7 +932,7 @@ impl<T: Iterator<char>> Parser<T> {
             if self.eof() {
                 Ok(value)
             } else {
-                self.error(~"trailing characters")
+                self.error("trailing characters".to_owned())
             }
           }
           Err(e) => Err(e)
@@ -968,7 +969,7 @@ impl<T : Iterator<char>> Parser<T> {
     fn parse_value(&mut self) -> DecodeResult<Json> {
         self.parse_whitespace();
 
-        if self.eof() { return self.error(~"EOF while parsing value"); }
+        if self.eof() { return self.error("EOF while parsing value".to_owned()); }
 
         match self.ch_or_null() {
             'n' => self.parse_ident("ull", Null),
@@ -983,7 +984,7 @@ impl<T : Iterator<char>> Parser<T> {
             },
             '[' => self.parse_list(),
             '{' => self.parse_object(),
-            _ => self.error(~"invalid syntax"),
+            _ => self.error("invalid syntax".to_owned()),
         }
     }
 
@@ -999,7 +1000,7 @@ impl<T : Iterator<char>> Parser<T> {
             self.bump();
             Ok(value)
         } else {
-            self.error(~"invalid syntax")
+            self.error("invalid syntax".to_owned())
         }
     }
 
@@ -1042,7 +1043,7 @@ impl<T : Iterator<char>> Parser<T> {
 
                 // There can be only one leading '0'.
                 match self.ch_or_null() {
-                    '0' .. '9' => return self.error(~"invalid number"),
+                    '0' .. '9' => return self.error("invalid number".to_owned()),
                     _ => ()
                 }
             },
@@ -1059,7 +1060,7 @@ impl<T : Iterator<char>> Parser<T> {
                     }
                 }
             }
-            _ => return self.error(~"invalid number"),
+            _ => return self.error("invalid number".to_owned()),
         }
         Ok(res)
     }
@@ -1070,7 +1071,7 @@ impl<T : Iterator<char>> Parser<T> {
         // Make sure a digit follows the decimal place.
         match self.ch_or_null() {
             '0' .. '9' => (),
-             _ => return self.error(~"invalid number")
+             _ => return self.error("invalid number".to_owned())
         }
 
         let mut res = res;
@@ -1106,7 +1107,7 @@ impl<T : Iterator<char>> Parser<T> {
         // Make sure a digit follows the exponent place.
         match self.ch_or_null() {
             '0' .. '9' => (),
-            _ => return self.error(~"invalid number")
+            _ => return self.error("invalid number".to_owned())
         }
         while !self.eof() {
             match self.ch_or_null() {
@@ -1144,7 +1145,7 @@ impl<T : Iterator<char>> Parser<T> {
                 'e' | 'E' => n * 16_u16 + 14_u16,
                 'f' | 'F' => n * 16_u16 + 15_u16,
                 _ => return self.error(
-                    ~"invalid \\u escape (unrecognized hex)")
+                    "invalid \\u escape (unrecognized hex)".to_owned())
             };
 
             i += 1u;
@@ -1153,7 +1154,7 @@ impl<T : Iterator<char>> Parser<T> {
         // Error out if we didn't parse 4 digits.
         if i != 4u {
             return self.error(
-                ~"invalid \\u escape (not four digits)");
+                "invalid \\u escape (not four digits)".to_owned());
         }
 
         Ok(n)
@@ -1166,7 +1167,7 @@ impl<T : Iterator<char>> Parser<T> {
         loop {
             self.bump();
             if self.eof() {
-                return self.error(~"EOF while parsing string");
+                return self.error("EOF while parsing string".to_owned());
             }
 
             if escape {
@@ -1181,7 +1182,7 @@ impl<T : Iterator<char>> Parser<T> {
                     't' => res.push_char('\t'),
                     'u' => match try!(self.decode_hex_escape()) {
                         0xDC00 .. 0xDFFF => return self.error(
-                                ~"lone trailing surrogate in hex escape"),
+                                "lone trailing surrogate in hex escape".to_owned()),
 
                         // Non-BMP characters are encoded as a sequence of
                         // two hex escapes, representing UTF-16 surrogates.
@@ -1191,14 +1192,14 @@ impl<T : Iterator<char>> Parser<T> {
                             match (c1, c2) {
                                 (Some('\\'), Some('u')) => (),
                                 _ => return self.error(
-                                    ~"unexpected end of non-BMP hex escape"),
+                                    "unexpected end of non-BMP hex escape".to_owned()),
                             }
 
                             let buf = [n1, try!(self.decode_hex_escape())];
                             match str::utf16_items(buf.as_slice()).next() {
                                 Some(ScalarValue(c)) => res.push_char(c),
                                 _ => return self.error(
-                                    ~"lone leading surrogate in hex escape"),
+                                    "lone leading surrogate in hex escape".to_owned()),
                             }
                         }
 
@@ -1208,7 +1209,7 @@ impl<T : Iterator<char>> Parser<T> {
                                 format!("invalid Unicode codepoint {:u}", n)),
                         },
                     },
-                    _ => return self.error(~"invalid escape"),
+                    _ => return self.error("invalid escape".to_owned()),
                 }
                 escape = false;
             } else if self.ch_is('\\') {
@@ -1245,7 +1246,7 @@ impl<T : Iterator<char>> Parser<T> {
 
             self.parse_whitespace();
             if self.eof() {
-                return self.error(~"EOF while parsing list");
+                return self.error("EOF while parsing list".to_owned());
             }
 
             if self.ch_is(',') {
@@ -1254,7 +1255,7 @@ impl<T : Iterator<char>> Parser<T> {
                 self.bump();
                 return Ok(List(values.move_iter().collect()));
             } else {
-                return self.error(~"expected `,` or `]`")
+                return self.error("expected `,` or `]`".to_owned())
             }
         };
     }
@@ -1274,7 +1275,7 @@ impl<T : Iterator<char>> Parser<T> {
             self.parse_whitespace();
 
             if !self.ch_is('"') {
-                return self.error(~"key must be a string");
+                return self.error("key must be a string".to_owned());
             }
 
             let key = match self.parse_str() {
@@ -1286,7 +1287,7 @@ impl<T : Iterator<char>> Parser<T> {
 
             if !self.ch_is(':') {
                 if self.eof() { break; }
-                return self.error(~"expected `:`");
+                return self.error("expected `:`".to_owned());
             }
             self.bump();
 
@@ -1301,12 +1302,12 @@ impl<T : Iterator<char>> Parser<T> {
                 '}' => { self.bump(); return Ok(Object(values)); },
                 _ => {
                     if self.eof() { break; }
-                    return self.error(~"expected `,` or `}`");
+                    return self.error("expected `,` or `}`".to_owned());
                 }
             }
         }
 
-        return self.error(~"EOF while parsing object");
+        return self.error("EOF while parsing object".to_owned());
     }
 }
 
@@ -1318,7 +1319,7 @@ pub fn from_reader(rdr: &mut io::Reader) -> DecodeResult<Json> {
     };
     let s = match str::from_utf8(contents.as_slice()) {
         Some(s) => s.to_owned(),
-        None => return Err(ParseError(~"contents not utf-8", 0, 0))
+        None => return Err(ParseError("contents not utf-8".to_owned(), 0, 0))
     };
     let mut parser = Parser::new(s.chars());
     parser.parse()
@@ -1354,7 +1355,7 @@ macro_rules! expect(
     ($e:expr, Null) => ({
         match $e {
             Null => Ok(()),
-            other => Err(ExpectedError(~"Null", format!("{}", other)))
+            other => Err(ExpectedError("Null".to_owned(), format!("{}", other)))
         }
     });
     ($e:expr, $t:ident) => ({
@@ -1399,7 +1400,7 @@ impl ::Decoder<Error> for Decoder {
                 // is going to have a string here, as per JSON spec..
                 Ok(FromStr::from_str(s).unwrap())
             },
-            value => Err(ExpectedError(~"Number", format!("{}", value)))
+            value => Err(ExpectedError("Number".to_owned(), format!("{}", value)))
         }
     }
 
@@ -1415,7 +1416,7 @@ impl ::Decoder<Error> for Decoder {
                 _ => ()
             }
         }
-        Err(ExpectedError(~"single character string", format!("{}", s)))
+        Err(ExpectedError("single character string".to_owned(), format!("{}", s)))
     }
 
     fn read_str(&mut self) -> DecodeResult<~str> {
@@ -1438,23 +1439,23 @@ impl ::Decoder<Error> for Decoder {
         let name = match self.pop() {
             String(s) => s,
             Object(mut o) => {
-                let n = match o.pop(&~"variant") {
+                let n = match o.pop(&"variant".to_owned()) {
                     Some(String(s)) => s,
-                    Some(val) => return Err(ExpectedError(~"String", format!("{}", val))),
-                    None => return Err(MissingFieldError(~"variant"))
+                    Some(val) => return Err(ExpectedError("String".to_owned(), format!("{}", val))),
+                    None => return Err(MissingFieldError("variant".to_owned()))
                 };
-                match o.pop(&~"fields") {
+                match o.pop(&"fields".to_owned()) {
                     Some(List(l)) => {
                         for field in l.move_rev_iter() {
                             self.stack.push(field.clone());
                         }
                     },
-                    Some(val) => return Err(ExpectedError(~"List", format!("{}", val))),
-                    None => return Err(MissingFieldError(~"fields"))
+                    Some(val) => return Err(ExpectedError("List".to_owned(), format!("{}", val))),
+                    None => return Err(MissingFieldError("fields".to_owned()))
                 }
                 n
             }
-            json => return Err(ExpectedError(~"String or Object", format!("{}", json)))
+            json => return Err(ExpectedError("String or Object".to_owned(), format!("{}", json)))
         };
         let idx = match names.iter().position(|n| str::eq_slice(*n, name)) {
             Some(idx) => idx,
@@ -1820,68 +1821,68 @@ mod tests {
 
     #[test]
     fn test_write_null() {
-        assert_eq!(Null.to_str(), ~"null");
-        assert_eq!(Null.to_pretty_str(), ~"null");
+        assert_eq!(Null.to_str(), "null".to_owned());
+        assert_eq!(Null.to_pretty_str(), "null".to_owned());
     }
 
 
     #[test]
     fn test_write_number() {
-        assert_eq!(Number(3.0).to_str(), ~"3");
-        assert_eq!(Number(3.0).to_pretty_str(), ~"3");
+        assert_eq!(Number(3.0).to_str(), "3".to_owned());
+        assert_eq!(Number(3.0).to_pretty_str(), "3".to_owned());
 
-        assert_eq!(Number(3.1).to_str(), ~"3.1");
-        assert_eq!(Number(3.1).to_pretty_str(), ~"3.1");
+        assert_eq!(Number(3.1).to_str(), "3.1".to_owned());
+        assert_eq!(Number(3.1).to_pretty_str(), "3.1".to_owned());
 
-        assert_eq!(Number(-1.5).to_str(), ~"-1.5");
-        assert_eq!(Number(-1.5).to_pretty_str(), ~"-1.5");
+        assert_eq!(Number(-1.5).to_str(), "-1.5".to_owned());
+        assert_eq!(Number(-1.5).to_pretty_str(), "-1.5".to_owned());
 
-        assert_eq!(Number(0.5).to_str(), ~"0.5");
-        assert_eq!(Number(0.5).to_pretty_str(), ~"0.5");
+        assert_eq!(Number(0.5).to_str(), "0.5".to_owned());
+        assert_eq!(Number(0.5).to_pretty_str(), "0.5".to_owned());
     }
 
     #[test]
     fn test_write_str() {
-        assert_eq!(String(~"").to_str(), ~"\"\"");
-        assert_eq!(String(~"").to_pretty_str(), ~"\"\"");
+        assert_eq!(String("".to_owned()).to_str(), "\"\"".to_owned());
+        assert_eq!(String("".to_owned()).to_pretty_str(), "\"\"".to_owned());
 
-        assert_eq!(String(~"foo").to_str(), ~"\"foo\"");
-        assert_eq!(String(~"foo").to_pretty_str(), ~"\"foo\"");
+        assert_eq!(String("foo".to_owned()).to_str(), "\"foo\"".to_owned());
+        assert_eq!(String("foo".to_owned()).to_pretty_str(), "\"foo\"".to_owned());
     }
 
     #[test]
     fn test_write_bool() {
-        assert_eq!(Boolean(true).to_str(), ~"true");
-        assert_eq!(Boolean(true).to_pretty_str(), ~"true");
+        assert_eq!(Boolean(true).to_str(), "true".to_owned());
+        assert_eq!(Boolean(true).to_pretty_str(), "true".to_owned());
 
-        assert_eq!(Boolean(false).to_str(), ~"false");
-        assert_eq!(Boolean(false).to_pretty_str(), ~"false");
+        assert_eq!(Boolean(false).to_str(), "false".to_owned());
+        assert_eq!(Boolean(false).to_pretty_str(), "false".to_owned());
     }
 
     #[test]
     fn test_write_list() {
-        assert_eq!(List(~[]).to_str(), ~"[]");
-        assert_eq!(List(~[]).to_pretty_str(), ~"[]");
+        assert_eq!(List(~[]).to_str(), "[]".to_owned());
+        assert_eq!(List(~[]).to_pretty_str(), "[]".to_owned());
 
-        assert_eq!(List(~[Boolean(true)]).to_str(), ~"[true]");
+        assert_eq!(List(~[Boolean(true)]).to_str(), "[true]".to_owned());
         assert_eq!(
             List(~[Boolean(true)]).to_pretty_str(),
-            ~"\
+            "\
             [\n  \
                 true\n\
-            ]"
+            ]".to_owned()
         );
 
         let long_test_list = List(~[
             Boolean(false),
             Null,
-            List(~[String(~"foo\nbar"), Number(3.5)])]);
+            List(~[String("foo\nbar".to_owned()), Number(3.5)])]);
 
         assert_eq!(long_test_list.to_str(),
-            ~"[false,null,[\"foo\\nbar\",3.5]]");
+            "[false,null,[\"foo\\nbar\",3.5]]".to_owned());
         assert_eq!(
             long_test_list.to_pretty_str(),
-            ~"\
+            "\
             [\n  \
                 false,\n  \
                 null,\n  \
@@ -1889,46 +1890,46 @@ mod tests {
                     \"foo\\nbar\",\n    \
                     3.5\n  \
                 ]\n\
-            ]"
+            ]".to_owned()
         );
     }
 
     #[test]
     fn test_write_object() {
-        assert_eq!(mk_object([]).to_str(), ~"{}");
-        assert_eq!(mk_object([]).to_pretty_str(), ~"{}");
+        assert_eq!(mk_object([]).to_str(), "{}".to_owned());
+        assert_eq!(mk_object([]).to_pretty_str(), "{}".to_owned());
 
         assert_eq!(
-            mk_object([(~"a", Boolean(true))]).to_str(),
-            ~"{\"a\":true}"
+            mk_object([("a".to_owned(), Boolean(true))]).to_str(),
+            "{\"a\":true}".to_owned()
         );
         assert_eq!(
-            mk_object([(~"a", Boolean(true))]).to_pretty_str(),
-            ~"\
+            mk_object([("a".to_owned(), Boolean(true))]).to_pretty_str(),
+            "\
             {\n  \
                 \"a\": true\n\
-            }"
+            }".to_owned()
         );
 
         let complex_obj = mk_object([
-                (~"b", List(~[
-                    mk_object([(~"c", String(~"\x0c\r"))]),
-                    mk_object([(~"d", String(~""))])
+                ("b".to_owned(), List(~[
+                    mk_object([("c".to_owned(), String("\x0c\r".to_owned()))]),
+                    mk_object([("d".to_owned(), String("".to_owned()))])
                 ]))
             ]);
 
         assert_eq!(
             complex_obj.to_str(),
-            ~"{\
+            "{\
                 \"b\":[\
                     {\"c\":\"\\f\\r\"},\
                     {\"d\":\"\"}\
                 ]\
-            }"
+            }".to_owned()
         );
         assert_eq!(
             complex_obj.to_pretty_str(),
-            ~"\
+            "\
             {\n  \
                 \"b\": [\n    \
                     {\n      \
@@ -1938,14 +1939,14 @@ mod tests {
                         \"d\": \"\"\n    \
                     }\n  \
                 ]\n\
-            }"
+            }".to_owned()
         );
 
         let a = mk_object([
-            (~"a", Boolean(true)),
-            (~"b", List(~[
-                mk_object([(~"c", String(~"\x0c\r"))]),
-                mk_object([(~"d", String(~""))])
+            ("a".to_owned(), Boolean(true)),
+            ("b".to_owned(), List(~[
+                mk_object([("c".to_owned(), String("\x0c\r".to_owned()))]),
+                mk_object([("d".to_owned(), String("".to_owned()))])
             ]))
         ]);
 
@@ -1972,53 +1973,53 @@ mod tests {
                 let mut encoder = Encoder::new(wr);
                 animal.encode(&mut encoder).unwrap();
             }),
-            ~"\"Dog\""
+            "\"Dog\"".to_owned()
         );
         assert_eq!(
             with_str_writer(|wr| {
                 let mut encoder = PrettyEncoder::new(wr);
                 animal.encode(&mut encoder).unwrap();
             }),
-            ~"\"Dog\""
+            "\"Dog\"".to_owned()
         );
 
-        let animal = Frog(~"Henry", 349);
+        let animal = Frog("Henry".to_owned(), 349);
         assert_eq!(
             with_str_writer(|wr| {
                 let mut encoder = Encoder::new(wr);
                 animal.encode(&mut encoder).unwrap();
             }),
-            ~"{\"variant\":\"Frog\",\"fields\":[\"Henry\",349]}"
+            "{\"variant\":\"Frog\",\"fields\":[\"Henry\",349]}".to_owned()
         );
         assert_eq!(
             with_str_writer(|wr| {
                 let mut encoder = PrettyEncoder::new(wr);
                 animal.encode(&mut encoder).unwrap();
             }),
-            ~"\
+            "\
             [\n  \
                 \"Frog\",\n  \
                 \"Henry\",\n  \
                 349\n\
-            ]"
+            ]".to_owned()
         );
     }
 
     #[test]
     fn test_write_some() {
-        let value = Some(~"jodhpurs");
+        let value = Some("jodhpurs".to_owned());
         let s = with_str_writer(|wr| {
             let mut encoder = Encoder::new(wr);
             value.encode(&mut encoder).unwrap();
         });
-        assert_eq!(s, ~"\"jodhpurs\"");
+        assert_eq!(s, "\"jodhpurs\"".to_owned());
 
-        let value = Some(~"jodhpurs");
+        let value = Some("jodhpurs".to_owned());
         let s = with_str_writer(|wr| {
             let mut encoder = PrettyEncoder::new(wr);
             value.encode(&mut encoder).unwrap();
         });
-        assert_eq!(s, ~"\"jodhpurs\"");
+        assert_eq!(s, "\"jodhpurs\"".to_owned());
     }
 
     #[test]
@@ -2028,47 +2029,47 @@ mod tests {
             let mut encoder = Encoder::new(wr);
             value.encode(&mut encoder).unwrap();
         });
-        assert_eq!(s, ~"null");
+        assert_eq!(s, "null".to_owned());
 
         let s = with_str_writer(|wr| {
             let mut encoder = Encoder::new(wr);
             value.encode(&mut encoder).unwrap();
         });
-        assert_eq!(s, ~"null");
+        assert_eq!(s, "null".to_owned());
     }
 
     #[test]
     fn test_trailing_characters() {
         assert_eq!(from_str("nulla"),
-            Err(ParseError(~"trailing characters", 1u, 5u)));
+            Err(ParseError("trailing characters".to_owned(), 1u, 5u)));
         assert_eq!(from_str("truea"),
-            Err(ParseError(~"trailing characters", 1u, 5u)));
+            Err(ParseError("trailing characters".to_owned(), 1u, 5u)));
         assert_eq!(from_str("falsea"),
-            Err(ParseError(~"trailing characters", 1u, 6u)));
+            Err(ParseError("trailing characters".to_owned(), 1u, 6u)));
         assert_eq!(from_str("1a"),
-            Err(ParseError(~"trailing characters", 1u, 2u)));
+            Err(ParseError("trailing characters".to_owned(), 1u, 2u)));
         assert_eq!(from_str("[]a"),
-            Err(ParseError(~"trailing characters", 1u, 3u)));
+            Err(ParseError("trailing characters".to_owned(), 1u, 3u)));
         assert_eq!(from_str("{}a"),
-            Err(ParseError(~"trailing characters", 1u, 3u)));
+            Err(ParseError("trailing characters".to_owned(), 1u, 3u)));
     }
 
     #[test]
     fn test_read_identifiers() {
         assert_eq!(from_str("n"),
-            Err(ParseError(~"invalid syntax", 1u, 2u)));
+            Err(ParseError("invalid syntax".to_owned(), 1u, 2u)));
         assert_eq!(from_str("nul"),
-            Err(ParseError(~"invalid syntax", 1u, 4u)));
+            Err(ParseError("invalid syntax".to_owned(), 1u, 4u)));
 
         assert_eq!(from_str("t"),
-            Err(ParseError(~"invalid syntax", 1u, 2u)));
+            Err(ParseError("invalid syntax".to_owned(), 1u, 2u)));
         assert_eq!(from_str("truz"),
-            Err(ParseError(~"invalid syntax", 1u, 4u)));
+            Err(ParseError("invalid syntax".to_owned(), 1u, 4u)));
 
         assert_eq!(from_str("f"),
-            Err(ParseError(~"invalid syntax", 1u, 2u)));
+            Err(ParseError("invalid syntax".to_owned(), 1u, 2u)));
         assert_eq!(from_str("faz"),
-            Err(ParseError(~"invalid syntax", 1u, 3u)));
+            Err(ParseError("invalid syntax".to_owned(), 1u, 3u)));
 
         assert_eq!(from_str("null"), Ok(Null));
         assert_eq!(from_str("true"), Ok(Boolean(true)));
@@ -2096,20 +2097,20 @@ mod tests {
     #[test]
     fn test_read_number() {
         assert_eq!(from_str("+"),
-            Err(ParseError(~"invalid syntax", 1u, 1u)));
+            Err(ParseError("invalid syntax".to_owned(), 1u, 1u)));
         assert_eq!(from_str("."),
-            Err(ParseError(~"invalid syntax", 1u, 1u)));
+            Err(ParseError("invalid syntax".to_owned(), 1u, 1u)));
 
         assert_eq!(from_str("-"),
-            Err(ParseError(~"invalid number", 1u, 2u)));
+            Err(ParseError("invalid number".to_owned(), 1u, 2u)));
         assert_eq!(from_str("00"),
-            Err(ParseError(~"invalid number", 1u, 2u)));
+            Err(ParseError("invalid number".to_owned(), 1u, 2u)));
         assert_eq!(from_str("1."),
-            Err(ParseError(~"invalid number", 1u, 3u)));
+            Err(ParseError("invalid number".to_owned(), 1u, 3u)));
         assert_eq!(from_str("1e"),
-            Err(ParseError(~"invalid number", 1u, 3u)));
+            Err(ParseError("invalid number".to_owned(), 1u, 3u)));
         assert_eq!(from_str("1e+"),
-            Err(ParseError(~"invalid number", 1u, 4u)));
+            Err(ParseError("invalid number".to_owned(), 1u, 4u)));
 
         assert_eq!(from_str("3"), Ok(Number(3.0)));
         assert_eq!(from_str("3.1"), Ok(Number(3.1)));
@@ -2155,24 +2156,24 @@ mod tests {
     #[test]
     fn test_read_str() {
         assert_eq!(from_str("\""),
-            Err(ParseError(~"EOF while parsing string", 1u, 2u)));
+            Err(ParseError("EOF while parsing string".to_owned(), 1u, 2u)));
         assert_eq!(from_str("\"lol"),
-            Err(ParseError(~"EOF while parsing string", 1u, 5u)));
+            Err(ParseError("EOF while parsing string".to_owned(), 1u, 5u)));
 
-        assert_eq!(from_str("\"\""), Ok(String(~"")));
-        assert_eq!(from_str("\"foo\""), Ok(String(~"foo")));
-        assert_eq!(from_str("\"\\\"\""), Ok(String(~"\"")));
-        assert_eq!(from_str("\"\\b\""), Ok(String(~"\x08")));
-        assert_eq!(from_str("\"\\n\""), Ok(String(~"\n")));
-        assert_eq!(from_str("\"\\r\""), Ok(String(~"\r")));
-        assert_eq!(from_str("\"\\t\""), Ok(String(~"\t")));
-        assert_eq!(from_str(" \"foo\" "), Ok(String(~"foo")));
-        assert_eq!(from_str("\"\\u12ab\""), Ok(String(~"\u12ab")));
-        assert_eq!(from_str("\"\\uAB12\""), Ok(String(~"\uAB12")));
+        assert_eq!(from_str("\"\""), Ok(String("".to_owned())));
+        assert_eq!(from_str("\"foo\""), Ok(String("foo".to_owned())));
+        assert_eq!(from_str("\"\\\"\""), Ok(String("\"".to_owned())));
+        assert_eq!(from_str("\"\\b\""), Ok(String("\x08".to_owned())));
+        assert_eq!(from_str("\"\\n\""), Ok(String("\n".to_owned())));
+        assert_eq!(from_str("\"\\r\""), Ok(String("\r".to_owned())));
+        assert_eq!(from_str("\"\\t\""), Ok(String("\t".to_owned())));
+        assert_eq!(from_str(" \"foo\" "), Ok(String("foo".to_owned())));
+        assert_eq!(from_str("\"\\u12ab\""), Ok(String("\u12ab".to_owned())));
+        assert_eq!(from_str("\"\\uAB12\""), Ok(String("\uAB12".to_owned())));
 
         // Non-BMP escapes.  The exact error messages and positions are kind of
         // arbitrary.
-        assert_eq!(from_str("\"\\ud83d\\udca9\""), Ok(String(~"\U0001F4A9")));
+        assert_eq!(from_str("\"\\ud83d\\udca9\""), Ok(String("\U0001F4A9".to_owned())));
         assert!(from_str("\"\\ud83d\"").is_err());
         assert!(from_str("\"\\udca9\"").is_err());
         assert!(from_str("\"\\ud83d\\ud83d\"").is_err());
@@ -2185,53 +2186,53 @@ mod tests {
     fn test_decode_str() {
         let mut decoder = Decoder::new(from_str("\"\"").unwrap());
         let v: ~str = Decodable::decode(&mut decoder).unwrap();
-        assert_eq!(v, ~"");
+        assert_eq!(v, "".to_owned());
 
         let mut decoder = Decoder::new(from_str("\"foo\"").unwrap());
         let v: ~str = Decodable::decode(&mut decoder).unwrap();
-        assert_eq!(v, ~"foo");
+        assert_eq!(v, "foo".to_owned());
 
         let mut decoder = Decoder::new(from_str("\"\\\"\"").unwrap());
         let v: ~str = Decodable::decode(&mut decoder).unwrap();
-        assert_eq!(v, ~"\"");
+        assert_eq!(v, "\"".to_owned());
 
         let mut decoder = Decoder::new(from_str("\"\\b\"").unwrap());
         let v: ~str = Decodable::decode(&mut decoder).unwrap();
-        assert_eq!(v, ~"\x08");
+        assert_eq!(v, "\x08".to_owned());
 
         let mut decoder = Decoder::new(from_str("\"\\n\"").unwrap());
         let v: ~str = Decodable::decode(&mut decoder).unwrap();
-        assert_eq!(v, ~"\n");
+        assert_eq!(v, "\n".to_owned());
 
         let mut decoder = Decoder::new(from_str("\"\\r\"").unwrap());
         let v: ~str = Decodable::decode(&mut decoder).unwrap();
-        assert_eq!(v, ~"\r");
+        assert_eq!(v, "\r".to_owned());
 
         let mut decoder = Decoder::new(from_str("\"\\t\"").unwrap());
         let v: ~str = Decodable::decode(&mut decoder).unwrap();
-        assert_eq!(v, ~"\t");
+        assert_eq!(v, "\t".to_owned());
 
         let mut decoder = Decoder::new(from_str("\"\\u12ab\"").unwrap());
         let v: ~str = Decodable::decode(&mut decoder).unwrap();
-        assert_eq!(v, ~"\u12ab");
+        assert_eq!(v, "\u12ab".to_owned());
 
         let mut decoder = Decoder::new(from_str("\"\\uAB12\"").unwrap());
         let v: ~str = Decodable::decode(&mut decoder).unwrap();
-        assert_eq!(v, ~"\uAB12");
+        assert_eq!(v, "\uAB12".to_owned());
     }
 
     #[test]
     fn test_read_list() {
         assert_eq!(from_str("["),
-            Err(ParseError(~"EOF while parsing value", 1u, 2u)));
+            Err(ParseError("EOF while parsing value".to_owned(), 1u, 2u)));
         assert_eq!(from_str("[1"),
-            Err(ParseError(~"EOF while parsing list", 1u, 3u)));
+            Err(ParseError("EOF while parsing list".to_owned(), 1u, 3u)));
         assert_eq!(from_str("[1,"),
-            Err(ParseError(~"EOF while parsing value", 1u, 4u)));
+            Err(ParseError("EOF while parsing value".to_owned(), 1u, 4u)));
         assert_eq!(from_str("[1,]"),
-            Err(ParseError(~"invalid syntax", 1u, 4u)));
+            Err(ParseError("invalid syntax".to_owned(), 1u, 4u)));
         assert_eq!(from_str("[6 7]"),
-            Err(ParseError(~"expected `,` or `]`", 1u, 4u)));
+            Err(ParseError("expected `,` or `]`".to_owned(), 1u, 4u)));
 
         assert_eq!(from_str("[]"), Ok(List(~[])));
         assert_eq!(from_str("[ ]"), Ok(List(~[])));
@@ -2276,50 +2277,50 @@ mod tests {
     #[test]
     fn test_read_object() {
         assert_eq!(from_str("{"),
-            Err(ParseError(~"EOF while parsing object", 1u, 2u)));
+            Err(ParseError("EOF while parsing object".to_owned(), 1u, 2u)));
         assert_eq!(from_str("{ "),
-            Err(ParseError(~"EOF while parsing object", 1u, 3u)));
+            Err(ParseError("EOF while parsing object".to_owned(), 1u, 3u)));
         assert_eq!(from_str("{1"),
-            Err(ParseError(~"key must be a string", 1u, 2u)));
+            Err(ParseError("key must be a string".to_owned(), 1u, 2u)));
         assert_eq!(from_str("{ \"a\""),
-            Err(ParseError(~"EOF while parsing object", 1u, 6u)));
+            Err(ParseError("EOF while parsing object".to_owned(), 1u, 6u)));
         assert_eq!(from_str("{\"a\""),
-            Err(ParseError(~"EOF while parsing object", 1u, 5u)));
+            Err(ParseError("EOF while parsing object".to_owned(), 1u, 5u)));
         assert_eq!(from_str("{\"a\" "),
-            Err(ParseError(~"EOF while parsing object", 1u, 6u)));
+            Err(ParseError("EOF while parsing object".to_owned(), 1u, 6u)));
 
         assert_eq!(from_str("{\"a\" 1"),
-            Err(ParseError(~"expected `:`", 1u, 6u)));
+            Err(ParseError("expected `:`".to_owned(), 1u, 6u)));
         assert_eq!(from_str("{\"a\":"),
-            Err(ParseError(~"EOF while parsing value", 1u, 6u)));
+            Err(ParseError("EOF while parsing value".to_owned(), 1u, 6u)));
         assert_eq!(from_str("{\"a\":1"),
-            Err(ParseError(~"EOF while parsing object", 1u, 7u)));
+            Err(ParseError("EOF while parsing object".to_owned(), 1u, 7u)));
         assert_eq!(from_str("{\"a\":1 1"),
-            Err(ParseError(~"expected `,` or `}`", 1u, 8u)));
+            Err(ParseError("expected `,` or `}`".to_owned(), 1u, 8u)));
         assert_eq!(from_str("{\"a\":1,"),
-            Err(ParseError(~"EOF while parsing object", 1u, 8u)));
+            Err(ParseError("EOF while parsing object".to_owned(), 1u, 8u)));
 
         assert_eq!(from_str("{}").unwrap(), mk_object([]));
         assert_eq!(from_str("{\"a\": 3}").unwrap(),
-                  mk_object([(~"a", Number(3.0))]));
+                  mk_object([("a".to_owned(), Number(3.0))]));
 
         assert_eq!(from_str(
                       "{ \"a\": null, \"b\" : true }").unwrap(),
                   mk_object([
-                      (~"a", Null),
-                      (~"b", Boolean(true))]));
+                      ("a".to_owned(), Null),
+                      ("b".to_owned(), Boolean(true))]));
         assert_eq!(from_str("\n{ \"a\": null, \"b\" : true }\n").unwrap(),
                   mk_object([
-                      (~"a", Null),
-                      (~"b", Boolean(true))]));
+                      ("a".to_owned(), Null),
+                      ("b".to_owned(), Boolean(true))]));
         assert_eq!(from_str(
                       "{\"a\" : 1.0 ,\"b\": [ true ]}").unwrap(),
                   mk_object([
-                      (~"a", Number(1.0)),
-                      (~"b", List(~[Boolean(true)]))
+                      ("a".to_owned(), Number(1.0)),
+                      ("b".to_owned(), List(~[Boolean(true)]))
                   ]));
         assert_eq!(from_str(
-                      ~"{" +
+                      "{".to_owned() +
                           "\"a\": 1.0, " +
                           "\"b\": [" +
                               "true," +
@@ -2328,12 +2329,12 @@ mod tests {
                           "]" +
                       "}").unwrap(),
                   mk_object([
-                      (~"a", Number(1.0)),
-                      (~"b", List(~[
+                      ("a".to_owned(), Number(1.0)),
+                      ("b".to_owned(), List(~[
                           Boolean(true),
-                          String(~"foo\nbar"),
+                          String("foo\nbar".to_owned()),
                           mk_object([
-                              (~"c", mk_object([(~"d", Null)]))
+                              ("c".to_owned(), mk_object([("d".to_owned(), Null)]))
                           ])
                       ]))
                   ]));
@@ -2341,18 +2342,18 @@ mod tests {
 
     #[test]
     fn test_decode_struct() {
-        let s = ~"{
+        let s = "{
             \"inner\": [
                 { \"a\": null, \"b\": 2, \"c\": [\"abc\", \"xyz\"] }
             ]
-        }";
+        }".to_owned();
         let mut decoder = Decoder::new(from_str(s).unwrap());
         let v: Outer = Decodable::decode(&mut decoder).unwrap();
         assert_eq!(
             v,
             Outer {
                 inner: ~[
-                    Inner { a: (), b: 2, c: ~[~"abc", ~"xyz"] }
+                    Inner { a: (), b: 2, c: ~["abc".to_owned(), "xyz".to_owned()] }
                 ]
             }
         );
@@ -2366,7 +2367,7 @@ mod tests {
 
         let mut decoder = Decoder::new(from_str("\"jodhpurs\"").unwrap());
         let value: Option<~str> = Decodable::decode(&mut decoder).unwrap();
-        assert_eq!(value, Some(~"jodhpurs"));
+        assert_eq!(value, Some("jodhpurs".to_owned()));
     }
 
     #[test]
@@ -2378,23 +2379,24 @@ mod tests {
         let s = "{\"variant\":\"Frog\",\"fields\":[\"Henry\",349]}";
         let mut decoder = Decoder::new(from_str(s).unwrap());
         let value: Animal = Decodable::decode(&mut decoder).unwrap();
-        assert_eq!(value, Frog(~"Henry", 349));
+        assert_eq!(value, Frog("Henry".to_owned(), 349));
     }
 
     #[test]
     fn test_decode_map() {
-        let s = ~"{\"a\": \"Dog\", \"b\": {\"variant\":\"Frog\",\"fields\":[\"Henry\", 349]}}";
+        let s = "{\"a\": \"Dog\", \"b\": {\"variant\":\"Frog\",\
+                  \"fields\":[\"Henry\", 349]}}".to_owned();
         let mut decoder = Decoder::new(from_str(s).unwrap());
         let mut map: TreeMap<~str, Animal> = Decodable::decode(&mut decoder).unwrap();
 
-        assert_eq!(map.pop(&~"a"), Some(Dog));
-        assert_eq!(map.pop(&~"b"), Some(Frog(~"Henry", 349)));
+        assert_eq!(map.pop(&"a".to_owned()), Some(Dog));
+        assert_eq!(map.pop(&"b".to_owned()), Some(Frog("Henry".to_owned(), 349)));
     }
 
     #[test]
     fn test_multiline_errors() {
         assert_eq!(from_str("{\n  \"foo\":\n \"bar\""),
-            Err(ParseError(~"EOF while parsing object", 3u, 8u)));
+            Err(ParseError("EOF while parsing object".to_owned(), 3u, 8u)));
     }
 
     #[deriving(Decodable)]
@@ -2427,50 +2429,51 @@ mod tests {
     }
     #[test]
     fn test_decode_errors_struct() {
-        check_err::<DecodeStruct>("[]", ExpectedError(~"Object", ~"[]"));
+        check_err::<DecodeStruct>("[]", ExpectedError("Object".to_owned(), "[]".to_owned()));
         check_err::<DecodeStruct>("{\"x\": true, \"y\": true, \"z\": \"\", \"w\": []}",
-                                  ExpectedError(~"Number", ~"true"));
+                                  ExpectedError("Number".to_owned(), "true".to_owned()));
         check_err::<DecodeStruct>("{\"x\": 1, \"y\": [], \"z\": \"\", \"w\": []}",
-                                  ExpectedError(~"Boolean", ~"[]"));
+                                  ExpectedError("Boolean".to_owned(), "[]".to_owned()));
         check_err::<DecodeStruct>("{\"x\": 1, \"y\": true, \"z\": {}, \"w\": []}",
-                                  ExpectedError(~"String", ~"{}"));
+                                  ExpectedError("String".to_owned(), "{}".to_owned()));
         check_err::<DecodeStruct>("{\"x\": 1, \"y\": true, \"z\": \"\", \"w\": null}",
-                                  ExpectedError(~"List", ~"null"));
+                                  ExpectedError("List".to_owned(), "null".to_owned()));
         check_err::<DecodeStruct>("{\"x\": 1, \"y\": true, \"z\": \"\"}",
-                                  MissingFieldError(~"w"));
+                                  MissingFieldError("w".to_owned()));
     }
     #[test]
     fn test_decode_errors_enum() {
         check_err::<DecodeEnum>("{}",
-                                MissingFieldError(~"variant"));
+                                MissingFieldError("variant".to_owned()));
         check_err::<DecodeEnum>("{\"variant\": 1}",
-                                ExpectedError(~"String", ~"1"));
+                                ExpectedError("String".to_owned(), "1".to_owned()));
         check_err::<DecodeEnum>("{\"variant\": \"A\"}",
-                                MissingFieldError(~"fields"));
+                                MissingFieldError("fields".to_owned()));
         check_err::<DecodeEnum>("{\"variant\": \"A\", \"fields\": null}",
-                                ExpectedError(~"List", ~"null"));
+                                ExpectedError("List".to_owned(), "null".to_owned()));
         check_err::<DecodeEnum>("{\"variant\": \"C\", \"fields\": []}",
-                                UnknownVariantError(~"C"));
+                                UnknownVariantError("C".to_owned()));
     }
 
     #[test]
     fn test_find(){
         let json_value = from_str("{\"dog\" : \"cat\"}").unwrap();
-        let found_str = json_value.find(&~"dog");
+        let found_str = json_value.find(&"dog".to_owned());
         assert!(found_str.is_some() && found_str.unwrap().as_string().unwrap() == &"cat");
     }
 
     #[test]
     fn test_find_path(){
         let json_value = from_str("{\"dog\":{\"cat\": {\"mouse\" : \"cheese\"}}}").unwrap();
-        let found_str = json_value.find_path(&[&~"dog", &~"cat", &~"mouse"]);
+        let found_str = json_value.find_path(&[&"dog".to_owned(),
+                                             &"cat".to_owned(), &"mouse".to_owned()]);
         assert!(found_str.is_some() && found_str.unwrap().as_string().unwrap() == &"cheese");
     }
 
     #[test]
     fn test_search(){
         let json_value = from_str("{\"dog\":{\"cat\": {\"mouse\" : \"cheese\"}}}").unwrap();
-        let found_str = json_value.search(&~"mouse").and_then(|j| j.as_string());
+        let found_str = json_value.search(&"mouse".to_owned()).and_then(|j| j.as_string());
         assert!(found_str.is_some());
         assert!(found_str.unwrap() == &"cheese");
     }

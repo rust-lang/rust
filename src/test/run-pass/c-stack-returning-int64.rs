@@ -30,6 +30,6 @@ fn atoll(s: ~str) -> i64 {
 }
 
 pub fn main() {
-    assert_eq!(atol(~"1024") * 10, atol(~"10240"));
-    assert!((atoll(~"11111111111111111") * 10) == atoll(~"111111111111111110"));
+    assert_eq!(atol("1024".to_owned()) * 10, atol("10240".to_owned()));
+    assert!((atoll("11111111111111111".to_owned()) * 10) == atoll("111111111111111110".to_owned()));
 }

@@ -9,10 +9,10 @@
 // except according to those terms.
 
 pub fn main () {
-  let mut line = ~"";
+  let mut line = "".to_owned();
   let mut i = 0;
-  while line != ~"exit" {
-    line = if i == 9 { ~"exit" } else { ~"notexit" };
+  while line != "exit".to_owned() {
+    line = if i == 9 { "exit".to_owned() } else { "notexit".to_owned() };
     i += 1;
   }
 }

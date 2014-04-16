@@ -743,7 +743,7 @@ mod test {
     fn connect_close_ip4() {
         match TcpWatcher::connect(local_loop(), next_test_ip4()) {
             Ok(..) => fail!(),
-            Err(e) => assert_eq!(e.name(), ~"ECONNREFUSED"),
+            Err(e) => assert_eq!(e.name(), "ECONNREFUSED".to_owned()),
         }
     }
 
@@ -751,7 +751,7 @@ mod test {
     fn connect_close_ip6() {
         match TcpWatcher::connect(local_loop(), next_test_ip6()) {
             Ok(..) => fail!(),
-            Err(e) => assert_eq!(e.name(), ~"ECONNREFUSED"),
+            Err(e) => assert_eq!(e.name(), "ECONNREFUSED".to_owned()),
         }
     }
 

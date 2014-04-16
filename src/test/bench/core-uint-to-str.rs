@@ -14,9 +14,9 @@ use std::uint;
 fn main() {
     let args = os::args();
     let args = if os::getenv("RUST_BENCH").is_some() {
-        vec!(~"", ~"10000000")
+        vec!("".to_owned(), "10000000".to_owned())
     } else if args.len() <= 1u {
-        vec!(~"", ~"100000")
+        vec!("".to_owned(), "100000".to_owned())
     } else {
         args.move_iter().collect()
     };

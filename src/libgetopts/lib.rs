@@ -419,7 +419,7 @@ pub fn optflag(short_name: &str, long_name: &str, desc: &str) -> OptGroup {
     OptGroup {
         short_name: short_name.to_owned(),
         long_name: long_name.to_owned(),
-        hint: ~"",
+        hint: "".to_owned(),
         desc: desc.to_owned(),
         hasarg: No,
         occur: Optional
@@ -434,7 +434,7 @@ pub fn optflagmulti(short_name: &str, long_name: &str, desc: &str) -> OptGroup {
     OptGroup {
         short_name: short_name.to_owned(),
         long_name: long_name.to_owned(),
-        hint: ~"",
+        hint: "".to_owned(),
         desc: desc.to_owned(),
         hasarg: No,
         occur: Multi
@@ -532,7 +532,7 @@ pub fn getopts(args: &[~str], optgrps: &[OptGroup]) -> Result {
         let curlen = cur.len();
         if !is_arg(cur) {
             free.push(cur);
-        } else if cur == ~"--" {
+        } else if cur == "--".to_owned() {
             let mut j = i + 1;
             while j < l { free.push(args[j].clone()); j += 1; }
             break;
@@ -893,11 +893,11 @@ fn test_split_within() {
     }
     t("", 0, []);
     t("", 15, []);
-    t("hello", 15, [~"hello"]);
+    t("hello", 15, ["hello".to_owned()]);
     t("\nMary had a little lamb\nLittle lamb\n", 15,
-        [~"Mary had a", ~"little lamb", ~"Little lamb"]);
+        ["Mary had a".to_owned(), "little lamb".to_owned(), "Little lamb".to_owned()]);
     t("\nMary had a little lamb\nLittle lamb\n", ::std::uint::MAX,
-        [~"Mary had a little lamb\nLittle lamb"]);
+        ["Mary had a little lamb\nLittle lamb".to_owned()]);
 }
 
 #[cfg(test)]
@@ -920,25 +920,25 @@ mod tests {
     // Tests for reqopt
     #[test]
     fn test_reqopt() {
-        let long_args = vec!(~"--test=20");
+        let long_args = vec!("--test=20".to_owned());
         let opts = vec!(reqopt("t", "test", "testing", "TEST"));
         let rs = getopts(long_args.as_slice(), opts.as_slice());
         match rs {
           Ok(ref m) => {
             assert!(m.opt_present("test"));
-            assert_eq!(m.opt_str("test").unwrap(), ~"20");
+            assert_eq!(m.opt_str("test").unwrap(), "20".to_owned());
             assert!(m.opt_present("t"));
-            assert_eq!(m.opt_str("t").unwrap(), ~"20");
+            assert_eq!(m.opt_str("t").unwrap(), "20".to_owned());
           }
           _ => { fail!("test_reqopt failed (long arg)"); }
         }
-        let short_args = vec!(~"-t", ~"20");
+        let short_args = vec!("-t".to_owned(), "20".to_owned());
         match getopts(short_args.as_slice(), opts.as_slice()) {
           Ok(ref m) => {
             assert!((m.opt_present("test")));
-            assert_eq!(m.opt_str("test").unwrap(), ~"20");
+            assert_eq!(m.opt_str("test").unwrap(), "20".to_owned());
             assert!((m.opt_present("t")));
-            assert_eq!(m.opt_str("t").unwrap(), ~"20");
+            assert_eq!(m.opt_str("t").unwrap(), "20".to_owned());
           }
           _ => { fail!("test_reqopt failed (short arg)"); }
         }
@@ -946,7 +946,7 @@ mod tests {
 
     #[test]
     fn test_reqopt_missing() {
-        let args = vec!(~"blah");
+        let args = vec!("blah".to_owned());
         let opts = vec!(reqopt("t", "test", "testing", "TEST"));
         let rs = getopts(args.as_slice(), opts.as_slice());
         match rs {
@@ -957,14 +957,14 @@ mod tests {
 
     #[test]
     fn test_reqopt_no_arg() {
-        let long_args = vec!(~"--test");
+        let long_args = vec!("--test".to_owned());
         let opts = vec!(reqopt("t", "test", "testing", "TEST"));
         let rs = getopts(long_args.as_slice(), opts.as_slice());
         match rs {
           Err(f) => check_fail_type(f, ArgumentMissing_),
           _ => fail!()
         }
-        let short_args = vec!(~"-t");
+        let short_args = vec!("-t".to_owned());
         match getopts(short_args.as_slice(), opts.as_slice()) {
           Err(f) => check_fail_type(f, ArgumentMissing_),
           _ => fail!()
@@ -973,7 +973,7 @@ mod tests {
 
     #[test]
     fn test_reqopt_multi() {
-        let args = vec!(~"--test=20", ~"-t", ~"30");
+        let args = vec!("--test=20".to_owned(), "-t".to_owned(), "30".to_owned());
         let opts = vec!(reqopt("t", "test", "testing", "TEST"));
         let rs = getopts(args.as_slice(), opts.as_slice());
         match rs {
@@ -985,25 +985,25 @@ mod tests {
     // Tests for optopt
     #[test]
     fn test_optopt() {
-        let long_args = vec!(~"--test=20");
+        let long_args = vec!("--test=20".to_owned());
         let opts = vec!(optopt("t", "test", "testing", "TEST"));
         let rs = getopts(long_args.as_slice(), opts.as_slice());
         match rs {
           Ok(ref m) => {
             assert!(m.opt_present("test"));
-            assert_eq!(m.opt_str("test").unwrap(), ~"20");
+            assert_eq!(m.opt_str("test").unwrap(), "20".to_owned());
             assert!((m.opt_present("t")));
-            assert_eq!(m.opt_str("t").unwrap(), ~"20");
+            assert_eq!(m.opt_str("t").unwrap(), "20".to_owned());
           }
           _ => fail!()
         }
-        let short_args = vec!(~"-t", ~"20");
+        let short_args = vec!("-t".to_owned(), "20".to_owned());
         match getopts(short_args.as_slice(), opts.as_slice()) {
           Ok(ref m) => {
             assert!((m.opt_present("test")));
-            assert_eq!(m.opt_str("test").unwrap(), ~"20");
+            assert_eq!(m.opt_str("test").unwrap(), "20".to_owned());
             assert!((m.opt_present("t")));
-            assert_eq!(m.opt_str("t").unwrap(), ~"20");
+            assert_eq!(m.opt_str("t").unwrap(), "20".to_owned());
           }
           _ => fail!()
         }
@@ -1011,7 +1011,7 @@ mod tests {
 
     #[test]
     fn test_optopt_missing() {
-        let args = vec!(~"blah");
+        let args = vec!("blah".to_owned());
         let opts = vec!(optopt("t", "test", "testing", "TEST"));
         let rs = getopts(args.as_slice(), opts.as_slice());
         match rs {
@@ -1025,14 +1025,14 @@ mod tests {
 
     #[test]
     fn test_optopt_no_arg() {
-        let long_args = vec!(~"--test");
+        let long_args = vec!("--test".to_owned());
         let opts = vec!(optopt("t", "test", "testing", "TEST"));
         let rs = getopts(long_args.as_slice(), opts.as_slice());
         match rs {
           Err(f) => check_fail_type(f, ArgumentMissing_),
           _ => fail!()
         }
-        let short_args = vec!(~"-t");
+        let short_args = vec!("-t".to_owned());
         match getopts(short_args.as_slice(), opts.as_slice()) {
           Err(f) => check_fail_type(f, ArgumentMissing_),
           _ => fail!()
@@ -1041,7 +1041,7 @@ mod tests {
 
     #[test]
     fn test_optopt_multi() {
-        let args = vec!(~"--test=20", ~"-t", ~"30");
+        let args = vec!("--test=20".to_owned(), "-t".to_owned(), "30".to_owned());
         let opts = vec!(optopt("t", "test", "testing", "TEST"));
         let rs = getopts(args.as_slice(), opts.as_slice());
         match rs {
@@ -1053,7 +1053,7 @@ mod tests {
     // Tests for optflag
     #[test]
     fn test_optflag() {
-        let long_args = vec!(~"--test");
+        let long_args = vec!("--test".to_owned());
         let opts = vec!(optflag("t", "test", "testing"));
         let rs = getopts(long_args.as_slice(), opts.as_slice());
         match rs {
@@ -1063,7 +1063,7 @@ mod tests {
           }
           _ => fail!()
         }
-        let short_args = vec!(~"-t");
+        let short_args = vec!("-t".to_owned());
         match getopts(short_args.as_slice(), opts.as_slice()) {
           Ok(ref m) => {
             assert!(m.opt_present("test"));
@@ -1075,7 +1075,7 @@ mod tests {
 
     #[test]
     fn test_optflag_missing() {
-        let args = vec!(~"blah");
+        let args = vec!("blah".to_owned());
         let opts = vec!(optflag("t", "test", "testing"));
         let rs = getopts(args.as_slice(), opts.as_slice());
         match rs {
@@ -1089,7 +1089,7 @@ mod tests {
 
     #[test]
     fn test_optflag_long_arg() {
-        let args = vec!(~"--test=20");
+        let args = vec!("--test=20".to_owned());
         let opts = vec!(optflag("t", "test", "testing"));
         let rs = getopts(args.as_slice(), opts.as_slice());
         match rs {
@@ -1103,7 +1103,7 @@ mod tests {
 
     #[test]
     fn test_optflag_multi() {
-        let args = vec!(~"--test", ~"-t");
+        let args = vec!("--test".to_owned(), "-t".to_owned());
         let opts = vec!(optflag("t", "test", "testing"));
         let rs = getopts(args.as_slice(), opts.as_slice());
         match rs {
@@ -1114,14 +1114,14 @@ mod tests {
 
     #[test]
     fn test_optflag_short_arg() {
-        let args = vec!(~"-t", ~"20");
+        let args = vec!("-t".to_owned(), "20".to_owned());
         let opts = vec!(optflag("t", "test", "testing"));
         let rs = getopts(args.as_slice(), opts.as_slice());
         match rs {
           Ok(ref m) => {
             // The next variable after the flag is just a free argument
 
-            assert!(*m.free.get(0) == ~"20");
+            assert!(*m.free.get(0) == "20".to_owned());
           }
           _ => fail!()
         }
@@ -1130,7 +1130,7 @@ mod tests {
     // Tests for optflagmulti
     #[test]
     fn test_optflagmulti_short1() {
-        let args = vec!(~"-v");
+        let args = vec!("-v".to_owned());
         let opts = vec!(optflagmulti("v", "verbose", "verbosity"));
         let rs = getopts(args.as_slice(), opts.as_slice());
         match rs {
@@ -1143,7 +1143,7 @@ mod tests {
 
     #[test]
     fn test_optflagmulti_short2a() {
-        let args = vec!(~"-v", ~"-v");
+        let args = vec!("-v".to_owned(), "-v".to_owned());
         let opts = vec!(optflagmulti("v", "verbose", "verbosity"));
         let rs = getopts(args.as_slice(), opts.as_slice());
         match rs {
@@ -1156,7 +1156,7 @@ mod tests {
 
     #[test]
     fn test_optflagmulti_short2b() {
-        let args = vec!(~"-vv");
+        let args = vec!("-vv".to_owned());
         let opts = vec!(optflagmulti("v", "verbose", "verbosity"));
         let rs = getopts(args.as_slice(), opts.as_slice());
         match rs {
@@ -1169,7 +1169,7 @@ mod tests {
 
     #[test]
     fn test_optflagmulti_long1() {
-        let args = vec!(~"--verbose");
+        let args = vec!("--verbose".to_owned());
         let opts = vec!(optflagmulti("v", "verbose", "verbosity"));
         let rs = getopts(args.as_slice(), opts.as_slice());
         match rs {
@@ -1182,7 +1182,7 @@ mod tests {
 
     #[test]
     fn test_optflagmulti_long2() {
-        let args = vec!(~"--verbose", ~"--verbose");
+        let args = vec!("--verbose".to_owned(), "--verbose".to_owned());
         let opts = vec!(optflagmulti("v", "verbose", "verbosity"));
         let rs = getopts(args.as_slice(), opts.as_slice());
         match rs {
@@ -1195,7 +1195,8 @@ mod tests {
 
     #[test]
     fn test_optflagmulti_mix() {
-        let args = vec!(~"--verbose", ~"-v", ~"-vv", ~"verbose");
+        let args = vec!("--verbose".to_owned(), "-v".to_owned(),
+                        "-vv".to_owned(), "verbose".to_owned());
         let opts = vec!(optflagmulti("v", "verbose", "verbosity"));
         let rs = getopts(args.as_slice(), opts.as_slice());
         match rs {
@@ -1210,25 +1211,25 @@ mod tests {
     // Tests for optmulti
     #[test]
     fn test_optmulti() {
-        let long_args = vec!(~"--test=20");
+        let long_args = vec!("--test=20".to_owned());
         let opts = vec!(optmulti("t", "test", "testing", "TEST"));
         let rs = getopts(long_args.as_slice(), opts.as_slice());
         match rs {
           Ok(ref m) => {
             assert!((m.opt_present("test")));
-            assert_eq!(m.opt_str("test").unwrap(), ~"20");
+            assert_eq!(m.opt_str("test").unwrap(), "20".to_owned());
             assert!((m.opt_present("t")));
-            assert_eq!(m.opt_str("t").unwrap(), ~"20");
+            assert_eq!(m.opt_str("t").unwrap(), "20".to_owned());
           }
           _ => fail!()
         }
-        let short_args = vec!(~"-t", ~"20");
+        let short_args = vec!("-t".to_owned(), "20".to_owned());
         match getopts(short_args.as_slice(), opts.as_slice()) {
           Ok(ref m) => {
             assert!((m.opt_present("test")));
-            assert_eq!(m.opt_str("test").unwrap(), ~"20");
+            assert_eq!(m.opt_str("test").unwrap(), "20".to_owned());
             assert!((m.opt_present("t")));
-            assert_eq!(m.opt_str("t").unwrap(), ~"20");
+            assert_eq!(m.opt_str("t").unwrap(), "20".to_owned());
           }
           _ => fail!()
         }
@@ -1236,7 +1237,7 @@ mod tests {
 
     #[test]
     fn test_optmulti_missing() {
-        let args = vec!(~"blah");
+        let args = vec!("blah".to_owned());
         let opts = vec!(optmulti("t", "test", "testing", "TEST"));
         let rs = getopts(args.as_slice(), opts.as_slice());
         match rs {
@@ -1250,14 +1251,14 @@ mod tests {
 
     #[test]
     fn test_optmulti_no_arg() {
-        let long_args = vec!(~"--test");
+        let long_args = vec!("--test".to_owned());
         let opts = vec!(optmulti("t", "test", "testing", "TEST"));
         let rs = getopts(long_args.as_slice(), opts.as_slice());
         match rs {
           Err(f) => check_fail_type(f, ArgumentMissing_),
           _ => fail!()
         }
-        let short_args = vec!(~"-t");
+        let short_args = vec!("-t".to_owned());
         match getopts(short_args.as_slice(), opts.as_slice()) {
           Err(f) => check_fail_type(f, ArgumentMissing_),
           _ => fail!()
@@ -1266,18 +1267,18 @@ mod tests {
 
     #[test]
     fn test_optmulti_multi() {
-        let args = vec!(~"--test=20", ~"-t", ~"30");
+        let args = vec!("--test=20".to_owned(), "-t".to_owned(), "30".to_owned());
         let opts = vec!(optmulti("t", "test", "testing", "TEST"));
         let rs = getopts(args.as_slice(), opts.as_slice());
         match rs {
           Ok(ref m) => {
               assert!(m.opt_present("test"));
-              assert_eq!(m.opt_str("test").unwrap(), ~"20");
+              assert_eq!(m.opt_str("test").unwrap(), "20".to_owned());
               assert!(m.opt_present("t"));
-              assert_eq!(m.opt_str("t").unwrap(), ~"20");
+              assert_eq!(m.opt_str("t").unwrap(), "20".to_owned());
               let pair = m.opt_strs("test");
-              assert!(*pair.get(0) == ~"20");
-              assert!(*pair.get(1) == ~"30");
+              assert!(*pair.get(0) == "20".to_owned());
+              assert!(*pair.get(1) == "30".to_owned());
           }
           _ => fail!()
         }
@@ -1285,14 +1286,14 @@ mod tests {
 
     #[test]
     fn test_unrecognized_option() {
-        let long_args = vec!(~"--untest");
+        let long_args = vec!("--untest".to_owned());
         let opts = vec!(optmulti("t", "test", "testing", "TEST"));
         let rs = getopts(long_args.as_slice(), opts.as_slice());
         match rs {
           Err(f) => check_fail_type(f, UnrecognizedOption_),
           _ => fail!()
         }
-        let short_args = vec!(~"-u");
+        let short_args = vec!("-u".to_owned());
         match getopts(short_args.as_slice(), opts.as_slice()) {
           Err(f) => check_fail_type(f, UnrecognizedOption_),
           _ => fail!()
@@ -1302,9 +1303,10 @@ mod tests {
     #[test]
     fn test_combined() {
         let args =
-            vec!(~"prog", ~"free1", ~"-s", ~"20", ~"free2",
-              ~"--flag", ~"--long=30", ~"-f", ~"-m", ~"40",
-              ~"-m", ~"50", ~"-n", ~"-A B", ~"-n", ~"-60 70");
+            vec!("prog".to_owned(), "free1".to_owned(), "-s".to_owned(), "20".to_owned(),
+            "free2".to_owned(), "--flag".to_owned(), "--long=30".to_owned(), "-f".to_owned(),
+            "-m".to_owned(), "40".to_owned(), "-m".to_owned(), "50".to_owned(), "-n".to_owned(),
+            "-A B".to_owned(), "-n".to_owned(), "-60 70".to_owned());
         let opts =
             vec!(optopt("s", "something", "something", "SOMETHING"),
               optflag("", "flag", "a flag"),
@@ -1316,19 +1318,19 @@ mod tests {
         let rs = getopts(args.as_slice(), opts.as_slice());
         match rs {
           Ok(ref m) => {
-            assert!(*m.free.get(0) == ~"prog");
-            assert!(*m.free.get(1) == ~"free1");
-            assert_eq!(m.opt_str("s").unwrap(), ~"20");
-            assert!(*m.free.get(2) == ~"free2");
+            assert!(*m.free.get(0) == "prog".to_owned());
+            assert!(*m.free.get(1) == "free1".to_owned());
+            assert_eq!(m.opt_str("s").unwrap(), "20".to_owned());
+            assert!(*m.free.get(2) == "free2".to_owned());
             assert!((m.opt_present("flag")));
-            assert_eq!(m.opt_str("long").unwrap(), ~"30");
+            assert_eq!(m.opt_str("long").unwrap(), "30".to_owned());
             assert!((m.opt_present("f")));
             let pair = m.opt_strs("m");
-            assert!(*pair.get(0) == ~"40");
-            assert!(*pair.get(1) == ~"50");
+            assert!(*pair.get(0) == "40".to_owned());
+            assert!(*pair.get(1) == "50".to_owned());
             let pair = m.opt_strs("n");
-            assert!(*pair.get(0) == ~"-A B");
-            assert!(*pair.get(1) == ~"-60 70");
+            assert!(*pair.get(0) == "-A B".to_owned());
+            assert!(*pair.get(1) == "-60 70".to_owned());
             assert!((!m.opt_present("notpresent")));
           }
           _ => fail!()
@@ -1341,63 +1343,68 @@ mod tests {
                      optopt("", "encrypt", "encrypt", "ENCRYPT"),
                      optopt("f", "", "flag", "FLAG"));
 
-        let args_single = vec!(~"-e", ~"foo");
+        let args_single = vec!("-e".to_owned(), "foo".to_owned());
         let matches_single = &match getopts(args_single.as_slice(),
                                             opts.as_slice()) {
           result::Ok(m) => m,
           result::Err(_) => fail!()
         };
-        assert!(matches_single.opts_present([~"e"]));
-        assert!(matches_single.opts_present([~"encrypt", ~"e"]));
-        assert!(matches_single.opts_present([~"e", ~"encrypt"]));
-        assert!(!matches_single.opts_present([~"encrypt"]));
-        assert!(!matches_single.opts_present([~"thing"]));
+        assert!(matches_single.opts_present(["e".to_owned()]));
+        assert!(matches_single.opts_present(["encrypt".to_owned(), "e".to_owned()]));
+        assert!(matches_single.opts_present(["e".to_owned(), "encrypt".to_owned()]));
+        assert!(!matches_single.opts_present(["encrypt".to_owned()]));
+        assert!(!matches_single.opts_present(["thing".to_owned()]));
         assert!(!matches_single.opts_present([]));
 
-        assert_eq!(matches_single.opts_str([~"e"]).unwrap(), ~"foo");
-        assert_eq!(matches_single.opts_str([~"e", ~"encrypt"]).unwrap(), ~"foo");
-        assert_eq!(matches_single.opts_str([~"encrypt", ~"e"]).unwrap(), ~"foo");
+        assert_eq!(matches_single.opts_str(["e".to_owned()]).unwrap(), "foo".to_owned());
+        assert_eq!(matches_single.opts_str(["e".to_owned(), "encrypt".to_owned()]).unwrap(),
+                   "foo".to_owned());
+        assert_eq!(matches_single.opts_str(["encrypt".to_owned(), "e".to_owned()]).unwrap(),
+                   "foo".to_owned());
 
-        let args_both = vec!(~"-e", ~"foo", ~"--encrypt", ~"foo");
+        let args_both = vec!("-e".to_owned(), "foo".to_owned(), "--encrypt".to_owned(),
+                             "foo".to_owned());
         let matches_both = &match getopts(args_both.as_slice(),
                                           opts.as_slice()) {
           result::Ok(m) => m,
           result::Err(_) => fail!()
         };
-        assert!(matches_both.opts_present([~"e"]));
-        assert!(matches_both.opts_present([~"encrypt"]));
-        assert!(matches_both.opts_present([~"encrypt", ~"e"]));
-        assert!(matches_both.opts_present([~"e", ~"encrypt"]));
-        assert!(!matches_both.opts_present([~"f"]));
-        assert!(!matches_both.opts_present([~"thing"]));
+        assert!(matches_both.opts_present(["e".to_owned()]));
+        assert!(matches_both.opts_present(["encrypt".to_owned()]));
+        assert!(matches_both.opts_present(["encrypt".to_owned(), "e".to_owned()]));
+        assert!(matches_both.opts_present(["e".to_owned(), "encrypt".to_owned()]));
+        assert!(!matches_both.opts_present(["f".to_owned()]));
+        assert!(!matches_both.opts_present(["thing".to_owned()]));
         assert!(!matches_both.opts_present([]));
 
-        assert_eq!(matches_both.opts_str([~"e"]).unwrap(), ~"foo");
-        assert_eq!(matches_both.opts_str([~"encrypt"]).unwrap(), ~"foo");
-        assert_eq!(matches_both.opts_str([~"e", ~"encrypt"]).unwrap(), ~"foo");
-        assert_eq!(matches_both.opts_str([~"encrypt", ~"e"]).unwrap(), ~"foo");
+        assert_eq!(matches_both.opts_str(["e".to_owned()]).unwrap(), "foo".to_owned());
+        assert_eq!(matches_both.opts_str(["encrypt".to_owned()]).unwrap(), "foo".to_owned());
+        assert_eq!(matches_both.opts_str(["e".to_owned(), "encrypt".to_owned()]).unwrap(),
+                   "foo".to_owned());
+        assert_eq!(matches_both.opts_str(["encrypt".to_owned(), "e".to_owned()]).unwrap(),
+                   "foo".to_owned());
     }
 
     #[test]
     fn test_nospace() {
-        let args = vec!(~"-Lfoo", ~"-M.");
+        let args = vec!("-Lfoo".to_owned(), "-M.".to_owned());
         let opts = vec!(optmulti("L", "", "library directory", "LIB"),
                      optmulti("M", "", "something", "MMMM"));
         let matches = &match getopts(args.as_slice(), opts.as_slice()) {
           result::Ok(m) => m,
           result::Err(_) => fail!()
         };
-        assert!(matches.opts_present([~"L"]));
-        assert_eq!(matches.opts_str([~"L"]).unwrap(), ~"foo");
-        assert!(matches.opts_present([~"M"]));
-        assert_eq!(matches.opts_str([~"M"]).unwrap(), ~".");
+        assert!(matches.opts_present(["L".to_owned()]));
+        assert_eq!(matches.opts_str(["L".to_owned()]).unwrap(), "foo".to_owned());
+        assert!(matches.opts_present(["M".to_owned()]));
+        assert_eq!(matches.opts_str(["M".to_owned()]).unwrap(), ".".to_owned());
 
     }
 
     #[test]
     fn test_long_to_short() {
         let mut short = Opt {
-            name: Long(~"banana"),
+            name: Long("banana".to_owned()),
             hasarg: Yes,
             occur: Req,
             aliases: Vec::new(),
@@ -1416,7 +1423,7 @@ mod tests {
         let opts = vec!(
             optflagmulti("a", "apple", "Desc"));
 
-        let args = vec!(~"-a", ~"--apple", ~"-a");
+        let args = vec!("-a".to_owned(), "--apple".to_owned(), "-a".to_owned());
 
         let matches = getopts(args.as_slice(), opts.as_slice()).unwrap();
         assert_eq!(3, matches.opt_count("a"));
@@ -1515,7 +1522,7 @@ Options:
             optflagopt("p", "", "Desc", "VAL"),
             optmulti("l", "", "Desc", "VAL"));
 
-        let expected = ~"Usage: fruits -b VAL [-a VAL] [-k] [-p [VAL]] [-l VAL]..";
+        let expected = "Usage: fruits -b VAL [-a VAL] [-k] [-p [VAL]] [-l VAL]..".to_owned();
         let generated_usage = short_usage("fruits", optgroups.as_slice());
 
         debug!("expected: <<{}>>", expected);

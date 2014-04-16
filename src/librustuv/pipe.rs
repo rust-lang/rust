@@ -275,7 +275,7 @@ mod tests {
     fn bind_err() {
         match PipeListener::bind(local_loop(), &"path/to/nowhere".to_c_str()) {
             Ok(..) => fail!(),
-            Err(e) => assert_eq!(e.name(), ~"EACCES"),
+            Err(e) => assert_eq!(e.name(), "EACCES".to_owned()),
         }
     }
 

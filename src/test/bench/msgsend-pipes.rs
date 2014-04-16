@@ -106,9 +106,9 @@ fn run(args: &[~str]) {
 fn main() {
     let args = os::args();
     let args = if os::getenv("RUST_BENCH").is_some() {
-        vec!(~"", ~"1000000", ~"8")
+        vec!("".to_owned(), "1000000".to_owned(), "8".to_owned())
     } else if args.len() <= 1u {
-        vec!(~"", ~"10000", ~"4")
+        vec!("".to_owned(), "10000".to_owned(), "4".to_owned())
     } else {
         args.clone().move_iter().collect()
     };

@@ -1089,19 +1089,19 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
     pub fn cmt_to_str(&self, cmt: cmt) -> ~str {
         match cmt.cat {
           cat_static_item => {
-              ~"static item"
+              "static item".to_owned()
           }
           cat_copied_upvar(_) => {
-              ~"captured outer variable in a proc"
+              "captured outer variable in a proc".to_owned()
           }
           cat_rvalue(..) => {
-              ~"non-lvalue"
+              "non-lvalue".to_owned()
           }
           cat_local(_) => {
-              ~"local variable"
+              "local variable".to_owned()
           }
           cat_arg(..) => {
-              ~"argument"
+              "argument".to_owned()
           }
           cat_deref(base, _, pk) => {
               match base.cat {
@@ -1114,22 +1114,22 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
               }
           }
           cat_interior(_, InteriorField(NamedField(_))) => {
-              ~"field"
+              "field".to_owned()
           }
           cat_interior(_, InteriorField(PositionalField(_))) => {
-              ~"anonymous field"
+              "anonymous field".to_owned()
           }
           cat_interior(_, InteriorElement(VecElement)) => {
-              ~"vec content"
+              "vec content".to_owned()
           }
           cat_interior(_, InteriorElement(StrElement)) => {
-              ~"str content"
+              "str content".to_owned()
           }
           cat_interior(_, InteriorElement(OtherElement)) => {
-              ~"indexed content"
+              "indexed content".to_owned()
           }
           cat_upvar(..) => {
-              ~"captured outer variable"
+              "captured outer variable".to_owned()
           }
           cat_discr(cmt, _) => {
             self.cmt_to_str(cmt)
@@ -1300,7 +1300,7 @@ impl Repr for InteriorKind {
                 token::get_name(fld).get().to_str()
             }
             InteriorField(PositionalField(i)) => format!("\\#{:?}", i),
-            InteriorElement(_) => ~"[]",
+            InteriorElement(_) => "[]".to_owned(),
         }
     }
 }

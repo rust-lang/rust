@@ -30,7 +30,7 @@ pub fn main() {
     *i.borrow_mut() = 5;
     assert_eq!((i_value, *i.borrow()), (2, 5));
 
-    let s = Rc::new(~"foo");
+    let s = Rc::new("foo".to_owned());
     assert!(s.equiv(&("foo")));
     assert_eq!(s.as_slice(), "foo");
 

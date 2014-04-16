@@ -19,7 +19,7 @@ type rsrc_loader = proc(path: &Path) -> result::Result<~str, ~str>;
 
 fn tester()
 {
-    let loader: rsrc_loader = proc(_path) {result::Ok(~"more blah")};
+    let loader: rsrc_loader = proc(_path) {result::Ok("more blah".to_owned())};
 
     let path = path::Path::new("blah");
     assert!(loader(&path).is_ok());

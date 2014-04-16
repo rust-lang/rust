@@ -17,9 +17,9 @@ struct Foo {
 
 pub fn main() {
     let x = vec!(
-        Foo { string: ~"foo" },
-        Foo { string: ~"bar" },
-        Foo { string: ~"baz" }
+        Foo { string: "foo".to_owned() },
+        Foo { string: "bar".to_owned() },
+        Foo { string: "baz".to_owned() }
     );
     let x: &[Foo] = x.as_slice();
     match x {

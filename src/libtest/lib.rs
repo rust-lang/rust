@@ -536,9 +536,9 @@ impl<T: Writer> ConsoleTestState<T> {
             None => Ok(()),
             Some(ref mut o) => {
                 let s = format!("{} {}\n", match *result {
-                        TrOk => ~"ok",
-                        TrFailed => ~"failed",
-                        TrIgnored => ~"ignored",
+                        TrOk => "ok".to_owned(),
+                        TrFailed => "failed".to_owned(),
+                        TrIgnored => "ignored".to_owned(),
                         TrMetrics(ref mm) => fmt_metrics(mm),
                         TrBench(ref bs) => fmt_bench_samples(bs)
                     }, test.name.to_str());
@@ -893,7 +893,7 @@ pub fn filter_tests(
     } else {
         let filter_str = match opts.filter {
           Some(ref f) => (*f).clone(),
-          None => ~""
+          None => "".to_owned()
         };
 
         fn filter_fn(test: TestDescAndFn, filter_str: &str) ->
@@ -1019,8 +1019,8 @@ fn calc_result(desc: &TestDesc, task_succeeded: bool) -> TestResult {
 impl ToJson for Metric {
     fn to_json(&self) -> json::Json {
         let mut map = ~TreeMap::new();
-        map.insert(~"value", json::Number(self.value));
-        map.insert(~"noise", json::Number(self.noise));
+        map.insert("value".to_owned(), json::Number(self.value));
+        map.insert("noise".to_owned(), json::Number(self.noise));
         json::Object(map)
     }
 }
@@ -1378,7 +1378,7 @@ mod tests {
 
     #[test]
     fn first_free_arg_should_be_a_filter() {
-        let args = vec!(~"progname", ~"filter");
+        let args = vec!("progname".to_owned(), "filter".to_owned());
         let opts = match parse_opts(args.as_slice()) {
             Some(Ok(o)) => o,
             _ => fail!("Malformed arg in first_free_arg_should_be_a_filter")
@@ -1388,7 +1388,7 @@ mod tests {
 
     #[test]
     fn parse_ignored_flag() {
-        let args = vec!(~"progname", ~"filter", ~"--ignored");
+        let args = vec!("progname".to_owned(), "filter".to_owned(), "--ignored".to_owned());
         let opts = match parse_opts(args.as_slice()) {
             Some(Ok(o)) => o,
             _ => fail!("Malformed arg in parse_ignored_flag")
@@ -1433,7 +1433,7 @@ mod tests {
         let filtered = filter_tests(&opts, tests);
 
         assert_eq!(filtered.len(), 1);
-        assert_eq!(filtered.get(0).desc.name.to_str(), ~"1");
+        assert_eq!(filtered.get(0).desc.name.to_str(), "1".to_owned());
         assert!(filtered.get(0).desc.ignore == false);
     }
 
@@ -1452,12 +1452,12 @@ mod tests {
         };
 
         let names =
-            vec!(~"sha1::test", ~"int::test_to_str", ~"int::test_pow",
-             ~"test::do_not_run_ignored_tests",
-             ~"test::ignored_tests_result_in_ignored",
-             ~"test::first_free_arg_should_be_a_filter",
-             ~"test::parse_ignored_flag", ~"test::filter_for_ignored_option",
-             ~"test::sort_tests");
+            vec!("sha1::test".to_owned(), "int::test_to_str".to_owned(), "int::test_pow".to_owned(),
+             "test::do_not_run_ignored_tests".to_owned(),
+             "test::ignored_tests_result_in_ignored".to_owned(),
+             "test::first_free_arg_should_be_a_filter".to_owned(),
+             "test::parse_ignored_flag".to_owned(), "test::filter_for_ignored_option".to_owned(),
+             "test::sort_tests".to_owned());
         let tests =
         {
             fn testfn() { }
@@ -1478,13 +1478,13 @@ mod tests {
         let filtered = filter_tests(&opts, tests);
 
         let expected =
-            vec!(~"int::test_pow", ~"int::test_to_str", ~"sha1::test",
-              ~"test::do_not_run_ignored_tests",
-              ~"test::filter_for_ignored_option",
-              ~"test::first_free_arg_should_be_a_filter",
-              ~"test::ignored_tests_result_in_ignored",
-              ~"test::parse_ignored_flag",
-              ~"test::sort_tests");
+            vec!("int::test_pow".to_owned(), "int::test_to_str".to_owned(), "sha1::test".to_owned(),
+              "test::do_not_run_ignored_tests".to_owned(),
+              "test::filter_for_ignored_option".to_owned(),
+              "test::first_free_arg_should_be_a_filter".to_owned(),
+              "test::ignored_tests_result_in_ignored".to_owned(),
+              "test::parse_ignored_flag".to_owned(),
+              "test::sort_tests".to_owned());
 
         for (a, b) in expected.iter().zip(filtered.iter()) {
             assert!(*a == b.desc.name.to_str());
@@ -1515,28 +1515,32 @@ mod tests {
 
         let diff1 = m2.compare_to_old(&m1, None);
 
-        assert_eq!(*(diff1.find(&~"in-both-noise").unwrap()), LikelyNoise);
-        assert_eq!(*(diff1.find(&~"in-first-noise").unwrap()), MetricRemoved);
-        assert_eq!(*(diff1.find(&~"in-second-noise").unwrap()), MetricAdded);
-        assert_eq!(*(diff1.find(&~"in-both-want-downwards-but-regressed").unwrap()),
+        assert_eq!(*(diff1.find(&"in-both-noise".to_owned()).unwrap()), LikelyNoise);
+        assert_eq!(*(diff1.find(&"in-first-noise".to_owned()).unwrap()), MetricRemoved);
+        assert_eq!(*(diff1.find(&"in-second-noise".to_owned()).unwrap()), MetricAdded);
+        assert_eq!(*(diff1.find(&"in-both-want-downwards-but-regressed".to_owned()).unwrap()),
                    Regression(100.0));
-        assert_eq!(*(diff1.find(&~"in-both-want-downwards-and-improved").unwrap()),
+        assert_eq!(*(diff1.find(&"in-both-want-downwards-and-improved".to_owned()).unwrap()),
                    Improvement(50.0));
-        assert_eq!(*(diff1.find(&~"in-both-want-upwards-but-regressed").unwrap()),
+        assert_eq!(*(diff1.find(&"in-both-want-upwards-but-regressed".to_owned()).unwrap()),
                    Regression(50.0));
-        assert_eq!(*(diff1.find(&~"in-both-want-upwards-and-improved").unwrap()),
+        assert_eq!(*(diff1.find(&"in-both-want-upwards-and-improved".to_owned()).unwrap()),
                    Improvement(100.0));
         assert_eq!(diff1.len(), 7);
 
         let diff2 = m2.compare_to_old(&m1, Some(200.0));
 
-        assert_eq!(*(diff2.find(&~"in-both-noise").unwrap()), LikelyNoise);
-        assert_eq!(*(diff2.find(&~"in-first-noise").unwrap()), MetricRemoved);
-        assert_eq!(*(diff2.find(&~"in-second-noise").unwrap()), MetricAdded);
-        assert_eq!(*(diff2.find(&~"in-both-want-downwards-but-regressed").unwrap()), LikelyNoise);
-        assert_eq!(*(diff2.find(&~"in-both-want-downwards-and-improved").unwrap()), LikelyNoise);
-        assert_eq!(*(diff2.find(&~"in-both-want-upwards-but-regressed").unwrap()), LikelyNoise);
-        assert_eq!(*(diff2.find(&~"in-both-want-upwards-and-improved").unwrap()), LikelyNoise);
+        assert_eq!(*(diff2.find(&"in-both-noise".to_owned()).unwrap()), LikelyNoise);
+        assert_eq!(*(diff2.find(&"in-first-noise".to_owned()).unwrap()), MetricRemoved);
+        assert_eq!(*(diff2.find(&"in-second-noise".to_owned()).unwrap()), MetricAdded);
+        assert_eq!(*(diff2.find(&"in-both-want-downwards-but-regressed".to_owned()).unwrap()),
+                   LikelyNoise);
+        assert_eq!(*(diff2.find(&"in-both-want-downwards-and-improved".to_owned()).unwrap()),
+                   LikelyNoise);
+        assert_eq!(*(diff2.find(&"in-both-want-upwards-but-regressed".to_owned()).unwrap()),
+                   LikelyNoise);
+        assert_eq!(*(diff2.find(&"in-both-want-upwards-and-improved".to_owned()).unwrap()),
+                   LikelyNoise);
         assert_eq!(diff2.len(), 7);
     }
 
@@ -1560,29 +1564,29 @@ mod tests {
         let (diff1, ok1) = m2.ratchet(&pth, None);
         assert_eq!(ok1, false);
         assert_eq!(diff1.len(), 2);
-        assert_eq!(*(diff1.find(&~"runtime").unwrap()), Regression(10.0));
-        assert_eq!(*(diff1.find(&~"throughput").unwrap()), LikelyNoise);
+        assert_eq!(*(diff1.find(&"runtime".to_owned()).unwrap()), Regression(10.0));
+        assert_eq!(*(diff1.find(&"throughput".to_owned()).unwrap()), LikelyNoise);
 
         // Check that it was not rewritten.
         let m3 = MetricMap::load(&pth);
         let MetricMap(m3) = m3;
         assert_eq!(m3.len(), 2);
-        assert_eq!(*(m3.find(&~"runtime").unwrap()), Metric::new(1000.0, 2.0));
-        assert_eq!(*(m3.find(&~"throughput").unwrap()), Metric::new(50.0, 2.0));
+        assert_eq!(*(m3.find(&"runtime".to_owned()).unwrap()), Metric::new(1000.0, 2.0));
+        assert_eq!(*(m3.find(&"throughput".to_owned()).unwrap()), Metric::new(50.0, 2.0));
 
         // Ask for a ratchet with an explicit noise-percentage override,
         // that should advance.
         let (diff2, ok2) = m2.ratchet(&pth, Some(10.0));
         assert_eq!(ok2, true);
         assert_eq!(diff2.len(), 2);
-        assert_eq!(*(diff2.find(&~"runtime").unwrap()), LikelyNoise);
-        assert_eq!(*(diff2.find(&~"throughput").unwrap()), LikelyNoise);
+        assert_eq!(*(diff2.find(&"runtime".to_owned()).unwrap()), LikelyNoise);
+        assert_eq!(*(diff2.find(&"throughput".to_owned()).unwrap()), LikelyNoise);
 
         // Check that it was rewritten.
         let m4 = MetricMap::load(&pth);
         let MetricMap(m4) = m4;
         assert_eq!(m4.len(), 2);
-        assert_eq!(*(m4.find(&~"runtime").unwrap()), Metric::new(1100.0, 2.0));
-        assert_eq!(*(m4.find(&~"throughput").unwrap()), Metric::new(50.0, 2.0));
+        assert_eq!(*(m4.find(&"runtime".to_owned()).unwrap()), Metric::new(1100.0, 2.0));
+        assert_eq!(*(m4.find(&"throughput".to_owned()).unwrap()), Metric::new(50.0, 2.0));
     }
 }

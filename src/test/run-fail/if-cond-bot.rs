@@ -10,4 +10,4 @@
 
 // error-pattern:quux
 fn my_err(s: ~str) -> ! { println!("{}", s); fail!("quux"); }
-fn main() { if my_err(~"bye") { } }
+fn main() { if my_err("bye".to_owned()) { } }

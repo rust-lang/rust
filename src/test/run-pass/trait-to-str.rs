@@ -25,16 +25,16 @@ impl<T:to_str> to_str for Vec<T> {
 }
 
 pub fn main() {
-    assert!(1.to_string() == ~"1");
-    assert!((vec!(2, 3, 4)).to_string() == ~"[2, 3, 4]");
+    assert!(1.to_string() == "1".to_owned());
+    assert!((vec!(2, 3, 4)).to_string() == "[2, 3, 4]".to_owned());
 
     fn indirect<T:to_str>(x: T) -> ~str {
         x.to_string() + "!"
     }
-    assert!(indirect(vec!(10, 20)) == ~"[10, 20]!");
+    assert!(indirect(vec!(10, 20)) == "[10, 20]!".to_owned());
 
     fn indirect2<T:to_str>(x: T) -> ~str {
         indirect(x)
     }
-    assert!(indirect2(vec!(1)) == ~"[1]!");
+    assert!(indirect2(vec!(1)) == "[1]!".to_owned());
 }

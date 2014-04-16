@@ -9,7 +9,7 @@
 // except according to those terms.
 
 pub fn main() {
-    let thing = ~"{{ f }}";
+    let thing = "{{ f }}".to_owned();
     let f = thing.find_str("{{");
 
     if f.is_none() {

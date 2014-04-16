@@ -195,21 +195,21 @@ pub fn parse(file: &mut io::Reader,
     assert!(names_bytes          > 0);
 
     if (bools_bytes as uint) > boolnames.len() {
-        return Err(~"incompatible file: more booleans than expected");
+        return Err("incompatible file: more booleans than expected".to_owned());
     }
 
     if (numbers_count as uint) > numnames.len() {
-        return Err(~"incompatible file: more numbers than expected");
+        return Err("incompatible file: more numbers than expected".to_owned());
     }
 
     if (string_offsets_count as uint) > stringnames.len() {
-        return Err(~"incompatible file: more string offsets than expected");
+        return Err("incompatible file: more string offsets than expected".to_owned());
     }
 
     // don't read NUL
     let bytes = try!(file.read_exact(names_bytes as uint - 1));
     let names_str = match str::from_utf8(bytes.as_slice()) {
-        Some(s) => s.to_owned(), None => return Err(~"input not utf-8"),
+        Some(s) => s.to_owned(), None => return Err("input not utf-8".to_owned()),
     };
 
     let term_names: Vec<~str> = names_str.split('|').map(|s| s.to_owned()).collect();
@@ -221,7 +221,7 @@ pub fn parse(file: &mut io::Reader,
         for i in range(0, bools_bytes) {
             let b = try!(file.read_byte());
             if b < 0 {
-                return Err(~"error: expected more bools but hit EOF");
+                return Err("error: expected more bools but hit EOF".to_owned());
             } else if b == 1 {
                 bools_map.insert(bnames[i as uint].to_owned(), true);
             }
@@ -253,7 +253,7 @@ pub fn parse(file: &mut io::Reader,
         let string_table = try!(file.read_exact(string_table_bytes as uint));
 
         if string_table.len() != string_table_bytes as uint {
-            return Err(~"error: hit EOF before end of string table");
+            return Err("error: hit EOF before end of string table".to_owned());
         }
 
         for (i, v) in string_offsets.iter().enumerate() {
@@ -287,7 +287,7 @@ pub fn parse(file: &mut io::Reader,
                                           offset as uint + len)))
                 },
                 None => {
-                    return Err(~"invalid file: missing NUL in string_table");
+                    return Err("invalid file: missing NUL in string_table".to_owned());
                 }
             };
         }
@@ -300,12 +300,12 @@ pub fn parse(file: &mut io::Reader,
 /// Create a dummy TermInfo struct for msys terminals
 pub fn msys_terminfo() -> ~TermInfo {
     let mut strings = HashMap::new();
-    strings.insert(~"sgr0", Vec::from_slice(bytes!("\x1b[0m")));
-    strings.insert(~"bold", Vec::from_slice(bytes!("\x1b[1m")));
-    strings.insert(~"setaf", Vec::from_slice(bytes!("\x1b[3%p1%dm")));
-    strings.insert(~"setab", Vec::from_slice(bytes!("\x1b[4%p1%dm")));
+    strings.insert("sgr0".to_owned(), Vec::from_slice(bytes!("\x1b[0m")));
+    strings.insert("bold".to_owned(), Vec::from_slice(bytes!("\x1b[1m")));
+    strings.insert("setaf".to_owned(), Vec::from_slice(bytes!("\x1b[3%p1%dm")));
+    strings.insert("setab".to_owned(), Vec::from_slice(bytes!("\x1b[4%p1%dm")));
     ~TermInfo {
-        names: vec!(~"cygwin"), // msys is a fork of an older cygwin version
+        names: vec!("cygwin".to_owned()), // msys is a fork of an older cygwin version
         bools: HashMap::new(),
         numbers: HashMap::new(),
         strings: strings

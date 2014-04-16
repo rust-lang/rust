@@ -529,13 +529,13 @@ spawn(proc() {
 });
 
 from_child.send(22);
-assert!(from_child.recv() == ~"22");
+assert!(from_child.recv() == "22".to_owned());
 
 from_child.send(23);
 from_child.send(0);
 
-assert!(from_child.recv() == ~"23");
-assert!(from_child.recv() == ~"0");
+assert!(from_child.recv() == "23".to_owned());
+assert!(from_child.recv() == "0".to_owned());
 
 # }
 ~~~~

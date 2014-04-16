@@ -32,6 +32,6 @@ fn strlen(str: ~str) -> uint {
 }
 
 pub fn main() {
-    let len = strlen(~"Rust");
+    let len = strlen("Rust".to_owned());
     assert_eq!(len, 4u);
 }

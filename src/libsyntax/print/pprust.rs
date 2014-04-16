@@ -2409,7 +2409,7 @@ mod test {
         let generics = ast_util::empty_generics();
         assert_eq!(&fun_to_str(&decl, ast::NormalFn, abba_ident,
                                None, &generics),
-                   &~"fn abba()");
+                   &"fn abba()".to_owned());
     }
 
     #[test]
@@ -2427,6 +2427,6 @@ mod test {
         });
 
         let varstr = variant_to_str(&var);
-        assert_eq!(&varstr,&~"pub principal_skinner");
+        assert_eq!(&varstr,&"pub principal_skinner".to_owned());
     }
 }

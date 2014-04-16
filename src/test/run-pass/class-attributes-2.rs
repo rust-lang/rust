@@ -33,5 +33,5 @@ fn cat(name: ~str) -> cat {
 }
 
 pub fn main() {
-  let _kitty = cat(~"Spotty");
+  let _kitty = cat("Spotty".to_owned());
 }

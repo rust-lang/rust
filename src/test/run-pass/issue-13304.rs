@@ -34,12 +34,12 @@ fn main() {
             rx.recv();
         }
     } else {
-        parent(~"green");
-        parent(~"native");
+        parent("green".to_owned());
+        parent("native".to_owned());
         let (tx, rx) = channel();
         native::task::spawn(proc() {
-            parent(~"green");
-            parent(~"native");
+            parent("green".to_owned());
+            parent("native".to_owned());
             tx.send(());
         });
         rx.recv();
@@ -48,7 +48,7 @@ fn main() {
 
 fn parent(flavor: ~str) {
     let args = os::args();
-    let mut p = io::Process::new(args[0].as_slice(), [~"child", flavor]).unwrap();
+    let mut p = io::Process::new(args[0].as_slice(), ["child".to_owned(), flavor]).unwrap();
     p.stdin.get_mut_ref().write_str("test1\ntest2\ntest3").unwrap();
     let out = p.wait_with_output();
     assert!(out.status.success());

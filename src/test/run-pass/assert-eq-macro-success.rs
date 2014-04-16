@@ -13,7 +13,7 @@ struct Point { x : int }
 
 pub fn main() {
     assert_eq!(14,14);
-    assert_eq!(~"abc",~"abc");
+    assert_eq!("abc".to_owned(),"abc".to_owned());
     assert_eq!(~Point{x:34},~Point{x:34});
     assert_eq!(&Point{x:34},&Point{x:34});
     assert_eq!(@Point{x:34},@Point{x:34});

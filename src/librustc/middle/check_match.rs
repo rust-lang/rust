@@ -172,8 +172,8 @@ fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, pats: Vec<@Pat> ) {
             match ty::get(ty).sty {
                 ty::ty_bool => {
                     match *ctor {
-                        val(const_bool(true)) => Some(~"true"),
-                        val(const_bool(false)) => Some(~"false"),
+                        val(const_bool(true)) => Some("true".to_owned()),
+                        val(const_bool(false)) => Some("false".to_owned()),
                         _ => None
                     }
                 }
@@ -201,9 +201,9 @@ fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, pats: Vec<@Pat> ) {
             }
         }
     };
-    let msg = ~"non-exhaustive patterns" + match ext {
+    let msg = "non-exhaustive patterns".to_owned() + match ext {
         Some(ref s) => format!(": {} not covered",  *s),
-        None => ~""
+        None => "".to_owned()
     };
     cx.tcx.sess.span_err(sp, msg);
 }

@@ -366,9 +366,9 @@ pub fn parse(sess: &ParseSess,
                 }
                 return Success(nameize(sess, ms, v.as_slice()));
             } else if eof_eis.len() > 1u {
-                return Error(sp, ~"ambiguity: multiple successful parses");
+                return Error(sp, "ambiguity: multiple successful parses".to_owned());
             } else {
-                return Failure(sp, ~"unexpected end of macro invocation");
+                return Failure(sp, "unexpected end of macro invocation".to_owned());
             }
         } else {
             if (bb_eis.len() > 0u && next_eis.len() > 0u)
@@ -436,7 +436,7 @@ pub fn parse_nt(p: &mut Parser, name: &str) -> Nonterminal {
         token::IDENT(sn,b) => { p.bump(); token::NtIdent(~sn,b) }
         _ => {
             let token_str = token::to_str(&p.token);
-            p.fatal(~"expected ident, found " + token_str)
+            p.fatal("expected ident, found ".to_owned() + token_str)
         }
       },
       "path" => {
@@ -450,6 +450,6 @@ pub fn parse_nt(p: &mut Parser, name: &str) -> Nonterminal {
         res
       }
       "matchers" => token::NtMatchers(p.parse_matchers()),
-      _ => p.fatal(~"unsupported builtin nonterminal parser: " + name)
+      _ => p.fatal("unsupported builtin nonterminal parser: ".to_owned() + name)
     }
 }

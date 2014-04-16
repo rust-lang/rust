@@ -19,5 +19,5 @@ fn main() {
     let y = vec!(3);
     fail!("so long");
     x.push_all_move(y);
-    ~"good" + ~"bye";
+    "good".to_owned() + "bye".to_owned();
 }

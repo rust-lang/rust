@@ -22,7 +22,7 @@ fn parse_args() -> ~str {
         n += 1;
     }
 
-    return ~""
+    return "".to_owned()
 }
 
 pub fn main() {

@@ -2339,7 +2339,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                     let name = class_field.name;
                     let (_, seen) = *class_field_map.get(&name);
                     if !seen {
-                        missing_fields.push(~"`" + token::get_name(name).get() + "`");
+                        missing_fields.push("`".to_owned() + token::get_name(name).get() + "`");
                     }
                 }
 
@@ -3128,7 +3128,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
            ppaux::ty_to_str(tcx, fcx.expr_ty(expr)),
            match expected {
                Some(t) => ppaux::ty_to_str(tcx, t),
-               _ => ~"empty"
+               _ => "empty".to_owned()
            });
 
     unifier();
@@ -3277,7 +3277,7 @@ pub fn check_block_with_expected(fcx: &FnCtxt,
                   _ => false
                 } {
                 fcx.ccx.tcx.sess.add_lint(UnreachableCode, s_id, s.span,
-                                          ~"unreachable statement");
+                                          "unreachable statement".to_owned());
                 warned = true;
             }
             if ty::type_is_bot(s_ty) {
@@ -3299,7 +3299,7 @@ pub fn check_block_with_expected(fcx: &FnCtxt,
           Some(e) => {
             if any_bot && !warned {
                 fcx.ccx.tcx.sess.add_lint(UnreachableCode, e.id, e.span,
-                                          ~"unreachable expression");
+                                          "unreachable expression".to_owned());
             }
             check_expr_with_opt_hint(fcx, e, expected);
               let ety = fcx.expr_ty(e);
@@ -3779,7 +3779,7 @@ pub fn structurally_resolved_type(fcx: &FnCtxt, sp: Span, tp: ty::t) -> ty::t {
         Ok(t_s) if !ty::type_is_ty_var(t_s) => t_s,
         _ => {
             fcx.type_error_message(sp, |_actual| {
-                ~"the type of this value must be known in this context"
+                "the type of this value must be known in this context".to_owned()
             }, tp, None);
             demand::suptype(fcx, sp, ty::mk_err(), tp);
             tp

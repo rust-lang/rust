@@ -87,7 +87,7 @@ impl<'a> Reflector<'a> {
     pub fn visit(&mut self, ty_name: &str, args: &[ValueRef]) {
         let fcx = self.bcx.fcx;
         let tcx = self.bcx.tcx();
-        let mth_idx = ty::method_idx(token::str_to_ident(~"visit_" + ty_name),
+        let mth_idx = ty::method_idx(token::str_to_ident("visit_".to_owned() + ty_name),
                                      self.visitor_methods.as_slice()).expect(
                 format!("couldn't find visit method for {}", ty_name));
         let mth_ty =
@@ -128,10 +128,10 @@ impl<'a> Reflector<'a> {
         match vstore {
             ty::VstoreFixed(n) => {
                 let extra = (vec!(self.c_uint(n))).append(self.c_size_and_align(t).as_slice());
-                (~"fixed", extra)
+                ("fixed".to_owned(), extra)
             }
-            ty::VstoreSlice(..) => (~"slice", Vec::new()),
-            ty::VstoreUniq => (~"uniq", Vec::new()),
+            ty::VstoreSlice(..) => ("slice".to_owned(), Vec::new()),
+            ty::VstoreUniq => ("uniq".to_owned(), Vec::new()),
         }
     }
 
@@ -166,7 +166,7 @@ impl<'a> Reflector<'a> {
           // Should rename to str_*/vec_*.
           ty::ty_str(vst) => {
               let (name, extra) = self.vstore_name_and_extra(t, vst);
-              self.visit(~"estr_" + name, extra.as_slice())
+              self.visit("estr_".to_owned() + name, extra.as_slice())
           }
           ty::ty_vec(ty, vst) => {
               let (name, extra) = self.vstore_name_and_extra(t, vst);
@@ -177,7 +177,7 @@ impl<'a> Reflector<'a> {
                       _ => ast::MutImmutable
                   }
               }).as_slice());
-              self.visit(~"evec_" + name, extra.as_slice())
+              self.visit("evec_".to_owned() + name, extra.as_slice())
           }
           // Should remove mt from box and uniq.
           ty::ty_box(typ) => {

@@ -99,7 +99,7 @@ impl SpanHandler {
         fail!(ExplicitBug);
     }
     pub fn span_unimpl(&self, sp: Span, msg: &str) -> ! {
-        self.span_bug(sp, ~"unimplemented " + msg);
+        self.span_bug(sp, "unimplemented ".to_owned() + msg);
     }
     pub fn handler<'a>(&'a self) -> &'a Handler {
         &self.handler
@@ -136,7 +136,7 @@ impl Handler {
         let s;
         match self.err_count.get() {
           0u => return,
-          1u => s = ~"aborting due to previous error",
+          1u => s = "aborting due to previous error".to_owned(),
           _  => {
             s = format!("aborting due to {} previous errors",
                      self.err_count.get());
@@ -155,7 +155,7 @@ impl Handler {
         fail!(ExplicitBug);
     }
     pub fn unimpl(&self, msg: &str) -> ! {
-        self.bug(~"unimplemented " + msg);
+        self.bug("unimplemented ".to_owned() + msg);
     }
     pub fn emit(&self,
                 cmsp: Option<(&codemap::CodeMap, Span)>,
@@ -452,7 +452,7 @@ fn print_macro_backtrace(w: &mut EmitterWriter,
                          sp: Span)
                          -> io::IoResult<()> {
     for ei in sp.expn_info.iter() {
-        let ss = ei.callee.span.as_ref().map_or(~"", |span| cm.span_to_str(*span));
+        let ss = ei.callee.span.as_ref().map_or("".to_owned(), |span| cm.span_to_str(*span));
         let (pre, post) = match ei.callee.format {
             codemap::MacroAttribute => ("#[", "]"),
             codemap::MacroBang => ("", "!")

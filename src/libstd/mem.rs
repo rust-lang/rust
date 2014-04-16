@@ -262,6 +262,7 @@ pub fn drop<T>(_x: T) { }
 mod tests {
     use mem::*;
     use option::{Some,None};
+    use str::StrSlice;
 
     #[test]
     fn size_of_basic() {
@@ -352,7 +353,7 @@ mod tests {
 
     #[test]
     fn test_replace() {
-        let mut x = Some(~"test");
+        let mut x = Some("test".to_owned());
         let y = replace(&mut x, None);
         assert!(x.is_none());
         assert!(y.is_some());
