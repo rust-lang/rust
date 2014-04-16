@@ -313,21 +313,18 @@ impl<T:Clone> Clone for Vec<T> {
     fn clone(&self) -> Vec<T> {
         let len = self.len;
         let mut vector = Vec::with_capacity(len);
-        vector.len = len;
         // Unsafe code so this can be optimised to a memcpy (or something
         // similarly fast) when T is Copy. LLVM is easily confused, so any
         // extra operations during the loop can prevent this optimisation
         {
-            let slice = vector.as_mut_slice();
             let this_slice = self.as_slice();
-            let mut i = 0;
-            while i < len {
+            while vector.len < len {
                 unsafe {
                     mem::move_val_init(
-                        slice.unsafe_mut_ref(i),
-                        this_slice.unsafe_ref(i).clone());
+                        vector.as_mut_slice().unsafe_mut_ref(vector.len),
+                        this_slice.unsafe_ref(vector.len).clone());
                 }
-                i = i + 1;
+                vector.len += 1;
             }
         }
         vector

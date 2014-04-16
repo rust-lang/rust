@@ -762,18 +762,23 @@ impl<'a, T: Clone> CloneableVector<T> for &'a [T] {
     fn to_owned(&self) -> ~[T] {
         let len = self.len();
         let mut result = with_capacity(len);
+        // Unsafe code so this can be optimised to a memcpy (or something
+        // similarly fast) when T is Copy. LLVM is easily confused, so any
+        // extra operations during the loop can prevent this optimisation
         unsafe {
-            // Unsafe code so this can be optimised to a memcpy (or something
-            // similarly fast) when T is Copy. LLVM is easily confused, so any
-            // extra operations during the loop can prevent this optimisation
-            result.set_len(len);
             let mut i = 0;
-            while i < len {
-                mem::move_val_init(
-                    result.unsafe_mut_ref(i),
-                    self.unsafe_ref(i).clone());
-                i = i + 1;
-            }
+            let p = result.as_mut_ptr();
+            // Use try_finally here otherwise the write to length
+            // inside the loop stops LLVM from optimising this.
+            try_finally(
+                &mut i, (),
+                |i, ()| while *i < len {
+                    mem::move_val_init(
+                        &mut(*p.offset(*i as int)),
+                        self.unsafe_ref(*i).clone());
+                    *i += 1;
+                },
+                |i| result.set_len(*i));
         }
         result
     }
