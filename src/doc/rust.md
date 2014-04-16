@@ -1586,10 +1586,10 @@ pub struct Bar {
     field: int
 }
 
-// Declare a public enum with public and private variants
+// Declare a public enum with two public variants
 pub enum State {
     PubliclyAccessibleState,
-    priv PrivatelyAccessibleState
+    PubliclyAccessibleState2,
 }
 ~~~~
 

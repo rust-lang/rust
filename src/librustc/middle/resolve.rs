@@ -1421,12 +1421,8 @@ impl<'a> Resolver<'a> {
                                        variant: &Variant,
                                        item_id: DefId,
                                        parent: ReducedGraphParent,
-                                       parent_public: bool) {
+                                       is_public: bool) {
         let ident = variant.node.name;
-        // FIXME: this is unfortunate to have to do this privacy calculation
-        //      here. This should be living in middle::privacy, but it's
-        //      necessary to keep around in some form becaues of glob imports...
-        let is_public = parent_public && variant.node.vis != ast::Private;
 
         match variant.node.kind {
             TupleVariantKind(_) => {
@@ -1668,12 +1664,11 @@ impl<'a> Resolver<'a> {
             // We assume the parent is visible, or else we wouldn't have seen
             // it. Also variants are public-by-default if the parent was also
             // public.
-            let is_public = vis != ast::Private;
             if is_struct {
-                child_name_bindings.define_type(def, DUMMY_SP, is_public);
+                child_name_bindings.define_type(def, DUMMY_SP, true);
                 self.structs.insert(variant_id);
             } else {
-                child_name_bindings.define_value(def, DUMMY_SP, is_public);
+                child_name_bindings.define_value(def, DUMMY_SP, true);
             }
           }
           DefFn(..) | DefStaticMethod(..) | DefStatic(..) => {

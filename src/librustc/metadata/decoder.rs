@@ -124,7 +124,6 @@ enum Family {
     Trait,                 // I
     Struct,                // S
     PublicField,           // g
-    PrivateField,          // j
     InheritedField         // N
 }
 
@@ -149,7 +148,6 @@ fn item_family(item: ebml::Doc) -> Family {
       'I' => Trait,
       'S' => Struct,
       'g' => PublicField,
-      'j' => PrivateField,
       'N' => InheritedField,
        c => fail!("unexpected family char: {}", c)
     }
@@ -161,7 +159,6 @@ fn item_visibility(item: ebml::Doc) -> ast::Visibility {
         Some(visibility_doc) => {
             match reader::doc_as_u8(visibility_doc) as char {
                 'y' => ast::Public,
-                'n' => ast::Private,
                 'i' => ast::Inherited,
                 _ => fail!("unknown visibility character")
             }
@@ -364,7 +361,7 @@ fn item_to_def_like(item: ebml::Doc, did: ast::DefId, cnum: ast::CrateNum)
         Trait => DlDef(ast::DefTrait(did)),
         Enum => DlDef(ast::DefTy(did)),
         Impl => DlImpl(did),
-        PublicField | PrivateField | InheritedField => DlField,
+        PublicField | InheritedField => DlField,
     }
 }
 
@@ -962,7 +959,6 @@ pub fn get_item_attrs(cdata: Cmd,
 fn struct_field_family_to_visibility(family: Family) -> ast::Visibility {
     match family {
       PublicField => ast::Public,
-      PrivateField => ast::Private,
       InheritedField => ast::Inherited,
       _ => fail!()
     }
@@ -975,7 +971,7 @@ pub fn get_struct_fields(intr: Rc<IdentInterner>, cdata: Cmd, id: ast::NodeId)
     let mut result = Vec::new();
     reader::tagged_docs(item, tag_item_field, |an_item| {
         let f = item_family(an_item);
-        if f == PublicField || f == PrivateField || f == InheritedField {
+        if f == PublicField || f == InheritedField {
             // FIXME #6993: name should be of type Name, not Ident
             let name = item_name(&*intr, an_item);
             let did = item_def_id(an_item, cdata);

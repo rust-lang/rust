@@ -60,11 +60,6 @@ pub enum Baz {
         pub x: Private<int>, //~ ERROR private type in exported type signature
         y: Private<int>
     },
-
-    priv Baz3(Private<int>),
-    priv Baz4 {
-        x: Private<int>,
-    }
 }
 
 enum Qux {

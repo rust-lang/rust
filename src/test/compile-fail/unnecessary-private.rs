@@ -19,7 +19,7 @@ fn main() {
     }
 
     struct D {
-        priv foo: int, //~ ERROR: visibility has no effect
+        pub foo: int, //~ ERROR: visibility has no effect
     }
     pub fn foo() {} //~ ERROR: visibility has no effect
     pub mod bar {} //~ ERROR: visibility has no effect
