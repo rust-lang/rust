@@ -42,16 +42,25 @@ $$(LLVM_STAMP_$(1)): $(S)src/rustllvm/llvm-auto-clean-trigger
 	@$$(call E, make: done cleaning llvm)
 	touch $$@
 
-endef
+ifeq ($$(CFG_ENABLE_LLVM_STATIC_STDCPP),1)
+LLVM_STDCPP_LOCATION_$(1) = $$(shell $$(CC_$(1)) $$(CFG_GCCISH_CFLAGS_$(1)) \
+					-print-file-name=libstdc++.a)
+else
+LLVM_STDCPP_LOCATION_$(1) =
+endif
 
-$(foreach host,$(CFG_HOST), \
-    $(eval LLVM_CONFIGS := $(LLVM_CONFIGS) $(LLVM_CONFIG_$(host))))
+endef
 
 $(foreach host,$(CFG_HOST), \
  $(eval $(call DEF_LLVM_RULES,$(host))))
 
+$(foreach host,$(CFG_HOST), \
+ $(eval LLVM_CONFIGS := $(LLVM_CONFIGS) $(LLVM_CONFIG_$(host))))
+
 $(S)src/librustc/lib/llvmdeps.rs: \
 		    $(LLVM_CONFIGS) \
-		    $(S)src/etc/mklldeps.py
+		    $(S)src/etc/mklldeps.py \
+		    $(MKFILE_DEPS)
 	$(Q)$(CFG_PYTHON) $(S)src/etc/mklldeps.py \
-	    "$@" "$(LLVM_COMPONENTS)" $(LLVM_CONFIGS)
+		"$@" "$(LLVM_COMPONENTS)" "$(CFG_ENABLE_LLVM_STATIC_STDCPP)" \
+		$(LLVM_CONFIGS)

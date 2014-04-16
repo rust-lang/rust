@@ -11,11 +11,14 @@
 import os
 import sys
 import subprocess
+import itertools
+from os import path
 
 f = open(sys.argv[1], 'wb')
 
 components = sys.argv[2].split(' ')
 components = [i for i in components if i]  # ignore extra whitespaces
+enable_static = sys.argv[3]
 
 f.write("""// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
@@ -41,7 +44,7 @@ def run(args):
         sys.exit(1)
     return out
 
-for llconfig in sys.argv[3:]:
+for llconfig in sys.argv[4:]:
     f.write("\n")
 
     out = run([llconfig, '--host-target'])
@@ -94,9 +97,13 @@ for llconfig in sys.argv[3:]:
 
     # C++ runtime library
     out = run([llconfig, '--cxxflags'])
-    if 'stdlib=libc++' in out:
-        f.write("#[link(name = \"c++\")]\n")
+    if enable_static == '1':
+      assert('stdlib=libc++' not in out)
+      f.write("#[link(name = \"stdc++\", kind = \"static\")]\n")
     else:
+      if 'stdlib=libc++' in out:
+        f.write("#[link(name = \"c++\")]\n")
+      else:
         f.write("#[link(name = \"stdc++\")]\n")
 
     # Attach everything to an extern block
