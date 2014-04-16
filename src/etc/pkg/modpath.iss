@@ -164,7 +164,7 @@ begin
 end;
 
 
-procedure CurStepChanged(CurStep: TSetupStep);
+procedure ModPathCurStepChanged(CurStep: TSetupStep);
 var
 	taskname:	String;
 begin

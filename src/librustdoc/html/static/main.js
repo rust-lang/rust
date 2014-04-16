@@ -189,67 +189,68 @@
             for (var i = 0; i < nresults; i += 1) {
                 results[i].word = searchWords[results[i].id];
                 results[i].item = searchIndex[results[i].id] || {};
-                results[i].ty = results[i].item.ty;
-                results[i].path = results[i].item.path;
             }
             // if there are no results then return to default and fail
             if (results.length === 0) {
                 return [];
             }
 
-            // sort by exact match
-            results.sort(function search_complete_sort0(aaa, bbb) {
-                if (aaa.word === valLower &&
-                    bbb.word !== valLower) {
-                    return 1;
-                }
+            results.sort(function(aaa, bbb) {
+                var a, b;
+
+                // sort by crate (non-current crate goes later)
+                a = (aaa.item.crate !== window.currentCrate);
+                b = (bbb.item.crate !== window.currentCrate);
+                if (a !== b) return a - b;
+
+                // sort by exact match (mismatch goes later)
+                a = (aaa.word !== valLower);
+                b = (bbb.word !== valLower);
+                if (a !== b) return a - b;
+
+                // sort by item name length (longer goes later)
+                a = aaa.word.length;
+                b = bbb.word.length;
+                if (a !== b) return a - b;
+
+                // sort by item name (lexicographically larger goes later)
+                a = aaa.word;
+                b = bbb.word;
+                if (a !== b) return (a > b ? +1 : -1);
+
+                // sort by index of keyword in item name (no literal occurrence goes later)
+                a = (aaa.index < 0);
+                b = (bbb.index < 0);
+                if (a !== b) return a - b;
+                // (later literal occurrence, if any, goes later)
+                a = aaa.index;
+                b = bbb.index;
+                if (a !== b) return a - b;
+
+                // sort by description (no description goes later)
+                a = (aaa.item.desc === '');
+                b = (bbb.item.desc === '');
+                if (a !== b) return a - b;
+
+                // sort by type (later occurrence in `itemTypes` goes later)
+                a = aaa.item.ty;
+                b = bbb.item.ty;
+                if (a !== b) return a - b;
+
+                // sort by path (lexicographically larger goes later)
+                a = aaa.item.path;
+                b = bbb.item.path;
+                if (a !== b) return (a > b ? +1 : -1);
+
+                // que sera, sera
+                return 0;
             });
-            // first sorting attempt
-            // sort by item name length
-            results.sort(function search_complete_sort1(aaa, bbb) {
-                if (aaa.word.length > bbb.word.length) {
-                    return 1;
-                }
-            });
-            // second sorting attempt
-            // sort by item name
-            results.sort(function search_complete_sort1(aaa, bbb) {
-                if (aaa.word.length === bbb.word.length &&
-                    aaa.word > bbb.word) {
-                    return 1;
-                }
-            });
-            // third sorting attempt
-            // sort by index of keyword in item name
-            if (results[0].index !== -1) {
-                results.sort(function search_complete_sort1(aaa, bbb) {
-                    if (aaa.index > bbb.index && bbb.index === 0) {
-                        return 1;
-                    }
-                });
-            }
-            // fourth sorting attempt
-            // sort by type
-            results.sort(function search_complete_sort3(aaa, bbb) {
-                if (aaa.word === bbb.word &&
-                    aaa.ty > bbb.ty) {
-                    return 1;
-                }
-            });
-            // fifth sorting attempt
-            // sort by path
-            results.sort(function search_complete_sort4(aaa, bbb) {
-                if (aaa.word === bbb.word &&
-                    aaa.ty === bbb.ty && aaa.path > bbb.path) {
-                    return 1;
-                }
-            });
-            // sixth sorting attempt
+
             // remove duplicates, according to the data provided
             for (var i = results.length - 1; i > 0; i -= 1) {
                 if (results[i].word === results[i - 1].word &&
-                    results[i].ty === results[i - 1].ty &&
-                    results[i].path === results[i - 1].path)
+                    results[i].item.ty === results[i - 1].item.ty &&
+                    results[i].item.path === results[i - 1].item.path)
                 {
                     results[i].id = -1;
                 }

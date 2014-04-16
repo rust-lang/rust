@@ -1294,37 +1294,47 @@ impl Drop for MemoryMap {
 /// Various useful system-specific constants.
 pub mod consts {
     #[cfg(unix)]
-    pub use os::consts::unix::*;
+    pub use os::consts::unix::FAMILY;
 
     #[cfg(windows)]
-    pub use os::consts::windows::*;
+    pub use os::consts::windows::FAMILY;
 
     #[cfg(target_os = "macos")]
-    pub use os::consts::macos::*;
+    pub use os::consts::macos::{SYSNAME, DLL_PREFIX, DLL_SUFFIX, DLL_EXTENSION};
+    #[cfg(target_os = "macos")]
+    pub use os::consts::macos::{EXE_SUFFIX, EXE_EXTENSION};
 
     #[cfg(target_os = "freebsd")]
-    pub use os::consts::freebsd::*;
+    pub use os::consts::freebsd::{SYSNAME, DLL_PREFIX, DLL_SUFFIX, DLL_EXTENSION};
+    #[cfg(target_os = "freebsd")]
+    pub use os::consts::freebsd::{EXE_SUFFIX, EXE_EXTENSION};
 
     #[cfg(target_os = "linux")]
-    pub use os::consts::linux::*;
+    pub use os::consts::linux::{SYSNAME, DLL_PREFIX, DLL_SUFFIX, DLL_EXTENSION};
+    #[cfg(target_os = "linux")]
+    pub use os::consts::linux::{EXE_SUFFIX, EXE_EXTENSION};
 
     #[cfg(target_os = "android")]
-    pub use os::consts::android::*;
+    pub use os::consts::android::{SYSNAME, DLL_PREFIX, DLL_SUFFIX, DLL_EXTENSION};
+    #[cfg(target_os = "android")]
+    pub use os::consts::android::{EXE_SUFFIX, EXE_EXTENSION};
 
     #[cfg(target_os = "win32")]
-    pub use os::consts::win32::*;
+    pub use os::consts::win32::{SYSNAME, DLL_PREFIX, DLL_SUFFIX, DLL_EXTENSION};
+    #[cfg(target_os = "win32")]
+    pub use os::consts::win32::{EXE_SUFFIX, EXE_EXTENSION};
 
     #[cfg(target_arch = "x86")]
-    pub use os::consts::x86::*;
+    pub use os::consts::x86::{ARCH};
 
     #[cfg(target_arch = "x86_64")]
-    pub use os::consts::x86_64::*;
+    pub use os::consts::x86_64::{ARCH};
 
     #[cfg(target_arch = "arm")]
-    pub use os::consts::arm::*;
+    pub use os::consts::arm::{ARCH};
 
     #[cfg(target_arch = "mips")]
-    pub use os::consts::mips::*;
+    pub use os::consts::mips::{ARCH};
 
     /// Constants for Unix systems.
     pub mod unix {

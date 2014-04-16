@@ -194,7 +194,7 @@ pub fn encode(s: &str) -> ~str {
 }
 
 /**
- * Encodes a URI component by replacing reserved characters with percent
+ * Encodes a URI component by replacing reserved characters with percent-
  * encoded character sequences.
  *
  * This function is compliant with RFC 3986.

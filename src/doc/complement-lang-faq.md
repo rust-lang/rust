@@ -27,7 +27,7 @@ Some examples that demonstrate different aspects of the language:
 
 You may also be interested in browsing [GitHub's Rust][github-rust] page.
 
-[github-rust]: https://github.com/languages/Rust
+[github-rust]: https://github.com/trending?l=rust
 
 ## Does it run on Windows?
 
@@ -141,8 +141,14 @@ export RUST_LOG=hello
 ./hello
 ```
 
-**Long answer** RUST_LOG takes a 'logging spec' that consists of a comma-separated list of paths, where a path consists of the crate name and sequence of module names, each separated by double-colons. For standalone .rs files the crate is implicitly named after the source file, so in the above example we were setting RUST_LOG to the name of the hello crate. Multiple paths can be combined to control the exact logging you want to see. For example, when debugging linking in the compiler you might set `RUST_LOG=rustc::metadata::creader,rustc::util::filesearch,rustc::back::rpath`
-
-If you aren't sure which paths you need, try setting RUST_LOG to `::help` and running your program. This will print a list of paths available for logging. For a full description see [the language reference][1].
+**Long answer** RUST_LOG takes a 'logging spec' that consists of a
+comma-separated list of paths, where a path consists of the crate name and
+sequence of module names, each separated by double-colons. For standalone .rs
+files the crate is implicitly named after the source file, so in the above
+example we were setting RUST_LOG to the name of the hello crate. Multiple paths
+can be combined to control the exact logging you want to see. For example, when
+debugging linking in the compiler you might set
+`RUST_LOG=rustc::metadata::creader,rustc::util::filesearch,rustc::back::rpath`
+For a full description see [the language reference][1].
 
 [1]:http://doc.rust-lang.org/doc/master/rust.html#logging-system

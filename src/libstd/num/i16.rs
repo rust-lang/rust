@@ -28,17 +28,17 @@ int_module!(i16, 16)
 impl Bitwise for i16 {
     /// Returns the number of ones in the binary representation of the number.
     #[inline]
-    fn count_ones(&self) -> i16 { unsafe { intrinsics::ctpop16(*self) } }
+    fn count_ones(&self) -> i16 { unsafe { intrinsics::ctpop16(*self as u16) as i16 } }
 
     /// Returns the number of leading zeros in the in the binary representation
     /// of the number.
     #[inline]
-    fn leading_zeros(&self) -> i16 { unsafe { intrinsics::ctlz16(*self) } }
+    fn leading_zeros(&self) -> i16 { unsafe { intrinsics::ctlz16(*self as u16) as i16 } }
 
     /// Returns the number of trailing zeros in the in the binary representation
     /// of the number.
     #[inline]
-    fn trailing_zeros(&self) -> i16 { unsafe { intrinsics::cttz16(*self) } }
+    fn trailing_zeros(&self) -> i16 { unsafe { intrinsics::cttz16(*self as u16) as i16 } }
 }
 
 impl CheckedAdd for i16 {

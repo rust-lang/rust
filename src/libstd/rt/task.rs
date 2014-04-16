@@ -127,8 +127,8 @@ impl Task {
                 #[allow(unused_must_use)]
                 fn close_outputs() {
                     let mut task = Local::borrow(None::<Task>);
-                    let stderr = task.get().stderr.take();
-                    let stdout = task.get().stdout.take();
+                    let stderr = task.stderr.take();
+                    let stdout = task.stdout.take();
                     drop(task);
                     match stdout { Some(mut w) => { w.flush(); }, None => {} }
                     match stderr { Some(mut w) => { w.flush(); }, None => {} }
@@ -159,8 +159,7 @@ impl Task {
                 // be intertwined, and miraculously work for now...
                 let mut task = Local::borrow(None::<Task>);
                 let storage_map = {
-                    let task = task.get();
-                    let LocalStorage(ref mut optmap) = task.storage;
+                    let &LocalStorage(ref mut optmap) = &mut task.storage;
                     optmap.take()
                 };
                 drop(task);
@@ -332,8 +331,7 @@ impl BlockedTask {
     }
 
     /// Converts one blocked task handle to a list of many handles to the same.
-    pub fn make_selectable(self, num_handles: uint) -> Take<BlockedTasks>
-    {
+    pub fn make_selectable(self, num_handles: uint) -> Take<BlockedTasks> {
         let arc = match self {
             Owned(task) => {
                 let flag = unsafe { AtomicUint::new(cast::transmute(task)) };
