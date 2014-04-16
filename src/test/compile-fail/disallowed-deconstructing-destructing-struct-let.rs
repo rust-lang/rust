@@ -24,7 +24,7 @@ fn unwrap(x: X) -> ~str {
 }
 
 fn main() {
-    let x = X { x: ~"hello" };
+    let x = X { x: "hello".to_owned() };
     let y = unwrap(x);
     println!("contents: {}", y);
 }

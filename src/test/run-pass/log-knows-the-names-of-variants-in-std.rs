@@ -21,19 +21,19 @@ fn check_log<T>(exp: ~str, v: T) {
 
 pub fn main() {
     let mut x = Some(a(22u));
-    let exp = ~"Some(a(22u))";
+    let exp = "Some(a(22u))".to_owned();
     let act = format!("{:?}", x);
     assert_eq!(act, exp);
     check_log(exp, x);
 
-    x = Some(b(~"hi"));
-    let exp = ~"Some(b(~\"hi\"))";
+    x = Some(b("hi".to_owned()));
+    let exp = "Some(b(~\"hi\"))".to_owned();
     let act = format!("{:?}", x);
     assert_eq!(act, exp);
     check_log(exp, x);
 
     x = None;
-    let exp = ~"None";
+    let exp = "None".to_owned();
     let act = format!("{:?}", x);
     assert_eq!(act, exp);
     check_log(exp, x);

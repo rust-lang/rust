@@ -132,7 +132,7 @@ fn generic_extension(cx: &ExtCtxt,
 
     // Which arm's failure should we report? (the one furthest along)
     let mut best_fail_spot = DUMMY_SP;
-    let mut best_fail_msg = ~"internal error: ran no matchers";
+    let mut best_fail_msg = "internal error: ran no matchers".to_owned();
 
     for (i, lhs) in lhses.iter().enumerate() { // try each arm's matchers
         match **lhs {

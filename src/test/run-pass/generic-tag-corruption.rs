@@ -14,4 +14,4 @@
 // This used to cause memory corruption in stage 0.
 enum thing<K> { some(K), }
 
-pub fn main() { let _x = some(~"hi"); }
+pub fn main() { let _x = some("hi".to_owned()); }

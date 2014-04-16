@@ -92,7 +92,9 @@ impl Drop for UnsafeStruct {
 static STATIC10: UnsafeStruct = UnsafeStruct;
 //~^ ERROR static items are not allowed to have destructor
 
-static STATIC11: ~str = ~"Owned pointers are not allowed either";
+struct MyOwned;
+
+static STATIC11: ~MyOwned = ~MyOwned;
 //~^ ERROR static items are not allowed to have owned pointers
 
 // The following examples test that mutable structs are just forbidden
@@ -104,14 +106,14 @@ static mut STATIC12: UnsafeStruct = UnsafeStruct;
 static mut STATIC13: SafeStruct = SafeStruct{field1: Variant1, field2: Variant3(WithDtor)};
 //~^ ERROR mutable static items are not allowed to have destructors
 
-static mut STATIC14: SafeStruct = SafeStruct{field1: Variant1, field2: Variant4(~"str")};
+static mut STATIC14: SafeStruct = SafeStruct{field1: Variant1, field2: Variant4("str".to_owned())};
 //~^ ERROR mutable static items are not allowed to have destructors
 
-static STATIC15: &'static [~str] = &'static [~"str", ~"str"];
+static STATIC15: &'static [~MyOwned] = &'static [~MyOwned, ~MyOwned];
 //~^ ERROR static items are not allowed to have owned pointers
 //~^^ ERROR static items are not allowed to have owned pointers
 
-static STATIC16: (~str, ~str) = (~"str", ~"str");
+static STATIC16: (&'static ~MyOwned, &'static ~MyOwned) = (&'static ~MyOwned, &'static ~MyOwned);
 //~^ ERROR static items are not allowed to have owned pointers
 //~^^ ERROR static items are not allowed to have owned pointers
 

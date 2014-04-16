@@ -1525,7 +1525,7 @@ mod tests {
 
     fn make_rand_name() -> ~str {
         let mut rng = rand::task_rng();
-        let n = ~"TEST" + rng.gen_ascii_str(10u);
+        let n = "TEST".to_owned() + rng.gen_ascii_str(10u);
         assert!(getenv(n).is_none());
         n
     }
@@ -1534,7 +1534,7 @@ mod tests {
     fn test_setenv() {
         let n = make_rand_name();
         setenv(n, "VALUE");
-        assert_eq!(getenv(n), option::Some(~"VALUE"));
+        assert_eq!(getenv(n), option::Some("VALUE".to_owned()));
     }
 
     #[test]
@@ -1551,9 +1551,9 @@ mod tests {
         let n = make_rand_name();
         setenv(n, "1");
         setenv(n, "2");
-        assert_eq!(getenv(n), option::Some(~"2"));
+        assert_eq!(getenv(n), option::Some("2".to_owned()));
         setenv(n, "");
-        assert_eq!(getenv(n), option::Some(~""));
+        assert_eq!(getenv(n), option::Some("".to_owned()));
     }
 
     // Windows GetEnvironmentVariable requires some extra work to make sure
@@ -1561,7 +1561,7 @@ mod tests {
     #[test]
     #[ignore]
     fn test_getenv_big() {
-        let mut s = ~"";
+        let mut s = "".to_owned();
         let mut i = 0;
         while i < 100 {
             s = s + "aaaaaaaaaa";
@@ -1627,10 +1627,10 @@ mod tests {
 
         let mut e = env();
         setenv(n, "VALUE");
-        assert!(!e.contains(&(n.clone(), ~"VALUE")));
+        assert!(!e.contains(&(n.clone(), "VALUE".to_owned())));
 
         e = env();
-        assert!(e.contains(&(n, ~"VALUE")));
+        assert!(e.contains(&(n, "VALUE".to_owned())));
     }
 
     #[test]

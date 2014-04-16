@@ -434,9 +434,9 @@ cgoptions!(
         "system linker to link outputs with"),
     link_args: Vec<~str> = (Vec::new(), parse_list,
         "extra arguments to pass to the linker (space separated)"),
-    target_cpu: ~str = (~"generic", parse_string,
+    target_cpu: ~str = ("generic".to_owned(), parse_string,
         "select target processor (llc -mcpu=help for details)"),
-    target_feature: ~str = (~"", parse_string,
+    target_feature: ~str = ("".to_owned(), parse_string,
         "target specific attributes (llc -mattr=help for details)"),
     passes: Vec<~str> = (Vec::new(), parse_list,
         "a list of extra LLVM passes to run (space separated)"),
@@ -460,7 +460,7 @@ cgoptions!(
         "prefer dynamic linking to static linking"),
     no_integrated_as: bool = (false, parse_bool,
         "use an external assembler rather than LLVM's integrated one"),
-    relocation_model: ~str = (~"pic", parse_string,
+    relocation_model: ~str = ("pic".to_owned(), parse_string,
          "choose the relocation model to use (llc -relocation-model for details)"),
 )
 
@@ -524,12 +524,12 @@ pub fn collect_crate_types(session: &Session,
                         session.add_lint(lint::UnknownCrateType,
                                          ast::CRATE_NODE_ID,
                                          a.span,
-                                         ~"invalid `crate_type` value");
+                                         "invalid `crate_type` value".to_owned());
                         None
                     }
                     _ => {
                         session.add_lint(lint::UnknownCrateType, ast::CRATE_NODE_ID,
-                                        a.span, ~"`crate_type` requires a value");
+                                        a.span, "`crate_type` requires a value".to_owned());
                         None
                     }
                 }

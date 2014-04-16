@@ -60,10 +60,10 @@ impl Pet for Goldfyshe {
 }
 
 pub fn main() {
-    let catte = Catte { num_whiskers: 7, name: ~"alonzo_church" };
-    let dogge1 = Dogge { bark_decibels: 100, tricks_known: 42, name: ~"alan_turing" };
-    let dogge2 = Dogge { bark_decibels: 55,  tricks_known: 11, name: ~"albert_einstein" };
-    let fishe = Goldfyshe { swim_speed: 998, name: ~"alec_guinness" };
+    let catte = Catte { num_whiskers: 7, name: "alonzo_church".to_owned() };
+    let dogge1 = Dogge { bark_decibels: 100, tricks_known: 42, name: "alan_turing".to_owned() };
+    let dogge2 = Dogge { bark_decibels: 55,  tricks_known: 11, name: "albert_einstein".to_owned() };
+    let fishe = Goldfyshe { swim_speed: 998, name: "alec_guinness".to_owned() };
     let arc = Arc::new(vec!(~catte  as ~Pet:Share+Send,
                          ~dogge1 as ~Pet:Share+Send,
                          ~fishe  as ~Pet:Share+Send,

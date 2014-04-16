@@ -17,9 +17,9 @@ fn test_box() {
 }
 
 fn test_str() {
-    let res = match true { true => { ~"happy" },
+    let res = match true { true => { "happy".to_owned() },
                          _ => fail!("not happy at all") };
-    assert_eq!(res, ~"happy");
+    assert_eq!(res, "happy".to_owned());
 }
 
 pub fn main() { test_box(); test_str(); }

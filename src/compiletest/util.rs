@@ -46,10 +46,10 @@ pub fn make_new_path(path: &str) -> ~str {
 }
 
 #[cfg(target_os = "win32")]
-pub fn lib_path_env_var() -> ~str { ~"PATH" }
+pub fn lib_path_env_var() -> ~str { "PATH".to_owned() }
 
 #[cfg(target_os = "win32")]
-pub fn path_div() -> ~str { ~";" }
+pub fn path_div() -> ~str { ";".to_owned() }
 
 pub fn logv(config: &config, s: ~str) {
     debug!("{}", s);

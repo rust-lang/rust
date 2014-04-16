@@ -14,6 +14,6 @@ extern crate explicit_self_xcrate;
 use explicit_self_xcrate::{Foo, Bar};
 
 pub fn main() {
-    let x = Bar { x: ~"hello" };
+    let x = Bar { x: "hello".to_owned() };
     x.f();
 }

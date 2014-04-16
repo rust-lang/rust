@@ -1340,7 +1340,7 @@ impl<'a> Visitor<()> for VisiblePrivateTypesVisitor<'a> {
                 if self.path_is_private_type(path_id) {
                     self.tcx.sess.add_lint(lint::VisiblePrivateTypes,
                                            path_id, p.span,
-                                           ~"private type in exported type signature");
+                                           "private type in exported type signature".to_owned());
                 }
             }
             _ => {}

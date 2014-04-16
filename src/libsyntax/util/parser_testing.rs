@@ -18,12 +18,12 @@ use parse::token;
 // map a string to tts, using a made-up filename:
 pub fn string_to_tts(source_str: ~str) -> Vec<ast::TokenTree> {
     let ps = new_parse_sess();
-    filemap_to_tts(&ps, string_to_filemap(&ps, source_str,~"bogofile"))
+    filemap_to_tts(&ps, string_to_filemap(&ps, source_str,"bogofile".to_owned()))
 }
 
 // map string to parser (via tts)
 pub fn string_to_parser<'a>(ps: &'a ParseSess, source_str: ~str) -> Parser<'a> {
-    new_parser_from_source_str(ps, Vec::new(), ~"bogofile", source_str)
+    new_parser_from_source_str(ps, Vec::new(), "bogofile".to_owned(), source_str)
 }
 
 fn with_error_checking_parse<T>(s: ~str, f: |&mut Parser| -> T) -> T {

@@ -13,8 +13,8 @@
 #![feature(concat_idents)]
 
 pub fn main() {
-    let asdf_fdsa = ~"<.<";
-    assert_eq!(concat_idents!(asd, f_f, dsa), ~"<.<");
+    let asdf_fdsa = "<.<".to_owned();
+    assert_eq!(concat_idents!(asd, f_f, dsa), "<.<".to_owned());
     //~^ ERROR: unresolved name `asdf_fdsa`
 
     assert!(stringify!(use_mention_distinction) ==

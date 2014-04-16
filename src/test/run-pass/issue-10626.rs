@@ -17,7 +17,7 @@ use std::io::process;
 
 pub fn main () {
     let args = os::args();
-    if args.len() > 1 && args[1] == ~"child" {
+    if args.len() > 1 && args[1] == "child".to_owned() {
         for _ in range(0, 1000) {
             println!("hello?");
         }
@@ -29,7 +29,7 @@ pub fn main () {
 
     let config = process::ProcessConfig {
         program : args[0].as_slice(),
-        args : &[~"child"],
+        args : &["child".to_owned()],
         stdout: process::Ignored,
         stderr: process::Ignored,
         .. process::ProcessConfig::new()

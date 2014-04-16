@@ -129,7 +129,7 @@ impl<T: Writer> Terminal<T> {
     pub fn new(out: T) -> Result<Terminal<T>, ~str> {
         let term = match os::getenv("TERM") {
             Some(t) => t,
-            None => return Err(~"TERM environment variable undefined")
+            None => return Err("TERM environment variable undefined".to_owned())
         };
 
         let mut file = match open(term) {
@@ -251,7 +251,7 @@ impl<T: Writer> Terminal<T> {
                 cap = self.ti.strings.find_equiv(&("op"));
             }
         }
-        let s = cap.map_or(Err(~"can't find terminfo capability `sgr0`"), |op| {
+        let s = cap.map_or(Err("can't find terminfo capability `sgr0`".to_owned()), |op| {
             expand(op.as_slice(), [], &mut Variables::new())
         });
         if s.is_ok() {
