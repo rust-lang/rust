@@ -2007,110 +2007,110 @@ A complete list of the built-in language items follows:
 
 #### Built-in Traits
 
-`send`
+* `send`
   : Able to be sent across task boundaries.
-`sized`
+* `sized`
   : Has a size known at compile time.
-`copy`
+* `copy`
   : Types that do not move ownership when used by-value.
-`share`
+* `share`
   : Able to be safely shared between tasks when aliased.
-`drop`
+* `drop`
   : Have destructors.
 
 #### Operators
 
 These language items are traits:
 
-`add`
+* `add`
   : Elements can be added (for example, integers and floats).
-`sub`
+* `sub`
   : Elements can be subtracted.
-`mul`
+* `mul`
   : Elements can be multiplied.
-`div`
+* `div`
   : Elements have a division operation.
-`rem`
+* `rem`
   : Elements have a remainder operation.
-`neg`
+* `neg`
   : Elements can be negated arithmetically.
-`not`
+* `not`
   : Elements can be negated logically.
-`bitxor`
+* `bitxor`
   : Elements have an exclusive-or operation.
-`bitand`
+* `bitand`
   : Elements have a bitwise `and` operation.
-`bitor`
+* `bitor`
   : Elements have a bitwise `or` operation.
-`shl`
+* `shl`
   : Elements have a left shift operation.
-`shr`
+* `shr`
   : Elements have a right shift operation.
-`index`
+* `index`
   : Elements can be indexed.
-`eq`
+* `eq`
   : Elements can be compared for equality.
-`ord`
+* `ord`
   : Elements have a partial ordering.
-`deref`
+* `deref`
   : `*` can be applied, yielding a reference to another type
-`deref_mut`
+* `deref_mut`
   : `*` can be applied, yielding a mutable reference to another type
 
 
 These are functions:
 
-`str_eq`
+* `str_eq`
   : Compare two strings (`&str`) for equality.
-`uniq_str_eq`
+* `uniq_str_eq`
   : Compare two owned strings (`~str`) for equality.
-`strdup_uniq`
+* `strdup_uniq`
   : Return a new unique string
     containing a copy of the contents of a unique string.
 
 #### Types
 
-`unsafe`
+* `unsafe`
   : A type whose contents can be mutated through an immutable reference
-`type_id`
+* `type_id`
   : The type returned by the `type_id` intrinsic.
 
 #### Marker types
 
 These types help drive the compiler's analysis
 
-`covariant_type`
+* `covariant_type`
   : The type parameter should be considered covariant
-`contravariant_type`
+* `contravariant_type`
   : The type parameter should be considered contravariant
-`invariant_type`
+* `invariant_type`
   : The type parameter should be considered invariant
-`covariant_lifetime`
+* `covariant_lifetime`
   : The lifetime parameter should be considered covariant
-`contravariant_lifetime`
+* `contravariant_lifetime`
   : The lifetime parameter should be considered contravariant
-`invariant_lifetime`
+* `invariant_lifetime`
   : The lifetime parameter should be considered invariant
-`no_send_bound`
+* `no_send_bound`
   : This type does not implement "send", even if eligible
-`no_copy_bound`
+* `no_copy_bound`
   : This type does not implement "copy", even if eligible
-`no_share_bound`
+* `no_share_bound`
   : This type does not implement "share", even if eligible
-`managed_bound`
+* `managed_bound`
   : This type implements "managed"
 
-`fail_`
+* `fail_`
   : Abort the program with an error.
-`fail_bounds_check`
+* `fail_bounds_check`
   : Abort the program with a bounds check error.
-`exchange_malloc`
+* `exchange_malloc`
   : Allocate memory on the exchange heap.
-`exchange_free`
+* `exchange_free`
   : Free memory that was allocated on the exchange heap.
-`malloc`
+* `malloc`
   : Allocate memory on the managed heap.
-`free`
+* `free`
   : Free memory that was allocated on the managed heap.
 
 > **Note:** This list is likely to become out of date. We should auto-generate it
@@ -2618,9 +2618,9 @@ Rust defines six symbolic unary operators.
 They are all written as prefix operators,
 before the expression they apply to.
 
-`-`
+* `-`
   : Negation. May only be applied to numeric types.
-`*`
+* `*`
   : Dereference. When applied to a [pointer](#pointer-types) it denotes the pointed-to location.
     For pointers to mutable locations, the resulting [lvalue](#lvalues-rvalues-and-temporaries) can be assigned to.
     On non-pointer types, it calls the `deref` method of the `std::ops::Deref` trait, or the
@@ -2628,14 +2628,14 @@ before the expression they apply to.
     for an outer expression that will or could mutate the dereference), and produces the
     result of dereferencing the `&` or `&mut` borrowed pointer returned from the overload method.
 
-`!`
+* `!`
   : Logical negation. On the boolean type, this flips between `true` and
     `false`. On integer types, this inverts the individual bits in the
     two's complement representation of the value.
-`~`
+* `~`
   :  [Boxing](#pointer-types) operators. Allocate a box to hold the value they are applied to,
      and store the value in it. `~` creates an owned box.
-`&`
+* `&`
   : Borrow operator. Returns a reference, pointing to its operand.
     The operand of a borrow is statically proven to outlive the resulting pointer.
     If the borrow-checker cannot prove this, it is a compilation error.
@@ -2656,19 +2656,19 @@ defined in the `std::ops` module of the `std` library.
 This means that arithmetic operators can be overridden for user-defined types.
 The default meaning of the operators on standard types is given here.
 
-`+`
+* `+`
   : Addition and vector/string concatenation.
     Calls the `add` method on the `std::ops::Add` trait.
-`-`
+* `-`
   : Subtraction.
     Calls the `sub` method on the `std::ops::Sub` trait.
-`*`
+* `*`
   : Multiplication.
     Calls the `mul` method on the `std::ops::Mul` trait.
-`/`
+* `/`
   : Quotient.
     Calls the `div` method on the `std::ops::Div` trait.
-`%`
+* `%`
   : Remainder.
     Calls the `rem` method on the `std::ops::Rem` trait.
 
@@ -2679,19 +2679,19 @@ are syntactic sugar for calls to methods of built-in traits.
 This means that bitwise operators can be overridden for user-defined types.
 The default meaning of the operators on standard types is given here.
 
-`&`
+* `&`
   : And.
     Calls the `bitand` method of the `std::ops::BitAnd` trait.
-`|`
+* `|`
   : Inclusive or.
     Calls the `bitor` method of the `std::ops::BitOr` trait.
-`^`
+* `^`
   : Exclusive or.
     Calls the `bitxor` method of the `std::ops::BitXor` trait.
-`<<`
+* `<<`
   : Logical left shift.
     Calls the `shl` method of the `std::ops::Shl` trait.
-`>>`
+* `>>`
   : Logical right shift.
     Calls the `shr` method of the `std::ops::Shr` trait.
 
@@ -2712,22 +2712,22 @@ syntactic sugar for calls to built-in traits.
 This means that comparison operators can be overridden for user-defined types.
 The default meaning of the operators on standard types is given here.
 
-`==`
+* `==`
   : Equal to.
     Calls the `eq` method on the `std::cmp::Eq` trait.
-`!=`
+* `!=`
   : Unequal to.
     Calls the `ne` method on the `std::cmp::Eq` trait.
-`<`
+* `<`
   : Less than.
     Calls the `lt` method on the `std::cmp::Ord` trait.
-`>`
+* `>`
   : Greater than.
     Calls the `gt` method on the `std::cmp::Ord` trait.
-`<=`
+* `<=`
   : Less than or equal.
     Calls the `le` method on the `std::cmp::Ord` trait.
-`>=`
+* `>=`
   : Greater than or equal.
     Calls the `ge` method on the `std::cmp::Ord` trait.
 
@@ -3413,7 +3413,7 @@ All pointers in Rust are explicit first-class values.
 They can be copied, stored into data structures, and returned from functions.
 There are four varieties of pointer in Rust:
 
-Owning pointers (`~`)
+* Owning pointers (`~`)
   : These point to owned heap allocations (or "boxes") in the shared, inter-task heap.
     Each owned box has a single owning pointer; pointer and pointee retain a 1:1 relationship at all times.
     Owning pointers are written `~content`,
@@ -3422,7 +3422,7 @@ Owning pointers (`~`)
     it involves allocating a new owned box and copying the contents of the old box into the new box.
     Releasing an owning pointer immediately releases its corresponding owned box.
 
-References (`&`)
+* References (`&`)
   : These point to memory _owned by some other value_.
     References arise by (automatic) conversion from owning pointers, managed pointers,
     or by applying the borrowing operator `&` to some other value,
@@ -3435,7 +3435,7 @@ References (`&`)
     with the exception of temporary values,
     which are released when the last reference to them is released.
 
-Raw pointers (`*`)
+* Raw pointers (`*`)
   : Raw pointers are pointers without safety or liveness guarantees.
     Raw pointers are written `*content`,
     for example `*int` means a raw pointer to an integer.
@@ -3609,24 +3609,24 @@ call to the method `make_string`.
 Types in Rust are categorized into kinds, based on various properties of the components of the type.
 The kinds are:
 
-`Send`
+* `Send`
   : Types of this kind can be safely sent between tasks.
     This kind includes scalars, owning pointers, owned closures, and
     structural types containing only other owned types.
     All `Send` types are `'static`.
-`Copy`
+* `Copy`
   : Types of this kind consist of "Plain Old Data"
     which can be copied by simply moving bits.
     All values of this kind can be implicitly copied.
     This kind includes scalars and immutable references,
     as well as structural types containing other `Copy` types.
-`'static`
+* `'static`
   : Types of this kind do not contain any references (except for
     references with the `static` lifetime, which are allowed).
     This can be a useful guarantee for code
     that breaks borrowing assumptions
     using [`unsafe` operations](#unsafe-functions).
-`Drop`
+* `Drop`
   : This is not strictly a kind,
     but its presence interacts with kinds:
     the `Drop` trait provides a single method `drop`
@@ -3638,7 +3638,7 @@ The kinds are:
     before any of the values it owns run their destructors.
     Only `Send` types can implement `Drop`.
 
-_Default_
+* _Default_
   : Types with destructors, closure environments,
     and various other _non-first-class_ types,
     are not copyable at all.
