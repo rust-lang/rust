@@ -26,9 +26,9 @@ fn main() {
     let s = S { x: ~Bar(~42) };
     loop {
         f(&s, |hellothere| {
-            match hellothere.x {
+            match hellothere.x { //~ ERROR cannot move out
                 ~Foo(_) => {}
-                ~Bar(x) => println!("{}", x.to_str()), //~ ERROR cannot move out
+                ~Bar(x) => println!("{}", x.to_str()), //~ NOTE attempting to move value to here
                 ~Baz => {}
             }
         })
