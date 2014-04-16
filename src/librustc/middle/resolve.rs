@@ -3507,8 +3507,9 @@ impl<'a> Resolver<'a> {
                         // its scope.
 
                         self.resolve_error(span,
-                                              "attempt to use a type \
-                                              argument out of scope");
+                                              "can't use type parameters from \
+                                              outer function; try using a local \
+                                              type parameter instead");
                     }
 
                     return None;
@@ -3530,8 +3531,9 @@ impl<'a> Resolver<'a> {
                         // its scope.
 
                         self.resolve_error(span,
-                                              "attempt to use a type \
-                                              argument out of scope");
+                                              "can't use type parameters from \
+                                              outer function; try using a local \
+                                              type parameter instead");
                     }
 
                     return None;

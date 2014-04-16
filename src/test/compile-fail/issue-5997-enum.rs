@@ -10,7 +10,7 @@
 
 fn f<Z>() -> bool {
     enum E { V(Z) }
-    //~^ ERROR missing type param `Z` in the substitution of `Z`
+    //~^ ERROR can't use type parameters from outer function in the
 
     true
 }

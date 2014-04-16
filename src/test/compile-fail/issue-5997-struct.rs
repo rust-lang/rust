@@ -10,7 +10,7 @@
 
 fn f<T>() -> bool {
     struct S(T); //~ ERROR use of undeclared type name `T`
-    //~^ ERROR attempt to use a type argument out of scope
+    //~^ ERROR can't use type parameters from outer function; try using
 
     true
 }
