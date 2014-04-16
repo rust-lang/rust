@@ -507,7 +507,6 @@ impl fmt::Show for VisSpace {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.get() {
             Some(ast::Public) => write!(f.buf, "pub "),
-            Some(ast::Private) => write!(f.buf, "priv "),
             Some(ast::Inherited) | None => Ok(())
         }
     }

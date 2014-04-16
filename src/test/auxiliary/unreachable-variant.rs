@@ -8,14 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-mod a {
-    pub enum Waffle {
-        Belgian,
-        Brussels,
-        priv Liege
+mod super_sekrit {
+    pub enum sooper_sekrit {
+        quux, baz
     }
-}
-
-fn main() {
-    let x = a::Liege;   //~ ERROR variant `Liege` is private
 }

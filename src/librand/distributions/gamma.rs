@@ -45,10 +45,14 @@ use super::{IndependentSample, Sample, Exp};
 /// for Generating Gamma Variables" *ACM Trans. Math. Softw.* 26, 3
 /// (September 2000),
 /// 363-372. DOI:[10.1145/358407.358414](http://doi.acm.org/10.1145/358407.358414)
-pub enum Gamma {
-    priv Large(GammaLargeShape),
-    priv One(Exp),
-    priv Small(GammaSmallShape)
+pub struct Gamma {
+    repr: GammaRepr,
+}
+
+enum GammaRepr {
+    Large(GammaLargeShape),
+    One(Exp),
+    Small(GammaSmallShape)
 }
 
 // These two helpers could be made public, but saving the
@@ -90,11 +94,12 @@ impl Gamma {
         assert!(shape > 0.0, "Gamma::new called with shape <= 0");
         assert!(scale > 0.0, "Gamma::new called with scale <= 0");
 
-        match shape {
+        let repr = match shape {
             1.0        => One(Exp::new(1.0 / scale)),
             0.0 .. 1.0 => Small(GammaSmallShape::new_raw(shape, scale)),
             _          => Large(GammaLargeShape::new_raw(shape, scale))
-        }
+        };
+        Gamma { repr: repr }
     }
 }
 
@@ -131,7 +136,7 @@ impl Sample<f64> for GammaLargeShape {
 
 impl IndependentSample<f64> for Gamma {
     fn ind_sample<R: Rng>(&self, rng: &mut R) -> f64 {
-        match *self {
+        match self.repr {
             Small(ref g) => g.ind_sample(rng),
             One(ref g) => g.ind_sample(rng),
             Large(ref g) => g.ind_sample(rng),
@@ -183,24 +188,29 @@ impl IndependentSample<f64> for GammaLargeShape {
 /// let v = chi.ind_sample(&mut rand::task_rng());
 /// println!("{} is from a χ²(11) distribution", v)
 /// ```
-pub enum ChiSquared {
+pub struct ChiSquared {
+    repr: ChiSquaredRepr,
+}
+
+enum ChiSquaredRepr {
     // k == 1, Gamma(alpha, ..) is particularly slow for alpha < 1,
     // e.g. when alpha = 1/2 as it would be for this case, so special-
     // casing and using the definition of N(0,1)^2 is faster.
-    priv DoFExactlyOne,
-    priv DoFAnythingElse(Gamma)
+    DoFExactlyOne,
+    DoFAnythingElse(Gamma),
 }
 
 impl ChiSquared {
     /// Create a new chi-squared distribution with degrees-of-freedom
     /// `k`. Fails if `k < 0`.
     pub fn new(k: f64) -> ChiSquared {
-        if k == 1.0 {
+        let repr = if k == 1.0 {
             DoFExactlyOne
         } else {
             assert!(k > 0.0, "ChiSquared::new called with `k` < 0");
             DoFAnythingElse(Gamma::new(0.5 * k, 2.0))
-        }
+        };
+        ChiSquared { repr: repr }
     }
 }
 impl Sample<f64> for ChiSquared {
@@ -208,7 +218,7 @@ impl Sample<f64> for ChiSquared {
 }
 impl IndependentSample<f64> for ChiSquared {
     fn ind_sample<R: Rng>(&self, rng: &mut R) -> f64 {
-        match *self {
+        match self.repr {
             DoFExactlyOne => {
                 // k == 1 => N(0,1)^2
                 let StandardNormal(norm) = rng.gen::<StandardNormal>();

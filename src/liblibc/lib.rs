@@ -229,8 +229,8 @@ pub mod types {
             */
             #[repr(u8)]
             pub enum c_void {
-                priv variant1,
-                priv variant2
+                __variant1,
+                __variant2,
             }
             pub enum FILE {}
             pub enum fpos_t {}

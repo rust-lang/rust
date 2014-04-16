@@ -109,8 +109,6 @@ pub enum PubBaz { //~ ERROR: missing documentation
         pub a: int, //~ ERROR: missing documentation
         b: int
     },
-
-    priv PubBazB
 }
 
 /// dox
@@ -121,7 +119,6 @@ pub enum PubBaz2 {
         pub a: int,
         b: int
     },
-    priv PubBaz2B
 }
 
 #[allow(missing_doc)]
@@ -130,7 +127,6 @@ pub enum PubBaz3 {
         pub a: int,
         b: int
     },
-    priv PubBaz3B
 }
 
 #[doc(hidden)]

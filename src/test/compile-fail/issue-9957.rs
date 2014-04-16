@@ -9,15 +9,12 @@
 // except according to those terms.
 
 pub extern crate std; //~ ERROR: `pub` visibility is not allowed
-priv extern crate std; //~ ERROR: unnecessary visibility qualifier
 extern crate std;
 
 pub use std::bool;
-priv use std::bool; //~ ERROR: unnecessary visibility qualifier
 use std::bool;
 
 fn main() {
     pub use std::bool; //~ ERROR: imports in functions are never reachable
-    priv use std::bool; //~ ERROR: unnecessary visibility qualifier
     use std::bool;
 }
