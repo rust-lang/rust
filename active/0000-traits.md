@@ -8,7 +8,7 @@ Cleanup the trait, method, and operator semantics so that they are
 well-defined and cover more use cases. A high-level summary of the
 changes is as follows:
 
-1. Full support for proper generic traits ("multiparemeter type classes"),
+1. Full support for proper generic traits ("multiparameter type classes"),
    including a simplified version of functional dependencies that may
    evolve into associated types in the future.
 2. Generalize explicit self types beyond `&self` and `&mut self` etc,
