@@ -31,8 +31,8 @@ fn c() {
     let mut vec = vec!(~1, ~2, ~3);
     let vec: &mut [~int] = vec.as_mut_slice();
     match vec {
-        [_a, .._b] => {
-            //~^ ERROR cannot move out
+        [_a,         //~ ERROR cannot move out
+         .._b] => {  //~^ NOTE attempting to move value to here
 
             // Note: `_a` is *moved* here, but `b` is borrowing,
             // hence illegal.
@@ -49,9 +49,8 @@ fn d() {
     let mut vec = vec!(~1, ~2, ~3);
     let vec: &mut [~int] = vec.as_mut_slice();
     match vec {
-        [.._a, _b] => {
-            //~^ ERROR cannot move out
-        }
+        [.._a,     //~ ERROR cannot move out
+         _b] => {} //~ NOTE attempting to move value to here
         _ => {}
     }
     let a = vec[0]; //~ ERROR cannot move out
@@ -62,11 +61,13 @@ fn e() {
     let vec: &mut [~int] = vec.as_mut_slice();
     match vec {
         [_a, _b, _c] => {}  //~ ERROR cannot move out
-        //~^ ERROR cannot move out
-        //~^^ ERROR cannot move out
+        //~^ NOTE attempting to move value to here
+        //~^^ NOTE and here
+        //~^^^ NOTE and here
         _ => {}
     }
     let a = vec[0]; //~ ERROR cannot move out
+    //~^ NOTE attempting to move value to here
 }
 
 fn main() {}

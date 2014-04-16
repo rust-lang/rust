@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -39,6 +39,7 @@ use syntax::ast::{Expr, FnDecl, Block, NodeId, Stmt, Pat, Local};
 mod lifetime;
 mod restrictions;
 mod gather_moves;
+mod move_error;
 
 /// Context used while gathering loans:
 ///
@@ -70,6 +71,7 @@ struct GatherLoanCtxt<'a> {
     bccx: &'a BorrowckCtxt<'a>,
     id_range: IdRange,
     move_data: move_data::MoveData,
+    move_error_collector: move_error::MoveErrorCollector,
     all_loans: Vec<Loan>,
     item_ub: ast::NodeId,
     repeating_ids: Vec<ast::NodeId> }
@@ -121,11 +123,13 @@ pub fn gather_loans_in_fn(bccx: &BorrowckCtxt, decl: &ast::FnDecl, body: &ast::B
         all_loans: Vec::new(),
         item_ub: body.id,
         repeating_ids: vec!(body.id),
-        move_data: MoveData::new()
+        move_data: MoveData::new(),
+        move_error_collector: move_error::MoveErrorCollector::new(),
     };
     glcx.gather_fn_arg_patterns(decl, body);
 
     glcx.visit_block(body, ());
+    glcx.report_potential_errors();
     let GatherLoanCtxt { id_range, all_loans, move_data, .. } = glcx;
     (id_range, all_loans, move_data)
 }
@@ -180,7 +184,7 @@ fn gather_loans_in_expr(this: &mut GatherLoanCtxt,
     if this.bccx.is_move(ex.id) {
         let cmt = this.bccx.cat_expr(ex);
         gather_moves::gather_move_from_expr(
-            this.bccx, &this.move_data, ex, cmt);
+            this.bccx, &this.move_data, &this.move_error_collector, ex, cmt);
     }
 
     // Special checks for various kinds of expressions:
@@ -270,7 +274,8 @@ fn gather_loans_in_expr(this: &mut GatherLoanCtxt,
       }
 
       ast::ExprFnBlock(..) | ast::ExprProc(..) => {
-          gather_moves::gather_captures(this.bccx, &this.move_data, ex);
+          gather_moves::gather_captures(this.bccx, &this.move_data,
+                                        &this.move_error_collector, ex);
           this.guarantee_captures(ex);
           visit::walk_expr(this, ex, ());
       }
@@ -865,7 +870,8 @@ impl<'a> GatherLoanCtxt<'a> {
                       // No borrows here, but there may be moves
                       if self.bccx.is_move(pat.id) {
                           gather_moves::gather_move_from_pat(
-                              self.bccx, &self.move_data, pat, cmt);
+                              self.bccx, &self.move_data,
+                              &self.move_error_collector, pat, cmt);
                       }
                   }
                 }
@@ -915,6 +921,10 @@ impl<'a> GatherLoanCtxt<'a> {
 
     pub fn pat_is_binding(&self, pat: &ast::Pat) -> bool {
         pat_util::pat_is_binding(self.bccx.tcx.def_map, pat)
+    }
+
+    pub fn report_potential_errors(&self) {
+        self.move_error_collector.report_potential_errors(self.bccx);
     }
 }
 

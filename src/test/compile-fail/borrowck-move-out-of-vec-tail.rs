@@ -25,9 +25,10 @@ pub fn main() {
     match x {
         [_, ..tail] => {
             match tail {
-                [Foo { string: a }, Foo { string: b }] => {
-                    //~^ ERROR cannot move out of dereference of `&`-pointer
-                    //~^^ ERROR cannot move out of dereference of `&`-pointer
+                [Foo { string: a }, //~ ERROR cannot move out of dereference of `&`-pointer
+                 Foo { string: b }] => {
+                    //~^^ NOTE attempting to move value to here
+                    //~^^ NOTE and here
                 }
                 _ => {
                     unreachable!();
