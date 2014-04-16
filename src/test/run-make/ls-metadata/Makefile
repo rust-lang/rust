@@ -2,6 +2,6 @@
 
 all:
 	$(RUSTC) foo.rs
-	$(RUSTC) --ls $(TMPDIR)/foo
+	$(RUSTC) -Z ls $(TMPDIR)/foo
 	touch $(TMPDIR)/bar
-	$(RUSTC) --ls $(TMPDIR)/bar
+	$(RUSTC) -Z ls $(TMPDIR)/bar
