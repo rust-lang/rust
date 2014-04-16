@@ -57,7 +57,7 @@ use syntax::ast::Name;
 use syntax::attr::contains;
 use syntax::codemap::{Span, mk_sp};
 use syntax::ext::base;
-use syntax::ext::base::{SyntaxExtension, BasicMacroExpander, NormalTT, ExtCtxt, MRExpr};
+use syntax::ext::base::{SyntaxExtension, BasicMacroExpander, NormalTT, ExtCtxt, MacExpr};
 use syntax::ext::build::AstBuilder;
 use syntax::parse;
 use syntax::parse::token;
@@ -73,7 +73,7 @@ pub fn macro_registrar(register: |Name, SyntaxExtension|) {
         None));
 }
 
-pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree]) -> base::MacResult {
+pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree]) -> ~base::MacResult {
     let (expr, endian) = parse_tts(cx, tts);
 
     let little = match endian {
@@ -101,12 +101,12 @@ pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree]) -> 
             }
             _ => {
                 cx.span_err(expr.span, "unsupported literal in fourcc!");
-                return MRExpr(cx.expr_lit(sp, ast::LitUint(0u64, ast::TyU32)));
+                return base::DummyResult::expr(sp)
             }
         },
         _ => {
             cx.span_err(expr.span, "non-literal in fourcc!");
-            return MRExpr(cx.expr_lit(sp, ast::LitUint(0u64, ast::TyU32)));
+            return base::DummyResult::expr(sp)
         }
     };
 
@@ -126,7 +126,7 @@ pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree]) -> 
         };
     }
     let e = cx.expr_lit(sp, ast::LitUint(val as u64, ast::TyU32));
-    MRExpr(e)
+    MacExpr::new(e)
 }
 
 struct Ident {

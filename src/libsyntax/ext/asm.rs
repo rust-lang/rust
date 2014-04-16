@@ -45,7 +45,7 @@ impl State {
 static OPTIONS: &'static [&'static str] = &["volatile", "alignstack", "intel"];
 
 pub fn expand_asm(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
-               -> base::MacResult {
+               -> ~base::MacResult {
     let mut p = parse::new_parser_from_tts(cx.parse_sess(),
                                            cx.cfg(),
                                            tts.iter()
@@ -72,7 +72,7 @@ pub fn expand_asm(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                                                    "inline assembly must be a string literal.") {
                     Some((s, st)) => (s, st),
                     // let compilation continue
-                    None => return MacResult::dummy_expr(sp),
+                    None => return DummyResult::expr(sp),
                 };
                 asm = s;
                 asm_str_style = Some(style);
@@ -210,7 +210,7 @@ pub fn expand_asm(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
         inputs.push((token::intern_and_get_ident(i.to_str()), out));
     }
 
-    MRExpr(@ast::Expr {
+    MacExpr::new(@ast::Expr {
         id: ast::DUMMY_NODE_ID,
         node: ast::ExprInlineAsm(ast::InlineAsm {
             asm: token::intern_and_get_ident(asm.get()),
