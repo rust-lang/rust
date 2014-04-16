@@ -223,6 +223,11 @@ impl Bitwise for $T {
     fn trailing_zeros(&self) -> $T {
         (*self as $T_SIGNED).trailing_zeros() as $T
     }
+
+    /// Returns the bitwise reflected representation of the number.
+    fn reflect(&self) -> $T {
+        (*self as $T_SIGNED).reflect() as $T
+    }
 }
 
 #[cfg(test)]
@@ -270,6 +275,13 @@ mod tests {
         assert_eq!((0b0101100 as $T).count_zeros(), BITS as $T - 3);
         assert_eq!((0b0100001 as $T).count_zeros(), BITS as $T - 2);
         assert_eq!((0b1111001 as $T).count_zeros(), BITS as $T - 5);
+    }
+
+    #[test]
+    fn test_bitwise_reflect() {
+        assert_eq!((0b01011001 as $T).reflect(), (0b10011010 as $T) << (BITS - 8));
+        assert_eq!((0b01000011 as $T).reflect(), (0b11000010 as $T) << (BITS - 8));
+        assert_eq!((0b11110011 as $T).reflect(), (0b11001111 as $T) << (BITS - 8));
     }
 
     #[test]

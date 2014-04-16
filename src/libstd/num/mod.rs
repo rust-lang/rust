@@ -273,6 +273,18 @@ pub trait Bitwise: Bounded
     /// assert_eq!(n.trailing_zeros(), 3);
     /// ```
     fn trailing_zeros(&self) -> Self;
+
+    /// Returns the bitwise reflected representation of the number.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use std::num::Bitwise;
+    ///
+    /// let n = 0b11010001u8;
+    /// assert_eq!(n.reflect(), 0b10001011u8);
+    /// ```
+    fn reflect(&self) -> Self;
 }
 
 /// Specifies the available operations common to all of Rust's core numeric primitives.

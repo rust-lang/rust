@@ -41,6 +41,10 @@ impl Bitwise for int {
     /// of the number.
     #[inline]
     fn trailing_zeros(&self) -> int { (*self as i32).trailing_zeros() as int }
+
+    /// Returns the bitwise reflected representation of the number.
+    #[inline]
+    fn reflect(&self) -> int { (*self as i32).reflect() as int }
 }
 
 #[cfg(target_word_size = "64")]
@@ -58,6 +62,10 @@ impl Bitwise for int {
     /// of the number.
     #[inline]
     fn trailing_zeros(&self) -> int { (*self as i64).trailing_zeros() as int }
+
+    /// Returns the bitwise reflected representation of the number.
+    #[inline]
+    fn reflect(&self) -> int { (*self as i64).reflect() as int }
 }
 
 #[cfg(target_word_size = "32")]
