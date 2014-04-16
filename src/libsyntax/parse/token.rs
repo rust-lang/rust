@@ -461,29 +461,29 @@ declare_special_idents_and_keywords! {
         (25,                         Mod,        "mod");
         (26,                         Mut,        "mut");
         (27,                         Once,       "once");
-        (28,                         Priv,       "priv");
-        (29,                         Pub,        "pub");
-        (30,                         Ref,        "ref");
-        (31,                         Return,     "return");
+        (28,                         Pub,        "pub");
+        (29,                         Ref,        "ref");
+        (30,                         Return,     "return");
         // Static and Self are also special idents (prefill de-dupes)
         (super::STATIC_KEYWORD_NAME, Static,     "static");
         (super::SELF_KEYWORD_NAME,   Self,       "self");
-        (32,                         Struct,     "struct");
-        (33,                         Super,      "super");
-        (34,                         True,       "true");
-        (35,                         Trait,      "trait");
-        (36,                         Type,       "type");
-        (37,                         Unsafe,     "unsafe");
-        (38,                         Use,        "use");
-        (39,                         While,      "while");
-        (40,                         Continue,   "continue");
-        (41,                         Proc,       "proc");
-        (42,                         Box,        "box");
+        (31,                         Struct,     "struct");
+        (32,                         Super,      "super");
+        (33,                         True,       "true");
+        (34,                         Trait,      "trait");
+        (35,                         Type,       "type");
+        (36,                         Unsafe,     "unsafe");
+        (37,                         Use,        "use");
+        (38,                         While,      "while");
+        (39,                         Continue,   "continue");
+        (40,                         Proc,       "proc");
+        (41,                         Box,        "box");
 
         'reserved:
-        (43,                         Alignof,    "alignof");
-        (44,                         Be,         "be");
-        (45,                         Offsetof,   "offsetof");
+        (42,                         Alignof,    "alignof");
+        (43,                         Be,         "be");
+        (44,                         Offsetof,   "offsetof");
+        (45,                         Priv,       "priv");
         (46,                         Pure,       "pure");
         (47,                         Sizeof,     "sizeof");
         (48,                         Typeof,     "typeof");
