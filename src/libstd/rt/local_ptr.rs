@@ -23,10 +23,12 @@ use ptr::RawPtr;
 
 #[cfg(windows)]               // mingw-w32 doesn't like thread_local things
 #[cfg(target_os = "android")] // see #10686
-pub use self::native::*;
+pub use self::native::{init, cleanup, put, take, try_take, unsafe_take, exists,
+                       unsafe_borrow, try_unsafe_borrow};
 
 #[cfg(not(windows), not(target_os = "android"))]
-pub use self::compiled::*;
+pub use self::compiled::{init, cleanup, put, take, try_take, unsafe_take, exists,
+                         unsafe_borrow, try_unsafe_borrow};
 
 /// Encapsulates a borrowed value. When this value goes out of scope, the
 /// pointer is returned.
