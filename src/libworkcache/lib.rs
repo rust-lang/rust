@@ -512,8 +512,9 @@ fn test() {
         prep.declare_input("file", pth.as_str().unwrap(), file_content);
         prep.exec(proc(_exe) {
             let out = make_path(~"foo.o");
+            let compiler = if cfg!(windows) {"gcc"} else {"cc"};
             // FIXME (#9639): This needs to handle non-utf8 paths
-            Process::status("gcc", [pth.as_str().unwrap().to_owned(),
+            Process::status(compiler, [pth.as_str().unwrap().to_owned(),
                                     ~"-o",
                                     out.as_str().unwrap().to_owned()]).unwrap();
 
