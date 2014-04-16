@@ -947,6 +947,10 @@ impl<'a> State<'a> {
     }
 
     pub fn print_attribute(&mut self, attr: &ast::Attribute) -> IoResult<()> {
+        // skip any attribute which starts with `!`. it's only for internal usage.
+        if attr.name().get().char_at(0) == '!' {
+            return Ok(());
+        }
         try!(self.hardbreak_if_not_bol());
         try!(self.maybe_print_comment(attr.span.lo));
         if attr.node.is_sugared_doc {

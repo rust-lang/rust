@@ -986,7 +986,7 @@ impl<'a> Visitor<()> for RawPtrDerivingVisitor<'a> {
 }
 
 fn check_raw_ptr_deriving(cx: &Context, item: &ast::Item) {
-    if !attr::contains_name(item.attrs.as_slice(), "deriving") {
+    if !attr::contains_name(item.attrs.as_slice(), "!deriving") {
         return
     }
     match item.node {
@@ -1030,15 +1030,17 @@ static other_attrs: &'static [&'static str] = &[
     // fn-level
     "test", "bench", "should_fail", "ignore", "inline", "lang", "main", "start",
     "no_split_stack", "cold", "macro_registrar", "linkage",
-
-    // internal attribute: bypass privacy inside items
-    "!resolve_unexported",
 ];
 
 fn check_crate_attrs_usage(cx: &Context, attrs: &[ast::Attribute]) {
 
     for attr in attrs.iter() {
         let name = attr.node.value.name();
+        if name.get().char_at(0) == '!' {
+            // special attributes for internal use
+            continue;
+        }
+
         let mut iter = crate_attrs.iter().chain(other_attrs.iter());
         if !iter.any(|other_attr| { name.equiv(other_attr) }) {
             cx.span_lint(AttributeUsage, attr.span, "unknown crate attribute");
@@ -1057,6 +1059,11 @@ fn check_attrs_usage(cx: &Context, attrs: &[ast::Attribute]) {
 
     for attr in attrs.iter() {
         let name = attr.node.value.name();
+        if name.get().char_at(0) == '!' {
+            // special attributes for internal use
+            continue;
+        }
+
         for crate_attr in crate_attrs.iter() {
             if name.equiv(crate_attr) {
                 let msg = match attr.node.style {
