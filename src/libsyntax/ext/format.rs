@@ -806,14 +806,14 @@ impl<'a, 'b> Context<'a, 'b> {
 }
 
 pub fn expand_args(ecx: &mut ExtCtxt, sp: Span,
-                   tts: &[ast::TokenTree]) -> base::MacResult {
+                   tts: &[ast::TokenTree]) -> ~base::MacResult {
 
     match parse_args(ecx, sp, tts) {
         (extra, Some((efmt, args, order, names))) => {
-            MRExpr(expand_preparsed_format_args(ecx, sp, extra, efmt, args,
+            MacExpr::new(expand_preparsed_format_args(ecx, sp, extra, efmt, args,
                                                 order, names))
         }
-        (_, None) => MRExpr(ecx.expr_uint(sp, 2))
+        (_, None) => MacExpr::new(ecx.expr_uint(sp, 2))
     }
 }
 
@@ -845,7 +845,7 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt, sp: Span,
                                 efmt,
                                 "format argument must be a string literal.") {
         Some((fmt, _)) => fmt,
-        None => return MacResult::raw_dummy_expr(sp)
+        None => return DummyResult::raw_expr(sp)
     };
 
     let mut parser = parse::Parser::new(fmt.get());
@@ -863,7 +863,7 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt, sp: Span,
     match parser.errors.shift() {
         Some(error) => {
             cx.ecx.span_err(efmt.span, "invalid format string: " + error);
-            return MacResult::raw_dummy_expr(sp);
+            return DummyResult::raw_expr(sp);
         }
         None => {}
     }

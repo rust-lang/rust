@@ -50,19 +50,19 @@ pub trait MacroExpander {
               ecx: &mut ExtCtxt,
               span: Span,
               token_tree: &[ast::TokenTree])
-              -> MacResult;
+              -> ~MacResult;
 }
 
 pub type MacroExpanderFn =
     fn(ecx: &mut ExtCtxt, span: codemap::Span, token_tree: &[ast::TokenTree])
-       -> MacResult;
+       -> ~MacResult;
 
 impl MacroExpander for BasicMacroExpander {
     fn expand(&self,
               ecx: &mut ExtCtxt,
               span: Span,
               token_tree: &[ast::TokenTree])
-              -> MacResult {
+              -> ~MacResult {
         (self.expander)(ecx, span, token_tree)
     }
 }
@@ -78,7 +78,7 @@ pub trait IdentMacroExpander {
               sp: Span,
               ident: ast::Ident,
               token_tree: Vec<ast::TokenTree> )
-              -> MacResult;
+              -> ~MacResult;
 }
 
 impl IdentMacroExpander for BasicIdentMacroExpander {
@@ -87,62 +87,130 @@ impl IdentMacroExpander for BasicIdentMacroExpander {
               sp: Span,
               ident: ast::Ident,
               token_tree: Vec<ast::TokenTree> )
-              -> MacResult {
+              -> ~MacResult {
         (self.expander)(cx, sp, ident, token_tree)
     }
 }
 
 pub type IdentMacroExpanderFn =
-    fn(&mut ExtCtxt, Span, ast::Ident, Vec<ast::TokenTree> ) -> MacResult;
+    fn(&mut ExtCtxt, Span, ast::Ident, Vec<ast::TokenTree> ) -> ~MacResult;
 
 pub type MacroCrateRegistrationFun =
     fn(|ast::Name, SyntaxExtension|);
 
-pub trait AnyMacro {
-    fn make_expr(&self) -> @ast::Expr;
-    fn make_items(&self) -> SmallVector<@ast::Item>;
-    fn make_stmt(&self) -> @ast::Stmt;
+/// The result of a macro expansion. The return values of the various
+/// methods are spliced into the AST at the callsite of the macro (or
+/// just into the compiler's internal macro table, for `make_def`).
+pub trait MacResult {
+    /// Define a new macro.
+    fn make_def(&self) -> Option<MacroDef> {
+        None
+    }
+    /// Create an expression.
+    fn make_expr(&self) -> Option<@ast::Expr> {
+        None
+    }
+    /// Create zero or more items.
+    fn make_items(&self) -> Option<SmallVector<@ast::Item>> {
+        None
+    }
+
+    /// Create a statement.
+    ///
+    /// By default this attempts to create an expression statement,
+    /// returning None if that fails.
+    fn make_stmt(&self) -> Option<@ast::Stmt> {
+        self.make_expr()
+            .map(|e| @codemap::respan(e.span, ast::StmtExpr(e, ast::DUMMY_NODE_ID)))
+    }
 }
 
-
-pub enum MacResult {
-    MRExpr(@ast::Expr),
-    MRItem(@ast::Item),
-    MRAny(~AnyMacro:),
-    MRDef(MacroDef),
+/// A convenience type for macros that return a single expression.
+pub struct MacExpr {
+    e: @ast::Expr
 }
-impl MacResult {
-    /// Create an empty expression MacResult; useful for satisfying
-    /// type signatures after emitting a non-fatal error (which stop
-    /// compilation well before the validity (or otherwise)) of the
-    /// expression are checked.
-    pub fn raw_dummy_expr(sp: codemap::Span) -> @ast::Expr {
+impl MacExpr {
+    pub fn new(e: @ast::Expr) -> ~MacResult {
+        ~MacExpr { e: e } as ~MacResult
+    }
+}
+impl MacResult for MacExpr {
+    fn make_expr(&self) -> Option<@ast::Expr> {
+        Some(self.e)
+    }
+}
+/// A convenience type for macros that return a single item.
+pub struct MacItem {
+    i: @ast::Item
+}
+impl MacItem {
+    pub fn new(i: @ast::Item) -> ~MacResult {
+        ~MacItem { i: i } as ~MacResult
+    }
+}
+impl MacResult for MacItem {
+    fn make_items(&self) -> Option<SmallVector<@ast::Item>> {
+        Some(SmallVector::one(self.i))
+    }
+    fn make_stmt(&self) -> Option<@ast::Stmt> {
+        Some(@codemap::respan(
+            self.i.span,
+            ast::StmtDecl(
+                @codemap::respan(self.i.span, ast::DeclItem(self.i)),
+                ast::DUMMY_NODE_ID)))
+    }
+}
+
+/// Fill-in macro expansion result, to allow compilation to continue
+/// after hitting errors.
+pub struct DummyResult {
+    expr_only: bool,
+    span: Span
+}
+
+impl DummyResult {
+    /// Create a default MacResult that can be anything.
+    ///
+    /// Use this as a return value after hitting any errors and
+    /// calling `span_err`.
+    pub fn any(sp: Span) -> ~MacResult {
+        ~DummyResult { expr_only: false, span: sp } as ~MacResult
+    }
+
+    /// Create a default MacResult that can only be an expression.
+    ///
+    /// Use this for macros that must expand to an expression, so even
+    /// if an error is encountered internally, the user will recieve
+    /// an error that they also used it in the wrong place.
+    pub fn expr(sp: Span) -> ~MacResult {
+        ~DummyResult { expr_only: true, span: sp } as ~MacResult
+    }
+
+    /// A plain dummy expression.
+    pub fn raw_expr(sp: Span) -> @ast::Expr {
         @ast::Expr {
             id: ast::DUMMY_NODE_ID,
             node: ast::ExprLit(@codemap::respan(sp, ast::LitNil)),
             span: sp,
         }
     }
-    pub fn dummy_expr(sp: codemap::Span) -> MacResult {
-        MRExpr(MacResult::raw_dummy_expr(sp))
-    }
-    pub fn dummy_any(sp: codemap::Span) -> MacResult {
-        MRAny(~DummyMacResult { sp: sp })
-    }
 }
-struct DummyMacResult {
-    sp: codemap::Span
-}
-impl AnyMacro for DummyMacResult {
-    fn make_expr(&self) -> @ast::Expr {
-        MacResult::raw_dummy_expr(self.sp)
+
+impl MacResult for DummyResult {
+    fn make_expr(&self) -> Option<@ast::Expr> {
+        Some(DummyResult::raw_expr(self.span))
     }
-    fn make_items(&self) -> SmallVector<@ast::Item> {
-        SmallVector::zero()
+    fn make_items(&self) -> Option<SmallVector<@ast::Item>> {
+        if self.expr_only {
+            None
+        } else {
+            Some(SmallVector::zero())
+        }
     }
-    fn make_stmt(&self) -> @ast::Stmt {
-        @codemap::respan(self.sp,
-                         ast::StmtExpr(MacResult::raw_dummy_expr(self.sp), ast::DUMMY_NODE_ID))
+    fn make_stmt(&self) -> Option<@ast::Stmt> {
+        Some(@codemap::respan(self.span,
+                              ast::StmtExpr(DummyResult::raw_expr(self.span),
+                                            ast::DUMMY_NODE_ID)))
     }
 }
 

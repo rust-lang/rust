@@ -19,7 +19,7 @@ use parse::token::{str_to_ident};
 use std::strbuf::StrBuf;
 
 pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
-    -> base::MacResult {
+    -> ~base::MacResult {
     let mut res_str = StrBuf::new();
     for (i, e) in tts.iter().enumerate() {
         if i & 1 == 1 {
@@ -27,7 +27,7 @@ pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                 ast::TTTok(_, token::COMMA) => (),
                 _ => {
                     cx.span_err(sp, "concat_idents! expecting comma.");
-                    return MacResult::dummy_expr(sp);
+                    return DummyResult::expr(sp);
                 }
             }
         } else {
@@ -37,7 +37,7 @@ pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                 }
                 _ => {
                     cx.span_err(sp, "concat_idents! requires ident args.");
-                    return MacResult::dummy_expr(sp);
+                    return DummyResult::expr(sp);
                 }
             }
         }
@@ -61,5 +61,5 @@ pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
         ),
         span: sp,
     };
-    MRExpr(e)
+    MacExpr::new(e)
 }

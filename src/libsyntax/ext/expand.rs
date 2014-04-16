@@ -52,7 +52,7 @@ pub fn expand_expr(e: @ast::Expr, fld: &mut MacroExpander) -> @ast::Expr {
                             format!("expected macro name without module \
                                   separators"));
                         // let compilation continue
-                        return MacResult::raw_dummy_expr(e.span);
+                        return DummyResult::raw_expr(e.span);
                     }
                     let extname = pth.segments.get(0).identifier;
                     let extnamestr = token::get_ident(extname);
@@ -65,7 +65,7 @@ pub fn expand_expr(e: @ast::Expr, fld: &mut MacroExpander) -> @ast::Expr {
                                         extnamestr.get()));
 
                             // let compilation continue
-                            return MacResult::raw_dummy_expr(e.span);
+                            return DummyResult::raw_expr(e.span);
                         }
                         Some(&NormalTT(ref expandfun, exp_span)) => {
                             fld.cx.bt_push(ExpnInfo {
@@ -88,10 +88,9 @@ pub fn expand_expr(e: @ast::Expr, fld: &mut MacroExpander) -> @ast::Expr {
 
                             let expanded = match expandfun.expand(fld.cx,
                                                    mac_span.call_site,
-                                                   marked_before.as_slice()) {
-                                MRExpr(e) => e,
-                                MRAny(any_macro) => any_macro.make_expr(),
-                                _ => {
+                                                   marked_before.as_slice()).make_expr() {
+                                Some(e) => e,
+                                None => {
                                     fld.cx.span_err(
                                         pth.span,
                                         format!(
@@ -99,7 +98,7 @@ pub fn expand_expr(e: @ast::Expr, fld: &mut MacroExpander) -> @ast::Expr {
                                             extnamestr.get()
                                         )
                                     );
-                                    return MacResult::raw_dummy_expr(e.span);
+                                    return DummyResult::raw_expr(e.span);
                                 }
                             };
 
@@ -112,7 +111,7 @@ pub fn expand_expr(e: @ast::Expr, fld: &mut MacroExpander) -> @ast::Expr {
                                 format!("'{}' is not a tt-style macro",
                                         extnamestr.get())
                             );
-                            return MacResult::raw_dummy_expr(e.span);
+                            return DummyResult::raw_expr(e.span);
                         }
                     };
 
@@ -430,25 +429,8 @@ pub fn expand_item_mac(it: @ast::Item, fld: &mut MacroExpander)
         }
     };
 
-    let items = match expanded {
-        MRItem(it) => {
-            mark_item(it,fm).move_iter()
-                .flat_map(|i| fld.fold_item(i).move_iter())
-                .collect()
-        }
-        MRExpr(_) => {
-            fld.cx.span_err(pth.span,
-                            format!("expr macro in item position: {}",
-                                    extnamestr.get()));
-            return SmallVector::zero();
-        }
-        MRAny(any_macro) => {
-            any_macro.make_items().move_iter()
-                    .flat_map(|i| mark_item(i, fm).move_iter())
-                    .flat_map(|i| fld.fold_item(i).move_iter())
-                    .collect()
-        }
-        MRDef(MacroDef { name, ext }) => {
+    let items = match expanded.make_def() {
+        Some(MacroDef { name, ext }) => {
             // yikes... no idea how to apply the mark to this. I'm afraid
             // we're going to have to wait-and-see on this one.
             fld.extsbox.insert(intern(name), ext);
@@ -456,6 +438,22 @@ pub fn expand_item_mac(it: @ast::Item, fld: &mut MacroExpander)
                 SmallVector::one(it)
             } else {
                 SmallVector::zero()
+            }
+        }
+        None => {
+            match expanded.make_items() {
+                Some(items) => {
+                    items.move_iter()
+                        .flat_map(|i| mark_item(i, fm).move_iter())
+                        .flat_map(|i| fld.fold_item(i).move_iter())
+                        .collect()
+                }
+                None => {
+                    fld.cx.span_err(pth.span,
+                                    format!("expr macro in item position: {}",
+                                            extnamestr.get()));
+                    return SmallVector::zero();
+                }
             }
         }
     };
@@ -593,15 +591,9 @@ pub fn expand_stmt(s: &Stmt, fld: &mut MacroExpander) -> SmallVector<@Stmt> {
 
             let expanded = match expandfun.expand(fld.cx,
                                                   mac_span.call_site,
-                                                  marked_tts.as_slice()) {
-                MRExpr(e) => {
-                    @codemap::Spanned {
-                        node: StmtExpr(e, ast::DUMMY_NODE_ID),
-                        span: e.span,
-                    }
-                }
-                MRAny(any_macro) => any_macro.make_stmt(),
-                _ => {
+                                                  marked_tts.as_slice()).make_stmt() {
+                Some(stmt) => stmt,
+                None => {
                     fld.cx.span_err(pth.span,
                                     format!("non-stmt macro in stmt pos: {}",
                                             extnamestr));
