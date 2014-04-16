@@ -1298,9 +1298,22 @@ fn add_local_native_libraries(args: &mut Vec<~str>, sess: &Session) {
         args.push("-L" + path.as_str().unwrap().to_owned());
     }
 
+    // Some platforms take hints about whether a library is static or dynamic.
+    // For those that support this, we ensure we pass the option if the library
+    // was flagged "static" (most defaults are dynamic) to ensure that if
+    // libfoo.a and libfoo.so both exist that the right one is chosen.
+    let takes_hints = sess.targ_cfg.os != abi::OsMacos;
+
     for &(ref l, kind) in sess.cstore.get_used_libraries().borrow().iter() {
         match kind {
             cstore::NativeUnknown | cstore::NativeStatic => {
+                if takes_hints {
+                    if kind == cstore::NativeStatic {
+                        args.push("-Wl,-Bstatic".to_owned());
+                    } else {
+                        args.push("-Wl,-Bdynamic".to_owned());
+                    }
+                }
                 args.push("-l" + *l);
             }
             cstore::NativeFramework => {
@@ -1308,6 +1321,9 @@ fn add_local_native_libraries(args: &mut Vec<~str>, sess: &Session) {
                 args.push(l.to_owned());
             }
         }
+    }
+    if takes_hints {
+        args.push("-Wl,-Bdynamic".to_owned());
     }
 }
 
