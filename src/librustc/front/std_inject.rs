@@ -100,6 +100,7 @@ impl<'a> fold::Folder for StandardLibraryInjector<'a> {
             });
         }
 
+        // `extern crate` must be precede `use` items
         vis.push_all_move(krate.module.view_items.clone());
         let new_module = ast::Mod {
             view_items: vis,
@@ -130,8 +131,20 @@ impl<'a> fold::Folder for PreludeInjector<'a> {
         if !no_prelude(krate.attrs.as_slice()) {
             // only add `use std::prelude::*;` if there wasn't a
             // `#![no_implicit_prelude]` at the crate level.
+
+            let mut attrs = krate.attrs.clone();
+
+            // fold_mod() will insert glob path.
+            let globs_attr = attr::mk_attr(attr::mk_list_item(
+                InternedString::new("feature"),
+                vec!(
+                    attr::mk_word_item(InternedString::new("globs")),
+                )));
+            attrs.push(globs_attr);
+
             ast::Crate {
                 module: self.fold_mod(&krate.module),
+                attrs: attrs,
                 ..krate
             }
         } else {
@@ -175,11 +188,20 @@ impl<'a> fold::Folder for PreludeInjector<'a> {
             span: DUMMY_SP,
         };
 
-        let vis = (vec!(vi2)).append(module.view_items.as_slice());
+        let (crates, uses) = module.view_items.partitioned(|x| {
+            match x.node {
+                ast::ViewItemExternCrate(..) => true,
+                _ => false,
+            }
+        });
 
-        // FIXME #2543: Bad copy.
+        // add vi2 after any `extern crate` but before any `use`
+        let mut view_items = crates;
+        view_items.push(vi2);
+        view_items.push_all_move(uses);
+
         let new_module = ast::Mod {
-            view_items: vis,
+            view_items: view_items,
             ..(*module).clone()
         };
         fold::noop_fold_mod(&new_module, self)
