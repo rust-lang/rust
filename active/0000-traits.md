@@ -17,7 +17,6 @@ changes is as follows:
    orphans more carefully.
 4. Revise vtable resolution algorithm to be gradual.
 5. Revise method resolution algorithm in terms of vtable resolution.
-6. Define operator overloading in a stricter fashion.
 
 # Motivation
 
