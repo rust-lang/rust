@@ -41,7 +41,7 @@ impl Module {
         Module {
             name       : name,
             id: 0,
-            vis: ast::Private,
+            vis: ast::Inherited,
             where: syntax::codemap::DUMMY_SP,
             attrs      : Vec::new(),
             structs    : Vec::new(),
