@@ -1096,7 +1096,6 @@ pub fn optgroups() -> Vec<getopts::OptGroup> {
   optflag("", "crate-name", "Output the crate name and exit"),
   optflag("", "crate-file-name", "Output the file(s) that would be written if compilation \
           continued and exit"),
-  optflag("",  "ls",  "List the symbols defined by a library crate"),
   optflag("g",  "",  "Equivalent to --debuginfo=2"),
   optopt("",  "debuginfo",  "Emit DWARF debug info to the objects created:
          0 = no debug info,
