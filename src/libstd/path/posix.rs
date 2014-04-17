@@ -21,7 +21,7 @@ use option::{Option, None, Some};
 use str;
 use str::Str;
 use slice::{CloneableVector, RevSplits, Splits, Vector, VectorVector,
-            ImmutableEqVector, OwnedVector, ImmutableVector, OwnedCloneableVector};
+            ImmutableEqVector, OwnedVector, ImmutableVector};
 use vec::Vec;
 
 use super::{BytesContainer, GenericPath, GenericPathUnsafe};

@@ -125,13 +125,14 @@ mod imp {
     unsafe fn load_argc_and_argv(argc: int, argv: **u8) -> ~[~[u8]] {
         use c_str::CString;
         use ptr::RawPtr;
-        use {slice, libc};
+        use libc;
         use slice::CloneableVector;
+        use vec::Vec;
 
-        slice::from_fn(argc as uint, |i| {
+        Vec::from_fn(argc as uint, |i| {
             let cs = CString::new(*(argv as **libc::c_char).offset(i as int), false);
             cs.as_bytes_no_nul().to_owned()
-        })
+        }).move_iter().collect()
     }
 
     #[cfg(test)]
