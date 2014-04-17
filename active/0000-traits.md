@@ -383,7 +383,7 @@ and the *overlapping implementations* restriction.
 the following conditions:
 
 1. The trait being implemented (if any) must be defined in the current crate.
-1. At least one of the input type parameters (including but not
+2. At least one of the input type parameters (including but not
    necessarily `Self`) must meet the following grammar, where `C`
    is a struct or enum defined within the current crate:
    
@@ -395,8 +395,6 @@ the following conditions:
          | ~T
          | (..., T, ...)
          | X<..., T, ...> where X is not bivariant with respect to T
-
-Here is a simple example that is OK:
 
 *Overlapping instances*: No two implementations can be instantiable
 with the same set of types for the input type parameters. For this
@@ -425,7 +423,7 @@ It might seem surprising that these two impls are ok, because both
 implement `Add` for `int`. However, the type `RHS` is different in
 each case, and `RHS` is an input type parameter.
 
-Note that it is crucial for `RHS to be an input type parameter.
+Note that it is crucial for `RHS` to be an input type parameter.
 The following example is *NOT OK*:
 
     trait Iterator<E> { ... }
@@ -864,7 +862,7 @@ associated types and so forth. See the
 
 **Note 4:** The prioritization of inherent methods could be
 reconsidered after DST has been implemented. It is currently needed to
-make impls like `impl Trait for @Trait` work.
+make impls like `impl Trait for ~Trait` work.
 
 <a name=5>
 
