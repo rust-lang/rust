@@ -16,12 +16,8 @@ use syntax::abi;
 pub fn get_target_strs(target_triple: ~str, target_os: abi::Os) -> target_strs::t {
     let cc_args = if target_triple.contains("thumb") {
         vec!(~"-mthumb")
-    } else {
-      if target_os == abi::OsiOS {
-        vec!(~"-marm", ~"-arch armv7", ~"-mcpu=cortex-a8", ~"-mfpu=vfp3")
-      } else {
-        vec!(~"-marm")
-      }
+    } else {        
+        vec!(~"-marm")            
     };
     return target_strs::t {
         module_asm: ~"",
