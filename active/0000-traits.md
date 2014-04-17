@@ -885,5 +885,4 @@ to this rule.
 discuss alternate rules that might allow us to lift the requirement
 that the receiver be named `self`.
 
-[prototype]: http://github.com/nikomatsakis/trait-resolution-prototype
-
+[prototype]: https://github.com/nikomatsakis/trait-matching-algorithm
