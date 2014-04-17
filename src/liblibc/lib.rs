@@ -1221,8 +1221,8 @@ pub mod types {
 
                 pub struct GUID {
                     pub Data1: DWORD,
-                    pub Data2: DWORD,
-                    pub Data3: DWORD,
+                    pub Data2: WORD,
+                    pub Data3: WORD,
                     pub Data4: [BYTE, ..8],
                 }
 
