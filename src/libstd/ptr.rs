@@ -170,10 +170,9 @@ pub fn mut_null<T>() -> *mut T { 0 as *mut T }
 ///
 /// ```
 /// use std::ptr;
-/// use std::slice;
 ///
-/// unsafe fn from_buf_raw<T>(ptr: *T, elts: uint) -> ~[T] {
-///     let mut dst = slice::with_capacity(elts);
+/// unsafe fn from_buf_raw<T>(ptr: *T, elts: uint) -> Vec<T> {
+///     let mut dst = Vec::with_capacity(elts);
 ///     dst.set_len(elts);
 ///     ptr::copy_memory(dst.as_mut_ptr(), ptr, elts);
 ///     dst

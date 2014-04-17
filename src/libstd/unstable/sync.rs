@@ -115,7 +115,7 @@ mod tests {
     #[test]
     fn exclusive_new_arc() {
         unsafe {
-            let mut futures = ~[];
+            let mut futures = Vec::new();
 
             let num_tasks = 10;
             let count = 10;

@@ -614,13 +614,9 @@ impl<T> Vec<T> {
     /// ```
     #[inline]
     pub fn as_mut_slice<'a>(&'a mut self) -> &'a mut [T] {
-        // See the comment in as_slice() for what's going on here.
-        let slice = if mem::size_of::<T>() == 0 {
-            Slice { data: 1 as *T, len: self.len }
-        } else {
-            Slice { data: self.ptr as *T, len: self.len }
-        };
-        unsafe { transmute(slice) }
+        unsafe {
+            transmute(Slice { data: self.as_mut_ptr() as *T, len: self.len })
+        }
     }
 
     /// Creates a consuming iterator, that is, one that moves each
@@ -1143,7 +1139,15 @@ impl<T> Vec<T> {
     /// would also make any pointers to it invalid.
     #[inline]
     pub fn as_ptr(&self) -> *T {
-        self.as_slice().as_ptr()
+        // If we have a 0-sized vector, then the base pointer should not be NULL
+        // because an iterator over the slice will attempt to yield the base
+        // pointer as the first element in the vector, but this will end up
+        // being Some(NULL) which is optimized to None.
+        if mem::size_of::<T>() == 0 {
+            1 as *T
+        } else {
+            self.ptr as *T
+        }
     }
 
     /// Returns a mutable unsafe pointer to the vector's buffer.
@@ -1155,7 +1159,12 @@ impl<T> Vec<T> {
     /// would also make any pointers to it invalid.
     #[inline]
     pub fn as_mut_ptr(&mut self) -> *mut T {
-        self.as_mut_slice().as_mut_ptr()
+        // see above for the 0-size check
+        if mem::size_of::<T>() == 0 {
+            1 as *mut T
+        } else {
+            self.ptr
+        }
     }
 
     /// Retains only the elements specified by the predicate.
@@ -1356,16 +1365,7 @@ impl<T> Vector<T> for Vec<T> {
     /// ```
     #[inline]
     fn as_slice<'a>(&'a self) -> &'a [T] {
-        // If we have a 0-sized vector, then the base pointer should not be NULL
-        // because an iterator over the slice will attempt to yield the base
-        // pointer as the first element in the vector, but this will end up
-        // being Some(NULL) which is optimized to None.
-        let slice = if mem::size_of::<T>() == 0 {
-            Slice { data: 1 as *T, len: self.len }
-        } else {
-            Slice { data: self.ptr as *T, len: self.len }
-        };
-        unsafe { transmute(slice) }
+        unsafe { transmute(Slice { data: self.as_ptr(), len: self.len }) }
     }
 }
 

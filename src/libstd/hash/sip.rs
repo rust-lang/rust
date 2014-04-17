@@ -359,13 +359,8 @@ pub fn hash_with_keys<T: Hash<SipState>>(k0: u64, k1: u64, value: &T) -> u64 {
 #[cfg(test)]
 mod tests {
     extern crate test;
-    use io::Writer;
-    use iter::Iterator;
+    use prelude::*;
     use num::ToStrRadix;
-    use option::{Some, None};
-    use str::Str;
-    use strbuf::StrBuf;
-    use slice::{Vector, ImmutableVector, OwnedVector};
     use self::test::Bencher;
 
     use super::super::Hash;
@@ -454,7 +449,7 @@ mod tests {
 
         let k0 = 0x_07_06_05_04_03_02_01_00_u64;
         let k1 = 0x_0f_0e_0d_0c_0b_0a_09_08_u64;
-        let mut buf : ~[u8] = ~[];
+        let mut buf = Vec::new();
         let mut t = 0;
         let mut state_inc = SipState::new_with_keys(k0, k1);
         let mut state_full = SipState::new_with_keys(k0, k1);
@@ -496,7 +491,7 @@ mod tests {
             assert_eq!(vec, out);
 
             state_full.reset();
-            state_full.write(buf);
+            state_full.write(buf.as_slice());
             let f = result_str(state_full.result());
             let i = result_str(state_inc.result());
             let v = to_hex_str(&vecs[t]);

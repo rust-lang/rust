@@ -191,13 +191,13 @@ impl ToStrRadix for $T {
     /// Convert to a string in a given base.
     #[inline]
     fn to_str_radix(&self, radix: uint) -> ~str {
-        let mut buf = ~[];
+        let mut buf = Vec::new();
         strconv::int_to_str_bytes_common(*self, radix, strconv::SignNone, |i| {
             buf.push(i);
         });
         // We know we generated valid utf-8, so we don't need to go through that
         // check.
-        unsafe { str::raw::from_utf8_owned(buf) }
+        unsafe { str::raw::from_utf8_owned(buf.move_iter().collect()) }
     }
 }
 
