@@ -42,6 +42,7 @@ use syntax::ast_map::NodeItem;
 use syntax::ast_map;
 use syntax::ast_util::{def_id_of_def, local_def};
 use syntax::codemap::Span;
+use syntax::owned_slice::OwnedSlice;
 use syntax::parse::token;
 use syntax::visit;
 
@@ -346,7 +347,8 @@ impl<'a> CoherenceChecker<'a> {
                     Rc::new(Vec::from_slice(impl_poly_type.generics.type_param_defs()).append(
                             new_method_ty.generics.type_param_defs())),
                 region_param_defs:
-                    impl_poly_type.generics.region_param_defs.clone()
+                    Rc::new(Vec::from_slice(impl_poly_type.generics.region_param_defs()).append(
+                            new_method_ty.generics.region_param_defs()))
             };
             let new_polytype = ty::ty_param_bounds_and_ty {
                 generics: new_generics,
@@ -741,39 +743,35 @@ pub fn make_substs_for_receiver_types(tcx: &ty::ctxt,
      * receiver and method generics.
      */
 
-    // determine how many type parameters were declared on the impl
-    let num_impl_type_parameters = {
-        let impl_polytype = ty::lookup_item_type(tcx, impl_id);
-        impl_polytype.generics.type_param_defs().len()
+    let impl_polytype = ty::lookup_item_type(tcx, impl_id);
+    let num_impl_tps = impl_polytype.generics.type_param_defs().len();
+    let num_impl_regions = impl_polytype.generics.region_param_defs().len();
+    let meth_tps: Vec<ty::t> =
+        method.generics.type_param_defs().iter().enumerate()
+              .map(|(i, t)| ty::mk_param(tcx, i + num_impl_tps, t.def_id))
+              .collect();
+    let meth_regions: Vec<ty::Region> =
+        method.generics.region_param_defs().iter().enumerate()
+              .map(|(i, l)| ty::ReEarlyBound(l.def_id.node, i + num_impl_regions, l.name))
+              .collect();
+    let mut combined_tps = trait_ref.substs.tps.clone();
+    combined_tps.push_all_move(meth_tps);
+    let combined_regions = match &trait_ref.substs.regions {
+        &ty::ErasedRegions =>
+            fail!("make_substs_for_receiver_types: unexpected ErasedRegions"),
+
+        &ty::NonerasedRegions(ref rs) => {
+            let mut rs = rs.clone().into_vec();
+            rs.push_all_move(meth_regions);
+            ty::NonerasedRegions(OwnedSlice::from_vec(rs))
+        }
     };
 
-    // determine how many type parameters appear on the trait
-    let num_trait_type_parameters = trait_ref.substs.tps.len();
-
-    // the current method type has the type parameters from the trait + method
-    let num_method_type_parameters =
-        num_trait_type_parameters + method.generics.type_param_defs().len();
-
-    // the new method type will have the type parameters from the impl + method
-    let combined_tps = Vec::from_fn(num_method_type_parameters, |i| {
-        if i < num_trait_type_parameters {
-            // replace type parameters that come from trait with new value
-            *trait_ref.substs.tps.get(i)
-        } else {
-            // replace type parameters that belong to method with another
-            // type parameter, this time with the index adjusted
-            let method_index = i - num_trait_type_parameters;
-            let type_param_def = &method.generics.type_param_defs()[method_index];
-            let new_index = num_impl_type_parameters + method_index;
-            ty::mk_param(tcx, new_index, type_param_def.def_id)
-        }
-    });
-
-    return ty::substs {
-        regions: trait_ref.substs.regions.clone(),
+    ty::substs {
+        regions: combined_regions,
         self_ty: trait_ref.substs.self_ty,
         tps: combined_tps
-    };
+    }
 }
 
 fn subst_receiver_types_in_method_ty(tcx: &ty::ctxt,
