@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-android
+// ignore-cross-compile
+
 #![feature(quote)]
 #![deny(unused_variable)]
 
