@@ -12,8 +12,16 @@
 .align
 #endif
 
-.globl _record_sp_limit
-.globl _get_sp_limit
+#if defined(__APPLE__)
+  #define RECORD_SP_LIMIT _record_sp_limit
+  #define GET_SP_LIMIT    _get_sp_limit
+#else
+  #define RECORD_SP_LIMIT record_sp_limit
+  #define GET_SP_LIMIT    get_sp_limit
+#endif
+        
+.globl 	RECORD_SP_LIMIT
+.globl	GET_SP_LIMIT
 
         // Apple implementation for now is absolutely empty
         // as there is no hardware TLS and emulating
@@ -24,7 +32,7 @@
         // only, i.e. if you plan to use rust in user space
         // you'll need probably disable them
 
-_record_sp_limit:
+RECORD_SP_LIMIT:
 #if !defined(__APPLE__)
 	// First, try to read TLS address from coprocessor
 	mrc p15, #0, r3, c13, c0, #3
@@ -43,7 +51,7 @@ _record_sp_limit:
 #endif // __APPLE__
 	mov pc, lr
 
-_get_sp_limit:
+GET_SP_LIMIT:
 #if defined(__APPLE__)
         // just an placeholder, considering 512Kb limit for stack on secondary thread
         // anyway, stacked segments are disabled for iOS so this function

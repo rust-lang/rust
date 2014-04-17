@@ -12,8 +12,16 @@
 .align
 #endif
 
-.globl _rust_swap_registers
-_rust_swap_registers:
+#if defined(__APPLE__)
+  #define SWAP_REGISTERS  _rust_swap_registers
+  #define BOOTSTRAP_TASK  _rust_bootstrap_green_task
+#else
+  #define SWAP_REGISTERS  rust_swap_registers
+  #define BOOTSTRAP_TASK  rust_bootstrap_green_task
+#endif
+        
+.globl SWAP_REGISTERS
+SWAP_REGISTERS:
 	str r0, [r0, #0]
 	str r3, [r0, #12]
 	str r4, [r0, #16]
@@ -53,8 +61,8 @@ _rust_swap_registers:
 	mov pc, lr
 
 // For reasons of this existence, see the comments in x86_64/_context.S
-.globl _rust_bootstrap_green_task
-_rust_bootstrap_green_task:
+.globl BOOTSTRAP_TASK
+BOOTSTRAP_TASK:
         mov r0, r0
         mov r1, r3
         mov r2, r4
