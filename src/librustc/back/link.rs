@@ -111,6 +111,13 @@ pub mod write {
     // which are *far* more efficient. This is obviously undesirable in some
     // cases, so if any sort of target feature is specified we don't append v7
     // to the feature list.
+
+    // On iOS only armv7 and newer are supported. So it is useful to
+    // get all hardware potential via VFP3 (hardware floating point)
+    // and NEON (SIMD) instructions supported by LLVM.    
+    // Note that without those flags various linking errors might
+    // arise as some of intrinsicts are converted into function calls
+    // and nobody provides implementations those functions
     fn target_feature<'a>(sess: &'a Session) -> &'a str {
         match sess.targ_cfg.os {
             abi::OsAndroid => {
