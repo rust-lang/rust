@@ -114,7 +114,7 @@ pub mod write {
 
     // On iOS only armv7 and newer are supported. So it is useful to
     // get all hardware potential via VFP3 (hardware floating point)
-    // and NEON (SIMD) instructions supported by LLVM.    
+    // and NEON (SIMD) instructions supported by LLVM.
     // Note that without those flags various linking errors might
     // arise as some of intrinsicts are converted into function calls
     // and nobody provides implementations those functions
@@ -897,7 +897,8 @@ fn link_binary_output(sess: &Session,
         }
         session::CrateTypeDylib => {
             if sess.targ_cfg.os == abi::OsiOS {
-                sess.note(format!("No dylib for iOS -> saving static library {} to {}", obj_filename.display(), out_filename.display()));
+                sess.note(format!("No dylib for iOS -> saving static library {} to {}",
+                                  obj_filename.display(), out_filename.display()));
                 link_staticlib(sess, &obj_filename, &out_filename);
             }
             else {
