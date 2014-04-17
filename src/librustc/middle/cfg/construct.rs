@@ -18,7 +18,6 @@ use util::nodemap::NodeMap;
 
 struct CFGBuilder<'a> {
     tcx: &'a ty::ctxt,
-    method_map: typeck::MethodMap,
     exit_map: NodeMap<CFGIndex>,
     graph: CFGGraph,
     fn_exit: CFGIndex,
@@ -32,7 +31,6 @@ struct LoopScope {
 }
 
 pub fn construct(tcx: &ty::ctxt,
-                 method_map: typeck::MethodMap,
                  blk: &ast::Block) -> CFG {
     let mut graph = graph::Graph::new();
     let entry = add_initial_dummy_node(&mut graph);
@@ -49,7 +47,6 @@ pub fn construct(tcx: &ty::ctxt,
         graph: graph,
         fn_exit: fn_exit,
         tcx: tcx,
-        method_map: method_map,
         loop_scopes: Vec::new()
     };
     block_exit = cfg_builder.block(blk, entry);
@@ -551,6 +548,6 @@ impl<'a> CFGBuilder<'a> {
 
     fn is_method_call(&self, expr: &ast::Expr) -> bool {
         let method_call = typeck::MethodCall::expr(expr.id);
-        self.method_map.borrow().contains_key(&method_call)
+        self.tcx.method_map.borrow().contains_key(&method_call)
     }
 }
