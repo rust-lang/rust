@@ -1516,22 +1516,27 @@ impl<'a> State<'a> {
                 try!(self.popen());
                 try!(self.print_string(a.asm.get(), a.asm_str_style));
                 try!(self.word_space(":"));
-                for &(ref co, o) in a.outputs.iter() {
-                    try!(self.print_string(co.get(), ast::CookedStr));
-                    try!(self.popen());
-                    try!(self.print_expr(o));
-                    try!(self.pclose());
-                    try!(self.word_space(","));
-                }
+
+                try!(self.commasep(Inconsistent, a.outputs.as_slice(), |s, &(ref co, o)| {
+                    try!(s.print_string(co.get(), ast::CookedStr));
+                    try!(s.popen());
+                    try!(s.print_expr(o));
+                    try!(s.pclose());
+                    Ok(())
+                }));
+                try!(space(&mut self.s));
                 try!(self.word_space(":"));
-                for &(ref co, o) in a.inputs.iter() {
-                    try!(self.print_string(co.get(), ast::CookedStr));
-                    try!(self.popen());
-                    try!(self.print_expr(o));
-                    try!(self.pclose());
-                    try!(self.word_space(","));
-                }
+
+                try!(self.commasep(Inconsistent, a.inputs.as_slice(), |s, &(ref co, o)| {
+                    try!(s.print_string(co.get(), ast::CookedStr));
+                    try!(s.popen());
+                    try!(s.print_expr(o));
+                    try!(s.pclose());
+                    Ok(())
+                }));
+                try!(space(&mut self.s));
                 try!(self.word_space(":"));
+
                 try!(self.print_string(a.clobbers.get(), ast::CookedStr));
                 try!(self.pclose());
             }
