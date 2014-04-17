@@ -285,20 +285,32 @@ pub enum PpMode {
     PpmExpanded,
     PpmTyped,
     PpmIdentified,
-    PpmExpandedIdentified
+    PpmExpandedIdentified,
+    PpmFlowGraph(ast::NodeId),
 }
 
 pub fn parse_pretty(sess: &Session, name: &str) -> PpMode {
-    match name {
-        "normal" => PpmNormal,
-        "expanded" => PpmExpanded,
-        "typed" => PpmTyped,
-        "expanded,identified" => PpmExpandedIdentified,
-        "identified" => PpmIdentified,
+    let mut split = name.splitn('=', 1);
+    let first = split.next().unwrap();
+    let opt_second = split.next();
+    match (opt_second, first) {
+        (None, "normal")       => PpmNormal,
+        (None, "expanded")     => PpmExpanded,
+        (None, "typed")        => PpmTyped,
+        (None, "expanded,identified") => PpmExpandedIdentified,
+        (None, "identified")   => PpmIdentified,
+        (Some(s), "flowgraph") => {
+             match from_str(s) {
+                 Some(id) => PpmFlowGraph(id),
+                 None => sess.fatal(format!("`pretty flowgraph=<nodeid>` needs \
+                                             an integer <nodeid>; got {}", s))
+             }
+        }
         _ => {
-            sess.fatal("argument to `pretty` must be one of `normal`, \
-                        `expanded`, `typed`, `identified`, \
-                        or `expanded,identified`");
+            sess.fatal(format!(
+                "argument to `pretty` must be one of `normal`, \
+                 `expanded`, `flowgraph=<nodeid>`, `typed`, `identified`, \
+                 or `expanded,identified`; got {}", name));
         }
     }
 }
