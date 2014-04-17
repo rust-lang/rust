@@ -11,8 +11,12 @@
 // ignore-android see #10393 #13206
 // ignore-pretty
 
+extern crate sync;
+
 use std::strbuf::StrBuf;
 use std::slice;
+use sync::Arc;
+use sync::Future;
 
 static TABLE: [u8, ..4] = [ 'A' as u8, 'C' as u8, 'G' as u8, 'T' as u8 ];
 static TABLE_SIZE: uint = 2 << 16;
@@ -202,10 +206,9 @@ fn unpack_symbol(c: u8) -> u8 {
     TABLE[c as uint]
 }
 
-fn generate_frequencies(frequencies: &mut Table,
-                        mut input: &[u8],
-                        frame: uint) {
-    if input.len() < frame { return; }
+fn generate_frequencies(mut input: &[u8], frame: uint) -> Table {
+    let mut frequencies = Table::new();
+    if input.len() < frame { return frequencies; }
     let mut code = Code(0);
 
     // Pull first frame.
@@ -220,6 +223,7 @@ fn generate_frequencies(frequencies: &mut Table,
         frequencies.lookup(code, BumpCallback);
         input = input.slice_from(1);
     }
+    frequencies
 }
 
 fn print_frequencies(frequencies: &Table, frame: uint) {
@@ -266,20 +270,21 @@ fn main() {
     } else {
         get_sequence(&mut std::io::stdin(), ">THREE")
     };
+    let input = Arc::new(input);
 
-    let mut frequencies = Table::new();
-    generate_frequencies(&mut frequencies, input.as_slice(), 1);
-    print_frequencies(&frequencies, 1);
+    let nb_freqs: Vec<(uint, Future<Table>)> = range(1u, 3).map(|i| {
+        let input = input.clone();
+        (i, Future::spawn(proc() generate_frequencies(input.as_slice(), i)))
+    }).collect();
+    let occ_freqs: Vec<Future<Table>> = OCCURRENCES.iter().map(|&occ| {
+        let input = input.clone();
+        Future::spawn(proc() generate_frequencies(input.as_slice(), occ.len()))
+    }).collect();
 
-    frequencies = Table::new();
-    generate_frequencies(&mut frequencies, input.as_slice(), 2);
-    print_frequencies(&frequencies, 2);
-
-    for occurrence in OCCURRENCES.iter() {
-        frequencies = Table::new();
-        generate_frequencies(&mut frequencies,
-                             input.as_slice(),
-                             occurrence.len());
-        print_occurrences(&mut frequencies, *occurrence);
+    for (i, freq) in nb_freqs.move_iter() {
+        print_frequencies(&freq.unwrap(), i);
+    }
+    for (&occ, freq) in OCCURRENCES.iter().zip(occ_freqs.move_iter()) {
+        print_occurrences(&mut freq.unwrap(), occ);
     }
 }
