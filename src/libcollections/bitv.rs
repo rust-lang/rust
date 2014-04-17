@@ -415,10 +415,7 @@ impl Bitv {
     pub fn all(&self) -> bool {
       match self.rep {
         Small(ref b) => b.all(self.nbits),
-        _ => {
-          for i in self.iter() { if !i { return false; } }
-          true
-        }
+        _ => self.iter().all(|x| x)
       }
     }
 
@@ -436,10 +433,7 @@ impl Bitv {
     pub fn none(&self) -> bool {
       match self.rep {
         Small(ref b) => b.none(self.nbits),
-        Big(_) => {
-          for i in self.iter() { if i { return false; } }
-          true
-        }
+        _ => self.iter().all(|x| !x)
       }
     }
 
