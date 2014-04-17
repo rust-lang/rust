@@ -398,10 +398,10 @@ mod imp {
         pub unsafe fn new() -> Mutex {
             // As mutex might be moved and address is changing it
             // is better to avoid initialization of potentially
-            // opaque OS data before it landed 
+            // opaque OS data before it landed
             let m = Mutex {
                 lock: Unsafe::new(PTHREAD_MUTEX_INITIALIZER),
-                cond: Unsafe::new(PTHREAD_COND_INITIALIZER),                        
+                cond: Unsafe::new(PTHREAD_COND_INITIALIZER),
             };
 
             return m;

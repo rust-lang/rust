@@ -118,8 +118,8 @@ pub unsafe fn _Unwind_RaiseException(exc: *_Unwind_Exception)
     extern "C" {
         fn _Unwind_SjLj_RaiseException(e: *_Unwind_Exception)
                                        -> _Unwind_Reason_Code; }
-        
-    _Unwind_SjLj_RaiseException(exc)                                     
+
+    _Unwind_SjLj_RaiseException(exc)
 }
 
 // On iOS there is no any backtrace function available in
