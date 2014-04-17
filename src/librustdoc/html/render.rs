@@ -938,28 +938,8 @@ impl<'a> fmt::Show for Item<'a> {
             None => {}
         }
 
-        if self.cx.include_sources {
-            let mut path = Vec::new();
-            clean_srcpath(self.item.source.filename.as_bytes(), |component| {
-                path.push(component.to_owned());
-            });
-            let href = if self.item.source.loline == self.item.source.hiline {
-                format!("{}", self.item.source.loline)
-            } else {
-                format!("{}-{}", self.item.source.loline, self.item.source.hiline)
-            };
-            try!(write!(fmt.buf,
-                          "<a class='source'
-                              href='{root}src/{krate}/{path}.html\\#{href}'>\
-                              [src]</a>",
-                          root = self.cx.root_path,
-                          krate = self.cx.layout.krate,
-                          path = path.connect("/"),
-                          href = href));
-        }
-
         // Write the breadcrumb trail header for the top
-        try!(write!(fmt.buf, "<h1 class='fqn'>"));
+        try!(write!(fmt.buf, "\n<h1 class='fqn'>"));
         match self.item.inner {
             clean::ModuleItem(ref m) => if m.is_crate {
                     try!(write!(fmt.buf, "Crate "));
@@ -982,8 +962,29 @@ impl<'a> fmt::Show for Item<'a> {
             try!(write!(fmt.buf, "<a href='{}index.html'>{}</a>::",
                           trail, component.as_slice()));
         }
-        try!(write!(fmt.buf, "<a class='{}' href=''>{}</a></h1>",
+        try!(write!(fmt.buf, "<a class='{}' href=''>{}</a>",
                       shortty(self.item), self.item.name.get_ref().as_slice()));
+
+        if self.cx.include_sources {
+            let mut path = Vec::new();
+            clean_srcpath(self.item.source.filename.as_bytes(), |component| {
+                path.push(component.to_owned());
+            });
+            let href = if self.item.source.loline == self.item.source.hiline {
+                format!("{}", self.item.source.loline)
+            } else {
+                format!("{}-{}", self.item.source.loline, self.item.source.hiline)
+            };
+            try!(write!(fmt.buf,
+                          "<a class='source'\
+                              href='{root}src/{krate}/{path}.html\\#{href}'>\
+                              [src]</a>",
+                          root = self.cx.root_path,
+                          krate = self.cx.layout.krate,
+                          path = path.connect("/"),
+                          href = href));
+        }
+        try!(write!(fmt.buf, "</h1>\n"));
 
         match self.item.inner {
             clean::ModuleItem(ref m) => {
