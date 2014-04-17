@@ -45,7 +45,7 @@ use syntax::ast;
 use syntax::codemap;
 use syntax::crateid::CrateId;
 
-pub type Cmd = @crate_metadata;
+pub type Cmd<'a> = &'a crate_metadata;
 
 // A function that takes a def_id relative to the crate being searched and
 // returns a def_id relative to the compilation environment, i.e. if we hit a
@@ -75,8 +75,6 @@ fn lookup_hash<'a>(d: ebml::Doc<'a>, eq_fn: |&[u8]| -> bool,
     });
     ret
 }
-
-pub type GetCrateDataCb<'a> = |ast::CrateNum|: 'a -> Cmd;
 
 pub fn maybe_find_item<'a>(item_id: ast::NodeId,
                            items: ebml::Doc<'a>) -> Option<ebml::Doc<'a>> {
@@ -462,6 +460,8 @@ pub fn each_lang_item(cdata: Cmd, f: |ast::NodeId, uint| -> bool) -> bool {
     })
 }
 
+pub type GetCrateDataCb<'a> = |ast::CrateNum|: 'a -> Rc<crate_metadata>;
+
 fn each_child_of_item_or_crate(intr: Rc<IdentInterner>,
                                cdata: Cmd,
                                item_doc: ebml::Doc,
@@ -477,12 +477,17 @@ fn each_child_of_item_or_crate(intr: Rc<IdentInterner>,
 
         // This item may be in yet another crate if it was the child of a
         // reexport.
-        let other_crates_items = if child_def_id.krate == cdata.cnum {
-            reader::get_doc(reader::Doc(cdata.data()), tag_items)
+        let crate_data = if child_def_id.krate == cdata.cnum {
+            None
         } else {
-            let crate_data = get_crate_data(child_def_id.krate);
-            reader::get_doc(reader::Doc(crate_data.data()), tag_items)
+            Some(get_crate_data(child_def_id.krate))
         };
+        let crate_data = match crate_data {
+            Some(ref cdata) => &**cdata,
+            None => cdata
+        };
+
+        let other_crates_items = reader::get_doc(reader::Doc(crate_data.data()), tag_items);
 
         // Get the item.
         match maybe_find_item(child_def_id.node, other_crates_items) {
@@ -565,12 +570,17 @@ fn each_child_of_item_or_crate(intr: Rc<IdentInterner>,
         let name = name_doc.as_str_slice();
 
         // This reexport may be in yet another crate.
-        let other_crates_items = if child_def_id.krate == cdata.cnum {
-            reader::get_doc(reader::Doc(cdata.data()), tag_items)
+        let crate_data = if child_def_id.krate == cdata.cnum {
+            None
         } else {
-            let crate_data = get_crate_data(child_def_id.krate);
-            reader::get_doc(reader::Doc(crate_data.data()), tag_items)
+            Some(get_crate_data(child_def_id.krate))
         };
+        let crate_data = match crate_data {
+            Some(ref cdata) => &**cdata,
+            None => cdata
+        };
+
+        let other_crates_items = reader::get_doc(reader::Doc(crate_data.data()), tag_items);
 
         // Get the item.
         match maybe_find_item(child_def_id.node, other_crates_items) {
@@ -634,7 +644,7 @@ pub fn get_item_path(cdata: Cmd, id: ast::NodeId) -> Vec<ast_map::PathElem> {
     item_path(lookup_item(id, cdata.data()))
 }
 
-pub type DecodeInlinedItem<'a> = |cdata: @cstore::crate_metadata,
+pub type DecodeInlinedItem<'a> = |cdata: Cmd,
                                   tcx: &ty::ctxt,
                                   path: Vec<ast_map::PathElem>,
                                   par_doc: ebml::Doc|: 'a

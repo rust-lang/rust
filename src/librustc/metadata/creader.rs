@@ -279,7 +279,7 @@ fn resolve_crate<'a>(e: &mut Env,
                      hash: Option<&Svh>,
                      should_link: bool,
                      span: Span)
-                     -> (ast::CrateNum, @cstore::crate_metadata,
+                     -> (ast::CrateNum, Rc<cstore::crate_metadata>,
                          cstore::CrateSource) {
     match existing_match(e, crate_id, hash) {
         None => {
@@ -330,13 +330,13 @@ fn resolve_crate<'a>(e: &mut Env,
                 -1
             };
 
-            let cmeta = @cstore::crate_metadata {
+            let cmeta = Rc::new(cstore::crate_metadata {
                 name: load_ctxt.crate_id.name.to_owned(),
                 data: metadata,
                 cnum_map: cnum_map,
                 cnum: cnum,
                 span: span,
-            };
+            });
 
             let source = cstore::CrateSource {
                 dylib: dylib,
@@ -345,7 +345,7 @@ fn resolve_crate<'a>(e: &mut Env,
             };
 
             if should_link {
-                e.sess.cstore.set_crate_data(cnum, cmeta);
+                e.sess.cstore.set_crate_data(cnum, cmeta.clone());
                 e.sess.cstore.add_used_crate_source(source.clone());
             }
             (cnum, cmeta, source)
@@ -402,8 +402,8 @@ impl<'a> CrateLoader for Loader<'a> {
                                                info.ident, &info.crate_id,
                                                None, info.should_link,
                                                krate.span);
-        let macros = decoder::get_exported_macros(data);
-        let registrar = decoder::get_macro_registrar_fn(data).map(|id| {
+        let macros = decoder::get_exported_macros(&*data);
+        let registrar = decoder::get_macro_registrar_fn(&*data).map(|id| {
             decoder::get_symbol(data.data.as_slice(), id)
         });
         MacroCrate {
