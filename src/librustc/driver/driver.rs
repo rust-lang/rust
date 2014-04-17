@@ -1103,7 +1103,8 @@ pub fn optgroups() -> Vec<getopts::OptGroup> {
          1 = line-tables only (for stacktraces and breakpoints),
          2 = full debug info with variable and type information (same as -g)", "LEVEL"),
   optflag("", "no-trans", "Run all passes except translation; no output"),
-  optflag("", "no-analysis", "Parse and expand the output, but run no analysis or produce output"),
+  optflag("", "no-analysis",
+          "Parse and expand the source, but run no analysis and produce no output"),
   optflag("O", "", "Equivalent to --opt-level=2"),
   optopt("o", "", "Write output to <filename>", "FILENAME"),
   optopt("", "opt-level", "Optimize with possible levels 0-3", "LEVEL"),
@@ -1116,7 +1117,9 @@ pub fn optgroups() -> Vec<getopts::OptGroup> {
               typed (crates expanded, with type annotations),
               or identified (fully parenthesized,
               AST nodes and blocks with IDs)", "TYPE"),
-  optflagopt("", "dep-info", "Output dependency info to <filename> after compiling", "FILENAME"),
+  optflagopt("", "dep-info",
+             "Output dependency info to <filename> after compiling, \
+              in a format suitable for use by Makefiles", "FILENAME"),
   optopt("", "sysroot", "Override the system root", "PATH"),
   optflag("", "test", "Build a test harness"),
   optopt("", "target", "Target triple cpu-manufacturer-kernel[-os]

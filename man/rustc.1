@@ -1,6 +1,6 @@
 .TH RUSTC "1" "March 2014" "rustc 0.11-pre" "User Commands"
 .SH NAME
-rustc \- rust compiler
+rustc \- The Rust compiler
 .SH SYNOPSIS
 .B rustc
 [\fIOPTIONS\fR] \fIINPUT\fR
@@ -33,8 +33,16 @@ List the symbols defined by a library crate
 \fB\-\-no\-trans\fR
 Run all passes except translation; no output
 .TP
-\fB\-g\fR, \fB\-\-debuginfo\fR
+\fB\-\-no\-analysis\fR
+Parse and expand the source, but run no analysis and produce no output
+.TP
+\fB\-g\fR
 Emit DWARF debug information into object files generated.
+.TP
+\fB\-\-debuginfo\fR LEVEL
+Emit DWARF debug info to the objects created: 0 = no debug info, 1 =
+line-tables only (for stacktraces and breakpoints), 2 = full debug
+info with variable and type information (same as -g).
 .TP
 \fB\-O\fR
 Equivalent to \fI\-\-opt\-level=2\fR
@@ -57,6 +65,10 @@ Pretty-print the input instead of compiling; valid types are: normal
 (un-annotated source), expanded (crates expanded), typed (crates
 expanded, with type annotations), or identified (fully parenthesized,
 AST nodes and blocks with IDs)
+.TP
+\fB\-\-dep-info\fR [FILENAME]
+Output dependency info to <filename> after compiling, in o format suitable
+for use by Makefiles.
 .TP
 \fB\-\-sysroot\fR PATH
 Override the system root
@@ -151,15 +163,14 @@ level.
 Generates software floating point library calls instead of hardware
 instructions.
 .TP
-\fBgen-crate-map\fR
-Forces generate of a toplevel crate map. May be required for logging to work
-when rust is embedded into another application.
-.TP
 \fBprefer-dynamic\fR
 Prefers dynamic linking to static linking.
 .TP
 \fBno-integrated-as\fR
 Force usage of an external assembler rather than LLVM's integrated one.
+.TP
+\fBrelocation-model\fR=[pic,static,dynamic-no-pic]
+The relocation model to use. (default: pic)
 
 .SH "EXAMPLES"
 To build an executable from a source file with a main function:
