@@ -57,7 +57,7 @@ mod imp {
 }
 
 #[cfg(target_os = "ios")]
-#[link(name = "Security.framework")]
+#[link(name = "Security")]
 mod imp {
     extern crate libc;
 
