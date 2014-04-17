@@ -23,6 +23,7 @@ use syntax::diagnostic::SpanHandler;
 use syntax::parse::token::IdentInterner;
 use syntax::crateid::CrateId;
 use syntax::attr::AttrMetaMethods;
+use machine::abi::{Os, OsLinux, OsMacos, OsWin32, OsAndroid, OsFreebsd};
 
 use std::c_str::ToCStr;
 use std::cast;
@@ -37,14 +38,6 @@ use std::str;
 use collections::{HashMap, HashSet};
 use flate;
 use time;
-
-pub enum Os {
-    OsMacos,
-    OsWin32,
-    OsLinux,
-    OsAndroid,
-    OsFreebsd
-}
 
 pub struct HashMismatch {
     path: Path,
