@@ -10,6 +10,7 @@
 
 use std::fmt;
 use std::from_str;
+use std::os::consts::{macos, freebsd, linux, android, win32};
 
 #[deriving(Eq, Hash, Clone, TotalEq)]
 pub enum Os {
@@ -18,6 +19,19 @@ pub enum Os {
     OsLinux,
     OsAndroid,
     OsFreebsd,
+}
+impl Os {
+    // Returns the corresponding (prefix, suffix) that files need to have for
+    // dynamic libraries for the specified OS.
+    pub fn dylibname(&self) -> (&'static str, &'static str) {
+        match self {
+            &OsWin32 =>   (win32::DLL_PREFIX,   win32::DLL_SUFFIX),
+            &OsMacos =>   (macos::DLL_PREFIX,   macos::DLL_SUFFIX),
+            &OsLinux =>   (linux::DLL_PREFIX,   linux::DLL_SUFFIX),
+            &OsAndroid => (android::DLL_PREFIX, android::DLL_SUFFIX),
+            &OsFreebsd => (freebsd::DLL_PREFIX, freebsd::DLL_SUFFIX),
+        }
+    }
 }
 
 impl from_str::FromStr for Os {

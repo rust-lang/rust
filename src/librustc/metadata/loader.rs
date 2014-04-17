@@ -29,7 +29,6 @@ use std::c_str::ToCStr;
 use std::cast;
 use std::cmp;
 use std::io;
-use std::os::consts::{macos, freebsd, linux, android, win32};
 use std::ptr;
 use std::rc::Rc;
 use std::slice;
@@ -143,7 +142,7 @@ impl<'a> Context<'a> {
 
     fn find_library_crate(&mut self) -> Option<Library> {
         let filesearch = self.sess.filesearch();
-        let (dyprefix, dysuffix) = self.dylibname();
+        let (dyprefix, dysuffix) = self.os.dylibname();
 
         // want: crate_name.dir_part() + prefix + crate_name.file_part + "-"
         let dylib_prefix = format!("{}{}-", dyprefix, self.crate_id.name);
@@ -384,18 +383,6 @@ impl<'a> Context<'a> {
                     true
                 }
             }
-        }
-    }
-
-    // Returns the corresponding (prefix, suffix) that files need to have for
-    // dynamic libraries
-    fn dylibname(&self) -> (&'static str, &'static str) {
-        match self.os {
-            OsWin32 => (win32::DLL_PREFIX, win32::DLL_SUFFIX),
-            OsMacos => (macos::DLL_PREFIX, macos::DLL_SUFFIX),
-            OsLinux => (linux::DLL_PREFIX, linux::DLL_SUFFIX),
-            OsAndroid => (android::DLL_PREFIX, android::DLL_SUFFIX),
-            OsFreebsd => (freebsd::DLL_PREFIX, freebsd::DLL_SUFFIX),
         }
     }
 }

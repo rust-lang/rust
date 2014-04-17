@@ -11,7 +11,6 @@
 use std::result::{Result, Ok, Err};
 use std::from_str::FromStr;
 use std::{cmp, fmt, default};
-use std::os::consts::{macos, freebsd, linux, android, win32};
 use abi;
 
 pub type KnownType<T> = Result<T, ~str>;
@@ -138,14 +137,8 @@ impl Triple {
     // dynamic libraries. Note this expects a known OS, which should all be
     // fine except for the session builder (the session builder won't proceed
     // if we don't have a known OS).
-    pub fn dylibname(&self) -> (&'static str, &'static str) {
-        match self.expect_known_os() {
-            abi::OsWin32   => (win32::DLL_PREFIX,   win32::DLL_SUFFIX),
-            abi::OsMacos   => (macos::DLL_PREFIX,   macos::DLL_SUFFIX),
-            abi::OsLinux   => (linux::DLL_PREFIX,   linux::DLL_SUFFIX),
-            abi::OsAndroid => (android::DLL_PREFIX, android::DLL_SUFFIX),
-            abi::OsFreebsd => (freebsd::DLL_PREFIX, freebsd::DLL_SUFFIX),
-        }
+    #[inline] pub fn dylibname(&self) -> (&'static str, &'static str) {
+        self.expect_known_os().dylibname()
     }
 
     // Are we targeting Android?
