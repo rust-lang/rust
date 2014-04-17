@@ -97,7 +97,6 @@ extern "C" {
     #[cfg(not(target_os = "ios"))]
     pub fn _Unwind_RaiseException(exception: *_Unwind_Exception)
                 -> _Unwind_Reason_Code;
-    #[cfg(not(target_os = "ios"))]
     pub fn _Unwind_DeleteException(exception: *_Unwind_Exception);
 
     #[cfg(not(target_os = "ios"))]
@@ -113,18 +112,18 @@ extern "C" {
     pub fn _Unwind_FindEnclosingFunction(pc: *libc::c_void) -> *libc::c_void;
 }
 
-// On iOS there is no exception unwinding yet
 #[cfg(target_os = "ios")]
-pub unsafe fn _Unwind_RaiseException(_: *_Unwind_Exception)
-            -> _Unwind_Reason_Code {
-    _URC_FAILURE
+pub unsafe fn _Unwind_RaiseException(exc: *_Unwind_Exception)
+                                     -> _Unwind_Reason_Code {
+    extern "C" {
+        fn _Unwind_SjLj_RaiseException(e: *_Unwind_Exception)
+                                       -> _Unwind_Reason_Code; }
+        
+    _Unwind_SjLj_RaiseException(exc)                                     
 }
 
-#[cfg(target_os = "ios")]
-pub unsafe fn _Unwind_DeleteException(_: *_Unwind_Exception)
-{
-}
-
+// On iOS there is no any backtrace function available in
+// native libunwind, perhaps it should be emulated manually
 #[cfg(target_os = "ios")]
 pub unsafe fn _Unwind_Backtrace(_: _Unwind_Trace_Fn,
                          _: *libc::c_void)
