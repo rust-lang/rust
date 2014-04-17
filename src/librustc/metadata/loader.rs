@@ -17,10 +17,9 @@ use lib::llvm::{False, llvm, ObjectFile, mk_section_iter};
 use metadata::cstore::{MetadataBlob, MetadataVec, MetadataArchive};
 use metadata::decoder;
 use metadata::encoder;
-use metadata::filesearch::{FileMatches, FileDoesntMatch};
+use metadata::filesearch::{FileSearch, FileMatches, FileDoesntMatch};
 use syntax::codemap::Span;
 use syntax::diagnostic::SpanHandler;
-use syntax::parse::token::IdentInterner;
 use syntax::crateid::CrateId;
 use syntax::attr::AttrMetaMethods;
 
@@ -30,7 +29,6 @@ use std::cmp;
 use std::io;
 use std::os::consts::{macos, freebsd, linux, android, win32};
 use std::ptr;
-use std::rc::Rc;
 use std::slice;
 use std::str;
 
@@ -46,8 +44,9 @@ pub enum Os {
     OsFreebsd
 }
 
-pub struct HashMismatch {
+pub struct CrateMismatch {
     path: Path,
+    got: ~str,
 }
 
 pub struct Context<'a> {
@@ -57,9 +56,12 @@ pub struct Context<'a> {
     pub crate_id: &'a CrateId,
     pub id_hash: &'a str,
     pub hash: Option<&'a Svh>,
+    pub triple: &'a str,
     pub os: Os,
-    pub intr: Rc<IdentInterner>,
-    pub rejected_via_hash: Vec<HashMismatch>
+    pub filesearch: FileSearch<'a>,
+    pub root: &'a Option<CratePaths>,
+    pub rejected_via_hash: Vec<CrateMismatch>,
+    pub rejected_via_triple: Vec<CrateMismatch>,
 }
 
 pub struct Library {
@@ -104,52 +106,69 @@ fn realpath(p: &Path) -> Path {
 }
 
 impl<'a> Context<'a> {
-    pub fn load_library_crate(&mut self, root: &Option<CratePaths>) -> Library {
+    pub fn maybe_load_library_crate(&mut self) -> Option<Library> {
+        self.find_library_crate()
+    }
+
+    pub fn load_library_crate(&mut self) -> Library {
         match self.find_library_crate() {
             Some(t) => t,
             None => {
-                self.sess.abort_if_errors();
-                let message = if self.rejected_via_hash.len() > 0 {
-                    format!("found possibly newer version of crate `{}`",
-                            self.ident)
-                } else {
-                    format!("can't find crate for `{}`", self.ident)
-                };
-                let message = match root {
-                    &None => message,
-                    &Some(ref r) => format!("{} which `{}` depends on",
-                                            message, r.ident)
-                };
-                self.sess.span_err(self.span, message);
-
-                if self.rejected_via_hash.len() > 0 {
-                    self.sess.span_note(self.span, "perhaps this crate needs \
-                                                    to be recompiled?");
-                    let mismatches = self.rejected_via_hash.iter();
-                    for (i, &HashMismatch{ ref path }) in mismatches.enumerate() {
-                        self.sess.fileline_note(self.span,
-                            format!("crate `{}` path \\#{}: {}",
-                                    self.ident, i+1, path.display()));
-                    }
-                    match root {
-                        &None => {}
-                        &Some(ref r) => {
-                            for (i, path) in r.paths().iter().enumerate() {
-                                self.sess.fileline_note(self.span,
-                                    format!("crate `{}` path \\#{}: {}",
-                                            r.ident, i+1, path.display()));
-                            }
-                        }
-                    }
-                }
-                self.sess.abort_if_errors();
+                self.report_load_errs();
                 unreachable!()
             }
         }
     }
 
+    pub fn report_load_errs(&mut self) {
+        let message = if self.rejected_via_hash.len() > 0 {
+            format!("found possibly newer version of crate `{}`",
+                    self.ident)
+        } else if self.rejected_via_triple.len() > 0 {
+            format!("found incorrect triple for crate `{}`", self.ident)
+        } else {
+            format!("can't find crate for `{}`", self.ident)
+        };
+        let message = match self.root {
+            &None => message,
+            &Some(ref r) => format!("{} which `{}` depends on",
+                                    message, r.ident)
+        };
+        self.sess.span_err(self.span, message);
+
+        let mismatches = self.rejected_via_triple.iter();
+        if self.rejected_via_triple.len() > 0 {
+            self.sess.span_note(self.span, format!("expected triple of {}", self.triple));
+            for (i, &CrateMismatch{ ref path, ref got }) in mismatches.enumerate() {
+                self.sess.fileline_note(self.span,
+                    format!("crate `{}` path \\#{}, triple {}: {}",
+                            self.ident, i+1, got, path.display()));
+            }
+        }
+        if self.rejected_via_hash.len() > 0 {
+            self.sess.span_note(self.span, "perhaps this crate needs \
+                                            to be recompiled?");
+            let mismatches = self.rejected_via_hash.iter();
+            for (i, &CrateMismatch{ ref path, .. }) in mismatches.enumerate() {
+                self.sess.fileline_note(self.span,
+                    format!("crate `{}` path \\#{}: {}",
+                            self.ident, i+1, path.display()));
+            }
+            match self.root {
+                &None => {}
+                &Some(ref r) => {
+                    for (i, path) in r.paths().iter().enumerate() {
+                        self.sess.fileline_note(self.span,
+                            format!("crate `{}` path \\#{}: {}",
+                                    r.ident, i+1, path.display()));
+                    }
+                }
+            }
+        }
+        self.sess.abort_if_errors();
+    }
+
     fn find_library_crate(&mut self) -> Option<Library> {
-        let filesearch = self.sess.filesearch();
         let (dyprefix, dysuffix) = self.dylibname();
 
         // want: crate_name.dir_part() + prefix + crate_name.file_part + "-"
@@ -171,11 +190,12 @@ impl<'a> Context<'a> {
         // of the crate id (path/name/id).
         //
         // The goal of this step is to look at as little metadata as possible.
-        filesearch.search(|path| {
+        self.filesearch.search(|path| {
             let file = match path.filename_str() {
                 None => return FileDoesntMatch,
                 Some(file) => file,
             };
+            info!("file: {}", file);
             if file.starts_with(rlib_prefix) && file.ends_with(".rlib") {
                 info!("rlib candidate: {}", path.display());
                 match self.try_match(file, rlib_prefix, ".rlib") {
@@ -376,16 +396,30 @@ impl<'a> Context<'a> {
     fn crate_matches(&mut self, crate_data: &[u8], libpath: &Path) -> bool {
         match decoder::maybe_get_crate_id(crate_data) {
             Some(ref id) if self.crate_id.matches(id) => {}
-            _ => return false
+            _ => { info!("Rejecting via crate_id"); return false }
         }
         let hash = match decoder::maybe_get_crate_hash(crate_data) {
-            Some(hash) => hash, None => return false
+            Some(hash) => hash, None => {
+                info!("Rejecting via lack of crate hash");
+                return false;
+            }
         };
+
+        let triple = decoder::get_crate_triple(crate_data);
+        if triple.as_slice() != self.triple {
+            info!("Rejecting via crate triple: expected {} got {}", self.triple, triple);
+            self.rejected_via_triple.push(CrateMismatch{ path: libpath.clone(),
+                                                         got: triple.to_owned() });
+            return false;
+        }
+
         match self.hash {
             None => true,
             Some(myhash) => {
                 if *myhash != hash {
-                    self.rejected_via_hash.push(HashMismatch{ path: libpath.clone() });
+                    info!("Rejecting via hash: expected {} got {}", *myhash, hash);
+                    self.rejected_via_hash.push(CrateMismatch{ path: libpath.clone(),
+                                                               got: myhash.as_str().to_owned() });
                     false
                 } else {
                     true
@@ -393,6 +427,7 @@ impl<'a> Context<'a> {
             }
         }
     }
+
 
     // Returns the corresponding (prefix, suffix) that files need to have for
     // dynamic libraries
@@ -405,6 +440,7 @@ impl<'a> Context<'a> {
             OsFreebsd => (freebsd::DLL_PREFIX, freebsd::DLL_SUFFIX),
         }
     }
+
 }
 
 pub fn note_crateid_attr(diag: &SpanHandler, crateid: &CrateId) {
