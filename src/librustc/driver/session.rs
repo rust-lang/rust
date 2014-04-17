@@ -69,7 +69,8 @@ debugging_opts!(
         PRINT_LLVM_PASSES,
         LTO,
         AST_JSON,
-        AST_JSON_NOEXPAND
+        AST_JSON_NOEXPAND,
+        LS
     ]
     0
 )
@@ -102,7 +103,8 @@ pub fn debugging_opts_map() -> Vec<(&'static str, &'static str, u64)> {
       PRINT_LLVM_PASSES),
      ("lto", "Perform LLVM link-time optimizations", LTO),
      ("ast-json", "Print the AST as JSON and halt", AST_JSON),
-     ("ast-json-noexpand", "Print the pre-expansion AST as JSON and halt", AST_JSON_NOEXPAND))
+     ("ast-json-noexpand", "Print the pre-expansion AST as JSON and halt", AST_JSON_NOEXPAND),
+     ("ls", "List the symbols defined by a library crate", LS))
 }
 
 #[deriving(Clone, Eq)]

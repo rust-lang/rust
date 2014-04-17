@@ -299,8 +299,8 @@ pub fn run_compiler(args: &[~str]) {
         }
         None::<d::PpMode> => {/* continue */ }
     }
-    let ls = matches.opt_present("ls");
-    if ls {
+
+    if r.contains(&~"ls") {
         match input {
             d::FileInput(ref ifile) => {
                 let mut stdout = io::stdout();
