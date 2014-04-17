@@ -54,7 +54,7 @@ NATIVE_DEPS_rustrt_$(1) := rust_builtin.c \
 			rust_android_dummy.c \
 			rust_test_helpers.c \
 			rust_try.ll \
-			arch/$$(HOST_$(1))/record_sp.S 
+			arch/$$(HOST_$(1))/record_sp.S
 NATIVE_DEPS_morestack_$(1) := arch/$$(HOST_$(1))/morestack.S
 NATIVE_DEPS_context_switch_$(1) := \
 			arch/$$(HOST_$(1))/_context.S
@@ -153,8 +153,6 @@ define DEF_THIRD_PARTY_TARGETS
 
 ifeq ($$(CFG_WINDOWSY_$(1)), 1)
   LIBUV_OSTYPE_$(1) := win
-#else ifeq ($(OSTYPE_$(1)), apple-ios)
-#  LIBUV_OSTYPE_%(1) := ios
 else ifeq ($(OSTYPE_$(1)), apple-darwin)
   LIBUV_OSTYPE_$(1) := mac
 else ifeq ($(OSTYPE_$(1)), unknown-freebsd)

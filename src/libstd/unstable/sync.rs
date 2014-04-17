@@ -43,7 +43,7 @@ impl<T:Send> Clone for Exclusive<T> {
 impl<T:Send> Exclusive<T> {
     pub fn new(user_data: T) -> Exclusive<T> {
         let data = ExData {
-            lock: unsafe { NativeMutex::new() },
+            lock: unsafe {NativeMutex::new()},
             failed: false,
             data: user_data
         };

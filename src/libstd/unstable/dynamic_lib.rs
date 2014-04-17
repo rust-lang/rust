@@ -80,7 +80,7 @@ impl DynamicLibrary {
     }
 }
 
-#[cfg(test, not(target_os = "ios"))]
+#[cfg(test, not(target_os = "os"))]
 mod test {
     use super::*;
     use prelude::*;
@@ -131,7 +131,7 @@ mod test {
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "android")]
 #[cfg(target_os = "macos")]
-#[cfg(target_os = "ios")] // TODO: it's actually absolutely useless
+#[cfg(target_os = "ios")]
 #[cfg(target_os = "freebsd")]
 pub mod dl {
     use c_str::ToCStr;

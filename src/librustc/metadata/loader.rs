@@ -404,7 +404,7 @@ impl<'a> Context<'a> {
             OsLinux => (linux::DLL_PREFIX, linux::DLL_SUFFIX),
             OsAndroid => (android::DLL_PREFIX, android::DLL_SUFFIX),
             OsFreebsd => (freebsd::DLL_PREFIX, freebsd::DLL_SUFFIX),
-            OsiOS => (macos::DLL_PREFIX, macos::DLL_SUFFIX), // TODO: ask about this...
+            OsiOS => (macos::DLL_PREFIX, macos::DLL_SUFFIX),
         }
     }
 }

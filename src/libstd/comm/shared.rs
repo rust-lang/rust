@@ -79,9 +79,6 @@ impl<T: Send> Packet<T> {
             sender_drain: atomics::AtomicInt::new(0),
             select_lock: unsafe { NativeMutex::new() },
         };
-        // see comments in inherit_blocker about why we grab this lock
-        // see comments in postinit_lock about why it should be done later
-        // unsafe { p.select_lock.lock_noguard() }
         return p;
     }
 
