@@ -525,7 +525,6 @@ mod tests {
 
     use super::{Digest, Sha256, FixedBuffer};
     use std::num::Bounded;
-    use std::slice;
     use self::rand::isaac::IsaacRng;
     use self::rand::Rng;
     use serialize::hex::FromHex;
@@ -600,7 +599,7 @@ mod tests {
     /// correct.
     fn test_digest_1million_random<D: Digest>(digest: &mut D, blocksize: uint, expected: &str) {
         let total_size = 1000000;
-        let buffer = slice::from_elem(blocksize * 2, 'a' as u8);
+        let buffer = Vec::from_elem(blocksize * 2, 'a' as u8);
         let mut rng = IsaacRng::new_unseeded();
         let mut count = 0;
 

@@ -223,13 +223,13 @@ pub fn describe_codegen_flags() {
 }
 
 pub fn run_compiler(args: &[~str]) {
-    let mut args = args.to_owned();
+    let mut args = Vec::from_slice(args);
     let binary = args.shift().unwrap();
 
     if args.is_empty() { usage(binary); return; }
 
     let matches =
-        &match getopts::getopts(args, d::optgroups().as_slice()) {
+        &match getopts::getopts(args.as_slice(), d::optgroups().as_slice()) {
           Ok(m) => m,
           Err(f) => {
             d::early_error(f.to_err_msg());

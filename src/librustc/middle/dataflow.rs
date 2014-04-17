@@ -18,7 +18,6 @@
 
 
 use std::io;
-use std::slice;
 use std::strbuf::StrBuf;
 use std::uint;
 use syntax::ast;
@@ -308,13 +307,13 @@ impl<'a, O:DataFlowOperator+Clone+'static> DataFlowContext<'a, O> {
                 changed: true
             };
 
-            let mut temp = slice::from_elem(self.words_per_id, 0u);
+            let mut temp = Vec::from_elem(self.words_per_id, 0u);
             let mut loop_scopes = Vec::new();
 
             while propcx.changed {
                 propcx.changed = false;
-                propcx.reset(temp);
-                propcx.walk_block(blk, temp, &mut loop_scopes);
+                propcx.reset(temp.as_mut_slice());
+                propcx.walk_block(blk, temp.as_mut_slice(), &mut loop_scopes);
             }
         }
 

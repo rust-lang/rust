@@ -593,11 +593,11 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr,
                 const_eval::const_uint(i) => i as uint,
                 _ => cx.sess().span_bug(count.span, "count must be integral const expression.")
             };
-            let vs = slice::from_elem(n, const_expr(cx, elem, is_local).val0());
+            let vs = Vec::from_elem(n, const_expr(cx, elem, is_local).val0());
             let v = if vs.iter().any(|vi| val_ty(*vi) != llunitty) {
-                C_struct(cx, vs, false)
+                C_struct(cx, vs.as_slice(), false)
             } else {
-                C_array(llunitty, vs)
+                C_array(llunitty, vs.as_slice())
             };
             (v, true)
           }

@@ -1230,11 +1230,11 @@ impl<T : Iterator<char>> Parser<T> {
         self.bump();
         self.parse_whitespace();
 
-        let mut values = ~[];
+        let mut values = Vec::new();
 
         if self.ch_is(']') {
             self.bump();
-            return Ok(List(values));
+            return Ok(List(values.move_iter().collect()));
         }
 
         loop {
@@ -1252,7 +1252,7 @@ impl<T : Iterator<char>> Parser<T> {
                 self.bump();
             } else if self.ch_is(']') {
                 self.bump();
-                return Ok(List(values));
+                return Ok(List(values.move_iter().collect()));
             } else {
                 return self.error(~"expected `,` or `]`")
             }
@@ -1332,14 +1332,14 @@ pub fn from_str(s: &str) -> DecodeResult<Json> {
 
 /// A structure to decode JSON to values in rust.
 pub struct Decoder {
-    stack: ~[Json],
+    stack: Vec<Json>,
 }
 
 impl Decoder {
     /// Creates a new decoder instance for decoding the specified JSON value.
     pub fn new(json: Json) -> Decoder {
         Decoder {
-            stack: ~[json]
+            stack: vec!(json),
         }
     }
 }

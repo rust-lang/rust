@@ -156,8 +156,6 @@ pub fn minimize_rpaths(rpaths: &[~str]) -> Vec<~str> {
 
 #[cfg(unix, test)]
 mod test {
-    use std::os;
-
     use back::rpath::get_install_prefix_rpath;
     use back::rpath::{minimize_rpaths, rpaths_to_flags, get_rpath_relative_to_output};
     use syntax::abi;
