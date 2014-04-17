@@ -2214,7 +2214,9 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
         } else if Some(did) == cx.lang_items.no_share_bound() {
             tc | TC::ReachesNoShare
         } else if Some(did) == cx.lang_items.unsafe_type() {
-            tc | TC::InteriorUnsafe
+            // FIXME(#13231): This shouldn't be needed after
+            // opt-in built-in bounds are implemented.
+            (tc | TC::InteriorUnsafe) - TC::Nonsharable
         } else {
             tc
         }
