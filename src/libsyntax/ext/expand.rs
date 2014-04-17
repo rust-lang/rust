@@ -156,7 +156,7 @@ pub fn expand_expr(e: @ast::Expr, fld: &mut MacroExpander) -> @ast::Expr {
             //     }
             //   }
 
-            let local_ident = token::gensym_ident("i");
+            let local_ident = token::gensym_ident("__i"); // FIXME #13573
             let next_ident = fld.cx.ident_of("next");
             let none_ident = fld.cx.ident_of("None");
 
