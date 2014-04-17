@@ -79,7 +79,7 @@ impl<'a> ToBase64 for &'a [u8] {
             UrlSafe => URLSAFE_CHARS
         };
 
-        let mut v: ~[u8] = ~[];
+        let mut v = Vec::new();
         let mut i = 0;
         let mut cur_length = 0;
         let len = self.len();
@@ -146,7 +146,7 @@ impl<'a> ToBase64 for &'a [u8] {
         }
 
         unsafe {
-            str::raw::from_utf8_owned(v)
+            str::raw::from_utf8_owned(v.move_iter().collect())
         }
     }
 }
@@ -208,7 +208,7 @@ impl<'a> FromBase64 for &'a str {
      * ```
      */
     fn from_base64(&self) -> Result<~[u8], FromBase64Error> {
-        let mut r = ~[];
+        let mut r = Vec::new();
         let mut buf: u32 = 0;
         let mut modulus = 0;
 
@@ -256,7 +256,7 @@ impl<'a> FromBase64 for &'a str {
             _ => return Err(InvalidBase64Length),
         }
 
-        Ok(r)
+        Ok(r.move_iter().collect())
     }
 }
 
@@ -337,12 +337,12 @@ mod tests {
     #[test]
     fn test_base64_random() {
         use self::rand::{task_rng, random, Rng};
-        use std::slice;
 
         for _ in range(0, 1000) {
             let times = task_rng().gen_range(1u, 100);
-            let v = slice::from_fn(times, |_| random::<u8>());
-            assert_eq!(v.to_base64(STANDARD).from_base64().unwrap(), v);
+            let v = Vec::from_fn(times, |_| random::<u8>());
+            assert_eq!(v.as_slice().to_base64(STANDARD).from_base64().unwrap(),
+                       v.as_slice().to_owned());
         }
     }
 

@@ -28,9 +28,6 @@
 
 #![allow(missing_doc)]
 
-#[cfg(windows)]
-use iter::range;
-
 use clone::Clone;
 use container::Container;
 use libc;
@@ -96,15 +93,16 @@ pub fn getcwd() -> Path {
 
 #[cfg(windows)]
 pub mod win32 {
+    use iter::Iterator;
     use libc::types::os::arch::extra::DWORD;
     use libc;
     use option::{None, Option};
     use option;
     use os::TMPBUF_SZ;
+    use slice::{MutableVector, ImmutableVector, OwnedVector};
     use str::StrSlice;
     use str;
-    use slice::{MutableVector, ImmutableVector, OwnedVector};
-    use slice;
+    use vec::Vec;
 
     pub fn fill_utf16_buf_and_decode(f: |*mut u16, DWORD| -> DWORD)
         -> Option<~str> {
@@ -114,7 +112,7 @@ pub mod win32 {
             let mut res = None;
             let mut done = false;
             while !done {
-                let mut buf = slice::from_elem(n as uint, 0u16);
+                let mut buf = Vec::from_elem(n as uint, 0u16);
                 let k = f(buf.as_mut_ptr(), n);
                 if k == (0 as DWORD) {
                     done = true;
@@ -142,7 +140,7 @@ pub mod win32 {
     }
 
     pub fn as_utf16_p<T>(s: &str, f: |*u16| -> T) -> T {
-        let mut t = s.to_utf16();
+        let mut t = s.to_utf16().move_iter().collect::<Vec<u16>>();
         // Null terminate before passing on.
         t.push(0u16);
         f(t.as_ptr())
@@ -182,7 +180,7 @@ pub fn env() -> ~[(~str,~str)] {
 pub fn env_as_bytes() -> ~[(~[u8],~[u8])] {
     unsafe {
         #[cfg(windows)]
-        unsafe fn get_env_pairs() -> ~[~[u8]] {
+        unsafe fn get_env_pairs() -> Vec<~[u8]> {
             use c_str;
             use str::StrSlice;
 
@@ -195,7 +193,7 @@ pub fn env_as_bytes() -> ~[(~[u8],~[u8])] {
                 fail!("os::env() failure getting env string from OS: {}",
                        os::last_os_error());
             }
-            let mut result = ~[];
+            let mut result = Vec::new();
             c_str::from_c_multistring(ch as *c_char, None, |cstr| {
                 result.push(cstr.as_bytes_no_nul().to_owned());
             });
@@ -839,27 +837,24 @@ fn real_args() -> ~[~str] {
     let lpCmdLine = unsafe { GetCommandLineW() };
     let szArgList = unsafe { CommandLineToArgvW(lpCmdLine, lpArgCount) };
 
-    let mut args = ~[];
-    for i in range(0u, nArgs as uint) {
-        unsafe {
-            // Determine the length of this argument.
-            let ptr = *szArgList.offset(i as int);
-            let mut len = 0;
-            while *ptr.offset(len as int) != 0 { len += 1; }
+    let args = Vec::from_fn(nArgs as uint, |i| unsafe {
+        // Determine the length of this argument.
+        let ptr = *szArgList.offset(i as int);
+        let mut len = 0;
+        while *ptr.offset(len as int) != 0 { len += 1; }
 
-            // Push it onto the list.
-            let opt_s = slice::raw::buf_as_slice(ptr, len, |buf| {
-                    str::from_utf16(str::truncate_utf16_at_nul(buf))
-                });
-            args.push(opt_s.expect("CommandLineToArgvW returned invalid UTF-16"));
-        }
-    }
+        // Push it onto the list.
+        let opt_s = slice::raw::buf_as_slice(ptr, len, |buf| {
+            str::from_utf16(str::truncate_utf16_at_nul(buf))
+        });
+        opt_s.expect("CommandLineToArgvW returned invalid UTF-16")
+    });
 
     unsafe {
         LocalFree(szArgList as *c_void);
     }
 
-    return args;
+    return args.move_iter().collect();
 }
 
 #[cfg(windows)]

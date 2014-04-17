@@ -13,5 +13,4 @@
 fn main() {
     ~[1]; //~ ERROR use of deprecated `~[]`
     //~^ ERROR use of deprecated `~[]`
-    std::slice::with_capacity::<int>(10); //~ ERROR use of deprecated `~[]`
 }

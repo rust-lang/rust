@@ -33,7 +33,6 @@ use std::os;
 use std::str;
 use std::strbuf::StrBuf;
 use std::task;
-use std::slice;
 use test::MetricMap;
 
 pub fn run(config: config, testfile: ~str) {
@@ -509,7 +508,7 @@ fn check_expected_errors(expected_errors: Vec<errors::ExpectedError> ,
                          proc_res: &ProcRes) {
 
     // true if we found the error in question
-    let mut found_flags = slice::from_elem(
+    let mut found_flags = Vec::from_elem(
         expected_errors.len(), false);
 
     if proc_res.status.success() {
@@ -554,13 +553,13 @@ fn check_expected_errors(expected_errors: Vec<errors::ExpectedError> ,
     for line in proc_res.stderr.lines() {
         let mut was_expected = false;
         for (i, ee) in expected_errors.iter().enumerate() {
-            if !found_flags[i] {
+            if !*found_flags.get(i) {
                 debug!("prefix={} ee.kind={} ee.msg={} line={}",
                        *prefixes.get(i), ee.kind, ee.msg, line);
                 if prefix_matches(line, *prefixes.get(i)) &&
                     line.contains(ee.kind) &&
                     line.contains(ee.msg) {
-                    found_flags[i] = true;
+                    *found_flags.get_mut(i) = true;
                     was_expected = true;
                     break;
                 }

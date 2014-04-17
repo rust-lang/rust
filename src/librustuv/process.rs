@@ -15,7 +15,6 @@ use libc;
 use std::ptr;
 use std::rt::rtio::RtioProcess;
 use std::rt::task::BlockedTask;
-use std::slice;
 
 use homing::{HomingIO, HomeHandle};
 use pipe::PipeWatcher;
@@ -44,12 +43,12 @@ impl Process {
                 -> Result<(~Process, ~[Option<PipeWatcher>]), UvError>
     {
         let cwd = config.cwd.map(|s| s.to_c_str());
-        let mut io = ~[config.stdin, config.stdout, config.stderr];
+        let mut io = vec![config.stdin, config.stdout, config.stderr];
         for slot in config.extra_io.iter() {
             io.push(*slot);
         }
-        let mut stdio = slice::with_capacity::<uvll::uv_stdio_container_t>(io.len());
-        let mut ret_io = slice::with_capacity(io.len());
+        let mut stdio = Vec::<uvll::uv_stdio_container_t>::with_capacity(io.len());
+        let mut ret_io = Vec::with_capacity(io.len());
         unsafe {
             stdio.set_len(io.len());
             for (slot, other) in stdio.iter().zip(io.iter()) {
@@ -104,7 +103,7 @@ impl Process {
         });
 
         match ret {
-            Ok(p) => Ok((p, ret_io)),
+            Ok(p) => Ok((p, ret_io.move_iter().collect())),
             Err(e) => Err(e),
         }
     }
@@ -167,14 +166,14 @@ unsafe fn set_stdio(dst: *uvll::uv_stdio_container_t,
 fn with_argv<T>(prog: &str, args: &[~str], f: |**libc::c_char| -> T) -> T {
     // First, allocation space to put all the C-strings (we need to have
     // ownership of them somewhere
-    let mut c_strs = slice::with_capacity(args.len() + 1);
+    let mut c_strs = Vec::with_capacity(args.len() + 1);
     c_strs.push(prog.to_c_str());
     for arg in args.iter() {
         c_strs.push(arg.to_c_str());
     }
 
     // Next, create the char** array
-    let mut c_args = slice::with_capacity(c_strs.len() + 1);
+    let mut c_args = Vec::with_capacity(c_strs.len() + 1);
     for s in c_strs.iter() {
         c_args.push(s.with_ref(|p| p));
     }
@@ -189,11 +188,11 @@ fn with_env<T>(env: Option<&[(~str, ~str)]>, f: |**libc::c_char| -> T) -> T {
         None => { return f(ptr::null()); }
     };
     // As with argv, create some temporary storage and then the actual array
-    let mut envp = slice::with_capacity(env.len());
+    let mut envp = Vec::with_capacity(env.len());
     for &(ref key, ref value) in env.iter() {
         envp.push(format!("{}={}", *key, *value).to_c_str());
     }
-    let mut c_envp = slice::with_capacity(envp.len() + 1);
+    let mut c_envp = Vec::with_capacity(envp.len() + 1);
     for s in envp.iter() {
         c_envp.push(s.with_ref(|p| p));
     }
