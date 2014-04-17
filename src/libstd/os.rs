@@ -471,7 +471,7 @@ pub fn self_exe_name() -> Option<Path> {
 
     #[cfg(target_os = "ios")]
     fn load_self() -> Option<~[u8]> {
-        // TODO: [iOS] recheck
+        // FIXME: [iOS] recheck
         None
     }
 

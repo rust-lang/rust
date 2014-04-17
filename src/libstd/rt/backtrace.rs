@@ -318,7 +318,7 @@ mod imp {
     }
 
     #[cfg(target_os = "macos")]
-    #[cfg(target_os = "ios")] // TODO: [iOS] check if it ever will work
+    #[cfg(target_os = "ios")] // FIXME: [iOS] check if it ever will work
     fn print(w: &mut Writer, idx: int, addr: *libc::c_void) -> IoResult<()> {
         use intrinsics;
         struct Dl_info {
