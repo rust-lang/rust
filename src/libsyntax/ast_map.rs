@@ -107,6 +107,8 @@ pub enum Node {
 
     /// NodeStructCtor represents a tuple struct.
     NodeStructCtor(@StructDef),
+
+    NodeLifetime(@Lifetime),
 }
 
 // The odd layout is to bring down the total size.
@@ -127,6 +129,7 @@ enum MapEntry {
     EntryLocal(NodeId, @Pat),
     EntryBlock(NodeId, P<Block>),
     EntryStructCtor(NodeId, @StructDef),
+    EntryLifetime(NodeId, @Lifetime),
 
     // Roots for node trees.
     RootCrate,
@@ -153,6 +156,7 @@ impl MapEntry {
             EntryLocal(id, _) => id,
             EntryBlock(id, _) => id,
             EntryStructCtor(id, _) => id,
+            EntryLifetime(id, _) => id,
             _ => return None
         })
     }
@@ -170,6 +174,7 @@ impl MapEntry {
             EntryLocal(_, p) => NodeLocal(p),
             EntryBlock(_, p) => NodeBlock(p),
             EntryStructCtor(_, p) => NodeStructCtor(p),
+            EntryLifetime(_, p) => NodeLifetime(p),
             _ => return None
         })
     }
@@ -213,6 +218,8 @@ impl Map {
         self.find_entry(id).and_then(|x| x.to_node())
     }
 
+    /// Retrieve the parent NodeId for `id`, or `id` itself if no
+    /// parent is registered in this map.
     pub fn get_parent(&self, id: NodeId) -> NodeId {
         self.find_entry(id).and_then(|x| x.parent()).unwrap_or(id)
     }
@@ -500,6 +507,15 @@ impl<'a, F: FoldOps> Folder for Ctx<'a, F> {
         SmallVector::one(stmt)
     }
 
+    fn fold_type_method(&mut self, m: &TypeMethod) -> TypeMethod {
+        let parent = self.parent;
+        self.parent = DUMMY_NODE_ID;
+        let m = fold::noop_fold_type_method(m, self);
+        assert_eq!(self.parent, m.id);
+        self.parent = parent;
+        m
+    }
+
     fn fold_method(&mut self, m: @Method) -> @Method {
         let parent = self.parent;
         self.parent = DUMMY_NODE_ID;
@@ -521,6 +537,12 @@ impl<'a, F: FoldOps> Folder for Ctx<'a, F> {
         let block = fold::noop_fold_block(block, self);
         self.insert(block.id, EntryBlock(self.parent, block));
         block
+    }
+
+    fn fold_lifetime(&mut self, lifetime: &Lifetime) -> Lifetime {
+        let lifetime = fold::noop_fold_lifetime(lifetime, self);
+        self.insert(lifetime.id, EntryLifetime(self.parent, @lifetime));
+        lifetime
     }
 }
 
@@ -657,6 +679,9 @@ fn node_id_to_str(map: &Map, id: NodeId) -> ~str {
         }
         Some(NodeStructCtor(_)) => {
             format!("struct_ctor {} (id={})", map.path_to_str(id), id)
+        }
+        Some(NodeLifetime(ref l)) => {
+            format!("lifetime {} (id={})", pprust::lifetime_to_str(*l), id)
         }
         None => {
             format!("unknown node (id={})", id)

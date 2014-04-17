@@ -272,6 +272,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
         }
 
         // Ugh -- but this ensures any new variants won't be forgotten
+        ast_map::NodeLifetime(..) |
         ast_map::NodeExpr(..) |
         ast_map::NodeStmt(..) |
         ast_map::NodeArg(..) |

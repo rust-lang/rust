@@ -198,6 +198,7 @@ use arena::Arena;
 use middle::ty;
 use std::fmt;
 use syntax::ast;
+use syntax::ast_map;
 use syntax::ast_util;
 use syntax::owned_slice::OwnedSlice;
 use syntax::visit;
@@ -517,6 +518,13 @@ impl<'a> Visitor<()> for ConstraintContext<'a> {
     }
 }
 
+/// Is `param_id` a lifetime according to `map`?
+fn is_lifetime(map: &ast_map::Map, param_id: ast::NodeId) -> bool {
+    match map.find(param_id) {
+        Some(ast_map::NodeLifetime(..)) => true, _ => false
+    }
+}
+
 impl<'a> ConstraintContext<'a> {
     fn tcx(&self) -> &'a ty::ctxt {
         self.terms_cx.tcx
@@ -531,6 +539,70 @@ impl<'a> ConstraintContext<'a> {
                         self.tcx().map.node_to_str(param_id)));
             }
         }
+    }
+
+    fn find_binding_for_lifetime(&self, param_id: ast::NodeId) -> ast::NodeId {
+        let tcx = self.terms_cx.tcx;
+        assert!(is_lifetime(&tcx.map, param_id));
+        match tcx.named_region_map.find(&param_id) {
+            Some(&ast::DefEarlyBoundRegion(_, lifetime_decl_id))
+                => lifetime_decl_id,
+            Some(_) => fail!("should not encounter non early-bound cases"),
+
+            // The lookup should only fail when `param_id` is
+            // itself a lifetime binding: use it as the decl_id.
+            None    => param_id,
+        }
+
+    }
+
+    /// Is `param_id` a type parameter for which we infer variance?
+    fn is_to_be_inferred(&self, param_id: ast::NodeId) -> bool {
+        let result = self.terms_cx.inferred_map.contains_key(&param_id);
+
+        // To safe-guard against invalid inferred_map constructions,
+        // double-check if variance is inferred at some use of a type
+        // parameter (by inspecting parent of its binding declaration
+        // to see if it is introduced by a type or by a fn/impl).
+
+        let check_result = |this:&ConstraintContext| -> bool {
+            let tcx = this.terms_cx.tcx;
+            let decl_id = this.find_binding_for_lifetime(param_id);
+            // Currently only called on lifetimes; double-checking that.
+            assert!(is_lifetime(&tcx.map, param_id));
+            let parent_id = tcx.map.get_parent(decl_id);
+            let parent = tcx.map.find(parent_id).unwrap_or_else(
+                || fail!("tcx.map missing entry for id: {}", parent_id));
+
+            let is_inferred;
+            macro_rules! cannot_happen { () => { {
+                fail!("invalid parent: {:s} for {:s}",
+                      tcx.map.node_to_str(parent_id),
+                      tcx.map.node_to_str(param_id));
+            } } }
+
+            match parent {
+                ast_map::NodeItem(p) => {
+                    match p.node {
+                        ast::ItemTy(..) |
+                        ast::ItemEnum(..) |
+                        ast::ItemStruct(..) |
+                        ast::ItemTrait(..)   => is_inferred = true,
+                        ast::ItemFn(..)      => is_inferred = false,
+                        _                    => cannot_happen!(),
+                    }
+                }
+                ast_map::NodeTraitMethod(..) => is_inferred = false,
+                ast_map::NodeMethod(_)       => is_inferred = false,
+                _                            => cannot_happen!(),
+            }
+
+            return is_inferred;
+        };
+
+        assert_eq!(result, check_result(self));
+
+        return result;
     }
 
     fn declared_variance(&self,
@@ -788,8 +860,10 @@ impl<'a> ConstraintContext<'a> {
                                    variance: VarianceTermPtr<'a>) {
         match region {
             ty::ReEarlyBound(param_id, _, _) => {
-                let index = self.inferred_index(param_id);
-                self.add_constraint(index, variance);
+                if self.is_to_be_inferred(param_id) {
+                    let index = self.inferred_index(param_id);
+                    self.add_constraint(index, variance);
+                }
             }
 
             ty::ReStatic => { }
