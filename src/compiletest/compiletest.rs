@@ -23,6 +23,7 @@ extern crate getopts;
 extern crate log;
 extern crate green;
 extern crate rustuv;
+extern crate machine;
 
 use std::os;
 use std::io;
@@ -58,6 +59,8 @@ pub fn main() {
 }
 
 pub fn parse_config(args: Vec<~str> ) -> config {
+    use std::from_str::FromStr;
+    use std::default::Default;
 
     let groups : Vec<getopts::OptGroup> =
         vec!(reqopt("", "compile-lib-path", "path to host shared libraries", "PATH"),
@@ -145,8 +148,18 @@ pub fn parse_config(args: Vec<~str> ) -> config {
         host_rustcflags: matches.opt_str("host-rustcflags"),
         target_rustcflags: matches.opt_str("target-rustcflags"),
         jit: matches.opt_present("jit"),
-        target: opt_str2(matches.opt_str("target")).to_str(),
-        host: opt_str2(matches.opt_str("host")).to_str(),
+        target: matches
+            .opt_str("target")
+            .and_then(|triple| {
+                FromStr::from_str(triple)
+            })
+            .unwrap_or_else(|| Default::default() ),
+        host: matches
+            .opt_str("host")
+            .and_then(|triple| {
+                FromStr::from_str(triple)
+            })
+            .unwrap_or_else(|| Default::default() ),
         adb_path: opt_str2(matches.opt_str("adb-path")).to_str(),
         adb_test_dir:
             opt_str2(matches.opt_str("adb-test-dir")).to_str(),
@@ -226,7 +239,7 @@ pub fn mode_str(mode: mode) -> ~str {
 }
 
 pub fn run_tests(config: &config) {
-    if config.target == ~"arm-linux-androideabi" {
+    if config.is_target_android() {
         match config.mode{
             mode_debug_info => {
                 println!("arm-linux-androideabi debug-info \

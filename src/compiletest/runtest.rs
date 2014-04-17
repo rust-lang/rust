@@ -37,15 +37,10 @@ use test::MetricMap;
 
 pub fn run(config: config, testfile: ~str) {
 
-    match config.target.as_slice() {
-
-        "arm-linux-androideabi" => {
-            if !config.adb_device_status {
-                fail!("android device not available");
-            }
+    if config.is_target_android() {
+        if !config.adb_device_status {
+            fail!("android device not available");
         }
-
-        _=> { }
     }
 
     let mut _mm = MetricMap::new();
@@ -208,7 +203,7 @@ fn run_pretty_test(config: &config, props: &TestProps, testfile: &Path) {
 
     fn make_pp_args(config: &config, _testfile: &Path) -> ProcArgs {
         let args = vec!(~"-", ~"--pretty", ~"normal",
-                     ~"--target=" + config.target);
+                        ~"--target=" + config.target.full);
         // FIXME (#9639): This needs to handle non-utf8 paths
         return ProcArgs {prog: config.rustc_path.as_str().unwrap().to_owned(), args: args};
     }
@@ -240,9 +235,9 @@ actual:\n\
     fn make_typecheck_args(config: &config, props: &TestProps, testfile: &Path) -> ProcArgs {
         let aux_dir = aux_output_dir_name(config, testfile);
         let target = if props.force_host {
-            config.host.as_slice()
+            config.host.full.as_slice()
         } else {
-            config.target.as_slice()
+            config.target.full.as_slice()
         };
         // FIXME (#9639): This needs to handle non-utf8 paths
         let mut args = vec!(~"-",
@@ -278,119 +273,114 @@ fn run_debuginfo_test(config: &config, props: &TestProps, testfile: &Path) {
     let exe_file = make_exe_name(config, testfile);
 
     let mut proc_args;
-    match config.target.as_slice() {
-        "arm-linux-androideabi" => {
+    if config.is_target_android() {
+        cmds = cmds.replace("run","continue");
 
-            cmds = cmds.replace("run","continue");
-
-            // write debugger script
-            let script_str = [~"set charset UTF-8",
-                              format!("file {}",exe_file.as_str().unwrap().to_owned()),
-                              ~"target remote :5039",
-                              cmds,
-                              ~"quit"].connect("\n");
-            debug!("script_str = {}", script_str);
-            dump_output_file(config, testfile, script_str, "debugger.script");
+        // write debugger script
+        let script_str = [~"set charset UTF-8",
+                          format!("file {}", exe_file.as_str().unwrap().to_owned()),
+                          ~"target remote :5039",
+                          cmds,
+                          ~"quit"].connect("\n");
+        debug!("script_str = {}", script_str);
+        dump_output_file(config, testfile, script_str, "debugger.script");
 
 
-            procsrv::run("", config.adb_path,
-                         [~"push", exe_file.as_str().unwrap().to_owned(),
-                          config.adb_test_dir.clone()],
-                         vec!((~"",~"")), Some(~""))
-                .expect(format!("failed to exec `{}`", config.adb_path));
+        procsrv::run("", config.adb_path,
+                     [~"push", exe_file.as_str().unwrap().to_owned(),
+                      config.adb_test_dir.clone()],
+                     vec!((~"",~"")), Some(~""))
+            .expect(format!("failed to exec `{}`", config.adb_path));
 
-            procsrv::run("", config.adb_path,
-                         [~"forward", ~"tcp:5039", ~"tcp:5039"],
-                         vec!((~"",~"")), Some(~""))
-                .expect(format!("failed to exec `{}`", config.adb_path));
+        procsrv::run("", config.adb_path,
+                     [~"forward", ~"tcp:5039", ~"tcp:5039"],
+                     vec!((~"",~"")), Some(~""))
+            .expect(format!("failed to exec `{}`", config.adb_path));
 
-            let adb_arg = format!("export LD_LIBRARY_PATH={}; gdbserver :5039 {}/{}",
-                                  config.adb_test_dir.clone(), config.adb_test_dir.clone(),
-                                  str::from_utf8(exe_file.filename().unwrap()).unwrap());
+        let adb_arg = format!("export LD_LIBRARY_PATH={}; gdbserver :5039 {}/{}",
+                              config.adb_test_dir.clone(), config.adb_test_dir.clone(),
+                              str::from_utf8(exe_file.filename().unwrap()).unwrap());
 
-            let mut process = procsrv::run_background("", config.adb_path,
-                                                      [~"shell",adb_arg.clone()],
-                                                      vec!((~"",~"")), Some(~""))
-                .expect(format!("failed to exec `{}`", config.adb_path));
-            loop {
-                //waiting 1 second for gdbserver start
-                timer::sleep(1000);
-                let result = task::try(proc() {
-                    tcp::TcpStream::connect(SocketAddr {
-                        ip: Ipv4Addr(127, 0, 0, 1),
-                        port: 5039,
-                    }).unwrap();
-                });
-                if result.is_err() {
-                    continue;
-                }
+        let mut process = procsrv::run_background("", config.adb_path,
+                                                  [~"shell", adb_arg.clone()],
+                                                  vec!((~"",~"")), Some(~""))
+            .expect(format!("failed to exec `{}`", config.adb_path));
+        loop {
+            //waiting 1 second for gdbserver start
+            timer::sleep(1000);
+            let result = task::try(proc() {
+                tcp::TcpStream::connect(SocketAddr {
+                    ip: Ipv4Addr(127, 0, 0, 1),
+                    port: 5039,
+                }).unwrap();
+            });
+            if result.is_err() {
+                continue;
+            }
+            break;
+        }
+
+        let args = split_maybe_args(&config.target_rustcflags);
+        let mut tool_path = StrBuf::new();
+        for arg in args.iter() {
+            if arg.contains("android-cross-path=") {
+                tool_path = StrBuf::from_str(arg.replace("android-cross-path=", ""));
                 break;
             }
-
-            let args = split_maybe_args(&config.target_rustcflags);
-            let mut tool_path = StrBuf::new();
-            for arg in args.iter() {
-                if arg.contains("android-cross-path=") {
-                    tool_path = StrBuf::from_str(arg.replace("android-cross-path=", ""));
-                    break;
-                }
-            }
-
-            if tool_path.is_empty() {
-                fatal(~"cannot found android cross path");
-            }
-
-            let debugger_script = make_out_name(config, testfile, "debugger.script");
-            // FIXME (#9639): This needs to handle non-utf8 paths
-            let debugger_opts = vec!(~"-quiet", ~"-batch", ~"-nx",
-                                  "-command=" + debugger_script.as_str().unwrap().to_owned());
-
-            let gdb_path = tool_path.append("/bin/arm-linux-androideabi-gdb");
-            let procsrv::Result{ out, err, status }=
-                procsrv::run("",
-                             gdb_path.as_slice(),
-                             debugger_opts.as_slice(),
-                             vec!((~"",~"")),
-                             None)
-                .expect(format!("failed to exec `{}`", gdb_path));
-            let cmdline = {
-                let cmdline = make_cmdline("",
-                                           "arm-linux-androideabi-gdb",
-                                           debugger_opts.as_slice());
-                logv(config, format!("executing {}", cmdline));
-                cmdline
-            };
-
-            proc_res = ProcRes {status: status,
-                               stdout: out,
-                               stderr: err,
-                               cmdline: cmdline};
-            process.signal_kill().unwrap();
         }
 
-        _=> {
-            // write debugger script
-            let script_str = [~"set charset UTF-8",
-                cmds,
-                ~"quit\n"].connect("\n");
-            debug!("script_str = {}", script_str);
-            dump_output_file(config, testfile, script_str, "debugger.script");
-
-            // run debugger script with gdb
-            #[cfg(windows)]
-            fn debugger() -> ~str { ~"gdb.exe" }
-            #[cfg(unix)]
-            fn debugger() -> ~str { ~"gdb" }
-
-            let debugger_script = make_out_name(config, testfile, "debugger.script");
-
-            // FIXME (#9639): This needs to handle non-utf8 paths
-            let debugger_opts = vec!(~"-quiet", ~"-batch", ~"-nx",
-                "-command=" + debugger_script.as_str().unwrap().to_owned(),
-                exe_file.as_str().unwrap().to_owned());
-            proc_args = ProcArgs {prog: debugger(), args: debugger_opts};
-            proc_res = compose_and_run(config, testfile, proc_args, Vec::new(), "", None);
+        if tool_path.is_empty() {
+            fatal(~"cannot found android cross path");
         }
+
+        let debugger_script = make_out_name(config, testfile, "debugger.script");
+        // FIXME (#9639): This needs to handle non-utf8 paths
+        let debugger_opts = vec!(~"-quiet", ~"-batch", ~"-nx",
+                                 "-command=" + debugger_script.as_str().unwrap().to_owned());
+
+        let gdb_path = tool_path.append("/bin/arm-linux-androideabi-gdb");
+        let procsrv::Result { out, err, status } =
+            procsrv::run("",
+                         gdb_path.as_slice(),
+                         debugger_opts.as_slice(),
+                         vec!((~"",~"")),
+                         None)
+            .expect(format!("failed to exec `{}`", gdb_path));
+        let cmdline = {
+            let cmdline = make_cmdline("",
+                                       "arm-linux-androideabi-gdb",
+                                       debugger_opts.as_slice());
+            logv(config, format!("executing {}", cmdline));
+            cmdline
+        };
+
+        proc_res = ProcRes {status: status,
+                            stdout: out,
+                            stderr: err,
+                            cmdline: cmdline};
+        process.signal_kill().unwrap();
+    } else {
+        // write debugger script
+        let script_str = [~"set charset UTF-8",
+                          cmds,
+                          ~"quit\n"].connect("\n");
+        debug!("script_str = {}", script_str);
+        dump_output_file(config, testfile, script_str, "debugger.script");
+
+        // run debugger script with gdb
+        #[cfg(windows)]
+        fn debugger() -> ~str { ~"gdb.exe" }
+        #[cfg(unix)]
+        fn debugger() -> ~str { ~"gdb" }
+
+        let debugger_script = make_out_name(config, testfile, "debugger.script");
+
+        // FIXME (#9639): This needs to handle non-utf8 paths
+        let debugger_opts = vec!(~"-quiet", ~"-batch", ~"-nx",
+                                 "-command=" + debugger_script.as_str().unwrap().to_owned(),
+                                 exe_file.as_str().unwrap().to_owned());
+        proc_args = ProcArgs {prog: debugger(), args: debugger_opts};
+        proc_res = compose_and_run(config, testfile, proc_args, Vec::new(), "", None);
     }
 
     if !proc_res.status.success() {
@@ -692,18 +682,13 @@ fn exec_compiled_test(config: &config, props: &TestProps,
 
     let env = props.exec_env.clone();
 
-    match config.target.as_slice() {
-
-        "arm-linux-androideabi" => {
-            _arm_exec_compiled_test(config, props, testfile, env)
-        }
-
-        _=> {
-            compose_and_run(config, testfile,
-                            make_run_args(config, props, testfile),
-                            env,
-                            config.run_lib_path, None)
-        }
+    if config.is_target_android() {
+        _arm_exec_compiled_test(config, props, testfile, env)
+    } else {
+        compose_and_run(config, testfile,
+                        make_run_args(config, props, testfile),
+                        env,
+                        config.run_lib_path, None)
     }
 }
 
@@ -746,14 +731,8 @@ fn compose_and_run_compiler(
                      abs_ab.display()),
                 &auxres);
         }
-
-        match config.target.as_slice() {
-
-            "arm-linux-androideabi" => {
-                _arm_push_aux_shared_library(config, testfile);
-            }
-
-            _=> { }
+        if config.is_target_android() {
+             _arm_push_aux_shared_library(config, testfile);
         }
     }
 
@@ -788,9 +767,9 @@ fn make_compile_args(config: &config,
                      -> ProcArgs {
     let xform_file = xform(config, testfile);
     let target = if props.force_host {
-        config.host.as_slice()
+        config.host.full.as_slice()
     } else {
-        config.target.as_slice()
+        config.target.full.as_slice()
     };
     // FIXME (#9639): This needs to handle non-utf8 paths
     let mut args = vec!(testfile.as_str().unwrap().to_owned(),

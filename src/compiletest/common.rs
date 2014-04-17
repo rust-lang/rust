@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use machine::triple::Triple;
+
 #[deriving(Clone, Eq)]
 pub enum mode {
     mode_compile_fail,
@@ -87,10 +89,10 @@ pub struct config {
     pub jit: bool,
 
     // Target system to be tested
-    pub target: ~str,
+    pub target: Triple,
 
     // Host triple for the compiler being invoked
-    pub host: ~str,
+    pub host: Triple,
 
     // Extra parameter to run adb on arm-linux-androideabi
     pub adb_path: ~str,
@@ -105,3 +107,14 @@ pub struct config {
     pub verbose: bool
 
 }
+
+impl config {
+    pub fn is_cross_compile(&self) -> bool {
+        self.target != self.host
+    }
+
+    pub fn is_target_android(&self) -> bool {
+        self.target.is_android()
+    }
+}
+

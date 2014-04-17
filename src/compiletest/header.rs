@@ -10,7 +10,6 @@
 
 use common::config;
 use common;
-use util;
 
 pub struct TestProps {
     // Lines that should be expected, in order, on standard out
@@ -112,7 +111,7 @@ pub fn load_props(testfile: &Path) -> TestProps {
 
 pub fn is_test_ignored(config: &config, testfile: &Path) -> bool {
     fn ignore_target(config: &config) -> ~str {
-        ~"ignore-" + util::get_os(config.target)
+        ~"ignore-" + config.target.expect_known_os().to_str()
     }
     fn ignore_stage(config: &config) -> ~str {
         ~"ignore-" + config.stage_id.split('-').next().unwrap()
