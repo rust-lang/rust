@@ -85,7 +85,8 @@ impl<T: Send> Packet<T> {
     // This function should be used after newly created Packet
     // was wrapped with an Arc
     // In other case mutex data will be duplicated while clonning
-    // and that drives iOS crazy
+    // and that could cause problems on platforms where it is
+    // represented by opaque data structure
     pub fn postinit_lock(&mut self) {
         unsafe { self.select_lock.lock_noguard() }
     }

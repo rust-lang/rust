@@ -98,6 +98,7 @@ impl StaticNativeMutex {
     ///
     /// Note that a mutex created in this way needs to be explicit
     /// freed with a call to `destroy` or it will leak.
+    /// Also it is important to avoid locking until mutex has stopped moving
     pub unsafe fn new() -> StaticNativeMutex {
         StaticNativeMutex { inner: imp::Mutex::new() }
     }
@@ -172,6 +173,7 @@ impl NativeMutex {
     ///
     /// The user must be careful to ensure the mutex is not locked when its is
     /// being destroyed.
+    /// Also it is important to avoid locking until mutex has stopped moving
     pub unsafe fn new() -> NativeMutex {
         NativeMutex { inner: StaticNativeMutex::new() }
     }
@@ -394,17 +396,12 @@ mod imp {
 
     impl Mutex {
         pub unsafe fn new() -> Mutex {
-            // Use static initializer as it work pretty fine with
-            // cloning on iOS
+            // As mutex might be moved and address is changing it
+            // is better to avoid initialization of potentially
+            // opaque OS data before it landed 
             let m = Mutex {
-                lock: Unsafe {
-                    value: PTHREAD_MUTEX_INITIALIZER,
-                    marker1: marker::InvariantType
-                },
-                cond: Unsafe {
-                    value: PTHREAD_COND_INITIALIZER,
-                    marker1: marker::InvariantType
-                }
+                lock: Unsafe::new(PTHREAD_MUTEX_INITIALIZER),
+                cond: Unsafe::new(PTHREAD_COND_INITIALIZER),                        
             };
 
             return m;
