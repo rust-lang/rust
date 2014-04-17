@@ -835,6 +835,10 @@ of `where` clause:
 Past experience also suggests that it's harder to figure out how to
 integrate this substitution into the type system rules themselves.
 
+Moreover, it's not clear how associated types integrate with object
+types. For example, an object type like `&Iterator<char>` works fine,
+but for traits using associated types that doesn't work at all.
+
 ## Why functional dependencies and not traits implemented over tuples? <a name=tuples>
 
 All things being equal, I might prefer to say that only the `Self`
