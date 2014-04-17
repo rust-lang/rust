@@ -59,12 +59,13 @@ TOOLS := compiletest rustdoc rustc
 DEPS_core :=
 DEPS_rlibc :=
 DEPS_std := core libc native:rustrt native:compiler-rt native:backtrace native:jemalloc
+DEPS_graphviz := std
 DEPS_green := std rand native:context_switch
 DEPS_rustuv := std native:uv native:uv_support
 DEPS_native := std
 DEPS_syntax := std term serialize collections log fmt_macros
 DEPS_rustc := syntax native:rustllvm flate arena serialize sync getopts \
-              collections time log
+              collections time log graphviz
 DEPS_rustdoc := rustc native:hoedown serialize sync getopts collections \
                 test time
 DEPS_flate := std native:miniz
