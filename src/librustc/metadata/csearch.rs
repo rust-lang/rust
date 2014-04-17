@@ -277,20 +277,6 @@ pub fn get_trait_of_method(cstore: &cstore::CStore,
     decoder::get_trait_of_method(&*cdata, def_id.node, tcx)
 }
 
-pub fn get_macro_registrar_fn(cstore: &cstore::CStore,
-                              crate_num: ast::CrateNum)
-                              -> Option<ast::NodeId> {
-    let cdata = cstore.get_crate_data(crate_num);
-    decoder::get_macro_registrar_fn(&*cdata)
-}
-
-pub fn get_exported_macros(cstore: &cstore::CStore,
-                           crate_num: ast::CrateNum)
-                           -> Vec<~str> {
-    let cdata = cstore.get_crate_data(crate_num);
-    decoder::get_exported_macros(&*cdata)
-}
-
 pub fn get_tuple_struct_definition_if_ctor(cstore: &cstore::CStore,
                                            def_id: ast::DefId)
     -> Option<ast::DefId>

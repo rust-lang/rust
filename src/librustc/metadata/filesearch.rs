@@ -30,7 +30,7 @@ pub type pick<'a> = |path: &Path|: 'a -> FileMatch;
 pub struct FileSearch<'a> {
     pub sysroot: &'a Path,
     pub addl_lib_search_paths: &'a RefCell<HashSet<Path>>,
-    pub target_triple: &'a str
+    pub triple: &'a str,
 }
 
 impl<'a> FileSearch<'a> {
@@ -48,22 +48,23 @@ impl<'a> FileSearch<'a> {
             visited_dirs.insert(path.as_vec().to_owned());
         }
 
-        debug!("filesearch: searching target lib path");
+        debug!("filesearch: searching lib path");
         let tlib_path = make_target_lib_path(self.sysroot,
-                                    self.target_triple);
+                                    self.triple);
         if !visited_dirs.contains_equiv(&tlib_path.as_vec()) {
             match f(&tlib_path) {
                 FileMatches => found = true,
                 FileDoesntMatch => ()
             }
         }
+
         visited_dirs.insert(tlib_path.as_vec().to_owned());
         // Try RUST_PATH
         if !found {
             let rustpath = rust_path();
             for path in rustpath.iter() {
-                let tlib_path = make_rustpkg_target_lib_path(
-                    self.sysroot, path, self.target_triple);
+                let tlib_path = make_rustpkg_lib_path(
+                    self.sysroot, path, self.triple);
                 debug!("is {} in visited_dirs? {:?}", tlib_path.display(),
                         visited_dirs.contains_equiv(&tlib_path.as_vec().to_owned()));
 
@@ -82,8 +83,8 @@ impl<'a> FileSearch<'a> {
         }
     }
 
-    pub fn get_target_lib_path(&self) -> Path {
-        make_target_lib_path(self.sysroot, self.target_triple)
+    pub fn get_lib_path(&self) -> Path {
+        make_target_lib_path(self.sysroot, self.triple)
     }
 
     pub fn search(&self, pick: pick) {
@@ -122,13 +123,13 @@ impl<'a> FileSearch<'a> {
     }
 
     pub fn new(sysroot: &'a Path,
-               target_triple: &'a str,
+               triple: &'a str,
                addl_lib_search_paths: &'a RefCell<HashSet<Path>>) -> FileSearch<'a> {
-        debug!("using sysroot = {}", sysroot.display());
+        debug!("using sysroot = {}, triple = {}", sysroot.display(), triple);
         FileSearch {
             sysroot: sysroot,
             addl_lib_search_paths: addl_lib_search_paths,
-            target_triple: target_triple
+            triple: triple,
         }
     }
 }
@@ -147,11 +148,11 @@ fn make_target_lib_path(sysroot: &Path,
     sysroot.join(&relative_target_lib_path(sysroot, target_triple))
 }
 
-fn make_rustpkg_target_lib_path(sysroot: &Path,
-                                dir: &Path,
-                                target_triple: &str) -> Path {
+fn make_rustpkg_lib_path(sysroot: &Path,
+                         dir: &Path,
+                         triple: &str) -> Path {
     let mut p = dir.join(find_libdir(sysroot));
-    p.push(target_triple);
+    p.push(triple);
     p
 }
 

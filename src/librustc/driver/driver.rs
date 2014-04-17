@@ -284,9 +284,7 @@ pub fn phase_3_run_analysis_passes(sess: Session,
     let time_passes = sess.time_passes();
 
     time(time_passes, "external crate/lib resolution", (), |_|
-         creader::read_crates(&sess, krate,
-                              session::sess_os_to_meta_os(sess.targ_cfg.os),
-                              token::get_ident_interner()));
+         creader::read_crates(&sess, krate));
 
     let lang_items = time(time_passes, "language item collection", (), |_|
                           middle::lang_items::collect_language_items(krate, &sess));
@@ -794,7 +792,7 @@ pub fn build_target_config(sopts: &session::Options) -> session::Config {
     }
 }
 
-pub fn host_triple() -> ~str {
+pub fn host_triple() -> &'static str {
     // Get the host triple out of the build environment. This ensures that our
     // idea of the host triple is the same as for the set of libraries we've
     // actually built.  We can't just take LLVM's host triple because they
@@ -803,7 +801,7 @@ pub fn host_triple() -> ~str {
     // Instead of grabbing the host triple (for the current host), we grab (at
     // compile time) the target triple that this rustc is built with and
     // calling that (at runtime) the host triple.
-    (env!("CFG_COMPILER_HOST_TRIPLE")).to_owned()
+    env!("CFG_COMPILER_HOST_TRIPLE")
 }
 
 pub fn build_session_options(matches: &getopts::Matches) -> session::Options {
@@ -895,7 +893,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> session::Options {
     }
 
     let sysroot_opt = matches.opt_str("sysroot").map(|m| Path::new(m));
-    let target = matches.opt_str("target").unwrap_or(host_triple());
+    let target = matches.opt_str("target").unwrap_or(host_triple().to_owned());
     let opt_level = {
         if (debugging_opts & session::NO_OPT) != 0 {
             No

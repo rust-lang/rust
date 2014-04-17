@@ -319,15 +319,23 @@ impl Session {
     pub fn show_span(&self) -> bool {
         self.debugging_opt(SHOW_SPAN)
     }
-    pub fn filesearch<'a>(&'a self) -> filesearch::FileSearch<'a> {
-        let sysroot = match self.opts.maybe_sysroot {
-            Some(ref sysroot) => sysroot,
+    pub fn sysroot<'a>(&'a self) -> &'a Path {
+        match self.opts.maybe_sysroot {
+            Some (ref sysroot) => sysroot,
             None => self.default_sysroot.as_ref()
                         .expect("missing sysroot and default_sysroot in Session")
-        };
+        }
+    }
+    pub fn target_filesearch<'a>(&'a self) -> filesearch::FileSearch<'a> {
         filesearch::FileSearch::new(
-            sysroot,
+            self.sysroot(),
             self.opts.target_triple,
+            &self.opts.addl_lib_search_paths)
+    }
+    pub fn host_filesearch<'a>(&'a self) -> filesearch::FileSearch<'a> {
+        filesearch::FileSearch::new(
+            self.sysroot(),
+            host_triple(),
             &self.opts.addl_lib_search_paths)
     }
 }
@@ -343,7 +351,7 @@ pub fn basic_options() -> Options {
         output_types: Vec::new(),
         addl_lib_search_paths: RefCell::new(HashSet::new()),
         maybe_sysroot: None,
-        target_triple: host_triple(),
+        target_triple: host_triple().to_owned(),
         cfg: Vec::new(),
         test: false,
         parse_only: false,
