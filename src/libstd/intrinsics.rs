@@ -394,9 +394,7 @@ extern "rust-intrinsic" {
 
     pub fn roundf32(x: f32) -> f32;
     pub fn roundf64(x: f64) -> f64;
-}
-#[cfg(not(stage0))]
-extern "rust-intrinsic" {
+
     pub fn ctpop8(x: u8) -> u8;
     pub fn ctpop16(x: u16) -> u16;
     pub fn ctpop32(x: u32) -> u32;
@@ -415,29 +413,7 @@ extern "rust-intrinsic" {
     pub fn bswap16(x: u16) -> u16;
     pub fn bswap32(x: u32) -> u32;
     pub fn bswap64(x: u64) -> u64;
-}
 
-// NOTE: remove this after a snap, and merge the extern block above
-macro_rules! stage0_hack {
-    ($( $u_ty:ty, $i_ty:ty => $($name:ident),*);*) => {
-        $(
-            $(
-                #[cfg(stage0)]
-                pub unsafe fn $name(x: $u_ty) -> $u_ty {
-                    extern "rust-intrinsic" { fn $name(x: $i_ty) -> $i_ty; }
-                    $name(x as $i_ty) as $u_ty
-                }
-            )*)*
-    }
-}
-stage0_hack! {
-    u8, i8 => ctpop8, ctlz8, cttz8;
-    u16, i16 => ctpop16, ctlz16, cttz16, bswap16;
-    u32, i32 => ctpop32, ctlz32, cttz32, bswap32;
-    u64, i64 => ctpop64, ctlz64, cttz64, bswap64
-}
-
-extern "rust-intrinsic" {
     pub fn i8_add_with_overflow(x: i8, y: i8) -> (i8, bool);
     pub fn i16_add_with_overflow(x: i16, y: i16) -> (i16, bool);
     pub fn i32_add_with_overflow(x: i32, y: i32) -> (i32, bool);
