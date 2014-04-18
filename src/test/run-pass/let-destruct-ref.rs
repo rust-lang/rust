@@ -9,7 +9,7 @@
 // except according to those terms.
 
 pub fn main() {
-    let x = ~"hello";
+    let x = "hello".to_owned();
     let ref y = x;
     assert_eq!(x.slice(0, x.len()), y.slice(0, y.len()));
 }

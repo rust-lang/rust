@@ -384,7 +384,7 @@ impl<'a> Parser<'a> {
         fn tokens_to_str(tokens: &[token::Token]) -> ~str {
             let mut i = tokens.iter();
             // This might be a sign we need a connect method on Iterator.
-            let b = i.next().map_or(~"", |t| Parser::token_to_str(t));
+            let b = i.next().map_or("".to_owned(), |t| Parser::token_to_str(t));
             i.fold(b, |b,a| b + "`, `" + Parser::token_to_str(a))
         }
         if edible.contains(&self.token) {

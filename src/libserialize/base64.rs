@@ -269,13 +269,13 @@ mod tests {
 
     #[test]
     fn test_to_base64_basic() {
-        assert_eq!("".as_bytes().to_base64(STANDARD), ~"");
-        assert_eq!("f".as_bytes().to_base64(STANDARD), ~"Zg==");
-        assert_eq!("fo".as_bytes().to_base64(STANDARD), ~"Zm8=");
-        assert_eq!("foo".as_bytes().to_base64(STANDARD), ~"Zm9v");
-        assert_eq!("foob".as_bytes().to_base64(STANDARD), ~"Zm9vYg==");
-        assert_eq!("fooba".as_bytes().to_base64(STANDARD), ~"Zm9vYmE=");
-        assert_eq!("foobar".as_bytes().to_base64(STANDARD), ~"Zm9vYmFy");
+        assert_eq!("".as_bytes().to_base64(STANDARD), "".to_owned());
+        assert_eq!("f".as_bytes().to_base64(STANDARD), "Zg==".to_owned());
+        assert_eq!("fo".as_bytes().to_base64(STANDARD), "Zm8=".to_owned());
+        assert_eq!("foo".as_bytes().to_base64(STANDARD), "Zm9v".to_owned());
+        assert_eq!("foob".as_bytes().to_base64(STANDARD), "Zm9vYg==".to_owned());
+        assert_eq!("fooba".as_bytes().to_base64(STANDARD), "Zm9vYmE=".to_owned());
+        assert_eq!("foobar".as_bytes().to_base64(STANDARD), "Zm9vYmFy".to_owned());
     }
 
     #[test]
@@ -284,19 +284,19 @@ mod tests {
                 .contains("\r\n"));
         assert_eq!("foobar".as_bytes().to_base64(Config {line_length: Some(4),
                                                          ..STANDARD}),
-                   ~"Zm9v\r\nYmFy");
+                   "Zm9v\r\nYmFy".to_owned());
     }
 
     #[test]
     fn test_to_base64_padding() {
-        assert_eq!("f".as_bytes().to_base64(Config {pad: false, ..STANDARD}), ~"Zg");
-        assert_eq!("fo".as_bytes().to_base64(Config {pad: false, ..STANDARD}), ~"Zm8");
+        assert_eq!("f".as_bytes().to_base64(Config {pad: false, ..STANDARD}), "Zg".to_owned());
+        assert_eq!("fo".as_bytes().to_base64(Config {pad: false, ..STANDARD}), "Zm8".to_owned());
     }
 
     #[test]
     fn test_to_base64_url_safe() {
-        assert_eq!([251, 255].to_base64(URL_SAFE), ~"-_8");
-        assert_eq!([251, 255].to_base64(STANDARD), ~"+/8=");
+        assert_eq!([251, 255].to_base64(URL_SAFE), "-_8".to_owned());
+        assert_eq!([251, 255].to_base64(STANDARD), "+/8=".to_owned());
     }
 
     #[test]

@@ -9,7 +9,8 @@
 // except according to those terms.
 
 fn foo(b: bool) -> Result<bool,~str> {
-    Err(~"bar"); //~ ERROR: cannot determine a type for this expression: unconstrained type
+    Err("bar".to_owned());
+    //~^ ERROR: cannot determine a type for this expression: unconstrained type
 }
 
 fn main() {

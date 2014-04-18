@@ -25,9 +25,9 @@ fn ack(m: int, n: int) -> int {
 fn main() {
     let args = os::args();
     let args = if os::getenv("RUST_BENCH").is_some() {
-        vec!(~"", ~"12")
+        vec!("".to_owned(), "12".to_owned())
     } else if args.len() <= 1u {
-        vec!(~"", ~"8")
+        vec!("".to_owned(), "8".to_owned())
     } else {
         args.move_iter().collect()
     };

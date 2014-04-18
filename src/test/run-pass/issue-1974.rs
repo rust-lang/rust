@@ -11,8 +11,8 @@
 // Issue 1974
 // Don't double free the condition allocation
 pub fn main() {
-    let s = ~"hej";
-    while s != ~"" {
+    let s = "hej".to_owned();
+    while s != "".to_owned() {
         return;
     }
 }

@@ -14,8 +14,8 @@ struct Bike {
 }
 
 pub fn main() {
-    let town_bike = Bike { name: ~"schwinn" };
-    let my_bike = Bike { name: ~"surly" };
+    let town_bike = Bike { name: "schwinn".to_owned() };
+    let my_bike = Bike { name: "surly".to_owned() };
 
     assert!(town_bike != my_bike);
 }

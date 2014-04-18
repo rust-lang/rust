@@ -29,6 +29,6 @@ fn main() {
         return test();
     }
 
-    let mut p = Process::new(args[0], [~"test"]).unwrap();
+    let mut p = Process::new(args[0], ["test".to_owned()]).unwrap();
     assert!(p.wait().success());
 }

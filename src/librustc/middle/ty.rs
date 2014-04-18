@@ -3251,22 +3251,22 @@ pub fn ty_sort_str(cx: &ctxt, t: t) -> ~str {
         }
 
         ty_enum(id, _) => format!("enum {}", item_path_str(cx, id)),
-        ty_box(_) => ~"@-ptr",
-        ty_uniq(_) => ~"~-ptr",
-        ty_vec(_, _) => ~"vector",
-        ty_ptr(_) => ~"*-ptr",
-        ty_rptr(_, _) => ~"&-ptr",
-        ty_bare_fn(_) => ~"extern fn",
-        ty_closure(_) => ~"fn",
+        ty_box(_) => "@-ptr".to_owned(),
+        ty_uniq(_) => "~-ptr".to_owned(),
+        ty_vec(_, _) => "vector".to_owned(),
+        ty_ptr(_) => "*-ptr".to_owned(),
+        ty_rptr(_, _) => "&-ptr".to_owned(),
+        ty_bare_fn(_) => "extern fn".to_owned(),
+        ty_closure(_) => "fn".to_owned(),
         ty_trait(ref inner) => format!("trait {}", item_path_str(cx, inner.def_id)),
         ty_struct(id, _) => format!("struct {}", item_path_str(cx, id)),
-        ty_tup(_) => ~"tuple",
-        ty_infer(TyVar(_)) => ~"inferred type",
-        ty_infer(IntVar(_)) => ~"integral variable",
-        ty_infer(FloatVar(_)) => ~"floating-point variable",
-        ty_param(_) => ~"type parameter",
-        ty_self(_) => ~"self",
-        ty_err => ~"type error"
+        ty_tup(_) => "tuple".to_owned(),
+        ty_infer(TyVar(_)) => "inferred type".to_owned(),
+        ty_infer(IntVar(_)) => "integral variable".to_owned(),
+        ty_infer(FloatVar(_)) => "floating-point variable".to_owned(),
+        ty_param(_) => "type parameter".to_owned(),
+        ty_self(_) => "self".to_owned(),
+        ty_err => "type error".to_owned()
     }
 }
 
@@ -3282,15 +3282,15 @@ pub fn type_err_to_str(cx: &ctxt, err: &type_err) -> ~str {
 
     fn terr_vstore_kind_to_str(k: terr_vstore_kind) -> ~str {
         match k {
-            terr_vec => ~"[]",
-            terr_str => ~"str",
-            terr_fn => ~"fn",
-            terr_trait => ~"trait"
+            terr_vec => "[]".to_owned(),
+            terr_str => "str".to_owned(),
+            terr_fn => "fn".to_owned(),
+            terr_trait => "trait".to_owned()
         }
     }
 
     match *err {
-        terr_mismatch => ~"types differ",
+        terr_mismatch => "types differ".to_owned(),
         terr_fn_style_mismatch(values) => {
             format!("expected {} fn but found {} fn",
                  values.expected.to_str(), values.found.to_str())
@@ -3308,11 +3308,11 @@ pub fn type_err_to_str(cx: &ctxt, err: &type_err) -> ~str {
                  values.expected.to_str(),
                  values.found.to_str())
         }
-        terr_mutability => ~"values differ in mutability",
-        terr_box_mutability => ~"boxed values differ in mutability",
-        terr_vec_mutability => ~"vectors differ in mutability",
-        terr_ptr_mutability => ~"pointers differ in mutability",
-        terr_ref_mutability => ~"references differ in mutability",
+        terr_mutability => "values differ in mutability".to_owned(),
+        terr_box_mutability => "boxed values differ in mutability".to_owned(),
+        terr_vec_mutability => "vectors differ in mutability".to_owned(),
+        terr_ptr_mutability => "pointers differ in mutability".to_owned(),
+        terr_ref_mutability => "references differ in mutability".to_owned(),
         terr_ty_param_size(values) => {
             format!("expected a type with {} type params \
                   but found one with {} type params",
@@ -3329,7 +3329,7 @@ pub fn type_err_to_str(cx: &ctxt, err: &type_err) -> ~str {
                  values.expected, values.found)
         }
         terr_record_mutability => {
-            ~"record elements differ in mutability"
+            "record elements differ in mutability".to_owned()
         }
         terr_record_fields(values) => {
             format!("expected a record with field `{}` but found one with field \
@@ -3337,7 +3337,7 @@ pub fn type_err_to_str(cx: &ctxt, err: &type_err) -> ~str {
                  token::get_ident(values.expected),
                  token::get_ident(values.found))
         }
-        terr_arg_count => ~"incorrect number of function parameters",
+        terr_arg_count => "incorrect number of function parameters".to_owned(),
         terr_regions_does_not_outlive(..) => {
             format!("lifetime mismatch")
         }

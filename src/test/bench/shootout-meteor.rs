@@ -277,7 +277,7 @@ fn main () {
     };
     let masks = make_masks();
     let masks = filter_masks(masks.as_slice());
-    let mut data = Data {stop_after: stop_after, nb: 0, min: ~"", max: ~""};
+    let mut data = Data {stop_after: stop_after, nb: 0, min: "".to_owned(), max: "".to_owned()};
     search(masks.as_slice(), 0, 0, Nil, &mut data);
     println!("{} solutions found", data.nb);
     print_sol(data.min);

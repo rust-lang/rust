@@ -25,7 +25,7 @@ impl<'self> Serializable<str> for &'self str {
 
 fn main() {
     println!("hello");
-    let x = ~"foo";
+    let x = "foo".to_owned();
     let y = x;
     println!("{}", y);
 }

@@ -24,17 +24,17 @@ pub fn main() {
     assert_eq!(pi as int, '\u03a0' as int);
     assert_eq!('\x0a' as int, '\n' as int);
 
-    let bhutan: ~str = ~"འབྲུག་ཡུལ།";
-    let japan: ~str = ~"日本";
-    let uzbekistan: ~str = ~"Ўзбекистон";
-    let austria: ~str = ~"Österreich";
+    let bhutan: ~str = "འབྲུག་ཡུལ།".to_owned();
+    let japan: ~str = "日本".to_owned();
+    let uzbekistan: ~str = "Ўзбекистон".to_owned();
+    let austria: ~str = "Österreich".to_owned();
 
     let bhutan_e: ~str =
-        ~"\u0f60\u0f56\u0fb2\u0f74\u0f42\u0f0b\u0f61\u0f74\u0f63\u0f0d";
-    let japan_e: ~str = ~"\u65e5\u672c";
+        "\u0f60\u0f56\u0fb2\u0f74\u0f42\u0f0b\u0f61\u0f74\u0f63\u0f0d".to_owned();
+    let japan_e: ~str = "\u65e5\u672c".to_owned();
     let uzbekistan_e: ~str =
-        ~"\u040e\u0437\u0431\u0435\u043a\u0438\u0441\u0442\u043e\u043d";
-    let austria_e: ~str = ~"\u00d6sterreich";
+        "\u040e\u0437\u0431\u0435\u043a\u0438\u0441\u0442\u043e\u043d".to_owned();
+    let austria_e: ~str = "\u00d6sterreich".to_owned();
 
     let oo: char = 'Ö';
     assert_eq!(oo as int, 0xd6);

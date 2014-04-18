@@ -15,9 +15,9 @@ fn gl_err_str(err: u32) -> ~str
 {
   match err
   {
-    INVALID_ENUM => { ~"Invalid enum" },
-    INVALID_VALUE => { ~"Invalid value" },
-    _ => { ~"Unknown error" }
+    INVALID_ENUM => { "Invalid enum".to_owned() },
+    INVALID_VALUE => { "Invalid value".to_owned() },
+    _ => { "Unknown error".to_owned() }
   }
 }
 

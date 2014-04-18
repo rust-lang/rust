@@ -14,9 +14,9 @@ struct A<'a> {
 }
 
 pub fn main() {
-    let b = &[~"foo"];
+    let b = &["foo".to_owned()];
     let a = A {
-        a: &[~"test"],
+        a: &["test".to_owned()],
         b: Some(b),
     };
     assert_eq!(a.b.get_ref()[0].as_slice(), "foo");

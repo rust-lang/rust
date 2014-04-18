@@ -60,7 +60,7 @@ fn cat(in_x : uint, in_y : int, in_name: ~str) -> cat {
 
 
 pub fn main() {
-    let mut nyan = cat(0u, 2, ~"nyan");
+    let mut nyan = cat(0u, 2, "nyan".to_owned());
     let mut nyan: &mut noisy = &mut nyan;
     nyan.speak();
 }

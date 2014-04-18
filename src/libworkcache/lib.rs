@@ -492,10 +492,10 @@ fn test() {
         return pth;
     }
 
-    let pth = make_path(~"foo.c");
+    let pth = make_path("foo.c".to_owned());
     File::create(&pth).write(bytes!("int main() { return 0; }")).unwrap();
 
-    let db_path = make_path(~"db.json");
+    let db_path = make_path("db.json".to_owned());
 
     let cx = Context::new(Arc::new(RWLock::new(Database::new(db_path))),
                           Arc::new(TreeMap::new()));
@@ -511,11 +511,11 @@ fn test() {
         // FIXME (#9639): This needs to handle non-utf8 paths
         prep.declare_input("file", pth.as_str().unwrap(), file_content);
         prep.exec(proc(_exe) {
-            let out = make_path(~"foo.o");
+            let out = make_path("foo.o".to_owned());
             let compiler = if cfg!(windows) {"gcc"} else {"cc"};
             // FIXME (#9639): This needs to handle non-utf8 paths
             Process::status(compiler, [pth.as_str().unwrap().to_owned(),
-                                    ~"-o",
+                                    "-o".to_owned(),
                                     out.as_str().unwrap().to_owned()]).unwrap();
 
             let _proof_of_concept = subcx.prep("subfn");

@@ -636,7 +636,8 @@ fn test_repr() {
     exact_test(&false, "false");
     exact_test(&1.234, "1.234f64");
     exact_test(&(&"hello"), "\"hello\"");
-    exact_test(&(~"he\u10f3llo"), "~\"he\\u10f3llo\"");
+    // FIXME What do I do about this one?
+    exact_test(&("he\u10f3llo".to_owned()), "~\"he\\u10f3llo\"");
 
     exact_test(&(@10), "@10");
     exact_test(&(~10), "~10");
@@ -658,13 +659,13 @@ fn test_repr() {
                "@repr::P{a: 10, b: 1.234f64}");
     exact_test(&(~P{a:10, b:1.234}),
                "~repr::P{a: 10, b: 1.234f64}");
-    exact_test(&(10u8, ~"hello"),
+    exact_test(&(10u8, "hello".to_owned()),
                "(10u8, ~\"hello\")");
-    exact_test(&(10u16, ~"hello"),
+    exact_test(&(10u16, "hello".to_owned()),
                "(10u16, ~\"hello\")");
-    exact_test(&(10u32, ~"hello"),
+    exact_test(&(10u32, "hello".to_owned()),
                "(10u32, ~\"hello\")");
-    exact_test(&(10u64, ~"hello"),
+    exact_test(&(10u64, "hello".to_owned()),
                "(10u64, ~\"hello\")");
 
     exact_test(&(&[1, 2]), "&[1, 2]");

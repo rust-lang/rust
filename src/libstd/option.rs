@@ -194,7 +194,7 @@ impl<T> Option<T> {
     /// to the value inside the original.
     ///
     /// ```
-    /// let num_as_str: Option<~str> = Some(~"10");
+    /// let num_as_str: Option<~str> = Some("10".to_owned());
     /// // First, cast `Option<~str>` to `Option<&~str>` with `as_ref`,
     /// // then consume *that* with `map`, leaving `num_as_str` on the stack.
     /// let num_as_int: Option<uint> = num_as_str.as_ref().map(|n| n.len());
@@ -294,7 +294,7 @@ impl<T> Option<T> {
     /// Convert an `Option<~str>` into an `Option<uint>`, consuming the original:
     ///
     /// ```
-    /// let num_as_str: Option<~str> = Some(~"10");
+    /// let num_as_str: Option<~str> = Some("10".to_owned());
     /// // `Option::map` takes self *by value*, consuming `num_as_str`
     /// let num_as_int: Option<uint> = num_as_str.map(|n| n.len());
     /// ```
@@ -630,7 +630,7 @@ mod tests {
 
     #[test]
     fn test_get_str() {
-        let x = ~"test";
+        let x = "test".to_owned();
         let addr_x = x.as_ptr();
         let opt = Some(x);
         let y = opt.unwrap();
@@ -751,7 +751,7 @@ mod tests {
     #[test]
     fn test_unwrap() {
         assert_eq!(Some(1).unwrap(), 1);
-        assert_eq!(Some(~"hello").unwrap(), ~"hello");
+        assert_eq!(Some("hello".to_owned()).unwrap(), "hello".to_owned());
     }
 
     #[test]

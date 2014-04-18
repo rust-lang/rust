@@ -779,19 +779,19 @@ fn test_escape_default() {
         escape_default(c, |c| { result.push_char(c); });
         return result.into_owned();
     }
-    assert_eq!(string('\n'), ~"\\n");
-    assert_eq!(string('\r'), ~"\\r");
-    assert_eq!(string('\''), ~"\\'");
-    assert_eq!(string('"'), ~"\\\"");
-    assert_eq!(string(' '), ~" ");
-    assert_eq!(string('a'), ~"a");
-    assert_eq!(string('~'), ~"~");
-    assert_eq!(string('\x00'), ~"\\x00");
-    assert_eq!(string('\x1f'), ~"\\x1f");
-    assert_eq!(string('\x7f'), ~"\\x7f");
-    assert_eq!(string('\xff'), ~"\\xff");
-    assert_eq!(string('\u011b'), ~"\\u011b");
-    assert_eq!(string('\U0001d4b6'), ~"\\U0001d4b6");
+    assert_eq!(string('\n'), "\\n".to_owned());
+    assert_eq!(string('\r'), "\\r".to_owned());
+    assert_eq!(string('\''), "\\'".to_owned());
+    assert_eq!(string('"'), "\\\"".to_owned());
+    assert_eq!(string(' '), " ".to_owned());
+    assert_eq!(string('a'), "a".to_owned());
+    assert_eq!(string('~'), "~".to_owned());
+    assert_eq!(string('\x00'), "\\x00".to_owned());
+    assert_eq!(string('\x1f'), "\\x1f".to_owned());
+    assert_eq!(string('\x7f'), "\\x7f".to_owned());
+    assert_eq!(string('\xff'), "\\xff".to_owned());
+    assert_eq!(string('\u011b'), "\\u011b".to_owned());
+    assert_eq!(string('\U0001d4b6'), "\\U0001d4b6".to_owned());
 }
 
 #[test]
@@ -801,19 +801,19 @@ fn test_escape_unicode() {
         escape_unicode(c, |c| { result.push_char(c); });
         return result.into_owned();
     }
-    assert_eq!(string('\x00'), ~"\\x00");
-    assert_eq!(string('\n'), ~"\\x0a");
-    assert_eq!(string(' '), ~"\\x20");
-    assert_eq!(string('a'), ~"\\x61");
-    assert_eq!(string('\u011b'), ~"\\u011b");
-    assert_eq!(string('\U0001d4b6'), ~"\\U0001d4b6");
+    assert_eq!(string('\x00'), "\\x00".to_owned());
+    assert_eq!(string('\n'), "\\x0a".to_owned());
+    assert_eq!(string(' '), "\\x20".to_owned());
+    assert_eq!(string('a'), "\\x61".to_owned());
+    assert_eq!(string('\u011b'), "\\u011b".to_owned());
+    assert_eq!(string('\U0001d4b6'), "\\U0001d4b6".to_owned());
 }
 
 #[test]
 fn test_to_str() {
     use to_str::ToStr;
     let s = 't'.to_str();
-    assert_eq!(s, ~"t");
+    assert_eq!(s, "t".to_owned());
 }
 
 #[test]

@@ -1209,12 +1209,12 @@ impl<'a> ErrorReportingHelpers for InferCtxt<'a> {
     fn report_inference_failure(&self,
                                 var_origin: RegionVariableOrigin) {
         let var_description = match var_origin {
-            infer::MiscVariable(_) => ~"",
-            infer::PatternRegion(_) => ~" for pattern",
-            infer::AddrOfRegion(_) => ~" for borrow expression",
-            infer::AddrOfSlice(_) => ~" for slice expression",
-            infer::Autoref(_) => ~" for autoref",
-            infer::Coercion(_) => ~" for automatic coercion",
+            infer::MiscVariable(_) => "".to_owned(),
+            infer::PatternRegion(_) => " for pattern".to_owned(),
+            infer::AddrOfRegion(_) => " for borrow expression".to_owned(),
+            infer::AddrOfSlice(_) => " for slice expression".to_owned(),
+            infer::Autoref(_) => " for autoref".to_owned(),
+            infer::Coercion(_) => " for automatic coercion".to_owned(),
             infer::LateBoundRegion(_, br) => {
                 format!(" for {}in function call",
                         bound_region_to_str(self.tcx, "lifetime parameter ", true, br))

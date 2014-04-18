@@ -10,7 +10,7 @@
 
 pub fn main() {
     // Make sure we properly handle repeated self-appends.
-    let mut a: ~str = ~"A";
+    let mut a: ~str = "A".to_owned();
     let mut i = 20;
     let mut expected_len = 1u;
     while i > 0 {

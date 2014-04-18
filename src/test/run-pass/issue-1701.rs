@@ -16,16 +16,16 @@ enum animal { cat(pattern), dog(breed), rabbit(name, ear_kind), tiger }
 
 fn noise(a: animal) -> Option<~str> {
     match a {
-      cat(..)    => { Some(~"meow") }
-      dog(..)    => { Some(~"woof") }
+      cat(..)    => { Some("meow".to_owned()) }
+      dog(..)    => { Some("woof".to_owned()) }
       rabbit(..) => { None }
-      tiger(..)  => { Some(~"roar") }
+      tiger(..)  => { Some("roar".to_owned()) }
     }
 }
 
 pub fn main() {
-    assert_eq!(noise(cat(tabby)), Some(~"meow"));
-    assert_eq!(noise(dog(pug)), Some(~"woof"));
-    assert_eq!(noise(rabbit(~"Hilbert", upright)), None);
-    assert_eq!(noise(tiger), Some(~"roar"));
+    assert_eq!(noise(cat(tabby)), Some("meow".to_owned()));
+    assert_eq!(noise(dog(pug)), Some("woof".to_owned()));
+    assert_eq!(noise(rabbit("Hilbert".to_owned(), upright)), None);
+    assert_eq!(noise(tiger), Some("roar".to_owned()));
 }

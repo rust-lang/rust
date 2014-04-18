@@ -29,7 +29,7 @@ fn make_uniq_closure<A:Send>(a: A) -> proc():Send -> uint {
 fn empty_pointy() -> @RefCell<Pointy> {
     return @RefCell::new(Pointy {
         a : none,
-        d : make_uniq_closure(~"hi")
+        d : make_uniq_closure("hi".to_owned())
     })
 }
 

@@ -108,6 +108,7 @@ pub unsafe fn copy_lifetime_vec<'a,S,T>(_ptr: &'a [S], ptr: &T) -> &'a T {
 mod tests {
     use cast::{bump_box_refcount, transmute};
     use raw;
+    use str::StrSlice;
 
     #[test]
     fn test_transmute_copy() {
@@ -117,13 +118,13 @@ mod tests {
     #[test]
     fn test_bump_managed_refcount() {
         unsafe {
-            let managed = @~"box box box";      // refcount 1
+            let managed = @"box box box".to_owned();      // refcount 1
             bump_box_refcount(managed);     // refcount 2
             let ptr: *int = transmute(managed); // refcount 2
             let _box1: @~str = ::cast::transmute_copy(&ptr);
             let _box2: @~str = ::cast::transmute_copy(&ptr);
-            assert!(*_box1 == ~"box box box");
-            assert!(*_box2 == ~"box box box");
+            assert!(*_box1 == "box box box".to_owned());
+            assert!(*_box2 == "box box box".to_owned());
             // Will destroy _box1 and _box2. Without the bump, this would
             // use-after-free. With too many bumps, it would leak.
         }
@@ -142,7 +143,7 @@ mod tests {
     #[test]
     fn test_transmute2() {
         unsafe {
-            assert_eq!(~[76u8], transmute(~"L"));
+            assert_eq!(~[76u8], transmute("L".to_owned()));
         }
     }
 }

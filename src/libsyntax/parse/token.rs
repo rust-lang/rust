@@ -141,56 +141,56 @@ impl fmt::Show for Nonterminal {
 
 pub fn binop_to_str(o: BinOp) -> ~str {
     match o {
-      PLUS => ~"+",
-      MINUS => ~"-",
-      STAR => ~"*",
-      SLASH => ~"/",
-      PERCENT => ~"%",
-      CARET => ~"^",
-      AND => ~"&",
-      OR => ~"|",
-      SHL => ~"<<",
-      SHR => ~">>"
+      PLUS => "+".to_owned(),
+      MINUS => "-".to_owned(),
+      STAR => "*".to_owned(),
+      SLASH => "/".to_owned(),
+      PERCENT => "%".to_owned(),
+      CARET => "^".to_owned(),
+      AND => "&".to_owned(),
+      OR => "|".to_owned(),
+      SHL => "<<".to_owned(),
+      SHR => ">>".to_owned()
     }
 }
 
 pub fn to_str(t: &Token) -> ~str {
     match *t {
-      EQ => ~"=",
-      LT => ~"<",
-      LE => ~"<=",
-      EQEQ => ~"==",
-      NE => ~"!=",
-      GE => ~">=",
-      GT => ~">",
-      NOT => ~"!",
-      TILDE => ~"~",
-      OROR => ~"||",
-      ANDAND => ~"&&",
+      EQ => "=".to_owned(),
+      LT => "<".to_owned(),
+      LE => "<=".to_owned(),
+      EQEQ => "==".to_owned(),
+      NE => "!=".to_owned(),
+      GE => ">=".to_owned(),
+      GT => ">".to_owned(),
+      NOT => "!".to_owned(),
+      TILDE => "~".to_owned(),
+      OROR => "||".to_owned(),
+      ANDAND => "&&".to_owned(),
       BINOP(op) => binop_to_str(op),
       BINOPEQ(op) => binop_to_str(op) + "=",
 
       /* Structural symbols */
-      AT => ~"@",
-      DOT => ~".",
-      DOTDOT => ~"..",
-      DOTDOTDOT => ~"...",
-      COMMA => ~",",
-      SEMI => ~";",
-      COLON => ~":",
-      MOD_SEP => ~"::",
-      RARROW => ~"->",
-      LARROW => ~"<-",
-      DARROW => ~"<->",
-      FAT_ARROW => ~"=>",
-      LPAREN => ~"(",
-      RPAREN => ~")",
-      LBRACKET => ~"[",
-      RBRACKET => ~"]",
-      LBRACE => ~"{",
-      RBRACE => ~"}",
-      POUND => ~"#",
-      DOLLAR => ~"$",
+      AT => "@".to_owned(),
+      DOT => ".".to_owned(),
+      DOTDOT => "..".to_owned(),
+      DOTDOTDOT => "...".to_owned(),
+      COMMA => ",".to_owned(),
+      SEMI => ";".to_owned(),
+      COLON => ":".to_owned(),
+      MOD_SEP => "::".to_owned(),
+      RARROW => "->".to_owned(),
+      LARROW => "<-".to_owned(),
+      DARROW => "<->".to_owned(),
+      FAT_ARROW => "=>".to_owned(),
+      LPAREN => "(".to_owned(),
+      RPAREN => ")".to_owned(),
+      LBRACKET => "[".to_owned(),
+      RBRACKET => "]".to_owned(),
+      LBRACE => "{".to_owned(),
+      RBRACE => "}".to_owned(),
+      POUND => "#".to_owned(),
+      DOLLAR => "$".to_owned(),
 
       /* Literals */
       LIT_CHAR(c) => {
@@ -232,29 +232,29 @@ pub fn to_str(t: &Token) -> ~str {
       LIFETIME(s) => {
           format!("'{}", get_ident(s))
       }
-      UNDERSCORE => ~"_",
+      UNDERSCORE => "_".to_owned(),
 
       /* Other */
       DOC_COMMENT(s) => get_ident(s).get().to_str(),
-      EOF => ~"<eof>",
+      EOF => "<eof>".to_owned(),
       INTERPOLATED(ref nt) => {
         match nt {
             &NtExpr(e) => ::print::pprust::expr_to_str(e),
             &NtMeta(e) => ::print::pprust::meta_item_to_str(e),
             _ => {
-                ~"an interpolated " +
+                "an interpolated ".to_owned() +
                     match *nt {
-                        NtItem(..) => ~"item",
-                        NtBlock(..) => ~"block",
-                        NtStmt(..) => ~"statement",
-                        NtPat(..) => ~"pattern",
+                        NtItem(..) => "item".to_owned(),
+                        NtBlock(..) => "block".to_owned(),
+                        NtStmt(..) => "statement".to_owned(),
+                        NtPat(..) => "pattern".to_owned(),
                         NtMeta(..) => fail!("should have been handled"),
                         NtExpr(..) => fail!("should have been handled above"),
-                        NtTy(..) => ~"type",
-                        NtIdent(..) => ~"identifier",
-                        NtPath(..) => ~"path",
-                        NtTT(..) => ~"tt",
-                        NtMatchers(..) => ~"matcher sequence"
+                        NtTy(..) => "type".to_owned(),
+                        NtIdent(..) => "identifier".to_owned(),
+                        NtPath(..) => "path".to_owned(),
+                        NtTT(..) => "tt".to_owned(),
+                        NtMatchers(..) => "matcher sequence".to_owned()
                     }
             }
         }

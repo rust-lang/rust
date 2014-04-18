@@ -13,7 +13,7 @@
 use std::task;
 
 fn main() {
-    task::task().named(~"owned name").try(proc() {
+    task::task().named("owned name".to_owned()).try(proc() {
         fail!("test");
         1
     }).unwrap()

@@ -11,7 +11,7 @@
 use std::task;
 
 pub fn main() {
-    let x = ~"Hello world!";
+    let x = "Hello world!".to_owned();
     task::spawn(proc() {
         println!("{}", x);
     });

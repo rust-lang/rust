@@ -26,9 +26,9 @@ pub fn main() {
     //assert!((col!() == 11));
     assert_eq!(indirect_line!(), 27);
     assert!((file!().to_owned().ends_with("syntax-extension-source-utils.rs")));
-    assert_eq!(stringify!((2*3) + 5).to_owned(), ~"( 2 * 3 ) + 5");
+    assert_eq!(stringify!((2*3) + 5).to_owned(), "( 2 * 3 ) + 5".to_owned());
     assert!(include!("syntax-extension-source-utils-files/includeme.fragment").to_owned()
-           == ~"victory robot 6");
+           == "victory robot 6".to_owned());
 
     assert!(
         include_str!("syntax-extension-source-utils-files/includeme.fragment").to_owned()
