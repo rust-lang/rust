@@ -90,7 +90,9 @@ exposes byte indices.
 ## Word boundaries, word characters and Unicode
 
 At least Python and D define word characters, word boundaries and space 
-characters with Unicode character classes. I propose we do the same.
+characters with Unicode character classes. My implementation does the same
+by augmenting the standard Perl character classes `\d`, `\s` and `\w` with
+corresponding Unicode categories.
 
 ## Leftmost-first
 
@@ -147,31 +149,39 @@ an expression.
 ## The `regexp!` macro
 
 With syntax extensions, it's possible to write an `regexp!` macro that compiles 
-an expression when a Rust program is compiled. In my case, it seemed simplest 
-to compile it to *static* data. For example:
+an expression when a Rust program is compiled. This includes translating the
+matching algorithm to Rust code specific to the expression given. This "ahead 
+of time" compiling results in a performance increase. Namely, it elides all 
+heap allocation.
 
-    static re: Regexp = regexp!("a*");
+I've called these "native" regexps, whereas expressions compiled at runtime are 
+"dynamic" regexps. The public API need not impose this distinction on users, 
+other than requiring the use of a syntax extension to construct a native 
+regexp. For example:
 
-At first this seemed difficult to accommodate, but it turned out to be 
-relatively easy with a type like this:
+    let re = regexp!("a*");
 
-    pub enum MaybeStatic<T> {
-        Dynamic(Vec<T>),
-        Static(&'static [T]),
+After construction, `re` is indistinguishable from an expression created 
+dynamically:
+
+    let re = Regexp::new("a*").unwrap();
+
+In particular, both have the same type. This is accomplished with a 
+representation resembling:
+
+    enum MaybeNative {
+        Dynamic(~[Inst]),
+        Native(fn(MatchKind, &str, uint, uint) -> ~[Option<uint>]),
     }
 
-Another option is for the `regexp!` macro to produce a non-static value, but I 
-found this difficult to do with zero-runtime cost. Either way, the ability to 
-statically declare a regexp is pretty cool I think.
+This syntax extension requires a second crate, `regexp_macros`, where the 
+`regexp!` macro is defined. Technically, this could be provided in the `regexp` 
+crate, but this would introduce a runtime dependency on `libsyntax` for any use 
+of the `regexp` crate.
 
-Note that the syntax extension is the reason for the `regexp_macros` crate. It's 
-very small and contains the macro registration function. I'm not sure how this 
-fits into the Rust distribution, but my vote is to document the `regexp!` macro 
-in the `regexp` crate and hide the `regexp_macros` crate from public 
-documentation.  (Or link it to the `regexp` crate.)
-
-It seems like the `regexp!` macro will become a bit nicer to use once
-[#11640](https://github.com/mozilla/rust/issues/11640) is fixed.
+[@alexcrichton 
+remarks](https://github.com/rust-lang/rfcs/pull/42#issuecomment-40320112)
+that this state of affairs is a wart that will be corrected in the future.
 
 ## Untrusted input
 
@@ -234,11 +244,7 @@ Finally, it is always possible to persist without a regexp library.
 
 # Unresolved questions
 
-Firstly, I'm not entirely clear on how the `regexp_macros` crate will be handled.
-I gave a suggestion above, but I'm not sure if it's a good one. Is there any 
-precedent?
-
-Secondly, the public API design is fairly simple and straight-forward with no 
+The public API design is fairly simple and straight-forward with no 
 surprises.  I think most of the unresolved stuff is how the backend is 
 implemented, which should be changeable without changing the public API (sans 
 adding features to the syntax).
@@ -247,8 +253,8 @@ I can't remember where I read it, but someone had mentioned defining a *trait*
 that declared the API of a regexp engine. That way, anyone could write their 
 own backend and use the `regexp` interface. My initial thoughts are 
 YAGNI---since requiring different backends seems like a super specialized 
-case---but I'm just hazarding a guess here. (If we go this route, then we'd 
-probably also have to expose the regexp parser and AST and possibly the 
+case---but I'm just hazarding a guess here. (If we go this route, then we
+might want to expose the regexp parser and AST and possibly the 
 compiler and instruction set to make writing your own backend easier. That 
 sounds restrictive with respect to making performance improvements in the 
 future.)
@@ -263,19 +269,11 @@ For now, we could mark the API as `#[unstable]` or `#[experimental]`.
 
 I think most of the future work for this crate is to increase the performance, 
 either by implementing different matching algorithms (e.g., a DFA) or by 
-compiling a regular expression to native Rust code.
+improving the code generator that produces native regexps with `regexp!`.
 
-With regard to native compilation, there are a few notes:
-
-* If and when a DFA is implemented, care must be taken, as the size of the code 
-  required can grow rapidly.
-* Adding native compilation will very likely change the interface of the crate 
-  in a meaningful way, particularly if we want the interface to be consistent 
-  between natively compiled and dynamically compiled regexps. (i.e., Make 
-  `Regexp` a trait.)
+If and when a DFA is implemented, care must be taken when creating a code 
+generator, as the size of the code required can grow rapidly.
 
 Other future work (that is probably more important) includes more Unicode 
-support, specifically for simple case folding. Also, words and word boundaries 
-should also be Unicode friendly, but I plan to have this done before I submit a 
-PR.
+support, specifically for simple case folding.
 
