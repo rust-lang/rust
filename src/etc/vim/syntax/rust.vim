@@ -85,7 +85,7 @@ syn keyword rustTrait Primitive Int Float ToPrimitive FromPrimitive
 syn keyword rustTrait GenericPath Path PosixPath WindowsPath
 syn keyword rustTrait RawPtr
 syn keyword rustTrait Buffer Writer Reader Seek
-syn keyword rustTrait Str StrVector StrSlice OwnedStr IntoMaybeOwned
+syn keyword rustTrait Str StrVector StrSlice OwnedStr IntoMaybeOwned StrBuf
 syn keyword rustTrait ToStr IntoStr
 syn keyword rustTrait Tuple1 Tuple2 Tuple3 Tuple4
 syn keyword rustTrait Tuple5 Tuple6 Tuple7 Tuple8
