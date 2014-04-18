@@ -25,6 +25,7 @@ documentation.
     * `perl` 5.0 or later
     * GNU `make` 3.81 or later
     * `curl`
+    * `git`
 2. Download and build Rust:
 
     You can either download a [tarball] or build directly from the [repo].
