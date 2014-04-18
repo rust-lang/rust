@@ -74,7 +74,7 @@ impl Process {
             return Err(super::unimpl());
         }
 
-        fn get_io(io: p::StdioContainer, ret: &mut ~[Option<file::FileDesc>])
+        fn get_io(io: p::StdioContainer, ret: &mut Vec<Option<file::FileDesc>>)
             -> (Option<os::Pipe>, c_int)
         {
             match io {
@@ -93,7 +93,7 @@ impl Process {
             }
         }
 
-        let mut ret_io = ~[];
+        let mut ret_io = Vec::new();
         let (in_pipe, in_fd) = get_io(config.stdin, &mut ret_io);
         let (out_pipe, out_fd) = get_io(config.stdout, &mut ret_io);
         let (err_pipe, err_fd) = get_io(config.stderr, &mut ret_io);
@@ -117,7 +117,7 @@ impl Process {
                         exit_code: None,
                         exit_signal: None,
                     },
-                    ret_io))
+                    ret_io.move_iter().collect()))
             }
             Err(e) => Err(e)
         }
@@ -641,12 +641,10 @@ fn spawn_process_os(config: p::ProcessConfig,
 
 #[cfg(unix)]
 fn with_argv<T>(prog: &str, args: &[~str], cb: proc(**libc::c_char) -> T) -> T {
-    use std::slice;
-
     // We can't directly convert `str`s into `*char`s, as someone needs to hold
     // a reference to the intermediary byte buffers. So first build an array to
     // hold all the ~[u8] byte strings.
-    let mut tmps = slice::with_capacity(args.len() + 1);
+    let mut tmps = Vec::with_capacity(args.len() + 1);
 
     tmps.push(prog.to_c_str());
 
@@ -667,14 +665,12 @@ fn with_argv<T>(prog: &str, args: &[~str], cb: proc(**libc::c_char) -> T) -> T {
 
 #[cfg(unix)]
 fn with_envp<T>(env: Option<~[(~str, ~str)]>, cb: proc(*c_void) -> T) -> T {
-    use std::slice;
-
     // On posixy systems we can pass a char** for envp, which is a
     // null-terminated array of "k=v\n" strings. Like `with_argv`, we have to
     // have a temporary buffer to hold the intermediary `~[u8]` byte strings.
     match env {
         Some(env) => {
-            let mut tmps = slice::with_capacity(env.len());
+            let mut tmps = Vec::with_capacity(env.len());
 
             for pair in env.iter() {
                 let kv = format!("{}={}", *pair.ref0(), *pair.ref1());
@@ -700,7 +696,7 @@ fn with_envp<T>(env: Option<~[(~str, ~str)]>, cb: |*mut c_void| -> T) -> T {
     // \0 to terminate.
     match env {
         Some(env) => {
-            let mut blk = ~[];
+            let mut blk = Vec::new();
 
             for pair in env.iter() {
                 let kv = format!("{}={}", *pair.ref0(), *pair.ref1());

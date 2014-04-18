@@ -169,8 +169,8 @@ fn runtest(test: &str, cratename: &str, libs: HashSet<Path>, should_fail: bool,
 
 fn maketest(s: &str, cratename: &str, loose_feature_gating: bool) -> ~str {
     let mut prog = StrBuf::from_str(r"
-#![deny(warnings)];
-#![allow(unused_variable, dead_assignment, unused_mut, attribute_usage, dead_code)];
+#![deny(warnings)]
+#![allow(unused_variable, dead_assignment, unused_mut, attribute_usage, dead_code)]
 ");
 
     if loose_feature_gating {

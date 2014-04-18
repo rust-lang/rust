@@ -21,7 +21,7 @@ use option::{Option, Some, None};
 use result::{Ok, Err};
 use io;
 use io::{IoError, IoResult, Reader};
-use slice::{OwnedVector, ImmutableVector, Vector};
+use slice::{ImmutableVector, Vector};
 use ptr::RawPtr;
 
 /// An iterator that reads a single byte on each iteration,
@@ -503,21 +503,22 @@ mod test {
 #[cfg(test)]
 mod bench {
     extern crate test;
-    use self::test::Bencher;
+
     use container::Container;
+    use prelude::*;
+    use self::test::Bencher;
 
     macro_rules! u64_from_be_bytes_bench_impl(
         ($size:expr, $stride:expr, $start_index:expr) =>
         ({
-            use slice;
             use super::u64_from_be_bytes;
 
-            let data = slice::from_fn($stride*100+$start_index, |i| i as u8);
+            let data = Vec::from_fn($stride*100+$start_index, |i| i as u8);
             let mut sum = 0u64;
             b.iter(|| {
                 let mut i = $start_index;
                 while i < data.len() {
-                    sum += u64_from_be_bytes(data, i, $size);
+                    sum += u64_from_be_bytes(data.as_slice(), i, $size);
                     i += $stride;
                 }
             });

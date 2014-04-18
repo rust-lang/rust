@@ -28,7 +28,7 @@ use reflect::{MovePtr, align};
 use result::{Ok, Err};
 use str::StrSlice;
 use to_str::ToStr;
-use slice::{Vector, OwnedVector};
+use slice::Vector;
 use intrinsics::{Disr, Opaque, TyDesc, TyVisitor, get_tydesc, visit_tydesc};
 use raw;
 use vec::Vec;

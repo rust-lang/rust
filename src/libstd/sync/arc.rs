@@ -23,12 +23,13 @@
 
 use cast;
 use clone::Clone;
+use iter::Iterator;
 use kinds::Send;
 use ops::Drop;
 use ptr::RawPtr;
 use sync::atomics::{fence, AtomicUint, Relaxed, Acquire, Release};
-use slice;
 use ty::Unsafe;
+use vec::Vec;
 
 /// An atomically reference counted pointer.
 ///
@@ -73,7 +74,8 @@ impl<T: Send> UnsafeArc<T> {
                 ~[] // need to free data here
             } else {
                 let ptr = new_inner(data, num_handles);
-                slice::from_fn(num_handles, |_| UnsafeArc { data: ptr })
+                let v = Vec::from_fn(num_handles, |_| UnsafeArc { data: ptr });
+                v.move_iter().collect()
             }
         }
     }

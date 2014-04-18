@@ -21,7 +21,7 @@ use io::Writer;
 use iter::{AdditiveIterator, DoubleEndedIterator, Extendable, Rev, Iterator, Map};
 use option::{Option, Some, None};
 use slice::{Vector, OwnedVector, ImmutableVector};
-use str::{CharSplits, OwnedStr, Str, StrVector, StrSlice};
+use str::{CharSplits, Str, StrVector, StrSlice};
 use strbuf::StrBuf;
 use vec::Vec;
 

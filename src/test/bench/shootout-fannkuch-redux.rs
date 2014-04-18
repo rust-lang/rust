@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use std::os;
-use std::slice;
 
 fn max(a: i32, b: i32) -> i32 {
     if a > b {
@@ -20,12 +19,16 @@ fn max(a: i32, b: i32) -> i32 {
 }
 
 fn fannkuch_redux(n: i32) -> i32 {
-    let mut perm = slice::from_elem(n as uint, 0i32);
-    let mut perm1 = slice::from_fn(n as uint, |i| i as i32);
-    let mut count = slice::from_elem(n as uint, 0i32);
+    let mut perm = Vec::from_elem(n as uint, 0i32);
+    let mut perm1 = Vec::from_fn(n as uint, |i| i as i32);
+    let mut count = Vec::from_elem(n as uint, 0i32);
     let mut max_flips_count = 0i32;
     let mut perm_count = 0i32;
     let mut checksum = 0i32;
+
+    let perm = perm.as_mut_slice();
+    let perm1 = perm1.as_mut_slice();
+    let count = count.as_mut_slice();
 
     let mut r = n;
     loop {

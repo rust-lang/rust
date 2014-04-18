@@ -46,7 +46,7 @@ use kinds::Send;
 use mem::replace;
 use option::{None, Option, Some};
 use rt::task::{Task, LocalStorage};
-use slice::{ImmutableVector, MutableVector, OwnedVector};
+use slice::{ImmutableVector, MutableVector};
 use vec::Vec;
 
 /**

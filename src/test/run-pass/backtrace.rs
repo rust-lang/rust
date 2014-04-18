@@ -36,7 +36,7 @@ fn double() {
 }
 
 fn runtest(me: &str) {
-    let mut env = os::env();
+    let mut env = os::env().move_iter().collect::<Vec<(~str, ~str)>>();
     match env.iter().position(|&(ref s, _)| "RUST_BACKTRACE" == *s) {
         Some(i) => { env.remove(i); }
         None => {}

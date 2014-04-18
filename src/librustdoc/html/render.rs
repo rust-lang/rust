@@ -38,7 +38,6 @@ use std::fmt;
 use std::io::{fs, File, BufferedWriter, MemWriter, BufferedReader};
 use std::io;
 use std::local_data;
-use std::slice;
 use std::str;
 use std::strbuf::StrBuf;
 
@@ -1047,7 +1046,7 @@ fn item_module(w: &mut Writer, cx: &Context,
                item: &clean::Item, items: &[clean::Item]) -> fmt::Result {
     try!(document(w, item));
     debug!("{:?}", items);
-    let mut indices = slice::from_fn(items.len(), |i| i);
+    let mut indices = Vec::from_fn(items.len(), |i| i);
 
     fn cmp(i1: &clean::Item, i2: &clean::Item, idx1: uint, idx2: uint) -> Ordering {
         if shortty(i1) == shortty(i2) {

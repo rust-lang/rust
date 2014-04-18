@@ -28,7 +28,7 @@ use mem::drop;
 use option::{Some, None};
 use result::{Ok, Err};
 use rt::rtio::{IoFactory, LocalIo, RtioSignal};
-use slice::{ImmutableVector, OwnedVector};
+use slice::ImmutableVector;
 use vec::Vec;
 
 /// Signals that can be sent and received
