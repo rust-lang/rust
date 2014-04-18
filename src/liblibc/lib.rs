@@ -87,13 +87,14 @@ pub use types::common::c95::{FILE, c_void, fpos_t};
 pub use types::common::c99::{int8_t, int16_t, int32_t, int64_t};
 pub use types::common::c99::{uint8_t, uint16_t, uint32_t, uint64_t};
 pub use types::common::posix88::{DIR, dirent_t};
+pub use types::os::common::posix01::{timeval};
 pub use types::os::common::bsd44::{addrinfo, in_addr, in6_addr, sockaddr_storage};
 pub use types::os::common::bsd44::{ip_mreq, ip6_mreq, sockaddr, sockaddr_un};
 pub use types::os::common::bsd44::{sa_family_t, sockaddr_in, sockaddr_in6, socklen_t};
 pub use types::os::arch::c95::{c_char, c_double, c_float, c_int, c_uint};
 pub use types::os::arch::c95::{c_long, c_short, c_uchar, c_ulong};
 pub use types::os::arch::c95::{c_ushort, clock_t, ptrdiff_t};
-pub use types::os::arch::c95::{size_t, time_t};
+pub use types::os::arch::c95::{size_t, time_t, suseconds_t};
 pub use types::os::arch::c99::{c_longlong, c_ulonglong};
 pub use types::os::arch::c99::{intptr_t, uintptr_t};
 pub use types::os::arch::posix88::{dev_t, ino_t, mode_t};
@@ -113,7 +114,7 @@ pub use consts::os::posix88::{STDERR_FILENO, STDIN_FILENO, S_IXUSR};
 pub use consts::os::posix88::{STDOUT_FILENO, W_OK, X_OK};
 pub use consts::os::bsd44::{AF_INET, AF_INET6, SOCK_STREAM, SOCK_DGRAM};
 pub use consts::os::bsd44::{IPPROTO_IP, IPPROTO_IPV6, IPPROTO_TCP, TCP_NODELAY};
-pub use consts::os::bsd44::{SOL_SOCKET, SO_KEEPALIVE};
+pub use consts::os::bsd44::{SOL_SOCKET, SO_KEEPALIVE, SO_ERROR};
 pub use consts::os::bsd44::{SO_REUSEADDR, SO_BROADCAST, SHUT_WR, IP_MULTICAST_LOOP};
 pub use consts::os::bsd44::{IP_ADD_MEMBERSHIP, IP_DROP_MEMBERSHIP};
 pub use consts::os::bsd44::{IPV6_ADD_MEMBERSHIP, IPV6_DROP_MEMBERSHIP};
@@ -170,14 +171,13 @@ pub use funcs::bsd43::{shutdown};
 #[cfg(unix)] pub use consts::os::posix88::{ECONNREFUSED, ECONNRESET, EPERM, EPIPE};
 #[cfg(unix)] pub use consts::os::posix88::{ENOTCONN, ECONNABORTED, EADDRNOTAVAIL, EINTR};
 #[cfg(unix)] pub use consts::os::posix88::{EADDRINUSE, ENOENT, EISDIR, EAGAIN, EWOULDBLOCK};
-#[cfg(unix)] pub use consts::os::posix88::{ECANCELED, SIGINT};
+#[cfg(unix)] pub use consts::os::posix88::{ECANCELED, SIGINT, EINPROGRESS};
 #[cfg(unix)] pub use consts::os::posix88::{SIGTERM, SIGKILL, SIGPIPE, PROT_NONE};
 #[cfg(unix)] pub use consts::os::posix01::{SIG_IGN, WNOHANG};
 #[cfg(unix)] pub use consts::os::bsd44::{AF_UNIX};
 
-#[cfg(unix)] pub use types::os::common::posix01::{pthread_t, timespec, timezone, timeval};
+#[cfg(unix)] pub use types::os::common::posix01::{pthread_t, timespec, timezone};
 
-#[cfg(unix)] pub use types::os::arch::c95::{suseconds_t};
 #[cfg(unix)] pub use types::os::arch::posix88::{uid_t, gid_t};
 #[cfg(unix)] pub use types::os::arch::posix01::{pthread_attr_t};
 #[cfg(unix)] pub use types::os::arch::posix01::{stat, utimbuf};
@@ -195,6 +195,7 @@ pub use funcs::bsd43::{shutdown};
 #[cfg(windows)] pub use consts::os::c95::{WSAECONNREFUSED, WSAECONNRESET, WSAEACCES};
 #[cfg(windows)] pub use consts::os::c95::{WSAEWOULDBLOCK, WSAENOTCONN, WSAECONNABORTED};
 #[cfg(windows)] pub use consts::os::c95::{WSAEADDRNOTAVAIL, WSAEADDRINUSE, WSAEINTR};
+#[cfg(windows)] pub use consts::os::c95::{WSAEINPROGRESS};
 #[cfg(windows)] pub use consts::os::extra::{ERROR_INSUFFICIENT_BUFFER};
 #[cfg(windows)] pub use consts::os::extra::{O_BINARY, O_NOINHERIT, PAGE_NOACCESS};
 #[cfg(windows)] pub use consts::os::extra::{PAGE_READONLY, PAGE_READWRITE, PAGE_EXECUTE};
@@ -1708,6 +1709,7 @@ pub mod consts {
             pub static SO_KEEPALIVE: c_int = 8;
             pub static SO_BROADCAST: c_int = 32;
             pub static SO_REUSEADDR: c_int = 4;
+            pub static SO_ERROR: c_int = 0x1007;
 
             pub static SHUT_RD: c_int = 0;
             pub static SHUT_WR: c_int = 1;
@@ -2496,6 +2498,7 @@ pub mod consts {
             pub static SO_KEEPALIVE: c_int = 9;
             pub static SO_BROADCAST: c_int = 6;
             pub static SO_REUSEADDR: c_int = 2;
+            pub static SO_ERROR: c_int = 4;
 
             pub static SHUT_RD: c_int = 0;
             pub static SHUT_WR: c_int = 1;
@@ -2954,6 +2957,7 @@ pub mod consts {
             pub static SO_KEEPALIVE: c_int = 0x0008;
             pub static SO_BROADCAST: c_int = 0x0020;
             pub static SO_REUSEADDR: c_int = 0x0004;
+            pub static SO_ERROR: c_int = 0x1007;
 
             pub static SHUT_RD: c_int = 0;
             pub static SHUT_WR: c_int = 1;
@@ -3340,6 +3344,7 @@ pub mod consts {
             pub static SO_KEEPALIVE: c_int = 0x0008;
             pub static SO_BROADCAST: c_int = 0x0020;
             pub static SO_REUSEADDR: c_int = 0x0004;
+            pub static SO_ERROR: c_int = 0x1007;
 
             pub static SHUT_RD: c_int = 0;
             pub static SHUT_WR: c_int = 1;
