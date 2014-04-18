@@ -412,6 +412,7 @@ pub fn uv_error_to_io_error(uverr: UvError) -> IoError {
             uvll::EPIPE => io::BrokenPipe,
             uvll::ECONNABORTED => io::ConnectionAborted,
             uvll::EADDRNOTAVAIL => io::ConnectionRefused,
+            uvll::ECANCELED => io::TimedOut,
             err => {
                 uvdebug!("uverr.code {}", err as int);
                 // FIXME: Need to map remaining uv error types

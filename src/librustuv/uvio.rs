@@ -143,10 +143,10 @@ impl IoFactory for UvIoFactory {
     // Connect to an address and return a new stream
     // NB: This blocks the task waiting on the connection.
     // It would probably be better to return a future
-    fn tcp_connect(&mut self, addr: SocketAddr)
+    fn tcp_connect(&mut self, addr: SocketAddr, timeout: Option<u64>)
         -> Result<~rtio::RtioTcpStream:Send, IoError>
     {
-        match TcpWatcher::connect(self, addr) {
+        match TcpWatcher::connect(self, addr, timeout) {
             Ok(t) => Ok(~t as ~rtio::RtioTcpStream:Send),
             Err(e) => Err(uv_error_to_io_error(e)),
         }

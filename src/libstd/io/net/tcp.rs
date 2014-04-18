@@ -22,6 +22,7 @@ use io::IoResult;
 use io::net::ip::SocketAddr;
 use io::{Reader, Writer, Listener, Acceptor};
 use kinds::Send;
+use option::{None, Some};
 use rt::rtio::{IoFactory, LocalIo, RtioSocket, RtioTcpListener};
 use rt::rtio::{RtioTcpAcceptor, RtioTcpStream};
 
@@ -57,7 +58,21 @@ impl TcpStream {
     /// If no error is encountered, then `Ok(stream)` is returned.
     pub fn connect(addr: SocketAddr) -> IoResult<TcpStream> {
         LocalIo::maybe_raise(|io| {
-            io.tcp_connect(addr).map(TcpStream::new)
+            io.tcp_connect(addr, None).map(TcpStream::new)
+        })
+    }
+
+    /// Creates a TCP connection to a remote socket address, timing out after
+    /// the specified number of milliseconds.
+    ///
+    /// This is the same as the `connect` method, except that if the timeout
+    /// specified (in milliseconds) elapses before a connection is made an error
+    /// will be returned. The error's kind will be `TimedOut`.
+    #[experimental = "the timeout argument may eventually change types"]
+    pub fn connect_timeout(addr: SocketAddr,
+                           timeout_ms: u64) -> IoResult<TcpStream> {
+        LocalIo::maybe_raise(|io| {
+            io.tcp_connect(addr, Some(timeout_ms)).map(TcpStream::new)
         })
     }
 
