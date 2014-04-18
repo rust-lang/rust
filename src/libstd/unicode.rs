@@ -103,6 +103,7 @@ pub mod general_category {
     }
 
 }
+
 pub mod decompose {
     use option::Option;
     use option::{Some, None};
@@ -4134,6 +4135,7 @@ pub mod derived_property {
     pub fn XID_Start(c: char) -> bool {
         super::bsearch_range_table(c, XID_Start_table)
     }
+
 }
 
 pub mod property {
@@ -4149,6 +4151,7 @@ pub mod property {
     pub fn White_Space(c: char) -> bool {
         super::bsearch_range_table(c, White_Space_table)
     }
+
 }
 
 pub mod conversions {
@@ -4667,7 +4670,7 @@ pub mod conversions {
         ('\U00010426', '\U0001044e'), ('\U00010427', '\U0001044f')
     ];
 
-   static LlLu_table : &'static [(char, char)] = &[
+    static LlLu_table : &'static [(char, char)] = &[
         ('\x61', '\x41'), ('\x62', '\x42'),
         ('\x63', '\x43'), ('\x64', '\x44'),
         ('\x65', '\x45'), ('\x66', '\x46'),

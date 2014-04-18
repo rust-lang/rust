@@ -169,7 +169,7 @@ fn bsearch_range_table(c: char, r: &'static [(char,char)]) -> bool {
         else if hi < c { Less }
         else { Greater }
     }) != None
-}\n\n
+}\n
 """);
 
 def emit_property_module(f, mod, tbl):
@@ -193,11 +193,11 @@ def emit_property_module(f, mod, tbl):
         f.write("    pub fn %s(c: char) -> bool {\n" % cat)
         f.write("        super::bsearch_range_table(c, %s_table)\n" % cat)
         f.write("    }\n\n")
-    f.write("}\n")
+    f.write("}\n\n")
 
 
 def emit_conversions_module(f, lowerupper, upperlower):
-    f.write("pub mod conversions {\n")
+    f.write("pub mod conversions {")
     f.write("""
     use cmp::{Equal, Less, Greater};
     use slice::ImmutableVector;
@@ -225,13 +225,14 @@ def emit_conversions_module(f, lowerupper, upperlower):
             else { Greater }
         })
     }
+
 """);
     emit_caseconversion_table(f, "LuLl", upperlower)
     emit_caseconversion_table(f, "LlLu", lowerupper)
     f.write("}\n")
 
 def emit_caseconversion_table(f, name, table):
-    f.write("   static %s_table : &'static [(char, char)] = &[\n" % name)
+    f.write("    static %s_table : &'static [(char, char)] = &[\n" % name)
     sorted_table = sorted(table.iteritems(), key=operator.itemgetter(0))
     ix = 0
     for key, value in sorted_table:
@@ -413,7 +414,6 @@ rf.write('''// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGH
 
 #![allow(missing_doc)]
 #![allow(non_uppercase_statics)]
-
 ''')
 
 emit_bsearch_range_table(rf);
