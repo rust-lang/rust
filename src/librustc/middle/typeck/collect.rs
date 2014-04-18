@@ -945,7 +945,24 @@ pub fn ty_generics(ccx: &CrateCtxt,
                 let param_ty = ty::param_ty {idx: base_index + offset,
                                              def_id: local_def(param.id)};
                 let bounds = @compute_bounds(ccx, param_ty, &param.bounds);
-                let default = param.default.map(|x| ast_ty_to_ty(ccx, &ExplicitRscope, x));
+                let default = param.default.map(|path| {
+                    let ty = ast_ty_to_ty(ccx, &ExplicitRscope, path);
+                    let cur_idx = param_ty.idx;
+
+                    ty::walk_ty(ty, |t| {
+                        match ty::get(t).sty {
+                            ty::ty_param(p) => if p.idx > cur_idx {
+                                ccx.tcx.sess.span_err(path.span,
+                                                        "type parameters with a default cannot use \
+                                                        forward declared identifiers")
+                            },
+                            _ => {}
+                        }
+                    });
+
+                    ty
+                });
+
                 let def = ty::TypeParameterDef {
                     ident: param.ident,
                     def_id: local_def(param.id),

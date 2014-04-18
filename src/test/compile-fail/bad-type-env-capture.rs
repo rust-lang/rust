@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn foo<T>() {
-    fn bar(b: T) { } //~ ERROR attempt to use a type argument out of scope
+    fn bar(b: T) { } //~ ERROR can't use type parameters from outer
     //~^ ERROR use of undeclared type name
 }
 fn main() { }

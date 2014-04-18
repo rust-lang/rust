@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,9 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:can't use type parameters from outer function; try using
-fn hd<U>(v: Vec<U> ) -> U {
-    fn hd1(w: [U]) -> U { return w[0]; }
+fn f<T>() -> bool {
+    enum E<T> { V(T) }
 
-    return hd1(v);
+    struct S<T>(T);
+
+    true
+}
+
+fn main() {
+    let b = f::<int>();
+    assert!(b);
 }

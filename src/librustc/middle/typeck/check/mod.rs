@@ -3356,7 +3356,7 @@ pub fn check_representable(tcx: &ty::ctxt,
     // recursive type. It is only necessary to throw an error on those that
     // contain themselves. For case 2, there must be an inner type that will be
     // caught by case 1.
-    match ty::is_type_representable(tcx, rty) {
+    match ty::is_type_representable(tcx, sp, rty) {
       ty::SelfRecursive => {
         tcx.sess.span_err(
           sp, format!("illegal recursive {} type; \
