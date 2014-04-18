@@ -228,11 +228,11 @@ use os;
 use option::{Option, Some, None};
 use path::Path;
 use result::{Ok, Err, Result};
-use str::{StrSlice, OwnedStr};
+use str::StrSlice;
 use str;
 use uint;
 use unstable::finally::try_finally;
-use slice::{Vector, OwnedVector, MutableVector, ImmutableVector, OwnedCloneableVector};
+use slice::{Vector, MutableVector, ImmutableVector};
 use vec::Vec;
 
 // Reexports

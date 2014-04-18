@@ -74,7 +74,7 @@ use option::{Option, None, Some};
 use str;
 use str::{MaybeOwned, Str, StrSlice, from_utf8_lossy};
 use strbuf::StrBuf;
-use slice::{OwnedCloneableVector, OwnedVector, Vector};
+use slice::Vector;
 use slice::{ImmutableEqVector, ImmutableVector};
 use vec::Vec;
 

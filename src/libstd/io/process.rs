@@ -16,6 +16,7 @@ use fmt;
 use io::IoResult;
 use io;
 use libc;
+use mem;
 use rt::rtio::{RtioProcess, IoFactory, LocalIo};
 
 /// Signal a process to exit, without forcibly killing it. Corresponds to
@@ -416,12 +417,7 @@ impl Drop for Process {
         drop(self.stdin.take());
         drop(self.stdout.take());
         drop(self.stderr.take());
-        loop {
-            match self.extra_io.pop() {
-                Some(_) => (),
-                None => break,
-            }
-        }
+        drop(mem::replace(&mut self.extra_io, ~[]));
 
         self.wait();
     }

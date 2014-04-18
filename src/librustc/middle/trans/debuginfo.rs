@@ -148,7 +148,6 @@ use collections::HashMap;
 use collections::HashSet;
 use libc::{c_uint, c_ulonglong, c_longlong};
 use std::ptr;
-use std::slice;
 use std::strbuf::StrBuf;
 use std::sync::atomics;
 use syntax::codemap::{Span, Pos};
@@ -776,7 +775,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
             return create_DIArray(DIB(cx), []);
         }
 
-        let mut signature = slice::with_capacity(fn_decl.inputs.len() + 1);
+        let mut signature = Vec::with_capacity(fn_decl.inputs.len() + 1);
 
         // Return type -- llvm::DIBuilder wants this at index 0
         match fn_decl.output.node {
@@ -818,7 +817,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
             signature.push(type_metadata(cx, arg_type, codemap::DUMMY_SP));
         }
 
-        return create_DIArray(DIB(cx), signature);
+        return create_DIArray(DIB(cx), signature.as_slice());
     }
 
     fn get_template_parameters(cx: &CrateContext,
@@ -961,7 +960,7 @@ fn compile_unit_metadata(cx: &CrateContext) {
                             // prepend "./" if necessary
                             let dotdot = bytes!("..");
                             let prefix = &[dotdot[0], ::std::path::SEP_BYTE];
-                            let mut path_bytes = p.as_vec().to_owned();
+                            let mut path_bytes = Vec::from_slice(p.as_vec());
 
                             if path_bytes.slice_to(2) != prefix &&
                                path_bytes.slice_to(2) != dotdot {
@@ -969,7 +968,7 @@ fn compile_unit_metadata(cx: &CrateContext) {
                                 path_bytes.insert(1, prefix[1]);
                             }
 
-                            path_bytes.to_c_str()
+                            path_bytes.as_slice().to_c_str()
                         }
                     _ => fallback_path(cx)
                 }

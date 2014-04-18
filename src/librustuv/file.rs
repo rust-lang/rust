@@ -469,7 +469,6 @@ mod test {
     use libc::{O_CREAT, O_RDWR, O_RDONLY, S_IWUSR, S_IRUSR};
     use std::io;
     use std::str;
-    use std::slice;
     use super::FsRequest;
     use super::super::Loop;
     use super::super::local_loop;
@@ -505,8 +504,8 @@ mod test {
             let fd = result.fd;
 
             // read
-            let mut read_mem = slice::from_elem(1000, 0u8);
-            let result = FsRequest::read(l(), fd, read_mem, 0);
+            let mut read_mem = Vec::from_elem(1000, 0u8);
+            let result = FsRequest::read(l(), fd, read_mem.as_mut_slice(), 0);
             assert!(result.is_ok());
 
             let nread = result.unwrap();

@@ -17,7 +17,7 @@ use result::{Err, Ok};
 use io;
 use io::{Reader, Writer, Seek, Buffer, IoError, SeekStyle, IoResult};
 use slice;
-use slice::{Vector, ImmutableVector, MutableVector, OwnedCloneableVector};
+use slice::{Vector, ImmutableVector, MutableVector};
 use vec::Vec;
 
 fn combine(seek: SeekStyle, cur: uint, end: uint, offset: i64) -> IoResult<u64> {

@@ -20,7 +20,6 @@ use rsparse = parse;
 
 use std::fmt::parse;
 use collections::{HashMap, HashSet};
-use std::slice;
 
 #[deriving(Eq)]
 enum ArgumentType {
@@ -609,7 +608,7 @@ impl<'a, 'b> Context<'a, 'b> {
     fn to_expr(&self, extra: @ast::Expr) -> @ast::Expr {
         let mut lets = Vec::new();
         let mut locals = Vec::new();
-        let mut names = slice::from_fn(self.name_positions.len(), |_| None);
+        let mut names = Vec::from_fn(self.name_positions.len(), |_| None);
         let mut pats = Vec::new();
         let mut heads = Vec::new();
 
@@ -673,7 +672,7 @@ impl<'a, 'b> Context<'a, 'b> {
             let lname = self.ecx.ident_of(format!("__arg{}", *name));
             pats.push(self.ecx.pat_ident(e.span, lname));
             heads.push(self.ecx.expr_addr_of(e.span, e));
-            names[*self.name_positions.get(name)] =
+            *names.get_mut(*self.name_positions.get(name)) =
                 Some(self.format_arg(e.span,
                                      Named((*name).clone()),
                                      self.ecx.expr_ident(e.span, lname)));

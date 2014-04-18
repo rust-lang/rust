@@ -255,10 +255,9 @@ might look like the example below.
 
 ~~~
 # use std::task::spawn;
-# use std::slice;
 
 // Create a vector of ports, one for each child task
-let rxs = slice::from_fn(3, |init_val| {
+let rxs = Vec::from_fn(3, |init_val| {
     let (tx, rx) = channel();
     spawn(proc() {
         tx.send(some_expensive_computation(init_val));
@@ -304,7 +303,6 @@ be distributed on the available cores.
 
 ~~~
 # extern crate sync;
-# use std::slice;
 fn partial_sum(start: uint) -> f64 {
     let mut local_sum = 0f64;
     for num in range(start*100000, (start+1)*100000) {
@@ -314,7 +312,7 @@ fn partial_sum(start: uint) -> f64 {
 }
 
 fn main() {
-    let mut futures = slice::from_fn(1000, |ind| sync::Future::spawn( proc() { partial_sum(ind) }));
+    let mut futures = Vec::from_fn(1000, |ind| sync::Future::spawn( proc() { partial_sum(ind) }));
 
     let mut final_res = 0f64;
     for ft in futures.mut_iter()  {
@@ -342,15 +340,14 @@ a single large vector of floats. Each task needs the full vector to perform its 
 extern crate rand;
 extern crate sync;
 
-use std::slice;
 use sync::Arc;
 
-fn pnorm(nums: &~[f64], p: uint) -> f64 {
+fn pnorm(nums: &[f64], p: uint) -> f64 {
     nums.iter().fold(0.0, |a,b| a+(*b).powf(&(p as f64)) ).powf(&(1.0 / (p as f64)))
 }
 
 fn main() {
-    let numbers = slice::from_fn(1000000, |_| rand::random::<f64>());
+    let numbers = Vec::from_fn(1000000, |_| rand::random::<f64>());
     let numbers_arc = Arc::new(numbers);
 
     for num in range(1u, 10) {
@@ -358,9 +355,9 @@ fn main() {
         tx.send(numbers_arc.clone());
 
         spawn(proc() {
-            let local_arc : Arc<~[f64]> = rx.recv();
+            let local_arc : Arc<Vec<f64>> = rx.recv();
             let task_numbers = &*local_arc;
-            println!("{}-norm = {}", num, pnorm(task_numbers, num));
+            println!("{}-norm = {}", num, pnorm(task_numbers.as_slice(), num));
         });
     }
 }
@@ -374,9 +371,8 @@ created by the line
 # extern crate sync;
 # extern crate rand;
 # use sync::Arc;
-# use std::slice;
 # fn main() {
-# let numbers = slice::from_fn(1000000, |_| rand::random::<f64>());
+# let numbers = Vec::from_fn(1000000, |_| rand::random::<f64>());
 let numbers_arc=Arc::new(numbers);
 # }
 ~~~
@@ -387,9 +383,8 @@ and a clone of it is sent to each task
 # extern crate sync;
 # extern crate rand;
 # use sync::Arc;
-# use std::slice;
 # fn main() {
-# let numbers=slice::from_fn(1000000, |_| rand::random::<f64>());
+# let numbers=Vec::from_fn(1000000, |_| rand::random::<f64>());
 # let numbers_arc = Arc::new(numbers);
 # let (tx, rx) = channel();
 tx.send(numbers_arc.clone());
@@ -404,13 +399,12 @@ Each task recovers the underlying data by
 # extern crate sync;
 # extern crate rand;
 # use sync::Arc;
-# use std::slice;
 # fn main() {
-# let numbers=slice::from_fn(1000000, |_| rand::random::<f64>());
+# let numbers=Vec::from_fn(1000000, |_| rand::random::<f64>());
 # let numbers_arc=Arc::new(numbers);
 # let (tx, rx) = channel();
 # tx.send(numbers_arc.clone());
-# let local_arc : Arc<~[f64]> = rx.recv();
+# let local_arc : Arc<Vec<f64>> = rx.recv();
 let task_numbers = &*local_arc;
 # }
 ~~~

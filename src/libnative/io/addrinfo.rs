@@ -57,7 +57,7 @@ impl GetAddrInfoRequest {
         }
 
         // Collect all the results we found
-        let mut addrs = ~[];
+        let mut addrs = Vec::new();
         let mut rp = res;
         while rp.is_not_null() {
             unsafe {
@@ -80,7 +80,7 @@ impl GetAddrInfoRequest {
 
         unsafe { freeaddrinfo(res); }
 
-        Ok(addrs)
+        Ok(addrs.move_iter().collect())
     }
 }
 

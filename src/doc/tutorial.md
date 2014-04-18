@@ -1582,12 +1582,12 @@ the elements are mutable if the vector is mutable.
 use std::strbuf::StrBuf;
 
 // A dynamically sized vector (unique vector)
-let mut numbers = ~[1, 2, 3];
+let mut numbers = vec![1, 2, 3];
 numbers.push(4);
 numbers.push(5);
 
 // The type of a unique vector is written as `~[int]`
-let more_numbers: ~[int] = numbers;
+let more_numbers: ~[int] = numbers.move_iter().collect();
 
 // The original `numbers` value can no longer be used, due to move semantics.
 
@@ -1955,8 +1955,8 @@ vector consisting of the result of applying `function` to each element
 of `vector`:
 
 ~~~~
-fn map<T, U>(vector: &[T], function: |v: &T| -> U) -> ~[U] {
-    let mut accumulator = ~[];
+fn map<T, U>(vector: &[T], function: |v: &T| -> U) -> Vec<U> {
+    let mut accumulator = Vec::new();
     for element in vector.iter() {
         accumulator.push(function(element));
     }
