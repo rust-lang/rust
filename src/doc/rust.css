@@ -14,38 +14,38 @@
     font-family: 'Fira Sans';
     font-style: normal;
     font-weight: 400;
-    src: local('Fira Sans'), url("http://rust-lang.org/fonts/FiraSans-Regular.woff") format('woff');
+    src: local('Fira Sans'), url("http://www.rust-lang.org/fonts/FiraSans-Regular.woff") format('woff');
 }
 @font-face {
     font-family: 'Fira Sans';
     font-style: normal;
     font-weight: 500;
-    src: local('Fira Sans Medium'), url("http://rust-lang.org/fonts/FiraSans-Medium.woff") format('woff');
+    src: local('Fira Sans Medium'), url("http://www.rust-lang.org/fonts/FiraSans-Medium.woff") format('woff');
 }
 @font-face {
     font-family: 'Heuristica';
     font-style: normal;
     font-weight: 400;
-    src: local('Heuristica Regular'), url("http://rust-lang.org/fonts/Heuristica-Regular.woff") format('woff');
+    src: local('Heuristica Regular'), url("http://www.rust-lang.org/fonts/Heuristica-Regular.woff") format('woff');
 }
 @font-face {
     font-family: 'Heuristica';
     font-style: italic;
     font-weight: 400;
-    src: local('Heuristica Italic'), url("http://rust-lang.org/fonts/Heuristica-Italic.woff") format('woff');
+    src: local('Heuristica Italic'), url("http://www.rust-lang.org/fonts/Heuristica-Italic.woff") format('woff');
 }
 @font-face {
     font-family: 'Heuristica';
     font-style: normal;
     font-weight: 700;
-    src: local('Heuristica Bold'), url("http://rust-lang.org/fonts/Heuristica-Bold.woff") format('woff');
+    src: local('Heuristica Bold'), url("http://www.rust-lang.org/fonts/Heuristica-Bold.woff") format('woff');
 }
 /* Global page semantics
    ========================================================================== */
 body {
     margin: 0 auto;
     padding: 0 15px;
-    font-family: Heuristica, "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-family: "Heuristica", "Helvetica Neue", Helvetica, Arial, sans-serif;
     font-size: 18px;
     color: #333;
     line-height: 1.428571429;
@@ -66,9 +66,16 @@ h1, h2, h3, h4, h5, h6 {
 }
 h1, h2, h3 {
     margin-top: 20px;
-    margin-bottom: 10px;
+    margin-bottom: 15px;
+}
+h1 {
+    margin-bottom: 20px;
 }
 @media (min-width: 1170px) {
+    h1 {
+        margin-top: 40px;
+        margin-bottom: 30px;
+    }
     h1, h2, h3 {
         margin-top: 30px;
         margin-bottom: 15px;
@@ -87,7 +94,6 @@ h1 {
     font-size: 28px;
     font-weight: 500;
     padding: .1em .4em;
-    margin: 0.67em 0;
     border-bottom: 2px solid #ddd;
 }
 h1.title {
@@ -227,7 +233,7 @@ pre.rust .lifetime { color: #B76514; }
     margin: 0.5em;
     font-size: 1.1em;
 }
-@media handheld, only screen and (min-width: 768px) {
+@media only screen and (min-width: 768px) {
     #versioninfo {
         position: fixed;
         bottom: 0px;
@@ -254,21 +260,16 @@ blockquote {
 blockquote p {
     font-size: 17px;
     font-weight: 300;
-    line-height: 1.25;
+    line-height: 1.4;
 }
 blockquote p:last-child {
     margin-bottom: 0;
 }
 
-ul,
-ol {
-    margin-top: 0;
-    margin-bottom: 10px;
+ul, ol {
+    padding-left: 25px;
 }
-ul ul,
-ol ul,
-ul ol,
-ol ol {
+ul ul, ol ul, ul ol, ol ol {
     margin-bottom: 0;
 }
 dl {
@@ -280,6 +281,7 @@ dd {
 
 nav ul {
     list-style-type: none;
+    margin: 0;
     padding-left: 0px;
 }
 

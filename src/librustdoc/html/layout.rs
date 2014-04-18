@@ -32,13 +32,13 @@ pub fn render<T: fmt::Show, S: fmt::Show>(
 r##"<!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="The {krate} library documentation.">
 
     <title>{title}</title>
 
-    <link href='http://fonts.googleapis.com/css?family=Inconsolata:400,700'
+    <link href='http://fonts.googleapis.com/css?family=Source+Sans+Pro:400,600'
           rel='stylesheet' type='text/css'>
     <link rel="stylesheet" type="text/css" href="{root_path}main.css">
 
@@ -54,7 +54,7 @@ r##"<!DOCTYPE html>
 
     <section class="sidebar">
         {logo, select, none{} other{
-            <a href='{root_path}{krate}/index.html'><img src='#' alt='' width='100px' /></a>
+            <a href='{root_path}{krate}/index.html'><img src='#' alt='' width='100'></a>
         }}
 
         {sidebar}
@@ -66,7 +66,7 @@ r##"<!DOCTYPE html>
                 <input class="search-input" name="search"
                        autocomplete="off"
                        placeholder="Search documentation..."
-                       type="search" />
+                       type="search">
             </div>
         </form>
     </nav>
@@ -115,8 +115,7 @@ r##"<!DOCTYPE html>
     <script src="{root_path}main.js"></script>
     <script async src="{root_path}search-index.js"></script>
 </body>
-</html>
-"##,
+</html>"##,
     content   = *t,
     root_path = page.root_path,
     ty        = page.ty,
