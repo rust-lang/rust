@@ -723,7 +723,7 @@ impl<'a> State<'a> {
                 try!(self.print_ident(item.ident));
                 try!(self.cbox(indent_unit));
                 try!(self.popen());
-                try!(self.print_tts(&(tts.as_slice())));
+                try!(self.print_tts(tts.as_slice()));
                 try!(self.pclose());
                 try!(self.end());
             }
@@ -839,7 +839,7 @@ impl<'a> State<'a> {
     /// expression arguments as expressions). It can be done! I think.
     pub fn print_tt(&mut self, tt: &ast::TokenTree) -> IoResult<()> {
         match *tt {
-            ast::TTDelim(ref tts) => self.print_tts(&(tts.as_slice())),
+            ast::TTDelim(ref tts) => self.print_tts(tts.as_slice()),
             ast::TTTok(_, ref tk) => {
                 word(&mut self.s, parse::token::to_str(tk).as_slice())
             }
@@ -865,7 +865,7 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn print_tts(&mut self, tts: & &[ast::TokenTree]) -> IoResult<()> {
+    pub fn print_tts(&mut self, tts: &[ast::TokenTree]) -> IoResult<()> {
         try!(self.ibox(0));
         for (i, tt) in tts.iter().enumerate() {
             if i != 0 {
@@ -1122,7 +1122,7 @@ impl<'a> State<'a> {
                 try!(self.print_path(pth, false));
                 try!(word(&mut self.s, "!"));
                 try!(self.popen());
-                try!(self.print_tts(&tts.as_slice()));
+                try!(self.print_tts(tts.as_slice()));
                 self.pclose()
             }
         }
