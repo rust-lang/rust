@@ -150,6 +150,7 @@ mod imp {
     use libc;
     use libc::types::os::arch::extra::{LPSECURITY_ATTRIBUTES, SIZE_T, BOOL,
                                        LPVOID, DWORD, LPDWORD, HANDLE};
+    use os;
     use ptr;
     use rt::stack::RED_ZONE;
 
@@ -168,8 +169,15 @@ mod imp {
         // kernel does, might as well make it explicit.  With the current
         // 20 kB red zone, that makes for a 64 kB minimum stack.
         let stack_size = (cmp::max(stack, RED_ZONE) + 0xfffe) & (-0xfffe - 1);
-        CreateThread(ptr::mut_null(), stack_size as libc::size_t,
-                     super::thread_start, arg, 0, ptr::mut_null())
+        let ret = CreateThread(ptr::mut_null(), stack_size as libc::size_t,
+                               super::thread_start, arg, 0, ptr::mut_null());
+
+        if ret as uint == 0 {
+            // be sure to not leak the closure
+            let _p: ~proc():Send = cast::transmute(arg);
+            fail!("failed to spawn native thread: {}", os::last_os_error());
+        }
+        return ret;
     }
 
     pub unsafe fn join(native: rust_thread) {
@@ -243,9 +251,14 @@ mod imp {
         };
 
         let arg: *libc::c_void = cast::transmute(p);
-        assert_eq!(pthread_create(&mut native, &attr,
-                                  super::thread_start, arg), 0);
+        let ret = pthread_create(&mut native, &attr, super::thread_start, arg);
         assert_eq!(pthread_attr_destroy(&mut attr), 0);
+
+        if ret != 0 {
+            // be sure to not leak the closure
+            let _p: ~proc():Send = cast::transmute(arg);
+            fail!("failed to spawn native thread: {}", os::last_os_error());
+        }
         native
     }
 
