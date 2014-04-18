@@ -105,6 +105,7 @@ function GetRustIndent(lnum)
 	if prevline[len(prevline) - 1] == ","
 				\ && s:get_line_trimmed(a:lnum) !~ "^\\s*[\\[\\]{}]"
 				\ && prevline !~ "^\\s*fn\\s"
+				\ && prevline !~ "\\([^\\(\\)]\+,$"
 		" Oh ho! The previous line ended in a comma! I bet cindent will try to
 		" take this too far... For now, let's normally use the previous line's
 		" indent.
@@ -118,6 +119,16 @@ function GetRustIndent(lnum)
 		"
 		" fn foo(baz: Baz,
 		"        baz: Baz) // <-- cindent gets this right by itself
+		"
+		" Another case is similar to the previous, except calling a function
+		" instead of defining it, or any conditional expression that leaves
+		" an open paren:
+		"
+		" foo(baz,
+		"     baz);
+		"
+		" if baz && (foo ||
+		"            bar) {
 		"
 		" There are probably other cases where we don't want to do this as
 		" well. Add them as needed.
