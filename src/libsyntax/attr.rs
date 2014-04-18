@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // Functions dealing with attributes and meta items
+extern crate semver;
 
 use ast;
 use ast::{Attribute, Attribute_, MetaItem, MetaWord, MetaNameValue, MetaList};
@@ -19,6 +20,7 @@ use parse::comments::{doc_comment_style, strip_doc_comment_decoration};
 use parse::token::InternedString;
 use parse::token;
 use crateid::CrateId;
+use self::semver::parse;
 
 use collections::HashSet;
 
@@ -287,6 +289,41 @@ pub fn find_inline_attr(attrs: &[Attribute]) -> InlineAttr {
     })
 }
 
+fn cmp_version(curr: &str, cmp: &str ) -> bool {
+    let cmp_fn;
+    let idx;
+
+    let version = match parse(curr) {
+        Some(v) => v,
+        None => return false
+    };
+
+    if cmp.starts_with(">=") {
+        cmp_fn = |y| version.ge(y);
+        idx = 2;
+    } else if cmp.starts_with("<=") {
+        cmp_fn = |y| version.le(y);
+        idx = 2;
+    } else if cmp.starts_with(">") {
+        cmp_fn = |y| version.gt(y);
+        idx = 1;
+    } else if cmp.starts_with("<") {
+        cmp_fn =|y| version.lt(y);
+        idx = 1;
+    } else if cmp.starts_with("!=") {
+        cmp_fn = |y| version.ne(y);
+        idx = 2;
+    } else {
+        cmp_fn = |y| version.eq(y);
+        idx = 0;
+    }
+
+    match parse(cmp.slice_chars(idx, cmp.len())) {
+        Some(ref v) => cmp_fn(v),
+        None => false
+    }
+}
+
 /// Tests if any `cfg(...)` meta items in `metas` match `cfg`. e.g.
 ///
 /// test_cfg(`[foo="a", bar]`, `[cfg(foo), cfg(bar)]`) == true
@@ -321,6 +358,24 @@ pub fn test_cfg<AM: AttrMetaMethods, It: Iterator<AM>>
                                     debug!("cfg(not({}[...]))", mi.name());
                                     contains(cfg, *mi)
                                 })
+                            }
+                            ast::MetaNameValue(ref n, _)
+                            if n.equiv(&("rust_version")) => {
+                                debug!("rust_version!");
+                                // Inside #[cfg(rust_version="...")]
+                                // Need to get version and operator from the value
+                                // and compare it to the current Rust version
+                                match option_env!("CFG_VERSION") {
+                                    Some(s) => {
+                                        let v_opt = s.words().next();
+                                        match (v_opt, cfg_mi.value_str()) {
+                                            (None, _) => false,
+                                            (Some(v1), Some(v2)) => cmp_version(v1, v2.get()),
+                                            (_, None) => false
+                                        }
+                                    }
+                                    None => false
+                                }
                             }
                             _ => contains(cfg, *cfg_mi)
                         }
