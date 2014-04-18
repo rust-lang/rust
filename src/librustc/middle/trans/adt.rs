@@ -57,7 +57,7 @@ use middle::trans::type_::Type;
 use middle::trans::type_of;
 use middle::ty;
 use middle::ty::Disr;
-use syntax::abi::{X86, X86_64, Arm, Mips};
+use machine::abi::{X86, X86_64, Arm, Mips};
 use syntax::ast;
 use syntax::attr;
 use syntax::attr::IntType;
@@ -326,7 +326,7 @@ fn range_to_inttype(cx: &CrateContext, hint: Hint, bounds: &IntBounds) -> IntTyp
             return ity;
         }
         attr::ReprExtern => {
-            attempts = match cx.sess().targ_cfg.arch {
+            attempts = match cx.sess().target_arch() {
                 X86 | X86_64 => at_least_32,
                 // WARNING: the ARM EABI has two variants; the one corresponding to `at_least_32`
                 // appears to be used on Linux and NetBSD, but some systems may use the variant

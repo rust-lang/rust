@@ -23,7 +23,7 @@ use std::os;
 use std::io::process::{ProcessConfig, Process, ProcessOutput};
 use std::str;
 use std::raw;
-use syntax::abi;
+use machine::abi;
 
 pub static METADATA_FILENAME: &'static str = "rust.metadata.bin";
 
@@ -175,7 +175,7 @@ impl<'a> Archive<'a> {
     }
 
     fn find_library(&self, name: &str) -> Path {
-        let (osprefix, osext) = match self.sess.targ_cfg.os {
+        let (osprefix, osext) = match self.sess.target_os() {
             abi::OsWin32 => ("", "lib"), _ => ("lib", "a"),
         };
         // On Windows, static libraries sometimes show up as libfoo.a and other
@@ -184,7 +184,7 @@ impl<'a> Archive<'a> {
         let unixlibname = format!("lib{}.a", name);
 
         let mut rustpath = filesearch::rust_path();
-        rustpath.push(self.sess.filesearch().get_target_lib_path());
+        rustpath.push(self.sess.target_lib_path());
         let search = self.sess.opts.addl_lib_search_paths.borrow();
         for path in search.iter().chain(rustpath.iter()) {
             debug!("looking for {} inside {}", name, path.display());

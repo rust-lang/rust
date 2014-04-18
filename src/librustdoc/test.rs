@@ -64,8 +64,11 @@ pub fn run(input: &str, cfgs: Vec<~str>,
         @dummy_spanned(ast::MetaWord(cfg_))
     }));
     let krate = driver::phase_1_parse_input(&sess, cfg, &input);
-    let (krate, _) = driver::phase_2_configure_and_expand(&sess, &mut Loader::new(&sess), krate,
-                                                          &from_str("rustdoc-test").unwrap());
+    let (krate, _) = driver::phase_2_configure_and_expand
+        (&sess,
+         &mut Loader::new(&sess, sess.target_filesearch()),
+         krate,
+         &from_str("rustdoc-test").unwrap());
 
     let ctx = @core::DocContext {
         krate: krate,

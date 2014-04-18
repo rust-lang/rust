@@ -14,13 +14,11 @@
 
 use back::link;
 use back::svh::Svh;
-use driver::{driver, session};
 use driver::session::Session;
 use metadata::cstore;
 use metadata::cstore::CStore;
 use metadata::decoder;
-use metadata::loader;
-use metadata::loader::Os;
+use metadata::{loader, filesearch};
 use metadata::loader::CratePaths;
 
 use std::cell::RefCell;
@@ -37,10 +35,11 @@ use syntax::parse::token::{IdentInterner, InternedString};
 use syntax::parse::token;
 use syntax::crateid::CrateId;
 use syntax::visit;
+use machine;
 
 struct Env<'a> {
     sess: &'a Session,
-    os: loader::Os,
+    search: filesearch::FileSearch<'a>,
     next_crate_num: ast::CrateNum,
     intr: Rc<IdentInterner>
 }
@@ -49,11 +48,10 @@ struct Env<'a> {
 // libraries necessary for later resolving, typechecking, linking, etc.
 pub fn read_crates(sess: &Session,
                    krate: &ast::Crate,
-                   os: loader::Os,
                    intr: Rc<IdentInterner>) {
     let mut e = Env {
         sess: sess,
-        os: os,
+        search: sess.target_filesearch(),
         next_crate_num: sess.cstore.next_crate_num(),
         intr: intr
     };
@@ -215,7 +213,7 @@ fn visit_item(e: &Env, i: &ast::Item) {
                             Some(k) => {
                                 if k.equiv(&("static")) {
                                     cstore::NativeStatic
-                                } else if e.sess.targ_cfg.os == abi::OsMacos &&
+                                } else if e.sess.target_os() == machine::abi::OsMacos &&
                                           k.equiv(&("framework")) {
                                     cstore::NativeFramework
                                 } else if k.equiv(&("framework")) {
@@ -287,12 +285,12 @@ fn resolve_crate<'a>(e: &mut Env,
             let id_hash = link::crate_id_hash(crate_id);
             let mut load_ctxt = loader::Context {
                 sess: e.sess,
+                search: e.search.clone(),
                 span: span,
                 ident: ident,
                 crate_id: crate_id,
                 id_hash: id_hash,
                 hash: hash.map(|a| &*a),
-                os: e.os,
                 intr: e.intr.clone(),
                 rejected_via_hash: vec!(),
             };
@@ -386,13 +384,12 @@ pub struct Loader<'a> {
 }
 
 impl<'a> Loader<'a> {
-    pub fn new(sess: &'a Session) -> Loader<'a> {
-        let os = driver::get_os(driver::host_triple()).unwrap();
-        let os = session::sess_os_to_meta_os(os);
+    pub fn new(sess: &'a Session,
+               search: filesearch::FileSearch<'a>) -> Loader<'a> {
         Loader {
             env: Env {
                 sess: sess,
-                os: os,
+                search: search,
                 next_crate_num: sess.cstore.next_crate_num(),
                 intr: token::get_ident_interner(),
             }

@@ -25,18 +25,18 @@ use middle::ty;
 use util::common::time;
 use util::ppaux;
 use util::sha2::{Digest, Sha256};
+use machine::triple;
 
 use std::c_str::{ToCStr, CString};
 use std::char;
 use std::io::{fs, TempDir, Process};
 use std::io;
-use std::os::consts::{macos, freebsd, linux, android, win32};
 use std::ptr;
 use std::str;
 use std::strbuf::StrBuf;
 use flate;
 use serialize::hex::ToHex;
-use syntax::abi;
+use machine::abi;
 use syntax::ast;
 use syntax::ast_map::{PathElem, PathElems, PathName};
 use syntax::ast_map;
@@ -99,7 +99,6 @@ pub mod write {
     use lib::llvm::{ModuleRef, TargetMachineRef, PassManagerRef};
     use lib;
     use util::common::time;
-    use syntax::abi;
 
     use std::c_str::ToCStr;
     use std::io::Process;
@@ -112,7 +111,8 @@ pub mod write {
     // cases, so if any sort of target feature is specified we don't append v7
     // to the feature list.
     fn target_feature<'a>(sess: &'a Session) -> &'a str {
-        match sess.targ_cfg.os {
+        use machine::abi;
+        match sess.target_os() {
             abi::OsAndroid => {
                 if "" == sess.opts.cg.target_feature {
                     "+v7"
@@ -128,6 +128,7 @@ pub mod write {
                       trans: &CrateTranslation,
                       output_types: &[OutputType],
                       output: &OutputFilenames) {
+        use machine::abi;
         let llmod = trans.module;
         let llcx = trans.context;
         unsafe {
@@ -150,8 +151,8 @@ pub mod write {
             // FIXME: #11906: Omitting frame pointers breaks retrieving the value of a parameter.
             // FIXME: #11954: mac64 unwinding may not work with fp elim
             let no_fp_elim = (sess.opts.debuginfo != NoDebugInfo) ||
-                             (sess.targ_cfg.os == abi::OsMacos &&
-                              sess.targ_cfg.arch == abi::X86_64);
+                             (sess.target_os() == abi::OsMacos &&
+                              sess.target_arch() == abi::X86_64);
 
             let reloc_model = match sess.opts.cg.relocation_model.as_slice() {
                 "pic" => lib::llvm::RelocPIC,
@@ -530,10 +531,13 @@ pub fn crate_id_hash(crate_id: &CrateId) -> ~str {
     truncated_hash_result(&mut s).slice_to(8).to_owned()
 }
 
-pub fn build_link_meta(krate: &ast::Crate, out_filestem: &str) -> LinkMeta {
+pub fn build_link_meta(krate: &ast::Crate,
+                       out_filestem: &str,
+                       target: triple::Triple) -> LinkMeta {
     let r = LinkMeta {
         crateid: find_crate_id(krate.attrs.as_slice(), out_filestem),
         crate_hash: Svh::calculate(krate),
+        target: target
     };
     info!("{}", r);
     return r;
@@ -737,7 +741,7 @@ pub fn get_cc_prog(sess: &Session) -> ~str {
     // It would be flexible to use cc (system's default C compiler)
     // instead of hard-coded gcc.
     // For win32, there is no cc command, so we add a condition to make it use gcc.
-    match sess.targ_cfg.os {
+    match sess.target_os() {
         abi::OsWin32 => return ~"gcc",
         _ => {},
     }
@@ -755,7 +759,7 @@ pub fn get_ar_prog(sess: &Session) -> ~str {
 }
 
 fn get_system_tool(sess: &Session, tool: &str) -> ~str {
-    match sess.targ_cfg.os {
+    match sess.target_os() {
         abi::OsAndroid => match sess.opts.cg.android_cross_path {
             Some(ref path) => {
                 let tool_str = match tool {
@@ -821,13 +825,7 @@ pub fn filename_for_input(sess: &Session, crate_type: session::CrateType,
             out_filename.with_filename(format!("lib{}.rlib", libname))
         }
         session::CrateTypeDylib => {
-            let (prefix, suffix) = match sess.targ_cfg.os {
-                abi::OsWin32 => (win32::DLL_PREFIX, win32::DLL_SUFFIX),
-                abi::OsMacos => (macos::DLL_PREFIX, macos::DLL_SUFFIX),
-                abi::OsLinux => (linux::DLL_PREFIX, linux::DLL_SUFFIX),
-                abi::OsAndroid => (android::DLL_PREFIX, android::DLL_SUFFIX),
-                abi::OsFreebsd => (freebsd::DLL_PREFIX, freebsd::DLL_SUFFIX),
-            };
+            let (prefix, suffix) = sess.target_triple().dylibname();
             out_filename.with_filename(format!("{}{}{}", prefix, libname, suffix))
         }
         session::CrateTypeStaticlib => {
@@ -973,7 +971,7 @@ fn link_rlib<'a>(sess: &'a Session,
             // After adding all files to the archive, we need to update the
             // symbol table of the archive. This currently dies on OSX (see
             // #11162), and isn't necessary there anyway
-            match sess.targ_cfg.os {
+            match sess.target_os() {
                 abi::OsMacos => {}
                 _ => { a.update_symbols(); }
             }
@@ -1066,7 +1064,7 @@ fn link_natively(sess: &Session, dylib: bool, obj_filename: &Path,
 
     // On OSX, debuggers need this utility to get run to do some munging of
     // the symbols
-    if sess.targ_cfg.os == abi::OsMacos && (sess.opts.debuginfo != NoDebugInfo) {
+    if sess.target_os() == abi::OsMacos && (sess.opts.debuginfo != NoDebugInfo) {
         // FIXME (#9639): This needs to handle non-utf8 paths
         match Process::status("dsymutil",
                                   [out_filename.as_str().unwrap().to_owned()]) {
@@ -1088,7 +1086,7 @@ fn link_args(sess: &Session,
     // The default library location, we need this to find the runtime.
     // The location of crates will be determined as needed.
     // FIXME (#9639): This needs to handle non-utf8 paths
-    let lib_path = sess.filesearch().get_target_lib_path();
+    let lib_path = sess.target_lib_path();
     let stage: ~str = ~"-L" + lib_path.as_str().unwrap();
 
     let mut args = vec!(stage);
@@ -1130,11 +1128,11 @@ fn link_args(sess: &Session,
     // subset we wanted.
     //
     // FIXME(#11937) we should invoke the system linker directly
-    if sess.targ_cfg.os != abi::OsWin32 {
+    if sess.target_os() != abi::OsWin32 {
         args.push(~"-nodefaultlibs");
     }
 
-    if sess.targ_cfg.os == abi::OsLinux {
+    if sess.target_os() == abi::OsLinux {
         // GNU-style linkers will use this to omit linking to libraries which
         // don't actually fulfill any relocations, but only for libraries which
         // follow this flag. Thus, use it before specifying libraries to link to.
@@ -1150,7 +1148,7 @@ fn link_args(sess: &Session,
         }
     }
 
-    if sess.targ_cfg.os == abi::OsWin32 {
+    if sess.target_os() == abi::OsWin32 {
         // Make sure that we link to the dynamic libgcc, otherwise cross-module
         // DWARF stack unwinding will not work.
         // This behavior may be overridden by --link-args "-static-libgcc"
@@ -1184,7 +1182,7 @@ fn link_args(sess: &Session,
         args.push(~"-Wl,--enable-long-section-names");
     }
 
-    if sess.targ_cfg.os == abi::OsAndroid {
+    if sess.target_os() == abi::OsAndroid {
         // Many of the symbols defined in compiler-rt are also defined in libgcc.
         // Android linker doesn't like that by default.
         args.push(~"-Wl,--allow-multiple-definition");
@@ -1231,7 +1229,7 @@ fn link_args(sess: &Session,
 
     if dylib {
         // On mac we need to tell the linker to let this library be rpathed
-        if sess.targ_cfg.os == abi::OsMacos {
+        if sess.target_os() == abi::OsMacos {
             args.push(~"-dynamiclib");
             args.push(~"-Wl,-dylib");
             // FIXME (#9639): This needs to handle non-utf8 paths
@@ -1244,7 +1242,7 @@ fn link_args(sess: &Session,
         }
     }
 
-    if sess.targ_cfg.os == abi::OsFreebsd {
+    if sess.target_os() == abi::OsFreebsd {
         args.push_all([~"-L/usr/local/lib",
                        ~"-L/usr/local/lib/gcc46",
                        ~"-L/usr/local/lib/gcc44"]);
@@ -1388,7 +1386,7 @@ fn add_upstream_rust_crates(args: &mut Vec<~str>, sess: &Session,
 
     // Converts a library file-stem into a cc -l argument
     fn unlib(config: &session::Config, stem: &str) -> ~str {
-        if stem.starts_with("lib") && config.os != abi::OsWin32 {
+        if stem.starts_with("lib") && config.os() != abi::OsWin32 {
             stem.slice(3, stem.len()).to_owned()
         } else {
             stem.to_owned()

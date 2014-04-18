@@ -74,8 +74,8 @@ struct LlvmSignature {
 
 pub fn llvm_calling_convention(ccx: &CrateContext,
                                abi: Abi) -> Option<CallConv> {
-    let os = ccx.sess().targ_cfg.os;
-    let arch = ccx.sess().targ_cfg.arch;
+    let os = ccx.sess().target_os();
+    let arch = ccx.sess().target_arch();
     abi.for_target(os, arch).map(|abi| {
         match abi {
             RustIntrinsic => {

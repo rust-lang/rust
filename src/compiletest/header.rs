@@ -10,7 +10,6 @@
 
 use common::config;
 use common;
-use util;
 
 pub struct TestProps {
     // Lines that should be expected, in order, on standard out
@@ -28,8 +27,13 @@ pub struct TestProps {
     pub debugger_cmds: Vec<~str> ,
     // Lines to check if they appear in the expected debugger output
     pub check_lines: Vec<~str> ,
-    // Flag to force a crate to be built with the host architecture
-    pub force_host: bool,
+    // Flag to additionally build a crate for the host architecture
+    // Used for some aux crates that export syntax extensions.
+    pub needs_host: bool,
+    // Flag for syntax extensions aux' that use libsyntax (a host crate,
+    // so therefore can't, for the time being, target the target).
+    // Ignored on non-aux crates && implies needs-host.
+    pub only_host: bool,
     // Check stdout for error-pattern output as well as stderr
     pub check_stdout: bool,
     // Don't force a --crate-type=dylib flag on the command line
@@ -45,7 +49,8 @@ pub fn load_props(testfile: &Path) -> TestProps {
     let mut pp_exact = None;
     let mut debugger_cmds = Vec::new();
     let mut check_lines = Vec::new();
-    let mut force_host = false;
+    let mut needs_host = false;
+    let mut only_host = false;
     let mut check_stdout = false;
     let mut no_prefer_dynamic = false;
     iter_header(testfile, |ln| {
@@ -62,8 +67,11 @@ pub fn load_props(testfile: &Path) -> TestProps {
             pp_exact = parse_pp_exact(ln, testfile);
         }
 
-        if !force_host {
-            force_host = parse_force_host(ln);
+        if !needs_host {
+            needs_host = parse_needs_host(ln);
+        }
+        if !only_host {
+            only_host = parse_only_host(ln);
         }
 
         if !check_stdout {
@@ -104,7 +112,8 @@ pub fn load_props(testfile: &Path) -> TestProps {
         exec_env: exec_env,
         debugger_cmds: debugger_cmds,
         check_lines: check_lines,
-        force_host: force_host,
+        needs_host: needs_host,
+        only_host: only_host,
         check_stdout: check_stdout,
         no_prefer_dynamic: no_prefer_dynamic,
     };
@@ -112,7 +121,7 @@ pub fn load_props(testfile: &Path) -> TestProps {
 
 pub fn is_test_ignored(config: &config, testfile: &Path) -> bool {
     fn ignore_target(config: &config) -> ~str {
-        ~"ignore-" + util::get_os(config.target)
+        ~"ignore-" + config.target.expect_known_os().to_str()
     }
     fn ignore_stage(config: &config) -> ~str {
         ~"ignore-" + config.stage_id.split('-').next().unwrap()
@@ -168,8 +177,12 @@ fn parse_check_line(line: &str) -> Option<~str> {
     parse_name_value_directive(line, ~"check")
 }
 
-fn parse_force_host(line: &str) -> bool {
-    parse_name_directive(line, "force-host")
+fn parse_needs_host(line: &str) -> bool {
+    parse_name_directive(line, "needs-host")
+}
+
+fn parse_only_host(line: &str) -> bool {
+    parse_name_directive(line, "only-host")
 }
 
 fn parse_check_stdout(line: &str) -> bool {

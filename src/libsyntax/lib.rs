@@ -35,6 +35,7 @@ extern crate term;
 extern crate collections;
 #[phase(syntax, link)]
 extern crate log;
+extern crate machine;
 
 pub mod util {
     pub mod interner;

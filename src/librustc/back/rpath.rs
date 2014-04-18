@@ -12,18 +12,19 @@
 use driver::session::Session;
 use metadata::cstore;
 use metadata::filesearch;
+use machine::triple;
 use util::fs;
 
 use collections::HashSet;
 use std::os;
-use syntax::abi;
+use machine::abi;
 
 fn not_win32(os: abi::Os) -> bool {
   os != abi::OsWin32
 }
 
 pub fn get_rpath_flags(sess: &Session, out_filename: &Path) -> Vec<~str> {
-    let os = sess.targ_cfg.os;
+    let os = sess.target_os();
 
     // No rpath on windows
     if os == abi::OsWin32 {
@@ -32,7 +33,7 @@ pub fn get_rpath_flags(sess: &Session, out_filename: &Path) -> Vec<~str> {
 
     let mut flags = Vec::new();
 
-    if sess.targ_cfg.os == abi::OsFreebsd {
+    if sess.target_os() == abi::OsFreebsd {
         flags.push_all([~"-Wl,-rpath,/usr/local/lib/gcc46",
                         ~"-Wl,-rpath,/usr/local/lib/gcc44",
                         ~"-Wl,-z,origin"]);
@@ -40,7 +41,7 @@ pub fn get_rpath_flags(sess: &Session, out_filename: &Path) -> Vec<~str> {
 
     debug!("preparing the RPATH!");
 
-    let sysroot = sess.filesearch().sysroot;
+    let sysroot = sess.sysroot();
     let output = out_filename;
     let libs = sess.cstore.get_used_crates(cstore::RequireDynamic);
     let libs = libs.move_iter().filter_map(|(_, l)| {
@@ -48,7 +49,7 @@ pub fn get_rpath_flags(sess: &Session, out_filename: &Path) -> Vec<~str> {
     }).collect::<~[_]>();
 
     let rpaths = get_rpaths(os, sysroot, output, libs,
-                            sess.opts.target_triple);
+                            sess.target_triple());
     flags.push_all(rpaths_to_flags(rpaths.as_slice()).as_slice());
     flags
 }
@@ -65,7 +66,7 @@ fn get_rpaths(os: abi::Os,
               sysroot: &Path,
               output: &Path,
               libs: &[Path],
-              target_triple: &str) -> Vec<~str> {
+              target_triple: &triple::Triple) -> Vec<~str> {
     debug!("sysroot: {}", sysroot.display());
     debug!("output: {}", output.display());
     debug!("libs:");
@@ -132,7 +133,7 @@ pub fn get_rpath_relative_to_output(os: abi::Os,
     prefix+"/"+relative.as_str().expect("non-utf8 component in path")
 }
 
-pub fn get_install_prefix_rpath(sysroot: &Path, target_triple: &str) -> ~str {
+pub fn get_install_prefix_rpath(sysroot: &Path, target_triple: &triple::Triple) -> ~str {
     let install_prefix = env!("CFG_PREFIX");
 
     let tlib = filesearch::relative_target_lib_path(sysroot, target_triple);
@@ -157,11 +158,17 @@ pub fn minimize_rpaths(rpaths: &[~str]) -> Vec<~str> {
 #[cfg(unix, test)]
 mod test {
     use std::os;
+    use std::from_str::FromStr;
 
     use back::rpath::get_install_prefix_rpath;
     use back::rpath::{minimize_rpaths, rpaths_to_flags, get_rpath_relative_to_output};
-    use syntax::abi;
+    use machine::triple::Triple;
+    use machine::abi;
     use metadata::filesearch;
+
+    fn triple() -> Triple {
+        FromStr::from_str("x86_64-unknown-linux-gnu").unwrap()
+    }
 
     #[test]
     fn test_rpaths_to_flags() {
@@ -172,11 +179,12 @@ mod test {
     #[test]
     fn test_prefix_rpath() {
         let sysroot = filesearch::get_or_default_sysroot();
-        let res = get_install_prefix_rpath(&sysroot, "triple");
+        let triple = triple();
+        let res = get_install_prefix_rpath(&sysroot, &triple);
         let mut d = Path::new(env!("CFG_PREFIX"));
         d.push("lib");
         d.push(filesearch::rustlibdir());
-        d.push("triple/lib");
+        d.push("x86_64-unknown-linux-gnu/lib");
         debug!("test_prefix_path: {} vs. {}",
                res,
                d.display());
@@ -186,7 +194,7 @@ mod test {
     #[test]
     fn test_prefix_rpath_abs() {
         let sysroot = filesearch::get_or_default_sysroot();
-        let res = get_install_prefix_rpath(&sysroot, "triple");
+        let res = get_install_prefix_rpath(&sysroot, &triple());
         assert!(Path::new(res).is_absolute());
     }
 

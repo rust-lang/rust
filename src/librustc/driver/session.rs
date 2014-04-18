@@ -27,15 +27,25 @@ use syntax::parse::ParseSess;
 use syntax::{abi, ast, codemap};
 use syntax;
 
+use machine::triple::Triple;
+
 use std::cell::{Cell, RefCell};
+use std::default::Default;
 use collections::HashSet;
 
 pub struct Config {
-    pub os: abi::Os,
-    pub arch: abi::Architecture,
+    pub target: Triple,
     pub target_strs: target_strs::t,
     pub int_type: IntTy,
     pub uint_type: UintTy,
+}
+impl Config {
+    pub fn os(&self) -> abi::Os {
+        self.target.expect_known_os()
+    }
+    pub fn arch(&self) -> abi::Architecture {
+        self.target.arch.clone()
+    }
 }
 
 macro_rules! debugging_opts(
@@ -173,6 +183,39 @@ pub enum CrateType {
     CrateTypeDylib,
     CrateTypeRlib,
     CrateTypeStaticlib,
+}
+// Serves mostly as a lifetime/storage boat.
+pub struct HostFileSearch {
+    sysroot: Path,
+    search_paths: RefCell<HashSet<Path>>,
+}
+impl HostFileSearch {
+    // Create a loader solely for the host. This is used for
+    // syntax phase crates referenced by our crate. We do this in order to
+    // prevent errors from having multiple crates in -L paths later on
+    // (particularly problematic when targeting non-host targets).
+    // We accomplish this with this minor hack. More specifically,
+    // we use a bogus sysroot and add the path for rustc's set of libs
+    // (ie /usr/local/lib/ on Unix) to addl_lib_search_paths.
+    fn new(sess: &Session) -> HostFileSearch {
+        HostFileSearch {
+            search_paths: RefCell::new
+                ({
+                    let mut set = (*sess.opts.addl_lib_search_paths.borrow()).clone();
+                    set.insert(sess.host_lib_path());
+                    set
+                }),
+            // ensure we don't silently (and possibly maliciously) load crates from
+            // our fake sysroot:
+            sysroot: Path::new("/dev/null"),
+        }
+    }
+    // Create a filesearch object for passing to metadata subsystems.
+    pub fn filesearch<'a>(&'a self) -> filesearch::FileSearch<'a> {
+        filesearch::FileSearch::new(&self.sysroot,
+                                    Default::default(),
+                                    &self.search_paths)
+    }
 }
 
 pub struct Session {
@@ -319,16 +362,39 @@ impl Session {
     pub fn show_span(&self) -> bool {
         self.debugging_opt(SHOW_SPAN)
     }
-    pub fn filesearch<'a>(&'a self) -> filesearch::FileSearch<'a> {
-        let sysroot = match self.opts.maybe_sysroot {
+    pub fn sysroot<'a>(&'a self) -> &'a Path {
+        match self.opts.maybe_sysroot {
             Some(ref sysroot) => sysroot,
             None => self.default_sysroot.as_ref()
                         .expect("missing sysroot and default_sysroot in Session")
-        };
+        }
+    }
+    pub fn target_filesearch<'a>(&'a self) -> filesearch::FileSearch<'a> {
         filesearch::FileSearch::new(
-            sysroot,
-            self.opts.target_triple,
+            self.sysroot(),
+            self.target_triple().clone(),
             &self.opts.addl_lib_search_paths)
+    }
+    pub fn host_filesearch(&self) -> HostFileSearch {
+        HostFileSearch::new(self)
+    }
+    pub fn target_lib_path(&self) -> Path {
+        filesearch::make_target_lib_path(self.sysroot(), self.target_triple())
+    }
+    pub fn host_lib_path(&self) -> Path {
+        filesearch::get_host_lib_path(self.sysroot())
+    }
+    pub fn target_os(&self) -> abi::Os {
+        self.targ_cfg.os()
+    }
+    pub fn target_arch(&self) -> abi::Architecture {
+        self.targ_cfg.arch()
+    }
+    pub fn target_triple<'a>(&'a self) -> &'a Triple {
+        &self.targ_cfg.target
+    }
+    pub fn cross_compiling(&self) -> bool {
+        *self.target_triple() != Default::default()
     }
 }
 
@@ -544,17 +610,5 @@ pub fn collect_crate_types(session: &Session,
         base.as_mut_slice().sort();
         base.dedup();
         return base;
-    }
-}
-
-pub fn sess_os_to_meta_os(os: abi::Os) -> metadata::loader::Os {
-    use metadata::loader;
-
-    match os {
-        abi::OsWin32 => loader::OsWin32,
-        abi::OsLinux => loader::OsLinux,
-        abi::OsAndroid => loader::OsAndroid,
-        abi::OsMacos => loader::OsMacos,
-        abi::OsFreebsd => loader::OsFreebsd
     }
 }

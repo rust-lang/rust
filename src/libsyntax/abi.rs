@@ -8,10 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::fmt;
+// It is my opinion that all of this should have been moved to libmachine,
+// however rustc would barf when a type used Abi (from libmachine) while also
+// #[deriving(Hash)] when I tried to do that. So, I've left Abi here.
 
-#[deriving(Eq)]
-pub enum Os { OsWin32, OsMacos, OsLinux, OsAndroid, OsFreebsd, }
+use std::fmt;
+use machine::abi;
+pub use machine::abi::Os;
+pub use machine::abi::Architecture;
 
 #[deriving(Eq, TotalEq, Hash, Encodable, Decodable, Clone)]
 pub enum Abi {
@@ -32,21 +36,6 @@ pub enum Abi {
     RustIntrinsic,
 }
 
-#[allow(non_camel_case_types)]
-#[deriving(Eq)]
-pub enum Architecture {
-    // NB. You cannot change the ordering of these
-    // constants without adjusting IntelBits below.
-    // (This is ensured by the test indices_are_correct().)
-    X86,
-    X86_64,
-    Arm,
-    Mips
-}
-
-static IntelBits: u32 = (1 << (X86 as uint)) | (1 << (X86_64 as uint));
-static ArmBits: u32 = (1 << (Arm as uint));
-
 pub struct AbiData {
     abi: Abi,
 
@@ -66,12 +55,12 @@ pub enum AbiArchitecture {
 
 static AbiDatas: &'static [AbiData] = &[
     // Platform-specific ABIs
-    AbiData {abi: Cdecl, name: "cdecl", abi_arch: Archs(IntelBits)},
-    AbiData {abi: Stdcall, name: "stdcall", abi_arch: Archs(IntelBits)},
-    AbiData {abi: Fastcall, name:"fastcall", abi_arch: Archs(IntelBits)},
-    AbiData {abi: Aapcs, name: "aapcs", abi_arch: Archs(ArmBits)},
+    AbiData {abi: Cdecl, name: "cdecl", abi_arch: Archs(abi::IntelBits)},
+    AbiData {abi: Stdcall, name: "stdcall", abi_arch: Archs(abi::IntelBits)},
+    AbiData {abi: Fastcall, name:"fastcall", abi_arch: Archs(abi::IntelBits)},
+    AbiData {abi: Aapcs, name: "aapcs", abi_arch: Archs(abi::ArmBits)},
     AbiData {abi: Win64, name: "win64",
-             abi_arch: Archs(1 << (X86_64 as uint))},
+             abi_arch: Archs(1 << (abi::X86_64 as uint))},
 
     // Cross-platform ABIs
     //
@@ -130,7 +119,7 @@ impl Abi {
         self.data().name
     }
 
-    pub fn for_target(&self, os: Os, arch: Architecture) -> Option<Abi> {
+    pub fn for_target(&self, os: abi::Os, arch: abi::Architecture) -> Option<Abi> {
         // If this ABI isn't actually for the specified architecture, then we
         // short circuit early
         match self.data().abi_arch {
@@ -140,14 +129,18 @@ impl Abi {
         // Transform this ABI as appropriate for the requested os/arch
         // combination.
         Some(match (*self, os, arch) {
-            (System, OsWin32, X86) => Stdcall,
+            (System, abi::OsWin32, abi::X86) => Stdcall,
             (System, _, _) => C,
             (me, _, _) => me,
         })
     }
 }
 
-impl Architecture {
+trait ArchBit {
+    fn bit(&self) -> u32;
+}
+
+impl ArchBit for Architecture {
     fn bit(&self) -> u32 {
         1 << (*self as u32)
     }
@@ -183,16 +176,18 @@ fn indices_are_correct() {
         assert_eq!(i, abi_data.abi.index());
     }
 
-    let bits = 1 << (X86 as u32);
-    let bits = bits | 1 << (X86_64 as u32);
-    assert_eq!(IntelBits, bits);
+    let bits = 1 << (abi::X86 as u32);
+    let bits = bits | 1 << (abi::X86_64 as u32);
+    assert_eq!(abi::IntelBits, bits);
 
-    let bits = 1 << (Arm as u32);
-    assert_eq!(ArmBits, bits);
+    let bits = 1 << (abi::Arm as u32);
+    assert_eq!(abi::ArmBits, bits);
 }
 
 #[test]
 fn pick_uniplatform() {
+    use machine::abi::{OsLinux, OsWin32,
+                       X86, X86_64, Arm};
     assert_eq!(Stdcall.for_target(OsLinux, X86), Some(Stdcall));
     assert_eq!(Stdcall.for_target(OsLinux, Arm), None);
     assert_eq!(System.for_target(OsLinux, X86), Some(C));

@@ -151,8 +151,9 @@ use std::ptr;
 use std::slice;
 use std::strbuf::StrBuf;
 use std::sync::atomics;
+use machine::abi;
 use syntax::codemap::{Span, Pos};
-use syntax::{abi, ast, codemap, ast_util, ast_map};
+use syntax::{ast, codemap, ast_util, ast_map};
 use syntax::owned_slice::OwnedSlice;
 use syntax::parse::token;
 use syntax::parse::token::special_idents;
@@ -276,7 +277,7 @@ pub fn finalize(cx: &CrateContext) {
         // instruct LLVM to emit an older version of dwarf, however,
         // for OS X to understand. For more info see #11352
         // This can be overridden using --llvm-opts -dwarf-version,N.
-        if cx.sess().targ_cfg.os == abi::OsMacos {
+        if cx.sess().target_os() == abi::OsMacos {
             "Dwarf Version".with_c_str(
                 |s| llvm::LLVMRustAddModuleFlag(cx.llmod, s, 2));
         }
