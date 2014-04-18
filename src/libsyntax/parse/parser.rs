@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -539,6 +539,26 @@ impl<'a> Parser<'a> {
         if token::is_reserved_keyword(&self.token) {
             let token_str = self.this_token_to_str();
             self.fatal(format!("`{}` is a reserved keyword", token_str))
+        }
+    }
+
+    // Expect and consume an `&`. If `&&` is seen, replace it with a single
+    // `&` and continue. If an `&` is not seen, signal an error.
+    fn expect_and(&mut self) {
+        match self.token {
+            token::BINOP(token::AND) => self.bump(),
+            token::ANDAND => {
+                let lo = self.span.lo + BytePos(1);
+                self.replace_token(token::BINOP(token::AND), lo, self.span.hi)
+            }
+            _ => {
+                let token_str = self.this_token_to_str();
+                let found_token =
+                    Parser::token_to_str(&token::BINOP(token::AND));
+                self.fatal(format!("expected `{}`, found `{}`",
+                                   found_token,
+                                   token_str))
+            }
         }
     }
 
@@ -1218,9 +1238,10 @@ impl<'a> Parser<'a> {
             };
             self.expect(&token::RBRACKET);
             t
-        } else if self.token == token::BINOP(token::AND) {
+        } else if self.token == token::BINOP(token::AND) ||
+                self.token == token::ANDAND {
             // BORROWED POINTER
-            self.bump();
+            self.expect_and();
             self.parse_borrowed_pointee()
         } else if self.is_keyword(keywords::Extern) ||
                 self.token_is_bare_fn_keyword() {
@@ -2169,42 +2190,37 @@ impl<'a> Parser<'a> {
             hi = e.span.hi;
             ex = self.mk_unary(UnNot, e);
           }
-          token::BINOP(b) => {
-            match b {
-              token::MINUS => {
-                self.bump();
-                let e = self.parse_prefix_expr();
-                hi = e.span.hi;
-                ex = self.mk_unary(UnNeg, e);
+          token::BINOP(token::MINUS) => {
+            self.bump();
+            let e = self.parse_prefix_expr();
+            hi = e.span.hi;
+            ex = self.mk_unary(UnNeg, e);
+          }
+          token::BINOP(token::STAR) => {
+            self.bump();
+            let e = self.parse_prefix_expr();
+            hi = e.span.hi;
+            ex = self.mk_unary(UnDeref, e);
+          }
+          token::BINOP(token::AND) | token::ANDAND => {
+            self.expect_and();
+            let _lt = self.parse_opt_lifetime();
+            let m = self.parse_mutability();
+            let e = self.parse_prefix_expr();
+            hi = e.span.hi;
+            // HACK: turn &[...] into a &-vec
+            ex = match e.node {
+              ExprVec(..) if m == MutImmutable => {
+                ExprVstore(e, ExprVstoreSlice)
               }
-              token::STAR => {
-                self.bump();
-                let e = self.parse_prefix_expr();
-                hi = e.span.hi;
-                ex = self.mk_unary(UnDeref, e);
+              ExprLit(lit) if lit_is_str(lit) && m == MutImmutable => {
+                ExprVstore(e, ExprVstoreSlice)
               }
-              token::AND => {
-                self.bump();
-                let _lt = self.parse_opt_lifetime();
-                let m = self.parse_mutability();
-                let e = self.parse_prefix_expr();
-                hi = e.span.hi;
-                // HACK: turn &[...] into a &-vec
-                ex = match e.node {
-                  ExprVec(..) if m == MutImmutable => {
-                    ExprVstore(e, ExprVstoreSlice)
-                  }
-                  ExprLit(lit) if lit_is_str(lit) && m == MutImmutable => {
-                    ExprVstore(e, ExprVstoreSlice)
-                  }
-                  ExprVec(..) if m == MutMutable => {
-                    ExprVstore(e, ExprVstoreMutSlice)
-                  }
-                  _ => ExprAddrOf(m, e)
-                };
+              ExprVec(..) if m == MutMutable => {
+                ExprVstore(e, ExprVstoreMutSlice)
               }
-              _ => return self.parse_dot_or_call_expr()
-            }
+              _ => ExprAddrOf(m, e)
+            };
           }
           token::AT => {
             self.bump();
@@ -2749,10 +2765,10 @@ impl<'a> Parser<'a> {
                 span: mk_sp(lo, hi)
             }
           }
-          token::BINOP(token::AND) => {
+          token::BINOP(token::AND) | token::ANDAND => {
               // parse &pat
               let lo = self.span.lo;
-              self.bump();
+              self.expect_and();
               let sub = self.parse_pat();
               hi = sub.span.hi;
               // HACK: parse &"..." as a literal of a borrowed str
