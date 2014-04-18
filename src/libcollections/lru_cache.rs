@@ -59,7 +59,6 @@ pub struct LruCache<K, V> {
     map: HashMap<KeyRef<K>, ~LruEntry<K, V>>,
     max_size: uint,
     head: *mut LruEntry<K, V>,
-    tail: *mut LruEntry<K, V>,
 }
 
 impl<S, K: Hash<S>> Hash<S> for KeyRef<K> {
@@ -103,11 +102,10 @@ impl<K: Hash + TotalEq, V> LruCache<K, V> {
             map: HashMap::new(),
             max_size: capacity,
             head: unsafe{ cast::transmute(~LruEntry::<K, V>::new()) },
-            tail: unsafe{ cast::transmute(~LruEntry::<K, V>::new()) },
         };
         unsafe {
-            (*cache.head).next = cache.tail;
-            (*cache.tail).prev = cache.head;
+            (*cache.head).next = cache.head;
+            (*cache.head).prev = cache.head;
         }
         return cache;
     }
@@ -191,7 +189,7 @@ impl<K: Hash + TotalEq, V> LruCache<K, V> {
     #[inline]
     fn remove_lru(&mut self) {
         if self.len() > 0 {
-            let lru = unsafe { (*self.tail).prev };
+            let lru = unsafe { (*self.head).prev };
             self.detach(lru);
             unsafe {
                 match (*lru).key {
@@ -269,7 +267,6 @@ impl<K, V> Drop for LruCache<K, V> {
     fn drop(&mut self) {
         unsafe {
             let _: ~LruEntry<K, V> = cast::transmute(self.head);
-            let _: ~LruEntry<K, V> = cast::transmute(self.tail);
         }
     }
 }
