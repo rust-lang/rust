@@ -266,16 +266,6 @@ impl Primitive for f64 {}
 
 impl Float for f64 {
     #[inline]
-    fn max(self, other: f64) -> f64 {
-        unsafe { cmath::fmax(self, other) }
-    }
-
-    #[inline]
-    fn min(self, other: f64) -> f64 {
-        unsafe { cmath::fmin(self, other) }
-    }
-
-    #[inline]
     fn nan() -> f64 { 0.0 / 0.0 }
 
     #[inline]
@@ -309,8 +299,9 @@ impl Float for f64 {
         self.classify() == FPNormal
     }
 
-    /// Returns the floating point category of the number. If only one property is going to
-    /// be tested, it is generally faster to use the specific predicate instead.
+    /// Returns the floating point category of the number. If only one property
+    /// is going to be tested, it is generally faster to use the specific
+    /// predicate instead.
     fn classify(self) -> FPCategory {
         static EXP_MASK: u64 = 0x7ff0000000000000;
         static MAN_MASK: u64 = 0x000fffffffffffff;
@@ -346,13 +337,15 @@ impl Float for f64 {
     #[inline]
     fn max_10_exp(_: Option<f64>) -> int { 308 }
 
-    /// Constructs a floating point number by multiplying `x` by 2 raised to the power of `exp`
+    /// Constructs a floating point number by multiplying `x` by 2 raised to the
+    /// power of `exp`
     #[inline]
     fn ldexp(x: f64, exp: int) -> f64 {
         unsafe { cmath::ldexp(x, exp as c_int) }
     }
 
-    /// Breaks the number into a normalized fraction and a base-2 exponent, satisfying:
+    /// Breaks the number into a normalized fraction and a base-2 exponent,
+    /// satisfying:
     ///
     /// - `self = x * pow(2, exp)`
     /// - `0.5 <= abs(x) < 1.0`
@@ -363,34 +356,6 @@ impl Float for f64 {
             let x = cmath::frexp(self, &mut exp);
             (x, exp as int)
         }
-    }
-
-    /// Returns the exponential of the number, minus `1`, in a way that is accurate
-    /// even if the number is close to zero
-    #[inline]
-    fn exp_m1(self) -> f64 {
-        unsafe { cmath::expm1(self) }
-    }
-
-    /// Returns the natural logarithm of the number plus `1` (`ln(1+n)`) more accurately
-    /// than if the operations were performed separately
-    #[inline]
-    fn ln_1p(self) -> f64 {
-        unsafe { cmath::log1p(self) }
-    }
-
-    /// Fused multiply-add. Computes `(self * a) + b` with only one rounding error. This
-    /// produces a more accurate result with better performance than a separate multiplication
-    /// operation followed by an add.
-    #[inline]
-    fn mul_add(self, a: f64, b: f64) -> f64 {
-        unsafe { intrinsics::fmaf64(self, a, b) }
-    }
-
-    /// Returns the next representable floating-point value in the direction of `other`
-    #[inline]
-    fn next_after(self, other: f64) -> f64 {
-        unsafe { cmath::nextafter(self, other) }
     }
 
     /// Returns the mantissa, exponent and sign as integers.
@@ -406,6 +371,13 @@ impl Float for f64 {
         // Exponent bias + mantissa shift
         exponent -= 1023 + 52;
         (mantissa, exponent, sign)
+    }
+
+    /// Returns the next representable floating-point value in the direction of
+    /// `other`.
+    #[inline]
+    fn next_after(self, other: f64) -> f64 {
+        unsafe { cmath::nextafter(self, other) }
     }
 
     /// Round half-way cases toward `NEG_INFINITY`
@@ -440,6 +412,64 @@ impl Float for f64 {
     /// ```
     #[inline]
     fn fract(self) -> f64 { self - self.trunc() }
+
+    #[inline]
+    fn max(self, other: f64) -> f64 {
+        unsafe { cmath::fmax(self, other) }
+    }
+
+    #[inline]
+    fn min(self, other: f64) -> f64 {
+        unsafe { cmath::fmin(self, other) }
+    }
+
+    /// Fused multiply-add. Computes `(self * a) + b` with only one rounding
+    /// error. This produces a more accurate result with better performance than
+    /// a separate multiplication operation followed by an add.
+    #[inline]
+    fn mul_add(self, a: f64, b: f64) -> f64 {
+        unsafe { intrinsics::fmaf64(self, a, b) }
+    }
+
+    /// The reciprocal (multiplicative inverse) of the number
+    #[inline]
+    fn recip(self) -> f64 { 1.0 / self }
+
+    #[inline]
+    fn powf(self, n: f64) -> f64 {
+        unsafe { intrinsics::powf64(self, n) }
+    }
+
+    #[inline]
+    fn powi(self, n: i32) -> f64 {
+        unsafe { intrinsics::powif64(self, n) }
+    }
+
+    /// sqrt(2.0)
+    #[inline]
+    fn sqrt2() -> f64 { 1.41421356237309504880168872420969808 }
+
+    /// 1.0 / sqrt(2.0)
+    #[inline]
+    fn frac_1_sqrt2() -> f64 { 0.707106781186547524400844362104849039 }
+
+    #[inline]
+    fn sqrt(self) -> f64 {
+        unsafe { intrinsics::sqrtf64(self) }
+    }
+
+    #[inline]
+    fn rsqrt(self) -> f64 { self.sqrt().recip() }
+
+    #[inline]
+    fn cbrt(self) -> f64 {
+        unsafe { cmath::cbrt(self) }
+    }
+
+    #[inline]
+    fn hypot(self, other: f64) -> f64 {
+        unsafe { cmath::hypot(self, other) }
+    }
 
     /// Archimedes' constant
     #[inline]
@@ -480,66 +510,6 @@ impl Float for f64 {
     /// 2.0 / sqrt(pi)
     #[inline]
     fn frac_2_sqrtpi() -> f64 { 1.12837916709551257389615890312154517 }
-
-    /// sqrt(2.0)
-    #[inline]
-    fn sqrt2() -> f64 { 1.41421356237309504880168872420969808 }
-
-    /// 1.0 / sqrt(2.0)
-    #[inline]
-    fn frac_1_sqrt2() -> f64 { 0.707106781186547524400844362104849039 }
-
-    /// Euler's number
-    #[inline]
-    fn e() -> f64 { 2.71828182845904523536028747135266250 }
-
-    /// log2(e)
-    #[inline]
-    fn log2_e() -> f64 { 1.44269504088896340735992468100189214 }
-
-    /// log10(e)
-    #[inline]
-    fn log10_e() -> f64 { 0.434294481903251827651128918916605082 }
-
-    /// ln(2.0)
-    #[inline]
-    fn ln_2() -> f64 { 0.693147180559945309417232121458176568 }
-
-    /// ln(10.0)
-    #[inline]
-    fn ln_10() -> f64 { 2.30258509299404568401799145468436421 }
-
-    /// The reciprocal (multiplicative inverse) of the number
-    #[inline]
-    fn recip(self) -> f64 { 1.0 / self }
-
-    #[inline]
-    fn powf(self, n: f64) -> f64 {
-        unsafe { intrinsics::powf64(self, n) }
-    }
-
-    #[inline]
-    fn powi(self, n: i32) -> f64 {
-        unsafe { intrinsics::powif64(self, n) }
-    }
-
-    #[inline]
-    fn sqrt(self) -> f64 {
-        unsafe { intrinsics::sqrtf64(self) }
-    }
-
-    #[inline]
-    fn rsqrt(self) -> f64 { self.sqrt().recip() }
-
-    #[inline]
-    fn cbrt(self) -> f64 {
-        unsafe { cmath::cbrt(self) }
-    }
-
-    #[inline]
-    fn hypot(self, other: f64) -> f64 {
-        unsafe { cmath::hypot(self, other) }
-    }
 
     #[inline]
     fn sin(self) -> f64 {
@@ -582,6 +552,26 @@ impl Float for f64 {
         (self.sin(), self.cos())
     }
 
+    /// Euler's number
+    #[inline]
+    fn e() -> f64 { 2.71828182845904523536028747135266250 }
+
+    /// log2(e)
+    #[inline]
+    fn log2_e() -> f64 { 1.44269504088896340735992468100189214 }
+
+    /// log10(e)
+    #[inline]
+    fn log10_e() -> f64 { 0.434294481903251827651128918916605082 }
+
+    /// ln(2.0)
+    #[inline]
+    fn ln_2() -> f64 { 0.693147180559945309417232121458176568 }
+
+    /// ln(10.0)
+    #[inline]
+    fn ln_10() -> f64 { 2.30258509299404568401799145468436421 }
+
     /// Returns the exponential of the number
     #[inline]
     fn exp(self) -> f64 {
@@ -592,6 +582,13 @@ impl Float for f64 {
     #[inline]
     fn exp2(self) -> f64 {
         unsafe { intrinsics::exp2f64(self) }
+    }
+
+    /// Returns the exponential of the number, minus `1`, in a way that is
+    /// accurate even if the number is close to zero
+    #[inline]
+    fn exp_m1(self) -> f64 {
+        unsafe { cmath::expm1(self) }
     }
 
     /// Returns the natural logarithm of the number
@@ -614,6 +611,13 @@ impl Float for f64 {
     #[inline]
     fn log10(self) -> f64 {
         unsafe { intrinsics::log10f64(self) }
+    }
+
+    /// Returns the natural logarithm of the number plus `1` (`ln(1+n)`) more
+    /// accurately than if the operations were performed separately
+    #[inline]
+    fn ln_1p(self) -> f64 {
+        unsafe { cmath::log1p(self) }
     }
 
     #[inline]
