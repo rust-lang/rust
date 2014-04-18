@@ -479,7 +479,7 @@ impl<T: Send> Sender<T> {
     /// then the other end could immediately disconnect.
     ///
     /// The purpose of this functionality is to propagate failure among tasks.
-    /// If failure is not desired, then consider using the `try_send` method
+    /// If failure is not desired, then consider using the `send_opt` method
     pub fn send(&self, t: T) {
         if self.send_opt(t).is_err() {
             fail!("sending on a closed channel");
@@ -669,7 +669,7 @@ impl<T: Send> SyncSender<T> {
 
     /// Attempts to send a value on this channel without blocking.
     ///
-    /// This method semantically differs from `Sender::try_send` because it can
+    /// This method semantically differs from `Sender::send_opt` because it can
     /// fail if the receiver has not disconnected yet. If the buffer on this
     /// channel is full, this function will immediately return the data back to
     /// the callee.
