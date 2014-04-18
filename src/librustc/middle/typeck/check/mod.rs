@@ -118,7 +118,6 @@ use std::cell::{Cell, RefCell};
 use collections::HashMap;
 use std::mem::replace;
 use std::result;
-use std::slice;
 use std::vec::Vec;
 use syntax::abi;
 use syntax::ast::{Provided, Required};
@@ -3906,13 +3905,13 @@ pub fn check_bounds_are_used(ccx: &CrateCtxt,
 
     // make a vector of booleans initially false, set to true when used
     if tps.len() == 0u { return; }
-    let mut tps_used = slice::from_elem(tps.len(), false);
+    let mut tps_used = Vec::from_elem(tps.len(), false);
 
     ty::walk_ty(ty, |t| {
             match ty::get(t).sty {
                 ty::ty_param(param_ty {idx, ..}) => {
                     debug!("Found use of ty param \\#{}", idx);
-                    tps_used[idx] = true;
+                    *tps_used.get_mut(idx) = true;
                 }
                 _ => ()
             }

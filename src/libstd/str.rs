@@ -80,7 +80,7 @@ use char;
 use char::Char;
 use clone::Clone;
 use cmp::{Eq, TotalEq, Ord, TotalOrd, Equiv, Ordering};
-use container::{Container, Mutable};
+use container::Container;
 use fmt;
 use io::Writer;
 use iter::{Iterator, FromIterator, Extendable, range};
@@ -92,7 +92,7 @@ use option::{None, Option, Some};
 use ptr;
 use from_str::FromStr;
 use slice;
-use slice::{OwnedVector, OwnedCloneableVector, ImmutableVector, MutableVector};
+use slice::{OwnedVector, ImmutableVector, MutableVector};
 use slice::{Vector};
 use vec::Vec;
 use default::Default;
@@ -588,7 +588,7 @@ enum NormalizationForm {
 pub struct Normalizations<'a> {
     kind: NormalizationForm,
     iter: Chars<'a>,
-    buffer: ~[(char, u8)],
+    buffer: Vec<(char, u8)>,
     sorted: bool
 }
 
@@ -597,7 +597,7 @@ impl<'a> Iterator<char> for Normalizations<'a> {
     fn next(&mut self) -> Option<char> {
         use unicode::decompose::canonical_combining_class;
 
-        match self.buffer.head() {
+        match self.buffer.as_slice().head() {
             Some(&(c, 0)) => {
                 self.sorted = false;
                 self.buffer.shift();
@@ -622,7 +622,7 @@ impl<'a> Iterator<char> for Normalizations<'a> {
                 decomposer(ch, |d| {
                     let class = canonical_combining_class(d);
                     if class == 0 && !*sorted {
-                        canonical_sort(*buffer);
+                        canonical_sort(buffer.as_mut_slice());
                         *sorted = true;
                     }
                     buffer.push((d, class));
@@ -632,7 +632,7 @@ impl<'a> Iterator<char> for Normalizations<'a> {
         }
 
         if !self.sorted {
-            canonical_sort(self.buffer);
+            canonical_sort(self.buffer.as_mut_slice());
             self.sorted = true;
         }
 
@@ -1336,22 +1336,23 @@ impl<'a> fmt::Show for MaybeOwned<'a> {
 pub mod raw {
     use cast;
     use container::Container;
+    use iter::Iterator;
     use libc;
-    use ptr;
     use ptr::RawPtr;
-    use str::{is_utf8, OwnedStr, StrSlice};
-    use slice;
-    use slice::{MutableVector, ImmutableVector, OwnedVector};
+    use ptr;
     use raw::Slice;
+    use slice::{MutableVector, ImmutableVector, OwnedVector, Vector};
+    use str::{is_utf8, StrSlice};
+    use vec::Vec;
 
     /// Create a Rust string from a *u8 buffer of the given length
     pub unsafe fn from_buf_len(buf: *u8, len: uint) -> ~str {
-        let mut v: ~[u8] = slice::with_capacity(len);
+        let mut v = Vec::with_capacity(len);
         ptr::copy_memory(v.as_mut_ptr(), buf, len);
         v.set_len(len);
 
-        assert!(is_utf8(v));
-        ::cast::transmute(v)
+        assert!(is_utf8(v.as_slice()));
+        ::cast::transmute(v.move_iter().collect::<~[u8]>())
     }
 
     #[lang="strdup_uniq"]
@@ -1592,16 +1593,6 @@ impl<'a> Container for &'a str {
 impl Container for ~str {
     #[inline]
     fn len(&self) -> uint { self.as_slice().len() }
-}
-
-impl Mutable for ~str {
-    /// Remove all content, make the string empty
-    #[inline]
-    fn clear(&mut self) {
-        unsafe {
-            self.set_len(0)
-        }
-    }
 }
 
 /// Methods for string slices
@@ -2396,7 +2387,7 @@ impl<'a> StrSlice<'a> for &'a str {
     fn nfd_chars(&self) -> Normalizations<'a> {
         Normalizations {
             iter: self.chars(),
-            buffer: ~[],
+            buffer: Vec::new(),
             sorted: false,
             kind: NFD
         }
@@ -2406,7 +2397,7 @@ impl<'a> StrSlice<'a> for &'a str {
     fn nfkd_chars(&self) -> Normalizations<'a> {
         Normalizations {
             iter: self.chars(),
-            buffer: ~[],
+            buffer: Vec::new(),
             sorted: false,
             kind: NFKD
         }
@@ -2544,22 +2535,22 @@ impl<'a> StrSlice<'a> for &'a str {
     fn to_owned(&self) -> ~str {
         let len = self.len();
         unsafe {
-            let mut v = slice::with_capacity(len);
+            let mut v = Vec::with_capacity(len);
 
             ptr::copy_memory(v.as_mut_ptr(), self.as_ptr(), len);
             v.set_len(len);
-            ::cast::transmute(v)
+            ::cast::transmute(v.move_iter().collect::<~[u8]>())
         }
     }
 
     fn to_utf16(&self) -> ~[u16] {
-        let mut u = ~[];
+        let mut u = Vec::new();;
         for ch in self.chars() {
             let mut buf = [0u16, ..2];
             let n = ch.encode_utf16(buf /* as mut slice! */);
             u.push_all(buf.slice_to(n));
         }
-        u
+        u.move_iter().collect()
     }
 
     #[inline]
@@ -2694,29 +2685,30 @@ impl<'a> StrSlice<'a> for &'a str {
         if slen == 0 { return tlen; }
         if tlen == 0 { return slen; }
 
-        let mut dcol = slice::from_fn(tlen + 1, |x| x);
+        let mut dcol = Vec::from_fn(tlen + 1, |x| x);
 
         for (i, sc) in self.chars().enumerate() {
 
             let mut current = i;
-            dcol[0] = current + 1;
+            *dcol.get_mut(0) = current + 1;
 
             for (j, tc) in t.chars().enumerate() {
 
-                let next = dcol[j + 1];
+                let next = *dcol.get(j + 1);
 
                 if sc == tc {
-                    dcol[j + 1] = current;
+                    *dcol.get_mut(j + 1) = current;
                 } else {
-                    dcol[j + 1] = ::cmp::min(current, next);
-                    dcol[j + 1] = ::cmp::min(dcol[j + 1], dcol[j]) + 1;
+                    *dcol.get_mut(j + 1) = ::cmp::min(current, next);
+                    *dcol.get_mut(j + 1) = ::cmp::min(*dcol.get(j + 1),
+                                                      *dcol.get(j)) + 1;
                 }
 
                 current = next;
             }
         }
 
-        return dcol[tlen];
+        return *dcol.get(tlen);
     }
 
     fn subslice_offset(&self, inner: &str) -> uint {
@@ -2738,20 +2730,10 @@ impl<'a> StrSlice<'a> for &'a str {
 
 /// Methods for owned strings
 pub trait OwnedStr {
-    /// Shorten a string to the specified length (which must be <= the current length)
-    fn truncate(&mut self, len: uint);
-
     /// Consumes the string, returning the underlying byte buffer.
     ///
     /// The buffer does not have a null terminator.
     fn into_bytes(self) -> ~[u8];
-
-    /// Sets the length of a string
-    ///
-    /// This will explicitly set the size of the string, without actually
-    /// modifying its buffers, so it is up to the caller to ensure that
-    /// the string is actually the specified size.
-    unsafe fn set_len(&mut self, new_len: uint);
 
     /// Pushes the given string onto this string, returning the concatenation of the two strings.
     fn append(self, rhs: &str) -> ~str;
@@ -2759,20 +2741,8 @@ pub trait OwnedStr {
 
 impl OwnedStr for ~str {
     #[inline]
-    fn truncate(&mut self, len: uint) {
-        assert!(len <= self.len());
-        assert!(self.is_char_boundary(len));
-        unsafe { self.set_len(len); }
-    }
-
-    #[inline]
     fn into_bytes(self) -> ~[u8] {
         unsafe { cast::transmute(self) }
-    }
-
-    #[inline]
-    unsafe fn set_len(&mut self, new_len: uint) {
-        raw::as_owned_vec(self).set_len(new_len)
     }
 
     #[inline]
@@ -3409,8 +3379,7 @@ mod tests {
         assert_eq!(a.subslice_offset(c), 0);
 
         let string = "a\nb\nc";
-        let mut lines = ~[];
-        for line in string.lines() { lines.push(line) }
+        let lines: ~[&str] = string.lines().collect();
         assert_eq!(string.subslice_offset(lines[0]), 0);
         assert_eq!(string.subslice_offset(lines[1]), 2);
         assert_eq!(string.subslice_offset(lines[2]), 4);
@@ -4259,9 +4228,9 @@ mod bench {
 
     #[bench]
     fn from_utf8_lossy_100_invalid(b: &mut Bencher) {
-        let s = ::slice::from_elem(100, 0xF5u8);
+        let s = Vec::from_elem(100, 0xF5u8);
         b.iter(|| {
-            let _ = from_utf8_lossy(s);
+            let _ = from_utf8_lossy(s.as_slice());
         });
     }
 

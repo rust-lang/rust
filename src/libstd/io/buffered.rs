@@ -17,7 +17,7 @@ use iter::ExactSize;
 use ops::Drop;
 use option::{Some, None, Option};
 use result::{Ok, Err};
-use slice::{OwnedVector, ImmutableVector, MutableVector};
+use slice::{ImmutableVector, MutableVector};
 use slice;
 use vec::Vec;
 
@@ -391,7 +391,7 @@ mod test {
 
     /// A dummy reader intended at testing short-reads propagation.
     pub struct ShortReader {
-        lengths: ~[uint],
+        lengths: Vec<uint>,
     }
 
     impl Reader for ShortReader {
@@ -554,7 +554,7 @@ mod test {
 
     #[test]
     fn test_short_reads() {
-        let inner = ShortReader{lengths: ~[0, 1, 2, 0, 1, 0]};
+        let inner = ShortReader{lengths: vec![0, 1, 2, 0, 1, 0]};
         let mut reader = BufferedReader::new(inner);
         let mut buf = [0, 0];
         assert_eq!(reader.read(buf), Ok(0));

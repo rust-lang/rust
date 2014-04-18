@@ -26,7 +26,6 @@ use util::ppaux::{Repr};
 
 use std::cell::{Cell, RefCell};
 use std::uint;
-use std::slice;
 use collections::{HashMap, HashSet};
 use syntax::ast;
 
@@ -1004,7 +1003,7 @@ impl<'a> RegionVarBindings<'a> {
         // idea is to report errors that derive from independent
         // regions of the graph, but not those that derive from
         // overlapping locations.
-        let mut dup_vec = slice::from_elem(self.num_vars(), uint::MAX);
+        let mut dup_vec = Vec::from_elem(self.num_vars(), uint::MAX);
 
         let mut opt_graph = None;
 
@@ -1052,11 +1051,13 @@ impl<'a> RegionVarBindings<'a> {
                     match var_data[idx].classification {
                         Expanding => {
                             self.collect_error_for_expanding_node(
-                                graph, var_data, dup_vec, node_vid, errors);
+                                graph, var_data, dup_vec.as_mut_slice(),
+                                node_vid, errors);
                         }
                         Contracting => {
                             self.collect_error_for_contracting_node(
-                                graph, var_data, dup_vec, node_vid, errors);
+                                graph, var_data, dup_vec.as_mut_slice(),
+                                node_vid, errors);
                         }
                     }
                 }

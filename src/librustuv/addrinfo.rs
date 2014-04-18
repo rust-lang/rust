@@ -138,7 +138,7 @@ pub fn accum_addrinfo(addr: &Addrinfo) -> ~[ai::Info] {
     unsafe {
         let mut addr = addr.handle;
 
-        let mut addrs = ~[];
+        let mut addrs = Vec::new();
         loop {
             let rustaddr = net::sockaddr_to_addr(cast::transmute((*addr).ai_addr),
                                                  (*addr).ai_addrlen as uint);
@@ -180,6 +180,6 @@ pub fn accum_addrinfo(addr: &Addrinfo) -> ~[ai::Info] {
             }
         }
 
-        return addrs;
+        return addrs.move_iter().collect();
     }
 }

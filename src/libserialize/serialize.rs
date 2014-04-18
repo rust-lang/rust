@@ -16,7 +16,6 @@ Core encoding and decoding interfaces.
 
 use std::path;
 use std::rc::Rc;
-use std::slice;
 
 pub trait Encoder<E> {
     // Primitive types:
@@ -443,11 +442,15 @@ impl<E, S:Encoder<E>,T:Encodable<S, E>> Encodable<S, E> for ~[T] {
 impl<E, D:Decoder<E>,T:Decodable<D, E>> Decodable<D, E> for ~[T] {
     fn decode(d: &mut D) -> Result<~[T], E> {
         d.read_seq(|d, len| {
-            let mut v: ~[T] = slice::with_capacity(len);
+            let mut v: Vec<T> = Vec::with_capacity(len);
             for i in range(0, len) {
                 v.push(try!(d.read_seq_elt(i, |d| Decodable::decode(d))));
             }
-            Ok(v)
+            println!("-------");
+            println!("{}", v.len());
+            let k = v.move_iter().collect::<~[T]>();
+            println!("{}", k.len());
+            Ok(k)
         })
     }
 }
@@ -594,11 +597,11 @@ pub trait DecoderHelpers<E> {
 impl<E, D:Decoder<E>> DecoderHelpers<E> for D {
     fn read_to_vec<T>(&mut self, f: |&mut D| -> Result<T, E>) -> Result<~[T], E> {
         self.read_seq(|this, len| {
-            let mut v = slice::with_capacity(len);
+            let mut v = Vec::with_capacity(len);
             for i in range(0, len) {
                 v.push(try!(this.read_seq_elt(i, |this| f(this))));
             }
-            Ok(v)
+            Ok(v.move_iter().collect())
         })
     }
 }

@@ -61,7 +61,7 @@ use ptr::RawPtr;
 use sync::arc::UnsafeArc;
 use sync::atomics::{AtomicInt, AtomicPtr, SeqCst};
 use unstable::sync::Exclusive;
-use slice::{OwnedVector, ImmutableVector};
+use slice::ImmutableVector;
 use vec::Vec;
 
 // Once the queue is less than 1/K full, then it will be downsized. Note that

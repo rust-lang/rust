@@ -16,8 +16,6 @@
  * closure.
  */
 
-use std::slice;
-
 use back::abi;
 use driver::session;
 use lib::llvm::{ValueRef, NoAliasAttribute, StructRetAttribute, NoCaptureAttribute};
@@ -221,11 +219,12 @@ fn resolve_default_method_vtables(bcx: &Block,
         Some(vtables) => {
             let num_impl_type_parameters =
                 vtables.len() - num_method_vtables;
-            vtables.tailn(num_impl_type_parameters).to_owned()
+            Vec::from_slice(vtables.tailn(num_impl_type_parameters))
         },
-        None => slice::from_elem(num_method_vtables, @Vec::new())
+        None => Vec::from_elem(num_method_vtables, @Vec::new())
     };
 
+    let method_vtables = method_vtables.as_slice();
     let param_vtables = @((*trait_vtables_fixed).clone().append(method_vtables));
 
     let self_vtables = resolve_param_vtables_under_param_substs(

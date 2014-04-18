@@ -71,7 +71,6 @@ use util::nodemap::NodeMap;
 use middle::trans::machine::{llsize_of, llsize_of_alloc};
 use middle::trans::type_::Type;
 
-use std::slice;
 use syntax::ast;
 use syntax::codemap;
 use syntax::print::pprust::{expr_to_str};
@@ -969,7 +968,7 @@ fn trans_rec_or_struct<'a>(
     let ty = node_id_type(bcx, id);
     let tcx = bcx.tcx();
     with_field_tys(tcx, ty, Some(id), |discr, field_tys| {
-        let mut need_base = slice::from_elem(field_tys.len(), true);
+        let mut need_base = Vec::from_elem(field_tys.len(), true);
 
         let numbered_fields = fields.iter().map(|field| {
             let opt_pos =
@@ -977,7 +976,7 @@ fn trans_rec_or_struct<'a>(
                                           field_ty.ident.name == field.ident.node.name);
             match opt_pos {
                 Some(i) => {
-                    need_base[i] = false;
+                    *need_base.get_mut(i) = false;
                     (i, field.expr)
                 }
                 None => {
