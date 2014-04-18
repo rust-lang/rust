@@ -162,25 +162,6 @@ pub fn abs_sub<T: Signed>(x: T, y: T) -> T {
 /// A trait for values which cannot be negative
 pub trait Unsigned: Num {}
 
-/// A collection of rounding operations.
-pub trait Round {
-    /// Return the largest integer less than or equal to a number.
-    fn floor(&self) -> Self;
-
-    /// Return the smallest integer greater than or equal to a number.
-    fn ceil(&self) -> Self;
-
-    /// Return the nearest integer to a number. Round half-way cases away from
-    /// `0.0`.
-    fn round(&self) -> Self;
-
-    /// Return the integer part of a number.
-    fn trunc(&self) -> Self;
-
-    /// Return the fractional part of a number.
-    fn fract(&self) -> Self;
-}
-
 /// Raises a value to the power of exp, using exponentiation by squaring.
 ///
 /// # Example
@@ -347,7 +328,7 @@ pub enum FPCategory {
 //
 // FIXME(#8888): Several of these functions have a parameter named
 //               `unused_self`. Removing it requires #8888 to be fixed.
-pub trait Float: Signed + Round + Primitive {
+pub trait Float: Signed + Primitive {
     /// Returns the maximum of the two numbers.
     fn max(self, other: Self) -> Self;
     /// Returns the minimum of the two numbers.
@@ -430,6 +411,22 @@ pub trait Float: Signed + Round + Primitive {
 
     /// Returns the mantissa, exponent and sign as integers, respectively.
     fn integer_decode(&self) -> (u64, i16, i8);
+
+    /// Return the largest integer less than or equal to a number.
+    fn floor(&self) -> Self;
+
+    /// Return the smallest integer greater than or equal to a number.
+    fn ceil(&self) -> Self;
+
+    /// Return the nearest integer to a number. Round half-way cases away from
+    /// `0.0`.
+    fn round(&self) -> Self;
+
+    /// Return the integer part of a number.
+    fn trunc(&self) -> Self;
+
+    /// Return the fractional part of a number.
+    fn fract(&self) -> Self;
 
     /// Archimedes' constant.
     fn pi() -> Self;

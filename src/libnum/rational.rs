@@ -15,7 +15,7 @@ use Integer;
 use std::cmp;
 use std::fmt;
 use std::from_str::FromStr;
-use std::num::{Zero,One,ToStrRadix,FromStrRadix,Round};
+use std::num::{Zero, One, ToStrRadix, FromStrRadix};
 use bigint::{BigInt, BigUint, Sign, Plus, Minus};
 
 /// Represents the ratio between 2 numbers.
@@ -112,6 +112,40 @@ impl<T: Clone + Integer + Ord>
     #[inline]
     pub fn recip(&self) -> Ratio<T> {
         Ratio::new_raw(self.denom.clone(), self.numer.clone())
+    }
+
+    pub fn floor(&self) -> Ratio<T> {
+        if *self < Zero::zero() {
+            Ratio::from_integer((self.numer - self.denom + One::one()) / self.denom)
+        } else {
+            Ratio::from_integer(self.numer / self.denom)
+        }
+    }
+
+    pub fn ceil(&self) -> Ratio<T> {
+        if *self < Zero::zero() {
+            Ratio::from_integer(self.numer / self.denom)
+        } else {
+            Ratio::from_integer((self.numer + self.denom - One::one()) / self.denom)
+        }
+    }
+
+    #[inline]
+    pub fn round(&self) -> Ratio<T> {
+        if *self < Zero::zero() {
+            Ratio::from_integer((self.numer - self.denom + One::one()) / self.denom)
+        } else {
+            Ratio::from_integer((self.numer + self.denom - One::one()) / self.denom)
+        }
+    }
+
+    #[inline]
+    pub fn trunc(&self) -> Ratio<T> {
+        Ratio::from_integer(self.numer / self.denom)
+    }
+
+    pub fn fract(&self) -> Ratio<T> {
+        Ratio::new_raw(self.numer % self.denom, self.denom.clone())
     }
 }
 
@@ -237,45 +271,6 @@ impl<T: Clone + Integer + Ord>
 
 impl<T: Clone + Integer + Ord>
     Num for Ratio<T> {}
-
-/* Utils */
-impl<T: Clone + Integer + Ord>
-    Round for Ratio<T> {
-
-    fn floor(&self) -> Ratio<T> {
-        if *self < Zero::zero() {
-            Ratio::from_integer((self.numer - self.denom + One::one()) / self.denom)
-        } else {
-            Ratio::from_integer(self.numer / self.denom)
-        }
-    }
-
-    fn ceil(&self) -> Ratio<T> {
-        if *self < Zero::zero() {
-            Ratio::from_integer(self.numer / self.denom)
-        } else {
-            Ratio::from_integer((self.numer + self.denom - One::one()) / self.denom)
-        }
-    }
-
-    #[inline]
-    fn round(&self) -> Ratio<T> {
-        if *self < Zero::zero() {
-            Ratio::from_integer((self.numer - self.denom + One::one()) / self.denom)
-        } else {
-            Ratio::from_integer((self.numer + self.denom - One::one()) / self.denom)
-        }
-    }
-
-    #[inline]
-    fn trunc(&self) -> Ratio<T> {
-        Ratio::from_integer(self.numer / self.denom)
-    }
-
-    fn fract(&self) -> Ratio<T> {
-        Ratio::new_raw(self.numer % self.denom, self.denom.clone())
-    }
-}
 
 /* String conversions */
 impl<T: fmt::Show> fmt::Show for Ratio<T> {
