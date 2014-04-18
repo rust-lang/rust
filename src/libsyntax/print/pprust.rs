@@ -1261,11 +1261,6 @@ impl<'a> State<'a> {
                 }
 
                 try!(self.print_mutability(m));
-                // Avoid `& &e` => `&&e`.
-                match (m, &expr.node) {
-                    (ast::MutImmutable, &ast::ExprAddrOf(..)) => try!(space(&mut self.s)),
-                    _ => { }
-                }
 
                 try!(self.print_expr_maybe_paren(expr));
             }
