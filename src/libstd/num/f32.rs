@@ -239,33 +239,6 @@ impl Signed for f32 {
     fn is_negative(&self) -> bool { *self < 0.0 || (1.0 / *self) == NEG_INFINITY }
 }
 
-impl Round for f32 {
-    /// Round half-way cases toward `NEG_INFINITY`
-    #[inline]
-    fn floor(&self) -> f32 { unsafe{intrinsics::floorf32(*self)} }
-
-    /// Round half-way cases toward `INFINITY`
-    #[inline]
-    fn ceil(&self) -> f32 { unsafe{intrinsics::ceilf32(*self)} }
-
-    /// Round half-way cases away from `0.0`
-    #[inline]
-    fn round(&self) -> f32 { unsafe{intrinsics::roundf32(*self)} }
-
-    /// The integer part of the number (rounds towards `0.0`)
-    #[inline]
-    fn trunc(&self) -> f32 { unsafe{intrinsics::truncf32(*self)} }
-
-    /// The fractional part of the number, satisfying:
-    ///
-    /// ```rust
-    /// let x = 1.65f32;
-    /// assert!(x == x.trunc() + x.fract())
-    /// ```
-    #[inline]
-    fn fract(&self) -> f32 { *self - self.trunc() }
-}
-
 impl Bounded for f32 {
     #[inline]
     fn min_value() -> f32 { 1.17549435e-38 }
@@ -413,6 +386,31 @@ impl Float for f32 {
         exponent -= 127 + 23;
         (mantissa as u64, exponent, sign)
     }
+
+    /// Round half-way cases toward `NEG_INFINITY`
+    #[inline]
+    fn floor(&self) -> f32 { unsafe{intrinsics::floorf32(*self)} }
+
+    /// Round half-way cases toward `INFINITY`
+    #[inline]
+    fn ceil(&self) -> f32 { unsafe{intrinsics::ceilf32(*self)} }
+
+    /// Round half-way cases away from `0.0`
+    #[inline]
+    fn round(&self) -> f32 { unsafe{intrinsics::roundf32(*self)} }
+
+    /// The integer part of the number (rounds towards `0.0`)
+    #[inline]
+    fn trunc(&self) -> f32 { unsafe{intrinsics::truncf32(*self)} }
+
+    /// The fractional part of the number, satisfying:
+    ///
+    /// ```rust
+    /// let x = 1.65f32;
+    /// assert!(x == x.trunc() + x.fract())
+    /// ```
+    #[inline]
+    fn fract(&self) -> f32 { *self - self.trunc() }
 
     /// Archimedes' constant
     #[inline]
