@@ -114,10 +114,8 @@ impl<K: Hash + TotalEq, V> LruCache<K, V> {
 
     /// Put a key-value pair into cache.
     pub fn put(&mut self, k: K, v: V) {
-        let mut key_existed = false;
         let (node_ptr, node_opt) = match self.map.find_mut(&KeyRef{k: &k}) {
             Some(node) => {
-                key_existed = true;
                 node.value = Some(v);
                 let node_ptr: *mut LruEntry<K, V> = &mut **node;
                 (node_ptr, None)
@@ -128,15 +126,18 @@ impl<K: Hash + TotalEq, V> LruCache<K, V> {
                 (node_ptr, Some(node))
             }
         };
-        if key_existed {
-            self.detach(node_ptr);
-            self.attach(node_ptr);
-        } else {
-            let keyref = unsafe { (*node_ptr).key.as_ref().unwrap() };
-            self.map.swap(KeyRef{k: keyref}, node_opt.unwrap());
-            self.attach(node_ptr);
-            if self.len() > self.capacity() {
-                self.remove_lru();
+        match node_opt {
+            None => {
+                self.detach(node_ptr);
+                self.attach(node_ptr);
+            }
+            Some(node) => {
+                let keyref = unsafe { (*node_ptr).key.as_ref().unwrap() };
+                self.map.swap(KeyRef{k: keyref}, node);
+                self.attach(node_ptr);
+                if self.len() > self.capacity() {
+                    self.remove_lru();
+                }
             }
         }
     }
