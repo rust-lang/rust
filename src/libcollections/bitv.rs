@@ -97,12 +97,12 @@ impl SmallBitv {
     pub fn set_all(&mut self) { self.bits = !0; }
 
     #[inline]
-    pub fn is_true(&self, nbits: uint) -> bool {
+    pub fn all(&self, nbits: uint) -> bool {
         small_mask(nbits) & !self.bits == 0
     }
 
     #[inline]
-    pub fn is_false(&self, nbits: uint) -> bool {
+    pub fn none(&self, nbits: uint) -> bool {
         small_mask(nbits) & self.bits == 0
     }
 
@@ -412,13 +412,10 @@ impl Bitv {
 
     /// Returns `true` if all bits are 1
     #[inline]
-    pub fn is_true(&self) -> bool {
+    pub fn all(&self) -> bool {
       match self.rep {
-        Small(ref b) => b.is_true(self.nbits),
-        _ => {
-          for i in self.iter() { if !i { return false; } }
-          true
-        }
+        Small(ref b) => b.all(self.nbits),
+        _ => self.iter().all(|x| x)
       }
     }
 
@@ -433,14 +430,17 @@ impl Bitv {
     }
 
     /// Returns `true` if all bits are 0
-    pub fn is_false(&self) -> bool {
+    pub fn none(&self) -> bool {
       match self.rep {
-        Small(ref b) => b.is_false(self.nbits),
-        Big(_) => {
-          for i in self.iter() { if i { return false; } }
-          true
-        }
+        Small(ref b) => b.none(self.nbits),
+        _ => self.iter().all(|x| !x)
       }
+    }
+
+    #[inline]
+    /// Returns `true` if any bit is 1
+    pub fn any(&self) -> bool {
+        !self.none()
     }
 
     pub fn init_to_vec(&self, i: uint) -> uint {
@@ -1549,6 +1549,51 @@ mod tests {
 
         assert!(a.remove(&1000));
         assert!(b.contains(&1000));
+    }
+
+    #[test]
+    fn test_small_bitv_tests() {
+        let v = from_bytes([0]);
+        assert!(!v.all());
+        assert!(!v.any());
+        assert!(v.none());
+
+        let v = from_bytes([0b00010100]);
+        assert!(!v.all());
+        assert!(v.any());
+        assert!(!v.none());
+
+        let v = from_bytes([0xFF]);
+        assert!(v.all());
+        assert!(v.any());
+        assert!(!v.none());
+    }
+
+    #[test]
+    fn test_big_bitv_tests() {
+        let v = from_bytes([ // 88 bits
+            0, 0, 0, 0,
+            0, 0, 0, 0,
+            0, 0, 0]);
+        assert!(!v.all());
+        assert!(!v.any());
+        assert!(v.none());
+
+        let v = from_bytes([ // 88 bits
+            0, 0, 0b00010100, 0,
+            0, 0, 0, 0b00110100,
+            0, 0, 0]);
+        assert!(!v.all());
+        assert!(v.any());
+        assert!(!v.none());
+
+        let v = from_bytes([ // 88 bits
+            0xFF, 0xFF, 0xFF, 0xFF,
+            0xFF, 0xFF, 0xFF, 0xFF,
+            0xFF, 0xFF, 0xFF]);
+        assert!(v.all());
+        assert!(v.any());
+        assert!(!v.none());
     }
 
     fn rng() -> rand::IsaacRng {
