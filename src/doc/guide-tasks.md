@@ -306,7 +306,7 @@ be distributed on the available cores.
 fn partial_sum(start: uint) -> f64 {
     let mut local_sum = 0f64;
     for num in range(start*100000, (start+1)*100000) {
-        local_sum += (num as f64 + 1.0).powf(&-2.0);
+        local_sum += (num as f64 + 1.0).powf(-2.0);
     }
     local_sum
 }
@@ -343,7 +343,7 @@ extern crate sync;
 use sync::Arc;
 
 fn pnorm(nums: &[f64], p: uint) -> f64 {
-    nums.iter().fold(0.0, |a,b| a+(*b).powf(&(p as f64)) ).powf(&(1.0 / (p as f64)))
+    nums.iter().fold(0.0, |a, b| a + b.powf(p as f64)).powf(1.0 / (p as f64))
 }
 
 fn main() {

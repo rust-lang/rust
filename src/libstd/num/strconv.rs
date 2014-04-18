@@ -310,7 +310,7 @@ pub fn float_to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Float+
                     ExpNone => unreachable!()
                 };
 
-                (num / exp_base.powf(&exp), cast::<T, i32>(exp).unwrap())
+                (num / exp_base.powf(exp), cast::<T, i32>(exp).unwrap())
             }
         }
     };

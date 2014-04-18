@@ -147,7 +147,7 @@ impl IndependentSample<f64> for GammaSmallShape {
     fn ind_sample<R: Rng>(&self, rng: &mut R) -> f64 {
         let Open01(u) = rng.gen::<Open01<f64>>();
 
-        self.large_shape.ind_sample(rng) * u.powf(&self.inv_shape)
+        self.large_shape.ind_sample(rng) * u.powf(self.inv_shape)
     }
 }
 impl IndependentSample<f64> for GammaLargeShape {

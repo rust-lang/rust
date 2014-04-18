@@ -282,33 +282,33 @@ impl Float for f64 {
 
     /// Returns `true` if the number is NaN
     #[inline]
-    fn is_nan(&self) -> bool { *self != *self }
+    fn is_nan(self) -> bool { self != self }
 
     /// Returns `true` if the number is infinite
     #[inline]
-    fn is_infinite(&self) -> bool {
-        *self == Float::infinity() || *self == Float::neg_infinity()
+    fn is_infinite(self) -> bool {
+        self == Float::infinity() || self == Float::neg_infinity()
     }
 
     /// Returns `true` if the number is neither infinite or NaN
     #[inline]
-    fn is_finite(&self) -> bool {
+    fn is_finite(self) -> bool {
         !(self.is_nan() || self.is_infinite())
     }
 
     /// Returns `true` if the number is neither zero, infinite, subnormal or NaN
     #[inline]
-    fn is_normal(&self) -> bool {
+    fn is_normal(self) -> bool {
         self.classify() == FPNormal
     }
 
     /// Returns the floating point category of the number. If only one property is going to
     /// be tested, it is generally faster to use the specific predicate instead.
-    fn classify(&self) -> FPCategory {
+    fn classify(self) -> FPCategory {
         static EXP_MASK: u64 = 0x7ff0000000000000;
         static MAN_MASK: u64 = 0x000fffffffffffff;
 
-        let bits: u64 = unsafe {::cast::transmute(*self)};
+        let bits: u64 = unsafe {::cast::transmute(self)};
         match (bits & MAN_MASK, bits & EXP_MASK) {
             (0, 0)        => FPZero,
             (_, 0)        => FPSubnormal,
@@ -348,10 +348,10 @@ impl Float for f64 {
     /// - `self = x * pow(2, exp)`
     /// - `0.5 <= abs(x) < 1.0`
     #[inline]
-    fn frexp(&self) -> (f64, int) {
+    fn frexp(self) -> (f64, int) {
         unsafe {
             let mut exp = 0;
-            let x = cmath::frexp(*self, &mut exp);
+            let x = cmath::frexp(self, &mut exp);
             (x, exp as int)
         }
     }
@@ -359,27 +359,27 @@ impl Float for f64 {
     /// Returns the exponential of the number, minus `1`, in a way that is accurate
     /// even if the number is close to zero
     #[inline]
-    fn exp_m1(&self) -> f64 { unsafe{cmath::expm1(*self)} }
+    fn exp_m1(self) -> f64 { unsafe{cmath::expm1(self)} }
 
     /// Returns the natural logarithm of the number plus `1` (`ln(1+n)`) more accurately
     /// than if the operations were performed separately
     #[inline]
-    fn ln_1p(&self) -> f64 { unsafe{cmath::log1p(*self)} }
+    fn ln_1p(self) -> f64 { unsafe{cmath::log1p(self)} }
 
     /// Fused multiply-add. Computes `(self * a) + b` with only one rounding error. This
     /// produces a more accurate result with better performance than a separate multiplication
     /// operation followed by an add.
     #[inline]
-    fn mul_add(&self, a: f64, b: f64) -> f64 { unsafe{intrinsics::fmaf64(*self, a, b)} }
+    fn mul_add(self, a: f64, b: f64) -> f64 { unsafe{intrinsics::fmaf64(self, a, b)} }
 
     /// Returns the next representable floating-point value in the direction of `other`
     #[inline]
-    fn next_after(&self, other: f64) -> f64 { unsafe{cmath::nextafter(*self, other)} }
+    fn next_after(self, other: f64) -> f64 { unsafe{cmath::nextafter(self, other)} }
 
     /// Returns the mantissa, exponent and sign as integers.
-    fn integer_decode(&self) -> (u64, i16, i8) {
+    fn integer_decode(self) -> (u64, i16, i8) {
         let bits: u64 = unsafe {
-            ::cast::transmute(*self)
+            ::cast::transmute(self)
         };
         let sign: i8 = if bits >> 63 == 0 { 1 } else { -1 };
         let mut exponent: i16 = ((bits >> 52) & 0x7ff) as i16;
@@ -395,19 +395,19 @@ impl Float for f64 {
 
     /// Round half-way cases toward `NEG_INFINITY`
     #[inline]
-    fn floor(&self) -> f64 { unsafe{intrinsics::floorf64(*self)} }
+    fn floor(self) -> f64 { unsafe{intrinsics::floorf64(self)} }
 
     /// Round half-way cases toward `INFINITY`
     #[inline]
-    fn ceil(&self) -> f64 { unsafe{intrinsics::ceilf64(*self)} }
+    fn ceil(self) -> f64 { unsafe{intrinsics::ceilf64(self)} }
 
     /// Round half-way cases away from `0.0`
     #[inline]
-    fn round(&self) -> f64 { unsafe{intrinsics::roundf64(*self)} }
+    fn round(self) -> f64 { unsafe{intrinsics::roundf64(self)} }
 
     /// The integer part of the number (rounds towards `0.0`)
     #[inline]
-    fn trunc(&self) -> f64 { unsafe{intrinsics::truncf64(*self)} }
+    fn trunc(self) -> f64 { unsafe{intrinsics::truncf64(self)} }
 
     /// The fractional part of the number, satisfying:
     ///
@@ -416,7 +416,7 @@ impl Float for f64 {
     /// assert!(x == x.trunc() + x.fract())
     /// ```
     #[inline]
-    fn fract(&self) -> f64 { *self - self.trunc() }
+    fn fract(self) -> f64 { self - self.trunc() }
 
     /// Archimedes' constant
     #[inline]
@@ -488,85 +488,85 @@ impl Float for f64 {
 
     /// The reciprocal (multiplicative inverse) of the number
     #[inline]
-    fn recip(&self) -> f64 { 1.0 / *self }
+    fn recip(self) -> f64 { 1.0 / self }
 
     #[inline]
-    fn powf(&self, n: &f64) -> f64 { unsafe{intrinsics::powf64(*self, *n)} }
+    fn powf(self, n: f64) -> f64 { unsafe{intrinsics::powf64(self, n)} }
 
     #[inline]
-    fn powi(&self, n: i32) -> f64 { unsafe{intrinsics::powif64(*self, n)} }
+    fn powi(self, n: i32) -> f64 { unsafe{intrinsics::powif64(self, n)} }
 
     #[inline]
-    fn sqrt(&self) -> f64 { unsafe{intrinsics::sqrtf64(*self)} }
+    fn sqrt(self) -> f64 { unsafe{intrinsics::sqrtf64(self)} }
 
     #[inline]
-    fn rsqrt(&self) -> f64 { self.sqrt().recip() }
+    fn rsqrt(self) -> f64 { self.sqrt().recip() }
 
     #[inline]
-    fn cbrt(&self) -> f64 { unsafe{cmath::cbrt(*self)} }
+    fn cbrt(self) -> f64 { unsafe{cmath::cbrt(self)} }
 
     #[inline]
-    fn hypot(&self, other: &f64) -> f64 { unsafe{cmath::hypot(*self, *other)} }
+    fn hypot(self, other: f64) -> f64 { unsafe{cmath::hypot(self, other)} }
 
     #[inline]
-    fn sin(&self) -> f64 { unsafe{intrinsics::sinf64(*self)} }
+    fn sin(self) -> f64 { unsafe{intrinsics::sinf64(self)} }
 
     #[inline]
-    fn cos(&self) -> f64 { unsafe{intrinsics::cosf64(*self)} }
+    fn cos(self) -> f64 { unsafe{intrinsics::cosf64(self)} }
 
     #[inline]
-    fn tan(&self) -> f64 { unsafe{cmath::tan(*self)} }
+    fn tan(self) -> f64 { unsafe{cmath::tan(self)} }
 
     #[inline]
-    fn asin(&self) -> f64 { unsafe{cmath::asin(*self)} }
+    fn asin(self) -> f64 { unsafe{cmath::asin(self)} }
 
     #[inline]
-    fn acos(&self) -> f64 { unsafe{cmath::acos(*self)} }
+    fn acos(self) -> f64 { unsafe{cmath::acos(self)} }
 
     #[inline]
-    fn atan(&self) -> f64 { unsafe{cmath::atan(*self)} }
+    fn atan(self) -> f64 { unsafe{cmath::atan(self)} }
 
     #[inline]
-    fn atan2(&self, other: &f64) -> f64 { unsafe{cmath::atan2(*self, *other)} }
+    fn atan2(self, other: f64) -> f64 { unsafe{cmath::atan2(self, other)} }
 
     /// Simultaneously computes the sine and cosine of the number
     #[inline]
-    fn sin_cos(&self) -> (f64, f64) {
+    fn sin_cos(self) -> (f64, f64) {
         (self.sin(), self.cos())
     }
 
     /// Returns the exponential of the number
     #[inline]
-    fn exp(&self) -> f64 { unsafe{intrinsics::expf64(*self)} }
+    fn exp(self) -> f64 { unsafe{intrinsics::expf64(self)} }
 
     /// Returns 2 raised to the power of the number
     #[inline]
-    fn exp2(&self) -> f64 { unsafe{intrinsics::exp2f64(*self)} }
+    fn exp2(self) -> f64 { unsafe{intrinsics::exp2f64(self)} }
 
     /// Returns the natural logarithm of the number
     #[inline]
-    fn ln(&self) -> f64 { unsafe{intrinsics::logf64(*self)} }
+    fn ln(self) -> f64 { unsafe{intrinsics::logf64(self)} }
 
     /// Returns the logarithm of the number with respect to an arbitrary base
     #[inline]
-    fn log(&self, base: &f64) -> f64 { self.ln() / base.ln() }
+    fn log(self, base: f64) -> f64 { self.ln() / base.ln() }
 
     /// Returns the base 2 logarithm of the number
     #[inline]
-    fn log2(&self) -> f64 { unsafe{intrinsics::log2f64(*self)} }
+    fn log2(self) -> f64 { unsafe{intrinsics::log2f64(self)} }
 
     /// Returns the base 10 logarithm of the number
     #[inline]
-    fn log10(&self) -> f64 { unsafe{intrinsics::log10f64(*self)} }
+    fn log10(self) -> f64 { unsafe{intrinsics::log10f64(self)} }
 
     #[inline]
-    fn sinh(&self) -> f64 { unsafe{cmath::sinh(*self)} }
+    fn sinh(self) -> f64 { unsafe{cmath::sinh(self)} }
 
     #[inline]
-    fn cosh(&self) -> f64 { unsafe{cmath::cosh(*self)} }
+    fn cosh(self) -> f64 { unsafe{cmath::cosh(self)} }
 
     #[inline]
-    fn tanh(&self) -> f64 { unsafe{cmath::tanh(*self)} }
+    fn tanh(self) -> f64 { unsafe{cmath::tanh(self)} }
 
     /// Inverse hyperbolic sine
     ///
@@ -576,8 +576,8 @@ impl Float for f64 {
     /// - `self` if `self` is `0.0`, `-0.0`, `INFINITY`, or `NEG_INFINITY`
     /// - `NAN` if `self` is `NAN`
     #[inline]
-    fn asinh(&self) -> f64 {
-        match *self {
+    fn asinh(self) -> f64 {
+        match self {
             NEG_INFINITY => NEG_INFINITY,
             x => (x + ((x * x) + 1.0).sqrt()).ln(),
         }
@@ -591,8 +591,8 @@ impl Float for f64 {
     /// - `INFINITY` if `self` is `INFINITY`
     /// - `NAN` if `self` is `NAN` or `self < 1.0` (including `NEG_INFINITY`)
     #[inline]
-    fn acosh(&self) -> f64 {
-        match *self {
+    fn acosh(self) -> f64 {
+        match self {
             x if x < 1.0 => Float::nan(),
             x => (x + ((x * x) - 1.0).sqrt()).ln(),
         }
@@ -609,19 +609,19 @@ impl Float for f64 {
     /// - `NAN` if the `self` is `NAN` or outside the domain of `-1.0 <= self <= 1.0`
     ///   (including `INFINITY` and `NEG_INFINITY`)
     #[inline]
-    fn atanh(&self) -> f64 {
-        0.5 * ((2.0 * *self) / (1.0 - *self)).ln_1p()
+    fn atanh(self) -> f64 {
+        0.5 * ((2.0 * self) / (1.0 - self)).ln_1p()
     }
 
     /// Converts to degrees, assuming the number is in radians
     #[inline]
-    fn to_degrees(&self) -> f64 { *self * (180.0f64 / Float::pi()) }
+    fn to_degrees(self) -> f64 { self * (180.0f64 / Float::pi()) }
 
     /// Converts to radians, assuming the number is in degrees
     #[inline]
-    fn to_radians(&self) -> f64 {
+    fn to_radians(self) -> f64 {
         let value: f64 = Float::pi();
-        *self * (value / 180.0)
+        self * (value / 180.0)
     }
 }
 
@@ -1165,7 +1165,7 @@ mod tests {
     fn test_integer_decode() {
         assert_eq!(3.14159265359f64.integer_decode(), (7074237752028906u64, -51i16, 1i8));
         assert_eq!((-8573.5918555f64).integer_decode(), (4713381968463931u64, -39i16, -1i8));
-        assert_eq!(2f64.powf(&100.0).integer_decode(), (4503599627370496u64, 48i16, 1i8));
+        assert_eq!(2f64.powf(100.0).integer_decode(), (4503599627370496u64, 48i16, 1i8));
         assert_eq!(0f64.integer_decode(), (0u64, -1075i16, 1i8));
         assert_eq!((-0f64).integer_decode(), (0u64, -1075i16, -1i8));
         assert_eq!(INFINITY.integer_decode(), (4503599627370496u64, 972i16, 1i8));

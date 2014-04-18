@@ -82,7 +82,7 @@ impl<T: Clone + Float> Cmplx<T> {
     /// Calculate |self|
     #[inline]
     pub fn norm(&self) -> T {
-        self.re.hypot(&self.im)
+        self.re.hypot(self.im)
     }
 }
 
@@ -90,7 +90,7 @@ impl<T: Clone + Float> Cmplx<T> {
     /// Calculate the principal Arg of self.
     #[inline]
     pub fn arg(&self) -> T {
-        self.im.atan2(&self.re)
+        self.im.atan2(self.re)
     }
     /// Convert to polar form (r, theta), such that `self = r * exp(i
     /// * theta)`
