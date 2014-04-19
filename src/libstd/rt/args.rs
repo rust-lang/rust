@@ -67,9 +67,9 @@ mod imp {
     use clone::Clone;
     use option::{Option, Some, None};
     use iter::Iterator;
-    use str::StrSlice;
     use unstable::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
     use mem;
+    #[cfg(not(test))] use str::StrSlice;
     #[cfg(not(test))] use ptr::RawPtr;
 
     static mut global_args_ptr: uint = 0;

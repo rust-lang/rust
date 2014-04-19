@@ -212,8 +212,7 @@ impl uv_stat_t {
     }
 }
 
-pub type uv_idle_cb = extern "C" fn(handle: *uv_idle_t,
-                                    status: c_int);
+pub type uv_idle_cb = extern "C" fn(handle: *uv_idle_t);
 pub type uv_alloc_cb = extern "C" fn(stream: *uv_stream_t,
                                      suggested_size: size_t,
                                      buf: *mut uv_buf_t);
@@ -230,14 +229,12 @@ pub type uv_udp_recv_cb = extern "C" fn(handle: *uv_udp_t,
 pub type uv_close_cb = extern "C" fn(handle: *uv_handle_t);
 pub type uv_walk_cb = extern "C" fn(handle: *uv_handle_t,
                                     arg: *c_void);
-pub type uv_async_cb = extern "C" fn(handle: *uv_async_t,
-                                     status: c_int);
+pub type uv_async_cb = extern "C" fn(handle: *uv_async_t);
 pub type uv_connect_cb = extern "C" fn(handle: *uv_connect_t,
                                        status: c_int);
 pub type uv_connection_cb = extern "C" fn(handle: *uv_connection_t,
                                           status: c_int);
-pub type uv_timer_cb = extern "C" fn(handle: *uv_timer_t,
-                                     status: c_int);
+pub type uv_timer_cb = extern "C" fn(handle: *uv_timer_t);
 pub type uv_write_cb = extern "C" fn(handle: *uv_write_t,
                                      status: c_int);
 pub type uv_getaddrinfo_cb = extern "C" fn(req: *uv_getaddrinfo_t,
@@ -597,10 +594,12 @@ extern {
                       flags: c_int, mode: c_int, cb: uv_fs_cb) -> c_int;
     pub fn uv_fs_unlink(loop_ptr: *uv_loop_t, req: *uv_fs_t, path: *c_char,
                         cb: uv_fs_cb) -> c_int;
-    pub fn uv_fs_write(l: *uv_loop_t, req: *uv_fs_t, fd: c_int, buf: *c_void,
-                       len: size_t, offset: i64, cb: uv_fs_cb) -> c_int;
-    pub fn uv_fs_read(l: *uv_loop_t, req: *uv_fs_t, fd: c_int, buf: *c_void,
-                      len: size_t, offset: i64, cb: uv_fs_cb) -> c_int;
+    pub fn uv_fs_write(l: *uv_loop_t, req: *uv_fs_t, fd: c_int,
+                       bufs: *uv_buf_t, nbufs: c_uint,
+                       offset: i64, cb: uv_fs_cb) -> c_int;
+    pub fn uv_fs_read(l: *uv_loop_t, req: *uv_fs_t, fd: c_int,
+                      bufs: *uv_buf_t, nbufs: c_uint,
+                      offset: i64, cb: uv_fs_cb) -> c_int;
     pub fn uv_fs_close(l: *uv_loop_t, req: *uv_fs_t, fd: c_int,
                        cb: uv_fs_cb) -> c_int;
     pub fn uv_fs_stat(l: *uv_loop_t, req: *uv_fs_t, path: *c_char,

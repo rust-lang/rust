@@ -364,7 +364,7 @@ mod tests {
     use option::{Some, None};
     use str::{Str,StrSlice};
     use strbuf::StrBuf;
-    use slice::{Vector, ImmutableVector, OwnedVector};
+    use slice::{Vector, ImmutableVector};
     use self::test::Bencher;
 
     use super::super::Hash;
