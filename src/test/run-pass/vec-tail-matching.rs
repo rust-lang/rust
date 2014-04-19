@@ -15,16 +15,16 @@ struct Foo {
 
 pub fn main() {
     let x = [
-        Foo { string: ~"foo" },
-        Foo { string: ~"bar" },
-        Foo { string: ~"baz" }
+        Foo { string: "foo".to_owned() },
+        Foo { string: "bar".to_owned() },
+        Foo { string: "baz".to_owned() }
     ];
     match x {
         [ref first, ..tail] => {
-            assert!(first.string == ~"foo");
+            assert!(first.string == "foo".to_owned());
             assert_eq!(tail.len(), 2);
-            assert!(tail[0].string == ~"bar");
-            assert!(tail[1].string == ~"baz");
+            assert!(tail[0].string == "bar".to_owned());
+            assert!(tail[1].string == "baz".to_owned());
 
             match tail {
                 [Foo { .. }, _, Foo { .. }, .. _tail] => {

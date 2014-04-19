@@ -36,7 +36,7 @@ fn main() {
 
     let config = process::ProcessConfig {
         program : "/bin/sh",
-        args: &[~"-c", ~"read a"],
+        args: &["-c".to_owned(), "read a".to_owned()],
         detach: true,
         .. process::ProcessConfig::new()
     };

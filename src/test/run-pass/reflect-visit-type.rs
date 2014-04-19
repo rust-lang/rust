@@ -18,32 +18,32 @@ struct MyVisitor {
 
 impl TyVisitor for MyVisitor {
     fn visit_bot(&mut self) -> bool {
-        self.types.push(~"bot");
+        self.types.push("bot".to_owned());
         println!("visited bot type");
         true
     }
     fn visit_nil(&mut self) -> bool {
-        self.types.push(~"nil");
+        self.types.push("nil".to_owned());
         println!("visited nil type");
         true
     }
     fn visit_bool(&mut self) -> bool {
-        self.types.push(~"bool");
+        self.types.push("bool".to_owned());
         println!("visited bool type");
         true
     }
     fn visit_int(&mut self) -> bool {
-        self.types.push(~"int");
+        self.types.push("int".to_owned());
         println!("visited int type");
         true
     }
     fn visit_i8(&mut self) -> bool {
-        self.types.push(~"i8");
+        self.types.push("i8".to_owned());
         println!("visited i8 type");
         true
     }
     fn visit_i16(&mut self) -> bool {
-        self.types.push(~"i16");
+        self.types.push("i16".to_owned());
         println!("visited i16 type");
         true
     }
@@ -75,9 +75,9 @@ impl TyVisitor for MyVisitor {
 
     fn visit_evec_box(&mut self, _mtbl: uint, _inner: *TyDesc) -> bool { true }
     fn visit_evec_uniq(&mut self, _mtbl: uint, inner: *TyDesc) -> bool {
-        self.types.push(~"[");
+        self.types.push("[".to_owned());
         unsafe { visit_tydesc(inner, &mut *self as &mut TyVisitor); }
-        self.types.push(~"]");
+        self.types.push("]".to_owned());
         true
     }
     fn visit_evec_slice(&mut self, _mtbl: uint, _inner: *TyDesc) -> bool { true }
@@ -155,5 +155,6 @@ pub fn main() {
     }
 
     let vec_types: Vec<~str> = v.types.clone().move_iter().collect();
-    assert_eq!(vec_types, vec!(~"bool", ~"int", ~"i8", ~"i16"));
+    assert_eq!(vec_types, vec!("bool".to_owned(), "int".to_owned(),
+                               "i8".to_owned(), "i16".to_owned()));
 }

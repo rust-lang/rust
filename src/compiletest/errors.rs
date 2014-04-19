@@ -31,7 +31,7 @@ pub fn load_errors(testfile: &Path) -> Vec<ExpectedError> {
 
 fn parse_expected(line_num: uint, line: ~str) -> Vec<ExpectedError> {
     let line = line.trim();
-    let error_tag = ~"//~";
+    let error_tag = "//~".to_owned();
     let mut idx;
     match line.find_str(error_tag) {
       None => return Vec::new(),

@@ -413,11 +413,11 @@ mod test {
     fn tls() {
         use local_data;
         local_data_key!(key: @~str)
-        local_data::set(key, @~"data");
-        assert!(*local_data::get(key, |k| k.map(|k| *k)).unwrap() == ~"data");
+        local_data::set(key, @"data".to_owned());
+        assert!(*local_data::get(key, |k| k.map(|k| *k)).unwrap() == "data".to_owned());
         local_data_key!(key2: @~str)
-        local_data::set(key2, @~"data");
-        assert!(*local_data::get(key2, |k| k.map(|k| *k)).unwrap() == ~"data");
+        local_data::set(key2, @"data".to_owned());
+        assert!(*local_data::get(key2, |k| k.map(|k| *k)).unwrap() == "data".to_owned());
     }
 
     #[test]

@@ -49,9 +49,9 @@ fn calc(children: uint, parent_wait_chan: &Sender<Sender<Sender<int>>>) {
 fn main() {
     let args = os::args();
     let args = if os::getenv("RUST_BENCH").is_some() {
-        vec!(~"", ~"30")
+        vec!("".to_owned(), "30".to_owned())
     } else if args.len() <= 1u {
-        vec!(~"", ~"10")
+        vec!("".to_owned(), "10".to_owned())
     } else {
         args
     };

@@ -2166,7 +2166,7 @@ impl Printable for ~str {
 }
 
 # 1.print();
-# (~"foo").print();
+# ("foo".to_owned()).print();
 ~~~~
 
 Methods defined in an impl for a trait may be called just like
@@ -2216,7 +2216,7 @@ impl Printable for bool {}
 impl Printable for f32 {}
 
 # 1.print();
-# (~"foo").print();
+# ("foo".to_owned()).print();
 # true.print();
 # 3.14159.print();
 ~~~~

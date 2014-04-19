@@ -564,12 +564,12 @@ mod test {
             assert_eq!(FromStr::from_str(s), Some(r));
             assert_eq!(r.to_str(), s);
         }
-        test(_1, ~"1/1");
-        test(_0, ~"0/1");
-        test(_1_2, ~"1/2");
-        test(_3_2, ~"3/2");
-        test(_2, ~"2/1");
-        test(_neg1_2, ~"-1/2");
+        test(_1, "1/1".to_owned());
+        test(_0, "0/1".to_owned());
+        test(_1_2, "1/2".to_owned());
+        test(_3_2, "3/2".to_owned());
+        test(_2, "2/1".to_owned());
+        test(_neg1_2, "-1/2".to_owned());
     }
     #[test]
     fn test_from_str_fail() {
@@ -593,23 +593,23 @@ mod test {
         fn test3(r: Rational, s: ~str) { test(r, s, 3) }
         fn test16(r: Rational, s: ~str) { test(r, s, 16) }
 
-        test3(_1, ~"1/1");
-        test3(_0, ~"0/1");
-        test3(_1_2, ~"1/2");
-        test3(_3_2, ~"10/2");
-        test3(_2, ~"2/1");
-        test3(_neg1_2, ~"-1/2");
-        test3(_neg1_2 / _2, ~"-1/11");
+        test3(_1, "1/1".to_owned());
+        test3(_0, "0/1".to_owned());
+        test3(_1_2, "1/2".to_owned());
+        test3(_3_2, "10/2".to_owned());
+        test3(_2, "2/1".to_owned());
+        test3(_neg1_2, "-1/2".to_owned());
+        test3(_neg1_2 / _2, "-1/11".to_owned());
 
-        test16(_1, ~"1/1");
-        test16(_0, ~"0/1");
-        test16(_1_2, ~"1/2");
-        test16(_3_2, ~"3/2");
-        test16(_2, ~"2/1");
-        test16(_neg1_2, ~"-1/2");
-        test16(_neg1_2 / _2, ~"-1/4");
-        test16(Ratio::new(13,15), ~"d/f");
-        test16(_1_2*_1_2*_1_2*_1_2, ~"1/10");
+        test16(_1, "1/1".to_owned());
+        test16(_0, "0/1".to_owned());
+        test16(_1_2, "1/2".to_owned());
+        test16(_3_2, "3/2".to_owned());
+        test16(_2, "2/1".to_owned());
+        test16(_neg1_2, "-1/2".to_owned());
+        test16(_neg1_2 / _2, "-1/4".to_owned());
+        test16(Ratio::new(13,15), "d/f".to_owned());
+        test16(_1_2*_1_2*_1_2*_1_2, "1/10".to_owned());
     }
 
     #[test]

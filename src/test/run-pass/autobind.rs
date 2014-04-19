@@ -16,5 +16,5 @@ fn g(act: |Vec<int> | -> int) -> int { return act(vec!(1, 2, 3)); }
 pub fn main() {
     assert_eq!(g(f), 1);
     let f1: |Vec<~str> | -> ~str = f;
-    assert_eq!(f1(vec!(~"x", ~"y", ~"z")), ~"x");
+    assert_eq!(f1(vec!("x".to_owned(), "y".to_owned(), "z".to_owned())), "x".to_owned());
 }

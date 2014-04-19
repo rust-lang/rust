@@ -26,7 +26,7 @@ fn foo(i:int, j: @~str) -> foo {
 }
 
 fn main() {
-  let cat = ~"kitty";
+  let cat = "kitty".to_owned();
   let (tx, _) = channel(); //~ ERROR does not fulfill `Send`
   tx.send(foo(42, @(cat))); //~ ERROR does not fulfill `Send`
 }

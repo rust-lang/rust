@@ -85,7 +85,7 @@ pub fn run(input: &str, cfgs: Vec<~str>,
                                        false);
     collector.fold_crate(krate);
 
-    test_args.unshift(~"rustdoctest");
+    test_args.unshift("rustdoctest".to_owned());
 
     testing::test_main(test_args.as_slice(),
                        collector.tests.move_iter().collect());

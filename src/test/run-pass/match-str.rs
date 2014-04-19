@@ -16,7 +16,7 @@ pub fn main() {
     enum t { tag1(~str), tag2, }
 
 
-    match tag1(~"test") {
+    match tag1("test".to_owned()) {
       tag2 => fail!(),
       tag1(ref s) if "test" != *s => fail!(),
       tag1(ref s) if "test" == *s => (),

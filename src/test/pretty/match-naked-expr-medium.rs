@@ -14,7 +14,11 @@ fn main() {
     let x = Some(3);
     let _y =
         match x {
-            Some(_) => [~"some(_)", ~"not", ~"SO", ~"long", ~"string"],
-            None => [~"none", ~"a", ~"a", ~"a", ~"a"]
+            Some(_) =>
+            ["some(_)".to_owned(), "not".to_owned(), "SO".to_owned(),
+             "long".to_owned(), "string".to_owned()],
+            None =>
+            ["none".to_owned(), "a".to_owned(), "a".to_owned(),
+             "a".to_owned(), "a".to_owned()]
         };
 }

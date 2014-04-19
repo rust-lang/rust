@@ -20,7 +20,7 @@ struct R<'a> {
 }
 
 fn innocent_looking_victim() {
-    let mut x = Some(~"hello");
+    let mut x = Some("hello".to_owned());
     conspirator(|f, writer| {
         if writer {
             x = None;

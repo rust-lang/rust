@@ -19,10 +19,10 @@ use std::task;
 type ctx = Sender<int>;
 
 fn iotask(_tx: &ctx, ip: ~str) {
-    assert_eq!(ip, ~"localhost");
+    assert_eq!(ip, "localhost".to_owned());
 }
 
 pub fn main() {
     let (tx, _rx) = channel::<int>();
-    task::spawn(proc() iotask(&tx, ~"localhost") );
+    task::spawn(proc() iotask(&tx, "localhost".to_owned()) );
 }

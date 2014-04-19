@@ -10,5 +10,5 @@
 
 pub fn main() {
     fn as_buf<T>(s: ~str, f: |~str| -> T) -> T { f(s) }
-    as_buf(~"foo", |foo: ~str| -> () println!("{}", foo) );
+    as_buf("foo".to_owned(), |foo: ~str| -> () println!("{}", foo) );
 }

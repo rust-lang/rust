@@ -487,6 +487,7 @@ mod tests {
     use str::from_char;
     use char::from_u32;
     use vec::Vec;
+    use str::StrSlice;
 
     macro_rules! v2ascii (
         ( [$($e:expr),*]) => (&[$(Ascii{chr:$e}),*]);
@@ -536,14 +537,14 @@ mod tests {
         // FIXME: #5475 borrowchk error, owned vectors do not live long enough
         // if chained-from directly
         let v = ~[40u8, 32u8, 59u8]; assert_eq!(v.to_ascii(), v2ascii!([40, 32, 59]));
-        let v = ~"( ;";              assert_eq!(v.to_ascii(), v2ascii!([40, 32, 59]));
+        let v = "( ;".to_owned();              assert_eq!(v.to_ascii(), v2ascii!([40, 32, 59]));
 
-        assert_eq!("abCDef&?#".to_ascii().to_lower().into_str(), ~"abcdef&?#");
-        assert_eq!("abCDef&?#".to_ascii().to_upper().into_str(), ~"ABCDEF&?#");
+        assert_eq!("abCDef&?#".to_ascii().to_lower().into_str(), "abcdef&?#".to_owned());
+        assert_eq!("abCDef&?#".to_ascii().to_upper().into_str(), "ABCDEF&?#".to_owned());
 
-        assert_eq!("".to_ascii().to_lower().into_str(), ~"");
-        assert_eq!("YMCA".to_ascii().to_lower().into_str(), ~"ymca");
-        assert_eq!("abcDEFxyz:.;".to_ascii().to_upper().into_str(), ~"ABCDEFXYZ:.;");
+        assert_eq!("".to_ascii().to_lower().into_str(), "".to_owned());
+        assert_eq!("YMCA".to_ascii().to_lower().into_str(), "ymca".to_owned());
+        assert_eq!("abcDEFxyz:.;".to_ascii().to_upper().into_str(), "ABCDEFXYZ:.;".to_owned());
 
         assert!("aBcDeF&?#".to_ascii().eq_ignore_case("AbCdEf&?#".to_ascii()));
 
@@ -555,18 +556,19 @@ mod tests {
 
     #[test]
     fn test_ascii_vec_ng() {
-        assert_eq!(Vec::from_slice("abCDef&?#".to_ascii().to_lower()).into_str(), ~"abcdef&?#");
-        assert_eq!(Vec::from_slice("abCDef&?#".to_ascii().to_upper()).into_str(), ~"ABCDEF&?#");
-
-        assert_eq!(Vec::from_slice("".to_ascii().to_lower()).into_str(), ~"");
-        assert_eq!(Vec::from_slice("YMCA".to_ascii().to_lower()).into_str(), ~"ymca");
+        assert_eq!(Vec::from_slice("abCDef&?#".to_ascii().to_lower()).into_str(),
+                   "abcdef&?#".to_owned());
+        assert_eq!(Vec::from_slice("abCDef&?#".to_ascii().to_upper()).into_str(),
+                   "ABCDEF&?#".to_owned());
+        assert_eq!(Vec::from_slice("".to_ascii().to_lower()).into_str(), "".to_owned());
+        assert_eq!(Vec::from_slice("YMCA".to_ascii().to_lower()).into_str(), "ymca".to_owned());
         assert_eq!(Vec::from_slice("abcDEFxyz:.;".to_ascii().to_upper()).into_str(),
-                   ~"ABCDEFXYZ:.;");
+                   "ABCDEFXYZ:.;".to_owned());
     }
 
     #[test]
     fn test_owned_ascii_vec() {
-        assert_eq!((~"( ;").into_ascii(), v2ascii!(~[40, 32, 59]));
+        assert_eq!(("( ;".to_owned()).into_ascii(), v2ascii!(~[40, 32, 59]));
         assert_eq!((~[40u8, 32u8, 59u8]).into_ascii(), v2ascii!(~[40, 32, 59]));
     }
 
@@ -578,8 +580,8 @@ mod tests {
 
     #[test]
     fn test_ascii_into_str() {
-        assert_eq!(v2ascii!(~[40, 32, 59]).into_str(), ~"( ;");
-        assert_eq!(vec2ascii!(40, 32, 59).into_str(), ~"( ;");
+        assert_eq!(v2ascii!(~[40, 32, 59]).into_str(), "( ;".to_owned());
+        assert_eq!(vec2ascii!(40, 32, 59).into_str(), "( ;".to_owned());
     }
 
     #[test]
@@ -626,14 +628,14 @@ mod tests {
         assert_eq!((~[40u8, 32u8, 59u8]).into_ascii_opt(), Some(v2ascii!(~[40, 32, 59])));
         assert_eq!((~[127u8, 128u8, 255u8]).into_ascii_opt(), None);
 
-        assert_eq!((~"( ;").into_ascii_opt(), Some(v2ascii!(~[40, 32, 59])));
-        assert_eq!((~"zoä华").into_ascii_opt(), None);
+        assert_eq!(("( ;".to_owned()).into_ascii_opt(), Some(v2ascii!(~[40, 32, 59])));
+        assert_eq!(("zoä华".to_owned()).into_ascii_opt(), None);
     }
 
     #[test]
     fn test_to_ascii_upper() {
-        assert_eq!("url()URL()uRl()ürl".to_ascii_upper(), ~"URL()URL()URL()üRL");
-        assert_eq!("hıKß".to_ascii_upper(), ~"HıKß");
+        assert_eq!("url()URL()uRl()ürl".to_ascii_upper(), "URL()URL()URL()üRL".to_owned());
+        assert_eq!("hıKß".to_ascii_upper(), "HıKß".to_owned());
 
         let mut i = 0;
         while i <= 500 {
@@ -647,9 +649,9 @@ mod tests {
 
     #[test]
     fn test_to_ascii_lower() {
-        assert_eq!("url()URL()uRl()Ürl".to_ascii_lower(), ~"url()url()url()Ürl");
+        assert_eq!("url()URL()uRl()Ürl".to_ascii_lower(), "url()url()url()Ürl".to_owned());
         // Dotted capital I, Kelvin sign, Sharp S.
-        assert_eq!("HİKß".to_ascii_lower(), ~"hİKß");
+        assert_eq!("HİKß".to_ascii_lower(), "hİKß".to_owned());
 
         let mut i = 0;
         while i <= 500 {
@@ -663,8 +665,9 @@ mod tests {
 
     #[test]
     fn test_into_ascii_upper() {
-        assert_eq!((~"url()URL()uRl()ürl").into_ascii_upper(), ~"URL()URL()URL()üRL");
-        assert_eq!((~"hıKß").into_ascii_upper(), ~"HıKß");
+        assert_eq!(("url()URL()uRl()ürl".to_owned()).into_ascii_upper(),
+                   "URL()URL()URL()üRL".to_owned());
+        assert_eq!(("hıKß".to_owned()).into_ascii_upper(), "HıKß".to_owned());
 
         let mut i = 0;
         while i <= 500 {
@@ -678,9 +681,10 @@ mod tests {
 
     #[test]
     fn test_into_ascii_lower() {
-        assert_eq!((~"url()URL()uRl()Ürl").into_ascii_lower(), ~"url()url()url()Ürl");
+        assert_eq!(("url()URL()uRl()Ürl".to_owned()).into_ascii_lower(),
+                   "url()url()url()Ürl".to_owned());
         // Dotted capital I, Kelvin sign, Sharp S.
-        assert_eq!((~"HİKß").into_ascii_lower(), ~"hİKß");
+        assert_eq!(("HİKß".to_owned()).into_ascii_lower(), "hİKß".to_owned());
 
         let mut i = 0;
         while i <= 500 {
@@ -716,12 +720,12 @@ mod tests {
     #[test]
     fn test_to_str() {
         let s = Ascii{ chr: 't' as u8 }.to_str();
-        assert_eq!(s, ~"t");
+        assert_eq!(s, "t".to_owned());
     }
 
     #[test]
     fn test_show() {
         let c = Ascii { chr: 't' as u8 };
-        assert_eq!(format!("{}", c), ~"t");
+        assert_eq!(format!("{}", c), "t".to_owned());
     }
 }

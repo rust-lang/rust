@@ -19,5 +19,5 @@ impl Drop for foo {
 }
 
 pub fn main() {
-    let _z = foo { x: ~"Hello" };
+    let _z = foo { x: "Hello".to_owned() };
 }

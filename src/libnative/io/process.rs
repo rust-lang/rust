@@ -854,20 +854,20 @@ mod tests {
     fn test_make_command_line() {
         use super::make_command_line;
         assert_eq!(
-            make_command_line("prog", [~"aaa", ~"bbb", ~"ccc"]),
-            ~"prog aaa bbb ccc"
+            make_command_line("prog", ["aaa".to_owned(), "bbb".to_owned(), "ccc".to_owned()]),
+            "prog aaa bbb ccc".to_owned()
         );
         assert_eq!(
-            make_command_line("C:\\Program Files\\blah\\blah.exe", [~"aaa"]),
-            ~"\"C:\\Program Files\\blah\\blah.exe\" aaa"
+            make_command_line("C:\\Program Files\\blah\\blah.exe", ["aaa".to_owned()]),
+            "\"C:\\Program Files\\blah\\blah.exe\" aaa".to_owned()
         );
         assert_eq!(
-            make_command_line("C:\\Program Files\\test", [~"aa\"bb"]),
-            ~"\"C:\\Program Files\\test\" aa\\\"bb"
+            make_command_line("C:\\Program Files\\test", ["aa\"bb".to_owned()]),
+            "\"C:\\Program Files\\test\" aa\\\"bb".to_owned()
         );
         assert_eq!(
-            make_command_line("echo", [~"a b c"]),
-            ~"echo \"a b c\""
+            make_command_line("echo", ["a b c".to_owned()]),
+            "echo \"a b c\"".to_owned()
         );
     }
 }

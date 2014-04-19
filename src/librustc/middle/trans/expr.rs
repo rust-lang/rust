@@ -90,7 +90,7 @@ impl Dest {
     pub fn to_str(&self, ccx: &CrateContext) -> ~str {
         match *self {
             SaveIn(v) => format!("SaveIn({})", ccx.tn.val_to_str(v)),
-            Ignore => ~"Ignore"
+            Ignore => "Ignore".to_owned()
         }
     }
 }

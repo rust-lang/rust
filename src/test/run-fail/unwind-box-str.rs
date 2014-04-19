@@ -17,7 +17,7 @@ fn failfn() {
 }
 
 fn main() {
-    let x = @~"hi";
+    let x = @"hi".to_owned();
     failfn();
     println!("{:?}", x);
 }

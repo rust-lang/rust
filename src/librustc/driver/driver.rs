@@ -161,7 +161,7 @@ impl Input {
     fn filestem(&self) -> ~str {
         match *self {
             FileInput(ref ifile) => ifile.filestem_str().unwrap().to_str(),
-            StrInput(_) => ~"rust_out",
+            StrInput(_) => "rust_out".to_owned(),
         }
     }
 }
@@ -615,7 +615,7 @@ impl pprust::PpAnn for IdentifiedAnnotation {
             }
             pprust::NodeBlock(blk) => {
                 try!(pp::space(&mut s.s));
-                s.synth_comment(~"block " + blk.id.to_str())
+                s.synth_comment("block ".to_owned() + blk.id.to_str())
             }
             pprust::NodeExpr(expr) => {
                 try!(pp::space(&mut s.s));
@@ -624,7 +624,7 @@ impl pprust::PpAnn for IdentifiedAnnotation {
             }
             pprust::NodePat(pat) => {
                 try!(pp::space(&mut s.s));
-                s.synth_comment(~"pat " + pat.id.to_str())
+                s.synth_comment("pat ".to_owned() + pat.id.to_str())
             }
         }
     }
@@ -1242,7 +1242,7 @@ mod test {
     #[test]
     fn test_switch_implies_cfg_test() {
         let matches =
-            &match getopts([~"--test"], optgroups().as_slice()) {
+            &match getopts(["--test".to_owned()], optgroups().as_slice()) {
               Ok(m) => m,
               Err(f) => fail!("test_switch_implies_cfg_test: {}", f.to_err_msg())
             };
@@ -1257,7 +1257,7 @@ mod test {
     #[test]
     fn test_switch_implies_cfg_test_unless_cfg_test() {
         let matches =
-            &match getopts([~"--test", ~"--cfg=test"],
+            &match getopts(["--test".to_owned(), "--cfg=test".to_owned()],
                            optgroups().as_slice()) {
               Ok(m) => m,
               Err(f) => {

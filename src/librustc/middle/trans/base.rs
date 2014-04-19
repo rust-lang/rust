@@ -468,7 +468,7 @@ pub fn set_split_stack(f: ValueRef) {
 // silently mangles such symbols, breaking our linkage model.
 pub fn note_unique_llvm_symbol(ccx: &CrateContext, sym: ~str) {
     if ccx.all_llvm_symbols.borrow().contains(&sym) {
-        ccx.sess().bug(~"duplicate LLVM symbol: " + sym);
+        ccx.sess().bug("duplicate LLVM symbol: ".to_owned() + sym);
     }
     ccx.all_llvm_symbols.borrow_mut().insert(sym);
 }
@@ -696,7 +696,7 @@ pub fn iter_structural_ty<'r,
 
                   for variant in (*variants).iter() {
                       let variant_cx =
-                          fcx.new_temp_block(~"enum-iter-variant-" +
+                          fcx.new_temp_block("enum-iter-variant-".to_owned() +
                                              variant.disr_val.to_str());
                       match adt::trans_case(cx, repr, variant.disr_val) {
                           _match::single_result(r) => {
@@ -795,7 +795,7 @@ pub fn fail_if_zero<'a>(
         ICmp(cx, lib::llvm::IntEQ, rhs, zero)
       }
       _ => {
-        cx.sess().bug(~"fail-if-zero on unexpected type: " +
+        cx.sess().bug("fail-if-zero on unexpected type: ".to_owned() +
                       ty_to_str(cx.tcx(), rhs_t));
       }
     };
@@ -1108,7 +1108,7 @@ pub fn new_fn_ctxt<'a>(ccx: &'a CrateContext,
     for p in param_substs.iter() { p.validate(); }
 
     debug!("new_fn_ctxt(path={}, id={}, param_substs={})",
-           if id == -1 { ~"" } else { ccx.tcx.map.path_to_str(id) },
+           if id == -1 { "".to_owned() } else { ccx.tcx.map.path_to_str(id) },
            id, param_substs.repr(ccx.tcx()));
 
     let substd_output_type = match param_substs {
@@ -2188,10 +2188,12 @@ pub fn trans_crate(krate: ast::Crate,
     // symbol. This symbol is required for use by the libmorestack library that
     // we link in, so we must ensure that this symbol is not internalized (if
     // defined in the crate).
-    reachable.push(~"main");
-    reachable.push(~"rust_stack_exhausted");
-    reachable.push(~"rust_eh_personality"); // referenced from .eh_frame section on some platforms
-    reachable.push(~"rust_eh_personality_catch"); // referenced from rt/rust_try.ll
+    reachable.push("main".to_owned());
+    reachable.push("rust_stack_exhausted".to_owned());
+
+    // referenced from .eh_frame section on some platforms
+    reachable.push("rust_eh_personality".to_owned());
+    reachable.push("rust_eh_personality_catch".to_owned()); // referenced from rt/rust_try.ll
 
     let metadata_module = ccx.metadata_llmod;
 

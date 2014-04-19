@@ -129,12 +129,13 @@ fn make_sequence_processor(sz: uint,
    let buffer = match sz {
        1u => { sort_and_fmt(&freqs, total) }
        2u => { sort_and_fmt(&freqs, total) }
-       3u => { format!("{}\t{}", find(&freqs, ~"GGT"), "GGT") }
-       4u => { format!("{}\t{}", find(&freqs, ~"GGTA"), "GGTA") }
-       6u => { format!("{}\t{}", find(&freqs, ~"GGTATT"), "GGTATT") }
-      12u => { format!("{}\t{}", find(&freqs, ~"GGTATTTTAATT"), "GGTATTTTAATT") }
-      18u => { format!("{}\t{}", find(&freqs, ~"GGTATTTTAATTTATAGT"), "GGTATTTTAATTTATAGT") }
-        _ => { ~"" }
+       3u => { format!("{}\t{}", find(&freqs, "GGT".to_owned()), "GGT") }
+       4u => { format!("{}\t{}", find(&freqs, "GGTA".to_owned()), "GGTA") }
+       6u => { format!("{}\t{}", find(&freqs, "GGTATT".to_owned()), "GGTATT") }
+      12u => { format!("{}\t{}", find(&freqs, "GGTATTTTAATT".to_owned()), "GGTATTTTAATT") }
+      18u => { format!("{}\t{}", find(&freqs, "GGTATTTTAATTTATAGT".to_owned()),
+                       "GGTATTTTAATTTATAGT") }
+        _ => { "".to_owned() }
    };
 
     to_parent.send(buffer);

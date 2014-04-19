@@ -33,11 +33,11 @@ fn cat<U>(in_x : uint, in_y : int, in_info: Vec<U> ) -> cat<U> {
 
 pub fn main() {
   let mut nyan : cat<int> = cat::<int>(52u, 99, vec!(9));
-  let mut kitty = cat(1000u, 2, vec!(~"tabby"));
+  let mut kitty = cat(1000u, 2, vec!("tabby".to_owned()));
   assert_eq!(nyan.how_hungry, 99);
   assert_eq!(kitty.how_hungry, 2);
   nyan.speak(vec!(1,2,3));
   assert_eq!(nyan.meow_count(), 55u);
-  kitty.speak(vec!(~"meow", ~"mew", ~"purr", ~"chirp"));
+  kitty.speak(vec!("meow".to_owned(), "mew".to_owned(), "purr".to_owned(), "chirp".to_owned()));
   assert_eq!(kitty.meow_count(), 1004u);
 }

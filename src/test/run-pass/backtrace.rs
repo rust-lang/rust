@@ -41,12 +41,12 @@ fn runtest(me: &str) {
         Some(i) => { env.remove(i); }
         None => {}
     }
-    env.push((~"RUST_BACKTRACE", ~"1"));
+    env.push(("RUST_BACKTRACE".to_owned(), "1".to_owned()));
 
     // Make sure that the stack trace is printed
     let mut p = Process::configure(ProcessConfig {
         program: me,
-        args: [~"fail"],
+        args: ["fail".to_owned()],
         env: Some(env.as_slice()),
         .. ProcessConfig::new()
     }).unwrap();
@@ -59,7 +59,7 @@ fn runtest(me: &str) {
     // Make sure the stack trace is *not* printed
     let mut p = Process::configure(ProcessConfig {
         program: me,
-        args: [~"fail"],
+        args: ["fail".to_owned()],
         .. ProcessConfig::new()
     }).unwrap();
     let out = p.wait_with_output();
@@ -71,7 +71,7 @@ fn runtest(me: &str) {
     // Make sure a stack trace is printed
     let mut p = Process::configure(ProcessConfig {
         program: me,
-        args: [~"double-fail"],
+        args: ["double-fail".to_owned()],
         .. ProcessConfig::new()
     }).unwrap();
     let out = p.wait_with_output();
@@ -83,7 +83,7 @@ fn runtest(me: &str) {
     // Make sure a stack trace isn't printed too many times
     let mut p = Process::configure(ProcessConfig {
         program: me,
-        args: [~"double-fail"],
+        args: ["double-fail".to_owned()],
         env: Some(env.as_slice()),
         .. ProcessConfig::new()
     }).unwrap();

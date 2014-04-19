@@ -20,7 +20,7 @@ extern crate collections;
    This originally came from the word-count benchmark.
 */
 
-pub fn map(filename: ~str, emit: map_reduce::putter) { emit(filename, ~"1"); }
+pub fn map(filename: ~str, emit: map_reduce::putter) { emit(filename, "1".to_owned()); }
 
 mod map_reduce {
     use collections::HashMap;
@@ -96,5 +96,5 @@ mod map_reduce {
 }
 
 pub fn main() {
-    map_reduce::map_reduce(vec!(~"../src/test/run-pass/hashmap-memory.rs"));
+    map_reduce::map_reduce(vec!("../src/test/run-pass/hashmap-memory.rs".to_owned()));
 }

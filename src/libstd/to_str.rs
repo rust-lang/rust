@@ -35,26 +35,27 @@ impl<T: fmt::Show> ToStr for T {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use str::StrSlice;
 
     #[test]
     fn test_simple_types() {
-        assert_eq!(1i.to_str(), ~"1");
-        assert_eq!((-1i).to_str(), ~"-1");
-        assert_eq!(200u.to_str(), ~"200");
-        assert_eq!(2u8.to_str(), ~"2");
-        assert_eq!(true.to_str(), ~"true");
-        assert_eq!(false.to_str(), ~"false");
-        assert_eq!(().to_str(), ~"()");
-        assert_eq!((~"hi").to_str(), ~"hi");
+        assert_eq!(1i.to_str(), "1".to_owned());
+        assert_eq!((-1i).to_str(), "-1".to_owned());
+        assert_eq!(200u.to_str(), "200".to_owned());
+        assert_eq!(2u8.to_str(), "2".to_owned());
+        assert_eq!(true.to_str(), "true".to_owned());
+        assert_eq!(false.to_str(), "false".to_owned());
+        assert_eq!(().to_str(), "()".to_owned());
+        assert_eq!(("hi".to_owned()).to_str(), "hi".to_owned());
     }
 
     #[test]
     fn test_vectors() {
         let x: ~[int] = ~[];
-        assert_eq!(x.to_str(), ~"[]");
-        assert_eq!((~[1]).to_str(), ~"[1]");
-        assert_eq!((~[1, 2, 3]).to_str(), ~"[1, 2, 3]");
+        assert_eq!(x.to_str(), "[]".to_owned());
+        assert_eq!((~[1]).to_str(), "[1]".to_owned());
+        assert_eq!((~[1, 2, 3]).to_str(), "[1, 2, 3]".to_owned());
         assert!((~[~[], ~[1], ~[1, 1]]).to_str() ==
-               ~"[[], [1], [1, 1]]");
+               "[[], [1], [1, 1]]".to_owned());
     }
 }

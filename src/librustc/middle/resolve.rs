@@ -2126,7 +2126,7 @@ impl<'a> Resolver<'a> {
             SingleImport(_, source) => {
                 token::get_ident(source).get().to_str()
             }
-            GlobImport => ~"*"
+            GlobImport => "*".to_owned()
         }
     }
 
@@ -4617,7 +4617,7 @@ impl<'a> Resolver<'a> {
                     self.session.add_lint(UnnecessaryQualification,
                                           id,
                                           path.span,
-                                          ~"unnecessary qualification");
+                                          "unnecessary qualification".to_owned());
                 }
                 _ => ()
             }
@@ -5300,7 +5300,8 @@ impl<'a> Resolver<'a> {
                         ViewPathGlob(_, id) => {
                             if !self.used_imports.contains(&(id, TypeNS)) &&
                                !self.used_imports.contains(&(id, ValueNS)) {
-                                self.session.add_lint(UnusedImports, id, p.span, ~"unused import");
+                                self.session.add_lint(UnusedImports, id, p.span,
+                                                      "unused import".to_owned());
                             }
                         },
                     }
@@ -5321,7 +5322,7 @@ impl<'a> Resolver<'a> {
 
         if !self.used_imports.contains(&(id, TypeNS)) &&
            !self.used_imports.contains(&(id, ValueNS)) {
-            self.session.add_lint(UnusedImports, id, span, ~"unused import");
+            self.session.add_lint(UnusedImports, id, span, "unused import".to_owned());
         }
 
         let (v_priv, t_priv) = match self.last_private.find(&id) {
@@ -5386,7 +5387,7 @@ impl<'a> Resolver<'a> {
         }
 
         if idents.len() == 0 {
-            return ~"???";
+            return "???".to_owned();
         }
         return self.idents_to_str(idents.move_iter()
                                         .rev()
@@ -5409,18 +5410,18 @@ impl<'a> Resolver<'a> {
         for (&name, import_resolution) in import_resolutions.iter() {
             let value_repr;
             match import_resolution.target_for_namespace(ValueNS) {
-                None => { value_repr = ~""; }
+                None => { value_repr = "".to_owned(); }
                 Some(_) => {
-                    value_repr = ~" value:?";
+                    value_repr = " value:?".to_owned();
                     // FIXME #4954
                 }
             }
 
             let type_repr;
             match import_resolution.target_for_namespace(TypeNS) {
-                None => { type_repr = ~""; }
+                None => { type_repr = "".to_owned(); }
                 Some(_) => {
-                    type_repr = ~" type:?";
+                    type_repr = " type:?".to_owned();
                     // FIXME #4954
                 }
             }

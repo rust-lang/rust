@@ -11,6 +11,6 @@
 use std::rc::Rc;
 
 pub fn main() {
-    let _x = *Rc::new(~"hi");
+    let _x = *Rc::new("hi".to_owned());
     //~^ ERROR cannot move out of dereference of `&`-pointer
 }

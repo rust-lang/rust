@@ -13,10 +13,10 @@
 enum color { red = 1, green, blue, imaginary = -1, }
 
 pub fn main() {
-    test_color(red, 1, ~"red");
-    test_color(green, 2, ~"green");
-    test_color(blue, 3, ~"blue");
-    test_color(imaginary, -1, ~"imaginary");
+    test_color(red, 1, "red".to_owned());
+    test_color(green, 2, "green".to_owned());
+    test_color(blue, 3, "blue".to_owned());
+    test_color(imaginary, -1, "imaginary".to_owned());
 }
 
 fn test_color(color: color, val: int, _name: ~str) {

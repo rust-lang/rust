@@ -214,8 +214,8 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
         root_path: StrBuf::new(),
         sidebar: HashMap::new(),
         layout: layout::Layout {
-            logo: ~"",
-            favicon: ~"",
+            logo: "".to_owned(),
+            favicon: "".to_owned(),
             krate: krate.name.clone(),
         },
         include_sources: true,
@@ -309,7 +309,7 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
         let mut w = MemWriter::new();
         try!(write!(&mut w, r#"searchIndex['{}'] = \{"items":["#, krate.name));
 
-        let mut lastpath = ~"";
+        let mut lastpath = "".to_owned();
         for (i, item) in cache.search_index.iter().enumerate() {
             // Omit the path if it is same to that of the prior item.
             let path;

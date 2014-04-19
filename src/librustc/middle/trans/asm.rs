@@ -137,11 +137,11 @@ pub fn trans_inline_asm<'a>(bcx: &'a Block<'a>, ia: &ast::InlineAsm)
 #[cfg(target_arch = "arm")]
 #[cfg(target_arch = "mips")]
 fn getClobbers() -> ~str {
-    ~""
+    "".to_owned()
 }
 
 #[cfg(target_arch = "x86")]
 #[cfg(target_arch = "x86_64")]
 fn getClobbers() -> ~str {
-    ~"~{dirflag},~{fpsr},~{flags}"
+    "~{dirflag},~{fpsr},~{flags}".to_owned()
 }
