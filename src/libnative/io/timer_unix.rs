@@ -53,8 +53,9 @@ use std::ptr;
 use std::rt::rtio;
 use std::sync::atomics;
 
-use io::file::FileDesc;
 use io::IoResult;
+use io::c;
+use io::file::FileDesc;
 use io::timer_helper;
 
 pub struct Timer {
@@ -84,16 +85,16 @@ pub enum Req {
 }
 
 // returns the current time (in milliseconds)
-fn now() -> u64 {
+pub fn now() -> u64 {
     unsafe {
         let mut now: libc::timeval = mem::init();
-        assert_eq!(imp::gettimeofday(&mut now, ptr::null()), 0);
+        assert_eq!(c::gettimeofday(&mut now, ptr::null()), 0);
         return (now.tv_sec as u64) * 1000 + (now.tv_usec as u64) / 1000;
     }
 }
 
 fn helper(input: libc::c_int, messages: Receiver<Req>) {
-    let mut set: imp::fd_set = unsafe { mem::init() };
+    let mut set: c::fd_set = unsafe { mem::init() };
 
     let mut fd = FileDesc::new(input, true);
     let mut timeout: libc::timeval = unsafe { mem::init() };
@@ -150,9 +151,9 @@ fn helper(input: libc::c_int, messages: Receiver<Req>) {
             &timeout as *libc::timeval
         };
 
-        imp::fd_set(&mut set, input);
+        c::fd_set(&mut set, input);
         match unsafe {
-            imp::select(input + 1, &set, ptr::null(), ptr::null(), timeout)
+            c::select(input + 1, &set, ptr::null(), ptr::null(), timeout)
         } {
             // timed out
             0 => signal(&mut active, &mut dead),
@@ -281,61 +282,5 @@ impl rtio::RtioTimer for Timer {
 impl Drop for Timer {
     fn drop(&mut self) {
         self.inner = Some(self.inner());
-    }
-}
-
-#[cfg(target_os = "macos")]
-mod imp {
-    use libc;
-
-    pub static FD_SETSIZE: uint = 1024;
-
-    pub struct fd_set {
-        fds_bits: [i32, ..(FD_SETSIZE / 32)]
-    }
-
-    pub fn fd_set(set: &mut fd_set, fd: i32) {
-        set.fds_bits[(fd / 32) as uint] |= 1 << (fd % 32);
-    }
-
-    extern {
-        pub fn select(nfds: libc::c_int,
-                      readfds: *fd_set,
-                      writefds: *fd_set,
-                      errorfds: *fd_set,
-                      timeout: *libc::timeval) -> libc::c_int;
-
-        pub fn gettimeofday(timeval: *mut libc::timeval,
-                            tzp: *libc::c_void) -> libc::c_int;
-    }
-}
-
-#[cfg(target_os = "android")]
-#[cfg(target_os = "freebsd")]
-#[cfg(target_os = "linux")]
-mod imp {
-    use libc;
-    use std::uint;
-
-    pub static FD_SETSIZE: uint = 1024;
-
-    pub struct fd_set {
-        fds_bits: [uint, ..(FD_SETSIZE / uint::BITS)]
-    }
-
-    pub fn fd_set(set: &mut fd_set, fd: i32) {
-        let fd = fd as uint;
-        set.fds_bits[fd / uint::BITS] |= 1 << (fd % uint::BITS);
-    }
-
-    extern {
-        pub fn select(nfds: libc::c_int,
-                      readfds: *fd_set,
-                      writefds: *fd_set,
-                      errorfds: *fd_set,
-                      timeout: *libc::timeval) -> libc::c_int;
-
-        pub fn gettimeofday(timeval: *mut libc::timeval,
-                            tzp: *libc::c_void) -> libc::c_int;
     }
 }

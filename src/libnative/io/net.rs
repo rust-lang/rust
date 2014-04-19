@@ -8,15 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use libc;
 use std::cast;
 use std::io::net::ip;
 use std::io;
-use libc;
 use std::mem;
+use std::ptr;
 use std::rt::rtio;
 use std::sync::arc::UnsafeArc;
 
 use super::{IoResult, retry, keep_going};
+use super::c;
 
 ////////////////////////////////////////////////////////////////////////////////
 // sockaddr and misc bindings
@@ -115,12 +117,26 @@ fn setsockopt<T>(fd: sock_t, opt: libc::c_int, val: libc::c_int,
     }
 }
 
+fn getsockopt<T: Copy>(fd: sock_t, opt: libc::c_int,
+                       val: libc::c_int) -> IoResult<T> {
+    unsafe {
+        let mut slot: T = mem::init();
+        let mut len = mem::size_of::<T>() as libc::socklen_t;
+        let ret = c::getsockopt(fd, opt, val,
+                                &mut slot as *mut _ as *mut _,
+                                &mut len);
+        if ret != 0 {
+            Err(last_error())
+        } else {
+            assert!(len as uint == mem::size_of::<T>());
+            Ok(slot)
+        }
+    }
+}
+
 #[cfg(windows)]
 fn last_error() -> io::IoError {
-    extern "system" {
-        fn WSAGetLastError() -> libc::c_int;
-    }
-    io::IoError::from_errno(unsafe { WSAGetLastError() } as uint, true)
+    io::IoError::from_errno(unsafe { c::WSAGetLastError() } as uint, true)
 }
 
 #[cfg(not(windows))]
@@ -197,24 +213,6 @@ pub fn init() {}
 
 #[cfg(windows)]
 pub fn init() {
-    static WSADESCRIPTION_LEN: uint = 256;
-    static WSASYS_STATUS_LEN: uint = 128;
-    struct WSADATA {
-        wVersion: libc::WORD,
-        wHighVersion: libc::WORD,
-        szDescription: [u8, ..WSADESCRIPTION_LEN + 1],
-        szSystemStatus: [u8, ..WSASYS_STATUS_LEN + 1],
-        iMaxSockets: u16,
-        iMaxUdpDg: u16,
-        lpVendorInfo: *u8,
-    }
-    type LPWSADATA = *mut WSADATA;
-
-    #[link(name = "ws2_32")]
-    extern "system" {
-        fn WSAStartup(wVersionRequested: libc::WORD,
-                       lpWSAData: LPWSADATA) -> libc::c_int;
-    }
 
     unsafe {
         use std::unstable::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
@@ -223,9 +221,9 @@ pub fn init() {
 
         let _guard = LOCK.lock();
         if !INITIALIZED {
-            let mut data: WSADATA = mem::init();
-            let ret = WSAStartup(0x202,      // version 2.2
-                                 &mut data);
+            let mut data: c::WSADATA = mem::init();
+            let ret = c::WSAStartup(0x202,      // version 2.2
+                                    &mut data);
             assert_eq!(ret, 0);
             INITIALIZED = true;
         }
@@ -245,21 +243,117 @@ struct Inner {
 }
 
 impl TcpStream {
-    pub fn connect(addr: ip::SocketAddr) -> IoResult<TcpStream> {
-        unsafe {
-            socket(addr, libc::SOCK_STREAM).and_then(|fd| {
-                let (addr, len) = addr_to_sockaddr(addr);
-                let addrp = &addr as *libc::sockaddr_storage;
-                let inner = Inner { fd: fd };
-                let ret = TcpStream { inner: UnsafeArc::new(inner) };
-                match retry(|| {
-                    libc::connect(fd, addrp as *libc::sockaddr,
-                                  len as libc::socklen_t)
-                }) {
+    pub fn connect(addr: ip::SocketAddr,
+                   timeout: Option<u64>) -> IoResult<TcpStream> {
+        let fd = try!(socket(addr, libc::SOCK_STREAM));
+        let (addr, len) = addr_to_sockaddr(addr);
+        let inner = Inner { fd: fd };
+        let ret = TcpStream { inner: UnsafeArc::new(inner) };
+
+        let len = len as libc::socklen_t;
+        let addrp = &addr as *_ as *libc::sockaddr;
+        match timeout {
+            Some(timeout) => {
+                try!(TcpStream::connect_timeout(fd, addrp, len, timeout));
+                Ok(ret)
+            },
+            None => {
+                match retry(|| unsafe { libc::connect(fd, addrp, len) }) {
                     -1 => Err(last_error()),
                     _ => Ok(ret),
                 }
+            }
+        }
+    }
+
+    // See http://developerweb.net/viewtopic.php?id=3196 for where this is
+    // derived from.
+    fn connect_timeout(fd: sock_t,
+                       addrp: *libc::sockaddr,
+                       len: libc::socklen_t,
+                       timeout: u64) -> IoResult<()> {
+        use std::os;
+        #[cfg(unix)]    use INPROGRESS = libc::EINPROGRESS;
+        #[cfg(windows)] use INPROGRESS = libc::WSAEINPROGRESS;
+        #[cfg(unix)]    use WOULDBLOCK = libc::EWOULDBLOCK;
+        #[cfg(windows)] use WOULDBLOCK = libc::WSAEWOULDBLOCK;
+
+        // Make sure the call to connect() doesn't block
+        try!(set_nonblocking(fd, true));
+
+        let ret = match unsafe { libc::connect(fd, addrp, len) } {
+            // If the connection is in progress, then we need to wait for it to
+            // finish (with a timeout). The current strategy for doing this is
+            // to use select() with a timeout.
+            -1 if os::errno() as int == INPROGRESS as int ||
+                  os::errno() as int == WOULDBLOCK as int => {
+                let mut set: c::fd_set = unsafe { mem::init() };
+                c::fd_set(&mut set, fd);
+                match await(fd, &mut set, timeout) {
+                    0 => Err(io::IoError {
+                        kind: io::TimedOut,
+                        desc: "connection timed out",
+                        detail: None,
+                    }),
+                    -1 => Err(last_error()),
+                    _ => {
+                        let err: libc::c_int = try!(
+                            getsockopt(fd, libc::SOL_SOCKET, libc::SO_ERROR));
+                        if err == 0 {
+                            Ok(())
+                        } else {
+                            Err(io::IoError::from_errno(err as uint, true))
+                        }
+                    }
+                }
+            }
+
+            -1 => Err(last_error()),
+            _ => Ok(()),
+        };
+
+        // be sure to turn blocking I/O back on
+        try!(set_nonblocking(fd, false));
+        return ret;
+
+        #[cfg(unix)]
+        fn set_nonblocking(fd: sock_t, nb: bool) -> IoResult<()> {
+            let set = nb as libc::c_int;
+            super::mkerr_libc(retry(|| unsafe { c::ioctl(fd, c::FIONBIO, &set) }))
+        }
+        #[cfg(windows)]
+        fn set_nonblocking(fd: sock_t, nb: bool) -> IoResult<()> {
+            let mut set = nb as libc::c_ulong;
+            if unsafe { c::ioctlsocket(fd, c::FIONBIO, &mut set) != 0 } {
+                Err(last_error())
+            } else {
+                Ok(())
+            }
+        }
+
+        #[cfg(unix)]
+        fn await(fd: sock_t, set: &mut c::fd_set, timeout: u64) -> libc::c_int {
+            let start = ::io::timer::now();
+            retry(|| unsafe {
+                // Recalculate the timeout each iteration (it is generally
+                // undefined what the value of the 'tv' is after select
+                // returns EINTR).
+                let timeout = timeout - (::io::timer::now() - start);
+                let tv = libc::timeval {
+                    tv_sec: (timeout / 1000) as libc::time_t,
+                    tv_usec: ((timeout % 1000) * 1000) as libc::suseconds_t,
+                };
+                c::select(fd + 1, ptr::null(), set as *mut _ as *_,
+                          ptr::null(), &tv)
             })
+        }
+        #[cfg(windows)]
+        fn await(_fd: sock_t, set: &mut c::fd_set, timeout: u64) -> libc::c_int {
+            let tv = libc::timeval {
+                tv_sec: (timeout / 1000) as libc::time_t,
+                tv_usec: ((timeout % 1000) * 1000) as libc::suseconds_t,
+            };
+            unsafe { c::select(1, ptr::mut_null(), set, ptr::mut_null(), &tv) }
         }
     }
 

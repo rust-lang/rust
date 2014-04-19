@@ -454,7 +454,7 @@ fn spawn_process_os(config: p::ProcessConfig,
                     err_fd: c_int) -> IoResult<SpawnProcessResult> {
     use libc::funcs::posix88::unistd::{fork, dup2, close, chdir, execvp};
     use libc::funcs::bsd44::getdtablesize;
-    use libc::c_ulong;
+    use io::c;
 
     mod rustrt {
         extern {
@@ -475,16 +475,7 @@ fn spawn_process_os(config: p::ProcessConfig,
     }
 
     unsafe fn set_cloexec(fd: c_int) {
-        extern { fn ioctl(fd: c_int, req: c_ulong) -> c_int; }
-
-        #[cfg(target_os = "macos")]
-        #[cfg(target_os = "freebsd")]
-        static FIOCLEX: c_ulong = 0x20006601;
-        #[cfg(target_os = "linux")]
-        #[cfg(target_os = "android")]
-        static FIOCLEX: c_ulong = 0x5451;
-
-        let ret = ioctl(fd, FIOCLEX);
+        let ret = c::ioctl(fd, c::FIOCLEX);
         assert_eq!(ret, 0);
     }
 

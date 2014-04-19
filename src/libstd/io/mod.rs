@@ -430,6 +430,8 @@ pub enum IoErrorKind {
     IoUnavailable,
     /// A parameter was incorrect in a way that caused an I/O error not part of this list.
     InvalidInput,
+    /// The I/O operation's timeout expired, causing it to be canceled.
+    TimedOut,
 }
 
 /// A trait for objects which are byte-oriented streams. Readers are defined by
