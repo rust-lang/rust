@@ -566,9 +566,9 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::Item) {
         // These don't define types.
         ast::ItemForeignMod(_) | ast::ItemMod(_) | ast::ItemMac(_) => {}
         ast::ItemEnum(ref enum_definition, ref generics) => {
-            ensure_no_ty_param_bounds(ccx, it.span, generics, "enumeration");
             let tpt = ty_of_item(ccx, it);
             write_ty_to_tcx(tcx, it.id, tpt.ty);
+            tcx.tcache.borrow_mut().insert(local_def(it.id), tpt.clone());
             get_enum_variant_types(ccx,
                                    tpt.ty,
                                    enum_definition.variants.as_slice(),
@@ -580,9 +580,9 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::Item) {
             write_ty_to_tcx(tcx, it.id, selfty);
 
             tcx.tcache.borrow_mut().insert(local_def(it.id),
-                                ty_param_bounds_and_ty {
-                                    generics: ty_generics.clone(),
-                                    ty: selfty});
+                                           ty_param_bounds_and_ty {
+                                               generics: ty_generics.clone(),
+                                               ty: selfty});
 
             // If there is a trait reference, treat the methods as always public.
             // This is to work around some incorrect behavior in privacy checking:
@@ -634,9 +634,7 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::Item) {
             // static trait methods. This is somewhat unfortunate.
             ensure_trait_methods(ccx, it.id);
         },
-        ast::ItemStruct(struct_def, ref generics) => {
-            ensure_no_ty_param_bounds(ccx, it.span, generics, "structure");
-
+        ast::ItemStruct(struct_def, _) => {
             // Write the class type
             let tpt = ty_of_item(ccx, it);
             write_ty_to_tcx(tcx, it.id, tpt.ty);
