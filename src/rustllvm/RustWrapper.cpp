@@ -77,6 +77,18 @@ extern "C" void LLVMAddFunctionAttrString(LLVMValueRef fn, const char *Name) {
   unwrap<Function>(fn)->addFnAttr(Name);
 }
 
+extern "C" void LLVMRemoveFunctionAttrString(LLVMValueRef fn, const char *Name) {
+  Function *f = unwrap<Function>(fn);
+  LLVMContext &C = f->getContext();
+  AttrBuilder B;
+  B.addAttribute(Name);
+  AttributeSet to_remove = AttributeSet::get(C, AttributeSet::FunctionIndex, B);
+
+  AttributeSet attrs = f->getAttributes();
+  f->setAttributes(attrs.removeAttributes(f->getContext(),
+                                          AttributeSet::FunctionIndex,
+                                          to_remove));
+}
 
 extern "C" void LLVMAddReturnAttribute(LLVMValueRef Fn, LLVMAttribute PA) {
   Function *A = unwrap<Function>(Fn);
