@@ -48,14 +48,18 @@ impl TimerWatcher {
         return me.install();
     }
 
-    fn start(&mut self, msecs: u64, period: u64) {
+    pub fn start(&mut self, f: uvll::uv_timer_cb, msecs: u64, period: u64) {
         assert_eq!(unsafe {
-            uvll::uv_timer_start(self.handle, timer_cb, msecs, period)
+            uvll::uv_timer_start(self.handle, f, msecs, period)
         }, 0)
     }
 
-    fn stop(&mut self) {
+    pub fn stop(&mut self) {
         assert_eq!(unsafe { uvll::uv_timer_stop(self.handle) }, 0)
+    }
+
+    pub unsafe fn set_data<T>(&mut self, data: *T) {
+        uvll::set_data_for_uv_handle(self.handle, data);
     }
 }
 
@@ -92,7 +96,7 @@ impl RtioTimer for TimerWatcher {
 
         self.action = Some(WakeTask);
         wait_until_woken_after(&mut self.blocker, &self.uv_loop(), || {
-            self.start(msecs, 0);
+            self.start(timer_cb, msecs, 0);
         });
         self.stop();
     }
@@ -106,7 +110,7 @@ impl RtioTimer for TimerWatcher {
             let _m = self.fire_homing_missile();
             self.id += 1;
             self.stop();
-            self.start(msecs, 0);
+            self.start(timer_cb, msecs, 0);
             mem::replace(&mut self.action, Some(SendOnce(tx)))
         };
 
@@ -122,7 +126,7 @@ impl RtioTimer for TimerWatcher {
             let _m = self.fire_homing_missile();
             self.id += 1;
             self.stop();
-            self.start(msecs, msecs);
+            self.start(timer_cb, msecs, msecs);
             mem::replace(&mut self.action, Some(SendMany(tx, self.id)))
         };
 

@@ -25,6 +25,7 @@ use stream::StreamWatcher;
 use super::{Loop, Request, UvError, Buf, status_to_io_result,
             uv_error_to_io_error, UvHandle, slice_to_uv_buf,
             wait_until_woken_after, wakeup};
+use timer::TimerWatcher;
 use uvio::UvIoFactory;
 use uvll;
 
@@ -198,10 +199,14 @@ impl TcpWatcher {
         }
     }
 
-    pub fn connect(io: &mut UvIoFactory, address: ip::SocketAddr)
-        -> Result<TcpWatcher, UvError>
-    {
-        struct Ctx { status: c_int, task: Option<BlockedTask> }
+    pub fn connect(io: &mut UvIoFactory,
+                   address: ip::SocketAddr,
+                   timeout: Option<u64>) -> Result<TcpWatcher, UvError> {
+        struct Ctx {
+            status: c_int,
+            task: Option<BlockedTask>,
+            timer: Option<~TimerWatcher>,
+        }
 
         let tcp = TcpWatcher::new(io);
         let (addr, _len) = addr_to_sockaddr(address);
@@ -215,24 +220,72 @@ impl TcpWatcher {
         return match result {
             0 => {
                 req.defuse(); // uv callback now owns this request
-                let mut cx = Ctx { status: 0, task: None };
+                let mut cx = Ctx { status: -1, task: None, timer: None };
+                match timeout {
+                    Some(t) => {
+                        let mut timer = TimerWatcher::new(io);
+                        timer.start(timer_cb, t, 0);
+                        cx.timer = Some(timer);
+                    }
+                    None => {}
+                }
                 wait_until_woken_after(&mut cx.task, &io.loop_, || {
-                    req.set_data(&cx);
+                    let data = &cx as *_;
+                    match cx.timer {
+                        Some(ref mut timer) => unsafe { timer.set_data(data) },
+                        None => {}
+                    }
+                    req.set_data(data);
                 });
+                // Make sure an erroneously fired callback doesn't have access
+                // to the context any more.
+                req.set_data(0 as *int);
+
+                // If we failed because of a timeout, drop the TcpWatcher as
+                // soon as possible because it's data is now set to null and we
+                // want to cancel the callback ASAP.
                 match cx.status {
                     0 => Ok(tcp),
-                    n => Err(UvError(n)),
+                    n => { drop(tcp); Err(UvError(n)) }
                 }
             }
             n => Err(UvError(n))
         };
 
+        extern fn timer_cb(handle: *uvll::uv_timer_t, status: c_int) {
+            // Don't close the corresponding tcp request, just wake up the task
+            // and let RAII take care of the pending watcher.
+            assert_eq!(status, 0);
+            let cx: &mut Ctx = unsafe {
+                &mut *(uvll::get_data_for_uv_handle(handle) as *mut Ctx)
+            };
+            cx.status = uvll::ECANCELED;
+            wakeup(&mut cx.task);
+        }
+
         extern fn connect_cb(req: *uvll::uv_connect_t, status: c_int) {
+            // This callback can be invoked with ECANCELED if the watcher is
+            // closed by the timeout callback. In that case we just want to free
+            // the request and be along our merry way.
             let req = Request::wrap(req);
-            assert!(status != uvll::ECANCELED);
+            if status == uvll::ECANCELED { return }
+
             let cx: &mut Ctx = unsafe { req.get_data() };
             cx.status = status;
-            wakeup(&mut cx.task);
+            match cx.timer {
+                Some(ref mut t) => t.stop(),
+                None => {}
+            }
+            // Note that the timer callback doesn't cancel the connect request
+            // (that's the job of uv_close()), so it's possible for this
+            // callback to get triggered after the timeout callback fires, but
+            // before the task wakes up. In that case, we did indeed
+            // successfully connect, but we don't need to wake someone up. We
+            // updated the status above (correctly so), and the task will pick
+            // up on this when it wakes up.
+            if cx.task.is_some() {
+                wakeup(&mut cx.task);
+            }
         }
     }
 }
@@ -741,7 +794,7 @@ mod test {
 
     #[test]
     fn connect_close_ip4() {
-        match TcpWatcher::connect(local_loop(), next_test_ip4()) {
+        match TcpWatcher::connect(local_loop(), next_test_ip4(), None) {
             Ok(..) => fail!(),
             Err(e) => assert_eq!(e.name(), "ECONNREFUSED".to_owned()),
         }
@@ -749,7 +802,7 @@ mod test {
 
     #[test]
     fn connect_close_ip6() {
-        match TcpWatcher::connect(local_loop(), next_test_ip6()) {
+        match TcpWatcher::connect(local_loop(), next_test_ip6(), None) {
             Ok(..) => fail!(),
             Err(e) => assert_eq!(e.name(), "ECONNREFUSED".to_owned()),
         }
@@ -799,7 +852,7 @@ mod test {
         });
 
         rx.recv();
-        let mut w = match TcpWatcher::connect(local_loop(), addr) {
+        let mut w = match TcpWatcher::connect(local_loop(), addr, None) {
             Ok(w) => w, Err(e) => fail!("{:?}", e)
         };
         match w.write([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) {
@@ -835,7 +888,7 @@ mod test {
         });
 
         rx.recv();
-        let mut w = match TcpWatcher::connect(local_loop(), addr) {
+        let mut w = match TcpWatcher::connect(local_loop(), addr, None) {
             Ok(w) => w, Err(e) => fail!("{:?}", e)
         };
         match w.write([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) {
@@ -928,7 +981,7 @@ mod test {
         });
 
         rx.recv();
-        let mut stream = TcpWatcher::connect(local_loop(), addr).unwrap();
+        let mut stream = TcpWatcher::connect(local_loop(), addr, None).unwrap();
         let mut buf = [0, .. 2048];
         let mut total_bytes_read = 0;
         while total_bytes_read < MAX {
@@ -1036,7 +1089,7 @@ mod test {
 
         spawn(proc() {
             let rx = rx.recv();
-            let mut stream = TcpWatcher::connect(local_loop(), addr).unwrap();
+            let mut stream = TcpWatcher::connect(local_loop(), addr, None).unwrap();
             stream.write([0, 1, 2, 3, 4, 5, 6, 7]).unwrap();
             stream.write([0, 1, 2, 3, 4, 5, 6, 7]).unwrap();
             rx.recv();
@@ -1088,9 +1141,9 @@ mod test {
             }
         });
 
-        let mut stream = TcpWatcher::connect(local_loop(), addr);
+        let mut stream = TcpWatcher::connect(local_loop(), addr, None);
         while stream.is_err() {
-            stream = TcpWatcher::connect(local_loop(), addr);
+            stream = TcpWatcher::connect(local_loop(), addr, None);
         }
         stream.unwrap().write([0, 1, 2, 3, 4, 5, 6, 7]).unwrap();
     }
@@ -1115,7 +1168,7 @@ mod test {
             drop(w.accept().unwrap());
         });
         rx.recv();
-        let _w = TcpWatcher::connect(local_loop(), addr).unwrap();
+        let _w = TcpWatcher::connect(local_loop(), addr, None).unwrap();
         fail!();
     }
 
