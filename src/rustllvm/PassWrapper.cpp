@@ -81,7 +81,9 @@ LLVMRustCreateTargetMachine(const char *triple,
 
     TargetOptions Options;
     Options.NoFramePointerElim = NoFramePointerElim;
+#if LLVM_VERSION_MINOR < 5
     Options.EnableSegmentedStacks = EnableSegmentedStacks;
+#endif
     Options.FloatABIType = FloatABI::Default;
     Options.UseSoftFloat = UseSoftFloat;
     if (UseSoftFloat) {
@@ -111,7 +113,11 @@ LLVMRustAddAnalysisPasses(LLVMTargetMachineRef TM,
                           LLVMPassManagerRef PMR,
                           LLVMModuleRef M) {
     PassManagerBase *PM = unwrap(PMR);
+#if LLVM_VERSION_MINOR >= 5
+    PM->add(new DataLayoutPass(unwrap(M)));
+#else
     PM->add(new DataLayout(unwrap(M)));
+#endif
     unwrap(TM)->addAnalysisPasses(*PM);
 }
 

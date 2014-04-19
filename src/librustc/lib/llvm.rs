@@ -1261,7 +1261,8 @@ pub mod llvm {
                                       LHS: ValueRef,
                                       CMP: ValueRef,
                                       RHS: ValueRef,
-                                      Order: AtomicOrdering)
+                                      Order: AtomicOrdering,
+                                      FailureOrder: AtomicOrdering)
                                       -> ValueRef;
         pub fn LLVMBuildAtomicRMW(B: BuilderRef,
                                   Op: AtomicBinOp,
@@ -1586,7 +1587,8 @@ pub mod llvm {
                                                Scope: DIDescriptor,
                                                File: DIFile,
                                                Line: c_uint,
-                                               Col: c_uint)
+                                               Col: c_uint,
+                                               Discriminator: c_uint)
                                                -> DILexicalBlock;
 
         pub fn LLVMDIBuilderCreateStaticVariable(Builder: DIBuilderRef,

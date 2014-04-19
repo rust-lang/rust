@@ -388,6 +388,7 @@ opt ccache 0 "invoke gcc/clang via ccache to reuse object files between builds"
 opt local-rust 0 "use an installed rustc rather than downloading a snapshot"
 opt pax-flags 0 "apply PaX flags to rustc binaries (required for GRSecurity/PaX-patched kernels)"
 opt inject-std-version 1 "inject the current compiler version of libstd into programs"
+opt llvm-static-stdcpp 0 "statically link to libstdc++ for LLVM"
 opt rpath 1 "build rpaths into rustc itself"
 opt nightly 0 "build nightly packages"
 opt verify-install 1 "verify installed binaries work"
@@ -579,26 +580,32 @@ then
         CFG_ENABLE_CLANG=1
         putvar CFG_ENABLE_CLANG
     else
-        # on OS X, with xcode 5 and newer, certain developers may have
-        # cc, gcc and g++ point to a  mixture of clang and gcc
-        # if so, this will create very strange build errors
-        # this last stanza is to detect some such problems and save the future rust
-        # contributor some time solving that issue.
-        # this detection could be generalized to other OSes aside from OS X
-        # but the issue seems most likely to happen on OS X
+        if [ $("$CFG_GCC" --version 2>&1 | grep -c ' 4\.[0-6]') -ne 0 ]; then
+            step_msg "older GCC found, using clang instead"
+            CFG_ENABLE_CLANG=1
+            putvar CFG_ENABLE_CLANG
+        else
+            # on OS X, with xcode 5 and newer, certain developers may have
+            # cc, gcc and g++ point to a  mixture of clang and gcc
+            # if so, this will create very strange build errors
+            # this last stanza is to detect some such problems and save the future rust
+            # contributor some time solving that issue.
+            # this detection could be generalized to other OSes aside from OS X
+            # but the issue seems most likely to happen on OS X
 
-        chk_cc () {
-            $1 --version 2> /dev/null | grep -q $2
-        }
-        # check that gcc, cc and g++ all point to the same compiler.
-        # note that for xcode 5, g++ points to clang, not clang++
-        if !((chk_cc gcc clang  && chk_cc g++ clang) ||
-            (chk_cc gcc gcc  &&( chk_cc g++ g++ || chk g++ gcc))) then
-            err "the gcc and g++ in your path point to different compilers.
-Check which versions are in your path with  cc --version and g++ --version.
-To resolve this problem, either fix your PATH  or run configure with --enable-clang"
+            chk_cc () {
+                $1 --version 2> /dev/null | grep -q $2
+            }
+            # check that gcc, cc and g++ all point to the same compiler.
+            # note that for xcode 5, g++ points to clang, not clang++
+            if !((chk_cc gcc clang  && chk_cc g++ clang) ||
+                (chk_cc gcc gcc  &&( chk_cc g++ g++ || chk g++ gcc))) then
+                err "the gcc and g++ in your path point to different compilers.
+    Check which versions are in your path with  cc --version and g++ --version.
+    To resolve this problem, either fix your PATH  or run configure with --enable-clang"
+            fi
+
         fi
-
     fi
 fi
 
@@ -921,10 +928,6 @@ do
         LLVM_OPTS="$LLVM_OPTS --disable-terminfo"
         # Try to have LLVM pull in as few dependencies as possible (#9397)
         LLVM_OPTS="$LLVM_OPTS --disable-zlib --disable-libffi"
-        # LLVM says it needs a "new" clang/gcc, but we seem to get by ok with
-        # older versions on the bots. Get by for a little longer by asking it to
-        # not do version detection
-        LLVM_OPTS="$LLVM_OPTS --disable-compiler-version-checks"
 
         # Use win32 native thread/lock apis instead of pthread wrapper.
         # (llvm's configure tries to find pthread first, so we have to disable it explicitly.)
@@ -942,6 +945,7 @@ do
 
             LLVM_CXX_64="ccache clang++ -Qunused-arguments"
             LLVM_CC_64="ccache clang -Qunused-arguments"
+            LLVM_OPTS="$LLVM_OPTS --enable-libcpp"
             ;;
             ("clang")
             LLVM_CXX_32="clang++ -m32 -Qunused-arguments"
@@ -949,6 +953,7 @@ do
 
             LLVM_CXX_64="clang++ -Qunused-arguments"
             LLVM_CC_64="clang -Qunused-arguments"
+            LLVM_OPTS="$LLVM_OPTS --enable-libcpp"
             ;;
             ("ccache gcc")
             LLVM_CXX_32="ccache g++ -m32"
