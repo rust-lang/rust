@@ -71,6 +71,9 @@ pub mod pipe;
 #[path = "pipe_win32.rs"]
 pub mod pipe;
 
+#[cfg(unix)]    #[path = "c_unix.rs"]  mod c;
+#[cfg(windows)] #[path = "c_win32.rs"] mod c;
+
 mod timer_helper;
 
 pub type IoResult<T> = Result<T, IoError>;
@@ -161,8 +164,9 @@ impl IoFactory {
 
 impl rtio::IoFactory for IoFactory {
     // networking
-    fn tcp_connect(&mut self, addr: SocketAddr) -> IoResult<~RtioTcpStream:Send> {
-        net::TcpStream::connect(addr).map(|s| ~s as ~RtioTcpStream:Send)
+    fn tcp_connect(&mut self, addr: SocketAddr,
+                   timeout: Option<u64>) -> IoResult<~RtioTcpStream:Send> {
+        net::TcpStream::connect(addr, timeout).map(|s| ~s as ~RtioTcpStream:Send)
     }
     fn tcp_bind(&mut self, addr: SocketAddr) -> IoResult<~RtioTcpListener:Send> {
         net::TcpListener::bind(addr).map(|s| ~s as ~RtioTcpListener:Send)
