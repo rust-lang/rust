@@ -1717,27 +1717,32 @@ environment (sometimes referred to as "capturing" variables in their
 environment). For example, you couldn't write the following:
 
 ~~~~ {.ignore}
-let foo = 10;
+let x = 3;
 
-// `bar` cannot refer to `foo`
-fn bar() -> () { println!("{}", foo); }
+// `fun` cannot refer to `x`
+fn fun() -> () { println!("{}", x); }
 ~~~~
 
 Rust also supports _closures_, functions that can access variables in
-the enclosing scope.  Compare `foo` in these:
+the enclosing scope.  Compare `x` in these:
 
 ~~~~
-fn            bar() -> () { println!("{}", foo) }; // cannot reach enclosing scope
-let closure = |foo| -> () { println!("{}", foo) }; // can reach enclosing scope
+let x = 3;
+
+// `fun` is an invalid definition
+fn  fun       () -> () { println!("{}", x) }; // cannot reach enclosing scope
+let closure = || -> () { println!("{}", x) }; // can reach enclosing scope
+
+fun();      // Still won't work
+closure();  // Prints: 3
 ~~~~
 
 Closures can be utilized in this fashion:
 
 ~~~~
-// Create a nameless function and assign it to `closure`.
-// It's sole argument is a yet unknown `foo` to be supplied
-// by the caller.
-let closure = |foo| -> () { println!("{}", foo) };
+// Create a nameless function and assign it to `closure`. It's sole
+// argument is a yet unknown `x` to be supplied by the caller.
+let closure = |x| -> () { println!("{}", x) };
 
 // Define `call_closure_with_ten` to take one argument and return null `()`.
 // `fun` is a function which takes one `int` argument `|int|` and also returns
@@ -1752,7 +1757,7 @@ call_closure_with_ten(closure);
 This can be simplified by removing null arguments:
 
 ~~~~
-let closure = |foo| println!("{}", foo);
+let closure = |x| println!("{}", x);
 fn call_closure_with_ten(fun: |int|) { fun(10); }
 
 call_closure_with_ten(closure);
