@@ -26,7 +26,7 @@ pub extern fn rust_stack_exhausted() {}
 #[no_split_stack]
 fn main(_: int, _: **u8) -> int {
     unsafe {
-        let (ptr, _): (*u8, uint) = transmute("Hello!");
+        let (ptr, _): (*u8, uint) = transmute("Hello!\0");
         puts(ptr);
     }
     return 0;
