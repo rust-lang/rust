@@ -27,15 +27,25 @@ use syntax::parse::ParseSess;
 use syntax::{abi, ast, codemap};
 use syntax;
 
+use machine::triple::Triple;
+
 use std::cell::{Cell, RefCell};
+use std::default::Default;
 use collections::HashSet;
 
 pub struct Config {
-    pub os: abi::Os,
-    pub arch: abi::Architecture,
+    pub target: Triple,
     pub target_strs: target_strs::t,
     pub int_type: IntTy,
     pub uint_type: UintTy,
+}
+impl Config {
+    pub fn os(&self) -> abi::Os {
+        self.target.expect_known_os()
+    }
+    pub fn arch(&self) -> abi::Architecture {
+        self.target.arch.clone()
+    }
 }
 
 macro_rules! debugging_opts(
@@ -327,8 +337,20 @@ impl Session {
         };
         filesearch::FileSearch::new(
             sysroot,
-            self.opts.target_triple,
+            self.target_triple().clone(),
             &self.opts.addl_lib_search_paths)
+    }
+    pub fn target_os(&self) -> abi::Os {
+        self.targ_cfg.os()
+    }
+    pub fn target_arch(&self) -> abi::Architecture {
+        self.targ_cfg.arch()
+    }
+    pub fn target_triple<'a>(&'a self) -> &'a Triple {
+        &self.targ_cfg.target
+    }
+    pub fn cross_compiling(&self) -> bool {
+        *self.target_triple() != Default::default()
     }
 }
 
@@ -544,17 +566,5 @@ pub fn collect_crate_types(session: &Session,
         base.as_mut_slice().sort();
         base.dedup();
         return base;
-    }
-}
-
-pub fn sess_os_to_meta_os(os: abi::Os) -> metadata::loader::Os {
-    use metadata::loader;
-
-    match os {
-        abi::OsWin32 => loader::OsWin32,
-        abi::OsLinux => loader::OsLinux,
-        abi::OsAndroid => loader::OsAndroid,
-        abi::OsMacos => loader::OsMacos,
-        abi::OsFreebsd => loader::OsFreebsd
     }
 }

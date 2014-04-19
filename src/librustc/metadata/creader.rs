@@ -14,20 +14,18 @@
 
 use back::link;
 use back::svh::Svh;
-use driver::{driver, session};
 use driver::session::Session;
 use metadata::cstore;
 use metadata::cstore::CStore;
 use metadata::decoder;
 use metadata::loader;
-use metadata::loader::Os;
 use metadata::loader::CratePaths;
 
 use std::cell::RefCell;
 use std::rc::Rc;
 use collections::HashMap;
+use syntax;
 use syntax::ast;
-use syntax::abi;
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
 use syntax::codemap::{Span};
@@ -37,10 +35,11 @@ use syntax::parse::token::{IdentInterner, InternedString};
 use syntax::parse::token;
 use syntax::crateid::CrateId;
 use syntax::visit;
+use machine::abi;
 
 struct Env<'a> {
     sess: &'a Session,
-    os: loader::Os,
+    os: abi::Os,
     next_crate_num: ast::CrateNum,
     intr: Rc<IdentInterner>
 }
@@ -49,7 +48,7 @@ struct Env<'a> {
 // libraries necessary for later resolving, typechecking, linking, etc.
 pub fn read_crates(sess: &Session,
                    krate: &ast::Crate,
-                   os: loader::Os,
+                   os: abi::Os,
                    intr: Rc<IdentInterner>) {
     let mut e = Env {
         sess: sess,
@@ -178,7 +177,7 @@ fn extract_crate_info(e: &Env, i: &ast::ViewItem) -> Option<CrateInfo> {
 fn visit_item(e: &Env, i: &ast::Item) {
     match i.node {
         ast::ItemForeignMod(ref fm) => {
-            if fm.abi == abi::Rust || fm.abi == abi::RustIntrinsic {
+            if fm.abi == syntax::abi::Rust || fm.abi == syntax::abi::RustIntrinsic {
                 return;
             }
 
@@ -215,7 +214,7 @@ fn visit_item(e: &Env, i: &ast::Item) {
                             Some(k) => {
                                 if k.equiv(&("static")) {
                                     cstore::NativeStatic
-                                } else if e.sess.targ_cfg.os == abi::OsMacos &&
+                                } else if e.sess.target_os() == abi::OsMacos &&
                                           k.equiv(&("framework")) {
                                     cstore::NativeFramework
                                 } else if k.equiv(&("framework")) {
@@ -387,8 +386,8 @@ pub struct Loader<'a> {
 
 impl<'a> Loader<'a> {
     pub fn new(sess: &'a Session) -> Loader<'a> {
-        let os = driver::get_os(driver::host_triple()).unwrap();
-        let os = session::sess_os_to_meta_os(os);
+        use machine::triple::Triple;
+        let os = Triple::host_triple().expect_known_os();
         Loader {
             env: Env {
                 sess: sess,
