@@ -709,6 +709,7 @@ pub mod llvm {
         pub fn LLVMSetGC(Fn: ValueRef, Name: *c_char);
         pub fn LLVMAddFunctionAttr(Fn: ValueRef, PA: c_uint);
         pub fn LLVMAddFunctionAttrString(Fn: ValueRef, Name: *c_char);
+        pub fn LLVMRemoveFunctionAttrString(Fn: ValueRef, Name: *c_char);
         pub fn LLVMGetFunctionAttr(Fn: ValueRef) -> c_ulonglong;
 
         pub fn LLVMAddReturnAttribute(Fn: ValueRef, PA: c_uint);
