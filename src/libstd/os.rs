@@ -419,7 +419,6 @@ pub fn self_exe_name() -> Option<Path> {
         unsafe {
             use libc::funcs::bsd44::*;
             use libc::consts::os::extra::*;
-            use slice;
             let mib = ~[CTL_KERN as c_int,
                         KERN_PROC as c_int,
                         KERN_PROC_PATHNAME as c_int, -1 as c_int];
@@ -429,14 +428,14 @@ pub fn self_exe_name() -> Option<Path> {
                              0u as libc::size_t);
             if err != 0 { return None; }
             if sz == 0 { return None; }
-            let mut v: ~[u8] = slice::with_capacity(sz as uint);
+            let mut v: Vec<u8> = Vec::with_capacity(sz as uint);
             let err = sysctl(mib.as_ptr(), mib.len() as ::libc::c_uint,
                              v.as_mut_ptr() as *mut c_void, &mut sz, ptr::null(),
                              0u as libc::size_t);
             if err != 0 { return None; }
             if sz == 0 { return None; }
             v.set_len(sz as uint - 1); // chop off trailing NUL
-            Some(v)
+            Some(v.move_iter().collect())
         }
     }
 
