@@ -169,6 +169,7 @@ LIBUV_DIR_$(1) := $$(RT_OUTPUT_DIR_$(1))/libuv
 LIBUV_LIB_$(1) := $$(RT_OUTPUT_DIR_$(1))/$$(LIBUV_NAME_$(1))
 
 LIBUV_MAKEFILE_$(1) := $$(CFG_BUILD_DIR)$$(RT_OUTPUT_DIR_$(1))/libuv/Makefile
+LIBUV_XCODEPROJ_$(1) := $$(S)src/libuv/uv-$(1).xcodeproj
 
 LIBUV_STAMP_$(1) = $$(LIBUV_DIR_$(1))/libuv-auto-clean-stamp
 
@@ -200,6 +201,30 @@ $$(LIBUV_LIB_$(1)): $$(LIBUV_DEPS) $$(MKFILE_DEPS)
 		AR="$$(AR_$(1))" \
 		V=$$(VERBOSE)
 	$$(Q)cp $$(S)src/libuv/libuv.a $$@
+else ifeq ($(OSTYPE_$(1)), apple-ios) # iOS
+
+$$(LIBUV_XCODEPROJ_$(1)): $$(LIBUV_DEPS) $$(MKFILE_DEPS) $$(LIBUV_STAMP_$(1))
+	(cd $(S)src/libuv/ && \
+	 $$(CFG_PYTHON) ./gyp_uv.py -f xcode \
+	   -D ninja \
+	   -R libuv)
+	touch $$@
+
+LIBUV_XCODE_OUT_LIB_$(1) := $$(S)src/libuv/build/Release-$$(CFG_SDK_NAME_$(1))/libuv.a
+
+$$(LIBUV_LIB_$(1)): $$(LIBUV_XCODE_OUT_LIB_$(1)) $$(MKFILE_DEPS)
+	$$(Q)cp $$< $$@
+$$(LIBUV_XCODE_OUT_LIB_$(1)): $$(LIBUV_DEPS) $$(LIBUV_XCODEPROJ_$(1)) \
+				    $$(MKFILE_DEPS)				    
+	$$(Q)xcodebuild -project $$(S)src/libuv/uv.xcodeproj \
+		CFLAGS="$$(LIBUV_CFLAGS_$(1)) $$(SNAP_DEFINES)" \
+		LDFLAGS="$$(CFG_GCCISH_LINK_FLAGS_$(1))" \
+		$$(LIBUV_ARGS_$(1)) \
+		V=$$(VERBOSE) \
+		-configuration Release \
+		-sdk "$$(CFG_SDK_NAME_$(1))" \
+		ARCHS="$$(CFG_SDK_ARCHS_$(1))"
+	$$(Q)touch $$@
 else
 $$(LIBUV_LIB_$(1)): $$(LIBUV_DIR_$(1))/Release/libuv.a $$(MKFILE_DEPS)
 	$$(Q)cp $$< $$@
@@ -216,7 +241,6 @@ $$(LIBUV_DIR_$(1))/Release/libuv.a: $$(LIBUV_DEPS) $$(LIBUV_MAKEFILE_$(1)) \
 		NO_LOAD="$$(LIBUV_NO_LOAD)" \
 		V=$$(VERBOSE)
 	$$(Q)touch $$@
-
 endif
 
 ################################################################################
@@ -270,6 +294,11 @@ $$(BACKTRACE_LIB_$(1)):
 	touch $$@
 
 else
+ifeq ($$(findstring ios,$$(OSTYPE_$(1))),ios)
+$$(BACKTRACE_LIB_$(1)):
+	touch $$@
+else
+
 ifeq ($$(CFG_WINDOWSY_$(1)),1)
 $$(BACKTRACE_LIB_$(1)):
 	touch $$@
@@ -315,6 +344,7 @@ $$(BACKTRACE_LIB_$(1)): $$(BACKTRACE_BUILD_DIR_$(1))/Makefile $$(MKFILE_DEPS)
 	$$(Q)cp $$(BACKTRACE_BUILD_DIR_$(1))/.libs/libbacktrace.a $$@
 
 endif # endif for windowsy
+endif # endif for ios
 endif # endif for darwin
 
 endef

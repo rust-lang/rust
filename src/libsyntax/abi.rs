@@ -11,7 +11,7 @@
 use std::fmt;
 
 #[deriving(Eq)]
-pub enum Os { OsWin32, OsMacos, OsLinux, OsAndroid, OsFreebsd, }
+pub enum Os { OsWin32, OsMacos, OsLinux, OsAndroid, OsFreebsd, OsiOS, }
 
 #[deriving(Eq, TotalEq, Hash, Encodable, Decodable, Clone)]
 pub enum Abi {

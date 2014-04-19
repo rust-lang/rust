@@ -166,6 +166,7 @@ mod imp {
 }
 
 #[cfg(target_os = "macos", not(test))]
+#[cfg(target_os = "ios", not(test))]
 #[cfg(target_os = "win32", not(test))]
 mod imp {
     use option::Option;

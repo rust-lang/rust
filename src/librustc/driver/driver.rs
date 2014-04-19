@@ -86,6 +86,7 @@ pub fn default_configuration(sess: &Session) ->
         abi::OsLinux =>   InternedString::new("linux"),
         abi::OsAndroid => InternedString::new("android"),
         abi::OsFreebsd => InternedString::new("freebsd"),
+        abi::OsiOS =>     InternedString::new("ios"),
     };
 
     // ARM is bi-endian, however using NDK seems to default
@@ -744,6 +745,7 @@ static os_names : &'static [(&'static str, abi::Os)] = &'static [
     ("mingw32", abi::OsWin32),
     ("win32",   abi::OsWin32),
     ("darwin",  abi::OsMacos),
+    ("ios",     abi::OsiOS),
     ("android", abi::OsAndroid),
     ("linux",   abi::OsLinux),
     ("freebsd", abi::OsFreebsd)];
