@@ -21,7 +21,7 @@
 #![allow(dead_code)]
 
 use std::cast;
-use libc::{c_void, c_int};
+use libc::c_void;
 use std::rt::task::BlockedTask;
 use std::unstable::mutex::NativeMutex;
 use std::sync::arc::UnsafeArc;
@@ -55,8 +55,7 @@ pub struct Queue {
     queue: UnsafeArc<State>,
 }
 
-extern fn async_cb(handle: *uvll::uv_async_t, status: c_int) {
-    assert_eq!(status, 0);
+extern fn async_cb(handle: *uvll::uv_async_t) {
     let pool: &mut QueuePool = unsafe {
         cast::transmute(uvll::get_data_for_uv_handle(handle))
     };
