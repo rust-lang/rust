@@ -669,10 +669,10 @@ impl<T: Send> SyncSender<T> {
 
     /// Attempts to send a value on this channel without blocking.
     ///
-    /// This method semantically differs from `Sender::send_opt` because it can
-    /// fail if the receiver has not disconnected yet. If the buffer on this
-    /// channel is full, this function will immediately return the data back to
-    /// the callee.
+    /// This method differs from `send_opt` by returning immediately if the
+    /// channel's buffer is full or no receiver is waiting to acquire some
+    /// data. Compared with `send_opt`, this function has two failure cases
+    /// instead of one (one for disconnection, one for a full buffer).
     ///
     /// See `SyncSender::send` for notes about guarantees of whether the
     /// receiver has received the data or not if this function is successful.
