@@ -278,6 +278,12 @@ pub fn finalize(cx: &CrateContext) {
         if cx.sess().targ_cfg.os == abi::OsMacos {
             "Dwarf Version".with_c_str(
                 |s| llvm::LLVMRustAddModuleFlag(cx.llmod, s, 2));
+        } else {
+            // FIXME(#13611) this is a kludge fix because the linux bots have
+            //               gdb 7.4 which doesn't understand dwarf4, we should
+            //               do something more graceful here.
+            "Dwarf Version".with_c_str(
+                |s| llvm::LLVMRustAddModuleFlag(cx.llmod, s, 3));
         }
 
         // Prevent bitcode readers from deleting the debug info.
@@ -2421,7 +2427,8 @@ fn populate_scope_map(cx: &CrateContext,
                 parent_scope,
                 file_metadata,
                 loc.line as c_uint,
-                loc.col.to_uint() as c_uint)
+                loc.col.to_uint() as c_uint,
+                0)
         };
 
         scope_stack.push(ScopeStackEntry { scope_metadata: scope_metadata, ident: None });
@@ -2538,7 +2545,8 @@ fn populate_scope_map(cx: &CrateContext,
                                 parent_scope,
                                 file_metadata,
                                 loc.line as c_uint,
-                                loc.col.to_uint() as c_uint)
+                                loc.col.to_uint() as c_uint,
+                                0)
                         };
 
                         scope_stack.push(ScopeStackEntry {
