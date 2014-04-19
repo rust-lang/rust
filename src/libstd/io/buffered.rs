@@ -372,6 +372,7 @@ mod test {
     use super::*;
     use super::super::mem::{MemReader, MemWriter, BufReader};
     use self::test::Bencher;
+    use str::StrSlice;
 
     /// A type, free to create, primarily intended for benchmarking creation of
     /// wrappers that, just for construction, don't need a Reader/Writer that
@@ -535,9 +536,9 @@ mod test {
     fn test_read_line() {
         let in_buf = MemReader::new(Vec::from_slice(bytes!("a\nb\nc")));
         let mut reader = BufferedReader::with_capacity(2, in_buf);
-        assert_eq!(reader.read_line(), Ok(~"a\n"));
-        assert_eq!(reader.read_line(), Ok(~"b\n"));
-        assert_eq!(reader.read_line(), Ok(~"c"));
+        assert_eq!(reader.read_line(), Ok("a\n".to_owned()));
+        assert_eq!(reader.read_line(), Ok("b\n".to_owned()));
+        assert_eq!(reader.read_line(), Ok("c".to_owned()));
         assert!(reader.read_line().is_err());
     }
 
@@ -546,9 +547,9 @@ mod test {
         let in_buf = MemReader::new(Vec::from_slice(bytes!("a\nb\nc")));
         let mut reader = BufferedReader::with_capacity(2, in_buf);
         let mut it = reader.lines();
-        assert_eq!(it.next(), Some(Ok(~"a\n")));
-        assert_eq!(it.next(), Some(Ok(~"b\n")));
-        assert_eq!(it.next(), Some(Ok(~"c")));
+        assert_eq!(it.next(), Some(Ok("a\n".to_owned())));
+        assert_eq!(it.next(), Some(Ok("b\n".to_owned())));
+        assert_eq!(it.next(), Some(Ok("c".to_owned())));
         assert_eq!(it.next(), None);
     }
 

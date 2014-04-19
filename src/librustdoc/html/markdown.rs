@@ -173,7 +173,7 @@ pub fn render(w: &mut io::Writer, s: &str, print_toc: bool) -> fmt::Result {
 
         // Extract the text provided
         let s = if text.is_null() {
-            ~""
+            "".to_owned()
         } else {
             unsafe {
                 str::raw::from_buf_len((*text).data, (*text).size as uint)

@@ -711,6 +711,7 @@ mod test {
     use path::Path;
     use io;
     use ops::Drop;
+    use str::StrSlice;
 
     macro_rules! check( ($e:expr) => (
         match $e {

@@ -28,8 +28,8 @@ pub fn main() {
     *(*i).borrow_mut() = 5;
     assert_eq!((i_value, *(*i).borrow()), (2, 5));
 
-    let s = Rc::new(~"foo");
-    assert_eq!(*s, ~"foo");
+    let s = Rc::new("foo".to_owned());
+    assert_eq!(*s, "foo".to_owned());
     assert_eq!((*s).as_slice(), "foo");
 
     let mut_s = Rc::new(RefCell::new(StrBuf::from_str("foo")));

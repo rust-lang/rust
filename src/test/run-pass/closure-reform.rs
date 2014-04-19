@@ -15,7 +15,7 @@ use std::cast;
 use std::io::stdio::println;
 
 fn call_it(f: proc(~str) -> ~str) {
-    println!("{}", f(~"Fred"))
+    println!("{}", f("Fred".to_owned()))
 }
 
 fn call_a_thunk(f: ||) {
@@ -48,15 +48,15 @@ fn call_bare_again(f: extern "Rust" fn(&str)) {
 pub fn main() {
     // Procs
 
-    let greeting = ~"Hello ";
+    let greeting = "Hello ".to_owned();
     call_it(proc(s) {
         greeting + s
     });
 
-    let greeting = ~"Goodbye ";
+    let greeting = "Goodbye ".to_owned();
     call_it(proc(s) greeting + s);
 
-    let greeting = ~"How's life, ";
+    let greeting = "How's life, ".to_owned();
     call_it(proc(s: ~str) -> ~str {
         greeting + s
     });

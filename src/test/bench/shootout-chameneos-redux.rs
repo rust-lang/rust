@@ -209,9 +209,9 @@ fn rendezvous(nn: uint, set: Vec<color>) {
 fn main() {
     let args = os::args();
     let args = if os::getenv("RUST_BENCH").is_some() {
-        vec!(~"", ~"200000")
+        vec!("".to_owned(), "200000".to_owned())
     } else if args.len() <= 1u {
-        vec!(~"", ~"600")
+        vec!("".to_owned(), "600".to_owned())
     } else {
         args.move_iter().collect()
     };

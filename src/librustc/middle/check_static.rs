@@ -132,7 +132,7 @@ impl<'a> Visitor<bool> for CheckStaticVisitor<'a> {
                     ty::ty_enum(did, _) => {
                         if ty::has_dtor(self.tcx, did) {
                             self.report_error(e.span,
-                                     Some(~"static items are not allowed to have destructors"));
+                             Some("static items are not allowed to have destructors".to_owned()));
                             return;
                         }
                     }

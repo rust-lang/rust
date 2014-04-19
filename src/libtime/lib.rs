@@ -477,62 +477,62 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
       -> Result<uint, ~str> {
         match ch {
           'A' => match match_strs(s, pos, [
-              (~"Sunday", 0_i32),
-              (~"Monday", 1_i32),
-              (~"Tuesday", 2_i32),
-              (~"Wednesday", 3_i32),
-              (~"Thursday", 4_i32),
-              (~"Friday", 5_i32),
-              (~"Saturday", 6_i32)
+              ("Sunday".to_owned(), 0_i32),
+              ("Monday".to_owned(), 1_i32),
+              ("Tuesday".to_owned(), 2_i32),
+              ("Wednesday".to_owned(), 3_i32),
+              ("Thursday".to_owned(), 4_i32),
+              ("Friday".to_owned(), 5_i32),
+              ("Saturday".to_owned(), 6_i32)
           ]) {
             Some(item) => { let (v, pos) = item; tm.tm_wday = v; Ok(pos) }
-            None => Err(~"Invalid day")
+            None => Err("Invalid day".to_owned())
           },
           'a' => match match_strs(s, pos, [
-              (~"Sun", 0_i32),
-              (~"Mon", 1_i32),
-              (~"Tue", 2_i32),
-              (~"Wed", 3_i32),
-              (~"Thu", 4_i32),
-              (~"Fri", 5_i32),
-              (~"Sat", 6_i32)
+              ("Sun".to_owned(), 0_i32),
+              ("Mon".to_owned(), 1_i32),
+              ("Tue".to_owned(), 2_i32),
+              ("Wed".to_owned(), 3_i32),
+              ("Thu".to_owned(), 4_i32),
+              ("Fri".to_owned(), 5_i32),
+              ("Sat".to_owned(), 6_i32)
           ]) {
             Some(item) => { let (v, pos) = item; tm.tm_wday = v; Ok(pos) }
-            None => Err(~"Invalid day")
+            None => Err("Invalid day".to_owned())
           },
           'B' => match match_strs(s, pos, [
-              (~"January", 0_i32),
-              (~"February", 1_i32),
-              (~"March", 2_i32),
-              (~"April", 3_i32),
-              (~"May", 4_i32),
-              (~"June", 5_i32),
-              (~"July", 6_i32),
-              (~"August", 7_i32),
-              (~"September", 8_i32),
-              (~"October", 9_i32),
-              (~"November", 10_i32),
-              (~"December", 11_i32)
+              ("January".to_owned(), 0_i32),
+              ("February".to_owned(), 1_i32),
+              ("March".to_owned(), 2_i32),
+              ("April".to_owned(), 3_i32),
+              ("May".to_owned(), 4_i32),
+              ("June".to_owned(), 5_i32),
+              ("July".to_owned(), 6_i32),
+              ("August".to_owned(), 7_i32),
+              ("September".to_owned(), 8_i32),
+              ("October".to_owned(), 9_i32),
+              ("November".to_owned(), 10_i32),
+              ("December".to_owned(), 11_i32)
           ]) {
             Some(item) => { let (v, pos) = item; tm.tm_mon = v; Ok(pos) }
-            None => Err(~"Invalid month")
+            None => Err("Invalid month".to_owned())
           },
           'b' | 'h' => match match_strs(s, pos, [
-              (~"Jan", 0_i32),
-              (~"Feb", 1_i32),
-              (~"Mar", 2_i32),
-              (~"Apr", 3_i32),
-              (~"May", 4_i32),
-              (~"Jun", 5_i32),
-              (~"Jul", 6_i32),
-              (~"Aug", 7_i32),
-              (~"Sep", 8_i32),
-              (~"Oct", 9_i32),
-              (~"Nov", 10_i32),
-              (~"Dec", 11_i32)
+              ("Jan".to_owned(), 0_i32),
+              ("Feb".to_owned(), 1_i32),
+              ("Mar".to_owned(), 2_i32),
+              ("Apr".to_owned(), 3_i32),
+              ("May".to_owned(), 4_i32),
+              ("Jun".to_owned(), 5_i32),
+              ("Jul".to_owned(), 6_i32),
+              ("Aug".to_owned(), 7_i32),
+              ("Sep".to_owned(), 8_i32),
+              ("Oct".to_owned(), 9_i32),
+              ("Nov".to_owned(), 10_i32),
+              ("Dec".to_owned(), 11_i32)
           ]) {
             Some(item) => { let (v, pos) = item; tm.tm_mon = v; Ok(pos) }
-            None => Err(~"Invalid month")
+            None => Err("Invalid month".to_owned())
           },
           'C' => match match_digits_in_range(s, pos, 2u, false, 0_i32,
                                              99_i32) {
@@ -541,7 +541,7 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
                   tm.tm_year += (v * 100_i32) - 1900_i32;
                   Ok(pos)
               }
-            None => Err(~"Invalid year")
+            None => Err("Invalid year".to_owned())
           },
           'c' => {
             parse_type(s, pos, 'a', &mut *tm)
@@ -564,12 +564,12 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
           'd' => match match_digits_in_range(s, pos, 2u, false, 1_i32,
                                              31_i32) {
             Some(item) => { let (v, pos) = item; tm.tm_mday = v; Ok(pos) }
-            None => Err(~"Invalid day of the month")
+            None => Err("Invalid day of the month".to_owned())
           },
           'e' => match match_digits_in_range(s, pos, 2u, true, 1_i32,
                                              31_i32) {
             Some(item) => { let (v, pos) = item; tm.tm_mday = v; Ok(pos) }
-            None => Err(~"Invalid day of the month")
+            None => Err("Invalid day of the month".to_owned())
           },
           'f' => {
             let (val, pos) = match_fractional_seconds(s, pos);
@@ -586,7 +586,7 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
           'H' => {
             match match_digits_in_range(s, pos, 2u, false, 0_i32, 23_i32) {
               Some(item) => { let (v, pos) = item; tm.tm_hour = v; Ok(pos) }
-              None => Err(~"Invalid hour")
+              None => Err("Invalid hour".to_owned())
             }
           }
           'I' => {
@@ -596,7 +596,7 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
                   tm.tm_hour = if v == 12_i32 { 0_i32 } else { v };
                   Ok(pos)
               }
-              None => Err(~"Invalid hour")
+              None => Err("Invalid hour".to_owned())
             }
           }
           'j' => {
@@ -606,13 +606,13 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
                 tm.tm_yday = v - 1_i32;
                 Ok(pos)
               }
-              None => Err(~"Invalid day of year")
+              None => Err("Invalid day of year".to_owned())
             }
           }
           'k' => {
             match match_digits_in_range(s, pos, 2u, true, 0_i32, 23_i32) {
               Some(item) => { let (v, pos) = item; tm.tm_hour = v; Ok(pos) }
-              None => Err(~"Invalid hour")
+              None => Err("Invalid hour".to_owned())
             }
           }
           'l' => {
@@ -622,13 +622,13 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
                   tm.tm_hour = if v == 12_i32 { 0_i32 } else { v };
                   Ok(pos)
               }
-              None => Err(~"Invalid hour")
+              None => Err("Invalid hour".to_owned())
             }
           }
           'M' => {
             match match_digits_in_range(s, pos, 2u, false, 0_i32, 59_i32) {
               Some(item) => { let (v, pos) = item; tm.tm_min = v; Ok(pos) }
-              None => Err(~"Invalid minute")
+              None => Err("Invalid minute".to_owned())
             }
           }
           'm' => {
@@ -638,21 +638,21 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
                 tm.tm_mon = v - 1_i32;
                 Ok(pos)
               }
-              None => Err(~"Invalid month")
+              None => Err("Invalid month".to_owned())
             }
           }
           'n' => parse_char(s, pos, '\n'),
           'P' => match match_strs(s, pos,
-                                  [(~"am", 0_i32), (~"pm", 12_i32)]) {
+                                  [("am".to_owned(), 0_i32), ("pm".to_owned(), 12_i32)]) {
 
             Some(item) => { let (v, pos) = item; tm.tm_hour += v; Ok(pos) }
-            None => Err(~"Invalid hour")
+            None => Err("Invalid hour".to_owned())
           },
           'p' => match match_strs(s, pos,
-                                  [(~"AM", 0_i32), (~"PM", 12_i32)]) {
+                                  [("AM".to_owned(), 0_i32), ("PM".to_owned(), 12_i32)]) {
 
             Some(item) => { let (v, pos) = item; tm.tm_hour += v; Ok(pos) }
-            None => Err(~"Invalid hour")
+            None => Err("Invalid hour".to_owned())
           },
           'R' => {
             parse_type(s, pos, 'H', &mut *tm)
@@ -675,7 +675,7 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
                 tm.tm_sec = v;
                 Ok(pos)
               }
-              None => Err(~"Invalid second")
+              None => Err("Invalid second".to_owned())
             }
           }
           //'s' {}
@@ -694,7 +694,7 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
                 tm.tm_wday = if v == 7 { 0 } else { v };
                 Ok(pos)
               }
-              None => Err(~"Invalid day of week")
+              None => Err("Invalid day of week".to_owned())
             }
           }
           'v' => {
@@ -708,7 +708,7 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
           'w' => {
             match match_digits_in_range(s, pos, 1u, false, 0_i32, 6_i32) {
               Some(item) => { let (v, pos) = item; tm.tm_wday = v; Ok(pos) }
-              None => Err(~"Invalid day of week")
+              None => Err("Invalid day of week".to_owned())
             }
           }
           'Y' => {
@@ -718,7 +718,7 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
                 tm.tm_year = v - 1900_i32;
                 Ok(pos)
               }
-              None => Err(~"Invalid year")
+              None => Err("Invalid year".to_owned())
             }
           }
           'y' => {
@@ -728,13 +728,13 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
                 tm.tm_year = v;
                 Ok(pos)
               }
-              None => Err(~"Invalid year")
+              None => Err("Invalid year".to_owned())
             }
           }
           'Z' => {
             if match_str(s, pos, "UTC") || match_str(s, pos, "GMT") {
                 tm.tm_gmtoff = 0_i32;
-                tm.tm_zone = ~"UTC";
+                tm.tm_zone = "UTC".to_owned();
                 Ok(pos + 3u)
             } else {
                 // It's odd, but to maintain compatibility with c's
@@ -759,15 +759,15 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
                     let (v, pos) = item;
                     if v == 0_i32 {
                         tm.tm_gmtoff = 0_i32;
-                        tm.tm_zone = ~"UTC";
+                        tm.tm_zone = "UTC".to_owned();
                     }
 
                     Ok(pos)
                   }
-                  None => Err(~"Invalid zone offset")
+                  None => Err("Invalid zone offset".to_owned())
                 }
             } else {
-                Err(~"Invalid zone offset")
+                Err("Invalid zone offset".to_owned())
             }
           }
           '%' => parse_char(s, pos, '%'),
@@ -789,12 +789,12 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
         tm_yday: 0_i32,
         tm_isdst: 0_i32,
         tm_gmtoff: 0_i32,
-        tm_zone: ~"",
+        tm_zone: "".to_owned(),
         tm_nsec: 0_i32,
     };
     let mut pos = 0u;
     let len = s.len();
-    let mut result = Err(~"Invalid time");
+    let mut result = Err("Invalid time".to_owned());
 
     while pos < len {
         let range = s.char_range_at(pos);
@@ -893,7 +893,7 @@ pub fn strftime(format: &str, tm: &Tm) -> ~str {
             'G' => format!("{}", year),
             'g' => format!("{:02d}", (year % 100 + 100) % 100),
             'V' => format!("{:02d}", days / 7 + 1),
-            _ => ~""
+            _ => "".to_owned()
         }
     }
 
@@ -901,53 +901,53 @@ pub fn strftime(format: &str, tm: &Tm) -> ~str {
       let die = || format!("strftime: can't understand this format {} ", ch);
         match ch {
           'A' => match tm.tm_wday as int {
-            0 => ~"Sunday",
-            1 => ~"Monday",
-            2 => ~"Tuesday",
-            3 => ~"Wednesday",
-            4 => ~"Thursday",
-            5 => ~"Friday",
-            6 => ~"Saturday",
+            0 => "Sunday".to_owned(),
+            1 => "Monday".to_owned(),
+            2 => "Tuesday".to_owned(),
+            3 => "Wednesday".to_owned(),
+            4 => "Thursday".to_owned(),
+            5 => "Friday".to_owned(),
+            6 => "Saturday".to_owned(),
             _ => die()
           },
          'a' => match tm.tm_wday as int {
-            0 => ~"Sun",
-            1 => ~"Mon",
-            2 => ~"Tue",
-            3 => ~"Wed",
-            4 => ~"Thu",
-            5 => ~"Fri",
-            6 => ~"Sat",
+            0 => "Sun".to_owned(),
+            1 => "Mon".to_owned(),
+            2 => "Tue".to_owned(),
+            3 => "Wed".to_owned(),
+            4 => "Thu".to_owned(),
+            5 => "Fri".to_owned(),
+            6 => "Sat".to_owned(),
             _ => die()
           },
           'B' => match tm.tm_mon as int {
-            0 => ~"January",
-            1 => ~"February",
-            2 => ~"March",
-            3 => ~"April",
-            4 => ~"May",
-            5 => ~"June",
-            6 => ~"July",
-            7 => ~"August",
-            8 => ~"September",
-            9 => ~"October",
-            10 => ~"November",
-            11 => ~"December",
+            0 => "January".to_owned(),
+            1 => "February".to_owned(),
+            2 => "March".to_owned(),
+            3 => "April".to_owned(),
+            4 => "May".to_owned(),
+            5 => "June".to_owned(),
+            6 => "July".to_owned(),
+            7 => "August".to_owned(),
+            8 => "September".to_owned(),
+            9 => "October".to_owned(),
+            10 => "November".to_owned(),
+            11 => "December".to_owned(),
             _ => die()
           },
           'b' | 'h' => match tm.tm_mon as int {
-            0 => ~"Jan",
-            1 => ~"Feb",
-            2 => ~"Mar",
-            3 => ~"Apr",
-            4 => ~"May",
-            5 => ~"Jun",
-            6 => ~"Jul",
-            7 => ~"Aug",
-            8 => ~"Sep",
-            9 => ~"Oct",
-            10 => ~"Nov",
-            11 => ~"Dec",
+            0 => "Jan".to_owned(),
+            1 => "Feb".to_owned(),
+            2 => "Mar".to_owned(),
+            3 => "Apr".to_owned(),
+            4 => "May".to_owned(),
+            5 => "Jun".to_owned(),
+            6 => "Jul".to_owned(),
+            7 => "Aug".to_owned(),
+            8 => "Sep".to_owned(),
+            9 => "Oct".to_owned(),
+            10 => "Nov".to_owned(),
+            11 => "Dec".to_owned(),
             _  => die()
           },
           'C' => format!("{:02d}", (tm.tm_year as int + 1900) / 100),
@@ -993,9 +993,9 @@ pub fn strftime(format: &str, tm: &Tm) -> ~str {
           }
           'M' => format!("{:02d}", tm.tm_min),
           'm' => format!("{:02d}", tm.tm_mon + 1),
-          'n' => ~"\n",
-          'P' => if (tm.tm_hour as int) < 12 { ~"am" } else { ~"pm" },
-          'p' => if (tm.tm_hour as int) < 12 { ~"AM" } else { ~"PM" },
+          'n' => "\n".to_owned(),
+          'P' => if (tm.tm_hour as int) < 12 { "am".to_owned() } else { "pm".to_owned() },
+          'p' => if (tm.tm_hour as int) < 12 { "AM".to_owned() } else { "PM".to_owned() },
           'R' => {
             format!("{}:{}",
                 parse_type('H', tm),
@@ -1016,7 +1016,7 @@ pub fn strftime(format: &str, tm: &Tm) -> ~str {
                 parse_type('M', tm),
                 parse_type('S', tm))
           }
-          't' => ~"\t",
+          't' => "\t".to_owned(),
           'U' => format!("{:02d}", (tm.tm_yday - tm.tm_wday + 7) / 7),
           'u' => {
             let i = tm.tm_wday as int;
@@ -1043,7 +1043,7 @@ pub fn strftime(format: &str, tm: &Tm) -> ~str {
             format!("{}{:02d}{:02d}", sign, h, m)
           }
           '+' => tm.rfc3339(),
-          '%' => ~"%",
+          '%' => "%".to_owned(),
           _   => die()
         }
     }
@@ -1158,7 +1158,7 @@ mod tests {
         assert_eq!(utc.tm_yday, 43_i32);
         assert_eq!(utc.tm_isdst, 0_i32);
         assert_eq!(utc.tm_gmtoff, 0_i32);
-        assert_eq!(utc.tm_zone, ~"UTC");
+        assert_eq!(utc.tm_zone, "UTC".to_owned());
         assert_eq!(utc.tm_nsec, 54321_i32);
     }
 
@@ -1184,7 +1184,7 @@ mod tests {
         // FIXME (#2350): We should probably standardize on the timezone
         // abbreviation.
         let zone = &local.tm_zone;
-        assert!(*zone == ~"PST" || *zone == ~"Pacific Standard Time");
+        assert!(*zone == "PST".to_owned() || *zone == "Pacific Standard Time".to_owned());
 
         assert_eq!(local.tm_nsec, 54321_i32);
     }
@@ -1228,16 +1228,16 @@ mod tests {
             assert!(tm.tm_wday == 0_i32);
             assert!(tm.tm_isdst == 0_i32);
             assert!(tm.tm_gmtoff == 0_i32);
-            assert!(tm.tm_zone == ~"");
+            assert!(tm.tm_zone == "".to_owned());
             assert!(tm.tm_nsec == 0_i32);
           }
           Err(_) => ()
         }
 
         let format = "%a %b %e %T.%f %Y";
-        assert_eq!(strptime("", format), Err(~"Invalid time"));
+        assert_eq!(strptime("", format), Err("Invalid time".to_owned()));
         assert!(strptime("Fri Feb 13 15:31:30", format)
-            == Err(~"Invalid time"));
+            == Err("Invalid time".to_owned()));
 
         match strptime("Fri Feb 13 15:31:30.01234 2009", format) {
           Err(e) => fail!(e),
@@ -1252,7 +1252,7 @@ mod tests {
             assert!(tm.tm_yday == 0_i32);
             assert!(tm.tm_isdst == 0_i32);
             assert!(tm.tm_gmtoff == 0_i32);
-            assert!(tm.tm_zone == ~"");
+            assert!(tm.tm_zone == "".to_owned());
             assert!(tm.tm_nsec == 12340000_i32);
           }
         }
@@ -1265,62 +1265,62 @@ mod tests {
         }
 
         let days = [
-            ~"Sunday",
-            ~"Monday",
-            ~"Tuesday",
-            ~"Wednesday",
-            ~"Thursday",
-            ~"Friday",
-            ~"Saturday"
+            "Sunday".to_owned(),
+            "Monday".to_owned(),
+            "Tuesday".to_owned(),
+            "Wednesday".to_owned(),
+            "Thursday".to_owned(),
+            "Friday".to_owned(),
+            "Saturday".to_owned()
         ];
         for day in days.iter() {
             assert!(test(*day, "%A"));
         }
 
         let days = [
-            ~"Sun",
-            ~"Mon",
-            ~"Tue",
-            ~"Wed",
-            ~"Thu",
-            ~"Fri",
-            ~"Sat"
+            "Sun".to_owned(),
+            "Mon".to_owned(),
+            "Tue".to_owned(),
+            "Wed".to_owned(),
+            "Thu".to_owned(),
+            "Fri".to_owned(),
+            "Sat".to_owned()
         ];
         for day in days.iter() {
             assert!(test(*day, "%a"));
         }
 
         let months = [
-            ~"January",
-            ~"February",
-            ~"March",
-            ~"April",
-            ~"May",
-            ~"June",
-            ~"July",
-            ~"August",
-            ~"September",
-            ~"October",
-            ~"November",
-            ~"December"
+            "January".to_owned(),
+            "February".to_owned(),
+            "March".to_owned(),
+            "April".to_owned(),
+            "May".to_owned(),
+            "June".to_owned(),
+            "July".to_owned(),
+            "August".to_owned(),
+            "September".to_owned(),
+            "October".to_owned(),
+            "November".to_owned(),
+            "December".to_owned()
         ];
         for day in months.iter() {
             assert!(test(*day, "%B"));
         }
 
         let months = [
-            ~"Jan",
-            ~"Feb",
-            ~"Mar",
-            ~"Apr",
-            ~"May",
-            ~"Jun",
-            ~"Jul",
-            ~"Aug",
-            ~"Sep",
-            ~"Oct",
-            ~"Nov",
-            ~"Dec"
+            "Jan".to_owned(),
+            "Feb".to_owned(),
+            "Mar".to_owned(),
+            "Apr".to_owned(),
+            "May".to_owned(),
+            "Jun".to_owned(),
+            "Jul".to_owned(),
+            "Aug".to_owned(),
+            "Sep".to_owned(),
+            "Oct".to_owned(),
+            "Nov".to_owned(),
+            "Dec".to_owned()
         ];
         for day in months.iter() {
             assert!(test(*day, "%b"));
@@ -1365,9 +1365,9 @@ mod tests {
         assert!(test("2009", "%Y"));
         assert!(test("09", "%y"));
         assert!(strptime("UTC", "%Z").unwrap().tm_zone ==
-            ~"UTC");
+            "UTC".to_owned());
         assert!(strptime("PST", "%Z").unwrap().tm_zone ==
-            ~"");
+            "".to_owned());
         assert!(strptime("-0000", "%z").unwrap().tm_gmtoff ==
             0);
         assert!(strptime("-0800", "%z").unwrap().tm_gmtoff ==
@@ -1375,7 +1375,7 @@ mod tests {
         assert!(test("%", "%%"));
 
         // Test for #7256
-        assert_eq!(strptime("360", "%Y-%m-%d"), Err(~"Invalid year"))
+        assert_eq!(strptime("360", "%Y-%m-%d"), Err("Invalid year".to_owned()))
     }
 
     fn test_ctime() {
@@ -1387,8 +1387,8 @@ mod tests {
 
         debug!("test_ctime: {:?} {:?}", utc.ctime(), local.ctime());
 
-        assert_eq!(utc.ctime(), ~"Fri Feb 13 23:31:30 2009");
-        assert_eq!(local.ctime(), ~"Fri Feb 13 15:31:30 2009");
+        assert_eq!(utc.ctime(), "Fri Feb 13 23:31:30 2009".to_owned());
+        assert_eq!(local.ctime(), "Fri Feb 13 15:31:30 2009".to_owned());
     }
 
     fn test_strftime() {
@@ -1398,70 +1398,70 @@ mod tests {
         let utc = at_utc(time);
         let local = at(time);
 
-        assert_eq!(local.strftime(""), ~"");
-        assert_eq!(local.strftime("%A"), ~"Friday");
-        assert_eq!(local.strftime("%a"), ~"Fri");
-        assert_eq!(local.strftime("%B"), ~"February");
-        assert_eq!(local.strftime("%b"), ~"Feb");
-        assert_eq!(local.strftime("%C"), ~"20");
-        assert_eq!(local.strftime("%c"), ~"Fri Feb 13 15:31:30 2009");
-        assert_eq!(local.strftime("%D"), ~"02/13/09");
-        assert_eq!(local.strftime("%d"), ~"13");
-        assert_eq!(local.strftime("%e"), ~"13");
-        assert_eq!(local.strftime("%f"), ~"000054321");
-        assert_eq!(local.strftime("%F"), ~"2009-02-13");
-        assert_eq!(local.strftime("%G"), ~"2009");
-        assert_eq!(local.strftime("%g"), ~"09");
-        assert_eq!(local.strftime("%H"), ~"15");
-        assert_eq!(local.strftime("%I"), ~"03");
-        assert_eq!(local.strftime("%j"), ~"044");
-        assert_eq!(local.strftime("%k"), ~"15");
-        assert_eq!(local.strftime("%l"), ~" 3");
-        assert_eq!(local.strftime("%M"), ~"31");
-        assert_eq!(local.strftime("%m"), ~"02");
-        assert_eq!(local.strftime("%n"), ~"\n");
-        assert_eq!(local.strftime("%P"), ~"pm");
-        assert_eq!(local.strftime("%p"), ~"PM");
-        assert_eq!(local.strftime("%R"), ~"15:31");
-        assert_eq!(local.strftime("%r"), ~"03:31:30 PM");
-        assert_eq!(local.strftime("%S"), ~"30");
-        assert_eq!(local.strftime("%s"), ~"1234567890");
-        assert_eq!(local.strftime("%T"), ~"15:31:30");
-        assert_eq!(local.strftime("%t"), ~"\t");
-        assert_eq!(local.strftime("%U"), ~"06");
-        assert_eq!(local.strftime("%u"), ~"5");
-        assert_eq!(local.strftime("%V"), ~"07");
-        assert_eq!(local.strftime("%v"), ~"13-Feb-2009");
-        assert_eq!(local.strftime("%W"), ~"06");
-        assert_eq!(local.strftime("%w"), ~"5");
-        assert_eq!(local.strftime("%X"), ~"15:31:30"); // FIXME (#2350): support locale
-        assert_eq!(local.strftime("%x"), ~"02/13/09"); // FIXME (#2350): support locale
-        assert_eq!(local.strftime("%Y"), ~"2009");
-        assert_eq!(local.strftime("%y"), ~"09");
-        assert_eq!(local.strftime("%+"), ~"2009-02-13T15:31:30-08:00");
+        assert_eq!(local.strftime(""), "".to_owned());
+        assert_eq!(local.strftime("%A"), "Friday".to_owned());
+        assert_eq!(local.strftime("%a"), "Fri".to_owned());
+        assert_eq!(local.strftime("%B"), "February".to_owned());
+        assert_eq!(local.strftime("%b"), "Feb".to_owned());
+        assert_eq!(local.strftime("%C"), "20".to_owned());
+        assert_eq!(local.strftime("%c"), "Fri Feb 13 15:31:30 2009".to_owned());
+        assert_eq!(local.strftime("%D"), "02/13/09".to_owned());
+        assert_eq!(local.strftime("%d"), "13".to_owned());
+        assert_eq!(local.strftime("%e"), "13".to_owned());
+        assert_eq!(local.strftime("%f"), "000054321".to_owned());
+        assert_eq!(local.strftime("%F"), "2009-02-13".to_owned());
+        assert_eq!(local.strftime("%G"), "2009".to_owned());
+        assert_eq!(local.strftime("%g"), "09".to_owned());
+        assert_eq!(local.strftime("%H"), "15".to_owned());
+        assert_eq!(local.strftime("%I"), "03".to_owned());
+        assert_eq!(local.strftime("%j"), "044".to_owned());
+        assert_eq!(local.strftime("%k"), "15".to_owned());
+        assert_eq!(local.strftime("%l"), " 3".to_owned());
+        assert_eq!(local.strftime("%M"), "31".to_owned());
+        assert_eq!(local.strftime("%m"), "02".to_owned());
+        assert_eq!(local.strftime("%n"), "\n".to_owned());
+        assert_eq!(local.strftime("%P"), "pm".to_owned());
+        assert_eq!(local.strftime("%p"), "PM".to_owned());
+        assert_eq!(local.strftime("%R"), "15:31".to_owned());
+        assert_eq!(local.strftime("%r"), "03:31:30 PM".to_owned());
+        assert_eq!(local.strftime("%S"), "30".to_owned());
+        assert_eq!(local.strftime("%s"), "1234567890".to_owned());
+        assert_eq!(local.strftime("%T"), "15:31:30".to_owned());
+        assert_eq!(local.strftime("%t"), "\t".to_owned());
+        assert_eq!(local.strftime("%U"), "06".to_owned());
+        assert_eq!(local.strftime("%u"), "5".to_owned());
+        assert_eq!(local.strftime("%V"), "07".to_owned());
+        assert_eq!(local.strftime("%v"), "13-Feb-2009".to_owned());
+        assert_eq!(local.strftime("%W"), "06".to_owned());
+        assert_eq!(local.strftime("%w"), "5".to_owned());
+        assert_eq!(local.strftime("%X"), "15:31:30".to_owned()); // FIXME (#2350): support locale
+        assert_eq!(local.strftime("%x"), "02/13/09".to_owned()); // FIXME (#2350): support locale
+        assert_eq!(local.strftime("%Y"), "2009".to_owned());
+        assert_eq!(local.strftime("%y"), "09".to_owned());
+        assert_eq!(local.strftime("%+"), "2009-02-13T15:31:30-08:00".to_owned());
 
         // FIXME (#2350): We should probably standardize on the timezone
         // abbreviation.
         let zone = local.strftime("%Z");
-        assert!(zone == ~"PST" || zone == ~"Pacific Standard Time");
+        assert!(zone == "PST".to_owned() || zone == "Pacific Standard Time".to_owned());
 
-        assert_eq!(local.strftime("%z"), ~"-0800");
-        assert_eq!(local.strftime("%%"), ~"%");
+        assert_eq!(local.strftime("%z"), "-0800".to_owned());
+        assert_eq!(local.strftime("%%"), "%".to_owned());
 
         // FIXME (#2350): We should probably standardize on the timezone
         // abbreviation.
         let rfc822 = local.rfc822();
-        let prefix = ~"Fri, 13 Feb 2009 15:31:30 ";
+        let prefix = "Fri, 13 Feb 2009 15:31:30 ".to_owned();
         assert!(rfc822 == prefix + "PST" || rfc822 == prefix + "Pacific Standard Time");
 
-        assert_eq!(local.ctime(), ~"Fri Feb 13 15:31:30 2009");
-        assert_eq!(local.rfc822z(), ~"Fri, 13 Feb 2009 15:31:30 -0800");
-        assert_eq!(local.rfc3339(), ~"2009-02-13T15:31:30-08:00");
+        assert_eq!(local.ctime(), "Fri Feb 13 15:31:30 2009".to_owned());
+        assert_eq!(local.rfc822z(), "Fri, 13 Feb 2009 15:31:30 -0800".to_owned());
+        assert_eq!(local.rfc3339(), "2009-02-13T15:31:30-08:00".to_owned());
 
-        assert_eq!(utc.ctime(), ~"Fri Feb 13 23:31:30 2009");
-        assert_eq!(utc.rfc822(), ~"Fri, 13 Feb 2009 23:31:30 GMT");
-        assert_eq!(utc.rfc822z(), ~"Fri, 13 Feb 2009 23:31:30 -0000");
-        assert_eq!(utc.rfc3339(), ~"2009-02-13T23:31:30Z");
+        assert_eq!(utc.ctime(), "Fri Feb 13 23:31:30 2009".to_owned());
+        assert_eq!(utc.rfc822(), "Fri, 13 Feb 2009 23:31:30 GMT".to_owned());
+        assert_eq!(utc.rfc822z(), "Fri, 13 Feb 2009 23:31:30 -0000".to_owned());
+        assert_eq!(utc.rfc3339(), "2009-02-13T23:31:30Z".to_owned());
     }
 
     fn test_timespec_eq_ord() {

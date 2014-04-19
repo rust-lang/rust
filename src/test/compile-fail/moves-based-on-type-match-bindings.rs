@@ -17,7 +17,7 @@ fn guard(_s: ~str) -> bool {fail!()}
 fn touch<A>(_a: &A) {}
 
 fn f10() {
-    let x = Foo {f: ~"hi"};
+    let x = Foo {f: "hi".to_owned()};
 
     let y = match x {
         Foo {f} => {} //~ NOTE moved here

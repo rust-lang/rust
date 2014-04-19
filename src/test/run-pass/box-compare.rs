@@ -12,6 +12,6 @@
 
 pub fn main() {
     assert!((@1 < @3));
-    assert!((@@~"hello " > @@~"hello"));
-    assert!((@@@~"hello" != @@@~"there"));
+    assert!((@@"hello ".to_owned() > @@"hello".to_owned()));
+    assert!((@@@"hello".to_owned() != @@@"there".to_owned()));
 }

@@ -33,7 +33,7 @@ mod argparse {
 }
 
 fn main () {
-    let f : argparse::Flag = argparse::flag(~"flag", ~"My flag");
-    let updated_flag = f.set_desc(~"My new flag");
+    let f : argparse::Flag = argparse::flag("flag".to_owned(), "My flag".to_owned());
+    let updated_flag = f.set_desc("My new flag".to_owned());
     assert_eq!(updated_flag.desc, "My new flag");
 }

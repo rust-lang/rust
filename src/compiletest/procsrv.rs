@@ -29,7 +29,7 @@ fn target_env(lib_path: &str, prog: &str) -> Vec<(~str, ~str)> {
         (k, new_v)
     }).collect();
     if prog.ends_with("rustc.exe") {
-        new_env.push((~"RUST_THREADS", ~"1"));
+        new_env.push(("RUST_THREADS".to_owned(), "1".to_owned()));
     }
     return new_env;
 }
@@ -49,7 +49,7 @@ fn target_env(lib_path: &str, prog: &str) -> Vec<(~str,~str)> {
     };
     let prev = match env.iter().position(|&(ref k, _)| k.as_slice() == var) {
         Some(i) => env.remove(i).unwrap().val1(),
-        None => ~"",
+        None => "".to_owned(),
     };
     env.push((var.to_owned(), if prev.is_empty() {
         lib_path + ":" + aux_path

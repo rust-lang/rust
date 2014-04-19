@@ -27,17 +27,17 @@ impl<T: Speak> Speak for Option<T> {
     fn say(&self, s:&str) -> ~str {
         match *self {
             None => format!("{} - none", s),
-            Some(ref x) => { ~"something!" + x.say(s) }
+            Some(ref x) => { "something!".to_owned() + x.say(s) }
         }
     }
 }
 
 
 pub fn main() {
-    assert_eq!(3.hi(), ~"hello: 3");
-    assert_eq!(Some(Some(3)).hi(), ~"something!something!hello: 3");
-    assert_eq!(None::<int>.hi(), ~"hello - none");
+    assert_eq!(3.hi(), "hello: 3".to_owned());
+    assert_eq!(Some(Some(3)).hi(), "something!something!hello: 3".to_owned());
+    assert_eq!(None::<int>.hi(), "hello - none".to_owned());
 
-    assert_eq!(Some(None::<int>).hi(), ~"something!hello - none");
-    assert_eq!(Some(3).hi(), ~"something!hello: 3");
+    assert_eq!(Some(None::<int>).hi(), "something!hello - none".to_owned());
+    assert_eq!(Some(3).hi(), "something!hello: 3".to_owned());
 }

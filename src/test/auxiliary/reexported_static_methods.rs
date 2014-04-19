@@ -47,7 +47,7 @@ pub mod sub_foo {
 
     impl Bort {
         pub fn bort() -> ~str {
-            ~"bort()"
+            "bort()".to_owned()
         }
     }
 }

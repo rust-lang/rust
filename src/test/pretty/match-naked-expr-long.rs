@@ -18,8 +18,8 @@ fn main() {
     let _y =
         match x {
             Some(_) =>
-            ~"some" + "very" + "very" + "very" + "very" + "very" + "very" +
-                "very" + "very" + "long" + "string",
-            None => ~"none"
+            "some".to_owned() + "very" + "very" + "very" + "very" + "very" +
+                "very" + "very" + "very" + "long" + "string",
+            None => "none".to_owned()
         };
 }

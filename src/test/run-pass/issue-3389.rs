@@ -25,8 +25,8 @@ pub fn main() {
         content: Vec::new(),
         children: Vec::new()
     };
-    let v = vec!(~"123", ~"abc");
-    node.content = vec!(~"123", ~"abc");
+    let v = vec!("123".to_owned(), "abc".to_owned());
+    node.content = vec!("123".to_owned(), "abc".to_owned());
     print_str_vector(v);
     print_str_vector(node.content.clone());
 

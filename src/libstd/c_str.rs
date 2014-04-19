@@ -428,6 +428,7 @@ mod tests {
     use super::*;
     use libc;
     use ptr;
+    use str::StrSlice;
 
     #[test]
     fn test_str_multistring_parsing() {
@@ -638,7 +639,7 @@ mod tests {
     #[test]
     fn test_clone_noleak() {
         fn foo(f: |c: &CString|) {
-            let s = ~"test";
+            let s = "test".to_owned();
             let c = s.to_c_str();
             // give the closure a non-owned CString
             let mut c_ = c.with_ref(|c| unsafe { CString::new(c, false) } );

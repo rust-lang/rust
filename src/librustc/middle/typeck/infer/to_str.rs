@@ -53,7 +53,7 @@ impl<V:InferStr> InferStr for Bound<V> {
     fn inf_str(&self, cx: &InferCtxt) -> ~str {
         match *self {
           Some(ref v) => v.inf_str(cx),
-          None => ~"none"
+          None => "none".to_owned()
         }
     }
 }

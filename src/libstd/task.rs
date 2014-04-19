@@ -48,6 +48,7 @@ use str::{Str, SendStr, IntoMaybeOwned};
 
 #[cfg(test)] use any::{AnyOwnExt, AnyRefExt};
 #[cfg(test)] use result;
+#[cfg(test)] use str::StrSlice;
 
 /// Indicates the manner in which a task exited.
 ///
@@ -297,7 +298,7 @@ fn test_unnamed_task() {
 
 #[test]
 fn test_owned_named_task() {
-    task().named(~"ada lovelace").spawn(proc() {
+    task().named("ada lovelace".to_owned()).spawn(proc() {
         with_task_name(|name| {
             assert!(name.unwrap() == "ada lovelace");
         })
@@ -369,7 +370,7 @@ fn test_back_to_the_future_result() {
 #[test]
 fn test_try_success() {
     match try(proc() {
-        ~"Success!"
+        "Success!".to_owned()
     }).as_ref().map(|s| s.as_slice()) {
         result::Ok("Success!") => (),
         _ => fail!()
@@ -499,12 +500,12 @@ fn test_try_fail_message_static_str() {
 #[test]
 fn test_try_fail_message_owned_str() {
     match try(proc() {
-        fail!(~"owned string");
+        fail!("owned string".to_owned());
     }) {
         Err(e) => {
             type T = ~str;
             assert!(e.is::<T>());
-            assert_eq!(*e.move::<T>().unwrap(), ~"owned string");
+            assert_eq!(*e.move::<T>().unwrap(), "owned string".to_owned());
         }
         Ok(()) => fail!()
     }

@@ -33,7 +33,7 @@ As an example, here's a few different kinds of strings.
 
 ```rust
 fn main() {
-    let owned_string = ~"I am an owned string";
+    let owned_string = "I am an owned string".to_owned();
     let borrowed_string1 = "This string is borrowed with the 'static lifetime";
     let borrowed_string2: &str = owned_string;   // owned strings can be borrowed
 }
@@ -163,7 +163,7 @@ pub trait StrVector {
 
 impl<'a, S: Str> StrVector for &'a [S] {
     fn concat(&self) -> ~str {
-        if self.is_empty() { return ~""; }
+        if self.is_empty() { return "".to_owned(); }
 
         // `len` calculation may overflow but push_str but will check boundaries
         let len = self.iter().map(|s| s.as_slice().len()).sum();
@@ -178,7 +178,7 @@ impl<'a, S: Str> StrVector for &'a [S] {
     }
 
     fn connect(&self, sep: &str) -> ~str {
-        if self.is_empty() { return ~""; }
+        if self.is_empty() { return "".to_owned(); }
 
         // concat is faster
         if sep.is_empty() { return self.concat(); }
@@ -974,7 +974,7 @@ pub fn truncate_utf16_at_nul<'a>(v: &'a [u16]) -> &'a [u16] {
 /// // 𝄞music
 /// let mut v = [0xD834, 0xDD1E, 0x006d, 0x0075,
 ///              0x0073, 0x0069, 0x0063];
-/// assert_eq!(str::from_utf16(v), Some(~"𝄞music"));
+/// assert_eq!(str::from_utf16(v), Some("𝄞music".to_owned()));
 ///
 /// // 𝄞mu<invalid>ic
 /// v[4] = 0xD800;
@@ -1004,7 +1004,7 @@ pub fn from_utf16(v: &[u16]) -> Option<~str> {
 ///          0xD834];
 ///
 /// assert_eq!(str::from_utf16_lossy(v),
-///            ~"𝄞mus\uFFFDic\uFFFD");
+///            "𝄞mus\uFFFDic\uFFFD".to_owned());
 /// ```
 pub fn from_utf16_lossy(v: &[u16]) -> ~str {
     utf16_items(v).map(|c| c.to_char_lossy()).collect()
@@ -1451,7 +1451,7 @@ pub mod raw {
             let a = ~[65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 0u8];
             let b = a.as_ptr();
             let c = from_buf_len(b, 3u);
-            assert_eq!(c, ~"AAA");
+            assert_eq!(c, "AAA".to_owned());
         }
     }
 }
@@ -2776,7 +2776,7 @@ impl<'a> Default for &'a str {
 }
 
 impl Default for ~str {
-    fn default() -> ~str { ~"" }
+    fn default() -> ~str { "".to_owned() }
 }
 
 #[cfg(test)]
@@ -2789,9 +2789,9 @@ mod tests {
 
     #[test]
     fn test_eq() {
-        assert!((eq(&~"", &~"")));
-        assert!((eq(&~"foo", &~"foo")));
-        assert!((!eq(&~"foo", &~"bar")));
+        assert!((eq(&"".to_owned(), &"".to_owned())));
+        assert!((eq(&"foo".to_owned(), &"foo".to_owned())));
+        assert!((!eq(&"foo".to_owned(), &"bar".to_owned())));
     }
 
     #[test]
@@ -2851,17 +2851,17 @@ mod tests {
 
     #[test]
     fn test_collect() {
-        let empty = ~"";
+        let empty = "".to_owned();
         let s: ~str = empty.chars().collect();
         assert_eq!(empty, s);
-        let data = ~"ประเทศไทย中";
+        let data = "ประเทศไทย中".to_owned();
         let s: ~str = data.chars().collect();
         assert_eq!(data, s);
     }
 
     #[test]
     fn test_into_bytes() {
-        let data = ~"asdf";
+        let data = "asdf".to_owned();
         let buf = data.into_bytes();
         assert_eq!(bytes!("asdf"), buf.as_slice());
     }
@@ -2877,7 +2877,7 @@ mod tests {
         assert_eq!(data.slice(2u, 6u).find_str("ab"), Some(3u - 2u));
         assert!(data.slice(2u, 4u).find_str("ab").is_none());
 
-        let mut data = ~"ประเทศไทย中华Việt Nam";
+        let mut data = "ประเทศไทย中华Việt Nam".to_owned();
         data = data + data;
         assert!(data.find_str("ไท华").is_none());
         assert_eq!(data.slice(0u, 43u).find_str(""), Some(0u));
@@ -2914,10 +2914,11 @@ mod tests {
         fn t(v: &[~str], s: &str) {
             assert_eq!(v.concat(), s.to_str());
         }
-        t([~"you", ~"know", ~"I'm", ~"no", ~"good"], "youknowI'mnogood");
+        t(["you".to_owned(), "know".to_owned(), "I'm".to_owned(),
+          "no".to_owned(), "good".to_owned()], "youknowI'mnogood");
         let v: &[~str] = [];
         t(v, "");
-        t([~"hi"], "hi");
+        t(["hi".to_owned()], "hi");
     }
 
     #[test]
@@ -2925,11 +2926,12 @@ mod tests {
         fn t(v: &[~str], sep: &str, s: &str) {
             assert_eq!(v.connect(sep), s.to_str());
         }
-        t([~"you", ~"know", ~"I'm", ~"no", ~"good"],
+        t(["you".to_owned(), "know".to_owned(), "I'm".to_owned(),
+           "no".to_owned(), "good".to_owned()],
           " ", "you know I'm no good");
         let v: &[~str] = [];
         t(v, " ", "");
-        t([~"hi"], " ", "hi");
+        t(["hi".to_owned()], " ", "hi");
     }
 
     #[test]
@@ -2956,11 +2958,11 @@ mod tests {
 
     #[test]
     fn test_repeat() {
-        assert_eq!("x".repeat(4), ~"xxxx");
-        assert_eq!("hi".repeat(4), ~"hihihihi");
-        assert_eq!("ไท华".repeat(3), ~"ไท华ไท华ไท华");
-        assert_eq!("".repeat(4), ~"");
-        assert_eq!("hi".repeat(0), ~"");
+        assert_eq!("x".repeat(4), "xxxx".to_owned());
+        assert_eq!("hi".repeat(4), "hihihihi".to_owned());
+        assert_eq!("ไท华".repeat(3), "ไท华ไท华ไท华".to_owned());
+        assert_eq!("".repeat(4), "".to_owned());
+        assert_eq!("hi".repeat(0), "".to_owned());
     }
 
     #[test]
@@ -3022,51 +3024,51 @@ mod tests {
     #[test]
     fn test_replace() {
         let a = "a";
-        assert_eq!("".replace(a, "b"), ~"");
-        assert_eq!("a".replace(a, "b"), ~"b");
-        assert_eq!("ab".replace(a, "b"), ~"bb");
+        assert_eq!("".replace(a, "b"), "".to_owned());
+        assert_eq!("a".replace(a, "b"), "b".to_owned());
+        assert_eq!("ab".replace(a, "b"), "bb".to_owned());
         let test = "test";
         assert!(" test test ".replace(test, "toast") ==
-            ~" toast toast ");
-        assert_eq!(" test test ".replace(test, ""), ~"   ");
+            " toast toast ".to_owned());
+        assert_eq!(" test test ".replace(test, ""), "   ".to_owned());
     }
 
     #[test]
     fn test_replace_2a() {
-        let data = ~"ประเทศไทย中华";
-        let repl = ~"دولة الكويت";
+        let data = "ประเทศไทย中华".to_owned();
+        let repl = "دولة الكويت".to_owned();
 
-        let a = ~"ประเ";
-        let a2 = ~"دولة الكويتทศไทย中华";
+        let a = "ประเ".to_owned();
+        let a2 = "دولة الكويتทศไทย中华".to_owned();
         assert_eq!(data.replace(a, repl), a2);
     }
 
     #[test]
     fn test_replace_2b() {
-        let data = ~"ประเทศไทย中华";
-        let repl = ~"دولة الكويت";
+        let data = "ประเทศไทย中华".to_owned();
+        let repl = "دولة الكويت".to_owned();
 
-        let b = ~"ะเ";
-        let b2 = ~"ปรدولة الكويتทศไทย中华";
+        let b = "ะเ".to_owned();
+        let b2 = "ปรدولة الكويتทศไทย中华".to_owned();
         assert_eq!(data.replace(b, repl), b2);
     }
 
     #[test]
     fn test_replace_2c() {
-        let data = ~"ประเทศไทย中华";
-        let repl = ~"دولة الكويت";
+        let data = "ประเทศไทย中华".to_owned();
+        let repl = "دولة الكويت".to_owned();
 
-        let c = ~"中华";
-        let c2 = ~"ประเทศไทยدولة الكويت";
+        let c = "中华".to_owned();
+        let c2 = "ประเทศไทยدولة الكويت".to_owned();
         assert_eq!(data.replace(c, repl), c2);
     }
 
     #[test]
     fn test_replace_2d() {
-        let data = ~"ประเทศไทย中华";
-        let repl = ~"دولة الكويت";
+        let data = "ประเทศไทย中华".to_owned();
+        let repl = "دولة الكويت".to_owned();
 
-        let d = ~"ไท华";
+        let d = "ไท华".to_owned();
         assert_eq!(data.replace(d, repl), data);
     }
 
@@ -3331,7 +3333,7 @@ mod tests {
             let a = ~[65, 65, 65, 65, 65, 65, 65, 0];
             let b = a.as_ptr();
             let c = raw::from_c_str(b);
-            assert_eq!(c, ~"AAAAAAA");
+            assert_eq!(c, "AAAAAAA".to_owned());
         }
     }
 
@@ -3353,7 +3355,7 @@ mod tests {
     fn test_as_bytes_fail() {
         // Don't double free. (I'm not sure if this exercises the
         // original problem code path anymore.)
-        let s = ~"";
+        let s = "".to_owned();
         let _bytes = s.as_bytes();
         fail!();
     }
@@ -3395,7 +3397,7 @@ mod tests {
 
     #[test]
     fn vec_str_conversions() {
-        let s1: ~str = ~"All mimsy were the borogoves";
+        let s1: ~str = "All mimsy were the borogoves".to_owned();
 
         let v: ~[u8] = s1.as_bytes().to_owned();
         let s2: ~str = from_utf8(v).unwrap().to_owned();
@@ -3423,7 +3425,7 @@ mod tests {
         assert!(!"abcde".contains("def"));
         assert!(!"".contains("a"));
 
-        let data = ~"ประเทศไทย中华Việt Nam";
+        let data = "ประเทศไทย中华Việt Nam".to_owned();
         assert!(data.contains("ประเ"));
         assert!(data.contains("ะเ"));
         assert!(data.contains("中华"));
@@ -3441,13 +3443,13 @@ mod tests {
     #[test]
     fn test_utf16() {
         let pairs =
-            [(~"𐍅𐌿𐌻𐍆𐌹𐌻𐌰\n",
+            [("𐍅𐌿𐌻𐍆𐌹𐌻𐌰\n".to_owned(),
               ~[0xd800_u16, 0xdf45_u16, 0xd800_u16, 0xdf3f_u16,
                 0xd800_u16, 0xdf3b_u16, 0xd800_u16, 0xdf46_u16,
                 0xd800_u16, 0xdf39_u16, 0xd800_u16, 0xdf3b_u16,
                 0xd800_u16, 0xdf30_u16, 0x000a_u16]),
 
-             (~"𐐒𐑉𐐮𐑀𐐲𐑋 𐐏𐐲𐑍\n",
+             ("𐐒𐑉𐐮𐑀𐐲𐑋 𐐏𐐲𐑍\n".to_owned(),
               ~[0xd801_u16, 0xdc12_u16, 0xd801_u16,
                 0xdc49_u16, 0xd801_u16, 0xdc2e_u16, 0xd801_u16,
                 0xdc40_u16, 0xd801_u16, 0xdc32_u16, 0xd801_u16,
@@ -3455,7 +3457,7 @@ mod tests {
                 0xd801_u16, 0xdc32_u16, 0xd801_u16, 0xdc4d_u16,
                 0x000a_u16]),
 
-             (~"𐌀𐌖𐌋𐌄𐌑𐌉·𐌌𐌄𐌕𐌄𐌋𐌉𐌑\n",
+             ("𐌀𐌖𐌋𐌄𐌑𐌉·𐌌𐌄𐌕𐌄𐌋𐌉𐌑\n".to_owned(),
               ~[0xd800_u16, 0xdf00_u16, 0xd800_u16, 0xdf16_u16,
                 0xd800_u16, 0xdf0b_u16, 0xd800_u16, 0xdf04_u16,
                 0xd800_u16, 0xdf11_u16, 0xd800_u16, 0xdf09_u16,
@@ -3464,7 +3466,7 @@ mod tests {
                 0xdf04_u16, 0xd800_u16, 0xdf0b_u16, 0xd800_u16,
                 0xdf09_u16, 0xd800_u16, 0xdf11_u16, 0x000a_u16 ]),
 
-             (~"𐒋𐒘𐒈𐒑𐒛𐒒 𐒕𐒓 𐒈𐒚𐒍 𐒏𐒜𐒒𐒖𐒆 𐒕𐒆\n",
+             ("𐒋𐒘𐒈𐒑𐒛𐒒 𐒕𐒓 𐒈𐒚𐒍 𐒏𐒜𐒒𐒖𐒆 𐒕𐒆\n".to_owned(),
               ~[0xd801_u16, 0xdc8b_u16, 0xd801_u16, 0xdc98_u16,
                 0xd801_u16, 0xdc88_u16, 0xd801_u16, 0xdc91_u16,
                 0xd801_u16, 0xdc9b_u16, 0xd801_u16, 0xdc92_u16,
@@ -3477,7 +3479,7 @@ mod tests {
                 0xd801_u16, 0xdc95_u16, 0xd801_u16, 0xdc86_u16,
                 0x000a_u16 ]),
              // Issue #12318, even-numbered non-BMP planes
-             (~"\U00020000",
+             ("\U00020000".to_owned(),
               ~[0xD840, 0xDC00])];
 
         for p in pairs.iter() {
@@ -3512,15 +3514,15 @@ mod tests {
     fn test_utf16_lossy() {
         // completely positive cases tested above.
         // lead + eof
-        assert_eq!(from_utf16_lossy([0xD800]), ~"\uFFFD");
+        assert_eq!(from_utf16_lossy([0xD800]), "\uFFFD".to_owned());
         // lead + lead
-        assert_eq!(from_utf16_lossy([0xD800, 0xD800]), ~"\uFFFD\uFFFD");
+        assert_eq!(from_utf16_lossy([0xD800, 0xD800]), "\uFFFD\uFFFD".to_owned());
 
         // isolated trail
-        assert_eq!(from_utf16_lossy([0x0061, 0xDC00]), ~"a\uFFFD");
+        assert_eq!(from_utf16_lossy([0x0061, 0xDC00]), "a\uFFFD".to_owned());
 
         // general
-        assert_eq!(from_utf16_lossy([0xD800, 0xd801, 0xdc8b, 0xD800]), ~"\uFFFD𐒋\uFFFD");
+        assert_eq!(from_utf16_lossy([0xD800, 0xd801, 0xdc8b, 0xD800]), "\uFFFD𐒋\uFFFD".to_owned());
     }
 
     #[test]
@@ -3543,7 +3545,7 @@ mod tests {
 
     #[test]
     fn test_char_at() {
-        let s = ~"ศไทย中华Việt Nam";
+        let s = "ศไทย中华Việt Nam".to_owned();
         let v = ~['ศ','ไ','ท','ย','中','华','V','i','ệ','t',' ','N','a','m'];
         let mut pos = 0;
         for ch in v.iter() {
@@ -3554,7 +3556,7 @@ mod tests {
 
     #[test]
     fn test_char_at_reverse() {
-        let s = ~"ศไทย中华Việt Nam";
+        let s = "ศไทย中华Việt Nam".to_owned();
         let v = ~['ศ','ไ','ท','ย','中','华','V','i','ệ','t',' ','N','a','m'];
         let mut pos = s.len();
         for ch in v.rev_iter() {
@@ -3565,27 +3567,27 @@ mod tests {
 
     #[test]
     fn test_escape_unicode() {
-        assert_eq!("abc".escape_unicode(), ~"\\x61\\x62\\x63");
-        assert_eq!("a c".escape_unicode(), ~"\\x61\\x20\\x63");
-        assert_eq!("\r\n\t".escape_unicode(), ~"\\x0d\\x0a\\x09");
-        assert_eq!("'\"\\".escape_unicode(), ~"\\x27\\x22\\x5c");
-        assert_eq!("\x00\x01\xfe\xff".escape_unicode(), ~"\\x00\\x01\\xfe\\xff");
-        assert_eq!("\u0100\uffff".escape_unicode(), ~"\\u0100\\uffff");
-        assert_eq!("\U00010000\U0010ffff".escape_unicode(), ~"\\U00010000\\U0010ffff");
-        assert_eq!("ab\ufb00".escape_unicode(), ~"\\x61\\x62\\ufb00");
-        assert_eq!("\U0001d4ea\r".escape_unicode(), ~"\\U0001d4ea\\x0d");
+        assert_eq!("abc".escape_unicode(), "\\x61\\x62\\x63".to_owned());
+        assert_eq!("a c".escape_unicode(), "\\x61\\x20\\x63".to_owned());
+        assert_eq!("\r\n\t".escape_unicode(), "\\x0d\\x0a\\x09".to_owned());
+        assert_eq!("'\"\\".escape_unicode(), "\\x27\\x22\\x5c".to_owned());
+        assert_eq!("\x00\x01\xfe\xff".escape_unicode(), "\\x00\\x01\\xfe\\xff".to_owned());
+        assert_eq!("\u0100\uffff".escape_unicode(), "\\u0100\\uffff".to_owned());
+        assert_eq!("\U00010000\U0010ffff".escape_unicode(), "\\U00010000\\U0010ffff".to_owned());
+        assert_eq!("ab\ufb00".escape_unicode(), "\\x61\\x62\\ufb00".to_owned());
+        assert_eq!("\U0001d4ea\r".escape_unicode(), "\\U0001d4ea\\x0d".to_owned());
     }
 
     #[test]
     fn test_escape_default() {
-        assert_eq!("abc".escape_default(), ~"abc");
-        assert_eq!("a c".escape_default(), ~"a c");
-        assert_eq!("\r\n\t".escape_default(), ~"\\r\\n\\t");
-        assert_eq!("'\"\\".escape_default(), ~"\\'\\\"\\\\");
-        assert_eq!("\u0100\uffff".escape_default(), ~"\\u0100\\uffff");
-        assert_eq!("\U00010000\U0010ffff".escape_default(), ~"\\U00010000\\U0010ffff");
-        assert_eq!("ab\ufb00".escape_default(), ~"ab\\ufb00");
-        assert_eq!("\U0001d4ea\r".escape_default(), ~"\\U0001d4ea\\r");
+        assert_eq!("abc".escape_default(), "abc".to_owned());
+        assert_eq!("a c".escape_default(), "a c".to_owned());
+        assert_eq!("\r\n\t".escape_default(), "\\r\\n\\t".to_owned());
+        assert_eq!("'\"\\".escape_default(), "\\'\\\"\\\\".to_owned());
+        assert_eq!("\u0100\uffff".escape_default(), "\\u0100\\uffff".to_owned());
+        assert_eq!("\U00010000\U0010ffff".escape_default(), "\\U00010000\\U0010ffff".to_owned());
+        assert_eq!("ab\ufb00".escape_default(), "ab\\ufb00".to_owned());
+        assert_eq!("\U0001d4ea\r".escape_default(), "\\U0001d4ea\\r".to_owned());
     }
 
     #[test]
@@ -3599,7 +3601,7 @@ mod tests {
 
     #[test]
     fn test_char_range_at() {
-        let data = ~"b¢€𤭢𤭢€¢b";
+        let data = "b¢€𤭢𤭢€¢b".to_owned();
         assert_eq!('b', data.char_range_at(0).ch);
         assert_eq!('¢', data.char_range_at(1).ch);
         assert_eq!('€', data.char_range_at(3).ch);
@@ -3629,15 +3631,15 @@ mod tests {
         );
 
         t!("foo",  "bar", "foobar");
-        t!("foo", ~"bar", "foobar");
+        t!("foo", "bar".to_owned(), "foobar");
         t!("ศไทย中",  "华Việt Nam", "ศไทย中华Việt Nam");
-        t!("ศไทย中", ~"华Việt Nam", "ศไทย中华Việt Nam");
+        t!("ศไทย中", "华Việt Nam".to_owned(), "ศไทย中华Việt Nam");
     }
 
     #[test]
     fn test_iterator() {
         use iter::*;
-        let s = ~"ศไทย中华Việt Nam";
+        let s = "ศไทย中华Việt Nam".to_owned();
         let v = ~['ศ','ไ','ท','ย','中','华','V','i','ệ','t',' ','N','a','m'];
 
         let mut pos = 0;
@@ -3653,7 +3655,7 @@ mod tests {
     #[test]
     fn test_rev_iterator() {
         use iter::*;
-        let s = ~"ศไทย中华Việt Nam";
+        let s = "ศไทย中华Việt Nam".to_owned();
         let v = ~['m', 'a', 'N', ' ', 't', 'ệ','i','V','华','中','ย','ท','ไ','ศ'];
 
         let mut pos = 0;
@@ -3676,7 +3678,7 @@ mod tests {
 
     #[test]
     fn test_bytesator() {
-        let s = ~"ศไทย中华Việt Nam";
+        let s = "ศไทย中华Việt Nam".to_owned();
         let v = [
             224, 184, 168, 224, 185, 132, 224, 184, 151, 224, 184, 162, 228,
             184, 173, 229, 141, 142, 86, 105, 225, 187, 135, 116, 32, 78, 97,
@@ -3692,7 +3694,7 @@ mod tests {
 
     #[test]
     fn test_bytes_revator() {
-        let s = ~"ศไทย中华Việt Nam";
+        let s = "ศไทย中华Việt Nam".to_owned();
         let v = [
             224, 184, 168, 224, 185, 132, 224, 184, 151, 224, 184, 162, 228,
             184, 173, 229, 141, 142, 86, 105, 225, 187, 135, 116, 32, 78, 97,
@@ -3849,30 +3851,30 @@ mod tests {
 
     #[test]
     fn test_nfd_chars() {
-        assert_eq!("abc".nfd_chars().collect::<~str>(), ~"abc");
-        assert_eq!("\u1e0b\u01c4".nfd_chars().collect::<~str>(), ~"d\u0307\u01c4");
-        assert_eq!("\u2026".nfd_chars().collect::<~str>(), ~"\u2026");
-        assert_eq!("\u2126".nfd_chars().collect::<~str>(), ~"\u03a9");
-        assert_eq!("\u1e0b\u0323".nfd_chars().collect::<~str>(), ~"d\u0323\u0307");
-        assert_eq!("\u1e0d\u0307".nfd_chars().collect::<~str>(), ~"d\u0323\u0307");
-        assert_eq!("a\u0301".nfd_chars().collect::<~str>(), ~"a\u0301");
-        assert_eq!("\u0301a".nfd_chars().collect::<~str>(), ~"\u0301a");
-        assert_eq!("\ud4db".nfd_chars().collect::<~str>(), ~"\u1111\u1171\u11b6");
-        assert_eq!("\uac1c".nfd_chars().collect::<~str>(), ~"\u1100\u1162");
+        assert_eq!("abc".nfd_chars().collect::<~str>(), "abc".to_owned());
+        assert_eq!("\u1e0b\u01c4".nfd_chars().collect::<~str>(), "d\u0307\u01c4".to_owned());
+        assert_eq!("\u2026".nfd_chars().collect::<~str>(), "\u2026".to_owned());
+        assert_eq!("\u2126".nfd_chars().collect::<~str>(), "\u03a9".to_owned());
+        assert_eq!("\u1e0b\u0323".nfd_chars().collect::<~str>(), "d\u0323\u0307".to_owned());
+        assert_eq!("\u1e0d\u0307".nfd_chars().collect::<~str>(), "d\u0323\u0307".to_owned());
+        assert_eq!("a\u0301".nfd_chars().collect::<~str>(), "a\u0301".to_owned());
+        assert_eq!("\u0301a".nfd_chars().collect::<~str>(), "\u0301a".to_owned());
+        assert_eq!("\ud4db".nfd_chars().collect::<~str>(), "\u1111\u1171\u11b6".to_owned());
+        assert_eq!("\uac1c".nfd_chars().collect::<~str>(), "\u1100\u1162".to_owned());
     }
 
     #[test]
     fn test_nfkd_chars() {
-        assert_eq!("abc".nfkd_chars().collect::<~str>(), ~"abc");
-        assert_eq!("\u1e0b\u01c4".nfkd_chars().collect::<~str>(), ~"d\u0307DZ\u030c");
-        assert_eq!("\u2026".nfkd_chars().collect::<~str>(), ~"...");
-        assert_eq!("\u2126".nfkd_chars().collect::<~str>(), ~"\u03a9");
-        assert_eq!("\u1e0b\u0323".nfkd_chars().collect::<~str>(), ~"d\u0323\u0307");
-        assert_eq!("\u1e0d\u0307".nfkd_chars().collect::<~str>(), ~"d\u0323\u0307");
-        assert_eq!("a\u0301".nfkd_chars().collect::<~str>(), ~"a\u0301");
-        assert_eq!("\u0301a".nfkd_chars().collect::<~str>(), ~"\u0301a");
-        assert_eq!("\ud4db".nfkd_chars().collect::<~str>(), ~"\u1111\u1171\u11b6");
-        assert_eq!("\uac1c".nfkd_chars().collect::<~str>(), ~"\u1100\u1162");
+        assert_eq!("abc".nfkd_chars().collect::<~str>(), "abc".to_owned());
+        assert_eq!("\u1e0b\u01c4".nfkd_chars().collect::<~str>(), "d\u0307DZ\u030c".to_owned());
+        assert_eq!("\u2026".nfkd_chars().collect::<~str>(), "...".to_owned());
+        assert_eq!("\u2126".nfkd_chars().collect::<~str>(), "\u03a9".to_owned());
+        assert_eq!("\u1e0b\u0323".nfkd_chars().collect::<~str>(), "d\u0323\u0307".to_owned());
+        assert_eq!("\u1e0d\u0307".nfkd_chars().collect::<~str>(), "d\u0323\u0307".to_owned());
+        assert_eq!("a\u0301".nfkd_chars().collect::<~str>(), "a\u0301".to_owned());
+        assert_eq!("\u0301a".nfkd_chars().collect::<~str>(), "\u0301a".to_owned());
+        assert_eq!("\ud4db".nfkd_chars().collect::<~str>(), "\u1111\u1171\u11b6".to_owned());
+        assert_eq!("\uac1c".nfkd_chars().collect::<~str>(), "\u1100\u1162".to_owned());
     }
 
     #[test]
@@ -3926,9 +3928,9 @@ mod tests {
             v.iter().map(|x| x.len()).sum()
         }
 
-        let s = ~"01234";
+        let s = "01234".to_owned();
         assert_eq!(5, sum_len(["012", "", "34"]));
-        assert_eq!(5, sum_len([~"01", ~"2", ~"34", ~""]));
+        assert_eq!(5, sum_len(["01".to_owned(), "2".to_owned(), "34".to_owned(), "".to_owned()]));
         assert_eq!(5, sum_len([s.as_slice()]));
     }
 
@@ -3947,10 +3949,10 @@ mod tests {
     #[test]
     fn test_str_from_utf8_owned() {
         let xs = bytes!("hello").to_owned();
-        assert_eq!(from_utf8_owned(xs), Some(~"hello"));
+        assert_eq!(from_utf8_owned(xs), Some("hello".to_owned()));
 
         let xs = bytes!("ศไทย中华Việt Nam").to_owned();
-        assert_eq!(from_utf8_owned(xs), Some(~"ศไทย中华Việt Nam"));
+        assert_eq!(from_utf8_owned(xs), Some("ศไทย中华Việt Nam".to_owned()));
 
         let xs = bytes!("hello", 0xff).to_owned();
         assert_eq!(from_utf8_owned(xs), None);
@@ -3965,32 +3967,34 @@ mod tests {
         assert_eq!(from_utf8_lossy(xs), Slice("ศไทย中华Việt Nam"));
 
         let xs = bytes!("Hello", 0xC2, " There", 0xFF, " Goodbye");
-        assert_eq!(from_utf8_lossy(xs), Owned(~"Hello\uFFFD There\uFFFD Goodbye"));
+        assert_eq!(from_utf8_lossy(xs), Owned("Hello\uFFFD There\uFFFD Goodbye".to_owned()));
 
         let xs = bytes!("Hello", 0xC0, 0x80, " There", 0xE6, 0x83, " Goodbye");
-        assert_eq!(from_utf8_lossy(xs), Owned(~"Hello\uFFFD\uFFFD There\uFFFD Goodbye"));
+        assert_eq!(from_utf8_lossy(xs), Owned("Hello\uFFFD\uFFFD There\uFFFD Goodbye".to_owned()));
 
         let xs = bytes!(0xF5, "foo", 0xF5, 0x80, "bar");
-        assert_eq!(from_utf8_lossy(xs), Owned(~"\uFFFDfoo\uFFFD\uFFFDbar"));
+        assert_eq!(from_utf8_lossy(xs), Owned("\uFFFDfoo\uFFFD\uFFFDbar".to_owned()));
 
         let xs = bytes!(0xF1, "foo", 0xF1, 0x80, "bar", 0xF1, 0x80, 0x80, "baz");
-        assert_eq!(from_utf8_lossy(xs), Owned(~"\uFFFDfoo\uFFFDbar\uFFFDbaz"));
+        assert_eq!(from_utf8_lossy(xs), Owned("\uFFFDfoo\uFFFDbar\uFFFDbaz".to_owned()));
 
         let xs = bytes!(0xF4, "foo", 0xF4, 0x80, "bar", 0xF4, 0xBF, "baz");
-        assert_eq!(from_utf8_lossy(xs), Owned(~"\uFFFDfoo\uFFFDbar\uFFFD\uFFFDbaz"));
+        assert_eq!(from_utf8_lossy(xs), Owned("\uFFFDfoo\uFFFDbar\uFFFD\uFFFDbaz".to_owned()));
 
         let xs = bytes!(0xF0, 0x80, 0x80, 0x80, "foo", 0xF0, 0x90, 0x80, 0x80, "bar");
-        assert_eq!(from_utf8_lossy(xs), Owned(~"\uFFFD\uFFFD\uFFFD\uFFFDfoo\U00010000bar"));
+        assert_eq!(from_utf8_lossy(xs), Owned("\uFFFD\uFFFD\uFFFD\uFFFD\
+                                               foo\U00010000bar".to_owned()));
 
         // surrogates
         let xs = bytes!(0xED, 0xA0, 0x80, "foo", 0xED, 0xBF, 0xBF, "bar");
-        assert_eq!(from_utf8_lossy(xs), Owned(~"\uFFFD\uFFFD\uFFFDfoo\uFFFD\uFFFD\uFFFDbar"));
+        assert_eq!(from_utf8_lossy(xs), Owned("\uFFFD\uFFFD\uFFFDfoo\
+                                               \uFFFD\uFFFD\uFFFDbar".to_owned()));
     }
 
     #[test]
     fn test_from_str() {
       let owned: Option<~str> = from_str(&"string");
-      assert_eq!(owned, Some(~"string"));
+      assert_eq!(owned, Some("string".to_owned()));
     }
 
     #[test]
@@ -3998,18 +4002,18 @@ mod tests {
         let s = Slice("abcde");
         assert_eq!(s.len(), 5);
         assert_eq!(s.as_slice(), "abcde");
-        assert_eq!(s.to_str(), ~"abcde");
-        assert_eq!(format!("{}", s), ~"abcde");
-        assert!(s.lt(&Owned(~"bcdef")));
+        assert_eq!(s.to_str(), "abcde".to_owned());
+        assert_eq!(format!("{}", s), "abcde".to_owned());
+        assert!(s.lt(&Owned("bcdef".to_owned())));
         assert_eq!(Slice(""), Default::default());
 
-        let o = Owned(~"abcde");
+        let o = Owned("abcde".to_owned());
         assert_eq!(o.len(), 5);
         assert_eq!(o.as_slice(), "abcde");
-        assert_eq!(o.to_str(), ~"abcde");
-        assert_eq!(format!("{}", o), ~"abcde");
+        assert_eq!(o.to_str(), "abcde".to_owned());
+        assert_eq!(format!("{}", o), "abcde".to_owned());
         assert!(o.lt(&Slice("bcdef")));
-        assert_eq!(Owned(~""), Default::default());
+        assert_eq!(Owned("".to_owned()), Default::default());
 
         assert!(s.cmp(&o) == Equal);
         assert!(s.equiv(&o));
@@ -4024,31 +4028,31 @@ mod tests {
         assert!(s.is_slice());
         assert!(!s.is_owned());
 
-        let o = Owned(~"abcde");
+        let o = Owned("abcde".to_owned());
         assert!(!o.is_slice());
         assert!(o.is_owned());
     }
 
     #[test]
     fn test_maybe_owned_clone() {
-        assert_eq!(Owned(~"abcde"), Slice("abcde").clone());
-        assert_eq!(Owned(~"abcde"), Owned(~"abcde").clone());
+        assert_eq!(Owned("abcde".to_owned()), Slice("abcde").clone());
+        assert_eq!(Owned("abcde".to_owned()), Owned("abcde".to_owned()).clone());
         assert_eq!(Slice("abcde"), Slice("abcde").clone());
-        assert_eq!(Slice("abcde"), Owned(~"abcde").clone());
+        assert_eq!(Slice("abcde"), Owned("abcde".to_owned()).clone());
     }
 
     #[test]
     fn test_maybe_owned_into_owned() {
-        assert_eq!(Slice("abcde").into_owned(), ~"abcde");
-        assert_eq!(Owned(~"abcde").into_owned(), ~"abcde");
+        assert_eq!(Slice("abcde").into_owned(), "abcde".to_owned());
+        assert_eq!(Owned("abcde".to_owned()).into_owned(), "abcde".to_owned());
     }
 
     #[test]
     fn test_into_maybe_owned() {
         assert_eq!("abcde".into_maybe_owned(), Slice("abcde"));
-        assert_eq!((~"abcde").into_maybe_owned(), Slice("abcde"));
-        assert_eq!("abcde".into_maybe_owned(), Owned(~"abcde"));
-        assert_eq!((~"abcde").into_maybe_owned(), Owned(~"abcde"));
+        assert_eq!(("abcde".to_owned()).into_maybe_owned(), Slice("abcde"));
+        assert_eq!("abcde".into_maybe_owned(), Owned("abcde".to_owned()));
+        assert_eq!(("abcde".to_owned()).into_maybe_owned(), Owned("abcde".to_owned()));
     }
 }
 

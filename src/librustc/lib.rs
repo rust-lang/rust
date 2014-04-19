@@ -243,24 +243,24 @@ pub fn run_compiler(args: &[~str]) {
 
     let lint_flags = matches.opt_strs("W").move_iter().collect::<Vec<_>>().append(
                                     matches.opt_strs("warn").as_slice());
-    if lint_flags.iter().any(|x| x == &~"help") {
+    if lint_flags.iter().any(|x| x == &"help".to_owned()) {
         describe_warnings();
         return;
     }
 
     let r = matches.opt_strs("Z");
-    if r.iter().any(|x| x == &~"help") {
+    if r.iter().any(|x| x == &"help".to_owned()) {
         describe_debug_flags();
         return;
     }
 
     let cg_flags = matches.opt_strs("C");
-    if cg_flags.iter().any(|x| x == &~"help") {
+    if cg_flags.iter().any(|x| x == &"help".to_owned()) {
         describe_codegen_flags();
         return;
     }
 
-    if cg_flags.contains(&~"passes=list") {
+    if cg_flags.contains(&"passes=list".to_owned()) {
         unsafe { lib::llvm::llvm::LLVMRustPrintPasses(); }
         return;
     }
@@ -406,9 +406,9 @@ pub fn monitor(f: proc():Send) {
                 }
 
                 let xs = [
-                    ~"the compiler hit an unexpected failure path. this is a bug.",
+                    "the compiler hit an unexpected failure path. this is a bug.".to_owned(),
                     "we would appreciate a bug report: " + BUG_REPORT_URL,
-                    ~"run with `RUST_BACKTRACE=1` for a backtrace",
+                    "run with `RUST_BACKTRACE=1` for a backtrace".to_owned(),
                 ];
                 for note in xs.iter() {
                     emitter.emit(None, *note, diagnostic::Note)

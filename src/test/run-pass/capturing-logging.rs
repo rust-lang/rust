@@ -45,5 +45,5 @@ fn main() {
         debug!("debug");
         info!("info");
     });
-    assert_eq!(r.read_to_str().unwrap(), ~"info\n");
+    assert_eq!(r.read_to_str().unwrap(), "info\n".to_owned());
 }

@@ -16,13 +16,13 @@ fn consume(_s: ~str) {}
 fn touch<A>(_a: &A) {}
 
 fn f10() {
-    let x = Foo { f: ~"hi", y: 3 };
+    let x = Foo { f: "hi".to_owned(), y: 3 };
     consume(x.f);
     touch(&x.y); //~ ERROR use of partially moved value: `x`
 }
 
 fn f20() {
-    let x = vec!(~"hi");
+    let x = vec!("hi".to_owned());
     consume(x.move_iter().next().unwrap());
     touch(x.get(0)); //~ ERROR use of moved value: `x`
 }

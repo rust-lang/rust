@@ -1314,9 +1314,9 @@ mod tests {
     #[test]
     fn test_display_str() {
         let path = Path::new("foo");
-        assert_eq!(path.display().to_str(), ~"foo");
+        assert_eq!(path.display().to_str(), "foo".to_owned());
         let path = Path::new(b!("\\"));
-        assert_eq!(path.filename_display().to_str(), ~"");
+        assert_eq!(path.filename_display().to_str(), "".to_owned());
 
         let path = Path::new("foo");
         let mo = path.display().as_maybe_owned();
@@ -1577,7 +1577,7 @@ mod tests {
         t!(s: "a\\b\\c", ["d", "e"], "a\\b\\c\\d\\e");
         t!(s: "a\\b\\c", ["d", "\\e"], "\\e");
         t!(s: "a\\b\\c", ["d", "\\e", "f"], "\\e\\f");
-        t!(s: "a\\b\\c", [~"d", ~"e"], "a\\b\\c\\d\\e");
+        t!(s: "a\\b\\c", ["d".to_owned(), "e".to_owned()], "a\\b\\c\\d\\e");
         t!(v: b!("a\\b\\c"), [b!("d"), b!("e")], b!("a\\b\\c\\d\\e"));
         t!(v: b!("a\\b\\c"), [b!("d"), b!("\\e"), b!("f")], b!("\\e\\f"));
         t!(v: b!("a\\b\\c"), [Vec::from_slice(b!("d")), Vec::from_slice(b!("e"))],
@@ -1718,7 +1718,7 @@ mod tests {
         t!(s: "a\\b\\c", ["d", "e"], "a\\b\\c\\d\\e");
         t!(s: "a\\b\\c", ["..", "d"], "a\\b\\d");
         t!(s: "a\\b\\c", ["d", "\\e", "f"], "\\e\\f");
-        t!(s: "a\\b\\c", [~"d", ~"e"], "a\\b\\c\\d\\e");
+        t!(s: "a\\b\\c", ["d".to_owned(), "e".to_owned()], "a\\b\\c\\d\\e");
         t!(v: b!("a\\b\\c"), [b!("d"), b!("e")], b!("a\\b\\c\\d\\e"));
         t!(v: b!("a\\b\\c"), [Vec::from_slice(b!("d")), Vec::from_slice(b!("e"))],
            b!("a\\b\\c\\d\\e"));

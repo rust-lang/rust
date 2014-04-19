@@ -28,5 +28,5 @@ impl Foo for uint {
 
 pub fn main() {
     let x = @3u;
-    assert_eq!(x.foo(), ~"@3");
+    assert_eq!(x.foo(), "@3".to_owned());
 }

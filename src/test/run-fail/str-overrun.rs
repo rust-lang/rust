@@ -11,7 +11,7 @@
 
 // error-pattern:index out of bounds: the len is 5 but the index is 5
 fn main() {
-    let s: ~str = ~"hello";
+    let s: ~str = "hello".to_owned();
 
     // Bounds-check failure.
     assert_eq!(s[5], 0x0 as u8);
