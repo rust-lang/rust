@@ -109,7 +109,7 @@ fn demangle(writer: &mut Writer, s: &str) -> IoResult<()> {
             let i: uint = from_str(s.slice_to(s.len() - rest.len())).unwrap();
             s = rest.slice_from(i);
             rest = rest.slice_to(i);
-            loop {
+            while rest.len() > 0 {
                 if rest.starts_with("$") {
                     macro_rules! demangle(
                         ($($pat:expr => $demangled:expr),*) => ({
@@ -144,8 +144,12 @@ fn demangle(writer: &mut Writer, s: &str) -> IoResult<()> {
                         "$x5d" => "]"
                     )
                 } else {
-                    try!(writer.write_str(rest));
-                    break;
+                    let idx = match rest.find('$') {
+                        None => rest.len(),
+                        Some(i) => i,
+                    };
+                    try!(writer.write_str(rest.slice_to(idx)));
+                    rest = rest.slice_from(idx);
                 }
             }
         }
@@ -773,5 +777,11 @@ mod test {
         t!("_ZN8$UP$testE", "~test");
         t!("_ZN8$UP$test4foobE", "~test::foob");
         t!("_ZN8$x20test4foobE", " test::foob");
+    }
+
+    #[test]
+    fn demangle_many_dollars() {
+        t!("_ZN12test$x20test4foobE", "test test::foob");
+        t!("_ZN12test$UP$test4foobE", "test~test::foob");
     }
 }
