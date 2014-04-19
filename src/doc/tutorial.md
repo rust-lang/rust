@@ -1719,19 +1719,41 @@ environment). For example, you couldn't write the following:
 ~~~~ {.ignore}
 let foo = 10;
 
-fn bar() -> int {
-   return foo; // `bar` cannot refer to `foo`
-}
+// `bar` cannot refer to `foo`
+fn bar() -> () { println!("{}", foo); }
 ~~~~
 
 Rust also supports _closures_, functions that can access variables in
-the enclosing scope.
+the enclosing scope.  Compare `foo` in these:
 
 ~~~~
-fn call_closure_with_ten(b: |int|) { b(10); }
+fn            bar() -> () { println!("{}", foo) }; // cannot reach enclosing scope
+let closure = |foo| -> () { println!("{}", foo) }; // can reach enclosing scope
+~~~~
 
-let captured_var = 20;
-let closure = |arg| println!("captured_var={}, arg={}", captured_var, arg);
+Closures can be utilized in this fashion:
+
+~~~~
+// Create a nameless function and assign it to `closure`.
+// It's sole argument is a yet unknown `foo` to be supplied
+// by the caller.
+let closure = |foo| -> () { println!("{}", foo) };
+
+// Define `call_closure_with_ten` to take one argument and return null `()`.
+// `fun` is a function which takes one `int` argument `|int|` and also returns
+// null `()`.  `|int|` defines the `fun` to be of type _closure_
+fn call_closure_with_ten(fun: |int| -> ()) -> () { fun(10); }
+
+// The caller supplies `10` to the closure
+// which prints out the value
+call_closure_with_ten(closure);
+~~~~
+
+This can be simplified by removing null arguments:
+
+~~~~
+let closure = |foo| println!("{}", foo);
+fn call_closure_with_ten(fun: |int|) { fun(10); }
 
 call_closure_with_ten(closure);
 ~~~~
