@@ -536,6 +536,14 @@ fn write_out_deps(sess: &Session,
         _ => return Ok(()),
     };
 
+    // Check that the directory exists and the target is not a directory
+    if !deps_filename.dir_path().exists() {
+        sess.fatal("directory specified by --dep-info does not exist.");
+    }
+    if deps_filename.is_dir() {
+        sess.fatal("file specified by --dep-info is a directory.");
+    }
+
     // Build a list of files used to compile the output and
     // write Makefile-compatible dependency rules
     let files: Vec<~str> = sess.codemap().files.borrow()
@@ -575,7 +583,11 @@ pub fn compile_input(sess: Session, cfg: ast::CrateConfig, input: &Input,
                                                                          krate, &id);
             (outputs, expanded_crate, ast_map)
         };
-        write_out_deps(&sess, input, &outputs, &expanded_crate).unwrap();
+        let r = write_out_deps(&sess, input, &outputs, &expanded_crate);
+        match r {
+            Err(e) => fail!("writing dependencies failed due to {}", e),
+            _ => r.unwrap(),
+        }
 
         if stop_after_phase_2(&sess) { return; }
 
