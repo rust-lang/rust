@@ -33,16 +33,17 @@ mod table {
     extern crate libc;
 
     use std::clone::Clone;
+    use std::cmp;
     use std::cmp::Eq;
     use std::hash::{Hash, Hasher};
     use std::kinds::marker;
-    use std::num::CheckedMul;
+    use std::num::{CheckedMul, is_power_of_two};
     use std::option::{Option, Some, None};
     use std::prelude::Drop;
     use std::ptr;
     use std::ptr::RawPtr;
     use std::rt::global_heap;
-    use std::intrinsics::{size_of, transmute, move_val_init};
+    use std::intrinsics::{size_of, min_align_of, transmute, move_val_init};
     use std::iter::{Iterator, range_step_inclusive};
 
     static EMPTY_BUCKET: u64 = 0u64;
@@ -163,6 +164,42 @@ mod table {
         }
     }
 
+    fn round_up_to_next(unrounded: uint, target_alignment: uint) -> uint {
+        assert!(is_power_of_two(target_alignment));
+        (unrounded + target_alignment - 1) & !(target_alignment - 1)
+    }
+
+    #[test]
+    fn test_rounding() {
+        assert!(round_up_to_next(0, 4) == 0);
+        assert!(round_up_to_next(1, 4) == 4);
+        assert!(round_up_to_next(2, 4) == 4);
+        assert!(round_up_to_next(3, 4) == 4);
+        assert!(round_up_to_next(4, 4) == 4);
+        assert!(round_up_to_next(5, 4) == 8);
+    }
+
+    // Returns a tuple of (minimum required malloc alignment, hash_offset,
+    // key_offset, val_offset, array_size), from the start of a mallocated array.
+    fn calculate_offsets(
+        hash_size: uint, hash_align: uint,
+        keys_size: uint, keys_align: uint,
+        vals_size: uint, vals_align: uint) -> (uint, uint, uint, uint, uint) {
+
+        let hash_offset   = 0;
+        let end_of_hashes = hash_offset + hash_size;
+
+        let keys_offset   = round_up_to_next(end_of_hashes, keys_align);
+        let end_of_keys   = keys_offset + keys_size;
+
+        let vals_offset   = round_up_to_next(end_of_keys, vals_align);
+        let end_of_vals   = vals_offset + vals_size;
+
+        let min_align = cmp::max(hash_align, cmp::max(keys_align, vals_align));
+
+        (min_align, hash_offset, keys_offset, vals_offset, end_of_vals)
+    }
+
     impl<K, V> RawTable<K, V> {
 
         /// Does not initialize the buckets. The caller should ensure they,
@@ -175,32 +212,31 @@ mod table {
             let vals_size   =
                 capacity.checked_mul(&size_of::< V >()).expect("capacity overflow");
 
-            /*
-            The following code was my first pass at making RawTable only
-            allocate a single buffer, since that's all it needs. There's
-            no logical reason for this to require three calls to malloc.
+            // Allocating hashmaps is a little tricky. We need to allocate three
+            // arrays here, but since we know their sizes and alignments up front,
+            // we could theoretically allocate only a single array, and then have
+            // the subarrays just point into it.
+            //
+            // This is great in theory, but in practice getting the alignment
+            // right is a little subtle. Therefore, calculating offsets has been
+            // factored out into a different function.
+            let (malloc_alignment, hash_offset, keys_offset, vals_offset, size) =
+                calculate_offsets(
+                    hashes_size, min_align_of::<u64>(),
+                    keys_size,   min_align_of::< K >(),
+                    vals_size,   min_align_of::< V >());
 
-            However, I'm not convinced the code below is correct. If you
-            want to take a stab at it, please do! The alignment is
-            especially tricky to get right, especially if you need more
-            alignment than malloc guarantees.
+            let buffer = global_heap::malloc_raw(size) as *mut u8;
 
-            let hashes_offset = 0;
-            let keys_offset   = align_size(hashes_offset + hashes_size, keys_align);
-            let vals_offset   = align_size(keys_offset + keys_size, vals_align);
-            let end = vals_offset + vals_size;
+            // FIXME #13094: If malloc was not at as aligned as we expected,
+            // our offset calculations are just plain wrong. We could support
+            // any alignment if we switched from `malloc` to `posix_memalign`.
+            assert!(round_up_to_next(buffer as uint, malloc_alignment)
+                == (buffer as uint));
 
-            let buffer = global_heap::malloc_raw(end);
-
-            let hashes = buffer.offset(hashes_offset) as *mut u64;
-            let keys   = buffer.offset(keys_offset)   as *mut K;
-            let vals   = buffer.offset(vals_offset)   as *mut V;
-
-            */
-
-            let hashes = global_heap::malloc_raw(hashes_size) as *mut u64;
-            let keys   = global_heap::malloc_raw(keys_size)   as *mut K;
-            let vals   = global_heap::malloc_raw(vals_size)   as *mut V;
+            let hashes = buffer.offset(hash_offset as int) as *mut u64;
+            let keys   = buffer.offset(keys_offset as int) as *mut K;
+            let vals   = buffer.offset(vals_offset as int) as *mut V;
 
             RawTable {
                 capacity: capacity,
@@ -513,9 +549,9 @@ mod table {
             assert!(self.size == 0);
 
             unsafe {
-                libc::free(self.vals   as *mut libc::c_void);
-                libc::free(self.keys   as *mut libc::c_void);
                 libc::free(self.hashes as *mut libc::c_void);
+                // Remember how everything was allocated out of one buffer
+                // during initialization? We only need one call to free here.
             }
         }
     }

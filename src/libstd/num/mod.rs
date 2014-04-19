@@ -311,6 +311,12 @@ pub fn next_power_of_two<T: Unsigned + Int>(n: T) -> T {
     tmp + one()
 }
 
+// Returns `true` iff `n == 2^k` for some k.
+#[inline]
+pub fn is_power_of_two<T: Unsigned + Int>(n: T) -> bool {
+    (n - one()) & n == zero()
+}
+
 /// Returns the smallest power of 2 greater than or equal to `n`. If the next
 /// power of two is greater than the type's maximum value, `None` is returned,
 /// otherwise the power of 2 is wrapped in `Some`.
