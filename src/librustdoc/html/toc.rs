@@ -200,7 +200,7 @@ mod test {
         // there's been no macro mistake.
         macro_rules! push {
             ($level: expr, $name: expr) => {
-                assert_eq!(builder.push($level, $name.to_owned(), ~""), $name);
+                assert_eq!(builder.push($level, $name.to_owned(), "".to_owned()), $name);
             }
         }
         push!(2, "0.1");
@@ -240,7 +240,7 @@ mod test {
                                 level: $level,
                                 name: $name.to_owned(),
                                 sec_number: $name.to_owned(),
-                                id: ~"",
+                                id: "".to_owned(),
                                 children: toc!($($sub),*)
                             }
                             ),*

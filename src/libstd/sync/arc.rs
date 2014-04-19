@@ -181,12 +181,12 @@ mod tests {
     #[test]
     fn arclike_newN() {
         // Tests that the many-refcounts-at-once constructors don't leak.
-        let _ = UnsafeArc::new2(~~"hello");
-        let x = UnsafeArc::newN(~~"hello", 0);
+        let _ = UnsafeArc::new2("hello".to_owned().to_owned());
+        let x = UnsafeArc::newN("hello".to_owned().to_owned(), 0);
         assert_eq!(x.len(), 0)
-        let x = UnsafeArc::newN(~~"hello", 1);
+        let x = UnsafeArc::newN("hello".to_owned().to_owned(), 1);
         assert_eq!(x.len(), 1)
-        let x = UnsafeArc::newN(~~"hello", 10);
+        let x = UnsafeArc::newN("hello".to_owned().to_owned(), 10);
         assert_eq!(x.len(), 10)
     }
 }

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn f() {
-    let a = ~"hello";
+    let a = "hello".to_owned();
     let b: &str = a;
     println!("{}", b);
 }

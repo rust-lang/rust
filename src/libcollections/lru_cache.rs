@@ -295,22 +295,22 @@ mod tests {
     #[test]
     fn test_put_update() {
         let mut cache: LruCache<~str, Vec<u8>> = LruCache::new(1);
-        cache.put(~"1", vec![10, 10]);
-        cache.put(~"1", vec![10, 19]);
-        assert_opt_eq(cache.get(&~"1"), vec![10, 19]);
+        cache.put("1".to_owned(), vec![10, 10]);
+        cache.put("1".to_owned(), vec![10, 19]);
+        assert_opt_eq(cache.get(&"1".to_owned()), vec![10, 19]);
         assert_eq!(cache.len(), 1);
     }
 
     #[test]
     fn test_expire_lru() {
         let mut cache: LruCache<~str, ~str> = LruCache::new(2);
-        cache.put(~"foo1", ~"bar1");
-        cache.put(~"foo2", ~"bar2");
-        cache.put(~"foo3", ~"bar3");
-        assert!(cache.get(&~"foo1").is_none());
-        cache.put(~"foo2", ~"bar2update");
-        cache.put(~"foo4", ~"bar4");
-        assert!(cache.get(&~"foo3").is_none());
+        cache.put("foo1".to_owned(), "bar1".to_owned());
+        cache.put("foo2".to_owned(), "bar2".to_owned());
+        cache.put("foo3".to_owned(), "bar3".to_owned());
+        assert!(cache.get(&"foo1".to_owned()).is_none());
+        cache.put("foo2".to_owned(), "bar2update".to_owned());
+        cache.put("foo4".to_owned(), "bar4".to_owned());
+        assert!(cache.get(&"foo3".to_owned()).is_none());
     }
 
     #[test]
@@ -343,15 +343,15 @@ mod tests {
         cache.put(1, 10);
         cache.put(2, 20);
         cache.put(3, 30);
-        assert_eq!(cache.to_str(), ~"{3: 30, 2: 20, 1: 10}");
+        assert_eq!(cache.to_str(), "{3: 30, 2: 20, 1: 10}".to_owned());
         cache.put(2, 22);
-        assert_eq!(cache.to_str(), ~"{2: 22, 3: 30, 1: 10}");
+        assert_eq!(cache.to_str(), "{2: 22, 3: 30, 1: 10}".to_owned());
         cache.put(6, 60);
-        assert_eq!(cache.to_str(), ~"{6: 60, 2: 22, 3: 30}");
+        assert_eq!(cache.to_str(), "{6: 60, 2: 22, 3: 30}".to_owned());
         cache.get(&3);
-        assert_eq!(cache.to_str(), ~"{3: 30, 6: 60, 2: 22}");
+        assert_eq!(cache.to_str(), "{3: 30, 6: 60, 2: 22}".to_owned());
         cache.change_capacity(2);
-        assert_eq!(cache.to_str(), ~"{3: 30, 6: 60}");
+        assert_eq!(cache.to_str(), "{3: 30, 6: 60}".to_owned());
     }
 
     #[test]
@@ -362,6 +362,6 @@ mod tests {
         cache.clear();
         assert!(cache.get(&1).is_none());
         assert!(cache.get(&2).is_none());
-        assert_eq!(cache.to_str(), ~"{}");
+        assert_eq!(cache.to_str(), "{}".to_owned());
     }
 }

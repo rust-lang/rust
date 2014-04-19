@@ -112,7 +112,7 @@ fn check_expr(v: &mut CheckCrateVisitor, e: &Expr, is_const: bool) {
           ExprCast(_, _) => {
             let ety = ty::expr_ty(v.tcx, e);
             if !ty::type_is_numeric(ety) && !ty::type_is_unsafe_ptr(ety) {
-                v.tcx.sess.span_err(e.span, ~"can not cast to `" +
+                v.tcx.sess.span_err(e.span, "can not cast to `".to_owned() +
                                               ppaux::ty_to_str(v.tcx, ety) +
                                              "` in a constant expression");
             }

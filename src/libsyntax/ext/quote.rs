@@ -393,11 +393,11 @@ fn mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> @ast::Expr {
 
         LIT_INT(i, ity) => {
             let s_ity = match ity {
-                ast::TyI => ~"TyI",
-                ast::TyI8 => ~"TyI8",
-                ast::TyI16 => ~"TyI16",
-                ast::TyI32 => ~"TyI32",
-                ast::TyI64 => ~"TyI64"
+                ast::TyI => "TyI".to_owned(),
+                ast::TyI8 => "TyI8".to_owned(),
+                ast::TyI16 => "TyI16".to_owned(),
+                ast::TyI32 => "TyI32".to_owned(),
+                ast::TyI64 => "TyI64".to_owned()
             };
             let e_ity = cx.expr_ident(sp, id_ext(s_ity));
 
@@ -410,11 +410,11 @@ fn mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> @ast::Expr {
 
         LIT_UINT(u, uty) => {
             let s_uty = match uty {
-                ast::TyU => ~"TyU",
-                ast::TyU8 => ~"TyU8",
-                ast::TyU16 => ~"TyU16",
-                ast::TyU32 => ~"TyU32",
-                ast::TyU64 => ~"TyU64"
+                ast::TyU => "TyU".to_owned(),
+                ast::TyU8 => "TyU8".to_owned(),
+                ast::TyU16 => "TyU16".to_owned(),
+                ast::TyU32 => "TyU32".to_owned(),
+                ast::TyU64 => "TyU64".to_owned()
             };
             let e_uty = cx.expr_ident(sp, id_ext(s_uty));
 
@@ -435,8 +435,8 @@ fn mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> @ast::Expr {
 
         LIT_FLOAT(fident, fty) => {
             let s_fty = match fty {
-                ast::TyF32 => ~"TyF32",
-                ast::TyF64 => ~"TyF64"
+                ast::TyF32 => "TyF32".to_owned(),
+                ast::TyF64 => "TyF64".to_owned()
             };
             let e_fty = cx.expr_ident(sp, id_ext(s_fty));
 
@@ -649,10 +649,10 @@ fn expand_wrapper(cx: &ExtCtxt,
                   cx_expr: @ast::Expr,
                   expr: @ast::Expr) -> @ast::Expr {
     let uses = vec!( cx.view_use_glob(sp, ast::Inherited,
-                                   ids_ext(vec!(~"syntax",
-                                             ~"ext",
-                                             ~"quote",
-                                             ~"rt"))) );
+                                   ids_ext(vec!("syntax".to_owned(),
+                                             "ext".to_owned(),
+                                             "quote".to_owned(),
+                                             "rt".to_owned()))) );
 
     let stmt_let_ext_cx = cx.stmt_let(sp, false, id_ext("ext_cx"), cx_expr);
 

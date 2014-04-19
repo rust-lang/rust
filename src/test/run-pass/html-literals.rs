@@ -66,7 +66,7 @@ macro_rules! parse_node (
     ) => (
         parse_node!(
             [$(: $tags ($(:$tag_nodes),*))*];
-            [$(:$nodes,)* :text(~".")];
+            [$(:$nodes,)* :text(".".to_owned())];
             $($rest)*
         )
     );

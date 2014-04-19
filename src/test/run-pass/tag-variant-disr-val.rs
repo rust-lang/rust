@@ -27,14 +27,14 @@ impl Eq for color {
 }
 
 pub fn main() {
-    test_color(red, 0xff0000, ~"red");
-    test_color(green, 0x00ff00, ~"green");
-    test_color(blue, 0x0000ff, ~"blue");
-    test_color(black, 0x000000, ~"black");
-    test_color(white, 0xFFFFFF, ~"white");
-    test_color(imaginary, -1, ~"imaginary");
-    test_color(purple, 2, ~"purple");
-    test_color(orange, 4, ~"orange");
+    test_color(red, 0xff0000, "red".to_owned());
+    test_color(green, 0x00ff00, "green".to_owned());
+    test_color(blue, 0x0000ff, "blue".to_owned());
+    test_color(black, 0x000000, "black".to_owned());
+    test_color(white, 0xFFFFFF, "white".to_owned());
+    test_color(imaginary, -1, "imaginary".to_owned());
+    test_color(purple, 2, "purple".to_owned());
+    test_color(orange, 4, "orange".to_owned());
 }
 
 fn test_color(color: color, val: int, name: ~str) {
@@ -47,25 +47,25 @@ fn test_color(color: color, val: int, name: ~str) {
 
 fn get_color_alt(color: color) -> ~str {
     match color {
-      red => {~"red"}
-      green => {~"green"}
-      blue => {~"blue"}
-      black => {~"black"}
-      white => {~"white"}
-      imaginary => {~"imaginary"}
-      purple => {~"purple"}
-      orange => {~"orange"}
+      red => {"red".to_owned()}
+      green => {"green".to_owned()}
+      blue => {"blue".to_owned()}
+      black => {"black".to_owned()}
+      white => {"white".to_owned()}
+      imaginary => {"imaginary".to_owned()}
+      purple => {"purple".to_owned()}
+      orange => {"orange".to_owned()}
     }
 }
 
 fn get_color_if(color: color) -> ~str {
-    if color == red {~"red"}
-    else if color == green {~"green"}
-    else if color == blue {~"blue"}
-    else if color == black {~"black"}
-    else if color == white {~"white"}
-    else if color == imaginary {~"imaginary"}
-    else if color == purple {~"purple"}
-    else if color == orange {~"orange"}
-    else {~"unknown"}
+    if color == red {"red".to_owned()}
+    else if color == green {"green".to_owned()}
+    else if color == blue {"blue".to_owned()}
+    else if color == black {"black".to_owned()}
+    else if color == white {"white".to_owned()}
+    else if color == imaginary {"imaginary".to_owned()}
+    else if color == purple {"purple".to_owned()}
+    else if color == orange {"orange".to_owned()}
+    else {"unknown".to_owned()}
 }

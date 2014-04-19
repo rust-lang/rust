@@ -388,7 +388,7 @@ impl fmt::Show for UvError {
 #[test]
 fn error_smoke_test() {
     let err: UvError = UvError(uvll::EOF);
-    assert_eq!(err.to_str(), ~"EOF: end of file");
+    assert_eq!(err.to_str(), "EOF: end of file".to_owned());
 }
 
 pub fn uv_error_to_io_error(uverr: UvError) -> IoError {

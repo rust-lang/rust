@@ -26,7 +26,6 @@ fn main() {
 
     ~2; //~ ERROR type uses owned
     fn g(_: ~Clone) {} //~ ERROR type uses owned
-    ~""; //~ ERROR type uses owned
-    //~^ ERROR type uses owned
+    "".to_owned(); //~ ERROR type uses owned
     proc() {}; //~ ERROR type uses owned
 }

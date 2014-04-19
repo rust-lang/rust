@@ -33,9 +33,9 @@ pub fn get_rpath_flags(sess: &Session, out_filename: &Path) -> Vec<~str> {
     let mut flags = Vec::new();
 
     if sess.targ_cfg.os == abi::OsFreebsd {
-        flags.push_all([~"-Wl,-rpath,/usr/local/lib/gcc46",
-                        ~"-Wl,-rpath,/usr/local/lib/gcc44",
-                        ~"-Wl,-z,origin"]);
+        flags.push_all(["-Wl,-rpath,/usr/local/lib/gcc46".to_owned(),
+                        "-Wl,-rpath,/usr/local/lib/gcc44".to_owned(),
+                        "-Wl,-z,origin".to_owned()]);
     }
 
     debug!("preparing the RPATH!");
@@ -163,8 +163,8 @@ mod test {
 
     #[test]
     fn test_rpaths_to_flags() {
-        let flags = rpaths_to_flags([~"path1", ~"path2"]);
-        assert_eq!(flags, vec!(~"-Wl,-rpath,path1", ~"-Wl,-rpath,path2"));
+        let flags = rpaths_to_flags(["path1".to_owned(), "path2".to_owned()]);
+        assert_eq!(flags, vec!("-Wl,-rpath,path1".to_owned(), "-Wl,-rpath,path2".to_owned()));
     }
 
     #[test]
@@ -190,17 +190,18 @@ mod test {
 
     #[test]
     fn test_minimize1() {
-        let res = minimize_rpaths([~"rpath1", ~"rpath2", ~"rpath1"]);
-        assert!(res.as_slice() == [~"rpath1", ~"rpath2"]);
+        let res = minimize_rpaths(["rpath1".to_owned(), "rpath2".to_owned(), "rpath1".to_owned()]);
+        assert!(res.as_slice() == ["rpath1".to_owned(), "rpath2".to_owned()]);
     }
 
     #[test]
     fn test_minimize2() {
-        let res = minimize_rpaths([~"1a", ~"2",  ~"2",
-                                   ~"1a", ~"4a", ~"1a",
-                                   ~"2",  ~"3",  ~"4a",
-                                   ~"3"]);
-        assert!(res.as_slice() == [~"1a", ~"2", ~"4a", ~"3"]);
+        let res = minimize_rpaths(["1a".to_owned(), "2".to_owned(),  "2".to_owned(),
+                                   "1a".to_owned(), "4a".to_owned(), "1a".to_owned(),
+                                   "2".to_owned(),  "3".to_owned(),  "4a".to_owned(),
+                                   "3".to_owned()]);
+        assert!(res.as_slice() == ["1a".to_owned(), "2".to_owned(), "4a".to_owned(),
+                                   "3".to_owned()]);
     }
 
     #[test]

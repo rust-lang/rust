@@ -864,7 +864,7 @@ impl<'a> MethodDef<'a> {
 
         } else {  // there are still matches to create
             let current_match_str = if match_count == 0 {
-                ~"__self"
+                "__self".to_owned()
             } else {
                 format!("__arg_{}", match_count)
             };

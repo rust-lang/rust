@@ -727,7 +727,7 @@ mod test {
 
         let u = Uuid::from_fields(d1, d2, d3, d4.as_slice());
 
-        let expected = ~"a1a2a3a4b1b2c1c2d1d2d3d4d5d6d7d8";
+        let expected = "a1a2a3a4b1b2c1c2d1d2d3d4d5d6d7d8".to_owned();
         let result = u.to_simple_str();
         assert!(result == expected);
     }
@@ -738,7 +738,7 @@ mod test {
                    0xd1, 0xd2, 0xd3, 0xd4, 0xd5, 0xd6, 0xd7, 0xd8 );
 
         let u = Uuid::from_bytes(b.as_slice()).unwrap();
-        let expected = ~"a1a2a3a4b1b2c1c2d1d2d3d4d5d6d7d8";
+        let expected = "a1a2a3a4b1b2c1c2d1d2d3d4d5d6d7d8".to_owned();
 
         assert!(u.to_simple_str() == expected);
     }

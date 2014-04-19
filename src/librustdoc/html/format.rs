@@ -214,7 +214,7 @@ fn path(w: &mut io::Writer, path: &clean::Path, print_all: bool,
             let cache = cache.unwrap();
             let abs_root = root(&**cache, loc.as_slice());
             let rel_root = match path.segments.get(0).name.as_slice() {
-                "self" => Some(~"./"),
+                "self" => Some("./".to_owned()),
                 _ => None,
             };
 
@@ -343,7 +343,7 @@ impl fmt::Show for clean::Type {
                                {arrow, select, yes{ -&gt; {ret}} other{}}",
                        style = FnStyleSpace(decl.fn_style),
                        lifetimes = if decl.lifetimes.len() == 0 {
-                           ~""
+                           "".to_owned()
                        } else {
                            format!("&lt;{:#}&gt;", decl.lifetimes)
                        },
@@ -379,13 +379,13 @@ impl fmt::Show for clean::Type {
                                {arrow, select, yes{ -&gt; {ret}} other{}}",
                        style = FnStyleSpace(decl.fn_style),
                        lifetimes = if decl.lifetimes.len() == 0 {
-                           ~""
+                           "".to_owned()
                        } else {
                            format!("&lt;{:#}&gt;", decl.lifetimes)
                        },
                        args = decl.decl.inputs,
                        bounds = if decl.bounds.len() == 0 {
-                           ~""
+                           "".to_owned()
                        } else {
                            let mut m = decl.bounds.iter().map(|s| s.to_str());
                            ": " + m.collect::<~[~str]>().connect(" + ")
@@ -397,8 +397,8 @@ impl fmt::Show for clean::Type {
                 write!(f.buf, "{}{}fn{}{}",
                        FnStyleSpace(decl.fn_style),
                        match decl.abi {
-                           ref x if "" == *x => ~"",
-                           ref x if "\"Rust\"" == *x => ~"",
+                           ref x if "" == *x => "".to_owned(),
+                           ref x if "\"Rust\"" == *x => "".to_owned(),
                            ref s => " " + *s + " ",
                        },
                        decl.generics,
@@ -432,7 +432,7 @@ impl fmt::Show for clean::Type {
                        }, **t)
             }
             clean::BorrowedRef{ lifetime: ref l, mutability, type_: ref ty} => {
-                let lt = match *l { Some(ref l) => format!("{} ", *l), _ => ~"" };
+                let lt = match *l { Some(ref l) => format!("{} ", *l), _ => "".to_owned() };
                 write!(f.buf, "&amp;{}{}{}",
                        lt,
                        match mutability {

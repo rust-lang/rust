@@ -15,7 +15,7 @@ use std::ptr;
 pub fn main() {
     let mut test = TestDescAndFn {
         desc: TestDesc {
-            name: DynTestName(~"test"),
+            name: DynTestName("test".to_owned()),
             should_fail: false
         },
         testfn: DynTestFn(proc() ()),

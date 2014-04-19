@@ -112,10 +112,10 @@ impl Token {
 pub fn tok_str(t: Token) -> ~str {
     match t {
         String(s, len) => return format!("STR({},{})", s, len),
-        Break(_) => return ~"BREAK",
-        Begin(_) => return ~"BEGIN",
-        End => return ~"END",
-        Eof => return ~"EOF"
+        Break(_) => return "BREAK".to_owned(),
+        Begin(_) => return "BEGIN".to_owned(),
+        End => return "END".to_owned(),
+        Eof => return "EOF".to_owned()
     }
 }
 

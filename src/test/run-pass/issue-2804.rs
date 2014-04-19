@@ -41,21 +41,21 @@ fn add_interface(_store: int, managed_ip: ~str, data: json::Json) -> (~str, obje
 {
     match &data {
         &json::Object(ref interface) => {
-            let name = lookup((*interface).clone(), ~"ifDescr", ~"");
+            let name = lookup((*interface).clone(), "ifDescr".to_owned(), "".to_owned());
             let label = format!("{}-{}", managed_ip, name);
 
             (label, bool_value(false))
         }
         _ => {
             println!("Expected dict for {} interfaces but found {:?}", managed_ip, data);
-            (~"gnos:missing-interface", bool_value(true))
+            ("gnos:missing-interface".to_owned(), bool_value(true))
         }
     }
 }
 
 fn add_interfaces(store: int, managed_ip: ~str, device: HashMap<~str, json::Json>)
 -> Vec<(~str, object)> {
-    match device.get(&~"interfaces")
+    match device.get(&"interfaces".to_owned())
     {
         &json::List(ref interfaces) =>
         {
@@ -66,7 +66,7 @@ fn add_interfaces(store: int, managed_ip: ~str, device: HashMap<~str, json::Json
         _ =>
         {
             println!("Expected list for {} interfaces but found {:?}", managed_ip,
-                   device.get(&~"interfaces"));
+                   device.get(&"interfaces".to_owned()));
             Vec::new()
         }
     }

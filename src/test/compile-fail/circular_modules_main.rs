@@ -12,7 +12,7 @@
 mod circular_modules_hello; //~ERROR: circular modules
 
 pub fn hi_str() -> ~str {
-  ~"Hi!"
+  "Hi!".to_owned()
 }
 
 fn main() {

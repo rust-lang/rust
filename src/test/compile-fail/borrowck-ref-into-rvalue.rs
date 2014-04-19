@@ -10,7 +10,7 @@
 
 fn main() {
     let msg;
-    match Some(~"Hello") {
+    match Some("Hello".to_owned()) {
         Some(ref m) => { //~ ERROR borrowed value does not live long enough
             msg = m;
         },

@@ -43,7 +43,7 @@ use rt::rtio::{RtioProcess, IoFactory, LocalIo};
 /// ```should_fail
 /// use std::io::Process;
 ///
-/// let mut child = match Process::new("/bin/cat", [~"file.txt"]) {
+/// let mut child = match Process::new("/bin/cat", ["file.txt".to_owned()]) {
 ///     Ok(child) => child,
 ///     Err(e) => fail!("failed to execute child: {}", e),
 /// };
@@ -81,7 +81,7 @@ pub struct Process {
 ///
 /// let config = ProcessConfig {
 ///     program: "/bin/sh",
-///     args: &[~"-c", ~"true"],
+///     args: &["-c".to_owned(), "true".to_owned()],
 ///     .. ProcessConfig::new()
 /// };
 /// ```
@@ -211,7 +211,7 @@ impl<'a> ProcessConfig<'a> {
     ///
     /// let config = ProcessConfig {
     ///     program: "/bin/sh",
-    ///     args: &[~"-c", ~"echo hello"],
+    ///     args: &["-c".to_owned(), "echo hello".to_owned()],
     ///     .. ProcessConfig::new()
     /// };
     ///
@@ -248,7 +248,7 @@ impl Process {
     /// ```
     /// use std::io::Process;
     ///
-    /// let mut process = match Process::new("sh", &[~"c", ~"echo hello"]) {
+    /// let mut process = match Process::new("sh", &["c".to_owned(), "echo hello".to_owned()]) {
     ///     Ok(p) => p,
     ///     Err(e) => fail!("failed to execute process: {}", e),
     /// };
@@ -272,7 +272,7 @@ impl Process {
     /// use std::io::Process;
     /// use std::str;
     ///
-    /// let output = match Process::output("cat", [~"foo.txt"]) {
+    /// let output = match Process::output("cat", ["foo.txt".to_owned()]) {
     ///     Ok(output) => output,
     ///     Err(e) => fail!("failed to execute process: {}", e),
     /// };
@@ -427,6 +427,7 @@ impl Drop for Process {
 mod tests {
     use io::process::{ProcessConfig, Process};
     use prelude::*;
+    use str::StrSlice;
 
     // FIXME(#10380) these tests should not all be ignored on android.
 
@@ -471,7 +472,7 @@ mod tests {
     iotest!(fn signal_reported_right() {
         let args = ProcessConfig {
             program: "/bin/sh",
-            args: &[~"-c", ~"kill -1 $$"],
+            args: &["-c".to_owned(), "kill -1 $$".to_owned()],
             .. ProcessConfig::new()
         };
         let p = Process::configure(args);
@@ -501,11 +502,11 @@ mod tests {
     iotest!(fn stdout_works() {
         let args = ProcessConfig {
             program: "echo",
-            args: &[~"foobar"],
+            args: &["foobar".to_owned()],
             stdout: CreatePipe(false, true),
             .. ProcessConfig::new()
         };
-        assert_eq!(run_output(args), ~"foobar\n");
+        assert_eq!(run_output(args), "foobar\n".to_owned());
     })
 
     #[cfg(unix, not(target_os="android"))]
@@ -513,19 +514,19 @@ mod tests {
         let cwd = Path::new("/");
         let args = ProcessConfig {
             program: "/bin/sh",
-            args: &[~"-c", ~"pwd"],
+            args: &["-c".to_owned(), "pwd".to_owned()],
             cwd: Some(&cwd),
             stdout: CreatePipe(false, true),
             .. ProcessConfig::new()
         };
-        assert_eq!(run_output(args), ~"/\n");
+        assert_eq!(run_output(args), "/\n".to_owned());
     })
 
     #[cfg(unix, not(target_os="android"))]
     iotest!(fn stdin_works() {
         let args = ProcessConfig {
             program: "/bin/sh",
-            args: &[~"-c", ~"read line; echo $line"],
+            args: &["-c".to_owned(), "read line; echo $line".to_owned()],
             stdin: CreatePipe(true, false),
             stdout: CreatePipe(false, true),
             .. ProcessConfig::new()
@@ -535,7 +536,7 @@ mod tests {
         drop(p.stdin.take());
         let out = read_all(p.stdout.get_mut_ref() as &mut Reader);
         assert!(p.wait().success());
-        assert_eq!(out, ~"foobar\n");
+        assert_eq!(out, "foobar\n".to_owned());
     })
 
     #[cfg(not(target_os="android"))]
@@ -564,7 +565,7 @@ mod tests {
         use libc;
         let args = ProcessConfig {
             program: "/bin/sh",
-            args: &[~"-c", ~"true"],
+            args: &["-c".to_owned(), "true".to_owned()],
             uid: Some(unsafe { libc::getuid() as uint }),
             gid: Some(unsafe { libc::getgid() as uint }),
             .. ProcessConfig::new()
@@ -609,11 +610,11 @@ mod tests {
     iotest!(fn test_process_output_output() {
 
         let ProcessOutput {status, output, error}
-             = Process::output("echo", [~"hello"]).unwrap();
+             = Process::output("echo", ["hello".to_owned()]).unwrap();
         let output_str = str::from_utf8(output.as_slice()).unwrap();
 
         assert!(status.success());
-        assert_eq!(output_str.trim().to_owned(), ~"hello");
+        assert_eq!(output_str.trim().to_owned(), "hello".to_owned());
         // FIXME #7224
         if !running_on_valgrind() {
             assert_eq!(error, Vec::new());
@@ -623,7 +624,7 @@ mod tests {
     #[cfg(not(target_os="android"))]
     iotest!(fn test_process_output_error() {
         let ProcessOutput {status, output, error}
-             = Process::output("mkdir", [~"."]).unwrap();
+             = Process::output("mkdir", [".".to_owned()]).unwrap();
 
         assert!(status.matches_exit_status(1));
         assert_eq!(output, Vec::new());
@@ -646,12 +647,12 @@ mod tests {
     #[cfg(not(target_os="android"))]
     iotest!(fn test_wait_with_output_once() {
 
-        let mut prog = Process::new("echo", [~"hello"]).unwrap();
+        let mut prog = Process::new("echo", ["hello".to_owned()]).unwrap();
         let ProcessOutput {status, output, error} = prog.wait_with_output();
         let output_str = str::from_utf8(output.as_slice()).unwrap();
 
         assert!(status.success());
-        assert_eq!(output_str.trim().to_owned(), ~"hello");
+        assert_eq!(output_str.trim().to_owned(), "hello".to_owned());
         // FIXME #7224
         if !running_on_valgrind() {
             assert_eq!(error, Vec::new());
@@ -660,13 +661,13 @@ mod tests {
 
     #[cfg(not(target_os="android"))]
     iotest!(fn test_wait_with_output_twice() {
-        let mut prog = Process::new("echo", [~"hello"]).unwrap();
+        let mut prog = Process::new("echo", ["hello".to_owned()]).unwrap();
         let ProcessOutput {status, output, error} = prog.wait_with_output();
 
         let output_str = str::from_utf8(output.as_slice()).unwrap();
 
         assert!(status.success());
-        assert_eq!(output_str.trim().to_owned(), ~"hello");
+        assert_eq!(output_str.trim().to_owned(), "hello".to_owned());
         // FIXME #7224
         if !running_on_valgrind() {
             assert_eq!(error, Vec::new());
@@ -694,7 +695,7 @@ mod tests {
     pub fn run_pwd(dir: Option<&Path>) -> Process {
         Process::configure(ProcessConfig {
             program: "/system/bin/sh",
-            args: &[~"-c",~"pwd"],
+            args: &["-c".to_owned(),"pwd".to_owned()],
             cwd: dir.map(|a| &*a),
             .. ProcessConfig::new()
         }).unwrap()
@@ -704,7 +705,7 @@ mod tests {
     pub fn run_pwd(dir: Option<&Path>) -> Process {
         Process::configure(ProcessConfig {
             program: "cmd",
-            args: &[~"/c", ~"cd"],
+            args: &["/c".to_owned(), "cd".to_owned()],
             cwd: dir.map(|a| &*a),
             .. ProcessConfig::new()
         }).unwrap()
@@ -754,7 +755,7 @@ mod tests {
     pub fn run_env(env: Option<~[(~str, ~str)]>) -> Process {
         Process::configure(ProcessConfig {
             program: "/system/bin/sh",
-            args: &[~"-c",~"set"],
+            args: &["-c".to_owned(),"set".to_owned()],
             env: env.as_ref().map(|e| e.as_slice()),
             .. ProcessConfig::new()
         }).unwrap()
@@ -764,7 +765,7 @@ mod tests {
     pub fn run_env(env: Option<~[(~str, ~str)]>) -> Process {
         Process::configure(ProcessConfig {
             program: "cmd",
-            args: &[~"/c", ~"set"],
+            args: &["/c".to_owned(), "set".to_owned()],
             env: env.as_ref().map(|e| e.as_slice()),
             .. ProcessConfig::new()
         }).unwrap()
@@ -795,7 +796,7 @@ mod tests {
         let r = os::env();
         for &(ref k, ref v) in r.iter() {
             // don't check android RANDOM variables
-            if *k != ~"RANDOM" {
+            if *k != "RANDOM".to_owned() {
                 assert!(output.contains(format!("{}={}", *k, *v)) ||
                         output.contains(format!("{}=\'{}\'", *k, *v)));
             }
@@ -803,7 +804,7 @@ mod tests {
     })
 
     iotest!(fn test_add_to_env() {
-        let new_env = ~[(~"RUN_TEST_NEW_ENV", ~"123")];
+        let new_env = ~[("RUN_TEST_NEW_ENV".to_owned(), "123".to_owned())];
 
         let mut prog = run_env(Some(new_env));
         let result = prog.wait_with_output();
@@ -815,14 +816,14 @@ mod tests {
 
     #[cfg(unix)]
     pub fn sleeper() -> Process {
-        Process::new("sleep", [~"1000"]).unwrap()
+        Process::new("sleep", ["1000".to_owned()]).unwrap()
     }
     #[cfg(windows)]
     pub fn sleeper() -> Process {
         // There's a `timeout` command on windows, but it doesn't like having
         // its output piped, so instead just ping ourselves a few times with
         // gaps inbetweeen so we're sure this process is alive for awhile
-        Process::new("ping", [~"127.0.0.1", ~"-n", ~"1000"]).unwrap()
+        Process::new("ping", ["127.0.0.1".to_owned(), "-n".to_owned(), "1000".to_owned()]).unwrap()
     }
 
     iotest!(fn test_kill() {

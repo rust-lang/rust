@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn main() {
-    let mut s = ~"test";
+    let mut s = "test".to_owned();
     s[0] = 3; //~ ERROR: not allowed
     s[0] += 3; //~ ERROR: not allowed
     {

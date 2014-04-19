@@ -112,10 +112,10 @@ pub fn load_props(testfile: &Path) -> TestProps {
 
 pub fn is_test_ignored(config: &config, testfile: &Path) -> bool {
     fn ignore_target(config: &config) -> ~str {
-        ~"ignore-" + util::get_os(config.target)
+        "ignore-".to_owned() + util::get_os(config.target)
     }
     fn ignore_stage(config: &config) -> ~str {
-        ~"ignore-" + config.stage_id.split('-').next().unwrap()
+        "ignore-".to_owned() + config.stage_id.split('-').next().unwrap()
     }
 
     let val = iter_header(testfile, |ln| {
@@ -149,23 +149,23 @@ fn iter_header(testfile: &Path, it: |&str| -> bool) -> bool {
 }
 
 fn parse_error_pattern(line: &str) -> Option<~str> {
-    parse_name_value_directive(line, ~"error-pattern")
+    parse_name_value_directive(line, "error-pattern".to_owned())
 }
 
 fn parse_aux_build(line: &str) -> Option<~str> {
-    parse_name_value_directive(line, ~"aux-build")
+    parse_name_value_directive(line, "aux-build".to_owned())
 }
 
 fn parse_compile_flags(line: &str) -> Option<~str> {
-    parse_name_value_directive(line, ~"compile-flags")
+    parse_name_value_directive(line, "compile-flags".to_owned())
 }
 
 fn parse_debugger_cmd(line: &str) -> Option<~str> {
-    parse_name_value_directive(line, ~"debugger")
+    parse_name_value_directive(line, "debugger".to_owned())
 }
 
 fn parse_check_line(line: &str) -> Option<~str> {
-    parse_name_value_directive(line, ~"check")
+    parse_name_value_directive(line, "check".to_owned())
 }
 
 fn parse_force_host(line: &str) -> bool {
@@ -181,12 +181,12 @@ fn parse_no_prefer_dynamic(line: &str) -> bool {
 }
 
 fn parse_exec_env(line: &str) -> Option<(~str, ~str)> {
-    parse_name_value_directive(line, ~"exec-env").map(|nv| {
+    parse_name_value_directive(line, "exec-env".to_owned()).map(|nv| {
         // nv is either FOO or FOO=BAR
         let mut strs: Vec<~str> = nv.splitn('=', 1).map(|s| s.to_owned()).collect();
 
         match strs.len() {
-          1u => (strs.pop().unwrap(), ~""),
+          1u => (strs.pop().unwrap(), "".to_owned()),
           2u => {
               let end = strs.pop().unwrap();
               (strs.pop().unwrap(), end)
@@ -197,7 +197,7 @@ fn parse_exec_env(line: &str) -> Option<(~str, ~str)> {
 }
 
 fn parse_pp_exact(line: &str, testfile: &Path) -> Option<Path> {
-    match parse_name_value_directive(line, ~"pp-exact") {
+    match parse_name_value_directive(line, "pp-exact".to_owned()) {
       Some(s) => Some(Path::new(s)),
       None => {
         if parse_name_directive(line, "pp-exact") {

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn main() {
-    match ~"foo" {
+    match "foo".to_owned() {
         ['f', 'o', ..] => { } //~ ERROR mismatched types: expected `~str` but found a vector pattern
         _ => { }
     }

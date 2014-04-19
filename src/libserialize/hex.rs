@@ -145,7 +145,7 @@ mod tests {
 
     #[test]
     pub fn test_to_hex() {
-        assert_eq!("foobar".as_bytes().to_hex(), ~"666f6f626172");
+        assert_eq!("foobar".as_bytes().to_hex(), "666f6f626172".to_owned());
     }
 
     #[test]

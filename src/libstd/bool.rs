@@ -199,6 +199,7 @@ impl Default for bool {
 mod tests {
     use prelude::*;
     use super::to_bit;
+    use str::StrSlice;
 
     #[test]
     fn test_to_bit() {
@@ -268,8 +269,8 @@ mod tests {
 
     #[test]
     fn test_to_str() {
-        assert_eq!(false.to_str(), ~"false");
-        assert_eq!(true.to_str(), ~"true");
+        assert_eq!(false.to_str(), "false".to_owned());
+        assert_eq!(true.to_str(), "true".to_owned());
     }
 
     #[test]

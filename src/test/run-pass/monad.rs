@@ -42,10 +42,10 @@ fn transform(x: Option<int>) -> Option<~str> {
 }
 
 pub fn main() {
-    assert_eq!(transform(Some(10)), Some(~"11"));
+    assert_eq!(transform(Some(10)), Some("11".to_owned()));
     assert_eq!(transform(None), None);
-    assert!((vec!(~"hi"))
+    assert!((vec!("hi".to_owned()))
         .bind(|x| vec!(x.clone(), *x + "!") )
         .bind(|x| vec!(x.clone(), *x + "?") ) ==
-        vec!(~"hi", ~"hi?", ~"hi!", ~"hi!?"));
+        vec!("hi".to_owned(), "hi?".to_owned(), "hi!".to_owned(), "hi!?".to_owned()));
 }

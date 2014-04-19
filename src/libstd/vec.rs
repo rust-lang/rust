@@ -626,7 +626,7 @@ impl<T> Vec<T> {
     /// # Example
     ///
     /// ```rust
-    /// let v = vec!(~"a", ~"b");
+    /// let v = vec!("a".to_owned(), "b".to_owned());
     /// for s in v.move_iter() {
     ///     // s has type ~str, not &~str
     ///     println!("{}", s);
@@ -830,13 +830,13 @@ impl<T> Vec<T> {
     ///
     /// # Example
     /// ```rust
-    /// let mut v = vec!(~"foo", ~"bar", ~"baz", ~"qux");
+    /// let mut v = vec!("foo".to_owned(), "bar".to_owned(), "baz".to_owned(), "qux".to_owned());
     ///
-    /// assert_eq!(v.swap_remove(1), Some(~"bar"));
-    /// assert_eq!(v, vec!(~"foo", ~"qux", ~"baz"));
+    /// assert_eq!(v.swap_remove(1), Some("bar".to_owned()));
+    /// assert_eq!(v, vec!("foo".to_owned(), "qux".to_owned(), "baz".to_owned()));
     ///
-    /// assert_eq!(v.swap_remove(0), Some(~"foo"));
-    /// assert_eq!(v, vec!(~"baz", ~"qux"));
+    /// assert_eq!(v.swap_remove(0), Some("foo".to_owned()));
+    /// assert_eq!(v, vec!("baz".to_owned(), "qux".to_owned()));
     ///
     /// assert_eq!(v.swap_remove(2), None);
     /// ```

@@ -57,20 +57,20 @@ fn main() {
     let cx = mk_ctxt();
 
     let abc = quote_expr!(cx, 23);
-    check_pp(ext_cx, abc,  pprust::print_expr, ~"23");
+    check_pp(ext_cx, abc,  pprust::print_expr, "23".to_owned());
 
 
     let ty = quote_ty!(cx, int);
-    check_pp(ext_cx, ty, pprust::print_type, ~"int");
+    check_pp(ext_cx, ty, pprust::print_type, "int".to_owned());
 
     let item = quote_item!(cx, static x : int = 10;).get();
-    check_pp(ext_cx, item, pprust::print_item, ~"static x: int = 10;");
+    check_pp(ext_cx, item, pprust::print_item, "static x: int = 10;".to_owned());
 
     let stmt = quote_stmt!(cx, let x = 20;);
-    check_pp(ext_cx, *stmt, pprust::print_stmt, ~"let x = 20;");
+    check_pp(ext_cx, *stmt, pprust::print_stmt, "let x = 20;".to_owned());
 
     let pat = quote_pat!(cx, Some(_));
-    check_pp(ext_cx, pat, pprust::print_pat, ~"Some(_)");
+    check_pp(ext_cx, pat, pprust::print_pat, "Some(_)".to_owned());
 
 }
 
@@ -82,7 +82,7 @@ fn check_pp<T>(cx: fake_ext_ctxt,
         pp::eof(pp.s);
     });
     stdout().write_line(s);
-    if expect != ~"" {
+    if expect != "".to_owned() {
         println!("expect: '%s', got: '%s'", expect, s);
         assert_eq!(s, expect);
     }

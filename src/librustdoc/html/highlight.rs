@@ -27,7 +27,7 @@ use t = syntax::parse::token;
 /// Highlights some source code, returning the HTML output.
 pub fn highlight(src: &str, class: Option<&str>) -> ~str {
     let sess = parse::new_parse_sess();
-    let fm = parse::string_to_filemap(&sess, src.to_owned(), ~"<stdin>");
+    let fm = parse::string_to_filemap(&sess, src.to_owned(), "<stdin>".to_owned());
 
     let mut out = io::MemWriter::new();
     doit(&sess,

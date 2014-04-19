@@ -13,7 +13,7 @@ fn decode() -> ~str {
         let mut ch_start: uint;
         break 'outer;
     }
-    ~""
+    "".to_owned()
 }
 
 pub fn main() {

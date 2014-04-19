@@ -202,7 +202,7 @@ impl Clean<Item> for doctree::Module {
         let name = if self.name.is_some() {
             self.name.unwrap().clean()
         } else {
-            ~""
+            "".to_owned()
         };
         let mut foreigns = Vec::new();
         for subforeigns in self.foreigns.clean().move_iter() {
@@ -1170,7 +1170,7 @@ impl Clean<Item> for ast::ForeignItem {
                 ForeignStaticItem(Static {
                     type_: ty.clean(),
                     mutability: if mutbl {Mutable} else {Immutable},
-                    expr: ~"",
+                    expr: "".to_owned(),
                 })
             }
         };
@@ -1197,7 +1197,7 @@ impl ToSource for syntax::codemap::Span {
         let cm = local_data::get(super::ctxtkey, |x| x.unwrap().clone()).sess().codemap().clone();
         let sn = match cm.span_to_snippet(*self) {
             Some(x) => x,
-            None    => ~""
+            None    => "".to_owned()
         };
         debug!("got snippet {}", sn);
         sn
@@ -1208,14 +1208,14 @@ fn lit_to_str(lit: &ast::Lit) -> ~str {
     match lit.node {
         ast::LitStr(ref st, _) => st.get().to_owned(),
         ast::LitBinary(ref data) => format!("{:?}", data.as_slice()),
-        ast::LitChar(c) => ~"'" + std::char::from_u32(c).unwrap().to_str() + "'",
+        ast::LitChar(c) => "'".to_owned() + std::char::from_u32(c).unwrap().to_str() + "'",
         ast::LitInt(i, _t) => i.to_str(),
         ast::LitUint(u, _t) => u.to_str(),
         ast::LitIntUnsuffixed(i) => i.to_str(),
         ast::LitFloat(ref f, _t) => f.get().to_str(),
         ast::LitFloatUnsuffixed(ref f) => f.get().to_str(),
         ast::LitBool(b) => b.to_str(),
-        ast::LitNil => ~"",
+        ast::LitNil => "".to_owned(),
     }
 }
 
@@ -1224,19 +1224,19 @@ fn name_from_pat(p: &ast::Pat) -> ~str {
     debug!("Trying to get a name from pattern: {:?}", p);
 
     match p.node {
-        PatWild => ~"_",
-        PatWildMulti => ~"..",
+        PatWild => "_".to_owned(),
+        PatWildMulti => "..".to_owned(),
         PatIdent(_, ref p, _) => path_to_str(p),
         PatEnum(ref p, _) => path_to_str(p),
         PatStruct(..) => fail!("tried to get argument name from pat_struct, \
                                 which is not allowed in function arguments"),
-        PatTup(..) => ~"(tuple arg NYI)",
+        PatTup(..) => "(tuple arg NYI)".to_owned(),
         PatUniq(p) => name_from_pat(p),
         PatRegion(p) => name_from_pat(p),
         PatLit(..) => {
             warn!("tried to get argument name from PatLit, \
                   which is silly in function arguments");
-            ~"()"
+            "()".to_owned()
         },
         PatRange(..) => fail!("tried to get argument name from PatRange, \
                               which is not allowed in function arguments"),

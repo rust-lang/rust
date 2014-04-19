@@ -19,7 +19,7 @@ impl Drop for X {
 }
 
 fn main() {
-    let x = X { x: ~"hello" };
+    let x = X { x: "hello".to_owned() };
 
     match x {
         X { x: y } => println!("contents: {}", y)

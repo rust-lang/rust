@@ -36,4 +36,4 @@ enum crew_of_enterprise_d {
 
 fn boldly_go(_crew_member: crew_of_enterprise_d, _where: ~str) { }
 
-pub fn main() { boldly_go(worf, ~"where no one has gone before"); }
+pub fn main() { boldly_go(worf, "where no one has gone before".to_owned()); }

@@ -266,10 +266,11 @@ mod tests {
     use super::*;
     use clone::Clone;
     use cmp::*;
+    use str::StrSlice;
 
     #[test]
     fn test_clone() {
-        let a = (1, ~"2");
+        let a = (1, "2".to_owned());
         let b = a.clone();
         assert_eq!(a, b);
     }
@@ -342,8 +343,8 @@ mod tests {
 
     #[test]
     fn test_show() {
-        assert_eq!(format!("{}", (1,)), ~"(1,)");
-        assert_eq!(format!("{}", (1, true)), ~"(1, true)");
-        assert_eq!(format!("{}", (1, ~"hi", true)), ~"(1, hi, true)");
+        assert_eq!(format!("{}", (1,)), "(1,)".to_owned());
+        assert_eq!(format!("{}", (1, true)), "(1, true)".to_owned());
+        assert_eq!(format!("{}", (1, "hi".to_owned(), true)), "(1, hi, true)".to_owned());
     }
 }

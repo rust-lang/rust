@@ -24,5 +24,5 @@ fn compare(x: &str, y: &str) -> bool
 pub fn main()
 {
     assert!(compare("foo", "foo"));
-    assert!(compare(~"foo", ~"foo"));
+    assert!(compare("foo".to_owned(), "foo".to_owned()));
 }

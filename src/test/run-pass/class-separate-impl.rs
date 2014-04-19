@@ -64,6 +64,6 @@ fn print_out(thing: ~ToStr, expected: ~str) {
 }
 
 pub fn main() {
-  let nyan: ~ToStr = ~cat(0u, 2, ~"nyan") as ~ToStr;
-  print_out(nyan, ~"nyan");
+  let nyan: ~ToStr = ~cat(0u, 2, "nyan".to_owned()) as ~ToStr;
+  print_out(nyan, "nyan".to_owned());
 }

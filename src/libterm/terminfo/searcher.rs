@@ -99,10 +99,10 @@ fn test_get_dbpath_for_term() {
         let p = get_dbpath_for_term(t).expect("no terminfo entry found");
         p.as_str().unwrap().to_owned()
     };
-    assert!(x("screen") == ~"/usr/share/terminfo/s/screen");
+    assert!(x("screen") == "/usr/share/terminfo/s/screen".to_owned());
     assert!(get_dbpath_for_term("") == None);
     setenv("TERMINFO_DIRS", ":");
-    assert!(x("screen") == ~"/usr/share/terminfo/s/screen");
+    assert!(x("screen") == "/usr/share/terminfo/s/screen".to_owned());
     unsetenv("TERMINFO_DIRS");
 }
 

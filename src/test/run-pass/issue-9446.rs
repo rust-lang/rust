@@ -28,12 +28,12 @@ impl Drop for Wrapper {
 pub fn main() {
     {
         // This runs without complaint.
-        let x = Wrapper::new(~"Bob");
+        let x = Wrapper::new("Bob".to_owned());
         x.say_hi();
     }
     {
         // This fails to compile, circa 0.8-89-gc635fba.
         // error: internal compiler error: drop_ty_immediate: non-box ty
-        Wrapper::new(~"Bob").say_hi();
+        Wrapper::new("Bob".to_owned()).say_hi();
     }
 }

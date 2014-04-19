@@ -308,14 +308,14 @@ fn test_parse() {
         major: 1u,
         minor: 2u,
         patch: 3u,
-        pre: vec!(AlphaNumeric(~"alpha1")),
+        pre: vec!(AlphaNumeric("alpha1".to_owned())),
         build: vec!(),
     }));
     assert!(parse("  1.2.3-alpha1  ") == Some(Version {
         major: 1u,
         minor: 2u,
         patch: 3u,
-        pre: vec!(AlphaNumeric(~"alpha1")),
+        pre: vec!(AlphaNumeric("alpha1".to_owned())),
         build: vec!()
     }));
     assert!(parse("1.2.3+build5") == Some(Version {
@@ -323,37 +323,37 @@ fn test_parse() {
         minor: 2u,
         patch: 3u,
         pre: vec!(),
-        build: vec!(AlphaNumeric(~"build5"))
+        build: vec!(AlphaNumeric("build5".to_owned()))
     }));
     assert!(parse("  1.2.3+build5  ") == Some(Version {
         major: 1u,
         minor: 2u,
         patch: 3u,
         pre: vec!(),
-        build: vec!(AlphaNumeric(~"build5"))
+        build: vec!(AlphaNumeric("build5".to_owned()))
     }));
     assert!(parse("1.2.3-alpha1+build5") == Some(Version {
         major: 1u,
         minor: 2u,
         patch: 3u,
-        pre: vec!(AlphaNumeric(~"alpha1")),
-        build: vec!(AlphaNumeric(~"build5"))
+        pre: vec!(AlphaNumeric("alpha1".to_owned())),
+        build: vec!(AlphaNumeric("build5".to_owned()))
     }));
     assert!(parse("  1.2.3-alpha1+build5  ") == Some(Version {
         major: 1u,
         minor: 2u,
         patch: 3u,
-        pre: vec!(AlphaNumeric(~"alpha1")),
-        build: vec!(AlphaNumeric(~"build5"))
+        pre: vec!(AlphaNumeric("alpha1".to_owned())),
+        build: vec!(AlphaNumeric("build5".to_owned()))
     }));
     assert!(parse("1.2.3-1.alpha1.9+build5.7.3aedf  ") == Some(Version {
         major: 1u,
         minor: 2u,
         patch: 3u,
-        pre: vec!(Numeric(1),AlphaNumeric(~"alpha1"),Numeric(9)),
-        build: vec!(AlphaNumeric(~"build5"),
+        pre: vec!(Numeric(1),AlphaNumeric("alpha1".to_owned()),Numeric(9)),
+        build: vec!(AlphaNumeric("build5".to_owned()),
                  Numeric(7),
-                 AlphaNumeric(~"3aedf"))
+                 AlphaNumeric("3aedf".to_owned()))
     }));
 
 }
@@ -377,18 +377,18 @@ fn test_ne() {
 
 #[test]
 fn test_show() {
-    assert_eq!(format!("{}", parse("1.2.3").unwrap()), ~"1.2.3");
-    assert_eq!(format!("{}", parse("1.2.3-alpha1").unwrap()), ~"1.2.3-alpha1");
-    assert_eq!(format!("{}", parse("1.2.3+build.42").unwrap()), ~"1.2.3+build.42");
-    assert_eq!(format!("{}", parse("1.2.3-alpha1+42").unwrap()), ~"1.2.3-alpha1+42");
+    assert_eq!(format!("{}", parse("1.2.3").unwrap()), "1.2.3".to_owned());
+    assert_eq!(format!("{}", parse("1.2.3-alpha1").unwrap()), "1.2.3-alpha1".to_owned());
+    assert_eq!(format!("{}", parse("1.2.3+build.42").unwrap()), "1.2.3+build.42".to_owned());
+    assert_eq!(format!("{}", parse("1.2.3-alpha1+42").unwrap()), "1.2.3-alpha1+42".to_owned());
 }
 
 #[test]
 fn test_to_str() {
-    assert_eq!(parse("1.2.3").unwrap().to_str(), ~"1.2.3");
-    assert_eq!(parse("1.2.3-alpha1").unwrap().to_str(), ~"1.2.3-alpha1");
-    assert_eq!(parse("1.2.3+build.42").unwrap().to_str(), ~"1.2.3+build.42");
-    assert_eq!(parse("1.2.3-alpha1+42").unwrap().to_str(), ~"1.2.3-alpha1+42");
+    assert_eq!(parse("1.2.3").unwrap().to_str(), "1.2.3".to_owned());
+    assert_eq!(parse("1.2.3-alpha1").unwrap().to_str(), "1.2.3-alpha1".to_owned());
+    assert_eq!(parse("1.2.3+build.42").unwrap().to_str(), "1.2.3+build.42".to_owned());
+    assert_eq!(parse("1.2.3-alpha1+42").unwrap().to_str(), "1.2.3-alpha1+42".to_owned());
 }
 
 #[test]

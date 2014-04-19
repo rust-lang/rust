@@ -79,7 +79,7 @@ pub fn WriteOutputFile(
             let result = llvm::LLVMRustWriteOutputFile(
                     target, pm, m, output, file_type);
             if !result {
-                llvm_err(sess, ~"could not write output");
+                llvm_err(sess, "could not write output".to_owned());
             }
         })
     }
@@ -341,8 +341,8 @@ pub mod write {
 
         // FIXME (#9639): This needs to handle non-utf8 paths
         let args = [
-            ~"-c",
-            ~"-o", object.as_str().unwrap().to_owned(),
+            "-c".to_owned(),
+            "-o".to_owned(), object.as_str().unwrap().to_owned(),
             assembly.as_str().unwrap().to_owned()];
 
         debug!("{} '{}'", cc, args.connect("' '"));
@@ -622,7 +622,7 @@ pub fn sanitize(s: &str) -> ~str {
     if result.len() > 0u &&
         result[0] != '_' as u8 &&
         ! char::is_XID_start(result[0] as char) {
-        return ~"_" + result;
+        return "_".to_owned() + result;
     }
 
     return result;
@@ -738,7 +738,7 @@ pub fn get_cc_prog(sess: &Session) -> ~str {
     // instead of hard-coded gcc.
     // For win32, there is no cc command, so we add a condition to make it use gcc.
     match sess.targ_cfg.os {
-        abi::OsWin32 => return ~"gcc",
+        abi::OsWin32 => return "gcc".to_owned(),
         _ => {},
     }
 
@@ -1089,13 +1089,13 @@ fn link_args(sess: &Session,
     // The location of crates will be determined as needed.
     // FIXME (#9639): This needs to handle non-utf8 paths
     let lib_path = sess.filesearch().get_target_lib_path();
-    let stage: ~str = ~"-L" + lib_path.as_str().unwrap();
+    let stage: ~str = "-L".to_owned() + lib_path.as_str().unwrap();
 
     let mut args = vec!(stage);
 
     // FIXME (#9639): This needs to handle non-utf8 paths
     args.push_all([
-        ~"-o", out_filename.as_str().unwrap().to_owned(),
+        "-o".to_owned(), out_filename.as_str().unwrap().to_owned(),
         obj_filename.as_str().unwrap().to_owned()]);
 
     // Stack growth requires statically linking a __morestack function. Note
@@ -1113,7 +1113,7 @@ fn link_args(sess: &Session,
     // line, but inserting this farther to the left makes the
     // "rust_stack_exhausted" symbol an outstanding undefined symbol, which
     // flags libstd as a required library (or whatever provides the symbol).
-    args.push(~"-lmorestack");
+    args.push("-lmorestack".to_owned());
 
     // When linking a dynamic library, we put the metadata into a section of the
     // executable. This metadata is in a separate object file from the main
@@ -1131,14 +1131,14 @@ fn link_args(sess: &Session,
     //
     // FIXME(#11937) we should invoke the system linker directly
     if sess.targ_cfg.os != abi::OsWin32 {
-        args.push(~"-nodefaultlibs");
+        args.push("-nodefaultlibs".to_owned());
     }
 
     if sess.targ_cfg.os == abi::OsLinux {
         // GNU-style linkers will use this to omit linking to libraries which
         // don't actually fulfill any relocations, but only for libraries which
         // follow this flag. Thus, use it before specifying libraries to link to.
-        args.push(~"-Wl,--as-needed");
+        args.push("-Wl,--as-needed".to_owned());
 
         // GNU-style linkers support optimization with -O. --gc-sections
         // removes metadata and potentially other useful things, so don't
@@ -1146,7 +1146,7 @@ fn link_args(sess: &Session,
         // do.
         if sess.opts.optimize == session::Default ||
            sess.opts.optimize == session::Aggressive {
-            args.push(~"-Wl,-O1");
+            args.push("-Wl,-O1".to_owned());
         }
     }
 
@@ -1154,7 +1154,7 @@ fn link_args(sess: &Session,
         // Make sure that we link to the dynamic libgcc, otherwise cross-module
         // DWARF stack unwinding will not work.
         // This behavior may be overridden by --link-args "-static-libgcc"
-        args.push(~"-shared-libgcc");
+        args.push("-shared-libgcc".to_owned());
 
         // And here, we see obscure linker flags #45. On windows, it has been
         // found to be necessary to have this flag to compile liblibc.
@@ -1181,13 +1181,13 @@ fn link_args(sess: &Session,
         //
         // [1] - https://sourceware.org/bugzilla/show_bug.cgi?id=13130
         // [2] - https://code.google.com/p/go/issues/detail?id=2139
-        args.push(~"-Wl,--enable-long-section-names");
+        args.push("-Wl,--enable-long-section-names".to_owned());
     }
 
     if sess.targ_cfg.os == abi::OsAndroid {
         // Many of the symbols defined in compiler-rt are also defined in libgcc.
         // Android linker doesn't like that by default.
-        args.push(~"-Wl,--allow-multiple-definition");
+        args.push("-Wl,--allow-multiple-definition".to_owned());
     }
 
     // Take careful note of the ordering of the arguments we pass to the linker
@@ -1232,22 +1232,22 @@ fn link_args(sess: &Session,
     if dylib {
         // On mac we need to tell the linker to let this library be rpathed
         if sess.targ_cfg.os == abi::OsMacos {
-            args.push(~"-dynamiclib");
-            args.push(~"-Wl,-dylib");
+            args.push("-dynamiclib".to_owned());
+            args.push("-Wl,-dylib".to_owned());
             // FIXME (#9639): This needs to handle non-utf8 paths
             if !sess.opts.cg.no_rpath {
-                args.push(~"-Wl,-install_name,@rpath/" +
+                args.push("-Wl,-install_name,@rpath/".to_owned() +
                           out_filename.filename_str().unwrap());
             }
         } else {
-            args.push(~"-shared")
+            args.push("-shared".to_owned())
         }
     }
 
     if sess.targ_cfg.os == abi::OsFreebsd {
-        args.push_all([~"-L/usr/local/lib",
-                       ~"-L/usr/local/lib/gcc46",
-                       ~"-L/usr/local/lib/gcc44"]);
+        args.push_all(["-L/usr/local/lib".to_owned(),
+                       "-L/usr/local/lib/gcc46".to_owned(),
+                       "-L/usr/local/lib/gcc44".to_owned()]);
     }
 
     // FIXME (#2397): At some point we want to rpath our guesses as to
@@ -1264,7 +1264,7 @@ fn link_args(sess: &Session,
     //
     // This is the end of the command line, so this library is used to resolve
     // *all* undefined symbols in all other libraries, and this is intentional.
-    args.push(~"-lcompiler-rt");
+    args.push("-lcompiler-rt".to_owned());
 
     // Finally add all the linker arguments provided on the command line along
     // with any #[link_args] attributes found inside the crate
@@ -1317,7 +1317,7 @@ fn add_local_native_libraries(args: &mut Vec<~str>, sess: &Session) {
                 args.push("-l" + *l);
             }
             cstore::NativeFramework => {
-                args.push(~"-framework");
+                args.push("-framework".to_owned());
                 args.push(l.to_owned());
             }
         }
@@ -1525,7 +1525,7 @@ fn add_upstream_native_libraries(args: &mut Vec<~str>, sess: &Session) {
             match kind {
                 cstore::NativeUnknown => args.push("-l" + *lib),
                 cstore::NativeFramework => {
-                    args.push(~"-framework");
+                    args.push("-framework".to_owned());
                     args.push(lib.to_owned());
                 }
                 cstore::NativeStatic => {
