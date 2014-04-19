@@ -289,7 +289,7 @@ macro_rules! green_start( ($f:ident) => (
 /// error.
 pub fn start(argc: int, argv: **u8,
              event_loop_factory: fn() -> ~rtio::EventLoop:Send,
-             main: proc()) -> int {
+             main: proc():Send) -> int {
     rt::init(argc, argv);
     let mut main = Some(main);
     let mut ret = None;
@@ -310,7 +310,7 @@ pub fn start(argc: int, argv: **u8,
 /// This function will not return until all schedulers in the associated pool
 /// have returned.
 pub fn run(event_loop_factory: fn() -> ~rtio::EventLoop:Send,
-           main: proc()) -> int {
+           main: proc():Send) -> int {
     // Create a scheduler pool and spawn the main task into this pool. We will
     // get notified over a channel when the main task exits.
     let mut cfg = PoolConfig::new();
@@ -445,7 +445,7 @@ impl SchedPool {
     /// This is useful to create a task which can then be sent to a specific
     /// scheduler created by `spawn_sched` (and possibly pin it to that
     /// scheduler).
-    pub fn task(&mut self, opts: TaskOpts, f: proc()) -> ~GreenTask {
+    pub fn task(&mut self, opts: TaskOpts, f: proc():Send) -> ~GreenTask {
         GreenTask::configure(&mut self.stack_pool, opts, f)
     }
 
@@ -455,7 +455,7 @@ impl SchedPool {
     /// New tasks are spawned in a round-robin fashion to the schedulers in this
     /// pool, but tasks can certainly migrate among schedulers once they're in
     /// the pool.
-    pub fn spawn(&mut self, opts: TaskOpts, f: proc()) {
+    pub fn spawn(&mut self, opts: TaskOpts, f: proc():Send) {
         let task = self.task(opts, f);
 
         // Figure out someone to send this task to
