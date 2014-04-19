@@ -175,6 +175,21 @@ pub fn mk_sugared_doc_attr(text: InternedString, lo: BytePos, hi: BytePos)
     spanned(lo, hi, attr)
 }
 
+pub fn rename_attr(attr: &Attribute, new_name: &str) -> Attribute {
+    let new_mname = token::intern_and_get_ident(new_name);
+    let meta = attr.meta();
+    let new_item: ast::MetaItem_ = match meta.node {
+        ast::MetaWord(_) => ast::MetaWord(new_mname),
+        ast::MetaList(_, ref v) => ast::MetaList(new_mname, (*v).clone()),
+        ast::MetaNameValue(_, ref l) => ast::MetaNameValue(new_mname, (*l).clone()),
+    };
+
+    dummy_spanned(ast::Attribute_ {
+        value: @dummy_spanned(new_item),
+        .. (attr.node).clone()
+    })
+}
+
 /* Searching */
 /// Check if `needle` occurs in `haystack` by a structural
 /// comparison. This is slightly subtle, and relies on ignoring the

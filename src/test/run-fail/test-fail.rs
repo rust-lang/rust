@@ -11,6 +11,7 @@
 // check-stdout
 // error-pattern:task 'test_foo' failed at
 // compile-flags: --test
+// ignore-pretty: does not work well with `--test`
 
 #[test]
 fn test_foo() {

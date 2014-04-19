@@ -168,7 +168,7 @@ pub fn tt_to_str(tt: &ast::TokenTree) -> ~str {
 }
 
 pub fn tts_to_str(tts: &[ast::TokenTree]) -> ~str {
-    to_str(|s| s.print_tts(&tts))
+    to_str(|s| s.print_tts(tts))
 }
 
 pub fn stmt_to_str(stmt: &ast::Stmt) -> ~str {
@@ -244,6 +244,15 @@ pub fn visibility_qualified(vis: ast::Visibility, s: &str) -> ~str {
     match vis {
         ast::Public => format!("pub {}", s),
         ast::Inherited => s.to_owned()
+    }
+}
+
+fn needs_parentheses(expr: &ast::Expr) -> bool {
+    match expr.node {
+        ast::ExprAssign(..) | ast::ExprBinary(..) |
+        ast::ExprFnBlock(..) | ast::ExprProc(..) |
+        ast::ExprAssignOp(..) | ast::ExprCast(..) => true,
+        _ => false,
     }
 }
 
@@ -700,7 +709,7 @@ impl<'a> State<'a> {
                 try!(self.print_ident(item.ident));
                 try!(self.cbox(indent_unit));
                 try!(self.popen());
-                try!(self.print_tts(&(tts.as_slice())));
+                try!(self.print_tts(tts.as_slice()));
                 try!(self.pclose());
                 try!(self.end());
             }
@@ -809,7 +818,7 @@ impl<'a> State<'a> {
     /// expression arguments as expressions). It can be done! I think.
     pub fn print_tt(&mut self, tt: &ast::TokenTree) -> IoResult<()> {
         match *tt {
-            ast::TTDelim(ref tts) => self.print_tts(&(tts.as_slice())),
+            ast::TTDelim(ref tts) => self.print_tts(tts.as_slice()),
             ast::TTTok(_, ref tk) => {
                 word(&mut self.s, parse::token::to_str(tk))
             }
@@ -834,7 +843,7 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn print_tts(&mut self, tts: & &[ast::TokenTree]) -> IoResult<()> {
+    pub fn print_tts(&mut self, tts: &[ast::TokenTree]) -> IoResult<()> {
         try!(self.ibox(0));
         for (i, tt) in tts.iter().enumerate() {
             if i != 0 {
@@ -947,6 +956,10 @@ impl<'a> State<'a> {
     }
 
     pub fn print_attribute(&mut self, attr: &ast::Attribute) -> IoResult<()> {
+        // skip any attribute which starts with `!`. it's only for internal usage.
+        if attr.name().get().char_at(0) == '!' {
+            return Ok(());
+        }
         try!(self.hardbreak_if_not_bol());
         try!(self.maybe_print_comment(attr.span.lo));
         if attr.node.is_sugared_doc {
@@ -1091,7 +1104,7 @@ impl<'a> State<'a> {
                 try!(self.print_path(pth, false));
                 try!(word(&mut self.s, "!"));
                 try!(self.popen());
-                try!(self.print_tts(&tts.as_slice()));
+                try!(self.print_tts(tts.as_slice()));
                 self.pclose()
             }
         }
@@ -1112,6 +1125,18 @@ impl<'a> State<'a> {
         try!(self.popen());
         try!(self.commasep_exprs(Inconsistent, args));
         self.pclose()
+    }
+
+    pub fn print_expr_maybe_paren(&mut self, expr: &ast::Expr) -> IoResult<()> {
+        let needs_par = needs_parentheses(expr);
+        if needs_par {
+            try!(self.popen());
+        }
+        try!(self.print_expr(expr));
+        if needs_par {
+            try!(self.pclose());
+        }
+        Ok(())
     }
 
     pub fn print_expr(&mut self, expr: &ast::Expr) -> IoResult<()> {
@@ -1187,7 +1212,7 @@ impl<'a> State<'a> {
                 try!(self.pclose());
             }
             ast::ExprCall(func, ref args) => {
-                try!(self.print_expr(func));
+                try!(self.print_expr_maybe_paren(func));
                 try!(self.print_call_post(args.as_slice()));
             }
             ast::ExprMethodCall(ident, ref tys, ref args) => {
@@ -1211,17 +1236,33 @@ impl<'a> State<'a> {
             }
             ast::ExprUnary(op, expr) => {
                 try!(word(&mut self.s, ast_util::unop_to_str(op)));
-                try!(self.print_expr(expr));
+                try!(self.print_expr_maybe_paren(expr));
             }
             ast::ExprAddrOf(m, expr) => {
                 try!(word(&mut self.s, "&"));
-                try!(self.print_mutability(m));
-                // Avoid `& &e` => `&&e`.
-                match (m, &expr.node) {
-                    (ast::MutImmutable, &ast::ExprAddrOf(..)) => try!(space(&mut self.s)),
-                    _ => { }
+
+                // `ExprAddrOf(ExprLit("str"))` should be `&&"str"` instead of `&"str"`
+                // since `&"str"` is `ExprVstore(ExprLit("str"))` which has same meaning to
+                // `"str"`.
+                // In many cases adding parentheses (`&("str")`) would help, but it become invalid
+                // if expr is in `PatLit()`.
+                let needs_extra_amp = match expr.node {
+                    ast::ExprLit(lit) => {
+                        match lit.node {
+                            ast::LitStr(..) => true,
+                            _ => false,
+                        }
+                    }
+                    ast::ExprVec(..) => true,
+                    _ => false,
+                };
+                if needs_extra_amp {
+                    try!(word(&mut self.s, "&"));
                 }
-                try!(self.print_expr(expr));
+
+                try!(self.print_mutability(m));
+
+                try!(self.print_expr_maybe_paren(expr));
             }
             ast::ExprLit(lit) => try!(self.print_literal(lit)),
             ast::ExprCast(expr, ty) => {
@@ -1447,22 +1488,27 @@ impl<'a> State<'a> {
                 try!(self.popen());
                 try!(self.print_string(a.asm.get(), a.asm_str_style));
                 try!(self.word_space(":"));
-                for &(ref co, o) in a.outputs.iter() {
-                    try!(self.print_string(co.get(), ast::CookedStr));
-                    try!(self.popen());
-                    try!(self.print_expr(o));
-                    try!(self.pclose());
-                    try!(self.word_space(","));
-                }
+
+                try!(self.commasep(Inconsistent, a.outputs.as_slice(), |s, &(ref co, o)| {
+                    try!(s.print_string(co.get(), ast::CookedStr));
+                    try!(s.popen());
+                    try!(s.print_expr(o));
+                    try!(s.pclose());
+                    Ok(())
+                }));
+                try!(space(&mut self.s));
                 try!(self.word_space(":"));
-                for &(ref co, o) in a.inputs.iter() {
-                    try!(self.print_string(co.get(), ast::CookedStr));
-                    try!(self.popen());
-                    try!(self.print_expr(o));
-                    try!(self.pclose());
-                    try!(self.word_space(","));
-                }
+
+                try!(self.commasep(Inconsistent, a.inputs.as_slice(), |s, &(ref co, o)| {
+                    try!(s.print_string(co.get(), ast::CookedStr));
+                    try!(s.popen());
+                    try!(s.print_expr(o));
+                    try!(s.pclose());
+                    Ok(())
+                }));
+                try!(space(&mut self.s));
                 try!(self.word_space(":"));
+
                 try!(self.print_string(a.clobbers.get(), ast::CookedStr));
                 try!(self.pclose());
             }
