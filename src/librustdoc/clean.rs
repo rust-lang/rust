@@ -652,7 +652,7 @@ pub enum Type {
     Proc(~ClosureDecl),
     /// extern "ABI" fn
     BareFunction(~BareFunctionDecl),
-    Tuple(Vec<Type> ),
+    Tuple(Vec<Type>),
     Vector(~Type),
     FixedVector(~Type, ~str),
     String,
@@ -713,25 +713,24 @@ impl Clean<Type> for ast::Ty {
 }
 
 #[deriving(Clone, Encodable, Decodable)]
-pub struct StructField {
-    pub type_: Type,
+pub enum StructField {
+    HiddenStructField,
+    TypedStructField(Type),
 }
 
 impl Clean<Item> for ast::StructField {
     fn clean(&self) -> Item {
         let (name, vis) = match self.node.kind {
-            ast::NamedField(id, vis) => (Some(id), Some(vis)),
-            _ => (None, None)
+            ast::NamedField(id, vis) => (Some(id), vis),
+            ast::UnnamedField(vis) => (None, vis)
         };
         Item {
             name: name.clean(),
             attrs: self.node.attrs.clean().move_iter().collect(),
             source: self.span.clean(),
-            visibility: vis,
+            visibility: Some(vis),
             id: self.node.id,
-            inner: StructFieldItem(StructField {
-                type_: self.node.ty.clean(),
-            }),
+            inner: StructFieldItem(TypedStructField(self.node.ty.clean())),
         }
     }
 }
@@ -837,7 +836,7 @@ impl Clean<Item> for doctree::Variant {
 #[deriving(Clone, Encodable, Decodable)]
 pub enum VariantKind {
     CLikeVariant,
-    TupleVariant(Vec<Type> ),
+    TupleVariant(Vec<Type>),
     StructVariant(VariantStruct),
 }
 
