@@ -37,8 +37,10 @@ pub fn size_of_val<T>(_val: &T) -> uint {
 /// Useful for building structures containing variable-length arrays.
 #[inline]
 pub fn nonzero_size_of<T>() -> uint {
-    let s = size_of::<T>();
-    if s == 0 { 1 } else { s }
+    match size_of::<T>() {
+        0 => 1,
+        x => x
+    }
 }
 
 /// Returns the size in bytes of the type of the value that `_val` points to.
@@ -222,7 +224,6 @@ pub unsafe fn move_val_init<T>(dst: &mut T, src: T) {
 /// On big endian, this is a no-op.  On little endian, the bytes are swapped.
 #[cfg(target_endian = "big")]    #[inline] pub fn from_be64(x: u64) -> u64 { x }
 
-
 /**
  * Swap the values at two mutable locations of the same type, without
  * deinitialising or copying either one.
@@ -238,7 +239,7 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
         ptr::copy_nonoverlapping_memory(x, &*y, 1);
         ptr::copy_nonoverlapping_memory(y, &t, 1);
 
-        // y and t now point to the same thing, but we need to completely forget `tmp`
+        // y and t now point to the same thing, but we need to completely forget `t`
         // because it's no longer relevant.
         cast::forget(t);
     }
@@ -360,6 +361,7 @@ mod tests {
     }
 }
 
+// FIXME #13642 (these benchmarks should be in another place)
 /// Completely miscellaneous language-construct benchmarks.
 #[cfg(test)]
 mod bench {
