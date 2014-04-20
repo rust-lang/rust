@@ -41,6 +41,7 @@ mod cmath {
         pub fn frexpf(n: c_float, value: &mut c_int) -> c_float;
         pub fn fmaxf(a: c_float, b: c_float) -> c_float;
         pub fn fminf(a: c_float, b: c_float) -> c_float;
+        pub fn fmodf(a: c_float, b: c_float) -> c_float;
         pub fn nextafterf(x: c_float, y: c_float) -> c_float;
         pub fn hypotf(x: c_float, y: c_float) -> c_float;
         pub fn ldexpf(x: c_float, n: c_int) -> c_float;
@@ -201,7 +202,9 @@ impl Div<f32,f32> for f32 {
 #[cfg(not(test))]
 impl Rem<f32,f32> for f32 {
     #[inline]
-    fn rem(&self, other: &f32) -> f32 { *self % *other }
+    fn rem(&self, other: &f32) -> f32 {
+        unsafe { cmath::fmodf(*self, *other) }
+    }
 }
 
 #[cfg(not(test))]

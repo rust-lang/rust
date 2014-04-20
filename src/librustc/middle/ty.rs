@@ -4091,6 +4091,7 @@ pub fn is_binopable(cx: &ctxt, ty: t, op: ast::BinOp) -> bool {
     static opcat_eq: int = 5;
     static opcat_bit: int = 6;
     static opcat_logic: int = 7;
+    static opcat_mod: int = 8;
 
     fn opcat(op: ast::BinOp) -> int {
         match op {
@@ -4098,7 +4099,7 @@ pub fn is_binopable(cx: &ctxt, ty: t, op: ast::BinOp) -> bool {
           ast::BiSub => opcat_sub,
           ast::BiMul => opcat_mult,
           ast::BiDiv => opcat_mult,
-          ast::BiRem => opcat_mult,
+          ast::BiRem => opcat_mod,
           ast::BiAnd => opcat_logic,
           ast::BiOr => opcat_logic,
           ast::BiBitXor => opcat_bit,
@@ -4134,14 +4135,14 @@ pub fn is_binopable(cx: &ctxt, ty: t, op: ast::BinOp) -> bool {
     static f: bool = false;
 
     let tbl = [
-    //           +, -, *, shift, rel, ==, bit, logic
-    /*other*/   [f, f, f, f,     f,   f,  f,   f],
-    /*bool*/    [f, f, f, f,     t,   t,  t,   t],
-    /*char*/    [f, f, f, f,     t,   t,  f,   f],
-    /*int*/     [t, t, t, t,     t,   t,  t,   f],
-    /*float*/   [t, t, t, f,     t,   t,  f,   f],
-    /*bot*/     [t, t, t, t,     t,   t,  t,   t],
-    /*raw ptr*/ [f, f, f, f,     t,   t,  f,   f]];
+    //           +, -, *, shift, rel, ==, bit, logic, mod
+    /*other*/   [f, f, f, f,     f,   f,  f,   f,     f],
+    /*bool*/    [f, f, f, f,     t,   t,  t,   t,     f],
+    /*char*/    [f, f, f, f,     t,   t,  f,   f,     f],
+    /*int*/     [t, t, t, t,     t,   t,  t,   f,     t],
+    /*float*/   [t, t, t, f,     t,   t,  f,   f,     f],
+    /*bot*/     [t, t, t, t,     t,   t,  t,   t,     t],
+    /*raw ptr*/ [f, f, f, f,     t,   t,  f,   f,     f]];
 
     return tbl[tycat(cx, ty) as uint ][opcat(op) as uint];
 }
