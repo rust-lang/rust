@@ -1345,16 +1345,22 @@ fn item_struct(w: &mut Writer, it: &clean::Item,
                        Some(&s.generics),
                        s.struct_type,
                        s.fields.as_slice(),
-                       s.fields_stripped,
                        "",
                        true));
     try!(write!(w, "</pre>"));
 
     try!(document(w, it));
+    let mut fields = s.fields.iter().filter(|f| {
+        match f.inner {
+            clean::StructFieldItem(clean::HiddenStructField) => false,
+            clean::StructFieldItem(clean::TypedStructField(..)) => true,
+            _ => false,
+        }
+    }).peekable();
     match s.struct_type {
-        doctree::Plain if s.fields.len() > 0 => {
+        doctree::Plain if fields.peek().is_some() => {
             try!(write!(w, "<h2 class='fields'>Fields</h2>\n<table>"));
-            for field in s.fields.iter() {
+            for field in fields {
                 try!(write!(w, "<tr><td id='structfield.{name}'>\
                                   <code>{name}</code></td><td>",
                               name = field.name.get_ref().as_slice()));
@@ -1400,7 +1406,6 @@ fn item_enum(w: &mut Writer, it: &clean::Item, e: &clean::Enum) -> fmt::Result {
                                                None,
                                                s.struct_type,
                                                s.fields.as_slice(),
-                                               s.fields_stripped,
                                                "    ",
                                                false));
                         }
@@ -1429,9 +1434,18 @@ fn item_enum(w: &mut Writer, it: &clean::Item, e: &clean::Enum) -> fmt::Result {
                 clean::VariantItem(ref var) => {
                     match var.kind {
                         clean::StructVariant(ref s) => {
+                            let mut fields = s.fields.iter().filter(|f| {
+                                match f.inner {
+                                    clean::StructFieldItem(ref t) => match *t {
+                                        clean::HiddenStructField => false,
+                                        clean::TypedStructField(..) => true,
+                                    },
+                                    _ => false,
+                                }
+                            });
                             try!(write!(w, "<h3 class='fields'>Fields</h3>\n
                                               <table>"));
-                            for field in s.fields.iter() {
+                            for field in fields {
                                 try!(write!(w, "<tr><td \
                                                   id='variant.{v}.field.{f}'>\
                                                   <code>{f}</code></td><td>",
@@ -1460,7 +1474,6 @@ fn render_struct(w: &mut Writer, it: &clean::Item,
                  g: Option<&clean::Generics>,
                  ty: doctree::StructType,
                  fields: &[clean::Item],
-                 fields_stripped: bool,
                  tab: &str,
                  structhead: bool) -> fmt::Result {
     try!(write!(w, "{}{}{}",
@@ -1474,17 +1487,21 @@ fn render_struct(w: &mut Writer, it: &clean::Item,
     match ty {
         doctree::Plain => {
             try!(write!(w, " \\{\n{}", tab));
+            let mut fields_stripped = false;
             for field in fields.iter() {
                 match field.inner {
-                    clean::StructFieldItem(ref ty) => {
+                    clean::StructFieldItem(clean::HiddenStructField) => {
+                        fields_stripped = true;
+                    }
+                    clean::StructFieldItem(clean::TypedStructField(ref ty)) => {
                         try!(write!(w, "    {}{}: {},\n{}",
                                       VisSpace(field.visibility),
                                       field.name.get_ref().as_slice(),
-                                      ty.type_,
+                                      *ty,
                                       tab));
                     }
-                    _ => unreachable!()
-                }
+                    _ => unreachable!(),
+                };
             }
 
             if fields_stripped {
@@ -1499,8 +1516,11 @@ fn render_struct(w: &mut Writer, it: &clean::Item,
                     try!(write!(w, ", "));
                 }
                 match field.inner {
-                    clean::StructFieldItem(ref field) => {
-                        try!(write!(w, "{}", field.type_));
+                    clean::StructFieldItem(clean::HiddenStructField) => {
+                        try!(write!(w, "_"))
+                    }
+                    clean::StructFieldItem(clean::TypedStructField(ref ty)) => {
+                        try!(write!(w, "{}{}", VisSpace(field.visibility), *ty))
                     }
                     _ => unreachable!()
                 }
