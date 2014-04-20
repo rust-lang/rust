@@ -219,7 +219,7 @@ fn ast_path_substs<AC:AstConv,RS:RegionScope>(
         && !this.tcx().sess.features.default_type_params.get() {
         this.tcx().sess.span_err(path.span, "default type parameters are \
                                              experimental and possibly buggy");
-        this.tcx().sess.span_note(path.span, "add #[feature(default_type_params)] \
+        this.tcx().sess.span_note(path.span, "add #![feature(default_type_params)] \
                                               to the crate attributes to enable");
     }
 
