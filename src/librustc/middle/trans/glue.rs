@@ -83,19 +83,21 @@ fn get_drop_glue_type(ccx: &CrateContext, t: ty::t) -> ty::t {
             ty::mk_box(tcx, ty::mk_i8()),
 
         ty::ty_uniq(typ) if !ty::type_needs_drop(tcx, typ) => {
-            let llty = sizing_type_of(ccx, typ);
-            // Unique boxes do not allocate for zero-size types. The standard library may assume
-            // that `free` is never called on the pointer returned for `~ZeroSizeType`.
-            if llsize_of_alloc(ccx, llty) == 0 {
-                ty::mk_i8()
-            } else {
-                ty::mk_uniq(tcx, ty::mk_i8())
-            }
-        }
-
-        ty::ty_vec(ty, ty::VstoreUniq) if !ty::type_needs_drop(tcx, ty) =>
-            ty::mk_uniq(tcx, ty::mk_i8()),
-
+            match ty::get(typ).sty {
+                ty::ty_vec(_, None) => t,
+                _ => {
+                    let llty = sizing_type_of(ccx, typ);
+                    // Unique boxes do not allocate for zero-size types. The standard
+                    // library may assume that `free` is never called on the pointer
+                    // returned for `~ZeroSizeType`.
+                    if llsize_of_alloc(ccx, llty) == 0 {
+                        ty::mk_i8()
+                    } else {
+                        ty::mk_uniq(tcx, ty::mk_i8())
+                    }
+                        }
+                    }
+                }
         _ => t
     }
 }
@@ -284,12 +286,22 @@ fn make_drop_glue<'a>(bcx: &'a Block<'a>, v0: ValueRef, t: ty::t) -> &'a Block<'
         ty::ty_uniq(content_ty) => {
             let llbox = Load(bcx, v0);
             let not_null = IsNotNull(bcx, llbox);
-            with_cond(bcx, not_null, |bcx| {
-                let bcx = drop_ty(bcx, llbox, content_ty);
-                trans_exchange_free(bcx, llbox)
-            })
+            match ty::get(content_ty).sty {
+                ty::ty_vec(mt, None) => {
+                    with_cond(bcx, not_null, |bcx| {
+                        let bcx = tvec::make_drop_glue_unboxed(bcx, llbox, mt.ty);
+                        trans_exchange_free(bcx, llbox)
+                    })
+                }
+                _ => {
+                    with_cond(bcx, not_null, |bcx| {
+                        let bcx = drop_ty(bcx, llbox, content_ty);
+                        trans_exchange_free(bcx, llbox)
+                    })
+                }
+            }
         }
-        ty::ty_vec(_, ty::VstoreUniq) | ty::ty_str(ty::VstoreUniq) => {
+        ty::ty_str(ty::VstoreUniq) => {
             let llbox = Load(bcx, v0);
             let not_null = IsNotNull(bcx, llbox);
             with_cond(bcx, not_null, |bcx| {

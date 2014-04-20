@@ -139,8 +139,11 @@ fn const_deref(cx: &CrateContext, v: ValueRef, t: ty::t, explicit: bool)
         Some(ref mt) => {
             assert!(mt.mutbl != ast::MutMutable);
             let dv = match ty::get(t).sty {
-                ty::ty_ptr(..) | ty::ty_rptr(..) => {
-                     const_deref_ptr(cx, v)
+                ty::ty_ptr(mt) | ty::ty_rptr(_, mt) => {
+                    match ty::get(mt.ty).sty {
+                        ty::ty_vec(_, None) => cx.sess().bug("unexpected slice"),
+                        _ => const_deref_ptr(cx, v),
+                    }
                 }
                 ty::ty_enum(..) | ty::ty_struct(..) => {
                     const_deref_newtype(cx, v, t)
@@ -244,7 +247,7 @@ pub fn const_expr(cx: &CrateContext, e: &ast::Expr, is_local: bool) -> (ValueRef
                                     assert_eq!(abi::slice_elt_base, 0);
                                     assert_eq!(abi::slice_elt_len, 1);
                                     match ty::get(ty).sty {
-                                        ty::ty_vec(_, ty::VstoreFixed(len)) => {
+                                        ty::ty_vec(_, Some(len)) => {
                                             llconst = C_struct(cx, [
                                                 llptr,
                                                 C_uint(cx, len)
@@ -432,14 +435,21 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr,
                                           "index is not an integer-constant expression")
               };
               let (arr, len) = match ty::get(bt).sty {
-                  ty::ty_vec(_, ty::VstoreFixed(u)) => (bv, C_uint(cx, u)),
-                  ty::ty_vec(_, ty::VstoreSlice(..)) |
                   ty::ty_str(ty::VstoreSlice(..)) => {
                     let e1 = const_get_elt(cx, bv, [0]);
                     (const_deref_ptr(cx, e1), const_get_elt(cx, bv, [1]))
                   },
+                  ty::ty_vec(_, Some(u)) => (bv, C_uint(cx, u)),
+                  ty::ty_rptr(_, mt) => match ty::get(mt.ty).sty {
+                      ty::ty_vec(_, None) => {
+                          let e1 = const_get_elt(cx, bv, [0]);
+                          (const_deref_ptr(cx, e1), const_get_elt(cx, bv, [1]))
+                      },
+                      _ => cx.sess().span_bug(base.span,
+                                              "index-expr base must be a vector or string type")
+                  },
                   _ => cx.sess().span_bug(base.span,
-                        "index-expr base must be a fixed-size vector or a slice")
+                                          "index-expr base must be a vector or string type")
               };
 
               let len = llvm::LLVMConstIntGetZExtValue(len) as u64;

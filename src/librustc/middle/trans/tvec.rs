@@ -162,8 +162,10 @@ pub fn trans_slice_vstore<'a>(
         llfixed = base::arrayalloca(bcx, vt.llunit_ty, llcount);
 
         // Arrange for the backing array to be cleaned up.
-        let fixed_ty = ty::mk_vec(bcx.tcx(), vt.unit_ty,
-                                  ty::VstoreFixed(count));
+        let fixed_ty = ty::mk_vec(bcx.tcx(),
+                                  ty::mt {ty: vt.unit_ty,
+                                          mutbl: ast::MutMutable},
+                                  Some(count));
         let llfixed_ty = type_of::type_of(bcx.ccx(), fixed_ty).ptr_to();
         let llfixed_casted = BitCast(bcx, llfixed, llfixed_ty);
         let cleanup_scope = cleanup::temporary_scope(bcx.tcx(), content_expr.id);
@@ -461,6 +463,35 @@ pub fn get_fixed_base_and_byte_len(bcx: &Block,
     (base, len)
 }
 
+pub fn get_base_and_byte_len_for_vec(bcx: &Block,
+                                     llval: ValueRef,
+                                     vec_ty: ty::t)
+                                     -> (ValueRef, ValueRef) {
+    /*!
+     * Converts a vector into the slice pair.  The vector should be
+     * stored in `llval` which should be by ref. If you have a datum,
+     * you would probably prefer to call
+     * `Datum::get_base_and_byte_len()`.
+     */
+
+    let ccx = bcx.ccx();
+    let vt = vec_types(bcx, ty::sequence_element_type(bcx.tcx(), vec_ty));
+
+    let size = match ty::get(vec_ty).sty {
+        ty::ty_vec(_, size) => size,
+        _ => ccx.sess().bug("non-vector in get_base_and_byte_len_for_vec"),
+    };
+
+    match size {
+        Some(n) => {
+            let base = GEPi(bcx, llval, [0u, 0u]);
+            let len = Mul(bcx, C_uint(ccx, n), vt.llunit_size);
+            (base, len)
+        }
+        None => ccx.sess().bug("unsized vector in get_base_and_byte_len_for_vec")
+    }
+}
+
 pub fn get_base_and_len(bcx: &Block,
                         llval: ValueRef,
                         vec_ty: ty::t)
@@ -477,16 +508,17 @@ pub fn get_base_and_len(bcx: &Block,
     let vt = vec_types(bcx, ty::sequence_element_type(bcx.tcx(), vec_ty));
 
     let vstore = match ty::get(vec_ty).sty {
-        ty::ty_vec(_, vst) => vst,
-        ty::ty_str(vst) => {
-            // Convert from immutable-only-Vstore to Vstore.
-            match vst {
-                ty::VstoreFixed(n) => ty::VstoreFixed(n),
-                ty::VstoreSlice(r, ()) => ty::VstoreSlice(r, ast::MutImmutable),
-                ty::VstoreUniq => ty::VstoreUniq
-            }
-        }
-        _ => ty::VstoreUniq
+        ty::ty_str(vst) => vst,
+        ty::ty_vec(_, Some(n)) => ty::VstoreFixed(n),
+        ty::ty_rptr(r, mt) => match ty::get(mt.ty).sty {
+            ty::ty_vec(_, None) => ty::VstoreSlice(r),
+            _ => ccx.sess().bug("unexpected type (ty_rptr) in get_base_and_len"),
+        },
+        ty::ty_uniq(t) => match ty::get(t).sty {
+            ty::ty_vec(_, None) => ty::VstoreUniq,
+            _ => ccx.sess().bug("unexpected type (ty_uniq) in get_base_and_len"),
+        },
+        _ => ccx.sess().bug("unexpected type in get_base_and_len"),
     };
 
     match vstore {
