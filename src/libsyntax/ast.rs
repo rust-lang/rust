@@ -1080,7 +1080,9 @@ pub struct StructDef {
     pub fields: Vec<StructField>, /* fields, not including ctor */
     /* ID of the constructor. This is only used for tuple- or enum-like
      * structs. */
-    pub ctor_id: Option<NodeId>
+    pub ctor_id: Option<NodeId>,
+    pub super_struct: Option<P<Ty>>, // Super struct, if specified.
+    pub is_virtual: bool,            // True iff the struct may be inherited from.
 }
 
 /*

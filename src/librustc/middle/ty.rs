@@ -52,7 +52,6 @@ use syntax::parse::token::InternedString;
 use syntax::{ast, ast_map};
 use syntax::owned_slice::OwnedSlice;
 use syntax::abi;
-use syntax;
 use collections::enum_set::{EnumSet, CLike};
 
 pub type Disr = u64;
@@ -150,10 +149,12 @@ pub enum TraitStore {
     RegionTraitStore(Region, ast::Mutability),
 }
 
+#[deriving(Clone)]
 pub struct field_ty {
     pub name: Name,
     pub id: DefId,
     pub vis: ast::Visibility,
+    pub origin: ast::DefId,  // The DefId of the struct in which the field is declared.
 }
 
 // Contains information needed to resolve types and (in the future) look up
@@ -303,6 +304,8 @@ pub struct ctxt {
     // A mapping of fake provided method def_ids to the default implementation
     pub provided_method_sources: RefCell<DefIdMap<ast::DefId>>,
     pub supertraits: RefCell<DefIdMap<@Vec<@TraitRef> >>,
+    pub superstructs: RefCell<DefIdMap<Option<ast::DefId>>>,
+    pub struct_fields: RefCell<DefIdMap<@Vec<field_ty>>>,
 
     // Maps from def-id of a type or region parameter to its
     // (inferred) variance.
@@ -1115,6 +1118,8 @@ pub fn mk_ctxt(s: Session,
         lang_items: lang_items,
         provided_method_sources: RefCell::new(DefIdMap::new()),
         supertraits: RefCell::new(DefIdMap::new()),
+        superstructs: RefCell::new(DefIdMap::new()),
+        struct_fields: RefCell::new(DefIdMap::new()),
         destructor_for_type: RefCell::new(DefIdMap::new()),
         destructors: RefCell::new(DefIdSet::new()),
         trait_impls: RefCell::new(DefIdMap::new()),
@@ -3987,60 +3992,70 @@ pub fn lookup_field_type(tcx: &ctxt,
     subst(tcx, substs, t)
 }
 
-// Look up the list of field names and IDs for a given struct
+// Lookup all ancestor structs of a struct indicated by did. That is the reflexive,
+// transitive closure of doing a single lookup in cx.superstructs.
+fn lookup_super_structs(cx: &ctxt,
+                            did: ast::DefId) -> Vec<DefId> {
+    let mut this_result: Vec<DefId> = vec!(did);
+    match cx.superstructs.borrow().find(&did) {
+        Some(&Some(def_id)) => {
+            let ss: Vec<DefId> = lookup_super_structs(cx, def_id);
+            this_result.extend(ss.move_iter());
+            this_result
+        },
+        Some(&None) => this_result,
+        None => {
+            cx.sess.bug(
+                format!("ID not mapped to super-struct: {}",
+                    cx.map.node_to_str(did.node)));
+        }
+    }
+}
+
+// Look up the list of field names and IDs for a given struct.
 // Fails if the id is not bound to a struct.
 pub fn lookup_struct_fields(cx: &ctxt, did: ast::DefId) -> Vec<field_ty> {
     if did.krate == ast::LOCAL_CRATE {
-        match cx.map.find(did.node) {
-            Some(ast_map::NodeItem(i)) => {
-                match i.node {
-                    ast::ItemStruct(struct_def, _) => {
-                        struct_field_tys(struct_def.fields.as_slice())
-                    }
-                    _ => cx.sess.bug("struct ID bound to non-struct")
+        // We store the fields which are syntactically in each struct in cx. So
+        // we have to walk the inheritance chain of the struct to get all the
+        // structs (explicit and inherited) for a struct. If this is expensive
+        // we could cache the whole list of fields here.
+        let structs = lookup_super_structs(cx, did);
+        let struct_fields = cx.struct_fields.borrow();
+        let results: Vec<&@Vec<field_ty>> = structs.iter().map(|s| {
+            match struct_fields.find(s) {
+                Some(fields) => fields,
+                _ => {
+                    cx.sess.bug(
+                        format!("ID not mapped to struct fields: {}",
+                            cx.map.node_to_str(did.node)));
                 }
             }
-            Some(ast_map::NodeVariant(ref variant)) => {
-                match (*variant).node.kind {
-                    ast::StructVariantKind(struct_def) => {
-                        struct_field_tys(struct_def.fields.as_slice())
-                    }
-                    _ => {
-                        cx.sess.bug("struct ID bound to enum variant that \
-                                    isn't struct-like")
-                    }
-                }
-            }
-            _ => {
-                cx.sess.bug(
-                    format!("struct ID not bound to an item: {}",
-                        cx.map.node_to_str(did.node)));
+        }).collect();
+
+        let len = results.iter().map(|x| x.len()).fold(0, |a, b| a + b);
+        let mut result: Vec<field_ty> = Vec::with_capacity(len);
+        for rs in results.iter() {
+            for r in rs.iter() {
+                result.push(*r);
             }
         }
+        assert!(result.len() == len);
+        result
     } else {
         csearch::get_struct_fields(&cx.sess.cstore, did)
     }
 }
 
-fn struct_field_tys(fields: &[StructField]) -> Vec<field_ty> {
-    fields.iter().map(|field| {
-        match field.node.kind {
-            NamedField(ident, visibility) => {
-                field_ty {
-                    name: ident.name,
-                    id: ast_util::local_def(field.node.id),
-                    vis: visibility,
-                }
-            }
-            UnnamedField(visibility) => {
-                field_ty {
-                    name: syntax::parse::token::special_idents::unnamed_field.name,
-                    id: ast_util::local_def(field.node.id),
-                    vis: visibility,
-                }
-            }
-        }
-    }).collect()
+pub fn lookup_struct_field(cx: &ctxt,
+                           parent: ast::DefId,
+                           field_id: ast::DefId)
+                        -> field_ty {
+    let r = lookup_struct_fields(cx, parent);
+    match r.iter().find(|f| f.id.node == field_id.node) {
+        Some(t) => *t,
+        None => cx.sess.bug("struct ID not found in parent's fields")
+    }
 }
 
 // Returns a list of fields corresponding to the struct's items. trans uses
