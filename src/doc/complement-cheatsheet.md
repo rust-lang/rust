@@ -29,7 +29,7 @@ let x: int = 42;
 let y: ~str = format!("{:t}", x);   // binary
 let y: ~str = format!("{:o}", x);   // octal
 let y: ~str = format!("{:x}", x);   // lowercase hexadecimal
-let y: ~str = format!("{:X}", x);   // uppercase hexidecimal
+let y: ~str = format!("{:X}", x);   // uppercase hexadecimal
 ~~~
 
 **String to int, in non-base-10**
