@@ -270,7 +270,14 @@ impl TcpWatcher {
             let req = Request::wrap(req);
             if status == uvll::ECANCELED { return }
 
-            let cx: &mut Ctx = unsafe { req.get_data() };
+            // Apparently on windows when the handle is closed this callback may
+            // not be invoked with ECANCELED but rather another error code.
+            // Either ways, if the data is null, then our timeout has expired
+            // and there's nothing we can do.
+            let data = unsafe { uvll::get_data_for_req(req.handle) };
+            if data.is_null() { return }
+
+            let cx: &mut Ctx = unsafe { &mut *(data as *mut Ctx) };
             cx.status = status;
             match cx.timer {
                 Some(ref mut t) => t.stop(),
