@@ -16,7 +16,6 @@ use middle::trans::base::{trans_enum_variant, push_ctxt, get_item_val};
 use middle::trans::base::{trans_fn, decl_internal_rust_fn};
 use middle::trans::base;
 use middle::trans::common::*;
-use middle::trans::meth;
 use middle::trans::intrinsic;
 use middle::ty;
 use middle::typeck;
@@ -26,7 +25,7 @@ use syntax::abi;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util::local_def;
-use std::hash::sip;
+use std::hash::{sip, Hash};
 
 pub fn monomorphic_fn(ccx: &CrateContext,
                       fn_id: ast::DefId,
@@ -71,7 +70,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
         }).collect()
     };
 
-    let hash_id = @mono_id_ {
+    let hash_id = MonoId {
         def: fn_id,
         params: param_ids
     };
@@ -194,16 +193,22 @@ pub fn monomorphic_fn(ccx: &CrateContext,
     }
 
     let s = ccx.tcx.map.with_path(fn_id.node, |path| {
-        exported_name(path, format!("h{}", sip::hash(&(hash_id, mono_ty))),
+        let mut state = sip::SipState::new();
+        hash_id.hash(&mut state);
+        mono_ty.hash(&mut state);
+
+        exported_name(path, format!("h{}", state.result()),
                       ccx.link_meta.crateid.version_or_default())
     });
     debug!("monomorphize_fn mangled to {}", s);
 
+    // This shouldn't need to option dance.
+    let mut hash_id = Some(hash_id);
     let mk_lldecl = || {
         let lldecl = decl_internal_rust_fn(ccx, false,
                                            f.sig.inputs.as_slice(),
                                            f.sig.output, s);
-        ccx.monomorphized.borrow_mut().insert(hash_id, lldecl);
+        ccx.monomorphized.borrow_mut().insert(hash_id.take_unwrap(), lldecl);
         lldecl
     };
 
@@ -305,21 +310,34 @@ pub fn monomorphic_fn(ccx: &CrateContext,
     (lldecl, false)
 }
 
+// Used to identify cached monomorphized functions and vtables
+#[deriving(Eq, TotalEq, Hash)]
+pub struct MonoParamId {
+    pub subst: ty::t,
+    // Do we really need the vtables to be hashed? Isn't the type enough?
+    pub vtables: Vec<MonoId>
+}
+
+#[deriving(Eq, TotalEq, Hash)]
+pub struct MonoId {
+    pub def: ast::DefId,
+    pub params: Vec<MonoParamId>
+}
+
 pub fn make_vtable_id(ccx: &CrateContext,
                       origin: &typeck::vtable_origin)
-                      -> mono_id {
+                      -> MonoId {
     match origin {
         &typeck::vtable_static(impl_id, ref substs, ref sub_vtables) => {
-            let param_ids = sub_vtables.iter().zip(substs.iter()).map(|(vtable, subst)| {
-                MonoParamId {
-                    subst: *subst,
-                    vtables: vtable.iter().map(|vt| make_vtable_id(ccx, vt)).collect()
-                }
-            }).collect();
-
-            @mono_id_ {
+            MonoId {
                 def: impl_id,
-                params: param_ids
+                params: sub_vtables.iter().zip(substs.iter()).map(|(vtable, subst)| {
+                    MonoParamId {
+                        subst: *subst,
+                        // Do we really need the vtables to be hashed? Isn't the type enough?
+                        vtables: vtable.iter().map(|vt| make_vtable_id(ccx, vt)).collect()
+                    }
+                }).collect()
             }
         }
 

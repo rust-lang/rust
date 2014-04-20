@@ -20,8 +20,9 @@ use middle::resolve;
 use middle::trans::adt;
 use middle::trans::base;
 use middle::trans::builder::Builder;
-use middle::trans::common::{mono_id,ExternMap,tydesc_info,BuilderRef_res,Stats};
+use middle::trans::common::{ExternMap,tydesc_info,BuilderRef_res,Stats};
 use middle::trans::debuginfo;
+use middle::trans::monomorphize::MonoId;
 use middle::trans::type_::Type;
 use middle::ty;
 use util::sha2::Sha256;
@@ -61,10 +62,10 @@ pub struct CrateContext {
     /// that is generated
     pub non_inlineable_statics: RefCell<NodeSet>,
     /// Cache instances of monomorphized functions
-    pub monomorphized: RefCell<HashMap<mono_id, ValueRef>>,
+    pub monomorphized: RefCell<HashMap<MonoId, ValueRef>>,
     pub monomorphizing: RefCell<DefIdMap<uint>>,
     /// Cache generated vtables
-    pub vtables: RefCell<HashMap<(ty::t, mono_id), ValueRef>>,
+    pub vtables: RefCell<HashMap<(ty::t, MonoId), ValueRef>>,
     /// Cache of constant strings,
     pub const_cstr_cache: RefCell<HashMap<InternedString, ValueRef>>,
 
