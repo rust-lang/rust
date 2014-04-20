@@ -686,22 +686,6 @@ pub fn is_null(val: ValueRef) -> bool {
     }
 }
 
-// Used to identify cached monomorphized functions and vtables
-#[deriving(Eq, TotalEq, Hash)]
-pub struct MonoParamId {
-    pub subst: ty::t,
-    // Do we really need the vtables to be hashed? Isn't the type enough?
-    pub vtables: Vec<mono_id>
-}
-
-#[deriving(Eq, TotalEq, Hash)]
-pub struct mono_id_ {
-    pub def: ast::DefId,
-    pub params: Vec<MonoParamId>
-}
-
-pub type mono_id = @mono_id_;
-
 pub fn monomorphize_type(bcx: &Block, t: ty::t) -> ty::t {
     match bcx.fcx.param_substs {
         Some(substs) => {
