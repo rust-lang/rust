@@ -561,7 +561,7 @@ points at a static constant).
 
 Lifetimes can be named and referenced. For example, the special lifetime
 `'static`, which does not go out of scope, can be used to create global
-variables and communicate between tasks (see the manual for usecases).
+variables and communicate between tasks (see the manual for use cases).
 
 ## Parameter Lifetimes
 

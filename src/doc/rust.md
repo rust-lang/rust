@@ -295,7 +295,7 @@ Raw string literals do not process any escapes. They start with the character
 `U+0022` (double-quote) character. The _raw string body_ is not defined in the
 EBNF grammar above: it can contain any sequence of Unicode characters and is
 terminated only by another `U+0022` (double-quote) character, followed by the
-same number of `U+0023` (`#`) characters that preceeded the opening `U+0022`
+same number of `U+0023` (`#`) characters that preceded the opening `U+0022`
 (double-quote) character.
 
 All Unicode characters contained in the raw string body represent themselves,
@@ -2256,7 +2256,7 @@ fn main() {
 Certain aspects of Rust may be implemented in the compiler, but they're not
 necessarily ready for every-day use. These features are often of "prototype
 quality" or "almost production ready", but may not be stable enough to be
-considered a full-fleged language feature.
+considered a full-fledged language feature.
 
 For this reason, Rust recognizes a special crate-level attribute of the form:
 
@@ -4005,7 +4005,7 @@ dependencies will be used:
    could only be found in an `rlib` format. Remember that `staticlib` formats
    are always ignored by `rustc` for crate-linking purposes.
 
-2. If a static library is being produced, all upstream dependecies are
+2. If a static library is being produced, all upstream dependencies are
    required to be available in `rlib` formats. This requirement stems from the
    same reasons that a dynamic library must have all dynamic dependencies.
 
