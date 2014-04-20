@@ -337,7 +337,7 @@ Besides classical synchronization mechanisms like mutexes, one possibility in
 Rust is to use channels (in `std::comm`) to forward data from the C thread
 that invoked the callback into a Rust task.
 
-If an asychronous callback targets a special object in the Rust address space
+If an asynchronous callback targets a special object in the Rust address space
 it is also absolutely necessary that no more callbacks are performed by the
 C library after the respective Rust object gets destroyed.
 This can be achieved by unregistering the callback in the object's

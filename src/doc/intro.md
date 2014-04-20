@@ -226,7 +226,7 @@ Now here's the exciting part:
 because `numbers` is an owned type,
 when it is sent across the channel,
 it is actually *moved*,
-transfering ownership of `numbers` between tasks.
+transferring ownership of `numbers` between tasks.
 This ownership transfer is *very fast* -
 in this case simply copying a pointer -
 while also ensuring that the original owning task cannot create data races by continuing to read or write to `numbers` in parallel with the new owner.
@@ -318,7 +318,7 @@ fn main() {
 This is almost exactly the same,
 except that this time `numbers` is first put into an `Arc`.
 `Arc::new` creates the `Arc`,
-`.clone()` makes another `Arc` that referrs to the same contents.
+`.clone()` makes another `Arc` that refers to the same contents.
 So we clone the `Arc` for each task,
 send that clone down the channel,
 and then use it to print out a number.

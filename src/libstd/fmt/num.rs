@@ -74,11 +74,11 @@ struct Octal;
 #[deriving(Clone, Eq)]
 struct Decimal;
 
-/// A hexidecimal (base 16) radix, formatted with lower-case characters
+/// A hexadecimal (base 16) radix, formatted with lower-case characters
 #[deriving(Clone, Eq)]
 struct LowerHex;
 
-/// A hexidecimal (base 16) radix, formatted with upper-case characters
+/// A hexadecimal (base 16) radix, formatted with upper-case characters
 #[deriving(Clone, Eq)]
 pub struct UpperHex;
 
