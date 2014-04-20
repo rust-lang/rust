@@ -405,7 +405,8 @@ impl<'a> PrivacyVisitor<'a> {
             };
         }
 
-        debug!("privacy - local {:?} not public all the way down", did);
+        debug!("privacy - local {} not public all the way down",
+               self.tcx.map.node_to_str(did.node));
         // return quickly for things in the same module
         if self.parents.find(&did.node) == self.parents.find(&self.curitem) {
             debug!("privacy - same parent, we're done here");
@@ -526,31 +527,60 @@ impl<'a> PrivacyVisitor<'a> {
     /// If the result is `None`, no errors were found.
     fn ensure_public(&self, span: Span, to_check: ast::DefId,
                      source_did: Option<ast::DefId>, msg: &str) -> CheckResult {
-        match self.def_privacy(to_check) {
-            ExternallyDenied => Some((span, format!("{} is private", msg), None)),
-            DisallowedBy(id) => {
-                let (err_span, err_msg) = if id == source_did.unwrap_or(to_check).node {
-                    return Some((span, format!("{} is private", msg), None));
-                } else {
-                    (span, format!("{} is inaccessible", msg))
-                };
-                match self.tcx.map.find(id) {
-                    Some(ast_map::NodeItem(item)) => {
-                        let desc = match item.node {
-                            ast::ItemMod(..) => "module",
-                            ast::ItemTrait(..) => "trait",
+        let id = match self.def_privacy(to_check) {
+            ExternallyDenied => {
+                return Some((span, format!("{} is private", msg), None))
+            }
+            Allowable => return None,
+            DisallowedBy(id) => id,
+        };
+
+        // If we're disallowed by a particular id, then we attempt to give a
+        // nice error message to say why it was disallowed. It was either
+        // because the item itself is private or because its parent is private
+        // and its parent isn't in our ancestry.
+        let (err_span, err_msg) = if id == source_did.unwrap_or(to_check).node {
+            return Some((span, format!("{} is private", msg), None));
+        } else {
+            (span, format!("{} is inaccessible", msg))
+        };
+        let item = match self.tcx.map.find(id) {
+            Some(ast_map::NodeItem(item)) => {
+                match item.node {
+                    // If an impl disallowed this item, then this is resolve's
+                    // way of saying that a struct/enum's static method was
+                    // invoked, and the struct/enum itself is private. Crawl
+                    // back up the chains to find the relevant struct/enum that
+                    // was private.
+                    ast::ItemImpl(_, _, ref ty, _) => {
+                        let id = match ty.node {
+                            ast::TyPath(_, _, id) => id,
                             _ => return Some((err_span, err_msg, None)),
                         };
-                        let msg = format!("{} `{}` is private",
-                                          desc,
-                                          token::get_ident(item.ident));
-                        Some((err_span, err_msg, Some((span, msg))))
-                    },
-                    _ => Some((err_span, err_msg, None)),
+                        let def = self.tcx.def_map.borrow().get_copy(&id);
+                        let did = def_id_of_def(def);
+                        assert!(is_local(did));
+                        match self.tcx.map.get(did.node) {
+                            ast_map::NodeItem(item) => item,
+                            _ => self.tcx.sess.span_bug(item.span,
+                                                        "path is not an item")
+                        }
+                    }
+                    _ => item
                 }
-            },
-            Allowable => None,
-        }
+            }
+            Some(..) | None => return Some((err_span, err_msg, None)),
+        };
+        let desc = match item.node {
+            ast::ItemMod(..) => "module",
+            ast::ItemTrait(..) => "trait",
+            ast::ItemStruct(..) => "struct",
+            ast::ItemEnum(..) => "enum",
+            _ => return Some((err_span, err_msg, None))
+        };
+        let msg = format!("{} `{}` is private", desc,
+                          token::get_ident(item.ident));
+        Some((err_span, err_msg, Some((span, msg))))
     }
 
     // Checks that a field is in scope.
@@ -625,12 +655,8 @@ impl<'a> PrivacyVisitor<'a> {
                                                 .unwrap()
                                                 .identifier);
                 let origdid = def_id_of_def(orig_def);
-                self.ensure_public(span,
-                                   def,
-                                   Some(origdid),
-                                   format!("{} `{}`",
-                                           tyname,
-                                           name))
+                self.ensure_public(span, def, Some(origdid),
+                                   format!("{} `{}`", tyname, name))
             };
 
             match *self.last_private_map.get(&path_id) {
