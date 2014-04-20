@@ -342,10 +342,10 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt, trait_id: ast::NodeId) {
         new_type_param_defs.push(ty::TypeParameterDef {
             ident: special_idents::self_,
             def_id: dummy_defid,
-            bounds: @ty::ParamBounds {
+            bounds: Rc::new(ty::ParamBounds {
                 builtin_bounds: ty::EmptyBuiltinBounds(),
                 trait_bounds: vec!(self_trait_ref)
-            },
+            }),
             default: None
         });
 
@@ -999,24 +999,24 @@ pub fn ty_of_foreign_item(ccx: &CrateCtxt,
     }
 }
 
-pub fn ty_generics_for_type(ccx: &CrateCtxt,
-                            generics: &ast::Generics)
-                            -> ty::Generics {
+fn ty_generics_for_type(ccx: &CrateCtxt,
+                        generics: &ast::Generics)
+                        -> ty::Generics {
     ty_generics(ccx, &generics.lifetimes, &generics.ty_params, 0)
 }
 
-pub fn ty_generics_for_fn_or_method(ccx: &CrateCtxt,
-                                    generics: &ast::Generics,
-                                    base_index: uint)
-                                    -> ty::Generics {
+fn ty_generics_for_fn_or_method(ccx: &CrateCtxt,
+                                generics: &ast::Generics,
+                                base_index: uint)
+                                -> ty::Generics {
     let early_lifetimes = resolve_lifetime::early_bound_lifetimes(generics);
     ty_generics(ccx, &early_lifetimes, &generics.ty_params, base_index)
 }
 
-pub fn ty_generics(ccx: &CrateCtxt,
-                   lifetimes: &Vec<ast::Lifetime>,
-                   ty_params: &OwnedSlice<ast::TyParam>,
-                   base_index: uint) -> ty::Generics {
+fn ty_generics(ccx: &CrateCtxt,
+               lifetimes: &Vec<ast::Lifetime>,
+               ty_params: &OwnedSlice<ast::TyParam>,
+               base_index: uint) -> ty::Generics {
     return ty::Generics {
         region_param_defs: Rc::new(lifetimes.iter().map(|l| {
                 ty::RegionParameterDef { name: l.name,
@@ -1025,12 +1025,12 @@ pub fn ty_generics(ccx: &CrateCtxt,
         type_param_defs: Rc::new(ty_params.iter().enumerate().map(|(offset, param)| {
             let existing_def_opt = {
                 let ty_param_defs = ccx.tcx.ty_param_defs.borrow();
-                ty_param_defs.find(&param.id).map(|&def| def)
+                ty_param_defs.find(&param.id).map(|def| def.clone())
             };
             existing_def_opt.unwrap_or_else(|| {
                 let param_ty = ty::param_ty {idx: base_index + offset,
                                              def_id: local_def(param.id)};
-                let bounds = @compute_bounds(ccx, param_ty, &param.bounds);
+                let bounds = Rc::new(compute_bounds(ccx, param_ty, &param.bounds));
                 let default = param.default.map(|path| {
                     let ty = ast_ty_to_ty(ccx, &ExplicitRscope, path);
                     let cur_idx = param_ty.idx;
@@ -1056,7 +1056,7 @@ pub fn ty_generics(ccx: &CrateCtxt,
                     default: default
                 };
                 debug!("def for param: {}", def.repr(ccx.tcx));
-                ccx.tcx.ty_param_defs.borrow_mut().insert(param.id, def);
+                ccx.tcx.ty_param_defs.borrow_mut().insert(param.id, def.clone());
                 def
             })
         }).collect()),
