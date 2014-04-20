@@ -446,10 +446,7 @@ impl<E, D:Decoder<E>,T:Decodable<D, E>> Decodable<D, E> for ~[T] {
             for i in range(0, len) {
                 v.push(try!(d.read_seq_elt(i, |d| Decodable::decode(d))));
             }
-            println!("-------");
-            println!("{}", v.len());
             let k = v.move_iter().collect::<~[T]>();
-            println!("{}", k.len());
             Ok(k)
         })
     }
