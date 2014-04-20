@@ -267,7 +267,19 @@ impl Case {
         mk_struct(cx, self.tys.as_slice(), false).size == 0
     }
     fn find_ptr(&self) -> Option<uint> {
-        self.tys.iter().position(|&ty| mono_data_classify(ty) == MonoNonNull)
+        self.tys.iter().position(|&ty| {
+            match ty::get(ty).sty {
+                ty::ty_rptr(_, mt) => match ty::get(mt.ty).sty {
+                    ty::ty_vec(_, None) => false,
+                    _ => true,
+                },
+                ty::ty_uniq(..) | ty::ty_box(..) |
+                ty::ty_str(ty::VstoreUniq) |
+                ty::ty_bare_fn(..) => true,
+                // Is that everything?  Would closures or slices qualify?
+                _ => false
+            }
+        })
     }
 }
 

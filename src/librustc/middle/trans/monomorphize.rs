@@ -49,7 +49,6 @@ pub fn monomorphic_fn(ccx: &CrateContext,
 
     assert!(real_substs.tps.iter().all(|t| !ty::type_needs_infer(*t)));
     let _icx = push_ctxt("monomorphic_fn");
-    let mut must_cast = false;
 
     let psubsts = @param_substs {
         tys: real_substs.tps.clone(),
@@ -62,10 +61,6 @@ pub fn monomorphic_fn(ccx: &CrateContext,
     for s in psubsts.tys.iter() { assert!(!ty::type_has_params(*s)); }
 
     let hash_id = make_mono_id(ccx, fn_id, &*psubsts);
-    if hash_id.params.iter().any(
-                |p| match *p { mono_precise(_, _) => false, _ => true }) {
-        must_cast = true;
-    }
 
     debug!("monomorphic_fn(\
             fn_id={}, \
@@ -79,7 +74,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
         Some(&val) => {
             debug!("leaving monomorphic fn {}",
             ty::item_path_str(ccx.tcx(), fn_id));
-            return (val, must_cast);
+            return (val, false);
         }
         None => ()
     }
@@ -286,32 +281,31 @@ pub fn monomorphic_fn(ccx: &CrateContext,
     ccx.monomorphizing.borrow_mut().insert(fn_id, depth);
 
     debug!("leaving monomorphic fn {}", ty::item_path_str(ccx.tcx(), fn_id));
-    (lldecl, must_cast)
+    (lldecl, false)
 }
 
 pub fn make_mono_id(ccx: &CrateContext,
                     item: ast::DefId,
                     substs: &param_substs) -> mono_id {
-    // FIXME (possibly #5801): Need a lot of type hints to get
-    // .collect() to work.
     let substs_iter = substs.self_ty.iter().chain(substs.tys.iter());
-    let precise_param_ids: Vec<(ty::t, Option<@Vec<mono_id> >)> = match substs.vtables {
-      Some(ref vts) => {
-        debug!("make_mono_id vtables={} substs={}",
-               vts.repr(ccx.tcx()), substs.tys.repr(ccx.tcx()));
-        let vts_iter = substs.self_vtables.iter().chain(vts.iter());
-        vts_iter.zip(substs_iter).map(|(vtable, subst)| {
-            let v = vtable.iter().map(|vt| meth::vtable_id(ccx, vt)).collect::<Vec<_>>();
-            (*subst, if !v.is_empty() { Some(@v) } else { None })
+    let param_ids: Vec<MonoParamId> = match substs.vtables {
+        Some(ref vts) => {
+            debug!("make_mono_id vtables={} substs={}",
+                   vts.repr(ccx.tcx()), substs.tys.repr(ccx.tcx()));
+            let vts_iter = substs.self_vtables.iter().chain(vts.iter());
+            vts_iter.zip(substs_iter).map(|(vtable, subst)| MonoParamId {
+                subst: *subst,
+                vtables: vtable.iter().map(|vt| meth::vtable_id(ccx, vt)).collect()
+            }).collect()
+        }
+        None => substs_iter.map(|subst| MonoParamId {
+            subst: *subst,
+            vtables: Vec::new()
         }).collect()
-      }
-      None => substs_iter.map(|subst| (*subst, None::<@Vec<mono_id> >)).collect()
     };
 
-
-    let param_ids = precise_param_ids.iter().map(|x| {
-        let (a, b) = *x;
-        mono_precise(a, b)
-    }).collect();
-    @mono_id_ {def: item, params: param_ids}
+    @mono_id_ {
+        def: item,
+        params: param_ids
+    }
 }

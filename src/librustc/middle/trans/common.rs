@@ -688,45 +688,16 @@ pub fn is_null(val: ValueRef) -> bool {
 
 // Used to identify cached monomorphized functions and vtables
 #[deriving(Eq, TotalEq, Hash)]
-pub enum mono_param_id {
-    mono_precise(ty::t, Option<@Vec<mono_id> >),
-    mono_any,
-    mono_repr(uint /* size */,
-              uint /* align */,
-              MonoDataClass,
-              datum::RvalueMode),
-}
-
-#[deriving(Eq, TotalEq, Hash)]
-pub enum MonoDataClass {
-    MonoBits,    // Anything not treated differently from arbitrary integer data
-    MonoNonNull, // Non-null pointers (used for optional-pointer optimization)
-    // FIXME(#3547)---scalars and floats are
-    // treated differently in most ABIs.  But we
-    // should be doing something more detailed
-    // here.
-    MonoFloat
-}
-
-pub fn mono_data_classify(t: ty::t) -> MonoDataClass {
-    match ty::get(t).sty {
-        ty::ty_float(_) => MonoFloat,
-        ty::ty_rptr(_, mt) => match ty::get(mt.ty).sty {
-            ty::ty_vec(_, None) => MonoBits,
-            _ => MonoNonNull,
-        },
-        ty::ty_uniq(..) | ty::ty_box(..) |
-        ty::ty_str(ty::VstoreUniq) |
-        ty::ty_bare_fn(..) => MonoNonNull,
-        // Is that everything?  Would closures or slices qualify?
-        _ => MonoBits
-    }
+pub struct MonoParamId {
+    pub subst: ty::t,
+    pub vtables: Vec<mono_id>
 }
 
 #[deriving(Eq, TotalEq, Hash)]
 pub struct mono_id_ {
     pub def: ast::DefId,
-    pub params: Vec<mono_param_id> }
+    pub params: Vec<MonoParamId>
+}
 
 pub type mono_id = @mono_id_;
 
