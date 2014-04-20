@@ -122,6 +122,7 @@ use std::vec::Vec;
 use syntax::abi;
 use syntax::ast::{Provided, Required};
 use syntax::ast;
+use syntax::ast_map;
 use syntax::ast_util::local_def;
 use syntax::ast_util;
 use syntax::attr;
@@ -509,6 +510,57 @@ fn check_fn<'a>(ccx: &'a CrateCtxt<'a>,
     fcx
 }
 
+fn span_for_field(tcx: &ty::ctxt, field: &ty::field_ty, struct_id: ast::DefId) -> Span {
+    assert!(field.id.krate == ast::LOCAL_CRATE);
+    let item = match tcx.map.find(struct_id.node) {
+        Some(ast_map::NodeItem(item)) => item,
+        None => fail!("node not in ast map: {}", struct_id.node),
+        _ => fail!("expected item, found {}", tcx.map.node_to_str(struct_id.node))
+    };
+
+    match item.node {
+        ast::ItemStruct(struct_def, _) => {
+            match struct_def.fields.iter().find(|f| match f.node.kind {
+                ast::NamedField(ident, _) => ident.name == field.name,
+                _ => false,
+            }) {
+                Some(f) => f.span,
+                None => tcx.sess.bug(format!("Could not find field {}",
+                                             token::get_name(field.name))),
+            }
+        },
+        _ => tcx.sess.bug("Field found outside of a struct?"),
+    }
+}
+
+// Check struct fields are uniquely named wrt parents.
+fn check_for_field_shadowing(tcx: &ty::ctxt,
+                             id: ast::DefId) {
+    let struct_fields = tcx.struct_fields.borrow();
+    let fields = struct_fields.get(&id);
+
+    let superstructs = tcx.superstructs.borrow();
+    let super_struct = superstructs.get(&id);
+    match *super_struct {
+        Some(parent_id) => {
+            let super_fields = ty::lookup_struct_fields(tcx, parent_id);
+            for f in fields.iter() {
+                match super_fields.iter().find(|sf| f.name == sf.name) {
+                    Some(prev_field) => {
+                        tcx.sess.span_err(span_for_field(tcx, f, id),
+                            format!("field `{}` hides field declared in super-struct",
+                                    token::get_name(f.name)));
+                        tcx.sess.span_note(span_for_field(tcx, prev_field, parent_id),
+                            "previously declared here");
+                    },
+                    None => {}
+                }
+            }
+        },
+        None => {}
+    }
+}
+
 pub fn check_struct(ccx: &CrateCtxt, id: ast::NodeId, span: Span) {
     let tcx = ccx.tcx;
 
@@ -517,6 +569,9 @@ pub fn check_struct(ccx: &CrateCtxt, id: ast::NodeId, span: Span) {
 
     // Check that the struct is instantiable
     check_instantiable(tcx, span, id);
+
+    // Check there are no overlapping fields in super-structs
+    check_for_field_shadowing(tcx, local_def(id));
 
     if ty::lookup_simd(tcx, local_def(id)) {
         check_simd(tcx, span, id);
@@ -2385,14 +2440,14 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         // Look up and check the fields.
         let class_fields = ty::lookup_struct_fields(tcx, class_id);
         check_struct_or_variant_fields(fcx,
-                                           struct_type,
-                                           span,
-                                           class_id,
-                                           id,
-                                           substitutions,
-                                           class_fields.as_slice(),
-                                           fields,
-                                           base_expr.is_none());
+                                       struct_type,
+                                       span,
+                                       class_id,
+                                       id,
+                                       substitutions,
+                                       class_fields.as_slice(),
+                                       fields,
+                                       base_expr.is_none());
         if ty::type_is_error(fcx.node_ty(id)) {
             struct_type = ty::mk_err();
         }

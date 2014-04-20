@@ -571,6 +571,10 @@ pub fn walk_struct_def<E: Clone, V: Visitor<E>>(visitor: &mut V,
                                                 _: &Generics,
                                                 _: NodeId,
                                                 env: E) {
+    match struct_definition.super_struct {
+        Some(t) => visitor.visit_ty(t, env.clone()),
+        None => {},
+    }
     for field in struct_definition.fields.iter() {
         visitor.visit_struct_field(field, env.clone())
     }

@@ -3884,11 +3884,26 @@ impl<'a> Parser<'a> {
     }
 
     // parse struct Foo { ... }
-    fn parse_item_struct(&mut self) -> ItemInfo {
+    fn parse_item_struct(&mut self, is_virtual: bool) -> ItemInfo {
         let class_name = self.parse_ident();
         let generics = self.parse_generics();
 
-        let mut fields: Vec<StructField> ;
+        let super_struct = if self.eat(&token::COLON) {
+            let ty = self.parse_ty(false);
+            match ty.node {
+                TyPath(_, None, _) => {
+                    Some(ty)
+                }
+                _ => {
+                    self.span_err(ty.span, "not a struct");
+                    None
+                }
+            }
+        } else {
+            None
+        };
+
+        let mut fields: Vec<StructField>;
         let is_tuple_like;
 
         if self.eat(&token::LBRACE) {
@@ -3938,7 +3953,9 @@ impl<'a> Parser<'a> {
         (class_name,
          ItemStruct(@ast::StructDef {
              fields: fields,
-             ctor_id: if is_tuple_like { Some(new_id) } else { None }
+             ctor_id: if is_tuple_like { Some(new_id) } else { None },
+             super_struct: super_struct,
+             is_virtual: is_virtual,
          }, generics),
          None)
     }
@@ -4329,7 +4346,9 @@ impl<'a> Parser<'a> {
 
         return @ast::StructDef {
             fields: fields,
-            ctor_id: None
+            ctor_id: None,
+            super_struct: None,
+            is_virtual: false,
         };
     }
 
@@ -4514,6 +4533,12 @@ impl<'a> Parser<'a> {
                             format!("expected `\\{` or `fn` but found `{}`", token_str));
         }
 
+        let is_virtual = self.eat_keyword(keywords::Virtual);
+        if is_virtual && !self.is_keyword(keywords::Struct) {
+            self.span_err(self.span,
+                          "`virtual` keyword may only be used with `struct`");
+        }
+
         // the rest are all guaranteed to be items:
         if self.is_keyword(keywords::Static) {
             // STATIC ITEM
@@ -4614,7 +4639,7 @@ impl<'a> Parser<'a> {
         }
         if self.eat_keyword(keywords::Struct) {
             // STRUCT ITEM
-            let (ident, item_, extra_attrs) = self.parse_item_struct();
+            let (ident, item_, extra_attrs) = self.parse_item_struct(is_virtual);
             let item = self.mk_item(lo,
                                     self.last_span.hi,
                                     ident,

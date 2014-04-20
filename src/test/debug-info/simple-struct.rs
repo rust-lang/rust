@@ -72,15 +72,20 @@
 // debugger:print 'simple-struct::PADDING_AT_END'
 // check:$18 = {x = -27, y = 28}
 
-#![allow(unused_variable)]
-#![allow(dead_code)]
+// debugger:print inheriting
+// check:$19 = {a = 10019, b = -10020, x = -10016, y = -10017.5, z = 10018}
+
+
+#![feature(struct_inherit)];
+#![allow(unused_variable)];
+#![allow(dead_code)];
 
 struct NoPadding16 {
     x: u16,
     y: i16
 }
 
-struct NoPadding32 {
+virtual struct NoPadding32 {
     x: i32,
     y: f32,
     z: u32
@@ -143,6 +148,11 @@ static mut PADDING_AT_END: PaddingAtEnd = PaddingAtEnd {
     y: 14
 };
 
+struct Inheriting : NoPadding32 {
+    a: u16,
+    b: i16
+}
+
 fn main() {
     let no_padding16 = NoPadding16 { x: 10000, y: -10001 };
     let no_padding32 = NoPadding32 { x: -10002, y: -10003.5, z: 10004 };
@@ -151,6 +161,8 @@ fn main() {
 
     let internal_padding = InternalPadding { x: 10012, y: -10013 };
     let padding_at_end = PaddingAtEnd { x: -10014, y: 10015 };
+
+    let inheriting = Inheriting { a: 10019, b: -10020, x: -10016, y: -10017.5, z: 10018 };
 
     unsafe {
         NO_PADDING_16.x = 100;

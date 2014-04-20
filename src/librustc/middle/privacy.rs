@@ -488,7 +488,7 @@ impl<'a> PrivacyVisitor<'a> {
         // members, so that's why we test the parent, and not the did itself.
         let mut cur = self.curitem;
         loop {
-            debug!("privacy - questioning {}", self.nodestr(cur));
+            debug!("privacy - questioning {}, {:?}", self.nodestr(cur), cur);
             match cur {
                 // If the relevant parent is in our history, then we're allowed
                 // to look inside any of our ancestor's immediate private items,
@@ -554,11 +554,14 @@ impl<'a> PrivacyVisitor<'a> {
     }
 
     // Checks that a field is in scope.
-    fn check_field(&mut self, span: Span, id: ast::DefId,
+    fn check_field(&mut self,
+                   span: Span,
+                   id: ast::DefId,
                    name: FieldName) {
         let fields = ty::lookup_struct_fields(self.tcx, id);
         let field = match name {
             NamedField(ident) => {
+                debug!("privacy - check named field {} in struct {}", ident.name, id);
                 fields.iter().find(|f| f.name == ident.name).unwrap()
             }
             UnnamedField(idx) => fields.get(idx)
