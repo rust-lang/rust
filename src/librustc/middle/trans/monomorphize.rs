@@ -47,28 +47,34 @@ pub fn monomorphic_fn(ccx: &CrateContext,
            self_vtables.repr(ccx.tcx()),
            ref_id);
 
-    assert!(real_substs.tps.iter().all(|t| !ty::type_needs_infer(*t)));
+    assert!(real_substs.tps.iter().all(|t| {
+        !ty::type_needs_infer(*t) && !ty::type_has_params(*t)
+    }));
+
     let _icx = push_ctxt("monomorphic_fn");
 
-    let psubsts = @param_substs {
-        tys: real_substs.tps.clone(),
-        vtables: vtables,
-        self_ty: real_substs.self_ty.clone(),
-        self_vtables: self_vtables
+    let substs_iter = real_substs.self_ty.iter().chain(real_substs.tps.iter());
+    let param_ids: Vec<MonoParamId> = match vtables {
+        Some(ref vts) => {
+            debug!("make_mono_id vtables={} psubsts={}",
+                   vts.repr(ccx.tcx()), real_substs.tps.repr(ccx.tcx()));
+            let vts_iter = self_vtables.iter().chain(vts.iter());
+            vts_iter.zip(substs_iter).map(|(vtable, subst)| MonoParamId {
+                subst: *subst,
+                // Do we really need the vtables to be hashed? Isn't the type enough?
+                vtables: vtable.iter().map(|vt| make_vtable_id(ccx, vt)).collect()
+            }).collect()
+        }
+        None => substs_iter.map(|subst| MonoParamId {
+            subst: *subst,
+            vtables: Vec::new()
+        }).collect()
     };
 
-    for s in real_substs.tps.iter() { assert!(!ty::type_has_params(*s)); }
-    for s in psubsts.tys.iter() { assert!(!ty::type_has_params(*s)); }
-
-    let hash_id = make_mono_id(ccx, fn_id, &*psubsts);
-
-    debug!("monomorphic_fn(\
-            fn_id={}, \
-            psubsts={}, \
-            hash_id={:?})",
-           fn_id.repr(ccx.tcx()),
-           psubsts.repr(ccx.tcx()),
-           hash_id);
+    let hash_id = @mono_id_ {
+        def: fn_id,
+        params: param_ids
+    };
 
     match ccx.monomorphized.borrow().find(&hash_id) {
         Some(&val) => {
@@ -78,6 +84,21 @@ pub fn monomorphic_fn(ccx: &CrateContext,
         }
         None => ()
     }
+
+    let psubsts = @param_substs {
+        tys: real_substs.tps.clone(),
+        vtables: vtables,
+        self_ty: real_substs.self_ty.clone(),
+        self_vtables: self_vtables
+    };
+
+    debug!("monomorphic_fn(\
+            fn_id={}, \
+            psubsts={}, \
+            hash_id={:?})",
+           fn_id.repr(ccx.tcx()),
+           psubsts.repr(ccx.tcx()),
+           hash_id);
 
     let tpt = ty::lookup_item_type(ccx.tcx(), fn_id);
     let llitem_ty = tpt.ty;
@@ -117,8 +138,8 @@ pub fn monomorphic_fn(ccx: &CrateContext,
 
     debug!("monomorphic_fn about to subst into {}", llitem_ty.repr(ccx.tcx()));
     let mono_ty = match is_static_provided {
-        None => ty::subst_tps(ccx.tcx(), psubsts.tys.as_slice(),
-                              psubsts.self_ty, llitem_ty),
+        None => ty::subst_tps(ccx.tcx(), real_substs.tps.as_slice(),
+                              real_substs.self_ty, llitem_ty),
         Some(num_method_ty_params) => {
             // Static default methods are a little unfortunate, in
             // that the "internal" and "external" type of them differ.
@@ -134,9 +155,9 @@ pub fn monomorphic_fn(ccx: &CrateContext,
             // stick a substitution for the self type in.
             // This is a bit unfortunate.
 
-            let idx = psubsts.tys.len() - num_method_ty_params;
-            let substs = psubsts.tys.slice(0, idx) +
-                &[psubsts.self_ty.unwrap()] + psubsts.tys.tailn(idx);
+            let idx = real_substs.tps.len() - num_method_ty_params;
+            let substs = real_substs.tps.slice(0, idx) +
+            &[real_substs.self_ty.unwrap()] + real_substs.tps.tailn(idx);
             debug!("static default: changed substitution to {}",
                    substs.repr(ccx.tcx()));
 
@@ -284,28 +305,25 @@ pub fn monomorphic_fn(ccx: &CrateContext,
     (lldecl, false)
 }
 
-pub fn make_mono_id(ccx: &CrateContext,
-                    item: ast::DefId,
-                    substs: &param_substs) -> mono_id {
-    let substs_iter = substs.self_ty.iter().chain(substs.tys.iter());
-    let param_ids: Vec<MonoParamId> = match substs.vtables {
-        Some(ref vts) => {
-            debug!("make_mono_id vtables={} substs={}",
-                   vts.repr(ccx.tcx()), substs.tys.repr(ccx.tcx()));
-            let vts_iter = substs.self_vtables.iter().chain(vts.iter());
-            vts_iter.zip(substs_iter).map(|(vtable, subst)| MonoParamId {
-                subst: *subst,
-                vtables: vtable.iter().map(|vt| meth::vtable_id(ccx, vt)).collect()
-            }).collect()
-        }
-        None => substs_iter.map(|subst| MonoParamId {
-            subst: *subst,
-            vtables: Vec::new()
-        }).collect()
-    };
+pub fn make_vtable_id(ccx: &CrateContext,
+                      origin: &typeck::vtable_origin)
+                      -> mono_id {
+    match origin {
+        &typeck::vtable_static(impl_id, ref substs, ref sub_vtables) => {
+            let param_ids = sub_vtables.iter().zip(substs.iter()).map(|(vtable, subst)| {
+                MonoParamId {
+                    subst: *subst,
+                    vtables: vtable.iter().map(|vt| make_vtable_id(ccx, vt)).collect()
+                }
+            }).collect();
 
-    @mono_id_ {
-        def: item,
-        params: param_ids
+            @mono_id_ {
+                def: impl_id,
+                params: param_ids
+            }
+        }
+
+        // can't this be checked at the callee?
+        _ => fail!("make_vtable_id needs vtable_static")
     }
 }

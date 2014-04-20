@@ -427,29 +427,6 @@ pub fn trans_trait_callee_from_llval<'a>(bcx: &'a Block<'a>,
     };
 }
 
-pub fn vtable_id(ccx: &CrateContext,
-                 origin: &typeck::vtable_origin)
-              -> mono_id {
-    match origin {
-        &typeck::vtable_static(impl_id, ref substs, ref sub_vtables) => {
-            let psubsts = param_substs {
-                tys: (*substs).clone(),
-                vtables: Some(sub_vtables.clone()),
-                self_ty: None,
-                self_vtables: None
-            };
-
-            monomorphize::make_mono_id(
-                ccx,
-                impl_id,
-                &psubsts)
-        }
-
-        // can't this be checked at the callee?
-        _ => fail!("vtable_id")
-    }
-}
-
 /// Creates a returns a dynamic vtable for the given type and vtable origin.
 /// This is used only for objects.
 fn get_vtable(bcx: &Block,
@@ -460,7 +437,7 @@ fn get_vtable(bcx: &Block,
     let _icx = push_ctxt("meth::get_vtable");
 
     // Check the cache.
-    let hash_id = (self_ty, vtable_id(ccx, origins.get(0)));
+    let hash_id = (self_ty, monomorphize::make_vtable_id(ccx, origins.get(0)));
     match ccx.vtables.borrow().find(&hash_id) {
         Some(&val) => { return val }
         None => { }

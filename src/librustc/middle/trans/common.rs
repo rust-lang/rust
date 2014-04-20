@@ -690,6 +690,7 @@ pub fn is_null(val: ValueRef) -> bool {
 #[deriving(Eq, TotalEq, Hash)]
 pub struct MonoParamId {
     pub subst: ty::t,
+    // Do we really need the vtables to be hashed? Isn't the type enough?
     pub vtables: Vec<mono_id>
 }
 
