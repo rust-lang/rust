@@ -820,7 +820,6 @@ pub enum type_err {
     terr_regions_overly_polymorphic(BoundRegion, Region),
     terr_vstores_differ(terr_vstore_kind, expected_found<Vstore>),
     terr_trait_stores_differ(terr_vstore_kind, expected_found<TraitStore>),
-    terr_in_field(@type_err, ast::Ident),
     terr_sorts(expected_found<t>),
     terr_integer_as_char,
     terr_int_mismatch(expected_found<IntVarValue>),
@@ -3406,10 +3405,6 @@ pub fn type_err_to_str(cx: &ctxt, err: &type_err) -> ~str {
             format!("trait storage differs: expected `{}` but found `{}`",
                  trait_store_to_str(cx, (*values).expected),
                  trait_store_to_str(cx, (*values).found))
-        }
-        terr_in_field(err, fname) => {
-            format!("in field `{}`, {}", token::get_ident(fname),
-                 type_err_to_str(cx, err))
         }
         terr_sorts(values) => {
             format!("expected {} but found {}",
