@@ -1723,44 +1723,29 @@ let x = 3;
 fn fun() -> () { println!("{}", x); }
 ~~~~
 
-Rust also supports _closures_, functions that can access variables in
-the enclosing scope.  Compare `x` in these:
+A _closure_ does support accessing the enclosing scope; below we will create
+2 _closures_ (nameless functions). Compare how `||` replaces `()` and how
+they try to access `x`:
 
-~~~~
+~~~~ {.ignore}
 let x = 3;
 
 // `fun` is an invalid definition
-fn  fun       () -> () { println!("{}", x) }; // cannot reach enclosing scope
-let closure = || -> () { println!("{}", x) }; // can reach enclosing scope
+fn  fun       () -> () { println!("{}", x) }; // cannot capture enclosing scope
+let closure = || -> () { println!("{}", x) }; // can capture enclosing scope
 
-fun();      // Still won't work
-closure();  // Prints: 3
-~~~~
+// `fun_arg` is an invalid definition
+fn  fun_arg       (arg: int) -> () { println!("{}", arg + x) }; // cannot capture enclosing scope
+let closure_arg = |arg: int| -> () { println!("{}", arg + x) }; // Can capture enclosing scope
+//                       ^
+// Requires a type because the implementation needs to know which `+` to use.
+// In the future, the implementation may not need the help.
 
-Closures can be utilized in this fashion:
+fun();          // Still won't work
+closure();      // Prints: 3
 
-~~~~
-// Create a nameless function and assign it to `closure`. It's sole
-// argument is a yet unknown `x` to be supplied by the caller.
-let closure = |x| -> () { println!("{}", x) };
-
-// Define `call_closure_with_ten` to take one argument and return null `()`.
-// `fun` is a function which takes one `int` argument `|int|` and also returns
-// null `()`.  `|int|` defines the `fun` to be of type _closure_
-fn call_closure_with_ten(fun: |int| -> ()) -> () { fun(10); }
-
-// The caller supplies `10` to the closure
-// which prints out the value
-call_closure_with_ten(closure);
-~~~~
-
-This can be simplified by removing null arguments:
-
-~~~~
-let closure = |x| println!("{}", x);
-fn call_closure_with_ten(fun: |int|) { fun(10); }
-
-call_closure_with_ten(closure);
+fun_arg(7);     // Still won't work
+closure_arg(7); // Prints: 10
 ~~~~
 
 Closures begin with the argument list between vertical bars and are followed by
@@ -1769,13 +1754,41 @@ considered a single expression: it evaluates to the result of the last
 expression it contains if that expression is not followed by a semicolon,
 otherwise the block evaluates to `()`.
 
-The types of the arguments are generally omitted, as is the return type,
-because the compiler can almost always infer them. In the rare case where the
-compiler needs assistance, though, the arguments and return types may be
-annotated.
+Since a closure is an expression, the compiler can usually infer the argument and
+return types; so they are often omitted. This is in contrast to a function which
+is a declaration and _not_ an expression. Declarations require the types to be
+specified and carry no inference. Compare:
+
+~~~~ {.ignore}
+// `fun` cannot infer the type of `x` so it must be provided because it is a function.
+fn  fun       (x: int) -> () { println!("{}", x) };
+let closure = |x     | -> () { println!("{}", x) };
+
+fun(10);     // Prints 10
+closure(20); // Prints 20
+
+fun("String"); // Error: wrong type
+// Error: This type is different from when `x` was originally evaluated
+closure("String");
+~~~~
+
+The null arguments `()` are typically dropped so the end result
+is more compact.
+
+~~~~
+let closure = |x| { println!("{}", x) };
+
+closure(20); // Prints 20
+~~~~
+
+Here, in the rare case where the compiler needs assistance,
+the arguments and return types may be annotated.
 
 ~~~~
 let square = |x: int| -> uint { (x * x) as uint };
+
+println!("{}", square(20));  // 400
+println!("{}", square(-20)); // 400
 ~~~~
 
 There are several forms of closure, each with its own role. The most
