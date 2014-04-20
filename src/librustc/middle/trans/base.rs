@@ -1112,7 +1112,7 @@ pub fn new_fn_ctxt<'a>(ccx: &'a CrateContext,
                        id: ast::NodeId,
                        has_env: bool,
                        output_type: ty::t,
-                       param_substs: Option<@param_substs>,
+                       param_substs: Option<&'a param_substs>,
                        sp: Option<Span>,
                        block_arena: &'a TypedArena<Block<'a>>)
                        -> FunctionContext<'a> {
@@ -1120,7 +1120,7 @@ pub fn new_fn_ctxt<'a>(ccx: &'a CrateContext,
 
     debug!("new_fn_ctxt(path={}, id={}, param_substs={})",
            if id == -1 { "".to_owned() } else { ccx.tcx.map.path_to_str(id) },
-           id, param_substs.repr(ccx.tcx()));
+           id, param_substs.map(|s| s.repr(ccx.tcx())));
 
     let substd_output_type = match param_substs {
         None => output_type,
@@ -1166,11 +1166,9 @@ pub fn new_fn_ctxt<'a>(ccx: &'a CrateContext,
 
 /// Performs setup on a newly created function, creating the entry scope block
 /// and allocating space for the return pointer.
-pub fn init_function<'a>(
-                     fcx: &'a FunctionContext<'a>,
-                     skip_retptr: bool,
-                     output_type: ty::t,
-                     param_substs: Option<@param_substs>) {
+pub fn init_function<'a>(fcx: &'a FunctionContext<'a>,
+                         skip_retptr: bool,
+                         output_type: ty::t) {
     let entry_bcx = fcx.new_temp_block("entry-block");
 
     *fcx.entry_bcx.borrow_mut() = Some(entry_bcx);
@@ -1182,7 +1180,9 @@ pub fn init_function<'a>(
         llvm::LLVMGetFirstInstruction(entry_bcx.llbb)
     }));
 
-    let substd_output_type = match param_substs {
+    // This shouldn't need to recompute the return type,
+    // as new_fn_ctxt did it already.
+    let substd_output_type = match fcx.param_substs {
         None => output_type,
         Some(substs) => {
             ty::subst_tps(fcx.ccx.tcx(),
@@ -1329,7 +1329,7 @@ pub fn trans_closure(ccx: &CrateContext,
                      decl: &ast::FnDecl,
                      body: &ast::Block,
                      llfndecl: ValueRef,
-                     param_substs: Option<@param_substs>,
+                     param_substs: Option<&param_substs>,
                      id: ast::NodeId,
                      _attributes: &[ast::Attribute],
                      output_type: ty::t,
@@ -1340,7 +1340,7 @@ pub fn trans_closure(ccx: &CrateContext,
     set_uwtable(llfndecl);
 
     debug!("trans_closure(..., param_substs={})",
-           param_substs.repr(ccx.tcx()));
+           param_substs.map(|s| s.repr(ccx.tcx())));
 
     let has_env = match ty::get(ty::node_id_to_type(ccx.tcx(), id)).sty {
         ty::ty_closure(_) => true,
@@ -1353,10 +1353,10 @@ pub fn trans_closure(ccx: &CrateContext,
                           id,
                           has_env,
                           output_type,
-                          param_substs,
+                          param_substs.map(|s| &*s),
                           Some(body.span),
                           &arena);
-    init_function(&fcx, false, output_type, param_substs);
+    init_function(&fcx, false, output_type);
 
     // cleanup scope for the incoming arguments
     let arg_scope = fcx.push_custom_cleanup_scope();
@@ -1429,11 +1429,11 @@ pub fn trans_fn(ccx: &CrateContext,
                 decl: &ast::FnDecl,
                 body: &ast::Block,
                 llfndecl: ValueRef,
-                param_substs: Option<@param_substs>,
+                param_substs: Option<&param_substs>,
                 id: ast::NodeId,
                 attrs: &[ast::Attribute]) {
     let _s = StatRecorder::new(ccx, ccx.tcx.map.path_to_str(id));
-    debug!("trans_fn(param_substs={})", param_substs.repr(ccx.tcx()));
+    debug!("trans_fn(param_substs={})", param_substs.map(|s| s.repr(ccx.tcx())));
     let _icx = push_ctxt("trans_fn");
     let output_type = ty::ty_fn_ret(ty::node_id_to_type(ccx.tcx(), id));
     trans_closure(ccx, decl, body, llfndecl,
@@ -1445,7 +1445,7 @@ pub fn trans_enum_variant(ccx: &CrateContext,
                           variant: &ast::Variant,
                           _args: &[ast::VariantArg],
                           disr: ty::Disr,
-                          param_substs: Option<@param_substs>,
+                          param_substs: Option<&param_substs>,
                           llfndecl: ValueRef) {
     let _icx = push_ctxt("trans_enum_variant");
 
@@ -1460,7 +1460,7 @@ pub fn trans_enum_variant(ccx: &CrateContext,
 pub fn trans_tuple_struct(ccx: &CrateContext,
                           _fields: &[ast::StructField],
                           ctor_id: ast::NodeId,
-                          param_substs: Option<@param_substs>,
+                          param_substs: Option<&param_substs>,
                           llfndecl: ValueRef) {
     let _icx = push_ctxt("trans_tuple_struct");
 
@@ -1475,24 +1475,20 @@ pub fn trans_tuple_struct(ccx: &CrateContext,
 fn trans_enum_variant_or_tuple_like_struct(ccx: &CrateContext,
                                            ctor_id: ast::NodeId,
                                            disr: ty::Disr,
-                                           param_substs: Option<@param_substs>,
+                                           param_substs: Option<&param_substs>,
                                            llfndecl: ValueRef) {
-    let no_substs: &[ty::t] = [];
-    let ty_param_substs = match param_substs {
-        Some(ref substs) => {
-            let v: &[ty::t] = substs.tys.as_slice();
-            v
-        }
-        None => {
-            let v: &[ty::t] = no_substs;
-            v
-        }
-    };
+    let ctor_ty = {
+        let no_substs: &[ty::t] = [];
+        let ty_param_substs: &[ty::t] = match param_substs {
+            Some(substs) => substs.tys.as_slice(),
+            None => no_substs
+        };
 
-    let ctor_ty = ty::subst_tps(ccx.tcx(),
-                                ty_param_substs,
-                                None,
-                                ty::node_id_to_type(ccx.tcx(), ctor_id));
+        ty::subst_tps(ccx.tcx(),
+                      ty_param_substs,
+                      None,
+                      ty::node_id_to_type(ccx.tcx(), ctor_id))
+    };
 
     let result_ty = match ty::get(ctor_ty).sty {
         ty::ty_bare_fn(ref bft) => bft.sig.output,
@@ -1504,8 +1500,8 @@ fn trans_enum_variant_or_tuple_like_struct(ccx: &CrateContext,
 
     let arena = TypedArena::new();
     let fcx = new_fn_ctxt(ccx, llfndecl, ctor_id, false, result_ty,
-                          param_substs, None, &arena);
-    init_function(&fcx, false, result_ty, param_substs);
+                          param_substs.map(|s| &*s), None, &arena);
+    init_function(&fcx, false, result_ty);
 
     let arg_tys = ty::ty_fn_args(ctor_ty);
 

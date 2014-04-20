@@ -274,7 +274,7 @@ pub struct FunctionContext<'a> {
 
     // If this function is being monomorphized, this contains the type
     // substitutions used.
-    pub param_substs: Option<@param_substs>,
+    pub param_substs: Option<&'a param_substs>,
 
     // The source span and nesting context where this function comes from, for
     // error reporting and symbol generation.
@@ -688,7 +688,7 @@ pub fn is_null(val: ValueRef) -> bool {
 
 pub fn monomorphize_type(bcx: &Block, t: ty::t) -> ty::t {
     match bcx.fcx.param_substs {
-        Some(substs) => {
+        Some(ref substs) => {
             ty::subst_tps(bcx.tcx(), substs.tys.as_slice(), substs.self_ty, t)
         }
         _ => {
@@ -742,12 +742,12 @@ pub fn node_id_type_params(bcx: &Block, node: ExprOrMethodCall) -> Vec<ty::t> {
     }
 
     match bcx.fcx.param_substs {
-      Some(substs) => {
-        params.iter().map(|t| {
-            ty::subst_tps(tcx, substs.tys.as_slice(), substs.self_ty, *t)
-        }).collect()
-      }
-      _ => params
+        Some(ref substs) => {
+            params.iter().map(|t| {
+                ty::subst_tps(tcx, substs.tys.as_slice(), substs.self_ty, *t)
+            }).collect()
+        }
+        _ => params
     }
 }
 
@@ -769,7 +769,7 @@ pub fn resolve_vtables_in_fn_ctxt(fcx: &FunctionContext,
 }
 
 pub fn resolve_vtables_under_param_substs(tcx: &ty::ctxt,
-                                          param_substs: Option<@param_substs>,
+                                          param_substs: Option<&param_substs>,
                                           vts: &[typeck::vtable_param_res])
                                           -> typeck::vtable_res {
     vts.iter().map(|ds| {
@@ -781,7 +781,7 @@ pub fn resolve_vtables_under_param_substs(tcx: &ty::ctxt,
 
 pub fn resolve_param_vtables_under_param_substs(
     tcx: &ty::ctxt,
-    param_substs: Option<@param_substs>,
+    param_substs: Option<&param_substs>,
     ds: &[typeck::vtable_origin])
     -> typeck::vtable_param_res {
     ds.iter().map(|d| {
@@ -794,7 +794,7 @@ pub fn resolve_param_vtables_under_param_substs(
 
 
 pub fn resolve_vtable_under_param_substs(tcx: &ty::ctxt,
-                                         param_substs: Option<@param_substs>,
+                                         param_substs: Option<&param_substs>,
                                          vt: &typeck::vtable_origin)
                                          -> typeck::vtable_origin {
     match *vt {

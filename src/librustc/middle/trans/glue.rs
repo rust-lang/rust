@@ -466,7 +466,7 @@ fn make_generic_glue(ccx: &CrateContext,
     let arena = TypedArena::new();
     let fcx = new_fn_ctxt(ccx, llfn, -1, false, ty::mk_nil(), None, None, &arena);
 
-    init_function(&fcx, false, ty::mk_nil(), None);
+    init_function(&fcx, false, ty::mk_nil());
 
     lib::llvm::SetLinkage(llfn, lib::llvm::InternalLinkage);
     ccx.stats.n_glues_created.set(ccx.stats.n_glues_created.get() + 1u);

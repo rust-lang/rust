@@ -84,7 +84,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
         None => ()
     }
 
-    let psubsts = @param_substs {
+    let psubsts = param_substs {
         tys: real_substs.tps.clone(),
         vtables: vtables,
         self_ty: real_substs.self_ty.clone(),
@@ -221,7 +221,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
               } => {
                   let d = mk_lldecl();
                   set_llvm_fn_attrs(i.attrs.as_slice(), d);
-                  trans_fn(ccx, decl, body, d, Some(psubsts), fn_id.node, []);
+                  trans_fn(ccx, decl, body, d, Some(&psubsts), fn_id.node, []);
                   d
               }
               _ => {
@@ -235,7 +235,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
                 Some(decl) => decl,
                 None => {
                     let d = mk_lldecl();
-                    intrinsic::trans_intrinsic(ccx, d, i, psubsts, ref_id);
+                    intrinsic::trans_intrinsic(ccx, d, i, &psubsts, ref_id);
                     d
                 }
             }
@@ -253,7 +253,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
                                        v,
                                        args.as_slice(),
                                        this_tv.disr_val,
-                                       Some(psubsts),
+                                       Some(&psubsts),
                                        d);
                 }
                 ast::StructVariantKind(_) =>
@@ -264,7 +264,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
         ast_map::NodeMethod(mth) => {
             let d = mk_lldecl();
             set_llvm_fn_attrs(mth.attrs.as_slice(), d);
-            trans_fn(ccx, mth.decl, mth.body, d, Some(psubsts), mth.id, []);
+            trans_fn(ccx, mth.decl, mth.body, d, Some(&psubsts), mth.id, []);
             d
         }
         ast_map::NodeTraitMethod(method) => {
@@ -272,7 +272,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
                 ast::Provided(mth) => {
                     let d = mk_lldecl();
                     set_llvm_fn_attrs(mth.attrs.as_slice(), d);
-                    trans_fn(ccx, mth.decl, mth.body, d, Some(psubsts), mth.id, []);
+                    trans_fn(ccx, mth.decl, mth.body, d, Some(&psubsts), mth.id, []);
                     d
                 }
                 _ => {
@@ -288,7 +288,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
                                      struct_def.fields.as_slice(),
                                      struct_def.ctor_id.expect("ast-mapped tuple struct \
                                                                 didn't have a ctor id"),
-                                     Some(psubsts),
+                                     Some(&psubsts),
                                      d);
             d
         }
