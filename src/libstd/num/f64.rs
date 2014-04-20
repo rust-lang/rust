@@ -40,6 +40,7 @@ mod cmath {
         pub fn fdim(a: c_double, b: c_double) -> c_double;
         pub fn fmax(a: c_double, b: c_double) -> c_double;
         pub fn fmin(a: c_double, b: c_double) -> c_double;
+        pub fn fmod(a: c_double, b: c_double) -> c_double;
         pub fn nextafter(x: c_double, y: c_double) -> c_double;
         pub fn frexp(n: c_double, value: &mut c_int) -> c_double;
         pub fn hypot(x: c_double, y: c_double) -> c_double;
@@ -210,7 +211,9 @@ impl Div<f64,f64> for f64 {
 #[cfg(not(test))]
 impl Rem<f64,f64> for f64 {
     #[inline]
-    fn rem(&self, other: &f64) -> f64 { *self % *other }
+    fn rem(&self, other: &f64) -> f64 {
+        unsafe { cmath::fmod(*self, *other) }
+    }
 }
 #[cfg(not(test))]
 impl Neg<f64> for f64 {
