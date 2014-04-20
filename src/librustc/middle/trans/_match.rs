@@ -417,15 +417,10 @@ struct BindingInfo {
 
 type BindingsMap = HashMap<Ident, BindingInfo>;
 
-struct ArmData<'a,'b> {
+struct ArmData<'a, 'b> {
     bodycx: &'b Block<'b>,
     arm: &'a ast::Arm,
-    bindings_map: @BindingsMap
-}
-
-// FIXME #11820: method resolution is unreliable with &
-impl<'a,'b> Clone for ArmData<'a, 'b> {
-    fn clone(&self) -> ArmData<'a, 'b> { *self }
+    bindings_map: BindingsMap
 }
 
 /**
@@ -434,14 +429,13 @@ impl<'a,'b> Clone for ArmData<'a, 'b> {
  * As we proceed `bound_ptrs` are filled with pointers to values to be bound,
  * these pointers are stored in llmatch variables just before executing `data` arm.
  */
-#[deriving(Clone)]
-struct Match<'a,'b> {
-    pats: Vec<@ast::Pat> ,
-    data: ArmData<'a,'b>,
+struct Match<'a, 'b> {
+    pats: Vec<@ast::Pat>,
+    data: &'a ArmData<'a, 'b>,
     bound_ptrs: Vec<(Ident, ValueRef)>
 }
 
-impl<'a,'b> Repr for Match<'a,'b> {
+impl<'a, 'b> Repr for Match<'a, 'b> {
     fn repr(&self, tcx: &ty::ctxt) -> ~str {
         if tcx.sess.verbose() {
             // for many programs, this just take too long to serialize
@@ -462,12 +456,12 @@ fn has_nested_bindings(m: &[Match], col: uint) -> bool {
     return false;
 }
 
-fn expand_nested_bindings<'r,'b>(
+fn expand_nested_bindings<'a, 'b>(
                           bcx: &'b Block<'b>,
-                          m: &[Match<'r,'b>],
+                          m: &'a [Match<'a, 'b>],
                           col: uint,
                           val: ValueRef)
-                          -> Vec<Match<'r,'b>> {
+                          -> Vec<Match<'a, 'b>> {
     debug!("expand_nested_bindings(bcx={}, m={}, col={}, val={})",
            bcx.to_str(),
            m.repr(bcx.tcx()),
@@ -482,15 +476,19 @@ fn expand_nested_bindings<'r,'b>(
                            .append((vec!(inner))
                                    .append(br.pats.slice(col + 1u, br.pats.len())).as_slice());
 
-                let mut res = Match {
+                let mut bound_ptrs = br.bound_ptrs.clone();
+                bound_ptrs.push((path_to_ident(path), val));
+                Match {
                     pats: pats,
-                    data: br.data.clone(),
-                    bound_ptrs: br.bound_ptrs.clone()
-                };
-                res.bound_ptrs.push((path_to_ident(path), val));
-                res
+                    data: &*br.data,
+                    bound_ptrs: bound_ptrs
+                }
             }
-            _ => (*br).clone(),
+            _ => Match {
+                pats: br.pats.clone(),
+                data: &*br.data,
+                bound_ptrs: br.bound_ptrs.clone()
+            }
         }
     }).collect()
 }
@@ -506,14 +504,14 @@ fn assert_is_binding_or_wild(bcx: &Block, p: @ast::Pat) {
 
 type enter_pat<'a> = |@ast::Pat|: 'a -> Option<Vec<@ast::Pat>>;
 
-fn enter_match<'r,'b>(
+fn enter_match<'a, 'b>(
                bcx: &'b Block<'b>,
                dm: &DefMap,
-               m: &[Match<'r,'b>],
+               m: &'a [Match<'a, 'b>],
                col: uint,
                val: ValueRef,
                e: enter_pat)
-               -> Vec<Match<'r,'b>> {
+               -> Vec<Match<'a, 'b>> {
     debug!("enter_match(bcx={}, m={}, col={}, val={})",
            bcx.to_str(),
            m.repr(bcx.tcx()),
@@ -521,47 +519,39 @@ fn enter_match<'r,'b>(
            bcx.val_to_str(val));
     let _indenter = indenter();
 
-    let mut result = Vec::new();
-    for br in m.iter() {
-        match e(*br.pats.get(col)) {
-            Some(sub) => {
-                let pats = sub.append(br.pats.slice(0u, col))
-                              .append(br.pats.slice(col + 1u, br.pats.len()));
+    m.iter().filter_map(|br| {
+        e(*br.pats.get(col)).map(|sub| {
+            let pats = sub.append(br.pats.slice(0u, col))
+                            .append(br.pats.slice(col + 1u, br.pats.len()));
 
-                let this = *br.pats.get(col);
-                let mut bound_ptrs = br.bound_ptrs.clone();
-                match this.node {
-                    ast::PatIdent(_, ref path, None) => {
-                        if pat_is_binding(dm, this) {
-                            bound_ptrs.push((path_to_ident(path), val));
-                        }
+            let this = *br.pats.get(col);
+            let mut bound_ptrs = br.bound_ptrs.clone();
+            match this.node {
+                ast::PatIdent(_, ref path, None) => {
+                    if pat_is_binding(dm, this) {
+                        bound_ptrs.push((path_to_ident(path), val));
                     }
-                    _ => {}
                 }
-
-                result.push(Match {
-                    pats: pats,
-                    data: br.data.clone(),
-                    bound_ptrs: bound_ptrs
-                });
+                _ => {}
             }
-            None => ()
-        }
-    }
 
-    debug!("result={}", result.repr(bcx.tcx()));
-
-    return result;
+            Match {
+                pats: pats,
+                data: br.data,
+                bound_ptrs: bound_ptrs
+            }
+        })
+    }).collect()
 }
 
-fn enter_default<'r,'b>(
+fn enter_default<'a, 'b>(
                  bcx: &'b Block<'b>,
                  dm: &DefMap,
-                 m: &[Match<'r,'b>],
+                 m: &'a [Match<'a, 'b>],
                  col: uint,
                  val: ValueRef,
                  chk: &FailureHandler)
-                 -> Vec<Match<'r,'b>> {
+                 -> Vec<Match<'a, 'b>> {
     debug!("enter_default(bcx={}, m={}, col={}, val={})",
            bcx.to_str(),
            m.repr(bcx.tcx()),
@@ -625,14 +615,14 @@ fn enter_default<'r,'b>(
 // <nmatsakis> so all patterns must either be records (resp. tuples) or
 //             wildcards
 
-fn enter_opt<'r,'b>(
+fn enter_opt<'a, 'b>(
              bcx: &'b Block<'b>,
-             m: &[Match<'r,'b>],
+             m: &'a [Match<'a, 'b>],
              opt: &Opt,
              col: uint,
              variant_size: uint,
              val: ValueRef)
-             -> Vec<Match<'r,'b>> {
+             -> Vec<Match<'a, 'b>> {
     debug!("enter_opt(bcx={}, m={}, opt={:?}, col={}, val={})",
            bcx.to_str(),
            m.repr(bcx.tcx()),
@@ -799,14 +789,14 @@ fn enter_opt<'r,'b>(
     })
 }
 
-fn enter_rec_or_struct<'r,'b>(
+fn enter_rec_or_struct<'a, 'b>(
                        bcx: &'b Block<'b>,
                        dm: &DefMap,
-                       m: &[Match<'r,'b>],
+                       m: &'a [Match<'a, 'b>],
                        col: uint,
                        fields: &[ast::Ident],
                        val: ValueRef)
-                       -> Vec<Match<'r,'b>> {
+                       -> Vec<Match<'a, 'b>> {
     debug!("enter_rec_or_struct(bcx={}, m={}, col={}, val={})",
            bcx.to_str(),
            m.repr(bcx.tcx()),
@@ -835,14 +825,14 @@ fn enter_rec_or_struct<'r,'b>(
     })
 }
 
-fn enter_tup<'r,'b>(
+fn enter_tup<'a, 'b>(
              bcx: &'b Block<'b>,
              dm: &DefMap,
-             m: &[Match<'r,'b>],
+             m: &'a [Match<'a, 'b>],
              col: uint,
              val: ValueRef,
              n_elts: uint)
-             -> Vec<Match<'r,'b>> {
+             -> Vec<Match<'a, 'b>> {
     debug!("enter_tup(bcx={}, m={}, col={}, val={})",
            bcx.to_str(),
            m.repr(bcx.tcx()),
@@ -868,14 +858,14 @@ fn enter_tup<'r,'b>(
     })
 }
 
-fn enter_tuple_struct<'r,'b>(
+fn enter_tuple_struct<'a, 'b>(
                       bcx: &'b Block<'b>,
                       dm: &DefMap,
-                      m: &[Match<'r,'b>],
+                      m: &'a [Match<'a, 'b>],
                       col: uint,
                       val: ValueRef,
                       n_elts: uint)
-                      -> Vec<Match<'r,'b>> {
+                      -> Vec<Match<'a, 'b>> {
     debug!("enter_tuple_struct(bcx={}, m={}, col={}, val={})",
            bcx.to_str(),
            m.repr(bcx.tcx()),
@@ -897,13 +887,13 @@ fn enter_tuple_struct<'r,'b>(
     })
 }
 
-fn enter_uniq<'r,'b>(
+fn enter_uniq<'a, 'b>(
               bcx: &'b Block<'b>,
               dm: &DefMap,
-              m: &[Match<'r,'b>],
+              m: &'a [Match<'a, 'b>],
               col: uint,
               val: ValueRef)
-              -> Vec<Match<'r,'b>> {
+              -> Vec<Match<'a, 'b>> {
     debug!("enter_uniq(bcx={}, m={}, col={}, val={})",
            bcx.to_str(),
            m.repr(bcx.tcx()),
@@ -925,14 +915,13 @@ fn enter_uniq<'r,'b>(
     })
 }
 
-fn enter_region<'r,
-                'b>(
+fn enter_region<'a, 'b>(
                 bcx: &'b Block<'b>,
                 dm: &DefMap,
-                m: &[Match<'r,'b>],
+                m: &'a [Match<'a, 'b>],
                 col: uint,
                 val: ValueRef)
-                -> Vec<Match<'r,'b>> {
+                -> Vec<Match<'a, 'b>> {
     debug!("enter_region(bcx={}, m={}, col={}, val={})",
            bcx.to_str(),
            m.repr(bcx.tcx()),
@@ -1424,12 +1413,11 @@ fn insert_lllocals<'a>(bcx: &'a Block<'a>,
     bcx
 }
 
-fn compile_guard<'r,
-                 'b>(
+fn compile_guard<'a, 'b>(
                  bcx: &'b Block<'b>,
                  guard_expr: &ast::Expr,
                  data: &ArmData,
-                 m: &[Match<'r,'b>],
+                 m: &'a [Match<'a, 'b>],
                  vals: &[ValueRef],
                  chk: &FailureHandler)
                  -> &'b Block<'b> {
@@ -1445,9 +1433,9 @@ fn compile_guard<'r,
     let temp_scope = bcx.fcx.push_custom_cleanup_scope();
 
     let mut bcx = bcx;
-    bcx = store_non_ref_bindings(bcx, data.bindings_map,
+    bcx = store_non_ref_bindings(bcx, &data.bindings_map,
                                  Some(cleanup::CustomScope(temp_scope)));
-    bcx = insert_lllocals(bcx, data.bindings_map,
+    bcx = insert_lllocals(bcx, &data.bindings_map,
                           cleanup::CustomScope(temp_scope));
 
     let val = unpack_datum!(bcx, expr::trans(bcx, guard_expr));
@@ -1482,10 +1470,9 @@ fn compile_guard<'r,
     }
 }
 
-fn compile_submatch<'r,
-                    'b>(
+fn compile_submatch<'a, 'b>(
                     bcx: &'b Block<'b>,
-                    m: &[Match<'r,'b>],
+                    m: &'a [Match<'a, 'b>],
                     vals: &[ValueRef],
                     chk: &FailureHandler) {
     debug!("compile_submatch(bcx={}, m={}, vals={})",
@@ -1514,7 +1501,7 @@ fn compile_submatch<'r,
             Some(guard_expr) => {
                 bcx = compile_guard(bcx,
                                     guard_expr,
-                                    &m[0].data,
+                                    m[0].data,
                                     m.slice(1, m.len()),
                                     vals,
                                     chk);
@@ -1541,10 +1528,9 @@ fn compile_submatch<'r,
     }
 }
 
-fn compile_submatch_continue<'r,
-                             'b>(
+fn compile_submatch_continue<'a, 'b>(
                              mut bcx: &'b Block<'b>,
-                             m: &[Match<'r,'b>],
+                             m: &'a [Match<'a, 'b>],
                              vals: &[ValueRef],
                              chk: &FailureHandler,
                              col: uint,
@@ -1933,26 +1919,6 @@ fn trans_match_inner<'a>(scope_cx: &'a Block<'a>,
         return bcx;
     }
 
-    let mut arm_datas = Vec::new();
-    let mut matches = Vec::new();
-    for arm in arms.iter() {
-        let body = fcx.new_id_block("case_body", arm.body.id);
-        let bindings_map = create_bindings_map(bcx, *arm.pats.get(0));
-        let arm_data = ArmData {
-            bodycx: body,
-            arm: arm,
-            bindings_map: @bindings_map
-        };
-        arm_datas.push(arm_data.clone());
-        for p in arm.pats.iter() {
-            matches.push(Match {
-                pats: vec!(*p),
-                data: arm_data.clone(),
-                bound_ptrs: Vec::new(),
-            });
-        }
-    }
-
     let t = node_id_type(bcx, discr_expr.id);
     let chk = {
         if ty::type_is_empty(tcx, t) {
@@ -1970,8 +1936,23 @@ fn trans_match_inner<'a>(scope_cx: &'a Block<'a>,
             Infallible
         }
     };
-    let lldiscr = discr_datum.val;
-    compile_submatch(bcx, matches.as_slice(), [lldiscr], &chk);
+
+    let arm_datas: Vec<ArmData> = arms.iter().map(|arm| ArmData {
+        bodycx: fcx.new_id_block("case_body", arm.body.id),
+        arm: arm,
+        bindings_map: create_bindings_map(bcx, *arm.pats.get(0))
+    }).collect();
+
+    let mut matches = Vec::new();
+    for arm_data in arm_datas.iter() {
+        matches.extend(arm_data.arm.pats.iter().map(|p| Match {
+            pats: vec!(*p),
+            data: arm_data,
+            bound_ptrs: Vec::new(),
+        }));
+    }
+
+    compile_submatch(bcx, matches.as_slice(), [discr_datum.val], &chk);
 
     let mut arm_cxs = Vec::new();
     for arm_data in arm_datas.iter() {
@@ -1982,12 +1963,12 @@ fn trans_match_inner<'a>(scope_cx: &'a Block<'a>,
         // is just to reduce code space.  See extensive comment at the start
         // of the file for more details.
         if arm_data.arm.guard.is_none() {
-            bcx = store_non_ref_bindings(bcx, arm_data.bindings_map, None);
+            bcx = store_non_ref_bindings(bcx, &arm_data.bindings_map, None);
         }
 
         // insert bindings into the lllocals map and add cleanups
         let cleanup_scope = fcx.push_custom_cleanup_scope();
-        bcx = insert_lllocals(bcx, arm_data.bindings_map,
+        bcx = insert_lllocals(bcx, &arm_data.bindings_map,
                               cleanup::CustomScope(cleanup_scope));
         bcx = expr::trans_into(bcx, arm_data.arm.body, dest);
         bcx = fcx.pop_and_trans_custom_cleanup_scope(bcx, cleanup_scope);
