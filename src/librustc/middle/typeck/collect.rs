@@ -1141,14 +1141,12 @@ fn ty_generics(ccx: &CrateCtxt,
                                                  param_bounds.trait_bounds.as_slice(),
                                                  |trait_ref| {
                 let trait_def = ty::lookup_trait_def(tcx, trait_ref.def_id);
-                for bound in trait_def.bounds.iter() {
-                    if bound == ty::BoundSized {
-                        tcx.sess.span_err(span,
-                            format!("incompatible bounds on type parameter {}, \
-                                     bound {} does not allow unsized type",
-                            token::get_ident(ident),
-                            ppaux::trait_ref_to_str(tcx, trait_ref)));
-                    }
+                if trait_def.bounds.contains_elem(ty::BoundSized) {
+                    tcx.sess.span_err(span,
+                        format!("incompatible bounds on type parameter {}, \
+                                 bound {} does not allow unsized type",
+                        token::get_ident(ident),
+                        ppaux::trait_ref_to_str(tcx, &*trait_ref)));
                 }
                 true
             });
