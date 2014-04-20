@@ -204,17 +204,17 @@ fn enc_bound_region(w: &mut MemWriter, cx: &ctxt, br: ty::BoundRegion) {
     }
 }
 
-pub fn enc_vstore<M>(w: &mut MemWriter, cx: &ctxt,
-                     v: ty::Vstore<M>,
-                     enc_mut: |&mut MemWriter, M|) {
+pub fn enc_vstore(w: &mut MemWriter, cx: &ctxt,
+                  v: ty::Vstore,
+                  enc_mut: |&mut MemWriter|) {
     mywrite!(w, "/");
     match v {
         ty::VstoreFixed(u) => mywrite!(w, "{}|", u),
         ty::VstoreUniq => mywrite!(w, "~"),
-        ty::VstoreSlice(r, m) => {
+        ty::VstoreSlice(r) => {
             mywrite!(w, "&");
             enc_region(w, cx, r);
-            enc_mut(w, m);
+            enc_mut(w);
         }
     }
 }
@@ -292,14 +292,18 @@ fn enc_sty(w: &mut MemWriter, cx: &ctxt, st: &ty::sty) {
             enc_region(w, cx, r);
             enc_mt(w, cx, mt);
         }
-        ty::ty_vec(ty, v) => {
+        ty::ty_vec(mt, sz) => {
             mywrite!(w, "V");
-            enc_ty(w, cx, ty);
-            enc_vstore(w, cx, v, enc_mutability);
+            enc_mt(w, cx, mt);
+            mywrite!(w, "/");
+            match sz {
+                Some(n) => mywrite!(w, "{}|", n),
+                None => mywrite!(w, "|"),
+            }
         }
         ty::ty_str(v) => {
             mywrite!(w, "v");
-            enc_vstore(w, cx, v, |_, ()| {});
+            enc_vstore(w, cx, v, |_| {});
         }
         ty::ty_closure(ref f) => {
             mywrite!(w, "f");

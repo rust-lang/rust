@@ -240,8 +240,8 @@ fn apply_adjustments<'a>(bcx: &'a Block<'a>,
 
         // this type may have a different region/mutability than the
         // real one, but it will have the same runtime representation
-        let slice_ty = ty::mk_vec(tcx, unit_ty,
-                                  ty::VstoreSlice(ty::ReStatic, ast::MutImmutable));
+        let slice_ty = ty::mk_slice(tcx, ty::ReStatic,
+                                    ty::mt { ty: unit_ty, mutbl: ast::MutImmutable });
 
         let scratch = rvalue_scratch_datum(bcx, slice_ty, "__adjust");
         Store(bcx, base, GEPi(bcx, scratch.val, [0u, abi::slice_elt_base]));
@@ -1505,16 +1505,19 @@ pub enum cast_kind {
 
 pub fn cast_type_kind(t: ty::t) -> cast_kind {
     match ty::get(t).sty {
-        ty::ty_char       => cast_integral,
+        ty::ty_char        => cast_integral,
         ty::ty_float(..)   => cast_float,
         ty::ty_ptr(..)     => cast_pointer,
-        ty::ty_rptr(..)    => cast_pointer,
+        ty::ty_rptr(_, mt) => match ty::get(mt.ty).sty{
+            ty::ty_vec(_, None) => cast_other,
+            _ => cast_pointer,
+        },
         ty::ty_bare_fn(..) => cast_pointer,
         ty::ty_int(..)     => cast_integral,
         ty::ty_uint(..)    => cast_integral,
-        ty::ty_bool       => cast_integral,
+        ty::ty_bool        => cast_integral,
         ty::ty_enum(..)    => cast_enum,
-        _                 => cast_other
+        _                  => cast_other
     }
 }
 
@@ -1717,7 +1720,10 @@ fn deref_once<'a>(bcx: &'a Block<'a>,
 
     let r = match ty::get(datum.ty).sty {
         ty::ty_uniq(content_ty) => {
-            deref_owned_pointer(bcx, expr, datum, content_ty)
+            match ty::get(content_ty).sty {
+                ty::ty_vec(_, None) => bcx.tcx().sess.span_bug(expr.span, "unexpected ~[T]"),
+                _ => deref_owned_pointer(bcx, expr, datum, content_ty),
+            }
         }
 
         ty::ty_box(content_ty) => {
@@ -1731,16 +1737,21 @@ fn deref_once<'a>(bcx: &'a Block<'a>,
 
         ty::ty_ptr(ty::mt { ty: content_ty, .. }) |
         ty::ty_rptr(_, ty::mt { ty: content_ty, .. }) => {
-            assert!(!ty::type_needs_drop(bcx.tcx(), datum.ty));
+            match ty::get(content_ty).sty {
+                ty::ty_vec(_, None) => bcx.tcx().sess.span_bug(expr.span, "unexpected &[T]"),
+                _ => {
+                    assert!(!ty::type_needs_drop(bcx.tcx(), datum.ty));
 
-            let ptr = datum.to_llscalarish(bcx);
+                    let ptr = datum.to_llscalarish(bcx);
 
-            // Always generate an lvalue datum, even if datum.mode is
-            // an rvalue.  This is because datum.mode is only an
-            // rvalue for non-owning pointers like &T or *T, in which
-            // case cleanup *is* scheduled elsewhere, by the true
-            // owner (or, in the case of *T, by the user).
-            DatumBlock(bcx, Datum(ptr, content_ty, LvalueExpr))
+                    // Always generate an lvalue datum, even if datum.mode is
+                    // an rvalue.  This is because datum.mode is only an
+                    // rvalue for non-owning pointers like &T or *T, in which
+                    // case cleanup *is* scheduled elsewhere, by the true
+                    // owner (or, in the case of *T, by the user).
+                    DatumBlock(bcx, Datum(ptr, content_ty, LvalueExpr))
+                }
+            }
         }
 
         _ => {

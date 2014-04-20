@@ -270,15 +270,15 @@ pub trait Combine {
 
     fn vstores(&self,
                 vk: ty::terr_vstore_kind,
-                a: ty::Vstore<()>,
-                b: ty::Vstore<()>)
-                -> cres<ty::Vstore<()>> {
+                a: ty::Vstore,
+                b: ty::Vstore)
+                -> cres<ty::Vstore> {
         debug!("{}.vstores(a={:?}, b={:?})", self.tag(), a, b);
 
         match (a, b) {
-            (ty::VstoreSlice(a_r, _), ty::VstoreSlice(b_r, _)) => {
+            (ty::VstoreSlice(a_r), ty::VstoreSlice(b_r)) => {
                 self.contraregions(a_r, b_r).and_then(|r| {
-                    Ok(ty::VstoreSlice(r, ()))
+                    Ok(ty::VstoreSlice(r))
                 })
             }
 
@@ -510,48 +510,49 @@ pub fn super_tys<C:Combine>(this: &C, a: ty::t, b: ty::t) -> cres<ty::t> {
       }
 
       (&ty::ty_uniq(a_inner), &ty::ty_uniq(b_inner)) => {
-        this.tys(a_inner, b_inner).and_then(|typ| Ok(ty::mk_uniq(tcx, typ)))
+            let typ = if_ok!(this.tys(a_inner, b_inner));
+
+            match (&ty::get(a_inner).sty, &ty::get(b_inner).sty) {
+                (&ty::ty_vec(_, None), &ty::ty_vec(_, None)) => Ok(ty::mk_uniq(tcx, typ)),
+                (&ty::ty_vec(_, None), _) |
+                (_, &ty::ty_vec(_, None)) => Err(ty::terr_sorts(expected_found(this, a, b))),
+                _ => Ok(ty::mk_uniq(tcx, typ)),
+            }
       }
 
       (&ty::ty_ptr(ref a_mt), &ty::ty_ptr(ref b_mt)) => {
-        this.mts(a_mt, b_mt).and_then(|mt| Ok(ty::mk_ptr(tcx, mt)))
+            let mt = if_ok!(this.mts(a_mt, b_mt));
+            match (&ty::get(a_mt.ty).sty, &ty::get(b_mt.ty).sty) {
+                (&ty::ty_vec(_, None), &ty::ty_vec(_, None)) => Ok(ty::mk_ptr(tcx, mt)),
+                (&ty::ty_vec(_, None), _) |
+                (_, &ty::ty_vec(_, None)) => Err(ty::terr_sorts(expected_found(this, a, b))),
+                _ => Ok(ty::mk_ptr(tcx, mt)),
+            }
       }
 
       (&ty::ty_rptr(a_r, ref a_mt), &ty::ty_rptr(b_r, ref b_mt)) => {
-          let r = if_ok!(this.contraregions(a_r, b_r));
-          let mt = if_ok!(this.mts(a_mt, b_mt));
-          Ok(ty::mk_rptr(tcx, r, mt))
+            let r = if_ok!(this.contraregions(a_r, b_r));
+            let mt = if_ok!(this.mts(a_mt, b_mt));
+
+            // This is a horible hack - historically, [T] was not treated as a type,
+            // so, for example, &T and &[U] should not unify. In fact the only thing
+            // &[U] should unify with is &[T]. We preserve that behaviour with this
+            // check. See also ty_uniq, ty_ptr.
+            match (&ty::get(a_mt.ty).sty, &ty::get(b_mt.ty).sty) {
+                (&ty::ty_vec(_, None), &ty::ty_vec(_, None)) => Ok(ty::mk_rptr(tcx, r, mt)),
+                (&ty::ty_vec(_, None), _) |
+                (_, &ty::ty_vec(_, None)) => Err(ty::terr_sorts(expected_found(this, a, b))),
+                _ => Ok(ty::mk_rptr(tcx, r, mt)),
+            }
       }
 
-      (&ty::ty_vec(a_inner, vs_a), &ty::ty_vec(b_inner, vs_b)) => {
-        // This could be nicer if we didn't have to go through .mts(a, b).
-        let (vs_a, mutbl_a) = match vs_a {
-            ty::VstoreFixed(n) => (ty::VstoreFixed(n), ast::MutImmutable),
-            ty::VstoreSlice(r, m) => (ty::VstoreSlice(r, ()), m),
-            ty::VstoreUniq => (ty::VstoreUniq, ast::MutImmutable)
-        };
-        let (vs_b, mutbl_b) = match vs_b {
-            ty::VstoreFixed(n) => (ty::VstoreFixed(n), ast::MutImmutable),
-            ty::VstoreSlice(r, m) => (ty::VstoreSlice(r, ()), m),
-            ty::VstoreUniq => (ty::VstoreUniq, ast::MutImmutable)
-        };
-        let a_mt = ty::mt {
-            ty: a_inner,
-            mutbl: mutbl_a
-        };
-        let b_mt = ty::mt {
-            ty: b_inner,
-            mutbl: mutbl_b
-        };
-        this.mts(&a_mt, &b_mt).and_then(|mt| {
-            this.vstores(ty::terr_vec, vs_a, vs_b).and_then(|vs| {
-                let store = match vs {
-                    ty::VstoreFixed(n) => ty::VstoreFixed(n),
-                    ty::VstoreSlice(r, _) => ty::VstoreSlice(r, mt.mutbl),
-                    ty::VstoreUniq => ty::VstoreUniq
-                };
-                Ok(ty::mk_vec(tcx, mt.ty, store))
-            })
+      (&ty::ty_vec(ref a_mt, sz_a), &ty::ty_vec(ref b_mt, sz_b)) => {
+        this.mts(a_mt, b_mt).and_then(|mt| {
+            if sz_a == sz_b {
+                Ok(ty::mk_vec(tcx, mt, sz_a))
+            } else {
+                Err(ty::terr_sorts(expected_found(this, a, b)))
+            }
         })
       }
 
