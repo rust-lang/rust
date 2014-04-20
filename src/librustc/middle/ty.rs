@@ -833,7 +833,8 @@ pub enum type_err {
 #[deriving(Eq, TotalEq, Hash)]
 pub struct ParamBounds {
     pub builtin_bounds: BuiltinBounds,
-    pub trait_bounds: Vec<@TraitRef> }
+    pub trait_bounds: Vec<@TraitRef>
+}
 
 pub type BuiltinBounds = EnumSet<BuiltinBound>;
 
@@ -987,7 +988,7 @@ impl fmt::Show for IntVarValue {
 pub struct TypeParameterDef {
     pub ident: ast::Ident,
     pub def_id: ast::DefId,
-    pub bounds: @ParamBounds,
+    pub bounds: Rc<ParamBounds>,
     pub default: Option<ty::t>
 }
 

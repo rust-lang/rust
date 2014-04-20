@@ -18,6 +18,7 @@
 
 use middle::ty;
 
+use std::rc::Rc;
 use std::str;
 use std::strbuf::StrBuf;
 use std::uint;
@@ -563,7 +564,7 @@ fn parse_type_param_def(st: &mut PState, conv: conv_did) -> ty::TypeParameterDef
     ty::TypeParameterDef {
         ident: parse_ident(st, ':'),
         def_id: parse_def(st, NominalType, |x,y| conv(x,y)),
-        bounds: @parse_bounds(st, |x,y| conv(x,y)),
+        bounds: Rc::new(parse_bounds(st, |x,y| conv(x,y))),
         default: parse_opt(st, |st| parse_ty(st, |x,y| conv(x,y)))
     }
 }
