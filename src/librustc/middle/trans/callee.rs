@@ -203,15 +203,15 @@ fn resolve_default_method_vtables(bcx: &Block,
 
     // Build up a param_substs that we are going to resolve the
     // trait_vtables under.
-    let param_substs = Some(@param_substs {
+    let param_substs = param_substs {
         tys: substs.tps.clone(),
         self_ty: substs.self_ty,
         vtables: impl_vtables.clone(),
         self_vtables: None
-    });
+    };
 
     let mut param_vtables = resolve_vtables_under_param_substs(
-        bcx.tcx(), param_substs, impl_res.trait_vtables.as_slice());
+        bcx.tcx(), Some(&param_substs), impl_res.trait_vtables.as_slice());
 
     // Now we pull any vtables for parameters on the actual method.
     let num_method_vtables = method.generics.type_param_defs().len();
@@ -231,7 +231,7 @@ fn resolve_default_method_vtables(bcx: &Block,
     }
 
     let self_vtables = resolve_param_vtables_under_param_substs(
-        bcx.tcx(), param_substs, impl_res.self_vtables.as_slice());
+        bcx.tcx(), Some(&param_substs), impl_res.self_vtables.as_slice());
 
     (param_vtables, self_vtables)
 }

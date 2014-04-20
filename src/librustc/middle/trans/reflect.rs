@@ -307,7 +307,7 @@ impl<'a> Reflector<'a> {
                 let arena = TypedArena::new();
                 let fcx = new_fn_ctxt(ccx, llfdecl, -1, false,
                                       ty::mk_u64(), None, None, &arena);
-                init_function(&fcx, false, ty::mk_u64(), None);
+                init_function(&fcx, false, ty::mk_u64());
 
                 let arg = unsafe {
                     //
