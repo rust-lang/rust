@@ -290,23 +290,22 @@ fn encode_parent_item(ebml_w: &mut Encoder, id: DefId) {
 }
 
 fn encode_struct_fields(ebml_w: &mut Encoder,
-                        def: @StructDef) {
-    for f in def.fields.iter() {
-        match f.node.kind {
-            NamedField(ident, vis) => {
-               ebml_w.start_tag(tag_item_field);
-               encode_struct_field_family(ebml_w, vis);
-               encode_name(ebml_w, ident.name);
-               encode_def_id(ebml_w, local_def(f.node.id));
-               ebml_w.end_tag();
-            }
-            UnnamedField(vis) => {
-                ebml_w.start_tag(tag_item_unnamed_field);
-                encode_struct_field_family(ebml_w, vis);
-                encode_def_id(ebml_w, local_def(f.node.id));
-                ebml_w.end_tag();
-            }
+                        fields: &Vec<ty::field_ty>,
+                        origin: DefId) {
+    for f in fields.iter() {
+        if f.name == special_idents::unnamed_field.name {
+            ebml_w.start_tag(tag_item_unnamed_field);
+        } else {
+            ebml_w.start_tag(tag_item_field);
+            encode_name(ebml_w, f.name);
         }
+        encode_struct_field_family(ebml_w, f.vis);
+        encode_def_id(ebml_w, f.id);
+        ebml_w.start_tag(tag_item_field_origin);
+        let s = def_to_str(origin);
+        ebml_w.writer.write(s.as_bytes());
+        ebml_w.end_tag();
+        ebml_w.end_tag();
     }
 }
 
@@ -344,12 +343,13 @@ fn encode_enum_variant_info(ecx: &EncodeContext,
                 encode_symbol(ecx, ebml_w, variant.node.id);
             }
             ast::TupleVariantKind(_) => {},
-            ast::StructVariantKind(def) => {
+            ast::StructVariantKind(_) => {
+                let fields = ty::lookup_struct_fields(ecx.tcx, def_id);
                 let idx = encode_info_for_struct(ecx,
                                                  ebml_w,
-                                                 def.fields.as_slice(),
+                                                 &fields,
                                                  index);
-                encode_struct_fields(ebml_w, def);
+                encode_struct_fields(ebml_w, &fields, def_id);
                 let bkts = create_index(idx);
                 encode_index(ebml_w, bkts, write_i64);
             }
@@ -666,7 +666,7 @@ fn encode_provided_source(ebml_w: &mut Encoder,
 /* Returns an index of items in this class */
 fn encode_info_for_struct(ecx: &EncodeContext,
                           ebml_w: &mut Encoder,
-                          fields: &[StructField],
+                          fields: &Vec<ty::field_ty>,
                           global_index: @RefCell<Vec<entry<i64>> >)
                           -> Vec<entry<i64>> {
     /* Each class has its own index, since different classes
@@ -676,12 +676,9 @@ fn encode_info_for_struct(ecx: &EncodeContext,
      /* We encode both private and public fields -- need to include
         private fields to get the offsets right */
     for field in fields.iter() {
-        let (nm, vis) = match field.node.kind {
-            NamedField(nm, vis) => (nm, vis),
-            UnnamedField(vis) => (special_idents::unnamed_field, vis)
-        };
+        let nm = field.name;
+        let id = field.id.node;
 
-        let id = field.node.id;
         index.push(entry {val: id as i64, pos: ebml_w.writer.tell().unwrap()});
         global_index.borrow_mut().push(entry {
             val: id as i64,
@@ -689,9 +686,9 @@ fn encode_info_for_struct(ecx: &EncodeContext,
         });
         ebml_w.start_tag(tag_items_data_item);
         debug!("encode_info_for_struct: doing {} {}",
-               token::get_ident(nm), id);
-        encode_struct_field_family(ebml_w, vis);
-        encode_name(ebml_w, nm.name);
+               token::get_name(nm), id);
+        encode_struct_field_family(ebml_w, field.vis);
+        encode_name(ebml_w, nm);
         encode_type(ecx, ebml_w, node_id_to_type(tcx, id));
         encode_def_id(ebml_w, local_def(id));
         ebml_w.end_tag();
@@ -983,12 +980,16 @@ fn encode_info_for_item(ecx: &EncodeContext,
                                  generics);
       }
       ItemStruct(struct_def, _) => {
+        let fields = ty::lookup_struct_fields(tcx, def_id);
+
         /* First, encode the fields
            These come first because we need to write them to make
            the index, and the index needs to be in the item for the
            class itself */
-        let idx = encode_info_for_struct(ecx, ebml_w,
-                                         struct_def.fields.as_slice(), index);
+        let idx = encode_info_for_struct(ecx,
+                                         ebml_w,
+                                         &fields,
+                                         index);
 
         /* Index the class*/
         add_to_index(item, ebml_w, index);
@@ -1008,7 +1009,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         /* Encode def_ids for each field and method
          for methods, write all the stuff get_trait_method
         needs to know*/
-        encode_struct_fields(ebml_w, struct_def);
+        encode_struct_fields(ebml_w, &fields, def_id);
 
         (ecx.encode_inlined_item)(ecx, ebml_w, IIItemRef(item));
 

@@ -46,7 +46,7 @@ use util::ppaux;
 use util::ppaux::Repr;
 
 use std::rc::Rc;
-use collections::HashSet;
+use collections::{HashMap, HashSet};
 
 use syntax::abi;
 use syntax::ast::{RegionTyParamBound, TraitTyParamBound};
@@ -440,15 +440,35 @@ pub fn ensure_supertraits(ccx: &CrateCtxt,
 
 pub fn convert_field(ccx: &CrateCtxt,
                      struct_generics: &ty::Generics,
-                     v: &ast::StructField) {
+                     v: &ast::StructField,
+                     origin: ast::DefId) -> ty::field_ty {
     let tt = ccx.to_ty(&ExplicitRscope, v.node.ty);
     write_ty_to_tcx(ccx.tcx, v.node.id, tt);
     /* add the field to the tcache */
     ccx.tcx.tcache.borrow_mut().insert(local_def(v.node.id),
-                          ty::ty_param_bounds_and_ty {
-                              generics: struct_generics.clone(),
-                              ty: tt
-                          });
+                                       ty::ty_param_bounds_and_ty {
+                                           generics: struct_generics.clone(),
+                                           ty: tt
+                                       });
+
+    match v.node.kind {
+        ast::NamedField(ident, visibility) => {
+            ty::field_ty {
+                name: ident.name,
+                id: local_def(v.node.id),
+                vis: visibility,
+                origin: origin,
+            }
+        }
+        ast::UnnamedField(visibility) => {
+            ty::field_ty {
+                name: special_idents::unnamed_field.name,
+                id: local_def(v.node.id),
+                vis: visibility,
+                origin: origin,
+            }
+        }
+    }
 }
 
 fn convert_methods(ccx: &CrateCtxt,
@@ -637,11 +657,20 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::Item) {
         ast::ItemStruct(struct_def, ref generics) => {
             ensure_no_ty_param_bounds(ccx, it.span, generics, "structure");
 
-            // Write the class type
+            // Write the class type.
             let tpt = ty_of_item(ccx, it);
             write_ty_to_tcx(tcx, it.id, tpt.ty);
 
             tcx.tcache.borrow_mut().insert(local_def(it.id), tpt.clone());
+
+            // Write the super-struct type, if it exists.
+            match struct_def.super_struct {
+                Some(ty) => {
+                    let supserty = ccx.to_ty(&ExplicitRscope, ty);
+                    write_ty_to_tcx(tcx, it.id, supserty);
+                },
+                _ => {},
+            }
 
             convert_struct(ccx, struct_def, tpt, it.id);
         },
@@ -671,10 +700,67 @@ pub fn convert_struct(ccx: &CrateCtxt,
                       id: ast::NodeId) {
     let tcx = ccx.tcx;
 
-    // Write the type of each of the members
-    for f in struct_def.fields.iter() {
-       convert_field(ccx, &tpt.generics, f);
-    }
+    // Write the type of each of the members and check for duplicate fields.
+    let mut seen_fields: HashMap<ast::Name, Span> = HashMap::new();
+    let field_tys = struct_def.fields.iter().map(|f| {
+        let result = convert_field(ccx, &tpt.generics, f, local_def(id));
+
+        if result.name != special_idents::unnamed_field.name {
+            let dup = match seen_fields.find(&result.name) {
+                Some(prev_span) => {
+                    tcx.sess.span_err(f.span,
+                        format!("field `{}` is already declared", token::get_name(result.name)));
+                    tcx.sess.span_note(*prev_span,
+                        "previously declared here");
+                    true
+                },
+                None => false,
+            };
+            // FIXME(#6393) this whole dup thing is just to satisfy
+            // the borrow checker :-(
+            if !dup {
+                seen_fields.insert(result.name, f.span);
+            }
+        }
+
+        result
+    }).collect();
+
+    tcx.struct_fields.borrow_mut().insert(local_def(id), @field_tys);
+
+    let super_struct = match struct_def.super_struct {
+        Some(t) => match t.node {
+            ast::TyPath(_, _, path_id) => {
+                let def_map = tcx.def_map.borrow();
+                match def_map.find(&path_id) {
+                    Some(&ast::DefStruct(def_id)) => {
+                        // FIXME(#12511) Check for cycles in the inheritance hierarchy.
+                        // Check super-struct is virtual.
+                        match tcx.map.find(def_id.node) {
+                            Some(ast_map::NodeItem(i)) => match i.node {
+                                ast::ItemStruct(struct_def, _) => {
+                                    if !struct_def.is_virtual {
+                                        tcx.sess.span_err(t.span,
+                                            "struct inheritance is only \
+                                             allowed from virtual structs");
+                                    }
+                                },
+                                _ => {},
+                            },
+                            _ => {},
+                        }
+
+                        Some(def_id)
+                    },
+                    _ => None,
+                }
+            }
+            _ => None,
+        },
+        None => None,
+    };
+    tcx.superstructs.borrow_mut().insert(local_def(id), super_struct);
+
     let substs = mk_item_substs(ccx, &tpt.generics, None);
     let selfty = ty::mk_struct(tcx, local_def(id), substs);
 

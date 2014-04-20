@@ -3708,6 +3708,7 @@ impl<'a> Resolver<'a> {
             ItemStruct(ref struct_def, ref generics) => {
                 self.resolve_struct(item.id,
                                     generics,
+                                    struct_def.super_struct,
                                     struct_def.fields.as_slice());
             }
 
@@ -3922,30 +3923,10 @@ impl<'a> Resolver<'a> {
     }
 
     fn resolve_struct(&mut self,
-                          id: NodeId,
-                          generics: &Generics,
-                          fields: &[StructField]) {
-        let mut ident_map: HashMap<ast::Ident, &StructField> = HashMap::new();
-        for field in fields.iter() {
-            match field.node.kind {
-                NamedField(ident, _) => {
-                    match ident_map.find(&ident) {
-                        Some(&prev_field) => {
-                            let ident_str = token::get_ident(ident);
-                            self.resolve_error(field.span,
-                                format!("field `{}` is already declared", ident_str));
-                            self.session.span_note(prev_field.span,
-                                "previously declared here");
-                        },
-                        None => {
-                            ident_map.insert(ident, field);
-                        }
-                    }
-                }
-                _ => ()
-            }
-        }
-
+                      id: NodeId,
+                      generics: &Generics,
+                      super_struct: Option<P<Ty>>,
+                      fields: &[StructField]) {
         // If applicable, create a rib for the type parameters.
         self.with_type_parameter_rib(HasTypeParameters(generics,
                                                        id,
@@ -3954,6 +3935,39 @@ impl<'a> Resolver<'a> {
                                      |this| {
             // Resolve the type parameters.
             this.resolve_type_parameters(&generics.ty_params);
+
+            // Resolve the super struct.
+            match super_struct {
+                Some(t) => match t.node {
+                    TyPath(ref path, None, path_id) => {
+                        match this.resolve_path(id, path, TypeNS, true) {
+                            Some((DefTy(def_id), lp)) if this.structs.contains(&def_id) => {
+                                let def = DefStruct(def_id);
+                                debug!("(resolving struct) resolved `{}` to type {:?}",
+                                       token::get_ident(path.segments
+                                                            .last().unwrap()
+                                                            .identifier),
+                                       def);
+                                debug!("(resolving struct) writing resolution for `{}` (id {})",
+                                       this.path_idents_to_str(path),
+                                       path_id);
+                                this.record_def(path_id, (def, lp));
+                            }
+                            Some((DefStruct(_), _)) => {
+                                this.session.span_err(t.span,
+                                                      "super-struct is defined \
+                                                       in a different crate")
+                            },
+                            Some(_) => this.session.span_err(t.span,
+                                                             "super-struct is not a struct type"),
+                            None => this.session.span_err(t.span,
+                                                          "super-struct could not be resolved"),
+                        }
+                    },
+                    _ => this.session.span_bug(t.span, "path not mapped to a TyPath")
+                },
+                None => {}
+            }
 
             // Resolve fields.
             for field in fields.iter() {
