@@ -576,15 +576,20 @@ fn check_for_field_shadowing(tcx: &ty::ctxt,
 }
 
 fn check_fields_sized(tcx: &ty::ctxt,
-                      struct_def: @ast::StructDef) {
+                      struct_def: &ast::StructDef) {
     let len = struct_def.fields.len();
-    for i in range(0, len) {
-        let f = struct_def.fields.get(i);
+    if len == 0 {
+        return;
+    }
+    for f in struct_def.fields.slice_to(len - 1).iter() {
         let t = ty::node_id_to_type(tcx, f.node.id);
-        if !ty::type_is_sized(tcx, t) && i < (len - 1) {
+        if !ty::type_is_sized(tcx, t) {
             match f.node.kind {
                 ast::NamedField(ident, _) => {
-                    tcx.sess.span_err(f.span, format!("type of field {} is dynamically sized",
+                    tcx.sess.span_err(f.span, format!("type `{}` is dynamically sized. \
+                                                       dynamically sized types may only \
+                                                       appear as the type of the final \
+                                                       field in a struct",
                                                       token::get_ident(ident)));
                 }
                 ast::UnnamedField(_) => {
@@ -3519,16 +3524,18 @@ pub fn check_representable(tcx: &ty::ctxt,
 /// is representable, but not instantiable.
 pub fn check_instantiable(tcx: &ty::ctxt,
                           sp: Span,
-                          item_id: ast::NodeId) -> bool {
+                          item_id: ast::NodeId)
+                          -> bool {
     let item_ty = ty::node_id_to_type(tcx, item_id);
     if !ty::is_instantiable(tcx, item_ty) {
         tcx.sess.span_err(sp, format!("this type cannot be instantiated \
                   without an instance of itself; \
                   consider using `Option<{}>`",
                                    ppaux::ty_to_str(tcx, item_ty)));
-        return false
+        false
+    } else {
+        true
     }
-    true
 }
 
 pub fn check_simd(tcx: &ty::ctxt, sp: Span, id: ast::NodeId) {
@@ -3567,12 +3574,20 @@ pub fn check_enum_variants_sized(ccx: &CrateCtxt,
             ast::TupleVariantKind(ref args) if args.len() > 0 => {
                 let ctor_ty = ty::node_id_to_type(ccx.tcx, v.node.id);
                 let arg_tys: Vec<ty::t> = ty::ty_fn_args(ctor_ty).iter().map(|a| *a).collect();
-                for i in range(0, args.len()) {
-                    let t = arg_tys.get(i);
+                let len = arg_tys.len();
+                if len == 0 {
+                    return;
+                }
+                for (i, t) in arg_tys.slice_to(len - 1).iter().enumerate() {
                     // Allow the last field in an enum to be unsized.
-                    if !ty::type_is_sized(ccx.tcx, *t) && i < args.len() -1 {
+                    // We want to do this so that we can support smart pointers.
+                    // A struct value with an unsized final field is itself
+                    // unsized and we must track this in the type system.
+                    if !ty::type_is_sized(ccx.tcx, *t) {
                         ccx.tcx.sess.span_err(args.get(i).ty.span,
-                                              format!("type {} is dynamically sized",
+                                              format!("type `{}` is dynamically sized. \
+                                                       dynamically sized types may only \
+                                                       appear as the final type in a variant",
                                                       ppaux::ty_to_str(ccx.tcx, *t)));
                     }
                 }

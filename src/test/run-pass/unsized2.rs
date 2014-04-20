@@ -66,7 +66,8 @@ trait T4<X> {
     fn m2(x: &T5<X>);
 }
 trait T5<type X> {
-    fn m1(x: &T4<X>); // not an error (for now)
+    // not an error (for now)
+    fn m1(x: &T4<X>);
     fn m2(x: &T5<X>);
 }
 
@@ -75,7 +76,8 @@ trait T6<X: T> {
     fn m2(x: &T5<X>);
 }
 trait T7<type X: T> {
-    fn m1(x: &T4<X>); // not an error (for now)
+    // not an error (for now)
+    fn m1(x: &T4<X>);
     fn m2(x: &T5<X>);
 }
 

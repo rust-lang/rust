@@ -23,18 +23,18 @@ fn f6<type X: T>(x: &X) {
 }*/
 
 struct S1<type X> {
-    f1: X, //~ ERROR type of field f1 is dynamically sized
+    f1: X, //~ ERROR type `f1` is dynamically sized. dynamically sized types may only appear as the
     f2: int,
 }
 struct S2<type X> {
     f: int,
-    g: X, //~ ERROR type of field g is dynamically sized
+    g: X, //~ ERROR type `g` is dynamically sized. dynamically sized types may only appear as the ty
     h: int,
 }
 
 enum E<type X> {
-    V1(X, int), //~ERROR type X is dynamically sized
-    V2{f1: X, f: int}, //~ERROR type of field f1 is dynamically sized
+    V1(X, int), //~ERROR type `X` is dynamically sized. dynamically sized types may only appear as t
+    V2{f1: X, f: int}, //~ERROR type `f1` is dynamically sized. dynamically sized types may only app
 }
 
 pub fn main() {

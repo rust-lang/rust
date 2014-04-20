@@ -678,7 +678,8 @@ impl<'a> State<'a> {
                 try!(self.print_ident(item.ident));
                 try!(self.print_generics(generics));
                 if *sized == ast::DynSize {
-                    try!(self.word_space("for type"));
+                    try!(space(&mut self.s));
+                    try!(word(&mut self.s, "for type"));
                 }
                 if traits.len() != 0u {
                     try!(word(&mut self.s, ":"));
