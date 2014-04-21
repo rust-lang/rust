@@ -16,7 +16,7 @@ use std::gc::GC;
 struct Point { x : int }
 
 pub fn main() {
-    assert_eq!(14,14);
+    assert_eq!(14i,14i);
     assert_eq!("abc".to_string(),"abc".to_string());
     assert_eq!(box Point{x:34},box Point{x:34});
     assert_eq!(&Point{x:34},&Point{x:34});

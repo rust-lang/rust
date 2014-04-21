@@ -17,7 +17,7 @@ extern crate debug;
 
 pub fn main() {
     let (tx, rx) = channel();
-    tx.send(42);
+    tx.send(42i);
     let r = rx.recv();
     println!("{:?}", r);
 }

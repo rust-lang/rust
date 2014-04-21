@@ -11,7 +11,7 @@
 extern crate debug;
 
 pub fn main() {
-    let mut x = 0;
+    let mut x = 0i;
 
     'foo: loop {
         'bar: loop {

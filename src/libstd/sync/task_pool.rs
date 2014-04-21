@@ -89,7 +89,7 @@ impl<T> TaskPool<T> {
 fn test_task_pool() {
     let f: || -> proc(uint):Send -> uint = || { proc(i) i };
     let mut pool = TaskPool::new(4, f);
-    for _ in range(0, 8) {
+    for _ in range(0u, 8) {
         pool.execute(proc(i) println!("Hello from thread {}!", *i));
     }
 }

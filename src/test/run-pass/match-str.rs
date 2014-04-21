@@ -23,7 +23,7 @@ pub fn main() {
       _ => fail!()
     }
 
-    let x = match "a" { "a" => 1, "b" => 2, _ => fail!() };
+    let x = match "a" { "a" => 1i, "b" => 2i, _ => fail!() };
     assert_eq!(x, 1);
 
     match "a" { "a" => { } "b" => { }, _ => fail!() }

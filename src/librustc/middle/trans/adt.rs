@@ -578,6 +578,7 @@ fn load_discr(bcx: &Block, ity: IntType, ptr: ValueRef, min: Disr, max: Disr)
     assert_eq!(val_ty(ptr), llty.ptr_to());
     let bits = machine::llbitsize_of_real(bcx.ccx(), llty);
     assert!(bits <= 64);
+    let  bits = bits as uint;
     let mask = (-1u64 >> (64 - bits)) as Disr;
     if (max + 1) & mask == min & mask {
         // i.e., if the range is everything.  The lo==hi case would be

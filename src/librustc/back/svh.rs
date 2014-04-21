@@ -100,7 +100,7 @@ impl Svh {
 
         let hash = state.result();
         return Svh {
-            hash: range_step(0, 64, 4).map(|i| hex(hash >> i)).collect()
+            hash: range_step(0u, 64u, 4u).map(|i| hex(hash >> i)).collect()
         };
 
         fn hex(b: u64) -> char {

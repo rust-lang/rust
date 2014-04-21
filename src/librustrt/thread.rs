@@ -333,14 +333,14 @@ mod tests {
     fn smoke() { Thread::start(proc (){}).join(); }
 
     #[test]
-    fn data() { assert_eq!(Thread::start(proc () { 1 }).join(), 1); }
+    fn data() { assert_eq!(Thread::start(proc () { 1i }).join(), 1); }
 
     #[test]
     fn detached() { Thread::spawn(proc () {}) }
 
     #[test]
     fn small_stacks() {
-        assert_eq!(42, Thread::start_stack(0, proc () 42).join());
-        assert_eq!(42, Thread::start_stack(1, proc () 42).join());
+        assert_eq!(42i, Thread::start_stack(0, proc () 42i).join());
+        assert_eq!(42i, Thread::start_stack(1, proc () 42i).join());
     }
 }

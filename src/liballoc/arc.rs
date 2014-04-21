@@ -39,7 +39,7 @@ use heap::deallocate;
 ///     let numbers = Vec::from_fn(100, |i| i as f32);
 ///     let shared_numbers = Arc::new(numbers);
 ///
-///     for _ in range(0, 10) {
+///     for _ in range(0u, 10) {
 ///         let child_numbers = shared_numbers.clone();
 ///
 ///         spawn(proc() {

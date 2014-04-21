@@ -169,6 +169,19 @@ pub struct Inherited<'a> {
     upvar_borrow_map: RefCell<ty::UpvarBorrowMap>,
 }
 
+/// When type-checking an expression, we propagate downward
+/// whatever type hint we are able in the form of an `Expectation`.
+enum Expectation {
+    /// We know nothing about what type this expression should have.
+    NoExpectation,
+
+    /// This expression should have the type given (or some subtype)
+    ExpectHasType(ty::t),
+
+    /// This expression will be cast to the `ty::t`
+    ExpectCastableToType(ty::t),
+}
+
 #[deriving(Clone)]
 pub struct FnStyleState {
     pub def: ast::NodeId,
@@ -492,7 +505,7 @@ fn check_fn<'a>(ccx: &'a CrateCtxt<'a>,
         visit.visit_block(body, ());
     }
 
-    check_block_with_expected(&fcx, body, Some(ret_ty));
+    check_block_with_expected(&fcx, body, ExpectHasType(ret_ty));
 
     // We unify the tail expr's type with the
     // function result type, if there is a tail expr.
@@ -1708,7 +1721,11 @@ fn write_call(fcx: &FnCtxt, call_expr: &ast::Expr, output: ty::t) {
 }
 
 // AST fragment checking
-pub fn check_lit(fcx: &FnCtxt, lit: &ast::Lit) -> ty::t {
+fn check_lit(fcx: &FnCtxt,
+             lit: &ast::Lit,
+             expected: Expectation)
+             -> ty::t
+{
     let tcx = fcx.ccx.tcx;
 
     match lit.node {
@@ -1721,15 +1738,29 @@ pub fn check_lit(fcx: &FnCtxt, lit: &ast::Lit) -> ty::t {
         ast::LitInt(_, t) => ty::mk_mach_int(t),
         ast::LitUint(_, t) => ty::mk_mach_uint(t),
         ast::LitIntUnsuffixed(_) => {
-            // An unsuffixed integer literal could have any integral type,
-            // so we create an integral type variable for it.
-            ty::mk_int_var(tcx, fcx.infcx().next_int_var_id())
+            let opt_ty = expected.map_to_option(fcx, |sty| {
+                match *sty {
+                    ty::ty_int(i) => Some(ty::mk_mach_int(i)),
+                    ty::ty_uint(i) => Some(ty::mk_mach_uint(i)),
+                    ty::ty_char => Some(ty::mk_mach_uint(ast::TyU8)),
+                    ty::ty_ptr(..) => Some(ty::mk_mach_uint(ast::TyU)),
+                    ty::ty_bare_fn(..) => Some(ty::mk_mach_uint(ast::TyU)),
+                    _ => None
+                }
+            });
+            opt_ty.unwrap_or_else(
+                || ty::mk_int_var(tcx, fcx.infcx().next_int_var_id()))
         }
         ast::LitFloat(_, t) => ty::mk_mach_float(t),
         ast::LitFloatUnsuffixed(_) => {
-            // An unsuffixed floating point literal could have any floating point
-            // type, so we create a floating point type variable for it.
-            ty::mk_float_var(tcx, fcx.infcx().next_float_var_id())
+            let opt_ty = expected.map_to_option(fcx, |sty| {
+                match *sty {
+                    ty::ty_float(i) => Some(ty::mk_mach_float(i)),
+                    _ => None
+                }
+            });
+            opt_ty.unwrap_or_else(
+                || ty::mk_float_var(tcx, fcx.infcx().next_float_var_id()))
         }
         ast::LitNil => ty::mk_nil(),
         ast::LitBool(_) => ty::mk_bool()
@@ -1746,43 +1777,51 @@ pub fn valid_range_bounds(ccx: &CrateCtxt,
     }
 }
 
-pub fn check_expr_has_type(
-    fcx: &FnCtxt, expr: &ast::Expr,
-    expected: ty::t) {
-    check_expr_with_unifier(fcx, expr, Some(expected), NoPreference, || {
-        demand::suptype(fcx, expr.span, expected, fcx.expr_ty(expr));
-    });
+pub fn check_expr_has_type(fcx: &FnCtxt,
+                           expr: &ast::Expr,
+                           expected: ty::t) {
+    check_expr_with_unifier(
+        fcx, expr, ExpectHasType(expected), NoPreference,
+        || demand::suptype(fcx, expr.span, expected, fcx.expr_ty(expr)));
 }
 
-fn check_expr_coercable_to_type(fcx: &FnCtxt, expr: &ast::Expr, expected: ty::t) {
-    check_expr_with_unifier(fcx, expr, Some(expected), NoPreference, || {
-        demand::coerce(fcx, expr.span, expected, expr)
-    });
+fn check_expr_coercable_to_type(fcx: &FnCtxt,
+                                expr: &ast::Expr,
+                                expected: ty::t) {
+    check_expr_with_unifier(
+        fcx, expr, ExpectHasType(expected), NoPreference,
+        || demand::coerce(fcx, expr.span, expected, expr));
 }
 
 fn check_expr_with_hint(fcx: &FnCtxt, expr: &ast::Expr, expected: ty::t) {
-    check_expr_with_unifier(fcx, expr, Some(expected), NoPreference, || ())
+    check_expr_with_unifier(
+        fcx, expr, ExpectHasType(expected), NoPreference,
+        || ())
 }
 
-fn check_expr_with_opt_hint(fcx: &FnCtxt, expr: &ast::Expr,
-                            expected: Option<ty::t>)  {
-    check_expr_with_unifier(fcx, expr, expected, NoPreference, || ())
+fn check_expr_with_expectation(fcx: &FnCtxt,
+                               expr: &ast::Expr,
+                               expected: Expectation) {
+    check_expr_with_unifier(
+        fcx, expr, expected, NoPreference,
+        || ())
 }
 
-fn check_expr_with_opt_hint_and_lvalue_pref(fcx: &FnCtxt,
+fn check_expr_with_expectation_and_lvalue_pref(fcx: &FnCtxt,
                                             expr: &ast::Expr,
-                                            expected: Option<ty::t>,
-                                            lvalue_pref: LvaluePreference) {
+                                            expected: Expectation,
+                                            lvalue_pref: LvaluePreference)
+{
     check_expr_with_unifier(fcx, expr, expected, lvalue_pref, || ())
 }
 
 fn check_expr(fcx: &FnCtxt, expr: &ast::Expr)  {
-    check_expr_with_unifier(fcx, expr, None, NoPreference, || ())
+    check_expr_with_unifier(fcx, expr, NoExpectation, NoPreference, || ())
 }
 
 fn check_expr_with_lvalue_pref(fcx: &FnCtxt, expr: &ast::Expr,
                                lvalue_pref: LvaluePreference)  {
-    check_expr_with_unifier(fcx, expr, None, lvalue_pref, || ())
+    check_expr_with_unifier(fcx, expr, NoExpectation, lvalue_pref, || ())
 }
 
 
@@ -1863,9 +1902,10 @@ enum TupleArgumentsFlag {
 /// `ty_bot`, so avoid that when err and bot need to be handled differently.
 fn check_expr_with_unifier(fcx: &FnCtxt,
                            expr: &ast::Expr,
-                           expected: Option<ty::t>,
+                           expected: Expectation,
                            lvalue_pref: LvaluePreference,
-                           unifier: ||) {
+                           unifier: ||)
+{
     debug!(">> typechecking");
 
     // A generic function for doing all of the checking for call expressions
@@ -2001,14 +2041,27 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                        opt_else_expr: Option<Gc<ast::Expr>>,
                        id: ast::NodeId,
                        sp: Span,
-                       expected: Option<ty::t>) {
+                       expected: Expectation) {
         check_expr_has_type(fcx, cond_expr, ty::mk_bool());
 
         let branches_ty = match opt_else_expr {
             Some(ref else_expr) => {
+                // Disregard "castable to" expectations because they
+                // can lead us astray. Consider for example `if cond
+                // {22} else {c} as u8` -- if we propagate the
+                // "castable to u8" constraint to 22, it will pick the
+                // type 22u8, which is overly constrained (c might not
+                // be a u8). In effect, the problem is that the
+                // "castable to" expectation is not the tightest thing
+                // we can say, so we want to drop it in this case.
+                // The tightest thing we can say is "must unify with
+                // else branch". Note that in the case of a "has type"
+                // constraint, this limitation does not hold.
+                let expected = expected.only_has_type();
+
                 check_block_with_expected(fcx, then_blk, expected);
                 let then_ty = fcx.node_ty(then_blk.id);
-                check_expr_with_opt_hint(fcx, &**else_expr, expected);
+                check_expr_with_expectation(fcx, &**else_expr, expected);
                 let else_ty = fcx.expr_ty(&**else_expr);
                 infer::common_supertype(fcx.infcx(),
                                         infer::IfExpression(sp),
@@ -2101,10 +2154,8 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                                                fcx.expr_ty(&*lhs));
 
         if ty::type_is_integral(lhs_t) && ast_util::is_shift_binop(op) {
-            // Shift is a special case: rhs can be any integral type
-            check_expr(fcx, &*rhs);
-            let rhs_t = fcx.expr_ty(&*rhs);
-            require_integral(fcx, rhs.span, rhs_t);
+            // Shift is a special case: rhs must be uint, no matter what lhs is
+            check_expr_has_type(fcx, rhs, ty::mk_uint());
             fcx.write_ty(expr.id, lhs_t);
             return;
         }
@@ -2243,40 +2294,18 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         })
     }
 
-    // Resolves `expected` by a single level if it is a variable and passes it
-    // through the `unpack` function.  It there is no expected type or
-    // resolution is not possible (e.g., no constraints yet present), just
-    // returns `none`.
-    fn unpack_expected<O>(
-                       fcx: &FnCtxt,
-                       expected: Option<ty::t>,
-                       unpack: |&ty::sty| -> Option<O>)
-                       -> Option<O> {
-        match expected {
-            Some(t) => {
-                match resolve_type(fcx.infcx(), t, force_tvar) {
-                    Ok(t) => unpack(&ty::get(t).sty),
-                    _ => None
-                }
-            }
-            _ => None
-        }
-    }
-
     fn check_expr_fn(fcx: &FnCtxt,
                      expr: &ast::Expr,
                      store: ty::TraitStore,
                      decl: &ast::FnDecl,
                      body: ast::P<ast::Block>,
-                     expected: Option<ty::t>) {
+                     expected: Expectation) {
         let tcx = fcx.ccx.tcx;
 
         // Find the expected input/output types (if any). Substitute
         // fresh bound regions for any bound regions we find in the
         // expected types so as to avoid capture.
-        let expected_sty = unpack_expected(fcx,
-                                           expected,
-                                           |x| Some((*x).clone()));
+        let expected_sty = expected.map_to_option(fcx, |x| Some((*x).clone()));
         let (expected_sig,
              expected_onceness,
              expected_bounds) = {
@@ -2696,8 +2725,8 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
           }
       }
 
-      ast::ExprLit(ref lit) => {
-        let typ = check_lit(fcx, &**lit);
+      ast::ExprLit(lit) => {
+        let typ = check_lit(fcx, lit, expected);
         fcx.write_ty(id, typ);
       }
       ast::ExprBinary(op, ref lhs, ref rhs) => {
@@ -2735,21 +2764,31 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         }
       }
       ast::ExprUnary(unop, ref oprnd) => {
-        let exp_inner = unpack_expected(fcx, expected, |sty| {
+        let expected = expected.only_has_type();
+        let expected_inner = expected.map(fcx, |sty| {
             match unop {
                 ast::UnBox | ast::UnUniq => match *sty {
-                    ty::ty_box(ty) | ty::ty_uniq(ty) => Some(ty),
-                    _ => None
+                    ty::ty_box(ty) | ty::ty_uniq(ty) => {
+                        ExpectHasType(ty)
+                    }
+                    _ => {
+                        NoExpectation
+                    }
                 },
-                ast::UnNot | ast::UnNeg => expected,
-                ast::UnDeref => None
+                ast::UnNot | ast::UnNeg => {
+                    expected
+                }
+                ast::UnDeref => {
+                    NoExpectation
+                }
             }
         });
         let lvalue_pref = match unop {
             ast::UnDeref => lvalue_pref,
             _ => NoPreference
         };
-        check_expr_with_opt_hint_and_lvalue_pref(fcx, &**oprnd, exp_inner, lvalue_pref);
+        check_expr_with_expectation_and_lvalue_pref(
+            fcx, &**oprnd, expected_inner, lvalue_pref);
         let mut oprnd_t = fcx.expr_ty(&**oprnd);
         if !ty::type_is_error(oprnd_t) && !ty::type_is_bot(oprnd_t) {
             match unop {
@@ -2818,15 +2857,19 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         fcx.write_ty(id, oprnd_t);
       }
       ast::ExprAddrOf(mutbl, ref oprnd) => {
-          let hint = unpack_expected(
-              fcx, expected,
-              |sty| match *sty { ty::ty_rptr(_, ref mt) => Some(mt.ty),
-                                 _ => None });
+        let expected = expected.only_has_type();
+        let hint = expected.map(fcx, |sty| {
+            match *sty { ty::ty_rptr(_, ref mt) => ExpectHasType(mt.ty),
+                         _ => NoExpectation }
+        });
         let lvalue_pref = match mutbl {
             ast::MutMutable => PreferMutLvalue,
             ast::MutImmutable => NoPreference
         };
-        check_expr_with_opt_hint_and_lvalue_pref(fcx, &**oprnd, hint, lvalue_pref);
+        check_expr_with_expectation_and_lvalue_pref(fcx,
+                                                    &**oprnd,
+                                                    hint,
+                                                    lvalue_pref);
 
         // Note: at this point, we cannot say what the best lifetime
         // is to use for resulting pointer.  We want to use the
@@ -2890,9 +2933,9 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         }
         fcx.write_bot(id);
       }
-      ast::ExprParen(ref a) => {
-        check_expr_with_opt_hint_and_lvalue_pref(fcx, &**a, expected, lvalue_pref);
-        fcx.write_ty(id, fcx.expr_ty(&**a));
+      ast::ExprParen(a) => {
+        check_expr_with_expectation_and_lvalue_pref(fcx, a, expected, lvalue_pref);
+        fcx.write_ty(id, fcx.expr_ty(a));
       }
       ast::ExprAssign(ref lhs, ref rhs) => {
         check_expr_with_lvalue_pref(fcx, &**lhs, PreferMutLvalue);
@@ -3006,133 +3049,11 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
             fcx.write_bot(id);
         }
       }
-      ast::ExprCast(ref e, ref t) => {
-        check_expr(fcx, &**e);
-        let t_1 = fcx.to_ty(&**t);
-        let t_e = fcx.expr_ty(&**e);
-
-        debug!("t_1={}", fcx.infcx().ty_to_str(t_1));
-        debug!("t_e={}", fcx.infcx().ty_to_str(t_e));
-
-        if ty::type_is_error(t_e) {
-            fcx.write_error(id);
-        }
-        else if ty::type_is_bot(t_e) {
-            fcx.write_bot(id);
-        }
-        else {
-            match ty::get(t_1).sty {
-                // This will be looked up later on
-                _ if ty::type_is_trait(t_1) => {},
-
-                _ => {
-                    let t_1 = structurally_resolved_type(fcx, e.span, t_1);
-                    let t_e = structurally_resolved_type(fcx, e.span, t_e);
-
-                    if ty::type_is_nil(t_e) {
-                        fcx.type_error_message(expr.span, |actual| {
-                            format!("cast from nil: `{}` as `{}`",
-                                    actual,
-                                    fcx.infcx().ty_to_str(t_1))
-                        }, t_e, None);
-                    } else if ty::type_is_nil(t_1) {
-                        fcx.type_error_message(expr.span, |actual| {
-                            format!("cast to nil: `{}` as `{}`",
-                                    actual,
-                                    fcx.infcx().ty_to_str(t_1))
-                        }, t_e, None);
-                    }
-
-                    let t_1_is_scalar = ty::type_is_scalar(t_1);
-                    let t_1_is_char = ty::type_is_char(t_1);
-                    let t_1_is_bare_fn = ty::type_is_bare_fn(t_1);
-                    let t_1_is_float = ty::type_is_floating_point(t_1);
-
-                    // casts to scalars other than `char` and `bare fn` are trivial
-                    let t_1_is_trivial = t_1_is_scalar && !t_1_is_char && !t_1_is_bare_fn;
-                    if ty::type_is_c_like_enum(fcx.tcx(), t_e) && t_1_is_trivial {
-                        if t_1_is_float {
-                            fcx.type_error_message(expr.span, |actual| {
-                                format!("illegal cast; cast through an \
-                                         integer first: `{}` as `{}`",
-                                        actual,
-                                        fcx.infcx().ty_to_str(t_1))
-                            }, t_e, None);
-                        }
-                        // casts from C-like enums are allowed
-                    } else if t_1_is_char {
-                        let t_e = fcx.infcx().resolve_type_vars_if_possible(t_e);
-                        if ty::get(t_e).sty != ty::ty_uint(ast::TyU8) {
-                            fcx.type_error_message(expr.span, |actual| {
-                                format!("only `u8` can be cast as \
-                                         `char`, not `{}`", actual)
-                            }, t_e, None);
-                        }
-                    } else if ty::get(t_1).sty == ty::ty_bool {
-                        fcx.tcx()
-                           .sess
-                           .span_err(expr.span,
-                                     "cannot cast as `bool`, compare with \
-                                      zero instead");
-                    } else if ty::type_is_region_ptr(t_e) && ty::type_is_unsafe_ptr(t_1) {
-                        fn is_vec(t: ty::t) -> bool {
-                            match ty::get(t).sty {
-                                ty::ty_vec(..) => true,
-                                ty::ty_ptr(ty::mt{ty: t, ..}) | ty::ty_rptr(_, ty::mt{ty: t, ..}) |
-                                ty::ty_box(t) | ty::ty_uniq(t) => match ty::get(t).sty {
-                                    ty::ty_vec(_, None) => true,
-                                    _ => false,
-                                },
-                                _ => false
-                            }
-                        }
-                        fn types_compatible(fcx: &FnCtxt, sp: Span,
-                                            t1: ty::t, t2: ty::t) -> bool {
-                            if !is_vec(t1) {
-                                false
-                            } else {
-                                let el = ty::sequence_element_type(fcx.tcx(),
-                                                                   t1);
-                                infer::mk_eqty(fcx.infcx(), false,
-                                               infer::Misc(sp), el, t2).is_ok()
-                            }
-                        }
-
-                        // Due to the limitations of LLVM global constants,
-                        // region pointers end up pointing at copies of
-                        // vector elements instead of the original values.
-                        // To allow unsafe pointers to work correctly, we
-                        // need to special-case obtaining an unsafe pointer
-                        // from a region pointer to a vector.
-
-                        /* this cast is only allowed from &[T] to *T or
-                        &T to *T. */
-                        match (&ty::get(t_e).sty, &ty::get(t_1).sty) {
-                            (&ty::ty_rptr(_, ty::mt { ty: mt1, mutbl: ast::MutImmutable }),
-                             &ty::ty_ptr(ty::mt { ty: mt2, mutbl: ast::MutImmutable }))
-                            if types_compatible(fcx, e.span, mt1, mt2) => {
-                                /* this case is allowed */
-                            }
-                            _ => {
-                                demand::coerce(fcx, e.span, t_1, &**e);
-                            }
-                        }
-                    } else if !(ty::type_is_scalar(t_e) && t_1_is_trivial) {
-                        /*
-                        If more type combinations should be supported than are
-                        supported here, then file an enhancement issue and
-                        record the issue number in this comment.
-                        */
-                        fcx.type_error_message(expr.span, |actual| {
-                            format!("non-scalar cast: `{}` as `{}`",
-                                    actual,
-                                    fcx.infcx().ty_to_str(t_1))
-                        }, t_e, None);
-                    }
-                }
-            }
-            fcx.write_ty(id, t_1);
-        }
+      ast::ExprCast(expr_from, t) => {
+        let ty_to = fcx.to_ty(t);
+        debug!("ExprCast ty_to={}", fcx.infcx().ty_to_str(ty_to));
+        check_cast(fcx, expr_from, ty_to);
+        fcx.write_ty(id, ty_to);
       }
       ast::ExprVec(ref args) => {
         let t: ty::t = fcx.infcx().next_ty_var();
@@ -3144,7 +3065,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         fcx.write_ty(id, typ);
       }
       ast::ExprRepeat(ref element, ref count_expr) => {
-        check_expr_with_hint(fcx, &**count_expr, ty::mk_uint());
+        check_expr_has_type(fcx, &**count_expr, ty::mk_uint());
         let count = ty::eval_repeat_count(fcx, &**count_expr);
         let t: ty::t = fcx.infcx().next_ty_var();
         check_expr_has_type(fcx, &**element, t);
@@ -3162,7 +3083,8 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         }
       }
       ast::ExprTup(ref elts) => {
-        let flds = unpack_expected(fcx, expected, |sty| {
+        let expected = expected.only_has_type();
+        let flds = expected.map_to_option(fcx, |sty| {
             match *sty {
                 ty::ty_tup(ref flds) => Some((*flds).clone()),
                 _ => None
@@ -3173,11 +3095,11 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
 
         let elt_ts = elts.iter().enumerate().map(|(i, e)| {
             let opt_hint = match flds {
-                Some(ref fs) if i < fs.len() => Some(*fs.get(i)),
-                _ => None
+                Some(ref fs) if i < fs.len() => ExpectHasType(*fs.get(i)),
+                _ => NoExpectation
             };
-            check_expr_with_opt_hint(fcx, &**e, opt_hint);
-            let t = fcx.expr_ty(&**e);
+            check_expr_with_expectation(fcx, *e, opt_hint);
+            let t = fcx.expr_ty(*e);
             err_field = err_field || ty::type_is_error(t);
             bot_field = bot_field || ty::type_is_bot(t);
             t
@@ -3263,12 +3185,191 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
            syntax::print::pprust::expr_to_str(expr));
     debug!("... {}, expected is {}",
            ppaux::ty_to_str(tcx, fcx.expr_ty(expr)),
-           match expected {
-               Some(t) => ppaux::ty_to_str(tcx, t),
-               _ => "empty".to_string()
-           });
+           expected.repr(tcx))
 
     unifier();
+}
+
+impl Expectation {
+    fn only_has_type(self) -> Expectation {
+        match self {
+            NoExpectation | ExpectCastableToType(..) => NoExpectation,
+            ExpectHasType(t) => ExpectHasType(t)
+        }
+    }
+
+    // Resolves `expected` by a single level if it is a variable. If
+    // there is no expected type or resolution is not possible (e.g.,
+    // no constraints yet present), just returns `None`.
+    fn resolve(self, fcx: &FnCtxt) -> Expectation {
+        match self {
+            NoExpectation => {
+                NoExpectation
+            }
+            ExpectCastableToType(t) => {
+                ExpectCastableToType(
+                    fcx.infcx().resolve_type_vars_if_possible(t))
+            }
+            ExpectHasType(t) => {
+                ExpectHasType(
+                    fcx.infcx().resolve_type_vars_if_possible(t))
+            }
+        }
+    }
+
+    fn map(self, fcx: &FnCtxt, unpack: |&ty::sty| -> Expectation) -> Expectation {
+        match self.resolve(fcx) {
+            NoExpectation => NoExpectation,
+            ExpectCastableToType(t) | ExpectHasType(t) => unpack(&ty::get(t).sty),
+        }
+    }
+
+    fn map_to_option<O>(self,
+                        fcx: &FnCtxt,
+                        unpack: |&ty::sty| -> Option<O>)
+                        -> Option<O>
+    {
+        match self.resolve(fcx) {
+            NoExpectation => None,
+            ExpectCastableToType(t) | ExpectHasType(t) => unpack(&ty::get(t).sty),
+        }
+    }
+}
+
+impl Repr for Expectation {
+    fn repr(&self, tcx: &ty::ctxt) -> String {
+        match *self {
+            NoExpectation => format!("NoExpectation"),
+            ExpectHasType(t) => format!("ExpectHasType({})",
+                                        t.repr(tcx)),
+            ExpectCastableToType(t) => format!("ExpectCastableToType({})",
+                                               t.repr(tcx)),
+        }
+    }
+}
+
+fn check_cast(fcx: &FnCtxt, expr_from: Gc<ast::Expr>, ty_to: ty::t) {
+    // Find the type of `expr_from`. Supply hints based on the type
+    // we are casting to, if appropriate.
+    let ty_to = structurally_resolved_type(fcx, expr_from.span, ty_to);
+    if ty::type_is_scalar(ty_to) {
+        // Supply the type as a hint so as to influence integer
+        // literals and other things that might care.
+        check_expr_with_hint(fcx, expr_from, ty_to)
+    } else {
+        check_expr(fcx, expr_from)
+    }
+    let ty_from = fcx.expr_ty(expr_from);
+
+    // Object creation is checked during the vtable phase.
+    if ty::type_is_trait(ty_to) {
+        check_expr(fcx, expr_from);
+        return;
+    }
+
+    let ty_from = fcx.infcx().resolve_type_vars_if_possible(ty_from);
+
+    if ty::type_is_nil(ty_from) {
+        fcx.type_error_message(expr_from.span, |actual| {
+            format!("cast from nil: `{}` as `{}`", actual,
+                    fcx.infcx().ty_to_str(ty_to))
+        }, ty_from, None);
+        return;
+    }
+
+    if ty::type_is_nil(ty_to) {
+        fcx.type_error_message(expr_from.span, |actual| {
+            format!("cast to nil: `{}` as `{}`", actual,
+                    fcx.infcx().ty_to_str(ty_to))
+        }, ty_from, None);
+        return;
+    }
+
+    let t_e = structurally_resolved_type(fcx, expr_from.span, ty_from);
+    let t_1 = structurally_resolved_type(fcx, expr_from.span, ty_to);
+
+    let to_is_scalar = ty::type_is_scalar(t_1);
+    let to_is_float = ty::type_is_floating_point(t_1);
+    let to_is_char = ty::type_is_char(t_1);
+    let to_is_bare_fn = ty::type_is_bare_fn(t_1);
+
+    // casts to scalars other than `char` and `bare fn` are trivial
+    let to_is_trivial = to_is_scalar &&
+        !to_is_char && !to_is_bare_fn;
+
+    if ty::type_is_c_like_enum(fcx.tcx(), t_e) && to_is_trivial {
+        if to_is_float {
+            fcx.type_error_message(expr_from.span, |actual| {
+                format!("illegal cast; cast through an integer first: `{}` \
+                         as `{}`",
+                        actual,
+                        fcx.infcx().ty_to_str(t_1))
+            }, ty_from, None);
+        }
+        // casts from C-like enums are allowed
+    } else if to_is_char {
+        if ty::get(ty_from).sty != ty::ty_uint(ast::TyU8) {
+            fcx.type_error_message(expr_from.span, |actual| {
+                format!("only `u8` can be cast as `char`, not `{}`", actual)
+            }, ty_from, None);
+        }
+    } else if ty::type_is_bool(t_1) {
+        fcx.tcx().sess.span_err(expr_from.span,
+                                "cannot cast as `bool`, compare with zero instead");
+    } else if ty::type_is_region_ptr(t_e) && ty::type_is_unsafe_ptr(t_1) {
+        fn is_vec(t: ty::t) -> bool {
+            match ty::get(t).sty {
+                ty::ty_vec(..) => true,
+                ty::ty_ptr(ty::mt{ty: t, ..}) |
+                ty::ty_rptr(_, ty::mt{ty: t, ..}) |
+                ty::ty_box(t) |
+                ty::ty_uniq(t) => match ty::get(t).sty {
+                    ty::ty_vec(_, None) => true,
+                    _ => false,
+                },
+                _ => false
+            }
+        }
+        fn types_compatible(fcx: &FnCtxt, sp: Span,
+                            t1: ty::t, t2: ty::t) -> bool {
+            if !is_vec(t1) {
+                false
+            } else {
+                let el = ty::sequence_element_type(fcx.tcx(),
+                                                   t1);
+                infer::mk_eqty(fcx.infcx(), false,
+                               infer::Misc(sp), el, t2).is_ok()
+            }
+        }
+
+        // Due to the limitations of LLVM global constants,
+        // region pointers end up pointing at copies of
+        // vector elements instead of the original values.
+        // To allow unsafe pointers to work correctly, we
+        // need to special-case obtaining an unsafe pointer
+        // from a region pointer to a vector.
+
+        /* this cast is only allowed from &[T] to *T or
+        &T to *T. */
+        match (&ty::get(t_e).sty, &ty::get(t_1).sty) {
+            (&ty::ty_rptr(_, ty::mt { ty: mt1, mutbl: ast::MutImmutable }),
+             &ty::ty_ptr(ty::mt { ty: mt2, mutbl: ast::MutImmutable }))
+                if types_compatible(fcx, expr_from.span, mt1, mt2) => {
+                    /* this case is allowed */
+                }
+            _ => {
+                demand::coerce(fcx, expr_from.span, ty_to, expr_from);
+            }
+        }
+    } else if !(ty::type_is_scalar(t_e) && to_is_trivial) {
+        // If more type combinations should be supported than are
+        // supported here, then file an enhancement issue and
+        // record the issue number in this comment.
+        fcx.type_error_message(expr_from.span, |actual| {
+            format!("non-scalar cast: `{}` as `{}`", actual,
+                    fcx.infcx().ty_to_str(ty_to))
+        }, ty_from, None);
+    }
 }
 
 pub fn require_uint(fcx: &FnCtxt, sp: Span, t: ty::t) {
@@ -3371,7 +3472,7 @@ pub fn check_stmt(fcx: &FnCtxt, stmt: &ast::Stmt)  {
 }
 
 pub fn check_block_no_value(fcx: &FnCtxt, blk: &ast::Block)  {
-    check_block_with_expected(fcx, blk, Some(ty::mk_nil()));
+    check_block_with_expected(fcx, blk, ExpectHasType(ty::mk_nil()));
     let blkty = fcx.node_ty(blk.id);
     if ty::type_is_error(blkty) {
         fcx.write_error(blk.id);
@@ -3385,9 +3486,9 @@ pub fn check_block_no_value(fcx: &FnCtxt, blk: &ast::Block)  {
     }
 }
 
-pub fn check_block_with_expected(fcx: &FnCtxt,
-                                 blk: &ast::Block,
-                                 expected: Option<ty::t>) {
+fn check_block_with_expected(fcx: &FnCtxt,
+                             blk: &ast::Block,
+                             expected: Expectation) {
     let prev = {
         let mut fcx_ps = fcx.ps.borrow_mut();
         let fn_style_state = fcx_ps.recurse(blk);
@@ -3448,8 +3549,8 @@ pub fn check_block_with_expected(fcx: &FnCtxt,
                              e.span,
                              "unreachable expression".to_string());
             }
-            check_expr_with_opt_hint(fcx, &*e, expected);
-              let ety = fcx.expr_ty(&*e);
+            check_expr_with_expectation(fcx, e, expected);
+              let ety = fcx.expr_ty(e);
               fcx.write_ty(blk.id, ety);
               if any_err {
                   fcx.write_error(blk.id);
@@ -4170,7 +4271,7 @@ pub fn instantiate_path(fcx: &FnCtxt,
 // Resolves `typ` by a single level if `typ` is a type variable.  If no
 // resolution is possible, then an error is reported.
 pub fn structurally_resolved_type(fcx: &FnCtxt, sp: Span, tp: ty::t) -> ty::t {
-    match infer::resolve_type(fcx.infcx(), tp, force_tvar) {
+    match infer::resolve_type(fcx.infcx(), Some(sp), tp, force_tvar) {
         Ok(t_s) if !ty::type_is_ty_var(t_s) => t_s,
         _ => {
             fcx.type_error_message(sp, |_actual| {

@@ -41,7 +41,7 @@ impl<'a> Outer<'a> {
 }
 
 pub fn main() {
-    let inner = 5;
+    let inner = 5i;
     let outer = Outer::new(&inner as &Inner);
     outer.inner.print();
 }

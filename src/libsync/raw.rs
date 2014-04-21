@@ -138,7 +138,7 @@ impl<Q: Send> Sem<Q> {
             });
             // Uncomment if you wish to test for sem races. Not
             // valgrind-friendly.
-            /* for _ in range(0, 1000) { task::deschedule(); } */
+            /* for _ in range(0u, 1000) { task::deschedule(); } */
             // Need to wait outside the exclusive.
             if waiter_nobe.is_some() {
                 let _ = waiter_nobe.unwrap().recv();
@@ -642,10 +642,10 @@ mod tests {
         let s2 = s.clone();
         task::spawn(proc() {
             let _g = s2.access();
-            for _ in range(0, 5) { task::deschedule(); }
+            for _ in range(0u, 5) { task::deschedule(); }
         });
         let _g = s.access();
-        for _ in range(0, 5) { task::deschedule(); }
+        for _ in range(0u, 5) { task::deschedule(); }
     }
     #[test]
     fn test_sem_as_cvar() {
@@ -657,7 +657,7 @@ mod tests {
             s2.acquire();
             tx.send(());
         });
-        for _ in range(0, 5) { task::deschedule(); }
+        for _ in range(0u, 5) { task::deschedule(); }
         s.release();
         let _ = rx.recv();
 
@@ -666,7 +666,7 @@ mod tests {
         let s = Arc::new(Semaphore::new(0));
         let s2 = s.clone();
         task::spawn(proc() {
-            for _ in range(0, 5) { task::deschedule(); }
+            for _ in range(0u, 5) { task::deschedule(); }
             s2.release();
             let _ = rx.recv();
         });
@@ -705,7 +705,7 @@ mod tests {
                 tx.send(());
             });
             rx.recv(); // wait for child to come alive
-            for _ in range(0, 5) { task::deschedule(); } // let the child contend
+            for _ in range(0u, 5) { task::deschedule(); } // let the child contend
         }
         rx.recv(); // wait for child to be done
     }
@@ -735,7 +735,7 @@ mod tests {
         }
 
         fn access_shared(sharedstate: *mut int, m: &Arc<Mutex>, n: uint) {
-            for _ in range(0, n) {
+            for _ in range(0u, n) {
                 let _g = m.lock();
                 let oldval = unsafe { *sharedstate };
                 task::deschedule();
@@ -780,7 +780,7 @@ mod tests {
         let m = Arc::new(Mutex::new());
         let mut rxs = Vec::new();
 
-        for _ in range(0, num_waiters) {
+        for _ in range(0u, num_waiters) {
             let mi = m.clone();
             let (tx, rx) = channel();
             rxs.push(rx);
@@ -907,7 +907,7 @@ mod tests {
 
         fn access_shared(sharedstate: &mut int, x: &Arc<RWLock>,
                          mode: RWLockMode, n: uint) {
-            for _ in range(0, n) {
+            for _ in range(0u, n) {
                 lock_rwlock_in_mode(x, mode, || {
                     let oldval = *sharedstate;
                     task::deschedule();
@@ -1033,7 +1033,7 @@ mod tests {
         let x = Arc::new(RWLock::new());
         let mut rxs = Vec::new();
 
-        for _ in range(0, num_waiters) {
+        for _ in range(0u, num_waiters) {
             let xi = x.clone();
             let (tx, rx) = channel();
             rxs.push(rx);

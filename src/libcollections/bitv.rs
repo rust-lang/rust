@@ -572,7 +572,7 @@ impl ops::Index<uint,bool> for Bitv {
 impl fmt::Show for Bitv {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         for bit in self.iter() {
-            try!(write!(fmt, "{}", if bit { 1 } else { 0 }));
+            try!(write!(fmt, "{}", if bit { 1u } else { 0u }));
         }
         Ok(())
     }

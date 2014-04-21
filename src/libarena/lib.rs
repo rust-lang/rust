@@ -513,7 +513,7 @@ mod tests {
     #[test]
     pub fn test_copy() {
         let arena = TypedArena::new();
-        for _ in range(0, 100000) {
+        for _ in range(0u, 100000) {
             arena.alloc(Point {
                 x: 1,
                 y: 2,
@@ -567,7 +567,7 @@ mod tests {
     #[test]
     pub fn test_noncopy() {
         let arena = TypedArena::new();
-        for _ in range(0, 100000) {
+        for _ in range(0u, 100000) {
             arena.alloc(Noncopy {
                 string: "hello world".to_string(),
                 array: vec!( 1, 2, 3, 4, 5 ),

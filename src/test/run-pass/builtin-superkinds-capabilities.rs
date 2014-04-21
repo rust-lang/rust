@@ -21,7 +21,7 @@ fn foo<T: Foo>(val: T, chan: Sender<T>) {
 }
 
 pub fn main() {
-    let (tx, rx) = channel();
-    foo(31337, tx);
-    assert!(rx.recv() == 31337);
+    let (tx, rx): (Sender<int>, Receiver<int>) = channel();
+    foo(31337i, tx);
+    assert!(rx.recv() == 31337i);
 }

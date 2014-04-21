@@ -36,15 +36,15 @@ impl RhsOfVec2Mul<Vec2> for f64 {
 
 // Usage with failing inference
 pub fn main() {
-    let a = Vec2 { x: 3.0, y: 4.0 };
+    let a = Vec2 { x: 3.0f64, y: 4.0f64 };
 
     // the following compiles and works properly
-    let v1: Vec2 = a * 3.0;
+    let v1: Vec2 = a * 3.0f64;
     println!("{} {}", v1.x, v1.y);
 
     // the following compiles but v2 will not be Vec2 yet and
     // using it later will cause an error that the type of v2
     // must be known
-    let v2 = a * 3.0;
+    let v2 = a * 3.0f64;
     println!("{} {}", v2.x, v2.y); // error regarding v2's type
 }

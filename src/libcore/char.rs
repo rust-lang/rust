@@ -308,6 +308,7 @@ pub fn escape_unicode(c: char, f: |char|) {
         _                   => { f('U'); 8 }
     };
     for offset in range_step::<i32>(4 * (pad - 1), -1, -4) {
+        let offset = offset as uint;
         unsafe {
             match ((c as i32) >> offset) & 0xf {
                 i @ 0 .. 9 => { f(transmute('0' as i32 + i)); }

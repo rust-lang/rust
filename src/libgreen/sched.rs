@@ -1336,7 +1336,7 @@ mod test {
     fn multithreading() {
         run(proc() {
             let mut rxs = vec![];
-            for _ in range(0, 10) {
+            for _ in range(0u, 10) {
                 let (tx, rx) = channel();
                 spawn(proc() {
                     tx.send(());
@@ -1469,7 +1469,7 @@ mod test {
     fn single_threaded_yield() {
         use std::task::deschedule;
         run(proc() {
-            for _ in range(0, 5) { deschedule(); }
+            for _ in range(0u, 5) { deschedule(); }
         });
     }
 
@@ -1480,7 +1480,7 @@ mod test {
 
         // Testing that a task in one scheduler can block in foreign code
         // without affecting other schedulers
-        for _ in range(0, 20) {
+        for _ in range(0u, 20) {
             let mut pool = pool();
             let (start_tx, start_rx) = channel();
             let (fin_tx, fin_rx) = channel();

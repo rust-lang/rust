@@ -456,7 +456,7 @@ impl<'cx> TypeFolder for Resolver<'cx> {
             return t;
         }
 
-        match resolve_type(self.infcx, t, resolve_all | force_all) {
+        match resolve_type(self.infcx, None, t, resolve_all | force_all) {
             Ok(t) => t,
             Err(e) => {
                 self.report_error(e);

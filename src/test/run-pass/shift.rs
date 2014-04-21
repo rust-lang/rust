@@ -18,44 +18,44 @@ pub fn main() {
 }
 
 fn test_misc() {
-    assert_eq!(1 << 1i8 << 1u8 << 1i16 << 1u8 << 1u64, 32);
+    assert_eq!(1i << 1 << 1 << 1 << 1 << 1, 32);
 }
 
 fn test_expr() {
     let v10 = 10 as uint;
     let v4 = 4 as u8;
     let v2 = 2 as u8;
-    assert_eq!(v10 >> v2, v2 as uint);
-    assert_eq!(v10 << v4, 160 as uint);
+    assert_eq!(v10 >> v2 as uint, v2 as uint);
+    assert_eq!(v10 << v4 as uint, 160 as uint);
 
     let v10 = 10 as u8;
     let v4 = 4 as uint;
     let v2 = 2 as uint;
-    assert_eq!(v10 >> v2, v2 as u8);
-    assert_eq!(v10 << v4, 160 as u8);
+    assert_eq!(v10 >> v2 as uint, v2 as u8);
+    assert_eq!(v10 << v4 as uint, 160 as u8);
 
     let v10 = 10 as int;
     let v4 = 4 as i8;
     let v2 = 2 as i8;
-    assert_eq!(v10 >> v2, v2 as int);
-    assert_eq!(v10 << v4, 160 as int);
+    assert_eq!(v10 >> v2 as uint, v2 as int);
+    assert_eq!(v10 << v4 as uint, 160 as int);
 
     let v10 = 10 as i8;
     let v4 = 4 as int;
     let v2 = 2 as int;
-    assert_eq!(v10 >> v2, v2 as i8);
-    assert_eq!(v10 << v4, 160 as i8);
+    assert_eq!(v10 >> v2 as uint, v2 as i8);
+    assert_eq!(v10 << v4 as uint, 160 as i8);
 
     let v10 = 10 as uint;
     let v4 = 4 as int;
     let v2 = 2 as int;
-    assert_eq!(v10 >> v2, v2 as uint);
-    assert_eq!(v10 << v4, 160 as uint);
+    assert_eq!(v10 >> v2 as uint, v2 as uint);
+    assert_eq!(v10 << v4 as uint, 160 as uint);
 }
 
 fn test_const() {
-    static r1_1: uint = 10u >> 2u8;
-    static r2_1: uint = 10u << 4u8;
+    static r1_1: uint = 10u >> 2u;
+    static r2_1: uint = 10u << 4u;
     assert_eq!(r1_1, 2 as uint);
     assert_eq!(r2_1, 160 as uint);
 
@@ -64,18 +64,18 @@ fn test_const() {
     assert_eq!(r1_2, 2 as u8);
     assert_eq!(r2_2, 160 as u8);
 
-    static r1_3: int = 10 >> 2i8;
-    static r2_3: int = 10 << 4i8;
+    static r1_3: int = 10 >> 2u;
+    static r2_3: int = 10 << 4u;
     assert_eq!(r1_3, 2 as int);
     assert_eq!(r2_3, 160 as int);
 
-    static r1_4: i8 = 10i8 >> 2;
-    static r2_4: i8 = 10i8 << 4;
+    static r1_4: i8 = 10i8 >> 2u;
+    static r2_4: i8 = 10i8 << 4u;
     assert_eq!(r1_4, 2 as i8);
     assert_eq!(r2_4, 160 as i8);
 
-    static r1_5: uint = 10u >> 2i8;
-    static r2_5: uint = 10u << 4i8;
+    static r1_5: uint = 10u >> 2u;
+    static r2_5: uint = 10u << 4u;
     assert_eq!(r1_5, 2 as uint);
     assert_eq!(r2_5, 160 as uint);
 }

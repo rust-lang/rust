@@ -146,8 +146,8 @@ mod test {
 
     #[test]
     fn test_clone_from() {
-        let a = box 5;
-        let mut b = box 10;
+        let a = box 5i;
+        let mut b = box 10i;
         realclone_from(&mut b, &a);
         assert_eq!(*b, 5);
     }

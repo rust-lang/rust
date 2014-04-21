@@ -367,8 +367,8 @@ pub fn eval_const_expr_partial<T: ty::ExprTyProvider>(tcx: &T, e: &Expr)
               BiAnd | BiBitAnd => Ok(const_int(a & b)),
               BiOr | BiBitOr => Ok(const_int(a | b)),
               BiBitXor => Ok(const_int(a ^ b)),
-              BiShl => Ok(const_int(a << b)),
-              BiShr => Ok(const_int(a >> b)),
+              BiShl => Ok(const_int(a << b as uint)),
+              BiShr => Ok(const_int(a >> b as uint)),
               BiEq => fromb(a == b),
               BiLt => fromb(a < b),
               BiLe => fromb(a <= b),
@@ -394,8 +394,8 @@ pub fn eval_const_expr_partial<T: ty::ExprTyProvider>(tcx: &T, e: &Expr)
               BiAnd | BiBitAnd => Ok(const_uint(a & b)),
               BiOr | BiBitOr => Ok(const_uint(a | b)),
               BiBitXor => Ok(const_uint(a ^ b)),
-              BiShl => Ok(const_uint(a << b)),
-              BiShr => Ok(const_uint(a >> b)),
+              BiShl => Ok(const_uint(a << b as uint)),
+              BiShr => Ok(const_uint(a >> b as uint)),
               BiEq => fromb(a == b),
               BiLt => fromb(a < b),
               BiLe => fromb(a <= b),
@@ -407,15 +407,15 @@ pub fn eval_const_expr_partial<T: ty::ExprTyProvider>(tcx: &T, e: &Expr)
           // shifts can have any integral type as their rhs
           (Ok(const_int(a)), Ok(const_uint(b))) => {
             match op {
-              BiShl => Ok(const_int(a << b)),
-              BiShr => Ok(const_int(a >> b)),
+              BiShl => Ok(const_int(a << b as uint)),
+              BiShr => Ok(const_int(a >> b as uint)),
               _ => Err("can't do this op on an int and uint".to_string())
             }
           }
           (Ok(const_uint(a)), Ok(const_int(b))) => {
             match op {
-              BiShl => Ok(const_uint(a << b)),
-              BiShr => Ok(const_uint(a >> b)),
+              BiShl => Ok(const_uint(a << b as uint)),
+              BiShr => Ok(const_uint(a >> b as uint)),
               _ => Err("can't do this op on a uint and int".to_string())
             }
           }

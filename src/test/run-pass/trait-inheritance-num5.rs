@@ -17,7 +17,7 @@ impl NumExt for f32 {}
 impl NumExt for int {}
 
 fn num_eq_one<T:NumExt>() -> T {
-    NumCast::from(1).unwrap()
+    NumCast::from(1i).unwrap()
 }
 
 pub fn main() {

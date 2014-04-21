@@ -17,7 +17,7 @@ fn box_it<'r>(x: ||: 'r) -> closure_box<'r> {
 }
 
 pub fn main() {
-    let mut i = 3;
+    let mut i = 3i;
     assert_eq!(i, 3);
     {
         let cl = || i += 1;

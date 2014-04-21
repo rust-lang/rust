@@ -9,8 +9,8 @@
 // except according to those terms.
 
 fn main() {
-    let box x = box 3;
-    match box 3 {
+    let box x = box 3i;
+    match box 3i {
         box y => {
             assert!(x == y);
             println!("{} {}", x, y);

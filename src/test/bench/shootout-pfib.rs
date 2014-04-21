@@ -66,9 +66,9 @@ fn parse_opts(argv: Vec<String> ) -> Config {
 }
 
 fn stress_task(id: int) {
-    let mut i = 0;
+    let mut i = 0i;
     loop {
-        let n = 15;
+        let n = 15i;
         assert_eq!(fib(n), fib(n));
         i += 1;
         println!("{}: Completed {} iterations", id, i);
@@ -108,7 +108,7 @@ fn main() {
         let num_trials = 10;
 
         for n in range(1, max + 1) {
-            for _ in range(0, num_trials) {
+            for _ in range(0u, num_trials) {
                 let start = time::precise_time_ns();
                 let fibn = fib(n);
                 let stop = time::precise_time_ns();

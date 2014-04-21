@@ -181,7 +181,7 @@ mod test {
 
     #[test]
     fn test_get_ref_method() {
-        let mut f = Future::from_value(22);
+        let mut f = Future::from_value(22i);
         assert_eq!(*f.get_ref(), 22);
     }
 

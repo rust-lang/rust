@@ -18,7 +18,8 @@ use core::mem;
 use {Rng, SeedableRng, Rand};
 
 static RAND_SIZE_LEN: u32 = 8;
-static RAND_SIZE: u32 = 1 << RAND_SIZE_LEN;
+static RAND_SIZE: u32 = 1 << (RAND_SIZE_LEN as uint);
+static RAND_SIZE_UINT: uint = 1 << (RAND_SIZE_LEN as uint);
 
 /// A random number generator that uses the ISAAC algorithm[1].
 ///
@@ -31,16 +32,16 @@ static RAND_SIZE: u32 = 1 << RAND_SIZE_LEN;
 /// generator*](http://www.burtleburtle.net/bob/rand/isaacafa.html)
 pub struct IsaacRng {
     cnt: u32,
-    rsl: [u32, .. RAND_SIZE],
-    mem: [u32, .. RAND_SIZE],
+    rsl: [u32, ..RAND_SIZE_UINT],
+    mem: [u32, ..RAND_SIZE_UINT],
     a: u32,
     b: u32,
     c: u32
 }
 static EMPTY: IsaacRng = IsaacRng {
     cnt: 0,
-    rsl: [0, .. RAND_SIZE],
-    mem: [0, .. RAND_SIZE],
+    rsl: [0, ..RAND_SIZE_UINT],
+    mem: [0, ..RAND_SIZE_UINT],
     a: 0, b: 0, c: 0
 };
 
@@ -79,7 +80,9 @@ impl IsaacRng {
             }}
         );
 
-        for _ in range(0, 4) { mix!(); }
+        for _ in range(0u, 4) {
+            mix!();
+        }
 
         if use_rsl {
             macro_rules! memloop (
@@ -115,32 +118,43 @@ impl IsaacRng {
 
     /// Refills the output buffer (`self.rsl`)
     #[inline]
+    #[allow(unsigned_negate)]
     fn isaac(&mut self) {
         self.c += 1;
         // abbreviations
         let mut a = self.a;
         let mut b = self.b + self.c;
 
-        static MIDPOINT: uint = RAND_SIZE as uint / 2;
+        static MIDPOINT: uint = (RAND_SIZE / 2) as uint;
 
         macro_rules! ind (($x:expr) => {
-            self.mem[(($x >> 2) & (RAND_SIZE - 1)) as uint]
+            self.mem[(($x >> 2) as uint & ((RAND_SIZE - 1) as uint))]
         });
-        macro_rules! rngstep(
+        macro_rules! rngstepp(
             ($j:expr, $shift:expr) => {{
                 let base = $j;
-                let mix = if $shift < 0 {
-                    a >> -$shift as uint
-                } else {
-                    a << $shift as uint
-                };
+                let mix = a << $shift as uint;
 
                 let x = self.mem[base  + mr_offset];
                 a = (a ^ mix) + self.mem[base + m2_offset];
                 let y = ind!(x) + a + b;
                 self.mem[base + mr_offset] = y;
 
-                b = ind!(y >> RAND_SIZE_LEN) + x;
+                b = ind!(y >> RAND_SIZE_LEN as uint) + x;
+                self.rsl[base + mr_offset] = b;
+            }}
+        );
+        macro_rules! rngstepn(
+            ($j:expr, $shift:expr) => {{
+                let base = $j;
+                let mix = a >> $shift as uint;
+
+                let x = self.mem[base  + mr_offset];
+                a = (a ^ mix) + self.mem[base + m2_offset];
+                let y = ind!(x) + a + b;
+                self.mem[base + mr_offset] = y;
+
+                b = ind!(y >> RAND_SIZE_LEN as uint) + x;
                 self.rsl[base + mr_offset] = b;
             }}
         );
@@ -148,10 +162,10 @@ impl IsaacRng {
         let r = [(0, MIDPOINT), (MIDPOINT, 0)];
         for &(mr_offset, m2_offset) in r.iter() {
             for i in range_step(0u, MIDPOINT, 4) {
-                rngstep!(i + 0, 13);
-                rngstep!(i + 1, -6);
-                rngstep!(i + 2, 2);
-                rngstep!(i + 3, -16);
+                rngstepp!(i + 0, 13);
+                rngstepn!(i + 1, 6);
+                rngstepp!(i + 2, 2);
+                rngstepn!(i + 3, 16);
             }
         }
 
@@ -286,7 +300,10 @@ impl Isaac64Rng {
             }}
         );
 
-        for _ in range(0, 4) { mix!(); }
+        for _ in range(0u, 4) {
+            mix!();
+        }
+
         if use_rsl {
             macro_rules! memloop (
                 ($arr:expr) => {{
@@ -332,14 +349,27 @@ impl Isaac64Rng {
                 *self.mem.unsafe_ref(($x as uint >> 3) & (RAND_SIZE_64 - 1))
             }
         );
-        macro_rules! rngstep(
+        macro_rules! rngstepp(
             ($j:expr, $shift:expr) => {{
                 let base = base + $j;
-                let mix = a ^ (if $shift < 0 {
-                    a >> -$shift as uint
-                } else {
-                    a << $shift as uint
-                });
+                let mix = a ^ (a << $shift as uint);
+                let mix = if $j == 0 {!mix} else {mix};
+
+                unsafe {
+                    let x = *self.mem.unsafe_ref(base + mr_offset);
+                    a = mix + *self.mem.unsafe_ref(base + m2_offset);
+                    let y = ind!(x) + a + b;
+                    self.mem.unsafe_set(base + mr_offset, y);
+
+                    b = ind!(y >> RAND_SIZE_64_LEN) + x;
+                    self.rsl.unsafe_set(base + mr_offset, b);
+                }
+            }}
+        );
+        macro_rules! rngstepn(
+            ($j:expr, $shift:expr) => {{
+                let base = base + $j;
+                let mix = a ^ (a >> $shift as uint);
                 let mix = if $j == 0 {!mix} else {mix};
 
                 unsafe {
@@ -356,10 +386,10 @@ impl Isaac64Rng {
 
         for &(mr_offset, m2_offset) in MP_VEC.iter() {
             for base in range(0, MIDPOINT / 4).map(|i| i * 4) {
-                rngstep!(0, 21);
-                rngstep!(1, -5);
-                rngstep!(2, 12);
-                rngstep!(3, -33);
+                rngstepp!(0, 21);
+                rngstepn!(1, 5);
+                rngstepp!(2, 12);
+                rngstepn!(3, 33);
             }
         }
 
@@ -515,7 +545,7 @@ mod test {
         let seed = &[12345, 67890, 54321, 9876];
         let mut rb: IsaacRng = SeedableRng::from_seed(seed);
         // skip forward to the 10000th number
-        for _ in range(0, 10000) { rb.next_u32(); }
+        for _ in range(0u, 10000) { rb.next_u32(); }
 
         let v = Vec::from_fn(10, |_| rb.next_u32());
         assert_eq!(v,
@@ -537,7 +567,7 @@ mod test {
         let seed = &[12345, 67890, 54321, 9876];
         let mut rb: Isaac64Rng = SeedableRng::from_seed(seed);
         // skip forward to the 10000th number
-        for _ in range(0, 10000) { rb.next_u64(); }
+        for _ in range(0u, 10000) { rb.next_u64(); }
 
         let v = Vec::from_fn(10, |_| rb.next_u64());
         assert_eq!(v,

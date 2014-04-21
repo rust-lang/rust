@@ -277,7 +277,7 @@ mod test_map {
     #[test]
     fn test_find_mut() {
         let mut m = SmallIntMap::new();
-        assert!(m.insert(1, 12));
+        assert!(m.insert(1, 12i));
         assert!(m.insert(2, 8));
         assert!(m.insert(5, 14));
         let new = 100;
@@ -292,7 +292,7 @@ mod test_map {
         let mut map = SmallIntMap::new();
         assert_eq!(map.len(), 0);
         assert!(map.is_empty());
-        assert!(map.insert(5, 20));
+        assert!(map.insert(5, 20i));
         assert_eq!(map.len(), 1);
         assert!(!map.is_empty());
         assert!(map.insert(11, 12));
@@ -306,7 +306,7 @@ mod test_map {
     #[test]
     fn test_clear() {
         let mut map = SmallIntMap::new();
-        assert!(map.insert(5, 20));
+        assert!(map.insert(5, 20i));
         assert!(map.insert(11, 12));
         assert!(map.insert(14, 22));
         map.clear();
@@ -349,15 +349,15 @@ mod test_map {
     #[test]
     fn test_swap() {
         let mut m = SmallIntMap::new();
-        assert_eq!(m.swap(1, 2), None);
-        assert_eq!(m.swap(1, 3), Some(2));
-        assert_eq!(m.swap(1, 4), Some(3));
+        assert_eq!(m.swap(1, 2i), None);
+        assert_eq!(m.swap(1, 3i), Some(2));
+        assert_eq!(m.swap(1, 4i), Some(3));
     }
 
     #[test]
     fn test_pop() {
         let mut m = SmallIntMap::new();
-        m.insert(1, 2);
+        m.insert(1, 2i);
         assert_eq!(m.pop(&1), Some(2));
         assert_eq!(m.pop(&1), None);
     }
@@ -366,7 +366,7 @@ mod test_map {
     fn test_iterator() {
         let mut m = SmallIntMap::new();
 
-        assert!(m.insert(0, 1));
+        assert!(m.insert(0, 1i));
         assert!(m.insert(1, 2));
         assert!(m.insert(3, 5));
         assert!(m.insert(6, 10));
@@ -391,7 +391,7 @@ mod test_map {
     fn test_iterator_size_hints() {
         let mut m = SmallIntMap::new();
 
-        assert!(m.insert(0, 1));
+        assert!(m.insert(0, 1i));
         assert!(m.insert(1, 2));
         assert!(m.insert(3, 5));
         assert!(m.insert(6, 10));
@@ -407,7 +407,7 @@ mod test_map {
     fn test_mut_iterator() {
         let mut m = SmallIntMap::new();
 
-        assert!(m.insert(0, 1));
+        assert!(m.insert(0, 1i));
         assert!(m.insert(1, 2));
         assert!(m.insert(3, 5));
         assert!(m.insert(6, 10));
@@ -430,7 +430,7 @@ mod test_map {
     fn test_rev_iterator() {
         let mut m = SmallIntMap::new();
 
-        assert!(m.insert(0, 1));
+        assert!(m.insert(0, 1i));
         assert!(m.insert(1, 2));
         assert!(m.insert(3, 5));
         assert!(m.insert(6, 10));
@@ -449,7 +449,7 @@ mod test_map {
     fn test_mut_rev_iterator() {
         let mut m = SmallIntMap::new();
 
-        assert!(m.insert(0, 1));
+        assert!(m.insert(0, 1i));
         assert!(m.insert(1, 2));
         assert!(m.insert(3, 5));
         assert!(m.insert(6, 10));
@@ -471,16 +471,16 @@ mod test_map {
     #[test]
     fn test_move_iter() {
         let mut m = SmallIntMap::new();
-        m.insert(1, box 2);
+        m.insert(1, box 2i);
         let mut called = false;
         for (k, v) in m.move_iter() {
             assert!(!called);
             called = true;
             assert_eq!(k, 1);
-            assert_eq!(v, box 2);
+            assert_eq!(v, box 2i);
         }
         assert!(called);
-        m.insert(2, box 1);
+        m.insert(2, box 1i);
     }
 
     #[test]
@@ -488,8 +488,8 @@ mod test_map {
         let mut map = SmallIntMap::new();
         let empty = SmallIntMap::<int>::new();
 
-        map.insert(1, 2);
-        map.insert(3, 4);
+        map.insert(1, 2i);
+        map.insert(3, 4i);
 
         let map_str = map.to_str();
         let map_str = map_str.as_slice();

@@ -315,7 +315,7 @@ duration a 'lifetime'. Let's try a more complex example:
 
 ~~~rust
 fn main() {
-    let mut x = box 5;
+    let mut x = box 5i;
     if *x < 10 {
         let y = &x;
         println!("Oh no: {}", y);
@@ -332,7 +332,7 @@ mutated, and therefore, lets us pass. This wouldn't work:
 
 ~~~rust{.ignore}
 fn main() {
-    let mut x = box 5;
+    let mut x = box 5i;
     if *x < 10 {
         let y = &x;
         *x -= 1;

@@ -14,8 +14,8 @@ fn foo(cond: bool) {
     let mut x;
 
     if cond {
-        x = &3; //~ ERROR borrowed value does not live long enough
-        assert_eq!(*x, 3);
+        x = &3i; //~ ERROR borrowed value does not live long enough
+        assert_eq!(*x, 3i);
     }
 }
 

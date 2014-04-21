@@ -12,7 +12,7 @@
 
 
 pub fn main() {
-    match vec!(1, 2, 3) {
+    match vec!(1i, 2i, 3i) {
         x => {
             assert_eq!(x.len(), 3);
             assert_eq!(*x.get(0), 1);

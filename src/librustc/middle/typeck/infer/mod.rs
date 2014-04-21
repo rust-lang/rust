@@ -238,6 +238,7 @@ pub enum RegionVariableOrigin {
 
 pub enum fixup_err {
     unresolved_int_ty(IntVid),
+    unresolved_float_ty(FloatVid),
     unresolved_ty(TyVid),
     cyclic_ty(TyVid),
     unresolved_region(RegionVid),
@@ -247,6 +248,9 @@ pub enum fixup_err {
 pub fn fixup_err_to_str(f: fixup_err) -> String {
     match f {
       unresolved_int_ty(_) => "unconstrained integral type".to_string(),
+      unresolved_float_ty(_) => {
+          "unconstrained floating point type".to_string()
+      }
       unresolved_ty(_) => "unconstrained type".to_string(),
       cyclic_ty(_) => "cyclic type of infinite size".to_string(),
       unresolved_region(_) => "unconstrained region".to_string(),
@@ -407,18 +411,17 @@ pub fn mk_coercety(cx: &InferCtxt,
 
 // See comment on the type `resolve_state` below
 pub fn resolve_type(cx: &InferCtxt,
+                    span: Option<Span>,
                     a: ty::t,
                     modes: uint)
-                 -> fres<ty::t>
-{
-    let mut resolver = resolver(cx, modes);
+                    -> fres<ty::t> {
+    let mut resolver = resolver(cx, modes, span);
     cx.commit_unconditionally(|| resolver.resolve_type_chk(a))
 }
 
 pub fn resolve_region(cx: &InferCtxt, r: ty::Region, modes: uint)
-                   -> fres<ty::Region>
-{
-    let mut resolver = resolver(cx, modes);
+                      -> fres<ty::Region> {
+    let mut resolver = resolver(cx, modes, None);
     resolver.resolve_region_chk(r)
 }
 
@@ -671,9 +674,11 @@ impl<'a> InferCtxt<'a> {
     }
 
     pub fn resolve_type_vars_if_possible(&self, typ: ty::t) -> ty::t {
-        match resolve_type(self, typ, resolve_nested_tvar | resolve_ivar) {
-            Ok(new_type) => new_type,
-            Err(_) => typ
+        match resolve_type(self,
+                           None,
+                           typ, resolve_nested_tvar | resolve_ivar) {
+          Ok(new_type) => new_type,
+          Err(_) => typ
         }
     }
 

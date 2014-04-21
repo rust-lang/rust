@@ -184,7 +184,7 @@ mod test {
         let mut rs = ReseedingRng::new(Counter {i:0}, 400, ReseedWithDefault);
 
         let mut i = 0;
-        for _ in range(0, 1000) {
+        for _ in range(0u, 1000) {
             assert_eq!(rs.next_u32(), i % 100);
             i += 1;
         }

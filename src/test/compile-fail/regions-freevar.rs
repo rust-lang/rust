@@ -11,7 +11,7 @@
 fn wants_static_fn(_x: ||: 'static) {}
 
 fn main() {
-    let i = 3;
+    let i = 3i;
     wants_static_fn(|| { //~ ERROR cannot infer
         println!("i={}", i);
     })
