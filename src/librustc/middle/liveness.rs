@@ -103,10 +103,10 @@
  */
 
 
+use middle::freevars;
 use middle::lint::{UnusedVariable, DeadAssignment};
 use middle::pat_util;
 use middle::ty;
-use middle::moves;
 use util::nodemap::NodeMap;
 
 use std::cast::transmute;
@@ -170,9 +170,8 @@ impl<'a> Visitor<()> for IrMaps<'a> {
 }
 
 pub fn check_crate(tcx: &ty::ctxt,
-                   capture_map: &moves::CaptureMap,
                    krate: &Crate) {
-    visit::walk_crate(&mut IrMaps(tcx, capture_map), krate, ());
+    visit::walk_crate(&mut IrMaps(tcx), krate, ());
     tcx.sess.abort_if_errors();
 }
 
@@ -245,7 +244,6 @@ enum VarKind {
 
 struct IrMaps<'a> {
     tcx: &'a ty::ctxt,
-    capture_map: &'a moves::CaptureMap,
 
     num_live_nodes: uint,
     num_vars: uint,
@@ -256,12 +254,10 @@ struct IrMaps<'a> {
     lnks: Vec<LiveNodeKind>,
 }
 
-fn IrMaps<'a>(tcx: &'a ty::ctxt,
-              capture_map: &'a moves::CaptureMap)
+fn IrMaps<'a>(tcx: &'a ty::ctxt)
               -> IrMaps<'a> {
     IrMaps {
         tcx: tcx,
-        capture_map: capture_map,
         num_live_nodes: 0,
         num_vars: 0,
         live_node_map: NodeMap::new(),
@@ -361,7 +357,7 @@ fn visit_fn(ir: &mut IrMaps,
     let _i = ::util::common::indenter();
 
     // swap in a new set of IR maps for this function body:
-    let mut fn_maps = IrMaps(ir.tcx, ir.capture_map);
+    let mut fn_maps = IrMaps(ir.tcx);
 
     unsafe {
         debug!("creating fn_maps: {}", transmute::<&IrMaps, *IrMaps>(&fn_maps));
@@ -446,13 +442,23 @@ fn visit_arm(ir: &mut IrMaps, arm: &Arm) {
     visit::walk_arm(ir, arm, ());
 }
 
+fn moved_variable_node_id_from_def(def: Def) -> Option<NodeId> {
+    match def {
+        DefBinding(nid, _) |
+        DefArg(nid, _) |
+        DefLocal(nid, _) => Some(nid),
+
+      _ => None
+    }
+}
+
 fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
     match expr.node {
       // live nodes required for uses or definitions of variables:
       ExprPath(_) => {
         let def = ir.tcx.def_map.borrow().get_copy(&expr.id);
         debug!("expr {}: path that leads to {:?}", expr.id, def);
-        if moves::moved_variable_node_id_from_def(def).is_some() {
+        if moved_variable_node_id_from_def(def).is_some() {
             ir.add_live_node_for_node(expr.id, ExprNode(expr.span));
         }
         visit::walk_expr(ir, expr, ());
@@ -467,24 +473,33 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
         // in better error messages than just pointing at the closure
         // construction site.
         let mut call_caps = Vec::new();
-        for cv in ir.capture_map.get(&expr.id).iter() {
-            match moves::moved_variable_node_id_from_def(cv.def) {
-              Some(rv) => {
-                let cv_ln = ir.add_live_node(FreeVarNode(cv.span));
-                let is_move = match cv.mode {
-                    // var must be dead afterwards
-                    moves::CapMove => true,
+        let fv_mode = freevars::get_capture_mode(ir.tcx, expr.id);
+        freevars::with_freevars(ir.tcx, expr.id, |freevars| {
+            for fv in freevars.iter() {
+                match moved_variable_node_id_from_def(fv.def) {
+                    Some(rv) => {
+                        let fv_ln = ir.add_live_node(FreeVarNode(fv.span));
+                        let fv_id = ast_util::def_id_of_def(fv.def).node;
+                        let fv_ty = ty::node_id_to_type(ir.tcx, fv_id);
+                        let is_move = match fv_mode {
+                            // var must be dead afterwards
+                            freevars::CaptureByValue => {
+                                ty::type_moves_by_default(ir.tcx, fv_ty)
+                            }
 
-                    // var can still be used
-                    moves::CapCopy | moves::CapRef => false
-                };
-                call_caps.push(CaptureInfo {ln: cv_ln,
-                                            is_move: is_move,
-                                            var_nid: rv});
-              }
-              None => {}
+                            // var can still be used
+                            freevars::CaptureByRef => {
+                                false
+                            }
+                        };
+                        call_caps.push(CaptureInfo {ln: fv_ln,
+                                                    is_move: is_move,
+                                                    var_nid: rv});
+                    }
+                    None => {}
+                }
             }
-        }
+        });
         ir.set_captures(expr.id, call_caps);
 
         visit::walk_expr(ir, expr, ());
@@ -1270,7 +1285,7 @@ impl<'a> Liveness<'a> {
     fn access_path(&mut self, expr: &Expr, succ: LiveNode, acc: uint)
                    -> LiveNode {
         let def = self.ir.tcx.def_map.borrow().get_copy(&expr.id);
-        match moves::moved_variable_node_id_from_def(def) {
+        match moved_variable_node_id_from_def(def) {
           Some(nid) => {
             let ln = self.live_node(expr.id, expr.span);
             if acc != 0u {
@@ -1497,7 +1512,7 @@ impl<'a> Liveness<'a> {
                 self.warn_about_dead_assign(expr.span, expr.id, ln, var);
               }
               def => {
-                match moves::moved_variable_node_id_from_def(def) {
+                match moved_variable_node_id_from_def(def) {
                   Some(nid) => {
                     let ln = self.live_node(expr.id, expr.span);
                     let var = self.variable(nid, expr.span);
