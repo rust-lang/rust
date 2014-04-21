@@ -468,9 +468,11 @@ impl<'a> LookupContext<'a> {
         ty::populate_implementations_for_trait_if_necessary(self.tcx(), trait_did);
 
         // Look for explicit implementations.
+        let impl_methods = self.tcx().impl_methods.borrow();
         for impl_infos in self.tcx().trait_impls.borrow().find(&trait_did).iter() {
-            for impl_info in impl_infos.borrow().iter() {
-                self.push_candidates_from_impl(*impl_info, true);
+            for impl_did in impl_infos.borrow().iter() {
+                let methods = impl_methods.get(impl_did);
+                self.push_candidates_from_impl(*impl_did, methods.as_slice(), true);
             }
         }
     }
@@ -643,39 +645,34 @@ impl<'a> LookupContext<'a> {
         // metadata if necessary.
         ty::populate_implementations_for_type_if_necessary(self.tcx(), did);
 
+        let impl_methods = self.tcx().impl_methods.borrow();
         for impl_infos in self.tcx().inherent_impls.borrow().find(&did).iter() {
-            for impl_info in impl_infos.borrow().iter() {
-                self.push_candidates_from_impl(*impl_info, false);
+            for impl_did in impl_infos.borrow().iter() {
+                let methods = impl_methods.get(impl_did);
+                self.push_candidates_from_impl(*impl_did, methods.as_slice(), false);
             }
         }
     }
 
     fn push_candidates_from_impl(&mut self,
-                                 impl_info: &ty::Impl,
+                                 impl_did: DefId,
+                                 impl_methods: &[DefId],
                                  is_extension: bool) {
-        if !self.impl_dups.insert(impl_info.did) {
+        if !self.impl_dups.insert(impl_did) {
             return; // already visited
         }
 
-        debug!("push_candidates_from_impl: {} {} {}",
+        debug!("push_candidates_from_impl: {} {}",
                token::get_name(self.m_name),
-               impl_info.ident.repr(self.tcx()),
-               impl_info.methods.iter()
-                                .map(|m| m.ident)
-                                .collect::<Vec<ast::Ident>>()
-                                .repr(self.tcx()));
+               impl_methods.iter().map(|&did| ty::method(self.tcx(), did).ident)
+                                 .collect::<Vec<ast::Ident>>()
+                                 .repr(self.tcx()));
 
-        let idx = {
-            match impl_info.methods
-                           .iter()
-                           .position(|m| m.ident.name == self.m_name) {
-                Some(idx) => idx,
-                None => { return; } // No method with the right name.
-            }
+        let method = match impl_methods.iter().map(|&did| ty::method(self.tcx(), did))
+                                              .find(|m| m.ident.name == self.m_name) {
+            Some(method) => method,
+            None => { return; } // No method with the right name.
         };
-
-        let method = ty::method(self.tcx(),
-                                impl_info.methods.get(idx).def_id);
 
         // determine the `self` of the impl with fresh
         // variables for each parameter:
@@ -684,7 +681,7 @@ impl<'a> LookupContext<'a> {
         let ty::ty_param_substs_and_ty {
             substs: impl_substs,
             ty: impl_ty
-        } = impl_self_ty(&vcx, span, impl_info.did);
+        } = impl_self_ty(&vcx, span, impl_did);
 
         let candidates = if is_extension {
             &mut self.extension_candidates

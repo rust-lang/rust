@@ -116,12 +116,6 @@ impl Method {
     }
 }
 
-pub struct Impl {
-    pub did: DefId,
-    pub ident: Ident,
-    pub methods: Vec<@Method>,
-}
-
 #[deriving(Clone, Eq, TotalEq, Hash)]
 pub struct mt {
     pub ty: t,
@@ -320,18 +314,18 @@ pub struct ctxt {
     pub destructors: RefCell<DefIdSet>,
 
     // Maps a trait onto a list of impls of that trait.
-    pub trait_impls: RefCell<DefIdMap<@RefCell<Vec<@Impl>>>>,
+    pub trait_impls: RefCell<DefIdMap<@RefCell<Vec<ast::DefId>>>>,
 
-    // Maps a def_id of a type to a list of its inherent impls.
+    // Maps a DefId of a type to a list of its inherent impls.
     // Contains implementations of methods that are inherent to a type.
     // Methods in these implementations don't need to be exported.
-    pub inherent_impls: RefCell<DefIdMap<@RefCell<Vec<@Impl>>>>,
+    pub inherent_impls: RefCell<DefIdMap<@RefCell<Vec<ast::DefId>>>>,
 
-    // Maps a def_id of an impl to an Impl structure.
+    // Maps a DefId of an impl to a list of its methods.
     // Note that this contains all of the impls that we know about,
     // including ones in other crates. It's not clear that this is the best
     // way to do it.
-    pub impls: RefCell<DefIdMap<@Impl>>,
+    pub impl_methods: RefCell<DefIdMap<Vec<ast::DefId>>>,
 
     // Set of used unsafe nodes (functions or blocks). Unsafe nodes not
     // present in this set can be warned about.
@@ -1126,7 +1120,7 @@ pub fn mk_ctxt(s: Session,
         destructors: RefCell::new(DefIdSet::new()),
         trait_impls: RefCell::new(DefIdMap::new()),
         inherent_impls: RefCell::new(DefIdMap::new()),
-        impls: RefCell::new(DefIdMap::new()),
+        impl_methods: RefCell::new(DefIdMap::new()),
         used_unsafe: RefCell::new(NodeSet::new()),
         used_mut_nodes: RefCell::new(NodeSet::new()),
         impl_vtables: RefCell::new(DefIdMap::new()),
@@ -4384,15 +4378,15 @@ pub fn item_variances(tcx: &ctxt, item_id: ast::DefId) -> @ItemVariances {
 /// Records a trait-to-implementation mapping.
 pub fn record_trait_implementation(tcx: &ctxt,
                                    trait_def_id: DefId,
-                                   implementation: @Impl) {
+                                   impl_def_id: DefId) {
     match tcx.trait_impls.borrow().find(&trait_def_id) {
         Some(impls_for_trait) => {
-            impls_for_trait.borrow_mut().push(implementation);
+            impls_for_trait.borrow_mut().push(impl_def_id);
             return;
         }
         None => {}
     }
-    tcx.trait_impls.borrow_mut().insert(trait_def_id, @RefCell::new(vec!(implementation)));
+    tcx.trait_impls.borrow_mut().insert(trait_def_id, @RefCell::new(vec!(impl_def_id)));
 }
 
 /// Populates the type context with all the implementations for the given type
@@ -4407,40 +4401,36 @@ pub fn populate_implementations_for_type_if_necessary(tcx: &ctxt,
     }
 
     csearch::each_implementation_for_type(&tcx.sess.cstore, type_id,
-            |implementation_def_id| {
-        let implementation = @csearch::get_impl(tcx, implementation_def_id);
+            |impl_def_id| {
+        let methods = csearch::get_impl_methods(&tcx.sess.cstore, impl_def_id);
 
         // Record the trait->implementation mappings, if applicable.
-        let associated_traits = csearch::get_impl_trait(tcx,
-                                                        implementation.did);
+        let associated_traits = csearch::get_impl_trait(tcx, impl_def_id);
         for trait_ref in associated_traits.iter() {
-            record_trait_implementation(tcx,
-                                        trait_ref.def_id,
-                                        implementation);
+            record_trait_implementation(tcx, trait_ref.def_id, impl_def_id);
         }
 
         // For any methods that use a default implementation, add them to
         // the map. This is a bit unfortunate.
-        for method in implementation.methods.iter() {
-            for source in method.provided_source.iter() {
-                tcx.provided_method_sources.borrow_mut()
-                   .insert(method.def_id, *source);
+        for &method_def_id in methods.iter() {
+            for &source in ty::method(tcx, method_def_id).provided_source.iter() {
+                tcx.provided_method_sources.borrow_mut().insert(method_def_id, source);
             }
         }
 
         // Store the implementation info.
-        tcx.impls.borrow_mut().insert(implementation_def_id, implementation);
+        tcx.impl_methods.borrow_mut().insert(impl_def_id, methods);
 
         // If this is an inherent implementation, record it.
         if associated_traits.is_none() {
             match tcx.inherent_impls.borrow().find(&type_id) {
                 Some(implementation_list) => {
-                    implementation_list.borrow_mut().push(implementation);
+                    implementation_list.borrow_mut().push(impl_def_id);
                     return;
                 }
                 None => {}
             }
-            tcx.inherent_impls.borrow_mut().insert(type_id, @RefCell::new(vec!(implementation)));
+            tcx.inherent_impls.borrow_mut().insert(type_id, @RefCell::new(vec!(impl_def_id)));
         }
     });
 
@@ -4461,22 +4451,21 @@ pub fn populate_implementations_for_trait_if_necessary(
 
     csearch::each_implementation_for_trait(&tcx.sess.cstore, trait_id,
             |implementation_def_id| {
-        let implementation = @csearch::get_impl(tcx, implementation_def_id);
+        let methods = csearch::get_impl_methods(&tcx.sess.cstore, implementation_def_id);
 
         // Record the trait->implementation mapping.
-        record_trait_implementation(tcx, trait_id, implementation);
+        record_trait_implementation(tcx, trait_id, implementation_def_id);
 
         // For any methods that use a default implementation, add them to
         // the map. This is a bit unfortunate.
-        for method in implementation.methods.iter() {
-            for source in method.provided_source.iter() {
-                tcx.provided_method_sources.borrow_mut()
-                   .insert(method.def_id, *source);
+        for &method_def_id in methods.iter() {
+            for &source in ty::method(tcx, method_def_id).provided_source.iter() {
+                tcx.provided_method_sources.borrow_mut().insert(method_def_id, source);
             }
         }
 
         // Store the implementation info.
-        tcx.impls.borrow_mut().insert(implementation_def_id, implementation);
+        tcx.impl_methods.borrow_mut().insert(implementation_def_id, methods);
     });
 
     tcx.populated_external_traits.borrow_mut().insert(trait_id);

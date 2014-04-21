@@ -114,10 +114,10 @@ pub fn get_enum_variants(tcx: &ty::ctxt, def: ast::DefId)
 }
 
 /// Returns information about the given implementation.
-pub fn get_impl(tcx: &ty::ctxt, impl_def_id: ast::DefId)
-                -> ty::Impl {
-    let cdata = tcx.sess.cstore.get_crate_data(impl_def_id.krate);
-    decoder::get_impl(tcx.sess.cstore.intr.clone(), &*cdata, impl_def_id.node, tcx)
+pub fn get_impl_methods(cstore: &cstore::CStore, impl_def_id: ast::DefId)
+                        -> Vec<ast::DefId> {
+    let cdata = cstore.get_crate_data(impl_def_id.krate);
+    decoder::get_impl_methods(&*cdata, impl_def_id.node)
 }
 
 pub fn get_method(tcx: &ty::ctxt, def: ast::DefId) -> ty::Method {

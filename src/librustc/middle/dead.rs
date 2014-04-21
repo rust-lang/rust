@@ -336,13 +336,13 @@ impl<'a> DeadVisitor<'a> {
         // This is done to handle the case where, for example, the static
         // method of a private type is used, but the type itself is never
         // called directly.
-        let def_id = local_def(id);
-        match self.tcx.inherent_impls.borrow().find(&def_id) {
+        let impl_methods = self.tcx.impl_methods.borrow();
+        match self.tcx.inherent_impls.borrow().find(&local_def(id)) {
             None => (),
             Some(impl_list) => {
-                for impl_ in impl_list.borrow().iter() {
-                    for method in impl_.methods.iter() {
-                        if self.live_symbols.contains(&method.def_id.node) {
+                for impl_did in impl_list.borrow().iter() {
+                    for method_did in impl_methods.get(impl_did).iter() {
+                        if self.live_symbols.contains(&method_did.node) {
                             return true;
                         }
                     }
