@@ -17,6 +17,8 @@ pub struct TestProps {
     pub error_patterns: Vec<~str> ,
     // Extra flags to pass to the compiler
     pub compile_flags: Option<~str>,
+    // Extra flags to pass when the compiled code is run (such as --bench)
+    pub run_flags: Option<~str>,
     // If present, the name of a file that this test should match when
     // pretty-printed
     pub pp_exact: Option<Path>,
@@ -42,6 +44,7 @@ pub fn load_props(testfile: &Path) -> TestProps {
     let mut aux_builds = Vec::new();
     let mut exec_env = Vec::new();
     let mut compile_flags = None;
+    let mut run_flags = None;
     let mut pp_exact = None;
     let mut debugger_cmds = Vec::new();
     let mut check_lines = Vec::new();
@@ -56,6 +59,10 @@ pub fn load_props(testfile: &Path) -> TestProps {
 
         if compile_flags.is_none() {
             compile_flags = parse_compile_flags(ln);
+        }
+
+        if run_flags.is_none() {
+            run_flags = parse_run_flags(ln);
         }
 
         if pp_exact.is_none() {
@@ -96,9 +103,11 @@ pub fn load_props(testfile: &Path) -> TestProps {
 
         true
     });
-    return TestProps {
+
+    TestProps {
         error_patterns: error_patterns,
         compile_flags: compile_flags,
+        run_flags: run_flags,
         pp_exact: pp_exact,
         aux_builds: aux_builds,
         exec_env: exec_env,
@@ -107,7 +116,7 @@ pub fn load_props(testfile: &Path) -> TestProps {
         force_host: force_host,
         check_stdout: check_stdout,
         no_prefer_dynamic: no_prefer_dynamic,
-    };
+    }
 }
 
 pub fn is_test_ignored(config: &config, testfile: &Path) -> bool {
@@ -158,6 +167,10 @@ fn parse_aux_build(line: &str) -> Option<~str> {
 
 fn parse_compile_flags(line: &str) -> Option<~str> {
     parse_name_value_directive(line, "compile-flags".to_owned())
+}
+
+fn parse_run_flags(line: &str) -> Option<~str> {
+    parse_name_value_directive(line, ~"run-flags")
 }
 
 fn parse_debugger_cmd(line: &str) -> Option<~str> {
