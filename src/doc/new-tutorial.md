@@ -1,83 +1,36 @@
-% The (New) Rust Language Tutorial
+% The Philosophy of Rust (provisional title)
 
-An introductory tutorial to the Rust programming language. The tutorial focuses on Rust's strengths and unique design, and is intentionally brief.
+An introduction to the Rust programming language that focuses on Rust's design choices and strengths.
 
 You should already be already familiar with programming concepts, in particular pointers, and a programming language from the C-family. The [syntax guide][syntax] is a reference to the nuts and bolts of the language, essentials such as [variables][guide-var], [functions][guide-fn], [structs][guide-struct] etc.
-
-<!-- FIXME link link to pointers? -->
 
 [syntax]: guide-syntax.html
 [guide-var]: guide-syntax.html#variables
 [guide-fn]: guide-syntax.html#functions
 [guide-struct]: guide-syntax.html#struct
 
+# Stack, Heap and inline structures
 
-# Output and Input
-
-Output to the console using `print`. Use the `println` convenience function instead of `print` to add a newline to the end of the output. Note the `use std::io::print` syntax to include the `print` function from the standard `io` library. You can find more information on [use::][guide-use] in the [syntax guide][syntax].
-
-[guide-use]: guide-syntax.html#use
+To show how Rust semantics take maximum advantage of modern machine architecture to optimize runtime, we use a structure that represents a two dimensional point: 
 
 ~~~~
-fn main() {
-    use std::io::print;
-
-    print("hello?");
+struct Point {
+    x: int,
+    y: int
 }
 ~~~~
 
-To add variables and formatting to the printed output, use `print!` or `println!`.  Variables are introduced with the `let` keyword, and unlike in most other languages are not changeable (or in Rust terms, mutable) by default. To make a  variable mutable, use `let mut`. More information on [variables][guide-var].
+Create a point using a *struct literal* expression which assigns the point into the local variable `p`, in this case specifying `x=1` and `y=2`.
 
-The variables are inserted into the output at the `{}` placeholders.
-
-<!-- FIXME second println to show decimal places formatting?
-    println!("hello? the number is {:f} and the letter is {}.", n, l);
--->
-
-~~~~
-fn main() {
-    let n = 3.5;
-    let l = 'b';
-
-    println!("hello? the number is {} and the letter is {}.", n as int, l);
-
-}
-~~~~
-
-For more information on formatting strings, read [`std::fmt`][fmt].
-
-[fmt]: http://static.rust-lang.org/doc/0.9/std/fmt/index.html
-
-Getting user input is slightly more involved, the following code takes each line of input, and prints it back after the string "You wrote:". Note the bracketed `use` on line one to include two different functions on the same line.
-
-~~~~
-use std::io::{stdin, BufferedReader};
-fn main() {
-  let mut stdin = BufferedReader::new(stdin());
-  for line in stdin.lines() {
-      println!("You wrote: {}", line);
-  }
-}
-~~~~
-
-# Stack and Heap, `struct`
-
-So far we've looked at simple variables and strings. To represent compound data use structures, which are groupings of data types, and are introduced by the `struct` keyword. For example, a structure that represents a point on a two dimensional grid is composed of two integers, `x` and `y`. You can access the types within the `struct` using dot notation.
-
-Create a point using a *struct literal* expression `let p = Point { x: 1, y: 2 };`, which assigns the point into the local variable `p`. The data for the point is stored directly on the stack, there is no heap allocation or pointer indirection, which improves performance.
-
-<!-- FIXME: struct literal? -->
-
-~~~~
+````
 struct Point { x: int, y: int }
 fn main() {
     let  p = Point { x: 1, y: 2};
-    println!("{}", p.x); // prints 1
 
 }
-~~~~
+````
 
-If you look at the stack frame for the function `main()`, it looks like this:
+The data for the point is stored directly on the stack, there is no heap allocation or pointer indirection, which improves performance. The stack frame for the function `main()` looks like this:
 
 ~~~~{.notrust}
 +------+
@@ -87,11 +40,11 @@ If you look at the stack frame for the function `main()`, it looks like this:
 +------+ --+
 ~~~~
 
-<!--
-Those of you who are familiar with C and C++ will find this behavior familiar. In contrast, languages like Java or Ruby always store structures in the heap. This means that the stack frame would look something like this:
+Those of you who are familiar with C and C++ will find this behavior familiar. In contrast, languages like Java or Ruby always store structures in the heap, so the stack frame looks like this:
+
+<!-- (TODO: fix this image) -->
 
 ```{.notrust}
-(TODO: Make me not look like vomit)
 -----------------     -----------------------------
 | struct p            | 1
 |   x: ---------------|
@@ -101,18 +54,22 @@ Those of you who are familiar with C and C++ will find this behavior familiar. I
                                  -----------------------------
 ```
 
--->
+Storing aggregate data inline is critical for improving performance, because malloc/free, pointer chasing and cache invalidation require a complex runtime with garbage collector.  
 
-Storing aggregate data inline is critical for improving performance, because cache, malloc/free, pointer chasing and cache invalidation require a complex runtime with garbage collector.  If we define a type `Line` that consists of two `Point`s:
+Rust does not introduce pointers unless you specifically request them. If we define a type `Line` that consists of two `Point`s:
 
-~~~~{.notrust}
+~~~~
+struct Point {
+    x: int,
+    y: int
+}
 struct Line {
     p1: Point,
     p2: Point
 }
 ~~~~
 
-The two `Point`s are similarly laid out inline inside the `Line` struct, which avoids the memory overhead of multiple headers and pointers to objects in different locations.
+The two `Point`s are laid out inline inside the `Line` struct, which avoids the memory overhead of multiple headers and pointers to objects in different locations.
 
 <!-- FIXME: not really sure how this should look -->
 
@@ -131,104 +88,169 @@ The two `Point`s are similarly laid out inline inside the `Line` struct, which a
 +------------------+
 ~~~~
 
-## Stack vs. Heap
+<!-- FIXME: here we continue talking about copying values as they are passed up and down the stack before introducing Rust's more common pattern - *moving* in the next section-->
 
-<!-- FIXME: this is not correct right? BOX vs stack vs heap? -->
+Function parameters are laid out inline in the same way. A function that takes two points as arguments:
 
-Rust does not introduce pointers to the heap unless you specify that you require them, using the `~` symbol. To access the contents of the pointer, use the `*` symbol to dereference it. Heap memory is freed when the variable goes out of scope.
+~~~~{.notrust}
+fn draw_line(from: Point, to: Point) { // Draw the line }
+~~~~
+
+reserves space on the stack for the two point arguments. 
+
+## Heap Allocation
+
+The stack is very efficient but it is also limited in size, so can't be used to store arbitrary amounts of data. To do that you need to allocate memory on the heap.
+
+In Rust, the `~` operator allocates memory, so `~expr` allocates space on the heap, evaluates `expr` and stores the result on the heap. For example, `p=~Point { x: 1, y: 2 }`. `p` is not of type `Point` but of type `~Point`,  the `~` indicates that it is a pointer to a heap allocation.
+
+One very common use for heap allocation is to store [arrays][arrays]. For example, a function to draw an a polygon of an arbitrary list of points:
+
+[arrays]:  FIXME
 
 ~~~~
-fn main() {
-    let mut x = 3; // allocated on the stack
-    x = x + 1;
-
-    let mut y = ~5; // allocated on the heap
-    // y = y + 1; // Does not work
-    *y = *y + 1;
-
+fn draw_polygon(points: ~[Point]) {
+    let mut i = 0;
+    while i < points.len() - 1 {
+        draw_line(points[i], points[i+1]);
+        i += 1;
+    }
+    draw_line(points[i], points[0]);
 }
 ~~~~
 
+The type `~[...]` in Rust indicates a heap-allocated array, in this case that means a variable number of points. You can create a `~[...]` array using a `~[...]` expression. Calling `draw_polygon` might look like:
+
+~~~~
+# struct Point { x: int, y: int }
+
+fn main() { 
+    let p1 = Point { x: 0, y: 0 }; 
+    let p2 = Point { x: 0, y: 100 }; 
+    let p3 = Point { x: 100, y: 100 }; 
+    let points = ~[p1, p2, p3]; 
+    draw_polygon(points); 
+} 
+~~~~
 
 <!--
-FIXME:
+
+In Rust, whenever a heap pointer (that is, a variable of type `~T`) goes out of scope, the memory it points at is automatically freed. 
+
+ For example, when the `draw_polygon()` function returns, it automatically frees its argument, `points`. -->
+
+# Ownership and Moving 
+
+<!-- obective: show why ownership is important
+               how moving works -->
+
+<!--Now talk about draw_polygon and moving.-->
+
+In other languages, manually freeing memory carries the risk that if you use a pointer after it has been freed, you are using memory that no longer belongs to you, which might have been reused elsewhere in the system. The results are unpredicable, leading to errors, crashes, and security vulnerabilities.
+
+Rust is designed to guarantee that once a pointer is freed, it can never be used again. Every heap pointer has an *owner*, and only the owner of a pointer may use it. When a pointer is first allocated, the owner is the function that allocated it. But when the pointer is passed as an argument, ownership is transferred to the callee. This means that the caller can no longer access the pointer or the memory it points at.
+
+Revisiting the `draw_polygon` example:
 
 ~~~~
-struct Point { x: int, y: int }
+struct Point {
+    x: int,
+    y: int
+}
+
+fn draw_polygon(points: ~[Point]) { // Draw the line}
 
 fn main() {
-    let mut p = Point { x: 1, y: 2};
-    let q = p;
-    p.x += 1;
-    println!("{}", q.x); // still prints 1
+    // `points` is initially owned by `main()`
+    let points = ~[...];
+    
+    // `points` is given to `draw_polygon()`
+    draw_polygon(points);
+    
+    // Error: `points` has been given away, cannot access
+    draw_line(points[0], points[1]);
 }
 ~~~~
 
+The last line, which attempts to use `points` after it has been *given* to `draw_polygon()` is flagged as an error by the Rust compiler. Because `draw_polygon()` has already freed the array's memory when it returned, this access would be reading from freed memory, which is not allowed.
+ 
+Ownership can also be transferred by returning a value or by storing it an array or the field of a struct. For example, we can modify the `draw_polygon()` function to return the array of points at the end, so that the caller can go on using it 
 
-* copying (not compared to moving
-* to modify p.x, you make p mutable
-  - don't explain inherited mutability in depth
-
--->
-<!--
-
-Tuples are structures of types without names, such a point composed of two unnamed integers `struct Point(int,int)`. See [tuples][guide-tup] for more information.
-
-
-[guide-tup]: guide-syntax.html/tuples
-
--->
-
-
-
-<!-- FIXME: rewrite this
-
+<!-- (Note: you probably wouldn't actually write the code this way; in the next section, we'll introduce "borrowing", which allows you to give temporary access to an array without transferring ownership): -->
 
 ~~~~
-struct Point { x: int, y: int }
+# struct Point {
+#     x: int,
+#     y: int
+# }
+
+fn draw_polygon(points: ~[Point]) -> ~[Point] {
+    ...
+    return points;
+}
 
 fn main() {
-    let mut p = Point { x: 1, y: 2};
-    let q = p; // copies p deeply
-    p.x += 1; // legal because p is mutable
-    println!("{}", q.x); // still prints 1
+    // `points` is initially owned by `main()`
+    let points = ~[...];
+    
+    // `points` is given to `draw_polygon()` then taken back.
+    let points = draw_polygon(points);
+    
+    // This is now ok
+    draw_line(points[0], points[1]);
 }
 ~~~~
 
--->
+<!-- now generalize ownership to other types;
+     when are things movable vs. copyable -->
 
-#  Move Vs Copy
+In Rust, owned pointers are called owned boxes, as they represent pointers to 'boxes' of memory. Ownership is not just about owned boxes. By default, whenever you declare a new type, values of that type are *moved* from place to place when you use them. By *move*, we mean that ownership of the value is transferred to its new location.
 
-<!-- FIXME: talk about this in a SIMPLE manner?
+Ownership is a powerful tool for working with values that require some sort of cleanup or which have some sort of destructor. Examples are owned boxes, which need to be freed, or file handles, which need to be closed. Ownership tells us who will perform this cleanup.
 
-## `enum`
+For simple data types, however, this sort of tracking is inconvenient. The `Point` type that we introduced earlier is simply a pair of integers and requires no cleanup, so we might prefer that it be implicitly copied each time we use it rather than transferring ownership. To indicate that, we annotate the `Point` type with an attribute, `#[deriving(Copy)]`:
+ 
 
-Enumerations are
+```
+#[deriving(Copy)]
+struct Point {
+    x: int,
+    y: int,
+}
+```
 
-### Enums and matching (???)
+This annotation is an example of a Rust *attribute*. Rust attributes generally have the form `#[...]` and can be attached to any declaration. There are detailed guides on [attributes][attributes] in general and the [deriving][deriving] attribute in particular.
 
-Introduce enums and matching here? Or after ownership? After 3.3?
+[attributes]: FIXME
+[deriving]: FIXME
 
--->
-
-# Ownership
+Now that we have indicated that `Point` values should be copied and not moved, we can continue using them even after they have been passed as parameters or stored into data structures:
 
 ~~~~
-struct Point {x: int, y: int}
+# struct Point {
+#    x: int,
+#    y: int
+# }
 fn main() {
-    let mut p = ~Point { x: 1, y: 2 };
-    let q = p;
+    let point1 = Point { x:1, y:2 };
+    let point2 = Point { x:5, y:6 };
 
-    // p.x += 1; // error, huh?
-
+    // Passing copies of some points to a function
+    draw_line(point1, point2);
+    
+    // Inserting copies of the same points into a boxed array.
+    // If `Point` were not declared as `#[deriving(Copy)]`,
+    // the compiler would flag an error
+    let points = ~[point1, point2];
+    draw_polygon(points);
 }
-~~~~~
-
-* freeing
+~~~~
 
 # Borrowing
 
 Ownership is not the right tool when you just want temporary access to data:
+
+<!--
 
 ~~~~
 struct Point {x: int, y: int}
@@ -256,15 +278,19 @@ fn inc_allocated_point(p: &mut ~Point) {
     p.x += 1;
 }
 ~~~~
+-->
 
 ## Immutable borrow
 
+<!--
 ~~~~
 struct Point {x: int, y: int}
 fn get_point(p: &Point) -> int {
     p.x + p.y
 }
 ~~~~
+
+-->
 
 * only talking about using borrowed pointers in parameters
 * make it explicit we're not talking about returning borrowed pointers
