@@ -1883,8 +1883,8 @@ impl Shape {
 
 let s = Circle(Point { x: 1.0, y: 2.0 }, 3.0);
 
-(~s).draw_owned();
 (&s).draw_reference();
+(~s).draw_owned();
 s.draw_value();
 ~~~
 
