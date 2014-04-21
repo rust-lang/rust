@@ -1851,17 +1851,15 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
 
                     // We need the translated value here, because for enums the
                     // LLVM type is not fully determined by the Rust type.
-                    let (v, inlineable, override_reach) = if attr::contains_name(i.attrs.as_slice(),
+                    let (v, inlineable) = if attr::contains_name(i.attrs.as_slice(),
                             "unsafe_override_address") {
                         let (addrconst, _) = consts::const_expr(ccx, expr, is_local);
                         let llptrty = type_of(ccx, ty).ptr_to().to_ref();
                         let ptr = unsafe { llvm::LLVMConstIntToPtr(addrconst, llptrty) };
 
-                        (ptr, true, true)
+                        (ptr, true)
                     } else {
-                        let (v, i) = consts::const_expr(ccx, expr, is_local);
-
-                        (v, i, false)
+                        consts::const_expr(ccx, expr, is_local)
                     };
                     ccx.const_values.borrow_mut().insert(id, v);
                     let mut inlineable = inlineable;
@@ -1877,15 +1875,15 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
                                 llvm::LLVMAddGlobal(ccx.llmod, llty, buf)
                             });
 
-                            if override_reach || !ccx.reachable.contains(&id) {
+                            if !ccx.reachable.contains(&id) {
                                 lib::llvm::SetLinkage(g, lib::llvm::InternalLinkage);
                             }
 
                             // Apply the `unnamed_addr` attribute if
                             // requested
-                            if override_reach || attr::contains_name(i.attrs.as_slice(),
+                            if attr::contains_name(i.attrs.as_slice(),
                                                    "address_insignificant") {
-                                if !override_reach && ccx.reachable.contains(&id) {
+                                if ccx.reachable.contains(&id) {
                                     ccx.sess().span_bug(i.span,
                                         "insignificant static is reachable");
                                 }
