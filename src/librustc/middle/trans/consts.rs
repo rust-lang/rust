@@ -36,7 +36,8 @@ use std::c_str::ToCStr;
 use std::slice;
 use std::vec::Vec;
 use libc::c_uint;
-use syntax::{ast, ast_util};
+use syntax::{ast, ast_util, ast_map, attr};
+
 
 pub fn const_lit(cx: &CrateContext, e: &ast::Expr, lit: ast::Lit)
     -> ValueRef {
@@ -683,13 +684,22 @@ pub fn trans_const(ccx: &CrateContext, m: ast::Mutability, id: ast::NodeId) {
     unsafe {
         let _icx = push_ctxt("trans_const");
         let g = base::get_item_val(ccx, id);
+        let item = ccx.tcx.map.get(id);
+        let isglobal = match item {
+          ast_map::NodeItem(i) =>
+              if attr::contains_name(i.attrs.as_slice(),
+                  "unsafe_override_address") {false} else {true},
+          _ => true,
+        };
         // At this point, get_item_val has already translated the
         // constant's initializer to determine its LLVM type.
-        let v = ccx.const_values.borrow().get_copy(&id);
-        llvm::LLVMSetInitializer(g, v);
-        if m != ast::MutMutable {
-            llvm::LLVMSetGlobalConstant(g, True);
+        if isglobal {
+            let v = ccx.const_values.borrow().get_copy(&id);
+            llvm::LLVMSetInitializer(g, v);
+            if m != ast::MutMutable {
+                llvm::LLVMSetGlobalConstant(g, True);
+            }
+            debuginfo::create_global_var_metadata(ccx, id, g);
         }
-        debuginfo::create_global_var_metadata(ccx, id, g);
     }
 }
