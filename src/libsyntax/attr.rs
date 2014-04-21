@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -205,7 +205,8 @@ pub fn first_attr_value_str_by_name(attrs: &[Attribute], name: &str)
 
 pub fn last_meta_item_value_str_by_name(items: &[@MetaItem], name: &str)
                                      -> Option<InternedString> {
-    items.rev_iter()
+    items.iter()
+         .rev()
          .find(|mi| mi.name().equiv(&name))
          .and_then(|i| i.value_str())
 }

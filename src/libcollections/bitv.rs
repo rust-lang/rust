@@ -425,6 +425,7 @@ impl Bitv {
     }
 
     #[inline]
+    #[deprecated = "replaced by .iter().rev()"]
     pub fn rev_iter<'a>(&'a self) -> Rev<Bits<'a>> {
         self.iter().rev()
     }
