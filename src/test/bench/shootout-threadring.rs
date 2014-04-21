@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,69 +8,39 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Based on threadring.erlang by Jira Isa
-
-use std::os;
+#![feature(phase)]
+#[phase(syntax)] extern crate green;
+green_start!(main)
 
 fn start(n_tasks: int, token: int) {
     let (tx, mut rx) = channel();
     tx.send(token);
-    //  FIXME could not get this to work with a range closure
-    let mut i = 2;
-    while i <= n_tasks {
+    for i in range(2, n_tasks + 1) {
         let (tx, next_rx) = channel();
-        let imm_i = i;
-        let imm_rx = rx;
-        spawn(proc() {
-            roundtrip(imm_i, n_tasks, &imm_rx, &tx);
-        });
+        spawn(proc() roundtrip(i, tx, rx));
         rx = next_rx;
-        i += 1;
     }
-    let imm_rx = rx;
-    spawn(proc() {
-        roundtrip(1, n_tasks, &imm_rx, &tx);
-    });
+    spawn(proc() roundtrip(1, tx, rx));
 }
 
-fn roundtrip(id: int, n_tasks: int, p: &Receiver<int>, ch: &Sender<int>) {
-    loop {
-        match p.recv() {
-          1 => {
-            println!("{}\n", id);
-            return;
-          }
-          token => {
-            println!("thread: {}   got token: {}", id, token);
-            ch.send(token - 1);
-            if token <= n_tasks {
-                return;
-            }
-          }
+fn roundtrip(id: int, tx: Sender<int>, rx: Receiver<int>) {
+    for token in rx.iter() {
+        if token == 1 {
+            println!("{}", id);
+            break;
         }
+        tx.send(token - 1);
     }
 }
 
 fn main() {
-    use std::from_str::FromStr;
-
-    let args = if os::getenv("RUST_BENCH").is_some() {
-        vec!("".to_owned(), "2000000".to_owned(), "503".to_owned())
+    let args = std::os::args();
+    let token = if std::os::getenv("RUST_BENCH").is_some() {
+        2000000
     } else {
-        os::args().move_iter().collect()
+        args.get(1).and_then(|arg| from_str(*arg)).unwrap_or(1000)
     };
-    let token = if args.len() > 1u {
-        FromStr::from_str(*args.get(1)).unwrap()
-    }
-    else {
-        1000
-    };
-    let n_tasks = if args.len() > 2u {
-        FromStr::from_str(*args.get(2)).unwrap()
-    }
-    else {
-        503
-    };
-    start(n_tasks, token);
+    let n_tasks = args.get(2).and_then(|arg| from_str(*arg)).unwrap_or(503);
 
+    start(n_tasks, token);
 }
