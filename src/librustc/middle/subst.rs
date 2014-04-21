@@ -272,7 +272,7 @@ impl Subst for ty::Region {
                      substs: &ty::substs,
                      _: Option<Span>) -> ty::Region {
         // Note: This routine only handles regions that are bound on
-        // type declarationss and other outer declarations, not those
+        // type declarations and other outer declarations, not those
         // bound in *fn types*. Region substitution of the bound
         // regions that appear in a function signature is done using
         // the specialized routine

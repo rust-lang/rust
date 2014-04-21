@@ -141,7 +141,7 @@ impl<T> TrieMap<T> {
 // (with many different `x`) below, so we need to optionally pass mut
 // as a tt, but the only thing we can do with a `tt` is pass them to
 // other macros, so this takes the `& <mutability> <operand>` token
-// sequence and forces their evalutation as an expression. (see also
+// sequence and forces their evaluation as an expression. (see also
 // `item!` below.)
 macro_rules! addr { ($e:expr) => { $e } }
 

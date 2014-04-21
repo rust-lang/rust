@@ -2503,7 +2503,7 @@ fn populate_scope_map(cx: &CrateContext,
             ast::PatIdent(_, ref path_ref, ref sub_pat_opt) => {
 
                 // Check if this is a binding. If so we need to put it on the scope stack and maybe
-                // introduce an articial scope
+                // introduce an artificial scope
                 if pat_util::pat_is_binding(def_map, pat) {
 
                     let ident = ast_util::path_to_ident(path_ref);

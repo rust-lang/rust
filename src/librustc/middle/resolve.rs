@@ -72,7 +72,7 @@ pub enum LastPrivate {
     // `use` directives (imports) can refer to two separate definitions in the
     // type and value namespaces. We record here the last private node for each
     // and whether the import is in fact used for each.
-    // If the Option<PrivateDep> fields are None, it means there is no defintion
+    // If the Option<PrivateDep> fields are None, it means there is no definition
     // in that namespace.
     LastImport{pub value_priv: Option<PrivateDep>,
                pub value_used: ImportUse,
@@ -3610,7 +3610,7 @@ impl<'a> Resolver<'a> {
                     }
                 }
 
-                // n.b. the discr expr gets visted twice.
+                // n.b. the discr expr gets visited twice.
                 // but maybe it's okay since the first time will signal an
                 // error if there is one? -- tjc
                 self.with_type_parameter_rib(HasTypeParameters(generics,

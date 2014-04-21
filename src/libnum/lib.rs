@@ -171,7 +171,7 @@ macro_rules! impl_integer_for_int {
             /// `other`.
             #[inline]
             fn lcm(&self, other: &$T) -> $T {
-                // should not have to recaluculate abs
+                // should not have to recalculate abs
                 ((*self * *other) / self.gcd(other)).abs()
             }
 

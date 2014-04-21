@@ -238,7 +238,7 @@ pub struct FnCtxt<'a> {
     //
     // What we do in such cases is to generate a region variable with
     // `region_lb` as a lower bound.  The regionck pass then adds
-    // other constriants based on how the variable is used and region
+    // other constraints based on how the variable is used and region
     // inference selects the ultimate value.  Finally, borrowck is
     // charged with guaranteeing that the value whose address was taken
     // can actually be made to live as long as it needs to live.
@@ -2548,7 +2548,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                                                              ty::mt {ty: t, mutbl: mutability},
                                                              None)), // Sadly, we know the length
                                                                      // - Some(args.len()) - but
-                                                                     // must thow it away or cause
+                                                                     // must throw it away or cause
                                                                      // confusion further down the
                                                                      // pipeline. Hopefully we can
                                                                      // remedy this later.

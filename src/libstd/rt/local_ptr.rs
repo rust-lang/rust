@@ -374,7 +374,7 @@ pub mod native {
     pub fn maybe_tls_key() -> Option<tls::Key> {
         unsafe {
             // NB: This is a little racy because, while the key is
-            // initalized under a mutex and it's assumed to be initalized
+            // initialized under a mutex and it's assumed to be initialized
             // in the Scheduler ctor by any thread that needs to use it,
             // we are not accessing the key under a mutex.  Threads that
             // are not using the new Scheduler but still *want to check*

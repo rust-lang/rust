@@ -937,7 +937,7 @@ impl<A: TotalOrd, T: Iterator<A>> OrdIterator<A> for T {
         loop {
             // `first` and `second` are the two next elements we want to look at.
             // We first compare `first` and `second` (#1). The smaller one is then compared to
-            // current mininum (#2). The larger one is compared to current maximum (#3). This
+            // current minimum (#2). The larger one is compared to current maximum (#3). This
             // way we do 3 comparisons for 2 elements.
             let first = match self.next() {
                 None => break,

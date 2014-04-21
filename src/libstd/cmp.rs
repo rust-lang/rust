@@ -26,7 +26,7 @@
 //!
 //! // Our implementation of `Eq` to support `==` and `!=`.
 //! impl Eq for SketchyNum {
-//!     // Our custom eq allows numbers which are near eachother to be equal! :D
+//!     // Our custom eq allows numbers which are near each other to be equal! :D
 //!     fn eq(&self, other: &SketchyNum) -> bool {
 //!         (self.num - other.num).abs() < 5
 //!     }
@@ -283,7 +283,7 @@ mod test {
 
         // Our implementation of `Eq` to support `==` and `!=`.
         impl Eq for SketchyNum {
-            // Our custom eq allows numbers which are near eachother to be equal! :D
+            // Our custom eq allows numbers which are near each other to be equal! :D
             fn eq(&self, other: &SketchyNum) -> bool {
                 (self.num - other.num).abs() < 5
             }

@@ -36,7 +36,7 @@
 // therefore cannot sensibly be mapped to any particular result.  By
 // default, we will leave such variables as is (so you will get back a
 // variable in your result).  The options force_* will cause the
-// resolution to fail in this case intead, except for the case of
+// resolution to fail in this case instead, except for the case of
 // integral variables, which resolve to `int` if forced.
 //
 // # resolve_all and force_all

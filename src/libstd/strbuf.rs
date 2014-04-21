@@ -31,7 +31,7 @@ pub struct StrBuf {
 }
 
 impl StrBuf {
-    /// Creates a new string buffer initalized with the empty string.
+    /// Creates a new string buffer initialized with the empty string.
     #[inline]
     pub fn new() -> StrBuf {
         StrBuf {
