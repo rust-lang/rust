@@ -330,13 +330,13 @@ impl<'a> CoherenceChecker<'a> {
 
             // Create substitutions for the various trait parameters.
             let new_method_ty =
-                @subst_receiver_types_in_method_ty(
+                Rc::new(subst_receiver_types_in_method_ty(
                     tcx,
                     impl_id,
                     trait_ref,
                     new_did,
-                    *trait_method,
-                    Some(trait_method.def_id));
+                    &**trait_method,
+                    Some(trait_method.def_id)));
 
             debug!("new_method_ty={}", new_method_ty.repr(tcx));
             all_methods.push(new_did);
@@ -376,7 +376,8 @@ impl<'a> CoherenceChecker<'a> {
             None => {}
         }
 
-        tcx.inherent_impls.borrow_mut().insert(base_def_id, @RefCell::new(vec!(impl_def_id)));
+        tcx.inherent_impls.borrow_mut().insert(base_def_id,
+                                               Rc::new(RefCell::new(vec!(impl_def_id))));
     }
 
     fn add_trait_impl(&self, base_def_id: DefId, impl_def_id: DefId) {
@@ -575,7 +576,7 @@ impl<'a> CoherenceChecker<'a> {
                         trait_ref.ref_id);
 
                     self.instantiate_default_methods(local_def(item.id),
-                                                     ty_trait_ref,
+                                                     &*ty_trait_ref,
                                                      &mut methods);
                 }
 

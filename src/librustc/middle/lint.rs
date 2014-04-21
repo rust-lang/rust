@@ -53,6 +53,7 @@ use std::i16;
 use std::i32;
 use std::i64;
 use std::i8;
+use std::rc::Rc;
 use std::to_str::ToStr;
 use std::u16;
 use std::u32;
@@ -678,7 +679,7 @@ impl<'a> AstConv for Context<'a>{
         ty::lookup_item_type(self.tcx, id)
     }
 
-    fn get_trait_def(&self, id: ast::DefId) -> @ty::TraitDef {
+    fn get_trait_def(&self, id: ast::DefId) -> Rc<ty::TraitDef> {
         ty::lookup_trait_def(self.tcx, id)
     }
 
@@ -1465,7 +1466,7 @@ fn check_missing_doc_method(cx: &Context, m: &ast::Method) {
         node: m.id
     };
 
-    match cx.tcx.methods.borrow().find(&did).map(|method| *method) {
+    match cx.tcx.methods.borrow().find_copy(&did) {
         None => cx.tcx.sess.span_bug(m.span, "missing method descriptor?!"),
         Some(md) => {
             match md.container {

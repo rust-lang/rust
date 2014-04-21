@@ -197,6 +197,7 @@ use arena;
 use arena::Arena;
 use middle::ty;
 use std::fmt;
+use std::rc::Rc;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util;
@@ -254,7 +255,7 @@ struct TermsContext<'a> {
     tcx: &'a ty::ctxt,
     arena: &'a Arena,
 
-    empty_variances: @ty::ItemVariances,
+    empty_variances: Rc<ty::ItemVariances>,
 
     // Maps from the node id of a type/generic parameter to the
     // corresponding inferred index.
@@ -286,9 +287,11 @@ fn determine_parameters_to_be_inferred<'a>(tcx: &'a ty::ctxt,
 
         // cache and share the variance struct used for items with
         // no type/region parameters
-        empty_variances: @ty::ItemVariances { self_param: None,
-                                              type_params: OwnedSlice::empty(),
-                                              region_params: OwnedSlice::empty() }
+        empty_variances: Rc::new(ty::ItemVariances {
+            self_param: None,
+            type_params: OwnedSlice::empty(),
+            region_params: OwnedSlice::empty()
+        })
     };
 
     visit::walk_crate(&mut terms_cx, krate, ());
@@ -362,7 +365,7 @@ impl<'a> Visitor<()> for TermsContext<'a> {
                 if self.num_inferred() == inferreds_on_entry {
                     let newly_added = self.tcx.item_variance_map.borrow_mut().insert(
                         ast_util::local_def(item.id),
-                        self.empty_variances);
+                        self.empty_variances.clone());
                     assert!(newly_added);
                 }
 
@@ -1016,7 +1019,7 @@ impl<'a> SolveContext<'a> {
             }
 
             let newly_added = tcx.item_variance_map.borrow_mut()
-                                 .insert(item_def_id, @item_variances);
+                                 .insert(item_def_id, Rc::new(item_variances));
             assert!(newly_added);
         }
     }

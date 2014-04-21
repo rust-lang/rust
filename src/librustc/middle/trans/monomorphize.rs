@@ -243,7 +243,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
         ast_map::NodeVariant(v) => {
             let parent = ccx.tcx.map.get_parent(fn_id.node);
             let tvs = ty::enum_variants(ccx.tcx(), local_def(parent));
-            let this_tv = *tvs.iter().find(|tv| { tv.id.node == fn_id.node}).unwrap();
+            let this_tv = tvs.iter().find(|tv| { tv.id.node == fn_id.node}).unwrap();
             let d = mk_lldecl();
             set_inline_hint(d);
             match v.node.kind {

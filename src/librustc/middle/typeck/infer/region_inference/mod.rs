@@ -212,7 +212,7 @@ impl<'a> RegionVarBindings<'a> {
 
     pub fn new_region_var(&self, origin: RegionVariableOrigin) -> RegionVid {
         let id = self.num_vars();
-        self.var_origins.borrow_mut().push(origin);
+        self.var_origins.borrow_mut().push(origin.clone());
         let vid = RegionVid { id: id };
         if self.in_snapshot() {
             self.undo_log.borrow_mut().push(AddVar(vid));
@@ -330,9 +330,9 @@ impl<'a> RegionVarBindings<'a> {
 
             _ => {
                 self.combine_vars(
-                    Lub, a, b, origin,
+                    Lub, a, b, origin.clone(),
                     |this, old_r, new_r|
-                    this.make_subregion(origin, old_r, new_r))
+                    this.make_subregion(origin.clone(), old_r, new_r))
             }
         }
     }
@@ -354,9 +354,9 @@ impl<'a> RegionVarBindings<'a> {
 
             _ => {
                 self.combine_vars(
-                    Glb, a, b, origin,
+                    Glb, a, b, origin.clone(),
                     |this, old_r, new_r|
-                    this.make_subregion(origin, new_r, old_r))
+                    this.make_subregion(origin.clone(), new_r, old_r))
             }
         }
     }
@@ -1150,10 +1150,10 @@ impl<'a> RegionVarBindings<'a> {
                 if !self.is_subregion_of(lower_bound.region,
                                          upper_bound.region) {
                     errors.push(SubSupConflict(
-                        *self.var_origins.borrow().get(node_idx.to_uint()),
-                        lower_bound.origin,
+                        self.var_origins.borrow().get(node_idx.to_uint()).clone(),
+                        lower_bound.origin.clone(),
                         lower_bound.region,
-                        upper_bound.origin,
+                        upper_bound.origin.clone(),
                         upper_bound.region));
                     return;
                 }
@@ -1200,10 +1200,10 @@ impl<'a> RegionVarBindings<'a> {
                   Ok(_) => {}
                   Err(_) => {
                     errors.push(SupSupConflict(
-                        *self.var_origins.borrow().get(node_idx.to_uint()),
-                        upper_bound_1.origin,
+                        self.var_origins.borrow().get(node_idx.to_uint()).clone(),
+                        upper_bound_1.origin.clone(),
                         upper_bound_1.region,
-                        upper_bound_2.origin,
+                        upper_bound_2.origin.clone(),
                         upper_bound_2.region));
                     return;
                   }

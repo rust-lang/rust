@@ -112,9 +112,9 @@ fn check_impl_of_trait(cx: &mut Context, it: &Item, trait_ref: &TraitRef, self_t
                               .find(&trait_ref.ref_id)
                               .expect("trait ref not in def map!");
     let trait_def_id = ast_util::def_id_of_def(ast_trait_def);
-    let trait_def = *cx.tcx.trait_defs.borrow()
-                           .find(&trait_def_id)
-                           .expect("trait def not in trait-defs map!");
+    let trait_def = cx.tcx.trait_defs.borrow()
+                          .find_copy(&trait_def_id)
+                          .expect("trait def not in trait-defs map!");
 
     // If this trait has builtin-kind supertraits, meet them.
     let self_ty: ty::t = ty::node_id_to_type(cx.tcx, it.id);

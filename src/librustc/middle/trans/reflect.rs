@@ -25,6 +25,7 @@ use middle::trans::type_of::*;
 use middle::ty;
 use util::ppaux::ty_to_str;
 
+use std::rc::Rc;
 use arena::TypedArena;
 use libc::c_uint;
 use syntax::ast::DefId;
@@ -33,15 +34,15 @@ use syntax::ast_map;
 use syntax::parse::token::{InternedString, special_idents};
 use syntax::parse::token;
 
-pub struct Reflector<'a> {
+pub struct Reflector<'a, 'b> {
     visitor_val: ValueRef,
-    visitor_methods: @Vec<@ty::Method> ,
-    final_bcx: &'a Block<'a>,
+    visitor_methods: &'a [Rc<ty::Method>],
+    final_bcx: &'b Block<'b>,
     tydesc_ty: Type,
-    bcx: &'a Block<'a>
+    bcx: &'b Block<'b>
 }
 
-impl<'a> Reflector<'a> {
+impl<'a, 'b> Reflector<'a, 'b> {
     pub fn c_uint(&mut self, u: uint) -> ValueRef {
         C_uint(self.bcx.ccx(), u)
     }
@@ -92,7 +93,7 @@ impl<'a> Reflector<'a> {
                 format!("couldn't find visit method for {}", ty_name));
         let mth_ty =
             ty::mk_bare_fn(tcx,
-                           self.visitor_methods.get(mth_idx).fty.clone());
+                           self.visitor_methods[mth_idx].fty.clone());
         let v = self.visitor_val;
         debug!("passing {} args:", args.len());
         let mut bcx = self.bcx;
@@ -401,9 +402,10 @@ pub fn emit_calls_to_trait_visit_ty<'a>(
     let final = fcx.new_temp_block("final");
     let tydesc_ty = ty::get_tydesc_ty(bcx.tcx()).unwrap();
     let tydesc_ty = type_of(bcx.ccx(), tydesc_ty);
+    let visitor_methods = ty::trait_methods(bcx.tcx(), visitor_trait_id);
     let mut r = Reflector {
         visitor_val: visitor_val,
-        visitor_methods: ty::trait_methods(bcx.tcx(), visitor_trait_id),
+        visitor_methods: visitor_methods.as_slice(),
         final_bcx: final,
         tydesc_ty: tydesc_ty,
         bcx: bcx

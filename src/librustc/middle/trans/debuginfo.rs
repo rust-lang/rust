@@ -144,6 +144,7 @@ use util::ppaux;
 
 use std::c_str::{CString, ToCStr};
 use std::cell::{Cell, RefCell};
+use std::rc::Rc;
 use collections::HashMap;
 use collections::HashSet;
 use libc::{c_uint, c_ulonglong, c_longlong};
@@ -1389,7 +1390,7 @@ fn prepare_tuple_metadata(cx: &CrateContext,
 
 struct GeneralMemberDescriptionFactory {
     type_rep: @adt::Repr,
-    variants: @Vec<@ty::VariantInfo> ,
+    variants: Rc<Vec<Rc<ty::VariantInfo>>>,
     discriminant_type_metadata: ValueRef,
     containing_scope: DIScope,
     file_metadata: DIFile,
@@ -1412,7 +1413,7 @@ impl GeneralMemberDescriptionFactory {
                 let (variant_type_metadata, variant_llvm_type, member_desc_factory) =
                     describe_enum_variant(cx,
                                           struct_def,
-                                          *self.variants.get(i),
+                                          &**self.variants.get(i),
                                           Some(self.discriminant_type_metadata),
                                           self.containing_scope,
                                           self.file_metadata,
@@ -1617,7 +1618,7 @@ fn prepare_enum_metadata(cx: &CrateContext,
                  member_description_factory) =
                     describe_enum_variant(cx,
                                           struct_def,
-                                          *variants.get(0),
+                                          &**variants.get(0),
                                           None,
                                           containing_scope,
                                           file_metadata,
@@ -1676,7 +1677,7 @@ fn prepare_enum_metadata(cx: &CrateContext,
                  member_description_factory) =
                     describe_enum_variant(cx,
                                           struct_def,
-                                          *variants.get(nndiscr as uint),
+                                          &**variants.get(nndiscr as uint),
                                           None,
                                           containing_scope,
                                           file_metadata,

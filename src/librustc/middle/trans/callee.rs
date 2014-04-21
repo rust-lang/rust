@@ -318,7 +318,7 @@ pub fn trans_fn_ref_with_vtables(
 
             // Compute the first substitution
             let first_subst = make_substs_for_receiver_types(
-                tcx, impl_id, trait_ref, method);
+                tcx, impl_id, &*trait_ref, &*method);
 
             // And compose them
             let new_substs = first_subst.subst(tcx, &substs);
@@ -333,7 +333,7 @@ pub fn trans_fn_ref_with_vtables(
 
             let (param_vtables, self_vtables) =
                 resolve_default_method_vtables(bcx, impl_id,
-                                               method, &substs, vtables);
+                                               &*method, &substs, vtables);
 
             debug!("trans_fn_with_vtables - default method: \
                     self_vtable = {}, param_vtables = {}",

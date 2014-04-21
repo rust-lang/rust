@@ -386,7 +386,7 @@ pub fn get_trait_def(cdata: Cmd,
         generics: ty::Generics {type_param_defs: tp_defs,
                                 region_param_defs: rp_defs},
         bounds: bounds,
-        trait_ref: @item_trait_ref(item_doc, tcx, cdata)
+        trait_ref: Rc::new(item_trait_ref(item_doc, tcx, cdata))
     }
 }
 
@@ -410,11 +410,11 @@ pub fn get_type(cdata: Cmd, id: ast::NodeId, tcx: &ty::ctxt)
 
 pub fn get_impl_trait(cdata: Cmd,
                       id: ast::NodeId,
-                      tcx: &ty::ctxt) -> Option<@ty::TraitRef>
+                      tcx: &ty::ctxt) -> Option<Rc<ty::TraitRef>>
 {
     let item_doc = lookup_item(id, cdata.data());
     reader::maybe_get_doc(item_doc, tag_item_trait_ref).map(|tp| {
-        @doc_trait_ref(tp, tcx, cdata)
+        Rc::new(doc_trait_ref(tp, tcx, cdata))
     })
 }
 
@@ -675,27 +675,27 @@ pub fn maybe_get_item_ast(cdata: Cmd, tcx: &ty::ctxt, id: ast::NodeId,
 }
 
 pub fn get_enum_variants(intr: Rc<IdentInterner>, cdata: Cmd, id: ast::NodeId,
-                     tcx: &ty::ctxt) -> Vec<@ty::VariantInfo> {
+                     tcx: &ty::ctxt) -> Vec<Rc<ty::VariantInfo>> {
     let data = cdata.data();
     let items = reader::get_doc(reader::Doc(data), tag_items);
     let item = find_item(id, items);
-    let mut infos: Vec<@ty::VariantInfo> = Vec::new();
-    let variant_ids = enum_variant_ids(item, cdata);
     let mut disr_val = 0;
-    for did in variant_ids.iter() {
+    enum_variant_ids(item, cdata).iter().map(|did| {
         let item = find_item(did.node, items);
         let ctor_ty = item_type(ast::DefId { krate: cdata.cnum, node: id},
                                 item, tcx, cdata);
         let name = item_name(&*intr, item);
         let arg_tys = match ty::get(ctor_ty).sty {
-          ty::ty_bare_fn(ref f) => f.sig.inputs.clone(),
-          _ => Vec::new(), // Nullary enum variant.
+            ty::ty_bare_fn(ref f) => f.sig.inputs.clone(),
+            _ => Vec::new(), // Nullary enum variant.
         };
         match variant_disr_val(item) {
-          Some(val) => { disr_val = val; }
-          _         => { /* empty */ }
+            Some(val) => { disr_val = val; }
+            _         => { /* empty */ }
         }
-        infos.push(@ty::VariantInfo{
+        let old_disr_val = disr_val;
+        disr_val += 1;
+        Rc::new(ty::VariantInfo {
             args: arg_tys,
             arg_names: None,
             ctor_ty: ctor_ty,
@@ -703,11 +703,10 @@ pub fn get_enum_variants(intr: Rc<IdentInterner>, cdata: Cmd, id: ast::NodeId,
             // I'm not even sure if we encode visibility
             // for variants -- TEST -- tjc
             id: *did,
-            disr_val: disr_val,
-            vis: ast::Inherited});
-        disr_val += 1;
-    }
-    return infos;
+            disr_val: old_disr_val,
+            vis: ast::Inherited
+        })
+    }).collect()
 }
 
 fn get_explicit_self(item: ebml::Doc) -> ast::ExplicitSelf_ {
@@ -816,8 +815,8 @@ pub fn get_item_variances(cdata: Cmd, id: ast::NodeId) -> ty::ItemVariances {
 }
 
 pub fn get_provided_trait_methods(intr: Rc<IdentInterner>, cdata: Cmd,
-                                  id: ast::NodeId, tcx: &ty::ctxt) ->
-        Vec<@ty::Method> {
+                                  id: ast::NodeId, tcx: &ty::ctxt)
+                                  -> Vec<Rc<ty::Method>> {
     let data = cdata.data();
     let item = lookup_item(id, data);
     let mut result = Vec::new();
@@ -827,7 +826,7 @@ pub fn get_provided_trait_methods(intr: Rc<IdentInterner>, cdata: Cmd,
         let mth = lookup_item(did.node, data);
 
         if item_method_sort(mth) == 'p' {
-            result.push(@get_method(intr.clone(), cdata, did.node, tcx));
+            result.push(Rc::new(get_method(intr.clone(), cdata, did.node, tcx)));
         }
         true
     });
@@ -837,7 +836,7 @@ pub fn get_provided_trait_methods(intr: Rc<IdentInterner>, cdata: Cmd,
 
 /// Returns the supertraits of the given trait.
 pub fn get_supertraits(cdata: Cmd, id: ast::NodeId, tcx: &ty::ctxt)
-                    -> Vec<@ty::TraitRef> {
+                    -> Vec<Rc<ty::TraitRef>> {
     let mut results = Vec::new();
     let item_doc = lookup_item(id, cdata.data());
     reader::tagged_docs(item_doc, tag_item_super_trait_ref, |trait_doc| {
@@ -846,7 +845,7 @@ pub fn get_supertraits(cdata: Cmd, id: ast::NodeId, tcx: &ty::ctxt)
         // FIXME(#8559): The builtin bounds shouldn't be encoded in the first place.
         let trait_ref = doc_trait_ref(trait_doc, tcx, cdata);
         if tcx.lang_items.to_builtin_kind(trait_ref.def_id).is_none() {
-            results.push(@trait_ref);
+            results.push(Rc::new(trait_ref));
         }
         true
     });
