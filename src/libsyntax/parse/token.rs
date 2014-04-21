@@ -212,10 +212,8 @@ pub fn to_str(t: &Token) -> String {
           res.push_char('\'');
           res
       }
-      LIT_INT(i, t) => ast_util::int_ty_to_str(t, Some(i),
-                                               ast_util::ForceSuffix),
-      LIT_UINT(u, t) => ast_util::uint_ty_to_str(t, Some(u),
-                                                 ast_util::ForceSuffix),
+      LIT_INT(i, t) => ast_util::int_ty_to_str(t, Some(i)),
+      LIT_UINT(u, t) => ast_util::uint_ty_to_str(t, Some(u)),
       LIT_INT_UNSUFFIXED(i) => { (i as u64).to_str() }
       LIT_FLOAT(s, t) => {
         let mut body = String::from_str(get_ident(s).get());

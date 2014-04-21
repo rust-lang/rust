@@ -57,20 +57,20 @@ pub type _Unwind_Exception_Class = u64;
 pub type _Unwind_Word = libc::uintptr_t;
 
 #[cfg(target_arch = "x86")]
-pub static unwinder_private_data_size: int = 5;
+pub static unwinder_private_data_size: uint = 5;
 
 #[cfg(target_arch = "x86_64")]
-pub static unwinder_private_data_size: int = 2;
+pub static unwinder_private_data_size: uint = 2;
 
 #[cfg(target_arch = "arm", not(target_os = "ios"))]
-pub static unwinder_private_data_size: int = 20;
+pub static unwinder_private_data_size: uint = 20;
 
 #[cfg(target_arch = "arm", target_os = "ios")]
-pub static unwinder_private_data_size: int = 5;
+pub static unwinder_private_data_size: uint = 5;
 
 #[cfg(target_arch = "mips")]
 #[cfg(target_arch = "mipsel")]
-pub static unwinder_private_data_size: int = 2;
+pub static unwinder_private_data_size: uint = 2;
 
 pub struct _Unwind_Exception {
     pub exception_class: _Unwind_Exception_Class,

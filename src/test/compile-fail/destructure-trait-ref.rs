@@ -25,17 +25,17 @@ fn main() {
     // if n > m, it's a type mismatch error.
 
     // n < m
-    let &x = &(&1 as &T);
-    let &x = &&(&1 as &T);
-    let &&x = &&(&1 as &T);
+    let &x = &(&1i as &T);
+    let &x = &&(&1i as &T);
+    let &&x = &&(&1i as &T);
 
     // n == m
-    let &x = &1 as &T;      //~ ERROR cannot be dereferenced
-    let &&x = &(&1 as &T);  //~ ERROR cannot be dereferenced
-    let box x = box 1 as Box<T>; //~ ERROR cannot be dereferenced
+    let &x = &1i as &T;      //~ ERROR cannot be dereferenced
+    let &&x = &(&1i as &T);  //~ ERROR cannot be dereferenced
+    let box x = box 1i as Box<T>; //~ ERROR cannot be dereferenced
 
     // n > m
-    let &&x = &1 as &T;     //~ ERROR found an `&`-pointer pattern
-    let &&&x = &(&1 as &T); //~ ERROR found an `&`-pointer pattern
-    let box box x = box 1 as Box<T>;    //~ ERROR found a box pattern
+    let &&x = &1i as &T;     //~ ERROR found an `&`-pointer pattern
+    let &&&x = &(&1i as &T); //~ ERROR found an `&`-pointer pattern
+    let box box x = box 1i as Box<T>;    //~ ERROR found a box pattern
 }

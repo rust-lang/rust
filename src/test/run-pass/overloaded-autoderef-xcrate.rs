@@ -13,5 +13,5 @@
 extern crate overloaded_autoderef_xc;
 
 fn main() {
-    assert!(overloaded_autoderef_xc::check(5, 5));
+    assert!(overloaded_autoderef_xc::check(5i, 5i));
 }

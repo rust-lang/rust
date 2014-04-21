@@ -19,6 +19,6 @@ impl<'a, T> Deref<&'a [T]> for DerefArray<'a, T> {
 }
 
 pub fn main() {
-    let a = &[1, 2, 3];
+    let a = &[1i, 2i, 3i];
     assert_eq!(DerefArray {inner: a}[1], 2);
 }

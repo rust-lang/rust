@@ -20,12 +20,12 @@ macro_rules! loop_x {
 macro_rules! run_once {
     ($e: expr) => {
         // ditto
-        'x: for _ in range(0, 1) { $e }
+        'x: for _ in range(0i, 1) { $e }
     }
 }
 
 pub fn main() {
-    'x: for _ in range(0, 1) {
+    'x: for _ in range(0i, 1) {
         // this 'x should refer to the outer loop, lexically
         loop_x!(break 'x);
         fail!("break doesn't act hygienically inside for loop");
@@ -37,7 +37,7 @@ pub fn main() {
         fail!("break doesn't act hygienically inside infinite loop");
     }
 
-    'x: for _ in range(0, 1) {
+    'x: for _ in range(0i, 1) {
         // ditto
         run_once!(continue 'x);
         fail!("continue doesn't act hygienically inside for loop");

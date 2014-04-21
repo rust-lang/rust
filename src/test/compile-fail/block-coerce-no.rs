@@ -22,7 +22,7 @@ fn coerce(b: ||) -> extern fn() {
 }
 
 fn main() {
-    let i = 8;
+    let i = 8i;
     let f = coerce(|| println!("{:?}", i) );
     f();
 }

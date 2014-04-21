@@ -284,7 +284,8 @@ mod bench {
     #[bench]
     fn bench_as_ref(b: &mut Bencher) {
         b.iter(|| {
-            let mut x = 0; let mut y = &mut x as &mut Any;
+            let mut x = 0i;
+            let mut y = &mut x as &mut Any;
             test::black_box(&mut y);
             test::black_box(y.as_ref::<int>() == Some(&0));
         });

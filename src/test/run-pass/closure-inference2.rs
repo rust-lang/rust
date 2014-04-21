@@ -12,6 +12,6 @@
 
 pub fn main() {
     let f = {|i| i};
-    assert_eq!(f(2), 2);
-    assert_eq!(f(5), 5);
+    assert_eq!(f(2i), 2i);
+    assert_eq!(f(5i), 5i);
 }

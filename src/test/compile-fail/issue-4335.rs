@@ -15,6 +15,6 @@ fn f<'r, T>(v: &'r T) -> ||: 'r -> T {
 }
 
 fn main() {
-    let v = &5;
+    let v = &5i;
     println!("{}", f(v)());
 }

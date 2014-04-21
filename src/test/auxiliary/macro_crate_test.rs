@@ -24,9 +24,9 @@ use rustc::plugin::Registry;
 use std::gc::{Gc, GC};
 
 #[macro_export]
-macro_rules! exported_macro (() => (2))
+macro_rules! exported_macro (() => (2i))
 
-macro_rules! unexported_macro (() => (3))
+macro_rules! unexported_macro (() => (3i))
 
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {

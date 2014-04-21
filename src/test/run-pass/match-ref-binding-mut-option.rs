@@ -9,7 +9,7 @@
 // except according to those terms.
 
 pub fn main() {
-    let mut v = Some(22);
+    let mut v = Some(22i);
     match v {
       None => {}
       Some(ref mut p) => { *p += 1; }

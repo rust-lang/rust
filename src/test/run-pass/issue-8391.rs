@@ -9,9 +9,9 @@
 // except according to those terms.
 
 fn main() {
-    let x = match Some(1) {
-        ref _y @ Some(_) => 1,
-        None => 2,
+    let x = match Some(1i) {
+        ref _y @ Some(_) => 1i,
+        None => 2i,
     };
     assert_eq!(x, 1);
 }

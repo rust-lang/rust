@@ -123,7 +123,13 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
                     'c' => if stack.len() > 0 {
                         match stack.pop().unwrap() {
                             // if c is 0, use 0200 (128) for ncurses compatibility
-                            Number(c) => output.push(if c == 0 { 128 } else { c } as u8),
+                            Number(c) => {
+                                output.push(if c == 0 {
+                                    128u8
+                                } else {
+                                    c as u8
+                                })
+                            }
                             _       => return Err("a non-char was used with %c".to_string())
                         }
                     } else { return Err("stack is empty".to_string()) },

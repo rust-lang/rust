@@ -21,4 +21,4 @@ fn foo<T>(o: myoption<T>) -> int {
 
 enum myoption<T> { none, some(T), }
 
-pub fn main() { println!("{}", 5); }
+pub fn main() { println!("{}", 5i); }

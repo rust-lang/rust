@@ -195,8 +195,8 @@ mod test {
 
     #[test]
     fn option_swap() {
-        let p = AtomicOption::new(box 1);
-        let a = box 2;
+        let p = AtomicOption::new(box 1i);
+        let a = box 2i;
 
         let b = p.swap(a, SeqCst);
 
@@ -206,12 +206,12 @@ mod test {
 
     #[test]
     fn option_take() {
-        let p = AtomicOption::new(box 1);
+        let p = AtomicOption::new(box 1i);
 
         assert!(p.take(SeqCst) == Some(box 1));
         assert!(p.take(SeqCst) == None);
 
-        let p2 = box 2;
+        let p2 = box 2i;
         p.swap(p2, SeqCst);
 
         assert!(p.take(SeqCst) == Some(box 2));
@@ -219,11 +219,11 @@ mod test {
 
     #[test]
     fn option_fill() {
-        let p = AtomicOption::new(box 1);
-        assert!(p.fill(box 2, SeqCst).is_some()); // should fail; shouldn't leak!
+        let p = AtomicOption::new(box 1i);
+        assert!(p.fill(box 2i, SeqCst).is_some()); // should fail; shouldn't leak!
         assert!(p.take(SeqCst) == Some(box 1));
 
-        assert!(p.fill(box 2, SeqCst).is_none()); // shouldn't fail
+        assert!(p.fill(box 2i, SeqCst).is_none()); // shouldn't fail
         assert!(p.take(SeqCst) == Some(box 2));
     }
 }

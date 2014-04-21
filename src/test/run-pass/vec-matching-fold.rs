@@ -31,11 +31,11 @@ fn foldr<T,U:Clone>(values: &[T],
 }
 
 pub fn main() {
-    let x = [1, 2, 3, 4, 5];
+    let x = [1i, 2, 3, 4, 5];
 
-    let product = foldl(x, 1, |a, b| a * *b);
+    let product = foldl(x, 1i, |a, b| a * *b);
     assert_eq!(product, 120);
 
-    let sum = foldr(x, 0, |a, b| *a + b);
+    let sum = foldr(x, 0i, |a, b| *a + b);
     assert_eq!(sum, 15);
 }

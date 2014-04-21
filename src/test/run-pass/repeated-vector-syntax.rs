@@ -14,7 +14,7 @@ extern crate debug;
 
 pub fn main() {
     let x = [ [true], ..512 ];
-    let y = [ 0, ..1 ];
+    let y = [ 0i, ..1 ];
 
     println!("{:?}", x);
     println!("{:?}", y);

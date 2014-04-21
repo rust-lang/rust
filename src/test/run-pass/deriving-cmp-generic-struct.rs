@@ -15,8 +15,8 @@ struct S<T> {
 }
 
 pub fn main() {
-    let s1 = S {x: 1, y: 1};
-    let s2 = S {x: 1, y: 2};
+    let s1 = S {x: 1i, y: 1i};
+    let s2 = S {x: 1i, y: 2i};
 
     // in order for both PartialOrd and Ord
     let ss = [s1, s2];

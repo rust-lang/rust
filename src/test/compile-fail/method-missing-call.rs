@@ -33,7 +33,7 @@ fn main() {
                         //~^ NOTE maybe a missing `()` to call it? If not, try an anonymous
 
     // Ensure the span is useful
-    let ys = &[1,2,3,4,5,6,7];
+    let ys = &[1i,2,3,4,5,6,7];
     let a = ys.iter()
               .map(|x| x)
               .filter(|&&x| x == 1)

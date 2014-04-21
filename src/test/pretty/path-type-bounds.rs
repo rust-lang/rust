@@ -19,6 +19,6 @@ fn foo(x: Box<Tr+ Share>) -> Box<Tr+ Share> { x }
 fn main() {
     let x: Box<Tr+ Share>;
 
-    box() 1 as Box<Tr+ Share>;
+    box() 1i as Box<Tr+ Share>;
 }
 

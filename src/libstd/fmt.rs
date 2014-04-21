@@ -36,12 +36,12 @@ Some examples of the `format!` extension are:
 ```rust
 # extern crate debug;
 # fn main() {
-format!("Hello");                 // => "Hello"
-format!("Hello, {:s}!", "world"); // => "Hello, world!"
-format!("The number is {:d}", 1); // => "The number is 1"
-format!("{:?}", (3, 4));          // => "(3, 4)"
-format!("{value}", value=4);      // => "4"
-format!("{} {}", 1, 2);           // => "1 2"
+format!("Hello");                  // => "Hello"
+format!("Hello, {:s}!", "world");  // => "Hello, world!"
+format!("The number is {:d}", 1i); // => "The number is 1"
+format!("{:?}", (3i, 4i));         // => "(3, 4)"
+format!("{value}", value=4i);      // => "4"
+format!("{} {}", 1i, 2i);          // => "1 2"
 # }
 ```
 
@@ -65,7 +65,7 @@ iterator over the argument. Each time a "next argument" specifier is seen, the
 iterator advances. This leads to behavior like this:
 
 ```rust
-format!("{1} {} {0} {}", 1, 2); // => "2 1 1 2"
+format!("{1} {} {0} {}", 1i, 2i); // => "2 1 1 2"
 ```
 
 The internal iterator over the argument has not been advanced by the time the
@@ -94,9 +94,9 @@ For example, the following `format!` expressions all use named argument:
 ```rust
 # extern crate debug;
 # fn main() {
-format!("{argument}", argument = "test");       // => "test"
-format!("{name} {}", 1, name = 2);              // => "2 1"
-format!("{a:s} {c:d} {b:?}", a="a", b=(), c=3); // => "a 3 ()"
+format!("{argument}", argument = "test");        // => "test"
+format!("{name} {}", 1i, name = 2i);             // => "2 1"
+format!("{a:s} {c:d} {b:?}", a="a", b=(), c=3i); // => "a 3 ()"
 # }
 ```
 

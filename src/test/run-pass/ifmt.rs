@@ -40,10 +40,10 @@ macro_rules! t(($a:expr, $b:expr) => { assert_eq!($a.as_slice(), $b) })
 
 pub fn main() {
     // Make sure there's a poly formatter that takes anything
-    t!(format!("{:?}", 1), "1");
+    t!(format!("{:?}", 1i), "1");
     t!(format!("{:?}", A), "A");
     t!(format!("{:?}", ()), "()");
-    t!(format!("{:?}", box(GC) (box 1, "foo")), "box(GC) (box 1, \"foo\")");
+    t!(format!("{:?}", box(GC) (box 1i, "foo")), "box(GC) (box 1, \"foo\")");
 
     // Various edge cases without formats
     t!(format!(""), "");
@@ -61,8 +61,8 @@ pub fn main() {
     // At least exercise all the formats
     t!(format!("{:b}", true), "true");
     t!(format!("{:c}", '☃'), "☃");
-    t!(format!("{:d}", 10), "10");
-    t!(format!("{:i}", 10), "10");
+    t!(format!("{:d}", 10i), "10");
+    t!(format!("{:i}", 10i), "10");
     t!(format!("{:u}", 10u), "10");
     t!(format!("{:o}", 10u), "12");
     t!(format!("{:x}", 10u), "a");
@@ -74,12 +74,12 @@ pub fn main() {
     t!(format!("{:d}", A), "aloha");
     t!(format!("{:d}", B), "adios");
     t!(format!("foo {:s} ☃☃☃☃☃☃", "bar"), "foo bar ☃☃☃☃☃☃");
-    t!(format!("{1} {0}", 0, 1), "1 0");
-    t!(format!("{foo} {bar}", foo=0, bar=1), "0 1");
-    t!(format!("{foo} {1} {bar} {0}", 0, 1, foo=2, bar=3), "2 1 3 0");
+    t!(format!("{1} {0}", 0i, 1i), "1 0");
+    t!(format!("{foo} {bar}", foo=0i, bar=1i), "0 1");
+    t!(format!("{foo} {1} {bar} {0}", 0i, 1i, foo=2i, bar=3i), "2 1 3 0");
     t!(format!("{} {0}", "a"), "a a");
-    t!(format!("{foo_bar}", foo_bar=1), "1");
-    t!(format!("{:d}", 5 + 5), "10");
+    t!(format!("{foo_bar}", foo_bar=1i), "1");
+    t!(format!("{:d}", 5i + 5i), "10");
 
     // Formatting strings and their arguments
     t!(format!("{:s}", "a"), "a");
@@ -132,7 +132,7 @@ pub fn main() {
     test_order();
 
     // make sure that format! doesn't move out of local variables
-    let a = box 3;
+    let a = box 3i;
     format!("{:?}", a);
     format!("{:?}", a);
 
@@ -154,10 +154,10 @@ pub fn main() {
 // io::Writer instance.
 fn test_write() {
     let mut buf = MemWriter::new();
-    write!(&mut buf as &mut io::Writer, "{}", 3);
+    write!(&mut buf as &mut io::Writer, "{}", 3i);
     {
         let w = &mut buf as &mut io::Writer;
-        write!(w, "{foo}", foo=4);
+        write!(w, "{foo}", foo=4i);
         write!(w, "{:s}", "hello");
         writeln!(w, "{}", "line");
         writeln!(w, "{foo}", foo="bar");
@@ -183,9 +183,9 @@ fn test_format_args() {
     let mut buf = MemWriter::new();
     {
         let w = &mut buf as &mut io::Writer;
-        format_args!(|args| { write!(w, "{}", args); }, "{}", 1);
+        format_args!(|args| { write!(w, "{}", args); }, "{}", 1i);
         format_args!(|args| { write!(w, "{}", args); }, "test");
-        format_args!(|args| { write!(w, "{}", args); }, "{test}", test=3);
+        format_args!(|args| { write!(w, "{}", args); }, "{test}", test=3i);
     }
     let s = str::from_utf8(buf.unwrap().as_slice()).unwrap().to_string();
     t!(s, "1test3");

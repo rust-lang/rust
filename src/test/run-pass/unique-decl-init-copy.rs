@@ -9,11 +9,11 @@
 // except according to those terms.
 
 pub fn main() {
-    let mut i = box 1;
+    let mut i = box 1i;
     // Should be a copy
     let mut j = i.clone();
-    *i = 2;
-    *j = 3;
-    assert_eq!(*i, 2);
-    assert_eq!(*j, 3);
+    *i = 2i;
+    *j = 3i;
+    assert_eq!(*i, 2i);
+    assert_eq!(*j, 3i);
 }

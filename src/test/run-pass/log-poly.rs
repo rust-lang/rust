@@ -15,8 +15,8 @@ enum Numbers {
 }
 
 pub fn main() {
-    println!("{}", 1);
-    println!("{}", 2.0);
+    println!("{}", 1i);
+    println!("{}", 2.0f64);
     println!("{:?}", Three);
-    println!("{:?}", vec!(4));
+    println!("{:?}", vec!(4i));
 }

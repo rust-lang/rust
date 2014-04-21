@@ -1034,21 +1034,21 @@ mod tests {
             assert_eq!(out, expected);
         }
 
-        t(&Summary::new([-2.0, -1.0]),
+        t(&Summary::new([-2.0f64, -1.0f64]),
                         "-2 |[------******#*****---]| -1".to_string());
-        t(&Summary::new([0.0, 2.0]),
+        t(&Summary::new([0.0f64, 2.0f64]),
                         "0 |[-------*****#*******---]| 2".to_string());
-        t(&Summary::new([-2.0, 0.0]),
+        t(&Summary::new([-2.0f64, 0.0f64]),
                         "-2 |[------******#******---]| 0".to_string());
 
     }
     #[test]
     fn test_sum_f64s() {
-        assert_eq!([0.5, 3.2321, 1.5678].sum(), 5.2999);
+        assert_eq!([0.5f64, 3.2321f64, 1.5678f64].sum(), 5.2999);
     }
     #[test]
     fn test_sum_f64_between_ints_that_sum_to_0() {
-        assert_eq!([1e30, 1.2, -1e30].sum(), 1.2);
+        assert_eq!([1e30f64, 1.2f64, -1e30f64].sum(), 1.2);
     }
 }
 
@@ -1060,12 +1060,12 @@ mod bench {
     #[bench]
     pub fn sum_three_items(b: &mut Bencher) {
         b.iter(|| {
-            [1e20, 1.5, -1e20].sum();
+            [1e20f64, 1.5f64, -1e20f64].sum();
         })
     }
     #[bench]
     pub fn sum_many_f64(b: &mut Bencher) {
-        let nums = [-1e30, 1e60, 1e30, 1.0, -1e60];
+        let nums = [-1e30f64, 1e60, 1e30, 1.0, -1e60];
         let v = Vec::from_fn(500, |i| nums[i%5]);
 
         b.iter(|| {

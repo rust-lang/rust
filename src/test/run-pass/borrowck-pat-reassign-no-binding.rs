@@ -14,7 +14,7 @@ pub fn main() {
       None => {
         // It is ok to reassign x here, because there is in
         // fact no outstanding loan of x!
-        x = Some(0);
+        x = Some(0i);
       }
       Some(_) => { }
     }

@@ -20,11 +20,11 @@ fn sendable() {
         assert!(i != j);
     }
 
-    let i = box 100;
-    let j = box 100;
+    let i = box 100i;
+    let j = box 100i;
     f(i, j);
-    let i = box 100;
-    let j = box 101;
+    let i = box 100i;
+    let j = box 101i;
     g(i, j);
 }
 
@@ -38,11 +38,11 @@ fn copyable() {
         assert!(i != j);
     }
 
-    let i = box 100;
-    let j = box 100;
+    let i = box 100i;
+    let j = box 100i;
     f(i, j);
-    let i = box 100;
-    let j = box 101;
+    let i = box 100i;
+    let j = box 101i;
     g(i, j);
 }
 
@@ -56,11 +56,11 @@ fn noncopyable() {
         assert!(i != j);
     }
 
-    let i = box 100;
-    let j = box 100;
+    let i = box 100i;
+    let j = box 100i;
     f(i, j);
-    let i = box 100;
-    let j = box 101;
+    let i = box 100i;
+    let j = box 101i;
     g(i, j);
 }
 

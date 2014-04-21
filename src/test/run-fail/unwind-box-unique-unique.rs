@@ -21,7 +21,7 @@ fn failfn() {
 }
 
 fn main() {
-    let x = box(GC) box box 0;
+    let x = box(GC) box box 0i;
     failfn();
     println!("{:?}", x);
 }
