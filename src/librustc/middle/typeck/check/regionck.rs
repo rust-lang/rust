@@ -1008,7 +1008,7 @@ fn constrain_regions_in_type(
             // for regions that are as-yet-unknown.
         } else if r_sub == minimum_lifetime {
             rcx.fcx.mk_subr(
-                true, origin,
+                true, origin.clone(),
                 r_sub, r_sup);
         } else {
             rcx.fcx.mk_subr(

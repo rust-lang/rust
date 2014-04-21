@@ -117,7 +117,7 @@ use util::nodemap::{FnvHashMap, NodeMap};
 use std::cell::{Cell, RefCell};
 use collections::HashMap;
 use std::mem::replace;
-use std::result;
+use std::rc::Rc;
 use std::vec::Vec;
 use syntax::abi;
 use syntax::ast::{Provided, Required};
@@ -622,9 +622,9 @@ pub fn check_item(ccx: &CrateCtxt, it: &ast::Item) {
                                              it.span,
                                              &impl_tpt.generics,
                                              ast_trait_ref,
-                                             impl_trait_ref,
+                                             &*impl_trait_ref,
                                              ms.as_slice());
-                vtable::resolve_impl(ccx.tcx, it, &impl_tpt.generics, impl_trait_ref);
+                vtable::resolve_impl(ccx.tcx, it, &impl_tpt.generics, &*impl_trait_ref);
             }
             None => { }
         }
@@ -640,7 +640,7 @@ pub fn check_item(ccx: &CrateCtxt, it: &ast::Item) {
                 }
                 Provided(m) => {
                     check_method_body(ccx, &trait_def.generics,
-                                      Some(trait_def.trait_ref), m);
+                                      Some(trait_def.trait_ref.clone()), m);
                 }
             }
         }
@@ -682,7 +682,7 @@ pub fn check_item(ccx: &CrateCtxt, it: &ast::Item) {
 
 fn check_method_body(ccx: &CrateCtxt,
                      item_generics: &ty::Generics,
-                     self_bound: Option<@ty::TraitRef>,
+                     self_bound: Option<Rc<ty::TraitRef>>,
                      method: &ast::Method) {
     /*!
      * Type checks a method body.
@@ -744,10 +744,10 @@ fn check_impl_methods_against_trait(ccx: &CrateCtxt,
             Some(trait_method_ty) => {
                 compare_impl_method(ccx.tcx,
                                     impl_generics,
-                                    impl_method_ty,
+                                    &*impl_method_ty,
                                     impl_method.span,
                                     impl_method.body.id,
-                                    *trait_method_ty,
+                                    &**trait_method_ty,
                                     &impl_trait_ref.substs);
             }
             None => {
@@ -800,7 +800,7 @@ fn check_impl_methods_against_trait(ccx: &CrateCtxt,
  */
 fn compare_impl_method(tcx: &ty::ctxt,
                        impl_generics: &ty::Generics,
-                       impl_m: @ty::Method,
+                       impl_m: &ty::Method,
                        impl_m_span: Span,
                        impl_m_body_id: ast::NodeId,
                        trait_m: &ty::Method,
@@ -973,8 +973,8 @@ fn compare_impl_method(tcx: &ty::ctxt,
 
     match infer::mk_subty(&infcx, false, infer::MethodCompatCheck(impl_m_span),
                           impl_fty, trait_fty) {
-        result::Ok(()) => {}
-        result::Err(ref terr) => {
+        Ok(()) => {}
+        Err(ref terr) => {
             tcx.sess.span_err(
                 impl_m_span,
                 format!("method `{}` has an incompatible type for trait: {}",
@@ -992,7 +992,7 @@ impl<'a> AstConv for FnCtxt<'a> {
         ty::lookup_item_type(self.tcx(), id)
     }
 
-    fn get_trait_def(&self, id: ast::DefId) -> @ty::TraitDef {
+    fn get_trait_def(&self, id: ast::DefId) -> Rc<ty::TraitDef> {
         ty::lookup_trait_def(self.tcx(), id)
     }
 
@@ -1175,8 +1175,8 @@ impl<'a> FnCtxt<'a> {
                                  infer::ExprAssignable(expr.span),
                                  sub,
                                  sup) {
-            Ok(None) => result::Ok(()),
-            Err(ref e) => result::Err((*e)),
+            Ok(None) => Ok(()),
+            Err(ref e) => Err((*e)),
             Ok(Some(adjustment)) => {
                 self.write_adjustment(expr.id, adjustment);
                 Ok(())
@@ -2844,8 +2844,8 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         match expr_opt {
           None => match fcx.mk_eqty(false, infer::Misc(expr.span),
                                     ret_ty, ty::mk_nil()) {
-            result::Ok(_) => { /* fall through */ }
-            result::Err(_) => {
+            Ok(_) => { /* fall through */ }
+            Err(_) => {
                 tcx.sess.span_err(
                     expr.span,
                     "`return;` in function returning non-nil");
@@ -3541,10 +3541,10 @@ pub fn check_enum_variants(ccx: &CrateCtxt,
                 vs: &[ast::P<ast::Variant>],
                 id: ast::NodeId,
                 hint: attr::ReprAttr)
-                -> Vec<@ty::VariantInfo> {
+                -> Vec<Rc<ty::VariantInfo>> {
 
         let rty = ty::node_id_to_type(ccx.tcx, id);
-        let mut variants: Vec<@ty::VariantInfo> = Vec::new();
+        let mut variants: Vec<Rc<ty::VariantInfo>> = Vec::new();
         let mut disr_vals: Vec<ty::Disr> = Vec::new();
         let mut prev_disr_val: Option<ty::Disr> = None;
 
@@ -3600,7 +3600,8 @@ pub fn check_enum_variants(ccx: &CrateCtxt,
             }
             disr_vals.push(current_disr_val);
 
-            let variant_info = @VariantInfo::from_ast_variant(ccx.tcx, v, current_disr_val);
+            let variant_info = Rc::new(VariantInfo::from_ast_variant(ccx.tcx, v,
+                                                                     current_disr_val));
             prev_disr_val = Some(current_disr_val);
 
             variants.push(variant_info);
@@ -3622,7 +3623,7 @@ pub fn check_enum_variants(ccx: &CrateCtxt,
     let variants = do_check(ccx, vs, id, hint);
 
     // cache so that ty::enum_variants won't repeat this work
-    ccx.tcx.enum_var_cache.borrow_mut().insert(local_def(id), @variants);
+    ccx.tcx.enum_var_cache.borrow_mut().insert(local_def(id), Rc::new(variants));
 
     // Check that it is possible to represent this enum.
     check_representable(ccx.tcx, sp, id, "enum");

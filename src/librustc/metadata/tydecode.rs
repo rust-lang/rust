@@ -592,7 +592,7 @@ fn parse_bounds(st: &mut PState, conv: conv_did) -> ty::ParamBounds {
                 param_bounds.builtin_bounds.add(ty::BoundShare);
             }
             'I' => {
-                param_bounds.trait_bounds.push(@parse_trait_ref(st, |x,y| conv(x,y)));
+                param_bounds.trait_bounds.push(Rc::new(parse_trait_ref(st, |x,y| conv(x,y))));
             }
             '.' => {
                 return param_bounds;

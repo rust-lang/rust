@@ -366,9 +366,9 @@ fn enc_bounds(w: &mut MemWriter, cx: &ctxt, bs: &ty::ParamBounds) {
         }
     }
 
-    for &tp in bs.trait_bounds.iter() {
+    for tp in bs.trait_bounds.iter() {
         mywrite!(w, "I");
-        enc_trait_ref(w, cx, tp);
+        enc_trait_ref(w, cx, &**tp);
     }
 
     mywrite!(w, ".");

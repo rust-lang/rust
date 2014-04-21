@@ -22,6 +22,7 @@ use middle::ty::{ty_uniq, ty_trait, ty_int, ty_uint, ty_infer};
 use middle::ty;
 use middle::typeck;
 
+use std::rc::Rc;
 use std::strbuf::StrBuf;
 use syntax::abi;
 use syntax::ast_map;
@@ -497,6 +498,12 @@ impl Repr for () {
     }
 }
 
+impl<T:Repr> Repr for Rc<T> {
+    fn repr(&self, tcx: &ctxt) -> ~str {
+        (&**self).repr(tcx)
+    }
+}
+
 impl<T:Repr> Repr for @T {
     fn repr(&self, tcx: &ctxt) -> ~str {
         (&**self).repr(tcx)
@@ -887,7 +894,7 @@ impl Repr for Span {
     }
 }
 
-impl<A:UserString> UserString for @A {
+impl<A:UserString> UserString for Rc<A> {
     fn user_string(&self, tcx: &ctxt) -> ~str {
         let this: &A = &**self;
         this.user_string(tcx)

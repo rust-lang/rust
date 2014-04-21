@@ -75,6 +75,7 @@ use libc::c_uint;
 use std::c_str::ToCStr;
 use std::cell::{Cell, RefCell};
 use std::local_data;
+use std::rc::Rc;
 use syntax::abi::{X86, X86_64, Arm, Mips, Rust, RustIntrinsic};
 use syntax::ast_util::{local_def, is_local};
 use syntax::attr::AttrMetaMethods;
@@ -637,7 +638,7 @@ pub fn iter_structural_ty<'r,
                     cx: &'b Block<'b>,
                     repr: &adt::Repr,
                     av: ValueRef,
-                    variant: @ty::VariantInfo,
+                    variant: &ty::VariantInfo,
                     tps: &[ty::t],
                     f: val_and_ty_fn<'r,'b>)
                     -> &'b Block<'b> {
@@ -694,7 +695,7 @@ pub fn iter_structural_ty<'r,
 
           match adt::trans_switch(cx, repr, av) {
               (_match::single, None) => {
-                  cx = iter_variant(cx, repr, av, *variants.get(0),
+                  cx = iter_variant(cx, repr, av, &**variants.get(0),
                                     substs.tps.as_slice(), f);
               }
               (_match::switch, Some(lldiscrim_a)) => {
@@ -720,7 +721,7 @@ pub fn iter_structural_ty<'r,
                           iter_variant(variant_cx,
                                        repr,
                                        av,
-                                       *variant,
+                                       &**variant,
                                        substs.tps.as_slice(),
                                        |x,y,z| f(x,y,z));
                       Br(variant_cx, next_cx.llbb);
@@ -1525,11 +1526,11 @@ fn trans_enum_variant_or_tuple_like_struct(ccx: &CrateContext,
     finish_fn(&fcx, bcx);
 }
 
-pub fn trans_enum_def(ccx: &CrateContext, enum_definition: &ast::EnumDef,
-                      id: ast::NodeId, vi: @Vec<@ty::VariantInfo>,
-                      i: &mut uint) {
+fn trans_enum_def(ccx: &CrateContext, enum_definition: &ast::EnumDef,
+                  id: ast::NodeId, vi: &[Rc<ty::VariantInfo>],
+                  i: &mut uint) {
     for &variant in enum_definition.variants.iter() {
-        let disr_val = vi.get(*i).disr_val;
+        let disr_val = vi[*i].disr_val;
         *i += 1;
 
         match variant.node.kind {
@@ -1592,7 +1593,7 @@ pub fn trans_item(ccx: &CrateContext, item: &ast::Item) {
         if !generics.is_type_parameterized() {
             let vi = ty::enum_variants(ccx.tcx(), local_def(item.id));
             let mut i = 0;
-            trans_enum_def(ccx, enum_definition, item.id, vi, &mut i);
+            trans_enum_def(ccx, enum_definition, item.id, vi.as_slice(), &mut i);
         }
       }
       ast::ItemStatic(_, m, expr) => {

@@ -107,10 +107,10 @@ pub fn maybe_get_item_ast(tcx: &ty::ctxt, def: ast::DefId,
 }
 
 pub fn get_enum_variants(tcx: &ty::ctxt, def: ast::DefId)
-                      -> Vec<@ty::VariantInfo> {
+                      -> Vec<Rc<ty::VariantInfo>> {
     let cstore = &tcx.sess.cstore;
     let cdata = cstore.get_crate_data(def.krate);
-    return decoder::get_enum_variants(cstore.intr.clone(), &*cdata, def.node, tcx)
+    decoder::get_enum_variants(cstore.intr.clone(), &*cdata, def.node, tcx)
 }
 
 /// Returns information about the given implementation.
@@ -147,13 +147,13 @@ pub fn get_item_variances(cstore: &cstore::CStore,
 
 pub fn get_provided_trait_methods(tcx: &ty::ctxt,
                                   def: ast::DefId)
-                               -> Vec<@ty::Method> {
+                               -> Vec<Rc<ty::Method>> {
     let cstore = &tcx.sess.cstore;
     let cdata = cstore.get_crate_data(def.krate);
     decoder::get_provided_trait_methods(cstore.intr.clone(), &*cdata, def.node, tcx)
 }
 
-pub fn get_supertraits(tcx: &ty::ctxt, def: ast::DefId) -> Vec<@ty::TraitRef> {
+pub fn get_supertraits(tcx: &ty::ctxt, def: ast::DefId) -> Vec<Rc<ty::TraitRef>> {
     let cstore = &tcx.sess.cstore;
     let cdata = cstore.get_crate_data(def.krate);
     decoder::get_supertraits(&*cdata, def.node, tcx)
@@ -224,7 +224,7 @@ pub fn get_field_type(tcx: &ty::ctxt, class_id: ast::DefId,
 // Given a def_id for an impl, return the trait it implements,
 // if there is one.
 pub fn get_impl_trait(tcx: &ty::ctxt,
-                      def: ast::DefId) -> Option<@ty::TraitRef> {
+                      def: ast::DefId) -> Option<Rc<ty::TraitRef>> {
     let cstore = &tcx.sess.cstore;
     let cdata = cstore.get_crate_data(def.krate);
     decoder::get_impl_trait(&*cdata, def.node, tcx)

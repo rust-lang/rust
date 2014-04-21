@@ -324,6 +324,7 @@ pub trait Combine {
     }
 }
 
+#[deriving(Clone)]
 pub struct CombineFields<'a> {
     pub infcx: &'a InferCtxt<'a>,
     pub a_is_expected: bool,

@@ -422,7 +422,7 @@ fn encode_reexported_static_trait_methods(ecx: &EncodeContext,
                                           -> bool {
     match ecx.tcx.trait_methods_cache.borrow().find(&exp.def_id) {
         Some(methods) => {
-            for &m in methods.iter() {
+            for m in methods.iter() {
                 if m.explicit_self == ast::SelfStatic {
                     encode_reexported_static_method(ebml_w, exp, m.def_id, m.ident);
                 }
@@ -1057,7 +1057,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         for ast_trait_ref in opt_trait.iter() {
             let trait_ref = ty::node_id_to_trait_ref(
                 tcx, ast_trait_ref.ref_id);
-            encode_trait_ref(ebml_w, ecx, trait_ref, tag_item_trait_ref);
+            encode_trait_ref(ebml_w, ecx, &*trait_ref, tag_item_trait_ref);
             let impl_vtables = ty::lookup_impl_vtables(tcx, def_id);
             encode_impl_vtables(ebml_w, ecx, &impl_vtables);
         }
@@ -1078,10 +1078,9 @@ fn encode_info_for_item(ecx: &EncodeContext,
                 val: method_def_id.node as i64,
                 pos: ebml_w.writer.tell().unwrap(),
             });
-            let m = ty::method(tcx, method_def_id);
             encode_info_for_method(ecx,
                                    ebml_w,
-                                   m,
+                                   &*ty::method(tcx, method_def_id),
                                    path.clone(),
                                    false,
                                    item.id,
@@ -1099,7 +1098,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
                                   trait_def.generics.type_param_defs(),
                                   tag_items_data_item_ty_param_bounds);
         encode_region_param_defs(ebml_w, trait_def.generics.region_param_defs());
-        encode_trait_ref(ebml_w, ecx, trait_def.trait_ref, tag_item_trait_ref);
+        encode_trait_ref(ebml_w, ecx, &*trait_def.trait_ref, tag_item_trait_ref);
         encode_name(ebml_w, item.ident.name);
         encode_attributes(ebml_w, item.attrs.as_slice());
         encode_visibility(ebml_w, vis);
@@ -1118,7 +1117,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         // the builtin-kinds-as-supertraits. See corresponding fixme in decoder.
         for ast_trait_ref in super_traits.iter() {
             let trait_ref = ty::node_id_to_trait_ref(ecx.tcx, ast_trait_ref.ref_id);
-            encode_trait_ref(ebml_w, ecx, trait_ref, tag_item_super_trait_ref);
+            encode_trait_ref(ebml_w, ecx, &*trait_ref, tag_item_super_trait_ref);
         }
 
         // Encode the implementations of this trait.
@@ -1140,7 +1139,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
 
             ebml_w.start_tag(tag_items_data_item);
 
-            encode_method_ty_fields(ecx, ebml_w, method_ty);
+            encode_method_ty_fields(ecx, ebml_w, &*method_ty);
 
             encode_parent_item(ebml_w, def_id);
 

@@ -195,7 +195,7 @@ impl<'f> Coerce<'f> {
     }
 
     pub fn subtype(&self, a: ty::t, b: ty::t) -> CoerceResult {
-        match Sub(*self.get_ref()).tys(a, b) {
+        match Sub(self.get_ref().clone()).tys(a, b) {
             Ok(_) => Ok(None),         // No coercion required.
             Err(ref e) => Err(*e)
         }
@@ -232,8 +232,9 @@ impl<'f> Coerce<'f> {
         // to type check, we will construct the type that `&M*expr` would
         // yield.
 
-        let sub = Sub(*self.get_ref());
-        let r_borrow = self.get_ref().infcx.next_region_var(Coercion(self.get_ref().trace));
+        let sub = Sub(self.get_ref().clone());
+        let coercion = Coercion(self.get_ref().trace.clone());
+        let r_borrow = self.get_ref().infcx.next_region_var(coercion);
 
         let inner_ty = match *sty_a {
             ty::ty_box(typ) | ty::ty_uniq(typ) => typ,
@@ -269,7 +270,8 @@ impl<'f> Coerce<'f> {
             }
         };
 
-        let r_a = self.get_ref().infcx.next_region_var(Coercion(self.get_ref().trace));
+        let coercion = Coercion(self.get_ref().trace.clone());
+        let r_a = self.get_ref().infcx.next_region_var(coercion);
         let a_borrowed = ty::mk_str(self.get_ref().infcx.tcx, VstoreSlice(r_a));
         if_ok!(self.subtype(a_borrowed, b));
         Ok(Some(AutoDerefRef(AutoDerefRef {
@@ -288,8 +290,9 @@ impl<'f> Coerce<'f> {
                a.inf_str(self.get_ref().infcx), sty_a,
                b.inf_str(self.get_ref().infcx));
 
-        let sub = Sub(*self.get_ref());
-        let r_borrow = self.get_ref().infcx.next_region_var(Coercion(self.get_ref().trace));
+        let sub = Sub(self.get_ref().clone());
+        let coercion = Coercion(self.get_ref().trace.clone());
+        let r_borrow = self.get_ref().infcx.next_region_var(coercion);
         let ty_inner = match *sty_a {
             ty::ty_uniq(t) | ty::ty_ptr(ty::mt{ty: t, ..}) |
             ty::ty_rptr(_, ty::mt{ty: t, ..}) => match ty::get(t).sty {
@@ -324,7 +327,8 @@ impl<'f> Coerce<'f> {
                b.inf_str(self.get_ref().infcx));
 
         let tcx = self.get_ref().infcx.tcx;
-        let r_a = self.get_ref().infcx.next_region_var(Coercion(self.get_ref().trace));
+        let coercion = Coercion(self.get_ref().trace.clone());
+        let r_a = self.get_ref().infcx.next_region_var(coercion);
 
         let a_borrowed = match *sty_a {
             ty::ty_trait(~ty::TyTrait { def_id, ref substs, bounds, .. }) => {
