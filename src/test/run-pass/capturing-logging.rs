@@ -24,7 +24,7 @@ use log::{set_logger, Logger};
 struct MyWriter(ChanWriter);
 
 impl Logger for MyWriter {
-    fn log(&mut self, _level: u32, args: &fmt::Arguments) {
+    fn log(&mut self, _level: u32, _file: &str, _line: uint, args: &fmt::Arguments) {
         let MyWriter(ref mut inner) = *self;
         fmt::writeln(inner as &mut Writer, args);
     }
