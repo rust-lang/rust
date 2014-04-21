@@ -120,12 +120,13 @@ differently.
 Containers implement iteration over the contained elements by returning an
 iterator object. For example, vector slices several iterators available:
 
-* `iter()` and `rev_iter()`, for immutable references to the elements
-* `mut_iter()` and `mut_rev_iter()`, for mutable references to the elements
-* `move_iter()` and `move_rev_iter()`, to move the elements out by-value
+* `iter()` for immutable references to the elements
+* `mut_iter()` for mutable references to the elements
+* `move_iter()` to move the elements out by-value
 
 A typical mutable container will implement at least `iter()`, `mut_iter()` and
-`move_iter()` along with the reverse variants if it maintains an order.
+`move_iter()`. If it maintains an order, the returned iterators will be
+`DoubleEndedIterator`s, which are described below.
 
 ### Freezing
 
@@ -265,7 +266,7 @@ Iterators offer generic conversion to containers with the `collect` adaptor:
 
 ~~~
 let xs = [0, 1, 1, 2, 3, 5, 8];
-let ys = xs.rev_iter().skip(1).map(|&x| x * 2).collect::<~[int]>();
+let ys = xs.iter().rev().skip(1).map(|&x| x * 2).collect::<~[int]>();
 assert_eq!(ys, ~[10, 6, 4, 2, 2, 0]);
 ~~~
 
@@ -357,9 +358,6 @@ for &x in it.rev() {
     println!("{}", x)
 }
 ~~~
-
-The `rev_iter` and `mut_rev_iter` methods on vectors just return an inverted
-version of the standard immutable and mutable vector iterators.
 
 The `chain`, `map`, `filter`, `filter_map` and `inspect` adaptors are
 `DoubleEndedIterator` implementations if the underlying iterators are.

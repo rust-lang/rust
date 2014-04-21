@@ -395,7 +395,7 @@ impl<T> TrieNode<T> {
 
 impl<T> TrieNode<T> {
     fn each_reverse<'a>(&'a self, f: |&uint, &'a T| -> bool) -> bool {
-        for elt in self.children.rev_iter() {
+        for elt in self.children.iter().rev() {
             match *elt {
                 Internal(ref x) => if !x.each_reverse(|i,t| f(i,t)) { return false },
                 External(k, ref v) => if !f(&k, v) { return false },

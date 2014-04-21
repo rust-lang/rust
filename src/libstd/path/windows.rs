@@ -37,12 +37,14 @@ pub type StrComponents<'a> = Map<'a, &'a str, Option<&'a str>,
 ///
 /// Each component is yielded as Option<&str> for compatibility with PosixPath, but
 /// every component in WindowsPath is guaranteed to be Some.
+#[deprecated = "replaced by Rev<StrComponents<'a>>"]
 pub type RevStrComponents<'a> = Rev<StrComponents<'a>>;
 
 /// Iterator that yields successive components of a Path as &[u8]
 pub type Components<'a> = Map<'a, Option<&'a str>, &'a [u8],
                                     StrComponents<'a>>;
 /// Iterator that yields components of a Path in reverse as &[u8]
+#[deprecated = "replaced by Rev<Components<'a>>"]
 pub type RevComponents<'a> = Rev<Components<'a>>;
 
 /// Represents a Windows path
@@ -631,7 +633,8 @@ impl Path {
 
     /// Returns an iterator that yields each component of the path in reverse as an Option<&str>
     /// See str_components() for details.
-    pub fn rev_str_components<'a>(&'a self) -> RevStrComponents<'a> {
+    #[deprecated = "replaced by .str_components().rev()"]
+    pub fn rev_str_components<'a>(&'a self) -> Rev<StrComponents<'a>> {
         self.str_components().rev()
     }
 
@@ -647,7 +650,8 @@ impl Path {
 
     /// Returns an iterator that yields each component of the path in reverse as a &[u8].
     /// See str_components() for details.
-    pub fn rev_components<'a>(&'a self) -> RevComponents<'a> {
+    #[deprecated = "replaced by .components().rev()"]
+    pub fn rev_components<'a>(&'a self) -> Rev<Components<'a>> {
         self.components().rev()
     }
 
@@ -2233,9 +2237,9 @@ mod tests {
                                 .collect::<Vec<&str>>();
                     let exp: &[&str] = $exp;
                     assert_eq!(comps.as_slice(), exp);
-                    let comps = path.rev_str_components().map(|x|x.unwrap())
+                    let comps = path.str_components().rev().map(|x|x.unwrap())
                                 .collect::<Vec<&str>>();
-                    let exp = exp.rev_iter().map(|&x|x).collect::<Vec<&str>>();
+                    let exp = exp.iter().rev().map(|&x|x).collect::<Vec<&str>>();
                     assert_eq!(comps, exp);
                 }
             );
@@ -2245,9 +2249,9 @@ mod tests {
                     let comps = path.str_components().map(|x|x.unwrap()).collect::<Vec<&str>>();
                     let exp: &[&str] = $exp;
                     assert_eq!(comps.as_slice(), exp);
-                    let comps = path.rev_str_components().map(|x|x.unwrap())
+                    let comps = path.str_components().rev().map(|x|x.unwrap())
                                 .collect::<Vec<&str>>();
-                    let exp = exp.rev_iter().map(|&x|x).collect::<Vec<&str>>();
+                    let exp = exp.iter().rev().map(|&x|x).collect::<Vec<&str>>();
                     assert_eq!(comps, exp);
                 }
             )
@@ -2302,8 +2306,8 @@ mod tests {
                     let comps = path.components().collect::<Vec<&[u8]>>();
                     let exp: &[&[u8]] = $exp;
                     assert_eq!(comps.as_slice(), exp);
-                    let comps = path.rev_components().collect::<Vec<&[u8]>>();
-                    let exp = exp.rev_iter().map(|&x|x).collect::<Vec<&[u8]>>();
+                    let comps = path.components().rev().collect::<Vec<&[u8]>>();
+                    let exp = exp.iter().rev().map(|&x|x).collect::<Vec<&[u8]>>();
                     assert_eq!(comps, exp);
                 }
             )

@@ -304,7 +304,7 @@ fn rust_input(cratefile: &str, matches: &getopts::Matches) -> Output {
         None => {}
     }
     if default_passes {
-        for name in DEFAULT_PASSES.rev_iter() {
+        for name in DEFAULT_PASSES.iter().rev() {
             passes.unshift(name.to_owned());
         }
     }

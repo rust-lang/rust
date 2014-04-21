@@ -81,8 +81,6 @@ for &x in numbers.iter() {
 }
  ```
 
-* `.rev_iter()` returns an iterator with the same values as `.iter()`,
-  but going in the reverse order, starting with the back element.
 * `.mut_iter()` returns an iterator that allows modifying each value.
 * `.move_iter()` converts an owned vector into an iterator that
   moves out a value from the vector each iteration.
@@ -731,7 +729,8 @@ pub trait ImmutableVector<'a, T> {
     /// Returns an iterator over the vector
     fn iter(self) -> Items<'a, T>;
     /// Returns a reversed iterator over a vector
-    fn rev_iter(self) -> RevItems<'a, T>;
+    #[deprecated = "replaced by .iter().rev()"]
+    fn rev_iter(self) -> Rev<Items<'a, T>>;
     /// Returns an iterator over the subslices of the vector which are
     /// separated by elements that match `pred`.  The matched element
     /// is not contained in the subslices.
@@ -745,6 +744,7 @@ pub trait ImmutableVector<'a, T> {
     /// separated by elements that match `pred`. This starts at the
     /// end of the vector and works backwards.  The matched element is
     /// not contained in the subslices.
+    #[deprecated = "replaced by .split(pred).rev()"]
     fn rsplit(self, pred: |&T|: 'a -> bool) -> Rev<Splits<'a, T>>;
     /// Returns an iterator over the subslices of the vector which are
     /// separated by elements that match `pred` limited to splitting
@@ -923,7 +923,8 @@ impl<'a,T> ImmutableVector<'a, T> for &'a [T] {
     }
 
     #[inline]
-    fn rev_iter(self) -> RevItems<'a, T> {
+    #[deprecated = "replaced by .iter().rev()"]
+    fn rev_iter(self) -> Rev<Items<'a, T>> {
         self.iter().rev()
     }
 
@@ -946,6 +947,7 @@ impl<'a,T> ImmutableVector<'a, T> for &'a [T] {
     }
 
     #[inline]
+    #[deprecated = "replaced by .split(pred).rev()"]
     fn rsplit(self, pred: |&T|: 'a -> bool) -> Rev<Splits<'a, T>> {
         self.split(pred).rev()
     }
@@ -1167,7 +1169,8 @@ pub trait OwnedVector<T> {
     fn move_iter(self) -> MoveItems<T>;
     /// Creates a consuming iterator that moves out of the vector in
     /// reverse order.
-    fn move_rev_iter(self) -> RevMoveItems<T>;
+    #[deprecated = "replaced by .move_iter().rev()"]
+    fn move_rev_iter(self) -> Rev<MoveItems<T>>;
 
     /**
      * Partitions the vector into two vectors `(A,B)`, where all
@@ -1187,7 +1190,8 @@ impl<T> OwnedVector<T> for ~[T] {
     }
 
     #[inline]
-    fn move_rev_iter(self) -> RevMoveItems<T> {
+    #[deprecated = "replaced by .move_iter().rev()"]
+    fn move_rev_iter(self) -> Rev<MoveItems<T>> {
         self.move_iter().rev()
     }
 
@@ -1442,7 +1446,8 @@ pub trait MutableVector<'a, T> {
     fn mut_last(self) -> Option<&'a mut T>;
 
     /// Returns a reversed iterator that allows modifying each value
-    fn mut_rev_iter(self) -> RevMutItems<'a, T>;
+    #[deprecated = "replaced by .mut_iter().rev()"]
+    fn mut_rev_iter(self) -> Rev<MutItems<'a, T>>;
 
     /// Returns an iterator over the mutable subslices of the vector
     /// which are separated by elements that match `pred`.  The
@@ -1714,7 +1719,8 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
     }
 
     #[inline]
-    fn mut_rev_iter(self) -> RevMutItems<'a, T> {
+    #[deprecated = "replaced by .mut_iter().rev()"]
+    fn mut_rev_iter(self) -> Rev<MutItems<'a, T>> {
         self.mut_iter().rev()
     }
 
@@ -2129,6 +2135,7 @@ impl<'a, T> RandomAccessIterator<&'a T> for Items<'a, T> {
 }
 
 iterator!{struct Items -> *T, &'a T}
+#[deprecated = "replaced by Rev<Items<'a, T>>"]
 pub type RevItems<'a, T> = Rev<Items<'a, T>>;
 
 impl<'a, T> ExactSize<&'a T> for Items<'a, T> {}
@@ -2139,6 +2146,7 @@ impl<'a, T> Clone for Items<'a, T> {
 }
 
 iterator!{struct MutItems -> *mut T, &'a mut T}
+#[deprecated = "replaced by Rev<MutItems<'a, T>>"]
 pub type RevMutItems<'a, T> = Rev<MutItems<'a, T>>;
 
 /// An iterator over the subslices of the vector which are separated
@@ -2299,6 +2307,7 @@ impl<T> Drop for MoveItems<T> {
 }
 
 /// An iterator that moves out of a vector in reverse order.
+#[deprecated = "replaced by Rev<MoveItems<'a, T>>"]
 pub type RevMoveItems<T> = Rev<MoveItems<T>>;
 
 impl<A> FromIterator<A> for ~[A] {
@@ -3228,9 +3237,7 @@ mod tests {
         use iter::*;
         let mut xs = [1, 2, 5, 10, 11];
         assert_eq!(xs.iter().size_hint(), (5, Some(5)));
-        assert_eq!(xs.rev_iter().size_hint(), (5, Some(5)));
         assert_eq!(xs.mut_iter().size_hint(), (5, Some(5)));
-        assert_eq!(xs.mut_rev_iter().size_hint(), (5, Some(5)));
     }
 
     #[test]
@@ -3261,7 +3268,7 @@ mod tests {
         let xs = [1, 2, 5, 10, 11];
         let ys = [11, 10, 5, 2, 1];
         let mut i = 0;
-        for &x in xs.rev_iter() {
+        for &x in xs.iter().rev() {
             assert_eq!(x, ys[i]);
             i += 1;
         }
@@ -3272,7 +3279,7 @@ mod tests {
     fn test_mut_rev_iterator() {
         use iter::*;
         let mut xs = [1u, 2, 3, 4, 5];
-        for (i,x) in xs.mut_rev_iter().enumerate() {
+        for (i,x) in xs.mut_iter().rev().enumerate() {
             *x += i;
         }
         assert!(xs == [5, 5, 5, 5, 5])
@@ -3289,7 +3296,7 @@ mod tests {
     fn test_move_rev_iterator() {
         use iter::*;
         let xs = ~[1u,2,3,4,5];
-        assert_eq!(xs.move_rev_iter().fold(0, |a: uint, b: uint| 10*a + b), 54321);
+        assert_eq!(xs.move_iter().rev().fold(0, |a: uint, b: uint| 10*a + b), 54321);
     }
 
     #[test]
@@ -3330,17 +3337,17 @@ mod tests {
     fn test_rsplitator() {
         let xs = &[1i,2,3,4,5];
 
-        assert_eq!(xs.rsplit(|x| *x % 2 == 0).collect::<~[&[int]]>(),
+        assert_eq!(xs.split(|x| *x % 2 == 0).rev().collect::<~[&[int]]>(),
                    ~[&[5], &[3], &[1]]);
-        assert_eq!(xs.rsplit(|x| *x == 1).collect::<~[&[int]]>(),
+        assert_eq!(xs.split(|x| *x == 1).rev().collect::<~[&[int]]>(),
                    ~[&[2,3,4,5], &[]]);
-        assert_eq!(xs.rsplit(|x| *x == 5).collect::<~[&[int]]>(),
+        assert_eq!(xs.split(|x| *x == 5).rev().collect::<~[&[int]]>(),
                    ~[&[], &[1,2,3,4]]);
-        assert_eq!(xs.rsplit(|x| *x == 10).collect::<~[&[int]]>(),
+        assert_eq!(xs.split(|x| *x == 10).rev().collect::<~[&[int]]>(),
                    ~[&[1,2,3,4,5]]);
 
         let xs: &[int] = &[];
-        assert_eq!(xs.rsplit(|x| *x == 5).collect::<~[&[int]]>(), ~[&[]]);
+        assert_eq!(xs.split(|x| *x == 5).rev().collect::<~[&[int]]>(), ~[&[]]);
     }
 
     #[test]
