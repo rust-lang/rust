@@ -221,22 +221,22 @@ pub fn trans_static_method_callee(bcx: &Block,
     }
 }
 
-pub fn method_with_name(ccx: &CrateContext,
-                        impl_id: ast::DefId,
-                        name: ast::Name) -> ast::DefId {
+fn method_with_name(ccx: &CrateContext,
+                    impl_id: ast::DefId,
+                    name: ast::Name) -> ast::DefId {
     match ccx.impl_method_cache.borrow().find_copy(&(impl_id, name)) {
         Some(m) => return m,
         None => {}
     }
 
-    let imp = ccx.tcx.impls.borrow();
-    let imp = imp.find(&impl_id)
-                 .expect("could not find impl while translating");
-    let meth = imp.methods.iter().find(|m| m.ident.name == name)
-                  .expect("could not find method while translating");
+    let methods = ccx.tcx.impl_methods.borrow();
+    let methods = methods.find(&impl_id)
+                         .expect("could not find impl while translating");
+    let meth_did = methods.iter().find(|&did| ty::method(&ccx.tcx, *did).ident.name == name)
+                                 .expect("could not find method while translating");
 
-    ccx.impl_method_cache.borrow_mut().insert((impl_id, name), meth.def_id);
-    meth.def_id
+    ccx.impl_method_cache.borrow_mut().insert((impl_id, name), *meth_did);
+    *meth_did
 }
 
 fn trans_monomorphized_callee<'a>(bcx: &'a Block<'a>,

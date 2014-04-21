@@ -325,21 +325,21 @@ fn search_for_vtable(vcx: &VtableContext,
         }
     };
     // impls is the list of all impls in scope for trait_ref.
-    for im in impls.borrow().iter() {
+    for &impl_did in impls.borrow().iter() {
         // im is one specific impl of trait_ref.
 
         // First, ensure we haven't processed this impl yet.
-        if impls_seen.contains(&im.did) {
+        if impls_seen.contains(&impl_did) {
             continue;
         }
-        impls_seen.insert(im.did);
+        impls_seen.insert(impl_did);
 
         // ty::impl_traits gives us the trait im implements.
         //
         // If foo implements a trait t, and if t is the same trait as
         // trait_ref, we need to unify it with trait_ref in order to
         // get all the ty vars sorted out.
-        let r = ty::impl_trait_ref(tcx, im.did);
+        let r = ty::impl_trait_ref(tcx, impl_did);
         let of_trait_ref = r.expect("trait_ref missing on trait impl");
         if of_trait_ref.def_id != trait_ref.def_id { continue; }
 
@@ -362,7 +362,7 @@ fn search_for_vtable(vcx: &VtableContext,
         let ty::ty_param_substs_and_ty {
             substs: substs,
             ty: for_ty
-        } = impl_self_ty(vcx, span, im.did);
+        } = impl_self_ty(vcx, span, impl_did);
         match infer::mk_subty(vcx.infcx,
                               false,
                               infer::RelateSelfType(span),
@@ -405,7 +405,7 @@ fn search_for_vtable(vcx: &VtableContext,
         // type variables in substs. This might still be OK: the
         // process of looking up bounds might constrain some of them.
         let im_generics =
-            ty::lookup_item_type(tcx, im.did).generics;
+            ty::lookup_item_type(tcx, impl_did).generics;
         let subres = lookup_vtables(vcx, span,
                                     im_generics.type_param_defs(), &substs,
                                     is_early);
@@ -438,12 +438,12 @@ fn search_for_vtable(vcx: &VtableContext,
         // I am a little confused about this, since it seems to be
         // very similar to the relate_trait_refs we already do,
         // but problems crop up if it is removed, so... -sully
-        connect_trait_tps(vcx, span, &substs_f, trait_ref, im.did);
+        connect_trait_tps(vcx, span, &substs_f, trait_ref, impl_did);
 
         // Finally, we register that we found a matching impl, and
         // record the def ID of the impl as well as the resolved list
         // of type substitutions for the target trait.
-        found.push(vtable_static(im.did, substs_f.tps.clone(), subres));
+        found.push(vtable_static(impl_did, substs_f.tps.clone(), subres));
     }
 
     match found.len() {

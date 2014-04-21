@@ -733,32 +733,17 @@ fn get_explicit_self(item: ebml::Doc) -> ast::ExplicitSelf_ {
     }
 }
 
-fn item_impl_methods(intr: Rc<IdentInterner>, cdata: Cmd, item: ebml::Doc,
-                     tcx: &ty::ctxt) -> Vec<@ty::Method> {
-    let mut rslt = Vec::new();
-    reader::tagged_docs(item, tag_item_impl_method, |doc| {
+/// Returns information about the given implementation.
+pub fn get_impl_methods(cdata: Cmd, impl_id: ast::NodeId) -> Vec<ast::DefId> {
+    let mut methods = Vec::new();
+    reader::tagged_docs(lookup_item(impl_id, cdata.data()),
+                        tag_item_impl_method, |doc| {
         let m_did = reader::with_doc_data(doc, parse_def_id);
-        rslt.push(@get_method(intr.clone(), cdata, m_did.node, tcx));
+        methods.push(translate_def_id(cdata, m_did));
         true
     });
 
-    rslt
-}
-
-/// Returns information about the given implementation.
-pub fn get_impl(intr: Rc<IdentInterner>, cdata: Cmd, impl_id: ast::NodeId,
-               tcx: &ty::ctxt)
-                -> ty::Impl {
-    let data = cdata.data();
-    let impl_item = lookup_item(impl_id, data);
-    ty::Impl {
-        did: ast::DefId {
-            krate: cdata.cnum,
-            node: impl_id,
-        },
-        ident: item_name(&*intr, impl_item),
-        methods: item_impl_methods(intr, cdata, impl_item, tcx),
-    }
+    methods
 }
 
 pub fn get_method_name_and_explicit_self(

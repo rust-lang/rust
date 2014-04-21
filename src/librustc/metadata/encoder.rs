@@ -398,10 +398,12 @@ fn encode_reexported_static_base_methods(ecx: &EncodeContext,
                                          ebml_w: &mut Encoder,
                                          exp: &middle::resolve::Export2)
                                          -> bool {
+    let impl_methods = ecx.tcx.impl_methods.borrow();
     match ecx.tcx.inherent_impls.borrow().find(&exp.def_id) {
         Some(implementations) => {
-            for &base_impl in implementations.borrow().iter() {
-                for &m in base_impl.methods.iter() {
+            for base_impl_did in implementations.borrow().iter() {
+                for &method_did in impl_methods.get(base_impl_did).iter() {
+                    let m = ty::method(ecx.tcx, method_did);
                     if m.explicit_self == ast::SelfStatic {
                         encode_reexported_static_method(ebml_w, exp, m.def_id, m.ident);
                     }
@@ -822,9 +824,9 @@ fn encode_inherent_implementations(ecx: &EncodeContext,
     match ecx.tcx.inherent_impls.borrow().find(&def_id) {
         None => {}
         Some(implementations) => {
-            for implementation in implementations.borrow().iter() {
+            for &impl_def_id in implementations.borrow().iter() {
                 ebml_w.start_tag(tag_items_data_item_inherent_impl);
-                encode_def_id(ebml_w, implementation.did);
+                encode_def_id(ebml_w, impl_def_id);
                 ebml_w.end_tag();
             }
         }
@@ -838,9 +840,9 @@ fn encode_extension_implementations(ecx: &EncodeContext,
     match ecx.tcx.trait_impls.borrow().find(&trait_def_id) {
         None => {}
         Some(implementations) => {
-            for implementation in implementations.borrow().iter() {
+            for &impl_def_id in implementations.borrow().iter() {
                 ebml_w.start_tag(tag_items_data_item_extension_impl);
-                encode_def_id(ebml_w, implementation.did);
+                encode_def_id(ebml_w, impl_def_id);
                 ebml_w.end_tag();
             }
         }
@@ -1028,8 +1030,8 @@ fn encode_info_for_item(ecx: &EncodeContext,
       ItemImpl(_, ref opt_trait, ty, ref ast_methods) => {
         // We need to encode information about the default methods we
         // have inherited, so we drive this based on the impl structure.
-        let impls = tcx.impls.borrow();
-        let imp = impls.get(&def_id);
+        let impl_methods = tcx.impl_methods.borrow();
+        let methods = impl_methods.get(&def_id);
 
         add_to_index(item, ebml_w, index);
         ebml_w.start_tag(tag_items_data_item);
@@ -1046,9 +1048,9 @@ fn encode_info_for_item(ecx: &EncodeContext,
             }
             _ => {}
         }
-        for method in imp.methods.iter() {
+        for &method_def_id in methods.iter() {
             ebml_w.start_tag(tag_item_impl_method);
-            let s = def_to_str(method.def_id);
+            let s = def_to_str(method_def_id);
             ebml_w.writer.write(s.as_bytes());
             ebml_w.end_tag();
         }
@@ -1067,18 +1069,19 @@ fn encode_info_for_item(ecx: &EncodeContext,
         // appear first in the impl structure, in the same order they do
         // in the ast. This is a little sketchy.
         let num_implemented_methods = ast_methods.len();
-        for (i, m) in imp.methods.iter().enumerate() {
+        for (i, &method_def_id) in methods.iter().enumerate() {
             let ast_method = if i < num_implemented_methods {
                 Some(*ast_methods.get(i))
             } else { None };
 
             index.push(entry {
-                val: m.def_id.node as i64,
+                val: method_def_id.node as i64,
                 pos: ebml_w.writer.tell().unwrap(),
             });
+            let m = ty::method(tcx, method_def_id);
             encode_info_for_method(ecx,
                                    ebml_w,
-                                   *m,
+                                   m,
                                    path.clone(),
                                    false,
                                    item.id,
