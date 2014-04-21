@@ -119,7 +119,6 @@ use result::{Ok, Err};
 use mem;
 use mem::size_of;
 use kinds::marker;
-use uint;
 use unstable::finally::try_finally;
 use raw::{Repr, Slice};
 use RawVec = raw::Vec;
@@ -148,7 +147,6 @@ pub fn mut_ref_slice<'a, A>(s: &'a mut A) -> &'a mut [A] {
 /// match a predicate function.
 pub struct Splits<'a, T> {
     v: &'a [T],
-    n: uint,
     pred: |t: &T|: 'a -> bool,
     finished: bool
 }
@@ -158,11 +156,6 @@ impl<'a, T> Iterator<&'a [T]> for Splits<'a, T> {
     fn next(&mut self) -> Option<&'a [T]> {
         if self.finished { return None; }
 
-        if self.n == 0 {
-            self.finished = true;
-            return Some(self.v);
-        }
-
         match self.v.iter().position(|x| (self.pred)(x)) {
             None => {
                 self.finished = true;
@@ -171,7 +164,6 @@ impl<'a, T> Iterator<&'a [T]> for Splits<'a, T> {
             Some(idx) => {
                 let ret = Some(self.v.slice(0, idx));
                 self.v = self.v.slice(idx + 1, self.v.len());
-                self.n -= 1;
                 ret
             }
         }
@@ -180,37 +172,17 @@ impl<'a, T> Iterator<&'a [T]> for Splits<'a, T> {
     #[inline]
     fn size_hint(&self) -> (uint, Option<uint>) {
         if self.finished {
-            return (0, Some(0))
-        }
-        // if the predicate doesn't match anything, we yield one slice
-        // if it matches every element, we yield N+1 empty slices where
-        // N is either the number of elements or the number of splits.
-        match (self.v.len(), self.n) {
-            (0,_) => (1, Some(1)),
-            (_,0) => (1, Some(1)),
-            (l,n) => (1, cmp::min(l,n).checked_add(&1u))
+            (0, Some(0))
+        } else {
+            (1, Some(self.v.len() + 1))
         }
     }
 }
 
-/// An iterator over the slices of a vector separated by elements that
-/// match a predicate function, from back to front.
-pub struct RevSplits<'a, T> {
-    v: &'a [T],
-    n: uint,
-    pred: |t: &T|: 'a -> bool,
-    finished: bool
-}
-
-impl<'a, T> Iterator<&'a [T]> for RevSplits<'a, T> {
+impl<'a, T> DoubleEndedIterator<&'a [T]> for Splits<'a, T> {
     #[inline]
-    fn next(&mut self) -> Option<&'a [T]> {
+    fn next_back(&mut self) -> Option<&'a [T]> {
         if self.finished { return None; }
-
-        if self.n == 0 {
-            self.finished = true;
-            return Some(self.v);
-        }
 
         match self.v.iter().rposition(|x| (self.pred)(x)) {
             None => {
@@ -220,21 +192,42 @@ impl<'a, T> Iterator<&'a [T]> for RevSplits<'a, T> {
             Some(idx) => {
                 let ret = Some(self.v.slice(idx + 1, self.v.len()));
                 self.v = self.v.slice(0, idx);
-                self.n -= 1;
                 ret
             }
+        }
+    }
+}
+
+/// An iterator over the slices of a vector separated by elements that
+/// match a predicate function, splitting at most a fixed number of times.
+pub struct SplitsN<'a, T> {
+    iter: Splits<'a, T>,
+    count: uint,
+    invert: bool
+}
+
+impl<'a, T> Iterator<&'a [T]> for SplitsN<'a, T> {
+    #[inline]
+    fn next(&mut self) -> Option<&'a [T]> {
+        if self.count == 0 {
+            if self.iter.finished {
+                None
+            } else {
+                self.iter.finished = true;
+                Some(self.iter.v)
+            }
+        } else {
+            self.count -= 1;
+            if self.invert { self.iter.next_back() } else { self.iter.next() }
         }
     }
 
     #[inline]
     fn size_hint(&self) -> (uint, Option<uint>) {
-        if self.finished {
-            return (0, Some(0))
-        }
-        match (self.v.len(), self.n) {
-            (0,_) => (1, Some(1)),
-            (_,0) => (1, Some(1)),
-            (l,n) => (1, cmp::min(l,n).checked_add(&1u))
+        if self.iter.finished {
+            (0, Some(0))
+        } else {
+            (1, Some(cmp::min(self.count, self.iter.v.len()) + 1))
         }
     }
 }
@@ -747,18 +740,18 @@ pub trait ImmutableVector<'a, T> {
     /// separated by elements that match `pred`, limited to splitting
     /// at most `n` times.  The matched element is not contained in
     /// the subslices.
-    fn splitn(self, n: uint, pred: |&T|: 'a -> bool) -> Splits<'a, T>;
+    fn splitn(self, n: uint, pred: |&T|: 'a -> bool) -> SplitsN<'a, T>;
     /// Returns an iterator over the subslices of the vector which are
     /// separated by elements that match `pred`. This starts at the
     /// end of the vector and works backwards.  The matched element is
     /// not contained in the subslices.
-    fn rsplit(self, pred: |&T|: 'a -> bool) -> RevSplits<'a, T>;
+    fn rsplit(self, pred: |&T|: 'a -> bool) -> Rev<Splits<'a, T>>;
     /// Returns an iterator over the subslices of the vector which are
     /// separated by elements that match `pred` limited to splitting
     /// at most `n` times. This starts at the end of the vector and
     /// works backwards.  The matched element is not contained in the
     /// subslices.
-    fn rsplitn(self,  n: uint, pred: |&T|: 'a -> bool) -> RevSplits<'a, T>;
+    fn rsplitn(self,  n: uint, pred: |&T|: 'a -> bool) -> SplitsN<'a, T>;
 
     /**
      * Returns an iterator over all contiguous windows of length
@@ -936,31 +929,33 @@ impl<'a,T> ImmutableVector<'a, T> for &'a [T] {
 
     #[inline]
     fn split(self, pred: |&T|: 'a -> bool) -> Splits<'a, T> {
-        self.splitn(uint::MAX, pred)
-    }
-
-    #[inline]
-    fn splitn(self, n: uint, pred: |&T|: 'a -> bool) -> Splits<'a, T> {
         Splits {
             v: self,
-            n: n,
             pred: pred,
             finished: false
         }
     }
 
     #[inline]
-    fn rsplit(self, pred: |&T|: 'a -> bool) -> RevSplits<'a, T> {
-        self.rsplitn(uint::MAX, pred)
+    fn splitn(self, n: uint, pred: |&T|: 'a -> bool) -> SplitsN<'a, T> {
+        SplitsN {
+            iter: self.split(pred),
+            count: n,
+            invert: false
+        }
     }
 
     #[inline]
-    fn rsplitn(self, n: uint, pred: |&T|: 'a -> bool) -> RevSplits<'a, T> {
-        RevSplits {
-            v: self,
-            n: n,
-            pred: pred,
-            finished: false
+    fn rsplit(self, pred: |&T|: 'a -> bool) -> Rev<Splits<'a, T>> {
+        self.split(pred).rev()
+    }
+
+    #[inline]
+    fn rsplitn(self, n: uint, pred: |&T|: 'a -> bool) -> SplitsN<'a, T> {
+        SplitsN {
+            iter: self.split(pred),
+            count: n,
+            invert: true
         }
     }
 
