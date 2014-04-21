@@ -9,9 +9,9 @@ You should already be already familiar with programming concepts, in particular 
 [guide-fn]: guide-syntax.html#functions
 [guide-struct]: guide-syntax.html#struct
 
-# Stack, Heap and inline structures
+# Stack, Heap and Inline Structures
 
-To show how Rust semantics take maximum advantage of modern machine architecture to optimize runtime, we use a structure that represents a two dimensional point: 
+To show how Rust semantics take maximum advantage of modern machine architecture to optimize runtime, we use a structure that represents a point in 2 dimensions: 
 
 ~~~~
 struct Point {
@@ -90,21 +90,22 @@ The two `Point`s are laid out inline inside the `Line` struct, which avoids the 
 
 <!-- FIXME: here we continue talking about copying values as they are passed up and down the stack before introducing Rust's more common pattern - *moving* in the next section-->
 
-Function parameters are laid out inline in the same way. A function that takes two points as arguments:
+Function parameters are laid out inline in the same way. A function that takes two points as arguments reserves space on the stack for the two point arguments:
 
 ~~~~{.notrust}
 fn draw_line(from: Point, to: Point) { // Draw the line }
 ~~~~
 
-reserves space on the stack for the two point arguments. 
 
 ## Heap Allocation
 
 The stack is very efficient but it is also limited in size, so can't be used to store arbitrary amounts of data. To do that you need to allocate memory on the heap.
 
+<!-- FIXME: not really happy with this, we're already talking about allocating memory, so the ~ is forced -->
+
 In Rust, the `~` operator allocates memory, so `~expr` allocates space on the heap, evaluates `expr` and stores the result on the heap. For example, `p=~Point { x: 1, y: 2 }`. `p` is not of type `Point` but of type `~Point`,  the `~` indicates that it is a pointer to a heap allocation.
 
-One very common use for heap allocation is to store [arrays][arrays]. For example, a function to draw an a polygon of an arbitrary list of points:
+One very common use for heap allocation is to store [arrays][arrays]. For example, a function to draw a polygon of an arbitrary list of points:
 
 [arrays]:  FIXME
 
@@ -119,7 +120,9 @@ fn draw_polygon(points: ~[Point]) {
 }
 ~~~~
 
-The type `~[...]` in Rust indicates a heap-allocated array, in this case that means a variable number of points. You can create a `~[...]` array using a `~[...]` expression. Calling `draw_polygon` might look like:
+The type `~[...]` in Rust indicates a heap-allocated array containing an unknown number of points. Calling `draw_polygon`:
+
+<!-- FIXME You can create a `~[...]` array using a `~[...]` expression.  -->
 
 ~~~~
 # struct Point { x: int, y: int }
@@ -146,7 +149,7 @@ In Rust, whenever a heap pointer (that is, a variable of type `~T`) goes out of 
 
 <!--Now talk about draw_polygon and moving.-->
 
-In other languages, manually freeing memory carries the risk that if you use a pointer after it has been freed, you are using memory that no longer belongs to you, which might have been reused elsewhere in the system. The results are unpredicable, leading to errors, crashes, and security vulnerabilities.
+In other languages, manually freeing memory carries the risk that if you use a pointer after it has been freed, you are using memory that no longer belongs to you, which might have been reused elsewhere. The results are unpredictable, leading to errors, crashes, and security vulnerabilities.
 
 Rust is designed to guarantee that once a pointer is freed, it can never be used again. Every heap pointer has an *owner*, and only the owner of a pointer may use it. When a pointer is first allocated, the owner is the function that allocated it. But when the pointer is passed as an argument, ownership is transferred to the callee. This means that the caller can no longer access the pointer or the memory it points at.
 
@@ -185,7 +188,6 @@ Ownership can also be transferred by returning a value or by storing it an array
 # }
 
 fn draw_polygon(points: ~[Point]) -> ~[Point] {
-    ...
     return points;
 }
 
