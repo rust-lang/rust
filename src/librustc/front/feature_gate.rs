@@ -16,7 +16,7 @@
 //! enabled.
 //!
 //! Features are enabled in programs via the crate-level attributes of
-//! #[feature(...)] with a comma-separated list of features.
+//! #![feature(...)] with a comma-separated list of features.
 
 use middle::lint;
 
@@ -324,7 +324,7 @@ pub fn check_crate(sess: &Session, krate: &ast::Crate) {
         match attr.meta_item_list() {
             None => {
                 sess.span_err(attr.span, "malformed feature attribute, \
-                                          expected #[feature(...)]");
+                                          expected #![feature(...)]");
             }
             Some(list) => {
                 for &mi in list.iter() {
