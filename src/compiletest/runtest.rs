@@ -835,14 +835,19 @@ fn make_exe_name(config: &config, testfile: &Path) -> Path {
     f
 }
 
-fn make_run_args(config: &config, _props: &TestProps, testfile: &Path) ->
+fn make_run_args(config: &config, props: &TestProps, testfile: &Path) ->
    ProcArgs {
     // If we've got another tool to run under (valgrind),
     // then split apart its command
     let mut args = split_maybe_args(&config.runtool);
     let exe_file = make_exe_name(config, testfile);
+
     // FIXME (#9639): This needs to handle non-utf8 paths
     args.push(exe_file.as_str().unwrap().to_owned());
+
+    // Add the arguments in the run_flags directive
+    args.push_all_move(split_maybe_args(&props.run_flags));
+
     let prog = args.shift().unwrap();
     return ProcArgs {prog: prog, args: args};
 }
