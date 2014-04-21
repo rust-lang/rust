@@ -25,13 +25,13 @@ fn test0(f: Foo, g: Noncopyable, h: Noncopyable) {
 fn test1(f: Foo, g: Noncopyable, h: Noncopyable) {
     // copying move-by-default fields from `f`, so move:
     let _b = Foo {noncopyable: g, ..f};
-    let _c = Foo {noncopyable: h, ..f}; //~ ERROR use of moved value: `f`
+    let _c = Foo {noncopyable: h, ..f}; //~ ERROR use of partially moved value: `f`
 }
 
 fn test2(f: Foo, g: Noncopyable) {
     // move non-copyable field
     let _b = Foo {copied: 22, moved: ~23, ..f};
-    let _c = Foo {noncopyable: g, ..f}; //~ ERROR use of moved value: `f`
+    let _c = Foo {noncopyable: g, ..f}; //~ ERROR use of partially moved value: `f`
 }
 
 fn main() {}

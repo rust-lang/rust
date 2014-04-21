@@ -15,7 +15,6 @@ use lib::llvm::{ContextRef, ModuleRef, ValueRef};
 use lib::llvm::{llvm, TargetData, TypeNames};
 use lib::llvm::mk_target_data;
 use metadata::common::LinkMeta;
-use middle::astencode;
 use middle::resolve;
 use middle::trans::adt;
 use middle::trans::base;
@@ -113,7 +112,6 @@ pub struct CrateContext {
     pub type_hashcodes: RefCell<HashMap<ty::t, ~str>>,
     pub all_llvm_symbols: RefCell<HashSet<~str>>,
     pub tcx: ty::ctxt,
-    pub maps: astencode::Maps,
     pub stats: Stats,
     pub int_type: Type,
     pub opaque_vec_type: Type,
@@ -131,7 +129,6 @@ impl CrateContext {
     pub fn new(name: &str,
                tcx: ty::ctxt,
                emap2: resolve::ExportMap2,
-               maps: astencode::Maps,
                symbol_hasher: Sha256,
                link_meta: LinkMeta,
                reachable: NodeSet)
@@ -195,7 +192,6 @@ impl CrateContext {
                 type_hashcodes: RefCell::new(HashMap::new()),
                 all_llvm_symbols: RefCell::new(HashSet::new()),
                 tcx: tcx,
-                maps: maps,
                 stats: Stats {
                     n_static_tydescs: Cell::new(0u),
                     n_glues_created: Cell::new(0u),

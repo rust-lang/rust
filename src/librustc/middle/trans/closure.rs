@@ -13,8 +13,8 @@ use back::abi;
 use back::link::mangle_internal_name_by_path_and_seq;
 use driver::session::FullDebugInfo;
 use lib::llvm::ValueRef;
+use middle::freevars;
 use middle::lang_items::ClosureExchangeMallocFnLangItem;
-use middle::moves;
 use middle::trans::base::*;
 use middle::trans::build::*;
 use middle::trans::common::*;
@@ -98,35 +98,14 @@ use syntax::ast_util;
 //
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-pub enum EnvAction {
-    /// Copy the value from this llvm ValueRef into the environment.
-    EnvCopy,
-
-    /// Move the value from this llvm ValueRef into the environment.
-    EnvMove,
-
-    /// Access by reference (used for stack closures).
-    EnvRef
-}
-
 pub struct EnvValue {
-    action: EnvAction,
+    action: freevars::CaptureMode,
     datum: Datum<Lvalue>
-}
-
-impl EnvAction {
-    pub fn to_str(&self) -> ~str {
-        match *self {
-            EnvCopy => "EnvCopy".to_owned(),
-            EnvMove => "EnvMove".to_owned(),
-            EnvRef => "EnvRef".to_owned()
-        }
-    }
 }
 
 impl EnvValue {
     pub fn to_str(&self, ccx: &CrateContext) -> ~str {
-        format!("{}({})", self.action.to_str(), self.datum.to_str(ccx))
+        format!("{}({})", self.action, self.datum.to_str(ccx))
     }
 }
 
@@ -140,8 +119,8 @@ pub fn mk_closure_tys(tcx: &ty::ctxt,
     // converted to ptrs.
     let bound_tys = bound_values.iter().map(|bv| {
         match bv.action {
-            EnvCopy | EnvMove => bv.datum.ty,
-            EnvRef => ty::mk_mut_ptr(tcx, bv.datum.ty)
+            freevars::CaptureByValue => bv.datum.ty,
+            freevars::CaptureByRef => ty::mk_mut_ptr(tcx, bv.datum.ty)
         }
     }).collect();
     let cdata_ty = ty::mk_tup(tcx, bound_tys);
@@ -232,10 +211,10 @@ pub fn store_environment<'a>(
         let bound_data = GEPi(bcx, llbox, [0u, abi::box_field_body, i]);
 
         match bv.action {
-            EnvCopy | EnvMove => {
+            freevars::CaptureByValue => {
                 bcx = bv.datum.store_to(bcx, bound_data);
             }
-            EnvRef => {
+            freevars::CaptureByRef => {
                 Store(bcx, bv.datum.to_llref(), bound_data);
             }
         }
@@ -247,9 +226,11 @@ pub fn store_environment<'a>(
 // Given a context and a list of upvars, build a closure. This just
 // collects the upvars and packages them up for store_environment.
 fn build_closure<'a>(bcx0: &'a Block<'a>,
-                     cap_vars: &[moves::CaptureVar],
+                     freevar_mode: freevars::CaptureMode,
+                     freevars: &Vec<freevars::freevar_entry>,
                      store: ty::TraitStore)
-                     -> ClosureResult<'a> {
+                     -> ClosureResult<'a>
+{
     let _icx = push_ctxt("closure::build_closure");
 
     // If we need to, package up the iterator body to call
@@ -257,28 +238,9 @@ fn build_closure<'a>(bcx0: &'a Block<'a>,
 
     // Package up the captured upvars
     let mut env_vals = Vec::new();
-    for cap_var in cap_vars.iter() {
-        debug!("Building closure: captured variable {:?}", *cap_var);
-        let datum = expr::trans_local_var(bcx, cap_var.def);
-        match cap_var.mode {
-            moves::CapRef => {
-                let is_region_closure = match store {
-                    ty::RegionTraitStore(..) => true,
-                    ty::UniqTraitStore => false
-                };
-                assert!(is_region_closure);
-                env_vals.push(EnvValue {action: EnvRef,
-                                        datum: datum});
-            }
-            moves::CapCopy => {
-                env_vals.push(EnvValue {action: EnvCopy,
-                                        datum: datum});
-            }
-            moves::CapMove => {
-                env_vals.push(EnvValue {action: EnvMove,
-                                        datum: datum});
-            }
-        }
+    for freevar in freevars.iter() {
+        let datum = expr::trans_local_var(bcx, freevar.def);
+        env_vals.push(EnvValue {action: freevar_mode, datum: datum});
     }
 
     store_environment(bcx, env_vals, store)
@@ -287,13 +249,15 @@ fn build_closure<'a>(bcx0: &'a Block<'a>,
 // Given an enclosing block context, a new function context, a closure type,
 // and a list of upvars, generate code to load and populate the environment
 // with the upvars and type descriptors.
-fn load_environment<'a>(bcx: &'a Block<'a>, cdata_ty: ty::t,
-                        cap_vars: &[moves::CaptureVar],
-                        store: ty::TraitStore) -> &'a Block<'a> {
+fn load_environment<'a>(bcx: &'a Block<'a>,
+                        cdata_ty: ty::t,
+                        freevars: &Vec<freevars::freevar_entry>,
+                        store: ty::TraitStore)
+                        -> &'a Block<'a> {
     let _icx = push_ctxt("closure::load_environment");
 
     // Don't bother to create the block if there's nothing to load
-    if cap_vars.len() == 0 {
+    if freevars.len() == 0 {
         return bcx;
     }
 
@@ -312,13 +276,13 @@ fn load_environment<'a>(bcx: &'a Block<'a>, cdata_ty: ty::t,
 
     // Populate the upvars from the environment
     let mut i = 0u;
-    for cap_var in cap_vars.iter() {
+    for freevar in freevars.iter() {
         let mut upvarptr = GEPi(bcx, llcdata, [0u, i]);
         match store {
             ty::RegionTraitStore(..) => { upvarptr = Load(bcx, upvarptr); }
             ty::UniqTraitStore => {}
         }
-        let def_id = ast_util::def_id_of_def(cap_var.def);
+        let def_id = ast_util::def_id_of_def(freevar.def);
 
         bcx.fcx.llupvars.borrow_mut().insert(def_id.node, upvarptr);
 
@@ -330,7 +294,7 @@ fn load_environment<'a>(bcx: &'a Block<'a>, cdata_ty: ty::t,
                 env_pointer_alloca,
                 i,
                 store,
-                cap_var.span);
+                freevar.span);
         }
 
         i += 1u;
@@ -395,15 +359,19 @@ pub fn trans_expr_fn<'a>(
     // set an inline hint for all closures
     set_inline_hint(llfn);
 
-    let cap_vars = ccx.maps.capture_map.borrow().get_copy(&id);
+    let freevar_mode = freevars::get_capture_mode(tcx, id);
+    let freevars: Vec<freevars::freevar_entry> =
+        freevars::with_freevars(
+            tcx, id,
+            |fv| fv.iter().map(|&fv| fv).collect());
+
     let ClosureResult {llbox, cdata_ty, bcx} =
-        build_closure(bcx, cap_vars.as_slice(), store);
+        build_closure(bcx, freevar_mode, &freevars, store);
     trans_closure(ccx, decl, body, llfn,
                   bcx.fcx.param_substs, id,
                   [], ty::ty_fn_ret(fty),
-                  |bcx| load_environment(bcx, cdata_ty, cap_vars.as_slice(), store));
+                  |bcx| load_environment(bcx, cdata_ty, &freevars, store));
     fill_fn_pair(bcx, dest_addr, llfn, llbox);
-
     bcx
 }
 

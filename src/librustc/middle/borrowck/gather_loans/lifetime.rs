@@ -14,6 +14,7 @@
  */
 
 use middle::borrowck::*;
+use euv = middle::expr_use_visitor;
 use mc = middle::mem_categorization;
 use middle::ty;
 use util::ppaux::Repr;
@@ -24,9 +25,8 @@ type R = Result<(),()>;
 
 pub fn guarantee_lifetime(bccx: &BorrowckCtxt,
                           item_scope_id: ast::NodeId,
-                          root_scope_id: ast::NodeId,
                           span: Span,
-                          cause: LoanCause,
+                          cause: euv::LoanCause,
                           cmt: mc::cmt,
                           loan_region: ty::Region,
                           loan_kind: ty::BorrowKind)
@@ -39,8 +39,7 @@ pub fn guarantee_lifetime(bccx: &BorrowckCtxt,
                                          cause: cause,
                                          loan_region: loan_region,
                                          loan_kind: loan_kind,
-                                         cmt_original: cmt.clone(),
-                                         root_scope_id: root_scope_id};
+                                         cmt_original: cmt.clone()};
     ctxt.check(&cmt, None)
 }
 
@@ -53,12 +52,8 @@ struct GuaranteeLifetimeContext<'a> {
     // the node id of the function body for the enclosing item
     item_scope_id: ast::NodeId,
 
-    // the node id of the innermost loop / function body; this is the
-    // longest scope for which we can root managed boxes
-    root_scope_id: ast::NodeId,
-
     span: Span,
-    cause: LoanCause,
+    cause: euv::LoanCause,
     loan_region: ty::Region,
     loan_kind: ty::BorrowKind,
     cmt_original: mc::cmt
