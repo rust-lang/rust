@@ -128,7 +128,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
             // Static default methods are a little unfortunate, in
             // that the "internal" and "external" type of them differ.
             // Internally, the method body can refer to Self, but the
-            // externally visable type of the method has a type param
+            // externally visible type of the method has a type param
             // inserted in between the trait type params and the
             // method type params. The substs that we are given are
             // the proper substs *internally* to the method body, so

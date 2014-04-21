@@ -370,7 +370,7 @@ pub fn trans_fn_ref_with_vtables(
         false
     };
 
-    // Create a monomorphic verison of generic functions
+    // Create a monomorphic version of generic functions
     if must_monomorphise {
         // Should be either intra-crate or inlined.
         assert_eq!(def_id.krate, ast::LOCAL_CRATE);

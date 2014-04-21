@@ -15,7 +15,7 @@
 //! They can be used as targets of transmutes in unsafe code for manipulating
 //! the raw representations directly.
 //!
-//! Their definitition should always match the ABI defined in `rustc::back::abi`.
+//! Their definition should always match the ABI defined in `rustc::back::abi`.
 
 use cast;
 
