@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,89 +8,87 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// chameneos
+#![feature(phase)]
+#[phase(syntax)] extern crate green;
 
-use std::option;
-use std::os;
 use std::strbuf::StrBuf;
-use std::task;
+use std::fmt;
+
+green_start!(main)
 
 fn print_complements() {
     let all = [Blue, Red, Yellow];
     for aa in all.iter() {
         for bb in all.iter() {
-            println!("{} + {} -> {}", show_color(*aa), show_color(*bb),
-                show_color(transform(*aa, *bb)));
+            println!("{} + {} -> {}", *aa, *bb, transform(*aa, *bb));
         }
     }
 }
 
-enum color { Red, Yellow, Blue }
-
-struct CreatureInfo {
-    name: uint,
-    color: color
-}
-
-fn show_color(cc: color) -> &'static str {
-    match cc {
-        Red    => "red",
-        Yellow => "yellow",
-        Blue   => "blue"
+enum Color { Red, Yellow, Blue }
+impl fmt::Show for Color {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let str = match *self {
+            Red => "red",
+            Yellow => "yellow",
+            Blue => "blue",
+        };
+        f.buf.write(str.as_bytes())
     }
 }
 
-fn show_color_list(set: Vec<color>) -> StrBuf {
+struct CreatureInfo {
+    name: uint,
+    color: Color
+}
+
+fn show_color_list(set: Vec<Color>) -> StrBuf {
     let mut out = StrBuf::new();
     for col in set.iter() {
         out.push_char(' ');
-        out.push_str(show_color(*col));
+        out.push_str(col.to_str());
     }
     out
 }
 
 fn show_digit(nn: uint) -> &'static str {
     match nn {
-        0 => {"zero"}
-        1 => {"one"}
-        2 => {"two"}
-        3 => {"three"}
-        4 => {"four"}
-        5 => {"five"}
-        6 => {"six"}
-        7 => {"seven"}
-        8 => {"eight"}
-        9 => {"nine"}
+        0 => {" zero"}
+        1 => {" one"}
+        2 => {" two"}
+        3 => {" three"}
+        4 => {" four"}
+        5 => {" five"}
+        6 => {" six"}
+        7 => {" seven"}
+        8 => {" eight"}
+        9 => {" nine"}
         _ => {fail!("expected digits from 0 to 9...")}
     }
 }
 
-fn show_number(nn: uint) -> StrBuf {
-    let mut out = vec![];
-    let mut num = nn;
-    let mut dig;
-    let mut len = 0;
-    if num == 0 { out.push(show_digit(0)) };
+struct Number(uint);
+impl fmt::Show for Number {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut out = vec![];
+        let Number(mut num) = *self;
+        if num == 0 { out.push(show_digit(0)) };
 
-    while num != 0 {
-        dig = num % 10;
-        num = num / 10;
-        out.push(" ");
-        let s = show_digit(dig);
-        out.push(s);
-        len += 1 + s.len();
-    }
-    len += 1;
-    out.push(" ");
+        while num != 0 {
+            let dig = num % 10;
+            num = num / 10;
+            let s = show_digit(dig);
+            out.push(s);
+        }
 
-    let mut ret = StrBuf::with_capacity(len);
-    for s in out.iter().rev() {
-        ret.push_str(*s);
+        for s in out.iter().rev() {
+            try!(f.buf.write(s.as_bytes()));
+        }
+        Ok(())
     }
-    ret
 }
 
-fn transform(aa: color, bb: color) -> color {
+fn transform(aa: Color, bb: Color) -> Color {
     match (aa, bb) {
         (Red,    Red   ) => { Red    }
         (Red,    Yellow) => { Blue   }
@@ -106,23 +104,22 @@ fn transform(aa: color, bb: color) -> color {
 
 fn creature(
     name: uint,
-    color: color,
-    from_rendezvous: Receiver<Option<CreatureInfo>>,
+    mut color: Color,
+    from_rendezvous: Receiver<CreatureInfo>,
     to_rendezvous: Sender<CreatureInfo>,
     to_rendezvous_log: Sender<~str>
 ) {
-    let mut color = color;
     let mut creatures_met = 0;
     let mut evil_clones_met = 0;
+    let mut rendezvous = from_rendezvous.iter();
 
     loop {
         // ask for a pairing
         to_rendezvous.send(CreatureInfo {name: name, color: color});
-        let resp = from_rendezvous.recv();
 
-        // log and change, or print and quit
-        match resp {
-            option::Some(other_creature) => {
+        // log and change, or quit
+        match rendezvous.next() {
+            Some(other_creature) => {
                 color = transform(color, other_creature.color);
 
                 // track some statistics
@@ -131,41 +128,35 @@ fn creature(
                    evil_clones_met += 1;
                 }
             }
-            option::None => {
-                // log creatures met and evil clones of self
-                let report = format!("{} {}",
-                                     creatures_met, show_number(evil_clones_met).as_slice());
-                to_rendezvous_log.send(report);
-                break;
-            }
+            None => break
         }
     }
+    // log creatures met and evil clones of self
+    let report = format!("{}{}", creatures_met, Number(evil_clones_met));
+    to_rendezvous_log.send(report);
 }
 
-fn rendezvous(nn: uint, set: Vec<color>) {
-
+fn rendezvous(nn: uint, set: Vec<Color>) {
     // these ports will allow us to hear from the creatures
     let (to_rendezvous, from_creatures) = channel::<CreatureInfo>();
-    let (to_rendezvous_log, from_creatures_log) = channel::<~str>();
 
     // these channels will be passed to the creatures so they can talk to us
+    let (to_rendezvous_log, from_creatures_log) = channel::<~str>();
 
     // these channels will allow us to talk to each creature by 'name'/index
-    let mut to_creature: Vec<Sender<Option<CreatureInfo>>> =
-        set.iter().enumerate().map(|(ii, col)| {
+    let mut to_creature: Vec<Sender<CreatureInfo>> =
+        set.iter().enumerate().map(|(ii, &col)| {
             // create each creature as a listener with a port, and
             // give us a channel to talk to each
-            let ii = ii;
-            let col = *col;
             let to_rendezvous = to_rendezvous.clone();
             let to_rendezvous_log = to_rendezvous_log.clone();
             let (to_creature, from_rendezvous) = channel();
-            task::spawn(proc() {
+            spawn(proc() {
                 creature(ii,
                          col,
                          from_rendezvous,
-                         to_rendezvous.clone(),
-                         to_rendezvous_log.clone());
+                         to_rendezvous,
+                         to_rendezvous_log);
             });
             to_creature
         }).collect();
@@ -174,55 +165,42 @@ fn rendezvous(nn: uint, set: Vec<color>) {
 
     // set up meetings...
     for _ in range(0, nn) {
-        let mut fst_creature: CreatureInfo = from_creatures.recv();
-        let mut snd_creature: CreatureInfo = from_creatures.recv();
+        let fst_creature = from_creatures.recv();
+        let snd_creature = from_creatures.recv();
 
         creatures_met += 2;
 
-        to_creature.get_mut(fst_creature.name).send(Some(snd_creature));
-        to_creature.get_mut(snd_creature.name).send(Some(fst_creature));
+        to_creature.get_mut(fst_creature.name).send(snd_creature);
+        to_creature.get_mut(snd_creature.name).send(fst_creature);
     }
 
     // tell each creature to stop
-    for to_one in to_creature.iter() {
-        to_one.send(None);
-    }
-
-    // save each creature's meeting stats
-    let mut report = Vec::new();
-    for _to_one in to_creature.iter() {
-        report.push(from_creatures_log.recv());
-    }
+    drop(to_creature);
 
     // print each color in the set
     println!("{}", show_color_list(set));
 
     // print each creature's stats
-    for rep in report.iter() {
-        println!("{}", *rep);
+    drop(to_rendezvous_log);
+    for rep in from_creatures_log.iter() {
+        println!("{}", rep);
     }
 
     // print the total number of creatures met
-    println!("{}", show_number(creatures_met));
+    println!("{}\n", Number(creatures_met));
 }
 
 fn main() {
-    let args = os::args();
-    let args = if os::getenv("RUST_BENCH").is_some() {
-        vec!("".to_owned(), "200000".to_owned())
-    } else if args.len() <= 1u {
-        vec!("".to_owned(), "600".to_owned())
+    let nn = if std::os::getenv("RUST_BENCH").is_some() {
+        200000
     } else {
-        args.move_iter().collect()
+        std::os::args().get(1).and_then(|arg| from_str(*arg)).unwrap_or(600)
     };
-
-    let nn = from_str::<uint>(*args.get(1)).unwrap();
 
     print_complements();
     println!("");
 
     rendezvous(nn, vec!(Blue, Red, Yellow));
-    println!("");
 
     rendezvous(nn,
         vec!(Blue, Red, Yellow, Red, Yellow, Blue, Red, Yellow, Red, Blue));
