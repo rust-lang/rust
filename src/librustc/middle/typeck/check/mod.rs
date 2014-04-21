@@ -585,7 +585,15 @@ pub fn check_item(ccx: &CrateCtxt, it: &ast::Item) {
     let _indenter = indenter();
 
     match it.node {
-      ast::ItemStatic(_, _, e) => check_const(ccx, it.span, e, it.id),
+      ast::ItemStatic(_, _, e) => {
+        // override type to uint if it's unsafe_override_address, to make things
+        // like static t: T = 123 work.
+        if attr::contains_name(it.attrs.as_slice(), "unsafe_override_address") {
+            check_const(ccx, it.span, e, it.id, Some(ty::mk_u32()));
+        } else {
+            check_const(ccx, it.span, e, it.id, None);
+        }
+      }
       ast::ItemEnum(ref enum_definition, _) => {
         check_enum_variants(ccx,
                             it.span,
@@ -3407,11 +3415,15 @@ pub fn check_block_with_expected(fcx: &FnCtxt,
 pub fn check_const(ccx: &CrateCtxt,
                    sp: Span,
                    e: &ast::Expr,
-                   id: ast::NodeId) {
+                   id: ast::NodeId,
+                   override_ty: Option<ty::t>) {
     let inh = blank_inherited_fields(ccx);
     let rty = ty::node_id_to_type(ccx.tcx, id);
     let fcx = blank_fn_ctxt(ccx, &inh, rty, e.id);
-    let declty = fcx.ccx.tcx.tcache.borrow().get(&local_def(id)).ty;
+    let declty = match override_ty {
+      Some(t) => t,
+      None => fcx.ccx.tcx.tcache.borrow().get(&local_def(id)).ty,
+    };
     check_const_with_ty(&fcx, sp, e, declty);
 }
 
