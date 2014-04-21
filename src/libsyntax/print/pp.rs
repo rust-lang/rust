@@ -163,7 +163,7 @@ pub fn mk_printer(out: Box<io::Writer>, linewidth: uint) -> Printer {
     let n: uint = 3 * linewidth;
     debug!("mk_printer {}", linewidth);
     let token: Vec<Token> = Vec::from_elem(n, Eof);
-    let size: Vec<int> = Vec::from_elem(n, 0);
+    let size: Vec<int> = Vec::from_elem(n, 0i);
     let scan_stack: Vec<uint> = Vec::from_elem(n, 0u);
     Printer {
         out: out,

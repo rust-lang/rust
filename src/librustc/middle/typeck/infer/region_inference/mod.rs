@@ -1348,7 +1348,7 @@ impl<'a> RegionVarBindings<'a> {
     fn iterate_until_fixed_point(&self,
                                  tag: &str,
                                  body: |constraint: &Constraint| -> bool) {
-        let mut iteration = 0;
+        let mut iteration = 0u;
         let mut changed = true;
         while changed {
             changed = false;

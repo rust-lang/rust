@@ -19,11 +19,11 @@ struct Point {
 }
 
 pub fn main() {
-    assert_eq!(*Rc::new(5), 5);
-    assert_eq!(***Rc::new(box box 5), 5);
+    assert_eq!(*Rc::new(5i), 5);
+    assert_eq!(***Rc::new(box box 5i), 5);
     assert_eq!(*Rc::new(Point {x: 2, y: 4}), Point {x: 2, y: 4});
 
-    let i = Rc::new(RefCell::new(2));
+    let i = Rc::new(RefCell::new(2i));
     let i_value = *(*i).borrow();
     *(*i).borrow_mut() = 5;
     assert_eq!((i_value, *(*i).borrow()), (2, 5));
@@ -43,7 +43,7 @@ pub fn main() {
     (*(*p).borrow_mut()).y += 3;
     assert_eq!(*(*p).borrow(), Point {x: 3, y: 5});
 
-    let v = Rc::new(RefCell::new(vec!(1, 2, 3)));
+    let v = Rc::new(RefCell::new(vec!(1i, 2, 3)));
     *(*(*v).borrow_mut()).get_mut(0) = 3;
     *(*(*v).borrow_mut()).get_mut(1) += 3;
     assert_eq!((*(*(*v).borrow()).get(0),

@@ -322,7 +322,7 @@ trait_impl!(Unsigned for uint u8 u16 u32 u64)
 /// ```rust
 /// use std::num;
 ///
-/// assert_eq!(num::pow(2, 4), 16);
+/// assert_eq!(num::pow(2i, 4), 16);
 /// ```
 #[inline]
 pub fn pow<T: One + Mul<T, T>>(mut base: T, mut exp: uint) -> T {
@@ -1144,7 +1144,7 @@ impl_from_primitive!(f64, n.to_f64())
 /// ```
 /// use std::num;
 ///
-/// let twenty: f32 = num::cast(0x14).unwrap();
+/// let twenty: f32 = num::cast(0x14i).unwrap();
 /// assert_eq!(twenty, 20f32);
 /// ```
 ///
@@ -1378,11 +1378,11 @@ checkeddiv_uint_impl!(uint u8 u16 u32 u64)
 /// Helper function for testing numeric operations
 #[cfg(test)]
 pub fn test_num<T:Num + NumCast + ::std::fmt::Show>(ten: T, two: T) {
-    assert_eq!(ten.add(&two),  cast(12).unwrap());
-    assert_eq!(ten.sub(&two),  cast(8).unwrap());
-    assert_eq!(ten.mul(&two),  cast(20).unwrap());
-    assert_eq!(ten.div(&two),  cast(5).unwrap());
-    assert_eq!(ten.rem(&two),  cast(0).unwrap());
+    assert_eq!(ten.add(&two),  cast(12i).unwrap());
+    assert_eq!(ten.sub(&two),  cast(8i).unwrap());
+    assert_eq!(ten.mul(&two),  cast(20i).unwrap());
+    assert_eq!(ten.div(&two),  cast(5i).unwrap());
+    assert_eq!(ten.rem(&two),  cast(0i).unwrap());
 
     assert_eq!(ten.add(&two),  ten + two);
     assert_eq!(ten.sub(&two),  ten - two);

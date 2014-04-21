@@ -9,8 +9,8 @@
 // except according to those terms.
 
 pub fn main() {
-    let x = [1,..100];
-    let mut y = 0;
+    let x = [1i,..100];
+    let mut y = 0i;
     for (n,i) in x.iter().enumerate() {
         if n < 10 {
             continue;

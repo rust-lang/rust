@@ -9,6 +9,6 @@
 // except according to those terms.
 
 pub fn main() {
-    let vect = vec!(box 100);
+    let vect = vec!(box 100i);
     assert!(*vect.get(0) == box 100);
 }

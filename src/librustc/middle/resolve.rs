@@ -1966,7 +1966,7 @@ impl<'a> Resolver<'a> {
     /// Resolves all imports for the crate. This method performs the fixed-
     /// point iteration.
     fn resolve_imports(&mut self) {
-        let mut i = 0;
+        let mut i = 0u;
         let mut prev_unresolved_imports = 0;
         loop {
             debug!("(resolving imports) iteration {}, {} imports left",

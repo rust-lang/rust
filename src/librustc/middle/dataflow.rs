@@ -595,7 +595,7 @@ fn set_bit(words: &mut [uint], bit: uint) -> bool {
 
 fn bit_str(bit: uint) -> String {
     let byte = bit >> 8;
-    let lobits = 1 << (bit & 0xFF);
+    let lobits = 1u << (bit & 0xFF);
     format!("[{}:{}-{:02x}]", bit, byte, lobits)
 }
 

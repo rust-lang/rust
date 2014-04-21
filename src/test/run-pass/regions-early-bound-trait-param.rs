@@ -79,7 +79,7 @@ impl<'s> Trait<'s> for (int,int) {
 }
 
 impl<'t> MakerTrait<'t> for Box<Trait<'t>> {
-    fn mk() -> Box<Trait<'t>> { box() (4,5) as Box<Trait> }
+    fn mk() -> Box<Trait<'t>> { box() (4i,5i) as Box<Trait> }
 }
 
 enum List<'l> {
@@ -109,7 +109,7 @@ impl<'t> RefMakerTrait<'t> for List<'t> {
 }
 
 pub fn main() {
-    let t = (2,3);
+    let t = (2i,3i);
     let o = &t as &Trait;
     let s1 = Struct1 { f: o };
     let s2 = Struct2 { f: o };

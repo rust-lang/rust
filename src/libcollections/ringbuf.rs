@@ -431,8 +431,8 @@ mod tests {
     fn test_simple() {
         let mut d = RingBuf::new();
         assert_eq!(d.len(), 0u);
-        d.push_front(17);
-        d.push_front(42);
+        d.push_front(17i);
+        d.push_front(42i);
         d.push_back(137);
         assert_eq!(d.len(), 3u);
         d.push_back(137);
@@ -588,7 +588,7 @@ mod tests {
     fn bench_grow(b: &mut test::Bencher) {
         let mut deq = RingBuf::new();
         b.iter(|| {
-            for _ in range(0, 65) {
+            for _ in range(0i, 65) {
                 deq.push_front(1);
             }
         })
@@ -684,7 +684,7 @@ mod tests {
 
     #[test]
     fn test_swap() {
-        let mut d: RingBuf<int> = range(0, 5).collect();
+        let mut d: RingBuf<int> = range(0i, 5).collect();
         d.pop_front();
         d.swap(0, 3);
         assert_eq!(d.iter().map(|&x|x).collect::<Vec<int>>(), vec!(4, 2, 3, 1));
@@ -696,12 +696,12 @@ mod tests {
         assert_eq!(d.iter().next(), None);
         assert_eq!(d.iter().size_hint(), (0, Some(0)));
 
-        for i in range(0, 5) {
+        for i in range(0i, 5) {
             d.push_back(i);
         }
         assert_eq!(d.iter().collect::<Vec<&int>>().as_slice(), &[&0,&1,&2,&3,&4]);
 
-        for i in range(6, 9) {
+        for i in range(6i, 9) {
             d.push_front(i);
         }
         assert_eq!(d.iter().collect::<Vec<&int>>().as_slice(), &[&8,&7,&6,&0,&1,&2,&3,&4]);
@@ -721,12 +721,12 @@ mod tests {
         let mut d = RingBuf::new();
         assert_eq!(d.iter().rev().next(), None);
 
-        for i in range(0, 5) {
+        for i in range(0i, 5) {
             d.push_back(i);
         }
         assert_eq!(d.iter().rev().collect::<Vec<&int>>().as_slice(), &[&4,&3,&2,&1,&0]);
 
-        for i in range(6, 9) {
+        for i in range(6i, 9) {
             d.push_front(i);
         }
         assert_eq!(d.iter().rev().collect::<Vec<&int>>().as_slice(), &[&4,&3,&2,&1,&0,&6,&7,&8]);
@@ -737,7 +737,7 @@ mod tests {
         let mut d = RingBuf::with_capacity(3);
         assert!(d.mut_iter().rev().next().is_none());
 
-        d.push_back(1);
+        d.push_back(1i);
         d.push_back(2);
         d.push_back(3);
         assert_eq!(d.pop_front(), Some(1));
@@ -796,7 +796,7 @@ mod tests {
     #[test]
     fn test_from_iter() {
         use std::iter;
-        let v = vec!(1,2,3,4,5,6,7);
+        let v = vec!(1i,2,3,4,5,6,7);
         let deq: RingBuf<int> = v.iter().map(|&x| x).collect();
         let u: Vec<int> = deq.iter().map(|&x| x).collect();
         assert_eq!(u, v);
@@ -812,7 +812,7 @@ mod tests {
     #[test]
     fn test_clone() {
         let mut d = RingBuf::new();
-        d.push_front(17);
+        d.push_front(17i);
         d.push_front(42);
         d.push_back(137);
         d.push_back(137);
@@ -830,7 +830,7 @@ mod tests {
     fn test_eq() {
         let mut d = RingBuf::new();
         assert!(d == RingBuf::with_capacity(0));
-        d.push_front(137);
+        d.push_front(137i);
         d.push_front(17);
         d.push_front(42);
         d.push_back(137);
@@ -849,7 +849,7 @@ mod tests {
 
     #[test]
     fn test_show() {
-        let ringbuf: RingBuf<int> = range(0, 10).collect();
+        let ringbuf: RingBuf<int> = range(0i, 10).collect();
         assert!(format!("{}", ringbuf).as_slice() == "[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]");
 
         let ringbuf: RingBuf<&str> = vec!["just", "one", "test", "more"].iter()

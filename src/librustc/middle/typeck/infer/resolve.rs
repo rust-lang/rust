@@ -54,8 +54,9 @@ use middle::ty_fold;
 use middle::typeck::infer::{Bounds, cyclic_ty, fixup_err, fres, InferCtxt};
 use middle::typeck::infer::unresolved_ty;
 use middle::typeck::infer::unify::Root;
-use util::common::{indent};
-use util::ppaux::{ty_to_str, Repr};
+use syntax::codemap::Span;
+use util::common::indent;
+use util::ppaux::{Repr, ty_to_str};
 
 use syntax::ast;
 
@@ -81,16 +82,22 @@ pub struct ResolveState<'a> {
     modes: uint,
     err: Option<fixup_err>,
     v_seen: Vec<TyVid> ,
-    type_depth: uint
+    type_depth: uint,
+    span: Option<Span>,
 }
 
-pub fn resolver<'a>(infcx: &'a InferCtxt, modes: uint) -> ResolveState<'a> {
+pub fn resolver<'a>(infcx: &'a InferCtxt,
+                    modes: uint,
+                    span: Option<Span>)
+                    -> ResolveState<'a>
+{
     ResolveState {
         infcx: infcx,
         modes: modes,
         err: None,
         v_seen: Vec::new(),
-        type_depth: 0
+        type_depth: 0,
+        span: span
     }
 }
 
@@ -113,7 +120,9 @@ impl<'a> ResolveState<'a> {
         (self.modes & mode) == mode
     }
 
-    pub fn resolve_type_chk(&mut self, typ: ty::t) -> fres<ty::t> {
+    pub fn resolve_type_chk(&mut self,
+                            typ: ty::t)
+                            -> fres<ty::t> {
         self.err = None;
 
         debug!("Resolving {} (modes={:x})",
@@ -138,7 +147,8 @@ impl<'a> ResolveState<'a> {
         }
     }
 
-    pub fn resolve_region_chk(&mut self, orig: ty::Region)
+    pub fn resolve_region_chk(&mut self,
+                              orig: ty::Region)
                               -> fres<ty::Region> {
         self.err = None;
         let resolved = indent(|| self.resolve_region(orig) );
@@ -248,10 +258,20 @@ impl<'a> ResolveState<'a> {
           Some(UintType(t)) => ty::mk_mach_uint(t),
           None => {
             if self.should(force_ivar) {
-                // As a last resort, default to int.
+                // As a last resort, default to int and emit an error.
                 let ty = ty::mk_int();
                 table.borrow_mut().set(
                     tcx, node.key, Root(Some(IntType(ast::TyI)), node.rank));
+
+                match self.span {
+                    Some(sp) => {
+                        self.infcx.tcx.sess.span_err(
+                            sp,
+                            "cannot determine the type of this integer; add \
+                             a suffix to specify the type explicitly");
+                    }
+                    None => { }
+                }
                 ty
             } else {
                 ty::mk_int_var(self.infcx.tcx, vid)
@@ -272,10 +292,20 @@ impl<'a> ResolveState<'a> {
           Some(t) => ty::mk_mach_float(t),
           None => {
             if self.should(force_fvar) {
-                // As a last resort, default to f64.
+                // As a last resort, default to f64 and emit an error.
                 let ty = ty::mk_f64();
                 table.borrow_mut().set(
                     tcx, node.key, Root(Some(ast::TyF64), node.rank));
+
+                match self.span {
+                    Some(sp) => {
+                        self.infcx.tcx.sess.span_err(
+                            sp,
+                            "cannot determine the type of this number; add \
+                             a suffix to specify the type explicitly");
+                    }
+                    None => { }
+                }
                 ty
             } else {
                 ty::mk_float_var(self.infcx.tcx, vid)

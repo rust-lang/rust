@@ -9,8 +9,8 @@
 // except according to those terms.
 
 pub fn main() {
-    let arr = [1,2,3];
+    let arr = [1i,2i,3i];
     let arr2 = arr;
-    assert_eq!(arr[1], 2);
-    assert_eq!(arr2[2], 3);
+    assert_eq!(arr[1], 2i);
+    assert_eq!(arr2[2], 3i);
 }

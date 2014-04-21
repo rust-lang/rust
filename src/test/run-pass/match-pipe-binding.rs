@@ -20,7 +20,7 @@ fn test1() {
 }
 
 fn test2() {
-    match (1, 2, 3) {
+    match (1i, 2i, 3i) {
         (1, a, b) | (2, b, a) => {
             assert_eq!(a, 2);
             assert_eq!(b, 3);
@@ -30,7 +30,7 @@ fn test2() {
 }
 
 fn test3() {
-    match (1, 2, 3) {
+    match (1i, 2i, 3i) {
         (1, ref a, ref b) | (2, ref b, ref a) => {
             assert_eq!(*a, 2);
             assert_eq!(*b, 3);
@@ -40,7 +40,7 @@ fn test3() {
 }
 
 fn test4() {
-    match (1, 2, 3) {
+    match (1i, 2i, 3i) {
         (1, a, b) | (2, b, a) if a == 2 => {
             assert_eq!(a, 2);
             assert_eq!(b, 3);
@@ -50,7 +50,7 @@ fn test4() {
 }
 
 fn test5() {
-    match (1, 2, 3) {
+    match (1i, 2i, 3i) {
         (1, ref a, ref b) | (2, ref b, ref a) if *a == 2 => {
             assert_eq!(*a, 2);
             assert_eq!(*b, 3);

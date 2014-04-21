@@ -9,10 +9,10 @@
 // except according to those terms.
 
 pub fn main() {
-    let x = 1;
-    let y = 2;
+    let x = 1i;
+    let y = 2i;
 
-    assert_eq!(3, match (x, y) {
+    assert_eq!(3i, match (x, y) {
         (1, 1) => 1,
         (2, 2) => 2,
         (1..2, 2) => 3,
@@ -20,7 +20,7 @@ pub fn main() {
     });
 
     // nested tuple
-    assert_eq!(3, match ((x, y),) {
+    assert_eq!(3i, match ((x, y),) {
         ((1, 1),) => 1,
         ((2, 2),) => 2,
         ((1..2, 2),) => 3,

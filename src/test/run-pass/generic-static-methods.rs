@@ -24,5 +24,5 @@ impl<T> vec_utils<T> for Vec<T> {
 }
 
 pub fn main() {
-    assert_eq!(vec_utils::map_(&vec!(1,2,3), |&x| x+1), vec!(2,3,4));
+    assert_eq!(vec_utils::map_(&vec!(1i,2i,3i), |&x| x+1), vec!(2i,3i,4i));
 }

@@ -11,6 +11,6 @@
 extern crate debug;
 
 pub fn main() {
-    let i = box 100;
+    let i = box 100i;
     println!("{:?}", i);
 }

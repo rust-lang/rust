@@ -56,9 +56,9 @@ mod tests {
     fn test_vectors() {
         let x: Vec<int> = vec![];
         assert_eq!(x.to_str(), "[]".to_string());
-        assert_eq!((vec![1]).to_str(), "[1]".to_string());
-        assert_eq!((vec![1, 2, 3]).to_str(), "[1, 2, 3]".to_string());
-        assert!((vec![vec![], vec![1], vec![1, 1]]).to_str() ==
+        assert_eq!((vec![1i]).to_str(), "[1]".to_string());
+        assert_eq!((vec![1i, 2, 3]).to_str(), "[1, 2, 3]".to_string());
+        assert!((vec![vec![], vec![1i], vec![1i, 1]]).to_str() ==
                "[[], [1], [1, 1]]".to_string());
     }
 }

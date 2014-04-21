@@ -949,7 +949,7 @@ mod imp {
         let _c = Cleanup { handle: process, SymCleanup: SymCleanup };
 
         // And now that we're done with all the setup, do the stack walking!
-        let mut i = 0;
+        let mut i = 0i;
         try!(write!(w, "stack backtrace:\n"));
         while StackWalk64(image, process, thread, &mut frame, &mut context,
                           0 as *libc::c_void, 0 as *libc::c_void,

@@ -2172,7 +2172,7 @@ mod biguint_tests {
     fn test_rand_range() {
         let mut rng = task_rng();
 
-        for _ in range(0, 10) {
+        for _ in range(0u, 10) {
             assert_eq!(rng.gen_bigint_range(&FromPrimitive::from_uint(236).unwrap(),
                                             &FromPrimitive::from_uint(237).unwrap()),
                        FromPrimitive::from_uint(236).unwrap());
@@ -2180,7 +2180,7 @@ mod biguint_tests {
 
         let l = FromPrimitive::from_uint(403469000 + 2352).unwrap();
         let u = FromPrimitive::from_uint(403469000 + 3513).unwrap();
-        for _ in range(0, 1000) {
+        for _ in range(0u, 1000) {
             let n: BigUint = rng.gen_biguint_below(&u);
             assert!(n < u);
 
@@ -2761,7 +2761,7 @@ mod bigint_tests {
     fn test_rand_range() {
         let mut rng = task_rng();
 
-        for _ in range(0, 10) {
+        for _ in range(0u, 10) {
             assert_eq!(rng.gen_bigint_range(&FromPrimitive::from_uint(236).unwrap(),
                                             &FromPrimitive::from_uint(237).unwrap()),
                        FromPrimitive::from_uint(236).unwrap());
@@ -2769,7 +2769,7 @@ mod bigint_tests {
 
         fn check(l: BigInt, u: BigInt) {
             let mut rng = task_rng();
-            for _ in range(0, 1000) {
+            for _ in range(0u, 1000) {
                 let n: BigInt = rng.gen_bigint_range(&l, &u);
                 assert!(n >= l);
                 assert!(n < u);
@@ -2858,7 +2858,7 @@ mod bench {
         let n = { let one : BigUint = One::one(); one << 1000 };
         b.iter(|| {
             let mut m = n.clone();
-            for _ in range(0, 10) {
+            for _ in range(0u, 10) {
                 m = m >> 1;
             }
         })

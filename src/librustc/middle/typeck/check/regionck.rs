@@ -228,7 +228,7 @@ impl<'a> Rcx<'a> {
          * bigger than the let and the `*b` expression, so we will
          * effectively resolve `<R0>` to be the block B.
          */
-        match resolve_type(self.fcx.infcx(), unresolved_ty,
+        match resolve_type(self.fcx.infcx(), None, unresolved_ty,
                            resolve_and_force_all_but_regions) {
             Ok(t) => t,
             Err(_) => ty::mk_err()

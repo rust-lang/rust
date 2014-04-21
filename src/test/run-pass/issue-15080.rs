@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn main() {
-    let mut x = &[1, 2, 3, 4];
+    let mut x = &[1i, 2, 3, 4];
 
     let mut result = vec!();
     loop {

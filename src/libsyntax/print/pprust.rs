@@ -2319,13 +2319,11 @@ impl<'a> State<'a> {
             }
             ast::LitInt(i, t) => {
                 word(&mut self.s,
-                     ast_util::int_ty_to_str(t, Some(i),
-                                             ast_util::AutoSuffix).as_slice())
+                     ast_util::int_ty_to_str(t, Some(i)).as_slice())
             }
             ast::LitUint(u, t) => {
                 word(&mut self.s,
-                     ast_util::uint_ty_to_str(t, Some(u),
-                                              ast_util::ForceSuffix).as_slice())
+                     ast_util::uint_ty_to_str(t, Some(u)).as_slice())
             }
             ast::LitIntUnsuffixed(i) => {
                 word(&mut self.s, format!("{}", i).as_slice())

@@ -65,7 +65,9 @@ pub fn coerce(fcx: &FnCtxt, sp: Span, expected: ty::t, expr: &ast::Expr) {
            expected.repr(fcx.ccx.tcx),
            expr_ty.repr(fcx.ccx.tcx));
     let expected = if ty::type_needs_infer(expected) {
-        resolve_type(fcx.infcx(), expected,
+        resolve_type(fcx.infcx(),
+                     None,
+                     expected,
                      try_resolve_tvar_shallow).unwrap_or(expected)
     } else { expected };
     match fcx.mk_assignty(expr, expr_ty, expected) {

@@ -16,7 +16,7 @@
 // begin failing.
 
 mod m {
-    pub fn f() -> Vec<int> { Vec::from_elem(1u, 0) }
+    pub fn f() -> Vec<int> { Vec::from_elem(1u, 0i) }
 }
 
 pub fn main() { let _x = m::f(); }

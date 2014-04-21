@@ -101,7 +101,7 @@ pub struct Weighted<T> {
 ///                      Weighted { weight: 1, item: 'c' });
 /// let wc = WeightedChoice::new(items.as_mut_slice());
 /// let mut rng = rand::task_rng();
-/// for _ in range(0, 16) {
+/// for _ in range(0u, 16) {
 ///      // on average prints 'a' 4 times, 'b' 8 and 'c' twice.
 ///      println!("{}", wc.ind_sample(&mut rng));
 /// }
@@ -308,36 +308,36 @@ mod tests {
             }}
         );
 
-        t!(vec!(Weighted { weight: 1, item: 10}), [10]);
+        t!(vec!(Weighted { weight: 1, item: 10i}), [10]);
 
         // skip some
-        t!(vec!(Weighted { weight: 0, item: 20},
-                Weighted { weight: 2, item: 21},
-                Weighted { weight: 0, item: 22},
-                Weighted { weight: 1, item: 23}),
+        t!(vec!(Weighted { weight: 0, item: 20i},
+                Weighted { weight: 2, item: 21i},
+                Weighted { weight: 0, item: 22i},
+                Weighted { weight: 1, item: 23i}),
            [21,21, 23]);
 
         // different weights
-        t!(vec!(Weighted { weight: 4, item: 30},
-                Weighted { weight: 3, item: 31}),
+        t!(vec!(Weighted { weight: 4, item: 30i},
+                Weighted { weight: 3, item: 31i}),
            [30,30,30,30, 31,31,31]);
 
         // check that we're binary searching
         // correctly with some vectors of odd
         // length.
-        t!(vec!(Weighted { weight: 1, item: 40},
-                Weighted { weight: 1, item: 41},
-                Weighted { weight: 1, item: 42},
-                Weighted { weight: 1, item: 43},
-                Weighted { weight: 1, item: 44}),
+        t!(vec!(Weighted { weight: 1, item: 40i},
+                Weighted { weight: 1, item: 41i},
+                Weighted { weight: 1, item: 42i},
+                Weighted { weight: 1, item: 43i},
+                Weighted { weight: 1, item: 44i}),
            [40, 41, 42, 43, 44]);
-        t!(vec!(Weighted { weight: 1, item: 50},
-                Weighted { weight: 1, item: 51},
-                Weighted { weight: 1, item: 52},
-                Weighted { weight: 1, item: 53},
-                Weighted { weight: 1, item: 54},
-                Weighted { weight: 1, item: 55},
-                Weighted { weight: 1, item: 56}),
+        t!(vec!(Weighted { weight: 1, item: 50i},
+                Weighted { weight: 1, item: 51i},
+                Weighted { weight: 1, item: 52i},
+                Weighted { weight: 1, item: 53i},
+                Weighted { weight: 1, item: 54i},
+                Weighted { weight: 1, item: 55i},
+                Weighted { weight: 1, item: 56i}),
            [50, 51, 52, 53, 54, 55, 56]);
     }
 
@@ -347,15 +347,15 @@ mod tests {
     }
     #[test] #[should_fail]
     fn test_weighted_choice_zero_weight() {
-        WeightedChoice::new(&mut [Weighted { weight: 0, item: 0},
-                                  Weighted { weight: 0, item: 1}]);
+        WeightedChoice::new(&mut [Weighted { weight: 0, item: 0i},
+                                  Weighted { weight: 0, item: 1i}]);
     }
     #[test] #[should_fail]
     fn test_weighted_choice_weight_overflows() {
         let x = (-1) as uint / 2; // x + x + 2 is the overflow
-        WeightedChoice::new(&mut [Weighted { weight: x, item: 0 },
-                                  Weighted { weight: 1, item: 1 },
-                                  Weighted { weight: x, item: 2 },
-                                  Weighted { weight: 1, item: 3 }]);
+        WeightedChoice::new(&mut [Weighted { weight: x, item: 0i },
+                                  Weighted { weight: 1, item: 1i },
+                                  Weighted { weight: x, item: 2i },
+                                  Weighted { weight: 1, item: 3i }]);
     }
 }

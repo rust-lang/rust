@@ -116,14 +116,14 @@ mod tests {
     fn test_flate_round_trip() {
         let mut r = rand::task_rng();
         let mut words = vec!();
-        for _ in range(0, 20) {
+        for _ in range(0u, 20) {
             let range = r.gen_range(1u, 10);
             let v = r.gen_iter::<u8>().take(range).collect::<Vec<u8>>();
             words.push(v);
         }
-        for _ in range(0, 20) {
+        for _ in range(0u, 20) {
             let mut input = vec![];
-            for _ in range(0, 2000) {
+            for _ in range(0u, 2000) {
                 input.push_all(r.choose(words.as_slice()).unwrap().as_slice());
             }
             debug!("de/inflate of {} bytes of random word-sequences",

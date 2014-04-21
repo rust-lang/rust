@@ -3365,21 +3365,21 @@ mod tests {
         assert_eq!(true.to_json(), Boolean(true));
         assert_eq!(false.to_json(), Boolean(false));
         assert_eq!("abc".to_string().to_json(), String("abc".to_string()));
-        assert_eq!((1, 2).to_json(), list2);
-        assert_eq!((1, 2, 3).to_json(), list3);
-        assert_eq!([1, 2].to_json(), list2);
-        assert_eq!((&[1, 2, 3]).to_json(), list3);
-        assert_eq!((vec![1, 2]).to_json(), list2);
-        assert_eq!(vec!(1, 2, 3).to_json(), list3);
+        assert_eq!((1i, 2i).to_json(), list2);
+        assert_eq!((1i, 2i, 3i).to_json(), list3);
+        assert_eq!([1i, 2].to_json(), list2);
+        assert_eq!((&[1i, 2, 3]).to_json(), list3);
+        assert_eq!((vec![1i, 2]).to_json(), list2);
+        assert_eq!(vec!(1i, 2i, 3i).to_json(), list3);
         let mut tree_map = TreeMap::new();
-        tree_map.insert("a".to_string(), 1);
+        tree_map.insert("a".to_string(), 1i);
         tree_map.insert("b".to_string(), 2);
         assert_eq!(tree_map.to_json(), object);
         let mut hash_map = HashMap::new();
-        hash_map.insert("a".to_string(), 1);
+        hash_map.insert("a".to_string(), 1i);
         hash_map.insert("b".to_string(), 2);
         assert_eq!(hash_map.to_json(), object);
-        assert_eq!(Some(15).to_json(), Number(15 as f64));
+        assert_eq!(Some(15i).to_json(), Number(15 as f64));
         assert_eq!(None::<int>.to_json(), Null);
     }
 
@@ -3420,7 +3420,7 @@ mod tests {
 
     fn big_json() -> String {
         let mut src = "[\n".to_string();
-        for _ in range(0, 500) {
+        for _ in range(0i, 500) {
             src.push_str(r#"{ "a": true, "b": null, "c":3.1415, "d": "Hello world", "e": \
                             [1,2,3]},"#);
         }

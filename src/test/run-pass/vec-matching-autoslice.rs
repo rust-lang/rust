@@ -9,7 +9,7 @@
 // except according to those terms.
 
 pub fn main() {
-    let x = [1, 2, 3];
+    let x = [1i, 2, 3];
     match x {
         [2, _, _] => fail!(),
         [1, a, b] => {
@@ -18,7 +18,7 @@ pub fn main() {
         [_, _, _] => fail!(),
     }
 
-    let y = ([(1, true), (2, false)], 0.5);
+    let y = ([(1i, true), (2i, false)], 0.5f64);
     match y {
         ([(1, a), (b, false)], _) => {
             assert_eq!(a, true);

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 pub fn main() {
-    let x = [22];
+    let x = [22i];
     let y = &x[0];
     assert_eq!(*y, 22);
 }
