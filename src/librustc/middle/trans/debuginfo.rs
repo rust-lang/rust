@@ -57,7 +57,7 @@ For example, the following simple type for a singly-linked list...
 ```
 struct List {
     value: int,
-    tail: Option<@List>,
+    tail: Option<~List>,
 }
 ```
 
@@ -66,8 +66,8 @@ will generate the following callstack with a naive DFS algorithm:
 ```
 describe(t = List)
   describe(t = int)
-  describe(t = Option<@List>)
-    describe(t = @List)
+  describe(t = Option<~List>)
+    describe(t = ~List)
       describe(t = List) // at the beginning again...
       ...
 ```
@@ -144,7 +144,7 @@ use util::ppaux;
 
 use std::c_str::{CString, ToCStr};
 use std::cell::{Cell, RefCell};
-use std::rc::Rc;
+use std::rc::{Rc, Weak};
 use collections::HashMap;
 use collections::HashSet;
 use libc::{c_uint, c_ulonglong, c_longlong};
@@ -181,7 +181,7 @@ pub struct CrateDebugContext {
     created_files: RefCell<HashMap<~str, DIFile>>,
     created_types: RefCell<HashMap<uint, DIType>>,
     created_enum_disr_types: RefCell<HashMap<ast::DefId, DIType>>,
-    namespace_map: RefCell<HashMap<Vec<ast::Name> , @NamespaceTreeNode>>,
+    namespace_map: RefCell<HashMap<Vec<ast::Name>, Rc<NamespaceTreeNode>>>,
     // This collection is used to assert that composite types (structs, enums, ...) have their
     // members only set once:
     composite_types_completed: RefCell<HashSet<DIType>>,
@@ -2831,14 +2831,14 @@ fn populate_scope_map(cx: &CrateContext,
 struct NamespaceTreeNode {
     name: ast::Name,
     scope: DIScope,
-    parent: Option<@NamespaceTreeNode>,
+    parent: Option<Weak<NamespaceTreeNode>>,
 }
 
 impl NamespaceTreeNode {
     fn mangled_name_of_contained_item(&self, item_name: &str) -> ~str {
         fn fill_nested(node: &NamespaceTreeNode, output: &mut StrBuf) {
             match node.parent {
-                Some(parent) => fill_nested(parent, output),
+                Some(ref parent) => fill_nested(&*parent.upgrade().unwrap(), output),
                 None => {}
             }
             let string = token::get_name(node.name);
@@ -2855,7 +2855,7 @@ impl NamespaceTreeNode {
     }
 }
 
-fn namespace_for_item(cx: &CrateContext, def_id: ast::DefId) -> @NamespaceTreeNode {
+fn namespace_for_item(cx: &CrateContext, def_id: ast::DefId) -> Rc<NamespaceTreeNode> {
     ty::with_path(cx.tcx(), def_id, |path| {
         // prepend crate name if not already present
         let krate = if def_id.krate == ast::LOCAL_CRATE {
@@ -2867,7 +2867,7 @@ fn namespace_for_item(cx: &CrateContext, def_id: ast::DefId) -> @NamespaceTreeNo
         let mut path = krate.move_iter().chain(path).peekable();
 
         let mut current_key = Vec::new();
-        let mut parent_node: Option<@NamespaceTreeNode> = None;
+        let mut parent_node: Option<Rc<NamespaceTreeNode>> = None;
 
         // Create/Lookup namespace for each element of the path.
         loop {
@@ -2891,7 +2891,7 @@ fn namespace_for_item(cx: &CrateContext, def_id: ast::DefId) -> @NamespaceTreeNo
                 None => {
                     // create and insert
                     let parent_scope = match parent_node {
-                        Some(node) => node.scope,
+                        Some(ref node) => node.scope,
                         None => ptr::null()
                     };
                     let namespace_name = token::get_name(name);
@@ -2908,14 +2908,14 @@ fn namespace_for_item(cx: &CrateContext, def_id: ast::DefId) -> @NamespaceTreeNo
                         }
                     });
 
-                    let node = @NamespaceTreeNode {
+                    let node = Rc::new(NamespaceTreeNode {
                         name: name,
                         scope: scope,
-                        parent: parent_node,
-                    };
+                        parent: parent_node.map(|parent| parent.downgrade()),
+                    });
 
                     debug_context(cx).namespace_map.borrow_mut()
-                                     .insert(current_key.clone(), node);
+                                     .insert(current_key.clone(), node.clone());
 
                     node
                 }
