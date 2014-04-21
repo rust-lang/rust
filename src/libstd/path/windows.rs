@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -37,15 +37,13 @@ pub type StrComponents<'a> = Map<'a, &'a str, Option<&'a str>,
 ///
 /// Each component is yielded as Option<&str> for compatibility with PosixPath, but
 /// every component in WindowsPath is guaranteed to be Some.
-pub type RevStrComponents<'a> = Rev<Map<'a, &'a str, Option<&'a str>,
-                                                 CharSplits<'a, char>>>;
+pub type RevStrComponents<'a> = Rev<StrComponents<'a>>;
 
 /// Iterator that yields successive components of a Path as &[u8]
 pub type Components<'a> = Map<'a, Option<&'a str>, &'a [u8],
                                     StrComponents<'a>>;
 /// Iterator that yields components of a Path in reverse as &[u8]
-pub type RevComponents<'a> = Map<'a, Option<&'a str>, &'a [u8],
-                                       RevStrComponents<'a>>;
+pub type RevComponents<'a> = Rev<Components<'a>>;
 
 /// Represents a Windows path
 // Notes for Windows path impl:
@@ -650,11 +648,7 @@ impl Path {
     /// Returns an iterator that yields each component of the path in reverse as a &[u8].
     /// See str_components() for details.
     pub fn rev_components<'a>(&'a self) -> RevComponents<'a> {
-        fn convert<'a>(x: Option<&'a str>) -> &'a [u8] {
-            #![inline]
-            x.unwrap().as_bytes()
-        }
-        self.rev_str_components().map(convert)
+        self.components().rev()
     }
 
     fn equiv_prefix(&self, other: &Path) -> bool {
