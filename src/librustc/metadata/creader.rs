@@ -23,7 +23,6 @@ use metadata::loader;
 use metadata::loader::Os;
 use metadata::loader::CratePaths;
 
-use std::cell::RefCell;
 use std::rc::Rc;
 use collections::HashMap;
 use syntax::ast;
@@ -280,7 +279,7 @@ fn resolve_crate<'a>(e: &mut Env,
                      hash: Option<&Svh>,
                      should_link: bool,
                      span: Span)
-                     -> (ast::CrateNum, @cstore::crate_metadata,
+                     -> (ast::CrateNum, Rc<cstore::crate_metadata>,
                          cstore::CrateSource) {
     match existing_match(e, crate_id, hash) {
         None => {
@@ -317,7 +316,7 @@ fn resolve_crate<'a>(e: &mut Env,
             let cnum_map = if should_link {
                 resolve_crate_deps(e, root, metadata.as_slice(), span)
             } else {
-                @RefCell::new(HashMap::new())
+                HashMap::new()
             };
 
             // Claim this crate number and cache it if we're linking to the
@@ -331,13 +330,13 @@ fn resolve_crate<'a>(e: &mut Env,
                 -1
             };
 
-            let cmeta = @cstore::crate_metadata {
+            let cmeta = Rc::new(cstore::crate_metadata {
                 name: load_ctxt.crate_id.name.to_owned(),
                 data: metadata,
                 cnum_map: cnum_map,
                 cnum: cnum,
                 span: span,
-            };
+            });
 
             let source = cstore::CrateSource {
                 dylib: dylib,
@@ -346,7 +345,7 @@ fn resolve_crate<'a>(e: &mut Env,
             };
 
             if should_link {
-                e.sess.cstore.set_crate_data(cnum, cmeta);
+                e.sess.cstore.set_crate_data(cnum, cmeta.clone());
                 e.sess.cstore.add_used_crate_source(source.clone());
             }
             (cnum, cmeta, source)
@@ -365,10 +364,7 @@ fn resolve_crate_deps(e: &mut Env,
     debug!("resolving deps of external crate");
     // The map from crate numbers in the crate we're resolving to local crate
     // numbers
-    let mut cnum_map = HashMap::new();
-    let r = decoder::get_crate_deps(cdata);
-    for dep in r.iter() {
-        let extrn_cnum = dep.cnum;
+    decoder::get_crate_deps(cdata).iter().map(|dep| {
         debug!("resolving dep crate {} hash: `{}`", dep.crate_id, dep.hash);
         let (local_cnum, _, _) = resolve_crate(e, root,
                                                dep.crate_id.name.as_slice(),
@@ -376,9 +372,8 @@ fn resolve_crate_deps(e: &mut Env,
                                                Some(&dep.hash),
                                                true,
                                                span);
-        cnum_map.insert(extrn_cnum, local_cnum);
-    }
-    return @RefCell::new(cnum_map);
+        (dep.cnum, local_cnum)
+    }).collect()
 }
 
 pub struct Loader<'a> {
@@ -407,8 +402,8 @@ impl<'a> CrateLoader for Loader<'a> {
                                                info.ident, &info.crate_id,
                                                None, info.should_link,
                                                krate.span);
-        let macros = decoder::get_exported_macros(data);
-        let registrar = decoder::get_macro_registrar_fn(data).map(|id| {
+        let macros = decoder::get_exported_macros(&*data);
+        let registrar = decoder::get_macro_registrar_fn(&*data).map(|id| {
             decoder::get_symbol(data.data.as_slice(), id)
         });
         MacroCrate {

@@ -30,7 +30,7 @@ use syntax::parse::token::IdentInterner;
 // local crate numbers (as generated during this session). Each external
 // crate may refer to types in other external crates, and each has their
 // own crate numbers.
-pub type cnum_map = @RefCell<HashMap<ast::CrateNum, ast::CrateNum>>;
+pub type cnum_map = HashMap<ast::CrateNum, ast::CrateNum>;
 
 pub enum MetadataBlob {
     MetadataVec(CVec<u8>),
@@ -68,7 +68,7 @@ pub struct CrateSource {
 }
 
 pub struct CStore {
-    metas: RefCell<HashMap<ast::CrateNum, @crate_metadata>>,
+    metas: RefCell<HashMap<ast::CrateNum, Rc<crate_metadata>>>,
     extern_mod_crate_map: RefCell<extern_mod_crate_map>,
     used_crate_sources: RefCell<Vec<CrateSource>>,
     used_libraries: RefCell<Vec<(~str, NativeLibaryKind)>>,
@@ -95,8 +95,8 @@ impl CStore {
         self.metas.borrow().len() as ast::CrateNum + 1
     }
 
-    pub fn get_crate_data(&self, cnum: ast::CrateNum) -> @crate_metadata {
-        *self.metas.borrow().get(&cnum)
+    pub fn get_crate_data(&self, cnum: ast::CrateNum) -> Rc<crate_metadata> {
+        self.metas.borrow().get(&cnum).clone()
     }
 
     pub fn get_crate_hash(&self, cnum: ast::CrateNum) -> Svh {
@@ -104,13 +104,13 @@ impl CStore {
         decoder::get_crate_hash(cdata.data())
     }
 
-    pub fn set_crate_data(&self, cnum: ast::CrateNum, data: @crate_metadata) {
+    pub fn set_crate_data(&self, cnum: ast::CrateNum, data: Rc<crate_metadata>) {
         self.metas.borrow_mut().insert(cnum, data);
     }
 
-    pub fn iter_crate_data(&self, i: |ast::CrateNum, @crate_metadata|) {
-        for (&k, &v) in self.metas.borrow().iter() {
-            i(k, v);
+    pub fn iter_crate_data(&self, i: |ast::CrateNum, &crate_metadata|) {
+        for (&k, v) in self.metas.borrow().iter() {
+            i(k, &**v);
         }
     }
 
@@ -155,7 +155,7 @@ impl CStore {
                  ordering: &mut Vec<ast::CrateNum>) {
             if ordering.as_slice().contains(&cnum) { return }
             let meta = cstore.get_crate_data(cnum);
-            for (_, &dep) in meta.cnum_map.borrow().iter() {
+            for (_, &dep) in meta.cnum_map.iter() {
                 visit(cstore, dep, ordering);
             }
             ordering.push(cnum);

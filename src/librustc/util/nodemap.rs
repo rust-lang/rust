@@ -16,12 +16,13 @@ use std::io;
 use syntax::ast;
 
 pub type FnvHashMap<K, V> = HashMap<K, V, FnvHasher>;
+pub type FnvHashSet<V> = HashSet<V, FnvHasher>;
 
 pub type NodeMap<T> = FnvHashMap<ast::NodeId, T>;
 pub type DefIdMap<T> = FnvHashMap<ast::DefId, T>;
 
-pub type NodeSet = HashSet<ast::NodeId, FnvHasher>;
-pub type DefIdSet = HashSet<ast::DefId, FnvHasher>;
+pub type NodeSet = FnvHashSet<ast::NodeId>;
+pub type DefIdSet = FnvHashSet<ast::DefId>;
 
 // Hacks to get good names
 pub mod FnvHashMap {
@@ -29,6 +30,13 @@ pub mod FnvHashMap {
     use collections::HashMap;
     pub fn new<K: Hash<super::FnvState> + TotalEq, V>() -> super::FnvHashMap<K, V> {
         HashMap::with_hasher(super::FnvHasher)
+    }
+}
+pub mod FnvHashSet {
+    use std::hash::Hash;
+    use collections::HashSet;
+    pub fn new<V: Hash<super::FnvState> + TotalEq>() -> super::FnvHashSet<V> {
+        HashSet::with_hasher(super::FnvHasher)
     }
 }
 pub mod NodeMap {
@@ -42,15 +50,13 @@ pub mod DefIdMap {
     }
 }
 pub mod NodeSet {
-    use collections::HashSet;
     pub fn new() -> super::NodeSet {
-        HashSet::with_hasher(super::FnvHasher)
+        super::FnvHashSet::new()
     }
 }
 pub mod DefIdSet {
-    use collections::HashSet;
     pub fn new() -> super::DefIdSet {
-        HashSet::with_hasher(super::FnvHasher)
+        super::FnvHashSet::new()
     }
 }
 

@@ -45,8 +45,8 @@
 
 use std::container::Map;
 use libc::c_ulonglong;
-use std::option::{Option, Some, None};
 use std::num::{Bitwise};
+use std::rc::Rc;
 
 use lib::llvm::{ValueRef, True, IntEQ, IntNE};
 use middle::trans::_match;
@@ -115,22 +115,22 @@ pub struct Struct {
  * these, for places in trans where the `ty::t` isn't directly
  * available.
  */
-pub fn represent_node(bcx: &Block, node: ast::NodeId) -> @Repr {
+pub fn represent_node(bcx: &Block, node: ast::NodeId) -> Rc<Repr> {
     represent_type(bcx.ccx(), node_id_type(bcx, node))
 }
 
 /// Decides how to represent a given type.
-pub fn represent_type(cx: &CrateContext, t: ty::t) -> @Repr {
+pub fn represent_type(cx: &CrateContext, t: ty::t) -> Rc<Repr> {
     debug!("Representing: {}", ty_to_str(cx.tcx(), t));
     match cx.adt_reprs.borrow().find(&t) {
-        Some(repr) => return *repr,
+        Some(repr) => return repr.clone(),
         None => {}
     }
 
-    let repr = @represent_type_uncached(cx, t);
+    let repr = Rc::new(represent_type_uncached(cx, t));
     debug!("Represented as: {:?}", repr)
-    cx.adt_reprs.borrow_mut().insert(t, repr);
-    return repr;
+    cx.adt_reprs.borrow_mut().insert(t, repr.clone());
+    repr
 }
 
 fn represent_type_uncached(cx: &CrateContext, t: ty::t) -> Repr {
@@ -267,7 +267,19 @@ impl Case {
         mk_struct(cx, self.tys.as_slice(), false).size == 0
     }
     fn find_ptr(&self) -> Option<uint> {
-        self.tys.iter().position(|&ty| mono_data_classify(ty) == MonoNonNull)
+        self.tys.iter().position(|&ty| {
+            match ty::get(ty).sty {
+                ty::ty_rptr(_, mt) => match ty::get(mt.ty).sty {
+                    ty::ty_vec(_, None) => false,
+                    _ => true,
+                },
+                ty::ty_uniq(..) | ty::ty_box(..) |
+                ty::ty_str(ty::VstoreUniq) |
+                ty::ty_bare_fn(..) => true,
+                // Is that everything?  Would closures or slices qualify?
+                _ => false
+            }
+        })
     }
 }
 

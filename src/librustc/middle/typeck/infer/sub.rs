@@ -37,15 +37,16 @@ impl<'f> Combine for Sub<'f> {
     fn infcx<'a>(&'a self) -> &'a InferCtxt<'a> { self.get_ref().infcx }
     fn tag(&self) -> ~str { "sub".to_owned() }
     fn a_is_expected(&self) -> bool { self.get_ref().a_is_expected }
-    fn trace(&self) -> TypeTrace { self.get_ref().trace }
+    fn trace(&self) -> TypeTrace { self.get_ref().trace.clone() }
 
-    fn sub<'a>(&'a self) -> Sub<'a> { Sub(*self.get_ref()) }
-    fn lub<'a>(&'a self) -> Lub<'a> { Lub(*self.get_ref()) }
-    fn glb<'a>(&'a self) -> Glb<'a> { Glb(*self.get_ref()) }
+    fn sub<'a>(&'a self) -> Sub<'a> { Sub(self.get_ref().clone()) }
+    fn lub<'a>(&'a self) -> Lub<'a> { Lub(self.get_ref().clone()) }
+    fn glb<'a>(&'a self) -> Glb<'a> { Glb(self.get_ref().clone()) }
 
     fn contratys(&self, a: ty::t, b: ty::t) -> cres<ty::t> {
         let opp = CombineFields {
-            a_is_expected: !self.get_ref().a_is_expected,.. *self.get_ref()
+            a_is_expected: !self.get_ref().a_is_expected,
+            ..self.get_ref().clone()
         };
         Sub(opp).tys(b, a)
     }
@@ -53,7 +54,8 @@ impl<'f> Combine for Sub<'f> {
     fn contraregions(&self, a: ty::Region, b: ty::Region)
                     -> cres<ty::Region> {
         let opp = CombineFields {
-            a_is_expected: !self.get_ref().a_is_expected,.. *self.get_ref()
+            a_is_expected: !self.get_ref().a_is_expected,
+            ..self.get_ref().clone()
         };
         Sub(opp).regions(b, a)
     }
@@ -63,7 +65,7 @@ impl<'f> Combine for Sub<'f> {
                self.tag(),
                a.inf_str(self.get_ref().infcx),
                b.inf_str(self.get_ref().infcx));
-        self.get_ref().infcx.region_vars.make_subregion(Subtype(self.get_ref().trace), a, b);
+        self.get_ref().infcx.region_vars.make_subregion(Subtype(self.trace()), a, b);
         Ok(a)
     }
 
@@ -167,7 +169,7 @@ impl<'f> Combine for Sub<'f> {
         // region variable.
         let (a_sig, _) =
             self.get_ref().infcx.replace_late_bound_regions_with_fresh_regions(
-                self.get_ref().trace, a);
+                self.trace(), a);
 
         // Second, we instantiate each bound region in the supertype with a
         // fresh concrete region.

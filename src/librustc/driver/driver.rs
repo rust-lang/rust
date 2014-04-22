@@ -299,7 +299,7 @@ pub fn phase_3_run_analysis_passes(sess: Session,
         last_private_map: last_private_map
     } =
         time(time_passes, "resolution", (), |_|
-             middle::resolve::resolve_crate(&sess, lang_items, krate));
+             middle::resolve::resolve_crate(&sess, &lang_items, krate));
 
     // Discard MTWT tables that aren't required past resolution.
     syntax::ext::mtwt::clear_tables();
@@ -316,7 +316,7 @@ pub fn phase_3_run_analysis_passes(sess: Session,
                 sess.diagnostic(), krate)));
 
     let freevars = time(time_passes, "freevar finding", (), |_|
-                        freevars::annotate_freevars(def_map, krate));
+                        freevars::annotate_freevars(&def_map, krate));
 
     let region_map = time(time_passes, "region resolution", (), |_|
                           middle::region::resolve_crate(&sess, krate));
@@ -328,7 +328,7 @@ pub fn phase_3_run_analysis_passes(sess: Session,
                             freevars, region_map, lang_items);
 
     // passes are timed inside typeck
-    let (method_map, vtable_map) = typeck::check_crate(&ty_cx, trait_map, krate);
+    typeck::check_crate(&ty_cx, trait_map, krate);
 
     time(time_passes, "check static items", (), |_|
          middle::check_static::check_crate(&ty_cx, krate));
@@ -338,56 +338,52 @@ pub fn phase_3_run_analysis_passes(sess: Session,
          middle::const_eval::process_crate(krate, &ty_cx));
 
     time(time_passes, "const checking", (), |_|
-         middle::check_const::check_crate(krate, def_map, method_map, &ty_cx));
+         middle::check_const::check_crate(krate, &ty_cx));
 
     let maps = (external_exports, last_private_map);
     let (exported_items, public_items) =
             time(time_passes, "privacy checking", maps, |(a, b)|
-                 middle::privacy::check_crate(&ty_cx, &method_map, &exp_map2,
-                                              a, b, krate));
+                 middle::privacy::check_crate(&ty_cx, &exp_map2, a, b, krate));
 
     time(time_passes, "effect checking", (), |_|
-         middle::effect::check_crate(&ty_cx, method_map, krate));
+         middle::effect::check_crate(&ty_cx, krate));
 
     let middle::moves::MoveMaps {moves_map, moved_variables_set,
                                  capture_map} =
         time(time_passes, "compute moves", (), |_|
-             middle::moves::compute_moves(&ty_cx, method_map, krate));
+             middle::moves::compute_moves(&ty_cx, krate));
 
     time(time_passes, "match checking", (), |_|
-         middle::check_match::check_crate(&ty_cx, method_map,
-                                          &moves_map, krate));
+         middle::check_match::check_crate(&ty_cx, &moves_map, krate));
 
     time(time_passes, "liveness checking", (), |_|
-         middle::liveness::check_crate(&ty_cx, method_map,
-                                       &capture_map, krate));
+         middle::liveness::check_crate(&ty_cx, &capture_map, krate));
 
     let root_map =
         time(time_passes, "borrow checking", (), |_|
-             middle::borrowck::check_crate(&ty_cx, method_map,
-                                           &moves_map, &moved_variables_set,
+             middle::borrowck::check_crate(&ty_cx, &moves_map,
+                                           &moved_variables_set,
                                            &capture_map, krate));
 
     drop(moves_map);
     drop(moved_variables_set);
 
     time(time_passes, "kind checking", (), |_|
-         kind::check_crate(&ty_cx, method_map, krate));
+         kind::check_crate(&ty_cx, krate));
 
     let reachable_map =
         time(time_passes, "reachability checking", (), |_|
-             reachable::find_reachable(&ty_cx, method_map, &exported_items));
+             reachable::find_reachable(&ty_cx, &exported_items));
 
     time(time_passes, "death checking", (), |_| {
         middle::dead::check_crate(&ty_cx,
-                                  method_map,
                                   &exported_items,
                                   &reachable_map,
                                   krate)
     });
 
     time(time_passes, "lint checking", (), |_|
-         lint::check_crate(&ty_cx, method_map, &exported_items, krate));
+         lint::check_crate(&ty_cx, &exported_items, krate));
 
     CrateAnalysis {
         exp_map2: exp_map2,
@@ -396,8 +392,6 @@ pub fn phase_3_run_analysis_passes(sess: Session,
         public_items: public_items,
         maps: astencode::Maps {
             root_map: root_map,
-            method_map: method_map,
-            vtable_map: vtable_map,
             capture_map: RefCell::new(capture_map)
         },
         reachable: reachable_map

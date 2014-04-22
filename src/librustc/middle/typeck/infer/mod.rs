@@ -38,7 +38,7 @@ use middle::typeck::infer::to_str::InferStr;
 use middle::typeck::infer::unify::{ValsAndBindings, Root};
 use middle::typeck::infer::error_reporting::ErrorReporting;
 use std::cell::{Cell, RefCell};
-use std::result;
+use std::rc::Rc;
 use syntax::ast::{MutImmutable, MutMutable};
 use syntax::ast;
 use syntax::codemap;
@@ -72,7 +72,7 @@ pub struct Bounds<T> {
 pub type cres<T> = Result<T,ty::type_err>; // "combine result"
 pub type ures = cres<()>; // "unify result"
 pub type fres<T> = Result<T, fixup_err>; // "fixup result"
-pub type CoerceResult = cres<Option<@ty::AutoAdjustment>>;
+pub type CoerceResult = cres<Option<ty::AutoAdjustment>>;
 
 pub struct InferCtxt<'a> {
     pub tcx: &'a ty::ctxt,
@@ -129,7 +129,7 @@ pub enum TypeOrigin {
 #[deriving(Clone)]
 pub enum ValuePairs {
     Types(ty::expected_found<ty::t>),
-    TraitRefs(ty::expected_found<@ty::TraitRef>),
+    TraitRefs(ty::expected_found<Rc<ty::TraitRef>>),
 }
 
 /// The trace designates the path through inference that we took to
@@ -301,7 +301,7 @@ pub fn common_supertype(cx: &InferCtxt,
         values: Types(expected_found(a_is_expected, a, b))
     };
 
-    let result = cx.commit(|| cx.lub(a_is_expected, trace).tys(a, b));
+    let result = cx.commit(|| cx.lub(a_is_expected, trace.clone()).tys(a, b));
     match result {
         Ok(t) => t,
         Err(ref err) => {
@@ -375,8 +375,8 @@ pub fn mk_eqty(cx: &InferCtxt,
 pub fn mk_sub_trait_refs(cx: &InferCtxt,
                          a_is_expected: bool,
                          origin: TypeOrigin,
-                         a: @ty::TraitRef,
-                         b: @ty::TraitRef)
+                         a: Rc<ty::TraitRef>,
+                         b: Rc<ty::TraitRef>)
     -> ures
 {
     debug!("mk_sub_trait_refs({} <: {})",
@@ -385,10 +385,10 @@ pub fn mk_sub_trait_refs(cx: &InferCtxt,
         cx.commit(|| {
             let trace = TypeTrace {
                 origin: origin,
-                values: TraitRefs(expected_found(a_is_expected, a, b))
+                values: TraitRefs(expected_found(a_is_expected, a.clone(), b.clone()))
             };
             let suber = cx.sub(a_is_expected, trace);
-            suber.trait_refs(a, b)
+            suber.trait_refs(&*a, &*b)
         })
     }).to_ures()
 }
@@ -666,8 +666,8 @@ impl<'a> InferCtxt<'a> {
 
     pub fn resolve_type_vars_if_possible(&self, typ: ty::t) -> ty::t {
         match resolve_type(self, typ, resolve_nested_tvar | resolve_ivar) {
-          result::Ok(new_type) => new_type,
-          result::Err(_) => typ
+            Ok(new_type) => new_type,
+            Err(_) => typ
         }
     }
 
@@ -854,7 +854,7 @@ impl Repr for TypeOrigin {
 impl SubregionOrigin {
     pub fn span(&self) -> Span {
         match *self {
-            Subtype(a) => a.span(),
+            Subtype(ref a) => a.span(),
             InfStackClosure(a) => a,
             InvokeClosure(a) => a,
             DerefPointer(a) => a,
@@ -877,7 +877,7 @@ impl SubregionOrigin {
 impl Repr for SubregionOrigin {
     fn repr(&self, tcx: &ty::ctxt) -> ~str {
         match *self {
-            Subtype(a) => format!("Subtype({})", a.repr(tcx)),
+            Subtype(ref a) => format!("Subtype({})", a.repr(tcx)),
             InfStackClosure(a) => format!("InfStackClosure({})", a.repr(tcx)),
             InvokeClosure(a) => format!("InvokeClosure({})", a.repr(tcx)),
             DerefPointer(a) => format!("DerefPointer({})", a.repr(tcx)),
@@ -907,7 +907,7 @@ impl RegionVariableOrigin {
             AddrOfRegion(a) => a,
             AddrOfSlice(a) => a,
             Autoref(a) => a,
-            Coercion(a) => a.span(),
+            Coercion(ref a) => a.span(),
             EarlyBoundRegion(a, _) => a,
             LateBoundRegion(a, _) => a,
             BoundRegionInFnType(a, _) => a,
@@ -925,7 +925,7 @@ impl Repr for RegionVariableOrigin {
             AddrOfRegion(a) => format!("AddrOfRegion({})", a.repr(tcx)),
             AddrOfSlice(a) => format!("AddrOfSlice({})", a.repr(tcx)),
             Autoref(a) => format!("Autoref({})", a.repr(tcx)),
-            Coercion(a) => format!("Coercion({})", a.repr(tcx)),
+            Coercion(ref a) => format!("Coercion({})", a.repr(tcx)),
             EarlyBoundRegion(a, b) => format!("EarlyBoundRegion({},{})",
                                               a.repr(tcx), b.repr(tcx)),
             LateBoundRegion(a, b) => format!("LateBoundRegion({},{})",

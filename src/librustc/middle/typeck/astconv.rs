@@ -60,6 +60,7 @@ use middle::typeck::rscope::{RegionScope};
 use middle::typeck::lookup_def_tcx;
 use util::ppaux::Repr;
 
+use std::rc::Rc;
 use syntax::abi;
 use syntax::{ast, ast_util};
 use syntax::codemap::Span;
@@ -69,7 +70,7 @@ use syntax::print::pprust::{lifetime_to_str, path_to_str};
 pub trait AstConv {
     fn tcx<'a>(&'a self) -> &'a ty::ctxt;
     fn get_item_ty(&self, id: ast::DefId) -> ty::ty_param_bounds_and_ty;
-    fn get_trait_def(&self, id: ast::DefId) -> @ty::TraitDef;
+    fn get_trait_def(&self, id: ast::DefId) -> Rc<ty::TraitDef>;
 
     // what type should we use when a type is omitted?
     fn ty_infer(&self, span: Span) -> ty::t;
@@ -261,25 +262,16 @@ pub fn ast_path_to_substs_and_ty<AC:AstConv,
 }
 
 pub fn ast_path_to_trait_ref<AC:AstConv,RS:RegionScope>(
-    this: &AC,
-    rscope: &RS,
-    trait_def_id: ast::DefId,
-    self_ty: Option<ty::t>,
-    path: &ast::Path) -> @ty::TraitRef
-{
-    let trait_def =
-        this.get_trait_def(trait_def_id);
-    let substs =
-        ast_path_substs(
-            this,
-            rscope,
-            &trait_def.generics,
-            self_ty,
-            path);
-    let trait_ref =
-        @ty::TraitRef {def_id: trait_def_id,
-                       substs: substs};
-    return trait_ref;
+        this: &AC,
+        rscope: &RS,
+        trait_def_id: ast::DefId,
+        self_ty: Option<ty::t>,
+        path: &ast::Path) -> Rc<ty::TraitRef> {
+    let trait_def = this.get_trait_def(trait_def_id);
+    Rc::new(ty::TraitRef {
+        def_id: trait_def_id,
+        substs: ast_path_substs(this, rscope, &trait_def.generics, self_ty, path)
+    })
 }
 
 pub fn ast_path_to_ty<AC:AstConv,RS:RegionScope>(

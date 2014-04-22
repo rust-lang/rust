@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use std::mem;
+use std::slice;
 use std::vec;
 
 /// A vector type optimized for cases where the size is almost always 0 or 1
@@ -59,6 +60,14 @@ impl<T> SmallVector<T> {
 
     pub fn many(vs: Vec<T>) -> SmallVector<T> {
         SmallVector { repr: Many(vs) }
+    }
+
+    pub fn as_slice<'a>(&'a self) -> &'a [T] {
+        match self.repr {
+            Zero => &[],
+            One(ref v) => slice::ref_slice(v),
+            Many(ref vs) => vs.as_slice()
+        }
     }
 
     pub fn push(&mut self, v: T) {

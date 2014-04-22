@@ -12,7 +12,7 @@
 /// `unsafe`.
 
 use middle::ty;
-use middle::typeck::{MethodCall, MethodMap};
+use middle::typeck::MethodCall;
 use util::ppaux;
 
 use syntax::ast;
@@ -38,8 +38,6 @@ fn type_is_unsafe_function(ty: ty::t) -> bool {
 struct EffectCheckVisitor<'a> {
     tcx: &'a ty::ctxt,
 
-    /// The method map.
-    method_map: MethodMap,
     /// Whether we're in an unsafe context.
     unsafe_context: UnsafeContext,
 }
@@ -138,7 +136,7 @@ impl<'a> Visitor<()> for EffectCheckVisitor<'a> {
         match expr.node {
             ast::ExprMethodCall(_, _, _) => {
                 let method_call = MethodCall::expr(expr.id);
-                let base_type = self.method_map.borrow().get(&method_call).ty;
+                let base_type = self.tcx.method_map.borrow().get(&method_call).ty;
                 debug!("effect: method call case, base type is {}",
                        ppaux::ty_to_str(self.tcx, base_type));
                 if type_is_unsafe_function(base_type) {
@@ -190,10 +188,9 @@ impl<'a> Visitor<()> for EffectCheckVisitor<'a> {
     }
 }
 
-pub fn check_crate(tcx: &ty::ctxt, method_map: MethodMap, krate: &ast::Crate) {
+pub fn check_crate(tcx: &ty::ctxt, krate: &ast::Crate) {
     let mut visitor = EffectCheckVisitor {
         tcx: tcx,
-        method_map: method_map,
         unsafe_context: SafeContext,
     };
 
