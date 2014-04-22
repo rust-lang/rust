@@ -182,16 +182,16 @@ fn get_base_type_def_id(inference_context: &InferCtxt,
     }
 }
 
-struct CoherenceChecker<'a> {
-    crate_context: &'a CrateCtxt<'a>,
-    inference_context: InferCtxt<'a>,
+struct CoherenceChecker<'a, 'tcx: 'a> {
+    crate_context: &'a CrateCtxt<'a, 'tcx>,
+    inference_context: InferCtxt<'a, 'tcx>,
 }
 
-struct CoherenceCheckVisitor<'a> {
-    cc: &'a CoherenceChecker<'a>
+struct CoherenceCheckVisitor<'a, 'tcx: 'a> {
+    cc: &'a CoherenceChecker<'a, 'tcx>
 }
 
-impl<'a> visit::Visitor<()> for CoherenceCheckVisitor<'a> {
+impl<'a, 'tcx> visit::Visitor<()> for CoherenceCheckVisitor<'a, 'tcx> {
     fn visit_item(&mut self, item: &Item, _: ()) {
 
         //debug!("(checking coherence) item '{}'", token::get_ident(item.ident));
@@ -214,9 +214,11 @@ impl<'a> visit::Visitor<()> for CoherenceCheckVisitor<'a> {
     }
 }
 
-struct PrivilegedScopeVisitor<'a> { cc: &'a CoherenceChecker<'a> }
+struct PrivilegedScopeVisitor<'a, 'tcx: 'a> {
+    cc: &'a CoherenceChecker<'a, 'tcx>
+}
 
-impl<'a> visit::Visitor<()> for PrivilegedScopeVisitor<'a> {
+impl<'a, 'tcx> visit::Visitor<()> for PrivilegedScopeVisitor<'a, 'tcx> {
     fn visit_item(&mut self, item: &Item, _: ()) {
 
         match item.node {
@@ -263,7 +265,7 @@ impl<'a> visit::Visitor<()> for PrivilegedScopeVisitor<'a> {
     }
 }
 
-impl<'a> CoherenceChecker<'a> {
+impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
     fn check(&self, krate: &Crate) {
         // Check implementations and traits. This populates the tables
         // containing the inherent methods and extension methods. It also

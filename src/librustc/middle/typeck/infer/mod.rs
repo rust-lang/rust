@@ -75,8 +75,8 @@ pub type ures = cres<()>; // "unify result"
 pub type fres<T> = Result<T, fixup_err>; // "fixup result"
 pub type CoerceResult = cres<Option<ty::AutoAdjustment>>;
 
-pub struct InferCtxt<'a> {
-    pub tcx: &'a ty::ctxt,
+pub struct InferCtxt<'a, 'tcx: 'a> {
+    pub tcx: &'a ty::ctxt<'tcx>,
 
     // We instantiate UnificationTable with bounds<ty::t> because the
     // types that might instantiate a general type variable have an
@@ -93,7 +93,7 @@ pub struct InferCtxt<'a> {
 
     // For region variables.
     region_vars:
-        RegionVarBindings<'a>,
+        RegionVarBindings<'a, 'tcx>,
 }
 
 /// Why did we require that the two types be related?
@@ -291,7 +291,8 @@ pub fn fixup_err_to_string(f: fixup_err) -> String {
     }
 }
 
-pub fn new_infer_ctxt<'a>(tcx: &'a ty::ctxt) -> InferCtxt<'a> {
+pub fn new_infer_ctxt<'a, 'tcx>(tcx: &'a ty::ctxt<'tcx>)
+                                -> InferCtxt<'a, 'tcx> {
     InferCtxt {
         tcx: tcx,
         type_variables: RefCell::new(type_variable::TypeVariableTable::new()),
@@ -518,23 +519,23 @@ pub struct CombinedSnapshot {
     region_vars_snapshot: RegionSnapshot,
 }
 
-impl<'a> InferCtxt<'a> {
+impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn combine_fields<'a>(&'a self, a_is_expected: bool, trace: TypeTrace)
-                              -> CombineFields<'a> {
+                              -> CombineFields<'a, 'tcx> {
         CombineFields {infcx: self,
                        a_is_expected: a_is_expected,
                        trace: trace}
     }
 
-    pub fn equate<'a>(&'a self, a_is_expected: bool, trace: TypeTrace) -> Equate<'a> {
+    pub fn equate<'a>(&'a self, a_is_expected: bool, trace: TypeTrace) -> Equate<'a, 'tcx> {
         Equate(self.combine_fields(a_is_expected, trace))
     }
 
-    pub fn sub<'a>(&'a self, a_is_expected: bool, trace: TypeTrace) -> Sub<'a> {
+    pub fn sub<'a>(&'a self, a_is_expected: bool, trace: TypeTrace) -> Sub<'a, 'tcx> {
         Sub(self.combine_fields(a_is_expected, trace))
     }
 
-    pub fn lub<'a>(&'a self, a_is_expected: bool, trace: TypeTrace) -> Lub<'a> {
+    pub fn lub<'a>(&'a self, a_is_expected: bool, trace: TypeTrace) -> Lub<'a, 'tcx> {
         Lub(self.combine_fields(a_is_expected, trace))
     }
 
@@ -635,7 +636,7 @@ impl<'a> InferCtxt<'a> {
     }
 }
 
-impl<'a> InferCtxt<'a> {
+impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn next_ty_var_id(&self) -> TyVid {
         self.type_variables
             .borrow_mut()

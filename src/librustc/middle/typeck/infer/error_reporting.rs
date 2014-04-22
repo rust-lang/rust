@@ -166,7 +166,7 @@ trait ErrorReportingHelpers {
                                 span: codemap::Span);
 }
 
-impl<'a> ErrorReporting for InferCtxt<'a> {
+impl<'a, 'tcx> ErrorReporting for InferCtxt<'a, 'tcx> {
     fn report_region_errors(&self,
                             errors: &Vec<RegionResolutionError>) {
         let p_errors = self.process_errors(errors);
@@ -900,8 +900,8 @@ struct RebuildPathInfo<'a> {
     region_names: &'a HashSet<ast::Name>
 }
 
-struct Rebuilder<'a> {
-    tcx: &'a ty::ctxt,
+struct Rebuilder<'a, 'tcx: 'a> {
+    tcx: &'a ty::ctxt<'tcx>,
     fn_decl: ast::P<ast::FnDecl>,
     expl_self_opt: Option<ast::ExplicitSelf_>,
     generics: &'a ast::Generics,
@@ -916,14 +916,14 @@ enum FreshOrKept {
     Kept
 }
 
-impl<'a> Rebuilder<'a> {
-    fn new(tcx: &'a ty::ctxt,
+impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
+    fn new(tcx: &'a ty::ctxt<'tcx>,
            fn_decl: ast::P<ast::FnDecl>,
            expl_self_opt: Option<ast::ExplicitSelf_>,
            generics: &'a ast::Generics,
            same_regions: &'a [SameRegions],
            life_giver: &'a LifeGiver)
-           -> Rebuilder<'a> {
+           -> Rebuilder<'a, 'tcx> {
         Rebuilder {
             tcx: tcx,
             fn_decl: fn_decl,
@@ -1403,7 +1403,7 @@ impl<'a> Rebuilder<'a> {
     }
 }
 
-impl<'a> ErrorReportingHelpers for InferCtxt<'a> {
+impl<'a, 'tcx> ErrorReportingHelpers for InferCtxt<'a, 'tcx> {
     fn give_expl_lifetime_param(&self,
                                 decl: &ast::FnDecl,
                                 fn_style: ast::FnStyle,

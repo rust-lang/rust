@@ -71,8 +71,8 @@ use syntax::abi;
 use syntax::{ast, ast_util};
 use syntax::codemap::Span;
 
-pub trait AstConv {
-    fn tcx<'a>(&'a self) -> &'a ty::ctxt;
+pub trait AstConv<'tcx> {
+    fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx>;
     fn get_item_ty(&self, id: ast::DefId) -> ty::Polytype;
     fn get_trait_def(&self, id: ast::DefId) -> Rc<ty::TraitDef>;
 
@@ -118,7 +118,7 @@ pub fn ast_region_to_region(tcx: &ty::ctxt, lifetime: &ast::Lifetime)
     r
 }
 
-pub fn opt_ast_region_to_region<AC:AstConv,RS:RegionScope>(
+pub fn opt_ast_region_to_region<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
     this: &AC,
     rscope: &RS,
     default_span: Span,
@@ -152,7 +152,7 @@ pub fn opt_ast_region_to_region<AC:AstConv,RS:RegionScope>(
     r
 }
 
-fn ast_path_substs<AC:AstConv,RS:RegionScope>(
+fn ast_path_substs<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
     this: &AC,
     rscope: &RS,
     decl_generics: &ty::Generics,
@@ -271,7 +271,7 @@ fn ast_path_substs<AC:AstConv,RS:RegionScope>(
     substs
 }
 
-pub fn ast_path_to_trait_ref<AC:AstConv,RS:RegionScope>(
+pub fn ast_path_to_trait_ref<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
         this: &AC,
         rscope: &RS,
         trait_def_id: ast::DefId,
@@ -284,7 +284,7 @@ pub fn ast_path_to_trait_ref<AC:AstConv,RS:RegionScope>(
     })
 }
 
-pub fn ast_path_to_ty<AC:AstConv,RS:RegionScope>(
+pub fn ast_path_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
     this: &AC,
     rscope: &RS,
     did: ast::DefId,
@@ -307,7 +307,7 @@ pub fn ast_path_to_ty<AC:AstConv,RS:RegionScope>(
 /// and/or region variables are substituted.
 ///
 /// This is used when checking the constructor in struct literals.
-pub fn ast_path_to_ty_relaxed<AC:AstConv,
+pub fn ast_path_to_ty_relaxed<'tcx, AC: AstConv<'tcx>,
                               RS:RegionScope>(
                               this: &AC,
                               rscope: &RS,
@@ -412,12 +412,11 @@ pub fn ast_ty_to_prim_ty(tcx: &ty::ctxt, ast_ty: &ast::Ty) -> Option<ty::t> {
 
 /// Converts the given AST type to a built-in type. A "built-in type" is, at
 /// present, either a core numeric type, a string, or `Box`.
-pub fn ast_ty_to_builtin_ty<AC:AstConv,
-                            RS:RegionScope>(
-                            this: &AC,
-                            rscope: &RS,
-                            ast_ty: &ast::Ty)
-                            -> Option<ty::t> {
+pub fn ast_ty_to_builtin_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
+        this: &AC,
+        rscope: &RS,
+        ast_ty: &ast::Ty)
+        -> Option<ty::t> {
     match ast_ty_to_prim_ty(this.tcx(), ast_ty) {
         Some(typ) => return Some(typ),
         None => {}
@@ -531,7 +530,7 @@ impl PointerTy {
     }
 }
 
-pub fn trait_ref_for_unboxed_function<AC:AstConv,
+pub fn trait_ref_for_unboxed_function<'tcx, AC: AstConv<'tcx>,
                                       RS:RegionScope>(
                                       this: &AC,
                                       rscope: &RS,
@@ -576,14 +575,13 @@ pub fn trait_ref_for_unboxed_function<AC:AstConv,
 // Handle `~`, `Box`, and `&` being able to mean strs and vecs.
 // If a_seq_ty is a str or a vec, make it a str/vec.
 // Also handle first-class trait types.
-fn mk_pointer<AC:AstConv,
-              RS:RegionScope>(
-              this: &AC,
-              rscope: &RS,
-              a_seq_ty: &ast::MutTy,
-              ptr_ty: PointerTy,
-              constr: |ty::t| -> ty::t)
-              -> ty::t {
+fn mk_pointer<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
+        this: &AC,
+        rscope: &RS,
+        a_seq_ty: &ast::MutTy,
+        ptr_ty: PointerTy,
+        constr: |ty::t| -> ty::t)
+        -> ty::t {
     let tcx = this.tcx();
     debug!("mk_pointer(ptr_ty={})", ptr_ty);
 
@@ -695,8 +693,8 @@ fn mk_pointer<AC:AstConv,
 
 // Parses the programmer's textual representation of a type into our
 // internal notion of a type.
-pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
-    this: &AC, rscope: &RS, ast_ty: &ast::Ty) -> ty::t {
+pub fn ast_ty_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
+        this: &AC, rscope: &RS, ast_ty: &ast::Ty) -> ty::t {
 
     let tcx = this.tcx();
 
@@ -914,8 +912,10 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
     return typ;
 }
 
-pub fn ty_of_arg<AC: AstConv, RS: RegionScope>(this: &AC, rscope: &RS, a: &ast::Arg,
-                                               expected_ty: Option<ty::t>) -> ty::t {
+pub fn ty_of_arg<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(this: &AC, rscope: &RS,
+                                                           a: &ast::Arg,
+                                                           expected_ty: Option<ty::t>)
+                                                           -> ty::t {
     match a.ty.node {
         ast::TyInfer if expected_ty.is_some() => expected_ty.unwrap(),
         ast::TyInfer => this.ty_infer(a.ty.span),
@@ -928,7 +928,7 @@ struct SelfInfo<'a> {
     explicit_self: ast::ExplicitSelf,
 }
 
-pub fn ty_of_method<AC:AstConv>(
+pub fn ty_of_method<'tcx, AC: AstConv<'tcx>>(
                     this: &AC,
                     id: ast::NodeId,
                     fn_style: ast::FnStyle,
@@ -951,15 +951,15 @@ pub fn ty_of_method<AC:AstConv>(
     (bare_fn_ty, optional_explicit_self_category.unwrap())
 }
 
-pub fn ty_of_bare_fn<AC:AstConv>(this: &AC, id: ast::NodeId,
-                                 fn_style: ast::FnStyle, abi: abi::Abi,
-                                 decl: &ast::FnDecl) -> ty::BareFnTy {
+pub fn ty_of_bare_fn<'tcx, AC: AstConv<'tcx>>(this: &AC, id: ast::NodeId,
+                                              fn_style: ast::FnStyle, abi: abi::Abi,
+                                              decl: &ast::FnDecl) -> ty::BareFnTy {
     let (bare_fn_ty, _) =
         ty_of_method_or_bare_fn(this, id, fn_style, abi, None, decl);
     bare_fn_ty
 }
 
-fn ty_of_method_or_bare_fn<AC:AstConv>(
+fn ty_of_method_or_bare_fn<'tcx, AC: AstConv<'tcx>>(
                            this: &AC,
                            id: ast::NodeId,
                            fn_style: ast::FnStyle,
@@ -1070,7 +1070,7 @@ fn ty_of_method_or_bare_fn<AC:AstConv>(
     }, explicit_self_category_result)
 }
 
-fn determine_explicit_self_category<AC:AstConv,
+fn determine_explicit_self_category<'tcx, AC: AstConv<'tcx>,
                                     RS:RegionScope>(
                                     this: &AC,
                                     rscope: &RS,
@@ -1145,7 +1145,7 @@ fn determine_explicit_self_category<AC:AstConv,
     }
 }
 
-pub fn ty_of_closure<AC:AstConv>(
+pub fn ty_of_closure<'tcx, AC: AstConv<'tcx>>(
     this: &AC,
     id: ast::NodeId,
     fn_style: ast::FnStyle,
@@ -1196,7 +1196,7 @@ pub fn ty_of_closure<AC:AstConv>(
     }
 }
 
-pub fn conv_existential_bounds<AC:AstConv, RS:RegionScope>(
+pub fn conv_existential_bounds<'tcx, AC: AstConv<'tcx>, RS:RegionScope>(
     this: &AC,
     rscope: &RS,
     span: Span,
@@ -1330,7 +1330,7 @@ pub fn compute_opt_region_bound(tcx: &ty::ctxt,
     return Some(r);
 }
 
-fn compute_region_bound<AC:AstConv, RS:RegionScope>(
+fn compute_region_bound<'tcx, AC: AstConv<'tcx>, RS:RegionScope>(
     this: &AC,
     rscope: &RS,
     span: Span,

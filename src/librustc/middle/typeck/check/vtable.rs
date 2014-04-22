@@ -68,14 +68,14 @@ use syntax::visit::Visitor;
 
 /// A vtable context includes an inference context, a parameter environment,
 /// and a list of unboxed closure types.
-pub struct VtableContext<'a> {
-    pub infcx: &'a infer::InferCtxt<'a>,
+pub struct VtableContext<'a, 'tcx: 'a> {
+    pub infcx: &'a infer::InferCtxt<'a, 'tcx>,
     pub param_env: &'a ty::ParameterEnvironment,
     pub unboxed_closures: &'a RefCell<DefIdMap<ty::UnboxedClosure>>,
 }
 
-impl<'a> VtableContext<'a> {
-    pub fn tcx(&self) -> &'a ty::ctxt { self.infcx.tcx }
+impl<'a, 'tcx> VtableContext<'a, 'tcx> {
+    pub fn tcx(&self) -> &'a ty::ctxt<'tcx> { self.infcx.tcx }
 }
 
 fn lookup_vtables(vcx: &VtableContext,
@@ -1025,7 +1025,7 @@ pub fn trans_resolve_method(tcx: &ty::ctxt, id: ast::NodeId,
                    false)
 }
 
-impl<'a, 'b> visit::Visitor<()> for &'a FnCtxt<'b> {
+impl<'a, 'b, 'tcx> visit::Visitor<()> for &'a FnCtxt<'b, 'tcx> {
     fn visit_expr(&mut self, ex: &ast::Expr, _: ()) {
         early_resolve_expr(ex, *self, false);
         visit::walk_expr(self, ex, ());

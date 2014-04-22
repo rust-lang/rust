@@ -281,10 +281,10 @@ pub type vtable_map = RefCell<FnvHashMap<MethodCall, vtable_res>>;
 
 pub type impl_vtable_map = RefCell<DefIdMap<vtable_res>>;
 
-pub struct CrateCtxt<'a> {
+pub struct CrateCtxt<'a, 'tcx: 'a> {
     // A mapping from method call sites to traits that have that method.
     trait_map: resolve::TraitMap,
-    tcx: &'a ty::ctxt
+    tcx: &'a ty::ctxt<'tcx>
 }
 
 // Functions that write types into the node type table

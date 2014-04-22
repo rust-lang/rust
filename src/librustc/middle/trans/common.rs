@@ -233,7 +233,7 @@ pub type LvalueDatum = datum::Datum<datum::Lvalue>;
 
 // Function context.  Every LLVM function we create will have one of
 // these.
-pub struct FunctionContext<'a> {
+pub struct FunctionContext<'a, 'tcx: 'a> {
     // The ValueRef returned from a call to llvm::LLVMAddFunction; the
     // address of the first instruction in the sequence of
     // instructions for this function that will go in the .text
@@ -297,7 +297,7 @@ pub struct FunctionContext<'a> {
     pub block_arena: &'a TypedArena<Block<'a>>,
 
     // This function's enclosing crate context.
-    pub ccx: &'a CrateContext<'a>,
+    pub ccx: &'a CrateContext<'a, 'tcx>,
 
     // Used and maintained by the debuginfo module.
     pub debug_context: debuginfo::FunctionDebugContext,
@@ -306,7 +306,7 @@ pub struct FunctionContext<'a> {
     pub scopes: RefCell<Vec<cleanup::CleanupScope<'a>> >,
 }
 
-impl<'a> FunctionContext<'a> {
+impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
     pub fn arg_pos(&self, arg: uint) -> uint {
         let arg = self.env_arg_pos() + arg;
         if self.llenv.is_some() {
@@ -410,7 +410,7 @@ impl<'a> FunctionContext<'a> {
 // code.  Each basic block we generate is attached to a function, typically
 // with many basic blocks per function.  All the basic blocks attached to a
 // function are organized as a directed graph.
-pub struct Block<'a> {
+pub struct Block<'a, 'tcx> {
     // The BasicBlockRef returned from a call to
     // llvm::LLVMAppendBasicBlock(llfn, name), which adds a basic
     // block to the function pointed to by llfn.  We insert
@@ -429,16 +429,15 @@ pub struct Block<'a> {
 
     // The function context for the function to which this block is
     // attached.
-    pub fcx: &'a FunctionContext<'a>,
+    pub fcx: &'a FunctionContext<'a, 'tcx>,
 }
 
-impl<'a> Block<'a> {
-    pub fn new<'a>(
-               llbb: BasicBlockRef,
+impl<'a, 'tcx> Block<'a, 'tcx> {
+    pub fn new(llbb: BasicBlockRef,
                is_lpad: bool,
                opt_node_id: Option<ast::NodeId>,
-               fcx: &'a FunctionContext<'a>)
-               -> &'a Block<'a> {
+               fcx: &'a FunctionContext<'a, 'tcx>)
+               -> &'a Block<'a, 'tcx> {
         fcx.block_arena.alloc(Block {
             llbb: llbb,
             terminated: Cell::new(false),
@@ -449,8 +448,8 @@ impl<'a> Block<'a> {
         })
     }
 
-    pub fn ccx(&self) -> &'a CrateContext<'a> { self.fcx.ccx }
-    pub fn tcx(&self) -> &'a ty::ctxt {
+    pub fn ccx(&self) -> &'a CrateContext<'a, 'tcx> { self.fcx.ccx }
+    pub fn tcx(&self) -> &'a ty::ctxt<'tcx> {
         self.fcx.ccx.tcx()
     }
     pub fn sess(&self) -> &'a Session { self.fcx.ccx.sess() }
@@ -495,8 +494,8 @@ impl<'a> Block<'a> {
     }
 }
 
-impl<'a> mc::Typer for Block<'a> {
-    fn tcx<'a>(&'a self) -> &'a ty::ctxt {
+impl<'blk, 'tcx> mc::Typer<'tcx> for Block<'blk, 'tcx> {
+    fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx> {
         self.tcx()
     }
 
@@ -535,13 +534,13 @@ impl<'a> mc::Typer for Block<'a> {
     }
 }
 
-pub struct Result<'a> {
-    pub bcx: &'a Block<'a>,
+pub struct Result<'blk, 'tcx: 'blk> {
+    pub bcx: &'blk Block<'blk, 'tcx>,
     pub val: ValueRef
 }
 
-impl<'a> Result<'a> {
-    pub fn new(bcx: &'a Block<'a>, val: ValueRef) -> Result<'a> {
+impl<'b, 'tcx> Result<'b, 'tcx> {
+    pub fn new(bcx: &'b Block<'b, 'tcx>, val: ValueRef) -> Result<'b, 'tcx> {
         Result {
             bcx: bcx,
             val: val,
@@ -746,11 +745,11 @@ pub fn is_null(val: ValueRef) -> bool {
     }
 }
 
-pub fn monomorphize_type(bcx: &Block, t: ty::t) -> ty::t {
+pub fn monomorphize_type(bcx: Block, t: ty::t) -> ty::t {
     t.subst(bcx.tcx(), &bcx.fcx.param_substs.substs)
 }
 
-pub fn node_id_type(bcx: &Block, id: ast::NodeId) -> ty::t {
+pub fn node_id_type(bcx: Block, id: ast::NodeId) -> ty::t {
     let tcx = bcx.tcx();
     let t = ty::node_id_to_type(tcx, id);
     monomorphize_type(bcx, t)

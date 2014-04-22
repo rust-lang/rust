@@ -133,8 +133,8 @@ impl Visitor<()> for ParentVisitor {
 /// The embargo visitor, used to determine the exports of the ast
 ////////////////////////////////////////////////////////////////////////////////
 
-struct EmbargoVisitor<'a> {
-    tcx: &'a ty::ctxt,
+struct EmbargoVisitor<'a, 'tcx: 'a> {
+    tcx: &'a ty::ctxt<'tcx>,
     exp_map2: &'a resolve::ExportMap2,
 
     // This flag is an indicator of whether the previous item in the
@@ -163,7 +163,7 @@ struct EmbargoVisitor<'a> {
     prev_public: bool,
 }
 
-impl<'a> EmbargoVisitor<'a> {
+impl<'a, 'tcx> EmbargoVisitor<'a, 'tcx> {
     // There are checks inside of privacy which depend on knowing whether a
     // trait should be exported or not. The two current consumers of this are:
     //
@@ -180,7 +180,7 @@ impl<'a> EmbargoVisitor<'a> {
     }
 }
 
-impl<'a> Visitor<()> for EmbargoVisitor<'a> {
+impl<'a, 'tcx> Visitor<()> for EmbargoVisitor<'a, 'tcx> {
     fn visit_item(&mut self, item: &ast::Item, _: ()) {
         let orig_all_pub = self.prev_public;
         self.prev_public = orig_all_pub && item.vis == ast::Public;
@@ -355,8 +355,8 @@ impl<'a> Visitor<()> for EmbargoVisitor<'a> {
 /// The privacy visitor, where privacy checks take place (violations reported)
 ////////////////////////////////////////////////////////////////////////////////
 
-struct PrivacyVisitor<'a> {
-    tcx: &'a ty::ctxt,
+struct PrivacyVisitor<'a, 'tcx: 'a> {
+    tcx: &'a ty::ctxt<'tcx>,
     curitem: ast::NodeId,
     in_foreign: bool,
     parents: NodeMap<ast::NodeId>,
@@ -376,7 +376,7 @@ enum FieldName {
     NamedField(ast::Ident),
 }
 
-impl<'a> PrivacyVisitor<'a> {
+impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
     // used when debugging
     fn nodestr(&self, id: ast::NodeId) -> String {
         self.tcx.map.node_to_string(id).to_string()
@@ -802,7 +802,7 @@ impl<'a> PrivacyVisitor<'a> {
     }
 }
 
-impl<'a> Visitor<()> for PrivacyVisitor<'a> {
+impl<'a, 'tcx> Visitor<()> for PrivacyVisitor<'a, 'tcx> {
     fn visit_item(&mut self, item: &ast::Item, _: ()) {
         let orig_curitem = replace(&mut self.curitem, item.id);
         visit::walk_item(self, item, ());
@@ -1023,12 +1023,12 @@ impl<'a> Visitor<()> for PrivacyVisitor<'a> {
 /// The privacy sanity check visitor, ensures unnecessary visibility isn't here
 ////////////////////////////////////////////////////////////////////////////////
 
-struct SanePrivacyVisitor<'a> {
-    tcx: &'a ty::ctxt,
+struct SanePrivacyVisitor<'a, 'tcx: 'a> {
+    tcx: &'a ty::ctxt<'tcx>,
     in_fn: bool,
 }
 
-impl<'a> Visitor<()> for SanePrivacyVisitor<'a> {
+impl<'a, 'tcx> Visitor<()> for SanePrivacyVisitor<'a, 'tcx> {
     fn visit_item(&mut self, item: &ast::Item, _: ()) {
         if self.in_fn {
             self.check_all_inherited(item);
@@ -1076,7 +1076,7 @@ impl<'a> Visitor<()> for SanePrivacyVisitor<'a> {
     }
 }
 
-impl<'a> SanePrivacyVisitor<'a> {
+impl<'a, 'tcx> SanePrivacyVisitor<'a, 'tcx> {
     /// Validates all of the visibility qualifiers placed on the item given. This
     /// ensures that there are no extraneous qualifiers that don't actually do
     /// anything. In theory these qualifiers wouldn't parse, but that may happen
@@ -1215,14 +1215,14 @@ impl<'a> SanePrivacyVisitor<'a> {
     }
 }
 
-struct VisiblePrivateTypesVisitor<'a> {
-    tcx: &'a ty::ctxt,
+struct VisiblePrivateTypesVisitor<'a, 'tcx: 'a> {
+    tcx: &'a ty::ctxt<'tcx>,
     exported_items: &'a ExportedItems,
     public_items: &'a PublicItems,
 }
 
-struct CheckTypeForPrivatenessVisitor<'a, 'b:'a> {
-    inner: &'a VisiblePrivateTypesVisitor<'b>,
+struct CheckTypeForPrivatenessVisitor<'a, 'b: 'a, 'tcx: 'b> {
+    inner: &'a VisiblePrivateTypesVisitor<'b, 'tcx>,
     /// whether the type refers to private types.
     contains_private: bool,
     /// whether we've recurred at all (i.e. if we're pointing at the
@@ -1232,7 +1232,7 @@ struct CheckTypeForPrivatenessVisitor<'a, 'b:'a> {
     outer_type_is_public_path: bool,
 }
 
-impl<'a> VisiblePrivateTypesVisitor<'a> {
+impl<'a, 'tcx> VisiblePrivateTypesVisitor<'a, 'tcx> {
     fn path_is_private_type(&self, path_id: ast::NodeId) -> bool {
         let did = match self.tcx.def_map.borrow().find_copy(&path_id) {
             // `int` etc. (None doesn't seem to occur.)
@@ -1256,7 +1256,7 @@ impl<'a> VisiblePrivateTypesVisitor<'a> {
     }
 }
 
-impl<'a, 'b> Visitor<()> for CheckTypeForPrivatenessVisitor<'a, 'b> {
+impl<'a, 'b, 'tcx> Visitor<()> for CheckTypeForPrivatenessVisitor<'a, 'b, 'tcx> {
     fn visit_ty(&mut self, ty: &ast::Ty, _: ()) {
         match ty.node {
             ast::TyPath(_, _, path_id) => {
@@ -1279,7 +1279,7 @@ impl<'a, 'b> Visitor<()> for CheckTypeForPrivatenessVisitor<'a, 'b> {
     fn visit_expr(&mut self, _: &ast::Expr, _: ()) {}
 }
 
-impl<'a> Visitor<()> for VisiblePrivateTypesVisitor<'a> {
+impl<'a, 'tcx> Visitor<()> for VisiblePrivateTypesVisitor<'a, 'tcx> {
     fn visit_item(&mut self, item: &ast::Item, _: ()) {
         match item.node {
             // contents of a private mod can be reexported, so we need

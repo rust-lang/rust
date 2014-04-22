@@ -231,9 +231,9 @@ impl LintStore {
 }
 
 /// Context for lint checking.
-pub struct Context<'a> {
+pub struct Context<'a, 'tcx: 'a> {
     /// Type context we're checking in.
-    pub tcx: &'a ty::ctxt,
+    pub tcx: &'a ty::ctxt<'tcx>,
 
     /// The crate being checked.
     pub krate: &'a ast::Crate,
@@ -345,10 +345,10 @@ pub fn raw_emit_lint(sess: &Session, lint: &'static Lint,
     }
 }
 
-impl<'a> Context<'a> {
-    fn new(tcx: &'a ty::ctxt,
+impl<'a, 'tcx> Context<'a, 'tcx> {
+    fn new(tcx: &'a ty::ctxt<'tcx>,
            krate: &'a ast::Crate,
-           exported_items: &'a ExportedItems) -> Context<'a> {
+           exported_items: &'a ExportedItems) -> Context<'a, 'tcx> {
         // We want to own the lint store, so move it out of the session.
         let lint_store = mem::replace(&mut *tcx.sess.lint_store.borrow_mut(),
                                       LintStore::new());
@@ -476,8 +476,8 @@ impl<'a> Context<'a> {
     }
 }
 
-impl<'a> AstConv for Context<'a>{
-    fn tcx<'a>(&'a self) -> &'a ty::ctxt { self.tcx }
+impl<'a, 'tcx> AstConv<'tcx> for Context<'a, 'tcx>{
+    fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx> { self.tcx }
 
     fn get_item_ty(&self, id: ast::DefId) -> ty::Polytype {
         ty::lookup_item_type(self.tcx, id)
@@ -492,7 +492,7 @@ impl<'a> AstConv for Context<'a>{
     }
 }
 
-impl<'a> Visitor<()> for Context<'a> {
+impl<'a, 'tcx> Visitor<()> for Context<'a, 'tcx> {
     fn visit_item(&mut self, it: &ast::Item, _: ()) {
         self.with_lint_attrs(it.attrs.as_slice(), |cx| {
             run_lints!(cx, check_item, it);
@@ -663,7 +663,7 @@ impl<'a> Visitor<()> for Context<'a> {
 }
 
 // Output any lints that were previously added to the session.
-impl<'a> IdVisitingOperation for Context<'a> {
+impl<'a, 'tcx> IdVisitingOperation for Context<'a, 'tcx> {
     fn visit_id(&self, id: ast::NodeId) {
         match self.tcx.sess.lints.borrow_mut().pop(&id) {
             None => {}

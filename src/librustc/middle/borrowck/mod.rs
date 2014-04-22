@@ -58,9 +58,9 @@ pub mod move_data;
 #[deriving(Clone)]
 pub struct LoanDataFlowOperator;
 
-pub type LoanDataFlow<'a> = DataFlowContext<'a, LoanDataFlowOperator>;
+pub type LoanDataFlow<'a, 'tcx> = DataFlowContext<'a, 'tcx, LoanDataFlowOperator>;
 
-impl<'a> Visitor<()> for BorrowckCtxt<'a> {
+impl<'a, 'tcx> Visitor<()> for BorrowckCtxt<'a, 'tcx> {
     fn visit_fn(&mut self, fk: &FnKind, fd: &FnDecl,
                 b: &Block, s: Span, n: NodeId, _: ()) {
         borrowck_fn(self, fk, fd, b, s, n);
@@ -120,10 +120,10 @@ fn borrowck_item(this: &mut BorrowckCtxt, item: &ast::Item) {
 }
 
 /// Collection of conclusions determined via borrow checker analyses.
-pub struct AnalysisData<'a> {
+pub struct AnalysisData<'a, 'tcx: 'a> {
     pub all_loans: Vec<Loan>,
-    pub loans: DataFlowContext<'a, LoanDataFlowOperator>,
-    pub move_data: move_data::FlowedMoveData<'a>,
+    pub loans: DataFlowContext<'a, 'tcx, LoanDataFlowOperator>,
+    pub move_data: move_data::FlowedMoveData<'a, 'tcx>,
 }
 
 fn borrowck_fn(this: &mut BorrowckCtxt,
@@ -145,13 +145,13 @@ fn borrowck_fn(this: &mut BorrowckCtxt,
     visit::walk_fn(this, fk, decl, body, sp, ());
 }
 
-fn build_borrowck_dataflow_data<'a>(this: &mut BorrowckCtxt<'a>,
-                                    fk: &FnKind,
-                                    decl: &ast::FnDecl,
-                                    cfg: &cfg::CFG,
-                                    body: &ast::Block,
-                                    sp: Span,
-                                    id: ast::NodeId) -> AnalysisData<'a> {
+fn build_borrowck_dataflow_data<'a, 'tcx>(this: &mut BorrowckCtxt<'a, 'tcx>,
+                                          fk: &FnKind,
+                                          decl: &ast::FnDecl,
+                                          cfg: &cfg::CFG,
+                                          body: &ast::Block,
+                                          sp: Span,
+                                          id: ast::NodeId) -> AnalysisData<'a, 'tcx> {
     // Check the body of fn items.
     let id_range = ast_util::compute_id_range_for_fn_body(fk, decl, body, sp, id);
     let (all_loans, move_data) =
@@ -200,9 +200,9 @@ impl<'a> FnPartsWithCFG<'a> {
 
 /// Accessor for introspective clients inspecting `AnalysisData` and
 /// the `BorrowckCtxt` itself , e.g. the flowgraph visualizer.
-pub fn build_borrowck_dataflow_data_for_fn<'a>(
-    tcx: &'a ty::ctxt,
-    input: FnPartsWithCFG<'a>) -> (BorrowckCtxt<'a>, AnalysisData<'a>) {
+pub fn build_borrowck_dataflow_data_for_fn<'a, 'tcx>(
+    tcx: &'a ty::ctxt<'tcx>,
+    input: FnPartsWithCFG<'a>) -> (BorrowckCtxt<'a, 'tcx>, AnalysisData<'a, 'tcx>) {
 
     let mut bccx = BorrowckCtxt {
         tcx: tcx,
@@ -230,8 +230,8 @@ pub fn build_borrowck_dataflow_data_for_fn<'a>(
 // ----------------------------------------------------------------------
 // Type definitions
 
-pub struct BorrowckCtxt<'a> {
-    tcx: &'a ty::ctxt,
+pub struct BorrowckCtxt<'a, 'tcx: 'a> {
+    tcx: &'a ty::ctxt<'tcx>,
 
     // Statistics:
     stats: Gc<BorrowStats>,
@@ -390,7 +390,7 @@ pub enum MovedValueUseKind {
 ///////////////////////////////////////////////////////////////////////////
 // Misc
 
-impl<'a> BorrowckCtxt<'a> {
+impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
     pub fn is_subregion_of(&self, r_sub: ty::Region, r_sup: ty::Region)
                            -> bool {
         self.tcx.region_maps.is_subregion_of(r_sub, r_sup)
@@ -401,7 +401,7 @@ impl<'a> BorrowckCtxt<'a> {
         self.tcx.region_maps.is_subscope_of(r_sub, r_sup)
     }
 
-    pub fn mc(&self) -> mc::MemCategorizationContext<'a,ty::ctxt> {
+    pub fn mc(&self) -> mc::MemCategorizationContext<'a, ty::ctxt<'tcx>> {
         mc::MemCategorizationContext::new(self.tcx)
     }
 

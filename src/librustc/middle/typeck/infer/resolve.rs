@@ -74,18 +74,18 @@ pub static try_resolve_tvar_shallow: uint = 0;
 pub static resolve_and_force_all_but_regions: uint =
     (resolve_all | force_all) & not_regions;
 
-pub struct ResolveState<'a> {
-    infcx: &'a InferCtxt<'a>,
+pub struct ResolveState<'a, 'tcx: 'a> {
+    infcx: &'a InferCtxt<'a, 'tcx>,
     modes: uint,
     err: Option<fixup_err>,
     v_seen: Vec<TyVid> ,
     type_depth: uint,
 }
 
-pub fn resolver<'a>(infcx: &'a InferCtxt,
-                    modes: uint,
-                    _: Option<Span>)
-                    -> ResolveState<'a> {
+pub fn resolver<'a, 'tcx>(infcx: &'a InferCtxt<'a, 'tcx>,
+                          modes: uint,
+                          _: Option<Span>)
+                          -> ResolveState<'a, 'tcx> {
     ResolveState {
         infcx: infcx,
         modes: modes,
@@ -95,8 +95,8 @@ pub fn resolver<'a>(infcx: &'a InferCtxt,
     }
 }
 
-impl<'a> ty_fold::TypeFolder for ResolveState<'a> {
-    fn tcx<'a>(&'a self) -> &'a ty::ctxt {
+impl<'a, 'tcx> ty_fold::TypeFolder<'tcx> for ResolveState<'a, 'tcx> {
+    fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx> {
         self.infcx.tcx
     }
 
@@ -109,7 +109,7 @@ impl<'a> ty_fold::TypeFolder for ResolveState<'a> {
     }
 }
 
-impl<'a> ResolveState<'a> {
+impl<'a, 'tcx> ResolveState<'a, 'tcx> {
     pub fn should(&mut self, mode: uint) -> bool {
         (self.modes & mode) == mode
     }

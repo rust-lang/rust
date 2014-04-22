@@ -57,15 +57,15 @@ pub fn gather_loans_in_fn(bccx: &BorrowckCtxt,
     (all_loans, move_data)
 }
 
-struct GatherLoanCtxt<'a> {
-    bccx: &'a BorrowckCtxt<'a>,
+struct GatherLoanCtxt<'a, 'tcx: 'a> {
+    bccx: &'a BorrowckCtxt<'a, 'tcx>,
     move_data: move_data::MoveData,
     move_error_collector: move_error::MoveErrorCollector,
     all_loans: Vec<Loan>,
     item_ub: ast::NodeId,
 }
 
-impl<'a> euv::Delegate for GatherLoanCtxt<'a> {
+impl<'a, 'tcx> euv::Delegate for GatherLoanCtxt<'a, 'tcx> {
     fn consume(&mut self,
                consume_id: ast::NodeId,
                _consume_span: Span,
@@ -204,8 +204,8 @@ fn check_aliasability(bccx: &BorrowckCtxt,
     }
 }
 
-impl<'a> GatherLoanCtxt<'a> {
-    pub fn tcx(&self) -> &'a ty::ctxt { self.bccx.tcx }
+impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
+    pub fn tcx(&self) -> &'a ty::ctxt<'tcx> { self.bccx.tcx }
 
     fn guarantee_valid(&mut self,
                        borrow_id: ast::NodeId,
@@ -467,11 +467,11 @@ impl<'a> GatherLoanCtxt<'a> {
 ///
 /// This visitor walks static initializer's expressions and makes
 /// sure the loans being taken are sound.
-struct StaticInitializerCtxt<'a> {
-    bccx: &'a BorrowckCtxt<'a>
+struct StaticInitializerCtxt<'a, 'tcx: 'a> {
+    bccx: &'a BorrowckCtxt<'a, 'tcx>
 }
 
-impl<'a> visit::Visitor<()> for StaticInitializerCtxt<'a> {
+impl<'a, 'tcx> visit::Visitor<()> for StaticInitializerCtxt<'a, 'tcx> {
     fn visit_expr(&mut self, ex: &Expr, _: ()) {
         match ex.node {
             ast::ExprAddrOf(mutbl, ref base) => {

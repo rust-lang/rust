@@ -51,7 +51,7 @@ pub trait LatticeDir {
     fn relate_bound<'a>(&'a self, v: ty::t, a: ty::t, b: ty::t) -> cres<()>;
 }
 
-impl<'a> LatticeDir for Lub<'a> {
+impl<'a, 'tcx> LatticeDir for Lub<'a, 'tcx> {
     fn ty_bot(&self, t: ty::t) -> cres<ty::t> {
         Ok(t)
     }
@@ -64,7 +64,7 @@ impl<'a> LatticeDir for Lub<'a> {
     }
 }
 
-impl<'a> LatticeDir for Glb<'a> {
+impl<'a, 'tcx> LatticeDir for Glb<'a, 'tcx> {
     fn ty_bot(&self, _: ty::t) -> cres<ty::t> {
         Ok(ty::mk_bot())
     }
@@ -77,10 +77,10 @@ impl<'a> LatticeDir for Glb<'a> {
     }
 }
 
-pub fn super_lattice_tys<L:LatticeDir+Combine>(this: &L,
-                                               a: ty::t,
-                                               b: ty::t)
-                                               -> cres<ty::t>
+pub fn super_lattice_tys<'tcx, L:LatticeDir+Combine<'tcx>>(this: &L,
+                                                           a: ty::t,
+                                                           b: ty::t)
+                                                           -> cres<ty::t>
 {
     debug!("{}.lattice_tys({}, {})",
            this.tag(),
@@ -115,9 +115,9 @@ pub fn super_lattice_tys<L:LatticeDir+Combine>(this: &L,
 // Random utility functions used by LUB/GLB when computing LUB/GLB of
 // fn types
 
-pub fn var_ids<T:Combine>(this: &T,
-                          map: &HashMap<ty::BoundRegion, ty::Region>)
-                          -> Vec<RegionVid> {
+pub fn var_ids<'tcx, T: Combine<'tcx>>(this: &T,
+                                       map: &HashMap<ty::BoundRegion, ty::Region>)
+                                       -> Vec<RegionVid> {
     map.iter().map(|(_, r)| match *r {
             ty::ReInfer(ty::ReVar(r)) => { r }
             r => {

@@ -74,9 +74,9 @@ fn generated_code(span: Span) -> bool {
     span.expn_info.is_some() || span  == DUMMY_SP
 }
 
-struct DxrVisitor<'l> {
+struct DxrVisitor<'l, 'tcx: 'l> {
     sess: &'l Session,
-    analysis: &'l CrateAnalysis,
+    analysis: &'l CrateAnalysis<'tcx>,
 
     collected_paths: Vec<(NodeId, ast::Path, bool, recorder::Row)>,
     collecting: bool,
@@ -85,7 +85,7 @@ struct DxrVisitor<'l> {
     fmt: FmtStrs<'l>,
 }
 
-impl <'l> DxrVisitor<'l> {
+impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
     fn dump_crate_info(&mut self, name: &str, krate: &ast::Crate) {
         // the current crate
         self.fmt.crate_str(krate.span, name);
@@ -1023,7 +1023,7 @@ impl <'l> DxrVisitor<'l> {
     }
 }
 
-impl<'l> Visitor<DxrVisitorEnv> for DxrVisitor<'l> {
+impl<'l, 'tcx> Visitor<DxrVisitorEnv> for DxrVisitor<'l, 'tcx> {
     fn visit_item(&mut self, item:&ast::Item, e: DxrVisitorEnv) {
         if generated_code(item.span) {
             return

@@ -79,14 +79,14 @@ fn owned_ptr_base_path_rc(loan_path: &Rc<LoanPath>) -> Rc<LoanPath> {
     }
 }
 
-struct CheckLoanCtxt<'a> {
-    bccx: &'a BorrowckCtxt<'a>,
-    dfcx_loans: &'a LoanDataFlow<'a>,
-    move_data: move_data::FlowedMoveData<'a>,
+struct CheckLoanCtxt<'a, 'tcx: 'a> {
+    bccx: &'a BorrowckCtxt<'a, 'tcx>,
+    dfcx_loans: &'a LoanDataFlow<'a, 'tcx>,
+    move_data: move_data::FlowedMoveData<'a, 'tcx>,
     all_loans: &'a [Loan],
 }
 
-impl<'a> euv::Delegate for CheckLoanCtxt<'a> {
+impl<'a, 'tcx> euv::Delegate for CheckLoanCtxt<'a, 'tcx> {
     fn consume(&mut self,
                consume_id: ast::NodeId,
                consume_span: Span,
@@ -179,12 +179,12 @@ impl<'a> euv::Delegate for CheckLoanCtxt<'a> {
     fn decl_without_init(&mut self, _id: ast::NodeId, _span: Span) { }
 }
 
-pub fn check_loans(bccx: &BorrowckCtxt,
-                   dfcx_loans: &LoanDataFlow,
-                   move_data: move_data::FlowedMoveData,
-                   all_loans: &[Loan],
-                   decl: &ast::FnDecl,
-                   body: &ast::Block) {
+pub fn check_loans<'a, 'b, 'c, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
+                                     dfcx_loans: &LoanDataFlow<'b, 'tcx>,
+                                     move_data: move_data::FlowedMoveData<'c, 'tcx>,
+                                     all_loans: &[Loan],
+                                     decl: &ast::FnDecl,
+                                     body: &ast::Block) {
     debug!("check_loans(body id={:?})", body.id);
 
     let mut clcx = CheckLoanCtxt {
@@ -212,8 +212,8 @@ fn compatible_borrow_kinds(borrow_kind1: ty::BorrowKind,
     borrow_kind1 == ty::ImmBorrow && borrow_kind2 == ty::ImmBorrow
 }
 
-impl<'a> CheckLoanCtxt<'a> {
-    pub fn tcx(&self) -> &'a ty::ctxt { self.bccx.tcx }
+impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
+    pub fn tcx(&self) -> &'a ty::ctxt<'tcx> { self.bccx.tcx }
 
     pub fn each_issued_loan(&self, scope_id: ast::NodeId, op: |&Loan| -> bool)
                             -> bool {
