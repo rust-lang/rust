@@ -243,7 +243,7 @@ mod test {
         })
     }
 
-    fn run(f: proc()) {
+    fn run(f: proc():Send) {
         let mut pool = pool();
         pool.spawn(TaskOpts::new(), f);
         pool.shutdown();

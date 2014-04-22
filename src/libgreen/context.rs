@@ -46,7 +46,7 @@ impl Context {
     /// FIXME: this is basically an awful the interface. The main reason for
     ///        this is to reduce the number of allocations made when a green
     ///        task is spawned as much as possible
-    pub fn new(init: InitFn, arg: uint, start: proc(),
+    pub fn new(init: InitFn, arg: uint, start: proc():Send,
                stack: &mut Stack) -> Context {
 
         let sp: *uint = stack.end();
