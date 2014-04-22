@@ -141,6 +141,17 @@ pub fn mk_sp(lo: BytePos, hi: BytePos) -> Span {
     Span {lo: lo, hi: hi, expn_info: None}
 }
 
+/// Return the span itself if it doesn't come from a macro expansion,
+/// otherwise return the call site span up to the `enclosing_sp` by
+/// following the `expn_info` chain.
+pub fn original_sp(sp: Span, enclosing_sp: Span) -> Span {
+    match (sp.expn_info, enclosing_sp.expn_info) {
+        (None, _) => sp,
+        (Some(expn1), Some(expn2)) if expn1.call_site == expn2.call_site => sp,
+        (Some(expn1), _) => original_sp(expn1.call_site, enclosing_sp),
+    }
+}
+
 /// A source code location used for error reporting
 pub struct Loc {
     /// Information about the original source
