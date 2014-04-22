@@ -313,25 +313,6 @@ pub fn require_same_types(tcx: &ty::ctxt,
     }
 }
 
-// a list of mapping from in-scope-region-names ("isr") to the
-// corresponding ty::Region
-pub type isr_alist = @Vec<(ty::BoundRegion, ty::Region)>;
-
-trait get_region<'a, T:'static> {
-    fn get(&'a self, br: ty::BoundRegion) -> ty::Region;
-}
-
-impl<'a, T:'static> get_region <'a, T> for isr_alist {
-    fn get(&'a self, br: ty::BoundRegion) -> ty::Region {
-        let mut region = None;
-        for isr in self.iter() {
-            let (isr_br, isr_r) = *isr;
-            if isr_br == br { region = Some(isr_r); break; }
-        };
-        region.unwrap()
-    }
-}
-
 fn check_main_fn_ty(ccx: &CrateCtxt,
                     main_id: ast::NodeId,
                     main_span: Span) {
