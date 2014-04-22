@@ -84,7 +84,7 @@ use syntax::ast_util;
 // because the alignment requirements of the bound data affects the
 // alignment requires of the closure_data struct as a whole.  However,
 // right now this is a non-issue in any case, because the size of the
-// rust_opaque_box header is always a mutiple of 16-bytes, which is
+// rust_opaque_box header is always a multiple of 16-bytes, which is
 // the maximum alignment requirement we ever have to worry about.
 //
 // The only reason alignment matters is that, in order to learn what data

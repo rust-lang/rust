@@ -24,7 +24,7 @@
 /// which is transmitted.
 ///
 /// The multi-argument form of this macro fails with a string and has the
-/// `format!` sytnax for building a string.
+/// `format!` syntax for building a string.
 ///
 /// # Example
 ///

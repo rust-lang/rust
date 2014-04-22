@@ -15,7 +15,7 @@
 //! an unsafe pointer when safe pointers are unsuitable;
 //! checking for null; and converting back to safe pointers.
 //! As a result, there is not yet an abundance of library code
-//! for working with unsafe poniters, and in particular,
+//! for working with unsafe pointers, and in particular,
 //! since pointer math is fairly uncommon in Rust, it is not
 //! all that convenient.
 //!

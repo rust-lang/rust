@@ -963,7 +963,7 @@ fn get_options(bcx: &Block, m: &[Match], col: uint) -> Vec<Opt> {
         if set.iter().any(|l| opt_eq(tcx, l, &val)) {return;}
         set.push(val);
     }
-    // Vector comparisions are special in that since the actual
+    // Vector comparisons are special in that since the actual
     // conditions over-match, we need to be careful about them. This
     // means that in order to properly handle things in order, we need
     // to not always merge conditions.

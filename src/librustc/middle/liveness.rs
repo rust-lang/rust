@@ -480,7 +480,7 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
                     // var must be dead afterwards
                     moves::CapMove => true,
 
-                    // var can stil be used
+                    // var can still be used
                     moves::CapCopy | moves::CapRef => false
                 };
                 call_caps.push(CaptureInfo {ln: cv_ln,
@@ -613,7 +613,7 @@ impl<'a> Liveness<'a> {
                          f: |&mut Liveness<'a>, LiveNode, Variable, Span, NodeId|) {
         // only consider the first pattern; any later patterns must have
         // the same bindings, and we also consider the first pattern to be
-        // the "authoratative" set of ids
+        // the "authoritative" set of ids
         if !pats.is_empty() {
             self.pat_bindings(pats[0], f)
         }

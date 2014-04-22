@@ -222,7 +222,7 @@ impl<'a> Context<'a> {
         //
         // A Library candidate is created if the metadata for the set of
         // libraries corresponds to the crate id and hash criteria that this
-        // serach is being performed for.
+        // search is being performed for.
         let mut libraries = Vec::new();
         for (_hash, (rlibs, dylibs)) in candidates.move_iter() {
             let mut metadata = None;
@@ -278,7 +278,7 @@ impl<'a> Context<'a> {
     // rlib/dylib).
     //
     // The return value is `None` if `file` doesn't look like a rust-generated
-    // library, or if a specific version was requested and it doens't match the
+    // library, or if a specific version was requested and it doesn't match the
     // apparent file's version.
     //
     // If everything checks out, then `Some(hash)` is returned where `hash` is
