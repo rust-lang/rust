@@ -3331,6 +3331,13 @@ pub fn type_err_to_str(cx: &ctxt, err: &type_err) -> ~str {
         }
     }
 
+    fn tstore_to_closure(s: &TraitStore) -> ~str {
+        match s {
+            &UniqTraitStore => "proc".to_owned(),
+            &RegionTraitStore(..) => "closure".to_owned()
+        }
+    }
+
     match *err {
         terr_mismatch => "types differ".to_owned(),
         terr_fn_style_mismatch(values) => {
@@ -3346,9 +3353,9 @@ pub fn type_err_to_str(cx: &ctxt, err: &type_err) -> ~str {
                  values.expected.to_str(), values.found.to_str())
         }
         terr_sigil_mismatch(values) => {
-            format!("expected {} closure, found {} closure",
-                 values.expected.to_str(),
-                 values.found.to_str())
+            format!("expected {}, found {}",
+                    tstore_to_closure(&values.expected),
+                    tstore_to_closure(&values.found))
         }
         terr_mutability => "values differ in mutability".to_owned(),
         terr_box_mutability => "boxed values differ in mutability".to_owned(),

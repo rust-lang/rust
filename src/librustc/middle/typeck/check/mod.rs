@@ -2182,7 +2182,6 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         let expected_sty = unpack_expected(fcx,
                                            expected,
                                            |x| Some((*x).clone()));
-        let error_happened = false;
         let (expected_sig,
              expected_onceness,
              expected_bounds) = {
@@ -2192,7 +2191,24 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                         replace_late_bound_regions_in_fn_sig(
                             tcx, &cenv.sig,
                             |_| fcx.inh.infcx.fresh_bound_region(expr.id));
-                    (Some(sig), cenv.onceness, cenv.bounds)
+                    let onceness = match (&store, &cenv.store) {
+                        // As the closure type and onceness go, only three
+                        // combinations are legit:
+                        //      once closure
+                        //      many closure
+                        //      once proc
+                        // If the actual and expected closure type disagree with
+                        // each other, set expected onceness to be always Once or
+                        // Many according to the actual type. Otherwise, it will
+                        // yield either an illegal "many proc" or a less known
+                        // "once closure" in the error message.
+                        (&ty::UniqTraitStore, &ty::UniqTraitStore) |
+                        (&ty::RegionTraitStore(..), &ty::RegionTraitStore(..)) =>
+                            cenv.onceness,
+                        (&ty::UniqTraitStore, _) => ast::Once,
+                        (&ty::RegionTraitStore(..), _) => ast::Many,
+                    };
+                    (Some(sig), onceness, cenv.bounds)
                 }
                 _ => {
                     // Not an error! Means we're inferring the closure type
@@ -2218,23 +2234,9 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                                            store,
                                            decl,
                                            expected_sig);
-
-        let fty_sig;
-        let fty = if error_happened {
-            fty_sig = FnSig {
-                binder_id: ast::CRATE_NODE_ID,
-                inputs: fn_ty.sig.inputs.iter().map(|_| ty::mk_err()).collect(),
-                output: ty::mk_err(),
-                variadic: false
-            };
-            ty::mk_err()
-        } else {
-            fty_sig = fn_ty.sig.clone();
-            ty::mk_closure(tcx, fn_ty.clone())
-        };
-
-        debug!("check_expr_fn_with_unifier fty={}",
-               fcx.infcx().ty_to_str(fty));
+        let fty_sig = fn_ty.sig.clone();
+        let fty = ty::mk_closure(tcx, fn_ty);
+        debug!("check_expr_fn fty={}", fcx.infcx().ty_to_str(fty));
 
         fcx.write_ty(expr.id, fty);
 
