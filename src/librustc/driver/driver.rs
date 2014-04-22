@@ -348,8 +348,7 @@ pub fn phase_3_run_analysis_passes(sess: Session,
     time(time_passes, "effect checking", (), |_|
          middle::effect::check_crate(&ty_cx, krate));
 
-    let middle::moves::MoveMaps {moves_map, moved_variables_set,
-                                 capture_map} =
+    let middle::moves::MoveMaps {moves_map, capture_map} =
         time(time_passes, "compute moves", (), |_|
              middle::moves::compute_moves(&ty_cx, krate));
 
@@ -361,11 +360,9 @@ pub fn phase_3_run_analysis_passes(sess: Session,
 
     time(time_passes, "borrow checking", (), |_|
          middle::borrowck::check_crate(&ty_cx, &moves_map,
-                                       &moved_variables_set,
                                        &capture_map, krate));
 
     drop(moves_map);
-    drop(moved_variables_set);
 
     time(time_passes, "kind checking", (), |_|
          kind::check_crate(&ty_cx, krate));

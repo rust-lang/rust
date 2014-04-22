@@ -77,13 +77,11 @@ impl<'a> Visitor<()> for BorrowckCtxt<'a> {
 
 pub fn check_crate(tcx: &ty::ctxt,
                    moves_map: &NodeSet,
-                   moved_variables_set: &NodeSet,
                    capture_map: &moves::CaptureMap,
                    krate: &ast::Crate) {
     let mut bccx = BorrowckCtxt {
         tcx: tcx,
         moves_map: moves_map,
-        moved_variables_set: moved_variables_set,
         capture_map: capture_map,
         stats: @BorrowStats {
             loaned_paths_same: Cell::new(0),
@@ -168,7 +166,6 @@ fn borrowck_fn(this: &mut BorrowckCtxt,
 pub struct BorrowckCtxt<'a> {
     tcx: &'a ty::ctxt,
     moves_map: &'a NodeSet,
-    moved_variables_set: &'a NodeSet,
     capture_map: &'a moves::CaptureMap,
 
     // Statistics:

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// exec-env:RUST_POISON_ON_FREE=1
+// Test no-special rooting is used for managed boxes
 
 #![feature(managed_boxes)]
 
@@ -16,30 +16,20 @@ fn testfn(cond: bool) {
     let mut x = @3;
     let mut y = @4;
 
-    // borrow x and y
-    let r_x = &*x;
-    let r_y = &*y;
-    let mut r = r_x;
-    let mut exp = 3;
+    let mut a = &*x;
 
+    let mut exp = 3;
     if cond {
-        r = r_y;
+        a = &*y;
+
         exp = 4;
     }
 
-    println!("*r = {}, exp = {}", *r, exp);
-    assert_eq!(*r, exp);
-
-    x = @5;
-    y = @6;
-
-    println!("*r = {}, exp = {}", *r, exp);
-    assert_eq!(*r, exp);
+    x = @5; //~ERROR cannot assign to `x` because it is borrowed
+    y = @6; //~ERROR cannot assign to `y` because it is borrowed
+    assert_eq!(*a, exp);
     assert_eq!(x, @5);
     assert_eq!(y, @6);
 }
 
-pub fn main() {
-    testfn(true);
-    testfn(false);
-}
+pub fn main() {}
