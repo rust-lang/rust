@@ -10,6 +10,10 @@ One para explanation of the feature.
 
 Why are we doing this? What use cases does it support? What is the expected outcome?
 
+# Drawbacks
+
+Why should we *not* do this?
+
 # Detailed design
 
 This is the bulk of the RFC. Explain the design in enough detail for somebody familiar
