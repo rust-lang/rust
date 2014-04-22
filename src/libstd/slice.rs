@@ -2002,6 +2002,12 @@ impl<'a, T: fmt::Show> fmt::Show for &'a [T] {
     }
 }
 
+impl<'a, T: fmt::Show> fmt::Show for &'a mut [T] {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.as_slice().fmt(f)
+    }
+}
+
 impl<T: fmt::Show> fmt::Show for ~[T] {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.as_slice().fmt(f)
@@ -3408,6 +3414,12 @@ mod tests {
         test_show_vec!(~[1], "[1]".to_owned());
         test_show_vec!(~[1, 2, 3], "[1, 2, 3]".to_owned());
         test_show_vec!(~[~[], ~[1u], ~[1u, 1u]], "[[], [1], [1, 1]]".to_owned());
+
+        let empty_mut: &mut [int] = &mut[];
+        test_show_vec!(empty_mut, "[]".to_owned());
+        test_show_vec!(&mut[1], "[1]".to_owned());
+        test_show_vec!(&mut[1, 2, 3], "[1, 2, 3]".to_owned());
+        test_show_vec!(&mut[&mut[], &mut[1u], &mut[1u, 1u]], "[[], [1], [1, 1]]".to_owned());
     }
 
     #[test]
