@@ -129,7 +129,7 @@ pub fn trans_intrinsic(ccx: &CrateContext,
         RetVoid(bcx);
     }
 
-    fn copy_intrinsic(bcx: &Block, allow_overlap: bool, tp_ty: ty::t) {
+    fn copy_intrinsic(bcx: &Block, allow_overlap: bool, volatile: bool, tp_ty: ty::t) {
         let ccx = bcx.ccx();
         let lltp_ty = type_of::type_of(ccx, tp_ty);
         let align = C_i32(ccx, machine::llalign_of_min(ccx, lltp_ty) as i32);
@@ -154,13 +154,12 @@ pub fn trans_intrinsic(ccx: &CrateContext,
         let dst_ptr = PointerCast(bcx, get_param(decl, first_real_arg), Type::i8p(ccx));
         let src_ptr = PointerCast(bcx, get_param(decl, first_real_arg + 1), Type::i8p(ccx));
         let count = get_param(decl, first_real_arg + 2);
-        let volatile = C_i1(ccx, false);
         let llfn = ccx.get_intrinsic(&name);
-        Call(bcx, llfn, [dst_ptr, src_ptr, Mul(bcx, size, count), align, volatile], []);
+        Call(bcx, llfn, [dst_ptr, src_ptr, Mul(bcx, size, count), align, C_i1(ccx, volatile)], []);
         RetVoid(bcx);
     }
 
-    fn memset_intrinsic(bcx: &Block, tp_ty: ty::t) {
+    fn memset_intrinsic(bcx: &Block, volatile: bool, tp_ty: ty::t) {
         let ccx = bcx.ccx();
         let lltp_ty = type_of::type_of(ccx, tp_ty);
         let align = C_i32(ccx, machine::llalign_of_min(ccx, lltp_ty) as i32);
@@ -176,9 +175,8 @@ pub fn trans_intrinsic(ccx: &CrateContext,
         let dst_ptr = PointerCast(bcx, get_param(decl, first_real_arg), Type::i8p(ccx));
         let val = get_param(decl, first_real_arg + 1);
         let count = get_param(decl, first_real_arg + 2);
-        let volatile = C_i1(ccx, false);
         let llfn = ccx.get_intrinsic(&name);
-        Call(bcx, llfn, [dst_ptr, val, Mul(bcx, size, count), align, volatile], []);
+        Call(bcx, llfn, [dst_ptr, val, Mul(bcx, size, count), align, C_i1(ccx, volatile)], []);
         RetVoid(bcx);
     }
 
@@ -466,11 +464,15 @@ pub fn trans_intrinsic(ccx: &CrateContext,
             let lladdr = InBoundsGEP(bcx, ptr, [offset]);
             Ret(bcx, lladdr);
         }
-        "copy_nonoverlapping_memory" => {
-            copy_intrinsic(bcx, false, *substs.tys.get(0))
-        }
-        "copy_memory" => copy_intrinsic(bcx, true, *substs.tys.get(0)),
-        "set_memory" => memset_intrinsic(bcx, *substs.tys.get(0)),
+        "copy_nonoverlapping_memory" => copy_intrinsic(bcx, false, false, *substs.tys.get(0)),
+        "copy_memory" => copy_intrinsic(bcx, true, false, *substs.tys.get(0)),
+        "set_memory" => memset_intrinsic(bcx, false, *substs.tys.get(0)),
+
+        "volatile_copy_nonoverlapping_memory" =>
+            copy_intrinsic(bcx, false, true, *substs.tys.get(0)),
+        "volatile_copy_memory" => copy_intrinsic(bcx, true, true, *substs.tys.get(0)),
+        "volatile_set_memory" => memset_intrinsic(bcx, true, *substs.tys.get(0)),
+
         "ctlz8" => count_zeros_intrinsic(bcx, "llvm.ctlz.i8"),
         "ctlz16" => count_zeros_intrinsic(bcx, "llvm.ctlz.i16"),
         "ctlz32" => count_zeros_intrinsic(bcx, "llvm.ctlz.i32"),
