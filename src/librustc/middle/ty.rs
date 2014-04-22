@@ -22,7 +22,7 @@ use middle::resolve_lifetime;
 use middle::ty;
 use middle::subst::Subst;
 use middle::typeck;
-use middle::typeck::{MethodCall, MethodCallee, MethodMap};
+use middle::typeck::MethodCall;
 use middle::ty_fold;
 use middle::ty_fold::TypeFolder;
 use middle;
@@ -38,9 +38,11 @@ use std::cmp;
 use std::fmt::Show;
 use std::fmt;
 use std::hash::{Hash, sip};
+use std::iter::AdditiveIterator;
 use std::ops;
 use std::rc::Rc;
 use collections::{HashMap, HashSet};
+use syntax::abi;
 use syntax::ast::*;
 use syntax::ast_util::{is_local, lit_is_str};
 use syntax::ast_util;
@@ -51,7 +53,7 @@ use syntax::parse::token;
 use syntax::parse::token::InternedString;
 use syntax::{ast, ast_map};
 use syntax::owned_slice::OwnedSlice;
-use syntax::abi;
+use syntax::util::small_vector::SmallVector;
 use collections::enum_set::{EnumSet, CLike};
 
 pub type Disr = u64;
@@ -114,12 +116,6 @@ impl Method {
             ImplContainer(id) => id,
         }
     }
-}
-
-pub struct Impl {
-    pub did: DefId,
-    pub ident: Ident,
-    pub methods: Vec<@Method>,
 }
 
 #[deriving(Clone, Eq, TotalEq, Hash)]
@@ -212,6 +208,7 @@ pub enum Variance {
     Bivariant,      // T<A> <: T<B>            -- e.g., unused type parameter
 }
 
+#[deriving(Clone)]
 pub enum AutoAdjustment {
     AutoAddEnv(ty::TraitStore),
     AutoDerefRef(AutoDerefRef),
@@ -221,13 +218,13 @@ pub enum AutoAdjustment {
                ty::substs /* Trait substitutions */)
 }
 
-#[deriving(Decodable, Encodable)]
+#[deriving(Clone, Decodable, Encodable)]
 pub struct AutoDerefRef {
     pub autoderefs: uint,
     pub autoref: Option<AutoRef>
 }
 
-#[deriving(Decodable, Encodable, Eq, Show)]
+#[deriving(Clone, Decodable, Encodable, Eq, Show)]
 pub enum AutoRef {
     /// Convert from T to &T
     AutoPtr(Region, ast::Mutability),
@@ -272,18 +269,18 @@ pub struct ctxt {
     pub node_type_substs: RefCell<NodeMap<Vec<t>>>,
 
     // Maps from a method to the method "descriptor"
-    pub methods: RefCell<DefIdMap<@Method>>,
+    pub methods: RefCell<DefIdMap<Rc<Method>>>,
 
     // Maps from a trait def-id to a list of the def-ids of its methods
-    pub trait_method_def_ids: RefCell<DefIdMap<@Vec<DefId> >>,
+    pub trait_method_def_ids: RefCell<DefIdMap<Rc<Vec<DefId>>>>,
 
     // A cache for the trait_methods() routine
-    pub trait_methods_cache: RefCell<DefIdMap<@Vec<@Method> >>,
+    pub trait_methods_cache: RefCell<DefIdMap<Rc<Vec<Rc<Method>>>>>,
 
-    pub impl_trait_cache: RefCell<DefIdMap<Option<@ty::TraitRef>>>,
+    pub impl_trait_cache: RefCell<DefIdMap<Option<Rc<ty::TraitRef>>>>,
 
-    pub trait_refs: RefCell<NodeMap<@TraitRef>>,
-    pub trait_defs: RefCell<DefIdMap<@TraitDef>>,
+    pub trait_refs: RefCell<NodeMap<Rc<TraitRef>>>,
+    pub trait_defs: RefCell<DefIdMap<Rc<TraitDef>>>,
 
     pub map: ast_map::Map,
     pub intrinsic_defs: RefCell<DefIdMap<t>>,
@@ -294,20 +291,20 @@ pub struct ctxt {
     pub needs_unwind_cleanup_cache: RefCell<HashMap<t, bool>>,
     pub tc_cache: RefCell<HashMap<uint, TypeContents>>,
     pub ast_ty_to_ty_cache: RefCell<NodeMap<ast_ty_to_ty_cache_entry>>,
-    pub enum_var_cache: RefCell<DefIdMap<@Vec<@VariantInfo> >>,
+    pub enum_var_cache: RefCell<DefIdMap<Rc<Vec<Rc<VariantInfo>>>>>,
     pub ty_param_defs: RefCell<NodeMap<TypeParameterDef>>,
-    pub adjustments: RefCell<NodeMap<@AutoAdjustment>>,
+    pub adjustments: RefCell<NodeMap<AutoAdjustment>>,
     pub normalized_cache: RefCell<HashMap<t, t>>,
-    pub lang_items: @middle::lang_items::LanguageItems,
+    pub lang_items: middle::lang_items::LanguageItems,
     // A mapping of fake provided method def_ids to the default implementation
     pub provided_method_sources: RefCell<DefIdMap<ast::DefId>>,
-    pub supertraits: RefCell<DefIdMap<@Vec<@TraitRef> >>,
+    pub supertraits: RefCell<DefIdMap<Rc<Vec<Rc<TraitRef>>>>>,
     pub superstructs: RefCell<DefIdMap<Option<ast::DefId>>>,
-    pub struct_fields: RefCell<DefIdMap<@Vec<field_ty>>>,
+    pub struct_fields: RefCell<DefIdMap<Rc<Vec<field_ty>>>>,
 
     // Maps from def-id of a type or region parameter to its
     // (inferred) variance.
-    pub item_variance_map: RefCell<DefIdMap<@ItemVariances>>,
+    pub item_variance_map: RefCell<DefIdMap<Rc<ItemVariances>>>,
 
     // A mapping from the def ID of an enum or struct type to the def ID
     // of the method that implements its destructor. If the type is not
@@ -319,18 +316,18 @@ pub struct ctxt {
     pub destructors: RefCell<DefIdSet>,
 
     // Maps a trait onto a list of impls of that trait.
-    pub trait_impls: RefCell<DefIdMap<@RefCell<Vec<@Impl> >>>,
+    pub trait_impls: RefCell<DefIdMap<Rc<RefCell<Vec<ast::DefId>>>>>,
 
-    // Maps a def_id of a type to a list of its inherent impls.
+    // Maps a DefId of a type to a list of its inherent impls.
     // Contains implementations of methods that are inherent to a type.
     // Methods in these implementations don't need to be exported.
-    pub inherent_impls: RefCell<DefIdMap<@RefCell<Vec<@Impl> >>>,
+    pub inherent_impls: RefCell<DefIdMap<Rc<RefCell<Vec<ast::DefId>>>>>,
 
-    // Maps a def_id of an impl to an Impl structure.
+    // Maps a DefId of an impl to a list of its methods.
     // Note that this contains all of the impls that we know about,
     // including ones in other crates. It's not clear that this is the best
     // way to do it.
-    pub impls: RefCell<DefIdMap<@Impl>>,
+    pub impl_methods: RefCell<DefIdMap<Vec<ast::DefId>>>,
 
     // Set of used unsafe nodes (functions or blocks). Unsafe nodes not
     // present in this set can be warned about.
@@ -359,6 +356,9 @@ pub struct ctxt {
     // and variants that are found.
     pub extern_const_statics: RefCell<DefIdMap<Option<@ast::Expr>>>,
     pub extern_const_variants: RefCell<DefIdMap<Option<@ast::Expr>>>,
+
+    pub method_map: typeck::MethodMap,
+    pub vtable_map: typeck::vtable_map,
 }
 
 pub enum tbox_flag {
@@ -816,7 +816,6 @@ pub enum type_err {
     terr_regions_overly_polymorphic(BoundRegion, Region),
     terr_vstores_differ(terr_vstore_kind, expected_found<Vstore>),
     terr_trait_stores_differ(terr_vstore_kind, expected_found<TraitStore>),
-    terr_in_field(@type_err, ast::Ident),
     terr_sorts(expected_found<t>),
     terr_integer_as_char,
     terr_int_mismatch(expected_found<IntVarValue>),
@@ -829,7 +828,8 @@ pub enum type_err {
 #[deriving(Eq, TotalEq, Hash)]
 pub struct ParamBounds {
     pub builtin_bounds: BuiltinBounds,
-    pub trait_bounds: Vec<@TraitRef> }
+    pub trait_bounds: Vec<Rc<TraitRef>>
+}
 
 pub type BuiltinBounds = EnumSet<BuiltinBound>;
 
@@ -983,7 +983,7 @@ impl fmt::Show for IntVarValue {
 pub struct TypeParameterDef {
     pub ident: ast::Ident,
     pub def_id: ast::DefId,
-    pub bounds: @ParamBounds,
+    pub bounds: Rc<ParamBounds>,
     pub default: Option<ty::t>
 }
 
@@ -1038,7 +1038,7 @@ pub struct ParameterEnvironment {
     pub free_substs: ty::substs,
 
     /// Bound on the Self parameter
-    pub self_param_bound: Option<@TraitRef>,
+    pub self_param_bound: Option<Rc<TraitRef>>,
 
     /// Bounds on each numbered type parameter
     pub type_param_bounds: Vec<ParamBounds> ,
@@ -1064,7 +1064,7 @@ pub struct ty_param_bounds_and_ty {
 pub struct TraitDef {
     pub generics: Generics,
     pub bounds: BuiltinBounds,
-    pub trait_ref: @ty::TraitRef,
+    pub trait_ref: Rc<ty::TraitRef>,
 }
 
 pub struct ty_param_substs_and_ty {
@@ -1082,7 +1082,7 @@ pub fn mk_ctxt(s: Session,
                map: ast_map::Map,
                freevars: freevars::freevar_map,
                region_maps: middle::region::RegionMaps,
-               lang_items: @middle::lang_items::LanguageItems)
+               lang_items: middle::lang_items::LanguageItems)
             -> ctxt {
     ctxt {
         named_region_map: named_region_map,
@@ -1122,7 +1122,7 @@ pub fn mk_ctxt(s: Session,
         destructors: RefCell::new(DefIdSet::new()),
         trait_impls: RefCell::new(DefIdMap::new()),
         inherent_impls: RefCell::new(DefIdMap::new()),
-        impls: RefCell::new(DefIdMap::new()),
+        impl_methods: RefCell::new(DefIdMap::new()),
         used_unsafe: RefCell::new(NodeSet::new()),
         used_mut_nodes: RefCell::new(NodeSet::new()),
         impl_vtables: RefCell::new(DefIdMap::new()),
@@ -1131,6 +1131,8 @@ pub fn mk_ctxt(s: Session,
         upvar_borrow_map: RefCell::new(HashMap::new()),
         extern_const_statics: RefCell::new(DefIdMap::new()),
         extern_const_variants: RefCell::new(DefIdMap::new()),
+        method_map: RefCell::new(FnvHashMap::new()),
+        vtable_map: RefCell::new(FnvHashMap::new()),
     }
 }
 
@@ -2174,7 +2176,7 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
                 // Self may be bounded if the associated trait has builtin kinds
                 // for supertraits. If so we can use those bounds.
                 let trait_def = lookup_trait_def(cx, def_id);
-                let traits = [trait_def.trait_ref];
+                let traits = [trait_def.trait_ref.clone()];
                 kind_bounds_to_contents(cx, trait_def.bounds, traits)
             }
 
@@ -2271,7 +2273,7 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
 
     fn kind_bounds_to_contents(cx: &ctxt,
                                bounds: BuiltinBounds,
-                               traits: &[@TraitRef])
+                               traits: &[Rc<TraitRef>])
                                -> TypeContents {
         let _i = indenter();
         let mut tc = TC::All;
@@ -2290,7 +2292,7 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
         // those inherited from traits with builtin-kind-supertraits.
         fn each_inherited_builtin_bound(cx: &ctxt,
                                         bounds: BuiltinBounds,
-                                        traits: &[@TraitRef],
+                                        traits: &[Rc<TraitRef>],
                                         f: |BuiltinBound|) {
             for bound in bounds.iter() {
                 f(bound);
@@ -2656,12 +2658,12 @@ pub fn index(t: t) -> Option<mt> {
     }
 }
 
-pub fn node_id_to_trait_ref(cx: &ctxt, id: ast::NodeId) -> @ty::TraitRef {
+pub fn node_id_to_trait_ref(cx: &ctxt, id: ast::NodeId) -> Rc<ty::TraitRef> {
     match cx.trait_refs.borrow().find(&id) {
-       Some(&t) => t,
-       None => cx.sess.bug(
-           format!("node_id_to_trait_ref: no trait ref for node `{}`",
-               cx.map.node_to_str(id)))
+        Some(t) => t.clone(),
+        None => cx.sess.bug(
+            format!("node_id_to_trait_ref: no trait ref for node `{}`",
+                cx.map.node_to_str(id)))
     }
 }
 
@@ -2791,10 +2793,7 @@ pub fn expr_ty_opt(cx: &ctxt, expr: &ast::Expr) -> Option<t> {
     return node_id_to_type_opt(cx, expr.id);
 }
 
-pub fn expr_ty_adjusted(cx: &ctxt,
-                        expr: &ast::Expr,
-                        method_map: &FnvHashMap<MethodCall, MethodCallee>)
-                        -> t {
+pub fn expr_ty_adjusted(cx: &ctxt, expr: &ast::Expr) -> t {
     /*!
      *
      * Returns the type of `expr`, considering any `AutoAdjustment`
@@ -2808,11 +2807,9 @@ pub fn expr_ty_adjusted(cx: &ctxt,
      * task at hand! -nmatsakis
      */
 
-    let unadjusted_ty = expr_ty(cx, expr);
-    let adjustment = cx.adjustments.borrow().find_copy(&expr.id);
-    adjust_ty(cx, expr.span, expr.id, unadjusted_ty, adjustment, |method_call| {
-        method_map.find(&method_call).map(|method| method.ty)
-    })
+    adjust_ty(cx, expr.span, expr.id, expr_ty(cx, expr),
+              cx.adjustments.borrow().find(&expr.id),
+              |method_call| cx.method_map.borrow().find(&method_call).map(|method| method.ty))
 }
 
 pub fn expr_span(cx: &ctxt, id: NodeId) -> Span {
@@ -2857,8 +2854,8 @@ pub fn adjust_ty(cx: &ctxt,
                  span: Span,
                  expr_id: ast::NodeId,
                  unadjusted_ty: ty::t,
-                 adjustment: Option<@AutoAdjustment>,
-                 method_type: |MethodCall| -> Option<ty::t>)
+                 adjustment: Option<&AutoAdjustment>,
+                 method_type: |typeck::MethodCall| -> Option<ty::t>)
                  -> ty::t {
     /*! See `expr_ty_adjusted` */
 
@@ -2890,7 +2887,8 @@ pub fn adjust_ty(cx: &ctxt,
 
                     if !ty::type_is_error(adjusted_ty) {
                         for i in range(0, adj.autoderefs) {
-                            match method_type(MethodCall::autoderef(expr_id, i as u32)) {
+                            let method_call = typeck::MethodCall::autoderef(expr_id, i as u32);
+                            match method_type(method_call) {
                                 Some(method_ty) => {
                                     adjusted_ty = ty_fn_ret(method_ty);
                                 }
@@ -3051,8 +3049,8 @@ pub fn method_call_type_param_defs(tcx: &ctxt, origin: typeck::MethodOrigin)
             // method bounds, so we must preprend the tps from the
             // trait itself.  This ought to be harmonized.
             let trait_type_param_defs =
-                lookup_trait_def(tcx, trt_id).generics.type_param_defs();
-            Rc::new(Vec::from_slice(trait_type_param_defs).append(
+                Vec::from_slice(lookup_trait_def(tcx, trt_id).generics.type_param_defs());
+            Rc::new(trait_type_param_defs.append(
                         ty::trait_method(tcx, trt_id, n_mth).generics.type_param_defs()))
         }
     }
@@ -3068,10 +3066,8 @@ pub fn resolve_expr(tcx: &ctxt, expr: &ast::Expr) -> ast::Def {
     }
 }
 
-pub fn expr_is_lval(tcx: &ctxt,
-                    method_map: MethodMap,
-                    e: &ast::Expr) -> bool {
-    match expr_kind(tcx, method_map, e) {
+pub fn expr_is_lval(tcx: &ctxt, e: &ast::Expr) -> bool {
+    match expr_kind(tcx, e) {
         LvalueExpr => true,
         RvalueDpsExpr | RvalueDatumExpr | RvalueStmtExpr => false
     }
@@ -3089,10 +3085,8 @@ pub enum ExprKind {
     RvalueStmtExpr
 }
 
-pub fn expr_kind(tcx: &ctxt,
-                 method_map: MethodMap,
-                 expr: &ast::Expr) -> ExprKind {
-    if method_map.borrow().contains_key(&MethodCall::expr(expr.id)) {
+pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
+    if tcx.method_map.borrow().contains_key(&typeck::MethodCall::expr(expr.id)) {
         // Overloaded operations are generally calls, and hence they are
         // generated via DPS, but there are two exceptions:
         return match expr.node {
@@ -3236,7 +3230,7 @@ pub fn expr_kind(tcx: &ctxt,
             }
         }
 
-        ast::ExprParen(e) => expr_kind(tcx, method_map, e),
+        ast::ExprParen(e) => expr_kind(tcx, e),
 
         ast::ExprMac(..) => {
             tcx.sess.span_bug(
@@ -3265,7 +3259,7 @@ pub fn field_idx_strict(tcx: &ctxt, name: ast::Name, fields: &[field])
         fields.iter().map(|f| token::get_ident(f.ident).get().to_str()).collect::<Vec<~str>>()));
 }
 
-pub fn method_idx(id: ast::Ident, meths: &[@Method]) -> Option<uint> {
+pub fn method_idx(id: ast::Ident, meths: &[Rc<Method>]) -> Option<uint> {
     meths.iter().position(|m| m.ident == id)
 }
 
@@ -3417,10 +3411,6 @@ pub fn type_err_to_str(cx: &ctxt, err: &type_err) -> ~str {
                  trait_store_to_str(cx, (*values).expected),
                  trait_store_to_str(cx, (*values).found))
         }
-        terr_in_field(err, fname) => {
-            format!("in field `{}`, {}", token::get_ident(fname),
-                 type_err_to_str(cx, err))
-        }
         terr_sorts(values) => {
             format!("expected {} but found {}",
                  ty_sort_str(cx, values.expected),
@@ -3500,42 +3490,29 @@ pub fn provided_source(cx: &ctxt, id: ast::DefId) -> Option<ast::DefId> {
     cx.provided_method_sources.borrow().find(&id).map(|x| *x)
 }
 
-pub fn provided_trait_methods(cx: &ctxt, id: ast::DefId) -> Vec<@Method> {
+pub fn provided_trait_methods(cx: &ctxt, id: ast::DefId) -> Vec<Rc<Method>> {
     if is_local(id) {
-        {
-            match cx.map.find(id.node) {
-                Some(ast_map::NodeItem(item)) => {
-                    match item.node {
-                        ItemTrait(_, _, ref ms) => {
-                            let (_, p) =
-                                ast_util::split_trait_methods(ms.as_slice());
-                            p.iter()
-                             .map(|m| method(cx, ast_util::local_def(m.id)))
-                             .collect()
-                        }
-                        _ => {
-                            cx.sess.bug(format!("provided_trait_methods: \
-                                                 `{:?}` is not a trait",
-                                                id))
-                        }
+        match cx.map.find(id.node) {
+            Some(ast_map::NodeItem(item)) => {
+                match item.node {
+                    ItemTrait(_, _, ref ms) => {
+                        let (_, p) = ast_util::split_trait_methods(ms.as_slice());
+                        p.iter().map(|m| method(cx, ast_util::local_def(m.id))).collect()
                     }
-                }
-                _ => {
-                    cx.sess.bug(format!("provided_trait_methods: `{:?}` is not \
-                                         a trait",
-                                        id))
+                    _ => cx.sess.bug(format!("provided_trait_methods: `{}` is not a trait", id))
                 }
             }
+            _ => cx.sess.bug(format!("provided_trait_methods: `{}` is not a trait", id))
         }
     } else {
         csearch::get_provided_trait_methods(cx, id)
     }
 }
 
-pub fn trait_supertraits(cx: &ctxt, id: ast::DefId) -> @Vec<@TraitRef> {
+pub fn trait_supertraits(cx: &ctxt, id: ast::DefId) -> Rc<Vec<Rc<TraitRef>>> {
     // Check the cache.
     match cx.supertraits.borrow().find(&id) {
-        Some(&trait_refs) => { return trait_refs; }
+        Some(trait_refs) => { return trait_refs.clone(); }
         None => {}  // Continue.
     }
 
@@ -3545,12 +3522,12 @@ pub fn trait_supertraits(cx: &ctxt, id: ast::DefId) -> @Vec<@TraitRef> {
 
     // Get the supertraits out of the metadata and create the
     // TraitRef for each.
-    let result = @csearch::get_supertraits(cx, id);
-    cx.supertraits.borrow_mut().insert(id, result);
-    return result;
+    let result = Rc::new(csearch::get_supertraits(cx, id));
+    cx.supertraits.borrow_mut().insert(id, result.clone());
+    result
 }
 
-pub fn trait_ref_supertraits(cx: &ctxt, trait_ref: &ty::TraitRef) -> Vec<@TraitRef> {
+pub fn trait_ref_supertraits(cx: &ctxt, trait_ref: &ty::TraitRef) -> Vec<Rc<TraitRef>> {
     let supertrait_refs = trait_supertraits(cx, trait_ref.def_id);
     supertrait_refs.iter().map(
         |supertrait_ref| supertrait_ref.subst(cx, &trait_ref.substs)).collect()
@@ -3584,44 +3561,46 @@ fn lookup_locally_or_in_crate_store<V:Clone>(
     v
 }
 
-pub fn trait_method(cx: &ctxt, trait_did: ast::DefId, idx: uint) -> @Method {
+pub fn trait_method(cx: &ctxt, trait_did: ast::DefId, idx: uint) -> Rc<Method> {
     let method_def_id = *ty::trait_method_def_ids(cx, trait_did).get(idx);
     ty::method(cx, method_def_id)
 }
 
 
-pub fn trait_methods(cx: &ctxt, trait_did: ast::DefId) -> @Vec<@Method> {
+pub fn trait_methods(cx: &ctxt, trait_did: ast::DefId) -> Rc<Vec<Rc<Method>>> {
     let mut trait_methods = cx.trait_methods_cache.borrow_mut();
-    match trait_methods.find(&trait_did) {
-        Some(&methods) => methods,
+    match trait_methods.find_copy(&trait_did) {
+        Some(methods) => methods,
         None => {
             let def_ids = ty::trait_method_def_ids(cx, trait_did);
-            let methods = @def_ids.iter().map(|d| ty::method(cx, *d)).collect();
-            trait_methods.insert(trait_did, methods);
+            let methods: Rc<Vec<Rc<Method>>> = Rc::new(def_ids.iter().map(|d| {
+                ty::method(cx, *d)
+            }).collect());
+            trait_methods.insert(trait_did, methods.clone());
             methods
         }
     }
 }
 
-pub fn method(cx: &ctxt, id: ast::DefId) -> @Method {
+pub fn method(cx: &ctxt, id: ast::DefId) -> Rc<Method> {
     lookup_locally_or_in_crate_store("methods", id,
                                      &mut *cx.methods.borrow_mut(), || {
-        @csearch::get_method(cx, id)
+        Rc::new(csearch::get_method(cx, id))
     })
 }
 
-pub fn trait_method_def_ids(cx: &ctxt, id: ast::DefId) -> @Vec<DefId> {
+pub fn trait_method_def_ids(cx: &ctxt, id: ast::DefId) -> Rc<Vec<DefId>> {
     lookup_locally_or_in_crate_store("trait_method_def_ids",
                                      id,
                                      &mut *cx.trait_method_def_ids.borrow_mut(),
                                      || {
-        @csearch::get_trait_method_def_ids(&cx.sess.cstore, id)
+        Rc::new(csearch::get_trait_method_def_ids(&cx.sess.cstore, id))
     })
 }
 
-pub fn impl_trait_ref(cx: &ctxt, id: ast::DefId) -> Option<@TraitRef> {
+pub fn impl_trait_ref(cx: &ctxt, id: ast::DefId) -> Option<Rc<TraitRef>> {
     match cx.impl_trait_cache.borrow().find(&id) {
-        Some(&ret) => { return ret; }
+        Some(ret) => { return ret.clone(); }
         None => {}
     }
 
@@ -3647,8 +3626,8 @@ pub fn impl_trait_ref(cx: &ctxt, id: ast::DefId) -> Option<@TraitRef> {
         csearch::get_impl_trait(cx, id)
     };
 
-    cx.impl_trait_cache.borrow_mut().insert(id, ret);
-    return ret;
+    cx.impl_trait_cache.borrow_mut().insert(id, ret.clone());
+    ret
 }
 
 pub fn trait_ref_to_def_id(tcx: &ctxt, tr: &ast::TraitRef) -> ast::DefId {
@@ -3751,18 +3730,18 @@ impl VariantInfo {
 pub fn substd_enum_variants(cx: &ctxt,
                             id: ast::DefId,
                             substs: &substs)
-                         -> Vec<@VariantInfo> {
+                         -> Vec<Rc<VariantInfo>> {
     enum_variants(cx, id).iter().map(|variant_info| {
         let substd_args = variant_info.args.iter()
             .map(|aty| subst(cx, substs, *aty)).collect();
 
         let substd_ctor_ty = subst(cx, substs, variant_info.ctor_ty);
 
-        @VariantInfo {
+        Rc::new(VariantInfo {
             args: substd_args,
             ctor_ty: substd_ctor_ty,
             ..(**variant_info).clone()
-        }
+        })
     }).collect()
 }
 
@@ -3831,27 +3810,26 @@ pub fn type_is_empty(cx: &ctxt, t: t) -> bool {
      }
 }
 
-pub fn enum_variants(cx: &ctxt, id: ast::DefId) -> @Vec<@VariantInfo> {
+pub fn enum_variants(cx: &ctxt, id: ast::DefId) -> Rc<Vec<Rc<VariantInfo>>> {
     match cx.enum_var_cache.borrow().find(&id) {
-        Some(&variants) => return variants,
+        Some(variants) => return variants.clone(),
         _ => { /* fallthrough */ }
     }
 
     let result = if ast::LOCAL_CRATE != id.krate {
-        @csearch::get_enum_variants(cx, id)
+        Rc::new(csearch::get_enum_variants(cx, id))
     } else {
         /*
           Although both this code and check_enum_variants in typeck/check
           call eval_const_expr, it should never get called twice for the same
           expr, since check_enum_variants also updates the enum_var_cache
          */
-        {
-            match cx.map.get(id.node) {
-              ast_map::NodeItem(item) => {
-                  match item.node {
+        match cx.map.get(id.node) {
+            ast_map::NodeItem(item) => {
+                match item.node {
                     ast::ItemEnum(ref enum_definition, _) => {
                         let mut last_discriminant: Option<Disr> = None;
-                        @enum_definition.variants.iter().map(|&variant| {
+                        Rc::new(enum_definition.variants.iter().map(|&variant| {
 
                             let mut discriminant = match last_discriminant {
                                 Some(val) => val + 1,
@@ -3869,40 +3847,33 @@ pub fn enum_variants(cx: &ctxt, id: ast::DefId) -> @Vec<@VariantInfo> {
                                     Ok(_) => {
                                         cx.sess
                                           .span_err(e.span,
-                                                    "expected signed integer \
-                                                     constant");
+                                                    "expected signed integer constant");
                                     }
                                     Err(ref err) => {
                                         cx.sess
                                           .span_err(e.span,
-                                                    format!("expected \
-                                                             constant: {}",
+                                                    format!("expected constant: {}",
                                                             *err));
                                     }
                                 },
                                 None => {}
                             };
 
-                            let variant_info =
-                                @VariantInfo::from_ast_variant(cx,
-                                                               variant,
-                                                               discriminant);
                             last_discriminant = Some(discriminant);
-                            variant_info
-
-                        }).collect()
+                            Rc::new(VariantInfo::from_ast_variant(cx, variant,
+                                                                  discriminant))
+                        }).collect())
                     }
                     _ => {
                         cx.sess.bug("enum_variants: id not bound to an enum")
                     }
-                  }
-              }
-              _ => cx.sess.bug("enum_variants: id not bound to an enum")
+                }
             }
+            _ => cx.sess.bug("enum_variants: id not bound to an enum")
         }
     };
 
-    cx.enum_var_cache.borrow_mut().insert(id, result);
+    cx.enum_var_cache.borrow_mut().insert(id, result.clone());
     result
 }
 
@@ -3911,17 +3882,11 @@ pub fn enum_variants(cx: &ctxt, id: ast::DefId) -> @Vec<@VariantInfo> {
 pub fn enum_variant_with_id(cx: &ctxt,
                             enum_id: ast::DefId,
                             variant_id: ast::DefId)
-                         -> @VariantInfo {
-    let variants = enum_variants(cx, enum_id);
-    let mut i = 0;
-    while i < variants.len() {
-        let variant = *variants.get(i);
-        if variant.id == variant_id {
-            return variant
-        }
-        i += 1;
-    }
-    cx.sess.bug("enum_variant_with_id(): no variant exists with that ID");
+                         -> Rc<VariantInfo> {
+    enum_variants(cx, enum_id).iter()
+                              .find(|variant| variant.id == variant_id)
+                              .expect("enum_variant_with_id(): no variant exists with that ID")
+                              .clone()
 }
 
 
@@ -3944,19 +3909,19 @@ pub fn lookup_impl_vtables(cx: &ctxt,
 }
 
 /// Given the did of a trait, returns its canonical trait ref.
-pub fn lookup_trait_def(cx: &ctxt, did: ast::DefId) -> @ty::TraitDef {
+pub fn lookup_trait_def(cx: &ctxt, did: ast::DefId) -> Rc<ty::TraitDef> {
     let mut trait_defs = cx.trait_defs.borrow_mut();
-    match trait_defs.find(&did) {
-        Some(&trait_def) => {
+    match trait_defs.find_copy(&did) {
+        Some(trait_def) => {
             // The item is in this crate. The caller should have added it to the
             // type cache already
-            return trait_def;
+            trait_def
         }
         None => {
             assert!(did.krate != ast::LOCAL_CRATE);
-            let trait_def = @csearch::get_trait_def(cx, did);
-            trait_defs.insert(did, trait_def);
-            return trait_def;
+            let trait_def = Rc::new(csearch::get_trait_def(cx, did));
+            trait_defs.insert(did, trait_def.clone());
+            trait_def
         }
     }
 }
@@ -3964,7 +3929,7 @@ pub fn lookup_trait_def(cx: &ctxt, did: ast::DefId) -> @ty::TraitDef {
 /// Iterate over meta_items of a definition.
 // (This should really be an iterator, but that would require csearch and
 // decoder to use iterators instead of higher-order functions.)
-pub fn each_attr(tcx: &ctxt, did: DefId, f: |@MetaItem| -> bool) -> bool {
+pub fn each_attr(tcx: &ctxt, did: DefId, f: |@ast::MetaItem| -> bool) -> bool {
     if is_local(did) {
         let item = tcx.map.expect_item(did.node);
         item.attrs.iter().advance(|attr| f(attr.node.value))
@@ -4038,20 +4003,21 @@ pub fn lookup_field_type(tcx: &ctxt,
 
 // Lookup all ancestor structs of a struct indicated by did. That is the reflexive,
 // transitive closure of doing a single lookup in cx.superstructs.
-fn lookup_super_structs(cx: &ctxt,
-                            did: ast::DefId) -> Vec<DefId> {
-    let mut this_result: Vec<DefId> = vec!(did);
-    match cx.superstructs.borrow().find(&did) {
-        Some(&Some(def_id)) => {
-            let ss: Vec<DefId> = lookup_super_structs(cx, def_id);
-            this_result.extend(ss.move_iter());
-            this_result
-        },
-        Some(&None) => this_result,
-        None => {
-            cx.sess.bug(
-                format!("ID not mapped to super-struct: {}",
-                    cx.map.node_to_str(did.node)));
+fn each_super_struct(cx: &ctxt, mut did: ast::DefId, f: |ast::DefId|) {
+    let superstructs = cx.superstructs.borrow();
+
+    loop {
+        f(did);
+        match superstructs.find(&did) {
+            Some(&Some(def_id)) => {
+                did = def_id;
+            },
+            Some(&None) => break,
+            None => {
+                cx.sess.bug(
+                    format!("ID not mapped to super-struct: {}",
+                        cx.map.node_to_str(did.node)));
+            }
         }
     }
 }
@@ -4064,26 +4030,22 @@ pub fn lookup_struct_fields(cx: &ctxt, did: ast::DefId) -> Vec<field_ty> {
         // we have to walk the inheritance chain of the struct to get all the
         // structs (explicit and inherited) for a struct. If this is expensive
         // we could cache the whole list of fields here.
-        let structs = lookup_super_structs(cx, did);
         let struct_fields = cx.struct_fields.borrow();
-        let results: Vec<&@Vec<field_ty>> = structs.iter().map(|s| {
-            match struct_fields.find(s) {
-                Some(fields) => fields,
+        let mut results: SmallVector<&[field_ty]> = SmallVector::zero();
+        each_super_struct(cx, did, |s| {
+            match struct_fields.find(&s) {
+                Some(fields) => results.push(fields.as_slice()),
                 _ => {
                     cx.sess.bug(
                         format!("ID not mapped to struct fields: {}",
                             cx.map.node_to_str(did.node)));
                 }
             }
-        }).collect();
+        });
 
-        let len = results.iter().map(|x| x.len()).fold(0, |a, b| a + b);
+        let len = results.as_slice().iter().map(|x| x.len()).sum();
         let mut result: Vec<field_ty> = Vec::with_capacity(len);
-        for rs in results.iter() {
-            for r in rs.iter() {
-                result.push(*r);
-            }
-        }
+        result.extend(results.as_slice().iter().flat_map(|rs| rs.iter().map(|&f| f)));
         assert!(result.len() == len);
         result
     } else {
@@ -4314,31 +4276,31 @@ pub fn eval_repeat_count<T: ExprTyProvider>(tcx: &T, count_expr: &ast::Expr) -> 
 // relation on the supertraits from each bounded trait's constraint
 // list.
 pub fn each_bound_trait_and_supertraits(tcx: &ctxt,
-                                        bounds: &[@TraitRef],
-                                        f: |@TraitRef| -> bool)
+                                        bounds: &[Rc<TraitRef>],
+                                        f: |Rc<TraitRef>| -> bool)
                                         -> bool {
-    for &bound_trait_ref in bounds.iter() {
+    for bound_trait_ref in bounds.iter() {
         let mut supertrait_set = HashMap::new();
         let mut trait_refs = Vec::new();
         let mut i = 0;
 
         // Seed the worklist with the trait from the bound
         supertrait_set.insert(bound_trait_ref.def_id, ());
-        trait_refs.push(bound_trait_ref);
+        trait_refs.push(bound_trait_ref.clone());
 
         // Add the given trait ty to the hash map
         while i < trait_refs.len() {
             debug!("each_bound_trait_and_supertraits(i={:?}, trait_ref={})",
                    i, trait_refs.get(i).repr(tcx));
 
-            if !f(*trait_refs.get(i)) {
+            if !f(trait_refs.get(i).clone()) {
                 return false;
             }
 
             // Add supertraits to supertrait_set
             let supertrait_refs = trait_ref_supertraits(tcx,
-                                                        *trait_refs.get(i));
-            for &supertrait_ref in supertrait_refs.iter() {
+                                                        &**trait_refs.get(i));
+            for supertrait_ref in supertrait_refs.iter() {
                 debug!("each_bound_trait_and_supertraits(supertrait_ref={})",
                        supertrait_ref.repr(tcx));
 
@@ -4346,7 +4308,7 @@ pub fn each_bound_trait_and_supertraits(tcx: &ctxt,
                 if !supertrait_set.contains_key(&d_id) {
                     // FIXME(#5527) Could have same trait multiple times
                     supertrait_set.insert(d_id, ());
-                    trait_refs.push(supertrait_ref);
+                    trait_refs.push(supertrait_ref.clone());
                 }
             }
 
@@ -4371,7 +4333,7 @@ pub fn get_opaque_ty(tcx: &ctxt) -> Result<t, ~str> {
 }
 
 pub fn visitor_object_ty(tcx: &ctxt,
-                         region: ty::Region) -> Result<(@TraitRef, t), ~str> {
+                         region: ty::Region) -> Result<(Rc<TraitRef>, t), ~str> {
     let trait_lang_item = match tcx.lang_items.require(TyVisitorTraitLangItem) {
         Ok(id) => id,
         Err(s) => { return Err(s); }
@@ -4381,8 +4343,8 @@ pub fn visitor_object_ty(tcx: &ctxt,
         self_ty: None,
         tps: Vec::new()
     };
-    let trait_ref = @TraitRef { def_id: trait_lang_item, substs: substs };
-    Ok((trait_ref,
+    let trait_ref = Rc::new(TraitRef { def_id: trait_lang_item, substs: substs });
+    Ok((trait_ref.clone(),
         mk_trait(tcx,
                  trait_ref.def_id,
                  trait_ref.substs.clone(),
@@ -4390,29 +4352,24 @@ pub fn visitor_object_ty(tcx: &ctxt,
                  EmptyBuiltinBounds())))
 }
 
-pub fn item_variances(tcx: &ctxt, item_id: ast::DefId) -> @ItemVariances {
+pub fn item_variances(tcx: &ctxt, item_id: ast::DefId) -> Rc<ItemVariances> {
     lookup_locally_or_in_crate_store(
         "item_variance_map", item_id, &mut *tcx.item_variance_map.borrow_mut(),
-        || @csearch::get_item_variances(&tcx.sess.cstore, item_id))
+        || Rc::new(csearch::get_item_variances(&tcx.sess.cstore, item_id)))
 }
 
 /// Records a trait-to-implementation mapping.
-fn record_trait_implementation(tcx: &ctxt,
-                               trait_def_id: DefId,
-                               implementation: @Impl) {
-    let implementation_list;
-    let mut trait_impls = tcx.trait_impls.borrow_mut();
-    match trait_impls.find(&trait_def_id) {
-        None => {
-            implementation_list = @RefCell::new(Vec::new());
-            trait_impls.insert(trait_def_id, implementation_list);
+pub fn record_trait_implementation(tcx: &ctxt,
+                                   trait_def_id: DefId,
+                                   impl_def_id: DefId) {
+    match tcx.trait_impls.borrow().find(&trait_def_id) {
+        Some(impls_for_trait) => {
+            impls_for_trait.borrow_mut().push(impl_def_id);
+            return;
         }
-        Some(&existing_implementation_list) => {
-            implementation_list = existing_implementation_list
-        }
+        None => {}
     }
-
-    implementation_list.borrow_mut().push(implementation);
+    tcx.trait_impls.borrow_mut().insert(trait_def_id, Rc::new(RefCell::new(vec!(impl_def_id))));
 }
 
 /// Populates the type context with all the implementations for the given type
@@ -4427,45 +4384,38 @@ pub fn populate_implementations_for_type_if_necessary(tcx: &ctxt,
     }
 
     csearch::each_implementation_for_type(&tcx.sess.cstore, type_id,
-            |implementation_def_id| {
-        let implementation = @csearch::get_impl(tcx, implementation_def_id);
+            |impl_def_id| {
+        let methods = csearch::get_impl_methods(&tcx.sess.cstore, impl_def_id);
 
         // Record the trait->implementation mappings, if applicable.
-        let associated_traits = csearch::get_impl_trait(tcx,
-                                                        implementation.did);
+        let associated_traits = csearch::get_impl_trait(tcx, impl_def_id);
         for trait_ref in associated_traits.iter() {
-            record_trait_implementation(tcx,
-                                        trait_ref.def_id,
-                                        implementation);
+            record_trait_implementation(tcx, trait_ref.def_id, impl_def_id);
         }
 
         // For any methods that use a default implementation, add them to
         // the map. This is a bit unfortunate.
-        for method in implementation.methods.iter() {
-            for source in method.provided_source.iter() {
-                tcx.provided_method_sources.borrow_mut()
-                   .insert(method.def_id, *source);
+        for &method_def_id in methods.iter() {
+            for &source in ty::method(tcx, method_def_id).provided_source.iter() {
+                tcx.provided_method_sources.borrow_mut().insert(method_def_id, source);
             }
-        }
-
-        // If this is an inherent implementation, record it.
-        if associated_traits.is_none() {
-            let implementation_list;
-            let mut inherent_impls = tcx.inherent_impls.borrow_mut();
-            match inherent_impls.find(&type_id) {
-                None => {
-                    implementation_list = @RefCell::new(Vec::new());
-                    inherent_impls.insert(type_id, implementation_list);
-                }
-                Some(&existing_implementation_list) => {
-                    implementation_list = existing_implementation_list;
-                }
-            }
-            implementation_list.borrow_mut().push(implementation);
         }
 
         // Store the implementation info.
-        tcx.impls.borrow_mut().insert(implementation_def_id, implementation);
+        tcx.impl_methods.borrow_mut().insert(impl_def_id, methods);
+
+        // If this is an inherent implementation, record it.
+        if associated_traits.is_none() {
+            match tcx.inherent_impls.borrow().find(&type_id) {
+                Some(implementation_list) => {
+                    implementation_list.borrow_mut().push(impl_def_id);
+                    return;
+                }
+                None => {}
+            }
+            tcx.inherent_impls.borrow_mut().insert(type_id,
+                                                   Rc::new(RefCell::new(vec!(impl_def_id))));
+        }
     });
 
     tcx.populated_external_types.borrow_mut().insert(type_id);
@@ -4485,22 +4435,21 @@ pub fn populate_implementations_for_trait_if_necessary(
 
     csearch::each_implementation_for_trait(&tcx.sess.cstore, trait_id,
             |implementation_def_id| {
-        let implementation = @csearch::get_impl(tcx, implementation_def_id);
+        let methods = csearch::get_impl_methods(&tcx.sess.cstore, implementation_def_id);
 
         // Record the trait->implementation mapping.
-        record_trait_implementation(tcx, trait_id, implementation);
+        record_trait_implementation(tcx, trait_id, implementation_def_id);
 
         // For any methods that use a default implementation, add them to
         // the map. This is a bit unfortunate.
-        for method in implementation.methods.iter() {
-            for source in method.provided_source.iter() {
-                tcx.provided_method_sources.borrow_mut()
-                   .insert(method.def_id, *source);
+        for &method_def_id in methods.iter() {
+            for &source in ty::method(tcx, method_def_id).provided_source.iter() {
+                tcx.provided_method_sources.borrow_mut().insert(method_def_id, source);
             }
         }
 
         // Store the implementation info.
-        tcx.impls.borrow_mut().insert(implementation_def_id, implementation);
+        tcx.impl_methods.borrow_mut().insert(implementation_def_id, methods);
     });
 
     tcx.populated_external_traits.borrow_mut().insert(trait_id);
@@ -4535,7 +4484,7 @@ pub fn trait_of_method(tcx: &ctxt, def_id: ast::DefId)
     if def_id.krate != LOCAL_CRATE {
         return csearch::get_trait_of_method(&tcx.sess.cstore, def_id, tcx);
     }
-    match tcx.methods.borrow().find(&def_id).map(|m| *m) {
+    match tcx.methods.borrow().find_copy(&def_id) {
         Some(method) => {
             match method.container {
                 TraitContainer(def_id) => Some(def_id),
@@ -4555,7 +4504,7 @@ pub fn trait_of_method(tcx: &ctxt, def_id: ast::DefId)
 pub fn trait_method_of_method(tcx: &ctxt,
                               def_id: ast::DefId) -> Option<ast::DefId> {
     let method = match tcx.methods.borrow().find(&def_id) {
-        Some(&m) => m,
+        Some(m) => m.clone(),
         None => return None,
     };
     let name = method.ident.name;
@@ -4724,7 +4673,7 @@ impl Variance {
 
 pub fn construct_parameter_environment(
     tcx: &ctxt,
-    self_bound: Option<@TraitRef>,
+    self_bound: Option<Rc<TraitRef>>,
     item_type_params: &[TypeParameterDef],
     method_type_params: &[TypeParameterDef],
     item_region_params: &[RegionParameterDef],
@@ -4739,7 +4688,7 @@ pub fn construct_parameter_environment(
     //
 
     // map Self => Self
-    let self_ty = self_bound.map(|t| ty::mk_self(tcx, t.def_id));
+    let self_ty = self_bound.as_ref().map(|t| ty::mk_self(tcx, t.def_id));
 
     // map A => A
     let num_item_type_params = item_type_params.len();

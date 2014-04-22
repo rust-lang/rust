@@ -57,7 +57,7 @@ For example, the following simple type for a singly-linked list...
 ```
 struct List {
     value: int,
-    tail: Option<@List>,
+    tail: Option<~List>,
 }
 ```
 
@@ -66,8 +66,8 @@ will generate the following callstack with a naive DFS algorithm:
 ```
 describe(t = List)
   describe(t = int)
-  describe(t = Option<@List>)
-    describe(t = @List)
+  describe(t = Option<~List>)
+    describe(t = ~List)
       describe(t = List) // at the beginning again...
       ...
 ```
@@ -144,6 +144,7 @@ use util::ppaux;
 
 use std::c_str::{CString, ToCStr};
 use std::cell::{Cell, RefCell};
+use std::rc::{Rc, Weak};
 use collections::HashMap;
 use collections::HashSet;
 use libc::{c_uint, c_ulonglong, c_longlong};
@@ -180,7 +181,7 @@ pub struct CrateDebugContext {
     created_files: RefCell<HashMap<~str, DIFile>>,
     created_types: RefCell<HashMap<uint, DIType>>,
     created_enum_disr_types: RefCell<HashMap<ast::DefId, DIType>>,
-    namespace_map: RefCell<HashMap<Vec<ast::Name> , @NamespaceTreeNode>>,
+    namespace_map: RefCell<HashMap<Vec<ast::Name>, Rc<NamespaceTreeNode>>>,
     // This collection is used to assert that composite types (structs, enums, ...) have their
     // members only set once:
     composite_types_completed: RefCell<HashSet<DIType>>,
@@ -369,7 +370,7 @@ pub fn create_local_var_metadata(bcx: &Block, local: &ast::Local) {
     }
 
     let cx = bcx.ccx();
-    let def_map = cx.tcx.def_map;
+    let def_map = &cx.tcx.def_map;
 
     pat_util::pat_bindings(def_map, local.pat, |_, node_id, span, path_ref| {
         let var_ident = ast_util::path_to_ident(path_ref);
@@ -509,7 +510,7 @@ pub fn create_argument_metadata(bcx: &Block, arg: &ast::Arg) {
     let fcx = bcx.fcx;
     let cx = fcx.ccx;
 
-    let def_map = cx.tcx.def_map;
+    let def_map = &cx.tcx.def_map;
     let scope_metadata = bcx.fcx.debug_context.get_ref(cx, arg.pat.span).fn_metadata;
 
     pat_util::pat_bindings(def_map, arg.pat, |_, node_id, span, path_ref| {
@@ -609,7 +610,7 @@ pub fn start_emitting_source_locations(fcx: &FunctionContext) {
 /// indicates why no debuginfo should be created for the function.
 pub fn create_function_debug_context(cx: &CrateContext,
                                      fn_ast_id: ast::NodeId,
-                                     param_substs: Option<@param_substs>,
+                                     param_substs: Option<&param_substs>,
                                      llfn: ValueRef) -> FunctionDebugContext {
     if cx.sess().opts.debuginfo == NoDebugInfo {
         return FunctionDebugContext { repr: DebugInfoDisabled };
@@ -775,7 +776,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
     fn get_function_signature(cx: &CrateContext,
                               fn_ast_id: ast::NodeId,
                               fn_decl: &ast::FnDecl,
-                              param_substs: Option<@param_substs>,
+                              param_substs: Option<&param_substs>,
                               error_span: Span) -> DIArray {
         if cx.sess().opts.debuginfo == LimitedDebugInfo {
             return create_DIArray(DIB(cx), []);
@@ -828,7 +829,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
 
     fn get_template_parameters(cx: &CrateContext,
                                generics: &ast::Generics,
-                               param_substs: Option<@param_substs>,
+                               param_substs: Option<&param_substs>,
                                file_metadata: DIFile,
                                name_to_append_suffix_to: &mut StrBuf)
                                -> DIArray {
@@ -1388,8 +1389,8 @@ fn prepare_tuple_metadata(cx: &CrateContext,
 }
 
 struct GeneralMemberDescriptionFactory {
-    type_rep: @adt::Repr,
-    variants: @Vec<@ty::VariantInfo> ,
+    type_rep: Rc<adt::Repr>,
+    variants: Rc<Vec<Rc<ty::VariantInfo>>>,
     discriminant_type_metadata: ValueRef,
     containing_scope: DIScope,
     file_metadata: DIFile,
@@ -1412,7 +1413,7 @@ impl GeneralMemberDescriptionFactory {
                 let (variant_type_metadata, variant_llvm_type, member_desc_factory) =
                     describe_enum_variant(cx,
                                           struct_def,
-                                          *self.variants.get(i),
+                                          &**self.variants.get(i),
                                           Some(self.discriminant_type_metadata),
                                           self.containing_scope,
                                           self.file_metadata,
@@ -1617,7 +1618,7 @@ fn prepare_enum_metadata(cx: &CrateContext,
                  member_description_factory) =
                     describe_enum_variant(cx,
                                           struct_def,
-                                          *variants.get(0),
+                                          &**variants.get(0),
                                           None,
                                           containing_scope,
                                           file_metadata,
@@ -1661,7 +1662,7 @@ fn prepare_enum_metadata(cx: &CrateContext,
                 llvm_type: enum_llvm_type,
                 file_metadata: file_metadata,
                 member_description_factory: GeneralMD(GeneralMemberDescriptionFactory {
-                    type_rep: type_rep,
+                    type_rep: type_rep.clone(),
                     variants: variants,
                     discriminant_type_metadata: discriminant_type_metadata,
                     containing_scope: containing_scope,
@@ -1676,7 +1677,7 @@ fn prepare_enum_metadata(cx: &CrateContext,
                  member_description_factory) =
                     describe_enum_variant(cx,
                                           struct_def,
-                                          *variants.get(nndiscr as uint),
+                                          &**variants.get(nndiscr as uint),
                                           None,
                                           containing_scope,
                                           file_metadata,
@@ -2381,7 +2382,7 @@ fn populate_scope_map(cx: &CrateContext,
                       fn_entry_block: &ast::Block,
                       fn_metadata: DISubprogram,
                       scope_map: &mut HashMap<ast::NodeId, DIScope>) {
-    let def_map = cx.tcx.def_map;
+    let def_map = &cx.tcx.def_map;
 
     struct ScopeStackEntry {
         scope_metadata: DIScope,
@@ -2494,7 +2495,7 @@ fn populate_scope_map(cx: &CrateContext,
                     scope_stack: &mut Vec<ScopeStackEntry> ,
                     scope_map: &mut HashMap<ast::NodeId, DIScope>) {
 
-        let def_map = cx.tcx.def_map;
+        let def_map = &cx.tcx.def_map;
 
         // Unfortunately, we cannot just use pat_util::pat_bindings() or ast_util::walk_pat() here
         // because we have to visit *all* nodes in order to put them into the scope map. The above
@@ -2830,14 +2831,14 @@ fn populate_scope_map(cx: &CrateContext,
 struct NamespaceTreeNode {
     name: ast::Name,
     scope: DIScope,
-    parent: Option<@NamespaceTreeNode>,
+    parent: Option<Weak<NamespaceTreeNode>>,
 }
 
 impl NamespaceTreeNode {
     fn mangled_name_of_contained_item(&self, item_name: &str) -> ~str {
         fn fill_nested(node: &NamespaceTreeNode, output: &mut StrBuf) {
             match node.parent {
-                Some(parent) => fill_nested(parent, output),
+                Some(ref parent) => fill_nested(&*parent.upgrade().unwrap(), output),
                 None => {}
             }
             let string = token::get_name(node.name);
@@ -2854,7 +2855,7 @@ impl NamespaceTreeNode {
     }
 }
 
-fn namespace_for_item(cx: &CrateContext, def_id: ast::DefId) -> @NamespaceTreeNode {
+fn namespace_for_item(cx: &CrateContext, def_id: ast::DefId) -> Rc<NamespaceTreeNode> {
     ty::with_path(cx.tcx(), def_id, |path| {
         // prepend crate name if not already present
         let krate = if def_id.krate == ast::LOCAL_CRATE {
@@ -2866,7 +2867,7 @@ fn namespace_for_item(cx: &CrateContext, def_id: ast::DefId) -> @NamespaceTreeNo
         let mut path = krate.move_iter().chain(path).peekable();
 
         let mut current_key = Vec::new();
-        let mut parent_node: Option<@NamespaceTreeNode> = None;
+        let mut parent_node: Option<Rc<NamespaceTreeNode>> = None;
 
         // Create/Lookup namespace for each element of the path.
         loop {
@@ -2890,7 +2891,7 @@ fn namespace_for_item(cx: &CrateContext, def_id: ast::DefId) -> @NamespaceTreeNo
                 None => {
                     // create and insert
                     let parent_scope = match parent_node {
-                        Some(node) => node.scope,
+                        Some(ref node) => node.scope,
                         None => ptr::null()
                     };
                     let namespace_name = token::get_name(name);
@@ -2907,14 +2908,14 @@ fn namespace_for_item(cx: &CrateContext, def_id: ast::DefId) -> @NamespaceTreeNo
                         }
                     });
 
-                    let node = @NamespaceTreeNode {
+                    let node = Rc::new(NamespaceTreeNode {
                         name: name,
                         scope: scope,
-                        parent: parent_node,
-                    };
+                        parent: parent_node.map(|parent| parent.downgrade()),
+                    });
 
                     debug_context(cx).namespace_map.borrow_mut()
-                                     .insert(current_key.clone(), node);
+                                     .insert(current_key.clone(), node.clone());
 
                     node
                 }

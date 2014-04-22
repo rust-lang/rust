@@ -9,7 +9,6 @@
 // except according to those terms.
 
 
-use metadata::encoder;
 use middle::ty::{ReSkolemized, ReVar};
 use middle::ty::{BoundRegion, BrAnon, BrNamed};
 use middle::ty::{BrFresh, ctxt};
@@ -23,6 +22,7 @@ use middle::ty::{ty_uniq, ty_trait, ty_int, ty_uint, ty_infer};
 use middle::ty;
 use middle::typeck;
 
+use std::rc::Rc;
 use std::strbuf::StrBuf;
 use syntax::abi;
 use syntax::ast_map;
@@ -469,7 +469,7 @@ pub fn parameterized(cx: &ctxt,
 }
 
 pub fn ty_to_short_str(cx: &ctxt, typ: t) -> ~str {
-    let mut s = encoder::encoded_ty(cx, typ);
+    let mut s = typ.repr(cx);
     if s.len() >= 32u { s = s.slice(0u, 32u).to_owned(); }
     return s;
 }
@@ -495,6 +495,12 @@ impl<T:Repr,U:Repr> Repr for Result<T,U> {
 impl Repr for () {
     fn repr(&self, _tcx: &ctxt) -> ~str {
         "()".to_owned()
+    }
+}
+
+impl<T:Repr> Repr for Rc<T> {
+    fn repr(&self, tcx: &ctxt) -> ~str {
+        (&**self).repr(tcx)
     }
 }
 
@@ -888,7 +894,7 @@ impl Repr for Span {
     }
 }
 
-impl<A:UserString> UserString for @A {
+impl<A:UserString> UserString for Rc<A> {
     fn user_string(&self, tcx: &ctxt) -> ~str {
         let this: &A = &**self;
         this.user_string(tcx)

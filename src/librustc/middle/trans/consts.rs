@@ -130,7 +130,7 @@ fn const_deref_ptr(cx: &CrateContext, v: ValueRef) -> ValueRef {
 fn const_deref_newtype(cx: &CrateContext, v: ValueRef, t: ty::t)
     -> ValueRef {
     let repr = adt::represent_type(cx, t);
-    adt::const_get_field(cx, repr, v, 0, 0)
+    adt::const_get_field(cx, &*repr, v, 0, 0)
 }
 
 fn const_deref(cx: &CrateContext, v: ValueRef, t: ty::t, explicit: bool)
@@ -187,13 +187,12 @@ pub fn const_expr(cx: &CrateContext, e: &ast::Expr, is_local: bool) -> (ValueRef
     let mut llconst = llconst;
     let mut inlineable = inlineable;
     let ety = ty::expr_ty(cx.tcx(), e);
-    let ety_adjusted = ty::expr_ty_adjusted(cx.tcx(), e,
-                                            &*cx.maps.method_map.borrow());
+    let ety_adjusted = ty::expr_ty_adjusted(cx.tcx(), e);
     let opt_adj = cx.tcx.adjustments.borrow().find_copy(&e.id);
     match opt_adj {
         None => { }
         Some(adj) => {
-            match *adj {
+            match adj {
                 ty::AutoAddEnv(ty::RegionTraitStore(ty::ReStatic, _)) => {
                     let def = ty::resolve_expr(cx.tcx(), e);
                     let wrapper = closure::get_wrapper_for_bare_fn(cx,
@@ -414,19 +413,17 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr,
             }, true)
           }
           ast::ExprField(base, field, _) => {
-              let bt = ty::expr_ty_adjusted(cx.tcx(), base,
-                                            &*cx.maps.method_map.borrow());
+              let bt = ty::expr_ty_adjusted(cx.tcx(), base);
               let brepr = adt::represent_type(cx, bt);
               let (bv, inlineable) = const_expr(cx, base, is_local);
               expr::with_field_tys(cx.tcx(), bt, None, |discr, field_tys| {
                   let ix = ty::field_idx_strict(cx.tcx(), field.name, field_tys);
-                  (adt::const_get_field(cx, brepr, bv, discr, ix), inlineable)
+                  (adt::const_get_field(cx, &*brepr, bv, discr, ix), inlineable)
               })
           }
 
           ast::ExprIndex(base, index) => {
-              let bt = ty::expr_ty_adjusted(cx.tcx(), base,
-                                            &*cx.maps.method_map.borrow());
+              let bt = ty::expr_ty_adjusted(cx.tcx(), base);
               let (bv, inlineable) = const_expr(cx, base, is_local);
               let iv = match const_eval::eval_const_expr(cx.tcx(), index) {
                   const_eval::const_int(i) => i as u64,
@@ -494,7 +491,7 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr,
               (expr::cast_enum, expr::cast_integral) |
               (expr::cast_enum, expr::cast_float)  => {
                 let repr = adt::represent_type(cx, basety);
-                let discr = adt::const_get_discrim(cx, repr, v);
+                let discr = adt::const_get_discrim(cx, &*repr, v);
                 let iv = C_integral(cx.int_type, discr, false);
                 let ety_cast = expr::cast_type_kind(ety);
                 match ety_cast {
@@ -527,7 +524,7 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr,
               let ety = ty::expr_ty(cx.tcx(), e);
               let repr = adt::represent_type(cx, ety);
               let (vals, inlineable) = map_list(es.as_slice());
-              (adt::trans_const(cx, repr, 0, vals.as_slice()), inlineable)
+              (adt::trans_const(cx, &*repr, 0, vals.as_slice()), inlineable)
           }
           ast::ExprStruct(_, ref fs, ref base_opt) => {
               let ety = ty::expr_ty(cx.tcx(), e);
@@ -547,7 +544,7 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr,
                           None => {
                               match base_val {
                                 Some((bv, inlineable)) => {
-                                    (adt::const_get_field(cx, repr, bv, discr, ix),
+                                    (adt::const_get_field(cx, &*repr, bv, discr, ix),
                                      inlineable)
                                 }
                                 None => cx.sess().span_bug(e.span, "missing struct field")
@@ -555,7 +552,7 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr,
                           }
                       }
                   }));
-                  (adt::trans_const(cx, repr, discr, cs),
+                  (adt::trans_const(cx, &*repr, discr, cs),
                    inlineable.iter().fold(true, |a, &b| a && b))
               })
           }
@@ -635,7 +632,7 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr,
                     let vinfo = ty::enum_variant_with_id(cx.tcx(),
                                                          enum_did,
                                                          variant_did);
-                    (adt::trans_const(cx, repr, vinfo.disr_val, []), true)
+                    (adt::trans_const(cx, &*repr, vinfo.disr_val, []), true)
                 }
                 Some(ast::DefStruct(_)) => {
                     let ety = ty::expr_ty(cx.tcx(), e);
@@ -654,7 +651,7 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr,
                       let ety = ty::expr_ty(cx.tcx(), e);
                       let repr = adt::represent_type(cx, ety);
                       let (arg_vals, inlineable) = map_list(args.as_slice());
-                      (adt::trans_const(cx, repr, 0, arg_vals.as_slice()),
+                      (adt::trans_const(cx, &*repr, 0, arg_vals.as_slice()),
                        inlineable)
                   }
                   Some(ast::DefVariant(enum_did, variant_did, _)) => {
@@ -665,7 +662,7 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr,
                                                            variant_did);
                       let (arg_vals, inlineable) = map_list(args.as_slice());
                       (adt::trans_const(cx,
-                                        repr,
+                                        &*repr,
                                         vinfo.disr_val,
                                         arg_vals.as_slice()), inlineable)
                   }

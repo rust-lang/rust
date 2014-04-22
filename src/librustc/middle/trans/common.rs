@@ -154,21 +154,6 @@ pub fn expr_info(expr: &ast::Expr) -> NodeInfo {
     NodeInfo { id: expr.id, span: expr.span }
 }
 
-pub struct Stats {
-    pub n_static_tydescs: Cell<uint>,
-    pub n_glues_created: Cell<uint>,
-    pub n_null_glues: Cell<uint>,
-    pub n_real_glues: Cell<uint>,
-    pub n_fns: Cell<uint>,
-    pub n_monos: Cell<uint>,
-    pub n_inlines: Cell<uint>,
-    pub n_closures: Cell<uint>,
-    pub n_llvm_insns: Cell<uint>,
-    pub llvm_insns: RefCell<HashMap<~str, uint>>,
-    // (ident, time-in-ms, llvm-instructions)
-    pub fn_stats: RefCell<Vec<(~str, uint, uint)> >,
-}
-
 pub struct BuilderRef_res {
     pub b: BuilderRef,
 }
@@ -274,7 +259,7 @@ pub struct FunctionContext<'a> {
 
     // If this function is being monomorphized, this contains the type
     // substitutions used.
-    pub param_substs: Option<@param_substs>,
+    pub param_substs: Option<&'a param_substs>,
 
     // The source span and nesting context where this function comes from, for
     // error reporting and symbol generation.
@@ -686,53 +671,9 @@ pub fn is_null(val: ValueRef) -> bool {
     }
 }
 
-// Used to identify cached monomorphized functions and vtables
-#[deriving(Eq, TotalEq, Hash)]
-pub enum mono_param_id {
-    mono_precise(ty::t, Option<@Vec<mono_id> >),
-    mono_any,
-    mono_repr(uint /* size */,
-              uint /* align */,
-              MonoDataClass,
-              datum::RvalueMode),
-}
-
-#[deriving(Eq, TotalEq, Hash)]
-pub enum MonoDataClass {
-    MonoBits,    // Anything not treated differently from arbitrary integer data
-    MonoNonNull, // Non-null pointers (used for optional-pointer optimization)
-    // FIXME(#3547)---scalars and floats are
-    // treated differently in most ABIs.  But we
-    // should be doing something more detailed
-    // here.
-    MonoFloat
-}
-
-pub fn mono_data_classify(t: ty::t) -> MonoDataClass {
-    match ty::get(t).sty {
-        ty::ty_float(_) => MonoFloat,
-        ty::ty_rptr(_, mt) => match ty::get(mt.ty).sty {
-            ty::ty_vec(_, None) => MonoBits,
-            _ => MonoNonNull,
-        },
-        ty::ty_uniq(..) | ty::ty_box(..) |
-        ty::ty_str(ty::VstoreUniq) |
-        ty::ty_bare_fn(..) => MonoNonNull,
-        // Is that everything?  Would closures or slices qualify?
-        _ => MonoBits
-    }
-}
-
-#[deriving(Eq, TotalEq, Hash)]
-pub struct mono_id_ {
-    pub def: ast::DefId,
-    pub params: Vec<mono_param_id> }
-
-pub type mono_id = @mono_id_;
-
 pub fn monomorphize_type(bcx: &Block, t: ty::t) -> ty::t {
     match bcx.fcx.param_substs {
-        Some(substs) => {
+        Some(ref substs) => {
             ty::subst_tps(bcx.tcx(), substs.tys.as_slice(), substs.self_ty, t)
         }
         _ => {
@@ -754,9 +695,7 @@ pub fn expr_ty(bcx: &Block, ex: &ast::Expr) -> ty::t {
 }
 
 pub fn expr_ty_adjusted(bcx: &Block, ex: &ast::Expr) -> ty::t {
-    let tcx = bcx.tcx();
-    let t = ty::expr_ty_adjusted(tcx, ex, &*bcx.ccx().maps.method_map.borrow());
-    monomorphize_type(bcx, t)
+    monomorphize_type(bcx, ty::expr_ty_adjusted(bcx.tcx(), ex))
 }
 
 // Key used to lookup values supplied for type parameters in an expr.
@@ -774,7 +713,7 @@ pub fn node_id_type_params(bcx: &Block, node: ExprOrMethodCall) -> Vec<ty::t> {
     let params = match node {
         ExprId(id) => ty::node_id_to_type_params(tcx, id),
         MethodCall(method_call) => {
-            bcx.ccx().maps.method_map.borrow().get(&method_call).substs.tps.clone()
+            tcx.method_map.borrow().get(&method_call).substs.tps.clone()
         }
     };
 
@@ -788,62 +727,63 @@ pub fn node_id_type_params(bcx: &Block, node: ExprOrMethodCall) -> Vec<ty::t> {
     }
 
     match bcx.fcx.param_substs {
-      Some(substs) => {
-        params.iter().map(|t| {
-            ty::subst_tps(tcx, substs.tys.as_slice(), substs.self_ty, *t)
-        }).collect()
-      }
-      _ => params
+        Some(ref substs) => {
+            params.iter().map(|t| {
+                ty::subst_tps(tcx, substs.tys.as_slice(), substs.self_ty, *t)
+            }).collect()
+        }
+        _ => params
     }
 }
 
 pub fn node_vtables(bcx: &Block, id: typeck::MethodCall)
                  -> Option<typeck::vtable_res> {
-    let vtable_map = bcx.ccx().maps.vtable_map.borrow();
-    let raw_vtables = vtable_map.find(&id);
-    raw_vtables.map(|vts| resolve_vtables_in_fn_ctxt(bcx.fcx, *vts))
+    bcx.tcx().vtable_map.borrow().find(&id).map(|vts| {
+        resolve_vtables_in_fn_ctxt(bcx.fcx, vts.as_slice())
+    })
 }
 
 // Apply the typaram substitutions in the FunctionContext to some
 // vtables. This should eliminate any vtable_params.
-pub fn resolve_vtables_in_fn_ctxt(fcx: &FunctionContext, vts: typeck::vtable_res)
-    -> typeck::vtable_res {
+pub fn resolve_vtables_in_fn_ctxt(fcx: &FunctionContext,
+                                  vts: &[typeck::vtable_param_res])
+                                  -> typeck::vtable_res {
     resolve_vtables_under_param_substs(fcx.ccx.tcx(),
                                        fcx.param_substs,
                                        vts)
 }
 
 pub fn resolve_vtables_under_param_substs(tcx: &ty::ctxt,
-                                          param_substs: Option<@param_substs>,
-                                          vts: typeck::vtable_res)
-    -> typeck::vtable_res {
-    @vts.iter().map(|ds|
+                                          param_substs: Option<&param_substs>,
+                                          vts: &[typeck::vtable_param_res])
+                                          -> typeck::vtable_res {
+    vts.iter().map(|ds| {
       resolve_param_vtables_under_param_substs(tcx,
                                                param_substs,
-                                               *ds))
-        .collect()
+                                               ds.as_slice())
+    }).collect()
 }
 
 pub fn resolve_param_vtables_under_param_substs(
     tcx: &ty::ctxt,
-    param_substs: Option<@param_substs>,
-    ds: typeck::vtable_param_res)
+    param_substs: Option<&param_substs>,
+    ds: &[typeck::vtable_origin])
     -> typeck::vtable_param_res {
-    @ds.iter().map(
-        |d| resolve_vtable_under_param_substs(tcx,
-                                              param_substs,
-                                              d))
-        .collect()
+    ds.iter().map(|d| {
+        resolve_vtable_under_param_substs(tcx,
+                                          param_substs,
+                                          d)
+    }).collect()
 }
 
 
 
 pub fn resolve_vtable_under_param_substs(tcx: &ty::ctxt,
-                                         param_substs: Option<@param_substs>,
+                                         param_substs: Option<&param_substs>,
                                          vt: &typeck::vtable_origin)
                                          -> typeck::vtable_origin {
     match *vt {
-        typeck::vtable_static(trait_id, ref tys, sub) => {
+        typeck::vtable_static(trait_id, ref tys, ref sub) => {
             let tys = match param_substs {
                 Some(substs) => {
                     tys.iter().map(|t| {
@@ -857,7 +797,7 @@ pub fn resolve_vtable_under_param_substs(tcx: &ty::ctxt,
             };
             typeck::vtable_static(
                 trait_id, tys,
-                resolve_vtables_under_param_substs(tcx, param_substs, sub))
+                resolve_vtables_under_param_substs(tcx, param_substs, sub.as_slice()))
         }
         typeck::vtable_param(n_param, n_bound) => {
             match param_substs {
@@ -883,11 +823,11 @@ pub fn find_vtable(tcx: &ty::ctxt,
            n_param, n_bound, ps.repr(tcx));
 
     let param_bounds = match n_param {
-        typeck::param_self => ps.self_vtables.expect("self vtables missing"),
+        typeck::param_self => ps.self_vtables.as_ref().expect("self vtables missing"),
         typeck::param_numbered(n) => {
-            let tables = ps.vtables
+            let tables = ps.vtables.as_ref()
                 .expect("vtables missing where they are needed");
-            *tables.get(n)
+            tables.get(n)
         }
     };
     param_bounds.get(n_bound).clone()

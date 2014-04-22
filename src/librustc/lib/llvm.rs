@@ -1882,37 +1882,23 @@ impl TypeNames {
 
 /* Memory-managed interface to target data. */
 
-pub struct target_data_res {
-    pub td: TargetDataRef,
+pub struct TargetData {
+    pub lltd: TargetDataRef
 }
 
-impl Drop for target_data_res {
+impl Drop for TargetData {
     fn drop(&mut self) {
         unsafe {
-            llvm::LLVMDisposeTargetData(self.td);
+            llvm::LLVMDisposeTargetData(self.lltd);
         }
     }
 }
 
-pub fn target_data_res(td: TargetDataRef) -> target_data_res {
-    target_data_res {
-        td: td
-    }
-}
-
-pub struct TargetData {
-    pub lltd: TargetDataRef,
-    dtor: @target_data_res
-}
-
 pub fn mk_target_data(string_rep: &str) -> TargetData {
-    let lltd = string_rep.with_c_str(|buf| {
-        unsafe { llvm::LLVMCreateTargetData(buf) }
-    });
-
     TargetData {
-        lltd: lltd,
-        dtor: @target_data_res(lltd)
+        lltd: string_rep.with_c_str(|buf| {
+            unsafe { llvm::LLVMCreateTargetData(buf) }
+        })
     }
 }
 
@@ -1949,35 +1935,22 @@ impl Drop for ObjectFile {
 
 /* Memory-managed interface to section iterators. */
 
-pub struct section_iter_res {
-    pub si: SectionIteratorRef,
+pub struct SectionIter {
+    pub llsi: SectionIteratorRef
 }
 
-impl Drop for section_iter_res {
+impl Drop for SectionIter {
     fn drop(&mut self) {
         unsafe {
-            llvm::LLVMDisposeSectionIterator(self.si);
+            llvm::LLVMDisposeSectionIterator(self.llsi);
         }
     }
 }
 
-pub fn section_iter_res(si: SectionIteratorRef) -> section_iter_res {
-    section_iter_res {
-        si: si
-    }
-}
-
-pub struct SectionIter {
-    pub llsi: SectionIteratorRef,
-    dtor: @section_iter_res
-}
-
 pub fn mk_section_iter(llof: ObjectFileRef) -> SectionIter {
     unsafe {
-        let llsi = llvm::LLVMGetSections(llof);
         SectionIter {
-            llsi: llsi,
-            dtor: @section_iter_res(llsi)
+            llsi: llvm::LLVMGetSections(llof)
         }
     }
 }

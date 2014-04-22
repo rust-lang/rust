@@ -254,7 +254,7 @@ impl<'a> Visitor<()> for EmbargoVisitor<'a> {
                     _ => true,
                 };
                 let tr = ty::impl_trait_ref(self.tcx, local_def(item.id));
-                let public_trait = tr.map_or(false, |tr| {
+                let public_trait = tr.clone().map_or(false, |tr| {
                     !is_local(tr.def_id) ||
                      self.exported_items.contains(&tr.def_id.node)
                 });
@@ -337,7 +337,6 @@ struct PrivacyVisitor<'a> {
     curitem: ast::NodeId,
     in_fn: bool,
     in_foreign: bool,
-    method_map: &'a MethodMap,
     parents: NodeMap<ast::NodeId>,
     external_exports: resolve::ExternalExports,
     last_private_map: resolve::LastPrivateMap,
@@ -775,8 +774,7 @@ impl<'a> Visitor<()> for PrivacyVisitor<'a> {
     fn visit_expr(&mut self, expr: &ast::Expr, _: ()) {
         match expr.node {
             ast::ExprField(base, ident, _) => {
-                match ty::get(ty::expr_ty_adjusted(self.tcx, base,
-                                                   &*self.method_map.borrow())).sty {
+                match ty::get(ty::expr_ty_adjusted(self.tcx, base)).sty {
                     ty::ty_struct(id, _) => {
                         self.check_field(expr.span, id, NamedField(ident));
                     }
@@ -785,7 +783,7 @@ impl<'a> Visitor<()> for PrivacyVisitor<'a> {
             }
             ast::ExprMethodCall(ident, _, _) => {
                 let method_call = MethodCall::expr(expr.id);
-                match self.method_map.borrow().find(&method_call) {
+                match self.tcx.method_map.borrow().find(&method_call) {
                     None => {
                         self.tcx.sess.span_bug(expr.span,
                                                 "method call not in \
@@ -1404,7 +1402,6 @@ impl<'a> Visitor<()> for VisiblePrivateTypesVisitor<'a> {
 }
 
 pub fn check_crate(tcx: &ty::ctxt,
-                   method_map: &MethodMap,
                    exp_map2: &resolve::ExportMap2,
                    external_exports: resolve::ExternalExports,
                    last_private_map: resolve::LastPrivateMap,
@@ -1423,7 +1420,6 @@ pub fn check_crate(tcx: &ty::ctxt,
         in_foreign: false,
         tcx: tcx,
         parents: visitor.parents,
-        method_map: method_map,
         external_exports: external_exports,
         last_private_map: last_private_map,
     };

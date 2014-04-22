@@ -29,16 +29,15 @@ pub struct freevar_entry {
     pub def: ast::Def, //< The variable being accessed free.
     pub span: Span     //< First span where it is accessed (there can be multiple)
 }
-pub type freevar_info = @Vec<@freevar_entry> ;
-pub type freevar_map = NodeMap<freevar_info>;
+pub type freevar_map = NodeMap<Vec<freevar_entry>>;
 
-struct CollectFreevarsVisitor {
+struct CollectFreevarsVisitor<'a> {
     seen: NodeSet,
-    refs: Vec<@freevar_entry> ,
-    def_map: resolve::DefMap,
+    refs: Vec<freevar_entry>,
+    def_map: &'a resolve::DefMap,
 }
 
-impl Visitor<int> for CollectFreevarsVisitor {
+impl<'a> Visitor<int> for CollectFreevarsVisitor<'a> {
 
     fn visit_item(&mut self, _: &ast::Item, _: int) {
         // ignore_item
@@ -65,7 +64,7 @@ impl Visitor<int> for CollectFreevarsVisitor {
                         if i == depth { // Made it to end of loop
                             let dnum = ast_util::def_id_of_def(def).node;
                             if !self.seen.contains(&dnum) {
-                                self.refs.push(@freevar_entry {
+                                self.refs.push(freevar_entry {
                                     def: def,
                                     span: expr.span,
                                 });
@@ -87,30 +86,23 @@ impl Visitor<int> for CollectFreevarsVisitor {
 // Since we want to be able to collect upvars in some arbitrary piece
 // of the AST, we take a walker function that we invoke with a visitor
 // in order to start the search.
-fn collect_freevars(def_map: resolve::DefMap, blk: &ast::Block) -> freevar_info {
-    let seen = NodeSet::new();
-    let refs = Vec::new();
-
+fn collect_freevars(def_map: &resolve::DefMap, blk: &ast::Block) -> Vec<freevar_entry> {
     let mut v = CollectFreevarsVisitor {
-        seen: seen,
-        refs: refs,
+        seen: NodeSet::new(),
+        refs: Vec::new(),
         def_map: def_map,
     };
 
     v.visit_block(blk, 1);
-    let CollectFreevarsVisitor {
-        refs,
-        ..
-    } = v;
-    return @refs;
+    v.refs
 }
 
-struct AnnotateFreevarsVisitor {
-    def_map: resolve::DefMap,
+struct AnnotateFreevarsVisitor<'a> {
+    def_map: &'a resolve::DefMap,
     freevars: freevar_map,
 }
 
-impl Visitor<()> for AnnotateFreevarsVisitor {
+impl<'a> Visitor<()> for AnnotateFreevarsVisitor<'a> {
     fn visit_fn(&mut self, fk: &visit::FnKind, fd: &ast::FnDecl,
                 blk: &ast::Block, s: Span, nid: ast::NodeId, _: ()) {
         let vars = collect_freevars(self.def_map, blk);
@@ -124,7 +116,7 @@ impl Visitor<()> for AnnotateFreevarsVisitor {
 // efficient as it fully recomputes the free variables at every
 // node of interest rather than building up the free variables in
 // one pass. This could be improved upon if it turns out to matter.
-pub fn annotate_freevars(def_map: resolve::DefMap, krate: &ast::Crate) ->
+pub fn annotate_freevars(def_map: &resolve::DefMap, krate: &ast::Crate) ->
    freevar_map {
     let mut visitor = AnnotateFreevarsVisitor {
         def_map: def_map,
@@ -132,16 +124,12 @@ pub fn annotate_freevars(def_map: resolve::DefMap, krate: &ast::Crate) ->
     };
     visit::walk_crate(&mut visitor, krate, ());
 
-    let AnnotateFreevarsVisitor {
-        freevars,
-        ..
-    } = visitor;
-    freevars
+    visitor.freevars
 }
 
-pub fn get_freevars(tcx: &ty::ctxt, fid: ast::NodeId) -> freevar_info {
+pub fn with_freevars<T>(tcx: &ty::ctxt, fid: ast::NodeId, f: |&[freevar_entry]| -> T) -> T {
     match tcx.freevars.borrow().find(&fid) {
-        None => fail!("get_freevars: {} has no freevars", fid),
-        Some(&d) => return d
+        None => fail!("with_freevars: {} has no freevars", fid),
+        Some(d) => f(d.as_slice())
     }
 }

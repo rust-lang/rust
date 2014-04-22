@@ -34,7 +34,7 @@ pub fn root_and_write_guard<'a, K:KindOps>(datum: &Datum<K>,
     //
     // (Note: root'd values are always boxes)
     let ccx = bcx.ccx();
-    match ccx.maps.root_map.borrow().find(&key) {
+    match ccx.maps.root_map.find(&key) {
         None => bcx,
         Some(&root_info) => root(datum, bcx, span, key, root_info)
     }

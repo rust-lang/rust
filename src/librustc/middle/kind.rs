@@ -47,7 +47,6 @@ use syntax::visit::Visitor;
 #[deriving(Clone)]
 pub struct Context<'a> {
     tcx: &'a ty::ctxt,
-    method_map: typeck::MethodMap,
 }
 
 impl<'a> Visitor<()> for Context<'a> {
@@ -70,11 +69,9 @@ impl<'a> Visitor<()> for Context<'a> {
 }
 
 pub fn check_crate(tcx: &ty::ctxt,
-                   method_map: typeck::MethodMap,
                    krate: &Crate) {
     let mut ctx = Context {
         tcx: tcx,
-        method_map: method_map,
     };
     visit::walk_crate(&mut ctx, krate, ());
     tcx.sess.abort_if_errors();
@@ -115,9 +112,9 @@ fn check_impl_of_trait(cx: &mut Context, it: &Item, trait_ref: &TraitRef, self_t
                               .find(&trait_ref.ref_id)
                               .expect("trait ref not in def map!");
     let trait_def_id = ast_util::def_id_of_def(ast_trait_def);
-    let trait_def = *cx.tcx.trait_defs.borrow()
-                           .find(&trait_def_id)
-                           .expect("trait def not in trait-defs map!");
+    let trait_def = cx.tcx.trait_defs.borrow()
+                          .find_copy(&trait_def_id)
+                          .expect("trait def not in trait-defs map!");
 
     // If this trait has builtin-kind supertraits, meet them.
     let self_ty: ty::t = ty::node_id_to_type(cx.tcx, it.id);
@@ -166,7 +163,7 @@ fn check_item(cx: &mut Context, item: &Item) {
 // closure.
 fn with_appropriate_checker(cx: &Context,
                             id: NodeId,
-                            b: |checker: |&Context, @freevar_entry||) {
+                            b: |checker: |&Context, &freevar_entry||) {
     fn check_for_uniq(cx: &Context, fv: &freevar_entry, bounds: ty::BuiltinBounds) {
         // all captured data must be owned, regardless of whether it is
         // moved in or copied in.
@@ -187,7 +184,7 @@ fn with_appropriate_checker(cx: &Context,
                              bounds, Some(var_t));
     }
 
-    fn check_for_bare(cx: &Context, fv: @freevar_entry) {
+    fn check_for_bare(cx: &Context, fv: &freevar_entry) {
         cx.tcx.sess.span_err(
             fv.span,
             "can't capture dynamic environment in a fn item; \
@@ -226,10 +223,11 @@ fn check_fn(
 
     // Check kinds on free variables:
     with_appropriate_checker(cx, fn_id, |chk| {
-        let r = freevars::get_freevars(cx.tcx, fn_id);
-        for fv in r.iter() {
-            chk(cx, *fv);
-        }
+        freevars::with_freevars(cx.tcx, fn_id, |r| {
+            for fv in r.iter() {
+                chk(cx, fv);
+            }
+        })
     });
 
     visit::walk_fn(cx, fk, decl, body, sp, fn_id, ());
@@ -240,7 +238,7 @@ pub fn check_expr(cx: &mut Context, e: &Expr) {
 
     // Handle any kind bounds on type parameters
     {
-        let method_map = cx.method_map.borrow();
+        let method_map = cx.tcx.method_map.borrow();
         let method = method_map.find(&typeck::MethodCall::expr(e.id));
         let node_type_substs = cx.tcx.node_type_substs.borrow();
         let r = match method {
@@ -309,11 +307,10 @@ pub fn check_expr(cx: &mut Context, e: &Expr) {
     // Search for auto-adjustments to find trait coercions.
     match cx.tcx.adjustments.borrow().find(&e.id) {
         Some(adjustment) => {
-            match **adjustment {
+            match *adjustment {
                 ty::AutoObject(..) => {
                     let source_ty = ty::expr_ty(cx.tcx, e);
-                    let target_ty = ty::expr_ty_adjusted(cx.tcx, e,
-                                                         &*cx.method_map.borrow());
+                    let target_ty = ty::expr_ty_adjusted(cx.tcx, e);
                     check_trait_cast(cx, source_ty, target_ty, e.span);
                 }
                 ty::AutoAddEnv(..) |
