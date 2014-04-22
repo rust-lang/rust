@@ -632,7 +632,7 @@ impl<'a> RandomAccessIterator<bool> for Bits<'a> {
     }
 
     #[inline]
-    fn idx(&self, index: uint) -> Option<bool> {
+    fn idx(&mut self, index: uint) -> Option<bool> {
         if index >= self.indexable() {
             None
         } else {
