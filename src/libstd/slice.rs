@@ -489,7 +489,7 @@ impl<'a, T> RandomAccessIterator<&'a [T]> for Chunks<'a, T> {
     }
 
     #[inline]
-    fn idx(&self, index: uint) -> Option<&'a [T]> {
+    fn idx(&mut self, index: uint) -> Option<&'a [T]> {
         if index < self.indexable() {
             let lo = index * self.size;
             let mut hi = lo + self.size;
@@ -2095,7 +2095,7 @@ impl<'a, T> RandomAccessIterator<&'a T> for Items<'a, T> {
     }
 
     #[inline]
-    fn idx(&self, index: uint) -> Option<&'a T> {
+    fn idx(&mut self, index: uint) -> Option<&'a T> {
         unsafe {
             if index < self.indexable() {
                 transmute(self.ptr.offset(index as int))

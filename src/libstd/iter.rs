@@ -703,7 +703,7 @@ pub trait RandomAccessIterator<A>: Iterator<A> {
     fn indexable(&self) -> uint;
 
     /// Return an element at an index
-    fn idx(&self, index: uint) -> Option<A>;
+    fn idx(&mut self, index: uint) -> Option<A>;
 }
 
 /// An iterator that knows its exact length
@@ -771,8 +771,9 @@ impl<A, T: DoubleEndedIterator<A> + RandomAccessIterator<A>> RandomAccessIterato
     #[inline]
     fn indexable(&self) -> uint { self.iter.indexable() }
     #[inline]
-    fn idx(&self, index: uint) -> Option<A> {
-        self.iter.idx(self.indexable() - index - 1)
+    fn idx(&mut self, index: uint) -> Option<A> {
+        let amt = self.indexable();
+        self.iter.idx(amt - index - 1)
     }
 }
 
@@ -1071,7 +1072,7 @@ impl<A, T: Clone + RandomAccessIterator<A>> RandomAccessIterator<A> for Cycle<T>
     }
 
     #[inline]
-    fn idx(&self, index: uint) -> Option<A> {
+    fn idx(&mut self, index: uint) -> Option<A> {
         let liter = self.iter.indexable();
         let lorig = self.orig.indexable();
         if lorig == 0 {
@@ -1143,7 +1144,7 @@ for Chain<T, U> {
     }
 
     #[inline]
-    fn idx(&self, index: uint) -> Option<A> {
+    fn idx(&mut self, index: uint) -> Option<A> {
         let len = self.a.indexable();
         if index < len {
             self.a.idx(index)
@@ -1221,7 +1222,7 @@ RandomAccessIterator<(A, B)> for Zip<T, U> {
     }
 
     #[inline]
-    fn idx(&self, index: uint) -> Option<(A, B)> {
+    fn idx(&mut self, index: uint) -> Option<(A, B)> {
         match self.a.idx(index) {
             None => None,
             Some(x) => match self.b.idx(index) {
@@ -1276,8 +1277,9 @@ impl<'a, A, B, T: RandomAccessIterator<A>> RandomAccessIterator<B> for Map<'a, A
     }
 
     #[inline]
-    fn idx(&self, index: uint) -> Option<B> {
-        self.do_map(self.iter.idx(index))
+    fn idx(&mut self, index: uint) -> Option<B> {
+        let elt = self.iter.idx(index);
+        self.do_map(elt)
     }
 }
 
@@ -1415,7 +1417,7 @@ impl<A, T: RandomAccessIterator<A>> RandomAccessIterator<(uint, A)> for Enumerat
     }
 
     #[inline]
-    fn idx(&self, index: uint) -> Option<(uint, A)> {
+    fn idx(&mut self, index: uint) -> Option<(uint, A)> {
         match self.iter.idx(index) {
             Some(a) => Some((self.count + index, a)),
             _ => None,
@@ -1600,7 +1602,7 @@ impl<A, T: RandomAccessIterator<A>> RandomAccessIterator<A> for Skip<T> {
     }
 
     #[inline]
-    fn idx(&self, index: uint) -> Option<A> {
+    fn idx(&mut self, index: uint) -> Option<A> {
         if index >= self.indexable() {
             None
         } else {
@@ -1649,7 +1651,7 @@ impl<A, T: RandomAccessIterator<A>> RandomAccessIterator<A> for Take<T> {
     }
 
     #[inline]
-    fn idx(&self, index: uint) -> Option<A> {
+    fn idx(&mut self, index: uint) -> Option<A> {
         if index >= self.n {
             None
         } else {
@@ -1799,7 +1801,7 @@ impl<A, T: RandomAccessIterator<A>> RandomAccessIterator<A> for Fuse<T> {
     }
 
     #[inline]
-    fn idx(&self, index: uint) -> Option<A> {
+    fn idx(&mut self, index: uint) -> Option<A> {
         self.iter.idx(index)
     }
 }
@@ -1862,8 +1864,9 @@ for Inspect<'a, A, T> {
     }
 
     #[inline]
-    fn idx(&self, index: uint) -> Option<A> {
-        self.do_inspect(self.iter.idx(index))
+    fn idx(&mut self, index: uint) -> Option<A> {
+        let element = self.iter.idx(index);
+        self.do_inspect(element)
     }
 }
 
@@ -2164,7 +2167,7 @@ impl<A: Clone> RandomAccessIterator<A> for Repeat<A> {
     #[inline]
     fn indexable(&self) -> uint { uint::MAX }
     #[inline]
-    fn idx(&self, _: uint) -> Option<A> { Some(self.element.clone()) }
+    fn idx(&mut self, _: uint) -> Option<A> { Some(self.element.clone()) }
 }
 
 /// Functions for lexicographical ordering of sequences.
