@@ -37,7 +37,9 @@ pub fn expand_deriving_totalord(cx: &mut ExtCtxt,
                 ret_ty: Literal(Path::new(vec!("std", "cmp", "Ordering"))),
                 inline: true,
                 const_nonmatching: false,
-                combine_substructure: cs_cmp
+                combine_substructure: combine_substructure(|a, b, c| {
+                    cs_cmp(a, b, c)
+                }),
             }
         )
     };

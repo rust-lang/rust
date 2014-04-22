@@ -1241,7 +1241,7 @@ pub struct Map<'a, A, B, T> {
 
 impl<'a, A, B, T> Map<'a, A, B, T> {
     #[inline]
-    fn do_map(&self, elt: Option<A>) -> Option<B> {
+    fn do_map(&mut self, elt: Option<A>) -> Option<B> {
         match elt {
             Some(a) => Some((self.f)(a)),
             _ => None
@@ -1824,7 +1824,7 @@ pub struct Inspect<'a, A, T> {
 
 impl<'a, A, T> Inspect<'a, A, T> {
     #[inline]
-    fn do_inspect(&self, elt: Option<A>) -> Option<A> {
+    fn do_inspect(&mut self, elt: Option<A>) -> Option<A> {
         match elt {
             Some(ref a) => (self.f)(a),
             None => ()
@@ -2910,7 +2910,7 @@ mod tests {
         let xs = [1, 2, 3, 4, 5];
 
         // test .map and .inspect that don't implement Clone
-        let it = xs.iter().inspect(|_| {});
+        let mut it = xs.iter().inspect(|_| {});
         assert_eq!(xs.len(), it.indexable());
         for (i, elt) in xs.iter().enumerate() {
             assert_eq!(Some(elt), it.idx(i));
@@ -2922,7 +2922,7 @@ mod tests {
     fn test_random_access_map() {
         let xs = [1, 2, 3, 4, 5];
 
-        let it = xs.iter().map(|x| *x);
+        let mut it = xs.iter().map(|x| *x);
         assert_eq!(xs.len(), it.indexable());
         for (i, elt) in xs.iter().enumerate() {
             assert_eq!(Some(*elt), it.idx(i));
