@@ -41,6 +41,7 @@ use std::cast;
 use std::container::Container;
 use std::hash::Hash;
 use std::fmt;
+use std::mem;
 use std::ptr;
 
 use HashMap;
@@ -48,10 +49,10 @@ use HashMap;
 struct KeyRef<K> { k: *K }
 
 struct LruEntry<K, V> {
-    key: Option<K>,
-    value: Option<V>,
     next: *mut LruEntry<K, V>,
     prev: *mut LruEntry<K, V>,
+    key: K,
+    value: V,
 }
 
 /// An LRU Cache.
@@ -59,7 +60,6 @@ pub struct LruCache<K, V> {
     map: HashMap<KeyRef<K>, ~LruEntry<K, V>>,
     max_size: uint,
     head: *mut LruEntry<K, V>,
-    tail: *mut LruEntry<K, V>,
 }
 
 impl<S, K: Hash<S>> Hash<S> for KeyRef<K> {
@@ -77,19 +77,10 @@ impl<K: Eq> Eq for KeyRef<K> {
 impl<K: TotalEq> TotalEq for KeyRef<K> {}
 
 impl<K, V> LruEntry<K, V> {
-    fn new() -> LruEntry<K, V> {
+    fn new(k: K, v: V) -> LruEntry<K, V> {
         LruEntry {
-            key: None,
-            value: None,
-            next: ptr::mut_null(),
-            prev: ptr::mut_null(),
-        }
-    }
-
-    fn with_key_value(k: K, v: V) -> LruEntry<K, V> {
-        LruEntry {
-            key: Some(k),
-            value: Some(v),
+            key: k,
+            value: v,
             next: ptr::mut_null(),
             prev: ptr::mut_null(),
         }
@@ -102,41 +93,42 @@ impl<K: Hash + TotalEq, V> LruCache<K, V> {
         let cache = LruCache {
             map: HashMap::new(),
             max_size: capacity,
-            head: unsafe{ cast::transmute(~LruEntry::<K, V>::new()) },
-            tail: unsafe{ cast::transmute(~LruEntry::<K, V>::new()) },
+            head: unsafe{ cast::transmute(~mem::uninit::<LruEntry<K, V>>()) },
         };
         unsafe {
-            (*cache.head).next = cache.tail;
-            (*cache.tail).prev = cache.head;
+            (*cache.head).next = cache.head;
+            (*cache.head).prev = cache.head;
         }
         return cache;
     }
 
     /// Put a key-value pair into cache.
     pub fn put(&mut self, k: K, v: V) {
-        let mut key_existed = false;
         let (node_ptr, node_opt) = match self.map.find_mut(&KeyRef{k: &k}) {
             Some(node) => {
-                key_existed = true;
-                node.value = Some(v);
+                node.value = v;
                 let node_ptr: *mut LruEntry<K, V> = &mut **node;
                 (node_ptr, None)
             }
             None => {
-                let mut node = ~LruEntry::with_key_value(k, v);
+                let mut node = ~LruEntry::new(k, v);
                 let node_ptr: *mut LruEntry<K, V> = &mut *node;
                 (node_ptr, Some(node))
             }
         };
-        if key_existed {
-            self.detach(node_ptr);
-            self.attach(node_ptr);
-        } else {
-            let keyref = unsafe { (*node_ptr).key.as_ref().unwrap() };
-            self.map.swap(KeyRef{k: keyref}, node_opt.unwrap());
-            self.attach(node_ptr);
-            if self.len() > self.capacity() {
-                self.remove_lru();
+        match node_opt {
+            None => {
+                // Existing node, just update LRU position
+                self.detach(node_ptr);
+                self.attach(node_ptr);
+            }
+            Some(node) => {
+                let keyref = unsafe { &(*node_ptr).key };
+                self.map.swap(KeyRef{k: keyref}, node);
+                self.attach(node_ptr);
+                if self.len() > self.capacity() {
+                    self.remove_lru();
+                }
             }
         }
     }
@@ -147,12 +139,7 @@ impl<K: Hash + TotalEq, V> LruCache<K, V> {
             None => (None, None),
             Some(node) => {
                 let node_ptr: *mut LruEntry<K, V> = &mut **node;
-                unsafe {
-                    match (*node_ptr).value {
-                        None => (None, None),
-                        Some(ref value) => (Some(value), Some(node_ptr))
-                    }
-                }
+                (Some(unsafe { &(*node_ptr).value }), Some(node_ptr))
             }
         };
         match node_ptr_opt {
@@ -169,7 +156,7 @@ impl<K: Hash + TotalEq, V> LruCache<K, V> {
     pub fn pop(&mut self, k: &K) -> Option<V> {
         match self.map.pop(&KeyRef{k: k}) {
             None => None,
-            Some(lru_entry) => lru_entry.value
+            Some(lru_entry) => Some(lru_entry.value)
         }
     }
 
@@ -190,14 +177,9 @@ impl<K: Hash + TotalEq, V> LruCache<K, V> {
     #[inline]
     fn remove_lru(&mut self) {
         if self.len() > 0 {
-            let lru = unsafe { (*self.tail).prev };
+            let lru = unsafe { (*self.head).prev };
             self.detach(lru);
-            unsafe {
-                match (*lru).key {
-                    None => (),
-                    Some(ref k) => { self.map.pop(&KeyRef{k: k}); }
-                }
-            }
+            self.map.pop(&KeyRef{k: unsafe { &(*lru).key }});
         }
     }
 
@@ -230,19 +212,11 @@ impl<A: fmt::Show + Hash + TotalEq, B: fmt::Show> fmt::Show for LruCache<A, B> {
             if i > 0 { try!(write!(f.buf, ", ")) }
             unsafe {
                 cur = (*cur).next;
-                match (*cur).key {
-                    // should never print nil
-                    None => try!(write!(f.buf, "nil")),
-                    Some(ref k) => try!(write!(f.buf, "{}", *k)),
-                }
+                try!(write!(f.buf, "{}", (*cur).key));
             }
             try!(write!(f.buf, ": "));
             unsafe {
-                match (*cur).value {
-                    // should never print nil
-                    None => try!(write!(f.buf, "nil")),
-                    Some(ref value) => try!(write!(f.buf, "{}", *value)),
-                }
+                try!(write!(f.buf, "{}", (*cur).value));
             }
         }
         write!(f.buf, r"\}")
@@ -267,8 +241,11 @@ impl<K: Hash + TotalEq, V> Mutable for LruCache<K, V> {
 impl<K, V> Drop for LruCache<K, V> {
     fn drop(&mut self) {
         unsafe {
-            let _: ~LruEntry<K, V> = cast::transmute(self.head);
-            let _: ~LruEntry<K, V> = cast::transmute(self.tail);
+            let node: ~LruEntry<K, V> = cast::transmute(self.head);
+            // Prevent compiler from trying to drop the un-initialized field in the sigil node.
+            let ~LruEntry { key: k, value: v, .. } = node;
+            cast::forget(k);
+            cast::forget(v);
         }
     }
 }
