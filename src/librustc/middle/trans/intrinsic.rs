@@ -328,7 +328,7 @@ pub fn trans_intrinsic(ccx: &CrateContext,
         "get_tydesc" => {
             let tp_ty = *substs.tys.get(0);
             let static_ti = get_tydesc(ccx, tp_ty);
-            glue::lazily_emit_visit_glue(ccx, static_ti);
+            glue::lazily_emit_visit_glue(ccx, &*static_ti);
 
             // FIXME (#3730): ideally this shouldn't need a cast,
             // but there's a circularity between translating rust types to llvm

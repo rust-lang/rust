@@ -399,17 +399,17 @@ pub fn malloc_raw_dyn_managed<'a>(
 
 // Type descriptor and type glue stuff
 
-pub fn get_tydesc(ccx: &CrateContext, t: ty::t) -> @tydesc_info {
+pub fn get_tydesc(ccx: &CrateContext, t: ty::t) -> Rc<tydesc_info> {
     match ccx.tydescs.borrow().find(&t) {
-        Some(&inf) => return inf,
+        Some(inf) => return inf.clone(),
         _ => { }
     }
 
     ccx.stats.n_static_tydescs.set(ccx.stats.n_static_tydescs.get() + 1u);
-    let inf = glue::declare_tydesc(ccx, t);
+    let inf = Rc::new(glue::declare_tydesc(ccx, t));
 
-    ccx.tydescs.borrow_mut().insert(t, inf);
-    return inf;
+    ccx.tydescs.borrow_mut().insert(t, inf.clone());
+    inf
 }
 
 #[allow(dead_code)] // useful

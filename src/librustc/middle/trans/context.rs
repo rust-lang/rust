@@ -64,7 +64,7 @@ pub struct CrateContext {
     pub item_symbols: RefCell<NodeMap<~str>>,
     pub link_meta: LinkMeta,
     pub drop_glues: RefCell<HashMap<ty::t, ValueRef>>,
-    pub tydescs: RefCell<HashMap<ty::t, @tydesc_info>>,
+    pub tydescs: RefCell<HashMap<ty::t, Rc<tydesc_info>>>,
     /// Set when running emit_tydescs to enforce that no more tydescs are
     /// created.
     pub finished_tydescs: Cell<bool>,
