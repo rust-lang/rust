@@ -33,6 +33,7 @@ impl TempDir {
     /// deleted once the returned wrapper is destroyed.
     ///
     /// If no directory can be created, None is returned.
+    #[allow(unused_unsafe)] // NOTE: Remove after next snapshot (and the unsafe block)
     pub fn new_in(tmpdir: &Path, suffix: &str) -> Option<TempDir> {
         if !tmpdir.is_absolute() {
             return TempDir::new_in(&os::make_absolute(tmpdir), suffix);

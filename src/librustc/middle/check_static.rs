@@ -22,7 +22,12 @@
 //
 // Rules Enforced Elsewhere:
 // - It's not possible to take the address of a static item with unsafe interior. This is enforced
-// by borrowck::gather_loans
+// by `rustc::middle::borrowck::gather_loans`
+//
+// Mutable static items:
+// In general, it's not allowed to access mutable static items outside an unsafe block. However,
+// taking an immutable address of a mutable static items whose type implements `Share` is considered
+// a safe operation. This is enforced by `rustc::middle::effect`
 
 use middle::ty;
 
