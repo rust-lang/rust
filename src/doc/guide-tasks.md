@@ -456,7 +456,7 @@ an `Error` result.
 
 [`Result`]: std/result/index.html
 
-> ***Note:*** A failed task does not currently produce a useful error
+> *Note:* A failed task does not currently produce a useful error
 > value (`try` always returns `Err(())`). In the
 > future, it may be possible for tasks to intercept the value passed to
 > `fail!()`.
