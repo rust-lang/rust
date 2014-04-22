@@ -63,7 +63,7 @@ impl Visitor<()> for ParentVisitor {
         let prev = self.curparent;
         match item.node {
             ast::ItemMod(..) => { self.curparent = item.id; }
-            // Enum variants are parented to the enum definition itself beacuse
+            // Enum variants are parented to the enum definition itself because
             // they inherit privacy
             ast::ItemEnum(ref def, _) => {
                 for variant in def.variants.iter() {
@@ -1034,7 +1034,7 @@ impl<'a> Visitor<()> for SanePrivacyVisitor<'a> {
 }
 
 impl<'a> SanePrivacyVisitor<'a> {
-    /// Validates all of the visibility qualifers placed on the item given. This
+    /// Validates all of the visibility qualifiers placed on the item given. This
     /// ensures that there are no extraneous qualifiers that don't actually do
     /// anything. In theory these qualifiers wouldn't parse, but that may happen
     /// later on down the road...
@@ -1262,7 +1262,7 @@ impl<'a> Visitor<()> for VisiblePrivateTypesVisitor<'a> {
                     self_is_public_path = visitor.outer_type_is_public_path;
                 }
 
-                // miscellanous info about the impl
+                // miscellaneous info about the impl
 
                 // `true` iff this is `impl Private for ...`.
                 let not_private_trait =

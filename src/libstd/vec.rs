@@ -135,7 +135,7 @@ impl<T> Vec<T> {
         Vec { len: length, cap: capacity, ptr: ptr }
     }
 
-    /// Consumes the `Vec`, partitioning it based on a predcate.
+    /// Consumes the `Vec`, partitioning it based on a predicate.
     ///
     /// Partitions the `Vec` into two `Vec`s `(A,B)`, where all elements of `A`
     /// satisfy `f` and all elements of `B` do not. The order of elements is
@@ -279,7 +279,7 @@ impl<T: Clone> Vec<T> {
         *self.get_mut(index) = value;
     }
 
-    /// Partitions a vector based on a predcate.
+    /// Partitions a vector based on a predicate.
     ///
     /// Clones the elements of the vector, partitioning them into two `Vec`s
     /// `(A,B)`, where all elements of `A` satisfy `f` and all elements of `B`

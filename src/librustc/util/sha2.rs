@@ -146,14 +146,14 @@ impl FixedBuffer for FixedBuffer64 {
             }
         }
 
-        // While we have at least a full buffer size chunks's worth of data, process that data
+        // While we have at least a full buffer size chunk's worth of data, process that data
         // without copying it into the buffer
         while input.len() - i >= size {
             func(input.slice(i, i + size));
             i += size;
         }
 
-        // Copy any input data into the buffer. At this point in the method, the ammount of
+        // Copy any input data into the buffer. At this point in the method, the amount of
         // data left in the input vector will be less than the buffer size and the buffer will
         // be empty.
         let input_remaining = input.len() - i;

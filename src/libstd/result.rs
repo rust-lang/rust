@@ -103,7 +103,7 @@
 //! ~~~
 //!
 //! *Note: The actual definition of `Writer` uses `IoResult`, which
-//! is just a synonymn for `Result<T, IoError>`.*
+//! is just a synonym for `Result<T, IoError>`.*
 //!
 //! This method doesn`t produce a value, but the write may
 //! fail. It's crucial to handle the error case, and *not* write
@@ -255,7 +255,7 @@
 //! handling requires encapsulating fallable code in a task. Calling
 //! the `fail!` macro, or invoking `fail!` indirectly should be
 //! avoided as an error reporting strategy. Failure is only for
-//! unrecovereable errors and a failing task is typically the sign of
+//! unrecoverable errors and a failing task is typically the sign of
 //! a bug.
 //!
 //! A module that instead returns `Results` is alerting the caller

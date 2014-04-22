@@ -662,7 +662,7 @@ impl<'a> Iterator<char> for Normalizations<'a> {
 ///
 /// # Return value
 ///
-/// The original string with all occurances of `from` replaced with `to`
+/// The original string with all occurrences of `from` replaced with `to`
 pub fn replace(s: &str, from: &str, to: &str) -> ~str {
     let mut result = StrBuf::new();
     let mut last_end = 0;
@@ -1443,7 +1443,7 @@ pub mod raw {
     /// Sets the length of a string
     ///
     /// This will explicitly set the size of the string, without actually
-    /// modifing its buffers, so it is up to the caller to ensure that
+    /// modifying its buffers, so it is up to the caller to ensure that
     /// the string is actually the specified size.
     #[test]
     fn test_from_buf_len() {
@@ -2022,7 +2022,7 @@ pub trait StrSlice<'a> {
     ///
     /// # Return value
     ///
-    /// The original string with all occurances of `from` replaced with `to`.
+    /// The original string with all occurrences of `from` replaced with `to`.
     ///
     /// # Example
     ///

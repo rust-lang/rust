@@ -2338,7 +2338,7 @@ pub fn is_instantiable(cx: &ctxt, r_ty: t) -> bool {
         let r = match get(ty).sty {
             // fixed length vectors need special treatment compared to
             // normal vectors, since they don't necessarily have the
-            // possibilty to have length zero.
+            // possibility to have length zero.
             ty_vec(_, Some(0)) => false, // don't need no contents
             ty_vec(mt, Some(_)) => type_requires(cx, seen, r_ty, mt.ty),
 

@@ -659,13 +659,13 @@ impl<K: fmt::Show + TotalOrd, V: fmt::Show> fmt::Show for Branch<K, V> {
     }
 }
 
-//A LeafElt containts no left child, but a key-value pair.
+//A LeafElt contains no left child, but a key-value pair.
 struct LeafElt<K, V> {
     key: K,
     value: V
 }
 
-//A BranchElt has a left child in insertition to a key-value pair.
+//A BranchElt has a left child in insertion to a key-value pair.
 struct BranchElt<K, V> {
     left: ~Node<K, V>,
     key: K,
