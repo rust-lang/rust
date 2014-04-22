@@ -16,7 +16,7 @@ use metadata::decoder::{DefLike, DlDef, DlField, DlImpl};
 use middle::lang_items::LanguageItems;
 use middle::lint::{UnnecessaryQualification, UnusedImports};
 use middle::pat_util::pat_bindings;
-use util::nodemap::{NodeMap, DefIdSet};
+use util::nodemap::{NodeMap, DefIdSet, FnvHashSet};
 
 use syntax::ast::*;
 use syntax::ast;
@@ -38,7 +38,7 @@ use std::strbuf::StrBuf;
 use std::uint;
 
 // Definition mapping
-pub type DefMap = @RefCell<NodeMap<Def>>;
+pub type DefMap = RefCell<NodeMap<Def>>;
 
 struct binding_info {
     span: Span,
@@ -53,7 +53,7 @@ pub type TraitMap = NodeMap<Vec<DefId> >;
 
 // This is the replacement export map. It maps a module to all of the exports
 // within.
-pub type ExportMap2 = @RefCell<NodeMap<Vec<Export2> >>;
+pub type ExportMap2 = RefCell<NodeMap<Vec<Export2> >>;
 
 pub struct Export2 {
     pub name: ~str,        // The name of the target.
@@ -821,15 +821,15 @@ fn Resolver<'a>(session: &'a Session,
 
         graph_root: graph_root,
 
-        method_map: @RefCell::new(HashMap::new()),
+        method_set: RefCell::new(FnvHashSet::new()),
         structs: HashSet::new(),
 
         unresolved_imports: 0,
 
         current_module: current_module,
-        value_ribs: @RefCell::new(Vec::new()),
-        type_ribs: @RefCell::new(Vec::new()),
-        label_ribs: @RefCell::new(Vec::new()),
+        value_ribs: RefCell::new(Vec::new()),
+        type_ribs: RefCell::new(Vec::new()),
+        label_ribs: RefCell::new(Vec::new()),
 
         current_trait_refs: None,
 
@@ -840,8 +840,8 @@ fn Resolver<'a>(session: &'a Session,
 
         namespaces: vec!(TypeNS, ValueNS),
 
-        def_map: @RefCell::new(NodeMap::new()),
-        export_map2: @RefCell::new(NodeMap::new()),
+        def_map: RefCell::new(NodeMap::new()),
+        export_map2: RefCell::new(NodeMap::new()),
         trait_map: NodeMap::new(),
         used_imports: HashSet::new(),
         external_exports: DefIdSet::new(),
@@ -860,7 +860,7 @@ struct Resolver<'a> {
 
     graph_root: @NameBindings,
 
-    method_map: @RefCell<HashMap<Name, HashSet<DefId>>>,
+    method_set: RefCell<FnvHashSet<(Name, DefId)>>,
     structs: HashSet<DefId>,
 
     // The number of imports that are currently unresolved.
@@ -871,13 +871,13 @@ struct Resolver<'a> {
 
     // The current set of local scopes, for values.
     // FIXME #4948: Reuse ribs to avoid allocation.
-    value_ribs: @RefCell<Vec<@Rib> >,
+    value_ribs: RefCell<Vec<@Rib>>,
 
     // The current set of local scopes, for types.
-    type_ribs: @RefCell<Vec<@Rib> >,
+    type_ribs: RefCell<Vec<@Rib>>,
 
     // The current set of local scopes, for labels.
-    label_ribs: @RefCell<Vec<@Rib> >,
+    label_ribs: RefCell<Vec<@Rib>>,
 
     // The trait that the current context can refer to.
     current_trait_refs: Option<Vec<DefId> >,
@@ -1003,13 +1003,13 @@ impl<'a> Resolver<'a> {
      * If this node does not have a module definition and we are not inside
      * a block, fails.
      */
-    fn add_child(&mut self,
-                     name: Ident,
-                     reduced_graph_parent: ReducedGraphParent,
-                     duplicate_checking_mode: DuplicateCheckingMode,
-                     // For printing errors
-                     sp: Span)
-                     -> (@NameBindings, ReducedGraphParent) {
+    fn add_child(&self,
+                 name: Ident,
+                 reduced_graph_parent: ReducedGraphParent,
+                 duplicate_checking_mode: DuplicateCheckingMode,
+                 // For printing errors
+                 sp: Span)
+                 -> (@NameBindings, ReducedGraphParent) {
         // If this is the immediate descendant of a module, then we add the
         // child name directly. Otherwise, we create or reuse an anonymous
         // module and add the child to that.
@@ -1358,8 +1358,9 @@ impl<'a> Resolver<'a> {
                 let module_parent = ModuleReducedGraphParent(name_bindings.
                                                              get_module());
 
+                let def_id = local_def(item.id);
+
                 // Add the names of all the methods to the trait info.
-                let mut method_names = HashMap::new();
                 for method in methods.iter() {
                     let ty_m = trait_method_to_ty_method(method);
 
@@ -1388,23 +1389,8 @@ impl<'a> Resolver<'a> {
                     method_name_bindings.define_value(def, ty_m.span, true);
 
                     // Add it to the trait info if not static.
-                    match ty_m.explicit_self.node {
-                        SelfStatic => {}
-                        _ => {
-                            method_names.insert(ident.name, ());
-                        }
-                    }
-                }
-
-                let def_id = local_def(item.id);
-                for (name, _) in method_names.iter() {
-                    let mut method_map = self.method_map.borrow_mut();
-                    if !method_map.contains_key(name) {
-                        method_map.insert(*name, HashSet::new());
-                    }
-                    match method_map.find_mut(name) {
-                        Some(s) => { s.insert(def_id); },
-                        _ => fail!("can't happen"),
+                    if ty_m.explicit_self.node != SelfStatic {
+                        self.method_set.borrow_mut().insert((ident.name, def_id));
                     }
                 }
 
@@ -1685,7 +1671,6 @@ impl<'a> Resolver<'a> {
 
               let method_def_ids =
                 csearch::get_trait_method_def_ids(&self.session.cstore, def_id);
-              let mut interned_method_names = HashSet::new();
               for &method_def_id in method_def_ids.iter() {
                   let (method_name, explicit_self) =
                       csearch::get_method_name_and_explicit_self(&self.session.cstore,
@@ -1698,20 +1683,10 @@ impl<'a> Resolver<'a> {
 
                   // Add it to the trait info if not static.
                   if explicit_self != SelfStatic {
-                      interned_method_names.insert(method_name.name);
+                      self.method_set.borrow_mut().insert((method_name.name, def_id));
                   }
                   if is_exported {
                       self.external_exports.insert(method_def_id);
-                  }
-              }
-              for name in interned_method_names.iter() {
-                  let mut method_map = self.method_map.borrow_mut();
-                  if !method_map.contains_key(name) {
-                      method_map.insert(*name, HashSet::new());
-                  }
-                  match method_map.find_mut(name) {
-                      Some(s) => { s.insert(def_id); },
-                      _ => fail!("can't happen"),
                   }
               }
 
@@ -3444,12 +3419,12 @@ impl<'a> Resolver<'a> {
 
     /// Wraps the given definition in the appropriate number of `def_upvar`
     /// wrappers.
-    fn upvarify(&mut self,
-                    ribs: &mut Vec<@Rib> ,
-                    rib_index: uint,
-                    def_like: DefLike,
-                    span: Span)
-                    -> Option<DefLike> {
+    fn upvarify(&self,
+                ribs: &[@Rib],
+                rib_index: uint,
+                def_like: DefLike,
+                span: Span)
+                -> Option<DefLike> {
         let mut def;
         let is_ty_param;
 
@@ -3470,7 +3445,7 @@ impl<'a> Resolver<'a> {
 
         let mut rib_index = rib_index + 1;
         while rib_index < ribs.len() {
-            match ribs.get(rib_index).kind {
+            match ribs[rib_index].kind {
                 NormalRibKind => {
                     // Nothing to do. Continue.
                 }
@@ -3560,18 +3535,18 @@ impl<'a> Resolver<'a> {
         return Some(DlDef(def));
     }
 
-    fn search_ribs(&mut self,
-                       ribs: &mut Vec<@Rib> ,
-                       name: Name,
-                       span: Span)
-                       -> Option<DefLike> {
+    fn search_ribs(&self,
+                   ribs: &[@Rib],
+                   name: Name,
+                   span: Span)
+                   -> Option<DefLike> {
         // FIXME #4950: This should not use a while loop.
         // FIXME #4950: Try caching?
 
         let mut i = ribs.len();
         while i != 0 {
             i -= 1;
-            let binding_opt = ribs.get(i).bindings.borrow().find_copy(&name);
+            let binding_opt = ribs[i].bindings.borrow().find_copy(&name);
             match binding_opt {
                 Some(def_like) => {
                     return self.upvarify(ribs, i, def_like, span);
@@ -4095,7 +4070,7 @@ impl<'a> Resolver<'a> {
     // user and one 'x' came from the macro.
     fn binding_mode_map(&mut self, pat: @Pat) -> BindingMap {
         let mut result = HashMap::new();
-        pat_bindings(self.def_map, pat, |binding_mode, _id, sp, path| {
+        pat_bindings(&self.def_map, pat, |binding_mode, _id, sp, path| {
             let name = mtwt::resolve(path_to_ident(path));
             result.insert(name,
                           binding_info {span: sp,
@@ -4786,22 +4761,17 @@ impl<'a> Resolver<'a> {
         };
         match containing_module.kind.get() {
             TraitModuleKind | ImplModuleKind => {
-                match self.method_map.borrow().find(&ident.name) {
-                    Some(s) => {
-                        match containing_module.def_id.get() {
-                            Some(def_id) if s.contains(&def_id) => {
-                                debug!("containing module was a trait or impl \
-                                        and name was a method -> not resolved");
-                                return None;
-                            },
-                            _ => (),
-                        }
+                match containing_module.def_id.get() {
+                    Some(def_id) if self.method_set.borrow().contains(&(ident.name, def_id)) => {
+                        debug!("containing module was a trait or impl \
+                                and name was a method -> not resolved");
+                        return None;
                     },
-                    None => (),
+                    _ => (),
                 }
             },
             _ => (),
-        };
+        }
         return Some(def);
     }
 
@@ -4865,12 +4835,12 @@ impl<'a> Resolver<'a> {
         let search_result = match namespace {
             ValueNS => {
                 let renamed = mtwt::resolve(ident);
-                self.search_ribs(&mut *self.value_ribs.borrow_mut(),
+                self.search_ribs(self.value_ribs.borrow().as_slice(),
                                  renamed, span)
             }
             TypeNS => {
                 let name = ident.name;
-                self.search_ribs(&mut *self.type_ribs.borrow_mut(), name, span)
+                self.search_ribs(self.type_ribs.borrow().as_slice(), name, span)
             }
         };
 
@@ -4936,7 +4906,7 @@ impl<'a> Resolver<'a> {
         rs
     }
 
-    fn resolve_error(&mut self, span: Span, s: &str) {
+    fn resolve_error(&self, span: Span, s: &str) {
         if self.emit_errors {
             self.session.span_err(span, s);
         }
@@ -5115,9 +5085,9 @@ impl<'a> Resolver<'a> {
             ExprForLoop(..) => fail!("non-desugared expr_for_loop"),
 
             ExprBreak(Some(label)) | ExprAgain(Some(label)) => {
-                let mut label_ribs = self.label_ribs.borrow_mut();
                 let renamed = mtwt::resolve(label);
-                match self.search_ribs(&mut *label_ribs, renamed, expr.span) {
+                match self.search_ribs(self.label_ribs.borrow().as_slice(),
+                                       renamed, expr.span) {
                     None =>
                         self.resolve_error(expr.span,
                                               format!("use of undeclared label `{}`",
@@ -5147,14 +5117,14 @@ impl<'a> Resolver<'a> {
                 // field, we need to add any trait methods we find that match
                 // the field name so that we can do some nice error reporting
                 // later on in typeck.
-                let traits = self.search_for_traits_containing_method(ident);
+                let traits = self.search_for_traits_containing_method(ident.name);
                 self.trait_map.insert(expr.id, traits);
             }
             ExprMethodCall(ident, _, _) => {
                 debug!("(recording candidate traits for expr) recording \
                         traits for {}",
                        expr.id);
-                let traits = self.search_for_traits_containing_method(ident);
+                let traits = self.search_for_traits_containing_method(ident.name);
                 self.trait_map.insert(expr.id, traits);
             }
             _ => {
@@ -5163,33 +5133,43 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    fn search_for_traits_containing_method(&mut self, name: Ident) -> Vec<DefId> {
+    fn search_for_traits_containing_method(&mut self, name: Name) -> Vec<DefId> {
         debug!("(searching for traits containing method) looking for '{}'",
-               token::get_ident(name));
+               token::get_name(name));
+
+        fn add_trait_info(found_traits: &mut Vec<DefId>,
+                          trait_def_id: DefId,
+                          name: Name) {
+            debug!("(adding trait info) found trait {}:{} for method '{}'",
+                trait_def_id.krate,
+                trait_def_id.node,
+                token::get_name(name));
+            found_traits.push(trait_def_id);
+        }
 
         let mut found_traits = Vec::new();
         let mut search_module = self.current_module;
-        match self.method_map.borrow().find(&name.name) {
-            Some(candidate_traits) => loop {
-                // Look for the current trait.
-                match self.current_trait_refs {
-                    Some(ref trait_def_ids) => {
-                        for trait_def_id in trait_def_ids.iter() {
-                            if candidate_traits.contains(trait_def_id) {
-                                self.add_trait_info(&mut found_traits,
-                                                    *trait_def_id,
-                                                    name);
-                            }
+        loop {
+            // Look for the current trait.
+            match self.current_trait_refs {
+                Some(ref trait_def_ids) => {
+                    let method_set = self.method_set.borrow();
+                    for &trait_def_id in trait_def_ids.iter() {
+                        if method_set.contains(&(name, trait_def_id)) {
+                            add_trait_info(&mut found_traits, trait_def_id, name);
                         }
                     }
-                    None => {
-                        // Nothing to do.
-                    }
                 }
+                None => {
+                    // Nothing to do.
+                }
+            }
 
-                // Look for trait children.
-                self.populate_module_if_necessary(search_module);
+            // Look for trait children.
+            self.populate_module_if_necessary(search_module);
 
+            {
+                let method_set = self.method_set.borrow();
                 for (_, &child_names) in search_module.children.borrow().iter() {
                     let def = match child_names.def_for_namespace(TypeNS) {
                         Some(def) => def,
@@ -5199,52 +5179,39 @@ impl<'a> Resolver<'a> {
                         DefTrait(trait_def_id) => trait_def_id,
                         _ => continue,
                     };
-                    if candidate_traits.contains(&trait_def_id) {
-                        self.add_trait_info(&mut found_traits, trait_def_id,
-                                            name);
+                    if method_set.contains(&(name, trait_def_id)) {
+                        add_trait_info(&mut found_traits, trait_def_id, name);
                     }
                 }
+            }
 
-                // Look for imports.
-                let import_resolutions = search_module.import_resolutions
-                                                      .borrow();
-                for (_, &import) in import_resolutions.iter() {
-                    let target = match import.target_for_namespace(TypeNS) {
-                        None => continue,
-                        Some(target) => target,
-                    };
-                    let did = match target.bindings.def_for_namespace(TypeNS) {
-                        Some(DefTrait(trait_def_id)) => trait_def_id,
-                        Some(..) | None => continue,
-                    };
-                    if candidate_traits.contains(&did) {
-                        self.add_trait_info(&mut found_traits, did, name);
-                        self.used_imports.insert((import.type_id.get(), TypeNS));
-                    }
+            // Look for imports.
+            let import_resolutions = search_module.import_resolutions
+                                                    .borrow();
+            for (_, &import) in import_resolutions.iter() {
+                let target = match import.target_for_namespace(TypeNS) {
+                    None => continue,
+                    Some(target) => target,
+                };
+                let did = match target.bindings.def_for_namespace(TypeNS) {
+                    Some(DefTrait(trait_def_id)) => trait_def_id,
+                    Some(..) | None => continue,
+                };
+                if self.method_set.borrow().contains(&(name, did)) {
+                    add_trait_info(&mut found_traits, did, name);
+                    self.used_imports.insert((import.type_id.get(), TypeNS));
                 }
+            }
 
-                match search_module.parent_link {
-                    NoParentLink | ModuleParentLink(..) => break,
-                    BlockParentLink(parent_module, _) => {
-                        search_module = parent_module;
-                    }
+            match search_module.parent_link {
+                NoParentLink | ModuleParentLink(..) => break,
+                BlockParentLink(parent_module, _) => {
+                    search_module = parent_module;
                 }
-            },
-            _ => ()
+            }
         }
 
-        return found_traits;
-    }
-
-    fn add_trait_info(&self,
-                          found_traits: &mut Vec<DefId> ,
-                          trait_def_id: DefId,
-                          name: Ident) {
-        debug!("(adding trait info) found trait {}:{} for method '{}'",
-               trait_def_id.krate,
-               trait_def_id.node,
-               token::get_ident(name));
-        found_traits.push(trait_def_id);
+        found_traits
     }
 
     fn record_def(&mut self, node_id: NodeId, (def, lp): (Def, LastPrivate)) {

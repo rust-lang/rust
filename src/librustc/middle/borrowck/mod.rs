@@ -86,7 +86,7 @@ pub fn check_crate(tcx: &ty::ctxt,
         moves_map: moves_map,
         moved_variables_set: moved_variables_set,
         capture_map: capture_map,
-        root_map: root_map(),
+        root_map: RefCell::new(HashMap::new()),
         stats: @BorrowStats {
             loaned_paths_same: Cell::new(0),
             loaned_paths_imm: Cell::new(0),
@@ -94,28 +94,27 @@ pub fn check_crate(tcx: &ty::ctxt,
             guaranteed_paths: Cell::new(0),
         }
     };
-    let bccx = &mut bccx;
 
-    visit::walk_crate(bccx, krate, ());
+    visit::walk_crate(&mut bccx, krate, ());
 
     if tcx.sess.borrowck_stats() {
         println!("--- borrowck stats ---");
         println!("paths requiring guarantees: {}",
                  bccx.stats.guaranteed_paths.get());
         println!("paths requiring loans     : {}",
-                 make_stat(bccx, bccx.stats.loaned_paths_same.get()));
+                 make_stat(&bccx, bccx.stats.loaned_paths_same.get()));
         println!("paths requiring imm loans : {}",
-                 make_stat(bccx, bccx.stats.loaned_paths_imm.get()));
+                 make_stat(&bccx, bccx.stats.loaned_paths_imm.get()));
         println!("stable paths              : {}",
-                 make_stat(bccx, bccx.stats.stable_paths.get()));
+                 make_stat(&bccx, bccx.stats.stable_paths.get()));
     }
 
-    return bccx.root_map;
+    return bccx.root_map.unwrap();
 
-    fn make_stat(bccx: &mut BorrowckCtxt, stat: uint) -> ~str {
+    fn make_stat(bccx: &BorrowckCtxt, stat: uint) -> ~str {
         let stat_f = stat as f64;
         let total = bccx.stats.guaranteed_paths.get() as f64;
-        format!("{} ({:.0f}%)", stat  , stat_f * 100.0 / total)
+        format!("{} ({:.0f}%)", stat, stat_f * 100.0 / total)
     }
 }
 
@@ -175,7 +174,7 @@ pub struct BorrowckCtxt<'a> {
     moves_map: &'a NodeSet,
     moved_variables_set: &'a NodeSet,
     capture_map: &'a moves::CaptureMap,
-    root_map: root_map,
+    root_map: RefCell<root_map>,
 
     // Statistics:
     stats: @BorrowStats
@@ -375,11 +374,7 @@ pub struct RootInfo {
     pub scope: ast::NodeId,
 }
 
-pub type root_map = @RefCell<HashMap<root_map_key, RootInfo>>;
-
-pub fn root_map() -> root_map {
-    return @RefCell::new(HashMap::new());
-}
+pub type root_map = HashMap<root_map_key, RootInfo>;
 
 ///////////////////////////////////////////////////////////////////////////
 // Errors

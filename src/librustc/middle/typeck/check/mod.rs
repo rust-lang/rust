@@ -155,7 +155,7 @@ pub mod method;
 /// share the inherited fields.
 pub struct Inherited<'a> {
     infcx: infer::InferCtxt<'a>,
-    locals: @RefCell<NodeMap<ty::t>>,
+    locals: RefCell<NodeMap<ty::t>>,
     param_env: ty::ParameterEnvironment,
 
     // Temporary tables:
@@ -260,7 +260,7 @@ impl<'a> Inherited<'a> {
            -> Inherited<'a> {
         Inherited {
             infcx: infer::new_infer_ctxt(tcx),
-            locals: @RefCell::new(NodeMap::new()),
+            locals: RefCell::new(NodeMap::new()),
             param_env: param_env,
             node_types: RefCell::new(NodeMap::new()),
             node_type_substs: RefCell::new(NodeMap::new()),
@@ -387,7 +387,7 @@ impl<'a> Visitor<()> for GatherLocalsVisitor<'a> {
     fn visit_pat(&mut self, p: &ast::Pat, _: ()) {
             match p.node {
               ast::PatIdent(_, ref path, _)
-                  if pat_util::pat_is_binding(self.fcx.ccx.tcx.def_map, p) => {
+                  if pat_util::pat_is_binding(&self.fcx.ccx.tcx.def_map, p) => {
                 self.assign(p.id, None);
                 debug!("Pattern binding {} is assigned to {}",
                        token::get_ident(path.segments.get(0).identifier),
@@ -469,7 +469,7 @@ fn check_fn<'a>(ccx: &'a CrateCtxt<'a>,
         // Add formal parameters.
         for (arg_ty, input) in arg_tys.iter().zip(decl.inputs.iter()) {
             // Create type variables for each argument.
-            pat_util::pat_bindings(tcx.def_map,
+            pat_util::pat_bindings(&tcx.def_map,
                                    input.pat,
                                    |_bm, pat_id, _sp, _path| {
                                        visit.assign(pat_id, None);
@@ -478,7 +478,7 @@ fn check_fn<'a>(ccx: &'a CrateCtxt<'a>,
             // Check the pattern.
             let pcx = pat_ctxt {
                 fcx: &fcx,
-                map: pat_id_map(tcx.def_map, input.pat),
+                map: pat_id_map(&tcx.def_map, input.pat),
             };
             _match::check_pat(&pcx, input.pat, *arg_ty);
         }
@@ -3266,7 +3266,7 @@ pub fn check_decl_local(fcx: &FnCtxt, local: &ast::Local)  {
 
     let pcx = pat_ctxt {
         fcx: fcx,
-        map: pat_id_map(tcx.def_map, local.pat),
+        map: pat_id_map(&tcx.def_map, local.pat),
     };
     _match::check_pat(&pcx, local.pat, t);
     let pat_ty = fcx.node_ty(local.pat.id);

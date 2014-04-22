@@ -45,7 +45,7 @@ fn check_item(v: &mut CheckCrateVisitor, it: &Item, _is_const: bool) {
     match it.node {
         ItemStatic(_, _, ex) => {
             v.visit_expr(ex, true);
-            check_item_recursion(&v.tcx.sess, &v.tcx.map, v.tcx.def_map, it);
+            check_item_recursion(&v.tcx.sess, &v.tcx.map, &v.tcx.def_map, it);
         }
         ItemEnum(ref enum_definition, _) => {
             for var in (*enum_definition).variants.iter() {
@@ -178,14 +178,14 @@ struct CheckItemRecursionVisitor<'a> {
     root_it: &'a Item,
     sess: &'a Session,
     ast_map: &'a ast_map::Map,
-    def_map: resolve::DefMap,
+    def_map: &'a resolve::DefMap,
     idstack: Vec<NodeId> }
 
 // Make sure a const item doesn't recursively refer to itself
 // FIXME: Should use the dependency graph when it's available (#1356)
 pub fn check_item_recursion<'a>(sess: &'a Session,
                                 ast_map: &'a ast_map::Map,
-                                def_map: resolve::DefMap,
+                                def_map: &'a resolve::DefMap,
                                 it: &'a Item) {
 
     let mut visitor = CheckItemRecursionVisitor {

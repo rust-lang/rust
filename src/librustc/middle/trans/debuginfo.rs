@@ -369,7 +369,7 @@ pub fn create_local_var_metadata(bcx: &Block, local: &ast::Local) {
     }
 
     let cx = bcx.ccx();
-    let def_map = cx.tcx.def_map;
+    let def_map = &cx.tcx.def_map;
 
     pat_util::pat_bindings(def_map, local.pat, |_, node_id, span, path_ref| {
         let var_ident = ast_util::path_to_ident(path_ref);
@@ -509,7 +509,7 @@ pub fn create_argument_metadata(bcx: &Block, arg: &ast::Arg) {
     let fcx = bcx.fcx;
     let cx = fcx.ccx;
 
-    let def_map = cx.tcx.def_map;
+    let def_map = &cx.tcx.def_map;
     let scope_metadata = bcx.fcx.debug_context.get_ref(cx, arg.pat.span).fn_metadata;
 
     pat_util::pat_bindings(def_map, arg.pat, |_, node_id, span, path_ref| {
@@ -2381,7 +2381,7 @@ fn populate_scope_map(cx: &CrateContext,
                       fn_entry_block: &ast::Block,
                       fn_metadata: DISubprogram,
                       scope_map: &mut HashMap<ast::NodeId, DIScope>) {
-    let def_map = cx.tcx.def_map;
+    let def_map = &cx.tcx.def_map;
 
     struct ScopeStackEntry {
         scope_metadata: DIScope,
@@ -2494,7 +2494,7 @@ fn populate_scope_map(cx: &CrateContext,
                     scope_stack: &mut Vec<ScopeStackEntry> ,
                     scope_map: &mut HashMap<ast::NodeId, DIScope>) {
 
-        let def_map = cx.tcx.def_map;
+        let def_map = &cx.tcx.def_map;
 
         // Unfortunately, we cannot just use pat_util::pat_bindings() or ast_util::walk_pat() here
         // because we have to visit *all* nodes in order to put them into the scope map. The above

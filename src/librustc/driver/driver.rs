@@ -316,7 +316,7 @@ pub fn phase_3_run_analysis_passes(sess: Session,
                 sess.diagnostic(), krate)));
 
     let freevars = time(time_passes, "freevar finding", (), |_|
-                        freevars::annotate_freevars(def_map, krate));
+                        freevars::annotate_freevars(&def_map, krate));
 
     let region_map = time(time_passes, "region resolution", (), |_|
                           middle::region::resolve_crate(&sess, krate));

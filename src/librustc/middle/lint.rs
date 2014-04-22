@@ -1337,7 +1337,7 @@ fn check_unsafe_block(cx: &Context, e: &ast::Expr) {
 fn check_unused_mut_pat(cx: &Context, p: &ast::Pat) {
     match p.node {
         ast::PatIdent(ast::BindByValue(ast::MutMutable),
-                      ref path, _) if pat_util::pat_is_binding(cx.tcx.def_map, p)=> {
+                      ref path, _) if pat_util::pat_is_binding(&cx.tcx.def_map, p) => {
             // `let mut _a = 1;` doesn't need a warning.
             let initial_underscore = if path.segments.len() == 1 {
                 token::get_ident(path.segments

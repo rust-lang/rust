@@ -366,40 +366,23 @@ impl<'a> CoherenceChecker<'a> {
         }
     }
 
-    fn add_inherent_impl(&self, base_def_id: DefId,
-                         implementation: @Impl) {
+    fn add_inherent_impl(&self, base_def_id: DefId, implementation: @Impl) {
         let tcx = self.crate_context.tcx;
-        let implementation_list;
-        let mut inherent_impls = tcx.inherent_impls.borrow_mut();
-        match inherent_impls.find(&base_def_id) {
-            None => {
-                implementation_list = @RefCell::new(Vec::new());
-                inherent_impls.insert(base_def_id, implementation_list);
+        match tcx.inherent_impls.borrow().find(&base_def_id) {
+            Some(implementation_list) => {
+                implementation_list.borrow_mut().push(implementation);
+                return;
             }
-            Some(&existing_implementation_list) => {
-                implementation_list = existing_implementation_list;
-            }
+            None => {}
         }
 
-        implementation_list.borrow_mut().push(implementation);
+        tcx.inherent_impls.borrow_mut().insert(base_def_id, @RefCell::new(vec!(implementation)));
     }
 
-    fn add_trait_impl(&self, base_def_id: DefId,
-                      implementation: @Impl) {
-        let tcx = self.crate_context.tcx;
-        let implementation_list;
-        let mut trait_impls = tcx.trait_impls.borrow_mut();
-        match trait_impls.find(&base_def_id) {
-            None => {
-                implementation_list = @RefCell::new(Vec::new());
-                trait_impls.insert(base_def_id, implementation_list);
-            }
-            Some(&existing_implementation_list) => {
-                implementation_list = existing_implementation_list;
-            }
-        }
-
-        implementation_list.borrow_mut().push(implementation);
+    fn add_trait_impl(&self, base_def_id: DefId, implementation: @Impl) {
+        ty::record_trait_implementation(self.crate_context.tcx,
+                                        base_def_id,
+                                        implementation);
     }
 
     fn check_implementation_coherence(&self) {
@@ -538,7 +521,7 @@ impl<'a> CoherenceChecker<'a> {
     }
 
     fn trait_ref_to_trait_def_id(&self, trait_ref: &TraitRef) -> DefId {
-        let def_map = self.crate_context.tcx.def_map;
+        let def_map = &self.crate_context.tcx.def_map;
         let trait_def = def_map.borrow().get_copy(&trait_ref.ref_id);
         let trait_id = def_id_of_def(trait_def);
         return trait_id;
@@ -680,13 +663,10 @@ impl<'a> CoherenceChecker<'a> {
             Some(id) => id, None => { return }
         };
 
-        let trait_impls = tcx.trait_impls.borrow();
-        let impls_opt = trait_impls.find(&drop_trait);
-        let impls;
-        match impls_opt {
+        let impls = match tcx.trait_impls.borrow().find_copy(&drop_trait) {
             None => return, // No types with (new-style) dtors present.
-            Some(found_impls) => impls = found_impls
-        }
+            Some(found_impls) => found_impls
+        };
 
         for impl_info in impls.borrow().iter() {
             if impl_info.methods.len() < 1 {

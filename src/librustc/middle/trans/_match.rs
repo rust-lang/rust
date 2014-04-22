@@ -496,7 +496,7 @@ fn expand_nested_bindings<'r,'b>(
 }
 
 fn assert_is_binding_or_wild(bcx: &Block, p: @ast::Pat) {
-    if !pat_is_binding_or_wild(bcx.tcx().def_map, p) {
+    if !pat_is_binding_or_wild(&bcx.tcx().def_map, p) {
         bcx.sess().span_bug(
             p.span,
             format!("expected an identifier pattern but found p: {}",
@@ -508,7 +508,7 @@ type enter_pat<'a> = |@ast::Pat|: 'a -> Option<Vec<@ast::Pat>>;
 
 fn enter_match<'r,'b>(
                bcx: &'b Block<'b>,
-               dm: DefMap,
+               dm: &DefMap,
                m: &[Match<'r,'b>],
                col: uint,
                val: ValueRef,
@@ -556,7 +556,7 @@ fn enter_match<'r,'b>(
 
 fn enter_default<'r,'b>(
                  bcx: &'b Block<'b>,
-                 dm: DefMap,
+                 dm: &DefMap,
                  m: &[Match<'r,'b>],
                  col: uint,
                  val: ValueRef,
@@ -657,10 +657,10 @@ fn enter_opt<'r,'b>(
     // "column" of arm patterns and the algorithm will converge.
     let guarded = m.iter().any(|x| x.data.arm.guard.is_some());
     let multi_pats = m.len() > 0 && m[0].pats.len() > 1;
-    enter_match(bcx, tcx.def_map, m, col, val, |p| {
+    enter_match(bcx, &tcx.def_map, m, col, val, |p| {
         let answer = match p.node {
             ast::PatEnum(..) |
-            ast::PatIdent(_, _, None) if pat_is_const(tcx.def_map, p) => {
+            ast::PatIdent(_, _, None) if pat_is_const(&tcx.def_map, p) => {
                 let const_def = tcx.def_map.borrow().get_copy(&p.id);
                 let const_def_id = ast_util::def_id_of_def(const_def);
                 let konst = lit(ConstLit(const_def_id));
@@ -684,7 +684,7 @@ fn enter_opt<'r,'b>(
                 }
             }
             ast::PatIdent(_, _, None)
-                    if pat_is_variant_or_struct(tcx.def_map, p) => {
+                    if pat_is_variant_or_struct(&tcx.def_map, p) => {
                 if opt_eq(tcx, &variant_opt(bcx, p.id), opt) {
                     Some(Vec::new())
                 } else {
@@ -801,7 +801,7 @@ fn enter_opt<'r,'b>(
 
 fn enter_rec_or_struct<'r,'b>(
                        bcx: &'b Block<'b>,
-                       dm: DefMap,
+                       dm: &DefMap,
                        m: &[Match<'r,'b>],
                        col: uint,
                        fields: &[ast::Ident],
@@ -837,7 +837,7 @@ fn enter_rec_or_struct<'r,'b>(
 
 fn enter_tup<'r,'b>(
              bcx: &'b Block<'b>,
-             dm: DefMap,
+             dm: &DefMap,
              m: &[Match<'r,'b>],
              col: uint,
              val: ValueRef,
@@ -870,7 +870,7 @@ fn enter_tup<'r,'b>(
 
 fn enter_tuple_struct<'r,'b>(
                       bcx: &'b Block<'b>,
-                      dm: DefMap,
+                      dm: &DefMap,
                       m: &[Match<'r,'b>],
                       col: uint,
                       val: ValueRef,
@@ -899,7 +899,7 @@ fn enter_tuple_struct<'r,'b>(
 
 fn enter_uniq<'r,'b>(
               bcx: &'b Block<'b>,
-              dm: DefMap,
+              dm: &DefMap,
               m: &[Match<'r,'b>],
               col: uint,
               val: ValueRef)
@@ -928,7 +928,7 @@ fn enter_uniq<'r,'b>(
 fn enter_region<'r,
                 'b>(
                 bcx: &'b Block<'b>,
-                dm: DefMap,
+                dm: &DefMap,
                 m: &[Match<'r,'b>],
                 col: uint,
                 val: ValueRef)
@@ -1170,7 +1170,7 @@ fn pats_require_rooting(bcx: &Block, m: &[Match], col: uint) -> bool {
     m.iter().any(|br| {
         let pat_id = br.pats.get(col).id;
         let key = root_map_key {id: pat_id, derefs: 0u };
-        bcx.ccx().maps.root_map.borrow().contains_key(&key)
+        bcx.ccx().maps.root_map.contains_key(&key)
     })
 }
 
@@ -1551,7 +1551,7 @@ fn compile_submatch_continue<'r,
                              val: ValueRef) {
     let fcx = bcx.fcx;
     let tcx = bcx.tcx();
-    let dm = tcx.def_map;
+    let dm = &tcx.def_map;
 
     let vals_left = Vec::from_slice(vals.slice(0u, col)).append(vals.slice(col + 1u, vals.len()));
     let ccx = bcx.fcx.ccx;
@@ -1885,7 +1885,7 @@ fn create_bindings_map(bcx: &Block, pat: @ast::Pat) -> BindingsMap {
     let ccx = bcx.ccx();
     let tcx = bcx.tcx();
     let mut bindings_map = HashMap::new();
-    pat_bindings(tcx.def_map, pat, |bm, p_id, span, path| {
+    pat_bindings(&tcx.def_map, pat, |bm, p_id, span, path| {
         let ident = path_to_ident(path);
         let variable_ty = node_id_type(bcx, p_id);
         let llvariable_ty = type_of::type_of(ccx, variable_ty);
@@ -2066,7 +2066,7 @@ pub fn store_local<'a>(bcx: &'a Block<'a>,
         // create dummy memory for the variables if we have no
         // value to store into them immediately
         let tcx = bcx.tcx();
-        pat_bindings(tcx.def_map, pat, |_, p_id, _, path| {
+        pat_bindings(&tcx.def_map, pat, |_, p_id, _, path| {
                 let scope = cleanup::var_scope(tcx, p_id);
                 bcx = mk_binding_alloca(
                     bcx, p_id, path, BindLocal, scope, (),
@@ -2199,7 +2199,7 @@ fn bind_irrefutable_pat<'a>(
     let ccx = bcx.ccx();
     match pat.node {
         ast::PatIdent(pat_binding_mode, ref path, inner) => {
-            if pat_is_binding(tcx.def_map, pat) {
+            if pat_is_binding(&tcx.def_map, pat) {
                 // Allocate the stack slot where the value of this
                 // binding will live and place it into the appropriate
                 // map.

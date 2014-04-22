@@ -320,12 +320,12 @@ pub struct ctxt {
     pub destructors: RefCell<DefIdSet>,
 
     // Maps a trait onto a list of impls of that trait.
-    pub trait_impls: RefCell<DefIdMap<@RefCell<Vec<@Impl> >>>,
+    pub trait_impls: RefCell<DefIdMap<@RefCell<Vec<@Impl>>>>,
 
     // Maps a def_id of a type to a list of its inherent impls.
     // Contains implementations of methods that are inherent to a type.
     // Methods in these implementations don't need to be exported.
-    pub inherent_impls: RefCell<DefIdMap<@RefCell<Vec<@Impl> >>>,
+    pub inherent_impls: RefCell<DefIdMap<@RefCell<Vec<@Impl>>>>,
 
     // Maps a def_id of an impl to an Impl structure.
     // Note that this contains all of the impls that we know about,
@@ -4386,22 +4386,17 @@ pub fn item_variances(tcx: &ctxt, item_id: ast::DefId) -> @ItemVariances {
 }
 
 /// Records a trait-to-implementation mapping.
-fn record_trait_implementation(tcx: &ctxt,
-                               trait_def_id: DefId,
-                               implementation: @Impl) {
-    let implementation_list;
-    let mut trait_impls = tcx.trait_impls.borrow_mut();
-    match trait_impls.find(&trait_def_id) {
-        None => {
-            implementation_list = @RefCell::new(Vec::new());
-            trait_impls.insert(trait_def_id, implementation_list);
+pub fn record_trait_implementation(tcx: &ctxt,
+                                   trait_def_id: DefId,
+                                   implementation: @Impl) {
+    match tcx.trait_impls.borrow().find(&trait_def_id) {
+        Some(impls_for_trait) => {
+            impls_for_trait.borrow_mut().push(implementation);
+            return;
         }
-        Some(&existing_implementation_list) => {
-            implementation_list = existing_implementation_list
-        }
+        None => {}
     }
-
-    implementation_list.borrow_mut().push(implementation);
+    tcx.trait_impls.borrow_mut().insert(trait_def_id, @RefCell::new(vec!(implementation)));
 }
 
 /// Populates the type context with all the implementations for the given type
@@ -4437,24 +4432,20 @@ pub fn populate_implementations_for_type_if_necessary(tcx: &ctxt,
             }
         }
 
-        // If this is an inherent implementation, record it.
-        if associated_traits.is_none() {
-            let implementation_list;
-            let mut inherent_impls = tcx.inherent_impls.borrow_mut();
-            match inherent_impls.find(&type_id) {
-                None => {
-                    implementation_list = @RefCell::new(Vec::new());
-                    inherent_impls.insert(type_id, implementation_list);
-                }
-                Some(&existing_implementation_list) => {
-                    implementation_list = existing_implementation_list;
-                }
-            }
-            implementation_list.borrow_mut().push(implementation);
-        }
-
         // Store the implementation info.
         tcx.impls.borrow_mut().insert(implementation_def_id, implementation);
+
+        // If this is an inherent implementation, record it.
+        if associated_traits.is_none() {
+            match tcx.inherent_impls.borrow().find(&type_id) {
+                Some(implementation_list) => {
+                    implementation_list.borrow_mut().push(implementation);
+                    return;
+                }
+                None => {}
+            }
+            tcx.inherent_impls.borrow_mut().insert(type_id, @RefCell::new(vec!(implementation)));
+        }
     });
 
     tcx.populated_external_types.borrow_mut().insert(type_id);

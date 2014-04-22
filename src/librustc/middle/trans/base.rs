@@ -2056,17 +2056,13 @@ pub fn p2i(ccx: &CrateContext, v: ValueRef) -> ValueRef {
 
 pub fn crate_ctxt_to_encode_parms<'r>(cx: &'r CrateContext, ie: encoder::EncodeInlinedItem<'r>)
     -> encoder::EncodeParams<'r> {
-
-        let diag = cx.sess().diagnostic();
-        let item_symbols = &cx.item_symbols;
-        let link_meta = &cx.link_meta;
         encoder::EncodeParams {
-            diag: diag,
+            diag: cx.sess().diagnostic(),
             tcx: cx.tcx(),
-            reexports2: cx.exp_map2,
-            item_symbols: item_symbols,
+            reexports2: &cx.exp_map2,
+            item_symbols: &cx.item_symbols,
             non_inlineable_statics: &cx.non_inlineable_statics,
-            link_meta: link_meta,
+            link_meta: &cx.link_meta,
             cstore: &cx.sess().cstore,
             encode_inlined_item: ie,
         }

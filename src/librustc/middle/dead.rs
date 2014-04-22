@@ -339,7 +339,7 @@ impl<'a> DeadVisitor<'a> {
         let def_id = local_def(id);
         match self.tcx.inherent_impls.borrow().find(&def_id) {
             None => (),
-            Some(ref impl_list) => {
+            Some(impl_list) => {
                 for impl_ in impl_list.borrow().iter() {
                     for method in impl_.methods.iter() {
                         if self.live_symbols.contains(&method.def_id.node) {

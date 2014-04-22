@@ -30,7 +30,7 @@ use syntax::parse::token::IdentInterner;
 // local crate numbers (as generated during this session). Each external
 // crate may refer to types in other external crates, and each has their
 // own crate numbers.
-pub type cnum_map = @RefCell<HashMap<ast::CrateNum, ast::CrateNum>>;
+pub type cnum_map = HashMap<ast::CrateNum, ast::CrateNum>;
 
 pub enum MetadataBlob {
     MetadataVec(CVec<u8>),
@@ -155,7 +155,7 @@ impl CStore {
                  ordering: &mut Vec<ast::CrateNum>) {
             if ordering.as_slice().contains(&cnum) { return }
             let meta = cstore.get_crate_data(cnum);
-            for (_, &dep) in meta.cnum_map.borrow().iter() {
+            for (_, &dep) in meta.cnum_map.iter() {
                 visit(cstore, dep, ordering);
             }
             ordering.push(cnum);

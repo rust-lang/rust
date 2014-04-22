@@ -23,7 +23,6 @@ use metadata::loader;
 use metadata::loader::Os;
 use metadata::loader::CratePaths;
 
-use std::cell::RefCell;
 use std::rc::Rc;
 use collections::HashMap;
 use syntax::ast;
@@ -317,7 +316,7 @@ fn resolve_crate<'a>(e: &mut Env,
             let cnum_map = if should_link {
                 resolve_crate_deps(e, root, metadata.as_slice(), span)
             } else {
-                @RefCell::new(HashMap::new())
+                HashMap::new()
             };
 
             // Claim this crate number and cache it if we're linking to the
@@ -365,10 +364,7 @@ fn resolve_crate_deps(e: &mut Env,
     debug!("resolving deps of external crate");
     // The map from crate numbers in the crate we're resolving to local crate
     // numbers
-    let mut cnum_map = HashMap::new();
-    let r = decoder::get_crate_deps(cdata);
-    for dep in r.iter() {
-        let extrn_cnum = dep.cnum;
+    decoder::get_crate_deps(cdata).iter().map(|dep| {
         debug!("resolving dep crate {} hash: `{}`", dep.crate_id, dep.hash);
         let (local_cnum, _, _) = resolve_crate(e, root,
                                                dep.crate_id.name.as_slice(),
@@ -376,9 +372,8 @@ fn resolve_crate_deps(e: &mut Env,
                                                Some(&dep.hash),
                                                true,
                                                span);
-        cnum_map.insert(extrn_cnum, local_cnum);
-    }
-    return @RefCell::new(cnum_map);
+        (dep.cnum, local_cnum)
+    }).collect()
 }
 
 pub struct Loader<'a> {
