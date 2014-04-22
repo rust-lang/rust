@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::task;
+use std::task::TaskBuilder;
 
 static generations: uint = 1024+256+128+49;
 
 fn spawn(f: proc():Send) {
-    let mut t = task::task();
+    let mut t = TaskBuilder::new();
     t.opts.stack_size = Some(32 * 1024);
     t.spawn(f);
 }

@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use std::task;
+use std::task::TaskBuilder;
 
 pub fn main() { test00(); }
 
@@ -16,7 +17,7 @@ fn start(_task_number: int) { println!("Started / Finished task."); }
 
 fn test00() {
     let i: int = 0;
-    let mut builder = task::task();
+    let mut builder = TaskBuilder::new();
     let mut result = builder.future_result();
     builder.spawn(proc() {
         start(i)
