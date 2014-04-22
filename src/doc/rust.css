@@ -10,13 +10,43 @@
  * option. This file may not be copied, modified, or distributed
  * except according to those terms.
  */
+@font-face {
+    font-family: 'Fira Sans';
+    font-style: normal;
+    font-weight: 400;
+    src: local('Fira Sans'), url("http://www.rust-lang.org/fonts/FiraSans-Regular.woff") format('woff');
+}
+@font-face {
+    font-family: 'Fira Sans';
+    font-style: normal;
+    font-weight: 500;
+    src: local('Fira Sans Medium'), url("http://www.rust-lang.org/fonts/FiraSans-Medium.woff") format('woff');
+}
+@font-face {
+    font-family: 'Heuristica';
+    font-style: normal;
+    font-weight: 400;
+    src: local('Heuristica Regular'), url("http://www.rust-lang.org/fonts/Heuristica-Regular.woff") format('woff');
+}
+@font-face {
+    font-family: 'Heuristica';
+    font-style: italic;
+    font-weight: 400;
+    src: local('Heuristica Italic'), url("http://www.rust-lang.org/fonts/Heuristica-Italic.woff") format('woff');
+}
+@font-face {
+    font-family: 'Heuristica';
+    font-style: normal;
+    font-weight: 700;
+    src: local('Heuristica Bold'), url("http://www.rust-lang.org/fonts/Heuristica-Bold.woff") format('woff');
+}
 /* Global page semantics
    ========================================================================== */
 body {
     margin: 0 auto;
     padding: 0 15px;
-    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-    font-size: 14px;
+    font-family: "Heuristica", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 18px;
     color: #333;
     line-height: 1.428571429;
 }
@@ -26,33 +56,51 @@ body {
     }
 }
 
+h1, h2, h3, h4, h5, h6, nav, #versioninfo {
+    font-family: "Fira Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
 h1, h2, h3, h4, h5, h6 {
     color: black;
-    font-weight: 500;
+    font-weight: 400;
     line-height: 1.1;
 }
 h1, h2, h3 {
     margin-top: 20px;
-    margin-bottom: 10px;
+    margin-bottom: 15px;
+}
+h1 {
+    margin-bottom: 20px;
+}
+@media (min-width: 1170px) {
+    h1 {
+        margin-top: 40px;
+        margin-bottom: 30px;
+    }
+    h1, h2, h3 {
+        margin-top: 30px;
+        margin-bottom: 15px;
+    }
 }
 h4, h5, h6 {
     margin-top: 12px;
     margin-bottom: 10px;
-    padding: .2em .8em;
+    padding: 5px 10px;
+}
+h5, h6 {
     text-decoration: underline;
 }
 
 h1 {
-    font-size: 36px;
+    font-size: 28px;
+    font-weight: 500;
     padding: .1em .4em;
-    margin: 0.67em 0;
     border-bottom: 2px solid #ddd;
 }
 h1.title {
     line-height: 1.5em;
 }
 h2 {
-    font-size: 30px;
+    font-size: 26px;
     padding: .2em .5em;
     border-bottom: 1px solid #ddd;
 }
@@ -62,17 +110,34 @@ h3 {
     border-bottom: 1px solid #DDE8FC;
 }
 h4 {
-    font-size: 18px;
+    font-size: 22px;
 }
 h5 {
-    font-size: 16px;
+    font-size: 20px;
 }
 h6 {
-    font-size: 14px;
+    font-size: 18px;
+}
+@media (min-width: 992px) {
+    h1 {
+        font-size: 36px;
+    }
+    h2 {
+        font-size: 30px;
+    }
+    h3 {
+        font-size: 26px;
+    }
 }
 
+nav {
+    column-count: 2;
+    -moz-column-count: 2;
+    -webkit-column-count: 2;
+    font-size: 15px;
+}
 p {
-    margin: 0 0 10px;
+    margin: 0 0 1em 0;
 }
 
 strong {
@@ -85,10 +150,10 @@ em {
 
 footer {
     border-top: 1px solid #ddd;
-    font-size: 12px;
+    font-size: 14.3px;
     font-style: italic;
-    padding-top: 4px;
-    margin-top: 4em;
+    padding-top: 5px;
+    margin-top: 3em;
     margin-bottom: 1em;
 }
 
@@ -130,16 +195,14 @@ pre {
     border-radius: 0.5em;
     white-space: pre-wrap;
     padding: 9.5px;
-    margin: 10px 0;
+    margin: 20px 0;
     font-size: 13px;
     word-break: break-all;
     word-wrap: break-word;
 }
 code {
-    padding: 2px 4px;
-    font-size: 90%;
-    color: #C7254E;
-    background-color: #F9F2F4;
+    padding: 0 2px;
+    color: #8D1A38;
     white-space: nowrap;
 }
 pre code {
@@ -170,7 +233,7 @@ pre.rust .lifetime { color: #B76514; }
     margin: 0.5em;
     font-size: 1.1em;
 }
-@media only screen, handheld and (min-width: 768px) {
+@media only screen and (min-width: 768px) {
     #versioninfo {
         position: fixed;
         bottom: 0px;
@@ -185,7 +248,7 @@ pre.rust .lifetime { color: #B76514; }
 }
 #versioninfo a.hash {
     color: gray;
-    font-size: 70%;
+    font-size: 80%;
 }
 
 blockquote {
@@ -197,21 +260,16 @@ blockquote {
 blockquote p {
     font-size: 17px;
     font-weight: 300;
-    line-height: 1.25;
+    line-height: 1.4;
 }
 blockquote p:last-child {
     margin-bottom: 0;
 }
 
-ul,
-ol {
-    margin-top: 0;
-    margin-bottom: 10px;
+ul, ol {
+    padding-left: 25px;
 }
-ul ul,
-ol ul,
-ul ol,
-ol ol {
+ul ul, ol ul, ul ol, ol ol {
     margin-bottom: 0;
 }
 dl {
@@ -221,13 +279,14 @@ dd {
     margin-left: 0;
 }
 
-#TOC ul {
+nav ul {
     list-style-type: none;
+    margin: 0;
     padding-left: 0px;
 }
 
 /* Only display one level of hierarchy in the TOC */
-#TOC ul ul {
+nav ul ul {
     display: none;
 }
 
