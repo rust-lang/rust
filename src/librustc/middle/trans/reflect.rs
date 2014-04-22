@@ -320,7 +320,7 @@ impl<'a, 'b> Reflector<'a, 'b> {
                 };
                 let bcx = fcx.entry_bcx.borrow().clone().unwrap();
                 let arg = BitCast(bcx, arg, llptrty);
-                let ret = adt::trans_get_discr(bcx, repr, arg, Some(Type::i64(ccx)));
+                let ret = adt::trans_get_discr(bcx, &*repr, arg, Some(Type::i64(ccx)));
                 Store(bcx, ret, fcx.llretptr.get().unwrap());
                 match fcx.llreturn.get() {
                     Some(llreturn) => Br(bcx, llreturn),
@@ -345,7 +345,7 @@ impl<'a, 'b> Reflector<'a, 'b> {
                         for (j, a) in v.args.iter().enumerate() {
                             let bcx = this.bcx;
                             let null = C_null(llptrty);
-                            let ptr = adt::trans_field_ptr(bcx, repr, null, v.disr_val, j);
+                            let ptr = adt::trans_field_ptr(bcx, &*repr, null, v.disr_val, j);
                             let offset = p2i(ccx, ptr);
                             let field_args = [this.c_uint(j),
                                                offset,

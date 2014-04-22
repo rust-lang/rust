@@ -31,6 +31,7 @@ use util::nodemap::{NodeMap, NodeSet, DefIdMap};
 use std::cell::{Cell, RefCell};
 use std::c_str::ToCStr;
 use std::ptr;
+use std::rc::Rc;
 use collections::{HashMap, HashSet};
 use syntax::ast;
 use syntax::parse::token::InternedString;
@@ -92,7 +93,7 @@ pub struct CrateContext {
 
     pub lltypes: RefCell<HashMap<ty::t, Type>>,
     pub llsizingtypes: RefCell<HashMap<ty::t, Type>>,
-    pub adt_reprs: RefCell<HashMap<ty::t, @adt::Repr>>,
+    pub adt_reprs: RefCell<HashMap<ty::t, Rc<adt::Repr>>>,
     pub symbol_hasher: RefCell<Sha256>,
     pub type_hashcodes: RefCell<HashMap<ty::t, ~str>>,
     pub all_llvm_symbols: RefCell<HashSet<~str>>,

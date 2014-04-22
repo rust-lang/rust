@@ -443,7 +443,7 @@ fn trans_rec_field<'a>(bcx: &'a Block<'a>,
             let ix = ty::field_idx_strict(bcx.tcx(), field.name, field_tys);
             let d = base_datum.get_element(
                 field_tys[ix].mt.ty,
-                |srcval| adt::trans_field_ptr(bcx, repr, srcval, discr, ix));
+                |srcval| adt::trans_field_ptr(bcx, &*repr, srcval, discr, ix));
             DatumBlock { datum: d.to_expr_datum(), bcx: bcx }
         })
 }
@@ -679,7 +679,7 @@ fn trans_rvalue_dps_unadjusted<'a>(bcx: &'a Block<'a>,
             let repr = adt::represent_type(bcx.ccx(), expr_ty(bcx, expr));
             let numbered_fields: Vec<(uint, @ast::Expr)> =
                 args.iter().enumerate().map(|(i, arg)| (i, *arg)).collect();
-            trans_adt(bcx, repr, 0, numbered_fields.as_slice(), None, dest)
+            trans_adt(bcx, &*repr, 0, numbered_fields.as_slice(), None, dest)
         }
         ast::ExprLit(lit) => {
             match lit.node {
@@ -797,7 +797,7 @@ fn trans_def_dps_unadjusted<'a>(
                 // Nullary variant.
                 let ty = expr_ty(bcx, ref_expr);
                 let repr = adt::represent_type(bcx.ccx(), ty);
-                adt::trans_start_init(bcx, repr, lldest,
+                adt::trans_start_init(bcx, &*repr, lldest,
                                       variant_info.disr_val);
                 return bcx;
             }
@@ -807,7 +807,7 @@ fn trans_def_dps_unadjusted<'a>(
             match ty::get(ty).sty {
                 ty::ty_struct(did, _) if ty::has_dtor(bcx.tcx(), did) => {
                     let repr = adt::represent_type(bcx.ccx(), ty);
-                    adt::trans_start_init(bcx, repr, lldest, 0);
+                    adt::trans_start_init(bcx, &*repr, lldest, 0);
                 }
                 _ => {}
             }
@@ -1004,7 +1004,7 @@ fn trans_rec_or_struct<'a>(
         };
 
         let repr = adt::represent_type(bcx.ccx(), ty);
-        trans_adt(bcx, repr, discr, numbered_fields.as_slice(), optbase, dest)
+        trans_adt(bcx, &*repr, discr, numbered_fields.as_slice(), optbase, dest)
     })
 }
 
@@ -1239,8 +1239,8 @@ fn trans_gc<'a>(mut bcx: &'a Block<'a>,
         SaveIn(addr) => {
             let expr_ty = expr_ty(bcx, expr);
             let repr = adt::represent_type(bcx.ccx(), expr_ty);
-            adt::trans_start_init(bcx, repr, addr, 0);
-            let field_dest = adt::trans_field_ptr(bcx, repr, addr, 0, 0);
+            adt::trans_start_init(bcx, &*repr, addr, 0);
+            let field_dest = adt::trans_field_ptr(bcx, &*repr, addr, 0, 0);
             contents_datum.store_to(bcx, field_dest)
         }
     }
@@ -1580,7 +1580,7 @@ fn trans_imm_cast<'a>(bcx: &'a Block<'a>,
                 bcx, datum.to_lvalue_datum(bcx, "trans_imm_cast", expr.id));
             let llexpr_ptr = datum.to_llref();
             let lldiscrim_a =
-                adt::trans_get_discr(bcx, repr, llexpr_ptr, Some(Type::i64(ccx)));
+                adt::trans_get_discr(bcx, &*repr, llexpr_ptr, Some(Type::i64(ccx)));
             match k_out {
                 cast_integral => int_cast(bcx, ll_t_out,
                                           val_ty(lldiscrim_a),

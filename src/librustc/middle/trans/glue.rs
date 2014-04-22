@@ -224,7 +224,7 @@ fn trans_struct_drop_flag<'a>(bcx: &'a Block<'a>,
                               substs: &ty::substs)
                               -> &'a Block<'a> {
     let repr = adt::represent_type(bcx.ccx(), t);
-    let drop_flag = adt::trans_drop_flag_ptr(bcx, repr, v0);
+    let drop_flag = adt::trans_drop_flag_ptr(bcx, &*repr, v0);
     with_cond(bcx, IsNotNull(bcx, Load(bcx, drop_flag)), |cx| {
         trans_struct_drop(cx, t, v0, dtor_did, class_did, substs)
     })
@@ -265,7 +265,7 @@ fn trans_struct_drop<'a>(bcx: &'a Block<'a>,
     // this scope.
     let field_tys = ty::struct_fields(bcx.tcx(), class_did, substs);
     for (i, fld) in field_tys.iter().enumerate() {
-        let llfld_a = adt::trans_field_ptr(bcx, repr, v0, 0, i);
+        let llfld_a = adt::trans_field_ptr(bcx, &*repr, v0, 0, i);
         bcx.fcx.schedule_drop_mem(cleanup::CustomScope(field_scope),
                                   llfld_a,
                                   fld.mt.ty);

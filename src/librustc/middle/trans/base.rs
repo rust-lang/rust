@@ -660,7 +660,7 @@ pub fn iter_structural_ty<'r,
           let repr = adt::represent_type(cx.ccx(), t);
           expr::with_field_tys(cx.tcx(), t, None, |discr, field_tys| {
               for (i, field_ty) in field_tys.iter().enumerate() {
-                  let llfld_a = adt::trans_field_ptr(cx, repr, av, discr, i);
+                  let llfld_a = adt::trans_field_ptr(cx, &*repr, av, discr, i);
                   cx = f(cx, llfld_a, field_ty.mt.ty);
               }
           })
@@ -678,7 +678,7 @@ pub fn iter_structural_ty<'r,
       ty::ty_tup(ref args) => {
           let repr = adt::represent_type(cx.ccx(), t);
           for (i, arg) in args.iter().enumerate() {
-              let llfld_a = adt::trans_field_ptr(cx, repr, av, 0, i);
+              let llfld_a = adt::trans_field_ptr(cx, &*repr, av, 0, i);
               cx = f(cx, llfld_a, *arg);
           }
       }
@@ -693,9 +693,9 @@ pub fn iter_structural_ty<'r,
           // NB: we must hit the discriminant first so that structural
           // comparison know not to proceed when the discriminants differ.
 
-          match adt::trans_switch(cx, repr, av) {
+          match adt::trans_switch(cx, &*repr, av) {
               (_match::single, None) => {
-                  cx = iter_variant(cx, repr, av, &**variants.get(0),
+                  cx = iter_variant(cx, &*repr, av, &**variants.get(0),
                                     substs.tps.as_slice(), f);
               }
               (_match::switch, Some(lldiscrim_a)) => {
@@ -710,7 +710,7 @@ pub fn iter_structural_ty<'r,
                       let variant_cx =
                           fcx.new_temp_block("enum-iter-variant-".to_owned() +
                                              variant.disr_val.to_str());
-                      match adt::trans_case(cx, repr, variant.disr_val) {
+                      match adt::trans_case(cx, &*repr, variant.disr_val) {
                           _match::single_result(r) => {
                               AddCase(llswitch, r.val, variant_cx.llbb)
                           }
@@ -719,7 +719,7 @@ pub fn iter_structural_ty<'r,
                       }
                       let variant_cx =
                           iter_variant(variant_cx,
-                                       repr,
+                                       &*repr,
                                        av,
                                        &**variant,
                                        substs.tps.as_slice(),
@@ -1512,10 +1512,10 @@ fn trans_enum_variant_or_tuple_like_struct(ccx: &CrateContext,
 
     if !type_is_zero_size(fcx.ccx, result_ty) {
         let repr = adt::represent_type(ccx, result_ty);
-        adt::trans_start_init(bcx, repr, fcx.llretptr.get().unwrap(), disr);
+        adt::trans_start_init(bcx, &*repr, fcx.llretptr.get().unwrap(), disr);
         for (i, arg_datum) in arg_datums.move_iter().enumerate() {
             let lldestptr = adt::trans_field_ptr(bcx,
-                                                 repr,
+                                                 &*repr,
                                                  fcx.llretptr.get().unwrap(),
                                                  disr,
                                                  i);
