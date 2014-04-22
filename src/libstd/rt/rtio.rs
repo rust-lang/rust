@@ -200,6 +200,7 @@ pub trait RtioTcpAcceptor : RtioSocket {
     fn accept(&mut self) -> IoResult<~RtioTcpStream:Send>;
     fn accept_simultaneously(&mut self) -> IoResult<()>;
     fn dont_accept_simultaneously(&mut self) -> IoResult<()>;
+    fn set_timeout(&mut self, timeout: Option<u64>);
 }
 
 pub trait RtioTcpStream : RtioSocket {

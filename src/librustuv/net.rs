@@ -174,6 +174,9 @@ pub struct TcpListener {
 
 pub struct TcpAcceptor {
     listener: ~TcpListener,
+    timer: Option<TimerWatcher>,
+    timeout_tx: Option<Sender<()>>,
+    timeout_rx: Option<Receiver<()>>,
 }
 
 // TCP watchers (clients/streams)
@@ -459,7 +462,12 @@ impl rtio::RtioSocket for TcpListener {
 impl rtio::RtioTcpListener for TcpListener {
     fn listen(~self) -> Result<~rtio::RtioTcpAcceptor:Send, IoError> {
         // create the acceptor object from ourselves
-        let mut acceptor = ~TcpAcceptor { listener: self };
+        let mut acceptor = ~TcpAcceptor {
+            listener: self,
+            timer: None,
+            timeout_tx: None,
+            timeout_rx: None,
+        };
 
         let _m = acceptor.fire_homing_missile();
         // FIXME: the 128 backlog should be configurable
@@ -509,7 +517,37 @@ impl rtio::RtioSocket for TcpAcceptor {
 
 impl rtio::RtioTcpAcceptor for TcpAcceptor {
     fn accept(&mut self) -> Result<~rtio::RtioTcpStream:Send, IoError> {
-        self.listener.incoming.recv()
+        match self.timeout_rx {
+            None => self.listener.incoming.recv(),
+            Some(ref rx) => {
+                use std::comm::Select;
+
+                // Poll the incoming channel first (don't rely on the order of
+                // select just yet). If someone's pending then we should return
+                // them immediately.
+                match self.listener.incoming.try_recv() {
+                    Ok(data) => return data,
+                    Err(..) => {}
+                }
+
+                // Use select to figure out which channel gets ready first. We
+                // do some custom handling of select to ensure that we never
+                // actually drain the timeout channel (we'll keep seeing the
+                // timeout message in the future).
+                let s = Select::new();
+                let mut timeout = s.handle(rx);
+                let mut data = s.handle(&self.listener.incoming);
+                unsafe {
+                    timeout.add();
+                    data.add();
+                }
+                if s.wait() == timeout.id() {
+                    Err(uv_error_to_io_error(UvError(uvll::ECANCELED)))
+                } else {
+                    self.listener.incoming.recv()
+                }
+            }
+        }
     }
 
     fn accept_simultaneously(&mut self) -> Result<(), IoError> {
@@ -524,6 +562,52 @@ impl rtio::RtioTcpAcceptor for TcpAcceptor {
         status_to_io_result(unsafe {
             uvll::uv_tcp_simultaneous_accepts(self.listener.handle, 0)
         })
+    }
+
+    fn set_timeout(&mut self, ms: Option<u64>) {
+        // First, if the timeout is none, clear any previous timeout by dropping
+        // the timer and transmission channels
+        let ms = match ms {
+            None => {
+                return drop((self.timer.take(),
+                             self.timeout_tx.take(),
+                             self.timeout_rx.take()))
+            }
+            Some(ms) => ms,
+        };
+
+        // If we have a timeout, lazily initialize the timer which will be used
+        // to fire when the timeout runs out.
+        if self.timer.is_none() {
+            let _m = self.fire_homing_missile();
+            let loop_ = Loop::wrap(unsafe {
+                uvll::get_loop_for_uv_handle(self.listener.handle)
+            });
+            let mut timer = TimerWatcher::new_home(&loop_, self.home().clone());
+            unsafe {
+                timer.set_data(self as *mut _ as *TcpAcceptor);
+            }
+            self.timer = Some(timer);
+        }
+
+        // Once we've got a timer, stop any previous timeout, reset it for the
+        // current one, and install some new channels to send/receive data on
+        let timer = self.timer.get_mut_ref();
+        timer.stop();
+        timer.start(timer_cb, ms, 0);
+        let (tx, rx) = channel();
+        self.timeout_tx = Some(tx);
+        self.timeout_rx = Some(rx);
+
+        extern fn timer_cb(timer: *uvll::uv_timer_t, status: c_int) {
+            assert_eq!(status, 0);
+            let acceptor: &mut TcpAcceptor = unsafe {
+                &mut *(uvll::get_data_for_uv_handle(timer) as *mut TcpAcceptor)
+            };
+            // This send can never fail because if this timer is active then the
+            // receiving channel is guaranteed to be alive
+            acceptor.timeout_tx.get_ref().send(());
+        }
     }
 }
 
