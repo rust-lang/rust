@@ -227,6 +227,7 @@ impl CharEq for char {
     #[inline]
     fn matches(&self, c: char) -> bool { *self == c }
 
+    #[inline]
     fn only_ascii(&self) -> bool { (*self as uint) < 128 }
 }
 
@@ -234,6 +235,7 @@ impl<'a> CharEq for |char|: 'a -> bool {
     #[inline]
     fn matches(&self, c: char) -> bool { (*self)(c) }
 
+    #[inline]
     fn only_ascii(&self) -> bool { false }
 }
 
@@ -241,6 +243,7 @@ impl CharEq for extern "Rust" fn(char) -> bool {
     #[inline]
     fn matches(&self, c: char) -> bool { (*self)(c) }
 
+    #[inline]
     fn only_ascii(&self) -> bool { false }
 }
 
@@ -250,6 +253,7 @@ impl<'a, C: CharEq> CharEq for &'a [C] {
         self.iter().any(|m| m.matches(c))
     }
 
+    #[inline]
     fn only_ascii(&self) -> bool {
         self.iter().all(|m| m.only_ascii())
     }
