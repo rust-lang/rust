@@ -130,7 +130,7 @@ and so on.
 use middle::pat_util::{pat_bindings};
 use middle::freevars;
 use middle::ty;
-use middle::typeck::{MethodCall, MethodMap};
+use middle::typeck::MethodCall;
 use util::ppaux;
 use util::ppaux::Repr;
 use util::common::indenter;
@@ -177,7 +177,6 @@ pub struct MoveMaps {
 #[deriving(Clone)]
 struct VisitContext<'a> {
     tcx: &'a ty::ctxt,
-    method_map: MethodMap,
     move_maps: MoveMaps
 }
 
@@ -202,13 +201,9 @@ impl<'a> visit::Visitor<()> for VisitContext<'a> {
     fn visit_ty(&mut self, _t: &Ty, _: ()) {}
 }
 
-pub fn compute_moves(tcx: &ty::ctxt,
-                     method_map: MethodMap,
-                     krate: &Crate) -> MoveMaps
-{
+pub fn compute_moves(tcx: &ty::ctxt, krate: &Crate) -> MoveMaps {
     let mut visit_cx = VisitContext {
         tcx: tcx,
-        method_map: method_map,
         move_maps: MoveMaps {
             moves_map: NodeSet::new(),
             moved_variables_set: NodeSet::new(),
@@ -274,8 +269,7 @@ impl<'a> VisitContext<'a> {
         debug!("consume_expr(expr={})",
                expr.repr(self.tcx));
 
-        let expr_ty = ty::expr_ty_adjusted(self.tcx, expr,
-                                           &*self.method_map.borrow());
+        let expr_ty = ty::expr_ty_adjusted(self.tcx, expr);
         if ty::type_moves_by_default(self.tcx, expr_ty) {
             self.move_maps.moves_map.insert(expr.id);
             self.use_expr(expr, Move);
@@ -318,7 +312,7 @@ impl<'a> VisitContext<'a> {
         // reading the underlying expression, not moving it.
         let comp_mode = match self.tcx.adjustments.borrow().find(&expr.id) {
             Some(adjustment) => {
-                match **adjustment {
+                match *adjustment {
                     ty::AutoDerefRef(ty::AutoDerefRef {
                         autoref: Some(_),
                         ..
@@ -550,7 +544,7 @@ impl<'a> VisitContext<'a> {
                     self.use_pat(a.pat);
                 }
                 let cap_vars = self.compute_captures(expr.id);
-                self.move_maps.capture_map.insert(expr.id, cap_vars);
+                self.move_maps.capture_map.insert(expr.id, Rc::new(cap_vars));
                 self.consume_block(body);
             }
 
@@ -577,7 +571,7 @@ impl<'a> VisitContext<'a> {
                                    arg_exprs: &[@Expr])
                                    -> bool {
         let method_call = MethodCall::expr(expr.id);
-        if !self.method_map.borrow().contains_key(&method_call) {
+        if !self.tcx.method_map.borrow().contains_key(&method_call) {
             return false;
         }
 
@@ -611,7 +605,7 @@ impl<'a> VisitContext<'a> {
          * into itself or not based on its type and annotation.
          */
 
-        pat_bindings(self.tcx.def_map, pat, |bm, id, _span, path| {
+        pat_bindings(&self.tcx.def_map, pat, |bm, id, _span, path| {
             let binding_moves = match bm {
                 BindByRef(_) => false,
                 BindByValue(_) => {
@@ -645,34 +639,35 @@ impl<'a> VisitContext<'a> {
         self.consume_expr(arg_expr)
     }
 
-    pub fn compute_captures(&mut self, fn_expr_id: NodeId) -> Rc<Vec<CaptureVar> > {
+    fn compute_captures(&mut self, fn_expr_id: NodeId) -> Vec<CaptureVar> {
         debug!("compute_capture_vars(fn_expr_id={:?})", fn_expr_id);
         let _indenter = indenter();
 
         let fn_ty = ty::node_id_to_type(self.tcx, fn_expr_id);
-        let freevars = freevars::get_freevars(self.tcx, fn_expr_id);
-        Rc::new(match ty::ty_closure_store(fn_ty) {
-            ty::RegionTraitStore(..) => {
-                // || captures everything by ref
-                freevars.iter()
-                        .map(|fvar| CaptureVar {def: fvar.def, span: fvar.span, mode: CapRef})
-                        .collect()
-            }
-            ty::UniqTraitStore => {
-                // proc captures by copy or by move depending on type
-                freevars.iter()
-                        .map(|fvar| {
-                    let fvar_def_id = ast_util::def_id_of_def(fvar.def).node;
-                    let fvar_ty = ty::node_id_to_type(self.tcx, fvar_def_id);
-                    debug!("fvar_def_id={:?} fvar_ty={}",
-                        fvar_def_id, ppaux::ty_to_str(self.tcx, fvar_ty));
-                    let mode = if ty::type_moves_by_default(self.tcx, fvar_ty) {
-                        CapMove
-                    } else {
-                        CapCopy
-                    };
-                    CaptureVar {def: fvar.def, span: fvar.span, mode:mode}
-                }).collect()
+        freevars::with_freevars(self.tcx, fn_expr_id, |freevars| {
+            match ty::ty_closure_store(fn_ty) {
+                ty::RegionTraitStore(..) => {
+                    // || captures everything by ref
+                    freevars.iter()
+                            .map(|fvar| CaptureVar {def: fvar.def, span: fvar.span, mode: CapRef})
+                            .collect()
+                }
+                ty::UniqTraitStore => {
+                    // proc captures by copy or by move depending on type
+                    freevars.iter()
+                            .map(|fvar| {
+                        let fvar_def_id = ast_util::def_id_of_def(fvar.def).node;
+                        let fvar_ty = ty::node_id_to_type(self.tcx, fvar_def_id);
+                        debug!("fvar_def_id={:?} fvar_ty={}",
+                            fvar_def_id, ppaux::ty_to_str(self.tcx, fvar_ty));
+                        let mode = if ty::type_moves_by_default(self.tcx, fvar_ty) {
+                            CapMove
+                        } else {
+                            CapCopy
+                        };
+                        CaptureVar {def: fvar.def, span: fvar.span, mode:mode}
+                    }).collect()
+                }
             }
         })
     }

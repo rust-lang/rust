@@ -85,7 +85,7 @@ pub fn get_simple_intrinsic(ccx: &CrateContext, item: &ast::ForeignItem) -> Opti
 pub fn trans_intrinsic(ccx: &CrateContext,
                        decl: ValueRef,
                        item: &ast::ForeignItem,
-                       substs: @param_substs,
+                       substs: &param_substs,
                        ref_id: Option<ast::NodeId>) {
     debug!("trans_intrinsic(item.ident={})", token::get_ident(item.ident));
 
@@ -194,8 +194,8 @@ pub fn trans_intrinsic(ccx: &CrateContext,
 
     let arena = TypedArena::new();
     let fcx = new_fn_ctxt(ccx, decl, item.id, false, output_type,
-                          Some(substs), Some(item.span), &arena);
-    init_function(&fcx, true, output_type, Some(substs));
+                          Some(&*substs), Some(item.span), &arena);
+    init_function(&fcx, true, output_type);
 
     set_always_inline(fcx.llfn);
 
@@ -328,7 +328,7 @@ pub fn trans_intrinsic(ccx: &CrateContext,
         "get_tydesc" => {
             let tp_ty = *substs.tys.get(0);
             let static_ti = get_tydesc(ccx, tp_ty);
-            glue::lazily_emit_visit_glue(ccx, static_ti);
+            glue::lazily_emit_visit_glue(ccx, &*static_ti);
 
             // FIXME (#3730): ideally this shouldn't need a cast,
             // but there's a circularity between translating rust types to llvm

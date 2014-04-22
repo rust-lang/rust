@@ -21,8 +21,6 @@ use syntax::visit::Visitor;
 use syntax::visit;
 
 pub struct CheckCrateVisitor<'a> {
-    def_map: resolve::DefMap,
-    method_map: typeck::MethodMap,
     tcx: &'a ty::ctxt,
 }
 
@@ -38,16 +36,8 @@ impl<'a> Visitor<bool> for CheckCrateVisitor<'a> {
     }
 }
 
-pub fn check_crate(krate: &Crate,
-                   def_map: resolve::DefMap,
-                   method_map: typeck::MethodMap,
-                   tcx: &ty::ctxt) {
-    let mut v = CheckCrateVisitor {
-        def_map: def_map,
-        method_map: method_map,
-        tcx: tcx,
-    };
-    visit::walk_crate(&mut v, krate, false);
+pub fn check_crate(krate: &Crate, tcx: &ty::ctxt) {
+    visit::walk_crate(&mut CheckCrateVisitor { tcx: tcx }, krate, false);
     tcx.sess.abort_if_errors();
 }
 
@@ -55,7 +45,7 @@ fn check_item(v: &mut CheckCrateVisitor, it: &Item, _is_const: bool) {
     match it.node {
         ItemStatic(_, _, ex) => {
             v.visit_expr(ex, true);
-            check_item_recursion(&v.tcx.sess, &v.tcx.map, v.def_map, it);
+            check_item_recursion(&v.tcx.sess, &v.tcx.map, &v.tcx.def_map, it);
         }
         ItemEnum(ref enum_definition, _) => {
             for var in (*enum_definition).variants.iter() {
@@ -103,7 +93,7 @@ fn check_expr(v: &mut CheckCrateVisitor, e: &Expr, is_const: bool) {
           ExprLit(lit) if ast_util::lit_is_str(lit) => {}
           ExprBinary(..) | ExprUnary(..) => {
             let method_call = typeck::MethodCall::expr(e.id);
-            if v.method_map.borrow().contains_key(&method_call) {
+            if v.tcx.method_map.borrow().contains_key(&method_call) {
                 v.tcx.sess.span_err(e.span, "user-defined operators are not \
                                              allowed in constant expressions");
             }
@@ -127,7 +117,7 @@ fn check_expr(v: &mut CheckCrateVisitor, e: &Expr, is_const: bool) {
                                     "paths in constants may only refer to \
                                      items without type parameters");
             }
-            match v.def_map.borrow().find(&e.id) {
+            match v.tcx.def_map.borrow().find(&e.id) {
               Some(&DefStatic(..)) |
               Some(&DefFn(_, _)) |
               Some(&DefVariant(_, _, _)) |
@@ -145,7 +135,7 @@ fn check_expr(v: &mut CheckCrateVisitor, e: &Expr, is_const: bool) {
             }
           }
           ExprCall(callee, _) => {
-            match v.def_map.borrow().find(&callee.id) {
+            match v.tcx.def_map.borrow().find(&callee.id) {
                 Some(&DefStruct(..)) => {}    // OK.
                 Some(&DefVariant(..)) => {}    // OK.
                 _ => {
@@ -188,14 +178,14 @@ struct CheckItemRecursionVisitor<'a> {
     root_it: &'a Item,
     sess: &'a Session,
     ast_map: &'a ast_map::Map,
-    def_map: resolve::DefMap,
+    def_map: &'a resolve::DefMap,
     idstack: Vec<NodeId> }
 
 // Make sure a const item doesn't recursively refer to itself
 // FIXME: Should use the dependency graph when it's available (#1356)
 pub fn check_item_recursion<'a>(sess: &'a Session,
                                 ast_map: &'a ast_map::Map,
-                                def_map: resolve::DefMap,
+                                def_map: &'a resolve::DefMap,
                                 it: &'a Item) {
 
     let mut visitor = CheckItemRecursionVisitor {

@@ -145,39 +145,34 @@ pub fn get_drop_glue(ccx: &CrateContext, t: ty::t) -> ValueRef {
     glue
 }
 
-pub fn lazily_emit_visit_glue(ccx: &CrateContext, ti: @tydesc_info) {
+pub fn lazily_emit_visit_glue(ccx: &CrateContext, ti: &tydesc_info) -> ValueRef {
     let _icx = push_ctxt("lazily_emit_visit_glue");
 
     let llfnty = Type::glue_fn(ccx, type_of(ccx, ti.ty).ptr_to());
 
     match ti.visit_glue.get() {
-        Some(_) => (),
+        Some(visit_glue) => visit_glue,
         None => {
             debug!("+++ lazily_emit_tydesc_glue VISIT {}", ppaux::ty_to_str(ccx.tcx(), ti.ty));
             let glue_fn = declare_generic_glue(ccx, ti.ty, llfnty, "visit");
             ti.visit_glue.set(Some(glue_fn));
             make_generic_glue(ccx, ti.ty, glue_fn, make_visit_glue, "visit");
             debug!("--- lazily_emit_tydesc_glue VISIT {}", ppaux::ty_to_str(ccx.tcx(), ti.ty));
+            glue_fn
         }
     }
 }
 
 // See [Note-arg-mode]
 pub fn call_visit_glue(bcx: &Block, v: ValueRef, tydesc: ValueRef,
-                       static_ti: Option<@tydesc_info>) {
+                       static_ti: Option<&tydesc_info>) {
     let _icx = push_ctxt("call_tydesc_glue_full");
     let ccx = bcx.ccx();
     // NB: Don't short-circuit even if this block is unreachable because
     // GC-based cleanup needs to the see that the roots are live.
     if bcx.unreachable.get() && !ccx.sess().no_landing_pads() { return; }
 
-    let static_glue_fn = match static_ti {
-        None => None,
-        Some(sti) => {
-            lazily_emit_visit_glue(ccx, sti);
-            sti.visit_glue.get()
-        }
-    };
+    let static_glue_fn = static_ti.map(|sti| lazily_emit_visit_glue(ccx, sti));
 
     // When static type info is available, avoid casting to a generic pointer.
     let llrawptr = if static_glue_fn.is_none() {
@@ -224,7 +219,7 @@ fn trans_struct_drop_flag<'a>(bcx: &'a Block<'a>,
                               substs: &ty::substs)
                               -> &'a Block<'a> {
     let repr = adt::represent_type(bcx.ccx(), t);
-    let drop_flag = adt::trans_drop_flag_ptr(bcx, repr, v0);
+    let drop_flag = adt::trans_drop_flag_ptr(bcx, &*repr, v0);
     with_cond(bcx, IsNotNull(bcx, Load(bcx, drop_flag)), |cx| {
         trans_struct_drop(cx, t, v0, dtor_did, class_did, substs)
     })
@@ -265,7 +260,7 @@ fn trans_struct_drop<'a>(bcx: &'a Block<'a>,
     // this scope.
     let field_tys = ty::struct_fields(bcx.tcx(), class_did, substs);
     for (i, fld) in field_tys.iter().enumerate() {
-        let llfld_a = adt::trans_field_ptr(bcx, repr, v0, 0, i);
+        let llfld_a = adt::trans_field_ptr(bcx, &*repr, v0, 0, i);
         bcx.fcx.schedule_drop_mem(cleanup::CustomScope(field_scope),
                                   llfld_a,
                                   fld.mt.ty);
@@ -404,7 +399,7 @@ fn incr_refcnt_of_boxed<'a>(bcx: &'a Block<'a>,
 
 
 // Generates the declaration for (but doesn't emit) a type descriptor.
-pub fn declare_tydesc(ccx: &CrateContext, t: ty::t) -> @tydesc_info {
+pub fn declare_tydesc(ccx: &CrateContext, t: ty::t) -> tydesc_info {
     // If emit_tydescs already ran, then we shouldn't be creating any new
     // tydescs.
     assert!(!ccx.finished_tydescs.get());
@@ -430,16 +425,15 @@ pub fn declare_tydesc(ccx: &CrateContext, t: ty::t) -> @tydesc_info {
     let ty_name = token::intern_and_get_ident(ppaux::ty_to_str(ccx.tcx(), t));
     let ty_name = C_str_slice(ccx, ty_name);
 
-    let inf = @tydesc_info {
+    debug!("--- declare_tydesc {}", ppaux::ty_to_str(ccx.tcx(), t));
+    tydesc_info {
         ty: t,
         tydesc: gvar,
         size: llsize,
         align: llalign,
         name: ty_name,
         visit_glue: Cell::new(None),
-    };
-    debug!("--- declare_tydesc {}", ppaux::ty_to_str(ccx.tcx(), t));
-    return inf;
+    }
 }
 
 fn declare_generic_glue(ccx: &CrateContext, t: ty::t, llfnty: Type,
@@ -466,7 +460,7 @@ fn make_generic_glue(ccx: &CrateContext,
     let arena = TypedArena::new();
     let fcx = new_fn_ctxt(ccx, llfn, -1, false, ty::mk_nil(), None, None, &arena);
 
-    init_function(&fcx, false, ty::mk_nil(), None);
+    init_function(&fcx, false, ty::mk_nil());
 
     lib::llvm::SetLinkage(llfn, lib::llvm::InternalLinkage);
     ccx.stats.n_glues_created.set(ccx.stats.n_glues_created.get() + 1u);
@@ -491,9 +485,7 @@ pub fn emit_tydescs(ccx: &CrateContext) {
     // As of this point, allow no more tydescs to be created.
     ccx.finished_tydescs.set(true);
     let glue_fn_ty = Type::generic_glue_fn(ccx).ptr_to();
-    for (_, &val) in ccx.tydescs.borrow().iter() {
-        let ti = val;
-
+    for (_, ti) in ccx.tydescs.borrow().iter() {
         // Each of the glue functions needs to be cast to a generic type
         // before being put into the tydesc because we only have a singleton
         // tydesc type. Then we'll recast each function to its real type when

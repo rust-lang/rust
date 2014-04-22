@@ -40,7 +40,7 @@ pub fn check_match(fcx: &FnCtxt,
     for arm in arms.iter() {
         let mut pcx = pat_ctxt {
             fcx: fcx,
-            map: pat_id_map(tcx.def_map, *arm.pats.get(0)),
+            map: pat_id_map(&tcx.def_map, *arm.pats.get(0)),
         };
 
         for p in arm.pats.iter() { check_pat(&mut pcx, *p, discrim_ty);}
@@ -467,14 +467,14 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
         fcx.write_ty(pat.id, b_ty);
       }
       ast::PatEnum(..) |
-      ast::PatIdent(..) if pat_is_const(tcx.def_map, pat) => {
+      ast::PatIdent(..) if pat_is_const(&tcx.def_map, pat) => {
         let const_did = ast_util::def_id_of_def(tcx.def_map.borrow()
                                                    .get_copy(&pat.id));
         let const_tpt = ty::lookup_item_type(tcx, const_did);
         demand::suptype(fcx, pat.span, expected, const_tpt.ty);
         fcx.write_ty(pat.id, const_tpt.ty);
       }
-      ast::PatIdent(bm, ref name, sub) if pat_is_binding(tcx.def_map, pat) => {
+      ast::PatIdent(bm, ref name, sub) if pat_is_binding(&tcx.def_map, pat) => {
         let typ = fcx.local_ty(pat.span, pat.id);
 
         match bm {

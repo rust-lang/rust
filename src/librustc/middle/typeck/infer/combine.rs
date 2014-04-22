@@ -235,19 +235,6 @@ pub trait Combine {
 
     fn fn_sigs(&self, a: &ty::FnSig, b: &ty::FnSig) -> cres<ty::FnSig>;
 
-    fn flds(&self, a: ty::field, b: ty::field) -> cres<ty::field> {
-        if a.ident == b.ident {
-            self.mts(&a.mt, &b.mt)
-                .and_then(|mt| Ok(ty::field {ident: a.ident, mt: mt}) )
-                .or_else(|e| Err(ty::terr_in_field(@e, a.ident)) )
-        } else {
-            Err(ty::terr_record_fields(
-                                       expected_found(self,
-                                                      a.ident,
-                                                      b.ident)))
-        }
-    }
-
     fn args(&self, a: ty::t, b: ty::t) -> cres<ty::t> {
         self.contratys(a, b).and_then(|t| Ok(t))
     }
@@ -337,6 +324,7 @@ pub trait Combine {
     }
 }
 
+#[deriving(Clone)]
 pub struct CombineFields<'a> {
     pub infcx: &'a InferCtxt<'a>,
     pub a_is_expected: bool,

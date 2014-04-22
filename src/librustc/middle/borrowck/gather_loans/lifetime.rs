@@ -39,9 +39,9 @@ pub fn guarantee_lifetime(bccx: &BorrowckCtxt,
                                          cause: cause,
                                          loan_region: loan_region,
                                          loan_kind: loan_kind,
-                                         cmt_original: cmt,
+                                         cmt_original: cmt.clone(),
                                          root_scope_id: root_scope_id};
-    ctxt.check(cmt, None)
+    ctxt.check(&cmt, None)
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -69,7 +69,7 @@ impl<'a> GuaranteeLifetimeContext<'a> {
         self.bccx.tcx
     }
 
-    fn check(&self, cmt: mc::cmt, discr_scope: Option<ast::NodeId>) -> R {
+    fn check(&self, cmt: &mc::cmt, discr_scope: Option<ast::NodeId>) -> R {
         //! Main routine. Walks down `cmt` until we find the "guarantor".
         debug!("guarantee_lifetime.check(cmt={}, loan_region={})",
                cmt.repr(self.bccx.tcx),
@@ -83,15 +83,14 @@ impl<'a> GuaranteeLifetimeContext<'a> {
             mc::cat_upvar(..) |
             mc::cat_deref(_, _, mc::BorrowedPtr(..)) |  // L-Deref-Borrowed
             mc::cat_deref(_, _, mc::UnsafePtr(..)) => {
-                let scope = self.scope(cmt);
-                self.check_scope(scope)
+                self.check_scope(self.scope(cmt))
             }
 
             mc::cat_static_item => {
                 Ok(())
             }
 
-            mc::cat_deref(base, derefs, mc::GcPtr) => {
+            mc::cat_deref(ref base, derefs, mc::GcPtr) => {
                 let base_scope = self.scope(base);
 
                 // L-Deref-Managed-Imm-User-Root
@@ -111,13 +110,13 @@ impl<'a> GuaranteeLifetimeContext<'a> {
                 }
             }
 
-            mc::cat_downcast(base) |
-            mc::cat_deref(base, _, mc::OwnedPtr) |     // L-Deref-Send
-            mc::cat_interior(base, _) => {             // L-Field
+            mc::cat_downcast(ref base) |
+            mc::cat_deref(ref base, _, mc::OwnedPtr) |     // L-Deref-Send
+            mc::cat_interior(ref base, _) => {             // L-Field
                 self.check(base, discr_scope)
             }
 
-            mc::cat_discr(base, new_discr_scope) => {
+            mc::cat_discr(ref base, new_discr_scope) => {
                 // Subtle: in a match, we must ensure that each binding
                 // variable remains valid for the duration of the arm in
                 // which it appears, presuming that this arm is taken.
@@ -176,7 +175,7 @@ impl<'a> GuaranteeLifetimeContext<'a> {
     }
 
     fn is_rvalue_or_immutable(&self,
-                              cmt: mc::cmt) -> bool {
+                              cmt: &mc::cmt) -> bool {
         //! We can omit the root on an `@T` value if the location
         //! that holds the box is either (1) an rvalue, in which case
         //! it is in a non-user-accessible temporary, or (2) an immutable
@@ -189,8 +188,8 @@ impl<'a> GuaranteeLifetimeContext<'a> {
     }
 
     fn check_root(&self,
-                  cmt_deref: mc::cmt,
-                  cmt_base: mc::cmt,
+                  cmt_deref: &mc::cmt,
+                  cmt_base: &mc::cmt,
                   derefs: uint,
                   discr_scope: Option<ast::NodeId>) -> R {
         debug!("check_root(cmt_deref={}, cmt_base={}, derefs={:?}, \
@@ -253,7 +252,7 @@ impl<'a> GuaranteeLifetimeContext<'a> {
         }
     }
 
-    fn is_moved(&self, cmt: mc::cmt) -> bool {
+    fn is_moved(&self, cmt: &mc::cmt) -> bool {
         //! True if `cmt` is something that is potentially moved
         //! out of the current stack frame.
 
@@ -269,9 +268,9 @@ impl<'a> GuaranteeLifetimeContext<'a> {
             mc::cat_upvar(..) => {
                 false
             }
-            r @ mc::cat_downcast(..) |
-            r @ mc::cat_interior(..) |
-            r @ mc::cat_discr(..) => {
+            ref r @ mc::cat_downcast(..) |
+            ref r @ mc::cat_interior(..) |
+            ref r @ mc::cat_discr(..) => {
                 self.tcx().sess.span_bug(
                     cmt.span,
                     format!("illegal guarantor category: {:?}", r));
@@ -279,7 +278,7 @@ impl<'a> GuaranteeLifetimeContext<'a> {
         }
     }
 
-    fn scope(&self, cmt: mc::cmt) -> ty::Region {
+    fn scope(&self, cmt: &mc::cmt) -> ty::Region {
         //! Returns the maximal region scope for the which the
         //! lvalue `cmt` is guaranteed to be valid without any
         //! rooting etc, and presuming `cmt` is not mutated.
@@ -307,18 +306,18 @@ impl<'a> GuaranteeLifetimeContext<'a> {
             mc::cat_deref(_, _, mc::BorrowedPtr(_, r)) => {
                 r
             }
-            mc::cat_downcast(cmt) |
-            mc::cat_deref(cmt, _, mc::OwnedPtr) |
-            mc::cat_deref(cmt, _, mc::GcPtr) |
-            mc::cat_interior(cmt, _) |
-            mc::cat_discr(cmt, _) => {
+            mc::cat_downcast(ref cmt) |
+            mc::cat_deref(ref cmt, _, mc::OwnedPtr) |
+            mc::cat_deref(ref cmt, _, mc::GcPtr) |
+            mc::cat_interior(ref cmt, _) |
+            mc::cat_discr(ref cmt, _) => {
                 self.scope(cmt)
             }
         }
     }
 
     fn report_error(&self, code: bckerr_code) {
-        self.bccx.report(BckError { cmt: self.cmt_original,
+        self.bccx.report(BckError { cmt: self.cmt_original.clone(),
                                     span: self.span,
                                     cause: self.cause,
                                     code: code });

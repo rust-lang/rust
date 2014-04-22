@@ -17,7 +17,6 @@ use std::cell::RefCell;
 use collections::HashMap;
 use std::io;
 use std::io::MemWriter;
-use std::str;
 use std::fmt;
 
 use middle::ty::param_ty;
@@ -39,7 +38,7 @@ pub struct ctxt<'a> {
     pub ds: fn(DefId) -> ~str,
     // The type context.
     pub tcx: &'a ty::ctxt,
-    pub abbrevs: abbrev_ctxt
+    pub abbrevs: &'a abbrev_map
 }
 
 // Compact string representation for ty.t values. API ty_str & parse_from_str.
@@ -51,61 +50,35 @@ pub struct ty_abbrev {
     s: ~str
 }
 
-pub enum abbrev_ctxt {
-    ac_no_abbrevs,
-    ac_use_abbrevs(@RefCell<HashMap<ty::t, ty_abbrev>>),
-}
+pub type abbrev_map = RefCell<HashMap<ty::t, ty_abbrev>>;
 
 fn mywrite(w: &mut MemWriter, fmt: &fmt::Arguments) {
     fmt::write(&mut *w as &mut io::Writer, fmt);
 }
 
 pub fn enc_ty(w: &mut MemWriter, cx: &ctxt, t: ty::t) {
-    match cx.abbrevs {
-      ac_no_abbrevs => {
-          let result_str_opt = cx.tcx.short_names_cache.borrow()
-                                            .find(&t)
-                                            .map(|result| {
-                                                (*result).clone()
-                                            });
-          let result_str = match result_str_opt {
-            Some(s) => s,
-            None => {
-                let wr = &mut MemWriter::new();
-                enc_sty(wr, cx, &ty::get(t).sty);
-                let s = str::from_utf8(wr.get_ref()).unwrap();
-                cx.tcx.short_names_cache.borrow_mut().insert(t, s.to_str());
-                s.to_str()
-            }
-          };
-          w.write(result_str.as_bytes());
-      }
-      ac_use_abbrevs(abbrevs) => {
-          match abbrevs.borrow_mut().find(&t) {
-              Some(a) => { w.write(a.s.as_bytes()); return; }
-              None => {}
-          }
-          let pos = w.tell().unwrap();
-          enc_sty(w, cx, &ty::get(t).sty);
-          let end = w.tell().unwrap();
-          let len = end - pos;
-          fn estimate_sz(u: u64) -> u64 {
-              let mut n = u;
-              let mut len = 0;
-              while n != 0 { len += 1; n = n >> 4; }
-              return len;
-          }
-          let abbrev_len = 3 + estimate_sz(pos) + estimate_sz(len);
-          if abbrev_len < len {
-              // I.e. it's actually an abbreviation.
-              let s = format!("\\#{:x}:{:x}\\#", pos, len);
-              let a = ty_abbrev { pos: pos as uint,
-                                  len: len as uint,
-                                  s: s };
-              abbrevs.borrow_mut().insert(t, a);
-          }
-          return;
-      }
+    match cx.abbrevs.borrow_mut().find(&t) {
+        Some(a) => { w.write(a.s.as_bytes()); return; }
+        None => {}
+    }
+    let pos = w.tell().unwrap();
+    enc_sty(w, cx, &ty::get(t).sty);
+    let end = w.tell().unwrap();
+    let len = end - pos;
+    fn estimate_sz(u: u64) -> u64 {
+        let mut n = u;
+        let mut len = 0;
+        while n != 0 { len += 1; n = n >> 4; }
+        return len;
+    }
+    let abbrev_len = 3 + estimate_sz(pos) + estimate_sz(len);
+    if abbrev_len < len {
+        // I.e. it's actually an abbreviation.
+        cx.abbrevs.borrow_mut().insert(t, ty_abbrev {
+            pos: pos as uint,
+            len: len as uint,
+            s: format!("\\#{:x}:{:x}\\#", pos, len)
+        });
     }
 }
 
@@ -393,9 +366,9 @@ fn enc_bounds(w: &mut MemWriter, cx: &ctxt, bs: &ty::ParamBounds) {
         }
     }
 
-    for &tp in bs.trait_bounds.iter() {
+    for tp in bs.trait_bounds.iter() {
         mywrite!(w, "I");
-        enc_trait_ref(w, cx, tp);
+        enc_trait_ref(w, cx, &**tp);
     }
 
     mywrite!(w, ".");
@@ -403,6 +376,6 @@ fn enc_bounds(w: &mut MemWriter, cx: &ctxt, bs: &ty::ParamBounds) {
 
 pub fn enc_type_param_def(w: &mut MemWriter, cx: &ctxt, v: &ty::TypeParameterDef) {
     mywrite!(w, "{}:{}|", token::get_ident(v.ident), (cx.ds)(v.def_id));
-    enc_bounds(w, cx, v.bounds);
+    enc_bounds(w, cx, &*v.bounds);
     enc_opt(w, v.default, |w, t| enc_ty(w, cx, t));
 }

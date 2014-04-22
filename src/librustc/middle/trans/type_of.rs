@@ -142,7 +142,7 @@ pub fn sizing_type_of(cx: &CrateContext, t: ty::t) -> Type {
 
         ty::ty_tup(..) | ty::ty_enum(..) => {
             let repr = adt::represent_type(cx, t);
-            adt::sizing_type_of(cx, repr)
+            adt::sizing_type_of(cx, &*repr)
         }
 
         ty::ty_struct(..) => {
@@ -152,7 +152,7 @@ pub fn sizing_type_of(cx: &CrateContext, t: ty::t) -> Type {
                 Type::vector(&type_of(cx, et), n as u64)
             } else {
                 let repr = adt::represent_type(cx, t);
-                adt::sizing_type_of(cx, repr)
+                adt::sizing_type_of(cx, &*repr)
             }
         }
 
@@ -213,7 +213,7 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
         // of the enum's variants refers to the enum itself.
         let repr = adt::represent_type(cx, t);
         let name = llvm_type_name(cx, an_enum, did, substs.tps.as_slice());
-        adt::incomplete_type_of(cx, repr, name)
+        adt::incomplete_type_of(cx, &*repr, name)
       }
       ty::ty_box(typ) => {
           Type::at_box(cx, type_of(cx, typ)).ptr_to()
@@ -259,7 +259,7 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
       ty::ty_trait(..) => Type::opaque_trait(cx),
       ty::ty_tup(..) => {
           let repr = adt::represent_type(cx, t);
-          adt::type_of(cx, repr)
+          adt::type_of(cx, &*repr)
       }
       ty::ty_struct(did, ref substs) => {
           if ty::type_is_simd(cx.tcx(), t) {
@@ -275,7 +275,7 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
                                         a_struct,
                                         did,
                                         substs.tps.as_slice());
-              adt::incomplete_type_of(cx, repr, name)
+              adt::incomplete_type_of(cx, &*repr, name)
           }
       }
 
@@ -297,7 +297,7 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
     match ty::get(t).sty {
         ty::ty_enum(..) | ty::ty_struct(..) if !ty::type_is_simd(cx.tcx(), t) => {
             let repr = adt::represent_type(cx, t);
-            adt::finish_type_of(cx, repr, &mut llty);
+            adt::finish_type_of(cx, &*repr, &mut llty);
         }
         _ => ()
     }

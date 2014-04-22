@@ -25,6 +25,7 @@ use middle::trans::type_of::*;
 use middle::ty;
 use util::ppaux::ty_to_str;
 
+use std::rc::Rc;
 use arena::TypedArena;
 use libc::c_uint;
 use syntax::ast::DefId;
@@ -33,15 +34,15 @@ use syntax::ast_map;
 use syntax::parse::token::{InternedString, special_idents};
 use syntax::parse::token;
 
-pub struct Reflector<'a> {
+pub struct Reflector<'a, 'b> {
     visitor_val: ValueRef,
-    visitor_methods: @Vec<@ty::Method> ,
-    final_bcx: &'a Block<'a>,
+    visitor_methods: &'a [Rc<ty::Method>],
+    final_bcx: &'b Block<'b>,
     tydesc_ty: Type,
-    bcx: &'a Block<'a>
+    bcx: &'b Block<'b>
 }
 
-impl<'a> Reflector<'a> {
+impl<'a, 'b> Reflector<'a, 'b> {
     pub fn c_uint(&mut self, u: uint) -> ValueRef {
         C_uint(self.bcx.ccx(), u)
     }
@@ -75,7 +76,7 @@ impl<'a> Reflector<'a> {
     pub fn c_tydesc(&mut self, t: ty::t) -> ValueRef {
         let bcx = self.bcx;
         let static_ti = get_tydesc(bcx.ccx(), t);
-        glue::lazily_emit_visit_glue(bcx.ccx(), static_ti);
+        glue::lazily_emit_visit_glue(bcx.ccx(), &*static_ti);
         PointerCast(bcx, static_ti.tydesc, self.tydesc_ty.ptr_to())
     }
 
@@ -92,7 +93,7 @@ impl<'a> Reflector<'a> {
                 format!("couldn't find visit method for {}", ty_name));
         let mth_ty =
             ty::mk_bare_fn(tcx,
-                           self.visitor_methods.get(mth_idx).fty.clone());
+                           self.visitor_methods[mth_idx].fty.clone());
         let v = self.visitor_val;
         debug!("passing {} args:", args.len());
         let mut bcx = self.bcx;
@@ -307,7 +308,7 @@ impl<'a> Reflector<'a> {
                 let arena = TypedArena::new();
                 let fcx = new_fn_ctxt(ccx, llfdecl, -1, false,
                                       ty::mk_u64(), None, None, &arena);
-                init_function(&fcx, false, ty::mk_u64(), None);
+                init_function(&fcx, false, ty::mk_u64());
 
                 let arg = unsafe {
                     //
@@ -319,7 +320,7 @@ impl<'a> Reflector<'a> {
                 };
                 let bcx = fcx.entry_bcx.borrow().clone().unwrap();
                 let arg = BitCast(bcx, arg, llptrty);
-                let ret = adt::trans_get_discr(bcx, repr, arg, Some(Type::i64(ccx)));
+                let ret = adt::trans_get_discr(bcx, &*repr, arg, Some(Type::i64(ccx)));
                 Store(bcx, ret, fcx.llretptr.get().unwrap());
                 match fcx.llreturn.get() {
                     Some(llreturn) => Br(bcx, llreturn),
@@ -344,7 +345,7 @@ impl<'a> Reflector<'a> {
                         for (j, a) in v.args.iter().enumerate() {
                             let bcx = this.bcx;
                             let null = C_null(llptrty);
-                            let ptr = adt::trans_field_ptr(bcx, repr, null, v.disr_val, j);
+                            let ptr = adt::trans_field_ptr(bcx, &*repr, null, v.disr_val, j);
                             let offset = p2i(ccx, ptr);
                             let field_args = [this.c_uint(j),
                                                offset,
@@ -401,9 +402,10 @@ pub fn emit_calls_to_trait_visit_ty<'a>(
     let final = fcx.new_temp_block("final");
     let tydesc_ty = ty::get_tydesc_ty(bcx.tcx()).unwrap();
     let tydesc_ty = type_of(bcx.ccx(), tydesc_ty);
+    let visitor_methods = ty::trait_methods(bcx.tcx(), visitor_trait_id);
     let mut r = Reflector {
         visitor_val: visitor_val,
-        visitor_methods: ty::trait_methods(bcx.tcx(), visitor_trait_id),
+        visitor_methods: visitor_methods.as_slice(),
         final_bcx: final,
         tydesc_ty: tydesc_ty,
         bcx: bcx

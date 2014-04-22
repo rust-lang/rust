@@ -106,7 +106,6 @@
 use middle::lint::{UnusedVariable, DeadAssignment};
 use middle::pat_util;
 use middle::ty;
-use middle::typeck;
 use middle::moves;
 use util::nodemap::NodeMap;
 
@@ -171,10 +170,9 @@ impl<'a> Visitor<()> for IrMaps<'a> {
 }
 
 pub fn check_crate(tcx: &ty::ctxt,
-                   method_map: typeck::MethodMap,
                    capture_map: &moves::CaptureMap,
                    krate: &Crate) {
-    visit::walk_crate(&mut IrMaps(tcx, method_map, capture_map), krate, ());
+    visit::walk_crate(&mut IrMaps(tcx, capture_map), krate, ());
     tcx.sess.abort_if_errors();
 }
 
@@ -247,7 +245,6 @@ enum VarKind {
 
 struct IrMaps<'a> {
     tcx: &'a ty::ctxt,
-    method_map: typeck::MethodMap,
     capture_map: &'a moves::CaptureMap,
 
     num_live_nodes: uint,
@@ -260,12 +257,10 @@ struct IrMaps<'a> {
 }
 
 fn IrMaps<'a>(tcx: &'a ty::ctxt,
-              method_map: typeck::MethodMap,
               capture_map: &'a moves::CaptureMap)
               -> IrMaps<'a> {
     IrMaps {
         tcx: tcx,
-        method_map: method_map,
         capture_map: capture_map,
         num_live_nodes: 0,
         num_vars: 0,
@@ -366,14 +361,14 @@ fn visit_fn(ir: &mut IrMaps,
     let _i = ::util::common::indenter();
 
     // swap in a new set of IR maps for this function body:
-    let mut fn_maps = IrMaps(ir.tcx, ir.method_map, ir.capture_map);
+    let mut fn_maps = IrMaps(ir.tcx, ir.capture_map);
 
     unsafe {
         debug!("creating fn_maps: {}", transmute::<&IrMaps, *IrMaps>(&fn_maps));
     }
 
     for arg in decl.inputs.iter() {
-        pat_util::pat_bindings(ir.tcx.def_map,
+        pat_util::pat_bindings(&ir.tcx.def_map,
                                arg.pat,
                                |_bm, arg_id, _x, path| {
             debug!("adding argument {}", arg_id);
@@ -407,7 +402,7 @@ fn visit_fn(ir: &mut IrMaps,
 }
 
 fn visit_local(ir: &mut IrMaps, local: &Local) {
-    pat_util::pat_bindings(ir.tcx.def_map, local.pat, |bm, p_id, sp, path| {
+    pat_util::pat_bindings(&ir.tcx.def_map, local.pat, |bm, p_id, sp, path| {
         debug!("adding local variable {}", p_id);
         let name = ast_util::path_to_ident(path);
         ir.add_live_node_for_node(p_id, VarDefNode(sp));
@@ -431,7 +426,7 @@ fn visit_local(ir: &mut IrMaps, local: &Local) {
 
 fn visit_arm(ir: &mut IrMaps, arm: &Arm) {
     for pat in arm.pats.iter() {
-        pat_util::pat_bindings(ir.tcx.def_map, *pat, |bm, p_id, sp, path| {
+        pat_util::pat_bindings(&ir.tcx.def_map, *pat, |bm, p_id, sp, path| {
             debug!("adding local variable {} from match with bm {:?}",
                    p_id, bm);
             let name = ast_util::path_to_ident(path);
@@ -601,7 +596,7 @@ impl<'a> Liveness<'a> {
     fn pat_bindings(&mut self,
                     pat: &Pat,
                     f: |&mut Liveness<'a>, LiveNode, Variable, Span, NodeId|) {
-        pat_util::pat_bindings(self.ir.tcx.def_map, pat, |_bm, p_id, sp, _n| {
+        pat_util::pat_bindings(&self.ir.tcx.def_map, pat, |_bm, p_id, sp, _n| {
             let ln = self.live_node(p_id, sp);
             let var = self.variable(p_id, sp);
             f(self, ln, var, sp, p_id);
@@ -1529,7 +1524,7 @@ impl<'a> Liveness<'a> {
 
     fn warn_about_unused_args(&self, decl: &FnDecl, entry_ln: LiveNode) {
         for arg in decl.inputs.iter() {
-            pat_util::pat_bindings(self.ir.tcx.def_map,
+            pat_util::pat_bindings(&self.ir.tcx.def_map,
                                    arg.pat,
                                    |_bm, p_id, sp, path| {
                 let var = self.variable(p_id, sp);

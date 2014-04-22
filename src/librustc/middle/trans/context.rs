@@ -20,8 +20,9 @@ use middle::resolve;
 use middle::trans::adt;
 use middle::trans::base;
 use middle::trans::builder::Builder;
-use middle::trans::common::{mono_id,ExternMap,tydesc_info,BuilderRef_res,Stats};
+use middle::trans::common::{ExternMap,tydesc_info,BuilderRef_res};
 use middle::trans::debuginfo;
+use middle::trans::monomorphize::MonoId;
 use middle::trans::type_::Type;
 use middle::ty;
 use util::sha2::Sha256;
@@ -30,9 +31,25 @@ use util::nodemap::{NodeMap, NodeSet, DefIdMap};
 use std::cell::{Cell, RefCell};
 use std::c_str::ToCStr;
 use std::ptr;
+use std::rc::Rc;
 use collections::{HashMap, HashSet};
 use syntax::ast;
 use syntax::parse::token::InternedString;
+
+pub struct Stats {
+    pub n_static_tydescs: Cell<uint>,
+    pub n_glues_created: Cell<uint>,
+    pub n_null_glues: Cell<uint>,
+    pub n_real_glues: Cell<uint>,
+    pub n_fns: Cell<uint>,
+    pub n_monos: Cell<uint>,
+    pub n_inlines: Cell<uint>,
+    pub n_closures: Cell<uint>,
+    pub n_llvm_insns: Cell<uint>,
+    pub llvm_insns: RefCell<HashMap<~str, uint>>,
+    // (ident, time-in-ms, llvm-instructions)
+    pub fn_stats: RefCell<Vec<(~str, uint, uint)> >,
+}
 
 pub struct CrateContext {
     pub llmod: ModuleRef,
@@ -47,7 +64,7 @@ pub struct CrateContext {
     pub item_symbols: RefCell<NodeMap<~str>>,
     pub link_meta: LinkMeta,
     pub drop_glues: RefCell<HashMap<ty::t, ValueRef>>,
-    pub tydescs: RefCell<HashMap<ty::t, @tydesc_info>>,
+    pub tydescs: RefCell<HashMap<ty::t, Rc<tydesc_info>>>,
     /// Set when running emit_tydescs to enforce that no more tydescs are
     /// created.
     pub finished_tydescs: Cell<bool>,
@@ -61,10 +78,10 @@ pub struct CrateContext {
     /// that is generated
     pub non_inlineable_statics: RefCell<NodeSet>,
     /// Cache instances of monomorphized functions
-    pub monomorphized: RefCell<HashMap<mono_id, ValueRef>>,
+    pub monomorphized: RefCell<HashMap<MonoId, ValueRef>>,
     pub monomorphizing: RefCell<DefIdMap<uint>>,
     /// Cache generated vtables
-    pub vtables: RefCell<HashMap<(ty::t, mono_id), ValueRef>>,
+    pub vtables: RefCell<HashMap<(ty::t, MonoId), ValueRef>>,
     /// Cache of constant strings,
     pub const_cstr_cache: RefCell<HashMap<InternedString, ValueRef>>,
 
@@ -91,13 +108,13 @@ pub struct CrateContext {
 
     pub lltypes: RefCell<HashMap<ty::t, Type>>,
     pub llsizingtypes: RefCell<HashMap<ty::t, Type>>,
-    pub adt_reprs: RefCell<HashMap<ty::t, @adt::Repr>>,
+    pub adt_reprs: RefCell<HashMap<ty::t, Rc<adt::Repr>>>,
     pub symbol_hasher: RefCell<Sha256>,
     pub type_hashcodes: RefCell<HashMap<ty::t, ~str>>,
     pub all_llvm_symbols: RefCell<HashSet<~str>>,
     pub tcx: ty::ctxt,
     pub maps: astencode::Maps,
-    pub stats: @Stats,
+    pub stats: Stats,
     pub int_type: Type,
     pub opaque_vec_type: Type,
     pub builder: BuilderRef_res,
@@ -179,7 +196,7 @@ impl CrateContext {
                 all_llvm_symbols: RefCell::new(HashSet::new()),
                 tcx: tcx,
                 maps: maps,
-                stats: @Stats {
+                stats: Stats {
                     n_static_tydescs: Cell::new(0u),
                     n_glues_created: Cell::new(0u),
                     n_null_glues: Cell::new(0u),

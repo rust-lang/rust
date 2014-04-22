@@ -47,26 +47,26 @@ use util::common::indenter;
 
 use collections::HashMap;
 
-pub trait LatticeValue {
-    fn sub(cf: &CombineFields, a: &Self, b: &Self) -> ures;
-    fn lub(cf: &CombineFields, a: &Self, b: &Self) -> cres<Self>;
-    fn glb(cf: &CombineFields, a: &Self, b: &Self) -> cres<Self>;
+trait LatticeValue {
+    fn sub(cf: CombineFields, a: &Self, b: &Self) -> ures;
+    fn lub(cf: CombineFields, a: &Self, b: &Self) -> cres<Self>;
+    fn glb(cf: CombineFields, a: &Self, b: &Self) -> cres<Self>;
 }
 
 pub type LatticeOp<'a, T> =
-    |cf: &CombineFields, a: &T, b: &T|: 'a -> cres<T>;
+    |cf: CombineFields, a: &T, b: &T|: 'a -> cres<T>;
 
 impl LatticeValue for ty::t {
-    fn sub(cf: &CombineFields, a: &ty::t, b: &ty::t) -> ures {
-        Sub(*cf).tys(*a, *b).to_ures()
+    fn sub(cf: CombineFields, a: &ty::t, b: &ty::t) -> ures {
+        Sub(cf).tys(*a, *b).to_ures()
     }
 
-    fn lub(cf: &CombineFields, a: &ty::t, b: &ty::t) -> cres<ty::t> {
-        Lub(*cf).tys(*a, *b)
+    fn lub(cf: CombineFields, a: &ty::t, b: &ty::t) -> cres<ty::t> {
+        Lub(cf).tys(*a, *b)
     }
 
-    fn glb(cf: &CombineFields, a: &ty::t, b: &ty::t) -> cres<ty::t> {
-        Glb(*cf).tys(*a, *b)
+    fn glb(cf: CombineFields, a: &ty::t, b: &ty::t) -> cres<ty::t> {
+        Glb(cf).tys(*a, *b)
     }
 }
 
@@ -142,7 +142,7 @@ impl<'f> CombineFieldsLatticeMethods for CombineFields<'f> {
         match (&a_bounds.ub, &b_bounds.lb) {
             (&Some(ref a_ub), &Some(ref b_lb)) => {
                 let r = self.infcx.try(
-                    || LatticeValue::sub(self, a_ub, b_lb));
+                    || LatticeValue::sub(self.clone(), a_ub, b_lb));
                 match r {
                     Ok(()) => {
                         return Ok(());
@@ -232,7 +232,7 @@ impl<'f> CombineFieldsLatticeMethods for CombineFields<'f> {
             (&Some(_),       &None) => Ok((*a).clone()),
             (&None,          &Some(_)) => Ok((*b).clone()),
             (&Some(ref v_a), &Some(ref v_b)) => {
-                lattice_op(self, v_a, v_b).and_then(|v| Ok(Some(v)))
+                lattice_op(self.clone(), v_a, v_b).and_then(|v| Ok(Some(v)))
             }
         }
     }
@@ -314,7 +314,7 @@ impl<'f> CombineFieldsLatticeMethods for CombineFields<'f> {
                 uok()
             }
             (&Some(ref t_a), &Some(ref t_b)) => {
-                LatticeValue::sub(self, t_a, t_b)
+                LatticeValue::sub(self.clone(), t_a, t_b)
             }
         }
     }
@@ -337,7 +337,7 @@ pub trait TyLatticeDir {
 }
 
 impl<'f> LatticeDir for Lub<'f> {
-    fn combine_fields<'a>(&'a self) -> CombineFields<'a> { *self.get_ref() }
+    fn combine_fields<'a>(&'a self) -> CombineFields<'a> { self.get_ref().clone() }
     fn bnd<T:Clone>(&self, b: &Bounds<T>) -> Option<T> { b.ub.clone() }
     fn with_bnd<T:Clone>(&self, b: &Bounds<T>, t: T) -> Bounds<T> {
         Bounds { ub: Some(t), ..(*b).clone() }
@@ -351,7 +351,7 @@ impl<'f> TyLatticeDir for Lub<'f> {
 }
 
 impl<'f> LatticeDir for Glb<'f> {
-    fn combine_fields<'a>(&'a self) -> CombineFields<'a> { *self.get_ref() }
+    fn combine_fields<'a>(&'a self) -> CombineFields<'a> { self.get_ref().clone() }
     fn bnd<T:Clone>(&self, b: &Bounds<T>) -> Option<T> { b.lb.clone() }
     fn with_bnd<T:Clone>(&self, b: &Bounds<T>, t: T) -> Bounds<T> {
         Bounds { lb: Some(t), ..(*b).clone() }
