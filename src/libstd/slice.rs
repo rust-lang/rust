@@ -212,8 +212,7 @@ impl<'a, T> Iterator<&'a [T]> for RevSplits<'a, T> {
             return Some(self.v);
         }
 
-        let pred = &mut self.pred;
-        match self.v.iter().rposition(|x| (*pred)(x)) {
+        match self.v.iter().rposition(|x| (self.pred)(x)) {
             None => {
                 self.finished = true;
                 Some(self.v)
@@ -2132,7 +2131,8 @@ impl<'a, T> Iterator<&'a mut [T]> for MutSplits<'a, T> {
     fn next(&mut self) -> Option<&'a mut [T]> {
         if self.finished { return None; }
 
-        match self.v.iter().position(|x| (self.pred)(x)) {
+        let pred = &mut self.pred;
+        match self.v.iter().position(|x| (*pred)(x)) {
             None => {
                 self.finished = true;
                 let tmp = mem::replace(&mut self.v, &mut []);
@@ -2167,7 +2167,8 @@ impl<'a, T> DoubleEndedIterator<&'a mut [T]> for MutSplits<'a, T> {
     fn next_back(&mut self) -> Option<&'a mut [T]> {
         if self.finished { return None; }
 
-        match self.v.iter().rposition(|x| (self.pred)(x)) {
+        let pred = &mut self.pred;
+        match self.v.iter().rposition(|x| (*pred)(x)) {
             None => {
                 self.finished = true;
                 let tmp = mem::replace(&mut self.v, &mut []);
@@ -3340,7 +3341,7 @@ mod tests {
         assert_eq!(v.chunks(6).collect::<~[&[int]]>(), ~[&[1i,2,3,4,5]]);
 
         assert_eq!(v.chunks(2).rev().collect::<~[&[int]]>(), ~[&[5i], &[3,4], &[1,2]]);
-        let it = v.chunks(2);
+        let mut it = v.chunks(2);
         assert_eq!(it.indexable(), 3);
         assert_eq!(it.idx(0).unwrap(), &[1,2]);
         assert_eq!(it.idx(1).unwrap(), &[3,4]);

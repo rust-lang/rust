@@ -47,7 +47,7 @@ pub fn strip_items(krate: ast::Crate,
     ctxt.fold_crate(krate)
 }
 
-fn filter_view_item<'r>(cx: &Context, view_item: &'r ast::ViewItem)
+fn filter_view_item<'r>(cx: &mut Context, view_item: &'r ast::ViewItem)
                         -> Option<&'r ast::ViewItem> {
     if view_item_in_cfg(cx, view_item) {
         Some(view_item)
@@ -72,7 +72,7 @@ fn fold_mod(cx: &mut Context, m: &ast::Mod) -> ast::Mod {
     }
 }
 
-fn filter_foreign_item(cx: &Context, item: @ast::ForeignItem)
+fn filter_foreign_item(cx: &mut Context, item: @ast::ForeignItem)
                        -> Option<@ast::ForeignItem> {
     if foreign_item_in_cfg(cx, item) {
         Some(item)
@@ -144,7 +144,7 @@ fn fold_item_underscore(cx: &mut Context, item: &ast::Item_) -> ast::Item_ {
     fold::noop_fold_item_underscore(&item, cx)
 }
 
-fn fold_struct(cx: &Context, def: &ast::StructDef) -> @ast::StructDef {
+fn fold_struct(cx: &mut Context, def: &ast::StructDef) -> @ast::StructDef {
     let mut fields = def.fields.iter().map(|c| c.clone()).filter(|m| {
         (cx.in_cfg)(m.node.attrs.as_slice())
     });
@@ -156,7 +156,7 @@ fn fold_struct(cx: &Context, def: &ast::StructDef) -> @ast::StructDef {
     }
 }
 
-fn retain_stmt(cx: &Context, stmt: @ast::Stmt) -> bool {
+fn retain_stmt(cx: &mut Context, stmt: @ast::Stmt) -> bool {
     match stmt.node {
       ast::StmtDecl(decl, _) => {
         match decl.node {
@@ -189,23 +189,23 @@ fn fold_block(cx: &mut Context, b: ast::P<ast::Block>) -> ast::P<ast::Block> {
     })
 }
 
-fn item_in_cfg(cx: &Context, item: &ast::Item) -> bool {
+fn item_in_cfg(cx: &mut Context, item: &ast::Item) -> bool {
     return (cx.in_cfg)(item.attrs.as_slice());
 }
 
-fn foreign_item_in_cfg(cx: &Context, item: &ast::ForeignItem) -> bool {
+fn foreign_item_in_cfg(cx: &mut Context, item: &ast::ForeignItem) -> bool {
     return (cx.in_cfg)(item.attrs.as_slice());
 }
 
-fn view_item_in_cfg(cx: &Context, item: &ast::ViewItem) -> bool {
+fn view_item_in_cfg(cx: &mut Context, item: &ast::ViewItem) -> bool {
     return (cx.in_cfg)(item.attrs.as_slice());
 }
 
-fn method_in_cfg(cx: &Context, meth: &ast::Method) -> bool {
+fn method_in_cfg(cx: &mut Context, meth: &ast::Method) -> bool {
     return (cx.in_cfg)(meth.attrs.as_slice());
 }
 
-fn trait_method_in_cfg(cx: &Context, meth: &ast::TraitMethod) -> bool {
+fn trait_method_in_cfg(cx: &mut Context, meth: &ast::TraitMethod) -> bool {
     match *meth {
         ast::Required(ref meth) => (cx.in_cfg)(meth.attrs.as_slice()),
         ast::Provided(meth) => (cx.in_cfg)(meth.attrs.as_slice())

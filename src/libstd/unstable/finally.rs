@@ -145,7 +145,7 @@ fn test_fail() {
 
 #[test]
 fn test_retval() {
-    let closure: || -> int = || 10;
+    let mut closure: || -> int = || 10;
     let i = closure.finally(|| { });
     assert_eq!(i, 10);
 }
@@ -154,6 +154,6 @@ fn test_retval() {
 fn test_compact() {
     fn do_some_fallible_work() {}
     fn but_always_run_this_function() { }
-    do_some_fallible_work.finally(
-        but_always_run_this_function);
+    let mut f = do_some_fallible_work;
+    f.finally(but_always_run_this_function);
 }
