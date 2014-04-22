@@ -29,7 +29,7 @@ fn start(argc: int, argv: **u8) -> int {
 }
 
 macro_rules! iotest (
-    { fn $name:ident() $b:block $($a:attr)* } => (
+    { fn $name:ident() $b:block $(#[$a:meta])* } => (
         mod $name {
             #![allow(unused_imports)]
 
@@ -40,8 +40,8 @@ macro_rules! iotest (
 
             fn f() $b
 
-            $($a)* #[test] fn green() { f() }
-            $($a)* #[test] fn native() {
+            $(#[$a])* #[test] fn green() { f() }
+            $(#[$a])* #[test] fn native() {
                 use native;
                 let (tx, rx) = channel();
                 native::task::spawn(proc() { tx.send(f()) });
@@ -76,7 +76,7 @@ iotest!(fn eventual_timeout() {
         }
     }
     fail!("never timed out!");
-})
+} #[ignore(cfg(target_os = "freebsd"))])
 
 iotest!(fn timeout_success() {
     let addr = next_test_ip4();
