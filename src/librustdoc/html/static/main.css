@@ -13,31 +13,31 @@
     font-family: 'Fira Sans';
     font-style: normal;
     font-weight: 400;
-    src: local('Fira Sans'), url("http://rust-lang.org/fonts/FiraSans-Regular.woff") format('woff');
+    src: local('Fira Sans'), url("http://www.rust-lang.org/fonts/FiraSans-Regular.woff") format('woff');
 }
 @font-face {
     font-family: 'Fira Sans';
     font-style: normal;
     font-weight: 500;
-    src: local('Fira Sans Medium'), url("http://rust-lang.org/fonts/FiraSans-Medium.woff") format('woff');
+    src: local('Fira Sans Medium'), url("http://www.rust-lang.org/fonts/FiraSans-Medium.woff") format('woff');
 }
 @font-face {
     font-family: 'Heuristica';
     font-style: normal;
     font-weight: 400;
-    src: local('Heuristica Regular'), url("http://rust-lang.org/fonts/Heuristica-Regular.woff") format('woff');
+    src: local('Heuristica Regular'), url("http://www.rust-lang.org/fonts/Heuristica-Regular.woff") format('woff');
 }
 @font-face {
     font-family: 'Heuristica';
     font-style: italic;
     font-weight: 400;
-    src: local('Heuristica Italic'), url("http://rust-lang.org/fonts/Heuristica-Italic.woff") format('woff');
+    src: local('Heuristica Italic'), url("http://www.rust-lang.org/fonts/Heuristica-Italic.woff") format('woff');
 }
 @font-face {
     font-family: 'Heuristica';
     font-style: normal;
     font-weight: 700;
-    src: local('Heuristica Bold'), url("http://rust-lang.org/fonts/Heuristica-Bold.woff") format('woff');
+    src: local('Heuristica Bold'), url("http://www.rust-lang.org/fonts/Heuristica-Bold.woff") format('woff');
 }
 
 @import "normalize.css";
@@ -58,31 +58,38 @@ body {
     margin: 0;
     position: relative;
     padding: 10px 15px 20px 15px;
-    padding-bottom: 20px;
 }
 
-h1, h2, h3, h4 {
+h1, h2, h3:not(.impl), h4:not(.method) {
     color: black;
     font-weight: 500;
     margin: 30px 0 20px 0;
-    padding-bottom: 15px;
+    padding-bottom: 6px;
 }
 h1.fqn {
     border-bottom: 1px dashed #D5D5D5;
     margin-top: 0;
 }
-h2, h3, h4 {
+h2, h3:not(.impl), h4:not(.method) {
     border-bottom: 1px solid #DDDDDD;
 }
-h2 code, h3 code, h4 code, .block a {
-    font-size: 1.2em;
+h3.impl, h4.method {
+    font-weight: 600;
+    margin-top: 10px;
+    margin-bottom: 10px;
 }
-h1, h2, h3, h4, section.sidebar, a.source, .content a, .search-input {
+h3.impl {
+    margin-top: 15px;
+}
+h1, h2, h3, h4, section.sidebar, a.source, .content a.mod, .search-input {
     font-family: "Fira Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 
-ul {
+ol, ul {
     padding-left: 25px;
+}
+ul ul, ol ul, ul ol, ol ol {
+    margin-bottom: 0;
 }
 
 p {
@@ -90,7 +97,7 @@ p {
 }
 
 code, pre {
-    font-family: Menlo, Monaco, Consolas, Inconsolata, "DejaVu Sans Mono", monospace;
+    font-family: "Source Code Pro", Menlo, Monaco, Consolas, "DejaVu Sans Mono", Inconsolata, monospace;
 }
 pre {
     font-size: 15px;
@@ -194,9 +201,8 @@ nav.sub {
 }
 
 .docblock h1, .docblock h2, .docblock h3, .docblock h4, .docblock h5 {
-    margin-left: 0;
     margin: 40px 0 10px 0;
-    padding-bottom: 10px;
+    padding: 10px 0;
     border-bottom: 1px solid #DDD;
 }
 
@@ -384,7 +390,7 @@ h3.section-link:hover a:after,
 h4.section-link:hover a:after,
 h5.section-link:hover a:after,
 h6.section-link:hover a:after {
-  content: ' § ';
+  content: '\2002\00a7\2002';
 }
 
 /** Media Queries **/

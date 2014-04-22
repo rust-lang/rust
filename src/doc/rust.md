@@ -96,9 +96,9 @@ The section [Special Unicode Productions](#special-unicode-productions) lists th
 
 ## String table productions
 
-Some rules in the grammar -- notably [unary
+Some rules in the grammar &mdash; notably [unary
 operators](#unary-operator-expressions), [binary
-operators](#binary-operator-expressions), and [keywords](#keywords) --
+operators](#binary-operator-expressions), and [keywords](#keywords) &mdash;
 are given in a simplified form: as a listing of a table of unquoted,
 printable whitespace-separated strings. These cases form a subset of
 the rules regarding the [token](#tokens) rule, and are assumed to be
@@ -645,7 +645,7 @@ The processing of that source file may result in other source files being loaded
 Source files have the extension `.rs`.
 
 A Rust source file describes a module, the name and
-location of which -- in the module tree of the current crate -- are defined
+location of which &mdash; in the module tree of the current crate &mdash; are defined
 from outside the source file: either by an explicit `mod_item` in
 a referencing source file, or by the name of the crate itself.
 
@@ -709,7 +709,7 @@ Some items form an implicit scope for the declaration of sub-items. In other
 words, within a function or module, declarations of items can (in many cases)
 be mixed with the statements, control blocks, and similar artifacts that
 otherwise compose the item body. The meaning of these scoped items is the same
-as if the item was declared outside the scope -- it is still a static item --
+as if the item was declared outside the scope &mdash; it is still a static item &mdash;
 except that the item's *path name* within the module namespace is qualified by
 the name of the enclosing item, or is private to the enclosing item (in the
 case of functions).
@@ -1348,7 +1348,6 @@ Traits are implemented for specific types through separate [implementations](#im
 ~~~~
 # type Surface = int;
 # type BoundingBox = int;
-
 trait Shape {
     fn draw(&self, Surface);
     fn bounding_box(&self) -> BoundingBox;
@@ -1379,7 +1378,6 @@ For example:
 ~~~~
 # type Surface = int;
 # trait Shape { fn draw(&self, Surface); }
-
 fn draw_twice<T: Shape>(surface: Surface, sh: T) {
     sh.draw(surface);
     sh.draw(surface);
@@ -1395,7 +1393,6 @@ to pointers to the trait name, used as a type.
 # trait Shape { }
 # impl Shape for int { }
 # let mycircle = 0;
-
 let myshape: ~Shape = ~mycircle as ~Shape;
 ~~~~
 
@@ -1456,7 +1453,6 @@ Likewise, supertrait methods may also be called on trait objects.
 # impl Shape for int { fn area(&self) -> f64 { 0.0 } }
 # impl Circle for int { fn radius(&self) -> f64 { 0.0 } }
 # let mycircle = 0;
-
 let mycircle: Circle = ~mycircle as ~Circle;
 let nonsense = mycircle.radius() * mycircle.area();
 ~~~~
@@ -1473,7 +1469,6 @@ Implementations are defined with the keyword `impl`.
 # struct BoundingBox {x: f64, y: f64, width: f64, height: f64};
 # trait Shape { fn draw(&self, Surface); fn bounding_box(&self) -> BoundingBox; }
 # fn do_draw_circle(s: Surface, c: Circle) { }
-
 struct Circle {
     radius: f64,
     center: Point,
@@ -1506,7 +1501,6 @@ Implementation parameters are written after the `impl` keyword.
 
 ~~~~
 # trait Seq<T> { }
-
 impl<T> Seq<T> for ~[T] {
    /* ... */
 }
@@ -1746,7 +1740,7 @@ attr : ident [ '=' literal
              | '(' attr_list ')' ] ? ;
 ~~~~
 
-Static entities in Rust -- crates, modules and items -- may have _attributes_
+Static entities in Rust &mdash; crates, modules and items &mdash; may have _attributes_
 applied to them. Attributes in Rust are modeled on Attributes in ECMA-335,
 with the syntax coming from ECMA-334 (C#). An attribute is a general,
 free-form metadatum that is interpreted according to name, convention, and
@@ -2368,8 +2362,8 @@ The declared names may denote new slots or new items.
 #### Item declarations
 
 An _item declaration statement_ has a syntactic form identical to an
-[item](#items) declaration within a module. Declaring an item -- a function,
-enumeration, structure, type, static, trait, implementation or module -- locally
+[item](#items) declaration within a module. Declaring an item &mdash; a function,
+enumeration, structure, type, static, trait, implementation or module &mdash; locally
 within a statement block is simply a way of restricting its scope to a narrow
 region containing all of its uses; it is otherwise identical in meaning to
 declaring the item outside the statement block.
@@ -3398,7 +3392,7 @@ but must be denoted by named reference to an [`enum` item](#enumerations).
 
 ### Recursive types
 
-Nominal types -- [enumerations](#enumerated-types) and [structures](#structure-types) -- may be recursive.
+Nominal types &mdash; [enumerations](#enumerated-types) and [structures](#structure-types) &mdash; may be recursive.
 That is, each `enum` constructor or `struct` field may refer, directly or indirectly, to the enclosing `enum` or `struct` type itself.
 Such recursion has restrictions:
 
@@ -3708,7 +3702,7 @@ entry to each function as the task executes. A stack allocation is reclaimed
 when control leaves the frame containing it.
 
 The _heap_ is a general term that describes two separate sets of boxes:
-managed boxes -- which may be subject to garbage collection -- and owned
+managed boxes &mdash; which may be subject to garbage collection &mdash; and owned
 boxes.  The lifetime of an allocation in the heap depends on the lifetime of
 the box values pointing to it. Since box values may themselves be passed in
 and out of frames, or stored in the heap, heap allocations may outlive the
@@ -3774,7 +3768,7 @@ initialized; this is enforced by the compiler.
 ### Owned boxes
 
 An  _owned box_ is a reference to a heap allocation holding another value, which is constructed
-by the prefix *tilde* sigil `~`
+by the prefix *tilde* sigil `~`.
 
 An example of an owned box type and value:
 
@@ -3809,7 +3803,7 @@ The runtime scheduler maps tasks to a certain number of operating-system threads
 By default, the scheduler chooses the number of threads based on
 the number of concurrent physical CPUs detected at startup.
 It's also possible to override this choice at runtime.
-When the number of tasks exceeds the number of threads -- which is likely --
+When the number of tasks exceeds the number of threads &mdash; which is likely &mdash;
 the scheduler multiplexes the tasks onto threads.^[
 This is an M:N scheduler,
 which is known to give suboptimal results for CPU-bound concurrency problems.
@@ -3848,14 +3842,14 @@ that cause transitions between the states. The lifecycle states of a task are:
 * failing
 * dead
 
-A task begins its lifecycle -- once it has been spawned -- in the *running*
+A task begins its lifecycle &mdash; once it has been spawned &mdash; in the *running*
 state. In this state it executes the statements of its entry function, and any
 functions called by the entry function.
 
 A task may transition from the *running* state to the *blocked*
 state any time it makes a blocking communication call. When the
-call can be completed -- when a message arrives at a sender, or a
-buffer opens to receive a message -- then the blocked task will
+call can be completed &mdash; when a message arrives at a sender, or a
+buffer opens to receive a message &mdash; then the blocked task will
 unblock and transition back to *running*.
 
 A task may transition to the *failing* state at any time, due being

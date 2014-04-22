@@ -975,7 +975,7 @@ impl<'a> fmt::Show for Item<'a> {
                 format!("{}-{}", self.item.source.loline, self.item.source.hiline)
             };
             try!(write!(fmt.buf,
-                          "<a class='source'\
+                          "<a class='source' \
                               href='{root}src/{krate}/{path}.html\\#{href}'>\
                               [src]</a>",
                           root = self.cx.root_path,
