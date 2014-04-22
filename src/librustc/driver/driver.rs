@@ -32,6 +32,7 @@ use serialize::{json, Encodable};
 
 use std::io;
 use std::io::fs;
+use arena::TypedArena;
 use syntax::ast;
 use syntax::attr;
 use syntax::attr::{AttrMetaMethods};
@@ -86,8 +87,9 @@ pub fn compile_input(sess: Session,
 
         if stop_after_phase_2(&sess) { return; }
 
+        let type_arena = TypedArena::new();
         let analysis = phase_3_run_analysis_passes(sess, &expanded_crate,
-                                                   ast_map, id);
+                                                   ast_map, &type_arena, id);
         phase_save_analysis(&analysis.ty_cx.sess, &expanded_crate, &analysis, outdir);
         if stop_after_phase_3(&analysis.ty_cx.sess) { return; }
         let (tcx, trans) = phase_4_translate_to_llvm(expanded_crate, analysis);
@@ -299,11 +301,11 @@ pub fn phase_2_configure_and_expand(sess: &Session,
     Some((krate, map))
 }
 
-pub struct CrateAnalysis {
+pub struct CrateAnalysis<'tcx> {
     pub exp_map2: middle::resolve::ExportMap2,
     pub exported_items: middle::privacy::ExportedItems,
     pub public_items: middle::privacy::PublicItems,
-    pub ty_cx: ty::ctxt,
+    pub ty_cx: ty::ctxt<'tcx>,
     pub reachable: NodeSet,
     pub name: String,
 }
@@ -312,10 +314,11 @@ pub struct CrateAnalysis {
 /// Run the resolution, typechecking, region checking and other
 /// miscellaneous analysis passes on the crate. Return various
 /// structures carrying the results of the analysis.
-pub fn phase_3_run_analysis_passes(sess: Session,
-                                   krate: &ast::Crate,
-                                   ast_map: syntax::ast_map::Map,
-                                   name: String) -> CrateAnalysis {
+pub fn phase_3_run_analysis_passes<'tcx>(sess: Session,
+                                         krate: &ast::Crate,
+                                         ast_map: syntax::ast_map::Map,
+                                         type_arena: &'tcx TypedArena<ty::t_box_>,
+                                         name: String) -> CrateAnalysis<'tcx> {
     let time_passes = sess.time_passes();
 
     time(time_passes, "external crate/lib resolution", (), |_|
@@ -362,6 +365,7 @@ pub fn phase_3_run_analysis_passes(sess: Session,
                                stability::Index::build(krate));
 
     let ty_cx = ty::mk_ctxt(sess,
+                            type_arena,
                             def_map,
                             named_region_map,
                             ast_map,

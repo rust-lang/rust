@@ -50,6 +50,7 @@ use std::mem;
 use std::ops;
 use std::rc::Rc;
 use std::collections::{HashMap, HashSet};
+use arena::TypedArena;
 use syntax::abi;
 use syntax::ast::{CrateNum, DefId, FnStyle, Ident, ItemTrait, LOCAL_CRATE};
 use syntax::ast::{MutImmutable, MutMutable, Name, NamedField, NodeId};
@@ -418,10 +419,13 @@ pub struct TransmuteRestriction {
 /// The data structure to keep track of all the information that typechecker
 /// generates so that so that it can be reused and doesn't have to be redone
 /// later on.
-pub struct ctxt {
+pub struct ctxt<'tcx> {
+    /// The arena that types are allocated from.
+    type_arena: &'tcx TypedArena<t_box_>,
+
     /// Specifically use a speedy hash algorithm for this hash map, it's used
     /// quite often.
-    pub interner: RefCell<FnvHashMap<intern_key, Box<t_box_>>>,
+    interner: RefCell<FnvHashMap<intern_key, &'tcx t_box_>>,
     pub next_id: Cell<uint>,
     pub sess: Session,
     pub def_map: resolve::DefMap,
@@ -1373,21 +1377,22 @@ impl UnboxedClosureKind {
     }
 }
 
-pub fn mk_ctxt(s: Session,
-               dm: resolve::DefMap,
-               named_region_map: resolve_lifetime::NamedRegionMap,
-               map: ast_map::Map,
-               freevars: freevars::freevar_map,
-               capture_modes: freevars::CaptureModeMap,
-               region_maps: middle::region::RegionMaps,
-               lang_items: middle::lang_items::LanguageItems,
-               stability: stability::Index)
-               -> ctxt {
+pub fn mk_ctxt<'tcx>(s: Session,
+                     type_arena: &'tcx TypedArena<t_box_>,
+                     dm: resolve::DefMap,
+                     named_region_map: resolve_lifetime::NamedRegionMap,
+                     map: ast_map::Map,
+                     freevars: freevars::freevar_map,
+                     capture_modes: freevars::CaptureModeMap,
+                     region_maps: middle::region::RegionMaps,
+                     lang_items: middle::lang_items::LanguageItems,
+                     stability: stability::Index) -> ctxt<'tcx> {
     ctxt {
+        type_arena: type_arena,
+        interner: RefCell::new(FnvHashMap::new()),
         named_region_map: named_region_map,
         item_variance_map: RefCell::new(DefIdMap::new()),
         variance_computed: Cell::new(false),
-        interner: RefCell::new(FnvHashMap::new()),
         next_id: Cell::new(primitives::LAST_PRIMITIVE_ID),
         sess: s,
         def_map: dm,
@@ -1554,11 +1559,11 @@ pub fn mk_t(cx: &ctxt, st: sty) -> t {
       }
     }
 
-    let t = box t_box_ {
+    let t = cx.type_arena.alloc(t_box_ {
         sty: st,
         id: cx.next_id.get(),
         flags: flags,
-    };
+    });
 
     let sty_ptr = &t.sty as *const sty;
 
