@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -28,8 +28,7 @@ pub unsafe fn transmute_copy<T, U>(src: &T) -> U {
  * Move a thing into the void
  *
  * The forget function will take ownership of the provided value but neglect
- * to run any required cleanup or memory-management operations on it. This
- * can be used for various acts of magick.
+ * to run any required cleanup or memory-management operations on it.
  */
 #[inline]
 pub unsafe fn forget<T>(thing: T) { intrinsics::forget(thing); }
