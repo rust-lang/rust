@@ -2253,7 +2253,7 @@ defining one.
 
 The type parameters bound by a trait are in scope in each of the
 method declarations. So, re-declaring the type parameter
-`T` as an explicit type parameter for `len`, in either the trait or
+`T` as an explicit type parameter for `length`, in either the trait or
 the impl, would be a compile-time error.
 
 Within a trait definition, `Self` is a special type that you can think
