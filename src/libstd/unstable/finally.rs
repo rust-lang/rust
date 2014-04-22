@@ -35,19 +35,19 @@ use ops::Drop;
 #[cfg(test)] use task::failing;
 
 pub trait Finally<T> {
-    fn finally(&self, dtor: ||) -> T;
+    fn finally(&mut self, dtor: ||) -> T;
 }
 
 impl<'a,T> Finally<T> for ||: 'a -> T {
-    fn finally(&self, dtor: ||) -> T {
-        try_finally(&mut (), (),
-                    |_, _| (*self)(),
+    fn finally(&mut self, dtor: ||) -> T {
+        try_finally(&mut (), self,
+                    |_, f| (*f)(),
                     |_| dtor())
     }
 }
 
 impl<T> Finally<T> for fn() -> T {
-    fn finally(&self, dtor: ||) -> T {
+    fn finally(&mut self, dtor: ||) -> T {
         try_finally(&mut (), (),
                     |_, _| (*self)(),
                     |_| dtor())
