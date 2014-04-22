@@ -55,7 +55,7 @@ pub struct Stats {
 /// per crate.  The data here is shared between all compilation units of the
 /// crate, so it must not contain references to any LLVM data structures
 /// (aside from metadata-related ones).
-pub struct SharedCrateContext {
+pub struct SharedCrateContext<'tcx> {
     local_ccxs: Vec<LocalCrateContext>,
 
     metadata_llmod: ModuleRef,
@@ -70,7 +70,7 @@ pub struct SharedCrateContext {
     /// that is generated
     non_inlineable_statics: RefCell<NodeSet>,
     symbol_hasher: RefCell<Sha256>,
-    tcx: ty::ctxt,
+    tcx: ty::ctxt<'tcx>,
     stats: Stats,
 
     available_monomorphizations: RefCell<HashSet<String>>,
@@ -152,21 +152,21 @@ pub struct LocalCrateContext {
     n_llvm_insns: Cell<uint>,
 }
 
-pub struct CrateContext<'a> {
-    shared: &'a SharedCrateContext,
+pub struct CrateContext<'a, 'tcx: 'a> {
+    shared: &'a SharedCrateContext<'tcx>,
     local: &'a LocalCrateContext,
     /// The index of `local` in `shared.local_ccxs`.  This is used in
     /// `maybe_iter(true)` to identify the original `LocalCrateContext`.
     index: uint,
 }
 
-pub struct CrateContextIterator<'a> {
-    shared: &'a SharedCrateContext,
+pub struct CrateContextIterator<'a, 'tcx: 'a> {
+    shared: &'a SharedCrateContext<'tcx>,
     index: uint,
 }
 
-impl<'a> Iterator<CrateContext<'a>> for CrateContextIterator<'a> {
-    fn next(&mut self) -> Option<CrateContext<'a>> {
+impl<'a, 'tcx> Iterator<CrateContext<'a, 'tcx>> for CrateContextIterator<'a,'tcx> {
+    fn next(&mut self) -> Option<CrateContext<'a, 'tcx>> {
         if self.index >= self.shared.local_ccxs.len() {
             return None;
         }
@@ -183,15 +183,15 @@ impl<'a> Iterator<CrateContext<'a>> for CrateContextIterator<'a> {
 }
 
 /// The iterator produced by `CrateContext::maybe_iter`.
-pub struct CrateContextMaybeIterator<'a> {
-    shared: &'a SharedCrateContext,
+pub struct CrateContextMaybeIterator<'a, 'tcx: 'a> {
+    shared: &'a SharedCrateContext<'tcx>,
     index: uint,
     single: bool,
     origin: uint,
 }
 
-impl<'a> Iterator<(CrateContext<'a>, bool)> for CrateContextMaybeIterator<'a> {
-    fn next(&mut self) -> Option<(CrateContext<'a>, bool)> {
+impl<'a, 'tcx> Iterator<(CrateContext<'a, 'tcx>, bool)> for CrateContextMaybeIterator<'a, 'tcx> {
+    fn next(&mut self) -> Option<(CrateContext<'a, 'tcx>, bool)> {
         if self.index >= self.shared.local_ccxs.len() {
             return None;
         }
@@ -234,15 +234,15 @@ unsafe fn create_context_and_module(sess: &Session, mod_name: &str) -> (ContextR
     (llcx, llmod)
 }
 
-impl SharedCrateContext {
+impl<'tcx> SharedCrateContext<'tcx> {
     pub fn new(crate_name: &str,
                local_count: uint,
-               tcx: ty::ctxt,
+               tcx: ty::ctxt<'tcx>,
                emap2: resolve::ExportMap2,
                symbol_hasher: Sha256,
                link_meta: LinkMeta,
                reachable: NodeSet)
-               -> SharedCrateContext {
+               -> SharedCrateContext<'tcx> {
         let (metadata_llcx, metadata_llmod) = unsafe {
             create_context_and_module(&tcx.sess, "metadata")
         };
@@ -293,14 +293,14 @@ impl SharedCrateContext {
         shared_ccx
     }
 
-    pub fn iter<'a>(&'a self) -> CrateContextIterator<'a> {
+    pub fn iter<'a>(&'a self) -> CrateContextIterator<'a, 'tcx> {
         CrateContextIterator {
             shared: self,
             index: 0,
         }
     }
 
-    pub fn get_ccx<'a>(&'a self, index: uint) -> CrateContext<'a> {
+    pub fn get_ccx<'a>(&'a self, index: uint) -> CrateContext<'a, 'tcx> {
         CrateContext {
             shared: self,
             local: &self.local_ccxs[index],
@@ -308,7 +308,7 @@ impl SharedCrateContext {
         }
     }
 
-    fn get_smallest_ccx<'a>(&'a self) -> CrateContext<'a> {
+    fn get_smallest_ccx<'a>(&'a self) -> CrateContext<'a, 'tcx> {
         let (local_ccx, index) =
             self.local_ccxs
                 .iter()
@@ -355,11 +355,11 @@ impl SharedCrateContext {
         &self.symbol_hasher
     }
 
-    pub fn tcx<'a>(&'a self) -> &'a ty::ctxt {
+    pub fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx> {
         &self.tcx
     }
 
-    pub fn take_tcx(self) -> ty::ctxt {
+    pub fn take_tcx(self) -> ty::ctxt<'tcx> {
         self.tcx
     }
 
@@ -459,7 +459,8 @@ impl LocalCrateContext {
     /// This is used in the `LocalCrateContext` constructor to allow calling
     /// functions that expect a complete `CrateContext`, even before the local
     /// portion is fully initialized and attached to the `SharedCrateContext`.
-    fn dummy_ccx<'a>(&'a self, shared: &'a SharedCrateContext) -> CrateContext<'a> {
+    fn dummy_ccx<'a, 'tcx>(&'a self, shared: &'a SharedCrateContext<'tcx>)
+                           -> CrateContext<'a, 'tcx> {
         CrateContext {
             shared: shared,
             local: self,
@@ -468,8 +469,8 @@ impl LocalCrateContext {
     }
 }
 
-impl<'b> CrateContext<'b> {
-    pub fn shared(&self) -> &'b SharedCrateContext {
+impl<'b, 'tcx> CrateContext<'b, 'tcx> {
+    pub fn shared(&self) -> &'b SharedCrateContext<'tcx> {
         self.shared
     }
 
@@ -480,7 +481,7 @@ impl<'b> CrateContext<'b> {
 
     /// Get a (possibly) different `CrateContext` from the same
     /// `SharedCrateContext`.
-    pub fn rotate(&self) -> CrateContext<'b> {
+    pub fn rotate(&self) -> CrateContext<'b, 'tcx> {
         self.shared.get_smallest_ccx()
     }
 
@@ -490,7 +491,7 @@ impl<'b> CrateContext<'b> {
     /// otherwise.  This method is useful for avoiding code duplication in
     /// cases where it may or may not be necessary to translate code into every
     /// context.
-    pub fn maybe_iter(&self, iter_all: bool) -> CrateContextMaybeIterator<'b> {
+    pub fn maybe_iter(&self, iter_all: bool) -> CrateContextMaybeIterator<'b, 'tcx> {
         CrateContextMaybeIterator {
             shared: self.shared,
             index: if iter_all { 0 } else { self.index },
@@ -500,7 +501,7 @@ impl<'b> CrateContext<'b> {
     }
 
 
-    pub fn tcx<'a>(&'a self) -> &'a ty::ctxt {
+    pub fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx> {
         &self.shared.tcx
     }
 
@@ -508,7 +509,7 @@ impl<'b> CrateContext<'b> {
         &self.shared.tcx.sess
     }
 
-    pub fn builder<'a>(&'a self) -> Builder<'a> {
+    pub fn builder<'a>(&'a self) -> Builder<'a, 'tcx> {
         Builder::new(self)
     }
 

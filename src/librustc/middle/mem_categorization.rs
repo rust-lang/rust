@@ -264,8 +264,8 @@ pub type McResult<T> = Result<T, ()>;
  * know that no errors have occurred, so we simply consult the tcx and we
  * can be sure that only `Ok` results will occur.
  */
-pub trait Typer {
-    fn tcx<'a>(&'a self) -> &'a ty::ctxt;
+pub trait Typer<'tcx> {
+    fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx>;
     fn node_ty(&self, id: ast::NodeId) -> McResult<ty::t>;
     fn node_method_ty(&self, method_call: typeck::MethodCall) -> Option<ty::t>;
     fn adjustments<'a>(&'a self) -> &'a RefCell<NodeMap<ty::AutoAdjustment>>;
@@ -375,12 +375,12 @@ macro_rules! if_ok(
     )
 )
 
-impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
+impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
     pub fn new(typer: &'t TYPER) -> MemCategorizationContext<'t,TYPER> {
         MemCategorizationContext { typer: typer }
     }
 
-    fn tcx(&self) -> &'t ty::ctxt {
+    fn tcx(&self) -> &'t ty::ctxt<'tcx> {
         self.typer.tcx()
     }
 

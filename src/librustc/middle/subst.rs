@@ -548,8 +548,8 @@ impl<T:TypeFoldable> Subst for T {
 ///////////////////////////////////////////////////////////////////////////
 // The actual substitution engine itself is a type folder.
 
-struct SubstFolder<'a> {
-    tcx: &'a ty::ctxt,
+struct SubstFolder<'a, 'tcx: 'a> {
+    tcx: &'a ty::ctxt<'tcx>,
     substs: &'a Substs,
 
     // The location for which the substitution is performed, if available.
@@ -562,8 +562,8 @@ struct SubstFolder<'a> {
     ty_stack_depth: uint,
 }
 
-impl<'a> TypeFolder for SubstFolder<'a> {
-    fn tcx<'a>(&'a self) -> &'a ty::ctxt { self.tcx }
+impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
+    fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx> { self.tcx }
 
     fn fold_region(&mut self, r: ty::Region) -> ty::Region {
         // Note: This routine only handles regions that are bound on

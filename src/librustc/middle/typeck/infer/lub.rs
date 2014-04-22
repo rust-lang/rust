@@ -29,25 +29,25 @@ use util::ppaux::mt_to_string;
 use util::ppaux::Repr;
 
 /// "Least upper bound" (common supertype)
-pub struct Lub<'f> {
-    fields: CombineFields<'f>
+pub struct Lub<'f, 'tcx: 'f> {
+    fields: CombineFields<'f, 'tcx>
 }
 
 #[allow(non_snake_case)]
-pub fn Lub<'f>(cf: CombineFields<'f>) -> Lub<'f> {
+pub fn Lub<'f, 'tcx>(cf: CombineFields<'f, 'tcx>) -> Lub<'f, 'tcx> {
     Lub { fields: cf }
 }
 
-impl<'f> Combine for Lub<'f> {
-    fn infcx<'a>(&'a self) -> &'a InferCtxt<'a> { self.fields.infcx }
+impl<'f, 'tcx> Combine<'tcx> for Lub<'f, 'tcx> {
+    fn infcx<'a>(&'a self) -> &'a InferCtxt<'a, 'tcx> { self.fields.infcx }
     fn tag(&self) -> String { "lub".to_string() }
     fn a_is_expected(&self) -> bool { self.fields.a_is_expected }
     fn trace(&self) -> TypeTrace { self.fields.trace.clone() }
 
-    fn equate<'a>(&'a self) -> Equate<'a> { Equate(self.fields.clone()) }
-    fn sub<'a>(&'a self) -> Sub<'a> { Sub(self.fields.clone()) }
-    fn lub<'a>(&'a self) -> Lub<'a> { Lub(self.fields.clone()) }
-    fn glb<'a>(&'a self) -> Glb<'a> { Glb(self.fields.clone()) }
+    fn equate<'a>(&'a self) -> Equate<'a, 'tcx> { Equate(self.fields.clone()) }
+    fn sub<'a>(&'a self) -> Sub<'a, 'tcx> { Sub(self.fields.clone()) }
+    fn lub<'a>(&'a self) -> Lub<'a, 'tcx> { Lub(self.fields.clone()) }
+    fn glb<'a>(&'a self) -> Glb<'a, 'tcx> { Glb(self.fields.clone()) }
 
     fn mts(&self, a: &ty::mt, b: &ty::mt) -> cres<ty::mt> {
         let tcx = self.fields.infcx.tcx;

@@ -288,8 +288,8 @@ pub trait InferCtxtMethodsForSimplyUnifiableTypes<V:SimplyUnifiable,
                     -> ures;
 }
 
-impl<'tcx,V:SimplyUnifiable,K:UnifyKey<Option<V>>>
-    InferCtxtMethodsForSimplyUnifiableTypes<V,K> for InferCtxt<'tcx>
+impl<'a,'tcx,V:SimplyUnifiable,K:UnifyKey<Option<V>>>
+    InferCtxtMethodsForSimplyUnifiableTypes<V,K> for InferCtxt<'a, 'tcx>
 {
     fn simple_vars(&self,
                    a_is_expected: bool,

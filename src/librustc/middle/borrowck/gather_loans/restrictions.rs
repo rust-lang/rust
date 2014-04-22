@@ -44,14 +44,14 @@ pub fn compute_restrictions(bccx: &BorrowckCtxt,
 ///////////////////////////////////////////////////////////////////////////
 // Private
 
-struct RestrictionsContext<'a> {
-    bccx: &'a BorrowckCtxt<'a>,
+struct RestrictionsContext<'a, 'tcx: 'a> {
+    bccx: &'a BorrowckCtxt<'a, 'tcx>,
     span: Span,
     loan_region: ty::Region,
     cause: euv::LoanCause,
 }
 
-impl<'a> RestrictionsContext<'a> {
+impl<'a, 'tcx> RestrictionsContext<'a, 'tcx> {
     fn restrict(&self,
                 cmt: mc::cmt) -> RestrictionResult {
         debug!("restrict(cmt={})", cmt.repr(self.bccx.tcx));

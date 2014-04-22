@@ -56,15 +56,15 @@ pub struct MoveData {
     pub assignee_ids: RefCell<HashSet<ast::NodeId>>,
 }
 
-pub struct FlowedMoveData<'a> {
+pub struct FlowedMoveData<'a, 'tcx: 'a> {
     pub move_data: MoveData,
 
-    pub dfcx_moves: MoveDataFlow<'a>,
+    pub dfcx_moves: MoveDataFlow<'a, 'tcx>,
 
     // We could (and maybe should, for efficiency) combine both move
     // and assign data flow into one, but this way it's easier to
     // distinguish the bits that correspond to moves and assignments.
-    pub dfcx_assign: AssignDataFlow<'a>
+    pub dfcx_assign: AssignDataFlow<'a, 'tcx>
 }
 
 /// Index into `MoveData.paths`, used like a pointer
@@ -154,12 +154,12 @@ pub struct Assignment {
 #[deriving(Clone)]
 pub struct MoveDataFlowOperator;
 
-pub type MoveDataFlow<'a> = DataFlowContext<'a, MoveDataFlowOperator>;
+pub type MoveDataFlow<'a, 'tcx> = DataFlowContext<'a, 'tcx, MoveDataFlowOperator>;
 
 #[deriving(Clone)]
 pub struct AssignDataFlowOperator;
 
-pub type AssignDataFlow<'a> = DataFlowContext<'a, AssignDataFlowOperator>;
+pub type AssignDataFlow<'a, 'tcx> = DataFlowContext<'a, 'tcx, AssignDataFlowOperator>;
 
 fn loan_path_is_precise(loan_path: &LoanPath) -> bool {
     match *loan_path {
@@ -531,14 +531,14 @@ impl MoveData {
     }
 }
 
-impl<'a> FlowedMoveData<'a> {
+impl<'a, 'tcx> FlowedMoveData<'a, 'tcx> {
     pub fn new(move_data: MoveData,
-               tcx: &'a ty::ctxt,
+               tcx: &'a ty::ctxt<'tcx>,
                cfg: &cfg::CFG,
                id_range: ast_util::IdRange,
                decl: &ast::FnDecl,
                body: &ast::Block)
-               -> FlowedMoveData<'a> {
+               -> FlowedMoveData<'a, 'tcx> {
         let mut dfcx_moves =
             DataFlowContext::new(tcx,
                                  "flowed_move_data_moves",

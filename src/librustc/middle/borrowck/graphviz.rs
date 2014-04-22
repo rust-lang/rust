@@ -43,14 +43,14 @@ impl Variant {
     }
 }
 
-pub struct DataflowLabeller<'a> {
+pub struct DataflowLabeller<'a, 'tcx: 'a> {
     pub inner: cfg_dot::LabelledCFG<'a>,
     pub variants: Vec<Variant>,
-    pub borrowck_ctxt: &'a BorrowckCtxt<'a>,
-    pub analysis_data: &'a borrowck::AnalysisData<'a>,
+    pub borrowck_ctxt: &'a BorrowckCtxt<'a, 'tcx>,
+    pub analysis_data: &'a borrowck::AnalysisData<'a, 'tcx>,
 }
 
-impl<'a> DataflowLabeller<'a> {
+impl<'a, 'tcx> DataflowLabeller<'a, 'tcx> {
     fn dataflow_for(&self, e: EntryOrExit, n: &Node<'a>) -> String {
         let id = n.val1().data.id;
         debug!("dataflow_for({}, id={}) {}", e, id, self.variants);
@@ -77,7 +77,7 @@ impl<'a> DataflowLabeller<'a> {
     fn build_set<O:DataFlowOperator>(&self,
                                      e: EntryOrExit,
                                      cfgidx: CFGIndex,
-                                     dfcx: &DataFlowContext<'a, O>,
+                                     dfcx: &DataFlowContext<'a, 'tcx, O>,
                                      to_lp: |uint| -> Rc<LoanPath>) -> String {
         let mut saw_some = false;
         let mut set = "{".to_string();
@@ -126,7 +126,7 @@ impl<'a> DataflowLabeller<'a> {
     }
 }
 
-impl<'a> dot::Labeller<'a, Node<'a>, Edge<'a>> for DataflowLabeller<'a> {
+impl<'a, 'tcx> dot::Labeller<'a, Node<'a>, Edge<'a>> for DataflowLabeller<'a, 'tcx> {
     fn graph_id(&'a self) -> dot::Id<'a> { self.inner.graph_id() }
     fn node_id(&'a self, n: &Node<'a>) -> dot::Id<'a> { self.inner.node_id(n) }
     fn node_label(&'a self, n: &Node<'a>) -> dot::LabelText<'a> {
@@ -140,7 +140,7 @@ impl<'a> dot::Labeller<'a, Node<'a>, Edge<'a>> for DataflowLabeller<'a> {
     fn edge_label(&'a self, e: &Edge<'a>) -> dot::LabelText<'a> { self.inner.edge_label(e) }
 }
 
-impl<'a> dot::GraphWalk<'a, Node<'a>, Edge<'a>> for DataflowLabeller<'a> {
+impl<'a, 'tcx> dot::GraphWalk<'a, Node<'a>, Edge<'a>> for DataflowLabeller<'a, 'tcx> {
     fn nodes(&self) -> dot::Nodes<'a, Node<'a>> { self.inner.nodes() }
     fn edges(&self) -> dot::Edges<'a, Edge<'a>> { self.inner.edges() }
     fn source(&self, edge: &Edge<'a>) -> Node<'a> { self.inner.source(edge) }

@@ -89,9 +89,9 @@ fn method_might_be_inlined(tcx: &ty::ctxt, method: &ast::Method,
 }
 
 // Information needed while computing reachability.
-struct ReachableContext<'a> {
+struct ReachableContext<'a, 'tcx: 'a> {
     // The type context.
-    tcx: &'a ty::ctxt,
+    tcx: &'a ty::ctxt<'tcx>,
     // The set of items which must be exported in the linkage sense.
     reachable_symbols: NodeSet,
     // A worklist of item IDs. Each item ID in this worklist will be inlined
@@ -101,7 +101,7 @@ struct ReachableContext<'a> {
     any_library: bool,
 }
 
-impl<'a> Visitor<()> for ReachableContext<'a> {
+impl<'a, 'tcx> Visitor<()> for ReachableContext<'a, 'tcx> {
 
     fn visit_expr(&mut self, expr: &ast::Expr, _: ()) {
 
@@ -164,9 +164,9 @@ impl<'a> Visitor<()> for ReachableContext<'a> {
     }
 }
 
-impl<'a> ReachableContext<'a> {
+impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
     // Creates a new reachability computation context.
-    fn new(tcx: &'a ty::ctxt) -> ReachableContext<'a> {
+    fn new(tcx: &'a ty::ctxt<'tcx>) -> ReachableContext<'a, 'tcx> {
         let any_library = tcx.sess.crate_types.borrow().iter().any(|ty| {
             *ty != config::CrateTypeExecutable
         });

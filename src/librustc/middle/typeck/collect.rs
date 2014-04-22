@@ -95,11 +95,11 @@ pub fn collect_item_types(ccx: &CrateCtxt, krate: &ast::Crate) {
 // of type parameters and supertraits. This is information we need to
 // know later when parsing field defs.
 
-struct CollectTraitDefVisitor<'a> {
-    ccx: &'a CrateCtxt<'a>
+struct CollectTraitDefVisitor<'a, 'tcx: 'a> {
+    ccx: &'a CrateCtxt<'a, 'tcx>
 }
 
-impl<'a> visit::Visitor<()> for CollectTraitDefVisitor<'a> {
+impl<'a, 'tcx> visit::Visitor<()> for CollectTraitDefVisitor<'a, 'tcx> {
     fn visit_item(&mut self, i: &ast::Item, _: ()) {
         match i.node {
             ast::ItemTrait(..) => {
@@ -116,11 +116,11 @@ impl<'a> visit::Visitor<()> for CollectTraitDefVisitor<'a> {
 ///////////////////////////////////////////////////////////////////////////
 // Second phase: collection proper.
 
-struct CollectItemTypesVisitor<'a> {
-    ccx: &'a CrateCtxt<'a>
+struct CollectItemTypesVisitor<'a, 'tcx: 'a> {
+    ccx: &'a CrateCtxt<'a, 'tcx>
 }
 
-impl<'a> visit::Visitor<()> for CollectItemTypesVisitor<'a> {
+impl<'a, 'tcx> visit::Visitor<()> for CollectItemTypesVisitor<'a, 'tcx> {
     fn visit_item(&mut self, i: &ast::Item, _: ()) {
         convert(self.ccx, i);
         visit::walk_item(self, i, ());
@@ -138,14 +138,14 @@ pub trait ToTy {
     fn to_ty<RS:RegionScope>(&self, rs: &RS, ast_ty: &ast::Ty) -> ty::t;
 }
 
-impl<'a> ToTy for CrateCtxt<'a> {
+impl<'a, 'tcx> ToTy for CrateCtxt<'a, 'tcx> {
     fn to_ty<RS:RegionScope>(&self, rs: &RS, ast_ty: &ast::Ty) -> ty::t {
         ast_ty_to_ty(self, rs, ast_ty)
     }
 }
 
-impl<'a> AstConv for CrateCtxt<'a> {
-    fn tcx<'a>(&'a self) -> &'a ty::ctxt { self.tcx }
+impl<'a, 'tcx> AstConv<'tcx> for CrateCtxt<'a, 'tcx> {
+    fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx> { self.tcx }
 
     fn get_item_ty(&self, id: ast::DefId) -> ty::Polytype {
         if id.krate != ast::LOCAL_CRATE {

@@ -52,15 +52,15 @@ fn safe_type_for_static_mut(cx: &ty::ctxt, e: &ast::Expr) -> Option<String> {
     Some(format!("mutable static items are not allowed to have {}", suffix))
 }
 
-struct CheckStaticVisitor<'a> {
-    tcx: &'a ty::ctxt,
+struct CheckStaticVisitor<'a, 'tcx: 'a> {
+    tcx: &'a ty::ctxt<'tcx>,
 }
 
 pub fn check_crate(tcx: &ty::ctxt, krate: &ast::Crate) {
     visit::walk_crate(&mut CheckStaticVisitor { tcx: tcx }, krate, false)
 }
 
-impl<'a> CheckStaticVisitor<'a> {
+impl<'a, 'tcx> CheckStaticVisitor<'a, 'tcx> {
     fn report_error(&self, span: Span, result: Option<String>) -> bool {
         match result {
             None => { false }
@@ -72,7 +72,7 @@ impl<'a> CheckStaticVisitor<'a> {
     }
 }
 
-impl<'a> Visitor<bool> for CheckStaticVisitor<'a> {
+impl<'a, 'tcx> Visitor<bool> for CheckStaticVisitor<'a, 'tcx> {
 
     fn visit_item(&mut self, i: &ast::Item, _is_const: bool) {
         debug!("visit_item(item={})", pprust::item_to_string(i));

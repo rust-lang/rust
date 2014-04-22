@@ -51,8 +51,8 @@ pub enum WfConstraint {
     RegionSubParamConstraint(Option<ty::t>, ty::Region, ty::ParamTy),
 }
 
-struct Wf<'a> {
-    tcx: &'a ty::ctxt,
+struct Wf<'a, 'tcx: 'a> {
+    tcx: &'a ty::ctxt<'tcx>,
     stack: Vec<(ty::Region, Option<ty::t>)>,
     out: Vec<WfConstraint>,
 }
@@ -78,7 +78,7 @@ pub fn region_wf_constraints(
     wf.out
 }
 
-impl<'a> Wf<'a> {
+impl<'a, 'tcx> Wf<'a, 'tcx> {
     fn accumulate_from_ty(&mut self, ty: ty::t) {
         debug!("Wf::accumulate_from_ty(ty={})",
                ty.repr(self.tcx));

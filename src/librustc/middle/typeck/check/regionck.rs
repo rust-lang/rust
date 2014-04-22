@@ -196,8 +196,8 @@ macro_rules! ignore_err(
     )
 )
 
-pub struct Rcx<'a> {
-    fcx: &'a FnCtxt<'a>,
+pub struct Rcx<'a, 'tcx: 'a> {
+    fcx: &'a FnCtxt<'a, 'tcx>,
 
     region_param_pairs: Vec<(ty::Region, ty::ParamTy)>,
 
@@ -250,15 +250,15 @@ fn region_of_def(fcx: &FnCtxt, def: def::Def) -> ty::Region {
     }
 }
 
-impl<'a> Rcx<'a> {
-    pub fn new(fcx: &'a FnCtxt<'a>,
-               initial_repeating_scope: ast::NodeId) -> Rcx<'a> {
+impl<'a, 'tcx> Rcx<'a, 'tcx> {
+    pub fn new(fcx: &'a FnCtxt<'a, 'tcx>,
+               initial_repeating_scope: ast::NodeId) -> Rcx<'a, 'tcx> {
         Rcx { fcx: fcx,
               repeating_scope: initial_repeating_scope,
               region_param_pairs: Vec::new() }
     }
 
-    pub fn tcx(&self) -> &'a ty::ctxt {
+    pub fn tcx(&self) -> &'a ty::ctxt<'tcx> {
         self.fcx.ccx.tcx
     }
 
@@ -438,8 +438,8 @@ impl<'a> Rcx<'a> {
     }
 }
 
-impl<'fcx> mc::Typer for Rcx<'fcx> {
-    fn tcx<'a>(&'a self) -> &'a ty::ctxt {
+impl<'fcx, 'tcx> mc::Typer<'tcx> for Rcx<'fcx, 'tcx> {
+    fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx> {
         self.fcx.ccx.tcx
     }
 
@@ -479,7 +479,7 @@ impl<'fcx> mc::Typer for Rcx<'fcx> {
     }
 }
 
-impl<'a> Visitor<()> for Rcx<'a> {
+impl<'a, 'tcx> Visitor<()> for Rcx<'a, 'tcx> {
     // (..) FIXME(#3238) should use visit_pat, not visit_arm/visit_local,
     // However, right now we run into an issue whereby some free
     // regions are not properly related if they appear within the

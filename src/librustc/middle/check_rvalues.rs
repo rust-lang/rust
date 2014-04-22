@@ -26,11 +26,11 @@ pub fn check_crate(tcx: &ty::ctxt,
     visit::walk_crate(&mut rvcx, krate, ());
 }
 
-struct RvalueContext<'a> {
-    tcx: &'a ty::ctxt
+struct RvalueContext<'a, 'tcx: 'a> {
+    tcx: &'a ty::ctxt<'tcx>
 }
 
-impl<'a> visit::Visitor<()> for RvalueContext<'a> {
+impl<'a, 'tcx> visit::Visitor<()> for RvalueContext<'a, 'tcx> {
     fn visit_fn(&mut self,
                 _: &visit::FnKind,
                 fd: &ast::FnDecl,
@@ -43,7 +43,7 @@ impl<'a> visit::Visitor<()> for RvalueContext<'a> {
     }
 }
 
-impl<'a> euv::Delegate for RvalueContext<'a> {
+impl<'a, 'tcx> euv::Delegate for RvalueContext<'a, 'tcx> {
     fn consume(&mut self,
                _: ast::NodeId,
                span: Span,
