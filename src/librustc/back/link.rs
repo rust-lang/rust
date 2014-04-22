@@ -1171,7 +1171,7 @@ fn link_args(sess: &Session,
         // actually creates "invalid" objects [1] [2], but only for some
         // introspection tools, not in terms of whether it can be loaded.
         //
-        // Long story shory, passing this flag forces the linker to *not*
+        // Long story short, passing this flag forces the linker to *not*
         // truncate section names (so we can find the metadata section after
         // it's compiled). The real kicker is that rust compiled just fine on
         // windows for quite a long time *without* this flag, so I have no idea
@@ -1491,7 +1491,7 @@ fn add_upstream_rust_crates(args: &mut Vec<~str>, sess: &Session,
 }
 
 // Link in all of our upstream crates' native dependencies. Remember that
-// all of these upstream native depenencies are all non-static
+// all of these upstream native dependencies are all non-static
 // dependencies. We've got two cases then:
 //
 // 1. The upstream crate is an rlib. In this case we *must* link in the
@@ -1509,7 +1509,7 @@ fn add_upstream_rust_crates(args: &mut Vec<~str>, sess: &Session,
 // be instantiated in the target crate, meaning that the native symbol must
 // also be resolved in the target crate.
 fn add_upstream_native_libraries(args: &mut Vec<~str>, sess: &Session) {
-    // Be sure to use a topological sorting of crates becuase there may be
+    // Be sure to use a topological sorting of crates because there may be
     // interdependencies between native libraries. When passing -nodefaultlibs,
     // for example, almost all native libraries depend on libc, so we have to
     // make sure that's all the way at the right (liblibc is near the base of

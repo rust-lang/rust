@@ -275,7 +275,7 @@ fn create_and_seed_worklist(tcx: &ty::ctxt,
         None => ()
     }
 
-    // Seed implemeneted trait methods
+    // Seed implemented trait methods
     let mut life_seeder = LifeSeeder {
         worklist: worklist
     };

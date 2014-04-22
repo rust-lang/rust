@@ -605,7 +605,7 @@ static INITIAL_LOAD_FACTOR: Fraction = (9, 10);
 //
 // > Why a load factor of 90%?
 //
-// In general, all the distances to inital buckets will converge on the mean.
+// In general, all the distances to initial buckets will converge on the mean.
 // At a load factor of α, the odds of finding the target bucket after k
 // probes is approximately 1-α^k. If we set this equal to 50% (since we converge
 // on the mean) and set k=8 (64-byte cache line / 8-byte hash), α=0.92. I round
@@ -618,7 +618,7 @@ static INITIAL_LOAD_FACTOR: Fraction = (9, 10);
 // > Wait, what? Where did you get 1-α^k from?
 //
 // On the first probe, your odds of a collision with an existing element is α.
-// The odds of doing this twice in a row is approximatelly α^2. For three times,
+// The odds of doing this twice in a row is approximately α^2. For three times,
 // α^3, etc. Therefore, the odds of colliding k times is α^k. The odds of NOT
 // colliding after k tries is 1-α^k.
 //
@@ -692,7 +692,7 @@ static INITIAL_LOAD_FACTOR: Fraction = (9, 10);
 /// let mut book_reviews = HashMap::new();
 ///
 /// // review some books.
-/// book_reviews.insert("Adventures of Hucklebury Fin",      "My favorite book.");
+/// book_reviews.insert("Adventures of Huckleberry Finn",    "My favorite book.");
 /// book_reviews.insert("Grimms' Fairy Tales",               "Masterpiece.");
 /// book_reviews.insert("Pride and Prejudice",               "Very enjoyable.");
 /// book_reviews.insert("The Adventures of Sherlock Holmes", "Eye lyked it alot.");
@@ -782,7 +782,7 @@ impl<K: TotalEq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// from its 'ideal' location.
     ///
     /// In the cited blog posts above, this is called the "distance to
-    /// inital bucket", or DIB.
+    /// initial bucket", or DIB.
     fn bucket_distance(&self, index_of_elem: &table::FullIndex) -> uint {
         // where the hash of the element that happens to reside at
         // `index_of_elem` tried to place itself first.

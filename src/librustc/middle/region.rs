@@ -182,7 +182,7 @@ impl RegionMaps {
 
         // else, locate the innermost terminating scope
         // if there's one. Static items, for instance, won't
-        // have an enclusing scope, hence no scope will be
+        // have an enclosing scope, hence no scope will be
         // returned.
         let mut id = match self.opt_encl_scope(expr_id) {
             Some(i) => i,
@@ -533,7 +533,7 @@ fn resolve_expr(visitor: &mut RegionResolutionVisitor,
             // the invoked function is actually running* and call.id
             // represents *the time to prepare the arguments and make the
             // call*.  See the section "Borrows in Calls" borrowck/doc.rs
-            // for an extended explanantion of why this distinction is
+            // for an extended explanation of why this distinction is
             // important.
             //
             // record_superlifetime(new_cx, expr.callee_id);
@@ -604,7 +604,7 @@ fn resolve_local(visitor: &mut RegionResolutionVisitor,
     //    (covers cases `expr` borrows an rvalue that is then assigned
     //     to memory (at least partially) owned by the binding)
     //
-    // Here are some examples hopefully giving an intution where each
+    // Here are some examples hopefully giving an intuition where each
     // rule comes into play and why:
     //
     // Rule A. `let (ref x, ref y) = (foo().x, 44)`. The rvalue `(22, 44)`
