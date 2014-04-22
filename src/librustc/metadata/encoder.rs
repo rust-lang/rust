@@ -27,7 +27,7 @@ use util::nodemap::{NodeMap, NodeSet};
 
 use serialize::Encodable;
 use std::cast;
-use std::cell::{Cell, RefCell};
+use std::cell::RefCell;
 use std::hash;
 use std::hash::Hash;
 use std::io::MemWriter;
@@ -76,26 +76,9 @@ pub struct EncodeParams<'a> {
     pub encode_inlined_item: EncodeInlinedItem<'a>,
 }
 
-pub struct Stats {
-    inline_bytes: Cell<u64>,
-    attr_bytes: Cell<u64>,
-    dep_bytes: Cell<u64>,
-    lang_item_bytes: Cell<u64>,
-    native_lib_bytes: Cell<u64>,
-    macro_registrar_fn_bytes: Cell<u64>,
-    macro_defs_bytes: Cell<u64>,
-    impl_bytes: Cell<u64>,
-    misc_bytes: Cell<u64>,
-    item_bytes: Cell<u64>,
-    index_bytes: Cell<u64>,
-    zero_bytes: Cell<u64>,
-    total_bytes: Cell<u64>,
-}
-
 pub struct EncodeContext<'a> {
     pub diag: &'a SpanHandler,
     pub tcx: &'a ty::ctxt,
-    pub stats: @Stats,
     pub reexports2: &'a middle::resolve::ExportMap2,
     pub item_symbols: &'a RefCell<NodeMap<~str>>,
     pub non_inlineable_statics: &'a RefCell<NodeSet>,
@@ -1701,20 +1684,33 @@ pub fn encode_metadata(parms: EncodeParams, krate: &Crate) -> Vec<u8> {
 }
 
 fn encode_metadata_inner(wr: &mut MemWriter, parms: EncodeParams, krate: &Crate) {
-    let stats = Stats {
-        inline_bytes: Cell::new(0),
-        attr_bytes: Cell::new(0),
-        dep_bytes: Cell::new(0),
-        lang_item_bytes: Cell::new(0),
-        native_lib_bytes: Cell::new(0),
-        macro_registrar_fn_bytes: Cell::new(0),
-        macro_defs_bytes: Cell::new(0),
-        impl_bytes: Cell::new(0),
-        misc_bytes: Cell::new(0),
-        item_bytes: Cell::new(0),
-        index_bytes: Cell::new(0),
-        zero_bytes: Cell::new(0),
-        total_bytes: Cell::new(0),
+    struct Stats {
+        attr_bytes: u64,
+        dep_bytes: u64,
+        lang_item_bytes: u64,
+        native_lib_bytes: u64,
+        macro_registrar_fn_bytes: u64,
+        macro_defs_bytes: u64,
+        impl_bytes: u64,
+        misc_bytes: u64,
+        item_bytes: u64,
+        index_bytes: u64,
+        zero_bytes: u64,
+        total_bytes: u64,
+    }
+    let mut stats = Stats {
+        attr_bytes: 0,
+        dep_bytes: 0,
+        lang_item_bytes: 0,
+        native_lib_bytes: 0,
+        macro_registrar_fn_bytes: 0,
+        macro_defs_bytes: 0,
+        impl_bytes: 0,
+        misc_bytes: 0,
+        item_bytes: 0,
+        index_bytes: 0,
+        zero_bytes: 0,
+        total_bytes: 0,
     };
     let EncodeParams {
         item_symbols,
@@ -1730,7 +1726,6 @@ fn encode_metadata_inner(wr: &mut MemWriter, parms: EncodeParams, krate: &Crate)
     let ecx = EncodeContext {
         diag: diag,
         tcx: tcx,
-        stats: @stats,
         reexports2: reexports2,
         item_symbols: item_symbols,
         non_inlineable_statics: non_inlineable_statics,
@@ -1748,76 +1743,75 @@ fn encode_metadata_inner(wr: &mut MemWriter, parms: EncodeParams, krate: &Crate)
     let mut i = ebml_w.writer.tell().unwrap();
     let crate_attrs = synthesize_crate_attrs(&ecx, krate);
     encode_attributes(&mut ebml_w, crate_attrs.as_slice());
-    ecx.stats.attr_bytes.set(ebml_w.writer.tell().unwrap() - i);
+    stats.attr_bytes = ebml_w.writer.tell().unwrap() - i;
 
     i = ebml_w.writer.tell().unwrap();
     encode_crate_deps(&mut ebml_w, ecx.cstore);
-    ecx.stats.dep_bytes.set(ebml_w.writer.tell().unwrap() - i);
+    stats.dep_bytes = ebml_w.writer.tell().unwrap() - i;
 
     // Encode the language items.
     i = ebml_w.writer.tell().unwrap();
     encode_lang_items(&ecx, &mut ebml_w);
-    ecx.stats.lang_item_bytes.set(ebml_w.writer.tell().unwrap() - i);
+    stats.lang_item_bytes = ebml_w.writer.tell().unwrap() - i;
 
     // Encode the native libraries used
     i = ebml_w.writer.tell().unwrap();
     encode_native_libraries(&ecx, &mut ebml_w);
-    ecx.stats.native_lib_bytes.set(ebml_w.writer.tell().unwrap() - i);
+    stats.native_lib_bytes = ebml_w.writer.tell().unwrap() - i;
 
     // Encode the macro registrar function
     i = ebml_w.writer.tell().unwrap();
     encode_macro_registrar_fn(&ecx, &mut ebml_w);
-    ecx.stats.macro_registrar_fn_bytes.set(ebml_w.writer.tell().unwrap() - i);
+    stats.macro_registrar_fn_bytes = ebml_w.writer.tell().unwrap() - i;
 
     // Encode macro definitions
     i = ebml_w.writer.tell().unwrap();
     encode_macro_defs(&ecx, krate, &mut ebml_w);
-    ecx.stats.macro_defs_bytes.set(ebml_w.writer.tell().unwrap() - i);
+    stats.macro_defs_bytes = ebml_w.writer.tell().unwrap() - i;
 
     // Encode the def IDs of impls, for coherence checking.
     i = ebml_w.writer.tell().unwrap();
     encode_impls(&ecx, krate, &mut ebml_w);
-    ecx.stats.impl_bytes.set(ebml_w.writer.tell().unwrap() - i);
+    stats.impl_bytes = ebml_w.writer.tell().unwrap() - i;
 
     // Encode miscellaneous info.
     i = ebml_w.writer.tell().unwrap();
     encode_misc_info(&ecx, krate, &mut ebml_w);
-    ecx.stats.misc_bytes.set(ebml_w.writer.tell().unwrap() - i);
+    stats.misc_bytes = ebml_w.writer.tell().unwrap() - i;
 
     // Encode and index the items.
     ebml_w.start_tag(tag_items);
     i = ebml_w.writer.tell().unwrap();
     let items_index = encode_info_for_items(&ecx, &mut ebml_w, krate);
-    ecx.stats.item_bytes.set(ebml_w.writer.tell().unwrap() - i);
+    stats.item_bytes = ebml_w.writer.tell().unwrap() - i;
 
     i = ebml_w.writer.tell().unwrap();
     encode_index(&mut ebml_w, items_index, write_i64);
-    ecx.stats.index_bytes.set(ebml_w.writer.tell().unwrap() - i);
+    stats.index_bytes = ebml_w.writer.tell().unwrap() - i;
     ebml_w.end_tag();
 
-    ecx.stats.total_bytes.set(ebml_w.writer.tell().unwrap());
+    stats.total_bytes = ebml_w.writer.tell().unwrap();
 
     if tcx.sess.meta_stats() {
         for e in ebml_w.writer.get_ref().iter() {
             if *e == 0 {
-                ecx.stats.zero_bytes.set(ecx.stats.zero_bytes.get() + 1);
+                stats.zero_bytes += 1;
             }
         }
 
         println!("metadata stats:");
-        println!("         inline bytes: {}", ecx.stats.inline_bytes.get());
-        println!("      attribute bytes: {}", ecx.stats.attr_bytes.get());
-        println!("            dep bytes: {}", ecx.stats.dep_bytes.get());
-        println!("      lang item bytes: {}", ecx.stats.lang_item_bytes.get());
-        println!("         native bytes: {}", ecx.stats.native_lib_bytes.get());
-        println!("macro registrar bytes: {}", ecx.stats.macro_registrar_fn_bytes.get());
-        println!("      macro def bytes: {}", ecx.stats.macro_defs_bytes.get());
-        println!("           impl bytes: {}", ecx.stats.impl_bytes.get());
-        println!("           misc bytes: {}", ecx.stats.misc_bytes.get());
-        println!("           item bytes: {}", ecx.stats.item_bytes.get());
-        println!("          index bytes: {}", ecx.stats.index_bytes.get());
-        println!("           zero bytes: {}", ecx.stats.zero_bytes.get());
-        println!("          total bytes: {}", ecx.stats.total_bytes.get());
+        println!("      attribute bytes: {}", stats.attr_bytes);
+        println!("            dep bytes: {}", stats.dep_bytes);
+        println!("      lang item bytes: {}", stats.lang_item_bytes);
+        println!("         native bytes: {}", stats.native_lib_bytes);
+        println!("macro registrar bytes: {}", stats.macro_registrar_fn_bytes);
+        println!("      macro def bytes: {}", stats.macro_defs_bytes);
+        println!("           impl bytes: {}", stats.impl_bytes);
+        println!("           misc bytes: {}", stats.misc_bytes);
+        println!("           item bytes: {}", stats.item_bytes);
+        println!("          index bytes: {}", stats.index_bytes);
+        println!("           zero bytes: {}", stats.zero_bytes);
+        println!("          total bytes: {}", stats.total_bytes);
     }
 }
 

@@ -154,21 +154,6 @@ pub fn expr_info(expr: &ast::Expr) -> NodeInfo {
     NodeInfo { id: expr.id, span: expr.span }
 }
 
-pub struct Stats {
-    pub n_static_tydescs: Cell<uint>,
-    pub n_glues_created: Cell<uint>,
-    pub n_null_glues: Cell<uint>,
-    pub n_real_glues: Cell<uint>,
-    pub n_fns: Cell<uint>,
-    pub n_monos: Cell<uint>,
-    pub n_inlines: Cell<uint>,
-    pub n_closures: Cell<uint>,
-    pub n_llvm_insns: Cell<uint>,
-    pub llvm_insns: RefCell<HashMap<~str, uint>>,
-    // (ident, time-in-ms, llvm-instructions)
-    pub fn_stats: RefCell<Vec<(~str, uint, uint)> >,
-}
-
 pub struct BuilderRef_res {
     pub b: BuilderRef,
 }
