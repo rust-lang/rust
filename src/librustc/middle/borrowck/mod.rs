@@ -202,6 +202,7 @@ pub enum LoanCause {
     AddrOf,
     AutoRef,
     RefBinding,
+    ClosureInvocation,
 }
 
 #[deriving(Eq, TotalEq, Hash)]
@@ -629,6 +630,10 @@ impl<'a> BorrowckCtxt<'a> {
                     AddrOf | RefBinding | AutoRef => {
                         format!("cannot borrow {} as mutable", descr)
                     }
+                    ClosureInvocation => {
+                        self.tcx.sess.span_bug(err.span,
+                            "err_mutbl with a closure invocation");
+                    }
                 }
             }
             err_out_of_root_scope(..) => {
@@ -676,6 +681,10 @@ impl<'a> BorrowckCtxt<'a> {
             BorrowViolation(AutoRef) |
             BorrowViolation(RefBinding) => {
                 "cannot borrow data mutably"
+            }
+
+            BorrowViolation(ClosureInvocation) => {
+                "closure invocation"
             }
         };
 
