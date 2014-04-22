@@ -118,6 +118,12 @@ pub enum AutoderefReceiverFlag {
     DontAutoderefReceiver,
 }
 
+#[deriving(Eq)]
+pub enum StaticMethodsFlag {
+    ReportStaticMethods,
+    IgnoreStaticMethods,
+}
+
 pub fn lookup<'a>(
         fcx: &'a FnCtxt<'a>,
 
@@ -129,7 +135,8 @@ pub fn lookup<'a>(
         supplied_tps: &'a [ty::t],          // The list of types X, Y, ... .
         deref_args: check::DerefArgs,       // Whether we autopointer first.
         check_traits: CheckTraitsFlag,      // Whether we check traits only.
-        autoderef_receiver: AutoderefReceiverFlag)
+        autoderef_receiver: AutoderefReceiverFlag,
+        report_statics: StaticMethodsFlag)
      -> Option<MethodCallee> {
     let mut lcx = LookupContext {
         fcx: fcx,
@@ -143,6 +150,7 @@ pub fn lookup<'a>(
         deref_args: deref_args,
         check_traits: check_traits,
         autoderef_receiver: autoderef_receiver,
+        report_statics: report_statics,
     };
 
     debug!("method lookup(self_ty={}, expr={}, self_expr={})",
@@ -173,7 +181,8 @@ pub fn lookup_in_trait<'a>(
         trait_did: DefId,                   // The trait to limit the lookup to.
         self_ty: ty::t,                     // The type of `a`.
         supplied_tps: &'a [ty::t],          // The list of types X, Y, ... .
-        autoderef_receiver: AutoderefReceiverFlag)
+        autoderef_receiver: AutoderefReceiverFlag,
+        report_statics: StaticMethodsFlag)
      -> Option<MethodCallee> {
     let mut lcx = LookupContext {
         fcx: fcx,
@@ -187,6 +196,7 @@ pub fn lookup_in_trait<'a>(
         deref_args: check::DoDerefArgs,
         check_traits: CheckTraitsOnly,
         autoderef_receiver: autoderef_receiver,
+        report_statics: report_statics,
     };
 
     debug!("method lookup_in_trait(self_ty={}, self_expr={})",
@@ -196,8 +206,6 @@ pub fn lookup_in_trait<'a>(
     lcx.push_extension_candidate(trait_did);
     lcx.search(self_ty)
 }
-
-
 
 // Determine the index of a method in the list of all methods belonging
 // to a trait and its supertraits.
@@ -301,6 +309,7 @@ struct LookupContext<'a> {
     deref_args: check::DerefArgs,
     check_traits: CheckTraitsFlag,
     autoderef_receiver: AutoderefReceiverFlag,
+    report_statics: StaticMethodsFlag,
 }
 
 /**
@@ -661,7 +670,17 @@ impl<'a> LookupContext<'a> {
                                  impl_did: DefId,
                                  impl_methods: &[DefId],
                                  is_extension: bool) {
-        if !self.impl_dups.insert(impl_did) {
+        let did = if self.report_statics == ReportStaticMethods {
+            // we only want to report each base trait once
+            match ty::impl_trait_ref(self.tcx(), impl_did) {
+                Some(trait_ref) => trait_ref.def_id,
+                None => impl_did
+            }
+        } else {
+            impl_did
+        };
+
+        if !self.impl_dups.insert(did) {
             return; // already visited
         }
 
@@ -1018,6 +1037,25 @@ impl<'a> LookupContext<'a> {
             return None;
         }
 
+        if self.report_statics == ReportStaticMethods {
+            // lookup should only be called with ReportStaticMethods if a regular lookup failed
+            assert!(relevant_candidates.iter().all(|c| c.method_ty.explicit_self == SelfStatic));
+
+            self.tcx().sess.fileline_note(self.span,
+                                "found defined static methods, maybe a `self` is missing?");
+
+            for (idx, candidate) in relevant_candidates.iter().enumerate() {
+                self.report_candidate(idx, &candidate.origin);
+            }
+
+            // return something so we don't get errors for every mutability
+            return Some(MethodCallee {
+                origin: relevant_candidates.get(0).origin,
+                ty: ty::mk_err(),
+                substs: substs::empty()
+            });
+        }
+
         if relevant_candidates.len() > 1 {
             self.tcx().sess.span_err(
                 self.span,
@@ -1305,7 +1343,7 @@ impl<'a> LookupContext<'a> {
         return match candidate.method_ty.explicit_self {
             SelfStatic => {
                 debug!("(is relevant?) explicit self is static");
-                false
+                self.report_statics == ReportStaticMethods
             }
 
             SelfValue => {
@@ -1391,11 +1429,20 @@ impl<'a> LookupContext<'a> {
     fn report_candidate(&self, idx: uint, origin: &MethodOrigin) {
         match *origin {
             MethodStatic(impl_did) => {
-                // If it is an instantiated default method, use the original
-                // default method for error reporting.
-                let did = match provided_source(self.tcx(), impl_did) {
-                    None => impl_did,
-                    Some(did) => did
+                let did = if self.report_statics == ReportStaticMethods {
+                    // If we're reporting statics, we want to report the trait
+                    // definition if possible, rather than an impl
+                    match ty::trait_method_of_method(self.tcx(), impl_did) {
+                        None => {debug!("(report candidate) No trait method found"); impl_did},
+                        Some(trait_did) => {debug!("(report candidate) Found trait ref"); trait_did}
+                    }
+                } else {
+                    // If it is an instantiated default method, use the original
+                    // default method for error reporting.
+                    match provided_source(self.tcx(), impl_did) {
+                        None => impl_did,
+                        Some(did) => did
+                    }
                 };
                 self.report_static_candidate(idx, did)
             }

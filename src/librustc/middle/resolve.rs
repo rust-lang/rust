@@ -16,7 +16,7 @@ use metadata::decoder::{DefLike, DlDef, DlField, DlImpl};
 use middle::lang_items::LanguageItems;
 use middle::lint::{UnnecessaryQualification, UnusedImports};
 use middle::pat_util::pat_bindings;
-use util::nodemap::{NodeMap, DefIdSet, FnvHashSet};
+use util::nodemap::{NodeMap, DefIdSet, FnvHashMap};
 
 use syntax::ast::*;
 use syntax::ast;
@@ -821,7 +821,7 @@ fn Resolver<'a>(session: &'a Session,
 
         graph_root: graph_root,
 
-        method_set: RefCell::new(FnvHashSet::new()),
+        method_map: RefCell::new(FnvHashMap::new()),
         structs: HashSet::new(),
 
         unresolved_imports: 0,
@@ -860,7 +860,7 @@ struct Resolver<'a> {
 
     graph_root: NameBindings,
 
-    method_set: RefCell<FnvHashSet<(Name, DefId)>>,
+    method_map: RefCell<FnvHashMap<(Name, DefId), ast::ExplicitSelf_>>,
     structs: HashSet<DefId>,
 
     // The number of imports that are currently unresolved.
@@ -1371,10 +1371,8 @@ impl<'a> Resolver<'a> {
                                        ty_m.span);
                     method_name_bindings.define_value(def, ty_m.span, true);
 
-                    // Add it to the trait info if not static.
-                    if ty_m.explicit_self.node != SelfStatic {
-                        self.method_set.borrow_mut().insert((ident.name, def_id));
-                    }
+                    self.method_map.borrow_mut().insert((ident.name, def_id),
+                                                        ty_m.explicit_self.node);
                 }
 
                 name_bindings.define_type(DefTrait(def_id), sp, is_public);
@@ -1660,10 +1658,8 @@ impl<'a> Resolver<'a> {
                           trait method '{}'",
                          token::get_ident(method_name));
 
-                  // Add it to the trait info if not static.
-                  if explicit_self != SelfStatic {
-                      self.method_set.borrow_mut().insert((method_name.name, def_id));
-                  }
+                  self.method_map.borrow_mut().insert((method_name.name, def_id), explicit_self);
+
                   if is_exported {
                       self.external_exports.insert(method_def_id);
                   }
@@ -4718,10 +4714,16 @@ impl<'a> Resolver<'a> {
         match containing_module.kind.get() {
             TraitModuleKind | ImplModuleKind => {
                 match containing_module.def_id.get() {
-                    Some(def_id) if self.method_set.borrow().contains(&(ident.name, def_id)) => {
-                        debug!("containing module was a trait or impl \
+                    Some(def_id) => {
+                        match self.method_map.borrow().find(&(ident.name, def_id)) {
+                            Some(x) if *x == SelfStatic => (),
+                            None => (),
+                            _ => {
+                                debug!("containing module was a trait or impl \
                                 and name was a method -> not resolved");
-                        return None;
+                                return None;
+                            }
+                        }
                     },
                     _ => (),
                 }
@@ -5110,9 +5112,9 @@ impl<'a> Resolver<'a> {
             // Look for the current trait.
             match self.current_trait_refs {
                 Some(ref trait_def_ids) => {
-                    let method_set = self.method_set.borrow();
+                    let method_map = self.method_map.borrow();
                     for &trait_def_id in trait_def_ids.iter() {
-                        if method_set.contains(&(name, trait_def_id)) {
+                        if method_map.contains_key(&(name, trait_def_id)) {
                             add_trait_info(&mut found_traits, trait_def_id, name);
                         }
                     }
@@ -5126,7 +5128,7 @@ impl<'a> Resolver<'a> {
             self.populate_module_if_necessary(&search_module);
 
             {
-                let method_set = self.method_set.borrow();
+                let method_map = self.method_map.borrow();
                 for (_, child_names) in search_module.children.borrow().iter() {
                     let def = match child_names.def_for_namespace(TypeNS) {
                         Some(def) => def,
@@ -5136,7 +5138,7 @@ impl<'a> Resolver<'a> {
                         DefTrait(trait_def_id) => trait_def_id,
                         _ => continue,
                     };
-                    if method_set.contains(&(name, trait_def_id)) {
+                    if method_map.contains_key(&(name, trait_def_id)) {
                         add_trait_info(&mut found_traits, trait_def_id, name);
                     }
                 }
@@ -5152,7 +5154,7 @@ impl<'a> Resolver<'a> {
                     Some(DefTrait(trait_def_id)) => trait_def_id,
                     Some(..) | None => continue,
                 };
-                if self.method_set.borrow().contains(&(name, did)) {
+                if self.method_map.borrow().contains_key(&(name, did)) {
                     add_trait_info(&mut found_traits, did, name);
                     self.used_imports.insert((import.type_id, TypeNS));
                 }
