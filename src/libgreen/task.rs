@@ -129,7 +129,7 @@ impl GreenTask {
     /// and will not have any contained Task structure.
     pub fn new(stack_pool: &mut StackPool,
                stack_size: Option<uint>,
-               start: proc()) -> ~GreenTask {
+               start: proc():Send) -> ~GreenTask {
         GreenTask::new_homed(stack_pool, stack_size, AnySched, start)
     }
 
@@ -137,7 +137,7 @@ impl GreenTask {
     pub fn new_homed(stack_pool: &mut StackPool,
                      stack_size: Option<uint>,
                      home: Home,
-                     start: proc()) -> ~GreenTask {
+                     start: proc():Send) -> ~GreenTask {
         // Allocate ourselves a GreenTask structure
         let mut ops = GreenTask::new_typed(None, TypeGreen(Some(home)));
 
@@ -175,7 +175,7 @@ impl GreenTask {
     /// new stack for this task.
     pub fn configure(pool: &mut StackPool,
                      opts: TaskOpts,
-                     f: proc()) -> ~GreenTask {
+                     f: proc():Send) -> ~GreenTask {
         let TaskOpts {
             notify_chan, name, stack_size,
             stderr, stdout,
@@ -443,7 +443,7 @@ impl Runtime for GreenTask {
         }
     }
 
-    fn spawn_sibling(mut ~self, cur_task: ~Task, opts: TaskOpts, f: proc()) {
+    fn spawn_sibling(mut ~self, cur_task: ~Task, opts: TaskOpts, f: proc():Send) {
         self.put_task(cur_task);
 
         // Spawns a task into the current scheduler. We allocate the new task's
@@ -490,7 +490,7 @@ mod tests {
     use super::super::{PoolConfig, SchedPool};
     use super::GreenTask;
 
-    fn spawn_opts(opts: TaskOpts, f: proc()) {
+    fn spawn_opts(opts: TaskOpts, f: proc():Send) {
         let mut pool = SchedPool::new(PoolConfig {
             threads: 1,
             event_loop_factory: ::rustuv::event_loop,
