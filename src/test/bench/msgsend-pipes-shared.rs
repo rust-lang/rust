@@ -23,6 +23,7 @@ extern crate time;
 use std::comm;
 use std::os;
 use std::task;
+use std::task::TaskBuilder;
 use std::uint;
 
 fn move_out<T>(_x: T) {}
@@ -62,7 +63,7 @@ fn run(args: &[~str]) {
     let mut worker_results = Vec::new();
     for _ in range(0u, workers) {
         let to_child = to_child.clone();
-        let mut builder = task::task();
+        let mut builder = TaskBuilder::new();
         worker_results.push(builder.future_result());
         builder.spawn(proc() {
             for _ in range(0u, size / workers) {

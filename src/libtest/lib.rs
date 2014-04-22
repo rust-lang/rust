@@ -60,7 +60,7 @@ use std::io;
 use std::os;
 use std::str;
 use std::strbuf::StrBuf;
-use std::task;
+use std::task::TaskBuilder;
 
 // to be used by rustc to compile tests in libtest
 pub mod test {
@@ -961,7 +961,7 @@ pub fn run_test(force_ignore: bool,
             let mut reader = ChanReader::new(rx);
             let stdout = ChanWriter::new(tx.clone());
             let stderr = ChanWriter::new(tx);
-            let mut task = task::task().named(match desc.name {
+            let mut task = TaskBuilder::new().named(match desc.name {
                 DynTestName(ref name) => name.clone().into_maybe_owned(),
                 StaticTestName(name) => name.into_maybe_owned(),
             });
