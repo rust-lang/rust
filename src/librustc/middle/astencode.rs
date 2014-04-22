@@ -820,7 +820,7 @@ impl<'a> get_ty_str_ctxt for e::EncodeContext<'a> {
             diag: self.tcx.sess.diagnostic(),
             ds: e::def_to_str,
             tcx: self.tcx,
-            abbrevs: tyencode::ac_use_abbrevs(self.type_abbrevs)
+            abbrevs: &self.type_abbrevs
         }
     }
 }

@@ -146,7 +146,7 @@ fn gather_loans_in_local(this: &mut GatherLoanCtxt,
         None => {
             // Variable declarations without initializers are considered "moves":
             let tcx = this.bccx.tcx;
-            pat_util::pat_bindings(tcx.def_map, local.pat, |_, id, span, _| {
+            pat_util::pat_bindings(&tcx.def_map, local.pat, |_, id, span, _| {
                 gather_moves::gather_decl(this.bccx,
                                           &this.move_data,
                                           id,
@@ -821,7 +821,7 @@ impl<'a> GatherLoanCtxt<'a> {
               ast::PatIdent(bm, _, _) if self.pat_is_binding(pat) => {
                 // Each match binding is effectively an assignment.
                 let tcx = self.bccx.tcx;
-                pat_util::pat_bindings(tcx.def_map, pat, |_, id, span, _| {
+                pat_util::pat_bindings(&tcx.def_map, pat, |_, id, span, _| {
                     gather_moves::gather_assignment(self.bccx,
                                                     &self.move_data,
                                                     id,
@@ -919,7 +919,7 @@ impl<'a> GatherLoanCtxt<'a> {
     }
 
     pub fn pat_is_binding(&self, pat: &ast::Pat) -> bool {
-        pat_util::pat_is_binding(self.bccx.tcx.def_map, pat)
+        pat_util::pat_is_binding(&self.bccx.tcx.def_map, pat)
     }
 
     pub fn report_potential_errors(&self) {

@@ -9,7 +9,6 @@
 // except according to those terms.
 
 
-use metadata::encoder;
 use middle::ty::{ReSkolemized, ReVar};
 use middle::ty::{BoundRegion, BrAnon, BrNamed};
 use middle::ty::{BrFresh, ctxt};
@@ -469,7 +468,7 @@ pub fn parameterized(cx: &ctxt,
 }
 
 pub fn ty_to_short_str(cx: &ctxt, typ: t) -> ~str {
-    let mut s = encoder::encoded_ty(cx, typ);
+    let mut s = typ.repr(cx);
     if s.len() >= 32u { s = s.slice(0u, 32u).to_owned(); }
     return s;
 }

@@ -605,7 +605,7 @@ impl<'a> VisitContext<'a> {
          * into itself or not based on its type and annotation.
          */
 
-        pat_bindings(self.tcx.def_map, pat, |bm, id, _span, path| {
+        pat_bindings(&self.tcx.def_map, pat, |bm, id, _span, path| {
             let binding_moves = match bm {
                 BindByRef(_) => false,
                 BindByValue(_) => {

@@ -28,7 +28,6 @@ use util::ppaux;
 use util::ppaux::Repr;
 
 use collections::HashSet;
-use std::cell::RefCell;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::codemap::Span;
@@ -319,10 +318,12 @@ fn search_for_vtable(vcx: &VtableContext,
     ty::populate_implementations_for_trait_if_necessary(tcx,
                                                         trait_ref.def_id);
 
-    // FIXME: this is a bad way to do this, since we do
-    // pointless allocations.
-    let impls = tcx.trait_impls.borrow().find(&trait_ref.def_id)
-                               .map_or(@RefCell::new(Vec::new()), |x| *x);
+    let impls = match tcx.trait_impls.borrow().find_copy(&trait_ref.def_id) {
+        Some(impls) => impls,
+        None => {
+            return None;
+        }
+    };
     // impls is the list of all impls in scope for trait_ref.
     for im in impls.borrow().iter() {
         // im is one specific impl of trait_ref.

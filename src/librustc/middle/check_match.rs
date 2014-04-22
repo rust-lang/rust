@@ -934,7 +934,7 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
                                        has_guard: bool,
                                        pats: &[@Pat]) {
     let tcx = cx.tcx;
-    let def_map = tcx.def_map;
+    let def_map = &tcx.def_map;
     let mut by_ref_span = None;
     let mut any_by_move = false;
     for pat in pats.iter() {
