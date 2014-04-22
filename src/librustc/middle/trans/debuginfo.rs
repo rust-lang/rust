@@ -1389,7 +1389,7 @@ fn prepare_tuple_metadata(cx: &CrateContext,
 }
 
 struct GeneralMemberDescriptionFactory {
-    type_rep: @adt::Repr,
+    type_rep: Rc<adt::Repr>,
     variants: Rc<Vec<Rc<ty::VariantInfo>>>,
     discriminant_type_metadata: ValueRef,
     containing_scope: DIScope,
@@ -1662,7 +1662,7 @@ fn prepare_enum_metadata(cx: &CrateContext,
                 llvm_type: enum_llvm_type,
                 file_metadata: file_metadata,
                 member_description_factory: GeneralMD(GeneralMemberDescriptionFactory {
-                    type_rep: type_rep,
+                    type_rep: type_rep.clone(),
                     variants: variants,
                     discriminant_type_metadata: discriminant_type_metadata,
                     containing_scope: containing_scope,

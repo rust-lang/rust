@@ -45,8 +45,8 @@
 
 use std::container::Map;
 use libc::c_ulonglong;
-use std::option::{Option, Some, None};
 use std::num::{Bitwise};
+use std::rc::Rc;
 
 use lib::llvm::{ValueRef, True, IntEQ, IntNE};
 use middle::trans::_match;
@@ -115,22 +115,22 @@ pub struct Struct {
  * these, for places in trans where the `ty::t` isn't directly
  * available.
  */
-pub fn represent_node(bcx: &Block, node: ast::NodeId) -> @Repr {
+pub fn represent_node(bcx: &Block, node: ast::NodeId) -> Rc<Repr> {
     represent_type(bcx.ccx(), node_id_type(bcx, node))
 }
 
 /// Decides how to represent a given type.
-pub fn represent_type(cx: &CrateContext, t: ty::t) -> @Repr {
+pub fn represent_type(cx: &CrateContext, t: ty::t) -> Rc<Repr> {
     debug!("Representing: {}", ty_to_str(cx.tcx(), t));
     match cx.adt_reprs.borrow().find(&t) {
-        Some(repr) => return *repr,
+        Some(repr) => return repr.clone(),
         None => {}
     }
 
-    let repr = @represent_type_uncached(cx, t);
+    let repr = Rc::new(represent_type_uncached(cx, t));
     debug!("Represented as: {:?}", repr)
-    cx.adt_reprs.borrow_mut().insert(t, repr);
-    return repr;
+    cx.adt_reprs.borrow_mut().insert(t, repr.clone());
+    repr
 }
 
 fn represent_type_uncached(cx: &CrateContext, t: ty::t) -> Repr {
