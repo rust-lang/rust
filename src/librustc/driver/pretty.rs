@@ -33,7 +33,7 @@ use graphviz as dot;
 use std::io::{mod, MemReader};
 use std::from_str::FromStr;
 use std::option;
-
+use arena::TypedArena;
 
 #[deriving(PartialEq, Show)]
 pub enum PpSourceMode {
@@ -114,7 +114,9 @@ impl PpSourceMode {
             }
             PpmTyped => {
                 let ast_map = ast_map.expect("--pretty=typed missing ast_map");
-                let analysis = driver::phase_3_run_analysis_passes(sess, krate, ast_map, id);
+                let type_arena = TypedArena::new();
+                let analysis = driver::phase_3_run_analysis_passes(sess, krate, ast_map,
+                                                                   &type_arena, id);
                 let annotation = TypedAnnotation { analysis: analysis };
                 f(&annotation, payload)
             }
@@ -531,8 +533,9 @@ pub fn pretty_print_input(sess: Session,
             match code {
                 Some(code) => {
                     let variants = gather_flowgraph_variants(&sess);
+                    let type_arena = TypedArena::new();
                     let analysis = driver::phase_3_run_analysis_passes(sess, &krate,
-                                                                       ast_map, id);
+                                                                       ast_map, &type_arena, id);
                     print_flowgraph(variants, analysis, code, out)
                 }
                 None => {
