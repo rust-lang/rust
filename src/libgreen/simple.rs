@@ -72,7 +72,7 @@ impl Runtime for SimpleTask {
     // feet and running.
     fn yield_now(~self, _cur_task: ~Task) { fail!() }
     fn maybe_yield(~self, _cur_task: ~Task) { fail!() }
-    fn spawn_sibling(~self, _cur_task: ~Task, _opts: TaskOpts, _f: proc()) {
+    fn spawn_sibling(~self, _cur_task: ~Task, _opts: TaskOpts, _f: proc():Send) {
         fail!()
     }
     fn local_io<'a>(&'a mut self) -> Option<rtio::LocalIo<'a>> { None }
