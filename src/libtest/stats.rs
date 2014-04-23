@@ -352,8 +352,8 @@ pub fn write_boxplot(w: &mut io::Writer, s: &Summary,
     let (q1,q2,q3) = s.quartiles;
 
     // the .abs() handles the case where numbers are negative
-    let lomag = (10.0_f64).powf(&(s.min.abs().log10().floor()));
-    let himag = (10.0_f64).powf(&(s.max.abs().log10().floor()));
+    let lomag = 10.0_f64.powf(s.min.abs().log10().floor());
+    let himag = 10.0_f64.powf(s.max.abs().log10().floor());
 
     // need to consider when the limit is zero
     let lo = if lomag == 0.0 {

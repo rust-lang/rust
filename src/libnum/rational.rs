@@ -15,7 +15,7 @@ use Integer;
 use std::cmp;
 use std::fmt;
 use std::from_str::FromStr;
-use std::num::{Zero,One,ToStrRadix,FromStrRadix,Round};
+use std::num::{Zero, One, ToStrRadix, FromStrRadix};
 use bigint::{BigInt, BigUint, Sign, Plus, Minus};
 
 /// Represents the ratio between 2 numbers.
@@ -112,6 +112,40 @@ impl<T: Clone + Integer + Ord>
     #[inline]
     pub fn recip(&self) -> Ratio<T> {
         Ratio::new_raw(self.denom.clone(), self.numer.clone())
+    }
+
+    pub fn floor(&self) -> Ratio<T> {
+        if *self < Zero::zero() {
+            Ratio::from_integer((self.numer - self.denom + One::one()) / self.denom)
+        } else {
+            Ratio::from_integer(self.numer / self.denom)
+        }
+    }
+
+    pub fn ceil(&self) -> Ratio<T> {
+        if *self < Zero::zero() {
+            Ratio::from_integer(self.numer / self.denom)
+        } else {
+            Ratio::from_integer((self.numer + self.denom - One::one()) / self.denom)
+        }
+    }
+
+    #[inline]
+    pub fn round(&self) -> Ratio<T> {
+        if *self < Zero::zero() {
+            Ratio::from_integer((self.numer - self.denom + One::one()) / self.denom)
+        } else {
+            Ratio::from_integer((self.numer + self.denom - One::one()) / self.denom)
+        }
+    }
+
+    #[inline]
+    pub fn trunc(&self) -> Ratio<T> {
+        Ratio::from_integer(self.numer / self.denom)
+    }
+
+    pub fn fract(&self) -> Ratio<T> {
+        Ratio::new_raw(self.numer % self.denom, self.denom.clone())
     }
 }
 
@@ -237,45 +271,6 @@ impl<T: Clone + Integer + Ord>
 
 impl<T: Clone + Integer + Ord>
     Num for Ratio<T> {}
-
-/* Utils */
-impl<T: Clone + Integer + Ord>
-    Round for Ratio<T> {
-
-    fn floor(&self) -> Ratio<T> {
-        if *self < Zero::zero() {
-            Ratio::from_integer((self.numer - self.denom + One::one()) / self.denom)
-        } else {
-            Ratio::from_integer(self.numer / self.denom)
-        }
-    }
-
-    fn ceil(&self) -> Ratio<T> {
-        if *self < Zero::zero() {
-            Ratio::from_integer(self.numer / self.denom)
-        } else {
-            Ratio::from_integer((self.numer + self.denom - One::one()) / self.denom)
-        }
-    }
-
-    #[inline]
-    fn round(&self) -> Ratio<T> {
-        if *self < Zero::zero() {
-            Ratio::from_integer((self.numer - self.denom + One::one()) / self.denom)
-        } else {
-            Ratio::from_integer((self.numer + self.denom - One::one()) / self.denom)
-        }
-    }
-
-    #[inline]
-    fn trunc(&self) -> Ratio<T> {
-        Ratio::from_integer(self.numer / self.denom)
-    }
-
-    fn fract(&self) -> Ratio<T> {
-        Ratio::new_raw(self.numer % self.denom, self.denom.clone())
-    }
-}
 
 /* String conversions */
 impl<T: fmt::Show> fmt::Show for Ratio<T> {
@@ -636,19 +631,19 @@ mod test {
 
         // f32
         test(3.14159265359f32, ("13176795", "4194304"));
-        test(2f32.powf(&100.), ("1267650600228229401496703205376", "1"));
-        test(-2f32.powf(&100.), ("-1267650600228229401496703205376", "1"));
-        test(1.0 / 2f32.powf(&100.), ("1", "1267650600228229401496703205376"));
+        test(2f32.powf(100.), ("1267650600228229401496703205376", "1"));
+        test(-2f32.powf(100.), ("-1267650600228229401496703205376", "1"));
+        test(1.0 / 2f32.powf(100.), ("1", "1267650600228229401496703205376"));
         test(684729.48391f32, ("1369459", "2"));
         test(-8573.5918555f32, ("-4389679", "512"));
 
         // f64
         test(3.14159265359f64, ("3537118876014453", "1125899906842624"));
-        test(2f64.powf(&100.), ("1267650600228229401496703205376", "1"));
-        test(-2f64.powf(&100.), ("-1267650600228229401496703205376", "1"));
+        test(2f64.powf(100.), ("1267650600228229401496703205376", "1"));
+        test(-2f64.powf(100.), ("-1267650600228229401496703205376", "1"));
         test(684729.48391f64, ("367611342500051", "536870912"));
         test(-8573.5918555, ("-4713381968463931", "549755813888"));
-        test(1.0 / 2f64.powf(&100.), ("1", "1267650600228229401496703205376"));
+        test(1.0 / 2f64.powf(100.), ("1", "1267650600228229401496703205376"));
     }
 
     #[test]

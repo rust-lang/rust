@@ -15,7 +15,7 @@ use clone::Clone;
 use container::Container;
 use iter::Iterator;
 use num::{NumCast, Zero, One, cast, Int};
-use num::{Round, Float, FPNaN, FPInfinite, ToPrimitive};
+use num::{Float, FPNaN, FPInfinite, ToPrimitive};
 use num;
 use ops::{Add, Sub, Mul, Div, Rem, Neg};
 use option::{None, Option, Some};
@@ -258,7 +258,7 @@ pub fn int_to_str_bytes_common<T: Int>(num: T, radix: uint, sign: SignFormat, f:
  * - Fails if `radix` > 25 and `exp_format` is `ExpBin` due to conflict
  *   between digit and exponent sign `'p'`.
  */
-pub fn float_to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Float+Round+
+pub fn float_to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Float+
                                   Div<T,T>+Neg<T>+Rem<T,T>+Mul<T,T>>(
         num: T, radix: uint, negative_zero: bool,
         sign: SignFormat, digits: SignificantDigits, exp_format: ExponentFormat, exp_upper: bool
@@ -310,7 +310,7 @@ pub fn float_to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Float+Round+
                     ExpNone => unreachable!()
                 };
 
-                (num / exp_base.powf(&exp), cast::<T, i32>(exp).unwrap())
+                (num / exp_base.powf(exp), cast::<T, i32>(exp).unwrap())
             }
         }
     };
@@ -491,7 +491,7 @@ pub fn float_to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Float+Round+
  * `to_str_bytes_common()`, for details see there.
  */
 #[inline]
-pub fn float_to_str_common<T:NumCast+Zero+One+Eq+Ord+NumStrConv+Float+Round+
+pub fn float_to_str_common<T:NumCast+Zero+One+Eq+Ord+NumStrConv+Float+
                              Div<T,T>+Neg<T>+Rem<T,T>+Mul<T,T>>(
         num: T, radix: uint, negative_zero: bool,
         sign: SignFormat, digits: SignificantDigits, exp_format: ExponentFormat, exp_capital: bool
