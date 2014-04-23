@@ -220,11 +220,14 @@ impl<'a> ResolveState<'a> {
             let bounds = nde.possible_types;
 
             let t1 = match bounds {
-              Bounds { ub:_, lb:Some(t) } if !type_is_bot(t)
+              Bounds { ub:_, lb:Some(t), .. } if !type_is_bot(t)
                 => self.resolve_type(t),
-              Bounds { ub:Some(t), lb:_ } => self.resolve_type(t),
-              Bounds { ub:_, lb:Some(t) } => self.resolve_type(t),
-              Bounds { ub:None, lb:None } => {
+              Bounds { ub:Some(t), lb:_, .. } => self.resolve_type(t),
+              Bounds { ub:_, lb:Some(t), .. } => self.resolve_type(t),
+              Bounds { ub:None, lb:None, fallback: Some(t) } if self.should(force_tvar) => {
+                  self.resolve_type(t)
+              }
+              Bounds { ub:None, lb:None, .. } => {
                 if self.should(force_tvar) {
                     self.err = Some(unresolved_ty(vid));
                 }

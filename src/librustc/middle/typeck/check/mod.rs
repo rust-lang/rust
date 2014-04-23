@@ -370,7 +370,7 @@ impl<'a> GatherLocalsVisitor<'a> {
         match ty_opt {
             None => {
                 // infer the variable's type
-                let var_ty = self.fcx.infcx().next_ty_var();
+                let var_ty = self.fcx.infcx().next_ty_var(None);
                 self.fcx.inh.locals.borrow_mut().insert(nid, var_ty);
             }
             Some(typ) => {
@@ -1050,7 +1050,7 @@ impl<'a> AstConv for FnCtxt<'a> {
     }
 
     fn ty_infer(&self, _span: Span) -> ty::t {
-        self.infcx().next_ty_var()
+        self.infcx().next_ty_var(None)
     }
 }
 
@@ -2092,7 +2092,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         }
 
         if ty::is_binopable(tcx, lhs_t, op) {
-            let tvar = fcx.infcx().next_ty_var();
+            let tvar = fcx.infcx().next_ty_var(None);
             demand::suptype(fcx, expr.span, tvar, lhs_t);
             check_expr_has_type(fcx, rhs, tvar);
 
@@ -2570,7 +2570,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
             let v = ast_expr_vstore_to_vstore(fcx, ev, vst);
             let mut any_error = false;
             let mut any_bot = false;
-            let t: ty::t = fcx.infcx().next_ty_var();
+            let t = fcx.infcx().next_ty_var(None);
             for e in args.iter() {
                 check_expr_has_type(fcx, *e, t);
                 let arg_t = fcx.expr_ty(*e);
@@ -2613,7 +2613,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                 _ => ast::MutImmutable,
             };
             let tt = ast_expr_vstore_to_vstore(fcx, ev, vst);
-            let t = fcx.infcx().next_ty_var();
+            let t = fcx.infcx().next_ty_var(None);
             check_expr_has_type(fcx, element, t);
             let arg_t = fcx.expr_ty(element);
             if ty::type_is_error(arg_t) {
@@ -3133,7 +3133,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         }
       }
       ast::ExprVec(ref args) => {
-        let t: ty::t = fcx.infcx().next_ty_var();
+        let t: ty::t = fcx.infcx().next_ty_var(None);
         for e in args.iter() {
             check_expr_has_type(fcx, *e, t);
         }
@@ -3144,7 +3144,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
       ast::ExprRepeat(element, count_expr) => {
         check_expr_with_hint(fcx, count_expr, ty::mk_uint());
         let count = ty::eval_repeat_count(fcx, count_expr);
-        let t: ty::t = fcx.infcx().next_ty_var();
+        let t: ty::t = fcx.infcx().next_ty_var(None);
         check_expr_has_type(fcx, element, t);
         let element_ty = fcx.expr_ty(element);
         if ty::type_is_error(element_ty) {
@@ -3882,7 +3882,7 @@ pub fn instantiate_path(fcx: &FnCtxt,
                                    .enumerate() {
             match self_parameter_index {
                 Some(index) if index == i => {
-                    tps.push(fcx.infcx().next_ty_var());
+                    tps.push(fcx.infcx().next_ty_var(None));
                     pushed = true;
                 }
                 _ => {}
@@ -3906,7 +3906,7 @@ pub fn instantiate_path(fcx: &FnCtxt,
         for (i, default) in defaults.skip(ty_substs_len).enumerate() {
             match self_parameter_index {
                 Some(index) if index == i + ty_substs_len => {
-                    substs.tps.push(fcx.infcx().next_ty_var());
+                    substs.tps.push(fcx.infcx().next_ty_var(None));
                     pushed = true;
                 }
                 _ => {}
@@ -3925,7 +3925,7 @@ pub fn instantiate_path(fcx: &FnCtxt,
 
         // If the self parameter goes at the end, insert it there.
         if !pushed && self_parameter_index.is_some() {
-            substs.tps.push(fcx.infcx().next_ty_var())
+            substs.tps.push(fcx.infcx().next_ty_var(None))
         }
 
         assert_eq!(substs.tps.len(), ty_param_count)

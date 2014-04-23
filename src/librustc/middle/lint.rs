@@ -684,7 +684,7 @@ impl<'a> AstConv for Context<'a>{
     }
 
     fn ty_infer(&self, _span: Span) -> ty::t {
-        infer::new_infer_ctxt(self.tcx).next_ty_var()
+        infer::new_infer_ctxt(self.tcx).next_ty_var(None)
     }
 }
 
