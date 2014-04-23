@@ -444,6 +444,8 @@ mod imp {
     static SPIN_COUNT: DWORD = 4000;
     #[cfg(target_arch = "x86")]
     static CRIT_SECTION_SIZE: uint = 24;
+    #[cfg(target_arch = "x86_64")]
+    static CRIT_SECTION_SIZE: uint = 40;
 
     pub struct Mutex {
         // pointers for the lock/cond handles, atomically updated

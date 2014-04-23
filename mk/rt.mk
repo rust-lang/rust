@@ -247,8 +247,8 @@ $$(COMPRT_LIB_$(1)): $$(COMPRT_DEPS) $$(MKFILE_DEPS)
 		RANLIB="$$(AR_$(1)) s" \
 		CFLAGS="$$(CFG_GCCISH_CFLAGS_$(1))" \
 		TargetTriple=$(1) \
-		triple-runtime
-	$$(Q)cp $$(COMPRT_BUILD_DIR_$(1))/triple/runtime/libcompiler_rt.a $$(COMPRT_LIB_$(1))
+		triple-builtins
+	$$(Q)cp $$(COMPRT_BUILD_DIR_$(1))/triple/builtins/libcompiler_rt.a $$(COMPRT_LIB_$(1))
 
 ################################################################################
 # libbacktrace
