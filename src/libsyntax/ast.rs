@@ -480,7 +480,7 @@ pub enum Expr_ {
     ExprBox(@Expr, @Expr),
     ExprVec(Vec<@Expr>),
     ExprCall(@Expr, Vec<@Expr>),
-    ExprMethodCall(Ident, Vec<P<Ty>>, Vec<@Expr>),
+    ExprMethodCall(SpannedIdent, Vec<P<Ty>>, Vec<@Expr>),
     ExprTup(Vec<@Expr>),
     ExprBinary(BinOp, @Expr, @Expr),
     ExprUnary(UnOp, @Expr),

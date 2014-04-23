@@ -1646,7 +1646,11 @@ impl<'a> Parser<'a> {
         ExprCall(f, args)
     }
 
-    fn mk_method_call(&mut self, ident: Ident, tps: Vec<P<Ty>> , args: Vec<@Expr> ) -> ast::Expr_ {
+    fn mk_method_call(&mut self,
+                      ident: ast::SpannedIdent,
+                      tps: Vec<P<Ty>>,
+                      args: Vec<@Expr>)
+                      -> ast::Expr_ {
         ExprMethodCall(ident, tps, args)
     }
 
@@ -1919,6 +1923,7 @@ impl<'a> Parser<'a> {
             if self.eat(&token::DOT) {
                 match self.token {
                   token::IDENT(i, _) => {
+                    let dot = self.last_span.hi;
                     hi = self.span.hi;
                     self.bump();
                     let (_, tys) = if self.eat(&token::MOD_SEP) {
@@ -1940,7 +1945,8 @@ impl<'a> Parser<'a> {
                             hi = self.last_span.hi;
 
                             es.unshift(e);
-                            let nd = self.mk_method_call(i, tys, es);
+                            let id = spanned(dot, hi, i);
+                            let nd = self.mk_method_call(id, tys, es);
                             e = self.mk_expr(lo, hi, nd);
                         }
                         _ => {
