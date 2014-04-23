@@ -673,10 +673,14 @@ impl<'a> State<'a> {
                 }
                 try!(self.bclose(item.span));
             }
-            ast::ItemTrait(ref generics, ref traits, ref methods) => {
+            ast::ItemTrait(ref generics, ref sized, ref traits, ref methods) => {
                 try!(self.head(visibility_qualified(item.vis, "trait")));
                 try!(self.print_ident(item.ident));
                 try!(self.print_generics(generics));
+                if *sized == ast::DynSize {
+                    try!(space(&mut self.s));
+                    try!(word(&mut self.s, "for type"));
+                }
                 if traits.len() != 0u {
                     try!(word(&mut self.s, ":"));
                     for (i, trait_) in traits.iter().enumerate() {
@@ -1910,6 +1914,9 @@ impl<'a> State<'a> {
                     } else {
                         let idx = idx - generics.lifetimes.len();
                         let param = generics.ty_params.get(idx);
+                        if param.sized == ast::DynSize {
+                            try!(s.word_space("type"));
+                        }
                         try!(s.print_ident(param.ident));
                         try!(s.print_bounds(&None, &param.bounds, false));
                         match param.default {

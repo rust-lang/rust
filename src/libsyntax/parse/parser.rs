@@ -42,6 +42,7 @@ use ast::{PatIdent, PatLit, PatRange, PatRegion, PatStruct};
 use ast::{PatTup, PatUniq, PatWild, PatWildMulti};
 use ast::{BiRem, Required};
 use ast::{RetStyle, Return, BiShl, BiShr, Stmt, StmtDecl};
+use ast::{Sized, DynSize, StaticSize};
 use ast::{StmtExpr, StmtSemi, StmtMac, StructDef, StructField};
 use ast::{StructVariantKind, BiSub};
 use ast::StrStyle;
@@ -3390,8 +3391,10 @@ impl<'a> Parser<'a> {
         return (ret_lifetime, Some(OwnedSlice::from_vec(result)));
     }
 
-    // matches typaram = IDENT optbounds ( EQ ty )?
+    // matches typaram = type? IDENT optbounds ( EQ ty )?
     fn parse_ty_param(&mut self) -> TyParam {
+        let sized = self.parse_sized();
+        let span = self.span;
         let ident = self.parse_ident();
         let (_, opt_bounds) = self.parse_optional_ty_param_bounds(false);
         // For typarams we don't care about the difference b/w "<T>" and "<T:>".
@@ -3406,8 +3409,10 @@ impl<'a> Parser<'a> {
         TyParam {
             ident: ident,
             id: ast::DUMMY_NODE_ID,
+            sized: sized,
             bounds: bounds,
-            default: default
+            default: default,
+            span: span,
         }
     }
 
@@ -3795,6 +3800,7 @@ impl<'a> Parser<'a> {
     fn parse_item_trait(&mut self) -> ItemInfo {
         let ident = self.parse_ident();
         let tps = self.parse_generics();
+        let sized = self.parse_for_sized();
 
         // Parse traits, if necessary.
         let traits;
@@ -3806,7 +3812,7 @@ impl<'a> Parser<'a> {
         }
 
         let meths = self.parse_trait_methods();
-        (ident, ItemTrait(tps, traits, meths), None)
+        (ident, ItemTrait(tps, sized, traits, meths), None)
     }
 
     // Parses two variants (with the region/type params always optional):
@@ -3995,6 +4001,23 @@ impl<'a> Parser<'a> {
     fn parse_visibility(&mut self) -> Visibility {
         if self.eat_keyword(keywords::Pub) { Public }
         else { Inherited }
+    }
+
+    fn parse_sized(&mut self) -> Sized {
+        if self.eat_keyword(keywords::Type) { DynSize }
+        else { StaticSize }
+    }
+
+    fn parse_for_sized(&mut self) -> Sized {
+        if self.eat_keyword(keywords::For) {
+            if !self.eat_keyword(keywords::Type) {
+                self.span_err(self.last_span,
+                    "expected 'type' after for in trait item");
+            }
+            DynSize
+        } else {
+            StaticSize
+        }
     }
 
     // given a termination token and a vector of already-parsed

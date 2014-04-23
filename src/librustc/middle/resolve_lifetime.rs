@@ -84,7 +84,7 @@ impl<'a, 'b> Visitor<Scope<'a>> for LifetimeContext<'b> {
             ast::ItemEnum(_, ref generics) |
             ast::ItemStruct(_, ref generics) |
             ast::ItemImpl(ref generics, _, _, _) |
-            ast::ItemTrait(ref generics, _, _) => {
+            ast::ItemTrait(ref generics, _, _, _) => {
                 self.check_lifetime_names(&generics.lifetimes);
                 EarlyScope(0, &generics.lifetimes, &root)
             }

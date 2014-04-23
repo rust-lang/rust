@@ -265,6 +265,31 @@ impl Map {
         }
     }
 
+    pub fn expect_struct(&self, id: NodeId) -> @StructDef {
+        match self.find(id) {
+            Some(NodeItem(i)) => {
+                match i.node {
+                    ItemStruct(struct_def, _) => struct_def,
+                    _ => fail!("struct ID bound to non-struct")
+                }
+            }
+            Some(NodeVariant(ref variant)) => {
+                match (*variant).node.kind {
+                    StructVariantKind(struct_def) => struct_def,
+                    _ => fail!("struct ID bound to enum variant that isn't struct-like"),
+                }
+            }
+            _ => fail!(format!("expected struct, found {}", self.node_to_str(id))),
+        }
+    }
+
+    pub fn expect_variant(&self, id: NodeId) -> P<Variant> {
+        match self.find(id) {
+            Some(NodeVariant(variant)) => variant,
+            _ => fail!(format!("expected variant, found {}", self.node_to_str(id))),
+        }
+    }
+
     pub fn expect_foreign_item(&self, id: NodeId) -> @ForeignItem {
         match self.find(id) {
             Some(NodeForeignItem(item)) => item,
@@ -453,7 +478,7 @@ impl<'a, F: FoldOps> Folder for Ctx<'a, F> {
                     None => {}
                 }
             }
-            ItemTrait(_, ref traits, ref methods) => {
+            ItemTrait(_, _, ref traits, ref methods) => {
                 for t in traits.iter() {
                     self.insert(t.ref_id, EntryItem(self.parent, i));
                 }

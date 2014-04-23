@@ -186,14 +186,14 @@ impl<'a> Ty<'a> {
 }
 
 
-fn mk_ty_param(cx: &ExtCtxt, span: Span, name: &str, bounds: &[Path],
+fn mk_ty_param(cx: &ExtCtxt, span: Span, name: &str, sized: ast::Sized, bounds: &[Path],
                self_ident: Ident, self_generics: &Generics) -> ast::TyParam {
     let bounds =
         bounds.iter().map(|b| {
             let path = b.to_path(cx, span, self_ident, self_generics);
             cx.typarambound(path)
         }).collect();
-    cx.typaram(cx.ident_of(name), bounds, None)
+    cx.typaram(span, cx.ident_of(name), sized, bounds, None)
 }
 
 fn mk_generics(lifetimes: Vec<ast::Lifetime> ,  ty_params: Vec<ast::TyParam> ) -> Generics {
@@ -206,7 +206,7 @@ fn mk_generics(lifetimes: Vec<ast::Lifetime> ,  ty_params: Vec<ast::TyParam> ) -
 /// Lifetimes and bounds on type parameters
 pub struct LifetimeBounds<'a> {
     pub lifetimes: Vec<&'a str>,
-    pub bounds: Vec<(&'a str, Vec<Path<'a>>)>,
+    pub bounds: Vec<(&'a str, ast::Sized, Vec<Path<'a>>)>,
 }
 
 impl<'a> LifetimeBounds<'a> {
@@ -226,10 +226,11 @@ impl<'a> LifetimeBounds<'a> {
         }).collect();
         let ty_params = self.bounds.iter().map(|t| {
             match t {
-                &(ref name, ref bounds) => {
+                &(ref name, sized, ref bounds) => {
                     mk_ty_param(cx,
                                 span,
                                 *name,
+                                sized,
                                 bounds.as_slice(),
                                 self_ty,
                                 self_generics)

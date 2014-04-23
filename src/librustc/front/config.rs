@@ -103,12 +103,12 @@ fn fold_item_underscore(cx: &mut Context, item: &ast::Item_) -> ast::Item_ {
                 .map(|x| *x).collect();
             ast::ItemImpl((*a).clone(), (*b).clone(), c, methods)
         }
-        ast::ItemTrait(ref a, ref b, ref methods) => {
+        ast::ItemTrait(ref a, b, ref c, ref methods) => {
             let methods = methods.iter()
                                  .filter(|m| trait_method_in_cfg(cx, *m) )
                                  .map(|x| (*x).clone())
                                  .collect();
-            ast::ItemTrait((*a).clone(), (*b).clone(), methods)
+            ast::ItemTrait((*a).clone(), b, (*c).clone(), methods)
         }
         ast::ItemStruct(def, ref generics) => {
             ast::ItemStruct(fold_struct(cx, def), generics.clone())
