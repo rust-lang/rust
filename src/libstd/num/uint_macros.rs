@@ -153,7 +153,7 @@ impl Int for $T {}
 /// Yields an `Option` because `buf` may or may not actually be parseable.
 ///
 /// # Examples
-/// 
+///
 /// ```rust
 /// let digits = [49,50,51,52,53,54,55,56,57];
 /// let base   = 10;
