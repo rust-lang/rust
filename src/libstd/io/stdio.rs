@@ -27,7 +27,6 @@ out.write(bytes!("Hello, world!"));
 
 */
 
-use container::Container;
 use fmt;
 use io::{Reader, Writer, IoResult, IoError, OtherIoError,
          standard_error, EndOfFile, LineBufferedWriter, BufferedReader};
@@ -37,11 +36,11 @@ use mem::replace;
 use option::{Option, Some, None};
 use prelude::drop;
 use result::{Ok, Err};
+use rt;
 use rt::local::Local;
 use rt::rtio::{DontClose, IoFactory, LocalIo, RtioFileStream, RtioTTY};
 use rt::task::Task;
 use str::StrSlice;
-use slice::ImmutableVector;
 
 // And so begins the tale of acquiring a uv handle to a stdio stream on all
 // platforms in all situations. Our story begins by splitting the world into two
@@ -236,18 +235,7 @@ fn with_task_stdout(f: |&mut Writer| -> IoResult<()> ) {
         }
 
         None => {
-            struct Stdout;
-            impl Writer for Stdout {
-                fn write(&mut self, data: &[u8]) -> IoResult<()> {
-                    unsafe {
-                        libc::write(libc::STDOUT_FILENO,
-                                    data.as_ptr() as *libc::c_void,
-                                    data.len() as libc::size_t);
-                    }
-                    Ok(()) // just ignore the results
-                }
-            }
-            let mut io = Stdout;
+            let mut io = rt::Stdout;
             f(&mut io as &mut Writer)
         }
     };

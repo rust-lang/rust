@@ -665,6 +665,89 @@ mod imp {
         }
     }
 
+    #[cfg(target_arch = "x86_64")]
+    mod arch {
+        use libc::{c_longlong, c_ulonglong};
+        use libc::types::os::arch::extra::{WORD, DWORD, DWORDLONG};
+
+        pub struct CONTEXT {
+            P1Home: DWORDLONG,
+            P2Home: DWORDLONG,
+            P3Home: DWORDLONG,
+            P4Home: DWORDLONG,
+            P5Home: DWORDLONG,
+            P6Home: DWORDLONG,
+
+            ContextFlags: DWORD,
+            MxCsr: DWORD,
+
+            SegCs: WORD,
+            SegDs: WORD,
+            SegEs: WORD,
+            SegFs: WORD,
+            SegGs: WORD,
+            SegSs: WORD,
+            EFlags: DWORD,
+
+            Dr0: DWORDLONG,
+            Dr1: DWORDLONG,
+            Dr2: DWORDLONG,
+            Dr3: DWORDLONG,
+            Dr6: DWORDLONG,
+            Dr7: DWORDLONG,
+
+            Rax: DWORDLONG,
+            Rcx: DWORDLONG,
+            Rdx: DWORDLONG,
+            Rbx: DWORDLONG,
+            Rsp: DWORDLONG,
+            Rbp: DWORDLONG,
+            Rsi: DWORDLONG,
+            Rdi: DWORDLONG,
+            R8:  DWORDLONG,
+            R9:  DWORDLONG,
+            R10: DWORDLONG,
+            R11: DWORDLONG,
+            R12: DWORDLONG,
+            R13: DWORDLONG,
+            R14: DWORDLONG,
+            R15: DWORDLONG,
+
+            Rip: DWORDLONG,
+
+            FltSave: FLOATING_SAVE_AREA,
+
+            VectorRegister: [M128A, .. 26],
+            VectorControl: DWORDLONG,
+
+            DebugControl: DWORDLONG,
+            LastBranchToRip: DWORDLONG,
+            LastBranchFromRip: DWORDLONG,
+            LastExceptionToRip: DWORDLONG,
+            LastExceptionFromRip: DWORDLONG,
+        }
+
+        pub struct M128A {
+            Low:  c_ulonglong,
+            High: c_longlong
+        }
+
+        pub struct FLOATING_SAVE_AREA {
+            _Dummy: [u8, ..512] // FIXME: Fill this out
+        }
+
+        pub fn init_frame(frame: &mut super::STACKFRAME64,
+                          ctx: &CONTEXT) -> DWORD {
+            frame.AddrPC.Offset = ctx.Rip as u64;
+            frame.AddrPC.Mode = super::AddrModeFlat;
+            frame.AddrStack.Offset = ctx.Rsp as u64;
+            frame.AddrStack.Mode = super::AddrModeFlat;
+            frame.AddrFrame.Offset = ctx.Rbp as u64;
+            frame.AddrFrame.Mode = super::AddrModeFlat;
+            super::IMAGE_FILE_MACHINE_AMD64
+        }
+    }
+
     struct Cleanup {
         handle: libc::HANDLE,
         SymCleanup: SymCleanupFn,
