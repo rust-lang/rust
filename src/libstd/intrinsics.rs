@@ -263,10 +263,6 @@ extern "rust-intrinsic" {
     /// Execute a breakpoint trap, for inspection by a debugger.
     pub fn breakpoint();
 
-    pub fn volatile_load<T>(src: *T) -> T;
-    pub fn volatile_store<T>(dst: *mut T, val: T);
-
-
     /// The size of a type in bytes.
     ///
     /// This is the exact number of bytes in memory taken up by a
@@ -339,6 +335,33 @@ extern "rust-intrinsic" {
     /// size of `count` * `size_of::<T>()` and an alignment of
     /// `min_align_of::<T>()`
     pub fn set_memory<T>(dst: *mut T, val: u8, count: uint);
+
+    /// Equivalent to the appropriate `llvm.memcpy.p0i8.0i8.*` intrinsic, with
+    /// a size of `count` * `size_of::<T>()` and an alignment of
+    /// `min_align_of::<T>()`
+    ///
+    /// The volatile parameter parameter is set to `true`, so it will not be optimized out.
+    #[cfg(not(stage0))]
+    pub fn volatile_copy_nonoverlapping_memory<T>(dst: *mut T, src: *T, count: uint);
+    /// Equivalent to the appropriate `llvm.memmove.p0i8.0i8.*` intrinsic, with
+    /// a size of `count` * `size_of::<T>()` and an alignment of
+    /// `min_align_of::<T>()`
+    ///
+    /// The volatile parameter parameter is set to `true`, so it will not be optimized out.
+    #[cfg(not(stage0))]
+    pub fn volatile_copy_memory<T>(dst: *mut T, src: *T, count: uint);
+    /// Equivalent to the appropriate `llvm.memset.p0i8.*` intrinsic, with a
+    /// size of `count` * `size_of::<T>()` and an alignment of
+    /// `min_align_of::<T>()`.
+    ///
+    /// The volatile parameter parameter is set to `true`, so it will not be optimized out.
+    #[cfg(not(stage0))]
+    pub fn volatile_set_memory<T>(dst: *mut T, val: u8, count: uint);
+
+    /// Perform a volatile load from the `src` pointer.
+    pub fn volatile_load<T>(src: *T) -> T;
+    /// Perform a volatile store to the `dst` pointer.
+    pub fn volatile_store<T>(dst: *mut T, val: T);
 
     pub fn sqrtf32(x: f32) -> f32;
     pub fn sqrtf64(x: f64) -> f64;
