@@ -64,26 +64,23 @@ mod cmath {
     }
 }
 
-// FIXME(#11621): These constants should be deprecated once CTFE is implemented
-// in favour of calling their respective functions in `Bounded` and `Float`.
-
 pub static RADIX: uint = 2u;
 
-pub static MANTISSA_DIGITS: uint = 53u;
-pub static DIGITS: uint = 15u;
+pub static MANTISSA_DIGITS: uint = 24u;
+pub static DIGITS: uint = 6u;
 
-pub static EPSILON: f64 = 2.220446e-16_f64;
+pub static EPSILON: f32 = 1.19209290e-07_f32;
 
-// FIXME (#1433): this is wrong, replace with hexadecimal (%a) statics
-// below.
-pub static MIN_VALUE: f64 = 2.225074e-308_f64;
-pub static MAX_VALUE: f64 = 1.797693e+308_f64;
+/// Minimum normalized f32 value
+pub static MIN_VALUE: f32 = 1.17549435e-38_f32;
+/// Maximum f32 value
+pub static MAX_VALUE: f32 = 3.40282347e+38_f32;
 
-pub static MIN_EXP: uint = -1021u;
-pub static MAX_EXP: uint = 1024u;
+pub static MIN_EXP: int = -125;
+pub static MAX_EXP: int = 128;
 
-pub static MIN_10_EXP: int = -307;
-pub static MAX_10_EXP: int = 308;
+pub static MIN_10_EXP: int = -37;
+pub static MAX_10_EXP: int = 38;
 
 pub static NAN: f32 = 0.0_f32/0.0_f32;
 pub static INFINITY: f32 = 1.0_f32/0.0_f32;
@@ -91,8 +88,7 @@ pub static NEG_INFINITY: f32 = -1.0_f32/0.0_f32;
 
 /// Various useful constants.
 pub mod consts {
-    // FIXME (requires Issue #1433 to fix): replace with mathematical
-    // staticants from cmath.
+    // FIXME: replace with mathematical constants from cmath.
 
     // FIXME(#11621): These constants should be deprecated once CTFE is
     // implemented in favour of calling their respective functions in `Float`.
@@ -100,11 +96,23 @@ pub mod consts {
     /// Archimedes' constant
     pub static PI: f32 = 3.14159265358979323846264338327950288_f32;
 
+    /// pi * 2.0
+    pub static PI_2: f32 = 6.28318530717958647692528676655900576_f32;
+
     /// pi/2.0
     pub static FRAC_PI_2: f32 = 1.57079632679489661923132169163975144_f32;
 
+    /// pi/3.0
+    pub static FRAC_PI_3: f32 = 1.04719755119659774615421446109316763_f32;
+
     /// pi/4.0
     pub static FRAC_PI_4: f32 = 0.785398163397448309615660845819875721_f32;
+
+    /// pi/6.0
+    pub static FRAC_PI_6: f32 = 0.52359877559829887307710723054658381_f32;
+
+    /// pi/8.0
+    pub static FRAC_PI_8: f32 = 0.39269908169872415480783042290993786_f32;
 
     /// 1.0/pi
     pub static FRAC_1_PI: f32 = 0.318309886183790671537767526745028724_f32;
@@ -251,24 +259,25 @@ impl Signed for f32 {
 }
 
 impl Bounded for f32 {
+    // NOTE: this is the smallest non-infinite f32 value, *not* MIN_VALUE
     #[inline]
-    fn min_value() -> f32 { 1.17549435e-38 }
+    fn min_value() -> f32 { -MAX_VALUE }
 
     #[inline]
-    fn max_value() -> f32 { 3.40282347e+38 }
+    fn max_value() -> f32 { MAX_VALUE }
 }
 
 impl Primitive for f32 {}
 
 impl Float for f32 {
     #[inline]
-    fn nan() -> f32 { 0.0 / 0.0 }
+    fn nan() -> f32 { NAN }
 
     #[inline]
-    fn infinity() -> f32 { 1.0 / 0.0 }
+    fn infinity() -> f32 { INFINITY }
 
     #[inline]
-    fn neg_infinity() -> f32 { -1.0 / 0.0 }
+    fn neg_infinity() -> f32 { NEG_INFINITY }
 
     #[inline]
     fn neg_zero() -> f32 { -0.0 }
@@ -313,25 +322,25 @@ impl Float for f32 {
     }
 
     #[inline]
-    fn mantissa_digits(_: Option<f32>) -> uint { 24 }
+    fn mantissa_digits(_: Option<f32>) -> uint { MANTISSA_DIGITS }
 
     #[inline]
-    fn digits(_: Option<f32>) -> uint { 6 }
+    fn digits(_: Option<f32>) -> uint { DIGITS }
 
     #[inline]
-    fn epsilon() -> f32 { 1.19209290e-07 }
+    fn epsilon() -> f32 { EPSILON }
 
     #[inline]
-    fn min_exp(_: Option<f32>) -> int { -125 }
+    fn min_exp(_: Option<f32>) -> int { MIN_EXP }
 
     #[inline]
-    fn max_exp(_: Option<f32>) -> int { 128 }
+    fn max_exp(_: Option<f32>) -> int { MAX_EXP }
 
     #[inline]
-    fn min_10_exp(_: Option<f32>) -> int { -37 }
+    fn min_10_exp(_: Option<f32>) -> int { MIN_10_EXP }
 
     #[inline]
-    fn max_10_exp(_: Option<f32>) -> int { 38 }
+    fn max_10_exp(_: Option<f32>) -> int { MAX_10_EXP }
 
     /// Constructs a floating point number by multiplying `x` by 2 raised to the
     /// power of `exp`
@@ -442,11 +451,11 @@ impl Float for f32 {
 
     /// sqrt(2.0)
     #[inline]
-    fn sqrt2() -> f32 { 1.41421356237309504880168872420969808 }
+    fn sqrt2() -> f32 { consts::SQRT2 }
 
     /// 1.0 / sqrt(2.0)
     #[inline]
-    fn frac_1_sqrt2() -> f32 { 0.707106781186547524400844362104849039 }
+    fn frac_1_sqrt2() -> f32 { consts::FRAC_1_SQRT2 }
 
     #[inline]
     fn sqrt(self) -> f32 {
@@ -468,43 +477,43 @@ impl Float for f32 {
 
     /// Archimedes' constant
     #[inline]
-    fn pi() -> f32 { 3.14159265358979323846264338327950288 }
+    fn pi() -> f32 { consts::PI }
 
     /// 2.0 * pi
     #[inline]
-    fn two_pi() -> f32 { 6.28318530717958647692528676655900576 }
+    fn two_pi() -> f32 { consts::PI_2 }
 
     /// pi / 2.0
     #[inline]
-    fn frac_pi_2() -> f32 { 1.57079632679489661923132169163975144 }
+    fn frac_pi_2() -> f32 { consts::FRAC_PI_2 }
 
     /// pi / 3.0
     #[inline]
-    fn frac_pi_3() -> f32 { 1.04719755119659774615421446109316763 }
+    fn frac_pi_3() -> f32 { consts::FRAC_PI_3 }
 
     /// pi / 4.0
     #[inline]
-    fn frac_pi_4() -> f32 { 0.785398163397448309615660845819875721 }
+    fn frac_pi_4() -> f32 { consts::FRAC_PI_4 }
 
     /// pi / 6.0
     #[inline]
-    fn frac_pi_6() -> f32 { 0.52359877559829887307710723054658381 }
+    fn frac_pi_6() -> f32 { consts::FRAC_PI_6 }
 
     /// pi / 8.0
     #[inline]
-    fn frac_pi_8() -> f32 { 0.39269908169872415480783042290993786 }
+    fn frac_pi_8() -> f32 { consts::FRAC_PI_8 }
 
     /// 1 .0/ pi
     #[inline]
-    fn frac_1_pi() -> f32 { 0.318309886183790671537767526745028724 }
+    fn frac_1_pi() -> f32 { consts::FRAC_1_PI }
 
     /// 2.0 / pi
     #[inline]
-    fn frac_2_pi() -> f32 { 0.636619772367581343075535053490057448 }
+    fn frac_2_pi() -> f32 { consts::FRAC_2_PI }
 
     /// 2.0 / sqrt(pi)
     #[inline]
-    fn frac_2_sqrtpi() -> f32 { 1.12837916709551257389615890312154517 }
+    fn frac_2_sqrtpi() -> f32 { consts::FRAC_2_SQRTPI }
 
     #[inline]
     fn sin(self) -> f32 {
@@ -549,23 +558,23 @@ impl Float for f32 {
 
     /// Euler's number
     #[inline]
-    fn e() -> f32 { 2.71828182845904523536028747135266250 }
+    fn e() -> f32 { consts::E }
 
     /// log2(e)
     #[inline]
-    fn log2_e() -> f32 { 1.44269504088896340735992468100189214 }
+    fn log2_e() -> f32 { consts::LOG2_E }
 
     /// log10(e)
     #[inline]
-    fn log10_e() -> f32 { 0.434294481903251827651128918916605082 }
+    fn log10_e() -> f32 { consts::LOG10_E }
 
     /// ln(2.0)
     #[inline]
-    fn ln_2() -> f32 { 0.693147180559945309417232121458176568 }
+    fn ln_2() -> f32 { consts::LN_2 }
 
     /// ln(10.0)
     #[inline]
-    fn ln_10() -> f32 { 2.30258509299404568401799145468436421 }
+    fn ln_10() -> f32 { consts::LN_10 }
 
     /// Returns the exponential of the number
     #[inline]

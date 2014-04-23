@@ -73,8 +73,6 @@ mod cmath {
     }
 }
 
-// FIXME (#1433): obtain these in a different way
-
 // FIXME(#11621): These constants should be deprecated once CTFE is implemented
 // in favour of calling their respective functions in `Bounded` and `Float`.
 
@@ -85,7 +83,9 @@ pub static DIGITS: uint = 15u;
 
 pub static EPSILON: f64 = 2.2204460492503131e-16_f64;
 
+/// Minimum normalized f64 value
 pub static MIN_VALUE: f64 = 2.2250738585072014e-308_f64;
+/// Maximum f64 value
 pub static MAX_VALUE: f64 = 1.7976931348623157e+308_f64;
 
 pub static MIN_EXP: int = -1021;
@@ -100,12 +100,9 @@ pub static INFINITY: f64 = 1.0_f64/0.0_f64;
 
 pub static NEG_INFINITY: f64 = -1.0_f64/0.0_f64;
 
-// FIXME (#1999): add is_normal, is_subnormal, and fpclassify
-
 /// Various useful constants.
 pub mod consts {
-    // FIXME (requires Issue #1433 to fix): replace with mathematical
-    // constants from cmath.
+    // FIXME: replace with mathematical constants from cmath.
 
     // FIXME(#11621): These constants should be deprecated once CTFE is
     // implemented in favour of calling their respective functions in `Float`.
@@ -113,11 +110,23 @@ pub mod consts {
     /// Archimedes' constant
     pub static PI: f64 = 3.14159265358979323846264338327950288_f64;
 
+    /// pi * 2.0
+    pub static PI_2: f64 = 6.28318530717958647692528676655900576_f64;
+
     /// pi/2.0
     pub static FRAC_PI_2: f64 = 1.57079632679489661923132169163975144_f64;
 
+    /// pi/3.0
+    pub static FRAC_PI_3: f64 = 1.04719755119659774615421446109316763_f64;
+
     /// pi/4.0
     pub static FRAC_PI_4: f64 = 0.785398163397448309615660845819875721_f64;
+
+    /// pi/6.0
+    pub static FRAC_PI_6: f64 = 0.52359877559829887307710723054658381_f64;
+
+    /// pi/8.0
+    pub static FRAC_PI_8: f64 = 0.39269908169872415480783042290993786_f64;
 
     /// 1.0/pi
     pub static FRAC_1_PI: f64 = 0.318309886183790671537767526745028724_f64;
@@ -258,24 +267,25 @@ impl Signed for f64 {
 }
 
 impl Bounded for f64 {
+    // NOTE: this is the smallest non-infinite f32 value, *not* MIN_VALUE
     #[inline]
-    fn min_value() -> f64 { 2.2250738585072014e-308 }
+    fn min_value() -> f64 { -MAX_VALUE }
 
     #[inline]
-    fn max_value() -> f64 { 1.7976931348623157e+308 }
+    fn max_value() -> f64 { MAX_VALUE }
 }
 
 impl Primitive for f64 {}
 
 impl Float for f64 {
     #[inline]
-    fn nan() -> f64 { 0.0 / 0.0 }
+    fn nan() -> f64 { NAN }
 
     #[inline]
-    fn infinity() -> f64 { 1.0 / 0.0 }
+    fn infinity() -> f64 { INFINITY }
 
     #[inline]
-    fn neg_infinity() -> f64 { -1.0 / 0.0 }
+    fn neg_infinity() -> f64 { NEG_INFINITY }
 
     #[inline]
     fn neg_zero() -> f64 { -0.0 }
@@ -450,11 +460,11 @@ impl Float for f64 {
 
     /// sqrt(2.0)
     #[inline]
-    fn sqrt2() -> f64 { 1.41421356237309504880168872420969808 }
+    fn sqrt2() -> f64 { consts::SQRT2 }
 
     /// 1.0 / sqrt(2.0)
     #[inline]
-    fn frac_1_sqrt2() -> f64 { 0.707106781186547524400844362104849039 }
+    fn frac_1_sqrt2() -> f64 { consts::FRAC_1_SQRT2 }
 
     #[inline]
     fn sqrt(self) -> f64 {
@@ -476,43 +486,43 @@ impl Float for f64 {
 
     /// Archimedes' constant
     #[inline]
-    fn pi() -> f64 { 3.14159265358979323846264338327950288 }
+    fn pi() -> f64 { consts::PI }
 
     /// 2.0 * pi
     #[inline]
-    fn two_pi() -> f64 { 6.28318530717958647692528676655900576 }
+    fn two_pi() -> f64 { consts::PI_2 }
 
     /// pi / 2.0
     #[inline]
-    fn frac_pi_2() -> f64 { 1.57079632679489661923132169163975144 }
+    fn frac_pi_2() -> f64 { consts::FRAC_PI_2 }
 
     /// pi / 3.0
     #[inline]
-    fn frac_pi_3() -> f64 { 1.04719755119659774615421446109316763 }
+    fn frac_pi_3() -> f64 { consts::FRAC_PI_3 }
 
     /// pi / 4.0
     #[inline]
-    fn frac_pi_4() -> f64 { 0.785398163397448309615660845819875721 }
+    fn frac_pi_4() -> f64 { consts::FRAC_PI_4 }
 
     /// pi / 6.0
     #[inline]
-    fn frac_pi_6() -> f64 { 0.52359877559829887307710723054658381 }
+    fn frac_pi_6() -> f64 { consts::FRAC_PI_6 }
 
     /// pi / 8.0
     #[inline]
-    fn frac_pi_8() -> f64 { 0.39269908169872415480783042290993786 }
+    fn frac_pi_8() -> f64 { consts::FRAC_PI_8 }
 
     /// 1.0 / pi
     #[inline]
-    fn frac_1_pi() -> f64 { 0.318309886183790671537767526745028724 }
+    fn frac_1_pi() -> f64 { consts::FRAC_1_PI }
 
     /// 2.0 / pi
     #[inline]
-    fn frac_2_pi() -> f64 { 0.636619772367581343075535053490057448 }
+    fn frac_2_pi() -> f64 { consts::FRAC_2_PI }
 
     /// 2.0 / sqrt(pi)
     #[inline]
-    fn frac_2_sqrtpi() -> f64 { 1.12837916709551257389615890312154517 }
+    fn frac_2_sqrtpi() -> f64 { consts::FRAC_2_SQRTPI }
 
     #[inline]
     fn sin(self) -> f64 {
@@ -557,23 +567,23 @@ impl Float for f64 {
 
     /// Euler's number
     #[inline]
-    fn e() -> f64 { 2.71828182845904523536028747135266250 }
+    fn e() -> f64 { consts::E }
 
     /// log2(e)
     #[inline]
-    fn log2_e() -> f64 { 1.44269504088896340735992468100189214 }
+    fn log2_e() -> f64 { consts::LOG2_E }
 
     /// log10(e)
     #[inline]
-    fn log10_e() -> f64 { 0.434294481903251827651128918916605082 }
+    fn log10_e() -> f64 { consts::LOG10_E }
 
     /// ln(2.0)
     #[inline]
-    fn ln_2() -> f64 { 0.693147180559945309417232121458176568 }
+    fn ln_2() -> f64 { consts::LN_2 }
 
     /// ln(10.0)
     #[inline]
-    fn ln_10() -> f64 { 2.30258509299404568401799145468436421 }
+    fn ln_10() -> f64 { consts::LN_10 }
 
     /// Returns the exponential of the number
     #[inline]
