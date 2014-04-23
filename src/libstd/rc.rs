@@ -192,7 +192,7 @@ impl<T> Clone for Weak<T> {
     }
 }
 
-#[allow(missing_doc)]
+#[doc(hidden)]
 trait RcBoxPtr<T> {
     fn inner<'a>(&'a self) -> &'a RcBox<T>;
 
