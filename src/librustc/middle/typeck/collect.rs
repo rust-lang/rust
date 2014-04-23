@@ -32,6 +32,7 @@ are represented as `ty_param()` instances.
 
 
 use metadata::csearch;
+use middle::lang_items::SizedTraitLangItem;
 use middle::resolve_lifetime;
 use middle::ty::{ImplContainer, MethodContainer, TraitContainer, substs};
 use middle::ty::{ty_param_bounds_and_ty};
@@ -189,7 +190,7 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt, trait_id: ast::NodeId) {
     match tcx.map.get(trait_id) {
         ast_map::NodeItem(item) => {
             match item.node {
-                ast::ItemTrait(ref generics, _, ref ms) => {
+                ast::ItemTrait(ref generics, _, _, ref ms) => {
                     let trait_ty_generics = ty_generics_for_type(ccx, generics);
 
                     // For each method, construct a suitable ty::Method and
@@ -402,7 +403,8 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt, trait_id: ast::NodeId) {
 pub fn ensure_supertraits(ccx: &CrateCtxt,
                           id: ast::NodeId,
                           sp: codemap::Span,
-                          ast_trait_refs: &[ast::TraitRef])
+                          ast_trait_refs: &[ast::TraitRef],
+                          sized: ast::Sized)
                           -> ty::BuiltinBounds
 {
     let tcx = ccx.tcx;
@@ -432,6 +434,12 @@ pub fn ensure_supertraits(ccx: &CrateCtxt,
                 ty_trait_refs.push(trait_ref);
             }
         }
+    }
+    if sized == ast::StaticSize {
+        match tcx.lang_items.require(SizedTraitLangItem) {
+            Ok(def_id) => { ty::try_add_builtin_trait(tcx, def_id, &mut bounds); },
+            Err(s) => tcx.sess.err(s),
+        };
     }
 
     tcx.supertraits.borrow_mut().insert(local_def(id), Rc::new(ty_trait_refs));
@@ -562,8 +570,7 @@ pub fn ensure_no_ty_param_bounds(ccx: &CrateCtxt,
         if ty_param.bounds.len() > 0 {
             ccx.tcx.sess.span_err(
                 span,
-                format!("trait bounds are not allowed in {} definitions",
-                     thing));
+                format!("trait bounds are not allowed in {} definitions", thing));
         }
     }
 }
@@ -634,7 +641,7 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::Item) {
                 }
             }
         },
-        ast::ItemTrait(ref generics, _, ref trait_methods) => {
+        ast::ItemTrait(ref generics, _, _, ref trait_methods) => {
             let trait_def = trait_def_of_item(ccx, it);
 
             // Run convert_methods on the provided methods.
@@ -863,14 +870,15 @@ pub fn trait_def_of_item(ccx: &CrateCtxt, it: &ast::Item) -> Rc<ty::TraitDef> {
     }
 
     match it.node {
-        ast::ItemTrait(ref generics, ref supertraits, _) => {
+        ast::ItemTrait(ref generics, sized, ref supertraits, _) => {
             let self_ty = ty::mk_self(tcx, def_id);
             let ty_generics = ty_generics_for_type(ccx, generics);
             let substs = mk_item_substs(ccx, &ty_generics, Some(self_ty));
             let bounds = ensure_supertraits(ccx,
                                             it.id,
                                             it.span,
-                                            supertraits.as_slice());
+                                            supertraits.as_slice(),
+                                            sized);
             let trait_def = Rc::new(ty::TraitDef {
                 generics: ty_generics,
                 bounds: bounds,
@@ -1032,7 +1040,12 @@ fn ty_generics(ccx: &CrateCtxt,
             existing_def_opt.unwrap_or_else(|| {
                 let param_ty = ty::param_ty {idx: base_index + offset,
                                              def_id: local_def(param.id)};
-                let bounds = Rc::new(compute_bounds(ccx, param_ty, &param.bounds));
+                let bounds = Rc::new(compute_bounds(ccx,
+                                                    param_ty,
+                                                    &param.bounds,
+                                                    param.sized,
+                                                    param.ident,
+                                                    param.span));
                 let default = param.default.map(|path| {
                     let ty = ast_ty_to_ty(ccx, &ExplicitRscope, path);
                     let cur_idx = param_ty.idx;
@@ -1067,7 +1080,10 @@ fn ty_generics(ccx: &CrateCtxt,
     fn compute_bounds(
         ccx: &CrateCtxt,
         param_ty: ty::param_ty,
-        ast_bounds: &OwnedSlice<ast::TyParamBound>) -> ty::ParamBounds
+        ast_bounds: &OwnedSlice<ast::TyParamBound>,
+        sized: ast::Sized,
+        ident: ast::Ident,
+        span: Span) -> ty::ParamBounds
     {
         /*!
          * Translate the AST's notion of ty param bounds (which are an
@@ -1086,9 +1102,8 @@ fn ty_generics(ccx: &CrateCtxt,
                     let ty = ty::mk_param(ccx.tcx, param_ty.idx, param_ty.def_id);
                     let trait_ref = instantiate_trait_ref(ccx, b, ty);
                     if !ty::try_add_builtin_trait(
-                        ccx.tcx, trait_ref.def_id,
-                        &mut param_bounds.builtin_bounds)
-                    {
+                            ccx.tcx, trait_ref.def_id,
+                            &mut param_bounds.builtin_bounds) {
                         // Must be a user-defined trait
                         param_bounds.trait_bounds.push(trait_ref);
                     }
@@ -1100,7 +1115,42 @@ fn ty_generics(ccx: &CrateCtxt,
             }
         }
 
+        if sized == ast::StaticSize {
+            match ccx.tcx.lang_items.require(SizedTraitLangItem) {
+                Ok(def_id) => { ty::try_add_builtin_trait(ccx.tcx,
+                                                          def_id,
+                                                          &mut param_bounds.builtin_bounds); },
+                // Fixme(13367) after `type` makes it into the snapshot, we can check this properly
+                Err(_s) => {}, //ccx.tcx.sess.err(s),
+            }
+        }
+
+        check_bounds_compatible(ccx.tcx, &param_bounds, ident, span);
+
         param_bounds
+    }
+
+    fn check_bounds_compatible(tcx: &ty::ctxt,
+                               param_bounds: &ty::ParamBounds,
+                               ident: ast::Ident,
+                               span: Span) {
+        // Currently the only bound which is incompatible with other bounds is
+        // Sized/Unsized.
+        if !param_bounds.builtin_bounds.contains_elem(ty::BoundSized) {
+            ty::each_bound_trait_and_supertraits(tcx,
+                                                 param_bounds.trait_bounds.as_slice(),
+                                                 |trait_ref| {
+                let trait_def = ty::lookup_trait_def(tcx, trait_ref.def_id);
+                if trait_def.bounds.contains_elem(ty::BoundSized) {
+                    tcx.sess.span_err(span,
+                        format!("incompatible bounds on type parameter {}, \
+                                 bound {} does not allow unsized type",
+                        token::get_ident(ident),
+                        ppaux::trait_ref_to_str(tcx, &*trait_ref)));
+                }
+                true
+            });
+        }
     }
 }
 

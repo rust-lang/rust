@@ -164,6 +164,19 @@ fn item_visibility(item: ebml::Doc) -> ast::Visibility {
     }
 }
 
+fn item_sized(item: ebml::Doc) -> ast::Sized {
+    match reader::maybe_get_doc(item, tag_items_data_item_sized) {
+        None => ast::StaticSize,
+        Some(sized_doc) => {
+            match reader::doc_as_u8(sized_doc) as char {
+                'd' => ast::DynSize,
+                's' => ast::StaticSize,
+                _ => fail!("unknown sized-ness character")
+            }
+        }
+    }
+}
+
 fn item_method_sort(item: ebml::Doc) -> char {
     let mut ret = 'r';
     reader::tagged_docs(item, tag_item_trait_method_sort, |doc| {
@@ -371,6 +384,7 @@ pub fn get_trait_def(cdata: Cmd,
     let tp_defs = item_ty_param_defs(item_doc, tcx, cdata,
                                      tag_items_data_item_ty_param_bounds);
     let rp_defs = item_region_param_defs(item_doc, cdata);
+    let sized = item_sized(item_doc);
     let mut bounds = ty::EmptyBuiltinBounds();
     // Collect the builtin bounds from the encoded supertraits.
     // FIXME(#8559): They should be encoded directly.
@@ -382,6 +396,13 @@ pub fn get_trait_def(cdata: Cmd,
         });
         true
     });
+    // Turn sized into a bound, FIXME(#8559).
+    if sized == ast::StaticSize {
+        tcx.lang_items.to_builtin_kind(tcx.lang_items.sized_trait().unwrap()).map(|bound| {
+            bounds.add(bound);
+        });
+    }
+
     ty::TraitDef {
         generics: ty::Generics {type_param_defs: tp_defs,
                                 region_param_defs: rp_defs},

@@ -12,6 +12,9 @@
 
 #![no_std]
 
+#[lang="sized"]
+pub trait Sized {}
+
 struct S<T> {
     contents: T,
 }

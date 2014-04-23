@@ -17,6 +17,10 @@
 #![crate_type="lib"]
 
 pub use foo2::Bar2;
+
+#[lang="sized"]
+pub trait Sized {}
+
 mod foo {
     pub struct Bar; //~ ERROR: code is never used
 }
