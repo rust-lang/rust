@@ -2539,6 +2539,7 @@ impl<'a> Parser<'a> {
         self.commit_expr_expecting(discriminant, token::LBRACE);
         let mut arms: Vec<Arm> = Vec::new();
         while self.token != token::RBRACE {
+            let attrs = self.parse_outer_attributes();
             let pats = self.parse_pats();
             let mut guard = None;
             if self.eat_keyword(keywords::If) {
@@ -2557,7 +2558,12 @@ impl<'a> Parser<'a> {
                 self.eat(&token::COMMA);
             }
 
-            arms.push(ast::Arm { pats: pats, guard: guard, body: expr });
+            arms.push(ast::Arm {
+                attrs: attrs,
+                pats: pats,
+                guard: guard,
+                body: expr
+            });
         }
         let hi = self.span.hi;
         self.bump();
