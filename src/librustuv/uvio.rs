@@ -291,8 +291,9 @@ impl IoFactory for UvIoFactory {
         }
     }
 
-    fn unix_connect(&mut self, path: &CString) -> Result<~rtio::RtioPipe:Send, IoError> {
-        match PipeWatcher::connect(self, path) {
+    fn unix_connect(&mut self, path: &CString,
+                    timeout: Option<u64>) -> Result<~rtio::RtioPipe:Send, IoError> {
+        match PipeWatcher::connect(self, path, timeout) {
             Ok(p) => Ok(~p as ~rtio::RtioPipe:Send),
             Err(e) => Err(uv_error_to_io_error(e)),
         }

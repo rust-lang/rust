@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use std::cast;
-use std::io::IoError;
+use std::io::{IoError, IoResult};
 use std::io::net::ip;
 use libc::{size_t, ssize_t, c_int, c_void, c_uint};
 use libc;
@@ -145,6 +145,190 @@ fn socket_name(sk: SocketNameKind,
         n => Err(uv_error_to_io_error(UvError(n)))
     }
 }
+////////////////////////////////////////////////////////////////////////////////
+// Helpers for handling timeouts, shared for pipes/tcp
+////////////////////////////////////////////////////////////////////////////////
+
+pub struct ConnectCtx {
+    pub status: c_int,
+    pub task: Option<BlockedTask>,
+    pub timer: Option<~TimerWatcher>,
+}
+
+pub struct AcceptTimeout {
+    timer: Option<TimerWatcher>,
+    timeout_tx: Option<Sender<()>>,
+    timeout_rx: Option<Receiver<()>>,
+}
+
+impl ConnectCtx {
+    pub fn connect<T>(
+        mut self, obj: T, timeout: Option<u64>, io: &mut UvIoFactory,
+        f: |&Request, &T, uvll::uv_connect_cb| -> libc::c_int
+    ) -> Result<T, UvError> {
+        let mut req = Request::new(uvll::UV_CONNECT);
+        let r = f(&req, &obj, connect_cb);
+        return match r {
+            0 => {
+                req.defuse(); // uv callback now owns this request
+                match timeout {
+                    Some(t) => {
+                        let mut timer = TimerWatcher::new(io);
+                        timer.start(timer_cb, t, 0);
+                        self.timer = Some(timer);
+                    }
+                    None => {}
+                }
+                wait_until_woken_after(&mut self.task, &io.loop_, || {
+                    let data = &self as *_;
+                    match self.timer {
+                        Some(ref mut timer) => unsafe { timer.set_data(data) },
+                        None => {}
+                    }
+                    req.set_data(data);
+                });
+                // Make sure an erroneously fired callback doesn't have access
+                // to the context any more.
+                req.set_data(0 as *int);
+
+                // If we failed because of a timeout, drop the TcpWatcher as
+                // soon as possible because it's data is now set to null and we
+                // want to cancel the callback ASAP.
+                match self.status {
+                    0 => Ok(obj),
+                    n => { drop(obj); Err(UvError(n)) }
+                }
+            }
+            n => Err(UvError(n))
+        };
+
+        extern fn timer_cb(handle: *uvll::uv_timer_t) {
+            // Don't close the corresponding tcp request, just wake up the task
+            // and let RAII take care of the pending watcher.
+            let cx: &mut ConnectCtx = unsafe {
+                &mut *(uvll::get_data_for_uv_handle(handle) as *mut ConnectCtx)
+            };
+            cx.status = uvll::ECANCELED;
+            wakeup(&mut cx.task);
+        }
+
+        extern fn connect_cb(req: *uvll::uv_connect_t, status: c_int) {
+            // This callback can be invoked with ECANCELED if the watcher is
+            // closed by the timeout callback. In that case we just want to free
+            // the request and be along our merry way.
+            let req = Request::wrap(req);
+            if status == uvll::ECANCELED { return }
+
+            // Apparently on windows when the handle is closed this callback may
+            // not be invoked with ECANCELED but rather another error code.
+            // Either ways, if the data is null, then our timeout has expired
+            // and there's nothing we can do.
+            let data = unsafe { uvll::get_data_for_req(req.handle) };
+            if data.is_null() { return }
+
+            let cx: &mut ConnectCtx = unsafe { &mut *(data as *mut ConnectCtx) };
+            cx.status = status;
+            match cx.timer {
+                Some(ref mut t) => t.stop(),
+                None => {}
+            }
+            // Note that the timer callback doesn't cancel the connect request
+            // (that's the job of uv_close()), so it's possible for this
+            // callback to get triggered after the timeout callback fires, but
+            // before the task wakes up. In that case, we did indeed
+            // successfully connect, but we don't need to wake someone up. We
+            // updated the status above (correctly so), and the task will pick
+            // up on this when it wakes up.
+            if cx.task.is_some() {
+                wakeup(&mut cx.task);
+            }
+        }
+    }
+}
+
+impl AcceptTimeout {
+    pub fn new() -> AcceptTimeout {
+        AcceptTimeout { timer: None, timeout_tx: None, timeout_rx: None }
+    }
+
+    pub fn accept<T: Send>(&mut self, c: &Receiver<IoResult<T>>) -> IoResult<T> {
+        match self.timeout_rx {
+            None => c.recv(),
+            Some(ref rx) => {
+                use std::comm::Select;
+
+                // Poll the incoming channel first (don't rely on the order of
+                // select just yet). If someone's pending then we should return
+                // them immediately.
+                match c.try_recv() {
+                    Ok(data) => return data,
+                    Err(..) => {}
+                }
+
+                // Use select to figure out which channel gets ready first. We
+                // do some custom handling of select to ensure that we never
+                // actually drain the timeout channel (we'll keep seeing the
+                // timeout message in the future).
+                let s = Select::new();
+                let mut timeout = s.handle(rx);
+                let mut data = s.handle(c);
+                unsafe {
+                    timeout.add();
+                    data.add();
+                }
+                if s.wait() == timeout.id() {
+                    Err(uv_error_to_io_error(UvError(uvll::ECANCELED)))
+                } else {
+                    c.recv()
+                }
+            }
+        }
+    }
+
+    pub fn clear(&mut self) {
+        // Clear any previous timeout by dropping the timer and transmission
+        // channels
+        drop((self.timer.take(),
+              self.timeout_tx.take(),
+              self.timeout_rx.take()))
+    }
+
+    pub fn set_timeout<U, T: UvHandle<U> + HomingIO>(
+        &mut self, ms: u64, t: &mut T
+    ) {
+        // If we have a timeout, lazily initialize the timer which will be used
+        // to fire when the timeout runs out.
+        if self.timer.is_none() {
+            let _m = t.fire_homing_missile();
+            let loop_ = Loop::wrap(unsafe {
+                uvll::get_loop_for_uv_handle(t.uv_handle())
+            });
+            let mut timer = TimerWatcher::new_home(&loop_, t.home().clone());
+            unsafe {
+                timer.set_data(self as *mut _ as *AcceptTimeout);
+            }
+            self.timer = Some(timer);
+        }
+
+        // Once we've got a timer, stop any previous timeout, reset it for the
+        // current one, and install some new channels to send/receive data on
+        let timer = self.timer.get_mut_ref();
+        timer.stop();
+        timer.start(timer_cb, ms, 0);
+        let (tx, rx) = channel();
+        self.timeout_tx = Some(tx);
+        self.timeout_rx = Some(rx);
+
+        extern fn timer_cb(timer: *uvll::uv_timer_t) {
+            let acceptor: &mut AcceptTimeout = unsafe {
+                &mut *(uvll::get_data_for_uv_handle(timer) as *mut AcceptTimeout)
+            };
+            // This send can never fail because if this timer is active then the
+            // receiving channel is guaranteed to be alive
+            acceptor.timeout_tx.get_ref().send(());
+        }
+    }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// TCP implementation
@@ -174,9 +358,7 @@ pub struct TcpListener {
 
 pub struct TcpAcceptor {
     listener: ~TcpListener,
-    timer: Option<TimerWatcher>,
-    timeout_tx: Option<Sender<()>>,
-    timeout_rx: Option<Receiver<()>>,
+    timeout: AcceptTimeout,
 }
 
 // TCP watchers (clients/streams)
@@ -205,97 +387,13 @@ impl TcpWatcher {
     pub fn connect(io: &mut UvIoFactory,
                    address: ip::SocketAddr,
                    timeout: Option<u64>) -> Result<TcpWatcher, UvError> {
-        struct Ctx {
-            status: c_int,
-            task: Option<BlockedTask>,
-            timer: Option<~TimerWatcher>,
-        }
-
         let tcp = TcpWatcher::new(io);
+        let cx = ConnectCtx { status: -1, task: None, timer: None };
         let (addr, _len) = addr_to_sockaddr(address);
-        let mut req = Request::new(uvll::UV_CONNECT);
-        let result = unsafe {
-            let addr_p = &addr as *libc::sockaddr_storage;
-            uvll::uv_tcp_connect(req.handle, tcp.handle,
-                                 addr_p as *libc::sockaddr,
-                                 connect_cb)
-        };
-        return match result {
-            0 => {
-                req.defuse(); // uv callback now owns this request
-                let mut cx = Ctx { status: -1, task: None, timer: None };
-                match timeout {
-                    Some(t) => {
-                        let mut timer = TimerWatcher::new(io);
-                        timer.start(timer_cb, t, 0);
-                        cx.timer = Some(timer);
-                    }
-                    None => {}
-                }
-                wait_until_woken_after(&mut cx.task, &io.loop_, || {
-                    let data = &cx as *_;
-                    match cx.timer {
-                        Some(ref mut timer) => unsafe { timer.set_data(data) },
-                        None => {}
-                    }
-                    req.set_data(data);
-                });
-                // Make sure an erroneously fired callback doesn't have access
-                // to the context any more.
-                req.set_data(0 as *int);
-
-                // If we failed because of a timeout, drop the TcpWatcher as
-                // soon as possible because it's data is now set to null and we
-                // want to cancel the callback ASAP.
-                match cx.status {
-                    0 => Ok(tcp),
-                    n => { drop(tcp); Err(UvError(n)) }
-                }
-            }
-            n => Err(UvError(n))
-        };
-
-        extern fn timer_cb(handle: *uvll::uv_timer_t) {
-            // Don't close the corresponding tcp request, just wake up the task
-            // and let RAII take care of the pending watcher.
-            let cx: &mut Ctx = unsafe {
-                &mut *(uvll::get_data_for_uv_handle(handle) as *mut Ctx)
-            };
-            cx.status = uvll::ECANCELED;
-            wakeup(&mut cx.task);
-        }
-
-        extern fn connect_cb(req: *uvll::uv_connect_t, status: c_int) {
-            // This callback can be invoked with ECANCELED if the watcher is
-            // closed by the timeout callback. In that case we just want to free
-            // the request and be along our merry way.
-            let req = Request::wrap(req);
-            if status == uvll::ECANCELED { return }
-
-            // Apparently on windows when the handle is closed this callback may
-            // not be invoked with ECANCELED but rather another error code.
-            // Either ways, if the data is null, then our timeout has expired
-            // and there's nothing we can do.
-            let data = unsafe { uvll::get_data_for_req(req.handle) };
-            if data.is_null() { return }
-
-            let cx: &mut Ctx = unsafe { &mut *(data as *mut Ctx) };
-            cx.status = status;
-            match cx.timer {
-                Some(ref mut t) => t.stop(),
-                None => {}
-            }
-            // Note that the timer callback doesn't cancel the connect request
-            // (that's the job of uv_close()), so it's possible for this
-            // callback to get triggered after the timeout callback fires, but
-            // before the task wakes up. In that case, we did indeed
-            // successfully connect, but we don't need to wake someone up. We
-            // updated the status above (correctly so), and the task will pick
-            // up on this when it wakes up.
-            if cx.task.is_some() {
-                wakeup(&mut cx.task);
-            }
-        }
+        let addr_p = &addr as *_ as *libc::sockaddr;
+        cx.connect(tcp, timeout, io, |req, tcp, cb| {
+            unsafe { uvll::uv_tcp_connect(req.handle, tcp.handle, addr_p, cb) }
+        })
     }
 }
 
@@ -463,9 +561,7 @@ impl rtio::RtioTcpListener for TcpListener {
         // create the acceptor object from ourselves
         let mut acceptor = ~TcpAcceptor {
             listener: self,
-            timer: None,
-            timeout_tx: None,
-            timeout_rx: None,
+            timeout: AcceptTimeout::new(),
         };
 
         let _m = acceptor.fire_homing_missile();
@@ -516,37 +612,7 @@ impl rtio::RtioSocket for TcpAcceptor {
 
 impl rtio::RtioTcpAcceptor for TcpAcceptor {
     fn accept(&mut self) -> Result<~rtio::RtioTcpStream:Send, IoError> {
-        match self.timeout_rx {
-            None => self.listener.incoming.recv(),
-            Some(ref rx) => {
-                use std::comm::Select;
-
-                // Poll the incoming channel first (don't rely on the order of
-                // select just yet). If someone's pending then we should return
-                // them immediately.
-                match self.listener.incoming.try_recv() {
-                    Ok(data) => return data,
-                    Err(..) => {}
-                }
-
-                // Use select to figure out which channel gets ready first. We
-                // do some custom handling of select to ensure that we never
-                // actually drain the timeout channel (we'll keep seeing the
-                // timeout message in the future).
-                let s = Select::new();
-                let mut timeout = s.handle(rx);
-                let mut data = s.handle(&self.listener.incoming);
-                unsafe {
-                    timeout.add();
-                    data.add();
-                }
-                if s.wait() == timeout.id() {
-                    Err(uv_error_to_io_error(UvError(uvll::ECANCELED)))
-                } else {
-                    self.listener.incoming.recv()
-                }
-            }
-        }
+        self.timeout.accept(&self.listener.incoming)
     }
 
     fn accept_simultaneously(&mut self) -> Result<(), IoError> {
@@ -564,47 +630,9 @@ impl rtio::RtioTcpAcceptor for TcpAcceptor {
     }
 
     fn set_timeout(&mut self, ms: Option<u64>) {
-        // First, if the timeout is none, clear any previous timeout by dropping
-        // the timer and transmission channels
-        let ms = match ms {
-            None => {
-                return drop((self.timer.take(),
-                             self.timeout_tx.take(),
-                             self.timeout_rx.take()))
-            }
-            Some(ms) => ms,
-        };
-
-        // If we have a timeout, lazily initialize the timer which will be used
-        // to fire when the timeout runs out.
-        if self.timer.is_none() {
-            let _m = self.fire_homing_missile();
-            let loop_ = Loop::wrap(unsafe {
-                uvll::get_loop_for_uv_handle(self.listener.handle)
-            });
-            let mut timer = TimerWatcher::new_home(&loop_, self.home().clone());
-            unsafe {
-                timer.set_data(self as *mut _ as *TcpAcceptor);
-            }
-            self.timer = Some(timer);
-        }
-
-        // Once we've got a timer, stop any previous timeout, reset it for the
-        // current one, and install some new channels to send/receive data on
-        let timer = self.timer.get_mut_ref();
-        timer.stop();
-        timer.start(timer_cb, ms, 0);
-        let (tx, rx) = channel();
-        self.timeout_tx = Some(tx);
-        self.timeout_rx = Some(rx);
-
-        extern fn timer_cb(timer: *uvll::uv_timer_t) {
-            let acceptor: &mut TcpAcceptor = unsafe {
-                &mut *(uvll::get_data_for_uv_handle(timer) as *mut TcpAcceptor)
-            };
-            // This send can never fail because if this timer is active then the
-            // receiving channel is guaranteed to be alive
-            acceptor.timeout_tx.get_ref().send(());
+        match ms {
+            None => self.timeout.clear(),
+            Some(ms) => self.timeout.set_timeout(ms, &mut *self.listener),
         }
     }
 }
