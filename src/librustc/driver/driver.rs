@@ -802,7 +802,8 @@ pub fn host_triple() -> &'static str {
     // Instead of grabbing the host triple (for the current host), we grab (at
     // compile time) the target triple that this rustc is built with and
     // calling that (at runtime) the host triple.
-    env!("CFG_COMPILER_HOST_TRIPLE")
+    (option_env!("CFG_COMPILER_HOST_TRIPLE")).
+        expect("CFG_COMPILER_HOST_TRIPLE")
 }
 
 pub fn build_session_options(matches: &getopts::Matches) -> session::Options {
