@@ -239,11 +239,11 @@ impl Primitive for $T {}
 /// Yields an `Option` because `buf` may or may not actually be parseable.
 ///
 /// # Examples
-/// 
+///
 /// ```rust
 /// let digits = [49,50,51,52,53,54,55,56,57];
 /// let base   = 10;
-/// let num    = std::i64::from_str_radix(foo, 10);
+/// let num    = std::i64::parse_bytes(digits, base);
 /// ```
 #[inline]
 pub fn parse_bytes(buf: &[u8], radix: uint) -> Option<$T> {
