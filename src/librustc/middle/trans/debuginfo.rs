@@ -640,7 +640,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
                 }
             }
         }
-        ast_map::NodeMethod(method) => {
+        ast_map::NodeMethod(ref method) => {
             (method.ident,
              method.decl,
              &method.generics,
@@ -667,9 +667,9 @@ pub fn create_function_debug_context(cx: &CrateContext,
                         "create_function_debug_context: expected an expr_fn_block here")
             }
         }
-        ast_map::NodeTraitMethod(trait_method) => {
-            match *trait_method {
-                ast::Provided(method) => {
+        ast_map::NodeTraitMethod(ref trait_method) => {
+            match **trait_method {
+                ast::Provided(ref method) => {
                     (method.ident,
                      method.decl,
                      &method.generics,
