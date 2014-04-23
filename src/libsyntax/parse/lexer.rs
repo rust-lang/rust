@@ -593,10 +593,15 @@ fn scan_number(c: char, rdr: &mut StringReader) -> token::Token {
             /* FIXME (#2252): if this is out of range for either a
             32-bit or 64-bit float, it won't be noticed till the
             back-end.  */
-        } else {
-            fatal_span(rdr, start_bpos, rdr.last_pos,
-                       "expected `f32` or `f64` suffix".to_owned());
+        } else if c == '1' && n == '2' && nextnextch(rdr).unwrap_or('\x00') == '8' {
+            bump(rdr);
+            bump(rdr);
+            bump(rdr);
+            check_float_base(rdr, start_bpos, rdr.last_pos, base);
+            return token::LIT_FLOAT(str_to_ident(num_str.as_slice()), ast::TyF128);
         }
+        fatal_span(rdr, start_bpos, rdr.last_pos,
+                   "expected `f32`, `f64` or `f128` suffix".to_owned());
     }
     if is_float {
         check_float_base(rdr, start_bpos, rdr.last_pos, base);

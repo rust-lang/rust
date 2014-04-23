@@ -105,6 +105,7 @@ pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree]) -> 
         Some(Ident{ident, span}) => match token::get_ident(ident).get() {
             "f32" => Some(ast::TyF32),
             "f64" => Some(ast::TyF64),
+            "f128" => Some(ast::TyF128),
             _ => {
                 cx.span_err(span, "invalid floating point type in hexfloat!");
                 None

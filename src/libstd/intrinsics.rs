@@ -95,6 +95,8 @@ pub trait TyVisitor {
 
     fn visit_f32(&mut self) -> bool;
     fn visit_f64(&mut self) -> bool;
+    #[cfg(not(stage0))]
+    fn visit_f128(&mut self) -> bool;
 
     fn visit_char(&mut self) -> bool;
 
