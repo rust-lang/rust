@@ -41,7 +41,9 @@ pub fn expand_deriving_from_primitive(cx: &mut ExtCtxt,
                 // liable to cause code-bloat
                 inline: true,
                 const_nonmatching: false,
-                combine_substructure: |c, s, sub| cs_from("i64", c, s, sub),
+                combine_substructure: combine_substructure(|c, s, sub| {
+                    cs_from("i64", c, s, sub)
+                }),
             },
             MethodDef {
                 name: "from_u64",
@@ -56,7 +58,9 @@ pub fn expand_deriving_from_primitive(cx: &mut ExtCtxt,
                 // liable to cause code-bloat
                 inline: true,
                 const_nonmatching: false,
-                combine_substructure: |c, s, sub| cs_from("u64", c, s, sub),
+                combine_substructure: combine_substructure(|c, s, sub| {
+                    cs_from("u64", c, s, sub)
+                }),
             })
     };
 

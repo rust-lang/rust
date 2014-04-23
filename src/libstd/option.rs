@@ -873,9 +873,9 @@ mod tests {
         assert_eq!(v, None);
 
         // test that it does not take more elements than it needs
-        let functions = [|| Some(()), || None, || fail!()];
+        let mut functions = [|| Some(()), || None, || fail!()];
 
-        let v: Option<~[()]> = collect(functions.iter().map(|f| (*f)()));
+        let v: Option<~[()]> = collect(functions.mut_iter().map(|f| (*f)()));
 
         assert_eq!(v, None);
     }

@@ -751,7 +751,15 @@ fn constrain_callee(rcx: &mut Rcx,
         ty::ty_bare_fn(..) => { }
         ty::ty_closure(ref closure_ty) => {
             let region = match closure_ty.store {
-                ty::RegionTraitStore(r, _) => r,
+                ty::RegionTraitStore(r, _) => {
+                    // While we're here, link the closure's region with a unique
+                    // immutable borrow (gathered later in borrowck)
+                    let mc = mc::MemCategorizationContext { typer: &*rcx };
+                    let expr_cmt = ignore_err!(mc.cat_expr(callee_expr));
+                    link_region(mc.typer, callee_expr.span, call_region,
+                                ty::UniqueImmBorrow, expr_cmt);
+                    r
+                }
                 ty::UniqTraitStore => ty::ReStatic
             };
             rcx.fcx.mk_subr(true, infer::InvokeClosure(callee_expr.span),
@@ -874,7 +882,8 @@ fn constrain_autoderefs(rcx: &mut Rcx,
                 {
                     let mc = mc::MemCategorizationContext { typer: &*rcx };
                     let self_cmt = ignore_err!(mc.cat_expr_autoderefd(deref_expr, i));
-                    link_region(mc.typer, deref_expr.span, r, m, self_cmt);
+                    link_region(mc.typer, deref_expr.span, r,
+                                ty::BorrowKind::from_mutbl(m), self_cmt);
                 }
 
                 // Specialized version of constrain_call.
@@ -1092,7 +1101,8 @@ fn link_pattern(mc: mc::MemCategorizationContext<&Rcx>,
                     match mc.cat_slice_pattern(sub_cmt, slice_pat) {
                         Ok((slice_cmt, slice_mutbl, slice_r)) => {
                             link_region(mc.typer, sub_pat.span, slice_r,
-                                        slice_mutbl, slice_cmt);
+                                        ty::BorrowKind::from_mutbl(slice_mutbl),
+                                        slice_cmt);
                         }
                         Err(()) => {}
                     }
@@ -1118,17 +1128,20 @@ fn link_autoref(rcx: &Rcx,
 
     match *autoref {
         ty::AutoPtr(r, m) => {
-            link_region(mc.typer, expr.span, r, m, expr_cmt);
+            link_region(mc.typer, expr.span, r,
+                        ty::BorrowKind::from_mutbl(m), expr_cmt);
         }
 
         ty::AutoBorrowVec(r, m) | ty::AutoBorrowVecRef(r, m) => {
             let cmt_index = mc.cat_index(expr, expr_cmt, autoderefs+1);
-            link_region(mc.typer, expr.span, r, m, cmt_index);
+            link_region(mc.typer, expr.span, r,
+                        ty::BorrowKind::from_mutbl(m), cmt_index);
         }
 
         ty::AutoBorrowObj(r, m) => {
             let cmt_deref = mc.cat_deref_obj(expr, expr_cmt);
-            link_region(mc.typer, expr.span, r, m, cmt_deref);
+            link_region(mc.typer, expr.span, r,
+                        ty::BorrowKind::from_mutbl(m), cmt_deref);
         }
 
         ty::AutoUnsafe(_) => {}
@@ -1150,7 +1163,7 @@ fn link_by_ref(rcx: &Rcx,
     let mc = mc::MemCategorizationContext { typer: rcx };
     let expr_cmt = ignore_err!(mc.cat_expr(expr));
     let region_min = ty::ReScope(callee_scope);
-    link_region(mc.typer, expr.span, region_min, ast::MutImmutable, expr_cmt);
+    link_region(mc.typer, expr.span, region_min, ty::ImmBorrow, expr_cmt);
 }
 
 fn link_region_from_node_type(rcx: &Rcx,
@@ -1169,18 +1182,19 @@ fn link_region_from_node_type(rcx: &Rcx,
         let tcx = rcx.fcx.ccx.tcx;
         debug!("rptr_ty={}", ty_to_str(tcx, rptr_ty));
         let r = ty::ty_region(tcx, span, rptr_ty);
-        link_region(rcx, span, r, mutbl, cmt_borrowed);
+        link_region(rcx, span, r, ty::BorrowKind::from_mutbl(mutbl),
+                    cmt_borrowed);
     }
 }
 
 fn link_region(rcx: &Rcx,
                span: Span,
                region_min: ty::Region,
-               mutbl: ast::Mutability,
+               kind: ty::BorrowKind,
                cmt_borrowed: mc::cmt) {
     /*!
      * Informs the inference engine that a borrow of `cmt`
-     * must have mutability `mutbl` and lifetime `region_min`.
+     * must have the borrow kind `kind` and lifetime `region_min`.
      * If `cmt` is a deref of a region pointer with
      * lifetime `r_borrowed`, this will add the constraint that
      * `region_min <= r_borrowed`.
@@ -1190,9 +1204,9 @@ fn link_region(rcx: &Rcx,
     // for the lifetime `region_min` for the borrow to be valid:
     let mut cmt_borrowed = cmt_borrowed;
     loop {
-        debug!("link_region(region_min={}, mutbl={}, cmt_borrowed={})",
+        debug!("link_region(region_min={}, kind={}, cmt_borrowed={})",
                region_min.repr(rcx.tcx()),
-               mutbl.repr(rcx.tcx()),
+               kind.repr(rcx.tcx()),
                cmt_borrowed.repr(rcx.tcx()));
         match cmt_borrowed.cat.clone() {
             mc::cat_deref(base, _, mc::BorrowedPtr(_, r_borrowed)) => {
@@ -1214,7 +1228,7 @@ fn link_region(rcx: &Rcx,
                                 adjust_upvar_borrow_kind_for_loan(
                                     *upvar_id,
                                     upvar_borrow,
-                                    mutbl);
+                                    kind);
                                 infer::ReborrowUpvar(span, *upvar_id)
                             }
                             None => {
@@ -1236,7 +1250,7 @@ fn link_region(rcx: &Rcx,
                        r_borrowed.repr(rcx.tcx()));
                 rcx.fcx.mk_subr(true, cause, region_min, r_borrowed);
 
-                if mutbl == ast::MutMutable {
+                if kind != ty::ImmBorrow {
                     // If this is a mutable borrow, then the thing
                     // being borrowed will have to be unique.
                     // In user code, this means it must be an `&mut`
@@ -1428,12 +1442,11 @@ fn link_upvar_borrow_kind_for_nested_closures(rcx: &mut Rcx,
 
 fn adjust_upvar_borrow_kind_for_loan(upvar_id: ty::UpvarId,
                                      upvar_borrow: &mut ty::UpvarBorrow,
-                                     mutbl: ast::Mutability) {
+                                     kind: ty::BorrowKind) {
     debug!("adjust_upvar_borrow_kind_for_loan: upvar_id={:?} kind={:?} -> {:?}",
-           upvar_id, upvar_borrow.kind, mutbl);
+           upvar_id, upvar_borrow.kind, kind);
 
-    adjust_upvar_borrow_kind(upvar_id, upvar_borrow,
-                             ty::BorrowKind::from_mutbl(mutbl))
+    adjust_upvar_borrow_kind(upvar_id, upvar_borrow, kind)
 }
 
 fn adjust_upvar_borrow_kind(upvar_id: ty::UpvarId,

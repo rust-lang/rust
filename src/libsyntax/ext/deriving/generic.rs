@@ -177,6 +177,8 @@ StaticEnum(<ast::EnumDef of C>, ~[(<ident of C0>, <span of C0>, Unnamed(~[<span 
 
 */
 
+use std::cell::RefCell;
+
 use ast;
 use ast::{P, EnumDef, Expr, Ident, Generics, StructDef};
 use ast_util;
@@ -234,7 +236,7 @@ pub struct MethodDef<'a> {
     /// actual enum variants, i.e. can use _ => .. match.
     pub const_nonmatching: bool,
 
-    pub combine_substructure: CombineSubstructureFunc<'a>,
+    pub combine_substructure: RefCell<CombineSubstructureFunc<'a>>,
 }
 
 /// All the data about the data structure/method being derived upon.
@@ -316,6 +318,11 @@ pub type EnumNonMatchFunc<'a> =
            &[(uint, P<ast::Variant>, Vec<(Span, Option<Ident>, @Expr)> )],
            &[@Expr]|: 'a
            -> @Expr;
+
+pub fn combine_substructure<'a>(f: CombineSubstructureFunc<'a>)
+    -> RefCell<CombineSubstructureFunc<'a>> {
+    RefCell::new(f)
+}
 
 
 impl<'a> TraitDef<'a> {
@@ -509,8 +516,9 @@ impl<'a> MethodDef<'a> {
             nonself_args: nonself_args,
             fields: fields
         };
-        (self.combine_substructure)(cx, trait_.span,
-                                    &substructure)
+        let mut f = self.combine_substructure.borrow_mut();
+        let f: &mut CombineSubstructureFunc = &mut *f;
+        (*f)(cx, trait_.span, &substructure)
     }
 
     fn get_ret_ty(&self,

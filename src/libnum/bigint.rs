@@ -672,7 +672,7 @@ impl ToStrRadix for BigUint {
                 s.push_str("0".repeat(l - ss.len()));
                 s.push_str(ss);
             }
-            s.as_slice().trim_left_chars(&'0').to_owned()
+            s.as_slice().trim_left_chars('0').to_owned()
         }
     }
 }

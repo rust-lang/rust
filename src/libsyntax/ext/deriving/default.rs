@@ -34,7 +34,9 @@ pub fn expand_deriving_default(cx: &mut ExtCtxt,
                 ret_ty: Self,
                 inline: true,
                 const_nonmatching: false,
-                combine_substructure: default_substructure
+                combine_substructure: combine_substructure(|a, b, c| {
+                    default_substructure(a, b, c)
+                })
             })
     };
     trait_def.expand(cx, mitem, item, push)

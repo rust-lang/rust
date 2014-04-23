@@ -1104,34 +1104,34 @@ impl<'a> SanePrivacyVisitor<'a> {
     /// control over anything so this forbids any mention of any visibility
     fn check_all_inherited(&self, item: &ast::Item) {
         let tcx = self.tcx;
-        let check_inherited = |sp: Span, vis: ast::Visibility| {
+        fn check_inherited(tcx: &ty::ctxt, sp: Span, vis: ast::Visibility) {
             if vis != ast::Inherited {
                 tcx.sess.span_err(sp, "visibility has no effect inside functions");
             }
-        };
+        }
         let check_struct = |def: &@ast::StructDef| {
             for f in def.fields.iter() {
                match f.node.kind {
-                    ast::NamedField(_, p) => check_inherited(f.span, p),
+                    ast::NamedField(_, p) => check_inherited(tcx, f.span, p),
                     ast::UnnamedField(..) => {}
                 }
             }
         };
-        check_inherited(item.span, item.vis);
+        check_inherited(tcx, item.span, item.vis);
         match item.node {
             ast::ItemImpl(_, _, _, ref methods) => {
                 for m in methods.iter() {
-                    check_inherited(m.span, m.vis);
+                    check_inherited(tcx, m.span, m.vis);
                 }
             }
             ast::ItemForeignMod(ref fm) => {
                 for i in fm.items.iter() {
-                    check_inherited(i.span, i.vis);
+                    check_inherited(tcx, i.span, i.vis);
                 }
             }
             ast::ItemEnum(ref def, _) => {
                 for v in def.variants.iter() {
-                    check_inherited(v.span, v.node.vis);
+                    check_inherited(tcx, v.span, v.node.vis);
 
                     match v.node.kind {
                         ast::StructVariantKind(ref s) => check_struct(s),
@@ -1146,7 +1146,8 @@ impl<'a> SanePrivacyVisitor<'a> {
                 for m in methods.iter() {
                     match *m {
                         ast::Required(..) => {}
-                        ast::Provided(ref m) => check_inherited(m.span, m.vis),
+                        ast::Provided(ref m) => check_inherited(tcx, m.span,
+                                                                m.vis),
                     }
                 }
             }

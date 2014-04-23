@@ -1164,7 +1164,7 @@ fn check_item_non_camel_case_types(cx: &Context, it: &ast::Item) {
     fn is_camel_case(ident: ast::Ident) -> bool {
         let ident = token::get_ident(ident);
         assert!(!ident.get().is_empty());
-        let ident = ident.get().trim_chars(&'_');
+        let ident = ident.get().trim_chars('_');
 
         // start with a non-lowercase letter rather than non-uppercase
         // ones (some scripts don't have a concept of upper/lowercase)

@@ -109,7 +109,7 @@ impl Task {
     /// This function is *not* meant to be abused as a "try/catch" block. This
     /// is meant to be used at the absolute boundaries of a task's lifetime, and
     /// only for that purpose.
-    pub fn run(~self, f: ||) -> ~Task {
+    pub fn run(~self, mut f: ||) -> ~Task {
         // Need to put ourselves into TLS, but also need access to the unwinder.
         // Unsafely get a handle to the task so we can continue to use it after
         // putting it in tls (so we can invoke the unwinder).
