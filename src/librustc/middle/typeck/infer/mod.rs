@@ -590,23 +590,19 @@ fn next_simple_var<V:Clone,T:Clone>(counter: &mut uint,
 }
 
 impl<'a> InferCtxt<'a> {
-    pub fn next_ty_var_id(&self) -> TyVid {
+    pub fn next_ty_var(&self) -> ty::t {
         let id = self.ty_var_counter.get();
         self.ty_var_counter.set(id + 1);
-        {
-            let mut ty_var_bindings = self.ty_var_bindings.borrow_mut();
-            let vals = &mut ty_var_bindings.vals;
-            vals.insert(id, Root(Bounds { lb: None, ub: None }, 0u));
-        }
-        return TyVid(id);
+        self.ty_var_bindings.borrow_mut().vals.insert(id, Root(Bounds {
+            lb: None,
+            ub: None
+        }, 0u));
+
+        ty::mk_var(self.tcx, TyVid(id))
     }
 
-    pub fn next_ty_var(&self) -> ty::t {
-        ty::mk_var(self.tcx, self.next_ty_var_id())
-    }
-
-    pub fn next_ty_vars(&self, n: uint) -> Vec<ty::t> {
-        Vec::from_fn(n, |_i| self.next_ty_var())
+    pub fn next_ty_vars(&self, ty_params: &[ty::TypeParameterDef]) -> Vec<ty::t> {
+        ty_params.iter().map(|_| self.next_ty_var()).collect()
     }
 
     pub fn next_int_var_id(&self) -> IntVid {

@@ -367,18 +367,17 @@ struct GatherLocalsVisitor<'a> {
 
 impl<'a> GatherLocalsVisitor<'a> {
     fn assign(&mut self, nid: ast::NodeId, ty_opt: Option<ty::t>) {
-            match ty_opt {
-                None => {
-                    // infer the variable's type
-                    let var_id = self.fcx.infcx().next_ty_var_id();
-                    let var_ty = ty::mk_var(self.fcx.tcx(), var_id);
-                    self.fcx.inh.locals.borrow_mut().insert(nid, var_ty);
-                }
-                Some(typ) => {
-                    // take type that the user specified
-                    self.fcx.inh.locals.borrow_mut().insert(nid, typ);
-                }
+        match ty_opt {
+            None => {
+                // infer the variable's type
+                let var_ty = self.fcx.infcx().next_ty_var();
+                self.fcx.inh.locals.borrow_mut().insert(nid, var_ty);
             }
+            Some(typ) => {
+                // take type that the user specified
+                self.fcx.inh.locals.borrow_mut().insert(nid, typ);
+            }
+        }
     }
 }
 
@@ -1479,20 +1478,16 @@ pub fn impl_self_ty(vcx: &VtableContext,
     let tcx = vcx.tcx();
 
     let ity = ty::lookup_item_type(tcx, did);
-    let (n_tps, rps, raw_ty) =
-        (ity.generics.type_param_defs().len(),
-         ity.generics.region_param_defs(),
-         ity.ty);
 
+    let rps = ity.generics.region_param_defs();
     let rps = vcx.infcx.region_vars_for_defs(span, rps);
-    let tps = vcx.infcx.next_ty_vars(n_tps);
 
     let substs = substs {
         regions: ty::NonerasedRegions(rps),
         self_ty: None,
-        tps: tps,
+        tps: vcx.infcx.next_ty_vars(ity.generics.type_param_defs()),
     };
-    let substd_ty = ty::subst(tcx, &substs, raw_ty);
+    let substd_ty = ty::subst(tcx, &substs, ity.ty);
 
     ty_param_substs_and_ty { substs: substs, ty: substd_ty }
 }
@@ -2477,17 +2472,15 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         // Look up the number of type parameters and the raw type, and
         // determine whether the class is region-parameterized.
         let item_type = ty::lookup_item_type(tcx, class_id);
-        let type_parameter_count = item_type.generics.type_param_defs().len();
         let region_param_defs = item_type.generics.region_param_defs();
         let raw_type = item_type.ty;
 
         // Generate the struct type.
         let regions = fcx.infcx().region_vars_for_defs(span, region_param_defs);
-        let type_parameters = fcx.infcx().next_ty_vars(type_parameter_count);
         let substitutions = substs {
             regions: ty::NonerasedRegions(regions),
             self_ty: None,
-            tps: type_parameters
+            tps: fcx.infcx().next_ty_vars(item_type.generics.type_param_defs())
         };
 
         let mut struct_type = ty::subst(tcx, &substitutions, raw_type);
@@ -2533,17 +2526,15 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         // Look up the number of type parameters and the raw type, and
         // determine whether the enum is region-parameterized.
         let item_type = ty::lookup_item_type(tcx, enum_id);
-        let type_parameter_count = item_type.generics.type_param_defs().len();
         let region_param_defs = item_type.generics.region_param_defs();
         let raw_type = item_type.ty;
 
         // Generate the enum type.
         let regions = fcx.infcx().region_vars_for_defs(span, region_param_defs);
-        let type_parameters = fcx.infcx().next_ty_vars(type_parameter_count);
         let substitutions = substs {
             regions: ty::NonerasedRegions(regions),
             self_ty: None,
-            tps: type_parameters
+            tps: fcx.infcx().next_ty_vars(item_type.generics.type_param_defs())
         };
 
         let enum_type = ty::subst(tcx, &substitutions, raw_type);
@@ -3845,11 +3836,11 @@ pub fn instantiate_path(fcx: &FnCtxt,
     // determine values for type parameters, using the values given by
     // the user (if any) and otherwise using fresh type variables
     let (tps, regions) = if ty_substs_len == 0 {
-        (fcx.infcx().next_ty_vars(ty_param_count), regions)
+        (fcx.infcx().next_ty_vars(tpt.generics.type_param_defs()), regions)
     } else if ty_param_count == 0 {
         fcx.ccx.tcx.sess.span_err
             (span, "this item does not take type parameters");
-        (fcx.infcx().next_ty_vars(ty_param_count), regions)
+        (fcx.infcx().next_ty_vars(tpt.generics.type_param_defs()), regions)
     } else if ty_substs_len > user_ty_param_count {
         let expected = if user_ty_param_req < user_ty_param_count {
             "expected at most"
@@ -3860,7 +3851,7 @@ pub fn instantiate_path(fcx: &FnCtxt,
             (span,
              format!("too many type parameters provided: {} {}, found {}",
                   expected, user_ty_param_count, ty_substs_len));
-        (fcx.infcx().next_ty_vars(ty_param_count), regions)
+        (fcx.infcx().next_ty_vars(tpt.generics.type_param_defs()), regions)
     } else if ty_substs_len < user_ty_param_req {
         let expected = if user_ty_param_req < user_ty_param_count {
             "expected at least"
@@ -3871,7 +3862,7 @@ pub fn instantiate_path(fcx: &FnCtxt,
             (span,
              format!("not enough type parameters provided: {} {}, found {}",
                   expected, user_ty_param_req, ty_substs_len));
-        (fcx.infcx().next_ty_vars(ty_param_count), regions)
+        (fcx.infcx().next_ty_vars(tpt.generics.type_param_defs()), regions)
     } else {
         if ty_substs_len > user_ty_param_req
             && !fcx.tcx().sess.features.default_type_params.get() {
@@ -3891,7 +3882,7 @@ pub fn instantiate_path(fcx: &FnCtxt,
                                    .enumerate() {
             match self_parameter_index {
                 Some(index) if index == i => {
-                    tps.push(*fcx.infcx().next_ty_vars(1).get(0));
+                    tps.push(fcx.infcx().next_ty_var());
                     pushed = true;
                 }
                 _ => {}
@@ -3915,7 +3906,7 @@ pub fn instantiate_path(fcx: &FnCtxt,
         for (i, default) in defaults.skip(ty_substs_len).enumerate() {
             match self_parameter_index {
                 Some(index) if index == i + ty_substs_len => {
-                    substs.tps.push(*fcx.infcx().next_ty_vars(1).get(0));
+                    substs.tps.push(fcx.infcx().next_ty_var());
                     pushed = true;
                 }
                 _ => {}
@@ -3934,7 +3925,7 @@ pub fn instantiate_path(fcx: &FnCtxt,
 
         // If the self parameter goes at the end, insert it there.
         if !pushed && self_parameter_index.is_some() {
-            substs.tps.push(*fcx.infcx().next_ty_vars(1).get(0))
+            substs.tps.push(fcx.infcx().next_ty_var())
         }
 
         assert_eq!(substs.tps.len(), ty_param_count)
