@@ -25,7 +25,6 @@ use std::cell::{Cell, RefCell};
 use std::ops::{BitOr, BitAnd};
 use std::rc::Rc;
 use std::strbuf::StrBuf;
-use collections::HashMap;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util;
