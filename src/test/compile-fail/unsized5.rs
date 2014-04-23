@@ -9,18 +9,7 @@
 // except according to those terms.
 #![feature(struct_variant)]
 
-// Test `type` types not allowed in fields or local variables.
-
-/*trait T for type {}
-
-fn f5<type X>(x: &X) {
-    let _: X; // ERROR local variable with dynamically sized type X
-    let _: (int, (X, int)); // ERROR local variable with dynamically sized type (int,(X,int))
-}
-fn f6<type X: T>(x: &X) {
-    let _: X; // ERROR local variable with dynamically sized type X
-    let _: (int, (X, int)); // ERROR local variable with dynamically sized type (int,(X,int))
-}*/
+// Test `type` types not allowed in fields.
 
 struct S1<type X> {
     f1: X, //~ ERROR type `f1` is dynamically sized. dynamically sized types may only appear as the
