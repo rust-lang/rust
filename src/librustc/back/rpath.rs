@@ -40,7 +40,7 @@ pub fn get_rpath_flags(sess: &Session, out_filename: &Path) -> Vec<~str> {
 
     debug!("preparing the RPATH!");
 
-    let sysroot = sess.filesearch().sysroot;
+    let sysroot = sess.sysroot();
     let output = out_filename;
     let libs = sess.cstore.get_used_crates(cstore::RequireDynamic);
     let libs = libs.move_iter().filter_map(|(_, l)| {

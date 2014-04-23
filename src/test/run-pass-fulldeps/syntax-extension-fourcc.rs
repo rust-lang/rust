@@ -10,7 +10,6 @@
 
 // ignore-stage1
 // ignore-pretty
-// ignore-cross-compile
 
 #![feature(phase)]
 
