@@ -1282,223 +1282,181 @@ impl Drop for MemoryMap {
     }
 }
 
-/// Various useful system-specific constants.
+#[cfg(target_os = "linux")]
 pub mod consts {
-    #[cfg(unix)]
-    pub use os::consts::unix::FAMILY;
+    pub use std::os::arch_consts::ARCH;
 
-    #[cfg(windows)]
-    pub use os::consts::windows::FAMILY;
+    pub static FAMILY: &'static str = "unix";
 
-    #[cfg(target_os = "macos")]
-    pub use os::consts::macos::{SYSNAME, DLL_PREFIX, DLL_SUFFIX, DLL_EXTENSION};
-    #[cfg(target_os = "macos")]
-    pub use os::consts::macos::{EXE_SUFFIX, EXE_EXTENSION};
+    /// A string describing the specific operating system in use: in this
+    /// case, `linux`.
+    pub static SYSNAME: &'static str = "linux";
 
-    #[cfg(target_os = "freebsd")]
-    pub use os::consts::freebsd::{SYSNAME, DLL_PREFIX, DLL_SUFFIX, DLL_EXTENSION};
-    #[cfg(target_os = "freebsd")]
-    pub use os::consts::freebsd::{EXE_SUFFIX, EXE_EXTENSION};
+    /// Specifies the filename prefix used for shared libraries on this
+    /// platform: in this case, `lib`.
+    pub static DLL_PREFIX: &'static str = "lib";
 
-    #[cfg(target_os = "linux")]
-    pub use os::consts::linux::{SYSNAME, DLL_PREFIX, DLL_SUFFIX, DLL_EXTENSION};
-    #[cfg(target_os = "linux")]
-    pub use os::consts::linux::{EXE_SUFFIX, EXE_EXTENSION};
+    /// Specifies the filename suffix used for shared libraries on this
+    /// platform: in this case, `.so`.
+    pub static DLL_SUFFIX: &'static str = ".so";
 
-    #[cfg(target_os = "android")]
-    pub use os::consts::android::{SYSNAME, DLL_PREFIX, DLL_SUFFIX, DLL_EXTENSION};
-    #[cfg(target_os = "android")]
-    pub use os::consts::android::{EXE_SUFFIX, EXE_EXTENSION};
+    /// Specifies the file extension used for shared libraries on this
+    /// platform that goes after the dot: in this case, `so`.
+    pub static DLL_EXTENSION: &'static str = "so";
 
-    #[cfg(target_os = "win32")]
-    pub use os::consts::win32::{SYSNAME, DLL_PREFIX, DLL_SUFFIX, DLL_EXTENSION};
-    #[cfg(target_os = "win32")]
-    pub use os::consts::win32::{EXE_SUFFIX, EXE_EXTENSION};
+    /// Specifies the filename suffix used for executable binaries on this
+    /// platform: in this case, the empty string.
+    pub static EXE_SUFFIX: &'static str = "";
 
-    #[cfg(target_arch = "x86")]
-    pub use os::consts::x86::{ARCH};
-
-    #[cfg(target_arch = "x86_64")]
-    pub use os::consts::x86_64::{ARCH};
-
-    #[cfg(target_arch = "arm")]
-    pub use os::consts::arm::{ARCH};
-
-    #[cfg(target_arch = "mips")]
-    pub use os::consts::mips::{ARCH};
-
-    /// Constants for Unix systems.
-    pub mod unix {
-        /// A string describing the family that this operating system belongs
-        /// to: in this case, `unix`.
-        pub static FAMILY: &'static str = "unix";
-    }
-
-    /// Constants for Windows systems.
-    pub mod windows {
-        /// A string describing the family that this operating system belongs
-        /// to: in this case, `windows`.
-        pub static FAMILY: &'static str = "windows";
-    }
-
-    /// Constants for Mac OS systems.
-    pub mod macos {
-        /// A string describing the specific operating system in use: in this
-        /// case, `macos`.
-        pub static SYSNAME: &'static str = "macos";
-
-        /// Specifies the filename prefix used for shared libraries on this
-        /// platform: in this case, `lib`.
-        pub static DLL_PREFIX: &'static str = "lib";
-
-        /// Specifies the filename suffix used for shared libraries on this
-        /// platform: in this case, `.dylib`.
-        pub static DLL_SUFFIX: &'static str = ".dylib";
-
-        /// Specifies the file extension used for shared libraries on this
-        /// platform that goes after the dot: in this case, `dylib`.
-        pub static DLL_EXTENSION: &'static str = "dylib";
-
-        /// Specifies the filename suffix used for executable binaries on this
-        /// platform: in this case, the empty string.
-        pub static EXE_SUFFIX: &'static str = "";
-
-        /// Specifies the file extension, if any, used for executable binaries
-        /// on this platform: in this case, the empty string.
-        pub static EXE_EXTENSION: &'static str = "";
-    }
-
-    /// Constants for FreeBSD systems.
-    pub mod freebsd {
-        /// A string describing the specific operating system in use: in this
-        /// case, `freebsd`.
-        pub static SYSNAME: &'static str = "freebsd";
-
-        /// Specifies the filename prefix used for shared libraries on this
-        /// platform: in this case, `lib`.
-        pub static DLL_PREFIX: &'static str = "lib";
-
-        /// Specifies the filename suffix used for shared libraries on this
-        /// platform: in this case, `.so`.
-        pub static DLL_SUFFIX: &'static str = ".so";
-
-        /// Specifies the file extension used for shared libraries on this
-        /// platform that goes after the dot: in this case, `so`.
-        pub static DLL_EXTENSION: &'static str = "so";
-
-        /// Specifies the filename suffix used for executable binaries on this
-        /// platform: in this case, the empty string.
-        pub static EXE_SUFFIX: &'static str = "";
-
-        /// Specifies the file extension, if any, used for executable binaries
-        /// on this platform: in this case, the empty string.
-        pub static EXE_EXTENSION: &'static str = "";
-    }
-
-    /// Constants for GNU/Linux systems.
-    pub mod linux {
-        /// A string describing the specific operating system in use: in this
-        /// case, `linux`.
-        pub static SYSNAME: &'static str = "linux";
-
-        /// Specifies the filename prefix used for shared libraries on this
-        /// platform: in this case, `lib`.
-        pub static DLL_PREFIX: &'static str = "lib";
-
-        /// Specifies the filename suffix used for shared libraries on this
-        /// platform: in this case, `.so`.
-        pub static DLL_SUFFIX: &'static str = ".so";
-
-        /// Specifies the file extension used for shared libraries on this
-        /// platform that goes after the dot: in this case, `so`.
-        pub static DLL_EXTENSION: &'static str = "so";
-
-        /// Specifies the filename suffix used for executable binaries on this
-        /// platform: in this case, the empty string.
-        pub static EXE_SUFFIX: &'static str = "";
-
-        /// Specifies the file extension, if any, used for executable binaries
-        /// on this platform: in this case, the empty string.
-        pub static EXE_EXTENSION: &'static str = "";
-    }
-
-    /// Constants for Android systems.
-    pub mod android {
-        /// A string describing the specific operating system in use: in this
-        /// case, `android`.
-        pub static SYSNAME: &'static str = "android";
-
-        /// Specifies the filename prefix used for shared libraries on this
-        /// platform: in this case, `lib`.
-        pub static DLL_PREFIX: &'static str = "lib";
-
-        /// Specifies the filename suffix used for shared libraries on this
-        /// platform: in this case, `.so`.
-        pub static DLL_SUFFIX: &'static str = ".so";
-
-        /// Specifies the file extension used for shared libraries on this
-        /// platform that goes after the dot: in this case, `so`.
-        pub static DLL_EXTENSION: &'static str = "so";
-
-        /// Specifies the filename suffix used for executable binaries on this
-        /// platform: in this case, the empty string.
-        pub static EXE_SUFFIX: &'static str = "";
-
-        /// Specifies the file extension, if any, used for executable binaries
-        /// on this platform: in this case, the empty string.
-        pub static EXE_EXTENSION: &'static str = "";
-    }
-
-    /// Constants for 32-bit or 64-bit Windows systems.
-    pub mod win32 {
-        /// A string describing the specific operating system in use: in this
-        /// case, `win32`.
-        pub static SYSNAME: &'static str = "win32";
-
-        /// Specifies the filename prefix used for shared libraries on this
-        /// platform: in this case, the empty string.
-        pub static DLL_PREFIX: &'static str = "";
-
-        /// Specifies the filename suffix used for shared libraries on this
-        /// platform: in this case, `.dll`.
-        pub static DLL_SUFFIX: &'static str = ".dll";
-
-        /// Specifies the file extension used for shared libraries on this
-        /// platform that goes after the dot: in this case, `dll`.
-        pub static DLL_EXTENSION: &'static str = "dll";
-
-        /// Specifies the filename suffix used for executable binaries on this
-        /// platform: in this case, `.exe`.
-        pub static EXE_SUFFIX: &'static str = ".exe";
-
-        /// Specifies the file extension, if any, used for executable binaries
-        /// on this platform: in this case, `exe`.
-        pub static EXE_EXTENSION: &'static str = "exe";
-    }
-
-    /// Constants for Intel Architecture-32 (x86) architectures.
-    pub mod x86 {
-        /// A string describing the architecture in use: in this case, `x86`.
-        pub static ARCH: &'static str = "x86";
-    }
-    /// Constants for Intel 64/AMD64 (x86-64) architectures.
-    pub mod x86_64 {
-        /// A string describing the architecture in use: in this case,
-        /// `x86_64`.
-        pub static ARCH: &'static str = "x86_64";
-    }
-    /// Constants for Advanced RISC Machine (ARM) architectures.
-    pub mod arm {
-        /// A string describing the architecture in use: in this case, `ARM`.
-        pub static ARCH: &'static str = "arm";
-    }
-    /// Constants for Microprocessor without Interlocked Pipeline Stages
-    /// (MIPS) architectures.
-    pub mod mips {
-        /// A string describing the architecture in use: in this case, `MIPS`.
-        pub static ARCH: &'static str = "mips";
-    }
+    /// Specifies the file extension, if any, used for executable binaries
+    /// on this platform: in this case, the empty string.
+    pub static EXE_EXTENSION: &'static str = "";
 }
+
+#[cfg(target_os = "macos")]
+pub mod consts {
+    pub use std::os::arch_consts::ARCH;
+
+    pub static FAMILY: &'static str = "unix";
+
+    /// A string describing the specific operating system in use: in this
+    /// case, `macos`.
+    pub static SYSNAME: &'static str = "macos";
+
+    /// Specifies the filename prefix used for shared libraries on this
+    /// platform: in this case, `lib`.
+    pub static DLL_PREFIX: &'static str = "lib";
+
+    /// Specifies the filename suffix used for shared libraries on this
+    /// platform: in this case, `.dylib`.
+    pub static DLL_SUFFIX: &'static str = ".dylib";
+
+    /// Specifies the file extension used for shared libraries on this
+    /// platform that goes after the dot: in this case, `dylib`.
+    pub static DLL_EXTENSION: &'static str = "dylib";
+
+    /// Specifies the filename suffix used for executable binaries on this
+    /// platform: in this case, the empty string.
+    pub static EXE_SUFFIX: &'static str = "";
+
+    /// Specifies the file extension, if any, used for executable binaries
+    /// on this platform: in this case, the empty string.
+    pub static EXE_EXTENSION: &'static str = "";
+}
+
+#[cfg(target_os = "freebsd")]
+pub mod consts {
+    pub use std::os::arch_consts::ARCH;
+
+    pub static FAMILY: &'static str = "unix";
+
+    /// A string describing the specific operating system in use: in this
+    /// case, `freebsd`.
+    pub static SYSNAME: &'static str = "freebsd";
+
+    /// Specifies the filename prefix used for shared libraries on this
+    /// platform: in this case, `lib`.
+    pub static DLL_PREFIX: &'static str = "lib";
+
+    /// Specifies the filename suffix used for shared libraries on this
+    /// platform: in this case, `.so`.
+    pub static DLL_SUFFIX: &'static str = ".so";
+
+    /// Specifies the file extension used for shared libraries on this
+    /// platform that goes after the dot: in this case, `so`.
+    pub static DLL_EXTENSION: &'static str = "so";
+
+    /// Specifies the filename suffix used for executable binaries on this
+    /// platform: in this case, the empty string.
+    pub static EXE_SUFFIX: &'static str = "";
+
+    /// Specifies the file extension, if any, used for executable binaries
+    /// on this platform: in this case, the empty string.
+    pub static EXE_EXTENSION: &'static str = "";
+}
+
+#[cfg(target_os = "android")]
+pub mod consts {
+    pub use std::os::arch_consts::ARCH;
+
+    pub static FAMILY: &'static str = "unix";
+
+    /// A string describing the specific operating system in use: in this
+    /// case, `android`.
+    pub static SYSNAME: &'static str = "android";
+
+    /// Specifies the filename prefix used for shared libraries on this
+    /// platform: in this case, `lib`.
+    pub static DLL_PREFIX: &'static str = "lib";
+
+    /// Specifies the filename suffix used for shared libraries on this
+    /// platform: in this case, `.so`.
+    pub static DLL_SUFFIX: &'static str = ".so";
+
+    /// Specifies the file extension used for shared libraries on this
+    /// platform that goes after the dot: in this case, `so`.
+    pub static DLL_EXTENSION: &'static str = "so";
+
+    /// Specifies the filename suffix used for executable binaries on this
+    /// platform: in this case, the empty string.
+    pub static EXE_SUFFIX: &'static str = "";
+
+    /// Specifies the file extension, if any, used for executable binaries
+    /// on this platform: in this case, the empty string.
+    pub static EXE_EXTENSION: &'static str = "";
+}
+
+#[cfg(target_os = "win32")]
+pub mod consts {
+    pub use std::os::arch_consts::ARCH;
+
+    pub static FAMILY: &'static str = "windows";
+
+    /// A string describing the specific operating system in use: in this
+    /// case, `win32`.
+    pub static SYSNAME: &'static str = "win32";
+
+    /// Specifies the filename prefix used for shared libraries on this
+    /// platform: in this case, the empty string.
+    pub static DLL_PREFIX: &'static str = "";
+
+    /// Specifies the filename suffix used for shared libraries on this
+    /// platform: in this case, `.dll`.
+    pub static DLL_SUFFIX: &'static str = ".dll";
+
+    /// Specifies the file extension used for shared libraries on this
+    /// platform that goes after the dot: in this case, `dll`.
+    pub static DLL_EXTENSION: &'static str = "dll";
+
+    /// Specifies the filename suffix used for executable binaries on this
+    /// platform: in this case, `.exe`.
+    pub static EXE_SUFFIX: &'static str = ".exe";
+
+    /// Specifies the file extension, if any, used for executable binaries
+    /// on this platform: in this case, `exe`.
+    pub static EXE_EXTENSION: &'static str = "exe";
+}
+
+#[cfg(target_arch = "x86")]
+mod arch_consts {
+    pub static ARCH: &'static str = "x86";
+}
+
+#[cfg(target_arch = "x86_64")]
+mod arch_consts {
+    pub static ARCH: &'static str = "x86_64";
+}
+
+#[cfg(target_arch = "arm")]
+mod arch_consts {
+    pub static ARCH: &'static str = "arm";
+}
+
+#[cfg(target_arch = "mips")]
+mod arch_consts {
+    pub static ARCH: &'static str = "mips";
+}
+
 
 #[cfg(test)]
 mod tests {
