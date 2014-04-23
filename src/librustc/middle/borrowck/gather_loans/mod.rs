@@ -292,6 +292,26 @@ fn gather_loans_in_expr(this: &mut GatherLoanCtxt,
           visit::walk_expr(this, ex, ());
       }
 
+      ast::ExprCall(f, _) => {
+          let expr_ty = ty::expr_ty_adjusted(tcx, f);
+          match ty::get(expr_ty).sty {
+              ty::ty_closure(~ty::ClosureTy {
+                  store: ty::RegionTraitStore(..), ..
+              }) => {
+                  let scope_r = ty::ReScope(ex.id);
+                  let base_cmt = this.bccx.cat_expr(f);
+                  this.guarantee_valid_kind(f.id,
+                                            f.span,
+                                            base_cmt,
+                                            ty::UniqueImmBorrow,
+                                            scope_r,
+                                            ClosureInvocation);
+              }
+              _ => {}
+          }
+          visit::walk_expr(this, ex, ());
+      }
+
       _ => {
           visit::walk_expr(this, ex, ());
       }

@@ -123,7 +123,9 @@ pub fn expand_deriving_encodable(cx: &mut ExtCtxt,
                                            true)),
                 inline: false,
                 const_nonmatching: true,
-                combine_substructure: encodable_substructure,
+                combine_substructure: combine_substructure(|a, b, c| {
+                    encodable_substructure(a, b, c)
+                }),
             })
     };
 

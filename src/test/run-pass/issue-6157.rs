@@ -8,23 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub trait OpInt<'a> { fn call<'a>(&'a self, int, int) -> int; }
+pub trait OpInt<'a> { fn call<'a>(&'a mut self, int, int) -> int; }
 
 impl<'a> OpInt<'a> for |int, int|: 'a -> int {
-    fn call(&self, a:int, b:int) -> int {
+    fn call(&mut self, a:int, b:int) -> int {
         (*self)(a, b)
     }
 }
 
-fn squarei<'a>(x: int, op: &'a OpInt) -> int { op.call(x, x) }
+fn squarei<'a>(x: int, op: &'a mut OpInt) -> int { op.call(x, x) }
 
 fn muli(x:int, y:int) -> int { x * y }
 
 pub fn main() {
-    let f = |x,y| muli(x,y);
+    let mut f = |x,y| muli(x,y);
     {
-        let g = &f;
-        let h = g as &OpInt;
+        let g = &mut f;
+        let h = g as &mut OpInt;
         squarei(3, h);
     }
 }

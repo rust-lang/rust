@@ -92,9 +92,9 @@ impl<'a> FileSearch<'a> {
             match fs::readdir(lib_search_path) {
                 Ok(files) => {
                     let mut rslt = FileDoesntMatch;
-                    let is_rlib = |p: & &Path| {
+                    fn is_rlib(p: & &Path) -> bool {
                         p.extension_str() == Some("rlib")
-                    };
+                    }
                     // Reading metadata out of rlibs is faster, and if we find both
                     // an rlib and a dylib we only read one of the files of
                     // metadata, so in the name of speed, bring all rlib files to

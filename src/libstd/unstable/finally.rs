@@ -35,19 +35,19 @@ use ops::Drop;
 #[cfg(test)] use task::failing;
 
 pub trait Finally<T> {
-    fn finally(&self, dtor: ||) -> T;
+    fn finally(&mut self, dtor: ||) -> T;
 }
 
 impl<'a,T> Finally<T> for ||: 'a -> T {
-    fn finally(&self, dtor: ||) -> T {
-        try_finally(&mut (), (),
-                    |_, _| (*self)(),
+    fn finally(&mut self, dtor: ||) -> T {
+        try_finally(&mut (), self,
+                    |_, f| (*f)(),
                     |_| dtor())
     }
 }
 
 impl<T> Finally<T> for fn() -> T {
-    fn finally(&self, dtor: ||) -> T {
+    fn finally(&mut self, dtor: ||) -> T {
         try_finally(&mut (), (),
                     |_, _| (*self)(),
                     |_| dtor())
@@ -145,7 +145,7 @@ fn test_fail() {
 
 #[test]
 fn test_retval() {
-    let closure: || -> int = || 10;
+    let mut closure: || -> int = || 10;
     let i = closure.finally(|| { });
     assert_eq!(i, 10);
 }
@@ -154,6 +154,6 @@ fn test_retval() {
 fn test_compact() {
     fn do_some_fallible_work() {}
     fn but_always_run_this_function() { }
-    do_some_fallible_work.finally(
-        but_always_run_this_function);
+    let mut f = do_some_fallible_work;
+    f.finally(but_always_run_this_function);
 }

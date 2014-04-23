@@ -327,7 +327,7 @@ impl<'a> CheckLoanCtxt<'a> {
                             self.bccx.loan_path_to_str(&*old_loan.loan_path))
                 }
 
-                AddrOf | AutoRef | RefBinding => {
+                AddrOf | AutoRef | RefBinding | ClosureInvocation => {
                     format!("previous borrow of `{}` occurs here",
                             self.bccx.loan_path_to_str(&*old_loan.loan_path))
                 }

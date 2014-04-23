@@ -34,7 +34,9 @@ pub fn expand_deriving_clone(cx: &mut ExtCtxt,
                 ret_ty: Self,
                 inline: true,
                 const_nonmatching: false,
-                combine_substructure: |c, s, sub| cs_clone("Clone", c, s, sub)
+                combine_substructure: combine_substructure(|c, s, sub| {
+                    cs_clone("Clone", c, s, sub)
+                }),
             }
         )
     };

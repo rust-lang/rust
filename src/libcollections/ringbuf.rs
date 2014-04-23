@@ -272,7 +272,7 @@ impl<'a, T> RandomAccessIterator<&'a T> for Items<'a, T> {
     fn indexable(&self) -> uint { self.rindex - self.index }
 
     #[inline]
-    fn idx(&self, j: uint) -> Option<&'a T> {
+    fn idx(&mut self, j: uint) -> Option<&'a T> {
         if j >= self.indexable() {
             None
         } else {
