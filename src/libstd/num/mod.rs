@@ -162,25 +162,6 @@ pub fn abs_sub<T: Signed>(x: T, y: T) -> T {
 /// A trait for values which cannot be negative
 pub trait Unsigned: Num {}
 
-/// A collection of rounding operations.
-pub trait Round {
-    /// Return the largest integer less than or equal to a number.
-    fn floor(&self) -> Self;
-
-    /// Return the smallest integer greater than or equal to a number.
-    fn ceil(&self) -> Self;
-
-    /// Return the nearest integer to a number. Round half-way cases away from
-    /// `0.0`.
-    fn round(&self) -> Self;
-
-    /// Return the integer part of a number.
-    fn trunc(&self) -> Self;
-
-    /// Return the fractional part of a number.
-    fn fract(&self) -> Self;
-}
-
 /// Raises a value to the power of exp, using exponentiation by squaring.
 ///
 /// # Example
@@ -353,217 +334,199 @@ pub enum FPCategory {
 //
 // FIXME(#8888): Several of these functions have a parameter named
 //               `unused_self`. Removing it requires #8888 to be fixed.
-pub trait Float: Signed + Round + Primitive {
+pub trait Float: Signed + Primitive {
+    /// Returns the NaN value.
+    fn nan() -> Self;
+    /// Returns the infinite value.
+    fn infinity() -> Self;
+    /// Returns the negative infinite value.
+    fn neg_infinity() -> Self;
+    /// Returns -0.0.
+    fn neg_zero() -> Self;
+
+    /// Returns true if this value is NaN and false otherwise.
+    fn is_nan(self) -> bool;
+    /// Returns true if this value is positive infinity or negative infinity and
+    /// false otherwise.
+    fn is_infinite(self) -> bool;
+    /// Returns true if this number is neither infinite nor NaN.
+    fn is_finite(self) -> bool;
+    /// Returns true if this number is neither zero, infinite, denormal, or NaN.
+    fn is_normal(self) -> bool;
+    /// Returns the category that this number falls into.
+    fn classify(self) -> FPCategory;
+
+    /// Returns the number of binary digits of mantissa that this type supports.
+    fn mantissa_digits(unused_self: Option<Self>) -> uint;
+    /// Returns the number of binary digits of exponent that this type supports.
+    fn digits(unused_self: Option<Self>) -> uint;
+    /// Returns the smallest positive number that this type can represent.
+    fn epsilon() -> Self;
+    /// Returns the minimum binary exponent that this type can represent.
+    fn min_exp(unused_self: Option<Self>) -> int;
+    /// Returns the maximum binary exponent that this type can represent.
+    fn max_exp(unused_self: Option<Self>) -> int;
+    /// Returns the minimum base-10 exponent that this type can represent.
+    fn min_10_exp(unused_self: Option<Self>) -> int;
+    /// Returns the maximum base-10 exponent that this type can represent.
+    fn max_10_exp(unused_self: Option<Self>) -> int;
+
+    /// Constructs a floating point number created by multiplying `x` by 2
+    /// raised to the power of `exp`.
+    fn ldexp(x: Self, exp: int) -> Self;
+    /// Breaks the number into a normalized fraction and a base-2 exponent,
+    /// satisfying:
+    ///
+    ///  * `self = x * pow(2, exp)`
+    ///
+    ///  * `0.5 <= abs(x) < 1.0`
+    fn frexp(self) -> (Self, int);
+    /// Returns the mantissa, exponent and sign as integers, respectively.
+    fn integer_decode(self) -> (u64, i16, i8);
+
+    /// Returns the next representable floating-point value in the direction of
+    /// `other`.
+    fn next_after(self, other: Self) -> Self;
+
+    /// Return the largest integer less than or equal to a number.
+    fn floor(self) -> Self;
+    /// Return the smallest integer greater than or equal to a number.
+    fn ceil(self) -> Self;
+    /// Return the nearest integer to a number. Round half-way cases away from
+    /// `0.0`.
+    fn round(self) -> Self;
+    /// Return the integer part of a number.
+    fn trunc(self) -> Self;
+    /// Return the fractional part of a number.
+    fn fract(self) -> Self;
+
     /// Returns the maximum of the two numbers.
     fn max(self, other: Self) -> Self;
     /// Returns the minimum of the two numbers.
     fn min(self, other: Self) -> Self;
 
-    /// Returns the NaN value.
-    fn nan() -> Self;
-
-    /// Returns the infinite value.
-    fn infinity() -> Self;
-
-    /// Returns the negative infinite value.
-    fn neg_infinity() -> Self;
-
-    /// Returns -0.0.
-    fn neg_zero() -> Self;
-
-    /// Returns true if this value is NaN and false otherwise.
-    fn is_nan(&self) -> bool;
-
-    /// Returns true if this value is positive infinity or negative infinity and false otherwise.
-    fn is_infinite(&self) -> bool;
-
-    /// Returns true if this number is neither infinite nor NaN.
-    fn is_finite(&self) -> bool;
-
-    /// Returns true if this number is neither zero, infinite, denormal, or NaN.
-    fn is_normal(&self) -> bool;
-
-    /// Returns the category that this number falls into.
-    fn classify(&self) -> FPCategory;
-
-    /// Returns the number of binary digits of mantissa that this type supports.
-    fn mantissa_digits(unused_self: Option<Self>) -> uint;
-
-    /// Returns the number of binary digits of exponent that this type supports.
-    fn digits(unused_self: Option<Self>) -> uint;
-
-    /// Returns the smallest positive number that this type can represent.
-    fn epsilon() -> Self;
-
-    /// Returns the minimum binary exponent that this type can represent.
-    fn min_exp(unused_self: Option<Self>) -> int;
-
-    /// Returns the maximum binary exponent that this type can represent.
-    fn max_exp(unused_self: Option<Self>) -> int;
-
-    /// Returns the minimum base-10 exponent that this type can represent.
-    fn min_10_exp(unused_self: Option<Self>) -> int;
-
-    /// Returns the maximum base-10 exponent that this type can represent.
-    fn max_10_exp(unused_self: Option<Self>) -> int;
-
-    /// Constructs a floating point number created by multiplying `x` by 2 raised to the power of
-    /// `exp`.
-    fn ldexp(x: Self, exp: int) -> Self;
-
-    /// Breaks the number into a normalized fraction and a base-2 exponent, satisfying:
-    ///
-    ///  * `self = x * pow(2, exp)`
-    ///
-    ///  * `0.5 <= abs(x) < 1.0`
-    fn frexp(&self) -> (Self, int);
-
-    /// Returns the exponential of the number, minus 1, in a way that is accurate even if the
-    /// number is close to zero.
-    fn exp_m1(&self) -> Self;
-
-    /// Returns the natural logarithm of the number plus 1 (`ln(1+n)`) more accurately than if the
-    /// operations were performed separately.
-    fn ln_1p(&self) -> Self;
-
-    /// Fused multiply-add. Computes `(self * a) + b` with only one rounding error. This produces a
-    /// more accurate result with better performance than a separate multiplication operation
-    /// followed by an add.
-    fn mul_add(&self, a: Self, b: Self) -> Self;
-
-    /// Returns the next representable floating-point value in the direction of `other`.
-    fn next_after(&self, other: Self) -> Self;
-
-    /// Returns the mantissa, exponent and sign as integers, respectively.
-    fn integer_decode(&self) -> (u64, i16, i8);
-
-    /// Archimedes' constant.
-    fn pi() -> Self;
-
-    /// 2.0 * pi.
-    fn two_pi() -> Self;
-
-    /// pi / 2.0.
-    fn frac_pi_2() -> Self;
-
-    /// pi / 3.0.
-    fn frac_pi_3() -> Self;
-
-    /// pi / 4.0.
-    fn frac_pi_4() -> Self;
-
-    /// pi / 6.0.
-    fn frac_pi_6() -> Self;
-
-    /// pi / 8.0.
-    fn frac_pi_8() -> Self;
-
-    /// 1.0 / pi.
-    fn frac_1_pi() -> Self;
-
-    /// 2.0 / pi.
-    fn frac_2_pi() -> Self;
-
-    /// 2.0 / sqrt(pi).
-    fn frac_2_sqrtpi() -> Self;
-
-    /// sqrt(2.0).
-    fn sqrt2() -> Self;
-
-    /// 1.0 / sqrt(2.0).
-    fn frac_1_sqrt2() -> Self;
-
-    /// Euler's number.
-    fn e() -> Self;
-
-    /// log2(e).
-    fn log2_e() -> Self;
-
-    /// log10(e).
-    fn log10_e() -> Self;
-
-    /// ln(2.0).
-    fn ln_2() -> Self;
-
-    /// ln(10.0).
-    fn ln_10() -> Self;
-
+    /// Fused multiply-add. Computes `(self * a) + b` with only one rounding
+    /// error. This produces a more accurate result with better performance than
+    /// a separate multiplication operation followed by an add.
+    fn mul_add(self, a: Self, b: Self) -> Self;
     /// Take the reciprocal (inverse) of a number, `1/x`.
-    fn recip(&self) -> Self;
-
-    /// Raise a number to a power.
-    fn powf(&self, n: &Self) -> Self;
+    fn recip(self) -> Self;
 
     /// Raise a number to an integer power.
     ///
     /// Using this function is generally faster than using `powf`
-    fn powi(&self, n: i32) -> Self;
+    fn powi(self, n: i32) -> Self;
+    /// Raise a number to a floating point power.
+    fn powf(self, n: Self) -> Self;
+
+    /// sqrt(2.0).
+    fn sqrt2() -> Self;
+    /// 1.0 / sqrt(2.0).
+    fn frac_1_sqrt2() -> Self;
 
     /// Take the square root of a number.
-    fn sqrt(&self) -> Self;
+    fn sqrt(self) -> Self;
     /// Take the reciprocal (inverse) square root of a number, `1/sqrt(x)`.
-    fn rsqrt(&self) -> Self;
+    fn rsqrt(self) -> Self;
     /// Take the cubic root of a number.
-    fn cbrt(&self) -> Self;
+    fn cbrt(self) -> Self;
     /// Calculate the length of the hypotenuse of a right-angle triangle given
     /// legs of length `x` and `y`.
-    fn hypot(&self, other: &Self) -> Self;
+    fn hypot(self, other: Self) -> Self;
+
+    /// Archimedes' constant.
+    fn pi() -> Self;
+    /// 2.0 * pi.
+    fn two_pi() -> Self;
+    /// pi / 2.0.
+    fn frac_pi_2() -> Self;
+    /// pi / 3.0.
+    fn frac_pi_3() -> Self;
+    /// pi / 4.0.
+    fn frac_pi_4() -> Self;
+    /// pi / 6.0.
+    fn frac_pi_6() -> Self;
+    /// pi / 8.0.
+    fn frac_pi_8() -> Self;
+    /// 1.0 / pi.
+    fn frac_1_pi() -> Self;
+    /// 2.0 / pi.
+    fn frac_2_pi() -> Self;
+    /// 2.0 / sqrt(pi).
+    fn frac_2_sqrtpi() -> Self;
 
     /// Computes the sine of a number (in radians).
-    fn sin(&self) -> Self;
+    fn sin(self) -> Self;
     /// Computes the cosine of a number (in radians).
-    fn cos(&self) -> Self;
+    fn cos(self) -> Self;
     /// Computes the tangent of a number (in radians).
-    fn tan(&self) -> Self;
+    fn tan(self) -> Self;
 
     /// Computes the arcsine of a number. Return value is in radians in
     /// the range [-pi/2, pi/2] or NaN if the number is outside the range
     /// [-1, 1].
-    fn asin(&self) -> Self;
+    fn asin(self) -> Self;
     /// Computes the arccosine of a number. Return value is in radians in
     /// the range [0, pi] or NaN if the number is outside the range
     /// [-1, 1].
-    fn acos(&self) -> Self;
+    fn acos(self) -> Self;
     /// Computes the arctangent of a number. Return value is in radians in the
     /// range [-pi/2, pi/2];
-    fn atan(&self) -> Self;
+    fn atan(self) -> Self;
     /// Computes the four quadrant arctangent of a number, `y`, and another
     /// number `x`. Return value is in radians in the range [-pi, pi].
-    fn atan2(&self, other: &Self) -> Self;
+    fn atan2(self, other: Self) -> Self;
     /// Simultaneously computes the sine and cosine of the number, `x`. Returns
     /// `(sin(x), cos(x))`.
-    fn sin_cos(&self) -> (Self, Self);
+    fn sin_cos(self) -> (Self, Self);
+
+    /// Euler's number.
+    fn e() -> Self;
+    /// log2(e).
+    fn log2_e() -> Self;
+    /// log10(e).
+    fn log10_e() -> Self;
+    /// ln(2.0).
+    fn ln_2() -> Self;
+    /// ln(10.0).
+    fn ln_10() -> Self;
 
     /// Returns `e^(self)`, (the exponential function).
-    fn exp(&self) -> Self;
+    fn exp(self) -> Self;
     /// Returns 2 raised to the power of the number, `2^(self)`.
-    fn exp2(&self) -> Self;
+    fn exp2(self) -> Self;
+    /// Returns the exponential of the number, minus 1, in a way that is
+    /// accurate even if the number is close to zero.
+    fn exp_m1(self) -> Self;
     /// Returns the natural logarithm of the number.
-    fn ln(&self) -> Self;
+    fn ln(self) -> Self;
     /// Returns the logarithm of the number with respect to an arbitrary base.
-    fn log(&self, base: &Self) -> Self;
+    fn log(self, base: Self) -> Self;
     /// Returns the base 2 logarithm of the number.
-    fn log2(&self) -> Self;
+    fn log2(self) -> Self;
     /// Returns the base 10 logarithm of the number.
-    fn log10(&self) -> Self;
+    fn log10(self) -> Self;
+    /// Returns the natural logarithm of the number plus 1 (`ln(1+n)`) more
+    /// accurately than if the operations were performed separately.
+    fn ln_1p(self) -> Self;
 
     /// Hyperbolic sine function.
-    fn sinh(&self) -> Self;
+    fn sinh(self) -> Self;
     /// Hyperbolic cosine function.
-    fn cosh(&self) -> Self;
+    fn cosh(self) -> Self;
     /// Hyperbolic tangent function.
-    fn tanh(&self) -> Self;
+    fn tanh(self) -> Self;
     /// Inverse hyperbolic sine function.
-    fn asinh(&self) -> Self;
+    fn asinh(self) -> Self;
     /// Inverse hyperbolic cosine function.
-    fn acosh(&self) -> Self;
+    fn acosh(self) -> Self;
     /// Inverse hyperbolic tangent function.
-    fn atanh(&self) -> Self;
+    fn atanh(self) -> Self;
 
     /// Convert radians to degrees.
-    fn to_degrees(&self) -> Self;
+    fn to_degrees(self) -> Self;
     /// Convert degrees to radians.
-    fn to_radians(&self) -> Self;
+    fn to_radians(self) -> Self;
 }
 
 /// A generic trait for converting a value to a number.
