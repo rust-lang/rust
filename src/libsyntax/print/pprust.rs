@@ -1286,9 +1286,14 @@ impl<'a> State<'a> {
                 try!(self.bopen());
                 let len = arms.len();
                 for (i, arm) in arms.iter().enumerate() {
-                    try!(space(&mut self.s));
+                    // I have no idea why this check is necessary, but here it
+                    // is :(
+                    if arm.attrs.is_empty() {
+                        try!(space(&mut self.s));
+                    }
                     try!(self.cbox(indent_unit));
                     try!(self.ibox(0u));
+                    try!(self.print_outer_attributes(arm.attrs.as_slice()));
                     let mut first = true;
                     for p in arm.pats.iter() {
                         if first {
