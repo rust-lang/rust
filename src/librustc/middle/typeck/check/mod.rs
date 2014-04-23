@@ -1722,7 +1722,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                 }
                 _ => {
                     fcx.tcx().sess.span_bug(
-                        sp,
+                        callee_expr.span,
                         format!("method without bare fn type"));
                 }
             }
@@ -1936,7 +1936,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
     // Checks a method call.
     fn check_method_call(fcx: &FnCtxt,
                          expr: &ast::Expr,
-                         method_name: ast::Ident,
+                         method_name: ast::SpannedIdent,
                          args: &[@ast::Expr],
                          tps: &[ast::P<ast::Ty>]) {
         let rcvr = args[0];
@@ -1952,7 +1952,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
 
         let tps = tps.iter().map(|&ast_ty| fcx.to_ty(ast_ty)).collect::<Vec<_>>();
         let fn_ty = match method::lookup(fcx, expr, rcvr,
-                                         method_name.name,
+                                         method_name.node.name,
                                          expr_t, tps.as_slice(),
                                          DontDerefArgs,
                                          CheckTraitsAndInherentMethods,
@@ -1966,11 +1966,10 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
             None => {
                 debug!("(checking method call) failing expr is {}", expr.id);
 
-                fcx.type_error_message(expr.span,
+                fcx.type_error_message(method_name.span,
                   |actual| {
-                      format!("type `{}` does not implement any method in scope \
-                            named `{}`",
-                           actual, token::get_ident(method_name))
+                      format!("type `{}` does not implement any method in scope named `{}`",
+                              actual, token::get_ident(method_name.node))
                   },
                   expr_t,
                   None);
@@ -1982,7 +1981,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         };
 
         // Call the generic checker.
-        let ret_ty = check_method_argument_types(fcx, expr.span,
+        let ret_ty = check_method_argument_types(fcx, method_name.span,
                                                  fn_ty, expr, args,
                                                  DontDerefArgs);
 

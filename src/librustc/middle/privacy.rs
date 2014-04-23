@@ -791,7 +791,7 @@ impl<'a> Visitor<()> for PrivacyVisitor<'a> {
                     }
                     Some(method) => {
                         debug!("(privacy checking) checking impl method");
-                        self.check_method(expr.span, method.origin, ident);
+                        self.check_method(expr.span, method.origin, ident.node);
                     }
                 }
             }

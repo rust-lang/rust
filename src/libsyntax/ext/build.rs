@@ -12,7 +12,7 @@ use abi;
 use ast::{P, Ident};
 use ast;
 use ast_util;
-use codemap::{Span, respan, DUMMY_SP};
+use codemap::{Span, respan, Spanned, DUMMY_SP};
 use ext::base::ExtCtxt;
 use ext::quote::rt::*;
 use fold::Folder;
@@ -548,8 +548,9 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                         expr: @ast::Expr,
                         ident: ast::Ident,
                         mut args: Vec<@ast::Expr> ) -> @ast::Expr {
+        let id = Spanned { node: ident, span: span };
         args.unshift(expr);
-        self.expr(span, ast::ExprMethodCall(ident, Vec::new(), args))
+        self.expr(span, ast::ExprMethodCall(id, Vec::new(), args))
     }
     fn expr_block(&self, b: P<ast::Block>) -> @ast::Expr {
         self.expr(b.span, ast::ExprBlock(b))
