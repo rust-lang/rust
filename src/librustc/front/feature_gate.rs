@@ -57,6 +57,8 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("linkage", Active),
     ("struct_inherit", Active),
 
+    ("quad_precision_float", Active),
+
     // These are used to test this portion of the compiler, they don't actually
     // mean anything
     ("test_accepted_feature", Accepted),
@@ -77,13 +79,15 @@ enum Status {
 
 /// A set of features to be used by later passes.
 pub struct Features {
-    pub default_type_params: Cell<bool>
+    pub default_type_params: Cell<bool>,
+    pub quad_precision_float: Cell<bool>
 }
 
 impl Features {
     pub fn new() -> Features {
         Features {
-            default_type_params: Cell::new(false)
+            default_type_params: Cell::new(false),
+            quad_precision_float: Cell::new(false)
         }
     }
 }
@@ -364,4 +368,5 @@ pub fn check_crate(sess: &Session, krate: &ast::Crate) {
     sess.abort_if_errors();
 
     sess.features.default_type_params.set(cx.has_feature("default_type_params"));
+    sess.features.quad_precision_float.set(cx.has_feature("quad_precision_float"));
 }

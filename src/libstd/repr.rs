@@ -280,6 +280,8 @@ impl<'a> TyVisitor for ReprVisitor<'a> {
 
     fn visit_f32(&mut self) -> bool { self.write::<f32>() }
     fn visit_f64(&mut self) -> bool { self.write::<f64>() }
+    #[cfg(not(stage0))]
+    fn visit_f128(&mut self) -> bool { fail!("not implemented") }
 
     fn visit_char(&mut self) -> bool {
         self.get::<char>(|this, &ch| {

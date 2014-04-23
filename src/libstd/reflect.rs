@@ -176,6 +176,14 @@ impl<V:TyVisitor + MovePtr> TyVisitor for MovePtrAdaptor<V> {
         true
     }
 
+    #[cfg(not(stage0))]
+    fn visit_f128(&mut self) -> bool {
+        self.align_to::<f128>();
+        if ! self.inner.visit_f128() { return false; }
+        self.bump_past::<f128>();
+        true
+    }
+
     fn visit_char(&mut self) -> bool {
         self.align_to::<char>();
         if ! self.inner.visit_char() { return false; }

@@ -187,7 +187,7 @@ pub fn uint_ty_max(t: UintTy) -> u64 {
 }
 
 pub fn float_ty_to_str(t: FloatTy) -> ~str {
-    match t { TyF32 => "f32".to_owned(), TyF64 => "f64".to_owned() }
+    match t { TyF32 => "f32".to_owned(), TyF64 => "f64".to_owned(), TyF128 => "f128".to_owned() }
 }
 
 pub fn is_call_expr(e: @Expr) -> bool {

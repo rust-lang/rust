@@ -332,6 +332,7 @@ impl fmt::Show for clean::Type {
                     ast::TyUint(ast::TyU64) => "u64",
                     ast::TyFloat(ast::TyF32) => "f32",
                     ast::TyFloat(ast::TyF64) => "f64",
+                    ast::TyFloat(ast::TyF128) => "f128",
                     ast::TyStr => "str",
                     ast::TyBool => "bool",
                     ast::TyChar => "char",
