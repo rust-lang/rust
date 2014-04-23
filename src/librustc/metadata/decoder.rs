@@ -1147,6 +1147,12 @@ pub fn maybe_get_crate_id(data: &[u8]) -> Option<CrateId> {
     })
 }
 
+pub fn get_crate_triple(data: &[u8]) -> ~str {
+    let cratedoc = reader::Doc(data);
+    let triple_doc = reader::maybe_get_doc(cratedoc, tag_crate_triple);
+    triple_doc.expect("No triple in crate").as_str()
+}
+
 pub fn get_crate_id(data: &[u8]) -> CrateId {
     let cratedoc = reader::Doc(data);
     let hashdoc = reader::get_doc(cratedoc, tag_crate_crateid);
@@ -1252,13 +1258,13 @@ pub fn get_native_libraries(cdata: Cmd) -> Vec<(cstore::NativeLibaryKind, ~str)>
     return result;
 }
 
-pub fn get_macro_registrar_fn(cdata: Cmd) -> Option<ast::NodeId> {
-    reader::maybe_get_doc(reader::Doc(cdata.data()), tag_macro_registrar_fn)
+pub fn get_macro_registrar_fn(data: &[u8]) -> Option<ast::NodeId> {
+    reader::maybe_get_doc(reader::Doc(data), tag_macro_registrar_fn)
         .map(|doc| FromPrimitive::from_u32(reader::doc_as_u32(doc)).unwrap())
 }
 
-pub fn get_exported_macros(cdata: Cmd) -> Vec<~str> {
-    let macros = reader::get_doc(reader::Doc(cdata.data()),
+pub fn get_exported_macros(data: &[u8]) -> Vec<~str> {
+    let macros = reader::get_doc(reader::Doc(data),
                                  tag_exported_macros);
     let mut result = Vec::new();
     reader::tagged_docs(macros, tag_macro_def, |macro_doc| {

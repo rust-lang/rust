@@ -10,17 +10,10 @@
 
 // aux-build:macro_crate_test.rs
 // ignore-stage1
-// ignore-android
-// force-host
-
-// You'll note that there's lots of directives above. This is a very particular
-// test in which we're both linking to a macro crate and loading macros from it.
-// This implies that both versions are the host architecture, meaning this test
-// must also be compiled with the host arch.
+// ignore-cross-compile
 //
-// because this doesn't work with that test runner, ignore-android because it
-// can't run host binaries, and force-host to make this test build as the host
-// arch.
+// macro_crate_test will not compile on a cross-compiled target because
+// libsyntax is not compiled for it.
 
 #![feature(phase)]
 

@@ -201,6 +201,8 @@ pub static tag_macro_registrar_fn: uint = 0x8b;
 pub static tag_exported_macros: uint = 0x8c;
 pub static tag_macro_def: uint = 0x8d;
 
+pub static tag_crate_triple: uint = 0x66;
+
 #[deriving(Clone, Show)]
 pub struct LinkMeta {
     pub crateid: CrateId,
