@@ -57,7 +57,7 @@ pub fn main() {
     mk_file("bbb/specials/!", false);
 
     // windows does not allow `*` or `?` characters to exist in filenames
-    if os::consts::FAMILY != os::consts::windows::FAMILY {
+    if os::consts::FAMILY != "windows" {
         mk_file("bbb/specials/*", false);
         mk_file("bbb/specials/?", false);
     }
@@ -84,7 +84,7 @@ pub fn main() {
     assert_eq!(glob_vec("aaa/apple/nope"), Vec::new());
 
     // windows should support both / and \ as directory separators
-    if os::consts::FAMILY == os::consts::windows::FAMILY {
+    if os::consts::FAMILY == "windows" {
         assert_eq!(glob_vec("aaa\\apple"), vec!(abs_path("aaa/apple")));
     }
 
@@ -156,12 +156,12 @@ pub fn main() {
     assert_eq!(glob_vec("bbb/specials/!"), vec!(abs_path("bbb/specials/!")));
     assert_eq!(glob_vec("bbb/specials/[]]"), vec!(abs_path("bbb/specials/]")));
 
-    if os::consts::FAMILY != os::consts::windows::FAMILY {
+    if os::consts::FAMILY != "windows" {
         assert_eq!(glob_vec("bbb/specials/[*]"), vec!(abs_path("bbb/specials/*")));
         assert_eq!(glob_vec("bbb/specials/[?]"), vec!(abs_path("bbb/specials/?")));
     }
 
-    if os::consts::FAMILY == os::consts::windows::FAMILY {
+    if os::consts::FAMILY == "windows" {
 
         assert_eq!(glob_vec("bbb/specials/[![]"), vec!(
             abs_path("bbb/specials/!"),
