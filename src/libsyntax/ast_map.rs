@@ -363,14 +363,15 @@ impl Map {
     }
 
     pub fn with_attrs<T>(&self, id: NodeId, f: |Option<&[Attribute]>| -> T) -> T {
-        let attrs = match self.get(id) {
-            NodeItem(i) => Some(i.attrs.as_slice()),
-            NodeForeignItem(fi) => Some(fi.attrs.as_slice()),
-            NodeTraitMethod(tm) => match *tm {
+        let node = self.get(id);
+        let attrs = match node {
+            NodeItem(ref i) => Some(i.attrs.as_slice()),
+            NodeForeignItem(ref fi) => Some(fi.attrs.as_slice()),
+            NodeTraitMethod(ref tm) => match **tm {
                 Required(ref type_m) => Some(type_m.attrs.as_slice()),
-                Provided(m) => Some(m.attrs.as_slice())
+                Provided(ref m) => Some(m.attrs.as_slice())
             },
-            NodeMethod(m) => Some(m.attrs.as_slice()),
+            NodeMethod(ref m) => Some(m.attrs.as_slice()),
             NodeVariant(ref v) => Some(v.node.attrs.as_slice()),
             // unit/tuple structs take the attributes straight from
             // the struct definition.
