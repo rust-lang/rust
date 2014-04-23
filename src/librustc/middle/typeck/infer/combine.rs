@@ -69,15 +69,17 @@ use syntax::ast;
 use syntax::owned_slice::OwnedSlice;
 use syntax::abi;
 
-pub trait Combine {
-    fn infcx<'a>(&'a self) -> &'a InferCtxt<'a>;
-    fn tag(&self) -> ~str;
-    fn a_is_expected(&self) -> bool;
-    fn trace(&self) -> TypeTrace;
+pub trait Combine<'f> {
+    fn get_ref<'a>(&'a self) -> &'a CombineFields<'f>;
+    fn tag(&self) -> &'static str;
 
-    fn sub<'a>(&'a self) -> Sub<'a>;
-    fn lub<'a>(&'a self) -> Lub<'a>;
-    fn glb<'a>(&'a self) -> Glb<'a>;
+    fn infcx(&self) -> &'f InferCtxt<'f> { self.get_ref().infcx }
+    fn a_is_expected(&self) -> bool { self.get_ref().a_is_expected }
+    fn trace(&self) -> TypeTrace { self.get_ref().trace.clone() }
+
+    fn sub(&self) -> Sub<'f> { Sub(self.get_ref().clone()) }
+    fn lub(&self) -> Lub<'f> { Lub(self.get_ref().clone()) }
+    fn glb(&self) -> Glb<'f> { Glb(self.get_ref().clone()) }
 
     fn mts(&self, a: &ty::mt, b: &ty::mt) -> cres<ty::mt>;
     fn contratys(&self, a: ty::t, b: ty::t) -> cres<ty::t>;
@@ -131,11 +133,11 @@ pub trait Combine {
               as_: &ty::substs,
               bs: &ty::substs) -> cres<ty::substs> {
 
-        fn relate_region_params<C:Combine>(this: &C,
-                                           item_def_id: ast::DefId,
-                                           a: &ty::RegionSubsts,
-                                           b: &ty::RegionSubsts)
-                                           -> cres<ty::RegionSubsts> {
+        fn relate_region_params<'f, C: Combine<'f>>(this: &C,
+                                                    item_def_id: ast::DefId,
+                                                    a: &ty::RegionSubsts,
+                                                    b: &ty::RegionSubsts)
+                                                    -> cres<ty::RegionSubsts> {
             let tcx = this.infcx().tcx;
             match (a, b) {
                 (&ty::ErasedRegions, _) | (_, &ty::ErasedRegions) => {
@@ -331,7 +333,7 @@ pub struct CombineFields<'a> {
     pub trace: TypeTrace,
 }
 
-pub fn expected_found<C:Combine,T>(
+pub fn expected_found<'f, C: Combine<'f>, T>(
         this: &C, a: T, b: T) -> ty::expected_found<T> {
     if this.a_is_expected() {
         ty::expected_found {expected: a, found: b}
@@ -340,15 +342,15 @@ pub fn expected_found<C:Combine,T>(
     }
 }
 
-pub fn eq_tys<C:Combine>(this: &C, a: ty::t, b: ty::t) -> ures {
+pub fn eq_tys<'f, C: Combine<'f>>(this: &C, a: ty::t, b: ty::t) -> ures {
     let suber = this.sub();
     this.infcx().try(|| {
         suber.tys(a, b).and_then(|_ok| suber.contratys(a, b)).to_ures()
     })
 }
 
-pub fn eq_regions<C:Combine>(this: &C, a: ty::Region, b: ty::Region)
-                          -> ures {
+pub fn eq_regions<'f, C: Combine<'f>>(this: &C, a: ty::Region, b: ty::Region)
+                                      -> ures {
     debug!("eq_regions({}, {})",
             a.repr(this.infcx().tcx),
             b.repr(this.infcx().tcx));
@@ -368,9 +370,11 @@ pub fn eq_regions<C:Combine>(this: &C, a: ty::Region, b: ty::Region)
     })
 }
 
-pub fn super_fn_sigs<C:Combine>(this: &C, a: &ty::FnSig, b: &ty::FnSig) -> cres<ty::FnSig> {
+pub fn super_fn_sigs<'f, C: Combine<'f>>(this: &C, a: &ty::FnSig, b: &ty::FnSig)
+                                         -> cres<ty::FnSig> {
 
-    fn argvecs<C:Combine>(this: &C, a_args: &[ty::t], b_args: &[ty::t]) -> cres<Vec<ty::t> > {
+    fn argvecs<'f, C: Combine<'f>>(this: &C, a_args: &[ty::t], b_args: &[ty::t])
+                                   -> cres<Vec<ty::t> > {
         if a_args.len() == b_args.len() {
             result::collect(a_args.iter().zip(b_args.iter())
                             .map(|(a, b)| this.args(*a, *b)))
@@ -393,7 +397,7 @@ pub fn super_fn_sigs<C:Combine>(this: &C, a: &ty::FnSig, b: &ty::FnSig) -> cres<
               variadic: a.variadic})
 }
 
-pub fn super_tys<C:Combine>(this: &C, a: ty::t, b: ty::t) -> cres<ty::t> {
+pub fn super_tys<'f, C: Combine<'f>>(this: &C, a: ty::t, b: ty::t) -> cres<ty::t> {
     let tcx = this.infcx().tcx;
     let a_sty = &ty::get(a).sty;
     let b_sty = &ty::get(b).sty;
@@ -575,7 +579,7 @@ pub fn super_tys<C:Combine>(this: &C, a: ty::t, b: ty::t) -> cres<ty::t> {
       _ => Err(ty::terr_sorts(expected_found(this, a, b)))
     };
 
-    fn unify_integral_variable<C:Combine>(
+    fn unify_integral_variable<'f, C: Combine<'f>>(
         this: &C,
         vid_is_expected: bool,
         vid: ty::IntVid,
@@ -588,7 +592,7 @@ pub fn super_tys<C:Combine>(this: &C, a: ty::t, b: ty::t) -> cres<ty::t> {
         }
     }
 
-    fn unify_float_variable<C:Combine>(
+    fn unify_float_variable<'f, C: Combine<'f>>(
         this: &C,
         vid_is_expected: bool,
         vid: ty::FloatVid,

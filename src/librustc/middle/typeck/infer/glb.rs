@@ -15,11 +15,8 @@ use middle::ty;
 use middle::typeck::infer::then;
 use middle::typeck::infer::combine::*;
 use middle::typeck::infer::lattice::*;
-use middle::typeck::infer::lub::Lub;
-use middle::typeck::infer::sub::Sub;
 use middle::typeck::infer::to_str::InferStr;
-use middle::typeck::infer::{cres, InferCtxt};
-use middle::typeck::infer::{TypeTrace, Subtype};
+use middle::typeck::infer::{cres, Subtype};
 use middle::typeck::infer::fold_regions_in_sig;
 use syntax::ast::{Many, Once, MutImmutable, MutMutable};
 use syntax::ast::{ExternFn, NormalFn, UnsafeFn, NodeId};
@@ -30,19 +27,9 @@ use util::ppaux::mt_to_str;
 
 pub struct Glb<'f>(pub CombineFields<'f>);  // "greatest lower bound" (common subtype)
 
-impl<'f> Glb<'f> {
-    pub fn get_ref<'a>(&'a self) -> &'a CombineFields<'f> { let Glb(ref v) = *self; v }
-}
-
-impl<'f> Combine for Glb<'f> {
-    fn infcx<'a>(&'a self) -> &'a InferCtxt<'a> { self.get_ref().infcx }
-    fn tag(&self) -> ~str { "glb".to_owned() }
-    fn a_is_expected(&self) -> bool { self.get_ref().a_is_expected }
-    fn trace(&self) -> TypeTrace { self.get_ref().trace.clone() }
-
-    fn sub<'a>(&'a self) -> Sub<'a> { Sub(self.get_ref().clone()) }
-    fn lub<'a>(&'a self) -> Lub<'a> { Lub(self.get_ref().clone()) }
-    fn glb<'a>(&'a self) -> Glb<'a> { Glb(self.get_ref().clone()) }
+impl<'f> Combine<'f> for Glb<'f> {
+    fn get_ref<'a>(&'a self) -> &'a CombineFields<'f> { let Glb(ref v) = *self; v }
+    fn tag(&self) -> &'static str { "glb" }
 
     fn mts(&self, a: &ty::mt, b: &ty::mt) -> cres<ty::mt> {
         let tcx = self.get_ref().infcx.tcx;

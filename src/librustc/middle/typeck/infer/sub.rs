@@ -14,14 +14,10 @@ use middle::ty;
 use middle::ty::TyVar;
 use middle::typeck::check::regionmanip::replace_late_bound_regions_in_fn_sig;
 use middle::typeck::infer::combine::*;
-use middle::typeck::infer::{cres, CresCompare};
-use middle::typeck::infer::glb::Glb;
-use middle::typeck::infer::InferCtxt;
+use middle::typeck::infer::{cres, CresCompare, Subtype};
 use middle::typeck::infer::lattice::CombineFieldsLatticeMethods;
-use middle::typeck::infer::lub::Lub;
 use middle::typeck::infer::then;
 use middle::typeck::infer::to_str::InferStr;
-use middle::typeck::infer::{TypeTrace, Subtype};
 use util::common::{indenter};
 use util::ppaux::bound_region_to_str;
 
@@ -29,19 +25,9 @@ use syntax::ast::{Onceness, FnStyle};
 
 pub struct Sub<'f>(pub CombineFields<'f>);  // "subtype", "subregion" etc
 
-impl<'f> Sub<'f> {
-    pub fn get_ref<'a>(&'a self) -> &'a CombineFields<'f> { let Sub(ref v) = *self; v }
-}
-
-impl<'f> Combine for Sub<'f> {
-    fn infcx<'a>(&'a self) -> &'a InferCtxt<'a> { self.get_ref().infcx }
-    fn tag(&self) -> ~str { "sub".to_owned() }
-    fn a_is_expected(&self) -> bool { self.get_ref().a_is_expected }
-    fn trace(&self) -> TypeTrace { self.get_ref().trace.clone() }
-
-    fn sub<'a>(&'a self) -> Sub<'a> { Sub(self.get_ref().clone()) }
-    fn lub<'a>(&'a self) -> Lub<'a> { Lub(self.get_ref().clone()) }
-    fn glb<'a>(&'a self) -> Glb<'a> { Glb(self.get_ref().clone()) }
+impl<'f> Combine<'f> for Sub<'f> {
+    fn get_ref<'a>(&'a self) -> &'a CombineFields<'f> { let Sub(ref v) = *self; v }
+    fn tag(&self) -> &'static str { "sub" }
 
     fn contratys(&self, a: ty::t, b: ty::t) -> cres<ty::t> {
         let opp = CombineFields {

@@ -364,10 +364,10 @@ impl<'f> TyLatticeDir for Glb<'f> {
     }
 }
 
-pub fn super_lattice_tys<L:LatticeDir+TyLatticeDir+Combine>(this: &L,
-                                                            a: ty::t,
-                                                            b: ty::t)
-                                                            -> cres<ty::t> {
+pub fn super_lattice_tys<'f, L:LatticeDir+TyLatticeDir+Combine<'f>>(this: &L,
+                                                                    a: ty::t,
+                                                                    b: ty::t)
+                                                                    -> cres<ty::t> {
     debug!("{}.lattice_tys({}, {})", this.tag(),
            a.inf_str(this.infcx()),
            b.inf_str(this.infcx()));
@@ -430,7 +430,7 @@ pub enum LatticeVarResult<V,T> {
  *   the variables and return the unified variable, in which case the
  *   result is a variable.  This is indicated with a `VarResult`
  *   return. */
-pub fn lattice_vars<L:LatticeDir + Combine,
+pub fn lattice_vars<'f, L:LatticeDir + Combine<'f>,
                     T:Clone + InferStr + LatticeValue,
                     V:Clone + Eq + ToStr + Vid + UnifyVid<Bounds<T>>>(
     this: &L,                           // defines whether we want LUB or GLB
@@ -476,7 +476,7 @@ pub fn lattice_vars<L:LatticeDir + Combine,
     })
 }
 
-pub fn lattice_var_and_t<L:LatticeDir + Combine,
+pub fn lattice_var_and_t<'f, L:LatticeDir + Combine<'f>,
                          T:Clone + InferStr + LatticeValue,
                          V:Clone + Eq + ToStr + Vid + UnifyVid<Bounds<T>>>(
     this: &L,
@@ -521,9 +521,9 @@ pub fn lattice_var_and_t<L:LatticeDir + Combine,
 // Random utility functions used by LUB/GLB when computing LUB/GLB of
 // fn types
 
-pub fn var_ids<T:Combine>(this: &T,
-                          map: &HashMap<ty::BoundRegion, ty::Region>)
-                          -> Vec<RegionVid> {
+pub fn var_ids<'f, T: Combine<'f>>(this: &T,
+                                   map: &HashMap<ty::BoundRegion, ty::Region>)
+                                   -> Vec<RegionVid> {
     map.iter().map(|(_, r)| match *r {
             ty::ReInfer(ty::ReVar(r)) => { r }
             r => {
