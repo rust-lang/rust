@@ -317,8 +317,22 @@ impl<'a> Visitor<()> for CheckItemTypesVisitor<'a> {
     }
 }
 
+struct CheckItemSizedTypesVisitor<'a> { ccx: &'a CrateCtxt<'a> }
+
+impl<'a> Visitor<()> for CheckItemSizedTypesVisitor<'a> {
+    fn visit_item(&mut self, i: &ast::Item, _: ()) {
+        check_item_sized(self.ccx, i);
+        visit::walk_item(self, i, ());
+    }
+}
+
 pub fn check_item_types(ccx: &CrateCtxt, krate: &ast::Crate) {
     let mut visit = CheckItemTypesVisitor { ccx: ccx };
+    visit::walk_crate(&mut visit, krate, ());
+
+    ccx.tcx.sess.abort_if_errors();
+
+    let mut visit = CheckItemSizedTypesVisitor { ccx: ccx };
     visit::walk_crate(&mut visit, krate, ());
 }
 
@@ -369,21 +383,21 @@ impl<'a> GatherLocalsVisitor<'a> {
 }
 
 impl<'a> Visitor<()> for GatherLocalsVisitor<'a> {
-        // Add explicitly-declared locals.
+    // Add explicitly-declared locals.
     fn visit_local(&mut self, local: &ast::Local, _: ()) {
-            let o_ty = match local.ty.node {
-              ast::TyInfer => None,
-              _ => Some(self.fcx.to_ty(local.ty))
-            };
-            self.assign(local.id, o_ty);
-            debug!("Local variable {} is assigned type {}",
-                   self.fcx.pat_to_str(local.pat),
-                   self.fcx.infcx().ty_to_str(
-                       self.fcx.inh.locals.borrow().get_copy(&local.id)));
-            visit::walk_local(self, local, ());
-
+        let o_ty = match local.ty.node {
+            ast::TyInfer => None,
+            _ => Some(self.fcx.to_ty(local.ty))
+        };
+        self.assign(local.id, o_ty);
+        debug!("Local variable {} is assigned type {}",
+               self.fcx.pat_to_str(local.pat),
+               self.fcx.infcx().ty_to_str(
+                   self.fcx.inh.locals.borrow().get_copy(&local.id)));
+        visit::walk_local(self, local, ());
     }
-        // Add pattern bindings.
+
+    // Add pattern bindings.
     fn visit_pat(&mut self, p: &ast::Pat, _: ()) {
             match p.node {
               ast::PatIdent(_, ref path, _)
@@ -561,13 +575,35 @@ fn check_for_field_shadowing(tcx: &ty::ctxt,
     }
 }
 
+fn check_fields_sized(tcx: &ty::ctxt,
+                      struct_def: &ast::StructDef) {
+    let len = struct_def.fields.len();
+    if len == 0 {
+        return;
+    }
+    for f in struct_def.fields.slice_to(len - 1).iter() {
+        let t = ty::node_id_to_type(tcx, f.node.id);
+        if !ty::type_is_sized(tcx, t) {
+            match f.node.kind {
+                ast::NamedField(ident, _) => {
+                    tcx.sess.span_err(f.span, format!("type `{}` is dynamically sized. \
+                                                       dynamically sized types may only \
+                                                       appear as the type of the final \
+                                                       field in a struct",
+                                                      token::get_ident(ident)));
+                }
+                ast::UnnamedField(_) => {
+                    tcx.sess.span_err(f.span, "dynamically sized type in field");
+                }
+            }
+        }
+    }
+}
+
 pub fn check_struct(ccx: &CrateCtxt, id: ast::NodeId, span: Span) {
     let tcx = ccx.tcx;
 
-    // Check that the struct is representable
     check_representable(tcx, span, id, "struct");
-
-    // Check that the struct is instantiable
     check_instantiable(tcx, span, id);
 
     // Check there are no overlapping fields in super-structs
@@ -575,6 +611,24 @@ pub fn check_struct(ccx: &CrateCtxt, id: ast::NodeId, span: Span) {
 
     if ty::lookup_simd(tcx, local_def(id)) {
         check_simd(tcx, span, id);
+    }
+}
+
+pub fn check_item_sized(ccx: &CrateCtxt, it: &ast::Item) {
+    debug!("check_item(it.id={}, it.ident={})",
+           it.id,
+           ty::item_path_str(ccx.tcx, local_def(it.id)));
+    let _indenter = indenter();
+
+    match it.node {
+        ast::ItemEnum(ref enum_definition, _) => {
+            check_enum_variants_sized(ccx,
+                                      enum_definition.variants.as_slice());
+        }
+        ast::ItemStruct(..) => {
+            check_fields_sized(ccx.tcx, ccx.tcx.map.expect_struct(it.id));
+        }
+        _ => {}
     }
 }
 
@@ -630,7 +684,7 @@ pub fn check_item(ccx: &CrateCtxt, it: &ast::Item) {
         }
 
       }
-      ast::ItemTrait(_, _, ref trait_methods) => {
+      ast::ItemTrait(_, _, _, ref trait_methods) => {
         let trait_def = ty::lookup_trait_def(ccx.tcx, local_def(it.id));
         for trait_method in (*trait_methods).iter() {
             match *trait_method {
@@ -3436,7 +3490,7 @@ pub fn check_const_with_ty(fcx: &FnCtxt,
 pub fn check_representable(tcx: &ty::ctxt,
                            sp: Span,
                            item_id: ast::NodeId,
-                           designation: &str) {
+                           designation: &str) -> bool {
     let rty = ty::node_id_to_type(tcx, item_id);
 
     // Check that it is possible to represent this type. This call identifies
@@ -3450,9 +3504,11 @@ pub fn check_representable(tcx: &ty::ctxt,
           sp, format!("illegal recursive {} type; \
                        wrap the inner value in a box to make it representable",
                       designation));
+        return false
       }
       ty::Representable | ty::ContainsRecursive => (),
     }
+    return true
 }
 
 /// Checks whether a type can be created without an instance of itself.
@@ -3468,13 +3524,17 @@ pub fn check_representable(tcx: &ty::ctxt,
 /// is representable, but not instantiable.
 pub fn check_instantiable(tcx: &ty::ctxt,
                           sp: Span,
-                          item_id: ast::NodeId) {
+                          item_id: ast::NodeId)
+                          -> bool {
     let item_ty = ty::node_id_to_type(tcx, item_id);
     if !ty::is_instantiable(tcx, item_ty) {
         tcx.sess.span_err(sp, format!("this type cannot be instantiated \
                   without an instance of itself; \
                   consider using `Option<{}>`",
                                    ppaux::ty_to_str(tcx, item_ty)));
+        false
+    } else {
+        true
     }
 }
 
@@ -3504,6 +3564,37 @@ pub fn check_simd(tcx: &ty::ctxt, sp: Span, id: ast::NodeId) {
             }
         }
         _ => ()
+    }
+}
+
+pub fn check_enum_variants_sized(ccx: &CrateCtxt,
+                                 vs: &[ast::P<ast::Variant>]) {
+    for &v in vs.iter() {
+        match v.node.kind {
+            ast::TupleVariantKind(ref args) if args.len() > 0 => {
+                let ctor_ty = ty::node_id_to_type(ccx.tcx, v.node.id);
+                let arg_tys: Vec<ty::t> = ty::ty_fn_args(ctor_ty).iter().map(|a| *a).collect();
+                let len = arg_tys.len();
+                if len == 0 {
+                    return;
+                }
+                for (i, t) in arg_tys.slice_to(len - 1).iter().enumerate() {
+                    // Allow the last field in an enum to be unsized.
+                    // We want to do this so that we can support smart pointers.
+                    // A struct value with an unsized final field is itself
+                    // unsized and we must track this in the type system.
+                    if !ty::type_is_sized(ccx.tcx, *t) {
+                        ccx.tcx.sess.span_err(args.get(i).ty.span,
+                                              format!("type `{}` is dynamically sized. \
+                                                       dynamically sized types may only \
+                                                       appear as the final type in a variant",
+                                                      ppaux::ty_to_str(ccx.tcx, *t)));
+                    }
+                }
+            },
+            ast::StructVariantKind(struct_def) => check_fields_sized(ccx.tcx, struct_def),
+            _ => {}
+        }
     }
 }
 
@@ -3627,7 +3718,6 @@ pub fn check_enum_variants(ccx: &CrateCtxt,
     // cache so that ty::enum_variants won't repeat this work
     ccx.tcx.enum_var_cache.borrow_mut().insert(local_def(id), Rc::new(variants));
 
-    // Check that it is possible to represent this enum.
     check_representable(ccx.tcx, sp, id, "enum");
 
     // Check that it is possible to instantiate this enum:

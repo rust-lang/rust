@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,23 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Tests that the borrow checker checks all components of a path when moving
-// out.
+// Test syntax checks for `type` keyword.
 
-#![no_std]
+struct S1 for type; //~ ERROR expected `{`, `(`, or `;` after struct name but found `for`
 
-#[lang="sized"]
-pub trait Sized {}
-
-struct S {
-  x : ~int
-}
-
-fn f<T>(_: T) {}
-
-fn main() {
-  let a : S = S { x : ~1 };
-  let pb = &a;
-  let S { x: ax } = a;  //~ ERROR cannot move out
-  f(pb);
+pub fn main() {
 }

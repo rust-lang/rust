@@ -2595,18 +2595,7 @@ pub fn type_is_machine(ty: t) -> bool {
 // Is the type's representation size known at compile time?
 #[allow(dead_code)] // leaving in for DST
 pub fn type_is_sized(cx: &ctxt, ty: ty::t) -> bool {
-    match get(ty).sty {
-        // FIXME(#6308) add trait, vec, str, etc here.
-        ty_param(p) => {
-            let ty_param_defs = cx.ty_param_defs.borrow();
-            let param_def = ty_param_defs.get(&p.def_id.node);
-            if param_def.bounds.builtin_bounds.contains_elem(BoundSized) {
-                return true;
-            }
-            return false;
-        },
-        _ => return true,
-    }
+    type_contents(cx, ty).is_sized(cx)
 }
 
 // Whether a type is enum like, that is an enum type with only nullary
@@ -3500,7 +3489,7 @@ pub fn provided_trait_methods(cx: &ctxt, id: ast::DefId) -> Vec<Rc<Method>> {
         match cx.map.find(id.node) {
             Some(ast_map::NodeItem(item)) => {
                 match item.node {
-                    ItemTrait(_, _, ref ms) => {
+                    ItemTrait(_, _, _, ref ms) => {
                         let (_, p) = ast_util::split_trait_methods(ms.as_slice());
                         p.iter().map(|m| method(cx, ast_util::local_def(m.id))).collect()
                     }

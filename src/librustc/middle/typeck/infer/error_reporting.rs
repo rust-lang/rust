@@ -878,6 +878,8 @@ impl<'a> Rebuilder<'a> {
                 id: ty_param.id,
                 bounds: bounds,
                 default: ty_param.default,
+                span: ty_param.span,
+                sized: ty_param.sized,
             }
         })
     }
