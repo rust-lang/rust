@@ -59,4 +59,6 @@ extern "system" {
                       optname: libc::c_int,
                       optval: *mut libc::c_char,
                       optlen: *mut libc::c_int) -> libc::c_int;
+
+    pub fn CancelIo(hFile: libc::HANDLE) -> libc::BOOL;
 }

@@ -13,13 +13,12 @@ use std::cast;
 use std::io::net::ip;
 use std::io;
 use std::mem;
-use std::os;
-use std::ptr;
 use std::rt::rtio;
 use std::sync::arc::UnsafeArc;
 
 use super::{IoResult, retry, keep_going};
 use super::c;
+use super::util;
 
 ////////////////////////////////////////////////////////////////////////////////
 // sockaddr and misc bindings
@@ -118,8 +117,8 @@ fn setsockopt<T>(fd: sock_t, opt: libc::c_int, val: libc::c_int,
     }
 }
 
-fn getsockopt<T: Copy>(fd: sock_t, opt: libc::c_int,
-                       val: libc::c_int) -> IoResult<T> {
+pub fn getsockopt<T: Copy>(fd: sock_t, opt: libc::c_int,
+                           val: libc::c_int) -> IoResult<T> {
     unsafe {
         let mut slot: T = mem::init();
         let mut len = mem::size_of::<T>() as libc::socklen_t;
@@ -143,21 +142,6 @@ fn last_error() -> io::IoError {
 #[cfg(not(windows))]
 fn last_error() -> io::IoError {
     super::last_error()
-}
-
-fn ms_to_timeval(ms: u64) -> libc::timeval {
-    libc::timeval {
-        tv_sec: (ms / 1000) as libc::time_t,
-        tv_usec: ((ms % 1000) * 1000) as libc::suseconds_t,
-    }
-}
-
-fn timeout(desc: &'static str) -> io::IoError {
-    io::IoError {
-        kind: io::TimedOut,
-        desc: desc,
-        detail: None,
-    }
 }
 
 #[cfg(windows)] unsafe fn close(sock: sock_t) { let _ = libc::closesocket(sock); }
@@ -270,7 +254,7 @@ impl TcpStream {
         let addrp = &addr as *_ as *libc::sockaddr;
         match timeout {
             Some(timeout) => {
-                try!(TcpStream::connect_timeout(fd, addrp, len, timeout));
+                try!(util::connect_timeout(fd, addrp, len, timeout));
                 Ok(ret)
             },
             None => {
@@ -279,84 +263,6 @@ impl TcpStream {
                     _ => Ok(ret),
                 }
             }
-        }
-    }
-
-    // See http://developerweb.net/viewtopic.php?id=3196 for where this is
-    // derived from.
-    fn connect_timeout(fd: sock_t,
-                       addrp: *libc::sockaddr,
-                       len: libc::socklen_t,
-                       timeout_ms: u64) -> IoResult<()> {
-        #[cfg(unix)]    use INPROGRESS = libc::EINPROGRESS;
-        #[cfg(windows)] use INPROGRESS = libc::WSAEINPROGRESS;
-        #[cfg(unix)]    use WOULDBLOCK = libc::EWOULDBLOCK;
-        #[cfg(windows)] use WOULDBLOCK = libc::WSAEWOULDBLOCK;
-
-        // Make sure the call to connect() doesn't block
-        try!(set_nonblocking(fd, true));
-
-        let ret = match unsafe { libc::connect(fd, addrp, len) } {
-            // If the connection is in progress, then we need to wait for it to
-            // finish (with a timeout). The current strategy for doing this is
-            // to use select() with a timeout.
-            -1 if os::errno() as int == INPROGRESS as int ||
-                  os::errno() as int == WOULDBLOCK as int => {
-                let mut set: c::fd_set = unsafe { mem::init() };
-                c::fd_set(&mut set, fd);
-                match await(fd, &mut set, timeout_ms) {
-                    0 => Err(timeout("connection timed out")),
-                    -1 => Err(last_error()),
-                    _ => {
-                        let err: libc::c_int = try!(
-                            getsockopt(fd, libc::SOL_SOCKET, libc::SO_ERROR));
-                        if err == 0 {
-                            Ok(())
-                        } else {
-                            Err(io::IoError::from_errno(err as uint, true))
-                        }
-                    }
-                }
-            }
-
-            -1 => Err(last_error()),
-            _ => Ok(()),
-        };
-
-        // be sure to turn blocking I/O back on
-        try!(set_nonblocking(fd, false));
-        return ret;
-
-        #[cfg(unix)]
-        fn set_nonblocking(fd: sock_t, nb: bool) -> IoResult<()> {
-            let set = nb as libc::c_int;
-            super::mkerr_libc(retry(|| unsafe { c::ioctl(fd, c::FIONBIO, &set) }))
-        }
-        #[cfg(windows)]
-        fn set_nonblocking(fd: sock_t, nb: bool) -> IoResult<()> {
-            let mut set = nb as libc::c_ulong;
-            if unsafe { c::ioctlsocket(fd, c::FIONBIO, &mut set) != 0 } {
-                Err(last_error())
-            } else {
-                Ok(())
-            }
-        }
-
-        #[cfg(unix)]
-        fn await(fd: sock_t, set: &mut c::fd_set, timeout: u64) -> libc::c_int {
-            let start = ::io::timer::now();
-            retry(|| unsafe {
-                // Recalculate the timeout each iteration (it is generally
-                // undefined what the value of the 'tv' is after select
-                // returns EINTR).
-                let tv = ms_to_timeval(timeout - (::io::timer::now() - start));
-                c::select(fd + 1, ptr::null(), &*set, ptr::null(), &tv)
-            })
-        }
-        #[cfg(windows)]
-        fn await(_fd: sock_t, set: &mut c::fd_set, timeout: u64) -> libc::c_int {
-            let tv = ms_to_timeval(timeout);
-            unsafe { c::select(1, ptr::null(), &*set, ptr::null(), &tv) }
         }
     }
 
@@ -533,7 +439,7 @@ impl TcpAcceptor {
 
     pub fn native_accept(&mut self) -> IoResult<TcpStream> {
         if self.deadline != 0 {
-            try!(self.accept_deadline());
+            try!(util::accept_deadline(self.fd(), self.deadline));
         }
         unsafe {
             let mut storage: libc::sockaddr_storage = mem::init();
@@ -548,25 +454,6 @@ impl TcpAcceptor {
                 -1 => Err(last_error()),
                 fd => Ok(TcpStream { inner: UnsafeArc::new(Inner { fd: fd })})
             }
-        }
-    }
-
-    fn accept_deadline(&mut self) -> IoResult<()> {
-        let mut set: c::fd_set = unsafe { mem::init() };
-        c::fd_set(&mut set, self.fd());
-
-        match retry(|| {
-            // If we're past the deadline, then pass a 0 timeout to select() so
-            // we can poll the status of the socket.
-            let now = ::io::timer::now();
-            let ms = if self.deadline > now {0} else {self.deadline - now};
-            let tv = ms_to_timeval(ms);
-            let n = if cfg!(windows) {1} else {self.fd() as libc::c_int + 1};
-            unsafe { c::select(n, &set, ptr::null(), ptr::null(), &tv) }
-        }) {
-            -1 => Err(last_error()),
-            0 => Err(timeout("accept timed out")),
-            _ => return Ok(()),
         }
     }
 }
@@ -585,10 +472,7 @@ impl rtio::RtioTcpAcceptor for TcpAcceptor {
     fn accept_simultaneously(&mut self) -> IoResult<()> { Ok(()) }
     fn dont_accept_simultaneously(&mut self) -> IoResult<()> { Ok(()) }
     fn set_timeout(&mut self, timeout: Option<u64>) {
-        self.deadline = match timeout {
-            None => 0,
-            Some(t) => ::io::timer::now() + t,
-        };
+        self.deadline = timeout.map(|a| ::io::timer::now() + a).unwrap_or(0);
     }
 }
 
