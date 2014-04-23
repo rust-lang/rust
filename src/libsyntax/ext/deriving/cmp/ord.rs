@@ -30,7 +30,9 @@ pub fn expand_deriving_ord(cx: &mut ExtCtxt,
                 ret_ty: Literal(Path::new(vec!("bool"))),
                 inline: true,
                 const_nonmatching: false,
-                combine_substructure: |cx, span, substr| cs_op($op, $equal, cx, span, substr)
+                combine_substructure: combine_substructure(|cx, span, substr| {
+                    cs_op($op, $equal, cx, span, substr)
+                })
             }
         }
     );

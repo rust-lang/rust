@@ -49,7 +49,9 @@ pub fn expand_deriving_hash(cx: &mut ExtCtxt,
                 ret_ty: nil_ty(),
                 inline: true,
                 const_nonmatching: false,
-                combine_substructure: hash_substructure
+                combine_substructure: combine_substructure(|a, b, c| {
+                    hash_substructure(a, b, c)
+                })
             }
         )
     };

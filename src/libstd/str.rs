@@ -217,7 +217,7 @@ impl<'a, S: Str> StrVector for Vec<S> {
 /// Something that can be used to compare against a character
 pub trait CharEq {
     /// Determine if the splitter should split at the given character
-    fn matches(&self, char) -> bool;
+    fn matches(&mut self, char) -> bool;
     /// Indicate if this is only concerned about ASCII characters,
     /// which can allow for a faster implementation.
     fn only_ascii(&self) -> bool;
@@ -225,7 +225,7 @@ pub trait CharEq {
 
 impl CharEq for char {
     #[inline]
-    fn matches(&self, c: char) -> bool { *self == c }
+    fn matches(&mut self, c: char) -> bool { *self == c }
 
     #[inline]
     fn only_ascii(&self) -> bool { (*self as uint) < 128 }
@@ -233,7 +233,7 @@ impl CharEq for char {
 
 impl<'a> CharEq for |char|: 'a -> bool {
     #[inline]
-    fn matches(&self, c: char) -> bool { (*self)(c) }
+    fn matches(&mut self, c: char) -> bool { (*self)(c) }
 
     #[inline]
     fn only_ascii(&self) -> bool { false }
@@ -241,16 +241,16 @@ impl<'a> CharEq for |char|: 'a -> bool {
 
 impl CharEq for extern "Rust" fn(char) -> bool {
     #[inline]
-    fn matches(&self, c: char) -> bool { (*self)(c) }
+    fn matches(&mut self, c: char) -> bool { (*self)(c) }
 
     #[inline]
     fn only_ascii(&self) -> bool { false }
 }
 
-impl<'a, C: CharEq> CharEq for &'a [C] {
+impl<'a> CharEq for &'a [char] {
     #[inline]
-    fn matches(&self, c: char) -> bool {
-        self.iter().any(|m| m.matches(c))
+    fn matches(&mut self, c: char) -> bool {
+        self.iter().any(|&mut m| m.matches(c))
     }
 
     #[inline]
@@ -1981,11 +1981,11 @@ pub trait StrSlice<'a> {
     /// # Example
     ///
     /// ```rust
-    /// assert_eq!("11foo1bar11".trim_chars(&'1'), "foo1bar")
-    /// assert_eq!("12foo1bar12".trim_chars(& &['1', '2']), "foo1bar")
-    /// assert_eq!("123foo1bar123".trim_chars(&|c: char| c.is_digit()), "foo1bar")
+    /// assert_eq!("11foo1bar11".trim_chars('1'), "foo1bar")
+    /// assert_eq!("12foo1bar12".trim_chars(&['1', '2']), "foo1bar")
+    /// assert_eq!("123foo1bar123".trim_chars(|c: char| c.is_digit()), "foo1bar")
     /// ```
-    fn trim_chars<C: CharEq>(&self, to_trim: &C) -> &'a str;
+    fn trim_chars<C: CharEq>(&self, to_trim: C) -> &'a str;
 
     /// Returns a string with leading `chars_to_trim` removed.
     ///
@@ -1996,11 +1996,11 @@ pub trait StrSlice<'a> {
     /// # Example
     ///
     /// ```rust
-    /// assert_eq!("11foo1bar11".trim_left_chars(&'1'), "foo1bar11")
-    /// assert_eq!("12foo1bar12".trim_left_chars(& &['1', '2']), "foo1bar12")
-    /// assert_eq!("123foo1bar123".trim_left_chars(&|c: char| c.is_digit()), "foo1bar123")
+    /// assert_eq!("11foo1bar11".trim_left_chars('1'), "foo1bar11")
+    /// assert_eq!("12foo1bar12".trim_left_chars(&['1', '2']), "foo1bar12")
+    /// assert_eq!("123foo1bar123".trim_left_chars(|c: char| c.is_digit()), "foo1bar123")
     /// ```
-    fn trim_left_chars<C: CharEq>(&self, to_trim: &C) -> &'a str;
+    fn trim_left_chars<C: CharEq>(&self, to_trim: C) -> &'a str;
 
     /// Returns a string with trailing `chars_to_trim` removed.
     ///
@@ -2011,11 +2011,11 @@ pub trait StrSlice<'a> {
     /// # Example
     ///
     /// ```rust
-    /// assert_eq!("11foo1bar11".trim_right_chars(&'1'), "11foo1bar")
-    /// assert_eq!("12foo1bar12".trim_right_chars(& &['1', '2']), "12foo1bar")
-    /// assert_eq!("123foo1bar123".trim_right_chars(&|c: char| c.is_digit()), "123foo1bar")
+    /// assert_eq!("11foo1bar11".trim_right_chars('1'), "11foo1bar")
+    /// assert_eq!("12foo1bar12".trim_right_chars(&['1', '2']), "12foo1bar")
+    /// assert_eq!("123foo1bar123".trim_right_chars(|c: char| c.is_digit()), "123foo1bar")
     /// ```
-    fn trim_right_chars<C: CharEq>(&self, to_trim: &C) -> &'a str;
+    fn trim_right_chars<C: CharEq>(&self, to_trim: C) -> &'a str;
 
     /// Replace all occurrences of one string with another.
     ///
@@ -2491,21 +2491,31 @@ impl<'a> StrSlice<'a> for &'a str {
 
     #[inline]
     fn trim_left(&self) -> &'a str {
-        self.trim_left_chars(&char::is_whitespace)
+        self.trim_left_chars(char::is_whitespace)
     }
 
     #[inline]
     fn trim_right(&self) -> &'a str {
-        self.trim_right_chars(&char::is_whitespace)
+        self.trim_right_chars(char::is_whitespace)
     }
 
     #[inline]
-    fn trim_chars<C: CharEq>(&self, to_trim: &C) -> &'a str {
-        self.trim_left_chars(to_trim).trim_right_chars(to_trim)
+    fn trim_chars<C: CharEq>(&self, mut to_trim: C) -> &'a str {
+        let cur = match self.find(|c: char| !to_trim.matches(c)) {
+            None => "",
+            Some(i) => unsafe { raw::slice_bytes(*self, i, self.len()) }
+        };
+        match cur.rfind(|c: char| !to_trim.matches(c)) {
+            None => "",
+            Some(i) => {
+                let right = cur.char_range_at(i).next;
+                unsafe { raw::slice_bytes(cur, 0, right) }
+            }
+        }
     }
 
     #[inline]
-    fn trim_left_chars<C: CharEq>(&self, to_trim: &C) -> &'a str {
+    fn trim_left_chars<C: CharEq>(&self, mut to_trim: C) -> &'a str {
         match self.find(|c: char| !to_trim.matches(c)) {
             None => "",
             Some(first) => unsafe { raw::slice_bytes(*self, first, self.len()) }
@@ -2513,7 +2523,7 @@ impl<'a> StrSlice<'a> for &'a str {
     }
 
     #[inline]
-    fn trim_right_chars<C: CharEq>(&self, to_trim: &C) -> &'a str {
+    fn trim_right_chars<C: CharEq>(&self, mut to_trim: C) -> &'a str {
         match self.rfind(|c: char| !to_trim.matches(c)) {
             None => "",
             Some(last) => {
@@ -2631,7 +2641,7 @@ impl<'a> StrSlice<'a> for &'a str {
         unsafe { cast::transmute(*self) }
     }
 
-    fn find<C: CharEq>(&self, search: C) -> Option<uint> {
+    fn find<C: CharEq>(&self, mut search: C) -> Option<uint> {
         if search.only_ascii() {
             self.bytes().position(|b| search.matches(b as char))
         } else {
@@ -2642,7 +2652,7 @@ impl<'a> StrSlice<'a> for &'a str {
         }
     }
 
-    fn rfind<C: CharEq>(&self, search: C) -> Option<uint> {
+    fn rfind<C: CharEq>(&self, mut search: C) -> Option<uint> {
         if search.only_ascii() {
             self.bytes().rposition(|b| search.matches(b as char))
         } else {
@@ -3160,40 +3170,40 @@ mod tests {
     #[test]
     fn test_trim_left_chars() {
         let v: &[char] = &[];
-        assert_eq!(" *** foo *** ".trim_left_chars(&v), " *** foo *** ");
-        assert_eq!(" *** foo *** ".trim_left_chars(& &['*', ' ']), "foo *** ");
-        assert_eq!(" ***  *** ".trim_left_chars(& &['*', ' ']), "");
-        assert_eq!("foo *** ".trim_left_chars(& &['*', ' ']), "foo *** ");
+        assert_eq!(" *** foo *** ".trim_left_chars(v), " *** foo *** ");
+        assert_eq!(" *** foo *** ".trim_left_chars(&['*', ' ']), "foo *** ");
+        assert_eq!(" ***  *** ".trim_left_chars(&['*', ' ']), "");
+        assert_eq!("foo *** ".trim_left_chars(&['*', ' ']), "foo *** ");
 
-        assert_eq!("11foo1bar11".trim_left_chars(&'1'), "foo1bar11");
-        assert_eq!("12foo1bar12".trim_left_chars(& &['1', '2']), "foo1bar12");
-        assert_eq!("123foo1bar123".trim_left_chars(&|c: char| c.is_digit()), "foo1bar123");
+        assert_eq!("11foo1bar11".trim_left_chars('1'), "foo1bar11");
+        assert_eq!("12foo1bar12".trim_left_chars(&['1', '2']), "foo1bar12");
+        assert_eq!("123foo1bar123".trim_left_chars(|c: char| c.is_digit()), "foo1bar123");
     }
 
     #[test]
     fn test_trim_right_chars() {
         let v: &[char] = &[];
-        assert_eq!(" *** foo *** ".trim_right_chars(&v), " *** foo *** ");
-        assert_eq!(" *** foo *** ".trim_right_chars(& &['*', ' ']), " *** foo");
-        assert_eq!(" ***  *** ".trim_right_chars(& &['*', ' ']), "");
-        assert_eq!(" *** foo".trim_right_chars(& &['*', ' ']), " *** foo");
+        assert_eq!(" *** foo *** ".trim_right_chars(v), " *** foo *** ");
+        assert_eq!(" *** foo *** ".trim_right_chars(&['*', ' ']), " *** foo");
+        assert_eq!(" ***  *** ".trim_right_chars(&['*', ' ']), "");
+        assert_eq!(" *** foo".trim_right_chars(&['*', ' ']), " *** foo");
 
-        assert_eq!("11foo1bar11".trim_right_chars(&'1'), "11foo1bar");
-        assert_eq!("12foo1bar12".trim_right_chars(& &['1', '2']), "12foo1bar");
-        assert_eq!("123foo1bar123".trim_right_chars(&|c: char| c.is_digit()), "123foo1bar");
+        assert_eq!("11foo1bar11".trim_right_chars('1'), "11foo1bar");
+        assert_eq!("12foo1bar12".trim_right_chars(&['1', '2']), "12foo1bar");
+        assert_eq!("123foo1bar123".trim_right_chars(|c: char| c.is_digit()), "123foo1bar");
     }
 
     #[test]
     fn test_trim_chars() {
         let v: &[char] = &[];
-        assert_eq!(" *** foo *** ".trim_chars(&v), " *** foo *** ");
-        assert_eq!(" *** foo *** ".trim_chars(& &['*', ' ']), "foo");
-        assert_eq!(" ***  *** ".trim_chars(& &['*', ' ']), "");
-        assert_eq!("foo".trim_chars(& &['*', ' ']), "foo");
+        assert_eq!(" *** foo *** ".trim_chars(v), " *** foo *** ");
+        assert_eq!(" *** foo *** ".trim_chars(&['*', ' ']), "foo");
+        assert_eq!(" ***  *** ".trim_chars(&['*', ' ']), "");
+        assert_eq!("foo".trim_chars(&['*', ' ']), "foo");
 
-        assert_eq!("11foo1bar11".trim_chars(&'1'), "foo1bar");
-        assert_eq!("12foo1bar12".trim_chars(& &['1', '2']), "foo1bar");
-        assert_eq!("123foo1bar123".trim_chars(&|c: char| c.is_digit()), "foo1bar");
+        assert_eq!("11foo1bar11".trim_chars('1'), "foo1bar");
+        assert_eq!("12foo1bar12".trim_chars(&['1', '2']), "foo1bar");
+        assert_eq!("123foo1bar123".trim_chars(|c: char| c.is_digit()), "foo1bar");
     }
 
     #[test]
@@ -4123,7 +4133,7 @@ mod bench {
     fn split_unicode_not_ascii(b: &mut Bencher) {
         struct NotAscii(char);
         impl CharEq for NotAscii {
-            fn matches(&self, c: char) -> bool {
+            fn matches(&mut self, c: char) -> bool {
                 let NotAscii(cc) = *self;
                 cc == c
             }
@@ -4148,7 +4158,7 @@ mod bench {
         struct NotAscii(char);
         impl CharEq for NotAscii {
             #[inline]
-            fn matches(&self, c: char) -> bool {
+            fn matches(&mut self, c: char) -> bool {
                 let NotAscii(cc) = *self;
                 cc == c
             }

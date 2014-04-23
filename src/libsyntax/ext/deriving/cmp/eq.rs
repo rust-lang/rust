@@ -40,7 +40,9 @@ pub fn expand_deriving_eq(cx: &mut ExtCtxt,
                 ret_ty: Literal(Path::new(vec!("bool"))),
                 inline: true,
                 const_nonmatching: true,
-                combine_substructure: $f
+                combine_substructure: combine_substructure(|a, b, c| {
+                    $f(a, b, c)
+                })
             }
         }
     );

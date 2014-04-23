@@ -52,7 +52,9 @@ pub fn expand_deriving_decodable(cx: &mut ExtCtxt,
                                           vec!(~Self, ~Literal(Path::new_local("__E"))), true)),
                 inline: false,
                 const_nonmatching: true,
-                combine_substructure: decodable_substructure,
+                combine_substructure: combine_substructure(|a, b, c| {
+                    decodable_substructure(a, b, c)
+                }),
             })
     };
 

@@ -84,7 +84,7 @@ pub struct EncodeContext<'a> {
     pub non_inlineable_statics: &'a RefCell<NodeSet>,
     pub link_meta: &'a LinkMeta,
     pub cstore: &'a cstore::CStore,
-    pub encode_inlined_item: EncodeInlinedItem<'a>,
+    pub encode_inlined_item: RefCell<EncodeInlinedItem<'a>>,
     pub type_abbrevs: tyencode::abbrev_map,
 }
 
@@ -765,14 +765,22 @@ fn encode_info_for_method(ecx: &EncodeContext,
         if num_params > 0u ||
                 is_default_impl ||
                 should_inline(ast_method.attrs.as_slice()) {
-            (ecx.encode_inlined_item)(
-                ecx, ebml_w, IIMethodRef(local_def(parent_id), false, ast_method));
+            encode_inlined_item(ecx, ebml_w,
+                                IIMethodRef(local_def(parent_id), false, ast_method));
         } else {
             encode_symbol(ecx, ebml_w, m.def_id.node);
         }
     }
 
     ebml_w.end_tag();
+}
+
+fn encode_inlined_item(ecx: &EncodeContext,
+                       ebml_w: &mut Encoder,
+                       ii: InlinedItemRef) {
+    let mut eii = ecx.encode_inlined_item.borrow_mut();
+    let eii: &mut EncodeInlinedItem = &mut *eii;
+    (*eii)(ecx, ebml_w, ii)
 }
 
 fn style_fn_family(s: FnStyle) -> char {
@@ -880,7 +888,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         let inlineable = !ecx.non_inlineable_statics.borrow().contains(&item.id);
 
         if inlineable {
-            (ecx.encode_inlined_item)(ecx, ebml_w, IIItemRef(item));
+            encode_inlined_item(ecx, ebml_w, IIItemRef(item));
         }
         encode_visibility(ebml_w, vis);
         ebml_w.end_tag();
@@ -896,7 +904,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_path(ebml_w, path);
         encode_attributes(ebml_w, item.attrs.as_slice());
         if tps_len > 0u || should_inline(item.attrs.as_slice()) {
-            (ecx.encode_inlined_item)(ecx, ebml_w, IIItemRef(item));
+            encode_inlined_item(ecx, ebml_w, IIItemRef(item));
         } else {
             encode_symbol(ecx, ebml_w, item.id);
         }
@@ -954,7 +962,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         for v in (*enum_definition).variants.iter() {
             encode_variant_id(ebml_w, local_def(v.node.id));
         }
-        (ecx.encode_inlined_item)(ecx, ebml_w, IIItemRef(item));
+        encode_inlined_item(ecx, ebml_w, IIItemRef(item));
         encode_path(ebml_w, path);
 
         // Encode inherent implementations for this enumeration.
@@ -1002,7 +1010,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         needs to know*/
         encode_struct_fields(ebml_w, fields.as_slice(), def_id);
 
-        (ecx.encode_inlined_item)(ecx, ebml_w, IIItemRef(item));
+        encode_inlined_item(ecx, ebml_w, IIItemRef(item));
 
         // Encode inherent implementations for this structure.
         encode_inherent_implementations(ecx, ebml_w, def_id);
@@ -1175,8 +1183,8 @@ fn encode_info_for_item(ecx: &EncodeContext,
                         encode_bounds_and_type(ebml_w, ecx, &tpt);
                     }
                     encode_method_sort(ebml_w, 'p');
-                    (ecx.encode_inlined_item)(
-                        ecx, ebml_w, IIMethodRef(def_id, true, m));
+                    encode_inlined_item(ecx, ebml_w,
+                                        IIMethodRef(def_id, true, m));
                 }
             }
 
@@ -1212,7 +1220,7 @@ fn encode_info_for_foreign_item(ecx: &EncodeContext,
                                &lookup_item_type(ecx.tcx,local_def(nitem.id)));
         encode_name(ebml_w, nitem.ident.name);
         if abi == abi::RustIntrinsic {
-            (ecx.encode_inlined_item)(ecx, ebml_w, IIForeignRef(nitem));
+            encode_inlined_item(ecx, ebml_w, IIForeignRef(nitem));
         } else {
             encode_symbol(ecx, ebml_w, nitem.id);
         }
@@ -1544,12 +1552,12 @@ fn encode_macro_registrar_fn(ecx: &EncodeContext, ebml_w: &mut Encoder) {
     }
 }
 
-struct MacroDefVisitor<'a, 'b> {
-    ecx: &'a EncodeContext<'a>,
-    ebml_w: &'a mut Encoder<'b>
+struct MacroDefVisitor<'a, 'b, 'c> {
+    ecx: &'a EncodeContext<'b>,
+    ebml_w: &'a mut Encoder<'c>
 }
 
-impl<'a, 'b> Visitor<()> for MacroDefVisitor<'a, 'b> {
+impl<'a, 'b, 'c> Visitor<()> for MacroDefVisitor<'a, 'b, 'c> {
     fn visit_item(&mut self, item: &Item, _: ()) {
         match item.node {
             ItemMac(..) => {
@@ -1565,9 +1573,9 @@ impl<'a, 'b> Visitor<()> for MacroDefVisitor<'a, 'b> {
     }
 }
 
-fn encode_macro_defs(ecx: &EncodeContext,
-                     krate: &Crate,
-                     ebml_w: &mut Encoder) {
+fn encode_macro_defs<'a>(ecx: &'a EncodeContext,
+                         krate: &Crate,
+                         ebml_w: &'a mut Encoder) {
     ebml_w.start_tag(tag_exported_macros);
     {
         let mut visitor = MacroDefVisitor {
@@ -1579,12 +1587,12 @@ fn encode_macro_defs(ecx: &EncodeContext,
     ebml_w.end_tag();
 }
 
-struct ImplVisitor<'a,'b> {
-    ecx: &'a EncodeContext<'a>,
-    ebml_w: &'a mut Encoder<'b>,
+struct ImplVisitor<'a,'b,'c> {
+    ecx: &'a EncodeContext<'b>,
+    ebml_w: &'a mut Encoder<'c>,
 }
 
-impl<'a,'b> Visitor<()> for ImplVisitor<'a,'b> {
+impl<'a,'b,'c> Visitor<()> for ImplVisitor<'a,'b,'c> {
     fn visit_item(&mut self, item: &Item, _: ()) {
         match item.node {
             ItemImpl(_, Some(ref trait_ref), _, _) => {
@@ -1617,9 +1625,9 @@ impl<'a,'b> Visitor<()> for ImplVisitor<'a,'b> {
 /// * Destructors (implementations of the Drop trait).
 ///
 /// * Implementations of traits not defined in this crate.
-fn encode_impls(ecx: &EncodeContext,
-                krate: &Crate,
-                ebml_w: &mut Encoder) {
+fn encode_impls<'a>(ecx: &'a EncodeContext,
+                    krate: &Crate,
+                    ebml_w: &'a mut Encoder) {
     ebml_w.start_tag(tag_impls);
 
     {
@@ -1744,7 +1752,7 @@ fn encode_metadata_inner(wr: &mut MemWriter, parms: EncodeParams, krate: &Crate)
         non_inlineable_statics: non_inlineable_statics,
         link_meta: link_meta,
         cstore: cstore,
-        encode_inlined_item: encode_inlined_item,
+        encode_inlined_item: RefCell::new(encode_inlined_item),
         type_abbrevs: RefCell::new(HashMap::new()),
      };
 

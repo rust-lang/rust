@@ -695,9 +695,9 @@ mod tests {
         assert_eq!(v, Err(2));
 
         // test that it does not take more elements than it needs
-        let functions = [|| Ok(()), || Err(1), || fail!()];
+        let mut functions = [|| Ok(()), || Err(1), || fail!()];
 
-        let v: Result<~[()], int> = collect(functions.iter().map(|f| (*f)()));
+        let v: Result<~[()], int> = collect(functions.mut_iter().map(|f| (*f)()));
         assert_eq!(v, Err(1));
     }
 
@@ -715,9 +715,9 @@ mod tests {
                    Err(2));
 
         // test that it does not take more elements than it needs
-        let functions = [|| Ok(()), || Err(1), || fail!()];
+        let mut functions = [|| Ok(()), || Err(1), || fail!()];
 
-        assert_eq!(fold_(functions.iter()
+        assert_eq!(fold_(functions.mut_iter()
                         .map(|f| (*f)())),
                    Err(1));
     }
