@@ -355,4 +355,20 @@ mod tests {
 
         rx.recv();
     })
+
+    iotest!(fn drop_removes_listener_path() {
+        let path = next_test_unix();
+        let l = UnixListener::bind(&path).unwrap();
+        assert!(path.exists());
+        drop(l);
+        assert!(!path.exists());
+    } #[cfg(not(windows))])
+
+    iotest!(fn drop_removes_acceptor_path() {
+        let path = next_test_unix();
+        let l = UnixListener::bind(&path).unwrap();
+        assert!(path.exists());
+        drop(l.listen().unwrap());
+        assert!(!path.exists());
+    } #[cfg(not(windows))])
 }

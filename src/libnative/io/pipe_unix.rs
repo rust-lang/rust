@@ -232,11 +232,14 @@ impl UnixDatagram {
 
 pub struct UnixListener {
     inner: Inner,
+    path: CString,
 }
 
 impl UnixListener {
     pub fn bind(addr: &CString) -> IoResult<UnixListener> {
-        bind(addr, libc::SOCK_STREAM).map(|fd| UnixListener { inner: fd })
+        bind(addr, libc::SOCK_STREAM).map(|fd| {
+            UnixListener { inner: fd, path: addr.clone() }
+        })
     }
 
     fn fd(&self) -> fd_t { self.inner.fd }
@@ -281,5 +284,16 @@ impl UnixAcceptor {
 impl rtio::RtioUnixAcceptor for UnixAcceptor {
     fn accept(&mut self) -> IoResult<~rtio::RtioPipe:Send> {
         self.native_accept().map(|s| ~s as ~rtio::RtioPipe:Send)
+    }
+}
+
+impl Drop for UnixListener {
+    fn drop(&mut self) {
+        // Unlink the path to the socket to ensure that it doesn't linger. We're
+        // careful to unlink the path before we close the file descriptor to
+        // prevent races where we unlink someone else's path.
+        unsafe {
+            let _ = libc::unlink(self.path.with_ref(|p| p));
+        }
     }
 }
