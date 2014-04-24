@@ -14,6 +14,7 @@ use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use ext::deriving::generic::*;
+use parse::token::InternedString;
 
 pub fn expand_deriving_ord(cx: &mut ExtCtxt,
                            span: Span,
@@ -21,20 +22,22 @@ pub fn expand_deriving_ord(cx: &mut ExtCtxt,
                            item: @Item,
                            push: |@Item|) {
     macro_rules! md (
-        ($name:expr, $op:expr, $equal:expr) => {
+        ($name:expr, $op:expr, $equal:expr) => { {
+            let inline = cx.meta_word(span, InternedString::new("inline"));
+            let attrs = vec!(cx.attribute(span, inline));
             MethodDef {
                 name: $name,
                 generics: LifetimeBounds::empty(),
                 explicit_self: borrowed_explicit_self(),
                 args: vec!(borrowed_self()),
                 ret_ty: Literal(Path::new(vec!("bool"))),
-                inline: true,
+                attributes: attrs,
                 const_nonmatching: false,
                 combine_substructure: combine_substructure(|cx, span, substr| {
                     cs_op($op, $equal, cx, span, substr)
                 })
             }
-        }
+        } }
     );
 
     let trait_def = TraitDef {

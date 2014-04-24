@@ -13,6 +13,7 @@ use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use ext::deriving::generic::*;
+use parse::token::InternedString;
 
 pub fn expand_deriving_eq(cx: &mut ExtCtxt,
                           span: Span,
@@ -31,20 +32,22 @@ pub fn expand_deriving_eq(cx: &mut ExtCtxt,
     }
 
     macro_rules! md (
-        ($name:expr, $f:ident) => {
+        ($name:expr, $f:ident) => { {
+            let inline = cx.meta_word(span, InternedString::new("inline"));
+            let attrs = vec!(cx.attribute(span, inline));
             MethodDef {
                 name: $name,
                 generics: LifetimeBounds::empty(),
                 explicit_self: borrowed_explicit_self(),
                 args: vec!(borrowed_self()),
                 ret_ty: Literal(Path::new(vec!("bool"))),
-                inline: true,
+                attributes: attrs,
                 const_nonmatching: true,
                 combine_substructure: combine_substructure(|a, b, c| {
                     $f(a, b, c)
                 })
             }
-        }
+        } }
     );
 
     let trait_def = TraitDef {

@@ -13,6 +13,7 @@ use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use ext::deriving::generic::*;
+use parse::token::InternedString;
 
 pub fn expand_deriving_totaleq(cx: &mut ExtCtxt,
                                span: Span,
@@ -33,6 +34,11 @@ pub fn expand_deriving_totaleq(cx: &mut ExtCtxt,
                        substr)
     }
 
+    let inline = cx.meta_word(span, InternedString::new("inline"));
+    let hidden = cx.meta_word(span, InternedString::new("hidden"));
+    let doc = cx.meta_list(span, InternedString::new("doc"), vec!(hidden));
+    let attrs = vec!(cx.attribute(span, inline),
+                     cx.attribute(span, doc));
     let trait_def = TraitDef {
         span: span,
         attributes: Vec::new(),
@@ -46,7 +52,7 @@ pub fn expand_deriving_totaleq(cx: &mut ExtCtxt,
                 explicit_self: borrowed_explicit_self(),
                 args: vec!(),
                 ret_ty: nil_ty(),
-                inline: true,
+                attributes: attrs,
                 const_nonmatching: true,
                 combine_substructure: combine_substructure(|a, b, c| {
                     cs_total_eq_assert(a, b, c)

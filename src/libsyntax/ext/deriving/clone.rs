@@ -13,12 +13,15 @@ use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use ext::deriving::generic::*;
+use parse::token::InternedString;
 
 pub fn expand_deriving_clone(cx: &mut ExtCtxt,
                              span: Span,
                              mitem: @MetaItem,
                              item: @Item,
                              push: |@Item|) {
+    let inline = cx.meta_word(span, InternedString::new("inline"));
+    let attrs = vec!(cx.attribute(span, inline));
     let trait_def = TraitDef {
         span: span,
         attributes: Vec::new(),
@@ -32,7 +35,7 @@ pub fn expand_deriving_clone(cx: &mut ExtCtxt,
                 explicit_self: borrowed_explicit_self(),
                 args: Vec::new(),
                 ret_ty: Self,
-                inline: true,
+                attributes: attrs,
                 const_nonmatching: false,
                 combine_substructure: combine_substructure(|c, s, sub| {
                     cs_clone("Clone", c, s, sub)
