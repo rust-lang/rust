@@ -105,7 +105,7 @@ function GetRustIndent(lnum)
 	if prevline[len(prevline) - 1] == ","
 				\ && s:get_line_trimmed(a:lnum) !~ "^\\s*[\\[\\]{}]"
 				\ && prevline !~ "^\\s*fn\\s"
-				\ && prevline !~ "\\([^\\(\\)]\+,$"
+				\ && prevline !~ "([^()]\\+,$"
 		" Oh ho! The previous line ended in a comma! I bet cindent will try to
 		" take this too far... For now, let's normally use the previous line's
 		" indent.
