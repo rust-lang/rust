@@ -798,7 +798,7 @@ pub fn noop_fold_expr<T: Folder>(e: @Expr, folder: &mut T) -> @Expr {
         }
         ExprMethodCall(i, ref tps, ref args) => {
             ExprMethodCall(
-                folder.fold_ident(i),
+                respan(i.span, folder.fold_ident(i.node)),
                 tps.iter().map(|&x| folder.fold_ty(x)).collect(),
                 args.iter().map(|&x| folder.fold_expr(x)).collect())
         }

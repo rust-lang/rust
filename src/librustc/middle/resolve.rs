@@ -5083,7 +5083,7 @@ impl<'a> Resolver<'a> {
                 debug!("(recording candidate traits for expr) recording \
                         traits for {}",
                        expr.id);
-                let traits = self.search_for_traits_containing_method(ident.name);
+                let traits = self.search_for_traits_containing_method(ident.node.name);
                 self.trait_map.insert(expr.id, traits);
             }
             _ => {
