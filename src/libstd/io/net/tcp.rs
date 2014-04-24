@@ -22,7 +22,7 @@ use io::IoResult;
 use io::net::ip::SocketAddr;
 use io::{Reader, Writer, Listener, Acceptor};
 use kinds::Send;
-use option::{None, Some};
+use option::{None, Some, Option};
 use rt::rtio::{IoFactory, LocalIo, RtioSocket, RtioTcpListener};
 use rt::rtio::{RtioTcpAcceptor, RtioTcpStream};
 
@@ -184,6 +184,56 @@ pub struct TcpAcceptor {
     obj: ~RtioTcpAcceptor:Send
 }
 
+impl TcpAcceptor {
+    /// Prevents blocking on all future accepts after `ms` milliseconds have
+    /// elapsed.
+    ///
+    /// This function is used to set a deadline after which this acceptor will
+    /// time out accepting any connections. The argument is the relative
+    /// distance, in milliseconds, to a point in the future after which all
+    /// accepts will fail.
+    ///
+    /// If the argument specified is `None`, then any previously registered
+    /// timeout is cleared.
+    ///
+    /// A timeout of `0` can be used to "poll" this acceptor to see if it has
+    /// any pending connections. All pending connections will be accepted,
+    /// regardless of whether the timeout has expired or not (the accept will
+    /// not block in this case).
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # #![allow(experimental)]
+    /// use std::io::net::tcp::TcpListener;
+    /// use std::io::net::ip::{SocketAddr, Ipv4Addr};
+    /// use std::io::{Listener, Acceptor, TimedOut};
+    ///
+    /// let addr = SocketAddr { ip: Ipv4Addr(127, 0, 0, 1), port: 8482 };
+    /// let mut a = TcpListener::bind(addr).listen().unwrap();
+    ///
+    /// // After 100ms have passed, all accepts will fail
+    /// a.set_timeout(Some(100));
+    ///
+    /// match a.accept() {
+    ///     Ok(..) => println!("accepted a socket"),
+    ///     Err(ref e) if e.kind == TimedOut => { println!("timed out!"); }
+    ///     Err(e) => println!("err: {}", e),
+    /// }
+    ///
+    /// // Reset the timeout and try again
+    /// a.set_timeout(Some(100));
+    /// let socket = a.accept();
+    ///
+    /// // Clear the timeout and block indefinitely waiting for a connection
+    /// a.set_timeout(None);
+    /// let socket = a.accept();
+    /// ```
+    #[experimental = "the type of the argument and name of this function are \
+                      subject to change"]
+    pub fn set_timeout(&mut self, ms: Option<u64>) { self.obj.set_timeout(ms); }
+}
+
 impl Acceptor<TcpStream> for TcpAcceptor {
     fn accept(&mut self) -> IoResult<TcpStream> {
         self.obj.accept().map(TcpStream::new)
@@ -191,6 +241,7 @@ impl Acceptor<TcpStream> for TcpAcceptor {
 }
 
 #[cfg(test)]
+#[allow(experimental)]
 mod test {
     use super::*;
     use io::net::ip::SocketAddr;
@@ -748,5 +799,38 @@ mod test {
         assert!(s.obj.close_write().is_ok());
         assert!(s.write([1]).is_err());
         assert_eq!(s.read_to_end(), Ok(vec!(1)));
+    })
+
+    iotest!(fn accept_timeout() {
+        let addr = next_test_ip4();
+        let mut a = TcpListener::bind(addr).unwrap().listen().unwrap();
+
+        a.set_timeout(Some(10));
+
+        // Make sure we time out once and future invocations also time out
+        let err = a.accept().err().unwrap();
+        assert_eq!(err.kind, TimedOut);
+        let err = a.accept().err().unwrap();
+        assert_eq!(err.kind, TimedOut);
+
+        // Also make sure that even though the timeout is expired that we will
+        // continue to receive any pending connections.
+        let l = TcpStream::connect(addr).unwrap();
+        for i in range(0, 1001) {
+            match a.accept() {
+                Ok(..) => break,
+                Err(ref e) if e.kind == TimedOut => {}
+                Err(e) => fail!("error: {}", e),
+            }
+            if i == 1000 { fail!("should have a pending connection") }
+        }
+        drop(l);
+
+        // Unset the timeout and make sure that this always blocks.
+        a.set_timeout(None);
+        spawn(proc() {
+            drop(TcpStream::connect(addr));
+        });
+        a.accept().unwrap();
     })
 }

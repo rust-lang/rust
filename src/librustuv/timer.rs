@@ -14,7 +14,7 @@ use std::rt::rtio::RtioTimer;
 use std::rt::task::BlockedTask;
 
 use homing::{HomeHandle, HomingIO};
-use super::{UvHandle, ForbidUnwind, ForbidSwitch, wait_until_woken_after};
+use super::{UvHandle, ForbidUnwind, ForbidSwitch, wait_until_woken_after, Loop};
 use uvio::UvIoFactory;
 use uvll;
 
@@ -34,18 +34,21 @@ pub enum NextAction {
 
 impl TimerWatcher {
     pub fn new(io: &mut UvIoFactory) -> ~TimerWatcher {
+        let handle = io.make_handle();
+        let me = ~TimerWatcher::new_home(&io.loop_, handle);
+        me.install()
+    }
+
+    pub fn new_home(loop_: &Loop, home: HomeHandle) -> TimerWatcher {
         let handle = UvHandle::alloc(None::<TimerWatcher>, uvll::UV_TIMER);
-        assert_eq!(unsafe {
-            uvll::uv_timer_init(io.uv_loop(), handle)
-        }, 0);
-        let me = ~TimerWatcher {
+        assert_eq!(unsafe { uvll::uv_timer_init(loop_.handle, handle) }, 0);
+        TimerWatcher {
             handle: handle,
             action: None,
             blocker: None,
-            home: io.make_handle(),
+            home: home,
             id: 0,
-        };
-        return me.install();
+        }
     }
 
     pub fn start(&mut self, f: uvll::uv_timer_cb, msecs: u64, period: u64) {
