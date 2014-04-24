@@ -460,9 +460,9 @@ impl Float for f32 {
     /// Newton's method to approximate the value.
     /// Originally seen in Quake arena
     fn fast_rsqrt(self) -> f32 {
-        let mut i:  i32 = 0;
-        let mut x2: f32 = 0.0;
-        let mut y:  f32 = 0.0;
+        let mut i:  i32;
+        let mut x2: f32;
+        let mut y:  f32;
 
         y  = self;
         x2 = y * 0.5;

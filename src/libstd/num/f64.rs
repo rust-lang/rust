@@ -472,9 +472,9 @@ impl Float for f64 {
     /// not be a major problem
     /// Originally seen in Quake arena
     fn fast_rsqrt(self) -> f64 {
-        let mut i:  i32 = 0;
-        let mut x2: f32 = 0.0;
-        let mut y:  f32 = 0.0;
+        let mut i:  i32;
+        let mut x2: f32;
+        let mut y:  f32;
 
         y  = self as f32;
         x2 = y * 0.5;
