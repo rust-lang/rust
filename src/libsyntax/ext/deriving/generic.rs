@@ -808,26 +808,25 @@ impl<'a> MethodDef<'a> {
                                 "no self match on an enum in \
                                 generic `deriving`");
             }
+
+            // `ref` inside let matches is buggy. Causes havoc wih rusc.
+            // let (variant_index, ref self_vec) = matches_so_far[0];
+            let (variant, self_vec) = match matches_so_far.get(0) {
+                &(_, v, ref s) => (v, s)
+            };
+
             // we currently have a vec of vecs, where each
             // subvec is the fields of one of the arguments,
             // but if the variants all match, we want this as
             // vec of tuples, where each tuple represents a
             // field.
 
-            let substructure;
-
             // most arms don't have matching variants, so do a
             // quick check to see if they match (even though
             // this means iterating twice) instead of being
             // optimistic and doing a pile of allocations etc.
-            match matching {
+            let substructure = match matching {
                 Some(variant_index) => {
-                    // `ref` inside let matches is buggy. Causes havoc wih rusc.
-                    // let (variant_index, ref self_vec) = matches_so_far[0];
-                    let (variant, self_vec) = match matches_so_far.get(0) {
-                        &(_, v, ref s) => (v, s)
-                    };
-
                     let mut enum_matching_fields = Vec::from_elem(self_vec.len(), Vec::new());
 
                     for triple in matches_so_far.tail().iter() {
@@ -850,12 +849,12 @@ impl<'a> MethodDef<'a> {
                             other: (*other).clone()
                         }
                     }).collect();
-                    substructure = EnumMatching(variant_index, variant, field_tuples);
+                    EnumMatching(variant_index, variant, field_tuples)
                 }
                 None => {
-                    substructure = EnumNonMatching(matches_so_far.as_slice());
+                    EnumNonMatching(matches_so_far.as_slice())
                 }
-            }
+            };
             self.call_substructure_method(cx, trait_, type_ident,
                                           self_args, nonself_args,
                                           &substructure)

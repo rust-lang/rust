@@ -1277,12 +1277,12 @@ fn link_region(rcx: &Rcx,
             }
             mc::cat_discr(cmt_base, _) |
             mc::cat_downcast(cmt_base) |
+            mc::cat_deref(cmt_base, _, mc::GcPtr(..)) |
             mc::cat_deref(cmt_base, _, mc::OwnedPtr) |
             mc::cat_interior(cmt_base, _) => {
                 // Interior or owned data requires its base to be valid
                 cmt_borrowed = cmt_base;
             }
-            mc::cat_deref(_, _, mc::GcPtr(..)) |
             mc::cat_deref(_, _, mc::UnsafePtr(..)) |
             mc::cat_static_item |
             mc::cat_copied_upvar(..) |

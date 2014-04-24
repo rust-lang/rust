@@ -91,7 +91,7 @@ pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree]) -> 
 
     let s = match expr.node {
         // expression is a literal
-        ast::ExprLit(lit) => match lit.node {
+        ast::ExprLit(ref lit) => match lit.node {
             // string literal
             ast::LitStr(ref s, _) => {
                 if s.get().char_len() != 4 {

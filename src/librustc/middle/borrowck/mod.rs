@@ -21,11 +21,10 @@ use middle::dataflow::DataFlowOperator;
 use util::nodemap::{NodeMap, NodeSet};
 use util::ppaux::{note_and_explain_region, Repr, UserString};
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::ops::{BitOr, BitAnd};
 use std::rc::Rc;
 use std::strbuf::StrBuf;
-use collections::HashMap;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util;
@@ -77,21 +76,39 @@ impl<'a> Visitor<()> for BorrowckCtxt<'a> {
 
 pub fn check_crate(tcx: &ty::ctxt,
                    moves_map: &NodeSet,
-                   moved_variables_set: &NodeSet,
                    capture_map: &moves::CaptureMap,
-                   krate: &ast::Crate)
-                   -> root_map {
+                   krate: &ast::Crate) {
     let mut bccx = BorrowckCtxt {
         tcx: tcx,
         moves_map: moves_map,
-        moved_variables_set: moved_variables_set,
         capture_map: capture_map,
-        root_map: RefCell::new(HashMap::new())
+        stats: @BorrowStats {
+            loaned_paths_same: Cell::new(0),
+            loaned_paths_imm: Cell::new(0),
+            stable_paths: Cell::new(0),
+            guaranteed_paths: Cell::new(0),
+        }
     };
 
     visit::walk_crate(&mut bccx, krate, ());
 
-    return bccx.root_map.unwrap();
+    if tcx.sess.borrowck_stats() {
+        println!("--- borrowck stats ---");
+        println!("paths requiring guarantees: {}",
+                 bccx.stats.guaranteed_paths.get());
+        println!("paths requiring loans     : {}",
+                 make_stat(&bccx, bccx.stats.loaned_paths_same.get()));
+        println!("paths requiring imm loans : {}",
+                 make_stat(&bccx, bccx.stats.loaned_paths_imm.get()));
+        println!("stable paths              : {}",
+                 make_stat(&bccx, bccx.stats.stable_paths.get()));
+    }
+
+    fn make_stat(bccx: &BorrowckCtxt, stat: uint) -> ~str {
+        let stat_f = stat as f64;
+        let total = bccx.stats.guaranteed_paths.get() as f64;
+        format!("{} ({:.0f}%)", stat  , stat_f * 100.0 / total)
+    }
 }
 
 fn borrowck_item(this: &mut BorrowckCtxt, item: &ast::Item) {
@@ -148,28 +165,17 @@ fn borrowck_fn(this: &mut BorrowckCtxt,
 pub struct BorrowckCtxt<'a> {
     tcx: &'a ty::ctxt,
     moves_map: &'a NodeSet,
-    moved_variables_set: &'a NodeSet,
     capture_map: &'a moves::CaptureMap,
-    root_map: RefCell<root_map>,
+
+    // Statistics:
+    stats: @BorrowStats
 }
 
-// The keys to the root map combine the `id` of the deref expression
-// with the number of types that it is *autodereferenced*. So, for
-// example, imagine I have a variable `x: @@@T` and an expression
-// `(*x).f`.  This will have 3 derefs, one explicit and then two
-// autoderefs. These are the relevant `root_map_key` values that could
-// appear:
-//
-//    {id:*x, derefs:0} --> roots `x` (type: @@@T, due to explicit deref)
-//    {id:*x, derefs:1} --> roots `*x` (type: @@T, due to autoderef #1)
-//    {id:*x, derefs:2} --> roots `**x` (type: @T, due to autoderef #2)
-//
-// Note that there is no entry with derefs:3---the type of that expression
-// is T, which is not a box.
-#[deriving(Eq, TotalEq, Hash)]
-pub struct root_map_key {
-    pub id: ast::NodeId,
-    pub derefs: uint
+pub struct BorrowStats {
+    loaned_paths_same: Cell<uint>,
+    loaned_paths_imm: Cell<uint>,
+    stable_paths: Cell<uint>,
+    guaranteed_paths: Cell<uint>,
 }
 
 pub type BckResult<T> = Result<T, BckError>;
@@ -319,38 +325,12 @@ impl Repr for RestrictionSet {
 }
 
 ///////////////////////////////////////////////////////////////////////////
-// Rooting of managed boxes
-//
-// When we borrow the interior of a managed box, it is sometimes
-// necessary to *root* the box, meaning to stash a copy of the box
-// somewhere that the garbage collector will find it. This ensures
-// that the box is not collected for the lifetime of the borrow.
-//
-// As part of this rooting, we sometimes also freeze the box at
-// runtime, meaning that we dynamically detect when the box is
-// borrowed in incompatible ways.
-//
-// Both of these actions are driven through the `root_map`, which maps
-// from a node to the dynamic rooting action that should be taken when
-// that node executes. The node is identified through a
-// `root_map_key`, which pairs a node-id and a deref count---the
-// problem is that sometimes the box that needs to be rooted is only
-// uncovered after a certain number of auto-derefs.
-
-pub struct RootInfo {
-    pub scope: ast::NodeId,
-}
-
-pub type root_map = HashMap<root_map_key, RootInfo>;
-
-///////////////////////////////////////////////////////////////////////////
 // Errors
 
 // Errors that can occur
 #[deriving(Eq)]
 pub enum bckerr_code {
     err_mutbl,
-    err_out_of_root_scope(ty::Region, ty::Region), // superscope, subscope
     err_out_of_scope(ty::Region, ty::Region), // superscope, subscope
     err_borrowed_pointer_too_short(
         ty::Region, ty::Region, RestrictionSet), // loan, ptr
@@ -636,9 +616,6 @@ impl<'a> BorrowckCtxt<'a> {
                     }
                 }
             }
-            err_out_of_root_scope(..) => {
-                format!("cannot root managed value long enough")
-            }
             err_out_of_scope(..) => {
                 let msg = match opt_loan_path(&err.cmt) {
                     None => format!("borrowed value"),
@@ -717,19 +694,6 @@ impl<'a> BorrowckCtxt<'a> {
         let code = err.code;
         match code {
             err_mutbl(..) => { }
-
-            err_out_of_root_scope(super_scope, sub_scope) => {
-                note_and_explain_region(
-                    self.tcx,
-                    "managed value would have to be rooted for ",
-                    sub_scope,
-                    "...");
-                note_and_explain_region(
-                    self.tcx,
-                    "...but can only be rooted for ",
-                    super_scope,
-                    "");
-            }
 
             err_out_of_scope(super_scope, sub_scope) => {
                 note_and_explain_region(
