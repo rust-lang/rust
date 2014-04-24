@@ -50,9 +50,9 @@ extern "system" {
     pub fn ioctlsocket(s: libc::SOCKET, cmd: libc::c_long,
                        argp: *mut libc::c_ulong) -> libc::c_int;
     pub fn select(nfds: libc::c_int,
-                  readfds: *mut fd_set,
-                  writefds: *mut fd_set,
-                  exceptfds: *mut fd_set,
+                  readfds: *fd_set,
+                  writefds: *fd_set,
+                  exceptfds: *fd_set,
                   timeout: *libc::timeval) -> libc::c_int;
     pub fn getsockopt(sockfd: libc::SOCKET,
                       level: libc::c_int,
