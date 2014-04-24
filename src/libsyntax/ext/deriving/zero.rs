@@ -13,12 +13,15 @@ use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use ext::deriving::generic::*;
+use parse::token::InternedString;
 
 pub fn expand_deriving_zero(cx: &mut ExtCtxt,
                             span: Span,
                             mitem: @MetaItem,
                             item: @Item,
                             push: |@Item|) {
+    let inline = cx.meta_word(span, InternedString::new("inline"));
+    let attrs = vec!(cx.attribute(span, inline));
     let trait_def = TraitDef {
         span: span,
         attributes: Vec::new(),
@@ -32,7 +35,7 @@ pub fn expand_deriving_zero(cx: &mut ExtCtxt,
                 explicit_self: None,
                 args: Vec::new(),
                 ret_ty: Self,
-                inline: true,
+                attributes: attrs.clone(),
                 const_nonmatching: false,
                 combine_substructure: combine_substructure(|a, b, c| {
                     zero_substructure(a, b, c)
@@ -44,7 +47,7 @@ pub fn expand_deriving_zero(cx: &mut ExtCtxt,
                 explicit_self: borrowed_explicit_self(),
                 args: Vec::new(),
                 ret_ty: Literal(Path::new(vec!("bool"))),
-                inline: true,
+                attributes: attrs,
                 const_nonmatching: false,
                 combine_substructure: combine_substructure(|cx, span, substr| {
                     cs_and(|cx, span, _, _| cx.span_bug(span,

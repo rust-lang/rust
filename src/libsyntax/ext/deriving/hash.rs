@@ -14,6 +14,7 @@ use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use ext::deriving::generic::*;
+use parse::token::InternedString;
 
 pub fn expand_deriving_hash(cx: &mut ExtCtxt,
                             span: Span,
@@ -34,6 +35,8 @@ pub fn expand_deriving_hash(cx: &mut ExtCtxt,
          LifetimeBounds::empty(),
          Path::new(vec!("std", "hash", "sip", "SipState")))
     };
+    let inline = cx.meta_word(span, InternedString::new("inline"));
+    let attrs = vec!(cx.attribute(span, inline));
     let hash_trait_def = TraitDef {
         span: span,
         attributes: Vec::new(),
@@ -47,7 +50,7 @@ pub fn expand_deriving_hash(cx: &mut ExtCtxt,
                 explicit_self: borrowed_explicit_self(),
                 args: vec!(Ptr(~Literal(args), Borrowed(None, MutMutable))),
                 ret_ty: nil_ty(),
-                inline: true,
+                attributes: attrs,
                 const_nonmatching: false,
                 combine_substructure: combine_substructure(|a, b, c| {
                     hash_substructure(a, b, c)

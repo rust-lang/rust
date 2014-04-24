@@ -50,7 +50,7 @@ pub fn expand_deriving_decodable(cx: &mut ExtCtxt,
                             Borrowed(None, MutMutable))),
                 ret_ty: Literal(Path::new_(vec!("std", "result", "Result"), None,
                                           vec!(~Self, ~Literal(Path::new_local("__E"))), true)),
-                inline: false,
+                attributes: Vec::new(),
                 const_nonmatching: true,
                 combine_substructure: combine_substructure(|a, b, c| {
                     decodable_substructure(a, b, c)
