@@ -15,7 +15,6 @@ pub mod monomorphize;
 pub mod controlflow;
 pub mod glue;
 pub mod datum;
-pub mod write_guard;
 pub mod callee;
 pub mod expr;
 pub mod common;

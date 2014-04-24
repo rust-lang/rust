@@ -101,11 +101,6 @@ borrow checker and trans, for example, only care about the outermost
 expressions that are moved.  It is more efficient therefore just to
 store those entries.
 
-Sometimes though we want to know the variables that are moved (in
-particular in the borrow checker). For these cases, the set
-`moved_variables_set` just collects the ids of variables that are
-moved.
-
 Finally, the `capture_map` maps from the node_id of a closure
 expression to an array of `CaptureVar` structs detailing which
 variables are captured and how (by ref, by copy, by move).
@@ -170,7 +165,6 @@ pub struct MoveMaps {
      * pub Note: The `moves_map` stores expression ids that are moves,
      * whereas this set stores the ids of the variables that are
      * moved at some point */
-    pub moved_variables_set: NodeSet,
     pub capture_map: CaptureMap
 }
 
@@ -206,7 +200,6 @@ pub fn compute_moves(tcx: &ty::ctxt, krate: &Crate) -> MoveMaps {
         tcx: tcx,
         move_maps: MoveMaps {
             moves_map: NodeSet::new(),
-            moved_variables_set: NodeSet::new(),
             capture_map: NodeMap::new()
         }
     };
@@ -326,19 +319,6 @@ impl<'a> VisitContext<'a> {
         debug!("comp_mode = {:?}", comp_mode);
 
         match expr.node {
-            ExprPath(..) => {
-                match comp_mode {
-                    Move => {
-                        let def = self.tcx.def_map.borrow().get_copy(&expr.id);
-                        let r = moved_variable_node_id_from_def(def);
-                        for &id in r.iter() {
-                            self.move_maps.moved_variables_set.insert(id);
-                        }
-                    }
-                    Read => {}
-                }
-            }
-
             ExprUnary(UnDeref, base) => {      // *base
                 if !self.use_overloaded_operator(expr, base, []) {
                     // Moving out of *base moves out of base.
@@ -475,6 +455,7 @@ impl<'a> VisitContext<'a> {
                 self.use_expr(base, Read);
             }
 
+            ExprPath(..) |
             ExprInlineAsm(..) |
             ExprBreak(..) |
             ExprAgain(..) |

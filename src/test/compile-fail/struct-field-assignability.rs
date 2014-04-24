@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,29 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/* Tests conditional rooting of the box y */
-
 #![feature(managed_boxes)]
 
-fn testfn(cond: bool) {
-    let mut x = @3;
-    let mut y = @4;
-
-    let mut a = &*x;
-
-    let mut exp = 3;
-    if cond {
-        a = &*y;
-
-        exp = 4;
-    }
-
-    x = @5;
-    y = @6;
-    assert_eq!(*a, exp);
-    assert_eq!(x, @5);
-    assert_eq!(y, @6);
+struct Foo<'a> {
+    x: &'a int
 }
 
 pub fn main() {
+    let f = Foo { x: @3 }; //~ ERROR borrowed value does not live long enough
+    assert_eq!(*f.x, 3);
 }

@@ -20,7 +20,7 @@ fn x_coord<'r>(p: &'r point) -> &'r int {
 }
 
 fn foo(p: @point) -> &int {
-    let xc = x_coord(p); //~ ERROR cannot root
+    let xc = x_coord(p); //~ ERROR `*p` does not live long enough
     assert_eq!(*xc, 3);
     return xc;
 }

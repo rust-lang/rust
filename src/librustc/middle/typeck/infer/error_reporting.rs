@@ -674,14 +674,16 @@ impl<'a> ErrorReporting for InferCtxt<'a> {
         let parent = self.tcx.map.get_parent(scope_id);
         let parent_node = self.tcx.map.find(parent);
         let node_inner = match parent_node {
-            Some(node) => match node {
-                ast_map::NodeItem(item) => match item.node {
-                    ast::ItemFn(ref fn_decl, ref pur, _, ref gen, _) => {
-                        Some((fn_decl, gen, *pur, item.ident, None, item.span))
-                    },
-                    _ => None
-                },
-                ast_map::NodeMethod(m) => {
+            Some(ref node) => match *node {
+                ast_map::NodeItem(ref item) => {
+                    match item.node {
+                        ast::ItemFn(ref fn_decl, ref pur, _, ref gen, _) => {
+                            Some((fn_decl, gen, *pur, item.ident, None, item.span))
+                        },
+                        _ => None
+                    }
+                }
+                ast_map::NodeMethod(ref m) => {
                     Some((&m.decl, &m.generics, m.fn_style,
                           m.ident, Some(m.explicit_self.node), m.span))
                 },
