@@ -40,7 +40,7 @@ impl TtyWatcher {
         // - https://github.com/joyent/libuv/issues/982
         // - https://github.com/joyent/libuv/issues/988
         let guess = unsafe { uvll::guess_handle(fd) };
-        if readable && guess != uvll::UV_TTY as libc::c_int {
+        if guess != uvll::UV_TTY as libc::c_int {
             return Err(UvError(uvll::EBADF));
         }
 
