@@ -91,19 +91,17 @@ pub struct TaskBuilder {
     nocopy: Option<marker::NoCopy>,
 }
 
-/**
- * Generate the base configuration for spawning a task, off of which more
- * configuration methods can be chained.
- */
-pub fn task() -> TaskBuilder {
-    TaskBuilder {
-        opts: TaskOpts::new(),
-        gen_body: None,
-        nocopy: None,
-    }
-}
-
 impl TaskBuilder {
+     /// Generate the base configuration for spawning a task, off of which more
+     /// configuration methods can be chained.
+    pub fn new() -> TaskBuilder {
+        TaskBuilder {
+            opts: TaskOpts::new(),
+            gen_body: None,
+            nocopy: None,
+        }
+    }
+
     /// Get a future representing the exit status of the task.
     ///
     /// Taking the value of the future will block until the child task
@@ -233,22 +231,17 @@ impl TaskOpts {
 /// Sets up a new task with its own call stack and schedules it to run
 /// the provided unique closure.
 ///
-/// This function is equivalent to `task().spawn(f)`.
+/// This function is equivalent to `TaskBuilder::new().spawn(f)`.
 pub fn spawn(f: proc():Send) {
-    let task = task();
-    task.spawn(f)
+    TaskBuilder::new().spawn(f)
 }
 
+/// Execute a function in another task and return either the return value of
+/// the function or an error if the task failed
+///
+/// This is equivalent to TaskBuilder::new().try
 pub fn try<T:Send>(f: proc():Send -> T) -> Result<T, ~Any:Send> {
-    /*!
-     * Execute a function in another task and return either the return value
-     * of the function or result::err.
-     *
-     * This is equivalent to task().try.
-     */
-
-    let task = task();
-    task.try(f)
+    TaskBuilder::new().try(f)
 }
 
 
@@ -298,7 +291,7 @@ fn test_unnamed_task() {
 
 #[test]
 fn test_owned_named_task() {
-    task().named("ada lovelace".to_owned()).spawn(proc() {
+    TaskBuilder::new().named("ada lovelace".to_owned()).spawn(proc() {
         with_task_name(|name| {
             assert!(name.unwrap() == "ada lovelace");
         })
@@ -307,7 +300,7 @@ fn test_owned_named_task() {
 
 #[test]
 fn test_static_named_task() {
-    task().named("ada lovelace").spawn(proc() {
+    TaskBuilder::new().named("ada lovelace").spawn(proc() {
         with_task_name(|name| {
             assert!(name.unwrap() == "ada lovelace");
         })
@@ -316,7 +309,7 @@ fn test_static_named_task() {
 
 #[test]
 fn test_send_named_task() {
-    task().named("ada lovelace".into_maybe_owned()).spawn(proc() {
+    TaskBuilder::new().named("ada lovelace".into_maybe_owned()).spawn(proc() {
         with_task_name(|name| {
             assert!(name.unwrap() == "ada lovelace");
         })
@@ -326,7 +319,7 @@ fn test_send_named_task() {
 #[test]
 fn test_run_basic() {
     let (tx, rx) = channel();
-    task().spawn(proc() {
+    TaskBuilder::new().spawn(proc() {
         tx.send(());
     });
     rx.recv();
@@ -335,7 +328,7 @@ fn test_run_basic() {
 #[test]
 fn test_with_wrapper() {
     let (tx, rx) = channel();
-    task().with_wrapper(proc(body) {
+    TaskBuilder::new().with_wrapper(proc(body) {
         let result: proc():Send = proc() {
             body();
             tx.send(());
@@ -347,12 +340,12 @@ fn test_with_wrapper() {
 
 #[test]
 fn test_future_result() {
-    let mut builder = task();
+    let mut builder = TaskBuilder::new();
     let result = builder.future_result();
     builder.spawn(proc() {});
     assert!(result.recv().is_ok());
 
-    let mut builder = task();
+    let mut builder = TaskBuilder::new();
     let result = builder.future_result();
     builder.spawn(proc() {
         fail!();
@@ -362,7 +355,7 @@ fn test_future_result() {
 
 #[test] #[should_fail]
 fn test_back_to_the_future_result() {
-    let mut builder = task();
+    let mut builder = TaskBuilder::new();
     builder.future_result();
     builder.future_result();
 }
@@ -445,7 +438,7 @@ fn test_avoid_copying_the_body_spawn() {
 #[test]
 fn test_avoid_copying_the_body_task_spawn() {
     avoid_copying_the_body(|f| {
-        let builder = task();
+        let builder = TaskBuilder::new();
         builder.spawn(proc() {
             f();
         });
@@ -471,11 +464,11 @@ fn test_child_doesnt_ref_parent() {
     fn child_no(x: uint) -> proc():Send {
         return proc() {
             if x < generations {
-                task().spawn(child_no(x+1));
+                TaskBuilder::new().spawn(child_no(x+1));
             }
         }
     }
-    task().spawn(child_no(0));
+    TaskBuilder::new().spawn(child_no(0));
 }
 
 #[test]

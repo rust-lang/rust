@@ -445,6 +445,7 @@ impl Barrier {
 mod tests {
     use std::comm::Empty;
     use std::task;
+    use std::task::TaskBuilder;
 
     use arc::Arc;
     use super::{Mutex, Barrier, RWLock};
@@ -614,7 +615,7 @@ mod tests {
         let mut children = Vec::new();
         for _ in range(0, 5) {
             let arc3 = arc.clone();
-            let mut builder = task::task();
+            let mut builder = TaskBuilder::new();
             children.push(builder.future_result());
             builder.spawn(proc() {
                 let lock = arc3.read();
