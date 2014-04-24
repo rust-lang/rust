@@ -9,9 +9,10 @@
 // except according to those terms.
 
 use std::task;
+use std::task::TaskBuilder;
 
 pub fn main() {
-    let mut builder = task::task();
+    let mut builder = TaskBuilder::new();
     let mut result = builder.future_result();
     builder.spawn(child);
     println!("1");

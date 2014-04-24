@@ -11,7 +11,7 @@
 // error-pattern:task 'static name' failed at 'test'
 
 fn main() {
-    ::std::task::task().named("static name").try(proc() {
+    ::std::task::TaskBuilder::new().named("static name").try(proc() {
         fail!("test");
     }).unwrap()
 }
