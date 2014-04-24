@@ -358,9 +358,9 @@ pub trait Float: Signed + Primitive {
 
     /// Returns the number of binary digits of mantissa that this type supports.
     fn mantissa_digits(unused_self: Option<Self>) -> uint;
-    /// Returns the number of binary digits of exponent that this type supports.
+    /// Returns the number of base-10 digits of precision that this type supports.
     fn digits(unused_self: Option<Self>) -> uint;
-    /// Returns the smallest positive number that this type can represent.
+    /// Returns the difference between 1.0 and the smallest representable number larger than 1.0.
     fn epsilon() -> Self;
     /// Returns the minimum binary exponent that this type can represent.
     fn min_exp(unused_self: Option<Self>) -> int;
