@@ -726,6 +726,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
 
     fn arm(&self, _span: Span, pats: Vec<@ast::Pat> , expr: @ast::Expr) -> ast::Arm {
         ast::Arm {
+            attrs: vec!(),
             pats: pats,
             guard: None,
             body: expr

@@ -112,6 +112,7 @@ fn cs_from(name: &str, cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure
 
                         // arm for `_ if $guard => $body`
                         let arm = ast::Arm {
+                            attrs: vec!(),
                             pats: vec!(cx.pat_wild(span)),
                             guard: Some(guard),
                             body: body,
@@ -131,6 +132,7 @@ fn cs_from(name: &str, cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure
 
             // arm for `_ => None`
             let arm = ast::Arm {
+                attrs: vec!(),
                 pats: vec!(cx.pat_wild(trait_span)),
                 guard: None,
                 body: cx.expr_none(trait_span),

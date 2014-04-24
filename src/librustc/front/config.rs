@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -35,6 +35,9 @@ impl<'a> fold::Folder for Context<'a> {
     }
     fn fold_item_underscore(&mut self, item: &ast::Item_) -> ast::Item_ {
         fold_item_underscore(self, item)
+    }
+    fn fold_expr(&mut self, expr: @ast::Expr) -> @ast::Expr {
+        fold_expr(self, expr)
     }
 }
 
@@ -187,6 +190,24 @@ fn fold_block(cx: &mut Context, b: ast::P<ast::Block>) -> ast::P<ast::Block> {
         rules: b.rules,
         span: b.span,
     })
+}
+
+fn fold_expr(cx: &mut Context, expr: @ast::Expr) -> @ast::Expr {
+    let expr = match expr.node {
+        ast::ExprMatch(ref m, ref arms) => {
+            let arms = arms.iter()
+                .filter(|a| (cx.in_cfg)(a.attrs.as_slice()))
+                .map(|a| a.clone())
+                .collect();
+            @ast::Expr {
+                id: expr.id,
+                span: expr.span.clone(),
+                node: ast::ExprMatch(m.clone(), arms),
+            }
+        }
+        _ => expr.clone()
+    };
+    fold::noop_fold_expr(expr, cx)
 }
 
 fn item_in_cfg(cx: &mut Context, item: &ast::Item) -> bool {
