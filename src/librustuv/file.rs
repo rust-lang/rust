@@ -12,7 +12,7 @@ use std::c_str::CString;
 use std::c_str;
 use std::cast::transmute;
 use std::cast;
-use libc::{c_int, c_char, c_void, size_t, ssize_t};
+use libc::{c_int, c_char, c_void, ssize_t};
 use libc;
 use std::rt::task::BlockedTask;
 use std::io::{FileStat, IoError};
@@ -86,14 +86,12 @@ impl FsRequest {
             } else {
                 offset + written as i64
             };
+            let uvbuf = uvll::uv_buf_t {
+                base: buf.slice_from(written as uint).as_ptr(),
+                len: (buf.len() - written) as uvll::uv_buf_len_t,
+            };
             match execute(|req, cb| unsafe {
-                uvll::uv_fs_write(loop_.handle,
-                                  req,
-                                  fd,
-                                  buf.as_ptr().offset(written as int) as *c_void,
-                                  (buf.len() - written) as size_t,
-                                  offset,
-                                  cb)
+                uvll::uv_fs_write(loop_.handle, req, fd, &uvbuf, 1, offset, cb)
             }).map(|req| req.get_result()) {
                 Err(e) => return Err(e),
                 Ok(n) => { written += n as uint; }
@@ -106,9 +104,11 @@ impl FsRequest {
         -> Result<int, UvError>
     {
         execute(|req, cb| unsafe {
-            uvll::uv_fs_read(loop_.handle, req,
-                             fd, buf.as_ptr() as *c_void,
-                             buf.len() as size_t, offset, cb)
+            let uvbuf = uvll::uv_buf_t {
+                base: buf.as_ptr(),
+                len: buf.len() as uvll::uv_buf_len_t,
+            };
+            uvll::uv_fs_read(loop_.handle, req, fd, &uvbuf, 1, offset, cb)
         }).map(|req| {
             req.get_result() as int
         })

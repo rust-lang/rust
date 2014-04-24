@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use std::cast;
-use libc::c_int;
 use std::rt::rtio::{Callback, RemoteCallback};
 use std::unstable::sync::Exclusive;
 
@@ -54,8 +53,7 @@ impl UvHandle<uvll::uv_async_t> for AsyncWatcher {
     }
 }
 
-extern fn async_cb(handle: *uvll::uv_async_t, status: c_int) {
-    assert!(status == 0);
+extern fn async_cb(handle: *uvll::uv_async_t) {
     let payload: &mut Payload = unsafe {
         cast::transmute(uvll::get_data_for_uv_handle(handle))
     };

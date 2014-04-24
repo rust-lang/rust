@@ -255,10 +255,9 @@ impl TcpWatcher {
             n => Err(UvError(n))
         };
 
-        extern fn timer_cb(handle: *uvll::uv_timer_t, status: c_int) {
+        extern fn timer_cb(handle: *uvll::uv_timer_t) {
             // Don't close the corresponding tcp request, just wake up the task
             // and let RAII take care of the pending watcher.
-            assert_eq!(status, 0);
             let cx: &mut Ctx = unsafe {
                 &mut *(uvll::get_data_for_uv_handle(handle) as *mut Ctx)
             };
@@ -599,8 +598,7 @@ impl rtio::RtioTcpAcceptor for TcpAcceptor {
         self.timeout_tx = Some(tx);
         self.timeout_rx = Some(rx);
 
-        extern fn timer_cb(timer: *uvll::uv_timer_t, status: c_int) {
-            assert_eq!(status, 0);
+        extern fn timer_cb(timer: *uvll::uv_timer_t) {
             let acceptor: &mut TcpAcceptor = unsafe {
                 &mut *(uvll::get_data_for_uv_handle(timer) as *mut TcpAcceptor)
             };
