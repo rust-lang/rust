@@ -257,7 +257,26 @@ pub struct TestOpts {
     pub ratchet_noise_percent: Option<f64>,
     pub save_metrics: Option<Path>,
     pub test_shard: Option<(uint,uint)>,
-    pub logfile: Option<Path>
+    pub logfile: Option<Path>,
+    pub nocapture: bool,
+}
+
+impl TestOpts {
+    #[cfg(test)]
+    fn new() -> TestOpts {
+        TestOpts {
+            filter: None,
+            run_ignored: false,
+            run_tests: false,
+            run_benchmarks: false,
+            ratchet_metrics: None,
+            ratchet_noise_percent: None,
+            save_metrics: None,
+            test_shard: None,
+            logfile: None,
+            nocapture: false,
+        }
+    }
 }
 
 /// Result of parsing the options.
@@ -280,7 +299,9 @@ fn optgroups() -> Vec<getopts::OptGroup> {
       getopts::optopt("", "logfile", "Write logs to the specified file instead \
                           of stdout", "PATH"),
       getopts::optopt("", "test-shard", "run shard A, of B shards, worth of the testsuite",
-                     "A.B"))
+                     "A.B"),
+      getopts::optflag("", "nocapture", "don't capture stdout/stderr of each \
+                                         task, allow printing directly"))
 }
 
 fn usage(binary: &str, helpstr: &str) {
@@ -294,6 +315,10 @@ have a substring match, only those tests are run.
 
 By default, all tests are run in parallel. This can be altered with the
 RUST_TEST_TASKS environment variable when running tests (set it to 1).
+
+All tests have their standard output and standard error captured by default.
+This can be overridden with the --nocapture flag or the RUST_TEST_NOCAPTURE=1
+environment variable. Logging is not captured by default.
 
 Test Attributes:
 
@@ -351,6 +376,11 @@ pub fn parse_opts(args: &[~str]) -> Option<OptRes> {
     let test_shard = matches.opt_str("test-shard");
     let test_shard = opt_shard(test_shard);
 
+    let mut nocapture = matches.opt_present("nocapture");
+    if !nocapture {
+        nocapture = os::getenv("RUST_TEST_NOCAPTURE").is_some();
+    }
+
     let test_opts = TestOpts {
         filter: filter,
         run_ignored: run_ignored,
@@ -360,7 +390,8 @@ pub fn parse_opts(args: &[~str]) -> Option<OptRes> {
         ratchet_noise_percent: ratchet_noise_percent,
         save_metrics: save_metrics,
         test_shard: test_shard,
-        logfile: logfile
+        logfile: logfile,
+        nocapture: nocapture,
     };
 
     Some(Ok(test_opts))
@@ -843,7 +874,7 @@ fn run_tests(opts: &TestOpts,
                 // that hang forever.
                 try!(callback(TeWait(test.desc.clone(), test.testfn.padding())));
             }
-            run_test(!opts.run_tests, test, tx.clone());
+            run_test(opts, !opts.run_tests, test, tx.clone());
             pending += 1;
         }
 
@@ -859,7 +890,7 @@ fn run_tests(opts: &TestOpts,
     // (this includes metric fns)
     for b in filtered_benchs_and_metrics.move_iter() {
         try!(callback(TeWait(b.desc.clone(), b.testfn.padding())));
-        run_test(!opts.run_benchmarks, b, tx.clone());
+        run_test(opts, !opts.run_benchmarks, b, tx.clone());
         let (test, result, stdout) = rx.recv();
         try!(callback(TeResult(test, result, stdout)));
     }
@@ -941,7 +972,8 @@ pub fn filter_tests(
     }
 }
 
-pub fn run_test(force_ignore: bool,
+pub fn run_test(opts: &TestOpts,
+                force_ignore: bool,
                 test: TestDescAndFn,
                 monitor_ch: Sender<MonitorMsg>) {
 
@@ -955,6 +987,7 @@ pub fn run_test(force_ignore: bool,
     #[allow(deprecated_owned_vector)]
     fn run_test_inner(desc: TestDesc,
                       monitor_ch: Sender<MonitorMsg>,
+                      nocapture: bool,
                       testfn: proc():Send) {
         spawn(proc() {
             let (tx, rx) = channel();
@@ -965,8 +998,12 @@ pub fn run_test(force_ignore: bool,
                 DynTestName(ref name) => name.clone().into_maybe_owned(),
                 StaticTestName(name) => name.into_maybe_owned(),
             });
-            task.opts.stdout = Some(~stdout as ~Writer:Send);
-            task.opts.stderr = Some(~stderr as ~Writer:Send);
+            if nocapture {
+                drop((stdout, stderr));
+            } else {
+                task.opts.stdout = Some(~stdout as ~Writer:Send);
+                task.opts.stderr = Some(~stderr as ~Writer:Send);
+            }
             let result_future = task.future_result();
             task.spawn(testfn);
 
@@ -1000,8 +1037,9 @@ pub fn run_test(force_ignore: bool,
             monitor_ch.send((desc, TrMetrics(mm), Vec::new()));
             return;
         }
-        DynTestFn(f) => run_test_inner(desc, monitor_ch, f),
-        StaticTestFn(f) => run_test_inner(desc, monitor_ch, proc() f())
+        DynTestFn(f) => run_test_inner(desc, monitor_ch, opts.nocapture, f),
+        StaticTestFn(f) => run_test_inner(desc, monitor_ch, opts.nocapture,
+                                          proc() f())
     }
 }
 
@@ -1320,7 +1358,7 @@ mod tests {
             testfn: DynTestFn(proc() f()),
         };
         let (tx, rx) = channel();
-        run_test(false, desc, tx);
+        run_test(&TestOpts::new(), false, desc, tx);
         let (_, res, _) = rx.recv();
         assert!(res != TrOk);
     }
@@ -1337,7 +1375,7 @@ mod tests {
             testfn: DynTestFn(proc() f()),
         };
         let (tx, rx) = channel();
-        run_test(false, desc, tx);
+        run_test(&TestOpts::new(), false, desc, tx);
         let (_, res, _) = rx.recv();
         assert!(res == TrIgnored);
     }
@@ -1354,7 +1392,7 @@ mod tests {
             testfn: DynTestFn(proc() f()),
         };
         let (tx, rx) = channel();
-        run_test(false, desc, tx);
+        run_test(&TestOpts::new(), false, desc, tx);
         let (_, res, _) = rx.recv();
         assert!(res == TrOk);
     }
@@ -1371,7 +1409,7 @@ mod tests {
             testfn: DynTestFn(proc() f()),
         };
         let (tx, rx) = channel();
-        run_test(false, desc, tx);
+        run_test(&TestOpts::new(), false, desc, tx);
         let (_, res, _) = rx.recv();
         assert!(res == TrFailed);
     }
@@ -1401,17 +1439,9 @@ mod tests {
         // When we run ignored tests the test filter should filter out all the
         // unignored tests and flip the ignore flag on the rest to false
 
-        let opts = TestOpts {
-            filter: None,
-            run_ignored: true,
-            logfile: None,
-            run_tests: true,
-            run_benchmarks: false,
-            ratchet_noise_percent: None,
-            ratchet_metrics: None,
-            save_metrics: None,
-            test_shard: None
-        };
+        let mut opts = TestOpts::new();
+        opts.run_tests = true;
+        opts.run_ignored = true;
 
         let tests = vec!(
             TestDescAndFn {
@@ -1439,17 +1469,8 @@ mod tests {
 
     #[test]
     pub fn sort_tests() {
-        let opts = TestOpts {
-            filter: None,
-            run_ignored: false,
-            logfile: None,
-            run_tests: true,
-            run_benchmarks: false,
-            ratchet_noise_percent: None,
-            ratchet_metrics: None,
-            save_metrics: None,
-            test_shard: None
-        };
+        let mut opts = TestOpts::new();
+        opts.run_tests = true;
 
         let names =
             vec!("sha1::test".to_owned(), "int::test_to_str".to_owned(), "int::test_pow".to_owned(),

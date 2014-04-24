@@ -267,7 +267,8 @@ pub fn test_opts(config: &config) -> test::TestOpts {
         ratchet_metrics: config.ratchet_metrics.clone(),
         ratchet_noise_percent: config.ratchet_noise_percent.clone(),
         save_metrics: config.save_metrics.clone(),
-        test_shard: config.test_shard.clone()
+        test_shard: config.test_shard.clone(),
+        nocapture: false,
     }
 }
 

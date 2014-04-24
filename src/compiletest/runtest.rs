@@ -955,6 +955,7 @@ fn fatal(err: ~str) -> ! { error(err); fail!(); }
 fn fatal_ProcRes(err: ~str, proc_res: &ProcRes) -> ! {
     print!("\n\
 error: {}\n\
+status: {}\n\
 command: {}\n\
 stdout:\n\
 ------------------------------------------\n\
@@ -965,7 +966,8 @@ stderr:\n\
 {}\n\
 ------------------------------------------\n\
 \n",
-             err, proc_res.cmdline, proc_res.stdout, proc_res.stderr);
+             err, proc_res.status, proc_res.cmdline, proc_res.stdout,
+             proc_res.stderr);
     fail!();
 }
 
