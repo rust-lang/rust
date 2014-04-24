@@ -493,7 +493,7 @@ pub fn stop_after_phase_5(sess: &Session) -> bool {
 fn write_out_deps(sess: &Session,
                   input: &Input,
                   outputs: &OutputFilenames,
-                  krate: &ast::Crate) -> io::IoResult<()> {
+                  krate: &ast::Crate) {
     let id = link::find_crate_id(krate.attrs.as_slice(), outputs.out_filestem);
 
     let mut out_filenames = Vec::new();
@@ -522,28 +522,34 @@ fn write_out_deps(sess: &Session,
             StrInput(..) => {
                 sess.warn("can not write --dep-info without a filename \
                            when compiling stdin.");
-                return Ok(());
+                return
             },
         },
-        _ => return Ok(()),
+        _ => return,
     };
 
-    // Build a list of files used to compile the output and
-    // write Makefile-compatible dependency rules
-    let files: Vec<~str> = sess.codemap().files.borrow()
-                               .iter().filter_map(|fmap| {
-                                    if fmap.is_real_file() {
-                                        Some(fmap.name.clone())
-                                    } else {
-                                        None
-                                    }
-                                }).collect();
-    let mut file = try!(io::File::create(&deps_filename));
-    for path in out_filenames.iter() {
-        try!(write!(&mut file as &mut Writer,
-                      "{}: {}\n\n", path.display(), files.connect(" ")));
+    let result = (|| {
+        // Build a list of files used to compile the output and
+        // write Makefile-compatible dependency rules
+        let files: Vec<~str> = sess.codemap().files.borrow()
+                                   .iter().filter(|fmap| fmap.is_real_file())
+                                   .map(|fmap| fmap.name.clone())
+                                   .collect();
+        let mut file = try!(io::File::create(&deps_filename));
+        for path in out_filenames.iter() {
+            try!(write!(&mut file as &mut Writer,
+                          "{}: {}\n\n", path.display(), files.connect(" ")));
+        }
+        Ok(())
+    })();
+
+    match result {
+        Ok(()) => {}
+        Err(e) => {
+            sess.fatal(format!("error writing dependencies to `{}`: {}",
+                               deps_filename.display(), e));
+        }
     }
-    Ok(())
 }
 
 pub fn compile_input(sess: Session, cfg: ast::CrateConfig, input: &Input,
@@ -567,7 +573,7 @@ pub fn compile_input(sess: Session, cfg: ast::CrateConfig, input: &Input,
                                                                          krate, &id);
             (outputs, expanded_crate, ast_map)
         };
-        write_out_deps(&sess, input, &outputs, &expanded_crate).unwrap();
+        write_out_deps(&sess, input, &outputs, &expanded_crate);
 
         if stop_after_phase_2(&sess) { return; }
 
