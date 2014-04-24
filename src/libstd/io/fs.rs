@@ -491,7 +491,8 @@ pub fn readdir(path: &Path) -> IoResult<Vec<Path>> {
 
 /// Returns an iterator which will recursively walk the directory structure
 /// rooted at `path`. The path given will not be iterated over, and this will
-/// perform iteration in a top-down order.
+/// perform iteration in some top-down order.  The contents of unreadable
+/// subdirectories are ignored.
 pub fn walk_dir(path: &Path) -> IoResult<Directories> {
     Ok(Directories { stack: try!(readdir(path)) })
 }
@@ -503,7 +504,7 @@ pub struct Directories {
 
 impl Iterator<Path> for Directories {
     fn next(&mut self) -> Option<Path> {
-        match self.stack.shift() {
+        match self.stack.pop() {
             Some(path) => {
                 if path.is_dir() {
                     match readdir(&path) {
@@ -968,6 +969,32 @@ mod test {
             check!(unlink(f));
         }
         check!(rmdir(dir));
+    })
+
+    iotest!(fn file_test_walk_dir() {
+        let tmpdir = tmpdir();
+        let dir = &tmpdir.join("walk_dir");
+        check!(mkdir(dir, io::UserRWX));
+
+        let dir1 = &dir.join("01/02/03");
+        check!(mkdir_recursive(dir1, io::UserRWX));
+        check!(File::create(&dir1.join("04")));
+
+        let dir2 = &dir.join("11/12/13");
+        check!(mkdir_recursive(dir2, io::UserRWX));
+        check!(File::create(&dir2.join("14")));
+
+        let mut files = check!(walk_dir(dir));
+        let mut cur = [0u8, .. 2];
+        for f in files {
+            let stem = f.filestem_str().unwrap();
+            let root = stem[0] - ('0' as u8);
+            let name = stem[1] - ('0' as u8);
+            assert!(cur[root as uint] < name);
+            cur[root as uint] = name;
+        }
+
+        check!(rmdir_recursive(dir));
     })
 
     iotest!(fn recursive_mkdir() {
