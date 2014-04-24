@@ -23,18 +23,28 @@ using namespace llvm;
 using namespace llvm::sys;
 using namespace llvm::object;
 
-const char *LLVMRustError;
+static char *LastError;
 
 extern "C" LLVMMemoryBufferRef
 LLVMRustCreateMemoryBufferWithContentsOfFile(const char *Path) {
   LLVMMemoryBufferRef MemBuf = NULL;
-  LLVMCreateMemoryBufferWithContentsOfFile(Path, &MemBuf,
-    const_cast<char **>(&LLVMRustError));
+  char *err = NULL;
+  LLVMCreateMemoryBufferWithContentsOfFile(Path, &MemBuf, &err);
+  if (err != NULL) {
+    LLVMRustSetLastError(err);
+  }
   return MemBuf;
 }
 
-extern "C" const char *LLVMRustGetLastError(void) {
-  return LLVMRustError;
+extern "C" char *LLVMRustGetLastError(void) {
+  char *ret = LastError;
+  LastError = NULL;
+  return ret;
+}
+
+void LLVMRustSetLastError(const char *err) {
+  free((void*) LastError);
+  LastError = strdup(err);
 }
 
 extern "C" void
@@ -609,14 +619,14 @@ LLVMRustLinkInExternalBitcode(LLVMModuleRef dst, char *bc, size_t len) {
     MemoryBuffer* buf = MemoryBuffer::getMemBufferCopy(StringRef(bc, len));
     ErrorOr<Module *> Src = llvm::getLazyBitcodeModule(buf, Dst->getContext());
     if (!Src) {
-        LLVMRustError = Src.getError().message().c_str();
+        LLVMRustSetLastError(Src.getError().message().c_str());
         delete buf;
         return false;
     }
 
     std::string Err;
     if (Linker::LinkModules(Dst, *Src, Linker::DestroySource, &Err)) {
-        LLVMRustError = Err.c_str();
+        LLVMRustSetLastError(Err.c_str());
         return false;
     }
     return true;
@@ -629,13 +639,13 @@ LLVMRustLinkInExternalBitcode(LLVMModuleRef dst, char *bc, size_t len) {
     std::string Err;
     Module *Src = llvm::getLazyBitcodeModule(buf, Dst->getContext(), &Err);
     if (!Src) {
-        LLVMRustError = Err.c_str();
+        LLVMRustSetLastError(Err.c_str());
         delete buf;
         return false;
     }
 
     if (Linker::LinkModules(Dst, Src, Linker::DestroySource, &Err)) {
-        LLVMRustError = Err.c_str();
+        LLVMRustSetLastError(Err.c_str());
         return false;
     }
     return true;
@@ -648,12 +658,12 @@ LLVMRustOpenArchive(char *path) {
     std::unique_ptr<MemoryBuffer> buf;
     error_code err = MemoryBuffer::getFile(path, buf);
     if (err) {
-        LLVMRustError = err.message().c_str();
+        LLVMRustSetLastError(err.message().c_str());
         return NULL;
     }
     Archive *ret = new Archive(buf.release(), err);
     if (err) {
-        LLVMRustError = err.message().c_str();
+        LLVMRustSetLastError(err.message().c_str());
         return NULL;
     }
     return ret;
@@ -664,12 +674,12 @@ LLVMRustOpenArchive(char *path) {
     OwningPtr<MemoryBuffer> buf;
     error_code err = MemoryBuffer::getFile(path, buf);
     if (err) {
-        LLVMRustError = err.message().c_str();
+        LLVMRustSetLastError(err.message().c_str());
         return NULL;
     }
     Archive *ret = new Archive(buf.take(), err);
     if (err) {
-        LLVMRustError = err.message().c_str();
+        LLVMRustSetLastError(err.message().c_str());
         return NULL;
     }
     return ret;
