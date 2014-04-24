@@ -428,6 +428,8 @@ pub trait Float: Signed + Primitive {
     fn sqrt(self) -> Self;
     /// Take the reciprocal (inverse) square root of a number, `1/sqrt(x)`.
     fn rsqrt(self) -> Self;
+    /// Take the fast reciprocal (inverse) square root of a number, `1/sqrt(x)`
+    fn fast_rsqrt(self) -> Self;
     /// Take the cubic root of a number.
     fn cbrt(self) -> Self;
     /// Calculate the length of the hypotenuse of a right-angle triangle given
