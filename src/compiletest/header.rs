@@ -26,8 +26,6 @@ pub struct TestProps {
     pub aux_builds: Vec<~str> ,
     // Environment settings to use during execution
     pub exec_env: Vec<(~str,~str)> ,
-    // Commands to be given to the debugger, when testing debug info
-    pub debugger_cmds: Vec<~str> ,
     // Lines to check if they appear in the expected debugger output
     pub check_lines: Vec<~str> ,
     // Flag to force a crate to be built with the host architecture
@@ -46,7 +44,6 @@ pub fn load_props(testfile: &Path) -> TestProps {
     let mut compile_flags = None;
     let mut run_flags = None;
     let mut pp_exact = None;
-    let mut debugger_cmds = Vec::new();
     let mut check_lines = Vec::new();
     let mut force_host = false;
     let mut check_stdout = false;
@@ -91,11 +88,6 @@ pub fn load_props(testfile: &Path) -> TestProps {
             None => {}
         }
 
-        match parse_debugger_cmd(ln) {
-            Some(dc) => debugger_cmds.push(dc),
-            None => ()
-        };
-
         match parse_check_line(ln) {
             Some(cl) => check_lines.push(cl),
             None => ()
@@ -111,7 +103,6 @@ pub fn load_props(testfile: &Path) -> TestProps {
         pp_exact: pp_exact,
         aux_builds: aux_builds,
         exec_env: exec_env,
-        debugger_cmds: debugger_cmds,
         check_lines: check_lines,
         force_host: force_host,
         check_stdout: check_stdout,
@@ -173,10 +164,6 @@ fn parse_run_flags(line: &str) -> Option<~str> {
     parse_name_value_directive(line, "run-flags".to_owned())
 }
 
-fn parse_debugger_cmd(line: &str) -> Option<~str> {
-    parse_name_value_directive(line, "debugger".to_owned())
-}
-
 fn parse_check_line(line: &str) -> Option<~str> {
     parse_name_value_directive(line, "check".to_owned())
 }
@@ -226,7 +213,7 @@ fn parse_name_directive(line: &str, directive: &str) -> bool {
     line.contains(directive)
 }
 
-fn parse_name_value_directive(line: &str,
+pub fn parse_name_value_directive(line: &str,
                               directive: ~str) -> Option<~str> {
     let keycolon = directive + ":";
     match line.find_str(keycolon) {

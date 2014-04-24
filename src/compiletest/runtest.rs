@@ -8,14 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use common::config;
-use common::mode_compile_fail;
-use common::mode_pretty;
-use common::mode_run_fail;
-use common::mode_run_pass;
+use common::{config, mode_compile_fail, mode_pretty, mode_run_fail, mode_run_pass};
 use errors;
 use header::TestProps;
-use header::load_props;
+use header;
 use procsrv;
 use util::logv;
 #[cfg(target_os = "win32")]
@@ -59,14 +55,15 @@ pub fn run_metrics(config: config, testfile: ~str, mm: &mut MetricMap) {
     }
     let testfile = Path::new(testfile);
     debug!("running {}", testfile.display());
-    let props = load_props(&testfile);
+    let props = header::load_props(&testfile);
     debug!("loaded props");
     match config.mode {
       mode_compile_fail => run_cfail_test(&config, &props, &testfile),
       mode_run_fail => run_rfail_test(&config, &props, &testfile),
       mode_run_pass => run_rpass_test(&config, &props, &testfile),
       mode_pretty => run_pretty_test(&config, &props, &testfile),
-      mode_debug_info => run_debuginfo_test(&config, &props, &testfile),
+      mode_debug_info_gdb => run_debuginfo_gdb_test(&config, &props, &testfile),
+      mode_debug_info_lldb => run_debuginfo_lldb_test(&config, &props, &testfile),
       mode_codegen => run_codegen_test(&config, &props, &testfile, mm)
     }
 }
@@ -259,7 +256,7 @@ actual:\n\
     }
 }
 
-fn run_debuginfo_test(config: &config, props: &TestProps, testfile: &Path) {
+fn run_debuginfo_gdb_test(config: &config, props: &TestProps, testfile: &Path) {
     let mut config = config {
         target_rustcflags: cleanup_debug_info_options(&config.target_rustcflags),
         host_rustcflags: cleanup_debug_info_options(&config.host_rustcflags),
@@ -267,18 +264,19 @@ fn run_debuginfo_test(config: &config, props: &TestProps, testfile: &Path) {
     };
 
     let config = &mut config;
-    let check_lines = &props.check_lines;
-    let mut cmds = props.debugger_cmds.connect("\n");
+    let DebuggerCommands { commands, check_lines, .. } = parse_debugger_commands(testfile, "gdb");
+    let mut cmds = commands.connect("\n");
 
     // compile test file (it shoud have 'compile-flags:-g' in the header)
-    let mut proc_res = compile_test(config, props, testfile);
-    if !proc_res.status.success() {
-        fatal_ProcRes("compilation failed!".to_owned(), &proc_res);
+    let compiler_run_result = compile_test(config, props, testfile);
+    if !compiler_run_result.status.success() {
+        fatal_ProcRes("compilation failed!".to_owned(), &compiler_run_result);
     }
 
     let exe_file = make_exe_name(config, testfile);
 
     let mut proc_args;
+    let debugger_run_result;
     match config.target.as_slice() {
         "arm-linux-androideabi" => {
 
@@ -363,10 +361,12 @@ fn run_debuginfo_test(config: &config, props: &TestProps, testfile: &Path) {
                 cmdline
             };
 
-            proc_res = ProcRes {status: status,
-                               stdout: out,
-                               stderr: err,
-                               cmdline: cmdline};
+            debugger_run_result = ProcRes {
+                status: status,
+                stdout: out,
+                stderr: err,
+                cmdline: cmdline
+            };
             process.signal_kill().unwrap();
         }
 
@@ -391,25 +391,199 @@ fn run_debuginfo_test(config: &config, props: &TestProps, testfile: &Path) {
                 "-command=" + debugger_script.as_str().unwrap().to_owned(),
                 exe_file.as_str().unwrap().to_owned());
             proc_args = ProcArgs {prog: debugger(), args: debugger_opts};
-            proc_res = compose_and_run(config, testfile, proc_args, Vec::new(), "", None);
+            debugger_run_result = compose_and_run(config,
+                                                  testfile,
+                                                  proc_args,
+                                                  Vec::new(),
+                                                  "",
+                                                  None);
         }
     }
 
-    if !proc_res.status.success() {
+    if !debugger_run_result.status.success() {
         fatal("gdb failed to execute".to_owned());
     }
+
+    check_debugger_output(&debugger_run_result, check_lines.as_slice());
+}
+
+fn run_debuginfo_lldb_test(config: &config, props: &TestProps, testfile: &Path) {
+    use std::io::process::{Process, ProcessConfig, ProcessOutput};
+
+    if config.lldb_python_dir.is_none() {
+        fatal("Can't run LLDB test because LLDB's python path is not set.".to_owned());
+    }
+
+    let mut config = config {
+        target_rustcflags: cleanup_debug_info_options(&config.target_rustcflags),
+        host_rustcflags: cleanup_debug_info_options(&config.host_rustcflags),
+        .. config.clone()
+    };
+
+    let config = &mut config;
+
+    // compile test file (it shoud have 'compile-flags:-g' in the header)
+    let compile_result = compile_test(config, props, testfile);
+    if !compile_result.status.success() {
+        fatal_ProcRes("compilation failed!".to_owned(), &compile_result);
+    }
+
+    let exe_file = make_exe_name(config, testfile);
+
+    // Parse debugger commands etc from test files
+    let DebuggerCommands {
+        commands,
+        check_lines,
+        breakpoint_lines
+    } = parse_debugger_commands(testfile, "lldb");
+
+    // Write debugger script:
+    // We don't want to hang when calling `quit` while the process is still running
+    let mut script_str = StrBuf::from_str("settings set auto-confirm true\n");
+
+    // Set breakpoints on every line that contains the string "#break"
+    for line in breakpoint_lines.iter() {
+        script_str.push_str(format!("breakpoint set --line {}\n", line));
+    }
+
+    // Append the other commands
+    for line in commands.iter() {
+        script_str.push_str(line.as_slice());
+        script_str.push_str("\n");
+    }
+
+    // Finally, quit the debugger
+    script_str.push_str("quit\n");
+
+    // Write the script into a file
+    debug!("script_str = {}", script_str);
+    dump_output_file(config, testfile, script_str.into_owned(), "debugger.script");
+    let debugger_script = make_out_name(config, testfile, "debugger.script");
+
+    // Let LLDB execute the script via lldb_batchmode.py
+    let debugger_run_result = run_lldb(config, &exe_file, &debugger_script);
+
+    if !debugger_run_result.status.success() {
+        fatal_ProcRes("Error while running LLDB".to_owned(), &debugger_run_result);
+    }
+
+    check_debugger_output(&debugger_run_result, check_lines.as_slice());
+
+    fn run_lldb(config: &config, test_executable: &Path, debugger_script: &Path) -> ProcRes {
+        // Prepare the lldb_batchmode which executes the debugger script
+        let lldb_batchmode_script = "./src/etc/lldb_batchmode.py".to_owned();
+        let test_executable_str = test_executable.as_str().unwrap().to_owned();
+        let debugger_script_str = debugger_script.as_str().unwrap().to_owned();
+        let commandline = format!("python {} {} {}",
+                                  lldb_batchmode_script.as_slice(),
+                                  test_executable_str.as_slice(),
+                                  debugger_script_str.as_slice());
+
+        let args = &[lldb_batchmode_script, test_executable_str, debugger_script_str];
+        let env = &[("PYTHONPATH".to_owned(), config.lldb_python_dir.clone().unwrap())];
+
+        let mut opt_process = Process::configure(ProcessConfig {
+            program: "python",
+            args: args,
+            env: Some(env),
+            .. ProcessConfig::new()
+        });
+
+        let (status, out, err) = match opt_process {
+            Ok(ref mut process) => {
+                let ProcessOutput { status, output, error } = process.wait_with_output();
+
+                (status,
+                 str::from_utf8(output.as_slice()).unwrap().to_owned(),
+                 str::from_utf8(error.as_slice()).unwrap().to_owned())
+            },
+            Err(e) => {
+                fatal(format!("Failed to setup Python process for LLDB script: {}", e))
+            }
+        };
+
+        dump_output(config, test_executable, out, err);
+        return ProcRes {
+            status: status,
+            stdout: out,
+            stderr: err,
+            cmdline: commandline
+        };
+    }
+}
+
+struct DebuggerCommands
+{
+    commands: Vec<~str>,
+    check_lines: Vec<~str>,
+    breakpoint_lines: Vec<uint>
+}
+
+fn parse_debugger_commands(file_path: &Path, debugger_prefix: &str) -> DebuggerCommands {
+    use std::io::{BufferedReader, File};
+
+    let command_directive = debugger_prefix + "-command";
+    let check_directive = debugger_prefix + "-check";
+
+    let mut breakpoint_lines = vec!();
+    let mut commands = vec!();
+    let mut check_lines = vec!();
+    let mut counter = 1;
+    let mut reader = BufferedReader::new(File::open(file_path).unwrap());
+    for line in reader.lines() {
+        match line {
+            Ok(line) => {
+                if line.contains("#break") {
+                    breakpoint_lines.push(counter);
+                }
+
+                header::parse_name_value_directive(line, command_directive.clone())
+                    .map(|cmd| commands.push(cmd));
+
+                header::parse_name_value_directive(line, check_directive.clone())
+                    .map(|cmd| check_lines.push(cmd));
+            }
+            Err(e) => {
+                fatal(format!("Error while parsing debugger commands: {}", e))
+            }
+        }
+        counter += 1;
+    }
+
+    DebuggerCommands {
+        commands: commands,
+        check_lines: check_lines,
+        breakpoint_lines: breakpoint_lines
+    }
+}
+
+fn cleanup_debug_info_options(options: &Option<~str>) -> Option<~str> {
+    if options.is_none() {
+        return None;
+    }
+
+    // Remove options that are either unwanted (-O) or may lead to duplicates due to RUSTFLAGS.
+    let options_to_remove = ["-O".to_owned(), "-g".to_owned(), "--debuginfo".to_owned()];
+    let new_options = split_maybe_args(options).move_iter()
+                                               .filter(|x| !options_to_remove.contains(x))
+                                               .collect::<Vec<~str>>()
+                                               .connect(" ");
+    Some(new_options)
+}
+
+fn check_debugger_output(debugger_run_result: &ProcRes, check_lines: &[~str]) {
     let num_check_lines = check_lines.len();
     if num_check_lines > 0 {
         // Allow check lines to leave parts unspecified (e.g., uninitialized
         // bits in the wrong case of an enum) with the notation "[...]".
         let check_fragments: Vec<Vec<~str>> =
             check_lines.iter().map(|s| {
-                s.split_str("[...]").map(|x| x.to_str()).collect()
+                s.trim().split_str("[...]").map(|x| x.to_str()).collect()
             }).collect();
         // check if each line in props.check_lines appears in the
         // output (in order)
         let mut i = 0u;
-        for line in proc_res.stdout.lines() {
+        for line in debugger_run_result.stdout.lines() {
             let mut rest = line.trim();
             let mut first = true;
             let mut failed = false;
@@ -440,22 +614,8 @@ fn run_debuginfo_test(config: &config, props: &TestProps, testfile: &Path) {
         }
         if i != num_check_lines {
             fatal_ProcRes(format!("line not found in debugger output: {}",
-                                  *check_lines.get(i)), &proc_res);
+                                  check_lines.get(i).unwrap()), debugger_run_result);
         }
-    }
-
-    fn cleanup_debug_info_options(options: &Option<~str>) -> Option<~str> {
-        if options.is_none() {
-            return None;
-        }
-
-        // Remove options that are either unwanted (-O) or may lead to duplicates due to RUSTFLAGS.
-        let options_to_remove = ["-O".to_owned(), "-g".to_owned(), "--debuginfo".to_owned()];
-        let new_options = split_maybe_args(options).move_iter()
-                                                   .filter(|x| !options_to_remove.contains(x))
-                                                   .collect::<Vec<~str>>()
-                                                   .connect(" ");
-        Some(new_options)
     }
 }
 
@@ -736,7 +896,7 @@ fn compose_and_run_compiler(
 
     for rel_ab in props.aux_builds.iter() {
         let abs_ab = config.aux_base.join(rel_ab.as_slice());
-        let aux_props = load_props(&abs_ab);
+        let aux_props = header::load_props(&abs_ab);
         let crate_type = if aux_props.no_prefer_dynamic {
             Vec::new()
         } else {

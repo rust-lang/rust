@@ -14,7 +14,8 @@ pub enum mode {
     mode_run_fail,
     mode_run_pass,
     mode_pretty,
-    mode_debug_info,
+    mode_debug_info_gdb,
+    mode_debug_info_lldb,
     mode_codegen
 }
 
@@ -100,6 +101,9 @@ pub struct config {
 
     // status whether android device available or not
     pub adb_device_status: bool,
+
+    // the path containing LLDB's Python module
+    pub lldb_python_dir: Option<~str>,
 
     // Explain what's going on
     pub verbose: bool
