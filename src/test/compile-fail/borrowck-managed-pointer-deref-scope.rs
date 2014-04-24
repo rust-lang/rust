@@ -8,13 +8,26 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Verify that managed pointers scope is treated like ownoed pointers.
+// regresion test for #11586
+
 #![feature(managed_boxes)]
 
-struct Foo<'a> {
-    x: &'a int
+fn foo<'a>(x: &'a @int) -> &'a int {
+    match x {
+        &ref y => {
+            &**y // Do not expect an error here
+        }
+    }
 }
 
-pub fn main() {
-    let f = Foo { x: @3 };
-    assert_eq!(*f.x, 3);
+fn bar() {
+    let a = 3;
+    let mut y = &a;
+    if true {
+        let x = @3;
+        y = &*x; //~ ERROR `*x` does not live long enough
+    }
 }
+
+fn main() {}

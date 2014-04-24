@@ -59,7 +59,6 @@ use middle::trans::meth;
 use middle::trans::inline;
 use middle::trans::tvec;
 use middle::trans::type_of;
-use middle::trans::write_guard;
 use middle::ty::struct_fields;
 use middle::ty::{AutoBorrowObj, AutoDerefRef, AutoAddEnv, AutoObject, AutoUnsafe};
 use middle::ty::{AutoPtr, AutoBorrowVec, AutoBorrowVecRef};
@@ -1676,8 +1675,6 @@ fn deref_once<'a>(bcx: &'a Block<'a>,
                   derefs: uint)
                   -> DatumBlock<'a, Expr> {
     let ccx = bcx.ccx();
-    let bcx = write_guard::root_and_write_guard(&datum, bcx, expr.span,
-                                                expr.id, derefs);
 
     debug!("deref_once(expr={}, datum={}, derefs={})",
            expr.repr(bcx.tcx()),

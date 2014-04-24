@@ -101,12 +101,18 @@ impl<'a> RestrictionsContext<'a> {
                 self.extend(result, cmt.mutbl, LpInterior(i), restrictions)
             }
 
-            mc::cat_deref(cmt_base, _, pk @ mc::OwnedPtr) => {
+            mc::cat_deref(cmt_base, _, pk @ mc::OwnedPtr) |
+            mc::cat_deref(cmt_base, _, pk @ mc::GcPtr) => {
                 // R-Deref-Send-Pointer
                 //
                 // When we borrow the interior of an owned pointer, we
                 // cannot permit the base to be mutated, because that
                 // would cause the unique pointer to be freed.
+                //
+                // For a managed pointer, the rules are basically the
+                // same, because this could be the last ref.
+                // Eventually we should make these non-special and
+                // just rely on Deref<T> implementation.
                 let result = self.restrict(
                     cmt_base,
                     restrictions | RESTR_MUTATE);
@@ -131,11 +137,6 @@ impl<'a> RestrictionsContext<'a> {
                                 self.loan_region, lt, restrictions)});
                     return Safe;
                 }
-                Safe
-            }
-
-            mc::cat_deref(_, _, mc::GcPtr) => {
-                // R-Deref-Imm-Managed
                 Safe
             }
 
