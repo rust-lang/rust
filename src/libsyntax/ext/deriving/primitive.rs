@@ -21,6 +21,8 @@ pub fn expand_deriving_from_primitive(cx: &mut ExtCtxt,
                                       mitem: @MetaItem,
                                       item: @Item,
                                       push: |@Item|) {
+    let inline = cx.meta_word(span, InternedString::new("inline"));
+    let attrs = vec!(cx.attribute(span, inline));
     let trait_def = TraitDef {
         span: span,
         attributes: Vec::new(),
@@ -38,8 +40,8 @@ pub fn expand_deriving_from_primitive(cx: &mut ExtCtxt,
                                            None,
                                            vec!(~Self),
                                            true)),
-                // liable to cause code-bloat
-                inline: true,
+                // #[inline] liable to cause code-bloat
+                attributes: attrs.clone(),
                 const_nonmatching: false,
                 combine_substructure: combine_substructure(|c, s, sub| {
                     cs_from("i64", c, s, sub)
@@ -55,8 +57,8 @@ pub fn expand_deriving_from_primitive(cx: &mut ExtCtxt,
                                            None,
                                            vec!(~Self),
                                            true)),
-                // liable to cause code-bloat
-                inline: true,
+                // #[inline] liable to cause code-bloat
+                attributes: attrs,
                 const_nonmatching: false,
                 combine_substructure: combine_substructure(|c, s, sub| {
                     cs_from("u64", c, s, sub)

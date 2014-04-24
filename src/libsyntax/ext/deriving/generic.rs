@@ -229,8 +229,7 @@ pub struct MethodDef<'a> {
     /// Return type
     pub ret_ty: Ty<'a>,
 
-    /// Whether to mark this as #[inline]
-    pub inline: bool,
+    pub attributes: Vec<ast::Attribute>,
 
     /// if the value of the nonmatching enums is independent of the
     /// actual enum variants, i.e. can use _ => .. match.
@@ -612,23 +611,10 @@ impl<'a> MethodDef<'a> {
         let fn_decl = cx.fn_decl(args, ret_type);
         let body_block = cx.block_expr(body);
 
-        let attrs = if self.inline {
-            vec!(
-                cx
-                      .attribute(trait_.span,
-                                 cx
-                                       .meta_word(trait_.span,
-                                                  InternedString::new(
-                                                      "inline")))
-            )
-        } else {
-            Vec::new()
-        };
-
         // Create the method.
         @ast::Method {
             ident: method_ident,
-            attrs: attrs,
+            attrs: self.attributes.clone(),
             generics: fn_generics,
             explicit_self: explicit_self,
             fn_style: ast::NormalFn,
