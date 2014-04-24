@@ -456,6 +456,23 @@ impl Float for f32 {
     #[inline]
     fn rsqrt(self) -> f32 { self.sqrt().recip() }
 
+    /// The reciprocal of the square root of a number, quickly using
+    /// Newton's method to approximate the value.
+    /// Originally seen in Quake arena
+    fn fast_rsqrt(self) -> f32 {
+        let mut i:  i32 = 0;
+        let mut x2: f32 = 0.0;
+        let mut y:  f32 = 0.0;
+
+        y  = self;
+        x2 = y * 0.5;
+        i = unsafe{std::cast::transmute::<f32, i32>(y)};  // stark lack of evil floating point bit level hacking
+        i = 0x5f3759df - ( i >> 1 );
+        y = unsafe{std::cast::transmute::<i32, f32>(i)};
+        y = y * (1.5 - (x2 * y * y));
+        y
+    }
+
     #[inline]
     fn cbrt(self) -> f32 {
         unsafe { cmath::cbrtf(self) }
