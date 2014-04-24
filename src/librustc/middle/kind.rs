@@ -20,7 +20,7 @@ use syntax::ast::*;
 use syntax::attr;
 use syntax::codemap::Span;
 use syntax::owned_slice::OwnedSlice;
-use syntax::print::pprust::expr_to_str;
+use syntax::print::pprust::{expr_to_str,path_to_str};
 use syntax::{visit,ast_util};
 use syntax::visit::Visitor;
 
@@ -63,8 +63,13 @@ impl<'a> Visitor<()> for Context<'a> {
     fn visit_ty(&mut self, t: &Ty, _: ()) {
         check_ty(self, t);
     }
+
     fn visit_item(&mut self, i: &Item, _: ()) {
         check_item(self, i);
+    }
+
+    fn visit_pat(&mut self, p: &Pat, _: ()) {
+        check_pat(self, p);
     }
 }
 
@@ -550,4 +555,39 @@ pub fn check_cast_for_escaping_regions(
             _ => false
         }
     }
+}
+
+// Ensure that `ty` has a statically known size (i.e., it has the `Sized` bound).
+fn check_sized(tcx: &ty::ctxt, ty: ty::t, name: ~str, sp: Span) {
+    if !ty::type_is_sized(tcx, ty) {
+        tcx.sess.span_err(sp, format!("variable `{}` has dynamically sized type `{}`",
+                                      name, ty_to_str(tcx, ty)));
+    }
+}
+
+// Check that any variables in a pattern have types with statically known size.
+fn check_pat(cx: &mut Context, pat: &Pat) {
+    let var_name = match pat.node {
+        PatWild => Some("_".to_owned()),
+        PatIdent(_, ref path, _) => Some(path_to_str(path)),
+        _ => None
+    };
+
+    match var_name {
+        Some(name) => {
+            let types = cx.tcx.node_types.borrow();
+            let ty = types.find(&(pat.id as uint));
+            match ty {
+                Some(ty) => {
+                    debug!("kind: checking sized-ness of variable {}: {}",
+                           name, ty_to_str(cx.tcx, *ty));
+                    check_sized(cx.tcx, *ty, name, pat.span);
+                }
+                None => {} // extern fn args
+            }
+        }
+        None => {}
+    }
+
+    visit::walk_pat(cx, pat, ());
 }
