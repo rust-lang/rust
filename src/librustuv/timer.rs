@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use libc::c_int;
 use std::mem;
 use std::rt::rtio::RtioTimer;
 use std::rt::task::BlockedTask;
@@ -137,9 +136,8 @@ impl RtioTimer for TimerWatcher {
     }
 }
 
-extern fn timer_cb(handle: *uvll::uv_timer_t, status: c_int) {
+extern fn timer_cb(handle: *uvll::uv_timer_t) {
     let _f = ForbidSwitch::new("timer callback can't switch");
-    assert_eq!(status, 0);
     let timer: &mut TimerWatcher = unsafe { UvHandle::from_uv_handle(&handle) };
 
     match timer.action.take_unwrap() {

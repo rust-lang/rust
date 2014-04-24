@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use std::cast;
-use libc::{c_int, c_void};
+use libc::c_void;
 
 use uvll;
 use super::{Loop, UvHandle};
@@ -46,8 +46,7 @@ impl IdleWatcher {
             assert_eq!(uvll::uv_idle_start(handle, onetime_cb), 0)
         }
 
-        extern fn onetime_cb(handle: *uvll::uv_idle_t, status: c_int) {
-            assert_eq!(status, 0);
+        extern fn onetime_cb(handle: *uvll::uv_idle_t) {
             unsafe {
                 let data = uvll::get_data_for_uv_handle(handle);
                 let f: ~proc() = cast::transmute(data);
@@ -82,8 +81,7 @@ impl UvHandle<uvll::uv_idle_t> for IdleWatcher {
     fn uv_handle(&self) -> *uvll::uv_idle_t { self.handle }
 }
 
-extern fn idle_cb(handle: *uvll::uv_idle_t, status: c_int) {
-    assert_eq!(status, 0);
+extern fn idle_cb(handle: *uvll::uv_idle_t) {
     let idle: &mut IdleWatcher = unsafe { UvHandle::from_uv_handle(&handle) };
     idle.callback.call();
 }
