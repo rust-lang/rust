@@ -22,7 +22,7 @@ extern crate rustuv;
 use std::io::net::ip::{Ipv4Addr, SocketAddr};
 use std::io::net::tcp::{TcpListener, TcpStream};
 use std::io::{Acceptor, Listener};
-use std::task;
+use std::task::TaskBuilder;
 
 #[start]
 fn start(argc: int, argv: **u8) -> int {
@@ -61,7 +61,7 @@ fn main() {
     let (tx, rx) = channel();
     for _ in range(0, 1000) {
         let tx = tx.clone();
-        let mut builder = task::task();
+        let mut builder = TaskBuilder::new();
         builder.opts.stack_size = Some(32 * 1024);
         builder.spawn(proc() {
             match TcpStream::connect(addr) {
