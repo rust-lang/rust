@@ -684,7 +684,8 @@ impl Clean<Type> for ast::Ty {
     fn clean(&self) -> Type {
         use syntax::ast::*;
         debug!("cleaning type `{:?}`", self);
-        let codemap = local_data::get(super::ctxtkey, |x| *x.unwrap()).sess().codemap();
+        let ctxt = local_data::get(super::ctxtkey, |x| *x.unwrap());
+        let codemap = ctxt.sess().codemap();
         debug!("span corresponds to `{}`", codemap.span_to_str(self.span));
         match self.node {
             TyNil => Unit,
@@ -866,7 +867,8 @@ pub struct Span {
 
 impl Clean<Span> for syntax::codemap::Span {
     fn clean(&self) -> Span {
-        let cm = local_data::get(super::ctxtkey, |x| *x.unwrap()).sess().codemap();
+        let ctxt = local_data::get(super::ctxtkey, |x| *x.unwrap());
+        let cm = ctxt.sess().codemap();
         let filename = cm.span_to_filename(*self);
         let lo = cm.lookup_char_pos(self.lo);
         let hi = cm.lookup_char_pos(self.hi);
@@ -1193,7 +1195,8 @@ trait ToSource {
 impl ToSource for syntax::codemap::Span {
     fn to_src(&self) -> ~str {
         debug!("converting span {:?} to snippet", self.clean());
-        let cm = local_data::get(super::ctxtkey, |x| x.unwrap().clone()).sess().codemap().clone();
+        let ctxt = local_data::get(super::ctxtkey, |x| x.unwrap().clone());
+        let cm = ctxt.sess().codemap().clone();
         let sn = match cm.span_to_snippet(*self) {
             Some(x) => x,
             None    => "".to_owned()
