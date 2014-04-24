@@ -1208,7 +1208,7 @@ impl<'a> State<'a> {
                 let base_args = args.slice_from(1);
                 try!(self.print_expr(*args.get(0)));
                 try!(word(&mut self.s, "."));
-                try!(self.print_ident(ident));
+                try!(self.print_ident(ident.node));
                 if tys.len() > 0u {
                     try!(word(&mut self.s, "::<"));
                     try!(self.commasep(Inconsistent, tys.as_slice(),
