@@ -104,10 +104,10 @@ pub trait Delegate {
 // supplies types from the tree. After type checking is complete, you
 // can just use the tcx as the typer.
 
-pub struct ExprUseVisitor<'d,'t,D,TYPER> {
+pub struct ExprUseVisitor<'d,'t,TYPER> {
     typer: &'t TYPER,
     mc: mc::MemCategorizationContext<'t,TYPER>,
-    delegate: &'d mut D,
+    delegate: &'d mut Delegate,
 }
 
 // If the TYPER results in an error, it's because the type check
@@ -126,10 +126,10 @@ macro_rules! ignore_err(
     )
 )
 
-impl<'d,'t,D:Delegate,TYPER:mc::Typer> ExprUseVisitor<'d,'t,D,TYPER> {
-    pub fn new(delegate: &'d mut D,
+impl<'d,'t,TYPER:mc::Typer> ExprUseVisitor<'d,'t,TYPER> {
+    pub fn new(delegate: &'d mut Delegate,
                typer: &'t TYPER)
-               -> ExprUseVisitor<'d,'t,D,TYPER> {
+               -> ExprUseVisitor<'d,'t,TYPER> {
         ExprUseVisitor { typer: typer,
                          mc: mc::MemCategorizationContext::new(typer),
                          delegate: delegate }
@@ -370,13 +370,10 @@ impl<'d,'t,D:Delegate,TYPER:mc::Typer> ExprUseVisitor<'d,'t,D,TYPER> {
             }
 
             ast::ExprAssignOp(_, lhs, rhs) => {
-                // FIXME(#4712) --- Overloaded operators?
-                //
-                // if !self.walk_overloaded_operator(expr, [lhs, rhs])
-                // {
+                // This will have to change if/when we support
+                // overloaded operators for `+=` and so forth.
                 self.mutate_expr(expr, lhs, WriteAndRead);
                 self.consume_expr(rhs);
-                // }
             }
 
             ast::ExprRepeat(base, count) => {
