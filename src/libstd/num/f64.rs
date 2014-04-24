@@ -478,9 +478,9 @@ impl Float for f64 {
 
         y  = self as f32;
         x2 = y * 0.5;
-        i = unsafe{std::cast::transmute::<f32, i32>(y)};  // stark lack of evil floating point bit
+        i = unsafe{cast::transmute::<f32, i32>(y)};  // stark lack of evil floating point bit
         i = 0x5f3759df - ( i >> 1 );                      // level hacking
-        y = unsafe{std::cast::transmute::<i32, f32>(i)};
+        y = unsafe{cast::transmute::<i32, f32>(i)};
         y = y * (1.5 - (x2 * y * y));
         y as f64
     }
