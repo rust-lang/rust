@@ -82,8 +82,8 @@ impl Runtime for SimpleTask {
 }
 
 pub fn task() -> ~Task {
-    let mut task = ~Task::new();
-    task.put_runtime(~SimpleTask {
+    let mut task = box Task::new();
+    task.put_runtime(box SimpleTask {
         lock: unsafe {NativeMutex::new()},
         awoken: false,
     });

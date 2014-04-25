@@ -132,7 +132,7 @@ pub fn print_crate<'a>(cm: &'a CodeMap,
 }
 
 pub fn to_str(f: |&mut State| -> IoResult<()>) -> ~str {
-    let mut s = rust_printer(~MemWriter::new());
+    let mut s = rust_printer(box MemWriter::new());
     f(&mut s).unwrap();
     eof(&mut s.s).unwrap();
     unsafe {

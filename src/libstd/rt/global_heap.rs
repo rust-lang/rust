@@ -125,14 +125,14 @@ mod bench {
     #[bench]
     fn alloc_owned_small(b: &mut Bencher) {
         b.iter(|| {
-            ~10
+            box 10
         })
     }
 
     #[bench]
     fn alloc_owned_big(b: &mut Bencher) {
         b.iter(|| {
-            ~[10, ..1000]
+            box [10, ..1000]
         })
     }
 }

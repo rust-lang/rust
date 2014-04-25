@@ -134,7 +134,7 @@ pub fn initial_matcher_pos(ms: Vec<Matcher> , sep: Option<Token>, lo: BytePos)
         }
     }
     let matches = Vec::from_fn(count_names(ms.as_slice()), |_i| Vec::new());
-    ~MatcherPos {
+    box MatcherPos {
         elts: ms,
         sep: sep,
         idx: 0u,
@@ -334,7 +334,7 @@ pub fn parse(sess: &ParseSess,
 
                     let matches = Vec::from_elem(ei.matches.len(), Vec::new());
                     let ei_t = ei;
-                    cur_eis.push(~MatcherPos {
+                    cur_eis.push(box MatcherPos {
                         elts: (*matchers).clone(),
                         sep: (*sep).clone(),
                         idx: 0u,
@@ -396,7 +396,7 @@ pub fn parse(sess: &ParseSess,
                 }
                 rdr.next_token();
             } else /* bb_eis.len() == 1 */ {
-                let mut rust_parser = Parser(sess, cfg.clone(), ~rdr.clone());
+                let mut rust_parser = Parser(sess, cfg.clone(), box rdr.clone());
 
                 let mut ei = bb_eis.pop().unwrap();
                 match ei.elts.get(ei.idx).node {
@@ -433,14 +433,14 @@ pub fn parse_nt(p: &mut Parser, name: &str) -> Nonterminal {
       "ty" => token::NtTy(p.parse_ty(false /* no need to disambiguate*/)),
       // this could be handled like a token, since it is one
       "ident" => match p.token {
-        token::IDENT(sn,b) => { p.bump(); token::NtIdent(~sn,b) }
+        token::IDENT(sn,b) => { p.bump(); token::NtIdent(box sn,b) }
         _ => {
             let token_str = token::to_str(&p.token);
             p.fatal("expected ident, found ".to_owned() + token_str)
         }
       },
       "path" => {
-        token::NtPath(~p.parse_path(LifetimeAndTypesWithoutColons).path)
+        token::NtPath(box p.parse_path(LifetimeAndTypesWithoutColons).path)
       }
       "meta" => token::NtMeta(p.parse_meta_item()),
       "tt" => {

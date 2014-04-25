@@ -122,7 +122,7 @@ impl RtioPipe for PipeWatcher {
     }
 
     fn clone(&self) -> ~RtioPipe:Send {
-        ~PipeWatcher {
+        box PipeWatcher {
             stream: StreamWatcher::new(self.stream.handle),
             defused: false,
             home: self.home.clone(),
@@ -165,7 +165,7 @@ impl PipeListener {
                 // we close the pipe differently. We can't rely on
                 // StreamWatcher's default close method.
                 let (tx, rx) = channel();
-                let p = ~PipeListener {
+                let p = box PipeListener {
                     home: io.make_handle(),
                     pipe: pipe.unwrap(),
                     incoming: rx,
@@ -181,7 +181,7 @@ impl PipeListener {
 impl RtioUnixListener for PipeListener {
     fn listen(~self) -> Result<~RtioUnixAcceptor:Send, IoError> {
         // create the acceptor object from ourselves
-        let mut acceptor = ~PipeAcceptor {
+        let mut acceptor = box PipeAcceptor {
             listener: self,
             timeout: net::AcceptTimeout::new(),
         };
@@ -214,7 +214,7 @@ extern fn listen_cb(server: *uvll::uv_stream_t, status: libc::c_int) {
             });
             let client = PipeWatcher::new_home(&loop_, pipe.home().clone(), false);
             assert_eq!(unsafe { uvll::uv_accept(server, client.handle()) }, 0);
-            Ok(~client as ~RtioPipe:Send)
+            Ok(box client as ~RtioPipe:Send)
         }
         n => Err(uv_error_to_io_error(UvError(n)))
     };

@@ -109,7 +109,7 @@ struct SemGuard<'a, Q> {
 impl<Q: Send> Sem<Q> {
     fn new(count: int, q: Q) -> Sem<Q> {
         let inner = unsafe {
-            cast::transmute(~SemInner {
+            cast::transmute(box SemInner {
                 waiters: WaitQueue::new(),
                 count: count,
                 blocked: q,
@@ -726,7 +726,7 @@ mod tests {
         let (tx, rx) = channel();
         let m = Arc::new(Mutex::new());
         let m2 = m.clone();
-        let mut sharedstate = ~0;
+        let mut sharedstate = box 0;
         {
             let ptr: *mut int = &mut *sharedstate;
             task::spawn(proc() {
@@ -895,7 +895,7 @@ mod tests {
         // mutex mutual exclusion test, a ways above.
         let (tx, rx) = channel();
         let x2 = x.clone();
-        let mut sharedstate = ~0;
+        let mut sharedstate = box 0;
         {
             let ptr: *int = &*sharedstate;
             task::spawn(proc() {

@@ -37,7 +37,7 @@ impl AsyncWatcher {
             uvll::uv_async_init(loop_.handle, handle, async_cb)
         }, 0);
         let flag = Exclusive::new(false);
-        let payload = ~Payload { callback: cb, exit_flag: flag.clone() };
+        let payload = box Payload { callback: cb, exit_flag: flag.clone() };
         unsafe {
             let payload: *u8 = cast::transmute(payload);
             uvll::set_data_for_uv_handle(handle, payload);
@@ -146,7 +146,7 @@ mod test_remote {
         }
 
         let (tx, rx) = channel();
-        let cb = ~MyCallback(Some(tx));
+        let cb = box MyCallback(Some(tx));
         let watcher = AsyncWatcher::new(&mut local_loop().loop_, cb);
 
         let thread = Thread::start(proc() {

@@ -417,7 +417,7 @@ impl Drop for Process {
         drop(self.stdin.take());
         drop(self.stdout.take());
         drop(self.stderr.take());
-        drop(mem::replace(&mut self.extra_io, ~[]));
+        drop(mem::replace(&mut self.extra_io, box []));
 
         self.wait();
     }
@@ -804,7 +804,7 @@ mod tests {
     })
 
     iotest!(fn test_add_to_env() {
-        let new_env = ~[("RUN_TEST_NEW_ENV".to_owned(), "123".to_owned())];
+        let new_env = box [("RUN_TEST_NEW_ENV".to_owned(), "123".to_owned())];
 
         let mut prog = run_env(Some(new_env));
         let result = prog.wait_with_output();

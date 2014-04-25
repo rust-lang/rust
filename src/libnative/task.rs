@@ -32,7 +32,7 @@ use task;
 
 /// Creates a new Task which is ready to execute as a 1:1 task.
 pub fn new(stack_bounds: (uint, uint)) -> ~Task {
-    let mut task = ~Task::new();
+    let mut task = box Task::new();
     let mut ops = ops();
     ops.stack_bounds = stack_bounds;
     task.put_runtime(ops);
@@ -40,7 +40,7 @@ pub fn new(stack_bounds: (uint, uint)) -> ~Task {
 }
 
 fn ops() -> ~Ops {
-    ~Ops {
+    box Ops {
         lock: unsafe { NativeMutex::new() },
         awoken: false,
         io: io::IoFactory::new(),
@@ -62,7 +62,7 @@ pub fn spawn_opts(opts: TaskOpts, f: proc():Send) {
         stderr, stdout,
     } = opts;
 
-    let mut task = ~Task::new();
+    let mut task = box Task::new();
     task.name = name;
     task.stderr = stderr;
     task.stdout = stdout;

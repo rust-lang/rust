@@ -399,7 +399,7 @@ impl<E, S:Encoder<E>,T:Encodable<S, E>> Encodable<S, E> for ~T {
 
 impl<E, D:Decoder<E>,T:Decodable<D, E>> Decodable<D, E> for ~T {
     fn decode(d: &mut D) -> Result<~T, E> {
-        Ok(~try!(Decodable::decode(d)))
+        Ok(box try!(Decodable::decode(d)))
     }
 }
 

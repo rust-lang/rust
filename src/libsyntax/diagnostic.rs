@@ -177,7 +177,7 @@ pub fn mk_span_handler(handler: Handler, cm: codemap::CodeMap) -> SpanHandler {
 }
 
 pub fn default_handler() -> Handler {
-    mk_handler(~EmitterWriter::stderr())
+    mk_handler(box EmitterWriter::stderr())
 }
 
 pub fn mk_handler(e: ~Emitter:Send) -> Handler {
@@ -262,11 +262,11 @@ impl EmitterWriter {
         if stderr.get_ref().isatty() {
             let dst = match term::Terminal::new(stderr.unwrap()) {
                 Ok(t) => Terminal(t),
-                Err(..) => Raw(~io::stderr()),
+                Err(..) => Raw(box io::stderr()),
             };
             EmitterWriter { dst: dst }
         } else {
-            EmitterWriter { dst: Raw(~stderr) }
+            EmitterWriter { dst: Raw(box stderr) }
         }
     }
 

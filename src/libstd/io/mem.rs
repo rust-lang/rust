@@ -450,7 +450,7 @@ mod test {
 
     #[test]
     fn test_buf_reader() {
-        let in_buf = ~[0, 1, 2, 3, 4, 5, 6, 7];
+        let in_buf = box [0, 1, 2, 3, 4, 5, 6, 7];
         let mut reader = BufReader::new(in_buf);
         let mut buf = [];
         assert_eq!(reader.read(buf), Ok(0));

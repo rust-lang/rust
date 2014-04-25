@@ -207,7 +207,7 @@ impl Timer {
         let id = unsafe { ID.fetch_add(1, atomics::Relaxed) };
         Ok(Timer {
             id: id,
-            inner: Some(~Inner {
+            inner: Some(box Inner {
                 tx: None,
                 interval: 0,
                 target: 0,

@@ -225,7 +225,7 @@ pub fn env_as_bytes() -> ~[(~[u8],~[u8])] {
             for p in input.iter() {
                 let vs: ~[&[u8]] = p.splitn(1, |b| *b == '=' as u8).collect();
                 let key = vs[0].to_owned();
-                let val = if vs.len() < 2 { ~[] } else { vs[1].to_owned() };
+                let val = if vs.len() < 2 { box [] } else { vs[1].to_owned() };
                 pairs.push((key, val));
             }
             pairs
@@ -419,7 +419,7 @@ pub fn self_exe_name() -> Option<Path> {
         unsafe {
             use libc::funcs::bsd44::*;
             use libc::consts::os::extra::*;
-            let mib = ~[CTL_KERN as c_int,
+            let mib = box [CTL_KERN as c_int,
                         KERN_PROC as c_int,
                         KERN_PROC_PATHNAME as c_int, -1 as c_int];
             let mut sz: libc::size_t = 0;

@@ -73,7 +73,7 @@ pub struct Queue<T> {
 
 impl<T> Node<T> {
     unsafe fn new(v: Option<T>) -> *mut Node<T> {
-        cast::transmute(~Node {
+        cast::transmute(box Node {
             next: AtomicPtr::new(0 as *mut Node<T>),
             value: v,
         })
@@ -163,8 +163,8 @@ mod tests {
     #[test]
     fn test_full() {
         let mut q = Queue::new();
-        q.push(~1);
-        q.push(~2);
+        q.push(box 1);
+        q.push(box 2);
     }
 
     #[test]

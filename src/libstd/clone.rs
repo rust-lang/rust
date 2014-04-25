@@ -42,7 +42,7 @@ pub trait Clone {
 impl<T: Clone> Clone for ~T {
     /// Return a copy of the owned box.
     #[inline]
-    fn clone(&self) -> ~T { ~(**self).clone() }
+    fn clone(&self) -> ~T { box {(**self).clone()} }
 
     /// Perform copy-assignment from `source` by reusing the existing allocation.
     #[inline]
@@ -126,7 +126,7 @@ extern_fn_clone!(A, B, C, D, E, F, G, H)
 
 #[test]
 fn test_owned_clone() {
-    let a = ~5i;
+    let a = box 5i;
     let b: ~int = a.clone();
     assert_eq!(a, b);
 }
@@ -148,8 +148,8 @@ fn test_borrowed_clone() {
 
 #[test]
 fn test_clone_from() {
-    let a = ~5;
-    let mut b = ~10;
+    let a = box 5;
+    let mut b = box 10;
     b.clone_from(&a);
     assert_eq!(*b, 5);
 }
