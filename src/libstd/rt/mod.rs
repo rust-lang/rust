@@ -88,6 +88,9 @@ mod macros;
 /// The global (exchange) heap.
 pub mod global_heap;
 
+/// The low-level memory allocation API.
+pub mod heap;
+
 /// Implementations of language-critical runtime features like @.
 pub mod task;
 
