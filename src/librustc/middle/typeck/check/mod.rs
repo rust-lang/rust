@@ -3199,12 +3199,13 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
       }
       ast::ExprStruct(ref path, ref fields, base_expr) => {
         // Resolve the path.
-        match tcx.def_map.borrow().find(&id) {
-            Some(&ast::DefStruct(type_def_id)) => {
+        let def = tcx.def_map.borrow().find(&id).map(|i| *i);
+        match def {
+            Some(ast::DefStruct(type_def_id)) => {
                 check_struct_constructor(fcx, id, expr.span, type_def_id,
                                          fields.as_slice(), base_expr);
             }
-            Some(&ast::DefVariant(enum_id, variant_id, _)) => {
+            Some(ast::DefVariant(enum_id, variant_id, _)) => {
                 check_struct_enum_variant(fcx, id, expr.span, enum_id,
                                           variant_id, fields.as_slice());
             }
