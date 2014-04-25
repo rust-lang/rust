@@ -214,6 +214,7 @@ pub trait RtioTcpStream : RtioSocket {
     fn letdie(&mut self) -> IoResult<()>;
     fn clone(&self) -> ~RtioTcpStream:Send;
     fn close_write(&mut self) -> IoResult<()>;
+    fn close_read(&mut self) -> IoResult<()>;
 }
 
 pub trait RtioSocket {
@@ -267,6 +268,9 @@ pub trait RtioPipe {
     fn read(&mut self, buf: &mut [u8]) -> IoResult<uint>;
     fn write(&mut self, buf: &[u8]) -> IoResult<()>;
     fn clone(&self) -> ~RtioPipe:Send;
+
+    fn close_write(&mut self) -> IoResult<()>;
+    fn close_read(&mut self) -> IoResult<()>;
 }
 
 pub trait RtioUnixListener {
