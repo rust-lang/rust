@@ -6,7 +6,7 @@ all:
 	$(RUSTC) m3.rs
 	$(RUSTC) m4.rs
 	$(call RUN,m4)
-	rm $(TMPDIR)/$(call DYLIB_GLOB,m1)
-	rm $(TMPDIR)/$(call DYLIB_GLOB,m2)
-	rm $(TMPDIR)/$(call DYLIB_GLOB,m3)
+	$(call REMOVE_DYLIBS,m1)
+	$(call REMOVE_DYLIBS,m2)
+	$(call REMOVE_DYLIBS,m3)
 	$(call FAIL,m4)

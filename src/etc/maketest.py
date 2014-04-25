@@ -30,6 +30,10 @@ def putenv(name, value):
         value = normalize_path(value)
     os.putenv(name, value)
 
+def convert_path_spec(name, value):
+    if os.name == 'nt' and name != 'PATH':
+        value = ":".join(normalize_path(v) for v in value.split(";"))
+    return value
 
 make = sys.argv[2]
 putenv('RUSTC', os.path.abspath(sys.argv[3]))
@@ -37,13 +41,10 @@ putenv('TMPDIR', os.path.abspath(sys.argv[4]))
 putenv('CC', sys.argv[5])
 putenv('RUSTDOC', os.path.abspath(sys.argv[6]))
 filt = sys.argv[7]
-ldpath = sys.argv[8]
-if ldpath != '':
-    name = ldpath.split('=')[0]
-    value = ldpath.split('=')[1]
-    if os.name == 'nt' and name != 'PATH':
-        value = ":".join(normalize_path(v) for v in value.split(";"))
-    os.putenv(name, value)
+putenv('LD_LIB_PATH_ENVVAR', sys.argv[8]);
+putenv('HOST_RPATH_DIR', os.path.abspath(sys.argv[9]));
+putenv('TARGET_RPATH_DIR', os.path.abspath(sys.argv[10]));
+putenv('RUST_BUILD_STAGE', sys.argv[11])
 
 if not filt in sys.argv[1]:
     sys.exit(0)
