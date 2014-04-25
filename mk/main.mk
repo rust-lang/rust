@@ -311,8 +311,6 @@ HSREQ$(1)_H_$(3) = $$(HBIN$(1)_H_$(3))/rustc$$(X_$(3))
 else
 HSREQ$(1)_H_$(3) = \
 	$$(HBIN$(1)_H_$(3))/rustc$$(X_$(3)) \
-	$$(HLIB$(1)_H_$(3))/stamp.rustc \
-	$$(foreach dep,$$(RUST_DEPS_rustc),$$(HLIB$(1)_H_$(3))/stamp.$$(dep)) \
 	$$(MKFILE_DEPS)
 endif
 
@@ -334,8 +332,7 @@ SREQ$(1)_T_$(2)_H_$(3) = \
 CSREQ$(1)_T_$(2)_H_$(3) = \
 	$$(TSREQ$(1)_T_$(2)_H_$(3)) \
 	$$(HBIN$(1)_H_$(3))/rustdoc$$(X_$(3)) \
-	$$(foreach dep,$$(CRATES),$$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$$(dep)) \
-	$$(foreach dep,$$(HOST_CRATES),$$(HLIB$(1)_H_$(3))/stamp.$$(dep))
+	$$(foreach dep,$$(CRATES),$$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$$(dep))
 
 ifeq ($(1),0)
 # Don't run the stage0 compiler under valgrind - that ship has sailed
