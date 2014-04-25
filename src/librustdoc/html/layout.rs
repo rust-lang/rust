@@ -38,11 +38,11 @@ r##"<!DOCTYPE html>
 
     <title>{title}</title>
 
-    <link href='http://fonts.googleapis.com/css?family=Source+Sans+Pro:400,600'
+    <link href='http://fonts.googleapis.com/css?family=Source+Code+Pro:400,600'
           rel='stylesheet' type='text/css'>
     <link rel="stylesheet" type="text/css" href="{root_path}main.css">
 
-    {favicon, select, none{} other{<link rel="shortcut icon" href="#" />}}
+    {favicon, select, none{} other{<link rel="shortcut icon" href="#">}}
 </head>
 <body>
     <!--[if lte IE 8]>

@@ -63,7 +63,7 @@ body {
 h1, h2, h3:not(.impl), h4:not(.method) {
     color: black;
     font-weight: 500;
-    margin: 30px 0 20px 0;
+    margin: 30px 0 15px 0;
     padding-bottom: 6px;
 }
 h1.fqn {
@@ -81,7 +81,7 @@ h3.impl, h4.method {
 h3.impl {
     margin-top: 15px;
 }
-h1, h2, h3, h4, section.sidebar, a.source, .content a.mod, .search-input {
+h1, h2, h3, h4, section.sidebar, a.source, .search-input, .content table a {
     font-family: "Fira Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 
@@ -164,7 +164,7 @@ nav.sub {
     padding: 20px 0;
 }
 
-.content pre { padding: 20px; }
+.content pre { padding: 14px; }
 .content.source pre.rust {
     white-space: pre;
     overflow: auto;
@@ -201,8 +201,7 @@ nav.sub {
 }
 
 .docblock h1, .docblock h2, .docblock h3, .docblock h4, .docblock h5 {
-    margin: 40px 0 10px 0;
-    padding: 10px 0;
+    margin: 30px 0 15px 0;
     border-bottom: 1px solid #DDD;
 }
 
