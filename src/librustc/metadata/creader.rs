@@ -17,7 +17,7 @@ use back::svh::Svh;
 use driver::session::Session;
 use driver::{driver, config};
 use metadata::cstore;
-use metadata::cstore::CStore;
+use metadata::cstore::{CStore, CrateSource};
 use metadata::decoder;
 use metadata::loader;
 use metadata::loader::CratePaths;
@@ -68,10 +68,15 @@ impl<'a> visit::Visitor<()> for Env<'a> {
 
 fn dump_crates(cstore: &CStore) {
     debug!("resolved crates:");
-    cstore.iter_crate_data(|_, data| {
+    cstore.iter_crate_data_origins(|_, data, opt_source| {
         debug!("crate_id: {}", data.crate_id());
         debug!("  cnum: {}", data.cnum);
         debug!("  hash: {}", data.hash());
+        opt_source.map(|cs| {
+            let CrateSource { dylib, rlib, cnum: _ } = cs;
+            dylib.map(|dl| debug!("  dylib: {}", dl.display()));
+            rlib.map(|rl|  debug!("   rlib: {}", rl.display()));
+        });
     })
 }
 
