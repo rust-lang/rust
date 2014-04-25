@@ -908,7 +908,8 @@ $(3)/test/run-make/%-$(1)-T-$(2)-H-$(3).ok: \
 	    "$$(CC_$(3)) $$(CFG_GCCISH_CFLAGS_$(3))" \
 	    $$(HBIN$(1)_H_$(3))/rustdoc$$(X_$(3)) \
 	    "$$(TESTNAME)" \
-	    "$$(RPATH_VAR$(1)_T_$(2)_H_$(3))"
+	    "$$(HOST_RPATH_VAR$(1)_T_$(2)_H_$(3))" \
+	    "$$(TARGET_RPATH_VAR$(1)_T_$(2)_H_$(3))"
 	@touch $$@
 else
 # FIXME #11094 - The above rule doesn't work right for multiple targets

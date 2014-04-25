@@ -4,8 +4,13 @@ export DYLD_LIBRARY_PATH:=$(TMPDIR):$(DYLD_LIBRARY_PATH)
 RUSTC := $(RUSTC) --out-dir $(TMPDIR) -L $(TMPDIR)
 CC := $(CC) -L $(TMPDIR)
 
-RUN = $(TMPDIR)/$(1)
-FAILS = $(TMPDIR)/$(1) && exit 1 || exit 0
+# This is the name of the binary we will generate and run; use this
+# e.g. for `$(CC) -o $(RUN_BINFILE)`.
+RUN_BINFILE = $(TMPDIR)/$(1)
+# This the basic way we will invoke the generated binary.  It sets the
+# LD_LIBRARY_PATH environment variable before running the binary.
+RUN = $(TARGET_RPATH_ENV) $(RUN_BINFILE)
+FAILS = $(TARGET_RPATH_ENV) ( $(RUN_BINFILE) && exit 1 || exit 0 )
 
 RLIB_GLOB = lib$(1)*.rlib
 STATICLIB = $(TMPDIR)/lib$(1).a
