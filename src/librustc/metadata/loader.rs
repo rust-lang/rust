@@ -27,7 +27,6 @@ use std::c_str::ToCStr;
 use std::cast;
 use std::cmp;
 use std::io;
-use std::os::consts::{macos, freebsd, linux, android, win32};
 use std::ptr;
 use std::slice;
 use std::str;
@@ -35,6 +34,21 @@ use std::str;
 use collections::{HashMap, HashSet};
 use flate;
 use time;
+
+pub static MACOS_DLL_PREFIX: &'static str = "lib";
+pub static MACOS_DLL_SUFFIX: &'static str = ".dylib";
+
+pub static WIN32_DLL_PREFIX: &'static str = "";
+pub static WIN32_DLL_SUFFIX: &'static str = ".dll";
+
+pub static LINUX_DLL_PREFIX: &'static str = "lib";
+pub static LINUX_DLL_SUFFIX: &'static str = ".so";
+
+pub static FREEBSD_DLL_PREFIX: &'static str = "lib";
+pub static FREEBSD_DLL_SUFFIX: &'static str = ".so";
+
+pub static ANDROID_DLL_PREFIX: &'static str = "lib";
+pub static ANDROID_DLL_SUFFIX: &'static str = ".so";
 
 pub enum Os {
     OsMacos,
@@ -433,11 +447,11 @@ impl<'a> Context<'a> {
     // dynamic libraries
     fn dylibname(&self) -> (&'static str, &'static str) {
         match self.os {
-            OsWin32 => (win32::DLL_PREFIX, win32::DLL_SUFFIX),
-            OsMacos => (macos::DLL_PREFIX, macos::DLL_SUFFIX),
-            OsLinux => (linux::DLL_PREFIX, linux::DLL_SUFFIX),
-            OsAndroid => (android::DLL_PREFIX, android::DLL_SUFFIX),
-            OsFreebsd => (freebsd::DLL_PREFIX, freebsd::DLL_SUFFIX),
+            OsWin32 => (WIN32_DLL_PREFIX, WIN32_DLL_SUFFIX),
+            OsMacos => (MACOS_DLL_PREFIX, MACOS_DLL_SUFFIX),
+            OsLinux => (LINUX_DLL_PREFIX, LINUX_DLL_SUFFIX),
+            OsAndroid => (ANDROID_DLL_PREFIX, ANDROID_DLL_SUFFIX),
+            OsFreebsd => (FREEBSD_DLL_PREFIX, FREEBSD_DLL_SUFFIX),
         }
     }
 
