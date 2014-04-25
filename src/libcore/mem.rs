@@ -174,7 +174,7 @@ pub unsafe fn overwrite<T>(dst: *mut T, src: T) {
 
 /// Deprecated, use `overwrite` instead
 #[inline]
-#[deprecated = "use ptr::write"]
+#[deprecated = "this function has been renamed to overwrite()"]
 pub unsafe fn move_val_init<T>(dst: &mut T, src: T) {
     ptr::write(dst, src)
 }

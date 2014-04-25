@@ -305,8 +305,7 @@ impl Case {
 
                 // Box<T> could either be a thin or fat pointer depending on T
                 ty::ty_uniq(t) => match ty::get(t).sty {
-                    // Box<[T]>/Box<str> might be FatPointer in a post DST world
-                    ty::ty_vec(_, None) | ty::ty_str => continue,
+                    ty::ty_vec(_, None) | return Some(FatPointer(i, slice_elt_base)),
 
                     // Box<Trait> is a pair of pointers: the actual object and a vtable
                     ty::ty_trait(..) => return Some(FatPointer(i, trt_field_box)),
@@ -326,7 +325,6 @@ impl Case {
 
                 // Anything else is not a pointer
                 _ => continue
-
             }
         }
 

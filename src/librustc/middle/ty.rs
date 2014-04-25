@@ -1816,8 +1816,7 @@ pub fn type_is_boxed(ty: t) -> bool {
 pub fn type_is_region_ptr(ty: t) -> bool {
     match get(ty).sty {
         ty_rptr(_, mt) => match get(mt.ty).sty {
-            // FIXME(nrc, DST) slices weren't regarded as rptrs, so we preserve this
-            // odd behaviour for now. (But ~[] were unique. I have no idea why).
+            // DST pointers should not be treated like regular pointers.
             ty_vec(_, None) | ty_str | ty_trait(..) => false,
             _ => true
         },

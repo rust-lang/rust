@@ -51,7 +51,7 @@ pub fn trans_free<'a>(cx: &'a Block<'a>, v: ValueRef) -> &'a Block<'a> {
         Some(expr::Ignore)).bcx
 }
 
-fn trans_exchange_free<'a>(cx: &'a Block<'a>, v: ValueRef, size: u64,
+pub fn trans_exchange_free<'a>(cx: &'a Block<'a>, v: ValueRef, size: u64,
                                align: u64) -> &'a Block<'a> {
     let _icx = push_ctxt("trans_exchange_free");
     let ccx = cx.ccx();
@@ -120,8 +120,8 @@ pub fn drop_ty<'a>(bcx: &'a Block<'a>, v: ValueRef, t: ty::t)
                -> &'a Block<'a> {
     // NB: v is an *alias* of type t here, not a direct value.
     let _icx = push_ctxt("drop_ty");
-    let ccx = bcx.ccx();
     if ty::type_needs_drop(bcx.tcx(), t) {
+        let ccx = bcx.ccx();
         let glue = get_drop_glue(ccx, t);
         let glue_type = get_drop_glue_type(ccx, t);
         let ptr = if glue_type != t {
@@ -277,23 +277,11 @@ fn make_drop_glue<'a>(bcx: &'a Block<'a>, v0: ValueRef, t: ty::t) -> &'a Block<'
         ty::ty_uniq(content_ty) => {
             match ty::get(content_ty).sty {
                 ty::ty_vec(mt, None) => {
-                    let llbox = Load(bcx, v0);
-                    let not_null = IsNotNull(bcx, llbox);
-                    with_cond(bcx, not_null, |bcx| {
-                        let bcx = tvec::make_drop_glue_unboxed(bcx, llbox, mt.ty);
-                        // FIXME: #13994: the old `Box<[T]>` will not support sized deallocation
-                        trans_exchange_free(bcx, llbox, 0, 8)
-                    })
+                    tvec::make_drop_glue_unboxed(bcx, v0, mt.ty)
                 }
                 ty::ty_str => {
-                    let llbox = Load(bcx, v0);
-                    let not_null = IsNotNull(bcx, llbox);
-                    with_cond(bcx, not_null, |bcx| {
-                        let unit_ty = ty::sequence_element_type(bcx.tcx(), t);
-                        let bcx = tvec::make_drop_glue_unboxed(bcx, llbox, unit_ty);
-                        // FIXME: #13994: the old `Box<str>` will not support sized deallocation
-                        trans_exchange_free(bcx, llbox, 0, 8)
-                    })
+                    let unit_ty = ty::sequence_element_type(bcx.tcx(), t);
+                    tvec::make_drop_glue_unboxed(bcx, v0, unit_ty)
                 }
                 ty::ty_trait(..) => {
                     let lluniquevalue = GEPi(bcx, v0, [0, abi::trt_field_box]);
