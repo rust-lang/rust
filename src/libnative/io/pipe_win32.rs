@@ -93,6 +93,8 @@ use std::sync::arc::UnsafeArc;
 use std::intrinsics;
 
 use super::IoResult;
+use super::c;
+use super::util;
 
 struct Event(libc::HANDLE);
 
@@ -210,8 +212,9 @@ impl UnixStream {
         None
     }
 
-    pub fn connect(addr: &CString) -> IoResult<UnixStream> {
+    pub fn connect(addr: &CString, timeout: Option<u64>) -> IoResult<UnixStream> {
         as_utf16_p(addr.as_str().unwrap(), |p| {
+            let start = ::io::timer::now();
             loop {
                 match UnixStream::try_connect(p) {
                     Some(handle) => {
@@ -246,11 +249,26 @@ impl UnixStream {
                     return Err(super::last_error())
                 }
 
-                // An example I found on microsoft's website used 20 seconds,
-                // libuv uses 30 seconds, hence we make the obvious choice of
-                // waiting for 25 seconds.
-                if unsafe { libc::WaitNamedPipeW(p, 25000) } == 0 {
-                    return Err(super::last_error())
+                match timeout {
+                    Some(timeout) => {
+                        let now = ::io::timer::now();
+                        let timed_out = (now - start) >= timeout || unsafe {
+                            let ms = (timeout - (now - start)) as libc::DWORD;
+                            libc::WaitNamedPipeW(p, ms) == 0
+                        };
+                        if timed_out {
+                            return Err(util::timeout("connect timed out"))
+                        }
+                    }
+
+                    // An example I found on microsoft's website used 20
+                    // seconds, libuv uses 30 seconds, hence we make the
+                    // obvious choice of waiting for 25 seconds.
+                    None => {
+                        if unsafe { libc::WaitNamedPipeW(p, 25000) } == 0 {
+                            return Err(super::last_error())
+                        }
+                    }
                 }
             }
         })
@@ -372,6 +390,7 @@ impl UnixListener {
         Ok(UnixAcceptor {
             listener: self,
             event: try!(Event::new(true, false)),
+            deadline: 0,
         })
     }
 }
@@ -391,6 +410,7 @@ impl rtio::RtioUnixListener for UnixListener {
 pub struct UnixAcceptor {
     listener: UnixListener,
     event: Event,
+    deadline: u64,
 }
 
 impl UnixAcceptor {
@@ -438,7 +458,28 @@ impl UnixAcceptor {
         overlapped.hEvent = self.event.handle();
         if unsafe { libc::ConnectNamedPipe(handle, &mut overlapped) == 0 } {
             let mut err = unsafe { libc::GetLastError() };
+
             if err == libc::ERROR_IO_PENDING as libc::DWORD {
+                // If we've got a timeout, use WaitForSingleObject in tandem
+                // with CancelIo to figure out if we should indeed get the
+                // result.
+                if self.deadline != 0 {
+                    let now = ::io::timer::now();
+                    let timeout = self.deadline < now || unsafe {
+                        let ms = (self.deadline - now) as libc::DWORD;
+                        let r = libc::WaitForSingleObject(overlapped.hEvent,
+                                                          ms);
+                        r != libc::WAIT_OBJECT_0
+                    };
+                    if timeout {
+                        unsafe { let _ = c::CancelIo(handle); }
+                        return Err(util::timeout("accept timed out"))
+                    }
+                }
+
+                // This will block until the overlapped I/O is completed. The
+                // timeout was previously handled, so this will either block in
+                // the normal case or succeed very quickly in the timeout case.
                 let ret = unsafe {
                     let mut transfer = 0;
                     libc::GetOverlappedResult(handle,
@@ -487,6 +528,9 @@ impl UnixAcceptor {
 impl rtio::RtioUnixAcceptor for UnixAcceptor {
     fn accept(&mut self) -> IoResult<~rtio::RtioPipe:Send> {
         self.native_accept().map(|s| ~s as ~rtio::RtioPipe:Send)
+    }
+    fn set_timeout(&mut self, timeout: Option<u64>) {
+        self.deadline = timeout.map(|i| i + ::io::timer::now()).unwrap_or(0);
     }
 }
 
