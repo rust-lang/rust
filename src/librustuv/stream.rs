@@ -14,6 +14,7 @@ use std::ptr;
 use std::rt::task::BlockedTask;
 
 use Loop;
+use homing::HomingMissile;
 use super::{UvError, Buf, slice_to_uv_buf, Request, wait_until_woken_after,
             ForbidUnwind, wakeup};
 use uvll;
@@ -57,6 +58,7 @@ impl StreamWatcher {
     // Wrappers should ensure to always reset the field to an appropriate value
     // if they rely on the field to perform an action.
     pub fn new(stream: *uvll::uv_stream_t) -> StreamWatcher {
+        unsafe { uvll::set_data_for_uv_handle(stream, 0 as *int) }
         StreamWatcher {
             handle: stream,
             last_write_req: None,
@@ -70,7 +72,9 @@ impl StreamWatcher {
 
         let mut rcx = ReadContext {
             buf: Some(slice_to_uv_buf(buf)),
-            result: 0,
+            // if the read is canceled, we'll see eof, otherwise this will get
+            // overwritten
+            result: uvll::EOF as ssize_t,
             task: None,
         };
         // When reading a TTY stream on windows, libuv will invoke alloc_cb
@@ -78,13 +82,11 @@ impl StreamWatcher {
         // we must be ready for this to happen (by setting the data in the uv
         // handle). In theory this otherwise doesn't need to happen until after
         // the read is succesfully started.
-        unsafe {
-            uvll::set_data_for_uv_handle(self.handle, &rcx)
-        }
+        unsafe { uvll::set_data_for_uv_handle(self.handle, &rcx) }
 
         // Send off the read request, but don't block until we're sure that the
         // read request is queued.
-        match unsafe {
+        let ret = match unsafe {
             uvll::uv_read_start(self.handle, alloc_cb, read_cb)
         } {
             0 => {
@@ -96,6 +98,29 @@ impl StreamWatcher {
                 }
             }
             n => Err(UvError(n))
+        };
+        // Make sure a read cancellation sees that there's no pending read
+        unsafe { uvll::set_data_for_uv_handle(self.handle, 0 as *int) }
+        return ret;
+    }
+
+    pub fn cancel_read(&mut self, m: HomingMissile) {
+        // When we invoke uv_read_stop, it cancels the read and alloc
+        // callbacks. We need to manually wake up a pending task (if one was
+        // present). Note that we wake up the task *outside* the homing missile
+        // to ensure that we don't switch schedulers when we're not supposed to.
+        assert_eq!(unsafe { uvll::uv_read_stop(self.handle) }, 0);
+        let data = unsafe {
+            let data = uvll::get_data_for_uv_handle(self.handle);
+            if data.is_null() { return }
+            uvll::set_data_for_uv_handle(self.handle, 0 as *int);
+            &mut *(data as *mut ReadContext)
+        };
+        let task = data.task.take();
+        drop(m);
+        match task {
+            Some(task) => { let _ = task.wake().map(|t| t.reawaken()); }
+            None => {}
         }
     }
 
