@@ -28,6 +28,9 @@ host_ldpath = sys.argv[8]
 #if host_ldpath != '':
 #    os.putenv(host_ldpath.split('=')[0], host_ldpath.split('=')[1])
 os.putenv('TARGET_RPATH_ENV', sys.argv[9]);
+rust_build_stage = sys.argv[10];
+if rust_build_stage != '':
+    os.putenv('RUST_BUILD_STAGE', rust_build_stage.split('=')[1])
 
 if not filt in sys.argv[1]:
     sys.exit(0)
