@@ -18,7 +18,7 @@ use lib::llvm::llvm;
 use lib::llvm::ModuleRef;
 use lib;
 use metadata::common::LinkMeta;
-use metadata::{encoder, cstore, filesearch, csearch};
+use metadata::{encoder, cstore, filesearch, csearch, loader};
 use middle::trans::context::CrateContext;
 use middle::trans::common::gensym_name;
 use middle::ty;
@@ -30,7 +30,6 @@ use std::c_str::{ToCStr, CString};
 use std::char;
 use std::io::{fs, TempDir, Process};
 use std::io;
-use std::os::consts::{macos, freebsd, linux, android, win32};
 use std::ptr;
 use std::str;
 use std::strbuf::StrBuf;
@@ -825,11 +824,11 @@ pub fn filename_for_input(sess: &Session, crate_type: session::CrateType,
         }
         session::CrateTypeDylib => {
             let (prefix, suffix) = match sess.targ_cfg.os {
-                abi::OsWin32 => (win32::DLL_PREFIX, win32::DLL_SUFFIX),
-                abi::OsMacos => (macos::DLL_PREFIX, macos::DLL_SUFFIX),
-                abi::OsLinux => (linux::DLL_PREFIX, linux::DLL_SUFFIX),
-                abi::OsAndroid => (android::DLL_PREFIX, android::DLL_SUFFIX),
-                abi::OsFreebsd => (freebsd::DLL_PREFIX, freebsd::DLL_SUFFIX),
+                abi::OsWin32 => (loader::WIN32_DLL_PREFIX, loader::WIN32_DLL_SUFFIX),
+                abi::OsMacos => (loader::MACOS_DLL_PREFIX, loader::MACOS_DLL_SUFFIX),
+                abi::OsLinux => (loader::LINUX_DLL_PREFIX, loader::LINUX_DLL_SUFFIX),
+                abi::OsAndroid => (loader::ANDROID_DLL_PREFIX, loader::ANDROID_DLL_SUFFIX),
+                abi::OsFreebsd => (loader::FREEBSD_DLL_PREFIX, loader::FREEBSD_DLL_SUFFIX),
             };
             out_filename.with_filename(format!("{}{}{}", prefix, libname, suffix))
         }
