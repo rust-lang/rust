@@ -44,6 +44,7 @@ use std::strbuf::StrBuf;
 use sync::Arc;
 use serialize::json::ToJson;
 use syntax::ast;
+use syntax::ast_util;
 use syntax::attr;
 use syntax::parse::token::InternedString;
 use rustc::util::nodemap::NodeSet;
@@ -111,6 +112,18 @@ pub enum Implementor {
     OtherType(clean::Generics, /* trait */ clean::Type, /* for */ clean::Type),
 }
 
+pub struct PathInfo {
+    /// The fully qualified path.
+    pub fqp: Vec<~str>,
+
+    /// A short type description. Combined with the fully qualified name,
+    /// this is used to create an URL to the documented path.
+    pub ty: ItemType,
+
+    /// A shortened description for the information.
+    pub desc: ~str,
+}
+
 /// This cache is used to store information about the `clean::Crate` being
 /// rendered in order to provide more useful documentation. This contains
 /// information like all implementors of a trait, all traits a type implements,
@@ -139,7 +152,7 @@ pub struct Cache {
     /// URLs when a type is being linked to. External paths are not located in
     /// this map because the `External` type itself has all the information
     /// necessary.
-    pub paths: HashMap<ast::NodeId, (Vec<~str> , ItemType)>,
+    pub paths: HashMap<ast::NodeId, PathInfo>,
 
     /// This map contains information about all known traits of this crate.
     /// Implementations of a crate should inherit the documentation of the
@@ -274,11 +287,11 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
         // has since been learned.
         for &(ref pid, ref item) in meths.iter() {
             match paths.find(pid) {
-                Some(&(ref fqp, _)) => {
+                Some(info) => {
                     index.push(IndexItem {
                         ty: shortty(item),
                         name: item.name.clone().unwrap(),
-                        path: fqp.slice_to(fqp.len() - 1).connect("::"),
+                        path: info.fqp.slice_to(info.fqp.len() - 1).connect("::"),
                         desc: shorter(item.doc_value()).to_owned(),
                         parent: Some(*pid),
                     });
@@ -339,12 +352,12 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
         try!(write!(&mut w, r#"],"paths":["#));
 
         for (i, &nodeid) in pathid_to_nodeid.iter().enumerate() {
-            let &(ref fqp, short) = cache.paths.find(&nodeid).unwrap();
+            let info = cache.paths.find(&nodeid).unwrap();
             if i > 0 {
                 try!(write!(&mut w, ","));
             }
             try!(write!(&mut w, r#"[{:u},"{}"]"#,
-                        short, *fqp.last().unwrap()));
+                        info.ty, *info.fqp.last().unwrap()));
         }
 
         try!(write!(&mut w, r"]\};"));
@@ -636,13 +649,13 @@ impl DocFolder for Cache {
                         } else {
                             let last = self.parent_stack.last().unwrap();
                             let path = match self.paths.find(last) {
-                                Some(&(_, item_type::Trait)) =>
+                                Some(&PathInfo { ty: item_type::Trait, .. }) =>
                                     Some(self.stack.slice_to(self.stack.len() - 1)),
                                 // The current stack not necessarily has correlation for
                                 // where the type was defined. On the other hand,
                                 // `paths` always has the right information if present.
-                                Some(&(ref fqp, item_type::Struct)) |
-                                Some(&(ref fqp, item_type::Enum)) =>
+                                Some(&PathInfo { ty: item_type::Struct, fqp: ref fqp, .. }) |
+                                Some(&PathInfo { ty: item_type::Enum, fqp: ref fqp, .. }) =>
                                     Some(fqp.slice_to(fqp.len() - 1)),
                                 Some(..) => Some(self.stack.as_slice()),
                                 None => None
@@ -694,7 +707,8 @@ impl DocFolder for Cache {
                 if !self.paths.contains_key(&item.id) ||
                    self.public_items.contains(&item.id) {
                     self.paths.insert(item.id,
-                                      (self.stack.clone(), shortty(&item)));
+                                      PathInfo { fqp: self.stack.clone(), ty: shortty(&item),
+                                                 desc: shorter(item.doc_value()).to_owned() });
                 }
             }
             // link variants to their parent enum because pages aren't emitted
@@ -702,7 +716,9 @@ impl DocFolder for Cache {
             clean::VariantItem(..) => {
                 let mut stack = self.stack.clone();
                 stack.pop();
-                self.paths.insert(item.id, (stack, item_type::Enum));
+                self.paths.insert(item.id,
+                                  PathInfo { fqp: stack, ty: item_type::Enum,
+                                             desc: shorter(item.doc_value()).to_owned() });
             }
             _ => {}
         }
@@ -904,7 +920,7 @@ impl Context {
             // Things which don't have names (like impls) don't get special
             // pages dedicated to them.
             _ if item.name.is_some() => {
-                let dst = self.dst.join(item_path(&item));
+                let dst = self.dst.join(item_path(shortty(&item), *item.name.get_ref()));
                 let dst = try!(File::create(&dst));
                 render(dst, self, &item, true)
             }
@@ -1003,17 +1019,40 @@ impl<'a> fmt::Show for Item<'a> {
     }
 }
 
-fn item_path(item: &clean::Item) -> ~str {
-    match item.inner {
-        clean::ModuleItem(..) => *item.name.get_ref() + "/index.html",
-        _ => shortty(item).to_static_str() + "." + *item.name.get_ref() + ".html"
+fn item_path(ty: ItemType, name: &str) -> ~str {
+    match ty {
+        item_type::Module => name + "/index.html",
+        _ => ty.to_static_str() + "." + name + ".html"
     }
 }
 
-fn full_path(cx: &Context, item: &clean::Item) -> ~str {
+fn nonlocal_item_path(cx: &Context, ty: ItemType, fqp: &[~str]) -> ~str {
+    let mut url = StrBuf::new();
+    url.push_str("../".repeat(cx.current.len()));
+    let to_link = fqp.slice_to(fqp.len() - 1);
+    for component in to_link.iter() {
+        url.push_str(*component);
+        url.push_str("/");
+    }
+    match ty {
+        item_type::Module => {
+            url.push_str(*fqp.last().unwrap());
+            url.push_str("/index.html");
+        }
+        _ => {
+            url.push_str(ty.to_static_str());
+            url.push_str(".");
+            url.push_str(*fqp.last().unwrap());
+            url.push_str(".html");
+        }
+    }
+    url.into_owned()
+}
+
+fn full_path(cx: &Context, name: &str) -> ~str {
     let mut s = StrBuf::from_str(cx.current.connect("::"));
     s.push_str("::");
-    s.push_str(item.name.get_ref().as_slice());
+    s.push_str(name.as_slice());
     return s.into_owned();
 }
 
@@ -1048,152 +1087,279 @@ fn item_module(w: &mut Writer, cx: &Context,
                item: &clean::Item, items: &[clean::Item]) -> fmt::Result {
     try!(document(w, item));
     debug!("{:?}", items);
-    let mut indices = Vec::from_fn(items.len(), |i| i);
 
-    fn cmp(i1: &clean::Item, i2: &clean::Item, idx1: uint, idx2: uint) -> Ordering {
-        if shortty(i1) == shortty(i2) {
-            return i1.name.cmp(&i2.name);
+    local_data::get(cache_key, |cache| {
+        let cache = cache.unwrap();
+
+        enum Indexed<'a> {
+            Borrowed(&'a clean::Item),
+            Owned(clean::Item), // used for reconstructed unresolved imports
+            Reexported(~str /* reexported name */, ast::NodeId /* resolved id */),
         }
-        match (&i1.inner, &i2.inner) {
-            (&clean::ViewItemItem(ref a), &clean::ViewItemItem(ref b)) => {
-                match (&a.inner, &b.inner) {
-                    (&clean::ExternCrate(..), _) => Less,
-                    (_, &clean::ExternCrate(..)) => Greater,
-                    _ => idx1.cmp(&idx2),
+
+        let defid_to_type = |did: Option<ast::DefId>| {
+            // FIXME: shouldn't be limited to just local imports
+            if did.is_some() && ast_util::is_local(did.unwrap()) {
+                match cache.paths.find(&did.unwrap().node) {
+                    None => None,
+                    Some(info) => Some(info.ty)
                 }
+            } else {
+                None
             }
-            (&clean::ViewItemItem(..), _) => Less,
-            (_, &clean::ViewItemItem(..)) => Greater,
-            (&clean::ModuleItem(..), _) => Less,
-            (_, &clean::ModuleItem(..)) => Greater,
-            (&clean::MacroItem(..), _) => Less,
-            (_, &clean::MacroItem(..)) => Greater,
-            (&clean::StructItem(..), _) => Less,
-            (_, &clean::StructItem(..)) => Greater,
-            (&clean::EnumItem(..), _) => Less,
-            (_, &clean::EnumItem(..)) => Greater,
-            (&clean::StaticItem(..), _) => Less,
-            (_, &clean::StaticItem(..)) => Greater,
-            (&clean::ForeignFunctionItem(..), _) => Less,
-            (_, &clean::ForeignFunctionItem(..)) => Greater,
-            (&clean::ForeignStaticItem(..), _) => Less,
-            (_, &clean::ForeignStaticItem(..)) => Greater,
-            (&clean::TraitItem(..), _) => Less,
-            (_, &clean::TraitItem(..)) => Greater,
-            (&clean::FunctionItem(..), _) => Less,
-            (_, &clean::FunctionItem(..)) => Greater,
-            (&clean::TypedefItem(..), _) => Less,
-            (_, &clean::TypedefItem(..)) => Greater,
-            _ => idx1.cmp(&idx2),
-        }
-    }
+        };
 
-    debug!("{:?}", indices);
-    indices.sort_by(|&i1, &i2| cmp(&items[i1], &items[i2], i1, i2));
-
-    debug!("{:?}", indices);
-    let mut curty = None;
-    for &idx in indices.iter() {
-        let myitem = &items[idx];
-
-        let myty = Some(shortty(myitem));
-        if myty != curty {
-            if curty.is_some() {
-                try!(write!(w, "</table>"));
-            }
-            curty = myty;
-            let (short, name) = match myitem.inner {
-                clean::ModuleItem(..)          => ("modules", "Modules"),
-                clean::StructItem(..)          => ("structs", "Structs"),
-                clean::EnumItem(..)            => ("enums", "Enums"),
-                clean::FunctionItem(..)        => ("functions", "Functions"),
-                clean::TypedefItem(..)         => ("types", "Type Definitions"),
-                clean::StaticItem(..)          => ("statics", "Statics"),
-                clean::TraitItem(..)           => ("traits", "Traits"),
-                clean::ImplItem(..)            => ("impls", "Implementations"),
-                clean::ViewItemItem(..)        => ("reexports", "Reexports"),
-                clean::TyMethodItem(..)        => ("tymethods", "Type Methods"),
-                clean::MethodItem(..)          => ("methods", "Methods"),
-                clean::StructFieldItem(..)     => ("fields", "Struct Fields"),
-                clean::VariantItem(..)         => ("variants", "Variants"),
-                clean::ForeignFunctionItem(..) => ("ffi-fns", "Foreign Functions"),
-                clean::ForeignStaticItem(..)   => ("ffi-statics", "Foreign Statics"),
-                clean::MacroItem(..)           => ("macros", "Macros"),
-            };
-            try!(write!(w,
-                        "<h2 id='{id}' class='section-header'>\
-                        <a href=\"\\#{id}\">{name}</a></h2>\n<table>",
-                        id = short, name = name));
-        }
-
-        match myitem.inner {
-            clean::StaticItem(ref s) | clean::ForeignStaticItem(ref s) => {
-                struct Initializer<'a>(&'a str);
-                impl<'a> fmt::Show for Initializer<'a> {
-                    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                        let Initializer(s) = *self;
-                        if s.len() == 0 { return Ok(()); }
-                        try!(write!(f.buf, "<code> = </code>"));
-                        let tag = if s.contains("\n") { "pre" } else { "code" };
-                        try!(write!(f.buf, "<{tag}>{}</{tag}>",
-                                      s.as_slice(), tag=tag));
-                        Ok(())
-                    }
-                }
-
-                try!(write!(w, "
-                    <tr>
-                        <td><code>{}static {}: {}</code>{}</td>
-                        <td class='docblock'>{}&nbsp;</td>
-                    </tr>
-                ",
-                VisSpace(myitem.visibility),
-                *myitem.name.get_ref(),
-                s.type_,
-                Initializer(s.expr),
-                Markdown(blank(myitem.doc_value()))));
-            }
-
-            clean::ViewItemItem(ref item) => {
-                match item.inner {
-                    clean::ExternCrate(ref name, ref src, _) => {
-                        try!(write!(w, "<tr><td><code>extern crate {}",
-                                      name.as_slice()));
-                        match *src {
-                            Some(ref src) => try!(write!(w, " = \"{}\"",
-                                                           src.as_slice())),
-                            None => {}
+        // try to resolve the use view path, and returns a copy of any unresolved path
+        // (which can differ from the original view path). resolved path goes to the indices.
+        let resolve_view_path = |indices: &mut Vec<(ItemType, Indexed, uint)>,
+                                 vp: &clean::ViewPath,
+                                 pos: uint| -> Option<clean::ViewPath> {
+            match vp {
+                &clean::SimpleImport(ref name, ref src) => {
+                    match defid_to_type(src.did) {
+                        Some(ty) => {
+                            let id = src.did.unwrap().node;
+                            let name = name.to_owned();
+                            indices.push((ty, Reexported(name, id), pos));
                         }
-                        try!(write!(w, ";</code></td></tr>"));
-                    }
-
-                    clean::Import(ref import) => {
-                        try!(write!(w, "<tr><td><code>{}{}</code></td></tr>",
-                                      VisSpace(myitem.visibility),
-                                      *import));
+                        None => {
+                            return Some(vp.clone());
+                        }
                     }
                 }
+                &clean::GlobImport(..) => {
+                    return Some(vp.clone());
+                }
+                &clean::ImportList(ref src, ref idents) => {
+                    let mut unresolved_idents = Vec::new();
+                    for ident in idents.iter() {
+                        match defid_to_type(ident.source) {
+                            Some(ty) => {
+                                let id = ident.source.unwrap().node;
+                                let name = ident.name.to_owned();
+                                indices.push((ty, Reexported(name, id), pos));
+                            }
+                            None => {
+                                unresolved_idents.push(ident.clone());
+                            }
+                        }
+                    }
+                    if !unresolved_idents.is_empty() {
+                        return Some(clean::ImportList(src.clone(),
+                                                      unresolved_idents));
+                    }
+                }
+            }
+            None
+        };
 
+        let mut indices = Vec::new();
+        for (i, item) in items.iter().enumerate() {
+            match item.inner {
+                clean::ViewItemItem(ref v) => {
+                    match v.inner {
+                        clean::Import(ref vp) => {
+                            let unresolved = resolve_view_path(&mut indices, vp, i);
+                            if unresolved.is_some() {
+                                // reconstructs the item out of unresolved path
+                                let item = clean::Item {
+                                    source: item.source.clone(),
+                                    name: item.name.clone(),
+                                    attrs: item.attrs.clone(),
+                                    inner: clean::ViewItemItem(clean::ViewItem {
+                                        inner: clean::Import(unresolved.unwrap())
+                                    }),
+                                    visibility: item.visibility,
+                                    id: item.id,
+                                };
+                                indices.push((shortty(&item), Owned(item), i));
+                            }
+                        }
+                        _ => {
+                            indices.push((shortty(item), Borrowed(item), i));
+                        }
+                    }
+                }
+                _ => {
+                    indices.push((shortty(item), Borrowed(item), i));
+                }
+            }
+        }
+
+        fn indexed_order(ty: ItemType) -> uint {
+            match ty {
+                // for unresolved "reexports" section
+                item_type::ViewItem        => 0,
+
+                item_type::Module          => 1,
+                item_type::Macro           => 2,
+                item_type::Struct          => 3,
+                item_type::Enum            => 4,
+                item_type::Static          => 5,
+                item_type::ForeignFunction => 6,
+                item_type::ForeignStatic   => 7,
+                item_type::Trait           => 8,
+                item_type::Function        => 9,
+                item_type::Typedef         => 10,
+
+                // these items should not appear in the module anyway
+                item_type::Impl            => 11,
+                item_type::TyMethod        => 12,
+                item_type::Method          => 13,
+                item_type::StructField     => 14,
+                item_type::Variant         => 15,
+            }
+        }
+
+        fn indexed_name<'a>(indexed: &'a Indexed<'a>) -> Option<&'a str> {
+            match indexed {
+                &Borrowed(item) => item.name.as_ref().map(|name| name.as_slice()),
+                &Owned(ref item) => item.name.as_ref().map(|name| name.as_slice()),
+                &Reexported(ref name, _id) => Some(name.as_slice()),
+            }
+        }
+
+        debug!("{:?}", indices);
+        indices.sort_by(|&(ty1, ref index1, pos1), &(ty2, ref index2, pos2)| {
+            let lhs = (indexed_order(ty1), indexed_name(index1), pos1);
+            let rhs = (indexed_order(ty2), indexed_name(index2), pos2);
+            lhs.cmp(&rhs)
+        });
+
+        debug!("{:?}", indices);
+        let mut curty = None;
+        for (ty, indexed, _pos) in indices.move_iter() {
+            // render a heading if needed
+            if Some(ty) != curty {
+                if curty.is_some() {
+                    try!(write!(w, "</table>"));
+                }
+                curty = Some(ty);
+                let (short, name) = match ty {
+                    item_type::Module          => ("modules", "Modules"),
+                    item_type::Struct          => ("structs", "Structs"),
+                    item_type::Enum            => ("enums", "Enums"),
+                    item_type::Function        => ("functions", "Functions"),
+                    item_type::Typedef         => ("types", "Type Definitions"),
+                    item_type::Static          => ("statics", "Statics"),
+                    item_type::Trait           => ("traits", "Traits"),
+                    item_type::Impl            => ("impls", "Implementations"),
+                    item_type::ViewItem        => ("reexports", "Reexports"),
+                    item_type::TyMethod        => ("tymethods", "Type Methods"),
+                    item_type::Method          => ("methods", "Methods"),
+                    item_type::StructField     => ("fields", "Struct Fields"),
+                    item_type::Variant         => ("variants", "Variants"),
+                    item_type::ForeignFunction => ("ffi-fns", "Foreign Functions"),
+                    item_type::ForeignStatic   => ("ffi-statics", "Foreign Statics"),
+                    item_type::Macro           => ("macros", "Macros"),
+                };
+                try!(write!(w,
+                            "<h2 id='{id}' class='section-header'>\
+                            <a href=\"\\#{id}\">{name}</a></h2>\n<table>",
+                            id = short, name = name));
             }
 
-            _ => {
-                if myitem.name.is_none() { continue }
+            let render_item = |myitem: &clean::Item| {
+                match myitem.inner {
+                    clean::StaticItem(ref s) | clean::ForeignStaticItem(ref s) => {
+                        struct Initializer<'a>(&'a str);
+                        impl<'a> fmt::Show for Initializer<'a> {
+                            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                                let Initializer(s) = *self;
+                                if s.len() == 0 { return Ok(()); }
+                                try!(write!(f.buf, "<code> = </code>"));
+                                let tag = if s.contains("\n") { "pre" } else { "code" };
+                                try!(write!(f.buf, "<{tag}>{}</{tag}>",
+                                              s.as_slice(), tag=tag));
+                                Ok(())
+                            }
+                        }
+
+                        try!(write!(w, "
+                            <tr>
+                                <td><code>{}static {}: {}</code>{}</td>
+                                <td class='docblock'>{}&nbsp;</td>
+                            </tr>
+                        ",
+                        VisSpace(myitem.visibility),
+                        *myitem.name.get_ref(),
+                        s.type_,
+                        Initializer(s.expr),
+                        Markdown(blank(myitem.doc_value()))));
+                    }
+
+                    clean::ViewItemItem(ref item) => {
+                        match item.inner {
+                            clean::ExternCrate(ref name, ref src, _) => {
+                                try!(write!(w, "<tr><td><code>extern crate {}",
+                                              name.as_slice()));
+                                match *src {
+                                    Some(ref src) => try!(write!(w, " = \"{}\"",
+                                                                   src.as_slice())),
+                                    None => {}
+                                }
+                                try!(write!(w, ";</code></td></tr>"));
+                            }
+
+                            clean::Import(ref import) => {
+                                try!(write!(w, "<tr><td><code>{}{}</code></td></tr>",
+                                              VisSpace(myitem.visibility),
+                                              *import));
+                            }
+                        }
+                    }
+
+                    _ => {
+                        if myitem.name.is_none() { return Ok(()) }
+                        let name = myitem.name.get_ref().as_slice();
+
+                        try!(write!(w, "
+                            <tr>
+                                <td><a class='{class}' href='{href}'
+                                       title='{title}'>{}</a></td>
+                                <td class='docblock short'>{}</td>
+                            </tr>
+                        ",
+                        name,
+                        Markdown(shorter(myitem.doc_value())),
+                        class = ty,
+                        href = item_path(ty, name),
+                        title = full_path(cx, name)));
+                    }
+                }
+                Ok(())
+            };
+
+            let render_reexported = |name: ~str, id: ast::NodeId| {
+                // this should always return `Some`
+                let info = cache.paths.find(&id).unwrap();
+
                 try!(write!(w, "
                     <tr>
                         <td><a class='{class}' href='{href}'
                                title='{title}'>{}</a></td>
-                        <td class='docblock short'>{}</td>
+                        <td class='docblock short'>
+                            <span class='reexported'>(Reexported)</span>
+                            {}</td>
                     </tr>
                 ",
-                *myitem.name.get_ref(),
-                Markdown(shorter(myitem.doc_value())),
-                class = shortty(myitem),
-                href = item_path(myitem),
-                title = full_path(cx, myitem)));
+                name,
+                Markdown(info.desc),
+                class = ty,
+                href = nonlocal_item_path(cx, ty, info.fqp.as_slice()),
+                title = info.fqp.connect("::")));
+
+                Ok(())
+            };
+
+            match indexed {
+                Borrowed(myitem) => try!(render_item(myitem)),
+                Owned(ref myitem) => try!(render_item(myitem)),
+                Reexported(name, id) => try!(render_reexported(name, id)),
             }
         }
-    }
-    write!(w, "</table>")
+        write!(w, "</table>")
+    })
 }
 
 fn item_function(w: &mut Writer, it: &clean::Item,
