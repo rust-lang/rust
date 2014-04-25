@@ -13,31 +13,31 @@
     font-family: 'Fira Sans';
     font-style: normal;
     font-weight: 400;
-    src: local('Fira Sans'), url("http://www.rust-lang.org/fonts/FiraSans-Regular.woff") format('woff');
+    src: local('Fira Sans'), url("FiraSans-Regular.woff") format('woff');
 }
 @font-face {
     font-family: 'Fira Sans';
     font-style: normal;
     font-weight: 500;
-    src: local('Fira Sans Medium'), url("http://www.rust-lang.org/fonts/FiraSans-Medium.woff") format('woff');
+    src: local('Fira Sans Medium'), url("FiraSans-Medium.woff") format('woff');
 }
 @font-face {
     font-family: 'Heuristica';
     font-style: normal;
     font-weight: 400;
-    src: local('Heuristica Regular'), url("http://www.rust-lang.org/fonts/Heuristica-Regular.woff") format('woff');
+    src: local('Heuristica Regular'), url("Heuristica-Regular.woff") format('woff');
 }
 @font-face {
     font-family: 'Heuristica';
     font-style: italic;
     font-weight: 400;
-    src: local('Heuristica Italic'), url("http://www.rust-lang.org/fonts/Heuristica-Italic.woff") format('woff');
+    src: local('Heuristica Italic'), url("Heuristica-Italic.woff") format('woff');
 }
 @font-face {
     font-family: 'Heuristica';
     font-style: normal;
     font-weight: 700;
-    src: local('Heuristica Bold'), url("http://www.rust-lang.org/fonts/Heuristica-Bold.woff") format('woff');
+    src: local('Heuristica Bold'), url("Heuristica-Bold.woff") format('woff');
 }
 
 @import "normalize.css";
