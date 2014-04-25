@@ -186,9 +186,6 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// Returns the path as a byte vector
     fn as_vec<'a>(&'a self) -> &'a [u8];
 
-    /// Converts the Path into an owned byte vector
-    fn into_vec(self) -> Vec<u8>;
-
     /// Returns an object that implements `Show` for printing paths
     ///
     /// This will print the equivalent of `to_display_str()` when used with a {} format parameter.

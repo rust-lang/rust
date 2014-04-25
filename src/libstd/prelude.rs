@@ -60,7 +60,7 @@ pub use slice::{OwnedVector};
 pub use slice::{MutableVector, MutableTotalOrdVector};
 pub use slice::{Vector, VectorVector, CloneableVector, ImmutableVector};
 pub use strbuf::StrBuf;
-pub use vec::Vec;
+pub use vec::{Vec,IntoVec};
 
 // Reexported runtime types
 pub use comm::{sync_channel, channel, SyncSender, Sender, Receiver};

@@ -1435,6 +1435,35 @@ impl<T> Drop for MoveItems<T> {
     }
 }
 
+/// A trait for types that can be converted into a Vec
+pub trait IntoVec<T> {
+    /// Convert `self` into a new Vec, copying if required.
+    fn into_vec(self) -> Vec<T>;
+}
+
+impl<'a, T: Clone> IntoVec<T> for &'a [T] {
+    fn into_vec(self) -> Vec<T> {
+        #![inline(always)]
+        Vec::from_slice(self)
+    }
+}
+
+impl<T> IntoVec<T> for Vec<T> {
+    fn into_vec(self) -> Vec<T> {
+        #![inline(always)]
+        self
+    }
+}
+
+impl<T> IntoVec<T> for ~[T] {
+    // someday this may be able to just reuse the data allocation, but for now, move
+    // all the items into the new Vec.
+    fn into_vec(self) -> Vec<T> {
+        #![inline(always)]
+        self.move_iter().collect()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use prelude::*;
@@ -1647,5 +1676,12 @@ mod tests {
         for &() in v.mut_iter() {}
         unsafe { v.set_len(0); }
         assert_eq!(v.mut_iter().len(), 0);
+    }
+
+    #[test]
+    fn test_into_vec() {
+        assert_eq!([1u, 2, 3, 4].into_vec(), Vec::from_slice([1u, 2, 3, 4]));
+        assert_eq!(["a","b"].to_owned().into_vec(), Vec::from_slice(["a","b"]));
+        assert_eq!(Vec::from_slice([1u, 2]).into_vec(), Vec::from_slice([1u, 2]));
     }
 }

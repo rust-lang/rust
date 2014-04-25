@@ -94,6 +94,7 @@ syn keyword rustTrait ImmutableEqVector ImmutableTotalOrdVector ImmutableCloneab
 syn keyword rustTrait OwnedVector OwnedCloneableVector OwnedEqVector
 syn keyword rustTrait MutableVector MutableTotalOrdVector
 syn keyword rustTrait Vector VectorVector CloneableVector ImmutableVector
+syn keyword rustTrait Vec IntoVec
 
 "syn keyword rustFunction stream
 syn keyword rustTrait Sender Receiver

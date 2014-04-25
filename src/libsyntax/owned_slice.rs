@@ -54,17 +54,6 @@ impl<T> OwnedSlice<T> {
         }
     }
 
-    #[inline(never)]
-    pub fn into_vec(self) -> Vec<T> {
-        // null is ok, because len == 0 in that case, as required by Vec.
-        unsafe {
-            let ret = Vec::from_raw_parts(self.len, self.len, self.data);
-            // the vector owns the allocation now
-            cast::forget(self);
-            ret
-        }
-    }
-
     pub fn as_slice<'a>(&'a self) -> &'a [T] {
         static PTR_MARKER: u8 = 0;
         let ptr = if self.data.is_null() {
@@ -92,6 +81,19 @@ impl<T> OwnedSlice<T> {
 
     pub fn map<U>(&self, f: |&T| -> U) -> OwnedSlice<U> {
         self.iter().map(f).collect()
+    }
+}
+
+impl<T> IntoVec<T> for OwnedSlice<T> {
+    fn into_vec(self) -> Vec<T> {
+        #![inline(never)]
+        // null is ok, because len == 0 in that case, as required by Vec.
+        unsafe {
+            let ret = Vec::from_raw_parts(self.len, self.len, self.data);
+            // the vector owns the allocation now
+            cast::forget(self);
+            ret
+        }
     }
 }
 
