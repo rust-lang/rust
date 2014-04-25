@@ -190,7 +190,9 @@ pub fn pow<T: One + Mul<T, T>>(mut base: T, mut exp: uint) -> T {
 /// Numbers which have upper and lower bounds
 pub trait Bounded {
     // FIXME (#5527): These should be associated constants
+    /// returns the smallest finite number this type can represent
     fn min_value() -> Self;
+    /// returns the largest finite number this type can represent
     fn max_value() -> Self;
 }
 
@@ -356,6 +358,8 @@ pub trait Float: Signed + Primitive {
     /// Returns the category that this number falls into.
     fn classify(self) -> FPCategory;
 
+    // FIXME (#5527): These should be associated constants
+
     /// Returns the number of binary digits of mantissa that this type supports.
     fn mantissa_digits(unused_self: Option<Self>) -> uint;
     /// Returns the number of base-10 digits of precision that this type supports.
@@ -370,6 +374,8 @@ pub trait Float: Signed + Primitive {
     fn min_10_exp(unused_self: Option<Self>) -> int;
     /// Returns the maximum base-10 exponent that this type can represent.
     fn max_10_exp(unused_self: Option<Self>) -> int;
+    /// Returns the smallest normalized positive number that this type can represent.
+    fn min_pos_value(unused_self: Option<Self>) -> Self;
 
     /// Constructs a floating point number created by multiplying `x` by 2
     /// raised to the power of `exp`.
@@ -433,6 +439,8 @@ pub trait Float: Signed + Primitive {
     /// Calculate the length of the hypotenuse of a right-angle triangle given
     /// legs of length `x` and `y`.
     fn hypot(self, other: Self) -> Self;
+
+    // FIXME (#5527): These should be associated constants
 
     /// Archimedes' constant.
     fn pi() -> Self;
