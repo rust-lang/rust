@@ -1638,6 +1638,9 @@ impl<'a> Visitor<()> for Context<'a> {
     fn visit_view_item(&mut self, i: &ast::ViewItem, _: ()) {
         self.with_lint_attrs(i.attrs.as_slice(), |cx| {
             check_attrs_usage(cx, i.attrs.as_slice());
+
+            cx.visit_ids(|v| v.visit_view_item(i, ()));
+
             visit::walk_view_item(cx, i, ());
         })
     }
