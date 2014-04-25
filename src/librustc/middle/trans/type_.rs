@@ -215,7 +215,7 @@ impl Type {
 
     pub fn vec(ccx: &CrateContext, ty: &Type) -> Type {
         Type::struct_(ccx,
-            [Type::int(ccx), Type::int(ccx), Type::array(ty, 0)],
+            [Type::array(ty, 0), Type::int(ccx)],
         false)
     }
 

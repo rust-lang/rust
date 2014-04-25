@@ -169,14 +169,8 @@ pub fn sizing_type_of(cx: &CrateContext, t: ty::t) -> Type {
 
         ty::ty_box(..) |
         ty::ty_ptr(..) => Type::i8p(cx),
-        ty::ty_uniq(ty) => {
+        ty::ty_uniq(ty) | ty::ty_rptr(_, ty::mt{ty, ..}) => {
             match ty::get(ty).sty {
-                ty::ty_trait(..) => Type::opaque_trait(cx),
-                _ => Type::i8p(cx),
-            }
-        }
-        ty::ty_rptr(_, mt) => {
-            match ty::get(mt.ty).sty {
                 ty::ty_vec(_, None) | ty::ty_str => {
                     Type::struct_(cx, [Type::i8p(cx), Type::i8p(cx)], false)
                 }
@@ -283,17 +277,10 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
       ty::ty_box(typ) => {
           Type::at_box(cx, type_of(cx, typ)).ptr_to()
       }
-      ty::ty_uniq(typ) => {
-          match ty::get(typ).sty {
-              ty::ty_vec(mt, None) => Type::vec(cx, &type_of(cx, mt.ty)).ptr_to(),
-              ty::ty_str => Type::vec(cx, &Type::i8(cx)).ptr_to(),
-              ty::ty_trait(..) => Type::opaque_trait(cx),
-              _ => type_of(cx, typ).ptr_to(),
-          }
-      }
       ty::ty_ptr(ref mt) => type_of(cx, mt.ty).ptr_to(),
-      ty::ty_rptr(_, ref mt) => {
-          match ty::get(mt.ty).sty {
+
+      ty::ty_uniq(ty) | ty::ty_rptr(_, ty::mt{ty, ..}) => {
+          match ty::get(ty).sty {
               ty::ty_vec(mt, None) => {
                   let p_ty = type_of(cx, mt.ty).ptr_to();
                   let u_ty = Type::uint_from_ty(cx, ast::TyU);
@@ -304,7 +291,7 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
                   cx.tn.find_type("str_slice").unwrap()
               }
               ty::ty_trait(..) => Type::opaque_trait(cx),
-              _ => type_of(cx, mt.ty).ptr_to(),
+              _ => type_of(cx, ty).ptr_to(),
           }
       }
 

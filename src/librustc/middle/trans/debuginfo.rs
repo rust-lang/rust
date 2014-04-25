@@ -2718,81 +2718,6 @@ fn fixed_vec_metadata(cx: &CrateContext,
     return MetadataCreationResult::new(metadata, false);
 }
 
-fn heap_vec_metadata(cx: &CrateContext,
-                     vec_pointer_type: ty::t,
-                     element_type: ty::t,
-                     unique_type_id: UniqueTypeId,
-                     span: Span)
-                  -> MetadataCreationResult {
-    let element_type_metadata = type_metadata(cx, element_type, span);
-    let element_llvm_type = type_of::type_of(cx, element_type);
-    let (element_size, element_align) = size_and_align_of(cx, element_llvm_type);
-
-    return_if_metadata_created_in_meantime!(cx, unique_type_id);
-
-    let vecbox_llvm_type = Type::vec(cx, &element_llvm_type);
-    let vec_pointer_type_name = compute_debuginfo_type_name(cx,
-                                                            vec_pointer_type,
-                                                            true);
-    let vec_pointer_type_name = vec_pointer_type_name.as_slice();
-
-    let member_llvm_types = vecbox_llvm_type.field_types();
-
-    let int_type_metadata = type_metadata(cx, ty::mk_int(), span);
-    let array_type_metadata = unsafe {
-        llvm::LLVMDIBuilderCreateArrayType(
-            DIB(cx),
-            bytes_to_bits(element_size),
-            bytes_to_bits(element_align),
-            element_type_metadata,
-            create_DIArray(DIB(cx), [llvm::LLVMDIBuilderGetOrCreateSubrange(DIB(cx), 0, 0)]))
-    };
-
-    let member_descriptions = [
-        MemberDescription {
-            name: "fill".to_string(),
-            llvm_type: *member_llvm_types.get(0),
-            type_metadata: int_type_metadata,
-            offset: ComputedMemberOffset,
-        },
-        MemberDescription {
-            name: "alloc".to_string(),
-            llvm_type: *member_llvm_types.get(1),
-            type_metadata: int_type_metadata,
-            offset: ComputedMemberOffset,
-        },
-        MemberDescription {
-            name: "elements".to_string(),
-            llvm_type: *member_llvm_types.get(2),
-            type_metadata: array_type_metadata,
-            offset: ComputedMemberOffset,
-        }
-    ];
-
-    assert!(member_descriptions.len() == member_llvm_types.len());
-
-    let loc = span_start(cx, span);
-    let file_metadata = file_metadata(cx, loc.file.name.as_slice());
-
-    let vec_box_unique_id = debug_context(cx).type_map
-                                             .borrow_mut()
-                                             .get_unique_type_id_of_heap_vec_box(cx,
-                                                                                 element_type);
-
-    let vecbox_metadata = composite_type_metadata(cx,
-                                                  vecbox_llvm_type,
-                                                  vec_pointer_type_name,
-                                                  vec_box_unique_id,
-                                                  member_descriptions,
-                                                  UNKNOWN_SCOPE_METADATA,
-                                                  file_metadata,
-                                                  span);
-
-    MetadataCreationResult::new(pointer_type_metadata(cx,
-                                                      vec_pointer_type,
-                                                      vecbox_metadata), false)
-}
-
 fn vec_slice_metadata(cx: &CrateContext,
                       vec_type: ty::t,
                       element_type: ty::t,
@@ -2995,11 +2920,13 @@ fn type_metadata(cx: &CrateContext,
         ty::ty_uniq(pointee_type) => {
             match ty::get(pointee_type).sty {
                 ty::ty_vec(ref mt, None) => {
-                    heap_vec_metadata(cx, pointee_type, mt.ty, unique_type_id, usage_site_span)
+                    let vec_metadata = vec_slice_metadata(cx, t, mt.ty, usage_site_span);
+                    pointer_type_metadata(cx, t, vec_metadata)
                 }
                 ty::ty_str => {
                     let i8_t = ty::mk_i8();
-                    heap_vec_metadata(cx, pointee_type, i8_t, unique_type_id, usage_site_span)
+                    let vec_metadata = vec_slice_metadata(cx, t, i8_t, usage_site_span);
+                    pointer_type_metadata(cx, t, vec_metadata)
                 }
                 ty::ty_trait(..) => {
                     MetadataCreationResult::new(

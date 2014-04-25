@@ -18,6 +18,7 @@ use std::path;
 use std::rc::Rc;
 use std::gc::{Gc, GC};
 use std::cell::{Cell, RefCell};
+use std::strbuf::StrBuf;
 
 pub trait Encoder<E> {
     // Primitive types:

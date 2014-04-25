@@ -268,7 +268,19 @@ pub struct Tm {
     pub tm_nsec: i32,
 }
 
+impl Tm {
+    pub fn tm_zone<'a>(&'a self) -> &'a str {
+        self.tm_zone.as_slice()
+    }
+}
+
 pub fn empty_tm() -> Tm {
+    // 64 is the max size of the timezone buffer allocated on windows
+    // in rust_localtime. In glibc the max timezone size is supposedly 3.
+    let mut zone = StrBuf::new();
+    for _ in range(0, 64) {
+        zone.push_char(' ')
+    }
     Tm {
         tm_sec: 0_i32,
         tm_min: 0_i32,
@@ -280,6 +292,7 @@ pub fn empty_tm() -> Tm {
         tm_yday: 0_i32,
         tm_isdst: 0_i32,
         tm_gmtoff: 0_i32,
+        tm_zone: zone,
         tm_nsec: 0_i32,
     }
 }
@@ -760,6 +773,7 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, String> {
           'Z' => {
             if match_str(s, pos, "UTC") || match_str(s, pos, "GMT") {
                 tm.tm_gmtoff = 0_i32;
+                tm.tm_zone = "UTC".into_strbuf();
                 Ok(pos + 3u)
             } else {
                 // It's odd, but to maintain compatibility with c's
@@ -784,6 +798,7 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, String> {
                     let (v, pos) = item;
                     if v == 0_i32 {
                         tm.tm_gmtoff = 0_i32;
+                        tm.tm_zone = "UTC".into_strbuf();
                     }
 
                     Ok(pos)
@@ -813,6 +828,7 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, String> {
         tm_yday: 0_i32,
         tm_isdst: 0_i32,
         tm_gmtoff: 0_i32,
+        tm_zone: StrBuf::new(),
         tm_nsec: 0_i32,
     };
     let mut pos = 0u;
@@ -859,6 +875,7 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, String> {
             tm_yday: tm.tm_yday,
             tm_isdst: tm.tm_isdst,
             tm_gmtoff: tm.tm_gmtoff,
+            tm_zone: tm.tm_zone.clone(),
             tm_nsec: tm.tm_nsec,
         })
     } else { result }
@@ -1060,7 +1077,7 @@ pub fn strftime(format: &str, tm: &Tm) -> String {
           'w' => (tm.tm_wday as int).to_string(),
           'Y' => (tm.tm_year as int + 1900).to_string(),
           'y' => format!("{:02d}", (tm.tm_year as int + 1900) % 100),
-          'Z' => "".to_string(),    // FIXME(pcwalton): Implement this.
+          'Z' => tm.tm_zone.as_slice().to_owned(),
           'z' => {
             let sign = if tm.tm_gmtoff > 0_i32 { '+' } else { '-' };
             let mut m = num::abs(tm.tm_gmtoff) / 60_i32;
@@ -1186,6 +1203,7 @@ mod tests {
         assert_eq!(utc.tm_yday, 43_i32);
         assert_eq!(utc.tm_isdst, 0_i32);
         assert_eq!(utc.tm_gmtoff, 0_i32);
+        assert_eq!(utc.tm_zone(), "UTC");
         assert_eq!(utc.tm_nsec, 54321_i32);
     }
 
@@ -1207,6 +1225,12 @@ mod tests {
         assert_eq!(local.tm_yday, 43_i32);
         assert_eq!(local.tm_isdst, 0_i32);
         assert_eq!(local.tm_gmtoff, -28800_i32);
+
+        // FIXME (#2350): We should probably standardize on the timezone
+        // abbreviation.
+        let zone = local.tm_zone();
+        assert!(zone == "PST" || zone == "Pacific Standard Time");
+
         assert_eq!(local.tm_nsec, 54321_i32);
     }
 
@@ -1249,6 +1273,7 @@ mod tests {
             assert!(tm.tm_wday == 0_i32);
             assert!(tm.tm_isdst == 0_i32);
             assert!(tm.tm_gmtoff == 0_i32);
+            assert!(tm.tm_zone() == "");
             assert!(tm.tm_nsec == 0_i32);
           }
           Err(_) => ()
@@ -1272,6 +1297,7 @@ mod tests {
             assert!(tm.tm_yday == 0_i32);
             assert!(tm.tm_isdst == 0_i32);
             assert!(tm.tm_gmtoff == 0_i32);
+            assert!(tm.tm_zone() == "");
             assert!(tm.tm_nsec == 12340000_i32);
           }
         }
@@ -1383,10 +1409,10 @@ mod tests {
         assert!(test("6", "%w"));
         assert!(test("2009", "%Y"));
         assert!(test("09", "%y"));
-        assert!(strptime("-0000", "%z").unwrap().tm_gmtoff ==
-            0);
-        assert!(strptime("-0800", "%z").unwrap().tm_gmtoff ==
-            0);
+        assert!(strptime("UTC", "%Z").unwrap().tm_zone() == "UTC");
+        assert!(strptime("PST", "%Z").unwrap().tm_zone() == "");
+        assert!(strptime("-0000", "%z").unwrap().tm_gmtoff == 0);
+        assert!(strptime("-0800", "%z").unwrap().tm_gmtoff == 0);
         assert!(test("%", "%%"));
 
         // Test for #7256

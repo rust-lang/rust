@@ -195,6 +195,16 @@ pub fn decl_fn(ccx: &CrateContext, name: &str, cc: llvm::CallConv,
                                                llvm::NoReturnAttribute as uint64_t)
             }
         }
+        // `~` pointer return values never alias because ownership is transferred
+        ty::ty_uniq(t)
+            => match ty::get(t).sty {
+                ty::ty_vec(_, None) | ty::ty_str | ty::ty_trait(..) => {}
+                _ => unsafe {
+                    llvm::LLVMAddReturnAttribute(llfn,
+                                                 lib::llvm::NoAliasAttribute as c_uint,
+                                                 lib::llvm::NoReturnAttribute as uint64_t);
+                }
+            },
         _ => {}
     }
 
@@ -364,20 +374,19 @@ fn require_alloc_fn(bcx: &Block, info_ty: ty::t, it: LangItem) -> ast::DefId {
 // a given type, but with a potentially dynamic size.
 
 pub fn malloc_raw_dyn<'a>(bcx: &'a Block<'a>,
-                          ptr_ty: ty::t,
+                          llty_ptr: Type,
+                          info_ty: ty::t,
                           size: ValueRef,
                           align: ValueRef)
                           -> Result<'a> {
     let _icx = push_ctxt("malloc_raw_exchange");
-    let ccx = bcx.ccx();
 
     // Allocate space:
     let r = callee::trans_lang_call(bcx,
-        require_alloc_fn(bcx, ptr_ty, ExchangeMallocFnLangItem),
+        require_alloc_fn(bcx, info_ty, ExchangeMallocFnLangItem),
         [size, align],
         None);
 
-    let llty_ptr = type_of::type_of(ccx, ptr_ty);
     Result::new(r.bcx, PointerCast(r.bcx, r.val, llty_ptr))
 }
 
@@ -731,8 +740,8 @@ pub fn iter_structural_ty<'r,
           }
       }
       ty::ty_vec(_, Some(n)) => {
+        let (base, len) = tvec::get_fixed_base_and_len(cx, av, n);
         let unit_ty = ty::sequence_element_type(cx.tcx(), t);
-        let (base, len) = tvec::get_fixed_base_and_byte_len(cx, av, unit_ty, n);
         cx = tvec::iter_vec_raw(cx, base, unit_ty, len, f);
       }
       ty::ty_tup(ref args) => {

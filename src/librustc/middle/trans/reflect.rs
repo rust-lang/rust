@@ -164,6 +164,10 @@ impl<'a, 'b> Reflector<'a, 'b> {
               });
               self.visit("box", extra.as_slice())
           }
+          ty::ty_ptr(ref mt) => {
+              let extra = self.c_mt(mt);
+              self.visit("ptr", extra.as_slice())
+          }
           ty::ty_uniq(typ) => {
               match ty::get(typ).sty {
                   ty::ty_vec(ref mt, None) => {
@@ -188,17 +192,12 @@ impl<'a, 'b> Reflector<'a, 'b> {
                   }
               }
           }
-          ty::ty_ptr(ref mt) => {
-              let extra = self.c_mt(mt);
-              self.visit("ptr", extra.as_slice())
-          }
           ty::ty_rptr(_, ref mt) => {
               match ty::get(mt.ty).sty {
                   ty::ty_vec(ref mt, None) => {
-                      let (name, extra) = ("slice".to_string(), Vec::new());
+                      let extra = Vec::new();
                       let extra = extra.append(self.c_mt(mt).as_slice());
-                      self.visit(format!("evec_{}", name).as_slice(),
-                                 extra.as_slice())
+                      self.visit("evec_slice", extra.as_slice())
                   }
                   ty::ty_str => self.visit("estr_slice", &[]),
                   ty::ty_trait(..) => {
