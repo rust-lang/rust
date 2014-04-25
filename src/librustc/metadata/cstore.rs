@@ -114,6 +114,17 @@ impl CStore {
         }
     }
 
+    /// Like `iter_crate_data`, but passes source paths (if available) as well.
+    pub fn iter_crate_data_origins(&self, i: |ast::CrateNum,
+                                              &crate_metadata,
+                                              Option<CrateSource>|) {
+        for (&k, v) in self.metas.borrow().iter() {
+            let origin = self.get_used_crate_source(k);
+            origin.as_ref().map(|cs| { assert!(k == cs.cnum); });
+            i(k, &**v, origin);
+        }
+    }
+
     pub fn add_used_crate_source(&self, src: CrateSource) {
         let mut used_crate_sources = self.used_crate_sources.borrow_mut();
         if !used_crate_sources.contains(&src) {
