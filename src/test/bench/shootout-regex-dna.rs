@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// FIXME(#13725) windows needs fixing.
+// ignore-win32
 // ignore-stage1
 // ignore-cross-compile #12102
 
