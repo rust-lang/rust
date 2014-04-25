@@ -41,7 +41,7 @@
     src: local('Heuristica Bold'), url("Heuristica-Bold.woff") format('woff');
 }
 
-* {
+*:not(body) {
   -webkit-box-sizing: border-box;
      -moz-box-sizing: border-box;
           box-sizing: border-box;
@@ -77,16 +77,6 @@ h1, h2, h3 {
 }
 h1 {
     margin-bottom: 20px;
-}
-@media (min-width: 1170px) {
-    h1 {
-        margin-top: 40px;
-        margin-bottom: 30px;
-    }
-    h1, h2, h3 {
-        margin-top: 30px;
-        margin-bottom: 15px;
-    }
 }
 h4, h5, h6 {
     margin-top: 12px;
@@ -197,7 +187,6 @@ pre, code {
 }
 pre {
     border-left: 2px solid #eee;
-    border-radius: 0;
     white-space: pre-wrap;
     padding: 14px;
     padding-right: 0;
@@ -209,14 +198,12 @@ pre {
 code {
     padding: 0 2px;
     color: #8D1A38;
-    white-space: nowrap;
+    white-space: pre-wrap;
 }
 pre code {
     padding: 0;
     font-size: inherit;
     color: inherit;
-    white-space: pre-wrap;
-    background-color: transparent;
 }
 
 /* Code highlighting */
@@ -237,7 +224,7 @@ pre.rust .lifetime { color: #B76514; }
     margin: 0.5em;
     font-size: 1.1em;
 }
-@media (min-width: 768px) {
+@media (min-width: 992px) {
     #versioninfo {
         font-size: 0.8em;
         position: fixed;
@@ -248,7 +235,7 @@ pre.rust .lifetime { color: #B76514; }
         background-color: #fff;
         margin: 2px;
         padding: 0 2px;
-        border-radius: .3em;
+        border-radius: .2em;
     }
 }
 #versioninfo a.hash {
