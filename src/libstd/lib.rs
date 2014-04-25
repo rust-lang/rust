@@ -57,8 +57,6 @@
 // Don't link to std. We are std.
 #![no_std]
 
-// NOTE: remove after snapshot
-#![allow(unknown_features)]
 #![deny(missing_doc)]
 
 // When testing libstd, bring in libuv as the I/O backend so tests can print
