@@ -12,9 +12,17 @@
 #[phase(syntax)]
 extern crate regex_macros;
 
-// Dirty hack: During stage1, test dynamic regexs. For stage2, we test
-// native regexs.
-#[cfg(stage1)]
+#[cfg(not(stage1))]
+#[path = "bench.rs"]
+mod native_bench;
+
+#[cfg(not(stage1))]
+#[path = "tests.rs"]
+mod native_tests;
+
+// Due to macro scoping rules, this definition only applies for the modules
+// defined below. Effectively, it allows us to use the same tests for both
+// native and dynamic regexes.
 macro_rules! regex(
     ($re:expr) => (
         match ::regex::Regex::new($re) {
@@ -24,6 +32,8 @@ macro_rules! regex(
     );
 )
 
-mod bench;
-mod tests;
+#[path = "bench.rs"]
+mod dynamic_bench;
+#[path = "tests.rs"]
+mod dynamic_tests;
 
