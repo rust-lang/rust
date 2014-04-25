@@ -10,14 +10,14 @@
 
 //! Blocking posix-based file I/O
 
-use std::sync::arc::UnsafeArc;
+use libc::{c_int, c_void};
+use libc;
 use std::c_str::CString;
 use std::io::IoError;
 use std::io;
-use libc::{c_int, c_void};
-use libc;
 use std::mem;
 use std::rt::rtio;
+use std::sync::arc::UnsafeArc;
 
 use io::{IoResult, retry, keep_going};
 
@@ -177,6 +177,13 @@ impl rtio::RtioPipe for FileDesc {
     }
     fn clone(&self) -> ~rtio::RtioPipe:Send {
         ~FileDesc { inner: self.inner.clone() } as ~rtio::RtioPipe:Send
+    }
+
+    fn close_write(&mut self) -> IoResult<()> {
+        super::mkerr_libc(unsafe { libc::shutdown(self.fd(), libc::SHUT_WR) })
+    }
+    fn close_read(&mut self) -> IoResult<()> {
+        super::mkerr_libc(unsafe { libc::shutdown(self.fd(), libc::SHUT_RD) })
     }
 }
 

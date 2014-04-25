@@ -118,7 +118,7 @@ pub use consts::os::bsd44::{SOL_SOCKET, SO_KEEPALIVE, SO_ERROR};
 pub use consts::os::bsd44::{SO_REUSEADDR, SO_BROADCAST, SHUT_WR, IP_MULTICAST_LOOP};
 pub use consts::os::bsd44::{IP_ADD_MEMBERSHIP, IP_DROP_MEMBERSHIP};
 pub use consts::os::bsd44::{IPV6_ADD_MEMBERSHIP, IPV6_DROP_MEMBERSHIP};
-pub use consts::os::bsd44::{IP_MULTICAST_TTL, IP_TTL};
+pub use consts::os::bsd44::{IP_MULTICAST_TTL, IP_TTL, SHUT_RD};
 
 pub use funcs::c95::ctype::{isalnum, isalpha, iscntrl, isdigit};
 pub use funcs::c95::ctype::{islower, isprint, ispunct, isspace};
