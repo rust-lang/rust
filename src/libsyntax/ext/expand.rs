@@ -524,6 +524,9 @@ fn load_extern_macros(krate: &ast::ViewItem, fld: &mut MacroExpander) {
         None => return
     };
 
+    debug!("load_extern_macros: mapped crate {} to path {} and registrar {:s}",
+           crate_name, path.display(), registrar);
+
     let lib = match DynamicLibrary::open(Some(&path)) {
         Ok(lib) => lib,
         // this is fatal: there are almost certainly macros we need
