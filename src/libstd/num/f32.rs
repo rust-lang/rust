@@ -71,9 +71,11 @@ pub static DIGITS: uint = 6u;
 
 pub static EPSILON: f32 = 1.19209290e-07_f32;
 
-/// Minimum normalized f32 value
-pub static MIN_VALUE: f32 = 1.17549435e-38_f32;
-/// Maximum f32 value
+/// Smallest finite f32 value
+pub static MIN_VALUE: f32 = -3.40282347e+38_f32;
+/// Smallest positive, normalized f32 value
+pub static MIN_POS_VALUE: f32 = 1.17549435e-38_f32;
+/// Largest finite f32 value
 pub static MAX_VALUE: f32 = 3.40282347e+38_f32;
 
 pub static MIN_EXP: int = -125;
@@ -90,8 +92,9 @@ pub static NEG_INFINITY: f32 = -1.0_f32/0.0_f32;
 pub mod consts {
     // FIXME: replace with mathematical constants from cmath.
 
-    // FIXME(#11621): These constants should be deprecated once CTFE is
-    // implemented in favour of calling their respective functions in `Float`.
+    // FIXME(#5527): These constants should be deprecated once associated
+    // constants are implemented in favour of referencing the respective members
+    // of `Float`.
 
     /// Archimedes' constant
     pub static PI: f32 = 3.14159265358979323846264338327950288_f32;
@@ -341,6 +344,9 @@ impl Float for f32 {
 
     #[inline]
     fn max_10_exp(_: Option<f32>) -> int { MAX_10_EXP }
+
+    #[inline]
+    fn min_pos_value(_: Option<f32>) -> f32 { MIN_POS_VALUE }
 
     /// Constructs a floating point number by multiplying `x` by 2 raised to the
     /// power of `exp`

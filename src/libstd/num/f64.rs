@@ -73,8 +73,9 @@ mod cmath {
     }
 }
 
-// FIXME(#11621): These constants should be deprecated once CTFE is implemented
-// in favour of calling their respective functions in `Bounded` and `Float`.
+// FIXME(#5527): These constants should be deprecated once associated
+// constants are implemented in favour of referencing the respective
+// members of `Bounded` and `Float`.
 
 pub static RADIX: uint = 2u;
 
@@ -83,9 +84,11 @@ pub static DIGITS: uint = 15u;
 
 pub static EPSILON: f64 = 2.2204460492503131e-16_f64;
 
-/// Minimum normalized f64 value
-pub static MIN_VALUE: f64 = 2.2250738585072014e-308_f64;
-/// Maximum f64 value
+/// Smallest finite f64 value
+pub static MIN_VALUE: f64 = -1.7976931348623157e+308_f64;
+/// Smallest positive, normalized f64 value
+pub static MIN_POS_VALUE: f64 = 2.2250738585072014e-308_f64;
+/// Largest finite f64 value
 pub static MAX_VALUE: f64 = 1.7976931348623157e+308_f64;
 
 pub static MIN_EXP: int = -1021;
@@ -104,8 +107,9 @@ pub static NEG_INFINITY: f64 = -1.0_f64/0.0_f64;
 pub mod consts {
     // FIXME: replace with mathematical constants from cmath.
 
-    // FIXME(#11621): These constants should be deprecated once CTFE is
-    // implemented in favour of calling their respective functions in `Float`.
+    // FIXME(#5527): These constants should be deprecated once associated
+    // constants are implemented in favour of referencing the respective members
+    // of `Float`.
 
     /// Archimedes' constant
     pub static PI: f64 = 3.14159265358979323846264338327950288_f64;
@@ -330,25 +334,28 @@ impl Float for f64 {
     }
 
     #[inline]
-    fn mantissa_digits(_: Option<f64>) -> uint { 53 }
+    fn mantissa_digits(_: Option<f64>) -> uint { MANTISSA_DIGITS }
 
     #[inline]
-    fn digits(_: Option<f64>) -> uint { 15 }
+    fn digits(_: Option<f64>) -> uint { DIGITS }
 
     #[inline]
-    fn epsilon() -> f64 { 2.2204460492503131e-16 }
+    fn epsilon() -> f64 { EPSILON }
 
     #[inline]
-    fn min_exp(_: Option<f64>) -> int { -1021 }
+    fn min_exp(_: Option<f64>) -> int { MIN_EXP }
 
     #[inline]
-    fn max_exp(_: Option<f64>) -> int { 1024 }
+    fn max_exp(_: Option<f64>) -> int { MAX_EXP }
 
     #[inline]
-    fn min_10_exp(_: Option<f64>) -> int { -307 }
+    fn min_10_exp(_: Option<f64>) -> int { MIN_10_EXP }
 
     #[inline]
-    fn max_10_exp(_: Option<f64>) -> int { 308 }
+    fn max_10_exp(_: Option<f64>) -> int { MAX_10_EXP }
+
+    #[inline]
+    fn min_pos_value(_: Option<f64>) -> f64 { MIN_POS_VALUE }
 
     /// Constructs a floating point number by multiplying `x` by 2 raised to the
     /// power of `exp`
