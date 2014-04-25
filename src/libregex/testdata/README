@@ -1,0 +1,17 @@
+Test data was taken from the Go distribution, which was in turn taken from the 
+testregex test suite:
+
+  http://www2.research.att.com/~astopen/testregex/testregex.html
+
+The LICENSE in this directory corresponds to the LICENSE that the data was
+released under.
+
+The tests themselves were modified for RE2/Go. A couple were modified further 
+by me (Andrew Gallant) (only in repetition.dat) so that RE2/Go would pass them. 
+(Yes, it seems like RE2/Go includes failing test cases.) This may or may not 
+have been a bad idea, but I think being consistent with an established Regex 
+library is worth something.
+
+Note that these files are read by 'src/etc/regexp-match-tests' and turned into 
+Rust tests found in 'src/libregexp/tests/matches.rs'.
+
