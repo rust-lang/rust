@@ -2,8 +2,8 @@
 
 all:
 	$(RUSTC) foo.rs --crate-type=rlib,dylib,staticlib
-	rm $(TMPDIR)/$(call RLIB_GLOB,bar)
-	rm $(TMPDIR)/$(call DYLIB_GLOB,bar)
+	$(call REMOVE_RLIBS,bar)
+	$(call REMOVE_DYLIBS,bar)
 	rm $(TMPDIR)/$(call STATICLIB_GLOB,bar)
 	$(RUSTC) foo.rs --crate-type=bin
 	rm $(TMPDIR)/$(call BIN,bar)
@@ -41,4 +41,4 @@ all:
 	cmp $(TMPDIR)/foo.bc $(TMPDIR)/bar.bc
 	rm $(TMPDIR)/bar.bc
 	rm $(TMPDIR)/foo.bc
-	rm $(TMPDIR)/$(call RLIB_GLOB,bar)
+	$(call REMOVE_RLIBS,bar)
