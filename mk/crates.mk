@@ -51,7 +51,7 @@
 
 TARGET_CRATES := libc std green rustuv native flate arena glob term semver \
                  uuid serialize sync getopts collections num test time rand \
-		 workcache url log regex
+		 workcache url log regex graphviz
 HOST_CRATES := syntax rustc rustdoc fourcc hexfloat regex_macros
 CRATES := $(TARGET_CRATES) $(HOST_CRATES)
 TOOLS := compiletest rustdoc rustc
@@ -67,6 +67,7 @@ DEPS_rustdoc := rustc native:sundown serialize sync getopts collections \
                 test time
 DEPS_flate := std native:miniz
 DEPS_arena := std collections
+DEPS_graphviz := std
 DEPS_glob := std
 DEPS_serialize := std collections log
 DEPS_term := std collections
