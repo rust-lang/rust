@@ -98,9 +98,18 @@ p {
 
 code, pre {
     font-family: "Source Code Pro", Menlo, Monaco, Consolas, "DejaVu Sans Mono", Inconsolata, monospace;
+    white-space: pre-wrap;
 }
 pre {
     font-size: 15px;
+    padding: 14px;
+    padding-right: 0;
+    border-left: 2px solid #eee;
+}
+
+.source pre {
+    border-left: none;
+    padding: 20px;
 }
 
 nav.sub {
@@ -164,7 +173,6 @@ nav.sub {
     padding: 20px 0;
 }
 
-.content pre { padding: 14px; }
 .content.source pre.rust {
     white-space: pre;
     overflow: auto;
@@ -355,10 +363,9 @@ a {
 .stability {
     border-left: 6px solid #000;
     border-radius: 3px;
-    padding: 8px 3px 8px 10px;
+    padding: 2px 10px;
     text-transform: lowercase;
-    display: block;
-    margin-bottom: 20px;
+    margin-left: 10px;
 }
 
 .stability.Deprecated { border-color: #D60027; color: #880017; }
@@ -369,8 +376,6 @@ a {
 .stability.Locked { border-color: #0084B6; color: #00668c; }
 
 :target { background: #FDFFD3; }
-
-pre.rust, pre.line-numbers { background-color: #F5F5F5; }
 
 /* Code highlighting */
 pre.rust .kw { color: #8959A8; }
