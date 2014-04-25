@@ -10,7 +10,7 @@ RUN_BINFILE = $(TMPDIR)/$(1)
 # This the basic way we will invoke the generated binary.  It sets the
 # LD_LIBRARY_PATH environment variable before running the binary.
 RUN = $(TARGET_RPATH_ENV) $(RUN_BINFILE)
-FAILS = $(TARGET_RPATH_ENV) ( $(RUN_BINFILE) && exit 1 || exit 0 )
+FAILS = $(TARGET_RPATH_ENV) $(RUN_BINFILE) && exit 1 || exit 0
 
 RLIB_GLOB = lib$(1)*.rlib
 STATICLIB = $(TMPDIR)/lib$(1).a
