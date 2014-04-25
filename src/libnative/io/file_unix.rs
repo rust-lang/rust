@@ -12,12 +12,12 @@
 
 use libc::{c_int, c_void};
 use libc;
-use std::sync::arc::UnsafeArc;
 use std::c_str::CString;
 use std::io::IoError;
 use std::io;
 use std::mem;
 use std::rt::rtio;
+use std::sync::arc::UnsafeArc;
 
 use io::{IoResult, retry, keep_going};
 
@@ -177,6 +177,17 @@ impl rtio::RtioPipe for FileDesc {
     }
     fn clone(&self) -> Box<rtio::RtioPipe:Send> {
         box FileDesc { inner: self.inner.clone() } as Box<rtio::RtioPipe:Send>
+    }
+
+    // Only supported on named pipes currently. Note that this doesn't have an
+    // impact on the std::io primitives, this is never called via
+    // std::io::PipeStream. If the functionality is exposed in the future, then
+    // these methods will need to be implemented.
+    fn close_read(&mut self) -> Result<(), IoError> {
+        Err(io::standard_error(io::InvalidInput))
+    }
+    fn close_write(&mut self) -> Result<(), IoError> {
+        Err(io::standard_error(io::InvalidInput))
     }
 }
 

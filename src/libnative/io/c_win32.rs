@@ -61,4 +61,6 @@ extern "system" {
                       optlen: *mut libc::c_int) -> libc::c_int;
 
     pub fn CancelIo(hFile: libc::HANDLE) -> libc::BOOL;
+    pub fn CancelIoEx(hFile: libc::HANDLE,
+                      lpOverlapped: libc::LPOVERLAPPED) -> libc::BOOL;
 }
