@@ -16,7 +16,7 @@
 //! datagram protocol.
 
 use clone::Clone;
-use io::net::ip::SocketAddr;
+use io::net::ip::{SocketAddr, IpAddr};
 use io::{Reader, Writer, IoResult};
 use kinds::Send;
 use result::{Ok, Err};
@@ -94,6 +94,52 @@ impl UdpSocket {
     /// Returns the socket address that this socket was created from.
     pub fn socket_name(&mut self) -> IoResult<SocketAddr> {
         self.obj.socket_name()
+    }
+
+    /// Joins a multicast IP address (becomes a member of it)
+    #[experimental]
+    pub fn join_multicast(&mut self, multi: IpAddr) -> IoResult<()> {
+        self.obj.join_multicast(multi)
+    }
+
+    /// Leaves a multicast IP address (drops membership from it)
+    #[experimental]
+    pub fn leave_multicast(&mut self, multi: IpAddr) -> IoResult<()> {
+        self.obj.leave_multicast(multi)
+    }
+
+    /// Set the multicast loop flag to the specified value
+    ///
+    /// This lets multicast packets loop back to local sockets (if enabled)
+    #[experimental]
+    pub fn set_multicast_loop(&mut self, on: bool) -> IoResult<()> {
+        if on {
+            self.obj.loop_multicast_locally()
+        } else {
+            self.obj.dont_loop_multicast_locally()
+        }
+    }
+
+    /// Sets the multicast TTL
+    #[experimental]
+    pub fn set_multicast_ttl(&mut self, ttl: int) -> IoResult<()> {
+        self.obj.multicast_time_to_live(ttl)
+    }
+
+    /// Sets this socket's TTL
+    #[experimental]
+    pub fn set_ttl(&mut self, ttl: int) -> IoResult<()> {
+        self.obj.time_to_live(ttl)
+    }
+
+    /// Sets the broadcast flag on or off
+    #[experimental]
+    pub fn set_broadast(&mut self, broadcast: bool) -> IoResult<()> {
+        if broadcast {
+            self.obj.hear_broadcasts()
+        } else {
+            self.obj.ignore_broadcasts()
+        }
     }
 }
 

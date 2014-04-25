@@ -85,6 +85,29 @@ impl TcpStream {
     pub fn socket_name(&mut self) -> IoResult<SocketAddr> {
         self.obj.socket_name()
     }
+
+    /// Sets the nodelay flag on this connection to the boolean specified
+    #[experimental]
+    pub fn set_nodelay(&mut self, nodelay: bool) -> IoResult<()> {
+        if nodelay {
+            self.obj.nodelay()
+        } else {
+            self.obj.control_congestion()
+        }
+    }
+
+    /// Sets the keepalive timeout to the timeout specified.
+    ///
+    /// If the value specified is `None`, then the keepalive flag is cleared on
+    /// this connection. Otherwise, the keepalive timeout will be set to the
+    /// specified time, in seconds.
+    #[experimental]
+    pub fn set_keepalive(&mut self, delay_in_seconds: Option<uint>) -> IoResult<()> {
+        match delay_in_seconds {
+            Some(i) => self.obj.keepalive(i),
+            None => self.obj.letdie(),
+        }
+    }
 }
 
 impl Clone for TcpStream {
