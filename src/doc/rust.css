@@ -40,8 +40,15 @@
     font-weight: 700;
     src: local('Heuristica Bold'), url("http://www.rust-lang.org/fonts/Heuristica-Bold.woff") format('woff');
 }
-/* Global page semantics
-   ========================================================================== */
+
+* {
+  -webkit-box-sizing: border-box;
+     -moz-box-sizing: border-box;
+          box-sizing: border-box;
+}
+
+/* General structure */
+
 body {
     margin: 0 auto;
     padding: 0 15px;
@@ -157,8 +164,8 @@ footer {
     margin-bottom: 1em;
 }
 
-/* Links layout
-   ========================================================================== */
+/* Links layout */
+
 a {
     text-decoration: none;
     color: #428BCA;
@@ -183,18 +190,17 @@ h5 a:link, h5 a:visited {color: black;}
 h1 a:hover, h2 a:hover, h3 a:hover, h4 a:hover,
 h5 a:hover {text-decoration: none;}
 
-/* Code
-   ========================================================================== */
+/* Code */
+
 pre, code {
-    font-family: Menlo, Monaco, Consolas, "DejaVu Sans Mono", monospace;
-    border-radius: 4px;
+    font-family: "Source Code Pro", Menlo, Monaco, Consolas, "DejaVu Sans Mono", monospace;
 }
 pre {
-    background-color: #FDFDFD;
-    border: 1px solid #CCC;
-    border-radius: 0.5em;
+    border-left: 2px solid #eee;
+    border-radius: 0;
     white-space: pre-wrap;
-    padding: 9.5px;
+    padding: 14px;
+    padding-right: 0;
     margin: 20px 0;
     font-size: 13px;
     word-break: break-all;
@@ -211,7 +217,6 @@ pre code {
     color: inherit;
     white-space: pre-wrap;
     background-color: transparent;
-    border-radius: 0;
 }
 
 /* Code highlighting */
@@ -225,16 +230,16 @@ pre.rust .doccomment { color: #4D4D4C; }
 pre.rust .macro, pre.rust .macro-nonterminal { color: #3E999F; }
 pre.rust .lifetime { color: #B76514; }
 
+/* The rest */
 
-/* The rest
-   ========================================================================== */
 #versioninfo {
     text-align: center;
     margin: 0.5em;
     font-size: 1.1em;
 }
-@media only screen and (min-width: 768px) {
+@media (min-width: 768px) {
     #versioninfo {
+        font-size: 0.8em;
         position: fixed;
         bottom: 0px;
         right: 0px;
@@ -252,10 +257,12 @@ pre.rust .lifetime { color: #B76514; }
 }
 
 blockquote {
-    color: black;
-    border-left: 5px solid #eee;
-    margin: 0 0 20px;
-    padding: 10px 20px;
+    color: #000;
+    margin: 20px 0;
+    padding: 15px 20px;
+    background-color: #f2f7f9;
+    border-top: .1em solid #e5eef2;
+    border-bottom: .1em solid #e5eef2;
 }
 blockquote p {
     font-size: 17px;
@@ -317,6 +324,12 @@ table td,
 table th {
     border: 1px solid #ddd;
     padding: 5px;
+}
+
+@media (min-width: 1170px) {
+    pre {
+        font-size: 15px;
+    }
 }
 
 @media print {
