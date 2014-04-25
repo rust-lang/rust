@@ -154,7 +154,7 @@ fn resolved_path(w: &mut io::Writer, id: ast::NodeId, p: &clean::Path,
         |cache| {
             match cache.paths.find(&id) {
                 None => None,
-                Some(&(ref fqp, shortty)) => Some((fqp.clone(), shortty))
+                Some(info) => Some((info.fqp.clone(), info.ty))
             }
         })
 }

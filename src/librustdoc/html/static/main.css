@@ -195,9 +195,14 @@ nav.sub {
     text-overflow: ellipsis;
 }
 .docblock.short p {
+    display: inline;
     overflow: hidden;
     text-overflow: ellipsis;
     margin: 0;
+}
+.docblock.short .reexported {
+    color: #888;
+    font-size: 90%;
 }
 
 .docblock h1, .docblock h2, .docblock h3, .docblock h4, .docblock h5 {
