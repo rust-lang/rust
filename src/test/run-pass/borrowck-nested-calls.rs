@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-test FIXME (#5074) nested method calls
+// ignore-test FIXME (#6268) nested method calls
 
 // Test that (safe) nested calls with `&mut` receivers are permitted.
 

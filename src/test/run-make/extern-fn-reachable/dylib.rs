@@ -1,4 +1,4 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -7,9 +7,18 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-// ignore-test
 
-pub fn main() {
-  let s = shell!( uname -a );
-  log(debug, s);
+#![crate_type = "dylib"]
+#![allow(dead_code)]
+
+#[no_mangle] pub extern "C" fn fun1() {}
+#[no_mangle] extern "C" fn fun2() {}
+
+mod foo {
+    #[no_mangle] pub extern "C" fn fun3() {}
 }
+pub mod bar {
+    #[no_mangle] pub extern "C" fn fun4() {}
+}
+
+#[no_mangle] pub fn fun5() {}
