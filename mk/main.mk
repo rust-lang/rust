@@ -357,12 +357,18 @@ endef
 define SREQ_CMDS
 
 ifeq ($$(OSTYPE_$(3)),apple-darwin)
-  RPATH_VAR$(1)_T_$(2)_H_$(3) := \
+  HOST_RPATH_VAR$(1)_T_$(2)_H_$(3) := \
       DYLD_LIBRARY_PATH="$$$$DYLD_LIBRARY_PATH:$$(CURDIR)/$$(HLIB$(1)_H_$(3))"
+  TARGET_RPATH_VAR$(1)_T_$(2)_H_$(3) := \
+      DYLD_LIBRARY_PATH="$$$$DYLD_LIBRARY_PATH:$$(CURDIR)/$$(TLIB1_T_$(2)_H_$(CFG_BUILD))"
 else
-  RPATH_VAR$(1)_T_$(2)_H_$(3) := \
+  HOST_RPATH_VAR$(1)_T_$(2)_H_$(3) := \
       LD_LIBRARY_PATH="$$$$LD_LIBRARY_PATH:$$(CURDIR)/$$(HLIB$(1)_H_$(3))"
+  TARGET_RPATH_VAR$(1)_T_$(2)_H_$(3) := \
+      LD_LIBRARY_PATH="$$$$LD_LIBRARY_PATH:$$(CURDIR)/$$(TLIB1_T_$(2)_H_$(CFG_BUILD))"
 endif
+
+RPATH_VAR$(1)_T_$(2)_H_$(3) := $$(HOST_RPATH_VAR$(1)_T_$(2)_H_$(3))
 
 # Pass --cfg stage0 only for the build->host part of stage0;
 # if you're building a cross config, the host->* parts are
@@ -379,13 +385,7 @@ ifeq ($(1),0)
 ifneq ($(strip $(CFG_BUILD)),$(strip $(3)))
 CFGFLAG$(1)_T_$(2)_H_$(3) = stage1
 
-ifeq ($$(OSTYPE_$(3)),apple-darwin)
-  RPATH_VAR$(1)_T_$(2)_H_$(3) := \
-      DYLD_LIBRARY_PATH="$$$$DYLD_LIBRARY_PATH:$$(CURDIR)/$$(TLIB1_T_$(2)_H_$(CFG_BUILD))"
-else
-  RPATH_VAR$(1)_T_$(2)_H_$(3) := \
-      LD_LIBRARY_PATH="$$$$LD_LIBRARY_PATH:$$(CURDIR)/$$(TLIB1_T_$(2)_H_$(CFG_BUILD))"
-endif
+RPATH_VAR$(1)_T_$(2)_H_$(3) := $$(TARGET_RPATH_VAR$(1)_T_$(2)_H_$(3))
 endif
 endif
 
