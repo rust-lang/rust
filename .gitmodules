@@ -15,3 +15,6 @@
 [submodule "src/rt/hoedown"]
 	path = src/rt/hoedown
 	url = https://github.com/rust-lang/hoedown.git
+[submodule "src/jemalloc"]
+	path = src/jemalloc
+	url = https://github.com/rust-lang/jemalloc.git

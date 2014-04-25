@@ -89,7 +89,10 @@ mod macros;
 // The global (exchange) heap.
 pub mod global_heap;
 
-// Implementations of language-critical runtime features like @.
+/// The low-level memory allocation API.
+pub mod heap;
+
+/// Implementations of language-critical runtime features like @.
 pub mod task;
 
 // The EventLoop and internal synchronous I/O interface.

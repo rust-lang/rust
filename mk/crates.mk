@@ -57,7 +57,7 @@ CRATES := $(TARGET_CRATES) $(HOST_CRATES)
 TOOLS := compiletest rustdoc rustc
 
 DEPS_core :=
-DEPS_std := core libc native:rustrt native:compiler-rt native:backtrace
+DEPS_std := core libc native:rustrt native:compiler-rt native:backtrace native:jemalloc
 DEPS_green := std rand native:context_switch
 DEPS_rustuv := std native:uv native:uv_support
 DEPS_native := std
