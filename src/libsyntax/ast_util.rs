@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -396,6 +396,13 @@ impl<'a, O: IdVisitingOperation> Visitor<()> for IdVisitor<'a, O> {
     }
 
     fn visit_view_item(&mut self, view_item: &ViewItem, env: ()) {
+        if !self.pass_through_items {
+            if self.visited_outermost {
+                return;
+            } else {
+                self.visited_outermost = true;
+            }
+        }
         match view_item.node {
             ViewItemExternCrate(_, _, node_id) => {
                 self.operation.visit_id(node_id)
@@ -417,7 +424,8 @@ impl<'a, O: IdVisitingOperation> Visitor<()> for IdVisitor<'a, O> {
                 }
             }
         }
-        visit::walk_view_item(self, view_item, env)
+        visit::walk_view_item(self, view_item, env);
+        self.visited_outermost = false;
     }
 
     fn visit_foreign_item(&mut self, foreign_item: &ForeignItem, env: ()) {
