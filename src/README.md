@@ -19,6 +19,7 @@ Source layout:
 | `libfourcc/`        | Data format identifier library                            |
 | `libgetopts/`       | Get command-line-options library                          |
 | `libglob/`          | Unix glob patterns library                                |
+| `libregex/`         | Regular expressions                                       |
 | `libsemver/`        | Rust's semantic versioning library                        |
 | `libserialize/`     | Encode-Decode types library                               |
 | `libsync/`          | Concurrency mechanisms and primitives                     |
