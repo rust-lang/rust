@@ -8,25 +8,27 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-test #7340 fails on 32-bit linux
-use std::ptr;
+// ignore-linux #7340 fails on 32-bit linux
+// ignore-macos #7340 fails on 32-bit macos
 
-enum a_tag {
-    a_tag(u64)
+use std::cast;
+
+enum Tag {
+    Tag(u64)
 }
 
-struct t_rec {
+struct Rec {
     c8: u8,
-    t: a_tag
+    t: Tag
 }
 
-fn mk_rec() -> t_rec {
-    return t_rec { c8:0u8, t:a_tag(0u64) };
+fn mk_rec() -> Rec {
+    return Rec { c8:0u8, t:Tag(0u64) };
 }
 
-fn is_8_byte_aligned(u: &a_tag) -> bool {
-    let p = ptr::to_unsafe_ptr(u) as u64;
-    return (p & 7u64) == 0u64;
+fn is_8_byte_aligned(u: &Tag) -> bool {
+    let p: uint = unsafe { cast::transmute(u) };
+    return (p & 7u) == 0u;
 }
 
 pub fn main() {
