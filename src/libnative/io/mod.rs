@@ -44,6 +44,7 @@ pub use self::process::Process;
 pub mod addrinfo;
 pub mod net;
 pub mod process;
+mod util;
 
 #[cfg(unix)]
 #[path = "file_unix.rs"]
@@ -177,8 +178,9 @@ impl rtio::IoFactory for IoFactory {
     fn unix_bind(&mut self, path: &CString) -> IoResult<~RtioUnixListener:Send> {
         pipe::UnixListener::bind(path).map(|s| ~s as ~RtioUnixListener:Send)
     }
-    fn unix_connect(&mut self, path: &CString) -> IoResult<~RtioPipe:Send> {
-        pipe::UnixStream::connect(path).map(|s| ~s as ~RtioPipe:Send)
+    fn unix_connect(&mut self, path: &CString,
+                    timeout: Option<u64>) -> IoResult<~RtioPipe:Send> {
+        pipe::UnixStream::connect(path, timeout).map(|s| ~s as ~RtioPipe:Send)
     }
     fn get_host_addresses(&mut self, host: Option<&str>, servname: Option<&str>,
                           hint: Option<ai::Hint>) -> IoResult<~[ai::Info]> {

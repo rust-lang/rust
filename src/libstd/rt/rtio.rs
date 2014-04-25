@@ -152,7 +152,8 @@ pub trait IoFactory {
     fn udp_bind(&mut self, addr: SocketAddr) -> IoResult<~RtioUdpSocket:Send>;
     fn unix_bind(&mut self, path: &CString)
         -> IoResult<~RtioUnixListener:Send>;
-    fn unix_connect(&mut self, path: &CString) -> IoResult<~RtioPipe:Send>;
+    fn unix_connect(&mut self, path: &CString,
+                    timeout: Option<u64>) -> IoResult<~RtioPipe:Send>;
     fn get_host_addresses(&mut self, host: Option<&str>, servname: Option<&str>,
                           hint: Option<ai::Hint>) -> IoResult<~[ai::Info]>;
 
@@ -274,6 +275,7 @@ pub trait RtioUnixListener {
 
 pub trait RtioUnixAcceptor {
     fn accept(&mut self) -> IoResult<~RtioPipe:Send>;
+    fn set_timeout(&mut self, timeout: Option<u64>);
 }
 
 pub trait RtioTTY {
