@@ -61,7 +61,31 @@ impl UnixStream {
     /// ```
     pub fn connect<P: ToCStr>(path: &P) -> IoResult<UnixStream> {
         LocalIo::maybe_raise(|io| {
-            io.unix_connect(&path.to_c_str()).map(UnixStream::new)
+            io.unix_connect(&path.to_c_str(), None).map(UnixStream::new)
+        })
+    }
+
+    /// Connect to a pipe named by `path`. This will attempt to open a
+    /// connection to the underlying socket.
+    ///
+    /// The returned stream will be closed when the object falls out of scope.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # #![allow(unused_must_use)]
+    /// use std::io::net::unix::UnixStream;
+    ///
+    /// let server = Path::new("path/to/my/socket");
+    /// let mut stream = UnixStream::connect(&server);
+    /// stream.write([1, 2, 3]);
+    /// ```
+    #[experimental = "the timeout argument is likely to change types"]
+    pub fn connect_timeout<P: ToCStr>(path: &P,
+                                      timeout_ms: u64) -> IoResult<UnixStream> {
+        LocalIo::maybe_raise(|io| {
+            let s = io.unix_connect(&path.to_c_str(), Some(timeout_ms));
+            s.map(UnixStream::new)
         })
     }
 }
@@ -128,6 +152,25 @@ pub struct UnixAcceptor {
     obj: ~RtioUnixAcceptor:Send,
 }
 
+impl UnixAcceptor {
+    /// Sets a timeout for this acceptor, after which accept() will no longer
+    /// block indefinitely.
+    ///
+    /// The argument specified is the amount of time, in milliseconds, into the
+    /// future after which all invocations of accept() will not block (and any
+    /// pending invocation will return). A value of `None` will clear any
+    /// existing timeout.
+    ///
+    /// When using this method, it is likely necessary to reset the timeout as
+    /// appropriate, the timeout specified is specific to this object, not
+    /// specific to the next request.
+    #[experimental = "the name and arguments to this function are likely \
+                      to change"]
+    pub fn set_timeout(&mut self, timeout_ms: Option<u64>) {
+        self.obj.set_timeout(timeout_ms)
+    }
+}
+
 impl Acceptor<UnixStream> for UnixAcceptor {
     fn accept(&mut self) -> IoResult<UnixStream> {
         self.obj.accept().map(UnixStream::new)
@@ -135,6 +178,7 @@ impl Acceptor<UnixStream> for UnixAcceptor {
 }
 
 #[cfg(test)]
+#[allow(experimental)]
 mod tests {
     use prelude::*;
     use super::*;
@@ -371,4 +415,49 @@ mod tests {
         drop(l.listen().unwrap());
         assert!(!path.exists());
     } #[cfg(not(windows))])
+
+    iotest!(fn accept_timeout() {
+        let addr = next_test_unix();
+        let mut a = UnixListener::bind(&addr).unwrap().listen().unwrap();
+
+        a.set_timeout(Some(10));
+
+        // Make sure we time out once and future invocations also time out
+        let err = a.accept().err().unwrap();
+        assert_eq!(err.kind, TimedOut);
+        let err = a.accept().err().unwrap();
+        assert_eq!(err.kind, TimedOut);
+
+        // Also make sure that even though the timeout is expired that we will
+        // continue to receive any pending connections.
+        let l = UnixStream::connect(&addr).unwrap();
+        for i in range(0, 1001) {
+            match a.accept() {
+                Ok(..) => break,
+                Err(ref e) if e.kind == TimedOut => {}
+                Err(e) => fail!("error: {}", e),
+            }
+            if i == 1000 { fail!("should have a pending connection") }
+        }
+        drop(l);
+
+        // Unset the timeout and make sure that this always blocks.
+        a.set_timeout(None);
+        let addr2 = addr.clone();
+        spawn(proc() {
+            drop(UnixStream::connect(&addr2));
+        });
+        a.accept().unwrap();
+    })
+
+    iotest!(fn connect_timeout_error() {
+        let addr = next_test_unix();
+        assert!(UnixStream::connect_timeout(&addr, 100).is_err());
+    })
+
+    iotest!(fn connect_timeout_success() {
+        let addr = next_test_unix();
+        let _a = UnixListener::bind(&addr).unwrap().listen().unwrap();
+        assert!(UnixStream::connect_timeout(&addr, 100).is_ok());
+    })
 }

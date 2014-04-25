@@ -12,14 +12,13 @@ use std::c_str::CString;
 use std::io::IoError;
 use libc;
 use std::rt::rtio::{RtioPipe, RtioUnixListener, RtioUnixAcceptor};
-use std::rt::task::BlockedTask;
 
 use access::Access;
 use homing::{HomingIO, HomeHandle};
+use net;
 use rc::Refcount;
 use stream::StreamWatcher;
-use super::{Loop, UvError, UvHandle, Request, uv_error_to_io_error,
-            wait_until_woken_after, wakeup};
+use super::{Loop, UvError, UvHandle, uv_error_to_io_error};
 use uvio::UvIoFactory;
 use uvll;
 
@@ -43,6 +42,7 @@ pub struct PipeListener {
 
 pub struct PipeAcceptor {
     listener: ~PipeListener,
+    timeout: net::AcceptTimeout,
 }
 
 // PipeWatcher implementation and traits
@@ -84,36 +84,18 @@ impl PipeWatcher {
         }
     }
 
-    pub fn connect(io: &mut UvIoFactory, name: &CString)
+    pub fn connect(io: &mut UvIoFactory, name: &CString, timeout: Option<u64>)
         -> Result<PipeWatcher, UvError>
     {
-        struct Ctx { task: Option<BlockedTask>, result: libc::c_int, }
-        let mut cx = Ctx { task: None, result: 0 };
-        let mut req = Request::new(uvll::UV_CONNECT);
         let pipe = PipeWatcher::new(io, false);
-
-        wait_until_woken_after(&mut cx.task, &io.loop_, || {
+        let cx = net::ConnectCtx { status: -1, task: None, timer: None };
+        cx.connect(pipe, timeout, io, |req, pipe, cb| {
             unsafe {
-                uvll::uv_pipe_connect(req.handle,
-                                      pipe.handle(),
-                                      name.with_ref(|p| p),
-                                      connect_cb)
+                uvll::uv_pipe_connect(req.handle, pipe.handle(),
+                                      name.with_ref(|p| p), cb)
             }
-            req.set_data(&cx);
-            req.defuse(); // uv callback now owns this request
-        });
-        return match cx.result {
-            0 => Ok(pipe),
-            n => Err(UvError(n))
-        };
-
-        extern fn connect_cb(req: *uvll::uv_connect_t, status: libc::c_int) {;
-            let req = Request::wrap(req);
-            assert!(status != uvll::ECANCELED);
-            let cx: &mut Ctx = unsafe { req.get_data() };
-            cx.result = status;
-            wakeup(&mut cx.task);
-        }
+            0
+        })
     }
 
     pub fn handle(&self) -> *uvll::uv_pipe_t { self.stream.handle }
@@ -199,7 +181,10 @@ impl PipeListener {
 impl RtioUnixListener for PipeListener {
     fn listen(~self) -> Result<~RtioUnixAcceptor:Send, IoError> {
         // create the acceptor object from ourselves
-        let mut acceptor = ~PipeAcceptor { listener: self };
+        let mut acceptor = ~PipeAcceptor {
+            listener: self,
+            timeout: net::AcceptTimeout::new(),
+        };
 
         let _m = acceptor.fire_homing_missile();
         // FIXME: the 128 backlog should be configurable
@@ -247,7 +232,14 @@ impl Drop for PipeListener {
 
 impl RtioUnixAcceptor for PipeAcceptor {
     fn accept(&mut self) -> Result<~RtioPipe:Send, IoError> {
-        self.listener.incoming.recv()
+        self.timeout.accept(&self.listener.incoming)
+    }
+
+    fn set_timeout(&mut self, timeout_ms: Option<u64>) {
+        match timeout_ms {
+            None => self.timeout.clear(),
+            Some(ms) => self.timeout.set_timeout(ms, &mut *self.listener),
+        }
     }
 }
 
@@ -265,7 +257,8 @@ mod tests {
 
     #[test]
     fn connect_err() {
-        match PipeWatcher::connect(local_loop(), &"path/to/nowhere".to_c_str()) {
+        match PipeWatcher::connect(local_loop(), &"path/to/nowhere".to_c_str(),
+                                   None) {
             Ok(..) => fail!(),
             Err(..) => {}
         }
@@ -312,7 +305,7 @@ mod tests {
             assert!(client.write([2]).is_ok());
         });
         rx.recv();
-        let mut c = PipeWatcher::connect(local_loop(), &path.to_c_str()).unwrap();
+        let mut c = PipeWatcher::connect(local_loop(), &path.to_c_str(), None).unwrap();
         assert!(c.write([1]).is_ok());
         let mut buf = [0];
         assert!(c.read(buf).unwrap() == 1);
@@ -332,7 +325,7 @@ mod tests {
             drop(p.accept().unwrap());
         });
         rx.recv();
-        let _c = PipeWatcher::connect(local_loop(), &path.to_c_str()).unwrap();
+        let _c = PipeWatcher::connect(local_loop(), &path.to_c_str(), None).unwrap();
         fail!()
 
     }
