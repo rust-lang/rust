@@ -1,6 +1,6 @@
 - Start Date: 2014-04-12
 - RFC PR #: 42
-- Rust Issue #: (leave this empty)
+- Rust Issue #: 13700
 
 # Summary
 
