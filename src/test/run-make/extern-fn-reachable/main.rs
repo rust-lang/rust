@@ -8,32 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-win32 dynamic_lib can read dllexported symbols only
-// ignore-linux apparently dlsym doesn't work on program symbols?
-// ignore-android apparently dlsym doesn't work on program symbols?
-// ignore-freebsd apparently dlsym doesn't work on program symbols?
-
 use std::unstable::dynamic_lib::DynamicLibrary;
-
-#[no_mangle] pub extern "C" fn fun1() {}
-#[no_mangle] extern "C" fn fun2() {}
-
-mod foo {
-    #[no_mangle] pub extern "C" fn fun3() {}
-}
-pub mod bar {
-    #[no_mangle] pub extern "C" fn fun4() {}
-}
-
-#[no_mangle] pub fn fun5() {}
+use std::os;
 
 pub fn main() {
     unsafe {
-        let a = DynamicLibrary::open(None).unwrap();
+        let path = Path::new("libdylib.so");
+        let a = DynamicLibrary::open(Some(&path)).unwrap();
         assert!(a.symbol::<int>("fun1").is_ok());
         assert!(a.symbol::<int>("fun2").is_err());
         assert!(a.symbol::<int>("fun3").is_err());
         assert!(a.symbol::<int>("fun4").is_ok());
-        assert!(a.symbol::<int>("fun5").is_err());
+        assert!(a.symbol::<int>("fun5").is_ok());
     }
 }
