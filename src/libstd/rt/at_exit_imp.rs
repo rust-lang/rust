@@ -36,7 +36,7 @@ pub fn init() {
     unsafe {
         rtassert!(!RUNNING);
         rtassert!(QUEUE.is_null());
-        let state: ~Queue = ~Exclusive::new(vec!());
+        let state: ~Queue = box Exclusive::new(vec!());
         QUEUE = cast::transmute(state);
     }
 }

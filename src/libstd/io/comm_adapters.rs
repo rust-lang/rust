@@ -139,40 +139,40 @@ mod test {
     fn test_rx_reader() {
         let (tx, rx) = channel();
         task::spawn(proc() {
-          tx.send(~[1u8, 2u8]);
-          tx.send(~[]);
-          tx.send(~[3u8, 4u8]);
-          tx.send(~[5u8, 6u8]);
-          tx.send(~[7u8, 8u8]);
+          tx.send(box [1u8, 2u8]);
+          tx.send(box []);
+          tx.send(box [3u8, 4u8]);
+          tx.send(box [5u8, 6u8]);
+          tx.send(box [7u8, 8u8]);
         });
 
         let mut reader = ChanReader::new(rx);
-        let mut buf = ~[0u8, ..3];
+        let mut buf = box [0u8, ..3];
 
 
         assert_eq!(Ok(0), reader.read([]));
 
         assert_eq!(Ok(3), reader.read(buf));
-        assert_eq!(~[1,2,3], buf);
+        assert_eq!(box [1,2,3], buf);
 
         assert_eq!(Ok(3), reader.read(buf));
-        assert_eq!(~[4,5,6], buf);
+        assert_eq!(box [4,5,6], buf);
 
         assert_eq!(Ok(2), reader.read(buf));
-        assert_eq!(~[7,8,6], buf);
+        assert_eq!(box [7,8,6], buf);
 
         match reader.read(buf) {
             Ok(..) => fail!(),
             Err(e) => assert_eq!(e.kind, io::EndOfFile),
         }
-        assert_eq!(~[7,8,6], buf);
+        assert_eq!(box [7,8,6], buf);
 
         // Ensure it continues to fail in the same way.
         match reader.read(buf) {
             Ok(..) => fail!(),
             Err(e) => assert_eq!(e.kind, io::EndOfFile),
         }
-        assert_eq!(~[7,8,6], buf);
+        assert_eq!(box [7,8,6], buf);
     }
 
     #[test]
@@ -181,7 +181,7 @@ mod test {
         let mut writer = ChanWriter::new(tx);
         writer.write_be_u32(42).unwrap();
 
-        let wanted = ~[0u8, 0u8, 0u8, 42u8];
+        let wanted = box [0u8, 0u8, 0u8, 42u8];
         let got = task::try(proc() { rx.recv() }).unwrap();
         assert_eq!(wanted, got);
 

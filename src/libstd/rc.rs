@@ -58,7 +58,7 @@ impl<T> Rc<T> {
                 // destructor never frees the allocation while the
                 // strong destructor is running, even if the weak
                 // pointer is stored inside the strong one.
-                ptr: transmute(~RcBox {
+                ptr: transmute(box RcBox {
                     value: value,
                     strong: Cell::new(1),
                     weak: Cell::new(1)
@@ -255,7 +255,7 @@ mod tests {
 
     #[test]
     fn test_destructor() {
-        let x = Rc::new(~5);
+        let x = Rc::new(box 5);
         assert_eq!(**x, 5);
     }
 

@@ -125,7 +125,7 @@ pub mod stream;
 /// }
 /// ```
 pub fn event_loop() -> ~rtio::EventLoop:Send {
-    ~uvio::UvEventLoop::new() as ~rtio::EventLoop:Send
+    box uvio::UvEventLoop::new() as ~rtio::EventLoop:Send
 }
 
 /// A type that wraps a uv handle

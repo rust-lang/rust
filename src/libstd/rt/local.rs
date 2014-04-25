@@ -59,7 +59,7 @@ mod test {
     #[test]
     fn thread_local_task_smoke_test() {
         run_in_bare_thread(proc() {
-            let task = ~Task::new();
+            let task = box Task::new();
             Local::put(task);
             let task: ~Task = Local::take();
             cleanup_task(task);
@@ -69,11 +69,11 @@ mod test {
     #[test]
     fn thread_local_task_two_instances() {
         run_in_bare_thread(proc() {
-            let task = ~Task::new();
+            let task = box Task::new();
             Local::put(task);
             let task: ~Task = Local::take();
             cleanup_task(task);
-            let task = ~Task::new();
+            let task = box Task::new();
             Local::put(task);
             let task: ~Task = Local::take();
             cleanup_task(task);
@@ -83,7 +83,7 @@ mod test {
     #[test]
     fn borrow_smoke_test() {
         run_in_bare_thread(proc() {
-            let task = ~Task::new();
+            let task = box Task::new();
             Local::put(task);
 
             unsafe {
@@ -97,7 +97,7 @@ mod test {
     #[test]
     fn borrow_with_return() {
         run_in_bare_thread(proc() {
-            let task = ~Task::new();
+            let task = box Task::new();
             Local::put(task);
 
             {
@@ -112,7 +112,7 @@ mod test {
     #[test]
     fn try_take() {
         run_in_bare_thread(proc() {
-            let task = ~Task::new();
+            let task = box Task::new();
             Local::put(task);
 
             let t: ~Task = Local::try_take().unwrap();

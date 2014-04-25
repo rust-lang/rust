@@ -72,7 +72,7 @@ impl DynamicLibrary {
         } else {
             ("LD_LIBRARY_PATH", ':' as u8)
         };
-        let newenv = os::getenv_as_bytes(envvar).unwrap_or(~[]);
+        let newenv = os::getenv_as_bytes(envvar).unwrap_or(box []);
         let newenv = newenv + &[sep] + path.as_vec();
         os::setenv(envvar, str::from_utf8(newenv).unwrap());
     }

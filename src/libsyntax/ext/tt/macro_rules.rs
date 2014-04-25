@@ -166,10 +166,10 @@ fn generic_extension(cx: &ExtCtxt,
                 let trncbr = new_tt_reader(&cx.parse_sess().span_diagnostic,
                                            Some(named_matches),
                                            rhs);
-                let p = Parser(cx.parse_sess(), cx.cfg(), ~trncbr);
+                let p = Parser(cx.parse_sess(), cx.cfg(), box trncbr);
                 // Let the context choose how to interpret the result.
                 // Weird, but useful for X-macros.
-                return ~ParserAnyMacro {
+                return box ParserAnyMacro {
                     parser: RefCell::new(p),
                 } as ~MacResult
               }
@@ -239,13 +239,13 @@ pub fn add_new_extension(cx: &mut ExtCtxt,
         _ => cx.span_bug(sp, "wrong-structured rhs")
     };
 
-    let exp = ~MacroRulesMacroExpander {
+    let exp = box MacroRulesMacroExpander {
         name: name,
         lhses: lhses,
         rhses: rhses,
     };
 
-    ~MacroRulesDefiner {
+    box MacroRulesDefiner {
         def: RefCell::new(Some(MacroDef {
             name: token::get_ident(name).to_str(),
             ext: NormalTT(exp, Some(sp))

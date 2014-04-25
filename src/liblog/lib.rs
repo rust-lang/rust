@@ -203,7 +203,7 @@ pub fn log(level: u32, args: &fmt::Arguments) {
     // frob the slot while we're doing the logging. This will destroy any logger
     // set during logging.
     let mut logger = local_data::pop(local_logger).unwrap_or_else(|| {
-        ~DefaultLogger { handle: io::stderr() } as ~Logger:Send
+        box DefaultLogger { handle: io::stderr() } as ~Logger:Send
     });
     logger.log(level, args);
     local_data::set(local_logger, logger);
@@ -286,7 +286,7 @@ fn init() {
         LOG_LEVEL = max_level;
 
         assert!(DIRECTIVES.is_null());
-        DIRECTIVES = cast::transmute(~directives);
+        DIRECTIVES = cast::transmute(box directives);
 
         // Schedule the cleanup for this global for when the runtime exits.
         rt::at_exit(proc() {

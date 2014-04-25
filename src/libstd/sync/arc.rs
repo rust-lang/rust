@@ -45,7 +45,7 @@ struct ArcData<T> {
 }
 
 unsafe fn new_inner<T: Send>(data: T, refcount: uint) -> *mut ArcData<T> {
-    let data = ~ArcData {
+    let data = box ArcData {
                     count: AtomicUint::new(refcount),
                     data: Unsafe::new(data)
                  };
@@ -71,7 +71,7 @@ impl<T: Send> UnsafeArc<T> {
     pub fn newN(data: T, num_handles: uint) -> ~[UnsafeArc<T>] {
         unsafe {
             if num_handles == 0 {
-                ~[] // need to free data here
+                box [] // need to free data here
             } else {
                 let ptr = new_inner(data, num_handles);
                 let v = Vec::from_fn(num_handles, |_| UnsafeArc { data: ptr });

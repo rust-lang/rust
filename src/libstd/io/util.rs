@@ -235,7 +235,7 @@ mod test {
     #[test]
     fn test_null_writer() {
         let mut s = NullWriter;
-        let buf = ~[0, 0, 0];
+        let buf = box [0, 0, 0];
         s.write(buf).unwrap();
         s.flush().unwrap();
     }
@@ -243,15 +243,15 @@ mod test {
     #[test]
     fn test_zero_reader() {
         let mut s = ZeroReader;
-        let mut buf = ~[1, 2, 3];
+        let mut buf = box [1, 2, 3];
         assert_eq!(s.read(buf), Ok(3));
-        assert_eq!(~[0, 0, 0], buf);
+        assert_eq!(box [0, 0, 0], buf);
     }
 
     #[test]
     fn test_null_reader() {
         let mut r = NullReader;
-        let mut buf = ~[0];
+        let mut buf = box [0];
         assert!(r.read(buf).is_err());
     }
 
@@ -273,8 +273,8 @@ mod test {
             }
         }
 
-        let mut multi = MultiWriter::new(vec!(~TestWriter as ~Writer,
-                                              ~TestWriter as ~Writer));
+        let mut multi = MultiWriter::new(vec!(box TestWriter as ~Writer,
+                                              box TestWriter as ~Writer));
         multi.write([1, 2, 3]).unwrap();
         assert_eq!(2, unsafe { writes });
         assert_eq!(0, unsafe { flushes });

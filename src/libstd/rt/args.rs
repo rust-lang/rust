@@ -99,7 +99,7 @@ mod imp {
         with_lock(|| unsafe {
             let ptr = get_global_ptr();
             rtassert!((*ptr).is_none());
-            (*ptr) = Some(~args.clone());
+            (*ptr) = Some(box args.clone());
         })
     }
 
@@ -147,7 +147,7 @@ mod imp {
             // Preserve the actual global state.
             let saved_value = take();
 
-            let expected = ~[bytes!("happy").to_owned(), bytes!("today?").to_owned()];
+            let expected = box [bytes!("happy").to_owned(), bytes!("today?").to_owned()];
 
             put(expected.clone());
             assert!(clone() == Some(expected.clone()));

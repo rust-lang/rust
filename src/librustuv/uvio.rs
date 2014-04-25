@@ -103,7 +103,7 @@ impl EventLoop for UvEventLoop {
     fn remote_callback(&mut self, f: ~rtio::Callback:Send)
         -> ~rtio::RemoteCallback:Send
     {
-        ~AsyncWatcher::new(&mut self.uvio.loop_, f) as ~rtio::RemoteCallback:Send
+        box AsyncWatcher::new(&mut self.uvio.loop_, f) as ~rtio::RemoteCallback:Send
     }
 
     fn io<'a>(&'a mut self) -> Option<&'a mut rtio::IoFactory> {
@@ -154,7 +154,7 @@ impl IoFactory for UvIoFactory {
         -> Result<~rtio::RtioTcpStream:Send, IoError>
     {
         match TcpWatcher::connect(self, addr, timeout) {
-            Ok(t) => Ok(~t as ~rtio::RtioTcpStream:Send),
+            Ok(t) => Ok(box t as ~rtio::RtioTcpStream:Send),
             Err(e) => Err(uv_error_to_io_error(e)),
         }
     }
@@ -168,7 +168,7 @@ impl IoFactory for UvIoFactory {
 
     fn udp_bind(&mut self, addr: SocketAddr) -> Result<~rtio::RtioUdpSocket:Send, IoError> {
         match UdpWatcher::bind(self, addr) {
-            Ok(u) => Ok(~u as ~rtio::RtioUdpSocket:Send),
+            Ok(u) => Ok(box u as ~rtio::RtioUdpSocket:Send),
             Err(e) => Err(uv_error_to_io_error(e)),
         }
     }
@@ -185,7 +185,7 @@ impl IoFactory for UvIoFactory {
 
     fn fs_from_raw_fd(&mut self, fd: c_int,
                       close: rtio::CloseBehavior) -> ~rtio::RtioFileStream:Send {
-        ~FileWatcher::new(self, fd, close) as ~rtio::RtioFileStream:Send
+        box FileWatcher::new(self, fd, close) as ~rtio::RtioFileStream:Send
     }
 
     fn fs_open(&mut self, path: &CString, fm: FileMode, fa: FileAccess)
@@ -205,7 +205,7 @@ impl IoFactory for UvIoFactory {
         };
 
         match FsRequest::open(self, path, flags as int, mode as int) {
-            Ok(fs) => Ok(~fs as ~rtio::RtioFileStream:Send),
+            Ok(fs) => Ok(box fs as ~rtio::RtioFileStream:Send),
             Err(e) => Err(uv_error_to_io_error(e))
         }
     }
@@ -275,7 +275,7 @@ impl IoFactory for UvIoFactory {
         match Process::spawn(self, config) {
             Ok((p, io)) => {
                 Ok((p as ~rtio::RtioProcess:Send,
-                    io.move_iter().map(|i| i.map(|p| ~p as ~rtio::RtioPipe:Send)).collect()))
+                    io.move_iter().map(|i| i.map(|p| box p as ~rtio::RtioPipe:Send)).collect()))
             }
             Err(e) => Err(uv_error_to_io_error(e)),
         }
@@ -296,7 +296,7 @@ impl IoFactory for UvIoFactory {
     fn unix_connect(&mut self, path: &CString,
                     timeout: Option<u64>) -> Result<~rtio::RtioPipe:Send, IoError> {
         match PipeWatcher::connect(self, path, timeout) {
-            Ok(p) => Ok(~p as ~rtio::RtioPipe:Send),
+            Ok(p) => Ok(box p as ~rtio::RtioPipe:Send),
             Err(e) => Err(uv_error_to_io_error(e)),
         }
     }
@@ -304,14 +304,14 @@ impl IoFactory for UvIoFactory {
     fn tty_open(&mut self, fd: c_int, readable: bool)
             -> Result<~rtio::RtioTTY:Send, IoError> {
         match TtyWatcher::new(self, fd, readable) {
-            Ok(tty) => Ok(~tty as ~rtio::RtioTTY:Send),
+            Ok(tty) => Ok(box tty as ~rtio::RtioTTY:Send),
             Err(e) => Err(uv_error_to_io_error(e))
         }
     }
 
     fn pipe_open(&mut self, fd: c_int) -> Result<~rtio::RtioPipe:Send, IoError> {
         match PipeWatcher::open(self, fd) {
-            Ok(s) => Ok(~s as ~rtio::RtioPipe:Send),
+            Ok(s) => Ok(box s as ~rtio::RtioPipe:Send),
             Err(e) => Err(uv_error_to_io_error(e))
         }
     }

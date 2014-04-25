@@ -44,9 +44,9 @@ fn test_run_in_bare_thread() {
 #[test]
 fn test_run_in_bare_thread_exchange() {
     // Does the exchange heap work without the runtime?
-    let i = ~100;
+    let i = box 100;
     run_in_bare_thread(proc() {
-        assert!(i == ~100);
+        assert!(i == box 100);
     });
 }
 

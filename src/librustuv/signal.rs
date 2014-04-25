@@ -28,7 +28,7 @@ pub struct SignalWatcher {
 impl SignalWatcher {
     pub fn new(io: &mut UvIoFactory, signum: Signum,
                channel: Sender<Signum>) -> Result<~SignalWatcher, UvError> {
-        let s = ~SignalWatcher {
+        let s = box SignalWatcher {
             handle: UvHandle::alloc(None::<SignalWatcher>, uvll::UV_SIGNAL),
             home: io.make_handle(),
             channel: channel,

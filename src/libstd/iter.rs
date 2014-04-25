@@ -2340,7 +2340,7 @@ mod tests {
     fn test_counter_from_iter() {
         let it = count(0, 5).take(10);
         let xs: ~[int] = FromIterator::from_iter(it);
-        assert_eq!(xs, ~[0, 5, 10, 15, 20, 25, 30, 35, 40, 45]);
+        assert_eq!(xs, box [0, 5, 10, 15, 20, 25, 30, 35, 40, 45]);
     }
 
     #[test]
@@ -2370,7 +2370,7 @@ mod tests {
     fn test_filter_map() {
         let mut it = count(0u, 1u).take(10)
             .filter_map(|x| if x % 2 == 0 { Some(x*x) } else { None });
-        assert_eq!(it.collect::<~[uint]>(), ~[0*0, 2*2, 4*4, 6*6, 8*8]);
+        assert_eq!(it.collect::<~[uint]>(), box [0*0, 2*2, 4*4, 6*6, 8*8]);
     }
 
     #[test]
@@ -2384,7 +2384,7 @@ mod tests {
 
     #[test]
     fn test_iterator_peekable() {
-        let xs = ~[0u, 1, 2, 3, 4, 5];
+        let xs = box [0u, 1, 2, 3, 4, 5];
         let mut it = xs.iter().map(|&x|x).peekable();
         assert_eq!(it.peek().unwrap(), &0);
         assert_eq!(it.next().unwrap(), 0);
@@ -2627,14 +2627,14 @@ mod tests {
 
     #[test]
     fn test_collect() {
-        let a = ~[1, 2, 3, 4, 5];
+        let a = box [1, 2, 3, 4, 5];
         let b: ~[int] = a.iter().map(|&x| x).collect();
         assert_eq!(a, b);
     }
 
     #[test]
     fn test_all() {
-        let v: ~&[int] = ~&[1, 2, 3, 4, 5];
+        let v: ~&[int] = box &[1, 2, 3, 4, 5];
         assert!(v.iter().all(|&x| x < 10));
         assert!(!v.iter().all(|&x| x % 2 == 0));
         assert!(!v.iter().all(|&x| x > 100));
@@ -2643,7 +2643,7 @@ mod tests {
 
     #[test]
     fn test_any() {
-        let v: ~&[int] = ~&[1, 2, 3, 4, 5];
+        let v: ~&[int] = box &[1, 2, 3, 4, 5];
         assert!(v.iter().any(|&x| x < 10));
         assert!(v.iter().any(|&x| x % 2 == 0));
         assert!(!v.iter().any(|&x| x > 100));
@@ -2701,7 +2701,7 @@ mod tests {
         let mut it = xs.iter();
         it.next();
         it.next();
-        assert_eq!(it.rev().map(|&x| x).collect::<~[int]>(), ~[16, 14, 12, 10, 8, 6]);
+        assert_eq!(it.rev().map(|&x| x).collect::<~[int]>(), box [16, 14, 12, 10, 8, 6]);
     }
 
     #[test]
@@ -2767,7 +2767,7 @@ mod tests {
     #[test]
     fn test_double_ended_chain() {
         let xs = [1, 2, 3, 4, 5];
-        let ys = ~[7, 9, 11];
+        let ys = box [7, 9, 11];
         let mut it = xs.iter().chain(ys.iter()).rev();
         assert_eq!(it.next().unwrap(), &11)
         assert_eq!(it.next().unwrap(), &9)
@@ -2784,7 +2784,7 @@ mod tests {
     fn test_rposition() {
         fn f(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'b' }
         fn g(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'd' }
-        let v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
+        let v = box [(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
 
         assert_eq!(v.iter().rposition(f), Some(3u));
         assert!(v.iter().rposition(g).is_none());
@@ -2793,7 +2793,7 @@ mod tests {
     #[test]
     #[should_fail]
     fn test_rposition_fail() {
-        let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
+        let v = [(box 0, @0), (box 0, @0), (box 0, @0), (box 0, @0)];
         let mut i = 0;
         v.iter().rposition(|_elt| {
             if i == 2 {
@@ -2845,7 +2845,7 @@ mod tests {
     #[test]
     fn test_random_access_chain() {
         let xs = [1, 2, 3, 4, 5];
-        let ys = ~[7, 9, 11];
+        let ys = box [7, 9, 11];
         let mut it = xs.iter().chain(ys.iter());
         assert_eq!(it.idx(0).unwrap(), &1);
         assert_eq!(it.idx(5).unwrap(), &7);
@@ -2939,12 +2939,12 @@ mod tests {
 
     #[test]
     fn test_double_ended_range() {
-        assert_eq!(range(11i, 14).rev().collect::<~[int]>(), ~[13i, 12, 11]);
+        assert_eq!(range(11i, 14).rev().collect::<~[int]>(), box [13i, 12, 11]);
         for _ in range(10i, 0).rev() {
             fail!("unreachable");
         }
 
-        assert_eq!(range(11u, 14).rev().collect::<~[uint]>(), ~[13u, 12, 11]);
+        assert_eq!(range(11u, 14).rev().collect::<~[uint]>(), box [13u, 12, 11]);
         for _ in range(10u, 0).rev() {
             fail!("unreachable");
         }
@@ -2996,13 +2996,13 @@ mod tests {
             }
         }
 
-        assert_eq!(range(0i, 5).collect::<~[int]>(), ~[0i, 1, 2, 3, 4]);
-        assert_eq!(range(-10i, -1).collect::<~[int]>(), ~[-10, -9, -8, -7, -6, -5, -4, -3, -2]);
-        assert_eq!(range(0i, 5).rev().collect::<~[int]>(), ~[4, 3, 2, 1, 0]);
-        assert_eq!(range(200, -5).collect::<~[int]>(), ~[]);
-        assert_eq!(range(200, -5).rev().collect::<~[int]>(), ~[]);
-        assert_eq!(range(200, 200).collect::<~[int]>(), ~[]);
-        assert_eq!(range(200, 200).rev().collect::<~[int]>(), ~[]);
+        assert_eq!(range(0i, 5).collect::<~[int]>(), box [0i, 1, 2, 3, 4]);
+        assert_eq!(range(-10i, -1).collect::<~[int]>(), box [-10, -9, -8, -7, -6, -5, -4, -3, -2]);
+        assert_eq!(range(0i, 5).rev().collect::<~[int]>(), box [4, 3, 2, 1, 0]);
+        assert_eq!(range(200, -5).collect::<~[int]>(), box []);
+        assert_eq!(range(200, -5).rev().collect::<~[int]>(), box []);
+        assert_eq!(range(200, 200).collect::<~[int]>(), box []);
+        assert_eq!(range(200, 200).rev().collect::<~[int]>(), box []);
 
         assert_eq!(range(0i, 100).size_hint(), (100, Some(100)));
         // this test is only meaningful when sizeof uint < sizeof u64
@@ -3013,32 +3013,32 @@ mod tests {
 
     #[test]
     fn test_range_inclusive() {
-        assert_eq!(range_inclusive(0i, 5).collect::<~[int]>(), ~[0i, 1, 2, 3, 4, 5]);
-        assert_eq!(range_inclusive(0i, 5).rev().collect::<~[int]>(), ~[5i, 4, 3, 2, 1, 0]);
-        assert_eq!(range_inclusive(200, -5).collect::<~[int]>(), ~[]);
-        assert_eq!(range_inclusive(200, -5).rev().collect::<~[int]>(), ~[]);
-        assert_eq!(range_inclusive(200, 200).collect::<~[int]>(), ~[200]);
-        assert_eq!(range_inclusive(200, 200).rev().collect::<~[int]>(), ~[200]);
+        assert_eq!(range_inclusive(0i, 5).collect::<~[int]>(), box [0i, 1, 2, 3, 4, 5]);
+        assert_eq!(range_inclusive(0i, 5).rev().collect::<~[int]>(), box [5i, 4, 3, 2, 1, 0]);
+        assert_eq!(range_inclusive(200, -5).collect::<~[int]>(), box []);
+        assert_eq!(range_inclusive(200, -5).rev().collect::<~[int]>(), box []);
+        assert_eq!(range_inclusive(200, 200).collect::<~[int]>(), box [200]);
+        assert_eq!(range_inclusive(200, 200).rev().collect::<~[int]>(), box [200]);
     }
 
     #[test]
     fn test_range_step() {
-        assert_eq!(range_step(0i, 20, 5).collect::<~[int]>(), ~[0, 5, 10, 15]);
-        assert_eq!(range_step(20i, 0, -5).collect::<~[int]>(), ~[20, 15, 10, 5]);
-        assert_eq!(range_step(20i, 0, -6).collect::<~[int]>(), ~[20, 14, 8, 2]);
-        assert_eq!(range_step(200u8, 255, 50).collect::<~[u8]>(), ~[200u8, 250]);
-        assert_eq!(range_step(200, -5, 1).collect::<~[int]>(), ~[]);
-        assert_eq!(range_step(200, 200, 1).collect::<~[int]>(), ~[]);
+        assert_eq!(range_step(0i, 20, 5).collect::<~[int]>(), box [0, 5, 10, 15]);
+        assert_eq!(range_step(20i, 0, -5).collect::<~[int]>(), box [20, 15, 10, 5]);
+        assert_eq!(range_step(20i, 0, -6).collect::<~[int]>(), box [20, 14, 8, 2]);
+        assert_eq!(range_step(200u8, 255, 50).collect::<~[u8]>(), box [200u8, 250]);
+        assert_eq!(range_step(200, -5, 1).collect::<~[int]>(), box []);
+        assert_eq!(range_step(200, 200, 1).collect::<~[int]>(), box []);
     }
 
     #[test]
     fn test_range_step_inclusive() {
-        assert_eq!(range_step_inclusive(0i, 20, 5).collect::<~[int]>(), ~[0, 5, 10, 15, 20]);
-        assert_eq!(range_step_inclusive(20i, 0, -5).collect::<~[int]>(), ~[20, 15, 10, 5, 0]);
-        assert_eq!(range_step_inclusive(20i, 0, -6).collect::<~[int]>(), ~[20, 14, 8, 2]);
-        assert_eq!(range_step_inclusive(200u8, 255, 50).collect::<~[u8]>(), ~[200u8, 250]);
-        assert_eq!(range_step_inclusive(200, -5, 1).collect::<~[int]>(), ~[]);
-        assert_eq!(range_step_inclusive(200, 200, 1).collect::<~[int]>(), ~[200]);
+        assert_eq!(range_step_inclusive(0i, 20, 5).collect::<~[int]>(), box [0, 5, 10, 15, 20]);
+        assert_eq!(range_step_inclusive(20i, 0, -5).collect::<~[int]>(), box [20, 15, 10, 5, 0]);
+        assert_eq!(range_step_inclusive(20i, 0, -6).collect::<~[int]>(), box [20, 14, 8, 2]);
+        assert_eq!(range_step_inclusive(200u8, 255, 50).collect::<~[u8]>(), box [200u8, 250]);
+        assert_eq!(range_step_inclusive(200, -5, 1).collect::<~[int]>(), box []);
+        assert_eq!(range_step_inclusive(200, 200, 1).collect::<~[int]>(), box [200]);
     }
 
     #[test]

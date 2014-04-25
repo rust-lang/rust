@@ -1020,8 +1020,8 @@ mod test {
     use std::io::util;
 
     fn mk_sh() -> diagnostic::SpanHandler {
-        let emitter = diagnostic::EmitterWriter::new(~util::NullWriter);
-        let handler = diagnostic::mk_handler(~emitter);
+        let emitter = diagnostic::EmitterWriter::new(box util::NullWriter);
+        let handler = diagnostic::mk_handler(box emitter);
         diagnostic::mk_span_handler(handler, CodeMap::new())
     }
 

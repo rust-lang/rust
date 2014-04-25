@@ -21,5 +21,5 @@ impl<T: Default + 'static> Default for @T {
 }
 
 impl<T: Default> Default for ~T {
-    fn default() -> ~T { ~Default::default() }
+    fn default() -> ~T { box Default::default() }
 }
