@@ -217,7 +217,7 @@ a `Sender` and `Receiver` (commonly abbreviated `tx` and `rx`).
 The `spawn` function spins up a new task,
 given a *heap allocated closure* to run.
 As you can see in the code,
-we call `chan.send()` from the original task,
+we call `tx.send()` from the original task,
 passing in our boxed array,
 and we call `rx.recv()` (short for 'receive') inside of the new task:
 values given to the `Sender` via the `send` method come out the other end via the `recv` method on the `Receiver`.
