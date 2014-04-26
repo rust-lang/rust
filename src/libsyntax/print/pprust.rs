@@ -1995,11 +1995,6 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn print_view_paths(&mut self,
-                            vps: &[@ast::ViewPath]) -> IoResult<()> {
-        self.commasep(Inconsistent, vps, |s, &vp| s.print_view_path(vp))
-    }
-
     pub fn print_view_item(&mut self, item: &ast::ViewItem) -> IoResult<()> {
         try!(self.hardbreak_if_not_bol());
         try!(self.maybe_print_comment(item.span.lo));
@@ -2017,9 +2012,9 @@ impl<'a> State<'a> {
                 }
             }
 
-            ast::ViewItemUse(ref vps) => {
+            ast::ViewItemUse(ref vp) => {
                 try!(self.head("use"));
-                try!(self.print_view_paths(vps.as_slice()));
+                try!(self.print_view_path(*vp));
             }
         }
         try!(word(&mut self.s, ";"));
