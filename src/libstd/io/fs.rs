@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -243,10 +243,6 @@ pub fn unlink(path: &Path) -> IoResult<()> {
 /// Given a path, query the file system to get information about a file,
 /// directory, etc. This function will traverse symlinks to query
 /// information about the destination file.
-///
-/// Returns a fully-filled out stat structure on success, and on failure it
-/// will return a dummy stat structure (it is expected that the condition
-/// raised is handled as well).
 ///
 /// # Example
 ///
@@ -652,18 +648,21 @@ impl Seek for File {
 impl path::Path {
     /// Get information on the file, directory, etc at this path.
     ///
-    /// Consult the `file::stat` documentation for more info.
+    /// Consult the `fs::stat` documentation for more info.
     ///
     /// This call preserves identical runtime/error semantics with `file::stat`.
     pub fn stat(&self) -> IoResult<FileStat> { stat(self) }
 
+    /// Get information on the file, directory, etc at this path, not following
+    /// symlinks.
+    ///
+    /// Consult the `fs::lstat` documentation for more info.
+    ///
+    /// This call preserves identical runtime/error semantics with `file::lstat`.
+    pub fn lstat(&self) -> IoResult<FileStat> { lstat(self) }
+
     /// Boolean value indicator whether the underlying file exists on the local
-    /// filesystem. This will return true if the path points to either a
-    /// directory or a file.
-    ///
-    /// # Error
-    ///
-    /// Will not raise a condition
+    /// filesystem. Returns false in exactly the cases where `fs::stat` fails.
     pub fn exists(&self) -> bool {
         self.stat().is_ok()
     }
@@ -671,11 +670,7 @@ impl path::Path {
     /// Whether the underlying implementation (be it a file path, or something
     /// else) points at a "regular file" on the FS. Will return false for paths
     /// to non-existent locations or directories or other non-regular files
-    /// (named pipes, etc).
-    ///
-    /// # Error
-    ///
-    /// Will not raise a condition
+    /// (named pipes, etc). Follows links when making this determination.
     pub fn is_file(&self) -> bool {
         match self.stat() {
             Ok(s) => s.kind == io::TypeFile,
@@ -683,14 +678,11 @@ impl path::Path {
         }
     }
 
-    /// Whether the underlying implementation (be it a file path,
-    /// or something else) is pointing at a directory in the underlying FS.
-    /// Will return false for paths to non-existent locations or if the item is
-    /// not a directory (eg files, named pipes, links, etc)
-    ///
-    /// # Error
-    ///
-    /// Will not raise a condition
+    /// Whether the underlying implementation (be it a file path, or something
+    /// else) is pointing at a directory in the underlying FS. Will return
+    /// false for paths to non-existent locations or if the item is not a
+    /// directory (eg files, named pipes, etc). Follows links when making this
+    /// determination.
     pub fn is_dir(&self) -> bool {
         match self.stat() {
             Ok(s) => s.kind == io::TypeDirectory,
@@ -898,8 +890,10 @@ mod test {
             let msg = "hw";
             fs.write(msg.as_bytes()).unwrap();
         }
-        let stat_res = check!(stat(filename));
-        assert_eq!(stat_res.kind, io::TypeFile);
+        let stat_res_fn = check!(stat(filename));
+        assert_eq!(stat_res_fn.kind, io::TypeFile);
+        let stat_res_meth = check!(filename.stat());
+        assert_eq!(stat_res_meth.kind, io::TypeFile);
         check!(unlink(filename));
     })
 
@@ -907,8 +901,10 @@ mod test {
         let tmpdir = tmpdir();
         let filename = &tmpdir.join("file_stat_correct_on_is_dir");
         check!(mkdir(filename, io::UserRWX));
-        let stat_res = check!(filename.stat());
-        assert!(stat_res.kind == io::TypeDirectory);
+        let stat_res_fn = check!(stat(filename));
+        assert!(stat_res_fn.kind == io::TypeDirectory);
+        let stat_res_meth = check!(filename.stat());
+        assert!(stat_res_meth.kind == io::TypeDirectory);
         check!(rmdir(filename));
     })
 
@@ -1139,6 +1135,7 @@ mod test {
         check!(symlink(&input, &out));
         if cfg!(not(windows)) {
             assert_eq!(check!(lstat(&out)).kind, io::TypeSymlink);
+            assert_eq!(check!(out.lstat()).kind, io::TypeSymlink);
         }
         assert_eq!(check!(stat(&out)).size, check!(stat(&input)).size);
         assert_eq!(check!(File::open(&out).read_to_end()),
@@ -1170,9 +1167,12 @@ mod test {
         check!(link(&input, &out));
         if cfg!(not(windows)) {
             assert_eq!(check!(lstat(&out)).kind, io::TypeFile);
+            assert_eq!(check!(out.lstat()).kind, io::TypeFile);
             assert_eq!(check!(stat(&out)).unstable.nlink, 2);
+            assert_eq!(check!(out.stat()).unstable.nlink, 2);
         }
         assert_eq!(check!(stat(&out)).size, check!(stat(&input)).size);
+        assert_eq!(check!(stat(&out)).size, check!(input.stat()).size);
         assert_eq!(check!(File::open(&out).read_to_end()),
                    (Vec::from_slice(bytes!("foobar"))));
 
