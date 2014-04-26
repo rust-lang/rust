@@ -278,7 +278,9 @@ pub fn trans_uniq_vstore<'a>(bcx: &'a Block<'a>,
 
     let vecsize = Add(bcx, alloc, llsize_of(ccx, ccx.opaque_vec_type));
 
-    let Result { bcx: bcx, val: val } = malloc_raw_dyn(bcx, vec_ty, vecsize);
+    // ~[T] is not going to be changed to support alignment, since it's obsolete.
+    let align = C_uint(ccx, 8);
+    let Result { bcx: bcx, val: val } = malloc_raw_dyn(bcx, vec_ty, vecsize, align);
     Store(bcx, fill, GEPi(bcx, val, [0u, abi::vec_elt_fill]));
     Store(bcx, alloc, GEPi(bcx, val, [0u, abi::vec_elt_alloc]));
 

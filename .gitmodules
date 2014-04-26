@@ -12,3 +12,6 @@
 [submodule "src/compiler-rt"]
 	path = src/compiler-rt
 	url = https://github.com/rust-lang/compiler-rt.git
+[submodule "src/jemalloc"]
+	path = src/jemalloc
+	url = https://github.com/jemalloc/jemalloc.git

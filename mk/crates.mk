@@ -56,7 +56,7 @@ HOST_CRATES := syntax rustc rustdoc fourcc hexfloat regex_macros
 CRATES := $(TARGET_CRATES) $(HOST_CRATES)
 TOOLS := compiletest rustdoc rustc
 
-DEPS_std := libc native:rustrt native:compiler-rt native:backtrace
+DEPS_std := libc native:rustrt native:compiler-rt native:backtrace native:jemalloc
 DEPS_green := std rand native:context_switch
 DEPS_rustuv := std native:uv native:uv_support
 DEPS_native := std
