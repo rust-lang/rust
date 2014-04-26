@@ -407,18 +407,16 @@ impl<'a, O: IdVisitingOperation> Visitor<()> for IdVisitor<'a, O> {
             ViewItemExternCrate(_, _, node_id) => {
                 self.operation.visit_id(node_id)
             }
-            ViewItemUse(ref view_paths) => {
-                for view_path in view_paths.iter() {
-                    match view_path.node {
-                        ViewPathSimple(_, _, node_id) |
-                        ViewPathGlob(_, node_id) => {
-                            self.operation.visit_id(node_id)
-                        }
-                        ViewPathList(_, ref paths, node_id) => {
-                            self.operation.visit_id(node_id);
-                            for path in paths.iter() {
-                                self.operation.visit_id(path.node.id)
-                            }
+            ViewItemUse(ref view_path) => {
+                match view_path.node {
+                    ViewPathSimple(_, _, node_id) |
+                    ViewPathGlob(_, node_id) => {
+                        self.operation.visit_id(node_id)
+                    }
+                    ViewPathList(_, ref paths, node_id) => {
+                        self.operation.visit_id(node_id);
+                        for path in paths.iter() {
+                            self.operation.visit_id(path.node.id)
                         }
                     }
                 }

@@ -28,44 +28,42 @@ pub trait Folder {
         meta_items.iter().map(|x| fold_meta_item_(*x, self)).collect()
     }
 
-    fn fold_view_paths(&mut self, view_paths: &[@ViewPath]) -> Vec<@ViewPath> {
-        view_paths.iter().map(|view_path| {
-            let inner_view_path = match view_path.node {
-                ViewPathSimple(ref ident, ref path, node_id) => {
-                    let id = self.new_id(node_id);
-                    ViewPathSimple(ident.clone(),
-                                   self.fold_path(path),
-                                   id)
-                }
-                ViewPathGlob(ref path, node_id) => {
-                    let id = self.new_id(node_id);
-                    ViewPathGlob(self.fold_path(path), id)
-                }
-                ViewPathList(ref path, ref path_list_idents, node_id) => {
-                    let id = self.new_id(node_id);
-                    ViewPathList(self.fold_path(path),
-                                 path_list_idents.iter().map(|path_list_ident| {
-                                    let id = self.new_id(path_list_ident.node
-                                                                        .id);
-                                    Spanned {
-                                        node: PathListIdent_ {
-                                            name: path_list_ident.node
-                                                                 .name
-                                                                 .clone(),
-                                            id: id,
-                                        },
-                                        span: self.new_span(
-                                            path_list_ident.span)
-                                    }
-                                 }).collect(),
-                                 id)
-                }
-            };
-            @Spanned {
-                node: inner_view_path,
-                span: self.new_span(view_path.span),
+    fn fold_view_path(&mut self, view_path: @ViewPath) -> @ViewPath {
+        let inner_view_path = match view_path.node {
+            ViewPathSimple(ref ident, ref path, node_id) => {
+                let id = self.new_id(node_id);
+                ViewPathSimple(ident.clone(),
+                               self.fold_path(path),
+                               id)
             }
-        }).collect()
+            ViewPathGlob(ref path, node_id) => {
+                let id = self.new_id(node_id);
+                ViewPathGlob(self.fold_path(path), id)
+            }
+            ViewPathList(ref path, ref path_list_idents, node_id) => {
+                let id = self.new_id(node_id);
+                ViewPathList(self.fold_path(path),
+                             path_list_idents.iter().map(|path_list_ident| {
+                                let id = self.new_id(path_list_ident.node
+                                                                    .id);
+                                Spanned {
+                                    node: PathListIdent_ {
+                                        name: path_list_ident.node
+                                                             .name
+                                                             .clone(),
+                                        id: id,
+                                    },
+                                    span: self.new_span(
+                                        path_list_ident.span)
+                                }
+                             }).collect(),
+                             id)
+            }
+        };
+        @Spanned {
+            node: inner_view_path,
+            span: self.new_span(view_path.span),
+        }
     }
 
     fn fold_view_item(&mut self, vi: &ViewItem) -> ViewItem {
@@ -557,8 +555,8 @@ pub fn noop_fold_view_item<T: Folder>(vi: &ViewItem, folder: &mut T)
                               (*string).clone(),
                               folder.new_id(node_id))
         }
-        ViewItemUse(ref view_paths) => {
-            ViewItemUse(folder.fold_view_paths(view_paths.as_slice()))
+        ViewItemUse(ref view_path) => {
+            ViewItemUse(folder.fold_view_path(*view_path))
         }
     };
     ViewItem {

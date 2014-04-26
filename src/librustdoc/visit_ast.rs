@@ -133,14 +133,12 @@ impl<'a> RustdocVisitor<'a> {
             return om.view_items.push(item.clone());
         }
         let item = match item.node {
-            ast::ViewItemUse(ref paths) => {
-                // rustc no longer supports "use foo, bar;"
-                assert_eq!(paths.len(), 1);
-                match self.visit_view_path(*paths.get(0), om) {
+            ast::ViewItemUse(ref vpath) => {
+                match self.visit_view_path(*vpath, om) {
                     None => return,
                     Some(path) => {
                         ast::ViewItem {
-                            node: ast::ViewItemUse(vec!(path)),
+                            node: ast::ViewItemUse(path),
                             .. item.clone()
                         }
                     }

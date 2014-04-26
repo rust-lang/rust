@@ -1003,7 +1003,7 @@ pub enum ViewItem_ {
     // (containing arbitrary characters) from which to fetch the crate sources
     // For example, extern crate whatever = "github.com/mozilla/rust"
     ViewItemExternCrate(Ident, Option<(InternedString,StrStyle)>, NodeId),
-    ViewItemUse(Vec<@ViewPath> ),
+    ViewItemUse(@ViewPath),
 }
 
 // Meta-data associated with an item
