@@ -68,7 +68,7 @@ pub unsafe fn realloc_raw(ptr: *mut u8, size: uint) -> *mut u8 {
 }
 
 /// The allocator for unique pointers without contained managed pointers.
-#[cfg(not(test))]
+#[cfg(not(test), stage0)]
 #[lang="exchange_malloc"]
 #[inline]
 pub unsafe fn exchange_malloc(size: uint) -> *mut u8 {
@@ -76,6 +76,23 @@ pub unsafe fn exchange_malloc(size: uint) -> *mut u8 {
     // zero-size allocations can point to this `static`. It would be incorrect
     // to use a null pointer, due to enums assuming types like unique pointers
     // are never null.
+    static EMPTY: () = ();
+
+    if size == 0 {
+        &EMPTY as *() as *mut u8
+    } else {
+        malloc_raw(size)
+    }
+}
+
+/// The allocator for unique pointers without contained managed pointers.
+#[cfg(not(test), not(stage0))]
+#[lang="exchange_malloc"]
+#[inline]
+pub unsafe fn exchange_malloc(size: uint, _align: uint) -> *mut u8 {
+    // The compiler never calls `exchange_free` on ~ZeroSizeType, so zero-size
+    // allocations can point to this `static`. It would be incorrect to use a null
+    // pointer, due to enums assuming types like unique pointers are never null.
     static EMPTY: () = ();
 
     if size == 0 {
@@ -116,6 +133,32 @@ pub unsafe fn exchange_free_(ptr: *u8) {
 #[inline]
 pub unsafe fn exchange_free(ptr: *u8) {
     free(ptr as *mut c_void);
+}
+
+// hack for libcore
+#[no_mangle]
+#[doc(hidden)]
+#[deprecated]
+#[cfg(stage0)]
+pub extern "C" fn rust_malloc(size: uint) -> *mut u8 {
+    unsafe { exchange_malloc(size) }
+}
+
+// hack for libcore
+#[no_mangle]
+#[doc(hidden)]
+#[deprecated]
+#[cfg(not(stage0))]
+pub extern "C" fn rust_malloc(size: uint, align: uint) -> *mut u8 {
+    unsafe { exchange_malloc(size, align) }
+}
+
+// hack for libcore
+#[no_mangle]
+#[doc(hidden)]
+#[deprecated]
+pub extern "C" fn rust_free(ptr: *u8) {
+    unsafe { exchange_free(ptr) }
 }
 
 #[cfg(test)]

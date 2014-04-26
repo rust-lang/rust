@@ -345,7 +345,8 @@ fn require_alloc_fn(bcx: &Block, info_ty: ty::t, it: LangItem) -> ast::DefId {
 
 pub fn malloc_raw_dyn<'a>(bcx: &'a Block<'a>,
                           ptr_ty: ty::t,
-                          size: ValueRef)
+                          size: ValueRef,
+                          align: ValueRef)
                           -> Result<'a> {
     let _icx = push_ctxt("malloc_raw_exchange");
     let ccx = bcx.ccx();
@@ -353,7 +354,7 @@ pub fn malloc_raw_dyn<'a>(bcx: &'a Block<'a>,
     // Allocate space:
     let r = callee::trans_lang_call(bcx,
         require_alloc_fn(bcx, ptr_ty, ExchangeMallocFnLangItem),
-        [size],
+        [size, align],
         None);
 
     let llty_ptr = type_of::type_of(ccx, ptr_ty);
