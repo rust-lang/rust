@@ -207,12 +207,12 @@ let _ = close(Door::<Closed>("front".to_owned())); // error: mismatched types: e
 
 ## C function signature conversions
 
-Description            C signature                                    Equivalent Rust signature
----------------------- ---------------------------------------------- ------------------------------------------
-no parameters          `void foo(void);`                              `fn foo();`
-return value           `int foo(void);`                               `fn foo() -> c_int;`
-function parameters    `void foo(int x, int y);`                      `fn foo(x: c_int, y: c_int);`
-in-out pointers        `void foo(const int* in_ptr, int* out_ptr);`   `fn foo(in_ptr: *c_int, out_ptr: *mut c_int);`
+| Description         | C signature                                   | Equivalent Rust signature                      |
+|---------------------|-----------------------------------------------|------------------------------------------------|
+| no parameters       | `void foo(void);`                             | `fn foo();`                                    |
+| return value        | `int foo(void);`                              | `fn foo() -> c_int;`                           |
+| function parameters | `void foo(int x, int y);`                     | `fn foo(x: c_int, y: c_int);`                  |
+| in-out pointers     | `void foo(const int* in_ptr, int* out_ptr);`  | `fn foo(in_ptr: *c_int, out_ptr: *mut c_int);` |
 
 Note: The Rust signatures should be wrapped in an `extern "ABI" { ... }` block.
 
