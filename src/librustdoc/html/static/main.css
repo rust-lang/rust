@@ -388,16 +388,17 @@ pre.rust .doccomment { color: #4D4D4C; }
 pre.rust .macro, pre.rust .macro-nonterminal { color: #3E999F; }
 pre.rust .lifetime { color: #B76514; }
 
-h1.section-link:hover a:after,
-h2.section-link:hover a:after,
-h3.section-link:hover a:after,
-h4.section-link:hover a:after,
-h5.section-link:hover a:after,
-h6.section-link:hover a:after {
-  content: '\2002\00a7\2002';
+.section-header {
+    border-bottom: none !important;
+    font-size: 1.1em !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+.section-header:hover a:after {
+    content: '\2002\00a7\2002';
 }
 
-/** Media Queries **/
+/* Media Queries */
 
 @media (max-width: 700px) {
     .sidebar {
