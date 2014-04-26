@@ -66,7 +66,6 @@ we may want to adjust precisely when coercions occur.
 
 
 use middle::ty::{AutoPtr, AutoBorrowVec, AutoBorrowObj, AutoDerefRef};
-use middle::ty::{VstoreSlice, VstoreUniq};
 use middle::ty::{mt};
 use middle::ty;
 use middle::typeck::infer::{CoerceResult, resolve_type, Coercion};
@@ -109,18 +108,17 @@ impl<'f> Coerce<'f> {
                         });
                     }
                     ty::ty_vec(_, _) => {},
+                    ty::ty_str(None) => {
+                        return self.unpack_actual_value(a, |sty_a| {
+                            self.coerce_borrowed_string(a, sty_a, b)
+                        });
+                    }
                     _ => {
                         return self.unpack_actual_value(a, |sty_a| {
                             self.coerce_borrowed_pointer(a, sty_a, b, mt_b)
                         });
                     }
                 };
-            }
-
-            ty::ty_str(VstoreSlice(..)) => {
-                return self.unpack_actual_value(a, |sty_a| {
-                    self.coerce_borrowed_string(a, sty_a, b)
-                });
             }
 
             ty::ty_closure(~ty::ClosureTy {store: ty::RegionTraitStore(..), ..}) => {
@@ -264,7 +262,10 @@ impl<'f> Coerce<'f> {
                b.inf_str(self.get_ref().infcx));
 
         match *sty_a {
-            ty::ty_str(VstoreUniq) => {}
+            ty::ty_uniq(t) => match ty::get(t).sty {
+                ty::ty_str(None) => {}
+                _ => return self.subtype(a, b),
+            },
             _ => {
                 return self.subtype(a, b);
             }
@@ -272,7 +273,7 @@ impl<'f> Coerce<'f> {
 
         let coercion = Coercion(self.get_ref().trace.clone());
         let r_a = self.get_ref().infcx.next_region_var(coercion);
-        let a_borrowed = ty::mk_str(self.get_ref().infcx.tcx, VstoreSlice(r_a));
+        let a_borrowed = ty::mk_str_slice(self.get_ref().infcx.tcx, r_a, ast::MutImmutable);
         if_ok!(self.subtype(a_borrowed, b));
         Ok(Some(AutoDerefRef(AutoDerefRef {
             autoderefs: 0,

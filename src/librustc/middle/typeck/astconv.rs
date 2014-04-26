@@ -355,7 +355,7 @@ pub fn ast_ty_to_prim_ty(tcx: &ty::ctxt, ast_ty: &ast::Ty) -> Option<ty::t> {
                             tcx.sess.span_err(ast_ty.span,
                                               "bare `str` is not a type");
                             // return /something/ so they can at least get more errors
-                            Some(ty::mk_str(tcx, ty::VstoreUniq))
+                            Some(ty::mk_uniq(tcx, ty::mk_str(tcx, None)))
                         }
                     }
                 }
@@ -373,19 +373,8 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
 
     enum PointerTy {
         Box,
-        VStore(ty::Vstore)
-    }
-    impl PointerTy {
-        fn expect_vstore(&self, tcx: &ty::ctxt, span: Span, ty: &str) -> ty::Vstore {
-            match *self {
-                Box => {
-                    tcx.sess.span_err(span, format!("managed {} are not supported", ty));
-                    // everything can be ~, so this is a worth substitute
-                    ty::VstoreUniq
-                }
-                VStore(vst) => vst
-            }
-        }
+        RPtr(ty::Region),
+        Uniq
     }
 
     fn ast_ty_to_mt<AC:AstConv, RS:RegionScope>(this: &AC,
@@ -423,23 +412,23 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
                 match tcx.def_map.borrow().find(&id) {
                     Some(&ast::DefPrimTy(ast::TyStr)) => {
                         check_path_args(tcx, path, NO_TPS | NO_REGIONS);
-                        let vst = ptr_ty.expect_vstore(tcx, path.span, "strings");
-                        match vst {
-                            ty::VstoreUniq => {
-                                return ty::mk_str(tcx, ty::VstoreUniq);
+                        match ptr_ty {
+                            Uniq => {
+                                return ty::mk_uniq(tcx, ty::mk_str(tcx, None));
                             }
-                            ty::VstoreSlice(r) => {
-                                return ty::mk_str(tcx, ty::VstoreSlice(r));
+                            RPtr(r) => {
+                                return ty::mk_str_slice(tcx, r, ast::MutImmutable);
                             }
-                            _ => {}
+                            _ => tcx.sess.span_err(path.span,
+                                                   format!("managed strings are not supported")),
                         }
                     }
                     Some(&ast::DefTrait(trait_def_id)) => {
                         let result = ast_path_to_trait_ref(
                             this, rscope, trait_def_id, None, path);
                         let trait_store = match ptr_ty {
-                            VStore(ty::VstoreUniq) => ty::UniqTraitStore,
-                            VStore(ty::VstoreSlice(r)) => {
+                            Uniq => ty::UniqTraitStore,
+                            RPtr(r) => {
                                 ty::RegionTraitStore(r, a_seq_ty.mutbl)
                             }
                             _ => {
@@ -491,7 +480,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
             }
             ast::TyUniq(ty) => {
                 let mt = ast::MutTy { ty: ty, mutbl: ast::MutImmutable };
-                mk_pointer(this, rscope, &mt, VStore(ty::VstoreUniq),
+                mk_pointer(this, rscope, &mt, Uniq,
                            |ty| ty::mk_uniq(tcx, ty))
             }
             ast::TyVec(ty) => {
@@ -509,7 +498,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
             ast::TyRptr(ref region, ref mt) => {
                 let r = opt_ast_region_to_region(this, rscope, ast_ty.span, region);
                 debug!("ty_rptr r={}", r.repr(this.tcx()));
-                mk_pointer(this, rscope, mt, VStore(ty::VstoreSlice(r)),
+                mk_pointer(this, rscope, mt, RPtr(r),
                            |ty| ty::mk_rptr(tcx, r, ty::mt {ty: ty, mutbl: mt.mutbl}))
             }
             ast::TyTup(ref fields) => {
