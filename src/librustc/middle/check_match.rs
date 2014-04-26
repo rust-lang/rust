@@ -405,6 +405,7 @@ fn missing_ctor(cx: &MatchCheckCtxt,
       ty::ty_struct(..) => check_matrix_for_wild(cx, m),
       ty::ty_uniq(ty) | ty::ty_rptr(_, ty::mt{ty: ty, ..}) => match ty::get(ty).sty {
           ty::ty_vec(_, None) => ctor_for_slice(m),
+          ty::ty_str(None) => Some(single),
           _ => check_matrix_for_wild(cx, m),
       },
       ty::ty_enum(eid, _) => {

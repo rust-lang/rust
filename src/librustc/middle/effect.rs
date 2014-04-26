@@ -68,6 +68,13 @@ impl<'a> EffectCheckVisitor<'a> {
         debug!("effect: checking index with base type {}",
                 ppaux::ty_to_str(self.tcx, base_type));
         match ty::get(base_type).sty {
+            ty::ty_uniq(ty) | ty::ty_rptr(_, ty::mt{ty, ..}) => match ty::get(ty).sty {
+                ty::ty_str(None) => {
+                    self.tcx.sess.span_err(e.span,
+                        "modification of string types is not allowed");
+                }
+                _ => {}
+            },
             ty::ty_str(..) => {
                 self.tcx.sess.span_err(e.span,
                     "modification of string types is not allowed");
