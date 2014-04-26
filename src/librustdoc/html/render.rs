@@ -924,19 +924,6 @@ impl<'a> Item<'a> {
 
 impl<'a> fmt::Show for Item<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        match attr::find_stability(self.item.attrs.iter()) {
-            Some(ref stability) => {
-                try!(write!(fmt.buf,
-                       "<a class='stability {lvl}' title='{reason}'>{lvl}</a>",
-                       lvl = stability.level.to_str(),
-                       reason = match stability.text {
-                           Some(ref s) => (*s).clone(),
-                           None => InternedString::new(""),
-                       }));
-            }
-            None => {}
-        }
-
         // Write the breadcrumb trail header for the top
         try!(write!(fmt.buf, "\n<h1 class='fqn'>"));
         match self.item.inner {
@@ -964,6 +951,21 @@ impl<'a> fmt::Show for Item<'a> {
         try!(write!(fmt.buf, "<a class='{}' href=''>{}</a>",
                       shortty(self.item), self.item.name.get_ref().as_slice()));
 
+        // Write stability attributes
+        match attr::find_stability(self.item.attrs.iter()) {
+            Some(ref stability) => {
+                try!(write!(fmt.buf,
+                       "<a class='stability {lvl}' title='{reason}'>{lvl}</a>",
+                       lvl = stability.level.to_str(),
+                       reason = match stability.text {
+                           Some(ref s) => (*s).clone(),
+                           None => InternedString::new(""),
+                       }));
+            }
+            None => {}
+        }
+
+        // Write `src` tag
         if self.cx.include_sources {
             let mut path = Vec::new();
             clean_srcpath(self.item.source.filename.as_bytes(), |component| {
