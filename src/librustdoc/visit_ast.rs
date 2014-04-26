@@ -118,7 +118,8 @@ impl<'a> RustdocVisitor<'a> {
         for item in m.view_items.iter() {
             self.visit_view_item(item, &mut om);
         }
-        om.where = span;
+        om.where_outer = span;
+        om.where_inner = m.inner;
         om.attrs = attrs;
         om.vis = vis;
         om.id = id;
