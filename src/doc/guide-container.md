@@ -22,10 +22,10 @@ just unique keys without a corresponding value. The `Map` and `Set` traits in
 
 The standard library provides three owned map/set types:
 
-* `std::hashmap::HashMap` and `std::hashmap::HashSet`, requiring the keys to
+* `collections::HashMap` and `collections::HashSet`, requiring the keys to
   implement `Eq` and `Hash`
-* `std::trie::TrieMap` and `std::trie::TrieSet`, requiring the keys to be `uint`
-* `extra::treemap::TreeMap` and `extra::treemap::TreeSet`, requiring the keys
+* `collections::TrieMap` and `collections::TrieSet`, requiring the keys to be `uint`
+* `collections::TreeMap` and `collections::TreeSet`, requiring the keys
   to implement `TotalOrd`
 
 These maps do not use managed pointers so they can be sent between tasks as
@@ -42,11 +42,11 @@ implementing the `Hash` trait.
 
 ## Double-ended queues
 
-The `extra::ringbuf` module implements a double-ended queue with `O(1)`
+The `collections::ringbuf` module implements a double-ended queue with `O(1)`
 amortized inserts and removals from both ends of the container. It also has
 `O(1)` indexing like a vector. The contained elements are not required to be
 copyable, and the queue will be sendable if the contained type is sendable.
-Its interface `Deque` is defined in `extra::collections`.
+Its interface `Deque` is defined in `collections`.
 
 The `extra::dlist` module implements a double-ended linked list, also
 implementing the `Deque` trait, with `O(1)` removals and inserts at either end,
@@ -54,7 +54,7 @@ and `O(1)` concatenation.
 
 ## Priority queues
 
-The `extra::priority_queue` module implements a queue ordered by a key.  The
+The `collections::priority_queue` module implements a queue ordered by a key.  The
 contained elements are not required to be copyable, and the queue will be
 sendable if the contained type is sendable.
 
