@@ -18,6 +18,7 @@ pub static WSADESCRIPTION_LEN: uint = 256;
 pub static WSASYS_STATUS_LEN: uint = 128;
 pub static FIONBIO: libc::c_long = 0x8004667e;
 static FD_SETSIZE: uint = 64;
+pub static MSG_DONTWAIT: libc::c_int = 0;
 
 pub struct WSADATA {
     pub wVersion: libc::WORD,
