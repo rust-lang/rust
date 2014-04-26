@@ -921,8 +921,12 @@ pub struct Method {
 
 #[deriving(Clone, Eq, TotalEq, Encodable, Decodable, Hash)]
 pub struct Mod {
-    pub view_items: Vec<ViewItem> ,
-    pub items: Vec<@Item> ,
+    /// A span from the first token past `{` to the last token until `}`.
+    /// For `mod foo;`, the inner span ranges from the first token
+    /// to the last token in the external file.
+    pub inner: Span,
+    pub view_items: Vec<ViewItem>,
+    pub items: Vec<@Item>,
 }
 
 #[deriving(Clone, Eq, TotalEq, Encodable, Decodable, Hash)]
@@ -1165,7 +1169,15 @@ mod test {
     fn check_asts_encodable() {
         use std::io;
         let e = Crate {
-            module: Mod {view_items: Vec::new(), items: Vec::new()},
+            module: Mod {
+                inner: Span {
+                    lo: BytePos(11),
+                    hi: BytePos(19),
+                    expn_info: None,
+                },
+                view_items: Vec::new(),
+                items: Vec::new(),
+            },
             attrs: Vec::new(),
             config: Vec::new(),
             span: Span {
