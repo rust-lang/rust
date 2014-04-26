@@ -32,6 +32,10 @@ use core;
 use doctree;
 use visit_ast;
 
+/// A stable identifier to the particular version of JSON output.
+/// Increment this when the `Crate` and related structures change.
+pub static SCHEMA_VERSION: &'static str = "0.8.2";
+
 pub trait Clean<T> {
     fn clean(&self) -> T;
 }
