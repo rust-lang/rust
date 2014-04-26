@@ -4918,12 +4918,12 @@ impl<'a> Parser<'a> {
     }
 
     // matches view_paths = view_path | view_path , view_paths
-    fn parse_view_paths(&mut self) -> Vec<@ViewPath> {
-        let mut vp = vec!(self.parse_view_path());
+    fn parse_view_paths(&mut self) -> @ViewPath {
+        let vp = self.parse_view_path();
         while self.token == token::COMMA {
             self.bump();
             self.obsolete(self.last_span, ObsoleteMultipleImport);
-            vp.push(self.parse_view_path());
+            let _ = self.parse_view_path();
         }
         return vp;
     }

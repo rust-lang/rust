@@ -130,16 +130,14 @@ impl<'a> Visitor<()> for Context<'a> {
 
     fn visit_view_item(&mut self, i: &ast::ViewItem, _: ()) {
         match i.node {
-            ast::ViewItemUse(ref paths) => {
-                for path in paths.iter() {
-                    match path.node {
-                        ast::ViewPathGlob(..) => {
-                            self.gate_feature("globs", path.span,
-                                              "glob import statements are \
-                                               experimental and possibly buggy");
-                        }
-                        _ => {}
+            ast::ViewItemUse(ref path) => {
+                match path.node {
+                    ast::ViewPathGlob(..) => {
+                        self.gate_feature("globs", path.span,
+                                          "glob import statements are \
+                                           experimental and possibly buggy");
                     }
+                    _ => {}
                 }
             }
             ast::ViewItemExternCrate(..) => {

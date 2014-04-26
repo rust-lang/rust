@@ -150,22 +150,20 @@ pub fn walk_view_item<E: Clone, V: Visitor<E>>(visitor: &mut V, vi: &ViewItem, e
         ViewItemExternCrate(name, _, _) => {
             visitor.visit_ident(vi.span, name, env)
         }
-        ViewItemUse(ref paths) => {
-            for vp in paths.iter() {
-                match vp.node {
-                    ViewPathSimple(ident, ref path, id) => {
-                        visitor.visit_ident(vp.span, ident, env.clone());
-                        visitor.visit_path(path, id, env.clone());
+        ViewItemUse(ref vp) => {
+            match vp.node {
+                ViewPathSimple(ident, ref path, id) => {
+                    visitor.visit_ident(vp.span, ident, env.clone());
+                    visitor.visit_path(path, id, env.clone());
+                }
+                ViewPathGlob(ref path, id) => {
+                    visitor.visit_path(path, id, env.clone());
+                }
+                ViewPathList(ref path, ref list, _) => {
+                    for id in list.iter() {
+                        visitor.visit_ident(id.span, id.node.name, env.clone())
                     }
-                    ViewPathGlob(ref path, id) => {
-                        visitor.visit_path(path, id, env.clone());
-                    }
-                    ViewPathList(ref path, ref list, _) => {
-                        for id in list.iter() {
-                            visitor.visit_ident(id.span, id.node.name, env.clone())
-                        }
-                        walk_path(visitor, path, env.clone());
-                    }
+                    walk_path(visitor, path, env.clone());
                 }
             }
         }

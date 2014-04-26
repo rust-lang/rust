@@ -1085,7 +1085,7 @@ impl Clean<Item> for ast::ViewItem {
 #[deriving(Clone, Encodable, Decodable)]
 pub enum ViewItemInner {
     ExternCrate(~str, Option<~str>, ast::NodeId),
-    Import(Vec<ViewPath>)
+    Import(ViewPath)
 }
 
 impl Clean<ViewItemInner> for ast::ViewItem_ {
@@ -1099,7 +1099,7 @@ impl Clean<ViewItemInner> for ast::ViewItem_ {
                 ExternCrate(i.clean(), string, *id)
             }
             &ast::ViewItemUse(ref vp) => {
-                Import(vp.clean().move_iter().collect())
+                Import(vp.clean())
             }
         }
     }
