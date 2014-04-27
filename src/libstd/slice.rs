@@ -307,6 +307,7 @@ pub struct ElementSwaps {
     sdir: ~[SizeDirection],
     /// If true, emit the last swap that returns the sequence to initial state
     emit_reset: bool,
+    swaps_made : uint,
 }
 
 impl ElementSwaps {
@@ -319,7 +320,8 @@ impl ElementSwaps {
             emit_reset: true,
             sdir: range(0, length)
                     .map(|i| SizeDirection{ size: i, dir: Neg })
-                    .collect::<~[_]>()
+                    .collect::<~[_]>(),
+            swaps_made: 0
         }
     }
 }
@@ -358,15 +360,29 @@ impl Iterator<(uint, uint)> for ElementSwaps {
                         x.dir = match x.dir { Pos => Neg, Neg => Pos };
                     }
                 }
+                self.swaps_made += 1;
                 Some((i, j))
             },
-            None => if self.emit_reset && self.sdir.len() > 1 {
+            None => if self.emit_reset {
                 self.emit_reset = false;
-                Some((0, 1))
-            } else {
-                None
-            }
+                if self.sdir.len() > 1 {
+                    // The last swap
+                    self.swaps_made += 1;
+                    Some((0, 1))
+                } else {
+                    // Vector is of the form [] or [x], and the only permutation is itself
+                    self.swaps_made += 1;
+                    Some((0,0))
+                }
+            } else { None }
         }
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        // For a vector of size n, there are exactly n! permutations.
+        let n = range(2, self.sdir.len() + 1).product();
+        (n - self.swaps_made, Some(n - self.swaps_made))
     }
 }
 
@@ -388,12 +404,18 @@ impl<T: Clone> Iterator<~[T]> for Permutations<T> {
     fn next(&mut self) -> Option<~[T]> {
         match self.swaps.next() {
             None => None,
+            Some((0,0)) => Some(self.v.clone()),
             Some((a, b)) => {
                 let elt = self.v.clone();
                 self.v.swap(a, b);
                 Some(elt)
             }
         }
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        self.swaps.size_hint()
     }
 }
 
@@ -2767,19 +2789,33 @@ mod tests {
         {
             let v: [int, ..0] = [];
             let mut it = v.permutations();
+            let (min_size, max_opt) = it.size_hint();
+            assert_eq!(min_size, 1);
+            assert_eq!(max_opt.unwrap(), 1);
+            assert_eq!(it.next(), Some(v.as_slice().to_owned()));
             assert_eq!(it.next(), None);
         }
         {
             let v = ["Hello".to_owned()];
             let mut it = v.permutations();
+            let (min_size, max_opt) = it.size_hint();
+            assert_eq!(min_size, 1);
+            assert_eq!(max_opt.unwrap(), 1);
+            assert_eq!(it.next(), Some(v.as_slice().to_owned()));
             assert_eq!(it.next(), None);
         }
         {
             let v = [1, 2, 3];
             let mut it = v.permutations();
+            let (min_size, max_opt) = it.size_hint();
+            assert_eq!(min_size, 3*2);
+            assert_eq!(max_opt.unwrap(), 3*2);
             assert_eq!(it.next(), Some(~[1,2,3]));
             assert_eq!(it.next(), Some(~[1,3,2]));
             assert_eq!(it.next(), Some(~[3,1,2]));
+            let (min_size, max_opt) = it.size_hint();
+            assert_eq!(min_size, 3);
+            assert_eq!(max_opt.unwrap(), 3);
             assert_eq!(it.next(), Some(~[3,2,1]));
             assert_eq!(it.next(), Some(~[2,3,1]));
             assert_eq!(it.next(), Some(~[2,1,3]));
@@ -2789,10 +2825,15 @@ mod tests {
             // check that we have N! permutations
             let v = ['A', 'B', 'C', 'D', 'E', 'F'];
             let mut amt = 0;
-            for _perm in v.permutations() {
+            let mut it = v.permutations();
+            let (min_size, max_opt) = it.size_hint();
+            for _perm in it {
                 amt += 1;
             }
+            assert_eq!(amt, it.swaps.swaps_made);
+            assert_eq!(amt, min_size);
             assert_eq!(amt, 2 * 3 * 4 * 5 * 6);
+            assert_eq!(amt, max_opt.unwrap());
         }
     }
 
