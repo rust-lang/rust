@@ -22,8 +22,8 @@ Some examples that demonstrate different aspects of the language:
 
 [sprocketnes]: https://github.com/pcwalton/sprocketnes
 [hash]: https://github.com/mozilla/rust/blob/master/src/libstd/hash.rs
-[HashMap]: https://github.com/mozilla/rust/blob/master/src/libstd/hashmap.rs
-[json]: https://github.com/mozilla/rust/blob/master/src/libextra/json.rs
+[HashMap]: https://github.com/mozilla/rust/blob/master/src/libcollections/hashmap.rs
+[json]: https://github.com/mozilla/rust/blob/master/src/libserialize/json.rs
 
 You may also be interested in browsing [GitHub's Rust][github-rust] page.
 
