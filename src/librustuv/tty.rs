@@ -87,7 +87,7 @@ impl RtioTTY for TtyWatcher {
 
     fn write(&mut self, buf: &[u8]) -> Result<(), IoError> {
         let _m = self.fire_homing_missile();
-        self.stream.write(buf).map_err(uv_error_to_io_error)
+        self.stream.write(buf, false).map_err(uv_error_to_io_error)
     }
 
     fn set_raw(&mut self, raw: bool) -> Result<(), IoError> {
