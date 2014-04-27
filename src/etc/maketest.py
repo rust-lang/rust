@@ -12,26 +12,53 @@ import subprocess
 import os
 import sys
 
-# FIXME #12303 these tests are broken on windows
-if os.name == 'nt':
-    print 'ignoring make tests on windows'
-    sys.exit(0)
+# msys1/msys2 automatically converts `/abs/path1:/abs/path2` into
+# `c:\real\abs\path1;c:\real\abs\path2` (semicolons) if shell thinks
+# the value is list of paths.
+# this causes great confusion and error: shell and Makefile doesn't like
+# windows paths so it is really error-prone. revert it for peace.
+def normalize_path(v):
+    # c:\path -> /c/path
+    if ':\\' in v:
+        v = '/' + v.replace(':\\', '/')
+    v = v.replace('\\', '/')
+    return v
+
+
+def putenv(name, value):
+    if os.name == 'nt':
+        value = normalize_path(value)
+    os.putenv(name, value)
+
 
 make = sys.argv[2]
-os.putenv('RUSTC', os.path.abspath(sys.argv[3]))
-os.putenv('TMPDIR', os.path.abspath(sys.argv[4]))
-os.putenv('CC', sys.argv[5])
-os.putenv('RUSTDOC', os.path.abspath(sys.argv[6]))
+putenv('RUSTC', os.path.abspath(sys.argv[3]))
+putenv('TMPDIR', os.path.abspath(sys.argv[4]))
+putenv('CC', sys.argv[5])
+putenv('RUSTDOC', os.path.abspath(sys.argv[6]))
 filt = sys.argv[7]
 ldpath = sys.argv[8]
 if ldpath != '':
-    os.putenv(ldpath.split('=')[0], ldpath.split('=')[1])
+    name = ldpath.split('=')[0]
+    value = ldpath.split('=')[1]
+    if os.name == 'nt' and name != 'PATH':
+        value = ":".join(normalize_path(v) for v in value.split(";"))
+    os.putenv(name, value)
 
 if not filt in sys.argv[1]:
     sys.exit(0)
 print('maketest: ' + os.path.basename(os.path.dirname(sys.argv[1])))
 
-proc = subprocess.Popen([make, '-C', sys.argv[1]],
+path = sys.argv[1]
+if path[-1] == '/':
+    # msys1 has a bug that `make` fails to include `../tools.mk` (parent dir)
+    # if `-C path` option is given and `path` is absolute directory with
+    # trailing slash (`c:/path/to/test/`).
+    # the easist workaround is to remove the slash (`c:/path/to/test`).
+    # msys2 seems to fix this problem.
+    path = path[:-1]
+
+proc = subprocess.Popen([make, '-C', path],
                         stdout = subprocess.PIPE,
                         stderr = subprocess.PIPE)
 out, err = proc.communicate()

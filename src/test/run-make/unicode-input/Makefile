@@ -1,5 +1,8 @@
 -include ../tools.mk
 
+# FIXME ignore windows
+ifndef IS_WINDOWS
+
 all:
 	# check that we don't ICE on unicode input, issue #11178
 	$(RUSTC) multiple_files.rs
@@ -9,3 +12,8 @@ all:
 	# correct length. issue #8706
 	$(RUSTC) span_length.rs
 	$(call RUN,span_length) "$(RUSTC)" "$(TMPDIR)"
+
+else
+all:
+
+endif
