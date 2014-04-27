@@ -219,7 +219,11 @@ nav.sub {
 
 .content .source-link {
     float: right;
-    font-size: 23px;
+    font-size: 90%;
+    font-weight: 400;
+    border-radius: 3px;
+    padding: 2px 10px;
+    background-color: #ddd;
 }
 
 .content table {
@@ -361,9 +365,11 @@ a {
 }
 
 .stability {
-    border-left: 6px solid #000;
-    border-radius: 3px;
-    padding: 2px 10px;
+    font-size: 90%;
+    font-weight: 400;
+    font-style: italic;
+    border-bottom: 2px solid #000;
+    padding: 2px 5px;
     text-transform: lowercase;
     margin-left: 10px;
 }
