@@ -1408,7 +1408,21 @@ pub fn standard_error(kind: IoErrorKind) -> IoError {
         EndOfFile => "end of file",
         IoUnavailable => "I/O is unavailable",
         InvalidInput => "invalid input",
-        _ => fail!()
+        OtherIoError => "unknown I/O error",
+        FileNotFound => "file not found",
+        PermissionDenied => "permission denied",
+        ConnectionFailed => "connection failed",
+        Closed => "stream is closed",
+        ConnectionRefused => "connection refused",
+        ConnectionReset => "connection reset",
+        ConnectionAborted => "connection aborted",
+        NotConnected => "not connected",
+        BrokenPipe => "broken pipe",
+        PathAlreadyExists => "file exists",
+        PathDoesntExist => "no such file",
+        MismatchedFileTypeForOperation => "mismatched file type",
+        ResourceUnavailable => "resource unavailable",
+        TimedOut => "operation timed out"
     };
     IoError {
         kind: kind,
