@@ -31,7 +31,7 @@ pub struct Guard<'a> {
 }
 
 struct Inner {
-    queue: Vec<BlockedTask>,
+    queue: Vec<(BlockedTask, uint)>,
     held: bool,
     closed: bool,
 }
@@ -47,16 +47,17 @@ impl Access {
         }
     }
 
-    pub fn grant<'a>(&'a mut self, missile: HomingMissile) -> Guard<'a> {
+    pub fn grant<'a>(&'a mut self, token: uint,
+                     missile: HomingMissile) -> Guard<'a> {
         // This unsafety is actually OK because the homing missile argument
         // guarantees that we're on the same event loop as all the other objects
         // attempting to get access granted.
-        let inner: &mut Inner = unsafe { cast::transmute(self.inner.get()) };
+        let inner: &mut Inner = unsafe { &mut *self.inner.get() };
 
         if inner.held {
             let t: Box<Task> = Local::take();
             t.deschedule(1, |task| {
-                inner.queue.push(task);
+                inner.queue.push((task, token));
                 Ok(())
             });
             assert!(inner.held);
@@ -74,6 +75,17 @@ impl Access {
         // everyone's running on the same thread and has already done the
         // necessary synchronization to be running on this thread.
         unsafe { (*self.inner.get()).closed = true; }
+    }
+
+    // Dequeue a blocked task with a specified token. This is unsafe because it
+    // is only safe to invoke while on the home event loop, and there is no
+    // guarantee that this i being invoked on the home event loop.
+    pub unsafe fn dequeue(&mut self, token: uint) -> Option<BlockedTask> {
+        let inner: &mut Inner = &mut *self.inner.get();
+        match inner.queue.iter().position(|&(_, t)| t == token) {
+            Some(i) => Some(inner.queue.remove(i).unwrap().val0()),
+            None => None,
+        }
     }
 }
 
@@ -111,9 +123,9 @@ impl<'a> Drop for Guard<'a> {
             // scheduled on this scheduler. Because we might be woken up on some
             // other scheduler, we drop our homing missile before we reawaken
             // the task.
-            Some(task) => {
+            Some((task, _)) => {
                 drop(self.missile.take());
-                let _ = task.wake().map(|t| t.reawaken());
+                task.reawaken();
             }
             None => { inner.held = false; }
         }
