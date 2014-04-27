@@ -202,6 +202,10 @@ nav.sub {
     white-space: nowrap;
     text-overflow: ellipsis;
 }
+
+.docblock a { color: #4e8bca; }
+.docblock a:hover { text-decoration: underline; }
+
 .docblock.short p {
     overflow: hidden;
     text-overflow: ellipsis;
