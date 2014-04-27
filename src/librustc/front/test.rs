@@ -299,9 +299,9 @@ fn mk_std(cx: &TestCtxt) -> ast::ViewItem {
     let id_test = token::str_to_ident("test");
     let (vi, vis) = if cx.is_test_crate {
         (ast::ViewItemUse(
-            vec!(@nospan(ast::ViewPathSimple(id_test,
-                                             path_node(vec!(id_test)),
-                                             ast::DUMMY_NODE_ID)))),
+            @nospan(ast::ViewPathSimple(id_test,
+                                        path_node(vec!(id_test)),
+                                        ast::DUMMY_NODE_ID))),
          ast::Public)
     } else {
         (ast::ViewItemExternCrate(id_test,

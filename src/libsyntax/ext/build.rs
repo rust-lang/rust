@@ -246,7 +246,7 @@ pub trait AstBuilder {
                        -> @ast::MetaItem;
 
     fn view_use(&self, sp: Span,
-                vis: ast::Visibility, vp: Vec<@ast::ViewPath> ) -> ast::ViewItem;
+                vis: ast::Visibility, vp: @ast::ViewPath) -> ast::ViewItem;
     fn view_use_simple(&self, sp: Span, vis: ast::Visibility, path: ast::Path) -> ast::ViewItem;
     fn view_use_simple_(&self, sp: Span, vis: ast::Visibility,
                         ident: ast::Ident, path: ast::Path) -> ast::ViewItem;
@@ -949,7 +949,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 
     fn view_use(&self, sp: Span,
-                vis: ast::Visibility, vp: Vec<@ast::ViewPath> ) -> ast::ViewItem {
+                vis: ast::Visibility, vp: @ast::ViewPath) -> ast::ViewItem {
         ast::ViewItem {
             node: ast::ViewItemUse(vp),
             attrs: Vec::new(),
@@ -966,10 +966,10 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     fn view_use_simple_(&self, sp: Span, vis: ast::Visibility,
                         ident: ast::Ident, path: ast::Path) -> ast::ViewItem {
         self.view_use(sp, vis,
-                      vec!(@respan(sp,
-                                ast::ViewPathSimple(ident,
-                                                    path,
-                                                    ast::DUMMY_NODE_ID))))
+                      @respan(sp,
+                           ast::ViewPathSimple(ident,
+                                               path,
+                                               ast::DUMMY_NODE_ID)))
     }
 
     fn view_use_list(&self, sp: Span, vis: ast::Visibility,
@@ -979,17 +979,17 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         }).collect();
 
         self.view_use(sp, vis,
-                      vec!(@respan(sp,
-                                ast::ViewPathList(self.path(sp, path),
-                                                  imports,
-                                                  ast::DUMMY_NODE_ID))))
+                      @respan(sp,
+                           ast::ViewPathList(self.path(sp, path),
+                                             imports,
+                                             ast::DUMMY_NODE_ID)))
     }
 
     fn view_use_glob(&self, sp: Span,
                      vis: ast::Visibility, path: Vec<ast::Ident> ) -> ast::ViewItem {
         self.view_use(sp, vis,
-                      vec!(@respan(sp,
-                                ast::ViewPathGlob(self.path(sp, path), ast::DUMMY_NODE_ID))))
+                      @respan(sp,
+                           ast::ViewPathGlob(self.path(sp, path), ast::DUMMY_NODE_ID)))
     }
 }
 

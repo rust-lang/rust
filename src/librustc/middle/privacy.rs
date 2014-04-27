@@ -872,26 +872,24 @@ impl<'a> Visitor<()> for PrivacyVisitor<'a> {
     fn visit_view_item(&mut self, a: &ast::ViewItem, _: ()) {
         match a.node {
             ast::ViewItemExternCrate(..) => {}
-            ast::ViewItemUse(ref uses) => {
-                for vpath in uses.iter() {
-                    match vpath.node {
-                        ast::ViewPathSimple(..) | ast::ViewPathGlob(..) => {}
-                        ast::ViewPathList(_, ref list, _) => {
-                            for pid in list.iter() {
-                                debug!("privacy - list {}", pid.node.id);
-                                let seg = ast::PathSegment {
-                                    identifier: pid.node.name,
-                                    lifetimes: Vec::new(),
-                                    types: OwnedSlice::empty(),
-                                };
-                                let segs = vec!(seg);
-                                let path = ast::Path {
-                                    global: false,
-                                    span: pid.span,
-                                    segments: segs,
-                                };
-                                self.check_path(pid.span, pid.node.id, &path);
-                            }
+            ast::ViewItemUse(ref vpath) => {
+                match vpath.node {
+                    ast::ViewPathSimple(..) | ast::ViewPathGlob(..) => {}
+                    ast::ViewPathList(_, ref list, _) => {
+                        for pid in list.iter() {
+                            debug!("privacy - list {}", pid.node.id);
+                            let seg = ast::PathSegment {
+                                identifier: pid.node.name,
+                                lifetimes: Vec::new(),
+                                types: OwnedSlice::empty(),
+                            };
+                            let segs = vec!(seg);
+                            let path = ast::Path {
+                                global: false,
+                                span: pid.span,
+                                segments: segs,
+                            };
+                            self.check_path(pid.span, pid.node.id, &path);
                         }
                     }
                 }

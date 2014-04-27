@@ -34,6 +34,9 @@ use std::io::{File, MemWriter};
 use std::str;
 use serialize::{json, Decodable, Encodable};
 
+// reexported from `clean` so it can be easily updated with the mod itself
+pub use clean::SCHEMA_VERSION;
+
 pub mod clean;
 pub mod core;
 pub mod doctree;
@@ -54,8 +57,6 @@ pub mod plugins;
 pub mod visit_ast;
 pub mod test;
 mod flock;
-
-pub static SCHEMA_VERSION: &'static str = "0.8.1";
 
 type Pass = (&'static str,                                      // name
              fn(clean::Crate) -> plugins::PluginResult,         // fn

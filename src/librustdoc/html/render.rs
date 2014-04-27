@@ -1167,12 +1167,10 @@ fn item_module(w: &mut Writer, cx: &Context,
                         try!(write!(w, ";</code></td></tr>"));
                     }
 
-                    clean::Import(ref imports) => {
-                        for import in imports.iter() {
-                            try!(write!(w, "<tr><td><code>{}{}</code></td></tr>",
-                                          VisSpace(myitem.visibility),
-                                          *import));
-                        }
+                    clean::Import(ref import) => {
+                        try!(write!(w, "<tr><td><code>{}{}</code></td></tr>",
+                                      VisSpace(myitem.visibility),
+                                      *import));
                     }
                 }
 

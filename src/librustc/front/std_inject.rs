@@ -166,7 +166,7 @@ impl<'a> fold::Folder for PreludeInjector<'a> {
 
         let vp = @codemap::dummy_spanned(ast::ViewPathGlob(prelude_path, ast::DUMMY_NODE_ID));
         let vi2 = ast::ViewItem {
-            node: ast::ViewItemUse(vec!(vp)),
+            node: ast::ViewItemUse(vp),
             attrs: Vec::new(),
             vis: ast::Inherited,
             span: DUMMY_SP,
