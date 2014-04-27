@@ -306,7 +306,7 @@ pub trait Iterator<A> {
         Take{iter: self, n: n}
     }
 
-    /// Creates a new iterator which behaves in a similar fashion to foldl.
+    /// Creates a new iterator which behaves in a similar fashion to fold.
     /// There is a state which is passed between each iteration and can be
     /// mutated as necessary. The yielded values from the closure are yielded
     /// from the Scan instance when not None.
