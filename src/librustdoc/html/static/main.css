@@ -224,7 +224,11 @@ nav.sub {
 
 .content .source-link {
     float: right;
-    font-size: 23px;
+    font-size: 90%;
+    font-weight: 400;
+    border-radius: 3px;
+    padding: 2px 10px;
+    background-color: #ddd;
 }
 
 .content table {
@@ -372,6 +376,10 @@ p a:hover { text-decoration: underline; }
     border-radius: 3px;
     font-weight: 400;
     padding: 4px 10px;
+    font-size: 90%;
+    font-style: italic;
+    border-bottom: 2px solid #000;
+    padding: 2px 5px;
     text-transform: lowercase;
     margin-left: 14px;
 }
