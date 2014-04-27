@@ -1417,71 +1417,69 @@ impl<'a> Resolver<'a> {
     fn build_reduced_graph_for_view_item(&mut self, view_item: &ViewItem,
                                          parent: ReducedGraphParent) {
         match view_item.node {
-            ViewItemUse(ref view_paths) => {
-                for view_path in view_paths.iter() {
-                    // Extract and intern the module part of the path. For
-                    // globs and lists, the path is found directly in the AST;
-                    // for simple paths we have to munge the path a little.
+            ViewItemUse(ref view_path) => {
+                // Extract and intern the module part of the path. For
+                // globs and lists, the path is found directly in the AST;
+                // for simple paths we have to munge the path a little.
 
-                    let mut module_path = Vec::new();
-                    match view_path.node {
-                        ViewPathSimple(_, ref full_path, _) => {
-                            let path_len = full_path.segments.len();
-                            assert!(path_len != 0);
+                let mut module_path = Vec::new();
+                match view_path.node {
+                    ViewPathSimple(_, ref full_path, _) => {
+                        let path_len = full_path.segments.len();
+                        assert!(path_len != 0);
 
-                            for (i, segment) in full_path.segments
-                                                         .iter()
-                                                         .enumerate() {
-                                if i != path_len - 1 {
-                                    module_path.push(segment.identifier)
-                                }
-                            }
-                        }
-
-                        ViewPathGlob(ref module_ident_path, _) |
-                        ViewPathList(ref module_ident_path, _, _) => {
-                            for segment in module_ident_path.segments.iter() {
+                        for (i, segment) in full_path.segments
+                                                     .iter()
+                                                     .enumerate() {
+                            if i != path_len - 1 {
                                 module_path.push(segment.identifier)
                             }
                         }
                     }
 
-                    // Build up the import directives.
-                    let module_ = parent.module();
-                    let is_public = view_item.vis == ast::Public;
-                    match view_path.node {
-                        ViewPathSimple(binding, ref full_path, id) => {
-                            let source_ident =
-                                full_path.segments.last().unwrap().identifier;
-                            let subclass = SingleImport(binding,
-                                                        source_ident);
-                            self.build_import_directive(&*module_,
-                                                        module_path,
-                                                        subclass,
-                                                        view_path.span,
-                                                        id,
-                                                        is_public);
+                    ViewPathGlob(ref module_ident_path, _) |
+                    ViewPathList(ref module_ident_path, _, _) => {
+                        for segment in module_ident_path.segments.iter() {
+                            module_path.push(segment.identifier)
                         }
-                        ViewPathList(_, ref source_idents, _) => {
-                            for source_ident in source_idents.iter() {
-                                let name = source_ident.node.name;
-                                self.build_import_directive(
-                                    &*module_,
-                                    module_path.clone(),
-                                    SingleImport(name, name),
-                                    source_ident.span,
-                                    source_ident.node.id,
-                                    is_public);
-                            }
+                    }
+                }
+
+                // Build up the import directives.
+                let module_ = parent.module();
+                let is_public = view_item.vis == ast::Public;
+                match view_path.node {
+                    ViewPathSimple(binding, ref full_path, id) => {
+                        let source_ident =
+                            full_path.segments.last().unwrap().identifier;
+                        let subclass = SingleImport(binding,
+                                                    source_ident);
+                        self.build_import_directive(&*module_,
+                                                    module_path,
+                                                    subclass,
+                                                    view_path.span,
+                                                    id,
+                                                    is_public);
+                    }
+                    ViewPathList(_, ref source_idents, _) => {
+                        for source_ident in source_idents.iter() {
+                            let name = source_ident.node.name;
+                            self.build_import_directive(
+                                &*module_,
+                                module_path.clone(),
+                                SingleImport(name, name),
+                                source_ident.span,
+                                source_ident.node.id,
+                                is_public);
                         }
-                        ViewPathGlob(_, id) => {
-                            self.build_import_directive(&*module_,
-                                                        module_path,
-                                                        GlobImport,
-                                                        view_path.span,
-                                                        id,
-                                                        is_public);
-                        }
+                    }
+                    ViewPathGlob(_, id) => {
+                        self.build_import_directive(&*module_,
+                                                    module_path,
+                                                    GlobImport,
+                                                    view_path.span,
+                                                    id,
+                                                    is_public);
                     }
                 }
             }
@@ -5226,23 +5224,21 @@ impl<'a> Resolver<'a> {
 
         match vi.node {
             ViewItemExternCrate(..) => {} // ignore
-            ViewItemUse(ref path) => {
-                for p in path.iter() {
-                    match p.node {
-                        ViewPathSimple(_, _, id) => self.finalize_import(id, p.span),
-                        ViewPathList(_, ref list, _) => {
-                            for i in list.iter() {
-                                self.finalize_import(i.node.id, i.span);
-                            }
-                        },
-                        ViewPathGlob(_, id) => {
-                            if !self.used_imports.contains(&(id, TypeNS)) &&
-                               !self.used_imports.contains(&(id, ValueNS)) {
-                                self.session.add_lint(UnusedImports, id, p.span,
-                                                      "unused import".to_owned());
-                            }
-                        },
-                    }
+            ViewItemUse(ref p) => {
+                match p.node {
+                    ViewPathSimple(_, _, id) => self.finalize_import(id, p.span),
+                    ViewPathList(_, ref list, _) => {
+                        for i in list.iter() {
+                            self.finalize_import(i.node.id, i.span);
+                        }
+                    },
+                    ViewPathGlob(_, id) => {
+                        if !self.used_imports.contains(&(id, TypeNS)) &&
+                           !self.used_imports.contains(&(id, ValueNS)) {
+                            self.session.add_lint(UnusedImports, id, p.span,
+                                                  "unused import".to_owned());
+                        }
+                    },
                 }
             }
         }

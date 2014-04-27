@@ -32,6 +32,10 @@ use core;
 use doctree;
 use visit_ast;
 
+/// A stable identifier to the particular version of JSON output.
+/// Increment this when the `Crate` and related structures change.
+pub static SCHEMA_VERSION: &'static str = "0.8.2";
+
 pub trait Clean<T> {
     fn clean(&self) -> T;
 }
@@ -1085,7 +1089,7 @@ impl Clean<Item> for ast::ViewItem {
 #[deriving(Clone, Encodable, Decodable)]
 pub enum ViewItemInner {
     ExternCrate(~str, Option<~str>, ast::NodeId),
-    Import(Vec<ViewPath>)
+    Import(ViewPath)
 }
 
 impl Clean<ViewItemInner> for ast::ViewItem_ {
@@ -1099,7 +1103,7 @@ impl Clean<ViewItemInner> for ast::ViewItem_ {
                 ExternCrate(i.clean(), string, *id)
             }
             &ast::ViewItemUse(ref vp) => {
-                Import(vp.clean().move_iter().collect())
+                Import(vp.clean())
             }
         }
     }
