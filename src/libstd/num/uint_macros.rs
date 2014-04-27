@@ -148,16 +148,15 @@ impl Int for $T {}
 
 // String conversion functions and impl str -> num
 
-/// Parse a byte slice as a number in the given base.
+/// Parse a byte slice as a number in the given base
 ///
 /// Yields an `Option` because `buf` may or may not actually be parseable.
 ///
 /// # Examples
 ///
-/// ```rust
-/// let digits = [49,50,51,52,53,54,55,56,57];
-/// let base   = 10;
-/// let num    = std::i64::parse_bytes(digits, base);
+/// ```
+/// let num = std::uint::parse_bytes([49,50,51,52,53,54,55,56,57], 10);
+/// assert!(num == Some(123456789));
 /// ```
 #[inline]
 pub fn parse_bytes(buf: &[u8], radix: uint) -> Option<$T> {
@@ -184,6 +183,16 @@ impl FromStrRadix for $T {
 // String conversion functions and impl num -> str
 
 /// Convert to a string as a byte slice in a given base.
+///
+/// Use in place of x.to_str() when you do not need to store the string permanently
+///
+/// # Examples
+///
+/// ```
+/// std::uint::to_str_bytes(123, 10, |v| {
+///     assert!(v == "123".as_bytes());
+/// });
+/// ```
 #[inline]
 pub fn to_str_bytes<U>(n: $T, radix: uint, f: |v: &[u8]| -> U) -> U {
     // The radix can be as low as 2, so we need at least 64 characters for a
