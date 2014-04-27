@@ -93,7 +93,7 @@ impl<T> RefCell<T> {
 
     /// Consumes the `RefCell`, returning the wrapped value.
     pub fn unwrap(self) -> T {
-        assert!(self.borrow.get() == UNUSED);
+        debug_assert!(self.borrow.get() == UNUSED);
         unsafe{self.value.unwrap()}
     }
 
@@ -181,7 +181,7 @@ pub struct Ref<'b, T> {
 impl<'b, T> Drop for Ref<'b, T> {
     fn drop(&mut self) {
         let borrow = self.parent.borrow.get();
-        assert!(borrow != WRITING && borrow != UNUSED);
+        debug_assert!(borrow != WRITING && borrow != UNUSED);
         self.parent.borrow.set(borrow - 1);
     }
 }
@@ -202,7 +202,7 @@ pub struct RefMut<'b, T> {
 impl<'b, T> Drop for RefMut<'b, T> {
     fn drop(&mut self) {
         let borrow = self.parent.borrow.get();
-        assert!(borrow == WRITING);
+        debug_assert!(borrow == WRITING);
         self.parent.borrow.set(UNUSED);
     }
 }
