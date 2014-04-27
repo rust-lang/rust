@@ -89,7 +89,7 @@ h3.impl, h3.method, h4.method {
 h3.impl, h3.method {
     margin-top: 15px;
 }
-h1, h2, h3, h4, section.sidebar, a.source, .search-input, .content table a {
+h1, h2, h3, h4, section.sidebar, .source-link, .search-input, .content table a {
     font-family: "Fira Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 
@@ -222,7 +222,7 @@ nav.sub {
 .docblock h2 { font-size: 1.15em; }
 .docblock h3, .docblock h4, .docblock h5 { font-size: 1em; }
 
-.content .source {
+.content .source-link {
     float: right;
     font-size: 23px;
 }

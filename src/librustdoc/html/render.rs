@@ -85,7 +85,7 @@ pub struct Context {
     /// header. This map will change depending on the surrounding context of the
     /// page.
     pub sidebar: HashMap<~str, Vec<~str> >,
-    /// This flag indicates whether [src] links should be generated or not. If
+    /// This flag indicates whether source links should be generated or not. If
     /// the source files are present in the html rendering, then this will be
     /// `true`.
     pub include_sources: bool,
@@ -974,39 +974,19 @@ impl<'a> fmt::Show for Item<'a> {
         }
         try!(write!(fmt.buf, "<a class='{}' href=''>{}</a>",
                       shortty(self.item), self.item.name.get_ref().as_slice()));
-
-        // Write stability attributes
-        match attr::find_stability(self.item.attrs.iter()) {
-            Some(ref stability) => {
-                try!(write!(fmt.buf,
-                       "<a class='stability {lvl}' title='{reason}'>{lvl}</a>",
-                       lvl = stability.level.to_str(),
-                       reason = match stability.text {
-                           Some(ref s) => (*s).clone(),
-                           None => InternedString::new(""),
-                       }));
-            }
-            None => {}
-        }
-
-        // Write `src` tag
-        if self.cx.include_sources {
-            try!(write!(fmt.buf, "<a class='source' href='{}'>[src]</a>",
-                        self.link()));
-        }
+        try!(self.cx.item_heading_aux(fmt.buf, self.item));
         try!(write!(fmt.buf, "</h1>\n"));
 
         match self.item.inner {
-            clean::ModuleItem(ref m) => {
-                item_module(fmt.buf, self.cx, self.item, m.items.as_slice())
-            }
+            clean::ModuleItem(ref m) =>
+                self.cx.item_module(fmt.buf, self.item, m.items.as_slice()),
             clean::FunctionItem(ref f) | clean::ForeignFunctionItem(ref f) =>
-                item_function(fmt.buf, self.item, f),
-            clean::TraitItem(ref t) => item_trait(fmt.buf, self.item, t),
-            clean::StructItem(ref s) => item_struct(fmt.buf, self.item, s),
-            clean::EnumItem(ref e) => item_enum(fmt.buf, self.item, e),
-            clean::TypedefItem(ref t) => item_typedef(fmt.buf, self.item, t),
-            clean::MacroItem(ref m) => item_macro(fmt.buf, self.item, m),
+                self.cx.item_function(fmt.buf, self.item, f),
+            clean::TraitItem(ref t) => self.cx.item_trait(fmt.buf, self.item, t),
+            clean::StructItem(ref s) => self.cx.item_struct(fmt.buf, self.item, s),
+            clean::EnumItem(ref e) => self.cx.item_enum(fmt.buf, self.item, e),
+            clean::TypedefItem(ref t) => self.cx.item_typedef(fmt.buf, self.item, t),
+            clean::MacroItem(ref m) => self.cx.item_macro(fmt.buf, self.item, m),
             _ => Ok(())
         }
     }
@@ -1053,619 +1033,673 @@ fn document(w: &mut Writer, item: &clean::Item) -> fmt::Result {
     Ok(())
 }
 
-fn item_module(w: &mut Writer, cx: &Context,
-               item: &clean::Item, items: &[clean::Item]) -> fmt::Result {
-    try!(document(w, item));
-    debug!("{:?}", items);
-    let mut indices = Vec::from_fn(items.len(), |i| i);
-
-    fn cmp(i1: &clean::Item, i2: &clean::Item, idx1: uint, idx2: uint) -> Ordering {
-        if shortty(i1) == shortty(i2) {
-            return i1.name.cmp(&i2.name);
-        }
-        match (&i1.inner, &i2.inner) {
-            (&clean::ViewItemItem(ref a), &clean::ViewItemItem(ref b)) => {
-                match (&a.inner, &b.inner) {
-                    (&clean::ExternCrate(..), _) => Less,
-                    (_, &clean::ExternCrate(..)) => Greater,
-                    _ => idx1.cmp(&idx2),
-                }
+impl Context {
+    /// Renders auxiliary tags and links in the heading of given item.
+    /// Should be placed between the heading text and the closing tag.
+    fn item_heading_aux(&self, w: &mut Writer, item: &clean::Item) -> fmt::Result {
+        // Write stability attributes
+        match attr::find_stability(item.attrs.iter()) {
+            Some(ref stability) => {
+                try!(write!(w,
+                       "<a class='stability {lvl}' title='{reason}'>{lvl}</a>",
+                       lvl = stability.level.to_str(),
+                       reason = match stability.text {
+                           Some(ref s) => (*s).clone(),
+                           None => InternedString::new(""),
+                       }));
             }
-            (&clean::ViewItemItem(..), _) => Less,
-            (_, &clean::ViewItemItem(..)) => Greater,
-            (&clean::ModuleItem(..), _) => Less,
-            (_, &clean::ModuleItem(..)) => Greater,
-            (&clean::MacroItem(..), _) => Less,
-            (_, &clean::MacroItem(..)) => Greater,
-            (&clean::StructItem(..), _) => Less,
-            (_, &clean::StructItem(..)) => Greater,
-            (&clean::EnumItem(..), _) => Less,
-            (_, &clean::EnumItem(..)) => Greater,
-            (&clean::StaticItem(..), _) => Less,
-            (_, &clean::StaticItem(..)) => Greater,
-            (&clean::ForeignFunctionItem(..), _) => Less,
-            (_, &clean::ForeignFunctionItem(..)) => Greater,
-            (&clean::ForeignStaticItem(..), _) => Less,
-            (_, &clean::ForeignStaticItem(..)) => Greater,
-            (&clean::TraitItem(..), _) => Less,
-            (_, &clean::TraitItem(..)) => Greater,
-            (&clean::FunctionItem(..), _) => Less,
-            (_, &clean::FunctionItem(..)) => Greater,
-            (&clean::TypedefItem(..), _) => Less,
-            (_, &clean::TypedefItem(..)) => Greater,
-            _ => idx1.cmp(&idx2),
+            None => {}
         }
-    }
 
-    debug!("{:?}", indices);
-    indices.sort_by(|&i1, &i2| cmp(&items[i1], &items[i2], i1, i2));
-
-    debug!("{:?}", indices);
-    let mut curty = None;
-    for &idx in indices.iter() {
-        let myitem = &items[idx];
-
-        let myty = Some(shortty(myitem));
-        if myty != curty {
-            if curty.is_some() {
-                try!(write!(w, "</table>"));
-            }
-            curty = myty;
-            let (short, name) = match myitem.inner {
-                clean::ModuleItem(..)          => ("modules", "Modules"),
-                clean::StructItem(..)          => ("structs", "Structs"),
-                clean::EnumItem(..)            => ("enums", "Enums"),
-                clean::FunctionItem(..)        => ("functions", "Functions"),
-                clean::TypedefItem(..)         => ("types", "Type Definitions"),
-                clean::StaticItem(..)          => ("statics", "Statics"),
-                clean::TraitItem(..)           => ("traits", "Traits"),
-                clean::ImplItem(..)            => ("impls", "Implementations"),
-                clean::ViewItemItem(..)        => ("reexports", "Reexports"),
-                clean::TyMethodItem(..)        => ("tymethods", "Type Methods"),
-                clean::MethodItem(..)          => ("methods", "Methods"),
-                clean::StructFieldItem(..)     => ("fields", "Struct Fields"),
-                clean::VariantItem(..)         => ("variants", "Variants"),
-                clean::ForeignFunctionItem(..) => ("ffi-fns", "Foreign Functions"),
-                clean::ForeignStaticItem(..)   => ("ffi-statics", "Foreign Statics"),
-                clean::MacroItem(..)           => ("macros", "Macros"),
+        // Write `src` tag
+        if self.include_sources {
+            let mut path = Vec::new();
+            clean_srcpath(item.source.filename.as_bytes(), |component| {
+                path.push(component.to_owned());
+            });
+            let href = if item.source.loline == item.source.hiline {
+                format!("{}", item.source.loline)
+            } else {
+                format!("{}-{}", item.source.loline, item.source.hiline)
             };
-            try!(write!(w,
-                        "<h2 id='{id}' class='section-header'>\
-                        <a href=\"\\#{id}\">{name}</a></h2>\n<table>",
-                        id = short, name = name));
+            try!(write!(w, "<a class='source-link' \
+                              href='{root}src/{krate}/{path}.html\\#{href}'>\
+                              Source</a>",
+                          root = self.root_path,
+                          krate = self.layout.krate,
+                          path = path.connect("/"),
+                          href = href));
         }
 
-        match myitem.inner {
-            clean::StaticItem(ref s) | clean::ForeignStaticItem(ref s) => {
-                struct Initializer<'a>(&'a str, Item<'a>);
-                impl<'a> fmt::Show for Initializer<'a> {
-                    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                        let Initializer(s, item) = *self;
-                        if s.len() == 0 { return Ok(()); }
-                        try!(write!(f.buf, "<code> = </code>"));
-                        if s.contains("\n") {
-                            write!(f.buf,
-                                   "<a href='{}'>[definition]</a>",
-                                   item.link())
-                        } else {
-                            write!(f.buf, "<code>{}</code>", s.as_slice())
-                        }
-                    }
-                }
-
-                try!(write!(w, "
-                    <tr>
-                        <td><code>{}static {}: {}</code>{}</td>
-                        <td class='docblock'>{}&nbsp;</td>
-                    </tr>
-                ",
-                VisSpace(myitem.visibility),
-                *myitem.name.get_ref(),
-                s.type_,
-                Initializer(s.expr, Item { cx: cx, item: myitem }),
-                Markdown(blank(myitem.doc_value()))));
-            }
-
-            clean::ViewItemItem(ref item) => {
-                match item.inner {
-                    clean::ExternCrate(ref name, ref src, _) => {
-                        try!(write!(w, "<tr><td><code>extern crate {}",
-                                      name.as_slice()));
-                        match *src {
-                            Some(ref src) => try!(write!(w, " = \"{}\"",
-                                                           src.as_slice())),
-                            None => {}
-                        }
-                        try!(write!(w, ";</code></td></tr>"));
-                    }
-
-                    clean::Import(ref import) => {
-                        try!(write!(w, "<tr><td><code>{}{}</code></td></tr>",
-                                      VisSpace(myitem.visibility),
-                                      *import));
-                    }
-                }
-
-            }
-
-            _ => {
-                if myitem.name.is_none() { continue }
-                try!(write!(w, "
-                    <tr>
-                        <td><a class='{class}' href='{href}'
-                               title='{title}'>{}</a></td>
-                        <td class='docblock short'>{}</td>
-                    </tr>
-                ",
-                *myitem.name.get_ref(),
-                Markdown(shorter(myitem.doc_value())),
-                class = shortty(myitem),
-                href = item_path(myitem),
-                title = full_path(cx, myitem)));
-            }
-        }
-    }
-    write!(w, "</table>")
-}
-
-fn item_function(w: &mut Writer, it: &clean::Item,
-                 f: &clean::Function) -> fmt::Result {
-    try!(write!(w, "<pre class='rust fn'>{vis}{fn_style}fn \
-                    {name}{generics}{decl}</pre>",
-           vis = VisSpace(it.visibility),
-           fn_style = FnStyleSpace(f.fn_style),
-           name = it.name.get_ref().as_slice(),
-           generics = f.generics,
-           decl = f.decl));
-    document(w, it)
-}
-
-fn item_trait(w: &mut Writer, it: &clean::Item,
-              t: &clean::Trait) -> fmt::Result {
-    let mut parents = StrBuf::new();
-    if t.parents.len() > 0 {
-        parents.push_str(": ");
-        for (i, p) in t.parents.iter().enumerate() {
-            if i > 0 { parents.push_str(" + "); }
-            parents.push_str(format!("{}", *p));
-        }
-    }
-
-    // Output the trait definition
-    try!(write!(w, "<pre class='rust trait'>{}trait {}{}{} ",
-                  VisSpace(it.visibility),
-                  it.name.get_ref().as_slice(),
-                  t.generics,
-                  parents));
-    let required = t.methods.iter().filter(|m| m.is_req()).collect::<Vec<&clean::TraitMethod>>();
-    let provided = t.methods.iter().filter(|m| !m.is_req()).collect::<Vec<&clean::TraitMethod>>();
-
-    if t.methods.len() == 0 {
-        try!(write!(w, "\\{ \\}"));
-    } else {
-        try!(write!(w, "\\{\n"));
-        for m in required.iter() {
-            try!(write!(w, "    "));
-            try!(render_method(w, m.item()));
-            try!(write!(w, ";\n"));
-        }
-        if required.len() > 0 && provided.len() > 0 {
-            try!(w.write("\n".as_bytes()));
-        }
-        for m in provided.iter() {
-            try!(write!(w, "    "));
-            try!(render_method(w, m.item()));
-            try!(write!(w, " \\{ ... \\}\n"));
-        }
-        try!(write!(w, "\\}"));
-    }
-    try!(write!(w, "</pre>"));
-
-    // Trait documentation
-    try!(document(w, it));
-
-    fn meth(w: &mut Writer, m: &clean::TraitMethod) -> fmt::Result {
-        try!(write!(w, "<h3 id='{}.{}' class='method'><code>",
-                      shortty(m.item()),
-                      *m.item().name.get_ref()));
-        try!(render_method(w, m.item()));
-        try!(write!(w, "</code></h3>"));
-        try!(document(w, m.item()));
         Ok(())
     }
 
-    // Output the documentation for each function individually
-    if required.len() > 0 {
-        try!(write!(w, "
-            <h2 id='required-methods'>Required Methods</h2>
-            <div class='methods'>
-        "));
-        for m in required.iter() {
-            try!(meth(w, *m));
-        }
-        try!(write!(w, "</div>"));
-    }
-    if provided.len() > 0 {
-        try!(write!(w, "
-            <h2 id='provided-methods'>Provided Methods</h2>
-            <div class='methods'>
-        "));
-        for m in provided.iter() {
-            try!(meth(w, *m));
-        }
-        try!(write!(w, "</div>"));
-    }
+    fn item_module(&self, w: &mut Writer,
+                   item: &clean::Item, items: &[clean::Item]) -> fmt::Result {
+        try!(document(w, item));
+        debug!("{:?}", items);
+        let mut indices = Vec::from_fn(items.len(), |i| i);
 
-    match cache_key.get().unwrap().implementors.find(&it.id) {
-        Some(implementors) => {
-            try!(write!(w, "
-                <h2 id='implementors'>Implementors</h2>
-                <ul class='item-list'>
-            "));
-            for i in implementors.iter() {
-                match *i {
-                    PathType(ref ty) => {
-                        try!(write!(w, "<li><code>{}</code></li>", *ty));
-                    }
-                    OtherType(ref generics, ref trait_, ref for_) => {
-                        try!(write!(w, "<li><code>impl{} {} for {}</code></li>",
-                                      *generics, *trait_, *for_));
+        fn cmp(i1: &clean::Item, i2: &clean::Item, idx1: uint, idx2: uint) -> Ordering {
+            if shortty(i1) == shortty(i2) {
+                return i1.name.cmp(&i2.name);
+            }
+            match (&i1.inner, &i2.inner) {
+                (&clean::ViewItemItem(ref a), &clean::ViewItemItem(ref b)) => {
+                    match (&a.inner, &b.inner) {
+                        (&clean::ExternCrate(..), _) => Less,
+                        (_, &clean::ExternCrate(..)) => Greater,
+                        _ => idx1.cmp(&idx2),
                     }
                 }
+                (&clean::ViewItemItem(..), _) => Less,
+                (_, &clean::ViewItemItem(..)) => Greater,
+                (&clean::ModuleItem(..), _) => Less,
+                (_, &clean::ModuleItem(..)) => Greater,
+                (&clean::MacroItem(..), _) => Less,
+                (_, &clean::MacroItem(..)) => Greater,
+                (&clean::StructItem(..), _) => Less,
+                (_, &clean::StructItem(..)) => Greater,
+                (&clean::EnumItem(..), _) => Less,
+                (_, &clean::EnumItem(..)) => Greater,
+                (&clean::StaticItem(..), _) => Less,
+                (_, &clean::StaticItem(..)) => Greater,
+                (&clean::ForeignFunctionItem(..), _) => Less,
+                (_, &clean::ForeignFunctionItem(..)) => Greater,
+                (&clean::ForeignStaticItem(..), _) => Less,
+                (_, &clean::ForeignStaticItem(..)) => Greater,
+                (&clean::TraitItem(..), _) => Less,
+                (_, &clean::TraitItem(..)) => Greater,
+                (&clean::FunctionItem(..), _) => Less,
+                (_, &clean::FunctionItem(..)) => Greater,
+                (&clean::TypedefItem(..), _) => Less,
+                (_, &clean::TypedefItem(..)) => Greater,
+                _ => idx1.cmp(&idx2),
             }
-            try!(write!(w, "</ul>"));
         }
-        None => {}
-    }
-    Ok(())
-}
 
-fn render_method(w: &mut Writer, meth: &clean::Item) -> fmt::Result {
-    fn fun(w: &mut Writer, it: &clean::Item, fn_style: ast::FnStyle,
-           g: &clean::Generics, selfty: &clean::SelfTy,
-           d: &clean::FnDecl) -> fmt::Result {
-        write!(w, "{}fn <a href='\\#{ty}.{name}' class='fnname'>{name}</a>\
-                   {generics}{decl}",
-               match fn_style {
-                   ast::UnsafeFn => "unsafe ",
-                   _ => "",
-               },
-               ty = shortty(it),
-               name = it.name.get_ref().as_slice(),
-               generics = *g,
-               decl = Method(selfty, d))
-    }
-    match meth.inner {
-        clean::TyMethodItem(ref m) => {
-            fun(w, meth, m.fn_style, &m.generics, &m.self_, &m.decl)
-        }
-        clean::MethodItem(ref m) => {
-            fun(w, meth, m.fn_style, &m.generics, &m.self_, &m.decl)
-        }
-        _ => unreachable!()
-    }
-}
+        debug!("{:?}", indices);
+        indices.sort_by(|&i1, &i2| cmp(&items[i1], &items[i2], i1, i2));
 
-fn item_struct(w: &mut Writer, it: &clean::Item,
-               s: &clean::Struct) -> fmt::Result {
-    try!(write!(w, "<pre class='rust struct'>"));
-    try!(render_struct(w,
-                       it,
-                       Some(&s.generics),
-                       s.struct_type,
-                       s.fields.as_slice(),
-                       "",
-                       true));
-    try!(write!(w, "</pre>"));
+        debug!("{:?}", indices);
+        let mut curty = None;
+        for &idx in indices.iter() {
+            let myitem = &items[idx];
 
-    try!(document(w, it));
-    let mut fields = s.fields.iter().filter(|f| {
-        match f.inner {
-            clean::StructFieldItem(clean::HiddenStructField) => false,
-            clean::StructFieldItem(clean::TypedStructField(..)) => true,
-            _ => false,
-        }
-    }).peekable();
-    match s.struct_type {
-        doctree::Plain if fields.peek().is_some() => {
-            try!(write!(w, "<h2 class='fields'>Fields</h2>\n<table>"));
-            for field in fields {
-                try!(write!(w, "<tr><td id='structfield.{name}'>\
-                                  <code>{name}</code></td><td>",
-                              name = field.name.get_ref().as_slice()));
-                try!(document(w, field));
-                try!(write!(w, "</td></tr>"));
-            }
-            try!(write!(w, "</table>"));
-        }
-        _ => {}
-    }
-    render_methods(w, it)
-}
-
-fn item_enum(w: &mut Writer, it: &clean::Item, e: &clean::Enum) -> fmt::Result {
-    try!(write!(w, "<pre class='rust enum'>{}enum {}{}",
-                  VisSpace(it.visibility),
-                  it.name.get_ref().as_slice(),
-                  e.generics));
-    if e.variants.len() == 0 && !e.variants_stripped {
-        try!(write!(w, " \\{\\}"));
-    } else {
-        try!(write!(w, " \\{\n"));
-        for v in e.variants.iter() {
-            try!(write!(w, "    "));
-            let name = v.name.get_ref().as_slice();
-            match v.inner {
-                clean::VariantItem(ref var) => {
-                    match var.kind {
-                        clean::CLikeVariant => try!(write!(w, "{}", name)),
-                        clean::TupleVariant(ref tys) => {
-                            try!(write!(w, "{}(", name));
-                            for (i, ty) in tys.iter().enumerate() {
-                                if i > 0 {
-                                    try!(write!(w, ", "))
-                                }
-                                try!(write!(w, "{}", *ty));
-                            }
-                            try!(write!(w, ")"));
-                        }
-                        clean::StructVariant(ref s) => {
-                            try!(render_struct(w,
-                                               v,
-                                               None,
-                                               s.struct_type,
-                                               s.fields.as_slice(),
-                                               "    ",
-                                               false));
-                        }
-                    }
+            let myty = Some(shortty(myitem));
+            if myty != curty {
+                if curty.is_some() {
+                    try!(write!(w, "</table>"));
                 }
-                _ => unreachable!()
-            }
-            try!(write!(w, ",\n"));
-        }
-
-        if e.variants_stripped {
-            try!(write!(w, "    // some variants omitted\n"));
-        }
-        try!(write!(w, "\\}"));
-    }
-    try!(write!(w, "</pre>"));
-
-    try!(document(w, it));
-    if e.variants.len() > 0 {
-        try!(write!(w, "<h2 class='variants'>Variants</h2>\n<table>"));
-        for variant in e.variants.iter() {
-            try!(write!(w, "<tr><td id='variant.{name}'><code>{name}</code></td><td>",
-                          name = variant.name.get_ref().as_slice()));
-            try!(document(w, variant));
-            match variant.inner {
-                clean::VariantItem(ref var) => {
-                    match var.kind {
-                        clean::StructVariant(ref s) => {
-                            let mut fields = s.fields.iter().filter(|f| {
-                                match f.inner {
-                                    clean::StructFieldItem(ref t) => match *t {
-                                        clean::HiddenStructField => false,
-                                        clean::TypedStructField(..) => true,
-                                    },
-                                    _ => false,
-                                }
-                            });
-                            try!(write!(w, "<h3 class='fields'>Fields</h3>\n
-                                              <table>"));
-                            for field in fields {
-                                try!(write!(w, "<tr><td \
-                                                  id='variant.{v}.field.{f}'>\
-                                                  <code>{f}</code></td><td>",
-                                              v = variant.name.get_ref().as_slice(),
-                                              f = field.name.get_ref().as_slice()));
-                                try!(document(w, field));
-                                try!(write!(w, "</td></tr>"));
-                            }
-                            try!(write!(w, "</table>"));
-                        }
-                        _ => ()
-                    }
-                }
-                _ => ()
-            }
-            try!(write!(w, "</td></tr>"));
-        }
-        try!(write!(w, "</table>"));
-
-    }
-    try!(render_methods(w, it));
-    Ok(())
-}
-
-fn render_struct(w: &mut Writer, it: &clean::Item,
-                 g: Option<&clean::Generics>,
-                 ty: doctree::StructType,
-                 fields: &[clean::Item],
-                 tab: &str,
-                 structhead: bool) -> fmt::Result {
-    try!(write!(w, "{}{}{}",
-                  VisSpace(it.visibility),
-                  if structhead {"struct "} else {""},
-                  it.name.get_ref().as_slice()));
-    match g {
-        Some(g) => try!(write!(w, "{}", *g)),
-        None => {}
-    }
-    match ty {
-        doctree::Plain => {
-            try!(write!(w, " \\{\n{}", tab));
-            let mut fields_stripped = false;
-            for field in fields.iter() {
-                match field.inner {
-                    clean::StructFieldItem(clean::HiddenStructField) => {
-                        fields_stripped = true;
-                    }
-                    clean::StructFieldItem(clean::TypedStructField(ref ty)) => {
-                        try!(write!(w, "    {}{}: {},\n{}",
-                                      VisSpace(field.visibility),
-                                      field.name.get_ref().as_slice(),
-                                      *ty,
-                                      tab));
-                    }
-                    _ => unreachable!(),
+                curty = myty;
+                let (short, name) = match myitem.inner {
+                    clean::ModuleItem(..)          => ("modules", "Modules"),
+                    clean::StructItem(..)          => ("structs", "Structs"),
+                    clean::EnumItem(..)            => ("enums", "Enums"),
+                    clean::FunctionItem(..)        => ("functions", "Functions"),
+                    clean::TypedefItem(..)         => ("types", "Type Definitions"),
+                    clean::StaticItem(..)          => ("statics", "Statics"),
+                    clean::TraitItem(..)           => ("traits", "Traits"),
+                    clean::ImplItem(..)            => ("impls", "Implementations"),
+                    clean::ViewItemItem(..)        => ("reexports", "Reexports"),
+                    clean::TyMethodItem(..)        => ("tymethods", "Type Methods"),
+                    clean::MethodItem(..)          => ("methods", "Methods"),
+                    clean::StructFieldItem(..)     => ("fields", "Struct Fields"),
+                    clean::VariantItem(..)         => ("variants", "Variants"),
+                    clean::ForeignFunctionItem(..) => ("ffi-fns", "Foreign Functions"),
+                    clean::ForeignStaticItem(..)   => ("ffi-statics", "Foreign Statics"),
+                    clean::MacroItem(..)           => ("macros", "Macros"),
                 };
+                try!(write!(w,
+                           "<h2 id='{id}' class='section-header'>\
+                          <a href=\"\\#{id}\">{name}</a></h2>\n<table>",
+                          id = short, name = name));
             }
 
-            if fields_stripped {
-                try!(write!(w, "    // some fields omitted\n{}", tab));
+            match myitem.inner {
+                clean::StaticItem(ref s) | clean::ForeignStaticItem(ref s) => {
+                    struct Initializer<'a>(&'a str, Item<'a>);
+                    impl<'a> fmt::Show for Initializer<'a> {
+                        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                            let Initializer(s, item) = *self;
+                            if s.len() == 0 { return Ok(()); }
+                            try!(write!(f.buf, "<code> = </code>"));
+                            if s.contains("\n") {
+                                write!(f.buf,
+                                       "<a href='{}'>[definition]</a>",
+                                       item.link())
+                            } else {
+                                write!(f.buf, "<code>{}</code>", s.as_slice())
+                            }
+                        }
+                    }
+
+                    try!(write!(w, "
+                        <tr>
+                            <td><code>{}static {}: {}</code>{}</td>
+                            <td class='docblock'>{}&nbsp;</td>
+                        </tr>
+                    ",
+                    VisSpace(myitem.visibility),
+                    *myitem.name.get_ref(),
+                    s.type_,
+                    Initializer(s.expr, Item { cx: cx, item: myitem }),
+                    Markdown(blank(myitem.doc_value()))));
+                }
+
+                clean::ViewItemItem(ref item) => {
+                    match item.inner {
+                        clean::ExternCrate(ref name, ref src, _) => {
+                            try!(write!(w, "<tr><td><code>extern crate {}",
+                                          name.as_slice()));
+                            match *src {
+                                Some(ref src) => try!(write!(w, " = \"{}\"",
+                                                               src.as_slice())),
+                                None => {}
+                            }
+                            try!(write!(w, ";</code></td></tr>"));
+                        }
+
+                        clean::Import(ref import) => {
+                            try!(write!(w, "<tr><td><code>{}{}</code></td></tr>",
+                                          VisSpace(myitem.visibility),
+                                          *import));
+                        }
+                    }
+
+                }
+
+                _ => {
+                    if myitem.name.is_none() { continue }
+                    try!(write!(w, "
+                        <tr>
+                            <td><a class='{class}' href='{href}'
+                                   title='{title}'>{}</a></td>
+                            <td class='docblock short'>{}</td>
+                        </tr>
+                    ",
+                    *myitem.name.get_ref(),
+                    Markdown(shorter(myitem.doc_value())),
+                    class = shortty(myitem),
+                    href = item_path(myitem),
+                    title = full_path(cx, myitem)));
+                }
+            }
+        }
+        write!(w, "</table>")
+    }
+
+    fn item_function(&self, w: &mut Writer, it: &clean::Item,
+                     f: &clean::Function) -> fmt::Result {
+        try!(write!(w, "<pre class='rust fn'>{vis}{fn_style}fn \
+                        {name}{generics}{decl}</pre>",
+               vis = VisSpace(it.visibility),
+               fn_style = FnStyleSpace(f.fn_style),
+               name = it.name.get_ref().as_slice(),
+               generics = f.generics,
+               decl = f.decl));
+        document(w, it)
+    }
+
+    fn item_trait(&self, w: &mut Writer, it: &clean::Item,
+                  t: &clean::Trait) -> fmt::Result {
+        let mut parents = StrBuf::new();
+        if t.parents.len() > 0 {
+            parents.push_str(": ");
+            for (i, p) in t.parents.iter().enumerate() {
+                if i > 0 { parents.push_str(" + "); }
+                parents.push_str(format!("{}", *p));
+            }
+        }
+
+        // Output the trait definition
+        try!(write!(w, "<pre class='rust trait'>{}trait {}{}{} ",
+                      VisSpace(it.visibility),
+                      it.name.get_ref().as_slice(),
+                      t.generics,
+                      parents));
+        let required: Vec<&clean::TraitMethod> =
+            t.methods.iter().filter(|m| m.is_req()).collect();
+        let provided: Vec<&clean::TraitMethod> =
+            t.methods.iter().filter(|m| !m.is_req()).collect();
+
+        if t.methods.len() == 0 {
+            try!(write!(w, "\\{ \\}"));
+        } else {
+            try!(write!(w, "\\{\n"));
+            for m in required.iter() {
+                try!(write!(w, "    "));
+                try!(self.render_method(w, m.item()));
+                try!(write!(w, ";\n"));
+            }
+            if required.len() > 0 && provided.len() > 0 {
+                try!(w.write("\n".as_bytes()));
+            }
+            for m in provided.iter() {
+                try!(write!(w, "    "));
+                try!(self.render_method(w, m.item()));
+                try!(write!(w, " \\{ ... \\}\n"));
             }
             try!(write!(w, "\\}"));
         }
-        doctree::Tuple | doctree::Newtype => {
-            try!(write!(w, "("));
-            for (i, field) in fields.iter().enumerate() {
-                if i > 0 {
-                    try!(write!(w, ", "));
-                }
-                match field.inner {
-                    clean::StructFieldItem(clean::HiddenStructField) => {
-                        try!(write!(w, "_"))
+        try!(write!(w, "</pre>"));
+
+        // Trait documentation
+        try!(document(w, it));
+
+        fn meth(w: &mut Writer, cx: &Context, m: &clean::TraitMethod) -> fmt::Result {
+            try!(write!(w, "<h3 id='{}.{}' class='method'><code>",
+                          shortty(m.item()),
+                          *m.item().name.get_ref()));
+            try!(cx.render_method(w, m.item()));
+            try!(write!(w, "</code>"));
+            try!(cx.item_heading_aux(w, m.item()));
+            try!(write!(w, "</h3>"));
+            try!(document(w, m.item()));
+            Ok(())
+        }
+
+        // Output the documentation for each function individually
+        if required.len() > 0 {
+            try!(write!(w, "
+                <h2 id='required-methods'>Required Methods</h2>
+                <div class='methods'>
+            "));
+            for m in required.iter() {
+                try!(meth(w, self, *m));
+            }
+            try!(write!(w, "</div>"));
+        }
+        if provided.len() > 0 {
+            try!(write!(w, "
+                <h2 id='provided-methods'>Provided Methods</h2>
+                <div class='methods'>
+            "));
+            for m in provided.iter() {
+                try!(meth(w, self, *m));
+            }
+            try!(write!(w, "</div>"));
+        }
+
+        match cache_key.get().unwrap().implementors.find(&it.id) {
+            Some(implementors) => {
+                try!(write!(w, "
+                    <h2 id='implementors'>Implementors</h2>
+                    <ul class='item-list'>
+                "));
+                for i in implementors.iter() {
+                    match *i {
+                        PathType(ref ty) => {
+                            try!(write!(w, "<li><code>{}</code></li>", *ty));
+                        }
+                        OtherType(ref generics, ref trait_, ref for_) => {
+                            try!(write!(w, "<li><code>impl{} {} for {}</code></li>",
+                                          *generics, *trait_, *for_));
+                        }
                     }
-                    clean::StructFieldItem(clean::TypedStructField(ref ty)) => {
-                        try!(write!(w, "{}{}", VisSpace(field.visibility), *ty))
+                }
+                try!(write!(w, "</ul>"));
+            }
+            None => {}
+        }
+        Ok(())
+    }
+
+    fn render_method(&self, w: &mut Writer, meth: &clean::Item) -> fmt::Result {
+        fn fun(w: &mut Writer, it: &clean::Item, fn_style: ast::FnStyle,
+               g: &clean::Generics, selfty: &clean::SelfTy,
+               d: &clean::FnDecl) -> fmt::Result {
+            write!(w, "{}fn <a href='\\#{ty}.{name}' class='fnname'>{name}</a>\
+                       {generics}{decl}",
+                   match fn_style {
+                       ast::UnsafeFn => "unsafe ",
+                       _ => "",
+                   },
+                   ty = shortty(it),
+                   name = it.name.get_ref().as_slice(),
+                   generics = *g,
+                   decl = Method(selfty, d))
+        }
+        match meth.inner {
+            clean::TyMethodItem(ref m) => {
+                fun(w, meth, m.fn_style, &m.generics, &m.self_, &m.decl)
+            }
+            clean::MethodItem(ref m) => {
+                fun(w, meth, m.fn_style, &m.generics, &m.self_, &m.decl)
+            }
+            _ => unreachable!()
+        }
+    }
+
+    fn item_struct(&self, w: &mut Writer, it: &clean::Item,
+                   s: &clean::Struct) -> fmt::Result {
+        try!(write!(w, "<pre class='rust struct'>"));
+        try!(self.render_struct(w,
+                                it,
+                                Some(&s.generics),
+                                s.struct_type,
+                                s.fields.as_slice(),
+                                "",
+                                true));
+        try!(write!(w, "</pre>"));
+
+        try!(document(w, it));
+        let mut fields = s.fields.iter().filter(|f| {
+            match f.inner {
+                clean::StructFieldItem(clean::HiddenStructField) => false,
+                clean::StructFieldItem(clean::TypedStructField(..)) => true,
+                _ => false,
+            }
+        }).peekable();
+        match s.struct_type {
+            doctree::Plain if fields.peek().is_some() => {
+                try!(write!(w, "<h2 class='fields'>Fields</h2>\n<table>"));
+                for field in fields {
+                    try!(write!(w, "<tr><td id='structfield.{name}'>\
+                                      <code>{name}</code></td><td>",
+                                  name = field.name.get_ref().as_slice()));
+                    try!(document(w, field));
+                    try!(write!(w, "</td></tr>"));
+                }
+                try!(write!(w, "</table>"));
+            }
+            _ => {}
+        }
+        self.render_methods(w, it)
+    }
+
+    fn item_enum(&self, w: &mut Writer, it: &clean::Item, e: &clean::Enum) -> fmt::Result {
+        try!(write!(w, "<pre class='rust enum'>{}enum {}{}",
+                      VisSpace(it.visibility),
+                      it.name.get_ref().as_slice(),
+                      e.generics));
+        if e.variants.len() == 0 && !e.variants_stripped {
+            try!(write!(w, " \\{\\}"));
+        } else {
+            try!(write!(w, " \\{\n"));
+            for v in e.variants.iter() {
+                try!(write!(w, "    "));
+                let name = v.name.get_ref().as_slice();
+                match v.inner {
+                    clean::VariantItem(ref var) => {
+                        match var.kind {
+                            clean::CLikeVariant => try!(write!(w, "{}", name)),
+                            clean::TupleVariant(ref tys) => {
+                                try!(write!(w, "{}(", name));
+                                for (i, ty) in tys.iter().enumerate() {
+                                    if i > 0 {
+                                        try!(write!(w, ", "))
+                                    }
+                                    try!(write!(w, "{}", *ty));
+                                }
+                                try!(write!(w, ")"));
+                            }
+                            clean::StructVariant(ref s) => {
+                                try!(self.render_struct(w,
+                                                        v,
+                                                        None,
+                                                        s.struct_type,
+                                                        s.fields.as_slice(),
+                                                        "    ",
+                                                        false));
+                            }
+                        }
                     }
                     _ => unreachable!()
                 }
+                try!(write!(w, ",\n"));
             }
-            try!(write!(w, ");"));
-        }
-        doctree::Unit => {
-            try!(write!(w, ";"));
-        }
-    }
-    Ok(())
-}
 
-fn render_methods(w: &mut Writer, it: &clean::Item) -> fmt::Result {
-    match cache_key.get().unwrap().impls.find(&it.id) {
-        Some(v) => {
-            let mut non_trait = v.iter().filter(|p| {
-                p.ref0().trait_.is_none()
-            });
-            let non_trait = non_trait.collect::<Vec<&(clean::Impl, Option<~str>)>>();
-            let mut traits = v.iter().filter(|p| {
-                p.ref0().trait_.is_some()
-            });
-            let traits = traits.collect::<Vec<&(clean::Impl, Option<~str>)>>();
-
-            if non_trait.len() > 0 {
-                try!(write!(w, "<h2 id='methods'>Methods</h2>"));
-                for &(ref i, ref dox) in non_trait.move_iter() {
-                    try!(render_impl(w, i, dox));
-                }
+            if e.variants_stripped {
+                try!(write!(w, "    // some variants omitted\n"));
             }
-            if traits.len() > 0 {
-                try!(write!(w, "<h2 id='implementations'>Trait \
-                                  Implementations</h2>"));
-                let mut any_derived = false;
-                for & &(ref i, ref dox) in traits.iter() {
-                    if !i.derived {
-                        try!(render_impl(w, i, dox));
-                    } else {
-                        any_derived = true;
-                    }
-                }
-                if any_derived {
-                    try!(write!(w, "<h3 id='derived_implementations'>Derived Implementations \
-                                </h3>"));
-                    for &(ref i, ref dox) in traits.move_iter() {
-                        if i.derived {
-                            try!(render_impl(w, i, dox));
-                        }
-                    }
-                }
-            }
+            try!(write!(w, "\\}"));
         }
-        None => {}
-    }
-    Ok(())
-}
+        try!(write!(w, "</pre>"));
 
-fn render_impl(w: &mut Writer, i: &clean::Impl,
-               dox: &Option<~str>) -> fmt::Result {
-    try!(write!(w, "<h3 class='impl'><code>impl{} ", i.generics));
-    let trait_id = match i.trait_ {
-        Some(ref ty) => {
-            try!(write!(w, "{} for ", *ty));
-            match *ty {
-                clean::ResolvedPath { id, .. } => Some(id),
-                _ => None,
-            }
-        }
-        None => None
-    };
-    try!(write!(w, "{}</code></h3>", i.for_));
-    match *dox {
-        Some(ref dox) => {
-            try!(write!(w, "<div class='docblock'>{}</div>",
-                          Markdown(dox.as_slice())));
-        }
-        None => {}
-    }
-
-    fn docmeth(w: &mut Writer, item: &clean::Item,
-               dox: bool) -> io::IoResult<()> {
-        try!(write!(w, "<h4 id='method.{}' class='method'><code>",
-                      *item.name.get_ref()));
-        try!(render_method(w, item));
-        try!(write!(w, "</code></h4>\n"));
-        match item.doc_value() {
-            Some(s) if dox => {
-                try!(write!(w, "<div class='docblock'>{}</div>", Markdown(s)));
-                Ok(())
-            }
-            Some(..) | None => Ok(())
-        }
-    }
-
-    try!(write!(w, "<div class='methods'>"));
-    for meth in i.methods.iter() {
-        try!(docmeth(w, meth, true));
-    }
-
-    // If we've implemented a trait, then also emit documentation for all
-    // default methods which weren't overridden in the implementation block.
-    match trait_id {
-        None => {}
-        Some(id) => {
-            try!({
-                match cache_key.get().unwrap().traits.find(&id) {
-                    Some(t) => {
-                        for method in t.methods.iter() {
-                            let n = method.item().name.clone();
-                            match i.methods.iter().find(|m| m.name == n) {
-                                Some(..) => continue,
-                                None => {}
+        try!(document(w, it));
+        if e.variants.len() > 0 {
+            try!(write!(w, "<h2 class='variants'>Variants</h2>\n<table>"));
+            for variant in e.variants.iter() {
+                try!(write!(w, "<tr><td id='variant.{name}'><code>{name}</code></td><td>",
+                              name = variant.name.get_ref().as_slice()));
+                try!(document(w, variant));
+                match variant.inner {
+                    clean::VariantItem(ref var) => {
+                        match var.kind {
+                            clean::StructVariant(ref s) => {
+                                let mut fields = s.fields.iter().filter(|f| {
+                                    match f.inner {
+                                        clean::StructFieldItem(ref t) => match *t {
+                                            clean::HiddenStructField => false,
+                                            clean::TypedStructField(..) => true,
+                                        },
+                                        _ => false,
+                                    }
+                                });
+                                try!(write!(w, "<h3 class='fields'>Fields</h3>\n
+                                                  <table>"));
+                                for field in fields {
+                                    try!(write!(w, "<tr><td \
+                                                      id='variant.{v}.field.{f}'>\
+                                                      <code>{f}</code></td><td>",
+                                                  v = variant.name.get_ref().as_slice(),
+                                                  f = field.name.get_ref().as_slice()));
+                                    try!(document(w, field));
+                                    try!(write!(w, "</td></tr>"));
+                                }
+                                try!(write!(w, "</table>"));
                             }
-
-                            try!(docmeth(w, method.item(), false));
+                            _ => ()
                         }
                     }
-                    None => {}
+                    _ => ()
                 }
-                Ok(())
-            })
+                try!(write!(w, "</td></tr>"));
+            }
+            try!(write!(w, "</table>"));
+
         }
+        try!(self.render_methods(w, it));
+        Ok(())
     }
-    try!(write!(w, "</div>"));
-    Ok(())
-}
 
-fn item_typedef(w: &mut Writer, it: &clean::Item,
-                t: &clean::Typedef) -> fmt::Result {
-    try!(write!(w, "<pre class='rust typedef'>type {}{} = {};</pre>",
-                  it.name.get_ref().as_slice(),
-                  t.generics,
-                  t.type_));
+    fn render_struct(&self, w: &mut Writer, it: &clean::Item,
+                     g: Option<&clean::Generics>,
+                     ty: doctree::StructType,
+                     fields: &[clean::Item],
+                     tab: &str,
+                     structhead: bool) -> fmt::Result {
+        try!(write!(w, "{}{}{}",
+                      VisSpace(it.visibility),
+                      if structhead {"struct "} else {""},
+                      it.name.get_ref().as_slice()));
+        match g {
+            Some(g) => try!(write!(w, "{}", *g)),
+            None => {}
+        }
+        match ty {
+            doctree::Plain => {
+                try!(write!(w, " \\{\n{}", tab));
+                let mut fields_stripped = false;
+                for field in fields.iter() {
+                    match field.inner {
+                        clean::StructFieldItem(clean::HiddenStructField) => {
+                            fields_stripped = true;
+                        }
+                        clean::StructFieldItem(clean::TypedStructField(ref ty)) => {
+                            try!(write!(w, "    {}{}: {},\n{}",
+                                          VisSpace(field.visibility),
+                                          field.name.get_ref().as_slice(),
+                                          *ty,
+                                          tab));
+                        }
+                        _ => unreachable!(),
+                    };
+                }
 
-    document(w, it)
+                if fields_stripped {
+                    try!(write!(w, "    // some fields omitted\n{}", tab));
+                }
+                try!(write!(w, "\\}"));
+            }
+            doctree::Tuple | doctree::Newtype => {
+                try!(write!(w, "("));
+                for (i, field) in fields.iter().enumerate() {
+                    if i > 0 {
+                        try!(write!(w, ", "));
+                    }
+                    match field.inner {
+                        clean::StructFieldItem(clean::HiddenStructField) => {
+                            try!(write!(w, "_"))
+                        }
+                        clean::StructFieldItem(clean::TypedStructField(ref ty)) => {
+                            try!(write!(w, "{}{}", VisSpace(field.visibility), *ty))
+                        }
+                        _ => unreachable!()
+                    }
+                }
+                try!(write!(w, ");"));
+            }
+            doctree::Unit => {
+                try!(write!(w, ";"));
+            }
+        }
+        Ok(())
+    }
+
+    fn render_methods(&self, w: &mut Writer, it: &clean::Item) -> fmt::Result {
+        match cache_key.get().unwrap().impls.find(&it.id) {
+            Some(v) => {
+                let mut non_trait = v.iter().filter(|p| {
+                    p.ref0().trait_.is_none()
+                });
+                let non_trait = non_trait.collect::<Vec<&(clean::Impl, Option<~str>)>>();
+                let mut traits = v.iter().filter(|p| {
+                    p.ref0().trait_.is_some()
+                });
+                let traits = traits.collect::<Vec<&(clean::Impl, Option<~str>)>>();
+    
+                if non_trait.len() > 0 {
+                    try!(write!(w, "<h2 id='methods'>Methods</h2>"));
+                    for &(ref i, ref dox) in non_trait.move_iter() {
+                        try!(self.render_impl(w, i, dox));
+                    }
+                }
+                if traits.len() > 0 {
+                    try!(write!(w, "<h2 id='implementations'>Trait \
+                                      Implementations</h2>"));
+                    let mut any_derived = false;
+                    for & &(ref i, ref dox) in traits.iter() {
+                        if !i.derived {
+                            try!(self.render_impl(w, i, dox));
+                        } else {
+                            any_derived = true;
+                        }
+                    }
+                    if any_derived {
+                        try!(write!(w, "<h3 id='derived_implementations'>Derived \
+                                      Implementations</h3>"));
+                        for &(ref i, ref dox) in traits.move_iter() {
+                            if i.derived {
+                                try!(self.render_impl(w, i, dox));
+                            }
+                        }
+                    }
+                }
+            }
+            None => {}
+        }
+        Ok(())
+    }
+
+    fn render_impl(&self, w: &mut Writer, i: &clean::Impl,
+                   dox: &Option<~str>) -> fmt::Result {
+        try!(write!(w, "<h3 class='impl'><code>impl{} ", i.generics));
+        let trait_id = match i.trait_ {
+            Some(ref ty) => {
+                try!(write!(w, "{} for ", *ty));
+                match *ty {
+                    clean::ResolvedPath { id, .. } => Some(id),
+                    _ => None,
+                }
+            }
+            None => None
+        };
+        try!(write!(w, "{}</code></h3>", i.for_));
+        match *dox {
+            Some(ref dox) => {
+                try!(write!(w, "<div class='docblock'>{}</div>",
+                              Markdown(dox.as_slice())));
+            }
+            None => {}
+        }
+
+        fn docmeth(w: &mut Writer, cx: &Context,
+                   item: &clean::Item, dox: bool) -> io::IoResult<()> {
+            try!(write!(w, "<h4 id='method.{}' class='method'><code>",
+                          *item.name.get_ref()));
+            try!(cx.render_method(w, item));
+            try!(write!(w, "</code>"));
+            try!(cx.item_heading_aux(w, item));
+            try!(write!(w, "</h4>\n"));
+            match item.doc_value() {
+                Some(s) if dox => {
+                    try!(write!(w, "<div class='docblock'>{}</div>", Markdown(s)));
+                    Ok(())
+                }
+                Some(..) | None => Ok(())
+            }
+        }
+
+        try!(write!(w, "<div class='methods'>"));
+        for meth in i.methods.iter() {
+            try!(docmeth(w, self, meth, true));
+        }
+
+        // If we've implemented a trait, then also emit documentation for all
+        // default methods which weren't overridden in the implementation block.
+        match trait_id {
+            None => {}
+            Some(id) => {
+                try!({
+                    match cache_key.get().unwrap().traits.find(&id) {
+                        Some(t) => {
+                            for method in t.methods.iter() {
+                                let n = method.item().name.clone();
+                                match i.methods.iter().find(|m| m.name == n) {
+                                    Some(..) => continue,
+                                    None => {}
+                                }
+
+                                try!(docmeth(w, self, method.item(), false));
+                            }
+                        }
+                        None => {}
+                    }
+                    Ok(())
+                })
+            }
+        }
+        try!(write!(w, "</div>"));
+        Ok(())
+    }
+
+    fn item_typedef(&self, w: &mut Writer, it: &clean::Item,
+                    t: &clean::Typedef) -> fmt::Result {
+        try!(write!(w, "<pre class='rust typedef'>type {}{} = {};</pre>",
+                      it.name.get_ref().as_slice(),
+                      t.generics,
+                      t.type_));
+
+        document(w, it)
+    }
+
+    fn item_macro(&self, w: &mut Writer, it: &clean::Item,
+                  t: &clean::Macro) -> fmt::Result {
+        try!(w.write_str(highlight::highlight(t.source, Some("macro"))));
+        document(w, it)
+    }
 }
 
 impl<'a> fmt::Show for Sidebar<'a> {
@@ -1761,8 +1795,3 @@ impl<'a> fmt::Show for Source<'a> {
     }
 }
 
-fn item_macro(w: &mut Writer, it: &clean::Item,
-              t: &clean::Macro) -> fmt::Result {
-    try!(w.write_str(highlight::highlight(t.source, Some("macro"))));
-    document(w, it)
-}
