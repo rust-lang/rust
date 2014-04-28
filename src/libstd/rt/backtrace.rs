@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! Simple backtrace functionality (to print on failure)
+
 #![allow(non_camel_case_types)]
 
 use char::Char;
