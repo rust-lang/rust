@@ -223,6 +223,30 @@ opt() {
      fi
 }
 
+envopt() {
+    local NAME=$1
+    local V="CFG_${NAME}"
+    eval VV=\$$V
+
+    # If configure didn't set a value already, then check environment.
+    #
+    # (It is recommended that the configure script always check the
+    # environment before setting any values to envopt variables; see
+    # e.g.  how CFG_CC is handled, where it first checks `-z "$CC"`,
+    # and issues msg if it ends up employing that provided value.)
+    if [ -z "$VV" ]
+    then
+        eval $V=\$$NAME
+        eval VV=\$$V
+    fi
+
+    # If script or environment provided a value, save it.
+    if [ ! -z "$VV" ]
+    then
+        putvar $V
+    fi
+}
+
 msg "looking for configure programs"
 need_cmd cmp
 need_cmd mkdir
@@ -621,7 +645,7 @@ then
             if !((chk_cc gcc clang  && chk_cc g++ clang) ||
                 (chk_cc gcc gcc  &&( chk_cc g++ g++ || chk g++ gcc))) then
                 err "the gcc and g++ in your path point to different compilers.
-    Check which versions are in your path with  cc --version and g++ --version.
+    Check which versions are in your path with gcc --version and g++ --version.
     To resolve this problem, either fix your PATH  or run configure with --enable-clang"
             fi
 
@@ -646,40 +670,100 @@ then
     esac
 fi
 
+# Even when the user overrides the choice of CC, still try to detect
+# clang to disable some clang-specific warnings.  We here draw a
+# distinction between:
+#
+#  CFG_ENABLE_CLANG : passed --enable-clang, or host "requires" clang,
+#  CFG_USING_CLANG : compiler (clang / gcc / $CC) looks like clang.
+#
+# This distinction is important because there are some safeguards we
+# would prefer to skip when merely CFG_USING_CLANG is set; but when
+# CFG_ENABLE_CLANG is set, that indicates that we are opting into
+# running such safeguards.
+
+if [ ! -z "$CC" ]
+then
+    msg "skipping compiler inference steps; using provided CC=$CC"
+    CFG_CC="$CC"
+
+    CFG_OSX_CC_VERSION=$("$CFG_CC" --version 2>&1 | grep "clang")
+    if [ $? -eq 0 ]
+    then
+        step_msg "note, user-provided CC looks like clang; CC=$CC."
+        CFG_USING_CLANG=1
+        putvar CFG_USING_CLANG
+    fi
+else
+    if [ ! -z "$CFG_ENABLE_CLANG" ]
+    then
+        if [ -z "$CFG_CLANG" ]
+        then
+            err "clang requested but not found"
+        fi
+        CFG_CC="$CFG_CLANG"
+        CFG_USING_CLANG=1
+        putvar CFG_USING_CLANG
+    else
+        CFG_CC="gcc"
+    fi
+fi
+
 if [ ! -z "$CFG_ENABLE_CLANG" ]
 then
-    if [ -z "$CFG_CLANG" ]
+    if [ -z "$CC" ] || [[ $CC == *clang ]]
     then
-        err "clang requested but not found"
-    fi
-    CFG_CLANG_VERSION=$("$CFG_CLANG" \
-                      --version \
-                      | grep version \
-                      | sed 's/.*\(version .*\)/\1/; s/.*based on \(LLVM .*\))/\1/' \
-                      | cut -d ' ' -f 2)
+        CFG_CLANG_VERSION=$($CFG_CC \
+            --version \
+            | grep version \
+            | sed 's/.*\(version .*\)/\1/; s/.*based on \(LLVM .*\))/\1/' \
+            | cut -d ' ' -f 2)
 
-    case $CFG_CLANG_VERSION in
-        (3.0svn | 3.0 | 3.1* | 3.2* | 3.3* | 3.4* | 3.5* )
-        step_msg "found ok version of CLANG: $CFG_CLANG_VERSION"
-        CFG_C_COMPILER="clang"
-        ;;
-        (*)
-        err "bad CLANG version: $CFG_CLANG_VERSION, need >=3.0svn"
-        ;;
-    esac
-else
-    CFG_C_COMPILER="gcc"
+        case $CFG_CLANG_VERSION in
+            (3.0svn | 3.0 | 3.1* | 3.2* | 3.3* | 3.4* | 3.5* )
+            step_msg "found ok version of CLANG: $CFG_CLANG_VERSION"
+            if [ -z "$CC" ]
+            then
+                CFG_CC="clang"
+            fi
+            ;;
+            (*)
+            err "bad CLANG version: $CFG_CLANG_VERSION, need >=3.0svn"
+            ;;
+        esac
+    else
+        msg "skipping CFG_ENABLE_CLANG version check; provided CC=$CC"
+    fi
 fi
 
 if [ ! -z "$CFG_ENABLE_CCACHE" ]
 then
-    if [ -z "$CFG_CCACHE" ]
+    if [ -z "$CC" ]
     then
-        err "ccache requested but not found"
-    fi
+        if [ -z "$CFG_CCACHE" ]
+        then
+            err "ccache requested but not found"
+        fi
 
-    CFG_C_COMPILER="ccache $CFG_C_COMPILER"
+        CFG_CC="ccache $CFG_CC"
+    fi
 fi
+
+if [ -z "$CC" -a -z "$CFG_ENABLE_CLANG" -a -z "$CFG_GCC" ]
+then
+    err "either clang or gcc is required"
+fi
+
+# All safeguards based on $CFG_ENABLE_CLANG should occur before this
+# point in the script; after this point, script logic should inspect
+# $CFG_USING_CLANG rather than $CFG_ENABLE_CLANG.
+
+# Set CFG_{CC,CXX,CPP,CFLAGS,CXXFLAGS}
+envopt CC
+envopt CXX
+envopt CPP
+envopt CFLAGS
+envopt CXXFLAGS
 
 # a little post-processing of various config values
 CFG_PREFIX=${CFG_PREFIX%/}
@@ -741,11 +825,6 @@ do
             ;;
     esac
 done
-
-if [ -z "$CFG_ENABLE_CLANG" -a -z "$CFG_GCC" ]
-then
-    err "either clang or gcc is required"
-fi
 
 if [ ! -z "$CFG_PERF" ]
 then
@@ -961,7 +1040,7 @@ do
             ;;
         esac
 
-        case "$CFG_C_COMPILER" in
+        case "$CFG_CC" in
             ("ccache clang")
             LLVM_CXX_32="ccache clang++ -m32 -Qunused-arguments"
             LLVM_CC_32="ccache clang -m32 -Qunused-arguments"
@@ -991,6 +1070,16 @@ do
 
             LLVM_CXX_64="g++"
             LLVM_CC_64="gcc"
+            ;;
+
+            (*)
+            msg "inferring LLVM_CXX/CC from CXX/CC = $CXX/$CC"
+            LLVM_CXX_32="$CXX -m32"
+            LLVM_CC_32="$CC -m32"
+
+            LLVM_CXX_64="$CXX"
+            LLVM_CC_64="$CC"
+            ;;
         esac
 
         LLVM_CFLAGS_32="-m32"
@@ -1073,7 +1162,6 @@ putvar CFG_PREFIX
 putvar CFG_BUILD
 putvar CFG_HOST
 putvar CFG_TARGET
-putvar CFG_C_COMPILER
 putvar CFG_LIBDIR
 putvar CFG_LIBDIR_RELATIVE
 putvar CFG_DISABLE_MANAGE_SUBMODULES
@@ -1084,7 +1172,7 @@ putvar CFG_DISABLE_INJECT_STD_VERSION
 
 # Avoid spurious warnings from clang by feeding it original source on
 # ccache-miss rather than preprocessed input.
-if [ ! -z "$CFG_ENABLE_CCACHE" ] && [ ! -z "$CFG_ENABLE_CLANG" ]
+if [ ! -z "$CFG_ENABLE_CCACHE" ] && [ ! -z "$CFG_USING_CLANG" ]
 then
     CFG_CCACHE_CPP2=1
     putvar CFG_CCACHE_CPP2
