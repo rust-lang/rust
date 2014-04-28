@@ -1,11 +1,15 @@
 -include ../tools.mk
 
+ifdef IS_WINDOWS
+	EXTRAFLAGS :=
+else
 ifeq ($(shell uname),Darwin)
 else
 ifeq ($(shell uname),FreeBSD)
 	EXTRAFLAGS := -lm -lpthread -lgcc_s
 else
 	EXTRAFLAGS := -lm -lrt -ldl -lpthread
+endif
 endif
 endif
 
