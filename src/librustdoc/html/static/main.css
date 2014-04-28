@@ -53,7 +53,7 @@
 body {
     color: #333;
     min-width: 500px;
-    font: 15px/1.4 "Heuristica", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font: 15.5px/1.4 "Heuristica", "Helvetica Neue", Helvetica, Arial, sans-serif;
     margin: 0;
     position: relative;
     padding: 10px 15px 20px 15px;
@@ -68,7 +68,7 @@ h2 {
 h3 {
     font-size: 1.3em;
 }
-h1, h2, h3:not(.impl), h4:not(.method) {
+h1, h2, h3:not(.impl):not(.method), h4:not(.method) {
     color: black;
     font-weight: 500;
     margin: 20px 0 15px 0;
@@ -78,15 +78,15 @@ h1.fqn {
     border-bottom: 1px dashed #D5D5D5;
     margin-top: 0;
 }
-h2, h3:not(.impl), h4:not(.method) {
+h2, h3:not(.impl):not(.method), h4:not(.method) {
     border-bottom: 1px solid #DDDDDD;
 }
-h3.impl, h4.method {
+h3.impl, h3.method, h4.method {
     font-weight: 600;
     margin-top: 10px;
     margin-bottom: 10px;
 }
-h3.impl {
+h3.impl, h3.method {
     margin-top: 15px;
 }
 h1, h2, h3, h4, section.sidebar, a.source, .search-input, .content table a {
@@ -211,6 +211,7 @@ nav.sub {
     text-overflow: ellipsis;
     margin: 0;
 }
+.docblock.short code { white-space: nowrap; }
 
 .docblock h1, .docblock h2, .docblock h3, .docblock h4, .docblock h5 {
     border-bottom: 1px solid #DDD;
@@ -366,9 +367,10 @@ a {
 .stability {
     border-left: 6px solid #000;
     border-radius: 3px;
-    padding: 2px 10px;
+    font-weight: 400;
+    padding: 4px 10px;
     text-transform: lowercase;
-    margin-left: 10px;
+    margin-left: 14px;
 }
 
 .stability.Deprecated { border-color: #D60027; color: #880017; }
@@ -395,7 +397,6 @@ pre.rust .lifetime { color: #B76514; }
     /* Override parent class attributes. */
     border-bottom: none !important;
     font-size: 1.1em !important;
-    font-weight: 400;
     margin: 0 0 -5px;
     padding: 0;
 }
