@@ -174,7 +174,6 @@ pub fn opt_deref_kind(t: ty::t) -> Option<deref_kind> {
     match ty::get(t).sty {
         ty::ty_uniq(_) |
         ty::ty_trait(~ty::TyTrait { store: ty::UniqTraitStore, .. }) |
-        ty::ty_str(ty::VstoreUniq) |
         ty::ty_closure(~ty::ClosureTy {store: ty::UniqTraitStore, ..}) => {
             Some(deref_ptr(OwnedPtr))
         }
@@ -188,7 +187,6 @@ pub fn opt_deref_kind(t: ty::t) -> Option<deref_kind> {
             Some(deref_ptr(BorrowedPtr(kind, r)))
         }
 
-        ty::ty_str(ty::VstoreSlice(r)) |
         ty::ty_closure(~ty::ClosureTy {store: ty::RegionTraitStore(r, _), ..}) => {
             Some(deref_ptr(BorrowedPtr(ty::ImmBorrow, r)))
         }
@@ -207,7 +205,7 @@ pub fn opt_deref_kind(t: ty::t) -> Option<deref_kind> {
         }
 
         ty::ty_vec(_, Some(_)) |
-        ty::ty_str(ty::VstoreFixed(_)) => {
+        ty::ty_str(Some(_)) => {
             Some(deref_interior(InteriorElement(element_kind(t))))
         }
 
@@ -1306,6 +1304,7 @@ fn element_kind(t: ty::t) -> ElementKind {
         ty::ty_rptr(_, ty::mt{ty:ty, ..}) |
         ty::ty_uniq(ty) => match ty::get(ty).sty {
             ty::ty_vec(_, None) => VecElement,
+            ty::ty_str(None) => StrElement,
             _ => OtherElement
         },
         ty::ty_vec(..) => VecElement,

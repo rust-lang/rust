@@ -2182,33 +2182,27 @@ fn type_metadata(cx: &CrateContext,
         ty::ty_uint(_)  |
         ty::ty_float(_) => {
             basic_type_metadata(cx, t)
-        },
-        ty::ty_str(ref vstore) => {
+        }
+        ty::ty_str(Some(len)) => {
             let i8_t = ty::mk_i8();
-            match *vstore {
-                ty::VstoreFixed(len) => {
-                    fixed_vec_metadata(cx, i8_t, len, usage_site_span)
-                },
-                ty::VstoreUniq  => {
-                    let vec_metadata = vec_metadata(cx, i8_t, usage_site_span);
-                    pointer_type_metadata(cx, t, vec_metadata)
-                }
-                ty::VstoreSlice(..) => {
-                    vec_slice_metadata(cx, t, i8_t, usage_site_span)
-                }
-            }
-        },
+            fixed_vec_metadata(cx, i8_t, len, usage_site_span)
+        }
         ty::ty_enum(def_id, _) => {
             prepare_enum_metadata(cx, t, def_id, usage_site_span).finalize(cx)
-        },
+        }
         ty::ty_box(typ) => {
             create_pointer_to_box_metadata(cx, t, typ)
-        },
+        }
         ty::ty_vec(ref mt, Some(len)) => fixed_vec_metadata(cx, mt.ty, len, usage_site_span),
         ty::ty_uniq(typ) => {
             match ty::get(typ).sty {
                 ty::ty_vec(ref mt, None) => {
                     let vec_metadata = vec_metadata(cx, mt.ty, usage_site_span);
+                    pointer_type_metadata(cx, t, vec_metadata)
+                }
+                ty::ty_str(None) => {
+                    let i8_t = ty::mk_i8();
+                    let vec_metadata = vec_metadata(cx, i8_t, usage_site_span);
                     pointer_type_metadata(cx, t, vec_metadata)
                 }
                 _ => {
@@ -2220,21 +2214,25 @@ fn type_metadata(cx: &CrateContext,
         ty::ty_ptr(ref mt) | ty::ty_rptr(_, ref mt) => {
             match ty::get(mt.ty).sty {
                 ty::ty_vec(ref mt, None) => vec_slice_metadata(cx, t, mt.ty, usage_site_span),
+                ty::ty_str(None) => {
+                    let i8_t = ty::mk_i8();
+                    vec_slice_metadata(cx, t, i8_t, usage_site_span)
+                }
                 _ => {
                     let pointee = type_metadata(cx, mt.ty, usage_site_span);
                     pointer_type_metadata(cx, t, pointee)
                 }
             }
-        },
+        }
         ty::ty_bare_fn(ref barefnty) => {
             subroutine_type_metadata(cx, &barefnty.sig, usage_site_span)
-        },
+        }
         ty::ty_closure(ref closurety) => {
             subroutine_type_metadata(cx, &closurety.sig, usage_site_span)
-        },
+        }
         ty::ty_trait(~ty::TyTrait { def_id, ref substs, store, ref bounds }) => {
             trait_metadata(cx, def_id, t, substs, store, bounds)
-        },
+        }
         ty::ty_struct(def_id, ref substs) => {
             if ty::type_is_simd(cx.tcx(), t) {
                 let element_type = ty::simd_type(cx.tcx(), t);
@@ -2243,7 +2241,7 @@ fn type_metadata(cx: &CrateContext,
             } else {
                 prepare_struct_metadata(cx, t, def_id, substs, usage_site_span).finalize(cx)
             }
-        },
+        }
         ty::ty_tup(ref elements) => {
             prepare_tuple_metadata(cx,
                                    t,

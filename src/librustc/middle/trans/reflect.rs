@@ -55,8 +55,7 @@ impl<'a, 'b> Reflector<'a, 'b> {
         // We're careful to not use first class aggregates here because that
         // will kick us off fast isel. (Issue #4352.)
         let bcx = self.bcx;
-        let str_vstore = ty::VstoreSlice(ty::ReStatic);
-        let str_ty = ty::mk_str(bcx.tcx(), str_vstore);
+        let str_ty = ty::mk_str_slice(bcx.tcx(), ty::ReStatic, ast::MutImmutable);
         let scratch = rvalue_scratch_datum(bcx, str_ty, "");
         let len = C_uint(bcx.ccx(), s.get().len());
         let c_str = PointerCast(bcx, C_cstr(bcx.ccx(), s, false), Type::i8p(bcx.ccx()));
@@ -122,20 +121,6 @@ impl<'a, 'b> Reflector<'a, 'b> {
         self.visit("leave_" + bracket_name, extra);
     }
 
-    pub fn vstore_name_and_extra(&mut self,
-                                 t: ty::t,
-                                 vstore: ty::Vstore)
-                                 -> (~str, Vec<ValueRef> ) {
-        match vstore {
-            ty::VstoreFixed(n) => {
-                let extra = (vec!(self.c_uint(n))).append(self.c_size_and_align(t).as_slice());
-                ("fixed".to_owned(), extra)
-            }
-            ty::VstoreSlice(..) => ("slice".to_owned(), Vec::new()),
-            ty::VstoreUniq => ("uniq".to_owned(), Vec::new()),
-        }
-    }
-
     pub fn leaf(&mut self, name: &str) {
         self.visit(name, []);
     }
@@ -166,16 +151,16 @@ impl<'a, 'b> Reflector<'a, 'b> {
           ty::ty_float(ast::TyF128) => self.leaf("f128"),
 
           // Should rename to str_*/vec_*.
-          ty::ty_str(vst) => {
-              let (name, extra) = self.vstore_name_and_extra(t, vst);
-              self.visit("estr_".to_owned() + name, extra.as_slice())
+          ty::ty_str(Some(n)) => {
+              let extra = (vec!(self.c_uint(n))).append(self.c_size_and_align(t).as_slice());
+              self.visit("estr_fixed".to_owned(), extra.as_slice())
           }
           ty::ty_vec(ref mt, Some(sz)) => {
               let extra = (vec!(self.c_uint(sz))).append(self.c_size_and_align(t).as_slice());
               let extra = extra.append(self.c_mt(mt).as_slice());
               self.visit("evec_fixed".to_owned(), extra.as_slice())
           }
-          ty::ty_vec(..) => fail!("unexpected unsized vec"),
+          ty::ty_vec(..) | ty::ty_str(..) => fail!("unexpected unsized type"),
           // Should remove mt from box and uniq.
           ty::ty_box(typ) => {
               let extra = self.c_mt(&ty::mt {
@@ -187,10 +172,11 @@ impl<'a, 'b> Reflector<'a, 'b> {
           ty::ty_uniq(typ) => {
               match ty::get(typ).sty {
                   ty::ty_vec(ref mt, None) => {
-                      let (name, extra) = (~"uniq", Vec::new());
+                      let extra = Vec::new();
                       let extra = extra.append(self.c_mt(mt).as_slice());
-                      self.visit(~"evec_" + name, extra.as_slice())
+                      self.visit("evec_uniq".to_owned(), extra.as_slice())
                   }
+                  ty::ty_str(None) => self.visit("estr_uniq".to_owned(), &[]),
                   _ => {
                       let extra = self.c_mt(&ty::mt {
                           ty: typ,
@@ -211,6 +197,7 @@ impl<'a, 'b> Reflector<'a, 'b> {
                       let extra = extra.append(self.c_mt(mt).as_slice());
                       self.visit(~"evec_" + name, extra.as_slice())
                   }
+                  ty::ty_str(None) => self.visit("estr_slice".to_owned(), &[]),
                   _ => {
                       let extra = self.c_mt(mt);
                       self.visit("rptr", extra.as_slice())

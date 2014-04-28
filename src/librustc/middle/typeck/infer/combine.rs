@@ -255,30 +255,6 @@ pub trait Combine {
                   -> cres<ty::Region>;
     fn regions(&self, a: ty::Region, b: ty::Region) -> cres<ty::Region>;
 
-    fn vstores(&self,
-                vk: ty::terr_vstore_kind,
-                a: ty::Vstore,
-                b: ty::Vstore)
-                -> cres<ty::Vstore> {
-        debug!("{}.vstores(a={:?}, b={:?})", self.tag(), a, b);
-
-        match (a, b) {
-            (ty::VstoreSlice(a_r), ty::VstoreSlice(b_r)) => {
-                self.contraregions(a_r, b_r).and_then(|r| {
-                    Ok(ty::VstoreSlice(r))
-                })
-            }
-
-            _ if a == b => {
-                Ok(a)
-            }
-
-            _ => {
-                Err(ty::terr_vstores_differ(vk, expected_found(self, a, b)))
-            }
-        }
-    }
-
     fn trait_stores(&self,
                     vk: ty::terr_vstore_kind,
                     a: ty::TraitStore,
@@ -394,6 +370,27 @@ pub fn super_fn_sigs<C:Combine>(this: &C, a: &ty::FnSig, b: &ty::FnSig) -> cres<
 }
 
 pub fn super_tys<C:Combine>(this: &C, a: ty::t, b: ty::t) -> cres<ty::t> {
+
+    // This is a horible hack - historically, [T] was not treated as a type,
+    // so, for example, &T and &[U] should not unify. In fact the only thing
+    // &[U] should unify with is &[T]. We preserve that behaviour with this
+    // check.
+    fn check_ptr_to_vec<C:Combine>(this: &C,
+                                   a: ty::t,
+                                   b: ty::t,
+                                   a_inner: ty::t,
+                                   b_inner: ty::t,
+                                   result: ty::t) -> cres<ty::t> {
+        match (&ty::get(a_inner).sty, &ty::get(b_inner).sty) {
+            (&ty::ty_vec(_, None), &ty::ty_vec(_, None)) |
+            (&ty::ty_str(None), &ty::ty_str(None)) => Ok(result),
+            (&ty::ty_vec(_, None), _) | (_, &ty::ty_vec(_, None)) |
+            (&ty::ty_str(None), _) | (_, &ty::ty_str(None))
+                => Err(ty::terr_sorts(expected_found(this, a, b))),
+            _ => Ok(result),
+        }
+    }
+
     let tcx = this.infcx().tcx;
     let a_sty = &ty::get(a).sty;
     let b_sty = &ty::get(b).sty;
@@ -499,39 +496,18 @@ pub fn super_tys<C:Combine>(this: &C, a: ty::t, b: ty::t) -> cres<ty::t> {
 
       (&ty::ty_uniq(a_inner), &ty::ty_uniq(b_inner)) => {
             let typ = if_ok!(this.tys(a_inner, b_inner));
-
-            match (&ty::get(a_inner).sty, &ty::get(b_inner).sty) {
-                (&ty::ty_vec(_, None), &ty::ty_vec(_, None)) => Ok(ty::mk_uniq(tcx, typ)),
-                (&ty::ty_vec(_, None), _) |
-                (_, &ty::ty_vec(_, None)) => Err(ty::terr_sorts(expected_found(this, a, b))),
-                _ => Ok(ty::mk_uniq(tcx, typ)),
-            }
+            check_ptr_to_vec(this, a, b, a_inner, b_inner, ty::mk_uniq(tcx, typ))
       }
 
       (&ty::ty_ptr(ref a_mt), &ty::ty_ptr(ref b_mt)) => {
             let mt = if_ok!(this.mts(a_mt, b_mt));
-            match (&ty::get(a_mt.ty).sty, &ty::get(b_mt.ty).sty) {
-                (&ty::ty_vec(_, None), &ty::ty_vec(_, None)) => Ok(ty::mk_ptr(tcx, mt)),
-                (&ty::ty_vec(_, None), _) |
-                (_, &ty::ty_vec(_, None)) => Err(ty::terr_sorts(expected_found(this, a, b))),
-                _ => Ok(ty::mk_ptr(tcx, mt)),
-            }
+            check_ptr_to_vec(this, a, b, a_mt.ty, b_mt.ty, ty::mk_ptr(tcx, mt))
       }
 
       (&ty::ty_rptr(a_r, ref a_mt), &ty::ty_rptr(b_r, ref b_mt)) => {
             let r = if_ok!(this.contraregions(a_r, b_r));
             let mt = if_ok!(this.mts(a_mt, b_mt));
-
-            // This is a horible hack - historically, [T] was not treated as a type,
-            // so, for example, &T and &[U] should not unify. In fact the only thing
-            // &[U] should unify with is &[T]. We preserve that behaviour with this
-            // check. See also ty_uniq, ty_ptr.
-            match (&ty::get(a_mt.ty).sty, &ty::get(b_mt.ty).sty) {
-                (&ty::ty_vec(_, None), &ty::ty_vec(_, None)) => Ok(ty::mk_rptr(tcx, r, mt)),
-                (&ty::ty_vec(_, None), _) |
-                (_, &ty::ty_vec(_, None)) => Err(ty::terr_sorts(expected_found(this, a, b))),
-                _ => Ok(ty::mk_rptr(tcx, r, mt)),
-            }
+            check_ptr_to_vec(this, a, b, a_mt.ty, b_mt.ty, ty::mk_rptr(tcx, r, mt))
       }
 
       (&ty::ty_vec(ref a_mt, sz_a), &ty::ty_vec(ref b_mt, sz_b)) => {
@@ -544,9 +520,12 @@ pub fn super_tys<C:Combine>(this: &C, a: ty::t, b: ty::t) -> cres<ty::t> {
         })
       }
 
-      (&ty::ty_str(vs_a), &ty::ty_str(vs_b)) => {
-        let vs = if_ok!(this.vstores(ty::terr_str, vs_a, vs_b));
-        Ok(ty::mk_str(tcx,vs))
+      (&ty::ty_str(sz_a), &ty::ty_str(sz_b)) => {
+            if sz_a == sz_b {
+                Ok(ty::mk_str(tcx,sz_a))
+            } else {
+                Err(ty::terr_sorts(expected_found(this, a, b)))
+            }
       }
 
       (&ty::ty_tup(ref as_), &ty::ty_tup(ref bs)) => {
