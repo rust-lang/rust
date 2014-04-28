@@ -33,23 +33,24 @@ pub fn strip_hidden(krate: clean::Crate) -> plugins::PluginResult {
         };
         impl<'a> fold::DocFolder for Stripper<'a> {
             fn fold_item(&mut self, i: Item) -> Option<Item> {
-                for attr in i.attrs.iter() {
-                    match attr {
-                        &clean::List(ref x, ref l) if "doc" == *x => {
-                            for innerattr in l.iter() {
-                                match innerattr {
-                                    &clean::Word(ref s) if "hidden" == *s => {
-                                        debug!("found one in strip_hidden; removing");
-                                        self.stripped.insert(i.id);
-                                        return None;
-                                    },
-                                    _ => (),
-                                }
-                            }
-                        },
-                        _ => ()
+                if i.is_hidden_from_doc() {
+                    debug!("found one in strip_hidden; removing");
+                    self.stripped.insert(i.id);
+
+                    // use a dedicated hidden item for given item type if any
+                    match i.inner {
+                        clean::StructFieldItem(..) => {
+                            return Some(clean::Item {
+                                inner: clean::StructFieldItem(clean::HiddenStructField),
+                                ..i
+                            });
+                        }
+                        _ => {
+                            return None;
+                        }
                     }
                 }
+
                 self.fold_item_recur(i)
             }
         }
