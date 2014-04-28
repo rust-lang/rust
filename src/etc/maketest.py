@@ -23,9 +23,14 @@ os.putenv('TMPDIR', os.path.abspath(sys.argv[4]))
 os.putenv('CC', sys.argv[5])
 os.putenv('RUSTDOC', os.path.abspath(sys.argv[6]))
 filt = sys.argv[7]
-ldpath = sys.argv[8]
-if ldpath != '':
-    os.putenv(ldpath.split('=')[0], ldpath.split('=')[1])
+os.putenv('HOST_RPATH_ENV', sys.argv[8]);
+host_ldpath = sys.argv[8]
+#if host_ldpath != '':
+#    os.putenv(host_ldpath.split('=')[0], host_ldpath.split('=')[1])
+os.putenv('TARGET_RPATH_ENV', sys.argv[9]);
+rust_build_stage = sys.argv[10];
+if rust_build_stage != '':
+    os.putenv('RUST_BUILD_STAGE', rust_build_stage.split('=')[1])
 
 if not filt in sys.argv[1]:
     sys.exit(0)

@@ -1,6 +1,19 @@
 -include ../tools.mk
 
-all:
+# This test attempts to run rustc itself from the compiled binary; but
+# that means that you need to set the LD_LIBRARY_PATH for rustc itself
+# while running muliple_files, and that won't work for stage1.
+
+ifeq ($(RUST_BUILD_STAGE),"1")
+DOTEST=
+endif
+ifeq ($(RUST_BUILD_STAGE),"2")
+DOTEST=dotest
+endif
+
+all: $(DOTEST)
+
+dotest:
 	# check that we don't ICE on unicode input, issue #11178
 	$(RUSTC) multiple_files.rs
 	$(call RUN,multiple_files)  "$(RUSTC)" "$(TMPDIR)"

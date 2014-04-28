@@ -47,8 +47,7 @@ pub fn get_rpath_flags(sess: &Session, out_filename: &Path) -> Vec<~str> {
         l.map(|p| p.clone())
     }).collect::<~[_]>();
 
-    let rpaths = get_rpaths(os, sysroot, output, libs,
-                            sess.opts.target_triple);
+    let rpaths = get_rpaths(sess, os, sysroot, output, libs);
     flags.push_all(rpaths_to_flags(rpaths.as_slice()).as_slice());
     flags
 }
@@ -61,11 +60,12 @@ pub fn rpaths_to_flags(rpaths: &[~str]) -> Vec<~str> {
     return ret;
 }
 
-fn get_rpaths(os: abi::Os,
+fn get_rpaths(sess: &Session,
+              os: abi::Os,
               sysroot: &Path,
               output: &Path,
-              libs: &[Path],
-              target_triple: &str) -> Vec<~str> {
+              libs: &[Path]) -> Vec<~str> {
+    let target_triple = sess.opts.target_triple.as_slice();
     debug!("sysroot: {}", sysroot.display());
     debug!("output: {}", output.display());
     debug!("libs:");
@@ -80,7 +80,8 @@ fn get_rpaths(os: abi::Os,
     let rel_rpaths = get_rpaths_relative_to_output(os, output, libs);
 
     // And a final backup rpath to the global library location.
-    let fallback_rpaths = vec!(get_install_prefix_rpath(sysroot, target_triple));
+    let fallback_rpaths = vec!(install_prefix_to_rpath(sess.install_prefix(),
+                                                       sysroot, target_triple));
 
     fn log_rpaths(desc: &str, rpaths: &[~str]) {
         debug!("{} rpaths:", desc);
@@ -132,11 +133,9 @@ pub fn get_rpath_relative_to_output(os: abi::Os,
     prefix+"/"+relative.as_str().expect("non-utf8 component in path")
 }
 
-pub fn get_install_prefix_rpath(sysroot: &Path, target_triple: &str) -> ~str {
-    let install_prefix = env!("CFG_PREFIX");
-
+fn install_prefix_to_rpath(install_prefix: Path, sysroot: &Path, target_triple: &str) -> ~str {
     let tlib = filesearch::relative_target_lib_path(sysroot, target_triple);
-    let mut path = Path::new(install_prefix);
+    let mut path = install_prefix;
     path.push(&tlib);
     let path = os::make_absolute(&path);
     // FIXME (#9639): This needs to handle non-utf8 paths
@@ -156,7 +155,7 @@ pub fn minimize_rpaths(rpaths: &[~str]) -> Vec<~str> {
 
 #[cfg(unix, test)]
 mod test {
-    use back::rpath::get_install_prefix_rpath;
+    use back::rpath::install_prefix_to_rpath;
     use back::rpath::{minimize_rpaths, rpaths_to_flags, get_rpath_relative_to_output};
     use syntax::abi;
     use metadata::filesearch;
@@ -170,8 +169,8 @@ mod test {
     #[test]
     fn test_prefix_rpath() {
         let sysroot = filesearch::get_or_default_sysroot();
-        let res = get_install_prefix_rpath(&sysroot, "triple");
         let mut d = Path::new(env!("CFG_PREFIX"));
+        let res = install_prefix_to_rpath(d.clone(), &sysroot, "triple");
         d.push("lib");
         d.push(filesearch::rustlibdir());
         d.push("triple/lib");
@@ -184,7 +183,7 @@ mod test {
     #[test]
     fn test_prefix_rpath_abs() {
         let sysroot = filesearch::get_or_default_sysroot();
-        let res = get_install_prefix_rpath(&sysroot, "triple");
+        let res = install_prefix_to_rpath(env!("CFG_PREFIX"), &sysroot, "triple");
         assert!(Path::new(res).is_absolute());
     }
 

@@ -894,6 +894,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> session::Options {
     }
 
     let sysroot_opt = matches.opt_str("sysroot").map(|m| Path::new(m));
+    let install_prefix_opt = matches.opt_str("install-prefix").map(|m| Path::new(m));
     let target = matches.opt_str("target").unwrap_or(host_triple().to_owned());
     let opt_level = {
         if (debugging_opts & session::NO_OPT) != 0 {
@@ -973,6 +974,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> session::Options {
         write_dependency_info: write_dependency_info,
         print_metas: print_metas,
         cg: cg,
+        maybe_install_prefix_override: install_prefix_opt,
     }
 }
 
@@ -1113,6 +1115,9 @@ pub fn optgroups() -> Vec<getopts::OptGroup> {
              "Output dependency info to <filename> after compiling, \
               in a format suitable for use by Makefiles", "FILENAME"),
   optopt("", "sysroot", "Override the system root", "PATH"),
+  optopt("", "install-prefix", format!("Override the install prefix ({:s})",
+                                       option_env!("CFG_PREFIX").unwrap_or(
+                                           "unset")), "PATH"),
   optflag("", "test", "Build a test harness"),
   optopt("", "target", "Target triple cpu-manufacturer-kernel[-os]
                         to compile for (see chapter 3.4 of http://www.sourceware.org/autobook/

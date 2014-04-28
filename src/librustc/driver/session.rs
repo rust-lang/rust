@@ -154,6 +154,8 @@ pub struct Options {
     /// Crate id-related things to maybe print. It's (crate_id, crate_name, crate_file_name).
     pub print_metas: (bool, bool, bool),
     pub cg: CodegenOptions,
+    /// If set, use path as install prefix; otherwise use `env!("CFG_PREFIX")`
+    pub maybe_install_prefix_override: Option<Path>,
 }
 
 // The type of entry function, so
@@ -338,6 +340,15 @@ impl Session {
             host_triple(),
             &self.opts.addl_lib_search_paths)
     }
+
+    pub fn install_prefix<'a>(&'a self) -> Path {
+        Path::new(self.opts.maybe_install_prefix_override.clone()
+                  .or(option_env!("CFG_PREFIX").map(Path::new))
+                  .unwrap_or_else(|| {
+                      fail!("built without CFG_PREFIX set; \
+                             set install prefix via command line.")
+                  }))
+    }
 }
 
 /// Some reasonable defaults
@@ -361,6 +372,7 @@ pub fn basic_options() -> Options {
         write_dependency_info: (false, None),
         print_metas: (false, false, false),
         cg: basic_codegen_options(),
+        maybe_install_prefix_override: None,
     }
 }
 
