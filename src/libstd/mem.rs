@@ -248,6 +248,38 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
 /**
  * Replace the value at a mutable location with a new one, returning the old
  * value, without deinitialising or copying either one.
+ *
+ * This is primarily used for transferring and swapping ownership of a value
+ * in a mutable location. For example, this function allows consumption of
+ * one field of a struct by replacing it with another value. The normal approach
+ * doesn't always work:
+ *
+ * ```rust,ignore
+ * struct Buffer<T> { buf: Vec<T> }
+ *
+ * impl<T> Buffer<T> {
+ *     fn get_and_reset(&mut self) -> Vec<T> {
+ *         // error: cannot move out of dereference of `&mut`-pointer
+ *         let buf = self.buf;
+ *         self.buf = Vec::new();
+ *         buf
+ *     }
+ * }
+ * ```
+ *
+ * Note that `T` does not necessarily implement `Clone`, so it can't even
+ * clone and reset `self.buf`. But `replace` can be used to disassociate
+ * the original value of `self.buf` from `self`, allowing it to be returned:
+ *
+ * ```rust
+ * # struct Buffer<T> { buf: Vec<T> }
+ * impl<T> Buffer<T> {
+ *     fn get_and_reset(&mut self) -> Vec<T> {
+ *         use std::mem::replace;
+ *         replace(&mut self.buf, Vec::new())
+ *     }
+ * }
+ * ```
  */
 #[inline]
 pub fn replace<T>(dest: &mut T, mut src: T) -> T {
