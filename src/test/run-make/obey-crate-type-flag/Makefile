@@ -7,7 +7,7 @@
 # fail if an rlib was built
 all:
 	$(RUSTC) test.rs
-	rm $(TMPDIR)/libtest*.rlib
-	rm $(TMPDIR)/libtest*
+	rm $(TMPDIR)/$(call RLIB_GLOB,test)
+	rm $(TMPDIR)/$(call DYLIB_GLOB,test)
 	$(RUSTC) --crate-type dylib test.rs
-	rm $(TMPDIR)/libtest*.rlib && exit 1 || exit 0
+	rm $(TMPDIR)/$(call RLIB_GLOB,test) && exit 1 || exit 0
