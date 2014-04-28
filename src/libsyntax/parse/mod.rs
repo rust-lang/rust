@@ -28,13 +28,8 @@ pub mod token;
 pub mod comments;
 pub mod attr;
 
-/// Common routines shared by parser mods
 pub mod common;
-
-/// Routines the parser uses to classify AST nodes
 pub mod classify;
-
-/// Reporting obsolete syntax
 pub mod obsolete;
 
 // info about a parsing session.
