@@ -1288,7 +1288,7 @@ impl<T:Eq> Vec<T> {
             //     +---+---+---+---+---+---+
             //           w
             //
-            // Comparing self[r] against self[w-1], tis is not a duplicate, so
+            // Comparing self[r] against self[w-1], this is not a duplicate, so
             // we swap self[r] and self[w] (no effect as r==w) and then increment both
             // r and w, leaving us with:
             //
