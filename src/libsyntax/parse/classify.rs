@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*
-  Predicates on exprs and stmts that the pretty-printer and parser use
- */
+//! Routines the parser uses to classify AST nodes
+
+// Predicates on exprs and stmts that the pretty-printer and parser use
 
 use ast;
 

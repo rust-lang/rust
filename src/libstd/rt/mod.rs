@@ -85,44 +85,44 @@ pub mod shouldnt_be_public {
 // Internal macros used by the runtime.
 mod macros;
 
-/// The global (exchange) heap.
+// The global (exchange) heap.
 pub mod global_heap;
 
-/// Implementations of language-critical runtime features like @.
+// Implementations of language-critical runtime features like @.
 pub mod task;
 
-/// The EventLoop and internal synchronous I/O interface.
+// The EventLoop and internal synchronous I/O interface.
 pub mod rtio;
 
-/// The Local trait for types that are accessible via thread-local
-/// or task-local storage.
+// The Local trait for types that are accessible via thread-local
+// or task-local storage.
 pub mod local;
 
-/// Bindings to system threading libraries.
+// Bindings to system threading libraries.
 pub mod thread;
 
-/// The runtime configuration, read from environment variables.
+// The runtime configuration, read from environment variables.
 pub mod env;
 
-/// The local, managed heap
+// The local, managed heap
 pub mod local_heap;
 
-/// The runtime needs to be able to put a pointer into thread-local storage.
+// The runtime needs to be able to put a pointer into thread-local storage.
 mod local_ptr;
 
-/// Bindings to pthread/windows thread-local storage.
+// Bindings to pthread/windows thread-local storage.
 mod thread_local_storage;
 
-/// Stack unwinding
+// Stack unwinding
 pub mod unwind;
 
-/// The interface to libunwind that rust is using.
+// The interface to libunwind that rust is using.
 mod libunwind;
 
-/// Simple backtrace functionality (to print on failure)
+// Simple backtrace functionality (to print on failure)
 pub mod backtrace;
 
-/// Just stuff
+// Just stuff
 mod util;
 
 // Global command line argument storage

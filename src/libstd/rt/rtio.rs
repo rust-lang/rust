@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! The EventLoop and internal synchronous I/O interface.
+
 use c_str::CString;
 use cast;
 use comm::{Sender, Receiver};
