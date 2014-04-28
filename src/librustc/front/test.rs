@@ -143,6 +143,7 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
         }
 
         let mod_nomain = ast::Mod {
+            inner: m.inner,
             view_items: m.view_items.clone(),
             items: m.items.iter().map(|i| nomain(&self.cx, *i)).collect(),
         };
@@ -335,6 +336,7 @@ fn mk_test_module(cx: &TestCtxt) -> @ast::Item {
     )).unwrap();
 
     let testmod = ast::Mod {
+        inner: DUMMY_SP,
         view_items: view_items,
         items: vec!(mainfn, tests),
     };

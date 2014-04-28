@@ -220,7 +220,7 @@ pub trait AstBuilder {
                         generics: Generics) -> @ast::Item;
     fn item_struct(&self, span: Span, name: Ident, struct_def: ast::StructDef) -> @ast::Item;
 
-    fn item_mod(&self, span: Span,
+    fn item_mod(&self, span: Span, inner_span: Span,
                 name: Ident, attrs: Vec<ast::Attribute> ,
                 vi: Vec<ast::ViewItem> , items: Vec<@ast::Item> ) -> @ast::Item;
 
@@ -898,7 +898,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         self.item(span, name, Vec::new(), ast::ItemStruct(@struct_def, generics))
     }
 
-    fn item_mod(&self, span: Span, name: Ident,
+    fn item_mod(&self, span: Span, inner_span: Span, name: Ident,
                 attrs: Vec<ast::Attribute> ,
                 vi: Vec<ast::ViewItem> ,
                 items: Vec<@ast::Item> ) -> @ast::Item {
@@ -907,6 +907,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             name,
             attrs,
             ast::ItemMod(ast::Mod {
+                inner: inner_span,
                 view_items: vi,
                 items: items,
             })

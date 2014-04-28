@@ -227,10 +227,27 @@ impl Clean<Item> for doctree::Module {
             self.view_items.clean().move_iter().collect(),
             self.macros.clean().move_iter().collect()
         );
+
+        // determine if we should display the inner contents or
+        // the outer `mod` item for the source code.
+        let where = {
+            let ctxt = local_data::get(super::ctxtkey, |x| *x.unwrap());
+            let cm = ctxt.sess().codemap();
+            let outer = cm.lookup_char_pos(self.where_outer.lo);
+            let inner = cm.lookup_char_pos(self.where_inner.lo);
+            if outer.file.start_pos == inner.file.start_pos {
+                // mod foo { ... }
+                self.where_outer
+            } else {
+                // mod foo; (and a separate FileMap for the contents)
+                self.where_inner
+            }
+        };
+
         Item {
             name: Some(name),
             attrs: self.attrs.clean(),
-            source: self.where.clean(),
+            source: where.clean(),
             visibility: self.vis.clean(),
             id: self.id,
             inner: ModuleItem(Module {
