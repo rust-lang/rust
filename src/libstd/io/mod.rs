@@ -326,6 +326,8 @@ impl IoError {
                 libc::WSAEADDRNOTAVAIL => (ConnectionRefused, "address not available"),
                 libc::WSAEADDRINUSE => (ConnectionRefused, "address in use"),
                 libc::ERROR_BROKEN_PIPE => (EndOfFile, "the pipe has ended"),
+                libc::ERROR_OPERATION_ABORTED =>
+                    (TimedOut, "operation timed out"),
 
                 // libuv maps this error code to EISDIR. we do too. if it is found
                 // to be incorrect, we can add in some more machinery to only

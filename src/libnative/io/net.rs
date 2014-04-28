@@ -893,7 +893,5 @@ pub fn write<T>(fd: sock_t,
         Err(last_error())
     } else {
         Ok(written)
->>>>>>> native: Implement timeouts for unix networking
->>>>>>> native: Implement timeouts for unix networking
     }
 }
