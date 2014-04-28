@@ -152,6 +152,21 @@ impl Item {
         return None;
     }
 
+    pub fn is_hidden_from_doc(&self) -> bool {
+        match self.doc_list() {
+            Some(ref l) => {
+                for innerattr in l.iter() {
+                    match *innerattr {
+                        Word(ref s) if "hidden" == *s => return true,
+                        _ => (),
+                    }
+                }
+            },
+            None => ()
+        }
+        return false;
+    }
+
     pub fn is_mod(&self) -> bool {
         match self.inner { ModuleItem(..) => true, _ => false }
     }
@@ -736,7 +751,7 @@ impl Clean<Type> for ast::Ty {
 
 #[deriving(Clone, Encodable, Decodable)]
 pub enum StructField {
-    HiddenStructField,
+    HiddenStructField, // inserted later by strip passes
     TypedStructField(Type),
 }
 
