@@ -230,7 +230,8 @@ impl Sub<BigUint, BigUint> for BigUint {
             lo
         }).collect();
 
-        assert_eq!(borrow, 0);     // <=> assert!((self >= other));
+        assert!(borrow == 0,
+                "Cannot subtract other from self because other is larger than self.");
         return BigUint::new(diff);
     }
 }
@@ -1753,6 +1754,13 @@ mod biguint_tests {
             assert!(c - a == b);
             assert!(c - b == a);
         }
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_sub_fail_on_underflow() {
+        let (a, b) : (BigUint, BigUint) = (Zero::zero(), One::one());
+        a - b;
     }
 
     static mul_triples: &'static [(&'static [BigDigit],
