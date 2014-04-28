@@ -1095,24 +1095,22 @@ impl<'a> LookupContext<'a> {
         // If they were not explicitly supplied, just construct fresh
         // variables.
         let num_supplied_tps = self.supplied_tps.len();
-        let num_method_tps = candidate.method_ty.generics.type_param_defs().len();
-        let m_substs = {
-            if num_supplied_tps == 0u {
-                self.fcx.infcx().next_ty_vars(num_method_tps)
-            } else if num_method_tps == 0u {
-                tcx.sess.span_err(
-                    self.span,
-                    "this method does not take type parameters");
-                self.fcx.infcx().next_ty_vars(num_method_tps)
-            } else if num_supplied_tps != num_method_tps {
-                tcx.sess.span_err(
-                    self.span,
-                    "incorrect number of type \
-                     parameters given for this method");
-                self.fcx.infcx().next_ty_vars(num_method_tps)
-            } else {
-                Vec::from_slice(self.supplied_tps)
-            }
+        let method_tps = candidate.method_ty.generics.type_param_defs();
+        let m_substs = if num_supplied_tps == 0u {
+            self.fcx.infcx().next_ty_vars(method_tps)
+        } else if method_tps.len() == 0u {
+            tcx.sess.span_err(
+                self.span,
+                "this method does not take type parameters");
+            self.fcx.infcx().next_ty_vars(method_tps)
+        } else if num_supplied_tps != method_tps.len() {
+            tcx.sess.span_err(
+                self.span,
+                "incorrect number of type \
+                 parameters given for this method");
+            self.fcx.infcx().next_ty_vars(method_tps)
+        } else {
+            Vec::from_slice(self.supplied_tps)
         };
 
         // Determine values for the early-bound lifetime parameters.

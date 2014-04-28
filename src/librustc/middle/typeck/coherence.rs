@@ -480,13 +480,10 @@ impl<'a> CoherenceChecker<'a> {
                 infer::BoundRegionInCoherence(d.name)))
             .collect();
 
-        let bounds_count = polytype.generics.type_param_defs().len();
-        let type_parameters = self.inference_context.next_ty_vars(bounds_count);
-
         let substitutions = substs {
             regions: ty::NonerasedRegions(region_parameters),
             self_ty: None,
-            tps: type_parameters
+            tps: self.inference_context.next_ty_vars(polytype.generics.type_param_defs())
         };
         let monotype = subst(self.crate_context.tcx,
                              &substitutions,

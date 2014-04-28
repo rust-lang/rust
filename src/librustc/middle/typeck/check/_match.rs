@@ -32,7 +32,7 @@ pub fn check_match(fcx: &FnCtxt,
                    arms: &[ast::Arm]) {
     let tcx = fcx.ccx.tcx;
 
-    let discrim_ty = fcx.infcx().next_ty_var();
+    let discrim_ty = fcx.infcx().next_ty_var(None);
     check_expr_has_type(fcx, discrim, discrim_ty);
 
     // Typecheck the patterns first, so that we get types for all the

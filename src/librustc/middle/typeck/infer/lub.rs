@@ -14,13 +14,10 @@ use middle::ty::RegionVid;
 use middle::ty;
 use middle::typeck::infer::then;
 use middle::typeck::infer::combine::*;
-use middle::typeck::infer::glb::Glb;
 use middle::typeck::infer::lattice::*;
-use middle::typeck::infer::sub::Sub;
 use middle::typeck::infer::to_str::InferStr;
-use middle::typeck::infer::{cres, InferCtxt};
+use middle::typeck::infer::{cres, Subtype};
 use middle::typeck::infer::fold_regions_in_sig;
-use middle::typeck::infer::{TypeTrace, Subtype};
 use collections::HashMap;
 use syntax::ast::{Many, Once, NodeId};
 use syntax::ast::{ExternFn, NormalFn, UnsafeFn};
@@ -29,19 +26,9 @@ use util::ppaux::mt_to_str;
 
 pub struct Lub<'f>(pub CombineFields<'f>);  // least-upper-bound: common supertype
 
-impl<'f> Lub<'f> {
-    pub fn get_ref<'a>(&'a self) -> &'a CombineFields<'f> { let Lub(ref v) = *self; v }
-}
-
-impl<'f> Combine for Lub<'f> {
-    fn infcx<'a>(&'a self) -> &'a InferCtxt<'a> { self.get_ref().infcx }
-    fn tag(&self) -> ~str { "lub".to_owned() }
-    fn a_is_expected(&self) -> bool { self.get_ref().a_is_expected }
-    fn trace(&self) -> TypeTrace { self.get_ref().trace.clone() }
-
-    fn sub<'a>(&'a self) -> Sub<'a> { Sub(self.get_ref().clone()) }
-    fn lub<'a>(&'a self) -> Lub<'a> { Lub(self.get_ref().clone()) }
-    fn glb<'a>(&'a self) -> Glb<'a> { Glb(self.get_ref().clone()) }
+impl<'f> Combine<'f> for Lub<'f> {
+    fn get_ref<'a>(&'a self) -> &'a CombineFields<'f> { let Lub(ref v) = *self; v }
+    fn tag(&self) -> &'static str { "lub" }
 
     fn mts(&self, a: &ty::mt, b: &ty::mt) -> cres<ty::mt> {
         let tcx = self.get_ref().infcx.tcx;
