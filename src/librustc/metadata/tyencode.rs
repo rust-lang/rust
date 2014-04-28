@@ -177,21 +177,6 @@ fn enc_bound_region(w: &mut MemWriter, cx: &ctxt, br: ty::BoundRegion) {
     }
 }
 
-pub fn enc_vstore(w: &mut MemWriter, cx: &ctxt,
-                  v: ty::Vstore,
-                  enc_mut: |&mut MemWriter|) {
-    mywrite!(w, "/");
-    match v {
-        ty::VstoreFixed(u) => mywrite!(w, "{}|", u),
-        ty::VstoreUniq => mywrite!(w, "~"),
-        ty::VstoreSlice(r) => {
-            mywrite!(w, "&");
-            enc_region(w, cx, r);
-            enc_mut(w);
-        }
-    }
-}
-
 pub fn enc_trait_ref(w: &mut MemWriter, cx: &ctxt, s: &ty::TraitRef) {
     mywrite!(w, "{}|", (cx.ds)(s.def_id));
     enc_substs(w, cx, &s.substs);
@@ -275,9 +260,13 @@ fn enc_sty(w: &mut MemWriter, cx: &ctxt, st: &ty::sty) {
                 None => mywrite!(w, "|"),
             }
         }
-        ty::ty_str(v) => {
+        ty::ty_str(sz) => {
             mywrite!(w, "v");
-            enc_vstore(w, cx, v, |_| {});
+            mywrite!(w, "/");
+            match sz {
+                Some(n) => mywrite!(w, "{}|", n),
+                None => mywrite!(w, "|"),
+            }
         }
         ty::ty_closure(ref f) => {
             mywrite!(w, "f");

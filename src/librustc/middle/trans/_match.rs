@@ -1293,40 +1293,51 @@ fn compare_values<'a>(
                   rhs: ValueRef,
                   rhs_t: ty::t)
                   -> Result<'a> {
+    fn compare_str<'a>(cx: &'a Block<'a>,
+                       lhs: ValueRef,
+                       rhs: ValueRef,
+                       rhs_t: ty::t)
+                       -> Result<'a> {
+        let did = langcall(cx, None,
+                           format!("comparison of `{}`", cx.ty_to_str(rhs_t)),
+                           StrEqFnLangItem);
+        let result = callee::trans_lang_call(cx, did, [lhs, rhs], None);
+        Result {
+            bcx: result.bcx,
+            val: bool_to_i1(result.bcx, result.val)
+        }
+    }
+
     let _icx = push_ctxt("compare_values");
     if ty::type_is_scalar(rhs_t) {
-      let rs = compare_scalar_types(cx, lhs, rhs, rhs_t, ast::BiEq);
-      return rslt(rs.bcx, rs.val);
+        let rs = compare_scalar_types(cx, lhs, rhs, rhs_t, ast::BiEq);
+        return rslt(rs.bcx, rs.val);
     }
 
     match ty::get(rhs_t).sty {
-        ty::ty_str(ty::VstoreUniq) => {
-            let scratch_lhs = alloca(cx, val_ty(lhs), "__lhs");
-            Store(cx, lhs, scratch_lhs);
-            let scratch_rhs = alloca(cx, val_ty(rhs), "__rhs");
-            Store(cx, rhs, scratch_rhs);
-            let did = langcall(cx, None,
-                               format!("comparison of `{}`", cx.ty_to_str(rhs_t)),
-                               UniqStrEqFnLangItem);
-            let result = callee::trans_lang_call(cx, did, [scratch_lhs, scratch_rhs], None);
-            Result {
-                bcx: result.bcx,
-                val: bool_to_i1(result.bcx, result.val)
+        ty::ty_uniq(t) => match ty::get(t).sty {
+            ty::ty_str(None) => {
+                let scratch_lhs = alloca(cx, val_ty(lhs), "__lhs");
+                Store(cx, lhs, scratch_lhs);
+                let scratch_rhs = alloca(cx, val_ty(rhs), "__rhs");
+                Store(cx, rhs, scratch_rhs);
+                let did = langcall(cx, None,
+                                   format!("comparison of `{}`", cx.ty_to_str(rhs_t)),
+                                   UniqStrEqFnLangItem);
+                let result = callee::trans_lang_call(cx, did, [scratch_lhs, scratch_rhs], None);
+                Result {
+                    bcx: result.bcx,
+                    val: bool_to_i1(result.bcx, result.val)
+                }
             }
-        }
-        ty::ty_str(_) => {
-            let did = langcall(cx, None,
-                               format!("comparison of `{}`", cx.ty_to_str(rhs_t)),
-                               StrEqFnLangItem);
-            let result = callee::trans_lang_call(cx, did, [lhs, rhs], None);
-            Result {
-                bcx: result.bcx,
-                val: bool_to_i1(result.bcx, result.val)
-            }
-        }
-        _ => {
-            cx.sess().bug("only scalars and strings supported in compare_values");
-        }
+            _ => cx.sess().bug("only scalars and strings supported in compare_values"),
+        },
+        ty::ty_rptr(_, mt) => match ty::get(mt.ty).sty {
+            ty::ty_str(None) => compare_str(cx, lhs, rhs, rhs_t),
+            _ => cx.sess().bug("only scalars and strings supported in compare_values"),
+        },
+        ty::ty_str(Some(_)) => compare_str(cx, lhs, rhs, rhs_t),
+        _ => cx.sess().bug("only scalars and strings supported in compare_values"),
     }
 }
 

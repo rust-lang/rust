@@ -1507,7 +1507,7 @@ pub fn cast_type_kind(t: ty::t) -> cast_kind {
         ty::ty_float(..)   => cast_float,
         ty::ty_ptr(..)     => cast_pointer,
         ty::ty_rptr(_, mt) => match ty::get(mt.ty).sty{
-            ty::ty_vec(_, None) => cast_other,
+            ty::ty_vec(_, None) | ty::ty_str(None) => cast_other,
             _ => cast_pointer,
         },
         ty::ty_bare_fn(..) => cast_pointer,
@@ -1717,7 +1717,8 @@ fn deref_once<'a>(bcx: &'a Block<'a>,
     let r = match ty::get(datum.ty).sty {
         ty::ty_uniq(content_ty) => {
             match ty::get(content_ty).sty {
-                ty::ty_vec(_, None) => bcx.tcx().sess.span_bug(expr.span, "unexpected ~[T]"),
+                ty::ty_vec(_, None) | ty::ty_str(None)
+                    => bcx.tcx().sess.span_bug(expr.span, "unexpected ~[T]"),
                 _ => deref_owned_pointer(bcx, expr, datum, content_ty),
             }
         }
@@ -1734,7 +1735,8 @@ fn deref_once<'a>(bcx: &'a Block<'a>,
         ty::ty_ptr(ty::mt { ty: content_ty, .. }) |
         ty::ty_rptr(_, ty::mt { ty: content_ty, .. }) => {
             match ty::get(content_ty).sty {
-                ty::ty_vec(_, None) => bcx.tcx().sess.span_bug(expr.span, "unexpected &[T]"),
+                ty::ty_vec(_, None) | ty::ty_str(None)
+                    => bcx.tcx().sess.span_bug(expr.span, "unexpected &[T]"),
                 _ => {
                     assert!(!ty::type_needs_drop(bcx.tcx(), datum.ty));
 

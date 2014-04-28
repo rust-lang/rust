@@ -138,23 +138,6 @@ pub fn parse_substs_data(data: &[u8], crate_num: ast::CrateNum, pos: uint, tcx: 
     parse_substs(&mut st, conv)
 }
 
-fn parse_vstore(st: &mut PState, conv: conv_did) -> ty::Vstore {
-    assert_eq!(next(st), '/');
-
-    let c = peek(st);
-    if '0' <= c && c <= '9' {
-        let n = parse_uint(st);
-        assert_eq!(next(st), '|');
-        return ty::VstoreFixed(n);
-    }
-
-    match next(st) {
-        '~' => ty::VstoreUniq,
-        '&' => ty::VstoreSlice(parse_region(st, conv)),
-        c => st.tcx.sess.bug(format!("parse_vstore(): bad input '{}'", c))
-    }
-}
-
 fn parse_size(st: &mut PState) -> Option<uint> {
     assert_eq!(next(st), '/');
 
@@ -361,8 +344,8 @@ fn parse_ty(st: &mut PState, conv: conv_did) -> ty::t {
         return ty::mk_vec(st.tcx, mt, sz);
       }
       'v' => {
-        let v = parse_vstore(st, |x,y| conv(x,y));
-        return ty::mk_str(st.tcx, v);
+        let sz = parse_size(st);
+        return ty::mk_str(st.tcx, sz);
       }
       'T' => {
         assert_eq!(next(st), '[');

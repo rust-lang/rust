@@ -706,7 +706,7 @@ impl<'a> ConstraintContext<'a> {
         match ty::get(ty).sty {
             ty::ty_nil | ty::ty_bot | ty::ty_bool |
             ty::ty_char | ty::ty_int(_) | ty::ty_uint(_) |
-            ty::ty_float(_) => {
+            ty::ty_float(_) | ty::ty_str(_) => {
                 /* leaf type -- noop */
             }
 
@@ -714,10 +714,6 @@ impl<'a> ConstraintContext<'a> {
                 let contra = self.contravariant(variance);
                 self.add_constraints_from_region(region, contra);
                 self.add_constraints_from_mt(mt, variance);
-            }
-
-            ty::ty_str(vstore) => {
-                self.add_constraints_from_vstore(vstore, variance);
             }
 
             ty::ty_vec(ref mt, _) => {
@@ -792,20 +788,6 @@ impl<'a> ConstraintContext<'a> {
         }
     }
 
-    /// Adds constraints appropriate for a vector with Vstore `vstore`
-    /// appearing in a context with ambient variance `variance`
-    fn add_constraints_from_vstore(&mut self,
-                                   vstore: ty::Vstore,
-                                   variance: VarianceTermPtr<'a>) {
-        match vstore {
-            ty::VstoreSlice(r) => {
-                let contra = self.contravariant(variance);
-                self.add_constraints_from_region(r, contra);
-            }
-
-            ty::VstoreFixed(_) | ty::VstoreUniq => {}
-        }
-    }
 
     /// Adds constraints appropriate for a nominal type (enum, struct,
     /// object, etc) appearing in a context with ambient variance `variance`

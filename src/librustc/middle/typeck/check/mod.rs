@@ -1395,7 +1395,7 @@ pub fn check_lit(fcx: &FnCtxt, lit: &ast::Lit) -> ty::t {
     let tcx = fcx.ccx.tcx;
 
     match lit.node {
-        ast::LitStr(..) => ty::mk_str(tcx, ty::VstoreSlice(ty::ReStatic)),
+        ast::LitStr(..) => ty::mk_str_slice(tcx, ty::ReStatic, ast::MutImmutable),
         ast::LitBinary(..) => {
             ty::mk_slice(tcx, ty::ReStatic, ty::mt{ ty: ty::mk_u8(), mutbl: ast::MutImmutable })
         }
@@ -2567,15 +2567,14 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
       ast::ExprVstore(ev, vst) => {
         let typ = match ev.node {
           ast::ExprLit(lit) if ast_util::lit_is_str(lit) => {
-            let v = ast_expr_vstore_to_vstore(fcx, ev, vst);
-            ty::mk_str(tcx, v)
+            ast_expr_vstore_to_ty(fcx, ev, vst, || ty::mt{ ty: ty::mk_str(tcx, None),
+                                                           mutbl: ast::MutImmutable })
           }
           ast::ExprVec(ref args) => {
             let mutability = match vst {
                 ast::ExprVstoreMutSlice => ast::MutMutable,
                 _ => ast::MutImmutable,
             };
-            let v = ast_expr_vstore_to_vstore(fcx, ev, vst);
             let mut any_error = false;
             let mut any_bot = false;
             let t: ty::t = fcx.infcx().next_ty_var();
@@ -2594,23 +2593,11 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
             } else if any_bot {
                 ty::mk_bot()
             } else {
-                match v {
-                    ty::VstoreFixed(sz) => ty::mk_vec(tcx,
-                                                      ty::mt {ty: t, mutbl: mutability},
-                                                      Some(sz)),
-                    ty::VstoreUniq => ty::mk_uniq(tcx,
-                                                  ty::mk_vec(tcx,
-                                                             ty::mt {ty: t, mutbl: mutability},
-                                                             None)), // Sadly, we know the length
-                                                                     // - Some(args.len()) - but
-                                                                     // must throw it away or cause
-                                                                     // confusion further down the
-                                                                     // pipeline. Hopefully we can
-                                                                     // remedy this later.
-                                                                     // See below (x3) too.
-                    ty::VstoreSlice(r) => ty::mk_slice(tcx, r,
-                                                       ty::mt {ty: t, mutbl: mutability}),
-                }
+                ast_expr_vstore_to_ty(fcx, ev, vst, ||
+                    ty::mt{ ty: ty::mk_vec(tcx,
+                                           ty::mt {ty: t, mutbl: mutability},
+                                           None),
+                            mutbl: mutability })
             }
           }
           ast::ExprRepeat(element, count_expr) => {
@@ -2620,7 +2607,6 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                 ast::ExprVstoreMutSlice => ast::MutMutable,
                 _ => ast::MutImmutable,
             };
-            let tt = ast_expr_vstore_to_vstore(fcx, ev, vst);
             let t = fcx.infcx().next_ty_var();
             check_expr_has_type(fcx, element, t);
             let arg_t = fcx.expr_ty(element);
@@ -2629,17 +2615,11 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
             } else if ty::type_is_bot(arg_t) {
                 ty::mk_bot()
             } else {
-                match tt {
-                    ty::VstoreFixed(sz) => ty::mk_vec(tcx,
-                                                      ty::mt {ty: t, mutbl: mutability},
-                                                      Some(sz)),
-                    ty::VstoreUniq => ty::mk_uniq(tcx,
-                                                  ty::mk_vec(tcx,
-                                                             ty::mt {ty: t, mutbl: mutability},
-                                                             None)),
-                    ty::VstoreSlice(r) => ty::mk_slice(tcx, r,
-                                                       ty::mt {ty: t, mutbl: mutability}),
-                }
+                ast_expr_vstore_to_ty(fcx, ev, vst, ||
+                    ty::mt{ ty: ty::mk_vec(tcx,
+                                           ty::mt {ty: t, mutbl: mutability},
+                                           None),
+                            mutbl: mutability})
             }
           }
           _ =>
@@ -4013,33 +3993,29 @@ pub fn type_is_c_like_enum(fcx: &FnCtxt, sp: Span, typ: ty::t) -> bool {
     return ty::type_is_c_like_enum(fcx.ccx.tcx, typ_s);
 }
 
-pub fn ast_expr_vstore_to_vstore(fcx: &FnCtxt,
-                                 e: &ast::Expr,
-                                 v: ast::ExprVstore)
-                                 -> ty::Vstore {
+pub fn ast_expr_vstore_to_ty(fcx: &FnCtxt,
+                             e: &ast::Expr,
+                             v: ast::ExprVstore,
+                             mk_inner: || -> ty::mt)
+                             -> ty::t {
     match v {
-        ast::ExprVstoreUniq => ty::VstoreUniq,
+        ast::ExprVstoreUniq => ty::mk_uniq(fcx.ccx.tcx, mk_inner().ty),
         ast::ExprVstoreSlice | ast::ExprVstoreMutSlice => {
             match e.node {
                 ast::ExprLit(..) => {
                     // string literals and *empty slices* live in static memory
-                    ty::VstoreSlice(ty::ReStatic)
+                    ty::mk_rptr(fcx.ccx.tcx, ty::ReStatic, mk_inner())
                 }
                 ast::ExprVec(ref elements) if elements.len() == 0 => {
                     // string literals and *empty slices* live in static memory
-                    ty::VstoreSlice(ty::ReStatic)
+                    ty::mk_rptr(fcx.ccx.tcx, ty::ReStatic, mk_inner())
                 }
                 ast::ExprRepeat(..) |
                 ast::ExprVec(..) => {
                     // vector literals are temporaries on the stack
                     match fcx.tcx().region_maps.temporary_scope(e.id) {
-                        Some(scope) => {
-                            ty::VstoreSlice(ty::ReScope(scope))
-                        }
-                        None => {
-                            // this slice occurs in a static somewhere
-                            ty::VstoreSlice(ty::ReStatic)
-                        }
+                        Some(scope) => ty::mk_rptr(fcx.ccx.tcx, ty::ReScope(scope), mk_inner()),
+                        None => ty::mk_rptr(fcx.ccx.tcx, ty::ReStatic, mk_inner()),
                     }
                 }
                 _ => {

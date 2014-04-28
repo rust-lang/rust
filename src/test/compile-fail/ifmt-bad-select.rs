@@ -10,5 +10,5 @@
 
 fn main() {
     format!("{0, select, other{}}", 2);
-    //~^ ERROR: expected &str but found integral
+    //~^ ERROR: mismatched types: expected `&&str` but found `&<generic integer #0>` (expected &-ptr
 }
