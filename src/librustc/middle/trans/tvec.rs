@@ -244,7 +244,7 @@ pub fn trans_uniq_vstore<'a>(bcx: &'a Block<'a>,
                     let llptrval = C_cstr(ccx, (*s).clone(), false);
                     let llptrval = PointerCast(bcx, llptrval, Type::i8p(ccx));
                     let llsizeval = C_uint(ccx, s.get().len());
-                    let typ = ty::mk_str(bcx.tcx(), ty::VstoreUniq);
+                    let typ = ty::mk_uniq(bcx.tcx(), ty::mk_str(bcx.tcx(), None));
                     let lldestval = rvalue_scratch_datum(bcx,
                                                          typ,
                                                          "");
@@ -463,35 +463,6 @@ pub fn get_fixed_base_and_byte_len(bcx: &Block,
     (base, len)
 }
 
-pub fn get_base_and_byte_len_for_vec(bcx: &Block,
-                                     llval: ValueRef,
-                                     vec_ty: ty::t)
-                                     -> (ValueRef, ValueRef) {
-    /*!
-     * Converts a vector into the slice pair.  The vector should be
-     * stored in `llval` which should be by ref. If you have a datum,
-     * you would probably prefer to call
-     * `Datum::get_base_and_byte_len()`.
-     */
-
-    let ccx = bcx.ccx();
-    let vt = vec_types(bcx, ty::sequence_element_type(bcx.tcx(), vec_ty));
-
-    let size = match ty::get(vec_ty).sty {
-        ty::ty_vec(_, size) => size,
-        _ => ccx.sess().bug("non-vector in get_base_and_byte_len_for_vec"),
-    };
-
-    match size {
-        Some(n) => {
-            let base = GEPi(bcx, llval, [0u, 0u]);
-            let len = Mul(bcx, C_uint(ccx, n), vt.llunit_size);
-            (base, len)
-        }
-        None => ccx.sess().bug("unsized vector in get_base_and_byte_len_for_vec")
-    }
-}
-
 pub fn get_base_and_len(bcx: &Block,
                         llval: ValueRef,
                         vec_ty: ty::t)
@@ -505,38 +476,32 @@ pub fn get_base_and_len(bcx: &Block,
      */
 
     let ccx = bcx.ccx();
-    let vt = vec_types(bcx, ty::sequence_element_type(bcx.tcx(), vec_ty));
 
-    let vstore = match ty::get(vec_ty).sty {
-        ty::ty_str(vst) => vst,
-        ty::ty_vec(_, Some(n)) => ty::VstoreFixed(n),
-        ty::ty_rptr(r, mt) => match ty::get(mt.ty).sty {
-            ty::ty_vec(_, None) => ty::VstoreSlice(r),
-            _ => ccx.sess().bug("unexpected type (ty_rptr) in get_base_and_len"),
-        },
-        ty::ty_uniq(t) => match ty::get(t).sty {
-            ty::ty_vec(_, None) => ty::VstoreUniq,
-            _ => ccx.sess().bug("unexpected type (ty_uniq) in get_base_and_len"),
-        },
-        _ => ccx.sess().bug("unexpected type in get_base_and_len"),
-    };
-
-    match vstore {
-        ty::VstoreFixed(n) => {
+    match ty::get(vec_ty).sty {
+        ty::ty_str(Some(n)) |
+        ty::ty_vec(_, Some(n)) => {
             let base = GEPi(bcx, llval, [0u, 0u]);
             (base, C_uint(ccx, n))
         }
-        ty::VstoreSlice(..) => {
-            assert!(!type_is_immediate(bcx.ccx(), vec_ty));
-            let base = Load(bcx, GEPi(bcx, llval, [0u, abi::slice_elt_base]));
-            let count = Load(bcx, GEPi(bcx, llval, [0u, abi::slice_elt_len]));
-            (base, count)
-        }
-        ty::VstoreUniq => {
-            assert!(type_is_immediate(bcx.ccx(), vec_ty));
-            let body = Load(bcx, llval);
-            (get_dataptr(bcx, body), UDiv(bcx, get_fill(bcx, body), vt.llunit_size))
-        }
+        ty::ty_rptr(_, mt) => match ty::get(mt.ty).sty {
+            ty::ty_vec(_, None) | ty::ty_str(None) => {
+                assert!(!type_is_immediate(bcx.ccx(), vec_ty));
+                let base = Load(bcx, GEPi(bcx, llval, [0u, abi::slice_elt_base]));
+                let count = Load(bcx, GEPi(bcx, llval, [0u, abi::slice_elt_len]));
+                (base, count)
+            }
+            _ => ccx.sess().bug("unexpected type (ty_rptr) in get_base_and_len"),
+        },
+        ty::ty_uniq(t) => match ty::get(t).sty {
+            ty::ty_vec(_, None) | ty::ty_str(None) => {
+                assert!(type_is_immediate(bcx.ccx(), vec_ty));
+                let vt = vec_types(bcx, ty::sequence_element_type(bcx.tcx(), vec_ty));
+                let body = Load(bcx, llval);
+                (get_dataptr(bcx, body), UDiv(bcx, get_fill(bcx, body), vt.llunit_size))
+            }
+            _ => ccx.sess().bug("unexpected type (ty_uniq) in get_base_and_len"),
+        },
+        _ => ccx.sess().bug("unexpected type in get_base_and_len"),
     }
 }
 
