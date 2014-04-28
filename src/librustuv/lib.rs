@@ -88,10 +88,7 @@ mod homing;
 mod queue;
 mod rc;
 
-/// The implementation of `rtio` for libuv
 pub mod uvio;
-
-/// C bindings to libuv
 pub mod uvll;
 
 pub mod file;

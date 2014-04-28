@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! Stack unwinding
+
 // Implementation of Rust stack unwinding
 //
 // For background on exception handling and stack unwinding please see
