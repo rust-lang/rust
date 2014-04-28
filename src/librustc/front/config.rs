@@ -70,6 +70,7 @@ fn fold_mod(cx: &mut Context, m: &ast::Mod) -> ast::Mod {
         filter_view_item(cx, a).map(|x| cx.fold_view_item(x))
     }).collect();
     ast::Mod {
+        inner: m.inner,
         view_items: filtered_view_items,
         items: flattened_items
     }

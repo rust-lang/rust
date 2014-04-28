@@ -652,6 +652,7 @@ pub fn noop_fold_type_method<T: Folder>(m: &TypeMethod, fld: &mut T) -> TypeMeth
 
 pub fn noop_fold_mod<T: Folder>(m: &Mod, folder: &mut T) -> Mod {
     ast::Mod {
+        inner: folder.new_span(m.inner),
         view_items: m.view_items
                      .iter()
                      .map(|x| folder.fold_view_item(x)).collect(),
