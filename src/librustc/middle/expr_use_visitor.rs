@@ -56,44 +56,39 @@ pub trait Delegate {
     // The value found at `cmt` is either copied or moved, depending
     // on mode.
     fn consume(&mut self,
-               _consume_id: ast::NodeId,
-               _consume_span: Span,
-               _cmt: mc::cmt,
-               _mode: ConsumeMode)
-    { }
+               consume_id: ast::NodeId,
+               consume_span: Span,
+               cmt: mc::cmt,
+               mode: ConsumeMode);
 
     // The value found at `cmt` is either copied or moved via the
     // pattern binding `consume_pat`, depending on mode.
     fn consume_pat(&mut self,
-                   _consume_pat: &ast::Pat,
-                   _cmt: mc::cmt,
-                   _mode: ConsumeMode)
-    { }
+                   consume_pat: &ast::Pat,
+                   cmt: mc::cmt,
+                   mode: ConsumeMode);
 
     // The value found at `borrow` is being borrowed at the point
     // `borrow_id` for the region `loan_region` with kind `bk`.
     fn borrow(&mut self,
-              _borrow_id: ast::NodeId,
-              _borrow_span: Span,
-              _cmt: mc::cmt,
-              _loan_region: ty::Region,
-              _bk: ty::BorrowKind,
-              _loan_cause: LoanCause)
-    { }
+              borrow_id: ast::NodeId,
+              borrow_span: Span,
+              cmt: mc::cmt,
+              loan_region: ty::Region,
+              bk: ty::BorrowKind,
+              loan_cause: LoanCause);
 
     // The local variable `id` is declared but not initialized.
     fn decl_without_init(&mut self,
                          _id: ast::NodeId,
-                         _span: Span)
-    { }
+                         _span: Span);
 
     // The path at `cmt` is being assigned to.
     fn mutate(&mut self,
-              _assignment_id: ast::NodeId,
-              _assignment_span: Span,
-              _assignee_cmt: mc::cmt,
-              _mode: MutateMode)
-    { }
+              assignment_id: ast::NodeId,
+              assignment_span: Span,
+              assignee_cmt: mc::cmt,
+              mode: MutateMode);
 }
 
 ///////////////////////////////////////////////////////////////////////////
