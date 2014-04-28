@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! Common routines shared by parser mods
+
 use parse::token;
 
 // SeqSep : a sequence separator (token)

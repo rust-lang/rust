@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! The implementation of `rtio` for libuv
+
 use std::c_str::CString;
 use std::cast;
 use std::io::IoError;
