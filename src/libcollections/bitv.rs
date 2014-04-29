@@ -225,6 +225,32 @@ enum BitvVariant { Big(BigBitv), Small(SmallBitv) }
 enum Op {Union, Intersect, Assign, Difference}
 
 /// The bitvector type
+///
+/// # Example
+///
+/// ```rust
+/// use collections::bitv::Bitv;
+///
+/// let mut bv = Bitv::new(10, false);
+///
+/// // insert all primes less than 10
+/// bv.set(2, true);
+/// bv.set(3, true);
+/// bv.set(5, true);
+/// bv.set(7, true);
+/// println!("{}", bv.to_str());
+/// println!("total bits set to true: {}", bv.iter().count(|x| x));
+///
+/// // flip all values in bitvector, producing non-primes less than 10
+/// bv.negate();
+/// println!("{}", bv.to_str());
+/// println!("total bits set to true: {}", bv.iter().count(|x| x));
+///
+/// // reset bitvector to empty
+/// bv.clear();
+/// println!("{}", bv.to_str());
+/// println!("total bits set to true: {}", bv.iter().count(|x| x));
+/// ```
 #[deriving(Clone)]
 pub struct Bitv {
     /// Internal representation of the bit vector (small or large)
@@ -264,10 +290,11 @@ impl Bitv {
           }
         }
     }
-
 }
 
 impl Bitv {
+    /// Creates an empty Bitv that holds `nbits` elements, setting each element
+    /// to `init`.
     pub fn new(nbits: uint, init: bool) -> Bitv {
         let rep = if nbits < uint::BITS {
             Small(SmallBitv::new(if init {(1<<nbits)-1} else {0}))
@@ -419,6 +446,21 @@ impl Bitv {
       }
     }
 
+    /// Returns an iterator over the elements of the vector in order.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use collections::bitv::Bitv;
+    /// let mut bv = Bitv::new(10, false);
+    /// bv.set(1, true);
+    /// bv.set(2, true);
+    /// bv.set(3, true);
+    /// bv.set(5, true);
+    /// bv.set(8, true);
+    /// // Count bits set to 1; result should be 5
+    /// println!("{}", bv.iter().count(|x| x));
+    /// ```
     #[inline]
     pub fn iter<'a>(&'a self) -> Bits<'a> {
         Bits {bitv: self, next_idx: 0, end_idx: self.nbits}
