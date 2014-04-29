@@ -1150,6 +1150,18 @@ fn link_args(sess: &Session,
            sess.opts.optimize == session::Aggressive {
             args.push("-Wl,-O1".to_owned());
         }
+    } else if sess.targ_cfg.os == abi::OsMacos {
+        // The dead_strip option to the linker specifies that functions and data
+        // unreachable by the entry point will be removed. This is quite useful
+        // with Rust's compilation model of compiling libraries at a time into
+        // one object file. For example, this brings hello world from 1.7MB to
+        // 458K.
+        //
+        // Note that this is done for both executables and dynamic libraries. We
+        // won't get much benefit from dylibs because LLVM will have already
+        // stripped away as much as it could. This has not been seen to impact
+        // link times negatively.
+        args.push("-Wl,-dead_strip".to_owned());
     }
 
     if sess.targ_cfg.os == abi::OsWin32 {
