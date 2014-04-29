@@ -1,5 +1,5 @@
 - Start Date: 2014-03-28
-- RFC PR #: 
+- RFC PR #: 23
 - Rust Issue #: 
 
 # Summary
