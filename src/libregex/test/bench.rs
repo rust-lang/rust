@@ -150,6 +150,7 @@ fn easy1() -> Regex { regex!("A[AB]B[BC]C[CD]D[DE]E[EF]F[FG]G[GH]H[HI]I[IJ]J$") 
 fn medium() -> Regex { regex!("[XYZ]ABCDEFGHIJKLMNOPQRSTUVWXYZ$") }
 fn hard() -> Regex { regex!("[ -~]*ABCDEFGHIJKLMNOPQRSTUVWXYZ$") }
 
+#[allow(deprecated_owned_vector)]
 fn gen_text(n: uint) -> ~str {
     let mut rng = task_rng();
     let mut bytes = rng.gen_ascii_str(n).into_bytes();
@@ -176,4 +177,3 @@ throughput!(medium_32K,medium(), 32<<10)
 throughput!(hard_32, hard(), 32)
 throughput!(hard_1K, hard(), 1<<10)
 throughput!(hard_32K,hard(), 32<<10)
-

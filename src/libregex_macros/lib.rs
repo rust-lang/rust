@@ -102,7 +102,7 @@ struct NfaGen<'a> {
     cx: &'a ExtCtxt<'a>,
     sp: codemap::Span,
     prog: Program,
-    names: ~[Option<~str>],
+    names: Vec<Option<~str>>,
     original: ~str,
 }
 
@@ -112,7 +112,7 @@ impl<'a> NfaGen<'a> {
         // expression returned.
         let num_cap_locs = 2 * self.prog.num_captures();
         let num_insts = self.prog.insts.len();
-        let cap_names = self.vec_expr(self.names,
+        let cap_names = self.vec_expr(self.names.as_slice(),
             |cx, name| match name {
                 &Some(ref name) => {
                     let name = name.as_slice();
@@ -309,7 +309,7 @@ fn exec<'t>(which: ::regex::native::MatchKind, input: &'t str,
 
 ::regex::Regex {
     original: ~$regex,
-    names: ~$cap_names,
+    names: vec!$cap_names,
     p: ::regex::native::Native(exec),
 }
         })
