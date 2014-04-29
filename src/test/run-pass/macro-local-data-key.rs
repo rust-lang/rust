@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::local_data;
-
 local_data_key!(foo: int)
 
 mod bar {
@@ -17,12 +15,12 @@ mod bar {
 }
 
 pub fn main() {
-    local_data::get(foo, |x| assert!(x.is_none()));
-    local_data::get(bar::baz, |y| assert!(y.is_none()));
+    assert!(foo.get().is_none());
+    assert!(bar::baz.get().is_none());
 
-    local_data::set(foo, 3);
-    local_data::set(bar::baz, -10.0);
+    foo.replace(Some(3));
+    bar::baz.replace(Some(-10.0));
 
-    local_data::get(foo, |x| assert_eq!(*x.unwrap(), 3));
-    local_data::get(bar::baz, |y| assert_eq!(*y.unwrap(), -10.0));
+    assert_eq!(*foo.get().unwrap(), 3);
+    assert_eq!(*bar::baz.get().unwrap(), -10.0);
 }
