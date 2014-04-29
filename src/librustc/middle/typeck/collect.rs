@@ -340,13 +340,14 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt, trait_id: ast::NodeId) {
         // add in the "self" type parameter
         let self_trait_def = get_trait_def(ccx, local_def(trait_id));
         let self_trait_ref = self_trait_def.trait_ref.subst(tcx, &substs);
+        let bounds = ty::ParamBounds {
+            builtin_bounds: ty::EmptyBuiltinBounds(),
+            trait_bounds: vec!(self_trait_ref)
+        };
         new_type_param_defs.push(ty::TypeParameterDef {
             ident: special_idents::self_,
             def_id: dummy_defid,
-            bounds: Rc::new(ty::ParamBounds {
-                builtin_bounds: ty::EmptyBuiltinBounds(),
-                trait_bounds: vec!(self_trait_ref)
-            }),
+            bounds: Rc::new(bounds),
             default: None
         });
 
@@ -1035,7 +1036,7 @@ fn ty_generics(ccx: &CrateCtxt,
         type_param_defs: Rc::new(ty_params.iter().enumerate().map(|(offset, param)| {
             let existing_def_opt = {
                 let ty_param_defs = ccx.tcx.ty_param_defs.borrow();
-                ty_param_defs.find(&param.id).map(|def| def.clone())
+                ty_param_defs.find(&param.id).map(|def| (*def).clone())
             };
             existing_def_opt.unwrap_or_else(|| {
                 let param_ty = ty::param_ty {idx: base_index + offset,
