@@ -66,6 +66,8 @@ static F64: f64 = 3.5;
 
 fn main() {
     _zzz();
+
+    let a = (B, I, C, I8, I16, I32, I64, U, U8, U16, U32, U64, F32, F64);
 }
 
 fn _zzz() {()}
