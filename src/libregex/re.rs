@@ -109,7 +109,7 @@ pub struct Regex {
     #[doc(hidden)]
     pub original: ~str,
     #[doc(hidden)]
-    pub names: ~[Option<~str>],
+    pub names: Vec<Option<~str>>,
     #[doc(hidden)]
     pub p: MaybeNative,
 }
