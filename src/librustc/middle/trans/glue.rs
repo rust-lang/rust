@@ -84,7 +84,7 @@ fn get_drop_glue_type(ccx: &CrateContext, t: ty::t) -> ty::t {
 
         ty::ty_uniq(typ) if !ty::type_needs_drop(tcx, typ) => {
             match ty::get(typ).sty {
-                ty::ty_vec(_, None) | ty::ty_str(None) => t,
+                ty::ty_vec(_, None) | ty::ty_str => t,
                 _ => {
                     let llty = sizing_type_of(ccx, typ);
                     // Unique boxes do not allocate for zero-size types. The standard
@@ -288,7 +288,7 @@ fn make_drop_glue<'a>(bcx: &'a Block<'a>, v0: ValueRef, t: ty::t) -> &'a Block<'
                         trans_exchange_free(bcx, llbox)
                     })
                 }
-                ty::ty_str(None) => {
+                ty::ty_str => {
                     with_cond(bcx, not_null, |bcx| {
                         let unit_ty = ty::sequence_element_type(bcx.tcx(), t);
                         let bcx = tvec::make_drop_glue_unboxed(bcx, llbox, unit_ty);

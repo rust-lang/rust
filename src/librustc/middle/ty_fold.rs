@@ -175,10 +175,7 @@ pub fn super_fold_sty<T:TypeFolder>(this: &mut T,
             ty::ty_struct(did,
                           this.fold_substs(substs))
         }
-        ty::ty_str(sz) => {
-            ty::ty_str(sz)
-        }
-        ty::ty_nil | ty::ty_bot | ty::ty_bool | ty::ty_char |
+        ty::ty_nil | ty::ty_bot | ty::ty_bool | ty::ty_char | ty::ty_str |
         ty::ty_int(_) | ty::ty_uint(_) | ty::ty_float(_) |
         ty::ty_err | ty::ty_infer(_) |
         ty::ty_param(..) | ty::ty_self(_) => {
