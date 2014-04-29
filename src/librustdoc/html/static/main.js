@@ -605,11 +605,10 @@
                     // cleared to ensure the search is successful.
                     currentResults = null;
                     // Synchronize search bar with query string state and
-                    // perform the search, but don't empty the bar if there's
-                    // nothing there.
-                    if (params.search !== undefined) {
-                        $('.search-input').val(params.search);
-                    }
+                    // perform the search. This will empty the bar if there's
+                    // nothing there, which lets you really go back to a
+                    // previous state with nothing in the bar.
+                    $('.search-input').val(params.search);
                     // Some browsers fire 'onpopstate' for every page load
                     // (Chrome), while others fire the event only when actually
                     // popping a state (Firefox), which is why search() is
