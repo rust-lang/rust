@@ -17,7 +17,6 @@
 
 use std::fmt;
 use std::io;
-use std::local_data;
 use std::strbuf::StrBuf;
 
 use syntax::ast;
@@ -206,78 +205,72 @@ fn path(w: &mut io::Writer, path: &clean::Path, print_all: bool,
         generics.push_str("&gt;");
     }
 
-    // Did someone say rightward-drift?
-    local_data::get(current_location_key, |loc| {
-        let loc = loc.unwrap();
+    let loc = current_location_key.get().unwrap();
+    let cache = cache_key.get().unwrap();
+    let abs_root = root(&**cache, loc.as_slice());
+    let rel_root = match path.segments.get(0).name.as_slice() {
+        "self" => Some("./".to_owned()),
+        _ => None,
+    };
 
-        local_data::get(cache_key, |cache| {
-            let cache = cache.unwrap();
-            let abs_root = root(&**cache, loc.as_slice());
-            let rel_root = match path.segments.get(0).name.as_slice() {
-                "self" => Some("./".to_owned()),
-                _ => None,
-            };
-
-            if print_all {
-                let amt = path.segments.len() - 1;
-                match rel_root {
-                    Some(root) => {
-                        let mut root = StrBuf::from_str(root);
-                        for seg in path.segments.slice_to(amt).iter() {
-                            if "super" == seg.name || "self" == seg.name {
-                                try!(write!(w, "{}::", seg.name));
-                            } else {
-                                root.push_str(seg.name);
-                                root.push_str("/");
-                                try!(write!(w, "<a class='mod'
-                                                    href='{}index.html'>{}</a>::",
-                                              root.as_slice(),
-                                              seg.name));
-                            }
-                        }
-                    }
-                    None => {
-                        for seg in path.segments.slice_to(amt).iter() {
-                            try!(write!(w, "{}::", seg.name));
-                        }
+    if print_all {
+        let amt = path.segments.len() - 1;
+        match rel_root {
+            Some(root) => {
+                let mut root = StrBuf::from_str(root);
+                for seg in path.segments.slice_to(amt).iter() {
+                    if "super" == seg.name || "self" == seg.name {
+                        try!(write!(w, "{}::", seg.name));
+                    } else {
+                        root.push_str(seg.name);
+                        root.push_str("/");
+                        try!(write!(w, "<a class='mod'
+                                            href='{}index.html'>{}</a>::",
+                                      root.as_slice(),
+                                      seg.name));
                     }
                 }
             }
-
-            match info(&**cache) {
-                // This is a documented path, link to it!
-                Some((ref fqp, shortty)) if abs_root.is_some() => {
-                    let mut url = StrBuf::from_str(abs_root.unwrap());
-                    let to_link = fqp.slice_to(fqp.len() - 1);
-                    for component in to_link.iter() {
-                        url.push_str(*component);
-                        url.push_str("/");
-                    }
-                    match shortty {
-                        item_type::Module => {
-                            url.push_str(*fqp.last().unwrap());
-                            url.push_str("/index.html");
-                        }
-                        _ => {
-                            url.push_str(shortty.to_static_str());
-                            url.push_str(".");
-                            url.push_str(*fqp.last().unwrap());
-                            url.push_str(".html");
-                        }
-                    }
-
-                    try!(write!(w, "<a class='{}' href='{}' title='{}'>{}</a>",
-                                  shortty, url, fqp.connect("::"), last.name));
+            None => {
+                for seg in path.segments.slice_to(amt).iter() {
+                    try!(write!(w, "{}::", seg.name));
                 }
+            }
+        }
+    }
 
+    match info(&**cache) {
+        // This is a documented path, link to it!
+        Some((ref fqp, shortty)) if abs_root.is_some() => {
+            let mut url = StrBuf::from_str(abs_root.unwrap());
+            let to_link = fqp.slice_to(fqp.len() - 1);
+            for component in to_link.iter() {
+                url.push_str(*component);
+                url.push_str("/");
+            }
+            match shortty {
+                item_type::Module => {
+                    url.push_str(*fqp.last().unwrap());
+                    url.push_str("/index.html");
+                }
                 _ => {
-                    try!(write!(w, "{}", last.name));
+                    url.push_str(shortty.to_static_str());
+                    url.push_str(".");
+                    url.push_str(*fqp.last().unwrap());
+                    url.push_str(".html");
                 }
             }
-            try!(write!(w, "{}", generics.as_slice()));
-            Ok(())
-        })
-    })
+
+            try!(write!(w, "<a class='{}' href='{}' title='{}'>{}</a>",
+                          shortty, url, fqp.connect("::"), last.name));
+        }
+
+        _ => {
+            try!(write!(w, "{}", last.name));
+        }
+    }
+    try!(write!(w, "{}", generics.as_slice()));
+    Ok(())
 }
 
 /// Helper to render type parameters
@@ -302,10 +295,8 @@ impl fmt::Show for clean::Type {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             clean::TyParamBinder(id) | clean::Generic(id) => {
-                local_data::get(cache_key, |cache| {
-                    let m = cache.unwrap();
-                    f.buf.write(m.typarams.get(&id).as_bytes())
-                })
+                let m = cache_key.get().unwrap();
+                f.buf.write(m.typarams.get(&id).as_bytes())
             }
             clean::ResolvedPath{id, typarams: ref tp, path: ref path} => {
                 try!(resolved_path(f.buf, id, path, false));

@@ -10,8 +10,6 @@
 
 // Testing that we can't store a reference it task-local storage
 
-use std::local_data;
-
 local_data_key!(key: @&int)
 //~^ ERROR missing lifetime specifier
 

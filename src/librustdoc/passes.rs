@@ -11,7 +11,6 @@
 use collections::HashSet;
 use rustc::util::nodemap::NodeSet;
 use std::cmp;
-use std::local_data;
 use std::strbuf::StrBuf;
 use std::uint;
 use syntax::ast;
@@ -86,13 +85,11 @@ pub fn strip_hidden(krate: clean::Crate) -> plugins::PluginResult {
 
 /// Strip private items from the point of view of a crate or externally from a
 /// crate, specified by the `xcrate` flag.
-pub fn strip_private(krate: clean::Crate) -> plugins::PluginResult {
+pub fn strip_private(mut krate: clean::Crate) -> plugins::PluginResult {
     // This stripper collects all *retained* nodes.
     let mut retained = HashSet::new();
-    let exported_items = local_data::get(super::analysiskey, |analysis| {
-        analysis.unwrap().exported_items.clone()
-    });
-    let mut krate = krate;
+    let analysis = super::analysiskey.get().unwrap();
+    let exported_items = analysis.exported_items.clone();
 
     // strip all private items
     {

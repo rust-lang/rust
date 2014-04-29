@@ -12,7 +12,6 @@ use std::cell::RefCell;
 use std::char;
 use std::io;
 use std::io::{Process, TempDir};
-use std::local_data;
 use std::os;
 use std::str;
 use std::strbuf::StrBuf;
@@ -75,7 +74,7 @@ pub fn run(input: &str,
         maybe_typed: core::NotTyped(sess),
         src: input_path,
     };
-    local_data::set(super::ctxtkey, ctx);
+    super::ctxtkey.replace(Some(ctx));
 
     let mut v = RustdocVisitor::new(ctx, None);
     v.visit(&ctx.krate);

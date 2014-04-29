@@ -3112,7 +3112,6 @@ mod tests {
     #[test]
     #[should_fail]
     fn test_from_elem_fail() {
-        use cast;
         use cell::Cell;
         use rc::Rc;
 

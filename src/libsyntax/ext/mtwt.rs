@@ -18,7 +18,6 @@
 use ast::{Ident, Mrk, Name, SyntaxContext};
 
 use std::cell::RefCell;
-use std::local_data;
 use std::rc::Rc;
 
 use collections::HashMap;
@@ -91,17 +90,14 @@ fn new_rename_internal(id: Ident,
 pub fn with_sctable<T>(op: |&SCTable| -> T) -> T {
     local_data_key!(sctable_key: Rc<SCTable>)
 
-    local_data::get(sctable_key, |opt_ts| {
-        let table = match opt_ts {
-            None => {
-                let ts = Rc::new(new_sctable_internal());
-                local_data::set(sctable_key, ts.clone());
-                ts
-            }
-            Some(ts) => ts.clone()
-        };
-        op(&*table)
-    })
+    match sctable_key.get() {
+        Some(ts) => op(&**ts),
+        None => {
+            let ts = Rc::new(new_sctable_internal());
+            sctable_key.replace(Some(ts.clone()));
+            op(&*ts)
+        }
+    }
 }
 
 // Make a fresh syntax context table with EmptyCtxt in slot zero
@@ -154,17 +150,14 @@ type ResolveTable = HashMap<(Name,SyntaxContext),Name>;
 fn with_resolve_table_mut<T>(op: |&mut ResolveTable| -> T) -> T {
     local_data_key!(resolve_table_key: Rc<RefCell<ResolveTable>>)
 
-    local_data::get(resolve_table_key, |opt_ts| {
-        let table = match opt_ts {
-            None => {
-                let ts = Rc::new(RefCell::new(HashMap::new()));
-                local_data::set(resolve_table_key, ts.clone());
-                ts
-            }
-            Some(ts) => ts.clone()
-        };
-        op(&mut *table.borrow_mut())
-    })
+    match resolve_table_key.get() {
+        Some(ts) => op(&mut *ts.borrow_mut()),
+        None => {
+            let ts = Rc::new(RefCell::new(HashMap::new()));
+            resolve_table_key.replace(Some(ts.clone()));
+            op(&mut *ts.borrow_mut())
+        }
+    }
 }
 
 // Resolve a syntax object to a name, per MTWT.

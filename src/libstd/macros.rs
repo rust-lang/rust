@@ -289,12 +289,10 @@ macro_rules! println(
 /// # Example
 ///
 /// ```
-/// use std::local_data;
-///
 /// local_data_key!(my_integer: int)
 ///
-/// local_data::set(my_integer, 2);
-/// local_data::get(my_integer, |val| println!("{}", val.map(|i| *i)));
+/// my_integer.replace(Some(2));
+/// println!("{}", my_integer.get().map(|a| *a));
 /// ```
 #[macro_export]
 macro_rules! local_data_key(

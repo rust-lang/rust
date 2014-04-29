@@ -74,7 +74,6 @@ use arena::TypedArena;
 use libc::c_uint;
 use std::c_str::ToCStr;
 use std::cell::{Cell, RefCell};
-use std::local_data;
 use std::rc::Rc;
 use syntax::abi::{X86, X86_64, Arm, Mips, Rust, RustIntrinsic};
 use syntax::ast_util::{local_def, is_local};
@@ -88,19 +87,17 @@ use syntax::{ast, ast_util, ast_map};
 
 use time;
 
-local_data_key!(task_local_insn_key: Vec<&'static str> )
+local_data_key!(task_local_insn_key: RefCell<Vec<&'static str>>)
 
 pub fn with_insn_ctxt(blk: |&[&'static str]|) {
-    local_data::get(task_local_insn_key, |c| {
-        match c {
-            Some(ctx) => blk(ctx.as_slice()),
-            None => ()
-        }
-    })
+    match task_local_insn_key.get() {
+        Some(ctx) => blk(ctx.borrow().as_slice()),
+        None => ()
+    }
 }
 
 pub fn init_insn_ctxt() {
-    local_data::set(task_local_insn_key, Vec::new());
+    task_local_insn_key.replace(Some(RefCell::new(Vec::new())));
 }
 
 pub struct _InsnCtxt { _x: () }
@@ -108,23 +105,19 @@ pub struct _InsnCtxt { _x: () }
 #[unsafe_destructor]
 impl Drop for _InsnCtxt {
     fn drop(&mut self) {
-        local_data::modify(task_local_insn_key, |c| {
-            c.map(|mut ctx| {
-                ctx.pop();
-                ctx
-            })
-        })
+        match task_local_insn_key.get() {
+            Some(ctx) => { ctx.borrow_mut().pop(); }
+            None => {}
+        }
     }
 }
 
 pub fn push_ctxt(s: &'static str) -> _InsnCtxt {
     debug!("new InsnCtxt: {}", s);
-    local_data::modify(task_local_insn_key, |c| {
-        c.map(|mut ctx| {
-            ctx.push(s);
-            ctx
-        })
-    });
+    match task_local_insn_key.get() {
+        Some(ctx) => ctx.borrow_mut().push(s),
+        None => {}
+    }
     _InsnCtxt { _x: () }
 }
 
