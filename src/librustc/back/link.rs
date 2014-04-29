@@ -152,6 +152,12 @@ pub mod write {
                              (sess.targ_cfg.os == abi::OsMacos &&
                               sess.targ_cfg.arch == abi::X86_64);
 
+            // OSX has -dead_strip, which doesn't rely on ffunction_sections
+            // FIXME(#13846) this should be enabled for windows
+            let ffunction_sections = sess.targ_cfg.os != abi::OsMacos &&
+                                     sess.targ_cfg.os != abi::OsWin32;
+            let fdata_sections = ffunction_sections;
+
             let reloc_model = match sess.opts.cg.relocation_model.as_slice() {
                 "pic" => lib::llvm::RelocPIC,
                 "static" => lib::llvm::RelocStatic,
@@ -173,9 +179,11 @@ pub mod write {
                             lib::llvm::CodeModelDefault,
                             reloc_model,
                             opt_level,
-                            true,
+                            true /* EnableSegstk */,
                             use_softfp,
-                            no_fp_elim
+                            no_fp_elim,
+                            ffunction_sections,
+                            fdata_sections,
                         )
                     })
                 })
@@ -1136,16 +1144,22 @@ fn link_args(sess: &Session,
         args.push("-nodefaultlibs".to_owned());
     }
 
+    // If we're building a dylib, we don't use --gc-sections because LLVM has
+    // already done the best it can do, and we also don't want to eliminate the
+    // metadata. If we're building an executable, however, --gc-sections drops
+    // the size of hello world from 1.8MB to 597K, a 67% reduction.
+    if !dylib && sess.targ_cfg.os != abi::OsMacos {
+        args.push("-Wl,--gc-sections".to_owned());
+    }
+
     if sess.targ_cfg.os == abi::OsLinux {
         // GNU-style linkers will use this to omit linking to libraries which
         // don't actually fulfill any relocations, but only for libraries which
         // follow this flag. Thus, use it before specifying libraries to link to.
         args.push("-Wl,--as-needed".to_owned());
 
-        // GNU-style linkers support optimization with -O. --gc-sections
-        // removes metadata and potentially other useful things, so don't
-        // include it. GNU ld doesn't need a numeric argument, but other linkers
-        // do.
+        // GNU-style linkers support optimization with -O. GNU ld doesn't need a
+        // numeric argument, but other linkers do.
         if sess.opts.optimize == session::Default ||
            sess.opts.optimize == session::Aggressive {
             args.push("-Wl,-O1".to_owned());
