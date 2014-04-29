@@ -349,6 +349,16 @@ TESTDEP_$(1)_$(2)_$(3)_$(4) = $$(SREQ$(1)_T_$(2)_H_$(3)) \
 			    $$(foreach crate,$$(TARGET_CRATES),\
 				$$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$$(crate)) \
 				$$(CRATE_FULLDEPS_$(1)_T_$(2)_H_$(3)_$(4))
+
+# The regex crate depends on the regex_macros crate during testing, but it
+# notably depend on the *host* regex_macros crate, not the target version.
+# Additionally, this is not a dependency in stage1, only in stage2.
+ifeq ($(4),regex)
+ifneq ($(1),1)
+TESTDEP_$(1)_$(2)_$(3)_$(4) += $$(TLIB$(1)_T_$(3)_H_$(3))/stamp.regex_macros
+endif
+endif
+
 else
 TESTDEP_$(1)_$(2)_$(3)_$(4) = $$(RSINPUTS_$(4))
 endif
