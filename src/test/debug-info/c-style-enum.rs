@@ -121,6 +121,10 @@ fn main() {
     };
 
     zzz();
+
+    let a = SINGLE_VARIANT;
+    let a = unsafe { AUTO_ONE };
+    let a = unsafe { MANUAL_ONE };
 }
 
 fn zzz() {()}
