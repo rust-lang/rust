@@ -2567,7 +2567,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
       ast::ExprVstore(ev, vst) => {
         let typ = match ev.node {
           ast::ExprLit(lit) if ast_util::lit_is_str(lit) => {
-            ast_expr_vstore_to_ty(fcx, ev, vst, || ty::mt{ ty: ty::mk_str(tcx, None),
+            ast_expr_vstore_to_ty(fcx, ev, vst, || ty::mt{ ty: ty::mk_str(tcx),
                                                            mutbl: ast::MutImmutable })
           }
           ast::ExprVec(ref args) => {

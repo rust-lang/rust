@@ -260,13 +260,8 @@ fn enc_sty(w: &mut MemWriter, cx: &ctxt, st: &ty::sty) {
                 None => mywrite!(w, "|"),
             }
         }
-        ty::ty_str(sz) => {
+        ty::ty_str => {
             mywrite!(w, "v");
-            mywrite!(w, "/");
-            match sz {
-                Some(n) => mywrite!(w, "{}|", n),
-                None => mywrite!(w, "|"),
-            }
         }
         ty::ty_closure(ref f) => {
             mywrite!(w, "f");

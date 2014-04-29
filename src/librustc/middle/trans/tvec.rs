@@ -244,7 +244,7 @@ pub fn trans_uniq_vstore<'a>(bcx: &'a Block<'a>,
                     let llptrval = C_cstr(ccx, (*s).clone(), false);
                     let llptrval = PointerCast(bcx, llptrval, Type::i8p(ccx));
                     let llsizeval = C_uint(ccx, s.get().len());
-                    let typ = ty::mk_uniq(bcx.tcx(), ty::mk_str(bcx.tcx(), None));
+                    let typ = ty::mk_uniq(bcx.tcx(), ty::mk_str(bcx.tcx()));
                     let lldestval = rvalue_scratch_datum(bcx,
                                                          typ,
                                                          "");
@@ -478,13 +478,12 @@ pub fn get_base_and_len(bcx: &Block,
     let ccx = bcx.ccx();
 
     match ty::get(vec_ty).sty {
-        ty::ty_str(Some(n)) |
         ty::ty_vec(_, Some(n)) => {
             let base = GEPi(bcx, llval, [0u, 0u]);
             (base, C_uint(ccx, n))
         }
         ty::ty_rptr(_, mt) => match ty::get(mt.ty).sty {
-            ty::ty_vec(_, None) | ty::ty_str(None) => {
+            ty::ty_vec(_, None) | ty::ty_str => {
                 assert!(!type_is_immediate(bcx.ccx(), vec_ty));
                 let base = Load(bcx, GEPi(bcx, llval, [0u, abi::slice_elt_base]));
                 let count = Load(bcx, GEPi(bcx, llval, [0u, abi::slice_elt_len]));
@@ -493,7 +492,7 @@ pub fn get_base_and_len(bcx: &Block,
             _ => ccx.sess().bug("unexpected type (ty_rptr) in get_base_and_len"),
         },
         ty::ty_uniq(t) => match ty::get(t).sty {
-            ty::ty_vec(_, None) | ty::ty_str(None) => {
+            ty::ty_vec(_, None) | ty::ty_str => {
                 assert!(type_is_immediate(bcx.ccx(), vec_ty));
                 let vt = vec_types(bcx, ty::sequence_element_type(bcx.tcx(), vec_ty));
                 let body = Load(bcx, llval);

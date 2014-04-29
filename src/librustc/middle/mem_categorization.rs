@@ -204,8 +204,7 @@ pub fn opt_deref_kind(t: ty::t) -> Option<deref_kind> {
             Some(deref_interior(InteriorField(PositionalField(0))))
         }
 
-        ty::ty_vec(_, Some(_)) |
-        ty::ty_str(Some(_)) => {
+        ty::ty_vec(_, Some(_)) => {
             Some(deref_interior(InteriorElement(element_kind(t))))
         }
 
@@ -1304,11 +1303,10 @@ fn element_kind(t: ty::t) -> ElementKind {
         ty::ty_rptr(_, ty::mt{ty:ty, ..}) |
         ty::ty_uniq(ty) => match ty::get(ty).sty {
             ty::ty_vec(_, None) => VecElement,
-            ty::ty_str(None) => StrElement,
+            ty::ty_str => StrElement,
             _ => OtherElement
         },
         ty::ty_vec(..) => VecElement,
-        ty::ty_str(..) => StrElement,
         _ => OtherElement
     }
 }

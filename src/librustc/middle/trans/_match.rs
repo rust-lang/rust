@@ -1316,7 +1316,7 @@ fn compare_values<'a>(
 
     match ty::get(rhs_t).sty {
         ty::ty_uniq(t) => match ty::get(t).sty {
-            ty::ty_str(None) => {
+            ty::ty_str => {
                 let scratch_lhs = alloca(cx, val_ty(lhs), "__lhs");
                 Store(cx, lhs, scratch_lhs);
                 let scratch_rhs = alloca(cx, val_ty(rhs), "__rhs");
@@ -1333,10 +1333,9 @@ fn compare_values<'a>(
             _ => cx.sess().bug("only scalars and strings supported in compare_values"),
         },
         ty::ty_rptr(_, mt) => match ty::get(mt.ty).sty {
-            ty::ty_str(None) => compare_str(cx, lhs, rhs, rhs_t),
+            ty::ty_str => compare_str(cx, lhs, rhs, rhs_t),
             _ => cx.sess().bug("only scalars and strings supported in compare_values"),
         },
-        ty::ty_str(Some(_)) => compare_str(cx, lhs, rhs, rhs_t),
         _ => cx.sess().bug("only scalars and strings supported in compare_values"),
     }
 }

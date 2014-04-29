@@ -108,7 +108,7 @@ impl<'f> Coerce<'f> {
                         });
                     }
                     ty::ty_vec(_, _) => {},
-                    ty::ty_str(None) => {
+                    ty::ty_str => {
                         return self.unpack_actual_value(a, |sty_a| {
                             self.coerce_borrowed_string(a, sty_a, b)
                         });
@@ -263,7 +263,7 @@ impl<'f> Coerce<'f> {
 
         match *sty_a {
             ty::ty_uniq(t) => match ty::get(t).sty {
-                ty::ty_str(None) => {}
+                ty::ty_str => {}
                 _ => return self.subtype(a, b),
             },
             _ => {
