@@ -187,18 +187,16 @@ fn exec<'t>(which: ::regex::native::MatchKind, input: &'t str,
                 self.ic = next_ic;
                 next_ic = self.chars.advance();
 
-                let mut i = 0;
-                while i < clist.size {
+                for i in range(0, clist.size) {
                     let pc = clist.pc(i);
                     let step_state = self.step(&mut groups, nlist,
                                                clist.groups(i), pc);
                     match step_state {
                         StepMatchEarlyReturn =>
                             return vec![Some(0u), Some(0u)],
-                        StepMatch => { matched = true; clist.empty() },
+                        StepMatch => { matched = true; break },
                         StepContinue => {},
                     }
-                    i += 1;
                 }
                 ::std::mem::swap(&mut clist, &mut nlist);
                 nlist.empty();
