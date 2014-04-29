@@ -13,6 +13,7 @@
 use std::cell::RefCell;
 use std::os;
 use std::io::fs;
+use std::unstable::dynamic_lib::DynamicLibrary;
 use collections::HashSet;
 
 use myfs = util::fs;
@@ -131,6 +132,13 @@ impl<'a> FileSearch<'a> {
             addl_lib_search_paths: addl_lib_search_paths,
             triple: triple,
         }
+    }
+
+    pub fn add_dylib_search_paths(&self) {
+        self.for_each_lib_search_path(|lib_search_path| {
+            DynamicLibrary::add_search_path(lib_search_path);
+            FileDoesntMatch
+        })
     }
 }
 

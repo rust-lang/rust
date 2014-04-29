@@ -232,6 +232,14 @@ pub fn phase_2_configure_and_expand(sess: &Session,
                  front::config::strip_unconfigured_items(krate));
 
     krate = time(time_passes, "expansion", krate, |krate| {
+        // Windows dlls do not have rpaths, so they don't know how to find their
+        // dependencies. It's up to use to tell the system where to find all the
+        // dependent dlls. Note that this uses cfg!(windows) as opposed to
+        // targ_cfg because syntax extensions are always loaded for the host
+        // compiler, not for the target.
+        if cfg!(windows) {
+            sess.host_filesearch().add_dylib_search_paths();
+        }
         let cfg = syntax::ext::expand::ExpansionConfig {
             loader: loader,
             deriving_hash_type_parameter: sess.features.default_type_params.get(),
