@@ -38,6 +38,7 @@ struct Struct {
 
 fn main() {
     some_function(101, 202);
+    some_other_function(1, 2);
 }
 
 
