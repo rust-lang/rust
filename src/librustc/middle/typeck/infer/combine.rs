@@ -383,9 +383,9 @@ pub fn super_tys<C:Combine>(this: &C, a: ty::t, b: ty::t) -> cres<ty::t> {
                                    result: ty::t) -> cres<ty::t> {
         match (&ty::get(a_inner).sty, &ty::get(b_inner).sty) {
             (&ty::ty_vec(_, None), &ty::ty_vec(_, None)) |
-            (&ty::ty_str(None), &ty::ty_str(None)) => Ok(result),
+            (&ty::ty_str, &ty::ty_str) => Ok(result),
             (&ty::ty_vec(_, None), _) | (_, &ty::ty_vec(_, None)) |
-            (&ty::ty_str(None), _) | (_, &ty::ty_str(None))
+            (&ty::ty_str, _) | (_, &ty::ty_str)
                 => Err(ty::terr_sorts(expected_found(this, a, b))),
             _ => Ok(result),
         }
@@ -520,12 +520,8 @@ pub fn super_tys<C:Combine>(this: &C, a: ty::t, b: ty::t) -> cres<ty::t> {
         })
       }
 
-      (&ty::ty_str(sz_a), &ty::ty_str(sz_b)) => {
-            if sz_a == sz_b {
-                Ok(ty::mk_str(tcx,sz_a))
-            } else {
-                Err(ty::terr_sorts(expected_found(this, a, b)))
-            }
+      (&ty::ty_str, &ty::ty_str) => {
+            Ok(ty::mk_str(tcx))
       }
 
       (&ty::ty_tup(ref as_), &ty::ty_tup(ref bs)) => {

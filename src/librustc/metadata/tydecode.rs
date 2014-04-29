@@ -344,8 +344,7 @@ fn parse_ty(st: &mut PState, conv: conv_did) -> ty::t {
         return ty::mk_vec(st.tcx, mt, sz);
       }
       'v' => {
-        let sz = parse_size(st);
-        return ty::mk_str(st.tcx, sz);
+        return ty::mk_str(st.tcx);
       }
       'T' => {
         assert_eq!(next(st), '[');

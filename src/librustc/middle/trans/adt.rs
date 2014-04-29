@@ -270,7 +270,7 @@ impl Case {
         self.tys.iter().position(|&ty| {
             match ty::get(ty).sty {
                 ty::ty_rptr(_, mt) => match ty::get(mt.ty).sty {
-                    ty::ty_vec(_, None) | ty::ty_str(None)=> false,
+                    ty::ty_vec(_, None) | ty::ty_str => false,
                     _ => true,
                 },
                 ty::ty_uniq(..) | ty::ty_box(..) |
