@@ -141,7 +141,7 @@ fn const_deref(cx: &CrateContext, v: ValueRef, t: ty::t, explicit: bool)
             let dv = match ty::get(t).sty {
                 ty::ty_ptr(mt) | ty::ty_rptr(_, mt) => {
                     match ty::get(mt.ty).sty {
-                        ty::ty_vec(_, None) | ty::ty_str(None) => cx.sess().bug("unexpected slice"),
+                        ty::ty_vec(_, None) | ty::ty_str => cx.sess().bug("unexpected slice"),
                         _ => const_deref_ptr(cx, v),
                     }
                 }
@@ -434,7 +434,7 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr,
               let (arr, len) = match ty::get(bt).sty {
                   ty::ty_vec(_, Some(u)) => (bv, C_uint(cx, u)),
                   ty::ty_rptr(_, mt) => match ty::get(mt.ty).sty {
-                      ty::ty_vec(_, None) | ty::ty_str(None) => {
+                      ty::ty_vec(_, None) | ty::ty_str => {
                           let e1 = const_get_elt(cx, bv, [0]);
                           (const_deref_ptr(cx, e1), const_get_elt(cx, bv, [1]))
                       },
@@ -448,15 +448,11 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr,
               let len = llvm::LLVMConstIntGetZExtValue(len) as u64;
               let len = match ty::get(bt).sty {
                   ty::ty_uniq(ty) | ty::ty_rptr(_, ty::mt{ty, ..}) => match ty::get(ty).sty {
-                      ty::ty_str(None) => {
+                      ty::ty_str => {
                           assert!(len > 0);
                           len - 1
                       }
                       _ => len
-                  },
-                  ty::ty_str(Some(_)) => {
-                      assert!(len > 0);
-                      len - 1
                   },
                   _ => len
               };

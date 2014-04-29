@@ -769,7 +769,7 @@ impl<'a> LookupContext<'a> {
                     self.infcx().next_region_var(infer::Autoref(self.span));
                 let (extra_derefs, auto) = match ty::get(self_mt.ty).sty {
                     ty::ty_vec(_, None) => (0, ty::AutoBorrowVec(region, self_mt.mutbl)),
-                    ty::ty_str(None) => (0, ty::AutoBorrowVec(region, self_mt.mutbl)),
+                    ty::ty_str => (0, ty::AutoBorrowVec(region, self_mt.mutbl)),
                     _ => (1, ty::AutoPtr(region, self_mt.mutbl)),
                 };
                 (ty::mk_rptr(tcx, region, self_mt),
@@ -878,11 +878,10 @@ impl<'a> LookupContext<'a> {
             },
             ty_uniq(t) => match ty::get(t).sty {
                 ty_vec(mt, None) => self.auto_slice_vec(mt, autoderefs),
-                ty_str(None) => self.auto_slice_str(autoderefs),
+                ty_str => self.auto_slice_str(autoderefs),
                 _ => None
             },
             ty_vec(mt, Some(_)) => self.auto_slice_vec(mt, autoderefs),
-            ty_str(Some(_)) => self.auto_slice_str(autoderefs),
 
             ty_trait(~ty::TyTrait { def_id: trt_did, substs: trt_substs, bounds: b, .. }) => {
                 // Coerce ~/&Trait instances to &Trait.
@@ -921,7 +920,7 @@ impl<'a> LookupContext<'a> {
             ty_self(_) | ty_param(..) | ty_nil | ty_bot | ty_bool |
             ty_char | ty_int(..) | ty_uint(..) |
             ty_float(..) | ty_enum(..) | ty_ptr(..) | ty_struct(..) | ty_tup(..) |
-            ty_str(..) | ty_vec(..) | ty_trait(..) | ty_closure(..) => {
+            ty_str | ty_vec(..) | ty_trait(..) | ty_closure(..) => {
                 self.search_for_some_kind_of_autorefd_method(
                     AutoPtr, autoderefs, [MutImmutable, MutMutable],
                     |m,r| ty::mk_rptr(tcx, r, ty::mt {ty:self_ty, mutbl:m}))
@@ -1318,7 +1317,7 @@ impl<'a> LookupContext<'a> {
                 match ty::get(rcvr_ty).sty {
                     ty::ty_rptr(_, mt) => {
                         match ty::get(mt.ty).sty {
-                            ty::ty_vec(_, None) | ty::ty_str(None) => false,
+                            ty::ty_vec(_, None) | ty::ty_str => false,
                             _ => mutability_matches(mt.mutbl, m) &&
                                  rcvr_matches_ty(self.fcx, mt.ty, candidate),
                         }
@@ -1340,7 +1339,7 @@ impl<'a> LookupContext<'a> {
                 match ty::get(rcvr_ty).sty {
                     ty::ty_uniq(typ) => {
                         match ty::get(typ).sty {
-                            ty::ty_vec(_, None) | ty::ty_str(None) => false,
+                            ty::ty_vec(_, None) | ty::ty_str => false,
                             _ => rcvr_matches_ty(self.fcx, typ, candidate),
                         }
                     }

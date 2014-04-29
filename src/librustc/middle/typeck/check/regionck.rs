@@ -940,7 +940,7 @@ fn constrain_index(rcx: &mut Rcx,
     let r_index_expr = ty::ReScope(index_expr.id);
     match ty::get(indexed_ty).sty {
         ty::ty_rptr(r_ptr, mt) => match ty::get(mt.ty).sty {
-            ty::ty_vec(_, None) | ty::ty_str(None)=> {
+            ty::ty_vec(_, None) | ty::ty_str => {
                 rcx.fcx.mk_subr(true, infer::IndexSlice(index_expr.span),
                                 r_index_expr, r_ptr);
             }

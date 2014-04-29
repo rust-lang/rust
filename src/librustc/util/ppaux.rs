@@ -395,12 +395,7 @@ pub fn ty_to_str(cx: &ctxt, typ: t) -> ~str {
         let bound_str = bounds.repr(cx);
         format!("{}{}{}{}", trait_store_to_str(cx, store), ty, bound_sep, bound_str)
       }
-      ty_str(sz) => {
-        match sz {
-            Some(n) => format!("str/{}", n),
-            None => "str".to_owned(),
-        }
-      }
+      ty_str => "str".to_owned(),
       ty_vec(ref mt, sz) => {
           match sz {
               Some(n) => format!("[{}, .. {}]", mt_to_str(cx, mt), n),

@@ -2183,10 +2183,6 @@ fn type_metadata(cx: &CrateContext,
         ty::ty_float(_) => {
             basic_type_metadata(cx, t)
         }
-        ty::ty_str(Some(len)) => {
-            let i8_t = ty::mk_i8();
-            fixed_vec_metadata(cx, i8_t, len, usage_site_span)
-        }
         ty::ty_enum(def_id, _) => {
             prepare_enum_metadata(cx, t, def_id, usage_site_span).finalize(cx)
         }
@@ -2200,7 +2196,7 @@ fn type_metadata(cx: &CrateContext,
                     let vec_metadata = vec_metadata(cx, mt.ty, usage_site_span);
                     pointer_type_metadata(cx, t, vec_metadata)
                 }
-                ty::ty_str(None) => {
+                ty::ty_str => {
                     let i8_t = ty::mk_i8();
                     let vec_metadata = vec_metadata(cx, i8_t, usage_site_span);
                     pointer_type_metadata(cx, t, vec_metadata)
@@ -2214,7 +2210,7 @@ fn type_metadata(cx: &CrateContext,
         ty::ty_ptr(ref mt) | ty::ty_rptr(_, ref mt) => {
             match ty::get(mt.ty).sty {
                 ty::ty_vec(ref mt, None) => vec_slice_metadata(cx, t, mt.ty, usage_site_span),
-                ty::ty_str(None) => {
+                ty::ty_str => {
                     let i8_t = ty::mk_i8();
                     vec_slice_metadata(cx, t, i8_t, usage_site_span)
                 }
