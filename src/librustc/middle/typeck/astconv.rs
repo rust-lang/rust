@@ -355,7 +355,7 @@ pub fn ast_ty_to_prim_ty(tcx: &ty::ctxt, ast_ty: &ast::Ty) -> Option<ty::t> {
                             tcx.sess.span_err(ast_ty.span,
                                               "bare `str` is not a type");
                             // return /something/ so they can at least get more errors
-                            Some(ty::mk_uniq(tcx, ty::mk_str(tcx, None)))
+                            Some(ty::mk_uniq(tcx, ty::mk_str(tcx)))
                         }
                     }
                 }
@@ -414,7 +414,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
                         check_path_args(tcx, path, NO_TPS | NO_REGIONS);
                         match ptr_ty {
                             Uniq => {
-                                return ty::mk_uniq(tcx, ty::mk_str(tcx, None));
+                                return ty::mk_uniq(tcx, ty::mk_str(tcx));
                             }
                             RPtr(r) => {
                                 return ty::mk_str_slice(tcx, r, ast::MutImmutable);
