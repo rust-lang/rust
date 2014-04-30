@@ -274,7 +274,7 @@ pub fn open(path: &CString, fm: io::FileMode, fa: io::FileAccess)
         (io::Truncate, io::Read) => libc::TRUNCATE_EXISTING,
         (io::Truncate, _) => libc::CREATE_ALWAYS,
         (io::Open, io::Read) => libc::OPEN_EXISTING,
-        (io::Open, _) => libc::CREATE_NEW,
+        (io::Open, _) => libc::OPEN_ALWAYS,
         (io::Append, io::Read) => {
             dwDesiredAccess |= libc::FILE_APPEND_DATA;
             libc::OPEN_EXISTING
