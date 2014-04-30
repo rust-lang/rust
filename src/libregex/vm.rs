@@ -169,17 +169,15 @@ impl<'r, 't> Nfa<'r, 't> {
             self.ic = next_ic;
             next_ic = self.chars.advance();
 
-            let mut i = 0;
-            while i < clist.size {
+            for i in range(0, clist.size) {
                 let pc = clist.pc(i);
                 let step_state = self.step(groups.as_mut_slice(), nlist,
                                            clist.groups(i), pc);
                 match step_state {
                     StepMatchEarlyReturn => return vec![Some(0), Some(0)],
-                    StepMatch => { matched = true; clist.empty() },
+                    StepMatch => { matched = true; break },
                     StepContinue => {},
                 }
-                i += 1;
             }
             mem::swap(&mut clist, &mut nlist);
             nlist.empty();
@@ -226,7 +224,7 @@ impl<'r, 't> Nfa<'r, 't> {
                     let found = ranges.as_slice();
                     let found = found.bsearch(|&rc| class_cmp(casei, c, rc));
                     let found = found.is_some();
-                    if (found && !negate) || (!found && negate) {
+                    if found ^ negate {
                         self.add(nlist, pc+1, caps);
                     }
                 }
@@ -568,20 +566,10 @@ pub fn find_prefix(needle: &[u8], haystack: &[u8]) -> Option<uint> {
     if nlen > hlen || nlen == 0 {
         return None
     }
-    let mut hayi = 0u;
-    'HAYSTACK: loop {
-        if hayi > hlen - nlen {
-            break
+    for (offset, window) in haystack.windows(nlen).enumerate() {
+        if window == needle {
+            return Some(offset)
         }
-        let mut nedi = 0;
-        while nedi < nlen {
-            if haystack[hayi+nedi] != needle[nedi] {
-                hayi += 1;
-                continue 'HAYSTACK
-            }
-            nedi += 1;
-        }
-        return Some(hayi)
     }
     None
 }

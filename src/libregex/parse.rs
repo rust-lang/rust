@@ -62,7 +62,7 @@ pub enum Ast {
     Capture(uint, Option<~str>, ~Ast),
     // Represent concatenation as a flat vector to avoid blowing the
     // stack in the compiler.
-    Cat(Vec<~Ast>),
+    Cat(Vec<Ast>),
     Alt(~Ast, ~Ast),
     Rep(~Ast, Repeater, Greed),
 }
@@ -103,7 +103,7 @@ impl Greed {
 /// state.
 #[deriving(Show)]
 enum BuildAst {
-    Ast(~Ast),
+    Ast(Ast),
     Paren(Flags, uint, ~str), // '('
     Bar, // '|'
 }
@@ -152,7 +152,7 @@ impl BuildAst {
         }
     }
 
-    fn unwrap(self) -> Result<~Ast, Error> {
+    fn unwrap(self) -> Result<Ast, Error> {
         match self {
             Ast(x) => Ok(x),
             _ => fail!("Tried to unwrap non-AST item: {}", self),
@@ -188,7 +188,7 @@ struct Parser<'a> {
     names: Vec<~str>,
 }
 
-pub fn parse(s: &str) -> Result<~Ast, Error> {
+pub fn parse(s: &str) -> Result<Ast, Error> {
     Parser {
         chars: s.chars().collect(),
         chari: 0,
@@ -200,7 +200,7 @@ pub fn parse(s: &str) -> Result<~Ast, Error> {
 }
 
 impl<'a> Parser<'a> {
-    fn parse(&mut self) -> Result<~Ast, Error> {
+    fn parse(&mut self) -> Result<Ast, Error> {
         loop {
             let c = self.cur();
             match c {
@@ -243,7 +243,7 @@ impl<'a> Parser<'a> {
                     // alternate and make it a capture.
                     if cap.is_some() {
                         let ast = try!(self.pop_ast());
-                        self.push(~Capture(cap.unwrap(), cap_name, ast));
+                        self.push(Capture(cap.unwrap(), cap_name, ~ast));
                     }
                 }
                 '|' => {
@@ -294,14 +294,14 @@ impl<'a> Parser<'a> {
         self.chari < self.chars.len()
     }
 
-    fn pop_ast(&mut self) -> Result<~Ast, Error> {
+    fn pop_ast(&mut self) -> Result<Ast, Error> {
         match self.stack.pop().unwrap().unwrap() {
             Err(e) => Err(e),
             Ok(ast) => Ok(ast),
         }
     }
 
-    fn push(&mut self, ast: ~Ast) {
+    fn push(&mut self, ast: Ast) {
         self.stack.push(Ast(ast))
     }
 
@@ -323,29 +323,29 @@ impl<'a> Parser<'a> {
         }
         let ast = try!(self.pop_ast());
         match ast {
-            ~Begin(_) | ~End(_) | ~WordBoundary(_) =>
+            Begin(_) | End(_) | WordBoundary(_) =>
                 return self.err(
                     "Repeat arguments cannot be empty width assertions."),
             _ => {}
         }
         let greed = try!(self.get_next_greedy());
-        self.push(~Rep(ast, rep, greed));
+        self.push(Rep(~ast, rep, greed));
         Ok(())
     }
 
     fn push_literal(&mut self, c: char) -> Result<(), Error> {
         match c {
             '.' => {
-                self.push(~Dot(self.flags))
+                self.push(Dot(self.flags))
             }
             '^' => {
-                self.push(~Begin(self.flags))
+                self.push(Begin(self.flags))
             }
             '$' => {
-                self.push(~End(self.flags))
+                self.push(End(self.flags))
             }
             _ => {
-                self.push(~Literal(c, self.flags))
+                self.push(Literal(c, self.flags))
             }
         }
         Ok(())
@@ -362,7 +362,7 @@ impl<'a> Parser<'a> {
                 FLAG_EMPTY
             };
         let mut ranges: Vec<(char, char)> = vec!();
-        let mut alts: Vec<~Ast> = vec!();
+        let mut alts: Vec<Ast> = vec!();
 
         if self.peek_is(1, ']') {
             try!(self.expect(']'))
@@ -378,8 +378,8 @@ impl<'a> Parser<'a> {
             match c {
                 '[' =>
                     match self.try_parse_ascii() {
-                        Some(~Class(asciis, flags)) => {
-                            alts.push(~Class(asciis, flags ^ negated));
+                        Some(Class(asciis, flags)) => {
+                            alts.push(Class(asciis, flags ^ negated));
                             continue
                         }
                         Some(ast) =>
@@ -389,12 +389,12 @@ impl<'a> Parser<'a> {
                     },
                 '\\' => {
                     match try!(self.parse_escape()) {
-                        ~Class(asciis, flags) => {
-                            alts.push(~Class(asciis, flags ^ negated));
+                        Class(asciis, flags) => {
+                            alts.push(Class(asciis, flags ^ negated));
                             continue
                         }
-                        ~Literal(c2, _) => c = c2, // process below
-                        ~Begin(_) | ~End(_) | ~WordBoundary(_) =>
+                        Literal(c2, _) => c = c2, // process below
+                        Begin(_) | End(_) | WordBoundary(_) =>
                             return self.err(
                                 "\\A, \\z, \\b and \\B are not valid escape \
                                  sequences inside a character class."),
@@ -407,15 +407,15 @@ impl<'a> Parser<'a> {
                 ']' => {
                     if ranges.len() > 0 {
                         let flags = negated | (self.flags & FLAG_NOCASE);
-                        let mut ast = ~Class(combine_ranges(ranges), flags);
+                        let mut ast = Class(combine_ranges(ranges), flags);
                         for alt in alts.move_iter() {
-                            ast = ~Alt(alt, ast)
+                            ast = Alt(~alt, ~ast)
                         }
                         self.push(ast);
                     } else if alts.len() > 0 {
                         let mut ast = alts.pop().unwrap();
                         for alt in alts.move_iter() {
-                            ast = ~Alt(alt, ast)
+                            ast = Alt(~alt, ~ast)
                         }
                         self.push(ast);
                     }
@@ -444,7 +444,7 @@ impl<'a> Parser<'a> {
     // and moves the parser to the final ']' character.
     // If unsuccessful, no state is changed and None is returned.
     // Assumes that '[' is the current character.
-    fn try_parse_ascii(&mut self) -> Option<~Ast> {
+    fn try_parse_ascii(&mut self) -> Option<Ast> {
         if !self.peek_is(1, ':') {
             return None
         }
@@ -473,7 +473,7 @@ impl<'a> Parser<'a> {
             Some(ranges) => {
                 self.chari = closer;
                 let flags = negated | (self.flags & FLAG_NOCASE);
-                Some(~Class(combine_ranges(ranges), flags))
+                Some(Class(combine_ranges(ranges), flags))
             }
         }
     }
@@ -546,7 +546,7 @@ impl<'a> Parser<'a> {
             for _ in iter::range(0, min) {
                 self.push(ast.clone())
             }
-            self.push(~Rep(ast, ZeroMore, greed));
+            self.push(Rep(~ast, ZeroMore, greed));
         } else {
             // Require N copies of what's on the stack and then repeat it
             // up to M times optionally.
@@ -556,14 +556,14 @@ impl<'a> Parser<'a> {
             }
             if max.is_some() {
                 for _ in iter::range(min, max.unwrap()) {
-                    self.push(~Rep(ast.clone(), ZeroOne, greed))
+                    self.push(Rep(~ast.clone(), ZeroOne, greed))
                 }
             }
             // It's possible that we popped something off the stack but
             // never put anything back on it. To keep things simple, add
             // a no-op expression.
             if min == 0 && (max.is_none() || max == Some(0)) {
-                self.push(~Nothing)
+                self.push(Nothing)
             }
         }
         Ok(())
@@ -571,24 +571,24 @@ impl<'a> Parser<'a> {
 
     // Parses all escape sequences.
     // Assumes that '\' is the current character.
-    fn parse_escape(&mut self) -> Result<~Ast, Error> {
+    fn parse_escape(&mut self) -> Result<Ast, Error> {
         try!(self.noteof("an escape sequence following a '\\'"))
 
         let c = self.cur();
         if is_punct(c) {
-            return Ok(~Literal(c, FLAG_EMPTY))
+            return Ok(Literal(c, FLAG_EMPTY))
         }
         match c {
-            'a' => Ok(~Literal('\x07', FLAG_EMPTY)),
-            'f' => Ok(~Literal('\x0C', FLAG_EMPTY)),
-            't' => Ok(~Literal('\t', FLAG_EMPTY)),
-            'n' => Ok(~Literal('\n', FLAG_EMPTY)),
-            'r' => Ok(~Literal('\r', FLAG_EMPTY)),
-            'v' => Ok(~Literal('\x0B', FLAG_EMPTY)),
-            'A' => Ok(~Begin(FLAG_EMPTY)),
-            'z' => Ok(~End(FLAG_EMPTY)),
-            'b' => Ok(~WordBoundary(FLAG_EMPTY)),
-            'B' => Ok(~WordBoundary(FLAG_NEGATED)),
+            'a' => Ok(Literal('\x07', FLAG_EMPTY)),
+            'f' => Ok(Literal('\x0C', FLAG_EMPTY)),
+            't' => Ok(Literal('\t', FLAG_EMPTY)),
+            'n' => Ok(Literal('\n', FLAG_EMPTY)),
+            'r' => Ok(Literal('\r', FLAG_EMPTY)),
+            'v' => Ok(Literal('\x0B', FLAG_EMPTY)),
+            'A' => Ok(Begin(FLAG_EMPTY)),
+            'z' => Ok(End(FLAG_EMPTY)),
+            'b' => Ok(WordBoundary(FLAG_EMPTY)),
+            'B' => Ok(WordBoundary(FLAG_NEGATED)),
             '0'|'1'|'2'|'3'|'4'|'5'|'6'|'7' => Ok(try!(self.parse_octal())),
             'x' => Ok(try!(self.parse_hex())),
             'p' | 'P' => Ok(try!(self.parse_unicode_name())),
@@ -596,7 +596,7 @@ impl<'a> Parser<'a> {
                 let ranges = perl_unicode_class(c);
                 let mut flags = self.flags & FLAG_NOCASE;
                 if c.is_uppercase() { flags |= FLAG_NEGATED }
-                Ok(~Class(ranges, flags))
+                Ok(Class(ranges, flags))
             }
             _ => self.err(format!("Invalid escape sequence '\\\\{}'", c)),
         }
@@ -607,7 +607,7 @@ impl<'a> Parser<'a> {
     // name is the unicode class name.
     // Assumes that \p or \P has been read (and 'p' or 'P' is the current
     // character).
-    fn parse_unicode_name(&mut self) -> Result<~Ast, Error> {
+    fn parse_unicode_name(&mut self) -> Result<Ast, Error> {
         let negated = if self.cur() == 'P' { FLAG_NEGATED } else { FLAG_EMPTY };
         let mut name: ~str;
         if self.peek_is(1, '{') {
@@ -635,14 +635,14 @@ impl<'a> Parser<'a> {
             None => return self.err(format!(
                 "Could not find Unicode class '{}'", name)),
             Some(ranges) => {
-                Ok(~Class(ranges, negated | (self.flags & FLAG_NOCASE)))
+                Ok(Class(ranges, negated | (self.flags & FLAG_NOCASE)))
             }
         }
     }
 
     // Parses an octal number, up to 3 digits.
     // Assumes that \n has been read, where n is the first digit.
-    fn parse_octal(&mut self) -> Result<~Ast, Error> {
+    fn parse_octal(&mut self) -> Result<Ast, Error> {
         let start = self.chari;
         let mut end = start + 1;
         let (d2, d3) = (self.peek(1), self.peek(2));
@@ -656,7 +656,7 @@ impl<'a> Parser<'a> {
         }
         let s = self.slice(start, end);
         match num::from_str_radix::<u32>(s, 8) {
-            Some(n) => Ok(~Literal(try!(self.char_from_u32(n)), FLAG_EMPTY)),
+            Some(n) => Ok(Literal(try!(self.char_from_u32(n)), FLAG_EMPTY)),
             None => self.err(format!(
                 "Could not parse '{}' as octal number.", s)),
         }
@@ -664,7 +664,7 @@ impl<'a> Parser<'a> {
 
     // Parse a hex number. Either exactly two digits or anything in {}.
     // Assumes that \x has been read.
-    fn parse_hex(&mut self) -> Result<~Ast, Error> {
+    fn parse_hex(&mut self) -> Result<Ast, Error> {
         if !self.peek_is(1, '{') {
             try!(self.expect('{'))
             return self.parse_hex_two()
@@ -684,7 +684,7 @@ impl<'a> Parser<'a> {
     // Assumes that \xn has been read, where n is the first digit and is the
     // current character.
     // After return, parser will point at the second digit.
-    fn parse_hex_two(&mut self) -> Result<~Ast, Error> {
+    fn parse_hex_two(&mut self) -> Result<Ast, Error> {
         let (start, end) = (self.chari, self.chari + 2);
         let bad = self.slice(start - 2, self.chars.len());
         try!(self.noteof(format!("Invalid hex escape sequence '{}'", bad)))
@@ -692,9 +692,9 @@ impl<'a> Parser<'a> {
     }
 
     // Parses `s` as a hexadecimal number.
-    fn parse_hex_digits(&self, s: &str) -> Result<~Ast, Error> {
+    fn parse_hex_digits(&self, s: &str) -> Result<Ast, Error> {
         match num::from_str_radix::<u32>(s, 16) {
-            Some(n) => Ok(~Literal(try!(self.char_from_u32(n)), FLAG_EMPTY)),
+            Some(n) => Ok(Literal(try!(self.char_from_u32(n)), FLAG_EMPTY)),
             None => self.err(format!(
                 "Could not parse '{}' as hex number.", s)),
         }
@@ -840,7 +840,7 @@ impl<'a> Parser<'a> {
         // thrown away). But be careful with overflow---we can't count on the
         // open paren to be there.
         if from > 0 { from = from - 1}
-        let ast = try!(self.build_from(from, Alt));
+        let ast = try!(self.build_from(from, |l,r| Alt(~l, ~r)));
         self.push(ast);
         Ok(())
     }
@@ -848,8 +848,8 @@ impl<'a> Parser<'a> {
     // build_from combines all AST elements starting at 'from' in the
     // parser's stack using 'mk' to combine them. If any such element is not an
     // AST then it is popped off the stack and ignored.
-    fn build_from(&mut self, from: uint, mk: |~Ast, ~Ast| -> Ast)
-                 -> Result<~Ast, Error> {
+    fn build_from(&mut self, from: uint, mk: |Ast, Ast| -> Ast)
+                 -> Result<Ast, Error> {
         if from >= self.stack.len() {
             return self.err("Empty group or alternate not allowed.")
         }
@@ -859,7 +859,7 @@ impl<'a> Parser<'a> {
         while i > from {
             i = i - 1;
             match self.stack.pop().unwrap() {
-                Ast(x) => combined = ~mk(x, combined),
+                Ast(x) => combined = mk(x, combined),
                 _ => {},
             }
         }
@@ -961,11 +961,11 @@ fn perl_unicode_class(which: char) -> Vec<(char, char)> {
 
 // Returns a concatenation of two expressions. This also guarantees that a
 // `Cat` expression will never be a direct child of another `Cat` expression.
-fn concat_flatten(x: ~Ast, y: ~Ast) -> Ast {
+fn concat_flatten(x: Ast, y: Ast) -> Ast {
     match (x, y) {
-        (~Cat(mut xs), ~Cat(ys)) => { xs.push_all_move(ys); Cat(xs) }
-        (~Cat(mut xs), ast) => { xs.push(ast); Cat(xs) }
-        (ast, ~Cat(mut xs)) => { xs.unshift(ast); Cat(xs) }
+        (Cat(mut xs), Cat(ys)) => { xs.push_all_move(ys); Cat(xs) }
+        (Cat(mut xs), ast) => { xs.push(ast); Cat(xs) }
+        (ast, Cat(mut xs)) => { xs.unshift(ast); Cat(xs) }
         (ast1, ast2) => Cat(vec!(ast1, ast2)),
     }
 }
