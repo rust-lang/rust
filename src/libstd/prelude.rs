@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! # The Rust prelude
+//! The Rust prelude
 //!
 //! Because `std` is required by most serious Rust software, it is
 //! imported at the topmost level of every crate by default, as if the
