@@ -109,7 +109,7 @@ pub struct Regex {
     #[doc(hidden)]
     pub original: ~str,
     #[doc(hidden)]
-    pub names: ~[Option<~str>],
+    pub names: Vec<Option<~str>>,
     #[doc(hidden)]
     pub p: MaybeNative,
 }
@@ -477,14 +477,13 @@ impl Regex {
                    (&self, text: &str, limit: uint, mut rep: R) -> StrBuf {
         let mut new = StrBuf::with_capacity(text.len());
         let mut last_match = 0u;
-        let mut i = 0;
-        for cap in self.captures_iter(text) {
+
+        for (i, cap) in self.captures_iter(text).enumerate() {
             // It'd be nicer to use the 'take' iterator instead, but it seemed
             // awkward given that '0' => no limit.
             if limit > 0 && i >= limit {
                 break
             }
-            i += 1;
 
             let (s, e) = cap.pos(0).unwrap(); // captures only reports matches
             new.push_str(text.slice(last_match, s));
@@ -800,7 +799,7 @@ impl<'r, 't> Iterator<Captures<'t>> for FindCaptures<'r, 't> {
 
         // Don't accept empty matches immediately following a match.
         // i.e., no infinite loops please.
-        if e - s == 0 && Some(self.last_end) == self.last_match {
+        if e == s && Some(self.last_end) == self.last_match {
             self.last_end += 1;
             return self.next()
         }
@@ -842,7 +841,7 @@ impl<'r, 't> Iterator<(uint, uint)> for FindMatches<'r, 't> {
 
         // Don't accept empty matches immediately following a match.
         // i.e., no infinite loops please.
-        if e - s == 0 && Some(self.last_end) == self.last_match {
+        if e == s && Some(self.last_end) == self.last_match {
             self.last_end += 1;
             return self.next()
         }

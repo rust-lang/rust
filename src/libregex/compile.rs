@@ -13,7 +13,6 @@
 #![allow(visible_private_types)]
 
 use std::cmp;
-use std::iter;
 use parse;
 use parse::{
     Flags, FLAG_EMPTY,
@@ -89,7 +88,7 @@ pub struct Program {
 
 impl Program {
     /// Compiles a Regex given its AST.
-    pub fn new(ast: ~parse::Ast) -> (Program, ~[Option<~str>]) {
+    pub fn new(ast: parse::Ast) -> (Program, Vec<Option<~str>>) {
         let mut c = Compiler {
             insts: Vec::with_capacity(100),
             names: Vec::with_capacity(10),
@@ -104,16 +103,16 @@ impl Program {
         // This is a bit hacky since we have to skip over the initial
         // 'Save' instruction.
         let mut pre = StrBuf::with_capacity(5);
-        for i in iter::range(1, c.insts.len()) {
-            match *c.insts.get(i) {
+        for inst in c.insts.slice_from(1).iter() {
+            match *inst {
                 OneChar(c, FLAG_EMPTY) => pre.push_char(c),
                 _ => break
             }
         }
 
-        let names = c.names.as_slice().into_owned();
+        let Compiler { insts, names } = c;
         let prog = Program {
-            insts: c.insts,
+            insts: insts,
             prefix: pre.into_owned(),
         };
         (prog, names)
@@ -144,17 +143,17 @@ struct Compiler<'r> {
 // The only tricky thing here is patching jump/split instructions to point to
 // the right instruction.
 impl<'r> Compiler<'r> {
-    fn compile(&mut self, ast: ~parse::Ast) {
+    fn compile(&mut self, ast: parse::Ast) {
         match ast {
-            ~Nothing => {},
-            ~Literal(c, flags) => self.push(OneChar(c, flags)),
-            ~Dot(nl) => self.push(Any(nl)),
-            ~Class(ranges, flags) =>
+            Nothing => {},
+            Literal(c, flags) => self.push(OneChar(c, flags)),
+            Dot(nl) => self.push(Any(nl)),
+            Class(ranges, flags) =>
                 self.push(CharClass(ranges, flags)),
-            ~Begin(flags) => self.push(EmptyBegin(flags)),
-            ~End(flags) => self.push(EmptyEnd(flags)),
-            ~WordBoundary(flags) => self.push(EmptyWordBoundary(flags)),
-            ~Capture(cap, name, x) => {
+            Begin(flags) => self.push(EmptyBegin(flags)),
+            End(flags) => self.push(EmptyEnd(flags)),
+            WordBoundary(flags) => self.push(EmptyWordBoundary(flags)),
+            Capture(cap, name, x) => {
                 let len = self.names.len();
                 if cap >= len {
                     self.names.grow(10 + cap - len, &None)
@@ -162,30 +161,30 @@ impl<'r> Compiler<'r> {
                 *self.names.get_mut(cap) = name;
 
                 self.push(Save(2 * cap));
-                self.compile(x);
+                self.compile(*x);
                 self.push(Save(2 * cap + 1));
             }
-            ~Cat(xs) => {
+            Cat(xs) => {
                 for x in xs.move_iter() {
                     self.compile(x)
                 }
             }
-            ~Alt(x, y) => {
+            Alt(x, y) => {
                 let split = self.empty_split(); // push: split 0, 0
                 let j1 = self.insts.len();
-                self.compile(x);                // push: insts for x
+                self.compile(*x);                // push: insts for x
                 let jmp = self.empty_jump();    // push: jmp 0
                 let j2 = self.insts.len();
-                self.compile(y);                // push: insts for y
+                self.compile(*y);                // push: insts for y
                 let j3 = self.insts.len();
 
                 self.set_split(split, j1, j2);  // split 0, 0 -> split j1, j2
                 self.set_jump(jmp, j3);         // jmp 0      -> jmp j3
             }
-            ~Rep(x, ZeroOne, g) => {
+            Rep(x, ZeroOne, g) => {
                 let split = self.empty_split();
                 let j1 = self.insts.len();
-                self.compile(x);
+                self.compile(*x);
                 let j2 = self.insts.len();
 
                 if g.is_greedy() {
@@ -194,11 +193,11 @@ impl<'r> Compiler<'r> {
                     self.set_split(split, j2, j1);
                 }
             }
-            ~Rep(x, ZeroMore, g) => {
+            Rep(x, ZeroMore, g) => {
                 let j1 = self.insts.len();
                 let split = self.empty_split();
                 let j2 = self.insts.len();
-                self.compile(x);
+                self.compile(*x);
                 let jmp = self.empty_jump();
                 let j3 = self.insts.len();
 
@@ -209,9 +208,9 @@ impl<'r> Compiler<'r> {
                     self.set_split(split, j3, j2);
                 }
             }
-            ~Rep(x, OneMore, g) => {
+            Rep(x, OneMore, g) => {
                 let j1 = self.insts.len();
-                self.compile(x);
+                self.compile(*x);
                 let split = self.empty_split();
                 let j2 = self.insts.len();
 
