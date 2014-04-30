@@ -1121,7 +1121,7 @@ fn item_module(w: &mut Writer, cx: &Context,
                 clean::MacroItem(..)           => ("macros", "Macros"),
             };
             try!(write!(w,
-                        "<h2 id='{id}' class='section-link'>\
+                        "<h2 id='{id}' class='section-header'>\
                         <a href=\"\\#{id}\">{name}</a></h2>\n<table>",
                         id = short, name = name));
         }

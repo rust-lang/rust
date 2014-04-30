@@ -471,7 +471,7 @@ Two examples of paths with type arguments:
 # fn f() {
 # fn id<T>(t: T) -> T { t }
 type T = HashMap<int,~str>;  // Type arguments used in a type expression
-let x = id::<int>(10);         // Type arguments used in a call expression
+let x = id::<int>(10);       // Type arguments used in a call expression
 # }
 ~~~~
 
