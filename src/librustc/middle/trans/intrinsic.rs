@@ -323,6 +323,17 @@ pub fn trans_intrinsic(ccx: &CrateContext,
             let lltp_ty = type_of::type_of(ccx, tp_ty);
             Ret(bcx, C_uint(ccx, machine::llalign_of_pref(ccx, lltp_ty) as uint));
         }
+        "num_variants" => {
+            let tp_ty = *substs.tys.get(0);
+            let ref sty = ty::get(tp_ty).sty;
+            let num_variants = match *sty {
+                ty::ty_enum(did, _) => {
+                    ty::enum_variants(ccx.tcx(), did).len()
+                }
+                _ => 0
+            };
+            Ret(bcx, C_uint(ccx, num_variants));
+        }
         "get_tydesc" => {
             let tp_ty = *substs.tys.get(0);
             let static_ti = get_tydesc(ccx, tp_ty);

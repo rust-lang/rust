@@ -37,6 +37,14 @@ pub fn align(size: uint, align: uint) -> uint {
     ((size + align) - 1u) & !(align - 1u)
 }
 
+/// Get the number of variants in an enum
+#[cfg(not(stage0))]
+#[inline]
+pub fn num_variants<T>() -> uint {
+    use intrinsics::num_variants;
+    unsafe { num_variants::<T>() }
+}
+
 /// Adaptor to wrap around visitors implementing MovePtr.
 pub struct MovePtrAdaptor<V> {
     inner: V

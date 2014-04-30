@@ -280,6 +280,10 @@ extern "rust-intrinsic" {
     pub fn min_align_of<T>() -> uint;
     pub fn pref_align_of<T>() -> uint;
 
+    /// Gets the number of variants in an enum
+    #[cfg(not(stage0))]
+    pub fn num_variants<T>() -> uint;
+
     /// Get a static pointer to a type descriptor.
     pub fn get_tydesc<T>() -> *TyDesc;
 
