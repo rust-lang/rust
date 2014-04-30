@@ -98,7 +98,7 @@ macro_rules! bitflags(
     }) => (
         #[deriving(Eq, TotalEq, Clone)]
         pub struct $BitFlags {
-            priv bits: $T,
+            bits: $T,
         }
 
         $(pub static $Flag: $BitFlags = $BitFlags { bits: $value };)+
