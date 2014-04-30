@@ -22,6 +22,7 @@ use ast::{Item, MetaItem, MetaList, MetaNameValue, MetaWord};
 use ext::base::ExtCtxt;
 use codemap::Span;
 
+pub mod bounds;
 pub mod clone;
 pub mod encodable;
 pub mod decodable;
@@ -89,6 +90,10 @@ pub fn expand_meta_deriving(cx: &mut ExtCtxt,
                             "Default" => expand!(default::expand_deriving_default),
 
                             "FromPrimitive" => expand!(primitive::expand_deriving_from_primitive),
+
+                            "Send" => expand!(bounds::expand_deriving_bound),
+                            "Share" => expand!(bounds::expand_deriving_bound),
+                            "Copy" => expand!(bounds::expand_deriving_bound),
 
                             ref tname => {
                                 cx.span_err(titem.span, format!("unknown \
