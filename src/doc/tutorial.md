@@ -1731,11 +1731,11 @@ they try to access `x`:
 let x = 3;
 
 // `fun` is an invalid definition
-fn  fun       () -> () { println!("{}", x) }; // cannot capture enclosing scope
+fn  fun       () -> () { println!("{}", x) }  // cannot capture enclosing scope
 let closure = || -> () { println!("{}", x) }; // can capture enclosing scope
 
 // `fun_arg` is an invalid definition
-fn  fun_arg       (arg: int) -> () { println!("{}", arg + x) }; // cannot capture enclosing scope
+fn  fun_arg       (arg: int) -> () { println!("{}", arg + x) }  // cannot capture enclosing scope
 let closure_arg = |arg: int| -> () { println!("{}", arg + x) }; // can capture enclosing scope
 //                       ^
 // Requires a type because the implementation needs to know which `+` to use.
