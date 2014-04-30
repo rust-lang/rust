@@ -207,9 +207,6 @@ nav.sub {
     text-overflow: ellipsis;
 }
 
-.docblock a { color: #4e8bca; }
-.docblock a:hover { text-decoration: underline; }
-
 .docblock.short p {
     overflow: hidden;
     text-overflow: ellipsis;
@@ -291,6 +288,8 @@ a {
     color: #000;
     background: transparent;
 }
+p a { color: #4e8bca; }
+p a:hover { text-decoration: underline; }
 
 .content a.trait, .block a.current.trait { color: #ed9603; }
 .content a.mod, .block a.current.mod { color: #4d76ae; }
@@ -397,7 +396,7 @@ pre.rust .doccomment { color: #4D4D4C; }
 pre.rust .macro, pre.rust .macro-nonterminal { color: #3E999F; }
 pre.rust .lifetime { color: #B76514; }
 
-.section-header {
+.methods .section-header {
     /* Override parent class attributes. */
     border-bottom: none !important;
     font-size: 1.1em !important;
