@@ -15,12 +15,16 @@ Dynamic library facilities.
 A simple wrapper over the platform's dynamic library facilities
 
 */
+
 use c_str::ToCStr;
 use cast;
-use path;
 use ops::*;
 use option::*;
+use os;
+use path::GenericPath;
+use path;
 use result::*;
+use str;
 
 pub struct DynamicLibrary { handle: *u8}
 
@@ -57,6 +61,20 @@ impl DynamicLibrary {
                 Ok(handle) => Ok(DynamicLibrary { handle: handle })
             }
         }
+    }
+
+    /// Appends a path to the system search path for dynamic libraries
+    pub fn add_search_path(path: &path::Path) {
+        let (envvar, sep) = if cfg!(windows) {
+            ("PATH", ';' as u8)
+        } else if cfg!(target_os = "macos") {
+            ("DYLD_LIBRARY_PATH", ':' as u8)
+        } else {
+            ("LD_LIBRARY_PATH", ':' as u8)
+        };
+        let newenv = os::getenv_as_bytes(envvar).unwrap_or(~[]);
+        let newenv = newenv + &[sep] + path.as_vec();
+        os::setenv(envvar, str::from_utf8(newenv).unwrap());
     }
 
     /// Access the value at the symbol of the dynamic library
@@ -237,7 +255,6 @@ pub mod dl {
         FreeLibrary(handle as *libc::c_void); ()
     }
 
-    #[link_name = "kernel32"]
     extern "system" {
         fn SetLastError(error: libc::size_t);
         fn LoadLibraryW(name: *libc::c_void) -> *libc::c_void;
