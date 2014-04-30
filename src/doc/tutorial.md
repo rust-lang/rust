@@ -1731,13 +1731,13 @@ they try to access `x`:
 let x = 3;
 
 // `fun` is an invalid definition
-fn  fun       () -> () { println!("{}", x) }  // cannot capture enclosing scope
-let closure = || -> () { println!("{}", x) }; // can capture enclosing scope
+fn  fun       () -> () { println!("{}", x) }  // cannot capture from enclosing scope
+let closure = || -> () { println!("{}", x) }; // can capture from enclosing scope
 
 // `fun_arg` is an invalid definition
-fn  fun_arg       (arg: int) -> () { println!("{}", arg + x) }  // cannot capture enclosing scope
-let closure_arg = |arg: int| -> () { println!("{}", arg + x) }; // can capture enclosing scope
-//                       ^
+fn  fun_arg       (arg: int) -> () { println!("{}", arg + x) }  // cannot capture
+let closure_arg = |arg: int| -> () { println!("{}", arg + x) }; // can capture
+//                      ^
 // Requires a type because the implementation needs to know which `+` to use.
 // In the future, the implementation may not need the help.
 
@@ -1752,43 +1752,68 @@ Closures begin with the argument list between vertical bars and are followed by
 a single expression. Remember that a block, `{ <expr1>; <expr2>; ... }`, is
 considered a single expression: it evaluates to the result of the last
 expression it contains if that expression is not followed by a semicolon,
-otherwise the block evaluates to `()`.
+otherwise the block evaluates to `()`, the unit value.
 
-Since a closure is an expression, the compiler can usually infer the argument and
-return types; so they are often omitted. This is in contrast to a function which
-is a declaration and _not_ an expression. Declarations require the types to be
-specified and carry no inference. Compare:
+In general, return types and all argument types must be specified
+explicitly for function definitions.  (As previously mentioned in the
+[Functions section](#functions), omitting the return type from a
+function declaration is synonymous with an explicit declaration of
+return type unit, `()`.)
 
 ~~~~ {.ignore}
-// `fun` cannot infer the type of `x` so it must be provided because it is a function.
-fn  fun       (x: int) -> () { println!("{}", x) };
-let closure = |x     | -> () { println!("{}", x) };
+fn  fun   (x: int)         { println!("{}", x) } // this is same as saying `-> ()`
+fn  square(x: int) -> uint { (x * x) as uint }   // other return types are explicit
 
-fun(10);     // Prints 10
-closure(20); // Prints 20
+// Error: mismatched types: expected `()` but found `uint`
+fn  badfun(x: int)         { (x * x) as uint }
+~~~~
 
-fun("String"); // Error: wrong type
-// Error: This type is different from when `x` was originally evaluated
+On the other hand, the compiler can usually infer both the argument
+and return types for a closure expression; therefore they are often
+omitted, since both a human reader and the compiler can deduce the
+types from the immediate context.  This is in contrast to function
+declarations, which require types to be specified and are not subject
+to type inference. Compare:
+
+~~~~ {.ignore}
+// `fun` as a function declaration cannot infer the type of `x`, so it must be provided
+fn  fun       (x: int) { println!("{}", x) }
+let closure = |x     | { println!("{}", x) }; // infers `x: int`, return type `()`
+
+// For closures, omitting a return type is *not* synonymous with `-> ()`
+let add_3   = |y     | { 3i + y }; // infers `y: int`, return type `int`.
+
+fun(10);            // Prints 10
+closure(20);        // Prints 20
+closure(add_3(30)); // Prints 33
+
+fun("String"); // Error: mismatched types
+
+// Error: mismatched types
+// inference already assigned `closure` the type `|int| -> ()`
 closure("String");
 ~~~~
 
-The null arguments `()` are typically dropped so the end result
-is more compact.
+In cases where the compiler needs assistance, the arguments and return
+types may be annotated on closures, using the same notation as shown
+earlier.  In the example below, since different types provide an
+implementation for the operator `*`, the argument type for the `x`
+parameter must be explicitly provided.
+
+~~~~{.ignore}
+// Error: the type of `x` must be known to be used with `x * x`
+let square = |x     | -> uint { (x * x) as uint };
+~~~~
+
+In the corrected version, the argument type is explicitly annotated,
+while the return type can still be inferred.
 
 ~~~~
-let closure = |x| { println!("{}", x) };
+let square_explicit = |x: int| -> uint { (x * x) as uint };
+let square_infer    = |x: int|         { (x * x) as uint };
 
-closure(20); // Prints 20
-~~~~
-
-Here, in the rare case where the compiler needs assistance,
-the arguments and return types may be annotated.
-
-~~~~
-let square = |x: int| -> uint { (x * x) as uint };
-
-println!("{}", square(20));  // 400
-println!("{}", square(-20)); // 400
+println!("{}", square_explicit(20));  // 400
+println!("{}", square_infer(-20));    // 400
 ~~~~
 
 There are several forms of closure, each with its own role. The most
