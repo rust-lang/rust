@@ -81,7 +81,7 @@ h3.impl, h4.method {
 h3.impl {
     margin-top: 15px;
 }
-h1, h2, h3, h4, section.sidebar, a.source, .search-input, .content table a {
+h1, h2, h3, h4, section.sidebar, .source-link, .search-input, .content table a {
     font-family: "Fira Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 
@@ -221,9 +221,13 @@ nav.sub {
 .docblock h2 { font-size: 1.15em; }
 .docblock h3, .docblock h4, .docblock h5 { font-size: 1em; }
 
-.content .source {
+.content .source-link {
     float: right;
-    font-size: 23px;
+    font-size: 90%;
+    font-weight: 400;
+    border-radius: 3px;
+    padding: 2px 10px;
+    background-color: #ddd;
 }
 
 .content table {
@@ -365,9 +369,11 @@ a {
 }
 
 .stability {
-    border-left: 6px solid #000;
-    border-radius: 3px;
-    padding: 2px 10px;
+    font-size: 90%;
+    font-weight: 400;
+    font-style: italic;
+    border-bottom: 2px solid #000;
+    padding: 2px 5px;
     text-transform: lowercase;
     margin-left: 10px;
 }
@@ -392,12 +398,12 @@ pre.rust .doccomment { color: #4D4D4C; }
 pre.rust .macro, pre.rust .macro-nonterminal { color: #3E999F; }
 pre.rust .lifetime { color: #B76514; }
 
-h1.section-link:hover a:after,
-h2.section-link:hover a:after,
-h3.section-link:hover a:after,
-h4.section-link:hover a:after,
-h5.section-link:hover a:after,
-h6.section-link:hover a:after {
+h1:hover a.section-link:after,
+h2:hover a.section-link:after,
+h3:hover a.section-link:after,
+h4:hover a.section-link:after,
+h5:hover a.section-link:after,
+h6:hover a.section-link:after {
   content: '\2002\00a7\2002';
 }
 

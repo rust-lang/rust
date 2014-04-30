@@ -1075,9 +1075,9 @@ impl<'a> Parser<'a> {
                 p.parse_arg_general(false)
             });
 
-            let hi = p.last_span.hi;
             match p.token {
               token::SEMI => {
+                let hi = p.last_span.hi;
                 p.bump();
                 debug!("parse_trait_methods(): parsing required method");
                 // NB: at the moment, visibility annotations on required
@@ -1100,6 +1100,7 @@ impl<'a> Parser<'a> {
                 debug!("parse_trait_methods(): parsing provided method");
                 let (inner_attrs, body) =
                     p.parse_inner_attrs_and_block();
+                let hi = p.last_span.hi;
                 let attrs = attrs.append(inner_attrs.as_slice());
                 Provided(@ast::Method {
                     ident: ident,
