@@ -142,7 +142,10 @@ fn start(argc: int, argv: **u8) -> int {
     green::start(argc, argv, rustuv::event_loop, __test::main)
 }
 
+/* Exported macros */
+
 pub mod macros;
+pub mod bitflags;
 
 mod rtdeps;
 
