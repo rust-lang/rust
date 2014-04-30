@@ -13,7 +13,7 @@ extern crate serialize;
 
 use serialize::{json, Decodable};
 
-trait JD : Decodable<json::Decoder, json::Error> { }
+trait JD : Decodable<json::Decoder, json::DecoderError> { }
 
 fn exec<T: JD>() {
     let doc = json::from_str("").unwrap();

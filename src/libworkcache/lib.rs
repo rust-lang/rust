@@ -261,7 +261,7 @@ fn json_encode<'a, T:Encodable<json::Encoder<'a>, io::IoError>>(t: &T) -> ~str {
 }
 
 // FIXME(#5121)
-fn json_decode<T:Decodable<json::Decoder, json::Error>>(s: &str) -> T {
+fn json_decode<T:Decodable<json::Decoder, json::DecoderError>>(s: &str) -> T {
     debug!("json decoding: {}", s);
     let j = json::from_str(s).unwrap();
     let mut decoder = json::Decoder::new(j);
@@ -394,14 +394,14 @@ impl<'a> Prep<'a> {
 
     pub fn exec<'a, T:Send +
         Encodable<json::Encoder<'a>, io::IoError> +
-        Decodable<json::Decoder, json::Error>>(
+        Decodable<json::Decoder, json::DecoderError>>(
             &'a self, blk: proc(&mut Exec):Send -> T) -> T {
         self.exec_work(blk).unwrap()
     }
 
     fn exec_work<'a, T:Send +
         Encodable<json::Encoder<'a>, io::IoError> +
-        Decodable<json::Decoder, json::Error>>( // FIXME(#5121)
+        Decodable<json::Decoder, json::DecoderError>>( // FIXME(#5121)
             &'a self, blk: proc(&mut Exec):Send -> T) -> Work<'a, T> {
         let mut bo = Some(blk);
 
@@ -445,7 +445,7 @@ impl<'a> Prep<'a> {
 
 impl<'a, T:Send +
        Encodable<json::Encoder<'a>, io::IoError> +
-       Decodable<json::Decoder, json::Error>>
+       Decodable<json::Decoder, json::DecoderError>>
     Work<'a, T> { // FIXME(#5121)
 
     pub fn from_value(elt: T) -> Work<'a, T> {
