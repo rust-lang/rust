@@ -534,7 +534,7 @@ impl<T: Writer> ConsoleTestState<T> {
 
     pub fn write_run_start(&mut self, len: uint) -> io::IoResult<()> {
         self.total = len;
-        let noun = if len != 1 { &"tests" } else { &"test" };
+        let noun = if len != 1 { "tests" } else { "test" };
         self.write_plain(format!("\nrunning {} {}\n", len, noun))
     }
 

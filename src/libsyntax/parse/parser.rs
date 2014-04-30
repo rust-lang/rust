@@ -2779,28 +2779,11 @@ impl<'a> Parser<'a> {
             }
           }
           token::BINOP(token::AND) | token::ANDAND => {
-              // parse &pat
-              let lo = self.span.lo;
-              self.expect_and();
-              let sub = self.parse_pat();
-              hi = sub.span.hi;
-              // HACK: parse &"..." as a literal of a borrowed str
-              pat = match sub.node {
-                  PatLit(e) => {
-                      match e.node {
-                        ExprLit(lit) if lit_is_str(lit) => {
-                          let vst = @Expr {
-                              id: ast::DUMMY_NODE_ID,
-                              node: ExprVstore(e, ExprVstoreSlice),
-                              span: mk_sp(lo, hi)
-                          };
-                          PatLit(vst)
-                        }
-                        _ => PatRegion(sub),
-                      }
-                  }
-                  _ => PatRegion(sub),
-            };
+            // parse &pat
+            let lo = self.span.lo;
+            self.expect_and();
+            let sub = self.parse_pat();
+            pat = PatRegion(sub);
             hi = self.last_span.hi;
             return @ast::Pat {
                 id: ast::DUMMY_NODE_ID,

@@ -647,8 +647,8 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
               ty::ty_vec(mt, None) => {
                   fcx.type_error_message(pat.span,
                                          |_| {
-                                          ~"unique vector patterns are no \
-                                            longer supported"
+                                            "unique vector patterns are no \
+                                             longer supported".to_owned()
                                          },
                                          expected,
                                          None);

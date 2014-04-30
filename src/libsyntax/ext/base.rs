@@ -270,22 +270,22 @@ pub fn syntax_expander_table() -> SyntaxEnv {
     }
 
     let mut syntax_expanders = SyntaxEnv::new();
-    syntax_expanders.insert(intern(&"macro_rules"),
+    syntax_expanders.insert(intern("macro_rules"),
                             IdentTT(~BasicIdentMacroExpander {
                                 expander: ext::tt::macro_rules::add_new_extension,
                                 span: None,
                             },
                             None));
-    syntax_expanders.insert(intern(&"fmt"),
+    syntax_expanders.insert(intern("fmt"),
                             builtin_normal_expander(
                                 ext::fmt::expand_syntax_ext));
-    syntax_expanders.insert(intern(&"format_args"),
+    syntax_expanders.insert(intern("format_args"),
                             builtin_normal_expander(
                                 ext::format::expand_args));
-    syntax_expanders.insert(intern(&"env"),
+    syntax_expanders.insert(intern("env"),
                             builtin_normal_expander(
                                     ext::env::expand_env));
-    syntax_expanders.insert(intern(&"option_env"),
+    syntax_expanders.insert(intern("option_env"),
                             builtin_normal_expander(
                                     ext::env::expand_option_env));
     syntax_expanders.insert(intern("bytes"),
@@ -297,63 +297,63 @@ pub fn syntax_expander_table() -> SyntaxEnv {
     syntax_expanders.insert(intern("concat"),
                             builtin_normal_expander(
                                     ext::concat::expand_syntax_ext));
-    syntax_expanders.insert(intern(&"log_syntax"),
+    syntax_expanders.insert(intern("log_syntax"),
                             builtin_normal_expander(
                                     ext::log_syntax::expand_syntax_ext));
-    syntax_expanders.insert(intern(&"deriving"),
+    syntax_expanders.insert(intern("deriving"),
                             ItemDecorator(ext::deriving::expand_meta_deriving));
 
     // Quasi-quoting expanders
-    syntax_expanders.insert(intern(&"quote_tokens"),
+    syntax_expanders.insert(intern("quote_tokens"),
                        builtin_normal_expander(
                             ext::quote::expand_quote_tokens));
-    syntax_expanders.insert(intern(&"quote_expr"),
+    syntax_expanders.insert(intern("quote_expr"),
                        builtin_normal_expander(
                             ext::quote::expand_quote_expr));
-    syntax_expanders.insert(intern(&"quote_ty"),
+    syntax_expanders.insert(intern("quote_ty"),
                        builtin_normal_expander(
                             ext::quote::expand_quote_ty));
-    syntax_expanders.insert(intern(&"quote_item"),
+    syntax_expanders.insert(intern("quote_item"),
                        builtin_normal_expander(
                             ext::quote::expand_quote_item));
-    syntax_expanders.insert(intern(&"quote_pat"),
+    syntax_expanders.insert(intern("quote_pat"),
                        builtin_normal_expander(
                             ext::quote::expand_quote_pat));
-    syntax_expanders.insert(intern(&"quote_stmt"),
+    syntax_expanders.insert(intern("quote_stmt"),
                        builtin_normal_expander(
                             ext::quote::expand_quote_stmt));
 
-    syntax_expanders.insert(intern(&"line"),
+    syntax_expanders.insert(intern("line"),
                             builtin_normal_expander(
                                     ext::source_util::expand_line));
-    syntax_expanders.insert(intern(&"col"),
+    syntax_expanders.insert(intern("col"),
                             builtin_normal_expander(
                                     ext::source_util::expand_col));
-    syntax_expanders.insert(intern(&"file"),
+    syntax_expanders.insert(intern("file"),
                             builtin_normal_expander(
                                     ext::source_util::expand_file));
-    syntax_expanders.insert(intern(&"stringify"),
+    syntax_expanders.insert(intern("stringify"),
                             builtin_normal_expander(
                                     ext::source_util::expand_stringify));
-    syntax_expanders.insert(intern(&"include"),
+    syntax_expanders.insert(intern("include"),
                             builtin_normal_expander(
                                     ext::source_util::expand_include));
-    syntax_expanders.insert(intern(&"include_str"),
+    syntax_expanders.insert(intern("include_str"),
                             builtin_normal_expander(
                                     ext::source_util::expand_include_str));
-    syntax_expanders.insert(intern(&"include_bin"),
+    syntax_expanders.insert(intern("include_bin"),
                             builtin_normal_expander(
                                     ext::source_util::expand_include_bin));
-    syntax_expanders.insert(intern(&"module_path"),
+    syntax_expanders.insert(intern("module_path"),
                             builtin_normal_expander(
                                     ext::source_util::expand_mod));
-    syntax_expanders.insert(intern(&"asm"),
+    syntax_expanders.insert(intern("asm"),
                             builtin_normal_expander(
                                     ext::asm::expand_asm));
-    syntax_expanders.insert(intern(&"cfg"),
+    syntax_expanders.insert(intern("cfg"),
                             builtin_normal_expander(
                                     ext::cfg::expand_cfg));
-    syntax_expanders.insert(intern(&"trace_macros"),
+    syntax_expanders.insert(intern("trace_macros"),
                             builtin_normal_expander(
                                     ext::trace_macros::expand_trace_macros));
     syntax_expanders

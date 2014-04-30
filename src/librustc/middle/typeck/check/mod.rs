@@ -2566,10 +2566,6 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
     match expr.node {
       ast::ExprVstore(ev, vst) => {
         let typ = match ev.node {
-          ast::ExprLit(lit) if ast_util::lit_is_str(lit) => {
-            ast_expr_vstore_to_ty(fcx, ev, vst, || ty::mt{ ty: ty::mk_str(tcx),
-                                                           mutbl: ast::MutImmutable })
-          }
           ast::ExprVec(ref args) => {
             let mutability = match vst {
                 ast::ExprVstoreMutSlice => ast::MutMutable,
@@ -2622,8 +2618,13 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                             mutbl: mutability})
             }
           }
-          _ =>
-            tcx.sess.span_bug(expr.span, "vstore modifier on non-sequence")
+          ast::ExprLit(_) => {
+            tcx.sess.span_err(expr.span,
+                              "`~\"string\"` has been removed; use `\"string\".to_owned()` \
+                               instead");
+            ty::mk_err()
+          }
+          _ => tcx.sess.span_bug(expr.span, "vstore modifier on non-sequence"),
         };
         fcx.write_ty(ev.id, typ);
         fcx.write_ty(id, typ);
