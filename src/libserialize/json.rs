@@ -1931,7 +1931,7 @@ impl ::Decoder<DecoderError> for Decoder {
                 };
                 match o.pop(&"fields".to_owned()) {
                     Some(List(l)) => {
-                        for field in l.move_rev_iter() {
+                        for field in l.move_iter().rev() {
                             self.stack.push(field.clone());
                         }
                     },
@@ -2042,7 +2042,7 @@ impl ::Decoder<DecoderError> for Decoder {
         debug!("read_seq()");
         let list = try!(expect!(self.pop(), List));
         let len = list.len();
-        for v in list.move_rev_iter() {
+        for v in list.move_iter().rev() {
             self.stack.push(v);
         }
         f(self, len)

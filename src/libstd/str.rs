@@ -343,12 +343,10 @@ impl<'a> DoubleEndedIterator<(uint, char)> for CharOffsets<'a> {
     }
 }
 
-/// External iterator for a string's characters in reverse order.
-/// Use with the `std::iter` module.
+#[deprecated = "replaced by Rev<Chars<'a>>"]
 pub type RevChars<'a> = Rev<Chars<'a>>;
 
-/// External iterator for a string's characters and their byte offsets in reverse order.
-/// Use with the `std::iter` module.
+#[deprecated = "replaced by Rev<CharOffsets<'a>>"]
 pub type RevCharOffsets<'a> = Rev<CharOffsets<'a>>;
 
 /// External iterator for a string's bytes.
@@ -356,8 +354,7 @@ pub type RevCharOffsets<'a> = Rev<CharOffsets<'a>>;
 pub type Bytes<'a> =
     Map<'a, &'a u8, u8, slice::Items<'a, u8>>;
 
-/// External iterator for a string's bytes in reverse order.
-/// Use with the `std::iter` module.
+#[deprecated = "replaced by Rev<Bytes<'a>>"]
 pub type RevBytes<'a> = Rev<Bytes<'a>>;
 
 /// An iterator over the substrings of a string, separated by `sep`.
@@ -372,8 +369,7 @@ pub struct CharSplits<'a, Sep> {
     finished: bool,
 }
 
-/// An iterator over the substrings of a string, separated by `sep`,
-/// starting from the back of the string.
+#[deprecated = "replaced by Rev<CharSplits<'a, Sep>>"]
 pub type RevCharSplits<'a, Sep> = Rev<CharSplits<'a, Sep>>;
 
 /// An iterator over the substrings of a string, separated by `sep`,
@@ -462,7 +458,7 @@ for CharSplits<'a, Sep> {
                 }
             }
         } else {
-            for (idx, ch) in self.string.char_indices_rev() {
+            for (idx, ch) in self.string.char_indices().rev() {
                 if self.sep.matches(ch) {
                     next_split = Some((idx, self.string.char_range_at(idx).next));
                     break;
@@ -1626,21 +1622,23 @@ pub trait StrSlice<'a> {
     /// ```
     fn chars(&self) -> Chars<'a>;
 
-    /// An iterator over the characters of `self`, in reverse order.
-    fn chars_rev(&self) -> RevChars<'a>;
+    /// Do not use this - it is deprecated.
+    #[deprecated = "replaced by .chars().rev()"]
+    fn chars_rev(&self) -> Rev<Chars<'a>>;
 
     /// An iterator over the bytes of `self`
     fn bytes(&self) -> Bytes<'a>;
 
-    /// An iterator over the bytes of `self`, in reverse order
-    fn bytes_rev(&self) -> RevBytes<'a>;
+    /// Do not use this - it is deprecated.
+    #[deprecated = "replaced by .bytes().rev()"]
+    fn bytes_rev(&self) -> Rev<Bytes<'a>>;
 
     /// An iterator over the characters of `self` and their byte offsets.
     fn char_indices(&self) -> CharOffsets<'a>;
 
-    /// An iterator over the characters of `self` and their byte offsets,
-    /// in reverse order.
-    fn char_indices_rev(&self) -> RevCharOffsets<'a>;
+    /// Do not use this - it is deprecated.
+    #[deprecated = "replaced by .char_indices().rev()"]
+    fn char_indices_rev(&self) -> Rev<CharOffsets<'a>>;
 
     /// An iterator over substrings of `self`, separated by characters
     /// matched by `sep`.
@@ -1691,25 +1689,21 @@ pub trait StrSlice<'a> {
     ///
     /// let v: ~[&str] = "A..B..".split_terminator('.').collect();
     /// assert_eq!(v, ~["A", "", "B", ""]);
+    ///
+    /// let v: ~[&str] = "Mary had a little lamb".split(' ').rev().collect();
+    /// assert_eq!(v, ~["lamb", "little", "a", "had", "Mary"]);
+    ///
+    /// let v: ~[&str] = "abc1def2ghi".split(|c: char| c.is_digit()).rev().collect();
+    /// assert_eq!(v, ~["ghi", "def", "abc"]);
+    ///
+    /// let v: ~[&str] = "lionXXtigerXleopard".split('X').rev().collect();
+    /// assert_eq!(v, ~["leopard", "tiger", "", "lion"]);
     /// ```
     fn split_terminator<Sep: CharEq>(&self, sep: Sep) -> CharSplits<'a, Sep>;
 
-    /// An iterator over substrings of `self`, separated by characters
-    /// matched by `sep`, in reverse order.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// let v: ~[&str] = "Mary had a little lamb".rsplit(' ').collect();
-    /// assert_eq!(v, ~["lamb", "little", "a", "had", "Mary"]);
-    ///
-    /// let v: ~[&str] = "abc1def2ghi".rsplit(|c: char| c.is_digit()).collect();
-    /// assert_eq!(v, ~["ghi", "def", "abc"]);
-    ///
-    /// let v: ~[&str] = "lionXXtigerXleopard".rsplit('X').collect();
-    /// assert_eq!(v, ~["leopard", "tiger", "", "lion"]);
-    /// ```
-    fn rsplit<Sep: CharEq>(&self, sep: Sep) -> RevCharSplits<'a, Sep>;
+    /// Do not use this - it is deprecated.
+    #[deprecated = "replaced by .split(sep).rev()"]
+    fn rsplit<Sep: CharEq>(&self, sep: Sep) -> Rev<CharSplits<'a, Sep>>;
 
     /// An iterator over substrings of `self`, separated by characters
     /// matched by `sep`, starting from the end of the string.
@@ -2281,7 +2275,8 @@ impl<'a> StrSlice<'a> for &'a str {
     }
 
     #[inline]
-    fn chars_rev(&self) -> RevChars<'a> {
+    #[deprecated = "replaced by .chars().rev()"]
+    fn chars_rev(&self) -> Rev<Chars<'a>> {
         self.chars().rev()
     }
 
@@ -2291,7 +2286,8 @@ impl<'a> StrSlice<'a> for &'a str {
     }
 
     #[inline]
-    fn bytes_rev(&self) -> RevBytes<'a> {
+    #[deprecated = "replaced by .bytes().rev()"]
+    fn bytes_rev(&self) -> Rev<Bytes<'a>> {
         self.bytes().rev()
     }
 
@@ -2301,7 +2297,8 @@ impl<'a> StrSlice<'a> for &'a str {
     }
 
     #[inline]
-    fn char_indices_rev(&self) -> RevCharOffsets<'a> {
+    #[deprecated = "replaced by .char_indices().rev()"]
+    fn char_indices_rev(&self) -> Rev<CharOffsets<'a>> {
         self.char_indices().rev()
     }
 
@@ -2336,7 +2333,8 @@ impl<'a> StrSlice<'a> for &'a str {
     }
 
     #[inline]
-    fn rsplit<Sep: CharEq>(&self, sep: Sep) -> RevCharSplits<'a, Sep> {
+    #[deprecated = "replaced by .split(sep).rev()"]
+    fn rsplit<Sep: CharEq>(&self, sep: Sep) -> Rev<CharSplits<'a, Sep>> {
         self.split(sep).rev()
     }
 
@@ -2656,7 +2654,7 @@ impl<'a> StrSlice<'a> for &'a str {
         if search.only_ascii() {
             self.bytes().rposition(|b| search.matches(b as char))
         } else {
-            for (index, c) in self.char_indices_rev() {
+            for (index, c) in self.char_indices().rev() {
                 if search.matches(c) { return Some(index); }
             }
             None
@@ -3573,7 +3571,7 @@ mod tests {
         let s = "ศไทย中华Việt Nam".to_owned();
         let v = ~['ศ','ไ','ท','ย','中','华','V','i','ệ','t',' ','N','a','m'];
         let mut pos = s.len();
-        for ch in v.rev_iter() {
+        for ch in v.iter().rev() {
             assert!(s.char_at_reverse(pos) == *ch);
             pos -= from_char(*ch).len();
         }
@@ -3673,7 +3671,7 @@ mod tests {
         let v = ~['m', 'a', 'N', ' ', 't', 'ệ','i','V','华','中','ย','ท','ไ','ศ'];
 
         let mut pos = 0;
-        let mut it = s.chars_rev();
+        let mut it = s.chars().rev();
 
         for c in it {
             assert_eq!(c, v[pos]);
@@ -3716,7 +3714,7 @@ mod tests {
         ];
         let mut pos = v.len();
 
-        for b in s.bytes_rev() {
+        for b in s.bytes().rev() {
             pos -= 1;
             assert_eq!(b, v[pos]);
         }
@@ -3748,7 +3746,7 @@ mod tests {
         let v = ['m', 'a', 'N', ' ', 't', 'ệ','i','V','华','中','ย','ท','ไ','ศ'];
 
         let mut pos = 0;
-        let mut it = s.char_indices_rev();
+        let mut it = s.char_indices().rev();
 
         for c in it {
             assert_eq!(c, (p[pos], v[pos]));
@@ -3765,14 +3763,14 @@ mod tests {
         let split: ~[&str] = data.split(' ').collect();
         assert_eq!( split, ~["\nMäry", "häd", "ä", "little", "lämb\nLittle", "lämb\n"]);
 
-        let mut rsplit: ~[&str] = data.rsplit(' ').collect();
+        let mut rsplit: ~[&str] = data.split(' ').rev().collect();
         rsplit.reverse();
         assert_eq!(rsplit, ~["\nMäry", "häd", "ä", "little", "lämb\nLittle", "lämb\n"]);
 
         let split: ~[&str] = data.split(|c: char| c == ' ').collect();
         assert_eq!( split, ~["\nMäry", "häd", "ä", "little", "lämb\nLittle", "lämb\n"]);
 
-        let mut rsplit: ~[&str] = data.rsplit(|c: char| c == ' ').collect();
+        let mut rsplit: ~[&str] = data.split(|c: char| c == ' ').rev().collect();
         rsplit.reverse();
         assert_eq!(rsplit, ~["\nMäry", "häd", "ä", "little", "lämb\nLittle", "lämb\n"]);
 
@@ -3780,14 +3778,14 @@ mod tests {
         let split: ~[&str] = data.split('ä').collect();
         assert_eq!( split, ~["\nM", "ry h", "d ", " little l", "mb\nLittle l", "mb\n"]);
 
-        let mut rsplit: ~[&str] = data.rsplit('ä').collect();
+        let mut rsplit: ~[&str] = data.split('ä').rev().collect();
         rsplit.reverse();
         assert_eq!(rsplit, ~["\nM", "ry h", "d ", " little l", "mb\nLittle l", "mb\n"]);
 
         let split: ~[&str] = data.split(|c: char| c == 'ä').collect();
         assert_eq!( split, ~["\nM", "ry h", "d ", " little l", "mb\nLittle l", "mb\n"]);
 
-        let mut rsplit: ~[&str] = data.rsplit(|c: char| c == 'ä').collect();
+        let mut rsplit: ~[&str] = data.split(|c: char| c == 'ä').rev().collect();
         rsplit.reverse();
         assert_eq!(rsplit, ~["\nM", "ry h", "d ", " little l", "mb\nLittle l", "mb\n"]);
     }
@@ -4103,7 +4101,7 @@ mod bench {
         let s = "ศไทย中华Việt Nam; Mary had a little lamb, Little lamb";
         let len = s.char_len();
 
-        b.iter(|| assert_eq!(s.chars_rev().len(), len));
+        b.iter(|| assert_eq!(s.chars().rev().len(), len));
     }
 
     #[bench]
@@ -4119,7 +4117,7 @@ mod bench {
         let s = "ศไทย中华Việt Nam; Mary had a little lamb, Little lamb";
         let len = s.char_len();
 
-        b.iter(|| assert_eq!(s.char_indices_rev().len(), len));
+        b.iter(|| assert_eq!(s.char_indices().rev().len(), len));
     }
 
     #[bench]
