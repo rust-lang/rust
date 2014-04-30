@@ -120,6 +120,18 @@
 //! });
 //! rx.recv();
 //! ```
+//! 
+//! Reading from a channel with a timeout:
+//! 
+//! ```
+//! let (tx, rx) = channel();
+//! let mut rx = TimeoutReceiver::new(rx, 10000);
+//! match rx.recv() {
+//!     Some(val) => println!("Received {}", val),
+//!     None => println!("timed out, no message received in 10 seconds"),
+//! }
+//! ```
+
 
 // A description of how Rust's channel implementation works
 //
@@ -284,6 +296,7 @@ use result::{Ok, Err, Result};
 use rt::local::Local;
 use rt::task::{Task, BlockedTask};
 use sync::arc::UnsafeArc;
+use io::timer::Timer;
 
 pub use comm::select::{Select, Handle};
 
@@ -329,6 +342,13 @@ pub struct Receiver<T> {
     receives: Cell<uint>,
     // can't share in an arc
     marker: marker::NoShare,
+}
+
+/// Wraps a Receiver and allows receiving messages with a timeout strategy
+pub struct TimeoutReceiver<T> {
+    inner: Receiver<T>,
+    timer: Timer,
+    timeout: u64,
 }
 
 /// An iterator over messages on a receiver, this iterator will block
@@ -934,6 +954,51 @@ impl<T: Send> select::Packet for Receiver<T> {
                           &mut new_port.inner);
             }
         }
+    }
+}
+
+impl<T: Send> TimeoutReceiver<T> {
+    pub fn new(inner: Receiver<T>, timeout: u64) -> TimeoutReceiver<T> {
+        // create a timer object
+        let timer = Timer::new().unwrap();
+        TimeoutReceiver { inner: inner, timer: timer, timeout: timeout }
+    }
+
+    /// Blocks waiting for a value on the inner receiver or returns None after
+    /// timeout has passed
+    ///
+    /// This method can not fail as opposed to the original Receiver::recv, but
+    /// it returns an Option instead of the raw value. None is returned if the 
+    /// recv timed out.
+    pub fn recv(&mut self) -> Option<T> {
+        let oneshot = self.timer.oneshot(self.timeout);
+
+        // alternately read from the oneshot timer and the wrapped channel
+        loop {
+            println!("Trying");
+            match self.inner.try_recv() {
+                Ok(v) => return Some(v),
+                _ => ()
+            }
+            if oneshot.try_recv().is_ok() {
+                return None;
+            }
+        }
+    }
+
+    /// Wrapper for the inner Receiver's try_recv method.
+    pub fn try_recv(&self) -> Result<T, TryRecvError> {
+        self.inner.try_recv()
+    }
+
+    /// Wrapper for the inner Receiver's recv_opt method.
+    pub fn recv_opt(&self) -> Result<T, ()> {
+        self.inner.recv_opt()
+    }
+
+    /// Wrapper for the inner Receiver's iter method.
+    pub fn iter<'a>(&'a self) -> Messages<'a, T> {
+        self.inner.iter()
     }
 }
 
