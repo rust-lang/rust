@@ -231,7 +231,7 @@ pub use funcs::bsd43::{shutdown};
 #[cfg(windows)] pub use types::os::arch::extra::{HANDLE, BOOL, LPSECURITY_ATTRIBUTES};
 #[cfg(windows)] pub use types::os::arch::extra::{LPCSTR, WORD, DWORD, BYTE, FILETIME};
 #[cfg(windows)] pub use types::os::arch::extra::{LARGE_INTEGER, LPVOID, LONG};
-#[cfg(windows)] pub use types::os::arch::extra::{time64_t, OVERLAPPED};
+#[cfg(windows)] pub use types::os::arch::extra::{time64_t, OVERLAPPED, LPCWSTR};
 #[cfg(windows)] pub use types::os::arch::extra::{LPOVERLAPPED, SIZE_T, LPDWORD};
 #[cfg(windows)] pub use funcs::c95::string::{wcslen};
 #[cfg(windows)] pub use funcs::posix88::stat_::{wstat, wutime, wchmod, wrmdir};
