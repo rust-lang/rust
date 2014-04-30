@@ -982,7 +982,8 @@ The obvious approach is to define `Cons` as containing an element in the list
 along with the next `List` node. However, this will generate a compiler error.
 
 ~~~ {.ignore}
-// error: illegal recursive enum type; wrap the inner value in a box to make it representable
+// error: illegal recursive enum type; wrap the inner value in a box to make it
+// representable
 enum List {
     Cons(u32, List), // an element (`u32`) and the next node in the list
     Nil
@@ -1054,10 +1055,10 @@ immutable, the whole list is immutable. The memory allocation itself is the
 box, while the owner holds onto a pointer to it:
 
 ~~~ {.notrust}
-          List box             List box           List box            List box
-        +--------------+    +--------------+    +--------------+    +--------------+
-list -> | Cons | 1 | ~ | -> | Cons | 2 | ~ | -> | Cons | 3 | ~ | -> | Nil          |
-        +--------------+    +--------------+    +--------------+    +--------------+
+            List box            List box            List box          List box
+        +--------------+    +--------------+    +--------------+    +----------+
+list -> | Cons | 1 | ~ | -> | Cons | 2 | ~ | -> | Cons | 3 | ~ | -> | Nil      |
+        +--------------+    +--------------+    +--------------+    +----------+
 ~~~
 
 > *Note:* the above diagram shows the logical contents of the enum. The actual
@@ -1197,7 +1198,8 @@ fn eq(xs: &List, ys: &List) -> bool {
         // If we have reached the end of both lists, they are equal.
         (&Nil, &Nil) => true,
         // If the current element in both lists is equal, keep going.
-        (&Cons(x, ~ref next_xs), &Cons(y, ~ref next_ys)) if x == y => eq(next_xs, next_ys),
+        (&Cons(x, ~ref next_xs), &Cons(y, ~ref next_ys))
+                if x == y => eq(next_xs, next_ys),
         // If the current elements are not equal, the lists are not equal.
         _ => false
     }
@@ -1256,7 +1258,7 @@ Using the generic `List<T>` works much like before, thanks to type inference:
 #     Cons(value, ~xs)
 # }
 let mut xs = Nil; // Unknown type! This is a `List<T>`, but `T` can be anything.
-xs = prepend(xs, 10); // The compiler infers the type of `xs` as `List<int>` from this.
+xs = prepend(xs, 10); // Here the compiler infers `xs`'s type as `List<int>`.
 xs = prepend(xs, 15);
 xs = prepend(xs, 20);
 ~~~
@@ -1303,7 +1305,8 @@ fn eq<T: Eq>(xs: &List<T>, ys: &List<T>) -> bool {
         // If we have reached the end of both lists, they are equal.
         (&Nil, &Nil) => true,
         // If the current element in both lists is equal, keep going.
-        (&Cons(ref x, ~ref next_xs), &Cons(ref y, ~ref next_ys)) if x == y => eq(next_xs, next_ys),
+        (&Cons(ref x, ~ref next_xs), &Cons(ref y, ~ref next_ys))
+                if x == y => eq(next_xs, next_ys),
         // If the current elements are not equal, the lists are not equal.
         _ => false
     }
@@ -1331,7 +1334,8 @@ impl<T: Eq> Eq for List<T> {
             // If we have reached the end of both lists, they are equal.
             (&Nil, &Nil) => true,
             // If the current element in both lists is equal, keep going.
-            (&Cons(ref x, ~ref next_xs), &Cons(ref y, ~ref next_ys)) if x == y => next_xs == next_ys,
+            (&Cons(ref x, ~ref next_xs), &Cons(ref y, ~ref next_ys))
+                    if x == y => next_xs == next_ys,
             // If the current elements are not equal, the lists are not equal.
             _ => false
         }

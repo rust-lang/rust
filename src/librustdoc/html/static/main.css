@@ -53,32 +53,40 @@
 body {
     color: #333;
     min-width: 500px;
-    font: 18px "Heuristica", "Helvetica Neue", Helvetica, Arial, sans-serif;
-    line-height: 1.4;
+    font: 15.5px/1.4 "Heuristica", "Helvetica Neue", Helvetica, Arial, sans-serif;
     margin: 0;
     position: relative;
     padding: 10px 15px 20px 15px;
 }
 
-h1, h2, h3:not(.impl), h4:not(.method) {
+h1 {
+    font-size: 1.5em;
+}
+h2 {
+    font-size: 1.4em;
+}
+h3 {
+    font-size: 1.3em;
+}
+h1, h2, h3:not(.impl):not(.method), h4:not(.method) {
     color: black;
     font-weight: 500;
-    margin: 30px 0 15px 0;
+    margin: 20px 0 15px 0;
     padding-bottom: 6px;
 }
 h1.fqn {
     border-bottom: 1px dashed #D5D5D5;
     margin-top: 0;
 }
-h2, h3:not(.impl), h4:not(.method) {
+h2, h3:not(.impl):not(.method), h4:not(.method) {
     border-bottom: 1px solid #DDDDDD;
 }
-h3.impl, h4.method {
+h3.impl, h3.method, h4.method {
     font-weight: 600;
     margin-top: 10px;
     margin-bottom: 10px;
 }
-h3.impl {
+h3.impl, h3.method {
     margin-top: 15px;
 }
 h1, h2, h3, h4, section.sidebar, a.source, .search-input, .content table a {
@@ -93,7 +101,7 @@ ul ul, ol ul, ul ol, ol ol {
 }
 
 p {
-    margin: 0 0 1em 0;
+    margin: 0 0 .6em 0;
 }
 
 code, pre {
@@ -101,19 +109,15 @@ code, pre {
     white-space: pre-wrap;
 }
 pre {
-    font-size: 15px;
+    background-color: #F5F5F5;
     padding: 14px;
-    padding-right: 0;
-    border-left: 2px solid #eee;
 }
 
 .source pre {
-    border-left: none;
     padding: 20px;
 }
 
 nav.sub {
-    padding-top: 10px;
     font-size: 16px;
     text-transform: uppercase;
 }
@@ -149,7 +153,7 @@ nav.sub {
 }
 
 .block {
-    padding: 10px;
+    padding: 0 10px;
     margin-bottom: 10px;
 }
 .block h2 { 
@@ -170,7 +174,7 @@ nav.sub {
 }
 
 .content {
-    padding: 20px 0;
+    padding: 15px 0;
 }
 
 .content.source pre.rust {
@@ -211,9 +215,9 @@ nav.sub {
     text-overflow: ellipsis;
     margin: 0;
 }
+.docblock.short code { white-space: nowrap; }
 
 .docblock h1, .docblock h2, .docblock h3, .docblock h4, .docblock h5 {
-    margin: 30px 0 15px 0;
     border-bottom: 1px solid #DDD;
 }
 
@@ -367,9 +371,10 @@ a {
 .stability {
     border-left: 6px solid #000;
     border-radius: 3px;
-    padding: 2px 10px;
+    font-weight: 400;
+    padding: 4px 10px;
     text-transform: lowercase;
-    margin-left: 10px;
+    margin-left: 14px;
 }
 
 .stability.Deprecated { border-color: #D60027; color: #880017; }
@@ -392,16 +397,18 @@ pre.rust .doccomment { color: #4D4D4C; }
 pre.rust .macro, pre.rust .macro-nonterminal { color: #3E999F; }
 pre.rust .lifetime { color: #B76514; }
 
-h1.section-link:hover a:after,
-h2.section-link:hover a:after,
-h3.section-link:hover a:after,
-h4.section-link:hover a:after,
-h5.section-link:hover a:after,
-h6.section-link:hover a:after {
-  content: '\2002\00a7\2002';
+.section-header {
+    /* Override parent class attributes. */
+    border-bottom: none !important;
+    font-size: 1.1em !important;
+    margin: 0 0 -5px;
+    padding: 0;
+}
+.section-header:hover a:after {
+    content: '\2002\00a7\2002';
 }
 
-/** Media Queries **/
+/* Media Queries */
 
 @media (max-width: 700px) {
     .sidebar {
