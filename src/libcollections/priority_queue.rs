@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -382,7 +382,7 @@ mod tests {
     fn test_from_iter() {
         let xs = vec!(9u, 8, 7, 6, 5, 4, 3, 2, 1);
 
-        let mut q: PriorityQueue<uint> = xs.as_slice().rev_iter().map(|&x| x).collect();
+        let mut q: PriorityQueue<uint> = xs.as_slice().iter().rev().map(|&x| x).collect();
 
         for &x in xs.iter() {
             assert_eq!(q.pop(), x);

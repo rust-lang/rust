@@ -927,7 +927,7 @@ impl<'a> Liveness<'a> {
 
     fn propagate_through_exprs(&mut self, exprs: &[@Expr], succ: LiveNode)
                                -> LiveNode {
-        exprs.rev_iter().fold(succ, |succ, expr| {
+        exprs.iter().rev().fold(succ, |succ, expr| {
             self.propagate_through_expr(*expr, succ)
         })
     }

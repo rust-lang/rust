@@ -81,8 +81,6 @@ for &x in numbers.iter() {
 }
  ```
 
-* `.rev_iter()` returns an iterator with the same values as `.iter()`,
-  but going in the reverse order, starting with the back element.
 * `.mut_iter()` returns an iterator that allows modifying each value.
 * `.move_iter()` converts an owned vector into an iterator that
   moves out a value from the vector each iteration.
@@ -119,7 +117,6 @@ use result::{Ok, Err};
 use mem;
 use mem::size_of;
 use kinds::marker;
-use uint;
 use unstable::finally::try_finally;
 use raw::{Repr, Slice};
 use RawVec = raw::Vec;
@@ -148,7 +145,6 @@ pub fn mut_ref_slice<'a, A>(s: &'a mut A) -> &'a mut [A] {
 /// match a predicate function.
 pub struct Splits<'a, T> {
     v: &'a [T],
-    n: uint,
     pred: |t: &T|: 'a -> bool,
     finished: bool
 }
@@ -158,11 +154,6 @@ impl<'a, T> Iterator<&'a [T]> for Splits<'a, T> {
     fn next(&mut self) -> Option<&'a [T]> {
         if self.finished { return None; }
 
-        if self.n == 0 {
-            self.finished = true;
-            return Some(self.v);
-        }
-
         match self.v.iter().position(|x| (self.pred)(x)) {
             None => {
                 self.finished = true;
@@ -171,7 +162,6 @@ impl<'a, T> Iterator<&'a [T]> for Splits<'a, T> {
             Some(idx) => {
                 let ret = Some(self.v.slice(0, idx));
                 self.v = self.v.slice(idx + 1, self.v.len());
-                self.n -= 1;
                 ret
             }
         }
@@ -180,37 +170,17 @@ impl<'a, T> Iterator<&'a [T]> for Splits<'a, T> {
     #[inline]
     fn size_hint(&self) -> (uint, Option<uint>) {
         if self.finished {
-            return (0, Some(0))
-        }
-        // if the predicate doesn't match anything, we yield one slice
-        // if it matches every element, we yield N+1 empty slices where
-        // N is either the number of elements or the number of splits.
-        match (self.v.len(), self.n) {
-            (0,_) => (1, Some(1)),
-            (_,0) => (1, Some(1)),
-            (l,n) => (1, cmp::min(l,n).checked_add(&1u))
+            (0, Some(0))
+        } else {
+            (1, Some(self.v.len() + 1))
         }
     }
 }
 
-/// An iterator over the slices of a vector separated by elements that
-/// match a predicate function, from back to front.
-pub struct RevSplits<'a, T> {
-    v: &'a [T],
-    n: uint,
-    pred: |t: &T|: 'a -> bool,
-    finished: bool
-}
-
-impl<'a, T> Iterator<&'a [T]> for RevSplits<'a, T> {
+impl<'a, T> DoubleEndedIterator<&'a [T]> for Splits<'a, T> {
     #[inline]
-    fn next(&mut self) -> Option<&'a [T]> {
+    fn next_back(&mut self) -> Option<&'a [T]> {
         if self.finished { return None; }
-
-        if self.n == 0 {
-            self.finished = true;
-            return Some(self.v);
-        }
 
         match self.v.iter().rposition(|x| (self.pred)(x)) {
             None => {
@@ -220,21 +190,42 @@ impl<'a, T> Iterator<&'a [T]> for RevSplits<'a, T> {
             Some(idx) => {
                 let ret = Some(self.v.slice(idx + 1, self.v.len()));
                 self.v = self.v.slice(0, idx);
-                self.n -= 1;
                 ret
             }
+        }
+    }
+}
+
+/// An iterator over the slices of a vector separated by elements that
+/// match a predicate function, splitting at most a fixed number of times.
+pub struct SplitsN<'a, T> {
+    iter: Splits<'a, T>,
+    count: uint,
+    invert: bool
+}
+
+impl<'a, T> Iterator<&'a [T]> for SplitsN<'a, T> {
+    #[inline]
+    fn next(&mut self) -> Option<&'a [T]> {
+        if self.count == 0 {
+            if self.iter.finished {
+                None
+            } else {
+                self.iter.finished = true;
+                Some(self.iter.v)
+            }
+        } else {
+            self.count -= 1;
+            if self.invert { self.iter.next_back() } else { self.iter.next() }
         }
     }
 
     #[inline]
     fn size_hint(&self) -> (uint, Option<uint>) {
-        if self.finished {
-            return (0, Some(0))
-        }
-        match (self.v.len(), self.n) {
-            (0,_) => (1, Some(1)),
-            (_,0) => (1, Some(1)),
-            (l,n) => (1, cmp::min(l,n).checked_add(&1u))
+        if self.iter.finished {
+            (0, Some(0))
+        } else {
+            (1, Some(cmp::min(self.count, self.iter.v.len()) + 1))
         }
     }
 }
@@ -738,7 +729,8 @@ pub trait ImmutableVector<'a, T> {
     /// Returns an iterator over the vector
     fn iter(self) -> Items<'a, T>;
     /// Returns a reversed iterator over a vector
-    fn rev_iter(self) -> RevItems<'a, T>;
+    #[deprecated = "replaced by .iter().rev()"]
+    fn rev_iter(self) -> Rev<Items<'a, T>>;
     /// Returns an iterator over the subslices of the vector which are
     /// separated by elements that match `pred`.  The matched element
     /// is not contained in the subslices.
@@ -747,18 +739,19 @@ pub trait ImmutableVector<'a, T> {
     /// separated by elements that match `pred`, limited to splitting
     /// at most `n` times.  The matched element is not contained in
     /// the subslices.
-    fn splitn(self, n: uint, pred: |&T|: 'a -> bool) -> Splits<'a, T>;
+    fn splitn(self, n: uint, pred: |&T|: 'a -> bool) -> SplitsN<'a, T>;
     /// Returns an iterator over the subslices of the vector which are
     /// separated by elements that match `pred`. This starts at the
     /// end of the vector and works backwards.  The matched element is
     /// not contained in the subslices.
-    fn rsplit(self, pred: |&T|: 'a -> bool) -> RevSplits<'a, T>;
+    #[deprecated = "replaced by .split(pred).rev()"]
+    fn rsplit(self, pred: |&T|: 'a -> bool) -> Rev<Splits<'a, T>>;
     /// Returns an iterator over the subslices of the vector which are
     /// separated by elements that match `pred` limited to splitting
     /// at most `n` times. This starts at the end of the vector and
     /// works backwards.  The matched element is not contained in the
     /// subslices.
-    fn rsplitn(self,  n: uint, pred: |&T|: 'a -> bool) -> RevSplits<'a, T>;
+    fn rsplitn(self,  n: uint, pred: |&T|: 'a -> bool) -> SplitsN<'a, T>;
 
     /**
      * Returns an iterator over all contiguous windows of length
@@ -930,37 +923,41 @@ impl<'a,T> ImmutableVector<'a, T> for &'a [T] {
     }
 
     #[inline]
-    fn rev_iter(self) -> RevItems<'a, T> {
+    #[deprecated = "replaced by .iter().rev()"]
+    fn rev_iter(self) -> Rev<Items<'a, T>> {
         self.iter().rev()
     }
 
     #[inline]
     fn split(self, pred: |&T|: 'a -> bool) -> Splits<'a, T> {
-        self.splitn(uint::MAX, pred)
-    }
-
-    #[inline]
-    fn splitn(self, n: uint, pred: |&T|: 'a -> bool) -> Splits<'a, T> {
         Splits {
             v: self,
-            n: n,
             pred: pred,
             finished: false
         }
     }
 
     #[inline]
-    fn rsplit(self, pred: |&T|: 'a -> bool) -> RevSplits<'a, T> {
-        self.rsplitn(uint::MAX, pred)
+    fn splitn(self, n: uint, pred: |&T|: 'a -> bool) -> SplitsN<'a, T> {
+        SplitsN {
+            iter: self.split(pred),
+            count: n,
+            invert: false
+        }
     }
 
     #[inline]
-    fn rsplitn(self, n: uint, pred: |&T|: 'a -> bool) -> RevSplits<'a, T> {
-        RevSplits {
-            v: self,
-            n: n,
-            pred: pred,
-            finished: false
+    #[deprecated = "replaced by .split(pred).rev()"]
+    fn rsplit(self, pred: |&T|: 'a -> bool) -> Rev<Splits<'a, T>> {
+        self.split(pred).rev()
+    }
+
+    #[inline]
+    fn rsplitn(self, n: uint, pred: |&T|: 'a -> bool) -> SplitsN<'a, T> {
+        SplitsN {
+            iter: self.split(pred),
+            count: n,
+            invert: true
         }
     }
 
@@ -1172,7 +1169,8 @@ pub trait OwnedVector<T> {
     fn move_iter(self) -> MoveItems<T>;
     /// Creates a consuming iterator that moves out of the vector in
     /// reverse order.
-    fn move_rev_iter(self) -> RevMoveItems<T>;
+    #[deprecated = "replaced by .move_iter().rev()"]
+    fn move_rev_iter(self) -> Rev<MoveItems<T>>;
 
     /**
      * Partitions the vector into two vectors `(A,B)`, where all
@@ -1192,7 +1190,8 @@ impl<T> OwnedVector<T> for ~[T] {
     }
 
     #[inline]
-    fn move_rev_iter(self) -> RevMoveItems<T> {
+    #[deprecated = "replaced by .move_iter().rev()"]
+    fn move_rev_iter(self) -> Rev<MoveItems<T>> {
         self.move_iter().rev()
     }
 
@@ -1447,7 +1446,8 @@ pub trait MutableVector<'a, T> {
     fn mut_last(self) -> Option<&'a mut T>;
 
     /// Returns a reversed iterator that allows modifying each value
-    fn mut_rev_iter(self) -> RevMutItems<'a, T>;
+    #[deprecated = "replaced by .mut_iter().rev()"]
+    fn mut_rev_iter(self) -> Rev<MutItems<'a, T>>;
 
     /// Returns an iterator over the mutable subslices of the vector
     /// which are separated by elements that match `pred`.  The
@@ -1719,7 +1719,8 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
     }
 
     #[inline]
-    fn mut_rev_iter(self) -> RevMutItems<'a, T> {
+    #[deprecated = "replaced by .mut_iter().rev()"]
+    fn mut_rev_iter(self) -> Rev<MutItems<'a, T>> {
         self.mut_iter().rev()
     }
 
@@ -2134,6 +2135,7 @@ impl<'a, T> RandomAccessIterator<&'a T> for Items<'a, T> {
 }
 
 iterator!{struct Items -> *T, &'a T}
+#[deprecated = "replaced by Rev<Items<'a, T>>"]
 pub type RevItems<'a, T> = Rev<Items<'a, T>>;
 
 impl<'a, T> ExactSize<&'a T> for Items<'a, T> {}
@@ -2144,6 +2146,7 @@ impl<'a, T> Clone for Items<'a, T> {
 }
 
 iterator!{struct MutItems -> *mut T, &'a mut T}
+#[deprecated = "replaced by Rev<MutItems<'a, T>>"]
 pub type RevMutItems<'a, T> = Rev<MutItems<'a, T>>;
 
 /// An iterator over the subslices of the vector which are separated
@@ -2304,6 +2307,7 @@ impl<T> Drop for MoveItems<T> {
 }
 
 /// An iterator that moves out of a vector in reverse order.
+#[deprecated = "replaced by Rev<MoveItems<'a, T>>"]
 pub type RevMoveItems<T> = Rev<MoveItems<T>>;
 
 impl<A> FromIterator<A> for ~[A] {
@@ -3233,9 +3237,7 @@ mod tests {
         use iter::*;
         let mut xs = [1, 2, 5, 10, 11];
         assert_eq!(xs.iter().size_hint(), (5, Some(5)));
-        assert_eq!(xs.rev_iter().size_hint(), (5, Some(5)));
         assert_eq!(xs.mut_iter().size_hint(), (5, Some(5)));
-        assert_eq!(xs.mut_rev_iter().size_hint(), (5, Some(5)));
     }
 
     #[test]
@@ -3266,7 +3268,7 @@ mod tests {
         let xs = [1, 2, 5, 10, 11];
         let ys = [11, 10, 5, 2, 1];
         let mut i = 0;
-        for &x in xs.rev_iter() {
+        for &x in xs.iter().rev() {
             assert_eq!(x, ys[i]);
             i += 1;
         }
@@ -3277,7 +3279,7 @@ mod tests {
     fn test_mut_rev_iterator() {
         use iter::*;
         let mut xs = [1u, 2, 3, 4, 5];
-        for (i,x) in xs.mut_rev_iter().enumerate() {
+        for (i,x) in xs.mut_iter().rev().enumerate() {
             *x += i;
         }
         assert!(xs == [5, 5, 5, 5, 5])
@@ -3294,7 +3296,7 @@ mod tests {
     fn test_move_rev_iterator() {
         use iter::*;
         let xs = ~[1u,2,3,4,5];
-        assert_eq!(xs.move_rev_iter().fold(0, |a: uint, b: uint| 10*a + b), 54321);
+        assert_eq!(xs.move_iter().rev().fold(0, |a: uint, b: uint| 10*a + b), 54321);
     }
 
     #[test]
@@ -3335,17 +3337,17 @@ mod tests {
     fn test_rsplitator() {
         let xs = &[1i,2,3,4,5];
 
-        assert_eq!(xs.rsplit(|x| *x % 2 == 0).collect::<~[&[int]]>(),
+        assert_eq!(xs.split(|x| *x % 2 == 0).rev().collect::<~[&[int]]>(),
                    ~[&[5], &[3], &[1]]);
-        assert_eq!(xs.rsplit(|x| *x == 1).collect::<~[&[int]]>(),
+        assert_eq!(xs.split(|x| *x == 1).rev().collect::<~[&[int]]>(),
                    ~[&[2,3,4,5], &[]]);
-        assert_eq!(xs.rsplit(|x| *x == 5).collect::<~[&[int]]>(),
+        assert_eq!(xs.split(|x| *x == 5).rev().collect::<~[&[int]]>(),
                    ~[&[], &[1,2,3,4]]);
-        assert_eq!(xs.rsplit(|x| *x == 10).collect::<~[&[int]]>(),
+        assert_eq!(xs.split(|x| *x == 10).rev().collect::<~[&[int]]>(),
                    ~[&[1,2,3,4,5]]);
 
         let xs: &[int] = &[];
-        assert_eq!(xs.rsplit(|x| *x == 5).collect::<~[&[int]]>(), ~[&[]]);
+        assert_eq!(xs.split(|x| *x == 5).rev().collect::<~[&[int]]>(), ~[&[]]);
     }
 
     #[test]

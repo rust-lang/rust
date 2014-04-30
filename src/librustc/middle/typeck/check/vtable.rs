@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -94,7 +94,7 @@ fn lookup_vtables(vcx: &VtableContext,
     let mut result: Vec<vtable_param_res> =
         substs.tps.iter()
         .rev()
-        .zip(type_param_defs.rev_iter())
+        .zip(type_param_defs.iter().rev())
         .map(|(ty, def)|
             lookup_vtables_for_param(vcx, span, Some(substs),
                                      &*def.bounds, *ty, is_early))

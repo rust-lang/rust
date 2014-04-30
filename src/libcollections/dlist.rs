@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -370,8 +370,8 @@ impl<T> DList<T> {
         Items{nelem: self.len(), head: &self.list_head, tail: self.list_tail}
     }
 
-    /// Provide a reverse iterator
     #[inline]
+    #[deprecated = "replaced by .iter().rev()"]
     pub fn rev_iter<'a>(&'a self) -> Rev<Items<'a, T>> {
         self.iter().rev()
     }
@@ -390,8 +390,9 @@ impl<T> DList<T> {
             list: self
         }
     }
-    /// Provide a reverse iterator with mutable references
+
     #[inline]
+    #[deprecated = "replaced by .mut_iter().rev()"]
     pub fn mut_rev_iter<'a>(&'a mut self) -> Rev<MutItems<'a, T>> {
         self.mut_iter().rev()
     }
@@ -403,8 +404,8 @@ impl<T> DList<T> {
         MoveItems{list: self}
     }
 
-    /// Consume the list into an iterator yielding elements by value, in reverse
     #[inline]
+    #[deprecated = "replaced by .move_iter().rev()"]
     pub fn move_rev_iter(self) -> Rev<MoveItems<T>> {
         self.move_iter().rev()
     }
@@ -849,13 +850,13 @@ mod tests {
     #[test]
     fn test_rev_iter() {
         let m = generate_test();
-        for (i, elt) in m.rev_iter().enumerate() {
+        for (i, elt) in m.iter().rev().enumerate() {
             assert_eq!((6 - i) as int, *elt);
         }
         let mut n = DList::new();
-        assert_eq!(n.rev_iter().next(), None);
+        assert_eq!(n.iter().rev().next(), None);
         n.push_front(4);
-        let mut it = n.rev_iter();
+        let mut it = n.iter().rev();
         assert_eq!(it.size_hint(), (1, Some(1)));
         assert_eq!(it.next().unwrap(), &4);
         assert_eq!(it.size_hint(), (0, Some(0)));
@@ -958,13 +959,13 @@ mod tests {
     #[test]
     fn test_mut_rev_iter() {
         let mut m = generate_test();
-        for (i, elt) in m.mut_rev_iter().enumerate() {
+        for (i, elt) in m.mut_iter().rev().enumerate() {
             assert_eq!((6-i) as int, *elt);
         }
         let mut n = DList::new();
-        assert!(n.mut_rev_iter().next().is_none());
+        assert!(n.mut_iter().rev().next().is_none());
         n.push_front(4);
-        let mut it = n.mut_rev_iter();
+        let mut it = n.mut_iter().rev();
         assert!(it.next().is_some());
         assert!(it.next().is_none());
     }
@@ -1164,7 +1165,7 @@ mod tests {
         let v = &[0, ..128];
         let m: DList<int> = v.iter().map(|&x|x).collect();
         b.iter(|| {
-            assert!(m.rev_iter().len() == 128);
+            assert!(m.iter().rev().len() == 128);
         })
     }
     #[bench]
@@ -1172,7 +1173,7 @@ mod tests {
         let v = &[0, ..128];
         let mut m: DList<int> = v.iter().map(|&x|x).collect();
         b.iter(|| {
-            assert!(m.mut_rev_iter().len() == 128);
+            assert!(m.mut_iter().rev().len() == 128);
         })
     }
 }
