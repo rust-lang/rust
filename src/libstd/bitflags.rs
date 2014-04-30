@@ -17,9 +17,6 @@
 //! # Example
 //!
 //! ~~~rust
-//! #[feature(phase)];
-//! #[phase(syntax)] extern crate collections;
-//!
 //! bitflags!(Flags: u32 {
 //!     FlagA       = 0x00000001,
 //!     FlagB       = 0x00000010,
@@ -41,9 +38,6 @@
 //! The generated `struct`s can also be extended with type and trait implementations:
 //!
 //! ~~~rust
-//! #[feature(phase)];
-//! #[phase(syntax)] extern crate collections;
-//!
 //! use std::fmt;
 //!
 //! bitflags!(Flags: u32 {
@@ -174,6 +168,8 @@ macro_rules! bitflags(
 
 #[cfg(test)]
 mod tests {
+    use ops::{BitOr, BitAnd, Sub};
+
     bitflags!(Flags: u32 {
         FlagA       = 0x00000001,
         FlagB       = 0x00000010,

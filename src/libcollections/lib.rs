@@ -42,7 +42,6 @@ pub use smallintmap::SmallIntMap;
 pub use treemap::{TreeMap, TreeSet};
 pub use trie::{TrieMap, TrieSet};
 
-pub mod bitflags;
 pub mod bitv;
 pub mod btree;
 pub mod deque;
