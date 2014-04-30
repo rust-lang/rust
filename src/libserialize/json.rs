@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -237,13 +237,13 @@ use std::char;
 use std::f64;
 use std::io::MemWriter;
 use std::io;
-use std::num;
 use std::str;
 use std::str::ScalarValue;
 use std::strbuf::StrBuf;
 use std::fmt;
 use std::vec::Vec;
 use std::mem::swap;
+use std::from_str::FromStr;
 
 use Encodable;
 use collections::TreeMap;
@@ -251,7 +251,7 @@ use collections::TreeMap;
 /// Represents a json value
 #[deriving(Clone, Eq)]
 pub enum Json {
-    Number(f64),
+    Number(~str),
     String(~str),
     Boolean(bool),
     List(List),
@@ -397,17 +397,23 @@ impl<'a> Encoder<'a> {
 impl<'a> ::Encoder<io::IoError> for Encoder<'a> {
     fn emit_nil(&mut self) -> EncodeResult { write!(self.wr, "null") }
 
-    fn emit_uint(&mut self, v: uint) -> EncodeResult { self.emit_f64(v as f64) }
-    fn emit_u64(&mut self, v: u64) -> EncodeResult { self.emit_f64(v as f64) }
-    fn emit_u32(&mut self, v: u32) -> EncodeResult { self.emit_f64(v as f64) }
-    fn emit_u16(&mut self, v: u16) -> EncodeResult { self.emit_f64(v as f64) }
-    fn emit_u8(&mut self, v: u8) -> EncodeResult  { self.emit_f64(v as f64) }
+    fn emit_uint(&mut self, v: uint) -> EncodeResult { self.emit_u64(v as u64) }
+    fn emit_u32(&mut self, v: u32) -> EncodeResult { self.emit_u64(v as u64) }
+    fn emit_u16(&mut self, v: u16) -> EncodeResult { self.emit_u64(v as u64) }
+    fn emit_u8(&mut self, v: u8) -> EncodeResult  { self.emit_u64(v as u64) }
 
-    fn emit_int(&mut self, v: int) -> EncodeResult { self.emit_f64(v as f64) }
-    fn emit_i64(&mut self, v: i64) -> EncodeResult { self.emit_f64(v as f64) }
-    fn emit_i32(&mut self, v: i32) -> EncodeResult { self.emit_f64(v as f64) }
-    fn emit_i16(&mut self, v: i16) -> EncodeResult { self.emit_f64(v as f64) }
-    fn emit_i8(&mut self, v: i8) -> EncodeResult  { self.emit_f64(v as f64) }
+    fn emit_u64(&mut self, v: u64) -> EncodeResult {
+        write!(self.wr, "{}", v)
+    }
+
+    fn emit_int(&mut self, v: int) -> EncodeResult { self.emit_i64(v as i64) }
+    fn emit_i32(&mut self, v: i32) -> EncodeResult { self.emit_i64(v as i64) }
+    fn emit_i16(&mut self, v: i16) -> EncodeResult { self.emit_i64(v as i64) }
+    fn emit_i8(&mut self, v: i8) -> EncodeResult  { self.emit_i64(v as i64) }
+
+    fn emit_i64(&mut self, v: i64) -> EncodeResult {
+        write!(self.wr, "{}", v)
+    }
 
     fn emit_bool(&mut self, v: bool) -> EncodeResult {
         if v {
@@ -588,17 +594,23 @@ impl<'a> PrettyEncoder<'a> {
 impl<'a> ::Encoder<io::IoError> for PrettyEncoder<'a> {
     fn emit_nil(&mut self) -> EncodeResult { write!(self.wr, "null") }
 
-    fn emit_uint(&mut self, v: uint) -> EncodeResult { self.emit_f64(v as f64) }
-    fn emit_u64(&mut self, v: u64) -> EncodeResult { self.emit_f64(v as f64) }
-    fn emit_u32(&mut self, v: u32) -> EncodeResult { self.emit_f64(v as f64) }
-    fn emit_u16(&mut self, v: u16) -> EncodeResult { self.emit_f64(v as f64) }
-    fn emit_u8(&mut self, v: u8) -> EncodeResult { self.emit_f64(v as f64) }
+    fn emit_uint(&mut self, v: uint) -> EncodeResult { self.emit_u64(v as u64) }
+    fn emit_u32(&mut self, v: u32) -> EncodeResult { self.emit_u64(v as u64) }
+    fn emit_u16(&mut self, v: u16) -> EncodeResult { self.emit_u64(v as u64) }
+    fn emit_u8(&mut self, v: u8) -> EncodeResult { self.emit_u64(v as u64) }
 
-    fn emit_int(&mut self, v: int) -> EncodeResult { self.emit_f64(v as f64) }
-    fn emit_i64(&mut self, v: i64) -> EncodeResult { self.emit_f64(v as f64) }
-    fn emit_i32(&mut self, v: i32) -> EncodeResult { self.emit_f64(v as f64) }
-    fn emit_i16(&mut self, v: i16) -> EncodeResult { self.emit_f64(v as f64) }
-    fn emit_i8(&mut self, v: i8) -> EncodeResult { self.emit_f64(v as f64) }
+    fn emit_u64(&mut self, v: u64) -> EncodeResult {
+        write!(self.wr, "{}", v)
+    }
+
+    fn emit_int(&mut self, v: int) -> EncodeResult { self.emit_i64(v as i64) }
+    fn emit_i32(&mut self, v: i32) -> EncodeResult { self.emit_i64(v as i64) }
+    fn emit_i16(&mut self, v: i16) -> EncodeResult { self.emit_i64(v as i64) }
+    fn emit_i8(&mut self, v: i8) -> EncodeResult { self.emit_i64(v as i64) }
+
+    fn emit_i64(&mut self, v: i64) -> EncodeResult {
+        write!(self.wr, "{}", v)
+    }
 
     fn emit_bool(&mut self, v: bool) -> EncodeResult {
         if v {
@@ -802,7 +814,22 @@ impl<'a> ::Encoder<io::IoError> for PrettyEncoder<'a> {
 impl<E: ::Encoder<S>, S> Encodable<E, S> for Json {
     fn encode(&self, e: &mut E) -> Result<(), S> {
         match *self {
-            Number(v) => v.encode(e),
+            Number(ref v) => {
+                let u: Option<u64> = FromStr::from_str(*v);
+                match u {
+                    Some(u) => u.encode(e),
+                    None => {
+                        let i: Option<i64> = FromStr::from_str(*v);
+                        match i {
+                            Some(i) => i.encode(e),
+                            None => {
+                                let f: f64 = FromStr::from_str(*v).unwrap();
+                                f.encode(e)
+                            }
+                        }
+                    }
+                }
+            }
             String(ref v) => v.encode(e),
             Boolean(v) => v.encode(e),
             List(ref v) => v.encode(e),
@@ -924,14 +951,17 @@ impl Json {
 
     /// Returns true if the Json value is a Number. Returns false otherwise.
     pub fn is_number(&self) -> bool {
-        self.as_number().is_some()
+        match self {
+            &Number(_) => true,
+            _ => false
+        }
     }
 
-    /// If the Json value is a Number, returns the associated f64.
+    /// If the Json value is a Number, returns the associated number.
     /// Returns None otherwise.
-    pub fn as_number(&self) -> Option<f64> {
+    pub fn as_number<T: FromStr>(&self) -> Option<T> {
         match self {
-            &Number(n) => Some(n),
+            &Number(ref n) => FromStr::from_str(*n),
             _ => None
         }
     }
@@ -973,7 +1003,7 @@ pub enum JsonEvent {
     ListStart,
     ListEnd,
     BooleanValue(bool),
-    NumberValue(f64),
+    NumberValue(~str),
     StringValue(~str),
     NullValue,
     Error(ParserError),
@@ -1227,42 +1257,41 @@ impl<T: Iterator<char>> Parser<T> {
               self.ch_is('\r') { self.bump(); }
     }
 
-    fn parse_number(&mut self) -> Result<f64, ParserError> {
-        let mut neg = 1.0;
+    fn parse_number(&mut self) -> Result<~str, ParserError> {
+        let mut num = StrBuf::new();
 
         if self.ch_is('-') {
             self.bump();
-            neg = -1.0;
+            num.push_char('-');
         }
 
-        let mut res = match self.parse_integer() {
-          Ok(res) => res,
+        match self.parse_integer(&mut num) {
+          Ok(_) => {},
           Err(e) => return Err(e)
-        };
+        }
 
         if self.ch_is('.') {
-            match self.parse_decimal(res) {
-              Ok(r) => res = r,
+            match self.parse_decimal(&mut num) {
+              Ok(_) => {},
               Err(e) => return Err(e)
             }
         }
 
         if self.ch_is('e') || self.ch_is('E') {
-            match self.parse_exponent(res) {
-              Ok(r) => res = r,
+            match self.parse_exponent(&mut num) {
+              Ok(_) => {},
               Err(e) => return Err(e)
             }
         }
 
-        Ok(neg * res)
+        Ok(num.into_owned())
     }
 
-    fn parse_integer(&mut self) -> Result<f64, ParserError> {
-        let mut res = 0.0;
-
+    fn parse_integer(&mut self, num: &mut StrBuf) -> Result<(), ParserError> {
         match self.ch_or_null() {
             '0' => {
                 self.bump();
+                num.push_char('0');
 
                 // There can be only one leading '0'.
                 match self.ch_or_null() {
@@ -1274,21 +1303,21 @@ impl<T: Iterator<char>> Parser<T> {
                 while !self.eof() {
                     match self.ch_or_null() {
                         c @ '0' .. '9' => {
-                            res *= 10.0;
-                            res += ((c as int) - ('0' as int)) as f64;
                             self.bump();
-                        }
+                            num.push_char(c)
+                        },
                         _ => break,
                     }
                 }
             }
             _ => return self.error(InvalidNumber),
         }
-        Ok(res)
+        Ok(())
     }
 
-    fn parse_decimal(&mut self, res: f64) -> Result<f64, ParserError> {
+    fn parse_decimal(&mut self, num: &mut StrBuf) -> Result<(), ParserError> {
         self.bump();
+        num.push_char('.');
 
         // Make sure a digit follows the decimal place.
         match self.ch_or_null() {
@@ -1296,33 +1325,29 @@ impl<T: Iterator<char>> Parser<T> {
              _ => return self.error(InvalidNumber)
         }
 
-        let mut res = res;
-        let mut dec = 1.0;
         while !self.eof() {
             match self.ch_or_null() {
                 c @ '0' .. '9' => {
-                    dec /= 10.0;
-                    res += (((c as int) - ('0' as int)) as f64) * dec;
                     self.bump();
-                }
+                    num.push_char(c);
+                },
                 _ => break,
             }
         }
 
-        Ok(res)
+        Ok(())
     }
 
-    fn parse_exponent(&mut self, mut res: f64) -> Result<f64, ParserError> {
+    fn parse_exponent(&mut self, num: &mut StrBuf) -> Result<(), ParserError> {
         self.bump();
-
-        let mut exp = 0u;
-        let mut neg_exp = false;
+        num.push_char('e');
 
         if self.ch_is('+') {
             self.bump();
+            num.push_char('+');
         } else if self.ch_is('-') {
             self.bump();
-            neg_exp = true;
+            num.push_char('-');
         }
 
         // Make sure a digit follows the exponent place.
@@ -1333,23 +1358,14 @@ impl<T: Iterator<char>> Parser<T> {
         while !self.eof() {
             match self.ch_or_null() {
                 c @ '0' .. '9' => {
-                    exp *= 10;
-                    exp += (c as uint) - ('0' as uint);
-
                     self.bump();
-                }
+                    num.push_char(c);
+                },
                 _ => break
             }
         }
 
-        let exp: f64 = num::pow(10u as f64, exp);
-        if neg_exp {
-            res /= exp;
-        } else {
-            res *= exp;
-        }
-
-        Ok(res)
+        Ok(())
     }
 
     fn decode_hex_escape(&mut self) -> Result<u16, ParserError> {
@@ -1737,10 +1753,14 @@ impl<T: Iterator<char>> Builder<T> {
     fn build_value(&mut self) -> Result<Json, BuilderError> {
         return match self.token {
             Some(NullValue) => { Ok(Null) }
-            Some(NumberValue(n)) => { Ok(Number(n)) }
+            Some(NumberValue(ref mut n)) => {
+                let mut temp = "".to_owned();
+                swap(n, &mut temp);
+                Ok(Number(temp))
+            }
             Some(BooleanValue(b)) => { Ok(Boolean(b)) }
             Some(StringValue(ref mut s)) => {
-                let mut temp = ~"";
+                let mut temp = "".to_owned();
                 swap(s, &mut temp);
                 Ok(String(temp))
             }
@@ -1834,6 +1854,20 @@ impl Decoder {
     fn pop(&mut self) -> Json {
         self.stack.pop().unwrap()
     }
+
+    fn read_number<T: FromStr>(&mut self) -> DecodeResult<T> {
+        use std::from_str::FromStr;
+        debug!("read_number");
+        match self.pop() {
+            Number(f) => Ok(FromStr::from_str(f).unwrap()),
+            String(s) => {
+                // re: #12967.. a type w/ numeric keys (ie HashMap<uint, V> etc)
+                // is going to have a string here, as per JSON spec..
+                Ok(FromStr::from_str(s).unwrap())
+            },
+            value => Err(ExpectedError("Number".to_owned(), format!("{}", value)))
+        }
+    }
 }
 
 macro_rules! expect(
@@ -1858,38 +1892,25 @@ impl ::Decoder<DecoderError> for Decoder {
         Ok(())
     }
 
-    fn read_u64(&mut self)  -> DecodeResult<u64 > { Ok(try!(self.read_f64()) as u64) }
-    fn read_u32(&mut self)  -> DecodeResult<u32 > { Ok(try!(self.read_f64()) as u32) }
-    fn read_u16(&mut self)  -> DecodeResult<u16 > { Ok(try!(self.read_f64()) as u16) }
-    fn read_u8 (&mut self)  -> DecodeResult<u8  > { Ok(try!(self.read_f64()) as u8) }
-    fn read_uint(&mut self) -> DecodeResult<uint> { Ok(try!(self.read_f64()) as uint) }
+    fn read_u64(&mut self)  -> DecodeResult<u64 > { Ok(try!(self.read_number())) }
+    fn read_u32(&mut self)  -> DecodeResult<u32 > { Ok(try!(self.read_number())) }
+    fn read_u16(&mut self)  -> DecodeResult<u16 > { Ok(try!(self.read_number())) }
+    fn read_u8 (&mut self)  -> DecodeResult<u8  > { Ok(try!(self.read_number())) }
+    fn read_uint(&mut self) -> DecodeResult<uint> { Ok(try!(self.read_number())) }
 
-    fn read_i64(&mut self) -> DecodeResult<i64> { Ok(try!(self.read_f64()) as i64) }
-    fn read_i32(&mut self) -> DecodeResult<i32> { Ok(try!(self.read_f64()) as i32) }
-    fn read_i16(&mut self) -> DecodeResult<i16> { Ok(try!(self.read_f64()) as i16) }
-    fn read_i8 (&mut self) -> DecodeResult<i8 > { Ok(try!(self.read_f64()) as i8) }
-    fn read_int(&mut self) -> DecodeResult<int> { Ok(try!(self.read_f64()) as int) }
+    fn read_i64(&mut self) -> DecodeResult<i64> { Ok(try!(self.read_number())) }
+    fn read_i32(&mut self) -> DecodeResult<i32> { Ok(try!(self.read_number())) }
+    fn read_i16(&mut self) -> DecodeResult<i16> { Ok(try!(self.read_number())) }
+    fn read_i8 (&mut self) -> DecodeResult<i8 > { Ok(try!(self.read_number())) }
+    fn read_int(&mut self) -> DecodeResult<int> { Ok(try!(self.read_number())) }
 
     fn read_bool(&mut self) -> DecodeResult<bool> {
         debug!("read_bool");
         Ok(try!(expect!(self.pop(), Boolean)))
     }
 
-    fn read_f64(&mut self) -> DecodeResult<f64> {
-        use std::from_str::FromStr;
-        debug!("read_f64");
-        match self.pop() {
-            Number(f) => Ok(f),
-            String(s) => {
-                // re: #12967.. a type w/ numeric keys (ie HashMap<uint, V> etc)
-                // is going to have a string here, as per JSON spec..
-                Ok(FromStr::from_str(s).unwrap())
-            },
-            value => Err(ExpectedError("Number".to_owned(), format!("{}", value)))
-        }
-    }
-
-    fn read_f32(&mut self) -> DecodeResult<f32> { Ok(try!(self.read_f64()) as f32) }
+    fn read_f64(&mut self) -> DecodeResult<f64> { Ok(try!(self.read_number())) }
+    fn read_f32(&mut self) -> DecodeResult<f32> { Ok(try!(self.read_number())) }
 
     fn read_char(&mut self) -> DecodeResult<char> {
         let s = try!(self.read_str());
@@ -2083,9 +2104,13 @@ impl ::Decoder<DecoderError> for Decoder {
 impl Ord for Json {
     fn lt(&self, other: &Json) -> bool {
         match *self {
-            Number(f0) => {
+            Number(ref f0) => {
                 match *other {
-                    Number(f1) => f0 < f1,
+                    Number(ref f1) => {
+                        let left: f64 = FromStr::from_str(*f0).unwrap();
+                        let right: f64 = FromStr::from_str(*f1).unwrap();
+                        left < right
+                    }
                     String(_) | Boolean(_) | List(_) | Object(_) |
                     Null => true
                 }
@@ -2146,51 +2171,51 @@ impl ToJson for Json {
 }
 
 impl ToJson for int {
-    fn to_json(&self) -> Json { Number(*self as f64) }
+    fn to_json(&self) -> Json { Number((*self).to_str()) }
 }
 
 impl ToJson for i8 {
-    fn to_json(&self) -> Json { Number(*self as f64) }
+    fn to_json(&self) -> Json { Number((*self).to_str()) }
 }
 
 impl ToJson for i16 {
-    fn to_json(&self) -> Json { Number(*self as f64) }
+    fn to_json(&self) -> Json { Number((*self).to_str()) }
 }
 
 impl ToJson for i32 {
-    fn to_json(&self) -> Json { Number(*self as f64) }
+    fn to_json(&self) -> Json { Number((*self).to_str()) }
 }
 
 impl ToJson for i64 {
-    fn to_json(&self) -> Json { Number(*self as f64) }
+    fn to_json(&self) -> Json { Number((*self).to_str()) }
 }
 
 impl ToJson for uint {
-    fn to_json(&self) -> Json { Number(*self as f64) }
+    fn to_json(&self) -> Json { Number((*self).to_str()) }
 }
 
 impl ToJson for u8 {
-    fn to_json(&self) -> Json { Number(*self as f64) }
+    fn to_json(&self) -> Json { Number((*self).to_str()) }
 }
 
 impl ToJson for u16 {
-    fn to_json(&self) -> Json { Number(*self as f64) }
+    fn to_json(&self) -> Json { Number((*self).to_str()) }
 }
 
 impl ToJson for u32 {
-    fn to_json(&self) -> Json { Number(*self as f64) }
+    fn to_json(&self) -> Json { Number((*self).to_str()) }
 }
 
 impl ToJson for u64 {
-    fn to_json(&self) -> Json { Number(*self as f64) }
+    fn to_json(&self) -> Json { Number((*self).to_str()) }
 }
 
 impl ToJson for f32 {
-    fn to_json(&self) -> Json { Number(*self as f64) }
+    fn to_json(&self) -> Json { Number((*self).to_str()) }
 }
 
 impl ToJson for f64 {
-    fn to_json(&self) -> Json { Number(*self) }
+    fn to_json(&self) -> Json { Number((*self).to_str()) }
 }
 
 impl ToJson for () {
@@ -2278,7 +2303,7 @@ mod tests {
                 NullValue, SyntaxError, Key, Index, Stack,
                 InvalidSyntax, InvalidNumber, EOFWhileParsingObject, EOFWhileParsingList,
                 EOFWhileParsingValue, EOFWhileParsingString, KeyMustBeAString, ExpectedColon,
-                TrailingCharacters};
+                TrailingCharacters, ToJson};
     use std::io;
     use collections::TreeMap;
 
@@ -2321,17 +2346,26 @@ mod tests {
 
     #[test]
     fn test_write_number() {
-        assert_eq!(Number(3.0).to_str(), "3".to_owned());
-        assert_eq!(Number(3.0).to_pretty_str(), "3".to_owned());
+        assert_eq!((3.0f64).to_json().to_str(), "3".to_owned());
+        assert_eq!((3.0f64).to_json().to_pretty_str(), "3".to_owned());
 
-        assert_eq!(Number(3.1).to_str(), "3.1".to_owned());
-        assert_eq!(Number(3.1).to_pretty_str(), "3.1".to_owned());
+        assert_eq!((3.1f64).to_json().to_str(), "3.1".to_owned());
+        assert_eq!((3.1f64).to_json().to_pretty_str(), "3.1".to_owned());
 
-        assert_eq!(Number(-1.5).to_str(), "-1.5".to_owned());
-        assert_eq!(Number(-1.5).to_pretty_str(), "-1.5".to_owned());
+        assert_eq!((-1.5f64).to_json().to_str(), "-1.5".to_owned());
+        assert_eq!((-1.5f64).to_json().to_pretty_str(), "-1.5".to_owned());
 
-        assert_eq!(Number(0.5).to_str(), "0.5".to_owned());
-        assert_eq!(Number(0.5).to_pretty_str(), "0.5".to_owned());
+        assert_eq!((0.5f64).to_json().to_str(), "0.5".to_owned());
+        assert_eq!((0.5f64).to_json().to_pretty_str(), "0.5".to_owned());
+
+        assert_eq!(
+            (0xb5b5b5b5b5b5b5b5u64).to_json().to_str(),
+            "13093571283691877813".to_owned()
+        );
+        assert_eq!(
+            (0xb5b5b5b5b5b5b5b5i64).to_json().to_pretty_str(),
+            "-5353172790017673803".to_owned()
+        );
     }
 
     #[test]
@@ -2369,7 +2403,7 @@ mod tests {
         let long_test_list = List(~[
             Boolean(false),
             Null,
-            List(~[String("foo\nbar".to_owned()), Number(3.5)])]);
+            List(~[String("foo\nbar".to_owned()), Number("3.5".to_owned())])]);
 
         assert_eq!(long_test_list.to_str(),
             "[false,null,[\"foo\\nbar\",3.5]]".to_owned());
@@ -2583,14 +2617,16 @@ mod tests {
         assert_eq!(from_str("1e"),  Err(SyntaxError(InvalidNumber, 1, 3)));
         assert_eq!(from_str("1e+"), Err(SyntaxError(InvalidNumber, 1, 4)));
 
-        assert_eq!(from_str("3"), Ok(Number(3.0)));
-        assert_eq!(from_str("3.1"), Ok(Number(3.1)));
-        assert_eq!(from_str("-1.2"), Ok(Number(-1.2)));
-        assert_eq!(from_str("0.4"), Ok(Number(0.4)));
-        assert_eq!(from_str("0.4e5"), Ok(Number(0.4e5)));
-        assert_eq!(from_str("0.4e+15"), Ok(Number(0.4e15)));
-        assert_eq!(from_str("0.4e-01"), Ok(Number(0.4e-01)));
-        assert_eq!(from_str(" 3 "), Ok(Number(3.0)));
+        assert_eq!(from_str("3"), Ok(Number("3".to_owned())));
+        assert_eq!(from_str("3.1"), Ok(Number("3.1".to_owned())));
+        assert_eq!(from_str("-1.2"), Ok(Number("-1.2".to_owned())));
+        assert_eq!(from_str("0.4"), Ok(Number("0.4".to_owned())));
+        assert_eq!(from_str("0.4e5"), Ok(Number("0.4e5".to_owned())));
+        assert_eq!(from_str("0.4e+15"), Ok(Number("0.4e+15".to_owned())));
+        assert_eq!(from_str("0.4e-01"), Ok(Number("0.4e-01".to_owned())));
+        assert_eq!(from_str(" 3 "), Ok(Number("3".to_owned())));
+
+        assert_eq!(from_str("13093571283691877813"), Ok(Number("13093571283691877813".to_owned())));
     }
 
     #[test]
@@ -2619,9 +2655,9 @@ mod tests {
         let v: f64 = Decodable::decode(&mut decoder).unwrap();
         assert_eq!(v, 0.4e15);
 
-        let mut decoder = Decoder::new(from_str("0.4e-01").unwrap());
+        let mut decoder = Decoder::new(from_str("0.5e-01").unwrap());
         let v: f64 = Decodable::decode(&mut decoder).unwrap();
-        assert_eq!(v, 0.4e-01);
+        assert_eq!(v, 0.5e-01);
     }
 
     #[test]
@@ -2694,11 +2730,14 @@ mod tests {
         assert_eq!(from_str("[ false ]"), Ok(List(~[Boolean(false)])));
         assert_eq!(from_str("[null]"), Ok(List(~[Null])));
         assert_eq!(from_str("[3, 1]"),
-                     Ok(List(~[Number(3.0), Number(1.0)])));
+                     Ok(List(~[Number("3".to_owned()), Number("1".to_owned())])));
         assert_eq!(from_str("\n[3, 2]\n"),
-                     Ok(List(~[Number(3.0), Number(2.0)])));
-        assert_eq!(from_str("[2, [4, 1]]"),
-               Ok(List(~[Number(2.0), List(~[Number(4.0), Number(1.0)])])));
+                     Ok(List(~[Number("3".to_owned()), Number("2".to_owned())])));
+        assert_eq!(
+            from_str("[2, [4, 1]]"),
+            Ok(List(~[
+                Number("2".to_owned()),
+                List(~[Number("4".to_owned()), Number("1".to_owned())])])));
     }
 
     #[test]
@@ -2745,7 +2784,7 @@ mod tests {
 
         assert_eq!(from_str("{}").unwrap(), mk_object([]));
         assert_eq!(from_str("{\"a\": 3}").unwrap(),
-                  mk_object([("a".to_owned(), Number(3.0))]));
+                  mk_object([("a".to_owned(), Number("3".to_owned()))]));
 
         assert_eq!(from_str(
                       "{ \"a\": null, \"b\" : true }").unwrap(),
@@ -2759,7 +2798,7 @@ mod tests {
         assert_eq!(from_str(
                       "{\"a\" : 1.0 ,\"b\": [ true ]}").unwrap(),
                   mk_object([
-                      ("a".to_owned(), Number(1.0)),
+                      ("a".to_owned(), Number("1.0".to_owned())),
                       ("b".to_owned(), List(~[Boolean(true)]))
                   ]));
         assert_eq!(from_str(
@@ -2772,7 +2811,7 @@ mod tests {
                           "]" +
                       "}").unwrap(),
                   mk_object([
-                      ("a".to_owned(), Number(1.0)),
+                      ("a".to_owned(), Number("1.0".to_owned())),
                       ("b".to_owned(), List(~[
                           Boolean(true),
                           String("foo\nbar".to_owned()),
@@ -2971,8 +3010,13 @@ mod tests {
     #[test]
     fn test_as_number(){
         let json_value = from_str("12").unwrap();
-        let json_num = json_value.as_number();
+
+        let json_num: Option<f64> = json_value.as_number();
         let expected_num = 12f64;
+        assert!(json_num.is_some() && json_num.unwrap() == expected_num);
+
+        let json_num: Option<i64> = json_value.as_number();
+        let expected_num = 12i64;
         assert!(json_num.is_some() && json_num.unwrap() == expected_num);
     }
 
@@ -3078,22 +3122,22 @@ mod tests {
         assert_stream_equal(
             r#"{ "foo":"bar", "array" : [0, 1, 2,3 ,4,5], "idents":[null,true,false]}"#,
             ~[
-                (ObjectStart,             ~[]),
-                  (StringValue(~"bar"),   ~[Key("foo")]),
-                  (ListStart,             ~[Key("array")]),
-                    (NumberValue(0.0),    ~[Key("array"), Index(0)]),
-                    (NumberValue(1.0),    ~[Key("array"), Index(1)]),
-                    (NumberValue(2.0),    ~[Key("array"), Index(2)]),
-                    (NumberValue(3.0),    ~[Key("array"), Index(3)]),
-                    (NumberValue(4.0),    ~[Key("array"), Index(4)]),
-                    (NumberValue(5.0),    ~[Key("array"), Index(5)]),
-                  (ListEnd,               ~[Key("array")]),
-                  (ListStart,             ~[Key("idents")]),
-                    (NullValue,           ~[Key("idents"), Index(0)]),
-                    (BooleanValue(true),  ~[Key("idents"), Index(1)]),
-                    (BooleanValue(false), ~[Key("idents"), Index(2)]),
-                  (ListEnd,               ~[Key("idents")]),
-                (ObjectEnd,               ~[]),
+                (ObjectStart,                        ~[]),
+                  (StringValue(~"bar"),              ~[Key("foo")]),
+                  (ListStart,                        ~[Key("array")]),
+                    (NumberValue("0".to_owned()),    ~[Key("array"), Index(0)]),
+                    (NumberValue("1".to_owned()),    ~[Key("array"), Index(1)]),
+                    (NumberValue("2".to_owned()),    ~[Key("array"), Index(2)]),
+                    (NumberValue("3".to_owned()),    ~[Key("array"), Index(3)]),
+                    (NumberValue("4".to_owned()),    ~[Key("array"), Index(4)]),
+                    (NumberValue("5".to_owned()),    ~[Key("array"), Index(5)]),
+                  (ListEnd,                          ~[Key("array")]),
+                  (ListStart,                        ~[Key("idents")]),
+                    (NullValue,                      ~[Key("idents"), Index(0)]),
+                    (BooleanValue(true),             ~[Key("idents"), Index(1)]),
+                    (BooleanValue(false),            ~[Key("idents"), Index(2)]),
+                  (ListEnd,                          ~[Key("idents")]),
+                (ObjectEnd,                          ~[]),
             ]
         );
     }
@@ -3128,9 +3172,9 @@ mod tests {
         assert_stream_equal(
             "{\"a\": 3}",
             ~[
-                (ObjectStart,        ~[]),
-                  (NumberValue(3.0), ~[Key("a")]),
-                (ObjectEnd,          ~[]),
+                (ObjectStart,                   ~[]),
+                  (NumberValue("3".to_owned()), ~[Key("a")]),
+                (ObjectEnd,                     ~[]),
             ]
         );
         assert_stream_equal(
@@ -3145,12 +3189,12 @@ mod tests {
         assert_stream_equal(
             "{\"a\" : 1.0 ,\"b\": [ true ]}",
             ~[
-                (ObjectStart,           ~[]),
-                  (NumberValue(1.0),    ~[Key("a")]),
-                  (ListStart,           ~[Key("b")]),
-                    (BooleanValue(true),~[Key("b"), Index(0)]),
-                  (ListEnd,             ~[Key("b")]),
-                (ObjectEnd,             ~[]),
+                (ObjectStart,                     ~[]),
+                  (NumberValue("1.0".to_owned()), ~[Key("a")]),
+                  (ListStart,                     ~[Key("b")]),
+                    (BooleanValue(true),          ~[Key("b"), Index(0)]),
+                  (ListEnd,                       ~[Key("b")]),
+                (ObjectEnd,                       ~[]),
             ]
         );
         assert_stream_equal(
@@ -3163,18 +3207,18 @@ mod tests {
                 ]
             }"#,
             ~[
-                (ObjectStart,                   ~[]),
-                  (NumberValue(1.0),            ~[Key("a")]),
-                  (ListStart,                   ~[Key("b")]),
-                    (BooleanValue(true),        ~[Key("b"), Index(0)]),
-                    (StringValue(~"foo\nbar"),  ~[Key("b"), Index(1)]),
-                    (ObjectStart,               ~[Key("b"), Index(2)]),
-                      (ObjectStart,             ~[Key("b"), Index(2), Key("c")]),
-                        (NullValue,             ~[Key("b"), Index(2), Key("c"), Key("d")]),
-                      (ObjectEnd,               ~[Key("b"), Index(2), Key("c")]),
-                    (ObjectEnd,                 ~[Key("b"), Index(2)]),
-                  (ListEnd,                     ~[Key("b")]),
-                (ObjectEnd,                     ~[]),
+                (ObjectStart,                     ~[]),
+                  (NumberValue("1.0".to_owned()), ~[Key("a")]),
+                  (ListStart,                     ~[Key("b")]),
+                    (BooleanValue(true),          ~[Key("b"), Index(0)]),
+                    (StringValue(~"foo\nbar"),    ~[Key("b"), Index(1)]),
+                    (ObjectStart,                 ~[Key("b"), Index(2)]),
+                      (ObjectStart,               ~[Key("b"), Index(2), Key("c")]),
+                        (NullValue,               ~[Key("b"), Index(2), Key("c"), Key("d")]),
+                      (ObjectEnd,                 ~[Key("b"), Index(2), Key("c")]),
+                    (ObjectEnd,                   ~[Key("b"), Index(2)]),
+                  (ListEnd,                       ~[Key("b")]),
+                (ObjectEnd,                       ~[]),
             ]
         );
     }
@@ -3222,8 +3266,8 @@ mod tests {
             "[3, 1]",
             ~[
                 (ListStart,     ~[]),
-                    (NumberValue(3.0), ~[Index(0)]),
-                    (NumberValue(1.0), ~[Index(1)]),
+                    (NumberValue("3".to_owned()), ~[Index(0)]),
+                    (NumberValue("1".to_owned()), ~[Index(1)]),
                 (ListEnd,       ~[]),
             ]
         );
@@ -3231,21 +3275,21 @@ mod tests {
             "\n[3, 2]\n",
             ~[
                 (ListStart,     ~[]),
-                    (NumberValue(3.0), ~[Index(0)]),
-                    (NumberValue(2.0), ~[Index(1)]),
+                    (NumberValue("3".to_owned()), ~[Index(0)]),
+                    (NumberValue("2".to_owned()), ~[Index(1)]),
                 (ListEnd,       ~[]),
             ]
         );
         assert_stream_equal(
             "[2, [4, 1]]",
             ~[
-                (ListStart,                 ~[]),
-                    (NumberValue(2.0),      ~[Index(0)]),
-                    (ListStart,             ~[Index(1)]),
-                        (NumberValue(4.0),  ~[Index(1), Index(0)]),
-                        (NumberValue(1.0),  ~[Index(1), Index(1)]),
-                    (ListEnd,               ~[Index(1)]),
-                (ListEnd,                   ~[]),
+                (ListStart,                            ~[]),
+                    (NumberValue("2".to_owned()),      ~[Index(0)]),
+                    (ListStart,                        ~[Index(1)]),
+                        (NumberValue("4".to_owned()),  ~[Index(1), Index(0)]),
+                        (NumberValue("1".to_owned()),  ~[Index(1), Index(1)]),
+                    (ListEnd,                          ~[Index(1)]),
+                (ListEnd,                              ~[]),
             ]
         );
 
