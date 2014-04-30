@@ -1740,7 +1740,7 @@ impl<T: Iterator<char>> Builder<T> {
             Some(NumberValue(n)) => { Ok(Number(n)) }
             Some(BooleanValue(b)) => { Ok(Boolean(b)) }
             Some(StringValue(ref mut s)) => {
-                let mut temp = ~"";
+                let mut temp = "".to_owned();
                 swap(s, &mut temp);
                 Ok(String(temp))
             }
