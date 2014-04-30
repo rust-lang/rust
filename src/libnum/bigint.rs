@@ -439,7 +439,7 @@ impl Integer for BigUint {
             let bn = *b.data.last().unwrap();
             let mut d = Vec::with_capacity(an.len());
             let mut carry = 0;
-            for elt in an.rev_iter() {
+            for elt in an.iter().rev() {
                 let ai = BigDigit::to_uint(carry, *elt);
                 let di = ai / (bn as uint);
                 assert!(di < BigDigit::base);
@@ -668,7 +668,7 @@ impl ToStrRadix for BigUint {
         fn fill_concat(v: &[BigDigit], radix: uint, l: uint) -> ~str {
             if v.is_empty() { return "0".to_owned() }
             let mut s = StrBuf::with_capacity(v.len() * l);
-            for n in v.rev_iter() {
+            for n in v.iter().rev() {
                 let ss = (*n as uint).to_str_radix(radix);
                 s.push_str("0".repeat(l - ss.len()));
                 s.push_str(ss);
@@ -2187,7 +2187,7 @@ mod bigint_tests {
     fn test_cmp() {
         let vs = [ &[2 as BigDigit], &[1, 1], &[2, 1], &[1, 1, 1] ];
         let mut nums = Vec::new();
-        for s in vs.rev_iter() {
+        for s in vs.iter().rev() {
             nums.push(BigInt::from_slice(Minus, *s));
         }
         nums.push(Zero::zero());
