@@ -11,7 +11,7 @@ You should already be already familiar with programming concepts, in particular 
 
 # Stack, Heap and Inline Structures
 
-To show how Rust semantics take maximum advantage of modern machine architecture to optimize runtime, we use a structure that represents a point in 2 dimensions: 
+To show how Rust semantics take maximum advantage of modern machine architecture to optimize runtime, we use a structure that represents a point in two dimensions: 
 
 ~~~~
 struct Point {
@@ -298,3 +298,11 @@ fn get_point(p: &Point) -> int {
 * make it explicit we're not talking about returning borrowed pointers
 * don't introduce lifetime parameters yet
 * don't put pointers into structs
+
+# Mutability
+
+# Lifetimes 
+
+# Vectors vs. Slices 
+
+# Structs, enums, and pattern matching
