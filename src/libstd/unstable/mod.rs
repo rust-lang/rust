@@ -10,8 +10,8 @@
 
 #![doc(hidden)]
 
-use prelude::*;
 use libc::uintptr_t;
+use kinds::Send;
 
 pub use core::finally;
 
