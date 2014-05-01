@@ -2205,6 +2205,10 @@ impl ToJson for ~str {
     fn to_json(&self) -> Json { String((*self).clone()) }
 }
 
+impl ToJson for StrBuf {
+    fn to_json(&self) -> Json { String((*self).as_slice().into_owned()) }
+}
+
 impl<A:ToJson,B:ToJson> ToJson for (A, B) {
     fn to_json(&self) -> Json {
         match *self {
@@ -2643,41 +2647,25 @@ mod tests {
 
     #[test]
     fn test_decode_str() {
-        let mut decoder = Decoder::new(from_str("\"\"").unwrap());
-        let v: ~str = Decodable::decode(&mut decoder).unwrap();
-        assert_eq!(v, "".to_owned());
+        let s = [("\"\"", ""),
+                 ("\"foo\"", "foo"),
+                 ("\"\\\"\"", "\""),
+                 ("\"\\b\"", "\x08"),
+                 ("\"\\n\"", "\n"),
+                 ("\"\\r\"", "\r"),
+                 ("\"\\t\"", "\t"),
+                 ("\"\\u12ab\"", "\u12ab"),
+                 ("\"\\uAB12\"", "\uAB12")];
 
-        let mut decoder = Decoder::new(from_str("\"foo\"").unwrap());
-        let v: ~str = Decodable::decode(&mut decoder).unwrap();
-        assert_eq!(v, "foo".to_owned());
+        for &(i, o) in s.iter() {
+            let mut decoder = Decoder::new(from_str(i).unwrap());
+            let v: StrBuf = Decodable::decode(&mut decoder).unwrap();
+            assert_eq!(v.as_slice(), o);
 
-        let mut decoder = Decoder::new(from_str("\"\\\"\"").unwrap());
-        let v: ~str = Decodable::decode(&mut decoder).unwrap();
-        assert_eq!(v, "\"".to_owned());
-
-        let mut decoder = Decoder::new(from_str("\"\\b\"").unwrap());
-        let v: ~str = Decodable::decode(&mut decoder).unwrap();
-        assert_eq!(v, "\x08".to_owned());
-
-        let mut decoder = Decoder::new(from_str("\"\\n\"").unwrap());
-        let v: ~str = Decodable::decode(&mut decoder).unwrap();
-        assert_eq!(v, "\n".to_owned());
-
-        let mut decoder = Decoder::new(from_str("\"\\r\"").unwrap());
-        let v: ~str = Decodable::decode(&mut decoder).unwrap();
-        assert_eq!(v, "\r".to_owned());
-
-        let mut decoder = Decoder::new(from_str("\"\\t\"").unwrap());
-        let v: ~str = Decodable::decode(&mut decoder).unwrap();
-        assert_eq!(v, "\t".to_owned());
-
-        let mut decoder = Decoder::new(from_str("\"\\u12ab\"").unwrap());
-        let v: ~str = Decodable::decode(&mut decoder).unwrap();
-        assert_eq!(v, "\u12ab".to_owned());
-
-        let mut decoder = Decoder::new(from_str("\"\\uAB12\"").unwrap());
-        let v: ~str = Decodable::decode(&mut decoder).unwrap();
-        assert_eq!(v, "\uAB12".to_owned());
+            let mut decoder = Decoder::new(from_str(i).unwrap());
+            let v: ~str = Decodable::decode(&mut decoder).unwrap();
+            assert_eq!(v, o.to_owned());
+        }
     }
 
     #[test]
