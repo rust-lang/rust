@@ -1036,7 +1036,7 @@ fn check_crate_attrs_usage(cx: &Context, attrs: &[ast::Attribute]) {
         if !iter.any(|other_attr| { name.equiv(other_attr) }) {
             cx.span_lint(AttributeUsage, attr.span, "unknown crate attribute");
         }
-        if name.equiv(& &"link") {
+        if name.equiv(&("link")) {
             cx.tcx.sess.span_err(attr.span,
                                  "obsolete crate `link` attribute");
             cx.tcx.sess.note("the link attribute has been superceded by the crate_id \

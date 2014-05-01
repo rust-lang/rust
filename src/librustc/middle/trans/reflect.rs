@@ -189,9 +189,9 @@ impl<'a, 'b> Reflector<'a, 'b> {
           ty::ty_rptr(_, ref mt) => {
               match ty::get(mt.ty).sty {
                   ty::ty_vec(ref mt, None) => {
-                      let (name, extra) = (~"slice", Vec::new());
+                      let (name, extra) = ("slice".to_owned(), Vec::new());
                       let extra = extra.append(self.c_mt(mt).as_slice());
-                      self.visit(~"evec_" + name, extra.as_slice())
+                      self.visit("evec_".to_owned() + name, extra.as_slice())
                   }
                   ty::ty_str => self.visit("estr_slice".to_owned(), &[]),
                   _ => {
