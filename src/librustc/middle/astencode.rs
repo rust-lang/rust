@@ -24,8 +24,7 @@ use metadata::tydecode::{DefIdSource, NominalType, TypeWithId, TypeParameter,
                          RegionParameter};
 use metadata::tyencode;
 use middle::typeck::{MethodCall, MethodCallee, MethodOrigin};
-use middle::{ty, typeck, moves};
-use middle;
+use middle::{ty, typeck};
 use util::ppaux::ty_to_str;
 
 use syntax::{ast, ast_map, ast_util, codemap, fold};
@@ -36,7 +35,6 @@ use syntax;
 
 use libc;
 use std::cast;
-use std::cell::RefCell;
 use std::io::Seek;
 use std::io::MemWriter;
 use std::rc::Rc;
@@ -52,15 +50,9 @@ use writer = serialize::ebml::writer;
 #[cfg(test)] use syntax::parse;
 #[cfg(test)] use syntax::print::pprust;
 
-// Auxiliary maps of things to be encoded
-pub struct Maps {
-    pub capture_map: RefCell<middle::moves::CaptureMap>,
-}
-
 struct DecodeContext<'a> {
     cdata: &'a cstore::crate_metadata,
     tcx: &'a ty::ctxt,
-    maps: &'a Maps
 }
 
 struct ExtendedDecodeContext<'a> {
@@ -84,8 +76,7 @@ pub type Encoder<'a> = writer::Encoder<'a, MemWriter>;
 
 pub fn encode_inlined_item(ecx: &e::EncodeContext,
                            ebml_w: &mut Encoder,
-                           ii: e::InlinedItemRef,
-                           maps: &Maps) {
+                           ii: e::InlinedItemRef) {
     let id = match ii {
         e::IIItemRef(i) => i.id,
         e::IIForeignRef(i) => i.id,
@@ -101,7 +92,7 @@ pub fn encode_inlined_item(ecx: &e::EncodeContext,
     ebml_w.start_tag(c::tag_ast as uint);
     id_range.encode(ebml_w);
     encode_ast(ebml_w, ii);
-    encode_side_tables_for_ii(ecx, maps, ebml_w, &ii);
+    encode_side_tables_for_ii(ecx, ebml_w, &ii);
     ebml_w.end_tag();
 
     debug!("< Encoded inlined fn: {} ({})",
@@ -111,14 +102,12 @@ pub fn encode_inlined_item(ecx: &e::EncodeContext,
 
 pub fn decode_inlined_item(cdata: &cstore::crate_metadata,
                            tcx: &ty::ctxt,
-                           maps: &Maps,
                            path: Vec<ast_map::PathElem>,
                            par_doc: ebml::Doc)
                            -> Result<ast::InlinedItem, Vec<ast_map::PathElem>> {
     let dcx = &DecodeContext {
         cdata: cdata,
         tcx: tcx,
-        maps: maps
     };
     match par_doc.opt_child(c::tag_ast) {
       None => Err(path),
@@ -552,32 +541,6 @@ impl tr for freevar_entry {
 }
 
 // ______________________________________________________________________
-// Encoding and decoding of CaptureVar information
-
-trait capture_var_helper {
-    fn read_capture_var(&mut self, xcx: &ExtendedDecodeContext)
-                        -> moves::CaptureVar;
-}
-
-impl<'a> capture_var_helper for reader::Decoder<'a> {
-    fn read_capture_var(&mut self, xcx: &ExtendedDecodeContext)
-                        -> moves::CaptureVar {
-        let cvar: moves::CaptureVar = Decodable::decode(self).unwrap();
-        cvar.tr(xcx)
-    }
-}
-
-impl tr for moves::CaptureVar {
-    fn tr(&self, xcx: &ExtendedDecodeContext) -> moves::CaptureVar {
-        moves::CaptureVar {
-            def: self.def.tr(xcx),
-            span: self.span.tr(xcx),
-            mode: self.mode
-        }
-    }
-}
-
-// ______________________________________________________________________
 // Encoding and decoding of MethodCallee
 
 trait read_method_callee_helper {
@@ -935,7 +898,6 @@ impl<'a> write_tag_and_id for Encoder<'a> {
 struct SideTableEncodingIdVisitor<'a,'b> {
     ecx_ptr: *libc::c_void,
     new_ebml_w: &'a mut Encoder<'b>,
-    maps: &'a Maps,
 }
 
 impl<'a,'b> ast_util::IdVisitingOperation for
@@ -953,12 +915,11 @@ impl<'a,'b> ast_util::IdVisitingOperation for
         let ecx: &e::EncodeContext = unsafe {
             cast::transmute(self.ecx_ptr)
         };
-        encode_side_tables_for_id(ecx, self.maps, &mut new_ebml_w, id)
+        encode_side_tables_for_id(ecx, &mut new_ebml_w, id)
     }
 }
 
 fn encode_side_tables_for_ii(ecx: &e::EncodeContext,
-                             maps: &Maps,
                              ebml_w: &mut Encoder,
                              ii: &ast::InlinedItem) {
     ebml_w.start_tag(c::tag_table as uint);
@@ -974,13 +935,11 @@ fn encode_side_tables_for_ii(ecx: &e::EncodeContext,
             cast::transmute(ecx)
         },
         new_ebml_w: &mut new_ebml_w,
-        maps: maps,
     });
     ebml_w.end_tag();
 }
 
 fn encode_side_tables_for_id(ecx: &e::EncodeContext,
-                             maps: &Maps,
                              ebml_w: &mut Encoder,
                              id: ast::NodeId) {
     let tcx = ecx.tcx;
@@ -1093,17 +1052,6 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
             ebml_w.id(id);
             ebml_w.tag(c::tag_table_val, |ebml_w| {
                 ebml_w.emit_auto_adjustment(ecx, adj);
-            })
-        })
-    }
-
-    for &cap_vars in maps.capture_map.borrow().find(&id).iter() {
-        ebml_w.tag(c::tag_table_capture_map, |ebml_w| {
-            ebml_w.id(id);
-            ebml_w.tag(c::tag_table_val, |ebml_w| {
-                ebml_w.emit_from_vec(cap_vars.as_slice(), |ebml_w, cap_var| {
-                    cap_var.encode(ebml_w)
-                });
             })
         })
     }
@@ -1404,15 +1352,6 @@ fn decode_side_tables(xcx: &ExtendedDecodeContext,
                     c::tag_table_adjustments => {
                         let adj: ty::AutoAdjustment = val_dsr.read_auto_adjustment(xcx);
                         dcx.tcx.adjustments.borrow_mut().insert(id, adj);
-                    }
-                    c::tag_table_capture_map => {
-                        let cvars =
-                                val_dsr.read_to_vec(
-                                            |val_dsr| Ok(val_dsr.read_capture_var(xcx)))
-                                       .unwrap()
-                                       .move_iter()
-                                       .collect();
-                        dcx.maps.capture_map.borrow_mut().insert(id, Rc::new(cvars));
                     }
                     _ => {
                         xcx.dcx.tcx.sess.bug(

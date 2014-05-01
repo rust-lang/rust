@@ -475,7 +475,6 @@ impl<'a, O: IdVisitingOperation> Visitor<()> for IdVisitor<'a, O> {
         visit::walk_pat(self, pattern, env)
     }
 
-
     fn visit_expr(&mut self, expression: &Expr, env: ()) {
         self.operation.visit_id(expression.id);
         visit::walk_expr(self, expression, env)
@@ -593,6 +592,30 @@ pub fn compute_id_range_for_inlined_item(item: &InlinedItem) -> IdRange {
         result: Cell::new(IdRange::max())
     };
     visit_ids_for_inlined_item(item, &visitor);
+    visitor.result.get()
+}
+
+pub fn compute_id_range_for_fn_body(fk: &visit::FnKind,
+                                    decl: &FnDecl,
+                                    body: &Block,
+                                    sp: Span,
+                                    id: NodeId)
+                                    -> IdRange
+{
+    /*!
+     * Computes the id range for a single fn body,
+     * ignoring nested items.
+     */
+
+    let visitor = IdRangeComputingVisitor {
+        result: Cell::new(IdRange::max())
+    };
+    let mut id_visitor = IdVisitor {
+        operation: &visitor,
+        pass_through_items: false,
+        visited_outermost: false,
+    };
+    id_visitor.visit_fn(fk, decl, body, sp, id, ());
     visitor.result.get()
 }
 

@@ -238,8 +238,8 @@ impl ast_node for ast::Pat {
     fn span(&self) -> Span { self.span }
 }
 
-pub struct MemCategorizationContext<TYPER> {
-    pub typer: TYPER
+pub struct MemCategorizationContext<'t,TYPER> {
+    typer: &'t TYPER
 }
 
 pub type McResult<T> = Result<T, ()>;
@@ -346,8 +346,12 @@ macro_rules! if_ok(
     )
 )
 
-impl<TYPER:Typer> MemCategorizationContext<TYPER> {
-    fn tcx<'a>(&'a self) -> &'a ty::ctxt {
+impl<'t,TYPER:Typer> MemCategorizationContext<'t,TYPER> {
+    pub fn new(typer: &'t TYPER) -> MemCategorizationContext<'t,TYPER> {
+        MemCategorizationContext { typer: typer }
+    }
+
+    fn tcx(&self) -> &'t ty::ctxt {
         self.typer.tcx()
     }
 
@@ -415,7 +419,9 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
         }
     }
 
-    pub fn cat_expr_autoderefd(&self, expr: &ast::Expr, autoderefs: uint)
+    pub fn cat_expr_autoderefd(&self,
+                               expr: &ast::Expr,
+                               autoderefs: uint)
                                -> McResult<cmt> {
         let mut cmt = if_ok!(self.cat_expr_unadjusted(expr));
         for deref in range(1u, autoderefs + 1) {
@@ -453,7 +459,9 @@ impl<TYPER:Typer> MemCategorizationContext<TYPER> {
             self.cat_def(expr.id, expr.span, expr_ty, def)
           }
 
-          ast::ExprParen(e) => self.cat_expr_unadjusted(e),
+          ast::ExprParen(e) => {
+            self.cat_expr(e)
+          }
 
           ast::ExprAddrOf(..) | ast::ExprCall(..) |
           ast::ExprAssign(..) | ast::ExprAssignOp(..) |

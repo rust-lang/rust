@@ -40,7 +40,7 @@ pub fn maybe_instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
     let csearch_result =
         csearch::maybe_get_item_ast(
             ccx.tcx(), fn_id,
-            |a,b,c,d| astencode::decode_inlined_item(a, b, &ccx.maps, c, d));
+            |a,b,c,d| astencode::decode_inlined_item(a, b, c, d));
     return match csearch_result {
         csearch::not_found => {
             ccx.external.borrow_mut().insert(fn_id, None);
