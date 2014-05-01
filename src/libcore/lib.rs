@@ -27,3 +27,7 @@ pub mod cast;
 pub mod intrinsics;
 pub mod mem;
 pub mod ptr;
+
+/* Core language traits */
+
+pub mod kinds;
