@@ -1291,6 +1291,39 @@ impl<T: Show> Show for Option<T> {
     }
 }
 
+impl<'a, T: Show> Show for &'a [T] {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        if f.flags & (1 << (parse::FlagAlternate as uint)) == 0 {
+            try!(write!(f.buf, "["));
+        }
+        let mut is_first = true;
+        for x in self.iter() {
+            if is_first {
+                is_first = false;
+            } else {
+                try!(write!(f.buf, ", "));
+            }
+            try!(write!(f.buf, "{}", *x))
+        }
+        if f.flags & (1 << (parse::FlagAlternate as uint)) == 0 {
+            try!(write!(f.buf, "]"));
+        }
+        Ok(())
+    }
+}
+
+impl<'a, T: Show> Show for &'a mut [T] {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        secret_show(&self.as_slice(), f)
+    }
+}
+
+impl<T: Show> Show for ~[T] {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        secret_show(&self.as_slice(), f)
+    }
+}
+
 impl Show for () {
     fn fmt(&self, f: &mut Formatter) -> Result {
         f.pad("()")
