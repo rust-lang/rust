@@ -135,6 +135,7 @@ extern crate core;
 
 pub use core::intrinsics;
 pub use core::mem;
+pub use core::ptr;
 
 // Run tests with libgreen instead of libnative.
 //
@@ -191,7 +192,7 @@ pub mod strbuf;
 
 pub mod ascii;
 
-pub mod ptr;
+pub mod owned;
 mod managed;
 mod reference;
 pub mod rc;

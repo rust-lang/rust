@@ -25,3 +25,4 @@
 
 pub mod intrinsics;
 pub mod mem;
+pub mod ptr;
