@@ -20,3 +20,7 @@
 #![no_std]
 #![feature(globs, macro_rules, managed_boxes)]
 #![deny(missing_doc)]
+
+/* Core modules for ownership management */
+
+pub mod intrinsics;

@@ -64,6 +64,7 @@
 #![allow(unused_must_use)]
 
 use container::Container;
+use intrinsics::TypeId;
 use io::Writer;
 use iter::Iterator;
 use option::{Option, Some, None};
@@ -281,6 +282,13 @@ impl<S: Writer, T> Hash<S> for *mut T {
         // NB: raw-pointer Hash does _not_ dereference
         // to the target; it just gives you the pointer-bytes.
         (*self as uint).hash(state);
+    }
+}
+
+impl<S: Writer> Hash<S> for TypeId {
+    #[inline]
+    fn hash(&self, state: &mut S) {
+        self.hash().hash(state)
     }
 }
 

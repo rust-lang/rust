@@ -122,8 +122,8 @@
 // Make and rand accessible for benchmarking/testcases
 #[cfg(test)] extern crate rand;
 
-// we wrap some libc stuff
 extern crate libc;
+extern crate core;
 
 // Make std testable by not duplicating lang items. See #2912
 #[cfg(test)] extern crate realstd = "std";
@@ -132,6 +132,8 @@ extern crate libc;
 #[cfg(test)] pub use cmp = realstd::cmp;
 #[cfg(test)] pub use ty = realstd::ty;
 #[cfg(test)] pub use owned = realstd::owned;
+
+pub use core::intrinsics;
 
 // Run tests with libgreen instead of libnative.
 //
@@ -254,8 +256,6 @@ pub mod reflect;
 // Private APIs
 #[unstable]
 pub mod unstable;
-#[experimental]
-pub mod intrinsics;
 #[experimental]
 pub mod raw;
 
