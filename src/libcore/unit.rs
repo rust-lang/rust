@@ -14,7 +14,6 @@
 use default::Default;
 #[cfg(not(test))]
 use cmp::{Eq, Equal, Ord, Ordering, TotalEq, TotalOrd};
-use fmt;
 
 #[cfg(not(test))]
 impl Eq for () {
@@ -43,10 +42,4 @@ impl TotalEq for () {}
 impl Default for () {
     #[inline]
     fn default() -> () { () }
-}
-
-impl fmt::Show for () {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.pad("()")
-    }
 }

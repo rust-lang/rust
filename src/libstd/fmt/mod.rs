@@ -1250,6 +1250,12 @@ impl<'a> Show for &'a any::Any {
     fn fmt(&self, f: &mut Formatter) -> Result { f.pad("&Any") }
 }
 
+impl Show for () {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        f.pad("()")
+    }
+}
+
 impl Show for TypeId {
     fn fmt(&self, f: &mut Formatter) -> Result {
         write!(f.buf, "TypeId \\{ {} \\}", self.hash())
