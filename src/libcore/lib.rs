@@ -39,4 +39,5 @@ pub mod container;
 
 pub mod any;
 pub mod finally;
+pub mod raw;
 pub mod char;

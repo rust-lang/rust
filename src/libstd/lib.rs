@@ -144,6 +144,7 @@ pub use core::container;
 pub use core::intrinsics;
 pub use core::mem;
 pub use core::ptr;
+pub use core::raw;
 
 // Run tests with libgreen instead of libnative.
 //
@@ -255,8 +256,6 @@ pub mod reflect;
 // Private APIs
 #[unstable]
 pub mod unstable;
-#[experimental]
-pub mod raw;
 
 /* For internal use, not exported */
 
