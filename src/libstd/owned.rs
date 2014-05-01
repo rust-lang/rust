@@ -10,8 +10,6 @@
 
 //! Operations on unique pointer types
 
-#[cfg(not(test))] use cmp::*;
-
 /// A value that represents the global exchange heap. This is the default
 /// place that the `box` keyword allocates into when no place is supplied.
 ///
@@ -33,32 +31,3 @@ pub struct Box<T>(*T);
 
 #[cfg(test)]
 pub struct Box<T>(*T);
-
-#[cfg(not(test))]
-impl<T:Eq> Eq for Box<T> {
-    #[inline]
-    fn eq(&self, other: &Box<T>) -> bool { *(*self) == *(*other) }
-    #[inline]
-    fn ne(&self, other: &Box<T>) -> bool { *(*self) != *(*other) }
-}
-
-#[cfg(not(test))]
-impl<T:Ord> Ord for Box<T> {
-    #[inline]
-    fn lt(&self, other: &Box<T>) -> bool { *(*self) < *(*other) }
-    #[inline]
-    fn le(&self, other: &Box<T>) -> bool { *(*self) <= *(*other) }
-    #[inline]
-    fn ge(&self, other: &Box<T>) -> bool { *(*self) >= *(*other) }
-    #[inline]
-    fn gt(&self, other: &Box<T>) -> bool { *(*self) > *(*other) }
-}
-
-#[cfg(not(test))]
-impl<T: TotalOrd> TotalOrd for Box<T> {
-    #[inline]
-    fn cmp(&self, other: &Box<T>) -> Ordering { (**self).cmp(*other) }
-}
-
-#[cfg(not(test))]
-impl<T: TotalEq> TotalEq for Box<T> {}
