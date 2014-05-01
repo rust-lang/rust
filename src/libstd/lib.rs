@@ -145,6 +145,7 @@ pub use core::clone;
 pub use core::container;
 pub use core::default;
 pub use core::intrinsics;
+pub use core::iter;
 pub use core::mem;
 pub use core::option;
 pub use core::ptr;
@@ -217,7 +218,6 @@ pub mod gc;
 
 pub mod from_str;
 pub mod num;
-pub mod iter;
 pub mod to_str;
 pub mod hash;
 

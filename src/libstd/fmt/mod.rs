@@ -489,6 +489,7 @@ use char::Char;
 use container::Container;
 use io::MemWriter;
 use io;
+use iter;
 use iter::{Iterator, range};
 use num::Signed;
 use option::{Option,Some,None};
@@ -1298,6 +1299,19 @@ impl Show for () {
 impl Show for TypeId {
     fn fmt(&self, f: &mut Formatter) -> Result {
         write!(f.buf, "TypeId \\{ {} \\}", self.hash())
+    }
+}
+
+impl<T: Show> Show for iter::MinMaxResult<T> {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        match *self {
+            iter::NoElements =>
+                write!(f.buf, "NoElements"),
+            iter::OneElement(ref t) =>
+                write!(f.buf, "OneElement({})", *t),
+            iter::MinMax(ref t1, ref t2) =>
+                write!(f.buf, "MinMax({}, {})", *t1, *t2),
+        }
     }
 }
 

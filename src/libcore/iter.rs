@@ -969,7 +969,7 @@ impl<A: TotalOrd, T: Iterator<A>> OrdIterator<A> for T {
 }
 
 /// `MinMaxResult` is an enum returned by `min_max`. See `OrdIterator::min_max` for more detail.
-#[deriving(Clone, Eq, Show)]
+#[deriving(Clone, Eq)]
 pub enum MinMaxResult<T> {
     /// Empty iterator
     NoElements,
