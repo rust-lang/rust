@@ -141,6 +141,7 @@ extern crate core;
 pub use core::any;
 pub use core::bool;
 pub use core::cast;
+pub use core::cell;
 pub use core::char;
 pub use core::clone;
 pub use core::container;
@@ -220,7 +221,6 @@ pub mod hash;
 /* Common data structures */
 
 pub mod result;
-pub mod cell;
 
 
 /* Tasks and communication */

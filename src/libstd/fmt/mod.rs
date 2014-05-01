@@ -485,6 +485,7 @@ will look like `"\\{"`.
 
 use any;
 use cast;
+use cell::Cell;
 use char::Char;
 use cmp;
 use container::Container;
@@ -492,6 +493,7 @@ use io::MemWriter;
 use io;
 use iter;
 use iter::{Iterator, range};
+use kinds::Copy;
 use num::Signed;
 use option::{Option, Some, None};
 use owned::Box;
