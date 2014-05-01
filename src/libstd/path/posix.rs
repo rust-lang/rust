@@ -555,7 +555,7 @@ mod tests {
             ($path:expr, $disp:ident, $exp:expr) => (
                 {
                     let path = Path::new($path);
-                    assert!(path.$disp().to_str() == ~$exp);
+                    assert!(path.$disp().to_str().as_slice() == $exp);
                 }
             )
         )

@@ -242,7 +242,7 @@ impl<T: Clone> Vec<T> {
     ///
     /// ```rust
     /// let mut vec = vec!("hello");
-    /// vec.grow(2, & &"world");
+    /// vec.grow(2, &("world"));
     /// assert_eq!(vec, vec!("hello", "world", "world"));
     /// ```
     pub fn grow(&mut self, n: uint, value: &T) {
@@ -267,8 +267,8 @@ impl<T: Clone> Vec<T> {
     ///
     /// ```rust
     /// let mut vec = vec!("a", "b", "c");
-    /// vec.grow_set(1, & &"fill", "d");
-    /// vec.grow_set(4, & &"fill", "e");
+    /// vec.grow_set(1, &("fill"), "d");
+    /// vec.grow_set(4, &("fill"), "e");
     /// assert_eq!(vec, vec!("a", "d", "c", "fill", "e"));
     /// ```
     pub fn grow_set(&mut self, index: uint, initval: &T, value: T) {

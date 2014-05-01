@@ -698,13 +698,13 @@ static INITIAL_LOAD_FACTOR: Fraction = (9, 10);
 /// book_reviews.insert("The Adventures of Sherlock Holmes", "Eye lyked it alot.");
 ///
 /// // check for a specific one.
-/// if !book_reviews.contains_key(& &"Les Misérables") {
+/// if !book_reviews.contains_key(&("Les Misérables")) {
 ///     println!("We've got {} reviews, but Les Misérables ain't one.",
 ///              book_reviews.len());
 /// }
 ///
 /// // oops, this review has a lot of spelling mistakes, let's delete it.
-/// book_reviews.remove(& &"The Adventures of Sherlock Holmes");
+/// book_reviews.remove(&("The Adventures of Sherlock Holmes"));
 ///
 /// // look up the values associated with some keys.
 /// let to_find = ["Pride and Prejudice", "Alice's Adventure in Wonderland"];
