@@ -33,6 +33,7 @@ pub mod ptr;
 pub mod kinds;
 pub mod ops;
 pub mod ty;
+pub mod clone;
 pub mod default;
 pub mod container;
 

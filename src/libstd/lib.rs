@@ -140,6 +140,7 @@ extern crate core;
 pub use core::any;
 pub use core::cast;
 pub use core::char;
+pub use core::clone;
 pub use core::container;
 pub use core::default;
 pub use core::intrinsics;
@@ -218,7 +219,6 @@ pub mod from_str;
 pub mod num;
 pub mod iter;
 pub mod to_str;
-pub mod clone;
 pub mod hash;
 
 /* Common data structures */
