@@ -24,3 +24,4 @@
 /* Core modules for ownership management */
 
 pub mod intrinsics;
+pub mod mem;

@@ -13,8 +13,6 @@
 //! This module contains functions for querying the size and alignment of
 //! types, initializing and manipulating memory.
 
-#![allow(missing_doc)] // FIXME
-
 use cast;
 use ptr;
 use intrinsics;
