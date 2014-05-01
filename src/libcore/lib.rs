@@ -38,6 +38,7 @@ pub mod container;
 
 /* Core types and methods on primitives */
 
+mod unit;
 pub mod any;
 pub mod finally;
 pub mod raw;
