@@ -18,7 +18,7 @@ use ops::Drop;
 use option::{Option, None, Some};
 use os;
 use path::{Path, GenericPath};
-use result::{Ok, Err};
+use result::{Ok, Err, ResultUnwrap};
 use sync::atomics;
 
 /// A wrapper for a path to temporary directory implementing automatic

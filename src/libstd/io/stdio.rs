@@ -36,7 +36,7 @@ use mem::replace;
 use option::{Option, Some, None};
 use owned::Box;
 use prelude::drop;
-use result::{Ok, Err};
+use result::{Ok, Err, ResultUnwrap};
 use rt;
 use rt::local::Local;
 use rt::rtio::{DontClose, IoFactory, LocalIo, RtioFileStream, RtioTTY};
