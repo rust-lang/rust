@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,16 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Operations and constants for signed 32-bits integers (`i32` type)
+#![macro_escape]
+#![doc(hidden)]
 
-use from_str::FromStr;
-use iter::Iterator;
-use num::{ToStrRadix, FromStrRadix};
-use num::strconv;
-use option::Option;
-use slice::{ImmutableVector, OwnedVector};
-use str;
-
-pub use core::i32::{BITS, BYTES, MIN, MAX};
-
-int_module!(i32)
+macro_rules! assert_approx_eq(
+    ($a:expr, $b:expr) => ({
+        let (a, b) = (&$a, &$b);
+        assert!((*a - *b).abs() < 1.0e-6,
+                "{} is not approximately equal to {}", *a, *b);
+    })
+)
