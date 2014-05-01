@@ -69,6 +69,7 @@ pub use owned::Box;
 pub use path::{GenericPath, Path, PosixPath, WindowsPath};
 pub use ptr::RawPtr;
 pub use io::{Buffer, Writer, Reader, Seek};
+pub use result::{ResultUnwrap, ResultUnwrapErr};
 pub use str::{Str, StrVector, StrSlice, OwnedStr, IntoMaybeOwned};
 pub use str::{StrAllocating};
 pub use to_str::{ToStr, IntoStr};
