@@ -268,14 +268,13 @@
 
 use clone::Clone;
 use cmp::Eq;
-use std::fmt::Show;
 use iter::{Iterator, FromIterator};
 use option::{None, Option, Some};
 
 /// `Result` is a type that represents either success (`Ok`) or failure (`Err`).
 ///
 /// See the [`std::result`](index.html) module documentation for details.
-#[deriving(Clone, Eq, Ord, TotalEq, TotalOrd, Show, Hash)]
+#[deriving(Clone, Eq, Ord, TotalEq, TotalOrd)]
 #[must_use]
 pub enum Result<T, E> {
     /// Contains the success value
@@ -512,34 +511,6 @@ impl<T, E> Result<T, E> {
         match self {
             Ok(t) => t,
             Err(e) => op(e)
-        }
-    }
-}
-
-impl<T, E: Show> Result<T, E> {
-    /// Unwraps a result, yielding the content of an `Ok`.
-    ///
-    /// Fails if the value is an `Err`.
-    #[inline]
-    pub fn unwrap(self) -> T {
-        match self {
-            Ok(t) => t,
-            Err(e) =>
-                fail!("called `Result::unwrap()` on an `Err` value: {}", e)
-        }
-    }
-}
-
-impl<T: Show, E> Result<T, E> {
-    /// Unwraps a result, yielding the content of an `Err`.
-    ///
-    /// Fails if the value is an `Ok`.
-    #[inline]
-    pub fn unwrap_err(self) -> E {
-        match self {
-            Ok(t) =>
-                fail!("called `Result::unwrap_err()` on an `Ok` value: {}", t),
-            Err(e) => e
         }
     }
 }
