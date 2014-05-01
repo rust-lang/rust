@@ -134,6 +134,7 @@ extern crate core;
 #[cfg(test)] pub use owned = realstd::owned;
 
 pub use core::intrinsics;
+pub use core::mem;
 
 // Run tests with libgreen instead of libnative.
 //
@@ -243,8 +244,6 @@ pub mod path;
 pub mod cast;
 pub mod fmt;
 pub mod cleanup;
-pub mod mem;
-
 
 /* Unsupported interfaces */
 
