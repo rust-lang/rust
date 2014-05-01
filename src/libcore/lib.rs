@@ -73,3 +73,6 @@ pub mod char;
 pub mod slice;
 pub mod str;
 pub mod tuple;
+
+// FIXME: this module should not exist
+mod should_not_exist;
