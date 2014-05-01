@@ -137,6 +137,7 @@ extern crate core;
 #[cfg(not(test))] pub use ops = core::ops;
 #[cfg(not(test))] pub use ty = core::ty;
 
+pub use core::any;
 pub use core::cast;
 pub use core::char;
 pub use core::container;
@@ -218,8 +219,6 @@ pub mod iter;
 pub mod to_str;
 pub mod clone;
 pub mod hash;
-pub mod default;
-pub mod any;
 
 /* Common data structures */
 

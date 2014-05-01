@@ -37,5 +37,6 @@ pub mod container;
 
 /* Core types and methods on primitives */
 
+pub mod any;
 pub mod finally;
 pub mod char;
