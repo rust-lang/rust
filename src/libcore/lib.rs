@@ -21,6 +21,8 @@
 #![feature(globs, macro_rules, managed_boxes)]
 #![deny(missing_doc)]
 
+mod macros;
+
 #[path = "num/float_macros.rs"] mod float_macros;
 #[path = "num/int_macros.rs"]   mod int_macros;
 #[path = "num/uint_macros.rs"]  mod uint_macros;
@@ -75,7 +77,11 @@ pub mod slice;
 pub mod str;
 pub mod tuple;
 
-// FIXME: this module should not exist
+mod failure;
+
+// FIXME: this module should not exist. Once owned allocations are no longer a
+//        language type, this module can move outside to the owned allocation
+//        crate.
 mod should_not_exist;
 
 mod std {

@@ -192,7 +192,7 @@ mod tests {
     fn test_overflows() {
         assert!(MAX > 0);
         assert!(MIN <= 0);
-        assert_eq!(MIN + MAX + 1, 0);
+        assert!(MIN + MAX + 1 == 0);
     }
 
     #[test]
@@ -202,32 +202,32 @@ mod tests {
 
     #[test]
     fn test_bitwise() {
-        assert_eq!(0b1110 as $T, (0b1100 as $T).bitor(&(0b1010 as $T)));
-        assert_eq!(0b1000 as $T, (0b1100 as $T).bitand(&(0b1010 as $T)));
-        assert_eq!(0b0110 as $T, (0b1100 as $T).bitxor(&(0b1010 as $T)));
-        assert_eq!(0b1110 as $T, (0b0111 as $T).shl(&(1 as $T)));
-        assert_eq!(0b0111 as $T, (0b1110 as $T).shr(&(1 as $T)));
-        assert_eq!(MAX - (0b1011 as $T), (0b1011 as $T).not());
+        assert!(0b1110 as $T == (0b1100 as $T).bitor(&(0b1010 as $T)));
+        assert!(0b1000 as $T == (0b1100 as $T).bitand(&(0b1010 as $T)));
+        assert!(0b0110 as $T == (0b1100 as $T).bitxor(&(0b1010 as $T)));
+        assert!(0b1110 as $T == (0b0111 as $T).shl(&(1 as $T)));
+        assert!(0b0111 as $T == (0b1110 as $T).shr(&(1 as $T)));
+        assert!(MAX - (0b1011 as $T) == (0b1011 as $T).not());
     }
 
     #[test]
     fn test_count_ones() {
-        assert_eq!((0b0101100 as $T).count_ones(), 3);
-        assert_eq!((0b0100001 as $T).count_ones(), 2);
-        assert_eq!((0b1111001 as $T).count_ones(), 5);
+        assert!((0b0101100 as $T).count_ones() == 3);
+        assert!((0b0100001 as $T).count_ones() == 2);
+        assert!((0b1111001 as $T).count_ones() == 5);
     }
 
     #[test]
     fn test_count_zeros() {
-        assert_eq!((0b0101100 as $T).count_zeros(), BITS as $T - 3);
-        assert_eq!((0b0100001 as $T).count_zeros(), BITS as $T - 2);
-        assert_eq!((0b1111001 as $T).count_zeros(), BITS as $T - 5);
+        assert!((0b0101100 as $T).count_zeros() == BITS as $T - 3);
+        assert!((0b0100001 as $T).count_zeros() == BITS as $T - 2);
+        assert!((0b1111001 as $T).count_zeros() == BITS as $T - 5);
     }
 
     #[test]
     fn test_unsigned_checked_div() {
-        assert_eq!(10u.checked_div(&2), Some(5));
-        assert_eq!(5u.checked_div(&0), None);
+        assert!(10u.checked_div(&2) == Some(5));
+        assert!(5u.checked_div(&0) == None);
     }
 }
 
