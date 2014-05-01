@@ -70,9 +70,15 @@ pub mod iter;
 pub mod option;
 pub mod raw;
 pub mod char;
+pub mod result;
 pub mod slice;
 pub mod str;
 pub mod tuple;
 
 // FIXME: this module should not exist
 mod should_not_exist;
+
+mod std {
+    pub use clone;
+    pub use cmp;
+}
