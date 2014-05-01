@@ -170,7 +170,7 @@ fn parse_compile_flags(line: &str) -> Option<~str> {
 }
 
 fn parse_run_flags(line: &str) -> Option<~str> {
-    parse_name_value_directive(line, ~"run-flags")
+    parse_name_value_directive(line, "run-flags".to_owned())
 }
 
 fn parse_debugger_cmd(line: &str) -> Option<~str> {

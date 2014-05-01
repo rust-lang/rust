@@ -1740,7 +1740,7 @@ impl<T: Iterator<char>> Builder<T> {
             Some(NumberValue(n)) => { Ok(Number(n)) }
             Some(BooleanValue(b)) => { Ok(Boolean(b)) }
             Some(StringValue(ref mut s)) => {
-                let mut temp = ~"";
+                let mut temp = "".to_owned();
                 swap(s, &mut temp);
                 Ok(String(temp))
             }
@@ -2633,16 +2633,16 @@ mod tests {
         assert_eq!(from_str("\""),    Err(SyntaxError(EOFWhileParsingString, 1, 2)));
         assert_eq!(from_str("\"lol"), Err(SyntaxError(EOFWhileParsingString, 1, 5)));
 
-        assert_eq!(from_str("\"\""), Ok(String(~"")));
-        assert_eq!(from_str("\"foo\""), Ok(String(~"foo")));
-        assert_eq!(from_str("\"\\\"\""), Ok(String(~"\"")));
-        assert_eq!(from_str("\"\\b\""), Ok(String(~"\x08")));
-        assert_eq!(from_str("\"\\n\""), Ok(String(~"\n")));
-        assert_eq!(from_str("\"\\r\""), Ok(String(~"\r")));
-        assert_eq!(from_str("\"\\t\""), Ok(String(~"\t")));
-        assert_eq!(from_str(" \"foo\" "), Ok(String(~"foo")));
-        assert_eq!(from_str("\"\\u12ab\""), Ok(String(~"\u12ab")));
-        assert_eq!(from_str("\"\\uAB12\""), Ok(String(~"\uAB12")));
+        assert_eq!(from_str("\"\""), Ok(String("".to_owned())));
+        assert_eq!(from_str("\"foo\""), Ok(String("foo".to_owned())));
+        assert_eq!(from_str("\"\\\"\""), Ok(String("\"".to_owned())));
+        assert_eq!(from_str("\"\\b\""), Ok(String("\x08".to_owned())));
+        assert_eq!(from_str("\"\\n\""), Ok(String("\n".to_owned())));
+        assert_eq!(from_str("\"\\r\""), Ok(String("\r".to_owned())));
+        assert_eq!(from_str("\"\\t\""), Ok(String("\t".to_owned())));
+        assert_eq!(from_str(" \"foo\" "), Ok(String("foo".to_owned())));
+        assert_eq!(from_str("\"\\u12ab\""), Ok(String("\u12ab".to_owned())));
+        assert_eq!(from_str("\"\\uAB12\""), Ok(String("\uAB12".to_owned())));
     }
 
     #[test]
@@ -2890,7 +2890,7 @@ mod tests {
     fn test_find(){
         let json_value = from_str("{\"dog\" : \"cat\"}").unwrap();
         let found_str = json_value.find(&"dog".to_owned());
-        assert!(found_str.is_some() && found_str.unwrap().as_string().unwrap() == &"cat");
+        assert!(found_str.is_some() && found_str.unwrap().as_string().unwrap() == "cat");
     }
 
     #[test]
@@ -2898,7 +2898,7 @@ mod tests {
         let json_value = from_str("{\"dog\":{\"cat\": {\"mouse\" : \"cheese\"}}}").unwrap();
         let found_str = json_value.find_path(&[&"dog".to_owned(),
                                              &"cat".to_owned(), &"mouse".to_owned()]);
-        assert!(found_str.is_some() && found_str.unwrap().as_string().unwrap() == &"cheese");
+        assert!(found_str.is_some() && found_str.unwrap().as_string().unwrap() == "cheese");
     }
 
     #[test]
@@ -2906,7 +2906,7 @@ mod tests {
         let json_value = from_str("{\"dog\":{\"cat\": {\"mouse\" : \"cheese\"}}}").unwrap();
         let found_str = json_value.search(&"mouse".to_owned()).and_then(|j| j.as_string());
         assert!(found_str.is_some());
-        assert!(found_str.unwrap() == &"cheese");
+        assert!(found_str.unwrap() == "cheese");
     }
 
     #[test]
@@ -2946,7 +2946,7 @@ mod tests {
     fn test_as_string(){
         let json_value = from_str("\"dog\"").unwrap();
         let json_str = json_value.as_string();
-        let expected_str = &"dog";
+        let expected_str = "dog";
         assert_eq!(json_str, Some(expected_str));
     }
 
@@ -3067,7 +3067,7 @@ mod tests {
             r#"{ "foo":"bar", "array" : [0, 1, 2,3 ,4,5], "idents":[null,true,false]}"#,
             ~[
                 (ObjectStart,             ~[]),
-                  (StringValue(~"bar"),   ~[Key("foo")]),
+                  (StringValue("bar".to_owned()),   ~[Key("foo")]),
                   (ListStart,             ~[Key("array")]),
                     (NumberValue(0.0),    ~[Key("array"), Index(0)]),
                     (NumberValue(1.0),    ~[Key("array"), Index(1)]),
@@ -3155,7 +3155,7 @@ mod tests {
                   (NumberValue(1.0),            ~[Key("a")]),
                   (ListStart,                   ~[Key("b")]),
                     (BooleanValue(true),        ~[Key("b"), Index(0)]),
-                    (StringValue(~"foo\nbar"),  ~[Key("b"), Index(1)]),
+                    (StringValue("foo\nbar".to_owned()),  ~[Key("b"), Index(1)]),
                     (ObjectStart,               ~[Key("b"), Index(2)]),
                       (ObjectStart,             ~[Key("b"), Index(2), Key("c")]),
                         (NullValue,             ~[Key("b"), Index(2), Key("c"), Key("d")]),
@@ -3287,7 +3287,7 @@ mod tests {
         assert!(stack.last_is_index());
         assert!(stack.get(0) == Index(1));
 
-        stack.push_key(~"foo");
+        stack.push_key("foo".to_owned());
 
         assert!(stack.len() == 2);
         assert!(stack.is_equal_to([Index(1), Key("foo")]));
@@ -3299,7 +3299,7 @@ mod tests {
         assert!(stack.get(0) == Index(1));
         assert!(stack.get(1) == Key("foo"));
 
-        stack.push_key(~"bar");
+        stack.push_key("bar".to_owned());
 
         assert!(stack.len() == 3);
         assert!(stack.is_equal_to([Index(1), Key("foo"), Key("bar")]));
@@ -3363,7 +3363,7 @@ mod tests {
     }
 
     fn big_json() -> ~str {
-        let mut src = ~"[\n";
+        let mut src = "[\n".to_owned();
         for _ in range(0, 500) {
             src = src + r#"{ "a": true, "b": null, "c":3.1415, "d": "Hello world", "e": [1,2,3]},"#;
         }

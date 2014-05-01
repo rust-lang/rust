@@ -300,7 +300,7 @@ pub fn run_compiler(args: &[~str]) {
         None::<d::PpMode> => {/* continue */ }
     }
 
-    if r.contains(&~"ls") {
+    if r.contains(&("ls".to_owned())) {
         match input {
             d::FileInput(ref ifile) => {
                 let mut stdout = io::stdout();

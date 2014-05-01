@@ -343,7 +343,7 @@ mod tests {
 
         assert_eq!(hasher.hash(&'a'), 97);
 
-        assert_eq!(hasher.hash(& &"a"), 97 + 0xFF);
+        assert_eq!(hasher.hash(&("a")), 97 + 0xFF);
         assert_eq!(hasher.hash(& &[1u8, 2u8, 3u8]), 9);
 
         unsafe {
