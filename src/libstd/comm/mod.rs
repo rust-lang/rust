@@ -973,17 +973,19 @@ impl<T: Send> TimeoutReceiver<T> {
     pub fn recv(&mut self) -> Option<T> {
         let oneshot = self.timer.oneshot(self.timeout);
 
-        // alternately read from the oneshot timer and the wrapped channel
-        loop {
-            println!("Trying");
-            match self.inner.try_recv() {
-                Ok(v) => return Some(v),
-                _ => ()
-            }
-            if oneshot.try_recv().is_ok() {
-                return None;
-            }
+        let sel = Select::new();
+        let mut timeout_rx = sel.handle(&oneshot);
+        let mut inner_rx = sel.handle(&self.inner);
+        unsafe {
+            timeout_rx.add();
+            inner_rx.add();
         }
+        let ret = sel.wait();
+        if ret == inner_rx.id() { 
+            return Some(inner_rx.recv());
+        }
+
+        return None;
     }
 
     /// Wrapper for the inner Receiver's try_recv method.
