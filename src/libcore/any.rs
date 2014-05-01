@@ -21,7 +21,6 @@
 //! the extension traits (`*Ext`) for the full details.
 
 use cast::{transmute, transmute_copy};
-use fmt;
 use option::{Option, Some, None};
 use owned::Box;
 use raw::TraitObject;
@@ -142,22 +141,6 @@ impl AnyOwnExt for Box<Any> {
         } else {
             Err(self)
         }
-    }
-}
-
-///////////////////////////////////////////////////////////////////////////////
-// Trait implementations
-///////////////////////////////////////////////////////////////////////////////
-
-impl fmt::Show for Box<Any> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.pad("Box<Any>")
-    }
-}
-
-impl<'a> fmt::Show for &'a Any {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.pad("&Any")
     }
 }
 

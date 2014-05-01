@@ -1242,6 +1242,14 @@ impl<T> Show for *mut T {
     fn fmt(&self, f: &mut Formatter) -> Result { secret_pointer(self, f) }
 }
 
+impl Show for Box<any::Any> {
+    fn fmt(&self, f: &mut Formatter) -> Result { f.pad("Box<Any>") }
+}
+
+impl<'a> Show for &'a any::Any {
+    fn fmt(&self, f: &mut Formatter) -> Result { f.pad("&Any") }
+}
+
 impl Show for TypeId {
     fn fmt(&self, f: &mut Formatter) -> Result {
         write!(f.buf, "TypeId \\{ {} \\}", self.hash())
