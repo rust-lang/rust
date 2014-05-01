@@ -43,6 +43,7 @@ mod unit;
 pub mod any;
 pub mod bool;
 pub mod finally;
+pub mod iter;
 pub mod option;
 pub mod raw;
 pub mod char;
