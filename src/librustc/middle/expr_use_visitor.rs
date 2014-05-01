@@ -26,32 +26,9 @@ use util::ppaux::Repr;
 
 ///////////////////////////////////////////////////////////////////////////
 // The Delegate trait
-//
-// This trait defines the callbacks you can expect to receiver when
-// employing the ExprUseVisitor.
 
-#[deriving(Eq)]
-pub enum LoanCause {
-    ClosureCapture(Span),
-    AddrOf,
-    AutoRef,
-    RefBinding,
-    OverloadedOperator,
-    ClosureInvocation
-}
-
-#[deriving(Eq,Show)]
-pub enum ConsumeMode {
-    Copy,    // reference to x where x has a type that copies
-    Move,    // reference to x where x has a type that moves
-}
-
-#[deriving(Eq,Show)]
-pub enum MutateMode {
-    JustWrite,    // x = y
-    WriteAndRead, // x += y
-}
-
+/// This trait defines the callbacks you can expect to receive when
+/// employing the ExprUseVisitor.
 pub trait Delegate {
     // The value found at `cmt` is either copied or moved, depending
     // on mode.
@@ -91,6 +68,28 @@ pub trait Delegate {
               mode: MutateMode);
 }
 
+#[deriving(Eq)]
+pub enum LoanCause {
+    ClosureCapture(Span),
+    AddrOf,
+    AutoRef,
+    RefBinding,
+    OverloadedOperator,
+    ClosureInvocation
+}
+
+#[deriving(Eq,Show)]
+pub enum ConsumeMode {
+    Copy,    // reference to x where x has a type that copies
+    Move,    // reference to x where x has a type that moves
+}
+
+#[deriving(Eq,Show)]
+pub enum MutateMode {
+    JustWrite,    // x = y
+    WriteAndRead, // x += y
+}
+
 ///////////////////////////////////////////////////////////////////////////
 // The ExprUseVisitor type
 //
@@ -112,7 +111,7 @@ pub struct ExprUseVisitor<'d,'t,TYPER> {
 //
 // Note that this macro appears similar to try!(), but, unlike try!(),
 // it does not propagate the error.
-macro_rules! ignore_err(
+macro_rules! return_if_err(
     ($inp: expr) => (
         match $inp {
             Ok(v) => v,
@@ -174,7 +173,7 @@ impl<'d,'t,TYPER:mc::Typer> ExprUseVisitor<'d,'t,TYPER> {
     fn consume_expr(&mut self, expr: &ast::Expr) {
         debug!("consume_expr(expr={})", expr.repr(self.tcx()));
 
-        let cmt = ignore_err!(self.mc.cat_expr(expr));
+        let cmt = return_if_err!(self.mc.cat_expr(expr));
         self.delegate_consume(expr.id, expr.span, cmt);
 
         match expr.node {
@@ -200,7 +199,7 @@ impl<'d,'t,TYPER:mc::Typer> ExprUseVisitor<'d,'t,TYPER> {
                    assignment_expr: &ast::Expr,
                    expr: &ast::Expr,
                    mode: MutateMode) {
-        let cmt = ignore_err!(self.mc.cat_expr(expr));
+        let cmt = return_if_err!(self.mc.cat_expr(expr));
         self.delegate.mutate(assignment_expr.id, assignment_expr.span, cmt, mode);
         self.walk_expr(expr);
     }
@@ -213,7 +212,7 @@ impl<'d,'t,TYPER:mc::Typer> ExprUseVisitor<'d,'t,TYPER> {
         debug!("borrow_expr(expr={}, r={}, bk={})",
                expr.repr(self.tcx()), r.repr(self.tcx()), bk.repr(self.tcx()));
 
-        let cmt = ignore_err!(self.mc.cat_expr(expr));
+        let cmt = return_if_err!(self.mc.cat_expr(expr));
         self.delegate.borrow(expr.id, expr.span, cmt, r, bk, cause);
 
         // Note: Unlike consume, we can ignore ExprParen. cat_expr
@@ -284,7 +283,7 @@ impl<'d,'t,TYPER:mc::Typer> ExprUseVisitor<'d,'t,TYPER> {
                 // treatment of the discriminant is handled while
                 // walking the arms:
                 self.walk_expr(discr);
-                let discr_cmt = ignore_err!(self.mc.cat_expr(discr));
+                let discr_cmt = return_if_err!(self.mc.cat_expr(discr));
                 for arm in arms.iter() {
                     self.walk_arm(discr_cmt.clone(), arm);
                 }
@@ -471,7 +470,7 @@ impl<'d,'t,TYPER:mc::Typer> ExprUseVisitor<'d,'t,TYPER> {
                 // "assigns", which is handled by
                 // `walk_pat`:
                 self.walk_expr(expr);
-                let init_cmt = ignore_err!(self.mc.cat_expr(expr));
+                let init_cmt = return_if_err!(self.mc.cat_expr(expr));
                 self.walk_pat(init_cmt, local.pat);
             }
         }
@@ -508,7 +507,7 @@ impl<'d,'t,TYPER:mc::Typer> ExprUseVisitor<'d,'t,TYPER> {
             None => { return; }
         };
 
-        let with_cmt = ignore_err!(self.mc.cat_expr(with_expr));
+        let with_cmt = return_if_err!(self.mc.cat_expr(with_expr));
 
         // Select just those fields of the `with`
         // expression that will actually be used
@@ -558,7 +557,7 @@ impl<'d,'t,TYPER:mc::Typer> ExprUseVisitor<'d,'t,TYPER> {
                         // input and stores it into the resulting rvalue.
                         debug!("walk_adjustment(AutoAddEnv|AutoObject)");
                         let cmt_unadjusted =
-                            ignore_err!(self.mc.cat_expr_unadjusted(expr));
+                            return_if_err!(self.mc.cat_expr_unadjusted(expr));
                         self.delegate_consume(expr.id, expr.span, cmt_unadjusted);
                     }
                     ty::AutoDerefRef(ty::AutoDerefRef {
@@ -596,7 +595,7 @@ impl<'d,'t,TYPER:mc::Typer> ExprUseVisitor<'d,'t,TYPER> {
             match self.typer.node_method_ty(deref_id) {
                 None => {}
                 Some(method_ty) => {
-                    let cmt = ignore_err!(self.mc.cat_expr_autoderefd(expr, i));
+                    let cmt = return_if_err!(self.mc.cat_expr_autoderefd(expr, i));
                     let self_ty = *ty::ty_fn_args(method_ty).get(0);
                     let (m, r) = match ty::get(self_ty).sty {
                         ty::ty_rptr(r, ref m) => (m.mutbl, r),
@@ -618,7 +617,7 @@ impl<'d,'t,TYPER:mc::Typer> ExprUseVisitor<'d,'t,TYPER> {
                     autoderefs: uint) {
         debug!("walk_autoref expr={} autoderefs={}", expr.repr(self.tcx()), autoderefs);
 
-        let cmt_derefd = ignore_err!(
+        let cmt_derefd = return_if_err!(
             self.mc.cat_expr_autoderefd(expr, autoderefs));
 
         debug!("walk_autoref: cmt_derefd={}", cmt_derefd.repr(self.tcx()));
@@ -699,7 +698,7 @@ impl<'d,'t,TYPER:mc::Typer> ExprUseVisitor<'d,'t,TYPER> {
         let tcx = typer.tcx();
         let def_map = &self.typer.tcx().def_map;
         let delegate = &mut self.delegate;
-        ignore_err!(mc.cat_pattern(cmt_discr, pat, |mc, cmt_pat, pat| {
+        return_if_err!(mc.cat_pattern(cmt_discr, pat, |mc, cmt_pat, pat| {
             if pat_util::pat_is_binding(def_map, pat) {
                 let tcx = typer.tcx();
 
@@ -810,9 +809,9 @@ impl<'d,'t,TYPER:mc::Typer> ExprUseVisitor<'d,'t,TYPER> {
                             freevars: &[freevars::freevar_entry]) {
         for freevar in freevars.iter() {
             let id_var = ast_util::def_id_of_def(freevar.def).node;
-            let cmt_var = ignore_err!(self.cat_captured_var(closure_expr.id,
-                                                            closure_expr.span,
-                                                            freevar.def));
+            let cmt_var = return_if_err!(self.cat_captured_var(closure_expr.id,
+                                                               closure_expr.span,
+                                                               freevar.def));
 
             // Lookup the kind of borrow the callee requires, as
             // inferred by regionbk
@@ -834,9 +833,9 @@ impl<'d,'t,TYPER:mc::Typer> ExprUseVisitor<'d,'t,TYPER> {
                               closure_expr: &ast::Expr,
                               freevars: &[freevars::freevar_entry]) {
         for freevar in freevars.iter() {
-            let cmt_var = ignore_err!(self.cat_captured_var(closure_expr.id,
-                                                            closure_expr.span,
-                                                            freevar.def));
+            let cmt_var = return_if_err!(self.cat_captured_var(closure_expr.id,
+                                                               closure_expr.span,
+                                                               freevar.def));
             self.delegate_consume(closure_expr.id, freevar.span, cmt_var);
         }
     }
