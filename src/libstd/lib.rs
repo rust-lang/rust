@@ -135,6 +135,7 @@ extern crate core;
 
 #[cfg(not(test))] pub use kinds = core::kinds;
 #[cfg(not(test))] pub use ops = core::ops;
+#[cfg(not(test))] pub use ty = core::ty;
 
 pub use core::cast;
 pub use core::intrinsics;
@@ -196,7 +197,6 @@ pub mod strbuf;
 
 pub mod ascii;
 
-pub mod owned;
 mod managed;
 mod reference;
 pub mod rc;
@@ -206,7 +206,6 @@ pub mod gc;
 /* Core language traits */
 
 #[cfg(not(test))] pub mod cmp;
-#[cfg(not(test))] pub mod ty;
 #[cfg(not(test))] pub mod owned;
 
 
