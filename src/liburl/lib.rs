@@ -185,7 +185,7 @@ fn encode_inner(s: &str, full_url: bool) -> ~str {
  * ```rust
  * use url::encode;
  *
- * let url = encode(&"https://example.com/Rust (programming language)");
+ * let url = encode("https://example.com/Rust (programming language)");
  * println!("{}", url); // https://example.com/Rust%20(programming%20language)
  * ```
  */
@@ -260,7 +260,7 @@ fn decode_inner(s: &str, full_url: bool) -> ~str {
  * ```rust
  * use url::decode;
  *
- * let url = decode(&"https://example.com/Rust%20(programming%20language)");
+ * let url = decode("https://example.com/Rust%20(programming%20language)");
  * println!("{}", url); // https://example.com/Rust (programming language)
  * ```
  */

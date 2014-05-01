@@ -44,15 +44,15 @@ fn g2(ref_1: &str, ref_2: &str) -> ~str {
 
 pub fn main() {
     assert_eq!(f1("b".to_owned()), "found b".to_owned());
-    assert_eq!(f1(&"c"), "not found".to_owned());
+    assert_eq!(f1("c"), "not found".to_owned());
     assert_eq!(f1("d"), "not found".to_owned());
     assert_eq!(f2("b".to_owned()), "found b".to_owned());
-    assert_eq!(f2(&"c"), "not found (c)".to_owned());
+    assert_eq!(f2("c"), "not found (c)".to_owned());
     assert_eq!(f2("d"), "not found (d)".to_owned());
     assert_eq!(g1("b".to_owned(), "c".to_owned()), "found b,c".to_owned());
-    assert_eq!(g1(&"c", &"d"), "not found".to_owned());
+    assert_eq!(g1("c", "d"), "not found".to_owned());
     assert_eq!(g1("d", "e"), "not found".to_owned());
     assert_eq!(g2("b".to_owned(), "c".to_owned()), "found b,c".to_owned());
-    assert_eq!(g2(&"c", &"d"), "not found (c, d)".to_owned());
+    assert_eq!(g2("c", "d"), "not found (c, d)".to_owned());
     assert_eq!(g2("d", "e"), "not found (d, e)".to_owned());
 }
