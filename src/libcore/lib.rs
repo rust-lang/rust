@@ -31,3 +31,4 @@ pub mod ptr;
 /* Core language traits */
 
 pub mod kinds;
+pub mod ops;
