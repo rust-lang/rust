@@ -133,6 +133,7 @@ extern crate core;
 #[cfg(test)] pub use ty = realstd::ty;
 #[cfg(test)] pub use owned = realstd::owned;
 
+pub use core::cast;
 pub use core::intrinsics;
 pub use core::mem;
 pub use core::ptr;
@@ -242,7 +243,6 @@ pub mod c_vec;
 pub mod os;
 pub mod io;
 pub mod path;
-pub mod cast;
 pub mod fmt;
 pub mod cleanup;
 
