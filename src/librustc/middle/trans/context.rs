@@ -425,6 +425,9 @@ fn declare_intrinsic(ccx: &CrateContext, key: & &'static str) -> Option<ValueRef
     ifn!("llvm.umul.with.overflow.i32" fn(t_i32, t_i32) -> mk_struct!{t_i32, i1});
     ifn!("llvm.umul.with.overflow.i64" fn(t_i64, t_i64) -> mk_struct!{t_i64, i1});
 
+    ifn!("llvm.lifetime.start" fn(t_i64,i8p) -> void);
+    ifn!("llvm.lifetime.end" fn(t_i64, i8p) -> void);
+
     ifn!("llvm.expect.i1" fn(i1, i1) -> i1);
 
     // Some intrinsics were introduced in later versions of LLVM, but they have
