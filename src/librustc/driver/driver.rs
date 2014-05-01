@@ -23,7 +23,7 @@ use metadata::{creader, filesearch};
 use metadata::cstore::CStore;
 use metadata::creader::Loader;
 use metadata;
-use middle::{trans, freevars, kind, ty, typeck, lint, astencode, reachable};
+use middle::{trans, freevars, kind, ty, typeck, lint, reachable};
 use middle;
 use util::common::time;
 use util::ppaux;
@@ -35,7 +35,6 @@ use std::cell::{Cell, RefCell};
 use std::io;
 use std::io::fs;
 use std::io::MemReader;
-use std::mem::drop;
 use std::os;
 use getopts::{optopt, optmulti, optflag, optflagopt};
 use getopts;
@@ -278,7 +277,6 @@ pub struct CrateAnalysis {
     pub exported_items: middle::privacy::ExportedItems,
     pub public_items: middle::privacy::PublicItems,
     pub ty_cx: ty::ctxt,
-    pub maps: astencode::Maps,
     pub reachable: NodeSet,
 }
 
@@ -354,21 +352,14 @@ pub fn phase_3_run_analysis_passes(sess: Session,
     time(time_passes, "effect checking", (), |_|
          middle::effect::check_crate(&ty_cx, krate));
 
-    let middle::moves::MoveMaps {moves_map, capture_map} =
-        time(time_passes, "compute moves", (), |_|
-             middle::moves::compute_moves(&ty_cx, krate));
-
     time(time_passes, "match checking", (), |_|
-         middle::check_match::check_crate(&ty_cx, &moves_map, krate));
+         middle::check_match::check_crate(&ty_cx, krate));
 
     time(time_passes, "liveness checking", (), |_|
-         middle::liveness::check_crate(&ty_cx, &capture_map, krate));
+         middle::liveness::check_crate(&ty_cx, krate));
 
     time(time_passes, "borrow checking", (), |_|
-         middle::borrowck::check_crate(&ty_cx, &moves_map,
-                                       &capture_map, krate));
-
-    drop(moves_map);
+         middle::borrowck::check_crate(&ty_cx, krate));
 
     time(time_passes, "kind checking", (), |_|
          kind::check_crate(&ty_cx, krate));
@@ -392,9 +383,6 @@ pub fn phase_3_run_analysis_passes(sess: Session,
         ty_cx: ty_cx,
         exported_items: exported_items,
         public_items: public_items,
-        maps: astencode::Maps {
-            capture_map: RefCell::new(capture_map)
-        },
         reachable: reachable_map
     }
 }
@@ -810,7 +798,8 @@ pub fn host_triple() -> &'static str {
     // Instead of grabbing the host triple (for the current host), we grab (at
     // compile time) the target triple that this rustc is built with and
     // calling that (at runtime) the host triple.
-    env!("CFG_COMPILER_HOST_TRIPLE")
+    (option_env!("CFG_COMPILER_HOST_TRIPLE")).
+        expect("CFG_COMPILER_HOST_TRIPLE")
 }
 
 pub fn build_session_options(matches: &getopts::Matches) -> session::Options {
