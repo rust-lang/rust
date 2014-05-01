@@ -147,6 +147,7 @@ pub use core::intrinsics;
 pub use core::mem;
 pub use core::ptr;
 pub use core::raw;
+pub use core::tuple;
 
 // Run tests with libgreen instead of libnative.
 //
@@ -192,7 +193,6 @@ pub mod prelude;
 #[path = "num/f64.rs"]   pub mod f64;
 
 pub mod bool;
-pub mod tuple;
 
 pub mod slice;
 pub mod vec;
