@@ -499,6 +499,7 @@ use str::StrSlice;
 use str;
 use slice::{Vector, ImmutableVector};
 use slice;
+use intrinsics::TypeId;
 
 pub use self::num::radix;
 pub use self::num::Radix;
@@ -1239,6 +1240,12 @@ impl<T> Show for *T {
 }
 impl<T> Show for *mut T {
     fn fmt(&self, f: &mut Formatter) -> Result { secret_pointer(self, f) }
+}
+
+impl Show for TypeId {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        write!(f.buf, "TypeId \\{ {} \\}", self.hash())
+    }
 }
 
 // If you expected tests to be here, look instead at the run-pass/ifmt.rs test,
