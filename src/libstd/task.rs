@@ -49,7 +49,7 @@ use str::{Str, SendStr, IntoMaybeOwned};
 
 #[cfg(test)] use any::{AnyOwnExt, AnyRefExt};
 #[cfg(test)] use result;
-#[cfg(test)] use str::StrSlice;
+#[cfg(test)] use str::StrAllocating;
 
 /// Indicates the manner in which a task exited.
 ///

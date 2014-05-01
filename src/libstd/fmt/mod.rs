@@ -493,11 +493,11 @@ use io;
 use iter;
 use iter::{Iterator, range};
 use num::Signed;
-use option::{Option,Some,None};
+use option::{Option, Some, None};
 use owned::Box;
 use repr;
-use result::{Ok, Err};
-use str::StrSlice;
+use result::{Ok, Err, ResultUnwrap};
+use str::{StrSlice, StrAllocating, UTF16Item, ScalarValue, LoneSurrogate};
 use str;
 use slice::{Vector, ImmutableVector};
 use slice;
@@ -1355,6 +1355,21 @@ impl Show for cmp::Ordering {
             cmp::Less => write!(f.buf, "Less"),
             cmp::Greater => write!(f.buf, "Greater"),
             cmp::Equal => write!(f.buf, "Equal"),
+        }
+    }
+}
+
+impl<T: Copy + Show> Show for Cell<T> {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        write!(f.buf, r"Cell \{ value: {} \}", self.get())
+    }
+}
+
+impl Show for UTF16Item {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        match *self {
+            ScalarValue(c) => write!(f.buf, "ScalarValue({})", c),
+            LoneSurrogate(u) => write!(f.buf, "LoneSurrogate({})", u),
         }
     }
 }

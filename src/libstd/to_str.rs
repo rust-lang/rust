@@ -35,7 +35,7 @@ impl<T: fmt::Show> ToStr for T {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use str::StrSlice;
+    use str::StrAllocating;
 
     #[test]
     fn test_simple_types() {

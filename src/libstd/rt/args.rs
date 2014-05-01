@@ -70,7 +70,6 @@ mod imp {
     use owned::Box;
     use unstable::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
     use mem;
-    #[cfg(not(test))] use str::StrSlice;
     #[cfg(not(test))] use ptr::RawPtr;
 
     static mut global_args_ptr: uint = 0;
