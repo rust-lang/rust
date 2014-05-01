@@ -31,50 +31,43 @@ use std::{i64, u64};
 
 /**
 A `BigDigit` is a `BigUint`'s composing element.
-
-A `BigDigit` is half the size of machine word size.
 */
-#[cfg(target_word_size = "32")]
-pub type BigDigit = u16;
+pub type BigDigit = u32;
 
 /**
-A `BigDigit` is a `BigUint`'s composing element.
-
-A `BigDigit` is half the size of machine word size.
+A `DoubleBigDigit` is the internal type used to do the computations.  Its
+size is the double of the size of `BigDigit`.
 */
-#[cfg(target_word_size = "64")]
-pub type BigDigit = u32;
+pub type DoubleBigDigit = u64;
 
 pub static ZERO_BIG_DIGIT: BigDigit = 0;
 static ZERO_VEC: [BigDigit, ..1] = [ZERO_BIG_DIGIT];
 
 pub mod BigDigit {
     use super::BigDigit;
+    use super::DoubleBigDigit;
 
-    #[cfg(target_word_size = "32")]
-    pub static bits: uint = 16;
-
-    #[cfg(target_word_size = "64")]
+    // `DoubleBigDigit` size dependent
     pub static bits: uint = 32;
 
-    pub static base: uint = 1 << bits;
-    static lo_mask: uint = (-1 as uint) >> bits;
+    pub static base: DoubleBigDigit = 1 << bits;
+    static lo_mask: DoubleBigDigit = (-1 as DoubleBigDigit) >> bits;
 
     #[inline]
-    fn get_hi(n: uint) -> BigDigit { (n >> bits) as BigDigit }
+    fn get_hi(n: DoubleBigDigit) -> BigDigit { (n >> bits) as BigDigit }
     #[inline]
-    fn get_lo(n: uint) -> BigDigit { (n & lo_mask) as BigDigit }
+    fn get_lo(n: DoubleBigDigit) -> BigDigit { (n & lo_mask) as BigDigit }
 
-    /// Split one machine sized unsigned integer into two `BigDigit`s.
+    /// Split one `DoubleBigDigit` into two `BigDigit`s.
     #[inline]
-    pub fn from_uint(n: uint) -> (BigDigit, BigDigit) {
+    pub fn from_doublebigdigit(n: DoubleBigDigit) -> (BigDigit, BigDigit) {
         (get_hi(n), get_lo(n))
     }
 
-    /// Join two `BigDigit`s into one machine sized unsigned integer
+    /// Join two `BigDigit`s into one `DoubleBigDigit`
     #[inline]
-    pub fn to_uint(hi: BigDigit, lo: BigDigit) -> uint {
-        (lo as uint) | ((hi as uint) << bits)
+    pub fn to_doublebigdigit(hi: BigDigit, lo: BigDigit) -> DoubleBigDigit {
+        (lo as DoubleBigDigit) | ((hi as DoubleBigDigit) << bits)
     }
 }
 
@@ -202,7 +195,8 @@ impl Add<BigUint, BigUint> for BigUint {
 
         let mut carry = 0;
         let mut sum: Vec<BigDigit> =  a.data.iter().zip(b.data.iter().chain(zeros)).map(|(ai, bi)| {
-            let (hi, lo) = BigDigit::from_uint((*ai as uint) + (*bi as uint) + (carry as uint));
+            let (hi, lo) = BigDigit::from_doublebigdigit(
+                (*ai as DoubleBigDigit) + (*bi as DoubleBigDigit) + (carry as DoubleBigDigit));
             carry = hi;
             lo
         }).collect();
@@ -219,8 +213,11 @@ impl Sub<BigUint, BigUint> for BigUint {
 
         let mut borrow = 0;
         let diff: Vec<BigDigit> =  a.take(new_len).zip(b).map(|(ai, bi)| {
-            let (hi, lo) = BigDigit::from_uint(
-                BigDigit::base + (*ai as uint) - (*bi as uint) - (borrow as uint)
+            let (hi, lo) = BigDigit::from_doublebigdigit(
+                BigDigit::base
+                    + (*ai as DoubleBigDigit)
+                    - (*bi as DoubleBigDigit)
+                    - (borrow as DoubleBigDigit)
             );
             /*
             hi * (base) + lo == 1*(base) + ai - bi - borrow
@@ -274,8 +271,8 @@ impl Mul<BigUint, BigUint> for BigUint {
 
             let mut carry = 0;
             let mut prod: Vec<BigDigit> = a.data.iter().map(|ai| {
-                let (hi, lo) = BigDigit::from_uint(
-                    (*ai as uint) * (n as uint) + (carry as uint)
+                let (hi, lo) = BigDigit::from_doublebigdigit(
+                    (*ai as DoubleBigDigit) * (n as DoubleBigDigit) + (carry as DoubleBigDigit)
                 );
                 carry = hi;
                 lo
@@ -440,10 +437,10 @@ impl Integer for BigUint {
             let mut d = Vec::with_capacity(an.len());
             let mut carry = 0;
             for elt in an.iter().rev() {
-                let ai = BigDigit::to_uint(carry, *elt);
-                let di = ai / (bn as uint);
+                let ai = BigDigit::to_doublebigdigit(carry, *elt);
+                let di = ai / (bn as DoubleBigDigit);
                 assert!(di < BigDigit::base);
-                carry = (ai % (bn as uint)) as BigDigit;
+                carry = (ai % (bn as DoubleBigDigit)) as BigDigit;
                 d.push(di as BigDigit)
             }
             d.reverse();
@@ -515,39 +512,14 @@ impl ToPrimitive for BigUint {
         })
     }
 
-    #[cfg(target_word_size = "32")]
+    // `DoubleBigDigit` size dependent
     #[inline]
     fn to_u64(&self) -> Option<u64> {
         match self.data.len() {
             0 => Some(0),
             1 => Some(self.data.as_slice()[0] as u64),
-            2 => {
-                Some(BigDigit::to_uint(self.data.as_slice()[1], self.data.as_slice()[0]) as u64)
-            }
-            3 => {
-                let n_lo = BigDigit::to_uint(self.data.as_slice()[1], self.data.as_slice()[0]) as
-                    u64;
-                let n_hi = self.data.as_slice()[2] as u64;
-                Some((n_hi << 32) + n_lo)
-            }
-            4 => {
-                let n_lo = BigDigit::to_uint(self.data.as_slice()[1], self.data.as_slice()[0])
-                    as u64;
-                let n_hi = BigDigit::to_uint(self.data.as_slice()[3], self.data.as_slice()[2])
-                    as u64;
-                Some((n_hi << 32) + n_lo)
-            }
-            _ => None
-        }
-    }
-
-    #[cfg(target_word_size = "64")]
-    #[inline]
-    fn to_u64(&self) -> Option<u64> {
-        match self.data.len() {
-            0 => Some(0),
-            1 => Some(self.data.as_slice()[0] as u64),
-            2 => Some(BigDigit::to_uint(self.data.as_slice()[1], self.data.as_slice()[0]) as u64),
+            2 => Some(BigDigit::to_doublebigdigit(self.data.as_slice()[1], self.data.as_slice()[0])
+                      as u64),
             _ => None
         }
     }
@@ -565,26 +537,10 @@ impl FromPrimitive for BigUint {
         }
     }
 
-    #[cfg(target_word_size = "32")]
+    // `DoubleBigDigit` size dependent
     #[inline]
     fn from_u64(n: u64) -> Option<BigUint> {
-        let n_lo = (n & 0x0000_0000_FFFF_FFFF) as uint;
-        let n_hi = (n >> 32) as uint;
-
-        let n = match (BigDigit::from_uint(n_hi), BigDigit::from_uint(n_lo)) {
-            ((0,  0),  (0,  0))  => Zero::zero(),
-            ((0,  0),  (0,  n0)) => BigUint::new(vec!(n0)),
-            ((0,  0),  (n1, n0)) => BigUint::new(vec!(n0, n1)),
-            ((0,  n2), (n1, n0)) => BigUint::new(vec!(n0, n1, n2)),
-            ((n3, n2), (n1, n0)) => BigUint::new(vec!(n0, n1, n2, n3)),
-        };
-        Some(n)
-    }
-
-    #[cfg(target_word_size = "64")]
-    #[inline]
-    fn from_u64(n: u64) -> Option<BigUint> {
-        let n = match BigDigit::from_uint(n as uint) {
+        let n = match BigDigit::from_doublebigdigit(n) {
             (0,  0)  => Zero::zero(),
             (0,  n0) => BigUint::new(vec!(n0)),
             (n1, n0) => BigUint::new(vec!(n0, n1))
@@ -650,8 +606,8 @@ impl ToStrRadix for BigUint {
         }
         return fill_concat(convert_base(self, base).as_slice(), radix, max_len);
 
-        fn convert_base(n: &BigUint, base: uint) -> Vec<BigDigit> {
-            let divider    = FromPrimitive::from_uint(base).unwrap();
+        fn convert_base(n: &BigUint, base: DoubleBigDigit) -> Vec<BigDigit> {
+            let divider    = base.to_biguint().unwrap();
             let mut result = Vec::new();
             let mut m      = n.clone();
             while m >= divider {
@@ -709,7 +665,7 @@ impl BigUint {
     /// Creates and initializes a `BigUint`.
     pub fn parse_bytes(buf: &[u8], radix: uint) -> Option<BigUint> {
         let (base, unit_len) = get_radix_base(radix);
-        let base_num = match FromPrimitive::from_uint(base) {
+        let base_num = match base.to_biguint() {
             Some(base_num) => base_num,
             None => { return None; }
         };
@@ -756,8 +712,8 @@ impl BigUint {
 
         let mut carry = 0;
         let mut shifted: Vec<BigDigit> = self.data.iter().map(|elem| {
-            let (hi, lo) = BigDigit::from_uint(
-                (*elem as uint) << n_bits | (carry as uint)
+            let (hi, lo) = BigDigit::from_doublebigdigit(
+                (*elem as DoubleBigDigit) << n_bits | (carry as DoubleBigDigit)
             );
             carry = hi;
             lo
@@ -797,33 +753,9 @@ impl BigUint {
     }
 }
 
-#[cfg(target_word_size = "32")]
+// `DoubleBigDigit` size dependent
 #[inline]
-fn get_radix_base(radix: uint) -> (uint, uint) {
-    assert!(1 < radix && radix <= 16);
-    match radix {
-        2  => (65536, 16),
-        3  => (59049, 10),
-        4  => (65536, 8),
-        5  => (15625, 6),
-        6  => (46656, 6),
-        7  => (16807, 5),
-        8  => (32768, 5),
-        9  => (59049, 5),
-        10 => (10000, 4),
-        11 => (14641, 4),
-        12 => (20736, 4),
-        13 => (28561, 4),
-        14 => (38416, 4),
-        15 => (50625, 4),
-        16 => (65536, 4),
-        _  => fail!()
-    }
-}
-
-#[cfg(target_word_size = "64")]
-#[inline]
-fn get_radix_base(radix: uint) -> (uint, uint) {
+fn get_radix_base(radix: uint) -> (DoubleBigDigit, uint) {
     assert!(1 < radix && radix <= 16);
     match radix {
         2  => (4294967296, 32),
@@ -1599,36 +1531,7 @@ mod biguint_tests {
               "88887777666655554444333322221111");
     }
 
-    #[cfg(target_word_size = "32")]
-    #[test]
-    fn test_convert_i64() {
-        fn check(b1: BigUint, i: i64) {
-            let b2: BigUint = FromPrimitive::from_i64(i).unwrap();
-            assert!(b1 == b2);
-            assert!(b1.to_i64().unwrap() == i);
-        }
-
-        check(Zero::zero(), 0);
-        check(One::one(), 1);
-        check(i64::MAX.to_biguint().unwrap(), i64::MAX);
-
-        check(BigUint::new(vec!(                   )), 0);
-        check(BigUint::new(vec!( 1                 )), (1 << (0*BigDigit::bits)));
-        check(BigUint::new(vec!(-1                 )), (1 << (1*BigDigit::bits)) - 1);
-        check(BigUint::new(vec!( 0,  1             )), (1 << (1*BigDigit::bits)));
-        check(BigUint::new(vec!(-1, -1             )), (1 << (2*BigDigit::bits)) - 1);
-        check(BigUint::new(vec!( 0,  0,  1         )), (1 << (2*BigDigit::bits)));
-        check(BigUint::new(vec!(-1, -1, -1         )), (1 << (3*BigDigit::bits)) - 1);
-        check(BigUint::new(vec!( 0,  0,  0,  1     )), (1 << (3*BigDigit::bits)));
-        check(BigUint::new(vec!(-1, -1, -1, -1 >> 1)), i64::MAX);
-
-        assert_eq!(i64::MIN.to_biguint(), None);
-        assert_eq!(BigUint::new(vec!(-1, -1, -1, -1    )).to_i64(), None);
-        assert_eq!(BigUint::new(vec!( 0,  0,  0,  0,  1)).to_i64(), None);
-        assert_eq!(BigUint::new(vec!(-1, -1, -1, -1, -1)).to_i64(), None);
-    }
-
-    #[cfg(target_word_size = "64")]
+    // `DoubleBigDigit` size dependent
     #[test]
     fn test_convert_i64() {
         fn check(b1: BigUint, i: i64) {
@@ -1653,35 +1556,7 @@ mod biguint_tests {
         assert_eq!(BigUint::new(vec!(-1, -1, -1)).to_i64(), None);
     }
 
-    #[cfg(target_word_size = "32")]
-    #[test]
-    fn test_convert_u64() {
-        fn check(b1: BigUint, u: u64) {
-            let b2: BigUint = FromPrimitive::from_u64(u).unwrap();
-            assert!(b1 == b2);
-            assert!(b1.to_u64().unwrap() == u);
-        }
-
-        check(Zero::zero(), 0);
-        check(One::one(), 1);
-        check(u64::MIN.to_biguint().unwrap(), u64::MIN);
-        check(u64::MAX.to_biguint().unwrap(), u64::MAX);
-
-        check(BigUint::new(vec!(              )), 0);
-        check(BigUint::new(vec!( 1            )), (1 << (0*BigDigit::bits)));
-        check(BigUint::new(vec!(-1            )), (1 << (1*BigDigit::bits)) - 1);
-        check(BigUint::new(vec!( 0,  1        )), (1 << (1*BigDigit::bits)));
-        check(BigUint::new(vec!(-1, -1        )), (1 << (2*BigDigit::bits)) - 1);
-        check(BigUint::new(vec!( 0,  0,  1    )), (1 << (2*BigDigit::bits)));
-        check(BigUint::new(vec!(-1, -1, -1    )), (1 << (3*BigDigit::bits)) - 1);
-        check(BigUint::new(vec!( 0,  0,  0,  1)), (1 << (3*BigDigit::bits)));
-        check(BigUint::new(vec!(-1, -1, -1, -1)), u64::MAX);
-
-        assert_eq!(BigUint::new(vec!( 0,  0,  0,  0,  1)).to_u64(), None);
-        assert_eq!(BigUint::new(vec!(-1, -1, -1, -1, -1)).to_u64(), None);
-    }
-
-    #[cfg(target_word_size = "64")]
+    // `DoubleBigDigit` size dependent
     #[test]
     fn test_convert_u64() {
         fn check(b1: BigUint, u: u64) {
