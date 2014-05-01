@@ -116,7 +116,7 @@ impl<'a> NfaGen<'a> {
             |cx, name| match name {
                 &Some(ref name) => {
                     let name = name.as_slice();
-                    quote_expr!(cx, Some(~$name))
+                    quote_expr!(cx, Some($name.to_owned()))
                 }
                 &None => quote_expr!(cx, None),
             }
@@ -306,7 +306,7 @@ fn exec<'t>(which: ::regex::native::MatchKind, input: &'t str,
 }
 
 ::regex::Regex {
-    original: ~$regex,
+    original: $regex.to_owned(),
     names: vec!$cap_names,
     p: ::regex::native::Native(exec),
 }

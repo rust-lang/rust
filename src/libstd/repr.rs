@@ -637,7 +637,7 @@ fn test_repr() {
     exact_test(&true, "true");
     exact_test(&false, "false");
     exact_test(&1.234, "1.234f64");
-    exact_test(&(&"hello"), "\"hello\"");
+    exact_test(&("hello"), "\"hello\"");
     // FIXME What do I do about this one?
     exact_test(&("he\u10f3llo".to_owned()), "~\"he\\u10f3llo\"");
 

@@ -62,7 +62,7 @@
 //!     let mut flags = FlagA | FlagB;
 //!     flags.clear();
 //!     assert!(flags.is_empty());
-//!     assert_eq!(format!("{}", flags), ~"hi!");
+//!     assert_eq!(format!("{}", flags).as_slice(), "hi!");
 //! }
 //! ~~~
 //!
