@@ -18,7 +18,6 @@ use util::interner;
 
 use serialize::{Decodable, Decoder, Encodable, Encoder};
 use std::cast;
-use std::char;
 use std::fmt;
 use std::local_data;
 use std::path::BytesContainer;
@@ -81,7 +80,7 @@ pub enum Token {
     DOLLAR,
 
     /* Literals */
-    LIT_CHAR(u32),
+    LIT_CHAR(char),
     LIT_INT(i64, ast::IntTy),
     LIT_UINT(u64, ast::UintTy),
     LIT_INT_UNSUFFIXED(i64),
@@ -195,7 +194,7 @@ pub fn to_str(t: &Token) -> ~str {
       /* Literals */
       LIT_CHAR(c) => {
           let mut res = StrBuf::from_str("'");
-          char::from_u32(c).unwrap().escape_default(|c| {
+          c.escape_default(|c| {
               res.push_char(c);
           });
           res.push_char('\'');

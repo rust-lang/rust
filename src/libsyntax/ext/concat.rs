@@ -14,7 +14,6 @@ use ext::base;
 use ext::build::AstBuilder;
 use parse::token;
 
-use std::char;
 use std::strbuf::StrBuf;
 
 pub fn expand_syntax_ext(cx: &mut base::ExtCtxt,
@@ -35,7 +34,7 @@ pub fn expand_syntax_ext(cx: &mut base::ExtCtxt,
                         accumulator.push_str(s.get());
                     }
                     ast::LitChar(c) => {
-                        accumulator.push_char(char::from_u32(c).unwrap());
+                        accumulator.push_char(c);
                     }
                     ast::LitInt(i, _) | ast::LitIntUnsuffixed(i) => {
                         accumulator.push_str(format!("{}", i));

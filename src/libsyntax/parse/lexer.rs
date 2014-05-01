@@ -874,7 +874,7 @@ fn next_token_inner(rdr: &mut StringReader) -> token::Token {
                                "unterminated character constant".to_owned());
         }
         bump(rdr); // advance curr past token
-        return token::LIT_CHAR(c2 as u32);
+        return token::LIT_CHAR(c2);
       }
       '"' => {
         let mut accum_str = StrBuf::new();
@@ -1097,17 +1097,17 @@ mod test {
 
     #[test] fn character_a() {
         assert_eq!(setup(&mk_sh(), "'a'".to_owned()).next_token().tok,
-                   token::LIT_CHAR('a' as u32));
+                   token::LIT_CHAR('a'));
     }
 
     #[test] fn character_space() {
         assert_eq!(setup(&mk_sh(), "' '".to_owned()).next_token().tok,
-                   token::LIT_CHAR(' ' as u32));
+                   token::LIT_CHAR(' '));
     }
 
     #[test] fn character_escaped() {
         assert_eq!(setup(&mk_sh(), "'\\n'".to_owned()).next_token().tok,
-                   token::LIT_CHAR('\n' as u32));
+                   token::LIT_CHAR('\n'));
     }
 
     #[test] fn lifetime_name() {
@@ -1128,7 +1128,7 @@ mod test {
 
     #[test] fn nested_block_comments() {
         assert_eq!(setup(&mk_sh(), "/* /* */ */'a'".to_owned()).next_token().tok,
-                   token::LIT_CHAR('a' as u32));
+                   token::LIT_CHAR('a'));
     }
 
 }
