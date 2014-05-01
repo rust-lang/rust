@@ -1197,7 +1197,7 @@ fn eq(xs: &List, ys: &List) -> bool {
     match (xs, ys) {
         // If we have reached the end of both lists, they are equal.
         (&Nil, &Nil) => true,
-        // If the current element in both lists is equal, keep going.
+        // If the current elements of both lists are equal, keep going.
         (&Cons(x, ~ref next_xs), &Cons(y, ~ref next_ys))
                 if x == y => eq(next_xs, next_ys),
         // If the current elements are not equal, the lists are not equal.
@@ -1304,7 +1304,7 @@ fn eq<T: Eq>(xs: &List<T>, ys: &List<T>) -> bool {
     match (xs, ys) {
         // If we have reached the end of both lists, they are equal.
         (&Nil, &Nil) => true,
-        // If the current element in both lists is equal, keep going.
+        // If the current elements of both lists are equal, keep going.
         (&Cons(ref x, ~ref next_xs), &Cons(ref y, ~ref next_ys))
                 if x == y => eq(next_xs, next_ys),
         // If the current elements are not equal, the lists are not equal.
@@ -1333,7 +1333,7 @@ impl<T: Eq> Eq for List<T> {
         match (self, ys) {
             // If we have reached the end of both lists, they are equal.
             (&Nil, &Nil) => true,
-            // If the current element in both lists is equal, keep going.
+            // If the current elements of both lists are equal, keep going.
             (&Cons(ref x, ~ref next_xs), &Cons(ref y, ~ref next_ys))
                     if x == y => next_xs == next_ys,
             // If the current elements are not equal, the lists are not equal.
