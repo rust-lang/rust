@@ -81,32 +81,8 @@ pub trait TotalEq: Eq {
     fn assert_receiver_is_total_eq(&self) {}
 }
 
-/// A macro which defines an implementation of TotalEq for a given type.
-macro_rules! totaleq_impl(
-    ($t:ty) => {
-        impl TotalEq for $t {}
-    }
-)
-
-totaleq_impl!(bool)
-
-totaleq_impl!(u8)
-totaleq_impl!(u16)
-totaleq_impl!(u32)
-totaleq_impl!(u64)
-
-totaleq_impl!(i8)
-totaleq_impl!(i16)
-totaleq_impl!(i32)
-totaleq_impl!(i64)
-
-totaleq_impl!(int)
-totaleq_impl!(uint)
-
-totaleq_impl!(char)
-
 /// An ordering is, e.g, a result of a comparison between two values.
-#[deriving(Clone, Eq, Show)]
+#[deriving(Clone, Eq)]
 pub enum Ordering {
    /// An ordering where a compared value is less [than another].
    Less = -1,
@@ -140,6 +116,7 @@ pub trait TotalOrd: TotalEq + Ord {
 }
 
 impl TotalEq for Ordering {}
+
 impl TotalOrd for Ordering {
     #[inline]
     fn cmp(&self, other: &Ordering) -> Ordering {
@@ -151,35 +128,6 @@ impl Ord for Ordering {
     #[inline]
     fn lt(&self, other: &Ordering) -> bool { (*self as int) < (*other as int) }
 }
-
-/// A macro which defines an implementation of TotalOrd for a given type.
-macro_rules! totalord_impl(
-    ($t:ty) => {
-        impl TotalOrd for $t {
-            #[inline]
-            fn cmp(&self, other: &$t) -> Ordering {
-                if *self < *other { Less }
-                else if *self > *other { Greater }
-                else { Equal }
-            }
-        }
-    }
-)
-
-totalord_impl!(u8)
-totalord_impl!(u16)
-totalord_impl!(u32)
-totalord_impl!(u64)
-
-totalord_impl!(i8)
-totalord_impl!(i16)
-totalord_impl!(i32)
-totalord_impl!(i64)
-
-totalord_impl!(int)
-totalord_impl!(uint)
-
-totalord_impl!(char)
 
 /// Combine orderings, lexically.
 ///
