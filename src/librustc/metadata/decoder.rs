@@ -610,7 +610,7 @@ fn each_child_of_item_or_crate(intr: Rc<IdentInterner>,
                 // Hand off the item to the callback.
                 let def_like = item_to_def_like(child_item_doc,
                                                 child_def_id,
-                                                cdata.cnum);
+                                                child_def_id.krate);
                 // These items have a public visibility because they're part of
                 // a public re-export.
                 callback(def_like, token::str_to_ident(name), ast::Public);
