@@ -10,64 +10,14 @@
 
 //! Operations and constants for signed 64-bits integers (`i64` type)
 
-#![allow(non_uppercase_statics)]
-
-use prelude::*;
-
-use default::Default;
 use from_str::FromStr;
-#[cfg(target_word_size = "64")]
-use num::CheckedMul;
-use num::{Bitwise, Bounded, CheckedAdd, CheckedSub};
-use num::{CheckedDiv, Zero, One, strconv};
+use iter::Iterator;
 use num::{ToStrRadix, FromStrRadix};
-use option::{Option, Some, None};
+use num::strconv;
+use option::Option;
+use slice::{ImmutableVector, OwnedVector};
 use str;
-use intrinsics;
 
-int_module!(i64, 64)
+pub use core::i64::{BITS, BYTES, MIN, MAX};
 
-impl Bitwise for i64 {
-    /// Returns the number of ones in the binary representation of the number.
-    #[inline]
-    fn count_ones(&self) -> i64 { unsafe { intrinsics::ctpop64(*self as u64) as i64 } }
-
-    /// Returns the number of leading zeros in the in the binary representation
-    /// of the number.
-    #[inline]
-    fn leading_zeros(&self) -> i64 { unsafe { intrinsics::ctlz64(*self as u64) as i64 } }
-
-    /// Counts the number of trailing zeros.
-    #[inline]
-    fn trailing_zeros(&self) -> i64 { unsafe { intrinsics::cttz64(*self as u64) as i64 } }
-}
-
-impl CheckedAdd for i64 {
-    #[inline]
-    fn checked_add(&self, v: &i64) -> Option<i64> {
-        unsafe {
-            let (x, y) = intrinsics::i64_add_with_overflow(*self, *v);
-            if y { None } else { Some(x) }
-        }
-    }
-}
-
-impl CheckedSub for i64 {
-    #[inline]
-    fn checked_sub(&self, v: &i64) -> Option<i64> {
-        unsafe {
-            let (x, y) = intrinsics::i64_sub_with_overflow(*self, *v);
-            if y { None } else { Some(x) }
-        }
-    }
-}
-
-impl CheckedMul for i64 {
-    #[inline]
-    fn checked_mul(&self, v: &i64) -> Option<i64> {
-        unsafe {
-            let (x, y) = intrinsics::i64_mul_with_overflow(*self, *v);
-            if y { None } else { Some(x) }
-        }
-    }
-}
+int_module!(i64)
