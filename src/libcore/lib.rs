@@ -41,6 +41,7 @@ pub mod container;
 
 mod unit;
 pub mod any;
+pub mod bool;
 pub mod finally;
 pub mod raw;
 pub mod char;

@@ -138,6 +138,7 @@ extern crate core;
 #[cfg(not(test))] pub use ty = core::ty;
 
 pub use core::any;
+pub use core::bool;
 pub use core::cast;
 pub use core::char;
 pub use core::clone;
@@ -191,8 +192,6 @@ pub mod prelude;
 
 #[path = "num/f32.rs"]   pub mod f32;
 #[path = "num/f64.rs"]   pub mod f64;
-
-pub mod bool;
 
 pub mod slice;
 pub mod vec;
