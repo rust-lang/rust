@@ -10,7 +10,7 @@
 
 /*! Generate files suitable for use with [Graphviz](http://www.graphviz.org/)
 
-The `render` function generates output (e.g. a `output.dot` file) for
+The `render` function generates output (e.g. an `output.dot` file) for
 use with [Graphviz](http://www.graphviz.org/) by walking a labelled
 graph. (Graphviz can then automatically lay out the nodes and edges
 of the graph, and also optionally render the graph as an image or
@@ -37,9 +37,10 @@ pairs of ints, representing the edges (the node set is implicit).
 Each node label is derived directly from the int representing the node,
 while the edge labels are all empty strings.
 
-This example also illustrates how to use the `Borrowed` variant of
-`MaybeOwnedVector` to return a slice into the edge list, rather than
-constructing a copy from scratch.
+This example also illustrates how to use `MaybeOwnedVector` to return
+an owned vector or a borrowed slice as appropriate: we construct the
+node vector from scratch, but borrow the edge list (rather than
+constructing a copy of all the edges from scratch).
 
 The output from this example renders five nodes, with the first four
 forming a diamond-shaped acyclic graph and then pointing to the fifth
@@ -47,6 +48,7 @@ which is cyclic.
 
 ```rust
 use dot = graphviz;
+use graphviz::maybe_owned_vec::IntoMaybeOwnedVector;
 
 type Nd = int;
 type Ed = (int,int);
@@ -77,12 +79,12 @@ impl<'a> dot::GraphWalk<'a, Nd, Ed> for Edges {
         }
         nodes.sort();
         nodes.dedup();
-        nodes.move_iter().collect()
+        nodes.into_maybe_owned()
     }
 
     fn edges(&'a self) -> dot::Edges<'a,Ed> {
         let &Edges(ref edges) = self;
-        dot::maybe_owned_vec::Borrowed(edges.as_slice())
+        edges.as_slice().into_maybe_owned()
     }
 
     fn source(&self, e: &Ed) -> Nd { let &(s,_) = e; s }
@@ -119,9 +121,16 @@ This example also illustrates how to use a type (in this case the edge
 type) that shares substructure with the graph: the edge type here is a
 direct reference to the `(source,target)` pair stored in the graph's
 internal vector (rather than passing around a copy of the pair
-itself). Note that in this case, this implies that `fn edges(&'a
-self)` must construct a fresh `Vec<&'a (uint,uint)>` from the
-`Vec<(uint,uint)>` edges stored in `self`.
+itself). Note that this implies that `fn edges(&'a self)` must
+construct a fresh `Vec<&'a (uint,uint)>` from the `Vec<(uint,uint)>`
+edges stored in `self`.
+
+Since both the set of nodes and the set of edges are always
+constructed from scratch via iterators, we use the `collect()` method
+from the `Iterator` trait to collect the nodes and edges into freshly
+constructed growable `Vec` values (rather use the `into_maybe_owned`
+from the `IntoMaybeOwnedVector` trait as was used in the first example
+above).
 
 The output from this example renders four nodes that make up the
 Hasse-diagram for the subsets of the set `{x, y}`. Each edge is
