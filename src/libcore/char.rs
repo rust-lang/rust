@@ -27,14 +27,13 @@
 use cast::transmute;
 use option::{None, Option, Some};
 use iter::{Iterator, range_step};
-use str::StrSlice;
 use unicode::{derived_property, property, general_category, decompose, conversions};
 
 #[cfg(test)] use str::Str;
 #[cfg(test)] use strbuf::StrBuf;
 #[cfg(test)] use slice::ImmutableVector;
 
-#[cfg(not(test))] use cmp::{Eq, Ord};
+#[cfg(not(test))] use cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering};
 #[cfg(not(test))] use default::Default;
 
 // UTF-8 ranges and tags for encoding characters
@@ -660,9 +659,19 @@ impl Eq for char {
 }
 
 #[cfg(not(test))]
+impl TotalEq for char {}
+
+#[cfg(not(test))]
 impl Ord for char {
     #[inline]
     fn lt(&self, other: &char) -> bool { *self < *other }
+}
+
+#[cfg(not(test))]
+impl TotalOrd for char {
+    fn cmp(&self, other: &char) -> Ordering {
+        (*self as u32).cmp(&(*other as u32))
+    }
 }
 
 #[cfg(not(test))]

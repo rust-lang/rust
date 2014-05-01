@@ -34,3 +34,7 @@ pub mod kinds;
 pub mod ops;
 pub mod ty;
 pub mod container;
+
+/* Core types and methods on primitives */
+
+pub mod char;

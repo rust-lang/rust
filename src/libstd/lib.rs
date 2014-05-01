@@ -138,6 +138,7 @@ extern crate core;
 #[cfg(not(test))] pub use ty = core::ty;
 
 pub use core::cast;
+pub use core::char;
 pub use core::container;
 pub use core::intrinsics;
 pub use core::mem;
@@ -188,7 +189,6 @@ pub mod prelude;
 
 pub mod unit;
 pub mod bool;
-pub mod char;
 pub mod tuple;
 
 pub mod slice;
