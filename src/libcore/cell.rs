@@ -12,7 +12,6 @@
 
 use clone::Clone;
 use cmp::Eq;
-use fmt;
 use kinds::{marker, Copy};
 use ops::{Deref, DerefMut, Drop};
 use option::{None, Option, Some};
@@ -57,12 +56,6 @@ impl<T:Copy> Clone for Cell<T> {
 impl<T:Eq + Copy> Eq for Cell<T> {
     fn eq(&self, other: &Cell<T>) -> bool {
         self.get() == other.get()
-    }
-}
-
-impl<T: Copy + fmt::Show> fmt::Show for Cell<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f.buf, r"Cell \{ value: {} \}", self.get())
     }
 }
 
