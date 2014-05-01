@@ -194,7 +194,7 @@ mod tests {
     use fmt::radix;
     use super::{Binary, Octal, Decimal, LowerHex, UpperHex};
     use super::{GenericRadix, Radix};
-    use str::StrSlice;
+    use str::StrAllocating;
 
     #[test]
     fn test_radix_base() {

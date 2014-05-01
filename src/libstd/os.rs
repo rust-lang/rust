@@ -38,7 +38,7 @@ use ops::Drop;
 use result::{Err, Ok, Result};
 use ptr;
 use str;
-use str::{Str, StrSlice};
+use str::{Str, StrSlice, StrAllocating};
 use fmt;
 use sync::atomics::{AtomicInt, INIT_ATOMIC_INT, SeqCst};
 use path::{Path, GenericPath};

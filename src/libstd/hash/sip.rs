@@ -362,7 +362,7 @@ mod tests {
     use prelude::*;
     use num::ToStrRadix;
     use option::{Some, None};
-    use str::{Str,StrSlice};
+    use str::Str;
     use strbuf::StrBuf;
     use slice::{Vector, ImmutableVector};
     use self::test::Bencher;

@@ -71,4 +71,5 @@ pub mod option;
 pub mod raw;
 pub mod char;
 pub mod slice;
+pub mod str;
 pub mod tuple;

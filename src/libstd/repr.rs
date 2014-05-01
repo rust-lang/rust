@@ -606,6 +606,7 @@ pub fn write_repr<T>(writer: &mut io::Writer, object: &T) -> io::IoResult<()> {
 
 pub fn repr_to_str<T>(t: &T) -> ~str {
     use str;
+    use str::StrAllocating;
     use io;
 
     let mut result = io::MemWriter::new();
