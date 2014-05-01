@@ -146,6 +146,7 @@ pub use core::container;
 pub use core::default;
 pub use core::intrinsics;
 pub use core::mem;
+pub use core::option;
 pub use core::ptr;
 pub use core::raw;
 pub use core::tuple;
@@ -222,7 +223,6 @@ pub mod hash;
 
 /* Common data structures */
 
-pub mod option;
 pub mod result;
 pub mod cell;
 

@@ -1280,6 +1280,15 @@ impl<'a> Show for &'a any::Any {
     fn fmt(&self, f: &mut Formatter) -> Result { f.pad("&Any") }
 }
 
+impl<T: Show> Show for Option<T> {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        match *self {
+            Some(ref t) => write!(f.buf, "Some({})", *t),
+            None => write!(f.buf, "None"),
+        }
+    }
+}
+
 impl Show for () {
     fn fmt(&self, f: &mut Formatter) -> Result {
         f.pad("()")
