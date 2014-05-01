@@ -30,11 +30,17 @@ use std::unstable::finally::Finally;
 ```
 */
 
+#![experimental]
+
 use ops::Drop;
 
 #[cfg(test)] use task::failing;
 
+/// A trait for executing a destructor unconditionally after a block of code,
+/// regardless of whether the blocked fails.
 pub trait Finally<T> {
+    /// Executes this object, unconditionally running `dtor` after this block of
+    /// code has run.
     fn finally(&mut self, dtor: ||) -> T;
 }
 
