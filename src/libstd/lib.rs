@@ -203,8 +203,6 @@ pub mod strbuf;
 
 pub mod ascii;
 
-mod managed;
-mod reference;
 pub mod rc;
 pub mod gc;
 

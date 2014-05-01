@@ -189,6 +189,81 @@ pub fn max<T: TotalOrd>(v1: T, v2: T) -> T {
     if v1 > v2 { v1 } else { v2 }
 }
 
+// Implementation of Eq/TotalEq for some primitive types
+#[cfg(not(test))]
+mod impls {
+    use cmp::{Ord, TotalOrd, Eq, TotalEq, Ordering};
+
+    // & pointers
+    impl<'a, T: Eq> Eq for &'a T {
+        #[inline]
+        fn eq(&self, other: & &'a T) -> bool { *(*self) == *(*other) }
+        #[inline]
+        fn ne(&self, other: & &'a T) -> bool { *(*self) != *(*other) }
+    }
+    impl<'a, T: Ord> Ord for &'a T {
+        #[inline]
+        fn lt(&self, other: & &'a T) -> bool { *(*self) < *(*other) }
+        #[inline]
+        fn le(&self, other: & &'a T) -> bool { *(*self) <= *(*other) }
+        #[inline]
+        fn ge(&self, other: & &'a T) -> bool { *(*self) >= *(*other) }
+        #[inline]
+        fn gt(&self, other: & &'a T) -> bool { *(*self) > *(*other) }
+    }
+    impl<'a, T: TotalOrd> TotalOrd for &'a T {
+        #[inline]
+        fn cmp(&self, other: & &'a T) -> Ordering { (**self).cmp(*other) }
+    }
+    impl<'a, T: TotalEq> TotalEq for &'a T {}
+
+    // @ pointers
+    impl<T:Eq> Eq for @T {
+        #[inline]
+        fn eq(&self, other: &@T) -> bool { *(*self) == *(*other) }
+        #[inline]
+        fn ne(&self, other: &@T) -> bool { *(*self) != *(*other) }
+    }
+    impl<T:Ord> Ord for @T {
+        #[inline]
+        fn lt(&self, other: &@T) -> bool { *(*self) < *(*other) }
+        #[inline]
+        fn le(&self, other: &@T) -> bool { *(*self) <= *(*other) }
+        #[inline]
+        fn ge(&self, other: &@T) -> bool { *(*self) >= *(*other) }
+        #[inline]
+        fn gt(&self, other: &@T) -> bool { *(*self) > *(*other) }
+    }
+    impl<T: TotalOrd> TotalOrd for @T {
+        #[inline]
+        fn cmp(&self, other: &@T) -> Ordering { (**self).cmp(*other) }
+    }
+    impl<T: TotalEq> TotalEq for @T {}
+
+    // ~ pointers
+    impl<T:Eq> Eq for ~T {
+        #[inline]
+        fn eq(&self, other: &~T) -> bool { *(*self) == *(*other) }
+        #[inline]
+        fn ne(&self, other: &~T) -> bool { *(*self) != *(*other) }
+    }
+    impl<T:Ord> Ord for ~T {
+        #[inline]
+        fn lt(&self, other: &~T) -> bool { *(*self) < *(*other) }
+        #[inline]
+        fn le(&self, other: &~T) -> bool { *(*self) <= *(*other) }
+        #[inline]
+        fn ge(&self, other: &~T) -> bool { *(*self) >= *(*other) }
+        #[inline]
+        fn gt(&self, other: &~T) -> bool { *(*self) > *(*other) }
+    }
+    impl<T: TotalOrd> TotalOrd for ~T {
+        #[inline]
+        fn cmp(&self, other: &~T) -> Ordering { (**self).cmp(*other) }
+    }
+    impl<T: TotalEq> TotalEq for ~T {}
+}
+
 #[cfg(test)]
 mod test {
     use super::lexical_ordering;
