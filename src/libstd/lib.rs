@@ -141,6 +141,7 @@ pub use core::any;
 pub use core::cast;
 pub use core::char;
 pub use core::container;
+pub use core::default;
 pub use core::intrinsics;
 pub use core::mem;
 pub use core::ptr;
