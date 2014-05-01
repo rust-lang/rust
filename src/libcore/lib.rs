@@ -21,6 +21,8 @@
 #![feature(globs, macro_rules, managed_boxes)]
 #![deny(missing_doc)]
 
+pub mod num;
+
 /* Core modules for ownership management */
 
 pub mod cast;
