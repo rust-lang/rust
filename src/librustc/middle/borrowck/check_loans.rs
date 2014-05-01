@@ -18,9 +18,10 @@
 // 4. moves do not affect things loaned out in any way
 
 
-use mc = middle::mem_categorization;
 use middle::borrowck::*;
-use middle::moves;
+use euv = middle::expr_use_visitor;
+use middle::freevars;
+use mc = middle::mem_categorization;
 use middle::ty;
 use middle::typeck::MethodCall;
 use syntax::ast;
@@ -288,7 +289,7 @@ impl<'a> CheckLoanCtxt<'a> {
             }
 
             match new_loan.cause {
-                ClosureCapture(span) => {
+                euv::ClosureCapture(span) => {
                     self.bccx.span_note(
                         span,
                         format!("borrow occurs due to use of `{}` in closure",
@@ -321,13 +322,17 @@ impl<'a> CheckLoanCtxt<'a> {
             };
 
             let borrow_summary = match old_loan.cause {
-                ClosureCapture(_) => {
+                euv::ClosureCapture(_) => {
                     format!("previous borrow of `{}` occurs here due to \
                             use in closure",
                             self.bccx.loan_path_to_str(&*old_loan.loan_path))
                 }
 
-                AddrOf | AutoRef | RefBinding | ClosureInvocation => {
+                euv::OverloadedOperator(..) |
+                euv::AddrOf(..) |
+                euv::AutoRef(..) |
+                euv::ClosureInvocation(..) |
+                euv::RefBinding(..) => {
                     format!("previous borrow of `{}` occurs here",
                             self.bccx.loan_path_to_str(&*old_loan.loan_path))
                 }
@@ -711,29 +716,33 @@ impl<'a> CheckLoanCtxt<'a> {
     fn check_captured_variables(&self,
                                 closure_id: ast::NodeId,
                                 span: Span) {
-        for cap_var in self.bccx.capture_map.get(&closure_id).iter() {
-            let var_id = ast_util::def_id_of_def(cap_var.def).node;
-            self.check_if_path_is_moved(closure_id, span,
-                                        MovedInCapture, &Rc::new(LpVar(var_id)));
-            match cap_var.mode {
-                moves::CapRef | moves::CapCopy => {}
-                moves::CapMove => {
-                    check_by_move_capture(self, closure_id, cap_var, &LpVar(var_id));
+        let freevar_mode = freevars::get_capture_mode(self.tcx(), closure_id);
+        freevars::with_freevars(self.tcx(), closure_id, |freevars| {
+            for freevar in freevars.iter() {
+                let var_id = ast_util::def_id_of_def(freevar.def).node;
+                let var_path = Rc::new(LpVar(var_id));
+                self.check_if_path_is_moved(closure_id, span,
+                                            MovedInCapture, &var_path);
+                match freevar_mode {
+                    freevars::CaptureByRef => { }
+                    freevars::CaptureByValue => {
+                        check_by_move_capture(self, closure_id, freevar, &*var_path);
+                    }
                 }
             }
-        }
+        });
         return;
 
         fn check_by_move_capture(this: &CheckLoanCtxt,
                                  closure_id: ast::NodeId,
-                                 cap_var: &moves::CaptureVar,
+                                 freevar: &freevars::freevar_entry,
                                  move_path: &LoanPath) {
             let move_err = this.analyze_move_out_from(closure_id, move_path);
             match move_err {
                 MoveOk => {}
                 MoveWhileBorrowed(loan_path, loan_span) => {
                     this.bccx.span_err(
-                        cap_var.span,
+                        freevar.span,
                         format!("cannot move `{}` into closure \
                                 because it is borrowed",
                                 this.bccx.loan_path_to_str(move_path)));

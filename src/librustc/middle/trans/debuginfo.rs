@@ -984,7 +984,8 @@ fn compile_unit_metadata(cx: &CrateContext) {
     };
 
     debug!("compile_unit_metadata: {:?}", compile_unit_name);
-    let producer = format!("rustc version {}", env!("CFG_VERSION"));
+    let producer = format!("rustc version {}",
+                           (option_env!("CFG_VERSION")).expect("CFG_VERSION"));
 
     compile_unit_name.with_ref(|compile_unit_name| {
         work_dir.as_vec().with_c_str(|work_dir| {

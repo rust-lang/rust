@@ -12,16 +12,14 @@
 
 #![allow(non_camel_case_types)]
 
-use mc = middle::mem_categorization;
-use middle::ty;
-use middle::typeck;
-use middle::moves;
 use middle::dataflow::DataFlowContext;
 use middle::dataflow::DataFlowOperator;
-use util::nodemap::{NodeMap, NodeSet};
+use euv = middle::expr_use_visitor;
+use mc = middle::mem_categorization;
+use middle::ty;
 use util::ppaux::{note_and_explain_region, Repr, UserString};
 
-use std::cell::{Cell, RefCell};
+use std::cell::{Cell};
 use std::ops::{BitOr, BitAnd};
 use std::rc::Rc;
 use std::strbuf::StrBuf;
@@ -75,13 +73,9 @@ impl<'a> Visitor<()> for BorrowckCtxt<'a> {
 }
 
 pub fn check_crate(tcx: &ty::ctxt,
-                   moves_map: &NodeSet,
-                   capture_map: &moves::CaptureMap,
                    krate: &ast::Crate) {
     let mut bccx = BorrowckCtxt {
         tcx: tcx,
-        moves_map: moves_map,
-        capture_map: capture_map,
         stats: @BorrowStats {
             loaned_paths_same: Cell::new(0),
             loaned_paths_imm: Cell::new(0),
@@ -135,7 +129,8 @@ fn borrowck_fn(this: &mut BorrowckCtxt,
     debug!("borrowck_fn(id={})", id);
 
     // Check the body of fn items.
-    let (id_range, all_loans, move_data) =
+    let id_range = ast_util::compute_id_range_for_fn_body(fk, decl, body, sp, id);
+    let (all_loans, move_data) =
         gather_loans::gather_loans_in_fn(this, decl, body);
     let mut loan_dfcx =
         DataFlowContext::new(this.tcx,
@@ -164,8 +159,6 @@ fn borrowck_fn(this: &mut BorrowckCtxt,
 
 pub struct BorrowckCtxt<'a> {
     tcx: &'a ty::ctxt,
-    moves_map: &'a NodeSet,
-    capture_map: &'a moves::CaptureMap,
 
     // Statistics:
     stats: @BorrowStats
@@ -199,16 +192,7 @@ pub struct Loan {
     gen_scope: ast::NodeId,
     kill_scope: ast::NodeId,
     span: Span,
-    cause: LoanCause,
-}
-
-#[deriving(Eq)]
-pub enum LoanCause {
-    ClosureCapture(Span),
-    AddrOf,
-    AutoRef,
-    RefBinding,
-    ClosureInvocation,
+    cause: euv::LoanCause,
 }
 
 #[deriving(Eq, TotalEq, Hash)]
@@ -341,14 +325,14 @@ pub enum bckerr_code {
 #[deriving(Eq)]
 pub struct BckError {
     span: Span,
-    cause: LoanCause,
+    cause: euv::LoanCause,
     cmt: mc::cmt,
     code: bckerr_code
 }
 
 pub enum AliasableViolationKind {
     MutabilityViolation,
-    BorrowViolation(LoanCause)
+    BorrowViolation(euv::LoanCause)
 }
 
 pub enum MovedValueUseKind {
@@ -370,14 +354,8 @@ impl<'a> BorrowckCtxt<'a> {
         self.tcx.region_maps.is_subscope_of(r_sub, r_sup)
     }
 
-    pub fn is_move(&self, id: ast::NodeId) -> bool {
-        self.moves_map.contains(&id)
-    }
-
-    pub fn mc(&self) -> mc::MemCategorizationContext<&'a ty::ctxt> {
-        mc::MemCategorizationContext {
-            typer: self.tcx,
-        }
+    pub fn mc(&self) -> mc::MemCategorizationContext<'a,ty::ctxt> {
+        mc::MemCategorizationContext::new(self.tcx)
     }
 
     pub fn cat_expr(&self, expr: &ast::Expr) -> mc::cmt {
@@ -439,14 +417,15 @@ impl<'a> BorrowckCtxt<'a> {
     }
 
     pub fn cat_captured_var(&self,
-                            id: ast::NodeId,
-                            span: Span,
-                            captured_var: &moves::CaptureVar) -> mc::cmt {
+                            closure_id: ast::NodeId,
+                            closure_span: Span,
+                            upvar_def: ast::Def)
+                            -> mc::cmt {
         // Create the cmt for the variable being borrowed, from the
         // caller's perspective
-        let var_id = ast_util::def_id_of_def(captured_var.def).node;
+        let var_id = ast_util::def_id_of_def(upvar_def).node;
         let var_ty = ty::node_id_to_type(self.tcx, var_id);
-        self.cat_def(id, span, var_ty, captured_var.def)
+        self.cat_def(closure_id, closure_span, var_ty, upvar_def)
     }
 
     pub fn cat_discr(&self, cmt: mc::cmt, match_id: ast::NodeId) -> mc::cmt {
@@ -604,13 +583,16 @@ impl<'a> BorrowckCtxt<'a> {
                 };
 
                 match err.cause {
-                    ClosureCapture(_) => {
+                    euv::ClosureCapture(_) => {
                         format!("closure cannot assign to {}", descr)
                     }
-                    AddrOf | RefBinding | AutoRef => {
+                    euv::OverloadedOperator |
+                    euv::AddrOf |
+                    euv::RefBinding |
+                    euv::AutoRef => {
                         format!("cannot borrow {} as mutable", descr)
                     }
-                    ClosureInvocation => {
+                    euv::ClosureInvocation => {
                         self.tcx.sess.span_bug(err.span,
                             "err_mutbl with a closure invocation");
                     }
@@ -644,7 +626,7 @@ impl<'a> BorrowckCtxt<'a> {
             MutabilityViolation => {
                 "cannot assign to data"
             }
-            BorrowViolation(ClosureCapture(_)) => {
+            BorrowViolation(euv::ClosureCapture(_)) => {
                 // I don't think we can get aliasability violations
                 // with closure captures, so no need to come up with a
                 // good error message. The reason this cannot happen
@@ -654,13 +636,14 @@ impl<'a> BorrowckCtxt<'a> {
                     span,
                     "aliasability violation with closure");
             }
-            BorrowViolation(AddrOf) |
-            BorrowViolation(AutoRef) |
-            BorrowViolation(RefBinding) => {
+            BorrowViolation(euv::OverloadedOperator) |
+            BorrowViolation(euv::AddrOf) |
+            BorrowViolation(euv::AutoRef) |
+            BorrowViolation(euv::RefBinding) => {
                 "cannot borrow data mutably"
             }
 
-            BorrowViolation(ClosureInvocation) => {
+            BorrowViolation(euv::ClosureInvocation) => {
                 "closure invocation"
             }
         };
@@ -839,34 +822,3 @@ impl Repr for LoanPath {
     }
 }
 
-///////////////////////////////////////////////////////////////////////////
-
-impl<'a> mc::Typer for &'a ty::ctxt {
-    fn tcx<'a>(&'a self) -> &'a ty::ctxt {
-        *self
-    }
-
-    fn node_ty(&self, id: ast::NodeId) -> mc::McResult<ty::t> {
-        Ok(ty::node_id_to_type(*self, id))
-    }
-
-    fn node_method_ty(&self, method_call: typeck::MethodCall) -> Option<ty::t> {
-        self.method_map.borrow().find(&method_call).map(|method| method.ty)
-    }
-
-    fn adjustments<'a>(&'a self) -> &'a RefCell<NodeMap<ty::AutoAdjustment>> {
-        &self.adjustments
-    }
-
-    fn is_method_call(&self, id: ast::NodeId) -> bool {
-        self.method_map.borrow().contains_key(&typeck::MethodCall::expr(id))
-    }
-
-    fn temporary_scope(&self, id: ast::NodeId) -> Option<ast::NodeId> {
-        self.region_maps.temporary_scope(id)
-    }
-
-    fn upvar_borrow(&self, id: ty::UpvarId) -> ty::UpvarBorrow {
-        self.upvar_borrow_map.borrow().get_copy(&id)
-    }
-}

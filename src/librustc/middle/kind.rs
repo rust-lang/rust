@@ -228,11 +228,11 @@ fn check_fn(
 
     // Check kinds on free variables:
     with_appropriate_checker(cx, fn_id, |chk| {
-        freevars::with_freevars(cx.tcx, fn_id, |r| {
-            for fv in r.iter() {
+        freevars::with_freevars(cx.tcx, fn_id, |freevars| {
+            for fv in freevars.iter() {
                 chk(cx, fv);
             }
-        })
+        });
     });
 
     visit::walk_fn(cx, fk, decl, body, sp, fn_id, ());

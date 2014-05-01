@@ -2067,7 +2067,7 @@ pub fn write_metadata(cx: &CrateContext, krate: &ast::Crate) -> Vec<u8> {
     }
 
     let encode_inlined_item: encoder::EncodeInlinedItem =
-        |ecx, ebml_w, ii| astencode::encode_inlined_item(ecx, ebml_w, ii, &cx.maps);
+        |ecx, ebml_w, ii| astencode::encode_inlined_item(ecx, ebml_w, ii);
 
     let encode_parms = crate_ctxt_to_encode_parms(cx, encode_inlined_item);
     let metadata = encoder::encode_metadata(encode_parms, krate);
@@ -2097,7 +2097,7 @@ pub fn write_metadata(cx: &CrateContext, krate: &ast::Crate) -> Vec<u8> {
 pub fn trans_crate(krate: ast::Crate,
                    analysis: CrateAnalysis,
                    output: &OutputFilenames) -> (ty::ctxt, CrateTranslation) {
-    let CrateAnalysis { ty_cx: tcx, exp_map2, maps, reachable, .. } = analysis;
+    let CrateAnalysis { ty_cx: tcx, exp_map2, reachable, .. } = analysis;
 
     // Before we touch LLVM, make sure that multithreading is enabled.
     unsafe {
@@ -2129,7 +2129,7 @@ pub fn trans_crate(krate: ast::Crate,
     // 1. http://llvm.org/bugs/show_bug.cgi?id=11479
     let llmod_id = link_meta.crateid.name + ".rs";
 
-    let ccx = CrateContext::new(llmod_id, tcx, exp_map2, maps,
+    let ccx = CrateContext::new(llmod_id, tcx, exp_map2,
                                 Sha256::new(), link_meta, reachable);
     {
         let _icx = push_ctxt("text");

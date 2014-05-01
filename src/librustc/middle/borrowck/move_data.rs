@@ -22,6 +22,7 @@ use collections::{HashMap, HashSet};
 use middle::borrowck::*;
 use middle::dataflow::DataFlowContext;
 use middle::dataflow::DataFlowOperator;
+use euv = middle::expr_use_visitor;
 use middle::ty;
 use syntax::ast;
 use syntax::ast_util;
@@ -357,7 +358,7 @@ impl MoveData {
                           assign_id: ast::NodeId,
                           span: Span,
                           assignee_id: ast::NodeId,
-                          is_also_move: bool) {
+                          mode: euv::MutateMode) {
         /*!
          * Adds a new record for an assignment to `lp` that occurs at
          * location `id` with the given `span`.
@@ -368,8 +369,11 @@ impl MoveData {
 
         let path_index = self.move_path(tcx, lp.clone());
 
-        if !is_also_move {
-            self.assignee_ids.borrow_mut().insert(assignee_id);
+        match mode {
+            euv::JustWrite => {
+                self.assignee_ids.borrow_mut().insert(assignee_id);
+            }
+            euv::WriteAndRead => { }
         }
 
         let assignment = Assignment {

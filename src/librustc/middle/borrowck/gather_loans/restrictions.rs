@@ -13,6 +13,7 @@
  */
 
 use middle::borrowck::*;
+use euv = middle::expr_use_visitor;
 use mc = middle::mem_categorization;
 use middle::ty;
 use syntax::codemap::Span;
@@ -27,7 +28,7 @@ pub enum RestrictionResult {
 
 pub fn compute_restrictions(bccx: &BorrowckCtxt,
                             span: Span,
-                            cause: LoanCause,
+                            cause: euv::LoanCause,
                             cmt: mc::cmt,
                             loan_region: ty::Region,
                             restr: RestrictionSet) -> RestrictionResult {
@@ -50,7 +51,7 @@ struct RestrictionsContext<'a> {
     span: Span,
     cmt_original: mc::cmt,
     loan_region: ty::Region,
-    cause: LoanCause,
+    cause: euv::LoanCause,
 }
 
 impl<'a> RestrictionsContext<'a> {
