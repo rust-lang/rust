@@ -30,6 +30,7 @@ use rt::global_heap::{malloc_raw, realloc_raw};
 use raw::Slice;
 use slice::{ImmutableEqVector, ImmutableVector, Items, MutItems, MutableVector};
 use slice::{MutableTotalOrdVector, OwnedVector, Vector};
+use slice::{MutableVectorAllocating};
 
 /// An owned, growable vector.
 ///
