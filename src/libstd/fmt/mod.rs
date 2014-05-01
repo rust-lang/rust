@@ -1291,6 +1291,15 @@ impl<T: Show> Show for Option<T> {
     }
 }
 
+impl<T: Show, U: Show> Show for ::result::Result<T, U> {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        match *self {
+            Ok(ref t) => write!(f.buf, "Ok({})", *t),
+            Err(ref t) => write!(f.buf, "Err({})", *t),
+        }
+    }
+}
+
 impl<'a, T: Show> Show for &'a [T] {
     fn fmt(&self, f: &mut Formatter) -> Result {
         if f.flags & (1 << (parse::FlagAlternate as uint)) == 0 {
