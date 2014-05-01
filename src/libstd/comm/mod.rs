@@ -958,8 +958,8 @@ impl<T: Send> select::Packet for Receiver<T> {
 }
 
 impl<T: Send> TimeoutReceiver<T> {
+    /// Creates a TimeoutReceiver
     pub fn new(inner: Receiver<T>, timeout: u64) -> TimeoutReceiver<T> {
-        // create a timer object
         let timer = Timer::new().unwrap();
         TimeoutReceiver { inner: inner, timer: timer, timeout: timeout }
     }
