@@ -138,11 +138,9 @@
 //! }
 //! ```
 
-use any::Any;
 use cmp::{Eq, TotalEq, TotalOrd};
 use default::Default;
 use iter::{Iterator, DoubleEndedIterator, FromIterator, ExactSize};
-use kinds::Send;
 use mem;
 use slice;
 
@@ -238,7 +236,7 @@ impl<T> Option<T> {
     ///
     /// Fails if the value is a `None` with a custom failure message provided by `msg`.
     #[inline]
-    pub fn expect<M: Any + Send>(self, msg: M) -> T {
+    pub fn expect(self, msg: &str) -> T {
         match self {
             Some(val) => val,
             None => fail!(msg),
