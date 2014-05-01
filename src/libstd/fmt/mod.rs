@@ -486,6 +486,7 @@ will look like `"\\{"`.
 use any;
 use cast;
 use char::Char;
+use cmp;
 use container::Container;
 use io::MemWriter;
 use io;
@@ -1311,6 +1312,16 @@ impl<T: Show> Show for iter::MinMaxResult<T> {
                 write!(f.buf, "OneElement({})", *t),
             iter::MinMax(ref t1, ref t2) =>
                 write!(f.buf, "MinMax({}, {})", *t1, *t2),
+        }
+    }
+}
+
+impl Show for cmp::Ordering {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        match *self {
+            cmp::Less => write!(f.buf, "Less"),
+            cmp::Greater => write!(f.buf, "Greater"),
+            cmp::Equal => write!(f.buf, "Equal"),
         }
     }
 }
