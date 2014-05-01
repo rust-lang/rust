@@ -16,8 +16,6 @@ use ext::base::*;
 use ext::base;
 use ext::build::AstBuilder;
 
-use std::char;
-
 pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree]) -> ~base::MacResult {
     // Gather all argument expressions
     let exprs = match get_exprs_from_tts(cx, sp, tts) {
@@ -59,7 +57,7 @@ pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree]) -> 
 
                 // char literal, push to vector expression
                 ast::LitChar(v) => {
-                    if char::from_u32(v).unwrap().is_ascii() {
+                    if v.is_ascii() {
                         bytes.push(cx.expr_u8(expr.span, v as u8));
                     } else {
                         cx.span_err(expr.span, "non-ascii char literal in bytes!")

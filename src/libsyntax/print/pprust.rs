@@ -26,7 +26,6 @@ use print::pp::{Breaks, Consistent, Inconsistent, eof};
 use print::pp;
 
 use std::cast;
-use std::char;
 use std::io::{IoResult, MemWriter};
 use std::io;
 use std::rc::Rc;
@@ -2196,7 +2195,7 @@ impl<'a> State<'a> {
             ast::LitStr(ref st, style) => self.print_string(st.get(), style),
             ast::LitChar(ch) => {
                 let mut res = StrBuf::from_str("'");
-                char::from_u32(ch).unwrap().escape_default(|c| res.push_char(c));
+                ch.escape_default(|c| res.push_char(c));
                 res.push_char('\'');
                 word(&mut self.s, res.into_owned())
             }

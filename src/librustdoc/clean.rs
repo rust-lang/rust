@@ -26,7 +26,6 @@ use rustc::metadata::decoder;
 
 use std::local_data;
 use std::strbuf::StrBuf;
-use std;
 
 use core;
 use doctree;
@@ -1246,7 +1245,7 @@ fn lit_to_str(lit: &ast::Lit) -> ~str {
     match lit.node {
         ast::LitStr(ref st, _) => st.get().to_owned(),
         ast::LitBinary(ref data) => format!("{:?}", data.as_slice()),
-        ast::LitChar(c) => "'".to_owned() + std::char::from_u32(c).unwrap().to_str() + "'",
+        ast::LitChar(c) => format!("'{}'", c),
         ast::LitInt(i, _t) => i.to_str(),
         ast::LitUint(u, _t) => u.to_str(),
         ast::LitIntUnsuffixed(i) => i.to_str(),
