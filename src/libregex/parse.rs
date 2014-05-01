@@ -220,7 +220,9 @@ impl<'a> Parser<'a> {
                         try!(self.parse_group_opts())
                     } else {
                         self.caps += 1;
-                        self.stack.push(Paren(self.flags, self.caps, ~""))
+                        self.stack.push(Paren(self.flags,
+                                              self.caps,
+                                              "".to_owned()))
                     }
                 }
                 ')' => {
@@ -769,7 +771,7 @@ impl<'a> Parser<'a> {
                     }
                     if self.cur() == ':' {
                         // Save the old flags with the opening paren.
-                        self.stack.push(Paren(self.flags, 0, ~""));
+                        self.stack.push(Paren(self.flags, 0, "".to_owned()));
                     }
                     self.flags = flags;
                     return Ok(())

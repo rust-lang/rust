@@ -10,9 +10,9 @@
 
 
 pub fn main() {
-    let x = &"hello";
-    let v = &"hello";
-    let y : &str = &"there";
+    let x = "hello";
+    let v = "hello";
+    let y : &str = "there";
 
     println!("{}", x);
     println!("{}", y);
@@ -20,15 +20,15 @@ pub fn main() {
     assert_eq!(x[0], 'h' as u8);
     assert_eq!(x[4], 'o' as u8);
 
-    let z : &str = &"thing";
+    let z : &str = "thing";
     assert_eq!(v, x);
     assert!(x != z);
 
-    let a = &"aaaa";
-    let b = &"bbbb";
+    let a = "aaaa";
+    let b = "bbbb";
 
-    let c = &"cccc";
-    let cc = &"ccccc";
+    let c = "cccc";
+    let cc = "ccccc";
 
     println!("{}", a);
 

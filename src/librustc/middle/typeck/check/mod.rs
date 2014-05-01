@@ -2564,70 +2564,74 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
     let tcx = fcx.ccx.tcx;
     let id = expr.id;
     match expr.node {
-      ast::ExprVstore(ev, vst) => {
-        let typ = match ev.node {
-          ast::ExprLit(lit) if ast_util::lit_is_str(lit) => {
-            ast_expr_vstore_to_ty(fcx, ev, vst, || ty::mt{ ty: ty::mk_str(tcx),
-                                                           mutbl: ast::MutImmutable })
-          }
-          ast::ExprVec(ref args) => {
-            let mutability = match vst {
-                ast::ExprVstoreMutSlice => ast::MutMutable,
-                _ => ast::MutImmutable,
-            };
-            let mut any_error = false;
-            let mut any_bot = false;
-            let t: ty::t = fcx.infcx().next_ty_var();
-            for e in args.iter() {
-                check_expr_has_type(fcx, *e, t);
-                let arg_t = fcx.expr_ty(*e);
-                if ty::type_is_error(arg_t) {
-                    any_error = true;
+        ast::ExprVstore(ev, vst) => {
+            let typ = match ev.node {
+                ast::ExprVec(ref args) => {
+                    let mutability = match vst {
+                        ast::ExprVstoreMutSlice => ast::MutMutable,
+                        _ => ast::MutImmutable,
+                    };
+                    let mut any_error = false;
+                    let mut any_bot = false;
+                    let t: ty::t = fcx.infcx().next_ty_var();
+                    for e in args.iter() {
+                        check_expr_has_type(fcx, *e, t);
+                        let arg_t = fcx.expr_ty(*e);
+                        if ty::type_is_error(arg_t) {
+                            any_error = true;
+                        }
+                        else if ty::type_is_bot(arg_t) {
+                            any_bot = true;
+                        }
+                    }
+                    if any_error {
+                        ty::mk_err()
+                    } else if any_bot {
+                        ty::mk_bot()
+                    } else {
+                        ast_expr_vstore_to_ty(fcx, ev, vst, ||
+                            ty::mt{ ty: ty::mk_vec(tcx,
+                                                   ty::mt {ty: t, mutbl: mutability},
+                                                   None),
+                                                   mutbl: mutability })
+                    }
                 }
-                else if ty::type_is_bot(arg_t) {
-                    any_bot = true;
+                ast::ExprRepeat(element, count_expr) => {
+                    check_expr_with_hint(fcx, count_expr, ty::mk_uint());
+                    let _ = ty::eval_repeat_count(fcx, count_expr);
+                    let mutability = match vst {
+                        ast::ExprVstoreMutSlice => ast::MutMutable,
+                        _ => ast::MutImmutable,
+                    };
+                    let t = fcx.infcx().next_ty_var();
+                    check_expr_has_type(fcx, element, t);
+                    let arg_t = fcx.expr_ty(element);
+                    if ty::type_is_error(arg_t) {
+                        ty::mk_err()
+                    } else if ty::type_is_bot(arg_t) {
+                        ty::mk_bot()
+                    } else {
+                        ast_expr_vstore_to_ty(fcx, ev, vst, ||
+                            ty::mt{ ty: ty::mk_vec(tcx,
+                                                   ty::mt {ty: t, mutbl: mutability},
+                                                   None),
+                                                   mutbl: mutability})
+                    }
                 }
-            }
-            if any_error {
-                ty::mk_err()
-            } else if any_bot {
-                ty::mk_bot()
-            } else {
-                ast_expr_vstore_to_ty(fcx, ev, vst, ||
-                    ty::mt{ ty: ty::mk_vec(tcx,
-                                           ty::mt {ty: t, mutbl: mutability},
-                                           None),
-                            mutbl: mutability })
-            }
-          }
-          ast::ExprRepeat(element, count_expr) => {
-            check_expr_with_hint(fcx, count_expr, ty::mk_uint());
-            let _ = ty::eval_repeat_count(fcx, count_expr);
-            let mutability = match vst {
-                ast::ExprVstoreMutSlice => ast::MutMutable,
-                _ => ast::MutImmutable,
+                ast::ExprLit(_) => {
+                    let error = if vst == ast::ExprVstoreSlice {
+                        "`&\"string\"` has been removed; use `\"string\"` instead"
+                    } else {
+                        "`~\"string\"` has been removed; use `\"string\".to_owned()` instead"
+                    };
+                    tcx.sess.span_err(expr.span, error);
+                    ty::mk_err()
+                }
+                _ => tcx.sess.span_bug(expr.span, "vstore modifier on non-sequence"),
             };
-            let t = fcx.infcx().next_ty_var();
-            check_expr_has_type(fcx, element, t);
-            let arg_t = fcx.expr_ty(element);
-            if ty::type_is_error(arg_t) {
-                ty::mk_err()
-            } else if ty::type_is_bot(arg_t) {
-                ty::mk_bot()
-            } else {
-                ast_expr_vstore_to_ty(fcx, ev, vst, ||
-                    ty::mt{ ty: ty::mk_vec(tcx,
-                                           ty::mt {ty: t, mutbl: mutability},
-                                           None),
-                            mutbl: mutability})
-            }
-          }
-          _ =>
-            tcx.sess.span_bug(expr.span, "vstore modifier on non-sequence")
-        };
-        fcx.write_ty(ev.id, typ);
-        fcx.write_ty(id, typ);
-      }
+            fcx.write_ty(ev.id, typ);
+            fcx.write_ty(id, typ);
+        }
 
       ast::ExprBox(place, subexpr) => {
           check_expr(fcx, place);

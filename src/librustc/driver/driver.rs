@@ -1059,16 +1059,16 @@ pub fn build_session_(sopts: session::Options,
 
 pub fn parse_pretty(sess: &Session, name: &str) -> PpMode {
     match name {
-      &"normal" => PpmNormal,
-      &"expanded" => PpmExpanded,
-      &"typed" => PpmTyped,
-      &"expanded,identified" => PpmExpandedIdentified,
-      &"identified" => PpmIdentified,
-      _ => {
-        sess.fatal("argument to `pretty` must be one of `normal`, \
-                    `expanded`, `typed`, `identified`, \
-                    or `expanded,identified`");
-      }
+        "normal" => PpmNormal,
+        "expanded" => PpmExpanded,
+        "typed" => PpmTyped,
+        "expanded,identified" => PpmExpandedIdentified,
+        "identified" => PpmIdentified,
+        _ => {
+            sess.fatal("argument to `pretty` must be one of `normal`, \
+                        `expanded`, `typed`, `identified`, \
+                        or `expanded,identified`");
+        }
     }
 }
 

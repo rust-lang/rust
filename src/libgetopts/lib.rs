@@ -1441,7 +1441,7 @@ mod tests {
             optmulti("l", "", "Desc", "VAL"));
 
         let expected =
-~"Usage: fruits
+"Usage: fruits
 
 Options:
     -b --banana VAL     Desc
@@ -1450,7 +1450,7 @@ Options:
     -k --kiwi           Desc
     -p [VAL]            Desc
     -l VAL              Desc
-";
+".to_owned();
 
         let generated_usage = usage("Usage: fruits", optgroups.as_slice());
 
@@ -1471,13 +1471,13 @@ Options:
                 "This is a long description which _will_ be wrapped..+.."));
 
         let expected =
-~"Usage: fruits
+"Usage: fruits
 
 Options:
     -k --kiwi           This is a long description which won't be wrapped..+..
     -a --apple          This is a long description which _will_ be
                         wrapped..+..
-";
+".to_owned();
 
         let usage = usage("Usage: fruits", optgroups.as_slice());
 
@@ -1496,14 +1496,14 @@ Options:
 confuse the line wrapping; an apple costs 0.51€ in some parts of Europe."));
 
         let expected =
-~"Usage: fruits
+"Usage: fruits
 
 Options:
     -k --k–w–           The word kiwi is normally spelled with two i's
     -a --apple          This “description” has some characters that could
                         confuse the line wrapping; an apple costs 0.51€ in
                         some parts of Europe.
-";
+".to_owned();
 
         let usage = usage("Usage: fruits", optgroups.as_slice());
 

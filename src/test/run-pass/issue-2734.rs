@@ -16,7 +16,7 @@ fn perform_hax<T: 'static>(x: ~T) -> ~hax: {
 }
 
 fn deadcode() {
-    perform_hax(~~"deadcode");
+    perform_hax(~"deadcode".to_owned());
 }
 
 pub fn main() {
