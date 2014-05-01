@@ -1242,6 +1242,36 @@ impl<T> Show for *mut T {
     fn fmt(&self, f: &mut Formatter) -> Result { secret_pointer(self, f) }
 }
 
+macro_rules! peel(($name:ident, $($other:ident,)*) => (tuple!($($other,)*)))
+
+macro_rules! tuple (
+    () => ();
+    ( $($name:ident,)+ ) => (
+        impl<$($name:Show),*> Show for ($($name,)*) {
+            #[allow(uppercase_variables, dead_assignment)]
+            fn fmt(&self, f: &mut Formatter) -> Result {
+                try!(write!(f.buf, "("));
+                let ($(ref $name,)*) = *self;
+                let mut n = 0;
+                $(
+                    if n > 0 {
+                        try!(write!(f.buf, ", "));
+                    }
+                    try!(write!(f.buf, "{}", *$name));
+                    n += 1;
+                )*
+                if n == 1 {
+                    try!(write!(f.buf, ","));
+                }
+                write!(f.buf, ")")
+            }
+        }
+        peel!($($name,)*)
+    )
+)
+
+tuple! { T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, }
+
 impl Show for Box<any::Any> {
     fn fmt(&self, f: &mut Formatter) -> Result { f.pad("Box<Any>") }
 }
