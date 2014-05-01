@@ -120,9 +120,9 @@
 //! });
 //! rx.recv();
 //! ```
-//! 
+//!
 //! Reading from a channel with a timeout:
-//! 
+//!
 //! ```
 //! let (tx, rx) = channel();
 //! let mut rx = TimeoutReceiver::new(rx, 10000);
@@ -968,7 +968,7 @@ impl<T: Send> TimeoutReceiver<T> {
     /// timeout has passed
     ///
     /// This method can not fail as opposed to the original Receiver::recv, but
-    /// it returns an Option instead of the raw value. None is returned if the 
+    /// it returns an Option instead of the raw value. None is returned if the
     /// recv timed out.
     pub fn recv(&mut self) -> Option<T> {
         let oneshot = self.timer.oneshot(self.timeout);
@@ -981,7 +981,7 @@ impl<T: Send> TimeoutReceiver<T> {
             inner_rx.add();
         }
         let ret = sel.wait();
-        if ret == inner_rx.id() { 
+        if ret == inner_rx.id() {
             return Some(inner_rx.recv());
         }
 
