@@ -131,7 +131,7 @@ pub unsafe fn position<T>(buf: *T, f: |&T| -> bool) -> uint {
     }
 }
 
-/// Create an null pointer.
+/// Create a null pointer.
 ///
 /// # Example
 ///

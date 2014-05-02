@@ -3643,7 +3643,7 @@ pub fn check_enum_variants(ccx: &CrateCtxt,
                     let declty = ty::mk_int_var(ccx.tcx, fcx.infcx().next_int_var_id());
                     check_const_with_ty(&fcx, e.span, e, declty);
                     // check_expr (from check_const pass) doesn't guarantee
-                    // that the expression is in an form that eval_const_expr can
+                    // that the expression is in a form that eval_const_expr can
                     // handle, so we may still get an internal compiler error
 
                     match const_eval::eval_const_expr_partial(ccx.tcx, e) {

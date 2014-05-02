@@ -161,7 +161,7 @@ Comments in Rust code follow the general C++ style of line and block-comment for
 with no nesting of block-comment delimiters.
 
 Line comments beginning with exactly _three_ slashes (`///`), and block
-comments beginning with a exactly one repeated asterisk in the block-open
+comments beginning with exactly one repeated asterisk in the block-open
 sequence (`/**`), are interpreted as a special syntax for `doc`
 [attributes](#attributes).  That is, they are equivalent to writing
 `#[doc="..."]` around the body of the comment (this includes the comment
@@ -365,7 +365,7 @@ of integer literal suffix:
     give the literal the corresponding machine type.
 
 The type of an _unsuffixed_ integer literal is determined by type inference.
-If a integer type can be _uniquely_ determined from the surrounding program
+If an integer type can be _uniquely_ determined from the surrounding program
 context, the unsuffixed integer literal has that type.  If the program context
 underconstrains the type, the unsuffixed integer literal's type is `int`; if
 the program context overconstrains the type, it is considered a static type
@@ -2184,7 +2184,7 @@ Supported traits for `deriving` are:
 * `Hash`, to iterate over the bytes in a data type.
 * `Rand`, to create a random instance of a data type.
 * `Default`, to create an empty instance of a data type.
-* `Zero`, to create an zero instance of a numeric data type.
+* `Zero`, to create a zero instance of a numeric data type.
 * `FromPrimitive`, to create an instance from a numeric primitive.
 * `Show`, to format a value using the `{}` formatter.
 
