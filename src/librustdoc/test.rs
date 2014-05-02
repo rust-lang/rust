@@ -55,7 +55,7 @@ pub fn run(input: &str, cfgs: Vec<~str>,
     diagnostic::mk_span_handler(diagnostic_handler, codemap);
 
     let sess = driver::build_session_(sessopts,
-                                      Some(input_path),
+                                      Some(input_path.clone()),
                                       span_diagnostic_handler);
 
     let mut cfg = driver::build_configuration(&sess);
@@ -70,6 +70,7 @@ pub fn run(input: &str, cfgs: Vec<~str>,
     let ctx = @core::DocContext {
         krate: krate,
         maybe_typed: core::NotTyped(sess),
+        src: input_path,
     };
     local_data::set(super::ctxtkey, ctx);
 

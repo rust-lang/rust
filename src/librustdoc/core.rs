@@ -34,7 +34,8 @@ pub enum MaybeTyped {
 
 pub struct DocContext {
     pub krate: ast::Crate,
-    pub maybe_typed: MaybeTyped
+    pub maybe_typed: MaybeTyped,
+    pub src: Path,
 }
 
 impl DocContext {
@@ -96,7 +97,8 @@ fn get_ast_and_resolve(cpath: &Path, libs: HashSet<Path>, cfgs: Vec<~str>)
     debug!("crate: {:?}", krate);
     (DocContext {
         krate: krate,
-        maybe_typed: Typed(ty_cx)
+        maybe_typed: Typed(ty_cx),
+        src: cpath.clone(),
     }, CrateAnalysis {
         exported_items: exported_items,
         public_items: public_items,
