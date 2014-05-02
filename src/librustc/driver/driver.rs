@@ -210,7 +210,6 @@ pub fn phase_2_configure_and_expand(sess: &Session,
                                     -> (ast::Crate, syntax::ast_map::Map) {
     let time_passes = sess.time_passes();
 
-    sess.building_library.set(session::building_library(&sess.opts, &krate));
     *sess.crate_types.borrow_mut() = session::collect_crate_types(sess, krate.attrs.as_slice());
 
     time(time_passes, "gated feature checking", (), |_|
@@ -1046,7 +1045,6 @@ pub fn build_session_(sopts: session::Options,
         entry_type: Cell::new(None),
         macro_registrar_fn: Cell::new(None),
         default_sysroot: default_sysroot,
-        building_library: Cell::new(false),
         local_crate_source_file: local_crate_source_file,
         working_dir: os::getcwd(),
         lints: RefCell::new(NodeMap::new()),

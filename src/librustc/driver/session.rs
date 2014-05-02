@@ -25,7 +25,6 @@ use syntax::codemap::Span;
 use syntax::diagnostic;
 use syntax::parse::ParseSess;
 use syntax::{abi, ast, codemap};
-use syntax;
 
 use std::cell::{Cell, RefCell};
 use collections::HashSet;
@@ -185,7 +184,6 @@ pub struct Session {
     pub entry_type: Cell<Option<EntryFnType>>,
     pub macro_registrar_fn: Cell<Option<ast::NodeId>>,
     pub default_sysroot: Option<Path>,
-    pub building_library: Cell<bool>,
     // The name of the root source file of the crate, in the local file system. The path is always
     // expected to be absolute. `None` means that there is no source file.
     pub local_crate_source_file: Option<Path>,
@@ -475,26 +473,6 @@ cgoptions!(
 // Seems out of place, but it uses session, so I'm putting it here
 pub fn expect<T:Clone>(sess: &Session, opt: Option<T>, msg: || -> ~str) -> T {
     diagnostic::expect(sess.diagnostic(), opt, msg)
-}
-
-pub fn building_library(options: &Options, krate: &ast::Crate) -> bool {
-    if options.test { return false }
-    for output in options.crate_types.iter() {
-        match *output {
-            CrateTypeExecutable => {}
-            CrateTypeStaticlib | CrateTypeDylib | CrateTypeRlib => return true
-        }
-    }
-    match syntax::attr::first_attr_value_str_by_name(krate.attrs.as_slice(),
-                                                     "crate_type") {
-        Some(s) => {
-            s.equiv(&("lib")) ||
-            s.equiv(&("rlib")) ||
-            s.equiv(&("dylib")) ||
-            s.equiv(&("staticlib"))
-        }
-        _ => false
-    }
 }
 
 pub fn default_lib_output() -> CrateType {
