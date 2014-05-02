@@ -143,4 +143,22 @@ mod tests {
         let s = "&lt;script src=&quot;evil.domain?foo&amp;&quot; type=&#39;baz&#39;&gt;";
         b.iter(|| unescape(s));
     }
+
+    #[bench]
+    fn bench_longest_entity(b: &mut test::Bencher) {
+        let s = "&CounterClockwiseContourIntegral;";
+        b.iter(|| assert_eq!(unescape(s).as_slice(), "\u2233"));
+    }
+
+    #[bench]
+    fn bench_longest_non_entity(b: &mut test::Bencher) {
+        let s = "&CounterClockwiseContourIntegraX;";
+        b.iter(|| assert_eq!(unescape(s).as_slice(), "&CounterClockwiseContourIntegraX;"));
+    }
+
+    #[bench]
+    fn bench_short_entity_long_tail(b: &mut test::Bencher) {
+        let s = "&ampnterClockwiseContourIntegral";
+        b.iter(|| assert_eq!(unescape(s).as_slice(), "&nterClockwiseContourIntegral"));
+    }
 }
