@@ -224,7 +224,7 @@ impl IoFactory for UvIoFactory {
     }
     fn fs_mkdir(&mut self, path: &CString,
                 perm: io::FilePermission) -> Result<(), IoError> {
-        let r = FsRequest::mkdir(&self.loop_, path, perm as c_int);
+        let r = FsRequest::mkdir(&self.loop_, path, perm.bits() as c_int);
         r.map_err(uv_error_to_io_error)
     }
     fn fs_rmdir(&mut self, path: &CString) -> Result<(), IoError> {
@@ -237,7 +237,7 @@ impl IoFactory for UvIoFactory {
     }
     fn fs_chmod(&mut self, path: &CString,
                 perm: io::FilePermission) -> Result<(), IoError> {
-        let r = FsRequest::chmod(&self.loop_, path, perm as c_int);
+        let r = FsRequest::chmod(&self.loop_, path, perm.bits() as c_int);
         r.map_err(uv_error_to_io_error)
     }
     fn fs_readdir(&mut self, path: &CString, flags: c_int)
