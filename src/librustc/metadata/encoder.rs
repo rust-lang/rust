@@ -14,6 +14,7 @@
 #![allow(non_camel_case_types)]
 
 use back::svh::Svh;
+use driver::session;
 use metadata::common::*;
 use metadata::cstore;
 use metadata::decoder;
@@ -1696,6 +1697,23 @@ fn encode_crate_triple(ebml_w: &mut Encoder, triple: &str) {
     ebml_w.end_tag();
 }
 
+fn encode_dylib_dependency_formats(ebml_w: &mut Encoder, ecx: &EncodeContext) {
+    ebml_w.start_tag(tag_dylib_dependency_formats);
+    match ecx.tcx.dependency_formats.borrow().find(&session::CrateTypeDylib) {
+        Some(arr) => {
+            let s = arr.iter().enumerate().filter_map(|(i, slot)| {
+                slot.map(|kind| format!("{}:{}", i + 1, match kind {
+                    cstore::RequireDynamic => "d",
+                    cstore::RequireStatic => "s",
+                }))
+            }).collect::<Vec<~str>>();
+            ebml_w.writer.write(s.connect(",").as_bytes());
+        }
+        None => {}
+    }
+    ebml_w.end_tag();
+}
+
 // NB: Increment this as you change the metadata encoding version.
 pub static metadata_encoding_version : &'static [u8] =
     &[0x72, //'r' as u8,
@@ -1767,6 +1785,7 @@ fn encode_metadata_inner(wr: &mut MemWriter, parms: EncodeParams, krate: &Crate)
     encode_crate_id(&mut ebml_w, &ecx.link_meta.crateid);
     encode_crate_triple(&mut ebml_w, tcx.sess.targ_cfg.target_strs.target_triple);
     encode_hash(&mut ebml_w, &ecx.link_meta.crate_hash);
+    encode_dylib_dependency_formats(&mut ebml_w, &ecx);
 
     let mut i = ebml_w.writer.tell().unwrap();
     let crate_attrs = synthesize_crate_attrs(&ecx, krate);

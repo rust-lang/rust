@@ -15,6 +15,7 @@ use driver::session::Session;
 use metadata::csearch;
 use mc = middle::mem_categorization;
 use middle::const_eval;
+use middle::dependency_format;
 use middle::lang_items::{ExchangeHeapLangItem, OpaqueStructLangItem};
 use middle::lang_items::{TyDescStructLangItem, TyVisitorTraitLangItem};
 use middle::freevars;
@@ -349,6 +350,8 @@ pub struct ctxt {
 
     pub method_map: typeck::MethodMap,
     pub vtable_map: typeck::vtable_map,
+
+    pub dependency_formats: RefCell<dependency_format::Dependencies>,
 }
 
 pub enum tbox_flag {
@@ -1123,6 +1126,7 @@ pub fn mk_ctxt(s: Session,
         extern_const_variants: RefCell::new(DefIdMap::new()),
         method_map: RefCell::new(FnvHashMap::new()),
         vtable_map: RefCell::new(FnvHashMap::new()),
+        dependency_formats: RefCell::new(HashMap::new()),
     }
 }
 
