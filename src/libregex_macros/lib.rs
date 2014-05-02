@@ -24,8 +24,11 @@
 extern crate regex;
 extern crate syntax;
 
+use std::rc::Rc;
+
 use syntax::ast;
 use syntax::codemap;
+use syntax::ext::build::AstBuilder;
 use syntax::ext::base::{
     SyntaxExtension, ExtCtxt, MacResult, MacExpr, DummyResult,
     NormalTT, BasicMacroExpander,
@@ -112,13 +115,13 @@ impl<'a> NfaGen<'a> {
         // expression returned.
         let num_cap_locs = 2 * self.prog.num_captures();
         let num_insts = self.prog.insts.len();
-        let cap_names = self.vec_expr(self.names.as_slice(),
-            |cx, name| match name {
-                &Some(ref name) => {
+        let cap_names = self.vec_expr(self.names.as_slice().iter(),
+            |cx, name| match *name {
+                Some(ref name) => {
                     let name = name.as_slice();
                     quote_expr!(cx, Some($name.to_owned()))
                 }
-                &None => quote_expr!(cx, None),
+                None => cx.expr_none(self.sp),
             }
         );
         let prefix_anchor =
@@ -126,10 +129,12 @@ impl<'a> NfaGen<'a> {
                 EmptyBegin(flags) if flags & FLAG_MULTI == 0 => true,
                 _ => false,
             };
-        let init_groups = self.vec_from_fn(num_cap_locs,
-                                           |cx| quote_expr!(cx, None));
-        let prefix_bytes = self.vec_expr(self.prog.prefix.as_slice().as_bytes(),
-                                         |cx, b| quote_expr!(cx, $b));
+        let init_groups = self.vec_expr(range(0, num_cap_locs),
+                                        |cx, _| cx.expr_none(self.sp));
+
+        let prefix_lit = Rc::new(Vec::from_slice(self.prog.prefix.as_slice().as_bytes()));
+        let prefix_bytes = self.cx.expr_lit(self.sp, ast::LitBinary(prefix_lit));
+
         let check_prefix = self.check_prefix();
         let step_insts = self.step_insts();
         let add_insts = self.add_insts();
@@ -320,12 +325,11 @@ fn exec<'t>(which: ::regex::native::MatchKind, input: &'t str,
             let nextpc = pc + 1;
             let body = match *inst {
                 EmptyBegin(flags) => {
-                    let nl = '\n';
                     let cond =
                         if flags & FLAG_MULTI > 0 {
                             quote_expr!(self.cx,
                                 self.chars.is_begin()
-                                || self.chars.prev == Some($nl)
+                                || self.chars.prev == Some('\n')
                             )
                         } else {
                             quote_expr!(self.cx, self.chars.is_begin())
@@ -336,12 +340,11 @@ fn exec<'t>(which: ::regex::native::MatchKind, input: &'t str,
                     })
                 }
                 EmptyEnd(flags) => {
-                    let nl = '\n';
                     let cond =
                         if flags & FLAG_MULTI > 0 {
                             quote_expr!(self.cx,
                                 self.chars.is_end()
-                                || self.chars.cur == Some($nl)
+                                || self.chars.cur == Some('\n')
                             )
                         } else {
                             quote_expr!(self.cx, self.chars.is_end())
@@ -489,16 +492,16 @@ fn exec<'t>(which: ::regex::native::MatchKind, input: &'t str,
                     if flags & FLAG_DOTNL > 0 {
                         quote_expr!(self.cx, self.add(nlist, $nextpc, caps))
                     } else {
-                        let nl = '\n'; // no char lits allowed? wtf?
                         quote_expr!(self.cx, {
-                            if self.chars.prev != Some($nl) {
+                            if self.chars.prev != Some('\n') {
                                 self.add(nlist, $nextpc, caps)
                             }
+                            ()
                         })
                     }
                 }
                 // EmptyBegin, EmptyEnd, EmptyWordBoundary, Save, Jump, Split
-                _ => quote_expr!(self.cx, {}),
+                _ => self.empty_block(),
             };
             self.arm_inst(pc, body)
         }).collect::<Vec<ast::Arm>>();
@@ -510,28 +513,22 @@ fn exec<'t>(which: ::regex::native::MatchKind, input: &'t str,
     // This avoids a binary search (and is hopefully replaced by a jump
     // table).
     fn match_class(&self, casei: bool, ranges: &[(char, char)]) -> @ast::Expr {
+        let expr_true = quote_expr!(self.cx, true);
+
         let mut arms = ranges.iter().map(|&(mut start, mut end)| {
             if casei {
                 start = start.to_uppercase();
                 end = end.to_uppercase();
             }
-            ast::Arm {
-                attrs: vec!(),
-                pats: vec!(@ast::Pat{
-                    id: ast::DUMMY_NODE_ID,
-                    span: self.sp,
-                    node: ast::PatRange(quote_expr!(self.cx, $start),
-                                        quote_expr!(self.cx, $end)),
-                }),
-                guard: None,
-                body: quote_expr!(self.cx, true),
-            }
+            let pat = self.cx.pat(self.sp, ast::PatRange(quote_expr!(self.cx, $start),
+                                                         quote_expr!(self.cx, $end)));
+            self.cx.arm(self.sp, vec!(pat), expr_true)
         }).collect::<Vec<ast::Arm>>();
 
         arms.push(self.wild_arm_expr(quote_expr!(self.cx, false)));
 
         let match_on = quote_expr!(self.cx, c);
-        self.dummy_expr(ast::ExprMatch(match_on, arms))
+        self.cx.expr_match(self.sp, match_on, arms)
     }
 
     // Generates code for checking a literal prefix of the search string.
@@ -539,7 +536,7 @@ fn exec<'t>(which: ::regex::native::MatchKind, input: &'t str,
     // Otherwise, a no-op is returned.
     fn check_prefix(&self) -> @ast::Expr {
         if self.prog.prefix.len() == 0 {
-            quote_expr!(self.cx, {})
+            self.empty_block()
         } else {
             quote_expr!(self.cx,
                 if clist.size == 0 {
@@ -562,24 +559,20 @@ fn exec<'t>(which: ::regex::native::MatchKind, input: &'t str,
     // never be used, but is added to satisfy the compiler complaining about
     // non-exhaustive patterns.
     fn match_insts(&self, mut arms: Vec<ast::Arm>) -> @ast::Expr {
-        let mat_pc = quote_expr!(self.cx, pc);
-        arms.push(self.wild_arm_expr(quote_expr!(self.cx, {})));
-        self.dummy_expr(ast::ExprMatch(mat_pc, arms))
+        arms.push(self.wild_arm_expr(self.empty_block()));
+        self.cx.expr_match(self.sp, quote_expr!(self.cx, pc), arms)
+    }
+
+    fn empty_block(&self) -> @ast::Expr {
+        quote_expr!(self.cx, {})
     }
 
     // Creates a match arm for the instruction at `pc` with the expression
     // `body`.
     fn arm_inst(&self, pc: uint, body: @ast::Expr) -> ast::Arm {
-        ast::Arm {
-            attrs: vec!(),
-            pats: vec!(@ast::Pat{
-                id: ast::DUMMY_NODE_ID,
-                span: self.sp,
-                node: ast::PatLit(quote_expr!(self.cx, $pc)),
-            }),
-            guard: None,
-            body: body,
-        }
+        let pc_pat = self.cx.pat_lit(self.sp, quote_expr!(self.cx, $pc));
+
+        self.cx.arm(self.sp, vec!(pc_pat), body)
     }
 
     // Creates a wild-card match arm with the expression `body`.
@@ -596,56 +589,13 @@ fn exec<'t>(which: ::regex::native::MatchKind, input: &'t str,
         }
     }
 
-    // Builds a `[a, b, .., len]` expression where each element is the result
-    // of executing `to_expr`.
-    fn vec_from_fn(&self, len: uint, to_expr: |&ExtCtxt| -> @ast::Expr)
-                  -> @ast::Expr {
-        self.vec_expr(Vec::from_elem(len, ()).as_slice(),
-                      |cx, _| to_expr(cx))
-    }
 
     // Converts `xs` to a `[x1, x2, .., xN]` expression by calling `to_expr`
     // on each element in `xs`.
-    fn vec_expr<T>(&self, xs: &[T], to_expr: |&ExtCtxt, &T| -> @ast::Expr)
+    fn vec_expr<T, It: Iterator<T>>(&self, xs: It, to_expr: |&ExtCtxt, T| -> @ast::Expr)
                   -> @ast::Expr {
-        let mut exprs = vec!();
-        for x in xs.iter() {
-            exprs.push(to_expr(self.cx, x))
-        }
-        let vec_exprs = self.dummy_expr(ast::ExprVec(exprs));
-        quote_expr!(self.cx, $vec_exprs)
-    }
-
-    // Creates an expression with a dummy node ID given an underlying
-    // `ast::Expr_`.
-    fn dummy_expr(&self, e: ast::Expr_) -> @ast::Expr {
-        @ast::Expr {
-            id: ast::DUMMY_NODE_ID,
-            node: e,
-            span: self.sp,
-        }
-    }
-}
-
-// This trait is defined in the quote module in the syntax crate, but I
-// don't think it's exported.
-// Interestingly, quote_expr! only requires that a 'to_tokens' method be
-// defined rather than satisfying a particular trait.
-#[doc(hidden)]
-trait ToTokens {
-    fn to_tokens(&self, cx: &ExtCtxt) -> Vec<ast::TokenTree>;
-}
-
-impl ToTokens for char {
-    fn to_tokens(&self, _: &ExtCtxt) -> Vec<ast::TokenTree> {
-        vec!(ast::TTTok(codemap::DUMMY_SP, token::LIT_CHAR((*self) as u32)))
-    }
-}
-
-impl ToTokens for bool {
-    fn to_tokens(&self, _: &ExtCtxt) -> Vec<ast::TokenTree> {
-        let ident = token::IDENT(token::str_to_ident(self.to_str()), false);
-        vec!(ast::TTTok(codemap::DUMMY_SP, ident))
+        let exprs = xs.map(|x| to_expr(self.cx, x)).collect();
+        self.cx.expr_vec(self.sp, exprs)
     }
 }
 

@@ -125,6 +125,26 @@ pub mod rt {
         }
     }
 
+    impl ToSource for () {
+        fn to_source(&self) -> ~str {
+            "()".to_owned()
+        }
+    }
+
+    impl ToSource for bool {
+        fn to_source(&self) -> ~str {
+            let lit = dummy_spanned(ast::LitBool(*self));
+            pprust::lit_to_str(&lit)
+        }
+    }
+
+    impl ToSource for char {
+        fn to_source(&self) -> ~str {
+            let lit = dummy_spanned(ast::LitChar(*self));
+            pprust::lit_to_str(&lit)
+        }
+    }
+
     impl ToSource for int {
         fn to_source(&self) -> ~str {
             let lit = dummy_spanned(ast::LitInt(*self as i64, ast::TyI));
@@ -227,6 +247,9 @@ pub mod rt {
     impl_to_tokens!(@ast::Expr)
     impl_to_tokens!(ast::Block)
     impl_to_tokens_self!(&'a str)
+    impl_to_tokens!(())
+    impl_to_tokens!(char)
+    impl_to_tokens!(bool)
     impl_to_tokens!(int)
     impl_to_tokens!(i8)
     impl_to_tokens!(i16)
