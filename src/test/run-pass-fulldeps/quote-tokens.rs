@@ -26,6 +26,10 @@ fn syntax_extension(cx: &ExtCtxt) {
     let _c: @syntax::ast::Pat = quote_pat!(cx, (x, 1 .. 4, *) );
     let _d: @syntax::ast::Stmt = quote_stmt!(cx, let x = $a; );
     let _e: @syntax::ast::Expr = quote_expr!(cx, match foo { $p_toks => 10 } );
+
+    let _f: @syntax::ast::Expr = quote_expr!(cx, ());
+    let _g: @syntax::ast::Expr = quote_expr!(cx, true);
+    let _h: @syntax::ast::Expr = quote_expr!(cx, 'a');
 }
 
 fn main() {
