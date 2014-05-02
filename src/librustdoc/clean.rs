@@ -1367,7 +1367,7 @@ pub struct Macro {
 impl Clean<Item> for doctree::Macro {
     fn clean(&self) -> Item {
         Item {
-            name: Some(self.name.clean()),
+            name: Some(self.name.clean() + "!"),
             attrs: self.attrs.clean(),
             source: self.where.clean(),
             visibility: ast::Public.clean(),
