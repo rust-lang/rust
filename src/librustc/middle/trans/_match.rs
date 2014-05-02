@@ -620,14 +620,15 @@ fn enter_opt<'a, 'b>(
              m: &'a [Match<'a, 'b>],
              opt: &Opt,
              col: uint,
+             row: uint,
              variant_size: uint,
              val: ValueRef)
              -> Vec<Match<'a, 'b>> {
-    debug!("enter_opt(bcx={}, m={}, opt={:?}, col={}, val={})",
+    debug!("enter_opt(bcx={}, m={}, opt={:?}, col={}, row={}, val={})",
            bcx.to_str(),
            m.repr(bcx.tcx()),
            *opt,
-           col,
+           col, row,
            bcx.val_to_str(val));
     let _indenter = indenter();
 
@@ -639,14 +640,8 @@ fn enter_opt<'a, 'b>(
     // comes to literal or range, that strategy may lead to wrong result if there
     // are guard function or multiple patterns inside tuple; in that case, pruning
     // based on the overlap of patterns is required.
-    //
-    // Ideally, when constructing the sub-match tree for certain arm, only those
-    // arms beneath it matter. But that isn't how algorithm works right now and
-    // all other arms are taken into consideration when computing `guarded` below.
-    // That is ok since each round of `compile_submatch` guarantees to trim one
-    // "column" of arm patterns and the algorithm will converge.
-    let guarded = m.iter().any(|x| x.data.arm.guard.is_some());
-    let multi_pats = m.len() > 0 && m[0].pats.len() > 1;
+    let guarded = m[row].data.arm.guard.is_some();
+    let multi_pats = m[0].pats.len() > 1;
     enter_match(bcx, &tcx.def_map, m, col, val, |p| {
         let answer = match p.node {
             ast::PatEnum(..) |
@@ -1817,7 +1812,7 @@ fn compile_submatch_continue<'a, 'b>(
             }
             lit(_) | range(_, _) => ()
         }
-        let opt_ms = enter_opt(opt_cx, m, opt, col, size, val);
+        let opt_ms = enter_opt(opt_cx, m, opt, col, i, size, val);
         let opt_vals = unpacked.append(vals_left.as_slice());
 
         match branch_chk {
