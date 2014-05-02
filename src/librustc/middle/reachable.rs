@@ -270,11 +270,12 @@ impl<'a> ReachableContext<'a> {
 
                     // Statics with insignificant addresses are not reachable
                     // because they're inlined specially into all other crates.
-                    ast::ItemStatic(..) => {
+                    ast::ItemStatic(_, _, init) => {
                         if attr::contains_name(item.attrs.as_slice(),
                                                "address_insignificant") {
                             self.reachable_symbols.remove(&search_item);
                         }
+                        visit::walk_expr(self, init, ());
                     }
 
                     // These are normal, nothing reachable about these
