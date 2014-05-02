@@ -175,9 +175,8 @@ impl Default for bool {
 
 #[cfg(test)]
 mod tests {
-    use prelude::*;
+    use realstd::prelude::*;
     use super::to_bit;
-    use str::StrSlice;
 
     #[test]
     fn test_to_bit() {

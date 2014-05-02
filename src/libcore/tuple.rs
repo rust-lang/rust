@@ -246,7 +246,7 @@ mod tests {
     use super::*;
     use clone::Clone;
     use cmp::*;
-    use str::StrSlice;
+    use realstd::str::StrAllocating;
 
     #[test]
     fn test_clone() {

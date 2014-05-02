@@ -10,14 +10,18 @@
 
 //! Operations and constants for architecture-sized signed integers (`int` type)
 
-use cmp::{Eq, Ord, TotalEq, TotalOrd, Less, Greater, Equal, Ordering};
 use default::Default;
 use intrinsics;
 use num::{Bitwise, Bounded, Zero, One, Signed, Num, Primitive, Int};
 use num::{CheckedDiv, CheckedAdd, CheckedSub, CheckedMul};
-use ops::{Add, Sub, Mul, Div, Rem, Neg, BitOr, BitAnd, BitXor};
-use ops::{Shl, Shr, Not};
 use option::{Option, Some, None};
+
+#[cfg(not(test))]
+use cmp::{Eq, Ord, TotalEq, TotalOrd, Less, Greater, Equal, Ordering};
+#[cfg(not(test))]
+use ops::{Add, Sub, Mul, Div, Rem, Neg, BitOr, BitAnd, BitXor};
+#[cfg(not(test))]
+use ops::{Shl, Shr, Not};
 
 #[cfg(target_word_size = "32")] int_module!(int, 32)
 #[cfg(target_word_size = "64")] int_module!(int, 64)

@@ -34,8 +34,6 @@ use std::unstable::finally::Finally;
 
 use ops::Drop;
 
-#[cfg(test)] use task::failing;
-
 /// A trait for executing a destructor unconditionally after a block of code,
 /// regardless of whether the blocked fails.
 pub trait Finally<T> {
@@ -119,6 +117,9 @@ impl<'a,A> Drop for Finallyalizer<'a,A> {
 
 #[cfg(test)]
 mod test {
+    use super::{try_finally, Finally};
+    use realstd::task::failing;
+
     #[test]
     fn test_success() {
         let mut i = 0;

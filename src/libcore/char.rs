@@ -29,10 +29,6 @@ use option::{None, Option, Some};
 use iter::{Iterator, range_step};
 use unicode::{derived_property, property, general_category, decompose, conversions};
 
-#[cfg(test)] use str::Str;
-#[cfg(test)] use strbuf::StrBuf;
-#[cfg(test)] use slice::ImmutableVector;
-
 #[cfg(not(test))] use cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering};
 #[cfg(not(test))] use default::Default;
 
@@ -682,6 +678,14 @@ impl Default for char {
 
 #[cfg(test)]
 mod test {
+    use super::{escape_unicode, escape_default};
+
+    use realcore::char::Char;
+    use slice::ImmutableVector;
+    use realstd::option::{Some, None};
+    use realstd::strbuf::StrBuf;
+    use realstd::str::StrAllocating;
+
     #[test]
     fn test_is_lowercase() {
         assert!('a'.is_lowercase());
@@ -822,7 +826,7 @@ mod test {
 
     #[test]
     fn test_to_str() {
-        use to_str::ToStr;
+        use realstd::to_str::ToStr;
         let s = 't'.to_str();
         assert_eq!(s, "t".to_owned());
     }

@@ -46,7 +46,7 @@ A quick refresher on memory ordering:
 
 // This is needed to prevent duplicate lang item definitions.
 #[cfg(test)]
-pub use realstd::intrinsics::{TyDesc, Opaque, TyVisitor, TypeId};
+pub use realcore::intrinsics::{TyDesc, Opaque, TyVisitor, TypeId};
 
 pub type GlueFn = extern "Rust" fn(*i8);
 

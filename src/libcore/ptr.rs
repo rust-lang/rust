@@ -480,12 +480,12 @@ impl<T> Ord for *mut T {
 #[cfg(test)]
 pub mod ptr_tests {
     use super::*;
-    use prelude::*;
+    use realstd::prelude::*;
 
-    use c_str::ToCStr;
+    use realstd::c_str::ToCStr;
     use cast;
     use libc;
-    use str;
+    use realstd::str;
     use slice::{ImmutableVector, MutableVector};
 
     #[test]

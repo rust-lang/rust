@@ -19,15 +19,19 @@ pub static BYTES : uint = ($bits / 8);
 pub static MIN: $T = 0 as $T;
 pub static MAX: $T = 0 as $T - 1 as $T;
 
+#[cfg(not(test))]
 impl Ord for $T {
     #[inline]
     fn lt(&self, other: &$T) -> bool { *self < *other }
 }
+#[cfg(not(test))]
 impl TotalEq for $T {}
+#[cfg(not(test))]
 impl Eq for $T {
     #[inline]
     fn eq(&self, other: &$T) -> bool { *self == *other }
 }
+#[cfg(not(test))]
 impl TotalOrd for $T {
     #[inline]
     fn cmp(&self, other: &$T) -> Ordering {
@@ -184,9 +188,6 @@ mod tests {
     use num;
     use num::CheckedDiv;
     use num::Bitwise;
-    use num::ToStrRadix;
-    use str::StrSlice;
-    use u16;
 
     #[test]
     fn test_overflows() {

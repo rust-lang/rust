@@ -293,7 +293,7 @@ pub fn drop<T>(_x: T) { }
 mod tests {
     use mem::*;
     use option::{Some,None};
-    use str::StrSlice;
+    use realstd::str::StrAllocating;
 
     #[test]
     fn size_of_basic() {

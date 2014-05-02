@@ -236,10 +236,21 @@ impl<T> Option<T> {
     ///
     /// Fails if the value is a `None` with a custom failure message provided by `msg`.
     #[inline]
+    #[cfg(not(test))]
     pub fn expect(self, msg: &str) -> T {
         match self {
             Some(val) => val,
             None => fail!(msg),
+        }
+    }
+
+    // FIXME: once std::fmt is in libcore, this extra variant should not be
+    //        necessary.
+    #[cfg(test)]
+    pub fn expect(self, msg: &str) -> T {
+        match self {
+            Some(val) => val,
+            None => fail!("{}", msg),
         }
     }
 
@@ -605,10 +616,10 @@ pub fn collect<T, Iter: Iterator<Option<T>>, V: FromIterator<T>>(iter: Iter) -> 
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use prelude::*;
+    use realstd::option::collect;
+    use realstd::prelude::*;
+    use realstd::iter::range;
 
-    use iter::range;
     use str::StrSlice;
     use kinds::marker;
     use slice::ImmutableVector;
@@ -637,7 +648,7 @@ mod tests {
 
     #[test]
     fn test_get_resource() {
-        use rc::Rc;
+        use realstd::rc::Rc;
         use cell::RefCell;
 
         struct R {

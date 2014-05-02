@@ -1090,7 +1090,7 @@ impl<A, T: Clone + RandomAccessIterator<A>> RandomAccessIterator<A> for Cycle<T>
 pub struct Chain<T, U> {
     a: T,
     b: U,
-    flag: bool
+    flag: bool,
 }
 
 impl<A, T: Iterator<A>, U: Iterator<A>> Iterator<A> for Chain<T, U> {
@@ -2329,13 +2329,13 @@ pub mod order {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use prelude::*;
+    use realstd::prelude::*;
+    use realstd::iter::*;
+    use realstd::num;
 
     use cmp;
     use owned::Box;
     use uint;
-    use num;
 
     #[test]
     fn test_counter_from_iter() {

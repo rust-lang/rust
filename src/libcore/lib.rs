@@ -18,9 +18,21 @@
        html_root_url = "http://static.rust-lang.org/doc/master")]
 
 #![no_std]
-#![feature(globs, macro_rules, managed_boxes)]
+#![feature(globs, macro_rules, managed_boxes, phase)]
 #![deny(missing_doc)]
 
+#[cfg(test)] extern crate realcore = "core";
+#[cfg(test)] extern crate libc;
+#[cfg(test)] extern crate native;
+#[phase(syntax, link)] #[cfg(test)] extern crate realstd = "std";
+#[phase(syntax, link)] #[cfg(test)] extern crate log;
+
+#[cfg(test)] pub use kinds = realcore::kinds;
+#[cfg(test)] pub use cmp = realcore::cmp;
+#[cfg(test)] pub use ops = realcore::ops;
+#[cfg(test)] pub use ty = realcore::ty;
+
+#[cfg(not(test))]
 mod macros;
 
 #[path = "num/float_macros.rs"] mod float_macros;
@@ -44,6 +56,10 @@ mod macros;
 
 pub mod num;
 
+/* The libcore prelude, not as all-encompassing as the libstd prelude */
+
+pub mod prelude;
+
 /* Core modules for ownership management */
 
 pub mod cast;
@@ -53,10 +69,10 @@ pub mod ptr;
 
 /* Core language traits */
 
-pub mod cmp;
-pub mod kinds;
-pub mod ops;
-pub mod ty;
+#[cfg(not(test))] pub mod kinds;
+#[cfg(not(test))] pub mod ops;
+#[cfg(not(test))] pub mod ty;
+#[cfg(not(test))] pub mod cmp;
 pub mod clone;
 pub mod default;
 pub mod container;
@@ -88,4 +104,9 @@ mod should_not_exist;
 mod std {
     pub use clone;
     pub use cmp;
+
+    #[cfg(test)] pub use realstd::fmt;    // needed for fail!()
+    #[cfg(test)] pub use realstd::rt;     // needed for fail!()
+    #[cfg(test)] pub use realstd::option; // needed for assert!()
+    #[cfg(test)] pub use realstd::os;     // needed for tests
 }

@@ -592,11 +592,9 @@ pub fn fold_<T,E,Iter:Iterator<Result<T,E>>>(iterator: Iter) -> Result<(),E> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use prelude::*;
-    use str::StrSlice;
-
-    use iter::range;
+    use realstd::result::{collect, fold, fold_};
+    use realstd::prelude::*;
+    use realstd::iter::range;
 
     pub fn op1() -> Result<int, ~str> { Ok(666) }
     pub fn op2() -> Result<int, ~str> { Err("sadface".to_owned()) }

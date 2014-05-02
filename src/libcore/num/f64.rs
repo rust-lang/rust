@@ -10,11 +10,12 @@
 
 //! Operations and constants for 64-bits floats (`f64` type)
 
-use cmp::{Eq, Ord};
 use default::Default;
 use intrinsics;
 use num::{Zero, One, Bounded, Signed, Num, Primitive};
-use ops::{Add, Sub, Mul, Div, Rem, Neg};
+
+#[cfg(not(test))] use cmp::{Eq, Ord};
+#[cfg(not(test))] use ops::{Add, Sub, Mul, Div, Rem, Neg};
 
 // FIXME(#5527): These constants should be deprecated once associated
 // constants are implemented in favour of referencing the respective
@@ -106,6 +107,7 @@ pub mod consts {
     pub static LN_10: f64 = 2.30258509299404568401799145468436421_f64;
 }
 
+#[cfg(not(test))]
 impl Ord for f64 {
     #[inline]
     fn lt(&self, other: &f64) -> bool { (*self) < (*other) }
@@ -116,6 +118,7 @@ impl Ord for f64 {
     #[inline]
     fn gt(&self, other: &f64) -> bool { (*self) > (*other) }
 }
+#[cfg(not(test))]
 impl Eq for f64 {
     #[inline]
     fn eq(&self, other: &f64) -> bool { (*self) == (*other) }

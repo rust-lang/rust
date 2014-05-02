@@ -128,6 +128,8 @@ extern_fn_clone!(A, B, C, D, E, F, G, H)
 
 #[cfg(test)]
 mod test {
+    use prelude::*;
+
     #[test]
     fn test_owned_clone() {
         let a = box 5i;

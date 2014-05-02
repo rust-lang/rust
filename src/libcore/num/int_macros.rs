@@ -28,15 +28,19 @@ pub static MIN: $T = (-1 as $T) << (BITS - 1);
 // calling the `Bounded::max_value` function.
 pub static MAX: $T = !MIN;
 
+#[cfg(not(test))]
 impl Ord for $T {
     #[inline]
     fn lt(&self, other: &$T) -> bool { *self < *other }
 }
+#[cfg(not(test))]
 impl TotalEq for $T {}
+#[cfg(not(test))]
 impl Eq for $T {
     #[inline]
     fn eq(&self, other: &$T) -> bool { *self == *other }
 }
+#[cfg(not(test))]
 impl TotalOrd for $T {
     #[inline]
     fn cmp(&self, other: &$T) -> Ordering {
@@ -221,7 +225,7 @@ impl Bounded for $T {
 impl CheckedDiv for $T {
     #[inline]
     fn checked_div(&self, v: &$T) -> Option<$T> {
-        if *v == 0 {
+        if *v == 0 || (*self == MIN && *v == -1) {
             None
         } else {
             Some(self / *v)
@@ -244,12 +248,9 @@ mod tests {
     use super::*;
 
     use int;
-    use i32;
     use num;
     use num::Bitwise;
     use num::CheckedDiv;
-    use num::ToStrRadix;
-    use str::StrSlice;
 
     #[test]
     fn test_overflows() {
