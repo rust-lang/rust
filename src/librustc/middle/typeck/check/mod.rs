@@ -2102,8 +2102,27 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
 
             let result_t = match op {
                 ast::BiEq | ast::BiNe | ast::BiLt | ast::BiLe | ast::BiGe |
-                ast::BiGt => ty::mk_bool(),
-                _ => lhs_t
+                ast::BiGt => {
+                    if ty::type_is_simd(tcx, lhs_t) {
+                        if ty::type_is_fp(ty::simd_type(tcx, lhs_t)) {
+                            fcx.type_error_message(expr.span,
+                                |actual| {
+                                    format!("binary comparison operation `{}` not supported \
+                                            for floating point SIMD vector `{}`",
+                                            ast_util::binop_to_str(op), actual)
+                                },
+                                lhs_t,
+                                None
+                            );
+                            ty::mk_err()
+                        } else {
+                            lhs_t
+                        }
+                    } else {
+                        ty::mk_bool()
+                    }
+                },
+                _ => lhs_t,
             };
 
             fcx.write_ty(expr.id, result_t);
