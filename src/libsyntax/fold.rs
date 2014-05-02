@@ -437,7 +437,8 @@ fn fold_ty_param_bound<T: Folder>(tpb: &TyParamBound, fld: &mut T)
                                     -> TyParamBound {
     match *tpb {
         TraitTyParamBound(ref ty) => TraitTyParamBound(fold_trait_ref(ty, fld)),
-        RegionTyParamBound => RegionTyParamBound
+        StaticRegionTyParamBound => StaticRegionTyParamBound,
+        OtherRegionTyParamBound(s) => OtherRegionTyParamBound(s)
     }
 }
 
