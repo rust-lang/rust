@@ -127,6 +127,12 @@ macro_rules! bitflags(
                 self.bits
             }
 
+            /// Convert from underlying bit representation. Unsafe because the
+            /// bits are not guaranteed to represent valid flags.
+            pub unsafe fn from_bits(bits: $T) -> $BitFlags {
+                $BitFlags { bits: bits }
+            }
+
             /// Returns `true` if no flags are currently stored.
             pub fn is_empty(&self) -> bool {
                 *self == $BitFlags::empty()
