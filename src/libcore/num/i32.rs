@@ -10,14 +10,18 @@
 
 //! Operations and constants for signed 32-bits integers (`i32` type)
 
-use cmp::{Eq, Ord, TotalEq, TotalOrd, Less, Greater, Equal, Ordering};
 use default::Default;
 use intrinsics;
 use num::{Bitwise, Bounded, Zero, One, Signed, Num, Primitive, Int};
 use num::{CheckedDiv, CheckedAdd, CheckedSub, CheckedMul};
-use ops::{Add, Sub, Mul, Div, Rem, Neg, BitOr, BitAnd, BitXor};
-use ops::{Shl, Shr, Not};
 use option::{Option, Some, None};
+
+#[cfg(not(test))]
+use cmp::{Eq, Ord, TotalEq, TotalOrd, Less, Greater, Equal, Ordering};
+#[cfg(not(test))]
+use ops::{Add, Sub, Mul, Div, Rem, Neg, BitOr, BitAnd, BitXor};
+#[cfg(not(test))]
+use ops::{Shl, Shr, Not};
 
 int_module!(i32, 32)
 

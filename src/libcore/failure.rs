@@ -12,6 +12,7 @@
 
 #![allow(dead_code)]
 
+#[cfg(not(test))]
 use str::raw::c_str_to_static_slice;
 
 // FIXME: Once std::fmt is in libcore, all of these functions should delegate

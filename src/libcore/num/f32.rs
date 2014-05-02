@@ -10,11 +10,12 @@
 
 //! Operations and constants for 32-bits floats (`f32` type)
 
-use cmp::{Eq, Ord};
 use default::Default;
 use intrinsics;
 use num::{Zero, One, Bounded, Signed, Num, Primitive};
-use ops::{Add, Sub, Mul, Div, Rem, Neg};
+
+#[cfg(not(test))] use cmp::{Eq, Ord};
+#[cfg(not(test))] use ops::{Add, Sub, Mul, Div, Rem, Neg};
 
 pub static RADIX: uint = 2u;
 
@@ -100,6 +101,7 @@ pub mod consts {
     pub static LN_10: f32 = 2.30258509299404568401799145468436421_f32;
 }
 
+#[cfg(not(test))]
 impl Ord for f32 {
     #[inline]
     fn lt(&self, other: &f32) -> bool { (*self) < (*other) }
@@ -110,6 +112,7 @@ impl Ord for f32 {
     #[inline]
     fn gt(&self, other: &f32) -> bool { (*self) > (*other) }
 }
+#[cfg(not(test))]
 impl Eq for f32 {
     #[inline]
     fn eq(&self, other: &f32) -> bool { (*self) == (*other) }

@@ -17,13 +17,15 @@ use intrinsics;
 use iter::{Iterator, FromIterator};
 use mem;
 use num::{CheckedMul, CheckedAdd};
-use ops::Add;
 use option::{Some, None};
 use ptr::RawPtr;
 use ptr;
 use raw::Vec;
-use slice::{ImmutableVector, Vector};
+use slice::ImmutableVector;
 use str::StrSlice;
+
+#[cfg(not(test))] use ops::Add;
+#[cfg(not(test))] use slice::Vector;
 
 #[allow(ctypes)]
 extern {
@@ -118,6 +120,7 @@ impl FromIterator<char> for ~str {
     }
 }
 
+#[cfg(not(test))]
 impl<'a> Add<&'a str,~str> for &'a str {
     #[inline]
     fn add(&self, rhs: & &'a str) -> ~str {
@@ -181,6 +184,7 @@ impl<A> FromIterator<A> for ~[A] {
     }
 }
 
+#[cfg(not(test))]
 impl<'a,T:Clone, V: Vector<T>> Add<V, ~[T]> for &'a [T] {
     #[inline]
     fn add(&self, rhs: &V) -> ~[T] {
@@ -189,6 +193,7 @@ impl<'a,T:Clone, V: Vector<T>> Add<V, ~[T]> for &'a [T] {
     }
 }
 
+#[cfg(not(test))]
 impl<T:Clone, V: Vector<T>> Add<V, ~[T]> for ~[T] {
     #[inline]
     fn add(&self, rhs: &V) -> ~[T] {

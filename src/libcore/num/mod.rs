@@ -858,3 +858,19 @@ pub trait CheckedDiv: Div<Self, Self> {
     /// `None` is returned.
     fn checked_div(&self, v: &Self) -> Option<Self>;
 }
+
+/// Helper function for testing numeric operations
+#[cfg(test)]
+pub fn test_num<T:Num + NumCast + ::std::fmt::Show>(ten: T, two: T) {
+    assert_eq!(ten.add(&two),  cast(12).unwrap());
+    assert_eq!(ten.sub(&two),  cast(8).unwrap());
+    assert_eq!(ten.mul(&two),  cast(20).unwrap());
+    assert_eq!(ten.div(&two),  cast(5).unwrap());
+    assert_eq!(ten.rem(&two),  cast(0).unwrap());
+
+    assert_eq!(ten.add(&two),  ten + two);
+    assert_eq!(ten.sub(&two),  ten - two);
+    assert_eq!(ten.mul(&two),  ten * two);
+    assert_eq!(ten.div(&two),  ten / two);
+    assert_eq!(ten.rem(&two),  ten % two);
+}
