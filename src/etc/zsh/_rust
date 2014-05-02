@@ -68,7 +68,7 @@ _rustc_opts_lint=(
     'unsafe-block[usage of an `unsafe` block]'
     'unstable[detects use of #\[unstable\] items (incl. items with no stability attribute)]'
     'unused-imports[imports that are never used]'
-    'unused-must-use[unused result of an type flagged as #\[must_use\]]'
+    'unused-must-use[unused result of a type flagged as #\[must_use\]]'
     "unused-mut[detect mut variables which don't need to be mutable]"
     'unused-result[unused result of an expression in a statement]'
     'unused-unsafe[unnecessary use of an `unsafe` block]'
