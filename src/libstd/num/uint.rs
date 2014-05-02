@@ -11,6 +11,7 @@
 //! Operations and constants for architecture-sized unsigned integers (`uint` type)
 
 #![allow(non_uppercase_statics)]
+#![allow(unsigned_negate)]
 
 use prelude::*;
 

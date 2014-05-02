@@ -43,6 +43,8 @@
  *   taken to it, implementing them for Rust seems difficult.
  */
 
+#![allow(unsigned_negate)]
+
 use std::container::Map;
 use libc::c_ulonglong;
 use std::num::{Bitwise};

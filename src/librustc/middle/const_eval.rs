@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![allow(non_camel_case_types)]
+#![allow(unsigned_negate)]
 
 use metadata::csearch;
 use middle::astencode;
