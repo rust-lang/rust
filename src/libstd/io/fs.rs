@@ -1119,7 +1119,7 @@ mod test {
         check!(File::create(&input));
         check!(chmod(&input, io::UserRead));
         check!(copy(&input, &out));
-        assert!(check!(out.stat()).perm & io::UserWrite == 0);
+        assert!(!check!(out.stat()).perm.intersects(io::UserWrite));
 
         check!(chmod(&input, io::UserFile));
         check!(chmod(&out, io::UserFile));
@@ -1193,9 +1193,9 @@ mod test {
         let file = tmpdir.join("in.txt");
 
         check!(File::create(&file));
-        assert!(check!(stat(&file)).perm & io::UserWrite == io::UserWrite);
+        assert!(check!(stat(&file)).perm.contains(io::UserWrite));
         check!(chmod(&file, io::UserRead));
-        assert!(check!(stat(&file)).perm & io::UserWrite == 0);
+        assert!(!check!(stat(&file)).perm.contains(io::UserWrite));
 
         match chmod(&tmpdir.join("foo"), io::UserRWX) {
             Ok(..) => fail!("wanted a failure"),

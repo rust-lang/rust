@@ -224,6 +224,7 @@ use fmt;
 use int;
 use iter::Iterator;
 use libc;
+use ops::{BitOr, BitAnd, Sub};
 use os;
 use option::{Option, Some, None};
 use path::Path;
@@ -1558,36 +1559,40 @@ pub struct UnstableFileStat {
     pub gen: u64,
 }
 
-/// A set of permissions for a file or directory is represented by a set of
-/// flags which are or'd together.
-pub type FilePermission = u32;
+bitflags!(
+    #[doc="A set of permissions for a file or directory is represented
+by a set of flags which are or'd together."]
+    #[deriving(Hash)]
+    #[deriving(Show)]
+    flags FilePermission: u32 {
+        static UserRead     = 0o400,
+        static UserWrite    = 0o200,
+        static UserExecute  = 0o100,
+        static GroupRead    = 0o040,
+        static GroupWrite   = 0o020,
+        static GroupExecute = 0o010,
+        static OtherRead    = 0o004,
+        static OtherWrite   = 0o002,
+        static OtherExecute = 0o001,
 
-// Each permission bit
-pub static UserRead: FilePermission     = 0x100;
-pub static UserWrite: FilePermission    = 0x080;
-pub static UserExecute: FilePermission  = 0x040;
-pub static GroupRead: FilePermission    = 0x020;
-pub static GroupWrite: FilePermission   = 0x010;
-pub static GroupExecute: FilePermission = 0x008;
-pub static OtherRead: FilePermission    = 0x004;
-pub static OtherWrite: FilePermission   = 0x002;
-pub static OtherExecute: FilePermission = 0x001;
+        static UserRWX  = UserRead.bits | UserWrite.bits | UserExecute.bits,
+        static GroupRWX = GroupRead.bits | GroupWrite.bits | GroupExecute.bits,
+        static OtherRWX = OtherRead.bits | OtherWrite.bits | OtherExecute.bits,
 
-// Common combinations of these bits
-pub static UserRWX: FilePermission  = UserRead | UserWrite | UserExecute;
-pub static GroupRWX: FilePermission = GroupRead | GroupWrite | GroupExecute;
-pub static OtherRWX: FilePermission = OtherRead | OtherWrite | OtherExecute;
+        #[doc="Permissions for user owned files, equivalent to 0644 on
+unix-like systems."]
+        static UserFile = UserRead.bits | UserWrite.bits | GroupRead.bits | OtherRead.bits,
 
-/// A set of permissions for user owned files, this is equivalent to 0644 on
-/// unix-like systems.
-pub static UserFile: FilePermission = UserRead | UserWrite | GroupRead | OtherRead;
-/// A set of permissions for user owned directories, this is equivalent to 0755
-/// on unix-like systems.
-pub static UserDir: FilePermission = UserRWX | GroupRead | GroupExecute |
-                                     OtherRead | OtherExecute;
-/// A set of permissions for user owned executables, this is equivalent to 0755
-/// on unix-like systems.
-pub static UserExec: FilePermission = UserDir;
+        #[doc="Permissions for user owned directories, equivalent to 0755 on
+unix-like systems."]
+        static UserDir  = UserRWX.bits | GroupRead.bits | GroupExecute.bits |
+                   OtherRead.bits | OtherExecute.bits,
 
-/// A mask for all possible permission bits
-pub static AllPermissions: FilePermission = 0x1ff;
+        #[doc="Permissions for user owned executables, equivalent to 0755
+on unix-like systems."]
+        static UserExec = UserDir.bits,
+
+        #[doc="All possible permissions enabled."]
+        static AllPermissions = UserRWX.bits | GroupRWX.bits | OtherRWX.bits
+    }
+)

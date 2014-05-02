@@ -283,7 +283,9 @@ impl FsRequest {
             path: path,
             size: stat.st_size as u64,
             kind: kind,
-            perm: (stat.st_mode as io::FilePermission) & io::AllPermissions,
+            perm: unsafe {
+                io::FilePermission::from_bits(stat.st_mode as u32) & io::AllPermissions
+            },
             created: to_msec(stat.st_birthtim),
             modified: to_msec(stat.st_mtim),
             accessed: to_msec(stat.st_atim),
