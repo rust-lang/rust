@@ -362,11 +362,21 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
         // Add all the static files. These may already exist, but we just
         // overwrite them anyway to make sure that they're fresh and up-to-date.
         try!(write(cx.dst.join("jquery.js"),
-                   include_str!("static/jquery-2.1.0.min.js")));
-        try!(write(cx.dst.join("main.js"), include_str!("static/main.js")));
-        try!(write(cx.dst.join("main.css"), include_str!("static/main.css")));
+                   include_bin!("static/jquery-2.1.0.min.js")));
+        try!(write(cx.dst.join("main.js"), include_bin!("static/main.js")));
+        try!(write(cx.dst.join("main.css"), include_bin!("static/main.css")));
         try!(write(cx.dst.join("normalize.css"),
-                   include_str!("static/normalize.css")));
+                   include_bin!("static/normalize.css")));
+        try!(write(cx.dst.join("FiraSans-Regular.woff"),
+                   include_bin!("static/FiraSans-Regular.woff")));
+        try!(write(cx.dst.join("FiraSans-Medium.woff"),
+                   include_bin!("static/FiraSans-Medium.woff")));
+        try!(write(cx.dst.join("Heuristica-Regular.woff"),
+                   include_bin!("static/Heuristica-Regular.woff")));
+        try!(write(cx.dst.join("Heuristica-Italic.woff"),
+                   include_bin!("static/Heuristica-Italic.woff")));
+        try!(write(cx.dst.join("Heuristica-Bold.woff"),
+                   include_bin!("static/Heuristica-Bold.woff")));
 
         // Update the search index
         let dst = cx.dst.join("search-index.js");
@@ -415,8 +425,8 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
 
 /// Writes the entire contents of a string to a destination, not attempting to
 /// catch any errors.
-fn write(dst: Path, contents: &str) -> io::IoResult<()> {
-    File::create(&dst).write(contents.as_bytes())
+fn write(dst: Path, contents: &[u8]) -> io::IoResult<()> {
+    File::create(&dst).write(contents)
 }
 
 /// Makes a directory on the filesystem, failing the task if an error occurs and
