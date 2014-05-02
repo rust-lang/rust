@@ -11,6 +11,7 @@
 //! Operations and constants for unsigned 32-bits integers (`u32` type)
 
 #![allow(non_uppercase_statics)]
+#![allow(unsigned_negate)]
 
 use prelude::*;
 

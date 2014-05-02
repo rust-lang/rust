@@ -137,7 +137,7 @@ impl rtio::RtioTimer for Timer {
 
         // there are 10^6 nanoseconds in a millisecond, and the parameter is in
         // 100ns intervals, so we multiply by 10^4.
-        let due = -(msecs * 10000) as libc::LARGE_INTEGER;
+        let due = -(msecs as i64 * 10000) as libc::LARGE_INTEGER;
         assert_eq!(unsafe {
             imp::SetWaitableTimer(self.obj, &due, 0, ptr::null(),
                                   ptr::mut_null(), 0)
@@ -151,7 +151,7 @@ impl rtio::RtioTimer for Timer {
         let (tx, rx) = channel();
 
         // see above for the calculation
-        let due = -(msecs * 10000) as libc::LARGE_INTEGER;
+        let due = -(msecs as i64 * 10000) as libc::LARGE_INTEGER;
         assert_eq!(unsafe {
             imp::SetWaitableTimer(self.obj, &due, 0, ptr::null(),
                                   ptr::mut_null(), 0)
@@ -167,7 +167,7 @@ impl rtio::RtioTimer for Timer {
         let (tx, rx) = channel();
 
         // see above for the calculation
-        let due = -(msecs * 10000) as libc::LARGE_INTEGER;
+        let due = -(msecs as i64 * 10000) as libc::LARGE_INTEGER;
         assert_eq!(unsafe {
             imp::SetWaitableTimer(self.obj, &due, msecs as libc::LONG,
                                   ptr::null(), ptr::mut_null(), 0)
