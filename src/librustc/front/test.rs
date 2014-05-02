@@ -125,27 +125,23 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
         // Remove any #[main] from the AST so it doesn't clash with
         // the one we're going to add. Only if compiling an executable.
 
-        fn nomain(cx: &TestCtxt, item: @ast::Item) -> @ast::Item {
-            if !cx.sess.building_library.get() {
-                @ast::Item {
-                    attrs: item.attrs.iter().filter_map(|attr| {
-                        if !attr.name().equiv(&("main")) {
-                            Some(*attr)
-                        } else {
-                            None
-                        }
-                    }).collect(),
-                    .. (*item).clone()
-                }
-            } else {
-                item
+        fn nomain(item: @ast::Item) -> @ast::Item {
+            @ast::Item {
+                attrs: item.attrs.iter().filter_map(|attr| {
+                    if !attr.name().equiv(&("main")) {
+                        Some(*attr)
+                    } else {
+                        None
+                    }
+                }).collect(),
+                .. (*item).clone()
             }
         }
 
         let mod_nomain = ast::Mod {
             inner: m.inner,
             view_items: m.view_items.clone(),
-            items: m.items.iter().map(|i| nomain(&self.cx, *i)).collect(),
+            items: m.items.iter().map(|i| nomain(*i)).collect(),
         };
 
         fold::noop_fold_mod(&mod_nomain, self)

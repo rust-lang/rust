@@ -15,6 +15,7 @@
 // makes all other generics or inline functions that it references
 // reachable as well.
 
+use driver::session;
 use middle::ty;
 use middle::typeck;
 use middle::privacy;
@@ -89,6 +90,8 @@ struct ReachableContext<'a> {
     // A worklist of item IDs. Each item ID in this worklist will be inlined
     // and will be scanned for further references.
     worklist: Vec<ast::NodeId>,
+    // Whether any output of this compilation is a library
+    any_library: bool,
 }
 
 impl<'a> Visitor<()> for ReachableContext<'a> {
@@ -157,10 +160,14 @@ impl<'a> Visitor<()> for ReachableContext<'a> {
 impl<'a> ReachableContext<'a> {
     // Creates a new reachability computation context.
     fn new(tcx: &'a ty::ctxt) -> ReachableContext<'a> {
+        let any_library = tcx.sess.crate_types.borrow().iter().any(|ty| {
+            *ty != session::CrateTypeExecutable
+        });
         ReachableContext {
             tcx: tcx,
             reachable_symbols: NodeSet::new(),
             worklist: Vec::new(),
+            any_library: any_library,
         }
     }
 
@@ -234,7 +241,7 @@ impl<'a> ReachableContext<'a> {
 
     fn propagate_node(&mut self, node: &ast_map::Node,
                       search_item: ast::NodeId) {
-        if !self.tcx.sess.building_library.get() {
+        if !self.any_library {
             // If we are building an executable, then there's no need to flag
             // anything as external except for `extern fn` types. These
             // functions may still participate in some form of native interface,

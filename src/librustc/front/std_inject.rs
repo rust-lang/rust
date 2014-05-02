@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
+use driver::session;
 use driver::session::Session;
 
 use syntax::ast;
@@ -86,7 +86,10 @@ impl<'a> fold::Folder for StandardLibraryInjector<'a> {
             span: DUMMY_SP
         });
 
-        if use_start(&krate) && !self.sess.building_library.get() {
+        let any_exe = self.sess.crate_types.borrow().iter().any(|ty| {
+            *ty == session::CrateTypeExecutable
+        });
+        if use_start(&krate) && any_exe {
             vis.push(ast::ViewItem {
                 node: ast::ViewItemExternCrate(token::str_to_ident("native"),
                                              with_version("native"),
