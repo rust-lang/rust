@@ -184,8 +184,7 @@ impl<'a,T: Float + FromPrimitive> Stats<T> for &'a [T] {
                 // `lo`. Together `hi+lo` are exactly equal to `x+y`.
                 let hi = x + y;
                 let lo = y - (hi - x);
-                let zero: T = Zero::zero();
-                if lo != zero {
+                if !lo.is_zero() {
                     *partials.get_mut(j) = lo;
                     j += 1;
                 }
@@ -373,13 +372,13 @@ pub fn write_boxplot<T: Float + Show + FromPrimitive>(
 
     // need to consider when the limit is zero
     let zero: T = Zero::zero();
-    let lo = if lomag == zero {
+    let lo = if lomag.is_zero() {
         zero
     } else {
         (s.min / lomag).floor() * lomag
     };
 
-    let hi = if himag == zero {
+    let hi = if himag.is_zero() {
         zero
     } else {
         (s.max / himag).ceil() * himag
