@@ -1,6 +1,6 @@
 - Start Date: 2014-04-30
-- RFC PR #: (leave this empty)
-- Rust Issue #: (leave this empty)
+- RFC PR #: 59
+- Rust Issue #: 13885
 
 # Summary
 
@@ -44,4 +44,4 @@ The other possible design here is to keep `~T` as sugar. The impact of doing thi
 
 The allocator design is not yet fully worked out.
 
-It may be possible that unforeseen interactions will appear between the struct nature of `Box<T>` and the built-in nature of `~T` when merged. 
+It may be possible that unforeseen interactions will appear between the struct nature of `Box<T>` and the built-in nature of `~T` when merged.
