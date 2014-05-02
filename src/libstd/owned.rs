@@ -26,6 +26,14 @@ pub static HEAP: () = ();
 #[cfg(test)]
 pub static HEAP: () = ();
 
+/// A type that represents a uniquely-owned value.
+#[lang="owned_box"]
+#[cfg(not(test))]
+pub struct Box<T>(*T);
+
+#[cfg(test)]
+pub struct Box<T>(*T);
+
 #[cfg(not(test))]
 impl<T:Eq> Eq for ~T {
     #[inline]

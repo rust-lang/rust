@@ -262,6 +262,7 @@ lets_do_this! {
     ManagedHeapLangItem,             "managed_heap",            managed_heap;
     ExchangeHeapLangItem,            "exchange_heap",           exchange_heap;
     GcLangItem,                      "gc",                      gc;
+    OwnedBoxLangItem,                "owned_box",               owned_box;
 
     CovariantTypeItem,               "covariant_type",          covariant_type;
     ContravariantTypeItem,           "contravariant_type",      contravariant_type;
