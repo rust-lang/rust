@@ -2584,11 +2584,18 @@ for `Eq` and can be used with the equality operators, and that a value
 of type `ABC` can be randomly generated and converted to a string:
 
 ~~~
+extern crate rand;
+
 #[deriving(Eq)]
 struct Circle { radius: f64 }
 
-#[deriving(Clone, Show)]
+#[deriving(Rand, Show)]
 enum ABC { A, B, C }
+
+fn main() {
+    // Use the Show trait to print "A, B, C."
+    println!("{}, {}, {}", A, B, C);
+}
 ~~~
 
 The full list of derivable traits is `Eq`, `TotalEq`, `Ord`,
