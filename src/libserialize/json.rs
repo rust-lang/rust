@@ -813,13 +813,13 @@ impl<E: ::Encoder<S>, S> Encodable<E, S> for Json {
 }
 
 impl Json {
-    /// Encodes a json value into a io::writer.  Uses a single line.
+    /// Encodes a json value into an io::writer.  Uses a single line.
     pub fn to_writer(&self, wr: &mut io::Writer) -> EncodeResult {
         let mut encoder = Encoder::new(wr);
         self.encode(&mut encoder)
     }
 
-    /// Encodes a json value into a io::writer.
+    /// Encodes a json value into an io::writer.
     /// Pretty-prints in a more readable format.
     pub fn to_pretty_writer(&self, wr: &mut io::Writer) -> EncodeResult {
         let mut encoder = PrettyEncoder::new(wr);

@@ -263,7 +263,7 @@ process is called *rooting*.
 The previous example demonstrated *rooting*, the process by which the
 compiler ensures that managed boxes remain live for the duration of a
 borrow. Unfortunately, rooting does not work for borrows of owned
-boxes, because it is not possible to have two references to a owned
+boxes, because it is not possible to have two references to an owned
 box.
 
 For owned boxes, therefore, the compiler will only allow a borrow *if
@@ -462,7 +462,7 @@ of a `f64` as if it were a struct with two fields would be a memory
 safety violation.
 
 So, in fact, for every `ref` binding, the compiler will impose the
-same rules as the ones we saw for borrowing the interior of a owned
+same rules as the ones we saw for borrowing the interior of an owned
 box: it must be able to guarantee that the `enum` will not be
 overwritten for the duration of the borrow.  In fact, the compiler
 would accept the example we gave earlier. The example is safe because

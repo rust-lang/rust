@@ -1392,7 +1392,7 @@ fn add_upstream_rust_crates(args: &mut Vec<~str>, sess: &Session,
             // If you opted in to dynamic linking and we decided to emit a
             // static output, you should probably be notified of such an event!
             sess.warn("dynamic linking was preferred, but dependencies \
-                       could not all be found in an dylib format.");
+                       could not all be found in a dylib format.");
             sess.warn("linking statically instead, using rlibs");
             add_static_crates(args, sess, tmpdir, deps)
         }

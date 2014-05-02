@@ -56,7 +56,7 @@ standard library types, e.g. `Cell` and `RefCell`, that provide inner
 mutability by replacing compile time guarantees with dynamic checks at
 runtime.
 
-An `&mut` reference has a stronger requirement: when a object has an
+An `&mut` reference has a stronger requirement: when an object has an
 `&mut T` pointing into it, then that `&mut` reference must be the only
 such usable path to that object in the whole program. That is, an
 `&mut` cannot alias with any other references.
