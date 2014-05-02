@@ -63,7 +63,7 @@ Version 0.10 (April 2014)
       documentation index page.
     * std: `std::condition` has been removed. All I/O errors are now propagated
       through the `Result` type. In order to assist with error handling, a
-      `try!` macro for unwrapping errors with an early return and an lint for
+      `try!` macro for unwrapping errors with an early return and a lint for
       unused results has been added. See #12039 for more information.
     * std: The `vec` module has been renamed to `slice`.
     * std: A new vector type, `Vec<T>`, has been added in preparation for DST.

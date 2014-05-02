@@ -1037,7 +1037,7 @@ pub trait Writer {
         self.write([n])
     }
 
-    /// Write a i8 (1 byte).
+    /// Write an i8 (1 byte).
     fn write_i8(&mut self, n: i8) -> IoResult<()> {
         self.write([n as u8])
     }
