@@ -13,5 +13,5 @@
 fn main() {
     let x: Option<uint>;
     x = 5;
-    //~^ ERROR mismatched types: expected `std::option::Option<uint>`
+    //~^ ERROR mismatched types: expected `core::option::Option<uint>`
 }
