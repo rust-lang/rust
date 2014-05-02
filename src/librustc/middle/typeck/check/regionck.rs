@@ -419,7 +419,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
                 }
             }
             ty::AutoObject(ty::RegionTraitStore(trait_region, _), _, _, _) => {
-                // Determine if we are casting `expr` to an trait
+                // Determine if we are casting `expr` to a trait
                 // instance.  If so, we have to be sure that the type of
                 // the source obeys the trait's region bound.
                 //
@@ -524,7 +524,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
         }
 
         ast::ExprCast(source, _) => {
-            // Determine if we are casting `source` to an trait
+            // Determine if we are casting `source` to a trait
             // instance.  If so, we have to be sure that the type of
             // the source obeys the trait's region bound.
             //

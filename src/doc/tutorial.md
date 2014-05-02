@@ -2980,7 +2980,7 @@ fn main() {
 }
 ~~~
 
-In general, `use` creates an local alias:
+In general, `use` creates a local alias:
 An alternate path and a possibly different name to access the same item,
 without touching the original, and with both being interchangeable.
 
