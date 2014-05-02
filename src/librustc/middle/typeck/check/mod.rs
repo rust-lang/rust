@@ -4143,6 +4143,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
             }
             "needs_drop" => (1u, Vec::new(), ty::mk_bool()),
             "owns_managed" => (1u, Vec::new(), ty::mk_bool()),
+            "num_variants" => (1u, Vec::new(), ty::mk_uint()),
 
             "get_tydesc" => {
               let tydesc_ty = match ty::get_tydesc_ty(ccx.tcx) {
