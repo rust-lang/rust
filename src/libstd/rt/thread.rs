@@ -15,6 +15,7 @@
 //! which are not used for scheduling in any way.
 
 #![allow(non_camel_case_types)]
+#![allow(unsigned_negate)]
 
 use cast;
 use kinds::Send;

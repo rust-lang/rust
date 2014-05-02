@@ -12,6 +12,8 @@
 
 // FIXME: #6220 Implement floating point formatting
 
+#![allow(unsigned_negate)]
+
 use container::Container;
 use fmt;
 use iter::{Iterator, DoubleEndedIterator};
