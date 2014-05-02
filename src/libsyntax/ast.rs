@@ -173,7 +173,8 @@ pub static DUMMY_NODE_ID: NodeId = -1;
 #[deriving(Clone, Eq, TotalEq, Encodable, Decodable, Hash)]
 pub enum TyParamBound {
     TraitTyParamBound(TraitRef),
-    RegionTyParamBound
+    StaticRegionTyParamBound,
+    OtherRegionTyParamBound(Span) // FIXME -- just here until work for #5723 lands
 }
 
 #[deriving(Clone, Eq, TotalEq, Encodable, Decodable, Hash)]

@@ -350,7 +350,8 @@ pub enum TyParamBound {
 impl Clean<TyParamBound> for ast::TyParamBound {
     fn clean(&self) -> TyParamBound {
         match *self {
-            ast::RegionTyParamBound => RegionBound,
+            ast::StaticRegionTyParamBound => RegionBound,
+            ast::OtherRegionTyParamBound(_) => RegionBound,
             ast::TraitTyParamBound(ref t) => TraitBound(t.clean()),
         }
     }
