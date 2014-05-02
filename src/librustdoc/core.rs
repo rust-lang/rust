@@ -12,6 +12,7 @@ use rustc;
 use rustc::{driver, middle};
 use rustc::metadata::creader::Loader;
 use rustc::middle::privacy;
+use rustc::middle::lint;
 
 use syntax::ast;
 use syntax::parse::token;
@@ -65,6 +66,7 @@ fn get_ast_and_resolve(cpath: &Path, libs: HashSet<Path>, cfgs: Vec<~str>)
         maybe_sysroot: Some(os::self_exe_path().unwrap().dir_path()),
         addl_lib_search_paths: RefCell::new(libs),
         crate_types: vec!(driver::session::CrateTypeDylib),
+        lint_opts: vec!((lint::Warnings, lint::allow)),
         ..rustc::driver::session::basic_options().clone()
     };
 
