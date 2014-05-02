@@ -203,6 +203,8 @@ pub static tag_macro_def: uint = 0x8d;
 
 pub static tag_crate_triple: uint = 0x66;
 
+pub static tag_dylib_dependency_formats: uint = 0x67;
+
 #[deriving(Clone, Show)]
 pub struct LinkMeta {
     pub crateid: CrateId,
