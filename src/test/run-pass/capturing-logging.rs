@@ -19,14 +19,14 @@ extern crate native;
 
 use std::fmt;
 use std::io::{ChanReader, ChanWriter};
-use log::{set_logger, Logger};
+use log::{set_logger, Logger, LogRecord};
 
 struct MyWriter(ChanWriter);
 
 impl Logger for MyWriter {
-    fn log(&mut self, _level: u32, args: &fmt::Arguments) {
+    fn log(&mut self, record: &LogRecord) {
         let MyWriter(ref mut inner) = *self;
-        fmt::writeln(inner as &mut Writer, args);
+        fmt::writeln(inner as &mut Writer, record.args);
     }
 }
 
