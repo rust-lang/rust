@@ -619,7 +619,7 @@ mod tests {
     #[test]
     fn test_get_ptr() {
         unsafe {
-            let x = ~0;
+            let x = box 0;
             let addr_x: *int = ::cast::transmute(&*x);
             let opt = Some(x);
             let y = opt.unwrap();
@@ -862,11 +862,11 @@ mod tests {
     fn test_collect() {
         let v: Option<~[int]> = collect(range(0, 0)
                                         .map(|_| Some(0)));
-        assert_eq!(v, Some(~[]));
+        assert_eq!(v, Some(box []));
 
         let v: Option<~[int]> = collect(range(0, 3)
                                         .map(|x| Some(x)));
-        assert_eq!(v, Some(~[0, 1, 2]));
+        assert_eq!(v, Some(box [0, 1, 2]));
 
         let v: Option<~[int]> = collect(range(0, 3)
                                         .map(|x| if x > 1 { None } else { Some(x) }));

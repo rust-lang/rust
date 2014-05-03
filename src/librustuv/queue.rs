@@ -114,7 +114,7 @@ impl QueuePool {
             lock: unsafe {NativeMutex::new()},
             queue: mpsc::Queue::new(),
         });
-        let q = ~QueuePool {
+        let q = box QueuePool {
             refcnt: 0,
             queue: state,
         };

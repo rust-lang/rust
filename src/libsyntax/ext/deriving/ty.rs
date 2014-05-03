@@ -101,7 +101,7 @@ pub fn borrowed_explicit_self<'r>() -> Option<Option<PtrTy<'r>>> {
 }
 
 pub fn borrowed_self<'r>() -> Ty<'r> {
-    borrowed(~Self)
+    borrowed(box Self)
 }
 
 pub fn nil_ty() -> Ty<'static> {

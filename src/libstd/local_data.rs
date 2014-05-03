@@ -302,7 +302,7 @@ pub fn set<T: 'static>(key: Key<T>, data: T) {
     // everything to a trait (LocalData) which is then stored inside the map.
     // Upon destruction of the map, all the objects will be destroyed and the
     // traits have enough information about them to destroy themselves.
-    let data = ~data as ~LocalData:;
+    let data = box data as ~LocalData:;
 
     fn insertion_position(map: &mut Map,
                           key: *u8) -> Option<uint> {
@@ -486,7 +486,7 @@ mod tests {
     #[test]
     fn test_owned() {
         static key: Key<~int> = &Key;
-        set(key, ~1);
+        set(key, box 1);
 
         get(key, |v| {
             get(key, |v| {
@@ -497,7 +497,7 @@ mod tests {
             });
             assert_eq!(**v.unwrap(), 1);
         });
-        set(key, ~2);
+        set(key, box 2);
         get(key, |v| {
             assert_eq!(**v.unwrap(), 2);
         })

@@ -1585,8 +1585,8 @@ mod tests {
     #[test]
     fn test_clone_from() {
         let mut v = vec!();
-        let three = vec!(~1, ~2, ~3);
-        let two = vec!(~4, ~5);
+        let three = vec!(box 1, box 2, box 3);
+        let two = vec!(box 4, box 5);
         // zero, long
         v.clone_from(&three);
         assert_eq!(v, three);

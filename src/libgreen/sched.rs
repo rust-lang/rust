@@ -183,7 +183,7 @@ impl Scheduler {
     pub fn bootstrap(mut ~self) {
 
         // Build an Idle callback.
-        let cb = ~SchedRunner as ~Callback:Send;
+        let cb = box SchedRunner as ~Callback:Send;
         self.idle_callback = Some(self.event_loop.pausable_idle_callback(cb));
 
         // Create a task for the scheduler with an empty context.
@@ -869,7 +869,7 @@ impl Scheduler {
     }
 
     pub fn make_handle(&mut self) -> SchedHandle {
-        let remote = self.event_loop.remote_callback(~SchedRunner);
+        let remote = self.event_loop.remote_callback(box SchedRunner);
 
         return SchedHandle {
             remote: remote,
@@ -1140,7 +1140,7 @@ mod test {
             let (_p, state) = TaskState::new();
 
             // Our normal scheduler
-            let mut normal_sched = ~Scheduler::new(
+            let mut normal_sched = box Scheduler::new(
                 1,
                 basic::event_loop(),
                 normal_worker,
@@ -1152,7 +1152,7 @@ mod test {
             let friend_handle = normal_sched.make_handle();
 
             // Our special scheduler
-            let mut special_sched = ~Scheduler::new_special(
+            let mut special_sched = box Scheduler::new_special(
                 1,
                 basic::event_loop(),
                 special_worker,
@@ -1403,7 +1403,7 @@ mod test {
 
             impl Drop for S {
                 fn drop(&mut self) {
-                    let _foo = ~0;
+                    let _foo = box 0;
                 }
             }
 

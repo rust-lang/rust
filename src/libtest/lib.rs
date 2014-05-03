@@ -1001,8 +1001,8 @@ pub fn run_test(opts: &TestOpts,
             if nocapture {
                 drop((stdout, stderr));
             } else {
-                task.opts.stdout = Some(~stdout as ~Writer:Send);
-                task.opts.stderr = Some(~stderr as ~Writer:Send);
+                task.opts.stdout = Some(box stdout as ~Writer:Send);
+                task.opts.stderr = Some(box stderr as ~Writer:Send);
             }
             let result_future = task.future_result();
             task.spawn(testfn);
@@ -1056,7 +1056,7 @@ fn calc_result(desc: &TestDesc, task_succeeded: bool) -> TestResult {
 
 impl ToJson for Metric {
     fn to_json(&self) -> json::Json {
-        let mut map = ~TreeMap::new();
+        let mut map = box TreeMap::new();
         map.insert("value".to_owned(), json::Number(self.value));
         map.insert("noise".to_owned(), json::Number(self.noise));
         json::Object(map)

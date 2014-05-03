@@ -137,7 +137,7 @@ impl FromStr for ~str {
 /// Fails if invalid UTF-8
 pub fn from_byte(b: u8) -> ~str {
     assert!(b < 128u8);
-    unsafe { ::cast::transmute(~[b]) }
+    unsafe { ::cast::transmute(box [b]) }
 }
 
 /// Convert a char to a string
@@ -1387,7 +1387,7 @@ pub mod raw {
     }
 
     /// Converts a byte to a string.
-    pub unsafe fn from_byte(u: u8) -> ~str { from_utf8_owned(~[u]) }
+    pub unsafe fn from_byte(u: u8) -> ~str { from_utf8_owned(box [u]) }
 
     /// Form a slice from a C string. Unsafe because the caller must ensure the
     /// C string has the static lifetime, or else the return value may be
@@ -1448,7 +1448,7 @@ pub mod raw {
     #[test]
     fn test_from_buf_len() {
         unsafe {
-            let a = ~[65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 0u8];
+            let a = box [65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 0u8];
             let b = a.as_ptr();
             let c = from_buf_len(b, 3u);
             assert_eq!(c, "AAA".to_owned());
@@ -3342,7 +3342,7 @@ mod tests {
     #[test]
     fn test_raw_from_c_str() {
         unsafe {
-            let a = ~[65, 65, 65, 65, 65, 65, 65, 0];
+            let a = box [65, 65, 65, 65, 65, 65, 65, 0];
             let b = a.as_ptr();
             let c = raw::from_c_str(b);
             assert_eq!(c, "AAAAAAA".to_owned());
@@ -3456,13 +3456,13 @@ mod tests {
     fn test_utf16() {
         let pairs =
             [("𐍅𐌿𐌻𐍆𐌹𐌻𐌰\n".to_owned(),
-              ~[0xd800_u16, 0xdf45_u16, 0xd800_u16, 0xdf3f_u16,
+              box [0xd800_u16, 0xdf45_u16, 0xd800_u16, 0xdf3f_u16,
                 0xd800_u16, 0xdf3b_u16, 0xd800_u16, 0xdf46_u16,
                 0xd800_u16, 0xdf39_u16, 0xd800_u16, 0xdf3b_u16,
                 0xd800_u16, 0xdf30_u16, 0x000a_u16]),
 
              ("𐐒𐑉𐐮𐑀𐐲𐑋 𐐏𐐲𐑍\n".to_owned(),
-              ~[0xd801_u16, 0xdc12_u16, 0xd801_u16,
+              box [0xd801_u16, 0xdc12_u16, 0xd801_u16,
                 0xdc49_u16, 0xd801_u16, 0xdc2e_u16, 0xd801_u16,
                 0xdc40_u16, 0xd801_u16, 0xdc32_u16, 0xd801_u16,
                 0xdc4b_u16, 0x0020_u16, 0xd801_u16, 0xdc0f_u16,
@@ -3470,7 +3470,7 @@ mod tests {
                 0x000a_u16]),
 
              ("𐌀𐌖𐌋𐌄𐌑𐌉·𐌌𐌄𐌕𐌄𐌋𐌉𐌑\n".to_owned(),
-              ~[0xd800_u16, 0xdf00_u16, 0xd800_u16, 0xdf16_u16,
+              box [0xd800_u16, 0xdf00_u16, 0xd800_u16, 0xdf16_u16,
                 0xd800_u16, 0xdf0b_u16, 0xd800_u16, 0xdf04_u16,
                 0xd800_u16, 0xdf11_u16, 0xd800_u16, 0xdf09_u16,
                 0x00b7_u16, 0xd800_u16, 0xdf0c_u16, 0xd800_u16,
@@ -3479,7 +3479,7 @@ mod tests {
                 0xdf09_u16, 0xd800_u16, 0xdf11_u16, 0x000a_u16 ]),
 
              ("𐒋𐒘𐒈𐒑𐒛𐒒 𐒕𐒓 𐒈𐒚𐒍 𐒏𐒜𐒒𐒖𐒆 𐒕𐒆\n".to_owned(),
-              ~[0xd801_u16, 0xdc8b_u16, 0xd801_u16, 0xdc98_u16,
+              box [0xd801_u16, 0xdc8b_u16, 0xd801_u16, 0xdc98_u16,
                 0xd801_u16, 0xdc88_u16, 0xd801_u16, 0xdc91_u16,
                 0xd801_u16, 0xdc9b_u16, 0xd801_u16, 0xdc92_u16,
                 0x0020_u16, 0xd801_u16, 0xdc95_u16, 0xd801_u16,
@@ -3492,7 +3492,7 @@ mod tests {
                 0x000a_u16 ]),
              // Issue #12318, even-numbered non-BMP planes
              ("\U00020000".to_owned(),
-              ~[0xD840, 0xDC00])];
+              box [0xD840, 0xDC00])];
 
         for p in pairs.iter() {
             let (s, u) = (*p).clone();
@@ -3558,7 +3558,7 @@ mod tests {
     #[test]
     fn test_char_at() {
         let s = "ศไทย中华Việt Nam".to_owned();
-        let v = ~['ศ','ไ','ท','ย','中','华','V','i','ệ','t',' ','N','a','m'];
+        let v = box ['ศ','ไ','ท','ย','中','华','V','i','ệ','t',' ','N','a','m'];
         let mut pos = 0;
         for ch in v.iter() {
             assert!(s.char_at(pos) == *ch);
@@ -3569,7 +3569,7 @@ mod tests {
     #[test]
     fn test_char_at_reverse() {
         let s = "ศไทย中华Việt Nam".to_owned();
-        let v = ~['ศ','ไ','ท','ย','中','华','V','i','ệ','t',' ','N','a','m'];
+        let v = box ['ศ','ไ','ท','ย','中','华','V','i','ệ','t',' ','N','a','m'];
         let mut pos = s.len();
         for ch in v.iter().rev() {
             assert!(s.char_at_reverse(pos) == *ch);
@@ -3652,7 +3652,7 @@ mod tests {
     fn test_iterator() {
         use iter::*;
         let s = "ศไทย中华Việt Nam".to_owned();
-        let v = ~['ศ','ไ','ท','ย','中','华','V','i','ệ','t',' ','N','a','m'];
+        let v = box ['ศ','ไ','ท','ย','中','华','V','i','ệ','t',' ','N','a','m'];
 
         let mut pos = 0;
         let mut it = s.chars();
@@ -3668,7 +3668,7 @@ mod tests {
     fn test_rev_iterator() {
         use iter::*;
         let s = "ศไทย中华Việt Nam".to_owned();
-        let v = ~['m', 'a', 'N', ' ', 't', 'ệ','i','V','华','中','ย','ท','ไ','ศ'];
+        let v = box ['m', 'a', 'N', ' ', 't', 'ệ','i','V','华','中','ย','ท','ไ','ศ'];
 
         let mut pos = 0;
         let mut it = s.chars().rev();
@@ -3761,33 +3761,33 @@ mod tests {
         let data = "\nMäry häd ä little lämb\nLittle lämb\n";
 
         let split: ~[&str] = data.split(' ').collect();
-        assert_eq!( split, ~["\nMäry", "häd", "ä", "little", "lämb\nLittle", "lämb\n"]);
+        assert_eq!( split, box ["\nMäry", "häd", "ä", "little", "lämb\nLittle", "lämb\n"]);
 
         let mut rsplit: ~[&str] = data.split(' ').rev().collect();
         rsplit.reverse();
-        assert_eq!(rsplit, ~["\nMäry", "häd", "ä", "little", "lämb\nLittle", "lämb\n"]);
+        assert_eq!(rsplit, box ["\nMäry", "häd", "ä", "little", "lämb\nLittle", "lämb\n"]);
 
         let split: ~[&str] = data.split(|c: char| c == ' ').collect();
-        assert_eq!( split, ~["\nMäry", "häd", "ä", "little", "lämb\nLittle", "lämb\n"]);
+        assert_eq!( split, box ["\nMäry", "häd", "ä", "little", "lämb\nLittle", "lämb\n"]);
 
         let mut rsplit: ~[&str] = data.split(|c: char| c == ' ').rev().collect();
         rsplit.reverse();
-        assert_eq!(rsplit, ~["\nMäry", "häd", "ä", "little", "lämb\nLittle", "lämb\n"]);
+        assert_eq!(rsplit, box ["\nMäry", "häd", "ä", "little", "lämb\nLittle", "lämb\n"]);
 
         // Unicode
         let split: ~[&str] = data.split('ä').collect();
-        assert_eq!( split, ~["\nM", "ry h", "d ", " little l", "mb\nLittle l", "mb\n"]);
+        assert_eq!( split, box ["\nM", "ry h", "d ", " little l", "mb\nLittle l", "mb\n"]);
 
         let mut rsplit: ~[&str] = data.split('ä').rev().collect();
         rsplit.reverse();
-        assert_eq!(rsplit, ~["\nM", "ry h", "d ", " little l", "mb\nLittle l", "mb\n"]);
+        assert_eq!(rsplit, box ["\nM", "ry h", "d ", " little l", "mb\nLittle l", "mb\n"]);
 
         let split: ~[&str] = data.split(|c: char| c == 'ä').collect();
-        assert_eq!( split, ~["\nM", "ry h", "d ", " little l", "mb\nLittle l", "mb\n"]);
+        assert_eq!( split, box ["\nM", "ry h", "d ", " little l", "mb\nLittle l", "mb\n"]);
 
         let mut rsplit: ~[&str] = data.split(|c: char| c == 'ä').rev().collect();
         rsplit.reverse();
-        assert_eq!(rsplit, ~["\nM", "ry h", "d ", " little l", "mb\nLittle l", "mb\n"]);
+        assert_eq!(rsplit, box ["\nM", "ry h", "d ", " little l", "mb\nLittle l", "mb\n"]);
     }
 
     #[test]
@@ -3795,17 +3795,17 @@ mod tests {
         let data = "\nMäry häd ä little lämb\nLittle lämb\n";
 
         let split: ~[&str] = data.splitn(' ', 3).collect();
-        assert_eq!(split, ~["\nMäry", "häd", "ä", "little lämb\nLittle lämb\n"]);
+        assert_eq!(split, box ["\nMäry", "häd", "ä", "little lämb\nLittle lämb\n"]);
 
         let split: ~[&str] = data.splitn(|c: char| c == ' ', 3).collect();
-        assert_eq!(split, ~["\nMäry", "häd", "ä", "little lämb\nLittle lämb\n"]);
+        assert_eq!(split, box ["\nMäry", "häd", "ä", "little lämb\nLittle lämb\n"]);
 
         // Unicode
         let split: ~[&str] = data.splitn('ä', 3).collect();
-        assert_eq!(split, ~["\nM", "ry h", "d ", " little lämb\nLittle lämb\n"]);
+        assert_eq!(split, box ["\nM", "ry h", "d ", " little lämb\nLittle lämb\n"]);
 
         let split: ~[&str] = data.splitn(|c: char| c == 'ä', 3).collect();
-        assert_eq!(split, ~["\nM", "ry h", "d ", " little lämb\nLittle lämb\n"]);
+        assert_eq!(split, box ["\nM", "ry h", "d ", " little lämb\nLittle lämb\n"]);
     }
 
     #[test]
@@ -3814,20 +3814,20 @@ mod tests {
 
         let mut split: ~[&str] = data.rsplitn(' ', 3).collect();
         split.reverse();
-        assert_eq!(split, ~["\nMäry häd ä", "little", "lämb\nLittle", "lämb\n"]);
+        assert_eq!(split, box ["\nMäry häd ä", "little", "lämb\nLittle", "lämb\n"]);
 
         let mut split: ~[&str] = data.rsplitn(|c: char| c == ' ', 3).collect();
         split.reverse();
-        assert_eq!(split, ~["\nMäry häd ä", "little", "lämb\nLittle", "lämb\n"]);
+        assert_eq!(split, box ["\nMäry häd ä", "little", "lämb\nLittle", "lämb\n"]);
 
         // Unicode
         let mut split: ~[&str] = data.rsplitn('ä', 3).collect();
         split.reverse();
-        assert_eq!(split, ~["\nMäry häd ", " little l", "mb\nLittle l", "mb\n"]);
+        assert_eq!(split, box ["\nMäry häd ", " little l", "mb\nLittle l", "mb\n"]);
 
         let mut split: ~[&str] = data.rsplitn(|c: char| c == 'ä', 3).collect();
         split.reverse();
-        assert_eq!(split, ~["\nMäry häd ", " little l", "mb\nLittle l", "mb\n"]);
+        assert_eq!(split, box ["\nMäry häd ", " little l", "mb\nLittle l", "mb\n"]);
     }
 
     #[test]
@@ -3835,10 +3835,10 @@ mod tests {
         let data = "\nMäry häd ä little lämb\nLittle lämb\n";
 
         let split: ~[&str] = data.split('\n').collect();
-        assert_eq!(split, ~["", "Märy häd ä little lämb", "Little lämb", ""]);
+        assert_eq!(split, box ["", "Märy häd ä little lämb", "Little lämb", ""]);
 
         let split: ~[&str] = data.split_terminator('\n').collect();
-        assert_eq!(split, ~["", "Märy häd ä little lämb", "Little lämb"]);
+        assert_eq!(split, box ["", "Märy häd ä little lämb", "Little lämb"]);
     }
 
     #[test]
@@ -3847,18 +3847,18 @@ mod tests {
 
         let mut split: ~[&str] = data.split('\n').rev().collect();
         split.reverse();
-        assert_eq!(split, ~["", "Märy häd ä little lämb", "Little lämb", ""]);
+        assert_eq!(split, box ["", "Märy häd ä little lämb", "Little lämb", ""]);
 
         let mut split: ~[&str] = data.split_terminator('\n').rev().collect();
         split.reverse();
-        assert_eq!(split, ~["", "Märy häd ä little lämb", "Little lämb"]);
+        assert_eq!(split, box ["", "Märy häd ä little lämb", "Little lämb"]);
     }
 
     #[test]
     fn test_words() {
         let data = "\n \tMäry   häd\tä  little lämb\nLittle lämb\n";
         let words: ~[&str] = data.words().collect();
-        assert_eq!(words, ~["Märy", "häd", "ä", "little", "lämb", "Little", "lämb"])
+        assert_eq!(words, box ["Märy", "häd", "ä", "little", "lämb", "Little", "lämb"])
     }
 
     #[test]
@@ -3893,11 +3893,11 @@ mod tests {
     fn test_lines() {
         let data = "\nMäry häd ä little lämb\n\nLittle lämb\n";
         let lines: ~[&str] = data.lines().collect();
-        assert_eq!(lines, ~["", "Märy häd ä little lämb", "", "Little lämb"]);
+        assert_eq!(lines, box ["", "Märy häd ä little lämb", "", "Little lämb"]);
 
         let data = "\nMäry häd ä little lämb\n\nLittle lämb"; // no trailing \n
         let lines: ~[&str] = data.lines().collect();
-        assert_eq!(lines, ~["", "Märy häd ä little lämb", "", "Little lämb"]);
+        assert_eq!(lines, box ["", "Märy häd ä little lämb", "", "Little lämb"]);
     }
 
     #[test]
@@ -3906,20 +3906,20 @@ mod tests {
             let v: ~[&str] = s.split_str(sep).collect();
             assert_eq!(v, u);
         }
-        t("--1233345--", "12345", ~["--1233345--"]);
-        t("abc::hello::there", "::", ~["abc", "hello", "there"]);
-        t("::hello::there", "::", ~["", "hello", "there"]);
-        t("hello::there::", "::", ~["hello", "there", ""]);
-        t("::hello::there::", "::", ~["", "hello", "there", ""]);
-        t("ประเทศไทย中华Việt Nam", "中华", ~["ประเทศไทย", "Việt Nam"]);
-        t("zzXXXzzYYYzz", "zz", ~["", "XXX", "YYY", ""]);
-        t("zzXXXzYYYz", "XXX", ~["zz", "zYYYz"]);
-        t(".XXX.YYY.", ".", ~["", "XXX", "YYY", ""]);
-        t("", ".", ~[""]);
-        t("zz", "zz", ~["",""]);
-        t("ok", "z", ~["ok"]);
-        t("zzz", "zz", ~["","z"]);
-        t("zzzzz", "zz", ~["","","z"]);
+        t("--1233345--", "12345", box ["--1233345--"]);
+        t("abc::hello::there", "::", box ["abc", "hello", "there"]);
+        t("::hello::there", "::", box ["", "hello", "there"]);
+        t("hello::there::", "::", box ["hello", "there", ""]);
+        t("::hello::there::", "::", box ["", "hello", "there", ""]);
+        t("ประเทศไทย中华Việt Nam", "中华", box ["ประเทศไทย", "Việt Nam"]);
+        t("zzXXXzzYYYzz", "zz", box ["", "XXX", "YYY", ""]);
+        t("zzXXXzYYYz", "XXX", box ["zz", "zYYYz"]);
+        t(".XXX.YYY.", ".", box ["", "XXX", "YYY", ""]);
+        t("", ".", box [""]);
+        t("zz", "zz", box ["",""]);
+        t("ok", "z", box ["ok"]);
+        t("zzz", "zz", box ["","z"]);
+        t("zzzzz", "zz", box ["","","z"]);
     }
 
     #[test]

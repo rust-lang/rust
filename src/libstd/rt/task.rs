@@ -353,7 +353,7 @@ impl BlockedTask {
                 blocked_task_ptr
             }
             Shared(arc) => {
-                let blocked_task_ptr: uint = cast::transmute(~arc);
+                let blocked_task_ptr: uint = cast::transmute(box arc);
                 rtassert!(blocked_task_ptr & 0x1 == 0);
                 blocked_task_ptr | 0x1
             }
@@ -485,7 +485,7 @@ mod test {
 
     #[test]
     fn block_and_wake() {
-        let task = ~Task::new();
+        let task = box Task::new();
         let mut task = BlockedTask::block(task).wake().unwrap();
         task.destroyed = true;
     }

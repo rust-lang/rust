@@ -142,7 +142,7 @@ mod tests {
     #[test]
     fn test_transmute2() {
         unsafe {
-            assert_eq!(~[76u8], transmute("L".to_owned()));
+            assert_eq!(box [76u8], transmute("L".to_owned()));
         }
     }
 }

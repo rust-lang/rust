@@ -48,7 +48,7 @@ pub fn boot(helper: fn(imp::signal, Receiver<Req>)) {
             let (tx, rx) = channel();
             // promote this to a shared channel
             drop(tx.clone());
-            HELPER_CHAN = cast::transmute(~tx);
+            HELPER_CHAN = cast::transmute(box tx);
             let (receive, send) = imp::new();
             HELPER_SIGNAL = send;
 

@@ -448,7 +448,7 @@ fn insert<T>(count: &mut uint, child: &mut Child<T>, key: uint, value: T,
     // have to move out of `child`.
     match mem::replace(child, Nothing) {
         External(stored_key, stored_value) => {
-            let mut new = ~TrieNode::new();
+            let mut new = box TrieNode::new();
             insert(&mut new.count,
                    &mut new.children[chunk(stored_key, idx)],
                    stored_key, stored_value, idx + 1);

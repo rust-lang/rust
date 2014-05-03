@@ -123,17 +123,17 @@ fn runtest(test: &str, cratename: &str, libs: HashSet<Path>, should_fail: bool,
     let (tx, rx) = channel();
     let w1 = io::ChanWriter::new(tx);
     let w2 = w1.clone();
-    let old = io::stdio::set_stderr(~w1);
+    let old = io::stdio::set_stderr(box w1);
     spawn(proc() {
         let mut p = io::ChanReader::new(rx);
-        let mut err = old.unwrap_or(~io::stderr() as ~Writer:Send);
+        let mut err = old.unwrap_or(box io::stderr() as ~Writer:Send);
         io::util::copy(&mut p, &mut err).unwrap();
     });
-    let emitter = diagnostic::EmitterWriter::new(~w2);
+    let emitter = diagnostic::EmitterWriter::new(box w2);
 
     // Compile the code
     let codemap = CodeMap::new();
-    let diagnostic_handler = diagnostic::mk_handler(~emitter);
+    let diagnostic_handler = diagnostic::mk_handler(box emitter);
     let span_diagnostic_handler =
         diagnostic::mk_span_handler(diagnostic_handler, codemap);
 

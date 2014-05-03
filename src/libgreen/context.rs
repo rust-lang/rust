@@ -152,7 +152,7 @@ struct Registers {
 
 #[cfg(target_arch = "x86")]
 fn new_regs() -> ~Registers {
-    ~Registers {
+    box Registers {
         eax: 0, ebx: 0, ecx: 0, edx: 0,
         ebp: 0, esi: 0, edi: 0, esp: 0,
         cs: 0, ds: 0, ss: 0, es: 0, fs: 0, gs: 0,
@@ -190,9 +190,9 @@ type Registers = [uint, ..34];
 type Registers = [uint, ..22];
 
 #[cfg(windows, target_arch = "x86_64")]
-fn new_regs() -> ~Registers { ~([0, .. 34]) }
+fn new_regs() -> ~Registers { box [0, .. 34] }
 #[cfg(not(windows), target_arch = "x86_64")]
-fn new_regs() -> ~Registers { ~([0, .. 22]) }
+fn new_regs() -> ~Registers { box {let v = [0, .. 22]; v} }
 
 #[cfg(target_arch = "x86_64")]
 fn initialize_call_frame(regs: &mut Registers, fptr: InitFn, arg: uint,
@@ -241,7 +241,7 @@ fn initialize_call_frame(regs: &mut Registers, fptr: InitFn, arg: uint,
 type Registers = [uint, ..32];
 
 #[cfg(target_arch = "arm")]
-fn new_regs() -> ~Registers { ~([0, .. 32]) }
+fn new_regs() -> ~Registers { box {[0, .. 32]} }
 
 #[cfg(target_arch = "arm")]
 fn initialize_call_frame(regs: &mut Registers, fptr: InitFn, arg: uint,
@@ -270,7 +270,7 @@ fn initialize_call_frame(regs: &mut Registers, fptr: InitFn, arg: uint,
 type Registers = [uint, ..32];
 
 #[cfg(target_arch = "mips")]
-fn new_regs() -> ~Registers { ~([0, .. 32]) }
+fn new_regs() -> ~Registers { box [0, .. 32] }
 
 #[cfg(target_arch = "mips")]
 fn initialize_call_frame(regs: &mut Registers, fptr: InitFn, arg: uint,

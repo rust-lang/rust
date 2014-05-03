@@ -23,7 +23,7 @@ use std::unstable::sync::Exclusive;
 
 /// This is the only exported function from this module.
 pub fn event_loop() -> ~EventLoop:Send {
-    ~BasicLoop::new() as ~EventLoop:Send
+    box BasicLoop::new() as ~EventLoop:Send
 }
 
 struct BasicLoop {
@@ -143,7 +143,7 @@ impl EventLoop for BasicLoop {
     fn pausable_idle_callback(&mut self, cb: ~Callback:Send)
         -> ~PausableIdleCallback:Send
     {
-        let callback = ~BasicPausable::new(self, cb);
+        let callback = box BasicPausable::new(self, cb);
         rtassert!(self.idle.is_none());
         unsafe {
             let cb_ptr: &*mut BasicPausable = cast::transmute(&callback);
@@ -156,7 +156,7 @@ impl EventLoop for BasicLoop {
         let id = self.next_remote;
         self.next_remote += 1;
         self.remotes.push((id, f));
-        ~BasicRemote::new(self.messages.clone(), id) as ~RemoteCallback:Send
+        box BasicRemote::new(self.messages.clone(), id) as ~RemoteCallback:Send
     }
 
     fn io<'a>(&'a mut self) -> Option<&'a mut IoFactory> { None }

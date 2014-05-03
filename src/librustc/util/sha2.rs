@@ -593,7 +593,7 @@ mod tests {
 
         let tests = wikipedia_tests;
 
-        let mut sh = ~Sha256::new();
+        let mut sh = box Sha256::new();
 
         test_hash(sh, tests.as_slice());
     }

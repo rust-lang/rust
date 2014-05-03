@@ -377,8 +377,8 @@ impl<K: Clone + TotalOrd, V: Clone> Leaf<K, V> {
                                                               == Less);
             let branch_return = Node::new_branch(vec!(BranchElt::new(midpoint.key.clone(),
                                                                   midpoint.value.clone(),
-                                                             ~Node::new_leaf(left_leaf))),
-                                            ~Node::new_leaf(right_leaf));
+                                                             box Node::new_leaf(left_leaf))),
+                                            box Node::new_leaf(right_leaf));
             return (branch_return, true);
         }
         (Node::new_leaf(self.elts.clone()), true)
@@ -540,10 +540,10 @@ impl<K: Clone + TotalOrd, V: Clone> Branch<K, V> {
                     //so we can return false.
                     LeafNode(..) => {
                         if index.unwrap() == self.elts.len() {
-                            self.rightmost_child = ~new_branch.clone();
+                            self.rightmost_child = box new_branch.clone();
                         }
                         else {
-                            self.elts.get_mut(index.unwrap()).left = ~new_branch.clone();
+                            self.elts.get_mut(index.unwrap()).left = box new_branch.clone();
                         }
                         return (Node::new_branch(self.clone().elts,
                                                  self.clone().rightmost_child),
@@ -561,10 +561,10 @@ impl<K: Clone + TotalOrd, V: Clone> Branch<K, V> {
                 //and return it, saying we have inserted a new element.
                 LeafNode(..) => {
                     if index.unwrap() == self.elts.len() {
-                        self.rightmost_child = ~new_branch;
+                        self.rightmost_child = box new_branch;
                     }
                     else {
-                        self.elts.get_mut(index.unwrap()).left = ~new_branch;
+                        self.elts.get_mut(index.unwrap()).left = box new_branch;
                     }
                     return (Node::new_branch(self.clone().elts,
                                              self.clone().rightmost_child),
@@ -604,9 +604,9 @@ impl<K: Clone + TotalOrd, V: Clone> Branch<K, V> {
                 new_branch = Node::new_branch(
                     vec!(BranchElt::new(midpoint.clone().key,
                                      midpoint.clone().value,
-                                     ~Node::new_branch(new_left,
+                                     box Node::new_branch(new_left,
                                                        midpoint.clone().left))),
-                    ~Node::new_branch(new_right, self.clone().rightmost_child));
+                    box Node::new_branch(new_right, self.clone().rightmost_child));
                 return (new_branch, true);
             }
         }

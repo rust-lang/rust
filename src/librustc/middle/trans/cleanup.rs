@@ -236,7 +236,7 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
          */
 
         if !ty::type_needs_drop(self.ccx.tcx(), ty) { return; }
-        let drop = ~DropValue {
+        let drop = box DropValue {
             is_immediate: false,
             on_unwind: ty::type_needs_unwind_cleanup(self.ccx.tcx(), ty),
             val: val,
@@ -260,7 +260,7 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
          */
 
         if !ty::type_needs_drop(self.ccx.tcx(), ty) { return; }
-        let drop = ~DropValue {
+        let drop = box DropValue {
             is_immediate: true,
             on_unwind: ty::type_needs_unwind_cleanup(self.ccx.tcx(), ty),
             val: val,
@@ -284,7 +284,7 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
          * operation.
          */
 
-        let drop = ~FreeValue { ptr: val, heap: heap };
+        let drop = box FreeValue { ptr: val, heap: heap };
 
         debug!("schedule_free_value({:?}, val={}, heap={:?})",
                cleanup_scope,
