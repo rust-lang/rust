@@ -81,7 +81,7 @@ impl Iterator<int> for ZeroStream {
         Some(0)
     }
 }
-~~~~
+~~~
 
 Reaching the end of the iterator is signalled by returning `None` instead of
 `Some(item)`:

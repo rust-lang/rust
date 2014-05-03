@@ -52,7 +52,7 @@ loop {
         None => { break }
     }
 }
- ```
+```
 
 This `for` loop syntax can be applied to any iterator over any type.
 

@@ -31,7 +31,7 @@ fn main() {
     let little_val = fourcc!("foo ", little);
     assert_eq!(little_val, 0x21EEFFC0u32);
 }
- ```
+```
 
 # References
 
