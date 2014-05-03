@@ -619,6 +619,44 @@ pub fn compare_scalar_values<'a>(
     }
 }
 
+pub fn compare_simd_types(
+                    cx: &Block,
+                    lhs: ValueRef,
+                    rhs: ValueRef,
+                    t: ty::t,
+                    size: uint,
+                    op: ast::BinOp)
+                    -> ValueRef {
+    match ty::get(t).sty {
+        ty::ty_float(_) => {
+            // The comparison operators for floating point vectors are challenging.
+            // LLVM outputs a `< size x i1 >`, but if we perform a sign extension
+            // then bitcast to a floating point vector, the result will be `-NaN`
+            // for each truth value. Because of this they are unsupported.
+            cx.sess().bug("compare_simd_types: comparison operators \
+                           not supported for floating point SIMD types")
+        },
+        ty::ty_uint(_) | ty::ty_int(_) => {
+            let cmp = match op {
+                ast::BiEq => lib::llvm::IntEQ,
+                ast::BiNe => lib::llvm::IntNE,
+                ast::BiLt => lib::llvm::IntSLT,
+                ast::BiLe => lib::llvm::IntSLE,
+                ast::BiGt => lib::llvm::IntSGT,
+                ast::BiGe => lib::llvm::IntSGE,
+                _ => cx.sess().bug("compare_simd_types: must be a comparison operator"),
+            };
+            let return_ty = Type::vector(&type_of(cx.ccx(), t), size as u64);
+            // LLVM outputs an `< size x i1 >`, so we need to perform a sign extension
+            // to get the correctly sized type. This will compile to a single instruction
+            // once the IR is converted to assembly if the SIMD instruction is supported
+            // by the target architecture.
+            SExt(cx, ICmp(cx, cmp, lhs, rhs), return_ty)
+        },
+        _ => cx.sess().bug("compare_simd_types: invalid SIMD type"),
+    }
+}
+
 pub type val_and_ty_fn<'r,'b> =
     |&'b Block<'b>, ValueRef, ty::t|: 'r -> &'b Block<'b>;
 
