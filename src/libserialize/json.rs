@@ -2233,6 +2233,10 @@ impl<A:ToJson> ToJson for ~[A] {
     fn to_json(&self) -> Json { List(self.iter().map(|elt| elt.to_json()).collect()) }
 }
 
+impl<A:ToJson> ToJson for Vec<A> {
+    fn to_json(&self) -> Json { List(self.iter().map(|elt| elt.to_json()).collect()) }
+}
+
 impl<A:ToJson> ToJson for TreeMap<~str, A> {
     fn to_json(&self) -> Json {
         let mut d = TreeMap::new();
