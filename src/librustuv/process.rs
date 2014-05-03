@@ -87,7 +87,7 @@ impl Process {
                 };
 
                 let handle = UvHandle::alloc(None::<Process>, uvll::UV_PROCESS);
-                let process = ~Process {
+                let process = box Process {
                     handle: handle,
                     home: io_loop.make_handle(),
                     to_wake: None,

@@ -976,14 +976,14 @@ mod test {
 
     test!(fn drop_full() {
         let (tx, _rx) = channel();
-        tx.send(~1);
+        tx.send(box 1);
     })
 
     test!(fn drop_full_shared() {
         let (tx, _rx) = channel();
         drop(tx.clone());
         drop(tx.clone());
-        tx.send(~1);
+        tx.send(box 1);
     })
 
     test!(fn smoke_shared() {
@@ -1179,7 +1179,7 @@ mod test {
         // Testing that the sender cleans up the payload if receiver is closed
         let (tx, rx) = channel::<~int>();
         drop(rx);
-        tx.send(~0);
+        tx.send(box 0);
     } #[should_fail])
 
     test!(fn oneshot_single_thread_recv_chan_close() {
@@ -1195,8 +1195,8 @@ mod test {
 
     test!(fn oneshot_single_thread_send_then_recv() {
         let (tx, rx) = channel::<~int>();
-        tx.send(~10);
-        assert!(rx.recv() == ~10);
+        tx.send(box 10);
+        assert!(rx.recv() == box 10);
     })
 
     test!(fn oneshot_single_thread_try_send_open() {
@@ -1245,10 +1245,10 @@ mod test {
     test!(fn oneshot_multi_task_recv_then_send() {
         let (tx, rx) = channel::<~int>();
         spawn(proc() {
-            assert!(rx.recv() == ~10);
+            assert!(rx.recv() == box 10);
         });
 
-        tx.send(~10);
+        tx.send(box 10);
     })
 
     test!(fn oneshot_multi_task_recv_then_close() {
@@ -1257,7 +1257,7 @@ mod test {
             drop(tx);
         });
         let res = task::try(proc() {
-            assert!(rx.recv() == ~10);
+            assert!(rx.recv() == box 10);
         });
         assert!(res.is_err());
     })
@@ -1305,10 +1305,10 @@ mod test {
         for _ in range(0, stress_factor()) {
             let (tx, rx) = channel();
             spawn(proc() {
-                tx.send(~10);
+                tx.send(box 10);
             });
             spawn(proc() {
-                assert!(rx.recv() == ~10);
+                assert!(rx.recv() == box 10);
             });
         }
     })
@@ -1324,7 +1324,7 @@ mod test {
                 if i == 10 { return }
 
                 spawn(proc() {
-                    tx.send(~i);
+                    tx.send(box i);
                     send(tx, i + 1);
                 });
             }
@@ -1333,7 +1333,7 @@ mod test {
                 if i == 10 { return }
 
                 spawn(proc() {
-                    assert!(rx.recv() == ~i);
+                    assert!(rx.recv() == box i);
                     recv(rx, i + 1);
                 });
             }
@@ -1509,7 +1509,7 @@ mod sync_tests {
 
     test!(fn drop_full() {
         let (tx, _rx) = sync_channel(1);
-        tx.send(~1);
+        tx.send(box 1);
     })
 
     test!(fn smoke_shared() {
@@ -1639,7 +1639,7 @@ mod sync_tests {
         // Testing that the sender cleans up the payload if receiver is closed
         let (tx, rx) = sync_channel::<~int>(0);
         drop(rx);
-        tx.send(~0);
+        tx.send(box 0);
     } #[should_fail])
 
     test!(fn oneshot_single_thread_recv_chan_close() {
@@ -1655,8 +1655,8 @@ mod sync_tests {
 
     test!(fn oneshot_single_thread_send_then_recv() {
         let (tx, rx) = sync_channel::<~int>(1);
-        tx.send(~10);
-        assert!(rx.recv() == ~10);
+        tx.send(box 10);
+        assert!(rx.recv() == box 10);
     })
 
     test!(fn oneshot_single_thread_try_send_open() {
@@ -1710,10 +1710,10 @@ mod sync_tests {
     test!(fn oneshot_multi_task_recv_then_send() {
         let (tx, rx) = sync_channel::<~int>(0);
         spawn(proc() {
-            assert!(rx.recv() == ~10);
+            assert!(rx.recv() == box 10);
         });
 
-        tx.send(~10);
+        tx.send(box 10);
     })
 
     test!(fn oneshot_multi_task_recv_then_close() {
@@ -1722,7 +1722,7 @@ mod sync_tests {
             drop(tx);
         });
         let res = task::try(proc() {
-            assert!(rx.recv() == ~10);
+            assert!(rx.recv() == box 10);
         });
         assert!(res.is_err());
     })
@@ -1770,10 +1770,10 @@ mod sync_tests {
         for _ in range(0, stress_factor()) {
             let (tx, rx) = sync_channel(0);
             spawn(proc() {
-                tx.send(~10);
+                tx.send(box 10);
             });
             spawn(proc() {
-                assert!(rx.recv() == ~10);
+                assert!(rx.recv() == box 10);
             });
         }
     })
@@ -1789,7 +1789,7 @@ mod sync_tests {
                 if i == 10 { return }
 
                 spawn(proc() {
-                    tx.send(~i);
+                    tx.send(box i);
                     send(tx, i + 1);
                 });
             }
@@ -1798,7 +1798,7 @@ mod sync_tests {
                 if i == 10 { return }
 
                 spawn(proc() {
-                    assert!(rx.recv() == ~i);
+                    assert!(rx.recv() == box i);
                     recv(rx, i + 1);
                 });
             }

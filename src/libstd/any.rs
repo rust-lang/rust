@@ -190,7 +190,7 @@ mod tests {
 
     #[test]
     fn any_owning() {
-        let (a, b, c) = (~5u as ~Any, ~TEST as ~Any, ~Test as ~Any);
+        let (a, b, c) = (box 5u as ~Any, box TEST as ~Any, box Test as ~Any);
 
         assert!(a.is::<uint>());
         assert!(!b.is::<uint>());
@@ -223,7 +223,7 @@ mod tests {
     #[test]
     fn any_as_mut() {
         let mut a = 5u;
-        let mut b = ~7u;
+        let mut b = box 7u;
 
         let a_r = &mut a as &mut Any;
         let tmp: &mut uint = b;
@@ -268,20 +268,20 @@ mod tests {
 
     #[test]
     fn any_move() {
-        let a = ~8u as ~Any;
-        let b = ~Test as ~Any;
+        let a = box 8u as ~Any;
+        let b = box Test as ~Any;
 
         match a.move::<uint>() {
-            Ok(a) => { assert_eq!(a, ~8u); }
+            Ok(a) => { assert_eq!(a, box 8u); }
             Err(..) => fail!()
         }
         match b.move::<Test>() {
-            Ok(a) => { assert_eq!(a, ~Test); }
+            Ok(a) => { assert_eq!(a, box Test); }
             Err(..) => fail!()
         }
 
-        let a = ~8u as ~Any;
-        let b = ~Test as ~Any;
+        let a = box 8u as ~Any;
+        let b = box Test as ~Any;
 
         assert!(a.move::<~Test>().is_err());
         assert!(b.move::<~uint>().is_err());
@@ -289,8 +289,8 @@ mod tests {
 
     #[test]
     fn test_show() {
-        let a = ~8u as ~Any;
-        let b = ~Test as ~Any;
+        let a = box 8u as ~Any;
+        let b = box Test as ~Any;
         assert_eq!(format!("{}", a), "~Any".to_owned());
         assert_eq!(format!("{}", b), "~Any".to_owned());
 

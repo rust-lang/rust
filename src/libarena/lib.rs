@@ -517,7 +517,7 @@ mod tests {
     #[bench]
     pub fn bench_copy_nonarena(b: &mut Bencher) {
         b.iter(|| {
-            ~Point {
+            box Point {
                 x: 1,
                 y: 2,
                 z: 3,
@@ -569,7 +569,7 @@ mod tests {
     #[bench]
     pub fn bench_noncopy_nonarena(b: &mut Bencher) {
         b.iter(|| {
-            ~Noncopy {
+            box Noncopy {
                 string: "hello world".to_owned(),
                 array: vec!( 1, 2, 3, 4, 5 ),
             }

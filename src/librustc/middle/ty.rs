@@ -1231,7 +1231,7 @@ pub fn mk_t(cx: &ctxt, st: sty) -> t {
       }
     }
 
-    let t = ~t_box_ {
+    let t = box t_box_ {
         sty: st,
         id: cx.next_id.get(),
         flags: flags,
@@ -1400,7 +1400,7 @@ pub fn mk_slice(cx: &ctxt, r: Region, tm: mt) -> t {
 pub fn mk_tup(cx: &ctxt, ts: Vec<t>) -> t { mk_t(cx, ty_tup(ts)) }
 
 pub fn mk_closure(cx: &ctxt, fty: ClosureTy) -> t {
-    mk_t(cx, ty_closure(~fty))
+    mk_t(cx, ty_closure(box fty))
 }
 
 pub fn mk_bare_fn(cx: &ctxt, fty: BareFnTy) -> t {
@@ -1433,7 +1433,7 @@ pub fn mk_trait(cx: &ctxt,
                 bounds: BuiltinBounds)
              -> t {
     // take a copy of substs so that we own the vectors inside
-    let inner = ~TyTrait {
+    let inner = box TyTrait {
         def_id: did,
         substs: substs,
         store: store,

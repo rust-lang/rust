@@ -120,7 +120,7 @@ mod tests {
             let num_tasks = 10;
             let count = 10;
 
-            let total = Exclusive::new(~0);
+            let total = Exclusive::new(box 0);
 
             for _ in range(0u, num_tasks) {
                 let total = total.clone();

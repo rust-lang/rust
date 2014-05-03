@@ -28,7 +28,7 @@ impl IdleWatcher {
         assert_eq!(unsafe {
             uvll::uv_idle_init(loop_.handle, handle)
         }, 0);
-        let me = ~IdleWatcher {
+        let me = box IdleWatcher {
             handle: handle,
             idle_flag: false,
             closed: false,
@@ -41,7 +41,7 @@ impl IdleWatcher {
         let handle = UvHandle::alloc(None::<IdleWatcher>, uvll::UV_IDLE);
         unsafe {
             assert_eq!(uvll::uv_idle_init(loop_.handle, handle), 0);
-            let data: *c_void = cast::transmute(~f);
+            let data: *c_void = cast::transmute(box f);
             uvll::set_data_for_uv_handle(handle, data);
             assert_eq!(uvll::uv_idle_start(handle, onetime_cb), 0)
         }
@@ -128,7 +128,7 @@ mod test {
 
     fn mk(v: uint) -> (~IdleWatcher, Chan) {
         let rc = Rc::new(RefCell::new((None, 0)));
-        let cb = ~MyCallback(rc.clone(), v);
+        let cb = box MyCallback(rc.clone(), v);
         let cb = cb as ~Callback:;
         let cb = unsafe { cast::transmute(cb) };
         (IdleWatcher::new(&mut local_loop().loop_, cb), rc)
@@ -173,7 +173,7 @@ mod test {
         // never reschedule us, so we're guaranteed to stay on the same
         // task/event loop.
         use std::io;
-        drop(io::stdio::set_stderr(~io::util::NullWriter));
+        drop(io::stdio::set_stderr(box io::util::NullWriter));
 
         let (mut idle, _chan) = mk(1);
         idle.resume();

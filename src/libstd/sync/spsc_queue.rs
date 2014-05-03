@@ -73,7 +73,7 @@ pub struct Queue<T> {
 impl<T: Send> Node<T> {
     fn new() -> *mut Node<T> {
         unsafe {
-            cast::transmute(~Node {
+            cast::transmute(box Node {
                 value: None,
                 next: AtomicPtr::new(0 as *mut Node<T>),
             })
@@ -247,8 +247,8 @@ mod test {
     #[test]
     fn drop_full() {
         let mut q = Queue::new(0);
-        q.push(~1);
-        q.push(~2);
+        q.push(box 1);
+        q.push(box 2);
     }
 
     #[test]

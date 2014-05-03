@@ -387,7 +387,7 @@ pub fn monitor(f: proc():Send) {
     let mut r = io::ChanReader::new(rx);
 
     match task_builder.try(proc() {
-        io::stdio::set_stderr(~w);
+        io::stdio::set_stderr(box w);
         f()
     }) {
         Ok(()) => { /* fallthrough */ }
@@ -425,7 +425,7 @@ pub fn monitor(f: proc():Send) {
             // Fail so the process returns a failure code, but don't pollute the
             // output with some unnecessary failure messages, we've already
             // printed everything that we needed to.
-            io::stdio::set_stderr(~io::util::NullWriter);
+            io::stdio::set_stderr(box io::util::NullWriter);
             fail!();
         }
     }

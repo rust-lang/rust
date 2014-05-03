@@ -62,13 +62,13 @@ pub fn get_dbpath_for_term(term: &str) -> Option<~Path> {
             let f = str::from_char(first_char);
             let newp = p.join_many([f.as_slice(), term]);
             if newp.exists() {
-                return Some(~newp);
+                return Some(box newp);
             }
             // on some installations the dir is named after the hex of the char (e.g. OS X)
             let f = format!("{:x}", first_char as uint);
             let newp = p.join_many([f.as_slice(), term]);
             if newp.exists() {
-                return Some(~newp);
+                return Some(box newp);
             }
         }
     }

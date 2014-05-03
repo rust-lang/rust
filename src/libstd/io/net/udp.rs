@@ -243,7 +243,7 @@ mod test {
         spawn(proc() {
             match UdpSocket::bind(client_ip) {
                 Ok(client) => {
-                    let client = ~client;
+                    let client = box client;
                     let mut stream = client.connect(server_ip);
                     rx1.recv();
                     stream.write([99]).unwrap();
@@ -255,7 +255,7 @@ mod test {
 
         match UdpSocket::bind(server_ip) {
             Ok(server) => {
-                let server = ~server;
+                let server = box server;
                 let mut stream = server.connect(client_ip);
                 tx1.send(());
                 let mut buf = [0];
@@ -281,7 +281,7 @@ mod test {
         spawn(proc() {
             match UdpSocket::bind(client_ip) {
                 Ok(client) => {
-                    let client = ~client;
+                    let client = box client;
                     let mut stream = client.connect(server_ip);
                     rx1.recv();
                     stream.write([99]).unwrap();
@@ -293,7 +293,7 @@ mod test {
 
         match UdpSocket::bind(server_ip) {
             Ok(server) => {
-                let server = ~server;
+                let server = box server;
                 let mut stream = server.connect(client_ip);
                 tx1.send(());
                 let mut buf = [0];

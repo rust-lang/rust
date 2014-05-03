@@ -602,7 +602,7 @@ pub fn task_rng() -> TaskRng {
                 Ok(r) => r,
                 Err(e) => fail!("could not initialize task_rng: {}", e)
             };
-            let mut rng = ~reseeding::ReseedingRng::new(r,
+            let mut rng = box reseeding::ReseedingRng::new(r,
                                                         TASK_RNG_RESEED_THRESHOLD,
                                                         TaskRngReseeder);
             let ptr = &mut *rng as *mut TaskRngInner;

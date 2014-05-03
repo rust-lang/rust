@@ -169,7 +169,7 @@
 ;; Font-locking definitions and helpers
 (defconst rust-mode-keywords
   '("as"
-    "break"
+    "box" "break"
     "continue" "crate"
     "do"
     "else" "enum" "extern"

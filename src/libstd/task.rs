@@ -418,7 +418,7 @@ fn test_spawn_sched_childs_on_default_sched() {
 fn avoid_copying_the_body(spawnfn: |v: proc():Send|) {
     let (tx, rx) = channel::<uint>();
 
-    let x = ~1;
+    let x = box 1;
     let x_in_parent = (&*x) as *int as uint;
 
     spawnfn(proc() {
@@ -507,7 +507,7 @@ fn test_try_fail_message_owned_str() {
 #[test]
 fn test_try_fail_message_any() {
     match try(proc() {
-        fail!(~413u16 as ~Any:Send);
+        fail!(box 413u16 as ~Any:Send);
     }) {
         Err(e) => {
             type T = ~Any:Send;

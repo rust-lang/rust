@@ -294,7 +294,12 @@ pub fn parse(file: &mut io::Reader,
     }
 
     // And that's all there is to it
-    Ok(~TermInfo {names: term_names, bools: bools_map, numbers: numbers_map, strings: string_map })
+    Ok(box TermInfo {
+        names: term_names,
+        bools: bools_map,
+        numbers: numbers_map,
+        strings: string_map
+    })
 }
 
 /// Create a dummy TermInfo struct for msys terminals
@@ -304,7 +309,7 @@ pub fn msys_terminfo() -> ~TermInfo {
     strings.insert("bold".to_owned(), Vec::from_slice(bytes!("\x1b[1m")));
     strings.insert("setaf".to_owned(), Vec::from_slice(bytes!("\x1b[3%p1%dm")));
     strings.insert("setab".to_owned(), Vec::from_slice(bytes!("\x1b[4%p1%dm")));
-    ~TermInfo {
+    box TermInfo {
         names: vec!("cygwin".to_owned()), // msys is a fork of an older cygwin version
         bools: HashMap::new(),
         numbers: HashMap::new(),

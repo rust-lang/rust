@@ -316,7 +316,7 @@ impl<'a, O:DataFlowOperator+Clone+'static> DataFlowContext<'a, O> {
 
         debug!("Dataflow result:");
         debug!("{}", {
-            self.pretty_print_to(~io::stderr(), blk).unwrap();
+            self.pretty_print_to(box io::stderr(), blk).unwrap();
             ""
         });
     }

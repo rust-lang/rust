@@ -834,7 +834,7 @@ fn insert<K: TotalOrd, V>(node: &mut Option<~TreeNode<K, V>>,
         }
       }
       None => {
-       *node = Some(~TreeNode::new(key, value));
+       *node = Some(box TreeNode::new(key, value));
         None
       }
     }

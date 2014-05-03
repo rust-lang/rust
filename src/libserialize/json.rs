@@ -1772,7 +1772,7 @@ impl<T: Iterator<char>> Builder<T> {
     fn build_object(&mut self) -> Result<Json, BuilderError> {
         self.bump();
 
-        let mut values = ~TreeMap::new();
+        let mut values = box TreeMap::new();
 
         while self.token != None {
             match self.token {
@@ -2213,7 +2213,7 @@ impl<A:ToJson,B:ToJson> ToJson for (A, B) {
     fn to_json(&self) -> Json {
         match *self {
           (ref a, ref b) => {
-            List(~[a.to_json(), b.to_json()])
+            List(box [a.to_json(), b.to_json()])
           }
         }
     }
@@ -2223,7 +2223,7 @@ impl<A:ToJson,B:ToJson,C:ToJson> ToJson for (A, B, C) {
     fn to_json(&self) -> Json {
         match *self {
           (ref a, ref b, ref c) => {
-            List(~[a.to_json(), b.to_json(), c.to_json()])
+            List(box [a.to_json(), b.to_json(), c.to_json()])
           }
         }
     }
@@ -2243,7 +2243,7 @@ impl<A:ToJson> ToJson for TreeMap<~str, A> {
         for (key, value) in self.iter() {
             d.insert((*key).clone(), value.to_json());
         }
-        Object(~d)
+        Object(box d)
     }
 }
 
@@ -2253,7 +2253,7 @@ impl<A:ToJson> ToJson for HashMap<~str, A> {
         for (key, value) in self.iter() {
             d.insert((*key).clone(), value.to_json());
         }
-        Object(~d)
+        Object(box d)
     }
 }
 
@@ -2309,7 +2309,7 @@ mod tests {
     }
 
     fn mk_object(items: &[(~str, Json)]) -> Json {
-        let mut d = ~TreeMap::new();
+        let mut d = box TreeMap::new();
 
         for item in items.iter() {
             match *item {
@@ -2374,10 +2374,10 @@ mod tests {
             ]".to_owned()
         );
 
-        let long_test_list = List(~[
+        let long_test_list = List(box [
             Boolean(false),
             Null,
-            List(~[String("foo\nbar".to_owned()), Number(3.5)])]);
+            List(box [String("foo\nbar".to_owned()), Number(3.5)])]);
 
         assert_eq!(long_test_list.to_str(),
             "[false,null,[\"foo\\nbar\",3.5]]".to_owned());
@@ -2413,7 +2413,7 @@ mod tests {
         );
 
         let complex_obj = mk_object([
-                ("b".to_owned(), List(~[
+                ("b".to_owned(), List(box [
                     mk_object([("c".to_owned(), String("\x0c\r".to_owned()))]),
                     mk_object([("d".to_owned(), String("".to_owned()))])
                 ]))
@@ -2445,7 +2445,7 @@ mod tests {
 
         let a = mk_object([
             ("a".to_owned(), Boolean(true)),
-            ("b".to_owned(), List(~[
+            ("b".to_owned(), List(box [
                 mk_object([("c".to_owned(), String("\x0c\r".to_owned()))]),
                 mk_object([("d".to_owned(), String("".to_owned()))])
             ]))
@@ -3115,34 +3115,34 @@ mod tests {
 
         assert_stream_equal(
             "{}",
-            ~[(ObjectStart, ~[]), (ObjectEnd, ~[])]
+            box [(ObjectStart, box []), (ObjectEnd, box [])]
         );
         assert_stream_equal(
             "{\"a\": 3}",
-            ~[
-                (ObjectStart,        ~[]),
-                  (NumberValue(3.0), ~[Key("a")]),
-                (ObjectEnd,          ~[]),
+            box [
+                (ObjectStart,        box []),
+                  (NumberValue(3.0), box [Key("a")]),
+                (ObjectEnd,          box []),
             ]
         );
         assert_stream_equal(
             "{ \"a\": null, \"b\" : true }",
-            ~[
-                (ObjectStart,           ~[]),
-                  (NullValue,           ~[Key("a")]),
-                  (BooleanValue(true),  ~[Key("b")]),
-                (ObjectEnd,             ~[]),
+            box [
+                (ObjectStart,           box []),
+                  (NullValue,           box [Key("a")]),
+                  (BooleanValue(true),  box [Key("b")]),
+                (ObjectEnd,             box []),
             ]
         );
         assert_stream_equal(
             "{\"a\" : 1.0 ,\"b\": [ true ]}",
-            ~[
-                (ObjectStart,           ~[]),
-                  (NumberValue(1.0),    ~[Key("a")]),
-                  (ListStart,           ~[Key("b")]),
-                    (BooleanValue(true),~[Key("b"), Index(0)]),
-                  (ListEnd,             ~[Key("b")]),
-                (ObjectEnd,             ~[]),
+            box [
+                (ObjectStart,           box []),
+                  (NumberValue(1.0),    box [Key("a")]),
+                  (ListStart,           box [Key("b")]),
+                    (BooleanValue(true),box [Key("b"), Index(0)]),
+                  (ListEnd,             box [Key("b")]),
+                (ObjectEnd,             box []),
             ]
         );
         assert_stream_equal(
@@ -3174,70 +3174,70 @@ mod tests {
     fn test_read_list_streaming() {
         assert_stream_equal(
             "[]",
-            ~[
-                (ListStart, ~[]),
-                (ListEnd,   ~[]),
+            box [
+                (ListStart, box []),
+                (ListEnd,   box []),
             ]
         );
         assert_stream_equal(
             "[ ]",
-            ~[
-                (ListStart, ~[]),
-                (ListEnd,   ~[]),
+            box [
+                (ListStart, box []),
+                (ListEnd,   box []),
             ]
         );
         assert_stream_equal(
             "[true]",
-            ~[
-                (ListStart,              ~[]),
-                    (BooleanValue(true), ~[Index(0)]),
-                (ListEnd,                ~[]),
+            box [
+                (ListStart,              box []),
+                    (BooleanValue(true), box [Index(0)]),
+                (ListEnd,                box []),
             ]
         );
         assert_stream_equal(
             "[ false ]",
-            ~[
-                (ListStart,               ~[]),
-                    (BooleanValue(false), ~[Index(0)]),
-                (ListEnd,                 ~[]),
+            box [
+                (ListStart,               box []),
+                    (BooleanValue(false), box [Index(0)]),
+                (ListEnd,                 box []),
             ]
         );
         assert_stream_equal(
             "[null]",
-            ~[
-                (ListStart,     ~[]),
-                    (NullValue, ~[Index(0)]),
-                (ListEnd,       ~[]),
+            box [
+                (ListStart,     box []),
+                    (NullValue, box [Index(0)]),
+                (ListEnd,       box []),
             ]
         );
         assert_stream_equal(
             "[3, 1]",
-            ~[
-                (ListStart,     ~[]),
-                    (NumberValue(3.0), ~[Index(0)]),
-                    (NumberValue(1.0), ~[Index(1)]),
-                (ListEnd,       ~[]),
+            box [
+                (ListStart,     box []),
+                    (NumberValue(3.0), box [Index(0)]),
+                    (NumberValue(1.0), box [Index(1)]),
+                (ListEnd,       box []),
             ]
         );
         assert_stream_equal(
             "\n[3, 2]\n",
-            ~[
-                (ListStart,     ~[]),
-                    (NumberValue(3.0), ~[Index(0)]),
-                    (NumberValue(2.0), ~[Index(1)]),
-                (ListEnd,       ~[]),
+            box [
+                (ListStart,     box []),
+                    (NumberValue(3.0), box [Index(0)]),
+                    (NumberValue(2.0), box [Index(1)]),
+                (ListEnd,       box []),
             ]
         );
         assert_stream_equal(
             "[2, [4, 1]]",
-            ~[
-                (ListStart,                 ~[]),
-                    (NumberValue(2.0),      ~[Index(0)]),
-                    (ListStart,             ~[Index(1)]),
-                        (NumberValue(4.0),  ~[Index(1), Index(0)]),
-                        (NumberValue(1.0),  ~[Index(1), Index(1)]),
-                    (ListEnd,               ~[Index(1)]),
-                (ListEnd,                   ~[]),
+            box [
+                (ListStart,                 box []),
+                    (NumberValue(2.0),      box [Index(0)]),
+                    (ListStart,             box [Index(1)]),
+                        (NumberValue(4.0),  box [Index(1), Index(0)]),
+                        (NumberValue(1.0),  box [Index(1), Index(1)]),
+                    (ListEnd,               box [Index(1)]),
+                (ListEnd,                   box []),
             ]
         );
 

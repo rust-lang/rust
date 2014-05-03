@@ -159,14 +159,14 @@ impl GreenTask {
     /// useful when creating scheduler tasks.
     pub fn new_typed(coroutine: Option<Coroutine>,
                      task_type: TaskType) -> ~GreenTask {
-        ~GreenTask {
+        box GreenTask {
             pool_id: 0,
             coroutine: coroutine,
             task_type: task_type,
             sched: None,
             handle: None,
             nasty_deschedule_lock: unsafe { NativeMutex::new() },
-            task: Some(~Task::new()),
+            task: Some(box Task::new()),
         }
     }
 

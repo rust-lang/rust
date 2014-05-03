@@ -37,7 +37,7 @@ pub fn expand_deriving_rand(cx: &mut ExtCtxt,
                 },
                 explicit_self: None,
                 args: vec!(
-                    Ptr(~Literal(Path::new_local("R")),
+                    Ptr(box Literal(Path::new_local("R")),
                         Borrowed(None, ast::MutMutable))
                 ),
                 ret_ty: Self,

@@ -685,10 +685,10 @@ mod tests {
     #[test]
     fn test_collect() {
         let v: Result<~[int], ()> = collect(range(0, 0).map(|_| Ok::<int, ()>(0)));
-        assert_eq!(v, Ok(~[]));
+        assert_eq!(v, Ok(box []));
 
         let v: Result<~[int], ()> = collect(range(0, 3).map(|x| Ok::<int, ()>(x)));
-        assert_eq!(v, Ok(~[0, 1, 2]));
+        assert_eq!(v, Ok(box [0, 1, 2]));
 
         let v: Result<~[int], int> = collect(range(0, 3)
                                              .map(|x| if x > 1 { Err(x) } else { Ok(x) }));

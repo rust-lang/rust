@@ -207,7 +207,7 @@ impl rtio::RtioPipe for FileDesc {
         self.inner_write(buf)
     }
     fn clone(&self) -> ~rtio::RtioPipe:Send {
-        ~FileDesc { inner: self.inner.clone() } as ~rtio::RtioPipe:Send
+        box FileDesc { inner: self.inner.clone() } as ~rtio::RtioPipe:Send
     }
 }
 

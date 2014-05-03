@@ -379,9 +379,9 @@ fn json_output(krate: clean::Crate, res: Vec<plugins::PluginJson> ,
     //   "crate": { parsed crate ... },
     //   "plugins": { output of plugins ... }
     // }
-    let mut json = ~collections::TreeMap::new();
+    let mut json = box collections::TreeMap::new();
     json.insert("schema".to_owned(), json::String(SCHEMA_VERSION.to_owned()));
-    let plugins_json = ~res.move_iter().filter_map(|opt| opt).collect();
+    let plugins_json = box res.move_iter().filter_map(|opt| opt).collect();
 
     // FIXME #8335: yuck, Rust -> str -> JSON round trip! No way to .encode
     // straight to the Rust JSON representation.

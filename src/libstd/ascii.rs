@@ -492,7 +492,7 @@ mod tests {
     macro_rules! v2ascii (
         ( [$($e:expr),*]) => (&[$(Ascii{chr:$e}),*]);
         (&[$($e:expr),*]) => (&[$(Ascii{chr:$e}),*]);
-        (~[$($e:expr),*]) => (~[$(Ascii{chr:$e}),*]);
+        (~[$($e:expr),*]) => (box [$(Ascii{chr:$e}),*]);
     )
 
     macro_rules! vec2ascii (
@@ -536,7 +536,7 @@ mod tests {
         assert_eq!("( ;".to_ascii(),                 v2ascii!([40, 32, 59]));
         // FIXME: #5475 borrowchk error, owned vectors do not live long enough
         // if chained-from directly
-        let v = ~[40u8, 32u8, 59u8]; assert_eq!(v.to_ascii(), v2ascii!([40, 32, 59]));
+        let v = box [40u8, 32u8, 59u8]; assert_eq!(v.to_ascii(), v2ascii!([40, 32, 59]));
         let v = "( ;".to_owned();              assert_eq!(v.to_ascii(), v2ascii!([40, 32, 59]));
 
         assert_eq!("abCDef&?#".to_ascii().to_lower().into_str(), "abcdef&?#".to_owned());
@@ -569,7 +569,7 @@ mod tests {
     #[test]
     fn test_owned_ascii_vec() {
         assert_eq!(("( ;".to_owned()).into_ascii(), v2ascii!(~[40, 32, 59]));
-        assert_eq!((~[40u8, 32u8, 59u8]).into_ascii(), v2ascii!(~[40, 32, 59]));
+        assert_eq!((box [40u8, 32u8, 59u8]).into_ascii(), v2ascii!(~[40, 32, 59]));
     }
 
     #[test]
@@ -586,7 +586,7 @@ mod tests {
 
     #[test]
     fn test_ascii_to_bytes() {
-        assert_eq!(v2ascii!(~[40, 32, 59]).into_bytes(), ~[40u8, 32u8, 59u8]);
+        assert_eq!(v2ascii!(~[40, 32, 59]).into_bytes(), box [40u8, 32u8, 59u8]);
     }
 
     #[test] #[should_fail]
@@ -625,8 +625,8 @@ mod tests {
         assert_eq!(v.to_ascii_opt(), Some(v2));
         assert_eq!("zoä华".to_ascii_opt(), None);
 
-        assert_eq!((~[40u8, 32u8, 59u8]).into_ascii_opt(), Some(v2ascii!(~[40, 32, 59])));
-        assert_eq!((~[127u8, 128u8, 255u8]).into_ascii_opt(), None);
+        assert_eq!((box [40u8, 32u8, 59u8]).into_ascii_opt(), Some(v2ascii!(~[40, 32, 59])));
+        assert_eq!((box [127u8, 128u8, 255u8]).into_ascii_opt(), None);
 
         assert_eq!(("( ;".to_owned()).into_ascii_opt(), Some(v2ascii!(~[40, 32, 59])));
         assert_eq!(("zoä华".to_owned()).into_ascii_opt(), None);

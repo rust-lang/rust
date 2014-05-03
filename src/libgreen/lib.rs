@@ -427,7 +427,7 @@ impl SchedPool {
         for worker in workers.move_iter() {
             rtdebug!("inserting a regular scheduler");
 
-            let mut sched = ~Scheduler::new(pool.id,
+            let mut sched = box Scheduler::new(pool.id,
                                             (pool.factory)(),
                                             worker,
                                             pool.stealers.clone(),
@@ -488,7 +488,7 @@ impl SchedPool {
         // Create the new scheduler, using the same sleeper list as all the
         // other schedulers as well as having a stealer handle to all other
         // schedulers.
-        let mut sched = ~Scheduler::new(self.id,
+        let mut sched = box Scheduler::new(self.id,
                                         (self.factory)(),
                                         worker,
                                         self.stealers.clone(),
