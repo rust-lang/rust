@@ -1922,7 +1922,7 @@ fn trans_match_inner<'a>(scope_cx: &'a Block<'a>,
         if ty::type_is_empty(tcx, t) {
             // Special case for empty types
             let fail_cx = Cell::new(None);
-            let fail_handler = ~DynamicFailureHandler {
+            let fail_handler = box DynamicFailureHandler {
                 bcx: scope_cx,
                 sp: discr_expr.span,
                 msg: InternedString::new("scrutinizing value that can't \

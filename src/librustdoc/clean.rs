@@ -724,14 +724,14 @@ impl Clean<Type> for ast::Ty {
         debug!("span corresponds to `{}`", codemap.span_to_str(self.span));
         match self.node {
             TyNil => Unit,
-            TyPtr(ref m) => RawPointer(m.mutbl.clean(), ~m.ty.clean()),
+            TyPtr(ref m) => RawPointer(m.mutbl.clean(), box m.ty.clean()),
             TyRptr(ref l, ref m) =>
                 BorrowedRef {lifetime: l.clean(), mutability: m.mutbl.clean(),
-                             type_: ~m.ty.clean()},
-            TyBox(ty) => Managed(~ty.clean()),
-            TyUniq(ty) => Unique(~ty.clean()),
-            TyVec(ty) => Vector(~ty.clean()),
-            TyFixedLengthVec(ty, ref e) => FixedVector(~ty.clean(),
+                             type_: box m.ty.clean()},
+            TyBox(ty) => Managed(box ty.clean()),
+            TyUniq(ty) => Unique(box ty.clean()),
+            TyVec(ty) => Vector(box ty.clean()),
+            TyFixedLengthVec(ty, ref e) => FixedVector(box ty.clean(),
                                                        e.span.to_src()),
             TyTup(ref tys) => Tuple(tys.iter().map(|x| x.clean()).collect()),
             TyPath(ref p, ref tpbs, id) => {
@@ -739,9 +739,9 @@ impl Clean<Type> for ast::Ty {
                              tpbs.clean().map(|x| x.move_iter().collect()),
                              id)
             }
-            TyClosure(ref c, region) => Closure(~c.clean(), region.clean()),
-            TyProc(ref c) => Proc(~c.clean()),
-            TyBareFn(ref barefn) => BareFunction(~barefn.clean()),
+            TyClosure(ref c, region) => Closure(box c.clean(), region.clean()),
+            TyProc(ref c) => Proc(box c.clean()),
+            TyBareFn(ref barefn) => BareFunction(box barefn.clean()),
             TyBot => Bottom,
             ref x => fail!("Unimplemented type {:?}", x),
         }

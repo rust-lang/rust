@@ -459,7 +459,7 @@ mod test_map {
     #[test]
     fn test_move_iter() {
         let mut m = SmallIntMap::new();
-        m.insert(1, ~2);
+        m.insert(1, box 2);
         let mut called = false;
         for (k, v) in m.move_iter() {
             assert!(!called);
@@ -468,7 +468,7 @@ mod test_map {
             assert_eq!(v, ~2);
         }
         assert!(called);
-        m.insert(2, ~1);
+        m.insert(2, box 1);
     }
 }
 

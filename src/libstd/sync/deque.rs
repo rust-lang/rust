@@ -159,7 +159,7 @@ impl<T: Send> BufferPool<T> {
             self.pool.with(|pool| {
                 match pool.iter().position(|x| x.size() >= (1 << bits)) {
                     Some(i) => pool.remove(i).unwrap(),
-                    None => ~Buffer::new(bits)
+                    None => box Buffer::new(bits)
                 }
             })
         }
@@ -314,7 +314,7 @@ impl<T: Send> Deque<T> {
     // continue to be read after we flag this buffer for reclamation.
     unsafe fn swap_buffer(&mut self, b: int, old: *mut Buffer<T>,
                           buf: Buffer<T>) -> *mut Buffer<T> {
-        let newbuf: *mut Buffer<T> = cast::transmute(~buf);
+        let newbuf: *mut Buffer<T> = cast::transmute(box buf);
         self.array.store(newbuf, SeqCst);
         let ss = (*newbuf).size();
         self.bottom.store(b + ss, SeqCst);
@@ -474,7 +474,7 @@ mod tests {
     fn stampede(mut w: Worker<~int>, s: Stealer<~int>,
                 nthreads: int, amt: uint) {
         for _ in range(0, amt) {
-            w.push(~20);
+            w.push(box 20);
         }
         let mut remaining = AtomicUint::new(amt);
         let unsafe_remaining: *mut AtomicUint = &mut remaining;
@@ -603,7 +603,7 @@ mod tests {
 
         let (threads, hits) = slice::unzip(range(0, NTHREADS).map(|_| {
             let s = s.clone();
-            let unique_box = ~AtomicUint::new(0);
+            let unique_box = box AtomicUint::new(0);
             let thread_box = unsafe {
                 *cast::transmute::<&~AtomicUint,**mut AtomicUint>(&unique_box)
             };

@@ -216,7 +216,7 @@ fn with_task_stdout(f: |&mut Writer| -> IoResult<()> ) {
             Local::put(task);
 
             if my_stdout.is_none() {
-                my_stdout = Some(~stdout() as ~Writer:Send);
+                my_stdout = Some(box stdout() as ~Writer:Send);
             }
             let ret = f(*my_stdout.get_mut_ref());
 
@@ -396,7 +396,7 @@ mod tests {
         let (tx, rx) = channel();
         let (mut r, w) = (ChanReader::new(rx), ChanWriter::new(tx));
         spawn(proc() {
-            set_stdout(~w);
+            set_stdout(box w);
             println!("hello!");
         });
         assert_eq!(r.read_to_str().unwrap(), "hello!\n".to_owned());
@@ -408,7 +408,7 @@ mod tests {
         let (tx, rx) = channel();
         let (mut r, w) = (ChanReader::new(rx), ChanWriter::new(tx));
         spawn(proc() {
-            set_stderr(~w);
+            set_stderr(box w);
             fail!("my special message");
         });
         let s = r.read_to_str().unwrap();

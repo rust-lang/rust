@@ -117,7 +117,7 @@ mod tests {
 
     #[test]
     fn test_destructor() {
-        let x = Gc::new(~5);
+        let x = Gc::new(box 5);
         assert_eq!(**x.borrow(), 5);
     }
 }

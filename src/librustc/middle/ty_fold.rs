@@ -150,7 +150,7 @@ pub fn super_fold_sty<T:TypeFolder>(this: &mut T,
             ty::ty_enum(tid, this.fold_substs(substs))
         }
         ty::ty_trait(~ty::TyTrait { def_id, ref substs, store, bounds }) => {
-            ty::ty_trait(~ty::TyTrait{
+            ty::ty_trait(box ty::TyTrait{
                 def_id: def_id,
                 substs: this.fold_substs(substs),
                 store: this.fold_trait_store(store),
@@ -164,7 +164,7 @@ pub fn super_fold_sty<T:TypeFolder>(this: &mut T,
             ty::ty_bare_fn(this.fold_bare_fn_ty(f))
         }
         ty::ty_closure(ref f) => {
-            ty::ty_closure(~this.fold_closure_ty(*f))
+            ty::ty_closure(box this.fold_closure_ty(*f))
         }
         ty::ty_rptr(r, ref tm) => {
             ty::ty_rptr(this.fold_region(r),

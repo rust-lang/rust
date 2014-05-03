@@ -894,36 +894,36 @@ mod test {
 
     #[test]
     fn option_swap() {
-        let p = AtomicOption::new(~1);
-        let a = ~2;
+        let p = AtomicOption::new(box 1);
+        let a = box 2;
 
         let b = p.swap(a, SeqCst);
 
-        assert_eq!(b, Some(~1));
-        assert_eq!(p.take(SeqCst), Some(~2));
+        assert_eq!(b, Some(box 1));
+        assert_eq!(p.take(SeqCst), Some(box 2));
     }
 
     #[test]
     fn option_take() {
-        let p = AtomicOption::new(~1);
+        let p = AtomicOption::new(box 1);
 
-        assert_eq!(p.take(SeqCst), Some(~1));
+        assert_eq!(p.take(SeqCst), Some(box 1));
         assert_eq!(p.take(SeqCst), None);
 
-        let p2 = ~2;
+        let p2 = box 2;
         p.swap(p2, SeqCst);
 
-        assert_eq!(p.take(SeqCst), Some(~2));
+        assert_eq!(p.take(SeqCst), Some(box 2));
     }
 
     #[test]
     fn option_fill() {
-        let p = AtomicOption::new(~1);
-        assert!(p.fill(~2, SeqCst).is_some()); // should fail; shouldn't leak!
-        assert_eq!(p.take(SeqCst), Some(~1));
+        let p = AtomicOption::new(box 1);
+        assert!(p.fill(box 2, SeqCst).is_some()); // should fail; shouldn't leak!
+        assert_eq!(p.take(SeqCst), Some(box 1));
 
-        assert!(p.fill(~2, SeqCst).is_none()); // shouldn't fail
-        assert_eq!(p.take(SeqCst), Some(~2));
+        assert!(p.fill(box 2, SeqCst).is_none()); // shouldn't fail
+        assert_eq!(p.take(SeqCst), Some(box 2));
     }
 
     #[test]

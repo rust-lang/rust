@@ -141,7 +141,7 @@ impl Unwinder {
         #[no_mangle]
         fn rust_fail() -> ! {
             unsafe {
-                let exception = ~uw::_Unwind_Exception {
+                let exception = box uw::_Unwind_Exception {
                     exception_class: rust_exception_class(),
                     exception_cleanup: exception_cleanup,
                     private: [0, ..uw::unwinder_private_data_size],
@@ -346,7 +346,7 @@ pub fn begin_unwind_fmt(msg: &fmt::Arguments, file: &'static str, line: uint) ->
     // required with the current scheme, and (b) we don't handle
     // failure + OOM properly anyway (see comment in begin_unwind
     // below).
-    begin_unwind_inner(~fmt::format(msg), file, line)
+    begin_unwind_inner(box fmt::format(msg), file, line)
 }
 
 /// This is the entry point of unwinding for fail!() and assert!().
@@ -360,7 +360,7 @@ pub fn begin_unwind<M: Any + Send>(msg: M, file: &'static str, line: uint) -> ! 
     // failing.
 
     // see below for why we do the `Any` coercion here.
-    begin_unwind_inner(~msg, file, line)
+    begin_unwind_inner(box msg, file, line)
 }
 
 

@@ -131,7 +131,7 @@ pub struct MacExpr {
 }
 impl MacExpr {
     pub fn new(e: @ast::Expr) -> ~MacResult {
-        ~MacExpr { e: e } as ~MacResult
+        box MacExpr { e: e } as ~MacResult
     }
 }
 impl MacResult for MacExpr {
@@ -145,7 +145,7 @@ pub struct MacItem {
 }
 impl MacItem {
     pub fn new(i: @ast::Item) -> ~MacResult {
-        ~MacItem { i: i } as ~MacResult
+        box MacItem { i: i } as ~MacResult
     }
 }
 impl MacResult for MacItem {
@@ -174,7 +174,7 @@ impl DummyResult {
     /// Use this as a return value after hitting any errors and
     /// calling `span_err`.
     pub fn any(sp: Span) -> ~MacResult {
-        ~DummyResult { expr_only: false, span: sp } as ~MacResult
+        box DummyResult { expr_only: false, span: sp } as ~MacResult
     }
 
     /// Create a default MacResult that can only be an expression.
@@ -183,7 +183,7 @@ impl DummyResult {
     /// if an error is encountered internally, the user will recieve
     /// an error that they also used it in the wrong place.
     pub fn expr(sp: Span) -> ~MacResult {
-        ~DummyResult { expr_only: true, span: sp } as ~MacResult
+        box DummyResult { expr_only: true, span: sp } as ~MacResult
     }
 
     /// A plain dummy expression.
@@ -262,7 +262,7 @@ pub type RenameList = Vec<(ast::Ident, Name)>;
 pub fn syntax_expander_table() -> SyntaxEnv {
     // utility function to simplify creating NormalTT syntax extensions
     fn builtin_normal_expander(f: MacroExpanderFn) -> SyntaxExtension {
-        NormalTT(~BasicMacroExpander {
+        NormalTT(box BasicMacroExpander {
                 expander: f,
                 span: None,
             },
@@ -271,7 +271,7 @@ pub fn syntax_expander_table() -> SyntaxEnv {
 
     let mut syntax_expanders = SyntaxEnv::new();
     syntax_expanders.insert(intern("macro_rules"),
-                            IdentTT(~BasicIdentMacroExpander {
+                            IdentTT(box BasicIdentMacroExpander {
                                 expander: ext::tt::macro_rules::add_new_extension,
                                 span: None,
                             },

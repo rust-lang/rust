@@ -673,11 +673,11 @@ pub fn pretty_print_input(sess: Session,
     let mut rdr = MemReader::new(src);
 
     let out = match ofile {
-        None => ~io::stdout() as ~Writer,
+        None => box io::stdout() as ~Writer,
         Some(p) => {
             let r = io::File::create(&p);
             match r {
-                Ok(w) => ~w as ~Writer,
+                Ok(w) => box w as ~Writer,
                 Err(e) => fail!("print-print failed to open {} due to {}",
                                 p.display(), e),
             }

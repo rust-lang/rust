@@ -456,7 +456,7 @@ impl rtio::RtioTcpStream for TcpWatcher {
     }
 
     fn clone(&self) -> ~rtio::RtioTcpStream:Send {
-        ~TcpWatcher {
+        box TcpWatcher {
             handle: self.handle,
             stream: StreamWatcher::new(self.handle),
             home: self.home.clone(),
@@ -522,7 +522,7 @@ impl TcpListener {
             uvll::uv_tcp_init(io.uv_loop(), handle)
         }, 0);
         let (tx, rx) = channel();
-        let l = ~TcpListener {
+        let l = box TcpListener {
             home: io.make_handle(),
             handle: handle,
             closing_task: None,
@@ -559,7 +559,7 @@ impl rtio::RtioSocket for TcpListener {
 impl rtio::RtioTcpListener for TcpListener {
     fn listen(~self) -> Result<~rtio::RtioTcpAcceptor:Send, IoError> {
         // create the acceptor object from ourselves
-        let mut acceptor = ~TcpAcceptor {
+        let mut acceptor = box TcpAcceptor {
             listener: self,
             timeout: AcceptTimeout::new(),
         };
@@ -583,7 +583,7 @@ extern fn listen_cb(server: *uvll::uv_stream_t, status: c_int) {
             });
             let client = TcpWatcher::new_home(&loop_, tcp.home().clone());
             assert_eq!(unsafe { uvll::uv_accept(server, client.handle) }, 0);
-            Ok(~client as ~rtio::RtioTcpStream:Send)
+            Ok(box client as ~rtio::RtioTcpStream:Send)
         }
         n => Err(uv_error_to_io_error(UvError(n)))
     };
@@ -880,7 +880,7 @@ impl rtio::RtioUdpSocket for UdpWatcher {
     }
 
     fn clone(&self) -> ~rtio::RtioUdpSocket:Send {
-        ~UdpWatcher {
+        box UdpWatcher {
             handle: self.handle,
             home: self.home.clone(),
             refcount: self.refcount.clone(),

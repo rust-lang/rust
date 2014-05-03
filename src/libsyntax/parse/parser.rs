@@ -751,7 +751,7 @@ impl<'a> Parser<'a> {
         self.last_span = self.span;
         // Stash token for error recovery (sometimes; clone is not necessarily cheap).
         self.last_token = if is_ident_or_path(&self.token) {
-            Some(~self.token.clone())
+            Some(box self.token.clone())
         } else {
             None
         };

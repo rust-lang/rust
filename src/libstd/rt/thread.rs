@@ -80,12 +80,12 @@ impl Thread<()> {
         // We need the address of the packet to fill in to be stable so when
         // `main` fills it in it's still valid, so allocate an extra ~ box to do
         // so.
-        let packet = ~None;
+        let packet = box None;
         let packet2: *mut Option<T> = unsafe {
             *cast::transmute::<&~Option<T>, **mut Option<T>>(&packet)
         };
         let main = proc() unsafe { *packet2 = Some(main()); };
-        let native = unsafe { imp::create(stack, ~main) };
+        let native = unsafe { imp::create(stack, box main) };
 
         Thread {
             native: native,
@@ -108,7 +108,7 @@ impl Thread<()> {
     /// stack size for the new thread.
     pub fn spawn_stack(stack: uint, main: proc():Send) {
         unsafe {
-            let handle = imp::create(stack, ~main);
+            let handle = imp::create(stack, box main);
             imp::detach(handle);
         }
     }

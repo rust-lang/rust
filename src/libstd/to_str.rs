@@ -51,11 +51,11 @@ mod tests {
 
     #[test]
     fn test_vectors() {
-        let x: ~[int] = ~[];
+        let x: ~[int] = box [];
         assert_eq!(x.to_str(), "[]".to_owned());
-        assert_eq!((~[1]).to_str(), "[1]".to_owned());
-        assert_eq!((~[1, 2, 3]).to_str(), "[1, 2, 3]".to_owned());
-        assert!((~[~[], ~[1], ~[1, 1]]).to_str() ==
+        assert_eq!((box [1]).to_str(), "[1]".to_owned());
+        assert_eq!((box [1, 2, 3]).to_str(), "[1, 2, 3]".to_owned());
+        assert!((box [box [], box [1], box [1, 1]]).to_str() ==
                "[[], [1], [1, 1]]".to_owned());
     }
 }

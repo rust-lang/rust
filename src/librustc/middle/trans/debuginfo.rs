@@ -757,7 +757,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
     });
 
     // Initialize fn debug context (including scope map and namespace map)
-    let fn_debug_context = ~FunctionDebugContextData {
+    let fn_debug_context = box FunctionDebugContextData {
         scope_map: RefCell::new(HashMap::new()),
         fn_metadata: fn_metadata,
         argument_counter: Cell::new(1),

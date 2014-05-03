@@ -447,7 +447,7 @@ mod test {
     #[test]
     fn test_read_f32() {
         //big-endian floating-point 8.1250
-        let buf = ~[0x41, 0x02, 0x00, 0x00];
+        let buf = box [0x41, 0x02, 0x00, 0x00];
 
         let mut writer = MemWriter::new();
         writer.write(buf).unwrap();

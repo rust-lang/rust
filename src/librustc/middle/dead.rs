@@ -60,7 +60,7 @@ impl<'a> MarkSymbolVisitor<'a> {
         MarkSymbolVisitor {
             worklist: worklist,
             tcx: tcx,
-            live_symbols: ~HashSet::new(),
+            live_symbols: box HashSet::new(),
         }
     }
 

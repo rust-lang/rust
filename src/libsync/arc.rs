@@ -70,7 +70,7 @@ impl<T: Share + Send> Arc<T> {
     pub fn new(data: T) -> Arc<T> {
         // Start the weak pointer count as 1 which is the weak pointer that's
         // held by all the strong pointers (kinda), see std/rc.rs for more info
-        let x = ~ArcInner {
+        let x = box ArcInner {
             strong: atomics::AtomicUint::new(1),
             weak: atomics::AtomicUint::new(1),
             data: data,
