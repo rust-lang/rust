@@ -84,7 +84,7 @@ impl ToStrRadix for $T {
         });
         // We know we generated valid utf-8, so we don't need to go through that
         // check.
-        unsafe { str::raw::from_utf8_owned(buf.move_iter().collect()) }
+        unsafe { str::raw::from_utf8(buf.as_slice()).to_owned() }
     }
 }
 

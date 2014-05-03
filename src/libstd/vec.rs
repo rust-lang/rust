@@ -1649,4 +1649,42 @@ mod tests {
         unsafe { v.set_len(0); }
         assert_eq!(v.mut_iter().len(), 0);
     }
+
+    #[test]
+    fn test_partition() {
+        assert_eq!(vec![].partition(|x: &int| *x < 3), (vec![], vec![]));
+        assert_eq!(vec![1, 2, 3].partition(|x: &int| *x < 4), (vec![1, 2, 3], vec![]));
+        assert_eq!(vec![1, 2, 3].partition(|x: &int| *x < 2), (vec![1], vec![2, 3]));
+        assert_eq!(vec![1, 2, 3].partition(|x: &int| *x < 0), (vec![], vec![1, 2, 3]));
+    }
+
+    #[test]
+    fn test_partitioned() {
+        assert_eq!(([]).partitioned(|x: &int| *x < 3), (vec![], vec![]))
+        assert_eq!(([1, 2, 3]).partitioned(|x: &int| *x < 4), (vec![1, 2, 3], vec![]));
+        assert_eq!(([1, 2, 3]).partitioned(|x: &int| *x < 2), (vec![1], vec![2, 3]));
+        assert_eq!(([1, 2, 3]).partitioned(|x: &int| *x < 0), (vec![], vec![1, 2, 3]));
+    }
+
+    #[test]
+    fn test_concat() {
+        let v: [Vec<int>, ..0] = [];
+        assert_eq!(v.concat_vec(), vec![]);
+        assert_eq!([vec![1], vec![2,3]].concat_vec(), vec![1, 2, 3]);
+
+        assert_eq!([&[1], &[2,3]].concat_vec(), vec![1, 2, 3]);
+    }
+
+    #[test]
+    fn test_connect() {
+        let v: [~[int], ..0] = [];
+        assert_eq!(v.connect_vec(&0), vec![]);
+        assert_eq!([vec![1], vec![2, 3]].connect_vec(&0), vec![1, 0, 2, 3]);
+        assert_eq!([vec![1], vec![2], vec![3]].connect_vec(&0), vec![1, 0, 2, 0, 3]);
+
+        let v: [&[int], ..0] = [];
+        assert_eq!(v.connect_vec(&0), vec![]);
+        assert_eq!([&[1], &[2, 3]].connect_vec(&0), vec![1, 0, 2, 3]);
+        assert_eq!([&[1], &[2], &[3]].connect_vec(&0), vec![1, 0, 2, 0, 3]);
+    }
 }
