@@ -145,6 +145,84 @@ pub mod win32 {
         t.push(0u16);
         f(t.as_ptr())
     }
+
+    pub mod compat {
+        use kinds::Copy;
+        use option::Option;
+        use c_str::ToCStr;
+        use intrinsics::{atomic_store_relaxed, transmute};
+        use libc::types::os::arch::extra::{LPCWSTR, HMODULE, LPCSTR, LPVOID};
+        use os::win32::as_utf16_p;
+
+        #[link_name="kernel32"]
+        extern "system" {
+            fn GetModuleHandleW(lpModuleName: LPCWSTR) -> HMODULE;
+            fn GetProcAddress(hModule: HMODULE, lpProcName: LPCSTR) -> LPVOID;
+        }
+
+        unsafe fn store_func<T: Copy>(ptr: *mut T, module: &str, symbol: &str, fallback: T) {
+            as_utf16_p(module, |module| {
+                symbol.with_c_str(|symbol| {
+                    let handle = GetModuleHandleW(module);
+                    let func: Option<T> = transmute(GetProcAddress(handle, symbol));
+                    atomic_store_relaxed(ptr, func.unwrap_or(fallback))
+                })
+            })
+        }
+
+        macro_rules! compat_fn(
+            ($module:ident::$symbol:ident($($argname:ident: $argtype:ty),*)
+                                          -> $rettype:ty $fallback:block) => (
+                #[inline(always)]
+                pub unsafe fn $symbol($($argname: $argtype),*) -> $rettype {
+                    static mut ptr: extern "system" fn($($argname: $argtype),*) -> $rettype = thunk;
+
+                    extern "system" fn thunk($($argname: $argtype),*) -> $rettype {
+                        unsafe {
+                            ::os::win32::compat::store_func(&mut ptr,
+                                                                 stringify!($module),
+                                                                 stringify!($symbol),
+                                                                 fallback);
+                            ::intrinsics::atomic_load_relaxed(&ptr)($($argname),*)
+                        }
+                    }
+
+                    extern "system" fn fallback($($argname: $argtype),*) -> $rettype $fallback
+
+                    ::intrinsics::atomic_load_relaxed(&ptr)($($argname),*)
+                }
+            );
+
+            ($module:ident::$symbol:ident($($argname:ident: $argtype:ty),*) $fallback:block) => (
+                compat_fn!($module::$symbol($($argname: $argtype),*) -> () $fallback)
+            )
+        )
+
+        pub mod kernel32 {
+            use libc::types::os::arch::extra::{DWORD, LPCWSTR, BOOLEAN, HANDLE};
+            use libc::consts::os::extra::ERROR_CALL_NOT_IMPLEMENTED;
+
+            #[link_name="kernel32"]
+            extern "system" {
+                fn SetLastError(dwErrCode: DWORD);
+            }
+
+            compat_fn!(kernel32::CreateSymbolicLinkW(_lpSymlinkFileName: LPCWSTR,
+                                                     _lpTargetFileName: LPCWSTR,
+                                                     _dwFlags: DWORD) -> BOOLEAN {
+                unsafe { SetLastError(ERROR_CALL_NOT_IMPLEMENTED as DWORD); }
+                0
+            })
+
+            compat_fn!(kernel32::GetFinalPathNameByHandleW(_hFile: HANDLE,
+                                                           _lpszFilePath: LPCWSTR,
+                                                           _cchFilePath: DWORD,
+                                                           _dwFlags: DWORD) -> DWORD {
+                unsafe { SetLastError(ERROR_CALL_NOT_IMPLEMENTED as DWORD); }
+                0
+            })
+        }
+    }
 }
 
 /*
