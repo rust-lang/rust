@@ -51,6 +51,14 @@ static HOEDOWN_EXT_TABLES: libc::c_uint = 1 << 0;
 static HOEDOWN_EXT_FENCED_CODE: libc::c_uint = 1 << 1;
 static HOEDOWN_EXT_AUTOLINK: libc::c_uint = 1 << 3;
 static HOEDOWN_EXT_STRIKETHROUGH: libc::c_uint = 1 << 4;
+static HOEDOWN_EXT_SUPERSCRIPT: libc::c_uint = 1 << 8;
+static HOEDOWN_EXT_FOOTNOTES: libc::c_uint = 1 << 2;
+
+static HOEDOWN_EXTENSIONS: libc::c_uint =
+    HOEDOWN_EXT_NO_INTRA_EMPHASIS | HOEDOWN_EXT_TABLES |
+    HOEDOWN_EXT_FENCED_CODE | HOEDOWN_EXT_AUTOLINK |
+    HOEDOWN_EXT_STRIKETHROUGH | HOEDOWN_EXT_SUPERSCRIPT |
+    HOEDOWN_EXT_FOOTNOTES;
 
 type hoedown_document = libc::c_void;  // this is opaque to us
 
@@ -236,9 +244,6 @@ pub fn render(w: &mut io::Writer, s: &str, print_toc: bool) -> fmt::Result {
 
     unsafe {
         let ob = hoedown_buffer_new(DEF_OUNIT);
-        let extensions = HOEDOWN_EXT_NO_INTRA_EMPHASIS | HOEDOWN_EXT_TABLES |
-                         HOEDOWN_EXT_FENCED_CODE | HOEDOWN_EXT_AUTOLINK |
-                         HOEDOWN_EXT_STRIKETHROUGH;
         let renderer = hoedown_html_renderer_new(0, 0);
         let mut opaque = MyOpaque {
             dfltblk: (*renderer).blockcode.unwrap(),
@@ -248,7 +253,7 @@ pub fn render(w: &mut io::Writer, s: &str, print_toc: bool) -> fmt::Result {
         (*renderer).blockcode = Some(block);
         (*renderer).header = Some(header);
 
-        let document = hoedown_document_new(renderer, extensions, 16);
+        let document = hoedown_document_new(renderer, HOEDOWN_EXTENSIONS, 16);
         hoedown_document_render(document, ob, s.as_ptr(),
                                 s.len() as libc::size_t);
         hoedown_document_free(document);
@@ -319,15 +324,12 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
 
     unsafe {
         let ob = hoedown_buffer_new(DEF_OUNIT);
-        let extensions = HOEDOWN_EXT_NO_INTRA_EMPHASIS | HOEDOWN_EXT_TABLES |
-                         HOEDOWN_EXT_FENCED_CODE | HOEDOWN_EXT_AUTOLINK |
-                         HOEDOWN_EXT_STRIKETHROUGH;
         let renderer = hoedown_html_renderer_new(0, 0);
         (*renderer).blockcode = Some(block);
         (*renderer).header = Some(header);
         (*(*renderer).opaque).opaque = tests as *mut _ as *mut libc::c_void;
 
-        let document = hoedown_document_new(renderer, extensions, 16);
+        let document = hoedown_document_new(renderer, HOEDOWN_EXTENSIONS, 16);
         hoedown_document_render(document, ob, doc.as_ptr(),
                                 doc.len() as libc::size_t);
         hoedown_document_free(document);
