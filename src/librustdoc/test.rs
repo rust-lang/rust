@@ -76,6 +76,8 @@ pub fn run(input: &str,
         maybe_typed: core::NotTyped(sess),
         src: input_path,
         external_paths: RefCell::new(Some(HashMap::new())),
+        external_traits: RefCell::new(None),
+        external_typarams: RefCell::new(None),
     };
     super::ctxtkey.replace(Some(ctx));
 

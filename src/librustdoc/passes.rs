@@ -35,7 +35,7 @@ pub fn strip_hidden(krate: clean::Crate) -> plugins::PluginResult {
             fn fold_item(&mut self, i: Item) -> Option<Item> {
                 if i.is_hidden_from_doc() {
                     debug!("found one in strip_hidden; removing");
-                    self.stripped.insert(i.id);
+                    self.stripped.insert(i.def_id.node);
 
                     // use a dedicated hidden item for given item type if any
                     match i.inner {
@@ -124,7 +124,8 @@ impl<'a> fold::DocFolder for Stripper<'a> {
             clean::TraitItem(..) | clean::FunctionItem(..) |
             clean::VariantItem(..) | clean::MethodItem(..) |
             clean::ForeignFunctionItem(..) | clean::ForeignStaticItem(..) => {
-                if !self.exported_items.contains(&i.id) {
+                if ast_util::is_local(i.def_id) &&
+                   !self.exported_items.contains(&i.def_id.node) {
                     return None;
                 }
             }
@@ -173,7 +174,7 @@ impl<'a> fold::DocFolder for Stripper<'a> {
         };
 
         let i = if fastreturn {
-            self.retained.insert(i.id);
+            self.retained.insert(i.def_id.node);
             return Some(i);
         } else {
             self.fold_item_recur(i)
@@ -188,7 +189,7 @@ impl<'a> fold::DocFolder for Stripper<'a> {
                            i.doc_value().is_none() => None,
                     clean::ImplItem(ref i) if i.methods.len() == 0 => None,
                     _ => {
-                        self.retained.insert(i.id);
+                        self.retained.insert(i.def_id.node);
                         Some(i)
                     }
                 }
