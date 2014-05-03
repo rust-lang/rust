@@ -54,6 +54,8 @@ macro_rules! iotest (
 iotest!(fn eventual_timeout() {
     use native;
     let addr = next_test_ip4();
+    let host = addr.ip.to_str();
+    let port = addr.port;
 
     // Use a native task to receive connections because it turns out libuv is
     // really good at accepting connections and will likely run out of file
@@ -61,7 +63,7 @@ iotest!(fn eventual_timeout() {
     let (tx1, rx1) = channel();
     let (_tx2, rx2) = channel::<()>();
     native::task::spawn(proc() {
-        let _l = TcpListener::bind(addr).unwrap().listen();
+        let _l = TcpListener::bind(host, port).unwrap().listen();
         tx1.send(());
         let _ = rx2.recv_opt();
     });
@@ -80,7 +82,9 @@ iotest!(fn eventual_timeout() {
 
 iotest!(fn timeout_success() {
     let addr = next_test_ip4();
-    let _l = TcpListener::bind(addr).unwrap().listen();
+    let host = addr.ip.to_str();
+    let port = addr.port;
+    let _l = TcpListener::bind(host, port).unwrap().listen();
 
     assert!(TcpStream::connect_timeout(addr, 1000).is_ok());
 })
