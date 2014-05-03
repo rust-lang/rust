@@ -33,7 +33,7 @@ impl fmt::Signed for B {
     }
 }
 
-macro_rules! t(($a:expr, $b:expr) => { assert_eq!($a, $b.to_owned()) })
+macro_rules! t(($a:expr, $b:expr) => { assert_eq!($a.as_slice(), $b) })
 
 pub fn main() {
     // Make sure there's a poly formatter that takes anything
@@ -202,6 +202,10 @@ fn test_format_args() {
 
     let s = format_args!(fmt::format, "hello {}", "world");
     t!(s, "hello world");
+    let s = format_args!(|args| {
+        format!("{}: {}", "args were", args)
+    }, "hello {}", "world");
+    t!(s, "args were: hello world");
 }
 
 fn test_order() {
