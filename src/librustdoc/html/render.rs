@@ -930,6 +930,23 @@ impl<'a> Item<'a> {
             clean::ModuleItem(..) => true, _ => false
         }
     }
+
+    fn link(&self) -> ~str {
+        let mut path = Vec::new();
+        clean_srcpath(self.item.source.filename.as_bytes(), |component| {
+            path.push(component.to_owned());
+        });
+        let href = if self.item.source.loline == self.item.source.hiline {
+            format!("{}", self.item.source.loline)
+        } else {
+            format!("{}-{}", self.item.source.loline, self.item.source.hiline)
+        };
+        format!("{root}src/{krate}/{path}.html\\#{href}",
+                root = self.cx.root_path,
+                krate = self.cx.layout.krate,
+                path = path.connect("/"),
+                href = href)
+    }
 }
 
 impl<'a> fmt::Show for Item<'a> {
@@ -977,23 +994,8 @@ impl<'a> fmt::Show for Item<'a> {
 
         // Write `src` tag
         if self.cx.include_sources {
-            let mut path = Vec::new();
-            clean_srcpath(self.item.source.filename.as_bytes(), |component| {
-                path.push(component.to_owned());
-            });
-            let href = if self.item.source.loline == self.item.source.hiline {
-                format!("{}", self.item.source.loline)
-            } else {
-                format!("{}-{}", self.item.source.loline, self.item.source.hiline)
-            };
-            try!(write!(fmt.buf,
-                          "<a class='source' \
-                              href='{root}src/{krate}/{path}.html\\#{href}'>\
-                              [src]</a>",
-                          root = self.cx.root_path,
-                          krate = self.cx.layout.krate,
-                          path = path.connect("/"),
-                          href = href));
+            try!(write!(fmt.buf, "<a class='source' href='{}'>[src]</a>",
+                        self.link()));
         }
         try!(write!(fmt.buf, "</h1>\n"));
 
@@ -1138,16 +1140,19 @@ fn item_module(w: &mut Writer, cx: &Context,
 
         match myitem.inner {
             clean::StaticItem(ref s) | clean::ForeignStaticItem(ref s) => {
-                struct Initializer<'a>(&'a str);
+                struct Initializer<'a>(&'a str, Item<'a>);
                 impl<'a> fmt::Show for Initializer<'a> {
                     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                        let Initializer(s) = *self;
+                        let Initializer(s, item) = *self;
                         if s.len() == 0 { return Ok(()); }
                         try!(write!(f.buf, "<code> = </code>"));
-                        let tag = if s.contains("\n") { "pre" } else { "code" };
-                        try!(write!(f.buf, "<{tag}>{}</{tag}>",
-                                      s.as_slice(), tag=tag));
-                        Ok(())
+                        if s.contains("\n") {
+                            write!(f.buf,
+                                   "<a href='{}'>[definition]</a>",
+                                   item.link())
+                        } else {
+                            write!(f.buf, "<code>{}</code>", s.as_slice())
+                        }
                     }
                 }
 
@@ -1160,7 +1165,7 @@ fn item_module(w: &mut Writer, cx: &Context,
                 VisSpace(myitem.visibility),
                 *myitem.name.get_ref(),
                 s.type_,
-                Initializer(s.expr),
+                Initializer(s.expr, Item { cx: cx, item: myitem }),
                 Markdown(blank(myitem.doc_value()))));
             }
 
