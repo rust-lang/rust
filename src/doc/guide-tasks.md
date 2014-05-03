@@ -48,13 +48,7 @@ concurrency at this writing:
 * [`std::task`] - All code relating to tasks and task scheduling,
 * [`std::comm`] - The message passing interface,
 * [`sync::DuplexStream`] - An extension of `pipes::stream` that allows both sending and receiving,
-* [`sync::SyncSender`] - An extension of `pipes::stream` that provides synchronous message sending,
-* [`sync::SyncReceiver`] - An extension of `pipes::stream` that acknowledges each message received,
-* [`sync::rendezvous`] - Creates a stream whose channel, upon sending a message, blocks until the
-    message is received.
 * [`sync::Arc`] - The Arc (atomically reference counted) type, for safely sharing immutable data,
-* [`sync::RWArc`] - A dual-mode Arc protected by a reader-writer lock,
-* [`sync::MutexArc`] - An Arc with mutable data protected by a blocking mutex,
 * [`sync::Semaphore`] - A counting, blocking, bounded-waiting semaphore,
 * [`sync::Mutex`] - A blocking, bounded-waiting, mutual exclusion lock with an associated
     FIFO condition variable,
@@ -70,13 +64,8 @@ concurrency at this writing:
 [`std::task`]: std/task/index.html
 [`std::comm`]: std/comm/index.html
 [`sync::DuplexStream`]: sync/struct.DuplexStream.html
-[`sync::SyncSender`]: sync/struct.SyncSender.html
-[`sync::SyncReceiver`]: sync/struct.SyncReceiver.html
-[`sync::rendezvous`]: sync/fn.rendezvous.html
 [`sync::Arc`]: sync/struct.Arc.html
-[`sync::RWArc`]: sync/struct.RWArc.html
-[`sync::MutexArc`]: sync/struct.MutexArc.html
-[`sync::Semaphore`]: sync/struct.Semaphore.html
+[`sync::Semaphore`]: sync/raw/struct.Semaphore.html
 [`sync::Mutex`]: sync/struct.Mutex.html
 [`sync::RWLock`]: sync/struct.RWLock.html
 [`sync::Barrier`]: sync/struct.Barrier.html
