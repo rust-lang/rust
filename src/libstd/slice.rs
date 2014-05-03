@@ -127,23 +127,23 @@ pub trait VectorVector<T> {
     // FIXME #5898: calling these .concat and .connect conflicts with
     // StrVector::con{cat,nect}, since they have generic contents.
     /// Flattens a vector of vectors of T into a single vector of T.
-    fn concat_vec(&self) -> ~[T];
+    fn concat_vec(&self) -> Vec<T>;
 
     /// Concatenate a vector of vectors, placing a given separator between each.
-    fn connect_vec(&self, sep: &T) -> ~[T];
+    fn connect_vec(&self, sep: &T) -> Vec<T>;
 }
 
 impl<'a, T: Clone, V: Vector<T>> VectorVector<T> for &'a [V] {
-    fn concat_vec(&self) -> ~[T] {
+    fn concat_vec(&self) -> Vec<T> {
         let size = self.iter().fold(0u, |acc, v| acc + v.as_slice().len());
         let mut result = Vec::with_capacity(size);
         for v in self.iter() {
             result.push_all(v.as_slice())
         }
-        result.move_iter().collect()
+        result
     }
 
-    fn connect_vec(&self, sep: &T) -> ~[T] {
+    fn connect_vec(&self, sep: &T) -> Vec<T> {
         let size = self.iter().fold(0u, |acc, v| acc + v.as_slice().len());
         let mut result = Vec::with_capacity(size + self.len());
         let mut first = true;
@@ -151,7 +151,7 @@ impl<'a, T: Clone, V: Vector<T>> VectorVector<T> for &'a [V] {
             if first { first = false } else { result.push(sep.clone()) }
             result.push_all(v.as_slice())
         }
-        result.move_iter().collect()
+        result
     }
 }
 
@@ -185,7 +185,7 @@ pub fn unzip<T, U, V: Iterator<(T, U)>>(mut iter: V) -> (~[T], ~[U]) {
 /// The last generated swap is always (0, 1), and it returns the
 /// sequence to its initial order.
 pub struct ElementSwaps {
-    sdir: ~[SizeDirection],
+    sdir: Vec<SizeDirection>,
     /// If true, emit the last swap that returns the sequence to initial state
     emit_reset: bool,
     swaps_made : uint,
@@ -199,9 +199,7 @@ impl ElementSwaps {
         // element (equal to the original index).
         ElementSwaps{
             emit_reset: true,
-            sdir: range(0, length)
-                    .map(|i| SizeDirection{ size: i, dir: Neg })
-                    .collect::<~[_]>(),
+            sdir: range(0, length).map(|i| SizeDirection{ size: i, dir: Neg }).collect(),
             swaps_made: 0
         }
     }
@@ -228,12 +226,12 @@ impl Iterator<(uint, uint)> for ElementSwaps {
         let max = self.sdir.iter().map(|&x| x).enumerate()
                            .filter(|&(i, sd)|
                                 new_pos(i, sd.dir) < self.sdir.len() &&
-                                self.sdir[new_pos(i, sd.dir)].size < sd.size)
+                                self.sdir.get(new_pos(i, sd.dir)).size < sd.size)
                            .max_by(|&(_, sd)| sd.size);
         match max {
             Some((i, sd)) => {
                 let j = new_pos(i, sd.dir);
-                self.sdir.swap(i, j);
+                self.sdir.as_mut_slice().swap(i, j);
 
                 // Swap the direction of each larger SizeDirection
                 for x in self.sdir.mut_iter() {
@@ -368,7 +366,7 @@ impl<T: Clone> CloneableVector<T> for ~[T] {
 pub trait ImmutableCloneableVector<T> {
     /// Partitions the vector into two vectors `(A,B)`, where all
     /// elements of `A` satisfy `f` and all elements of `B` do not.
-    fn partitioned(&self, f: |&T| -> bool) -> (~[T], ~[T]);
+    fn partitioned(&self, f: |&T| -> bool) -> (Vec<T>, Vec<T>);
 
     /// Create an iterator that yields every possible permutation of the
     /// vector in succession.
@@ -377,7 +375,7 @@ pub trait ImmutableCloneableVector<T> {
 
 impl<'a,T:Clone> ImmutableCloneableVector<T> for &'a [T] {
     #[inline]
-    fn partitioned(&self, f: |&T| -> bool) -> (~[T], ~[T]) {
+    fn partitioned(&self, f: |&T| -> bool) -> (Vec<T>, Vec<T>) {
         let mut lefts  = Vec::new();
         let mut rights = Vec::new();
 
@@ -389,7 +387,7 @@ impl<'a,T:Clone> ImmutableCloneableVector<T> for &'a [T] {
             }
         }
 
-        (lefts.move_iter().collect(), rights.move_iter().collect())
+        (lefts, rights)
     }
 
     fn permutations(self) -> Permutations<T> {
@@ -426,7 +424,7 @@ pub trait OwnedVector<T> {
      * Partitions the vector into two vectors `(A,B)`, where all
      * elements of `A` satisfy `f` and all elements of `B` do not.
      */
-    fn partition(self, f: |&T| -> bool) -> (~[T], ~[T]);
+    fn partition(self, f: |&T| -> bool) -> (Vec<T>, Vec<T>);
 }
 
 impl<T> OwnedVector<T> for ~[T] {
@@ -446,7 +444,7 @@ impl<T> OwnedVector<T> for ~[T] {
     }
 
     #[inline]
-    fn partition(self, f: |&T| -> bool) -> (~[T], ~[T]) {
+    fn partition(self, f: |&T| -> bool) -> (Vec<T>, Vec<T>) {
         let mut lefts  = Vec::new();
         let mut rights = Vec::new();
 
@@ -458,7 +456,7 @@ impl<T> OwnedVector<T> for ~[T] {
             }
         }
 
-        (lefts.move_iter().collect(), rights.move_iter().collect())
+        (lefts, rights)
     }
 }
 
@@ -1250,6 +1248,7 @@ mod tests {
 
         let (left, right) = unzip(z1.iter().map(|&x| x));
 
+        let (left, right) = (left.as_slice(), right.as_slice());
         assert_eq!((1, 4), (left[0], right[0]));
         assert_eq!((2, 5), (left[1], right[1]));
         assert_eq!((3, 6), (left[2], right[2]));
@@ -1453,43 +1452,6 @@ mod tests {
                 assert!(v.windows(2).all(|w| w[0] <= w[1]));
             }
         }
-    }
-
-    #[test]
-    fn test_partition() {
-        assert_eq!((box []).partition(|x: &int| *x < 3), (box [], box []));
-        assert_eq!((box [1, 2, 3]).partition(|x: &int| *x < 4), (box [1, 2, 3], box []));
-        assert_eq!((box [1, 2, 3]).partition(|x: &int| *x < 2), (box [1], box [2, 3]));
-        assert_eq!((box [1, 2, 3]).partition(|x: &int| *x < 0), (box [], box [1, 2, 3]));
-    }
-
-    #[test]
-    fn test_partitioned() {
-        assert_eq!(([]).partitioned(|x: &int| *x < 3), (box [], box []))
-        assert_eq!(([1, 2, 3]).partitioned(|x: &int| *x < 4), (box [1, 2, 3], box []));
-        assert_eq!(([1, 2, 3]).partitioned(|x: &int| *x < 2), (box [1], box [2, 3]));
-        assert_eq!(([1, 2, 3]).partitioned(|x: &int| *x < 0), (box [], box [1, 2, 3]));
-    }
-
-    #[test]
-    fn test_concat() {
-        let v: [~[int], ..0] = [];
-        assert_eq!(v.concat_vec(), box []);
-        assert_eq!([box [1], box [2,3]].concat_vec(), box [1, 2, 3]);
-
-        assert_eq!([&[1], &[2,3]].concat_vec(), box [1, 2, 3]);
-    }
-
-    #[test]
-    fn test_connect() {
-        let v: [~[int], ..0] = [];
-        assert_eq!(v.connect_vec(&0), box []);
-        assert_eq!([box [1], box [2, 3]].connect_vec(&0), box [1, 0, 2, 3]);
-        assert_eq!([box [1], box [2], box [3]].connect_vec(&0), box [1, 0, 2, 0, 3]);
-
-        assert_eq!(v.connect_vec(&0), box []);
-        assert_eq!([&[1], &[2, 3]].connect_vec(&0), box [1, 0, 2, 3]);
-        assert_eq!([&[1], &[2], &[3]].connect_vec(&0), box [1, 0, 2, 0, 3]);
     }
 
     #[test]
