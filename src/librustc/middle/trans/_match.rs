@@ -340,16 +340,16 @@ fn trans_opt<'a>(bcx: &'a Block<'a>, o: &Opt) -> opt_result<'a> {
             let lit_datum = unpack_datum!(bcx, expr::trans(bcx, lit_expr));
             let lit_datum = lit_datum.assert_rvalue(bcx); // literals are rvalues
             let lit_datum = unpack_datum!(bcx, lit_datum.to_appropriate_datum(bcx));
-            return single_result(rslt(bcx, lit_datum.val));
+            return single_result(Result::new(bcx, lit_datum.val));
         }
         lit(UnitLikeStructLit(pat_id)) => {
             let struct_ty = ty::node_id_to_type(bcx.tcx(), pat_id);
             let datum = datum::rvalue_scratch_datum(bcx, struct_ty, "");
-            return single_result(rslt(bcx, datum.val));
+            return single_result(Result::new(bcx, datum.val));
         }
         lit(ConstLit(lit_id)) => {
             let (llval, _) = consts::get_const_val(bcx.ccx(), lit_id);
-            return single_result(rslt(bcx, llval));
+            return single_result(Result::new(bcx, llval));
         }
         var(disr_val, ref repr) => {
             return adt::trans_case(bcx, &**repr, disr_val);
@@ -357,13 +357,13 @@ fn trans_opt<'a>(bcx: &'a Block<'a>, o: &Opt) -> opt_result<'a> {
         range(l1, l2) => {
             let (l1, _) = consts::const_expr(ccx, l1, true);
             let (l2, _) = consts::const_expr(ccx, l2, true);
-            return range_result(rslt(bcx, l1), rslt(bcx, l2));
+            return range_result(Result::new(bcx, l1), Result::new(bcx, l2));
         }
         vec_len(n, vec_len_eq, _) => {
-            return single_result(rslt(bcx, C_int(ccx, n as int)));
+            return single_result(Result::new(bcx, C_int(ccx, n as int)));
         }
         vec_len(n, vec_len_ge(_), _) => {
-            return lower_bound(rslt(bcx, C_int(ccx, n as int)));
+            return lower_bound(Result::new(bcx, C_int(ccx, n as int)));
         }
     }
 }
@@ -1311,7 +1311,7 @@ fn compare_values<'a>(
     let _icx = push_ctxt("compare_values");
     if ty::type_is_scalar(rhs_t) {
         let rs = compare_scalar_types(cx, lhs, rhs, rhs_t, ast::BiEq);
-        return rslt(rs.bcx, rs.val);
+        return Result::new(rs.bcx, rs.val);
     }
 
     match ty::get(rhs_t).sty {
@@ -1742,7 +1742,7 @@ fn compile_submatch_continue<'a, 'b>(
                                   compare_scalar_types(
                                   bcx, test_val, vend,
                                   t, ast::BiLe);
-                              rslt(bcx, And(bcx, llge, llle))
+                              Result::new(bcx, And(bcx, llge, llle))
                           }
                       }
                   };
@@ -1757,14 +1757,14 @@ fn compile_submatch_continue<'a, 'b>(
                               let value = compare_scalar_values(
                                   bcx, test_val, val,
                                   signed_int, ast::BiEq);
-                              rslt(bcx, value)
+                              Result::new(bcx, value)
                           }
                           lower_bound(
                               Result {bcx, val: val}) => {
                               let value = compare_scalar_values(
                                   bcx, test_val, val,
                                   signed_int, ast::BiGe);
-                              rslt(bcx, value)
+                              Result::new(bcx, value)
                           }
                           range_result(
                               Result {val: vbegin, ..},
@@ -1777,7 +1777,7 @@ fn compile_submatch_continue<'a, 'b>(
                                   compare_scalar_values(
                                   bcx, test_val, vend,
                                   signed_int, ast::BiLe);
-                              rslt(bcx, And(bcx, llge, llle))
+                              Result::new(bcx, And(bcx, llge, llle))
                           }
                       }
                   };
