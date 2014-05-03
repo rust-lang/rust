@@ -62,7 +62,7 @@ use std::str;
 
 let x: Option<~str> = str::from_utf8_owned(~[104u8,105u8]);
 let y: ~str = x.unwrap();
-~~~~
+~~~
 
 To return a [`MaybeOwned`](http://static.rust-lang.org/doc/master/std/str/enum.MaybeOwned.html) use the str helper function [`from_utf8_lossy`](http://static.rust-lang.org/doc/master/std/str/fn.from_utf8_owned.html).  This function also replaces non-valid utf-8 sequences with U+FFFD replacement character.
 
@@ -71,7 +71,7 @@ use std::str;
 
 let x = bytes!(72u8,"ello ",0xF0,0x90,0x80,"World!");
 let y = str::from_utf8_lossy(x);
-~~~~
+~~~
 
 # File operations
 

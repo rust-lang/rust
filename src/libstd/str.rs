@@ -37,7 +37,7 @@ fn main() {
     let borrowed_string1 = "This string is borrowed with the 'static lifetime";
     let borrowed_string2: &str = owned_string;   // owned strings can be borrowed
 }
- ```
+```
 
 From the example above, you can see that Rust has 2 different kinds of string
 literals. The owned literals correspond to the owned string types, but the

@@ -4085,7 +4085,7 @@ fn main() {
 
 These four log levels correspond to levels 1-4, as controlled by `RUST_LOG`:
 
-``` {.bash .notrust}
+```notrust,bash
 $ RUST_LOG=rust=3 ./rust
 This is an error log
 This is a warn log

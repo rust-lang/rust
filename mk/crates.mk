@@ -38,7 +38,7 @@
 #   DEPS_<crate>
 #	These lists are the dependencies of the <crate> that is to be built.
 #	Rust dependencies are listed bare (i.e. std, green) and native
-#	dependencies have a "native:" prefix (i.e. native:sundown). All deps
+#	dependencies have a "native:" prefix (i.e. native:hoedown). All deps
 #	will be built before the crate itself is built.
 #
 #   TOOL_DEPS_<tool>/TOOL_SOURCE_<tool>
@@ -63,7 +63,7 @@ DEPS_native := std
 DEPS_syntax := std term serialize collections log
 DEPS_rustc := syntax native:rustllvm flate arena serialize sync getopts \
               collections time log
-DEPS_rustdoc := rustc native:sundown serialize sync getopts collections \
+DEPS_rustdoc := rustc native:hoedown serialize sync getopts collections \
                 test time
 DEPS_flate := std native:miniz
 DEPS_arena := std collections

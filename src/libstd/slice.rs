@@ -19,7 +19,7 @@ homogeneous types:
 ```rust
 let int_vector = [1,2,3];
 let str_vector = ["one", "two", "three"];
- ```
+```
 
 This is a big module, but for a high-level overview:
 
@@ -44,7 +44,7 @@ a vector or a vector slice from the index interval `[a, b)`:
 let numbers = [0, 1, 2];
 let last_numbers = numbers.slice(1, 3);
 // last_numbers is now &[1, 2]
- ```
+```
 
 Traits defined for the `~[T]` type, like `OwnedVector`, can only be called
 on such vectors. These methods deal with adding elements or otherwise changing
@@ -57,7 +57,7 @@ of the vector:
 let mut numbers = vec![0, 1, 2];
 numbers.push(7);
 // numbers is now vec![0, 1, 2, 7];
- ```
+```
 
 ## Implementations of other traits
 
@@ -79,7 +79,7 @@ let numbers = [0, 1, 2];
 for &x in numbers.iter() {
     println!("{} is a number!", x);
 }
- ```
+```
 
 * `.mut_iter()` returns an iterator that allows modifying each value.
 * `.move_iter()` converts an owned vector into an iterator that
