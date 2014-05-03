@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(phase)]
+#[phase(syntax)] extern crate green;
 extern crate sync;
 
 use std::from_str::FromStr;
@@ -15,6 +17,8 @@ use std::iter::count;
 use std::cmp::min;
 use std::os;
 use sync::{Arc, RWLock};
+
+green_start!(main)
 
 fn A(i: uint, j: uint) -> f64 {
     ((i + j) * (i + j + 1) / 2 + i + 1) as f64
@@ -38,7 +42,7 @@ fn mult(v: Arc<RWLock<Vec<f64>>>, out: Arc<RWLock<Vec<f64>>>,
     let (tx, rx) = channel();
 
     let len = out.read().len();
-    let chunk = len / 100 + 1;
+    let chunk = len / 20 + 1;
     for chk in count(0, chunk) {
         if chk >= len {break;}
         let tx = tx.clone();
