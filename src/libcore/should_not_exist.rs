@@ -151,39 +151,6 @@ impl<A: Clone> Clone for ~[A] {
     }
 }
 
-impl<A> FromIterator<A> for ~[A] {
-    fn from_iter<T: Iterator<A>>(mut iterator: T) -> ~[A] {
-        let (lower, _) = iterator.size_hint();
-        let cap = if lower == 0 {16} else {lower};
-        let mut cap = cap.checked_mul(&mem::size_of::<A>()).unwrap();
-        let mut len = 0;
-
-        unsafe {
-            let mut ptr = alloc(cap) as *mut Vec<A>;
-            let mut ret = cast::transmute(ptr);
-            for elt in iterator {
-                if len * mem::size_of::<A>() >= cap {
-                    cap = cap.checked_mul(&2).unwrap();
-                    let ptr2 = alloc(cap) as *mut Vec<A>;
-                    ptr::copy_nonoverlapping_memory(&mut (*ptr2).data,
-                                                    &(*ptr).data,
-                                                    len);
-                    free(ptr as *u8);
-                    cast::forget(ret);
-                    ret = cast::transmute(ptr2);
-                    ptr = ptr2;
-                }
-
-                let base = &mut (*ptr).data as *mut A;
-                intrinsics::move_val_init(&mut *base.offset(len as int), elt);
-                len += 1;
-                (*ptr).fill = len * mem::nonzero_size_of::<A>();
-            }
-            ret
-        }
-    }
-}
-
 #[cfg(not(test))]
 impl<'a,T:Clone, V: Vector<T>> Add<V, ~[T]> for &'a [T] {
     #[inline]
