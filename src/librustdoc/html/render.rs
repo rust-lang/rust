@@ -1619,54 +1619,24 @@ fn render_impl(w: &mut Writer, i: &clean::Impl,
         None => {}
     }
 
-    fn docmeth(w: &mut Writer, item: &clean::Item) -> io::IoResult<bool> {
+    fn docmeth(w: &mut Writer, item: &clean::Item,
+               dox: bool) -> io::IoResult<()> {
         try!(write!(w, "<h4 id='method.{}' class='method'><code>",
                       *item.name.get_ref()));
         try!(render_method(w, item));
         try!(write!(w, "</code></h4>\n"));
         match item.doc_value() {
-            Some(s) => {
+            Some(s) if dox => {
                 try!(write!(w, "<div class='docblock'>{}</div>", Markdown(s)));
-                Ok(true)
+                Ok(())
             }
-            None => Ok(false)
+            Some(..) | None => Ok(())
         }
     }
 
     try!(write!(w, "<div class='methods'>"));
     for meth in i.methods.iter() {
-        if try!(docmeth(w, meth)) {
-            continue
-        }
-
-        // No documentation? Attempt to slurp in the trait's documentation
-        let trait_id = match trait_id {
-            None => continue,
-            Some(id) => id,
-        };
-        try!(local_data::get(cache_key, |cache| {
-            let cache = cache.unwrap();
-            match cache.traits.find(&trait_id) {
-                Some(t) => {
-                    let name = meth.name.clone();
-                    match t.methods.iter().find(|t| t.item().name == name) {
-                        Some(method) => {
-                            match method.item().doc_value() {
-                                Some(s) => {
-                                    try!(write!(w,
-                                                  "<div class='docblock'>{}</div>",
-                                                  Markdown(s)));
-                                }
-                                None => {}
-                            }
-                        }
-                        None => {}
-                    }
-                }
-                None => {}
-            }
-            Ok(())
-        }))
+        try!(docmeth(w, meth, true));
     }
 
     // If we've implemented a trait, then also emit documentation for all
@@ -1685,7 +1655,7 @@ fn render_impl(w: &mut Writer, i: &clean::Impl,
                                 None => {}
                             }
 
-                            try!(docmeth(w, method.item()));
+                            try!(docmeth(w, method.item(), false));
                         }
                     }
                     None => {}
