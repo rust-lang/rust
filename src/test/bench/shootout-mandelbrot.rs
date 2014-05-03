@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,72 +8,69 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::io;
+extern crate sync;
 
-struct DummyWriter;
-impl Writer for DummyWriter {
-    fn write(&mut self, _: &[u8]) -> io::IoResult<()> { Ok(()) }
-}
+use std::io;
+use sync::Future;
 
 static ITER: int = 50;
 static LIMIT: f64 = 2.0;
 
-fn main() {
-    let args = std::os::args();
-    let (w, mut out) = if args.len() < 2 {
-        println!("Test mode: do not dump the image because it's not utf8, \
-                  which interferes with the test runner.");
-        (1000, ~DummyWriter as ~Writer)
-    } else {
-        (from_str(args[1]).unwrap(),
-         ~std::io::stdout() as ~Writer)
-    };
-    let h = w;
-    let mut byte_acc = 0u8;
-    let mut bit_num = 0;
-
-    writeln!(out, "P4\n{} {}", w, h);
-
-    for y in range(0, h) {
-        let y = y as f64;
-        for x in range(0, w) {
-            let mut z_r = 0f64;
-            let mut z_i = 0f64;
-            let mut t_r = 0f64;
-            let mut t_i = 0f64;
-            let c_r = 2.0 * (x as f64) / (w as f64) - 1.5;
-            let c_i = 2.0 * (y as f64) / (h as f64) - 1.0;
-
+fn write_line(init_i: f64, vec_init_r: &[f64], res: &mut Vec<u8>) {
+    for chunk_init_r in vec_init_r.chunks(8) {
+        let mut cur_byte = 0xff;
+        let mut cur_bitmask = 0x80;
+        for &init_r in chunk_init_r.iter() {
+            let mut cur_r = init_r;
+            let mut cur_i = init_i;
             for _ in range(0, ITER) {
-                if t_r + t_i > LIMIT * LIMIT {
+                let r = cur_r;
+                let i = cur_i;
+                cur_r = r * r - i * i + init_r;
+                cur_i = 2.0 * r * i + init_i;
+
+                if r * r + i * i > LIMIT * LIMIT {
+                    cur_byte &= !cur_bitmask;
                     break;
                 }
-
-                z_i = 2.0 * z_r * z_i + c_i;
-                z_r = t_r - t_i + c_r;
-                t_r = z_r * z_r;
-                t_i = z_i * z_i;
             }
-
-            byte_acc <<= 1;
-            if t_r + t_i <= LIMIT * LIMIT {
-                byte_acc |= 1;
-            }
-
-            bit_num += 1;
-
-            if bit_num == 8 {
-                out.write_u8(byte_acc);
-                byte_acc = 0;
-                bit_num = 0;
-            } else if x == w - 1 {
-                byte_acc <<= 8 - w % 8;
-                out.write_u8(byte_acc);
-                byte_acc = 0;
-                bit_num = 0;
-            }
+            cur_bitmask >>= 1;
         }
+        res.push(cur_byte);
     }
+}
 
-    out.flush();
+fn mandelbrot<W: io::Writer>(w: uint, mut out: W) -> io::IoResult<()> {
+    // Ensure w and h are multiples of 8.
+    let w = (w + 7) / 8 * 8;
+    let h = w;
+    let chunk_size = h / 8;
+
+    let data: Vec<Future<Vec<u8>>> = range(0u, 8).map(|i| Future::spawn(proc () {
+        let vec_init_r = Vec::from_fn(w, |x| 2.0 * (x as f64) / (w as f64) - 1.5);
+        let mut res: Vec<u8> = Vec::with_capacity((chunk_size * w) / 8);
+        for y in range(i * chunk_size, (i + 1) * chunk_size) {
+            let init_i = 2.0 * (y as f64) / (h as f64) - 1.0;
+            write_line(init_i, vec_init_r.as_slice(), &mut res);
+        }
+        res
+    })).collect();
+
+    try!(writeln!(&mut out as &mut Writer, "P4\n{} {}", w, h));
+    for res in data.move_iter() {
+        try!(out.write(res.unwrap().as_slice()));
+    }
+    out.flush()
+}
+
+fn main() {
+    let args = std::os::args();
+    let res = if args.len() < 2 {
+        println!("Test mode: do not dump the image because it's not utf8, \
+                  which interferes with the test runner.");
+        mandelbrot(1000, std::io::util::NullWriter)
+    } else {
+        mandelbrot(from_str(args[1]).unwrap(), std::io::stdout())
+    };
+    res.unwrap();
 }
