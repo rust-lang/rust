@@ -22,6 +22,7 @@ use syntax::codemap::Span;
 use syntax::diagnostic::SpanHandler;
 use syntax::crateid::CrateId;
 use syntax::attr::AttrMetaMethods;
+use util::fs;
 
 use std::c_str::ToCStr;
 use std::cast;
@@ -104,18 +105,6 @@ impl CratePaths {
             (&None, &Some(ref p))          => vec!(p.clone()),
             (&Some(ref p1), &Some(ref p2)) => vec!(p1.clone(), p2.clone()),
         }
-    }
-}
-
-// FIXME(#11857) this should be a "real" realpath
-fn realpath(p: &Path) -> Path {
-    use std::os;
-    use std::io::fs;
-
-    let path = os::make_absolute(p);
-    match fs::readlink(&path) {
-        Ok(p) => p,
-        Err(..) => path
     }
 }
 
@@ -209,7 +198,6 @@ impl<'a> Context<'a> {
                 None => return FileDoesntMatch,
                 Some(file) => file,
             };
-            info!("file: {}", file);
             if file.starts_with(rlib_prefix) && file.ends_with(".rlib") {
                 info!("rlib candidate: {}", path.display());
                 match self.try_match(file, rlib_prefix, ".rlib") {
@@ -219,7 +207,7 @@ impl<'a> Context<'a> {
                             (HashSet::new(), HashSet::new())
                         });
                         let (ref mut rlibs, _) = *slot;
-                        rlibs.insert(realpath(path));
+                        rlibs.insert(fs::realpath(path).unwrap());
                         FileMatches
                     }
                     None => {
@@ -236,7 +224,7 @@ impl<'a> Context<'a> {
                             (HashSet::new(), HashSet::new())
                         });
                         let (_, ref mut dylibs) = *slot;
-                        dylibs.insert(realpath(path));
+                        dylibs.insert(fs::realpath(path).unwrap());
                         FileMatches
                     }
                     None => {
