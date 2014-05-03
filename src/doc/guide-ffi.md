@@ -11,16 +11,14 @@ snappy includes a C interface (documented in
 The following is a minimal example of calling a foreign function which will
 compile if snappy is installed:
 
-~~~~
+~~~~no_run
 extern crate libc;
 use libc::size_t;
 
 #[link(name = "snappy")]
-# #[cfg(ignore_this)]
 extern {
     fn snappy_max_compressed_length(source_length: size_t) -> size_t;
 }
-# unsafe fn snappy_max_compressed_length(a: size_t) -> size_t { a }
 
 fn main() {
     let x = unsafe { snappy_max_compressed_length(100) };
@@ -46,7 +44,7 @@ keeping the binding correct at runtime.
 
 The `extern` block can be extended to cover the entire snappy API:
 
-~~~~ {.ignore}
+~~~~no_run
 extern crate libc;
 use libc::{c_int, size_t};
 
@@ -67,6 +65,7 @@ extern {
     fn snappy_validate_compressed_buffer(compressed: *u8,
                                          compressed_length: size_t) -> c_int;
 }
+# fn main() {}
 ~~~~
 
 # Creating a safe interface
@@ -209,19 +208,16 @@ A basic example is:
 
 Rust code:
 
-~~~~
+~~~~no_run
 extern fn callback(a:i32) {
     println!("I'm called from C with value {0}", a);
 }
 
 #[link(name = "extlib")]
-# #[cfg(ignore)]
 extern {
    fn register_callback(cb: extern fn(i32)) -> i32;
    fn trigger_callback();
 }
-# unsafe fn register_callback(cb: extern fn(i32)) -> i32 { 0 }
-# unsafe fn trigger_callback() { }
 
 fn main() {
     unsafe {
@@ -265,7 +261,7 @@ referenced Rust object.
 
 Rust code:
 
-~~~~
+~~~~no_run
 
 struct RustObject {
     a: i32,
@@ -281,15 +277,11 @@ extern fn callback(target: *mut RustObject, a:i32) {
 }
 
 #[link(name = "extlib")]
-# #[cfg(ignore)]
 extern {
    fn register_callback(target: *mut RustObject,
                         cb: extern fn(*mut RustObject, i32)) -> i32;
    fn trigger_callback();
 }
-# unsafe fn register_callback(a: *mut RustObject,
-#                             b: extern fn(*mut RustObject, i32)) -> i32 { 0 }
-# unsafe fn trigger_callback() {}
 
 fn main() {
     // Create the object that will be referenced in the callback
@@ -398,9 +390,12 @@ the `link_args` attribute. This attribute is applied to `extern` blocks and
 specifies raw flags which need to get passed to the linker when producing an
 artifact. An example usage would be:
 
-~~~ {.ignore}
+~~~ no_run
+#![feature(link_args)]
+
 #[link_args = "-foo -bar -baz"]
 extern {}
+# fn main() {}
 ~~~
 
 Note that this feature is currently hidden behind the `feature(link_args)` gate
@@ -434,15 +429,13 @@ Foreign APIs often export a global variable which could do something like track
 global state. In order to access these variables, you declare them in `extern`
 blocks with the `static` keyword:
 
-~~~
+~~~no_run
 extern crate libc;
 
 #[link(name = "readline")]
-# #[cfg(ignore)]
 extern {
     static rl_readline_version: libc::c_int;
 }
-# static rl_readline_version: libc::c_int = 0;
 
 fn main() {
     println!("You have readline version {} installed.",
@@ -454,16 +447,14 @@ Alternatively, you may need to alter global state provided by a foreign
 interface. To do this, statics can be declared with `mut` so rust can mutate
 them.
 
-~~~
+~~~no_run
 extern crate libc;
 use std::ptr;
 
 #[link(name = "readline")]
-# #[cfg(ignore)]
 extern {
     static mut rl_prompt: *libc::c_char;
 }
-# static mut rl_prompt: *libc::c_char = 0 as *libc::c_char;
 
 fn main() {
     "[my-awesome-shell] $".with_c_str(|buf| {
@@ -488,7 +479,6 @@ extern crate libc;
 extern "stdcall" {
     fn SetEnvironmentVariableA(n: *u8, v: *u8) -> libc::c_int;
 }
-
 # fn main() { }
 ~~~~
 

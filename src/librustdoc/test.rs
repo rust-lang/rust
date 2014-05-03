@@ -103,6 +103,7 @@ fn runtest(test: &str, cratename: &str, libs: HashSet<Path>, should_fail: bool,
         addl_lib_search_paths: RefCell::new(libs),
         crate_types: vec!(session::CrateTypeExecutable),
         output_types: vec!(link::OutputTypeExe),
+        no_trans: no_run,
         cg: session::CodegenOptions {
             prefer_dynamic: true,
             .. session::basic_codegen_options()
