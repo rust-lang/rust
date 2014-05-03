@@ -1259,16 +1259,15 @@ fn trans_eager_binop<'a>(
                      -> DatumBlock<'a, Expr> {
     let _icx = push_ctxt("trans_eager_binop");
 
-    let mut intype = {
+    let tcx = bcx.tcx();
+    let is_simd = ty::type_is_simd(tcx, lhs_t);
+    let intype = {
         if ty::type_is_bot(lhs_t) { rhs_t }
+        else if is_simd { ty::simd_type(tcx, lhs_t) }
         else { lhs_t }
     };
-    let tcx = bcx.tcx();
-    if ty::type_is_simd(tcx, intype) {
-        intype = ty::simd_type(tcx, intype);
-    }
     let is_float = ty::type_is_fp(intype);
-    let signed = ty::type_is_signed(intype);
+    let is_signed = ty::type_is_signed(intype);
 
     let rhs = base::cast_shift_expr_rhs(bcx, op, lhs, rhs);
 
@@ -1293,7 +1292,7 @@ fn trans_eager_binop<'a>(
             // Only zero-check integers; fp /0 is NaN
             bcx = base::fail_if_zero(bcx, binop_expr.span,
                                      op, rhs, rhs_t);
-            if signed {
+            if is_signed {
                 SDiv(bcx, lhs, rhs)
             } else {
                 UDiv(bcx, lhs, rhs)
@@ -1307,7 +1306,7 @@ fn trans_eager_binop<'a>(
             // Only zero-check integers; fp %0 is NaN
             bcx = base::fail_if_zero(bcx, binop_expr.span,
                                      op, rhs, rhs_t);
-            if signed {
+            if is_signed {
                 SRem(bcx, lhs, rhs)
             } else {
                 URem(bcx, lhs, rhs)
@@ -1319,21 +1318,21 @@ fn trans_eager_binop<'a>(
       ast::BiBitXor => Xor(bcx, lhs, rhs),
       ast::BiShl => Shl(bcx, lhs, rhs),
       ast::BiShr => {
-        if signed {
+        if is_signed {
             AShr(bcx, lhs, rhs)
         } else { LShr(bcx, lhs, rhs) }
       }
       ast::BiEq | ast::BiNe | ast::BiLt | ast::BiGe | ast::BiLe | ast::BiGt => {
         if ty::type_is_bot(rhs_t) {
             C_bool(bcx.ccx(), false)
-        } else {
-            if !ty::type_is_scalar(rhs_t) {
-                bcx.tcx().sess.span_bug(binop_expr.span,
-                                        "non-scalar comparison");
-            }
+        } else if ty::type_is_scalar(rhs_t) {
             let cmpr = base::compare_scalar_types(bcx, lhs, rhs, rhs_t, op);
             bcx = cmpr.bcx;
             ZExt(bcx, cmpr.val, Type::i8(bcx.ccx()))
+        } else if is_simd {
+            base::compare_simd_types(bcx, lhs, rhs, intype, ty::simd_size(tcx, lhs_t), op)
+        } else {
+            bcx.tcx().sess.span_bug(binop_expr.span, "comparison operator unsupported for type")
         }
       }
       _ => {
