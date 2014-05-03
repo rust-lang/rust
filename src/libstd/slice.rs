@@ -975,7 +975,11 @@ impl<'a,T> ImmutableVector<'a, T> for &'a [T] {
 
     #[inline]
     fn get(&self, index: uint) -> Option<&'a T> {
-        if index < self.len() { Some(&self[index]) } else { None }
+        if index < self.len() {
+            Some(unsafe { self.unsafe_ref(index) })
+        } else {
+            None
+        }
     }
 
     #[inline]
