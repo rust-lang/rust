@@ -97,6 +97,7 @@ use middle::typeck::check::method::{AutoderefReceiver};
 use middle::typeck::check::method::{AutoderefReceiverFlag};
 use middle::typeck::check::method::{CheckTraitsAndInherentMethods};
 use middle::typeck::check::method::{DontAutoderefReceiver};
+use middle::typeck::check::method::{IgnoreStaticMethods, ReportStaticMethods};
 use middle::typeck::check::regionmanip::replace_late_bound_regions_in_fn_sig;
 use middle::typeck::check::regionmanip::relate_free_regions;
 use middle::typeck::check::vtable::VtableContext;
@@ -1360,7 +1361,7 @@ fn try_overloaded_deref(fcx: &FnCtxt,
         (PreferMutLvalue, Some(trait_did)) => {
             method::lookup_in_trait(fcx, span, base_expr.map(|x| &*x),
                                     token::intern("deref_mut"), trait_did,
-                                    base_ty, [], DontAutoderefReceiver)
+                                    base_ty, [], DontAutoderefReceiver, IgnoreStaticMethods)
         }
         _ => None
     };
@@ -1370,7 +1371,7 @@ fn try_overloaded_deref(fcx: &FnCtxt,
         (None, Some(trait_did)) => {
             method::lookup_in_trait(fcx, span, base_expr.map(|x| &*x),
                                     token::intern("deref"), trait_did,
-                                    base_ty, [], DontAutoderefReceiver)
+                                    base_ty, [], DontAutoderefReceiver, IgnoreStaticMethods)
         }
         (method, _) => method
     };
@@ -1956,7 +1957,7 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                                          expr_t, tps.as_slice(),
                                          DontDerefArgs,
                                          CheckTraitsAndInherentMethods,
-                                         AutoderefReceiver) {
+                                         AutoderefReceiver, IgnoreStaticMethods) {
             Some(method) => {
                 let method_ty = method.ty;
                 let method_call = MethodCall::expr(expr.id);
@@ -1976,6 +1977,15 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
 
                 // Add error type for the result
                 fcx.write_error(expr.id);
+
+                // Check for potential static matches (missing self parameters)
+                method::lookup(fcx, expr, rcvr,
+                                    method_name.node.name,
+                                    expr_t, tps.as_slice(),
+                                    DontDerefArgs,
+                                    CheckTraitsAndInherentMethods,
+                                    DontAutoderefReceiver, ReportStaticMethods);
+
                 ty::mk_err()
             }
         };
@@ -2040,7 +2050,8 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
         let method = match trait_did {
             Some(trait_did) => {
                 method::lookup_in_trait(fcx, op_ex.span, Some(&*args[0]), opname,
-                                        trait_did, self_t, [], autoderef_receiver)
+                                        trait_did, self_t, [], autoderef_receiver,
+                                        IgnoreStaticMethods)
             }
             None => None
         };
@@ -2367,7 +2378,8 @@ fn check_expr_with_unifier(fcx: &FnCtxt,
                              tps.as_slice(),
                              DontDerefArgs,
                              CheckTraitsAndInherentMethods,
-                             AutoderefReceiver) {
+                             AutoderefReceiver,
+                             IgnoreStaticMethods) {
             Some(_) => {
                 fcx.type_error_message(
                     expr.span,
