@@ -140,7 +140,7 @@ pub struct UnescapeWriter<W> {
 enum UnescapeState {
     CharData,
     Begin,
-    Named(uint, uint), // index into ENTITIES, and prefix len
+    Named(uint, uint, uint), // index into ENTITIES, prefix len, last non-semi index
     HexStart(bool), // boolean indicates if x is lower or upper case
     Hex(u32),
     DecStart,
@@ -209,10 +209,14 @@ impl<W: Writer> UnescapeWriter<W> {
             Begin => {
                 try!(self.inner.get_mut_ref().write_str("&"));
             }
-            Named(cursor, plen) => {
+            Named(cursor, plen, lastcur) => {
                 let (name, chars, needs_semi) = ENTITIES[cursor];
                 if !needs_semi && name.len() == plen {
                     try!(self.inner.get_mut_ref().write_str(chars));
+                } else if lastcur != -1 {
+                    let (lastname, chars, _) = ENTITIES[lastcur];
+                    try!(self.inner.get_mut_ref().write_str(chars));
+                    try!(self.inner.get_mut_ref().write_str(name.slice(lastname.len(), plen)));
                 } else {
                     try!(self.inner.get_mut_ref().write_str(name.slice_to(plen)));
                 }
@@ -349,13 +353,13 @@ impl<W:Writer> Writer for UnescapeWriter<W> {
                     // with our character as a prefix.
                     // There's at least one entity that starts with every letter, so we don't
                     // have to worry about not finding one.
-                    self.state = Named(base, 2); // plen is 2 to include &
+                    self.state = Named(base, 2, -1); // plen is 2 to include &
                 }
-                (Named(cursor, plen), ';') => {
+                (Named(cursor, plen, _), ';') => {
+                    it.next(); // consume ;
                     let (name, chars, _) = ENTITIES[cursor];
                     if name.len() == plen {
                         // valid entity
-                        it.next(); // consume ;
                         try!(self.inner_write_str(chars));
                         self.state = CharData;
                         cdata = i+1;
@@ -365,25 +369,32 @@ impl<W:Writer> Writer for UnescapeWriter<W> {
                         cdata = i;
                     }
                 }
-                (Named(cursor, plen), 'a'..'z') |
-                (Named(cursor, plen), 'A'..'Z') |
-                (Named(cursor, plen), '0'..'9') => {
+                (Named(cursor, plen, lastcur), 'a'..'z') |
+                (Named(cursor, plen, lastcur), 'A'..'Z') |
+                (Named(cursor, plen, lastcur), '0'..'9') => {
                     let mut cursor = cursor;
-                    let (name, _, _) = ENTITIES[cursor];
+                    it.next(); // consume character
+                    let (mut name, _, mut needs_semi) = ENTITIES[cursor];
                     if name.len() > plen && name[plen] == b {
                         // existing cursor is still a match
                     } else {
                         // search forward to find the next entity with our prefix
                         let prefix = name.slice_to(plen);
                         for ix in range(cursor+1, ENTITIES.len()) {
-                            let (name, _, _) = ENTITIES[ix];
-                            if !name.starts_with(prefix) {
+                            let (name_, _, needs_semi_) = ENTITIES[ix];
+                            if !name_.starts_with(prefix) {
                                 // no match
                                 cursor = -1;
                                 break;
                             }
-                            if name.len() > plen && name[plen] == b {
+                            if name_.len() > plen && name_[plen] == b {
                                 cursor = ix;
+                                name = name_;
+                                needs_semi = needs_semi_;
+                                if name_.len() == plen+1 {
+                                    name = name_;
+                                    needs_semi = needs_semi_;
+                                }
                                 break;
                             }
                         }
@@ -394,8 +405,13 @@ impl<W:Writer> Writer for UnescapeWriter<W> {
                         self.state = CharData;
                         cdata = i;
                     } else {
-                        it.next(); // consume character
-                        self.state = Named(cursor, plen+1);
+                        let plen = plen+1;
+                        let lastcur = if !needs_semi && name.len() == plen {
+                            cursor
+                        } else {
+                            lastcur
+                        };
+                        self.state = Named(cursor, plen, lastcur);
                     }
                 }
                 (HexStart(_), 'a'..'f')|(HexStart(_), 'A'..'F')|(HexStart(_), '0'..'9') => {
