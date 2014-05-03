@@ -55,6 +55,8 @@
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
 
+#![feature(macro_rules)] // used for tests
+
 use std::fmt::Show;
 use fmt::{Escape, Unescape};
 
@@ -80,85 +82,4 @@ pub fn unescape<T: Show>(s: T) -> ~str {
 }
 
 #[cfg(test)]
-mod tests {
-    extern crate test;
-    use std::fmt;
-    use super::{escape, unescape};
-
-    struct Test(StrBuf);
-
-    impl fmt::Show for Test {
-        fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-            let Test(ref s) = *self;
-            write!(fmt, "<Test>{}</Test>", s)
-        }
-    }
-
-    struct UnTest(&'static str, &'static str);
-
-    impl fmt::Show for UnTest {
-        fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-            let UnTest(s1, s2) = *self;
-            try!(write!(fmt, "{}", s1));
-            write!(fmt, "{}", s2)
-        }
-    }
-
-    #[test]
-    fn test_escape() {
-        let s = r#"<script src="evil.domain?foo&" type='baz'>"#;
-        assert_eq!(escape(s).as_slice(), "&lt;script src=&quot;evil.domain?foo&amp;&quot; \
-                                          type=&apos;baz&apos;&gt;");
-
-        let t = Test("foo".to_strbuf());
-        assert_eq!(escape(t), "&lt;Test&gt;foo&lt;/Test&gt;".to_owned());
-    }
-
-    #[test]
-    fn test_unescape() {
-        let s = "&lt;script src=&quot;evil.domain?foo&amp;&quot; type=&#39;baz&#39;&gt;";
-        assert_eq!(unescape(s), r#"<script src="evil.domain?foo&" type='baz'>"#.to_owned());
-
-        assert_eq!(unescape("&rarr;"), "\u2192".to_owned());
-        assert_eq!(unescape("&&amp;amp;amp;"), "&&amp;amp;".to_owned());
-        assert_eq!(unescape("&CounterClockwiseContourIntegral;"), "\u2233".to_owned());
-        assert_eq!(unescape("&amp"), "&".to_owned());
-        assert_eq!(unescape(UnTest("&am", "p;")), "&".to_owned());
-        assert_eq!(unescape("&fakentity"), "&fakentity".to_owned());
-        assert_eq!(unescape("&fakentity;"), "&fakentity;".to_owned());
-        assert_eq!(unescape("&aeligtest"), "ætest".to_owned());
-        assert_eq!(unescape("&#0abc"), "\uFFFDabc".to_owned());
-        assert_eq!(unescape("&#abc"), "&#abc".to_owned());
-        assert_eq!(unescape("&#xgabc"), "&#xgabc".to_owned());
-    }
-
-    #[bench]
-    fn bench_escape(b: &mut test::Bencher) {
-        let s = "<script src=\"evil.domain?foo&\" type='baz'>";
-        b.iter(|| escape(s));
-    }
-
-    #[bench]
-    fn bench_unescape(b: &mut test::Bencher) {
-        let s = "&lt;script src=&quot;evil.domain?foo&amp;&quot; type=&#39;baz&#39;&gt;";
-        b.iter(|| unescape(s));
-    }
-
-    #[bench]
-    fn bench_longest_entity(b: &mut test::Bencher) {
-        let s = "&CounterClockwiseContourIntegral;";
-        b.iter(|| assert_eq!(unescape(s).as_slice(), "\u2233"));
-    }
-
-    #[bench]
-    fn bench_longest_non_entity(b: &mut test::Bencher) {
-        let s = "&CounterClockwiseContourIntegraX;";
-        b.iter(|| assert_eq!(unescape(s).as_slice(), "&CounterClockwiseContourIntegraX;"));
-    }
-
-    #[bench]
-    fn bench_short_entity_long_tail(b: &mut test::Bencher) {
-        let s = "&ampnterClockwiseContourIntegral";
-        b.iter(|| assert_eq!(unescape(s).as_slice(), "&nterClockwiseContourIntegral"));
-    }
-}
+mod tests;

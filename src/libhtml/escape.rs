@@ -141,7 +141,7 @@ enum UnescapeState {
     CharData,
     Begin,
     Named(uint, uint), // index into ENTITIES, and prefix len
-    HexStart,
+    HexStart(bool), // boolean indicates if x is lower or upper case
     Hex(u32),
     DecStart,
     Dec(u32)
@@ -220,8 +220,11 @@ impl<W: Writer> UnescapeWriter<W> {
             DecStart => {
                 try!(self.inner.get_mut_ref().write_str("&#"));
             }
-            HexStart => {
+            HexStart(false) => {
                 try!(self.inner.get_mut_ref().write_str("&#x"));
+            }
+            HexStart(true) => {
+                try!(self.inner.get_mut_ref().write_str("&#X"));
             }
             Hex(val) | Dec(val) => {
                 let c = match char::from_u32(val) {
@@ -312,7 +315,11 @@ impl<W:Writer> Writer for UnescapeWriter<W> {
                     self.state = match it.peek().map(|&(_,&b)| b as char) {
                         Some('x') => {
                             it.next(); // consume x
-                            HexStart
+                            HexStart(false)
+                        }
+                        Some('X') => {
+                            it.next(); // consume X
+                            HexStart(true)
                         }
                         _ => DecStart
                     }
@@ -391,7 +398,7 @@ impl<W:Writer> Writer for UnescapeWriter<W> {
                         self.state = Named(cursor, plen+1);
                     }
                 }
-                (HexStart, 'a'..'f')|(HexStart, 'A'..'F')|(HexStart, '0'..'9') => {
+                (HexStart(_), 'a'..'f')|(HexStart(_), 'A'..'F')|(HexStart(_), '0'..'9') => {
                     self.state = Hex(0);
                     // don't consume, re-try this digit in the Hex state
                 }
