@@ -19,7 +19,6 @@ extern crate libc;
 extern crate green;
 extern crate rustuv;
 
-use std::io::net::ip::{Ipv4Addr, SocketAddr};
 use std::io::net::tcp::{TcpListener, TcpStream};
 use std::io::{Acceptor, Listener};
 use std::task::TaskBuilder;
@@ -38,10 +37,11 @@ fn main() {
         unsafe { libc::exit(1) }
     });
 
-    let addr = SocketAddr { ip: Ipv4Addr(127, 0, 0, 1), port: 0 };
+    let host = "127.0.0.1";
+    let port = 0;
     let (tx, rx) = channel();
     spawn(proc() {
-        let mut listener = TcpListener::bind(addr).unwrap();
+        let mut listener = TcpListener::bind(host, port).unwrap();
         tx.send(listener.socket_name().unwrap());
         let mut acceptor = listener.listen();
         loop {
@@ -57,6 +57,8 @@ fn main() {
         }
     });
     let addr = rx.recv();
+    let host = addr.ip.to_str();
+    let port = addr.port;
 
     let (tx, rx) = channel();
     for _ in range(0, 1000) {
@@ -64,7 +66,7 @@ fn main() {
         let mut builder = TaskBuilder::new();
         builder.opts.stack_size = Some(32 * 1024);
         builder.spawn(proc() {
-            match TcpStream::connect(addr) {
+            match TcpStream::connect(host, port) {
                 Ok(stream) => {
                     let mut stream = stream;
                     stream.write([1]);
