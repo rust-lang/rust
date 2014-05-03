@@ -315,15 +315,23 @@ impl<'a, T: Clone> CloneableVector<T> for &'a [T] {
     #[inline]
     fn to_owned(&self) -> ~[T] {
         let len = self.len();
-        let mut result = Vec::with_capacity(len);
-        // Unsafe code so this can be optimised to a memcpy (or something
-        // similarly fast) when T is Copy. LLVM is easily confused, so any
-        // extra operations during the loop can prevent this optimisation
+        let data_size = len.checked_mul(&mem::size_of::<T>());
+        let data_size = data_size.expect("overflow in to_owned()");
+        let size = mem::size_of::<RawVec<()>>().checked_add(&data_size);
+        let size = size.expect("overflow in to_owned()");
+
         unsafe {
+            let ret = malloc_raw(size) as *mut RawVec<()>;
+
+            (*ret).fill = len * mem::nonzero_size_of::<T>();
+            (*ret).alloc = len * mem::nonzero_size_of::<T>();
+
+            // Be careful with the following loop. We want it to be optimized
+            // to a memcpy (or something similarly fast) when T is Copy. LLVM
+            // is easily confused, so any extra operations during the loop can
+            // prevent this optimization.
             let mut i = 0;
-            let p = result.as_mut_ptr();
-            // Use try_finally here otherwise the write to length
-            // inside the loop stops LLVM from optimising this.
+            let p = &mut (*ret).data as *mut _ as *mut T;
             try_finally(
                 &mut i, (),
                 |i, ()| while *i < len {
@@ -332,9 +340,15 @@ impl<'a, T: Clone> CloneableVector<T> for &'a [T] {
                         self.unsafe_ref(*i).clone());
                     *i += 1;
                 },
-                |i| result.set_len(*i));
+                |i| if *i < len {
+                    // we must be failing, clean up after ourselves
+                    for j in range(0, *i as int) {
+                        ptr::read(&*p.offset(j));
+                    }
+                    exchange_free(ret as *u8);
+                });
+            cast::transmute(ret)
         }
-        result.move_iter().collect()
     }
 
     #[inline(always)]
