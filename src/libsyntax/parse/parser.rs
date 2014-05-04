@@ -2867,6 +2867,19 @@ impl<'a> Parser<'a> {
             // parse ref pat
             let mutbl = self.parse_mutability();
             pat = self.parse_pat_ident(BindByRef(mutbl));
+        } else if self.eat_keyword(keywords::Box) {
+            // `box PAT`
+            //
+            // FIXME(#13910): Rename to `PatBox` and extend to full DST
+            // support.
+            let sub = self.parse_pat();
+            pat = PatUniq(sub);
+            hi = self.last_span.hi;
+            return @ast::Pat {
+                id: ast::DUMMY_NODE_ID,
+                node: pat,
+                span: mk_sp(lo, hi)
+            }
         } else {
             let can_be_enum_or_struct = self.look_ahead(1, |t| {
                 match *t {
