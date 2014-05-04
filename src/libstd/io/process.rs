@@ -69,7 +69,7 @@ pub struct Process {
 
     /// Extra I/O handles as configured by the original `ProcessConfig` when
     /// this process was created. This is by default empty.
-    pub extra_io: ~[Option<io::PipeStream>],
+    pub extra_io: Vec<Option<io::PipeStream>>,
 }
 
 /// This configuration describes how a new process should be spawned. A blank
@@ -418,7 +418,7 @@ impl Drop for Process {
         drop(self.stdin.take());
         drop(self.stdout.take());
         drop(self.stderr.take());
-        drop(mem::replace(&mut self.extra_io, box []));
+        drop(mem::replace(&mut self.extra_io, Vec::new()));
 
         self.wait();
     }
