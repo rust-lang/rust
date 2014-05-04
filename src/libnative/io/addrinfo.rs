@@ -22,7 +22,7 @@ pub struct GetAddrInfoRequest;
 
 impl GetAddrInfoRequest {
     pub fn run(host: Option<&str>, servname: Option<&str>,
-               hint: Option<ai::Hint>) -> Result<~[ai::Info], IoError> {
+               hint: Option<ai::Hint>) -> Result<Vec<ai::Info>, IoError> {
         assert!(host.is_some() || servname.is_some());
 
         let c_host = host.map_or(unsafe { CString::new(null(), true) }, |x| x.to_c_str());
@@ -80,7 +80,7 @@ impl GetAddrInfoRequest {
 
         unsafe { freeaddrinfo(res); }
 
-        Ok(addrs.move_iter().collect())
+        Ok(addrs)
     }
 }
 

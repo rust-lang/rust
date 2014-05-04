@@ -191,7 +191,7 @@ pub trait IoFactory {
     fn timer_init(&mut self) -> IoResult<Box<RtioTimer:Send>>;
     fn spawn(&mut self, config: ProcessConfig)
             -> IoResult<(Box<RtioProcess:Send>,
-                         ~[Option<Box<RtioPipe:Send>>])>;
+                         Vec<Option<Box<RtioPipe:Send>>>)>;
     fn kill(&mut self, pid: libc::pid_t, signal: int) -> IoResult<()>;
     fn pipe_open(&mut self, fd: c_int) -> IoResult<Box<RtioPipe:Send>>;
     fn tty_open(&mut self, fd: c_int, readable: bool)
