@@ -3554,6 +3554,12 @@ pub fn check_const_with_ty(fcx: &FnCtxt,
                            _: Span,
                            e: &ast::Expr,
                            declty: ty::t) {
+    // Gather locals in statics (because of block expressions).
+    // This is technically uneccessary because locals in static items are forbidden,
+    // but prevents type checking from blowing up before const checking can properly
+    // emit a error.
+    GatherLocalsVisitor { fcx: fcx }.visit_expr(e, ());
+
     check_expr(fcx, e);
     let cty = fcx.expr_ty(e);
     demand::suptype(fcx, e.span, declty, cty);

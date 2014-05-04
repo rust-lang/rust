@@ -148,6 +148,33 @@ fn check_expr(v: &mut CheckCrateVisitor, e: &Expr, is_const: bool) {
                 }
             }
           }
+          ExprBlock(ref block) => {
+            // Check all statements in the block
+            for stmt in block.stmts.iter() {
+                let block_span_err = |span|
+                    v.tcx.sess.span_err(span,
+                        "blocks in constants are limited to \
+                        items and tail expressions");
+                match stmt.node {
+                    StmtDecl(ref span, _) => {
+                        match span.node {
+                            DeclLocal(_) => block_span_err(span.span),
+
+                            // Item statements are allowed
+                            DeclItem(_) => {}
+                        }
+                    }
+                    StmtExpr(ref expr, _) => block_span_err(expr.span),
+                    StmtSemi(ref semi, _) => block_span_err(semi.span),
+                    StmtMac(..) => v.tcx.sess.span_bug(e.span,
+                        "unexpanded statement macro in const?!")
+                }
+            }
+            match block.expr {
+                Some(ref expr) => check_expr(v, &**expr, true),
+                None => {}
+            }
+          }
           ExprVstore(_, ExprVstoreMutSlice) |
           ExprVstore(_, ExprVstoreSlice) |
           ExprVec(_) |
