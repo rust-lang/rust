@@ -2459,6 +2459,15 @@ pub mod consts {
             pub static CLOCK_MONOTONIC: c_int = 1;
 
             pub static WNOHANG: c_int = 1;
+
+            pub static F_GETFL: c_int = 3;
+            pub static F_SETFL: c_int = 4;
+            #[cfg(target_arch = "mips")]
+            pub static O_NONBLOCK: c_int = 0x0080;
+            #[cfg(target_arch = "arm")]
+            #[cfg(target_arch = "x86")]
+            #[cfg(target_arch = "x86_64")]
+            pub static O_NONBLOCK: c_int = 0o04000;
         }
         pub mod posix08 {
         }
@@ -2910,6 +2919,10 @@ pub mod consts {
             pub static CLOCK_MONOTONIC: c_int = 4;
 
             pub static WNOHANG: c_int = 1;
+
+            pub static F_GETFL: c_int = 3;
+            pub static F_SETFL: c_int = 4;
+            pub static O_NONBLOCK: c_int = 0x0004;
         }
         pub mod posix08 {
         }
@@ -3299,6 +3312,10 @@ pub mod consts {
             pub static PTHREAD_STACK_MIN: size_t = 8192;
 
             pub static WNOHANG: c_int = 1;
+
+            pub static F_GETFL: c_int = 3;
+            pub static F_SETFL: c_int = 4;
+            pub static O_NONBLOCK: c_int = 0x0004;
         }
         pub mod posix08 {
         }
