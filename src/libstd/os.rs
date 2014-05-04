@@ -141,10 +141,14 @@ pub mod win32 {
     }
 
     pub fn as_utf16_p<T>(s: &str, f: |*u16| -> T) -> T {
+        as_mut_utf16_p(s, |t| { f(t as *u16) })
+    }
+
+    pub fn as_mut_utf16_p<T>(s: &str, f: |*mut u16| -> T) -> T {
         let mut t = s.to_utf16();
         // Null terminate before passing on.
         t.push(0u16);
-        f(t.as_ptr())
+        f(t.as_mut_ptr())
     }
 }
 

@@ -258,7 +258,7 @@ fn spawn_process_os(config: p::ProcessConfig,
         GetCurrentProcess,
         DuplicateHandle,
         CloseHandle,
-        CreateProcessA
+        CreateProcessW
     };
     use libc::funcs::extra::msvcrt::get_osfhandle;
 
@@ -318,15 +318,15 @@ fn spawn_process_os(config: p::ProcessConfig,
         let mut create_err = None;
 
         // stolen from the libuv code.
-        let mut flags = 0;
+        let mut flags = libc::CREATE_UNICODE_ENVIRONMENT;
         if config.detach {
             flags |= libc::DETACHED_PROCESS | libc::CREATE_NEW_PROCESS_GROUP;
         }
 
         with_envp(env, |envp| {
             with_dirp(dir, |dirp| {
-                cmd.with_c_str(|cmdp| {
-                    let created = CreateProcessA(ptr::null(), mem::transmute(cmdp),
+                os::win32::as_mut_utf16_p(cmd, |cmdp| {
+                    let created = CreateProcessW(ptr::null(), cmdp,
                                                  ptr::mut_null(), ptr::mut_null(), TRUE,
                                                  flags, envp, dirp, &mut si,
                                                  &mut pi);
@@ -691,7 +691,7 @@ fn with_envp<T>(env: Option<~[(~str, ~str)]>, cb: |*mut c_void| -> T) -> T {
 
             for pair in env.iter() {
                 let kv = format!("{}={}", *pair.ref0(), *pair.ref1());
-                blk.push_all(kv.as_bytes());
+                blk.push_all(kv.to_utf16().as_slice());
                 blk.push(0);
             }
 
@@ -704,9 +704,12 @@ fn with_envp<T>(env: Option<~[(~str, ~str)]>, cb: |*mut c_void| -> T) -> T {
 }
 
 #[cfg(windows)]
-fn with_dirp<T>(d: Option<&Path>, cb: |*libc::c_char| -> T) -> T {
+fn with_dirp<T>(d: Option<&Path>, cb: |*u16| -> T) -> T {
     match d {
-      Some(dir) => dir.with_c_str(|buf| cb(buf)),
+      Some(dir) => match dir.as_str() {
+          Some(dir_str) => os::win32::as_utf16_p(dir_str, cb),
+          None => cb(ptr::null())
+      },
       None => cb(ptr::null())
     }
 }
