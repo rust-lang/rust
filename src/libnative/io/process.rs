@@ -409,16 +409,17 @@ fn make_command_line(prog: &str, args: &[~str]) -> ~str {
         if quote {
             cmd.push_char('"');
         }
-        for i in range(0u, arg.len()) {
-            append_char_at(cmd, arg, i);
+        let argvec: Vec<char> = arg.chars().collect();
+        for i in range(0u, argvec.len()) {
+            append_char_at(cmd, &argvec, i);
         }
         if quote {
             cmd.push_char('"');
         }
     }
 
-    fn append_char_at(cmd: &mut StrBuf, arg: &str, i: uint) {
-        match arg[i] as char {
+    fn append_char_at(cmd: &mut StrBuf, arg: &Vec<char>, i: uint) {
+        match *arg.get(i) {
             '"' => {
                 // Escape quotes.
                 cmd.push_str("\\\"");
@@ -438,11 +439,11 @@ fn make_command_line(prog: &str, args: &[~str]) -> ~str {
         }
     }
 
-    fn backslash_run_ends_in_quote(s: &str, mut i: uint) -> bool {
-        while i < s.len() && s[i] as char == '\\' {
+    fn backslash_run_ends_in_quote(s: &Vec<char>, mut i: uint) -> bool {
+        while i < s.len() && *s.get(i) == '\\' {
             i += 1;
         }
-        return i < s.len() && s[i] as char == '"';
+        return i < s.len() && *s.get(i) == '"';
     }
 }
 
