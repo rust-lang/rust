@@ -161,7 +161,7 @@ pub trait IoFactory {
     fn unix_connect(&mut self, path: &CString,
                     timeout: Option<u64>) -> IoResult<Box<RtioPipe:Send>>;
     fn get_host_addresses(&mut self, host: Option<&str>, servname: Option<&str>,
-                          hint: Option<ai::Hint>) -> IoResult<~[ai::Info]>;
+                          hint: Option<ai::Hint>) -> IoResult<Vec<ai::Info>>;
 
     // filesystem operations
     fn fs_from_raw_fd(&mut self, fd: c_int, close: CloseBehavior)
