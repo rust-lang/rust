@@ -178,7 +178,7 @@ impl IoFactory for UvIoFactory {
     }
 
     fn get_host_addresses(&mut self, host: Option<&str>, servname: Option<&str>,
-                          hint: Option<ai::Hint>) -> Result<~[ai::Info], IoError> {
+                          hint: Option<ai::Hint>) -> Result<Vec<ai::Info>, IoError> {
         let r = GetAddrInfoRequest::run(&self.loop_, host, servname, hint);
         r.map_err(uv_error_to_io_error)
     }
@@ -272,7 +272,7 @@ impl IoFactory for UvIoFactory {
 
     fn spawn(&mut self, config: ProcessConfig)
             -> Result<(Box<rtio::RtioProcess:Send>,
-                       ~[Option<Box<rtio::RtioPipe:Send>>]),
+                       Vec<Option<Box<rtio::RtioPipe:Send>>>),
                       IoError>
     {
         match Process::spawn(self, config) {
