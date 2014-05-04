@@ -3824,7 +3824,8 @@ impl<'a> Resolver<'a> {
             TraitTyParamBound(ref tref) => {
                 self.resolve_trait_reference(id, tref, TraitBoundingTypeParameter)
             }
-            RegionTyParamBound => {}
+            StaticRegionTyParamBound => {}
+            OtherRegionTyParamBound(_) => {}
         }
     }
 

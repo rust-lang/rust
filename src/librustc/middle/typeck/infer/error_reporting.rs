@@ -893,7 +893,8 @@ impl<'a> Rebuilder<'a> {
                                -> OwnedSlice<ast::TyParamBound> {
         ty_param_bounds.map(|tpb| {
             match tpb {
-                &ast::RegionTyParamBound => ast::RegionTyParamBound,
+                &ast::StaticRegionTyParamBound => ast::StaticRegionTyParamBound,
+                &ast::OtherRegionTyParamBound(s) => ast::OtherRegionTyParamBound(s),
                 &ast::TraitTyParamBound(ref tr) => {
                     let last_seg = tr.path.segments.last().unwrap();
                     let mut insert = Vec::new();

@@ -9,7 +9,8 @@
 // except according to those terms.
 
 use abi;
-use ast::{P, RegionTyParamBound, TraitTyParamBound, Required, Provided};
+use ast::{P, StaticRegionTyParamBound, OtherRegionTyParamBound,
+          TraitTyParamBound, Required, Provided};
 use ast;
 use ast_util;
 use owned_slice::OwnedSlice;
@@ -1881,7 +1882,8 @@ impl<'a> State<'a> {
 
                 try!(match *bound {
                     TraitTyParamBound(ref tref) => self.print_trait_ref(tref),
-                    RegionTyParamBound => word(&mut self.s, "'static"),
+                    StaticRegionTyParamBound => word(&mut self.s, "'static"),
+                    OtherRegionTyParamBound(_) => Ok(())
                 })
             }
             Ok(())

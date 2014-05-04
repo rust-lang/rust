@@ -12,7 +12,7 @@
 
 use abi;
 use ast::{BareFnTy, ClosureTy};
-use ast::{RegionTyParamBound, TraitTyParamBound};
+use ast::{StaticRegionTyParamBound, OtherRegionTyParamBound, TraitTyParamBound};
 use ast::{Provided, Public, FnStyle};
 use ast::{Mod, BiAdd, Arg, Arm, Attribute, BindByRef, BindByValue};
 use ast::{BiBitAnd, BiBitOr, BiBitXor, Block};
@@ -3351,7 +3351,7 @@ impl<'a> Parser<'a> {
                 token::LIFETIME(lifetime) => {
                     let lifetime_interned_string = token::get_ident(lifetime);
                     if lifetime_interned_string.equiv(&("static")) {
-                        result.push(RegionTyParamBound);
+                        result.push(StaticRegionTyParamBound);
                         if allow_any_lifetime && ret_lifetime.is_none() {
                             ret_lifetime = Some(ast::Lifetime {
                                 id: ast::DUMMY_NODE_ID,
@@ -3366,8 +3366,7 @@ impl<'a> Parser<'a> {
                             name: lifetime.name
                         });
                     } else {
-                        self.span_err(self.span,
-                                      "`'static` is the only permissible region bound here");
+                        result.push(OtherRegionTyParamBound(self.span));
                     }
                     self.bump();
                 }

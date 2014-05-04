@@ -898,8 +898,16 @@ fn conv_builtin_bounds(tcx: &ty::ctxt, ast_bounds: &Option<OwnedSlice<ast::TyPar
                             format!("only the builtin traits can be used \
                                   as closure or object bounds"));
                     }
-                    ast::RegionTyParamBound => {
+                    ast::StaticRegionTyParamBound => {
                         builtin_bounds.add(ty::BoundStatic);
+                    }
+                    ast::OtherRegionTyParamBound(span) => {
+                        if !tcx.sess.features.issue_5723_bootstrap.get() {
+                            tcx.sess.span_err(
+                                span,
+                                format!("only the 'static lifetime is \
+                                         accepted here."));
+                        }
                     }
                 }
             }
