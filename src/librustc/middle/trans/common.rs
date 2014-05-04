@@ -466,10 +466,12 @@ pub struct Result<'a> {
     pub val: ValueRef
 }
 
-pub fn rslt<'a>(bcx: &'a Block<'a>, val: ValueRef) -> Result<'a> {
-    Result {
-        bcx: bcx,
-        val: val,
+impl<'a> Result<'a> {
+    pub fn new(bcx: &'a Block<'a>, val: ValueRef) -> Result<'a> {
+        Result {
+            bcx: bcx,
+            val: val,
+        }
     }
 }
 

@@ -363,7 +363,7 @@ pub fn malloc_raw_dyn<'a>(bcx: &'a Block<'a>,
         None);
 
     let llty_ptr = type_of::type_of(ccx, ptr_ty);
-    rslt(r.bcx, PointerCast(r.bcx, r.val, llty_ptr))
+    Result::new(r.bcx, PointerCast(r.bcx, r.val, llty_ptr))
 }
 
 pub fn malloc_raw_dyn_managed<'a>(
@@ -393,7 +393,7 @@ pub fn malloc_raw_dyn_managed<'a>(
             llalign
         ],
         None);
-    rslt(r.bcx, PointerCast(r.bcx, r.val, llty))
+    Result::new(r.bcx, PointerCast(r.bcx, r.val, llty))
 }
 
 // Type descriptor and type glue stuff
@@ -543,7 +543,7 @@ pub fn compare_scalar_types<'a>(
                             t: ty::t,
                             op: ast::BinOp)
                             -> Result<'a> {
-    let f = |a| rslt(cx, compare_scalar_values(cx, lhs, rhs, a, op));
+    let f = |a| Result::new(cx, compare_scalar_values(cx, lhs, rhs, a, op));
 
     match ty::get(t).sty {
         ty::ty_nil => f(nil_type),

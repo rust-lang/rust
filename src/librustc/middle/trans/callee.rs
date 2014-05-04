@@ -746,7 +746,7 @@ pub fn trans_call_inner<'a>(
         Unreachable(bcx);
     }
 
-    rslt(bcx, llresult)
+    Result::new(bcx, llresult)
 }
 
 pub enum CallArgs<'a> {
@@ -904,5 +904,5 @@ pub fn trans_arg_datum<'a>(
     }
 
     debug!("--- trans_arg_datum passing {}", bcx.val_to_str(val));
-    rslt(bcx, val)
+    Result::new(bcx, val)
 }
