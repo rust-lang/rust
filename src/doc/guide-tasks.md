@@ -101,6 +101,8 @@ fn print_message() { println!("I am running in a different task!"); }
 spawn(print_message);
 
 // Print something more profound in a different task using a lambda expression
+// This uses the proc() keyword to assign to spawn a function with no name
+// That function will call println!(...) as requested
 spawn(proc() println!("I am also running in a different task!") );
 ~~~~
 
