@@ -220,9 +220,7 @@ pub fn parse(file: &mut io::Reader,
     if bools_bytes != 0 {
         for i in range(0, bools_bytes) {
             let b = try!(file.read_byte());
-            if b < 0 {
-                return Err("error: expected more bools but hit EOF".to_owned());
-            } else if b == 1 {
+            if b == 1 {
                 bools_map.insert(bnames[i as uint].to_owned(), true);
             }
         }
