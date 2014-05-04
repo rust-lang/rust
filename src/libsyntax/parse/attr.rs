@@ -108,7 +108,8 @@ impl<'a> ParserAttr for Parser<'a> {
         };
     }
 
-    // Parse attributes that appear after the opening of an item, each
+    // Parse attributes that appear after the opening of an item. These should
+    // be preceded by an exclaimation mark, but we accept and warn about one
     // terminated by a semicolon. In addition to a vector of inner attributes,
     // this function also returns a vector that may contain the first outer
     // attribute of the next item (since we can't know whether the attribute
