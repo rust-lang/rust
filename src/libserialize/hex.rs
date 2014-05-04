@@ -45,7 +45,7 @@ impl<'a> ToHex for &'a [u8] {
         }
 
         unsafe {
-            str::raw::from_utf8_owned(v.move_iter().collect())
+            str::raw::from_utf8(v.as_slice()).to_owned()
         }
     }
 }
@@ -54,7 +54,7 @@ impl<'a> ToHex for &'a [u8] {
 pub trait FromHex {
     /// Converts the value of `self`, interpreted as hexadecimal encoded data,
     /// into an owned vector of bytes, returning the vector.
-    fn from_hex(&self) -> Result<~[u8], FromHexError>;
+    fn from_hex(&self) -> Result<Vec<u8>, FromHexError>;
 }
 
 /// Errors that can occur when decoding a hex encoded string
@@ -91,19 +91,18 @@ impl<'a> FromHex for &'a str {
      * ```rust
      * extern crate serialize;
      * use serialize::hex::{FromHex, ToHex};
-     * use std::str;
      *
      * fn main () {
      *     let hello_str = "Hello, World".as_bytes().to_hex();
      *     println!("{}", hello_str);
      *     let bytes = hello_str.from_hex().unwrap();
      *     println!("{:?}", bytes);
-     *     let result_str = str::from_utf8_owned(bytes).unwrap();
+     *     let result_str = StrBuf::from_utf8(bytes).unwrap();
      *     println!("{}", result_str);
      * }
      * ```
      */
-    fn from_hex(&self) -> Result<~[u8], FromHexError> {
+    fn from_hex(&self) -> Result<Vec<u8>, FromHexError> {
         // This may be an overestimate if there is any whitespace
         let mut b = Vec::with_capacity(self.len() / 2);
         let mut modulus = 0;
@@ -150,10 +149,10 @@ mod tests {
 
     #[test]
     pub fn test_from_hex_okay() {
-        assert_eq!("666f6f626172".from_hex().unwrap(),
-                   "foobar".as_bytes().to_owned());
-        assert_eq!("666F6F626172".from_hex().unwrap(),
-                   "foobar".as_bytes().to_owned());
+        assert_eq!("666f6f626172".from_hex().unwrap().as_slice(),
+                   "foobar".as_bytes());
+        assert_eq!("666F6F626172".from_hex().unwrap().as_slice(),
+                   "foobar".as_bytes());
     }
 
     #[test]
@@ -169,8 +168,8 @@ mod tests {
 
     #[test]
     pub fn test_from_hex_ignores_whitespace() {
-        assert_eq!("666f 6f6\r\n26172 ".from_hex().unwrap(),
-                   "foobar".as_bytes().to_owned());
+        assert_eq!("666f 6f6\r\n26172 ".from_hex().unwrap().as_slice(),
+                   "foobar".as_bytes());
     }
 
     #[test]
@@ -183,8 +182,8 @@ mod tests {
     #[test]
     pub fn test_from_hex_all_bytes() {
         for i in range(0, 256) {
-            assert_eq!(format!("{:02x}", i as uint).from_hex().unwrap(), ~[i as u8]);
-            assert_eq!(format!("{:02X}", i as uint).from_hex().unwrap(), ~[i as u8]);
+            assert_eq!(format!("{:02x}", i as uint).from_hex().unwrap().as_slice(), &[i as u8]);
+            assert_eq!(format!("{:02X}", i as uint).from_hex().unwrap().as_slice(), &[i as u8]);
         }
     }
 
