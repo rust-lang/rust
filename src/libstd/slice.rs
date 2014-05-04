@@ -722,19 +722,6 @@ impl<'a, T: TotalOrd> MutableTotalOrdVector<T> for &'a mut [T] {
     }
 }
 
-/**
-* Constructs a vector from an unsafe pointer to a buffer
-*
-* # Arguments
-*
-* * ptr - An unsafe pointer to a buffer of `T`
-* * elts - The number of elements in the buffer
-*/
-// Wrapper for fn in raw: needs to be called by net_tcp::on_tcp_read_cb
-pub unsafe fn from_buf<T>(ptr: *T, elts: uint) -> ~[T] {
-    raw::from_buf_raw(ptr, elts)
-}
-
 /// Unsafe operations
 pub mod raw {
     use iter::Iterator;
@@ -744,23 +731,6 @@ pub mod raw {
 
     pub use core::slice::raw::{buf_as_slice, mut_buf_as_slice};
     pub use core::slice::raw::{shift_ptr, pop_ptr};
-
-    /**
-    * Constructs a vector from an unsafe pointer to a buffer
-    *
-    * # Arguments
-    *
-    * * ptr - An unsafe pointer to a buffer of `T`
-    * * elts - The number of elements in the buffer
-    */
-    // Was in raw, but needs to be called by net_tcp::on_tcp_read_cb
-    #[inline]
-    pub unsafe fn from_buf_raw<T>(ptr: *T, elts: uint) -> ~[T] {
-        let mut dst = Vec::with_capacity(elts);
-        dst.set_len(elts);
-        ptr::copy_memory(dst.as_mut_ptr(), ptr, elts);
-        dst.move_iter().collect()
-    }
 }
 
 /// An iterator that moves out of a vector.
@@ -819,31 +789,6 @@ mod tests {
     fn square(n: uint) -> uint { n * n }
 
     fn is_odd(n: &uint) -> bool { *n % 2u == 1u }
-
-    #[test]
-    fn test_unsafe_ptrs() {
-        unsafe {
-            // Test on-stack copy-from-buf.
-            let a = box [1, 2, 3];
-            let mut ptr = a.as_ptr();
-            let b = from_buf(ptr, 3u);
-            assert_eq!(b.len(), 3u);
-            assert_eq!(b[0], 1);
-            assert_eq!(b[1], 2);
-            assert_eq!(b[2], 3);
-
-            // Test on-heap copy-from-buf.
-            let c = box [1, 2, 3, 4, 5];
-            ptr = c.as_ptr();
-            let d = from_buf(ptr, 5u);
-            assert_eq!(d.len(), 5u);
-            assert_eq!(d[0], 1);
-            assert_eq!(d[1], 2);
-            assert_eq!(d[2], 3);
-            assert_eq!(d[3], 4);
-            assert_eq!(d[4], 5);
-        }
-    }
 
     #[test]
     fn test_from_fn() {
