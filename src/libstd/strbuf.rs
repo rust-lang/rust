@@ -19,7 +19,7 @@ use io::Writer;
 use iter::{Extendable, FromIterator, Iterator, range};
 use option::{None, Option, Some};
 use ptr::RawPtr;
-use slice::{OwnedVector, Vector};
+use slice::{OwnedVector, Vector, CloneableVector};
 use str::{OwnedStr, Str, StrSlice, StrAllocating};
 use str;
 use vec::Vec;
@@ -273,11 +273,8 @@ impl Str for StrBuf {
 impl StrAllocating for StrBuf {
     #[inline]
     fn into_owned(self) -> ~str {
-        let StrBuf {
-            vec: vec
-        } = self;
         unsafe {
-            cast::transmute::<~[u8],~str>(vec.move_iter().collect())
+            cast::transmute(self.vec.as_slice().to_owned())
         }
     }
 
