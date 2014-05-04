@@ -155,25 +155,6 @@ impl<'a, T: Clone, V: Vector<T>> VectorVector<T> for &'a [V] {
     }
 }
 
-/**
- * Convert an iterator of pairs into a pair of vectors.
- *
- * Returns a tuple containing two vectors where the i-th element of the first
- * vector contains the first element of the i-th tuple of the input iterator,
- * and the i-th element of the second vector contains the second element
- * of the i-th tuple of the input iterator.
- */
-pub fn unzip<T, U, V: Iterator<(T, U)>>(mut iter: V) -> (~[T], ~[U]) {
-    let (lo, _) = iter.size_hint();
-    let mut ts = Vec::with_capacity(lo);
-    let mut us = Vec::with_capacity(lo);
-    for (t, u) in iter {
-        ts.push(t);
-        us.push(u);
-    }
-    (ts.move_iter().collect(), us.move_iter().collect())
-}
-
 /// An Iterator that yields the element swaps needed to produce
 /// a sequence of all possible permutations for an indexed sequence of
 /// elements. Each permutation is only a single swap apart.
@@ -1240,18 +1221,6 @@ mod tests {
         let mut v = vec![1, 2, 3, 4, 5];
         v.retain(is_odd);
         assert_eq!(v, vec![1, 3, 5]);
-    }
-
-    #[test]
-    fn test_zip_unzip() {
-        let z1 = vec![(1, 4), (2, 5), (3, 6)];
-
-        let (left, right) = unzip(z1.iter().map(|&x| x));
-
-        let (left, right) = (left.as_slice(), right.as_slice());
-        assert_eq!((1, 4), (left[0], right[0]));
-        assert_eq!((2, 5), (left[1], right[1]));
-        assert_eq!((3, 6), (left[2], right[2]));
     }
 
     #[test]

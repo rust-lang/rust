@@ -1436,10 +1436,31 @@ impl<T> Drop for MoveItems<T> {
     }
 }
 
+/**
+ * Convert an iterator of pairs into a pair of vectors.
+ *
+ * Returns a tuple containing two vectors where the i-th element of the first
+ * vector contains the first element of the i-th tuple of the input iterator,
+ * and the i-th element of the second vector contains the second element
+ * of the i-th tuple of the input iterator.
+ */
+pub fn unzip<T, U, V: Iterator<(T, U)>>(mut iter: V) -> (Vec<T>, Vec<U>) {
+    let (lo, _) = iter.size_hint();
+    let mut ts = Vec::with_capacity(lo);
+    let mut us = Vec::with_capacity(lo);
+    for (t, u) in iter {
+        ts.push(t);
+        us.push(u);
+    }
+    (ts, us)
+}
+
+
 #[cfg(test)]
 mod tests {
     use prelude::*;
     use mem::size_of;
+    use super::unzip;
 
     #[test]
     fn test_small_vec_struct() {
@@ -1686,5 +1707,17 @@ mod tests {
         assert_eq!(v.connect_vec(&0), vec![]);
         assert_eq!([&[1], &[2, 3]].connect_vec(&0), vec![1, 0, 2, 3]);
         assert_eq!([&[1], &[2], &[3]].connect_vec(&0), vec![1, 0, 2, 0, 3]);
+    }
+
+    #[test]
+    fn test_zip_unzip() {
+        let z1 = vec![(1, 4), (2, 5), (3, 6)];
+
+        let (left, right) = unzip(z1.iter().map(|&x| x));
+
+        let (left, right) = (left.as_slice(), right.as_slice());
+        assert_eq!((1, 4), (left[0], right[0]));
+        assert_eq!((2, 5), (left[1], right[1]));
+        assert_eq!((3, 6), (left[2], right[2]));
     }
 }

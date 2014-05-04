@@ -33,7 +33,7 @@ use middle::ty;
 use util::ppaux::{Repr, ty_to_str};
 
 use std::c_str::ToCStr;
-use std::slice;
+use std::{slice, vec};
 use std::vec::Vec;
 use libc::c_uint;
 use syntax::{ast, ast_util};
@@ -94,7 +94,7 @@ fn const_vec(cx: &CrateContext, e: &ast::Expr,
     let vec_ty = ty::expr_ty(cx.tcx(), e);
     let unit_ty = ty::sequence_element_type(cx.tcx(), vec_ty);
     let llunitty = type_of::type_of(cx, unit_ty);
-    let (vs, inlineable) = slice::unzip(es.iter().map(|e| const_expr(cx, *e, is_local)));
+    let (vs, inlineable) = vec::unzip(es.iter().map(|e| const_expr(cx, *e, is_local)));
     // If the vector contains enums, an LLVM array won't work.
     let v = if vs.iter().any(|vi| val_ty(*vi) != llunitty) {
         C_struct(cx, vs, false)
@@ -539,7 +539,7 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr,
               };
 
               expr::with_field_tys(tcx, ety, Some(e.id), |discr, field_tys| {
-                  let (cs, inlineable) = slice::unzip(field_tys.iter().enumerate()
+                  let (cs, inlineable) = vec::unzip(field_tys.iter().enumerate()
                       .map(|(ix, &field_ty)| {
                       match fs.iter().find(|f| field_ty.ident.name == f.ident.node.name) {
                           Some(f) => const_expr(cx, (*f).expr, is_local),
