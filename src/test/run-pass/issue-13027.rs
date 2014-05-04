@@ -23,6 +23,7 @@ pub fn main() {
     multi_pats_shadow_range();
     lit_shadow_multi_pats();
     range_shadow_multi_pats();
+    misc();
 }
 
 fn lit_shadow_range() {
@@ -167,4 +168,19 @@ fn range_shadow_multi_pats() {
         0 | 1..10 => 2,
         _ => 3,
     });
+}
+
+fn misc() {
+    enum Foo {
+        Bar(uint, bool)
+    }
+    // This test basically mimics how trace_macros! macro is implemented,
+    // which is a rare combination of vector patterns, multiple wild-card
+    // patterns and guard functions.
+    let r = match [Bar(0, false)].as_slice() {
+        [Bar(_, pred)] if pred => 1,
+        [Bar(_, pred)] if !pred => 2,
+        _ => 0,
+    };
+    assert_eq!(2, r);
 }
