@@ -24,6 +24,7 @@ use std::os;
 
 pub fn main() {
     let args = os::args();
+    let args = args.as_slice();
 
     // Here, the rvalue `"signal".to_owned()` requires cleanup. Older versions
     // of the code had a problem that the cleanup scope for this

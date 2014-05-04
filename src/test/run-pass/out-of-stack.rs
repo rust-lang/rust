@@ -34,6 +34,7 @@ fn loud_recurse() {
 
 fn main() {
     let args = os::args();
+    let args = args.as_slice();
     if args.len() > 1 && args[1].as_slice() == "silent" {
         silent_recurse();
     } else if args.len() > 1 && args[1].as_slice() == "loud" {

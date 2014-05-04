@@ -85,7 +85,7 @@ local_data_key!(pub analysiskey: core::CrateAnalysis)
 type Output = (clean::Crate, Vec<plugins::PluginJson> );
 
 pub fn main() {
-    std::os::set_exit_status(main_args(std::os::args()));
+    std::os::set_exit_status(main_args(std::os::args().as_slice()));
 }
 
 pub fn opts() -> Vec<getopts::OptGroup> {
