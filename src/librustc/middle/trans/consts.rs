@@ -672,6 +672,12 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr,
               }
           }
           ast::ExprParen(e) => { const_expr(cx, e, is_local) }
+          ast::ExprBlock(ref block) => {
+            match block.expr {
+                Some(ref expr) => const_expr(cx, &**expr, is_local),
+                None => (C_nil(cx), true)
+            }
+          }
           _ => cx.sess().span_bug(e.span,
                   "bad constant expression type in consts::const_expr")
         };
