@@ -472,7 +472,8 @@ pub fn walk_ty_param_bounds<E: Clone, V: Visitor<E>>(visitor: &mut V,
             TraitTyParamBound(ref typ) => {
                 walk_trait_ref_helper(visitor, typ, env.clone())
             }
-            RegionTyParamBound => {}
+            StaticRegionTyParamBound => {}
+            OtherRegionTyParamBound(..) => {}
         }
     }
 }

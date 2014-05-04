@@ -50,7 +50,8 @@ use std::rc::Rc;
 use collections::{HashMap, HashSet};
 
 use syntax::abi;
-use syntax::ast::{RegionTyParamBound, TraitTyParamBound};
+use syntax::ast::{StaticRegionTyParamBound, OtherRegionTyParamBound,
+                  TraitTyParamBound};
 use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util::{local_def, split_trait_methods};
@@ -1102,8 +1103,17 @@ fn ty_generics(ccx: &CrateCtxt,
                     }
                 }
 
-                RegionTyParamBound => {
+                StaticRegionTyParamBound => {
                     param_bounds.builtin_bounds.add(ty::BoundStatic);
+                }
+
+                OtherRegionTyParamBound(span) => {
+                    if !ccx.tcx.sess.features.issue_5723_bootstrap.get() {
+                        ccx.tcx.sess.span_err(
+                            span,
+                            format!("only the 'static lifetime is \
+                                     accepted here."));
+                    }
                 }
             }
         }
