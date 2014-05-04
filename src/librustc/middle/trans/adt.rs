@@ -579,19 +579,19 @@ pub fn trans_case<'a>(bcx: &'a Block<'a>, r: &Repr, discr: Disr)
                   -> _match::opt_result<'a> {
     match *r {
         CEnum(ity, _, _) => {
-            _match::single_result(rslt(bcx, C_integral(ll_inttype(bcx.ccx(), ity),
-                                                       discr as u64, true)))
+            _match::single_result(Result::new(bcx, C_integral(ll_inttype(bcx.ccx(), ity),
+                                                              discr as u64, true)))
         }
         General(ity, _) => {
-            _match::single_result(rslt(bcx, C_integral(ll_inttype(bcx.ccx(), ity),
-                                                       discr as u64, true)))
+            _match::single_result(Result::new(bcx, C_integral(ll_inttype(bcx.ccx(), ity),
+                                                              discr as u64, true)))
         }
         Univariant(..) => {
             bcx.ccx().sess().bug("no cases for univariants or structs")
         }
         NullablePointer{ .. } => {
             assert!(discr == 0 || discr == 1);
-            _match::single_result(rslt(bcx, C_i1(bcx.ccx(), discr != 0)))
+            _match::single_result(Result::new(bcx, C_i1(bcx.ccx(), discr != 0)))
         }
     }
 }
