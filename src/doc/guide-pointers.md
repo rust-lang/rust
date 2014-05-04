@@ -186,7 +186,7 @@ enum List<T> {
     Nil,
     Cons(T, ~List<T>),
 }
-    
+
 fn main() {
     let list: List<int> = Cons(1, ~Cons(2, ~Cons(3, ~Nil)));
     println!("{:?}", list);
@@ -251,7 +251,7 @@ struct.
 
 > **Note**: the `@` form of managed pointers is deprecated and behind a
 > feature gate (it requires a `#![feature(managed_pointers)]` attribute on
-> the crate root; remember the semicolon!). There are replacements, currently 
+> the crate root). There are replacements, currently
 > there is `std::rc::Rc` and `std::gc::Gc` for shared ownership via reference
 > counting and garbage collection respectively.
 
@@ -266,7 +266,7 @@ struct Point {
     x: int,
     y: int,
 }
-    
+
 fn main() {
     let a = ~Point { x: 10, y: 20 };
     let b = a;
@@ -297,7 +297,7 @@ struct Point {
     x: int,
     y: int,
 }
-    
+
 fn main() {
     let a = @Point { x: 10, y: 20 };
     let b = a;
@@ -361,7 +361,7 @@ So how is this hard? Well, because we're ignoring ownership, the compiler needs
 to take great care to make sure that everything is safe. Despite their complete
 safety, a reference's representation at runtime is the same as that of
 an ordinary pointer in a C program. They introduce zero overhead. The compiler
-does all safety checks at compile time. 
+does all safety checks at compile time.
 
 This theory is called 'region pointers,' and involve a concept called
 'lifetimes'. Here's the simple explanation: would you expect this code to
@@ -477,7 +477,7 @@ fn main() {
 You may think that this gives us terrible performance: return a value and then
 immediately box it up?!?! Isn't that the worst of both worlds? Rust is smarter
 than that. There is no copy in this code. `main` allocates enough room for the
-`@int`, passes a pointer to that memory into `foo` as `x`, and then `foo` writes 
+`@int`, passes a pointer to that memory into `foo` as `x`, and then `foo` writes
 the value straight into that pointer. This writes the return value directly into
 the allocated box.
 
