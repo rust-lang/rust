@@ -85,10 +85,9 @@ use fmt;
 use io::Writer;
 use iter::{Iterator, range, AdditiveIterator};
 use option::{None, Option, Some};
-use ptr;
 use from_str::FromStr;
-use slice::{OwnedVector, ImmutableVector, MutableVector, CloneableVector};
-use slice::{Vector};
+use slice::{ImmutableVector, MutableVector, CloneableVector};
+use slice::Vector;
 use vec::Vec;
 use default::Default;
 use strbuf::StrBuf;
@@ -671,9 +670,9 @@ pub mod raw {
     use iter::Iterator;
     use libc;
     use ptr::RawPtr;
-    use ptr;
-    use slice::{MutableVector, OwnedVector, Vector};
-    use str::{is_utf8};
+    use raw::Slice;
+    use slice::ImmutableVector;
+    use str::is_utf8;
 
     pub use core::str::raw::{from_utf8, c_str_to_static_slice, slice_bytes};
     pub use core::str::raw::{slice_unchecked};

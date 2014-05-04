@@ -744,11 +744,6 @@ impl<'a, T: TotalOrd> MutableTotalOrdVector<T> for &'a mut [T] {
 
 /// Unsafe operations
 pub mod raw {
-    use iter::Iterator;
-    use ptr;
-    use slice::{MutableVector, OwnedVector};
-    use vec::Vec;
-
     pub use core::slice::raw::{buf_as_slice, mut_buf_as_slice};
     pub use core::slice::raw::{shift_ptr, pop_ptr};
 }

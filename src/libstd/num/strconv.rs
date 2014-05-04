@@ -19,7 +19,6 @@ use num::{Float, FPNaN, FPInfinite, ToPrimitive};
 use num;
 use ops::{Add, Sub, Mul, Div, Rem, Neg};
 use option::{None, Option, Some};
-use slice::OwnedVector;
 use slice::{CloneableVector, ImmutableVector, MutableVector};
 use std::cmp::{Ord, Eq};
 use str::{Str, StrSlice};
