@@ -151,7 +151,7 @@ fn allocate_cbox<'a>(bcx: &'a Block<'a>,
         ty::RegionTraitStore(..) => {
             let cbox_ty = tuplify_box_ty(tcx, cdata_ty);
             let llbox = alloc_ty(bcx, cbox_ty, "__closure");
-            rslt(bcx, llbox)
+            Result::new(bcx, llbox)
         }
     }
 }

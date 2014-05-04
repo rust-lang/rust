@@ -679,6 +679,6 @@ impl<'a> DatumBlock<'a, Expr> {
 
     pub fn to_llbool(self) -> Result<'a> {
         let DatumBlock { datum, bcx } = self;
-        rslt(bcx, datum.to_llbool(bcx))
+        Result::new(bcx, datum.to_llbool(bcx))
     }
 }
