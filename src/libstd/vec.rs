@@ -1455,12 +1455,30 @@ pub fn unzip<T, U, V: Iterator<(T, U)>>(mut iter: V) -> (Vec<T>, Vec<U>) {
     (ts, us)
 }
 
+/// Unsafe operations
+pub mod raw {
+    use super::Vec;
+    use ptr;
+
+    /// Constructs a vector from an unsafe pointer to a buffer.
+    ///
+    /// The elements of the buffer are copied into the vector without cloning,
+    /// as if `ptr::read()` were called on them.
+    #[inline]
+    pub unsafe fn from_buf<T>(ptr: *T, elts: uint) -> Vec<T> {
+        let mut dst = Vec::with_capacity(elts);
+        dst.set_len(elts);
+        ptr::copy_nonoverlapping_memory(dst.as_mut_ptr(), ptr, elts);
+        dst
+    }
+}
+
 
 #[cfg(test)]
 mod tests {
     use prelude::*;
     use mem::size_of;
-    use super::unzip;
+    use super::{unzip, raw};
 
     #[test]
     fn test_small_vec_struct() {
@@ -1719,5 +1737,22 @@ mod tests {
         assert_eq!((1, 4), (left[0], right[0]));
         assert_eq!((2, 5), (left[1], right[1]));
         assert_eq!((3, 6), (left[2], right[2]));
+    }
+
+    #[test]
+    fn test_unsafe_ptrs() {
+        unsafe {
+            // Test on-stack copy-from-buf.
+            let a = [1, 2, 3];
+            let ptr = a.as_ptr();
+            let b = raw::from_buf(ptr, 3u);
+            assert_eq!(b, vec![1, 2, 3]);
+
+            // Test on-heap copy-from-buf.
+            let c = box [1, 2, 3, 4, 5];
+            let ptr = c.as_ptr();
+            let d = raw::from_buf(ptr, 5u);
+            assert_eq!(d, vec![1, 2, 3, 4, 5]);
+        }
     }
 }
