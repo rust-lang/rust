@@ -33,7 +33,7 @@ use middle::ty;
 use util::ppaux::{Repr, ty_to_str};
 
 use std::c_str::ToCStr;
-use std::{slice, vec};
+use std::vec;
 use std::vec::Vec;
 use libc::c_uint;
 use syntax::{ast, ast_util};
@@ -97,9 +97,9 @@ fn const_vec(cx: &CrateContext, e: &ast::Expr,
     let (vs, inlineable) = vec::unzip(es.iter().map(|e| const_expr(cx, *e, is_local)));
     // If the vector contains enums, an LLVM array won't work.
     let v = if vs.iter().any(|vi| val_ty(*vi) != llunitty) {
-        C_struct(cx, vs, false)
+        C_struct(cx, vs.as_slice(), false)
     } else {
-        C_array(llunitty, vs)
+        C_array(llunitty, vs.as_slice())
     };
     (v, llunitty, inlineable.iter().fold(true, |a, &b| a && b))
 }
@@ -554,7 +554,7 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr,
                           }
                       }
                   }));
-                  (adt::trans_const(cx, &*repr, discr, cs),
+                  (adt::trans_const(cx, &*repr, discr, cs.as_slice()),
                    inlineable.iter().fold(true, |a, &b| a && b))
               })
           }

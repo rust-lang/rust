@@ -162,7 +162,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
             debug!("static default: changed substitution to {}",
                    substs.repr(ccx.tcx()));
 
-            ty::subst_tps(ccx.tcx(), substs, None, llitem_ty)
+            ty::subst_tps(ccx.tcx(), substs.as_slice(), None, llitem_ty)
         }
     };
 
