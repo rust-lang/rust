@@ -196,11 +196,11 @@ pub fn get_mut<T: 'static, U>(key: Key<T>, f: |Option<&mut T>| -> U) -> U {
         match x {
             None => f(None),
             // We're violating a lot of compiler guarantees with this
-            // invocation of `transmute_mut`, but we're doing runtime checks to
+            // invocation of `transmute`, but we're doing runtime checks to
             // ensure that it's always valid (only one at a time).
             //
             // there is no need to be upset!
-            Some(x) => { f(Some(unsafe { cast::transmute_mut(x) })) }
+            Some(x) => { f(Some(unsafe { cast::transmute::<&_, &mut _>(x) })) }
         }
     })
 }

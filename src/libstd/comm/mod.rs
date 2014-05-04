@@ -318,6 +318,11 @@ mod stream;
 mod shared;
 mod sync;
 
+// FIXME #13933: Remove/justify all `&T` to `&mut T` transmutes
+unsafe fn transmute_mut<'a,T>(x: &'a T) -> &'a mut T {
+    cast::transmute::<&_, &mut _>(x)
+}
+
 // Use a power of 2 to allow LLVM to optimize to something that's not a
 // division, this is hit pretty regularly.
 static RESCHED_FREQ: int = 256;
@@ -565,7 +570,7 @@ impl<T: Send> Sender<T> {
 
         unsafe {
             let mut tmp = Sender::new(Stream(new_inner));
-            mem::swap(&mut cast::transmute_mut(self).inner, &mut tmp.inner);
+            mem::swap(&mut transmute_mut(self).inner, &mut tmp.inner);
         }
         return ret;
     }
@@ -599,7 +604,7 @@ impl<T: Send> Clone for Sender<T> {
             (*packet.get()).inherit_blocker(sleeper);
 
             let mut tmp = Sender::new(Shared(packet.clone()));
-            mem::swap(&mut cast::transmute_mut(self).inner, &mut tmp.inner);
+            mem::swap(&mut transmute_mut(self).inner, &mut tmp.inner);
         }
         Sender::new(Shared(packet))
     }
@@ -790,7 +795,7 @@ impl<T: Send> Receiver<T> {
                 }
             };
             unsafe {
-                mem::swap(&mut cast::transmute_mut(self).inner,
+                mem::swap(&mut transmute_mut(self).inner,
                           &mut new_port.inner);
             }
         }
@@ -837,7 +842,7 @@ impl<T: Send> Receiver<T> {
                 Sync(ref p) => return unsafe { (*p.get()).recv() }
             };
             unsafe {
-                mem::swap(&mut cast::transmute_mut(self).inner,
+                mem::swap(&mut transmute_mut(self).inner,
                           &mut new_port.inner);
             }
         }
@@ -874,7 +879,7 @@ impl<T: Send> select::Packet for Receiver<T> {
                 }
             };
             unsafe {
-                mem::swap(&mut cast::transmute_mut(self).inner,
+                mem::swap(&mut transmute_mut(self).inner,
                           &mut new_port.inner);
             }
         }
@@ -906,7 +911,7 @@ impl<T: Send> select::Packet for Receiver<T> {
             };
             task = t;
             unsafe {
-                mem::swap(&mut cast::transmute_mut(self).inner,
+                mem::swap(&mut transmute_mut(self).inner,
                           &mut new_port.inner);
             }
         }
@@ -930,7 +935,7 @@ impl<T: Send> select::Packet for Receiver<T> {
             let mut new_port = match result { Ok(b) => return b, Err(p) => p };
             was_upgrade = true;
             unsafe {
-                mem::swap(&mut cast::transmute_mut(self).inner,
+                mem::swap(&mut transmute_mut(self).inner,
                           &mut new_port.inner);
             }
         }
