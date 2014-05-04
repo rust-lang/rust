@@ -69,14 +69,14 @@ impl<T: Send> UnsafeArc<T> {
 
     /// As new(), but returns a vector of as many pre-cloned handles as
     /// requested.
-    pub fn newN(data: T, num_handles: uint) -> ~[UnsafeArc<T>] {
+    pub fn newN(data: T, num_handles: uint) -> Vec<UnsafeArc<T>> {
         unsafe {
             if num_handles == 0 {
-                box [] // need to free data here
+                vec![] // need to free data here
             } else {
                 let ptr = new_inner(data, num_handles);
                 let v = Vec::from_fn(num_handles, |_| UnsafeArc { data: ptr });
-                v.move_iter().collect()
+                v
             }
         }
     }

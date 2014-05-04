@@ -844,22 +844,22 @@ mod tests {
 
     #[test]
     fn test_collect() {
-        let v: Option<~[int]> = collect(range(0, 0)
-                                        .map(|_| Some(0)));
-        assert_eq!(v, Some(box []));
+        let v: Option<Vec<int>> = collect(range(0, 0)
+                                          .map(|_| Some(0)));
+        assert_eq!(v, Some(vec![]));
 
-        let v: Option<~[int]> = collect(range(0, 3)
-                                        .map(|x| Some(x)));
-        assert_eq!(v, Some(box [0, 1, 2]));
+        let v: Option<Vec<int>> = collect(range(0, 3)
+                                          .map(|x| Some(x)));
+        assert_eq!(v, Some(vec![0, 1, 2]));
 
-        let v: Option<~[int]> = collect(range(0, 3)
-                                        .map(|x| if x > 1 { None } else { Some(x) }));
+        let v: Option<Vec<int>> = collect(range(0, 3)
+                                          .map(|x| if x > 1 { None } else { Some(x) }));
         assert_eq!(v, None);
 
         // test that it does not take more elements than it needs
         let mut functions = [|| Some(()), || None, || fail!()];
 
-        let v: Option<~[()]> = collect(functions.mut_iter().map(|f| (*f)()));
+        let v: Option<Vec<()>> = collect(functions.mut_iter().map(|f| (*f)()));
 
         assert_eq!(v, None);
     }
