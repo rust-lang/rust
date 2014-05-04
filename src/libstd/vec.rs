@@ -22,7 +22,7 @@ use mem::{size_of, move_val_init};
 use mem;
 use num;
 use num::{CheckedMul, CheckedAdd};
-use ops::Drop;
+use ops::{Add, Drop};
 use option::{None, Option, Some, Expect};
 use ptr::RawPtr;
 use ptr;
@@ -1367,6 +1367,16 @@ impl<T> Vector<T> for Vec<T> {
     #[inline]
     fn as_slice<'a>(&'a self) -> &'a [T] {
         unsafe { transmute(Slice { data: self.as_ptr(), len: self.len }) }
+    }
+}
+
+impl<T: Clone, V: Vector<T>> Add<V, Vec<T>> for Vec<T> {
+    #[inline]
+    fn add(&self, rhs: &V) -> Vec<T> {
+        let mut res = Vec::with_capacity(self.len() + rhs.as_slice().len());
+        res.push_all(self.as_slice());
+        res.push_all(rhs.as_slice());
+        res
     }
 }
 

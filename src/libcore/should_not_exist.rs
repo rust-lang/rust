@@ -150,20 +150,3 @@ impl<A: Clone> Clone for ~[A] {
         self.iter().map(|a| a.clone()).collect()
     }
 }
-
-#[cfg(not(test))]
-impl<'a,T:Clone, V: Vector<T>> Add<V, ~[T]> for &'a [T] {
-    #[inline]
-    fn add(&self, rhs: &V) -> ~[T] {
-        let first = self.iter().map(|t| t.clone());
-        first.chain(rhs.as_slice().iter().map(|t| t.clone())).collect()
-    }
-}
-
-#[cfg(not(test))]
-impl<T:Clone, V: Vector<T>> Add<V, ~[T]> for ~[T] {
-    #[inline]
-    fn add(&self, rhs: &V) -> ~[T] {
-        self.as_slice() + rhs.as_slice()
-    }
-}

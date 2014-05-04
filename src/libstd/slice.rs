@@ -279,6 +279,26 @@ impl<T: Clone> Iterator<~[T]> for Permutations<T> {
     }
 }
 
+#[cfg(not(test))]
+impl<'a,T:Clone, V: Vector<T>> Add<V, Vec<T>> for &'a [T] {
+    #[inline]
+    fn add(&self, rhs: &V) -> Vec<T> {
+        let rhs = rhs.as_slice();
+        let mut res = Vec::with_capacity(self.len() + rhs.len());
+        res.push_all(*self);
+        res.push_all(rhs);
+        res
+    }
+}
+
+#[cfg(not(test))]
+impl<T:Clone, V: Vector<T>> Add<V, Vec<T>> for ~[T] {
+    #[inline]
+    fn add(&self, rhs: &V) -> Vec<T> {
+        self.as_slice() + rhs.as_slice()
+    }
+}
+
 /// Extension methods for vector slices with cloneable elements
 pub trait CloneableVector<T> {
     /// Copy `self` into a new owned vector
