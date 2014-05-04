@@ -788,10 +788,10 @@ fn check_type_limits(cx: &Context, e: &ast::Expr) {
     fn is_valid<T:cmp::Ord>(binop: ast::BinOp, v: T,
                             min: T, max: T) -> bool {
         match binop {
-            ast::BiLt => v <= max,
-            ast::BiLe => v < max,
-            ast::BiGt => v >= min,
-            ast::BiGe => v > min,
+            ast::BiLt => v >  min && v <= max,
+            ast::BiLe => v >= min && v <  max,
+            ast::BiGt => v >= min && v <  max,
+            ast::BiGe => v >  min && v <= max,
             ast::BiEq | ast::BiNe => v >= min && v <= max,
             _ => fail!()
         }
