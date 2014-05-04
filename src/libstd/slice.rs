@@ -1739,7 +1739,9 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
         if self.len() == 0 { return None; }
         unsafe {
             let s: &mut Slice<T> = transmute(self);
-            Some(cast::transmute_mut(&*raw::shift_ptr(s)))
+            // FIXME #13933: this `&` -> `&mut` cast is a little
+            // dubious
+            Some(&mut *(raw::shift_ptr(s) as *mut _))
         }
     }
 
@@ -1747,7 +1749,9 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
         if self.len() == 0 { return None; }
         unsafe {
             let s: &mut Slice<T> = transmute(self);
-            Some(cast::transmute_mut(&*raw::pop_ptr(s)))
+            // FIXME #13933: this `&` -> `&mut` cast is a little
+            // dubious
+            Some(&mut *(raw::pop_ptr(s) as *mut _))
         }
     }
 
@@ -3108,23 +3112,23 @@ mod tests {
     #[should_fail]
     fn test_from_elem_fail() {
         use cast;
+        use cell::Cell;
         use rc::Rc;
 
         struct S {
-            f: int,
+            f: Cell<int>,
             boxes: (~int, Rc<int>)
         }
 
         impl Clone for S {
             fn clone(&self) -> S {
-                let s = unsafe { cast::transmute_mut(self) };
-                s.f += 1;
-                if s.f == 10 { fail!() }
-                S { f: s.f, boxes: s.boxes.clone() }
+                self.f.set(self.f.get() + 1);
+                if self.f.get() == 10 { fail!() }
+                S { f: self.f, boxes: self.boxes.clone() }
             }
         }
 
-        let s = S { f: 0, boxes: (box 0, Rc::new(0)) };
+        let s = S { f: Cell::new(0), boxes: (box 0, Rc::new(0)) };
         let _ = Vec::from_elem(100, s);
     }
 

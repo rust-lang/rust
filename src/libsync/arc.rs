@@ -148,7 +148,7 @@ impl<T: Send + Share + Clone> Arc<T> {
         // reference count is guaranteed to be 1 at this point, and we required
         // the Arc itself to be `mut`, so we're returning the only possible
         // reference to the inner data.
-        unsafe { cast::transmute_mut(self.deref()) }
+        unsafe { cast::transmute::<&_, &mut _>(self.deref()) }
     }
 }
 
