@@ -289,42 +289,6 @@ fn opt_eq(tcx: &ty::ctxt, a: &Opt, b: &Opt) -> bool {
     }
 }
 
-fn opt_overlap(tcx: &ty::ctxt, a: &Opt, b: &Opt) -> bool {
-    match (a, b) {
-        (&lit(a), &lit(b)) => {
-            let a_expr = lit_to_expr(tcx, &a);
-            let b_expr = lit_to_expr(tcx, &b);
-            match const_eval::compare_lit_exprs(tcx, a_expr, b_expr) {
-                Some(val1) => val1 == 0,
-                None => fail!("opt_overlap: type mismatch"),
-            }
-        }
-
-        (&range(a1, a2), &range(b1, b2)) => {
-            let m1 = const_eval::compare_lit_exprs(tcx, a1, b2);
-            let m2 = const_eval::compare_lit_exprs(tcx, b1, a2);
-            match (m1, m2) {
-                // two ranges [a1, a2] and [b1, b2] overlap iff:
-                //      a1 <= b2 && b1 <= a2
-                (Some(val1), Some(val2)) => (val1 <= 0 && val2 <= 0),
-                _ => fail!("opt_overlap: type mismatch"),
-            }
-        }
-
-        (&range(a1, a2), &lit(b)) | (&lit(b), &range(a1, a2)) => {
-            let b_expr = lit_to_expr(tcx, &b);
-            let m1 = const_eval::compare_lit_exprs(tcx, a1, b_expr);
-            let m2 = const_eval::compare_lit_exprs(tcx, a2, b_expr);
-            match (m1, m2) {
-                // b is in range [a1, a2] iff a1 <= b and b <= a2
-                (Some(val1), Some(val2)) => (val1 <= 0 && 0 <= val2),
-                _ => fail!("opt_overlap: type mismatch"),
-            }
-        }
-        _ => fail!("opt_overlap: expect lit or range")
-    }
-}
-
 pub enum opt_result<'a> {
     single_result(Result<'a>),
     lower_bound(Result<'a>),
@@ -634,30 +598,16 @@ fn enter_opt<'a, 'b>(
     let tcx = bcx.tcx();
     let dummy = @ast::Pat {id: 0, node: ast::PatWild, span: DUMMY_SP};
     let mut i = 0;
-    // By the virtue of fact that we are in `trans` already, `enter_opt` is able
-    // to prune sub-match tree aggressively based on exact equality. But when it
-    // comes to literal or range, that strategy may lead to wrong result if there
-    // are guard function or multiple patterns inside tuple; in that case, pruning
-    // based on the overlap of patterns is required.
-    //
-    // Ideally, when constructing the sub-match tree for certain arm, only those
-    // arms beneath it matter. But that isn't how algorithm works right now and
-    // all other arms are taken into consideration when computing `guarded` below.
-    // That is ok since each round of `compile_submatch` guarantees to trim one
-    // "column" of arm patterns and the algorithm will converge.
-    let guarded = m.iter().any(|x| x.data.arm.guard.is_some());
-    let multi_pats = m.len() > 0 && m[0].pats.len() > 1;
     enter_match(bcx, &tcx.def_map, m, col, val, |p| {
         let answer = match p.node {
             ast::PatEnum(..) |
             ast::PatIdent(_, _, None) if pat_is_const(&tcx.def_map, p) => {
                 let const_def = tcx.def_map.borrow().get_copy(&p.id);
                 let const_def_id = ast_util::def_id_of_def(const_def);
-                let konst = lit(ConstLit(const_def_id));
-                match guarded || multi_pats {
-                    false if opt_eq(tcx, &konst, opt) => Some(Vec::new()),
-                    true if opt_overlap(tcx, &konst, opt) => Some(Vec::new()),
-                    _ => None,
+                if opt_eq(tcx, &lit(ConstLit(const_def_id)), opt) {
+                    Some(Vec::new())
+                } else {
+                    None
                 }
             }
             ast::PatEnum(_, ref subpats) => {
@@ -682,20 +632,12 @@ fn enter_opt<'a, 'b>(
                 }
             }
             ast::PatLit(l) => {
-                let lit_expr = lit(ExprLit(l));
-                match guarded || multi_pats {
-                    false if opt_eq(tcx, &lit_expr, opt) => Some(Vec::new()),
-                    true if opt_overlap(tcx, &lit_expr, opt) => Some(Vec::new()),
-                    _ => None,
-                }
+                if opt_eq(tcx, &lit(ExprLit(l)), opt) { Some(Vec::new()) }
+                else { None }
             }
             ast::PatRange(l1, l2) => {
-                let rng = range(l1, l2);
-                match guarded || multi_pats {
-                    false if opt_eq(tcx, &rng, opt) => Some(Vec::new()),
-                    true if opt_overlap(tcx, &rng, opt) => Some(Vec::new()),
-                    _ => None,
-                }
+                if opt_eq(tcx, &range(l1, l2), opt) { Some(Vec::new()) }
+                else { None }
             }
             ast::PatStruct(_, ref field_pats, _) => {
                 if opt_eq(tcx, &variant_opt(bcx, p.id), opt) {
