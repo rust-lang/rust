@@ -1352,7 +1352,7 @@ mod tests {
                         let n = task_rng().gen::<uint>() % 10;
                         counts[n] += 1;
                         (n, counts[n])
-                    }).collect::<~[(uint, int)]>();
+                    }).collect::<Vec<(uint, int)>>();
 
                 // only sort on the first element, so an unstable sort
                 // may mix up the counts.
@@ -1363,7 +1363,7 @@ mod tests {
                 // will need to be ordered with increasing
                 // counts... i.e. exactly asserting that this sort is
                 // stable.
-                assert!(v.windows(2).all(|w| w[0] <= w[1]));
+                assert!(v.as_slice().windows(2).all(|w| w[0] <= w[1]));
             }
         }
     }
@@ -1663,74 +1663,74 @@ mod tests {
     fn test_splitator() {
         let xs = &[1i,2,3,4,5];
 
-        assert_eq!(xs.split(|x| *x % 2 == 0).collect::<~[&[int]]>(),
-                   box [&[1], &[3], &[5]]);
-        assert_eq!(xs.split(|x| *x == 1).collect::<~[&[int]]>(),
-                   box [&[], &[2,3,4,5]]);
-        assert_eq!(xs.split(|x| *x == 5).collect::<~[&[int]]>(),
-                   box [&[1,2,3,4], &[]]);
-        assert_eq!(xs.split(|x| *x == 10).collect::<~[&[int]]>(),
-                   box [&[1,2,3,4,5]]);
-        assert_eq!(xs.split(|_| true).collect::<~[&[int]]>(),
-                   box [&[], &[], &[], &[], &[], &[]]);
+        assert_eq!(xs.split(|x| *x % 2 == 0).collect::<Vec<&[int]>>().as_slice(),
+                   &[&[1], &[3], &[5]]);
+        assert_eq!(xs.split(|x| *x == 1).collect::<Vec<&[int]>>().as_slice(),
+                   &[&[], &[2,3,4,5]]);
+        assert_eq!(xs.split(|x| *x == 5).collect::<Vec<&[int]>>().as_slice(),
+                   &[&[1,2,3,4], &[]]);
+        assert_eq!(xs.split(|x| *x == 10).collect::<Vec<&[int]>>().as_slice(),
+                   &[&[1,2,3,4,5]]);
+        assert_eq!(xs.split(|_| true).collect::<Vec<&[int]>>().as_slice(),
+                   &[&[], &[], &[], &[], &[], &[]]);
 
         let xs: &[int] = &[];
-        assert_eq!(xs.split(|x| *x == 5).collect::<~[&[int]]>(), box [&[]]);
+        assert_eq!(xs.split(|x| *x == 5).collect::<Vec<&[int]>>().as_slice(), &[&[]]);
     }
 
     #[test]
     fn test_splitnator() {
         let xs = &[1i,2,3,4,5];
 
-        assert_eq!(xs.splitn(0, |x| *x % 2 == 0).collect::<~[&[int]]>(),
-                   box [&[1,2,3,4,5]]);
-        assert_eq!(xs.splitn(1, |x| *x % 2 == 0).collect::<~[&[int]]>(),
-                   box [&[1], &[3,4,5]]);
-        assert_eq!(xs.splitn(3, |_| true).collect::<~[&[int]]>(),
-                   box [&[], &[], &[], &[4,5]]);
+        assert_eq!(xs.splitn(0, |x| *x % 2 == 0).collect::<Vec<&[int]>>().as_slice(),
+                   &[&[1,2,3,4,5]]);
+        assert_eq!(xs.splitn(1, |x| *x % 2 == 0).collect::<Vec<&[int]>>().as_slice(),
+                   &[&[1], &[3,4,5]]);
+        assert_eq!(xs.splitn(3, |_| true).collect::<Vec<&[int]>>().as_slice(),
+                   &[&[], &[], &[], &[4,5]]);
 
         let xs: &[int] = &[];
-        assert_eq!(xs.splitn(1, |x| *x == 5).collect::<~[&[int]]>(), box [&[]]);
+        assert_eq!(xs.splitn(1, |x| *x == 5).collect::<Vec<&[int]>>().as_slice(), &[&[]]);
     }
 
     #[test]
     fn test_rsplitator() {
         let xs = &[1i,2,3,4,5];
 
-        assert_eq!(xs.split(|x| *x % 2 == 0).rev().collect::<~[&[int]]>(),
-                   box [&[5], &[3], &[1]]);
-        assert_eq!(xs.split(|x| *x == 1).rev().collect::<~[&[int]]>(),
-                   box [&[2,3,4,5], &[]]);
-        assert_eq!(xs.split(|x| *x == 5).rev().collect::<~[&[int]]>(),
-                   box [&[], &[1,2,3,4]]);
-        assert_eq!(xs.split(|x| *x == 10).rev().collect::<~[&[int]]>(),
-                   box [&[1,2,3,4,5]]);
+        assert_eq!(xs.split(|x| *x % 2 == 0).rev().collect::<Vec<&[int]>>().as_slice(),
+                   &[&[5], &[3], &[1]]);
+        assert_eq!(xs.split(|x| *x == 1).rev().collect::<Vec<&[int]>>().as_slice(),
+                   &[&[2,3,4,5], &[]]);
+        assert_eq!(xs.split(|x| *x == 5).rev().collect::<Vec<&[int]>>().as_slice(),
+                   &[&[], &[1,2,3,4]]);
+        assert_eq!(xs.split(|x| *x == 10).rev().collect::<Vec<&[int]>>().as_slice(),
+                   &[&[1,2,3,4,5]]);
 
         let xs: &[int] = &[];
-        assert_eq!(xs.split(|x| *x == 5).rev().collect::<~[&[int]]>(), box [&[]]);
+        assert_eq!(xs.split(|x| *x == 5).rev().collect::<Vec<&[int]>>().as_slice(), &[&[]]);
     }
 
     #[test]
     fn test_rsplitnator() {
         let xs = &[1,2,3,4,5];
 
-        assert_eq!(xs.rsplitn(0, |x| *x % 2 == 0).collect::<~[&[int]]>(),
-                   box [&[1,2,3,4,5]]);
-        assert_eq!(xs.rsplitn(1, |x| *x % 2 == 0).collect::<~[&[int]]>(),
-                   box [&[5], &[1,2,3]]);
-        assert_eq!(xs.rsplitn(3, |_| true).collect::<~[&[int]]>(),
-                   box [&[], &[], &[], &[1,2]]);
+        assert_eq!(xs.rsplitn(0, |x| *x % 2 == 0).collect::<Vec<&[int]>>().as_slice(),
+                   &[&[1,2,3,4,5]]);
+        assert_eq!(xs.rsplitn(1, |x| *x % 2 == 0).collect::<Vec<&[int]>>().as_slice(),
+                   &[&[5], &[1,2,3]]);
+        assert_eq!(xs.rsplitn(3, |_| true).collect::<Vec<&[int]>>().as_slice(),
+                   &[&[], &[], &[], &[1,2]]);
 
         let xs: &[int] = &[];
-        assert_eq!(xs.rsplitn(1, |x| *x == 5).collect::<~[&[int]]>(), box [&[]]);
+        assert_eq!(xs.rsplitn(1, |x| *x == 5).collect::<Vec<&[int]>>().as_slice(), &[&[]]);
     }
 
     #[test]
     fn test_windowsator() {
         let v = &[1i,2,3,4];
 
-        assert_eq!(v.windows(2).collect::<~[&[int]]>(), box [&[1,2], &[2,3], &[3,4]]);
-        assert_eq!(v.windows(3).collect::<~[&[int]]>(), box [&[1i,2,3], &[2,3,4]]);
+        assert_eq!(v.windows(2).collect::<Vec<&[int]>>().as_slice(), &[&[1,2], &[2,3], &[3,4]]);
+        assert_eq!(v.windows(3).collect::<Vec<&[int]>>().as_slice(), &[&[1i,2,3], &[2,3,4]]);
         assert!(v.windows(6).next().is_none());
     }
 
@@ -1745,11 +1745,11 @@ mod tests {
     fn test_chunksator() {
         let v = &[1i,2,3,4,5];
 
-        assert_eq!(v.chunks(2).collect::<~[&[int]]>(), box [&[1i,2], &[3,4], &[5]]);
-        assert_eq!(v.chunks(3).collect::<~[&[int]]>(), box [&[1i,2,3], &[4,5]]);
-        assert_eq!(v.chunks(6).collect::<~[&[int]]>(), box [&[1i,2,3,4,5]]);
+        assert_eq!(v.chunks(2).collect::<Vec<&[int]>>().as_slice(), &[&[1i,2], &[3,4], &[5]]);
+        assert_eq!(v.chunks(3).collect::<Vec<&[int]>>().as_slice(), &[&[1i,2,3], &[4,5]]);
+        assert_eq!(v.chunks(6).collect::<Vec<&[int]>>().as_slice(), &[&[1i,2,3,4,5]]);
 
-        assert_eq!(v.chunks(2).rev().collect::<~[&[int]]>(), box [&[5i], &[3,4], &[1,2]]);
+        assert_eq!(v.chunks(2).rev().collect::<Vec<&[int]>>().as_slice(), &[&[5i], &[3,4], &[1,2]]);
         let mut it = v.chunks(2);
         assert_eq!(it.indexable(), 3);
         assert_eq!(it.idx(0).unwrap(), &[1,2]);
