@@ -194,7 +194,7 @@ impl rtio::IoFactory for IoFactory {
         })
     }
     fn get_host_addresses(&mut self, host: Option<&str>, servname: Option<&str>,
-                          hint: Option<ai::Hint>) -> IoResult<~[ai::Info]> {
+                          hint: Option<ai::Hint>) -> IoResult<Vec<ai::Info>> {
         addrinfo::GetAddrInfoRequest::run(host, servname, hint)
     }
 
@@ -260,7 +260,7 @@ impl rtio::IoFactory for IoFactory {
     }
     fn spawn(&mut self, config: ProcessConfig)
             -> IoResult<(Box<RtioProcess:Send>,
-                         ~[Option<Box<RtioPipe:Send>>])> {
+                         Vec<Option<Box<RtioPipe:Send>>>)> {
         process::Process::spawn(config).map(|(p, io)| {
             (box p as Box<RtioProcess:Send>,
              io.move_iter().map(|p| p.map(|p| {
