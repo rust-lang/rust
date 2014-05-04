@@ -12,11 +12,12 @@ To install manually, check out this repository and add this to your
 
 ```lisp
 (add-to-list 'load-path "/path/to/rust-mode/")
-(require 'rust-mode)
+(autoload 'rust-mode "rust-mode" nil t)
+(add-to-list 'auto-mode-alist '("\\.rs\\'" . rust-mode))
 ```
 
-`rust-mode` will automatically be associated with `.rs` files. To enable it
-explicitly, do <kbd>M-x rust-mode</kbd>.
+This associates `rust-mode` with `.rs` files. To enable it explicitly, do
+<kbd>M-x rust-mode</kbd>.
 
 ### `package.el` installation via Marmalade or MELPA
 
