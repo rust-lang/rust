@@ -95,7 +95,7 @@ impl<'a> dot::GraphWalk<'a, Nd, Ed> for Edges {
 
 Output from first example (in `example1.dot`):
 
-```DOT
+```ignore
 digraph example1 {
     N0[label="N0"];
     N1[label="N1"];
