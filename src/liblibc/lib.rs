@@ -173,7 +173,7 @@ pub use funcs::bsd43::{shutdown};
 #[cfg(unix)] pub use consts::os::posix88::{EADDRINUSE, ENOENT, EISDIR, EAGAIN, EWOULDBLOCK};
 #[cfg(unix)] pub use consts::os::posix88::{ECANCELED, SIGINT, EINPROGRESS};
 #[cfg(unix)] pub use consts::os::posix88::{SIGTERM, SIGKILL, SIGPIPE, PROT_NONE};
-#[cfg(unix)] pub use consts::os::posix01::{SIG_IGN, WNOHANG};
+#[cfg(unix)] pub use consts::os::posix01::{SIG_IGN};
 #[cfg(unix)] pub use consts::os::bsd44::{AF_UNIX};
 
 #[cfg(unix)] pub use types::os::common::posix01::{pthread_t, timespec, timezone};
@@ -2473,8 +2473,6 @@ pub mod consts {
 
             pub static CLOCK_REALTIME: c_int = 0;
             pub static CLOCK_MONOTONIC: c_int = 1;
-
-            pub static WNOHANG: c_int = 1;
         }
         pub mod posix08 {
         }
@@ -2924,8 +2922,6 @@ pub mod consts {
 
             pub static CLOCK_REALTIME: c_int = 0;
             pub static CLOCK_MONOTONIC: c_int = 4;
-
-            pub static WNOHANG: c_int = 1;
         }
         pub mod posix08 {
         }
@@ -3313,8 +3309,6 @@ pub mod consts {
             pub static PTHREAD_CREATE_JOINABLE: c_int = 1;
             pub static PTHREAD_CREATE_DETACHED: c_int = 2;
             pub static PTHREAD_STACK_MIN: size_t = 8192;
-
-            pub static WNOHANG: c_int = 1;
         }
         pub mod posix08 {
         }
@@ -3977,16 +3971,6 @@ pub mod funcs {
                 #[link_name = "bsd_signal"]
                 pub fn signal(signum: c_int,
                               handler: sighandler_t) -> sighandler_t;
-            }
-        }
-
-        pub mod wait {
-            use types::os::arch::c95::{c_int};
-            use types::os::arch::posix88::{pid_t};
-
-            extern {
-                pub fn waitpid(pid: pid_t, status: *mut c_int, options: c_int)
-                               -> pid_t;
             }
         }
 
