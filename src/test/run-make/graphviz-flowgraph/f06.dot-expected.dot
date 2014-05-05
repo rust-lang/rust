@@ -1,0 +1,15 @@
+digraph block {
+    N0[label="entry"];
+    N1[label="exit"];
+    N2[label="expr 6"];
+    N3[label="expr S6{val: 6,}"];
+    N4[label="local _x"];
+    N5[label="pat S6{val: _x}"];
+    N6[label="block { let S6{val: _x} = S6{val: 6,}; }"];
+    N0 -> N2;
+    N2 -> N3;
+    N3 -> N4;
+    N4 -> N5;
+    N5 -> N6;
+    N6 -> N1;
+}
