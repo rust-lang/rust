@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//NOTE: Remove in the next snapshot
-#[cfg(not(stage0))]
 #[deriving(Share(Bad),Send,Copy)]
 //~^ ERROR unexpected value in deriving, expected a trait
 struct Test;
