@@ -24,6 +24,7 @@ use slice::{Vector, OwnedVector, ImmutableVector};
 use str::{CharSplits, Str, StrVector, StrSlice};
 use strbuf::StrBuf;
 use vec::Vec;
+use fmt;
 
 use super::{contains_nul, BytesContainer, GenericPath, GenericPathUnsafe};
 
@@ -92,6 +93,12 @@ impl Eq for Path {
     #[inline]
     fn eq(&self, other: &Path) -> bool {
         self.repr == other.repr
+    }
+}
+
+impl fmt::Show for Path {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f.buf, "{}", self.repr)
     }
 }
 
