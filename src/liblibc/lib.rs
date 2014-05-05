@@ -4195,7 +4195,7 @@ pub mod funcs {
             use types::os::arch::c95::{c_uint};
             use types::os::arch::extra::{BOOL, DWORD, SIZE_T, HMODULE,
                                                LPCWSTR, LPWSTR,
-                                               LPCH, LPDWORD, LPVOID,
+                                               LPWCH, LPDWORD, LPVOID,
                                                LPCVOID, LPOVERLAPPED,
                                                LPSECURITY_ATTRIBUTES,
                                                LPSTARTUPINFO,
@@ -4212,8 +4212,8 @@ pub mod funcs {
                                                -> DWORD;
                 pub fn SetEnvironmentVariableW(n: LPCWSTR, v: LPCWSTR)
                                                -> BOOL;
-                pub fn GetEnvironmentStringsA() -> LPCH;
-                pub fn FreeEnvironmentStringsA(env_ptr: LPCH) -> BOOL;
+                pub fn GetEnvironmentStringsW() -> LPWCH;
+                pub fn FreeEnvironmentStringsW(env_ptr: LPWCH) -> BOOL;
                 pub fn GetModuleFileNameW(hModule: HMODULE,
                                           lpFilename: LPWSTR,
                                           nSize: DWORD)
