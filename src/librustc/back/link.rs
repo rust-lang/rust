@@ -29,7 +29,7 @@ use util::sha2::{Digest, Sha256};
 
 use std::c_str::{ToCStr, CString};
 use std::char;
-use std::io::{fs, TempDir, Process};
+use std::io::{fs, TempDir, Command};
 use std::io;
 use std::ptr;
 use std::str;
@@ -103,7 +103,7 @@ pub mod write {
     use syntax::abi;
 
     use std::c_str::ToCStr;
-    use std::io::Process;
+    use std::io::{Command};
     use libc::{c_uint, c_int};
     use std::str;
 
@@ -348,22 +348,18 @@ pub mod write {
     }
 
     pub fn run_assembler(sess: &Session, outputs: &OutputFilenames) {
-        let cc = super::get_cc_prog(sess);
-        let assembly = outputs.temp_path(OutputTypeAssembly);
-        let object = outputs.path(OutputTypeObject);
+        let pname = super::get_cc_prog(sess);
+        let mut cmd = Command::new(pname.as_slice());
 
-        // FIXME (#9639): This needs to handle non-utf8 paths
-        let args = [
-            "-c".to_owned(),
-            "-o".to_owned(), object.as_str().unwrap().to_owned(),
-            assembly.as_str().unwrap().to_owned()];
+        cmd.arg("-c").arg("-o").arg(outputs.path(OutputTypeObject))
+                               .arg(outputs.temp_path(OutputTypeAssembly));
+        debug!("{}", &cmd);
 
-        debug!("{} '{}'", cc, args.connect("' '"));
-        match Process::output(cc.as_slice(), args) {
+        match cmd.output() {
             Ok(prog) => {
                 if !prog.status.success() {
-                    sess.err(format!("linking with `{}` failed: {}", cc, prog.status));
-                    sess.note(format!("{} arguments: '{}'", cc, args.connect("' '")));
+                    sess.err(format!("linking with `{}` failed: {}", pname, prog.status));
+                    sess.note(format!("{}", &cmd));
                     let mut note = prog.error.clone();
                     note.push_all(prog.output.as_slice());
                     sess.note(str::from_utf8(note.as_slice()).unwrap().to_owned());
@@ -371,7 +367,7 @@ pub mod write {
                 }
             },
             Err(e) => {
-                sess.err(format!("could not exec the linker `{}`: {}", cc, e));
+                sess.err(format!("could not exec the linker `{}`: {}", pname, e));
                 sess.abort_if_errors();
             }
         }
@@ -527,6 +523,7 @@ pub mod write {
  *    system linkers understand.
  */
 
+// FIXME (#9639): This needs to handle non-utf8 `out_filestem` values
 pub fn find_crate_id(attrs: &[ast::Attribute], out_filestem: &str) -> CrateId {
     match attr::find_crateid(attrs) {
         None => from_str(out_filestem).unwrap_or_else(|| {
@@ -547,6 +544,7 @@ pub fn crate_id_hash(crate_id: &CrateId) -> StrBuf {
     truncated_hash_result(&mut s).as_slice().slice_to(8).to_strbuf()
 }
 
+// FIXME (#9639): This needs to handle non-utf8 `out_filestem` values
 pub fn build_link_meta(krate: &ast::Crate, out_filestem: &str) -> LinkMeta {
     let r = LinkMeta {
         crateid: find_crate_id(krate.attrs.as_slice(), out_filestem),
@@ -1026,31 +1024,30 @@ fn link_staticlib(sess: &Session, obj_filename: &Path, out_filename: &Path) {
 fn link_natively(sess: &Session, trans: &CrateTranslation, dylib: bool,
                  obj_filename: &Path, out_filename: &Path) {
     let tmpdir = TempDir::new("rustc").expect("needs a temp dir");
+
     // The invocations of cc share some flags across platforms
-    let cc_prog = get_cc_prog(sess);
-    let mut cc_args = sess.targ_cfg.target_strs.cc_args.clone();
-    cc_args.push_all_move(link_args(sess, dylib, tmpdir.path(), trans,
-                                    obj_filename, out_filename));
+    let pname = get_cc_prog(sess);
+    let mut cmd = Command::new(pname.as_slice());
+
+    cmd.args(sess.targ_cfg.target_strs.cc_args.as_slice());
+    link_args(&mut cmd, sess, dylib, tmpdir.path(),
+              trans, obj_filename, out_filename);
+
     if (sess.opts.debugging_opts & config::PRINT_LINK_ARGS) != 0 {
-        println!("{} link args: '{}'", cc_prog, cc_args.connect("' '"));
+        println!("{}", &cmd);
     }
 
     // May have not found libraries in the right formats.
     sess.abort_if_errors();
 
     // Invoke the system linker
-    debug!("{} {}", cc_prog, cc_args.connect(" "));
-    let prog = time(sess.time_passes(), "running linker", (), |()|
-                    Process::output(cc_prog.as_slice(),
-                                    cc_args.iter()
-                                           .map(|x| (*x).to_owned())
-                                           .collect::<Vec<_>>()
-                                           .as_slice()));
+    debug!("{}", &cmd);
+    let prog = time(sess.time_passes(), "running linker", (), |()| cmd.output());
     match prog {
         Ok(prog) => {
             if !prog.status.success() {
-                sess.err(format!("linking with `{}` failed: {}", cc_prog, prog.status));
-                sess.note(format!("{} arguments: '{}'", cc_prog, cc_args.connect("' '")));
+                sess.err(format!("linking with `{}` failed: {}", pname, prog.status));
+                sess.note(format!("{}", &cmd));
                 let mut output = prog.error.clone();
                 output.push_all(prog.output.as_slice());
                 sess.note(str::from_utf8(output.as_slice()).unwrap().to_owned());
@@ -1058,7 +1055,7 @@ fn link_natively(sess: &Session, trans: &CrateTranslation, dylib: bool,
             }
         },
         Err(e) => {
-            sess.err(format!("could not exec the linker `{}`: {}", cc_prog, e));
+            sess.err(format!("could not exec the linker `{}`: {}", pname, e));
             sess.abort_if_errors();
         }
     }
@@ -1067,9 +1064,7 @@ fn link_natively(sess: &Session, trans: &CrateTranslation, dylib: bool,
     // On OSX, debuggers need this utility to get run to do some munging of
     // the symbols
     if sess.targ_cfg.os == abi::OsMacos && (sess.opts.debuginfo != NoDebugInfo) {
-        // FIXME (#9639): This needs to handle non-utf8 paths
-        match Process::status("dsymutil",
-                                  [out_filename.as_str().unwrap().to_owned()]) {
+        match Command::new("dsymutil").arg(out_filename).status() {
             Ok(..) => {}
             Err(e) => {
                 sess.err(format!("failed to run dsymutil: {}", e));
@@ -1079,25 +1074,20 @@ fn link_natively(sess: &Session, trans: &CrateTranslation, dylib: bool,
     }
 }
 
-fn link_args(sess: &Session,
+fn link_args(cmd: &mut Command,
+             sess: &Session,
              dylib: bool,
              tmpdir: &Path,
              trans: &CrateTranslation,
              obj_filename: &Path,
-             out_filename: &Path) -> Vec<StrBuf> {
+             out_filename: &Path) {
 
     // The default library location, we need this to find the runtime.
     // The location of crates will be determined as needed.
-    // FIXME (#9639): This needs to handle non-utf8 paths
     let lib_path = sess.target_filesearch().get_lib_path();
-    let stage = ("-L".to_owned() + lib_path.as_str().unwrap()).to_strbuf();
+    cmd.arg("-L").arg(lib_path);
 
-    let mut args = vec!(stage);
-
-    // FIXME (#9639): This needs to handle non-utf8 paths
-    args.push_all([
-        "-o".to_strbuf(), out_filename.as_str().unwrap().to_strbuf(),
-        obj_filename.as_str().unwrap().to_strbuf()]);
+    cmd.arg("-o").arg(out_filename).arg(obj_filename);
 
     // Stack growth requires statically linking a __morestack function. Note
     // that this is listed *before* all other libraries, even though it may be
@@ -1114,14 +1104,13 @@ fn link_args(sess: &Session,
     // line, but inserting this farther to the left makes the
     // "rust_stack_exhausted" symbol an outstanding undefined symbol, which
     // flags libstd as a required library (or whatever provides the symbol).
-    args.push("-lmorestack".to_strbuf());
+    cmd.arg("-lmorestack");
 
     // When linking a dynamic library, we put the metadata into a section of the
     // executable. This metadata is in a separate object file from the main
     // object file, so we link that in here.
     if dylib {
-        let metadata = obj_filename.with_extension("metadata.o");
-        args.push(metadata.as_str().unwrap().to_strbuf());
+        cmd.arg(obj_filename.with_extension("metadata.o"));
     }
 
     // We want to prevent the compiler from accidentally leaking in any system
@@ -1132,7 +1121,7 @@ fn link_args(sess: &Session,
     //
     // FIXME(#11937) we should invoke the system linker directly
     if sess.targ_cfg.os != abi::OsWin32 {
-        args.push("-nodefaultlibs".to_strbuf());
+        cmd.arg("-nodefaultlibs");
     }
 
     // If we're building a dylib, we don't use --gc-sections because LLVM has
@@ -1140,20 +1129,20 @@ fn link_args(sess: &Session,
     // metadata. If we're building an executable, however, --gc-sections drops
     // the size of hello world from 1.8MB to 597K, a 67% reduction.
     if !dylib && sess.targ_cfg.os != abi::OsMacos {
-        args.push("-Wl,--gc-sections".to_strbuf());
+        cmd.arg("-Wl,--gc-sections");
     }
 
     if sess.targ_cfg.os == abi::OsLinux {
         // GNU-style linkers will use this to omit linking to libraries which
         // don't actually fulfill any relocations, but only for libraries which
         // follow this flag. Thus, use it before specifying libraries to link to.
-        args.push("-Wl,--as-needed".to_strbuf());
+        cmd.arg("-Wl,--as-needed");
 
         // GNU-style linkers support optimization with -O. GNU ld doesn't need a
         // numeric argument, but other linkers do.
         if sess.opts.optimize == config::Default ||
            sess.opts.optimize == config::Aggressive {
-            args.push("-Wl,-O1".to_strbuf());
+            cmd.arg("-Wl,-O1");
         }
     } else if sess.targ_cfg.os == abi::OsMacos {
         // The dead_strip option to the linker specifies that functions and data
@@ -1166,14 +1155,14 @@ fn link_args(sess: &Session,
         // won't get much benefit from dylibs because LLVM will have already
         // stripped away as much as it could. This has not been seen to impact
         // link times negatively.
-        args.push("-Wl,-dead_strip".to_strbuf());
+        cmd.arg("-Wl,-dead_strip");
     }
 
     if sess.targ_cfg.os == abi::OsWin32 {
         // Make sure that we link to the dynamic libgcc, otherwise cross-module
         // DWARF stack unwinding will not work.
         // This behavior may be overridden by --link-args "-static-libgcc"
-        args.push("-shared-libgcc".to_strbuf());
+        cmd.arg("-shared-libgcc");
 
         // And here, we see obscure linker flags #45. On windows, it has been
         // found to be necessary to have this flag to compile liblibc.
@@ -1200,13 +1189,13 @@ fn link_args(sess: &Session,
         //
         // [1] - https://sourceware.org/bugzilla/show_bug.cgi?id=13130
         // [2] - https://code.google.com/p/go/issues/detail?id=2139
-        args.push("-Wl,--enable-long-section-names".to_strbuf());
+        cmd.arg("-Wl,--enable-long-section-names");
     }
 
     if sess.targ_cfg.os == abi::OsAndroid {
         // Many of the symbols defined in compiler-rt are also defined in libgcc.
         // Android linker doesn't like that by default.
-        args.push("-Wl,--allow-multiple-definition".to_strbuf());
+        cmd.arg("-Wl,--allow-multiple-definition");
     }
 
     // Take careful note of the ordering of the arguments we pass to the linker
@@ -1242,39 +1231,38 @@ fn link_args(sess: &Session,
     // this kind of behavior is pretty platform specific and generally not
     // recommended anyway, so I don't think we're shooting ourself in the foot
     // much with that.
-    add_upstream_rust_crates(&mut args, sess, dylib, tmpdir, trans);
-    add_local_native_libraries(&mut args, sess);
-    add_upstream_native_libraries(&mut args, sess);
+    add_upstream_rust_crates(cmd, sess, dylib, tmpdir, trans);
+    add_local_native_libraries(cmd, sess);
+    add_upstream_native_libraries(cmd, sess);
 
     // # Telling the linker what we're doing
 
     if dylib {
         // On mac we need to tell the linker to let this library be rpathed
         if sess.targ_cfg.os == abi::OsMacos {
-            args.push("-dynamiclib".to_strbuf());
-            args.push("-Wl,-dylib".to_strbuf());
-            // FIXME (#9639): This needs to handle non-utf8 paths
+            cmd.args(["-dynamiclib", "-Wl,-dylib"]);
+
             if !sess.opts.cg.no_rpath {
-                args.push(format_strbuf!("-Wl,-install_name,@rpath/{}",
-                                         out_filename.filename_str()
-                                                     .unwrap()));
+                let mut v = Vec::from_slice("-Wl,-install_name,@rpath/".as_bytes());
+                v.push_all(out_filename.filename().unwrap());
+                cmd.arg(v.as_slice());
             }
         } else {
-            args.push("-shared".to_strbuf())
+            cmd.arg("-shared");
         }
     }
 
     if sess.targ_cfg.os == abi::OsFreebsd {
-        args.push_all(["-L/usr/local/lib".to_strbuf(),
-                       "-L/usr/local/lib/gcc46".to_strbuf(),
-                       "-L/usr/local/lib/gcc44".to_strbuf()]);
+        cmd.args(["-L/usr/local/lib",
+                  "-L/usr/local/lib/gcc46",
+                  "-L/usr/local/lib/gcc44"]);
     }
 
     // FIXME (#2397): At some point we want to rpath our guesses as to
     // where extern libraries might live, based on the
     // addl_lib_search_paths
     if !sess.opts.cg.no_rpath {
-        args.push_all(rpath::get_rpath_flags(sess, out_filename).as_slice());
+        cmd.args(rpath::get_rpath_flags(sess, out_filename).as_slice());
     }
 
     // compiler-rt contains implementations of low-level LLVM helpers. This is
@@ -1284,15 +1272,14 @@ fn link_args(sess: &Session,
     //
     // This is the end of the command line, so this library is used to resolve
     // *all* undefined symbols in all other libraries, and this is intentional.
-    args.push("-lcompiler-rt".to_strbuf());
+    cmd.arg("-lcompiler-rt");
 
     // Finally add all the linker arguments provided on the command line along
     // with any #[link_args] attributes found inside the crate
-    args.push_all(sess.opts.cg.link_args.as_slice());
+    cmd.args(sess.opts.cg.link_args.as_slice());
     for arg in sess.cstore.get_used_link_args().borrow().iter() {
-        args.push(arg.clone());
+        cmd.arg(arg.as_slice());
     }
-    return args;
 }
 
 // # Native library linking
@@ -1306,16 +1293,14 @@ fn link_args(sess: &Session,
 // Also note that the native libraries linked here are only the ones located
 // in the current crate. Upstream crates with native library dependencies
 // may have their native library pulled in above.
-fn add_local_native_libraries(args: &mut Vec<StrBuf>, sess: &Session) {
+fn add_local_native_libraries(cmd: &mut Command, sess: &Session) {
     for path in sess.opts.addl_lib_search_paths.borrow().iter() {
-        // FIXME (#9639): This needs to handle non-utf8 paths
-        args.push(("-L" + path.as_str().unwrap().to_owned()).to_strbuf());
+        cmd.arg("-L").arg(path);
     }
 
     let rustpath = filesearch::rust_path();
     for path in rustpath.iter() {
-        // FIXME (#9639): This needs to handle non-utf8 paths
-        args.push(("-L" + path.as_str().unwrap().to_owned()).to_strbuf());
+        cmd.arg("-L").arg(path);
     }
 
     // Some platforms take hints about whether a library is static or dynamic.
@@ -1329,21 +1314,21 @@ fn add_local_native_libraries(args: &mut Vec<StrBuf>, sess: &Session) {
             cstore::NativeUnknown | cstore::NativeStatic => {
                 if takes_hints {
                     if kind == cstore::NativeStatic {
-                        args.push("-Wl,-Bstatic".to_strbuf());
+                        cmd.arg("-Wl,-Bstatic");
                     } else {
-                        args.push("-Wl,-Bdynamic".to_strbuf());
+                        cmd.arg("-Wl,-Bdynamic");
                     }
                 }
-                args.push(format_strbuf!("-l{}", *l));
+                cmd.arg(format_strbuf!("-l{}", *l));
             }
             cstore::NativeFramework => {
-                args.push("-framework".to_strbuf());
-                args.push(l.to_strbuf());
+                cmd.arg("-framework");
+                cmd.arg(l.as_slice());
             }
         }
     }
     if takes_hints {
-        args.push("-Wl,-Bdynamic".to_strbuf());
+        cmd.arg("-Wl,-Bdynamic");
     }
 }
 
@@ -1352,7 +1337,7 @@ fn add_local_native_libraries(args: &mut Vec<StrBuf>, sess: &Session) {
 // Rust crates are not considered at all when creating an rlib output. All
 // dependencies will be linked when producing the final output (instead of
 // the intermediate rlib version)
-fn add_upstream_rust_crates(args: &mut Vec<StrBuf>, sess: &Session,
+fn add_upstream_rust_crates(cmd: &mut Command, sess: &Session,
                             dylib: bool, tmpdir: &Path,
                             trans: &CrateTranslation) {
     // All of the heavy lifting has previously been accomplished by the
@@ -1384,26 +1369,26 @@ fn add_upstream_rust_crates(args: &mut Vec<StrBuf>, sess: &Session,
         let src = sess.cstore.get_used_crate_source(cnum).unwrap();
         match kind {
             cstore::RequireDynamic => {
-                add_dynamic_crate(args, sess, src.dylib.unwrap())
+                add_dynamic_crate(cmd, sess, src.dylib.unwrap())
             }
             cstore::RequireStatic => {
-                add_static_crate(args, sess, tmpdir, cnum, src.rlib.unwrap())
+                add_static_crate(cmd, sess, tmpdir, cnum, src.rlib.unwrap())
             }
         }
 
     }
 
     // Converts a library file-stem into a cc -l argument
-    fn unlib(config: &config::Config, stem: &str) -> StrBuf {
-        if stem.starts_with("lib") && config.os != abi::OsWin32 {
-            stem.slice(3, stem.len()).to_strbuf()
+    fn unlib<'a>(config: &config::Config, stem: &'a [u8]) -> &'a [u8] {
+        if stem.starts_with("lib".as_bytes()) && config.os != abi::OsWin32 {
+            stem.tailn(3)
         } else {
-            stem.to_strbuf()
+            stem
         }
     }
 
     // Adds the static "rlib" versions of all crates to the command line.
-    fn add_static_crate(args: &mut Vec<StrBuf>, sess: &Session, tmpdir: &Path,
+    fn add_static_crate(cmd: &mut Command, sess: &Session, tmpdir: &Path,
                         cnum: ast::CrateNum, cratepath: Path) {
         // When performing LTO on an executable output, all of the
         // bytecode from the upstream libraries has already been
@@ -1434,34 +1419,32 @@ fn add_upstream_rust_crates(args: &mut Vec<StrBuf>, sess: &Session,
                         sess.abort_if_errors();
                     }
                 }
-                let dst_str = dst.as_str().unwrap().to_strbuf();
-                let mut archive = Archive::open(sess, dst);
+                let mut archive = Archive::open(sess, dst.clone());
                 archive.remove_file(format!("{}.o", name));
                 let files = archive.files();
                 if files.iter().any(|s| s.as_slice().ends_with(".o")) {
-                    args.push(dst_str);
+                    cmd.arg(dst);
                 }
             });
         } else {
-            args.push(cratepath.as_str().unwrap().to_strbuf());
+            cmd.arg(cratepath);
         }
     }
 
     // Same thing as above, but for dynamic crates instead of static crates.
-    fn add_dynamic_crate(args: &mut Vec<StrBuf>, sess: &Session,
-                         cratepath: Path) {
+    fn add_dynamic_crate(cmd: &mut Command, sess: &Session, cratepath: Path) {
         // If we're performing LTO, then it should have been previously required
         // that all upstream rust dependencies were available in an rlib format.
         assert!(!sess.lto());
 
         // Just need to tell the linker about where the library lives and
         // what its name is
-        let dir = cratepath.dirname_str().unwrap();
-        if !dir.is_empty() {
-            args.push(format_strbuf!("-L{}", dir));
-        }
-        let libarg = unlib(&sess.targ_cfg, cratepath.filestem_str().unwrap());
-        args.push(format_strbuf!("-l{}", libarg));
+        let dir = cratepath.dirname();
+        if !dir.is_empty() { cmd.arg("-L").arg(dir); }
+
+        let mut v = Vec::from_slice("-l".as_bytes());
+        v.push_all(unlib(&sess.targ_cfg, cratepath.filestem().unwrap()));
+        cmd.arg(v.as_slice());
     }
 }
 
@@ -1470,12 +1453,12 @@ fn add_upstream_rust_crates(args: &mut Vec<StrBuf>, sess: &Session,
 // dependencies. We've got two cases then:
 //
 // 1. The upstream crate is an rlib. In this case we *must* link in the
-//    native dependency because the rlib is just an archive.
+// native dependency because the rlib is just an archive.
 //
 // 2. The upstream crate is a dylib. In order to use the dylib, we have to
-//    have the dependency present on the system somewhere. Thus, we don't
-//    gain a whole lot from not linking in the dynamic dependency to this
-//    crate as well.
+// have the dependency present on the system somewhere. Thus, we don't
+// gain a whole lot from not linking in the dynamic dependency to this
+// crate as well.
 //
 // The use case for this is a little subtle. In theory the native
 // dependencies of a crate are purely an implementation detail of the crate
@@ -1483,7 +1466,7 @@ fn add_upstream_rust_crates(args: &mut Vec<StrBuf>, sess: &Session,
 // generic function calls a native function, then the generic function must
 // be instantiated in the target crate, meaning that the native symbol must
 // also be resolved in the target crate.
-fn add_upstream_native_libraries(args: &mut Vec<StrBuf>, sess: &Session) {
+fn add_upstream_native_libraries(cmd: &mut Command, sess: &Session) {
     // Be sure to use a topological sorting of crates because there may be
     // interdependencies between native libraries. When passing -nodefaultlibs,
     // for example, almost all native libraries depend on libc, so we have to
@@ -1499,11 +1482,11 @@ fn add_upstream_native_libraries(args: &mut Vec<StrBuf>, sess: &Session) {
         for &(kind, ref lib) in libs.iter() {
             match kind {
                 cstore::NativeUnknown => {
-                    args.push(format_strbuf!("-l{}", *lib))
+                    cmd.arg(format_strbuf!("-l{}", *lib));
                 }
                 cstore::NativeFramework => {
-                    args.push("-framework".to_strbuf());
-                    args.push(lib.to_strbuf());
+                    cmd.arg("-framework");
+                    cmd.arg(lib.as_slice());
                 }
                 cstore::NativeStatic => {
                     sess.bug("statics shouldn't be propagated");

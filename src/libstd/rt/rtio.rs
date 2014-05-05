@@ -29,7 +29,7 @@ use ai = io::net::addrinfo;
 use io;
 use io::IoResult;
 use io::net::ip::{IpAddr, SocketAddr};
-use io::process::{ProcessConfig, ProcessExit};
+use io::process::{StdioContainer, ProcessExit};
 use io::signal::Signum;
 use io::{FileMode, FileAccess, FileStat, FilePermission};
 use io::{SeekStyle};
@@ -85,6 +85,61 @@ pub enum CloseBehavior {
     /// and cleaned up (but this will happen asynchronously on the local event
     /// loop).
     CloseAsynchronously,
+}
+
+/// Data needed to spawn a process. Serializes the `std::io::process::Command`
+/// builder.
+pub struct ProcessConfig<'a> {
+    /// Path to the program to run.
+    pub program: &'a CString,
+
+    /// Arguments to pass to the program (doesn't include the program itself).
+    pub args: &'a [CString],
+
+    /// Optional environment to specify for the program. If this is None, then
+    /// it will inherit the current process's environment.
+    pub env: Option<&'a [(CString, CString)]>,
+
+    /// Optional working directory for the new process. If this is None, then
+    /// the current directory of the running process is inherited.
+    pub cwd: Option<&'a CString>,
+
+    /// Configuration for the child process's stdin handle (file descriptor 0).
+    /// This field defaults to `CreatePipe(true, false)` so the input can be
+    /// written to.
+    pub stdin: StdioContainer,
+
+    /// Configuration for the child process's stdout handle (file descriptor 1).
+    /// This field defaults to `CreatePipe(false, true)` so the output can be
+    /// collected.
+    pub stdout: StdioContainer,
+
+    /// Configuration for the child process's stdout handle (file descriptor 2).
+    /// This field defaults to `CreatePipe(false, true)` so the output can be
+    /// collected.
+    pub stderr: StdioContainer,
+
+    /// Any number of streams/file descriptors/pipes may be attached to this
+    /// process. This list enumerates the file descriptors and such for the
+    /// process to be spawned, and the file descriptors inherited will start at
+    /// 3 and go to the length of this array. The first three file descriptors
+    /// (stdin/stdout/stderr) are configured with the `stdin`, `stdout`, and
+    /// `stderr` fields.
+    pub extra_io: &'a [StdioContainer],
+
+    /// Sets the child process's user id. This translates to a `setuid` call in
+    /// the child process. Setting this value on windows will cause the spawn to
+    /// fail. Failure in the `setuid` call on unix will also cause the spawn to
+    /// fail.
+    pub uid: Option<uint>,
+
+    /// Similar to `uid`, but sets the group id of the child process. This has
+    /// the same semantics as the `uid` field.
+    pub gid: Option<uint>,
+
+    /// If true, the child process is spawned in a detached state. On unix, this
+    /// means that the child is the leader of a new process group.
+    pub detach: bool,
 }
 
 pub struct LocalIo<'a> {
@@ -189,7 +244,7 @@ pub trait IoFactory {
 
     // misc
     fn timer_init(&mut self) -> IoResult<Box<RtioTimer:Send>>;
-    fn spawn(&mut self, config: ProcessConfig)
+    fn spawn(&mut self, cfg: ProcessConfig)
             -> IoResult<(Box<RtioProcess:Send>,
                          Vec<Option<Box<RtioPipe:Send>>>)>;
     fn kill(&mut self, pid: libc::pid_t, signal: int) -> IoResult<()>;

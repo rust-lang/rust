@@ -11,7 +11,7 @@
 use std::cell::RefCell;
 use std::char;
 use std::io;
-use std::io::{Process, TempDir};
+use std::io::{Command, TempDir};
 use std::os;
 use std::str;
 use std::strbuf::StrBuf;
@@ -155,9 +155,7 @@ fn runtest(test: &str, cratename: &str, libs: HashSet<Path>, should_fail: bool,
     if no_run { return }
 
     // Run the code!
-    let exe = outdir.path().join("rust_out");
-    let out = Process::output(exe.as_str().unwrap(), []);
-    match out {
+    match Command::new(outdir.path().join("rust_out")).output() {
         Err(e) => fail!("couldn't run the test: {}{}", e,
                         if e.kind == io::PermissionDenied {
                             " - maybe your tempdir is mounted with noexec?"
