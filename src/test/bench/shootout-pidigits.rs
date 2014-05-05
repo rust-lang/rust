@@ -88,6 +88,7 @@ fn pidigits(n: int) {
 
 fn main() {
     let args = std::os::args();
+    let args = args.as_slice();
     let n = if args.len() < 2 {
         512
     } else {

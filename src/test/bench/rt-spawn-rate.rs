@@ -28,6 +28,7 @@ fn start(argc: int, argv: **u8) -> int {
 fn main() {
 
     let args = os::args();
+    let args = args.as_slice();
     let n = if args.len() == 2 {
         from_str::<uint>(args[1]).unwrap()
     } else {
