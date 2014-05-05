@@ -565,6 +565,12 @@ pub struct Arguments<'a> {
     args: &'a [Argument<'a>],
 }
 
+impl<'a> Show for Arguments<'a> {
+    fn fmt(&self, fmt: &mut Formatter) -> Result {
+        write(fmt.buf, self)
+    }
+}
+
 /// When a format is not otherwise specified, types are formatted by ascribing
 /// to this trait. There is not an explicit way of selecting this trait to be
 /// used for formatting, it is only if no other format is specified.
