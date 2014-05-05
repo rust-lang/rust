@@ -1701,7 +1701,7 @@ fn finish_register_fn(ccx: &CrateContext, sp: Span, sym: ~str, node_id: ast::Nod
         lib::llvm::SetLinkage(llfn, lib::llvm::InternalLinkage);
     }
 
-    if is_entry_fn(ccx.sess(), node_id) && !ccx.sess().building_library.get() {
+    if is_entry_fn(ccx.sess(), node_id) {
         create_entry_wrapper(ccx, sp, llfn);
     }
 }
@@ -2100,7 +2100,10 @@ pub fn crate_ctxt_to_encode_parms<'r>(cx: &'r CrateContext, ie: encoder::EncodeI
 pub fn write_metadata(cx: &CrateContext, krate: &ast::Crate) -> Vec<u8> {
     use flate;
 
-    if !cx.sess().building_library.get() {
+    let any_library = cx.sess().crate_types.borrow().iter().any(|ty| {
+        *ty != session::CrateTypeExecutable
+    });
+    if !any_library {
         return Vec::new()
     }
 
