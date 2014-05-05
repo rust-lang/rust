@@ -401,10 +401,25 @@ pub fn check_builtin_bounds(cx: &Context,
     let kind = ty::type_contents(cx.tcx, ty);
     let mut missing = ty::empty_builtin_bounds();
     for bound in bounds.iter() {
-        if !kind.meets_bound(cx.tcx, bound) {
+        // FIXME(flaper87): This is temporary. The reason
+        // this code is here is because we'll move one trait
+        // at a time. Remaining traits will still rely on
+        // TypeContents.
+        let meets_bound = match bound {
+            ty::BoundStatic => kind.is_static(cx.tcx),
+            ty::BoundSend => kind.is_sendable(cx.tcx),
+            ty::BoundSized => kind.is_sized(cx.tcx),
+            ty::BoundCopy => kind.is_copy(cx.tcx),
+            ty::BoundShare => {
+                ty::type_fulfills_share(cx.tcx, ty)
+            }
+        };
+
+        if !meets_bound {
             missing.add(bound);
         }
     }
+
     if !missing.is_empty() {
         any_missing(missing);
     }

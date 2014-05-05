@@ -36,6 +36,7 @@ fn init() -> arc_destruct<context_res> {
     arc(context_res())
 }
 
+#[deriving(Share)]
 struct context_res {
     ctx : int,
 }

@@ -2148,8 +2148,9 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
 
     fn apply_lang_items(cx: &ctxt,
                         did: ast::DefId,
-                        tc: TypeContents)
+                        mut tc: TypeContents)
                         -> TypeContents {
+        tc = tc | TC::ReachesNoShare;
         if Some(did) == cx.lang_items.no_send_bound() {
             tc | TC::ReachesNonsendAnnot
         } else if Some(did) == cx.lang_items.managed_bound() {
@@ -2157,7 +2158,9 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
         } else if Some(did) == cx.lang_items.no_copy_bound() {
             tc | TC::OwnsAffine
         } else if Some(did) == cx.lang_items.no_share_bound() {
-            tc | TC::ReachesNoShare
+            // Do nothing! We now consider everything NoShare,
+            // unless Share is explicitly implemented.
+            tc
         } else if Some(did) == cx.lang_items.unsafe_type() {
             // FIXME(#13231): This shouldn't be needed after
             // opt-in built-in bounds are implemented.
@@ -3461,6 +3464,62 @@ pub fn provided_trait_methods(cx: &ctxt, id: ast::DefId) -> Vec<Rc<Method>> {
     }
 }
 
+pub fn node_fulfills_trait(cx: &ctxt, id: ast::NodeId, trait_ref: Rc<TraitRef>) -> bool {
+    let ty = node_id_to_type(cx, id);
+    type_fulfills_trait(cx, ty, trait_ref)
+}
+
+pub fn type_fulfills_trait(cx: &ctxt, ty: ty::t, trait_ref: Rc<TraitRef>) -> bool {
+    debug!("type_fulfills_trait(ty={}, trait_ref={})",
+           ty_to_str(cx, ty), trait_ref.repr(cx))
+
+    match ty::get(ty).sty {
+        ty_closure(ref c) => {
+            match cx.lang_items.to_builtin_kind(trait_ref.def_id) {
+                Some(bound) => { c.bounds.contains_elem(bound) }
+                None => false
+            }
+        }
+        ty_tup(ref tys) => {
+            tys.iter().all(|&typ| {
+                type_fulfills_trait(cx, typ, trait_ref.clone())
+            })
+        }
+        ty_param(param_ty{def_id: did, ..}) => {
+            // NOTE(flaper87): This will likely change. It's still unsure
+            // what will happen w/ the BuiltinBounds but I'm leaning towards
+            // completely getting rid of them.
+            let tp_defs = cx.ty_param_defs.borrow();
+            let tp_def = tp_defs.get(&did.node);
+            let bi_kind = cx.lang_items.to_builtin_kind(trait_ref.def_id);
+
+            debug!("ty_param(builtin_bounds={:?}, trait_bounds={:?})",
+                   tp_def.bounds.builtin_bounds, tp_def.bounds.trait_bounds)
+            tp_def.bounds.builtin_bounds.contains_elem(bi_kind.unwrap()) ||
+                tp_def.bounds.trait_bounds.contains(&trait_ref)
+        }
+        _ => {
+
+            let target_trait_ref = Rc::new(ty::TraitRef {
+                def_id: trait_ref.def_id,
+                substs: ty::substs {
+                    tps: trait_ref.substs.tps.clone(),
+                    regions: trait_ref.substs.regions.clone(),
+                    self_ty: Some(ty)
+                }
+            });
+
+            typeck::check::vtable::ty_trait_vtable(cx, ty, target_trait_ref).is_some()
+        }
+    }
+}
+
+pub fn type_fulfills_share(cx: &ctxt, t: ty::t) -> bool {
+    let did = cx.lang_items.share_trait().unwrap();
+    let tdef = lookup_trait_def(cx, did);
+    type_fulfills_trait(cx, t, tdef.trait_ref.clone())
+}
+
 pub fn trait_supertraits(cx: &ctxt, id: ast::DefId) -> Rc<Vec<Rc<TraitRef>>> {
     // Check the cache.
     match cx.supertraits.borrow().find(&id) {
@@ -3483,6 +3542,13 @@ pub fn trait_ref_supertraits(cx: &ctxt, trait_ref: &ty::TraitRef) -> Vec<Rc<Trai
     let supertrait_refs = trait_supertraits(cx, trait_ref.def_id);
     supertrait_refs.iter().map(
         |supertrait_ref| supertrait_ref.subst(cx, &trait_ref.substs)).collect()
+}
+
+pub fn is_built_in_trait(cx: &ctxt, trait_ref: &ty::TraitRef) -> bool {
+    match cx.lang_items.to_builtin_kind(trait_ref.def_id) {
+        Some(_) => true,
+        None => false
+    }
 }
 
 fn lookup_locally_or_in_crate_store<V:Clone>(

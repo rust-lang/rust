@@ -1077,6 +1077,11 @@ fn ty_generics(ccx: &CrateCtxt,
                     let ty = ty::mk_param(ccx.tcx, param_ty.space,
                                           param_ty.idx, param_ty.def_id);
                     let trait_ref = instantiate_trait_ref(ccx, b, ty);
+
+                    // FIXME(flaper87): Eventually, we'll get rid of the builtin
+                    // bounds EnumSet. When that happens, this will need to be
+                    // changed in order to treat built-in bounds just like every
+                    // other bound.
                     if !ty::try_add_builtin_trait(
                             ccx.tcx, trait_ref.def_id,
                             &mut param_bounds.builtin_bounds) {

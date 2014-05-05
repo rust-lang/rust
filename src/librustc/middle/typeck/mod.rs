@@ -483,6 +483,9 @@ pub fn check_crate(tcx: &ty::ctxt,
     time(time_passes, "type checking", (), |_|
         check::check_item_types(&ccx, krate));
 
+    time(time_passes, "bound checking", (), |_|
+        check::bounds::check_bounds(&ccx, krate));
+
     check_for_entry_fn(&ccx);
     tcx.sess.abort_if_errors();
 }

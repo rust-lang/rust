@@ -8,24 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-test
+// Checks for built-in traits implementation
 
-// Tests that an `&` pointer to something inherently mutable is itself
-// to be considered mutable.
+#[deriving(Share, Send, Copy)]
+struct Struct;
 
-use std::kinds::marker;
-
-enum Foo { A(marker::NoShare) }
-
-trait Test {}
-
-impl<'a> Test for &'a Foo {}
-
-fn bar<T: Test+Share>(_: T) {}
-
-fn main() {
-    let x = A(marker::NoShare);
-    bar(&x);
-    //FIXME(flaper87): Not yet
-    // ERROR type parameter with an incompatible type
+#[deriving(Share, Send, Copy)]
+struct SendShareStruct2 {
+    a: Struct
 }
+
+struct ManualImpl;
+
+impl Share for ManualImpl {}
+
+fn main() {}
