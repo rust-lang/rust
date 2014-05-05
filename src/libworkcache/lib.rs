@@ -488,7 +488,7 @@ impl<'a, T:Send +
 #[cfg(not(target_os="android"))] // FIXME(#10455)
 fn test() {
     use std::os;
-    use std::io::{fs, Process};
+    use std::io::{fs, Command};
     use std::str::from_utf8;
 
     // Create a path to a new file 'filename' in the directory in which
@@ -522,10 +522,7 @@ fn test() {
         prep.exec(proc(_exe) {
             let out = make_path("foo.o".to_strbuf());
             let compiler = if cfg!(windows) {"gcc"} else {"cc"};
-            // FIXME (#9639): This needs to handle non-utf8 paths
-            Process::status(compiler, [pth.as_str().unwrap().to_owned(),
-                                    "-o".to_owned(),
-                                    out.as_str().unwrap().to_owned()]).unwrap();
+            Command::new(compiler).arg(pth).arg("-o").arg(out.clone()).status().unwrap();
 
             let _proof_of_concept = subcx.prep("subfn");
             // Could run sub-rules inside here.

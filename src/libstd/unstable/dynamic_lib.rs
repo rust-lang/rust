@@ -221,8 +221,6 @@ pub mod dl {
 pub mod dl {
     use libc;
     use os;
-    use path::GenericPath;
-    use path;
     use ptr;
     use result::{Ok, Err, Result};
 

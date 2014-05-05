@@ -21,7 +21,7 @@
 // ignore-win32
 
 use std::os;
-use std::io::process::{Process, ExitSignal, ExitStatus};
+use std::io::process::{Command, ExitSignal, ExitStatus};
 
 pub fn main() {
     let args = os::args();
@@ -30,7 +30,7 @@ pub fn main() {
         // Raise a segfault.
         unsafe { *(0 as *mut int) = 0; }
     } else {
-        let status = Process::status(args[0], ["signal".to_owned()]).unwrap();
+        let status = Command::new(args[0].as_slice()).arg("signal").status().unwrap();
         // Windows does not have signal, so we get exit status 0xC0000028 (STATUS_BAD_STACK).
         match status {
             ExitSignal(_) if cfg!(unix) => {},
@@ -39,4 +39,3 @@ pub fn main() {
         }
     }
 }
-

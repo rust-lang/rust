@@ -13,7 +13,8 @@ use libc;
 use std::io::IoError;
 use std::io::process;
 use std::ptr;
-use std::rt::rtio::RtioProcess;
+use std::c_str::CString;
+use std::rt::rtio::{ProcessConfig, RtioProcess};
 use std::rt::task::BlockedTask;
 
 use homing::{HomingIO, HomeHandle};
@@ -50,12 +51,10 @@ impl Process {
     ///
     /// Returns either the corresponding process object or an error which
     /// occurred.
-    pub fn spawn(io_loop: &mut UvIoFactory, config: process::ProcessConfig)
-                -> Result<(Box<Process>, Vec<Option<PipeWatcher>>), UvError>
-    {
-        let cwd = config.cwd.map(|s| s.to_c_str());
-        let mut io = vec![config.stdin, config.stdout, config.stderr];
-        for slot in config.extra_io.iter() {
+    pub fn spawn(io_loop: &mut UvIoFactory, cfg: ProcessConfig)
+                -> Result<(Box<Process>, Vec<Option<PipeWatcher>>), UvError> {
+        let mut io = vec![cfg.stdin, cfg.stdout, cfg.stderr];
+        for slot in cfg.extra_io.iter() {
             io.push(*slot);
         }
         let mut stdio = Vec::<uvll::uv_stdio_container_t>::with_capacity(io.len());
@@ -69,16 +68,16 @@ impl Process {
             }
         }
 
-        let ret = with_argv(config.program, config.args, |argv| {
-            with_env(config.env, |envp| {
+        let ret = with_argv(cfg.program, cfg.args, |argv| {
+            with_env(cfg.env, |envp| {
                 let mut flags = 0;
-                if config.uid.is_some() {
+                if cfg.uid.is_some() {
                     flags |= uvll::PROCESS_SETUID;
                 }
-                if config.gid.is_some() {
+                if cfg.gid.is_some() {
                     flags |= uvll::PROCESS_SETGID;
                 }
-                if config.detach {
+                if cfg.detach {
                     flags |= uvll::PROCESS_DETACHED;
                 }
                 let options = uvll::uv_process_options_t {
@@ -86,15 +85,15 @@ impl Process {
                     file: unsafe { *argv },
                     args: argv,
                     env: envp,
-                    cwd: match cwd {
-                        Some(ref cwd) => cwd.with_ref(|p| p),
+                    cwd: match cfg.cwd {
+                        Some(cwd) => cwd.with_ref(|p| p),
                         None => ptr::null(),
                     },
                     flags: flags as libc::c_uint,
                     stdio_count: stdio.len() as libc::c_int,
                     stdio: stdio.as_ptr(),
-                    uid: config.uid.unwrap_or(0) as uvll::uv_uid_t,
-                    gid: config.gid.unwrap_or(0) as uvll::uv_gid_t,
+                    uid: cfg.uid.unwrap_or(0) as uvll::uv_uid_t,
+                    gid: cfg.gid.unwrap_or(0) as uvll::uv_gid_t,
                 };
 
                 let handle = UvHandle::alloc(None::<Process>, uvll::UV_PROCESS);
@@ -175,42 +174,53 @@ unsafe fn set_stdio(dst: *uvll::uv_stdio_container_t,
     }
 }
 
-/// Converts the program and arguments to the argv array expected by libuv
-fn with_argv<T>(prog: &str, args: &[~str], f: |**libc::c_char| -> T) -> T {
-    // First, allocation space to put all the C-strings (we need to have
-    // ownership of them somewhere
-    let mut c_strs = Vec::with_capacity(args.len() + 1);
-    c_strs.push(prog.to_c_str());
-    for arg in args.iter() {
-        c_strs.push(arg.to_c_str());
-    }
+/// Converts the program and arguments to the argv array expected by libuv.
+fn with_argv<T>(prog: &CString, args: &[CString], cb: |**libc::c_char| -> T) -> T {
+    let mut ptrs: Vec<*libc::c_char> = Vec::with_capacity(args.len()+1);
 
-    // Next, create the char** array
-    let mut c_args = Vec::with_capacity(c_strs.len() + 1);
-    for s in c_strs.iter() {
-        c_args.push(s.with_ref(|p| p));
-    }
-    c_args.push(ptr::null());
-    f(c_args.as_ptr())
+    // Convert the CStrings into an array of pointers. Note: the
+    // lifetime of the various CStrings involved is guaranteed to be
+    // larger than the lifetime of our invocation of cb, but this is
+    // technically unsafe as the callback could leak these pointers
+    // out of our scope.
+    ptrs.push(prog.with_ref(|buf| buf));
+    ptrs.extend(args.iter().map(|tmp| tmp.with_ref(|buf| buf)));
+
+    // Add a terminating null pointer (required by libc).
+    ptrs.push(ptr::null());
+
+    cb(ptrs.as_ptr())
 }
 
 /// Converts the environment to the env array expected by libuv
-fn with_env<T>(env: Option<&[(~str, ~str)]>, f: |**libc::c_char| -> T) -> T {
-    let env = match env {
-        Some(s) => s,
-        None => { return f(ptr::null()); }
-    };
-    // As with argv, create some temporary storage and then the actual array
-    let mut envp = Vec::with_capacity(env.len());
-    for &(ref key, ref value) in env.iter() {
-        envp.push(format!("{}={}", *key, *value).to_c_str());
+fn with_env<T>(env: Option<&[(CString, CString)]>, cb: |**libc::c_char| -> T) -> T {
+    // We can pass a char** for envp, which is a null-terminated array
+    // of "k=v\0" strings. Since we must create these strings locally,
+    // yet expose a raw pointer to them, we create a temporary vector
+    // to own the CStrings that outlives the call to cb.
+    match env {
+        Some(env) => {
+            let mut tmps = Vec::with_capacity(env.len());
+
+            for pair in env.iter() {
+                let mut kv = Vec::new();
+                kv.push_all(pair.ref0().as_bytes_no_nul());
+                kv.push('=' as u8);
+                kv.push_all(pair.ref1().as_bytes()); // includes terminal \0
+                tmps.push(kv);
+            }
+
+            // As with `with_argv`, this is unsafe, since cb could leak the pointers.
+            let mut ptrs: Vec<*libc::c_char> =
+                tmps.iter()
+                    .map(|tmp| tmp.as_ptr() as *libc::c_char)
+                    .collect();
+            ptrs.push(ptr::null());
+
+            cb(ptrs.as_ptr())
+        }
+        _ => cb(ptr::null())
     }
-    let mut c_envp = Vec::with_capacity(envp.len() + 1);
-    for s in envp.iter() {
-        c_envp.push(s.with_ref(|p| p));
-    }
-    c_envp.push(ptr::null());
-    f(c_envp.as_ptr())
 }
 
 impl HomingIO for Process {
