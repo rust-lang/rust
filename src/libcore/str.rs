@@ -621,12 +621,12 @@ impl<'a> Iterator<UTF16Item> for UTF16Items<'a> {
 ///          0x0073, 0xDD1E, 0x0069, 0x0063,
 ///          0xD834];
 ///
-/// assert_eq!(str::utf16_items(v).collect::<~[_]>(),
-///            ~[ScalarValue('𝄞'),
-///              ScalarValue('m'), ScalarValue('u'), ScalarValue('s'),
-///              LoneSurrogate(0xDD1E),
-///              ScalarValue('i'), ScalarValue('c'),
-///              LoneSurrogate(0xD834)]);
+/// assert_eq!(str::utf16_items(v).collect::<Vec<_>>(),
+///            vec![ScalarValue('𝄞'),
+///                 ScalarValue('m'), ScalarValue('u'), ScalarValue('s'),
+///                 LoneSurrogate(0xDD1E),
+///                 ScalarValue('i'), ScalarValue('c'),
+///                 LoneSurrogate(0xD834)]);
 /// ```
 pub fn utf16_items<'a>(v: &'a [u16]) -> UTF16Items<'a> {
     UTF16Items { iter : v.iter() }
@@ -896,8 +896,8 @@ pub trait StrSlice<'a> {
     /// # Example
     ///
     /// ```rust
-    /// let v: ~[char] = "abc åäö".chars().collect();
-    /// assert_eq!(v, ~['a', 'b', 'c', ' ', 'å', 'ä', 'ö']);
+    /// let v: Vec<char> = "abc åäö".chars().collect();
+    /// assert_eq!(v, vec!['a', 'b', 'c', ' ', 'å', 'ä', 'ö']);
     /// ```
     fn chars(&self) -> Chars<'a>;
 
@@ -925,14 +925,14 @@ pub trait StrSlice<'a> {
     /// # Example
     ///
     /// ```rust
-    /// let v: ~[&str] = "Mary had a little lamb".split(' ').collect();
-    /// assert_eq!(v, ~["Mary", "had", "a", "little", "lamb"]);
+    /// let v: Vec<&str> = "Mary had a little lamb".split(' ').collect();
+    /// assert_eq!(v, vec!["Mary", "had", "a", "little", "lamb"]);
     ///
-    /// let v: ~[&str] = "abc1def2ghi".split(|c: char| c.is_digit()).collect();
-    /// assert_eq!(v, ~["abc", "def", "ghi"]);
+    /// let v: Vec<&str> = "abc1def2ghi".split(|c: char| c.is_digit()).collect();
+    /// assert_eq!(v, vec!["abc", "def", "ghi"]);
     ///
-    /// let v: ~[&str] = "lionXXtigerXleopard".split('X').collect();
-    /// assert_eq!(v, ~["lion", "", "tiger", "leopard"]);
+    /// let v: Vec<&str> = "lionXXtigerXleopard".split('X').collect();
+    /// assert_eq!(v, vec!["lion", "", "tiger", "leopard"]);
     /// ```
     fn split<Sep: CharEq>(&self, sep: Sep) -> CharSplits<'a, Sep>;
 
@@ -943,14 +943,14 @@ pub trait StrSlice<'a> {
     /// # Example
     ///
     /// ```rust
-    /// let v: ~[&str] = "Mary had a little lambda".splitn(' ', 2).collect();
-    /// assert_eq!(v, ~["Mary", "had", "a little lambda"]);
+    /// let v: Vec<&str> = "Mary had a little lambda".splitn(' ', 2).collect();
+    /// assert_eq!(v, vec!["Mary", "had", "a little lambda"]);
     ///
-    /// let v: ~[&str] = "abc1def2ghi".splitn(|c: char| c.is_digit(), 1).collect();
-    /// assert_eq!(v, ~["abc", "def2ghi"]);
+    /// let v: Vec<&str> = "abc1def2ghi".splitn(|c: char| c.is_digit(), 1).collect();
+    /// assert_eq!(v, vec!["abc", "def2ghi"]);
     ///
-    /// let v: ~[&str] = "lionXXtigerXleopard".splitn('X', 2).collect();
-    /// assert_eq!(v, ~["lion", "", "tigerXleopard"]);
+    /// let v: Vec<&str> = "lionXXtigerXleopard".splitn('X', 2).collect();
+    /// assert_eq!(v, vec!["lion", "", "tigerXleopard"]);
     /// ```
     fn splitn<Sep: CharEq>(&self, sep: Sep, count: uint) -> CharSplitsN<'a, Sep>;
 
@@ -963,20 +963,20 @@ pub trait StrSlice<'a> {
     /// # Example
     ///
     /// ```rust
-    /// let v: ~[&str] = "A.B.".split_terminator('.').collect();
-    /// assert_eq!(v, ~["A", "B"]);
+    /// let v: Vec<&str> = "A.B.".split_terminator('.').collect();
+    /// assert_eq!(v, vec!["A", "B"]);
     ///
-    /// let v: ~[&str] = "A..B..".split_terminator('.').collect();
-    /// assert_eq!(v, ~["A", "", "B", ""]);
+    /// let v: Vec<&str> = "A..B..".split_terminator('.').collect();
+    /// assert_eq!(v, vec!["A", "", "B", ""]);
     ///
-    /// let v: ~[&str] = "Mary had a little lamb".split(' ').rev().collect();
-    /// assert_eq!(v, ~["lamb", "little", "a", "had", "Mary"]);
+    /// let v: Vec<&str> = "Mary had a little lamb".split(' ').rev().collect();
+    /// assert_eq!(v, vec!["lamb", "little", "a", "had", "Mary"]);
     ///
-    /// let v: ~[&str] = "abc1def2ghi".split(|c: char| c.is_digit()).rev().collect();
-    /// assert_eq!(v, ~["ghi", "def", "abc"]);
+    /// let v: Vec<&str> = "abc1def2ghi".split(|c: char| c.is_digit()).rev().collect();
+    /// assert_eq!(v, vec!["ghi", "def", "abc"]);
     ///
-    /// let v: ~[&str] = "lionXXtigerXleopard".split('X').rev().collect();
-    /// assert_eq!(v, ~["leopard", "tiger", "", "lion"]);
+    /// let v: Vec<&str> = "lionXXtigerXleopard".split('X').rev().collect();
+    /// assert_eq!(v, vec!["leopard", "tiger", "", "lion"]);
     /// ```
     fn split_terminator<Sep: CharEq>(&self, sep: Sep) -> CharSplits<'a, Sep>;
 
@@ -991,14 +991,14 @@ pub trait StrSlice<'a> {
     /// # Example
     ///
     /// ```rust
-    /// let v: ~[&str] = "Mary had a little lamb".rsplitn(' ', 2).collect();
-    /// assert_eq!(v, ~["lamb", "little", "Mary had a"]);
+    /// let v: Vec<&str> = "Mary had a little lamb".rsplitn(' ', 2).collect();
+    /// assert_eq!(v, vec!["lamb", "little", "Mary had a"]);
     ///
-    /// let v: ~[&str] = "abc1def2ghi".rsplitn(|c: char| c.is_digit(), 1).collect();
-    /// assert_eq!(v, ~["ghi", "abc1def"]);
+    /// let v: Vec<&str> = "abc1def2ghi".rsplitn(|c: char| c.is_digit(), 1).collect();
+    /// assert_eq!(v, vec!["ghi", "abc1def"]);
     ///
-    /// let v: ~[&str] = "lionXXtigerXleopard".rsplitn('X', 2).collect();
-    /// assert_eq!(v, ~["leopard", "tiger", "lionX"]);
+    /// let v: Vec<&str> = "lionXXtigerXleopard".rsplitn('X', 2).collect();
+    /// assert_eq!(v, vec!["leopard", "tiger", "lionX"]);
     /// ```
     fn rsplitn<Sep: CharEq>(&self, sep: Sep, count: uint) -> CharSplitsN<'a, Sep>;
 
@@ -1013,14 +1013,14 @@ pub trait StrSlice<'a> {
     /// # Example
     ///
     /// ```rust
-    /// let v: ~[(uint, uint)] = "abcXXXabcYYYabc".match_indices("abc").collect();
-    /// assert_eq!(v, ~[(0,3), (6,9), (12,15)]);
+    /// let v: Vec<(uint, uint)> = "abcXXXabcYYYabc".match_indices("abc").collect();
+    /// assert_eq!(v, vec![(0,3), (6,9), (12,15)]);
     ///
-    /// let v: ~[(uint, uint)] = "1abcabc2".match_indices("abc").collect();
-    /// assert_eq!(v, ~[(1,4), (4,7)]);
+    /// let v: Vec<(uint, uint)> = "1abcabc2".match_indices("abc").collect();
+    /// assert_eq!(v, vec![(1,4), (4,7)]);
     ///
-    /// let v: ~[(uint, uint)] = "ababa".match_indices("aba").collect();
-    /// assert_eq!(v, ~[(0, 3)]); // only the first `aba`
+    /// let v: Vec<(uint, uint)> = "ababa".match_indices("aba").collect();
+    /// assert_eq!(v, vec![(0, 3)]); // only the first `aba`
     /// ```
     fn match_indices(&self, sep: &'a str) -> MatchIndices<'a>;
 
@@ -1029,11 +1029,11 @@ pub trait StrSlice<'a> {
     /// # Example
     ///
     /// ```rust
-    /// let v: ~[&str] = "abcXXXabcYYYabc".split_str("abc").collect();
-    /// assert_eq!(v, ~["", "XXX", "YYY", ""]);
+    /// let v: Vec<&str> = "abcXXXabcYYYabc".split_str("abc").collect();
+    /// assert_eq!(v, vec!["", "XXX", "YYY", ""]);
     ///
-    /// let v: ~[&str] = "1abcabc2".split_str("abc").collect();
-    /// assert_eq!(v, ~["1", "", "2"]);
+    /// let v: Vec<&str> = "1abcabc2".split_str("abc").collect();
+    /// assert_eq!(v, vec!["1", "", "2"]);
     /// ```
     fn split_str(&self, &'a str) -> StrSplits<'a>;
 
@@ -1045,8 +1045,8 @@ pub trait StrSlice<'a> {
     ///
     /// ```rust
     /// let four_lines = "foo\nbar\n\nbaz\n";
-    /// let v: ~[&str] = four_lines.lines().collect();
-    /// assert_eq!(v, ~["foo", "bar", "", "baz"]);
+    /// let v: Vec<&str> = four_lines.lines().collect();
+    /// assert_eq!(v, vec!["foo", "bar", "", "baz"]);
     /// ```
     fn lines(&self) -> CharSplits<'a, char>;
 
@@ -1058,8 +1058,8 @@ pub trait StrSlice<'a> {
     ///
     /// ```rust
     /// let four_lines = "foo\r\nbar\n\r\nbaz\n";
-    /// let v: ~[&str] = four_lines.lines_any().collect();
-    /// assert_eq!(v, ~["foo", "bar", "", "baz"]);
+    /// let v: Vec<&str> = four_lines.lines_any().collect();
+    /// assert_eq!(v, vec!["foo", "bar", "", "baz"]);
     /// ```
     fn lines_any(&self) -> AnyLines<'a>;
 
@@ -1071,8 +1071,8 @@ pub trait StrSlice<'a> {
     ///
     /// ```rust
     /// let some_words = " Mary   had\ta little  \n\t lamb";
-    /// let v: ~[&str] = some_words.words().collect();
-    /// assert_eq!(v, ~["Mary", "had", "a", "little", "lamb"]);
+    /// let v: Vec<&str> = some_words.words().collect();
+    /// assert_eq!(v, vec!["Mary", "had", "a", "little", "lamb"]);
     /// ```
     fn words(&self) -> Words<'a>;
 
@@ -1469,7 +1469,8 @@ pub trait StrSlice<'a> {
     ///
     /// ```rust
     /// let string = "a\nb\nc";
-    /// let lines: ~[&str] = string.lines().collect();
+    /// let lines: Vec<&str> = string.lines().collect();
+    /// let lines = lines.as_slice();
     ///
     /// assert!(string.subslice_offset(lines[0]) == 0); // &"a"
     /// assert!(string.subslice_offset(lines[1]) == 2); // &"b"

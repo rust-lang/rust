@@ -455,8 +455,8 @@ pub trait Iterator<A> {
     ///
     /// ```rust
     /// let a = [1, 2, 3, 4, 5];
-    /// let b: ~[int] = a.iter().map(|&x| x).collect();
-    /// assert!(a == b);
+    /// let b: Vec<int> = a.iter().map(|&x| x).collect();
+    /// assert!(a.as_slice() == b.as_slice());
     /// ```
     #[inline]
     fn collect<B: FromIterator<A>>(&mut self) -> B {

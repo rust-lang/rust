@@ -166,14 +166,14 @@ use serialize::{json, Encodable, Decodable};
  pub struct TestStruct1  {
     data_int: u8,
     data_str: ~str,
-    data_vector: ~[u8],
+    data_vector: Vec<u8>,
  }
 
 // To serialize use the `json::str_encode` to encode an object in a string.
 // It calls the generated `Encodable` impl.
 fn main() {
     let to_encode_object = TestStruct1
-         {data_int: 1, data_str:"toto".to_owned(), data_vector:~[2,3,4,5]};
+         {data_int: 1, data_str:"toto".to_owned(), data_vector:vec![2,3,4,5]};
     let encoded_str: ~str = json::Encoder::str_encode(&to_encode_object);
 
     // To deserialize use the `json::from_str` and `json::Decoder`
@@ -201,7 +201,7 @@ use collections::TreeMap;
 pub struct TestStruct1  {
     data_int: u8,
     data_str: ~str,
-    data_vector: ~[u8],
+    data_vector: Vec<u8>,
 }
 
 impl ToJson for TestStruct1 {
@@ -218,7 +218,7 @@ fn main() {
     // Serialization using our impl of to_json
 
     let test2: TestStruct1 = TestStruct1 {data_int: 1, data_str:"toto".to_owned(),
-                                          data_vector:~[2,3,4,5]};
+                                          data_vector:vec![2,3,4,5]};
     let tjson: json::Json = test2.to_json();
     let json_str: ~str = tjson.to_str();
 
