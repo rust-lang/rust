@@ -502,7 +502,7 @@ fn run_debuginfo_lldb_test(config: &Config, props: &TestProps, testfile: &Path) 
         let args = &[lldb_batchmode_script, test_executable_str, debugger_script_str];
         let env = &[("PYTHONPATH".to_owned(), config.lldb_python_dir.clone().unwrap())];
 
-        let mut opt_process = Process::configure(ProcessConfig {
+        let opt_process = Process::configure(ProcessConfig {
             program: "python",
             args: args,
             env: Some(env),
@@ -510,8 +510,9 @@ fn run_debuginfo_lldb_test(config: &Config, props: &TestProps, testfile: &Path) 
         });
 
         let (status, out, err) = match opt_process {
-            Ok(ref mut process) => {
-                let ProcessOutput { status, output, error } = process.wait_with_output();
+            Ok(process) => {
+                let ProcessOutput { status, output, error } =
+                    process.wait_with_output().unwrap();
 
                 (status,
                  str::from_utf8(output.as_slice()).unwrap().to_owned(),

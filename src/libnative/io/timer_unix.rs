@@ -52,11 +52,14 @@ use std::os;
 use std::ptr;
 use std::rt::rtio;
 use std::sync::atomics;
+use std::comm;
 
 use io::IoResult;
 use io::c;
 use io::file::FileDesc;
-use io::timer_helper;
+use io::helper_thread::Helper;
+
+helper_init!(static mut HELPER: Helper<Req>)
 
 pub struct Timer {
     id: uint,
@@ -79,9 +82,6 @@ pub enum Req {
     // Remove a timer based on its id and then send it back on the channel
     // provided
     RemoveTimer(uint, Sender<Box<Inner>>),
-
-    // Shut down the loop and then ACK this channel once it's shut down
-    Shutdown,
 }
 
 // returns the current time (in milliseconds)
@@ -93,7 +93,7 @@ pub fn now() -> u64 {
     }
 }
 
-fn helper(input: libc::c_int, messages: Receiver<Req>) {
+fn helper(input: libc::c_int, messages: Receiver<Req>, _: ()) {
     let mut set: c::fd_set = unsafe { mem::init() };
 
     let mut fd = FileDesc::new(input, true);
@@ -163,7 +163,7 @@ fn helper(input: libc::c_int, messages: Receiver<Req>) {
             1 => {
                 loop {
                     match messages.try_recv() {
-                        Ok(Shutdown) => {
+                        Err(comm::Disconnected) => {
                             assert!(active.len() == 0);
                             break 'outer;
                         }
@@ -202,7 +202,7 @@ fn helper(input: libc::c_int, messages: Receiver<Req>) {
 
 impl Timer {
     pub fn new() -> IoResult<Timer> {
-        timer_helper::boot(helper);
+        unsafe { HELPER.boot(|| {}, helper); }
 
         static mut ID: atomics::AtomicUint = atomics::INIT_ATOMIC_UINT;
         let id = unsafe { ID.fetch_add(1, atomics::Relaxed) };
@@ -235,7 +235,7 @@ impl Timer {
             Some(i) => i,
             None => {
                 let (tx, rx) = channel();
-                timer_helper::send(RemoveTimer(self.id, tx));
+                unsafe { HELPER.send(RemoveTimer(self.id, tx)); }
                 rx.recv()
             }
         }
@@ -261,7 +261,7 @@ impl rtio::RtioTimer for Timer {
         inner.interval = msecs;
         inner.target = now + msecs;
 
-        timer_helper::send(NewTimer(inner));
+        unsafe { HELPER.send(NewTimer(inner)); }
         return rx;
     }
 
@@ -275,7 +275,7 @@ impl rtio::RtioTimer for Timer {
         inner.interval = msecs;
         inner.target = now + msecs;
 
-        timer_helper::send(NewTimer(inner));
+        unsafe { HELPER.send(NewTimer(inner)); }
         return rx;
     }
 }

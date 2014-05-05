@@ -40,6 +40,8 @@ use ai = std::io::net::addrinfo;
 pub use self::file::FileDesc;
 pub use self::process::Process;
 
+mod helper_thread;
+
 // Native I/O implementations
 pub mod addrinfo;
 pub mod net;
@@ -74,8 +76,6 @@ pub mod pipe;
 
 #[cfg(unix)]    #[path = "c_unix.rs"]  mod c;
 #[cfg(windows)] #[path = "c_win32.rs"] mod c;
-
-mod timer_helper;
 
 pub type IoResult<T> = Result<T, IoError>;
 

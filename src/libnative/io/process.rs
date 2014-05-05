@@ -8,20 +8,27 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::io;
 use libc::{pid_t, c_void, c_int};
 use libc;
+use std::io;
+use std::mem;
 use std::os;
 use std::ptr;
 use std::rt::rtio;
 use p = std::io::process;
 
+
 use super::IoResult;
 use super::file;
+use super::util;
 
-#[cfg(windows)] use std::mem;
 #[cfg(windows)] use std::strbuf::StrBuf;
-#[cfg(not(windows))] use super::retry;
+#[cfg(unix)] use super::c;
+#[cfg(unix)] use super::retry;
+#[cfg(unix)] use io::helper_thread::Helper;
+
+#[cfg(unix)]
+helper_init!(static mut HELPER: Helper<Req>)
 
 /**
  * A value representing a child process.
@@ -44,6 +51,14 @@ pub struct Process {
 
     /// Manually delivered signal
     exit_signal: Option<int>,
+
+    /// Deadline after which wait() will return
+    deadline: u64,
+}
+
+#[cfg(unix)]
+enum Req {
+    NewChild(libc::pid_t, Sender<p::ProcessExit>, u64),
 }
 
 impl Process {
@@ -116,6 +131,7 @@ impl Process {
                         handle: res.handle,
                         exit_code: None,
                         exit_signal: None,
+                        deadline: 0,
                     },
                     ret_io))
             }
@@ -131,11 +147,15 @@ impl Process {
 impl rtio::RtioProcess for Process {
     fn id(&self) -> pid_t { self.pid }
 
-    fn wait(&mut self) -> p::ProcessExit {
+    fn set_timeout(&mut self, timeout: Option<u64>) {
+        self.deadline = timeout.map(|i| i + ::io::timer::now()).unwrap_or(0);
+    }
+
+    fn wait(&mut self) -> IoResult<p::ProcessExit> {
         match self.exit_code {
-            Some(code) => code,
+            Some(code) => Ok(code),
             None => {
-                let code = waitpid(self.pid);
+                let code = try!(waitpid(self.pid, self.deadline));
                 // On windows, waitpid will never return a signal. If a signal
                 // was successfully delivered to the process, however, we can
                 // consider it as having died via a signal.
@@ -145,7 +165,7 @@ impl rtio::RtioProcess for Process {
                     Some(..) => code,
                 };
                 self.exit_code = Some(code);
-                code
+                Ok(code)
             }
         }
     }
@@ -762,61 +782,301 @@ fn translate_status(status: c_int) -> p::ProcessExit {
  * operate on a none-existent process or, even worse, on a newer process
  * with the same id.
  */
-fn waitpid(pid: pid_t) -> p::ProcessExit {
-    return waitpid_os(pid);
+#[cfg(windows)]
+fn waitpid(pid: pid_t, deadline: u64) -> IoResult<p::ProcessExit> {
+    use libc::types::os::arch::extra::DWORD;
+    use libc::consts::os::extra::{
+        SYNCHRONIZE,
+        PROCESS_QUERY_INFORMATION,
+        FALSE,
+        STILL_ACTIVE,
+        INFINITE,
+        WAIT_TIMEOUT,
+        WAIT_OBJECT_0,
+    };
+    use libc::funcs::extra::kernel32::{
+        OpenProcess,
+        GetExitCodeProcess,
+        CloseHandle,
+        WaitForSingleObject,
+    };
 
-    #[cfg(windows)]
-    fn waitpid_os(pid: pid_t) -> p::ProcessExit {
-        use libc::types::os::arch::extra::DWORD;
-        use libc::consts::os::extra::{
-            SYNCHRONIZE,
-            PROCESS_QUERY_INFORMATION,
-            FALSE,
-            STILL_ACTIVE,
-            INFINITE,
-            WAIT_FAILED
-        };
-        use libc::funcs::extra::kernel32::{
-            OpenProcess,
-            GetExitCodeProcess,
-            CloseHandle,
-            WaitForSingleObject
-        };
+    unsafe {
+        let process = OpenProcess(SYNCHRONIZE | PROCESS_QUERY_INFORMATION,
+                                  FALSE,
+                                  pid as DWORD);
+        if process.is_null() {
+            return Err(super::last_error())
+        }
 
-        unsafe {
-
-            let process = OpenProcess(SYNCHRONIZE | PROCESS_QUERY_INFORMATION,
-                                      FALSE,
-                                      pid as DWORD);
-            if process.is_null() {
-                fail!("failure in OpenProcess: {}", os::last_os_error());
+        loop {
+            let mut status = 0;
+            if GetExitCodeProcess(process, &mut status) == FALSE {
+                let err = Err(super::last_error());
+                assert!(CloseHandle(process) != 0);
+                return err;
             }
-
-            loop {
-                let mut status = 0;
-                if GetExitCodeProcess(process, &mut status) == FALSE {
+            if status != STILL_ACTIVE {
+                assert!(CloseHandle(process) != 0);
+                return Ok(p::ExitStatus(status as int));
+            }
+            let interval = if deadline == 0 {
+                INFINITE
+            } else {
+                let now = ::io::timer::now();
+                if deadline < now {0} else {(deadline - now) as u32}
+            };
+            match WaitForSingleObject(process, interval) {
+                WAIT_OBJECT_0 => {}
+                WAIT_TIMEOUT => {
                     assert!(CloseHandle(process) != 0);
-                    fail!("failure in GetExitCodeProcess: {}", os::last_os_error());
+                    return Err(util::timeout("process wait timed out"))
                 }
-                if status != STILL_ACTIVE {
+                _ => {
+                    let err = Err(super::last_error());
                     assert!(CloseHandle(process) != 0);
-                    return p::ExitStatus(status as int);
-                }
-                if WaitForSingleObject(process, INFINITE) == WAIT_FAILED {
-                    assert!(CloseHandle(process) != 0);
-                    fail!("failure in WaitForSingleObject: {}", os::last_os_error());
+                    return err
                 }
             }
         }
     }
+}
 
-    #[cfg(unix)]
-    fn waitpid_os(pid: pid_t) -> p::ProcessExit {
-        use libc::funcs::posix01::wait;
-        let mut status = 0 as c_int;
-        match retry(|| unsafe { wait::waitpid(pid, &mut status, 0) }) {
+#[cfg(unix)]
+fn waitpid(pid: pid_t, deadline: u64) -> IoResult<p::ProcessExit> {
+    use std::cmp;
+    use std::comm;
+
+    static mut WRITE_FD: libc::c_int = 0;
+
+    let mut status = 0 as c_int;
+    if deadline == 0 {
+        return match retry(|| unsafe { c::waitpid(pid, &mut status, 0) }) {
             -1 => fail!("unknown waitpid error: {}", super::last_error()),
-            _ => translate_status(status),
+            _ => Ok(translate_status(status)),
+        }
+    }
+
+    // On unix, wait() and its friends have no timeout parameters, so there is
+    // no way to time out a thread in wait(). From some googling and some
+    // thinking, it appears that there are a few ways to handle timeouts in
+    // wait(), but the only real reasonable one for a multi-threaded program is
+    // to listen for SIGCHLD.
+    //
+    // With this in mind, the waiting mechanism with a timeout barely uses
+    // waitpid() at all. There are a few times that waitpid() is invoked with
+    // WNOHANG, but otherwise all the necessary blocking is done by waiting for
+    // a SIGCHLD to arrive (and that blocking has a timeout). Note, however,
+    // that waitpid() is still used to actually reap the child.
+    //
+    // Signal handling is super tricky in general, and this is no exception. Due
+    // to the async nature of SIGCHLD, we use the self-pipe trick to transmit
+    // data out of the signal handler to the rest of the application. The first
+    // idea would be to have each thread waiting with a timeout to read this
+    // output file descriptor, but a write() is akin to a signal(), not a
+    // broadcast(), so it would only wake up one thread, and possibly the wrong
+    // thread. Hence a helper thread is used.
+    //
+    // The helper thread here is responsible for farming requests for a
+    // waitpid() with a timeout, and then processing all of the wait requests.
+    // By guaranteeing that only this helper thread is reading half of the
+    // self-pipe, we're sure that we'll never lose a SIGCHLD. This helper thread
+    // is also responsible for select() to wait for incoming messages or
+    // incoming SIGCHLD messages, along with passing an appropriate timeout to
+    // select() to wake things up as necessary.
+    //
+    // The ordering of the following statements is also very purposeful. First,
+    // we must be guaranteed that the helper thread is booted and available to
+    // receive SIGCHLD signals, and then we must also ensure that we do a
+    // nonblocking waitpid() at least once before we go ask the sigchld helper.
+    // This prevents the race where the child exits, we boot the helper, and
+    // then we ask for the child's exit status (never seeing a sigchld).
+    //
+    // The actual communication between the helper thread and this thread is
+    // quite simple, just a channel moving data around.
+
+    unsafe { HELPER.boot(register_sigchld, waitpid_helper) }
+
+    match waitpid_nowait(pid) {
+        Some(ret) => return Ok(ret),
+        None => {}
+    }
+
+    let (tx, rx) = channel();
+    unsafe { HELPER.send(NewChild(pid, tx, deadline)); }
+    return match rx.recv_opt() {
+        Ok(e) => Ok(e),
+        Err(()) => Err(util::timeout("wait timed out")),
+    };
+
+    // Register a new SIGCHLD handler, returning the reading half of the
+    // self-pipe plus the old handler registered (return value of sigaction).
+    fn register_sigchld() -> (libc::c_int, c::sigaction) {
+        unsafe {
+            let mut old: c::sigaction = mem::init();
+            let mut new: c::sigaction = mem::init();
+            new.sa_handler = sigchld_handler;
+            new.sa_flags = c::SA_NOCLDSTOP;
+            assert_eq!(c::sigaction(c::SIGCHLD, &new, &mut old), 0);
+
+            let mut pipes = [0, ..2];
+            assert_eq!(libc::pipe(pipes.as_mut_ptr()), 0);
+            util::set_nonblocking(pipes[0], true).unwrap();
+            util::set_nonblocking(pipes[1], true).unwrap();
+            WRITE_FD = pipes[1];
+            (pipes[0], old)
+        }
+    }
+
+    // Helper thread for processing SIGCHLD messages
+    fn waitpid_helper(input: libc::c_int,
+                      messages: Receiver<Req>,
+                      (read_fd, old): (libc::c_int, c::sigaction)) {
+        util::set_nonblocking(input, true).unwrap();
+        let mut set: c::fd_set = unsafe { mem::init() };
+        let mut tv: libc::timeval;
+        let mut active = Vec::<(libc::pid_t, Sender<p::ProcessExit>, u64)>::new();
+        let max = cmp::max(input, read_fd) + 1;
+
+        'outer: loop {
+            // Figure out the timeout of our syscall-to-happen. If we're waiting
+            // for some processes, then they'll have a timeout, otherwise we
+            // wait indefinitely for a message to arrive.
+            //
+            // FIXME: sure would be nice to not have to scan the entire array
+            let min = active.iter().map(|a| *a.ref2()).enumerate().min_by(|p| {
+                p.val1()
+            });
+            let (p, idx) = match min {
+                Some((idx, deadline)) => {
+                    let now = ::io::timer::now();
+                    let ms = if now < deadline {deadline - now} else {0};
+                    tv = util::ms_to_timeval(ms);
+                    (&tv as *_, idx)
+                }
+                None => (ptr::null(), -1),
+            };
+
+            // Wait for something to happen
+            c::fd_set(&mut set, input);
+            c::fd_set(&mut set, read_fd);
+            match unsafe { c::select(max, &set, ptr::null(), ptr::null(), p) } {
+                // interrupted, retry
+                -1 if os::errno() == libc::EINTR as int => continue,
+
+                // We read something, break out and process
+                1 | 2 => {}
+
+                // Timeout, the pending request is removed
+                0 => {
+                    drop(active.remove(idx));
+                    continue
+                }
+
+                n => fail!("error in select {} ({})", os::errno(), n),
+            }
+
+            // Process any pending messages
+            if drain(input) {
+                loop {
+                    match messages.try_recv() {
+                        Ok(NewChild(pid, tx, deadline)) => {
+                            active.push((pid, tx, deadline));
+                        }
+                        Err(comm::Disconnected) => {
+                            assert!(active.len() == 0);
+                            break 'outer;
+                        }
+                        Err(comm::Empty) => break,
+                    }
+                }
+            }
+
+            // If a child exited (somehow received SIGCHLD), then poll all
+            // children to see if any of them exited.
+            //
+            // We also attempt to be responsible netizens when dealing with
+            // SIGCHLD by invoking any previous SIGCHLD handler instead of just
+            // ignoring any previous SIGCHLD handler. Note that we don't provide
+            // a 1:1 mapping of our handler invocations to the previous handler
+            // invocations because we drain the `read_fd` entirely. This is
+            // probably OK because the kernel is already allowed to coalesce
+            // simultaneous signals, we're just doing some extra coalescing.
+            //
+            // Another point of note is that this likely runs the signal handler
+            // on a different thread than the one that received the signal. I
+            // *think* this is ok at this time.
+            //
+            // The main reason for doing this is to allow stdtest to run native
+            // tests as well. Both libgreen and libnative are running around
+            // with process timeouts, but libgreen should get there first
+            // (currently libuv doesn't handle old signal handlers).
+            if drain(read_fd) {
+                let i: uint = unsafe { mem::transmute(old.sa_handler) };
+                if i != 0 {
+                    assert!(old.sa_flags & c::SA_SIGINFO == 0);
+                    (old.sa_handler)(c::SIGCHLD);
+                }
+
+                // FIXME: sure would be nice to not have to scan the entire
+                //        array...
+                active.retain(|&(pid, ref tx, _)| {
+                    match waitpid_nowait(pid) {
+                        Some(msg) => { tx.send(msg); false }
+                        None => true,
+                    }
+                });
+            }
+        }
+
+        // Once this helper thread is done, we re-register the old sigchld
+        // handler and close our intermediate file descriptors.
+        unsafe {
+            assert_eq!(c::sigaction(c::SIGCHLD, &old, ptr::mut_null()), 0);
+            let _ = libc::close(read_fd);
+            let _ = libc::close(WRITE_FD);
+            WRITE_FD = -1;
+        }
+    }
+
+    // Drain all pending data from the file descriptor, returning if any data
+    // could be drained. This requires that the file descriptor is in
+    // nonblocking mode.
+    fn drain(fd: libc::c_int) -> bool {
+        let mut ret = false;
+        loop {
+            let mut buf = [0u8, ..1];
+            match unsafe {
+                libc::read(fd, buf.as_mut_ptr() as *mut libc::c_void,
+                           buf.len() as libc::size_t)
+            } {
+                n if n > 0 => { ret = true; }
+                0 => return true,
+                -1 if util::wouldblock() => return ret,
+                n => fail!("bad read {} ({})", os::last_os_error(), n),
+            }
+        }
+    }
+
+    // Signal handler for SIGCHLD signals, must be async-signal-safe!
+    //
+    // This function will write to the writing half of the "self pipe" to wake
+    // up the helper thread if it's waiting. Note that this write must be
+    // nonblocking because if it blocks and the reader is the thread we
+    // interrupted, then we'll deadlock.
+    //
+    // When writing, if the write returns EWOULDBLOCK then we choose to ignore
+    // it. At that point we're guaranteed that there's something in the pipe
+    // which will wake up the other end at some point, so we just allow this
+    // signal to be coalesced with the pending signals on the pipe.
+    extern fn sigchld_handler(_signum: libc::c_int) {
+        let mut msg = 1;
+        match unsafe {
+            libc::write(WRITE_FD, &mut msg as *mut _ as *libc::c_void, 1)
+        } {
+            1 => {}
+            -1 if util::wouldblock() => {} // see above comments
+            n => fail!("bad error on write fd: {} {}", n, os::errno()),
         }
     }
 }
@@ -830,10 +1090,9 @@ fn waitpid_nowait(pid: pid_t) -> Option<p::ProcessExit> {
 
     #[cfg(unix)]
     fn waitpid_os(pid: pid_t) -> Option<p::ProcessExit> {
-        use libc::funcs::posix01::wait;
         let mut status = 0 as c_int;
         match retry(|| unsafe {
-            wait::waitpid(pid, &mut status, libc::WNOHANG)
+            c::waitpid(pid, &mut status, c::WNOHANG)
         }) {
             n if n == pid => Some(translate_status(status)),
             0 => None,
