@@ -445,7 +445,8 @@ impl rtio::RtioFileStream for FileWatcher {
     fn tell(&self) -> Result<u64, IoError> {
         use libc::SEEK_CUR;
         // this is temporary
-        let self_ = unsafe { cast::transmute_mut(self) };
+        // FIXME #13933: Remove/justify all `&T` to `&mut T` transmutes
+        let self_ = unsafe { cast::transmute::<&_, &mut FileWatcher>(self) };
         self_.seek_common(0, SEEK_CUR)
     }
     fn fsync(&mut self) -> Result<(), IoError> {

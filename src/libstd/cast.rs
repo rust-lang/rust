@@ -60,6 +60,7 @@ pub unsafe fn transmute<L, G>(thing: L) -> G {
 
 /// Coerce an immutable reference to be mutable.
 #[inline]
+#[deprecated="casting &T to &mut T is undefined behaviour: use Cell<T>, RefCell<T> or Unsafe<T>"]
 pub unsafe fn transmute_mut<'a,T>(ptr: &'a T) -> &'a mut T { transmute(ptr) }
 
 /// Coerce a reference to have an arbitrary associated lifetime.
