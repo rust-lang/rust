@@ -268,7 +268,7 @@ impl<'a, 'b> Context<'a, 'b> {
     fn verify_arg_type(&mut self, arg: Position, ty: ArgumentType) {
         match arg {
             Exact(arg) => {
-                if arg < 0 || self.args.len() <= arg {
+                if self.args.len() <= arg {
                     let msg = format!("invalid reference to argument `{}` (there \
                                     are {} arguments)", arg, self.args.len());
                     self.ecx.span_err(self.fmtsp, msg);
