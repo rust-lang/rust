@@ -90,7 +90,7 @@ supported build environments that are most likely to work.
 To build from source you will also need the following prerequisite
 packages:
 
-* g++ 4.4 or clang++ 3.x
+* g++ 4.7 or clang++ 3.x
 * python 2.6 or later (but not 3.x)
 * perl 5.0 or later
 * gnu make 3.81 or later
