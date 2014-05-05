@@ -26,7 +26,7 @@
 
 extern crate collections;
 
-use std::cast::{transmute, transmute_mut, transmute_mut_lifetime};
+use std::cast::{transmute, transmute_mut_lifetime};
 use std::cast;
 use std::cell::{Cell, RefCell};
 use std::mem;
@@ -281,8 +281,8 @@ impl Arena {
     #[inline]
     pub fn alloc<'a, T>(&'a self, op: || -> T) -> &'a T {
         unsafe {
-            // FIXME: Borrow check
-            let this = transmute_mut(self);
+            // FIXME #13933: Remove/justify all `&T` to `&mut T` transmutes
+            let this: &mut Arena = transmute::<&_, &mut _>(self);
             if intrinsics::needs_drop::<T>() {
                 this.alloc_noncopy(op)
             } else {
@@ -438,7 +438,8 @@ impl<T> TypedArena<T> {
     #[inline]
     pub fn alloc<'a>(&'a self, object: T) -> &'a T {
         unsafe {
-            let this = cast::transmute_mut(self);
+            // FIXME #13933: Remove/justify all `&T` to `&mut T` transmutes
+            let this: &mut TypedArena<T> = cast::transmute::<&_, &mut _>(self);
             if this.ptr == this.end {
                 this.grow()
             }
