@@ -362,7 +362,8 @@ pub fn cfg_os_to_meta_os(os: abi::Os) -> metadata::loader::Os {
         abi::OsLinux => loader::OsLinux,
         abi::OsAndroid => loader::OsAndroid,
         abi::OsMacos => loader::OsMacos,
-        abi::OsFreebsd => loader::OsFreebsd
+        abi::OsFreebsd => loader::OsFreebsd,
+        abi::OsiOS => loader::OsiOS,
     }
 }
 
@@ -373,6 +374,7 @@ pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
         abi::OsLinux =>   InternedString::new("linux"),
         abi::OsAndroid => InternedString::new("android"),
         abi::OsFreebsd => InternedString::new("freebsd"),
+        abi::OsiOS =>     InternedString::new("ios"),
     };
 
     // ARM is bi-endian, however using NDK seems to default
@@ -438,7 +440,8 @@ static os_names : &'static [(&'static str, abi::Os)] = &'static [
     ("darwin",  abi::OsMacos),
     ("android", abi::OsAndroid),
     ("linux",   abi::OsLinux),
-    ("freebsd", abi::OsFreebsd)];
+    ("freebsd", abi::OsFreebsd),
+    ("ios",     abi::OsiOS)];
 
 pub fn get_arch(triple: &str) -> Option<abi::Architecture> {
     for &(arch, abi) in architecture_abis.iter() {

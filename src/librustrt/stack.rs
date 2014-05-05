@@ -173,7 +173,8 @@ pub unsafe fn record_sp_limit(limit: uint) {
     return target_record_sp_limit(limit);
 
     // x86-64
-    #[cfg(target_arch = "x86_64", target_os = "macos")] #[inline(always)]
+    #[cfg(target_arch = "x86_64", target_os = "macos")]
+    #[cfg(target_arch = "x86_64", target_os = "ios")] #[inline(always)]
     unsafe fn target_record_sp_limit(limit: uint) {
         asm!("movq $$0x60+90*8, %rsi
               movq $0, %gs:(%rsi)" :: "r"(limit) : "rsi" : "volatile")
@@ -195,7 +196,8 @@ pub unsafe fn record_sp_limit(limit: uint) {
     }
 
     // x86
-    #[cfg(target_arch = "x86", target_os = "macos")] #[inline(always)]
+    #[cfg(target_arch = "x86", target_os = "macos")]
+    #[cfg(target_arch = "x86", target_os = "ios")] #[inline(always)]
     unsafe fn target_record_sp_limit(limit: uint) {
         asm!("movl $$0x48+90*4, %eax
               movl $0, %gs:(%eax)" :: "r"(limit) : "eax" : "volatile")
@@ -243,7 +245,8 @@ pub unsafe fn get_sp_limit() -> uint {
     return target_get_sp_limit();
 
     // x86-64
-    #[cfg(target_arch = "x86_64", target_os = "macos")] #[inline(always)]
+    #[cfg(target_arch = "x86_64", target_os = "macos")]
+    #[cfg(target_arch = "x86_64", target_os = "ios")] #[inline(always)]
     unsafe fn target_get_sp_limit() -> uint {
         let limit;
         asm!("movq $$0x60+90*8, %rsi
@@ -270,7 +273,8 @@ pub unsafe fn get_sp_limit() -> uint {
     }
 
     // x86
-    #[cfg(target_arch = "x86", target_os = "macos")] #[inline(always)]
+    #[cfg(target_arch = "x86", target_os = "macos")]
+    #[cfg(target_arch = "x86", target_os = "ios")] #[inline(always)]
     unsafe fn target_get_sp_limit() -> uint {
         let limit;
         asm!("movl $$0x48+90*4, %eax
