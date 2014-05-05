@@ -95,7 +95,6 @@ pub trait TyVisitor {
 
     fn visit_f32(&mut self) -> bool;
     fn visit_f64(&mut self) -> bool;
-    #[cfg(not(stage0))]
     fn visit_f128(&mut self) -> bool;
 
     fn visit_char(&mut self) -> bool;
@@ -341,21 +340,18 @@ extern "rust-intrinsic" {
     /// `min_align_of::<T>()`
     ///
     /// The volatile parameter parameter is set to `true`, so it will not be optimized out.
-    #[cfg(not(stage0))]
     pub fn volatile_copy_nonoverlapping_memory<T>(dst: *mut T, src: *T, count: uint);
     /// Equivalent to the appropriate `llvm.memmove.p0i8.0i8.*` intrinsic, with
     /// a size of `count` * `size_of::<T>()` and an alignment of
     /// `min_align_of::<T>()`
     ///
     /// The volatile parameter parameter is set to `true`, so it will not be optimized out.
-    #[cfg(not(stage0))]
     pub fn volatile_copy_memory<T>(dst: *mut T, src: *T, count: uint);
     /// Equivalent to the appropriate `llvm.memset.p0i8.*` intrinsic, with a
     /// size of `count` * `size_of::<T>()` and an alignment of
     /// `min_align_of::<T>()`.
     ///
     /// The volatile parameter parameter is set to `true`, so it will not be optimized out.
-    #[cfg(not(stage0))]
     pub fn volatile_set_memory<T>(dst: *mut T, val: u8, count: uint);
 
     /// Perform a volatile load from the `src` pointer.
