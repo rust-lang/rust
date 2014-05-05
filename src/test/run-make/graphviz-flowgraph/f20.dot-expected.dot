@@ -1,0 +1,23 @@
+digraph block {
+    N0[label="entry"];
+    N1[label="exit"];
+    N2[label="expr 2"];
+    N3[label="expr 0"];
+    N4[label="expr 20"];
+    N5[label="expr [2, 0, 20]"];
+    N6[label="local v"];
+    N7[label="expr v"];
+    N8[label="expr 20"];
+    N9[label="expr v[20]"];
+    N10[label="block { let v = [2, 0, 20]; v[20]; }"];
+    N0 -> N2;
+    N2 -> N3;
+    N3 -> N4;
+    N4 -> N5;
+    N5 -> N6;
+    N6 -> N7;
+    N7 -> N8;
+    N8 -> N9;
+    N9 -> N10;
+    N10 -> N1;
+}
