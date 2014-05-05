@@ -1588,8 +1588,8 @@ let mut numbers = vec![1, 2, 3];
 numbers.push(4);
 numbers.push(5);
 
-// The type of a unique vector is written as `~[int]`
-let more_numbers: ~[int] = numbers.move_iter().collect();
+// The type of a unique vector is written as `Vec<int>`
+let more_numbers: Vec<int> = numbers.move_iter().map(|i| i+1).collect();
 
 // The original `numbers` value can no longer be used, due to move semantics.
 
@@ -1633,7 +1633,7 @@ view[0] = 5;
 let ys: &mut [int] = &mut [1, 2, 3];
 ~~~
 
-Square brackets denote indexing into a vector:
+Square brackets denote indexing into a slice or fixed-size vector:
 
 ~~~~
 # enum Crayon { Almond, AntiqueBrass, Apricot,
@@ -1647,7 +1647,7 @@ match crayons[0] {
 }
 ~~~~
 
-A vector can be destructured using pattern matching:
+A slice or fixed-size vector can be destructured using pattern matching:
 
 ~~~~
 let numbers: &[int] = &[1, 2, 3];
@@ -1660,9 +1660,10 @@ let score = match numbers {
 ~~~~
 
 Both vectors and strings support a number of useful [methods](#methods),
-defined in [`std::vec`] and [`std::str`].
+defined in [`std::vec`], [`std::slice`], and [`std::str`].
 
 [`std::vec`]: std/vec/index.html
+[`std::slice`]: std/slice/index.html
 [`std::str`]: std/str/index.html
 
 # Ownership escape hatches
