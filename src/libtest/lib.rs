@@ -320,13 +320,11 @@ fn optgroups() -> Vec<getopts::OptGroup> {
                                          task, allow printing directly"))
 }
 
-fn usage(binary: &str, helpstr: &str) {
+fn usage(binary: &str) {
     let message = format!("Usage: {} [OPTIONS] [FILTER]", binary);
-    println!("{}", getopts::usage(message, optgroups().as_slice()));
-    println!("");
-    if helpstr == "help" {
-        println!("{}", "\
-The FILTER regex is matched against the name of all tests to run, and
+    println!(r"{usage}
+
+The FILTER regex is tested against the name of all tests to run, and
 only those tests that match are run.
 
 By default, all tests are run in parallel. This can be altered with the
@@ -338,18 +336,18 @@ environment variable. Logging is not captured by default.
 
 Test Attributes:
 
-    #[test]        - Indicates a function is a test to be run. This function
+    \#[test]        - Indicates a function is a test to be run. This function
                      takes no arguments.
-    #[bench]       - Indicates a function is a benchmark to be run. This
+    \#[bench]       - Indicates a function is a benchmark to be run. This
                      function takes one argument (test::Bencher).
-    #[should_fail] - This function (also labeled with #[test]) will only pass if
+    \#[should_fail] - This function (also labeled with \#[test]) will only pass if
                      the code causes a failure (an assertion failure or fail!)
-    #[ignore]      - When applied to a function which is already attributed as a
+    \#[ignore]      - When applied to a function which is already attributed as a
                      test, then the test runner will ignore these tests during
                      normal test runs. Running with --ignored will run these
-                     tests. This may also be written as #[ignore(cfg(...))] to
-                     ignore the test on certain configurations.");
-    }
+                     tests. This may also be written as \#[ignore(cfg(...))] to
+                     ignore the test on certain configurations.",
+             usage = getopts::usage(message, optgroups().as_slice()));
 }
 
 // Parses command line arguments into test options
@@ -365,14 +363,7 @@ pub fn parse_opts(args: &[StrBuf]) -> Option<OptRes> {
           Err(f) => return Some(Err(f.to_err_msg().to_strbuf()))
         };
 
-    if matches.opt_present("h") {
-        usage(args[0].as_slice(), "h");
-        return None;
-    }
-    if matches.opt_present("help") {
-        usage(args[0].as_slice(), "help");
-        return None;
-    }
+    if matches.opt_present("h") { usage(args[0].as_slice()); return None; }
 
     let filter = if matches.free.len() > 0 {
         let s = matches.free.get(0).as_slice();
