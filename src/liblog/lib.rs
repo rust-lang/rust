@@ -129,6 +129,8 @@ use std::slice;
 
 use sync::one::{Once, ONCE_INIT};
 
+use directive::LOG_LEVEL_NAMES;
+
 pub mod macros;
 mod directive;
 
@@ -162,19 +164,42 @@ local_data_key!(local_logger: ~Logger:Send)
 /// can have its own custom logger which can respond to logging messages
 /// however it likes.
 pub trait Logger {
-    /// Logs a single message described by the `args` structure. The level is
-    /// provided in case you want to do things like color the message, etc.
-    fn log(&mut self, level: u32, args: &fmt::Arguments);
+    /// Logs a single message described by the `record`.
+    fn log(&mut self, record: &LogRecord);
 }
 
 struct DefaultLogger {
     handle: LineBufferedWriter<io::stdio::StdWriter>,
 }
 
+/// Wraps the log level with fmt implementations.
+#[deriving(Eq, Ord)]
+pub struct LogLevel(pub u32);
+
+impl fmt::Show for LogLevel {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        let LogLevel(level) = *self;
+        match LOG_LEVEL_NAMES.get(level as uint - 1) {
+            Some(name) => name.fmt(fmt),
+            None => level.fmt(fmt)
+        }
+    }
+}
+
+impl fmt::Signed for LogLevel {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        let LogLevel(level) = *self;
+        write!(fmt.buf, "{}", level)
+    }
+}
+
 impl Logger for DefaultLogger {
-    // by default, just ignore the level
-    fn log(&mut self, _level: u32, args: &fmt::Arguments) {
-        match fmt::writeln(&mut self.handle, args) {
+    fn log(&mut self, record: &LogRecord) {
+        match write!(&mut self.handle,
+                     "{}:{}: {}",
+                     record.level,
+                     record.module_path,
+                     record.args) {
             Err(e) => fail!("failed to log: {}", e),
             Ok(()) => {}
         }
@@ -198,14 +223,21 @@ impl Drop for DefaultLogger {
 ///
 /// It is not recommended to call this function directly, rather it should be
 /// invoked through the logging family of macros.
-pub fn log(level: u32, args: &fmt::Arguments) {
+#[doc(hidden)]
+pub fn log(level: u32, loc: &'static LogLocation, args: &fmt::Arguments) {
     // Completely remove the local logger from TLS in case anyone attempts to
     // frob the slot while we're doing the logging. This will destroy any logger
     // set during logging.
     let mut logger = local_data::pop(local_logger).unwrap_or_else(|| {
         box DefaultLogger { handle: io::stderr() } as ~Logger:Send
     });
-    logger.log(level, args);
+    logger.log(&LogRecord {
+        level: LogLevel(level),
+        args: args,
+        file: loc.file,
+        module_path: loc.module_path,
+        line: loc.line,
+    });
     local_data::set(local_logger, logger);
 }
 
@@ -221,6 +253,34 @@ pub fn set_logger(logger: ~Logger:Send) -> Option<~Logger:Send> {
     let prev = local_data::pop(local_logger);
     local_data::set(local_logger, logger);
     return prev;
+}
+
+/// A LogRecord is created by the logging macros, and passed as the only
+/// argument to Loggers.
+#[deriving(Show)]
+pub struct LogRecord<'a> {
+
+    /// The module path of where the LogRecord originated.
+    pub module_path: &'a str,
+
+    /// The LogLevel of this record.
+    pub level: LogLevel,
+
+    /// The arguments from the log line.
+    pub args: &'a fmt::Arguments<'a>,
+
+    /// The file of where the LogRecord originated.
+    pub file: &'a str,
+
+    /// The line number of where the LogRecord originated.
+    pub line: uint,
+}
+
+#[doc(hidden)]
+pub struct LogLocation {
+    pub module_path: &'static str,
+    pub file: &'static str,
+    pub line: uint,
 }
 
 /// Tests whether a given module's name is enabled for a particular level of
