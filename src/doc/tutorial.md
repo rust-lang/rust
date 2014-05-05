@@ -468,19 +468,16 @@ Unlike in C, there is no "falling through" between arms: only one arm
 executes, and it doesn't have to explicitly `break` out of the
 construct when it is finished.
 
-A `match` arm consists of a *pattern*, then an arrow `=>`, followed by
-an *action* (expression). Literals are valid patterns and match only
-their own value. A single arm may match multiple different patterns by
-combining them with the pipe operator (`|`), so long as every pattern
-binds the same set of variables. Ranges of numeric literal patterns
-can be expressed with two dots, as in `M..N`. The underscore (`_`) is
-a wildcard pattern that matches any single value. (`..`) is a different
-wildcard that can match one or more fields in an `enum` variant.
-
-The patterns in a match arm are followed by a fat arrow, `=>`, then an
-expression to evaluate. Each case is separated by commas. It's often
-convenient to use a block expression for each case, in which case the
-commas are optional.
+A `match` arm consists of a *pattern*, then a fat arrow `=>`, followed
+by an *action* (expression). Each case is separated by commas. It is
+often convenient to use a block expression for each case, in which case
+the commas are optional as shown below. Literals are valid patterns and
+match only their own value. A single arm may match multiple different
+patterns by combining them with the pipe operator (`|`), so long as every
+pattern binds the same set of variables. Ranges of numeric literal
+patterns can be expressed with two dots, as in `M..N`. The underscore
+(`_`) is a wildcard pattern that matches any single value. (`..`) is a
+different wildcard that can match one or more fields in an `enum` variant.
 
 ~~~
 # let my_number = 1;
@@ -1416,7 +1413,7 @@ contains a point, but allocated in a different location:
 
 ~~~
 # struct Point { x: f64, y: f64 }
-let on_the_stack : Point  =  Point { x: 3.0, y: 4.0 };
+let on_the_stack :  Point =  Point { x: 3.0, y: 4.0 };
 let owned_box    : ~Point = ~Point { x: 7.0, y: 9.0 };
 ~~~
 
@@ -2587,11 +2584,18 @@ for `Eq` and can be used with the equality operators, and that a value
 of type `ABC` can be randomly generated and converted to a string:
 
 ~~~
+extern crate rand;
+
 #[deriving(Eq)]
 struct Circle { radius: f64 }
 
-#[deriving(Clone, Show)]
+#[deriving(Rand, Show)]
 enum ABC { A, B, C }
+
+fn main() {
+    // Use the Show trait to print "A, B, C."
+    println!("{}, {}, {}", A, B, C);
+}
 ~~~
 
 The full list of derivable traits is `Eq`, `TotalEq`, `Ord`,
