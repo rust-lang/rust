@@ -54,7 +54,7 @@ fn main() {
     // Wait for the child process to die (terminate it's stdin and the read
     // should fail).
     drop(p.stdin.take());
-    match p.wait() {
+    match p.wait().unwrap() {
         process::ExitStatus(..) => {}
         process::ExitSignal(..) => fail!()
     }

@@ -54,8 +54,8 @@ fn run_ar(sess: &Session, args: &str, cwd: Option<&Path>,
         cwd: cwd.map(|a| &*a),
         .. ProcessConfig::new()
     }) {
-        Ok(mut prog) => {
-            let o = prog.wait_with_output();
+        Ok(prog) => {
+            let o = prog.wait_with_output().unwrap();
             if !o.status.success() {
                 sess.err(format!("{} {} failed with: {}", ar, args.connect(" "),
                                  o.status));

@@ -23,9 +23,12 @@
 use libc;
 use std::ptr;
 use std::rt::rtio;
+use std::comm;
 
-use io::timer_helper;
+use io::helper_thread::Helper;
 use io::IoResult;
+
+helper_init!(static mut HELPER: Helper<Req>)
 
 pub struct Timer {
     obj: libc::HANDLE,
@@ -35,10 +38,9 @@ pub struct Timer {
 pub enum Req {
     NewTimer(libc::HANDLE, Sender<()>, bool),
     RemoveTimer(libc::HANDLE, Sender<()>),
-    Shutdown,
 }
 
-fn helper(input: libc::HANDLE, messages: Receiver<Req>) {
+fn helper(input: libc::HANDLE, messages: Receiver<Req>, _: ()) {
     let mut objs = vec![input];
     let mut chans = vec![];
 
@@ -67,12 +69,12 @@ fn helper(input: libc::HANDLE, messages: Receiver<Req>) {
                             None => {}
                         }
                     }
-                    Ok(Shutdown) => {
+                    Err(comm::Disconnected) => {
                         assert_eq!(objs.len(), 1);
                         assert_eq!(chans.len(), 0);
                         break 'outer;
                     }
-                    _ => break
+                    Err(..) => break
                 }
             }
         } else {
@@ -102,7 +104,7 @@ pub fn now() -> u64 {
 
 impl Timer {
     pub fn new() -> IoResult<Timer> {
-        timer_helper::boot(helper);
+        unsafe { HELPER.boot(|| {}, helper) }
 
         let obj = unsafe {
             imp::CreateWaitableTimerA(ptr::mut_null(), 0, ptr::null())
@@ -124,7 +126,7 @@ impl Timer {
         if !self.on_worker { return }
 
         let (tx, rx) = channel();
-        timer_helper::send(RemoveTimer(self.obj, tx));
+        unsafe { HELPER.send(RemoveTimer(self.obj, tx)) }
         rx.recv();
 
         self.on_worker = false;
@@ -157,7 +159,7 @@ impl rtio::RtioTimer for Timer {
                                   ptr::mut_null(), 0)
         }, 1);
 
-        timer_helper::send(NewTimer(self.obj, tx, true));
+        unsafe { HELPER.send(NewTimer(self.obj, tx, true)) }
         self.on_worker = true;
         return rx;
     }
@@ -173,7 +175,7 @@ impl rtio::RtioTimer for Timer {
                                   ptr::null(), ptr::mut_null(), 0)
         }, 1);
 
-        timer_helper::send(NewTimer(self.obj, tx, false));
+        unsafe { HELPER.send(NewTimer(self.obj, tx, false)) }
         self.on_worker = true;
 
         return rx;

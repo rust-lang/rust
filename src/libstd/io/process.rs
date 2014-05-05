@@ -10,6 +10,8 @@
 
 //! Bindings for executing child processes
 
+#![allow(experimental)]
+
 use prelude::*;
 
 use fmt;
@@ -50,7 +52,7 @@ use rt::rtio::{RtioProcess, IoFactory, LocalIo};
 /// };
 ///
 /// let contents = child.stdout.get_mut_ref().read_to_end();
-/// assert!(child.wait().success());
+/// assert!(child.wait().unwrap().success());
 /// ```
 pub struct Process {
     handle: Box<RtioProcess:Send>,
@@ -283,7 +285,7 @@ impl Process {
     /// println!("stderr: {}", str::from_utf8_lossy(output.error.as_slice()));
     /// ```
     pub fn output(prog: &str, args: &[~str]) -> IoResult<ProcessOutput> {
-        Process::new(prog, args).map(|mut p| p.wait_with_output())
+        Process::new(prog, args).and_then(|p| p.wait_with_output())
     }
 
     /// Executes a child process and collects its exit status. This will block
@@ -302,7 +304,7 @@ impl Process {
     /// println!("process exited with: {}", status);
     /// ```
     pub fn status(prog: &str, args: &[~str]) -> IoResult<ProcessExit> {
-        Process::new(prog, args).map(|mut p| p.wait())
+        Process::new(prog, args).and_then(|mut p| p.wait())
     }
 
     /// Creates a new process with the specified configuration.
@@ -377,9 +379,59 @@ impl Process {
     /// after it has been called at least once.
     ///
     /// The stdin handle to the child process will be closed before waiting.
-    pub fn wait(&mut self) -> ProcessExit {
+    ///
+    /// # Errors
+    ///
+    /// This function can fail if a timeout was previously specified via
+    /// `set_timeout` and the timeout expires before the child exits.
+    pub fn wait(&mut self) -> IoResult<ProcessExit> {
         drop(self.stdin.take());
         self.handle.wait()
+    }
+
+    /// Sets a timeout, in milliseconds, for future calls to wait().
+    ///
+    /// The argument specified is a relative distance into the future, in
+    /// milliseconds, after which any call to wait() will return immediately
+    /// with a timeout error, and all future calls to wait() will not block.
+    ///
+    /// A value of `None` will clear any previous timeout, and a value of `Some`
+    /// will override any previously set timeout.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # #![allow(experimental)]
+    /// use std::io::process::{Process, ProcessExit};
+    /// use std::io::IoResult;
+    ///
+    /// fn run_gracefully(prog: &str) -> IoResult<ProcessExit> {
+    ///     let mut p = try!(Process::new("long-running-process", []));
+    ///
+    ///     // give the process 10 seconds to finish completely
+    ///     p.set_timeout(Some(10_000));
+    ///     match p.wait() {
+    ///         Ok(status) => return Ok(status),
+    ///         Err(..) => {}
+    ///     }
+    ///
+    ///     // Attempt to exit gracefully, but don't wait for it too long
+    ///     try!(p.signal_exit());
+    ///     p.set_timeout(Some(1_000));
+    ///     match p.wait() {
+    ///         Ok(status) => return Ok(status),
+    ///         Err(..) => {}
+    ///     }
+    ///
+    ///     // Well, we did our best, forcefully kill the process
+    ///     try!(p.signal_kill());
+    ///     p.set_timeout(None);
+    ///     p.wait()
+    /// }
+    /// ```
+    #[experimental = "the type of the timeout is likely to change"]
+    pub fn set_timeout(&mut self, timeout_ms: Option<u64>) {
+        self.handle.set_timeout(timeout_ms)
     }
 
     /// Simultaneously wait for the child to exit and collect all remaining
@@ -387,7 +439,12 @@ impl Process {
     /// instance.
     ///
     /// The stdin handle to the child is closed before waiting.
-    pub fn wait_with_output(&mut self) -> ProcessOutput {
+    ///
+    /// # Errors
+    ///
+    /// This function can fail for any of the same reasons that `wait()` can
+    /// fail.
+    pub fn wait_with_output(mut self) -> IoResult<ProcessOutput> {
         drop(self.stdin.take());
         fn read(stream: Option<io::PipeStream>) -> Receiver<IoResult<Vec<u8>>> {
             let (tx, rx) = channel();
@@ -403,11 +460,13 @@ impl Process {
         let stdout = read(self.stdout.take());
         let stderr = read(self.stderr.take());
 
-        let status = self.wait();
+        let status = try!(self.wait());
 
-        ProcessOutput { status: status,
-                        output: stdout.recv().ok().unwrap_or(Vec::new()),
-                        error:  stderr.recv().ok().unwrap_or(Vec::new()) }
+        Ok(ProcessOutput {
+            status: status,
+            output: stdout.recv().ok().unwrap_or(Vec::new()),
+            error:  stderr.recv().ok().unwrap_or(Vec::new()),
+        })
     }
 }
 
@@ -420,7 +479,8 @@ impl Drop for Process {
         drop(self.stderr.take());
         drop(mem::replace(&mut self.extra_io, Vec::new()));
 
-        self.wait();
+        self.set_timeout(None);
+        let _ = self.wait().unwrap();
     }
 }
 
@@ -440,7 +500,7 @@ mod tests {
         let p = Process::configure(args);
         assert!(p.is_ok());
         let mut p = p.unwrap();
-        assert!(p.wait().success());
+        assert!(p.wait().unwrap().success());
     })
 
     #[cfg(not(target_os="android"))]
@@ -464,7 +524,7 @@ mod tests {
         let p = Process::configure(args);
         assert!(p.is_ok());
         let mut p = p.unwrap();
-        assert!(p.wait().matches_exit_status(1));
+        assert!(p.wait().unwrap().matches_exit_status(1));
         drop(p.wait().clone());
     })
 
@@ -478,7 +538,7 @@ mod tests {
         let p = Process::configure(args);
         assert!(p.is_ok());
         let mut p = p.unwrap();
-        match p.wait() {
+        match p.wait().unwrap() {
             process::ExitSignal(1) => {},
             result => fail!("not terminated by signal 1 (instead, {})", result),
         }
@@ -494,7 +554,7 @@ mod tests {
         let mut p = p.unwrap();
         assert!(p.stdout.is_some());
         let ret = read_all(p.stdout.get_mut_ref() as &mut Reader);
-        assert!(p.wait().success());
+        assert!(p.wait().unwrap().success());
         return ret;
     }
 
@@ -535,7 +595,7 @@ mod tests {
         p.stdin.get_mut_ref().write("foobar".as_bytes()).unwrap();
         drop(p.stdin.take());
         let out = read_all(p.stdout.get_mut_ref() as &mut Reader);
-        assert!(p.wait().success());
+        assert!(p.wait().unwrap().success());
         assert_eq!(out, "foobar\n".to_owned());
     })
 
@@ -547,7 +607,7 @@ mod tests {
             .. ProcessConfig::new()
         };
         let mut p = Process::configure(args).unwrap();
-        assert!(p.wait().success());
+        assert!(p.wait().unwrap().success());
     })
 
     #[cfg(windows)]
@@ -571,7 +631,7 @@ mod tests {
             .. ProcessConfig::new()
         };
         let mut p = Process::configure(args).unwrap();
-        assert!(p.wait().success());
+        assert!(p.wait().unwrap().success());
     })
 
     #[cfg(unix, not(target_os="android"))]
@@ -634,49 +694,25 @@ mod tests {
     #[cfg(not(target_os="android"))]
     iotest!(fn test_finish_once() {
         let mut prog = Process::new("false", []).unwrap();
-        assert!(prog.wait().matches_exit_status(1));
+        assert!(prog.wait().unwrap().matches_exit_status(1));
     })
 
     #[cfg(not(target_os="android"))]
     iotest!(fn test_finish_twice() {
         let mut prog = Process::new("false", []).unwrap();
-        assert!(prog.wait().matches_exit_status(1));
-        assert!(prog.wait().matches_exit_status(1));
+        assert!(prog.wait().unwrap().matches_exit_status(1));
+        assert!(prog.wait().unwrap().matches_exit_status(1));
     })
 
     #[cfg(not(target_os="android"))]
     iotest!(fn test_wait_with_output_once() {
 
-        let mut prog = Process::new("echo", ["hello".to_owned()]).unwrap();
-        let ProcessOutput {status, output, error} = prog.wait_with_output();
+        let prog = Process::new("echo", ["hello".to_owned()]).unwrap();
+        let ProcessOutput {status, output, error} = prog.wait_with_output().unwrap();
         let output_str = str::from_utf8(output.as_slice()).unwrap();
 
         assert!(status.success());
         assert_eq!(output_str.trim().to_owned(), "hello".to_owned());
-        // FIXME #7224
-        if !running_on_valgrind() {
-            assert_eq!(error, Vec::new());
-        }
-    })
-
-    #[cfg(not(target_os="android"))]
-    iotest!(fn test_wait_with_output_twice() {
-        let mut prog = Process::new("echo", ["hello".to_owned()]).unwrap();
-        let ProcessOutput {status, output, error} = prog.wait_with_output();
-
-        let output_str = str::from_utf8(output.as_slice()).unwrap();
-
-        assert!(status.success());
-        assert_eq!(output_str.trim().to_owned(), "hello".to_owned());
-        // FIXME #7224
-        if !running_on_valgrind() {
-            assert_eq!(error, Vec::new());
-        }
-
-        let ProcessOutput {status, output, error} = prog.wait_with_output();
-
-        assert!(status.success());
-        assert_eq!(output, Vec::new());
         // FIXME #7224
         if !running_on_valgrind() {
             assert_eq!(error, Vec::new());
@@ -713,9 +749,10 @@ mod tests {
 
     iotest!(fn test_keep_current_working_dir() {
         use os;
-        let mut prog = run_pwd(None);
+        let prog = run_pwd(None);
 
-        let output = str::from_utf8(prog.wait_with_output().output.as_slice()).unwrap().to_owned();
+        let output = str::from_utf8(prog.wait_with_output().unwrap()
+                                        .output.as_slice()).unwrap().to_owned();
         let parent_dir = os::getcwd();
         let child_dir = Path::new(output.trim());
 
@@ -731,9 +768,10 @@ mod tests {
         // test changing to the parent of os::getcwd() because we know
         // the path exists (and os::getcwd() is not expected to be root)
         let parent_dir = os::getcwd().dir_path();
-        let mut prog = run_pwd(Some(&parent_dir));
+        let prog = run_pwd(Some(&parent_dir));
 
-        let output = str::from_utf8(prog.wait_with_output().output.as_slice()).unwrap().to_owned();
+        let output = str::from_utf8(prog.wait_with_output().unwrap()
+                                        .output.as_slice()).unwrap().to_owned();
         let child_dir = Path::new(output.trim());
 
         let parent_stat = parent_dir.stat().unwrap();
@@ -776,8 +814,9 @@ mod tests {
         use os;
         if running_on_valgrind() { return; }
 
-        let mut prog = run_env(None);
-        let output = str::from_utf8(prog.wait_with_output().output.as_slice()).unwrap().to_owned();
+        let prog = run_env(None);
+        let output = str::from_utf8(prog.wait_with_output().unwrap()
+                                        .output.as_slice()).unwrap().to_owned();
 
         let r = os::env();
         for &(ref k, ref v) in r.iter() {
@@ -790,8 +829,10 @@ mod tests {
         use os;
         if running_on_valgrind() { return; }
 
-        let mut prog = run_env(None);
-        let output = str::from_utf8(prog.wait_with_output().output.as_slice()).unwrap().to_owned();
+        let prog = run_env(None);
+        let output = str::from_utf8(prog.wait_with_output()
+                                        .unwrap().output.as_slice())
+                                   .unwrap().to_owned();
 
         let r = os::env();
         for &(ref k, ref v) in r.iter() {
@@ -806,8 +847,8 @@ mod tests {
     iotest!(fn test_add_to_env() {
         let new_env = box [("RUN_TEST_NEW_ENV".to_owned(), "123".to_owned())];
 
-        let mut prog = run_env(Some(new_env));
-        let result = prog.wait_with_output();
+        let prog = run_env(Some(new_env));
+        let result = prog.wait_with_output().unwrap();
         let output = str::from_utf8_lossy(result.output.as_slice()).into_owned();
 
         assert!(output.contains("RUN_TEST_NEW_ENV=123"),
@@ -829,14 +870,14 @@ mod tests {
     iotest!(fn test_kill() {
         let mut p = sleeper();
         Process::kill(p.id(), PleaseExitSignal).unwrap();
-        assert!(!p.wait().success());
+        assert!(!p.wait().unwrap().success());
     })
 
     iotest!(fn test_exists() {
         let mut p = sleeper();
         assert!(Process::kill(p.id(), 0).is_ok());
         p.signal_kill().unwrap();
-        assert!(!p.wait().success());
+        assert!(!p.wait().unwrap().success());
     })
 
     iotest!(fn test_zero() {
@@ -844,11 +885,42 @@ mod tests {
         p.signal_kill().unwrap();
         for _ in range(0, 20) {
             if p.signal(0).is_err() {
-                assert!(!p.wait().success());
+                assert!(!p.wait().unwrap().success());
                 return
             }
             timer::sleep(100);
         }
         fail!("never saw the child go away");
+    })
+
+    iotest!(fn wait_timeout() {
+        let mut p = sleeper();
+        p.set_timeout(Some(10));
+        assert_eq!(p.wait().err().unwrap().kind, TimedOut);
+        assert_eq!(p.wait().err().unwrap().kind, TimedOut);
+        p.signal_kill().unwrap();
+        p.set_timeout(None);
+        assert!(p.wait().is_ok());
+    })
+
+    iotest!(fn wait_timeout2() {
+        let (tx, rx) = channel();
+        let tx2 = tx.clone();
+        spawn(proc() {
+            let mut p = sleeper();
+            p.set_timeout(Some(10));
+            assert_eq!(p.wait().err().unwrap().kind, TimedOut);
+            p.signal_kill().unwrap();
+            tx.send(());
+        });
+        spawn(proc() {
+            let mut p = sleeper();
+            p.set_timeout(Some(10));
+            assert_eq!(p.wait().err().unwrap().kind, TimedOut);
+            p.signal_kill().unwrap();
+            tx2.send(());
+        });
+        rx.recv();
+        rx.recv();
     })
 }

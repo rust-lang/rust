@@ -1725,6 +1725,7 @@ impl<'a> StrSlice<'a> for &'a str {
     #[inline]
     fn is_char_boundary(&self, index: uint) -> bool {
         if index == self.len() { return true; }
+        if index > self.len() { return false; }
         let b = self[index];
         return b < 128u8 || b >= 192u8;
     }
