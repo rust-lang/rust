@@ -53,7 +53,7 @@ fn fannkuch(n: uint, i: uint) -> (int, int) {
 }
 
 fn main() {
-    let n = std::os::args().get(1).and_then(|arg| from_str(*arg)).unwrap_or(2u);
+    let n = std::os::args().as_slice().get(1).and_then(|arg| from_str(*arg)).unwrap_or(2u);
 
     let (tx, rx) = channel();
     for i in range(0, n) {

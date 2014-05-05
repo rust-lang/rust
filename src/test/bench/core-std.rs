@@ -24,7 +24,7 @@ use std::vec;
 use std::io::File;
 
 macro_rules! bench (
-    ($argv:expr, $id:ident) => (maybe_run_test($argv, stringify!($id).to_owned(), $id))
+    ($argv:expr, $id:ident) => (maybe_run_test($argv.as_slice(), stringify!($id).to_owned(), $id))
 )
 
 fn main() {

@@ -40,6 +40,7 @@ fn bottom_up_tree<'r>(arena: &'r TypedArena<Tree<'r>>, item: int, depth: int)
 
 fn main() {
     let args = std::os::args();
+    let args = args.as_slice();
     let n = if std::os::getenv("RUST_BENCH").is_some() {
         17
     } else if args.len() <= 1u {
