@@ -1,3 +1,5 @@
+// Do not compile anything here for iOS
+#if !defined(__APPLE__)
 // Mark stack as non-executable
 #if defined(__linux__) && defined(__ELF__)
 .section	.note.GNU-stack, "", %progbits
@@ -6,16 +8,15 @@
 .text
 .code 32
 .arm
-#if defined(__APPLE__)
-.align 2
-#else
 .align
-#endif
 
-.globl record_sp_limit
-.globl get_sp_limit
+#define RECORD_SP_LIMIT record_sp_limit
+#define GET_SP_LIMIT    get_sp_limit
 
-record_sp_limit:
+.globl 	RECORD_SP_LIMIT
+.globl	GET_SP_LIMIT
+
+RECORD_SP_LIMIT:
 	// First, try to read TLS address from coprocessor
 	mrc p15, #0, r3, c13, c0, #3
 	cmp r3, #0
@@ -27,12 +28,12 @@ record_sp_limit:
 	add r3, r3, #252
 #elif __linux__
 	add r3, r3, #4
-#endif
+#endif // ANDROID
 
 	str r0, [r3]
 	mov pc, lr
 
-get_sp_limit:
+GET_SP_LIMIT:
 	// First, try to read TLS address from coprocessor
 	mrc p15, #0, r3, c13, c0, #3
 	cmp r3, #0
@@ -44,7 +45,8 @@ get_sp_limit:
 	add r3, r3, #252
 #elif __linux__
 	add r3, r3, #4
-#endif
+#endif  // __ANDROID__
 
 	ldr r0, [r3]
 	mov pc, lr
+#endif
