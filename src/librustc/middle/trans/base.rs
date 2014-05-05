@@ -186,8 +186,6 @@ fn decl_fn(llmod: ModuleRef, name: &str, cc: lib::llvm::CallConv,
             }
         }
         // `~` pointer return values never alias because ownership is transferred
-        // FIXME #6750 ~Trait cannot be directly marked as
-        // noalias because the actual object pointer is nested.
         ty::ty_uniq(..) // | ty::ty_trait(_, _, ty::UniqTraitStore, _, _)
          => {
             unsafe {
@@ -258,23 +256,25 @@ pub fn decl_rust_fn(ccx: &CrateContext, has_env: bool,
         let llarg = unsafe { llvm::LLVMGetParam(llfn, (offset + i) as c_uint) };
         match ty::get(arg_ty).sty {
             // `~` pointer parameters never alias because ownership is transferred
-            // FIXME #6750 ~Trait cannot be directly marked as
-            // noalias because the actual object pointer is nested.
-            ty::ty_uniq(..) | // ty::ty_trait(_, _, ty::UniqTraitStore, _, _) |
-            ty::ty_closure(~ty::ClosureTy {store: ty::UniqTraitStore, ..}) => {
+            ty::ty_uniq(..) => {
                 unsafe {
                     llvm::LLVMAddAttribute(llarg, lib::llvm::NoAliasAttribute as c_uint);
                 }
-            },
-            // When a reference in an argument has no named lifetime, it's
-            // impossible for that reference to escape this function(ie, be
-            // returned).
+            }
+            // `&mut` pointer parameters never alias other parameters, or mutable global data
+            ty::ty_rptr(_, mt) if mt.mutbl == ast::MutMutable => {
+                unsafe {
+                    llvm::LLVMAddAttribute(llarg, lib::llvm::NoAliasAttribute as c_uint);
+                }
+            }
+            // When a reference in an argument has no named lifetime, it's impossible for that
+            // reference to escape this function (returned or stored beyond the call by a closure).
             ty::ty_rptr(ReLateBound(_, BrAnon(_)), _) => {
                 debug!("marking argument of {} as nocapture because of anonymous lifetime", name);
                 unsafe {
                     llvm::LLVMAddAttribute(llarg, lib::llvm::NoCaptureAttribute as c_uint);
                 }
-            },
+            }
             _ => {
                 // For non-immediate arguments the callee gets its own copy of
                 // the value on the stack, so there are no aliases
