@@ -37,6 +37,7 @@
 
 extern crate collections;
 extern crate getopts;
+extern crate regex;
 extern crate serialize;
 extern crate term;
 extern crate time;
@@ -45,6 +46,7 @@ use collections::TreeMap;
 use stats::Stats;
 use time::precise_time_ns;
 use getopts::{OptGroup, optflag, optopt};
+use regex::Regex;
 use serialize::{json, Decodable};
 use serialize::json::{Json, ToJson};
 use term::Terminal;
@@ -263,7 +265,7 @@ pub fn test_main_static_x(args: &[~str], tests: &[TestDescAndFn]) {
 }
 
 pub struct TestOpts {
-    pub filter: Option<StrBuf>,
+    pub filter: Option<Regex>,
     pub run_ignored: bool,
     pub run_tests: bool,
     pub run_benchmarks: bool,
@@ -324,8 +326,8 @@ fn usage(binary: &str, helpstr: &str) {
     println!("");
     if helpstr == "help" {
         println!("{}", "\
-The FILTER is matched against the name of all tests to run, and if any tests
-have a substring match, only those tests are run.
+The FILTER regex is matched against the name of all tests to run, and
+only those tests that match are run.
 
 By default, all tests are run in parallel. This can be altered with the
 RUST_TEST_TASKS environment variable when running tests (set it to 1).
@@ -372,12 +374,15 @@ pub fn parse_opts(args: &[StrBuf]) -> Option<OptRes> {
         return None;
     }
 
-    let filter =
-        if matches.free.len() > 0 {
-            Some((*matches.free.get(0)).to_strbuf())
-        } else {
-            None
-        };
+    let filter = if matches.free.len() > 0 {
+        let s = matches.free.get(0).as_slice();
+        match Regex::new(s) {
+            Ok(re) => Some(re),
+            Err(e) => return Some(Err(format_strbuf!("could not parse /{}/: {}", s, e)))
+        }
+    } else {
+        None
+    };
 
     let run_ignored = matches.opt_present("ignored");
 
@@ -945,26 +950,12 @@ pub fn filter_tests(
     let mut filtered = tests;
 
     // Remove tests that don't match the test filter
-    filtered = if opts.filter.is_none() {
-        filtered
-    } else {
-        let filter_str = match opts.filter {
-          Some(ref f) => (*f).clone(),
-          None => "".to_strbuf()
-        };
-
-        fn filter_fn(test: TestDescAndFn, filter_str: &str) ->
-            Option<TestDescAndFn> {
-            if test.desc.name.to_str().contains(filter_str) {
-                return Some(test);
-            } else {
-                return None;
-            }
+    filtered = match opts.filter {
+        None => filtered,
+        Some(ref re) => {
+            filtered.move_iter()
+                .filter(|test| re.is_match(test.desc.name.as_slice())).collect()
         }
-
-        filtered.move_iter()
-                .filter_map(|x| filter_fn(x, filter_str.as_slice()))
-                .collect()
     };
 
     // Maybe pull out the ignored test and unignore them
@@ -1451,12 +1442,12 @@ mod tests {
 
     #[test]
     fn first_free_arg_should_be_a_filter() {
-        let args = vec!("progname".to_strbuf(), "filter".to_strbuf());
+        let args = vec!("progname".to_strbuf(), "some_regex_filter".to_strbuf());
         let opts = match parse_opts(args.as_slice()) {
             Some(Ok(o)) => o,
             _ => fail!("Malformed arg in first_free_arg_should_be_a_filter")
         };
-        assert!("filter" == opts.filter.clone().unwrap().as_slice());
+        assert!(opts.filter.expect("should've found filter").is_match("some_regex_filter"))
     }
 
     #[test]
@@ -1552,6 +1543,37 @@ mod tests {
 
         for (a, b) in expected.iter().zip(filtered.iter()) {
             assert!(*a == b.desc.name.to_str().to_strbuf());
+        }
+    }
+
+    #[test]
+    pub fn filter_tests_regex() {
+        let mut opts = TestOpts::new();
+        opts.filter = Some(::regex::Regex::new("a.*b.+c").unwrap());
+
+        let mut names = ["yes::abXc", "yes::aXXXbXXXXc",
+                         "no::XYZ", "no::abc"];
+        names.sort();
+
+        fn test_fn() {}
+        let tests = names.iter().map(|name| {
+            TestDescAndFn {
+                desc: TestDesc {
+                    name: DynTestName(name.to_strbuf()),
+                    ignore: false,
+                    should_fail: false
+                },
+                testfn: DynTestFn(test_fn)
+            }
+        }).collect();
+        let filtered = filter_tests(&opts, tests);
+
+        let expected: Vec<&str> =
+            names.iter().map(|&s| s).filter(|name| name.starts_with("yes")).collect();
+
+        assert_eq!(filtered.len(), expected.len());
+        for (test, expected_name) in filtered.iter().zip(expected.iter()) {
+            assert_eq!(test.desc.name.as_slice(), *expected_name);
         }
     }
 

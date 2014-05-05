@@ -90,10 +90,15 @@ fn test_out_of_bounds_failure() {
 ~~~
 
 A test runner built with the `--test` flag supports a limited set of
-arguments to control which tests are run: the first free argument
-passed to a test runner specifies a filter used to narrow down the set
-of tests being run; the `--ignored` flag tells the test runner to run
-only tests with the `ignore` attribute.
+arguments to control which tests are run:
+
+- the first free argument passed to a test runner is interpreted as a
+  regular expression
+  ([syntax reference](regex/index.html#syntax))
+  and is used to narrow down the set of tests being run. Note: a plain
+  string is a valid regular expression that matches itself.
+- the `--ignored` flag tells the test runner to run only tests with the
+  `ignore` attribute.
 
 ## Parallelism
 
@@ -146,16 +151,31 @@ result: FAILED. 1 passed; 1 failed; 0 ignored
 
 ### Running a subset of tests
 
-~~~ {.notrust}
-$ mytests mytest1
+Using a plain string:
 
-running 11 tests
+~~~ {.notrust}
+$ mytests mytest23
+
+running 1 tests
+running driver::tests::mytest23 ... ok
+
+result: ok. 1 passed; 0 failed; 0 ignored
+~~~
+
+Using some regular expression features:
+
+~~~ {.notrust}
+$ mytests 'mytest[145]'
+
+running 13 tests
 running driver::tests::mytest1 ... ok
+running driver::tests::mytest4 ... ok
+running driver::tests::mytest5 ... ok
 running driver::tests::mytest10 ... ignored
 ... snip ...
 running driver::tests::mytest19 ... ok
 
-result: ok. 11 passed; 0 failed; 1 ignored
+result: ok. 13 passed; 0 failed; 1 ignored
 ~~~
 
 # Microbenchmarking
