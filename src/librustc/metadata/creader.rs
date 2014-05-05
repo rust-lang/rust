@@ -215,7 +215,8 @@ fn visit_item(e: &Env, i: &ast::Item) {
                             Some(k) => {
                                 if k.equiv(&("static")) {
                                     cstore::NativeStatic
-                                } else if e.sess.targ_cfg.os == abi::OsMacos &&
+                                } else if (e.sess.targ_cfg.os == abi::OsMacos ||
+                                           e.sess.targ_cfg.os == abi::OsiOS) &&
                                           k.equiv(&("framework")) {
                                     cstore::NativeFramework
                                 } else if k.equiv(&("framework")) {

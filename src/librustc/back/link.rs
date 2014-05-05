@@ -114,6 +114,13 @@ pub mod write {
     // which are *far* more efficient. This is obviously undesirable in some
     // cases, so if any sort of target feature is specified we don't append v7
     // to the feature list.
+    //
+    // On iOS only armv7 and newer are supported. So it is useful to
+    // get all hardware potential via VFP3 (hardware floating point)
+    // and NEON (SIMD) instructions supported by LLVM.
+    // Note that without those flags various linking errors might
+    // arise as some of intrinsicts are converted into function calls
+    // and nobody provides implementations those functions
     fn target_feature<'a>(sess: &'a Session) -> &'a str {
         match sess.targ_cfg.os {
             abi::OsAndroid => {
@@ -122,7 +129,10 @@ pub mod write {
                 } else {
                     sess.opts.cg.target_feature.as_slice()
                 }
-            }
+            },
+            abi::OsiOS if sess.targ_cfg.arch == abi::Arm => {
+                "+v7,+thumb2,+vfp3,+neon"
+            },
             _ => sess.opts.cg.target_feature.as_slice()
         }
     }
@@ -827,15 +837,23 @@ pub fn filename_for_input(sess: &Session, crate_type: config::CrateType,
             out_filename.with_filename(format!("lib{}.rlib", libname))
         }
         config::CrateTypeDylib => {
-            let (prefix, suffix) = match sess.targ_cfg.os {
-                abi::OsWin32 => (loader::WIN32_DLL_PREFIX, loader::WIN32_DLL_SUFFIX),
-                abi::OsMacos => (loader::MACOS_DLL_PREFIX, loader::MACOS_DLL_SUFFIX),
-                abi::OsLinux => (loader::LINUX_DLL_PREFIX, loader::LINUX_DLL_SUFFIX),
-                abi::OsAndroid => (loader::ANDROID_DLL_PREFIX, loader::ANDROID_DLL_SUFFIX),
-                abi::OsFreebsd => (loader::FREEBSD_DLL_PREFIX, loader::FREEBSD_DLL_SUFFIX),
-            };
-            out_filename.with_filename(format!("{}{}{}", prefix, libname,
-                                               suffix))
+            // There is no support of DyLibs on iOS
+            if sess.targ_cfg.os == abi::OsiOS {
+                out_filename.with_filename(format!("lib{}.a", libname))
+            } else {
+                let (prefix, suffix) = match sess.targ_cfg.os {
+                    abi::OsWin32 => (loader::WIN32_DLL_PREFIX, loader::WIN32_DLL_SUFFIX),
+                    abi::OsMacos => (loader::MACOS_DLL_PREFIX, loader::MACOS_DLL_SUFFIX),
+                    abi::OsLinux => (loader::LINUX_DLL_PREFIX, loader::LINUX_DLL_SUFFIX),
+                    abi::OsAndroid => (loader::ANDROID_DLL_PREFIX, loader::ANDROID_DLL_SUFFIX),
+                    abi::OsFreebsd => (loader::FREEBSD_DLL_PREFIX, loader::FREEBSD_DLL_SUFFIX),
+                    abi::OsiOS => unreachable!(),
+                };
+                out_filename.with_filename(format!("{}{}{}",
+                                                   prefix,
+                                                   libname,
+                                                   suffix))
+            }
         }
         config::CrateTypeStaticlib => {
             out_filename.with_filename(format!("lib{}.a", libname))
@@ -886,7 +904,14 @@ fn link_binary_output(sess: &Session,
             link_natively(sess, trans, false, &obj_filename, &out_filename);
         }
         config::CrateTypeDylib => {
-            link_natively(sess, trans, true, &obj_filename, &out_filename);
+            if sess.targ_cfg.os == abi::OsiOS {
+                sess.warn(format!("No dylib for iOS -> saving static library {} to {}",
+                                  obj_filename.display(), out_filename.display()).as_slice());
+                link_staticlib(sess, &obj_filename, &out_filename);
+            }
+            else {
+                link_natively(sess, trans, true, &obj_filename, &out_filename);
+            }
         }
     }
 
@@ -991,7 +1016,7 @@ fn link_rlib<'a>(sess: &'a Session,
             // symbol table of the archive. This currently dies on OSX (see
             // #11162), and isn't necessary there anyway
             match sess.targ_cfg.os {
-                abi::OsMacos => {}
+                abi::OsMacos | abi::OsiOS => {}
                 _ => { a.update_symbols(); }
             }
         }
@@ -1104,15 +1129,16 @@ fn link_natively(sess: &Session, trans: &CrateTranslation, dylib: bool,
 
     // On OSX, debuggers need this utility to get run to do some munging of
     // the symbols
-    if sess.targ_cfg.os == abi::OsMacos && (sess.opts.debuginfo != NoDebugInfo) {
-        match Command::new("dsymutil").arg(out_filename).status() {
-            Ok(..) => {}
-            Err(e) => {
-                sess.err(format!("failed to run dsymutil: {}", e).as_slice());
-                sess.abort_if_errors();
+    if (sess.targ_cfg.os == abi::OsMacos || sess.targ_cfg.os == abi::OsiOS)
+        && (sess.opts.debuginfo != NoDebugInfo) {
+            match Command::new("dsymutil").arg(out_filename).status() {
+                Ok(..) => {}
+                Err(e) => {
+                    sess.err(format!("failed to run dsymutil: {}", e).as_slice());
+                    sess.abort_if_errors();
+                }
             }
         }
-    }
 }
 
 fn link_args(cmd: &mut Command,
@@ -1169,7 +1195,7 @@ fn link_args(cmd: &mut Command,
     // already done the best it can do, and we also don't want to eliminate the
     // metadata. If we're building an executable, however, --gc-sections drops
     // the size of hello world from 1.8MB to 597K, a 67% reduction.
-    if !dylib && sess.targ_cfg.os != abi::OsMacos {
+    if !dylib && sess.targ_cfg.os != abi::OsMacos && sess.targ_cfg.os != abi::OsiOS {
         cmd.arg("-Wl,--gc-sections");
     }
 
@@ -1185,7 +1211,7 @@ fn link_args(cmd: &mut Command,
            sess.opts.optimize == config::Aggressive {
             cmd.arg("-Wl,-O1");
         }
-    } else if sess.targ_cfg.os == abi::OsMacos {
+    } else if sess.targ_cfg.os == abi::OsMacos || sess.targ_cfg.os == abi::OsiOS {
         // The dead_strip option to the linker specifies that functions and data
         // unreachable by the entry point will be removed. This is quite useful
         // with Rust's compilation model of compiling libraries at a time into
@@ -1348,7 +1374,7 @@ fn add_local_native_libraries(cmd: &mut Command, sess: &Session) {
     // For those that support this, we ensure we pass the option if the library
     // was flagged "static" (most defaults are dynamic) to ensure that if
     // libfoo.a and libfoo.so both exist that the right one is chosen.
-    let takes_hints = sess.targ_cfg.os != abi::OsMacos;
+    let takes_hints = sess.targ_cfg.os != abi::OsMacos && sess.targ_cfg.os != abi::OsiOS;
 
     for &(ref l, kind) in sess.cstore.get_used_libraries().borrow().iter() {
         match kind {

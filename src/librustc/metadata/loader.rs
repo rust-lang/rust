@@ -39,6 +39,9 @@ use time;
 pub static MACOS_DLL_PREFIX: &'static str = "lib";
 pub static MACOS_DLL_SUFFIX: &'static str = ".dylib";
 
+pub static IOS_DLL_PREFIX: &'static str = "lib";
+pub static IOS_DLL_SUFFIX: &'static str = ".dylib";
+
 pub static WIN32_DLL_PREFIX: &'static str = "";
 pub static WIN32_DLL_SUFFIX: &'static str = ".dll";
 
@@ -56,7 +59,8 @@ pub enum Os {
     OsWin32,
     OsLinux,
     OsAndroid,
-    OsFreebsd
+    OsFreebsd,
+    OsiOS
 }
 
 pub struct CrateMismatch {
@@ -455,6 +459,7 @@ impl<'a> Context<'a> {
             OsLinux => (LINUX_DLL_PREFIX, LINUX_DLL_SUFFIX),
             OsAndroid => (ANDROID_DLL_PREFIX, ANDROID_DLL_SUFFIX),
             OsFreebsd => (FREEBSD_DLL_PREFIX, FREEBSD_DLL_SUFFIX),
+            OsiOS => (IOS_DLL_PREFIX, IOS_DLL_SUFFIX),
         }
     }
 
@@ -593,6 +598,7 @@ fn get_metadata_section_imp(os: Os, filename: &Path) -> Result<MetadataBlob, Str
 pub fn meta_section_name(os: Os) -> &'static str {
     match os {
         OsMacos => "__DATA,__note.rustc",
+        OsiOS => "__DATA,__note.rustc",
         OsWin32 => ".note.rustc",
         OsLinux => ".note.rustc",
         OsAndroid => ".note.rustc",
@@ -603,6 +609,7 @@ pub fn meta_section_name(os: Os) -> &'static str {
 pub fn read_meta_section_name(os: Os) -> &'static str {
     match os {
         OsMacos => "__note.rustc",
+        OsiOS => "__note.rustc",
         OsWin32 => ".note.rustc",
         OsLinux => ".note.rustc",
         OsAndroid => ".note.rustc",

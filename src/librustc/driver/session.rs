@@ -249,4 +249,3 @@ pub fn expect<T:Clone>(sess: &Session, opt: Option<T>, msg: || -> String)
               -> T {
     diagnostic::expect(sess.diagnostic(), opt, msg)
 }
-

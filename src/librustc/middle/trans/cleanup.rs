@@ -680,7 +680,7 @@ impl<'a> CleanupHelperMethods<'a> for FunctionContext<'a> {
                     Some(llpersonality) => llpersonality,
                     None => {
                         let fty = Type::variadic_func(&[], &Type::i32(self.ccx));
-                        let f = base::decl_cdecl_fn(self.ccx.llmod,
+                        let f = base::decl_cdecl_fn(self.ccx,
                                                     "rust_eh_personality",
                                                     fty,
                                                     ty::mk_i32());

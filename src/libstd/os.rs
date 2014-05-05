@@ -552,6 +552,7 @@ pub fn pipe() -> Pipe {
 
 /// Returns the proper dll filename for the given basename of a file
 /// as a String.
+#[cfg(not(target_os="ios"))]
 pub fn dll_filename(base: &str) -> String {
     format!("{}{}{}", consts::DLL_PREFIX, base, consts::DLL_SUFFIX)
 }
@@ -608,6 +609,7 @@ pub fn self_exe_name() -> Option<Path> {
     }
 
     #[cfg(target_os = "macos")]
+    #[cfg(target_os = "ios")]
     fn load_self() -> Option<Vec<u8>> {
         unsafe {
             use libc::funcs::extra::_NSGetExecutablePath;
@@ -802,6 +804,7 @@ pub fn change_dir(p: &Path) -> bool {
 /// Returns the platform-specific value of errno
 pub fn errno() -> int {
     #[cfg(target_os = "macos")]
+    #[cfg(target_os = "ios")]
     #[cfg(target_os = "freebsd")]
     fn errno_location() -> *c_int {
         extern {
@@ -850,6 +853,7 @@ pub fn error_string(errnum: uint) -> String {
     #[cfg(unix)]
     fn strerror(errnum: uint) -> String {
         #[cfg(target_os = "macos")]
+        #[cfg(target_os = "ios")]
         #[cfg(target_os = "android")]
         #[cfg(target_os = "freebsd")]
         fn strerror_r(errnum: c_int, buf: *mut c_char, buflen: libc::size_t)
@@ -993,6 +997,64 @@ fn real_args_as_bytes() -> Vec<Vec<u8>> {
                             *_NSGetArgv() as **c_char);
         load_argc_and_argv(argc, argv)
     }
+}
+
+// As _NSGetArgc and _NSGetArgv aren't mentioned in iOS docs
+// and use underscores in their names - they're most probably
+// are considered private and therefore should be avoided
+// Here is another way to get arguments using Objective C
+// runtime
+//
+// In general it looks like:
+// res = Vec::new()
+// let args = [[NSProcessInfo processInfo] arguments]
+// for i in range(0, [args count])
+//      res.push([args objectAtIndex:i])
+// res
+#[cfg(target_os = "ios")]
+fn real_args_as_bytes() -> Vec<Vec<u8>> {
+    use c_str::CString;
+    use iter::range;
+    use mem;
+
+    #[link(name = "objc")]
+    extern {
+        fn sel_registerName(name: *libc::c_uchar) -> Sel;
+        fn objc_msgSend(obj: NsId, sel: Sel, ...) -> NsId;
+        fn objc_getClass(class_name: *libc::c_uchar) -> NsId;
+    }
+
+    #[link(name = "Foundation", kind = "framework")]
+    extern {}
+
+    type Sel = *libc::c_void;
+    type NsId = *libc::c_void;
+
+    let mut res = Vec::new();
+
+    unsafe {
+        let processInfoSel = sel_registerName("processInfo\0".as_ptr());
+        let argumentsSel = sel_registerName("arguments\0".as_ptr());
+        let utf8Sel = sel_registerName("UTF8String\0".as_ptr());
+        let countSel = sel_registerName("count\0".as_ptr());
+        let objectAtSel = sel_registerName("objectAtIndex:\0".as_ptr());
+
+        let klass = objc_getClass("NSProcessInfo\0".as_ptr());
+        let info = objc_msgSend(klass, processInfoSel);
+        let args = objc_msgSend(info, argumentsSel);
+
+        let cnt: int = mem::transmute(objc_msgSend(args, countSel));
+        for i in range(0, cnt) {
+            let tmp = objc_msgSend(args, objectAtSel, i);
+            let utf_c_str: *libc::c_char = mem::transmute(objc_msgSend(tmp, utf8Sel));
+            let s = CString::new(utf_c_str, false);
+            if s.is_not_null() {
+                res.push(Vec::from_slice(s.as_bytes_no_nul()))
+            }
+        }
+    }
+
+    res
 }
 
 #[cfg(target_os = "linux")]
@@ -1522,6 +1584,25 @@ pub mod consts {
     /// Specifies the file extension used for shared libraries on this
     /// platform that goes after the dot: in this case, `dylib`.
     pub static DLL_EXTENSION: &'static str = "dylib";
+
+    /// Specifies the filename suffix used for executable binaries on this
+    /// platform: in this case, the empty string.
+    pub static EXE_SUFFIX: &'static str = "";
+
+    /// Specifies the file extension, if any, used for executable binaries
+    /// on this platform: in this case, the empty string.
+    pub static EXE_EXTENSION: &'static str = "";
+}
+
+#[cfg(target_os = "ios")]
+pub mod consts {
+    pub use os::arch_consts::ARCH;
+
+    pub static FAMILY: &'static str = "unix";
+
+    /// A string describing the specific operating system in use: in this
+    /// case, `ios`.
+    pub static SYSNAME: &'static str = "ios";
 
     /// Specifies the filename suffix used for executable binaries on this
     /// platform: in this case, the empty string.

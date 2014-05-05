@@ -48,7 +48,7 @@ mod rustrt {
     }
 }
 
-#[cfg(unix, not(target_os = "macos"))]
+#[cfg(unix, not(target_os = "macos"), not(target_os = "ios"))]
 mod imp {
     use libc::{c_int, timespec};
 
@@ -63,6 +63,7 @@ mod imp {
 
 }
 #[cfg(target_os = "macos")]
+#[cfg(target_os = "ios")]
 mod imp {
     use libc::{timeval, timezone, c_int, mach_timebase_info};
 
@@ -123,6 +124,7 @@ pub fn get_time() -> Timespec {
     }
 
     #[cfg(target_os = "macos")]
+    #[cfg(target_os = "ios")]
     unsafe fn os_get_time() -> (i64, i32) {
         use std::ptr;
         let mut tv = libc::timeval { tv_sec: 0, tv_usec: 0 };
@@ -130,7 +132,7 @@ pub fn get_time() -> Timespec {
         (tv.tv_sec as i64, tv.tv_usec * 1000)
     }
 
-    #[cfg(not(target_os = "macos"), not(windows))]
+    #[cfg(not(target_os = "macos"), not(target_os = "ios"), not(windows))]
     unsafe fn os_get_time() -> (i64, i32) {
         let mut tv = libc::timespec { tv_sec: 0, tv_nsec: 0 };
         imp::clock_gettime(libc::CLOCK_REALTIME, &mut tv);
@@ -162,6 +164,7 @@ pub fn precise_time_ns() -> u64 {
     }
 
     #[cfg(target_os = "macos")]
+    #[cfg(target_os = "ios")]
     fn os_precise_time_ns() -> u64 {
         static mut TIMEBASE: libc::mach_timebase_info = libc::mach_timebase_info { numer: 0,
                                                                                    denom: 0 };
@@ -175,7 +178,7 @@ pub fn precise_time_ns() -> u64 {
         }
     }
 
-    #[cfg(not(windows), not(target_os = "macos"))]
+    #[cfg(not(windows), not(target_os = "macos"), not(target_os = "ios"))]
     fn os_precise_time_ns() -> u64 {
         let mut ts = libc::timespec { tv_sec: 0, tv_nsec: 0 };
         unsafe {
