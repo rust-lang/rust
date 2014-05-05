@@ -164,17 +164,31 @@ local_data_key!(local_logger: ~Logger:Send)
 pub trait Logger {
     /// Logs a single message described by the `args` structure. The level is
     /// provided in case you want to do things like color the message, etc.
-    fn log(&mut self, level: u32, args: &fmt::Arguments);
+    /// `file` and `line` are the filename and line number respectively of
+    /// the originating log statement.
+    fn log(&mut self, level: u32, file: &str, line: uint, args: &fmt::Arguments);
 }
 
 struct DefaultLogger {
     handle: LineBufferedWriter<io::stdio::StdWriter>,
 }
 
+fn level_to_string(level: u32) -> ~str {
+    match level {
+        DEBUG => ~"D",
+        INFO => ~"I",
+        WARN => ~"W",
+        ERROR => ~"E",
+        _ => level.to_str(),
+    }
+}
+
 impl Logger for DefaultLogger {
     // by default, just ignore the level
-    fn log(&mut self, _level: u32, args: &fmt::Arguments) {
-        match fmt::writeln(&mut self.handle, args) {
+    fn log(&mut self, level: u32, file: &str, line: uint, args: &fmt::Arguments) {
+        match write!(&mut self.handle, "{} {}:{}  ",
+                     level_to_string(level), file, line).and_then(
+                         |()| fmt::writeln(&mut self.handle, args)) {
             Err(e) => fail!("failed to log: {}", e),
             Ok(()) => {}
         }
@@ -198,14 +212,14 @@ impl Drop for DefaultLogger {
 ///
 /// It is not recommended to call this function directly, rather it should be
 /// invoked through the logging family of macros.
-pub fn log(level: u32, args: &fmt::Arguments) {
+pub fn log(level: u32, file: &str, line:uint, args: &fmt::Arguments) {
     // Completely remove the local logger from TLS in case anyone attempts to
     // frob the slot while we're doing the logging. This will destroy any logger
     // set during logging.
     let mut logger = local_data::pop(local_logger).unwrap_or_else(|| {
         box DefaultLogger { handle: io::stderr() } as ~Logger:Send
     });
-    logger.log(level, args);
+    logger.log(level, file, line, args);
     local_data::set(local_logger, logger);
 }
 

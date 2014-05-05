@@ -35,7 +35,7 @@ macro_rules! log(
     ($lvl:expr, $($arg:tt)+) => ({
         let lvl = $lvl;
         if log_enabled!(lvl) {
-            format_args!(|args| { ::log::log(lvl, args) }, $($arg)+)
+            format_args!(|args| { ::log::log(lvl, file!(), line!(), args) }, $($arg)+)
         }
     })
 )
