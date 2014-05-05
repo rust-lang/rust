@@ -53,6 +53,7 @@ use term::color::{Color, RED, YELLOW, GREEN, CYAN};
 use std::cmp;
 use std::f64;
 use std::fmt;
+use std::fmt::Show;
 use std::from_str::FromStr;
 use std::io::stdio::StdWriter;
 use std::io::{File, ChanReader, ChanWriter};
@@ -85,12 +86,17 @@ pub enum TestName {
     StaticTestName(&'static str),
     DynTestName(StrBuf)
 }
-impl fmt::Show for TestName {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl TestName {
+    fn as_slice<'a>(&'a self) -> &'a str {
         match *self {
-            StaticTestName(s) => f.buf.write_str(s),
-            DynTestName(ref s) => f.buf.write_str(s.as_slice()),
+            StaticTestName(s) => s,
+            DynTestName(ref s) => s.as_slice()
         }
+    }
+}
+impl Show for TestName {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.as_slice().fmt(f)
     }
 }
 
@@ -100,7 +106,7 @@ enum NamePadding { PadNone, PadOnLeft, PadOnRight }
 impl TestDesc {
     fn padded_name(&self, column_count: uint, align: NamePadding) -> StrBuf {
         use std::num::Saturating;
-        let mut name = StrBuf::from_str(self.name.to_str());
+        let mut name = StrBuf::from_str(self.name.as_slice());
         let fill = column_count.saturating_sub(name.len());
         let mut pad = StrBuf::from_owned_str(" ".repeat(fill));
         match align {
@@ -590,7 +596,7 @@ impl<T: Writer> ConsoleTestState<T> {
                         TrIgnored => "ignored".to_strbuf(),
                         TrMetrics(ref mm) => fmt_metrics(mm),
                         TrBench(ref bs) => fmt_bench_samples(bs)
-                    }, test.name.to_str());
+                    }, test.name.as_slice());
                 o.write(s.as_bytes())
             }
         }
@@ -604,7 +610,7 @@ impl<T: Writer> ConsoleTestState<T> {
             failures.push(f.name.to_str());
             if stdout.len() > 0 {
                 fail_out.push_str(format!("---- {} stdout ----\n\t",
-                                  f.name.to_str()));
+                                  f.name.as_slice()));
                 let output = str::from_utf8_lossy(stdout.as_slice());
                 fail_out.push_str(output.as_slice().replace("\n", "\n\t"));
                 fail_out.push_str("\n");
@@ -618,7 +624,7 @@ impl<T: Writer> ConsoleTestState<T> {
         try!(self.write_plain("\nfailures:\n"));
         failures.as_mut_slice().sort();
         for name in failures.iter() {
-            try!(self.write_plain(format!("    {}\n", name.to_str())));
+            try!(self.write_plain(format!("    {}\n", name.as_slice())));
         }
         Ok(())
     }
@@ -753,7 +759,7 @@ pub fn run_tests_console(opts: &TestOpts,
                     TrOk => st.passed += 1,
                     TrIgnored => st.ignored += 1,
                     TrMetrics(mm) => {
-                        let tname = test.name.to_str();
+                        let tname = test.name.as_slice();
                         let MetricMap(mm) = mm;
                         for (k,v) in mm.iter() {
                             st.metrics
@@ -764,7 +770,7 @@ pub fn run_tests_console(opts: &TestOpts,
                         st.measured += 1
                     }
                     TrBench(bs) => {
-                        st.metrics.insert_metric(test.name.to_str(),
+                        st.metrics.insert_metric(test.name.as_slice(),
                                                  bs.ns_iter_summ.median,
                                                  bs.ns_iter_summ.max - bs.ns_iter_summ.min);
                         st.measured += 1
@@ -782,12 +788,12 @@ pub fn run_tests_console(opts: &TestOpts,
     fn len_if_padded(t: &TestDescAndFn) -> uint {
         match t.testfn.padding() {
             PadNone => 0u,
-            PadOnLeft | PadOnRight => t.desc.name.to_str().len(),
+            PadOnLeft | PadOnRight => t.desc.name.as_slice().len(),
         }
     }
     match tests.iter().max_by(|t|len_if_padded(*t)) {
         Some(t) => {
-            let n = t.desc.name.to_str();
+            let n = t.desc.name.as_slice();
             st.max_name_len = n.len();
         },
         None => {}
@@ -980,7 +986,7 @@ pub fn filter_tests(
     };
 
     // Sort the tests alphabetically
-    filtered.sort_by(|t1, t2| t1.desc.name.to_str().cmp(&t2.desc.name.to_str()));
+    filtered.sort_by(|t1, t2| t1.desc.name.as_slice().cmp(&t2.desc.name.as_slice()));
 
     // Shard the remaining tests, if sharding requested.
     match opts.test_shard {
