@@ -23,6 +23,7 @@ use str::Str;
 use slice::{CloneableVector, Splits, Vector, VectorVector,
             ImmutableEqVector, OwnedVector, ImmutableVector};
 use vec::Vec;
+use fmt;
 
 use super::{BytesContainer, GenericPath, GenericPathUnsafe};
 
@@ -68,6 +69,12 @@ impl Eq for Path {
     #[inline]
     fn eq(&self, other: &Path) -> bool {
         self.repr == other.repr
+    }
+}
+
+impl fmt::Show for Path {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f.buf, "{}", str::from_utf8(self.repr.as_slice()).unwrap())
     }
 }
 
