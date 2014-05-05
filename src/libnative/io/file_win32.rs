@@ -174,7 +174,8 @@ impl rtio::RtioFileStream for FileDesc {
     fn tell(&self) -> Result<u64, IoError> {
         // This transmute is fine because our seek implementation doesn't
         // actually use the mutable self at all.
-        unsafe { cast::transmute_mut(self).seek(0, io::SeekCur) }
+        // FIXME #13933: Remove/justify all `&T` to `&mut T` transmutes
+        unsafe { cast::transmute::<&_, &mut FileDesc>(self).seek(0, io::SeekCur) }
     }
 
     fn fsync(&mut self) -> Result<(), IoError> {
