@@ -48,9 +48,12 @@ impl<'a> Visitor<()> for EntryContext<'a> {
 }
 
 pub fn find_entry_point(session: &Session, krate: &Crate, ast_map: &ast_map::Map) {
-    if session.building_library.get() {
+    let any_exe = session.crate_types.borrow().iter().any(|ty| {
+        *ty == session::CrateTypeExecutable
+    });
+    if !any_exe {
         // No need to find a main function
-        return;
+        return
     }
 
     // If the user wants no main function at all, then stop here.
@@ -132,18 +135,16 @@ fn configure_main(this: &mut EntryContext) {
         *this.session.entry_fn.borrow_mut() = this.main_fn;
         this.session.entry_type.set(Some(session::EntryMain));
     } else {
-        if !this.session.building_library.get() {
-            // No main function
-            this.session.err("main function not found");
-            if !this.non_main_fns.is_empty() {
-                // There were some functions named 'main' though. Try to give the user a hint.
-                this.session.note("the main function must be defined at the crate level \
-                                   but you have one or more functions named 'main' that are not \
-                                   defined at the crate level. Either move the definition or \
-                                   attach the `#[main]` attribute to override this behavior.");
-                for &(_, span) in this.non_main_fns.iter() {
-                    this.session.span_note(span, "here is a function named 'main'");
-                }
+        // No main function
+        this.session.err("main function not found");
+        if !this.non_main_fns.is_empty() {
+            // There were some functions named 'main' though. Try to give the user a hint.
+            this.session.note("the main function must be defined at the crate level \
+                               but you have one or more functions named 'main' that are not \
+                               defined at the crate level. Either move the definition or \
+                               attach the `#[main]` attribute to override this behavior.");
+            for &(_, span) in this.non_main_fns.iter() {
+                this.session.span_note(span, "here is a function named 'main'");
             }
             this.session.abort_if_errors();
         }
