@@ -6,7 +6,8 @@
 
 Add ASCII byte literals and ASCII byte string literals to the language,
 similar to the existing (Unicode) character and string literals.
-Before the RFC process was in place, this was discussed in mozilla/rust#4334.
+Before the RFC process was in place, 
+this was discussed in [#4334](https://github.com/mozilla/rust/issues/4334).
 
 
 # Motivation
@@ -95,7 +96,7 @@ The code points from syntax could be encoded as UTF-8
 rather than being mapped to bytes of the same value,
 but assuming UTF-8 is not always appropriate when working with bytes.
 
-See also previous discussion in mozilla/rust#4334.
+See also previous discussion in [#4334](https://github.com/mozilla/rust/issues/4334).
 
 
 # Unresolved questions
