@@ -780,6 +780,26 @@ pub fn trans_const(ccx: &CrateContext, r: &Repr, discr: Disr,
 }
 
 /**
+ * Compute struct field offsets relative to struct begin.
+ */
+fn compute_struct_field_offsets(ccx: &CrateContext, st: &Struct) -> Vec<u64> {
+    let mut offsets = vec!();
+
+    let mut offset = 0;
+    for &ty in st.fields.iter() {
+        let llty = type_of::sizing_type_of(ccx, ty);
+        if !st.packed {
+            let type_align = machine::llalign_of_min(ccx, llty) as u64;
+            offset = roundup(offset, type_align);
+        }
+        offsets.push(offset);
+        offset += machine::llsize_of_alloc(ccx, llty) as u64;
+    }
+    assert_eq!(st.fields.len(), offsets.len());
+    offsets
+}
+
+/**
  * Building structs is a little complicated, because we might need to
  * insert padding if a field's value is less aligned than its type.
  *
@@ -793,26 +813,32 @@ fn build_const_struct(ccx: &CrateContext, st: &Struct, vals: &[ValueRef])
     -> Vec<ValueRef> {
     assert_eq!(vals.len(), st.fields.len());
 
+    let target_offsets = compute_struct_field_offsets(ccx, st);
+
+    // offset of current value
     let mut offset = 0;
     let mut cfields = Vec::new();
-    for (i, &ty) in st.fields.iter().enumerate() {
-        let llty = type_of::sizing_type_of(ccx, ty);
-        let type_align = machine::llalign_of_min(ccx, llty)
-            /*bad*/as u64;
-        let val_align = machine::llalign_of_min(ccx, val_ty(vals[i]))
-            /*bad*/as u64;
-        let target_offset = roundup(offset, type_align);
-        offset = roundup(offset, val_align);
+    for (&val, &target_offset) in vals.iter().zip(target_offsets.iter()) {
+        if !st.packed {
+            let val_align = machine::llalign_of_min(ccx, val_ty(val))
+                /*bad*/as u64;
+            offset = roundup(offset, val_align);
+        }
         if offset != target_offset {
             cfields.push(padding(ccx, target_offset - offset));
             offset = target_offset;
         }
-        assert!(!is_undef(vals[i]));
-        cfields.push(vals[i]);
-        offset += machine::llsize_of_alloc(ccx, llty) as u64
+        assert!(!is_undef(val));
+        cfields.push(val);
+        offset += machine::llsize_of_alloc(ccx, val_ty(val)) as u64;
     }
 
-    return cfields;
+    assert!(offset <= st.size);
+    if offset != st.size {
+        cfields.push(padding(ccx, st.size - offset));
+    }
+
+    cfields
 }
 
 fn padding(ccx: &CrateContext, size: u64) -> ValueRef {
