@@ -82,6 +82,7 @@ use slice::{ImmutableVector, MutableVector};
 use slice;
 use str::StrSlice;
 use str;
+use strbuf::StrBuf;
 
 /// The representation of a C String.
 ///
@@ -292,7 +293,60 @@ pub trait ToCStr {
     }
 }
 
+// FIXME (#12938): Until DST lands, we cannot decompose &str into &
+// and str, so we cannot usefully take ToCStr arguments by reference
+// (without forcing an additional & around &str). So we are instead
+// temporarily adding an instance for ~str and StrBuf, so that we can
+// take ToCStr as owned. When DST lands, the string instances should
+// be revisted, and arguments bound by ToCStr should be passed by
+// reference.
+
 impl<'a> ToCStr for &'a str {
+    #[inline]
+    fn to_c_str(&self) -> CString {
+        self.as_bytes().to_c_str()
+    }
+
+    #[inline]
+    unsafe fn to_c_str_unchecked(&self) -> CString {
+        self.as_bytes().to_c_str_unchecked()
+    }
+
+    #[inline]
+    fn with_c_str<T>(&self, f: |*libc::c_char| -> T) -> T {
+        self.as_bytes().with_c_str(f)
+    }
+
+    #[inline]
+    unsafe fn with_c_str_unchecked<T>(&self, f: |*libc::c_char| -> T) -> T {
+        self.as_bytes().with_c_str_unchecked(f)
+    }
+}
+
+impl ToCStr for ~str {
+    #[inline]
+    fn to_c_str(&self) -> CString {
+        self.as_bytes().to_c_str()
+    }
+
+    #[inline]
+    unsafe fn to_c_str_unchecked(&self) -> CString {
+        self.as_bytes().to_c_str_unchecked()
+    }
+
+    #[inline]
+    fn with_c_str<T>(&self, f: |*libc::c_char| -> T) -> T {
+        self.as_bytes().with_c_str(f)
+    }
+
+    #[inline]
+    unsafe fn with_c_str_unchecked<T>(&self, f: |*libc::c_char| -> T) -> T {
+        self.as_bytes().with_c_str_unchecked(f)
+    }
+}
+
+
+impl ToCStr for StrBuf {
     #[inline]
     fn to_c_str(&self) -> CString {
         self.as_bytes().to_c_str()
