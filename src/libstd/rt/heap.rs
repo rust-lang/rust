@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// FIXME: #13994: port to the sized deallocation API when available
+// FIXME: #13996: need a way to mark the `allocate` and `reallocate` return values as `noalias`
+
 use intrinsics::{abort, cttz32};
 use libc::{c_int, c_void, size_t};
 use ptr::RawPtr;
