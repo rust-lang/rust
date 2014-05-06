@@ -2992,21 +2992,23 @@ And here an example with multiple files:
 ~~~{.ignore}
 // `a.rs` - crate root
 use b::foo;
+use b::c::bar;
 mod b;
-fn main() { foo(); }
+fn main() {
+    foo();
+    bar();
+}
 ~~~
 
 ~~~{.ignore}
-// `b.rs`
-use b::c::bar;
+// `b/mod.rs`
 pub mod c;
-pub fn foo() { bar(); }
+pub fn foo() { println!("Foo!"; }
 ~~~
 
-~~~
-// `c.rs`
-pub fn bar() { println!("Baz!"); }
-# fn main() {}
+~~~{.ignore}
+// `b/c.rs`
+pub fn bar() { println!("Bar!"); }
 ~~~
 
 There also exist two short forms for importing multiple names at once:
