@@ -33,11 +33,11 @@ message explaining why.
 
 In the licensing header at the beginning of any files you change,
 please make sure the listed date range includes the current year.  For
-example, if it's 2013, and you change a Rust file that was created in
+example, if it's 2014, and you change a Rust file that was created in
 2010, it should begin:
 
 ```
-// Copyright 2010-2013 The Rust Project Developers.
+// Copyright 2010-2014 The Rust Project Developers.
 ```
 
 For more details, please refer to
