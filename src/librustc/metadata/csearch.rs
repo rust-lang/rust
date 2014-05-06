@@ -132,7 +132,8 @@ pub fn get_method(tcx: &ty::ctxt, def: ast::DefId) -> ty::Method {
 
 pub fn get_method_name_and_explicit_self(cstore: &cstore::CStore,
                                          def: ast::DefId)
-                                     -> (ast::Ident, ast::ExplicitSelf_)
+                                         -> (ast::Ident,
+                                             ty::ExplicitSelfCategory)
 {
     let cdata = cstore.get_crate_data(def.krate);
     decoder::get_method_name_and_explicit_self(cstore.intr.clone(), &*cdata, def.node)

@@ -100,9 +100,7 @@ use util::ppaux::Repr;
 
 use std::collections::HashSet;
 use std::rc::Rc;
-use syntax::ast::{DefId, SelfValue, SelfRegion};
-use syntax::ast::{SelfUniq, SelfStatic};
-use syntax::ast::{MutMutable, MutImmutable};
+use syntax::ast::{DefId, MutImmutable, MutMutable};
 use syntax::ast;
 use syntax::codemap::Span;
 use syntax::parse::token;
@@ -267,15 +265,15 @@ fn construct_transformed_self_ty_for_object(
     obj_substs.types.pop(subst::SelfSpace).unwrap();
 
     match method_ty.explicit_self {
-        ast::SelfStatic => {
+        StaticExplicitSelfCategory => {
             tcx.sess.span_bug(span, "static method for object type receiver");
         }
-        ast::SelfValue(_) => {
+        ByValueExplicitSelfCategory => {
             let tr = ty::mk_trait(tcx, trait_def_id, obj_substs,
                                   ty::empty_builtin_bounds());
             ty::mk_uniq(tcx, tr)
         }
-        ast::SelfRegion(..) | ast::SelfUniq(..) => {
+        ByReferenceExplicitSelfCategory(..) | ByBoxExplicitSelfCategory => {
             let transformed_self_ty = *method_ty.fty.sig.inputs.get(0);
             match ty::get(transformed_self_ty).sty {
                 ty::ty_rptr(r, mt) => { // must be SelfRegion
@@ -618,7 +616,7 @@ impl<'a> LookupContext<'a> {
 
             let trait_methods = ty::trait_methods(tcx, bound_trait_ref.def_id);
             match trait_methods.iter().position(|m| {
-                m.explicit_self != ast::SelfStatic &&
+                m.explicit_self != ty::StaticExplicitSelfCategory &&
                 m.ident.name == self.m_name }) {
                 Some(pos) => {
                     let method = trait_methods.get(pos).clone();
@@ -1023,7 +1021,10 @@ impl<'a> LookupContext<'a> {
 
         if self.report_statics == ReportStaticMethods {
             // lookup should only be called with ReportStaticMethods if a regular lookup failed
-            assert!(relevant_candidates.iter().all(|c| c.method_ty.explicit_self == SelfStatic));
+            assert!(relevant_candidates.iter()
+                                       .all(|c| {
+                c.method_ty.explicit_self == ty::StaticExplicitSelfCategory
+            }));
 
             self.tcx().sess.fileline_note(self.span,
                                 "found defined static methods, maybe a `self` is missing?");
@@ -1100,7 +1101,8 @@ impl<'a> LookupContext<'a> {
         self.enforce_drop_trait_limitations(candidate);
 
         // static methods should never have gotten this far:
-        assert!(candidate.method_ty.explicit_self != SelfStatic);
+        assert!(candidate.method_ty.explicit_self !=
+                ty::StaticExplicitSelfCategory);
 
         // Determine the values for the generic parameters of the method.
         // If they were not explicitly supplied, just construct fresh
@@ -1217,12 +1219,16 @@ impl<'a> LookupContext<'a> {
         }
 
         match candidate.method_ty.explicit_self {
-            ast::SelfStatic => { // reason (a) above
-                span_err!(self.tcx().sess, self.span, E0037,
-                    "cannot call a method without a receiver through an object");
+            ty::StaticExplicitSelfCategory => { // reason (a) above
+                self.tcx().sess.span_err(
+                    self.span,
+                    "cannot call a method without a receiver \
+                     through an object");
             }
 
-            ast::SelfValue(_) | ast::SelfRegion(..) | ast::SelfUniq(_) => {}
+            ty::ByValueExplicitSelfCategory |
+            ty::ByReferenceExplicitSelfCategory(..) |
+            ty::ByBoxExplicitSelfCategory => {}
         }
 
         // reason (a) above
@@ -1284,12 +1290,12 @@ impl<'a> LookupContext<'a> {
                self.ty_to_string(rcvr_ty), candidate.repr(self.tcx()));
 
         return match candidate.method_ty.explicit_self {
-            SelfStatic => {
+            StaticExplicitSelfCategory => {
                 debug!("(is relevant?) explicit self is static");
                 self.report_statics == ReportStaticMethods
             }
 
-            SelfValue(_) => {
+            ByValueExplicitSelfCategory => {
                 debug!("(is relevant?) explicit self is by-value");
                 match ty::get(rcvr_ty).sty {
                     ty::ty_uniq(typ) => {
@@ -1312,7 +1318,7 @@ impl<'a> LookupContext<'a> {
                 }
             }
 
-            SelfRegion(_, m, _) => {
+            ByReferenceExplicitSelfCategory(_, m) => {
                 debug!("(is relevant?) explicit self is a region");
                 match ty::get(rcvr_ty).sty {
                     ty::ty_rptr(_, mt) => {
@@ -1332,7 +1338,7 @@ impl<'a> LookupContext<'a> {
                 }
             }
 
-            SelfUniq(_) => {
+            ByBoxExplicitSelfCategory => {
                 debug!("(is relevant?) explicit self is a unique pointer");
                 match ty::get(rcvr_ty).sty {
                     ty::ty_uniq(typ) => {
@@ -1480,3 +1486,6 @@ impl Repr for RcvrMatchCondition {
         }
     }
 }
+
+
+

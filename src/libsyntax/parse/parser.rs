@@ -45,7 +45,7 @@ use ast::{RetStyle, Return, BiShl, BiShr, Stmt, StmtDecl};
 use ast::{StmtExpr, StmtSemi, StmtMac, StructDef, StructField};
 use ast::{StructVariantKind, BiSub};
 use ast::StrStyle;
-use ast::{SelfRegion, SelfStatic, SelfUniq, SelfValue};
+use ast::{SelfExplicit, SelfRegion, SelfStatic, SelfUniq, SelfValue};
 use ast::{TokenTree, TraitMethod, TraitRef, TTDelim, TTSeq, TTTok};
 use ast::{TTNonterminal, TupleVariantKind, Ty, Ty_, TyBot, TyBox};
 use ast::{TypeField, TyFixedLengthVec, TyClosure, TyProc, TyBareFn};
@@ -3843,7 +3843,15 @@ impl<'a> Parser<'a> {
                 }
             }
             token::IDENT(..) if self.is_self_ident() => {
-                SelfValue(self.expect_self_ident())
+                let self_ident = self.expect_self_ident();
+
+                // Determine whether this is the fully explicit form, `self:
+                // TYPE`.
+                if self.eat(&token::COLON) {
+                    SelfExplicit(self.parse_ty(false), self_ident)
+                } else {
+                    SelfValue(self_ident)
+                }
             }
             token::BINOP(token::STAR) => {
                 // Possibly "*self" or "*mut self" -- not supported. Try to avoid
@@ -3851,7 +3859,9 @@ impl<'a> Parser<'a> {
                 self.bump();
                 let _mutability = if Parser::token_is_mutability(&self.token) {
                     self.parse_mutability()
-                } else { MutImmutable };
+                } else {
+                    MutImmutable
+                };
                 if self.is_self_ident() {
                     let span = self.span;
                     self.span_err(span, "cannot pass self by unsafe pointer");
@@ -3863,7 +3873,15 @@ impl<'a> Parser<'a> {
             _ if Parser::token_is_mutability(&self.token) &&
                     self.look_ahead(1, |t| token::is_keyword(keywords::Self, t)) => {
                 mutbl_self = self.parse_mutability();
-                SelfValue(self.expect_self_ident())
+                let self_ident = self.expect_self_ident();
+
+                // Determine whether this is the fully explicit form, `self:
+                // TYPE`.
+                if self.eat(&token::COLON) {
+                    SelfExplicit(self.parse_ty(false), self_ident)
+                } else {
+                    SelfValue(self_ident)
+                }
             }
             _ if Parser::token_is_mutability(&self.token) &&
                     self.look_ahead(1, |t| *t == token::TILDE) &&
@@ -3914,8 +3932,8 @@ impl<'a> Parser<'a> {
             }
             SelfValue(id) => parse_remaining_arguments!(id),
             SelfRegion(_,_,id) => parse_remaining_arguments!(id),
-            SelfUniq(id) => parse_remaining_arguments!(id)
-
+            SelfUniq(id) => parse_remaining_arguments!(id),
+            SelfExplicit(_,id) => parse_remaining_arguments!(id),
         };
 
 

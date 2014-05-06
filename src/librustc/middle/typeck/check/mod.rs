@@ -862,19 +862,26 @@ fn compare_impl_method(tcx: &ty::ctxt,
     // inscrutable, particularly for cases where one method has no
     // self.
     match (&trait_m.explicit_self, &impl_m.explicit_self) {
-        (&ast::SelfStatic, &ast::SelfStatic) => {}
-        (&ast::SelfStatic, _) => {
-            span_err!(tcx.sess, impl_m_span, E0047,
-                "method `{}` has a `{}` declaration in the impl, but not in the trait",
-                token::get_ident(trait_m.ident),
-                pprust::explicit_self_to_string(impl_m.explicit_self));
+        (&ty::StaticExplicitSelfCategory,
+         &ty::StaticExplicitSelfCategory) => {}
+        (&ty::StaticExplicitSelfCategory, _) => {
+            tcx.sess.span_err(
+                impl_m_span,
+                format!("method `{}` has a `{}` declaration in the impl, \
+                        but not in the trait",
+                        token::get_ident(trait_m.ident),
+                        ppaux::explicit_self_category_to_str(
+                            &impl_m.explicit_self)).as_slice());
             return;
         }
-        (_, &ast::SelfStatic) => {
-            span_err!(tcx.sess, impl_m_span, E0048,
-                "method `{}` has a `{}` declaration in the trait, but not in the impl",
-                token::get_ident(trait_m.ident),
-                pprust::explicit_self_to_string(trait_m.explicit_self));
+        (_, &ty::StaticExplicitSelfCategory) => {
+            tcx.sess.span_err(
+                impl_m_span,
+                format!("method `{}` has a `{}` declaration in the trait, \
+                        but not in the impl",
+                        token::get_ident(trait_m.ident),
+                        ppaux::explicit_self_category_to_str(
+                            &trait_m.explicit_self)).as_slice());
             return;
         }
         _ => {
@@ -4787,3 +4794,4 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
             });
     }
 }
+

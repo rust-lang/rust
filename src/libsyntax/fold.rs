@@ -344,6 +344,7 @@ pub trait Folder {
             SelfRegion(ref lifetime, m, id) => {
                 SelfRegion(fold_opt_lifetime(lifetime, self), m, id)
             }
+            SelfExplicit(ref typ, id) => SelfExplicit(self.fold_ty(*typ), id),
         }
     }
 

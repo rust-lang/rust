@@ -1859,6 +1859,11 @@ impl<'a> State<'a> {
                 try!(self.print_mutability(m));
                 try!(word(&mut self.s, "self"));
             }
+            ast::SelfExplicit(ref typ, _) => {
+                try!(word(&mut self.s, "self"));
+                try!(self.word_space(":"));
+                try!(self.print_type(*typ));
+            }
         }
         return Ok(true);
     }
