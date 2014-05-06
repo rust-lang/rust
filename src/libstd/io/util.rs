@@ -55,6 +55,24 @@ impl<R: Reader> Reader for LimitReader<R> {
     }
 }
 
+impl<R: Buffer> Buffer for LimitReader<R> {
+    fn fill_buf<'a>(&'a mut self) -> io::IoResult<&'a [u8]> {
+        let amt = try!(self.inner.fill_buf());
+        let buf = amt.slice_to(cmp::min(amt.len(), self.limit));
+        if buf.len() == 0 {
+            Err(io::standard_error(io::EndOfFile))
+        } else {
+            Ok(buf)
+        }
+    }
+
+    fn consume(&mut self, amt: uint) {
+        self.limit -= amt;
+        self.inner.consume(amt);
+    }
+
+}
+
 /// A `Writer` which ignores bytes written to it, like /dev/null.
 pub struct NullWriter;
 
@@ -74,6 +92,14 @@ impl Reader for ZeroReader {
     }
 }
 
+impl Buffer for ZeroReader {
+    fn fill_buf<'a>(&'a mut self) -> io::IoResult<&'a [u8]> {
+        static DATA: [u8, ..64] = [0, ..64];
+        Ok(DATA.as_slice())
+    }
+    fn consume(&mut self, _amt: uint) {}
+}
+
 /// A `Reader` which is always at EOF, like /dev/null.
 pub struct NullReader;
 
@@ -82,6 +108,13 @@ impl Reader for NullReader {
     fn read(&mut self, _buf: &mut [u8]) -> io::IoResult<uint> {
         Err(io::standard_error(io::EndOfFile))
     }
+}
+
+impl Buffer for NullReader {
+    fn fill_buf<'a>(&'a mut self) -> io::IoResult<&'a [u8]> {
+        Err(io::standard_error(io::EndOfFile))
+    }
+    fn consume(&mut self, _amt: uint) {}
 }
 
 /// A `Writer` which multiplexes writes to a set of `Writers`.
@@ -198,8 +231,8 @@ pub fn copy<R: Reader, W: Writer>(r: &mut R, w: &mut W) -> io::IoResult<()> {
 
 #[cfg(test)]
 mod test {
+    use io::{MemReader, MemWriter, BufReader};
     use io;
-    use io::{MemReader, MemWriter};
     use owned::Box;
     use super::*;
     use prelude::*;
@@ -308,5 +341,29 @@ mod test {
         let mut w = MemWriter::new();
         copy(&mut r, &mut w).unwrap();
         assert_eq!(vec!(0, 1, 2, 3, 4), w.unwrap());
+    }
+
+    #[test]
+    fn limit_reader_buffer() {
+        let data = "0123456789\n0123456789\n";
+        let mut r = BufReader::new(data.as_bytes());
+        {
+            let mut r = LimitReader::new(r.by_ref(), 3);
+            assert_eq!(r.read_line(), Ok("012".to_str()));
+            assert_eq!(r.limit(), 0);
+            assert_eq!(r.read_line().err().unwrap().kind, io::EndOfFile);
+        }
+        {
+            let mut r = LimitReader::new(r.by_ref(), 9);
+            assert_eq!(r.read_line(), Ok("3456789\n".to_str()));
+            assert_eq!(r.limit(), 1);
+            assert_eq!(r.read_line(), Ok("0".to_str()));
+        }
+        {
+            let mut r = LimitReader::new(r.by_ref(), 100);
+            assert_eq!(r.read_char(), Ok('1'));
+            assert_eq!(r.limit(), 99);
+            assert_eq!(r.read_line(), Ok("23456789\n".to_str()));
+        }
     }
 }
