@@ -422,7 +422,7 @@ pub fn get_trait_def(cdata: Cmd,
 }
 
 pub fn get_type(cdata: Cmd, id: ast::NodeId, tcx: &ty::ctxt)
-    -> ty::ty_param_bounds_and_ty {
+    -> ty::Polytype {
 
     let item = lookup_item(id, cdata.data());
 
@@ -432,7 +432,7 @@ pub fn get_type(cdata: Cmd, id: ast::NodeId, tcx: &ty::ctxt)
     let tp_defs = item_ty_param_defs(item, tcx, cdata, tag_items_data_item_ty_param_bounds);
     let rp_defs = item_region_param_defs(item, cdata);
 
-    ty::ty_param_bounds_and_ty {
+    ty::Polytype {
         generics: ty::Generics {types: tp_defs,
                                 regions: rp_defs},
         ty: t

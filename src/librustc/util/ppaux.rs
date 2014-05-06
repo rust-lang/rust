@@ -748,9 +748,9 @@ impl Repr for ast::DefId {
     }
 }
 
-impl Repr for ty::ty_param_bounds_and_ty {
+impl Repr for ty::Polytype {
     fn repr(&self, tcx: &ctxt) -> String {
-        format!("ty_param_bounds_and_ty {{generics: {}, ty: {}}}",
+        format!("Polytype {{generics: {}, ty: {}}}",
                 self.generics.repr(tcx),
                 self.ty.repr(tcx))
     }

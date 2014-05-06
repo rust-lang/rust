@@ -196,11 +196,11 @@ fn encode_item_variances(ebml_w: &mut Encoder,
 
 fn encode_bounds_and_type(ebml_w: &mut Encoder,
                           ecx: &EncodeContext,
-                          tpt: &ty::ty_param_bounds_and_ty) {
-    encode_ty_type_param_defs(ebml_w, ecx, &tpt.generics.types,
+                          pty: &ty::Polytype) {
+    encode_ty_type_param_defs(ebml_w, ecx, &pty.generics.types,
                               tag_items_data_item_ty_param_bounds);
-    encode_region_param_defs(ebml_w, &tpt.generics.regions);
-    encode_type(ecx, ebml_w, tpt.ty);
+    encode_region_param_defs(ebml_w, &pty.generics.regions);
+    encode_type(ecx, ebml_w, pty.ty);
 }
 
 fn encode_variant_id(ebml_w: &mut Encoder, vid: DefId) {
@@ -772,8 +772,8 @@ fn encode_info_for_method(ecx: &EncodeContext,
     encode_stability(ebml_w, stab);
 
     // The type for methods gets encoded twice, which is unfortunate.
-    let tpt = lookup_item_type(ecx.tcx, m.def_id);
-    encode_bounds_and_type(ebml_w, ecx, &tpt);
+    let pty = lookup_item_type(ecx.tcx, m.def_id);
+    encode_bounds_and_type(ebml_w, ecx, &pty);
 
     let elem = ast_map::PathName(m.ident.name);
     encode_path(ebml_w, impl_path.chain(Some(elem).move_iter()));
@@ -785,7 +785,7 @@ fn encode_info_for_method(ecx: &EncodeContext,
     }
 
     for &ast_method in ast_method_opt.iter() {
-        let any_types = !tpt.generics.types.is_empty();
+        let any_types = !pty.generics.types.is_empty();
         if any_types || is_default_impl || should_inline(ast_method.attrs.as_slice()) {
             encode_inlined_item(ecx, ebml_w,
                                 IIMethodRef(local_def(parent_id), false,
@@ -1218,8 +1218,8 @@ fn encode_info_for_item(ecx: &EncodeContext,
                                   fn_style_static_method_family(
                                       method_ty.fty.fn_style));
 
-                    let tpt = ty::lookup_item_type(tcx, method_def_id);
-                    encode_bounds_and_type(ebml_w, ecx, &tpt);
+                    let pty = ty::lookup_item_type(tcx, method_def_id);
+                    encode_bounds_and_type(ebml_w, ecx, &pty);
                 }
 
                 _ => {
@@ -1242,8 +1242,8 @@ fn encode_info_for_item(ecx: &EncodeContext,
                     // this.
                     if method_ty.explicit_self != SelfStatic {
                         // FIXME: I feel like there is something funny going on.
-                        let tpt = ty::lookup_item_type(tcx, method_def_id);
-                        encode_bounds_and_type(ebml_w, ecx, &tpt);
+                        let pty = ty::lookup_item_type(tcx, method_def_id);
+                        encode_bounds_and_type(ebml_w, ecx, &pty);
                     }
                     encode_method_sort(ebml_w, 'p');
                     encode_inlined_item(ecx, ebml_w,
