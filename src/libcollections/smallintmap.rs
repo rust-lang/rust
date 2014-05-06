@@ -465,7 +465,7 @@ mod test_map {
             assert!(!called);
             called = true;
             assert_eq!(k, 1);
-            assert_eq!(v, ~2);
+            assert_eq!(v, box 2);
         }
         assert!(called);
         m.insert(2, box 1);

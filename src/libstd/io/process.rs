@@ -17,6 +17,7 @@ use io::IoResult;
 use io;
 use libc;
 use mem;
+use owned::Box;
 use rt::rtio::{RtioProcess, IoFactory, LocalIo};
 
 /// Signal a process to exit, without forcibly killing it. Corresponds to
@@ -52,7 +53,7 @@ use rt::rtio::{RtioProcess, IoFactory, LocalIo};
 /// assert!(child.wait().success());
 /// ```
 pub struct Process {
-    handle: ~RtioProcess:Send,
+    handle: Box<RtioProcess:Send>,
 
     /// Handle to the child's stdin, if the `stdin` field of this process's
     /// `ProcessConfig` was `CreatePipe`. By default, this handle is `Some`.

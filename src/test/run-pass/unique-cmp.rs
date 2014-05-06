@@ -9,10 +9,10 @@
 // except according to those terms.
 
 pub fn main() {
-    let i = ~100;
-    assert!(i == ~100);
-    assert!(i < ~101);
-    assert!(i <= ~100);
-    assert!(i > ~99);
-    assert!(i >= ~99);
+    let i = box 100;
+    assert!(i == box 100);
+    assert!(i < box 101);
+    assert!(i <= box 100);
+    assert!(i > box 99);
+    assert!(i >= box 99);
 }

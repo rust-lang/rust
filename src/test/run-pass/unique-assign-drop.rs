@@ -11,8 +11,8 @@
 #![allow(dead_assignment)]
 
 pub fn main() {
-    let i = ~1;
-    let mut j = ~2;
+    let i = box 1;
+    let mut j = box 2;
     // Should drop the previous value of j
     j = i;
     assert_eq!(*j, 1);

@@ -214,9 +214,9 @@ impl<T:Rand> Rand for Option<T> {
     }
 }
 
-impl<T: Rand> Rand for ~T {
+impl<T: Rand> Rand for Box<T> {
     #[inline]
-    fn rand<R: Rng>(rng: &mut R) -> ~T { box rng.gen() }
+    fn rand<R: Rng>(rng: &mut R) -> Box<T> { box rng.gen() }
 }
 
 impl<T: Rand + 'static> Rand for @T {

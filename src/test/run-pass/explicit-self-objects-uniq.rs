@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 trait Foo {
     fn f(~self);
 }
@@ -23,7 +24,7 @@ impl Foo for S {
 }
 
 pub fn main() {
-    let x = ~S { x: 3 };
-    let y = x as ~Foo;
+    let x = box S { x: 3 };
+    let y = x as Box<Foo>;
     y.f();
 }

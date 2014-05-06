@@ -52,6 +52,7 @@ use kinds::marker;
 use kinds::Send;
 use ops::Drop;
 use option::{Some, None, Option};
+use owned::Box;
 use ptr::RawPtr;
 use result::{Ok, Err, Result};
 use rt::local::Local;
@@ -176,7 +177,7 @@ impl Select {
             // Acquire a number of blocking contexts, and block on each one
             // sequentially until one fails. If one fails, then abort
             // immediately so we can go unblock on all the other receivers.
-            let task: ~Task = Local::take();
+            let task: Box<Task> = Local::take();
             task.deschedule(amt, |task| {
                 // Prepare for the block
                 let (i, handle) = iter.next().unwrap();

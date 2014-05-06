@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 pub trait EventLoop {
 }
 
@@ -27,12 +28,12 @@ impl EventLoop for UvEventLoop {
 }
 
 pub struct Scheduler {
-    event_loop: ~EventLoop,
+    event_loop: Box<EventLoop>,
 }
 
 impl Scheduler {
 
-    pub fn new(event_loop: ~EventLoop) -> Scheduler {
+    pub fn new(event_loop: Box<EventLoop>) -> Scheduler {
         Scheduler {
             event_loop: event_loop,
         }
@@ -40,5 +41,5 @@ impl Scheduler {
 }
 
 pub fn main() {
-    let _sched = Scheduler::new(~UvEventLoop::new() as ~EventLoop);
+    let _sched = Scheduler::new(box UvEventLoop::new() as Box<EventLoop>);
 }

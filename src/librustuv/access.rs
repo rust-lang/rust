@@ -15,9 +15,9 @@
 /// (the uv event loop).
 
 use std::cast;
-use std::sync::arc::UnsafeArc;
-use std::rt::task::{BlockedTask, Task};
 use std::rt::local::Local;
+use std::rt::task::{BlockedTask, Task};
+use std::sync::arc::UnsafeArc;
 
 use homing::HomingMissile;
 
@@ -52,7 +52,7 @@ impl Access {
         let inner: &mut Inner = unsafe { cast::transmute(self.inner.get()) };
 
         if inner.held {
-            let t: ~Task = Local::take();
+            let t: Box<Task> = Local::take();
             t.deschedule(1, |task| {
                 inner.queue.push(task);
                 Ok(())

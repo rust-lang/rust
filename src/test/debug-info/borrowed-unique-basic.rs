@@ -63,46 +63,46 @@
 
 
 fn main() {
-    let bool_box: ~bool = ~true;
+    let bool_box: Box<bool> = box true;
     let bool_ref: &bool = bool_box;
 
-    let int_box: ~int = ~-1;
+    let int_box: Box<int> = box -1;
     let int_ref: &int = int_box;
 
-    let char_box: ~char = ~'a';
+    let char_box: Box<char> = box 'a';
     let char_ref: &char = char_box;
 
-    let i8_box: ~i8 = ~68;
+    let i8_box: Box<i8> = box 68;
     let i8_ref: &i8 = i8_box;
 
-    let i16_box: ~i16 = ~-16;
+    let i16_box: Box<i16> = box -16;
     let i16_ref: &i16 = i16_box;
 
-    let i32_box: ~i32 = ~-32;
+    let i32_box: Box<i32> = box -32;
     let i32_ref: &i32 = i32_box;
 
-    let i64_box: ~i64 = ~-64;
+    let i64_box: Box<i64> = box -64;
     let i64_ref: &i64 = i64_box;
 
-    let uint_box: ~uint = ~1;
+    let uint_box: Box<uint> = box 1;
     let uint_ref: &uint = uint_box;
 
-    let u8_box: ~u8 = ~100;
+    let u8_box: Box<u8> = box 100;
     let u8_ref: &u8 = u8_box;
 
-    let u16_box: ~u16 = ~16;
+    let u16_box: Box<u16> = box 16;
     let u16_ref: &u16 = u16_box;
 
-    let u32_box: ~u32 = ~32;
+    let u32_box: Box<u32> = box 32;
     let u32_ref: &u32 = u32_box;
 
-    let u64_box: ~u64 = ~64;
+    let u64_box: Box<u64> = box 64;
     let u64_ref: &u64 = u64_box;
 
-    let f32_box: ~f32 = ~2.5;
+    let f32_box: Box<f32> = box 2.5;
     let f32_ref: &f32 = f32_box;
 
-    let f64_box: ~f64 = ~3.5;
+    let f64_box: Box<f64> = box 3.5;
     let f64_ref: &f64 = f64_box;
     zzz();
 }

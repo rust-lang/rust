@@ -240,14 +240,14 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
     ("owned_heap_memory",
      LintSpec {
         lint: OwnedHeapMemory,
-        desc: "use of owned (~ type) heap memory",
+        desc: "use of owned (Box type) heap memory",
         default: allow
      }),
 
     ("heap_memory",
      LintSpec {
         lint: HeapMemory,
-        desc: "use of any (~ type or @ type) heap memory",
+        desc: "use of any (Box type or @ type) heap memory",
         default: allow
      }),
 
@@ -943,8 +943,13 @@ fn check_heap_type(cx: &Context, span: Span, ty: ty::t) {
                     n_box += 1;
                 }
                 ty::ty_uniq(_) |
-                ty::ty_trait(~ty::TyTrait { store: ty::UniqTraitStore, .. }) |
-                ty::ty_closure(~ty::ClosureTy { store: ty::UniqTraitStore, .. }) => {
+                ty::ty_trait(box ty::TyTrait {
+                    store: ty::UniqTraitStore, ..
+                }) |
+                ty::ty_closure(box ty::ClosureTy {
+                    store: ty::UniqTraitStore,
+                    ..
+                }) => {
                     n_uniq += 1;
                 }
 
@@ -955,7 +960,7 @@ fn check_heap_type(cx: &Context, span: Span, ty: ty::t) {
 
         if n_uniq > 0 && lint != ManagedHeapMemory {
             let s = ty_to_str(cx.tcx, ty);
-            let m = format!("type uses owned (~ type) pointers: {}", s);
+            let m = format!("type uses owned (Box type) pointers: {}", s);
             cx.span_lint(lint, span, m);
         }
 

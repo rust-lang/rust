@@ -13,6 +13,7 @@
 use prelude::*;
 use cmp;
 use io;
+use owned::Box;
 use slice::bytes::MutableByteVector;
 
 /// Wraps a `Reader`, limiting the number of bytes that can be read from it.
@@ -85,12 +86,12 @@ impl Reader for NullReader {
 
 /// A `Writer` which multiplexes writes to a set of `Writers`.
 pub struct MultiWriter {
-    writers: Vec<~Writer>
+    writers: Vec<Box<Writer>>
 }
 
 impl MultiWriter {
     /// Creates a new `MultiWriter`
-    pub fn new(writers: Vec<~Writer>) -> MultiWriter {
+    pub fn new(writers: Vec<Box<Writer>>) -> MultiWriter {
         MultiWriter { writers: writers }
     }
 }
@@ -199,6 +200,7 @@ pub fn copy<R: Reader, W: Writer>(r: &mut R, w: &mut W) -> io::IoResult<()> {
 mod test {
     use io;
     use io::{MemReader, MemWriter};
+    use owned::Box;
     use super::*;
     use prelude::*;
 
@@ -273,8 +275,8 @@ mod test {
             }
         }
 
-        let mut multi = MultiWriter::new(vec!(box TestWriter as ~Writer,
-                                              box TestWriter as ~Writer));
+        let mut multi = MultiWriter::new(vec!(box TestWriter as Box<Writer>,
+                                              box TestWriter as Box<Writer>));
         multi.write([1, 2, 3]).unwrap();
         assert_eq!(2, unsafe { writes });
         assert_eq!(0, unsafe { flushes });

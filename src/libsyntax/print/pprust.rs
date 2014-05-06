@@ -65,12 +65,12 @@ pub struct State<'a> {
     ann: &'a PpAnn
 }
 
-pub fn rust_printer(writer: ~io::Writer) -> State<'static> {
+pub fn rust_printer(writer: Box<io::Writer>) -> State<'static> {
     static NO_ANN: NoAnn = NoAnn;
     rust_printer_annotated(writer, &NO_ANN)
 }
 
-pub fn rust_printer_annotated<'a>(writer: ~io::Writer,
+pub fn rust_printer_annotated<'a>(writer: Box<io::Writer>,
                                   ann: &'a PpAnn) -> State<'a> {
     State {
         s: pp::mk_printer(writer, default_columns),
@@ -99,7 +99,7 @@ pub fn print_crate<'a>(cm: &'a CodeMap,
                        krate: &ast::Crate,
                        filename: ~str,
                        input: &mut io::Reader,
-                       out: ~io::Writer,
+                       out: Box<io::Writer>,
                        ann: &'a PpAnn,
                        is_expanded: bool) -> IoResult<()> {
     let (cmnts, lits) = comments::gather_comments_and_literals(
@@ -140,7 +140,7 @@ pub fn to_str(f: |&mut State| -> IoResult<()>) -> ~str {
         // FIXME(pcwalton): A nasty function to extract the string from an `io::Writer`
         // that we "know" to be a `MemWriter` that works around the lack of checked
         // downcasts.
-        let (_, wr): (uint, ~MemWriter) = cast::transmute_copy(&s.s.out);
+        let (_, wr): (uint, Box<MemWriter>) = cast::transmute_copy(&s.s.out);
         let result = str::from_utf8_owned(wr.get_ref().to_owned()).unwrap();
         cast::forget(wr);
         result
@@ -1113,7 +1113,7 @@ impl<'a> State<'a> {
 
     pub fn print_expr_vstore(&mut self, t: ast::ExprVstore) -> IoResult<()> {
         match t {
-            ast::ExprVstoreUniq => word(&mut self.s, "~"),
+            ast::ExprVstoreUniq => word(&mut self.s, "box "),
             ast::ExprVstoreSlice => word(&mut self.s, "&"),
             ast::ExprVstoreMutSlice => {
                 try!(word(&mut self.s, "&"));
@@ -1686,7 +1686,7 @@ impl<'a> State<'a> {
                 try!(self.pclose());
             }
             ast::PatUniq(inner) => {
-                try!(word(&mut self.s, "~"));
+                try!(word(&mut self.s, "box "));
                 try!(self.print_pat(inner));
             }
             ast::PatRegion(inner) => {

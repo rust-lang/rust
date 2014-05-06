@@ -8,4 +8,4 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-type closure = ~lt/fn(); //~ ERROR expected `;` but found `/`
+type closure = Box<lt/fn()>; //~ ERROR expected `,` but found `/`

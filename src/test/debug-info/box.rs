@@ -28,8 +28,8 @@
 #![allow(unused_variable)]
 
 fn main() {
-    let a = ~1;
-    let b = ~(2, 3.5);
+    let a = box 1;
+    let b = box() (2, 3.5);
     let c = @4;
     let d = @false;
     _zzz();

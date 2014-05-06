@@ -9,12 +9,9 @@
 // except according to those terms.
 
 
-
-
-
 // Tests for match as expressions resulting in boxed types
 fn test_box() {
-    let res = match true { true => { ~100 }, _ => fail!() };
+    let res = match true { true => { box 100 }, _ => fail!() };
     assert_eq!(*res, 100);
 }
 

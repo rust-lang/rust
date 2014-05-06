@@ -17,7 +17,7 @@ use std::os::getenv;
 use std::{os, str};
 
 /// Return path to database entry for `term`
-pub fn get_dbpath_for_term(term: &str) -> Option<~Path> {
+pub fn get_dbpath_for_term(term: &str) -> Option<Box<Path>> {
     if term.len() == 0 {
         return None;
     }

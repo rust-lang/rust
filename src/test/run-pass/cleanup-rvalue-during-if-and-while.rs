@@ -12,6 +12,7 @@
 // This test verifies that temporaries created for `while`'s and `if`
 // conditions are dropped after the condition is evaluated.
 
+
 struct Temporary;
 
 static mut DROPPED: int = 0;
@@ -26,7 +27,7 @@ impl Temporary {
     fn do_stuff(&self) -> bool {true}
 }
 
-fn borrow() -> ~Temporary { ~Temporary }
+fn borrow() -> Box<Temporary> { box Temporary }
 
 
 pub fn main() {

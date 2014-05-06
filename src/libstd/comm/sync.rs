@@ -40,6 +40,7 @@ use kinds::Send;
 use mem;
 use ops::Drop;
 use option::{Some, None, Option};
+use owned::Box;
 use ptr::RawPtr;
 use result::{Result, Ok, Err};
 use rt::local::Local;
@@ -111,7 +112,7 @@ pub enum Failure {
 /// in the meantime. This re-locks the mutex upon returning.
 fn wait(slot: &mut Blocker, f: fn(BlockedTask) -> Blocker,
         lock: &NativeMutex) {
-    let me: ~Task = Local::take();
+    let me: Box<Task> = Local::take();
     me.deschedule(1, |task| {
         match mem::replace(slot, f(task)) {
             NoneBlocked => {}
@@ -445,7 +446,7 @@ impl<T> Buffer<T> {
 
 impl Queue {
     fn enqueue(&mut self, lock: &NativeMutex) {
-        let task: ~Task = Local::take();
+        let task: Box<Task> = Local::take();
         let mut node = Node {
             task: None,
             next: 0 as *mut Node,

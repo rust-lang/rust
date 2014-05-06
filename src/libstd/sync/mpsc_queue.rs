@@ -42,6 +42,7 @@ use cast;
 use kinds::Send;
 use ops::Drop;
 use option::{Option, None, Some};
+use owned::Box;
 use ptr::RawPtr;
 use sync::atomics::{AtomicPtr, Release, Acquire, AcqRel, Relaxed};
 
@@ -120,7 +121,7 @@ impl<T: Send> Queue<T> {
                 assert!((*tail).value.is_none());
                 assert!((*next).value.is_some());
                 let ret = (*next).value.take_unwrap();
-                let _: ~Node<T> = cast::transmute(tail);
+                let _: Box<Node<T>> = cast::transmute(tail);
                 return Data(ret);
             }
 
@@ -145,7 +146,7 @@ impl<T: Send> Drop for Queue<T> {
             let mut cur = self.tail;
             while !cur.is_null() {
                 let next = (*cur).next.load(Relaxed);
-                let _: ~Node<T> = cast::transmute(cur);
+                let _: Box<Node<T>> = cast::transmute(cur);
                 cur = next;
             }
         }

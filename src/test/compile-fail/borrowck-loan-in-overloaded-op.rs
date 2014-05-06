@@ -8,18 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct foo(~uint);
+
+struct foo(Box<uint>);
 
 impl Add<foo, foo> for foo {
     fn add(&self, f: &foo) -> foo {
-        let foo(~i) = *self;
-        let foo(~j) = *f;
-        foo(~(i + j))
+        let foo(box i) = *self;
+        let foo(box j) = *f;
+        foo(box() (i + j))
     }
 }
 
 fn main() {
-    let x = foo(~3);
+    let x = foo(box 3);
     let _y = x + {x}; // the `{x}` forces a move to occur
     //~^ ERROR cannot move out of `x`
 }

@@ -147,9 +147,9 @@ fn main() {
 
     let rdr = if os::getenv("RUST_BENCH").is_some() {
         let foo = include_bin!("shootout-k-nucleotide.data");
-        ~MemReader::new(Vec::from_slice(foo)) as ~Reader
+        box MemReader::new(Vec::from_slice(foo)) as Box<Reader>
     } else {
-        ~stdio::stdin() as ~Reader
+        box stdio::stdin() as Box<Reader>
     };
     let mut rdr = BufferedReader::new(rdr);
 

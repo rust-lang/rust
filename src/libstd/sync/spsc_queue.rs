@@ -37,6 +37,7 @@ use cast;
 use kinds::Send;
 use ops::Drop;
 use option::{Some, None, Option};
+use owned::Box;
 use ptr::RawPtr;
 use sync::atomics::{AtomicPtr, Relaxed, AtomicUint, Acquire, Release};
 
@@ -187,7 +188,7 @@ impl<T: Send> Queue<T> {
                     (*self.tail_prev.load(Relaxed)).next.store(next, Relaxed);
                     // We have successfully erased all references to 'tail', so
                     // now we can safely drop it.
-                    let _: ~Node<T> = cast::transmute(tail);
+                    let _: Box<Node<T>> = cast::transmute(tail);
                 }
             }
             return ret;
@@ -215,7 +216,7 @@ impl<T: Send> Drop for Queue<T> {
             let mut cur = self.first;
             while !cur.is_null() {
                 let next = (*cur).next.load(Relaxed);
-                let _n: ~Node<T> = cast::transmute(cur);
+                let _n: Box<Node<T>> = cast::transmute(cur);
                 cur = next;
             }
         }

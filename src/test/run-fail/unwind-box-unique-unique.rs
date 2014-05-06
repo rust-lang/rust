@@ -12,12 +12,13 @@
 
 #![feature(managed_boxes)]
 
+
 fn failfn() {
     fail!();
 }
 
 fn main() {
-    let x = @~~0;
+    let x = @box box 0;
     failfn();
     println!("{:?}", x);
 }

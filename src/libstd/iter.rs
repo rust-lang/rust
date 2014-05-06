@@ -2333,6 +2333,7 @@ mod tests {
     use prelude::*;
 
     use cmp;
+    use owned::Box;
     use uint;
     use num;
 
@@ -2634,7 +2635,7 @@ mod tests {
 
     #[test]
     fn test_all() {
-        let v: ~&[int] = box &[1, 2, 3, 4, 5];
+        let v: Box<&[int]> = box &[1, 2, 3, 4, 5];
         assert!(v.iter().all(|&x| x < 10));
         assert!(!v.iter().all(|&x| x % 2 == 0));
         assert!(!v.iter().all(|&x| x > 100));
@@ -2643,7 +2644,7 @@ mod tests {
 
     #[test]
     fn test_any() {
-        let v: ~&[int] = box &[1, 2, 3, 4, 5];
+        let v: Box<&[int]> = box &[1, 2, 3, 4, 5];
         assert!(v.iter().any(|&x| x < 10));
         assert!(v.iter().any(|&x| x % 2 == 0));
         assert!(!v.iter().any(|&x| x > 100));

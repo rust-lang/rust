@@ -10,14 +10,15 @@
 
 // pp-exact
 
+
 trait Tr { }
 impl Tr for int { }
 
-fn foo(x: ~Tr: Share) -> ~Tr: Share { x }
+fn foo(x: Box<Tr: Share>) -> Box<Tr: Share> { x }
 
 fn main() {
-    let x: ~Tr: Share;
+    let x: Box<Tr: Share>;
 
-    ~1 as ~Tr: Share;
+    box() 1 as Box<Tr: Share>;
 }
 

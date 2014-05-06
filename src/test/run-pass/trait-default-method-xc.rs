@@ -50,7 +50,7 @@ impl TestEquality for stuff::thing {
 }
 
 
-pub fn main () {
+pub fn main() {
     // Some tests of random things
     f(0);
 
@@ -72,7 +72,7 @@ pub fn main () {
     assert_eq!(g(0i, 3.14, 1), (3.14, 1));
     assert_eq!(g(false, 3.14, 1), (3.14, 1));
 
-    let obj = ~0i as ~A;
+    let obj = box 0i as Box<A>;
     assert_eq!(obj.h(), 11);
 
 

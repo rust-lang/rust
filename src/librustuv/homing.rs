@@ -100,7 +100,7 @@ pub trait HomingIO {
         // to go (remember we have no preemption, so we're guaranteed to stay on
         // this event loop as long as we avoid the scheduler).
         if cur_loop_id != destination {
-            let cur_task: ~Task = Local::take();
+            let cur_task: Box<Task> = Local::take();
             cur_task.deschedule(1, |task| {
                 self.home().send(task);
                 Ok(())

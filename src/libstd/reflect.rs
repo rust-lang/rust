@@ -18,6 +18,7 @@ Runtime type reflection
 
 use intrinsics::{Disr, Opaque, TyDesc, TyVisitor};
 use mem;
+use owned::Box;
 
 /**
  * Trait for visitor that wishes to reflect on data. To use this, create a
@@ -225,9 +226,9 @@ impl<V:TyVisitor + MovePtr> TyVisitor for MovePtrAdaptor<V> {
     }
 
     fn visit_uniq(&mut self, mtbl: uint, inner: *TyDesc) -> bool {
-        self.align_to::<~u8>();
+        self.align_to::<Box<u8>>();
         if ! self.inner.visit_uniq(mtbl, inner) { return false; }
-        self.bump_past::<~u8>();
+        self.bump_past::<Box<u8>>();
         true
     }
 
@@ -417,9 +418,9 @@ impl<V:TyVisitor + MovePtr> TyVisitor for MovePtrAdaptor<V> {
     }
 
     fn visit_trait(&mut self, name: &str) -> bool {
-        self.align_to::<~TyVisitor>();
+        self.align_to::<Box<TyVisitor>>();
         if ! self.inner.visit_trait(name) { return false; }
-        self.bump_past::<~TyVisitor>();
+        self.bump_past::<Box<TyVisitor>>();
         true
     }
 

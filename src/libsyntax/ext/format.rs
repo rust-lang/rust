@@ -805,7 +805,7 @@ impl<'a, 'b> Context<'a, 'b> {
 }
 
 pub fn expand_args(ecx: &mut ExtCtxt, sp: Span,
-                   tts: &[ast::TokenTree]) -> ~base::MacResult {
+                   tts: &[ast::TokenTree]) -> Box<base::MacResult> {
 
     match parse_args(ecx, sp, tts) {
         (extra, Some((efmt, args, order, names))) => {

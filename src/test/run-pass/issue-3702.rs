@@ -8,12 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 pub fn main() {
   trait Text {
     fn to_str(&self) -> ~str;
   }
 
-  fn to_string(t: ~Text) {
+  fn to_string(t: Box<Text>) {
     println!("{}", t.to_str());
   }
 

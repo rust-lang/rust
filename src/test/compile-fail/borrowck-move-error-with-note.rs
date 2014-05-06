@@ -8,14 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 enum Foo {
-    Foo1(~u32, ~u32),
-    Foo2(~u32),
+    Foo1(Box<u32>, Box<u32>),
+    Foo2(Box<u32>),
     Foo3,
 }
 
 fn blah() {
-    let f = &Foo1(~1u32, ~2u32);
+    let f = &Foo1(box 1u32, box 2u32);
     match *f {             //~ ERROR cannot move out of
         Foo1(num1,         //~ NOTE attempting to move value to here
              num2) => (),  //~ NOTE and here
@@ -24,7 +25,10 @@ fn blah() {
     }
 }
 
-struct S {f:~str, g:~str}
+struct S {
+    f: ~str,
+    g: ~str
+}
 impl Drop for S {
     fn drop(&mut self) { println!("{}", self.f); }
 }
@@ -40,13 +44,13 @@ fn move_in_match() {
 
 // from issue-8064
 struct A {
-    a: ~int
+    a: Box<int>,
 }
 
 fn free<T>(_: T) {}
 
 fn blah2() {
-    let a = &A { a: ~1 };
+    let a = &A { a: box 1 };
     match a.a {           //~ ERROR cannot move out of
         n => {            //~ NOTE attempting to move value to here
             free(n)

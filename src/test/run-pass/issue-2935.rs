@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 //type t = { a: int };
 // type t = { a: bool };
 type t = bool;
@@ -22,10 +23,10 @@ impl it for t {
 
 pub fn main() {
   //    let x = ({a: 4i} as it);
-  //   let y = ~({a: 4i});
-  //    let z = ~({a: 4i} as it);
-  //    let z = ~({a: true} as it);
-    let z = ~(~true as ~it);
+  //   let y = box ({a: 4i});
+  //    let z = box ({a: 4i} as it);
+  //    let z = box ({a: true} as it);
+    let z = box() (box true as Box<it>);
     //  x.f();
     // y.f();
     // (*z).f();

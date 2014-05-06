@@ -28,28 +28,28 @@ fn test<'a,T,U:Send>(_: &'a int) {
     assert_send::<&'a str>(); //~ ERROR does not fulfill `Send`
     assert_send::<&'a [int]>(); //~ ERROR does not fulfill `Send`
 
-    // ~ pointers are ok
-    assert_send::<~int>();
+    // boxes are ok
+    assert_send::<Box<int>>();
     assert_send::<~str>();
     assert_send::<Vec<int> >();
 
     // but not if they own a bad thing
-    assert_send::<~&'a int>(); //~ ERROR does not fulfill `Send`
+    assert_send::<Box<&'a int>>(); //~ ERROR does not fulfill `Send`
 
     // careful with object types, who knows what they close over...
     assert_send::<&'static Dummy>(); //~ ERROR does not fulfill `Send`
     assert_send::<&'a Dummy>(); //~ ERROR does not fulfill `Send`
     assert_send::<&'a Dummy:Send>(); //~ ERROR does not fulfill `Send`
-    assert_send::<~Dummy:>(); //~ ERROR does not fulfill `Send`
+    assert_send::<Box<Dummy:>>(); //~ ERROR does not fulfill `Send`
 
     // ...unless they are properly bounded
     assert_send::<&'static Dummy:Send>();
-    assert_send::<~Dummy:Send>();
+    assert_send::<Box<Dummy:Send>>();
 
     // but closure and object types can have lifetime bounds which make
     // them not ok (FIXME #5121)
     // assert_send::<proc:'a()>(); // ERROR does not fulfill `Send`
-    // assert_send::<~Dummy:'a>(); // ERROR does not fulfill `Send`
+    // assert_send::<Box<Dummy:'a>>(); // ERROR does not fulfill `Send`
 
     // unsafe ptrs are ok unless they point at unsendable things
     assert_send::<*int>();

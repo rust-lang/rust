@@ -13,7 +13,7 @@ use std::task;
 pub fn main() {
     let (tx, rx) = channel::<uint>();
 
-    let x = ~1;
+    let x = box 1;
     let x_in_parent = &(*x) as *int as uint;
 
     task::spawn(proc() {

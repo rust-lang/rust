@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foo(x: Option<~int>, b: bool) -> int {
+
+fn foo(x: Option<Box<int>>, b: bool) -> int {
     match x {
       None => { 1 }
       Some(ref x) if b => { *x.clone() }
@@ -17,8 +18,8 @@ fn foo(x: Option<~int>, b: bool) -> int {
 }
 
 pub fn main() {
-    foo(Some(~22), true);
-    foo(Some(~22), false);
+    foo(Some(box 22), true);
+    foo(Some(box 22), false);
     foo(None, true);
     foo(None, false);
 }

@@ -15,6 +15,7 @@
 #![allow(dead_code)]
 #![allow(unused_imports)]
 
+
 // public type, private value
 pub mod foo1 {
     pub trait Bar {
@@ -42,7 +43,7 @@ pub mod foo2 {
 fn test_glob2() {
     use foo2::*;
 
-    let _x: ~Bar;  //~ ERROR use of undeclared type name `Bar`
+    let _x: Box<Bar>;  //~ ERROR use of undeclared type name `Bar`
 }
 
 // neither public
@@ -58,7 +59,7 @@ fn test_glob3() {
     use foo3::*;
 
     Bar();  //~ ERROR unresolved name `Bar`.
-    let _x: ~Bar;  //~ ERROR  use of undeclared type name `Bar`
+    let _x: Box<Bar>;  //~ ERROR  use of undeclared type name `Bar`
 }
 
 fn main() {

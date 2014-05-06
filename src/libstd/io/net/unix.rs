@@ -31,6 +31,7 @@ use clone::Clone;
 use io::pipe::PipeStream;
 use io::{Listener, Acceptor, Reader, Writer, IoResult};
 use kinds::Send;
+use owned::Box;
 use rt::rtio::{IoFactory, LocalIo, RtioUnixListener};
 use rt::rtio::{RtioUnixAcceptor, RtioPipe};
 
@@ -40,7 +41,7 @@ pub struct UnixStream {
 }
 
 impl UnixStream {
-    fn new(obj: ~RtioPipe:Send) -> UnixStream {
+    fn new(obj: Box<RtioPipe:Send>) -> UnixStream {
         UnixStream { obj: PipeStream::new(obj) }
     }
 
@@ -107,7 +108,7 @@ impl Writer for UnixStream {
 /// A value that can listen for incoming named pipe connection requests.
 pub struct UnixListener {
     /// The internal, opaque runtime Unix listener.
-    obj: ~RtioUnixListener:Send,
+    obj: Box<RtioUnixListener:Send>,
 }
 
 impl UnixListener {
@@ -149,7 +150,7 @@ impl Listener<UnixStream, UnixAcceptor> for UnixListener {
 /// A value that can accept named pipe connections, returned from `listen()`.
 pub struct UnixAcceptor {
     /// The internal, opaque runtime Unix acceptor.
-    obj: ~RtioUnixAcceptor:Send,
+    obj: Box<RtioUnixAcceptor:Send>,
 }
 
 impl UnixAcceptor {

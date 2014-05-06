@@ -10,11 +10,11 @@
 
 //! Ordered containers with integer keys, implemented as radix tries (`TrieSet` and `TrieMap` types)
 
-use std::mem;
-use std::uint;
 use std::mem::init;
-use std::slice;
+use std::mem;
 use std::slice::{Items, MutItems};
+use std::slice;
+use std::uint;
 
 // FIXME: #5244: need to manually update the TrieNode constructor
 static SHIFT: uint = 4;
@@ -23,7 +23,7 @@ static MASK: uint = SIZE - 1;
 static NUM_CHUNKS: uint = uint::BITS / SHIFT;
 
 enum Child<T> {
-    Internal(~TrieNode<T>),
+    Internal(Box<TrieNode<T>>),
     External(uint, T),
     Nothing
 }

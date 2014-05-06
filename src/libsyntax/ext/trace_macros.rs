@@ -14,10 +14,11 @@ use ext::base::ExtCtxt;
 use ext::base;
 use parse::token::{keywords, is_keyword};
 
+
 pub fn expand_trace_macros(cx: &mut ExtCtxt,
                            sp: Span,
                            tt: &[ast::TokenTree])
-                        -> ~base::MacResult {
+                           -> Box<base::MacResult> {
     match tt {
         [ast::TTTok(_, ref tok)] if is_keyword(keywords::True, tok) => {
             cx.set_trace_macros(true);

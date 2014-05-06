@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn main() {
-    let x = ~5;
+    let x = box 5;
     let y = x;
     println!("{:?}", *x); //~ ERROR use of moved value: `x`
     y.clone();

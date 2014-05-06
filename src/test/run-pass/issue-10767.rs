@@ -8,8 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 pub fn main() {
     fn f() {
     };
-    let _: ~fn() = ~f;
+    let _: Box<fn()> = box f;
 }

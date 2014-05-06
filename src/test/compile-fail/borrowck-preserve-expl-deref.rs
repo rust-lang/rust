@@ -14,6 +14,7 @@
 
 #![feature(managed_boxes)]
 
+
 fn borrow(x: &int, f: |x: &int|) {
     let before = *x;
     f(x);
@@ -21,16 +22,16 @@ fn borrow(x: &int, f: |x: &int|) {
     assert_eq!(before, after);
 }
 
-struct F { f: ~int }
+struct F { f: Box<int> }
 
 pub fn main() {
-    let mut x = @F {f: ~3};
+    let mut x = @F {f: box 3};
     borrow((*x).f, |b_x| {
     //~^ ERROR cannot borrow `x` as mutable because `*x.f` is also borrowed as immutable
         assert_eq!(*b_x, 3);
         assert_eq!(&(*x.f) as *int, &(*b_x) as *int);
         //~^ NOTE borrow occurs due to use of `x` in closure
-        x = @F {f: ~4};
+        x = @F {f: box 4};
 
         println!("&*b_x = {:p}", &(*b_x));
         assert_eq!(*b_x, 3);

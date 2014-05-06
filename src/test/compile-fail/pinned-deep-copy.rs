@@ -39,7 +39,7 @@ fn main() {
     let i = @Cell::new(0);
     {
         // Can't do this copy
-        let x = ~~~A {y: r(i)};
+        let x = box box box A {y: r(i)};
         let _z = x.clone(); //~ ERROR failed to find an implementation
         println!("{:?}", x);
     }

@@ -321,7 +321,7 @@ impl<'a, O:DataFlowOperator+Clone+'static> DataFlowContext<'a, O> {
         });
     }
 
-    fn pretty_print_to(&self, wr: ~io::Writer,
+    fn pretty_print_to(&self, wr: Box<io::Writer>,
                        blk: &ast::Block) -> io::IoResult<()> {
         let mut ps = pprust::rust_printer_annotated(wr, self);
         try!(ps.cbox(pprust::indent_unit));

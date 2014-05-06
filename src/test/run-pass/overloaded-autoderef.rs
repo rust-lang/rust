@@ -20,7 +20,7 @@ struct Point {
 
 pub fn main() {
     assert_eq!(Rc::new(5u).to_uint(), Some(5));
-    assert_eq!((~&~&Rc::new(~~&~5u)).to_uint(), Some(5));
+    assert_eq!((box &box &Rc::new(box box &box 5u)).to_uint(), Some(5));
     let point = Rc::new(Point {x: 2, y: 4});
     assert_eq!(point.x, 2);
     assert_eq!(point.y, 4);

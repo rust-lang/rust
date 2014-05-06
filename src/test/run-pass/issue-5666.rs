@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 struct Dog {
     name : ~str
 }
@@ -24,9 +25,9 @@ impl Barks for Dog {
 
 
 pub fn main() {
-    let snoopy = ~Dog{name: "snoopy".to_owned()};
-    let bubbles = ~Dog{name: "bubbles".to_owned()};
-    let barker = [snoopy as ~Barks, bubbles as ~Barks];
+    let snoopy = box Dog{name: "snoopy".to_owned()};
+    let bubbles = box Dog{name: "bubbles".to_owned()};
+    let barker = [snoopy as Box<Barks>, bubbles as Box<Barks>];
 
     for pup in barker.iter() {
         println!("{}", pup.bark());

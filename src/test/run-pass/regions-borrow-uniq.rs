@@ -13,7 +13,7 @@ fn foo(x: &uint) -> uint {
 }
 
 pub fn main() {
-    let p = ~3u;
+    let p = box 3u;
     let r = foo(p);
     assert_eq!(r, 3u);
 }

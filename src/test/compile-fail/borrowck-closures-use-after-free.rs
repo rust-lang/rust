@@ -12,6 +12,7 @@
 // cannot also be supplied a borrowed version of that
 // variable's contents. Issue #11192.
 
+
 struct Foo {
   x: int
 }
@@ -23,9 +24,9 @@ impl Drop for Foo {
 }
 
 fn main() {
-  let mut ptr = ~Foo { x: 0 };
+  let mut ptr = box Foo { x: 0 };
   let test = |foo: &Foo| {
-    ptr = ~Foo { x: ptr.x + 1 };
+    ptr = box Foo { x: ptr.x + 1 };
   };
   test(ptr); //~ ERROR cannot borrow `*ptr`
 }

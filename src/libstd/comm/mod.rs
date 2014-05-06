@@ -279,6 +279,7 @@ use kinds::marker;
 use mem;
 use ops::Drop;
 use option::{Some, None, Option};
+use owned::Box;
 use result::{Ok, Err, Result};
 use rt::local::Local;
 use rt::task::{Task, BlockedTask};
@@ -297,6 +298,7 @@ macro_rules! test (
             use prelude::*;
             use super::*;
             use super::super::*;
+            use owned::Box;
             use task;
 
             fn f() $b
@@ -549,7 +551,7 @@ impl<T: Send> Sender<T> {
         let cnt = self.sends.get() + 1;
         self.sends.set(cnt);
         if cnt % (RESCHED_FREQ as uint) == 0 {
-            let task: Option<~Task> = Local::try_take();
+            let task: Option<Box<Task>> = Local::try_take();
             task.map(|t| t.maybe_yield());
         }
 
@@ -773,7 +775,7 @@ impl<T: Send> Receiver<T> {
         let cnt = self.receives.get() + 1;
         self.receives.set(cnt);
         if cnt % (RESCHED_FREQ as uint) == 0 {
-            let task: Option<~Task> = Local::try_take();
+            let task: Option<Box<Task>> = Local::try_take();
             task.map(|t| t.maybe_yield());
         }
 
@@ -979,6 +981,7 @@ mod test {
 
     use native;
     use os;
+    use owned::Box;
     use super::*;
 
     pub fn stress_factor() -> uint {
@@ -1197,7 +1200,7 @@ mod test {
 
     test!(fn oneshot_single_thread_send_port_close() {
         // Testing that the sender cleans up the payload if receiver is closed
-        let (tx, rx) = channel::<~int>();
+        let (tx, rx) = channel::<Box<int>>();
         drop(rx);
         tx.send(box 0);
     } #[should_fail])
@@ -1214,7 +1217,7 @@ mod test {
     })
 
     test!(fn oneshot_single_thread_send_then_recv() {
-        let (tx, rx) = channel::<~int>();
+        let (tx, rx) = channel::<Box<int>>();
         tx.send(box 10);
         assert!(rx.recv() == box 10);
     })
@@ -1263,7 +1266,7 @@ mod test {
     })
 
     test!(fn oneshot_multi_task_recv_then_send() {
-        let (tx, rx) = channel::<~int>();
+        let (tx, rx) = channel::<Box<int>>();
         spawn(proc() {
             assert!(rx.recv() == box 10);
         });
@@ -1272,7 +1275,7 @@ mod test {
     })
 
     test!(fn oneshot_multi_task_recv_then_close() {
-        let (tx, rx) = channel::<~int>();
+        let (tx, rx) = channel::<Box<int>>();
         spawn(proc() {
             drop(tx);
         });
@@ -1340,7 +1343,7 @@ mod test {
             send(tx, 0);
             recv(rx, 0);
 
-            fn send(tx: Sender<~int>, i: int) {
+            fn send(tx: Sender<Box<int>>, i: int) {
                 if i == 10 { return }
 
                 spawn(proc() {
@@ -1349,7 +1352,7 @@ mod test {
                 });
             }
 
-            fn recv(rx: Receiver<~int>, i: int) {
+            fn recv(rx: Receiver<Box<int>>, i: int) {
                 if i == 10 { return }
 
                 spawn(proc() {
@@ -1513,6 +1516,7 @@ mod test {
 mod sync_tests {
     use prelude::*;
     use os;
+    use owned::Box;
 
     pub fn stress_factor() -> uint {
         match os::getenv("RUST_TEST_STRESS") {
@@ -1657,7 +1661,7 @@ mod sync_tests {
 
     test!(fn oneshot_single_thread_send_port_close() {
         // Testing that the sender cleans up the payload if receiver is closed
-        let (tx, rx) = sync_channel::<~int>(0);
+        let (tx, rx) = sync_channel::<Box<int>>(0);
         drop(rx);
         tx.send(box 0);
     } #[should_fail])
@@ -1674,7 +1678,7 @@ mod sync_tests {
     })
 
     test!(fn oneshot_single_thread_send_then_recv() {
-        let (tx, rx) = sync_channel::<~int>(1);
+        let (tx, rx) = sync_channel::<Box<int>>(1);
         tx.send(box 10);
         assert!(rx.recv() == box 10);
     })
@@ -1728,7 +1732,7 @@ mod sync_tests {
     })
 
     test!(fn oneshot_multi_task_recv_then_send() {
-        let (tx, rx) = sync_channel::<~int>(0);
+        let (tx, rx) = sync_channel::<Box<int>>(0);
         spawn(proc() {
             assert!(rx.recv() == box 10);
         });
@@ -1737,7 +1741,7 @@ mod sync_tests {
     })
 
     test!(fn oneshot_multi_task_recv_then_close() {
-        let (tx, rx) = sync_channel::<~int>(0);
+        let (tx, rx) = sync_channel::<Box<int>>(0);
         spawn(proc() {
             drop(tx);
         });
@@ -1805,7 +1809,7 @@ mod sync_tests {
             send(tx, 0);
             recv(rx, 0);
 
-            fn send(tx: SyncSender<~int>, i: int) {
+            fn send(tx: SyncSender<Box<int>>, i: int) {
                 if i == 10 { return }
 
                 spawn(proc() {
@@ -1814,7 +1818,7 @@ mod sync_tests {
                 });
             }
 
-            fn recv(rx: Receiver<~int>, i: int) {
+            fn recv(rx: Receiver<Box<int>>, i: int) {
                 if i == 10 { return }
 
                 spawn(proc() {

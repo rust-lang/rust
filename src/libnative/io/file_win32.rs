@@ -207,8 +207,8 @@ impl rtio::RtioPipe for FileDesc {
     fn write(&mut self, buf: &[u8]) -> Result<(), IoError> {
         self.inner_write(buf)
     }
-    fn clone(&self) -> ~rtio::RtioPipe:Send {
-        box FileDesc { inner: self.inner.clone() } as ~rtio::RtioPipe:Send
+    fn clone(&self) -> Box<rtio::RtioPipe:Send> {
+        box FileDesc { inner: self.inner.clone() } as Box<rtio::RtioPipe:Send>
     }
 }
 

@@ -10,8 +10,8 @@
 
 use std::task;
 
-fn child(tx: &Sender<~uint>, i: uint) {
-    tx.send(~i);
+fn child(tx: &Sender<Box<uint>>, i: uint) {
+    tx.send(box i);
 }
 
 pub fn main() {

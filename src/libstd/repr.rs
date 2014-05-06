@@ -320,7 +320,7 @@ impl<'a> TyVisitor for ReprVisitor<'a> {
     }
 
     fn visit_uniq(&mut self, _mtbl: uint, inner: *TyDesc) -> bool {
-        try!(self, self.writer.write(['~' as u8]));
+        try!(self, self.writer.write("box ".as_bytes()));
         self.get::<*u8>(|this, b| {
             this.visit_ptr_inner(*b, inner)
         })
@@ -353,7 +353,7 @@ impl<'a> TyVisitor for ReprVisitor<'a> {
 
     fn visit_evec_uniq(&mut self, mtbl: uint, inner: *TyDesc) -> bool {
         self.get::<&raw::Vec<()>>(|this, b| {
-            try!(this, this.writer.write(['~' as u8]));
+            try!(this, this.writer.write("box ".as_bytes()));
             this.write_unboxed_vec_repr(mtbl, *b, inner)
         })
     }
@@ -624,6 +624,7 @@ fn test_repr() {
     use io::stdio::println;
     use char::is_alphabetic;
     use mem::swap;
+    use owned::Box;
 
     fn exact_test<T>(t: &T, e:&str) {
         let mut m = io::MemWriter::new();
@@ -641,7 +642,7 @@ fn test_repr() {
     exact_test(&("he\u10f3llo".to_owned()), "~\"he\\u10f3llo\"");
 
     exact_test(&(@10), "@10");
-    exact_test(&(box 10), "~10");
+    exact_test(&(box 10), "box 10");
     exact_test(&(&10), "&10");
     let mut x = 10;
     exact_test(&(&mut x), "&mut 10");
@@ -650,8 +651,6 @@ fn test_repr() {
     exact_test(&(0 as *mut ()), "(0x0 as *mut ())");
 
     exact_test(&(1,), "(1,)");
-    exact_test(&(box ["hi", "there"]),
-               "~[\"hi\", \"there\"]");
     exact_test(&(&["hi", "there"]),
                "&[\"hi\", \"there\"]");
     exact_test(&(P{a:10, b:1.234}),
@@ -659,7 +658,7 @@ fn test_repr() {
     exact_test(&(@P{a:10, b:1.234}),
                "@repr::P{a: 10, b: 1.234f64}");
     exact_test(&(box P{a:10, b:1.234}),
-               "~repr::P{a: 10, b: 1.234f64}");
+               "box repr::P{a: 10, b: 1.234f64}");
     exact_test(&(10u8, "hello".to_owned()),
                "(10u8, ~\"hello\")");
     exact_test(&(10u16, "hello".to_owned()),
@@ -680,10 +679,6 @@ fn test_repr() {
     exact_test(&println, "fn(&str)");
     exact_test(&swap::<int>, "fn(&mut int, &mut int)");
     exact_test(&is_alphabetic, "fn(char) -> bool");
-    exact_test(&(box 5 as ~ToStr), "~to_str::ToStr<no-bounds>");
-
-    struct Foo;
-    exact_test(&(box [Foo, Foo]), "~[repr::test_repr::Foo, repr::test_repr::Foo]");
 
     struct Bar(int, int);
     exact_test(&(Bar(2, 2)), "repr::test_repr::Bar(2, 2)");

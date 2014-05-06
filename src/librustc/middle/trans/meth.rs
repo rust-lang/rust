@@ -344,7 +344,7 @@ fn trans_trait_callee<'a>(bcx: &'a Block<'a>,
                           -> Callee<'a> {
     /*!
      * Create a method callee where the method is coming from a trait
-     * object (e.g., ~Trait type).  In this case, we must pull the fn
+     * object (e.g., Box<Trait> type).  In this case, we must pull the fn
      * pointer out of the vtable that is packaged up with the object.
      * Objects are represented as a pair, so we first evaluate the self
      * expression and then extract the self data and vtable out of the
@@ -401,7 +401,7 @@ pub fn trans_trait_callee_from_llval<'a>(bcx: &'a Block<'a>,
 
     // Load the function from the vtable and cast it to the expected type.
     debug!("(translating trait callee) loading method");
-    // Replace the self type (&Self or ~Self) with an opaque pointer.
+    // Replace the self type (&Self or Box<Self>) with an opaque pointer.
     let llcallee_ty = match ty::get(callee_ty).sty {
         ty::ty_bare_fn(ref f) if f.abi == Rust => {
             type_of_rust_fn(ccx, true, f.sig.inputs.slice_from(1), f.sig.output)
@@ -527,8 +527,8 @@ pub fn trans_trait_cast<'a>(bcx: &'a Block<'a>,
                             dest: expr::Dest)
                             -> &'a Block<'a> {
     /*!
-     * Generates the code to convert from a pointer (`~T`, `&T`, etc)
-     * into an object (`~Trait`, `&Trait`, etc). This means creating a
+     * Generates the code to convert from a pointer (`Box<T>`, `&T`, etc)
+     * into an object (`Box<Trait>`, `&Trait`, etc). This means creating a
      * pair where the first word is the vtable and the second word is
      * the pointer.
      */

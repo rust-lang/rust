@@ -29,7 +29,7 @@ use std::str;
 
 /* line!(): expands to the current line number */
 pub fn expand_line(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
-    -> ~base::MacResult {
+                   -> Box<base::MacResult> {
     base::check_zero_tts(cx, sp, tts, "line!");
 
     let topmost = topmost_expn_info(cx.backtrace().unwrap());
@@ -40,7 +40,7 @@ pub fn expand_line(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
 
 /* col!(): expands to the current column number */
 pub fn expand_col(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
-    -> ~base::MacResult {
+                  -> Box<base::MacResult> {
     base::check_zero_tts(cx, sp, tts, "col!");
 
     let topmost = topmost_expn_info(cx.backtrace().unwrap());
@@ -52,7 +52,7 @@ pub fn expand_col(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
 /* The filemap (`loc.file`) contains a bunch more information we could spit
  * out if we wanted. */
 pub fn expand_file(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
-    -> ~base::MacResult {
+                   -> Box<base::MacResult> {
     base::check_zero_tts(cx, sp, tts, "file!");
 
     let topmost = topmost_expn_info(cx.backtrace().unwrap());
@@ -62,13 +62,13 @@ pub fn expand_file(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
 }
 
 pub fn expand_stringify(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
-    -> ~base::MacResult {
+                        -> Box<base::MacResult> {
     let s = pprust::tts_to_str(tts);
     base::MacExpr::new(cx.expr_str(sp, token::intern_and_get_ident(s)))
 }
 
 pub fn expand_mod(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
-    -> ~base::MacResult {
+                  -> Box<base::MacResult> {
     base::check_zero_tts(cx, sp, tts, "module_path!");
     let string = cx.mod_path()
                    .iter()
@@ -82,7 +82,7 @@ pub fn expand_mod(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
 // This is generally a bad idea because it's going to behave
 // unhygienically.
 pub fn expand_include(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
-    -> ~base::MacResult {
+                      -> Box<base::MacResult> {
     let file = match get_single_str_from_tts(cx, sp, tts, "include!") {
         Some(f) => f,
         None => return DummyResult::expr(sp),
@@ -100,7 +100,7 @@ pub fn expand_include(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
 
 // include_str! : read the given file, insert it as a literal string expr
 pub fn expand_include_str(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
-    -> ~base::MacResult {
+                          -> Box<base::MacResult> {
     let file = match get_single_str_from_tts(cx, sp, tts, "include_str!") {
         Some(f) => f,
         None => return DummyResult::expr(sp)
@@ -131,8 +131,7 @@ pub fn expand_include_str(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
 }
 
 pub fn expand_include_bin(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
-        -> ~base::MacResult
-{
+                          -> Box<base::MacResult> {
     let file = match get_single_str_from_tts(cx, sp, tts, "include_bin!") {
         Some(f) => f,
         None => return DummyResult::expr(sp)

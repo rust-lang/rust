@@ -16,7 +16,7 @@ struct Pair {
 }
 
 pub fn main() {
-    let z = ~Pair { a : 10, b : 12};
+    let z = box Pair { a : 10, b : 12};
 
     let f: proc():Send = proc() {
         assert_eq!(z.a, 10);

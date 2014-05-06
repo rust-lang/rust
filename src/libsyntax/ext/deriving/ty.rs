@@ -20,6 +20,7 @@ use ext::build::AstBuilder;
 use codemap::{Span,respan};
 use owned_slice::OwnedSlice;
 
+
 /// The types of pointers
 pub enum PtrTy<'a> {
     Send, // ~
@@ -31,7 +32,7 @@ pub enum PtrTy<'a> {
 pub struct Path<'a> {
     pub path: Vec<&'a str> ,
     pub lifetime: Option<&'a str>,
-    pub params: Vec<~Ty<'a>> ,
+    pub params: Vec<Box<Ty<'a>>>,
     pub global: bool,
 }
 
@@ -44,7 +45,7 @@ impl<'a> Path<'a> {
     }
     pub fn new_<'r>(path: Vec<&'r str> ,
                     lifetime: Option<&'r str>,
-                    params: Vec<~Ty<'r>> ,
+                    params: Vec<Box<Ty<'r>>>,
                     global: bool)
                     -> Path<'r> {
         Path {
@@ -80,8 +81,8 @@ impl<'a> Path<'a> {
 /// A type. Supports pointers (except for *), Self, and literals
 pub enum Ty<'a> {
     Self,
-    // &/~/@ Ty
-    Ptr(~Ty<'a>, PtrTy<'a>),
+    // &/Box/@ Ty
+    Ptr(Box<Ty<'a>>, PtrTy<'a>),
     // mod::mod::Type<[lifetime], [Params...]>, including a plain type
     // parameter, and things like `int`
     Literal(Path<'a>),
@@ -92,7 +93,7 @@ pub enum Ty<'a> {
 pub fn borrowed_ptrty<'r>() -> PtrTy<'r> {
     Borrowed(None, ast::MutImmutable)
 }
-pub fn borrowed<'r>(ty: ~Ty<'r>) -> Ty<'r> {
+pub fn borrowed<'r>(ty: Box<Ty<'r>>) -> Ty<'r> {
     Ptr(ty, borrowed_ptrty())
 }
 

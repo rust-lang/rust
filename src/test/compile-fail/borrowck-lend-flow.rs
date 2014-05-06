@@ -14,20 +14,21 @@
 // either genuine or would require more advanced changes.  The latter
 // cases are noted.
 
+
 fn borrow(_v: &int) {}
 fn borrow_mut(_v: &mut int) {}
 fn cond() -> bool { fail!() }
 fn for_func(_f: || -> bool) { fail!() }
 fn produce<T>() -> T { fail!(); }
 
-fn inc(v: &mut ~int) {
-    *v = ~(**v + 1);
+fn inc(v: &mut Box<int>) {
+    *v = box() (**v + 1);
 }
 
 fn pre_freeze() {
     // In this instance, the freeze starts before the mut borrow.
 
-    let mut v = ~3;
+    let mut v = box 3;
     let _w = &v;
     borrow_mut(v); //~ ERROR cannot borrow
 }
@@ -35,7 +36,7 @@ fn pre_freeze() {
 fn post_freeze() {
     // In this instance, the const alias starts after the borrow.
 
-    let mut v = ~3;
+    let mut v = box 3;
     borrow_mut(v);
     let _w = &v;
 }

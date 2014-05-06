@@ -129,7 +129,7 @@ fn demangle(writer: &mut Writer, s: &str) -> IoResult<()> {
                     // see src/librustc/back/link.rs for these mappings
                     demangle! (
                         "$SP$" => "@",
-                        "$UP$" => "~",
+                        "$UP$" => "Box",
                         "$RP$" => "*",
                         "$BP$" => "&",
                         "$LT$" => "<",
@@ -858,15 +858,15 @@ mod test {
 
     #[test]
     fn demangle_dollars() {
-        t!("_ZN4$UP$E", "~");
-        t!("_ZN8$UP$testE", "~test");
-        t!("_ZN8$UP$test4foobE", "~test::foob");
+        t!("_ZN4$UP$E", "Box");
+        t!("_ZN8$UP$testE", "Boxtest");
+        t!("_ZN8$UP$test4foobE", "Boxtest::foob");
         t!("_ZN8$x20test4foobE", " test::foob");
     }
 
     #[test]
     fn demangle_many_dollars() {
         t!("_ZN12test$x20test4foobE", "test test::foob");
-        t!("_ZN12test$UP$test4foobE", "test~test::foob");
+        t!("_ZN12test$UP$test4foobE", "testBoxtest::foob");
     }
 }

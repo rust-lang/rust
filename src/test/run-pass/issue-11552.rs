@@ -8,22 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 #[deriving(Clone)]
 enum Noun
 {
     Atom(int),
-    Cell(~Noun, ~Noun)
+    Cell(Box<Noun>, Box<Noun>)
 }
 
 fn fas(n: &Noun) -> Noun
 {
-    match n
-    {
-        &Cell(~Atom(2), ~Cell(ref a, _)) => (**a).clone(),
+    match n {
+        &Cell(box Atom(2), box Cell(ref a, _)) => (**a).clone(),
         _ => fail!("Invalid fas pattern")
     }
 }
 
 pub fn main() {
-    fas(&Cell(~Atom(2), ~Cell(~Atom(2), ~Atom(3))));
+    fas(&Cell(box Atom(2), box Cell(box Atom(2), box Atom(3))));
 }
