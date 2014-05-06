@@ -12,13 +12,12 @@
 
 use cast::{forget, transmute};
 use clone::Clone;
-use cmp::{Ord, Eq, Ordering, TotalEq, TotalOrd};
+use cmp::{Ord, Eq, Ordering, TotalEq, TotalOrd, max};
 use container::{Container, Mutable};
 use default::Default;
 use fmt;
 use iter::{DoubleEndedIterator, FromIterator, Extendable, Iterator, range};
-use libc::{free, c_void};
-use mem::{size_of, move_val_init};
+use mem::{min_align_of, move_val_init, size_of};
 use mem;
 use num;
 use num::{CheckedMul, CheckedAdd};
@@ -26,9 +25,9 @@ use ops::{Add, Drop};
 use option::{None, Option, Some, Expect};
 use ptr::RawPtr;
 use ptr;
-use rt::global_heap::{malloc_raw, realloc_raw};
 use raw::Slice;
 use RawVec = raw::Vec;
+use rt::heap::{allocate, reallocate, deallocate};
 use slice::{ImmutableEqVector, ImmutableVector, Items, MutItems, MutableVector};
 use slice::{MutableTotalOrdVector, OwnedVector, Vector};
 use slice::{MutableVectorAllocating};
@@ -96,7 +95,7 @@ impl<T> Vec<T> {
             Vec::new()
         } else {
             let size = capacity.checked_mul(&size_of::<T>()).expect("capacity overflow");
-            let ptr = unsafe { malloc_raw(size) };
+            let ptr = unsafe { allocate(size, min_align_of::<T>()) };
             Vec { len: 0, cap: capacity, ptr: ptr as *mut T }
         }
     }
@@ -401,6 +400,16 @@ impl<T> Container for Vec<T> {
     }
 }
 
+// FIXME: #13996: need a way to mark the return value as `noalias`
+#[inline(never)]
+unsafe fn alloc_or_realloc(ptr: *mut u8, size: uint, align: uint, old_size: uint) -> *mut u8 {
+    if old_size == 0 {
+        allocate(size, align)
+    } else {
+        reallocate(ptr, size, align, old_size)
+    }
+}
+
 impl<T> Vec<T> {
     /// Returns the number of elements the vector can hold without
     /// reallocating.
@@ -479,31 +488,35 @@ impl<T> Vec<T> {
     pub fn reserve_exact(&mut self, capacity: uint) {
         if capacity > self.cap {
             let size = capacity.checked_mul(&size_of::<T>()).expect("capacity overflow");
-            self.cap = capacity;
             unsafe {
-                self.ptr = realloc_raw(self.ptr as *mut u8, size) as *mut T;
+                self.ptr = alloc_or_realloc(self.ptr as *mut u8, size, min_align_of::<T>(),
+                                            self.cap * size_of::<T>()) as *mut T;
             }
+            self.cap = capacity;
         }
     }
 
-    /// Shrink the capacity of the vector to match the length
+    /// Shrink the capacity of the vector as much as possible
     ///
     /// # Example
     ///
     /// ```rust
     /// let mut vec = vec!(1, 2, 3);
     /// vec.shrink_to_fit();
-    /// assert_eq!(vec.capacity(), vec.len());
     /// ```
     pub fn shrink_to_fit(&mut self) {
         if self.len == 0 {
-            unsafe { free(self.ptr as *mut c_void) };
-            self.cap = 0;
-            self.ptr = 0 as *mut T;
+            if self.cap != 0 {
+                unsafe {
+                    deallocate(self.ptr as *mut u8, self.cap * size_of::<T>(), min_align_of::<T>())
+                }
+                self.cap = 0;
+            }
         } else {
             unsafe {
                 // Overflow check is unnecessary as the vector is already at least this large.
-                self.ptr = realloc_raw(self.ptr as *mut u8, self.len * size_of::<T>()) as *mut T;
+                self.ptr = reallocate(self.ptr as *mut u8, self.len * size_of::<T>(),
+                                      min_align_of::<T>(), self.cap * size_of::<T>()) as *mut T;
             }
             self.cap = self.len;
         }
@@ -547,14 +560,14 @@ impl<T> Vec<T> {
     #[inline]
     pub fn push(&mut self, value: T) {
         if self.len == self.cap {
-            if self.cap == 0 { self.cap += 2 }
             let old_size = self.cap * size_of::<T>();
-            self.cap = self.cap * 2;
-            let size = old_size * 2;
+            let size = max(old_size, 2 * size_of::<T>()) * 2;
             if old_size > size { fail!("capacity overflow") }
             unsafe {
-                self.ptr = realloc_raw(self.ptr as *mut u8, size) as *mut T;
+                self.ptr = alloc_or_realloc(self.ptr as *mut u8, size, min_align_of::<T>(),
+                                            self.cap * size_of::<T>()) as *mut u8 as *mut T;
             }
+            self.cap = max(self.cap, 2) * 2;
         }
 
         unsafe {
@@ -638,9 +651,10 @@ impl<T> Vec<T> {
     pub fn move_iter(self) -> MoveItems<T> {
         unsafe {
             let iter = transmute(self.as_slice().iter());
-            let ptr = self.ptr as *mut c_void;
+            let ptr = self.ptr as *mut u8;
+            let cap = self.cap;
             forget(self);
-            MoveItems { allocation: ptr, iter: iter }
+            MoveItems { allocation: ptr, cap: cap, iter: iter }
         }
     }
 
@@ -1386,11 +1400,13 @@ impl<T> Drop for Vec<T> {
     fn drop(&mut self) {
         // This is (and should always remain) a no-op if the fields are
         // zeroed (when moving out, because of #[unsafe_no_drop_flag]).
-        unsafe {
-            for x in self.as_mut_slice().iter() {
-                ptr::read(x);
+        if self.cap != 0 {
+            unsafe {
+                for x in self.as_mut_slice().iter() {
+                    ptr::read(x);
+                }
+                deallocate(self.ptr as *mut u8, self.cap * size_of::<T>(), min_align_of::<T>())
             }
-            free(self.ptr as *mut c_void)
         }
     }
 }
@@ -1409,7 +1425,8 @@ impl<T:fmt::Show> fmt::Show for Vec<T> {
 
 /// An iterator that moves out of a vector.
 pub struct MoveItems<T> {
-    allocation: *mut c_void, // the block of memory allocated for the vector
+    allocation: *mut u8, // the block of memory allocated for the vector
+    cap: uint, // the capacity of the vector
     iter: Items<'static, T>
 }
 
@@ -1440,9 +1457,11 @@ impl<T> DoubleEndedIterator<T> for MoveItems<T> {
 impl<T> Drop for MoveItems<T> {
     fn drop(&mut self) {
         // destroy the remaining elements
-        for _x in *self {}
-        unsafe {
-            free(self.allocation)
+        if self.cap != 0 {
+            for _x in *self {}
+            unsafe {
+                deallocate(self.allocation, self.cap * size_of::<T>(), min_align_of::<T>())
+            }
         }
     }
 }
