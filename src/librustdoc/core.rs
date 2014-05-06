@@ -60,19 +60,20 @@ pub struct CrateAnalysis {
 fn get_ast_and_resolve(cpath: &Path, libs: HashSet<Path>, cfgs: Vec<~str>)
                        -> (DocContext, CrateAnalysis) {
     use syntax::codemap::dummy_spanned;
-    use rustc::driver::driver::{FileInput, build_configuration,
+    use rustc::driver::driver::{FileInput,
                                 phase_1_parse_input,
                                 phase_2_configure_and_expand,
                                 phase_3_run_analysis_passes};
+    use rustc::driver::config::build_configuration;
 
     let input = FileInput(cpath.clone());
 
-    let sessopts = driver::session::Options {
+    let sessopts = driver::config::Options {
         maybe_sysroot: Some(os::self_exe_path().unwrap().dir_path()),
         addl_lib_search_paths: RefCell::new(libs),
-        crate_types: vec!(driver::session::CrateTypeDylib),
+        crate_types: vec!(driver::config::CrateTypeDylib),
         lint_opts: vec!((lint::Warnings, lint::allow)),
-        ..rustc::driver::session::basic_options().clone()
+        ..rustc::driver::config::basic_options().clone()
     };
 
 
@@ -81,9 +82,9 @@ fn get_ast_and_resolve(cpath: &Path, libs: HashSet<Path>, cfgs: Vec<~str>)
     let span_diagnostic_handler =
         syntax::diagnostic::mk_span_handler(diagnostic_handler, codemap);
 
-    let sess = driver::driver::build_session_(sessopts,
-                                              Some(cpath.clone()),
-                                              span_diagnostic_handler);
+    let sess = driver::session::build_session_(sessopts,
+                                               Some(cpath.clone()),
+                                               span_diagnostic_handler);
 
     let mut cfg = build_configuration(&sess);
     for cfg_ in cfgs.move_iter() {
