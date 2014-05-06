@@ -370,7 +370,7 @@ fn main() {
 ```
 
 This example is starting to get more subtle,
-but it hints at the powerful compositionality of Rust's concurrent types.
+but it hints at the powerful composability of Rust's concurrent types.
 This time we've put our array of numbers inside a `Mutex` and then put *that* inside the `Arc`.
 Like immutable data,
 `Mutex`es are sharable,
