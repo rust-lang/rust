@@ -42,7 +42,8 @@ byte literals of type `u8` and
 byte string literals of type `&'static [u8]` (or `[u8]`, post-DST).
 They are identical to the existing character and string literals, except that:
 
-* They are prefixed with a `b` (for "binary"), to distinguish them
+* They are prefixed with a `b` (for "binary"), to distinguish them.
+  This is similar to the `r` prefix for raw strings.
 * Unescaped code points in the body must be in the ASCII range: U+0000 to U+007F.
 * `'\x5c' 'u' hex_digit 4` and `'\x5c' 'U' hex_digit 8` escapes are not allowed.
 * `'\x5c' 'x' hex_digit 2` escapes represent a single byte rather than a code point.
