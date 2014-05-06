@@ -176,6 +176,7 @@ pub mod unit;
 pub mod bool;
 pub mod char;
 pub mod tuple;
+pub mod enums;
 
 pub mod slice;
 pub mod vec;

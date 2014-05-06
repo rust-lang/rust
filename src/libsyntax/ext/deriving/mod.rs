@@ -31,6 +31,7 @@ pub mod show;
 pub mod zero;
 pub mod default;
 pub mod primitive;
+pub mod enumerable;
 
 #[path="cmp/eq.rs"]
 pub mod eq;
@@ -87,6 +88,8 @@ pub fn expand_meta_deriving(cx: &mut ExtCtxt,
 
                             "Zero" => expand!(zero::expand_deriving_zero),
                             "Default" => expand!(default::expand_deriving_default),
+
+                            "Enumerable" => expand!(enumerable::expand_deriving_enumerable),
 
                             "FromPrimitive" => expand!(primitive::expand_deriving_from_primitive),
 
