@@ -89,6 +89,7 @@ fn run_cfail_test(config: &config, props: &TestProps, testfile: &Path) {
     } else {
         check_error_patterns(props, testfile, &proc_res);
     }
+    check_no_compiler_crash(&proc_res);
 }
 
 fn run_rfail_test(config: &config, props: &TestProps, testfile: &Path) {
@@ -502,6 +503,15 @@ fn check_error_patterns(props: &TestProps,
             error(format!("error pattern '{}' not found!", *pattern));
         }
         fatal_ProcRes("multiple error patterns not found".to_owned(), proc_res);
+    }
+}
+
+fn check_no_compiler_crash(proc_res: &ProcRes) {
+    for line in proc_res.stderr.lines() {
+        if line.starts_with("error: internal compiler error:") {
+            fatal_ProcRes("compiler encountered internal error".to_owned(),
+                          proc_res);
+        }
     }
 }
 
