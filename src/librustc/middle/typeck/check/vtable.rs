@@ -644,7 +644,6 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
                     insert_vtables(fcx, MethodCall::expr(ex.id), vtbls);
                 }
             }
-            true
         });
       }
 

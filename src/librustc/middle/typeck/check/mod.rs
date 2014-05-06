@@ -221,6 +221,10 @@ enum IsBinopAssignment{
 
 #[deriving(Clone)]
 pub struct FnCtxt<'a> {
+    // This flag is set to true if, during the writeback phase, we encounter
+    // a type error in this function.
+    writeback_errors: Cell<bool>,
+
     // Number of errors that had been reported when we started
     // checking this function. On exit, if we find that *more* errors
     // have been reported, we will skip regionck and other work that
@@ -280,6 +284,7 @@ fn blank_fn_ctxt<'a>(ccx: &'a CrateCtxt<'a>,
                      region_bnd: ast::NodeId)
                      -> FnCtxt<'a> {
     FnCtxt {
+        writeback_errors: Cell::new(false),
         err_count_on_creation: ccx.tcx.sess.err_count(),
         ret_ty: rty,
         ps: RefCell::new(FnStyleState::function(ast::NormalFn, 0)),
@@ -469,6 +474,7 @@ fn check_fn<'a>(ccx: &'a CrateCtxt<'a>,
     // Create the function context.  This is either derived from scratch or,
     // in the case of function expressions, based on the outer context.
     let fcx = FnCtxt {
+        writeback_errors: Cell::new(false),
         err_count_on_creation: err_count_on_creation,
         ret_ty: ret_ty,
         ps: RefCell::new(FnStyleState::function(fn_style, id)),
@@ -1198,11 +1204,10 @@ impl<'a> FnCtxt<'a> {
 
     pub fn opt_node_ty_substs(&self,
                               id: ast::NodeId,
-                              f: |&ty::substs| -> bool)
-                              -> bool {
+                              f: |&ty::substs|) {
         match self.inh.node_type_substs.borrow().find(&id) {
-            Some(s) => f(s),
-            None => true
+            Some(s) => { f(s) }
+            None => { }
         }
     }
 
