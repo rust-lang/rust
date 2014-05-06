@@ -14,12 +14,11 @@ use std::hash::Hash;
 use std::io;
 use std::mem;
 use std::num;
+use std::num::Zero;
 use collections::hashmap;
+use std::fmt::Show;
 
-// NB: this can probably be rewritten in terms of num::Num
-// to be less f64-specific.
-
-fn f64_cmp(x: f64, y: f64) -> Ordering {
+fn local_cmp<T:Float>(x: T, y: T) -> Ordering {
     // arbitrarily decide that NaNs are larger than everything.
     if y.is_nan() {
         Less
@@ -34,12 +33,12 @@ fn f64_cmp(x: f64, y: f64) -> Ordering {
     }
 }
 
-fn f64_sort(v: &mut [f64]) {
-    v.sort_by(|x: &f64, y: &f64| f64_cmp(*x, *y));
+fn local_sort<T: Float>(v: &mut [T]) {
+    v.sort_by(|x: &T, y: &T| local_cmp(*x, *y));
 }
 
 /// Trait that provides simple descriptive statistics on a univariate set of numeric samples.
-pub trait Stats {
+pub trait Stats <T: Float + FromPrimitive>{
 
     /// Sum of the samples.
     ///
@@ -48,24 +47,24 @@ pub trait Stats {
     /// ["Adaptive Precision Floating-Point Arithmetic and Fast Robust Geometric Predicates"]
     /// (http://www.cs.cmu.edu/~quake-papers/robust-arithmetic.ps)
     /// *Discrete & Computational Geometry 18*, 3 (Oct 1997), 305-363, Shewchuk J.R.
-    fn sum(self) -> f64;
+    fn sum(self) -> T;
 
     /// Minimum value of the samples.
-    fn min(self) -> f64;
+    fn min(self) -> T;
 
     /// Maximum value of the samples.
-    fn max(self) -> f64;
+    fn max(self) -> T;
 
     /// Arithmetic mean (average) of the samples: sum divided by sample-count.
     ///
     /// See: https://en.wikipedia.org/wiki/Arithmetic_mean
-    fn mean(self) -> f64;
+    fn mean(self) -> T;
 
     /// Median of the samples: value separating the lower half of the samples from the higher half.
     /// Equal to `self.percentile(50.0)`.
     ///
     /// See: https://en.wikipedia.org/wiki/Median
-    fn median(self) -> f64;
+    fn median(self) -> T;
 
     /// Variance of the samples: bias-corrected mean of the squares of the differences of each
     /// sample from the sample mean. Note that this calculates the _sample variance_ rather than the
@@ -74,7 +73,7 @@ pub trait Stats {
     /// than `n`.
     ///
     /// See: https://en.wikipedia.org/wiki/Variance
-    fn var(self) -> f64;
+    fn var(self) -> T;
 
     /// Standard deviation: the square root of the sample variance.
     ///
@@ -82,13 +81,13 @@ pub trait Stats {
     /// `median_abs_dev` for unknown distributions.
     ///
     /// See: https://en.wikipedia.org/wiki/Standard_deviation
-    fn std_dev(self) -> f64;
+    fn std_dev(self) -> T;
 
     /// Standard deviation as a percent of the mean value. See `std_dev` and `mean`.
     ///
     /// Note: this is not a robust statistic for non-normal distributions. Prefer the
     /// `median_abs_dev_pct` for unknown distributions.
-    fn std_dev_pct(self) -> f64;
+    fn std_dev_pct(self) -> T;
 
     /// Scaled median of the absolute deviations of each sample from the sample median. This is a
     /// robust (distribution-agnostic) estimator of sample variability. Use this in preference to
@@ -97,10 +96,10 @@ pub trait Stats {
     /// deviation.
     ///
     /// See: http://en.wikipedia.org/wiki/Median_absolute_deviation
-    fn median_abs_dev(self) -> f64;
+    fn median_abs_dev(self) -> T;
 
     /// Median absolute deviation as a percent of the median. See `median_abs_dev` and `median`.
-    fn median_abs_dev_pct(self) -> f64;
+    fn median_abs_dev_pct(self) -> T;
 
     /// Percentile: the value below which `pct` percent of the values in `self` fall. For example,
     /// percentile(95.0) will return the value `v` such that 95% of the samples `s` in `self`
@@ -109,7 +108,7 @@ pub trait Stats {
     /// Calculated by linear interpolation between closest ranks.
     ///
     /// See: http://en.wikipedia.org/wiki/Percentile
-    fn percentile(self, pct: f64) -> f64;
+    fn percentile(self, pct: T) -> T;
 
     /// Quartiles of the sample: three values that divide the sample into four equal groups, each
     /// with 1/4 of the data. The middle value is the median. See `median` and `percentile`. This
@@ -117,37 +116,37 @@ pub trait Stats {
     /// is otherwise equivalent.
     ///
     /// See also: https://en.wikipedia.org/wiki/Quartile
-    fn quartiles(self) -> (f64,f64,f64);
+    fn quartiles(self) -> (T,T,T);
 
     /// Inter-quartile range: the difference between the 25th percentile (1st quartile) and the 75th
     /// percentile (3rd quartile). See `quartiles`.
     ///
     /// See also: https://en.wikipedia.org/wiki/Interquartile_range
-    fn iqr(self) -> f64;
+    fn iqr(self) -> T;
 }
 
 /// Extracted collection of all the summary statistics of a sample set.
 #[deriving(Clone, Eq)]
 #[allow(missing_doc)]
-pub struct Summary {
-    pub sum: f64,
-    pub min: f64,
-    pub max: f64,
-    pub mean: f64,
-    pub median: f64,
-    pub var: f64,
-    pub std_dev: f64,
-    pub std_dev_pct: f64,
-    pub median_abs_dev: f64,
-    pub median_abs_dev_pct: f64,
-    pub quartiles: (f64,f64,f64),
-    pub iqr: f64,
+pub struct Summary<T> {
+    pub sum: T,
+    pub min: T,
+    pub max: T,
+    pub mean: T,
+    pub median: T,
+    pub var: T,
+    pub std_dev: T,
+    pub std_dev_pct: T,
+    pub median_abs_dev: T,
+    pub median_abs_dev_pct: T,
+    pub quartiles: (T,T,T),
+    pub iqr: T,
 }
 
-impl Summary {
+impl<T: Float + FromPrimitive> Summary<T> {
 
     /// Construct a new summary of a sample set.
-    pub fn new(samples: &[f64]) -> Summary {
+    pub fn new(samples: &[T]) -> Summary<T> {
         Summary {
             sum: samples.sum(),
             min: samples.min(),
@@ -165,11 +164,11 @@ impl Summary {
     }
 }
 
-impl<'a> Stats for &'a [f64] {
+impl<'a,T: Float + FromPrimitive> Stats<T> for &'a [T] {
 
     // FIXME #11059 handle NaN, inf and overflow
     #[allow(deprecated_owned_vector)]
-    fn sum(self) -> f64 {
+    fn sum(self) -> T {
         let mut partials = vec![];
 
         for &mut x in self.iter() {
@@ -185,7 +184,7 @@ impl<'a> Stats for &'a [f64] {
                 // `lo`. Together `hi+lo` are exactly equal to `x+y`.
                 let hi = x + y;
                 let lo = y - (hi - x);
-                if lo != 0f64 {
+                if !lo.is_zero() {
                     *partials.get_mut(j) = lo;
                     j += 1;
                 }
@@ -198,81 +197,89 @@ impl<'a> Stats for &'a [f64] {
                 partials.truncate(j+1);
             }
         }
-        partials.iter().fold(0.0, |p, q| p + *q)
+        let zero: T = Zero::zero();
+        partials.iter().fold(zero, |p, q| p + *q)
     }
 
-    fn min(self) -> f64 {
+    fn min(self) -> T {
         assert!(self.len() != 0);
         self.iter().fold(self[0], |p, q| p.min(*q))
     }
 
-    fn max(self) -> f64 {
+    fn max(self) -> T {
         assert!(self.len() != 0);
         self.iter().fold(self[0], |p, q| p.max(*q))
     }
 
-    fn mean(self) -> f64 {
+    fn mean(self) -> T {
         assert!(self.len() != 0);
-        self.sum() / (self.len() as f64)
+        self.sum() / FromPrimitive::from_uint(self.len()).unwrap()
     }
 
-    fn median(self) -> f64 {
-        self.percentile(50.0)
+    fn median(self) -> T {
+        self.percentile(FromPrimitive::from_uint(50).unwrap())
     }
 
-    fn var(self) -> f64 {
+    fn var(self) -> T {
         if self.len() < 2 {
-            0.0
+            Zero::zero()
         } else {
             let mean = self.mean();
-            let mut v = 0.0;
+            let mut v: T = Zero::zero();
             for s in self.iter() {
                 let x = *s - mean;
-                v += x*x;
+                v = v + x*x;
             }
             // NB: this is _supposed to be_ len-1, not len. If you
             // change it back to len, you will be calculating a
             // population variance, not a sample variance.
-            v/((self.len()-1) as f64)
+            let denom = FromPrimitive::from_uint(self.len()-1).unwrap();
+            v/denom
         }
     }
 
-    fn std_dev(self) -> f64 {
+    fn std_dev(self) -> T {
         self.var().sqrt()
     }
 
-    fn std_dev_pct(self) -> f64 {
-        (self.std_dev() / self.mean()) * 100.0
+    fn std_dev_pct(self) -> T {
+        let hundred = FromPrimitive::from_uint(100).unwrap();
+        (self.std_dev() / self.mean()) * hundred
     }
 
-    fn median_abs_dev(self) -> f64 {
+    fn median_abs_dev(self) -> T {
         let med = self.median();
-        let abs_devs: Vec<f64> = self.iter().map(|&v| num::abs(med - v)).collect();
+        let abs_devs: Vec<T> = self.iter().map(|&v| num::abs(med - v)).collect();
         // This constant is derived by smarter statistics brains than me, but it is
         // consistent with how R and other packages treat the MAD.
-        abs_devs.as_slice().median() * 1.4826
+        let number = FromPrimitive::from_f64(1.4826).unwrap();
+        abs_devs.as_slice().median() * number
     }
 
-    fn median_abs_dev_pct(self) -> f64 {
-        (self.median_abs_dev() / self.median()) * 100.0
+    fn median_abs_dev_pct(self) -> T {
+        let hundred = FromPrimitive::from_uint(100).unwrap();
+        (self.median_abs_dev() / self.median()) * hundred
     }
 
-    fn percentile(self, pct: f64) -> f64 {
+    fn percentile(self, pct: T) -> T {
         let mut tmp = Vec::from_slice(self);
-        f64_sort(tmp.as_mut_slice());
+        local_sort(tmp.as_mut_slice());
         percentile_of_sorted(tmp.as_slice(), pct)
     }
 
-    fn quartiles(self) -> (f64,f64,f64) {
+    fn quartiles(self) -> (T,T,T) {
         let mut tmp = Vec::from_slice(self);
-        f64_sort(tmp.as_mut_slice());
-        let a = percentile_of_sorted(tmp.as_slice(), 25.0);
-        let b = percentile_of_sorted(tmp.as_slice(), 50.0);
-        let c = percentile_of_sorted(tmp.as_slice(), 75.0);
+        local_sort(tmp.as_mut_slice());
+        let first = FromPrimitive::from_uint(25).unwrap();
+        let a = percentile_of_sorted(tmp.as_slice(), first);
+        let secound = FromPrimitive::from_uint(50).unwrap();
+        let b = percentile_of_sorted(tmp.as_slice(), secound);
+        let third = FromPrimitive::from_uint(75).unwrap();
+        let c = percentile_of_sorted(tmp.as_slice(), third);
         (a,b,c)
     }
 
-    fn iqr(self) -> f64 {
+    fn iqr(self) -> T {
         let (a,_,c) = self.quartiles();
         c - a
     }
@@ -281,21 +288,24 @@ impl<'a> Stats for &'a [f64] {
 
 // Helper function: extract a value representing the `pct` percentile of a sorted sample-set, using
 // linear interpolation. If samples are not sorted, return nonsensical value.
-fn percentile_of_sorted(sorted_samples: &[f64],
-                             pct: f64) -> f64 {
+fn percentile_of_sorted<T: Float + FromPrimitive>(sorted_samples: &[T],
+                                                             pct: T) -> T {
     assert!(sorted_samples.len() != 0);
     if sorted_samples.len() == 1 {
         return sorted_samples[0];
     }
-    assert!(0.0 <= pct);
-    assert!(pct <= 100.0);
-    if pct == 100.0 {
+    let zero: T = Zero::zero();
+    assert!(zero <= pct);
+    let hundred = FromPrimitive::from_uint(100).unwrap();
+    assert!(pct <= hundred);
+    if pct == hundred {
         return sorted_samples[sorted_samples.len() - 1];
     }
-    let rank = (pct / 100.0) * ((sorted_samples.len() - 1) as f64);
+    let length = FromPrimitive::from_uint(sorted_samples.len() - 1).unwrap();
+    let rank = (pct / hundred) * length;
     let lrank = rank.floor();
     let d = rank - lrank;
-    let n = lrank as uint;
+    let n = lrank.to_uint().unwrap();
     let lo = sorted_samples[n];
     let hi = sorted_samples[n+1];
     lo + (hi - lo) * d
@@ -308,11 +318,12 @@ fn percentile_of_sorted(sorted_samples: &[f64],
 /// change the number of samples, just changes the values of those that are outliers.
 ///
 /// See: http://en.wikipedia.org/wiki/Winsorising
-pub fn winsorize(samples: &mut [f64], pct: f64) {
+pub fn winsorize<T: Float + FromPrimitive>(samples: &mut [T], pct: T) {
     let mut tmp = Vec::from_slice(samples);
-    f64_sort(tmp.as_mut_slice());
+    local_sort(tmp.as_mut_slice());
     let lo = percentile_of_sorted(tmp.as_slice(), pct);
-    let hi = percentile_of_sorted(tmp.as_slice(), 100.0-pct);
+    let hundred: T = FromPrimitive::from_uint(100).unwrap();
+    let hi = percentile_of_sorted(tmp.as_slice(), hundred-pct);
     for samp in samples.mut_iter() {
         if *samp > hi {
             *samp = hi
@@ -323,8 +334,8 @@ pub fn winsorize(samples: &mut [f64], pct: f64) {
 }
 
 /// Render writes the min, max and quartiles of the provided `Summary` to the provided `Writer`.
-pub fn write_5_number_summary(w: &mut io::Writer,
-                              s: &Summary) -> io::IoResult<()> {
+pub fn write_5_number_summary<T: Float + Show>(w: &mut io::Writer,
+                                               s: &Summary<T>) -> io::IoResult<()> {
     let (q1,q2,q3) = s.quartiles;
     write!(w, "(min={}, q1={}, med={}, q3={}, max={})",
                      s.min,
@@ -346,24 +357,29 @@ pub fn write_5_number_summary(w: &mut io::Writer,
 ///   10 |        [--****#******----------]          | 40
 /// ~~~~
 
-pub fn write_boxplot(w: &mut io::Writer, s: &Summary,
-                     width_hint: uint) -> io::IoResult<()> {
+pub fn write_boxplot<T: Float + Show + FromPrimitive>(
+                     w: &mut io::Writer,
+                     s: &Summary<T>,
+                     width_hint: uint)
+                      -> io::IoResult<()> {
 
     let (q1,q2,q3) = s.quartiles;
 
     // the .abs() handles the case where numbers are negative
-    let lomag = 10.0_f64.powf(s.min.abs().log10().floor());
-    let himag = 10.0_f64.powf(s.max.abs().log10().floor());
+    let ten: T = FromPrimitive::from_uint(10).unwrap();
+    let lomag = ten.powf(s.min.abs().log10().floor());
+    let himag = ten.powf(s.max.abs().log10().floor());
 
     // need to consider when the limit is zero
-    let lo = if lomag == 0.0 {
-        0.0
+    let zero: T = Zero::zero();
+    let lo = if lomag.is_zero() {
+        zero
     } else {
         (s.min / lomag).floor() * lomag
     };
 
-    let hi = if himag == 0.0 {
-        0.0
+    let hi = if himag.is_zero() {
+        zero
     } else {
         (s.max / himag).ceil() * himag
     };
@@ -374,8 +390,9 @@ pub fn write_boxplot(w: &mut io::Writer, s: &Summary,
     let histr = hi.to_str();
 
     let overhead_width = lostr.len() + histr.len() + 4;
-    let range_width = width_hint - overhead_width;;
-    let char_step = range / (range_width as f64);
+    let range_width = width_hint - overhead_width;
+    let range_float = FromPrimitive::from_uint(range_width).unwrap();
+    let char_step = range / range_float;
 
     try!(write!(w, "{} |", lostr));
 
@@ -384,37 +401,37 @@ pub fn write_boxplot(w: &mut io::Writer, s: &Summary,
 
     while c < range_width && v < s.min {
         try!(write!(w, " "));
-        v += char_step;
+        v = v + char_step;
         c += 1;
     }
     try!(write!(w, "["));
     c += 1;
     while c < range_width && v < q1 {
         try!(write!(w, "-"));
-        v += char_step;
+        v = v + char_step;
         c += 1;
     }
     while c < range_width && v < q2 {
         try!(write!(w, "*"));
-        v += char_step;
+        v = v + char_step;
         c += 1;
     }
     try!(write!(w, r"\#"));
     c += 1;
     while c < range_width && v < q3 {
         try!(write!(w, "*"));
-        v += char_step;
+        v = v + char_step;
         c += 1;
     }
     while c < range_width && v < s.max {
         try!(write!(w, "-"));
-        v += char_step;
+        v = v + char_step;
         c += 1;
     }
     try!(write!(w, "]"));
     while c < range_width {
         try!(write!(w, " "));
-        v += char_step;
+        v = v + char_step;
         c += 1;
     }
 
@@ -452,7 +469,7 @@ mod tests {
         })
     )
 
-    fn check(samples: &[f64], summ: &Summary) {
+    fn check(samples: &[f64], summ: &Summary<f64>) {
 
         let summ2 = Summary::new(samples);
 
@@ -1011,7 +1028,7 @@ mod tests {
     #[test]
     fn test_boxplot_nonpositive() {
         #[allow(deprecated_owned_vector)]
-        fn t(s: &Summary, expected: ~str) {
+        fn t(s: &Summary<f64>, expected: ~str) {
             use std::io::MemWriter;
             let mut m = MemWriter::new();
             write_boxplot(&mut m as &mut io::Writer, s, 30).unwrap();
