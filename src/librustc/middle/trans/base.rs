@@ -1847,6 +1847,7 @@ fn exported_name(ccx: &CrateContext, id: ast::NodeId,
 
 pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
     debug!("get_item_val(id=`{:?}`)", id);
+    debug!("get_item_val {}", ast_map::node_id_to_str(&ccx.tcx.map, id));
 
     match ccx.item_vals.borrow().find_copy(&id) {
         Some(v) => return v,

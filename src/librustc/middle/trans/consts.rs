@@ -177,14 +177,19 @@ pub fn get_const_val(cx: &CrateContext,
                         trans_const(cx, ast::MutImmutable, def_id.node),
                     _ => {}
                 },
-            ast_map::NodeForeignItem(ref item) =>
+            /*ast_map::NodeForeignItem(ref item) =>
                 match item.node {
                     ast::ForeignItemStatic(_, false) =>
                         trans_const(cx, ast::MutImmutable, def_id.node),
                     _ => {}
-                },
+                }, */
             _ => {}
         }
+    }
+    if !cx.const_values.borrow().contains_key(&def_id.node) {
+        debug!("get_const_value {}: value={}",
+               ast_map::node_id_to_str(&cx.tcx.map, def_id.node),
+               cx.item_symbols.borrow().find(&def_id.node));
     }
 
     (cx.const_values.borrow().get_copy(&def_id.node),
