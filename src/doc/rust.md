@@ -204,7 +204,7 @@ The keywords are the following strings:
 
 ~~~~ {.notrust .keyword}
 as
-break
+box break
 crate
 else enum extern
 false fn for
