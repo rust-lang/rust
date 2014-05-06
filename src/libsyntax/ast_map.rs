@@ -663,7 +663,7 @@ pub fn map_decoded_item<F: FoldOps>(map: &Map,
     ii
 }
 
-fn node_id_to_str(map: &Map, id: NodeId) -> String {
+pub fn node_id_to_str(map: &Map, id: NodeId) -> String {
     match map.find(id) {
         Some(NodeItem(item)) => {
             let path_str = map.path_to_str_with_ident(id, item.ident);
