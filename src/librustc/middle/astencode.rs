@@ -839,9 +839,9 @@ trait ebml_writer_helpers {
     fn emit_type_param_def(&mut self,
                            ecx: &e::EncodeContext,
                            type_param_def: &ty::TypeParameterDef);
-    fn emit_tpbt(&mut self,
-                 ecx: &e::EncodeContext,
-                 tpbt: ty::ty_param_bounds_and_ty);
+    fn emit_polytype(&mut self,
+                     ecx: &e::EncodeContext,
+                     pty: ty::Polytype);
     fn emit_substs(&mut self, ecx: &e::EncodeContext, substs: &subst::Substs);
     fn emit_auto_adjustment(&mut self, ecx: &e::EncodeContext, adj: &ty::AutoAdjustment);
 }
@@ -865,26 +865,26 @@ impl<'a> ebml_writer_helpers for Encoder<'a> {
         });
     }
 
-    fn emit_tpbt(&mut self,
+    fn emit_polytype(&mut self,
                  ecx: &e::EncodeContext,
-                 tpbt: ty::ty_param_bounds_and_ty) {
-        self.emit_struct("ty_param_bounds_and_ty", 2, |this| {
+                 pty: ty::Polytype) {
+        self.emit_struct("Polytype", 2, |this| {
             this.emit_struct_field("generics", 0, |this| {
                 this.emit_struct("Generics", 2, |this| {
                     this.emit_struct_field("types", 0, |this| {
                         Ok(encode_vec_per_param_space(
-                            this, &tpbt.generics.types,
+                            this, &pty.generics.types,
                             |this, def| this.emit_type_param_def(ecx, def)))
                     });
                     this.emit_struct_field("regions", 1, |this| {
                         Ok(encode_vec_per_param_space(
-                            this, &tpbt.generics.regions,
+                            this, &pty.generics.regions,
                             |this, def| def.encode(this).unwrap()))
                     })
                 })
             });
             this.emit_struct_field("ty", 1, |this| {
-                Ok(this.emit_ty(ecx, tpbt.ty))
+                Ok(this.emit_ty(ecx, pty.ty))
             })
         });
     }
@@ -1030,11 +1030,11 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
     }
 
     let lid = ast::DefId { krate: ast::LOCAL_CRATE, node: id };
-    for &tpbt in tcx.tcache.borrow().find(&lid).iter() {
+    for &pty in tcx.tcache.borrow().find(&lid).iter() {
         ebml_w.tag(c::tag_table_tcache, |ebml_w| {
             ebml_w.id(id);
             ebml_w.tag(c::tag_table_val, |ebml_w| {
-                ebml_w.emit_tpbt(ecx, tpbt.clone());
+                ebml_w.emit_polytype(ecx, pty.clone());
             })
         })
     }
@@ -1142,8 +1142,8 @@ trait ebml_decoder_decoder_helpers {
     fn read_tys(&mut self, xcx: &ExtendedDecodeContext) -> Vec<ty::t>;
     fn read_type_param_def(&mut self, xcx: &ExtendedDecodeContext)
                            -> ty::TypeParameterDef;
-    fn read_ty_param_bounds_and_ty(&mut self, xcx: &ExtendedDecodeContext)
-                                -> ty::ty_param_bounds_and_ty;
+    fn read_polytype(&mut self, xcx: &ExtendedDecodeContext)
+                     -> ty::Polytype;
     fn read_substs(&mut self, xcx: &ExtendedDecodeContext) -> subst::Substs;
     fn read_auto_adjustment(&mut self, xcx: &ExtendedDecodeContext) -> ty::AutoAdjustment;
     fn convert_def_id(&mut self,
@@ -1245,10 +1245,10 @@ impl<'a> ebml_decoder_decoder_helpers for reader::Decoder<'a> {
         }).unwrap()
     }
 
-    fn read_ty_param_bounds_and_ty(&mut self, xcx: &ExtendedDecodeContext)
-                                   -> ty::ty_param_bounds_and_ty {
-        self.read_struct("ty_param_bounds_and_ty", 2, |this| {
-            Ok(ty::ty_param_bounds_and_ty {
+    fn read_polytype(&mut self, xcx: &ExtendedDecodeContext)
+                                   -> ty::Polytype {
+        self.read_struct("Polytype", 2, |this| {
+            Ok(ty::Polytype {
                 generics: this.read_struct_field("generics", 0, |this| {
                     this.read_struct("Generics", 2, |this| {
                         Ok(ty::Generics {
@@ -1408,9 +1408,9 @@ fn decode_side_tables(xcx: &ExtendedDecodeContext,
                         dcx.tcx.freevars.borrow_mut().insert(id, fv_info);
                     }
                     c::tag_table_tcache => {
-                        let tpbt = val_dsr.read_ty_param_bounds_and_ty(xcx);
+                        let pty = val_dsr.read_polytype(xcx);
                         let lid = ast::DefId { krate: ast::LOCAL_CRATE, node: id };
-                        dcx.tcx.tcache.borrow_mut().insert(lid, tpbt);
+                        dcx.tcx.tcache.borrow_mut().insert(lid, pty);
                     }
                     c::tag_table_param_defs => {
                         let bounds = val_dsr.read_type_param_def(xcx);

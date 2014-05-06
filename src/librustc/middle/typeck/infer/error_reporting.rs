@@ -1052,7 +1052,7 @@ impl<'a> Rebuilder<'a> {
                     };
                     match a_def {
                         def::DefTy(did) | def::DefStruct(did) => {
-                            let ty::ty_param_bounds_and_ty {
+                            let ty::Polytype {
                                 generics: generics,
                                 ty: _
                             } = ty::lookup_item_type(self.tcx, did);

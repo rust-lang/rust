@@ -23,7 +23,7 @@ use middle::ty::get;
 use middle::ty::{ImplContainer, lookup_item_type};
 use middle::ty::{t, ty_bool, ty_char, ty_bot, ty_box, ty_enum, ty_err};
 use middle::ty::{ty_str, ty_vec, ty_float, ty_infer, ty_int, ty_nil};
-use middle::ty::{ty_param, ty_param_bounds_and_ty, ty_ptr};
+use middle::ty::{ty_param, Polytype, ty_ptr};
 use middle::ty::{ty_rptr, ty_struct, ty_trait, ty_tup};
 use middle::ty::{ty_uint, ty_uniq, ty_bare_fn, ty_closure};
 use middle::ty::type_is_ty_var;
@@ -378,7 +378,7 @@ impl<'a> CoherenceChecker<'a> {
             // construct the polytype for the method based on the
             // method_ty.  it will have all the generics from the
             // impl, plus its own.
-            let new_polytype = ty::ty_param_bounds_and_ty {
+            let new_polytype = ty::Polytype {
                 generics: new_method_ty.generics.clone(),
                 ty: ty::mk_bare_fn(tcx, new_method_ty.fty.clone())
             };
@@ -487,8 +487,8 @@ impl<'a> CoherenceChecker<'a> {
     }
 
     fn polytypes_unify(&self,
-                       polytype_a: ty_param_bounds_and_ty,
-                       polytype_b: ty_param_bounds_and_ty)
+                       polytype_a: Polytype,
+                       polytype_b: Polytype)
                        -> bool {
         let universally_quantified_a =
             self.universally_quantify_polytype(polytype_a);
@@ -503,7 +503,7 @@ impl<'a> CoherenceChecker<'a> {
 
     // Converts a polytype to a monotype by replacing all parameters with
     // type variables. Returns the monotype and the type variables created.
-    fn universally_quantify_polytype(&self, polytype: ty_param_bounds_and_ty)
+    fn universally_quantify_polytype(&self, polytype: Polytype)
                                      -> UniversalQuantificationResult
     {
         let substitutions =
@@ -526,7 +526,7 @@ impl<'a> CoherenceChecker<'a> {
     }
 
     fn get_self_type_for_implementation(&self, impl_did: DefId)
-                                        -> ty_param_bounds_and_ty {
+                                        -> Polytype {
         self.crate_context.tcx.tcache.borrow().get_copy(&impl_did)
     }
 
@@ -748,7 +748,7 @@ pub fn make_substs_for_receiver_types(tcx: &ty::ctxt,
 
 fn subst_receiver_types_in_method_ty(tcx: &ty::ctxt,
                                      impl_id: ast::DefId,
-                                     impl_poly_type: &ty::ty_param_bounds_and_ty,
+                                     impl_poly_type: &ty::Polytype,
                                      trait_ref: &ty::TraitRef,
                                      new_def_id: ast::DefId,
                                      method: &ty::Method,
