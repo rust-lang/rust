@@ -392,7 +392,7 @@ pub fn rename(old: &CString, new: &CString) -> IoResult<()> {
 
 pub fn chmod(p: &CString, mode: io::FilePermission) -> IoResult<()> {
     super::mkerr_libc(as_utf16_p(p.as_str().unwrap(), |p| unsafe {
-        libc::wchmod(p, mode as libc::c_int)
+        libc::wchmod(p, mode.bits() as libc::c_int)
     }))
 }
 
@@ -471,7 +471,9 @@ fn mkstat(stat: &libc::stat, path: &CString) -> io::FileStat {
         path: Path::new(path),
         size: stat.st_size as u64,
         kind: kind,
-        perm: (stat.st_mode) as io::FilePermission & io::AllPermissions,
+        perm: unsafe {
+          io::FilePermission::from_bits(stat.st_mode as u32)  & io::AllPermissions
+        },
         created: stat.st_ctime as u64,
         modified: stat.st_mtime as u64,
         accessed: stat.st_atime as u64,
