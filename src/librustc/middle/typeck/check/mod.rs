@@ -85,7 +85,7 @@ use middle::pat_util;
 use middle::subst;
 use middle::subst::{Subst, Substs, VecPerParamSpace, ParamSpace};
 use middle::ty::{FnSig, VariantInfo};
-use middle::ty::{ty_param_bounds_and_ty, ty_param_substs_and_ty};
+use middle::ty::{ty_param_bounds_and_ty};
 use middle::ty::{ParamTy, Disr, ExprTyProvider};
 use middle::ty;
 use middle::ty_fold::TypeFolder;
@@ -109,6 +109,7 @@ use middle::typeck::{lookup_def_ccx};
 use middle::typeck::no_params;
 use middle::typeck::{require_same_types, vtable_map};
 use middle::typeck::{MethodCall, MethodMap};
+use middle::typeck::{TypeAndSubsts};
 use middle::lang_items::TypeIdLangItem;
 use util::common::{block_query, indenter, loop_query};
 use util::ppaux;
@@ -1791,7 +1792,7 @@ fn check_expr_with_lvalue_pref(fcx: &FnCtxt, expr: &ast::Expr,
 pub fn impl_self_ty(vcx: &VtableContext,
                     span: Span, // (potential) receiver for this impl
                     did: ast::DefId)
-                 -> ty_param_substs_and_ty {
+                    -> TypeAndSubsts {
     let tcx = vcx.tcx();
 
     let ity = ty::lookup_item_type(tcx, did);
@@ -1805,7 +1806,7 @@ pub fn impl_self_ty(vcx: &VtableContext,
     let substs = subst::Substs::new_type(tps, rps);
     let substd_ty = raw_ty.subst(tcx, &substs);
 
-    ty_param_substs_and_ty { substs: substs, ty: substd_ty }
+    TypeAndSubsts { substs: substs, ty: substd_ty }
 }
 
 // Only for fields! Returns <none> for methods>

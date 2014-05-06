@@ -54,9 +54,10 @@ use middle::def;
 use middle::lang_items::FnMutTraitLangItem;
 use rl = middle::resolve_lifetime;
 use middle::subst::{Subst, Substs};
-use middle::subst;
-use middle::ty::ty_param_substs_and_ty;
 use middle::ty;
+use middle::typeck::TypeAndSubsts;
+use middle::typeck::rscope;
+use middle::typeck::rscope::{RegionScope};
 use middle::typeck::lookup_def_tcx;
 use middle::typeck::rscope::RegionScope;
 use middle::typeck::rscope;
@@ -289,7 +290,7 @@ pub fn ast_path_to_ty<AC:AstConv,RS:RegionScope>(
         rscope: &RS,
         did: ast::DefId,
         path: &ast::Path)
-     -> ty_param_substs_and_ty
+     -> TypeAndSubsts
 {
     let tcx = this.tcx();
     let ty::ty_param_bounds_and_ty {
@@ -299,7 +300,7 @@ pub fn ast_path_to_ty<AC:AstConv,RS:RegionScope>(
 
     let substs = ast_path_substs(this, rscope, &generics, None, path);
     let ty = decl_ty.subst(tcx, &substs);
-    ty_param_substs_and_ty { substs: substs, ty: ty }
+    TypeAndSubsts { substs: substs, ty: ty }
 }
 
 pub static NO_REGIONS: uint = 1;

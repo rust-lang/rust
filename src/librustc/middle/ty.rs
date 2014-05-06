@@ -1054,11 +1054,6 @@ pub struct ItemSubsts {
     pub substs: Substs,
 }
 
-pub struct ty_param_substs_and_ty {
-    pub substs: Substs,
-    pub ty: ty::t
-}
-
 pub type type_cache = RefCell<DefIdMap<ty_param_bounds_and_ty>>;
 
 pub type node_type_table = RefCell<HashMap<uint,t>>;
