@@ -76,7 +76,7 @@ on the formals (the type well-formedness check).
 
 From the above examples:
 
-'''
+```
 trait U {}
 trait T<X: U> {}
 trait S1<Y> {
@@ -93,7 +93,7 @@ struct St<X: U> {
 impl<X: U> St<X> {
     ...
 }
-'''
+```
 
 # Alternatives
 
