@@ -335,7 +335,7 @@ pub fn open(path: &CString, fm: io::FileMode, fa: io::FileAccess)
 
 pub fn mkdir(p: &CString, mode: io::FilePermission) -> IoResult<()> {
     super::mkerr_libc(retry(|| unsafe {
-        libc::mkdir(p.with_ref(|p| p), mode as libc::mode_t)
+        libc::mkdir(p.with_ref(|p| p), mode.bits() as libc::mode_t)
     }))
 }
 
@@ -392,7 +392,7 @@ pub fn rename(old: &CString, new: &CString) -> IoResult<()> {
 
 pub fn chmod(p: &CString, mode: io::FilePermission) -> IoResult<()> {
     super::mkerr_libc(retry(|| unsafe {
-        libc::chmod(p.with_ref(|p| p), mode as libc::mode_t)
+        libc::chmod(p.with_ref(|p| p), mode.bits() as libc::mode_t)
     }))
 }
 
@@ -470,7 +470,9 @@ fn mkstat(stat: &libc::stat, path: &CString) -> io::FileStat {
         path: Path::new(path),
         size: stat.st_size as u64,
         kind: kind,
-        perm: (stat.st_mode) as io::FilePermission & io::AllPermissions,
+        perm: unsafe {
+            io::FilePermission::from_bits(stat.st_mode as u32) & io::AllPermissions
+        },
         created: mktime(stat.st_ctime as u64, stat.st_ctime_nsec as u64),
         modified: mktime(stat.st_mtime as u64, stat.st_mtime_nsec as u64),
         accessed: mktime(stat.st_atime as u64, stat.st_atime_nsec as u64),
