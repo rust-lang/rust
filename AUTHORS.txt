@@ -362,6 +362,7 @@ Raphael Speyer <rspeyer@gmail.com>
 reedlepee <reedlepee123@gmail.com>
 Reuben Morais <reuben.morais@gmail.com>
 Richard Diamond <wichard@vitalitystudios.com>
+Richo Healey <richo@psych0tik.net>
 Rick Waldron <waldron.rick@gmail.com>
 Rob Arnold <robarnold@cs.cmu.edu>
 Rob Hoelz <rob@hoelz.ro>
