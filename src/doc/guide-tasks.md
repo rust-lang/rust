@@ -89,9 +89,10 @@ closure in the new task.
 fn print_message() { println!("I am running in a different task!"); }
 spawn(print_message);
 
-// Print something more profound in a different task using a lambda expression
-// This uses the proc() keyword to assign to spawn a function with no name
-// That function will call println!(...) as requested
+// Print something profound in a different task using a `proc` expression
+// The `proc` expression evaluates to an (unnamed) owned closure.
+// That closure will call `println!(...)` when the spawned task runs.
+
 spawn(proc() println!("I am also running in a different task!") );
 ~~~~
 
