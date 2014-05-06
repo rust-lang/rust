@@ -177,6 +177,12 @@ pub fn get_const_val(cx: &CrateContext,
                         trans_const(cx, ast::MutImmutable, def_id.node),
                     _ => {}
                 },
+            ast_map::NodeForeignItem(ref item) =>
+                match item.node {
+                    ast::ForeignItemStatic(_, false) =>
+                        trans_const(cx, ast::MutImmutable, def_id.node),
+                    _ => {}
+                },
             _ => {}
         }
     }
