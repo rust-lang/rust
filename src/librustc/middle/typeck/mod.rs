@@ -176,6 +176,11 @@ pub enum ExprAdjustment {
     AutoObject
 }
 
+pub struct TypeAndSubsts {
+    pub substs: subst::Substs,
+    pub ty: ty::t,
+}
+
 impl MethodCall {
     pub fn expr(id: ast::NodeId) -> MethodCall {
         MethodCall {
