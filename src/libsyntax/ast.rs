@@ -949,12 +949,14 @@ pub enum RetStyle {
 pub enum ExplicitSelf_ {
     /// No self
     SelfStatic,
-    /// `self
+    /// `self`
     SelfValue(Ident),
     /// `&'lt self`, `&'lt mut self`
     SelfRegion(Option<Lifetime>, Mutability, Ident),
     /// `~self`
-    SelfUniq(Ident)
+    SelfUniq(Ident),
+    /// `self: TYPE`
+    SelfExplicit(P<Ty>, Ident),
 }
 
 pub type ExplicitSelf = Spanned<ExplicitSelf_>;

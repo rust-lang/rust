@@ -500,6 +500,9 @@ impl<'a> fmt::Show for Method<'a> {
                 args.push_str(format!("&amp;{}self",
                                       MutableSpace(mtbl)).as_slice());
             }
+            clean::SelfExplicit(ref typ) => {
+                args.push_str(format!("self: {}", *typ).as_slice());
+            }
         }
         for (i, input) in d.inputs.values.iter().enumerate() {
             if i > 0 || args.len() > 0 { args.push_str(", "); }

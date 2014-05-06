@@ -724,7 +724,7 @@ pub fn get_enum_variants(intr: Rc<IdentInterner>, cdata: Cmd, id: ast::NodeId,
     }).collect()
 }
 
-fn get_explicit_self(item: ebml::Doc) -> ast::ExplicitSelf_ {
+fn get_explicit_self(item: ebml::Doc) -> ty::ExplicitSelfCategory {
     fn get_mutability(ch: u8) -> ast::Mutability {
         match ch as char {
             'i' => ast::MutImmutable,
@@ -738,12 +738,15 @@ fn get_explicit_self(item: ebml::Doc) -> ast::ExplicitSelf_ {
 
     let explicit_self_kind = string.as_bytes()[0];
     match explicit_self_kind as char {
-        's' => ast::SelfStatic,
-        'v' => ast::SelfValue(special_idents::self_),
-        '~' => ast::SelfUniq(special_idents::self_),
+        's' => ty::StaticExplicitSelfCategory,
+        'v' => ty::ByValueExplicitSelfCategory,
+        '~' => ty::ByBoxExplicitSelfCategory,
         // FIXME(#4846) expl. region
-        '&' => ast::SelfRegion(None, get_mutability(string.as_bytes()[1]),
-                               special_idents::self_),
+        '&' => {
+            ty::ByReferenceExplicitSelfCategory(
+                ty::ReEmpty,
+                get_mutability(string.as_bytes()[1]))
+        }
         _ => fail!("unknown self type code: `{}`", explicit_self_kind as char)
     }
 }
@@ -761,11 +764,11 @@ pub fn get_impl_methods(cdata: Cmd, impl_id: ast::NodeId) -> Vec<ast::DefId> {
     methods
 }
 
-pub fn get_method_name_and_explicit_self(
-    intr: Rc<IdentInterner>,
-    cdata: Cmd,
-    id: ast::NodeId) -> (ast::Ident, ast::ExplicitSelf_)
-{
+pub fn get_method_name_and_explicit_self(intr: Rc<IdentInterner>,
+                                         cdata: Cmd,
+                                         id: ast::NodeId)
+                                         -> (ast::Ident,
+                                             ty::ExplicitSelfCategory) {
     let method_doc = lookup_item(id, cdata.data());
     let name = item_name(&*intr, method_doc);
     let explicit_self = get_explicit_self(method_doc);

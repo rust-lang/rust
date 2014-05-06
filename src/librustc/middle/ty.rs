@@ -85,7 +85,7 @@ pub struct Method {
     pub ident: ast::Ident,
     pub generics: ty::Generics,
     pub fty: BareFnTy,
-    pub explicit_self: ast::ExplicitSelf_,
+    pub explicit_self: ExplicitSelfCategory,
     pub vis: ast::Visibility,
     pub def_id: ast::DefId,
     pub container: MethodContainer,
@@ -98,7 +98,7 @@ impl Method {
     pub fn new(ident: ast::Ident,
                generics: ty::Generics,
                fty: BareFnTy,
-               explicit_self: ast::ExplicitSelf_,
+               explicit_self: ExplicitSelfCategory,
                vis: ast::Visibility,
                def_id: ast::DefId,
                container: MethodContainer,
@@ -310,6 +310,9 @@ pub struct ctxt {
     /// Maps from def-id of a type or region parameter to its
     /// (inferred) variance.
     pub item_variance_map: RefCell<DefIdMap<Rc<ItemVariances>>>,
+
+    /// True if the variance has been computed yet; false otherwise.
+    pub variance_computed: Cell<bool>,
 
     /// A mapping from the def ID of an enum or struct type to the def ID
     /// of the method that implements its destructor. If the type is not
@@ -1055,6 +1058,7 @@ pub fn mk_ctxt(s: Session,
     ctxt {
         named_region_map: named_region_map,
         item_variance_map: RefCell::new(DefIdMap::new()),
+        variance_computed: Cell::new(false),
         interner: RefCell::new(FnvHashMap::new()),
         next_id: Cell::new(primitives::LAST_PRIMITIVE_ID),
         sess: s,
@@ -4767,3 +4771,13 @@ impl mc::Typer for ty::ctxt {
         self.upvar_borrow_map.borrow().get_copy(&upvar_id)
     }
 }
+
+/// The category of explicit self.
+#[deriving(Clone, Eq, PartialEq)]
+pub enum ExplicitSelfCategory {
+    StaticExplicitSelfCategory,
+    ByValueExplicitSelfCategory,
+    ByReferenceExplicitSelfCategory(Region, ast::Mutability),
+    ByBoxExplicitSelfCategory,
+}
+

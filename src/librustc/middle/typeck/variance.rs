@@ -214,6 +214,7 @@ pub fn infer_variance(tcx: &ty::ctxt,
     let terms_cx = determine_parameters_to_be_inferred(tcx, &mut arena, krate);
     let constraints_cx = add_constraints_from_crate(terms_cx, krate);
     solve_constraints(constraints_cx);
+    tcx.variance_computed.set(true);
 }
 
 /**************************************************************************
