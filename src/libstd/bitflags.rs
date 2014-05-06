@@ -17,14 +17,16 @@
 //! # Example
 //!
 //! ~~~rust
-//! bitflags!(Flags: u32 {
-//!     FlagA       = 0x00000001,
-//!     FlagB       = 0x00000010,
-//!     FlagC       = 0x00000100,
-//!     FlagABC     = FlagA.bits
-//!                 | FlagB.bits
-//!                 | FlagC.bits
-//! })
+//! bitflags!(
+//!     flags Flags: u32 {
+//!         static FlagA       = 0x00000001,
+//!         static FlagB       = 0x00000010,
+//!         static FlagC       = 0x00000100,
+//!         static FlagABC     = FlagA.bits
+//!                            | FlagB.bits
+//!                            | FlagC.bits
+//!     }
+//! )
 //!
 //! fn main() {
 //!     let e1 = FlagA | FlagC;
@@ -40,10 +42,12 @@
 //! ~~~rust
 //! use std::fmt;
 //!
-//! bitflags!(Flags: u32 {
-//!     FlagA   = 0x00000001,
-//!     FlagB   = 0x00000010
-//! })
+//! bitflags!(
+//!     flags Flags: u32 {
+//!         static FlagA   = 0x00000001,
+//!         static FlagB   = 0x00000010
+//!     }
+//! )
 //!
 //! impl Flags {
 //!     pub fn clear(&mut self) {
@@ -66,10 +70,16 @@
 //! }
 //! ~~~
 //!
+//! # Attributes
+//!
+//! Attributes can be attached to the generated `struct` by placing them
+//! before the `flags` keyword.
+//!
 //! # Derived traits
 //!
-//! The `Eq`, `TotalEq`, and `Clone` traits are automatically derived for the
-//! `struct` using the `deriving` attribute.
+//! The `Eq` and `Clone` traits are automatically derived for the `struct` using
+//! the `deriving` attribute. Additional traits can be derived by providing an
+//! explicit `deriving` attribute on `flags`.
 //!
 //! # Operators
 //!
@@ -91,17 +101,20 @@
 //! - `insert`: inserts the specified flags in-place
 //! - `remove`: removes the specified flags in-place
 
+#![macro_escape]
+
 #[macro_export]
 macro_rules! bitflags(
-    ($BitFlags:ident: $T:ty {
-        $($Flag:ident = $value:expr),+
+    ($(#[$attr:meta])* flags $BitFlags:ident: $T:ty {
+        $($(#[$Flag_attr:meta])* static $Flag:ident = $value:expr),+
     }) => (
         #[deriving(Eq, TotalEq, Clone)]
+        $(#[$attr])*
         pub struct $BitFlags {
             bits: $T,
         }
 
-        $(pub static $Flag: $BitFlags = $BitFlags { bits: $value };)+
+        $($(#[$Flag_attr])* pub static $Flag: $BitFlags = $BitFlags { bits: $value };)+
 
         impl $BitFlags {
             /// Returns an empty set of flags.
@@ -112,6 +125,12 @@ macro_rules! bitflags(
             /// Returns the raw value of the flags currently stored.
             pub fn bits(&self) -> $T {
                 self.bits
+            }
+
+            /// Convert from underlying bit representation. Unsafe because the
+            /// bits are not guaranteed to represent valid flags.
+            pub unsafe fn from_bits(bits: $T) -> $BitFlags {
+                $BitFlags { bits: bits }
             }
 
             /// Returns `true` if no flags are currently stored.
@@ -170,14 +189,16 @@ macro_rules! bitflags(
 mod tests {
     use ops::{BitOr, BitAnd, Sub};
 
-    bitflags!(Flags: u32 {
-        FlagA       = 0x00000001,
-        FlagB       = 0x00000010,
-        FlagC       = 0x00000100,
-        FlagABC     = FlagA.bits
-                    | FlagB.bits
-                    | FlagC.bits
-    })
+    bitflags!(
+        flags Flags: u32 {
+            static FlagA       = 0x00000001,
+            static FlagB       = 0x00000010,
+            static FlagC       = 0x00000100,
+            static FlagABC     = FlagA.bits
+                               | FlagB.bits
+                               | FlagC.bits
+        }
+    )
 
     #[test]
     fn test_bits(){
