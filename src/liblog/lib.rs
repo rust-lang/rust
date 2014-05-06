@@ -195,11 +195,11 @@ impl fmt::Signed for LogLevel {
 
 impl Logger for DefaultLogger {
     fn log(&mut self, record: &LogRecord) {
-        match write!(&mut self.handle,
-                     "{}:{}: {}",
-                     record.level,
-                     record.module_path,
-                     record.args) {
+        match writeln!(&mut self.handle,
+                       "{}:{}: {}",
+                       record.level,
+                       record.module_path,
+                       record.args) {
             Err(e) => fail!("failed to log: {}", e),
             Ok(()) => {}
         }
