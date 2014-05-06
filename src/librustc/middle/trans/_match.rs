@@ -289,42 +289,6 @@ fn opt_eq(tcx: &ty::ctxt, a: &Opt, b: &Opt) -> bool {
     }
 }
 
-fn opt_overlap(tcx: &ty::ctxt, a: &Opt, b: &Opt) -> bool {
-    match (a, b) {
-        (&lit(a), &lit(b)) => {
-            let a_expr = lit_to_expr(tcx, &a);
-            let b_expr = lit_to_expr(tcx, &b);
-            match const_eval::compare_lit_exprs(tcx, a_expr, b_expr) {
-                Some(val1) => val1 == 0,
-                None => fail!("opt_overlap: type mismatch"),
-            }
-        }
-
-        (&range(a1, a2), &range(b1, b2)) => {
-            let m1 = const_eval::compare_lit_exprs(tcx, a1, b2);
-            let m2 = const_eval::compare_lit_exprs(tcx, b1, a2);
-            match (m1, m2) {
-                // two ranges [a1, a2] and [b1, b2] overlap iff:
-                //      a1 <= b2 && b1 <= a2
-                (Some(val1), Some(val2)) => (val1 <= 0 && val2 <= 0),
-                _ => fail!("opt_overlap: type mismatch"),
-            }
-        }
-
-        (&range(a1, a2), &lit(b)) | (&lit(b), &range(a1, a2)) => {
-            let b_expr = lit_to_expr(tcx, &b);
-            let m1 = const_eval::compare_lit_exprs(tcx, a1, b_expr);
-            let m2 = const_eval::compare_lit_exprs(tcx, a2, b_expr);
-            match (m1, m2) {
-                // b is in range [a1, a2] iff a1 <= b and b <= a2
-                (Some(val1), Some(val2)) => (val1 <= 0 && 0 <= val2),
-                _ => fail!("opt_overlap: type mismatch"),
-            }
-        }
-        _ => fail!("opt_overlap: expect lit or range")
-    }
-}
-
 pub enum opt_result<'a> {
     single_result(Result<'a>),
     lower_bound(Result<'a>),
@@ -562,7 +526,7 @@ fn enter_default<'a, 'b>(
     // Collect all of the matches that can match against anything.
     let matches = enter_match(bcx, dm, m, col, val, |p| {
         match p.node {
-          ast::PatWild | ast::PatWildMulti | ast::PatTup(_) => Some(Vec::new()),
+          ast::PatWild | ast::PatWildMulti => Some(Vec::new()),
           ast::PatIdent(_, _, None) if pat_is_binding(dm, p) => Some(Vec::new()),
           _ => None
         }
@@ -634,30 +598,16 @@ fn enter_opt<'a, 'b>(
     let tcx = bcx.tcx();
     let dummy = @ast::Pat {id: 0, node: ast::PatWild, span: DUMMY_SP};
     let mut i = 0;
-    // By the virtue of fact that we are in `trans` already, `enter_opt` is able
-    // to prune sub-match tree aggressively based on exact equality. But when it
-    // comes to literal or range, that strategy may lead to wrong result if there
-    // are guard function or multiple patterns inside tuple; in that case, pruning
-    // based on the overlap of patterns is required.
-    //
-    // Ideally, when constructing the sub-match tree for certain arm, only those
-    // arms beneath it matter. But that isn't how algorithm works right now and
-    // all other arms are taken into consideration when computing `guarded` below.
-    // That is ok since each round of `compile_submatch` guarantees to trim one
-    // "column" of arm patterns and the algorithm will converge.
-    let guarded = m.iter().any(|x| x.data.arm.guard.is_some());
-    let multi_pats = m.len() > 0 && m[0].pats.len() > 1;
     enter_match(bcx, &tcx.def_map, m, col, val, |p| {
         let answer = match p.node {
             ast::PatEnum(..) |
             ast::PatIdent(_, _, None) if pat_is_const(&tcx.def_map, p) => {
                 let const_def = tcx.def_map.borrow().get_copy(&p.id);
                 let const_def_id = ast_util::def_id_of_def(const_def);
-                let konst = lit(ConstLit(const_def_id));
-                match guarded || multi_pats {
-                    false if opt_eq(tcx, &konst, opt) => Some(Vec::new()),
-                    true if opt_overlap(tcx, &konst, opt) => Some(Vec::new()),
-                    _ => None,
+                if opt_eq(tcx, &lit(ConstLit(const_def_id)), opt) {
+                    Some(Vec::new())
+                } else {
+                    None
                 }
             }
             ast::PatEnum(_, ref subpats) => {
@@ -682,20 +632,12 @@ fn enter_opt<'a, 'b>(
                 }
             }
             ast::PatLit(l) => {
-                let lit_expr = lit(ExprLit(l));
-                match guarded || multi_pats {
-                    false if opt_eq(tcx, &lit_expr, opt) => Some(Vec::new()),
-                    true if opt_overlap(tcx, &lit_expr, opt) => Some(Vec::new()),
-                    _ => None,
-                }
+                if opt_eq(tcx, &lit(ExprLit(l)), opt) { Some(Vec::new()) }
+                else { None }
             }
             ast::PatRange(l1, l2) => {
-                let rng = range(l1, l2);
-                match guarded || multi_pats {
-                    false if opt_eq(tcx, &rng, opt) => Some(Vec::new()),
-                    true if opt_overlap(tcx, &rng, opt) => Some(Vec::new()),
-                    _ => None,
-                }
+                if opt_eq(tcx, &range(l1, l2), opt) { Some(Vec::new()) }
+                else { None }
             }
             ast::PatStruct(_, ref field_pats, _) => {
                 if opt_eq(tcx, &variant_opt(bcx, p.id), opt) {
@@ -770,18 +712,7 @@ fn enter_opt<'a, 'b>(
             }
             _ => {
                 assert_is_binding_or_wild(bcx, p);
-                // In most cases, a binding/wildcard match be
-                // considered to match against any Opt. However, when
-                // doing vector pattern matching, submatches are
-                // considered even if the eventual match might be from
-                // a different submatch. Thus, when a submatch fails
-                // when doing a vector match, we proceed to the next
-                // submatch. Thus, including a default match would
-                // cause the default match to fire spuriously.
-                match *opt {
-                    vec_len(..) => None,
-                    _ => Some(Vec::from_elem(variant_size, dummy))
-                }
+                Some(Vec::from_elem(variant_size, dummy))
             }
         };
         i += 1;
@@ -1421,7 +1352,8 @@ fn compile_guard<'a, 'b>(
                  data: &ArmData,
                  m: &'a [Match<'a, 'b>],
                  vals: &[ValueRef],
-                 chk: &FailureHandler)
+                 chk: &FailureHandler,
+                 has_genuine_default: bool)
                  -> &'b Block<'b> {
     debug!("compile_guard(bcx={}, guard_expr={}, m={}, vals={})",
            bcx.to_str(),
@@ -1452,7 +1384,17 @@ fn compile_guard<'a, 'b>(
         // Guard does not match: free the values we copied,
         // and remove all bindings from the lllocals table
         let bcx = drop_bindings(bcx, data);
-        compile_submatch(bcx, m, vals, chk);
+        match chk {
+            // If the default arm is the only one left, move on to the next
+            // condition explicitly rather than (possibly) falling back to
+            // the default arm.
+            &JumpToBasicBlock(_) if m.len() == 1 && has_genuine_default => {
+                Br(bcx, chk.handle_fail());
+            }
+            _ => {
+                compile_submatch(bcx, m, vals, chk, has_genuine_default);
+            }
+        };
         bcx
     });
 
@@ -1476,7 +1418,8 @@ fn compile_submatch<'a, 'b>(
                     bcx: &'b Block<'b>,
                     m: &'a [Match<'a, 'b>],
                     vals: &[ValueRef],
-                    chk: &FailureHandler) {
+                    chk: &FailureHandler,
+                    has_genuine_default: bool) {
     debug!("compile_submatch(bcx={}, m={}, vals={})",
            bcx.to_str(),
            m.repr(bcx.tcx()),
@@ -1506,7 +1449,8 @@ fn compile_submatch<'a, 'b>(
                                     m[0].data,
                                     m.slice(1, m.len()),
                                     vals,
-                                    chk);
+                                    chk,
+                                    has_genuine_default);
             }
             _ => ()
         }
@@ -1524,9 +1468,10 @@ fn compile_submatch<'a, 'b>(
                                   vals,
                                   chk,
                                   col,
-                                  val)
+                                  val,
+                                  has_genuine_default)
     } else {
-        compile_submatch_continue(bcx, m, vals, chk, col, val)
+        compile_submatch_continue(bcx, m, vals, chk, col, val, has_genuine_default)
     }
 }
 
@@ -1536,7 +1481,8 @@ fn compile_submatch_continue<'a, 'b>(
                              vals: &[ValueRef],
                              chk: &FailureHandler,
                              col: uint,
-                             val: ValueRef) {
+                             val: ValueRef,
+                             has_genuine_default: bool) {
     let fcx = bcx.fcx;
     let tcx = bcx.tcx();
     let dm = &tcx.def_map;
@@ -1570,7 +1516,7 @@ fn compile_submatch_continue<'a, 'b>(
                                             rec_fields.as_slice(),
                                             val).as_slice(),
                         rec_vals.append(vals_left.as_slice()).as_slice(),
-                        chk);
+                        chk, has_genuine_default);
             });
             return;
         }
@@ -1595,7 +1541,7 @@ fn compile_submatch_continue<'a, 'b>(
                                    val,
                                    n_tup_elts).as_slice(),
                          tup_vals.append(vals_left.as_slice()).as_slice(),
-                         chk);
+                         chk, has_genuine_default);
         return;
     }
 
@@ -1620,7 +1566,7 @@ fn compile_submatch_continue<'a, 'b>(
                          enter_tuple_struct(bcx, dm, m, col, val,
                                             struct_element_count).as_slice(),
                          llstructvals.append(vals_left.as_slice()).as_slice(),
-                         chk);
+                         chk, has_genuine_default);
         return;
     }
 
@@ -1629,7 +1575,7 @@ fn compile_submatch_continue<'a, 'b>(
         compile_submatch(bcx,
                          enter_uniq(bcx, dm, m, col, val).as_slice(),
                          (vec!(llbox)).append(vals_left.as_slice()).as_slice(),
-                         chk);
+                         chk, has_genuine_default);
         return;
     }
 
@@ -1638,7 +1584,7 @@ fn compile_submatch_continue<'a, 'b>(
         compile_submatch(bcx,
                          enter_region(bcx, dm, m, col, val).as_slice(),
                          (vec!(loaded_val)).append(vals_left.as_slice()).as_slice(),
-                         chk);
+                         chk, has_genuine_default);
         return;
     }
 
@@ -1695,9 +1641,9 @@ fn compile_submatch_continue<'a, 'b>(
 
     // Compile subtrees for each option
     for (i, opt) in opts.iter().enumerate() {
-        // In some cases in vector pattern matching, we need to override
-        // the failure case so that instead of failing, it proceeds to
-        // try more matching. branch_chk, then, is the proper failure case
+        // In some cases of range and vector pattern matching, we need to
+        // override the failure case so that instead of failing, it proceeds
+        // to try more matching. branch_chk, then, is the proper failure case
         // for the current conditional branch.
         let mut branch_chk = None;
         let mut opt_cx = else_cx;
@@ -1747,6 +1693,16 @@ fn compile_submatch_continue<'a, 'b>(
                       }
                   };
                   bcx = fcx.new_temp_block("compare_next");
+
+                  // If none of the sub-cases match, and the current condition
+                  // is guarded or has multiple patterns, move on to the next
+                  // condition, if there is any, rather than falling back to
+                  // the default.
+                  let guarded = m[i].data.arm.guard.is_some();
+                  let multi_pats = m[i].pats.len() > 1;
+                  if i+1 < len && (guarded || multi_pats) {
+                      branch_chk = Some(JumpToBasicBlock(bcx.llbb));
+                  }
                   CondBr(after_cx, matches, opt_cx.llbb, bcx.llbb);
               }
               compare_vec_len => {
@@ -1784,8 +1740,10 @@ fn compile_submatch_continue<'a, 'b>(
                   bcx = fcx.new_temp_block("compare_vec_len_next");
 
                   // If none of these subcases match, move on to the
-                  // next condition.
-                  branch_chk = Some(JumpToBasicBlock(bcx.llbb));
+                  // next condition if there is any.
+                  if i+1 < len {
+                      branch_chk = Some(JumpToBasicBlock(bcx.llbb));
+                  }
                   CondBr(after_cx, matches, opt_cx.llbb, bcx.llbb);
               }
               _ => ()
@@ -1825,27 +1783,38 @@ fn compile_submatch_continue<'a, 'b>(
                 compile_submatch(opt_cx,
                                  opt_ms.as_slice(),
                                  opt_vals.as_slice(),
-                                 chk)
+                                 chk,
+                                 has_genuine_default)
             }
             Some(branch_chk) => {
                 compile_submatch(opt_cx,
                                  opt_ms.as_slice(),
                                  opt_vals.as_slice(),
-                                 &branch_chk)
+                                 &branch_chk,
+                                 has_genuine_default)
             }
         }
     }
 
     // Compile the fall-through case, if any
-    if !exhaustive {
+    if !exhaustive && kind != single {
         if kind == compare || kind == compare_vec_len {
             Br(bcx, else_cx.llbb);
         }
-        if kind != single {
-            compile_submatch(else_cx,
-                             defaults.as_slice(),
-                             vals_left.as_slice(),
-                             chk);
+        match chk {
+            // If there is only one default arm left, move on to the next
+            // condition explicitly rather than (eventually) falling back to
+            // the last default arm.
+            &JumpToBasicBlock(_) if defaults.len() == 1 && has_genuine_default => {
+                Br(else_cx, chk.handle_fail());
+            }
+            _ => {
+                compile_submatch(else_cx,
+                                 defaults.as_slice(),
+                                 vals_left.as_slice(),
+                                 chk,
+                                 has_genuine_default);
+            }
         }
     }
 }
@@ -1950,7 +1919,22 @@ fn trans_match_inner<'a>(scope_cx: &'a Block<'a>,
         }));
     }
 
-    compile_submatch(bcx, matches.as_slice(), [discr_datum.val], &chk);
+    // `compile_submatch` works one column of arm patterns a time and
+    // then peels that column off. So as we progress, it may become
+    // impossible to know whether we have a genuine default arm, i.e.
+    // `_ => foo` or not. Sometimes it is important to know that in order
+    // to decide whether moving on to the next condition or falling back
+    // to the default arm.
+    let has_default = arms.len() > 0 && {
+        let ref pats = arms.last().unwrap().pats;
+
+        pats.len() == 1
+        && match pats.last().unwrap().node {
+            ast::PatWild => true, _ => false
+        }
+    };
+
+    compile_submatch(bcx, matches.as_slice(), [discr_datum.val], &chk, has_default);
 
     let mut arm_cxs = Vec::new();
     for arm_data in arm_datas.iter() {
