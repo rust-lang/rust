@@ -8,8 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 struct Foo;
 
-fn foo(_x: ~Foo:Send) { } //~ ERROR kind bounds can only be used on trait types
+fn foo(_x: Box<Foo:Send>) { } //~ ERROR kind bounds can only be used on trait types
 
 fn main() { }

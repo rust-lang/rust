@@ -73,7 +73,7 @@ fn test_tup() {
 fn test_unique() {
     let i = @Cell::new(0);
     {
-        let _a = ~r(i);
+        let _a = box r(i);
     }
     assert_eq!(i.get(), 1);
 }

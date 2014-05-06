@@ -16,6 +16,6 @@
 
 pub fn main()
 {
-    let y = ~1;
+    let y = box 1;
     y;
 }

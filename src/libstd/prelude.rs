@@ -65,6 +65,7 @@ pub use iter::{OrdIterator, MutableDoubleEndedIterator, ExactSize};
 pub use num::{Num, NumCast, CheckedAdd, CheckedSub, CheckedMul};
 pub use num::{Signed, Unsigned};
 pub use num::{Primitive, Int, Float, ToPrimitive, FromPrimitive};
+pub use owned::Box;
 pub use path::{GenericPath, Path, PosixPath, WindowsPath};
 pub use ptr::RawPtr;
 pub use io::{Buffer, Writer, Reader, Seek};

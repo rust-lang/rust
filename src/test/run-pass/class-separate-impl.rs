@@ -57,13 +57,13 @@ impl fmt::Show for cat {
     }
 }
 
-fn print_out(thing: ~ToStr, expected: ~str) {
+fn print_out(thing: Box<ToStr>, expected: ~str) {
   let actual = thing.to_str();
   println!("{}", actual);
   assert_eq!(actual, expected);
 }
 
 pub fn main() {
-  let nyan: ~ToStr = ~cat(0u, 2, "nyan".to_owned()) as ~ToStr;
+  let nyan: Box<ToStr> = box cat(0u, 2, "nyan".to_owned()) as Box<ToStr>;
   print_out(nyan, "nyan".to_owned());
 }

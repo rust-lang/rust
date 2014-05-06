@@ -45,6 +45,7 @@ use iter::{Iterator};
 use kinds::Send;
 use mem::replace;
 use option::{None, Option, Some};
+use owned::Box;
 use rt::task::{Task, LocalStorage};
 use slice::{ImmutableVector, MutableVector};
 use vec::Vec;
@@ -91,7 +92,7 @@ impl<T: 'static> LocalData for T {}
 //      a proper map.
 #[doc(hidden)]
 pub type Map = Vec<Option<(*u8, TLSValue, LoanState)>>;
-type TLSValue = ~LocalData:Send;
+type TLSValue = Box<LocalData:Send>;
 
 // Gets the map from the runtime. Lazily initialises if not done so already.
 unsafe fn get_local_map() -> &mut Map {
@@ -161,7 +162,7 @@ pub fn pop<T: 'static>(key: Key<T>) -> Option<T> {
 
                 // Move `data` into transmute to get out the memory that it
                 // owns, we must free it manually later.
-                let (_vtable, alloc): (uint, ~T) = unsafe {
+                let (_vtable, alloc): (uint, Box<T>) = unsafe {
                     cast::transmute(data)
                 };
 
@@ -252,11 +253,12 @@ fn get_with<T:'static,
                                   want.describe(), cur.describe());
                         }
                     }
-                    // data was created with `~T as ~LocalData`, so we extract
-                    // pointer part of the trait, (as ~T), and then use
-                    // compiler coercions to achieve a '&' pointer.
+                    // data was created with `box T as Box<LocalData>`, so we
+                    // extract pointer part of the trait, (as Box<T>), and
+                    // then use compiler coercions to achieve a '&' pointer.
                     unsafe {
-                        match *cast::transmute::<&TLSValue, &(uint, ~T)>(data){
+                        match *cast::transmute::<&TLSValue,
+                                                 &(uint, Box<T>)>(data){
                             (_vtable, ref alloc) => {
                                 let value: &T = *alloc;
                                 ret = f(Some(value));
@@ -297,12 +299,12 @@ pub fn set<T: 'static>(key: Key<T>, data: T) {
     let keyval = key_to_key_value(key);
 
     // When the task-local map is destroyed, all the data needs to be cleaned
-    // up. For this reason we can't do some clever tricks to store '~T' as a
-    // '*c_void' or something like that. To solve the problem, we cast
+    // up. For this reason we can't do some clever tricks to store 'Box<T>' as
+    // a '*c_void' or something like that. To solve the problem, we cast
     // everything to a trait (LocalData) which is then stored inside the map.
     // Upon destruction of the map, all the objects will be destroyed and the
     // traits have enough information about them to destroy themselves.
-    let data = box data as ~LocalData:;
+    let data = box data as Box<LocalData:>;
 
     fn insertion_position(map: &mut Map,
                           key: *u8) -> Option<uint> {
@@ -330,7 +332,7 @@ pub fn set<T: 'static>(key: Key<T>, data: T) {
     // transmute here to add the Send bound back on. This doesn't actually
     // matter because TLS will always own the data (until its moved out) and
     // we're not actually sending it to other schedulers or anything.
-    let data: ~LocalData:Send = unsafe { cast::transmute(data) };
+    let data: Box<LocalData:Send> = unsafe { cast::transmute(data) };
     match insertion_position(map, keyval) {
         Some(i) => { *map.get_mut(i) = Some((keyval, data, NoLoan)); }
         None => { map.push(Some((keyval, data, NoLoan))); }
@@ -353,6 +355,7 @@ pub fn modify<T: 'static>(key: Key<T>, f: |Option<T>| -> Option<T>) {
 mod tests {
     use prelude::*;
     use super::*;
+    use owned::Box;
     use task;
     use str::StrSlice;
 
@@ -485,7 +488,7 @@ mod tests {
 
     #[test]
     fn test_owned() {
-        static key: Key<~int> = &Key;
+        static key: Key<Box<int>> = &Key;
         set(key, box 1);
 
         get(key, |v| {

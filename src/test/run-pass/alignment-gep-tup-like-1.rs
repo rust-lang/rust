@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 struct pair<A,B> {
     a: A, b: B
 }
@@ -27,11 +28,11 @@ impl<A:Clone> Invokable<A> for Invoker<A> {
     }
 }
 
-fn f<A:Clone + 'static>(a: A, b: u16) -> ~Invokable<A>: {
-    ~Invoker {
+fn f<A:Clone + 'static>(a: A, b: u16) -> Box<Invokable<A>:> {
+    box Invoker {
         a: a,
         b: b,
-    } as ~Invokable<A>:
+    } as Box<Invokable<A>>:
 }
 
 pub fn main() {

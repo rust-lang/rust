@@ -15,6 +15,7 @@
 #![allow(dead_code)]
 #![allow(unused_imports)]
 
+
 // public type, private value
 pub mod foo1 {
     pub trait Bar {
@@ -49,13 +50,13 @@ pub mod foo2 {
 fn test_single2() {
     use foo2::Bar;  //~ ERROR `Bar` is private
 
-    let _x : ~Bar;
+    let _x : Box<Bar>;
 }
 
 fn test_list2() {
     use foo2::{Bar,Baz};  //~ ERROR `Bar` is private
 
-    let _x: ~Bar;
+    let _x: Box<Bar>;
 }
 
 // neither public
@@ -76,14 +77,14 @@ fn test_single3() {
     use foo3::Bar;  //~ ERROR `Bar` is private
 
     Bar();
-    let _x: ~Bar;
+    let _x: Box<Bar>;
 }
 
 fn test_list3() {
     use foo3::{Bar,Baz};  //~ ERROR `Bar` is private
 
     Bar();
-    let _x: ~Bar;
+    let _x: Box<Bar>;
 }
 
 fn main() {

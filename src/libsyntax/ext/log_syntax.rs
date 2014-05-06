@@ -18,7 +18,7 @@ use std::rc::Rc;
 pub fn expand_syntax_ext(cx: &mut base::ExtCtxt,
                          sp: codemap::Span,
                          tt: &[ast::TokenTree])
-                      -> ~base::MacResult {
+                         -> Box<base::MacResult> {
 
     cx.print_backtrace();
     println!("{}", print::pprust::tt_to_str(&ast::TTDelim(

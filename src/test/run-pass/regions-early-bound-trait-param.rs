@@ -11,6 +11,7 @@
 // Tests that you can use an early-bound lifetime parameter as
 // on of the generic parameters in a trait.
 
+
 trait Trait<'a> {
     fn long(&'a self) -> int;
     fn short<'b>(&'b self) -> int;
@@ -77,8 +78,8 @@ impl<'s> Trait<'s> for (int,int) {
     }
 }
 
-impl<'t> MakerTrait<'t> for ~Trait<'t> {
-    fn mk() -> ~Trait<'t> { ~(4,5) as ~Trait }
+impl<'t> MakerTrait<'t> for Box<Trait<'t>> {
+    fn mk() -> Box<Trait<'t>> { box() (4,5) as Box<Trait> }
 }
 
 enum List<'l> {
@@ -118,7 +119,7 @@ pub fn main() {
     assert_eq!(object_invoke2(&t), 3);
     assert_eq!(field_invoke2(&s2), 3);
 
-    let m : ~Trait = make_val();
+    let m : Box<Trait> = make_val();
     assert_eq!(object_invoke1(m), (4,5));
     assert_eq!(object_invoke2(m), 5);
 

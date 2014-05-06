@@ -8,12 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn f(y: ~int) {
+
+fn f(y: Box<int>) {
     *y = 5; //~ ERROR cannot assign
 }
 
 fn g() {
-    let _frob: |~int| = |q| { *q = 2; }; //~ ERROR cannot assign
+    let _frob: |Box<int>| = |q| { *q = 2; }; //~ ERROR cannot assign
 
 }
 

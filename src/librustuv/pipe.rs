@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use libc;
 use std::c_str::CString;
 use std::io::IoError;
-use libc;
 use std::rt::rtio::{RtioPipe, RtioUnixListener, RtioUnixAcceptor};
 
 use access::Access;
@@ -36,12 +36,12 @@ pub struct PipeWatcher {
 pub struct PipeListener {
     home: HomeHandle,
     pipe: *uvll::uv_pipe_t,
-    outgoing: Sender<Result<~RtioPipe:Send, IoError>>,
-    incoming: Receiver<Result<~RtioPipe:Send, IoError>>,
+    outgoing: Sender<Result<Box<RtioPipe:Send>, IoError>>,
+    incoming: Receiver<Result<Box<RtioPipe:Send>, IoError>>,
 }
 
 pub struct PipeAcceptor {
-    listener: ~PipeListener,
+    listener: Box<PipeListener>,
     timeout: net::AcceptTimeout,
 }
 
@@ -121,7 +121,7 @@ impl RtioPipe for PipeWatcher {
         self.stream.write(buf).map_err(uv_error_to_io_error)
     }
 
-    fn clone(&self) -> ~RtioPipe:Send {
+    fn clone(&self) -> Box<RtioPipe:Send> {
         box PipeWatcher {
             stream: StreamWatcher::new(self.stream.handle),
             defused: false,
@@ -129,7 +129,7 @@ impl RtioPipe for PipeWatcher {
             refcount: self.refcount.clone(),
             read_access: self.read_access.clone(),
             write_access: self.write_access.clone(),
-        } as ~RtioPipe:Send
+        } as Box<RtioPipe:Send>
     }
 }
 
@@ -154,7 +154,7 @@ impl Drop for PipeWatcher {
 
 impl PipeListener {
     pub fn bind(io: &mut UvIoFactory, name: &CString)
-        -> Result<~PipeListener, UvError>
+        -> Result<Box<PipeListener>, UvError>
     {
         let pipe = PipeWatcher::new(io, false);
         match unsafe {
@@ -179,7 +179,7 @@ impl PipeListener {
 }
 
 impl RtioUnixListener for PipeListener {
-    fn listen(~self) -> Result<~RtioUnixAcceptor:Send, IoError> {
+    fn listen(~self) -> Result<Box<RtioUnixAcceptor:Send>, IoError> {
         // create the acceptor object from ourselves
         let mut acceptor = box PipeAcceptor {
             listener: self,
@@ -189,7 +189,7 @@ impl RtioUnixListener for PipeListener {
         let _m = acceptor.fire_homing_missile();
         // FIXME: the 128 backlog should be configurable
         match unsafe { uvll::uv_listen(acceptor.listener.pipe, 128, listen_cb) } {
-            0 => Ok(acceptor as ~RtioUnixAcceptor:Send),
+            0 => Ok(acceptor as Box<RtioUnixAcceptor:Send>),
             n => Err(uv_error_to_io_error(UvError(n))),
         }
     }
@@ -214,7 +214,7 @@ extern fn listen_cb(server: *uvll::uv_stream_t, status: libc::c_int) {
             });
             let client = PipeWatcher::new_home(&loop_, pipe.home().clone(), false);
             assert_eq!(unsafe { uvll::uv_accept(server, client.handle()) }, 0);
-            Ok(box client as ~RtioPipe:Send)
+            Ok(box client as Box<RtioPipe:Send>)
         }
         n => Err(uv_error_to_io_error(UvError(n)))
     };
@@ -231,7 +231,7 @@ impl Drop for PipeListener {
 // PipeAcceptor implementation and traits
 
 impl RtioUnixAcceptor for PipeAcceptor {
-    fn accept(&mut self) -> Result<~RtioPipe:Send, IoError> {
+    fn accept(&mut self) -> Result<Box<RtioPipe:Send>, IoError> {
         self.timeout.accept(&self.listener.incoming)
     }
 

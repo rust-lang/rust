@@ -47,11 +47,11 @@ via `close` and `delete` methods.
 #[cfg(test)] extern crate realrustuv = "rustuv";
 extern crate libc;
 
+use libc::{c_int, c_void};
 use std::cast;
 use std::fmt;
 use std::io::IoError;
 use std::io;
-use libc::{c_int, c_void};
 use std::ptr::null;
 use std::ptr;
 use std::rt::local::Local;
@@ -124,8 +124,8 @@ pub mod stream;
 ///     // this code is running inside of a green task powered by libuv
 /// }
 /// ```
-pub fn event_loop() -> ~rtio::EventLoop:Send {
-    box uvio::UvEventLoop::new() as ~rtio::EventLoop:Send
+pub fn event_loop() -> Box<rtio::EventLoop:Send> {
+    box uvio::UvEventLoop::new() as Box<rtio::EventLoop:Send>
 }
 
 /// A type that wraps a uv handle
@@ -149,9 +149,9 @@ pub trait UvHandle<T> {
         cast::transmute(uvll::get_data_for_uv_handle(*h))
     }
 
-    fn install(~self) -> ~Self {
+    fn install(~self) -> Box<Self> {
         unsafe {
-            let myptr = cast::transmute::<&~Self, &*u8>(&self);
+            let myptr = cast::transmute::<&Box<Self>, &*u8>(&self);
             uvll::set_data_for_uv_handle(self.uv_handle(), *myptr);
         }
         self
@@ -242,7 +242,7 @@ fn wait_until_woken_after(slot: *mut Option<BlockedTask>,
     let _f = ForbidUnwind::new("wait_until_woken_after");
     unsafe {
         assert!((*slot).is_none());
-        let task: ~Task = Local::take();
+        let task: Box<Task> = Local::take();
         loop_.modify_blockers(1);
         task.deschedule(1, |task| {
             *slot = Some(task);

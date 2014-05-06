@@ -8,9 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 struct Triple {a: int, b: int, c: int}
 
-fn test(foo: ~Triple) -> ~Triple {
+fn test(foo: Box<Triple>) -> Box<Triple> {
     let foo = foo;
     let bar = foo;
     let baz = bar;
@@ -18,4 +19,8 @@ fn test(foo: ~Triple) -> ~Triple {
     return quux;
 }
 
-pub fn main() { let x = ~Triple{a: 1, b: 2, c: 3}; let y = test(x); assert!((y.c == 3)); }
+pub fn main() {
+    let x = box Triple{a: 1, b: 2, c: 3};
+    let y = test(x);
+    assert!((y.c == 3));
+}

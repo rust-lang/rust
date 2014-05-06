@@ -13,6 +13,6 @@ struct Test<'s> {
 }
 
 fn main() {
-    let test = ~Test { func: proc() {} };
+    let test = box Test { func: proc() {} };
     //~^ ERROR: expected `||` but found `proc()`
 }

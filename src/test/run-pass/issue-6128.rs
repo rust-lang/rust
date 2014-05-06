@@ -24,6 +24,6 @@ impl<E> Graph<int, E> for HashMap<int, int> {
 }
 
 pub fn main() {
-    let g : ~HashMap<int, int> = ~HashMap::new();
-    let _g2 : ~Graph<int,int> = g as ~Graph<int,int>;
+    let g : Box<HashMap<int,int>> = box HashMap::new();
+    let _g2 : Box<Graph<int,int>> = g as Box<Graph<int,int>>;
 }

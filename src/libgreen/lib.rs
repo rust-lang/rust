@@ -288,7 +288,7 @@ macro_rules! green_start( ($f:ident) => (
 /// The return value is used as the process return code. 0 on success, 101 on
 /// error.
 pub fn start(argc: int, argv: **u8,
-             event_loop_factory: fn() -> ~rtio::EventLoop:Send,
+             event_loop_factory: fn() -> Box<rtio::EventLoop:Send>,
              main: proc():Send) -> int {
     rt::init(argc, argv);
     let mut main = Some(main);
@@ -309,7 +309,7 @@ pub fn start(argc: int, argv: **u8,
 ///
 /// This function will not return until all schedulers in the associated pool
 /// have returned.
-pub fn run(event_loop_factory: fn() -> ~rtio::EventLoop:Send,
+pub fn run(event_loop_factory: fn() -> Box<rtio::EventLoop:Send>,
            main: proc():Send) -> int {
     // Create a scheduler pool and spawn the main task into this pool. We will
     // get notified over a channel when the main task exits.
@@ -340,7 +340,7 @@ pub struct PoolConfig {
     pub threads: uint,
     /// A factory function used to create new event loops. If this is not
     /// specified then the default event loop factory is used.
-    pub event_loop_factory: fn() -> ~rtio::EventLoop:Send,
+    pub event_loop_factory: fn() -> Box<rtio::EventLoop:Send>,
 }
 
 impl PoolConfig {
@@ -360,12 +360,12 @@ pub struct SchedPool {
     id: uint,
     threads: Vec<Thread<()>>,
     handles: Vec<SchedHandle>,
-    stealers: Vec<deque::Stealer<~task::GreenTask>>,
+    stealers: Vec<deque::Stealer<Box<task::GreenTask>>>,
     next_friend: uint,
     stack_pool: StackPool,
-    deque_pool: deque::BufferPool<~task::GreenTask>,
+    deque_pool: deque::BufferPool<Box<task::GreenTask>>,
     sleepers: SleeperList,
-    factory: fn() -> ~rtio::EventLoop:Send,
+    factory: fn() -> Box<rtio::EventLoop:Send>,
     task_state: TaskState,
     tasks_done: Receiver<()>,
 }
@@ -445,7 +445,7 @@ impl SchedPool {
     /// This is useful to create a task which can then be sent to a specific
     /// scheduler created by `spawn_sched` (and possibly pin it to that
     /// scheduler).
-    pub fn task(&mut self, opts: TaskOpts, f: proc():Send) -> ~GreenTask {
+    pub fn task(&mut self, opts: TaskOpts, f: proc():Send) -> Box<GreenTask> {
         GreenTask::configure(&mut self.stack_pool, opts, f)
     }
 

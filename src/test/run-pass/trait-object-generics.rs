@@ -10,6 +10,7 @@
 
 // test for #8664
 
+
 pub trait Trait2<A> {
     fn doit(&self);
 }
@@ -20,7 +21,7 @@ pub struct Impl<A1, A2, A3> {
      * task <unnamed> failed at 'index out of bounds: the len is 1 but the index is 1',
      * src/librustc/middle/subst.rs:58
      */
-    t: ~Trait2<A2>
+    t: Box<Trait2<A2>>
 }
 
 impl<A1, A2, A3> Impl<A1, A2, A3> {
@@ -42,6 +43,6 @@ impl<V> Trait<u8,V> for () {
 }
 
 pub fn main() {
-    let a = ~() as ~Trait<u8, u8>;
+    let a = box() () as Box<Trait<u8, u8>>;
     assert_eq!(a.method(Constant), 0);
 }

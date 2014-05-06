@@ -37,6 +37,6 @@ impl<K,V> HashMap<K,V> {
 }
 
 pub fn main() {
-    let mut m = ~linear_map::<(),()>();
+    let mut m = box linear_map::<(),()>();
     assert_eq!(m.len(), 0);
 }

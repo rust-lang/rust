@@ -35,30 +35,30 @@ pub struct Box<T>(*T);
 pub struct Box<T>(*T);
 
 #[cfg(not(test))]
-impl<T:Eq> Eq for ~T {
+impl<T:Eq> Eq for Box<T> {
     #[inline]
-    fn eq(&self, other: &~T) -> bool { *(*self) == *(*other) }
+    fn eq(&self, other: &Box<T>) -> bool { *(*self) == *(*other) }
     #[inline]
-    fn ne(&self, other: &~T) -> bool { *(*self) != *(*other) }
+    fn ne(&self, other: &Box<T>) -> bool { *(*self) != *(*other) }
 }
 
 #[cfg(not(test))]
-impl<T:Ord> Ord for ~T {
+impl<T:Ord> Ord for Box<T> {
     #[inline]
-    fn lt(&self, other: &~T) -> bool { *(*self) < *(*other) }
+    fn lt(&self, other: &Box<T>) -> bool { *(*self) < *(*other) }
     #[inline]
-    fn le(&self, other: &~T) -> bool { *(*self) <= *(*other) }
+    fn le(&self, other: &Box<T>) -> bool { *(*self) <= *(*other) }
     #[inline]
-    fn ge(&self, other: &~T) -> bool { *(*self) >= *(*other) }
+    fn ge(&self, other: &Box<T>) -> bool { *(*self) >= *(*other) }
     #[inline]
-    fn gt(&self, other: &~T) -> bool { *(*self) > *(*other) }
+    fn gt(&self, other: &Box<T>) -> bool { *(*self) > *(*other) }
 }
 
 #[cfg(not(test))]
-impl<T: TotalOrd> TotalOrd for ~T {
+impl<T: TotalOrd> TotalOrd for Box<T> {
     #[inline]
-    fn cmp(&self, other: &~T) -> Ordering { (**self).cmp(*other) }
+    fn cmp(&self, other: &Box<T>) -> Ordering { (**self).cmp(*other) }
 }
 
 #[cfg(not(test))]
-impl<T: TotalEq> TotalEq for ~T {}
+impl<T: TotalEq> TotalEq for Box<T> {}

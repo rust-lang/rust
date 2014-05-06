@@ -41,9 +41,9 @@ point, but allocated in a different place:
 
 ~~~
 # struct Point {x: f64, y: f64}
-let on_the_stack :  Point =  Point {x: 3.0, y: 4.0};
-let managed_box  : @Point = @Point {x: 5.0, y: 1.0};
-let owned_box    : ~Point = ~Point {x: 7.0, y: 9.0};
+let on_the_stack :  Point     =     Point {x: 3.0, y: 4.0};
+let managed_box  : @Point     =    @Point {x: 5.0, y: 1.0};
+let owned_box    : Box<Point> = box Point {x: 7.0, y: 9.0};
 ~~~
 
 Suppose we wanted to write a procedure that computed the distance between any
@@ -72,9 +72,9 @@ Now we can call `compute_distance()` in various ways:
 
 ~~~
 # struct Point {x: f64, y: f64}
-# let on_the_stack :  Point =  Point{x: 3.0, y: 4.0};
-# let managed_box  : @Point = @Point{x: 5.0, y: 1.0};
-# let owned_box    : ~Point = ~Point{x: 7.0, y: 9.0};
+# let on_the_stack :     Point  =     Point{x: 3.0, y: 4.0};
+# let managed_box  :    @Point  =    @Point{x: 5.0, y: 1.0};
+# let owned_box    : Box<Point> = box Point{x: 7.0, y: 9.0};
 # fn compute_distance(p1: &Point, p2: &Point) -> f64 { 0.0 }
 compute_distance(&on_the_stack, managed_box);
 compute_distance(managed_box, owned_box);
@@ -151,12 +151,12 @@ Now, as before, we can define rectangles in a few different ways:
 # struct Point {x: f64, y: f64}
 # struct Size {w: f64, h: f64} // as before
 # struct Rectangle {origin: Point, size: Size}
-let rect_stack   = &Rectangle {origin: Point {x: 1.0, y: 2.0},
-                               size: Size {w: 3.0, h: 4.0}};
-let rect_managed = @Rectangle {origin: Point {x: 3.0, y: 4.0},
-                               size: Size {w: 3.0, h: 4.0}};
-let rect_owned   = ~Rectangle {origin: Point {x: 5.0, y: 6.0},
-                               size: Size {w: 3.0, h: 4.0}};
+let rect_stack   =    &Rectangle {origin: Point {x: 1.0, y: 2.0},
+                                  size: Size {w: 3.0, h: 4.0}};
+let rect_managed =    @Rectangle {origin: Point {x: 3.0, y: 4.0},
+                                  size: Size {w: 3.0, h: 4.0}};
+let rect_owned   = box Rectangle {origin: Point {x: 5.0, y: 6.0},
+                                  size: Size {w: 3.0, h: 4.0}};
 ~~~
 
 In each case, we can extract out individual subcomponents with the `&`
@@ -168,7 +168,7 @@ operator. For example, I could write:
 # struct Rectangle {origin: Point, size: Size}
 # let rect_stack  = &Rectangle {origin: Point {x: 1.0, y: 2.0}, size: Size {w: 3.0, h: 4.0}};
 # let rect_managed = @Rectangle {origin: Point {x: 3.0, y: 4.0}, size: Size {w: 3.0, h: 4.0}};
-# let rect_owned = ~Rectangle {origin: Point {x: 5.0, y: 6.0}, size: Size {w: 3.0, h: 4.0}};
+# let rect_owned = box Rectangle {origin: Point {x: 5.0, y: 6.0}, size: Size {w: 3.0, h: 4.0}};
 # fn compute_distance(p1: &Point, p2: &Point) -> f64 { 0.0 }
 compute_distance(&rect_stack.origin, &rect_managed.origin);
 ~~~
@@ -276,12 +276,12 @@ the following function is legal:
 # fn some_condition() -> bool { true }
 # struct Foo { f: int }
 fn example3() -> int {
-    let mut x = ~Foo {f: 3};
+    let mut x = box Foo {f: 3};
     if some_condition() {
         let y = &x.f;      // -+ L
         return *y;         //  |
     }                      // -+
-    x = ~Foo {f: 4};
+    x = box Foo {f: 4};
     // ...
 # return 0;
 }
@@ -301,9 +301,9 @@ rejected by the compiler):
 
 ~~~ {.ignore}
 fn example3() -> int {
-    let mut x = ~X {f: 3};
+    let mut x = box X {f: 3};
     let y = &x.f;
-    x = ~X {f: 4};  // Error reported here.
+    x = box X {f: 4};  // Error reported here.
     *y
 }
 ~~~
@@ -314,13 +314,13 @@ memory immediately before the re-assignment of `x`:
 ~~~ {.notrust}
     Stack               Exchange Heap
 
-  x +----------+
-    | ~{f:int} | ----+
-  y +----------+     |
-    | &int     | ----+
-    +----------+     |    +---------+
-                     +--> |  f: 3   |
-                          +---------+
+  x +-------------+
+    | box {f:int} | ----+
+  y +-------------+     |
+    | &int        | ----+
+    +-------------+     |    +---------+
+                        +--> |  f: 3   |
+                             +---------+
 ~~~
 
 Once the reassignment occurs, the memory will look like this:
@@ -328,13 +328,13 @@ Once the reassignment occurs, the memory will look like this:
 ~~~ {.notrust}
     Stack               Exchange Heap
 
-  x +----------+          +---------+
-    | ~{f:int} | -------> |  f: 4   |
-  y +----------+          +---------+
-    | &int     | ----+
-    +----------+     |    +---------+
-                     +--> | (freed) |
-                          +---------+
+  x +-------------+          +---------+
+    | box {f:int} | -------> |  f: 4   |
+  y +-------------+          +---------+
+    | &int        | ----+
+    +-------------+     |    +---------+
+                        +--> | (freed) |
+                             +---------+
 ~~~
 
 Here you can see that the variable `y` still points at the old box,
@@ -349,12 +349,12 @@ mutations:
 ~~~ {.ignore}
 fn example3() -> int {
     struct R { g: int }
-    struct S { f: ~R }
+    struct S { f: Box<R> }
 
-    let mut x = ~S {f: ~R {g: 3}};
+    let mut x = box S {f: box R {g: 3}};
     let y = &x.f.g;
-    x = ~S {f: ~R {g: 4}};  // Error reported here.
-    x.f = ~R {g: 5};        // Error reported here.
+    x = box S {f: box R {g: 4}};  // Error reported here.
+    x.f = box R {g: 5};           // Error reported here.
     *y
 }
 ~~~

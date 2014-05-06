@@ -270,24 +270,24 @@ mod tests {
 
     #[test]
     fn test_push_unique() {
-        let mut heap = PriorityQueue::from_vec(vec!(~2, ~4, ~9));
+        let mut heap = PriorityQueue::from_vec(vec!(box 2, box 4, box 9));
         assert_eq!(heap.len(), 3);
-        assert!(*heap.top() == ~9);
+        assert!(*heap.top() == box 9);
         heap.push(box 11);
         assert_eq!(heap.len(), 4);
-        assert!(*heap.top() == ~11);
+        assert!(*heap.top() == box 11);
         heap.push(box 5);
         assert_eq!(heap.len(), 5);
-        assert!(*heap.top() == ~11);
+        assert!(*heap.top() == box 11);
         heap.push(box 27);
         assert_eq!(heap.len(), 6);
-        assert!(*heap.top() == ~27);
+        assert!(*heap.top() == box 27);
         heap.push(box 3);
         assert_eq!(heap.len(), 7);
-        assert!(*heap.top() == ~27);
+        assert!(*heap.top() == box 27);
         heap.push(box 103);
         assert_eq!(heap.len(), 8);
-        assert!(*heap.top() == ~103);
+        assert!(*heap.top() == box 103);
     }
 
     #[test]

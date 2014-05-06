@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // Test invoked `&self` methods on owned objects where the values
-// closed over do not contain managed values, and thus the ~ boxes do
+// closed over do not contain managed values, and thus the boxes do
 // not have headers.
 
 
@@ -28,10 +28,10 @@ impl FooTrait for BarStruct {
 }
 
 pub fn main() {
-    let foos: Vec<~FooTrait> = vec!(
-        ~BarStruct{ x: 0 } as ~FooTrait,
-        ~BarStruct{ x: 1 } as ~FooTrait,
-        ~BarStruct{ x: 2 } as ~FooTrait
+    let foos: Vec<Box<FooTrait>> = vec!(
+        box BarStruct{ x: 0 } as Box<FooTrait>,
+        box BarStruct{ x: 1 } as Box<FooTrait>,
+        box BarStruct{ x: 2 } as Box<FooTrait>
     );
 
     for i in range(0u, foos.len()) {

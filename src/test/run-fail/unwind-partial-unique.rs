@@ -22,7 +22,7 @@ fn prime() {
 }
 
 fn partial() {
-    let _x = ~f();
+    let _x = box f();
 }
 
 fn main() {

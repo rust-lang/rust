@@ -532,7 +532,7 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
     let resolve_object_cast = |src: &ast::Expr, target_ty: ty::t| {
       match ty::get(target_ty).sty {
           // Bounds of type's contents are not checked here, but in kind.rs.
-          ty::ty_trait(~ty::TyTrait {
+          ty::ty_trait(box ty::TyTrait {
               def_id: target_def_id, substs: ref target_substs, store, ..
           }) => {
               fn mutability_allowed(a_mutbl: ast::Mutability,
@@ -543,7 +543,7 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
               // Look up vtables for the type we're casting to,
               // passing in the source and target type.  The source
               // must be a pointer type suitable to the object sigil,
-              // e.g.: `&x as &Trait` or `~x as ~Trait`
+              // e.g.: `&x as &Trait` or `box x as Box<Trait>`
               let ty = structurally_resolved_type(fcx, ex.span,
                                                   fcx.expr_ty(src));
               match (&ty::get(ty).sty, store) {
@@ -606,8 +606,8 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
                   (_, ty::UniqTraitStore) => {
                       fcx.ccx.tcx.sess.span_err(
                           ex.span,
-                          format!("can only cast an ~-pointer \
-                                to a ~-object, not a {}",
+                          format!("can only cast an boxed pointer \
+                                   to a boxed object, not a {}",
                                ty::ty_sort_str(fcx.tcx(), ty)));
                   }
 

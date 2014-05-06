@@ -24,7 +24,7 @@ enum List<T> {
 }
 
 enum UniqueList {
-    ULNil, ULCons(~UniqueList)
+    ULNil, ULCons(Box<UniqueList>)
 }
 
 fn main() {
@@ -53,8 +53,8 @@ type nillist = List<()>;
 
 struct State {
     managed: @nillist,
-    unique: ~nillist,
-    tuple: (@nillist, ~nillist),
+    unique: Box<nillist>,
+    tuple: (@nillist, Box<nillist>),
     vec: Vec<@nillist>,
     res: r
 }
@@ -85,8 +85,8 @@ fn recurse_or_fail(depth: int, st: Option<State>) {
           None => {
             State {
                 managed: @Nil,
-                unique: ~Nil,
-                tuple: (@Nil, ~Nil),
+                unique: box Nil,
+                tuple: (@Nil, box Nil),
                 vec: vec!(@Nil),
                 res: r(@Nil)
             }
@@ -94,9 +94,9 @@ fn recurse_or_fail(depth: int, st: Option<State>) {
           Some(st) => {
             State {
                 managed: @Cons((), st.managed),
-                unique: ~Cons((), @*st.unique),
+                unique: box Cons((), @*st.unique),
                 tuple: (@Cons((), st.tuple.ref0().clone()),
-                        ~Cons((), @*st.tuple.ref1().clone())),
+                        box Cons((), @*st.tuple.ref1().clone())),
                 vec: st.vec.clone().append(&[@Cons((), *st.vec.last().unwrap())]),
                 res: r(@Cons((), st.res._l))
             }

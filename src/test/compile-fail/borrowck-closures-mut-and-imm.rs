@@ -11,6 +11,7 @@
 // Tests that two closures cannot simultaneously have mutable
 // and immutable access to the variable. Issue #6801.
 
+
 fn get(x: &int) -> int {
     *x
 }
@@ -50,27 +51,27 @@ fn e() {
 }
 
 fn f() {
-    let mut x = ~3;
+    let mut x = box 3;
     let c1 = || get(&*x);
     *x = 5; //~ ERROR cannot assign
 }
 
 fn g() {
     struct Foo {
-        f: ~int
+        f: Box<int>
     }
 
-    let mut x = ~Foo { f: ~3 };
+    let mut x = box Foo { f: box 3 };
     let c1 = || get(&*x.f);
     *x.f = 5; //~ ERROR cannot assign to `*x.f`
 }
 
 fn h() {
     struct Foo {
-        f: ~int
+        f: Box<int>
     }
 
-    let mut x = ~Foo { f: ~3 };
+    let mut x = box Foo { f: box 3 };
     let c1 = || get(&*x.f);
     let c2 = || *x.f = 5; //~ ERROR cannot borrow `x` as mutable
 }

@@ -11,7 +11,7 @@
 struct J { j: int }
 
 pub fn main() {
-    let i = ~J {
+    let i = box J {
         j: 100
     };
     assert_eq!(i.j, 100);

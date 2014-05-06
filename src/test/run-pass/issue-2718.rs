@@ -42,7 +42,7 @@ pub mod pipes {
 
     pub fn packet<T:Send>() -> *packet<T> {
         unsafe {
-            let p: *packet<T> = cast::transmute(~Stuff{
+            let p: *packet<T> = cast::transmute(box Stuff{
                 state: empty,
                 blocked_task: None::<Task>,
                 payload: None::<T>
@@ -59,7 +59,7 @@ pub mod pipes {
 
     // We should consider moving this to ::std::unsafe, although I
     // suspect graydon would want us to use void pointers instead.
-    pub unsafe fn uniquify<T>(x: *T) -> ~T {
+    pub unsafe fn uniquify<T>(x: *T) -> Box<T> {
         cast::transmute(x)
     }
 

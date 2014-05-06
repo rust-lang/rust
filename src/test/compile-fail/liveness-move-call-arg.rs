@@ -8,11 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn take(_x: ~int) {}
+
+fn take(_x: Box<int>) {}
 
 fn main() {
 
-    let x: ~int = ~25;
+    let x: Box<int> = box 25;
     loop {
         take(x); //~ ERROR use of moved value: `x`
     }

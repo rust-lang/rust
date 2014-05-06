@@ -39,7 +39,7 @@ fn main() {
         c: 4
     };
 
-    let owned = ~5;
+    let owned = box 5;
 
     let closure: proc() = proc() {
         zzz();

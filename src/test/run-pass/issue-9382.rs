@@ -18,23 +18,23 @@
 
 
 struct Thing1<'a> {
-    baz: &'a [~int],
-    bar: ~u64,
+    baz: &'a [Box<int>],
+    bar: Box<u64>,
 }
 
 struct Thing2<'a> {
-    baz: &'a [~int],
+    baz: &'a [Box<int>],
     bar: u64,
 }
 
 pub fn main() {
     let _t1_fixed = Thing1 {
         baz: &[],
-        bar: ~32,
+        bar: box 32,
     };
     Thing1 {
         baz: Vec::new().as_slice(),
-        bar: ~32,
+        bar: box 32,
     };
     let _t2_fixed = Thing2 {
         baz: &[],

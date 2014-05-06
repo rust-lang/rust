@@ -8,13 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 struct Point {
     x: int,
     y: int
 }
 
 struct Character {
-    pos: ~Point
+    pos: Box<Point>,
 }
 
 fn get_x<'r>(x: &'r Character) -> &'r int {

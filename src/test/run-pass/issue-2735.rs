@@ -8,17 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 trait hax { }
 impl<A> hax for A { }
 
-fn perform_hax<T: 'static>(x: ~T) -> ~hax: {
-    ~x as ~hax:
+fn perform_hax<T: 'static>(x: Box<T>) -> Box<hax:> {
+    box x as Box<hax:>
 }
 
 fn deadcode() {
-    perform_hax(~"deadcode".to_owned());
+    perform_hax(box "deadcode".to_owned());
 }
 
 pub fn main() {
-    perform_hax(~42);
+    perform_hax(box 42);
 }

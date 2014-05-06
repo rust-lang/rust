@@ -29,14 +29,14 @@ extern crate collections;
 use std::cast::{transmute, transmute_mut_lifetime};
 use std::cast;
 use std::cell::{Cell, RefCell};
-use std::mem;
-use std::ptr::read;
 use std::cmp;
-use std::num;
-use std::rc::Rc;
-use std::rt::global_heap;
 use std::intrinsics::{TyDesc, get_tydesc};
 use std::intrinsics;
+use std::mem;
+use std::num;
+use std::ptr::read;
+use std::rc::Rc;
+use std::rt::global_heap;
 
 // The way arena uses arrays is really deeply awful. The arrays are
 // allocated, and have capacities reserved, but the fill for the array
@@ -339,12 +339,12 @@ pub struct TypedArena<T> {
     end: *T,
 
     /// A pointer to the first arena segment.
-    first: Option<~TypedArenaChunk<T>>,
+    first: Option<Box<TypedArenaChunk<T>>>,
 }
 
 struct TypedArenaChunk<T> {
     /// Pointer to the next arena segment.
-    next: Option<~TypedArenaChunk<T>>,
+    next: Option<Box<TypedArenaChunk<T>>>,
 
     /// The number of elements that this chunk can hold.
     capacity: uint,
@@ -354,7 +354,8 @@ struct TypedArenaChunk<T> {
 
 impl<T> TypedArenaChunk<T> {
     #[inline]
-    fn new(next: Option<~TypedArenaChunk<T>>, capacity: uint) -> ~TypedArenaChunk<T> {
+    fn new(next: Option<Box<TypedArenaChunk<T>>>, capacity: uint)
+           -> Box<TypedArenaChunk<T>> {
         let mut size = mem::size_of::<TypedArenaChunk<T>>();
         size = round_up(size, mem::min_align_of::<T>());
         let elem_size = mem::size_of::<T>();
@@ -363,7 +364,7 @@ impl<T> TypedArenaChunk<T> {
 
         let mut chunk = unsafe {
             let chunk = global_heap::exchange_malloc(size);
-            let mut chunk: ~TypedArenaChunk<T> = cast::transmute(chunk);
+            let mut chunk: Box<TypedArenaChunk<T>> = cast::transmute(chunk);
             mem::move_val_init(&mut chunk.next, next);
             chunk
         };

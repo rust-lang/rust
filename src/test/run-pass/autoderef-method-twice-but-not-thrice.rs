@@ -8,15 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 trait double {
     fn double(~self) -> uint;
 }
 
-impl double for ~uint {
+impl double for Box<uint> {
     fn double(~self) -> uint { **self * 2u }
 }
 
 pub fn main() {
-    let x = ~~~~~3u;
+    let x = box box box box box 3u;
     assert_eq!(x.double(), 6u);
 }

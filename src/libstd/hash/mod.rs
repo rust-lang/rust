@@ -67,6 +67,7 @@ use container::Container;
 use io::Writer;
 use iter::Iterator;
 use option::{Option, Some, None};
+use owned::Box;
 use rc::Rc;
 use str::{Str, StrSlice};
 use slice::{Vector, ImmutableVector};
@@ -229,7 +230,7 @@ impl<'a, S: Writer, T: Hash<S>> Hash<S> for &'a mut T {
     }
 }
 
-impl<S: Writer, T: Hash<S>> Hash<S> for ~T {
+impl<S: Writer, T: Hash<S>> Hash<S> for Box<T> {
     #[inline]
     fn hash(&self, state: &mut S) {
         (**self).hash(state);

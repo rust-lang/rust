@@ -353,12 +353,12 @@ impl rtio::RtioPipe for UnixStream {
         Ok(())
     }
 
-    fn clone(&self) -> ~rtio::RtioPipe:Send {
+    fn clone(&self) -> Box<rtio::RtioPipe:Send> {
         box UnixStream {
             inner: self.inner.clone(),
             read: None,
             write: None,
-        } as ~rtio::RtioPipe:Send
+        } as Box<rtio::RtioPipe:Send>
     }
 }
 
@@ -402,8 +402,10 @@ impl Drop for UnixListener {
 }
 
 impl rtio::RtioUnixListener for UnixListener {
-    fn listen(~self) -> IoResult<~rtio::RtioUnixAcceptor:Send> {
-        self.native_listen().map(|a| box a as ~rtio::RtioUnixAcceptor:Send)
+    fn listen(~self) -> IoResult<Box<rtio::RtioUnixAcceptor:Send>> {
+        self.native_listen().map(|a| {
+            box a as Box<rtio::RtioUnixAcceptor:Send>
+        })
     }
 }
 
@@ -526,8 +528,8 @@ impl UnixAcceptor {
 }
 
 impl rtio::RtioUnixAcceptor for UnixAcceptor {
-    fn accept(&mut self) -> IoResult<~rtio::RtioPipe:Send> {
-        self.native_accept().map(|s| box s as ~rtio::RtioPipe:Send)
+    fn accept(&mut self) -> IoResult<Box<rtio::RtioPipe:Send>> {
+        self.native_accept().map(|s| box s as Box<rtio::RtioPipe:Send>)
     }
     fn set_timeout(&mut self, timeout: Option<u64>) {
         self.deadline = timeout.map(|i| i + ::io::timer::now()).unwrap_or(0);

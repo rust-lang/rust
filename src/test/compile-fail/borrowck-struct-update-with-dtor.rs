@@ -13,10 +13,12 @@
 
 // NoCopy
 use NP = std::kinds::marker::NoCopy;
+
+
 struct S { a: int, np: NP }
 impl Drop for S { fn drop(&mut self) { } }
 
-struct T { a: int, mv: ~int }
+struct T { a: int, mv: Box<int> }
 impl Drop for T { fn drop(&mut self) { } }
 
 fn f(s0:S) {

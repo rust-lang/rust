@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 #![feature(managed_boxes)]
+
 
 fn p_foo<T>(_pinned: T) { }
 fn s_foo<T>(_shared: T) { }
@@ -33,16 +33,16 @@ pub fn main() {
     p_foo(r(10));
     p_foo(@r(10));
 
-    p_foo(~r(10));
+    p_foo(box r(10));
     p_foo(@10);
-    p_foo(~10);
+    p_foo(box 10);
     p_foo(10);
 
     s_foo(@r(10));
     s_foo(@10);
-    s_foo(~10);
+    s_foo(box 10);
     s_foo(10);
 
-    u_foo(~10);
+    u_foo(box 10);
     u_foo(10);
 }

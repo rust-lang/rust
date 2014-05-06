@@ -8,20 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn f(mut y: ~int) {
+
+fn f(mut y: Box<int>) {
     *y = 5;
     assert_eq!(*y, 5);
 }
 
 fn g() {
-    let frob: |~int| = |mut q| { *q = 2; assert!(*q == 2); };
-    let w = ~37;
+    let frob: |Box<int>| = |mut q| { *q = 2; assert!(*q == 2); };
+    let w = box 37;
     frob(w);
 
 }
 
 pub fn main() {
-    let z = ~17;
+    let z = box 17;
     f(z);
     g();
 }

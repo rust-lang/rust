@@ -36,7 +36,7 @@ mod rusti {
 
 pub fn main() {
     unsafe {
-        let mut x = ~1;
+        let mut x = box 1;
 
         assert_eq!(rusti::atomic_load(&*x), 1);
         *x = 5;

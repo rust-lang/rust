@@ -40,7 +40,7 @@ pub fn main() {
     t!(format!("{:?}", 1), "1");
     t!(format!("{:?}", A), "A");
     t!(format!("{:?}", ()), "()");
-    t!(format!("{:?}", @(~1, "foo")), "@(~1, \"foo\")");
+    t!(format!("{:?}", @(box 1, "foo")), "@(box 1, \"foo\")");
 
     // Various edge cases without formats
     t!(format!(""), "");
@@ -142,7 +142,7 @@ pub fn main() {
     test_order();
 
     // make sure that format! doesn't move out of local variables
-    let a = ~3;
+    let a = box 3;
     format!("{:?}", a);
     format!("{:?}", a);
 

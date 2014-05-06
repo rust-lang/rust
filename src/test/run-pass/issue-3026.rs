@@ -15,6 +15,6 @@ use collections::HashMap;
 
 pub fn main() {
     let mut buggy_map: HashMap<uint, &uint> = HashMap::new();
-    let x = ~1;
+    let x = box 1;
     buggy_map.insert(42, &*x);
 }

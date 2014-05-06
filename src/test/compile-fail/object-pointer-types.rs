@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 trait Foo {
     fn borrowed(&self);
     fn borrowed_mut(&mut self);
@@ -27,7 +28,7 @@ fn borrowed_mut_receiver(x: &mut Foo) {
     x.owned(); //~ ERROR does not implement any method
 }
 
-fn owned_receiver(x: ~Foo) {
+fn owned_receiver(x: Box<Foo>) {
     x.borrowed();
     x.borrowed_mut(); // See [1]
     x.managed();  //~ ERROR does not implement any method

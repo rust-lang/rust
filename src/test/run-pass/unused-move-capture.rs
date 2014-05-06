@@ -9,7 +9,7 @@
 // except according to those terms.
 
 pub fn main() {
-    let _x = ~1;
+    let _x = box 1;
     let lam_move: || = || {};
     lam_move();
 }

@@ -1155,7 +1155,7 @@ impl<'a> DynamicFailureHandler<'a> {
 enum FailureHandler<'a> {
     Infallible,
     JumpToBasicBlock(BasicBlockRef),
-    DynamicFailureHandlerClass(~DynamicFailureHandler<'a>),
+    DynamicFailureHandlerClass(Box<DynamicFailureHandler<'a>>),
 }
 
 impl<'a> FailureHandler<'a> {

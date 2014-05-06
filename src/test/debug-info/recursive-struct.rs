@@ -105,13 +105,14 @@
 #![allow(unused_variable)]
 #![feature(struct_variant)]
 
+
 enum Opt<T> {
     Empty,
     Val { val: T }
 }
 
 struct UniqueNode<T> {
-    next: Opt<~UniqueNode<T>>,
+    next: Opt<Box<UniqueNode<T>>>,
     value: T
 }
 
@@ -121,27 +122,27 @@ struct ManagedNode<T> {
 }
 
 struct LongCycle1<T> {
-    next: ~LongCycle2<T>,
+    next: Box<LongCycle2<T>>,
     value: T,
 }
 
 struct LongCycle2<T> {
-    next: ~LongCycle3<T>,
+    next: Box<LongCycle3<T>>,
     value: T,
 }
 
 struct LongCycle3<T> {
-    next: ~LongCycle4<T>,
+    next: Box<LongCycle4<T>>,
     value: T,
 }
 
 struct LongCycle4<T> {
-    next: Option<~LongCycle1<T>>,
+    next: Option<Box<LongCycle1<T>>>,
     value: T,
 }
 
 struct LongCycleWithAnonymousTypes {
-    next: Opt<~~~~~LongCycleWithAnonymousTypes>,
+    next: Opt<Box<Box<Box<Box<Box<LongCycleWithAnonymousTypes>>>>>>,
     value: uint,
 }
 
@@ -163,7 +164,7 @@ struct LongCycleWithAnonymousTypes {
 fn main() {
     let stack_unique: UniqueNode<u16> = UniqueNode {
         next: Val {
-            val: ~UniqueNode {
+            val: box UniqueNode {
                 next: Empty,
                 value: 1_u16,
             }
@@ -171,9 +172,9 @@ fn main() {
         value: 0_u16,
     };
 
-    let unique_unique: ~UniqueNode<u32> = ~UniqueNode {
+    let unique_unique: Box<UniqueNode<u32>> = box UniqueNode {
         next: Val {
-            val: ~UniqueNode {
+            val: box UniqueNode {
                 next: Empty,
                 value: 3,
             }
@@ -183,7 +184,7 @@ fn main() {
 
     let box_unique: @UniqueNode<u64> = @UniqueNode {
         next: Val {
-            val: ~UniqueNode {
+            val: box UniqueNode {
                 next: Empty,
                 value: 5,
             }
@@ -193,7 +194,7 @@ fn main() {
 
     let vec_unique: [UniqueNode<f32>, ..1] = [UniqueNode {
         next: Val {
-            val: ~UniqueNode {
+            val: box UniqueNode {
                 next: Empty,
                 value: 7.5,
             }
@@ -203,7 +204,7 @@ fn main() {
 
     let borrowed_unique: &UniqueNode<f64> = &UniqueNode {
         next: Val {
-            val: ~UniqueNode {
+            val: box UniqueNode {
                 next: Empty,
                 value: 9.5,
             }
@@ -221,7 +222,7 @@ fn main() {
         value: 10,
     };
 
-    let unique_managed: ~ManagedNode<u32> = ~ManagedNode {
+    let unique_managed: Box<ManagedNode<u32>> = box ManagedNode {
         next: Val {
             val: @ManagedNode {
                 next: Empty,
@@ -263,9 +264,9 @@ fn main() {
 
     // LONG CYCLE
     let long_cycle1: LongCycle1<u16> = LongCycle1 {
-        next: ~LongCycle2 {
-            next: ~LongCycle3 {
-                next: ~LongCycle4 {
+        next: box LongCycle2 {
+            next: box LongCycle3 {
+                next: box LongCycle4 {
                     next: None,
                     value: 23,
                 },
@@ -277,8 +278,8 @@ fn main() {
     };
 
     let long_cycle2: LongCycle2<u32> = LongCycle2 {
-        next: ~LongCycle3 {
-            next: ~LongCycle4 {
+        next: box LongCycle3 {
+            next: box LongCycle4 {
                 next: None,
                 value: 26,
             },
@@ -288,7 +289,7 @@ fn main() {
     };
 
     let long_cycle3: LongCycle3<u64> = LongCycle3 {
-        next: ~LongCycle4 {
+        next: box LongCycle4 {
             next: None,
             value: 28,
         },
@@ -301,10 +302,10 @@ fn main() {
     };
 
     // It's important that LongCycleWithAnonymousTypes is encountered only at the end of the
-    // `~` chain.
-    let long_cycle_w_anonymous_types = ~~~~~LongCycleWithAnonymousTypes {
+    // `box` chain.
+    let long_cycle_w_anonymous_types = box box box box box LongCycleWithAnonymousTypes {
         next: Val {
-            val: ~~~~~LongCycleWithAnonymousTypes {
+            val: box box box box box LongCycleWithAnonymousTypes {
                 next: Empty,
                 value: 31,
             }

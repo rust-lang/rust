@@ -24,6 +24,7 @@ use kinds::Send;
 use local_data;
 use ops::Drop;
 use option::{Option, Some, None};
+use owned::Box;
 use prelude::drop;
 use result::{Result, Ok, Err};
 use rt::Runtime;
@@ -51,19 +52,20 @@ pub struct Task {
     pub destroyed: bool,
     pub name: Option<SendStr>,
 
-    pub stdout: Option<~Writer:Send>,
-    pub stderr: Option<~Writer:Send>,
+    pub stdout: Option<Box<Writer:Send>>,
+    pub stderr: Option<Box<Writer:Send>>,
 
-    imp: Option<~Runtime:Send>,
+    imp: Option<Box<Runtime:Send>>,
 }
 
 pub struct GarbageCollector;
 pub struct LocalStorage(pub Option<local_data::Map>);
 
-/// A handle to a blocked task. Usually this means having the ~Task pointer by
-/// ownership, but if the task is killable, a killer can steal it at any time.
+/// A handle to a blocked task. Usually this means having the Box<Task>
+/// pointer by ownership, but if the task is killable, a killer can steal it
+/// at any time.
 pub enum BlockedTask {
-    Owned(~Task),
+    Owned(Box<Task>),
     Shared(UnsafeArc<AtomicUint>),
 }
 
@@ -109,12 +111,12 @@ impl Task {
     /// This function is *not* meant to be abused as a "try/catch" block. This
     /// is meant to be used at the absolute boundaries of a task's lifetime, and
     /// only for that purpose.
-    pub fn run(~self, mut f: ||) -> ~Task {
+    pub fn run(~self, mut f: ||) -> Box<Task> {
         // Need to put ourselves into TLS, but also need access to the unwinder.
         // Unsafely get a handle to the task so we can continue to use it after
         // putting it in tls (so we can invoke the unwinder).
         let handle: *mut Task = unsafe {
-            *cast::transmute::<&~Task, &*mut Task>(&self)
+            *cast::transmute::<&Box<Task>, &*mut Task>(&self)
         };
         Local::put(self);
 
@@ -187,7 +189,7 @@ impl Task {
             let me: *mut Task = Local::unsafe_borrow();
             (*me).death.collect_failure((*me).unwinder.result());
         }
-        let mut me: ~Task = Local::take();
+        let mut me: Box<Task> = Local::take();
         me.destroyed = true;
         return me;
     }
@@ -195,7 +197,7 @@ impl Task {
     /// Inserts a runtime object into this task, transferring ownership to the
     /// task. It is illegal to replace a previous runtime object in this task
     /// with this argument.
-    pub fn put_runtime(&mut self, ops: ~Runtime:Send) {
+    pub fn put_runtime(&mut self, ops: Box<Runtime:Send>) {
         assert!(self.imp.is_none());
         self.imp = Some(ops);
     }
@@ -207,12 +209,12 @@ impl Task {
     ///
     /// It is recommended to only use this method when *absolutely necessary*.
     /// This function may not be available in the future.
-    pub fn maybe_take_runtime<T: 'static>(&mut self) -> Option<~T> {
+    pub fn maybe_take_runtime<T: 'static>(&mut self) -> Option<Box<T>> {
         // This is a terrible, terrible function. The general idea here is to
-        // take the runtime, cast it to ~Any, check if it has the right type,
-        // and then re-cast it back if necessary. The method of doing this is
-        // pretty sketchy and involves shuffling vtables of trait objects
-        // around, but it gets the job done.
+        // take the runtime, cast it to Box<Any>, check if it has the right
+        // type, and then re-cast it back if necessary. The method of doing
+        // this is pretty sketchy and involves shuffling vtables of trait
+        // objects around, but it gets the job done.
         //
         // FIXME: This function is a serious code smell and should be avoided at
         //      all costs. I have yet to think of a method to avoid this
@@ -225,7 +227,8 @@ impl Task {
                 Ok(t) => Some(t),
                 Err(t) => {
                     let (_, obj): (uint, uint) = cast::transmute(t);
-                    let obj: ~Runtime:Send = cast::transmute((vtable, obj));
+                    let obj: Box<Runtime:Send> =
+                        cast::transmute((vtable, obj));
                     self.put_runtime(obj);
                     None
                 }
@@ -308,7 +311,7 @@ impl Iterator<BlockedTask> for BlockedTasks {
 
 impl BlockedTask {
     /// Returns Some if the task was successfully woken; None if already killed.
-    pub fn wake(self) -> Option<~Task> {
+    pub fn wake(self) -> Option<Box<Task>> {
         match self {
             Owned(task) => Some(task),
             Shared(arc) => unsafe {
@@ -326,7 +329,7 @@ impl BlockedTask {
     #[cfg(test)]      pub fn trash(self) { assert!(self.wake().is_none()); }
 
     /// Create a blocked task, unless the task was already killed.
-    pub fn block(task: ~Task) -> BlockedTask {
+    pub fn block(task: Box<Task>) -> BlockedTask {
         Owned(task)
     }
 
@@ -367,7 +370,7 @@ impl BlockedTask {
         if blocked_task_ptr & 0x1 == 0 {
             Owned(cast::transmute(blocked_task_ptr))
         } else {
-            let ptr: ~UnsafeArc<AtomicUint> =
+            let ptr: Box<UnsafeArc<AtomicUint>> =
                 cast::transmute(blocked_task_ptr & !1);
             Shared(*ptr)
         }

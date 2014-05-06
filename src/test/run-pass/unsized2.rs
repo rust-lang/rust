@@ -9,6 +9,7 @@
 // except according to those terms.
 #![feature(struct_variant)]
 
+
 // Test sized-ness checking in substitution.
 
 // Unbounded.
@@ -32,33 +33,33 @@ fn f4<X: T>(x: &X) {
 
 // Self type.
 trait T2 for type {
-    fn f() -> ~Self;
+    fn f() -> Box<Self>;
 }
 struct S;
 impl T2 for S {
-    fn f() -> ~S {
-        ~S
+    fn f() -> Box<S> {
+        box S
     }
 }
 fn f5<type X: T2>(x: &X) {
-    let _: ~X = T2::f();
+    let _: Box<X> = T2::f();
 }
 fn f6<X: T2>(x: &X) {
-    let _: ~X = T2::f();
+    let _: Box<X> = T2::f();
 }
 
 trait T3 for type {
-    fn f() -> ~Self;
+    fn f() -> Box<Self>;
 }
 impl T3 for S {
-    fn f() -> ~S {
-        ~S
+    fn f() -> Box<S> {
+        box S
     }
 }
 fn f7<type X: T3>(x: &X) {
     // This is valid, but the unsized bound on X is irrelevant because any type
     // which implements T3 must have statically known size.
-    let _: ~X = T3::f();
+    let _: Box<X> = T3::f();
 }
 
 trait T4<X> {

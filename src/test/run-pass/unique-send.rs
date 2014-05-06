@@ -10,7 +10,7 @@
 
 pub fn main() {
     let (tx, rx) = channel();
-    tx.send(~100);
+    tx.send(box 100);
     let v = rx.recv();
-    assert_eq!(v, ~100);
+    assert_eq!(v, box 100);
 }

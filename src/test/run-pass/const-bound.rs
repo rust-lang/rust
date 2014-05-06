@@ -23,5 +23,5 @@ pub fn main() {
     foo(F{field: 42});
     foo((1, 2u));
     foo(@1);*/
-    foo(~1);
+    foo(box 1);
 }

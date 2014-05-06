@@ -55,11 +55,12 @@ use container::Container;
 use iter::Iterator;
 use kinds::Send;
 use super::{Reader, Writer, Seek};
-use super::{SeekStyle, Read, Write, Open, IoError, Truncate,
-            FileMode, FileAccess, FileStat, IoResult, FilePermission};
+use super::{SeekStyle, Read, Write, Open, IoError, Truncate};
+use super::{FileMode, FileAccess, FileStat, IoResult, FilePermission};
 use rt::rtio::{RtioFileStream, IoFactory, LocalIo};
 use io;
 use option::{Some, None, Option};
+use owned::Box;
 use result::{Ok, Err};
 use path;
 use path::{Path, GenericPath};
@@ -78,7 +79,7 @@ use vec::Vec;
 /// configured at creation time, via the `FileAccess` parameter to
 /// `File::open_mode()`.
 pub struct File {
-    fd: ~RtioFileStream:Send,
+    fd: Box<RtioFileStream:Send>,
     path: Path,
     last_nread: int,
 }

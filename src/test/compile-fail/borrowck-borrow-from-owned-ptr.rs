@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 struct Foo {
   bar1: Bar,
   bar2: Bar
@@ -18,7 +19,7 @@ struct Bar {
   int2: int,
 }
 
-fn make_foo() -> ~Foo { fail!() }
+fn make_foo() -> Box<Foo> { fail!() }
 
 fn borrow_same_field_twice_mut_mut() {
     let mut foo = make_foo();

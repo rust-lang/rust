@@ -17,12 +17,13 @@
 //! As `&Any` (a borrowed trait object), it has the `is` and `as_ref` methods, to test if the
 //! contained value is of a given type, and to get a reference to the inner value as a type. As
 //! `&mut Any`, there is also the `as_mut` method, for getting a mutable reference to the inner
-//! value. `~Any` adds the `move` method, which will unwrap a `~T` from the object.  See the
-//! extension traits (`*Ext`) for the full details.
+//! value. `Box<Any>` adds the `move` method, which will unwrap a `Box<T>` from the object.  See
+//! the extension traits (`*Ext`) for the full details.
 
 use cast::{transmute, transmute_copy};
 use fmt;
 use option::{Option, Some, None};
+use owned::Box;
 use raw::TraitObject;
 use result::{Result, Ok, Err};
 use intrinsics::TypeId;
@@ -121,12 +122,12 @@ impl<'a> AnyMutRefExt<'a> for &'a mut Any {
 pub trait AnyOwnExt {
     /// Returns the boxed value if it is of type `T`, or
     /// `Err(Self)` if it isn't.
-    fn move<T: 'static>(self) -> Result<~T, Self>;
+    fn move<T: 'static>(self) -> Result<Box<T>, Self>;
 }
 
-impl AnyOwnExt for ~Any {
+impl AnyOwnExt for Box<Any> {
     #[inline]
-    fn move<T: 'static>(self) -> Result<~T, ~Any> {
+    fn move<T: 'static>(self) -> Result<Box<T>, Box<Any>> {
         if self.is::<T>() {
             unsafe {
                 // Get the raw representation of the trait object
@@ -148,9 +149,9 @@ impl AnyOwnExt for ~Any {
 // Trait implementations
 ///////////////////////////////////////////////////////////////////////////////
 
-impl fmt::Show for ~Any {
+impl fmt::Show for Box<Any> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.pad("~Any")
+        f.pad("Box<Any>")
     }
 }
 
@@ -164,6 +165,7 @@ impl<'a> fmt::Show for &'a Any {
 mod tests {
     use prelude::*;
     use super::*;
+    use owned::Box;
     use str::StrSlice;
 
     #[deriving(Eq, Show)]
@@ -190,7 +192,7 @@ mod tests {
 
     #[test]
     fn any_owning() {
-        let (a, b, c) = (box 5u as ~Any, box TEST as ~Any, box Test as ~Any);
+        let (a, b, c) = (box 5u as Box<Any>, box TEST as Box<Any>, box Test as Box<Any>);
 
         assert!(a.is::<uint>());
         assert!(!b.is::<uint>());
@@ -268,8 +270,8 @@ mod tests {
 
     #[test]
     fn any_move() {
-        let a = box 8u as ~Any;
-        let b = box Test as ~Any;
+        let a = box 8u as Box<Any>;
+        let b = box Test as Box<Any>;
 
         match a.move::<uint>() {
             Ok(a) => { assert_eq!(a, box 8u); }
@@ -280,19 +282,19 @@ mod tests {
             Err(..) => fail!()
         }
 
-        let a = box 8u as ~Any;
-        let b = box Test as ~Any;
+        let a = box 8u as Box<Any>;
+        let b = box Test as Box<Any>;
 
-        assert!(a.move::<~Test>().is_err());
-        assert!(b.move::<~uint>().is_err());
+        assert!(a.move::<Box<Test>>().is_err());
+        assert!(b.move::<Box<uint>>().is_err());
     }
 
     #[test]
     fn test_show() {
-        let a = box 8u as ~Any;
-        let b = box Test as ~Any;
-        assert_eq!(format!("{}", a), "~Any".to_owned());
-        assert_eq!(format!("{}", b), "~Any".to_owned());
+        let a = box 8u as Box<Any>;
+        let b = box Test as Box<Any>;
+        assert_eq!(format!("{}", a), "Box<Any>".to_owned());
+        assert_eq!(format!("{}", b), "Box<Any>".to_owned());
 
         let a = &8u as &Any;
         let b = &Test as &Any;

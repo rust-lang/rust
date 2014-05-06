@@ -114,7 +114,7 @@ fn cap_for_attr(attr: attr::Attr) -> &'static str {
 pub struct Terminal<T> {
     num_colors: u16,
     out: T,
-    ti: ~TermInfo
+    ti: Box<TermInfo>,
 }
 
 impl<T: Writer> Terminal<T> {

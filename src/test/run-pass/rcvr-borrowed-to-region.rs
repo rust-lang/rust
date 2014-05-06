@@ -33,7 +33,7 @@ pub fn main() {
     println!("y={}", y);
     assert_eq!(y, 6);
 
-    let x = ~6;
+    let x = box 6;
     let y = x.get();
     println!("y={}", y);
     assert_eq!(y, 6);

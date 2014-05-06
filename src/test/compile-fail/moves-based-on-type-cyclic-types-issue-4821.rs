@@ -12,9 +12,10 @@
 // temporary kinds wound up being stored in a cache and used later.
 // See middle::ty::type_contents() for more information.
 
-struct List { key: int, next: Option<~List> }
 
-fn foo(node: ~List) -> int {
+struct List { key: int, next: Option<Box<List>> }
+
+fn foo(node: Box<List>) -> int {
     let r = match node.next {
         Some(right) => consume(right),
         None => 0
@@ -22,7 +23,7 @@ fn foo(node: ~List) -> int {
     consume(node) + r //~ ERROR use of partially moved value: `node`
 }
 
-fn consume(v: ~List) -> int {
+fn consume(v: Box<List>) -> int {
     v.key
 }
 

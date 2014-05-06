@@ -17,7 +17,7 @@ fn failfn() {
 }
 
 fn main() {
-    let x = @~0;
+    let x = @box 0;
     failfn();
     println!("{:?}", x);
 }

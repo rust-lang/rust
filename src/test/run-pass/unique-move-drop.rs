@@ -11,8 +11,8 @@
 #![allow(unused_variable)]
 
 pub fn main() {
-    let i = ~100;
-    let j = ~200;
+    let i = box 100;
+    let j = box 200;
     let j = i;
     assert_eq!(*j, 100);
 }

@@ -9,6 +9,6 @@
 // except according to those terms.
 
 
-fn f<T>(x: ~T) -> ~T { return x; }
+fn f<T>(x: Box<T>) -> Box<T> { return x; }
 
-pub fn main() { let x = f(~3); println!("{:?}", *x); }
+pub fn main() { let x = f(box 3); println!("{:?}", *x); }

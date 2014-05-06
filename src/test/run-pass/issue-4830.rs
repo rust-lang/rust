@@ -8,9 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 pub struct Scheduler {
     /// The event loop used to drive the scheduler and perform I/O
-    event_loop: ~int
+    event_loop: Box<int>
 }
 
 pub fn main() { }
