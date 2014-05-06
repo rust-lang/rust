@@ -330,7 +330,7 @@ CFG_PATH_MUNGE_arm-unknown-linux-gnueabihf := true
 CFG_LDPATH_arm-unknown-linux-gnueabihf :=
 CFG_RUN_arm-unknown-linux-gnueabihf=$(2)
 CFG_RUN_TARG_arm-unknown-linux-gnueabihf=$(call CFG_RUN_arm-unknown-linux-gnueabihf,,$(2))
-RUSTC_FLAGS_arm-unknown-linux-gnueabihf := -C target-feature=+v7,+vfp3
+RUSTC_FLAGS_arm-unknown-linux-gnueabihf := -C target-feature=+v6,+vfp2
 RUSTC_CROSS_FLAGS_arm-unknown-linux-gnueabihf :=
 
 # arm-unknown-linux-gnueabi configuration
