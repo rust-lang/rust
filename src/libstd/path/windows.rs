@@ -23,7 +23,7 @@ use option::{Option, Some, None};
 use slice::{Vector, OwnedVector, ImmutableVector};
 use str::{CharSplits, Str, StrVector, StrSlice};
 use strbuf::StrBuf;
-use vec::Vec;
+use vec::{Vec,IntoVec};
 
 use super::{contains_nul, BytesContainer, GenericPath, GenericPathUnsafe};
 
@@ -333,11 +333,6 @@ impl GenericPath for Path {
     }
 
     #[inline]
-    fn into_vec(self) -> Vec<u8> {
-        Vec::from_slice(self.repr.as_bytes())
-    }
-
-    #[inline]
     fn dirname<'a>(&'a self) -> &'a [u8] {
         self.dirname_str().unwrap().as_bytes()
     }
@@ -587,6 +582,13 @@ impl GenericPath for Path {
             }
         }
         true
+    }
+}
+
+impl IntoVec<u8> for Path {
+    #[inline]
+    fn into_vec(self) -> Vec<u8> {
+        Vec::from_slice(self.repr.as_bytes())
     }
 }
 

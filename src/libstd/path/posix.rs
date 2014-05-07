@@ -22,7 +22,7 @@ use str;
 use str::Str;
 use slice::{CloneableVector, Splits, Vector, VectorVector,
             ImmutableEqVector, OwnedVector, ImmutableVector};
-use vec::Vec;
+use vec::{Vec,IntoVec};
 
 use super::{BytesContainer, GenericPath, GenericPathUnsafe};
 
@@ -182,10 +182,6 @@ impl GenericPath for Path {
         self.repr.as_slice()
     }
 
-    fn into_vec(self) -> Vec<u8> {
-        self.repr
-    }
-
     fn dirname<'a>(&'a self) -> &'a [u8] {
         match self.sepidx {
             None if bytes!("..") == self.repr.as_slice() => self.repr.as_slice(),
@@ -320,6 +316,13 @@ impl GenericPath for Path {
             }
         }
         true
+    }
+}
+
+impl IntoVec<u8> for Path {
+    #[inline]
+    fn into_vec(self) -> Vec<u8> {
+        self.repr
     }
 }
 
