@@ -28,7 +28,7 @@ use ptr::copy_nonoverlapping_memory;
  * ```
  */
 #[inline]
-pub unsafe fn transmute<L, G>(thing: L) -> G {
+pub unsafe fn transmute<T, U>(thing: T) -> U {
     intrinsics::transmute(thing)
 }
 
