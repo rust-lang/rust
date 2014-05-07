@@ -8,10 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn f() -> ~int {
-    ~100
+
+fn f() -> Box<int> {
+    box 100
 }
 
 pub fn main() {
-    assert_eq!(f(), ~100);
+    assert_eq!(f(), box 100);
 }

@@ -12,9 +12,10 @@
 
 #![feature(issue_5723_bootstrap)]
 
+
 trait Foo { }
 
-fn foo<'a>(x: ~Foo:'a) {
+fn foo<'a>(x: Box<Foo:'a>) {
 }
 
 fn bar<'a, T:'a>() {

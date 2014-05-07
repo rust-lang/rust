@@ -8,11 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 trait add {
     fn plus(&self, x: Self) -> Self;
 }
 
-fn do_add(x: ~add, y: ~add) -> ~add {
+fn do_add(x: Box<add>, y: Box<add>) -> Box<add> {
     x.plus(y) //~ ERROR cannot call a method whose type contains a self-type through an object
 }
 

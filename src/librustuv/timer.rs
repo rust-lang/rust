@@ -32,7 +32,7 @@ pub enum NextAction {
 }
 
 impl TimerWatcher {
-    pub fn new(io: &mut UvIoFactory) -> ~TimerWatcher {
+    pub fn new(io: &mut UvIoFactory) -> Box<TimerWatcher> {
         let handle = io.make_handle();
         let me = box TimerWatcher::new_home(&io.loop_, handle);
         me.install()

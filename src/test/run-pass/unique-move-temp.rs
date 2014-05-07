@@ -10,6 +10,6 @@
 
 pub fn main() {
     let mut i;
-    i = ~100;
+    i = box 100;
     assert_eq!(*i, 100);
 }

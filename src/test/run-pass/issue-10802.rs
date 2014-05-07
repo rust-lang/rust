@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 struct DroppableStruct;
 
 static mut DROPPED: bool = false;
@@ -19,19 +20,19 @@ impl Drop for DroppableStruct {
 }
 
 trait MyTrait { }
-impl MyTrait for ~DroppableStruct {}
+impl MyTrait for Box<DroppableStruct> {}
 
-struct Whatever { w: ~MyTrait }
+struct Whatever { w: Box<MyTrait> }
 impl  Whatever {
-    fn new(w: ~MyTrait) -> Whatever {
+    fn new(w: Box<MyTrait>) -> Whatever {
         Whatever { w: w }
     }
 }
 
 fn main() {
     {
-        let f = ~DroppableStruct;
-        let _a = Whatever::new(~f as ~MyTrait);
+        let f = box DroppableStruct;
+        let _a = Whatever::new(box f as Box<MyTrait>);
     }
     assert!(unsafe { DROPPED });
 }

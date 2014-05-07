@@ -13,8 +13,8 @@ extern crate collections;
 use collections::Bitv;
 
 fn bitv_test() {
-    let mut v1 = ~Bitv::new(31, false);
-    let v2 = ~Bitv::new(31, true);
+    let mut v1 = box Bitv::new(31, false);
+    let v2 = box Bitv::new(31, true);
     v1.union(v2);
 }
 

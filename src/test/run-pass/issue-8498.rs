@@ -9,14 +9,14 @@
 // except according to those terms.
 
 pub fn main() {
-    match &[(~5,~7)] {
+    match &[(box 5,box 7)] {
         ps => {
            let (ref y, _) = ps[0];
            assert!(**y == 5);
         }
     }
 
-    match Some(&[(~5,)]) {
+    match Some(&[(box 5,)]) {
         Some(ps) => {
            let (ref y,) = ps[0];
            assert!(**y == 5);
@@ -24,7 +24,7 @@ pub fn main() {
         None => ()
     }
 
-    match Some(&[(~5,~7)]) {
+    match Some(&[(box 5,box 7)]) {
         Some(ps) => {
            let (ref y, ref z) = ps[0];
            assert!(**y == 5);

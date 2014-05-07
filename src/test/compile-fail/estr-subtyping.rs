@@ -17,7 +17,7 @@ fn has_uniq(x: ~str) {
 }
 
 fn has_slice(x: &str) {
-   wants_uniq(x); //~ ERROR mismatched types: expected `~str` but found `&str` (expected ~-ptr but f
+   wants_uniq(x); //~ ERROR mismatched types: expected `~str` but found `&str` (expected box but f
    wants_slice(x);
 }
 

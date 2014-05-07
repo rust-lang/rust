@@ -140,7 +140,8 @@ impl<K: TotalOrd, V> Node<K, V> {
     }
 
     ///Creates a new branch node given a vector of an elements and a pointer to a rightmost child.
-    fn new_branch(vec: Vec<BranchElt<K, V>>, right: ~Node<K, V>) -> Node<K, V> {
+    fn new_branch(vec: Vec<BranchElt<K, V>>, right: Box<Node<K, V>>)
+                  -> Node<K, V> {
         BranchNode(Branch::new(vec, right))
     }
 
@@ -270,7 +271,7 @@ struct Leaf<K, V> {
 //Vector of values with children, plus a rightmost child (greater than all)
 struct Branch<K, V> {
     elts: Vec<BranchElt<K,V>>,
-    rightmost_child: ~Node<K, V>
+    rightmost_child: Box<Node<K, V>>,
 }
 
 
@@ -434,7 +435,8 @@ impl<K: fmt::Show + TotalOrd, V: fmt::Show> fmt::Show for Leaf<K, V> {
 
 impl<K: TotalOrd, V> Branch<K, V> {
     ///Creates a new Branch from a vector of BranchElts and a rightmost child (a node).
-    fn new(vec: Vec<BranchElt<K, V>>, right: ~Node<K, V>) -> Branch<K, V> {
+    fn new(vec: Vec<BranchElt<K, V>>, right: Box<Node<K, V>>)
+           -> Branch<K, V> {
         Branch {
             elts: vec,
             rightmost_child: right
@@ -667,7 +669,7 @@ struct LeafElt<K, V> {
 
 //A BranchElt has a left child in insertion to a key-value pair.
 struct BranchElt<K, V> {
-    left: ~Node<K, V>,
+    left: Box<Node<K, V>>,
     key: K,
     value: V
 }
@@ -719,7 +721,7 @@ impl<K: fmt::Show + TotalOrd, V: fmt::Show> fmt::Show for LeafElt<K, V> {
 
 impl<K: TotalOrd, V> BranchElt<K, V> {
     ///Creates a new BranchElt from a supplied key, value, and left child.
-    fn new(k: K, v: V, n: ~Node<K, V>) -> BranchElt<K, V> {
+    fn new(k: K, v: V, n: Box<Node<K, V>>) -> BranchElt<K, V> {
         BranchElt {
             left: n,
             key: k,

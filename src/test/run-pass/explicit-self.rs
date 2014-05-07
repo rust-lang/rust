@@ -67,7 +67,7 @@ trait Nus { fn f(&self); }
 impl Nus for thing { fn f(&self) {} }
 
 pub fn main() {
-    let y = ~thing(A {a: 10});
+    let y = box thing(A {a: 10});
     assert_eq!(y.clone().bar(), 10);
     assert_eq!(y.quux(), 10);
 

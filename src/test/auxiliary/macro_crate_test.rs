@@ -27,7 +27,7 @@ macro_rules! unexported_macro (() => (3))
 #[macro_registrar]
 pub fn macro_registrar(register: |Name, SyntaxExtension|) {
     register(token::intern("make_a_1"),
-        NormalTT(~BasicMacroExpander {
+        NormalTT(box BasicMacroExpander {
             expander: expand_make_a_1,
             span: None,
         },
@@ -35,7 +35,8 @@ pub fn macro_registrar(register: |Name, SyntaxExtension|) {
     register(token::intern("into_foo"), ItemModifier(expand_into_foo));
 }
 
-fn expand_make_a_1(cx: &mut ExtCtxt, sp: Span, tts: &[TokenTree]) -> ~MacResult {
+fn expand_make_a_1(cx: &mut ExtCtxt, sp: Span, tts: &[TokenTree])
+                   -> Box<MacResult> {
     if !tts.is_empty() {
         cx.span_fatal(sp, "make_a_1 takes no arguments");
     }

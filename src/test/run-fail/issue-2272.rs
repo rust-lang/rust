@@ -13,7 +13,8 @@
 // error-pattern:explicit failure
 // Issue #2272 - unwind this without leaking the unique pointer
 
-struct X { y: Y, a: ~int }
+
+struct X { y: Y, a: Box<int> }
 
 struct Y { z: @int }
 
@@ -22,7 +23,7 @@ fn main() {
         y: Y {
             z: @0
         },
-        a: ~0
+        a: box 0
     };
     fail!();
 }

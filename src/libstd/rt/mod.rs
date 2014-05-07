@@ -57,6 +57,7 @@ Several modules in `core` are clients of `rt`:
 use any::Any;
 use kinds::Send;
 use option::Option;
+use owned::Box;
 use result::Result;
 use task::TaskOpts;
 
@@ -151,22 +152,25 @@ pub static DEFAULT_ERROR_CODE: int = 101;
 pub trait Runtime {
     // Necessary scheduling functions, used for channels and blocking I/O
     // (sometimes).
-    fn yield_now(~self, cur_task: ~Task);
-    fn maybe_yield(~self, cur_task: ~Task);
-    fn deschedule(~self, times: uint, cur_task: ~Task,
+    fn yield_now(~self, cur_task: Box<Task>);
+    fn maybe_yield(~self, cur_task: Box<Task>);
+    fn deschedule(~self, times: uint, cur_task: Box<Task>,
                   f: |BlockedTask| -> Result<(), BlockedTask>);
-    fn reawaken(~self, to_wake: ~Task);
+    fn reawaken(~self, to_wake: Box<Task>);
 
     // Miscellaneous calls which are very different depending on what context
     // you're in.
-    fn spawn_sibling(~self, cur_task: ~Task, opts: TaskOpts, f: proc():Send);
+    fn spawn_sibling(~self,
+                     cur_task: Box<Task>,
+                     opts: TaskOpts,
+                     f: proc():Send);
     fn local_io<'a>(&'a mut self) -> Option<rtio::LocalIo<'a>>;
     /// The (low, high) edges of the current stack.
     fn stack_bounds(&self) -> (uint, uint); // (lo, hi)
     fn can_block(&self) -> bool;
 
     // FIXME: This is a serious code smell and this should not exist at all.
-    fn wrap(~self) -> ~Any;
+    fn wrap(~self) -> Box<Any>;
 }
 
 /// One-time runtime initialization.

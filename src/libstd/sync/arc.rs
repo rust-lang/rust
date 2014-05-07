@@ -26,6 +26,7 @@ use clone::Clone;
 use iter::Iterator;
 use kinds::Send;
 use ops::Drop;
+use owned::Box;
 use ptr::RawPtr;
 use sync::atomics::{fence, AtomicUint, Relaxed, Acquire, Release};
 use ty::Unsafe;
@@ -157,7 +158,7 @@ impl<T> Drop for UnsafeArc<T>{
                 //  happened before), and an "acquire" operation before deleting the object.
                 // [1]: (www.boost.org/doc/libs/1_55_0/doc/html/atomic/usage_examples.html)
                 fence(Acquire);
-                let _: ~ArcData<T> = cast::transmute(self.data);
+                let _: Box<ArcData<T>> = cast::transmute(self.data);
             }
         }
     }

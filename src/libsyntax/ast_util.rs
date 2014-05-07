@@ -121,7 +121,7 @@ pub fn is_shift_binop(b: BinOp) -> bool {
 pub fn unop_to_str(op: UnOp) -> &'static str {
     match op {
       UnBox => "@",
-      UnUniq => "~",
+      UnUniq => "box() ",
       UnDeref => "*",
       UnNot => "!",
       UnNeg => "-",

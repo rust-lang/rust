@@ -57,7 +57,7 @@ if rng.gen() { // bool
 ```
 
 ```rust
-let tuple_ptr = rand::random::<~(f64, char)>();
+let tuple_ptr = rand::random::<Box<(f64, char)>>();
 println!("{:?}", tuple_ptr)
 ```
 */
@@ -569,7 +569,7 @@ type TaskRngInner = reseeding::ReseedingRng<StdRng, TaskRngReseeder>;
 /// The task-local RNG.
 pub struct TaskRng {
     // This points into TLS (specifically, it points to the endpoint
-    // of a ~ stored in TLS, to make it robust against TLS moving
+    // of a Box stored in TLS, to make it robust against TLS moving
     // things internally) and so this struct cannot be legally
     // transferred between tasks *and* it's unsafe to deallocate the
     // RNG other than when a task is finished.
@@ -582,7 +582,7 @@ pub struct TaskRng {
 }
 
 // used to make space in TLS for a random number generator
-local_data_key!(TASK_RNG_KEY: ~TaskRngInner)
+local_data_key!(TASK_RNG_KEY: Box<TaskRngInner>)
 
 /// Retrieve the lazily-initialized task-local random number
 /// generator, seeded by the system. Intended to be used in method
@@ -833,7 +833,9 @@ mod test {
         let _f : f32 = random();
         let _o : Option<Option<i8>> = random();
         let _many : ((),
-                     (~uint, @int, ~Option<~(@u32, ~(@bool,))>),
+                     (Box<uint>,
+                      @int,
+                      Box<Option<Box<(@u32, Box<(@bool,)>)>>>),
                      (u8, i8, u16, i16, u32, i32, u64, i64),
                      (f32, (f64, (f64,)))) = random();
     }

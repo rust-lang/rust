@@ -8,10 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foo(x: &mut ~u8) {
-    *x = ~5;
+
+fn foo(x: &mut Box<u8>) {
+    *x = box 5;
 }
 
 pub fn main() {
-    foo(&mut ~4);
+    foo(&mut box 4);
 }

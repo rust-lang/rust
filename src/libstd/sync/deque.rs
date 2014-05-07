@@ -56,6 +56,7 @@ use libc;
 use mem;
 use ops::Drop;
 use option::{Option, Some, None};
+use owned::Box;
 use ptr;
 use ptr::RawPtr;
 use sync::arc::UnsafeArc;
@@ -117,7 +118,7 @@ pub enum Stolen<T> {
 /// will only use this structure when allocating a new buffer or deallocating a
 /// previous one.
 pub struct BufferPool<T> {
-    pool: Exclusive<Vec<~Buffer<T>>>,
+    pool: Exclusive<Vec<Box<Buffer<T>>>>,
 }
 
 /// An internal buffer used by the chase-lev deque. This structure is actually
@@ -154,7 +155,7 @@ impl<T: Send> BufferPool<T> {
         (Worker { deque: a }, Stealer { deque: b })
     }
 
-    fn alloc(&mut self, bits: int) -> ~Buffer<T> {
+    fn alloc(&mut self, bits: int) -> Box<Buffer<T>> {
         unsafe {
             self.pool.with(|pool| {
                 match pool.iter().position(|x| x.size() >= (1 << bits)) {
@@ -165,7 +166,7 @@ impl<T: Send> BufferPool<T> {
         }
     }
 
-    fn free(&mut self, buf: ~Buffer<T>) {
+    fn free(&mut self, buf: Box<Buffer<T>>) {
         unsafe {
             let mut buf = Some(buf);
             self.pool.with(|pool| {
@@ -400,6 +401,7 @@ mod tests {
     use super::{Data, BufferPool, Abort, Empty, Worker, Stealer};
 
     use cast;
+    use owned::Box;
     use rt::thread::Thread;
     use rand;
     use rand::Rng;
@@ -471,7 +473,7 @@ mod tests {
         t.join();
     }
 
-    fn stampede(mut w: Worker<~int>, s: Stealer<~int>,
+    fn stampede(mut w: Worker<Box<int>>, s: Stealer<Box<int>>,
                 nthreads: int, amt: uint) {
         for _ in range(0, amt) {
             w.push(box 20);
@@ -486,7 +488,7 @@ mod tests {
                     let mut s = s;
                     while (*unsafe_remaining).load(SeqCst) > 0 {
                         match s.steal() {
-                            Data(~20) => {
+                            Data(box 20) => {
                                 (*unsafe_remaining).fetch_sub(1, SeqCst);
                             }
                             Data(..) => fail!(),
@@ -499,7 +501,7 @@ mod tests {
 
         while remaining.load(SeqCst) > 0 {
             match w.pop() {
-                Some(~20) => { remaining.fetch_sub(1, SeqCst); }
+                Some(box 20) => { remaining.fetch_sub(1, SeqCst); }
                 Some(..) => fail!(),
                 None => {}
             }
@@ -512,7 +514,7 @@ mod tests {
 
     #[test]
     fn run_stampede() {
-        let mut pool = BufferPool::<~int>::new();
+        let mut pool = BufferPool::<Box<int>>::new();
         let (w, s) = pool.deque();
         stampede(w, s, 8, 10000);
     }
@@ -520,7 +522,7 @@ mod tests {
     #[test]
     fn many_stampede() {
         static AMT: uint = 4;
-        let mut pool = BufferPool::<~int>::new();
+        let mut pool = BufferPool::<Box<int>>::new();
         let threads = range(0, AMT).map(|_| {
             let (w, s) = pool.deque();
             Thread::start(proc() {
@@ -605,7 +607,8 @@ mod tests {
             let s = s.clone();
             let unique_box = box AtomicUint::new(0);
             let thread_box = unsafe {
-                *cast::transmute::<&~AtomicUint,**mut AtomicUint>(&unique_box)
+                *cast::transmute::<&Box<AtomicUint>,
+                                   **mut AtomicUint>(&unique_box)
             };
             (Thread::start(proc() {
                 unsafe {

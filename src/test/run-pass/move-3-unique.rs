@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 #[deriving(Clone)]
 struct Triple {
     x: int,
@@ -15,15 +16,15 @@ struct Triple {
     z: int,
 }
 
-fn test(x: bool, foo: ~Triple) -> int {
+fn test(x: bool, foo: Box<Triple>) -> int {
     let bar = foo;
-    let mut y: ~Triple;
-    if x { y = bar; } else { y = ~Triple {x: 4, y: 5, z: 6}; }
+    let mut y: Box<Triple>;
+    if x { y = bar; } else { y = box Triple {x: 4, y: 5, z: 6}; }
     return y.y;
 }
 
 pub fn main() {
-    let x = ~Triple{x: 1, y: 2, z: 3};
+    let x = box Triple{x: 1, y: 2, z: 3};
     for _ in range(0u, 10000u) {
         assert_eq!(test(true, x.clone()), 2);
     }

@@ -14,6 +14,6 @@ fn f(_: &int) {}
 fn g(_: &mut int) {}
 
 fn main() {
-    f(~1); //~ ERROR unnecessary allocation, use & instead
-    g(~1); //~ ERROR unnecessary allocation, use &mut instead
+    f(box 1); //~ ERROR unnecessary allocation, use & instead
+    g(box 1); //~ ERROR unnecessary allocation, use &mut instead
 }

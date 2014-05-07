@@ -9,10 +9,10 @@
 // except according to those terms.
 
 
-enum bar { u(~int), w(int), }
+enum bar { u(Box<int>), w(int), }
 
 pub fn main() {
-    assert!(match u(~10) {
+    assert!(match u(box 10) {
       u(a) => {
         println!("{:?}", a);
         *a

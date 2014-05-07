@@ -64,6 +64,7 @@ use fmt;
 use kinds::Send;
 use mem;
 use option::{Some, None, Option};
+use owned::Box;
 use prelude::drop;
 use ptr::RawPtr;
 use result::{Err, Ok};
@@ -78,7 +79,7 @@ use uw = rt::libunwind;
 
 pub struct Unwinder {
     unwinding: bool,
-    cause: Option<~Any:Send>
+    cause: Option<Box<Any:Send>>
 }
 
 impl Unwinder {
@@ -128,7 +129,7 @@ impl Unwinder {
         }
     }
 
-    pub fn begin_unwind(&mut self, cause: ~Any:Send) -> ! {
+    pub fn begin_unwind(&mut self, cause: Box<Any:Send>) -> ! {
         rtdebug!("begin_unwind()");
 
         self.unwinding = true;
@@ -154,7 +155,8 @@ impl Unwinder {
                                             exception: *uw::_Unwind_Exception) {
                 rtdebug!("exception_cleanup()");
                 unsafe {
-                    let _: ~uw::_Unwind_Exception = cast::transmute(exception);
+                    let _: Box<uw::_Unwind_Exception> =
+                        cast::transmute(exception);
                 }
             }
         }
@@ -374,14 +376,16 @@ pub fn begin_unwind<M: Any + Send>(msg: M, file: &'static str, line: uint) -> ! 
 /// Do this split took the LLVM IR line counts of `fn main() { fail!()
 /// }` from ~1900/3700 (-O/no opts) to 180/590.
 #[inline(never)] #[cold] // this is the slow path, please never inline this
-fn begin_unwind_inner(msg: ~Any:Send, file: &'static str, line: uint) -> ! {
+fn begin_unwind_inner(msg: Box<Any:Send>,
+                      file: &'static str,
+                      line: uint) -> ! {
     let mut task;
     {
         let msg_s = match msg.as_ref::<&'static str>() {
             Some(s) => *s,
             None => match msg.as_ref::<~str>() {
                 Some(s) => s.as_slice(),
-                None => "~Any",
+                None => "Box<Any>",
             }
         };
 
@@ -392,7 +396,7 @@ fn begin_unwind_inner(msg: ~Any:Send, file: &'static str, line: uint) -> ! {
         // order to get some better diagnostics, we print on failure and
         // immediately abort the whole process if there is no local task
         // available.
-        let opt_task: Option<~Task> = Local::try_take();
+        let opt_task: Option<Box<Task>> = Local::try_take();
         task = match opt_task {
             Some(t) => t,
             None => {

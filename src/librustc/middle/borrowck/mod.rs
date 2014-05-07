@@ -533,7 +533,10 @@ impl<'a> BorrowckCtxt<'a> {
         fn move_suggestion(tcx: &ty::ctxt, ty: ty::t, default_msg: &'static str)
                           -> &'static str {
             match ty::get(ty).sty {
-                ty::ty_closure(~ty::ClosureTy { store: ty::RegionTraitStore(..), .. }) =>
+                ty::ty_closure(box ty::ClosureTy {
+                        store: ty::RegionTraitStore(..),
+                        ..
+                    }) =>
                     "a non-copyable stack closure (capture it in a new closure, \
                      e.g. `|x| f(x)`, to override)",
                 _ if ty::type_moves_by_default(tcx, ty) =>

@@ -9,17 +9,18 @@
 // except according to those terms.
 
 use option::Option;
+use owned::Box;
 use rt::task::Task;
 use rt::local_ptr;
 
 /// Encapsulates some task-local data.
 pub trait Local<Borrowed> {
-    fn put(value: ~Self);
-    fn take() -> ~Self;
-    fn try_take() -> Option<~Self>;
+    fn put(value: Box<Self>);
+    fn take() -> Box<Self>;
+    fn try_take() -> Option<Box<Self>>;
     fn exists(unused_value: Option<Self>) -> bool;
     fn borrow(unused_value: Option<Self>) -> Borrowed;
-    unsafe fn unsafe_take() -> ~Self;
+    unsafe fn unsafe_take() -> Box<Self>;
     unsafe fn unsafe_borrow() -> *mut Self;
     unsafe fn try_unsafe_borrow() -> Option<*mut Self>;
 }
@@ -27,11 +28,11 @@ pub trait Local<Borrowed> {
 #[allow(visible_private_types)]
 impl Local<local_ptr::Borrowed<Task>> for Task {
     #[inline]
-    fn put(value: ~Task) { unsafe { local_ptr::put(value) } }
+    fn put(value: Box<Task>) { unsafe { local_ptr::put(value) } }
     #[inline]
-    fn take() -> ~Task { unsafe { local_ptr::take() } }
+    fn take() -> Box<Task> { unsafe { local_ptr::take() } }
     #[inline]
-    fn try_take() -> Option<~Task> { unsafe { local_ptr::try_take() } }
+    fn try_take() -> Option<Box<Task>> { unsafe { local_ptr::try_take() } }
     fn exists(_: Option<Task>) -> bool { local_ptr::exists() }
     #[inline]
     fn borrow(_: Option<Task>) -> local_ptr::Borrowed<Task> {
@@ -40,7 +41,7 @@ impl Local<local_ptr::Borrowed<Task>> for Task {
         }
     }
     #[inline]
-    unsafe fn unsafe_take() -> ~Task { local_ptr::unsafe_take() }
+    unsafe fn unsafe_take() -> Box<Task> { local_ptr::unsafe_take() }
     #[inline]
     unsafe fn unsafe_borrow() -> *mut Task { local_ptr::unsafe_borrow() }
     #[inline]
@@ -54,6 +55,7 @@ mod test {
     use option::{None, Option};
     use unstable::run_in_bare_thread;
     use super::*;
+    use owned::Box;
     use rt::task::Task;
 
     #[test]
@@ -61,7 +63,7 @@ mod test {
         run_in_bare_thread(proc() {
             let task = box Task::new();
             Local::put(task);
-            let task: ~Task = Local::take();
+            let task: Box<Task> = Local::take();
             cleanup_task(task);
         });
     }
@@ -71,11 +73,11 @@ mod test {
         run_in_bare_thread(proc() {
             let task = box Task::new();
             Local::put(task);
-            let task: ~Task = Local::take();
+            let task: Box<Task> = Local::take();
             cleanup_task(task);
             let task = box Task::new();
             Local::put(task);
-            let task: ~Task = Local::take();
+            let task: Box<Task> = Local::take();
             cleanup_task(task);
         });
     }
@@ -89,7 +91,7 @@ mod test {
             unsafe {
                 let _task: *mut Task = Local::unsafe_borrow();
             }
-            let task: ~Task = Local::take();
+            let task: Box<Task> = Local::take();
             cleanup_task(task);
         });
     }
@@ -104,7 +106,7 @@ mod test {
                 let _ = Local::borrow(None::<Task>);
             }
 
-            let task: ~Task = Local::take();
+            let task: Box<Task> = Local::take();
             cleanup_task(task);
         });
     }
@@ -115,15 +117,15 @@ mod test {
             let task = box Task::new();
             Local::put(task);
 
-            let t: ~Task = Local::try_take().unwrap();
-            let u: Option<~Task> = Local::try_take();
+            let t: Box<Task> = Local::try_take().unwrap();
+            let u: Option<Box<Task>> = Local::try_take();
             assert!(u.is_none());
 
             cleanup_task(t);
         });
     }
 
-    fn cleanup_task(mut t: ~Task) {
+    fn cleanup_task(mut t: Box<Task>) {
         t.destroyed = true;
     }
 

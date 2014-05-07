@@ -492,6 +492,7 @@ use io;
 use iter::{Iterator, range};
 use num::Signed;
 use option::{Option,Some,None};
+use owned::Box;
 use repr;
 use result::{Ok, Err};
 use str::StrSlice;
@@ -1113,7 +1114,7 @@ pub fn argumentuint<'a>(s: &'a uint) -> Argument<'a> {
 impl<T: Show> Show for @T {
     fn fmt(&self, f: &mut Formatter) -> Result { secret_show(&**self, f) }
 }
-impl<T: Show> Show for ~T {
+impl<T: Show> Show for Box<T> {
     fn fmt(&self, f: &mut Formatter) -> Result { secret_show(&**self, f) }
 }
 impl<'a, T: Show> Show for &'a T {

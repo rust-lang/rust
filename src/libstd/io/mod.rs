@@ -227,6 +227,7 @@ use libc;
 use ops::{BitOr, BitAnd, Sub};
 use os;
 use option::{Option, Some, None};
+use owned::Box;
 use path::Path;
 use result::{Ok, Err, Result};
 use str::StrSlice;
@@ -811,7 +812,7 @@ pub trait Reader {
     }
 }
 
-impl Reader for ~Reader {
+impl Reader for Box<Reader> {
     fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> { self.read(buf) }
 }
 
@@ -1052,7 +1053,7 @@ pub trait Writer {
     }
 }
 
-impl Writer for ~Writer {
+impl Writer for Box<Writer> {
     fn write(&mut self, buf: &[u8]) -> IoResult<()> { self.write(buf) }
     fn flush(&mut self) -> IoResult<()> { self.flush() }
 }

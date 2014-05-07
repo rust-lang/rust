@@ -8,17 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 fn borrow(_v: &int) {}
 
-fn borrow_from_arg_imm_ref(v: ~int) {
+fn borrow_from_arg_imm_ref(v: Box<int>) {
     borrow(v);
 }
 
-fn borrow_from_arg_mut_ref(v: &mut ~int) {
+fn borrow_from_arg_mut_ref(v: &mut Box<int>) {
     borrow(*v);
 }
 
-fn borrow_from_arg_copy(v: ~int) {
+fn borrow_from_arg_copy(v: Box<int>) {
     borrow(v);
 }
 

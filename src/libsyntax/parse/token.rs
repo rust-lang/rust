@@ -113,9 +113,9 @@ pub enum Nonterminal {
     NtPat( @ast::Pat),
     NtExpr(@ast::Expr),
     NtTy(  P<ast::Ty>),
-    NtIdent(~ast::Ident, bool),
+    NtIdent(Box<ast::Ident>, bool),
     NtMeta(@ast::MetaItem), // stuff inside brackets for attributes
-    NtPath(~ast::Path),
+    NtPath(Box<ast::Path>),
     NtTT(  @ast::TokenTree), // needs @ed to break a circularity
     NtMatchers(Vec<ast::Matcher> )
 }

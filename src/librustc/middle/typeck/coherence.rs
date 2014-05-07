@@ -103,7 +103,7 @@ fn type_is_defined_in_local_crate(original_type: t) -> bool {
     ty::walk_ty(original_type, |t| {
         match get(t).sty {
             ty_enum(def_id, _) |
-            ty_trait(~ty::TyTrait { def_id, .. }) |
+            ty_trait(box ty::TyTrait { def_id, .. }) |
             ty_struct(def_id, _) => {
                 if def_id.krate == ast::LOCAL_CRATE {
                     found_nominal = true;
@@ -129,7 +129,7 @@ fn get_base_type_def_id(inference_context: &InferCtxt,
             match get(base_type).sty {
                 ty_enum(def_id, _) |
                 ty_struct(def_id, _) |
-                ty_trait(~ty::TyTrait { def_id, .. }) => {
+                ty_trait(box ty::TyTrait { def_id, .. }) => {
                     return Some(def_id);
                 }
                 _ => {

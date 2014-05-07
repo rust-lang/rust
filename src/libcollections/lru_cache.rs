@@ -57,7 +57,7 @@ struct LruEntry<K, V> {
 
 /// An LRU Cache.
 pub struct LruCache<K, V> {
-    map: HashMap<KeyRef<K>, ~LruEntry<K, V>>,
+    map: HashMap<KeyRef<K>, Box<LruEntry<K, V>>>,
     max_size: uint,
     head: *mut LruEntry<K, V>,
 }
@@ -241,9 +241,9 @@ impl<K: Hash + TotalEq, V> Mutable for LruCache<K, V> {
 impl<K, V> Drop for LruCache<K, V> {
     fn drop(&mut self) {
         unsafe {
-            let node: ~LruEntry<K, V> = cast::transmute(self.head);
+            let node: Box<LruEntry<K, V>> = cast::transmute(self.head);
             // Prevent compiler from trying to drop the un-initialized field in the sigil node.
-            let ~LruEntry { key: k, value: v, .. } = node;
+            let box LruEntry { key: k, value: v, .. } = node;
             cast::forget(k);
             cast::forget(v);
         }

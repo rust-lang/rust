@@ -9,5 +9,5 @@
 // except according to those terms.
 
 pub fn main() {
-    let _x = ~vec!(0,0,0,0,0);
+    let _x = box vec!(0,0,0,0,0);
 }

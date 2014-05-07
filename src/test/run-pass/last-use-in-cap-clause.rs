@@ -10,10 +10,11 @@
 
 // Make sure #1399 stays fixed
 
-struct A { a: ~int }
+
+struct A { a: Box<int> }
 
 fn foo() -> ||: 'static -> int {
-    let k = ~22;
+    let k = box 22;
     let _u = A {a: k.clone()};
     let result: ||: 'static -> int = || 22;
     result

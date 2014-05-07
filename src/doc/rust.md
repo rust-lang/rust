@@ -1400,7 +1400,7 @@ to pointers to the trait name, used as a type.
 # trait Shape { }
 # impl Shape for int { }
 # let mycircle = 0;
-let myshape: ~Shape = ~mycircle as ~Shape;
+let myshape: Box<Shape> = box mycircle as Box<Shape>;
 ~~~~
 
 The resulting value is a managed box containing the value that was cast,
@@ -3048,19 +3048,19 @@ stands for a *single* data field, whereas a wildcard `..` stands for *all* the
 fields of a particular variant. For example:
 
 ~~~~
-enum List<X> { Nil, Cons(X, ~List<X>) }
+enum List<X> { Nil, Cons(X, Box<List<X>>) }
 
-let x: List<int> = Cons(10, ~Cons(11, ~Nil));
+let x: List<int> = Cons(10, box Cons(11, box Nil));
 
 match x {
-    Cons(_, ~Nil) => fail!("singleton list"),
-    Cons(..)      => return,
-    Nil           => fail!("empty list")
+    Cons(_, box Nil) => fail!("singleton list"),
+    Cons(..)         => return,
+    Nil              => fail!("empty list")
 }
 ~~~~
 
 The first pattern matches lists constructed by applying `Cons` to any head
-value, and a tail value of `~Nil`. The second pattern matches _any_ list
+value, and a tail value of `box Nil`. The second pattern matches _any_ list
 constructed with `Cons`, ignoring the values of its arguments. The difference
 between `_` and `..` is that the pattern `C(_)` is only type-correct if `C` has
 exactly one argument, while the pattern `C(..)` is type-correct for any enum
@@ -3110,12 +3110,12 @@ An example of a `match` expression:
 # fn process_pair(a: int, b: int) { }
 # fn process_ten() { }
 
-enum List<X> { Nil, Cons(X, ~List<X>) }
+enum List<X> { Nil, Cons(X, Box<List<X>>) }
 
-let x: List<int> = Cons(10, ~Cons(11, ~Nil));
+let x: List<int> = Cons(10, box Cons(11, box Nil));
 
 match x {
-    Cons(a, ~Cons(b, _)) => {
+    Cons(a, box Cons(b, _)) => {
         process_pair(a,b);
     }
     Cons(10, _) => {
@@ -3142,17 +3142,17 @@ Subpatterns can also be bound to variables by the use of the syntax
 For example:
 
 ~~~~
-enum List { Nil, Cons(uint, ~List) }
+enum List { Nil, Cons(uint, Box<List>) }
 
 fn is_sorted(list: &List) -> bool {
     match *list {
-        Nil | Cons(_, ~Nil) => true,
-        Cons(x, ref r @ ~Cons(y, _)) => (x <= y) && is_sorted(*r)
+        Nil | Cons(_, box Nil) => true,
+        Cons(x, ref r @ box Cons(y, _)) => (x <= y) && is_sorted(*r)
     }
 }
 
 fn main() {
-    let a = Cons(6, ~Cons(7, ~Cons(42, ~Nil)));
+    let a = Cons(6, box Cons(7, box Cons(42, box Nil)));
     assert!(is_sorted(&a));
 }
 
@@ -3429,10 +3429,10 @@ An example of a *recursive* type and its use:
 ~~~~
 enum List<T> {
   Nil,
-  Cons(T, ~List<T>)
+  Cons(T, Box<List<T>>)
 }
 
-let a: List<int> = Cons(7, ~Cons(13, ~Nil));
+let a: List<int> = Cons(7, box Cons(13, box Nil));
 ~~~~
 
 ### Pointer types
@@ -3581,12 +3581,12 @@ impl Printable for int {
   fn to_string(&self) -> ~str { self.to_str() }
 }
 
-fn print(a: ~Printable) {
+fn print(a: Box<Printable>) {
    println!("{}", a.to_string());
 }
 
 fn main() {
-   print(~10 as ~Printable);
+   print(box 10 as Box<Printable>);
 }
 ~~~~
 
@@ -3773,7 +3773,7 @@ mutable slot by prefixing them with `mut` (similar to regular arguments):
 ~~~
 trait Changer {
     fn change(mut self) -> Self;
-    fn modify(mut ~self) -> ~Self;
+    fn modify(mut ~self) -> Box<Self>;
 }
 ~~~
 
@@ -3786,12 +3786,14 @@ initialized; this is enforced by the compiler.
 ### Owned boxes
 
 An  _owned box_ is a reference to a heap allocation holding another value, which is constructed
-by the prefix *tilde* sigil `~`.
+by the prefix operator `box`. When the standard library is in use, the type of an owned box is
+`std::owned::Box<T>`.
 
 An example of an owned box type and value:
 
 ~~~~
-let x: ~int = ~10;
+
+let x: Box<int> = box 10;
 ~~~~
 
 Owned box values exist in 1:1 correspondence with their heap allocation
@@ -3799,7 +3801,7 @@ copying an owned box value makes a shallow copy of the pointer
 Rust will consider a shallow copy of an owned box to move ownership of the value. After a value has been moved, the source location cannot be used unless it is reinitialized.
 
 ~~~~
-let x: ~int = ~10;
+let x: Box<int> = box 10;
 let y = x;
 // attempting to use `x` will result in an error here
 ~~~~

@@ -50,12 +50,12 @@ pub struct GreenTask {
 
     /// Slot for maintaining ownership of a scheduler. If a task is running,
     /// this value will be Some(sched) where the task is running on "sched".
-    pub sched: Option<~Scheduler>,
+    pub sched: Option<Box<Scheduler>>,
 
     /// Temporary ownership slot of a std::rt::task::Task object. This is used
     /// to squirrel that libstd task away while we're performing green task
     /// operations.
-    pub task: Option<~Task>,
+    pub task: Option<Box<Task>>,
 
     /// Dictates whether this is a sched task or a normal green task
     pub task_type: TaskType,
@@ -85,8 +85,8 @@ pub enum Home {
 /// for all green tasks. This code is actually called after the initial context
 /// switch onto a green thread.
 ///
-/// The first argument to this function is the `~GreenTask` pointer, and the
-/// next two arguments are the user-provided procedure for running code.
+/// The first argument to this function is the `Box<GreenTask>` pointer, and
+/// the next two arguments are the user-provided procedure for running code.
 ///
 /// The goal for having this weird-looking function is to reduce the number of
 /// allocations done on a green-task startup as much as possible.
@@ -96,8 +96,8 @@ extern fn bootstrap_green_task(task: uint, code: *(), env: *()) -> ! {
         cast::transmute(raw::Procedure { code: code, env: env })
     };
 
-    // Acquire ownership of the `~GreenTask`
-    let mut task: ~GreenTask = unsafe { cast::transmute(task) };
+    // Acquire ownership of the `Box<GreenTask>`
+    let mut task: Box<GreenTask> = unsafe { cast::transmute(task) };
 
     // First code after swap to this new context. Run our cleanup job
     task.pool_id = {
@@ -129,7 +129,7 @@ impl GreenTask {
     /// and will not have any contained Task structure.
     pub fn new(stack_pool: &mut StackPool,
                stack_size: Option<uint>,
-               start: proc():Send) -> ~GreenTask {
+               start: proc():Send) -> Box<GreenTask> {
         GreenTask::new_homed(stack_pool, stack_size, AnySched, start)
     }
 
@@ -137,7 +137,7 @@ impl GreenTask {
     pub fn new_homed(stack_pool: &mut StackPool,
                      stack_size: Option<uint>,
                      home: Home,
-                     start: proc():Send) -> ~GreenTask {
+                     start: proc():Send) -> Box<GreenTask> {
         // Allocate ourselves a GreenTask structure
         let mut ops = GreenTask::new_typed(None, TypeGreen(Some(home)));
 
@@ -158,7 +158,7 @@ impl GreenTask {
     /// Creates a new green task with the specified coroutine and type, this is
     /// useful when creating scheduler tasks.
     pub fn new_typed(coroutine: Option<Coroutine>,
-                     task_type: TaskType) -> ~GreenTask {
+                     task_type: TaskType) -> Box<GreenTask> {
         box GreenTask {
             pool_id: 0,
             coroutine: coroutine,
@@ -175,7 +175,7 @@ impl GreenTask {
     /// new stack for this task.
     pub fn configure(pool: &mut StackPool,
                      opts: TaskOpts,
-                     f: proc():Send) -> ~GreenTask {
+                     f: proc():Send) -> Box<GreenTask> {
         let TaskOpts {
             notify_chan, name, stack_size,
             stderr, stdout,
@@ -204,7 +204,7 @@ impl GreenTask {
     ///
     /// This function will assert that the task is indeed a green task before
     /// returning (and will kill the entire process if this is wrong).
-    pub fn convert(mut task: ~Task) -> ~GreenTask {
+    pub fn convert(mut task: Box<Task>) -> Box<GreenTask> {
         match task.maybe_take_runtime::<GreenTask>() {
             Some(mut green) => {
                 green.put_task(task);
@@ -270,22 +270,24 @@ impl GreenTask {
         self as *GreenTask as uint
     }
 
-    pub unsafe fn from_uint(val: uint) -> ~GreenTask { cast::transmute(val) }
+    pub unsafe fn from_uint(val: uint) -> Box<GreenTask> {
+        cast::transmute(val)
+    }
 
     // Runtime glue functions and helpers
 
-    pub fn put_with_sched(mut ~self, sched: ~Scheduler) {
+    pub fn put_with_sched(mut ~self, sched: Box<Scheduler>) {
         assert!(self.sched.is_none());
         self.sched = Some(sched);
         self.put();
     }
 
-    pub fn put_task(&mut self, task: ~Task) {
+    pub fn put_task(&mut self, task: Box<Task>) {
         assert!(self.task.is_none());
         self.task = Some(task);
     }
 
-    pub fn swap(mut ~self) -> ~Task {
+    pub fn swap(mut ~self) -> Box<Task> {
         let mut task = self.task.take_unwrap();
         task.put_runtime(self);
         return task;
@@ -331,19 +333,19 @@ impl GreenTask {
 }
 
 impl Runtime for GreenTask {
-    fn yield_now(mut ~self, cur_task: ~Task) {
+    fn yield_now(mut ~self, cur_task: Box<Task>) {
         self.put_task(cur_task);
         let sched = self.sched.take_unwrap();
         sched.yield_now(self);
     }
 
-    fn maybe_yield(mut ~self, cur_task: ~Task) {
+    fn maybe_yield(mut ~self, cur_task: Box<Task>) {
         self.put_task(cur_task);
         let sched = self.sched.take_unwrap();
         sched.maybe_yield(self);
     }
 
-    fn deschedule(mut ~self, times: uint, cur_task: ~Task,
+    fn deschedule(mut ~self, times: uint, cur_task: Box<Task>,
                   f: |BlockedTask| -> Result<(), BlockedTask>) {
         self.put_task(cur_task);
         let mut sched = self.sched.take_unwrap();
@@ -392,14 +394,14 @@ impl Runtime for GreenTask {
         }
     }
 
-    fn reawaken(mut ~self, to_wake: ~Task) {
+    fn reawaken(mut ~self, to_wake: Box<Task>) {
         self.put_task(to_wake);
         assert!(self.sched.is_none());
 
         // Optimistically look for a local task, but if one's not available to
         // inspect (in order to see if it's in the same sched pool as we are),
         // then just use our remote wakeup routine and carry on!
-        let mut running_task: ~Task = match Local::try_take() {
+        let mut running_task: Box<Task> = match Local::try_take() {
             Some(task) => task,
             None => return self.reawaken_remotely()
         };
@@ -443,7 +445,10 @@ impl Runtime for GreenTask {
         }
     }
 
-    fn spawn_sibling(mut ~self, cur_task: ~Task, opts: TaskOpts, f: proc():Send) {
+    fn spawn_sibling(mut ~self,
+                     cur_task: Box<Task>,
+                     opts: TaskOpts,
+                     f: proc():Send) {
         self.put_task(cur_task);
 
         // Spawns a task into the current scheduler. We allocate the new task's
@@ -477,7 +482,7 @@ impl Runtime for GreenTask {
 
     fn can_block(&self) -> bool { false }
 
-    fn wrap(~self) -> ~Any { self as ~Any }
+    fn wrap(~self) -> Box<Any> { self as Box<Any> }
 }
 
 #[cfg(test)]
@@ -572,7 +577,7 @@ mod tests {
         let (tx, rx) = channel();
         spawn_opts(TaskOpts::new(), proc() {
             spawn(proc() {
-                let mut task: ~Task = Local::take();
+                let mut task: Box<Task> = Local::take();
                 match task.maybe_take_runtime::<GreenTask>() {
                     Some(ops) => {
                         task.put_runtime(ops);

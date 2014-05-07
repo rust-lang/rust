@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::io::IoError;
-use std::io::process;
 use libc::c_int;
 use libc;
+use std::io::IoError;
+use std::io::process;
 use std::ptr;
 use std::rt::rtio::RtioProcess;
 use std::rt::task::BlockedTask;
@@ -40,8 +40,7 @@ impl Process {
     /// Returns either the corresponding process object or an error which
     /// occurred.
     pub fn spawn(io_loop: &mut UvIoFactory, config: process::ProcessConfig)
-                -> Result<(~Process, ~[Option<PipeWatcher>]), UvError>
-    {
+                -> Result<(Box<Process>, ~[Option<PipeWatcher>]), UvError> {
         let cwd = config.cwd.map(|s| s.to_c_str());
         let mut io = vec![config.stdin, config.stdout, config.stderr];
         for slot in config.extra_io.iter() {

@@ -23,8 +23,8 @@ fn main() {
     }
 
     match (true, false) {
-        ~(true, false) => ()
-        //~^ ERROR mismatched types: expected `(bool,bool)` but found a `~`-box pattern
+        box (true, false) => ()
+        //~^ ERROR mismatched types: expected `(bool,bool)` but found a box pattern
     }
 
     match (true, false) {

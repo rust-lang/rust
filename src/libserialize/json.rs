@@ -113,7 +113,7 @@ pub struct MyStruct  {
 
 impl ToJson for MyStruct {
     fn to_json( &self ) -> json::Json {
-        let mut d = ~TreeMap::new();
+        let mut d = box TreeMap::new();
         d.insert("attr1".to_owned(), self.attr1.to_json());
         d.insert("attr2".to_owned(), self.attr2.to_json());
         json::Object(d)
@@ -206,7 +206,7 @@ pub struct TestStruct1  {
 
 impl ToJson for TestStruct1 {
     fn to_json( &self ) -> json::Json {
-        let mut d = ~TreeMap::new();
+        let mut d = box TreeMap::new();
         d.insert("data_int".to_owned(), self.data_int.to_json());
         d.insert("data_str".to_owned(), self.data_str.to_json());
         d.insert("data_vector".to_owned(), self.data_vector.to_json());
@@ -232,21 +232,20 @@ fn main() {
 
 */
 
-use collections::HashMap;
 use std::char;
 use std::f64;
+use std::fmt;
 use std::io::MemWriter;
 use std::io;
-use std::num;
-use std::str;
-use std::str::ScalarValue;
-use std::strbuf::StrBuf;
-use std::fmt;
-use std::vec::Vec;
 use std::mem::swap;
+use std::num;
+use std::str::ScalarValue;
+use std::str;
+use std::strbuf::StrBuf;
+use std::vec::Vec;
 
 use Encodable;
-use collections::TreeMap;
+use collections::{HashMap, TreeMap};
 
 /// Represents a json value
 #[deriving(Clone, Eq)]
@@ -255,7 +254,7 @@ pub enum Json {
     String(~str),
     Boolean(bool),
     List(List),
-    Object(~Object),
+    Object(Box<Object>),
     Null,
 }
 

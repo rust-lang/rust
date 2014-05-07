@@ -11,17 +11,18 @@
 // Test that we detect nested calls that could free pointers evaluated
 // for earlier arguments.
 
-fn rewrite(v: &mut ~uint) -> uint {
-    *v = ~22;
+
+fn rewrite(v: &mut Box<uint>) -> uint {
+    *v = box 22;
     **v
 }
 
-fn add(v: &uint, w: ~uint) -> uint {
+fn add(v: &uint, w: Box<uint>) -> uint {
     *v + *w
 }
 
 fn implicit() {
-    let mut a = ~1;
+    let mut a = box 1;
 
     // Note the danger here:
     //
@@ -34,7 +35,7 @@ fn implicit() {
 }
 
 fn explicit() {
-    let mut a = ~1;
+    let mut a = box 1;
     add(
         &*a,
         a); //~ ERROR cannot move

@@ -650,7 +650,6 @@ fn resolve_local(visitor: &mut RegionResolutionVisitor,
          *        | VariantName(..., P&, ...)
          *        | [ ..., P&, ... ]
          *        | ( ..., P&, ... )
-         *        | ~P&
          *        | box P&
          */
 
@@ -704,7 +703,7 @@ fn resolve_local(visitor: &mut RegionResolutionVisitor,
          *        | [ ..., E&, ... ]
          *        | ( ..., E&, ... )
          *        | {...; E&}
-         *        | ~E&
+         *        | box E&
          *        | E& as ...
          *        | ( E& )
          */

@@ -20,7 +20,7 @@ struct Point {
 
 pub fn main() {
     assert_eq!(*Rc::new(5), 5);
-    assert_eq!(***Rc::new(~~5), 5);
+    assert_eq!(***Rc::new(box box 5), 5);
     assert_eq!(*Rc::new(Point {x: 2, y: 4}), Point {x: 2, y: 4});
 
     let i = Rc::new(RefCell::new(2));

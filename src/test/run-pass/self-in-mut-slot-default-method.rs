@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 struct X {
     a: int
 }
@@ -18,7 +19,7 @@ trait Changer {
         self
     }
 
-    fn change_again(mut ~self) -> ~Self {
+    fn change_again(mut ~self) -> Box<Self> {
         self.set_to(45);
         self
     }
@@ -37,7 +38,7 @@ pub fn main() {
     let new_x = x.change();
     assert_eq!(new_x.a, 55);
 
-    let x = ~new_x;
+    let x = box new_x;
     let new_x = x.change_again();
     assert_eq!(new_x.a, 45);
 }

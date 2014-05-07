@@ -11,5 +11,5 @@
 fn f<T: 'static>(_x: T) {}
 
 pub fn main() {
-    f(~5);
+    f(box 5);
 }

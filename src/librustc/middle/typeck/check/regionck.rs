@@ -367,7 +367,7 @@ fn constrain_bindings_in_pat(pat: &ast::Pat, rcx: &mut Rcx) {
         // accessed. We must be wary of loops like this:
         //
         //     // from src/test/compile-fail/borrowck-lend-flow.rs
-        //     let mut v = ~3, w = ~4;
+        //     let mut v = box 3, w = box 4;
         //     let mut x = &mut w;
         //     loop {
         //         **x += 1;   // (2)
@@ -539,7 +539,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
             // explaining how it goes about doing that.
             let target_ty = rcx.resolve_node_type(expr.id);
             match ty::get(target_ty).sty {
-                ty::ty_trait(~ty::TyTrait {
+                ty::ty_trait(box ty::TyTrait {
                     store: ty::RegionTraitStore(trait_region, _), ..
                 }) => {
                     let source_ty = rcx.resolve_expr_type_adjusted(source);
@@ -609,7 +609,7 @@ fn check_expr_fn_block(rcx: &mut Rcx,
     let tcx = rcx.fcx.tcx();
     let function_type = rcx.resolve_node_type(expr.id);
     match ty::get(function_type).sty {
-        ty::ty_closure(~ty::ClosureTy {
+        ty::ty_closure(box ty::ClosureTy {
                 store: ty::RegionTraitStore(region, _), ..}) => {
             freevars::with_freevars(tcx, expr.id, |freevars| {
                 if freevars.is_empty() {
@@ -635,7 +635,10 @@ fn check_expr_fn_block(rcx: &mut Rcx,
     rcx.set_repeating_scope(repeating_scope);
 
     match ty::get(function_type).sty {
-        ty::ty_closure(~ty::ClosureTy {store: ty::RegionTraitStore(..), ..}) => {
+        ty::ty_closure(box ty::ClosureTy {
+                store: ty::RegionTraitStore(..),
+                ..
+            }) => {
             freevars::with_freevars(tcx, expr.id, |freevars| {
                 propagate_upupvar_borrow_kind(rcx, expr, freevars);
             })

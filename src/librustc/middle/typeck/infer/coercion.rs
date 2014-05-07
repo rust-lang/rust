@@ -121,7 +121,10 @@ impl<'f> Coerce<'f> {
                 };
             }
 
-            ty::ty_closure(~ty::ClosureTy {store: ty::RegionTraitStore(..), ..}) => {
+            ty::ty_closure(box ty::ClosureTy {
+                    store: ty::RegionTraitStore(..),
+                    ..
+                }) => {
                 return self.unpack_actual_value(a, |sty_a| {
                     self.coerce_borrowed_fn(a, sty_a, b)
                 });
@@ -133,7 +136,7 @@ impl<'f> Coerce<'f> {
                 });
             }
 
-            ty::ty_trait(~ty::TyTrait {
+            ty::ty_trait(box ty::TyTrait {
                 def_id, ref substs, store: ty::UniqTraitStore, bounds
             }) => {
                 let result = self.unpack_actual_value(a, |sty_a| {
@@ -152,7 +155,7 @@ impl<'f> Coerce<'f> {
                 }
             }
 
-            ty::ty_trait(~ty::TyTrait {
+            ty::ty_trait(box ty::TyTrait {
                 def_id, ref substs, store: ty::RegionTraitStore(region, m), bounds
             }) => {
                 let result = self.unpack_actual_value(a, |sty_a| {
@@ -332,7 +335,12 @@ impl<'f> Coerce<'f> {
         let r_a = self.get_ref().infcx.next_region_var(coercion);
 
         let a_borrowed = match *sty_a {
-            ty::ty_trait(~ty::TyTrait { def_id, ref substs, bounds, .. }) => {
+            ty::ty_trait(box ty::TyTrait {
+                    def_id,
+                    ref substs,
+                    bounds,
+                    ..
+                }) => {
                 ty::mk_trait(tcx, def_id, substs.clone(),
                              ty::RegionTraitStore(r_a, b_mutbl), bounds)
             }

@@ -691,7 +691,7 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
     }
 }
 
-// Helper function to check @, ~ and & patterns
+// Helper function to check @, box and & patterns
 pub fn check_pointer_pat(pcx: &pat_ctxt,
                          pointer_kind: PointerKind,
                          inner: &ast::Pat,
@@ -721,7 +721,7 @@ pub fn check_pointer_pat(pcx: &pat_ctxt,
                              e, actual)})},
                 Some(expected),
                 format!("{} pattern", match pointer_kind {
-                    Send => "a `~`-box",
+                    Send => "a box",
                     Borrowed => "an `&`-pointer"
                 }),
                 None);

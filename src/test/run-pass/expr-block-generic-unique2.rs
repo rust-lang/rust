@@ -17,8 +17,8 @@ fn test_generic<T:Clone>(expected: T, eq: compare<T>) {
 }
 
 fn test_vec() {
-    fn compare_vec(v1: ~int, v2: ~int) -> bool { return v1 == v2; }
-    test_generic::<~int>(~1, compare_vec);
+    fn compare_vec(v1: Box<int>, v2: Box<int>) -> bool { return v1 == v2; }
+    test_generic::<Box<int>>(box 1, compare_vec);
 }
 
 pub fn main() { test_vec(); }

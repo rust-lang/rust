@@ -20,9 +20,9 @@ Rust. Each string must also be decorated with its ownership. This means that
 there are two common kinds of strings in Rust:
 
 * `~str` - This is an owned string. This type obeys all of the normal semantics
-           of the `~T` types, meaning that it has one, and only one, owner. This
-           type cannot be implicitly copied, and is moved out of when passed to
-           other functions.
+           of the `Box<T>` types, meaning that it has one, and only one,
+           owner. This type cannot be implicitly copied, and is moved out of
+           when passed to other functions.
 
 * `&str` - This is the borrowed string type. This type of string can only be
            created from the other kind of string. As the name "borrowed"

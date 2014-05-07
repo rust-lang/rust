@@ -12,6 +12,7 @@
 // access to the variable, whether that mutable access be used
 // for direct assignment or for taking mutable ref. Issue #6801.
 
+
 fn a() {
     let mut x = 3;
     let c1 = || x = 4;
@@ -43,10 +44,10 @@ fn d() {
 
 fn g() {
     struct Foo {
-        f: ~int
+        f: Box<int>
     }
 
-    let mut x = ~Foo { f: ~3 };
+    let mut x = box Foo { f: box 3 };
     let c1 = || set(&mut *x.f);
     let c2 = || set(&mut *x.f);
     //~^ ERROR cannot borrow `x` as mutable more than once

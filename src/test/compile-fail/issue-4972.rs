@@ -8,15 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 trait MyTrait { }
 
 pub enum TraitWrapper {
-    A(~MyTrait),
+    A(Box<MyTrait>),
 }
 
 fn get_tw_map<'lt>(tw: &'lt TraitWrapper) -> &'lt MyTrait {
     match *tw {
-        A(~ref map) => map, //~ ERROR found a `~`-box pattern
+        A(box ref map) => map, //~ ERROR found a box pattern
     }
 }
 

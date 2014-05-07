@@ -8,14 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn arg_item(~ref x: ~int) -> &'static int {
+
+fn arg_item(box ref x: Box<int>) -> &'static int {
     x //~^ ERROR borrowed value does not live long enough
 }
 
-fn with<R>(f: |~int| -> R) -> R { f(~3) }
+fn with<R>(f: |Box<int>| -> R) -> R { f(box 3) }
 
 fn arg_closure() -> &'static int {
-    with(|~ref x| x) //~ ERROR borrowed value does not live long enough
+    with(|box ref x| x) //~ ERROR borrowed value does not live long enough
 }
 
 fn main() {}

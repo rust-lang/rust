@@ -11,7 +11,7 @@
 // Issue #961
 
 fn altsimple() {
-    match ~true {
+    match box true {
       _ => { }
     }
 }

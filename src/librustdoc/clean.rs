@@ -690,26 +690,26 @@ pub enum Type {
     Self(ast::NodeId),
     /// Primitives are just the fixed-size numeric types (plus int/uint/float), and char.
     Primitive(ast::PrimTy),
-    Closure(~ClosureDecl, Option<Lifetime>),
-    Proc(~ClosureDecl),
+    Closure(Box<ClosureDecl>, Option<Lifetime>),
+    Proc(Box<ClosureDecl>),
     /// extern "ABI" fn
-    BareFunction(~BareFunctionDecl),
+    BareFunction(Box<BareFunctionDecl>),
     Tuple(Vec<Type>),
-    Vector(~Type),
-    FixedVector(~Type, ~str),
+    Vector(Box<Type>),
+    FixedVector(Box<Type>, ~str),
     String,
     Bool,
     /// aka TyNil
     Unit,
     /// aka TyBot
     Bottom,
-    Unique(~Type),
-    Managed(~Type),
-    RawPointer(Mutability, ~Type),
+    Unique(Box<Type>),
+    Managed(Box<Type>),
+    RawPointer(Mutability, Box<Type>),
     BorrowedRef {
         pub lifetime: Option<Lifetime>,
         pub mutability: Mutability,
-        pub type_: ~Type,
+        pub type_: Box<Type>,
     },
     // region, raw, other boxes, mutable
 }

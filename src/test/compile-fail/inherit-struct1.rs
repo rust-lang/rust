@@ -11,7 +11,8 @@
 // Test struct inheritance.
 #![feature(struct_inherit)]
 
-struct S6 : ~S2; //~ ERROR not a struct
+
+struct S6 : int; //~ ERROR super-struct could not be resolved
 
 pub fn main() {
 }

@@ -37,6 +37,7 @@ pub static RED_ZONE: uint = 20 * 1024;
 #[cfg(not(test))] // in testing, use the original libstd's version
 pub extern "C" fn rust_stack_exhausted() {
     use option::{Option, None, Some};
+    use owned::Box;
     use rt::local::Local;
     use rt::task::Task;
     use str::Str;
@@ -85,7 +86,7 @@ pub extern "C" fn rust_stack_exhausted() {
         //  #9854 - unwinding on windows through __morestack has never worked
         //  #2361 - possible implementation of not using landing pads
 
-        let task: Option<~Task> = Local::try_take();
+        let task: Option<Box<Task>> = Local::try_take();
         let name = match task {
             Some(ref task) => {
                 task.name.as_ref().map(|n| n.as_slice())

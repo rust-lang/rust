@@ -15,8 +15,11 @@ use codemap::Span;
 use ext::base;
 use ext::build::AstBuilder;
 
-pub fn expand_syntax_ext(ecx: &mut base::ExtCtxt, sp: Span,
-                         _tts: &[ast::TokenTree]) -> ~base::MacResult {
+
+pub fn expand_syntax_ext(ecx: &mut base::ExtCtxt,
+                         sp: Span,
+                         _tts: &[ast::TokenTree])
+                         -> Box<base::MacResult> {
     ecx.span_err(sp, "`fmt!` is deprecated, use `format!` instead");
     ecx.parse_sess.span_diagnostic.span_note(sp,
         "see http://static.rust-lang.org/doc/master/std/fmt/index.html \
