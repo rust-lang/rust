@@ -577,25 +577,25 @@ fn canonical_sort(comb: &mut [(char, u8)]) {
 }
 
 #[deriving(Clone)]
-enum NormalizationForm {
-    NFD,
-    NFKD
+enum DecompositionType {
+    Canonical,
+    Compatible
 }
 
-/// External iterator for a string's normalization's characters.
+/// External iterator for a string's decomposition's characters.
 /// Use with the `std::iter` module.
 #[deriving(Clone)]
-pub struct Normalizations<'a> {
-    kind: NormalizationForm,
+pub struct Decompositions<'a> {
+    kind: DecompositionType,
     iter: Chars<'a>,
     buffer: Vec<(char, u8)>,
     sorted: bool
 }
 
-impl<'a> Iterator<char> for Normalizations<'a> {
+impl<'a> Iterator<char> for Decompositions<'a> {
     #[inline]
     fn next(&mut self) -> Option<char> {
-        use unicode::decompose::canonical_combining_class;
+        use unicode::normalization::canonical_combining_class;
 
         match self.buffer.as_slice().head() {
             Some(&(c, 0)) => {
@@ -611,8 +611,8 @@ impl<'a> Iterator<char> for Normalizations<'a> {
         }
 
         let decomposer = match self.kind {
-            NFD => char::decompose_canonical,
-            NFKD => char::decompose_compatible
+            Canonical => char::decompose_canonical,
+            Compatible => char::decompose_compatible
         };
 
         if !self.sorted {
@@ -1799,11 +1799,11 @@ pub trait StrSlice<'a> {
 
     /// An Iterator over the string in Unicode Normalization Form D
     /// (canonical decomposition).
-    fn nfd_chars(&self) -> Normalizations<'a>;
+    fn nfd_chars(&self) -> Decompositions<'a>;
 
     /// An Iterator over the string in Unicode Normalization Form KD
     /// (compatibility decomposition).
-    fn nfkd_chars(&self) -> Normalizations<'a>;
+    fn nfkd_chars(&self) -> Decompositions<'a>;
 
     /// Returns true if the string contains only whitespace.
     ///
@@ -2386,22 +2386,22 @@ impl<'a> StrSlice<'a> for &'a str {
     }
 
     #[inline]
-    fn nfd_chars(&self) -> Normalizations<'a> {
-        Normalizations {
+    fn nfd_chars(&self) -> Decompositions<'a> {
+        Decompositions {
             iter: self.chars(),
             buffer: Vec::new(),
             sorted: false,
-            kind: NFD
+            kind: Canonical
         }
     }
 
     #[inline]
-    fn nfkd_chars(&self) -> Normalizations<'a> {
-        Normalizations {
+    fn nfkd_chars(&self) -> Decompositions<'a> {
+        Decompositions {
             iter: self.chars(),
             buffer: Vec::new(),
             sorted: false,
-            kind: NFKD
+            kind: Compatible
         }
     }
 
