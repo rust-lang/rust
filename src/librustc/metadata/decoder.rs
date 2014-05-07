@@ -110,7 +110,6 @@ enum Family {
     UnsafeFn,              // u
     StaticMethod,          // F
     UnsafeStaticMethod,    // U
-    ForeignFn,             // e
     Type,                  // y
     ForeignType,           // T
     Mod,                   // m
@@ -134,7 +133,6 @@ fn item_family(item: ebml::Doc) -> Family {
       'u' => UnsafeFn,
       'F' => StaticMethod,
       'U' => UnsafeStaticMethod,
-      'e' => ForeignFn,
       'y' => Type,
       'T' => ForeignType,
       'm' => Mod,
@@ -339,7 +337,6 @@ fn item_to_def_like(item: ebml::Doc, did: ast::DefId, cnum: ast::CrateNum)
         Struct    => DlDef(ast::DefStruct(did)),
         UnsafeFn  => DlDef(ast::DefFn(did, ast::UnsafeFn)),
         Fn        => DlDef(ast::DefFn(did, ast::NormalFn)),
-        ForeignFn => DlDef(ast::DefFn(did, ast::ExternFn)),
         StaticMethod | UnsafeStaticMethod => {
             let fn_style = if fam == UnsafeStaticMethod { ast::UnsafeFn } else
                 { ast::NormalFn };
