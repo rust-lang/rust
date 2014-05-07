@@ -321,14 +321,14 @@ TSREQ$(1)_T_$(2)_H_$(3) = \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/libcompiler-rt.a
 
 # Prerequisites for a working stageN compiler and libraries, for a specific
-# target
+# target.  Note that only-host crates are not included (see crates.mk).
 SREQ$(1)_T_$(2)_H_$(3) = \
 	$$(TSREQ$(1)_T_$(2)_H_$(3)) \
 	$$(foreach dep,$$(TARGET_CRATES),\
 	    $$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$$(dep))
 
 # Prerequisites for a working stageN compiler and complete set of target
-# libraries
+# libraries, including both only-host and non-host crates.
 CSREQ$(1)_T_$(2)_H_$(3) = \
 	$$(TSREQ$(1)_T_$(2)_H_$(3)) \
 	$$(HBIN$(1)_H_$(3))/rustdoc$$(X_$(3)) \
