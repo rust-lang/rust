@@ -125,7 +125,7 @@ pub enum DebugInfoLevel {
 pub struct Options {
     // The crate config requested for the session, which may be combined
     // with additional crate configurations during the compile process
-    pub crate_types: Vec<CrateType> ,
+    pub crate_types: Vec<CrateType>,
 
     pub gc: bool,
     pub optimize: OptLevel,
@@ -166,7 +166,7 @@ pub enum EntryFnType {
     EntryNone,
 }
 
-#[deriving(Eq, Ord, Clone, TotalOrd, TotalEq)]
+#[deriving(Eq, Ord, Clone, TotalOrd, TotalEq, Hash)]
 pub enum CrateType {
     CrateTypeExecutable,
     CrateTypeDylib,

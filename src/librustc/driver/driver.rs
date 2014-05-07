@@ -24,6 +24,7 @@ use metadata::cstore::CStore;
 use metadata::creader::Loader;
 use metadata;
 use middle::{trans, freevars, kind, ty, typeck, lint, reachable};
+use middle::dependency_format;
 use middle;
 use util::common::time;
 use util::ppaux;
@@ -382,7 +383,7 @@ pub fn phase_3_run_analysis_passes(sess: Session,
         ty_cx: ty_cx,
         exported_items: exported_items,
         public_items: public_items,
-        reachable: reachable_map
+        reachable: reachable_map,
     }
 }
 
@@ -393,6 +394,7 @@ pub struct CrateTranslation {
     pub link: LinkMeta,
     pub metadata: Vec<u8>,
     pub reachable: Vec<~str>,
+    pub crate_formats: dependency_format::Dependencies,
 }
 
 /// Run the translation phase to LLVM, after which the AST and analysis can
@@ -400,11 +402,14 @@ pub struct CrateTranslation {
 pub fn phase_4_translate_to_llvm(krate: ast::Crate,
                                  analysis: CrateAnalysis,
                                  outputs: &OutputFilenames) -> (ty::ctxt, CrateTranslation) {
-    // Option dance to work around the lack of stack once closures.
     let time_passes = analysis.ty_cx.sess.time_passes();
-    let mut analysis = Some(analysis);
-    time(time_passes, "translation", krate, |krate|
-         trans::base::trans_crate(krate, analysis.take_unwrap(), outputs))
+
+    time(time_passes, "resolving dependency formats", (), |_|
+         dependency_format::calculate(&analysis.ty_cx));
+
+    // Option dance to work around the lack of stack once closures.
+    time(time_passes, "translation", (krate, analysis), |(krate, analysis)|
+         trans::base::trans_crate(krate, analysis, outputs))
 }
 
 /// Run LLVM itself, producing a bitcode file, assembly file or object file
