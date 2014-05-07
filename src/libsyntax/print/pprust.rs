@@ -2372,16 +2372,10 @@ impl<'a> State<'a> {
                                 abi: abi::Abi,
                                 vis: ast::Visibility) -> IoResult<()> {
         try!(word(&mut self.s, visibility_qualified(vis, "")));
-
+        try!(self.print_opt_fn_style(opt_fn_style));
         if abi != abi::Rust {
             try!(self.word_nbsp("extern"));
             try!(self.word_nbsp(abi.to_str()));
-
-            if opt_fn_style != Some(ast::ExternFn) {
-                try!(self.print_opt_fn_style(opt_fn_style));
-            }
-        } else {
-            try!(self.print_opt_fn_style(opt_fn_style));
         }
 
         word(&mut self.s, "fn")
@@ -2391,7 +2385,6 @@ impl<'a> State<'a> {
         match s {
             ast::NormalFn => Ok(()),
             ast::UnsafeFn => self.word_nbsp("unsafe"),
-            ast::ExternFn => self.word_nbsp("extern")
         }
     }
 

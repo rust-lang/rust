@@ -22,7 +22,7 @@ use middle::typeck::infer::{cres, InferCtxt};
 use middle::typeck::infer::{TypeTrace, Subtype};
 use middle::typeck::infer::fold_regions_in_sig;
 use syntax::ast::{Many, Once, MutImmutable, MutMutable};
-use syntax::ast::{ExternFn, NormalFn, UnsafeFn, NodeId};
+use syntax::ast::{NormalFn, UnsafeFn, NodeId};
 use syntax::ast::{Onceness, FnStyle};
 use collections::HashMap;
 use util::common::{indenter};
@@ -83,7 +83,6 @@ impl<'f> Combine for Glb<'f> {
 
     fn fn_styles(&self, a: FnStyle, b: FnStyle) -> cres<FnStyle> {
         match (a, b) {
-          (ExternFn, _) | (_, ExternFn) => Ok(ExternFn),
           (NormalFn, _) | (_, NormalFn) => Ok(NormalFn),
           (UnsafeFn, UnsafeFn) => Ok(UnsafeFn)
         }

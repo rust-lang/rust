@@ -27,7 +27,7 @@ use ast::{ExprLit, ExprLoop, ExprMac};
 use ast::{ExprMethodCall, ExprParen, ExprPath, ExprProc};
 use ast::{ExprRepeat, ExprRet, ExprStruct, ExprTup, ExprUnary};
 use ast::{ExprVec, ExprVstore, ExprVstoreSlice};
-use ast::{ExprVstoreMutSlice, ExprWhile, ExprForLoop, ExternFn, Field, FnDecl};
+use ast::{ExprVstoreMutSlice, ExprWhile, ExprForLoop, Field, FnDecl};
 use ast::{ExprVstoreUniq, Once, Many};
 use ast::{ForeignItem, ForeignItemStatic, ForeignItemFn, ForeignMod};
 use ast::{Ident, NormalFn, Inherited, Item, Item_, ItemStatic};
@@ -884,25 +884,29 @@ impl<'a> Parser<'a> {
     pub fn parse_ty_bare_fn(&mut self) -> Ty_ {
         /*
 
-        [extern "ABI"] [unsafe] fn <'lt> (S) -> T
-                ^~~~^  ^~~~~~~^    ^~~~^ ^~^    ^
-                  |      |           |    |     |
-                  |      |           |    |   Return type
-                  |      |           |  Argument types
-                  |      |       Lifetimes
-                  |      |
-                  |    Function Style
-                 ABI
-
+        [unsafe] [extern "ABI"] fn <'lt> (S) -> T
+         ^~~~^           ^~~~^     ^~~~^ ^~^    ^
+           |               |         |    |     |
+           |               |         |    |   Return type
+           |               |         |  Argument types
+           |               |     Lifetimes
+           |              ABI
+        Function Style
         */
 
+        let fn_style = self.parse_unsafety();
         let abi = if self.eat_keyword(keywords::Extern) {
             self.parse_opt_abi().unwrap_or(abi::C)
         } else {
             abi::Rust
         };
 
-        let fn_style = self.parse_unsafety();
+        // NOTE: remove after a stage0 snapshot
+        let fn_style = match self.parse_unsafety() {
+            UnsafeFn => UnsafeFn,
+            NormalFn => fn_style,
+        };
+
         self.expect_keyword(keywords::Fn);
         let (decl, lifetimes) = self.parse_ty_fn_decl(true);
         return TyBareFn(@BareFnTy {
@@ -1256,6 +1260,7 @@ impl<'a> Parser<'a> {
             self.expect_and();
             self.parse_borrowed_pointee()
         } else if self.is_keyword(keywords::Extern) ||
+                  self.is_keyword(keywords::Unsafe) ||
                 self.token_is_bare_fn_keyword() {
             // BARE FUNCTION
             self.parse_ty_bare_fn()
@@ -4563,7 +4568,7 @@ impl<'a> Parser<'a> {
                 // EXTERN FUNCTION ITEM
                 let abi = opt_abi.unwrap_or(abi::C);
                 let (ident, item_, extra_attrs) =
-                    self.parse_item_fn(ExternFn, abi);
+                    self.parse_item_fn(NormalFn, abi);
                 let item = self.mk_item(lo,
                                         self.last_span.hi,
                                         ident,
@@ -4617,9 +4622,14 @@ impl<'a> Parser<'a> {
             && self.look_ahead(1u, |t| *t != token::LBRACE) {
             // UNSAFE FUNCTION ITEM
             self.bump();
+            let abi = if self.eat_keyword(keywords::Extern) {
+                self.parse_opt_abi().unwrap_or(abi::C)
+            } else {
+                abi::Rust
+            };
             self.expect_keyword(keywords::Fn);
             let (ident, item_, extra_attrs) =
-                self.parse_item_fn(UnsafeFn, abi::Rust);
+                self.parse_item_fn(UnsafeFn, abi);
             let item = self.mk_item(lo,
                                     self.last_span.hi,
                                     ident,
