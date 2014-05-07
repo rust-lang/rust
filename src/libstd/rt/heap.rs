@@ -98,3 +98,125 @@ pub unsafe fn deallocate(ptr: *mut u8, size: uint, align: uint) {
 pub fn usable_size(size: uint, align: uint) -> uint {
     unsafe { je_nallocx(size as size_t, mallocx_align(align)) as uint }
 }
+
+/// The allocator for unique pointers.
+#[cfg(stage0)]
+#[lang="exchange_malloc"]
+#[inline(always)]
+pub unsafe fn exchange_malloc_(size: uint) -> *mut u8 {
+    exchange_malloc(size)
+}
+
+/// The allocator for unique pointers.
+#[cfg(not(test), not(stage0))]
+#[lang="exchange_malloc"]
+#[inline(always)]
+pub unsafe fn exchange_malloc_(size: uint, align: uint) -> *mut u8 {
+    exchange_malloc(size, align)
+}
+
+/// The allocator for unique pointers.
+#[cfg(stage0)]
+#[inline]
+pub unsafe fn exchange_malloc(size: uint) -> *mut u8 {
+    // The compiler never calls `exchange_free` on ~ZeroSizeType, so zero-size
+    // allocations can point to this `static`. It would be incorrect to use a null
+    // pointer, due to enums assuming types like unique pointers are never null.
+    static EMPTY: () = ();
+
+    if size == 0 {
+        &EMPTY as *() as *mut u8
+    } else {
+        allocate(size, 8)
+    }
+}
+
+/// The allocator for unique pointers.
+#[cfg(not(stage0))]
+#[inline]
+pub unsafe fn exchange_malloc(size: uint, align: uint) -> *mut u8 {
+    // The compiler never calls `exchange_free` on ~ZeroSizeType, so zero-size
+    // allocations can point to this `static`. It would be incorrect to use a null
+    // pointer, due to enums assuming types like unique pointers are never null.
+    static EMPTY: () = ();
+
+    if size == 0 {
+        &EMPTY as *() as *mut u8
+    } else {
+        allocate(size, align)
+    }
+}
+
+#[cfg(not(test))]
+#[lang="exchange_free"]
+#[inline]
+// FIXME: #13994 (rustc should pass align and size here)
+pub unsafe fn exchange_free_(ptr: *mut u8) {
+    exchange_free(ptr, 0, 8)
+}
+
+#[inline]
+pub unsafe fn exchange_free(ptr: *mut u8, size: uint, align: uint) {
+    deallocate(ptr, size, align);
+}
+
+// FIXME: #7496
+#[cfg(not(test))]
+#[lang="closure_exchange_malloc"]
+#[inline]
+unsafe fn closure_exchange_malloc(drop_glue: fn(*mut u8), size: uint, align: uint) -> *mut u8 {
+    let total_size = ::rt::util::get_box_size(size, align);
+    let p = allocate(total_size, 8);
+
+    let alloc = p as *mut ::raw::Box<()>;
+    (*alloc).drop_glue = drop_glue;
+
+    alloc as *mut u8
+}
+
+// hack for libcore
+#[no_mangle]
+#[doc(hidden)]
+#[deprecated]
+#[cfg(stage0, not(test))]
+pub extern "C" fn rust_malloc(size: uint) -> *mut u8 {
+    unsafe { exchange_malloc(size) }
+}
+
+// hack for libcore
+#[no_mangle]
+#[doc(hidden)]
+#[deprecated]
+#[cfg(not(stage0), not(test))]
+pub extern "C" fn rust_malloc(size: uint, align: uint) -> *mut u8 {
+    unsafe { exchange_malloc(size, align) }
+}
+
+// hack for libcore
+#[no_mangle]
+#[doc(hidden)]
+#[deprecated]
+#[cfg(not(test))]
+pub extern "C" fn rust_free(ptr: *mut u8, size: uint, align: uint) {
+    unsafe { exchange_free(ptr, size, align) }
+}
+
+#[cfg(test)]
+mod bench {
+    extern crate test;
+    use self::test::Bencher;
+
+    #[bench]
+    fn alloc_owned_small(b: &mut Bencher) {
+        b.iter(|| {
+            box 10
+        })
+    }
+
+    #[bench]
+    fn alloc_owned_big(b: &mut Bencher) {
+        b.iter(|| {
+            box [10, ..1000]
+        })
+    }
+}

@@ -26,6 +26,23 @@ use slice::ImmutableVector;
 // FIXME: Once the runtime matures remove the `true` below to turn off rtassert, etc.
 pub static ENFORCE_SANITY: bool = true || !cfg!(rtopt) || cfg!(rtdebug) || cfg!(rtassert);
 
+#[deprecated]
+#[doc(hidden)]
+#[inline]
+pub fn get_box_size(body_size: uint, body_align: uint) -> uint {
+    let header_size = ::mem::size_of::<::raw::Box<()>>();
+    let total_size = align_to(header_size, body_align) + body_size;
+    total_size
+}
+
+// Rounds |size| to the nearest |alignment|. Invariant: |alignment| is a power
+// of two.
+#[inline]
+fn align_to(size: uint, align: uint) -> uint {
+    assert!(align != 0);
+    (size + align - 1) & !(align - 1)
+}
+
 /// Get the number of cores available
 pub fn num_cpus() -> uint {
     unsafe {
