@@ -26,6 +26,7 @@ use iter::Iterator;
 use kinds::Send;
 use mem::drop;
 use option::{Some, None};
+use owned::Box;
 use result::{Ok, Err};
 use rt::rtio::{IoFactory, LocalIo, RtioSignal};
 use slice::ImmutableVector;
@@ -81,7 +82,7 @@ pub enum Signum {
 /// ```
 pub struct Listener {
     /// A map from signums to handles to keep the handles in memory
-    handles: Vec<(Signum, ~RtioSignal:Send)>,
+    handles: Vec<(Signum, Box<RtioSignal:Send>)>,
     /// This is where all the handles send signums, which are received by
     /// the clients from the receiver.
     tx: Sender<Signum>,

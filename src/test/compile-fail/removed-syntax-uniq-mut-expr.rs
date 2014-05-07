@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn f() {
-    let a_box = ~mut 42;
+    let a_box = box mut 42;
     //~^  ERROR found `mut` in ident position
     //~^^ ERROR expected `;` but found `42`
 }

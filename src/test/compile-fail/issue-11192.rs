@@ -19,10 +19,10 @@ impl Drop for Foo {
 }
 
 fn main() {
-    let mut ptr = ~Foo { x: 0 };
+    let mut ptr = box Foo { x: 0 };
     let test = |foo: &Foo| {
         println!("access {}", foo.x);
-        ptr = ~Foo { x: ptr.x + 1 };
+        ptr = box Foo { x: ptr.x + 1 };
         println!("access {}", foo.x);
     };
     test(ptr);

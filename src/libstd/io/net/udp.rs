@@ -19,6 +19,7 @@ use clone::Clone;
 use io::net::ip::{SocketAddr, IpAddr};
 use io::{Reader, Writer, IoResult};
 use kinds::Send;
+use owned::Box;
 use result::{Ok, Err};
 use rt::rtio::{RtioSocket, RtioUdpSocket, IoFactory, LocalIo};
 
@@ -54,7 +55,7 @@ use rt::rtio::{RtioSocket, RtioUdpSocket, IoFactory, LocalIo};
 /// drop(socket); // close the socket
 /// ```
 pub struct UdpSocket {
-    obj: ~RtioUdpSocket:Send
+    obj: Box<RtioUdpSocket:Send>,
 }
 
 impl UdpSocket {

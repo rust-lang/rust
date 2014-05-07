@@ -203,7 +203,7 @@ pub fn mt_to_str(cx: &ctxt, m: &mt) -> ~str {
 
 pub fn trait_store_to_str(cx: &ctxt, s: ty::TraitStore) -> ~str {
     match s {
-        ty::UniqTraitStore => "~".to_owned(),
+        ty::UniqTraitStore => "Box ".to_owned(),
         ty::RegionTraitStore(r, m) => {
             format!("{}{}", region_ptr_to_str(cx, r), mutability_to_str(m))
         }
@@ -385,7 +385,7 @@ pub fn ty_to_str(cx: &ctxt, typ: t) -> ~str {
                       did,
                       false)
       }
-      ty_trait(~ty::TyTrait {
+      ty_trait(box ty::TyTrait {
           def_id: did, ref substs, store, ref bounds
       }) => {
         let base = ty::item_path_str(cx, did);
@@ -500,7 +500,7 @@ impl<T:Repr> Repr for @T {
     }
 }
 
-impl<T:Repr> Repr for ~T {
+impl<T:Repr> Repr for Box<T> {
     fn repr(&self, tcx: &ctxt) -> ~str {
         (&**self).repr(tcx)
     }

@@ -78,7 +78,7 @@ fn deref_extend_mut_field2<'a>(x: &'a mut Own<Point>) -> &'a mut int {
 }
 
 fn deref_extend_mut_field3<'a>(x: &'a mut Own<Point>) {
-    // Hmm, this is unfortunate, because with ~ it would work,
+    // Hmm, this is unfortunate, because with box it would work,
     // but it's presently the expected outcome. See `deref_extend_mut_field4`
     // for the workaround.
 

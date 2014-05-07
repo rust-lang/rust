@@ -68,13 +68,13 @@ niceties. This means that if you have a type like:
 struct S { f: uint }
 ```
 
-and a variable `a: ~S`, then the rust expression `a.f` would correspond
+and a variable `a: Box<S>`, then the rust expression `a.f` would correspond
 to an `LV` of `(*a).f`.
 
 Here is the formal grammar for the types we'll consider:
 
 ```notrust
-TY = () | S<'LT...> | ~TY | & 'LT MQ TY | @ MQ TY
+TY = () | S<'LT...> | Box<TY> | & 'LT MQ TY | @ MQ TY
 MQ = mut | imm | const
 ```
 
@@ -97,7 +97,7 @@ Now, imagine we had a program like this:
 struct Foo { f: uint, g: uint }
 ...
 'a: {
-  let mut x: ~Foo = ...;
+  let mut x: Box<Foo> = ...;
   let y = &mut (*x).f;
   x = ...;
 }
@@ -310,7 +310,7 @@ MUTABILITY(LV.f, MQ)                // M-Field
   MUTABILITY(LV, MQ)
 
 MUTABILITY(*LV, MQ)                 // M-Deref-Unique
-  TYPE(LV) = ~Ty
+  TYPE(LV) = Box<Ty>
   MUTABILITY(LV, MQ)
 ```
 
@@ -420,7 +420,7 @@ The scope of a unique referent is the scope of the pointer, since
 the pointer itself `LV` goes out of scope:
 
 ```notrust
-  SCOPE(*LV) = SCOPE(LV) if LV has type ~T
+  SCOPE(*LV) = SCOPE(LV) if LV has type Box<T>
 ```
 
 The scope of a managed referent is also the scope of the pointer.  This
@@ -459,7 +459,7 @@ LIFETIME(LV.f, LT, MQ)              // L-Field
   LIFETIME(LV, LT, MQ)
 
 LIFETIME(*LV, LT, MQ)               // L-Deref-Send
-  TYPE(LV) = ~Ty
+  TYPE(LV) = Box<Ty>
   LIFETIME(LV, LT, MQ)
 ```
 
@@ -595,7 +595,7 @@ on `LV`:
 
 ```notrust
 RESTRICTIONS(*LV, LT, ACTIONS) = RS, (*LV, ACTIONS)    // R-Deref-Send-Pointer
-  TYPE(LV) = ~Ty
+  TYPE(LV) = Box<Ty>
   RESTRICTIONS(LV, LT, ACTIONS|MUTATE|CLAIM) = RS
 ```
 
@@ -967,8 +967,8 @@ moves/uninitializations of the variable that is being used.
 Let's look at a simple example:
 
 ```
-fn foo(a: ~int) {
-    let b: ~int;       // Gen bit 0.
+fn foo(a: Box<int>) {
+    let b: Box<int>;   // Gen bit 0.
 
     if cond {          // Bits: 0
         use(&*a);

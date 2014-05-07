@@ -31,7 +31,7 @@ expression functions depending on the kind of expression. We divide
 up expressions into:
 
 - **Datum expressions:** Those that most naturally yield values.
-  Examples would be `22`, `~x`, or `a + b` (when not overloaded).
+  Examples would be `22`, `box x`, or `a + b` (when not overloaded).
 - **DPS expressions:** Those that most naturally write into a location
   in memory. Examples would be `foo()` or `Point { x: 3, y: 4 }`.
 - **Statement expressions:** That that do not generate a meaningful
@@ -107,7 +107,7 @@ Somewhat surprisingly, not all lvalue expressions yield lvalue datums
 when trans'd. Ultimately the reason for this is to micro-optimize
 the resulting LLVM. For example, consider the following code:
 
-    fn foo() -> ~int { ... }
+    fn foo() -> Box<int> { ... }
     let x = *foo();
 
 The expression `*foo()` is an lvalue, but if you invoke `expr::trans`,
@@ -169,7 +169,7 @@ is fully initialized, then the cleanup will run and try to free or
 drop uninitialized memory. If the initialization itself produces
 byproducts that need to be freed, then you should use temporary custom
 scopes to ensure that those byproducts will get freed on unwind.  For
-example, an expression like `~foo()` will first allocate a box in the
+example, an expression like `box foo()` will first allocate a box in the
 heap and then call `foo()` -- if `foo()` should fail, this box needs
 to be *shallowly* freed.
 
@@ -219,11 +219,11 @@ unwind, and only up until the point where execution succeeded, at
 which time the complete value should be stored in an lvalue or some
 other place where normal cleanup applies.
 
-To spell it out, here is an example. Imagine an expression `~expr`.
+To spell it out, here is an example. Imagine an expression `box expr`.
 We would basically:
 
 1. Push a custom cleanup scope C.
-2. Allocate the `~` box.
+2. Allocate the box.
 3. Schedule a shallow free in the scope C.
 4. Trans `expr` into the box.
 5. Pop the scope C.

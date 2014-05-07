@@ -8,8 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 struct S {
-    x: ~int
+    x: Box<int>,
 }
 
 impl S {
@@ -22,6 +23,6 @@ impl S {
 }
 
 fn main() {
-    let x = S { x: ~1 };
+    let x = S { x: box 1 };
     println!("{}", x.foo());
 }

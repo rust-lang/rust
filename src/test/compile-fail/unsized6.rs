@@ -10,6 +10,7 @@
 
 // Test `type` local variables.
 
+
 trait T for type {}
 
 fn f1<type X>(x: &X) {
@@ -25,12 +26,12 @@ fn f2<type X: T>(x: &X) {
     let y: (int, (X, int)); //~ERROR variable `y` has dynamically sized type `(int,(X,int))`
 }
 
-fn f3<type X>(x1: ~X, x2: ~X, x3: ~X) {
+fn f3<type X>(x1: Box<X>, x2: Box<X>, x3: Box<X>) {
     let y: X = *x1; //~ERROR variable `y` has dynamically sized type `X`
     let y = *x2; //~ERROR variable `y` has dynamically sized type `X`
     let (y, z) = (*x3, 4); //~ERROR variable `y` has dynamically sized type `X`
 }
-fn f4<type X: T>(x1: ~X, x2: ~X, x3: ~X) {
+fn f4<type X: T>(x1: Box<X>, x2: Box<X>, x3: Box<X>) {
     let y: X = *x1;         //~ERROR variable `y` has dynamically sized type `X`
     let y = *x2;            //~ERROR variable `y` has dynamically sized type `X`
     let (y, z) = (*x3, 4); //~ERROR variable `y` has dynamically sized type `X`

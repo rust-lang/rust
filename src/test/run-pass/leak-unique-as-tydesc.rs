@@ -9,7 +9,6 @@
 // except according to those terms.
 
 
-
 fn leaky<T>(_t: T) { }
 
-pub fn main() { let x = ~10; leaky::<~int>(x); }
+pub fn main() { let x = box 10; leaky::<Box<int>>(x); }

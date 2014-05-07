@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 trait Trait<T> {
     fn f(&self, x: T);
 }
@@ -25,7 +26,7 @@ impl Trait<&'static str> for Struct {
 
 pub fn main() {
     let a = Struct { x: 1, y: 2 };
-    let b: ~Trait<&'static str> = ~a;
+    let b: Box<Trait<&'static str>> = box a;
     b.f("Mary");
     let c: &Trait<&'static str> = &a;
     c.f("Joe");

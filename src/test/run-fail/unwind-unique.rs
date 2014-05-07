@@ -10,11 +10,12 @@
 
 // error-pattern:fail
 
+
 fn failfn() {
     fail!();
 }
 
 fn main() {
-    ~0;
+    box 0;
     failfn();
 }

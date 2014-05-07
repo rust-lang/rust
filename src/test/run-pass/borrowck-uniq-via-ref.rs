@@ -8,8 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 struct Rec {
-    f: ~int,
+    f: Box<int>,
 }
 
 struct Outer {
@@ -21,12 +22,12 @@ struct Inner {
 }
 
 struct Innermost {
-    h: ~int,
+    h: Box<int>,
 }
 
 fn borrow(_v: &int) {}
 
-fn box_mut(v: &mut ~int) {
+fn box_mut(v: &mut Box<int>) {
     borrow(*v); // OK: &mut -> &imm
 }
 
@@ -38,7 +39,7 @@ fn box_mut_recs(v: &mut Outer) {
     borrow(v.f.g.h); // OK: &mut -> &imm
 }
 
-fn box_imm(v: &~int) {
+fn box_imm(v: &Box<int>) {
     borrow(*v); // OK
 }
 

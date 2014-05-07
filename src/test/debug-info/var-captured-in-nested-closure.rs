@@ -68,7 +68,7 @@ fn main() {
     };
 
     let struct_ref = &a_struct;
-    let owned = ~6;
+    let owned = box 6;
     let managed = @7;
 
     let closure = || {

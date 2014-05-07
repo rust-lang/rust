@@ -10,11 +10,12 @@
 
 #![feature(managed_boxes)]
 
+
 fn borrow(x: &int, f: |x: &int|) {
     f(x)
 }
 
-fn test1(x: @~int) {
+fn test1(x: @Box<int>) {
     borrow(&*(*x).clone(), |p| {
         let x_a = &**x as *int;
         assert!((x_a as uint) != (p as *int as uint));
@@ -23,5 +24,5 @@ fn test1(x: @~int) {
 }
 
 pub fn main() {
-    test1(@~22);
+    test1(@box 22);
 }

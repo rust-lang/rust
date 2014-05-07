@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 trait Foo {
     fn f(&self);
 }
@@ -27,7 +28,7 @@ impl Foo for Bar {
 }
 
 fn main() {
-    let x = ~Bar { x: 10 };
-    let y: ~Foo = x as ~Foo;
+    let x = box Bar { x: 10 };
+    let y: Box<Foo> = x as Box<Foo>;
     let _z = y.clone(); //~ ERROR does not implement any method in scope
 }

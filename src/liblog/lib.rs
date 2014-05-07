@@ -158,7 +158,7 @@ pub static WARN: u32 = 2;
 /// Error log level
 pub static ERROR: u32 = 1;
 
-local_data_key!(local_logger: ~Logger:Send)
+local_data_key!(local_logger: Box<Logger:Send>)
 
 /// A trait used to represent an interface to a task-local logger. Each task
 /// can have its own custom logger which can respond to logging messages
@@ -229,7 +229,7 @@ pub fn log(level: u32, loc: &'static LogLocation, args: &fmt::Arguments) {
     // frob the slot while we're doing the logging. This will destroy any logger
     // set during logging.
     let mut logger = local_data::pop(local_logger).unwrap_or_else(|| {
-        box DefaultLogger { handle: io::stderr() } as ~Logger:Send
+        box DefaultLogger { handle: io::stderr() } as Box<Logger:Send>
     });
     logger.log(&LogRecord {
         level: LogLevel(level),
@@ -249,7 +249,7 @@ pub fn log_level() -> u32 { unsafe { LOG_LEVEL } }
 
 /// Replaces the task-local logger with the specified logger, returning the old
 /// logger.
-pub fn set_logger(logger: ~Logger:Send) -> Option<~Logger:Send> {
+pub fn set_logger(logger: Box<Logger:Send>) -> Option<Box<Logger:Send>> {
     let prev = local_data::pop(local_logger);
     local_data::set(local_logger, logger);
     return prev;
@@ -351,7 +351,7 @@ fn init() {
         // Schedule the cleanup for this global for when the runtime exits.
         rt::at_exit(proc() {
             assert!(!DIRECTIVES.is_null());
-            let _directives: ~Vec<directive::LogDirective> =
+            let _directives: Box<Vec<directive::LogDirective>> =
                 cast::transmute(DIRECTIVES);
             DIRECTIVES = 0 as *Vec<directive::LogDirective>;
         });

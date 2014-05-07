@@ -41,11 +41,11 @@
 //! and requires no resource management later,
 //! but you must not use the pointer after its lifetime.
 //!
-//! ## 2. Transmute an owned box (`~T`).
+//! ## 2. Transmute an owned box (`Box<T>`).
 //!
 //! The `transmute` function takes, by value, whatever it's given
 //! and returns it as whatever type is requested, as long as the
-//! types are the same size. Because `~T` and `*T` have the same
+//! types are the same size. Because `Box<T>` and `*T` have the same
 //! representation they can be trivially,
 //! though unsafely, transformed from one type to the other.
 //!
@@ -53,15 +53,15 @@
 //! use std::cast;
 //!
 //! unsafe {
-//!     let my_num: ~int = ~10;
+//!     let my_num: Box<int> = box 10;
 //!     let my_num: *int = cast::transmute(my_num);
-//!     let my_speed: ~int = ~88;
+//!     let my_speed: Box<int> = box 88;
 //!     let my_speed: *mut int = cast::transmute(my_speed);
 //!
-//!     // By taking ownership of the original `~T` though
+//!     // By taking ownership of the original `Box<T>` though
 //!     // we are obligated to transmute it back later to be destroyed.
-//!     drop(cast::transmute::<_, ~int>(my_speed));
-//!     drop(cast::transmute::<_, ~int>(my_num));
+//!     drop(cast::transmute::<_, Box<int>>(my_speed));
+//!     drop(cast::transmute::<_, Box<int>>(my_num));
 //! }
 //! ```
 //!

@@ -26,7 +26,9 @@ use parse::token::InternedString;
 use parse::token;
 use parse;
 
-pub fn expand_cfg(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree]) -> ~base::MacResult {
+
+pub fn expand_cfg(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
+                  -> Box<base::MacResult> {
     let mut p = parse::new_parser_from_tts(cx.parse_sess(),
                                            cx.cfg(),
                                            tts.iter()

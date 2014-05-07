@@ -21,7 +21,7 @@ enum object {
     int_value(i64),
 }
 
-fn lookup(table: ~json::Object, key: ~str, default: ~str) -> ~str
+fn lookup(table: Box<json::Object>, key: ~str, default: ~str) -> ~str
 {
     match table.find(&key) {
         option::Some(&json::String(ref s)) => {

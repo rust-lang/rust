@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::owned::Box;
 
 fn f(x: Box<int>) {
     let y: &int = x;

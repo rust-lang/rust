@@ -12,7 +12,7 @@
 // borrowed path.
 
 fn main() {
-    let a = ~~2;
+    let a = box box 2;
     let b = &a;
 
     let z = *a; //~ ERROR: cannot move out of `*a` because it is borrowed

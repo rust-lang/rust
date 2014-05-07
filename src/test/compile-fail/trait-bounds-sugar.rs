@@ -10,15 +10,16 @@
 
 // Tests for "default" bounds inferred for traits with no bounds list.
 
+
 trait Foo {}
 
-fn a(_x: ~Foo:Send) {
+fn a(_x: Box<Foo:Send>) {
 }
 
 fn b(_x: &'static Foo) { // should be same as &'static Foo:'static
 }
 
-fn c(x: ~Foo:Share) {
+fn c(x: Box<Foo:Share>) {
     a(x); //~ ERROR expected bounds `Send`
 }
 

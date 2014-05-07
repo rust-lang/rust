@@ -8,21 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 trait repeat<A> { fn get(&self) -> A; }
 
-impl<A:Clone + 'static> repeat<A> for ~A {
+impl<A:Clone + 'static> repeat<A> for Box<A> {
     fn get(&self) -> A {
         (**self).clone()
     }
 }
 
-fn repeater<A:Clone + 'static>(v: ~A) -> ~repeat<A>: {
+fn repeater<A:Clone + 'static>(v: Box<A>) -> Box<repeat<A>:> {
     // Note: owned kind is not necessary as A appears in the trait type
-    ~v as ~repeat<A>: // No
+    box v as Box<repeat<A>:> // No
 }
 
 pub fn main() {
     let x = 3;
-    let y = repeater(~x);
+    let y = repeater(box x);
     assert_eq!(x, y.get());
 }

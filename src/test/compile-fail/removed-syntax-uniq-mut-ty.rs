@@ -8,6 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-type mut_box = ~mut int;
+type mut_box = Box<mut int>;
     //~^  ERROR found `mut` in ident position
-    //~^^ ERROR expected `;` but found `int`
+    //~^^ ERROR expected `,` but found `int`

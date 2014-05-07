@@ -59,12 +59,12 @@ pub enum Ast {
     Begin(Flags),
     End(Flags),
     WordBoundary(Flags),
-    Capture(uint, Option<~str>, ~Ast),
+    Capture(uint, Option<~str>, Box<Ast>),
     // Represent concatenation as a flat vector to avoid blowing the
     // stack in the compiler.
     Cat(Vec<Ast>),
-    Alt(~Ast, ~Ast),
-    Rep(~Ast, Repeater, Greed),
+    Alt(Box<Ast>, Box<Ast>),
+    Rep(Box<Ast>, Repeater, Greed),
 }
 
 #[deriving(Show, Eq, Clone)]
@@ -245,7 +245,7 @@ impl<'a> Parser<'a> {
                     // alternate and make it a capture.
                     if cap.is_some() {
                         let ast = try!(self.pop_ast());
-                        self.push(Capture(cap.unwrap(), cap_name, ~ast));
+                        self.push(Capture(cap.unwrap(), cap_name, box ast));
                     }
                 }
                 '|' => {
@@ -331,7 +331,7 @@ impl<'a> Parser<'a> {
             _ => {}
         }
         let greed = try!(self.get_next_greedy());
-        self.push(Rep(~ast, rep, greed));
+        self.push(Rep(box ast, rep, greed));
         Ok(())
     }
 
@@ -411,13 +411,13 @@ impl<'a> Parser<'a> {
                         let flags = negated | (self.flags & FLAG_NOCASE);
                         let mut ast = Class(combine_ranges(ranges), flags);
                         for alt in alts.move_iter() {
-                            ast = Alt(~alt, ~ast)
+                            ast = Alt(box alt, box ast)
                         }
                         self.push(ast);
                     } else if alts.len() > 0 {
                         let mut ast = alts.pop().unwrap();
                         for alt in alts.move_iter() {
-                            ast = Alt(~alt, ~ast)
+                            ast = Alt(box alt, box ast)
                         }
                         self.push(ast);
                     }
@@ -548,7 +548,7 @@ impl<'a> Parser<'a> {
             for _ in iter::range(0, min) {
                 self.push(ast.clone())
             }
-            self.push(Rep(~ast, ZeroMore, greed));
+            self.push(Rep(box ast, ZeroMore, greed));
         } else {
             // Require N copies of what's on the stack and then repeat it
             // up to M times optionally.
@@ -558,7 +558,7 @@ impl<'a> Parser<'a> {
             }
             if max.is_some() {
                 for _ in iter::range(min, max.unwrap()) {
-                    self.push(Rep(~ast.clone(), ZeroOne, greed))
+                    self.push(Rep(box ast.clone(), ZeroOne, greed))
                 }
             }
             // It's possible that we popped something off the stack but
@@ -842,7 +842,7 @@ impl<'a> Parser<'a> {
         // thrown away). But be careful with overflow---we can't count on the
         // open paren to be there.
         if from > 0 { from = from - 1}
-        let ast = try!(self.build_from(from, |l,r| Alt(~l, ~r)));
+        let ast = try!(self.build_from(from, |l,r| Alt(box l, box r)));
         self.push(ast);
         Ok(())
     }

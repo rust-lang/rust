@@ -20,8 +20,8 @@
 
 #![allow(dead_code)]
 
-use std::cast;
 use libc::c_void;
+use std::cast;
 use std::rt::task::BlockedTask;
 use std::unstable::mutex::NativeMutex;
 use std::sync::arc::UnsafeArc;
@@ -107,7 +107,7 @@ extern fn async_cb(handle: *uvll::uv_async_t) {
 }
 
 impl QueuePool {
-    pub fn new(loop_: &mut Loop) -> ~QueuePool {
+    pub fn new(loop_: &mut Loop) -> Box<QueuePool> {
         let handle = UvHandle::alloc(None::<AsyncWatcher>, uvll::UV_ASYNC);
         let state = UnsafeArc::new(State {
             handle: handle,

@@ -1100,12 +1100,6 @@ mod test {
         }
     }
 
-    //fn fake_print_crate(krate: &ast::Crate) {
-    //    let mut out = ~std::io::stderr() as ~std::io::Writer;
-    //    let mut s = pprust::rust_printer(out, get_ident_interner());
-    //    pprust::print_crate_(&mut s, krate);
-    //}
-
     fn expand_crate_str(crate_str: ~str) -> ast::Crate {
         let ps = parse::new_parse_sess();
         let crate_ast = string_to_parser(&ps, crate_str).parse_crate_mod();

@@ -11,6 +11,6 @@
 struct Foo { a: int, b: int }
 
 pub fn main() {
-    let ~Foo{a, b} = ~Foo{a: 100, b: 200};
+    let box Foo{a, b} = box Foo{a: 100, b: 200};
     assert_eq!(a + b, 300);
 }

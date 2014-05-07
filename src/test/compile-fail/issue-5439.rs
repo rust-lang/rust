@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 struct Foo {
     foo: int,
 }
@@ -17,8 +18,8 @@ struct Bar {
 }
 
 impl Bar {
-    fn make_foo (&self, i: int) -> ~Foo {
-        return ~Foo { nonexistent: self, foo: i }; //~ ERROR: no field named
+    fn make_foo (&self, i: int) -> Box<Foo> {
+        return box Foo { nonexistent: self, foo: i }; //~ ERROR: no field named
     }
 }
 

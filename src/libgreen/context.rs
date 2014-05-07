@@ -8,21 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use stack::Stack;
 use std::uint;
 use std::cast::{transmute, transmute_mut_unsafe};
-use stack::Stack;
 use std::rt::stack;
 use std::raw;
 
 // FIXME #7761: Registers is boxed so that it is 16-byte aligned, for storing
 // SSE regs.  It would be marginally better not to do this. In C++ we
 // use an attribute on a struct.
-// FIXME #7761: It would be nice to define regs as `~Option<Registers>` since
-// the registers are sometimes empty, but the discriminant would
+// FIXME #7761: It would be nice to define regs as `Box<Option<Registers>>`
+// since the registers are sometimes empty, but the discriminant would
 // then misalign the regs again.
 pub struct Context {
     /// Hold the registers while the task or scheduler is suspended
-    regs: ~Registers,
+    regs: Box<Registers>,
     /// Lower bound and upper bound for the stack
     stack_bounds: Option<(uint, uint)>,
 }
@@ -87,10 +87,10 @@ impl Context {
     pub fn swap(out_context: &mut Context, in_context: &Context) {
         rtdebug!("swapping contexts");
         let out_regs: &mut Registers = match out_context {
-            &Context { regs: ~ref mut r, .. } => r
+            &Context { regs: box ref mut r, .. } => r
         };
         let in_regs: &Registers = match in_context {
-            &Context { regs: ~ref r, .. } => r
+            &Context { regs: box ref r, .. } => r
         };
 
         rtdebug!("noting the stack limit and doing raw swap");
@@ -151,7 +151,7 @@ struct Registers {
 }
 
 #[cfg(target_arch = "x86")]
-fn new_regs() -> ~Registers {
+fn new_regs() -> Box<Registers> {
     box Registers {
         eax: 0, ebx: 0, ecx: 0, edx: 0,
         ebp: 0, esi: 0, edi: 0, esp: 0,
@@ -190,9 +190,9 @@ type Registers = [uint, ..34];
 type Registers = [uint, ..22];
 
 #[cfg(windows, target_arch = "x86_64")]
-fn new_regs() -> ~Registers { box [0, .. 34] }
+fn new_regs() -> Box<Registers> { box [0, .. 34] }
 #[cfg(not(windows), target_arch = "x86_64")]
-fn new_regs() -> ~Registers { box {let v = [0, .. 22]; v} }
+fn new_regs() -> Box<Registers> { box {let v = [0, .. 22]; v} }
 
 #[cfg(target_arch = "x86_64")]
 fn initialize_call_frame(regs: &mut Registers, fptr: InitFn, arg: uint,
@@ -241,7 +241,7 @@ fn initialize_call_frame(regs: &mut Registers, fptr: InitFn, arg: uint,
 type Registers = [uint, ..32];
 
 #[cfg(target_arch = "arm")]
-fn new_regs() -> ~Registers { box {[0, .. 32]} }
+fn new_regs() -> Box<Registers> { box {[0, .. 32]} }
 
 #[cfg(target_arch = "arm")]
 fn initialize_call_frame(regs: &mut Registers, fptr: InitFn, arg: uint,
@@ -270,7 +270,7 @@ fn initialize_call_frame(regs: &mut Registers, fptr: InitFn, arg: uint,
 type Registers = [uint, ..32];
 
 #[cfg(target_arch = "mips")]
-fn new_regs() -> ~Registers { box [0, .. 32] }
+fn new_regs() -> Box<Registers> { box [0, .. 32] }
 
 #[cfg(target_arch = "mips")]
 fn initialize_call_frame(regs: &mut Registers, fptr: InitFn, arg: uint,

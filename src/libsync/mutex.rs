@@ -208,7 +208,7 @@ impl StaticMutex {
         // After we've failed the fast path, then we delegate to the differnet
         // locking protocols for green/native tasks. This will select two tasks
         // to continue further (one native, one green).
-        let t: ~Task = Local::take();
+        let t: Box<Task> = Local::take();
         let can_block = t.can_block();
         let native_bit;
         if can_block {
@@ -244,7 +244,7 @@ impl StaticMutex {
         // regularly in native/green contention. Due to try_lock and the header
         // of lock stealing the lock, it's also possible for native/native
         // contention to hit this location, but as less common.
-        let t: ~Task = Local::take();
+        let t: Box<Task> = Local::take();
         t.deschedule(1, |task| {
             let task = unsafe { task.cast_to_uint() };
 
@@ -308,7 +308,7 @@ impl StaticMutex {
 
     // Tasks which can block are super easy. These tasks just call the blocking
     // `lock()` function on an OS mutex
-    fn native_lock(&self, t: ~Task) {
+    fn native_lock(&self, t: Box<Task>) {
         Local::put(t);
         unsafe { self.lock.lock_noguard(); }
     }
@@ -317,7 +317,7 @@ impl StaticMutex {
         unsafe { self.lock.unlock_noguard(); }
     }
 
-    fn green_lock(&self, t: ~Task) {
+    fn green_lock(&self, t: Box<Task>) {
         // Green threads flag their presence with an atomic counter, and if they
         // fail to be the first to the mutex, they enqueue themselves on a
         // concurrent internal queue with a stack-allocated node.

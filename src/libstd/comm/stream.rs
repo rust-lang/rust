@@ -24,6 +24,7 @@ use iter::Iterator;
 use kinds::Send;
 use ops::Drop;
 use option::{Some, None};
+use owned::Box;
 use result::{Ok, Err, Result};
 use rt::local::Local;
 use rt::task::{Task, BlockedTask};
@@ -181,7 +182,7 @@ impl<T: Send> Packet<T> {
 
         // Welp, our channel has no data. Deschedule the current task and
         // initiate the blocking protocol.
-        let task: ~Task = Local::take();
+        let task: Box<Task> = Local::take();
         task.deschedule(1, |task| {
             self.decrement(task)
         });

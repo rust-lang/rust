@@ -8,13 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foo(x: ~int) -> int {
+
+fn foo(x: Box<int>) -> int {
     let y = &*x;
     free(x); //~ ERROR cannot move out of `x` because it is borrowed
     *y
 }
 
-fn free(_x: ~int) {
+fn free(_x: Box<int>) {
 }
 
 fn main() {

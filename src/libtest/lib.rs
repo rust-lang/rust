@@ -132,7 +132,7 @@ pub enum TestFn {
     StaticMetricFn(proc(&mut MetricMap)),
     DynTestFn(proc():Send),
     DynMetricFn(proc(&mut MetricMap)),
-    DynBenchFn(~TDynBenchFn)
+    DynBenchFn(Box<TDynBenchFn>)
 }
 
 impl TestFn {
@@ -1001,8 +1001,8 @@ pub fn run_test(opts: &TestOpts,
             if nocapture {
                 drop((stdout, stderr));
             } else {
-                task.opts.stdout = Some(box stdout as ~Writer:Send);
-                task.opts.stderr = Some(box stderr as ~Writer:Send);
+                task.opts.stdout = Some(box stdout as Box<Writer:Send>);
+                task.opts.stderr = Some(box stderr as Box<Writer:Send>);
             }
             let result_future = task.future_result();
             task.spawn(testfn);

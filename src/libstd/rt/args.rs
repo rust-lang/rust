@@ -67,6 +67,7 @@ mod imp {
     use clone::Clone;
     use option::{Option, Some, None};
     use iter::Iterator;
+    use owned::Box;
     use unstable::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
     use mem;
     #[cfg(not(test))] use str::StrSlice;
@@ -91,7 +92,7 @@ mod imp {
         with_lock(|| unsafe {
             let ptr = get_global_ptr();
             let val = mem::replace(&mut *ptr, None);
-            val.as_ref().map(|s: &~~[~[u8]]| (**s).clone())
+            val.as_ref().map(|s: &Box<~[~[u8]]>| (**s).clone())
         })
     }
 
@@ -106,7 +107,7 @@ mod imp {
     pub fn clone() -> Option<~[~[u8]]> {
         with_lock(|| unsafe {
             let ptr = get_global_ptr();
-            (*ptr).as_ref().map(|s: &~~[~[u8]]| (**s).clone())
+            (*ptr).as_ref().map(|s: &Box<~[~[u8]]>| (**s).clone())
         })
     }
 
@@ -117,7 +118,7 @@ mod imp {
         }
     }
 
-    fn get_global_ptr() -> *mut Option<~~[~[u8]]> {
+    fn get_global_ptr() -> *mut Option<Box<~[~[u8]]>> {
         unsafe { cast::transmute(&global_args_ptr) }
     }
 

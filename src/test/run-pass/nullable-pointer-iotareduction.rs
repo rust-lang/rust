@@ -74,7 +74,7 @@ macro_rules! check_type {
 
 pub fn main() {
     check_type!(&17: &int);
-    check_type!(~18: ~int);
+    check_type!(box 18: Box<int>);
     check_type!(@19: @int);
     check_type!("foo".to_owned(): ~str);
     check_type!(vec!(20, 22): Vec<int> );

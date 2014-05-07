@@ -128,7 +128,7 @@ pub struct mt {
 
 #[deriving(Clone, Eq, TotalEq, Hash, Encodable, Decodable, Show)]
 pub enum TraitStore {
-    /// ~Trait
+    /// Box<Trait>
     UniqTraitStore,
     /// &Trait and &mut Trait
     RegionTraitStore(Region, ast::Mutability),
@@ -229,7 +229,7 @@ pub enum AutoRef {
     /// Convert from T to *T
     AutoUnsafe(ast::Mutability),
 
-    /// Convert from ~Trait/&Trait to &Trait
+    /// Convert from Box<Trait>/&Trait to &Trait
     AutoBorrowObj(Region, ast::Mutability),
 }
 
@@ -239,7 +239,7 @@ pub enum AutoRef {
 pub struct ctxt {
     // Specifically use a speedy hash algorithm for this hash map, it's used
     // quite often.
-    pub interner: RefCell<FnvHashMap<intern_key, ~t_box_>>,
+    pub interner: RefCell<FnvHashMap<intern_key, Box<t_box_>>>,
     pub next_id: Cell<uint>,
     pub sess: Session,
     pub def_map: resolve::DefMap,
@@ -735,8 +735,8 @@ pub enum sty {
     ty_ptr(mt),
     ty_rptr(Region, mt),
     ty_bare_fn(BareFnTy),
-    ty_closure(~ClosureTy),
-    ty_trait(~TyTrait),
+    ty_closure(Box<ClosureTy>),
+    ty_trait(Box<TyTrait>),
     ty_struct(DefId, substs),
     ty_tup(Vec<t>),
 
@@ -1195,7 +1195,7 @@ pub fn mk_t(cx: &ctxt, st: sty) -> t {
       &ty_enum(_, ref substs) | &ty_struct(_, ref substs) => {
           flags |= sflags(substs);
       }
-      &ty_trait(~ty::TyTrait { ref substs, store, .. }) => {
+      &ty_trait(box ty::TyTrait { ref substs, store, .. }) => {
           flags |= sflags(substs);
           match store {
               RegionTraitStore(r, _) => {
@@ -1482,7 +1482,7 @@ pub fn maybe_walk_ty(ty: t, f: |t| -> bool) {
             maybe_walk_ty(tm.ty, f);
         }
         ty_enum(_, ref substs) | ty_struct(_, ref substs) |
-        ty_trait(~TyTrait { ref substs, .. }) => {
+        ty_trait(box TyTrait { ref substs, .. }) => {
             for subty in (*substs).tps.iter() { maybe_walk_ty(*subty, |x| f(x)); }
         }
         ty_tup(ref ts) => { for tt in ts.iter() { maybe_walk_ty(*tt, |x| f(x)); } }
@@ -1951,7 +1951,7 @@ impl TypeContents {
     pub fn owned_pointer(&self) -> TypeContents {
         /*!
          * Includes only those bits that still apply
-         * when indirected through a `~` pointer
+         * when indirected through a `Box` pointer
          */
         TC::OwnsOwned | (
             *self & (TC::OwnsAll | TC::ReachesAll))
@@ -2050,7 +2050,7 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
         // private cache for this walk.  This is needed in the case of cyclic
         // types like:
         //
-        //     struct List { next: ~Option<List>, ... }
+        //     struct List { next: Box<Option<List>>, ... }
         //
         // When computing the type contents of such a type, we wind up deeply
         // recursing as we go.  So when we encounter the recursive reference
@@ -2100,7 +2100,7 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
                 }
             }
 
-            ty_trait(~ty::TyTrait { store, bounds, .. }) => {
+            ty_trait(box ty::TyTrait { store, bounds, .. }) => {
                 object_contents(cx, store, bounds)
             }
 
@@ -2965,7 +2965,7 @@ pub fn adjust_ty(cx: &ctxt,
     fn borrow_obj(cx: &ctxt, span: Span, r: Region,
                   m: ast::Mutability, ty: ty::t) -> ty::t {
         match get(ty).sty {
-            ty_trait(~ty::TyTrait {def_id, ref substs, bounds, .. }) => {
+            ty_trait(box ty::TyTrait {def_id, ref substs, bounds, .. }) => {
                 ty::mk_trait(cx, def_id, substs.clone(),
                              RegionTraitStore(r, m), bounds)
             }
@@ -3164,7 +3164,7 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
                     // writing) it's not easy to distinguish casts to traits
                     // from other casts based on the AST.  This should be
                     // easier in the future, when casts to traits
-                    // would like @Foo, ~Foo, or &Foo.
+                    // would like @Foo, Box<Foo>, or &Foo.
                     RvalueDatumExpr
                 }
             }
@@ -3192,7 +3192,7 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
         }
 
         ast::ExprBox(place, _) => {
-            // Special case `~T` for now:
+            // Special case `Box<T>` for now:
             let definition = match tcx.def_map.borrow().find(&place.id) {
                 Some(&def) => def,
                 None => fail!("no def for place"),
@@ -3264,7 +3264,7 @@ pub fn ty_sort_str(cx: &ctxt, t: t) -> ~str {
 
         ty_enum(id, _) => format!("enum {}", item_path_str(cx, id)),
         ty_box(_) => "@-ptr".to_owned(),
-        ty_uniq(_) => "~-ptr".to_owned(),
+        ty_uniq(_) => "box".to_owned(),
         ty_vec(_, _) => "vector".to_owned(),
         ty_ptr(_) => "*-ptr".to_owned(),
         ty_rptr(_, _) => "&-ptr".to_owned(),
@@ -3614,7 +3614,9 @@ pub fn try_add_builtin_trait(tcx: &ctxt,
 
 pub fn ty_to_def_id(ty: t) -> Option<ast::DefId> {
     match get(ty).sty {
-        ty_trait(~TyTrait { def_id: id, .. }) | ty_struct(id, _) | ty_enum(id, _) => Some(id),
+        ty_trait(box TyTrait { def_id: id, .. }) |
+        ty_struct(id, _) |
+        ty_enum(id, _) => Some(id),
         _ => None
     }
 }
@@ -4575,7 +4577,7 @@ pub fn hash_crate_independent(tcx: &ctxt, t: t, svh: &Svh) -> u64 {
                     }
                 }
             }
-            ty_trait(~ty::TyTrait { def_id: d, store, bounds, .. }) => {
+            ty_trait(box ty::TyTrait { def_id: d, store, bounds, .. }) => {
                 byte!(17);
                 did(&mut state, d);
                 match store {

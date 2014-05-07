@@ -23,17 +23,17 @@ impl fmt::Show for Number {
 }
 
 struct List {
-    list: Vec<~ToStr> }
+    list: Vec<Box<ToStr>> }
 
 impl List {
-    fn push(&mut self, n: ~ToStr) {
+    fn push(&mut self, n: Box<ToStr>) {
         self.list.push(n);
     }
 }
 
 fn main() {
-    let n = ~Number { n: 42 };
-    let mut l = ~List { list: Vec::new() };
+    let n = box Number { n: 42 };
+    let mut l = box List { list: Vec::new() };
     l.push(n);
     let x = n.to_str();
     //~^ ERROR: use of moved value: `n`

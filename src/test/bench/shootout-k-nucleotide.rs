@@ -91,16 +91,16 @@ impl TableCallback for PrintCallback {
 struct Entry {
     code: Code,
     count: uint,
-    next: Option<~Entry>,
+    next: Option<Box<Entry>>,
 }
 
 struct Table {
     count: uint,
-    items: Vec<Option<~Entry>> }
+    items: Vec<Option<Box<Entry>>> }
 
 struct Items<'a> {
     cur: Option<&'a Entry>,
-    items: slice::Items<'a, Option<~Entry>>,
+    items: slice::Items<'a, Option<Box<Entry>>>,
 }
 
 impl Table {
@@ -114,7 +114,7 @@ impl Table {
     fn search_remainder<C:TableCallback>(item: &mut Entry, key: Code, c: C) {
         match item.next {
             None => {
-                let mut entry = ~Entry {
+                let mut entry = box Entry {
                     code: key,
                     count: 0,
                     next: None,
@@ -138,7 +138,7 @@ impl Table {
 
         {
             if self.items.get(index as uint).is_none() {
-                let mut entry = ~Entry {
+                let mut entry = box Entry {
                     code: key,
                     count: 0,
                     next: None,

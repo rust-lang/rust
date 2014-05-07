@@ -36,7 +36,7 @@ use std::ptr;
 #[allow(missing_doc)]
 #[deriving(Clone)]
 pub struct TreeMap<K, V> {
-    root: Option<~TreeNode<K, V>>,
+    root: Option<Box<TreeNode<K, V>>>,
     length: uint
 }
 
@@ -79,7 +79,7 @@ impl<K: TotalOrd, V> Mutable for TreeMap<K, V> {
 
 impl<K: TotalOrd, V> Map<K, V> for TreeMap<K, V> {
     fn find<'a>(&'a self, key: &K) -> Option<&'a V> {
-        let mut current: &'a Option<~TreeNode<K, V>> = &self.root;
+        let mut current: &'a Option<Box<TreeNode<K, V>>> = &self.root;
         loop {
             match *current {
               Some(ref r) => {
@@ -157,7 +157,7 @@ impl<K: TotalOrd, V> TreeMap<K, V> {
         let TreeMap { root: root, length: length } = self;
         let stk = match root {
             None => vec!(),
-            Some(~tn) => vec!(tn)
+            Some(box tn) => vec!(tn)
         };
         MoveEntries {
             stack: stk,
@@ -317,7 +317,7 @@ macro_rules! define_iterator {
     ($name:ident,
      $rev_name:ident,
 
-     // the function to go from &m Option<~TreeNode> to *m TreeNode
+     // the function to go from &m Option<Box<TreeNode>> to *m TreeNode
      deref = $deref:ident,
 
      // see comment on `addr!`, this is just an optional `mut`, but
@@ -441,7 +441,7 @@ define_iterator! {
     addr_mut = mut
 }
 
-fn deref<'a, K, V>(node: &'a Option<~TreeNode<K, V>>) -> *TreeNode<K, V> {
+fn deref<'a, K, V>(node: &'a Option<Box<TreeNode<K, V>>>) -> *TreeNode<K, V> {
     match *node {
         Some(ref n) => {
             let n: &TreeNode<K, V> = *n;
@@ -451,7 +451,8 @@ fn deref<'a, K, V>(node: &'a Option<~TreeNode<K, V>>) -> *TreeNode<K, V> {
     }
 }
 
-fn mut_deref<K, V>(x: &mut Option<~TreeNode<K, V>>) -> *mut TreeNode<K, V> {
+fn mut_deref<K, V>(x: &mut Option<Box<TreeNode<K, V>>>)
+             -> *mut TreeNode<K, V> {
     match *x {
         Some(ref mut n) => {
             let n: &mut TreeNode<K, V> = *n;
@@ -482,7 +483,7 @@ impl<K, V> Iterator<(K, V)> for MoveEntries<K,V> {
             } = self.stack.pop().unwrap();
 
             match left {
-                Some(~left) => {
+                Some(box left) => {
                     let n = TreeNode {
                         key: key,
                         value: value,
@@ -495,7 +496,7 @@ impl<K, V> Iterator<(K, V)> for MoveEntries<K,V> {
                 }
                 None => {
                     match right {
-                        Some(~right) => self.stack.push(right),
+                        Some(box right) => self.stack.push(right),
                         None => ()
                     }
                     self.remaining -= 1;
@@ -759,8 +760,8 @@ impl<'a, T: TotalOrd> Iterator<&'a T> for UnionItems<'a, T> {
 struct TreeNode<K, V> {
     key: K,
     value: V,
-    left: Option<~TreeNode<K, V>>,
-    right: Option<~TreeNode<K, V>>,
+    left: Option<Box<TreeNode<K, V>>>,
+    right: Option<Box<TreeNode<K, V>>>,
     level: uint
 }
 
@@ -773,7 +774,7 @@ impl<K: TotalOrd, V> TreeNode<K, V> {
 }
 
 // Remove left horizontal link by rotating right
-fn skew<K: TotalOrd, V>(node: &mut ~TreeNode<K, V>) {
+fn skew<K: TotalOrd, V>(node: &mut Box<TreeNode<K, V>>) {
     if node.left.as_ref().map_or(false, |x| x.level == node.level) {
         let mut save = node.left.take_unwrap();
         swap(&mut node.left, &mut save.right); // save.right now None
@@ -784,7 +785,7 @@ fn skew<K: TotalOrd, V>(node: &mut ~TreeNode<K, V>) {
 
 // Remove dual horizontal link by rotating left and increasing level of
 // the parent
-fn split<K: TotalOrd, V>(node: &mut ~TreeNode<K, V>) {
+fn split<K: TotalOrd, V>(node: &mut Box<TreeNode<K, V>>) {
     if node.right.as_ref().map_or(false,
       |x| x.right.as_ref().map_or(false, |y| y.level == node.level)) {
         let mut save = node.right.take_unwrap();
@@ -795,7 +796,7 @@ fn split<K: TotalOrd, V>(node: &mut ~TreeNode<K, V>) {
     }
 }
 
-fn find_mut<'r, K: TotalOrd, V>(node: &'r mut Option<~TreeNode<K, V>>,
+fn find_mut<'r, K: TotalOrd, V>(node: &'r mut Option<Box<TreeNode<K, V>>>,
                                 key: &K)
                              -> Option<&'r mut V> {
     match *node {
@@ -810,7 +811,7 @@ fn find_mut<'r, K: TotalOrd, V>(node: &'r mut Option<~TreeNode<K, V>>,
     }
 }
 
-fn insert<K: TotalOrd, V>(node: &mut Option<~TreeNode<K, V>>,
+fn insert<K: TotalOrd, V>(node: &mut Option<Box<TreeNode<K, V>>>,
                           key: K, value: V) -> Option<V> {
     match *node {
       Some(ref mut save) => {
@@ -840,10 +841,10 @@ fn insert<K: TotalOrd, V>(node: &mut Option<~TreeNode<K, V>>,
     }
 }
 
-fn remove<K: TotalOrd, V>(node: &mut Option<~TreeNode<K, V>>,
+fn remove<K: TotalOrd, V>(node: &mut Option<Box<TreeNode<K, V>>>,
                           key: &K) -> Option<V> {
-    fn heir_swap<K: TotalOrd, V>(node: &mut ~TreeNode<K, V>,
-                                 child: &mut Option<~TreeNode<K, V>>) {
+    fn heir_swap<K: TotalOrd, V>(node: &mut Box<TreeNode<K, V>>,
+                                 child: &mut Option<Box<TreeNode<K, V>>>) {
         // *could* be done without recursion, but it won't borrow check
         for x in child.mut_iter() {
             if x.right.is_some() {
@@ -877,13 +878,13 @@ fn remove<K: TotalOrd, V>(node: &mut Option<~TreeNode<K, V>>,
                     (remove(&mut save.left, key), true)
                 } else {
                     let new = save.left.take_unwrap();
-                    let ~TreeNode{value, ..} = replace(save, new);
+                    let box TreeNode{value, ..} = replace(save, new);
                     *save = save.left.take_unwrap();
                     (Some(value), true)
                 }
             } else if save.right.is_some() {
                 let new = save.right.take_unwrap();
-                let ~TreeNode{value, ..} = replace(save, new);
+                let box TreeNode{value, ..} = replace(save, new);
                 (Some(value), true)
             } else {
                 (None, false)
@@ -919,7 +920,7 @@ fn remove<K: TotalOrd, V>(node: &mut Option<~TreeNode<K, V>>,
       }
     }
     return match node.take() {
-        Some(~TreeNode{value, ..}) => Some(value), None => fail!()
+        Some(box TreeNode{value, ..}) => Some(value), None => fail!()
     };
 }
 
@@ -959,7 +960,6 @@ impl<T: TotalOrd> Extendable<T> for TreeSet<T> {
 
 #[cfg(test)]
 mod test_treemap {
-
     use super::{TreeMap, TreeNode};
 
     use rand::Rng;
@@ -1053,8 +1053,8 @@ mod test_treemap {
         }
     }
 
-    fn check_left<K: TotalOrd, V>(node: &Option<~TreeNode<K, V>>,
-                                  parent: &~TreeNode<K, V>) {
+    fn check_left<K: TotalOrd, V>(node: &Option<Box<TreeNode<K, V>>>,
+                                  parent: &Box<TreeNode<K, V>>) {
         match *node {
           Some(ref r) => {
             assert_eq!(r.key.cmp(&parent.key), Less);
@@ -1066,8 +1066,8 @@ mod test_treemap {
         }
     }
 
-    fn check_right<K: TotalOrd, V>(node: &Option<~TreeNode<K, V>>,
-                                   parent: &~TreeNode<K, V>,
+    fn check_right<K: TotalOrd, V>(node: &Option<Box<TreeNode<K, V>>>,
+                                   parent: &Box<TreeNode<K, V>>,
                                    parent_red: bool) {
         match *node {
           Some(ref r) => {

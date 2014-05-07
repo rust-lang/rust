@@ -11,7 +11,8 @@
 // Verify the compiler fails with an error on infinite function
 // recursions.
 
-struct Data(~Option<Data>);
+
+struct Data(Box<Option<Data>>);
 
 fn generic<T>( _ : Vec<(Data,T)> ) {
     //~^ ERROR reached the recursion limit during monomorphization

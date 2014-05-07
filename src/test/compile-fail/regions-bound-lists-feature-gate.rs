@@ -8,9 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 trait Foo { }
 
-fn foo<'a>(x: ~Foo:'a) { //~ ERROR only the 'static lifetime is accepted here
+fn foo<'a>(x: Box<Foo:'a>) { //~ ERROR only the 'static lifetime is accepted here
 }
 
 fn bar<'a, T:'a>() { //~ ERROR only the 'static lifetime is accepted here

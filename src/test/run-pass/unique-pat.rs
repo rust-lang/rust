@@ -9,8 +9,8 @@
 // except according to those terms.
 
 fn simple() {
-    match ~true {
-      ~true => { }
+    match box true {
+      box true => { }
       _ => { fail!(); }
     }
 }

@@ -13,24 +13,25 @@
 
 #![feature(macro_rules)]
 
+
 struct Foo {
   a: int
 }
 
 pub enum Bar {
-  Bar1, Bar2(int, ~Bar),
+  Bar1, Bar2(int, Box<Bar>),
 }
 
 impl Foo {
-  fn elaborate_stm(&mut self, s: ~Bar) -> ~Bar {
+  fn elaborate_stm(&mut self, s: Box<Bar>) -> Box<Bar> {
     macro_rules! declare(
       ($id:expr, $rest:expr) => ({
         self.check_id($id);
-        ~Bar2($id, $rest)
+        box Bar2($id, $rest)
       })
     );
     match s {
-      ~Bar2(id, rest) => declare!(id, self.elaborate_stm(rest)),
+      box Bar2(id, rest) => declare!(id, self.elaborate_stm(rest)),
       _ => fail!()
     }
   }

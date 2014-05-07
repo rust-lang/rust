@@ -20,6 +20,7 @@ use parse;
 use parse::token::InternedString;
 use parse::token;
 
+
 enum State {
     Asm,
     Outputs,
@@ -45,7 +46,7 @@ impl State {
 static OPTIONS: &'static [&'static str] = &["volatile", "alignstack", "intel"];
 
 pub fn expand_asm(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
-               -> ~base::MacResult {
+                  -> Box<base::MacResult> {
     let mut p = parse::new_parser_from_tts(cx.parse_sess(),
                                            cx.cfg(),
                                            tts.iter()

@@ -9,6 +9,6 @@
 // except according to those terms.
 
 pub fn main() {
-    let i = ~100;
+    let i = box 100;
     println!("{:?}", i);
 }

@@ -182,13 +182,14 @@ trait. Therefore, unboxed traits don't make any sense, and aren't allowed.
 Sometimes, you need a recursive data structure. The simplest is known as a 'cons list':
 
 ~~~rust
+
 enum List<T> {
     Nil,
-    Cons(T, ~List<T>),
+    Cons(T, Box<List<T>>),
 }
 
 fn main() {
-    let list: List<int> = Cons(1, ~Cons(2, ~Cons(3, ~Nil)));
+    let list: List<int> = Cons(1, box Cons(2, box Cons(3, box Nil)));
     println!("{:?}", list);
 }
 ~~~
@@ -196,7 +197,7 @@ fn main() {
 This prints:
 
 ~~~ {.notrust}
-Cons(1, ~Cons(2, ~Cons(3, ~Nil)))
+Cons(1, box Cons(2, box Cons(3, box Nil)))
 ~~~
 
 The inner lists _must_ be an owned pointer, because we can't know how many
@@ -237,7 +238,7 @@ struct Point {
 }
 
 fn main() {
-    let a = ~Point { x: 10, y: 20 };
+    let a = box Point { x: 10, y: 20 };
     spawn(proc() {
         println!("{}", a.x);
     });
@@ -268,7 +269,7 @@ struct Point {
 }
 
 fn main() {
-    let a = ~Point { x: 10, y: 20 };
+    let a = box Point { x: 10, y: 20 };
     let b = a;
     println!("{}", b.x);
     println!("{}", a.x);
@@ -285,7 +286,7 @@ note: in expansion of format_args!
 <std-macros>:158:27: 158:81 note: expansion site
 <std-macros>:157:5: 159:6 note: in expansion of println!
 test.rs:10:5: 10:25 note: expansion site
-test.rs:8:9: 8:10 note: `a` moved here because it has type `~Point`, which is moved by default (use `ref` to override)
+test.rs:8:9: 8:10 note: `a` moved here because it has type `Box<Point>`, which is moved by default (use `ref` to override)
 test.rs:8     let b = a;
                   ^
 ~~~
@@ -345,8 +346,8 @@ fn compute_distance(p1: &Point, p2: &Point) -> f32 {
 }
 
 fn main() {
-    let origin = @Point { x: 0.0, y: 0.0 };
-    let p1     = ~Point { x: 5.0, y: 3.0 };
+    let origin =    @Point { x: 0.0, y: 0.0 };
+    let p1     = box Point { x: 5.0, y: 3.0 };
 
     println!("{:?}", compute_distance(origin, p1));
 }
@@ -381,7 +382,7 @@ duration a 'lifetime'. Let's try a more complex example:
 
 ~~~rust
 fn main() {
-    let mut x = ~5;
+    let mut x = box 5;
     if *x < 10 {
         let y = &x;
         println!("Oh no: {:?}", y);
@@ -398,7 +399,7 @@ mutated, and therefore, lets us pass. This wouldn't work:
 
 ~~~rust{.ignore}
 fn main() {
-    let mut x = ~5;
+    let mut x = box 5;
     if *x < 10 {
         let y = &x;
         *x -= 1;
@@ -437,12 +438,12 @@ is best.
 What does that mean? Don't do this:
 
 ~~~rust
-fn foo(x: ~int) -> ~int {
-    return ~*x;
+fn foo(x: Box<int>) -> Box<int> {
+    return box *x;
 }
 
 fn main() {
-    let x = ~5;
+    let x = box 5;
     let y = foo(x);
 }
 ~~~
@@ -450,13 +451,13 @@ fn main() {
 Do this:
 
 ~~~rust
-fn foo(x: ~int) -> int {
+fn foo(x: Box<int>) -> int {
     return *x;
 }
 
 fn main() {
-    let x = ~5;
-    let y = ~foo(x);
+    let x = box 5;
+    let y = box foo(x);
 }
 ~~~
 
@@ -464,12 +465,12 @@ This gives you flexibility, without sacrificing performance. For example, this w
 also work:
 
 ~~~rust
-fn foo(x: ~int) -> int {
+fn foo(x: Box<int>) -> int {
     return *x;
 }
 
 fn main() {
-    let x = ~5;
+    let x = box 5;
     let y = @foo(x);
 }
 ~~~

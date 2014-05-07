@@ -65,7 +65,7 @@ fn main() {
     let managed_val_interior_ref_1: &int = &managed_val.x;
     let managed_val_interior_ref_2: &f64 = &managed_val.y;
 
-    let unique_val = ~SomeStruct { x: 13, y: 26.5 };
+    let unique_val = box SomeStruct { x: 13, y: 26.5 };
     let unique_val_ref: &SomeStruct = unique_val;
     let unique_val_interior_ref_1: &int = &unique_val.x;
     let unique_val_interior_ref_2: &f64 = &unique_val.y;

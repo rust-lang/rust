@@ -876,7 +876,8 @@ fn conv_builtin_bounds(tcx: &ty::ctxt, ast_bounds: &Option<OwnedSlice<ast::TyPar
     //! legal.
     //! If no bounds were specified, we choose a "default" bound based on
     //! the allocation type of the fn/trait, as per issue #7264. The user can
-    //! override this with an empty bounds list, e.g. "~fn:()" or "~Trait:".
+    //! override this with an empty bounds list, e.g. "Box<fn:()>" or
+    //! "Box<Trait:>".
 
     match (ast_bounds, store) {
         (&Some(ref bound_vec), _) => {

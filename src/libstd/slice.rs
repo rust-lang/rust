@@ -2352,10 +2352,11 @@ impl<A> FromIterator<A> for ~[A] {
 #[cfg(test)]
 mod tests {
     use prelude::*;
-    use mem;
-    use slice::*;
     use cmp::*;
+    use mem;
+    use owned::Box;
     use rand::{Rng, task_rng};
+    use slice::*;
 
     fn square(n: uint) -> uint { n * n }
 
@@ -2738,8 +2739,8 @@ mod tests {
         let mut v2 = vec![box 1, box 2, box 3, box 3];
         v2.dedup();
         /*
-         * If the ~pointers were leaked or otherwise misused, valgrind and/or
-         * rustrt should raise errors.
+         * If the boxed pointers were leaked or otherwise misused, valgrind
+         * and/or rustrt should raise errors.
          */
     }
 
@@ -3117,7 +3118,7 @@ mod tests {
 
         struct S {
             f: Cell<int>,
-            boxes: (~int, Rc<int>)
+            boxes: (Box<int>, Rc<int>)
         }
 
         impl Clone for S {
@@ -3566,13 +3567,7 @@ mod tests {
         }
         assert_eq!(cnt, 11);
 
-        let xs = vec![Foo, Foo, Foo];
-        assert_eq!(format!("{:?}", xs.slice(0, 2).to_owned()),
-                   "~[slice::tests::Foo, slice::tests::Foo]".to_owned());
-
         let xs: [Foo, ..3] = [Foo, Foo, Foo];
-        assert_eq!(format!("{:?}", xs.slice(0, 2).to_owned()),
-                   "~[slice::tests::Foo, slice::tests::Foo]".to_owned());
         cnt = 0;
         for f in xs.iter() {
             assert!(*f == Foo);

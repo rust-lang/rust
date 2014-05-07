@@ -23,7 +23,7 @@ struct MyStruct {
 }
 
 struct MyNoncopyStruct {
-    x: ~int,
+    x: Box<int>,
 }
 
 fn test<'a,T,U:Copy>(_: &'a int) {
@@ -38,10 +38,10 @@ fn test<'a,T,U:Copy>(_: &'a int) {
     assert_copy::<&'a mut int>();  //~ ERROR does not fulfill
 
     // ~ pointers are not ok
-    assert_copy::<~int>();   //~ ERROR does not fulfill
+    assert_copy::<Box<int>>();   //~ ERROR does not fulfill
     assert_copy::<~str>();   //~ ERROR does not fulfill
     assert_copy::<Vec<int> >(); //~ ERROR does not fulfill
-    assert_copy::<~&'a mut int>(); //~ ERROR does not fulfill
+    assert_copy::<Box<&'a mut int>>(); //~ ERROR does not fulfill
 
     // borrowed object types are generally ok
     assert_copy::<&'a Dummy>();
@@ -49,8 +49,8 @@ fn test<'a,T,U:Copy>(_: &'a int) {
     assert_copy::<&'static Dummy:Copy>();
 
     // owned object types are not ok
-    assert_copy::<~Dummy>(); //~ ERROR does not fulfill
-    assert_copy::<~Dummy:Copy>(); //~ ERROR does not fulfill
+    assert_copy::<Box<Dummy>>(); //~ ERROR does not fulfill
+    assert_copy::<Box<Dummy:Copy>>(); //~ ERROR does not fulfill
 
     // mutable object types are not ok
     assert_copy::<&'a mut Dummy:Copy>();  //~ ERROR does not fulfill

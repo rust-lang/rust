@@ -10,6 +10,7 @@
 
 // Test sized-ness checking in substitution.
 
+
 // Unbounded.
 fn f1<type X>(x: &X) {
     f2::<X>(x); //~ ERROR instantiating a type parameter with an incompatible type `X`, which does n
@@ -49,7 +50,7 @@ fn f8<type X>(x1: &S<X>, x2: &S<X>) {
 }
 
 // Test some tuples.
-fn f9<type X>(x1: ~S<X>, x2: ~E<X>) {
+fn f9<type X>(x1: Box<S<X>>, x2: Box<E<X>>) {
     f5(&(*x1, 34)); //~ERROR instantiating a type parameter with an incompatible type `(S<X>,int)`,
     f5(&(32, *x2)); //~ERROR instantiating a type parameter with an incompatible type `(int,E<X>)`,
 }

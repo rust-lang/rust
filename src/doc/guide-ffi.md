@@ -285,7 +285,7 @@ extern {
 
 fn main() {
     // Create the object that will be referenced in the callback
-    let mut rust_object = ~RustObject{ a: 5 };
+    let mut rust_object = box RustObject { a: 5 };
 
     unsafe {
         register_callback(&mut *rust_object, callback);

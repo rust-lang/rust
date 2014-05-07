@@ -12,7 +12,8 @@
 // transferring ownership of the owned box before invoking the stack
 // closure results in a crash.
 
-fn twice(x: ~uint) -> uint {
+
+fn twice(x: Box<uint>) -> uint {
      *x * 2
 }
 
@@ -21,7 +22,7 @@ fn invoke(f: || -> uint) {
 }
 
 fn main() {
-      let x  : ~uint         = ~9;
+      let x  : Box<uint>  = box 9;
       let sq : || -> uint =  || { *x * *x };
 
       twice(x); //~ ERROR: cannot move out of

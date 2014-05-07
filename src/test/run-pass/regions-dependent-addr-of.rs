@@ -21,7 +21,7 @@ struct B {
     v2: [int, ..3],
     v3: Vec<int> ,
     v4: C,
-    v5: ~C,
+    v5: Box<C>,
     v6: Option<C>
 }
 
@@ -78,7 +78,7 @@ fn get_v6_c<'v>(a: &'v A, _i: uint) -> &'v int {
 
 fn get_v5_ref<'v>(a: &'v A, _i: uint) -> &'v int {
     match &a.value {
-        &B {v5: ~C {f: ref v}, ..} => v
+        &B {v5: box C {f: ref v}, ..} => v
     }
 }
 
@@ -87,7 +87,7 @@ pub fn main() {
                          v2: [23, 24, 25],
                          v3: vec!(26, 27, 28),
                          v4: C { f: 29 },
-                         v5: ~C { f: 30 },
+                         v5: box C { f: 30 },
                          v6: Some(C { f: 31 })}};
 
     let p = get_v1(&a);

@@ -8,28 +8,29 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 fn a() {
-    let mut vec = [~1, ~2, ~3];
+    let mut vec = [box 1, box 2, box 3];
     match vec {
-        [~ref _a, _, _] => {
-            vec[0] = ~4; //~ ERROR cannot assign
+        [box ref _a, _, _] => {
+            vec[0] = box 4; //~ ERROR cannot assign
         }
     }
 }
 
 fn b() {
-    let mut vec = vec!(~1, ~2, ~3);
-    let vec: &mut [~int] = vec.as_mut_slice();
+    let mut vec = vec!(box 1, box 2, box 3);
+    let vec: &mut [Box<int>] = vec.as_mut_slice();
     match vec {
         [.._b] => {
-            vec[0] = ~4; //~ ERROR cannot assign
+            vec[0] = box 4; //~ ERROR cannot assign
         }
     }
 }
 
 fn c() {
-    let mut vec = vec!(~1, ~2, ~3);
-    let vec: &mut [~int] = vec.as_mut_slice();
+    let mut vec = vec!(box 1, box 2, box 3);
+    let vec: &mut [Box<int>] = vec.as_mut_slice();
     match vec {
         [_a,         //~ ERROR cannot move out
          .._b] => {  //~^ NOTE attempting to move value to here
@@ -46,8 +47,8 @@ fn c() {
 }
 
 fn d() {
-    let mut vec = vec!(~1, ~2, ~3);
-    let vec: &mut [~int] = vec.as_mut_slice();
+    let mut vec = vec!(box 1, box 2, box 3);
+    let vec: &mut [Box<int>] = vec.as_mut_slice();
     match vec {
         [.._a,     //~ ERROR cannot move out
          _b] => {} //~ NOTE attempting to move value to here
@@ -57,8 +58,8 @@ fn d() {
 }
 
 fn e() {
-    let mut vec = vec!(~1, ~2, ~3);
-    let vec: &mut [~int] = vec.as_mut_slice();
+    let mut vec = vec!(box 1, box 2, box 3);
+    let vec: &mut [Box<int>] = vec.as_mut_slice();
     match vec {
         [_a, _b, _c] => {}  //~ ERROR cannot move out
         //~^ NOTE attempting to move value to here

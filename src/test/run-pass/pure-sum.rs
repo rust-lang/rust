@@ -23,7 +23,7 @@ fn sums_to(v: Vec<int> , sum: int) -> bool {
 
 fn sums_to_using_uniq(v: Vec<int> , sum: int) -> bool {
     let mut i = 0u;
-    let mut sum0 = ~0;
+    let mut sum0 = box 0;
     while i < v.len() {
         *sum0 += *v.get(i);
         i += 1u;
@@ -45,7 +45,7 @@ struct F<T> { f: T }
 
 fn sums_to_using_uniq_rec(v: Vec<int> , sum: int) -> bool {
     let mut i = 0u;
-    let mut sum0 = F {f: ~0};
+    let mut sum0 = F {f: box 0};
     while i < v.len() {
         *sum0.f += *v.get(i);
         i += 1u;

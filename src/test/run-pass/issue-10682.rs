@@ -11,10 +11,11 @@
 // Regression test for issue #10682
 // Nested `proc` usage can't use outer owned data
 
-fn work(_: ~int) {}
+
+fn work(_: Box<int>) {}
 fn foo(_: proc()) {}
 
 pub fn main() {
-  let a = ~1;
+  let a = box 1;
   foo(proc() { foo(proc() { work(a) }) })
 }

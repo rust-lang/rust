@@ -21,6 +21,8 @@ the `clone` method.
 
 */
 
+use owned::Box;
+
 /// A common trait for cloning an object.
 pub trait Clone {
     /// Returns a copy of the value. The contents of owned pointers
@@ -39,14 +41,14 @@ pub trait Clone {
     }
 }
 
-impl<T: Clone> Clone for ~T {
+impl<T: Clone> Clone for Box<T> {
     /// Return a copy of the owned box.
     #[inline]
-    fn clone(&self) -> ~T { box {(**self).clone()} }
+    fn clone(&self) -> Box<T> { box {(**self).clone()} }
 
     /// Perform copy-assignment from `source` by reusing the existing allocation.
     #[inline]
-    fn clone_from(&mut self, source: &~T) {
+    fn clone_from(&mut self, source: &Box<T>) {
         (**self).clone_from(&(**source));
     }
 }
@@ -127,7 +129,7 @@ extern_fn_clone!(A, B, C, D, E, F, G, H)
 #[test]
 fn test_owned_clone() {
     let a = box 5i;
-    let b: ~int = a.clone();
+    let b: Box<int> = a.clone();
     assert_eq!(a, b);
 }
 

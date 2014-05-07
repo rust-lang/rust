@@ -89,7 +89,7 @@ fn get_drop_glue_type(ccx: &CrateContext, t: ty::t) -> ty::t {
                     let llty = sizing_type_of(ccx, typ);
                     // Unique boxes do not allocate for zero-size types. The standard
                     // library may assume that `free` is never called on the pointer
-                    // returned for `~ZeroSizeType`.
+                    // returned for `Box<ZeroSizeType>`.
                     if llsize_of_alloc(ccx, llty) == 0 {
                         ty::mk_i8()
                     } else {
@@ -318,7 +318,7 @@ fn make_drop_glue<'a>(bcx: &'a Block<'a>, v0: ValueRef, t: ty::t) -> &'a Block<'
                 }
             }
         }
-        ty::ty_trait(~ty::TyTrait { store: ty::UniqTraitStore, .. }) => {
+        ty::ty_trait(box ty::TyTrait { store: ty::UniqTraitStore, .. }) => {
             let lluniquevalue = GEPi(bcx, v0, [0, abi::trt_field_box]);
             // Only drop the value when it is non-null
             with_cond(bcx, IsNotNull(bcx, Load(bcx, lluniquevalue)), |bcx| {

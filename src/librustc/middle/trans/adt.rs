@@ -248,9 +248,10 @@ pub fn is_ffi_safe(tcx: &ty::ctxt, def_id: ast::DefId) -> bool {
             if hint.is_ffi_safe() {
                 return true;
             }
-            // Option<~T> and similar are used in FFI.  Rather than try to resolve type parameters
-            // and recognize this case exactly, this overapproximates -- assuming that if a
-            // non-C-like enum is being used in FFI then the user knows what they're doing.
+            // Option<Box<T>> and similar are used in FFI.  Rather than try to
+            // resolve type parameters and recognize this case exactly, this
+            // overapproximates -- assuming that if a non-C-like enum is being
+            // used in FFI then the user knows what they're doing.
             if variants.iter().any(|vi| !vi.args.is_empty()) {
                 return true;
             }

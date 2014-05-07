@@ -38,7 +38,7 @@ macro_rules! check_type {
 
 pub fn main() {
     check_type!(&'static int);
-    check_type!(~int);
+    check_type!(Box<int>);
     check_type!(@int);
     check_type!(~str);
     check_type!(extern fn());

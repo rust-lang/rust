@@ -8,17 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 trait Foo {
 }
 
-fn a(_x: ~Foo:Send) {
+fn a(_x: Box<Foo:Send>) {
 }
 
-fn c(x: ~Foo:Share+Send) {
+fn c(x: Box<Foo:Share+Send>) {
     a(x);
 }
 
-fn d(x: ~Foo:) {
+fn d(x: Box<Foo:>) {
     a(x); //~ ERROR found no bounds
 }
 

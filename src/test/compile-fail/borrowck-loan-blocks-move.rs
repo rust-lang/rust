@@ -8,11 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn take(_v: ~int) {
+
+fn take(_v: Box<int>) {
 }
 
 fn box_imm() {
-    let v = ~3;
+    let v = box 3;
     let _w = &v;
     take(v); //~ ERROR cannot move out of `v` because it is borrowed
 }

@@ -72,9 +72,10 @@ pub unsafe fn realloc_raw(ptr: *mut u8, size: uint) -> *mut u8 {
 #[lang="exchange_malloc"]
 #[inline]
 pub unsafe fn exchange_malloc(size: uint) -> *mut u8 {
-    // The compiler never calls `exchange_free` on ~ZeroSizeType, so zero-size
-    // allocations can point to this `static`. It would be incorrect to use a null
-    // pointer, due to enums assuming types like unique pointers are never null.
+    // The compiler never calls `exchange_free` on Box<ZeroSizeType>, so
+    // zero-size allocations can point to this `static`. It would be incorrect
+    // to use a null pointer, due to enums assuming types like unique pointers
+    // are never null.
     static EMPTY: () = ();
 
     if size == 0 {

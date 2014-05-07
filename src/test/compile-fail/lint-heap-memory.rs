@@ -13,19 +13,20 @@
 #![allow(dead_code)]
 #![allow(deprecated_owned_vector)]
 
+
 struct Foo {
     x: @int //~ ERROR type uses managed
 }
 
-struct Bar { x: ~int } //~ ERROR type uses owned
+struct Bar { x: Box<int> } //~ ERROR type uses owned
 
 fn main() {
-    let _x : Bar = Bar {x : ~10}; //~ ERROR type uses owned
+    let _x : Bar = Bar {x : box 10}; //~ ERROR type uses owned
 
     @2; //~ ERROR type uses managed
 
-    ~2; //~ ERROR type uses owned
-    fn g(_: ~Clone) {} //~ ERROR type uses owned
+    box 2; //~ ERROR type uses owned
+    fn g(_: Box<Clone>) {} //~ ERROR type uses owned
     "".to_owned(); //~ ERROR type uses owned
     proc() {}; //~ ERROR type uses owned
 }

@@ -88,7 +88,7 @@
 //!         }
 //!     });
 //!
-//!     shared_big_object.swap(~BigObject, SeqCst);
+//!     shared_big_object.swap(box BigObject, SeqCst);
 //! }
 //! ```
 //!
@@ -112,6 +112,7 @@ use cast;
 use std::kinds::marker;
 use option::{Option,Some,None};
 use ops::Drop;
+use owned::Box;
 use ty::Unsafe;
 
 /// An atomic boolean type.
@@ -663,7 +664,7 @@ impl<T> AtomicPtr<T> {
 
 impl<T> AtomicOption<T> {
     /// Create a new `AtomicOption`
-    pub fn new(p: ~T) -> AtomicOption<T> {
+    pub fn new(p: Box<T>) -> AtomicOption<T> {
         unsafe { AtomicOption { p: Unsafe::new(cast::transmute(p)) } }
     }
 
@@ -672,7 +673,7 @@ impl<T> AtomicOption<T> {
 
     /// Store a value, returning the old value
     #[inline]
-    pub fn swap(&self, val: ~T, order: Ordering) -> Option<~T> {
+    pub fn swap(&self, val: Box<T>, order: Ordering) -> Option<Box<T>> {
         unsafe {
             let val = cast::transmute(val);
 
@@ -687,7 +688,7 @@ impl<T> AtomicOption<T> {
 
     /// Remove the value, leaving the `AtomicOption` empty.
     #[inline]
-    pub fn take(&self, order: Ordering) -> Option<~T> {
+    pub fn take(&self, order: Ordering) -> Option<Box<T>> {
         unsafe { self.swap(cast::transmute(0), order) }
     }
 
@@ -697,7 +698,7 @@ impl<T> AtomicOption<T> {
     /// the option was already `Some`, returns `Some` of the rejected
     /// value.
     #[inline]
-    pub fn fill(&self, val: ~T, order: Ordering) -> Option<~T> {
+    pub fn fill(&self, val: Box<T>, order: Ordering) -> Option<Box<T>> {
         unsafe {
             let val = cast::transmute(val);
             let expected = cast::transmute(0);

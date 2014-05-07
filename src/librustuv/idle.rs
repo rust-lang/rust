@@ -19,11 +19,11 @@ pub struct IdleWatcher {
     handle: *uvll::uv_idle_t,
     idle_flag: bool,
     closed: bool,
-    callback: ~Callback:Send,
+    callback: Box<Callback:Send>,
 }
 
 impl IdleWatcher {
-    pub fn new(loop_: &mut Loop, cb: ~Callback:Send) -> ~IdleWatcher {
+    pub fn new(loop_: &mut Loop, cb: Box<Callback:Send>) -> Box<IdleWatcher> {
         let handle = UvHandle::alloc(None::<IdleWatcher>, uvll::UV_IDLE);
         assert_eq!(unsafe {
             uvll::uv_idle_init(loop_.handle, handle)
@@ -49,7 +49,7 @@ impl IdleWatcher {
         extern fn onetime_cb(handle: *uvll::uv_idle_t) {
             unsafe {
                 let data = uvll::get_data_for_uv_handle(handle);
-                let f: ~proc() = cast::transmute(data);
+                let f: Box<proc()> = cast::transmute(data);
                 (*f)();
                 assert_eq!(uvll::uv_idle_stop(handle), 0);
                 uvll::uv_close(handle, close_cb);
@@ -126,16 +126,16 @@ mod test {
         }
     }
 
-    fn mk(v: uint) -> (~IdleWatcher, Chan) {
+    fn mk(v: uint) -> (Box<IdleWatcher>, Chan) {
         let rc = Rc::new(RefCell::new((None, 0)));
         let cb = box MyCallback(rc.clone(), v);
-        let cb = cb as ~Callback:;
+        let cb = cb as Box<Callback:>;
         let cb = unsafe { cast::transmute(cb) };
         (IdleWatcher::new(&mut local_loop().loop_, cb), rc)
     }
 
     fn sleep(chan: &Chan) -> uint {
-        let task: ~Task = Local::take();
+        let task: Box<Task> = Local::take();
         task.deschedule(1, |task| {
             match *chan.borrow_mut().deref_mut() {
                 (ref mut slot, _) => {

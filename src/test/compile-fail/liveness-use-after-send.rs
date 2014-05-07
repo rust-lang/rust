@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 fn send<T:Send>(ch: _chan<T>, data: T) {
     println!("{:?}", ch);
     println!("{:?}", data);
@@ -18,7 +19,7 @@ struct _chan<T>(int);
 
 // Tests that "log(debug, message);" is flagged as using
 // message after the send deinitializes it
-fn test00_start(ch: _chan<~int>, message: ~int, _count: ~int) {
+fn test00_start(ch: _chan<Box<int>>, message: Box<int>, _count: Box<int>) {
     send(ch, message);
     println!("{:?}", message); //~ ERROR use of moved value: `message`
 }

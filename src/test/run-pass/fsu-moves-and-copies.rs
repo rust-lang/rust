@@ -21,9 +21,9 @@ impl NoFoo {
     fn new(x:int,y:int) -> NoFoo { NoFoo { copied: x, nocopy: ncint(y) } }
 }
 
-struct MoveFoo { copied: int, moved: ~int, }
+struct MoveFoo { copied: int, moved: Box<int>, }
 impl MoveFoo {
-    fn new(x:int,y:int) -> MoveFoo { MoveFoo { copied: x, moved: ~y } }
+    fn new(x:int,y:int) -> MoveFoo { MoveFoo { copied: x, moved: box y } }
 }
 
 struct DropNoFoo { inner: NoFoo }
@@ -59,8 +59,8 @@ fn test0() {
 
     // Case 2: Owned
     let f = DropMoveFoo::new(5, 6);
-    let b = DropMoveFoo { inner: MoveFoo { moved: ~7, ..f.inner }};
-    let c = DropMoveFoo { inner: MoveFoo { moved: ~8, ..f.inner }};
+    let b = DropMoveFoo { inner: MoveFoo { moved: box 7, ..f.inner }};
+    let c = DropMoveFoo { inner: MoveFoo { moved: box 8, ..f.inner }};
     assert_eq!(f.inner.copied,    5);
     assert_eq!(*f.inner.moved,    6);
 
@@ -75,7 +75,7 @@ fn test1() {
     // copying move-by-default fields from `f`, so it moves:
     let f = MoveFoo::new(11, 12);
 
-    let b = MoveFoo {moved: ~13, ..f};
+    let b = MoveFoo {moved: box 13, ..f};
     let c = MoveFoo {copied: 14, ..f};
     assert_eq!(b.copied,    11);
     assert_eq!(*b.moved,    13);
