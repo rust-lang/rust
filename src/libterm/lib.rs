@@ -65,25 +65,25 @@ mod win;
 #[cfg(not(windows))]
 /// Return a Terminal wrapping stdout, or None if a terminal couldn't be
 /// opened.
-pub fn stdout() -> Option<~Terminal<~Writer:Send>:Send> {
-    let ti: Option<TerminfoTerminal<~Writer:Send>>
-        = Terminal::new(~std::io::stdout() as ~Writer:Send);
-    ti.map(|t| ~t as ~Terminal<~Writer:Send>:Send)
+pub fn stdout() -> Option<Box<Terminal<Box<Writer:Send>>:Send>> {
+    let ti: Option<TerminfoTerminal<Box<Writer:Send>>>
+        = Terminal::new(box std::io::stdout() as Box<Writer:Send>);
+    ti.map(|t| box t as Box<Terminal<Box<Writer:Send>:Send>:Send>)
 }
 
 #[cfg(windows)]
 /// Return a Terminal wrapping stdout, or None if a terminal couldn't be
 /// opened.
-pub fn stdout() -> Option<~Terminal<~Writer:Send>:Send> {
-    let ti: Option<TerminfoTerminal<~Writer:Send>>
-        = Terminal::new(~std::io::stdout() as ~Writer:Send);
+pub fn stdout() -> Option<Box<Terminal<Box<Writer:Send>:Send>:Send>> {
+    let ti: Option<TerminfoTerminal<Box<Writer:Send>>>
+        = Terminal::new(box std::io::stdout() as Box<Writer:Send>);
 
     match ti {
-        Some(t) => Some(~t as ~Terminal<~Writer:Send>:Send),
+        Some(t) => Some(box t as Box<Terminal<Box<Writer:Send>:Send>:Send>),
         None => {
-            let wc: Option<WinConsole<~Writer:Send>>
-                = Terminal::new(~std::io::stdout() as ~Writer:Send);
-            wc.map(|w| ~w as ~Terminal<~Writer:Send>:Send)
+            let wc: Option<WinConsole<Box<Writer:Send>>>
+                = Terminal::new(box std::io::stdout() as Box<Writer:Send>);
+            wc.map(|w| box w as Box<Terminal<Box<Writer:Send>:Send>:Send>)
         }
     }
 }
@@ -91,25 +91,25 @@ pub fn stdout() -> Option<~Terminal<~Writer:Send>:Send> {
 #[cfg(not(windows))]
 /// Return a Terminal wrapping stderr, or None if a terminal couldn't be
 /// opened.
-pub fn stderr() -> Option<~Terminal<~Writer:Send>:Send> {
-    let ti: Option<TerminfoTerminal<~Writer:Send>>
-        = Terminal::new(~std::io::stderr() as ~Writer:Send);
-    ti.map(|t| ~t as ~Terminal<~Writer:Send>:Send)
+pub fn stderr() -> Option<Box<Terminal<Box<Writer:Send>:Send>:Send>:Send> {
+    let ti: Option<TerminfoTerminal<Box<Writer:Send>>>
+        = Terminal::new(box std::io::stderr() as Box<Writer:Send>);
+    ti.map(|t| box t as Box<Terminal<Box<Writer:Send>:Send>:Send>)
 }
 
 #[cfg(windows)]
 /// Return a Terminal wrapping stderr, or None if a terminal couldn't be
 /// opened.
-pub fn stderr() -> Option<~Terminal<~Writer:Send>:Send> {
-    let ti: Option<TerminfoTerminal<~Writer:Send>>
-        = Terminal::new(~std::io::stderr() as ~Writer:Send);
+pub fn stderr() -> Option<Box<Terminal<Box<Writer:Send>:Send>:Send>> {
+    let ti: Option<TerminfoTerminal<Box<Writer:Send>>>
+        = Terminal::new(box std::io::stderr() as Box<Writer:Send>);
 
     match ti {
-        Some(t) => Some(~t as ~Terminal<~Writer:Send>:Send),
+        Some(t) => Some(box t as Box<Terminal<Box<Writer:Send>:Send>:Send>),
         None => {
-            let wc: Option<WinConsole<~Writer:Send>>
-                = Terminal::new(~std::io::stderr() as ~Writer:Send);
-            wc.map(|w| ~w as ~Terminal<~Writer:Send>:Send)
+            let wc: Option<WinConsole<Box<Writer:Send>>>
+                = Terminal::new(box std::io::stderr() as Box<Writer:Send>);
+            wc.map(|w| box w as Box<Terminal<Box<Writer:Send>:Send>:Send>)
         }
     }
 }
