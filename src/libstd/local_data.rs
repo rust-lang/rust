@@ -357,7 +357,6 @@ mod tests {
     use super::*;
     use owned::Box;
     use task;
-    use str::StrSlice;
 
     #[test]
     fn test_tls_multitask() {

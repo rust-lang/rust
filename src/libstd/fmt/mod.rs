@@ -485,20 +485,25 @@ will look like `"\\{"`.
 
 use any;
 use cast;
+use cell::Cell;
 use char::Char;
+use cmp;
 use container::Container;
 use io::MemWriter;
 use io;
+use iter;
 use iter::{Iterator, range};
+use kinds::Copy;
 use num::Signed;
-use option::{Option,Some,None};
+use option::{Option, Some, None};
 use owned::Box;
 use repr;
-use result::{Ok, Err};
-use str::StrSlice;
+use result::{Ok, Err, ResultUnwrap};
+use str::{StrSlice, StrAllocating, UTF16Item, ScalarValue, LoneSurrogate};
 use str;
 use slice::{Vector, ImmutableVector};
 use slice;
+use intrinsics::TypeId;
 
 pub use self::num::radix;
 pub use self::num::Radix;
@@ -1239,6 +1244,145 @@ impl<T> Show for *T {
 }
 impl<T> Show for *mut T {
     fn fmt(&self, f: &mut Formatter) -> Result { secret_pointer(self, f) }
+}
+
+macro_rules! peel(($name:ident, $($other:ident,)*) => (tuple!($($other,)*)))
+
+macro_rules! tuple (
+    () => ();
+    ( $($name:ident,)+ ) => (
+        impl<$($name:Show),*> Show for ($($name,)*) {
+            #[allow(uppercase_variables, dead_assignment)]
+            fn fmt(&self, f: &mut Formatter) -> Result {
+                try!(write!(f.buf, "("));
+                let ($(ref $name,)*) = *self;
+                let mut n = 0;
+                $(
+                    if n > 0 {
+                        try!(write!(f.buf, ", "));
+                    }
+                    try!(write!(f.buf, "{}", *$name));
+                    n += 1;
+                )*
+                if n == 1 {
+                    try!(write!(f.buf, ","));
+                }
+                write!(f.buf, ")")
+            }
+        }
+        peel!($($name,)*)
+    )
+)
+
+tuple! { T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, }
+
+impl Show for Box<any::Any> {
+    fn fmt(&self, f: &mut Formatter) -> Result { f.pad("Box<Any>") }
+}
+
+impl<'a> Show for &'a any::Any {
+    fn fmt(&self, f: &mut Formatter) -> Result { f.pad("&Any") }
+}
+
+impl<T: Show> Show for Option<T> {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        match *self {
+            Some(ref t) => write!(f.buf, "Some({})", *t),
+            None => write!(f.buf, "None"),
+        }
+    }
+}
+
+impl<T: Show, U: Show> Show for ::result::Result<T, U> {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        match *self {
+            Ok(ref t) => write!(f.buf, "Ok({})", *t),
+            Err(ref t) => write!(f.buf, "Err({})", *t),
+        }
+    }
+}
+
+impl<'a, T: Show> Show for &'a [T] {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        if f.flags & (1 << (parse::FlagAlternate as uint)) == 0 {
+            try!(write!(f.buf, "["));
+        }
+        let mut is_first = true;
+        for x in self.iter() {
+            if is_first {
+                is_first = false;
+            } else {
+                try!(write!(f.buf, ", "));
+            }
+            try!(write!(f.buf, "{}", *x))
+        }
+        if f.flags & (1 << (parse::FlagAlternate as uint)) == 0 {
+            try!(write!(f.buf, "]"));
+        }
+        Ok(())
+    }
+}
+
+impl<'a, T: Show> Show for &'a mut [T] {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        secret_show(&self.as_slice(), f)
+    }
+}
+
+impl<T: Show> Show for ~[T] {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        secret_show(&self.as_slice(), f)
+    }
+}
+
+impl Show for () {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        f.pad("()")
+    }
+}
+
+impl Show for TypeId {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        write!(f.buf, "TypeId \\{ {} \\}", self.hash())
+    }
+}
+
+impl<T: Show> Show for iter::MinMaxResult<T> {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        match *self {
+            iter::NoElements =>
+                write!(f.buf, "NoElements"),
+            iter::OneElement(ref t) =>
+                write!(f.buf, "OneElement({})", *t),
+            iter::MinMax(ref t1, ref t2) =>
+                write!(f.buf, "MinMax({}, {})", *t1, *t2),
+        }
+    }
+}
+
+impl Show for cmp::Ordering {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        match *self {
+            cmp::Less => write!(f.buf, "Less"),
+            cmp::Greater => write!(f.buf, "Greater"),
+            cmp::Equal => write!(f.buf, "Equal"),
+        }
+    }
+}
+
+impl<T: Copy + Show> Show for Cell<T> {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        write!(f.buf, r"Cell \{ value: {} \}", self.get())
+    }
+}
+
+impl Show for UTF16Item {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        match *self {
+            ScalarValue(c) => write!(f.buf, "ScalarValue({})", c),
+            LoneSurrogate(u) => write!(f.buf, "LoneSurrogate({})", u),
+        }
+    }
 }
 
 // If you expected tests to be here, look instead at the run-pass/ifmt.rs test,

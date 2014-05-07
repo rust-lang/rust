@@ -21,7 +21,7 @@ use io::Writer;
 use iter::{AdditiveIterator, DoubleEndedIterator, Extendable, Rev, Iterator, Map};
 use option::{Option, Some, None};
 use slice::{Vector, OwnedVector, ImmutableVector};
-use str::{CharSplits, Str, StrVector, StrSlice};
+use str::{CharSplits, Str, StrAllocating, StrVector, StrSlice};
 use strbuf::StrBuf;
 use vec::Vec;
 
@@ -684,7 +684,7 @@ impl Path {
         }
     }
 
-    fn normalize_<S: Str>(s: S) -> (Option<PathPrefix>, StrBuf) {
+    fn normalize_<S: StrAllocating>(s: S) -> (Option<PathPrefix>, StrBuf) {
         // make borrowck happy
         let (prefix, val) = {
             let prefix = parse_prefix(s.as_slice());
@@ -842,7 +842,7 @@ impl Path {
     }
 
     fn update_normalized<S: Str>(&mut self, s: S) {
-        let (prefix, path) = Path::normalize_(s);
+        let (prefix, path) = Path::normalize_(s.as_slice());
         self.repr = path;
         self.prefix = prefix;
         self.update_sepidx();

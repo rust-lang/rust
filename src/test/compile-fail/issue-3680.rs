@@ -11,7 +11,7 @@
 fn main() {
     match None {
         Err(_) => ()
-        //~^ ERROR mismatched types: expected `std::option::Option<<generic #1>>`
-        //         but found `std::result::Result<<generic #2>,<generic #3>>`
+        //~^ ERROR mismatched types: expected `core::option::Option<<generic #1>>`
+        //         but found `core::result::Result<<generic #2>,<generic #3>>`
     }
 }

@@ -20,7 +20,6 @@ collector is task-local so `Gc<T>` is not sendable.
 
 use kinds::marker;
 use clone::Clone;
-use managed;
 
 /// Immutable garbage-collected pointer type
 #[lang="gc"]
@@ -55,7 +54,7 @@ impl<T: 'static> Gc<T> {
     /// Determine if two garbage-collected boxes point to the same object
     #[inline]
     pub fn ptr_eq(&self, other: &Gc<T>) -> bool {
-        managed::ptr_eq(self.ptr, other.ptr)
+        self.borrow() as *T == other.borrow() as *T
     }
 }
 

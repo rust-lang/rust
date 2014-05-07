@@ -38,7 +38,7 @@ use ops::Drop;
 use result::{Err, Ok, Result};
 use ptr;
 use str;
-use str::{Str, StrSlice};
+use str::{Str, StrSlice, StrAllocating};
 use fmt;
 use sync::atomics::{AtomicInt, INIT_ATOMIC_INT, SeqCst};
 use path::{Path, GenericPath};
@@ -81,6 +81,8 @@ pub fn getcwd() -> Path {
 pub fn getcwd() -> Path {
     use libc::DWORD;
     use libc::GetCurrentDirectoryW;
+    use option::Expect;
+
     let mut buf = [0 as u16, ..BUF_BYTES];
     unsafe {
         if libc::GetCurrentDirectoryW(buf.len() as DWORD, buf.as_mut_ptr()) == 0 as DWORD {
@@ -96,11 +98,11 @@ pub mod win32 {
     use iter::Iterator;
     use libc::types::os::arch::extra::DWORD;
     use libc;
-    use option::{None, Option};
+    use option::{None, Option, Expect};
     use option;
     use os::TMPBUF_SZ;
     use slice::{MutableVector, ImmutableVector, OwnedVector};
-    use str::StrSlice;
+    use str::{StrSlice, StrAllocating};
     use str;
     use vec::Vec;
 
@@ -182,7 +184,6 @@ pub fn env_as_bytes() -> ~[(~[u8],~[u8])] {
         #[cfg(windows)]
         unsafe fn get_env_pairs() -> Vec<~[u8]> {
             use c_str;
-            use str::StrSlice;
 
             use libc::funcs::extra::kernel32::{
                 GetEnvironmentStringsA,
@@ -830,6 +831,7 @@ fn real_args() -> ~[~str] {
 #[cfg(windows)]
 fn real_args() -> ~[~str] {
     use slice;
+    use option::Expect;
 
     let mut nArgs: c_int = 0;
     let lpArgCount: *mut c_int = &mut nArgs;

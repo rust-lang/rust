@@ -70,7 +70,7 @@ use self::task::{Task, BlockedTask};
 pub use self::util::default_sched_threads;
 
 // Export unwinding facilities used by the failure macros
-pub use self::unwind::{begin_unwind, begin_unwind_raw, begin_unwind_fmt};
+pub use self::unwind::{begin_unwind, begin_unwind_fmt};
 
 pub use self::util::{Stdio, Stdout, Stderr};
 

@@ -10,49 +10,14 @@
 
 //! Operations and constants for unsigned 32-bits integers (`u32` type)
 
-#![allow(non_uppercase_statics)]
-#![allow(unsigned_negate)]
-
-use prelude::*;
-
-use default::Default;
 use from_str::FromStr;
-use num::{Bitwise, Bounded};
-use num::{CheckedAdd, CheckedSub, CheckedMul};
-use num::{CheckedDiv, Zero, One, strconv};
+use iter::Iterator;
 use num::{ToStrRadix, FromStrRadix};
-use option::{Option, Some, None};
+use num::strconv;
+use option::Option;
+use slice::{ImmutableVector, OwnedVector};
 use str;
-use intrinsics;
 
-uint_module!(u32, i32, 32)
+pub use core::u32::{BITS, BYTES, MIN, MAX};
 
-impl CheckedAdd for u32 {
-    #[inline]
-    fn checked_add(&self, v: &u32) -> Option<u32> {
-        unsafe {
-            let (x, y) = intrinsics::u32_add_with_overflow(*self, *v);
-            if y { None } else { Some(x) }
-        }
-    }
-}
-
-impl CheckedSub for u32 {
-    #[inline]
-    fn checked_sub(&self, v: &u32) -> Option<u32> {
-        unsafe {
-            let (x, y) = intrinsics::u32_sub_with_overflow(*self, *v);
-            if y { None } else { Some(x) }
-        }
-    }
-}
-
-impl CheckedMul for u32 {
-    #[inline]
-    fn checked_mul(&self, v: &u32) -> Option<u32> {
-        unsafe {
-            let (x, y) = intrinsics::u32_mul_with_overflow(*self, *v);
-            if y { None } else { Some(x) }
-        }
-    }
-}
+uint_module!(u32)

@@ -428,7 +428,6 @@ impl Drop for Process {
 mod tests {
     use io::process::{ProcessConfig, Process};
     use prelude::*;
-    use str::StrSlice;
 
     // FIXME(#10380) these tests should not all be ignored on android.
 

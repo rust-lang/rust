@@ -14,7 +14,6 @@
 //!
 //! Implementations of the following traits:
 //!
-//! * `FromStr`
 //! * `Not`
 //! * `Ord`
 //! * `TotalOrd`
@@ -24,11 +23,9 @@
 //!
 //! A `to_bit` conversion function.
 
-use from_str::FromStr;
 use num::{Int, one, zero};
-use option::{None, Option, Some};
 
-#[cfg(not(test))] use cmp::{Eq, Ord, TotalOrd, Ordering};
+#[cfg(not(test))] use cmp::{Eq, Ord, TotalOrd, Ordering, TotalEq};
 #[cfg(not(test))] use ops::{Not, BitAnd, BitOr, BitXor};
 #[cfg(not(test))] use default::Default;
 
@@ -54,28 +51,6 @@ pub fn to_bit<N: Int>(p: bool) -> N {
 /////////////////////////////////////////////////////////////////////////////
 // Trait impls on `bool`
 /////////////////////////////////////////////////////////////////////////////
-
-impl FromStr for bool {
-    /// Parse a `bool` from a string.
-    ///
-    /// Yields an `Option<bool>`, because `s` may or may not actually be parseable.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// assert_eq!(from_str::<bool>("true"), Some(true));
-    /// assert_eq!(from_str::<bool>("false"), Some(false));
-    /// assert_eq!(from_str::<bool>("not even a boolean"), None);
-    /// ```
-    #[inline]
-    fn from_str(s: &str) -> Option<bool> {
-        match s {
-            "true"  => Some(true),
-            "false" => Some(false),
-            _       => None,
-        }
-    }
-}
 
 #[cfg(not(test))]
 impl Not<bool> for bool {
@@ -191,15 +166,17 @@ impl Eq for bool {
 }
 
 #[cfg(not(test))]
+impl TotalEq for bool {}
+
+#[cfg(not(test))]
 impl Default for bool {
     fn default() -> bool { false }
 }
 
 #[cfg(test)]
 mod tests {
-    use prelude::*;
+    use realstd::prelude::*;
     use super::to_bit;
-    use str::StrSlice;
 
     #[test]
     fn test_to_bit() {
@@ -258,13 +235,6 @@ mod tests {
     fn test_not() {
         assert_eq!(!true, false);
         assert_eq!(!false, true);
-    }
-
-    #[test]
-    fn test_from_str() {
-        assert_eq!(from_str::<bool>("true"), Some(true));
-        assert_eq!(from_str::<bool>("false"), Some(false));
-        assert_eq!(from_str::<bool>("not even a boolean"), None);
     }
 
     #[test]

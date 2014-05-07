@@ -1398,7 +1398,6 @@ impl<T: Iterator<char>> Parser<T> {
                     'n' => res.push_char('\n'),
                     'r' => res.push_char('\r'),
                     't' => res.push_char('\t'),
-//<<<<<<< HEAD
                     'u' => match try!(self.decode_hex_escape()) {
                         0xDC00 .. 0xDFFF => return self.error(LoneLeadingSurrogateInHexEscape),
 

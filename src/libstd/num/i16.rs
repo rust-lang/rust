@@ -10,63 +10,14 @@
 
 //! Operations and constants for signed 16-bits integers (`i16` type)
 
-#![allow(non_uppercase_statics)]
-
-use prelude::*;
-
-use default::Default;
 use from_str::FromStr;
-use num::{Bitwise, Bounded, CheckedAdd, CheckedSub, CheckedMul};
-use num::{CheckedDiv, Zero, One, strconv};
+use iter::Iterator;
 use num::{ToStrRadix, FromStrRadix};
-use option::{Option, Some, None};
+use num::strconv;
+use option::Option;
+use slice::{ImmutableVector, OwnedVector};
 use str;
-use intrinsics;
 
-int_module!(i16, 16)
+pub use core::i16::{BITS, BYTES, MIN, MAX};
 
-impl Bitwise for i16 {
-    /// Returns the number of ones in the binary representation of the number.
-    #[inline]
-    fn count_ones(&self) -> i16 { unsafe { intrinsics::ctpop16(*self as u16) as i16 } }
-
-    /// Returns the number of leading zeros in the in the binary representation
-    /// of the number.
-    #[inline]
-    fn leading_zeros(&self) -> i16 { unsafe { intrinsics::ctlz16(*self as u16) as i16 } }
-
-    /// Returns the number of trailing zeros in the in the binary representation
-    /// of the number.
-    #[inline]
-    fn trailing_zeros(&self) -> i16 { unsafe { intrinsics::cttz16(*self as u16) as i16 } }
-}
-
-impl CheckedAdd for i16 {
-    #[inline]
-    fn checked_add(&self, v: &i16) -> Option<i16> {
-        unsafe {
-            let (x, y) = intrinsics::i16_add_with_overflow(*self, *v);
-            if y { None } else { Some(x) }
-        }
-    }
-}
-
-impl CheckedSub for i16 {
-    #[inline]
-    fn checked_sub(&self, v: &i16) -> Option<i16> {
-        unsafe {
-            let (x, y) = intrinsics::i16_sub_with_overflow(*self, *v);
-            if y { None } else { Some(x) }
-        }
-    }
-}
-
-impl CheckedMul for i16 {
-    #[inline]
-    fn checked_mul(&self, v: &i16) -> Option<i16> {
-        unsafe {
-            let (x, y) = intrinsics::i16_mul_with_overflow(*self, *v);
-            if y { None } else { Some(x) }
-        }
-    }
-}
+int_module!(i16)

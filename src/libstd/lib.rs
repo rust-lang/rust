@@ -122,8 +122,8 @@
 // Make and rand accessible for benchmarking/testcases
 #[cfg(test)] extern crate rand;
 
-// we wrap some libc stuff
 extern crate libc;
+extern crate core;
 
 // Make std testable by not duplicating lang items. See #2912
 #[cfg(test)] extern crate realstd = "std";
@@ -132,6 +132,27 @@ extern crate libc;
 #[cfg(test)] pub use cmp = realstd::cmp;
 #[cfg(test)] pub use ty = realstd::ty;
 #[cfg(test)] pub use owned = realstd::owned;
+
+#[cfg(not(test))] pub use cmp = core::cmp;
+#[cfg(not(test))] pub use kinds = core::kinds;
+#[cfg(not(test))] pub use ops = core::ops;
+#[cfg(not(test))] pub use owned = core::owned;
+#[cfg(not(test))] pub use ty = core::ty;
+
+pub use core::any;
+pub use core::bool;
+pub use core::cast;
+pub use core::cell;
+pub use core::char;
+pub use core::clone;
+pub use core::container;
+pub use core::default;
+pub use core::intrinsics;
+pub use core::iter;
+pub use core::mem;
+pub use core::ptr;
+pub use core::raw;
+pub use core::tuple;
 
 // Run tests with libgreen instead of libnative.
 //
@@ -176,11 +197,6 @@ pub mod prelude;
 #[path = "num/f32.rs"]   pub mod f32;
 #[path = "num/f64.rs"]   pub mod f64;
 
-pub mod unit;
-pub mod bool;
-pub mod char;
-pub mod tuple;
-
 pub mod slice;
 pub mod vec;
 pub mod str;
@@ -188,40 +204,20 @@ pub mod strbuf;
 
 pub mod ascii;
 
-pub mod ptr;
-mod managed;
-mod reference;
 pub mod rc;
 pub mod gc;
-
-
-/* Core language traits */
-
-#[cfg(not(test))] pub mod kinds;
-#[cfg(not(test))] pub mod ops;
-#[cfg(not(test))] pub mod cmp;
-#[cfg(not(test))] pub mod ty;
-#[cfg(not(test))] pub mod owned;
-
 
 /* Common traits */
 
 pub mod from_str;
 pub mod num;
-pub mod iter;
 pub mod to_str;
-pub mod clone;
 pub mod hash;
-pub mod container;
-pub mod default;
-pub mod any;
 
 /* Common data structures */
 
-pub mod option;
 pub mod result;
-pub mod cell;
-
+pub mod option;
 
 /* Tasks and communication */
 
@@ -238,11 +234,8 @@ pub mod c_vec;
 pub mod os;
 pub mod io;
 pub mod path;
-pub mod cast;
 pub mod fmt;
 pub mod cleanup;
-pub mod mem;
-
 
 /* Unsupported interfaces */
 
@@ -254,10 +247,6 @@ pub mod reflect;
 // Private APIs
 #[unstable]
 pub mod unstable;
-#[experimental]
-pub mod intrinsics;
-#[experimental]
-pub mod raw;
 
 /* For internal use, not exported */
 

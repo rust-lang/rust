@@ -23,13 +23,14 @@ use mem;
 use num;
 use num::{CheckedMul, CheckedAdd};
 use ops::Drop;
-use option::{None, Option, Some};
+use option::{None, Option, Some, Expect};
 use ptr::RawPtr;
 use ptr;
 use rt::global_heap::{malloc_raw, realloc_raw};
 use raw::Slice;
 use slice::{ImmutableEqVector, ImmutableVector, Items, MutItems, MutableVector};
 use slice::{MutableTotalOrdVector, OwnedVector, Vector};
+use slice::{MutableVectorAllocating};
 
 /// An owned, growable vector.
 ///
