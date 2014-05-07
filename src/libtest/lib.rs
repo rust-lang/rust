@@ -47,7 +47,6 @@ use time::precise_time_ns;
 use getopts::{OptGroup, optflag, optopt};
 use serialize::{json, Decodable};
 use serialize::json::{Json, ToJson};
-use term::Terminal;
 use term::color::{Color, RED, YELLOW, GREEN, CYAN};
 
 use std::cmp;
@@ -427,7 +426,7 @@ pub enum TestResult {
 }
 
 enum OutputLocation<T> {
-    Pretty(term::Terminal<T>),
+    Pretty(~term::TerminalOps<T>),
     Raw(T),
 }
 
@@ -452,7 +451,7 @@ impl<T: Writer> ConsoleTestState<T> {
             Some(ref path) => Some(try!(File::create(path))),
             None => None
         };
-        let out = match term::Terminal::new(io::stdio::stdout_raw()) {
+        let out = match term::new_terminal(io::stdio::stdout_raw()) {
             Err(_) => Raw(io::stdio::stdout_raw()),
             Ok(t) => Pretty(t)
         };

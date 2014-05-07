@@ -252,7 +252,7 @@ pub struct EmitterWriter {
 }
 
 enum Destination {
-    Terminal(term::Terminal<io::stdio::StdWriter>),
+    Terminal(~term::TerminalOps<io::stdio::StdWriter>:Send),
     Raw(~Writer:Send),
 }
 
@@ -260,7 +260,7 @@ impl EmitterWriter {
     pub fn stderr() -> EmitterWriter {
         let stderr = io::stderr();
         if stderr.get_ref().isatty() {
-            let dst = match term::Terminal::new(stderr.unwrap()) {
+            let dst = match term::new_terminal(stderr.unwrap()) {
                 Ok(t) => Terminal(t),
                 Err(..) => Raw(box io::stderr()),
             };
