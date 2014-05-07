@@ -89,7 +89,7 @@ impl Rem<$T,$T> for $T {
 #[cfg(not(test))]
 impl Neg<$T> for $T {
     #[inline]
-    fn neg(&self) -> $T { -*self }
+    fn neg(&self) -> $T { -(*self as $T_SIGNED) as $T }
 }
 
 impl Unsigned for $T {}
