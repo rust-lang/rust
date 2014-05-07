@@ -34,13 +34,6 @@ pub unsafe fn transmute_copy<T, U>(src: &T) -> U {
 pub unsafe fn forget<T>(thing: T) { intrinsics::forget(thing); }
 
 /**
- * Force-increment the reference count on a shared box. If used
- * carelessly, this can leak the box.
- */
-#[inline]
-pub unsafe fn bump_box_refcount<T>(t: @T) { forget(t); }
-
-/**
  * Transform a value of one type into a value of another type.
  * Both types must have the same size and alignment.
  *
@@ -106,28 +99,13 @@ pub unsafe fn copy_lifetime_vec<'a,S,T>(_ptr: &'a [S], ptr: &T) -> &'a T {
 
 #[cfg(test)]
 mod tests {
-    use cast::{bump_box_refcount, transmute};
+    use cast::transmute;
     use raw;
     use realstd::str::StrAllocating;
 
     #[test]
     fn test_transmute_copy() {
         assert_eq!(1u, unsafe { ::cast::transmute_copy(&1) });
-    }
-
-    #[test]
-    fn test_bump_managed_refcount() {
-        unsafe {
-            let managed = @"box box box".to_owned();      // refcount 1
-            bump_box_refcount(managed);     // refcount 2
-            let ptr: *int = transmute(managed); // refcount 2
-            let _box1: @~str = ::cast::transmute_copy(&ptr);
-            let _box2: @~str = ::cast::transmute_copy(&ptr);
-            assert!(*_box1 == "box box box".to_owned());
-            assert!(*_box2 == "box box box".to_owned());
-            // Will destroy _box1 and _box2. Without the bump, this would
-            // use-after-free. With too many bumps, it would leak.
-        }
     }
 
     #[test]
