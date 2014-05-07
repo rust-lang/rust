@@ -27,9 +27,10 @@
 #[phase(syntax, link)] #[cfg(test)] extern crate realstd = "std";
 #[phase(syntax, link)] #[cfg(test)] extern crate log;
 
-#[cfg(test)] pub use kinds = realcore::kinds;
 #[cfg(test)] pub use cmp = realcore::cmp;
+#[cfg(test)] pub use kinds = realcore::kinds;
 #[cfg(test)] pub use ops = realcore::ops;
+#[cfg(test)] pub use owned = realcore::owned;
 #[cfg(test)] pub use ty = realcore::ty;
 
 #[cfg(not(test))]
@@ -73,6 +74,7 @@ pub mod ptr;
 #[cfg(not(test))] pub mod ops;
 #[cfg(not(test))] pub mod ty;
 #[cfg(not(test))] pub mod cmp;
+#[cfg(not(test))] pub mod owned;
 pub mod clone;
 pub mod default;
 pub mod container;

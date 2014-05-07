@@ -625,7 +625,6 @@ fn test_repr() {
     use io::stdio::println;
     use char::is_alphabetic;
     use mem::swap;
-    use owned::Box;
 
     fn exact_test<T>(t: &T, e:&str) {
         let mut m = io::MemWriter::new();

@@ -10,6 +10,11 @@
 
 //! Operations on unique pointer types
 
+// FIXME: this module should not exist in libcore. It must currently because the
+//        Box implementation is quite ad-hoc in the compiler. Once there is
+//        proper support in the compiler this type will be able to be defined in
+//        its own module.
+
 /// A value that represents the global exchange heap. This is the default
 /// place that the `box` keyword allocates into when no place is supplied.
 ///

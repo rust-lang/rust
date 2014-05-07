@@ -129,6 +129,7 @@ extern_fn_clone!(A, B, C, D, E, F, G, H)
 #[cfg(test)]
 mod test {
     use prelude::*;
+    use owned::Box;
 
     #[test]
     fn test_owned_clone() {
@@ -154,8 +155,8 @@ mod test {
 
     #[test]
     fn test_clone_from() {
-        let a = ~5;
-        let mut b = ~10;
+        let a = box 5;
+        let mut b = box 10;
         b.clone_from(&a);
         assert_eq!(*b, 5);
     }
