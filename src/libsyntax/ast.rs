@@ -876,7 +876,6 @@ pub struct FnDecl {
 pub enum FnStyle {
     UnsafeFn, // declared with "unsafe fn"
     NormalFn, // declared with "fn"
-    ExternFn, // declared with "extern fn"
 }
 
 impl fmt::Show for FnStyle {
@@ -884,7 +883,6 @@ impl fmt::Show for FnStyle {
         match *self {
             NormalFn => "normal".fmt(f),
             UnsafeFn => "unsafe".fmt(f),
-            ExternFn => "extern".fmt(f),
         }
     }
 }

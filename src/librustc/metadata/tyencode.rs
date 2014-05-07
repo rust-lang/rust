@@ -293,7 +293,6 @@ fn enc_fn_style(w: &mut MemWriter, p: FnStyle) {
     match p {
         NormalFn => mywrite!(w, "n"),
         UnsafeFn => mywrite!(w, "u"),
-        ExternFn => mywrite!(w, "c")
     }
 }
 
