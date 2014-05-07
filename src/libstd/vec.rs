@@ -28,6 +28,7 @@ use ptr::RawPtr;
 use ptr;
 use rt::global_heap::{malloc_raw, realloc_raw};
 use raw::Slice;
+use RawVec = raw::Vec;
 use slice::{ImmutableEqVector, ImmutableVector, Items, MutItems, MutableVector};
 use slice::{MutableTotalOrdVector, OwnedVector, Vector};
 use slice::{MutableVectorAllocating};
@@ -1465,6 +1466,50 @@ pub fn unzip<T, U, V: Iterator<(T, U)>>(mut iter: V) -> (Vec<T>, Vec<U>) {
     (ts, us)
 }
 
+/// Mechanism to convert from a `Vec<T>` to a `[T]`.
+///
+/// In a post-DST world this will be used to convert to any `Ptr<[T]>`.
+///
+/// This could be implemented on more types than just pointers to vectors, but
+/// the recommended approach for those types is to implement `FromIterator`.
+// FIXME(#12938): Update doc comment when DST lands
+pub trait FromVec<T> {
+    /// Convert a `Vec<T>` into the receiver type.
+    fn from_vec(v: Vec<T>) -> Self;
+}
+
+impl<T> FromVec<T> for ~[T] {
+    fn from_vec(mut v: Vec<T>) -> ~[T] {
+        let len = v.len();
+        let data_size = len.checked_mul(&mem::size_of::<T>());
+        let data_size = data_size.expect("overflow in from_vec()");
+        let size = mem::size_of::<RawVec<()>>().checked_add(&data_size);
+        let size = size.expect("overflow in from_vec()");
+
+        // In a post-DST world, we can attempt to reuse the Vec allocation by calling
+        // shrink_to_fit() on it. That may involve a reallocation+memcpy, but that's no
+        // diffrent than what we're doing manually here.
+
+        let vp = v.as_mut_ptr();
+
+        unsafe {
+            let ret = malloc_raw(size) as *mut RawVec<()>;
+
+            (*ret).fill = len * mem::nonzero_size_of::<T>();
+            (*ret).alloc = len * mem::nonzero_size_of::<T>();
+
+            ptr::copy_nonoverlapping_memory(&mut (*ret).data as *mut _ as *mut u8,
+                                            vp as *u8, data_size);
+
+            // we've transferred ownership of the contents from v, but we can't drop it
+            // as it still needs to free its own allocation.
+            v.set_len(0);
+
+            transmute(ret)
+        }
+    }
+}
+
 /// Unsafe operations
 pub mod raw {
     use super::Vec;
@@ -1488,7 +1533,8 @@ pub mod raw {
 mod tests {
     use prelude::*;
     use mem::size_of;
-    use super::{unzip, raw};
+    use kinds::marker;
+    use super::{unzip, raw, FromVec};
 
     #[test]
     fn test_small_vec_struct() {
@@ -1764,5 +1810,31 @@ mod tests {
             let d = raw::from_buf(ptr, 5u);
             assert_eq!(d, vec![1, 2, 3, 4, 5]);
         }
+    }
+
+    #[test]
+    fn test_from_vec() {
+        let a = vec![1u, 2, 3];
+        let b: ~[uint] = FromVec::from_vec(a);
+        assert_eq!(b.as_slice(), &[1u, 2, 3]);
+
+        let a = vec![];
+        let b: ~[u8] = FromVec::from_vec(a);
+        assert_eq!(b.as_slice(), &[]);
+
+        let a = vec!["one".to_owned(), "two".to_owned()];
+        let b: ~[~str] = FromVec::from_vec(a);
+        assert_eq!(b.as_slice(), &["one".to_owned(), "two".to_owned()]);
+
+        struct Foo {
+            x: uint,
+            nocopy: marker::NoCopy
+        }
+
+        let a = vec![Foo{x: 42, nocopy: marker::NoCopy}, Foo{x: 84, nocopy: marker::NoCopy}];
+        let b: ~[Foo] = FromVec::from_vec(a);
+        assert_eq!(b.len(), 2);
+        assert_eq!(b[0].x, 42);
+        assert_eq!(b[1].x, 84);
     }
 }
