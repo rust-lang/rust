@@ -25,7 +25,7 @@ use option::{Some, None, Option};
 use ptr::RawPtr;
 use reflect;
 use reflect::{MovePtr, align};
-use result::{Ok, Err};
+use result::{Ok, Err, ResultUnwrap};
 use str::StrSlice;
 use to_str::ToStr;
 use slice::Vector;
@@ -606,6 +606,7 @@ pub fn write_repr<T>(writer: &mut io::Writer, object: &T) -> io::IoResult<()> {
 
 pub fn repr_to_str<T>(t: &T) -> ~str {
     use str;
+    use str::StrAllocating;
     use io;
 
     let mut result = io::MemWriter::new();
@@ -624,7 +625,6 @@ fn test_repr() {
     use io::stdio::println;
     use char::is_alphabetic;
     use mem::swap;
-    use owned::Box;
 
     fn exact_test<T>(t: &T, e:&str) {
         let mut m = io::MemWriter::new();

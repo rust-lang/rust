@@ -10,51 +10,14 @@
 
 //! Operations and constants for unsigned 64-bits integer (`u64` type)
 
-#![allow(non_uppercase_statics)]
-#![allow(unsigned_negate)]
-
-use prelude::*;
-
-use default::Default;
 use from_str::FromStr;
-use num::{Bitwise, Bounded};
-#[cfg(target_word_size = "64")]
-use num::CheckedMul;
-use num::{CheckedAdd, CheckedSub};
-use num::{CheckedDiv, Zero, One, strconv};
+use iter::Iterator;
 use num::{ToStrRadix, FromStrRadix};
-use option::{Option, Some, None};
+use num::strconv;
+use option::Option;
+use slice::{ImmutableVector, OwnedVector};
 use str;
-use intrinsics;
 
-uint_module!(u64, i64, 64)
+pub use core::u64::{BITS, BYTES, MIN, MAX};
 
-impl CheckedAdd for u64 {
-    #[inline]
-    fn checked_add(&self, v: &u64) -> Option<u64> {
-        unsafe {
-            let (x, y) = intrinsics::u64_add_with_overflow(*self, *v);
-            if y { None } else { Some(x) }
-        }
-    }
-}
-
-impl CheckedSub for u64 {
-    #[inline]
-    fn checked_sub(&self, v: &u64) -> Option<u64> {
-        unsafe {
-            let (x, y) = intrinsics::u64_sub_with_overflow(*self, *v);
-            if y { None } else { Some(x) }
-        }
-    }
-}
-
-impl CheckedMul for u64 {
-    #[inline]
-    fn checked_mul(&self, v: &u64) -> Option<u64> {
-        unsafe {
-            let (x, y) = intrinsics::u64_mul_with_overflow(*self, *v);
-            if y { None } else { Some(x) }
-        }
-    }
-}
+uint_module!(u64)

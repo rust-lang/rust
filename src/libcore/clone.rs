@@ -126,46 +126,52 @@ extern_fn_clone!(A, B, C, D, E, F)
 extern_fn_clone!(A, B, C, D, E, F, G)
 extern_fn_clone!(A, B, C, D, E, F, G, H)
 
-#[test]
-fn test_owned_clone() {
-    let a = box 5i;
-    let b: Box<int> = a.clone();
-    assert_eq!(a, b);
-}
+#[cfg(test)]
+mod test {
+    use prelude::*;
+    use owned::Box;
 
-#[test]
-fn test_managed_clone() {
-    let a = @5i;
-    let b: @int = a.clone();
-    assert_eq!(a, b);
-}
+    #[test]
+    fn test_owned_clone() {
+        let a = box 5i;
+        let b: Box<int> = a.clone();
+        assert_eq!(a, b);
+    }
 
-#[test]
-fn test_borrowed_clone() {
-    let x = 5i;
-    let y: &int = &x;
-    let z: &int = (&y).clone();
-    assert_eq!(*z, 5);
-}
+    #[test]
+    fn test_managed_clone() {
+        let a = @5i;
+        let b: @int = a.clone();
+        assert_eq!(a, b);
+    }
 
-#[test]
-fn test_clone_from() {
-    let a = box 5;
-    let mut b = box 10;
-    b.clone_from(&a);
-    assert_eq!(*b, 5);
-}
+    #[test]
+    fn test_borrowed_clone() {
+        let x = 5i;
+        let y: &int = &x;
+        let z: &int = (&y).clone();
+        assert_eq!(*z, 5);
+    }
 
-#[test]
-fn test_extern_fn_clone() {
-    trait Empty {}
-    impl Empty for int {}
+    #[test]
+    fn test_clone_from() {
+        let a = box 5;
+        let mut b = box 10;
+        b.clone_from(&a);
+        assert_eq!(*b, 5);
+    }
 
-    fn test_fn_a() -> f64 { 1.0 }
-    fn test_fn_b<T: Empty>(x: T) -> T { x }
-    fn test_fn_c(_: int, _: f64, _: ~[int], _: int, _: int, _: int) {}
+    #[test]
+    fn test_extern_fn_clone() {
+        trait Empty {}
+        impl Empty for int {}
 
-    let _ = test_fn_a.clone();
-    let _ = test_fn_b::<int>.clone();
-    let _ = test_fn_c.clone();
+        fn test_fn_a() -> f64 { 1.0 }
+        fn test_fn_b<T: Empty>(x: T) -> T { x }
+        fn test_fn_c(_: int, _: f64, _: ~[int], _: int, _: int, _: int) {}
+
+        let _ = test_fn_a.clone();
+        let _ = test_fn_b::<int>.clone();
+        let _ = test_fn_c.clone();
+    }
 }

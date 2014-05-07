@@ -18,6 +18,6 @@ fn main() {
     let x: Box<HashMap<~str, ~str>> = box HashMap::new();
     let x: Box<Map<~str, ~str>> = x;
     let y: Box<Map<uint, ~str>> = box x;
-    //~^ ERROR failed to find an implementation of trait std::container::Map<uint,~str>
-    //         for ~std::container::Map<~str,~str>:Send
+    //~^ ERROR failed to find an implementation of trait core::container::Map<uint,~str>
+    //         for ~core::container::Map<~str,~str>:Send
 }

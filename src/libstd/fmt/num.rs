@@ -194,7 +194,7 @@ mod tests {
     use fmt::radix;
     use super::{Binary, Octal, Decimal, LowerHex, UpperHex};
     use super::{GenericRadix, Radix};
-    use str::StrSlice;
+    use str::StrAllocating;
 
     #[test]
     fn test_radix_base() {
@@ -400,6 +400,7 @@ mod bench {
         use super::test::Bencher;
         use fmt::radix;
         use rand::{XorShiftRng, Rng};
+        use realstd::result::ResultUnwrap;
 
         #[bench]
         fn format_bin(b: &mut Bencher) {
@@ -436,6 +437,7 @@ mod bench {
         use super::test::Bencher;
         use fmt::radix;
         use rand::{XorShiftRng, Rng};
+        use realstd::result::ResultUnwrap;
 
         #[bench]
         fn format_bin(b: &mut Bencher) {

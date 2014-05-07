@@ -10,49 +10,14 @@
 
 //! Operations and constants for unsigned 16-bits integers (`u16` type)
 
-#![allow(non_uppercase_statics)]
-#![allow(unsigned_negate)]
-
-use prelude::*;
-
-use default::Default;
 use from_str::FromStr;
-use num::{Bitwise, Bounded};
-use num::{CheckedAdd, CheckedSub, CheckedMul};
-use num::{CheckedDiv, Zero, One, strconv};
+use iter::Iterator;
 use num::{ToStrRadix, FromStrRadix};
-use option::{Option, Some, None};
+use num::strconv;
+use option::Option;
+use slice::{ImmutableVector, OwnedVector};
 use str;
-use intrinsics;
 
-uint_module!(u16, i16, 16)
+pub use core::u16::{BITS, BYTES, MIN, MAX};
 
-impl CheckedAdd for u16 {
-    #[inline]
-    fn checked_add(&self, v: &u16) -> Option<u16> {
-        unsafe {
-            let (x, y) = intrinsics::u16_add_with_overflow(*self, *v);
-            if y { None } else { Some(x) }
-        }
-    }
-}
-
-impl CheckedSub for u16 {
-    #[inline]
-    fn checked_sub(&self, v: &u16) -> Option<u16> {
-        unsafe {
-            let (x, y) = intrinsics::u16_sub_with_overflow(*self, *v);
-            if y { None } else { Some(x) }
-        }
-    }
-}
-
-impl CheckedMul for u16 {
-    #[inline]
-    fn checked_mul(&self, v: &u16) -> Option<u16> {
-        unsafe {
-            let (x, y) = intrinsics::u16_mul_with_overflow(*self, *v);
-            if y { None } else { Some(x) }
-        }
-    }
-}
+uint_module!(u16)
