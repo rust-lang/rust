@@ -362,11 +362,21 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
         // Add all the static files. These may already exist, but we just
         // overwrite them anyway to make sure that they're fresh and up-to-date.
         try!(write(cx.dst.join("jquery.js"),
-                   include_str!("static/jquery-2.1.0.min.js")));
-        try!(write(cx.dst.join("main.js"), include_str!("static/main.js")));
-        try!(write(cx.dst.join("main.css"), include_str!("static/main.css")));
+                   include_bin!("static/jquery-2.1.0.min.js")));
+        try!(write(cx.dst.join("main.js"), include_bin!("static/main.js")));
+        try!(write(cx.dst.join("main.css"), include_bin!("static/main.css")));
         try!(write(cx.dst.join("normalize.css"),
-                   include_str!("static/normalize.css")));
+                   include_bin!("static/normalize.css")));
+        try!(write(cx.dst.join("FiraSans-Regular.woff"),
+                   include_bin!("static/FiraSans-Regular.woff")));
+        try!(write(cx.dst.join("FiraSans-Medium.woff"),
+                   include_bin!("static/FiraSans-Medium.woff")));
+        try!(write(cx.dst.join("Heuristica-Regular.woff"),
+                   include_bin!("static/Heuristica-Regular.woff")));
+        try!(write(cx.dst.join("Heuristica-Italic.woff"),
+                   include_bin!("static/Heuristica-Italic.woff")));
+        try!(write(cx.dst.join("Heuristica-Bold.woff"),
+                   include_bin!("static/Heuristica-Bold.woff")));
 
         // Update the search index
         let dst = cx.dst.join("search-index.js");
@@ -415,8 +425,8 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
 
 /// Writes the entire contents of a string to a destination, not attempting to
 /// catch any errors.
-fn write(dst: Path, contents: &str) -> io::IoResult<()> {
-    File::create(&dst).write(contents.as_bytes())
+fn write(dst: Path, contents: &[u8]) -> io::IoResult<()> {
+    File::create(&dst).write(contents)
 }
 
 /// Makes a directory on the filesystem, failing the task if an error occurs and
@@ -920,6 +930,23 @@ impl<'a> Item<'a> {
             clean::ModuleItem(..) => true, _ => false
         }
     }
+
+    fn link(&self) -> ~str {
+        let mut path = Vec::new();
+        clean_srcpath(self.item.source.filename.as_bytes(), |component| {
+            path.push(component.to_owned());
+        });
+        let href = if self.item.source.loline == self.item.source.hiline {
+            format!("{}", self.item.source.loline)
+        } else {
+            format!("{}-{}", self.item.source.loline, self.item.source.hiline)
+        };
+        format!("{root}src/{krate}/{path}.html\\#{href}",
+                root = self.cx.root_path,
+                krate = self.cx.layout.krate,
+                path = path.connect("/"),
+                href = href)
+    }
 }
 
 impl<'a> fmt::Show for Item<'a> {
@@ -967,23 +994,8 @@ impl<'a> fmt::Show for Item<'a> {
 
         // Write `src` tag
         if self.cx.include_sources {
-            let mut path = Vec::new();
-            clean_srcpath(self.item.source.filename.as_bytes(), |component| {
-                path.push(component.to_owned());
-            });
-            let href = if self.item.source.loline == self.item.source.hiline {
-                format!("{}", self.item.source.loline)
-            } else {
-                format!("{}-{}", self.item.source.loline, self.item.source.hiline)
-            };
-            try!(write!(fmt.buf,
-                          "<a class='source' \
-                              href='{root}src/{krate}/{path}.html\\#{href}'>\
-                              [src]</a>",
-                          root = self.cx.root_path,
-                          krate = self.cx.layout.krate,
-                          path = path.connect("/"),
-                          href = href));
+            try!(write!(fmt.buf, "<a class='source' href='{}'>[src]</a>",
+                        self.link()));
         }
         try!(write!(fmt.buf, "</h1>\n"));
 
@@ -1128,16 +1140,19 @@ fn item_module(w: &mut Writer, cx: &Context,
 
         match myitem.inner {
             clean::StaticItem(ref s) | clean::ForeignStaticItem(ref s) => {
-                struct Initializer<'a>(&'a str);
+                struct Initializer<'a>(&'a str, Item<'a>);
                 impl<'a> fmt::Show for Initializer<'a> {
                     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                        let Initializer(s) = *self;
+                        let Initializer(s, item) = *self;
                         if s.len() == 0 { return Ok(()); }
                         try!(write!(f.buf, "<code> = </code>"));
-                        let tag = if s.contains("\n") { "pre" } else { "code" };
-                        try!(write!(f.buf, "<{tag}>{}</{tag}>",
-                                      s.as_slice(), tag=tag));
-                        Ok(())
+                        if s.contains("\n") {
+                            write!(f.buf,
+                                   "<a href='{}'>[definition]</a>",
+                                   item.link())
+                        } else {
+                            write!(f.buf, "<code>{}</code>", s.as_slice())
+                        }
                     }
                 }
 
@@ -1150,7 +1165,7 @@ fn item_module(w: &mut Writer, cx: &Context,
                 VisSpace(myitem.visibility),
                 *myitem.name.get_ref(),
                 s.type_,
-                Initializer(s.expr),
+                Initializer(s.expr, Item { cx: cx, item: myitem }),
                 Markdown(blank(myitem.doc_value()))));
             }
 
@@ -1604,54 +1619,24 @@ fn render_impl(w: &mut Writer, i: &clean::Impl,
         None => {}
     }
 
-    fn docmeth(w: &mut Writer, item: &clean::Item) -> io::IoResult<bool> {
+    fn docmeth(w: &mut Writer, item: &clean::Item,
+               dox: bool) -> io::IoResult<()> {
         try!(write!(w, "<h4 id='method.{}' class='method'><code>",
                       *item.name.get_ref()));
         try!(render_method(w, item));
         try!(write!(w, "</code></h4>\n"));
         match item.doc_value() {
-            Some(s) => {
+            Some(s) if dox => {
                 try!(write!(w, "<div class='docblock'>{}</div>", Markdown(s)));
-                Ok(true)
+                Ok(())
             }
-            None => Ok(false)
+            Some(..) | None => Ok(())
         }
     }
 
     try!(write!(w, "<div class='methods'>"));
     for meth in i.methods.iter() {
-        if try!(docmeth(w, meth)) {
-            continue
-        }
-
-        // No documentation? Attempt to slurp in the trait's documentation
-        let trait_id = match trait_id {
-            None => continue,
-            Some(id) => id,
-        };
-        try!(local_data::get(cache_key, |cache| {
-            let cache = cache.unwrap();
-            match cache.traits.find(&trait_id) {
-                Some(t) => {
-                    let name = meth.name.clone();
-                    match t.methods.iter().find(|t| t.item().name == name) {
-                        Some(method) => {
-                            match method.item().doc_value() {
-                                Some(s) => {
-                                    try!(write!(w,
-                                                  "<div class='docblock'>{}</div>",
-                                                  Markdown(s)));
-                                }
-                                None => {}
-                            }
-                        }
-                        None => {}
-                    }
-                }
-                None => {}
-            }
-            Ok(())
-        }))
+        try!(docmeth(w, meth, true));
     }
 
     // If we've implemented a trait, then also emit documentation for all
@@ -1670,7 +1655,7 @@ fn render_impl(w: &mut Writer, i: &clean::Impl,
                                 None => {}
                             }
 
-                            try!(docmeth(w, method.item()));
+                            try!(docmeth(w, method.item(), false));
                         }
                     }
                     None => {}

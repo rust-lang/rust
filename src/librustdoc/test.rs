@@ -55,7 +55,7 @@ pub fn run(input: &str, cfgs: Vec<~str>,
     diagnostic::mk_span_handler(diagnostic_handler, codemap);
 
     let sess = driver::build_session_(sessopts,
-                                      Some(input_path),
+                                      Some(input_path.clone()),
                                       span_diagnostic_handler);
 
     let mut cfg = driver::build_configuration(&sess);
@@ -70,6 +70,7 @@ pub fn run(input: &str, cfgs: Vec<~str>,
     let ctx = @core::DocContext {
         krate: krate,
         maybe_typed: core::NotTyped(sess),
+        src: input_path,
     };
     local_data::set(super::ctxtkey, ctx);
 
@@ -102,6 +103,7 @@ fn runtest(test: &str, cratename: &str, libs: HashSet<Path>, should_fail: bool,
         addl_lib_search_paths: RefCell::new(libs),
         crate_types: vec!(session::CrateTypeExecutable),
         output_types: vec!(link::OutputTypeExe),
+        no_trans: no_run,
         cg: session::CodegenOptions {
             prefer_dynamic: true,
             .. session::basic_codegen_options()

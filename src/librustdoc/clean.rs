@@ -20,6 +20,8 @@ use syntax::codemap::Pos;
 use syntax::parse::token::InternedString;
 use syntax::parse::token;
 
+use rustc::back::link;
+use rustc::driver::driver;
 use rustc::metadata::cstore;
 use rustc::metadata::csearch;
 use rustc::metadata::decoder;
@@ -75,7 +77,6 @@ pub struct Crate {
 
 impl<'a> Clean<Crate> for visit_ast::RustdocVisitor<'a> {
     fn clean(&self) -> Crate {
-        use syntax::attr::find_crateid;
         let cx = local_data::get(super::ctxtkey, |x| *x.unwrap());
 
         let mut externs = Vec::new();
@@ -83,11 +84,16 @@ impl<'a> Clean<Crate> for visit_ast::RustdocVisitor<'a> {
             externs.push((n, meta.clean()));
         });
 
+        let input = driver::FileInput(cx.src.clone());
+        let t_outputs = driver::build_output_filenames(&input,
+                                                       &None,
+                                                       &None,
+                                                       self.attrs.as_slice(),
+                                                       cx.sess());
+        let id = link::find_crate_id(self.attrs.as_slice(),
+                                     t_outputs.out_filestem);
         Crate {
-            name: match find_crateid(self.attrs.as_slice()) {
-                Some(n) => n.name,
-                None => fail!("rustdoc requires a `crate_id` crate attribute"),
-            },
+            name: id.name,
             module: Some(self.module.clean()),
             externs: externs,
         }
@@ -1362,7 +1368,7 @@ pub struct Macro {
 impl Clean<Item> for doctree::Macro {
     fn clean(&self) -> Item {
         Item {
-            name: Some(self.name.clean()),
+            name: Some(self.name.clean() + "!"),
             attrs: self.attrs.clean(),
             source: self.where.clean(),
             visibility: ast::Public.clean(),

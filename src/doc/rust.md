@@ -116,8 +116,12 @@ production. See [tokens](#tokens) for more information.
 Rust input is interpreted as a sequence of Unicode codepoints encoded in UTF-8,
 normalized to Unicode normalization form NFKC.
 Most Rust grammar rules are defined in terms of printable ASCII-range codepoints,
-but a small number are defined in terms of Unicode properties or explicit codepoint lists.
-^[Substitute definitions for the special Unicode productions are provided to the grammar verifier, restricted to ASCII range, when verifying the grammar in this document.]
+but a small number are defined in terms of Unicode properties or explicit
+codepoint lists. [^inputformat]
+
+[^inputformat]: Substitute definitions for the special Unicode productions are
+    provided to the grammar verifier, restricted to ASCII range, when verifying
+    the grammar in this document.
 
 ## Special Unicode Productions
 
@@ -631,10 +635,13 @@ Semantic rules called "dynamic semantics" govern the behavior of programs at run
 A program that fails to compile due to violation of a compile-time rule has no defined dynamic semantics; the compiler should halt with an error report, and produce no executable artifact.
 
 The compilation model centres on artifacts called _crates_.
-Each compilation processes a single crate in source form, and if successful, produces a single crate in binary form: either an executable or a library.^[A crate is somewhat
-analogous to an *assembly* in the ECMA-335 CLI model, a *library* in the
-SML/NJ Compilation Manager, a *unit* in the Owens and Flatt module system,
-or a *configuration* in Mesa.]
+Each compilation processes a single crate in source form, and if successful,
+produces a single crate in binary form: either an executable or a
+library.[^cratesourcefile]
+
+[^cratesourcefile]: A crate is somewhat analogous to an *assembly* in the
+    ECMA-335 CLI model, a *library* in the SML/NJ Compilation Manager, a *unit*
+    in the Owens and Flatt module system, or a *configuration* in Mesa.
 
 A _crate_ is a unit of compilation and linking, as well as versioning, distribution and runtime loading.
 A crate contains a _tree_ of nested [module](#modules) scopes.
@@ -3246,23 +3253,28 @@ types. User-defined types have limited capabilities.
 
 The primitive types are the following:
 
-* The "unit" type `()`, having the single "unit" value `()` (occasionally called "nil").
-  ^[The "unit" value `()` is *not* a sentinel "null pointer" value for reference slots; the "unit" type is the implicit return type from functions otherwise lacking a return type, and can be used in other contexts (such as message-sending or type-parametric code) as a zero-size type.]
+* The "unit" type `()`, having the single "unit" value `()` (occasionally called
+  "nil"). [^unittype]
 * The boolean type `bool` with values `true` and `false`.
 * The machine types.
 * The machine-dependent integer and floating-point types.
+
+[^unittype]: The "unit" value `()` is *not* a sentinel "null pointer" value for
+    reference slots; the "unit" type is the implicit return type from functions
+    otherwise lacking a return type, and can be used in other contexts (such as
+    message-sending or type-parametric code) as a zero-size type.]
 
 #### Machine types
 
 The machine types are the following:
 
 * The unsigned word types `u8`, `u16`, `u32` and `u64`, with values drawn from
-  the integer intervals $[0, 2^8 - 1]$, $[0, 2^{16} - 1]$, $[0, 2^{32} - 1]$ and
-  $[0, 2^{64} - 1]$ respectively.
+  the integer intervals [0, 2^8 - 1], [0, 2^16 - 1], [0, 2^32 - 1] and
+  [0, 2^64 - 1] respectively.
 
 * The signed two's complement word types `i8`, `i16`, `i32` and `i64`, with
-  values drawn from the integer intervals $[-(2^7), 2^7 - 1]$,
-  $[-(2^{15}), 2^{15} - 1]$, $[-(2^{31}), 2^{31} - 1]$, $[-(2^{63}), 2^{63} - 1]$
+  values drawn from the integer intervals [-(2^(7)), 2^7 - 1],
+  [-(2^(15)), 2^15 - 1], $[-(2^(31)), 2^31 - 1], [-(2^(63)), 2^63 - 1]
   respectively.
 
 * The IEEE 754-2008 `binary32` and `binary64` floating-point types: `f32` and
@@ -3270,15 +3282,18 @@ The machine types are the following:
 
 #### Machine-dependent integer types
 
-The Rust type `uint`^[A Rust `uint` is analogous to a C99 `uintptr_t`.] is an
+The Rust type `uint` [^rustuint] is an
 unsigned integer type with target-machine-dependent size. Its size, in
 bits, is equal to the number of bits required to hold any memory address on
 the target machine.
 
-The Rust type `int`^[A Rust `int` is analogous to a C99 `intptr_t`.] is a
+The Rust type `int` [^rustint]  is a
 two's complement signed integer type with target-machine-dependent size. Its
 size, in bits, is equal to the size of the rust type `uint` on the same target
 machine.
+
+[^rustuint]: A Rust `uint` is analogous to a C99 `uintptr_t`.
+[^rustint]: A Rust `int` is analogous to a C99 `intptr_t`.
 
 ### Textual types
 
@@ -3352,10 +3367,12 @@ and access to a vector is always bounds-checked.
 
 ### Structure types
 
-A `struct` *type* is a heterogeneous product of other types, called the *fields* of the type.
-^[`struct` types are analogous `struct` types in C,
-the *record* types of the ML family,
-or the *structure* types of the Lisp family.]
+A `struct` *type* is a heterogeneous product of other types, called the *fields*
+of the type.[^structtype]
+
+[^structtype]: `struct` types are analogous `struct` types in C,
+    the *record* types of the ML family,
+    or the *structure* types of the Lisp family.
 
 New instances of a `struct` can be constructed with a [struct expression](#structure-expressions).
 
@@ -3375,9 +3392,10 @@ is the only value that inhabits such a type.
 ### Enumerated types
 
 An *enumerated type* is a nominal, heterogeneous disjoint union type,
-denoted by the name of an [`enum` item](#enumerations).
-^[The `enum` type is analogous to a `data` constructor declaration in ML,
-or a *pick ADT* in Limbo.]
+denoted by the name of an [`enum` item](#enumerations). [^enumtype]
+
+[^enumtype]: The `enum` type is analogous to a `data` constructor declaration in
+             ML, or a *pick ADT* in Limbo.
 
 An [`enum` item](#enumerations) declares both the type and a number of *variant constructors*,
 each of which is independently named and takes an optional tuple of arguments.
@@ -3804,14 +3822,15 @@ By default, the scheduler chooses the number of threads based on
 the number of concurrent physical CPUs detected at startup.
 It's also possible to override this choice at runtime.
 When the number of tasks exceeds the number of threads &mdash; which is likely &mdash;
-the scheduler multiplexes the tasks onto threads.^[
-This is an M:N scheduler,
-which is known to give suboptimal results for CPU-bound concurrency problems.
-In such cases, running with the same number of threads and tasks can yield better results.
-Rust has M:N scheduling in order to support very large numbers of tasks
-in contexts where threads are too resource-intensive to use in large number.
-The cost of threads varies substantially per operating system, and is sometimes quite low,
-so this flexibility is not always worth exploiting.]
+the scheduler multiplexes the tasks onto threads.[^mnscheduler]
+
+[^mnscheduler]: This is an M:N scheduler, which is known to give suboptimal
+    results for CPU-bound concurrency problems.  In such cases, running with the
+    same number of threads and tasks can yield better results.  Rust has M:N
+    scheduling in order to support very large numbers of tasks in contexts where
+    threads are too resource-intensive to use in large number.  The cost of
+    threads varies substantially per operating system, and is sometimes quite
+    low, so this flexibility is not always worth exploiting.
 
 ### Communication between tasks
 
@@ -4085,7 +4104,7 @@ fn main() {
 
 These four log levels correspond to levels 1-4, as controlled by `RUST_LOG`:
 
-``` {.bash .notrust}
+```notrust,bash
 $ RUST_LOG=rust=3 ./rust
 This is an error log
 This is a warn log

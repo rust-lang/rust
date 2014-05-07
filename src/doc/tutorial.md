@@ -1405,7 +1405,7 @@ struct Point {
     x: f64,
     y: f64
 }
-~~~~
+~~~
 
 We can use this simple definition to allocate points in many different
 ways. For example, in this code, each of these local variables

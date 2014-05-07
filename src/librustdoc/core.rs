@@ -12,6 +12,7 @@ use rustc;
 use rustc::{driver, middle};
 use rustc::metadata::creader::Loader;
 use rustc::middle::privacy;
+use rustc::middle::lint;
 
 use syntax::ast;
 use syntax::parse::token;
@@ -33,7 +34,8 @@ pub enum MaybeTyped {
 
 pub struct DocContext {
     pub krate: ast::Crate,
-    pub maybe_typed: MaybeTyped
+    pub maybe_typed: MaybeTyped,
+    pub src: Path,
 }
 
 impl DocContext {
@@ -65,6 +67,7 @@ fn get_ast_and_resolve(cpath: &Path, libs: HashSet<Path>, cfgs: Vec<~str>)
         maybe_sysroot: Some(os::self_exe_path().unwrap().dir_path()),
         addl_lib_search_paths: RefCell::new(libs),
         crate_types: vec!(driver::session::CrateTypeDylib),
+        lint_opts: vec!((lint::Warnings, lint::allow)),
         ..rustc::driver::session::basic_options().clone()
     };
 
@@ -94,7 +97,8 @@ fn get_ast_and_resolve(cpath: &Path, libs: HashSet<Path>, cfgs: Vec<~str>)
     debug!("crate: {:?}", krate);
     (DocContext {
         krate: krate,
-        maybe_typed: Typed(ty_cx)
+        maybe_typed: Typed(ty_cx),
+        src: cpath.clone(),
     }, CrateAnalysis {
         exported_items: exported_items,
         public_items: public_items,
