@@ -1064,7 +1064,7 @@ impl Context {
             };
             try!(write!(w, "<a class='source-link' \
                               href='{root}src/{krate}/{path}.html\\#{href}'>\
-                              Source</a>",
+                              [src]</a>",
                           root = self.root_path,
                           krate = self.layout.krate,
                           path = path.connect("/"),

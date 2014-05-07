@@ -226,9 +226,6 @@ nav.sub {
     float: right;
     font-size: 90%;
     font-weight: 400;
-    border-radius: 3px;
-    padding: 2px 10px;
-    background-color: #ddd;
 }
 
 .content table {
@@ -292,8 +289,8 @@ a {
     color: #000;
     background: transparent;
 }
-p a { color: #4e8bca; }
-p a:hover { text-decoration: underline; }
+.content p a { color: #4e8bca; }
+.content p a:hover { text-decoration: underline; }
 
 .content a.trait, .block a.current.trait { color: #ed9603; }
 .content a.mod, .block a.current.mod { color: #4d76ae; }
@@ -372,24 +369,31 @@ p a:hover { text-decoration: underline; }
 }
 
 .stability {
-    border-left: 6px solid #000;
-    border-radius: 3px;
+    border-radius: 2px;
+    color: #FFF;
+    display: inline-block;
+    font-size: 11px;
     font-weight: 400;
-    padding: 4px 10px;
-    font-size: 90%;
-    font-style: italic;
-    border-bottom: 2px solid #000;
-    padding: 2px 5px;
-    text-transform: lowercase;
-    margin-left: 14px;
+    margin: 0 8px;
+    padding: 0 4px;
+    text-transform: uppercase;
+    vertical-align: 4px;
+}
+.method .stability {
+    visibility: hidden;
+    margin: 0 4px;
+    vertical-align: 1px;
+}
+.method:hover .stability {
+    visibility: visible;
 }
 
-.stability.Deprecated { border-color: #D60027; color: #880017; }
-.stability.Experimental { border-color: #EC5315; color: #a53c0e; }
-.stability.Unstable { border-color: #FFD700; color: #b39800; }
-.stability.Stable { border-color: #AEC516; color: #7c8b10; }
-.stability.Frozen { border-color: #009431; color: #007726; }
-.stability.Locked { border-color: #0084B6; color: #00668c; }
+.stability.Deprecated { background-color: #C8344D; }
+.stability.Experimental { background-color: #E58623; }
+.stability.Unstable { background-color: #F2CF15; }
+.stability.Stable { background-color: #809C10; }
+.stability.Frozen { background-color: #108034; }
+.stability.Locked { background-color: #007DAB; }
 
 :target { background: #FDFFD3; }
 
