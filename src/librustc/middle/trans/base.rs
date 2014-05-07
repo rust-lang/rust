@@ -1594,8 +1594,8 @@ impl<'a> Visitor<()> for TransItemVisitor<'a> {
 pub fn trans_item(ccx: &CrateContext, item: &ast::Item) {
     let _icx = push_ctxt("trans_item");
     match item.node {
-      ast::ItemFn(decl, fn_style, _abi, ref generics, body) => {
-        if fn_style == ast::ExternFn  {
+      ast::ItemFn(decl, _fn_style, abi, ref generics, body) => {
+        if abi != Rust  {
             let llfndecl = get_item_val(ccx, item.id);
             foreign::trans_rust_fn_with_foreign_abi(
                 ccx, decl, body, item.attrs.as_slice(), llfndecl, item.id);
@@ -1939,8 +1939,8 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
                     }
                 }
 
-                ast::ItemFn(_, fn_style, _, _, _) => {
-                    let llfn = if fn_style != ast::ExternFn {
+                ast::ItemFn(_, _, abi, _, _) => {
+                    let llfn = if abi == Rust {
                         register_fn(ccx, i.span, sym, i.id, ty)
                     } else {
                         foreign::register_rust_fn_with_foreign_abi(ccx,

@@ -22,6 +22,7 @@ use middle::privacy;
 use util::nodemap::NodeSet;
 
 use collections::HashSet;
+use syntax::abi;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util::{def_id_of_def, is_local};
@@ -250,8 +251,10 @@ impl<'a> ReachableContext<'a> {
             match *node {
                 ast_map::NodeItem(item) => {
                     match item.node {
-                        ast::ItemFn(_, ast::ExternFn, _, _, _) => {
-                            self.reachable_symbols.insert(search_item);
+                        ast::ItemFn(_, _, abi, _, _) => {
+                            if abi != abi::Rust {
+                                self.reachable_symbols.insert(search_item);
+                            }
                         }
                         _ => {}
                     }

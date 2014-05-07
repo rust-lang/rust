@@ -441,7 +441,6 @@ fn parse_fn_style(c: char) -> FnStyle {
     match c {
         'u' => UnsafeFn,
         'n' => NormalFn,
-        'c' => ExternFn,
         _ => fail!("parse_fn_style: bad fn_style {}", c)
     }
 }

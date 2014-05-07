@@ -403,6 +403,5 @@ pub fn ast_fn_style_constant(fn_style: ast::FnStyle) -> uint {
     match fn_style {
         ast::UnsafeFn => 1u,
         ast::NormalFn => 2u,
-        ast::ExternFn => 3u
     }
 }
