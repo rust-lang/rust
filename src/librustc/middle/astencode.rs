@@ -657,13 +657,13 @@ pub fn encode_vtable_origin(ecx: &e::EncodeContext,
                         vtable_origin: &typeck::vtable_origin) {
     ebml_w.emit_enum("vtable_origin", |ebml_w| {
         match *vtable_origin {
-          typeck::vtable_static(def_id, ref tys, ref vtable_res) => {
+          typeck::vtable_static(def_id, ref substs, ref vtable_res) => {
             ebml_w.emit_enum_variant("vtable_static", 0u, 3u, |ebml_w| {
                 ebml_w.emit_enum_variant_arg(0u, |ebml_w| {
                     Ok(ebml_w.emit_def_id(def_id))
                 });
                 ebml_w.emit_enum_variant_arg(1u, |ebml_w| {
-                    Ok(ebml_w.emit_tys(ecx, tys.as_slice()))
+                    Ok(ebml_w.emit_substs(ecx, substs))
                 });
                 ebml_w.emit_enum_variant_arg(2u, |ebml_w| {
                     Ok(encode_vtable_res(ecx, ebml_w, vtable_res))
@@ -744,7 +744,7 @@ impl<'a> vtable_decoder_helpers for reader::Decoder<'a> {
                             Ok(this.read_def_id_noxcx(cdata))
                         }).unwrap(),
                         this.read_enum_variant_arg(1u, |this| {
-                            Ok(this.read_tys_noxcx(tcx, cdata))
+                            Ok(this.read_substs_noxcx(tcx, cdata))
                         }).unwrap(),
                         this.read_enum_variant_arg(2u, |this| {
                             Ok(this.read_vtable_res(tcx, cdata))
@@ -962,11 +962,11 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
         })
     }
 
-    for tys in tcx.node_type_substs.borrow().find(&id).iter() {
-        ebml_w.tag(c::tag_table_node_type_subst, |ebml_w| {
+    for &item_substs in tcx.item_substs.borrow().find(&id).iter() {
+        ebml_w.tag(c::tag_table_item_subst, |ebml_w| {
             ebml_w.id(id);
             ebml_w.tag(c::tag_table_val, |ebml_w| {
-                ebml_w.emit_tys(ecx, tys.as_slice())
+                ebml_w.emit_substs(ecx, &item_substs.substs);
             })
         })
     }
@@ -1091,6 +1091,9 @@ trait ebml_decoder_decoder_helpers {
     fn read_tys_noxcx(&mut self,
                       tcx: &ty::ctxt,
                       cdata: &cstore::crate_metadata) -> Vec<ty::t>;
+    fn read_substs_noxcx(&mut self, tcx: &ty::ctxt,
+                         cdata: &cstore::crate_metadata)
+                         -> ty::substs;
 }
 
 impl<'a> ebml_decoder_decoder_helpers for reader::Decoder<'a> {
@@ -1113,6 +1116,21 @@ impl<'a> ebml_decoder_decoder_helpers for reader::Decoder<'a> {
             .unwrap()
             .move_iter()
             .collect()
+    }
+
+    fn read_substs_noxcx(&mut self,
+                         tcx: &ty::ctxt,
+                         cdata: &cstore::crate_metadata)
+                         -> ty::substs
+    {
+        self.read_opaque(|_, doc| {
+            Ok(tydecode::parse_substs_data(
+                doc.data,
+                cdata.cnum,
+                doc.start,
+                tcx,
+                |_, id| decoder::translate_def_id(cdata, id)))
+        }).unwrap()
     }
 
     fn read_ty(&mut self, xcx: &ExtendedDecodeContext) -> ty::t {
@@ -1312,9 +1330,12 @@ fn decode_side_tables(xcx: &ExtendedDecodeContext,
                                id, ty_to_str(dcx.tcx, ty));
                         dcx.tcx.node_types.borrow_mut().insert(id as uint, ty);
                     }
-                    c::tag_table_node_type_subst => {
-                        let tys = val_dsr.read_tys(xcx);
-                        dcx.tcx.node_type_substs.borrow_mut().insert(id, tys);
+                    c::tag_table_item_subst => {
+                        let item_substs = ty::ItemSubsts {
+                            substs: val_dsr.read_substs(xcx)
+                        };
+                        dcx.tcx.item_substs.borrow_mut().insert(
+                            id, item_substs);
                     }
                     c::tag_table_freevars => {
                         let fv_info = val_dsr.read_to_vec(|val_dsr| {

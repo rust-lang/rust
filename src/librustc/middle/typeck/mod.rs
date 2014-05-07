@@ -184,7 +184,7 @@ pub enum vtable_origin {
       from whence comes the vtable, and tys are the type substs.
       vtable_res is the vtable itself
      */
-    vtable_static(ast::DefId, Vec<ty::t>, vtable_res),
+    vtable_static(ast::DefId, ty::substs, vtable_res),
 
     /*
       Dynamic vtable, comes from a parameter that has a bound on it:
@@ -253,13 +253,16 @@ pub fn write_ty_to_tcx(tcx: &ty::ctxt, node_id: ast::NodeId, ty: ty::t) {
 }
 pub fn write_substs_to_tcx(tcx: &ty::ctxt,
                            node_id: ast::NodeId,
-                           substs: Vec<ty::t> ) {
-    if substs.len() > 0u {
-        debug!("write_substs_to_tcx({}, {:?})", node_id,
-               substs.iter().map(|t| ppaux::ty_to_str(tcx, *t)).collect::<Vec<~str>>());
-        assert!(substs.iter().all(|t| !ty::type_needs_infer(*t)));
+                           item_substs: ty::ItemSubsts) {
+    if !item_substs.is_noop() {
+        debug!("write_substs_to_tcx({}, {})",
+               node_id,
+               item_substs.repr(tcx));
 
-        tcx.node_type_substs.borrow_mut().insert(node_id, substs);
+        assert!(item_substs.substs.tps.iter().
+                all(|t| !ty::type_needs_infer(*t)));
+
+        tcx.item_substs.borrow_mut().insert(node_id, item_substs);
     }
 }
 pub fn lookup_def_tcx(tcx:&ty::ctxt, sp: Span, id: ast::NodeId) -> ast::Def {

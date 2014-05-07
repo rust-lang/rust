@@ -255,9 +255,9 @@ pub struct ctxt {
 
     // Stores the type parameters which were substituted to obtain the type
     // of this node.  This only applies to nodes that refer to entities
-    // parameterized by type parameters, such as generic fns, types, or
+    // param<eterized by type parameters, such as generic fns, types, or
     // other items.
-    pub node_type_substs: RefCell<NodeMap<Vec<t>>>,
+    pub item_substs: RefCell<NodeMap<ItemSubsts>>,
 
     // Maps from a method to the method "descriptor"
     pub methods: RefCell<DefIdMap<Rc<Method>>>,
@@ -1060,6 +1060,13 @@ pub struct TraitDef {
     pub trait_ref: Rc<ty::TraitRef>,
 }
 
+/// Records the substitutions used to translate the polytype for an
+/// item into the monotype of an item reference.
+#[deriving(Clone)]
+pub struct ItemSubsts {
+    pub substs: ty::substs,
+}
+
 pub struct ty_param_substs_and_ty {
     pub substs: ty::substs,
     pub ty: ty::t
@@ -1086,7 +1093,7 @@ pub fn mk_ctxt(s: Session,
         def_map: dm,
         region_maps: region_maps,
         node_types: RefCell::new(HashMap::new()),
-        node_type_substs: RefCell::new(NodeMap::new()),
+        item_substs: RefCell::new(NodeMap::new()),
         trait_refs: RefCell::new(NodeMap::new()),
         trait_defs: RefCell::new(DefIdMap::new()),
         map: map,
@@ -1510,47 +1517,13 @@ pub fn walk_regions_and_ty(cx: &ctxt, ty: t, fldr: |r: Region|, fldt: |t: t|)
                                    |t| { fldt(t); t }).fold_ty(ty)
 }
 
-// Substitute *only* type parameters.  Used in trans where regions are erased.
-pub fn subst_tps(tcx: &ctxt, tps: &[t], self_ty_opt: Option<t>, typ: t) -> t {
-    let mut subst = TpsSubst { tcx: tcx, self_ty_opt: self_ty_opt, tps: tps };
-    return subst.fold_ty(typ);
-
-    struct TpsSubst<'a> {
-        tcx: &'a ctxt,
-        self_ty_opt: Option<t>,
-        tps: &'a [t],
+impl ItemSubsts {
+    pub fn empty() -> ItemSubsts {
+        ItemSubsts { substs: substs::empty() }
     }
 
-    impl<'a> TypeFolder for TpsSubst<'a> {
-        fn tcx<'a>(&'a self) -> &'a ctxt { self.tcx }
-
-        fn fold_ty(&mut self, t: ty::t) -> ty::t {
-            if self.tps.len() == 0u && self.self_ty_opt.is_none() {
-                return t;
-            }
-
-            let tb = ty::get(t);
-            if self.self_ty_opt.is_none() && !tbox_has_flag(tb, has_params) {
-                return t;
-            }
-
-            match ty::get(t).sty {
-                ty_param(p) => {
-                    self.tps[p.idx]
-                }
-
-                ty_self(_) => {
-                    match self.self_ty_opt {
-                        None => self.tcx.sess.bug("ty_self unexpected here"),
-                        Some(self_ty) => self_ty
-                    }
-                }
-
-                _ => {
-                    ty_fold::super_fold_ty(self, t)
-                }
-            }
-        }
+    pub fn is_noop(&self) -> bool {
+        ty::substs_is_noop(&self.substs)
     }
 }
 
@@ -2669,11 +2642,10 @@ pub fn node_id_to_type_opt(cx: &ctxt, id: ast::NodeId) -> Option<t> {
     }
 }
 
-// FIXME(pcwalton): Makes a copy, bleh. Probably better to not do that.
-pub fn node_id_to_type_params(cx: &ctxt, id: ast::NodeId) -> Vec<t> {
-    match cx.node_type_substs.borrow().find(&id) {
-      None => return Vec::new(),
-      Some(ts) => return (*ts).clone(),
+pub fn node_id_item_substs(cx: &ctxt, id: ast::NodeId) -> ItemSubsts {
+    match cx.item_substs.borrow().find(&id) {
+      None => ItemSubsts::empty(),
+      Some(ts) => ts.clone(),
     }
 }
 
@@ -2988,21 +2960,6 @@ impl AutoRef {
             ty::AutoUnsafe(m) => ty::AutoUnsafe(m),
             ty::AutoBorrowObj(r, m) => ty::AutoBorrowObj(f(r), m),
         }
-    }
-}
-
-pub struct ParamsTy {
-    pub params: Vec<t>,
-    pub ty: t
-}
-
-#[allow(dead_code)] // this may be useful?
-pub fn expr_ty_params_and_ty(cx: &ctxt,
-                             expr: &ast::Expr)
-                          -> ParamsTy {
-    ParamsTy {
-        params: node_id_to_type_params(cx, expr.id),
-        ty: node_id_to_type(cx, expr.id)
     }
 }
 
