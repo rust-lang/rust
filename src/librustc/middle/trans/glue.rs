@@ -236,7 +236,7 @@ fn trans_struct_drop<'a>(bcx: &'a Block<'a>,
 
     // Find and call the actual destructor
     let dtor_addr = get_res_dtor(bcx.ccx(), dtor_did,
-                                 class_did, substs.tps.as_slice());
+                                 class_did, substs);
 
     // The second argument is the "self" argument for drop
     let params = unsafe {

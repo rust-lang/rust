@@ -21,11 +21,14 @@ use middle::typeck::check::FnCtxt;
 use middle::typeck::infer::{force_all, resolve_all, resolve_region};
 use middle::typeck::infer::resolve_type;
 use middle::typeck::infer;
+use middle::typeck::impl_res;
 use middle::typeck::{MethodCall, MethodCallee};
 use middle::typeck::{vtable_origin, vtable_static, vtable_param};
 use middle::typeck::write_substs_to_tcx;
 use middle::typeck::write_ty_to_tcx;
 use util::ppaux::Repr;
+
+use std::cell::Cell;
 
 use syntax::ast;
 use syntax::codemap::Span;
@@ -59,6 +62,17 @@ pub fn resolve_type_vars_in_fn(fcx: &FnCtxt,
         }
     }
     wbcx.visit_upvar_borrow_map();
+}
+
+pub fn resolve_impl_res(infcx: &infer::InferCtxt,
+                        span: Span,
+                        impl_res: &impl_res)
+                        -> impl_res {
+    let errors = Cell::new(false); // nobody cares
+    let mut resolver = Resolver::from_infcx(infcx,
+                                            &errors,
+                                            ResolvingImplRes(span));
+    impl_res.resolve_in(&mut resolver)
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -159,7 +173,7 @@ impl<'cx> Visitor<()> for WritebackCx<'cx> {
         }
 
         let var_ty = self.fcx.local_ty(l.span, l.id);
-        let var_ty = var_ty.resolve(self.fcx, ResolvingLocal(l.span));
+        let var_ty = self.resolve(&var_ty, ResolvingLocal(l.span));
         write_ty_to_tcx(self.tcx(), l.id, var_ty);
         visit::walk_local(self, l, ());
     }
@@ -177,7 +191,7 @@ impl<'cx> WritebackCx<'cx> {
 
         for (upvar_id, upvar_borrow) in self.fcx.inh.upvar_borrow_map.borrow().iter() {
             let r = upvar_borrow.region;
-            let r = r.resolve(self.fcx, ResolvingUpvar(*upvar_id));
+            let r = self.resolve(&r, ResolvingUpvar(*upvar_id));
             let new_upvar_borrow = ty::UpvarBorrow { kind: upvar_borrow.kind,
                                                      region: r };
             debug!("Upvar borrow for {} resolved to {}",
@@ -194,17 +208,14 @@ impl<'cx> WritebackCx<'cx> {
 
         // Resolve the type of the node with id `id`
         let n_ty = self.fcx.node_ty(id);
-        let n_ty = n_ty.resolve(self.fcx, reason);
+        let n_ty = self.resolve(&n_ty, reason);
         write_ty_to_tcx(self.tcx(), id, n_ty);
         debug!("Node {} has type {}", id, n_ty.repr(self.tcx()));
 
         // Resolve any substitutions
-        self.fcx.opt_node_ty_substs(id, |node_substs| {
-            let mut new_tps = Vec::new();
-            for subst in node_substs.tps.iter() {
-                new_tps.push(subst.resolve(self.fcx, reason));
-            }
-            write_substs_to_tcx(self.tcx(), id, new_tps);
+        self.fcx.opt_node_ty_substs(id, |item_substs| {
+            write_substs_to_tcx(self.tcx(), id,
+                                self.resolve(item_substs, reason));
         });
     }
 
@@ -228,12 +239,12 @@ impl<'cx> WritebackCx<'cx> {
                             }
                             _ => {
                                 self.tcx().sess.span_err(
-                                    reason.span(self.fcx),
+                                    reason.span(self.tcx()),
                                     "cannot coerce non-statically resolved bare fn")
                             }
                         }
 
-                        ty::AutoAddEnv(store.resolve(self.fcx, reason))
+                        ty::AutoAddEnv(self.resolve(&store, reason))
                     }
 
                     ty::AutoDerefRef(adj) => {
@@ -245,7 +256,7 @@ impl<'cx> WritebackCx<'cx> {
 
                         ty::AutoDerefRef(ty::AutoDerefRef {
                             autoderefs: adj.autoderefs,
-                            autoref: adj.autoref.resolve(self.fcx, reason),
+                            autoref: self.resolve(&adj.autoref, reason),
                         })
                     }
 
@@ -269,8 +280,8 @@ impl<'cx> WritebackCx<'cx> {
                        method.repr(self.tcx()));
                 let mut new_method = MethodCallee {
                     origin: method.origin,
-                    ty: method.ty.resolve(self.fcx, reason),
-                    substs: method.substs.resolve(self.fcx, reason),
+                    ty: self.resolve(&method.ty, reason),
+                    substs: self.resolve(&method.substs, reason),
                 };
 
                 // Wack. For some reason I don't quite know, we always
@@ -297,7 +308,7 @@ impl<'cx> WritebackCx<'cx> {
         // Resolve any vtable map entry
         match self.fcx.inh.vtable_map.borrow_mut().pop(&vtable_key) {
             Some(origins) => {
-                let r_origins = origins.resolve(self.fcx, reason);
+                let r_origins = self.resolve(&origins, reason);
                 debug!("writeback::resolve_vtable_map_entry(\
                         vtable_key={}, vtables={:?})",
                        vtable_key, r_origins.repr(self.tcx()));
@@ -305,6 +316,10 @@ impl<'cx> WritebackCx<'cx> {
             }
             None => {}
         }
+    }
+
+    fn resolve<T:ResolveIn>(&self, t: &T, reason: ResolveReason) -> T {
+        t.resolve_in(&mut Resolver::new(self.fcx, reason))
     }
 }
 
@@ -315,18 +330,20 @@ enum ResolveReason {
     ResolvingExpr(Span),
     ResolvingLocal(Span),
     ResolvingPattern(Span),
-    ResolvingUpvar(ty::UpvarId)
+    ResolvingUpvar(ty::UpvarId),
+    ResolvingImplRes(Span),
 }
 
 impl ResolveReason {
-    fn span(&self, fcx: &FnCtxt) -> Span {
+    fn span(&self, tcx: &ty::ctxt) -> Span {
         match *self {
             ResolvingExpr(s) => s,
             ResolvingLocal(s) => s,
             ResolvingPattern(s) => s,
             ResolvingUpvar(upvar_id) => {
-                ty::expr_span(fcx.tcx(), upvar_id.closure_expr_id)
+                ty::expr_span(tcx, upvar_id.closure_expr_id)
             }
+            ResolvingImplRes(s) => s,
         }
     }
 }
@@ -334,63 +351,80 @@ impl ResolveReason {
 ///////////////////////////////////////////////////////////////////////////
 // Convenience methods for resolving different kinds of things.
 
-trait Resolve {
-    fn resolve(&self, fcx: &FnCtxt, reason: ResolveReason) -> Self;
+trait ResolveIn {
+    fn resolve_in(&self, resolver: &mut Resolver) -> Self;
 }
 
-impl<T:Resolve> Resolve for Option<T> {
-    fn resolve(&self, fcx: &FnCtxt, reason: ResolveReason) -> Option<T> {
-        self.as_ref().map(|t| t.resolve(fcx, reason))
+impl<T:ResolveIn> ResolveIn for Option<T> {
+    fn resolve_in(&self, resolver: &mut Resolver) -> Option<T> {
+        self.as_ref().map(|t| t.resolve_in(resolver))
     }
 }
 
-impl<T:Resolve> Resolve for Vec<T> {
-    fn resolve(&self, fcx: &FnCtxt, reason: ResolveReason) -> Vec<T> {
-        self.iter().map(|t| t.resolve(fcx, reason)).collect()
+impl<T:ResolveIn> ResolveIn for Vec<T> {
+    fn resolve_in(&self, resolver: &mut Resolver) -> Vec<T> {
+        self.iter().map(|t| t.resolve_in(resolver)).collect()
     }
 }
 
-impl Resolve for ty::TraitStore {
-    fn resolve(&self, fcx: &FnCtxt, reason: ResolveReason) -> ty::TraitStore {
-        Resolver::new(fcx, reason).fold_trait_store(*self)
+impl ResolveIn for ty::TraitStore {
+    fn resolve_in(&self, resolver: &mut Resolver) -> ty::TraitStore {
+        resolver.fold_trait_store(*self)
     }
 }
 
-impl Resolve for ty::t {
-    fn resolve(&self, fcx: &FnCtxt, reason: ResolveReason) -> ty::t {
-        Resolver::new(fcx, reason).fold_ty(*self)
+impl ResolveIn for ty::t {
+    fn resolve_in(&self, resolver: &mut Resolver) -> ty::t {
+        resolver.fold_ty(*self)
     }
 }
 
-impl Resolve for ty::Region {
-    fn resolve(&self, fcx: &FnCtxt, reason: ResolveReason) -> ty::Region {
-        Resolver::new(fcx, reason).fold_region(*self)
+impl ResolveIn for ty::Region {
+    fn resolve_in(&self, resolver: &mut Resolver) -> ty::Region {
+        resolver.fold_region(*self)
     }
 }
 
-impl Resolve for ty::substs {
-    fn resolve(&self, fcx: &FnCtxt, reason: ResolveReason) -> ty::substs {
-        Resolver::new(fcx, reason).fold_substs(self)
+impl ResolveIn for ty::substs {
+    fn resolve_in(&self, resolver: &mut Resolver) -> ty::substs {
+        resolver.fold_substs(self)
     }
 }
 
-impl Resolve for ty::AutoRef {
-    fn resolve(&self, fcx: &FnCtxt, reason: ResolveReason) -> ty::AutoRef {
-        Resolver::new(fcx, reason).fold_autoref(self)
+impl ResolveIn for ty::ItemSubsts {
+    fn resolve_in(&self, resolver: &mut Resolver) -> ty::ItemSubsts {
+        ty::ItemSubsts {
+            substs: self.substs.resolve_in(resolver)
+        }
     }
 }
 
-impl Resolve for vtable_origin {
-    fn resolve(&self, fcx: &FnCtxt, reason: ResolveReason) -> vtable_origin {
+impl ResolveIn for ty::AutoRef {
+    fn resolve_in(&self, resolver: &mut Resolver) -> ty::AutoRef {
+        resolver.fold_autoref(self)
+    }
+}
+
+impl ResolveIn for vtable_origin {
+    fn resolve_in(&self, resolver: &mut Resolver) -> vtable_origin {
         match *self {
-            vtable_static(def_id, ref tys, ref origins) => {
-                let r_tys = tys.resolve(fcx, reason);
-                let r_origins = origins.resolve(fcx, reason);
-                vtable_static(def_id, r_tys, r_origins)
+            vtable_static(def_id, ref substs, ref origins) => {
+                let r_substs = substs.resolve_in(resolver);
+                let r_origins = origins.resolve_in(resolver);
+                vtable_static(def_id, r_substs, r_origins)
             }
             vtable_param(n, b) => {
                 vtable_param(n, b)
             }
+        }
+    }
+}
+
+impl ResolveIn for impl_res {
+    fn resolve_in(&self, resolver: &mut Resolver) -> impl_res {
+        impl_res {
+            trait_vtables: self.trait_vtables.resolve_in(resolver),
+            self_vtables: self.self_vtables.resolve_in(resolver),
         }
     }
 }
@@ -400,7 +434,9 @@ impl Resolve for vtable_origin {
 // unresolved types and so forth.
 
 struct Resolver<'cx> {
-    fcx: &'cx FnCtxt<'cx>,
+    tcx: &'cx ty::ctxt,
+    infcx: &'cx infer::InferCtxt<'cx>,
+    writeback_errors: &'cx Cell<bool>,
     reason: ResolveReason,
 }
 
@@ -409,15 +445,29 @@ impl<'cx> Resolver<'cx> {
            reason: ResolveReason)
            -> Resolver<'cx>
     {
-        Resolver { fcx: fcx, reason: reason }
+        Resolver { infcx: fcx.infcx(),
+                   tcx: fcx.tcx(),
+                   writeback_errors: &fcx.writeback_errors,
+                   reason: reason }
+    }
+
+    fn from_infcx(infcx: &'cx infer::InferCtxt<'cx>,
+                  writeback_errors: &'cx Cell<bool>,
+                  reason: ResolveReason)
+                  -> Resolver<'cx>
+    {
+        Resolver { infcx: infcx,
+                   tcx: infcx.tcx,
+                   writeback_errors: writeback_errors,
+                   reason: reason }
     }
 
     fn report_error(&self, e: infer::fixup_err) {
-        self.fcx.writeback_errors.set(true);
-        if !self.tcx().sess.has_errors() {
+        self.writeback_errors.set(true);
+        if !self.tcx.sess.has_errors() {
             match self.reason {
                 ResolvingExpr(span) => {
-                    self.tcx().sess.span_err(
+                    self.tcx.sess.span_err(
                         span,
                         format!("cannot determine a type for \
                                  this expression: {}",
@@ -425,7 +475,7 @@ impl<'cx> Resolver<'cx> {
                 }
 
                 ResolvingLocal(span) => {
-                    self.tcx().sess.span_err(
+                    self.tcx.sess.span_err(
                         span,
                         format!("cannot determine a type for \
                                  this local variable: {}",
@@ -433,7 +483,7 @@ impl<'cx> Resolver<'cx> {
                 }
 
                 ResolvingPattern(span) => {
-                    self.tcx().sess.span_err(
+                    self.tcx.sess.span_err(
                         span,
                         format!("cannot determine a type for \
                                  this pattern binding: {}",
@@ -441,15 +491,21 @@ impl<'cx> Resolver<'cx> {
                 }
 
                 ResolvingUpvar(upvar_id) => {
-                    let span = self.reason.span(self.fcx);
-                    self.tcx().sess.span_err(
+                    let span = self.reason.span(self.tcx);
+                    self.tcx.sess.span_err(
                         span,
                         format!("cannot resolve lifetime for \
                                  captured variable `{}`: {}",
                                 ty::local_var_name_str(
-                                    self.tcx(),
+                                    self.tcx,
                                     upvar_id.var_id).get().to_str(),
                                 infer::fixup_err_to_str(e)));
+                }
+
+                ResolvingImplRes(span) => {
+                    self.tcx.sess.span_err(
+                        span,
+                        format!("cannot determine a type for impl supertrait"));
                 }
             }
         }
@@ -458,7 +514,7 @@ impl<'cx> Resolver<'cx> {
 
 impl<'cx> TypeFolder for Resolver<'cx> {
     fn tcx<'a>(&'a self) -> &'a ty::ctxt {
-        self.fcx.tcx()
+        self.tcx
     }
 
     fn fold_ty(&mut self, t: ty::t) -> ty::t {
@@ -466,7 +522,7 @@ impl<'cx> TypeFolder for Resolver<'cx> {
             return t;
         }
 
-        match resolve_type(self.fcx.infcx(), t, resolve_all | force_all) {
+        match resolve_type(self.infcx, t, resolve_all | force_all) {
             Ok(t) => t,
             Err(e) => {
                 self.report_error(e);
@@ -476,7 +532,7 @@ impl<'cx> TypeFolder for Resolver<'cx> {
     }
 
     fn fold_region(&mut self, r: ty::Region) -> ty::Region {
-        match resolve_region(self.fcx.infcx(), r, resolve_all | force_all) {
+        match resolve_region(self.infcx, r, resolve_all | force_all) {
             Ok(r) => r,
             Err(e) => {
                 self.report_error(e);

@@ -195,6 +195,17 @@ impl Subst for ty::substs {
     }
 }
 
+impl Subst for ty::ItemSubsts {
+    fn subst_spanned(&self, tcx: &ty::ctxt,
+                     substs: &ty::substs,
+                     span: Option<Span>)
+                     -> ty::ItemSubsts {
+        ty::ItemSubsts {
+            substs: self.substs.subst_spanned(tcx, substs, span)
+        }
+    }
+}
+
 impl Subst for ty::RegionSubsts {
     fn subst_spanned(&self, tcx: &ty::ctxt,
                      substs: &ty::substs,
