@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// FIXME: talk about offset, copy_memory, copy_nonoverlapping_memory
+
 //! Conveniences for working with unsafe pointers, the `*T`, and `*mut T` types.
 //!
 //! Working with unsafe pointers in Rust is fairly uncommon,
