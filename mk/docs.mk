@@ -141,26 +141,6 @@ doc/footer.inc: $(D)/footer.inc | doc/
 	@$(call E, cp: $@)
 	$(Q)cp -a $< $@ 2> /dev/null
 
-doc/FiraSans-Regular.woff: $(D)/FiraSans-Regular.woff | doc/
-	@$(call E, cp: $@)
-	$(Q)cp -a $< $@ 2> /dev/null
-
-doc/FiraSans-Medium.woff: $(D)/FiraSans-Medium.woff | doc/
-	@$(call E, cp: $@)
-	$(Q)cp -a $< $@ 2> /dev/null
-
-doc/Heuristica-Regular.woff: $(D)/Heuristica-Regular.woff | doc/
-	@$(call E, cp: $@)
-	$(Q)cp -a $< $@ 2> /dev/null
-
-doc/Heuristica-Italic.woff: $(D)/Heuristica-Italic.woff | doc/
-	@$(call E, cp: $@)
-	$(Q)cp -a $< $@ 2> /dev/null
-
-doc/Heuristica-Bold.woff: $(D)/Heuristica-Bold.woff | doc/
-	@$(call E, cp: $@)
-	$(Q)cp -a $< $@ 2> /dev/null
-
 # The (english) documentation for each doc item.
 
 define DEF_SHOULD_BUILD_PDF_DOC

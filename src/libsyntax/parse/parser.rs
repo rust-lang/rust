@@ -4167,14 +4167,11 @@ impl<'a> Parser<'a> {
             }
         };
 
-        self.eval_src_mod_from_path(file_path,
-                                    outer_attrs.iter().map(|x| *x).collect(),
-                                    id_sp)
+        self.eval_src_mod_from_path(file_path, id_sp)
     }
 
     fn eval_src_mod_from_path(&mut self,
                               path: Path,
-                              outer_attrs: Vec<ast::Attribute> ,
                               id_sp: Span) -> (ast::Item_, Vec<ast::Attribute> ) {
         let mut included_mod_stack = self.sess.included_mod_stack.borrow_mut();
         match included_mod_stack.iter().position(|p| *p == path) {
@@ -4199,8 +4196,7 @@ impl<'a> Parser<'a> {
                                      &path,
                                      id_sp);
         let mod_inner_lo = p0.span.lo;
-        let (inner, next) = p0.parse_inner_attrs_and_next();
-        let mod_attrs = outer_attrs.append(inner.as_slice());
+        let (mod_attrs, next) = p0.parse_inner_attrs_and_next();
         let first_item_outer_attrs = next;
         let m0 = p0.parse_mod_items(token::EOF, first_item_outer_attrs, mod_inner_lo);
         self.sess.included_mod_stack.borrow_mut().pop();

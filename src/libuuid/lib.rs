@@ -35,7 +35,7 @@ fn main() {
     let uuid1 = Uuid::new_v4();
     println!("{}", uuid1.to_str());
 }
- ```
+```
 
 # Strings
 
