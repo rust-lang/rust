@@ -15,6 +15,7 @@ use syntax::abi;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::ast_map;
+use syntax::attr::AttrMetaMethods;
 use syntax::codemap::Span;
 
 use core;
@@ -133,9 +134,17 @@ impl<'a> RustdocVisitor<'a> {
         if item.vis != ast::Public {
             return om.view_items.push(item.clone());
         }
+        let please_inline = item.attrs.iter().any(|item| {
+            match item.meta_item_list() {
+                Some(list) => {
+                    list.iter().any(|i| i.name().get() == "inline")
+                }
+                None => false,
+            }
+        });
         let item = match item.node {
             ast::ViewItemUse(ref vpath) => {
-                match self.visit_view_path(*vpath, om) {
+                match self.visit_view_path(*vpath, om, please_inline) {
                     None => return,
                     Some(path) => {
                         ast::ViewItem {
@@ -151,15 +160,16 @@ impl<'a> RustdocVisitor<'a> {
     }
 
     fn visit_view_path(&mut self, path: @ast::ViewPath,
-                       om: &mut Module) -> Option<@ast::ViewPath> {
+                       om: &mut Module,
+                       please_inline: bool) -> Option<@ast::ViewPath> {
         match path.node {
             ast::ViewPathSimple(_, _, id) => {
-                if self.resolve_id(id, false, om) { return None }
+                if self.resolve_id(id, false, om, please_inline) { return None }
             }
             ast::ViewPathList(ref p, ref paths, ref b) => {
                 let mut mine = Vec::new();
                 for path in paths.iter() {
-                    if !self.resolve_id(path.node.id, false, om) {
+                    if !self.resolve_id(path.node.id, false, om, please_inline) {
                         mine.push(path.clone());
                     }
                 }
@@ -173,14 +183,14 @@ impl<'a> RustdocVisitor<'a> {
 
             // these are feature gated anyway
             ast::ViewPathGlob(_, id) => {
-                if self.resolve_id(id, true, om) { return None }
+                if self.resolve_id(id, true, om, please_inline) { return None }
             }
         }
         return Some(path);
     }
 
     fn resolve_id(&mut self, id: ast::NodeId, glob: bool,
-                  om: &mut Module) -> bool {
+                  om: &mut Module, please_inline: bool) -> bool {
         let tcx = match self.cx.maybe_typed {
             core::Typed(ref tcx) => tcx,
             core::NotTyped(_) => return false
@@ -190,7 +200,9 @@ impl<'a> RustdocVisitor<'a> {
         let analysis = match self.analysis {
             Some(analysis) => analysis, None => return false
         };
-        if analysis.public_items.contains(&def.node) { return false }
+        if !please_inline && analysis.public_items.contains(&def.node) {
+            return false
+        }
 
         match tcx.map.get(def.node) {
             ast_map::NodeItem(it) => {

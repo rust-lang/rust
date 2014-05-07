@@ -61,7 +61,7 @@ fn main() {
         unsafe { puts(c_buffer); }
     });
 }
- ```
+```
 
 */
 

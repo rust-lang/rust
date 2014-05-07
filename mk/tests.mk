@@ -220,8 +220,8 @@ ALL_CS := $(wildcard $(S)src/rt/*.cpp \
                      $(S)src/rt/*/*/*.cpp \
                      $(S)src/rustllvm/*.cpp)
 ALL_CS := $(filter-out $(S)src/rt/miniz.cpp \
-		       $(wildcard $(S)src/rt/sundown/src/*.c) \
-		       $(wildcard $(S)src/rt/sundown/html/*.c) \
+		       $(wildcard $(S)src/rt/hoedown/src/*.c) \
+		       $(wildcard $(S)src/rt/hoedown/bin/*.c) \
 	,$(ALL_CS))
 ALL_HS := $(wildcard $(S)src/rt/*.h \
                      $(S)src/rt/*/*.h \
@@ -232,8 +232,8 @@ ALL_HS := $(filter-out $(S)src/rt/vg/valgrind.h \
                        $(S)src/rt/msvc/typeof.h \
                        $(S)src/rt/msvc/stdint.h \
                        $(S)src/rt/msvc/inttypes.h \
-		       $(wildcard $(S)src/rt/sundown/src/*.h) \
-		       $(wildcard $(S)src/rt/sundown/html/*.h) \
+		       $(wildcard $(S)src/rt/hoedown/src/*.h) \
+		       $(wildcard $(S)src/rt/hoedown/bin/*.h) \
 	,$(ALL_HS))
 
 # Run the tidy script in multiple parts to avoid huge 'echo' commands
@@ -266,6 +266,7 @@ tidy:
 		    -and -not -name '*.sh' \
 		| grep '^$(S)src/llvm' -v \
 		| grep '^$(S)src/libuv' -v \
+		| grep '^$(S)src/rt/hoedown' -v \
 		| grep '^$(S)src/gyp' -v \
 		| grep '^$(S)src/etc' -v \
 		| grep '^$(S)src/doc' -v \

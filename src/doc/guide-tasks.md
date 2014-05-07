@@ -488,7 +488,7 @@ fn stringifier(channel: &sync::DuplexStream<~str, uint>) {
     }
 }
 # }
-~~~~
+~~~
 
 The implementation of `DuplexStream` supports both sending and
 receiving. The `stringifier` function takes a `DuplexStream` that can
@@ -530,7 +530,7 @@ assert!(from_child.recv() == "23".to_owned());
 assert!(from_child.recv() == "0".to_owned());
 
 # }
-~~~~
+~~~
 
 The parent task first calls `DuplexStream` to create a pair of bidirectional
 endpoints. It then uses `task::spawn` to create the child task, which captures

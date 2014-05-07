@@ -35,19 +35,20 @@
 # that's per-target so you're allowed to conditionally add files based on the
 # target.
 ################################################################################
-NATIVE_LIBS := rustrt sundown uv_support morestack miniz context_switch
+NATIVE_LIBS := rustrt hoedown uv_support morestack miniz context_switch
 
 # $(1) is the target triple
 define NATIVE_LIBRARIES
 
-NATIVE_DEPS_sundown_$(1) := sundown/src/autolink.c \
-			sundown/src/buffer.c \
-			sundown/src/stack.c \
-			sundown/src/markdown.c \
-			sundown/html/houdini_href_e.c \
-			sundown/html/houdini_html_e.c \
-			sundown/html/html_smartypants.c \
-			sundown/html/html.c
+NATIVE_DEPS_hoedown_$(1) := hoedown/src/autolink.c \
+			hoedown/src/buffer.c \
+			hoedown/src/document.c \
+			hoedown/src/escape.c \
+			hoedown/src/html.c \
+			hoedown/src/html_blocks.c \
+			hoedown/src/html_smartypants.c \
+			hoedown/src/stack.c \
+			hoedown/src/version.c
 NATIVE_DEPS_uv_support_$(1) := rust_uv.c
 NATIVE_DEPS_miniz_$(1) = miniz.c
 NATIVE_DEPS_rustrt_$(1) := rust_builtin.c \
@@ -79,7 +80,7 @@ $$(RT_OUTPUT_DIR_$(1))/%.o: $(S)src/rt/%.c $$(MKFILE_DEPS)
 	@mkdir -p $$(@D)
 	@$$(call E, compile: $$@)
 	$$(Q)$$(call CFG_COMPILE_C_$(1), $$@, \
-		-I $$(S)src/rt/sundown/src -I $$(S)src/rt/sundown/html \
+		-I $$(S)src/rt/hoedown/src \
 		-I $$(S)src/libuv/include -I $$(S)src/rt \
                  $$(RUNTIME_CFLAGS_$(1))) $$<
 

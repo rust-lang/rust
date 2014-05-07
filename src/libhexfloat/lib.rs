@@ -27,7 +27,7 @@ extern crate hexfloat;
 fn main() {
     let val = hexfloat!("0x1.ffffb4", f32);
 }
- ```
+```
 
 # References
 
