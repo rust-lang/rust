@@ -1,17 +1,59 @@
-% The Philosophy of Rust (provisional title)
+% The Rust Tutorial 
 
-An introduction to the Rust programming language that focuses on Rust's design choices and strengths.
+Rust is a compiled programming language with a focus on type safety, memory safety, concurrency and performance. It has a sophisticated memory model that encourages efficient data structures and safe concurrency patterns, forbidding invalid memory accesses that would otherwise cause segmentation faults. 
 
-You should already be already familiar with programming concepts, in particular pointers, and a programming language from the C-family. The [syntax guide][syntax] is a reference to the nuts and bolts of the language, essentials such as [variables][guide-var], [functions][guide-fn], [structs][guide-struct] etc.
+This brief introduction to Rust focuses on Rust's design choices, strengths and 'philosophy'. You should already be already familiar with programming concepts, in particular pointers, and a programming language from the C-family. The [syntax guide][syntax] is a reference to the nuts and bolts of the language, essentials such as [variables][guide-var], [functions][guide-fn], [structs][guide-struct] etc.
 
 [syntax]: guide-syntax.html
 [guide-var]: guide-syntax.html#variables
 [guide-fn]: guide-syntax.html#functions
 [guide-struct]: guide-syntax.html#struct
 
+# Running the Example Code
+
+Before we get started, lets show you how to compile the code examples shown in the tutorial.
+
+## Installing Rust
+
+To install Rust on Windows:
+
+1. Download and run the latest stable installer (.exe) from the [Rust website][install].
+
+To install Rust on OS X:
+
+1. Download and run the latest stable installer (.pkg) from the [Rust website][install].
+
+To install Rust on Linux:
+
+1. Download and extract the latest stable binaries (tar.gz) from the [Rust website][install].
+2. Run the `./install.sh` inside the directory.  
+
+There are more complete [installation intructions][install-wiki] on the wiki.
+
+[install]: http://www.rust-lang.org/install.html
+[install-wiki]: https://github.com/mozilla/rust/wiki/Doc-packages,-editors,-and-other-tools
+
+<!-- FIXME: I think there is a real issue here, with the install instructions -->
+
+## Compiling and Running Rust Examples
+
+1. Copy and paste the following source into an empty text file and save it as `example.rs`. By convention Rust source files have the `.rs` extension.
+	
+	~~~~
+	fn main() {
+	    println!("Hello world!");
+	}
+	~~~~
+
+2. Run `rustc example.rs`
+3. If there are no compiler errors, you can run `./example`. 
+
+<!-- FIXME non linux example? -->
+
+
 # Stack, Heap and Inline Structures
 
-To show how Rust semantics take maximum advantage of modern machine architecture to optimize runtime, we use a structure that represents a point in two dimensions: 
+To show how Rust semantics take maximum advantage of machine architecture to optimize runtime, we use a structure that represents a point in two dimensions: 
 
 ~~~~
 struct Point {
@@ -30,7 +72,11 @@ fn main() {
 }
 ````
 
-The data for the point is stored directly on the stack, there is no heap allocation or pointer indirection, which improves performance. The stack frame for the function `main()` looks like this:
+<!-- FIXME
+The data for the point is stored directly on the stack, there is no heap allocation or pointer indirection, which improves performance. 
+-->
+
+The stack frame for the function `main()` looks like this:
 
 ~~~~{.notrust}
 +------+
@@ -44,7 +90,7 @@ Those of you who are familiar with C and C++ will find this behavior familiar. I
 
 <!-- (TODO: fix this image) -->
 
-```{.notrust}
+~~~~{.notrust}
 -----------------     -----------------------------
 | struct p            | 1
 |   x: ---------------|
@@ -52,9 +98,12 @@ Those of you who are familiar with C and C++ will find this behavior familiar. I
                                  -----------------------------
                                  | 2
                                  -----------------------------
-```
+~~~~
+
+<!-- FIXME: reword 
 
 Storing aggregate data inline is critical for improving performance, because malloc/free, pointer chasing and cache invalidation require a complex runtime with garbage collector.  
+-->
 
 Rust does not introduce pointers unless you specifically request them. If we define a type `Line` that consists of two `Point`s:
 
@@ -120,9 +169,9 @@ fn draw_polygon(points: ~[Point]) {
 }
 ~~~~
 
-The type `~[...]` in Rust indicates a heap-allocated array containing an unknown number of points. Calling `draw_polygon`:
+The type `~[...]` in Rust indicates a heap-allocated array containing a variable number of points. Calling `draw_polygon`:
 
-<!-- FIXME You can create a `~[...]` array using a `~[...]` expression.  -->
+<!-- FIXME Reword? You can create a `~[...]` array using a `~[...]` expression.  -->
 
 ~~~~
 # struct Point { x: int, y: int }
