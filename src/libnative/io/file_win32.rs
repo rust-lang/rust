@@ -408,7 +408,7 @@ pub fn chown(_p: &CString, _uid: int, _gid: int) -> IoResult<()> {
 
 pub fn readlink(p: &CString) -> IoResult<Path> {
     // FIXME: I have a feeling that this reads intermediate symlinks as well.
-    use std::os::win32::compat::kernel32::GetFinalPathNameByHandleW;
+    use io::c::compat::kernel32::GetFinalPathNameByHandleW;
     let handle = unsafe {
         as_utf16_p(p.as_str().unwrap(), |p| {
             libc::CreateFileW(p,
@@ -441,7 +441,7 @@ pub fn readlink(p: &CString) -> IoResult<Path> {
 }
 
 pub fn symlink(src: &CString, dst: &CString) -> IoResult<()> {
-    use std::os::win32::compat::kernel32::CreateSymbolicLinkW;
+    use io::c::compat::kernel32::CreateSymbolicLinkW;
     super::mkerr_winbool(as_utf16_p(src.as_str().unwrap(), |src| {
         as_utf16_p(dst.as_str().unwrap(), |dst| {
             unsafe { CreateSymbolicLinkW(dst, src, 0) }
