@@ -15,8 +15,9 @@
 
 use std::cast;
 use std::ptr;
-use std::rt::global_heap;
+use std::rt::heap::exchange_free;
 use std::sync::atomics;
+use std::mem::{min_align_of, size_of};
 
 /// An atomically reference counted wrapper for shared state.
 ///
@@ -190,7 +191,8 @@ impl<T: Share + Send> Drop for Arc<T> {
 
         if self.inner().weak.fetch_sub(1, atomics::Release) == 1 {
             atomics::fence(atomics::Acquire);
-            unsafe { global_heap::exchange_free(self.x as *u8) }
+            unsafe { exchange_free(self.x as *mut u8, size_of::<ArcInner<T>>(),
+                                   min_align_of::<ArcInner<T>>()) }
         }
     }
 }
@@ -240,7 +242,8 @@ impl<T: Share + Send> Drop for Weak<T> {
         // the memory orderings
         if self.inner().weak.fetch_sub(1, atomics::Release) == 1 {
             atomics::fence(atomics::Acquire);
-            unsafe { global_heap::exchange_free(self.x as *u8) }
+            unsafe { exchange_free(self.x as *mut u8, size_of::<ArcInner<T>>(),
+                                   min_align_of::<ArcInner<T>>()) }
         }
     }
 }

@@ -1512,7 +1512,7 @@ impl<T> FromVec<T> for ~[T] {
         let vp = v.as_mut_ptr();
 
         unsafe {
-            let ret = malloc_raw(size) as *mut RawVec<()>;
+            let ret = allocate(size, 8) as *mut RawVec<()>;
 
             (*ret).fill = len * mem::nonzero_size_of::<T>();
             (*ret).alloc = len * mem::nonzero_size_of::<T>();

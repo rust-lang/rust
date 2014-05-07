@@ -12,6 +12,7 @@
 
 use cast;
 use iter::Iterator;
+use libc::{c_void, free};
 use mem;
 use ops::Drop;
 use option::{Option, None, Some};
@@ -58,7 +59,7 @@ impl LocalHeap {
 
     #[inline]
     pub fn alloc(&mut self, drop_glue: fn(*mut u8), size: uint, align: uint) -> *mut Box {
-        let total_size = global_heap::get_box_size(size, align);
+        let total_size = ::rt::util::get_box_size(size, align);
         let alloc = self.memory_region.malloc(total_size);
         {
             // Make sure that we can't use `mybox` outside of this scope
@@ -226,7 +227,7 @@ impl MemoryRegion {
             self.release(cast::transmute(alloc));
             rtassert!(self.live_allocations > 0);
             self.live_allocations -= 1;
-            global_heap::exchange_free(alloc as *u8)
+            free(alloc as *mut c_void)
         }
     }
 

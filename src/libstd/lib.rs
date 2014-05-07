@@ -110,6 +110,7 @@
 // Don't link to std. We are std.
 #![no_std]
 
+#![allow(deprecated)]
 #![deny(missing_doc)]
 
 // When testing libstd, bring in libuv as the I/O backend so tests can print

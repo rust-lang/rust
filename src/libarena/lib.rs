@@ -37,7 +37,7 @@ use std::mem::min_align_of;
 use std::num;
 use std::ptr::read;
 use std::rc::Rc;
-use std::rt::global_heap;
+use std::rt::heap::exchange_malloc;
 
 // The way arena uses arrays is really deeply awful. The arrays are
 // allocated, and have capacities reserved, but the fill for the array
@@ -365,7 +365,7 @@ impl<T> TypedArenaChunk<T> {
         size = size.checked_add(&elems_size).unwrap();
 
         let mut chunk = unsafe {
-            let chunk = global_heap::exchange_malloc(size);
+            let chunk = exchange_malloc(size);
             let mut chunk: Box<TypedArenaChunk<T>> = cast::transmute(chunk);
             mem::move_val_init(&mut chunk.next, next);
             chunk
@@ -386,7 +386,7 @@ impl<T> TypedArenaChunk<T> {
         size = size.checked_add(&elems_size).unwrap();
 
         let mut chunk = unsafe {
-            let chunk = global_heap::exchange_malloc(size, min_align_of::<TypedArenaChunk<T>>());
+            let chunk = exchange_malloc(size, min_align_of::<TypedArenaChunk<T>>());
             let mut chunk: Box<TypedArenaChunk<T>> = cast::transmute(chunk);
             mem::move_val_init(&mut chunk.next, next);
             chunk
