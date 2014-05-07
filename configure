@@ -466,6 +466,26 @@ probe CFG_PDFLATEX         pdflatex
 probe CFG_XELATEX          xelatex
 probe CFG_LUALATEX         lualatex
 probe CFG_GDB              gdb
+probe CFG_LLDB             lldb
+
+if [ ! -z "$CFG_LLDB" ]
+then
+    # If CFG_LLDB_PYTHON_DIR is not already set from the outside and valid, try to read it from
+    # LLDB via the -P commandline options.
+    if [ -z "$CFG_LLDB_PYTHON_DIR" ] || [ ! -d "$CFG_LLDB_PYTHON_DIR" ]
+    then
+        CFG_LLDB_PYTHON_DIR=$($CFG_LLDB -P)
+
+        # If CFG_LLDB_PYTHON_DIR is not a valid directory, set it to something more readable
+        if [ ! -d "$CFG_LLDB_PYTHON_DIR" ]
+        then
+            CFG_LLDB_PYTHON_DIR="LLDB_PYTHON_DIRECTORY_NOT_FOUND"
+        fi
+
+        putvar CFG_LLDB_PYTHON_DIR
+    fi
+fi
+
 if [ "$CFG_OSTYPE" = "unknown-linux-gnu" ]
 then
     probe CFG_PAXCTL           paxctl /sbin/paxctl
@@ -807,7 +827,8 @@ do
     make_dir $h/test/bench
     make_dir $h/test/perf
     make_dir $h/test/pretty
-    make_dir $h/test/debug-info
+    make_dir $h/test/debuginfo-gdb
+    make_dir $h/test/debuginfo-lldb
     make_dir $h/test/codegen
     make_dir $h/test/doc-tutorial
     make_dir $h/test/doc-guide-ffi
