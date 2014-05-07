@@ -133,9 +133,10 @@ extern crate core;
 #[cfg(test)] pub use ty = realstd::ty;
 #[cfg(test)] pub use owned = realstd::owned;
 
+#[cfg(not(test))] pub use cmp = core::cmp;
 #[cfg(not(test))] pub use kinds = core::kinds;
 #[cfg(not(test))] pub use ops = core::ops;
-#[cfg(not(test))] pub use cmp = core::cmp;
+#[cfg(not(test))] pub use owned = core::owned;
 #[cfg(not(test))] pub use ty = core::ty;
 
 pub use core::any;
@@ -205,10 +206,6 @@ pub mod ascii;
 
 pub mod rc;
 pub mod gc;
-
-/* Core language traits */
-
-#[cfg(not(test))] pub mod owned;
 
 /* Common traits */
 

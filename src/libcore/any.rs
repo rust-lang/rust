@@ -149,7 +149,6 @@ mod tests {
     use prelude::*;
     use super::*;
     use owned::Box;
-    use str::StrSlice;
     use realstd::str::StrAllocating;
 
     #[deriving(Eq, Show)]
@@ -275,17 +274,10 @@ mod tests {
 
     #[test]
     fn test_show() {
-<<<<<<< HEAD
-        let a = box 8u as Box<Any>;
-        let b = box Test as Box<Any>;
+        let a = box 8u as Box<::realcore::any::Any>;
+        let b = box Test as Box<::realcore::any::Any>;
         assert_eq!(format!("{}", a), "Box<Any>".to_owned());
         assert_eq!(format!("{}", b), "Box<Any>".to_owned());
-=======
-        let a = ~8u as ~::realcore::any::Any;
-        let b = ~Test as ~::realcore::any::Any;
-        assert_eq!(format!("{}", a), "~Any".to_owned());
-        assert_eq!(format!("{}", b), "~Any".to_owned());
->>>>>>> core: Get coretest working
 
         let a = &8u as &::realcore::any::Any;
         let b = &Test as &::realcore::any::Any;

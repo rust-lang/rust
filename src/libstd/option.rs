@@ -54,7 +54,7 @@
 //!
 //! Rust's pointer types must always point to a valid location; there are
 //! no "null" pointers. Instead, Rust has *optional* pointers, like
-//! the optional owned box, `Option<~T>`.
+//! the optional owned box, `Option<Box<T>>`.
 //!
 //! The following example uses `Option` to create an optional box of
 //! `int`. Notice that in order to use the inner `int` value first the
@@ -63,13 +63,13 @@
 //! not (`None`).
 //!
 //! ```
-//! let optional: Option<~int> = None;
+//! let optional: Option<Box<int>> = None;
 //! check_optional(&optional);
 //!
-//! let optional: Option<~int> = Some(~9000);
+//! let optional: Option<Box<int>> = Some(box 9000);
 //! check_optional(&optional);
 //!
-//! fn check_optional(optional: &Option<~int>) {
+//! fn check_optional(optional: &Option<Box<int>>) {
 //!     match *optional {
 //!         Some(ref p) => println!("have value {}", p),
 //!         None => println!("have no value")
@@ -79,7 +79,7 @@
 //!
 //! This usage of `Option` to create safe nullable pointers is so
 //! common that Rust does special optimizations to make the
-//! representation of `Option<~T>` a single pointer. Optional pointers
+//! representation of `Option<Box<T>>` a single pointer. Optional pointers
 //! in Rust are stored as efficiently as any other pointer type.
 //!
 //! # Examples

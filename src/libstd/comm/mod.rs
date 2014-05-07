@@ -981,7 +981,6 @@ mod test {
 
     use native;
     use os;
-    use owned::Box;
     use super::*;
 
     pub fn stress_factor() -> uint {
@@ -1516,7 +1515,6 @@ mod test {
 mod sync_tests {
     use prelude::*;
     use os;
-    use owned::Box;
 
     pub fn stress_factor() -> uint {
         match os::getenv("RUST_TEST_STRESS") {
