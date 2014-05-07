@@ -288,6 +288,7 @@ check-stage$(1)-T-$(2)-H-$(3)-exec:     				\
 	check-stage$(1)-T-$(2)-H-$(3)-rfail-exec			\
 	check-stage$(1)-T-$(2)-H-$(3)-cfail-exec			\
 	check-stage$(1)-T-$(2)-H-$(3)-rpass-full-exec			\
+	check-stage$(1)-T-$(2)-H-$(3)-cfail-full-exec			\
 	check-stage$(1)-T-$(2)-H-$(3)-rmake-exec			\
         check-stage$(1)-T-$(2)-H-$(3)-crates-exec                       \
         check-stage$(1)-T-$(2)-H-$(3)-doc-crates-exec                   \
@@ -451,6 +452,8 @@ RPASS_RC := $(wildcard $(S)src/test/run-pass/*.rc)
 RPASS_RS := $(wildcard $(S)src/test/run-pass/*.rs)
 RPASS_FULL_RC := $(wildcard $(S)src/test/run-pass-fulldeps/*.rc)
 RPASS_FULL_RS := $(wildcard $(S)src/test/run-pass-fulldeps/*.rs)
+CFAIL_FULL_RC := $(wildcard $(S)src/test/compile-fail-fulldeps/*.rc)
+CFAIL_FULL_RS := $(wildcard $(S)src/test/compile-fail-fulldeps/*.rs)
 RFAIL_RC := $(wildcard $(S)src/test/run-fail/*.rc)
 RFAIL_RS := $(wildcard $(S)src/test/run-fail/*.rs)
 CFAIL_RC := $(wildcard $(S)src/test/compile-fail/*.rc)
@@ -467,6 +470,7 @@ PERF_RS := $(wildcard $(S)src/test/bench/*.rs)
 
 RPASS_TESTS := $(RPASS_RC) $(RPASS_RS)
 RPASS_FULL_TESTS := $(RPASS_FULL_RC) $(RPASS_FULL_RS)
+CFAIL_FULL_TESTS := $(CFAIL_FULL_RC) $(CFAIL_FULL_RS)
 RFAIL_TESTS := $(RFAIL_RC) $(RFAIL_RS)
 CFAIL_TESTS := $(CFAIL_RC) $(CFAIL_RS)
 BENCH_TESTS := $(BENCH_RS)
@@ -484,6 +488,11 @@ CTEST_SRC_BASE_rpass-full = run-pass-fulldeps
 CTEST_BUILD_BASE_rpass-full = run-pass-fulldeps
 CTEST_MODE_rpass-full = run-pass
 CTEST_RUNTOOL_rpass-full = $(CTEST_RUNTOOL)
+
+CTEST_SRC_BASE_cfail-full = compile-fail-fulldeps
+CTEST_BUILD_BASE_cfail-full = compile-fail-fulldeps
+CTEST_MODE_cfail-full = compile-fail
+CTEST_RUNTOOL_cfail-full = $(CTEST_RUNTOOL)
 
 CTEST_SRC_BASE_rfail = run-fail
 CTEST_BUILD_BASE_rfail = run-fail
@@ -583,6 +592,7 @@ CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3) :=						\
 
 CTEST_DEPS_rpass_$(1)-T-$(2)-H-$(3) = $$(RPASS_TESTS)
 CTEST_DEPS_rpass-full_$(1)-T-$(2)-H-$(3) = $$(RPASS_FULL_TESTS) $$(CSREQ$(1)_T_$(3)_H_$(3)) $$(SREQ$(1)_T_$(2)_H_$(3))
+CTEST_DEPS_cfail-full_$(1)-T-$(2)-H-$(3) = $$(CFAIL_FULL_TESTS) $$(CSREQ$(1)_T_$(3)_H_$(3)) $$(SREQ$(1)_T_$(2)_H_$(3))
 CTEST_DEPS_rfail_$(1)-T-$(2)-H-$(3) = $$(RFAIL_TESTS)
 CTEST_DEPS_cfail_$(1)-T-$(2)-H-$(3) = $$(CFAIL_TESTS)
 CTEST_DEPS_bench_$(1)-T-$(2)-H-$(3) = $$(BENCH_TESTS)
@@ -651,7 +661,7 @@ endif
 
 endef
 
-CTEST_NAMES = rpass rpass-full rfail cfail bench perf debuginfo codegen
+CTEST_NAMES = rpass rpass-full cfail-full rfail cfail bench perf debuginfo codegen
 
 $(foreach host,$(CFG_HOST), \
  $(eval $(foreach target,$(CFG_TARGET), \
@@ -794,6 +804,7 @@ TEST_GROUPS = \
 	$(foreach crate,$(TEST_DOC_CRATES),doc-crate-$(crate)) \
 	rpass \
 	rpass-full \
+	cfail-full \
 	rfail \
 	cfail \
 	bench \
