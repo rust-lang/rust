@@ -10,7 +10,7 @@
 
 //! Access to a single thread-local pointer.
 //!
-//! The runtime will use this for storing ~Task.
+//! The runtime will use this for storing Box<Task>.
 //!
 //! FIXME: Add runtime checks for usage of inconsistent pointer types.
 //! and for overwriting an existing pointer.
@@ -19,6 +19,7 @@
 
 use cast;
 use ops::{Drop, Deref, DerefMut};
+use owned::Box;
 use ptr::RawPtr;
 
 #[cfg(windows)]               // mingw-w32 doesn't like thread_local things
@@ -43,7 +44,7 @@ impl<T> Drop for Borrowed<T> {
             if self.val.is_null() {
                 rtabort!("Aiee, returning null borrowed object!");
             }
-            let val: ~T = cast::transmute(self.val);
+            let val: Box<T> = cast::transmute(self.val);
             put::<T>(val);
             rtassert!(exists());
         }
@@ -84,6 +85,7 @@ pub unsafe fn borrow<T>() -> Borrowed<T> {
 pub mod compiled {
     use cast;
     use option::{Option, Some, None};
+    use owned::Box;
     use ptr::RawPtr;
 
     #[cfg(test)]
@@ -154,7 +156,7 @@ pub mod compiled {
     ///
     /// Does not validate the pointer type.
     #[inline(never)] // see comments above
-    pub unsafe fn put<T>(sched: ~T) {
+    pub unsafe fn put<T>(sched: Box<T>) {
         RT_TLS_PTR = cast::transmute(sched)
     }
 
@@ -164,10 +166,10 @@ pub mod compiled {
     ///
     /// Does not validate the pointer type.
     #[inline(never)] // see comments above
-    pub unsafe fn take<T>() -> ~T {
+    pub unsafe fn take<T>() -> Box<T> {
         let ptr = RT_TLS_PTR;
         rtassert!(!ptr.is_null());
-        let ptr: ~T = cast::transmute(ptr);
+        let ptr: Box<T> = cast::transmute(ptr);
         // can't use `as`, due to type not matching with `cfg(test)`
         RT_TLS_PTR = cast::transmute(0);
         ptr
@@ -179,12 +181,12 @@ pub mod compiled {
     ///
     /// Does not validate the pointer type.
     #[inline(never)] // see comments above
-    pub unsafe fn try_take<T>() -> Option<~T> {
+    pub unsafe fn try_take<T>() -> Option<Box<T>> {
         let ptr = RT_TLS_PTR;
         if ptr.is_null() {
             None
         } else {
-            let ptr: ~T = cast::transmute(ptr);
+            let ptr: Box<T> = cast::transmute(ptr);
             // can't use `as`, due to type not matching with `cfg(test)`
             RT_TLS_PTR = cast::transmute(0);
             Some(ptr)
@@ -198,7 +200,7 @@ pub mod compiled {
     /// Does not validate the pointer type.
     /// Leaves the old pointer in TLS for speed.
     #[inline(never)] // see comments above
-    pub unsafe fn unsafe_take<T>() -> ~T {
+    pub unsafe fn unsafe_take<T>() -> Box<T> {
         cast::transmute(RT_TLS_PTR)
     }
 
@@ -234,6 +236,7 @@ pub mod compiled {
 pub mod native {
     use cast;
     use option::{Option, Some, None};
+    use owned::Box;
     use ptr;
     use ptr::RawPtr;
     use tls = rt::thread_local_storage;
@@ -259,7 +262,7 @@ pub mod native {
     ///
     /// Does not validate the pointer type.
     #[inline]
-    pub unsafe fn put<T>(sched: ~T) {
+    pub unsafe fn put<T>(sched: Box<T>) {
         let key = tls_key();
         let void_ptr: *mut u8 = cast::transmute(sched);
         tls::set(key, void_ptr);
@@ -271,13 +274,13 @@ pub mod native {
     ///
     /// Does not validate the pointer type.
     #[inline]
-    pub unsafe fn take<T>() -> ~T {
+    pub unsafe fn take<T>() -> Box<T> {
         let key = tls_key();
         let void_ptr: *mut u8 = tls::get(key);
         if void_ptr.is_null() {
             rtabort!("thread-local pointer is null. bogus!");
         }
-        let ptr: ~T = cast::transmute(void_ptr);
+        let ptr: Box<T> = cast::transmute(void_ptr);
         tls::set(key, ptr::mut_null());
         return ptr;
     }
@@ -288,14 +291,14 @@ pub mod native {
     ///
     /// Does not validate the pointer type.
     #[inline]
-    pub unsafe fn try_take<T>() -> Option<~T> {
+    pub unsafe fn try_take<T>() -> Option<Box<T>> {
         match maybe_tls_key() {
             Some(key) => {
                 let void_ptr: *mut u8 = tls::get(key);
                 if void_ptr.is_null() {
                     None
                 } else {
-                    let ptr: ~T = cast::transmute(void_ptr);
+                    let ptr: Box<T> = cast::transmute(void_ptr);
                     tls::set(key, ptr::mut_null());
                     Some(ptr)
                 }
@@ -311,13 +314,13 @@ pub mod native {
     /// Does not validate the pointer type.
     /// Leaves the old pointer in TLS for speed.
     #[inline]
-    pub unsafe fn unsafe_take<T>() -> ~T {
+    pub unsafe fn unsafe_take<T>() -> Box<T> {
         let key = tls_key();
         let void_ptr: *mut u8 = tls::get(key);
         if void_ptr.is_null() {
             rtabort!("thread-local pointer is null. bogus!");
         }
-        let ptr: ~T = cast::transmute(void_ptr);
+        let ptr: Box<T> = cast::transmute(void_ptr);
         return ptr;
     }
 

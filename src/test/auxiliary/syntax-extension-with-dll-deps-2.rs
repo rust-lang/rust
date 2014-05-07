@@ -25,14 +25,15 @@ use syntax::parse::token;
 #[macro_registrar]
 pub fn macro_registrar(register: |Name, SyntaxExtension|) {
     register(token::intern("foo"),
-        NormalTT(~BasicMacroExpander {
+        NormalTT(box BasicMacroExpander {
             expander: expand_foo,
             span: None,
         },
         None));
 }
 
-fn expand_foo(cx: &mut ExtCtxt, sp: Span, tts: &[TokenTree]) -> ~MacResult {
+fn expand_foo(cx: &mut ExtCtxt, sp: Span, tts: &[TokenTree])
+              -> Box<MacResult> {
     let answer = other::the_answer();
     MacExpr::new(quote_expr!(cx, $answer))
 }

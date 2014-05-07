@@ -16,6 +16,7 @@
 #![allow(dead_code)]
 #![allow(unused_imports)]
 
+
 // public type, private value
 pub mod foo1 {
     pub trait Bar {
@@ -34,19 +35,19 @@ fn test_unused1() {
 fn test_single1() {
     use foo1::Bar;
 
-    let _x: ~Bar;
+    let _x: Box<Bar>;
 }
 
 fn test_list1() {
     use foo1::{Bar,Baz};
 
-    let _x: ~Bar;
+    let _x: Box<Bar>;
 }
 
 fn test_glob1() {
     use foo1::*;
 
-    let _x: ~Bar;
+    let _x: Box<Bar>;
 }
 
 // private type, public value
@@ -101,21 +102,21 @@ fn test_single3() {
     use foo3::Bar;
 
     Bar();
-    let _x: ~Bar;
+    let _x: Box<Bar>;
 }
 
 fn test_list3() {
     use foo3::{Bar,Baz};
 
     Bar();
-    let _x: ~Bar;
+    let _x: Box<Bar>;
 }
 
 fn test_glob3() {
     use foo3::*;
 
     Bar();
-    let _x: ~Bar;
+    let _x: Box<Bar>;
 }
 
 fn main() {

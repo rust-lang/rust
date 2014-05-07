@@ -60,7 +60,7 @@ use io::timer_helper;
 
 pub struct Timer {
     id: uint,
-    inner: Option<~Inner>,
+    inner: Option<Box<Inner>>,
 }
 
 struct Inner {
@@ -74,11 +74,11 @@ struct Inner {
 #[allow(visible_private_types)]
 pub enum Req {
     // Add a new timer to the helper thread.
-    NewTimer(~Inner),
+    NewTimer(Box<Inner>),
 
     // Remove a timer based on its id and then send it back on the channel
     // provided
-    RemoveTimer(uint, Sender<~Inner>),
+    RemoveTimer(uint, Sender<Box<Inner>>),
 
     // Shut down the loop and then ACK this channel once it's shut down
     Shutdown,
@@ -102,11 +102,11 @@ fn helper(input: libc::c_int, messages: Receiver<Req>) {
     // active timers are those which are able to be selected upon (and it's a
     // sorted list, and dead timers are those which have expired, but ownership
     // hasn't yet been transferred back to the timer itself.
-    let mut active: Vec<~Inner> = vec![];
+    let mut active: Vec<Box<Inner>> = vec![];
     let mut dead = vec![];
 
     // inserts a timer into an array of timers (sorted by firing time)
-    fn insert(t: ~Inner, active: &mut Vec<~Inner>) {
+    fn insert(t: Box<Inner>, active: &mut Vec<Box<Inner>>) {
         match active.iter().position(|tm| tm.target > t.target) {
             Some(pos) => { active.insert(pos, t); }
             None => { active.push(t); }
@@ -114,7 +114,8 @@ fn helper(input: libc::c_int, messages: Receiver<Req>) {
     }
 
     // signals the first requests in the queue, possible re-enqueueing it.
-    fn signal(active: &mut Vec<~Inner>, dead: &mut Vec<(uint, ~Inner)>) {
+    fn signal(active: &mut Vec<Box<Inner>>,
+              dead: &mut Vec<(uint, Box<Inner>)>) {
         let mut timer = match active.shift() {
             Some(timer) => timer, None => return
         };
@@ -229,7 +230,7 @@ impl Timer {
         }
     }
 
-    fn inner(&mut self) -> ~Inner {
+    fn inner(&mut self) -> Box<Inner> {
         match self.inner.take() {
             Some(i) => i,
             None => {

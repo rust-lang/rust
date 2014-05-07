@@ -57,7 +57,7 @@ For example, the following simple type for a singly-linked list...
 ```
 struct List {
     value: int,
-    tail: Option<~List>,
+    tail: Option<Box<List>>,
 }
 ```
 
@@ -66,8 +66,8 @@ will generate the following callstack with a naive DFS algorithm:
 ```
 describe(t = List)
   describe(t = int)
-  describe(t = Option<~List>)
-    describe(t = ~List)
+  describe(t = Option<Box<List>>)
+    describe(t = Box<List>)
       describe(t = List) // at the beginning again...
       ...
 ```
@@ -211,7 +211,7 @@ pub struct FunctionDebugContext {
 }
 
 enum FunctionDebugContextRepr {
-    FunctionDebugContext(~FunctionDebugContextData),
+    FunctionDebugContext(Box<FunctionDebugContextData>),
     DebugInfoDisabled,
     FunctionWithoutDebugInfo,
 }
@@ -219,7 +219,7 @@ enum FunctionDebugContextRepr {
 impl FunctionDebugContext {
     fn get_ref<'a>(&'a self, cx: &CrateContext, span: Span) -> &'a FunctionDebugContextData {
         match self.repr {
-            FunctionDebugContext(~ref data) => data,
+            FunctionDebugContext(box ref data) => data,
             DebugInfoDisabled => {
                 cx.sess().span_bug(span, FunctionDebugContext::debuginfo_disabled_message());
             }
@@ -560,7 +560,7 @@ pub fn set_source_location(fcx: &FunctionContext,
             set_debug_location(fcx.ccx, UnknownLocation);
             return;
         }
-        FunctionDebugContext(~ref function_debug_context) => {
+        FunctionDebugContext(box ref function_debug_context) => {
             let cx = fcx.ccx;
 
             debug!("set_source_location: {}", cx.sess().codemap().span_to_str(span));
@@ -596,7 +596,7 @@ pub fn clear_source_location(fcx: &FunctionContext) {
 /// translated.
 pub fn start_emitting_source_locations(fcx: &FunctionContext) {
     match fcx.debug_context.repr {
-        FunctionDebugContext(~ref data) => {
+        FunctionDebugContext(box ref data) => {
             data.source_locations_enabled.set(true)
         },
         _ => { /* safe to ignore */ }
@@ -2227,7 +2227,12 @@ fn type_metadata(cx: &CrateContext,
         ty::ty_closure(ref closurety) => {
             subroutine_type_metadata(cx, &closurety.sig, usage_site_span)
         }
-        ty::ty_trait(~ty::TyTrait { def_id, ref substs, store, ref bounds }) => {
+        ty::ty_trait(box ty::TyTrait {
+                def_id,
+                ref substs,
+                store,
+                ref bounds
+            }) => {
             trait_metadata(cx, def_id, t, substs, store, bounds)
         }
         ty::ty_struct(def_id, ref substs) => {

@@ -89,7 +89,7 @@ fn main() {
     let _ = stack.self_by_ref(-1, -2);
     let _ = stack.self_by_val(-3, -4);
 
-    let owned = ~TupleStruct(200, -200.5);
+    let owned = box TupleStruct(200, -200.5);
     let _ = owned.self_by_ref(-5, -6);
     let _ = owned.self_by_val(-7, -8);
     let _ = owned.self_owned(-9, -10);

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 trait T {
     fn print(&self);
 }
@@ -31,9 +32,9 @@ fn print_s(s: &S) {
 }
 
 pub fn main() {
-    let s: ~S = ~S { s: 5 };
+    let s: Box<S> = box S { s: 5 };
     print_s(s);
-    let t: ~T = s as ~T;
+    let t: Box<T> = s as Box<T>;
     print_t(t);
 
 }

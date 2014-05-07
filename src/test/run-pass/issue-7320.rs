@@ -8,10 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 trait Foo {
-    fn foo(~self) { bar(self as ~Foo); }
+    fn foo(~self) { bar(self as Box<Foo>); }
 }
 
-fn bar(_b: ~Foo) { }
+fn bar(_b: Box<Foo>) { }
 
 fn main() {}

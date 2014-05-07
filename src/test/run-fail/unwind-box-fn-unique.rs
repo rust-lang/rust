@@ -17,7 +17,7 @@ fn failfn() {
 }
 
 fn main() {
-    let y = ~0;
+    let y = box 0;
     let x: @proc():Send = @(proc() {
         println!("{:?}", y.clone());
     });

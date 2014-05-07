@@ -40,7 +40,7 @@ fn some_generic_fun<T1, T2>(a: T1, b: T2) -> (T2, T1) {
 
 fn main() {
     some_generic_fun(0.5, 10);
-    some_generic_fun(&29, ~110);
+    some_generic_fun(&29, box 110);
 }
 
 fn zzz() {()}

@@ -9,7 +9,8 @@
 // except according to those terms.
 
 use std::result::{Result,Ok};
-static C: Result<(), ~int> = Ok(());
+
+static C: Result<(), Box<int>> = Ok(());
 
 // This is because of yet another bad assertion (ICE) about the null side of a nullable enum.
 // So we won't actually compile if the bug is present, but we check the value in main anyway.

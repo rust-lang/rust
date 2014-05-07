@@ -9,8 +9,8 @@
 // except according to those terms.
 
 pub fn main() {
-    match ~100 {
-      ~x => {
+    match box 100 {
+      box x => {
         println!("{:?}", x);
         assert_eq!(x, 100);
       }

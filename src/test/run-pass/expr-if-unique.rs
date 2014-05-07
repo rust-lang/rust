@@ -14,7 +14,7 @@
 
 // Tests for if as expressions returning boxed types
 fn test_box() {
-    let rs = if true { ~100 } else { ~101 };
+    let rs = if true { box 100 } else { box 101 };
     assert_eq!(*rs, 100);
 }
 

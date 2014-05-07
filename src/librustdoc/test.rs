@@ -36,8 +36,11 @@ use html::markdown;
 use passes;
 use visit_ast::RustdocVisitor;
 
-pub fn run(input: &str, cfgs: Vec<~str>,
-           libs: HashSet<Path>, mut test_args: Vec<~str>) -> int {
+pub fn run(input: &str,
+           cfgs: Vec<~str>,
+           libs: HashSet<Path>,
+           mut test_args: Vec<~str>)
+           -> int {
     let input_path = Path::new(input);
     let input = driver::FileInput(input_path.clone());
 
@@ -128,7 +131,7 @@ fn runtest(test: &str, cratename: &str, libs: HashSet<Path>, should_fail: bool,
     let old = io::stdio::set_stderr(box w1);
     spawn(proc() {
         let mut p = io::ChanReader::new(rx);
-        let mut err = old.unwrap_or(box io::stderr() as ~Writer:Send);
+        let mut err = old.unwrap_or(box io::stderr() as Box<Writer:Send>);
         io::util::copy(&mut p, &mut err).unwrap();
     });
     let emitter = diagnostic::EmitterWriter::new(box w2);

@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foo(x: *~int) -> ~int {
+
+fn foo(x: *Box<int>) -> Box<int> {
     let y = *x; //~ ERROR dereference of unsafe pointer requires unsafe function or block
     return y;
 }

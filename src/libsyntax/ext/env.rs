@@ -24,7 +24,7 @@ use parse::token;
 use std::os;
 
 pub fn expand_option_env(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
-    -> ~base::MacResult {
+                         -> Box<base::MacResult> {
     let var = match get_single_str_from_tts(cx, sp, tts, "option_env!") {
         None => return DummyResult::expr(sp),
         Some(v) => v
@@ -60,7 +60,7 @@ pub fn expand_option_env(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
 }
 
 pub fn expand_env(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
-    -> ~base::MacResult {
+                  -> Box<base::MacResult> {
     let exprs = match get_exprs_from_tts(cx, sp, tts) {
         Some(ref exprs) if exprs.len() == 0 => {
             cx.span_err(sp, "env! takes 1 or 2 arguments");

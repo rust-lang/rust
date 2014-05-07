@@ -48,7 +48,7 @@ pub trait Copy {
 /// `Share`, and so are simple aggregate types containing them (like
 /// tuples, structs and enums). More instances of basic `Share` types
 /// include "immutable" types like `&T` and those with simple
-/// inherited mutability, such as `~T`, `Vec<T>` and most other
+/// inherited mutability, such as `Box<T>`, `Vec<T>` and most other
 /// collection types. (Generic parameters need to be `Share` for their
 /// container to be `Share`.)
 ///

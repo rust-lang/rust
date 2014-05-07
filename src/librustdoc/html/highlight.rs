@@ -83,8 +83,8 @@ fn doit(sess: &parse::ParseSess, mut lexer: lexer::StringReader, class: Option<&
         let klass = match next.tok {
             // If this '&' token is directly adjacent to another token, assume
             // that it's the address-of operator instead of the and-operator.
-            // This allows us to give all pointers their own class (~ and @ are
-            // below).
+            // This allows us to give all pointers their own class (`Box` and
+            // `@` are below).
             t::BINOP(t::AND) if lexer.peek().sp.lo == next.sp.hi => "kw-2",
             t::AT | t::TILDE => "kw-2",
 

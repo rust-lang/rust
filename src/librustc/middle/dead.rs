@@ -51,7 +51,7 @@ fn should_explore(tcx: &ty::ctxt, def_id: ast::DefId) -> bool {
 struct MarkSymbolVisitor<'a> {
     worklist: Vec<ast::NodeId>,
     tcx: &'a ty::ctxt,
-    live_symbols: ~HashSet<ast::NodeId>,
+    live_symbols: Box<HashSet<ast::NodeId>>,
 }
 
 impl<'a> MarkSymbolVisitor<'a> {
@@ -285,7 +285,7 @@ fn find_live(tcx: &ty::ctxt,
              exported_items: &privacy::ExportedItems,
              reachable_symbols: &NodeSet,
              krate: &ast::Crate)
-             -> ~HashSet<ast::NodeId> {
+             -> Box<HashSet<ast::NodeId>> {
     let worklist = create_and_seed_worklist(tcx, exported_items,
                                             reachable_symbols, krate);
     let mut symbol_visitor = MarkSymbolVisitor::new(tcx, worklist);
@@ -312,7 +312,7 @@ fn get_struct_ctor_id(item: &ast::Item) -> Option<ast::NodeId> {
 
 struct DeadVisitor<'a> {
     tcx: &'a ty::ctxt,
-    live_symbols: ~HashSet<ast::NodeId>,
+    live_symbols: Box<HashSet<ast::NodeId>>,
 }
 
 impl<'a> DeadVisitor<'a> {

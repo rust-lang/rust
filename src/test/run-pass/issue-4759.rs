@@ -8,18 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct T { a: ~int }
+
+struct T { a: Box<int> }
 
 trait U {
     fn f(self);
 }
 
-impl U for ~int {
+impl U for Box<int> {
     fn f(self) { }
 }
 
 pub fn main() {
-    let T { a: a } = T { a: ~0 };
+    let T { a: a } = T { a: box 0 };
     a.f();
 }
 

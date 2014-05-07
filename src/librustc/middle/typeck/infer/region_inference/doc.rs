@@ -190,7 +190,7 @@ going on:
         *p += 1; *p
     }
     fn weird() {
-        let mut x: ~Foo = ~Foo { ... };
+        let mut x: Box<Foo> = box Foo { ... };
         'a: add(&mut (*x).f,
                 'b: inc(&mut (*x).f)) // (..)
     }
@@ -243,11 +243,11 @@ this similar but unsound example:
         *p += v;
     }
     ...
-    fn consume(x: ~Foo) -> uint {
+    fn consume(x: Box<Foo>) -> uint {
         x.f + x.g
     }
     fn weird() {
-        let mut x: ~Foo = ~Foo { ... };
+        let mut x: Box<Foo> = box Foo { ... };
         'a: add(&mut (*x).f, consume(x)) // (..)
     }
 

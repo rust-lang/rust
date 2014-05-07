@@ -19,7 +19,7 @@ use parse::token::{str_to_ident};
 use std::strbuf::StrBuf;
 
 pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
-    -> ~base::MacResult {
+                         -> Box<base::MacResult> {
     let mut res_str = StrBuf::new();
     for (i, e) in tts.iter().enumerate() {
         if i & 1 == 1 {

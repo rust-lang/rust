@@ -23,7 +23,7 @@ impl Deref<Foo> for Foo {
 pub fn main() {
     let mut x;
     loop {
-        x = ~x;
+        x = box x;
         x.foo;
         x.bar();
     }

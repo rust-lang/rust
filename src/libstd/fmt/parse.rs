@@ -17,6 +17,7 @@
 use prelude::*;
 
 use char;
+use owned::Box;
 use str;
 
 /// A piece is a portion of the format string which represents the next part
@@ -41,7 +42,7 @@ pub struct Argument<'a> {
     /// How to format the argument
     pub format: FormatSpec<'a>,
     /// If not `None`, what method to invoke on the argument
-    pub method: Option<~Method<'a>>
+    pub method: Option<Box<Method<'a>>>
 }
 
 /// Specification for the formatting of an argument in the format string.
@@ -435,7 +436,7 @@ impl<'a> Parser<'a> {
 
     /// Parses a method to be applied to the previously specified argument and
     /// its format. The two current supported methods are 'plural' and 'select'
-    fn method(&mut self) -> Option<~Method<'a>> {
+    fn method(&mut self) -> Option<Box<Method<'a>>> {
         if !self.wsconsume(',') {
             return None;
         }
@@ -461,7 +462,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a 'select' statement (after the initial 'select' word)
-    fn select(&mut self) -> ~Method<'a> {
+    fn select(&mut self) -> Box<Method<'a>> {
         let mut other = None;
         let mut arms = vec!();
         // Consume arms one at a time
@@ -503,7 +504,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a 'plural' statement (after the initial 'plural' word)
-    fn plural(&mut self) -> ~Method<'a> {
+    fn plural(&mut self) -> Box<Method<'a>> {
         let mut offset = None;
         let mut other = None;
         let mut arms = vec!();

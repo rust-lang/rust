@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn dup(x: ~int) -> ~(~int,~int) { ~(x, x) } //~ ERROR use of moved value
+
+fn dup(x: Box<int>) -> Box<(Box<int>,Box<int>)> { box() (x, x) } //~ ERROR use of moved value
 fn main() {
-    dup(~3);
+    dup(box 3);
 }

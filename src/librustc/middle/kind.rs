@@ -198,11 +198,11 @@ fn with_appropriate_checker(cx: &Context,
 
     let fty = ty::node_id_to_type(cx.tcx, id);
     match ty::get(fty).sty {
-        ty::ty_closure(~ty::ClosureTy {
+        ty::ty_closure(box ty::ClosureTy {
             store: ty::UniqTraitStore, bounds, ..
         }) => b(|cx, fv| check_for_uniq(cx, fv, bounds)),
 
-        ty::ty_closure(~ty::ClosureTy {
+        ty::ty_closure(box ty::ClosureTy {
             store: ty::RegionTraitStore(region, _), bounds, ..
         }) => b(|cx, fv| check_for_block(cx, fv, bounds, region)),
 
@@ -331,7 +331,7 @@ pub fn check_expr(cx: &mut Context, e: &Expr) {
 fn check_trait_cast(cx: &mut Context, source_ty: ty::t, target_ty: ty::t, span: Span) {
     check_cast_for_escaping_regions(cx, source_ty, target_ty, span);
     match ty::get(target_ty).sty {
-        ty::ty_trait(~ty::TyTrait { bounds, .. }) => {
+        ty::ty_trait(box ty::TyTrait { bounds, .. }) => {
             check_trait_cast_bounds(cx, span, source_ty, bounds);
         }
         _ => {}

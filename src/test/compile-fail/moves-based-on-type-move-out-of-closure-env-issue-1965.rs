@@ -10,9 +10,9 @@
 
 use std::uint;
 
-fn test(_x: ~uint) {}
+fn test(_x: Box<uint>) {}
 
 fn main() {
-    let i = ~3;
+    let i = box 3;
     let _f = || test(i); //~ ERROR cannot move out
 }

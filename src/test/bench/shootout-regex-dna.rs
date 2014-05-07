@@ -34,9 +34,9 @@ fn count_matches(seq: &str, variant: &Regex) -> int {
 fn main() {
     let mut rdr = if std::os::getenv("RUST_BENCH").is_some() {
         let fd = io::File::open(&Path::new("shootout-k-nucleotide.data"));
-        ~io::BufferedReader::new(fd) as ~io::Reader
+        box io::BufferedReader::new(fd) as Box<io::Reader>
     } else {
-        ~io::stdin() as ~io::Reader
+        box io::stdin() as Box<io::Reader>
     };
     let mut seq = StrBuf::from_str(rdr.read_to_str().unwrap());
     let ilen = seq.len();

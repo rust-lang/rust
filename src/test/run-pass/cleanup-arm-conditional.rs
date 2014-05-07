@@ -26,8 +26,8 @@ use std::os;
 struct Test { x: int }
 
 impl Test {
-    fn get_x(&self) -> Option<~int> {
-        Some(~self.x)
+    fn get_x(&self) -> Option<Box<int>> {
+        Some(box self.x)
     }
 }
 

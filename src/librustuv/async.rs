@@ -26,12 +26,12 @@ pub struct AsyncWatcher {
 }
 
 struct Payload {
-    callback: ~Callback:Send,
+    callback: Box<Callback:Send>,
     exit_flag: Exclusive<bool>,
 }
 
 impl AsyncWatcher {
-    pub fn new(loop_: &mut Loop, cb: ~Callback:Send) -> AsyncWatcher {
+    pub fn new(loop_: &mut Loop, cb: Box<Callback:Send>) -> AsyncWatcher {
         let handle = UvHandle::alloc(None::<AsyncWatcher>, uvll::UV_ASYNC);
         assert_eq!(unsafe {
             uvll::uv_async_init(loop_.handle, handle, async_cb)
@@ -93,7 +93,7 @@ extern fn async_cb(handle: *uvll::uv_async_t) {
 
 extern fn close_cb(handle: *uvll::uv_handle_t) {
     // drop the payload
-    let _payload: ~Payload = unsafe {
+    let _payload: Box<Payload> = unsafe {
         cast::transmute(uvll::get_data_for_uv_handle(handle))
     };
     // and then free the handle

@@ -17,6 +17,6 @@ impl double for uint {
 }
 
 pub fn main() {
-    let x = ~3u;
+    let x = box 3u;
     assert_eq!(x.double(), 6u);
 }

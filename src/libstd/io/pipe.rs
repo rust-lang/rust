@@ -18,12 +18,13 @@
 use prelude::*;
 use io::IoResult;
 use libc;
+use owned::Box;
 use rt::rtio::{RtioPipe, LocalIo};
 
 /// A synchronous, in-memory pipe.
 pub struct PipeStream {
     /// The internal, opaque runtime pipe object.
-    obj: ~RtioPipe:Send,
+    obj: Box<RtioPipe:Send>,
 }
 
 impl PipeStream {
@@ -54,7 +55,7 @@ impl PipeStream {
     }
 
     #[doc(hidden)]
-    pub fn new(inner: ~RtioPipe:Send) -> PipeStream {
+    pub fn new(inner: Box<RtioPipe:Send>) -> PipeStream {
         PipeStream { obj: inner }
     }
 }

@@ -10,11 +10,12 @@
 
 #![forbid(owned_heap_memory)]
 
+
 struct Foo {
-    x: ~int //~ ERROR type uses owned
+    x: Box<int> //~ ERROR type uses owned
 }
 
 fn main() {
-    let _x : Foo = Foo {x : ~10};
+    let _x : Foo = Foo {x : box 10};
     //~^ ERROR type uses owned
 }

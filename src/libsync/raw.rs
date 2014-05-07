@@ -167,7 +167,9 @@ impl<Q: Send> Sem<Q> {
 #[unsafe_destructor]
 impl<Q: Send> Drop for Sem<Q> {
     fn drop(&mut self) {
-        let _waiters: ~SemInner<Q> = unsafe { cast::transmute(self.inner) };
+        let _waiters: Box<SemInner<Q>> = unsafe {
+            cast::transmute(self.inner)
+        };
         self.inner = 0 as *();
     }
 }
@@ -835,7 +837,7 @@ mod tests {
         let m = Arc::new(Mutex::new());
         let m2 = m.clone();
 
-        let result: result::Result<(), ~Any:Send> = task::try(proc() {
+        let result: result::Result<(), Box<Any:Send>> = task::try(proc() {
             let _lock = m2.lock();
             fail!();
         });
@@ -1075,7 +1077,7 @@ mod tests {
         let x = Arc::new(RWLock::new());
         let x2 = x.clone();
 
-        let result: result::Result<(), ~Any:Send> = task::try(proc() {
+        let result: result::Result<(), Box<Any:Send>> = task::try(proc() {
             lock_rwlock_in_mode(&x2, mode1, || {
                 fail!();
             })

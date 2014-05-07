@@ -19,9 +19,9 @@
 /// The entry point for failure of rust tasks.
 ///
 /// This macro is used to inject failure into a rust task, causing the task to
-/// unwind and fail entirely. Each task's failure can be reaped as the `~Any`
-/// type, and the single-argument form of the `fail!` macro will be the value
-/// which is transmitted.
+/// unwind and fail entirely. Each task's failure can be reaped as the
+/// `Box<Any>` type, and the single-argument form of the `fail!` macro will be
+/// the value which is transmitted.
 ///
 /// The multi-argument form of this macro fails with a string and has the
 /// `format!` syntax for building a string.

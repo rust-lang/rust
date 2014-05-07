@@ -17,6 +17,7 @@ use iter::Iterator;
 use kinds::Send;
 use mem;
 use option::{Some, None};
+use owned::Box;
 use ptr::RawPtr;
 use unstable::sync::Exclusive;
 use slice::OwnedVector;
@@ -36,7 +37,7 @@ pub fn init() {
     unsafe {
         rtassert!(!RUNNING);
         rtassert!(QUEUE.is_null());
-        let state: ~Queue = box Exclusive::new(vec!());
+        let state: Box<Queue> = box Exclusive::new(vec!());
         QUEUE = cast::transmute(state);
     }
 }
@@ -58,7 +59,7 @@ pub fn run() {
         rtassert!(!RUNNING);
         rtassert!(!QUEUE.is_null());
         RUNNING = true;
-        let state: ~Queue = cast::transmute(QUEUE);
+        let state: Box<Queue> = cast::transmute(QUEUE);
         QUEUE = 0 as *mut Queue;
         let mut vec = None;
         state.with(|arr| {

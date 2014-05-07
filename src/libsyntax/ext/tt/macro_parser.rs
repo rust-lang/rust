@@ -102,7 +102,7 @@ pub struct MatcherPos {
     elts: Vec<ast::Matcher> , // maybe should be <'>? Need to understand regions.
     sep: Option<Token>,
     idx: uint,
-    up: Option<~MatcherPos>,
+    up: Option<Box<MatcherPos>>,
     matches: Vec<Vec<Rc<NamedMatch>>>,
     match_lo: uint, match_hi: uint,
     sp_lo: BytePos,
@@ -120,7 +120,7 @@ pub fn count_names(ms: &[Matcher]) -> uint {
 }
 
 pub fn initial_matcher_pos(ms: Vec<Matcher> , sep: Option<Token>, lo: BytePos)
-                        -> ~MatcherPos {
+                           -> Box<MatcherPos> {
     let mut match_idx_hi = 0u;
     for elt in ms.iter() {
         match elt.node {

@@ -59,7 +59,7 @@ pub mod testtypes {
     // Skipping ty_box
 
     // Tests ty_uniq (of u8)
-    pub type FooUniq = ~u8;
+    pub type FooUniq = Box<u8>;
 
     // As with ty_str, what type should be used for ty_vec?
 

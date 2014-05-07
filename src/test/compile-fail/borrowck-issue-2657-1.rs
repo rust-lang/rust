@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn main() {
-let x = Some(~1);
+let x = Some(box 1);
 match x {
   Some(ref _y) => {
     let _a = x; //~ ERROR cannot move

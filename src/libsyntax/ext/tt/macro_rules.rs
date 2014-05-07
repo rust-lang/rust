@@ -95,7 +95,7 @@ impl MacroExpander for MacroRulesMacroExpander {
               cx: &mut ExtCtxt,
               sp: Span,
               arg: &[ast::TokenTree])
-              -> ~MacResult {
+              -> Box<MacResult> {
         generic_extension(cx,
                           sp,
                           self.name,
@@ -121,7 +121,7 @@ fn generic_extension(cx: &ExtCtxt,
                      arg: &[ast::TokenTree],
                      lhses: &[Rc<NamedMatch>],
                      rhses: &[Rc<NamedMatch>])
-                     -> ~MacResult {
+                     -> Box<MacResult> {
     if cx.trace_macros() {
         println!("{}! \\{ {} \\}",
                  token::get_ident(name),
@@ -171,7 +171,7 @@ fn generic_extension(cx: &ExtCtxt,
                 // Weird, but useful for X-macros.
                 return box ParserAnyMacro {
                     parser: RefCell::new(p),
-                } as ~MacResult
+                } as Box<MacResult>
               }
               Failure(sp, ref msg) => if sp.lo >= best_fail_spot.lo {
                 best_fail_spot = sp;
@@ -193,7 +193,7 @@ pub fn add_new_extension(cx: &mut ExtCtxt,
                          sp: Span,
                          name: Ident,
                          arg: Vec<ast::TokenTree> )
-                         -> ~base::MacResult {
+                         -> Box<base::MacResult> {
     // these spans won't matter, anyways
     fn ms(m: Matcher_) -> Matcher {
         Spanned {
@@ -250,5 +250,5 @@ pub fn add_new_extension(cx: &mut ExtCtxt,
             name: token::get_ident(name).to_str(),
             ext: NormalTT(exp, Some(sp))
         }))
-    } as ~MacResult
+    } as Box<MacResult>
 }

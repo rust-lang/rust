@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foo(~(_x, _y): ~(int, int)) {}
+
+fn foo(box (_x, _y): Box<(int, int)>) {}
 
 pub fn main() {}

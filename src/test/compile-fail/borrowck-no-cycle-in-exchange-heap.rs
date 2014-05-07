@@ -8,8 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 struct node_ {
-    a: ~cycle
+    a: Box<cycle>
 }
 
 enum cycle {
@@ -17,7 +18,7 @@ enum cycle {
     empty
 }
 fn main() {
-    let mut x = ~node(node_ {a: ~empty});
+    let mut x = box node(node_ {a: box empty});
     // Create a cycle!
     match *x {
       node(ref mut y) => {

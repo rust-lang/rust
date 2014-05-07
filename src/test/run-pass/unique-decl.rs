@@ -8,10 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 pub fn main() {
-    let _: ~int;
+    let _: Box<int>;
 }
 
-fn f(_i: ~int) -> ~int {
+fn f(_i: Box<int>) -> Box<int> {
     fail!();
 }

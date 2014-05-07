@@ -11,7 +11,7 @@
 pub fn main() {
     enum t { t1(int), t2(int), }
 
-    let _x = ~t1(10);
+    let _x = box t1(10);
 
     /*alt *x {
       t1(a) {
@@ -21,7 +21,7 @@ pub fn main() {
     }*/
 
     /*alt x {
-      ~t1(a) {
+      box t1(a) {
         assert_eq!(a, 10);
       }
       _ { fail!(); }

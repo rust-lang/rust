@@ -19,14 +19,14 @@ enum maybe_pointy {
 
 struct Pointy {
     a : maybe_pointy,
-    c : ~int,
+    c : Box<int>,
     d : proc():Send->(),
 }
 
 fn empty_pointy() -> @RefCell<Pointy> {
     return @RefCell::new(Pointy {
         a : none,
-        c : ~22,
+        c : box 22,
         d : proc() {},
     })
 }

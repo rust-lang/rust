@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 trait Foo<T> {
     fn get(&self) -> T;
 }
@@ -23,7 +24,7 @@ impl Foo<int> for S {
 }
 
 pub fn main() {
-    let x = ~S { x: 1 };
-    let y = x as ~Foo<int>;
+    let x = box S { x: 1 };
+    let y = x as Box<Foo<int>>;
     assert_eq!(y.get(), 1);
 }

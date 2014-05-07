@@ -8,14 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 trait Repeat<A> { fn get(&self) -> A; }
 
 impl<A:Clone> Repeat<A> for A {
     fn get(&self) -> A { self.clone() }
 }
 
-fn repeater<A:Clone>(v: A) -> ~Repeat<A>: {
-    ~v as ~Repeat<A>: // No
+fn repeater<A:Clone>(v: A) -> Box<Repeat<A>:> {
+    box v as Box<Repeat<A>:> // No
 }
 
 fn main() {

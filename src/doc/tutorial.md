@@ -911,12 +911,12 @@ Objects are never accessible after their destructor has been called, so no
 dynamic failures are possible from accessing freed resources. When a task
 fails, destructors of all objects in the task are called.
 
-The `~` sigil represents a unique handle for a memory allocation on the heap:
+The `box` operator performs memory allocation on the heap:
 
 ~~~~
 {
     // an integer allocated on the heap
-    let y = ~10;
+    let y = box 10;
 }
 // the destructor frees the heap memory as soon as `y` goes out of scope
 ~~~~
@@ -938,17 +938,17 @@ and destroy the contained object when they go out of scope.
 
 ~~~~
 // the struct owns the objects contained in the `x` and `y` fields
-struct Foo { x: int, y: ~int }
+struct Foo { x: int, y: Box<int> }
 
 {
     // `a` is the owner of the struct, and thus the owner of the struct's fields
-    let a = Foo { x: 5, y: ~10 };
+    let a = Foo { x: 5, y: box 10 };
 }
 // when `a` goes out of scope, the destructor for the `~int` in the struct's
 // field is called
 
 // `b` is mutable, and the mutability is inherited by the objects it owns
-let mut b = Foo { x: 5, y: ~10 };
+let mut b = Foo { x: 5, y: box 10 };
 b.x = 10;
 ~~~~
 
@@ -1021,13 +1021,15 @@ Our previous attempt at defining the `List` type included an `u32` and a `List`
 directly inside `Cons`, making it at least as big as the sum of both types. The
 type was invalid because the size was infinite!
 
-An *owned box* (`~`) uses a dynamic memory allocation to provide the invariant
-of always being the size of a pointer, regardless of the contained type. This
-can be leveraged to create a valid `List` definition:
+An *owned box* (`Box`, located in the `std::owned` module) uses a dynamic memory
+allocation to provide the invariant of always being the size of a pointer,
+regardless of the contained type. This can be leveraged to create a valid `List`
+definition:
 
 ~~~
+
 enum List {
-    Cons(u32, ~List),
+    Cons(u32, Box<List>),
     Nil
 }
 ~~~
@@ -1040,10 +1042,10 @@ Consider an instance of our `List` type:
 
 ~~~
 # enum List {
-#     Cons(u32, ~List),
+#     Cons(u32, Box<List>),
 #     Nil
 # }
-let list = Cons(1, ~Cons(2, ~Cons(3, ~Nil)));
+let list = Cons(1, box Cons(2, box Cons(3, box Nil)));
 ~~~
 
 It represents an owned tree of values, inheriting mutability down the tree and
@@ -1054,7 +1056,7 @@ box, while the owner holds onto a pointer to it:
 ~~~ {.notrust}
             List box            List box            List box          List box
         +--------------+    +--------------+    +--------------+    +----------+
-list -> | Cons | 1 | ~ | -> | Cons | 2 | ~ | -> | Cons | 3 | ~ | -> | Nil      |
+list -> | Cons | 1 |   | -> | Cons | 2 |   | -> | Cons | 3 |   | -> | Nil      |
         +--------------+    +--------------+    +--------------+    +----------+
 ~~~
 
@@ -1074,10 +1076,10 @@ the box rather than doing an implicit heap allocation.
 
 ~~~
 # enum List {
-#     Cons(u32, ~List),
+#     Cons(u32, Box<List>),
 #     Nil
 # }
-let xs = Cons(1, ~Cons(2, ~Cons(3, ~Nil)));
+let xs = Cons(1, box Cons(2, box Cons(3, box Nil)));
 let ys = xs; // copies `Cons(u32, pointer)` shallowly
 ~~~
 
@@ -1087,7 +1089,7 @@ location cannot be used unless it is reinitialized.
 
 ~~~
 # enum List {
-#     Cons(u32, ~List),
+#     Cons(u32, Box<List>),
 #     Nil
 # }
 let mut xs = Nil;
@@ -1107,7 +1109,7 @@ as it is only called a single time.
 Avoiding a move can be done with the library-defined `clone` method:
 
 ~~~~
-let x = ~5;
+let x = box 5;
 let y = x.clone(); // `y` is a newly allocated box
 let z = x; // no new memory allocated, `x` can no longer be used
 ~~~~
@@ -1118,11 +1120,11 @@ our `List` type. Traits will be explained in detail [later](#traits).
 ~~~{.ignore}
 #[deriving(Clone)]
 enum List {
-    Cons(u32, ~List),
+    Cons(u32, Box<List>),
     Nil
 }
 
-let x = Cons(5, ~Nil);
+let x = Cons(5, box Nil);
 let y = x.clone();
 
 // `x` can still be used!
@@ -1135,7 +1137,7 @@ let z = x;
 The mutability of a value may be changed by moving it to a new owner:
 
 ~~~~
-let r = ~13;
+let r = box 13;
 let mut s = r; // box becomes mutable
 *s += 1;
 let t = s; // box becomes immutable
@@ -1146,12 +1148,12 @@ advantage of moves:
 
 ~~~
 enum List {
-    Cons(u32, ~List),
+    Cons(u32, Box<List>),
     Nil
 }
 
 fn prepend(xs: List, value: u32) -> List {
-    Cons(value, ~xs)
+    Cons(value, box xs)
 }
 
 let mut xs = Nil;
@@ -1186,7 +1188,7 @@ by-value. A recursive definition of equality using references is as follows:
 
 ~~~
 # enum List {
-#     Cons(u32, ~List),
+#     Cons(u32, Box<List>),
 #     Nil
 # }
 fn eq(xs: &List, ys: &List) -> bool {
@@ -1195,15 +1197,15 @@ fn eq(xs: &List, ys: &List) -> bool {
         // If we have reached the end of both lists, they are equal.
         (&Nil, &Nil) => true,
         // If the current elements of both lists are equal, keep going.
-        (&Cons(x, ~ref next_xs), &Cons(y, ~ref next_ys))
+        (&Cons(x, box ref next_xs), &Cons(y, box ref next_ys))
                 if x == y => eq(next_xs, next_ys),
         // If the current elements are not equal, the lists are not equal.
         _ => false
     }
 }
 
-let xs = Cons(5, ~Cons(10, ~Nil));
-let ys = Cons(5, ~Cons(10, ~Nil));
+let xs = Cons(5, box Cons(10, box Nil));
+let ys = Cons(5, box Cons(10, box Nil));
 assert!(eq(&xs, &ys));
 ~~~
 
@@ -1223,7 +1225,7 @@ The `u32` in the previous definition can be substituted with a type parameter:
 
 ~~~
 enum List<T> {
-    Cons(T, ~List<T>),
+    Cons(T, Box<List<T>>),
     Nil
 }
 ~~~
@@ -1233,11 +1235,11 @@ definition has to be updated too:
 
 ~~~
 # enum List<T> {
-#     Cons(T, ~List<T>),
+#     Cons(T, Box<List<T>>),
 #     Nil
 # }
 fn prepend<T>(xs: List<T>, value: T) -> List<T> {
-    Cons(value, ~xs)
+    Cons(value, box xs)
 }
 ~~~
 
@@ -1248,11 +1250,11 @@ Using the generic `List<T>` works much like before, thanks to type inference:
 
 ~~~
 # enum List<T> {
-#     Cons(T, ~List<T>),
+#     Cons(T, Box<List<T>>),
 #     Nil
 # }
 # fn prepend<T>(xs: List<T>, value: T) -> List<T> {
-#     Cons(value, ~xs)
+#     Cons(value, box xs)
 # }
 let mut xs = Nil; // Unknown type! This is a `List<T>`, but `T` can be anything.
 xs = prepend(xs, 10); // Here the compiler infers `xs`'s type as `List<int>`.
@@ -1265,11 +1267,11 @@ equivalent to the following type-annotated code:
 
 ~~~
 # enum List<T> {
-#     Cons(T, ~List<T>),
+#     Cons(T, Box<List<T>>),
 #     Nil
 # }
 # fn prepend<T>(xs: List<T>, value: T) -> List<T> {
-#     Cons(value, ~xs)
+#     Cons(value, box xs)
 # }
 let mut xs: List<int> = Nil::<int>;
 xs = prepend::<int>(xs, 10);
@@ -1293,7 +1295,7 @@ Two more `ref` annotations need to be added to avoid attempting to move out the 
 
 ~~~
 # enum List<T> {
-#     Cons(T, ~List<T>),
+#     Cons(T, Box<List<T>>),
 #     Nil
 # }
 fn eq<T: Eq>(xs: &List<T>, ys: &List<T>) -> bool {
@@ -1302,15 +1304,15 @@ fn eq<T: Eq>(xs: &List<T>, ys: &List<T>) -> bool {
         // If we have reached the end of both lists, they are equal.
         (&Nil, &Nil) => true,
         // If the current elements of both lists are equal, keep going.
-        (&Cons(ref x, ~ref next_xs), &Cons(ref y, ~ref next_ys))
+        (&Cons(ref x, box ref next_xs), &Cons(ref y, box ref next_ys))
                 if x == y => eq(next_xs, next_ys),
         // If the current elements are not equal, the lists are not equal.
         _ => false
     }
 }
 
-let xs = Cons('c', ~Cons('a', ~Cons('t', ~Nil)));
-let ys = Cons('c', ~Cons('a', ~Cons('t', ~Nil)));
+let xs = Cons('c', box Cons('a', box Cons('t', box Nil)));
+let ys = Cons('c', box Cons('a', box Cons('t', box Nil)));
 assert!(eq(&xs, &ys));
 ~~~
 
@@ -1321,7 +1323,7 @@ on.
 
 ~~~
 # enum List<T> {
-#     Cons(T, ~List<T>),
+#     Cons(T, Box<List<T>>),
 #     Nil
 # }
 impl<T: Eq> Eq for List<T> {
@@ -1331,7 +1333,7 @@ impl<T: Eq> Eq for List<T> {
             // If we have reached the end of both lists, they are equal.
             (&Nil, &Nil) => true,
             // If the current elements of both lists are equal, keep going.
-            (&Cons(ref x, ~ref next_xs), &Cons(ref y, ~ref next_ys))
+            (&Cons(ref x, box ref next_xs), &Cons(ref y, box ref next_ys))
                     if x == y => next_xs == next_ys,
             // If the current elements are not equal, the lists are not equal.
             _ => false
@@ -1339,8 +1341,8 @@ impl<T: Eq> Eq for List<T> {
     }
 }
 
-let xs = Cons(5, ~Cons(10, ~Nil));
-let ys = Cons(5, ~Cons(10, ~Nil));
+let xs = Cons(5, box Cons(10, box Nil));
+let ys = Cons(5, box Cons(10, box Nil));
 // The methods below are part of the Eq trait,
 // which we implemented on our linked list.
 assert!(xs.eq(&ys));
@@ -1373,7 +1375,7 @@ fn foo() -> (u64, u64, u64, u64, u64, u64) {
     (5, 5, 5, 5, 5, 5)
 }
 
-let x = ~foo(); // allocates a `~` box, and writes the integers directly to it
+let x = box foo(); // allocates a box, and writes the integers directly to it
 ~~~~
 
 Beyond the properties granted by the size, an owned box behaves as a regular
@@ -1384,8 +1386,8 @@ let x = 5; // immutable
 let mut y = 5; // mutable
 y += 2;
 
-let x = ~5; // immutable
-let mut y = ~5; // mutable
+let x = box 5; // immutable
+let mut y = box 5; // mutable
 *y += 2; // the `*` operator is needed to access the contained value
 ~~~~
 
@@ -1413,8 +1415,8 @@ contains a point, but allocated in a different location:
 
 ~~~
 # struct Point { x: f64, y: f64 }
-let on_the_stack :  Point =  Point { x: 3.0, y: 4.0 };
-let owned_box    : ~Point = ~Point { x: 7.0, y: 9.0 };
+let on_the_stack :     Point  =     Point { x: 3.0, y: 4.0 };
+let owned_box    : Box<Point> = box Point { x: 7.0, y: 9.0 };
 ~~~
 
 Suppose we want to write a procedure that computes the distance
@@ -1438,8 +1440,8 @@ Now we can call `compute_distance()` in various ways:
 
 ~~~
 # struct Point{ x: f64, y: f64 };
-# let on_the_stack : Point  =  Point { x: 3.0, y: 4.0 };
-# let owned_box    : ~Point = ~Point { x: 7.0, y: 9.0 };
+# let on_the_stack :     Point  =     Point { x: 3.0, y: 4.0 };
+# let owned_box    : Box<Point> = box Point { x: 7.0, y: 9.0 };
 # fn compute_distance(p1: &Point, p2: &Point) -> f64 { 0.0 }
 compute_distance(&on_the_stack, owned_box);
 ~~~
@@ -1453,7 +1455,7 @@ route to the same data.
 
 In the case of `owned_box`, however, no
 explicit action is necessary. The compiler will automatically convert
-a box `~point` to a reference like
+a box `box point` to a reference like
 `&point`. This is another form of borrowing; in this case, the
 contents of the owned box are being lent out.
 
@@ -1492,7 +1494,7 @@ Rust uses the unary star operator (`*`) to access the contents of a
 box or pointer, similarly to C.
 
 ~~~
-let owned = ~10;
+let owned = box 10;
 let borrowed = &20;
 
 let sum = *owned + *borrowed;
@@ -1503,7 +1505,7 @@ assignments. Such an assignment modifies the value that the pointer
 points to.
 
 ~~~
-let mut owned = ~10;
+let mut owned = box 10;
 
 let mut value = 20;
 let borrowed = &mut value;
@@ -1520,8 +1522,8 @@ can sometimes make code awkward and parenthesis-filled.
 # struct Point { x: f64, y: f64 }
 # enum Shape { Rectangle(Point, Point) }
 # impl Shape { fn area(&self) -> int { 0 } }
-let start = ~Point { x: 10.0, y: 20.0 };
-let end = ~Point { x: (*start).x + 100.0, y: (*start).y + 100.0 };
+let start = box Point { x: 10.0, y: 20.0 };
+let end = box Point { x: (*start).x + 100.0, y: (*start).y + 100.0 };
 let rect = &Rectangle(*start, *end);
 let area = (*rect).area();
 ~~~
@@ -1534,8 +1536,8 @@ dot), so in most cases, explicitly dereferencing the receiver is not necessary.
 # struct Point { x: f64, y: f64 }
 # enum Shape { Rectangle(Point, Point) }
 # impl Shape { fn area(&self) -> int { 0 } }
-let start = ~Point { x: 10.0, y: 20.0 };
-let end = ~Point { x: start.x + 100.0, y: start.y + 100.0 };
+let start = box Point { x: 10.0, y: 20.0 };
+let end = box Point { x: start.x + 100.0, y: start.y + 100.0 };
 let rect = &Rectangle(*start, *end);
 let area = rect.area();
 ~~~
@@ -1546,7 +1548,7 @@ something silly like
 
 ~~~
 # struct Point { x: f64, y: f64 }
-let point = &~Point { x: 10.0, y: 20.0 };
+let point = &box Point { x: 10.0, y: 20.0 };
 println!("{:f}", point.x);
 ~~~
 
@@ -1944,7 +1946,7 @@ impl Shape {
 let s = Circle(Point { x: 1.0, y: 2.0 }, 3.0);
 
 (&s).draw_reference();
-(~s).draw_owned();
+(box s).draw_owned();
 s.draw_value();
 ~~~
 
@@ -1969,7 +1971,7 @@ to a reference.
 // As with typical function arguments, owned pointers
 // are automatically converted to references
 
-(~s).draw_reference();
+(box s).draw_reference();
 
 // Unlike typical function arguments, the self value will
 // automatically be referenced ...
@@ -1979,7 +1981,7 @@ s.draw_reference();
 (& &s).draw_reference();
 
 // ... and dereferenced and borrowed
-(&~s).draw_reference();
+(&box s).draw_reference();
 ~~~
 
 Implementations may also define standalone (sometimes called "static")
@@ -2433,7 +2435,7 @@ an _object_.
 
 ~~~~
 # trait Drawable { fn draw(&self); }
-fn draw_all(shapes: &[~Drawable]) {
+fn draw_all(shapes: &[Box<Drawable>]) {
     for shape in shapes.iter() { shape.draw(); }
 }
 ~~~~
@@ -2448,14 +2450,14 @@ to an object:
 # trait Drawable { fn draw(&self); }
 # fn new_circle() -> Circle { 1 }
 # fn new_rectangle() -> Rectangle { true }
-# fn draw_all(shapes: &[~Drawable]) {}
+# fn draw_all(shapes: &[Box<Drawable>]) {}
 
 impl Drawable for Circle { fn draw(&self) { /* ... */ } }
 impl Drawable for Rectangle { fn draw(&self) { /* ... */ } }
 
-let c: ~Circle = ~new_circle();
-let r: ~Rectangle = ~new_rectangle();
-draw_all([c as ~Drawable, r as ~Drawable]);
+let c: Box<Circle> = box new_circle();
+let r: Box<Rectangle> = box new_rectangle();
+draw_all([c as Box<Drawable>, r as Box<Drawable>]);
 ~~~~
 
 We omit the code for `new_circle` and `new_rectangle`; imagine that
@@ -2464,7 +2466,7 @@ that, like strings and vectors, objects have dynamic size and may
 only be referred to via one of the pointer types.
 Other pointer types work as well.
 Casts to traits may only be done with compatible pointers so,
-for example, an `&Circle` may not be cast to an `~Drawable`.
+for example, an `&Circle` may not be cast to a `Box<Drawable>`.
 
 ~~~
 # type Circle = int; type Rectangle = int;
@@ -2473,7 +2475,7 @@ for example, an `&Circle` may not be cast to an `~Drawable`.
 # fn new_circle() -> int { 1 }
 # fn new_rectangle() -> int { 2 }
 // An owned object
-let owny: ~Drawable = ~new_circle() as ~Drawable;
+let owny: Box<Drawable> = box new_circle() as Box<Drawable>;
 // A borrowed object
 let stacky: &Drawable = &new_circle() as &Drawable;
 ~~~
@@ -2497,7 +2499,7 @@ valid types:
 trait Foo {}
 trait Bar<T> {}
 
-fn sendable_foo(f: ~Foo:Send) { /* ... */ }
+fn sendable_foo(f: Box<Foo:Send>) { /* ... */ }
 fn shareable_bar<T: Share>(b: &Bar<T>: Share) { /* ... */ }
 ~~~
 

@@ -18,7 +18,7 @@ use std::slice;
 
 // Note 2: Once Dynamically Sized Types (DST) lands, it might be
 // reasonable to replace this with something like `enum MaybeOwned<'a,
-// Sized? U>{ Owned(~U), Borrowed(&'a U) }`; and then `U` could be
+// Sized? U>{ Owned(Box<U>), Borrowed(&'a U) }`; and then `U` could be
 // instantiated with `[T]` or `str`, etc.  Of course, that would imply
 // removing the `Growable` variant, which relates to note 1 above.
 // Alternatively, we might add `MaybeOwned` for the general case but

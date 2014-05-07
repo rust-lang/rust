@@ -15,6 +15,7 @@
 
 #![allow(unused_variable)]
 
+
 trait Trait {
     fn method(&self) -> int { 0 }
 }
@@ -30,5 +31,5 @@ impl Trait for Struct {}
 fn main() {
     let stack_struct = Struct { a:0, b: 1.0 };
     let reference: &Trait = &stack_struct as &Trait;
-    let unique: ~Trait = ~Struct { a:2, b: 3.0 } as ~Trait;
+    let unique: Box<Trait> = box Struct { a:2, b: 3.0 } as Box<Trait>;
 }

@@ -11,4 +11,8 @@
 
 struct X { x: int, y: int, z: int }
 
-pub fn main() { let x = ~X{x: 1, y: 2, z: 3}; let y = x; assert!((y.y == 2)); }
+pub fn main() {
+    let x = box X{x: 1, y: 2, z: 3};
+    let y = x;
+    assert!((y.y == 2));
+}

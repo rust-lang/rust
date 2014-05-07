@@ -16,7 +16,9 @@ use ext::base::*;
 use ext::base;
 use ext::build::AstBuilder;
 
-pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree]) -> ~base::MacResult {
+
+pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
+                         -> Box<base::MacResult> {
     // Gather all argument expressions
     let exprs = match get_exprs_from_tts(cx, sp, tts) {
         None => return DummyResult::expr(sp),

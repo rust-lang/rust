@@ -159,8 +159,8 @@ pub static stringnames: &'static[&'static str] = &'static[ "cbt", "_", "cr", "cs
     "box1"];
 
 /// Parse a compiled terminfo entry, using long capability names if `longnames` is true
-pub fn parse(file: &mut io::Reader,
-             longnames: bool) -> Result<~TermInfo, ~str> {
+pub fn parse(file: &mut io::Reader, longnames: bool)
+             -> Result<Box<TermInfo>, ~str> {
     macro_rules! try( ($e:expr) => (
         match $e { Ok(e) => e, Err(e) => return Err(format!("{}", e)) }
     ) )
@@ -301,7 +301,7 @@ pub fn parse(file: &mut io::Reader,
 }
 
 /// Create a dummy TermInfo struct for msys terminals
-pub fn msys_terminfo() -> ~TermInfo {
+pub fn msys_terminfo() -> Box<TermInfo> {
     let mut strings = HashMap::new();
     strings.insert("sgr0".to_owned(), Vec::from_slice(bytes!("\x1b[0m")));
     strings.insert("bold".to_owned(), Vec::from_slice(bytes!("\x1b[1m")));

@@ -273,7 +273,10 @@ struct ParsedItemsAndViewItems {
 
 /* ident is handled by common.rs */
 
-pub fn Parser<'a>(sess: &'a ParseSess, cfg: ast::CrateConfig, mut rdr: ~Reader:)
+pub fn Parser<'a>(
+              sess: &'a ParseSess,
+              cfg: ast::CrateConfig,
+              mut rdr: Box<Reader:>)
               -> Parser<'a> {
     let tok0 = rdr.next_token();
     let span = tok0.sp;
@@ -318,14 +321,14 @@ pub struct Parser<'a> {
     pub last_span: Span,
     pub cfg: CrateConfig,
     // the previous token or None (only stashed sometimes).
-    pub last_token: Option<~token::Token>,
+    pub last_token: Option<Box<token::Token>>,
     pub buffer: [TokenAndSpan, ..4],
     pub buffer_start: int,
     pub buffer_end: int,
     pub tokens_consumed: uint,
     pub restriction: restriction,
     pub quote_depth: uint, // not (yet) related to the quasiquoter
-    pub reader: ~Reader:,
+    pub reader: Box<Reader:>,
     pub interner: Rc<token::IdentInterner>,
     /// The set of seen errors about obsolete syntax. Used to suppress
     /// extra detail when the same error is seen twice
@@ -1221,6 +1224,14 @@ impl<'a> Parser<'a> {
         } else if self.token == token::TILDE {
             // OWNED POINTER
             self.bump();
+            match self.token {
+                token::IDENT(ref ident, _)
+                        if "str" == token::get_ident(*ident).get() => {
+                    // This is OK (for now).
+                }
+                token::LBRACKET => {}   // Also OK.
+                _ => self.obsolete(self.last_span, ObsoleteOwnedType),
+            };
             TyUniq(self.parse_ty(false))
         } else if self.token == token::BINOP(token::STAR) {
             // STAR POINTER (bare pointer?)
@@ -1445,7 +1456,7 @@ impl<'a> Parser<'a> {
             _ => None,
         };
         match found {
-            Some(INTERPOLATED(token::NtPath(~path))) => {
+            Some(INTERPOLATED(token::NtPath(box path))) => {
                 return PathAndBounds {
                     path: path,
                     bounds: None,
@@ -2258,9 +2269,13 @@ impl<'a> Parser<'a> {
             ex = match e.node {
               ExprVec(..) | ExprRepeat(..) => ExprVstore(e, ExprVstoreUniq),
               ExprLit(lit) if lit_is_str(lit) => {
+                  self.obsolete(self.last_span, ObsoleteOwnedExpr);
                   ExprVstore(e, ExprVstoreUniq)
               }
-              _ => self.mk_unary(UnUniq, e)
+              _ => {
+                  self.obsolete(self.last_span, ObsoleteOwnedExpr);
+                  self.mk_unary(UnUniq, e)
+              }
             };
           }
           token::IDENT(_, _) if self.is_keyword(keywords::Box) => {
@@ -2772,6 +2787,7 @@ impl<'a> Parser<'a> {
             let sub = self.parse_pat();
             pat = PatUniq(sub);
             hi = self.last_span.hi;
+            self.obsolete(self.last_span, ObsoleteOwnedPattern);
             return @ast::Pat {
                 id: ast::DUMMY_NODE_ID,
                 node: pat,

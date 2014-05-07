@@ -10,6 +10,6 @@
 
 
 pub fn main() {
-    let i = ~vec!(100);
+    let i = box vec!(100);
     assert_eq!(*i.get(0), 100);
 }

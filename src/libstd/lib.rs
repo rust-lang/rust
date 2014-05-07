@@ -131,6 +131,7 @@ extern crate libc;
 #[cfg(test)] pub use ops = realstd::ops;
 #[cfg(test)] pub use cmp = realstd::cmp;
 #[cfg(test)] pub use ty = realstd::ty;
+#[cfg(test)] pub use owned = realstd::owned;
 
 // Run tests with libgreen instead of libnative.
 //
@@ -188,7 +189,6 @@ pub mod strbuf;
 pub mod ascii;
 
 pub mod ptr;
-pub mod owned;
 mod managed;
 mod reference;
 pub mod rc;
@@ -201,6 +201,7 @@ pub mod gc;
 #[cfg(not(test))] pub mod ops;
 #[cfg(not(test))] pub mod cmp;
 #[cfg(not(test))] pub mod ty;
+#[cfg(not(test))] pub mod owned;
 
 
 /* Common traits */

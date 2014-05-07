@@ -258,10 +258,10 @@ impl<T: Send> Drop for Unique<T> {
     }
 }
 
-// A comparison between the built-in ~ and this reimplementation
+// A comparison between the built-in `Box` and this reimplementation
 fn main() {
     {
-        let mut x = ~5;
+        let mut x = box 5;
         *x = 10;
     } // `x` is freed here
 

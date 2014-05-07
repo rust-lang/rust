@@ -9,11 +9,10 @@
 // except according to those terms.
 
 
+type compare<T> = |Box<T>, Box<T>|: 'static -> bool;
 
-type compare<T> = |~T, ~T|: 'static -> bool;
-
-fn test_generic<T:Clone>(expected: ~T, eq: compare<T>) {
-    let actual: ~T = match true {
+fn test_generic<T:Clone>(expected: Box<T>, eq: compare<T>) {
+    let actual: Box<T> = match true {
         true => { expected.clone() },
         _ => fail!("wat")
     };
@@ -21,8 +20,10 @@ fn test_generic<T:Clone>(expected: ~T, eq: compare<T>) {
 }
 
 fn test_box() {
-    fn compare_box(b1: ~bool, b2: ~bool) -> bool { return *b1 == *b2; }
-    test_generic::<bool>(~true, compare_box);
+    fn compare_box(b1: Box<bool>, b2: Box<bool>) -> bool {
+        return *b1 == *b2;
+    }
+    test_generic::<bool>(box true, compare_box);
 }
 
 pub fn main() { test_box(); }
