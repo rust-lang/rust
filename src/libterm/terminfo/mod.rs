@@ -23,6 +23,7 @@ use self::parm::{expand, Number, Variables};
 
 
 /// A parsed terminfo database entry.
+#[deriving(Show)]
 pub struct TermInfo {
     /// Names for the terminal
     pub names: Vec<StrBuf> ,
@@ -86,7 +87,7 @@ impl<T: Writer> Terminal<T> for TerminfoTerminal<T> {
                 // msys terminal
                 return Some(TerminfoTerminal {out: out, ti: msys_terminfo(), num_colors: 8});
             }
-            debug!("error finding terminfo entry: {}", entry.unwrap_err());
+            debug!("error finding terminfo entry: {}", entry.err().unwrap());
             return None;
         }
 
@@ -183,7 +184,7 @@ impl<T: Writer> Terminal<T> for TerminfoTerminal<T> {
                 cap = self.ti.strings.find_equiv(&("op"));
             }
         }
-        let s = cap.map_or(Err(~"can't find terminfo capability `sgr0`"), |op| {
+        let s = cap.map_or(Err("can't find terminfo capability `sgr0`".to_owned()), |op| {
             expand(op.as_slice(), [], &mut Variables::new())
         });
         if s.is_ok() {
