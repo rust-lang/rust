@@ -2235,6 +2235,7 @@ pub fn trans_crate(krate: ast::Crate,
     reachable.push("rust_eh_personality_catch".to_owned()); // referenced from rt/rust_try.ll
 
     let metadata_module = ccx.metadata_llmod;
+    let formats = ccx.tcx.dependency_formats.borrow().clone();
 
     (ccx.tcx, CrateTranslation {
         context: llcx,
@@ -2243,5 +2244,6 @@ pub fn trans_crate(krate: ast::Crate,
         metadata_module: metadata_module,
         metadata: metadata,
         reachable: reachable,
+        crate_formats: formats,
     })
 }

@@ -8,13 +8,4 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:issue-12133-rlib.rs
-// aux-build:issue-12133-dylib.rs
-// no-prefer-dynamic
-
-// error-pattern: dylib output requested, but some depenencies could not
-
-#![crate_type = "dylib"]
-
-extern crate a = "issue-12133-rlib";
-extern crate b = "issue-12133-dylib";
+extern crate foo;

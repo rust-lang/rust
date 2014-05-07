@@ -10,11 +10,8 @@
 
 // aux-build:issue-12133-rlib.rs
 // aux-build:issue-12133-dylib.rs
-// no-prefer-dynamic
+// aux-build:issue-12133-dylib2.rs
 
-// error-pattern: dependencies were not all found in either dylib or rlib format
-
-extern crate a = "issue-12133-rlib";
-extern crate b = "issue-12133-dylib";
+extern crate other = "issue-12133-dylib2";
 
 fn main() {}
