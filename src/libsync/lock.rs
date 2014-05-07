@@ -278,6 +278,8 @@ pub struct RWLock<T> {
     data: Unsafe<T>,
 }
 
+impl<T: Share> Share for RWLock<T> {}
+
 /// A guard which is created by locking an rwlock in write mode. Through this
 /// guard the underlying data can be accessed.
 pub struct RWLockWriteGuard<'a, T> {

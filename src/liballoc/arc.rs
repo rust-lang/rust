@@ -57,6 +57,8 @@ pub struct Arc<T> {
     _ptr: *mut ArcInner<T>,
 }
 
+impl<T> Share for Arc<T> {}
+
 /// A weak pointer to an `Arc`.
 ///
 /// Weak pointers will not keep the data inside of the `Arc` alive, and can be
@@ -68,11 +70,15 @@ pub struct Weak<T> {
     _ptr: *mut ArcInner<T>,
 }
 
+impl<T: Share> Share for Weak<T> {}
+
 struct ArcInner<T> {
     strong: atomics::AtomicUint,
     weak: atomics::AtomicUint,
     data: T,
 }
+
+impl<T: Share> Share for ArcInner<T> {}
 
 impl<T: Share + Send> Arc<T> {
     /// Create an atomically reference counted wrapper.
