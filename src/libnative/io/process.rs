@@ -864,5 +864,9 @@ mod tests {
             make_command_line("echo", ["a b c".to_owned()]),
             "echo \"a b c\"".to_owned()
         );
+        assert_eq!(
+            make_command_line("\u03c0\u042f\u97f3\u00e6\u221e", []),
+            "\u03c0\u042f\u97f3\u00e6\u221e".to_owned()
+        );
     }
 }
