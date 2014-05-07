@@ -426,7 +426,7 @@ impl<'a> Block<'a> {
     }
 
     pub fn node_id_to_str(&self, id: ast::NodeId) -> ~str {
-        self.tcx().map.node_to_str(id)
+        self.tcx().map.node_to_str(id).to_owned()
     }
 
     pub fn expr_to_str(&self, e: &ast::Expr) -> ~str {
@@ -839,7 +839,10 @@ pub fn filename_and_line_num_from_span(bcx: &Block, span: Span)
                                        -> (ValueRef, ValueRef) {
     let loc = bcx.sess().codemap().lookup_char_pos(span.lo);
     let filename_cstr = C_cstr(bcx.ccx(),
-                               token::intern_and_get_ident(loc.file.name), true);
+                               token::intern_and_get_ident(loc.file
+                                                              .name
+                                                              .as_slice()),
+                               true);
     let filename = build::PointerCast(bcx, filename_cstr, Type::i8p(bcx.ccx()));
     let line = C_int(bcx.ccx(), loc.line as int);
     (filename, line)

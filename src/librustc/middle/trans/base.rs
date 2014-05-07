@@ -1145,7 +1145,11 @@ pub fn new_fn_ctxt<'a>(ccx: &'a CrateContext,
     for p in param_substs.iter() { p.validate(); }
 
     debug!("new_fn_ctxt(path={}, id={}, param_substs={})",
-           if id == -1 { "".to_owned() } else { ccx.tcx.map.path_to_str(id) },
+           if id == -1 {
+               "".to_owned()
+           } else {
+               ccx.tcx.map.path_to_str(id).to_owned()
+           },
            id, param_substs.map(|s| s.repr(ccx.tcx())));
 
     let substd_output_type = match param_substs {
@@ -1458,7 +1462,7 @@ pub fn trans_fn(ccx: &CrateContext,
                 param_substs: Option<&param_substs>,
                 id: ast::NodeId,
                 attrs: &[ast::Attribute]) {
-    let _s = StatRecorder::new(ccx, ccx.tcx.map.path_to_str(id));
+    let _s = StatRecorder::new(ccx, ccx.tcx.map.path_to_str(id).to_owned());
     debug!("trans_fn(param_substs={})", param_substs.map(|s| s.repr(ccx.tcx())));
     let _icx = push_ctxt("trans_fn");
     let output_type = ty::ty_fn_ret(ty::node_id_to_type(ccx.tcx(), id));
@@ -2161,9 +2165,10 @@ pub fn trans_crate(krate: ast::Crate,
     // crashes if the module identifer is same as other symbols
     // such as a function name in the module.
     // 1. http://llvm.org/bugs/show_bug.cgi?id=11479
-    let llmod_id = link_meta.crateid.name + ".rs";
+    let mut llmod_id = link_meta.crateid.name.clone();
+    llmod_id.push_str(".rs");
 
-    let ccx = CrateContext::new(llmod_id, tcx, exp_map2,
+    let ccx = CrateContext::new(llmod_id.as_slice(), tcx, exp_map2,
                                 Sha256::new(), link_meta, reachable);
     {
         let _icx = push_ctxt("text");

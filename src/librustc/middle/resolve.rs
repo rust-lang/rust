@@ -3167,12 +3167,12 @@ impl<'a> Resolver<'a> {
                          .codemap()
                          .span_to_snippet(imports.get(index).span)
                          .unwrap();
-            if sn.contains("::") {
+            if sn.as_slice().contains("::") {
                 self.resolve_error(imports.get(index).span,
                                    "unresolved import");
             } else {
                 let err = format!("unresolved import (maybe you meant `{}::*`?)",
-                               sn.slice(0, sn.len()));
+                                  sn.as_slice().slice(0, sn.len()));
                 self.resolve_error(imports.get(index).span, err);
             }
         }

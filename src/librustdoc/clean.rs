@@ -92,7 +92,7 @@ impl<'a> Clean<Crate> for visit_ast::RustdocVisitor<'a> {
         let id = link::find_crate_id(self.attrs.as_slice(),
                                      t_outputs.out_filestem);
         Crate {
-            name: id.name,
+            name: id.name.to_owned(),
             module: Some(self.module.clean()),
             externs: externs,
         }
@@ -1239,7 +1239,7 @@ impl ToSource for syntax::codemap::Span {
         let ctxt = super::ctxtkey.get().unwrap();
         let cm = ctxt.sess().codemap().clone();
         let sn = match cm.span_to_snippet(*self) {
-            Some(x) => x,
+            Some(x) => x.to_owned(),
             None    => "".to_owned()
         };
         debug!("got snippet {}", sn);

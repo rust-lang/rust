@@ -201,8 +201,8 @@ pub fn nameize(p_s: &ParseSess, ms: &[Matcher], res: &[Rc<NamedMatch>])
 
 pub enum ParseResult {
     Success(HashMap<Ident, Rc<NamedMatch>>),
-    Failure(codemap::Span, ~str),
-    Error(codemap::Span, ~str)
+    Failure(codemap::Span, StrBuf),
+    Error(codemap::Span, StrBuf)
 }
 
 pub fn parse_or_else(sess: &ParseSess,
@@ -212,8 +212,12 @@ pub fn parse_or_else(sess: &ParseSess,
                      -> HashMap<Ident, Rc<NamedMatch>> {
     match parse(sess, cfg, rdr, ms.as_slice()) {
         Success(m) => m,
-        Failure(sp, str) => sess.span_diagnostic.span_fatal(sp, str),
-        Error(sp, str) => sess.span_diagnostic.span_fatal(sp, str)
+        Failure(sp, str) => {
+            sess.span_diagnostic.span_fatal(sp, str.as_slice())
+        }
+        Error(sp, str) => {
+            sess.span_diagnostic.span_fatal(sp, str.as_slice())
+        }
     }
 }
 
@@ -366,9 +370,9 @@ pub fn parse(sess: &ParseSess,
                 }
                 return Success(nameize(sess, ms, v.as_slice()));
             } else if eof_eis.len() > 1u {
-                return Error(sp, "ambiguity: multiple successful parses".to_owned());
+                return Error(sp, "ambiguity: multiple successful parses".to_strbuf());
             } else {
-                return Failure(sp, "unexpected end of macro invocation".to_owned());
+                return Failure(sp, "unexpected end of macro invocation".to_strbuf());
             }
         } else {
             if (bb_eis.len() > 0u && next_eis.len() > 0u)
@@ -376,19 +380,19 @@ pub fn parse(sess: &ParseSess,
                 let nts = bb_eis.iter().map(|ei| {
                     match ei.elts.get(ei.idx).node {
                       MatchNonterminal(bind, name, _) => {
-                        format!("{} ('{}')",
+                        (format!("{} ('{}')",
                                 token::get_ident(name),
-                                token::get_ident(bind))
+                                token::get_ident(bind))).to_strbuf()
                       }
                       _ => fail!()
-                    } }).collect::<Vec<~str>>().connect(" or ");
+                    } }).collect::<Vec<StrBuf>>().connect(" or ");
                 return Error(sp, format!(
                     "local ambiguity: multiple parsing options: \
                      built-in NTs {} or {} other options.",
-                    nts, next_eis.len()));
+                    nts, next_eis.len()).to_strbuf());
             } else if bb_eis.len() == 0u && next_eis.len() == 0u {
                 return Failure(sp, format!("no rules expected the token `{}`",
-                            token::to_str(&tok)));
+                            token::to_str(&tok)).to_strbuf());
             } else if next_eis.len() > 0u {
                 /* Now process the next token */
                 while next_eis.len() > 0u {
@@ -436,7 +440,8 @@ pub fn parse_nt(p: &mut Parser, name: &str) -> Nonterminal {
         token::IDENT(sn,b) => { p.bump(); token::NtIdent(box sn,b) }
         _ => {
             let token_str = token::to_str(&p.token);
-            p.fatal("expected ident, found ".to_owned() + token_str)
+            p.fatal((format!("expected ident, found {}",
+                             token_str.as_slice())).as_slice())
         }
       },
       "path" => {

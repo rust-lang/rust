@@ -345,12 +345,12 @@ fn is_plain_ident_or_underscore(t: &token::Token) -> bool {
 
 impl<'a> Parser<'a> {
     // convert a token to a string using self's reader
-    pub fn token_to_str(token: &token::Token) -> ~str {
+    pub fn token_to_str(token: &token::Token) -> StrBuf {
         token::to_str(token)
     }
 
     // convert the current token to a string using self's reader
-    pub fn this_token_to_str(&mut self) -> ~str {
+    pub fn this_token_to_str(&mut self) -> StrBuf {
         Parser::token_to_str(&self.token)
     }
 
@@ -385,11 +385,17 @@ impl<'a> Parser<'a> {
     pub fn expect_one_of(&mut self,
                          edible: &[token::Token],
                          inedible: &[token::Token]) {
-        fn tokens_to_str(tokens: &[token::Token]) -> ~str {
+        fn tokens_to_str(tokens: &[token::Token]) -> StrBuf {
             let mut i = tokens.iter();
             // This might be a sign we need a connect method on Iterator.
-            let b = i.next().map_or("".to_owned(), |t| Parser::token_to_str(t));
-            i.fold(b, |b,a| b + "`, `" + Parser::token_to_str(a))
+            let b = i.next()
+                     .map_or("".to_strbuf(), |t| Parser::token_to_str(t));
+            i.fold(b, |b,a| {
+                let mut b = b;
+                b.push_str("`, `");
+                b.push_str(Parser::token_to_str(a).as_slice());
+                b
+            })
         }
         if edible.contains(&self.token) {
             self.bump();
@@ -3898,7 +3904,7 @@ impl<'a> Parser<'a> {
         (ident, ItemImpl(generics, opt_trait, ty, meths), Some(inner_attrs))
     }
 
-    // parse a::B<~str,int>
+    // parse a::B<StrBuf,int>
     fn parse_trait_ref(&mut self) -> TraitRef {
         ast::TraitRef {
             path: self.parse_path(LifetimeAndTypesWithoutColons).path,
@@ -3906,7 +3912,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    // parse B + C<~str,int> + D
+    // parse B + C<StrBuf,int> + D
     fn parse_trait_ref_list(&mut self, ket: &token::Token) -> Vec<TraitRef> {
         self.parse_seq_to_before_end(
             ket,

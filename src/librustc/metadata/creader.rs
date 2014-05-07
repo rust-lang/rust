@@ -428,11 +428,11 @@ impl<'a> CrateLoader for Loader<'a> {
         };
         let macros = decoder::get_exported_macros(library.metadata.as_slice());
         let registrar = decoder::get_macro_registrar_fn(library.metadata.as_slice()).map(|id| {
-            decoder::get_symbol(library.metadata.as_slice(), id)
+            decoder::get_symbol(library.metadata.as_slice(), id).to_strbuf()
         });
         let mc = MacroCrate {
             lib: library.dylib.clone(),
-            macros: macros.move_iter().collect(),
+            macros: macros.move_iter().map(|x| x.to_strbuf()).collect(),
             registrar_symbol: registrar,
         };
         if should_link {

@@ -84,7 +84,7 @@ pub struct BeginToken {
 
 #[deriving(Clone)]
 pub enum Token {
-    String(~str, int),
+    String(StrBuf, int),
     Break(BreakToken),
     Begin(BeginToken),
     End,
@@ -109,13 +109,13 @@ impl Token {
     }
 }
 
-pub fn tok_str(t: Token) -> ~str {
+pub fn tok_str(t: Token) -> StrBuf {
     match t {
-        String(s, len) => return format!("STR({},{})", s, len),
-        Break(_) => return "BREAK".to_owned(),
-        Begin(_) => return "BEGIN".to_owned(),
-        End => return "END".to_owned(),
-        Eof => return "EOF".to_owned()
+        String(s, len) => return format!("STR({},{})", s, len).to_strbuf(),
+        Break(_) => return "BREAK".to_strbuf(),
+        Begin(_) => return "BEGIN".to_strbuf(),
+        End => return "END".to_strbuf(),
+        Eof => return "EOF".to_strbuf()
     }
 }
 
@@ -124,7 +124,7 @@ pub fn buf_str(toks: Vec<Token>,
                left: uint,
                right: uint,
                lim: uint)
-               -> ~str {
+               -> StrBuf {
     let n = toks.len();
     assert_eq!(n, szs.len());
     let mut i = left;
@@ -140,7 +140,7 @@ pub fn buf_str(toks: Vec<Token>,
         i %= n;
     }
     s.push_char(']');
-    return s.into_owned();
+    return s.into_strbuf();
 }
 
 pub enum PrintStackBreak {
@@ -585,7 +585,7 @@ impl Printer {
             assert_eq!(l, len);
             // assert!(l <= space);
             self.space -= len;
-            self.print_str(s)
+            self.print_str(s.as_slice())
           }
           Eof => {
             // Eof should never get here.
@@ -625,15 +625,15 @@ pub fn end(p: &mut Printer) -> io::IoResult<()> { p.pretty_print(End) }
 pub fn eof(p: &mut Printer) -> io::IoResult<()> { p.pretty_print(Eof) }
 
 pub fn word(p: &mut Printer, wrd: &str) -> io::IoResult<()> {
-    p.pretty_print(String(/* bad */ wrd.to_str(), wrd.len() as int))
+    p.pretty_print(String(/* bad */ wrd.to_strbuf(), wrd.len() as int))
 }
 
 pub fn huge_word(p: &mut Printer, wrd: &str) -> io::IoResult<()> {
-    p.pretty_print(String(/* bad */ wrd.to_str(), SIZE_INFINITY))
+    p.pretty_print(String(/* bad */ wrd.to_strbuf(), SIZE_INFINITY))
 }
 
 pub fn zero_word(p: &mut Printer, wrd: &str) -> io::IoResult<()> {
-    p.pretty_print(String(/* bad */ wrd.to_str(), 0))
+    p.pretty_print(String(/* bad */ wrd.to_strbuf(), 0))
 }
 
 pub fn spaces(p: &mut Printer, n: uint) -> io::IoResult<()> {

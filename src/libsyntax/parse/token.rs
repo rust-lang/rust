@@ -137,58 +137,62 @@ impl fmt::Show for Nonterminal {
     }
 }
 
-pub fn binop_to_str(o: BinOp) -> ~str {
+pub fn binop_to_str(o: BinOp) -> StrBuf {
     match o {
-      PLUS => "+".to_owned(),
-      MINUS => "-".to_owned(),
-      STAR => "*".to_owned(),
-      SLASH => "/".to_owned(),
-      PERCENT => "%".to_owned(),
-      CARET => "^".to_owned(),
-      AND => "&".to_owned(),
-      OR => "|".to_owned(),
-      SHL => "<<".to_owned(),
-      SHR => ">>".to_owned()
+      PLUS => "+".to_strbuf(),
+      MINUS => "-".to_strbuf(),
+      STAR => "*".to_strbuf(),
+      SLASH => "/".to_strbuf(),
+      PERCENT => "%".to_strbuf(),
+      CARET => "^".to_strbuf(),
+      AND => "&".to_strbuf(),
+      OR => "|".to_strbuf(),
+      SHL => "<<".to_strbuf(),
+      SHR => ">>".to_strbuf()
     }
 }
 
-pub fn to_str(t: &Token) -> ~str {
+pub fn to_str(t: &Token) -> StrBuf {
     match *t {
-      EQ => "=".to_owned(),
-      LT => "<".to_owned(),
-      LE => "<=".to_owned(),
-      EQEQ => "==".to_owned(),
-      NE => "!=".to_owned(),
-      GE => ">=".to_owned(),
-      GT => ">".to_owned(),
-      NOT => "!".to_owned(),
-      TILDE => "~".to_owned(),
-      OROR => "||".to_owned(),
-      ANDAND => "&&".to_owned(),
+      EQ => "=".to_strbuf(),
+      LT => "<".to_strbuf(),
+      LE => "<=".to_strbuf(),
+      EQEQ => "==".to_strbuf(),
+      NE => "!=".to_strbuf(),
+      GE => ">=".to_strbuf(),
+      GT => ">".to_strbuf(),
+      NOT => "!".to_strbuf(),
+      TILDE => "~".to_strbuf(),
+      OROR => "||".to_strbuf(),
+      ANDAND => "&&".to_strbuf(),
       BINOP(op) => binop_to_str(op),
-      BINOPEQ(op) => binop_to_str(op) + "=",
+      BINOPEQ(op) => {
+          let mut s = binop_to_str(op);
+          s.push_str("=");
+          s
+      }
 
       /* Structural symbols */
-      AT => "@".to_owned(),
-      DOT => ".".to_owned(),
-      DOTDOT => "..".to_owned(),
-      DOTDOTDOT => "...".to_owned(),
-      COMMA => ",".to_owned(),
-      SEMI => ";".to_owned(),
-      COLON => ":".to_owned(),
-      MOD_SEP => "::".to_owned(),
-      RARROW => "->".to_owned(),
-      LARROW => "<-".to_owned(),
-      DARROW => "<->".to_owned(),
-      FAT_ARROW => "=>".to_owned(),
-      LPAREN => "(".to_owned(),
-      RPAREN => ")".to_owned(),
-      LBRACKET => "[".to_owned(),
-      RBRACKET => "]".to_owned(),
-      LBRACE => "{".to_owned(),
-      RBRACE => "}".to_owned(),
-      POUND => "#".to_owned(),
-      DOLLAR => "$".to_owned(),
+      AT => "@".to_strbuf(),
+      DOT => ".".to_strbuf(),
+      DOTDOT => "..".to_strbuf(),
+      DOTDOTDOT => "...".to_strbuf(),
+      COMMA => ",".to_strbuf(),
+      SEMI => ";".to_strbuf(),
+      COLON => ":".to_strbuf(),
+      MOD_SEP => "::".to_strbuf(),
+      RARROW => "->".to_strbuf(),
+      LARROW => "<-".to_strbuf(),
+      DARROW => "<->".to_strbuf(),
+      FAT_ARROW => "=>".to_strbuf(),
+      LPAREN => "(".to_strbuf(),
+      RPAREN => ")".to_strbuf(),
+      LBRACKET => "[".to_strbuf(),
+      RBRACKET => "]".to_strbuf(),
+      LBRACE => "{".to_strbuf(),
+      RBRACE => "}".to_strbuf(),
+      POUND => "#".to_strbuf(),
+      DOLLAR => "$".to_strbuf(),
 
       /* Literals */
       LIT_CHAR(c) => {
@@ -197,63 +201,64 @@ pub fn to_str(t: &Token) -> ~str {
               res.push_char(c);
           });
           res.push_char('\'');
-          res.into_owned()
+          res
       }
       LIT_INT(i, t) => ast_util::int_ty_to_str(t, Some(i)),
       LIT_UINT(u, t) => ast_util::uint_ty_to_str(t, Some(u)),
-      LIT_INT_UNSUFFIXED(i) => { i.to_str() }
+      LIT_INT_UNSUFFIXED(i) => { i.to_str().to_strbuf() }
       LIT_FLOAT(s, t) => {
         let mut body = StrBuf::from_str(get_ident(s).get());
         if body.as_slice().ends_with(".") {
             body.push_char('0');  // `10.f` is not a float literal
         }
-        body.push_str(ast_util::float_ty_to_str(t));
-        body.into_owned()
+        body.push_str(ast_util::float_ty_to_str(t).as_slice());
+        body
       }
       LIT_FLOAT_UNSUFFIXED(s) => {
         let mut body = StrBuf::from_str(get_ident(s).get());
         if body.as_slice().ends_with(".") {
             body.push_char('0');  // `10.f` is not a float literal
         }
-        body.into_owned()
+        body
       }
       LIT_STR(s) => {
-          format!("\"{}\"", get_ident(s).get().escape_default())
+          (format!("\"{}\"", get_ident(s).get().escape_default())).to_strbuf()
       }
       LIT_STR_RAW(s, n) => {
-          format!("r{delim}\"{string}\"{delim}",
-                  delim="#".repeat(n), string=get_ident(s))
+          (format!("r{delim}\"{string}\"{delim}",
+                  delim="#".repeat(n), string=get_ident(s))).to_strbuf()
       }
 
       /* Name components */
-      IDENT(s, _) => get_ident(s).get().to_str(),
+      IDENT(s, _) => get_ident(s).get().to_strbuf(),
       LIFETIME(s) => {
-          format!("'{}", get_ident(s))
+          (format!("'{}", get_ident(s))).to_strbuf()
       }
-      UNDERSCORE => "_".to_owned(),
+      UNDERSCORE => "_".to_strbuf(),
 
       /* Other */
-      DOC_COMMENT(s) => get_ident(s).get().to_str(),
-      EOF => "<eof>".to_owned(),
+      DOC_COMMENT(s) => get_ident(s).get().to_strbuf(),
+      EOF => "<eof>".to_strbuf(),
       INTERPOLATED(ref nt) => {
         match nt {
             &NtExpr(e) => ::print::pprust::expr_to_str(e),
             &NtMeta(e) => ::print::pprust::meta_item_to_str(e),
             _ => {
-                "an interpolated ".to_owned() +
-                    match *nt {
-                        NtItem(..) => "item".to_owned(),
-                        NtBlock(..) => "block".to_owned(),
-                        NtStmt(..) => "statement".to_owned(),
-                        NtPat(..) => "pattern".to_owned(),
-                        NtMeta(..) => fail!("should have been handled"),
-                        NtExpr(..) => fail!("should have been handled above"),
-                        NtTy(..) => "type".to_owned(),
-                        NtIdent(..) => "identifier".to_owned(),
-                        NtPath(..) => "path".to_owned(),
-                        NtTT(..) => "tt".to_owned(),
-                        NtMatchers(..) => "matcher sequence".to_owned()
-                    }
+                let mut s = "an interpolated ".to_strbuf();
+                match *nt {
+                    NtItem(..) => s.push_str("item"),
+                    NtBlock(..) => s.push_str("block"),
+                    NtStmt(..) => s.push_str("statement"),
+                    NtPat(..) => s.push_str("pattern"),
+                    NtMeta(..) => fail!("should have been handled"),
+                    NtExpr(..) => fail!("should have been handled above"),
+                    NtTy(..) => s.push_str("type"),
+                    NtIdent(..) => s.push_str("identifier"),
+                    NtPath(..) => s.push_str("path"),
+                    NtTT(..) => s.push_str("tt"),
+                    NtMatchers(..) => s.push_str("matcher sequence")
+                };
+                s
             }
         }
       }
