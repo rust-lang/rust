@@ -569,7 +569,7 @@ fn check_sized(tcx: &ty::ctxt, ty: ty::t, name: ~str, sp: Span) {
 fn check_pat(cx: &mut Context, pat: &Pat) {
     let var_name = match pat.node {
         PatWild => Some("_".to_owned()),
-        PatIdent(_, ref path, _) => Some(path_to_str(path)),
+        PatIdent(_, ref path, _) => Some(path_to_str(path).to_owned()),
         _ => None
     };
 

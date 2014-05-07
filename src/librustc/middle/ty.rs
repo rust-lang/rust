@@ -3709,7 +3709,7 @@ pub fn substd_enum_variants(cx: &ctxt,
 }
 
 pub fn item_path_str(cx: &ctxt, id: ast::DefId) -> ~str {
-    with_path(cx, id, |path| ast_map::path_to_str(path))
+    with_path(cx, id, |path| ast_map::path_to_str(path)).to_owned()
 }
 
 pub enum DtorKind {

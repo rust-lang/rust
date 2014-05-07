@@ -987,7 +987,7 @@ impl<'a> TraitDef<'a> {
         to_set.expn_info = Some(@codemap::ExpnInfo {
             call_site: to_set,
             callee: codemap::NameAndSpan {
-                name: format!("deriving({})", trait_name),
+                name: format!("deriving({})", trait_name).to_strbuf(),
                 format: codemap::MacroAttribute,
                 span: Some(self.span)
             }

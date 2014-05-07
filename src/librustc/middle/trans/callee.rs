@@ -364,7 +364,7 @@ pub fn trans_fn_ref_with_vtables(
         let map_node = session::expect(
             ccx.sess(),
             tcx.map.find(def_id.node),
-            || format!("local item should be in ast map"));
+            || "local item should be in ast map".to_strbuf());
 
         match map_node {
             ast_map::NodeForeignItem(_) => {

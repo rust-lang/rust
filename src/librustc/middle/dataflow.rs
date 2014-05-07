@@ -112,8 +112,8 @@ impl<'a, O:DataFlowOperator> pprust::PpAnn for DataFlowContext<'a, O> {
                 "".to_owned()
             };
 
-            try!(ps.synth_comment(format!("id {}: {}{}{}", id, entry_str,
-                                          gens_str, kills_str)));
+            try!(ps.synth_comment((format!("id {}: {}{}{}", id, entry_str,
+                                          gens_str, kills_str)).to_strbuf()));
             try!(pp::space(&mut ps.s));
         }
         Ok(())

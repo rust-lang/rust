@@ -57,14 +57,15 @@ pub fn expand_file(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
 
     let topmost = topmost_expn_info(cx.backtrace().unwrap());
     let loc = cx.codemap().lookup_char_pos(topmost.call_site.lo);
-    let filename = token::intern_and_get_ident(loc.file.name);
+    let filename = token::intern_and_get_ident(loc.file.name.as_slice());
     base::MacExpr::new(cx.expr_str(topmost.call_site, filename))
 }
 
 pub fn expand_stringify(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                         -> Box<base::MacResult> {
     let s = pprust::tts_to_str(tts);
-    base::MacExpr::new(cx.expr_str(sp, token::intern_and_get_ident(s)))
+    base::MacExpr::new(cx.expr_str(sp,
+                                   token::intern_and_get_ident(s.as_slice())))
 }
 
 pub fn expand_mod(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
@@ -72,8 +73,8 @@ pub fn expand_mod(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     base::check_zero_tts(cx, sp, tts, "module_path!");
     let string = cx.mod_path()
                    .iter()
-                   .map(|x| token::get_ident(*x).get().to_str())
-                   .collect::<Vec<~str>>()
+                   .map(|x| token::get_ident(*x).get().to_strbuf())
+                   .collect::<Vec<StrBuf>>()
                    .connect("::");
     base::MacExpr::new(cx.expr_str(sp, token::intern_and_get_ident(string)))
 }
@@ -117,9 +118,9 @@ pub fn expand_include_str(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
         Some(src) => {
             // Add this input file to the code map to make it available as
             // dependency information
-            let filename = file.display().to_str();
+            let filename = file.display().to_str().to_strbuf();
             let interned = token::intern_and_get_ident(src);
-            cx.codemap().new_filemap(filename, src.to_owned());
+            cx.codemap().new_filemap(filename, src.to_strbuf());
 
             base::MacExpr::new(cx.expr_str(sp, interned))
         }
@@ -161,7 +162,7 @@ fn topmost_expn_info(expn_info: @codemap::ExpnInfo) -> @codemap::ExpnInfo {
                             ..
                         } => {
                             // Don't recurse into file using "include!"
-                            if "include" == *name  {
+                            if "include" == name.as_slice() {
                                 expn_info
                             } else {
                                 topmost_expn_info(next_expn_info)

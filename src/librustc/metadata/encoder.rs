@@ -1563,7 +1563,7 @@ impl<'a, 'b, 'c> Visitor<()> for MacroDefVisitor<'a, 'b, 'c> {
                 let def = self.ecx.tcx.sess.codemap().span_to_snippet(item.span)
                     .expect("Unable to find source for macro");
                 self.ebml_w.start_tag(tag_macro_def);
-                self.ebml_w.wr_str(def);
+                self.ebml_w.wr_str(def.as_slice());
                 self.ebml_w.end_tag();
             }
             _ => {}

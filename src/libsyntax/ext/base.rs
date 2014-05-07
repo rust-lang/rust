@@ -30,7 +30,7 @@ use collections::HashMap;
 // ast::MacInvocTT.
 
 pub struct MacroDef {
-    pub name: ~str,
+    pub name: StrBuf,
     pub ext: SyntaxExtension
 }
 
@@ -361,8 +361,8 @@ pub fn syntax_expander_table() -> SyntaxEnv {
 
 pub struct MacroCrate {
     pub lib: Option<Path>,
-    pub macros: Vec<~str>,
-    pub registrar_symbol: Option<~str>,
+    pub macros: Vec<StrBuf>,
+    pub registrar_symbol: Option<StrBuf>,
 }
 
 pub trait CrateLoader {
@@ -425,7 +425,7 @@ impl<'a> ExtCtxt<'a> {
     pub fn mod_pop(&mut self) { self.mod_path.pop().unwrap(); }
     pub fn mod_path(&self) -> Vec<ast::Ident> {
         let mut v = Vec::new();
-        v.push(token::str_to_ident(self.ecfg.crate_id.name));
+        v.push(token::str_to_ident(self.ecfg.crate_id.name.as_slice()));
         v.extend(self.mod_path.iter().map(|a| *a));
         return v;
     }
@@ -540,14 +540,14 @@ pub fn get_single_str_from_tts(cx: &ExtCtxt,
                                sp: Span,
                                tts: &[ast::TokenTree],
                                name: &str)
-                               -> Option<~str> {
+                               -> Option<StrBuf> {
     if tts.len() != 1 {
         cx.span_err(sp, format!("{} takes 1 argument.", name));
     } else {
         match tts[0] {
             ast::TTTok(_, token::LIT_STR(ident))
             | ast::TTTok(_, token::LIT_STR_RAW(ident, _)) => {
-                return Some(token::get_ident(ident).get().to_str())
+                return Some(token::get_ident(ident).get().to_strbuf())
             }
             _ => cx.span_err(sp, format!("{} requires a string.", name)),
         }
