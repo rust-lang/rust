@@ -788,7 +788,6 @@ fn style_fn_family(s: FnStyle) -> char {
     match s {
         UnsafeFn => 'u',
         NormalFn => 'f',
-        ExternFn => 'e'
     }
 }
 
@@ -796,7 +795,6 @@ fn fn_style_static_method_family(s: FnStyle) -> char {
     match s {
         UnsafeFn => 'U',
         NormalFn => 'F',
-        _ => fail!("extern fn can't be static")
     }
 }
 

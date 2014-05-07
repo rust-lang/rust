@@ -23,7 +23,7 @@ use middle::typeck::infer::fold_regions_in_sig;
 use middle::typeck::infer::{TypeTrace, Subtype};
 use collections::HashMap;
 use syntax::ast::{Many, Once, NodeId};
-use syntax::ast::{ExternFn, NormalFn, UnsafeFn};
+use syntax::ast::{NormalFn, UnsafeFn};
 use syntax::ast::{Onceness, FnStyle};
 use util::ppaux::mt_to_str;
 
@@ -78,8 +78,7 @@ impl<'f> Combine for Lub<'f> {
     fn fn_styles(&self, a: FnStyle, b: FnStyle) -> cres<FnStyle> {
         match (a, b) {
           (UnsafeFn, _) | (_, UnsafeFn) => Ok(UnsafeFn),
-          (NormalFn, _) | (_, NormalFn) => Ok(NormalFn),
-          (ExternFn, ExternFn) => Ok(ExternFn),
+          (NormalFn, NormalFn) => Ok(NormalFn),
         }
     }
 

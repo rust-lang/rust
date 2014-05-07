@@ -397,10 +397,10 @@ impl fmt::Show for clean::Type {
             clean::BareFunction(ref decl) => {
                 write!(f.buf, "{}{}fn{}{}",
                        FnStyleSpace(decl.fn_style),
-                       match decl.abi {
-                           ref x if "" == *x => "".to_owned(),
-                           ref x if "\"Rust\"" == *x => "".to_owned(),
-                           ref s => " " + *s + " ",
+                       match decl.abi.as_slice() {
+                           "" => " extern ".to_owned(),
+                           "\"Rust\"" => "".to_owned(),
+                           s => format!(" extern {} ", s)
                        },
                        decl.generics,
                        decl.decl)
@@ -517,7 +517,6 @@ impl fmt::Show for FnStyleSpace {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.get() {
             ast::UnsafeFn => write!(f.buf, "unsafe "),
-            ast::ExternFn => write!(f.buf, "extern "),
             ast::NormalFn => Ok(())
         }
     }

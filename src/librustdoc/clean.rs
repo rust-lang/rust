@@ -1206,7 +1206,7 @@ impl Clean<Item> for ast::ForeignItem {
                 ForeignFunctionItem(Function {
                     decl: decl.clean(),
                     generics: generics.clean(),
-                    fn_style: ast::ExternFn,
+                    fn_style: ast::NormalFn,
                 })
             }
             ast::ForeignItemStatic(ref ty, mutbl) => {
