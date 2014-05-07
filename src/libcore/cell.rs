@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Types dealing with dynamic mutability
+//! Types that provide interior mutability.
 
 use clone::Clone;
 use cmp::Eq;
