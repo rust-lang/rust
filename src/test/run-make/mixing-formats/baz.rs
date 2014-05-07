@@ -8,12 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:issue-12133-rlib.rs
-// aux-build:issue-12133-dylib.rs
-
-// error-pattern: dynamic linking is preferred, but dependencies were not found
-
-extern crate a = "issue-12133-rlib";
-extern crate b = "issue-12133-dylib";
+extern crate bar1;
 
 fn main() {}

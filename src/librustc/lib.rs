@@ -93,6 +93,7 @@ pub mod middle {
     pub mod cfg;
     pub mod dead;
     pub mod expr_use_visitor;
+    pub mod dependency_format;
 }
 
 pub mod front {

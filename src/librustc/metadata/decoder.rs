@@ -1273,3 +1273,29 @@ pub fn get_exported_macros(data: &[u8]) -> Vec<~str> {
     });
     result
 }
+
+pub fn get_dylib_dependency_formats(cdata: Cmd)
+    -> Vec<(ast::CrateNum, cstore::LinkagePreference)>
+{
+    let formats = reader::get_doc(reader::Doc(cdata.data()),
+                                  tag_dylib_dependency_formats);
+    let mut result = Vec::new();
+
+    debug!("found dylib deps: {}", formats.as_str_slice());
+    for spec in formats.as_str_slice().split(',') {
+        if spec.len() == 0 { continue }
+        let cnum = spec.split(':').nth(0).unwrap();
+        let link = spec.split(':').nth(1).unwrap();
+        let cnum = from_str(cnum).unwrap();
+        let cnum = match cdata.cnum_map.find(&cnum) {
+            Some(&n) => n,
+            None => fail!("didn't find a crate in the cnum_map")
+        };
+        result.push((cnum, if link == "d" {
+            cstore::RequireDynamic
+        } else {
+            cstore::RequireStatic
+        }));
+    }
+    return result;
+}

@@ -2,7 +2,7 @@
 
 all:
 	$(RUSTC) rlib.rs
-	$(RUSTC) dylib.rs && exit 1 || exit 0
+	$(RUSTC) dylib.rs
 	$(RUSTC) rlib.rs --crate-type=dylib
 	$(RUSTC) dylib.rs
 	rm $(call DYLIB,rlib-*)

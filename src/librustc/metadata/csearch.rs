@@ -284,3 +284,11 @@ pub fn get_tuple_struct_definition_if_ctor(cstore: &cstore::CStore,
     let cdata = cstore.get_crate_data(def_id.krate);
     decoder::get_tuple_struct_definition_if_ctor(&*cdata, def_id.node)
 }
+
+pub fn get_dylib_dependency_formats(cstore: &cstore::CStore,
+                                    cnum: ast::CrateNum)
+    -> Vec<(ast::CrateNum, cstore::LinkagePreference)>
+{
+    let cdata = cstore.get_crate_data(cnum);
+    decoder::get_dylib_dependency_formats(&*cdata)
+}
