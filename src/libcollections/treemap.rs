@@ -43,13 +43,15 @@ use vec::Vec;
 // These would be convenient since the methods work like `each`
 
 #[allow(missing_doc)]
-#[deriving(Clone)]
+#[deriving(Clone, Share)]
 pub struct TreeMap<K, V> {
     root: Option<Box<TreeNode<K, V>>>,
     length: uint
 }
 
 impl<K: PartialEq + Ord, V: PartialEq> PartialEq for TreeMap<K, V> {
+
+impl<K: Eq + TotalOrd, V: Eq> Eq for TreeMap<K, V> {
     fn eq(&self, other: &TreeMap<K, V>) -> bool {
         self.len() == other.len() &&
             self.iter().zip(other.iter()).all(|(a, b)| a == b)
