@@ -230,30 +230,6 @@ impl<T> Option<T> {
     // Getting to contained values
     /////////////////////////////////////////////////////////////////////////
 
-    /// Unwraps an option, yielding the content of a `Some`
-    ///
-    /// # Failure
-    ///
-    /// Fails if the value is a `None` with a custom failure message provided by `msg`.
-    #[inline]
-    #[cfg(not(test))]
-    pub fn expect(self, msg: &str) -> T {
-        match self {
-            Some(val) => val,
-            None => fail!(msg),
-        }
-    }
-
-    // FIXME: once std::fmt is in libcore, this extra variant should not be
-    //        necessary.
-    #[cfg(test)]
-    pub fn expect(self, msg: &str) -> T {
-        match self {
-            Some(val) => val,
-            None => fail!("{}", msg),
-        }
-    }
-
     /// Moves a value out of an option type and returns it, consuming the `Option`.
     ///
     /// # Failure

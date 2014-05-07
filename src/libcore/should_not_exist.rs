@@ -34,7 +34,7 @@ extern {
 }
 
 unsafe fn alloc(cap: uint) -> *mut Vec<()> {
-    let cap = cap.checked_add(&mem::size_of::<Vec<()>>()).expect("cap overflow");
+    let cap = cap.checked_add(&mem::size_of::<Vec<()>>()).unwrap();
     let ret = malloc(cap) as *mut Vec<()>;
     if ret.is_null() {
         intrinsics::abort();
@@ -94,7 +94,7 @@ impl FromIterator<char> for ~str {
                 let amt = ch.encode_utf8(tmp);
 
                 if len + amt > cap {
-                    cap = cap.checked_mul(&2).expect("cap overflow");
+                    cap = cap.checked_mul(&2).unwrap();
                     if cap < len + amt {
                         cap = len + amt;
                     }
@@ -124,7 +124,7 @@ impl FromIterator<char> for ~str {
 impl<'a> Add<&'a str,~str> for &'a str {
     #[inline]
     fn add(&self, rhs: & &'a str) -> ~str {
-        let amt = self.len().checked_add(&rhs.len()).expect("len overflow");
+        let amt = self.len().checked_add(&rhs.len()).unwrap();
         unsafe {
             let ptr = alloc(amt) as *mut Vec<u8>;
             let base = &mut (*ptr).data as *mut _;
@@ -155,7 +155,7 @@ impl<A> FromIterator<A> for ~[A] {
     fn from_iter<T: Iterator<A>>(mut iterator: T) -> ~[A] {
         let (lower, _) = iterator.size_hint();
         let cap = if lower == 0 {16} else {lower};
-        let mut cap = cap.checked_mul(&mem::size_of::<A>()).expect("cap overflow");
+        let mut cap = cap.checked_mul(&mem::size_of::<A>()).unwrap();
         let mut len = 0;
 
         unsafe {
@@ -163,7 +163,7 @@ impl<A> FromIterator<A> for ~[A] {
             let mut ret = cast::transmute(ptr);
             for elt in iterator {
                 if len * mem::size_of::<A>() >= cap {
-                    cap = cap.checked_mul(&2).expect("cap overflow");
+                    cap = cap.checked_mul(&2).unwrap();
                     let ptr2 = alloc(cap) as *mut Vec<A>;
                     ptr::copy_nonoverlapping_memory(&mut (*ptr2).data,
                                                     &(*ptr).data,
