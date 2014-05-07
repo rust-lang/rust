@@ -154,12 +154,14 @@ pub mod win32 {
         use libc::types::os::arch::extra::{LPCWSTR, HMODULE, LPCSTR, LPVOID};
         use os::win32::as_utf16_p;
 
-        #[link_name="kernel32"]
         extern "system" {
             fn GetModuleHandleW(lpModuleName: LPCWSTR) -> HMODULE;
             fn GetProcAddress(hModule: HMODULE, lpProcName: LPCSTR) -> LPVOID;
         }
 
+        // store_func() is idempotent, so using relaxed ordering for the atomics should be enough.
+        // This way, calling a function in this compatibility layer (after it's loaded) shouldn't
+        // be any slower than a regular DLL call.
         unsafe fn store_func<T: Copy>(ptr: *mut T, module: &str, symbol: &str, fallback: T) {
             as_utf16_p(module, |module| {
                 symbol.with_c_str(|symbol| {
@@ -170,6 +172,17 @@ pub mod win32 {
             })
         }
 
+        /// Macro for creating a compatibility fallback for a Windows function
+        ///
+        /// # Example
+        /// ```
+        /// compat_fn!(adll32::SomeFunctionW(_arg: LPCWSTR) {
+        ///     // Fallback implementation
+        /// })
+        /// ```
+        ///
+        /// Note that arguments unused by the fallback implementation should not be called `_` as
+        /// they are used to be passed to the real function if available.
         macro_rules! compat_fn(
             ($module:ident::$symbol:ident($($argname:ident: $argtype:ty),*)
                                           -> $rettype:ty $fallback:block) => (
@@ -198,11 +211,16 @@ pub mod win32 {
             )
         )
 
+        /// Compatibility layer for functions in `kernel32.dll`
+        ///
+        /// Latest versions of Windows this is needed for:
+        ///
+        /// * `CreateSymbolicLinkW`: Windows XP, Windows Server 2003
+        /// * `GetFinalPathNameByHandleW`: Windows XP, Windows Server 2003
         pub mod kernel32 {
             use libc::types::os::arch::extra::{DWORD, LPCWSTR, BOOLEAN, HANDLE};
             use libc::consts::os::extra::ERROR_CALL_NOT_IMPLEMENTED;
 
-            #[link_name="kernel32"]
             extern "system" {
                 fn SetLastError(dwErrCode: DWORD);
             }
