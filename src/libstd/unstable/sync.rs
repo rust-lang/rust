@@ -13,7 +13,8 @@ use alloc::arc::Arc;
 use clone::Clone;
 use kinds::Send;
 use ty::Unsafe;
-use unstable::mutex::NativeMutex;
+use sync::arc::UnsafeArc;
+use rt::mutex::NativeMutex;
 
 struct ExData<T> {
     lock: NativeMutex,

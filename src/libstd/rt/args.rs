@@ -48,7 +48,7 @@ mod imp {
     use iter::Iterator;
     use option::{Option, Some, None};
     use owned::Box;
-    use unstable::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
+    use rt::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
     use mem;
     use vec::Vec;
     use ptr::RawPtr;

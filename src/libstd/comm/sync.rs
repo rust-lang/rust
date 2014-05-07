@@ -46,7 +46,7 @@ use rt::local::Local;
 use rt::task::{Task, BlockedTask};
 use sync::atomics;
 use ty::Unsafe;
-use unstable::mutex::{NativeMutex, LockGuard};
+use rt::mutex::{NativeMutex, LockGuard};
 use vec::Vec;
 
 pub struct Packet<T> {

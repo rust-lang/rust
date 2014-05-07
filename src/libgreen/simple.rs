@@ -18,7 +18,7 @@ use std::rt::local::Local;
 use std::rt::rtio;
 use std::rt::task::{Task, BlockedTask};
 use std::task::TaskOpts;
-use std::unstable::mutex::NativeMutex;
+use std::rt::mutex::NativeMutex;
 
 struct SimpleTask {
     lock: NativeMutex,

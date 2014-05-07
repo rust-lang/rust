@@ -223,8 +223,8 @@ pub mod dl {
         dlopen(ptr::null(), Lazy as libc::c_int) as *u8
     }
 
-    pub fn check_for_errors_in<T>(f: || -> T) -> Result<T, String> {
-        use unstable::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
+    pub fn check_for_errors_in<T>(f: || -> T) -> Result<T, ~str> {
+        use rt::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
         static mut lock: StaticNativeMutex = NATIVE_MUTEX_INIT;
         unsafe {
             // dlerror isn't thread safe, so we need to lock around this entire

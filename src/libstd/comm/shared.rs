@@ -30,7 +30,7 @@ use rt::local::Local;
 use rt::task::{Task, BlockedTask};
 use rt::thread::Thread;
 use sync::atomics;
-use unstable::mutex::NativeMutex;
+use rt::mutex::NativeMutex;
 
 use mpsc = sync::mpsc_queue;
 

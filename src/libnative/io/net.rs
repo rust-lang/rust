@@ -14,7 +14,8 @@ use std::io::net::ip;
 use std::io;
 use std::mem;
 use std::rt::rtio;
-use std::unstable::mutex;
+use std::sync::arc::UnsafeArc;
+use std::rt::mutex;
 
 use super::{IoResult, retry, keep_going};
 use super::c;
@@ -215,7 +216,7 @@ pub fn init() {}
 pub fn init() {
 
     unsafe {
-        use std::unstable::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
+        use std::rt::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
         static mut INITIALIZED: bool = false;
         static mut LOCK: StaticNativeMutex = NATIVE_MUTEX_INIT;
 

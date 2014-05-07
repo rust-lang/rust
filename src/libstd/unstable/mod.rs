@@ -13,5 +13,4 @@
 pub mod dynamic_lib;
 
 pub mod sync;
-pub mod mutex;
 
