@@ -259,7 +259,7 @@ pub struct EmitterWriter {
 }
 
 enum Destination {
-    Terminal(~term::Terminal<~Writer:Send>:Send),
+    Terminal(Box<term::Terminal<Box<Writer:Send>>:Send>),
     Raw(Box<Writer:Send>),
 }
 
