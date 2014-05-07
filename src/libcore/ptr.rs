@@ -92,14 +92,12 @@
 
 use cast;
 use clone::Clone;
-#[cfg(not(test))]
-use cmp::Equiv;
+use intrinsics;
 use iter::{range, Iterator};
 use mem;
-use option::{Option, Some, None};
-use intrinsics;
+use option::{Some, None, Option};
 
-#[cfg(not(test))] use cmp::{Eq, TotalEq, Ord};
+#[cfg(not(test))] use cmp::{Eq, TotalEq, Ord, Equiv};
 
 /// Return the offset of the first null pointer in `buf`.
 #[inline]
@@ -377,7 +375,9 @@ impl<T> RawPtr<T> for *mut T {
     fn to_uint(&self) -> uint { *self as uint }
 
     #[inline]
-    unsafe fn offset(self, count: int) -> *mut T { intrinsics::offset(self as *T, count) as *mut T }
+    unsafe fn offset(self, count: int) -> *mut T {
+        intrinsics::offset(self as *T, count) as *mut T
+    }
 
     #[inline]
     unsafe fn to_option(&self) -> Option<&T> {
@@ -444,10 +444,6 @@ mod externfnpointers {
             let other_: *() = unsafe { cast::transmute(*other) };
             self_ == other_
         }
-        #[inline]
-        fn ne(&self, other: &extern "C" fn() -> _R) -> bool {
-            !self.eq(other)
-        }
     }
     macro_rules! fnptreq(
         ($($p:ident),*) => {
@@ -457,10 +453,6 @@ mod externfnpointers {
                     let self_: *() = unsafe { cast::transmute(*self) };
                     let other_: *() = unsafe { cast::transmute(*other) };
                     self_ == other_
-                }
-                #[inline]
-                fn ne(&self, other: &extern "C" fn($($p),*) -> _R) -> bool {
-                    !self.eq(other)
                 }
             }
         }
@@ -476,52 +468,24 @@ mod externfnpointers {
 #[cfg(not(test))]
 impl<T> Ord for *T {
     #[inline]
-    fn lt(&self, other: &*T) -> bool {
-        *self < *other
-    }
-    #[inline]
-    fn le(&self, other: &*T) -> bool {
-        *self <= *other
-    }
-    #[inline]
-    fn ge(&self, other: &*T) -> bool {
-        *self >= *other
-    }
-    #[inline]
-    fn gt(&self, other: &*T) -> bool {
-        *self > *other
-    }
+    fn lt(&self, other: &*T) -> bool { *self < *other }
 }
 
 #[cfg(not(test))]
 impl<T> Ord for *mut T {
     #[inline]
-    fn lt(&self, other: &*mut T) -> bool {
-        *self < *other
-    }
-    #[inline]
-    fn le(&self, other: &*mut T) -> bool {
-        *self <= *other
-    }
-    #[inline]
-    fn ge(&self, other: &*mut T) -> bool {
-        *self >= *other
-    }
-    #[inline]
-    fn gt(&self, other: &*mut T) -> bool {
-        *self > *other
-    }
+    fn lt(&self, other: &*mut T) -> bool { *self < *other }
 }
 
 #[cfg(test)]
 pub mod ptr_tests {
     use super::*;
-    use prelude::*;
+    use realstd::prelude::*;
 
-    use c_str::ToCStr;
+    use realstd::c_str::ToCStr;
     use cast;
     use libc;
-    use str;
+    use realstd::str;
     use slice::{ImmutableVector, MutableVector};
 
     #[test]

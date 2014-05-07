@@ -162,7 +162,6 @@ impl<T: Send> Clone for Queue<T> {
 #[cfg(test)]
 mod tests {
     use prelude::*;
-    use option::*;
     use super::Queue;
     use native;
 

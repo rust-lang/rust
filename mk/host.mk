@@ -18,6 +18,7 @@
 # $(5) - the name of the crate being processed
 define CP_HOST_STAGE_N_CRATE
 
+ifeq ($$(ONLY_RLIB_$(5)),)
 $$(HLIB$(2)_H_$(4))/stamp.$(5):					\
 	$$(TLIB$(1)_T_$(3)_H_$(4))/stamp.$(5)			\
 	$$(RUST_DEPS_$(5):%=$$(HLIB$(2)_H_$(4))/stamp.%)	\
@@ -30,6 +31,10 @@ $$(HLIB$(2)_H_$(4))/stamp.$(5):					\
 	        $$(HLIB$(2)_H_$(4))
 	$$(call LIST_ALL_OLD_GLOB_MATCHES,\
 	    $$(dir $$@)$$(call CFG_LIB_GLOB_$(3),$(5)))
+else
+$$(HLIB$(2)_H_$(4))/stamp.$(5):
+	$$(Q)touch $$@
+endif
 
 endef
 
@@ -53,9 +58,6 @@ endef
 # $(3) - the target triple
 # $(4) - the host triple (same as $(3))
 define CP_HOST_STAGE_N
-
-$$(HBIN$(2)_H_$(4))/:
-	@mkdir -p $$@
 
 ifneq ($(CFG_LIBDIR_RELATIVE),bin)
 $$(HLIB$(2)_H_$(4))/:

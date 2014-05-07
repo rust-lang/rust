@@ -230,7 +230,7 @@ use option::{Option, Some, None};
 use owned::Box;
 use path::Path;
 use result::{Ok, Err, Result};
-use str::StrSlice;
+use str::{StrSlice, StrAllocating};
 use str;
 use uint;
 use unstable::finally::try_finally;

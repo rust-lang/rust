@@ -16,7 +16,7 @@ pub fn main() {
     // tricked into looking up a non-existing second type parameter.
     let _x: uint = match Some(1u) {
     //~^ ERROR mismatched types: expected `uint` but found `<generic #0>`
-        Ok(u) => u, //~ ERROR  mismatched types: expected `std::option::Option<uint>`
-        Err(e) => fail!(e)  //~ ERROR mismatched types: expected `std::option::Option<uint>`
+        Ok(u) => u, //~ ERROR  mismatched types: expected `core::option::Option<uint>`
+        Err(e) => fail!(e)  //~ ERROR mismatched types: expected `core::option::Option<uint>`
     };
 }

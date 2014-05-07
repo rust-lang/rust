@@ -109,11 +109,6 @@ impl Str for RcStr {
         let s: &'a str = *self.string;
         s
     }
-
-    #[inline]
-    fn into_owned(self) -> ~str {
-        self.string.to_owned()
-    }
 }
 
 impl fmt::Show for RcStr {

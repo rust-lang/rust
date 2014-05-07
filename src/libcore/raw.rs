@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![allow(missing_doc)]
+#![experimental]
 
 //! Contains struct definitions for the layout of compiler built-in types.
 //!

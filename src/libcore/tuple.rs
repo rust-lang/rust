@@ -15,8 +15,6 @@
 use clone::Clone;
 #[cfg(not(test))] use cmp::*;
 #[cfg(not(test))] use default::Default;
-use fmt;
-use result::{Ok, Err};
 
 // macro for implementing n-ary tuple functions and operations
 macro_rules! tuple_impls {
@@ -112,12 +110,6 @@ macro_rules! tuple_impls {
                     ($({ let x: $T = Default::default(); x},)+)
                 }
             }
-
-            impl<$($T: fmt::Show),+> fmt::Show for ($($T,)+) {
-                fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                    write_tuple!(f.buf, $(self.$refN()),+)
-                }
-            }
         )+
     }
 }
@@ -142,18 +134,6 @@ macro_rules! lexical_cmp {
         }
     };
     ($a:expr, $b:expr) => { ($a).cmp($b) };
-}
-
-macro_rules! write_tuple {
-    ($buf:expr, $x:expr) => (
-        write!($buf, "({},)", *$x)
-    );
-    ($buf:expr, $hd:expr, $($tl:expr),+) => ({
-        try!(write!($buf, "("));
-        try!(write!($buf, "{}", *$hd));
-        $(try!(write!($buf, ", {}", *$tl));)+
-        write!($buf, ")")
-    });
 }
 
 tuple_impls! {
@@ -266,7 +246,7 @@ mod tests {
     use super::*;
     use clone::Clone;
     use cmp::*;
-    use str::StrSlice;
+    use realstd::str::StrAllocating;
 
     #[test]
     fn test_clone() {

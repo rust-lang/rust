@@ -64,13 +64,15 @@
 #![allow(unused_must_use)]
 
 use container::Container;
+use intrinsics::TypeId;
 use io::Writer;
 use iter::Iterator;
 use option::{Option, Some, None};
 use owned::Box;
 use rc::Rc;
-use str::{Str, StrSlice};
+use result::{Result, Ok, Err};
 use slice::{Vector, ImmutableVector};
+use str::{Str, StrSlice};
 use vec::Vec;
 
 /// Reexport the `sip::hash` function as our default hasher.
@@ -281,6 +283,23 @@ impl<S: Writer, T> Hash<S> for *mut T {
         // NB: raw-pointer Hash does _not_ dereference
         // to the target; it just gives you the pointer-bytes.
         (*self as uint).hash(state);
+    }
+}
+
+impl<S: Writer> Hash<S> for TypeId {
+    #[inline]
+    fn hash(&self, state: &mut S) {
+        self.hash().hash(state)
+    }
+}
+
+impl<S: Writer, T: Hash<S>, U: Hash<S>> Hash<S> for Result<T, U> {
+    #[inline]
+    fn hash(&self, state: &mut S) {
+        match *self {
+            Ok(ref t) => { 1u.hash(state); t.hash(state); }
+            Err(ref t) => { 2u.hash(state); t.hash(state); }
+        }
     }
 }
 

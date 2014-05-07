@@ -108,7 +108,7 @@ pub unsafe fn copy_lifetime_vec<'a,S,T>(_ptr: &'a [S], ptr: &T) -> &'a T {
 mod tests {
     use cast::{bump_box_refcount, transmute};
     use raw;
-    use str::StrSlice;
+    use realstd::str::StrAllocating;
 
     #[test]
     fn test_transmute_copy() {

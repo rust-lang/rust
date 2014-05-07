@@ -10,12 +10,13 @@
 
 #![doc(hidden)]
 
-use prelude::*;
 use libc::uintptr_t;
+use kinds::Send;
+
+pub use core::finally;
 
 pub mod dynamic_lib;
 
-pub mod finally;
 pub mod simd;
 pub mod sync;
 pub mod mutex;

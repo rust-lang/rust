@@ -20,8 +20,8 @@ use iter::{Extendable, FromIterator, Iterator, range};
 use option::{None, Option, Some};
 use ptr::RawPtr;
 use slice::{OwnedVector, Vector};
+use str::{OwnedStr, Str, StrSlice, StrAllocating};
 use str;
-use str::{OwnedStr, Str, StrSlice};
 use vec::Vec;
 
 /// A growable string stored as a UTF-8 encoded buffer.
@@ -268,7 +268,9 @@ impl Str for StrBuf {
             cast::transmute(self.vec.as_slice())
         }
     }
+}
 
+impl StrAllocating for StrBuf {
     #[inline]
     fn into_owned(self) -> ~str {
         let StrBuf {
