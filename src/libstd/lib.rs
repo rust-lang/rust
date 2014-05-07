@@ -81,7 +81,7 @@
 //! memory types, including [`atomics`](sync/atomics/index.html).
 //!
 //! Common types of I/O, including files, TCP, UPD, pipes, Unix domain sockets,
-//! timers, and process spawning, are defined in the [`io`](io/index.html).
+//! timers, and process spawning, are defined in the [`io`](io/index.html) module.
 //!
 //! Rust's I/O and concurrency depends on a small runtime interface
 //! that lives, along with its support code, in mod [`rt`](rt/index.html).
@@ -90,10 +90,11 @@
 //!
 //! ## The Rust prelude and macros
 //!
-//! Finally, the [`prelude`](prelude/index.html) defines a set of
+//! Finally, the [`prelude`](prelude/index.html) defines a
 //! common set of traits, types, and functions that are made available
 //! to all code by default. [`macros`](macros/index.html) contains
-//! all the standard macros, such as `assert!`, `fail!`, `println!`.
+//! all the standard macros, such as `assert!`, `fail!`, `println!`,
+//! and `format!`, also available to all Rust code.
 
 #![crate_id = "std#0.11-pre"]
 #![comment = "The Rust standard library"]
