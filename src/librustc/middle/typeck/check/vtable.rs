@@ -733,7 +733,8 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: &FnCtxt, is_early: bool) {
 pub fn resolve_impl(tcx: &ty::ctxt,
                     impl_item: &ast::Item,
                     impl_generics: &ty::Generics,
-                    impl_trait_ref: &ty::TraitRef) {
+                    impl_trait_ref: &ty::TraitRef)
+{
     let param_env = ty::construct_parameter_environment(
         tcx,
         None,
@@ -774,6 +775,7 @@ pub fn resolve_impl(tcx: &ty::ctxt,
         lookup_vtables_for_param(&vcx, impl_item.span, None,
                                  &param_bounds, t, false);
 
+    infcx.resolve_regions_and_report_errors();
 
     let res = impl_res {
         trait_vtables: vtbls,
