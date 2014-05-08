@@ -11,6 +11,7 @@
 use libc::{size_t, ssize_t, c_int, c_void, c_uint};
 use libc;
 use std::cast;
+use std::io;
 use std::io::{IoError, IoResult};
 use std::io::net::ip;
 use std::mem;
@@ -411,7 +412,13 @@ impl rtio::RtioSocket for TcpWatcher {
 impl rtio::RtioTcpStream for TcpWatcher {
     fn read(&mut self, buf: &mut [u8]) -> Result<uint, IoError> {
         let m = self.fire_homing_missile();
-        let _g = self.read_access.grant(m);
+        let access = self.read_access.grant(m);
+
+        // see comments in close_read about this check
+        if access.is_closed() {
+            return Err(io::standard_error(io::EndOfFile))
+        }
+
         self.stream.read(buf).map_err(uv_error_to_io_error)
     }
 
@@ -466,36 +473,17 @@ impl rtio::RtioTcpStream for TcpWatcher {
         } as Box<rtio::RtioTcpStream:Send>
     }
 
+    fn close_read(&mut self) -> Result<(), IoError> {
+        // see comments in PipeWatcher::close_read
+        let m = self.fire_homing_missile();
+        self.read_access.close(&m);
+        self.stream.cancel_read(m);
+        Ok(())
+    }
+
     fn close_write(&mut self) -> Result<(), IoError> {
-        struct Ctx {
-            slot: Option<BlockedTask>,
-            status: c_int,
-        }
-        let mut req = Request::new(uvll::UV_SHUTDOWN);
-
-        return match unsafe {
-            uvll::uv_shutdown(req.handle, self.handle, shutdown_cb)
-        } {
-            0 => {
-                req.defuse(); // uv callback now owns this request
-                let mut cx = Ctx { slot: None, status: 0 };
-
-                wait_until_woken_after(&mut cx.slot, &self.uv_loop(), || {
-                    req.set_data(&cx);
-                });
-
-                status_to_io_result(cx.status)
-            }
-            n => Err(uv_error_to_io_error(UvError(n)))
-        };
-
-        extern fn shutdown_cb(req: *uvll::uv_shutdown_t, status: libc::c_int) {
-            let req = Request::wrap(req);
-            assert!(status != uvll::ECANCELED);
-            let cx: &mut Ctx = unsafe { req.get_data() };
-            cx.status = status;
-            wakeup(&mut cx.slot);
-        }
+        let _m = self.fire_homing_missile();
+        shutdown(self.handle, &self.uv_loop())
     }
 }
 
@@ -704,7 +692,7 @@ impl rtio::RtioUdpSocket for UdpWatcher {
         let m = self.fire_homing_missile();
         let _g = self.read_access.grant(m);
 
-        let a = match unsafe {
+        return match unsafe {
             uvll::uv_udp_recv_start(self.handle, alloc_cb, recv_cb)
         } {
             0 => {
@@ -725,14 +713,12 @@ impl rtio::RtioUdpSocket for UdpWatcher {
             }
             n => Err(uv_error_to_io_error(UvError(n)))
         };
-        return a;
 
         extern fn alloc_cb(handle: *uvll::uv_udp_t,
                            _suggested_size: size_t,
                            buf: *mut Buf) {
             unsafe {
-                let cx: &mut Ctx =
-                    cast::transmute(uvll::get_data_for_uv_handle(handle));
+                let cx = &mut *(uvll::get_data_for_uv_handle(handle) as *mut Ctx);
                 *buf = cx.buf.take().expect("recv alloc_cb called more than once")
             }
         }
@@ -740,8 +726,8 @@ impl rtio::RtioUdpSocket for UdpWatcher {
         extern fn recv_cb(handle: *uvll::uv_udp_t, nread: ssize_t, buf: *Buf,
                           addr: *libc::sockaddr, _flags: c_uint) {
             assert!(nread != uvll::ECANCELED as ssize_t);
-            let cx: &mut Ctx = unsafe {
-                cast::transmute(uvll::get_data_for_uv_handle(handle))
+            let cx = unsafe {
+                &mut *(uvll::get_data_for_uv_handle(handle) as *mut Ctx)
             };
 
             // When there's no data to read the recv callback can be a no-op.
@@ -752,13 +738,7 @@ impl rtio::RtioUdpSocket for UdpWatcher {
                 return
             }
 
-            unsafe {
-                assert_eq!(uvll::uv_udp_recv_stop(handle), 0)
-            }
-
-            let cx: &mut Ctx = unsafe {
-                cast::transmute(uvll::get_data_for_uv_handle(handle))
-            };
+            unsafe { assert_eq!(uvll::uv_udp_recv_stop(handle), 0) }
             let addr = if addr == ptr::null() {
                 None
             } else {
@@ -897,6 +877,40 @@ impl Drop for UdpWatcher {
         if self.refcount.decrement() {
             self.close();
         }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Shutdown helper
+////////////////////////////////////////////////////////////////////////////////
+
+pub fn shutdown(handle: *uvll::uv_stream_t, loop_: &Loop) -> Result<(), IoError> {
+    struct Ctx {
+        slot: Option<BlockedTask>,
+        status: c_int,
+    }
+    let mut req = Request::new(uvll::UV_SHUTDOWN);
+
+    return match unsafe { uvll::uv_shutdown(req.handle, handle, shutdown_cb) } {
+        0 => {
+            req.defuse(); // uv callback now owns this request
+            let mut cx = Ctx { slot: None, status: 0 };
+
+            wait_until_woken_after(&mut cx.slot, loop_, || {
+                req.set_data(&cx);
+            });
+
+            status_to_io_result(cx.status)
+        }
+        n => Err(uv_error_to_io_error(UvError(n)))
+    };
+
+    extern fn shutdown_cb(req: *uvll::uv_shutdown_t, status: libc::c_int) {
+        let req = Request::wrap(req);
+        assert!(status != uvll::ECANCELED);
+        let cx: &mut Ctx = unsafe { req.get_data() };
+        cx.status = status;
+        wakeup(&mut cx.slot);
     }
 }
 

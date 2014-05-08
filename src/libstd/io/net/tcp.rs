@@ -32,7 +32,7 @@ use rt::rtio::{RtioTcpAcceptor, RtioTcpStream};
 ///
 /// # Example
 ///
-/// ```rust
+/// ```no_run
 /// # #![allow(unused_must_use)]
 /// use std::io::net::tcp::TcpStream;
 /// use std::io::net::ip::{Ipv4Addr, SocketAddr};
@@ -109,6 +109,48 @@ impl TcpStream {
             None => self.obj.letdie(),
         }
     }
+
+    /// Closes the reading half of this connection.
+    ///
+    /// This method will close the reading portion of this connection, causing
+    /// all pending and future reads to immediately return with an error.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # #![allow(unused_must_use)]
+    /// use std::io::timer;
+    /// use std::io::net::tcp::TcpStream;
+    /// use std::io::net::ip::{Ipv4Addr, SocketAddr};
+    ///
+    /// let addr = SocketAddr { ip: Ipv4Addr(127, 0, 0, 1), port: 34254 };
+    /// let mut stream = TcpStream::connect(addr).unwrap();
+    /// let stream2 = stream.clone();
+    ///
+    /// spawn(proc() {
+    ///     // close this stream after one second
+    ///     timer::sleep(1000);
+    ///     let mut stream = stream2;
+    ///     stream.close_read();
+    /// });
+    ///
+    /// // wait for some data, will get canceled after one second
+    /// let mut buf = [0];
+    /// stream.read(buf);
+    /// ```
+    ///
+    /// Note that this method affects all cloned handles associated with this
+    /// stream, not just this one handle.
+    pub fn close_read(&mut self) -> IoResult<()> { self.obj.close_read() }
+
+    /// Closes the writing half of this connection.
+    ///
+    /// This method will close the writing portion of this connection, causing
+    /// all future writes to immediately return with an error.
+    ///
+    /// Note that this method affects all cloned handles associated with this
+    /// stream, not just this one handle.
+    pub fn close_write(&mut self) -> IoResult<()> { self.obj.close_write() }
 }
 
 impl Clone for TcpStream {
@@ -839,7 +881,11 @@ mod test {
 
         // Also make sure that even though the timeout is expired that we will
         // continue to receive any pending connections.
-        let l = TcpStream::connect(addr).unwrap();
+        let (tx, rx) = channel();
+        spawn(proc() {
+            tx.send(TcpStream::connect(addr).unwrap());
+        });
+        let l = rx.recv();
         for i in range(0, 1001) {
             match a.accept() {
                 Ok(..) => break,
@@ -853,8 +899,69 @@ mod test {
         // Unset the timeout and make sure that this always blocks.
         a.set_timeout(None);
         spawn(proc() {
-            drop(TcpStream::connect(addr));
+            drop(TcpStream::connect(addr).unwrap());
         });
         a.accept().unwrap();
+    })
+
+    iotest!(fn close_readwrite_smoke() {
+        let addr = next_test_ip4();
+        let a = TcpListener::bind(addr).listen().unwrap();
+        let (_tx, rx) = channel::<()>();
+        spawn(proc() {
+            let mut a = a;
+            let _s = a.accept().unwrap();
+            let _ = rx.recv_opt();
+        });
+
+        let mut b = [0];
+        let mut s = TcpStream::connect(addr).unwrap();
+        let mut s2 = s.clone();
+
+        // closing should prevent reads/writes
+        s.close_write().unwrap();
+        assert!(s.write([0]).is_err());
+        s.close_read().unwrap();
+        assert!(s.read(b).is_err());
+
+        // closing should affect previous handles
+        assert!(s2.write([0]).is_err());
+        assert!(s2.read(b).is_err());
+
+        // closing should affect new handles
+        let mut s3 = s.clone();
+        assert!(s3.write([0]).is_err());
+        assert!(s3.read(b).is_err());
+
+        // make sure these don't die
+        let _ = s2.close_read();
+        let _ = s2.close_write();
+        let _ = s3.close_read();
+        let _ = s3.close_write();
+    })
+
+    iotest!(fn close_read_wakes_up() {
+        let addr = next_test_ip4();
+        let a = TcpListener::bind(addr).listen().unwrap();
+        let (_tx, rx) = channel::<()>();
+        spawn(proc() {
+            let mut a = a;
+            let _s = a.accept().unwrap();
+            let _ = rx.recv_opt();
+        });
+
+        let mut s = TcpStream::connect(addr).unwrap();
+        let s2 = s.clone();
+        let (tx, rx) = channel();
+        spawn(proc() {
+            let mut s2 = s2;
+            assert!(s2.read([0]).is_err());
+            tx.send(());
+        });
+        // this should wake up the child task
+        s.close_read().unwrap();
+
+        // this test will never finish if the child doesn't wake up
+        rx.recv();
     })
 }

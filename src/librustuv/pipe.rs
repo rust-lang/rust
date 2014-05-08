@@ -11,6 +11,7 @@
 use libc;
 use std::c_str::CString;
 use std::io::IoError;
+use std::io;
 use std::rt::rtio::{RtioPipe, RtioUnixListener, RtioUnixAcceptor};
 
 use access::Access;
@@ -111,7 +112,13 @@ impl PipeWatcher {
 impl RtioPipe for PipeWatcher {
     fn read(&mut self, buf: &mut [u8]) -> Result<uint, IoError> {
         let m = self.fire_homing_missile();
-        let _g = self.read_access.grant(m);
+        let access = self.read_access.grant(m);
+
+        // see comments in close_read about this check
+        if access.is_closed() {
+            return Err(io::standard_error(io::EndOfFile))
+        }
+
         self.stream.read(buf).map_err(uv_error_to_io_error)
     }
 
@@ -130,6 +137,35 @@ impl RtioPipe for PipeWatcher {
             read_access: self.read_access.clone(),
             write_access: self.write_access.clone(),
         } as Box<RtioPipe:Send>
+    }
+
+    fn close_read(&mut self) -> Result<(), IoError> {
+        // The current uv_shutdown method only shuts the writing half of the
+        // connection, and no method is provided to shut down the reading half
+        // of the connection. With a lack of method, we emulate shutting down
+        // the reading half of the connection by manually returning early from
+        // all future calls to `read`.
+        //
+        // Note that we must be careful to ensure that *all* cloned handles see
+        // the closing of the read half, so we stored the "is closed" bit in the
+        // Access struct, not in our own personal watcher. Additionally, the
+        // homing missile is used as a locking mechanism to ensure there is no
+        // contention over this bit.
+        //
+        // To shutdown the read half, we must first flag the access as being
+        // closed, and then afterwards we cease any pending read. Note that this
+        // ordering is crucial because we could in theory be rescheduled during
+        // the uv_read_stop which means that another read invocation could leak
+        // in before we set the flag.
+        let m = self.fire_homing_missile();
+        self.read_access.close(&m);
+        self.stream.cancel_read(m);
+        Ok(())
+    }
+
+    fn close_write(&mut self) -> Result<(), IoError> {
+        let _m = self.fire_homing_missile();
+        net::shutdown(self.stream.handle, &self.uv_loop())
     }
 }
 
