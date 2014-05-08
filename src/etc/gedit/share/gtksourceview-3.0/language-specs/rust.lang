@@ -38,6 +38,7 @@
 		<keyword>as</keyword>
 		<keyword>assert</keyword>
 		<keyword>break</keyword>
+		<keyword>box</keyword>
 		<keyword>const</keyword>
 		<keyword>continue</keyword>
 		<keyword>crate</keyword>

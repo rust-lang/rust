@@ -18,7 +18,7 @@ syn keyword   rustOperator    as
 
 syn match     rustAssert      "\<assert\(\w\)*!" contained
 syn match     rustFail        "\<fail\(\w\)*!" contained
-syn keyword   rustKeyword     break continue
+syn keyword   rustKeyword     break box continue
 syn keyword   rustKeyword     extern nextgroup=rustExternCrate,rustObsoleteExternMod skipwhite
 syn keyword   rustKeyword     for in if impl let
 syn keyword   rustKeyword     loop once priv pub
