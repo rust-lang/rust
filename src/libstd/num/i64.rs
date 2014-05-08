@@ -11,11 +11,10 @@
 //! Operations and constants for signed 64-bits integers (`i64` type)
 
 use from_str::FromStr;
-use iter::Iterator;
 use num::{ToStrRadix, FromStrRadix};
 use num::strconv;
 use option::Option;
-use slice::{ImmutableVector, OwnedVector};
+use slice::ImmutableVector;
 use str;
 
 pub use core::i64::{BITS, BYTES, MIN, MAX};

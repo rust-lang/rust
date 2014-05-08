@@ -279,26 +279,6 @@ impl<T: Clone> Iterator<~[T]> for Permutations<T> {
     }
 }
 
-#[cfg(not(test))]
-impl<'a,T:Clone, V: Vector<T>> Add<V, Vec<T>> for &'a [T] {
-    #[inline]
-    fn add(&self, rhs: &V) -> Vec<T> {
-        let rhs = rhs.as_slice();
-        let mut res = Vec::with_capacity(self.len() + rhs.len());
-        res.push_all(*self);
-        res.push_all(rhs);
-        res
-    }
-}
-
-#[cfg(not(test))]
-impl<T:Clone, V: Vector<T>> Add<V, Vec<T>> for ~[T] {
-    #[inline]
-    fn add(&self, rhs: &V) -> Vec<T> {
-        self.as_slice() + rhs.as_slice()
-    }
-}
-
 /// Extension methods for vector slices with cloneable elements
 pub trait CloneableVector<T> {
     /// Copy `self` into a new owned vector
@@ -313,6 +293,11 @@ impl<'a, T: Clone> CloneableVector<T> for &'a [T] {
     /// Returns a copy of `v`.
     #[inline]
     fn to_owned(&self) -> ~[T] {
+        use RawVec = core::raw::Vec;
+        use rt::global_heap::{malloc_raw, exchange_free};
+        use num::{CheckedAdd, CheckedMul};
+        use option::Expect;
+
         let len = self.len();
         let data_size = len.checked_mul(&mem::size_of::<T>());
         let data_size = data_size.expect("overflow in to_owned()");
@@ -2140,15 +2125,6 @@ mod bench {
                 i += 1;
             }
         })
-    }
-
-    #[bench]
-    fn add(b: &mut Bencher) {
-        let xs: &[int] = [5, ..10];
-        let ys: &[int] = [5, ..10];
-        b.iter(|| {
-            xs + ys;
-        });
     }
 
     #[bench]

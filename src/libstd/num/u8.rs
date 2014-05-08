@@ -11,11 +11,10 @@
 //! Operations and constants for unsigned 8-bits integers (`u8` type)
 
 use from_str::FromStr;
-use iter::Iterator;
 use num::{ToStrRadix, FromStrRadix};
 use num::strconv;
 use option::Option;
-use slice::{ImmutableVector, OwnedVector};
+use slice::ImmutableVector;
 use str;
 
 pub use core::u8::{BITS, BYTES, MIN, MAX};

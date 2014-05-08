@@ -667,12 +667,11 @@ impl<'a> fmt::Show for MaybeOwned<'a> {
 /// Unsafe operations
 pub mod raw {
     use cast;
-    use iter::Iterator;
     use libc;
     use ptr::RawPtr;
     use raw::Slice;
-    use slice::ImmutableVector;
-    use str::is_utf8;
+    use slice::CloneableVector;
+    use str::{is_utf8, StrAllocating};
 
     pub use core::str::raw::{from_utf8, c_str_to_static_slice, slice_bytes};
     pub use core::str::raw::{slice_unchecked};
@@ -821,8 +820,10 @@ pub trait StrAllocating: Str {
     /// Copy a slice into a new owned str.
     #[inline]
     fn to_owned(&self) -> ~str {
+        use slice::Vector;
+
         unsafe {
-            ::cast::transmute(self.as_bytes().to_owned())
+            ::cast::transmute(self.as_slice().as_bytes().to_owned())
         }
     }
 

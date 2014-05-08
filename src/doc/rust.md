@@ -3604,7 +3604,7 @@ fn map<A: Clone, B: Clone>(f: |A| -> B, xs: &[A]) -> Vec<B> {
     }
     let first: B = f(xs[0].clone());
     let rest: Vec<B> = map(f, xs.slice(1, xs.len()));
-    return [first] + rest;
+    return vec![first].append(rest.as_slice());
 }
 ~~~~
 
