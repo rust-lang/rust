@@ -30,7 +30,7 @@ pub fn expand_option_env(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
         Some(v) => v
     };
 
-    let e = match os::getenv(var) {
+    let e = match os::getenv(var.as_slice()) {
       None => {
           cx.expr_path(cx.path_all(sp,
                                    true,

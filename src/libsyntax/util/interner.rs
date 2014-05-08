@@ -92,7 +92,7 @@ impl<T: TotalEq + Hash + Clone + 'static> Interner<T> {
 
 #[deriving(Clone, Eq, Hash, Ord)]
 pub struct RcStr {
-    string: Rc<~str>,
+    string: Rc<StrBuf>,
 }
 
 impl TotalEq for RcStr {}
@@ -106,7 +106,7 @@ impl TotalOrd for RcStr {
 impl Str for RcStr {
     #[inline]
     fn as_slice<'a>(&'a self) -> &'a str {
-        let s: &'a str = *self.string;
+        let s: &'a str = self.string.as_slice();
         s
     }
 }
@@ -121,7 +121,7 @@ impl fmt::Show for RcStr {
 impl RcStr {
     pub fn new(string: &str) -> RcStr {
         RcStr {
-            string: Rc::new(string.to_owned()),
+            string: Rc::new(string.to_strbuf()),
         }
     }
 }

@@ -125,7 +125,7 @@ impl AttributeMethods for Attribute {
             let meta = mk_name_value_item_str(
                 InternedString::new("doc"),
                 token::intern_and_get_ident(strip_doc_comment_decoration(
-                        comment.get())));
+                        comment.get()).as_slice()));
             mk_attr(meta)
         } else {
             *self

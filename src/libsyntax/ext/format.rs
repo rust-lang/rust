@@ -23,14 +23,14 @@ use collections::{HashMap, HashSet};
 
 #[deriving(Eq)]
 enum ArgumentType {
-    Known(~str),
+    Known(StrBuf),
     Unsigned,
     String,
 }
 
 enum Position {
     Exact(uint),
-    Named(~str),
+    Named(StrBuf),
 }
 
 struct Context<'a, 'b> {
@@ -45,13 +45,13 @@ struct Context<'a, 'b> {
     // Note that we keep a side-array of the ordering of the named arguments
     // found to be sure that we can translate them in the same order that they
     // were declared in.
-    names: HashMap<~str, @ast::Expr>,
-    name_types: HashMap<~str, ArgumentType>,
-    name_ordering: Vec<~str>,
+    names: HashMap<StrBuf, @ast::Expr>,
+    name_types: HashMap<StrBuf, ArgumentType>,
+    name_ordering: Vec<StrBuf>,
 
     // Collection of the compiled `rt::Piece` structures
     pieces: Vec<@ast::Expr> ,
-    name_positions: HashMap<~str, uint>,
+    name_positions: HashMap<StrBuf, uint>,
     method_statics: Vec<@ast::Item> ,
 
     // Updated as arguments are consumed or methods are entered
@@ -68,10 +68,10 @@ struct Context<'a, 'b> {
 ///     Some((fmtstr, unnamed arguments, ordering of named arguments,
 ///           named arguments))
 fn parse_args(ecx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
-    -> (@ast::Expr, Option<(@ast::Expr, Vec<@ast::Expr>, Vec<~str>,
-                            HashMap<~str, @ast::Expr>)>) {
+    -> (@ast::Expr, Option<(@ast::Expr, Vec<@ast::Expr>, Vec<StrBuf>,
+                            HashMap<StrBuf, @ast::Expr>)>) {
     let mut args = Vec::new();
-    let mut names = HashMap::<~str, @ast::Expr>::new();
+    let mut names = HashMap::<StrBuf, @ast::Expr>::new();
     let mut order = Vec::new();
 
     let mut p = rsparse::new_parser_from_tts(ecx.parse_sess(),
@@ -131,8 +131,8 @@ fn parse_args(ecx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                     continue
                 }
             }
-            order.push(name.to_str());
-            names.insert(name.to_str(), e);
+            order.push(name.to_strbuf());
+            names.insert(name.to_strbuf(), e);
         } else {
             args.push(p.parse_expr());
         }
@@ -171,13 +171,13 @@ impl<'a, 'b> Context<'a, 'b> {
                         Exact(i)
                     }
                     parse::ArgumentIs(i) => Exact(i),
-                    parse::ArgumentNamed(s) => Named(s.to_str()),
+                    parse::ArgumentNamed(s) => Named(s.to_strbuf()),
                 };
 
                 // and finally the method being applied
                 match arg.method {
                     None => {
-                        let ty = Known(arg.format.ty.to_str());
+                        let ty = Known(arg.format.ty.to_strbuf());
                         self.verify_arg_type(pos, ty);
                     }
                     Some(ref method) => { self.verify_method(pos, *method); }
@@ -199,7 +199,7 @@ impl<'a, 'b> Context<'a, 'b> {
                 self.verify_arg_type(Exact(i), Unsigned);
             }
             parse::CountIsName(s) => {
-                self.verify_arg_type(Named(s.to_str()), Unsigned);
+                self.verify_arg_type(Named(s.to_strbuf()), Unsigned);
             }
             parse::CountIsNextParam => {
                 if self.check_positional_ok() {
@@ -822,8 +822,8 @@ pub fn expand_args(ecx: &mut ExtCtxt, sp: Span,
 pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt, sp: Span,
                                     extra: @ast::Expr,
                                     efmt: @ast::Expr, args: Vec<@ast::Expr>,
-                                    name_ordering: Vec<~str>,
-                                    names: HashMap<~str, @ast::Expr>) -> @ast::Expr {
+                                    name_ordering: Vec<StrBuf>,
+                                    names: HashMap<StrBuf, @ast::Expr>) -> @ast::Expr {
     let arg_types = Vec::from_fn(args.len(), |_| None);
     let mut cx = Context {
         ecx: ecx,

@@ -536,7 +536,7 @@ pub fn crate_id_hash(crate_id: &CrateId) -> ~str {
     // the crate id in the hash because lookups are only done by (name/vers),
     // not by path.
     let mut s = Sha256::new();
-    s.input_str(crate_id.short_name_with_version());
+    s.input_str(crate_id.short_name_with_version().as_slice());
     truncated_hash_result(&mut s).slice_to(8).to_owned()
 }
 
@@ -566,7 +566,7 @@ fn symbol_hash(tcx: &ty::ctxt,
     // to be independent of one another in the crate.
 
     symbol_hasher.reset();
-    symbol_hasher.input_str(link_meta.crateid.name);
+    symbol_hasher.input_str(link_meta.crateid.name.as_slice());
     symbol_hasher.input_str("-");
     symbol_hasher.input_str(link_meta.crate_hash.as_str());
     symbol_hasher.input_str("-");
