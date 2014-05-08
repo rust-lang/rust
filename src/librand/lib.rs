@@ -79,7 +79,6 @@ println!("{:?}", tuple_ptr)
 use std::cast;
 use std::io::IoResult;
 use std::kinds::marker;
-use std::local_data;
 use std::strbuf::StrBuf;
 
 pub use isaac::{IsaacRng, Isaac64Rng};
@@ -581,9 +580,6 @@ pub struct TaskRng {
     marker: marker::NoSend,
 }
 
-// used to make space in TLS for a random number generator
-local_data_key!(TASK_RNG_KEY: Box<TaskRngInner>)
-
 /// Retrieve the lazily-initialized task-local random number
 /// generator, seeded by the system. Intended to be used in method
 /// chaining style, e.g. `task_rng().gen::<int>()`.
@@ -596,7 +592,10 @@ local_data_key!(TASK_RNG_KEY: Box<TaskRngInner>)
 /// the same sequence always. If absolute consistency is required,
 /// explicitly select an RNG, e.g. `IsaacRng` or `Isaac64Rng`.
 pub fn task_rng() -> TaskRng {
-    local_data::get_mut(TASK_RNG_KEY, |rng| match rng {
+    // used to make space in TLS for a random number generator
+    local_data_key!(TASK_RNG_KEY: Box<TaskRngInner>)
+
+    match TASK_RNG_KEY.get() {
         None => {
             let r = match StdRng::new() {
                 Ok(r) => r,
@@ -607,12 +606,15 @@ pub fn task_rng() -> TaskRng {
                                                         TaskRngReseeder);
             let ptr = &mut *rng as *mut TaskRngInner;
 
-            local_data::set(TASK_RNG_KEY, rng);
+            TASK_RNG_KEY.replace(Some(rng));
 
             TaskRng { rng: ptr, marker: marker::NoSend }
         }
-        Some(rng) => TaskRng { rng: &mut **rng, marker: marker::NoSend }
-    })
+        Some(rng) => TaskRng {
+            rng: &**rng as *_ as *mut TaskRngInner,
+            marker: marker::NoSend
+        }
+    }
 }
 
 impl Rng for TaskRng {

@@ -19,7 +19,6 @@ use util::interner;
 use serialize::{Decodable, Decoder, Encodable, Encoder};
 use std::cast;
 use std::fmt;
-use std::local_data;
 use std::path::BytesContainer;
 use std::rc::Rc;
 use std::strbuf::StrBuf;
@@ -529,11 +528,11 @@ pub type IdentInterner = StrInterner;
 // FIXME(eddyb) #8726 This should probably use a task-local reference.
 pub fn get_ident_interner() -> Rc<IdentInterner> {
     local_data_key!(key: Rc<::parse::token::IdentInterner>)
-    match local_data::get(key, |k| k.map(|k| k.clone())) {
-        Some(interner) => interner,
+    match key.get() {
+        Some(interner) => interner.clone(),
         None => {
             let interner = Rc::new(mk_fresh_ident_interner());
-            local_data::set(key, interner.clone());
+            key.replace(Some(interner.clone()));
             interner
         }
     }

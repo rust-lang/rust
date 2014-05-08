@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::local_data;
-
 // check that the local data keys are private by default.
 
 mod bar {
@@ -17,6 +15,6 @@ mod bar {
 }
 
 fn main() {
-    local_data::set(bar::baz, -10.0);
+    bar::baz.replace(Some(-10.0));
     //~^ ERROR static `baz` is private
 }

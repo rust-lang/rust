@@ -28,7 +28,6 @@ extern crate time;
 extern crate log;
 extern crate libc;
 
-use std::local_data;
 use std::io;
 use std::io::{File, MemWriter};
 use std::str;
@@ -276,7 +275,7 @@ fn rust_input(cratefile: &str, matches: &getopts::Matches) -> Output {
                        &cr)
     }).unwrap();
     info!("finished with rustc");
-    local_data::set(analysiskey, analysis);
+    analysiskey.replace(Some(analysis));
 
     // Process all of the crate attributes, extracting plugin metadata along
     // with the passes which we are supposed to run.

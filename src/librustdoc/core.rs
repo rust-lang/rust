@@ -20,7 +20,6 @@ use syntax;
 
 use std::cell::RefCell;
 use std::os;
-use std::local_data;
 use collections::HashSet;
 
 use visit_ast::RustdocVisitor;
@@ -109,7 +108,7 @@ pub fn run_core(libs: HashSet<Path>, cfgs: Vec<~str>, path: &Path)
                 -> (clean::Crate, CrateAnalysis) {
     let (ctxt, analysis) = get_ast_and_resolve(path, libs, cfgs);
     let ctxt = @ctxt;
-    local_data::set(super::ctxtkey, ctxt);
+    super::ctxtkey.replace(Some(ctxt));
 
     let krate = {
         let mut v = RustdocVisitor::new(ctxt, Some(&analysis));
