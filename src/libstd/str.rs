@@ -564,6 +564,11 @@ impl<'a> IntoMaybeOwned<'a> for ~str {
     fn into_maybe_owned(self) -> MaybeOwned<'a> { Owned(self) }
 }
 
+impl<'a> IntoMaybeOwned<'a> for StrBuf {
+    #[inline]
+    fn into_maybe_owned(self) -> MaybeOwned<'a> { Owned(self.into_owned()) }
+}
+
 impl<'a> IntoMaybeOwned<'a> for &'a str {
     #[inline]
     fn into_maybe_owned(self) -> MaybeOwned<'a> { Slice(self) }
