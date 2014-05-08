@@ -221,6 +221,9 @@ impl rtio::RtioPipe for FileDesc {
     fn close_write(&mut self) -> IoResult<()> {
         Err(io::standard_error(io::InvalidInput))
     }
+    fn set_timeout(&mut self, _t: Option<u64>) {}
+    fn set_read_timeout(&mut self, _t: Option<u64>) {}
+    fn set_write_timeout(&mut self, _t: Option<u64>) {}
 }
 
 impl rtio::RtioTTY for FileDesc {

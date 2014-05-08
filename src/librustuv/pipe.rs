@@ -10,16 +10,18 @@
 
 use libc;
 use std::c_str::CString;
+use std::cast;
 use std::io::IoError;
 use std::io;
 use std::rt::rtio::{RtioPipe, RtioUnixListener, RtioUnixAcceptor};
+use std::rt::task::BlockedTask;
 
-use access::Access;
 use homing::{HomingIO, HomeHandle};
 use net;
 use rc::Refcount;
 use stream::StreamWatcher;
 use super::{Loop, UvError, UvHandle, uv_error_to_io_error};
+use timeout::{AcceptTimeout, ConnectCtx, AccessTimeout};
 use uvio::UvIoFactory;
 use uvll;
 
@@ -30,8 +32,8 @@ pub struct PipeWatcher {
     refcount: Refcount,
 
     // see comments in TcpWatcher for why these exist
-    write_access: Access,
-    read_access: Access,
+    write_access: AccessTimeout,
+    read_access: AccessTimeout,
 }
 
 pub struct PipeListener {
@@ -43,7 +45,7 @@ pub struct PipeListener {
 
 pub struct PipeAcceptor {
     listener: Box<PipeListener>,
-    timeout: net::AcceptTimeout,
+    timeout: AcceptTimeout,
 }
 
 // PipeWatcher implementation and traits
@@ -70,8 +72,8 @@ impl PipeWatcher {
             home: home,
             defused: false,
             refcount: Refcount::new(),
-            read_access: Access::new(),
-            write_access: Access::new(),
+            read_access: AccessTimeout::new(),
+            write_access: AccessTimeout::new(),
         }
     }
 
@@ -89,7 +91,7 @@ impl PipeWatcher {
         -> Result<PipeWatcher, UvError>
     {
         let pipe = PipeWatcher::new(io, false);
-        let cx = net::ConnectCtx { status: -1, task: None, timer: None };
+        let cx = ConnectCtx { status: -1, task: None, timer: None };
         cx.connect(pipe, timeout, io, |req, pipe, cb| {
             unsafe {
                 uvll::uv_pipe_connect(req.handle, pipe.handle(),
@@ -112,10 +114,10 @@ impl PipeWatcher {
 impl RtioPipe for PipeWatcher {
     fn read(&mut self, buf: &mut [u8]) -> Result<uint, IoError> {
         let m = self.fire_homing_missile();
-        let access = self.read_access.grant(m);
+        let guard = try!(self.read_access.grant(m));
 
         // see comments in close_read about this check
-        if access.is_closed() {
+        if guard.access.is_closed() {
             return Err(io::standard_error(io::EndOfFile))
         }
 
@@ -124,8 +126,8 @@ impl RtioPipe for PipeWatcher {
 
     fn write(&mut self, buf: &[u8]) -> Result<(), IoError> {
         let m = self.fire_homing_missile();
-        let _g = self.write_access.grant(m);
-        self.stream.write(buf).map_err(uv_error_to_io_error)
+        let guard = try!(self.write_access.grant(m));
+        self.stream.write(buf, guard.can_timeout).map_err(uv_error_to_io_error)
     }
 
     fn clone(&self) -> Box<RtioPipe:Send> {
@@ -157,15 +159,47 @@ impl RtioPipe for PipeWatcher {
         // ordering is crucial because we could in theory be rescheduled during
         // the uv_read_stop which means that another read invocation could leak
         // in before we set the flag.
-        let m = self.fire_homing_missile();
-        self.read_access.close(&m);
-        self.stream.cancel_read(m);
+        let task = {
+            let m = self.fire_homing_missile();
+            self.read_access.access.close(&m);
+            self.stream.cancel_read(uvll::EOF as libc::ssize_t)
+        };
+        let _ = task.map(|t| t.reawaken());
         Ok(())
     }
 
     fn close_write(&mut self) -> Result<(), IoError> {
         let _m = self.fire_homing_missile();
         net::shutdown(self.stream.handle, &self.uv_loop())
+    }
+
+    fn set_timeout(&mut self, timeout: Option<u64>) {
+        self.set_read_timeout(timeout);
+        self.set_write_timeout(timeout);
+    }
+
+    fn set_read_timeout(&mut self, ms: Option<u64>) {
+        let _m = self.fire_homing_missile();
+        let loop_ = self.uv_loop();
+        self.read_access.set_timeout(ms, &self.home, &loop_, cancel_read,
+                                     &self.stream as *_ as uint);
+
+        fn cancel_read(stream: uint) -> Option<BlockedTask> {
+            let stream: &mut StreamWatcher = unsafe { cast::transmute(stream) };
+            stream.cancel_read(uvll::ECANCELED as libc::ssize_t)
+        }
+    }
+
+    fn set_write_timeout(&mut self, ms: Option<u64>) {
+        let _m = self.fire_homing_missile();
+        let loop_ = self.uv_loop();
+        self.write_access.set_timeout(ms, &self.home, &loop_, cancel_write,
+                                      &self.stream as *_ as uint);
+
+        fn cancel_write(stream: uint) -> Option<BlockedTask> {
+            let stream: &mut StreamWatcher = unsafe { cast::transmute(stream) };
+            stream.cancel_write()
+        }
     }
 }
 
@@ -219,7 +253,7 @@ impl RtioUnixListener for PipeListener {
         // create the acceptor object from ourselves
         let mut acceptor = box PipeAcceptor {
             listener: self,
-            timeout: net::AcceptTimeout::new(),
+            timeout: AcceptTimeout::new(),
         };
 
         let _m = acceptor.fire_homing_missile();
