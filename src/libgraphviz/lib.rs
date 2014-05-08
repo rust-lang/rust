@@ -54,11 +54,9 @@ type Nd = int;
 type Ed = (int,int);
 struct Edges(Vec<Ed>);
 
-pub fn main() {
-    use std::io::File;
+pub fn render_to<W:Writer>(output: &mut W) {
     let edges = Edges(vec!((0,1), (0,2), (1,3), (2,3), (3,4), (4,4)));
-    let mut f = File::create(&Path::new("example1.dot"));
-    dot::render(&edges, &mut f).unwrap()
+    dot::render(&edges, output).unwrap()
 }
 
 impl<'a> dot::Labeller<'a, Nd, Ed> for Edges {
@@ -90,6 +88,17 @@ impl<'a> dot::GraphWalk<'a, Nd, Ed> for Edges {
     fn source(&self, e: &Ed) -> Nd { let &(s,_) = e; s }
 
     fn target(&self, e: &Ed) -> Nd { let &(_,t) = e; t }
+}
+
+# pub fn main() { use std::io::MemWriter; render_to(&mut MemWriter::new()) }
+```
+
+```no_run
+# pub fn render_to<W:Writer>(output: &mut W) { unimplemented!() }
+pub fn main() {
+    use std::io::File;
+    let mut f = File::create(&Path::new("example1.dot"));
+    render_to(&mut f)
 }
 ```
 
@@ -140,19 +149,17 @@ entity `&sube`).
 ```rust
 use dot = graphviz;
 use std::str;
-use std::io::File;
 
 type Nd = uint;
 type Ed<'a> = &'a (uint, uint);
 struct Graph { nodes: Vec<&'static str>, edges: Vec<(uint,uint)> }
 
-pub fn main() {
+pub fn render_to<W:Writer>(output: &mut W) {
     let nodes = vec!("{x,y}","{x}","{y}","{}");
     let edges = vec!((0,1), (0,2), (1,3), (2,3));
     let graph = Graph { nodes: nodes, edges: edges };
 
-    let mut f = File::create(&Path::new("example2.dot"));
-    dot::render(&graph, &mut f).unwrap()
+    dot::render(&graph, output).unwrap()
 }
 
 impl<'a> dot::Labeller<'a, Nd, Ed<'a>> for Graph {
@@ -174,6 +181,17 @@ impl<'a> dot::GraphWalk<'a, Nd, Ed<'a>> for Graph {
     fn source(&self, e: &Ed) -> Nd { let & &(s,_) = e; s }
     fn target(&self, e: &Ed) -> Nd { let & &(_,t) = e; t }
 }
+
+# pub fn main() { use std::io::MemWriter; render_to(&mut MemWriter::new()) }
+```
+
+```no_run
+# pub fn render_to<W:Writer>(output: &mut W) { unimplemented!() }
+pub fn main() {
+    use std::io::File;
+    let mut f = File::create(&Path::new("example2.dot"));
+    render_to(&mut f)
+}
 ```
 
 The third example is similar to the second, except now each node and
@@ -187,19 +205,17 @@ Hasse-diagram for the subsets of the set `{x, y}`.
 ```rust
 use dot = graphviz;
 use std::str;
-use std::io::File;
 
 type Nd<'a> = (uint, &'a str);
 type Ed<'a> = (Nd<'a>, Nd<'a>);
 struct Graph { nodes: Vec<&'static str>, edges: Vec<(uint,uint)> }
 
-pub fn main() {
+pub fn render_to<W:Writer>(output: &mut W) {
     let nodes = vec!("{x,y}","{x}","{y}","{}");
     let edges = vec!((0,1), (0,2), (1,3), (2,3));
     let graph = Graph { nodes: nodes, edges: edges };
 
-    let mut f = File::create(&Path::new("example3.dot"));
-    dot::render(&graph, &mut f).unwrap()
+    dot::render(&graph, output).unwrap()
 }
 
 impl<'a> dot::Labeller<'a, Nd<'a>, Ed<'a>> for Graph {
@@ -228,6 +244,17 @@ impl<'a> dot::GraphWalk<'a, Nd<'a>, Ed<'a>> for Graph {
     }
     fn source(&self, e: &Ed<'a>) -> Nd<'a> { let &(s,_) = e; s }
     fn target(&self, e: &Ed<'a>) -> Nd<'a> { let &(_,t) = e; t }
+}
+
+# pub fn main() { use std::io::MemWriter; render_to(&mut MemWriter::new()) }
+```
+
+```no_run
+# pub fn render_to<W:Writer>(output: &mut W) { unimplemented!() }
+pub fn main() {
+    use std::io::File;
+    let mut f = File::create(&Path::new("example3.dot"));
+    render_to(&mut f)
 }
 ```
 
