@@ -123,7 +123,7 @@ impl<'a> ParserObsoleteMethods for Parser<'a> {
             ),
             ObsoleteManagedString => (
                 "managed string",
-                "use `Rc<~str>` instead of a managed string"
+                "use `Rc<StrBuf>` instead of a managed string"
             ),
             ObsoleteManagedVec => (
                 "managed vector",

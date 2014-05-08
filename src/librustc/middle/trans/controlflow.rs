@@ -345,7 +345,11 @@ pub fn trans_fail<'a>(
     let v_fail_str = C_cstr(ccx, fail_str, true);
     let _icx = push_ctxt("trans_fail_value");
     let loc = bcx.sess().codemap().lookup_char_pos(sp.lo);
-    let v_filename = C_cstr(ccx, token::intern_and_get_ident(loc.file.name), true);
+    let v_filename = C_cstr(ccx,
+                            token::intern_and_get_ident(loc.file
+                                                           .name
+                                                           .as_slice()),
+                            true);
     let v_line = loc.line as int;
     let v_str = PointerCast(bcx, v_fail_str, Type::i8p(ccx));
     let v_filename = PointerCast(bcx, v_filename, Type::i8p(ccx));

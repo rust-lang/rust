@@ -24,11 +24,11 @@ use std::from_str::FromStr;
 pub struct CrateId {
     /// A path which represents the codes origin. By convention this is the
     /// URL, without `http://` or `https://` prefix, to the crate's repository
-    pub path: ~str,
+    pub path: StrBuf,
     /// The name of the crate.
-    pub name: ~str,
+    pub name: StrBuf,
     /// The version of the crate.
-    pub version: Option<~str>,
+    pub version: Option<StrBuf>,
 }
 
 impl fmt::Show for CrateId {
@@ -38,7 +38,8 @@ impl fmt::Show for CrateId {
             None => "0.0",
             Some(ref version) => version.as_slice(),
         };
-        if self.path == self.name || self.path.ends_with(format!("/{}", self.name)) {
+        if self.path == self.name ||
+                self.path.as_slice().ends_with(format!("/{}", self.name)) {
             write!(f.buf, "\\#{}", version)
         } else {
             write!(f.buf, "\\#{}:{}", self.name, version)
@@ -60,7 +61,7 @@ impl FromStr for CrateId {
         let inferred_name = *path_pieces.get(0);
 
         let (name, version) = if pieces.len() == 1 {
-            (inferred_name.to_owned(), None)
+            (inferred_name.to_strbuf(), None)
         } else {
             let hash_pieces: Vec<&str> = pieces.get(1)
                                                .splitn(':', 1)
@@ -72,16 +73,16 @@ impl FromStr for CrateId {
             };
 
             let name = if !hash_name.is_empty() {
-                hash_name.to_owned()
+                hash_name.to_strbuf()
             } else {
-                inferred_name.to_owned()
+                inferred_name.to_strbuf()
             };
 
             let version = if !hash_version.is_empty() {
                 if hash_version == "0.0" {
                     None
                 } else {
-                    Some(hash_version.to_owned())
+                    Some(hash_version.to_strbuf())
                 }
             } else {
                 None
@@ -91,7 +92,7 @@ impl FromStr for CrateId {
         };
 
         Some(CrateId {
-            path: path.clone(),
+            path: path.to_strbuf(),
             name: name,
             version: version,
         })
@@ -106,8 +107,8 @@ impl CrateId {
         }
     }
 
-    pub fn short_name_with_version(&self) -> ~str {
-        format!("{}-{}", self.name, self.version_or_default())
+    pub fn short_name_with_version(&self) -> StrBuf {
+        (format!("{}-{}", self.name, self.version_or_default())).to_strbuf()
     }
 
     pub fn matches(&self, other: &CrateId) -> bool {
@@ -123,17 +124,17 @@ impl CrateId {
 #[test]
 fn bare_name() {
     let crateid: CrateId = from_str("foo").expect("valid crateid");
-    assert_eq!(crateid.name, "foo".to_owned());
+    assert_eq!(crateid.name, "foo".to_strbuf());
     assert_eq!(crateid.version, None);
-    assert_eq!(crateid.path, "foo".to_owned());
+    assert_eq!(crateid.path, "foo".to_strbuf());
 }
 
 #[test]
 fn bare_name_single_char() {
     let crateid: CrateId = from_str("f").expect("valid crateid");
-    assert_eq!(crateid.name, "f".to_owned());
+    assert_eq!(crateid.name, "f".to_strbuf());
     assert_eq!(crateid.version, None);
-    assert_eq!(crateid.path, "f".to_owned());
+    assert_eq!(crateid.path, "f".to_strbuf());
 }
 
 #[test]
@@ -145,17 +146,17 @@ fn empty_crateid() {
 #[test]
 fn simple_path() {
     let crateid: CrateId = from_str("example.com/foo/bar").expect("valid crateid");
-    assert_eq!(crateid.name, "bar".to_owned());
+    assert_eq!(crateid.name, "bar".to_strbuf());
     assert_eq!(crateid.version, None);
-    assert_eq!(crateid.path, "example.com/foo/bar".to_owned());
+    assert_eq!(crateid.path, "example.com/foo/bar".to_strbuf());
 }
 
 #[test]
 fn simple_version() {
     let crateid: CrateId = from_str("foo#1.0").expect("valid crateid");
-    assert_eq!(crateid.name, "foo".to_owned());
-    assert_eq!(crateid.version, Some("1.0".to_owned()));
-    assert_eq!(crateid.path, "foo".to_owned());
+    assert_eq!(crateid.name, "foo".to_strbuf());
+    assert_eq!(crateid.version, Some("1.0".to_strbuf()));
+    assert_eq!(crateid.path, "foo".to_strbuf());
 }
 
 #[test]
@@ -173,39 +174,39 @@ fn path_ends_with_slash() {
 #[test]
 fn path_and_version() {
     let crateid: CrateId = from_str("example.com/foo/bar#1.0").expect("valid crateid");
-    assert_eq!(crateid.name, "bar".to_owned());
-    assert_eq!(crateid.version, Some("1.0".to_owned()));
-    assert_eq!(crateid.path, "example.com/foo/bar".to_owned());
+    assert_eq!(crateid.name, "bar".to_strbuf());
+    assert_eq!(crateid.version, Some("1.0".to_strbuf()));
+    assert_eq!(crateid.path, "example.com/foo/bar".to_strbuf());
 }
 
 #[test]
 fn single_chars() {
     let crateid: CrateId = from_str("a/b#1").expect("valid crateid");
-    assert_eq!(crateid.name, "b".to_owned());
-    assert_eq!(crateid.version, Some("1".to_owned()));
-    assert_eq!(crateid.path, "a/b".to_owned());
+    assert_eq!(crateid.name, "b".to_strbuf());
+    assert_eq!(crateid.version, Some("1".to_strbuf()));
+    assert_eq!(crateid.path, "a/b".to_strbuf());
 }
 
 #[test]
 fn missing_version() {
     let crateid: CrateId = from_str("foo#").expect("valid crateid");
-    assert_eq!(crateid.name, "foo".to_owned());
+    assert_eq!(crateid.name, "foo".to_strbuf());
     assert_eq!(crateid.version, None);
-    assert_eq!(crateid.path, "foo".to_owned());
+    assert_eq!(crateid.path, "foo".to_strbuf());
 }
 
 #[test]
 fn path_and_name() {
     let crateid: CrateId = from_str("foo/rust-bar#bar:1.0").expect("valid crateid");
-    assert_eq!(crateid.name, "bar".to_owned());
-    assert_eq!(crateid.version, Some("1.0".to_owned()));
-    assert_eq!(crateid.path, "foo/rust-bar".to_owned());
+    assert_eq!(crateid.name, "bar".to_strbuf());
+    assert_eq!(crateid.version, Some("1.0".to_strbuf()));
+    assert_eq!(crateid.path, "foo/rust-bar".to_strbuf());
 }
 
 #[test]
 fn empty_name() {
     let crateid: CrateId = from_str("foo/bar#:1.0").expect("valid crateid");
-    assert_eq!(crateid.name, "bar".to_owned());
-    assert_eq!(crateid.version, Some("1.0".to_owned()));
-    assert_eq!(crateid.path, "foo/bar".to_owned());
+    assert_eq!(crateid.name, "bar".to_strbuf());
+    assert_eq!(crateid.version, Some("1.0".to_strbuf()));
+    assert_eq!(crateid.path, "foo/bar".to_strbuf());
 }

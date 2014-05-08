@@ -79,7 +79,7 @@ impl<'a, T: Copy> Iterator<T> for Values<'a, T> {
 /// The type of the iterator used by with_path.
 pub type PathElems<'a, 'b> = iter::Chain<Values<'a, PathElem>, LinkedPath<'b>>;
 
-pub fn path_to_str<PI: Iterator<PathElem>>(mut path: PI) -> ~str {
+pub fn path_to_str<PI: Iterator<PathElem>>(mut path: PI) -> StrBuf {
     let itr = token::get_ident_interner();
 
     path.fold(StrBuf::new(), |mut s, e| {
@@ -89,7 +89,7 @@ pub fn path_to_str<PI: Iterator<PathElem>>(mut path: PI) -> ~str {
         }
         s.push_str(e.as_slice());
         s
-    }).into_owned()
+    }).to_strbuf()
 }
 
 #[deriving(Clone)]
@@ -322,11 +322,11 @@ impl Map {
         self.with_path_next(id, None, f)
     }
 
-    pub fn path_to_str(&self, id: NodeId) -> ~str {
+    pub fn path_to_str(&self, id: NodeId) -> StrBuf {
         self.with_path(id, |path| path_to_str(path))
     }
 
-    fn path_to_str_with_ident(&self, id: NodeId, i: Ident) -> ~str {
+    fn path_to_str_with_ident(&self, id: NodeId, i: Ident) -> StrBuf {
         self.with_path(id, |path| {
             path_to_str(path.chain(Some(PathName(i.name)).move_iter()))
         })
@@ -405,7 +405,7 @@ impl Map {
         }
     }
 
-    pub fn node_to_str(&self, id: NodeId) -> ~str {
+    pub fn node_to_str(&self, id: NodeId) -> StrBuf {
         node_id_to_str(self, id)
     }
 }
@@ -650,7 +650,7 @@ pub fn map_decoded_item<F: FoldOps>(map: &Map,
     ii
 }
 
-fn node_id_to_str(map: &Map, id: NodeId) -> ~str {
+fn node_id_to_str(map: &Map, id: NodeId) -> StrBuf {
     match map.find(id) {
         Some(NodeItem(item)) => {
             let path_str = map.path_to_str_with_ident(id, item.ident);
@@ -666,51 +666,58 @@ fn node_id_to_str(map: &Map, id: NodeId) -> ~str {
                 ItemImpl(..) => "impl",
                 ItemMac(..) => "macro"
             };
-            format!("{} {} (id={})", item_str, path_str, id)
+            (format!("{} {} (id={})", item_str, path_str, id)).to_strbuf()
         }
         Some(NodeForeignItem(item)) => {
             let path_str = map.path_to_str_with_ident(id, item.ident);
-            format!("foreign item {} (id={})", path_str, id)
+            (format!("foreign item {} (id={})", path_str, id)).to_strbuf()
         }
         Some(NodeMethod(m)) => {
-            format!("method {} in {} (id={})",
+            (format!("method {} in {} (id={})",
                     token::get_ident(m.ident),
-                    map.path_to_str(id), id)
+                    map.path_to_str(id), id)).to_strbuf()
         }
         Some(NodeTraitMethod(ref tm)) => {
             let m = ast_util::trait_method_to_ty_method(&**tm);
-            format!("method {} in {} (id={})",
+            (format!("method {} in {} (id={})",
                     token::get_ident(m.ident),
-                    map.path_to_str(id), id)
+                    map.path_to_str(id), id)).to_strbuf()
         }
         Some(NodeVariant(ref variant)) => {
-            format!("variant {} in {} (id={})",
+            (format!("variant {} in {} (id={})",
                     token::get_ident(variant.node.name),
-                    map.path_to_str(id), id)
+                    map.path_to_str(id), id)).to_strbuf()
         }
         Some(NodeExpr(expr)) => {
-            format!("expr {} (id={})", pprust::expr_to_str(expr), id)
+            (format!("expr {} (id={})",
+                    pprust::expr_to_str(expr), id)).to_strbuf()
         }
         Some(NodeStmt(stmt)) => {
-            format!("stmt {} (id={})", pprust::stmt_to_str(stmt), id)
+            (format!("stmt {} (id={})",
+                    pprust::stmt_to_str(stmt), id)).to_strbuf()
         }
         Some(NodeArg(pat)) => {
-            format!("arg {} (id={})", pprust::pat_to_str(pat), id)
+            (format!("arg {} (id={})",
+                    pprust::pat_to_str(pat), id)).to_strbuf()
         }
         Some(NodeLocal(pat)) => {
-            format!("local {} (id={})", pprust::pat_to_str(pat), id)
+            (format!("local {} (id={})",
+                    pprust::pat_to_str(pat), id)).to_strbuf()
         }
         Some(NodeBlock(block)) => {
-            format!("block {} (id={})", pprust::block_to_str(block), id)
+            (format!("block {} (id={})",
+                    pprust::block_to_str(block), id)).to_strbuf()
         }
         Some(NodeStructCtor(_)) => {
-            format!("struct_ctor {} (id={})", map.path_to_str(id), id)
+            (format!("struct_ctor {} (id={})",
+                    map.path_to_str(id), id)).to_strbuf()
         }
         Some(NodeLifetime(ref l)) => {
-            format!("lifetime {} (id={})", pprust::lifetime_to_str(*l), id)
+            (format!("lifetime {} (id={})",
+                    pprust::lifetime_to_str(*l), id)).to_strbuf()
         }
         None => {
-            format!("unknown node (id={})", id)
+            (format!("unknown node (id={})", id)).to_strbuf()
         }
     }
 }

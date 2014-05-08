@@ -100,7 +100,7 @@ fn lookup_cur_matched(r: &TtReader, name: Ident) -> Rc<NamedMatch> {
 enum LockstepIterSize {
     LisUnconstrained,
     LisConstraint(uint, Ident),
-    LisContradiction(~str),
+    LisContradiction(StrBuf),
 }
 
 fn lis_merge(lhs: LockstepIterSize, rhs: LockstepIterSize) -> LockstepIterSize {
@@ -116,7 +116,7 @@ fn lis_merge(lhs: LockstepIterSize, rhs: LockstepIterSize) -> LockstepIterSize {
                 let r_n = token::get_ident(r_id);
                 LisContradiction(format!("inconsistent lockstep iteration: \
                                           '{}' has {} items, but '{}' has {}",
-                                          l_n, l_len, r_n, r_len))
+                                          l_n, l_len, r_n, r_len).to_strbuf())
             }
         }
     }
@@ -223,7 +223,7 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
                         }
                         LisContradiction(ref msg) => {
                             // FIXME #2887 blame macro invoker instead
-                            r.sp_diag.span_fatal(sp.clone(), *msg);
+                            r.sp_diag.span_fatal(sp.clone(), msg.as_slice());
                         }
                     LisConstraint(len, _) => {
                         if len == 0 {

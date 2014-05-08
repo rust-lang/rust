@@ -33,7 +33,7 @@ pub enum CommentStyle {
 #[deriving(Clone)]
 pub struct Comment {
     pub style: CommentStyle,
-    pub lines: Vec<~str>,
+    pub lines: Vec<StrBuf>,
     pub pos: BytePos,
 }
 
@@ -53,35 +53,40 @@ pub fn doc_comment_style(comment: &str) -> ast::AttrStyle {
     }
 }
 
-pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
+pub fn strip_doc_comment_decoration(comment: &str) -> StrBuf {
     /// remove whitespace-only lines from the start/end of lines
-    fn vertical_trim(lines: Vec<~str> ) -> Vec<~str> {
+    fn vertical_trim(lines: Vec<StrBuf> ) -> Vec<StrBuf> {
         let mut i = 0u;
         let mut j = lines.len();
         // first line of all-stars should be omitted
-        if lines.len() > 0 && lines.get(0).chars().all(|c| c == '*') {
+        if lines.len() > 0 &&
+                lines.get(0).as_slice().chars().all(|c| c == '*') {
             i += 1;
         }
-        while i < j && lines.get(i).trim().is_empty() {
+        while i < j && lines.get(i).as_slice().trim().is_empty() {
             i += 1;
         }
         // like the first, a last line of all stars should be omitted
-        if j > i && lines.get(j - 1).chars().skip(1).all(|c| c == '*') {
+        if j > i && lines.get(j - 1)
+                         .as_slice()
+                         .chars()
+                         .skip(1)
+                         .all(|c| c == '*') {
             j -= 1;
         }
-        while j > i && lines.get(j - 1).trim().is_empty() {
+        while j > i && lines.get(j - 1).as_slice().trim().is_empty() {
             j -= 1;
         }
         return lines.slice(i, j).iter().map(|x| (*x).clone()).collect();
     }
 
     /// remove a "[ \t]*\*" block from each line, if possible
-    fn horizontal_trim(lines: Vec<~str> ) -> Vec<~str> {
+    fn horizontal_trim(lines: Vec<StrBuf> ) -> Vec<StrBuf> {
         let mut i = uint::MAX;
         let mut can_trim = true;
         let mut first = true;
         for line in lines.iter() {
-            for (j, c) in line.chars().enumerate() {
+            for (j, c) in line.as_slice().chars().enumerate() {
                 if j > i || !"* \t".contains_char(c) {
                     can_trim = false;
                     break;
@@ -105,7 +110,9 @@ pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
         }
 
         if can_trim {
-            lines.iter().map(|line| line.slice(i + 1, line.len()).to_owned()).collect()
+            lines.iter().map(|line| {
+                line.as_slice().slice(i + 1, line.len()).to_strbuf()
+            }).collect()
         } else {
             lines
         }
@@ -115,39 +122,41 @@ pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
     static ONLINERS: &'static [&'static str] = &["///!", "///", "//!", "//"];
     for prefix in ONLINERS.iter() {
         if comment.starts_with(*prefix) {
-            return comment.slice_from(prefix.len()).to_owned();
+            return comment.slice_from(prefix.len()).to_strbuf();
         }
     }
 
     if comment.starts_with("/*") {
         let lines = comment.slice(3u, comment.len() - 2u)
             .lines_any()
-            .map(|s| s.to_owned())
-            .collect::<Vec<~str> >();
+            .map(|s| s.to_strbuf())
+            .collect::<Vec<StrBuf> >();
 
         let lines = vertical_trim(lines);
         let lines = horizontal_trim(lines);
 
-        return lines.connect("\n");
+        return lines.connect("\n").to_strbuf();
     }
 
     fail!("not a doc-comment: {}", comment);
 }
 
-fn read_to_eol(rdr: &mut StringReader) -> ~str {
+fn read_to_eol(rdr: &mut StringReader) -> StrBuf {
     let mut val = StrBuf::new();
     while !rdr.curr_is('\n') && !is_eof(rdr) {
         val.push_char(rdr.curr.unwrap());
         bump(rdr);
     }
     if rdr.curr_is('\n') { bump(rdr); }
-    return val.into_owned();
+    return val
 }
 
-fn read_one_line_comment(rdr: &mut StringReader) -> ~str {
+fn read_one_line_comment(rdr: &mut StringReader) -> StrBuf {
     let val = read_to_eol(rdr);
-    assert!((val[0] == '/' as u8 && val[1] == '/' as u8) ||
-                 (val[0] == '#' as u8 && val[1] == '!' as u8));
+    assert!((val.as_slice()[0] == '/' as u8 &&
+                val.as_slice()[1] == '/' as u8) ||
+                (val.as_slice()[0] == '#' as u8 &&
+                 val.as_slice()[1] == '!' as u8));
     return val;
 }
 
@@ -193,11 +202,12 @@ fn read_line_comments(rdr: &mut StringReader, code_to_the_left: bool,
                       comments: &mut Vec<Comment>) {
     debug!(">>> line comments");
     let p = rdr.last_pos;
-    let mut lines: Vec<~str> = Vec::new();
+    let mut lines: Vec<StrBuf> = Vec::new();
     while rdr.curr_is('/') && nextch_is(rdr, '/') {
         let line = read_one_line_comment(rdr);
         debug!("{}", line);
-        if is_doc_comment(line) { // doc-comments are not put in comments
+        // Doc comments are not put in comments.
+        if is_doc_comment(line.as_slice()) {
             break;
         }
         lines.push(line);
@@ -231,14 +241,16 @@ fn all_whitespace(s: &str, col: CharPos) -> Option<uint> {
     return Some(cursor);
 }
 
-fn trim_whitespace_prefix_and_push_line(lines: &mut Vec<~str> ,
-                                        s: ~str, col: CharPos) {
+fn trim_whitespace_prefix_and_push_line(lines: &mut Vec<StrBuf> ,
+                                        s: StrBuf, col: CharPos) {
     let len = s.len();
-    let s1 = match all_whitespace(s, col) {
+    let s1 = match all_whitespace(s.as_slice(), col) {
         Some(col) => {
             if col < len {
-                s.slice(col, len).to_owned()
-            } else {  "".to_owned() }
+                s.as_slice().slice(col, len).to_strbuf()
+            } else {
+                "".to_strbuf()
+            }
         }
         None => s,
     };
@@ -251,7 +263,7 @@ fn read_block_comment(rdr: &mut StringReader,
                       comments: &mut Vec<Comment> ) {
     debug!(">>> block comment");
     let p = rdr.last_pos;
-    let mut lines: Vec<~str> = Vec::new();
+    let mut lines: Vec<StrBuf> = Vec::new();
     let col = rdr.col;
     bump(rdr);
     bump(rdr);
@@ -273,17 +285,17 @@ fn read_block_comment(rdr: &mut StringReader,
             return
         }
         assert!(!curr_line.as_slice().contains_char('\n'));
-        lines.push(curr_line.into_owned());
+        lines.push(curr_line);
     } else {
         let mut level: int = 1;
         while level > 0 {
             debug!("=== block comment level {}", level);
             if is_eof(rdr) {
-                rdr.fatal("unterminated block comment".to_owned());
+                rdr.fatal("unterminated block comment".to_strbuf());
             }
             if rdr.curr_is('\n') {
                 trim_whitespace_prefix_and_push_line(&mut lines,
-                                                     curr_line.into_owned(),
+                                                     curr_line,
                                                      col);
                 curr_line = StrBuf::new();
                 bump(rdr);
@@ -306,7 +318,7 @@ fn read_block_comment(rdr: &mut StringReader,
         }
         if curr_line.len() != 0 {
             trim_whitespace_prefix_and_push_line(&mut lines,
-                                                 curr_line.into_owned(),
+                                                 curr_line,
                                                  col);
         }
     }
@@ -344,7 +356,7 @@ fn consume_comment(rdr: &mut StringReader,
 
 #[deriving(Clone)]
 pub struct Literal {
-    pub lit: ~str,
+    pub lit: StrBuf,
     pub pos: BytePos,
 }
 
@@ -352,11 +364,11 @@ pub struct Literal {
 // probably not a good thing.
 pub fn gather_comments_and_literals(span_diagnostic:
                                         &diagnostic::SpanHandler,
-                                    path: ~str,
+                                    path: StrBuf,
                                     srdr: &mut io::Reader)
                                  -> (Vec<Comment>, Vec<Literal>) {
     let src = srdr.read_to_end().unwrap();
-    let src = str::from_utf8(src.as_slice()).unwrap().to_owned();
+    let src = str::from_utf8(src.as_slice()).unwrap().to_strbuf();
     let cm = CodeMap::new();
     let filemap = cm.new_filemap(path, src);
     let mut rdr = lexer::new_low_level_string_reader(span_diagnostic, filemap);
@@ -387,7 +399,7 @@ pub fn gather_comments_and_literals(span_diagnostic:
         if token::is_lit(&tok) {
             with_str_from(&rdr, bstart, |s| {
                 debug!("tok lit: {}", s);
-                literals.push(Literal {lit: s.to_owned(), pos: sp.lo});
+                literals.push(Literal {lit: s.to_strbuf(), pos: sp.lo});
             })
         } else {
             debug!("tok: {}", token::to_str(&tok));
@@ -405,41 +417,41 @@ mod test {
     #[test] fn test_block_doc_comment_1() {
         let comment = "/**\n * Test \n **  Test\n *   Test\n*/";
         let stripped = strip_doc_comment_decoration(comment);
-        assert_eq!(stripped, " Test \n*  Test\n   Test".to_owned());
+        assert_eq!(stripped, " Test \n*  Test\n   Test".to_strbuf());
     }
 
     #[test] fn test_block_doc_comment_2() {
         let comment = "/**\n * Test\n *  Test\n*/";
         let stripped = strip_doc_comment_decoration(comment);
-        assert_eq!(stripped, " Test\n  Test".to_owned());
+        assert_eq!(stripped, " Test\n  Test".to_strbuf());
     }
 
     #[test] fn test_block_doc_comment_3() {
         let comment = "/**\n let a: *int;\n *a = 5;\n*/";
         let stripped = strip_doc_comment_decoration(comment);
-        assert_eq!(stripped, " let a: *int;\n *a = 5;".to_owned());
+        assert_eq!(stripped, " let a: *int;\n *a = 5;".to_strbuf());
     }
 
     #[test] fn test_block_doc_comment_4() {
         let comment = "/*******************\n test\n *********************/";
         let stripped = strip_doc_comment_decoration(comment);
-        assert_eq!(stripped, " test".to_owned());
+        assert_eq!(stripped, " test".to_strbuf());
     }
 
     #[test] fn test_line_doc_comment() {
         let stripped = strip_doc_comment_decoration("/// test");
-        assert_eq!(stripped, " test".to_owned());
+        assert_eq!(stripped, " test".to_strbuf());
         let stripped = strip_doc_comment_decoration("///! test");
-        assert_eq!(stripped, " test".to_owned());
+        assert_eq!(stripped, " test".to_strbuf());
         let stripped = strip_doc_comment_decoration("// test");
-        assert_eq!(stripped, " test".to_owned());
+        assert_eq!(stripped, " test".to_strbuf());
         let stripped = strip_doc_comment_decoration("// test");
-        assert_eq!(stripped, " test".to_owned());
+        assert_eq!(stripped, " test".to_strbuf());
         let stripped = strip_doc_comment_decoration("///test");
-        assert_eq!(stripped, "test".to_owned());
+        assert_eq!(stripped, "test".to_strbuf());
         let stripped = strip_doc_comment_decoration("///!test");
-        assert_eq!(stripped, "test".to_owned());
+        assert_eq!(stripped, "test".to_strbuf());
         let stripped = strip_doc_comment_decoration("//test");
-        assert_eq!(stripped, "test".to_owned());
+        assert_eq!(stripped, "test".to_strbuf());
     }
 }

@@ -357,7 +357,7 @@ enum FieldName {
 impl<'a> PrivacyVisitor<'a> {
     // used when debugging
     fn nodestr(&self, id: ast::NodeId) -> ~str {
-        self.tcx.map.node_to_str(id)
+        self.tcx.map.node_to_str(id).to_owned()
     }
 
     // Determines whether the given definition is public from the point of view

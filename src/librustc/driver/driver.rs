@@ -143,8 +143,8 @@ pub fn build_configuration(sess: &Session) -> ast::CrateConfig {
 fn parse_cfgspecs(cfgspecs: Vec<~str> )
                   -> ast::CrateConfig {
     cfgspecs.move_iter().map(|s| {
-        parse::parse_meta_from_source_str("cfgspec".to_str(),
-                                          s,
+        parse::parse_meta_from_source_str("cfgspec".to_strbuf(),
+                                          s.to_strbuf(),
                                           Vec::new(),
                                           &parse::new_parse_sess())
     }).collect::<ast::CrateConfig>()
@@ -175,8 +175,8 @@ pub fn phase_1_parse_input(sess: &Session, cfg: ast::CrateConfig, input: &Input)
                 parse::parse_crate_from_file(&(*file), cfg.clone(), &sess.parse_sess)
             }
             StrInput(ref src) => {
-                parse::parse_crate_from_source_str(anon_src(),
-                                                   (*src).clone(),
+                parse::parse_crate_from_source_str(anon_src().to_strbuf(),
+                                                   src.to_strbuf(),
                                                    cfg.clone(),
                                                    &sess.parse_sess)
             }
@@ -528,7 +528,7 @@ fn write_out_deps(sess: &Session,
         // write Makefile-compatible dependency rules
         let files: Vec<~str> = sess.codemap().files.borrow()
                                    .iter().filter(|fmap| fmap.is_real_file())
-                                   .map(|fmap| fmap.name.clone())
+                                   .map(|fmap| fmap.name.to_owned())
                                    .collect();
         let mut file = try!(io::File::create(&deps_filename));
         for path in out_filenames.iter() {
@@ -604,20 +604,20 @@ impl pprust::PpAnn for IdentifiedAnnotation {
         match node {
             pprust::NodeItem(item) => {
                 try!(pp::space(&mut s.s));
-                s.synth_comment(item.id.to_str())
+                s.synth_comment(item.id.to_str().to_strbuf())
             }
             pprust::NodeBlock(blk) => {
                 try!(pp::space(&mut s.s));
-                s.synth_comment("block ".to_owned() + blk.id.to_str())
+                s.synth_comment((format!("block {}", blk.id)).to_strbuf())
             }
             pprust::NodeExpr(expr) => {
                 try!(pp::space(&mut s.s));
-                try!(s.synth_comment(expr.id.to_str()));
+                try!(s.synth_comment(expr.id.to_str().to_strbuf()));
                 s.pclose()
             }
             pprust::NodePat(pat) => {
                 try!(pp::space(&mut s.s));
-                s.synth_comment("pat ".to_owned() + pat.id.to_str())
+                s.synth_comment((format!("pat {}", pat.id)).to_strbuf())
             }
         }
     }
@@ -692,7 +692,7 @@ pub fn pretty_print_input(sess: Session,
             pprust::print_crate(sess.codemap(),
                                 sess.diagnostic(),
                                 &krate,
-                                src_name,
+                                src_name.to_strbuf(),
                                 &mut rdr,
                                 out,
                                 &IdentifiedAnnotation,
@@ -707,7 +707,7 @@ pub fn pretty_print_input(sess: Session,
             pprust::print_crate(annotation.analysis.ty_cx.sess.codemap(),
                                 annotation.analysis.ty_cx.sess.diagnostic(),
                                 &krate,
-                                src_name,
+                                src_name.to_strbuf(),
                                 &mut rdr,
                                 out,
                                 &annotation,
@@ -717,7 +717,7 @@ pub fn pretty_print_input(sess: Session,
             pprust::print_crate(sess.codemap(),
                                 sess.diagnostic(),
                                 &krate,
-                                src_name,
+                                src_name.to_strbuf(),
                                 &mut rdr,
                                 out,
                                 &pprust::NoAnn,
