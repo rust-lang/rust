@@ -84,6 +84,7 @@ fn start(argc: int, argv: **u8) -> int {
 mod macros;
 
 mod access;
+mod timeout;
 mod homing;
 mod queue;
 mod rc;
