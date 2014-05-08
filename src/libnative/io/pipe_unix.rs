@@ -168,7 +168,7 @@ impl rtio::RtioPipe for UnixStream {
             libc::send(fd,
                        buf as *mut libc::c_void,
                        len as libc::size_t,
-                       flags)
+                       flags) as i64
         };
         match net::write(fd, self.write_deadline, buf, true, dolock, dowrite) {
             Ok(_) => Ok(()),

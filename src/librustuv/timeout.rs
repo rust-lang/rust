@@ -25,7 +25,7 @@ use {UvHandle, wait_until_woken_after};
 /// Managment of a timeout when gaining access to a portion of a duplex stream.
 pub struct AccessTimeout {
     state: TimeoutState,
-    timer: Option<~TimerWatcher>,
+    timer: Option<Box<TimerWatcher>>,
     pub access: access::Access,
 }
 
@@ -119,8 +119,8 @@ impl AccessTimeout {
         // If we have a timeout, lazily initialize the timer which will be used
         // to fire when the timeout runs out.
         if self.timer.is_none() {
-            let mut timer = ~TimerWatcher::new_home(loop_, home.clone());
-            let cx = ~TimerContext {
+            let mut timer = box TimerWatcher::new_home(loop_, home.clone());
+            let cx = box TimerContext {
                 timeout: self as *mut _,
                 callback: cb,
                 payload: data,
@@ -199,7 +199,7 @@ impl Drop for AccessTimeout {
         match self.timer {
             Some(ref timer) => unsafe {
                 let data = uvll::get_data_for_uv_handle(timer.handle);
-                let _data: ~TimerContext = cast::transmute(data);
+                let _data: Box<TimerContext> = cast::transmute(data);
             },
             None => {}
         }
@@ -213,7 +213,7 @@ impl Drop for AccessTimeout {
 pub struct ConnectCtx {
     pub status: c_int,
     pub task: Option<BlockedTask>,
-    pub timer: Option<~TimerWatcher>,
+    pub timer: Option<Box<TimerWatcher>>,
 }
 
 pub struct AcceptTimeout {
