@@ -49,6 +49,13 @@ impl RenderSpan {
     }
 }
 
+#[deriving(Clone)]
+pub enum ColorConfig {
+    Auto,
+    Always,
+    Never
+}
+
 pub trait Emitter {
     fn emit(&mut self, cmsp: Option<(&codemap::CodeMap, Span)>,
             msg: &str, lvl: Level);
@@ -176,8 +183,8 @@ pub fn mk_span_handler(handler: Handler, cm: codemap::CodeMap) -> SpanHandler {
     }
 }
 
-pub fn default_handler() -> Handler {
-    mk_handler(box EmitterWriter::stderr())
+pub fn default_handler(color_config: ColorConfig) -> Handler {
+    mk_handler(box EmitterWriter::stderr(color_config))
 }
 
 pub fn mk_handler(e: Box<Emitter:Send>) -> Handler {
@@ -257,9 +264,16 @@ enum Destination {
 }
 
 impl EmitterWriter {
-    pub fn stderr() -> EmitterWriter {
+    pub fn stderr(color_config: ColorConfig) -> EmitterWriter {
         let stderr = io::stderr();
-        if stderr.get_ref().isatty() {
+
+        let use_color = match color_config {
+            Always => true,
+            Never  => false,
+            Auto   => stderr.get_ref().isatty()
+        };
+
+        if use_color {
             let dst = match term::Terminal::new(stderr.unwrap()) {
                 Ok(t) => Terminal(t),
                 Err(..) => Raw(box io::stderr()),

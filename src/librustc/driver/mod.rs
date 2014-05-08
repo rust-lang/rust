@@ -323,7 +323,7 @@ fn parse_crate_attrs(sess: &Session, input: &Input) ->
 }
 
 pub fn early_error(msg: &str) -> ! {
-    let mut emitter = diagnostic::EmitterWriter::stderr();
+    let mut emitter = diagnostic::EmitterWriter::stderr(diagnostic::Auto);
     emitter.emit(None, msg, diagnostic::Fatal);
     fail!(diagnostic::FatalError);
 }
@@ -368,7 +368,7 @@ fn monitor(f: proc():Send) {
         Err(value) => {
             // Task failed without emitting a fatal diagnostic
             if !value.is::<diagnostic::FatalError>() {
-                let mut emitter = diagnostic::EmitterWriter::stderr();
+                let mut emitter = diagnostic::EmitterWriter::stderr(diagnostic::Auto);
 
                 // a .span_bug or .bug call has already printed what
                 // it wants to print.
