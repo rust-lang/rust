@@ -26,5 +26,4 @@ fn test1() {
 fn test2() {
     let x: Foo<_> = Bar::<uint>;
     //~^ ERROR mismatched types: expected `Foo<<generic #0>>` but found `Bar<uint>`
-    //~^^ ERROR cannot determine a type for this local variable: unconstrained type
 }
