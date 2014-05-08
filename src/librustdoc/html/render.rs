@@ -1183,7 +1183,7 @@ impl Context {
                     VisSpace(myitem.visibility),
                     *myitem.name.get_ref(),
                     s.type_,
-                    Initializer(s.expr, Item { cx: cx, item: myitem }),
+                    Initializer(s.expr, Item { cx: self, item: myitem }),
                     Markdown(blank(myitem.doc_value()))));
                 }
 
@@ -1222,7 +1222,7 @@ impl Context {
                     Markdown(shorter(myitem.doc_value())),
                     class = shortty(myitem),
                     href = item_path(myitem),
-                    title = full_path(cx, myitem)));
+                    title = full_path(self, myitem)));
                 }
             }
         }
@@ -1637,7 +1637,7 @@ impl Context {
 
         fn docmeth(w: &mut Writer, cx: &Context,
                    item: &clean::Item, dox: bool) -> io::IoResult<()> {
-            try!(write!(w, "<div class="method-container">"));
+            try!(write!(w, "<div class='method-container'>"));
             try!(write!(w, "<h4 id='method.{}' class='method'><code>",
                           *item.name.get_ref()));
             try!(cx.render_method(w, item));

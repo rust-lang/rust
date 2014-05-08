@@ -367,8 +367,8 @@ pub fn find_stability<AM: AttrMetaMethods, It: Iterator<AM>>(mut metas: It)
             _ => continue // not a stability level
         };
         let text = match m.value_str() {
-            "" => m.name().get(),
-            desc => desc
+            None => Some(m.name()),
+            Some(desc) => Some(desc)
         };
 
         return Some(Stability {
