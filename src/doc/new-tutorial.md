@@ -39,11 +39,11 @@ There are more complete [installation intructions][install-wiki] on the wiki.
 
 1. Copy and paste the following source into an empty text file and save it as `example.rs`. By convention Rust source files have the `.rs` extension.
 	
-	~~~~
-	fn main() {
-	    println!("Hello world!");
-	}
-	~~~~
+    ~~~~
+    fn main() {
+        println!("Hello world!");
+    }
+    ~~~~
 
 2. Run `rustc example.rs`
 3. If there are no compiler errors, you can run `./example`. 
@@ -64,13 +64,13 @@ struct Point {
 
 Create a point using a *struct literal* expression which assigns the point into the local variable `p`, in this case specifying `x=1` and `y=2`.
 
-````
+~~~~
 struct Point { x: int, y: int }
+
 fn main() {
     let  p = Point { x: 1, y: 2};
-
 }
-````
+~~~~
 
 <!-- FIXME
 The data for the point is stored directly on the stack, there is no heap allocation or pointer indirection, which improves performance. 
@@ -88,7 +88,12 @@ The stack frame for the function `main()` looks like this:
 
 Those of you who are familiar with C and C++ will find this behavior familiar. In contrast, languages like Java or Ruby always store structures in the heap, so the stack frame looks like this:
 
-<!-- (TODO: fix this image) -->
+<!-- (TODO: fix this image)
+
+https://github.com/mozilla/rust/pull/14017#discussion_r12404628
+
+
+-->
 
 ~~~~{.notrust}
 -----------------     -----------------------------
@@ -159,6 +164,13 @@ One very common use for heap allocation is to store [arrays][arrays]. For exampl
 [arrays]:  FIXME
 
 ~~~~
+struct Point {
+    x: int,
+    y: int
+}
+
+fn draw_line(from: Point, to: Point) { // Draw the line }
+
 fn draw_polygon(points: ~[Point]) {
     let mut i = 0;
     while i < points.len() - 1 {
@@ -175,6 +187,15 @@ The type `~[...]` in Rust indicates a heap-allocated array containing a variable
 
 ~~~~
 # struct Point { x: int, y: int }
+# fn draw_line(from: Point, to: Point) { // Draw the line }
+fn draw_polygon(points: ~[Point]) {
+    let mut i = 0;
+    while i < points.len() - 1 {
+        draw_line(points[i], points[i+1]);
+        i += 1;
+    }
+    draw_line(points[i], points[0]);
+}
 
 fn main() { 
     let p1 = Point { x: 0, y: 0 }; 
@@ -187,9 +208,11 @@ fn main() {
 
 <!--
 
-In Rust, whenever a heap pointer (that is, a variable of type `~T`) goes out of scope, the memory it points at is automatically freed. 
+In Rust, whenever a heap pointer goes out of scope, the memory it points at is automatically freed.
 
- For example, when the `draw_polygon()` function returns, it automatically frees its argument, `points`. -->
+ For example, when the `draw_polygon()` function returns, it automatically frees its argument, `points`.
+
+ -->
 
 # Ownership and Moving 
 
@@ -210,7 +233,7 @@ struct Point {
     y: int
 }
 
-fn draw_polygon(points: ~[Point]) { // Draw the line}
+fn draw_polygon(points: ~[Point]) { // Draw the line }
 
 fn main() {
     // `points` is initially owned by `main()`
@@ -262,13 +285,13 @@ Ownership is a powerful tool for working with values that require some sort of c
 For simple data types, however, this sort of tracking is inconvenient. The `Point` type that we introduced earlier is simply a pair of integers and requires no cleanup, so we might prefer that it be implicitly copied each time we use it rather than transferring ownership. To indicate that, we annotate the `Point` type with an attribute, `#[deriving(Copy)]`:
  
 
-```
+~~~~
 #[deriving(Copy)]
 struct Point {
     x: int,
     y: int,
 }
-```
+~~~~
 
 This annotation is an example of a Rust *attribute*. Rust attributes generally have the form `#[...]` and can be attached to any declaration. There are detailed guides on [attributes][attributes] in general and the [deriving][deriving] attribute in particular.
 
@@ -282,6 +305,7 @@ Now that we have indicated that `Point` values should be copied and not moved, w
 #    x: int,
 #    y: int
 # }
+
 fn main() {
     let point1 = Point { x:1, y:2 };
     let point2 = Point { x:5, y:6 };
