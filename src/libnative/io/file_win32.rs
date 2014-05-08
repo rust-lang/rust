@@ -210,6 +210,17 @@ impl rtio::RtioPipe for FileDesc {
     fn clone(&self) -> Box<rtio::RtioPipe:Send> {
         box FileDesc { inner: self.inner.clone() } as Box<rtio::RtioPipe:Send>
     }
+
+    // Only supported on named pipes currently. Note that this doesn't have an
+    // impact on the std::io primitives, this is never called via
+    // std::io::PipeStream. If the functionality is exposed in the future, then
+    // these methods will need to be implemented.
+    fn close_read(&mut self) -> IoResult<()> {
+        Err(io::standard_error(io::InvalidInput))
+    }
+    fn close_write(&mut self) -> IoResult<()> {
+        Err(io::standard_error(io::InvalidInput))
+    }
 }
 
 impl rtio::RtioTTY for FileDesc {

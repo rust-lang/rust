@@ -357,9 +357,10 @@ impl rtio::RtioTcpStream for TcpStream {
         } as Box<rtio::RtioTcpStream:Send>
     }
     fn close_write(&mut self) -> IoResult<()> {
-        super::mkerr_libc(unsafe {
-            libc::shutdown(self.fd(), libc::SHUT_WR)
-        })
+        super::mkerr_libc(unsafe { libc::shutdown(self.fd(), libc::SHUT_WR) })
+    }
+    fn close_read(&mut self) -> IoResult<()> {
+        super::mkerr_libc(unsafe { libc::shutdown(self.fd(), libc::SHUT_RD) })
     }
 }
 
