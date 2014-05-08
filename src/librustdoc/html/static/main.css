@@ -227,6 +227,12 @@ nav.sub {
     font-size: 90%;
     font-weight: 400;
 }
+.method .source-link {
+    visibility: hidden;
+}
+.method-container:hover .source-link {
+    visibility: visible;
+}
 
 .content table {
     border-spacing: 0 5px;
@@ -369,23 +375,20 @@ a {
 }
 
 .stability {
-    border-radius: 2px;
-    color: #FFF;
+    border-radius: 10px;
     display: inline-block;
-    font-size: 11px;
-    font-weight: 400;
+    font-size: 0;
+    height: 12px;
+    width: 12px;
     margin: 0 8px;
     padding: 0 4px;
-    text-transform: uppercase;
-    vertical-align: 4px;
+    vertical-align: 12px;
 }
 .method .stability {
-    visibility: hidden;
+    height: 10px;
+    width: 10px;
     margin: 0 4px;
-    vertical-align: 1px;
-}
-.method:hover .stability {
-    visibility: visible;
+    vertical-align: 9px;
 }
 
 .stability.Deprecated { background-color: #C8344D; }
@@ -425,11 +428,9 @@ pre.rust .lifetime { color: #B76514; }
     .sidebar {
         display: none;
     }
-
     .content {
         margin-left: 0px;
     }
-
     nav.sub {
         margin: 0 auto;
     }

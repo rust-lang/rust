@@ -1579,7 +1579,7 @@ impl Context {
                     p.ref0().trait_.is_some()
                 });
                 let traits = traits.collect::<Vec<&(clean::Impl, Option<~str>)>>();
-    
+
                 if non_trait.len() > 0 {
                     try!(write!(w, "<h2 id='methods'>Methods</h2>"));
                     for &(ref i, ref dox) in non_trait.move_iter() {
@@ -1637,6 +1637,7 @@ impl Context {
 
         fn docmeth(w: &mut Writer, cx: &Context,
                    item: &clean::Item, dox: bool) -> io::IoResult<()> {
+            try!(write!(w, "<div class="method-container">"));
             try!(write!(w, "<h4 id='method.{}' class='method'><code>",
                           *item.name.get_ref()));
             try!(cx.render_method(w, item));
@@ -1650,6 +1651,7 @@ impl Context {
                 }
                 Some(..) | None => Ok(())
             }
+            try!(write!(w, "</div>"));
         }
 
         try!(write!(w, "<div class='methods'>"));

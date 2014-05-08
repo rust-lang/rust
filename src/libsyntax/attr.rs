@@ -366,10 +366,14 @@ pub fn find_stability<AM: AttrMetaMethods, It: Iterator<AM>>(mut metas: It)
             "locked" => Locked,
             _ => continue // not a stability level
         };
+        let text = match m.value_str() {
+            "" => m.name().get(),
+            desc => desc
+        };
 
         return Some(Stability {
                 level: level,
-                text: m.value_str()
+                text: text
             });
     }
     None
