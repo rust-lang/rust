@@ -2110,11 +2110,11 @@ pub fn write_metadata(cx: &CrateContext, krate: &ast::Crate) -> Vec<u8> {
 
     let encode_parms = crate_ctxt_to_encode_parms(cx, encode_inlined_item);
     let metadata = encoder::encode_metadata(encode_parms, krate);
-    let compressed = encoder::metadata_encoding_version +
-                        match flate::deflate_bytes(metadata.as_slice()) {
-                            Some(compressed) => compressed,
-                            None => cx.sess().fatal(format!("failed to compress metadata", ))
-                        }.as_slice();
+    let compressed = Vec::from_slice(encoder::metadata_encoding_version)
+                     .append(match flate::deflate_bytes(metadata.as_slice()) {
+                         Some(compressed) => compressed,
+                         None => cx.sess().fatal(format!("failed to compress metadata"))
+                     }.as_slice());
     let llmeta = C_bytes(cx, compressed.as_slice());
     let llconst = C_struct(cx, [llmeta], false);
     let name = format!("rust_metadata_{}_{}_{}", cx.link_meta.crateid.name,

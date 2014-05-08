@@ -13,7 +13,7 @@
 use to_str::{IntoStr};
 use str;
 use str::Str;
-use str::StrSlice;
+use str::{StrAllocating, StrSlice};
 use str::OwnedStr;
 use container::Container;
 use cast;

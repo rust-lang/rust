@@ -21,7 +21,7 @@ use ops::{Add, Sub, Mul, Div, Rem, Neg};
 use option::{None, Option, Some};
 use slice::{CloneableVector, ImmutableVector, MutableVector};
 use std::cmp::{Ord, Eq};
-use str::{Str, StrSlice};
+use str::{StrAllocating, StrSlice};
 use strbuf::StrBuf;
 use vec::Vec;
 

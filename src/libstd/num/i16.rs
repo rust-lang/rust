@@ -11,11 +11,10 @@
 //! Operations and constants for signed 16-bits integers (`i16` type)
 
 use from_str::FromStr;
-use iter::Iterator;
 use num::{ToStrRadix, FromStrRadix};
 use num::strconv;
 use option::Option;
-use slice::{ImmutableVector, OwnedVector};
+use slice::ImmutableVector;
 use str;
 
 pub use core::i16::{BITS, BYTES, MIN, MAX};

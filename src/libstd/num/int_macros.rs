@@ -77,6 +77,9 @@ impl ToStrRadix for $T {
     /// Convert to a string in a given base.
     #[inline]
     fn to_str_radix(&self, radix: uint) -> ~str {
+        use slice::Vector;
+        use str::StrAllocating;
+
         let mut buf = ::vec::Vec::new();
         strconv::int_to_str_bytes_common(*self, radix, strconv::SignNeg, |i| {
             buf.push(i);

@@ -13,8 +13,9 @@ use char::Char;
 use clone::Clone;
 use container::Container;
 use default::Default;
+use finally::try_finally;
 use intrinsics;
-use iter::{Iterator, FromIterator};
+use iter::{range, Iterator, FromIterator};
 use mem;
 use num::{CheckedMul, CheckedAdd};
 use option::{Some, None};
@@ -25,7 +26,6 @@ use slice::ImmutableVector;
 use str::StrSlice;
 
 #[cfg(not(test))] use ops::Add;
-#[cfg(not(test))] use slice::Vector;
 
 #[allow(ctypes)]
 extern {
@@ -147,6 +147,34 @@ impl<'a> Add<&'a str,~str> for &'a str {
 impl<A: Clone> Clone for ~[A] {
     #[inline]
     fn clone(&self) -> ~[A] {
-        self.iter().map(|a| a.clone()).collect()
+        let len = self.len();
+        let data_size = len.checked_mul(&mem::size_of::<A>()).unwrap();
+        let size = mem::size_of::<Vec<()>>().checked_add(&data_size).unwrap();
+
+        unsafe {
+            let ret = alloc(size) as *mut Vec<A>;
+
+            (*ret).fill = len * mem::nonzero_size_of::<A>();
+            (*ret).alloc = len * mem::nonzero_size_of::<A>();
+
+            let mut i = 0;
+            let p = &mut (*ret).data as *mut _ as *mut A;
+            try_finally(
+                &mut i, (),
+                |i, ()| while *i < len {
+                    mem::move_val_init(
+                        &mut(*p.offset(*i as int)),
+                        self.unsafe_ref(*i).clone());
+                    *i += 1;
+                },
+                |i| if *i < len {
+                    // we must be failing, clean up after ourselves
+                    for j in range(0, *i as int) {
+                        ptr::read(&*p.offset(j));
+                    }
+                    free(ret as *u8);
+                });
+            cast::transmute(ret)
+        }
     }
 }
