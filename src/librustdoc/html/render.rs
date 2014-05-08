@@ -37,7 +37,6 @@ use collections::{HashMap, HashSet};
 use std::fmt;
 use std::io::{fs, File, BufferedWriter, MemWriter, BufferedReader};
 use std::io;
-use std::local_data;
 use std::str;
 use std::strbuf::StrBuf;
 
@@ -243,24 +242,22 @@ pub fn run(mut krate: clean::Crate, dst: Path) -> io::IoResult<()> {
     }
 
     // Crawl the crate to build various caches used for the output
-    let mut cache = local_data::get(::analysiskey, |analysis| {
-        let public_items = analysis.map(|a| a.public_items.clone());
-        let public_items = public_items.unwrap_or(NodeSet::new());
-        Cache {
-            impls: HashMap::new(),
-            typarams: HashMap::new(),
-            paths: HashMap::new(),
-            traits: HashMap::new(),
-            implementors: HashMap::new(),
-            stack: Vec::new(),
-            parent_stack: Vec::new(),
-            search_index: Vec::new(),
-            extern_locations: HashMap::new(),
-            privmod: false,
-            public_items: public_items,
-            orphan_methods: Vec::new(),
-        }
-    });
+    let public_items = ::analysiskey.get().map(|a| a.public_items.clone());
+    let public_items = public_items.unwrap_or(NodeSet::new());
+    let mut cache = Cache {
+        impls: HashMap::new(),
+        typarams: HashMap::new(),
+        paths: HashMap::new(),
+        traits: HashMap::new(),
+        implementors: HashMap::new(),
+        stack: Vec::new(),
+        parent_stack: Vec::new(),
+        search_index: Vec::new(),
+        extern_locations: HashMap::new(),
+        privmod: false,
+        public_items: public_items,
+        orphan_methods: Vec::new(),
+    };
     cache.stack.push(krate.name.clone());
     krate = cache.fold_crate(krate);
 
@@ -833,7 +830,7 @@ impl Context {
         item.name = Some(krate.name);
 
         // using a rwarc makes this parallelizable in the future
-        local_data::set(cache_key, Arc::new(cache));
+        cache_key.replace(Some(Arc::new(cache)));
 
         let mut work = vec!((self, item));
         loop {
@@ -859,7 +856,7 @@ impl Context {
             info!("Rendering an item to {}", w.path().display());
             // A little unfortunate that this is done like this, but it sure
             // does make formatting *a lot* nicer.
-            local_data::set(current_location_key, cx.current.clone());
+            current_location_key.replace(Some(cx.current.clone()));
 
             let mut title = StrBuf::from_str(cx.current.connect("::"));
             if pushname {
@@ -1299,31 +1296,28 @@ fn item_trait(w: &mut Writer, it: &clean::Item,
         try!(write!(w, "</div>"));
     }
 
-    local_data::get(cache_key, |cache| {
-        let cache = cache.unwrap();
-        match cache.implementors.find(&it.id) {
-            Some(implementors) => {
-                try!(write!(w, "
-                    <h2 id='implementors'>Implementors</h2>
-                    <ul class='item-list'>
-                "));
-                for i in implementors.iter() {
-                    match *i {
-                        PathType(ref ty) => {
-                            try!(write!(w, "<li><code>{}</code></li>", *ty));
-                        }
-                        OtherType(ref generics, ref trait_, ref for_) => {
-                            try!(write!(w, "<li><code>impl{} {} for {}</code></li>",
-                                          *generics, *trait_, *for_));
-                        }
+    match cache_key.get().unwrap().implementors.find(&it.id) {
+        Some(implementors) => {
+            try!(write!(w, "
+                <h2 id='implementors'>Implementors</h2>
+                <ul class='item-list'>
+            "));
+            for i in implementors.iter() {
+                match *i {
+                    PathType(ref ty) => {
+                        try!(write!(w, "<li><code>{}</code></li>", *ty));
+                    }
+                    OtherType(ref generics, ref trait_, ref for_) => {
+                        try!(write!(w, "<li><code>impl{} {} for {}</code></li>",
+                                      *generics, *trait_, *for_));
                     }
                 }
-                try!(write!(w, "</ul>"));
             }
-            None => {}
+            try!(write!(w, "</ul>"));
         }
-        Ok(())
-    })
+        None => {}
+    }
+    Ok(())
 }
 
 fn render_method(w: &mut Writer, meth: &clean::Item) -> fmt::Result {
@@ -1550,51 +1544,48 @@ fn render_struct(w: &mut Writer, it: &clean::Item,
 }
 
 fn render_methods(w: &mut Writer, it: &clean::Item) -> fmt::Result {
-    local_data::get(cache_key, |cache| {
-        let c = cache.unwrap();
-        match c.impls.find(&it.id) {
-            Some(v) => {
-                let mut non_trait = v.iter().filter(|p| {
-                    p.ref0().trait_.is_none()
-                });
-                let non_trait = non_trait.collect::<Vec<&(clean::Impl, Option<~str>)>>();
-                let mut traits = v.iter().filter(|p| {
-                    p.ref0().trait_.is_some()
-                });
-                let traits = traits.collect::<Vec<&(clean::Impl, Option<~str>)>>();
+    match cache_key.get().unwrap().impls.find(&it.id) {
+        Some(v) => {
+            let mut non_trait = v.iter().filter(|p| {
+                p.ref0().trait_.is_none()
+            });
+            let non_trait = non_trait.collect::<Vec<&(clean::Impl, Option<~str>)>>();
+            let mut traits = v.iter().filter(|p| {
+                p.ref0().trait_.is_some()
+            });
+            let traits = traits.collect::<Vec<&(clean::Impl, Option<~str>)>>();
 
-                if non_trait.len() > 0 {
-                    try!(write!(w, "<h2 id='methods'>Methods</h2>"));
-                    for &(ref i, ref dox) in non_trait.move_iter() {
+            if non_trait.len() > 0 {
+                try!(write!(w, "<h2 id='methods'>Methods</h2>"));
+                for &(ref i, ref dox) in non_trait.move_iter() {
+                    try!(render_impl(w, i, dox));
+                }
+            }
+            if traits.len() > 0 {
+                try!(write!(w, "<h2 id='implementations'>Trait \
+                                  Implementations</h2>"));
+                let mut any_derived = false;
+                for & &(ref i, ref dox) in traits.iter() {
+                    if !i.derived {
                         try!(render_impl(w, i, dox));
+                    } else {
+                        any_derived = true;
                     }
                 }
-                if traits.len() > 0 {
-                    try!(write!(w, "<h2 id='implementations'>Trait \
-                                      Implementations</h2>"));
-                    let mut any_derived = false;
-                    for & &(ref i, ref dox) in traits.iter() {
-                        if !i.derived {
+                if any_derived {
+                    try!(write!(w, "<h3 id='derived_implementations'>Derived Implementations \
+                                </h3>"));
+                    for &(ref i, ref dox) in traits.move_iter() {
+                        if i.derived {
                             try!(render_impl(w, i, dox));
-                        } else {
-                            any_derived = true;
-                        }
-                    }
-                    if any_derived {
-                        try!(write!(w, "<h3 id='derived_implementations'>Derived Implementations \
-                                    </h3>"));
-                        for &(ref i, ref dox) in traits.move_iter() {
-                            if i.derived {
-                                try!(render_impl(w, i, dox));
-                            }
                         }
                     }
                 }
             }
-            None => {}
         }
-        Ok(())
-    })
+        None => {}
+    }
+    Ok(())
 }
 
 fn render_impl(w: &mut Writer, i: &clean::Impl,
@@ -1644,9 +1635,8 @@ fn render_impl(w: &mut Writer, i: &clean::Impl,
     match trait_id {
         None => {}
         Some(id) => {
-            try!(local_data::get(cache_key, |cache| {
-                let cache = cache.unwrap();
-                match cache.traits.find(&id) {
+            try!({
+                match cache_key.get().unwrap().traits.find(&id) {
                     Some(t) => {
                         for method in t.methods.iter() {
                             let n = method.item().name.clone();
@@ -1661,7 +1651,7 @@ fn render_impl(w: &mut Writer, i: &clean::Impl,
                     None => {}
                 }
                 Ok(())
-            }))
+            })
         }
     }
     try!(write!(w, "</div>"));

@@ -420,13 +420,12 @@ mod test {
 
     #[test]
     fn tls() {
-        use local_data;
         local_data_key!(key: @~str)
-        local_data::set(key, @"data".to_owned());
-        assert!(*local_data::get(key, |k| k.map(|k| *k)).unwrap() == "data".to_owned());
+        key.replace(Some(@"data".to_owned()));
+        assert_eq!(key.get().unwrap().as_slice(), "data");
         local_data_key!(key2: @~str)
-        local_data::set(key2, @"data".to_owned());
-        assert!(*local_data::get(key2, |k| k.map(|k| *k)).unwrap() == "data".to_owned());
+        key2.replace(Some(@"data".to_owned()));
+        assert_eq!(key2.get().unwrap().as_slice(), "data");
     }
 
     #[test]
