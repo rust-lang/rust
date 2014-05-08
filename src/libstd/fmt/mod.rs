@@ -510,8 +510,33 @@ pub use self::num::Radix;
 pub use self::num::RadixFmt;
 
 mod num;
-pub mod parse;
 pub mod rt;
+
+#[cfg(stage0)]
+#[allow(missing_doc)]
+pub mod parse {
+    #[deriving(Eq)]
+    pub enum Alignment {
+        AlignLeft,
+        AlignRight,
+        AlignUnknown,
+    }
+
+    pub enum PluralKeyword {
+        Zero,
+        One,
+        Two,
+        Few,
+        Many,
+    }
+
+    pub enum Flag {
+        FlagSignPlus,
+        FlagSignMinus,
+        FlagAlternate,
+        FlagSignAwareZeroPad,
+    }
+}
 
 pub type Result = io::IoResult<()>;
 
@@ -524,7 +549,7 @@ pub struct Formatter<'a> {
     /// Character used as 'fill' whenever there is alignment
     pub fill: char,
     /// Boolean indication of whether the output should be left-aligned
-    pub align: parse::Alignment,
+    pub align: rt::Alignment,
     /// Optionally specified integer width that the output should be
     pub width: Option<uint>,
     /// Optionally specified precision for numeric types
@@ -757,7 +782,7 @@ pub unsafe fn write_unsafe(output: &mut io::Writer,
         width: None,
         precision: None,
         buf: output,
-        align: parse::AlignUnknown,
+        align: rt::AlignUnknown,
         fill: ' ',
         args: args,
         curarg: args.iter(),
@@ -890,15 +915,15 @@ impl<'a> Formatter<'a> {
                 let value = value - match offset { Some(i) => i, None => 0 };
                 for s in selectors.iter() {
                     let run = match s.selector {
-                        rt::Keyword(parse::Zero) => value == 0,
-                        rt::Keyword(parse::One) => value == 1,
-                        rt::Keyword(parse::Two) => value == 2,
+                        rt::Keyword(rt::Zero) => value == 0,
+                        rt::Keyword(rt::One) => value == 1,
+                        rt::Keyword(rt::Two) => value == 2,
 
                         // FIXME: Few/Many should have a user-specified boundary
                         //      One possible option would be in the function
                         //      pointer of the 'arg: Argument' struct.
-                        rt::Keyword(parse::Few) => value < 8,
-                        rt::Keyword(parse::Many) => value >= 8,
+                        rt::Keyword(rt::Few) => value < 8,
+                        rt::Keyword(rt::Many) => value >= 8,
 
                         rt::Literal(..) => false
                     };
@@ -960,7 +985,7 @@ impl<'a> Formatter<'a> {
     /// This function will correctly account for the flags provided as well as
     /// the minimum width. It will not take precision into account.
     pub fn pad_integral(&mut self, is_positive: bool, prefix: &str, buf: &[u8]) -> Result {
-        use fmt::parse::{FlagAlternate, FlagSignPlus, FlagSignAwareZeroPad};
+        use fmt::rt::{FlagAlternate, FlagSignPlus, FlagSignAwareZeroPad};
 
         let mut width = buf.len();
 
@@ -1000,11 +1025,11 @@ impl<'a> Formatter<'a> {
             Some(min) if self.flags & (1 << (FlagSignAwareZeroPad as uint)) != 0 => {
                 self.fill = '0';
                 try!(write_prefix(self));
-                self.with_padding(min - width, parse::AlignRight, |f| f.buf.write(buf))
+                self.with_padding(min - width, rt::AlignRight, |f| f.buf.write(buf))
             }
             // Otherwise, the sign and prefix goes after the padding
             Some(min) => {
-                self.with_padding(min - width, parse::AlignRight, |f| {
+                self.with_padding(min - width, rt::AlignRight, |f| {
                     try!(write_prefix(f)); f.buf.write(buf)
                 })
             }
@@ -1055,7 +1080,7 @@ impl<'a> Formatter<'a> {
             // If we're under both the maximum and the minimum width, then fill
             // up the minimum width with the specified string + some alignment.
             Some(width) => {
-                self.with_padding(width - s.len(), parse::AlignLeft, |me| {
+                self.with_padding(width - s.len(), rt::AlignLeft, |me| {
                     me.buf.write(s.as_bytes())
                 })
             }
@@ -1066,13 +1091,13 @@ impl<'a> Formatter<'a> {
     /// afterwards depending on whether right or left alingment is requested.
     fn with_padding(&mut self,
                     padding: uint,
-                    default: parse::Alignment,
+                    default: rt::Alignment,
                     f: |&mut Formatter| -> Result) -> Result {
         let align = match self.align {
-            parse::AlignUnknown => default,
-            parse::AlignLeft | parse::AlignRight => self.align
+            rt::AlignUnknown => default,
+            rt::AlignLeft | rt::AlignRight => self.align
         };
-        if align == parse::AlignLeft {
+        if align == rt::AlignLeft {
             try!(f(self));
         }
         let mut fill = [0u8, ..4];
@@ -1080,7 +1105,7 @@ impl<'a> Formatter<'a> {
         for _ in range(0, padding) {
             try!(self.buf.write(fill.slice_to(len)));
         }
-        if align == parse::AlignRight {
+        if align == rt::AlignRight {
             try!(f(self));
         }
         Ok(())
@@ -1203,7 +1228,7 @@ impl<T> Poly for T {
 
 impl<T> Pointer for *T {
     fn fmt(&self, f: &mut Formatter) -> Result {
-        f.flags |= 1 << (parse::FlagAlternate as uint);
+        f.flags |= 1 << (rt::FlagAlternate as uint);
         secret_lower_hex::<uint>(&(*self as uint), f)
     }
 }
@@ -1304,7 +1329,7 @@ impl<T: Show, U: Show> Show for ::result::Result<T, U> {
 
 impl<'a, T: Show> Show for &'a [T] {
     fn fmt(&self, f: &mut Formatter) -> Result {
-        if f.flags & (1 << (parse::FlagAlternate as uint)) == 0 {
+        if f.flags & (1 << (rt::FlagAlternate as uint)) == 0 {
             try!(write!(f.buf, "["));
         }
         let mut is_first = true;
@@ -1316,7 +1341,7 @@ impl<'a, T: Show> Show for &'a [T] {
             }
             try!(write!(f.buf, "{}", *x))
         }
-        if f.flags & (1 << (parse::FlagAlternate as uint)) == 0 {
+        if f.flags & (1 << (rt::FlagAlternate as uint)) == 0 {
             try!(write!(f.buf, "]"));
         }
         Ok(())

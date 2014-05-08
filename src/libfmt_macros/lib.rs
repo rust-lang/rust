@@ -8,17 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Parsing of format strings
+//! Macro support for format strings
 //!
 //! These structures are used when parsing format strings for the compiler.
 //! Parsing does not happen at runtime: structures of `std::fmt::rt` are
 //! generated instead.
 
-use prelude::*;
+#![crate_id = "fmt_macros#0.11-pre"]
+#![license = "MIT/ASL2"]
+#![crate_type = "rlib"]
+#![crate_type = "dylib"]
+#![feature(macro_rules, globs)]
+#![experimental]
 
-use char;
-use owned::Box;
-use str;
+use std::char;
+use std::str;
 
 /// A piece is a portion of the format string which represents the next part
 /// to emit. These are emitted as a stream by the `Parser` class.
@@ -164,7 +168,7 @@ pub struct PluralArm<'a> {
 /// is specially placed in the `Plural` variant of `Method`.
 ///
 /// http://www.icu-project.org/apiref/icu4c/classicu_1_1PluralRules.html
-#[deriving(Eq, TotalEq, Hash)]
+#[deriving(Eq, TotalEq, Hash, Show)]
 #[allow(missing_doc)]
 pub enum PluralKeyword {
     /// The plural form for zero objects.
@@ -683,7 +687,6 @@ impl<'a> Parser<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use prelude::*;
 
     fn same(fmt: &'static str, p: &[Piece<'static>]) {
         let mut parser = Parser::new(fmt);
