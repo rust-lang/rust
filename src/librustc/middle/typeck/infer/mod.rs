@@ -644,7 +644,7 @@ impl<'a> InferCtxt<'a> {
         self.region_vars.new_bound(binder_id)
     }
 
-    pub fn resolve_regions(&self) {
+    pub fn resolve_regions_and_report_errors(&self) {
         let errors = self.region_vars.resolve_regions();
         self.report_region_errors(&errors); // see error_reporting.rs
     }
