@@ -106,6 +106,7 @@ mod should_not_exist;
 mod std {
     pub use clone;
     pub use cmp;
+    pub use kinds;
 
     #[cfg(test)] pub use realstd::fmt;    // needed for fail!()
     #[cfg(test)] pub use realstd::rt;     // needed for fail!()
