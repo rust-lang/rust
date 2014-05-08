@@ -17,8 +17,16 @@
 #![allow(missing_doc)]
 #![doc(hidden)]
 
-use fmt::parse;
 use option::Option;
+
+#[cfg(stage0)]
+pub use fmt::parse::{Alignment, AlignLeft, AlignRight, AlignUnknown};
+#[cfg(stage0)]
+pub use fmt::parse::{PluralKeyword, Zero, One, Two, Few, Many};
+#[cfg(stage0)]
+pub use fmt::parse::{Flag, FlagSignPlus, FlagSignMinus, FlagSignAwareZeroPad};
+#[cfg(stage0)]
+pub use fmt::parse::{FlagAlternate};
 
 pub enum Piece<'a> {
     String(&'a str),
@@ -35,10 +43,18 @@ pub struct Argument<'a> {
 
 pub struct FormatSpec {
     pub fill: char,
-    pub align: parse::Alignment,
+    pub align: Alignment,
     pub flags: uint,
     pub precision: Count,
     pub width: Count,
+}
+
+#[cfg(not(stage0))]
+#[deriving(Eq)]
+pub enum Alignment {
+    AlignLeft,
+    AlignRight,
+    AlignUnknown,
 }
 
 pub enum Count {
@@ -49,14 +65,30 @@ pub enum Position {
     ArgumentNext, ArgumentIs(uint)
 }
 
+#[cfg(not(stage0))]
+pub enum Flag {
+    FlagSignPlus,
+    FlagSignMinus,
+    FlagAlternate,
+    FlagSignAwareZeroPad,
+}
+
 pub enum Method<'a> {
     Plural(Option<uint>, &'a [PluralArm<'a>], &'a [Piece<'a>]),
     Select(&'a [SelectArm<'a>], &'a [Piece<'a>]),
 }
 
 pub enum PluralSelector {
-    Keyword(parse::PluralKeyword),
+    Keyword(PluralKeyword),
     Literal(uint),
+}
+
+pub enum PluralKeyword {
+    Zero,
+    One,
+    Two,
+    Few,
+    Many,
 }
 
 pub struct PluralArm<'a> {
