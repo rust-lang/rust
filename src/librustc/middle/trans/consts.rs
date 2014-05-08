@@ -36,7 +36,7 @@ use std::c_str::ToCStr;
 use std::slice;
 use std::vec::Vec;
 use libc::c_uint;
-use syntax::{ast, ast_util};
+use syntax::{ast, ast_util, ast_map};
 
 pub fn const_lit(cx: &CrateContext, e: &ast::Expr, lit: ast::Lit)
     -> ValueRef {
@@ -170,12 +170,26 @@ pub fn get_const_val(cx: &CrateContext,
             def_id = inline::maybe_instantiate_inline(cx, def_id);
         }
 
-        match cx.tcx.map.expect_item(def_id.node).node {
-            ast::ItemStatic(_, ast::MutImmutable, _) => {
-                trans_const(cx, ast::MutImmutable, def_id.node);
-            }
+        match cx.tcx.map.get(def_id.node) {
+            ast_map::NodeItem(ref item) =>
+                match item.node {
+                    ast::ItemStatic(_, ast::MutImmutable, _) =>
+                        trans_const(cx, ast::MutImmutable, def_id.node),
+                    _ => {}
+                },
+            /*ast_map::NodeForeignItem(ref item) =>
+                match item.node {
+                    ast::ForeignItemStatic(_, false) =>
+                        trans_const(cx, ast::MutImmutable, def_id.node),
+                    _ => {}
+                }, */
             _ => {}
         }
+    }
+    if !cx.const_values.borrow().contains_key(&def_id.node) {
+        debug!("get_const_value {}: value={}",
+               ast_map::node_id_to_str(&cx.tcx.map, def_id.node),
+               cx.item_symbols.borrow().find(&def_id.node));
     }
 
     (cx.const_values.borrow().get_copy(&def_id.node),
