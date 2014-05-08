@@ -18,7 +18,7 @@ use uvio::UvIoFactory;
 use uvll;
 
 pub struct TimerWatcher {
-    handle: *uvll::uv_timer_t,
+    pub handle: *uvll::uv_timer_t,
     home: HomeHandle,
     action: Option<NextAction>,
     blocker: Option<BlockedTask>,

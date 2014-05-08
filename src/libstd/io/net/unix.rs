@@ -61,21 +61,11 @@ impl UnixStream {
         })
     }
 
-    /// Connect to a pipe named by `path`. This will attempt to open a
-    /// connection to the underlying socket.
+    /// Connect to a pipe named by `path`, timing out if the specified number of
+    /// milliseconds.
     ///
-    /// The returned stream will be closed when the object falls out of scope.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// # #![allow(unused_must_use)]
-    /// use std::io::net::unix::UnixStream;
-    ///
-    /// let server = Path::new("path/to/my/socket");
-    /// let mut stream = UnixStream::connect(&server);
-    /// stream.write([1, 2, 3]);
-    /// ```
+    /// This function is similar to `connect`, except that if `timeout_ms`
+    /// elapses the function will return an error of kind `TimedOut`.
     #[experimental = "the timeout argument is likely to change types"]
     pub fn connect_timeout<P: ToCStr>(path: &P,
                                       timeout_ms: u64) -> IoResult<UnixStream> {
@@ -103,6 +93,27 @@ impl UnixStream {
     /// Note that this method affects all cloned handles associated with this
     /// stream, not just this one handle.
     pub fn close_write(&mut self) -> IoResult<()> { self.obj.close_write() }
+
+    /// Sets the read/write timeout for this socket.
+    ///
+    /// For more information, see `TcpStream::set_timeout`
+    pub fn set_timeout(&mut self, timeout_ms: Option<u64>) {
+        self.obj.set_timeout(timeout_ms)
+    }
+
+    /// Sets the read timeout for this socket.
+    ///
+    /// For more information, see `TcpStream::set_timeout`
+    pub fn set_read_timeout(&mut self, timeout_ms: Option<u64>) {
+        self.obj.set_read_timeout(timeout_ms)
+    }
+
+    /// Sets the write timeout for this socket.
+    ///
+    /// For more information, see `TcpStream::set_timeout`
+    pub fn set_write_timeout(&mut self, timeout_ms: Option<u64>) {
+        self.obj.set_write_timeout(timeout_ms)
+    }
 }
 
 impl Clone for UnixStream {
@@ -457,6 +468,7 @@ mod tests {
                 Err(ref e) if e.kind == TimedOut => {}
                 Err(e) => fail!("error: {}", e),
             }
+            ::task::deschedule();
             if i == 1000 { fail!("should have a pending connection") }
         }
         drop(l);
@@ -540,5 +552,123 @@ mod tests {
 
         // this test will never finish if the child doesn't wake up
         rx.recv();
+    })
+
+    iotest!(fn readwrite_timeouts() {
+        let addr = next_test_unix();
+        let mut a = UnixListener::bind(&addr).listen().unwrap();
+        let (tx, rx) = channel::<()>();
+        spawn(proc() {
+            let mut s = UnixStream::connect(&addr).unwrap();
+            rx.recv();
+            assert!(s.write([0]).is_ok());
+            let _ = rx.recv_opt();
+        });
+
+        let mut s = a.accept().unwrap();
+        s.set_timeout(Some(20));
+        assert_eq!(s.read([0]).err().unwrap().kind, TimedOut);
+        assert_eq!(s.read([0]).err().unwrap().kind, TimedOut);
+
+        s.set_timeout(Some(20));
+        for i in range(0, 1001) {
+            match s.write([0, .. 128 * 1024]) {
+                Ok(()) | Err(IoError { kind: ShortWrite(..), .. }) => {},
+                Err(IoError { kind: TimedOut, .. }) => break,
+                Err(e) => fail!("{}", e),
+           }
+           if i == 1000 { fail!("should have filled up?!"); }
+        }
+
+        // I'm not sure as to why, but apparently the write on windows always
+        // succeeds after the previous timeout. Who knows?
+        if !cfg!(windows) {
+            assert_eq!(s.write([0]).err().unwrap().kind, TimedOut);
+        }
+
+        tx.send(());
+        s.set_timeout(None);
+        assert_eq!(s.read([0, 0]), Ok(1));
+    })
+
+    iotest!(fn read_timeouts() {
+        let addr = next_test_unix();
+        let mut a = UnixListener::bind(&addr).listen().unwrap();
+        let (tx, rx) = channel::<()>();
+        spawn(proc() {
+            let mut s = UnixStream::connect(&addr).unwrap();
+            rx.recv();
+            let mut amt = 0;
+            while amt < 100 * 128 * 1024 {
+                match s.read([0, ..128 * 1024]) {
+                    Ok(n) => { amt += n; }
+                    Err(e) => fail!("{}", e),
+                }
+            }
+            let _ = rx.recv_opt();
+        });
+
+        let mut s = a.accept().unwrap();
+        s.set_read_timeout(Some(20));
+        assert_eq!(s.read([0]).err().unwrap().kind, TimedOut);
+        assert_eq!(s.read([0]).err().unwrap().kind, TimedOut);
+
+        tx.send(());
+        for _ in range(0, 100) {
+            assert!(s.write([0, ..128 * 1024]).is_ok());
+        }
+    })
+
+    iotest!(fn write_timeouts() {
+        let addr = next_test_unix();
+        let mut a = UnixListener::bind(&addr).listen().unwrap();
+        let (tx, rx) = channel::<()>();
+        spawn(proc() {
+            let mut s = UnixStream::connect(&addr).unwrap();
+            rx.recv();
+            assert!(s.write([0]).is_ok());
+            let _ = rx.recv_opt();
+        });
+
+        let mut s = a.accept().unwrap();
+        s.set_write_timeout(Some(20));
+        for i in range(0, 1001) {
+            match s.write([0, .. 128 * 1024]) {
+                Ok(()) | Err(IoError { kind: ShortWrite(..), .. }) => {},
+                Err(IoError { kind: TimedOut, .. }) => break,
+                Err(e) => fail!("{}", e),
+           }
+           if i == 1000 { fail!("should have filled up?!"); }
+        }
+
+        tx.send(());
+        assert!(s.read([0]).is_ok());
+    })
+
+    iotest!(fn timeout_concurrent_read() {
+        let addr = next_test_unix();
+        let mut a = UnixListener::bind(&addr).listen().unwrap();
+        let (tx, rx) = channel::<()>();
+        spawn(proc() {
+            let mut s = UnixStream::connect(&addr).unwrap();
+            rx.recv();
+            assert!(s.write([0]).is_ok());
+            let _ = rx.recv_opt();
+        });
+
+        let mut s = a.accept().unwrap();
+        let s2 = s.clone();
+        let (tx2, rx2) = channel();
+        spawn(proc() {
+            let mut s2 = s2;
+            assert!(s2.read([0]).is_ok());
+            tx2.send(());
+        });
+
+        s.set_read_timeout(Some(20));
+        assert_eq!(s.read([0]).err().unwrap().kind, TimedOut);
+        tx.send(());
+
+        rx2.recv();
     })
 }

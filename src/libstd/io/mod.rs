@@ -326,6 +326,8 @@ impl IoError {
                 libc::WSAEADDRNOTAVAIL => (ConnectionRefused, "address not available"),
                 libc::WSAEADDRINUSE => (ConnectionRefused, "address in use"),
                 libc::ERROR_BROKEN_PIPE => (EndOfFile, "the pipe has ended"),
+                libc::ERROR_OPERATION_ABORTED =>
+                    (TimedOut, "operation timed out"),
 
                 // libuv maps this error code to EISDIR. we do too. if it is found
                 // to be incorrect, we can add in some more machinery to only
@@ -434,6 +436,17 @@ pub enum IoErrorKind {
     InvalidInput,
     /// The I/O operation's timeout expired, causing it to be canceled.
     TimedOut,
+    /// This write operation failed to write all of its data.
+    ///
+    /// Normally the write() method on a Writer guarantees that all of its data
+    /// has been written, but some operations may be terminated after only
+    /// partially writing some data. An example of this is a timed out write
+    /// which successfully wrote a known number of bytes, but bailed out after
+    /// doing so.
+    ///
+    /// The payload contained as part of this variant is the number of bytes
+    /// which are known to have been successfully written.
+    ShortWrite(uint),
 }
 
 /// A trait for objects which are byte-oriented streams. Readers are defined by
@@ -1429,7 +1442,8 @@ pub fn standard_error(kind: IoErrorKind) -> IoError {
         PathDoesntExist => "no such file",
         MismatchedFileTypeForOperation => "mismatched file type",
         ResourceUnavailable => "resource unavailable",
-        TimedOut => "operation timed out"
+        TimedOut => "operation timed out",
+        ShortWrite(..) => "short write",
     };
     IoError {
         kind: kind,

@@ -27,6 +27,13 @@ pub static FIOCLEX: libc::c_ulong = 0x20006601;
 #[cfg(target_os = "android")]
 pub static FIOCLEX: libc::c_ulong = 0x5451;
 
+#[cfg(target_os = "macos")]
+#[cfg(target_os = "freebsd")]
+pub static MSG_DONTWAIT: libc::c_int = 0x80;
+#[cfg(target_os = "linux")]
+#[cfg(target_os = "android")]
+pub static MSG_DONTWAIT: libc::c_int = 0x40;
+
 extern {
     pub fn gettimeofday(timeval: *mut libc::timeval,
                         tzp: *libc::c_void) -> libc::c_int;

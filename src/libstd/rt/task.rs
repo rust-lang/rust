@@ -323,6 +323,12 @@ impl BlockedTask {
         }
     }
 
+    /// Reawakens this task if ownership is acquired. If finer-grained control
+    /// is desired, use `wake` instead.
+    pub fn reawaken(self) {
+        self.wake().map(|t| t.reawaken());
+    }
+
     // This assertion has two flavours because the wake involves an atomic op.
     // In the faster version, destructors will fail dramatically instead.
     #[cfg(not(test))] pub fn trash(self) { }

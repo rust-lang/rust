@@ -151,6 +151,69 @@ impl TcpStream {
     /// Note that this method affects all cloned handles associated with this
     /// stream, not just this one handle.
     pub fn close_write(&mut self) -> IoResult<()> { self.obj.close_write() }
+
+    /// Sets a timeout, in milliseconds, for blocking operations on this stream.
+    ///
+    /// This function will set a timeout for all blocking operations (including
+    /// reads and writes) on this stream. The timeout specified is a relative
+    /// time, in milliseconds, into the future after which point operations will
+    /// time out. This means that the timeout must be reset periodically to keep
+    /// it from expiring. Specifying a value of `None` will clear the timeout
+    /// for this stream.
+    ///
+    /// The timeout on this stream is local to this stream only. Setting a
+    /// timeout does not affect any other cloned instances of this stream, nor
+    /// does the timeout propagated to cloned handles of this stream. Setting
+    /// this timeout will override any specific read or write timeouts
+    /// previously set for this stream.
+    ///
+    /// For clarification on the semantics of interrupting a read and a write,
+    /// take a look at `set_read_timeout` and `set_write_timeout`.
+    pub fn set_timeout(&mut self, timeout_ms: Option<u64>) {
+        self.obj.set_timeout(timeout_ms)
+    }
+
+    /// Sets the timeout for read operations on this stream.
+    ///
+    /// See documentation in `set_timeout` for the semantics of this read time.
+    /// This will overwrite any previous read timeout set through either this
+    /// function or `set_timeout`.
+    ///
+    /// # Errors
+    ///
+    /// When this timeout expires, if there is no pending read operation, no
+    /// action is taken. Otherwise, the read operation will be scheduled to
+    /// promptly return. If a timeout error is returned, then no data was read
+    /// during the timeout period.
+    pub fn set_read_timeout(&mut self, timeout_ms: Option<u64>) {
+        self.obj.set_read_timeout(timeout_ms)
+    }
+
+    /// Sets the timeout for write operations on this stream.
+    ///
+    /// See documentation in `set_timeout` for the semantics of this write time.
+    /// This will overwrite any previous write timeout set through either this
+    /// function or `set_timeout`.
+    ///
+    /// # Errors
+    ///
+    /// When this timeout expires, if there is no pending write operation, no
+    /// action is taken. Otherwise, the pending write operation will be
+    /// scheduled to promptly return. The actual state of the underlying stream
+    /// is not specified.
+    ///
+    /// The write operation may return an error of type `ShortWrite` which
+    /// indicates that the object is known to have written an exact number of
+    /// bytes successfully during the timeout period, and the remaining bytes
+    /// were never written.
+    ///
+    /// If the write operation returns `TimedOut`, then it the timeout primitive
+    /// does not know how many bytes were written as part of the timeout
+    /// operation. It may be the case that bytes continue to be written in an
+    /// asynchronous fashion after the call to write returns.
+    pub fn set_write_timeout(&mut self, timeout_ms: Option<u64>) {
+        self.obj.set_write_timeout(timeout_ms)
+    }
 }
 
 impl Clone for TcpStream {
@@ -892,6 +955,7 @@ mod test {
                 Err(ref e) if e.kind == TimedOut => {}
                 Err(e) => fail!("error: {}", e),
             }
+            ::task::deschedule();
             if i == 1000 { fail!("should have a pending connection") }
         }
         drop(l);
@@ -963,5 +1027,119 @@ mod test {
 
         // this test will never finish if the child doesn't wake up
         rx.recv();
+    })
+
+    iotest!(fn readwrite_timeouts() {
+        let addr = next_test_ip6();
+        let mut a = TcpListener::bind(addr).listen().unwrap();
+        let (tx, rx) = channel::<()>();
+        spawn(proc() {
+            let mut s = TcpStream::connect(addr).unwrap();
+            rx.recv();
+            assert!(s.write([0]).is_ok());
+            let _ = rx.recv_opt();
+        });
+
+        let mut s = a.accept().unwrap();
+        s.set_timeout(Some(20));
+        assert_eq!(s.read([0]).err().unwrap().kind, TimedOut);
+        assert_eq!(s.read([0]).err().unwrap().kind, TimedOut);
+
+        s.set_timeout(Some(20));
+        for i in range(0, 1001) {
+            match s.write([0, .. 128 * 1024]) {
+                Ok(()) | Err(IoError { kind: ShortWrite(..), .. }) => {},
+                Err(IoError { kind: TimedOut, .. }) => break,
+                Err(e) => fail!("{}", e),
+           }
+           if i == 1000 { fail!("should have filled up?!"); }
+        }
+        assert_eq!(s.write([0]).err().unwrap().kind, TimedOut);
+
+        tx.send(());
+        s.set_timeout(None);
+        assert_eq!(s.read([0, 0]), Ok(1));
+    })
+
+    iotest!(fn read_timeouts() {
+        let addr = next_test_ip6();
+        let mut a = TcpListener::bind(addr).listen().unwrap();
+        let (tx, rx) = channel::<()>();
+        spawn(proc() {
+            let mut s = TcpStream::connect(addr).unwrap();
+            rx.recv();
+            let mut amt = 0;
+            while amt < 100 * 128 * 1024 {
+                match s.read([0, ..128 * 1024]) {
+                    Ok(n) => { amt += n; }
+                    Err(e) => fail!("{}", e),
+                }
+            }
+            let _ = rx.recv_opt();
+        });
+
+        let mut s = a.accept().unwrap();
+        s.set_read_timeout(Some(20));
+        assert_eq!(s.read([0]).err().unwrap().kind, TimedOut);
+        assert_eq!(s.read([0]).err().unwrap().kind, TimedOut);
+
+        tx.send(());
+        for _ in range(0, 100) {
+            assert!(s.write([0, ..128 * 1024]).is_ok());
+        }
+    })
+
+    iotest!(fn write_timeouts() {
+        let addr = next_test_ip6();
+        let mut a = TcpListener::bind(addr).listen().unwrap();
+        let (tx, rx) = channel::<()>();
+        spawn(proc() {
+            let mut s = TcpStream::connect(addr).unwrap();
+            rx.recv();
+            assert!(s.write([0]).is_ok());
+            let _ = rx.recv_opt();
+        });
+
+        let mut s = a.accept().unwrap();
+        s.set_write_timeout(Some(20));
+        for i in range(0, 1001) {
+            match s.write([0, .. 128 * 1024]) {
+                Ok(()) | Err(IoError { kind: ShortWrite(..), .. }) => {},
+                Err(IoError { kind: TimedOut, .. }) => break,
+                Err(e) => fail!("{}", e),
+           }
+           if i == 1000 { fail!("should have filled up?!"); }
+        }
+        assert_eq!(s.write([0]).err().unwrap().kind, TimedOut);
+
+        tx.send(());
+        assert!(s.read([0]).is_ok());
+    })
+
+    iotest!(fn timeout_concurrent_read() {
+        let addr = next_test_ip6();
+        let mut a = TcpListener::bind(addr).listen().unwrap();
+        let (tx, rx) = channel::<()>();
+        spawn(proc() {
+            let mut s = TcpStream::connect(addr).unwrap();
+            rx.recv();
+            assert_eq!(s.write([0]), Ok(()));
+            let _ = rx.recv_opt();
+        });
+
+        let mut s = a.accept().unwrap();
+        let s2 = s.clone();
+        let (tx2, rx2) = channel();
+        spawn(proc() {
+            let mut s2 = s2;
+            assert_eq!(s2.read([0]), Ok(1));
+            tx2.send(());
+        });
+
+        s.set_read_timeout(Some(20));
+        assert_eq!(s.read([0]).err().unwrap().kind, TimedOut);
+        tx.send(());
+
+        rx2.recv();
     })
 }
