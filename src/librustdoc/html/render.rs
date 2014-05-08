@@ -1637,7 +1637,7 @@ impl Context {
 
         fn docmeth(w: &mut Writer, cx: &Context,
                    item: &clean::Item, dox: bool) -> io::IoResult<()> {
-            try!(write!(w, "<div class="method-container">"));
+            try!(write!(w, "<div class='method-container'>"));
             try!(write!(w, "<h4 id='method.{}' class='method'><code>",
                           *item.name.get_ref()));
             try!(cx.render_method(w, item));
