@@ -205,7 +205,7 @@ impl StreamWatcher {
                 // Note that we don't cache this write request back in the
                 // stream watcher because we no longer have ownership of it, and
                 // we never will.
-                let new_wcx = ~WriteContext {
+                let new_wcx = box WriteContext {
                     result: 0,
                     stream: 0 as *mut StreamWatcher,
                     data: wcx.data.take(),
@@ -272,6 +272,6 @@ extern fn write_cb(req: *uvll::uv_write_t, status: c_int) {
         let stream: &mut StreamWatcher = unsafe { &mut *wcx.stream };
         wakeup(&mut stream.blocked_writer);
     } else {
-        let _wcx: ~WriteContext = unsafe { cast::transmute(wcx) };
+        let _wcx: Box<WriteContext> = unsafe { cast::transmute(wcx) };
     }
 }

@@ -645,7 +645,7 @@ impl rtio::RtioUdpSocket for UdpWatcher {
                         n => Err(uv_error_to_io_error(UvError(n)))
                     }
                 }
-                let new_cx = ~UdpSendCtx {
+                let new_cx = box UdpSendCtx {
                     result: 0,
                     udp: 0 as *mut UdpWatcher,
                     data: cx.data.take(),
@@ -670,7 +670,7 @@ impl rtio::RtioUdpSocket for UdpWatcher {
                 let udp: &mut UdpWatcher = unsafe { &mut *cx.udp };
                 wakeup(&mut udp.blocked_sender);
             } else {
-                let _cx: ~UdpSendCtx = unsafe { cast::transmute(cx) };
+                let _cx: Box<UdpSendCtx> = unsafe { cast::transmute(cx) };
             }
         }
     }
