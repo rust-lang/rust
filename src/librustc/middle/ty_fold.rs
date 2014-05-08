@@ -71,6 +71,10 @@ pub trait TypeFolder {
     fn fold_trait_store(&mut self, s: ty::TraitStore) -> ty::TraitStore {
         super_fold_trait_store(self, s)
     }
+
+    fn fold_autoref(&mut self, ar: &ty::AutoRef) -> ty::AutoRef {
+        super_fold_autoref(self, ar)
+    }
 }
 
 pub fn fold_opt_ty<T:TypeFolder>(this: &mut T,
@@ -197,6 +201,19 @@ pub fn super_fold_trait_store<T:TypeFolder>(this: &mut T,
         ty::RegionTraitStore(r, m) => {
             ty::RegionTraitStore(this.fold_region(r), m)
         }
+    }
+}
+
+pub fn super_fold_autoref<T:TypeFolder>(this: &mut T,
+                                        autoref: &ty::AutoRef)
+                                        -> ty::AutoRef
+{
+    match *autoref {
+        ty::AutoPtr(r, m) => ty::AutoPtr(this.fold_region(r), m),
+        ty::AutoBorrowVec(r, m) => ty::AutoBorrowVec(this.fold_region(r), m),
+        ty::AutoBorrowVecRef(r, m) => ty::AutoBorrowVecRef(this.fold_region(r), m),
+        ty::AutoUnsafe(m) => ty::AutoUnsafe(m),
+        ty::AutoBorrowObj(r, m) => ty::AutoBorrowObj(this.fold_region(r), m),
     }
 }
 
