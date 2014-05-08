@@ -15,16 +15,16 @@
 
 use middle::pat_util;
 use middle::ty;
+use middle::ty_fold::TypeFolder;
 use middle::typeck::astconv::AstConv;
 use middle::typeck::check::FnCtxt;
 use middle::typeck::infer::{force_all, resolve_all, resolve_region};
 use middle::typeck::infer::resolve_type;
 use middle::typeck::infer;
 use middle::typeck::{MethodCall, MethodCallee};
-use middle::typeck::{vtable_res, vtable_static, vtable_param};
+use middle::typeck::{vtable_origin, vtable_static, vtable_param};
 use middle::typeck::write_substs_to_tcx;
 use middle::typeck::write_ty_to_tcx;
-use util::ppaux;
 use util::ppaux::Repr;
 
 use syntax::ast;
@@ -33,357 +33,455 @@ use syntax::print::pprust::pat_to_str;
 use syntax::visit;
 use syntax::visit::Visitor;
 
-fn resolve_type_vars_in_type(fcx: &FnCtxt, sp: Span, typ: ty::t)
-                          -> Option<ty::t> {
-    if !ty::type_needs_infer(typ) { return Some(typ); }
-    match resolve_type(fcx.infcx(), typ, resolve_all | force_all) {
-        Ok(new_type) => return Some(new_type),
-        Err(e) => {
-            if !fcx.ccx.tcx.sess.has_errors() {
-                fcx.ccx.tcx.sess.span_err(
-                    sp,
-                    format!("cannot determine a type \
-                          for this expression: {}",
-                         infer::fixup_err_to_str(e)))
-            }
-            return None;
-        }
-    }
-}
+///////////////////////////////////////////////////////////////////////////
+// Entry point functions
 
-fn resolve_method_map_entry(wbcx: &mut WbCtxt, sp: Span, method_call: MethodCall) {
-    let fcx = wbcx.fcx;
-    let tcx = fcx.ccx.tcx;
-
-    // Resolve any method map entry
-    match fcx.inh.method_map.borrow_mut().pop(&method_call) {
-        Some(method) => {
-            debug!("writeback::resolve_method_map_entry(call={:?}, entry={:?})",
-                   method_call, method.repr(tcx));
-            let new_method = MethodCallee {
-                origin: method.origin,
-                ty: match resolve_type_vars_in_type(fcx, sp, method.ty) {
-                    Some(t) => t,
-                    None => {
-                        wbcx.success = false;
-                        return;
-                    }
-                },
-                substs: ty::substs {
-                    tps: method.substs.tps.move_iter().map(|subst| {
-                        match resolve_type_vars_in_type(fcx, sp, subst) {
-                            Some(t) => t,
-                            None => { wbcx.success = false; ty::mk_err() }
-                        }
-                    }).collect(),
-                    regions: ty::ErasedRegions,
-                    self_ty: None
-                }
-            };
-            tcx.method_map.borrow_mut().insert(method_call, new_method);
-        }
-        None => {}
-    }
-}
-
-fn resolve_vtable_map_entry(fcx: &FnCtxt, sp: Span, vtable_key: MethodCall) {
-    // Resolve any vtable map entry
-    match fcx.inh.vtable_map.borrow_mut().pop(&vtable_key) {
-        Some(origins) => {
-            let r_origins = resolve_origins(fcx, sp, origins);
-            debug!("writeback::resolve_vtable_map_entry(vtable_key={}, vtables={:?})",
-                    vtable_key, r_origins.repr(fcx.tcx()));
-            fcx.tcx().vtable_map.borrow_mut().insert(vtable_key, r_origins);
-        }
-        None => {}
-    }
-
-    fn resolve_origins(fcx: &FnCtxt, sp: Span,
-                       vtbls: vtable_res) -> vtable_res {
-        vtbls.move_iter().map(|os| os.move_iter().map(|origin| {
-            match origin {
-                vtable_static(def_id, tys, origins) => {
-                    let r_tys = tys.move_iter().map(|t| {
-                        match resolve_type_vars_in_type(fcx, sp, t) {
-                            Some(t1) => t1,
-                            None => ty::mk_err()
-                        }
-                    }).collect();
-                    let r_origins = resolve_origins(fcx, sp, origins);
-                    vtable_static(def_id, r_tys, r_origins)
-                }
-                vtable_param(n, b) => vtable_param(n, b)
-            }
-        }).collect()).collect()
-    }
-}
-
-fn resolve_type_vars_for_node(wbcx: &mut WbCtxt, sp: Span, id: ast::NodeId) {
-    let fcx = wbcx.fcx;
-    let tcx = fcx.ccx.tcx;
-
-    // Resolve any borrowings for the node with id `id`
-    let resolved_adj = match fcx.inh.adjustments.borrow_mut().pop(&id) {
-        None => None,
-
-        Some(adjustment) => {
-            Some(match adjustment {
-                ty::AutoAddEnv(store) => {
-                    let r = match store {
-                        ty::RegionTraitStore(r, _) => r,
-                        ty::UniqTraitStore => ty::ReStatic
-                    };
-                    match resolve_region(fcx.infcx(),
-                                         r,
-                                         resolve_all | force_all) {
-                        Err(e) => {
-                            // This should not, I think, happen:
-                            tcx.sess.span_err(
-                                sp,
-                                format!("cannot resolve bound for closure: \
-                                         {}",
-                                        infer::fixup_err_to_str(e)));
-                            wbcx.success = false;
-                            return;
-                        }
-                        Ok(r1) => {
-                            // FIXME(eddyb) #2190 Allow only statically resolved
-                            // bare functions to coerce to a closure to avoid
-                            // constructing (slower) indirect call wrappers.
-                            match tcx.def_map.borrow().find(&id) {
-                                Some(&ast::DefFn(..)) |
-                                Some(&ast::DefStaticMethod(..)) |
-                                Some(&ast::DefVariant(..)) |
-                                Some(&ast::DefStruct(_)) => {}
-                                _ => tcx.sess.span_err(sp,
-                                        "cannot coerce non-statically resolved bare fn")
-                            }
-
-                            ty::AutoAddEnv(match store {
-                                ty::RegionTraitStore(..) => {
-                                    ty::RegionTraitStore(r1, ast::MutMutable)
-                                }
-                                ty::UniqTraitStore => ty::UniqTraitStore
-                            })
-                        }
-                    }
-                }
-
-                ty::AutoDerefRef(adj) => {
-                    for autoderef in range(0, adj.autoderefs) {
-                        let method_call = MethodCall::autoderef(id, autoderef as u32);
-                        resolve_method_map_entry(wbcx, sp, method_call);
-                        resolve_vtable_map_entry(wbcx.fcx, sp, method_call);
-                    }
-
-                    ty::AutoDerefRef(ty::AutoDerefRef {
-                        autoderefs: adj.autoderefs,
-                        autoref: adj.autoref.map(|r| r.map_region(|r| {
-                            match resolve_region(fcx.infcx(), r,
-                                                resolve_all | force_all) {
-                                Ok(r1) => r1,
-                                Err(e) => {
-                                    // This should not, I think, happen.
-                                    tcx.sess.span_err(
-                                        sp,
-                                        format!("cannot resolve scope of borrow: \
-                                                {}",
-                                                infer::fixup_err_to_str(e)));
-                                    r
-                                }
-                            }
-                        })),
-                    })
-                }
-
-                adjustment => adjustment
-            })
-        }
-    };
-
-    debug!("Adjustments for node {}: {:?}",
-           id, resolved_adj);
-    match resolved_adj {
-        Some(adj) => {
-            tcx.adjustments.borrow_mut().insert(id, adj);
-        }
-        None => {}
-    }
-
-    // Resolve the type of the node with id `id`
-    let n_ty = fcx.node_ty(id);
-    match resolve_type_vars_in_type(fcx, sp, n_ty) {
-      None => {
-        wbcx.success = false;
-      }
-
-      Some(t) => {
-        debug!("resolve_type_vars_for_node(id={}, n_ty={}, t={})",
-               id, ppaux::ty_to_str(tcx, n_ty), ppaux::ty_to_str(tcx, t));
-        write_ty_to_tcx(tcx, id, t);
-        fcx.opt_node_ty_substs(id, |substs| {
-          let mut new_tps = Vec::new();
-          for subst in substs.tps.iter() {
-              match resolve_type_vars_in_type(fcx, sp, *subst) {
-                Some(t) => new_tps.push(t),
-                None => { wbcx.success = false; break }
-              }
-          }
-          write_substs_to_tcx(tcx, id, new_tps);
-          wbcx.success
-        });
-      }
-    }
-}
-
-struct WbCtxt<'a> {
-    fcx: &'a FnCtxt<'a>,
-
-    // As soon as we hit an error we have to stop resolving
-    // the entire function.
-    success: bool,
-}
-
-fn visit_stmt(s: &ast::Stmt, wbcx: &mut WbCtxt) {
-    if !wbcx.success { return; }
-    resolve_type_vars_for_node(wbcx, s.span, ty::stmt_node_id(s));
-    visit::walk_stmt(wbcx, s, ());
-}
-
-fn visit_expr(e: &ast::Expr, wbcx: &mut WbCtxt) {
-    if !wbcx.success {
-        return;
-    }
-
-    resolve_type_vars_for_node(wbcx, e.span, e.id);
-    resolve_method_map_entry(wbcx, e.span, MethodCall::expr(e.id));
-    resolve_vtable_map_entry(wbcx.fcx, e.span, MethodCall::expr(e.id));
-
-    match e.node {
-        ast::ExprFnBlock(ref decl, _) | ast::ExprProc(ref decl, _) => {
-            for input in decl.inputs.iter() {
-                let _ = resolve_type_vars_for_node(wbcx, e.span, input.id);
-            }
-        }
-        _ => {}
-    }
-
-    visit::walk_expr(wbcx, e, ());
-}
-
-fn visit_block(b: &ast::Block, wbcx: &mut WbCtxt) {
-    if !wbcx.success {
-        return;
-    }
-
-    resolve_type_vars_for_node(wbcx, b.span, b.id);
-    visit::walk_block(wbcx, b, ());
-}
-
-fn visit_pat(p: &ast::Pat, wbcx: &mut WbCtxt) {
-    if !wbcx.success {
-        return;
-    }
-
-    resolve_type_vars_for_node(wbcx, p.span, p.id);
-    debug!("Type for pattern binding {} (id {}) resolved to {}",
-           pat_to_str(p), p.id,
-           wbcx.fcx.infcx().ty_to_str(
-               ty::node_id_to_type(wbcx.fcx.ccx.tcx,
-                                   p.id)));
-    visit::walk_pat(wbcx, p, ());
-}
-
-fn visit_local(l: &ast::Local, wbcx: &mut WbCtxt) {
-    if !wbcx.success { return; }
-    let var_ty = wbcx.fcx.local_ty(l.span, l.id);
-    match resolve_type(wbcx.fcx.infcx(), var_ty, resolve_all | force_all) {
-        Ok(lty) => {
-            debug!("Type for local {} (id {}) resolved to {}",
-                   pat_to_str(l.pat),
-                   l.id,
-                   wbcx.fcx.infcx().ty_to_str(lty));
-            write_ty_to_tcx(wbcx.fcx.ccx.tcx, l.id, lty);
-        }
-        Err(e) => {
-            wbcx.fcx.ccx.tcx.sess.span_err(
-                l.span,
-                format!("cannot determine a type \
-                      for this local variable: {}",
-                     infer::fixup_err_to_str(e)));
-            wbcx.success = false;
-        }
-    }
-    visit::walk_local(wbcx, l, ());
-}
-fn visit_item(_item: &ast::Item, _wbcx: &mut WbCtxt) {
-    // Ignore items
-}
-
-impl<'a> Visitor<()> for WbCtxt<'a> {
-    fn visit_item(&mut self, i: &ast::Item, _: ()) { visit_item(i, self); }
-    fn visit_stmt(&mut self, s: &ast::Stmt, _: ()) { visit_stmt(s, self); }
-    fn visit_expr(&mut self, ex:&ast::Expr, _: ()) { visit_expr(ex, self); }
-    fn visit_block(&mut self, b: &ast::Block, _: ()) { visit_block(b, self); }
-    fn visit_pat(&mut self, p: &ast::Pat, _: ()) { visit_pat(p, self); }
-    fn visit_local(&mut self, l: &ast::Local, _: ()) { visit_local(l, self); }
-    // FIXME(#10894) should continue recursing
-    fn visit_ty(&mut self, _t: &ast::Ty, _: ()) {}
-}
-
-fn resolve_upvar_borrow_map(wbcx: &mut WbCtxt) {
-    if !wbcx.success {
-        return;
-    }
-
-    let fcx = wbcx.fcx;
-    let tcx = fcx.tcx();
-    for (upvar_id, upvar_borrow) in fcx.inh.upvar_borrow_map.borrow().iter() {
-        let r = upvar_borrow.region;
-        match resolve_region(fcx.infcx(), r, resolve_all | force_all) {
-            Ok(r) => {
-                let new_upvar_borrow = ty::UpvarBorrow {
-                    kind: upvar_borrow.kind,
-                    region: r
-                };
-                debug!("Upvar borrow for {} resolved to {}",
-                       upvar_id.repr(tcx), new_upvar_borrow.repr(tcx));
-                tcx.upvar_borrow_map.borrow_mut().insert(*upvar_id,
-                                                         new_upvar_borrow);
-            }
-            Err(e) => {
-                let span = ty::expr_span(tcx, upvar_id.closure_expr_id);
-                fcx.ccx.tcx.sess.span_err(
-                    span, format!("cannot resolve lifetime for \
-                                  captured variable `{}`: {}",
-                                  ty::local_var_name_str(tcx, upvar_id.var_id).get().to_str(),
-                                  infer::fixup_err_to_str(e)));
-                wbcx.success = false;
-            }
-        };
-    }
-}
-
-pub fn resolve_type_vars_in_expr(fcx: &FnCtxt, e: &ast::Expr) -> bool {
-    let mut wbcx = WbCtxt { fcx: fcx, success: true };
-    let wbcx = &mut wbcx;
+pub fn resolve_type_vars_in_expr(fcx: &FnCtxt, e: &ast::Expr) {
+    assert_eq!(fcx.writeback_errors.get(), false);
+    let mut wbcx = WritebackCx::new(fcx);
     wbcx.visit_expr(e, ());
-    resolve_upvar_borrow_map(wbcx);
-    return wbcx.success;
+    wbcx.visit_upvar_borrow_map();
 }
 
-pub fn resolve_type_vars_in_fn(fcx: &FnCtxt, decl: &ast::FnDecl,
-                               blk: &ast::Block) -> bool {
-    let mut wbcx = WbCtxt { fcx: fcx, success: true };
-    let wbcx = &mut wbcx;
+pub fn resolve_type_vars_in_fn(fcx: &FnCtxt,
+                               decl: &ast::FnDecl,
+                               blk: &ast::Block) {
+    assert_eq!(fcx.writeback_errors.get(), false);
+    let mut wbcx = WritebackCx::new(fcx);
     wbcx.visit_block(blk, ());
     for arg in decl.inputs.iter() {
         wbcx.visit_pat(arg.pat, ());
+
         // Privacy needs the type for the whole pattern, not just each binding
         if !pat_util::pat_is_binding(&fcx.tcx().def_map, arg.pat) {
-            resolve_type_vars_for_node(wbcx, arg.pat.span, arg.pat.id);
+            wbcx.visit_node_id(ResolvingPattern(arg.pat.span),
+                               arg.pat.id);
         }
     }
-    resolve_upvar_borrow_map(wbcx);
-    return wbcx.success;
+    wbcx.visit_upvar_borrow_map();
+}
+
+///////////////////////////////////////////////////////////////////////////
+// The Writerback context. This visitor walks the AST, checking the
+// fn-specific tables to find references to types or regions. It
+// resolves those regions to remove inference variables and writes the
+// final result back into the master tables in the tcx. Here and
+// there, it applies a few ad-hoc checks that were not convenient to
+// do elsewhere.
+
+struct WritebackCx<'cx> {
+    fcx: &'cx FnCtxt<'cx>,
+}
+
+impl<'cx> WritebackCx<'cx> {
+    fn new(fcx: &'cx FnCtxt) -> WritebackCx<'cx> {
+        WritebackCx { fcx: fcx }
+    }
+
+    fn tcx(&self) -> &'cx ty::ctxt {
+        self.fcx.tcx()
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////
+// Impl of Visitor for Resolver
+//
+// This is the master code which walks the AST. It delegates most of
+// the heavy lifting to the generic visit and resolve functions
+// below. In general, a function is made into a `visitor` if it must
+// traffic in node-ids or update tables in the type context etc.
+
+impl<'cx> Visitor<()> for WritebackCx<'cx> {
+    fn visit_item(&mut self, _: &ast::Item, _: ()) {
+        // Ignore items
+    }
+
+    fn visit_stmt(&mut self, s: &ast::Stmt, _: ()) {
+        if self.fcx.writeback_errors.get() {
+            return;
+        }
+
+        self.visit_node_id(ResolvingExpr(s.span), ty::stmt_node_id(s));
+        visit::walk_stmt(self, s, ());
+    }
+
+    fn visit_expr(&mut self, e:&ast::Expr, _: ()) {
+        if self.fcx.writeback_errors.get() {
+            return;
+        }
+
+        self.visit_node_id(ResolvingExpr(e.span), e.id);
+        self.visit_method_map_entry(ResolvingExpr(e.span),
+                                    MethodCall::expr(e.id));
+        self.visit_vtable_map_entry(ResolvingExpr(e.span),
+                                    MethodCall::expr(e.id));
+
+        match e.node {
+            ast::ExprFnBlock(ref decl, _) | ast::ExprProc(ref decl, _) => {
+                for input in decl.inputs.iter() {
+                    let _ = self.visit_node_id(ResolvingExpr(e.span),
+                                               input.id);
+                }
+            }
+            _ => {}
+        }
+
+        visit::walk_expr(self, e, ());
+    }
+
+    fn visit_block(&mut self, b: &ast::Block, _: ()) {
+        if self.fcx.writeback_errors.get() {
+            return;
+        }
+
+        self.visit_node_id(ResolvingExpr(b.span), b.id);
+        visit::walk_block(self, b, ());
+    }
+
+    fn visit_pat(&mut self, p: &ast::Pat, _: ()) {
+        if self.fcx.writeback_errors.get() {
+            return;
+        }
+
+        self.visit_node_id(ResolvingPattern(p.span), p.id);
+
+        debug!("Type for pattern binding {} (id {}) resolved to {}",
+               pat_to_str(p),
+               p.id,
+               ty::node_id_to_type(self.tcx(), p.id).repr(self.tcx()));
+
+        visit::walk_pat(self, p, ());
+    }
+
+    fn visit_local(&mut self, l: &ast::Local, _: ()) {
+        if self.fcx.writeback_errors.get() {
+            return;
+        }
+
+        let var_ty = self.fcx.local_ty(l.span, l.id);
+        let var_ty = var_ty.resolve(self.fcx, ResolvingLocal(l.span));
+        write_ty_to_tcx(self.tcx(), l.id, var_ty);
+        visit::walk_local(self, l, ());
+    }
+
+    fn visit_ty(&mut self, _t: &ast::Ty, _: ()) {
+        // ignore
+    }
+}
+
+impl<'cx> WritebackCx<'cx> {
+    fn visit_upvar_borrow_map(&self) {
+        if self.fcx.writeback_errors.get() {
+            return;
+        }
+
+        for (upvar_id, upvar_borrow) in self.fcx.inh.upvar_borrow_map.borrow().iter() {
+            let r = upvar_borrow.region;
+            let r = r.resolve(self.fcx, ResolvingUpvar(*upvar_id));
+            let new_upvar_borrow = ty::UpvarBorrow { kind: upvar_borrow.kind,
+                                                     region: r };
+            debug!("Upvar borrow for {} resolved to {}",
+                   upvar_id.repr(self.tcx()),
+                   new_upvar_borrow.repr(self.tcx()));
+            self.fcx.tcx().upvar_borrow_map.borrow_mut().insert(
+                *upvar_id, new_upvar_borrow);
+        }
+    }
+
+    fn visit_node_id(&self, reason: ResolveReason, id: ast::NodeId) {
+        // Resolve any borrowings for the node with id `id`
+        self.visit_adjustments(reason, id);
+
+        // Resolve the type of the node with id `id`
+        let n_ty = self.fcx.node_ty(id);
+        let n_ty = n_ty.resolve(self.fcx, reason);
+        write_ty_to_tcx(self.tcx(), id, n_ty);
+        debug!("Node {} has type {}", id, n_ty.repr(self.tcx()));
+
+        // Resolve any substitutions
+        self.fcx.opt_node_ty_substs(id, |node_substs| {
+            let mut new_tps = Vec::new();
+            for subst in node_substs.tps.iter() {
+                new_tps.push(subst.resolve(self.fcx, reason));
+            }
+            write_substs_to_tcx(self.tcx(), id, new_tps);
+        });
+    }
+
+    fn visit_adjustments(&self, reason: ResolveReason, id: ast::NodeId) {
+        match self.fcx.inh.adjustments.borrow_mut().pop(&id) {
+            None => {
+                debug!("No adjustments for node {}", id);
+            }
+
+            Some(adjustment) => {
+                let resolved_adjustment = match adjustment {
+                    ty::AutoAddEnv(store) => {
+                        // FIXME(eddyb) #2190 Allow only statically resolved
+                        // bare functions to coerce to a closure to avoid
+                        // constructing (slower) indirect call wrappers.
+                        match self.tcx().def_map.borrow().find(&id) {
+                            Some(&ast::DefFn(..)) |
+                            Some(&ast::DefStaticMethod(..)) |
+                            Some(&ast::DefVariant(..)) |
+                            Some(&ast::DefStruct(_)) => {
+                            }
+                            _ => {
+                                self.tcx().sess.span_err(
+                                    reason.span(self.fcx),
+                                    "cannot coerce non-statically resolved bare fn")
+                            }
+                        }
+
+                        ty::AutoAddEnv(store.resolve(self.fcx, reason))
+                    }
+
+                    ty::AutoDerefRef(adj) => {
+                        for autoderef in range(0, adj.autoderefs) {
+                            let method_call = MethodCall::autoderef(id, autoderef as u32);
+                            self.visit_method_map_entry(reason, method_call);
+                            self.visit_vtable_map_entry(reason, method_call);
+                        }
+
+                        ty::AutoDerefRef(ty::AutoDerefRef {
+                            autoderefs: adj.autoderefs,
+                            autoref: adj.autoref.resolve(self.fcx, reason),
+                        })
+                    }
+
+                    adjustment => adjustment
+                };
+                debug!("Adjustments for node {}: {:?}", id, resolved_adjustment);
+                self.tcx().adjustments.borrow_mut().insert(
+                    id, resolved_adjustment);
+            }
+        }
+    }
+
+    fn visit_method_map_entry(&self,
+                              reason: ResolveReason,
+                              method_call: MethodCall) {
+        // Resolve any method map entry
+        match self.fcx.inh.method_map.borrow_mut().pop(&method_call) {
+            Some(method) => {
+                debug!("writeback::resolve_method_map_entry(call={:?}, entry={})",
+                       method_call,
+                       method.repr(self.tcx()));
+                let mut new_method = MethodCallee {
+                    origin: method.origin,
+                    ty: method.ty.resolve(self.fcx, reason),
+                    substs: method.substs.resolve(self.fcx, reason),
+                };
+
+                // Wack. For some reason I don't quite know, we always
+                // hard-code the self-ty and regions to these
+                // values. Changing this causes downstream errors I
+                // don't feel like investigating right now (in
+                // particular, self_ty is set to mk_err in some cases,
+                // probably for invocations on objects, and this
+                // causes encoding failures). -nmatsakis
+                new_method.substs.self_ty = None;
+                new_method.substs.regions = ty::ErasedRegions;
+
+                self.tcx().method_map.borrow_mut().insert(
+                    method_call,
+                    new_method);
+            }
+            None => {}
+        }
+    }
+
+    fn visit_vtable_map_entry(&self,
+                              reason: ResolveReason,
+                              vtable_key: MethodCall) {
+        // Resolve any vtable map entry
+        match self.fcx.inh.vtable_map.borrow_mut().pop(&vtable_key) {
+            Some(origins) => {
+                let r_origins = origins.resolve(self.fcx, reason);
+                debug!("writeback::resolve_vtable_map_entry(\
+                        vtable_key={}, vtables={:?})",
+                       vtable_key, r_origins.repr(self.tcx()));
+                self.tcx().vtable_map.borrow_mut().insert(vtable_key, r_origins);
+            }
+            None => {}
+        }
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////
+// Resolution reason.
+
+enum ResolveReason {
+    ResolvingExpr(Span),
+    ResolvingLocal(Span),
+    ResolvingPattern(Span),
+    ResolvingUpvar(ty::UpvarId)
+}
+
+impl ResolveReason {
+    fn span(&self, fcx: &FnCtxt) -> Span {
+        match *self {
+            ResolvingExpr(s) => s,
+            ResolvingLocal(s) => s,
+            ResolvingPattern(s) => s,
+            ResolvingUpvar(upvar_id) => {
+                ty::expr_span(fcx.tcx(), upvar_id.closure_expr_id)
+            }
+        }
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////
+// Convenience methods for resolving different kinds of things.
+
+trait Resolve {
+    fn resolve(&self, fcx: &FnCtxt, reason: ResolveReason) -> Self;
+}
+
+impl<T:Resolve> Resolve for Option<T> {
+    fn resolve(&self, fcx: &FnCtxt, reason: ResolveReason) -> Option<T> {
+        self.as_ref().map(|t| t.resolve(fcx, reason))
+    }
+}
+
+impl<T:Resolve> Resolve for Vec<T> {
+    fn resolve(&self, fcx: &FnCtxt, reason: ResolveReason) -> Vec<T> {
+        self.iter().map(|t| t.resolve(fcx, reason)).collect()
+    }
+}
+
+impl Resolve for ty::TraitStore {
+    fn resolve(&self, fcx: &FnCtxt, reason: ResolveReason) -> ty::TraitStore {
+        Resolver::new(fcx, reason).fold_trait_store(*self)
+    }
+}
+
+impl Resolve for ty::t {
+    fn resolve(&self, fcx: &FnCtxt, reason: ResolveReason) -> ty::t {
+        Resolver::new(fcx, reason).fold_ty(*self)
+    }
+}
+
+impl Resolve for ty::Region {
+    fn resolve(&self, fcx: &FnCtxt, reason: ResolveReason) -> ty::Region {
+        Resolver::new(fcx, reason).fold_region(*self)
+    }
+}
+
+impl Resolve for ty::substs {
+    fn resolve(&self, fcx: &FnCtxt, reason: ResolveReason) -> ty::substs {
+        Resolver::new(fcx, reason).fold_substs(self)
+    }
+}
+
+impl Resolve for ty::AutoRef {
+    fn resolve(&self, fcx: &FnCtxt, reason: ResolveReason) -> ty::AutoRef {
+        Resolver::new(fcx, reason).fold_autoref(self)
+    }
+}
+
+impl Resolve for vtable_origin {
+    fn resolve(&self, fcx: &FnCtxt, reason: ResolveReason) -> vtable_origin {
+        match *self {
+            vtable_static(def_id, ref tys, ref origins) => {
+                let r_tys = tys.resolve(fcx, reason);
+                let r_origins = origins.resolve(fcx, reason);
+                vtable_static(def_id, r_tys, r_origins)
+            }
+            vtable_param(n, b) => {
+                vtable_param(n, b)
+            }
+        }
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////
+// The Resolver. This is the type folding engine that detects
+// unresolved types and so forth.
+
+struct Resolver<'cx> {
+    fcx: &'cx FnCtxt<'cx>,
+    reason: ResolveReason,
+}
+
+impl<'cx> Resolver<'cx> {
+    fn new(fcx: &'cx FnCtxt<'cx>,
+           reason: ResolveReason)
+           -> Resolver<'cx>
+    {
+        Resolver { fcx: fcx, reason: reason }
+    }
+
+    fn report_error(&self, e: infer::fixup_err) {
+        self.fcx.writeback_errors.set(true);
+        if !self.tcx().sess.has_errors() {
+            match self.reason {
+                ResolvingExpr(span) => {
+                    self.tcx().sess.span_err(
+                        span,
+                        format!("cannot determine a type for \
+                                 this expression: {}",
+                                infer::fixup_err_to_str(e)))
+                }
+
+                ResolvingLocal(span) => {
+                    self.tcx().sess.span_err(
+                        span,
+                        format!("cannot determine a type for \
+                                 this local variable: {}",
+                                infer::fixup_err_to_str(e)))
+                }
+
+                ResolvingPattern(span) => {
+                    self.tcx().sess.span_err(
+                        span,
+                        format!("cannot determine a type for \
+                                 this pattern binding: {}",
+                                infer::fixup_err_to_str(e)))
+                }
+
+                ResolvingUpvar(upvar_id) => {
+                    let span = self.reason.span(self.fcx);
+                    self.tcx().sess.span_err(
+                        span,
+                        format!("cannot resolve lifetime for \
+                                 captured variable `{}`: {}",
+                                ty::local_var_name_str(
+                                    self.tcx(),
+                                    upvar_id.var_id).get().to_str(),
+                                infer::fixup_err_to_str(e)));
+                }
+            }
+        }
+    }
+}
+
+impl<'cx> TypeFolder for Resolver<'cx> {
+    fn tcx<'a>(&'a self) -> &'a ty::ctxt {
+        self.fcx.tcx()
+    }
+
+    fn fold_ty(&mut self, t: ty::t) -> ty::t {
+        if !ty::type_needs_infer(t) {
+            return t;
+        }
+
+        match resolve_type(self.fcx.infcx(), t, resolve_all | force_all) {
+            Ok(t) => t,
+            Err(e) => {
+                self.report_error(e);
+                ty::mk_err()
+            }
+        }
+    }
+
+    fn fold_region(&mut self, r: ty::Region) -> ty::Region {
+        match resolve_region(self.fcx.infcx(), r, resolve_all | force_all) {
+            Ok(r) => r,
+            Err(e) => {
+                self.report_error(e);
+                ty::ReStatic
+            }
+        }
+    }
 }
