@@ -33,6 +33,7 @@ pub struct Guard<'a> {
 struct Inner {
     queue: Vec<BlockedTask>,
     held: bool,
+    closed: bool,
 }
 
 impl Access {
@@ -41,6 +42,7 @@ impl Access {
             inner: UnsafeArc::new(Inner {
                 queue: vec![],
                 held: false,
+                closed: false,
             })
         }
     }
@@ -64,11 +66,28 @@ impl Access {
 
         Guard { access: self, missile: Some(missile) }
     }
+
+    pub fn close(&self, _missile: &HomingMissile) {
+        // This unsafety is OK because with a homing missile we're guaranteed to
+        // be the only task looking at the `closed` flag (and are therefore
+        // allowed to modify it). Additionally, no atomics are necessary because
+        // everyone's running on the same thread and has already done the
+        // necessary synchronization to be running on this thread.
+        unsafe { (*self.inner.get()).closed = true; }
+    }
 }
 
 impl Clone for Access {
     fn clone(&self) -> Access {
         Access { inner: self.inner.clone() }
+    }
+}
+
+impl<'a> Guard<'a> {
+    pub fn is_closed(&self) -> bool {
+        // See above for why this unsafety is ok, it just applies to the read
+        // instead of the write.
+        unsafe { (*self.access.inner.get()).closed }
     }
 }
 

@@ -28,7 +28,6 @@ use prelude::*;
 
 use c_str::ToCStr;
 use clone::Clone;
-use io::pipe::PipeStream;
 use io::{Listener, Acceptor, Reader, Writer, IoResult};
 use kinds::Send;
 use owned::Box;
@@ -37,14 +36,10 @@ use rt::rtio::{RtioUnixAcceptor, RtioPipe};
 
 /// A stream which communicates over a named pipe.
 pub struct UnixStream {
-    obj: PipeStream,
+    obj: Box<RtioPipe:Send>,
 }
 
 impl UnixStream {
-    fn new(obj: Box<RtioPipe:Send>) -> UnixStream {
-        UnixStream { obj: PipeStream::new(obj) }
-    }
-
     /// Connect to a pipe named by `path`. This will attempt to open a
     /// connection to the underlying socket.
     ///
@@ -62,7 +57,7 @@ impl UnixStream {
     /// ```
     pub fn connect<P: ToCStr>(path: &P) -> IoResult<UnixStream> {
         LocalIo::maybe_raise(|io| {
-            io.unix_connect(&path.to_c_str(), None).map(UnixStream::new)
+            io.unix_connect(&path.to_c_str(), None).map(|p| UnixStream { obj: p })
         })
     }
 
@@ -86,9 +81,28 @@ impl UnixStream {
                                       timeout_ms: u64) -> IoResult<UnixStream> {
         LocalIo::maybe_raise(|io| {
             let s = io.unix_connect(&path.to_c_str(), Some(timeout_ms));
-            s.map(UnixStream::new)
+            s.map(|p| UnixStream { obj: p })
         })
     }
+
+
+    /// Closes the reading half of this connection.
+    ///
+    /// This method will close the reading portion of this connection, causing
+    /// all pending and future reads to immediately return with an error.
+    ///
+    /// Note that this method affects all cloned handles associated with this
+    /// stream, not just this one handle.
+    pub fn close_read(&mut self) -> IoResult<()> { self.obj.close_read() }
+
+    /// Closes the writing half of this connection.
+    ///
+    /// This method will close the writing portion of this connection, causing
+    /// all pending and future writes to immediately return with an error.
+    ///
+    /// Note that this method affects all cloned handles associated with this
+    /// stream, not just this one handle.
+    pub fn close_write(&mut self) -> IoResult<()> { self.obj.close_write() }
 }
 
 impl Clone for UnixStream {
@@ -174,7 +188,7 @@ impl UnixAcceptor {
 
 impl Acceptor<UnixStream> for UnixAcceptor {
     fn accept(&mut self) -> IoResult<UnixStream> {
-        self.obj.accept().map(UnixStream::new)
+        self.obj.accept().map(|s| UnixStream { obj: s })
     }
 }
 
@@ -431,7 +445,12 @@ mod tests {
 
         // Also make sure that even though the timeout is expired that we will
         // continue to receive any pending connections.
-        let l = UnixStream::connect(&addr).unwrap();
+        let (tx, rx) = channel();
+        let addr2 = addr.clone();
+        spawn(proc() {
+            tx.send(UnixStream::connect(&addr2).unwrap());
+        });
+        let l = rx.recv();
         for i in range(0, 1001) {
             match a.accept() {
                 Ok(..) => break,
@@ -446,7 +465,7 @@ mod tests {
         a.set_timeout(None);
         let addr2 = addr.clone();
         spawn(proc() {
-            drop(UnixStream::connect(&addr2));
+            drop(UnixStream::connect(&addr2).unwrap());
         });
         a.accept().unwrap();
     })
@@ -460,5 +479,66 @@ mod tests {
         let addr = next_test_unix();
         let _a = UnixListener::bind(&addr).unwrap().listen().unwrap();
         assert!(UnixStream::connect_timeout(&addr, 100).is_ok());
+    })
+
+    iotest!(fn close_readwrite_smoke() {
+        let addr = next_test_unix();
+        let a = UnixListener::bind(&addr).listen().unwrap();
+        let (_tx, rx) = channel::<()>();
+        spawn(proc() {
+            let mut a = a;
+            let _s = a.accept().unwrap();
+            let _ = rx.recv_opt();
+        });
+
+        let mut b = [0];
+        let mut s = UnixStream::connect(&addr).unwrap();
+        let mut s2 = s.clone();
+
+        // closing should prevent reads/writes
+        s.close_write().unwrap();
+        assert!(s.write([0]).is_err());
+        s.close_read().unwrap();
+        assert!(s.read(b).is_err());
+
+        // closing should affect previous handles
+        assert!(s2.write([0]).is_err());
+        assert!(s2.read(b).is_err());
+
+        // closing should affect new handles
+        let mut s3 = s.clone();
+        assert!(s3.write([0]).is_err());
+        assert!(s3.read(b).is_err());
+
+        // make sure these don't die
+        let _ = s2.close_read();
+        let _ = s2.close_write();
+        let _ = s3.close_read();
+        let _ = s3.close_write();
+    })
+
+    iotest!(fn close_read_wakes_up() {
+        let addr = next_test_unix();
+        let a = UnixListener::bind(&addr).listen().unwrap();
+        let (_tx, rx) = channel::<()>();
+        spawn(proc() {
+            let mut a = a;
+            let _s = a.accept().unwrap();
+            let _ = rx.recv_opt();
+        });
+
+        let mut s = UnixStream::connect(&addr).unwrap();
+        let s2 = s.clone();
+        let (tx, rx) = channel();
+        spawn(proc() {
+            let mut s2 = s2;
+            assert!(s2.read([0]).is_err());
+            tx.send(());
+        });
+        // this should wake up the child task
+        s.close_read().unwrap();
+
+        // this test will never finish if the child doesn't wake up
+        rx.recv();
     })
 }
