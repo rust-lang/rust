@@ -1617,8 +1617,7 @@ mod test_map {
     use std::cmp::Equiv;
     use std::hash::Hash;
     use std::iter::{Iterator,range_inclusive,range_step_inclusive};
-    use std::local_data;
-    use std::vec;
+    use std::cell::RefCell;
 
     struct KindaIntLike(int);
 
@@ -1657,7 +1656,7 @@ mod test_map {
         assert_eq!(*m.find(&2).unwrap(), 4);
     }
 
-    local_data_key!(drop_vector: vec::Vec<int>)
+    local_data_key!(drop_vector: RefCell<Vec<int>>)
 
     #[deriving(Hash, Eq, TotalEq)]
     struct Dropable {
@@ -1667,8 +1666,8 @@ mod test_map {
 
     impl Dropable {
         fn new(k: uint) -> Dropable {
-            local_data::get_mut(drop_vector,
-                |v| { v.unwrap().as_mut_slice()[k] += 1; });
+            let v = drop_vector.get().unwrap();
+            v.borrow_mut().as_mut_slice()[k] += 1;
 
             Dropable { k: k }
         }
@@ -1676,23 +1675,23 @@ mod test_map {
 
     impl Drop for Dropable {
         fn drop(&mut self) {
-            local_data::get_mut(drop_vector, |v|
-                { v.unwrap().as_mut_slice()[self.k] -= 1; });
+            let v = drop_vector.get().unwrap();
+            v.borrow_mut().as_mut_slice()[self.k] -= 1;
         }
     }
 
     #[test]
     fn test_drops() {
-        local_data::set(drop_vector, vec::Vec::from_elem(200, 0));
+        drop_vector.replace(Some(RefCell::new(Vec::from_elem(200, 0))));
 
         {
             let mut m = HashMap::new();
 
-            local_data::get(drop_vector, |v| {
-                for i in range(0u, 200) {
-                    assert_eq!(v.unwrap().as_slice()[i], 0);
-                }
-            });
+            let v = drop_vector.get().unwrap();
+            for i in range(0u, 200) {
+                assert_eq!(v.borrow().as_slice()[i], 0);
+            }
+            drop(v);
 
             for i in range(0u, 100) {
                 let d1 = Dropable::new(i);
@@ -1700,11 +1699,11 @@ mod test_map {
                 m.insert(d1, d2);
             }
 
-            local_data::get(drop_vector, |v| {
-                for i in range(0u, 200) {
-                    assert_eq!(v.unwrap().as_slice()[i], 1);
-                }
-            });
+            let v = drop_vector.get().unwrap();
+            for i in range(0u, 200) {
+                assert_eq!(v.borrow().as_slice()[i], 1);
+            }
+            drop(v);
 
             for i in range(0u, 50) {
                 let k = Dropable::new(i);
@@ -1712,30 +1711,27 @@ mod test_map {
 
                 assert!(v.is_some());
 
-                local_data::get(drop_vector, |v| {
-                    assert_eq!(v.unwrap().as_slice()[i], 1);
-                    assert_eq!(v.unwrap().as_slice()[i+100], 1);
-                });
+                let v = drop_vector.get().unwrap();
+                assert_eq!(v.borrow().as_slice()[i], 1);
+                assert_eq!(v.borrow().as_slice()[i+100], 1);
             }
 
-            local_data::get(drop_vector, |v| {
-                for i in range(0u, 50) {
-                    assert_eq!(v.unwrap().as_slice()[i], 0);
-                    assert_eq!(v.unwrap().as_slice()[i+100], 0);
-                }
+            let v = drop_vector.get().unwrap();
+            for i in range(0u, 50) {
+                assert_eq!(v.borrow().as_slice()[i], 0);
+                assert_eq!(v.borrow().as_slice()[i+100], 0);
+            }
 
-                for i in range(50u, 100) {
-                    assert_eq!(v.unwrap().as_slice()[i], 1);
-                    assert_eq!(v.unwrap().as_slice()[i+100], 1);
-                }
-            });
+            for i in range(50u, 100) {
+                assert_eq!(v.borrow().as_slice()[i], 1);
+                assert_eq!(v.borrow().as_slice()[i+100], 1);
+            }
         }
 
-        local_data::get(drop_vector, |v| {
-            for i in range(0u, 200) {
-                assert_eq!(v.unwrap().as_slice()[i], 0);
-            }
-        });
+        let v = drop_vector.get().unwrap();
+        for i in range(0u, 200) {
+            assert_eq!(v.borrow().as_slice()[i], 0);
+        }
     }
 
     #[test]

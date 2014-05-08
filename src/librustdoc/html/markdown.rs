@@ -27,11 +27,11 @@
 #![allow(non_camel_case_types)]
 
 use libc;
+use std::cell::RefCell;
 use std::fmt;
 use std::io;
-use std::local_data;
-use std::str;
 use std::slice;
+use std::str;
 use collections::HashMap;
 
 use html::toc::TocBuilder;
@@ -139,7 +139,7 @@ fn stripped_filtered_line<'a>(s: &'a str) -> Option<&'a str> {
     }
 }
 
-local_data_key!(used_header_map: HashMap<~str, uint>)
+local_data_key!(used_header_map: RefCell<HashMap<~str, uint>>)
 
 pub fn render(w: &mut io::Writer, s: &str, print_toc: bool) -> fmt::Result {
     extern fn block(ob: *mut hoedown_buffer, text: *hoedown_buffer,
@@ -216,15 +216,12 @@ pub fn render(w: &mut io::Writer, s: &str, print_toc: bool) -> fmt::Result {
         let opaque = unsafe { &mut *((*opaque).opaque as *mut MyOpaque) };
 
         // Make sure our hyphenated ID is unique for this page
-        let id = local_data::get_mut(used_header_map, |map| {
-            let map = map.unwrap();
-            match map.find_mut(&id) {
-                None => {}
-                Some(a) => { *a += 1; return format!("{}-{}", id, *a - 1) }
-            }
-            map.insert(id.clone(), 1);
-            id.clone()
-        });
+        let map = used_header_map.get().unwrap();
+        let id = match map.borrow_mut().find_mut(&id) {
+            None => id,
+            Some(a) => { *a += 1; format!("{}-{}", id, *a - 1) }
+        };
+        map.borrow_mut().insert(id.clone(), 1);
 
         let sec = match opaque.toc_builder {
             Some(ref mut builder) => {
@@ -348,7 +345,7 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
 /// used at the beginning of rendering an entire HTML page to reset from the
 /// previous state (if any).
 pub fn reset_headers() {
-    local_data::set(used_header_map, HashMap::new())
+    used_header_map.replace(Some(RefCell::new(HashMap::new())));
 }
 
 impl<'a> fmt::Show for Markdown<'a> {
