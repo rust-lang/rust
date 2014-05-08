@@ -27,7 +27,9 @@ use t = syntax::parse::token;
 /// Highlights some source code, returning the HTML output.
 pub fn highlight(src: &str, class: Option<&str>) -> ~str {
     let sess = parse::new_parse_sess();
-    let fm = parse::string_to_filemap(&sess, src.to_owned(), "<stdin>".to_owned());
+    let fm = parse::string_to_filemap(&sess,
+                                      src.to_strbuf(),
+                                      "<stdin>".to_strbuf());
 
     let mut out = io::MemWriter::new();
     doit(&sess,
@@ -70,11 +72,11 @@ fn doit(sess: &parse::ParseSess, mut lexer: lexer::StringReader, class: Option<&
                 hi: test,
                 expn_info: None,
             }).unwrap();
-            if snip.contains("/") {
+            if snip.as_slice().contains("/") {
                 try!(write!(out, "<span class='comment'>{}</span>",
-                              Escape(snip)));
+                              Escape(snip.as_slice())));
             } else {
-                try!(write!(out, "{}", Escape(snip)));
+                try!(write!(out, "{}", Escape(snip.as_slice())));
             }
         }
         last = next.sp.hi;
@@ -171,10 +173,10 @@ fn doit(sess: &parse::ParseSess, mut lexer: lexer::StringReader, class: Option<&
         // stringifying this token
         let snip = sess.span_diagnostic.cm.span_to_snippet(next.sp).unwrap();
         if klass == "" {
-            try!(write!(out, "{}", Escape(snip)));
+            try!(write!(out, "{}", Escape(snip.as_slice())));
         } else {
             try!(write!(out, "<span class='{}'>{}</span>", klass,
-                          Escape(snip)));
+                          Escape(snip.as_slice())));
         }
     }
 

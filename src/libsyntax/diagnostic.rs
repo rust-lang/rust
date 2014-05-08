@@ -320,12 +320,12 @@ fn emit(dst: &mut EmitterWriter, cm: &codemap::CodeMap, rsp: RenderSpan,
         // the span)
         let span_end = Span { lo: sp.hi, hi: sp.hi, expn_info: sp.expn_info};
         let ses = cm.span_to_str(span_end);
-        try!(print_diagnostic(dst, ses, lvl, msg));
+        try!(print_diagnostic(dst, ses.as_slice(), lvl, msg));
         if rsp.is_full_span() {
             try!(custom_highlight_lines(dst, cm, sp, lvl, lines));
         }
     } else {
-        try!(print_diagnostic(dst, ss, lvl, msg));
+        try!(print_diagnostic(dst, ss.as_slice(), lvl, msg));
         if rsp.is_full_span() {
             try!(highlight_lines(dst, cm, sp, lvl, lines));
         }
@@ -378,7 +378,7 @@ fn highlight_lines(err: &mut EmitterWriter,
         }
         let orig = fm.get_line(*lines.lines.get(0) as int);
         for pos in range(0u, left-skip) {
-            let cur_char = orig[pos] as char;
+            let cur_char = orig.as_slice()[pos] as char;
             // Whenever a tab occurs on the previous line, we insert one on
             // the error-point-squiggly-line as well (instead of a space).
             // That way the squiggly line will usually appear in the correct
@@ -452,24 +452,28 @@ fn print_macro_backtrace(w: &mut EmitterWriter,
                          sp: Span)
                          -> io::IoResult<()> {
     for ei in sp.expn_info.iter() {
-        let ss = ei.callee.span.as_ref().map_or("".to_owned(), |span| cm.span_to_str(*span));
+        let ss = ei.callee
+                   .span
+                   .as_ref()
+                   .map_or("".to_strbuf(), |span| cm.span_to_str(*span));
         let (pre, post) = match ei.callee.format {
             codemap::MacroAttribute => ("#[", "]"),
             codemap::MacroBang => ("", "!")
         };
-        try!(print_diagnostic(w, ss, Note,
+        try!(print_diagnostic(w, ss.as_slice(), Note,
                               format!("in expansion of {}{}{}", pre,
                                       ei.callee.name, post)));
         let ss = cm.span_to_str(ei.call_site);
-        try!(print_diagnostic(w, ss, Note, "expansion site"));
+        try!(print_diagnostic(w, ss.as_slice(), Note, "expansion site"));
         try!(print_macro_backtrace(w, cm, ei.call_site));
     }
     Ok(())
 }
 
-pub fn expect<T:Clone>(diag: &SpanHandler, opt: Option<T>, msg: || -> ~str) -> T {
+pub fn expect<T:Clone>(diag: &SpanHandler, opt: Option<T>, msg: || -> StrBuf)
+              -> T {
     match opt {
        Some(ref t) => (*t).clone(),
-       None => diag.handler().bug(msg()),
+       None => diag.handler().bug(msg().as_slice()),
     }
 }

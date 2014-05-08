@@ -949,7 +949,7 @@ mod test {
                 let pred_val = $pred;
                 let a_val = $a;
                 let b_val = $b;
-                if !(pred_val(a_val,b_val)) {
+                if !(pred_val(a_val.as_slice(),b_val.as_slice())) {
                     fail!("expected args satisfying {}, got {:?} and {:?}",
                           $predname, a_val, b_val);
                 }
@@ -961,12 +961,13 @@ mod test {
     #[test] fn ident_transformation () {
         let mut zz_fold = ToZzIdentFolder;
         let ast = string_to_crate(
-            "#[a] mod b {fn c (d : e, f : g) {h!(i,j,k);l;m}}".to_owned());
+            "#[a] mod b {fn c (d : e, f : g) {h!(i,j,k);l;m}}".to_strbuf());
         let folded_crate = zz_fold.fold_crate(ast);
-        assert_pred!(matches_codepattern,
-                     "matches_codepattern",
-                     pprust::to_str(|s| fake_print_crate(s, &folded_crate)),
-                     "#[a]mod zz{fn zz(zz:zz,zz:zz){zz!(zz,zz,zz);zz;zz}}".to_owned());
+        assert_pred!(
+            matches_codepattern,
+            "matches_codepattern",
+            pprust::to_str(|s| fake_print_crate(s, &folded_crate)),
+            "#[a]mod zz{fn zz(zz:zz,zz:zz){zz!(zz,zz,zz);zz;zz}}".to_strbuf());
     }
 
     // even inside macro defs....
@@ -974,11 +975,12 @@ mod test {
         let mut zz_fold = ToZzIdentFolder;
         let ast = string_to_crate(
             "macro_rules! a {(b $c:expr $(d $e:token)f+ => \
-             (g $(d $d $e)+))} ".to_owned());
+             (g $(d $d $e)+))} ".to_strbuf());
         let folded_crate = zz_fold.fold_crate(ast);
-        assert_pred!(matches_codepattern,
-                     "matches_codepattern",
-                     pprust::to_str(|s| fake_print_crate(s, &folded_crate)),
-                     "zz!zz((zz$zz:zz$(zz $zz:zz)zz+=>(zz$(zz$zz$zz)+)))".to_owned());
+        assert_pred!(
+            matches_codepattern,
+            "matches_codepattern",
+            pprust::to_str(|s| fake_print_crate(s, &folded_crate)),
+            "zz!zz((zz$zz:zz$(zz $zz:zz)zz+=>(zz$(zz$zz$zz)+)))".to_strbuf());
     }
 }

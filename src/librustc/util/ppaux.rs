@@ -341,9 +341,9 @@ pub fn ty_to_str(cx: &ctxt, typ: t) -> ~str {
       ty_bot => "!".to_owned(),
       ty_bool => "bool".to_owned(),
       ty_char => "char".to_owned(),
-      ty_int(t) => ast_util::int_ty_to_str(t, None),
-      ty_uint(t) => ast_util::uint_ty_to_str(t, None),
-      ty_float(t) => ast_util::float_ty_to_str(t),
+      ty_int(t) => ast_util::int_ty_to_str(t, None).to_owned(),
+      ty_uint(t) => ast_util::uint_ty_to_str(t, None).to_owned(),
+      ty_float(t) => ast_util::float_ty_to_str(t).to_owned(),
       ty_box(typ) => "@".to_owned() + ty_to_str(cx, typ),
       ty_uniq(typ) => "~".to_owned() + ty_to_str(cx, typ),
       ty_ptr(ref tm) => "*".to_owned() + mt_to_str(cx, tm),
@@ -870,7 +870,7 @@ impl Repr for ty::BuiltinBounds {
 
 impl Repr for Span {
     fn repr(&self, tcx: &ctxt) -> ~str {
-        tcx.sess.codemap().span_to_str(*self)
+        tcx.sess.codemap().span_to_str(*self).to_owned()
     }
 }
 

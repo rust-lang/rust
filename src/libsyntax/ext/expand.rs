@@ -71,7 +71,7 @@ pub fn expand_expr(e: @ast::Expr, fld: &mut MacroExpander) -> @ast::Expr {
                             fld.cx.bt_push(ExpnInfo {
                                 call_site: e.span,
                                 callee: NameAndSpan {
-                                    name: extnamestr.get().to_str(),
+                                    name: extnamestr.get().to_strbuf(),
                                     format: MacroBang,
                                     span: exp_span,
                                 },
@@ -270,7 +270,7 @@ pub fn expand_item(it: @ast::Item, fld: &mut MacroExpander)
                 fld.cx.bt_push(ExpnInfo {
                     call_site: attr.span,
                     callee: NameAndSpan {
-                        name: mname.get().to_str(),
+                        name: mname.get().to_strbuf(),
                         format: MacroAttribute,
                         span: None
                     }
@@ -334,7 +334,7 @@ fn expand_item_modifiers(mut it: @ast::Item, fld: &mut MacroExpander)
                 fld.cx.bt_push(ExpnInfo {
                     call_site: attr.span,
                     callee: NameAndSpan {
-                        name: mname.get().to_str(),
+                        name: mname.get().to_strbuf(),
                         format: MacroAttribute,
                         span: None,
                     }
@@ -393,7 +393,7 @@ pub fn expand_item_mac(it: @ast::Item, fld: &mut MacroExpander)
             fld.cx.bt_push(ExpnInfo {
                 call_site: it.span,
                 callee: NameAndSpan {
-                    name: extnamestr.get().to_str(),
+                    name: extnamestr.get().to_strbuf(),
                     format: MacroBang,
                     span: span
                 }
@@ -412,7 +412,7 @@ pub fn expand_item_mac(it: @ast::Item, fld: &mut MacroExpander)
             fld.cx.bt_push(ExpnInfo {
                 call_site: it.span,
                 callee: NameAndSpan {
-                    name: extnamestr.get().to_str(),
+                    name: extnamestr.get().to_strbuf(),
                     format: MacroBang,
                     span: span
                 }
@@ -433,7 +433,7 @@ pub fn expand_item_mac(it: @ast::Item, fld: &mut MacroExpander)
         Some(MacroDef { name, ext }) => {
             // yikes... no idea how to apply the mark to this. I'm afraid
             // we're going to have to wait-and-see on this one.
-            fld.extsbox.insert(intern(name), ext);
+            fld.extsbox.insert(intern(name.as_slice()), ext);
             if attr::contains_name(it.attrs.as_slice(), "macro_export") {
                 SmallVector::one(it)
             } else {
@@ -493,6 +493,7 @@ fn load_extern_macros(krate: &ast::ViewItem, fld: &mut MacroExpander) {
         _ => unreachable!()
     };
     let name = format!("<{} macros>", token::get_ident(crate_name));
+    let name = name.to_strbuf();
 
     for source in macros.iter() {
         let item = parse::parse_item_from_source_str(name.clone(),
@@ -524,11 +525,12 @@ fn load_extern_macros(krate: &ast::ViewItem, fld: &mut MacroExpander) {
     };
 
     unsafe {
-        let registrar: MacroCrateRegistrationFun = match lib.symbol(registrar) {
-            Ok(registrar) => registrar,
-            // again fatal if we can't register macros
-            Err(err) => fld.cx.span_fatal(krate.span, err)
-        };
+        let registrar: MacroCrateRegistrationFun =
+            match lib.symbol(registrar.as_slice()) {
+                Ok(registrar) => registrar,
+                // again fatal if we can't register macros
+                Err(err) => fld.cx.span_fatal(krate.span, err)
+            };
         registrar(|name, extension| {
             let extension = match extension {
                 NormalTT(ext, _) => NormalTT(ext, Some(krate.span)),
@@ -576,7 +578,7 @@ pub fn expand_stmt(s: &Stmt, fld: &mut MacroExpander) -> SmallVector<@Stmt> {
             fld.cx.bt_push(ExpnInfo {
                 call_site: s.span,
                 callee: NameAndSpan {
-                    name: extnamestr.get().to_str(),
+                    name: extnamestr.get().to_strbuf(),
                     format: MacroBang,
                     span: exp_span,
                 }
@@ -1020,10 +1022,10 @@ mod test {
     #[should_fail]
     #[test] fn macros_cant_escape_fns_test () {
         let src = "fn bogus() {macro_rules! z (() => (3+4))}\
-                   fn inty() -> int { z!() }".to_owned();
+                   fn inty() -> int { z!() }".to_strbuf();
         let sess = parse::new_parse_sess();
         let crate_ast = parse::parse_crate_from_source_str(
-            "<test>".to_owned(),
+            "<test>".to_strbuf(),
             src,
             Vec::new(), &sess);
         // should fail:
@@ -1040,10 +1042,10 @@ mod test {
     #[should_fail]
     #[test] fn macros_cant_escape_mods_test () {
         let src = "mod foo {macro_rules! z (() => (3+4))}\
-                   fn inty() -> int { z!() }".to_owned();
+                   fn inty() -> int { z!() }".to_strbuf();
         let sess = parse::new_parse_sess();
         let crate_ast = parse::parse_crate_from_source_str(
-            "<test>".to_owned(),
+            "<test>".to_strbuf(),
             src,
             Vec::new(), &sess);
         // should fail:
@@ -1059,10 +1061,10 @@ mod test {
     // macro_escape modules shouldn't cause macros to leave scope
     #[test] fn macros_can_escape_flattened_mods_test () {
         let src = "#[macro_escape] mod foo {macro_rules! z (() => (3+4))}\
-                   fn inty() -> int { z!() }".to_owned();
+                   fn inty() -> int { z!() }".to_strbuf();
         let sess = parse::new_parse_sess();
         let crate_ast = parse::parse_crate_from_source_str(
-            "<test>".to_owned(),
+            "<test>".to_strbuf(),
             src,
             Vec::new(), &sess);
         // should fail:
@@ -1100,7 +1102,7 @@ mod test {
         }
     }
 
-    fn expand_crate_str(crate_str: ~str) -> ast::Crate {
+    fn expand_crate_str(crate_str: StrBuf) -> ast::Crate {
         let ps = parse::new_parse_sess();
         let crate_ast = string_to_parser(&ps, crate_str).parse_crate_mod();
         // the cfg argument actually does matter, here...
@@ -1118,13 +1120,14 @@ mod test {
         // println!("expanded: {:?}\n",expanded_ast);
         //mtwt_resolve_crate(expanded_ast)
     //}
-    //fn expand_and_resolve_and_pretty_print (crate_str: @str) -> ~str {
+    //fn expand_and_resolve_and_pretty_print (crate_str: @str) -> StrBuf {
         //let resolved_ast = expand_and_resolve(crate_str);
         //pprust::to_str(&resolved_ast,fake_print_crate,get_ident_interner())
     //}
 
     #[test] fn macro_tokens_should_match(){
-        expand_crate_str("macro_rules! m((a)=>(13)) fn main(){m!(a);}".to_owned());
+        expand_crate_str(
+            "macro_rules! m((a)=>(13)) fn main(){m!(a);}".to_strbuf());
     }
 
     // renaming tests expand a crate and then check that the bindings match
@@ -1182,7 +1185,7 @@ mod test {
         let (teststr, bound_connections, bound_ident_check) = match *t {
             (ref str,ref conns, bic) => (str.to_owned(), conns.clone(), bic)
         };
-        let cr = expand_crate_str(teststr.to_owned());
+        let cr = expand_crate_str(teststr.to_strbuf());
         // find the bindings:
         let mut name_finder = new_name_finder(Vec::new());
         visit::walk_crate(&mut name_finder,&cr,());
@@ -1257,7 +1260,7 @@ mod test {
         let crate_str = "macro_rules! fmt_wrap(($b:expr)=>($b.to_str()))
 macro_rules! foo_module (() => (mod generated { fn a() { let xx = 147; fmt_wrap!(xx);}}))
 foo_module!()
-".to_owned();
+".to_strbuf();
         let cr = expand_crate_str(crate_str);
         // find the xx binding
         let mut name_finder = new_name_finder(Vec::new());
@@ -1303,7 +1306,8 @@ foo_module!()
 
     #[test]
     fn pat_idents(){
-        let pat = string_to_pat("(a,Foo{x:c @ (b,9),y:Bar(4,d)})".to_owned());
+        let pat = string_to_pat(
+            "(a,Foo{x:c @ (b,9),y:Bar(4,d)})".to_strbuf());
         let mut pat_idents = new_name_finder(Vec::new());
         pat_idents.visit_pat(pat, ());
         assert_eq!(pat_idents.ident_accumulator,
