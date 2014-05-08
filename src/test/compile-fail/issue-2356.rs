@@ -8,12 +8,83 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-test Resolve code for classes knew how to do this, impls don't
+trait Groom {
+    fn shave();
+}
 
-struct cat {
-  tail: int,
+pub struct cat {
+  whiskers: int,
+}
+
+pub enum MaybeDog {
+    Dog,
+    NoDog
+}
+
+impl MaybeDog {
+  fn bark() {
+    // If this provides a suggestion, it's a bug as MaybeDog doesn't impl Groom
+    shave();
+    //~^ ERROR: unresolved name `shave`.
+  }
+}
+
+impl Groom for cat {
+  fn shave(&self, other: uint) {
+    whiskers -= other;
+    //~^ ERROR: unresolved name `whiskers`. Did you mean `self.whiskers`?
+    shave(4);
+    //~^ ERROR: unresolved name `shave`. Did you mean to call `Groom::shave`?
+    purr();
+    //~^ ERROR: unresolved name `purr`. Did you mean to call `self.purr`?
+  }
 }
 
 impl cat {
-  pub fn meow() { tail += 1; } //~ ERROR: Did you mean: `self.tail`
+    fn static_method() {}
+
+    fn purr_louder() {
+        static_method();
+        //~^ ERROR: unresolved name `static_method`. Did you mean to call `cat::static_method`
+        purr();
+        //~^ ERROR: unresolved name `purr`. Did you mean to call `self.purr`?
+        purr();
+        //~^ ERROR: unresolved name `purr`. Did you mean to call `self.purr`?
+        purr();
+        //~^ ERROR: unresolved name `purr`. Did you mean to call `self.purr`?
+    }
+}
+
+impl cat {
+  fn meow() {
+    if self.whiskers > 3 {
+        //~^ ERROR: `self` is not available in a static method. Maybe a `self` argument is missing?
+        println!("MEOW");
+    }
+  }
+
+  fn purr(&self) {
+    grow_older();
+    //~^ ERROR: unresolved name `grow_older`. Did you mean to call `cat::grow_older`
+    shave();
+    //~^ ERROR: unresolved name `shave`.
+  }
+
+  fn burn_whiskers(&mut self) {
+    whiskers = 0;
+    //~^ ERROR: unresolved name `whiskers`. Did you mean `self.whiskers`?
+  }
+
+  pub fn grow_older(other:uint) {
+    whiskers = 4;
+    //~^ ERROR: unresolved name `whiskers`. Did you mean `self.whiskers`?
+    purr_louder();
+    //~^ ERROR: unresolved name `purr_louder`. Did you mean to call `cat::purr_louder`
+  }
+}
+
+fn main() {
+    self += 1;
+    //~^ ERROR: unresolved name `self`.
+    // it's a bug if this suggests a missing `self` as we're not in a method
 }
