@@ -19,8 +19,9 @@ use iter::{Extendable, FromIterator, Iterator, range};
 use mem;
 use option::{None, Option, Some};
 use ptr::RawPtr;
+use ptr;
 use slice::{OwnedVector, Vector, CloneableVector};
-use str::{OwnedStr, Str, StrSlice, StrAllocating};
+use str::{CharRange, OwnedStr, Str, StrSlice, StrAllocating};
 use str;
 use vec::Vec;
 
@@ -215,19 +216,49 @@ impl StrBuf {
         Some(byte)
     }
 
-    /// Removes the first byte from the string buffer and returns it. Returns `None` if this string
-    /// buffer is empty.
-    ///
-    /// The caller must preserve the valid UTF-8 property.
-    pub unsafe fn shift_byte(&mut self) -> Option<u8> {
+    /// Removes the last character from the string buffer and returns it. Returns `None` if this
+    /// string buffer is empty.
+    #[inline]
+    pub fn pop_char(&mut self) -> Option<char> {
         let len = self.len();
         if len == 0 {
             return None
         }
 
-        let byte = self.as_slice()[0];
-        *self = self.as_slice().slice(1, len).into_strbuf();
-        Some(byte)
+        let CharRange {ch, next} = self.as_slice().char_range_at_reverse(len);
+        unsafe {
+            self.vec.set_len(next);
+        }
+        Some(ch)
+    }
+
+    /// Removes the first byte from the string buffer and returns it. Returns `None` if this string
+    /// buffer is empty.
+    ///
+    /// The caller must preserve the valid UTF-8 property.
+    pub unsafe fn shift_byte(&mut self) -> Option<u8> {
+        self.vec.shift()
+    }
+
+    /// Removes the first character from the string buffer and returns it. Returns `None` if this
+    /// string buffer is empty.
+    ///
+    /// # Warning
+    ///
+    /// This is a O(n) operation as it requires copying every element in the buffer.
+    pub fn shift_char (&mut self) -> Option<char> {
+        let len = self.len();
+        if len == 0 {
+            return None
+        }
+
+        let CharRange {ch, next} = self.as_slice().char_range_at(0);
+        let new_len = len - next;
+        unsafe {
+            ptr::copy_memory(self.vec.as_mut_ptr(), self.vec.as_ptr().offset(next as int), new_len);
+            self.vec.set_len(new_len);
+        }
+        Some(ch)
     }
 
     /// Views the string buffer as a mutable sequence of bytes.
@@ -355,6 +386,28 @@ mod tests {
         data.push_char('€'); // 3 byte
         data.push_char('𤭢'); // 4 byte
         assert_eq!(data.as_slice(), "ประเทศไทย中华b¢€𤭢");
+    }
+
+    #[test]
+    fn test_pop_char() {
+        let mut data = StrBuf::from_str("ประเทศไทย中华b¢€𤭢");
+        assert_eq!(data.pop_char().unwrap(), '𤭢'); // 4 bytes
+        assert_eq!(data.pop_char().unwrap(), '€'); // 3 bytes
+        assert_eq!(data.pop_char().unwrap(), '¢'); // 2 bytes
+        assert_eq!(data.pop_char().unwrap(), 'b'); // 1 bytes
+        assert_eq!(data.pop_char().unwrap(), '华');
+        assert_eq!(data.as_slice(), "ประเทศไทย中");
+    }
+
+    #[test]
+    fn test_shift_char() {
+        let mut data = StrBuf::from_str("𤭢€¢b华ประเทศไทย中");
+        assert_eq!(data.shift_char().unwrap(), '𤭢'); // 4 bytes
+        assert_eq!(data.shift_char().unwrap(), '€'); // 3 bytes
+        assert_eq!(data.shift_char().unwrap(), '¢'); // 2 bytes
+        assert_eq!(data.shift_char().unwrap(), 'b'); // 1 bytes
+        assert_eq!(data.shift_char().unwrap(), '华');
+        assert_eq!(data.as_slice(), "ประเทศไทย中");
     }
 
     #[test]
