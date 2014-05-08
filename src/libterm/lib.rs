@@ -26,7 +26,7 @@
 //!     t.fg(term::color::GREEN);
 //!     println!("hello, ");
 //!     t.fg(term::color::RED);
-//!     println("world!");
+//!     println!("world!");
 //!     t.reset();
 //! }
 //! ```
