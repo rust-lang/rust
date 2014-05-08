@@ -853,6 +853,11 @@ impl<'a, R: Reader> Reader for RefReader<'a, R> {
     fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> { self.inner.read(buf) }
 }
 
+impl<'a, R: Buffer> Buffer for RefReader<'a, R> {
+    fn fill_buf<'a>(&'a mut self) -> IoResult<&'a [u8]> { self.inner.fill_buf() }
+    fn consume(&mut self, amt: uint) { self.inner.consume(amt) }
+}
+
 fn extend_sign(val: u64, nbytes: uint) -> i64 {
     let shift = (8 - nbytes) * 8;
     (val << shift) as i64 >> shift
