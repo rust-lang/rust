@@ -169,6 +169,7 @@ impl TcpStream {
     ///
     /// For clarification on the semantics of interrupting a read and a write,
     /// take a look at `set_read_timeout` and `set_write_timeout`.
+    #[experimental = "the timeout argument may change in type and value"]
     pub fn set_timeout(&mut self, timeout_ms: Option<u64>) {
         self.obj.set_timeout(timeout_ms)
     }
@@ -185,6 +186,7 @@ impl TcpStream {
     /// action is taken. Otherwise, the read operation will be scheduled to
     /// promptly return. If a timeout error is returned, then no data was read
     /// during the timeout period.
+    #[experimental = "the timeout argument may change in type and value"]
     pub fn set_read_timeout(&mut self, timeout_ms: Option<u64>) {
         self.obj.set_read_timeout(timeout_ms)
     }
@@ -211,6 +213,7 @@ impl TcpStream {
     /// does not know how many bytes were written as part of the timeout
     /// operation. It may be the case that bytes continue to be written in an
     /// asynchronous fashion after the call to write returns.
+    #[experimental = "the timeout argument may change in type and value"]
     pub fn set_write_timeout(&mut self, timeout_ms: Option<u64>) {
         self.obj.set_write_timeout(timeout_ms)
     }
