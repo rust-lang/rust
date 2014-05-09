@@ -44,9 +44,9 @@ impl ItemType {
         match *self {
             Module          => "mod",
             Struct          => "struct",
-            Enum            => "enum",
+            Enum            => "type",
             Function        => "fn",
-            Typedef         => "typedef",
+            Typedef         => "type",
             Static          => "static",
             Trait           => "trait",
             Impl            => "impl",

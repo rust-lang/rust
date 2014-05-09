@@ -24,7 +24,7 @@
 //!
 //! Functions return `Result` whenever errors are expected and
 //! recoverable. In the `std` crate `Result` is most prominently used
-//! for [I/O](../io/index.html).
+//! for [I/O](../../std/io/index.html).
 //!
 //! A simple function returning `Result` might be
 //! defined and used like so:
