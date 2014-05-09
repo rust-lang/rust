@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::os;
-
 static PI: f64 = 3.141592653589793;
 static SOLAR_MASS: f64 = 4.0 * PI * PI;
 static YEAR: f64 = 365.24;
@@ -18,151 +16,143 @@ static N_BODIES: uint = 5;
 static BODIES: [Planet, ..N_BODIES] = [
     // Sun
     Planet {
-        x: [ 0.0, 0.0, 0.0 ],
-        v: [ 0.0, 0.0, 0.0 ],
+        x: 0.0, y: 0.0, z: 0.0,
+        vx: 0.0, vy: 0.0, vz: 0.0,
         mass: SOLAR_MASS,
     },
     // Jupiter
     Planet {
-        x: [
-            4.84143144246472090e+00,
-            -1.16032004402742839e+00,
-            -1.03622044471123109e-01,
-        ],
-        v: [
-            1.66007664274403694e-03 * YEAR,
-            7.69901118419740425e-03 * YEAR,
-            -6.90460016972063023e-05 * YEAR,
-        ],
+        x: 4.84143144246472090e+00,
+        y: -1.16032004402742839e+00,
+        z: -1.03622044471123109e-01,
+        vx: 1.66007664274403694e-03 * YEAR,
+        vy: 7.69901118419740425e-03 * YEAR,
+        vz: -6.90460016972063023e-05 * YEAR,
         mass: 9.54791938424326609e-04 * SOLAR_MASS,
     },
     // Saturn
     Planet {
-        x: [
-            8.34336671824457987e+00,
-            4.12479856412430479e+00,
-            -4.03523417114321381e-01,
-        ],
-        v: [
-            -2.76742510726862411e-03 * YEAR,
-            4.99852801234917238e-03 * YEAR,
-            2.30417297573763929e-05 * YEAR,
-        ],
+        x: 8.34336671824457987e+00,
+        y: 4.12479856412430479e+00,
+        z: -4.03523417114321381e-01,
+        vx: -2.76742510726862411e-03 * YEAR,
+        vy: 4.99852801234917238e-03 * YEAR,
+        vz: 2.30417297573763929e-05 * YEAR,
         mass: 2.85885980666130812e-04 * SOLAR_MASS,
     },
     // Uranus
     Planet {
-        x: [
-            1.28943695621391310e+01,
-            -1.51111514016986312e+01,
-            -2.23307578892655734e-01,
-        ],
-        v: [
-            2.96460137564761618e-03 * YEAR,
-            2.37847173959480950e-03 * YEAR,
-            -2.96589568540237556e-05 * YEAR,
-        ],
+        x: 1.28943695621391310e+01,
+        y: -1.51111514016986312e+01,
+        z: -2.23307578892655734e-01,
+        vx: 2.96460137564761618e-03 * YEAR,
+        vy: 2.37847173959480950e-03 * YEAR,
+        vz: -2.96589568540237556e-05 * YEAR,
         mass: 4.36624404335156298e-05 * SOLAR_MASS,
     },
     // Neptune
     Planet {
-        x: [
-            1.53796971148509165e+01,
-            -2.59193146099879641e+01,
-            1.79258772950371181e-01,
-        ],
-        v: [
-            2.68067772490389322e-03 * YEAR,
-            1.62824170038242295e-03 * YEAR,
-            -9.51592254519715870e-05 * YEAR,
-        ],
+        x: 1.53796971148509165e+01,
+        y: -2.59193146099879641e+01,
+        z: 1.79258772950371181e-01,
+        vx: 2.68067772490389322e-03 * YEAR,
+        vy: 1.62824170038242295e-03 * YEAR,
+        vz: -9.51592254519715870e-05 * YEAR,
         mass: 5.15138902046611451e-05 * SOLAR_MASS,
     },
 ];
 
 struct Planet {
-    x: [f64, ..3],
-    v: [f64, ..3],
+    x: f64, y: f64, z: f64,
+    vx: f64, vy: f64, vz: f64,
     mass: f64,
 }
 
-fn advance(bodies: &mut [Planet, ..N_BODIES], dt: f64, steps: i32) {
-    let mut d = [ 0.0, ..3 ];
+fn advance(bodies: &mut [Planet, ..N_BODIES], dt: f64, steps: int) {
     for _ in range(0, steps) {
-        for i in range(0u, N_BODIES) {
-            for j in range(i + 1, N_BODIES) {
-                d[0] = bodies[i].x[0] - bodies[j].x[0];
-                d[1] = bodies[i].x[1] - bodies[j].x[1];
-                d[2] = bodies[i].x[2] - bodies[j].x[2];
+        {
+            let mut b_slice = bodies.as_mut_slice();
+            loop {
+                let bi = match b_slice.mut_shift_ref() {
+                    Some(bi) => bi,
+                    None => break
+                };
+                for bj in b_slice.mut_iter() {
+                    let dx = bi.x - bj.x;
+                    let dy = bi.y - bj.y;
+                    let dz = bi.z - bj.z;
 
-                let d2 = d[0]*d[0] + d[1]*d[1] + d[2]*d[2];
-                let mag = dt / (d2 * d2.sqrt());
+                    let d2 = dx * dx + dy * dy + dz * dz;
+                    let mag = dt / (d2 * d2.sqrt());
 
-                let a_mass = bodies[i].mass;
-                let b_mass = bodies[j].mass;
-                bodies[i].v[0] -= d[0] * b_mass * mag;
-                bodies[i].v[1] -= d[1] * b_mass * mag;
-                bodies[i].v[2] -= d[2] * b_mass * mag;
+                    bi.vx -= dx * bj.mass * mag;
+                    bi.vy -= dy * bj.mass * mag;
+                    bi.vz -= dz * bj.mass * mag;
 
-                bodies[j].v[0] += d[0] * a_mass * mag;
-                bodies[j].v[1] += d[1] * a_mass * mag;
-                bodies[j].v[2] += d[2] * a_mass * mag;
+                    bj.vx += dx * bi.mass * mag;
+                    bj.vy += dy * bi.mass * mag;
+                    bj.vz += dz * bi.mass * mag;
+                }
             }
         }
 
-        for a in bodies.mut_iter() {
-            a.x[0] += dt * a.v[0];
-            a.x[1] += dt * a.v[1];
-            a.x[2] += dt * a.v[2];
+        for bi in bodies.mut_iter() {
+            bi.x += dt * bi.vx;
+            bi.y += dt * bi.vy;
+            bi.z += dt * bi.vz;
         }
     }
 }
 
 fn energy(bodies: &[Planet, ..N_BODIES]) -> f64 {
     let mut e = 0.0;
-    let mut d = [ 0.0, ..3 ];
-    for i in range(0u, N_BODIES) {
-        for k in range(0u, 3) {
-            e += bodies[i].mass * bodies[i].v[k] * bodies[i].v[k] / 2.0;
-        }
-
-        for j in range(i + 1, N_BODIES) {
-            for k in range(0u, 3) {
-                d[k] = bodies[i].x[k] - bodies[j].x[k];
-            }
-            let dist = (d[0]*d[0] + d[1]*d[1] + d[2]*d[2]).sqrt();
-            e -= bodies[i].mass * bodies[j].mass / dist;
+    let mut bodies = bodies.as_slice();
+    loop {
+        let bi = match bodies.shift_ref() {
+            Some(bi) => bi,
+            None => break
+        };
+        e += (bi.vx * bi.vx + bi.vy * bi.vy + bi.vz * bi.vz) * bi.mass / 2.0;
+        for bj in bodies.iter() {
+            let dx = bi.x - bj.x;
+            let dy = bi.y - bj.y;
+            let dz = bi.z - bj.z;
+            let dist = (dx * dx + dy * dy + dz * dz).sqrt();
+            e -= bi.mass * bj.mass / dist;
         }
     }
     e
 }
 
 fn offset_momentum(bodies: &mut [Planet, ..N_BODIES]) {
-    for i in range(0u, N_BODIES) {
-        for k in range(0u, 3) {
-            bodies[0].v[k] -= bodies[i].v[k] * bodies[i].mass / SOLAR_MASS;
-        }
+    let mut px = 0.0;
+    let mut py = 0.0;
+    let mut pz = 0.0;
+    for bi in bodies.iter() {
+        px += bi.vx * bi.mass;
+        py += bi.vy * bi.mass;
+        pz += bi.vz * bi.mass;
     }
+    let sun = &mut bodies[0];
+    sun.vx = - px / SOLAR_MASS;
+    sun.vy = - py / SOLAR_MASS;
+    sun.vz = - pz / SOLAR_MASS;
 }
 
 fn main() {
-    let args = os::args();
-    let args = if os::getenv("RUST_BENCH").is_some() {
-        vec!("".to_owned(), "1000".to_owned())
-    } else if args.len() <= 1u {
-        vec!("".to_owned(), "1000".to_owned())
+    let n = if std::os::getenv("RUST_BENCH").is_some() {
+        5000000
     } else {
-        args.move_iter().collect()
+        std::os::args().as_slice().get(1)
+            .and_then(|arg| from_str(*arg))
+            .unwrap_or(1000)
     };
-
-    let n: i32 = from_str::<i32>(*args.get(1)).unwrap();
     let mut bodies = BODIES;
 
     offset_momentum(&mut bodies);
-    println!("{:.9f}", energy(&bodies) as f64);
+    println!("{:.9f}", energy(&bodies));
 
     advance(&mut bodies, 0.01, n);
 
-    println!("{:.9f}", energy(&bodies) as f64);
+    println!("{:.9f}", energy(&bodies));
 }
-
