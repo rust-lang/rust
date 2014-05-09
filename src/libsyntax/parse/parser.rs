@@ -907,12 +907,6 @@ impl<'a> Parser<'a> {
             abi::Rust
         };
 
-        // NOTE: remove after a stage0 snapshot
-        let fn_style = match self.parse_unsafety() {
-            UnsafeFn => UnsafeFn,
-            NormalFn => fn_style,
-        };
-
         self.expect_keyword(keywords::Fn);
         let (decl, lifetimes) = self.parse_ty_fn_decl(true);
         return TyBareFn(@BareFnTy {

@@ -19,15 +19,6 @@
 
 use option::Option;
 
-#[cfg(stage0)]
-pub use fmt::parse::{Alignment, AlignLeft, AlignRight, AlignUnknown};
-#[cfg(stage0)]
-pub use fmt::parse::{PluralKeyword, Zero, One, Two, Few, Many};
-#[cfg(stage0)]
-pub use fmt::parse::{Flag, FlagSignPlus, FlagSignMinus, FlagSignAwareZeroPad};
-#[cfg(stage0)]
-pub use fmt::parse::{FlagAlternate};
-
 pub enum Piece<'a> {
     String(&'a str),
     // FIXME(#8259): this shouldn't require the unit-value here
@@ -49,7 +40,6 @@ pub struct FormatSpec {
     pub width: Count,
 }
 
-#[cfg(not(stage0))]
 #[deriving(Eq)]
 pub enum Alignment {
     AlignLeft,
@@ -65,7 +55,6 @@ pub enum Position {
     ArgumentNext, ArgumentIs(uint)
 }
 
-#[cfg(not(stage0))]
 pub enum Flag {
     FlagSignPlus,
     FlagSignMinus,
