@@ -76,7 +76,7 @@ Some examples of obvious things you might want to do
 
     let path = Path::new("message.txt");
     let mut file = BufferedReader::new(File::open(&path));
-    let lines: ~[~str] = file.lines().map(|x| x.unwrap()).collect();
+    let lines: Vec<~str> = file.lines().map(|x| x.unwrap()).collect();
     ```
 
 * Make a simple TCP client connection and request

@@ -62,7 +62,7 @@ pub fn main() {
 
     assert!(map.pop(&Slice("foo")).is_some());
     assert_eq!(map.move_iter().map(|(k, v)| k.to_str() + v.to_str())
-                              .collect::<~[~str]>()
+                              .collect::<Vec<~str>>()
                               .concat(),
                "abc50bcd51cde52def53".to_owned());
 }

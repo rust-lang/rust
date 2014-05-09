@@ -190,7 +190,7 @@ fn to_utf8(raw_sol: &List<u64>) -> ~str {
             }
         }
     }
-    std::str::from_utf8_owned(sol.move_iter().collect()).unwrap()
+    std::str::from_utf8(sol.as_slice()).unwrap().to_owned()
 }
 
 // Prints a solution in ~str form.
@@ -270,6 +270,7 @@ fn search(
 
 fn main () {
     let args = std::os::args();
+    let args = args.as_slice();
     let stop_after = if args.len() <= 1 {
         2098
     } else {

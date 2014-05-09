@@ -11,11 +11,10 @@
 //! Operations and constants for unsigned 32-bits integers (`u32` type)
 
 use from_str::FromStr;
-use iter::Iterator;
 use num::{ToStrRadix, FromStrRadix};
 use num::strconv;
 use option::Option;
-use slice::{ImmutableVector, OwnedVector};
+use slice::ImmutableVector;
 use str;
 
 pub use core::u32::{BITS, BYTES, MIN, MAX};

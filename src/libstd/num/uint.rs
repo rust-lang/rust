@@ -11,11 +11,10 @@
 //! Operations and constants for architecture-sized unsigned integers (`uint` type)
 
 use from_str::FromStr;
-use iter::Iterator;
 use num::{ToStrRadix, FromStrRadix};
 use num::strconv;
 use option::Option;
-use slice::{ImmutableVector, OwnedVector};
+use slice::ImmutableVector;
 use str;
 
 pub use core::uint::{BITS, BYTES, MIN, MAX};

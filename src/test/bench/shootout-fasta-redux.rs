@@ -177,6 +177,7 @@ impl<'a, W: Writer> RandomFasta<'a, W> {
 
 fn main() {
     let args = os::args();
+    let args = args.as_slice();
     let n = if args.len() > 1 {
         from_str::<uint>(args[1]).unwrap()
     } else {

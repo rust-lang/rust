@@ -85,10 +85,9 @@ use fmt;
 use io::Writer;
 use iter::{Iterator, range, AdditiveIterator};
 use option::{None, Option, Some};
-use ptr;
 use from_str::FromStr;
-use slice::{OwnedVector, ImmutableVector, MutableVector};
-use slice::{Vector};
+use slice::{ImmutableVector, MutableVector, CloneableVector};
+use slice::Vector;
 use vec::Vec;
 use default::Default;
 use strbuf::StrBuf;
@@ -668,25 +667,22 @@ impl<'a> fmt::Show for MaybeOwned<'a> {
 /// Unsafe operations
 pub mod raw {
     use cast;
-    use iter::Iterator;
     use libc;
     use ptr::RawPtr;
-    use ptr;
-    use slice::{MutableVector, OwnedVector, Vector};
-    use str::{is_utf8};
-    use vec::Vec;
+    use raw::Slice;
+    use slice::CloneableVector;
+    use str::{is_utf8, StrAllocating};
 
     pub use core::str::raw::{from_utf8, c_str_to_static_slice, slice_bytes};
     pub use core::str::raw::{slice_unchecked};
 
     /// Create a Rust string from a *u8 buffer of the given length
     pub unsafe fn from_buf_len(buf: *u8, len: uint) -> ~str {
-        let mut v = Vec::with_capacity(len);
-        ptr::copy_memory(v.as_mut_ptr(), buf, len);
-        v.set_len(len);
-
-        assert!(is_utf8(v.as_slice()));
-        ::cast::transmute(v.move_iter().collect::<~[u8]>())
+        let v = Slice { data: buf, len: len };
+        let bytes: &[u8] = ::cast::transmute(v);
+        assert!(is_utf8(bytes));
+        let s: &str = ::cast::transmute(bytes);
+        s.to_owned()
     }
 
     #[lang="strdup_uniq"]
@@ -824,27 +820,23 @@ pub trait StrAllocating: Str {
     /// Copy a slice into a new owned str.
     #[inline]
     fn to_owned(&self) -> ~str {
-        let me = self.as_slice();
-        let len = me.len();
-        unsafe {
-            let mut v = Vec::with_capacity(len);
+        use slice::Vector;
 
-            ptr::copy_memory(v.as_mut_ptr(), me.as_ptr(), len);
-            v.set_len(len);
-            ::cast::transmute(v.move_iter().collect::<~[u8]>())
+        unsafe {
+            ::cast::transmute(self.as_slice().as_bytes().to_owned())
         }
     }
 
     /// Converts to a vector of `u16` encoded as UTF-16.
-    fn to_utf16(&self) -> ~[u16] {
+    fn to_utf16(&self) -> Vec<u16> {
         let me = self.as_slice();
-        let mut u = Vec::new();;
+        let mut u = Vec::new();
         for ch in me.chars() {
             let mut buf = [0u16, ..2];
             let n = ch.encode_utf16(buf /* as mut slice! */);
             u.push_all(buf.slice_to(n));
         }
-        u.move_iter().collect()
+        u
     }
 
     /// Given a string, make a new string with repeated copies of it.
@@ -1554,7 +1546,8 @@ mod tests {
         assert_eq!(a.subslice_offset(c), 0);
 
         let string = "a\nb\nc";
-        let lines: ~[&str] = string.lines().collect();
+        let lines: Vec<&str> = string.lines().collect();
+        let lines = lines.as_slice();
         assert_eq!(string.subslice_offset(lines[0]), 0);
         assert_eq!(string.subslice_offset(lines[1]), 2);
         assert_eq!(string.subslice_offset(lines[2]), 4);
@@ -1617,13 +1610,13 @@ mod tests {
     fn test_utf16() {
         let pairs =
             [("𐍅𐌿𐌻𐍆𐌹𐌻𐌰\n".to_owned(),
-              box [0xd800_u16, 0xdf45_u16, 0xd800_u16, 0xdf3f_u16,
+              vec![0xd800_u16, 0xdf45_u16, 0xd800_u16, 0xdf3f_u16,
                 0xd800_u16, 0xdf3b_u16, 0xd800_u16, 0xdf46_u16,
                 0xd800_u16, 0xdf39_u16, 0xd800_u16, 0xdf3b_u16,
                 0xd800_u16, 0xdf30_u16, 0x000a_u16]),
 
              ("𐐒𐑉𐐮𐑀𐐲𐑋 𐐏𐐲𐑍\n".to_owned(),
-              box [0xd801_u16, 0xdc12_u16, 0xd801_u16,
+              vec![0xd801_u16, 0xdc12_u16, 0xd801_u16,
                 0xdc49_u16, 0xd801_u16, 0xdc2e_u16, 0xd801_u16,
                 0xdc40_u16, 0xd801_u16, 0xdc32_u16, 0xd801_u16,
                 0xdc4b_u16, 0x0020_u16, 0xd801_u16, 0xdc0f_u16,
@@ -1631,7 +1624,7 @@ mod tests {
                 0x000a_u16]),
 
              ("𐌀𐌖𐌋𐌄𐌑𐌉·𐌌𐌄𐌕𐌄𐌋𐌉𐌑\n".to_owned(),
-              box [0xd800_u16, 0xdf00_u16, 0xd800_u16, 0xdf16_u16,
+              vec![0xd800_u16, 0xdf00_u16, 0xd800_u16, 0xdf16_u16,
                 0xd800_u16, 0xdf0b_u16, 0xd800_u16, 0xdf04_u16,
                 0xd800_u16, 0xdf11_u16, 0xd800_u16, 0xdf09_u16,
                 0x00b7_u16, 0xd800_u16, 0xdf0c_u16, 0xd800_u16,
@@ -1640,7 +1633,7 @@ mod tests {
                 0xdf09_u16, 0xd800_u16, 0xdf11_u16, 0x000a_u16 ]),
 
              ("𐒋𐒘𐒈𐒑𐒛𐒒 𐒕𐒓 𐒈𐒚𐒍 𐒏𐒜𐒒𐒖𐒆 𐒕𐒆\n".to_owned(),
-              box [0xd801_u16, 0xdc8b_u16, 0xd801_u16, 0xdc98_u16,
+              vec![0xd801_u16, 0xdc8b_u16, 0xd801_u16, 0xdc98_u16,
                 0xd801_u16, 0xdc88_u16, 0xd801_u16, 0xdc91_u16,
                 0xd801_u16, 0xdc9b_u16, 0xd801_u16, 0xdc92_u16,
                 0x0020_u16, 0xd801_u16, 0xdc95_u16, 0xd801_u16,
@@ -1653,18 +1646,18 @@ mod tests {
                 0x000a_u16 ]),
              // Issue #12318, even-numbered non-BMP planes
              ("\U00020000".to_owned(),
-              box [0xD840, 0xDC00])];
+              vec![0xD840, 0xDC00])];
 
         for p in pairs.iter() {
             let (s, u) = (*p).clone();
-            assert!(is_utf16(u));
+            assert!(is_utf16(u.as_slice()));
             assert_eq!(s.to_utf16(), u);
 
-            assert_eq!(from_utf16(u).unwrap(), s);
-            assert_eq!(from_utf16_lossy(u), s);
+            assert_eq!(from_utf16(u.as_slice()).unwrap(), s);
+            assert_eq!(from_utf16_lossy(u.as_slice()), s);
 
-            assert_eq!(from_utf16(s.to_utf16()).unwrap(), s);
-            assert_eq!(from_utf16(u).unwrap().to_utf16(), u);
+            assert_eq!(from_utf16(s.to_utf16().as_slice()).unwrap(), s);
+            assert_eq!(from_utf16(u.as_slice()).unwrap().to_utf16(), u);
         }
     }
 
@@ -1921,105 +1914,105 @@ mod tests {
     fn test_split_char_iterator() {
         let data = "\nMäry häd ä little lämb\nLittle lämb\n";
 
-        let split: ~[&str] = data.split(' ').collect();
-        assert_eq!( split, box ["\nMäry", "häd", "ä", "little", "lämb\nLittle", "lämb\n"]);
+        let split: Vec<&str> = data.split(' ').collect();
+        assert_eq!( split, vec!["\nMäry", "häd", "ä", "little", "lämb\nLittle", "lämb\n"]);
 
-        let mut rsplit: ~[&str] = data.split(' ').rev().collect();
+        let mut rsplit: Vec<&str> = data.split(' ').rev().collect();
         rsplit.reverse();
-        assert_eq!(rsplit, box ["\nMäry", "häd", "ä", "little", "lämb\nLittle", "lämb\n"]);
+        assert_eq!(rsplit, vec!["\nMäry", "häd", "ä", "little", "lämb\nLittle", "lämb\n"]);
 
-        let split: ~[&str] = data.split(|c: char| c == ' ').collect();
-        assert_eq!( split, box ["\nMäry", "häd", "ä", "little", "lämb\nLittle", "lämb\n"]);
+        let split: Vec<&str> = data.split(|c: char| c == ' ').collect();
+        assert_eq!( split, vec!["\nMäry", "häd", "ä", "little", "lämb\nLittle", "lämb\n"]);
 
-        let mut rsplit: ~[&str] = data.split(|c: char| c == ' ').rev().collect();
+        let mut rsplit: Vec<&str> = data.split(|c: char| c == ' ').rev().collect();
         rsplit.reverse();
-        assert_eq!(rsplit, box ["\nMäry", "häd", "ä", "little", "lämb\nLittle", "lämb\n"]);
+        assert_eq!(rsplit, vec!["\nMäry", "häd", "ä", "little", "lämb\nLittle", "lämb\n"]);
 
         // Unicode
-        let split: ~[&str] = data.split('ä').collect();
-        assert_eq!( split, box ["\nM", "ry h", "d ", " little l", "mb\nLittle l", "mb\n"]);
+        let split: Vec<&str> = data.split('ä').collect();
+        assert_eq!( split, vec!["\nM", "ry h", "d ", " little l", "mb\nLittle l", "mb\n"]);
 
-        let mut rsplit: ~[&str] = data.split('ä').rev().collect();
+        let mut rsplit: Vec<&str> = data.split('ä').rev().collect();
         rsplit.reverse();
-        assert_eq!(rsplit, box ["\nM", "ry h", "d ", " little l", "mb\nLittle l", "mb\n"]);
+        assert_eq!(rsplit, vec!["\nM", "ry h", "d ", " little l", "mb\nLittle l", "mb\n"]);
 
-        let split: ~[&str] = data.split(|c: char| c == 'ä').collect();
-        assert_eq!( split, box ["\nM", "ry h", "d ", " little l", "mb\nLittle l", "mb\n"]);
+        let split: Vec<&str> = data.split(|c: char| c == 'ä').collect();
+        assert_eq!( split, vec!["\nM", "ry h", "d ", " little l", "mb\nLittle l", "mb\n"]);
 
-        let mut rsplit: ~[&str] = data.split(|c: char| c == 'ä').rev().collect();
+        let mut rsplit: Vec<&str> = data.split(|c: char| c == 'ä').rev().collect();
         rsplit.reverse();
-        assert_eq!(rsplit, box ["\nM", "ry h", "d ", " little l", "mb\nLittle l", "mb\n"]);
+        assert_eq!(rsplit, vec!["\nM", "ry h", "d ", " little l", "mb\nLittle l", "mb\n"]);
     }
 
     #[test]
     fn test_splitn_char_iterator() {
         let data = "\nMäry häd ä little lämb\nLittle lämb\n";
 
-        let split: ~[&str] = data.splitn(' ', 3).collect();
-        assert_eq!(split, box ["\nMäry", "häd", "ä", "little lämb\nLittle lämb\n"]);
+        let split: Vec<&str> = data.splitn(' ', 3).collect();
+        assert_eq!(split, vec!["\nMäry", "häd", "ä", "little lämb\nLittle lämb\n"]);
 
-        let split: ~[&str] = data.splitn(|c: char| c == ' ', 3).collect();
-        assert_eq!(split, box ["\nMäry", "häd", "ä", "little lämb\nLittle lämb\n"]);
+        let split: Vec<&str> = data.splitn(|c: char| c == ' ', 3).collect();
+        assert_eq!(split, vec!["\nMäry", "häd", "ä", "little lämb\nLittle lämb\n"]);
 
         // Unicode
-        let split: ~[&str] = data.splitn('ä', 3).collect();
-        assert_eq!(split, box ["\nM", "ry h", "d ", " little lämb\nLittle lämb\n"]);
+        let split: Vec<&str> = data.splitn('ä', 3).collect();
+        assert_eq!(split, vec!["\nM", "ry h", "d ", " little lämb\nLittle lämb\n"]);
 
-        let split: ~[&str] = data.splitn(|c: char| c == 'ä', 3).collect();
-        assert_eq!(split, box ["\nM", "ry h", "d ", " little lämb\nLittle lämb\n"]);
+        let split: Vec<&str> = data.splitn(|c: char| c == 'ä', 3).collect();
+        assert_eq!(split, vec!["\nM", "ry h", "d ", " little lämb\nLittle lämb\n"]);
     }
 
     #[test]
     fn test_rsplitn_char_iterator() {
         let data = "\nMäry häd ä little lämb\nLittle lämb\n";
 
-        let mut split: ~[&str] = data.rsplitn(' ', 3).collect();
+        let mut split: Vec<&str> = data.rsplitn(' ', 3).collect();
         split.reverse();
-        assert_eq!(split, box ["\nMäry häd ä", "little", "lämb\nLittle", "lämb\n"]);
+        assert_eq!(split, vec!["\nMäry häd ä", "little", "lämb\nLittle", "lämb\n"]);
 
-        let mut split: ~[&str] = data.rsplitn(|c: char| c == ' ', 3).collect();
+        let mut split: Vec<&str> = data.rsplitn(|c: char| c == ' ', 3).collect();
         split.reverse();
-        assert_eq!(split, box ["\nMäry häd ä", "little", "lämb\nLittle", "lämb\n"]);
+        assert_eq!(split, vec!["\nMäry häd ä", "little", "lämb\nLittle", "lämb\n"]);
 
         // Unicode
-        let mut split: ~[&str] = data.rsplitn('ä', 3).collect();
+        let mut split: Vec<&str> = data.rsplitn('ä', 3).collect();
         split.reverse();
-        assert_eq!(split, box ["\nMäry häd ", " little l", "mb\nLittle l", "mb\n"]);
+        assert_eq!(split, vec!["\nMäry häd ", " little l", "mb\nLittle l", "mb\n"]);
 
-        let mut split: ~[&str] = data.rsplitn(|c: char| c == 'ä', 3).collect();
+        let mut split: Vec<&str> = data.rsplitn(|c: char| c == 'ä', 3).collect();
         split.reverse();
-        assert_eq!(split, box ["\nMäry häd ", " little l", "mb\nLittle l", "mb\n"]);
+        assert_eq!(split, vec!["\nMäry häd ", " little l", "mb\nLittle l", "mb\n"]);
     }
 
     #[test]
     fn test_split_char_iterator_no_trailing() {
         let data = "\nMäry häd ä little lämb\nLittle lämb\n";
 
-        let split: ~[&str] = data.split('\n').collect();
-        assert_eq!(split, box ["", "Märy häd ä little lämb", "Little lämb", ""]);
+        let split: Vec<&str> = data.split('\n').collect();
+        assert_eq!(split, vec!["", "Märy häd ä little lämb", "Little lämb", ""]);
 
-        let split: ~[&str] = data.split_terminator('\n').collect();
-        assert_eq!(split, box ["", "Märy häd ä little lämb", "Little lämb"]);
+        let split: Vec<&str> = data.split_terminator('\n').collect();
+        assert_eq!(split, vec!["", "Märy häd ä little lämb", "Little lämb"]);
     }
 
     #[test]
     fn test_rev_split_char_iterator_no_trailing() {
         let data = "\nMäry häd ä little lämb\nLittle lämb\n";
 
-        let mut split: ~[&str] = data.split('\n').rev().collect();
+        let mut split: Vec<&str> = data.split('\n').rev().collect();
         split.reverse();
-        assert_eq!(split, box ["", "Märy häd ä little lämb", "Little lämb", ""]);
+        assert_eq!(split, vec!["", "Märy häd ä little lämb", "Little lämb", ""]);
 
-        let mut split: ~[&str] = data.split_terminator('\n').rev().collect();
+        let mut split: Vec<&str> = data.split_terminator('\n').rev().collect();
         split.reverse();
-        assert_eq!(split, box ["", "Märy häd ä little lämb", "Little lämb"]);
+        assert_eq!(split, vec!["", "Märy häd ä little lämb", "Little lämb"]);
     }
 
     #[test]
     fn test_words() {
         let data = "\n \tMäry   häd\tä  little lämb\nLittle lämb\n";
-        let words: ~[&str] = data.words().collect();
-        assert_eq!(words, box ["Märy", "häd", "ä", "little", "lämb", "Little", "lämb"])
+        let words: Vec<&str> = data.words().collect();
+        assert_eq!(words, vec!["Märy", "häd", "ä", "little", "lämb", "Little", "lämb"])
     }
 
     #[test]
@@ -2053,34 +2046,34 @@ mod tests {
     #[test]
     fn test_lines() {
         let data = "\nMäry häd ä little lämb\n\nLittle lämb\n";
-        let lines: ~[&str] = data.lines().collect();
-        assert_eq!(lines, box ["", "Märy häd ä little lämb", "", "Little lämb"]);
+        let lines: Vec<&str> = data.lines().collect();
+        assert_eq!(lines, vec!["", "Märy häd ä little lämb", "", "Little lämb"]);
 
         let data = "\nMäry häd ä little lämb\n\nLittle lämb"; // no trailing \n
-        let lines: ~[&str] = data.lines().collect();
-        assert_eq!(lines, box ["", "Märy häd ä little lämb", "", "Little lämb"]);
+        let lines: Vec<&str> = data.lines().collect();
+        assert_eq!(lines, vec!["", "Märy häd ä little lämb", "", "Little lämb"]);
     }
 
     #[test]
     fn test_split_strator() {
-        fn t<'a>(s: &str, sep: &'a str, u: ~[&str]) {
-            let v: ~[&str] = s.split_str(sep).collect();
-            assert_eq!(v, u);
+        fn t(s: &str, sep: &str, u: &[&str]) {
+            let v: Vec<&str> = s.split_str(sep).collect();
+            assert_eq!(v.as_slice(), u.as_slice());
         }
-        t("--1233345--", "12345", box ["--1233345--"]);
-        t("abc::hello::there", "::", box ["abc", "hello", "there"]);
-        t("::hello::there", "::", box ["", "hello", "there"]);
-        t("hello::there::", "::", box ["hello", "there", ""]);
-        t("::hello::there::", "::", box ["", "hello", "there", ""]);
-        t("ประเทศไทย中华Việt Nam", "中华", box ["ประเทศไทย", "Việt Nam"]);
-        t("zzXXXzzYYYzz", "zz", box ["", "XXX", "YYY", ""]);
-        t("zzXXXzYYYz", "XXX", box ["zz", "zYYYz"]);
-        t(".XXX.YYY.", ".", box ["", "XXX", "YYY", ""]);
-        t("", ".", box [""]);
-        t("zz", "zz", box ["",""]);
-        t("ok", "z", box ["ok"]);
-        t("zzz", "zz", box ["","z"]);
-        t("zzzzz", "zz", box ["","","z"]);
+        t("--1233345--", "12345", ["--1233345--"]);
+        t("abc::hello::there", "::", ["abc", "hello", "there"]);
+        t("::hello::there", "::", ["", "hello", "there"]);
+        t("hello::there::", "::", ["hello", "there", ""]);
+        t("::hello::there::", "::", ["", "hello", "there", ""]);
+        t("ประเทศไทย中华Việt Nam", "中华", ["ประเทศไทย", "Việt Nam"]);
+        t("zzXXXzzYYYzz", "zz", ["", "XXX", "YYY", ""]);
+        t("zzXXXzYYYz", "XXX", ["zz", "zYYYz"]);
+        t(".XXX.YYY.", ".", ["", "XXX", "YYY", ""]);
+        t("", ".", [""]);
+        t("zz", "zz", ["",""]);
+        t("ok", "z", ["ok"]);
+        t("zzz", "zz", ["","z"]);
+        t("zzzzz", "zz", ["","","z"]);
     }
 
     #[test]

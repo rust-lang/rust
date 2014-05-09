@@ -434,7 +434,7 @@ pub fn monitor(f: proc():Send) {
 }
 
 pub fn main() {
-    std::os::set_exit_status(main_args(std::os::args()));
+    std::os::set_exit_status(main_args(std::os::args().as_slice()));
 }
 
 pub fn main_args(args: &[~str]) -> int {

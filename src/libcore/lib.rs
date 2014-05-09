@@ -111,4 +111,6 @@ mod std {
     #[cfg(test)] pub use realstd::rt;     // needed for fail!()
     #[cfg(test)] pub use realstd::option; // needed for assert!()
     #[cfg(test)] pub use realstd::os;     // needed for tests
+    #[cfg(test)] pub use realstd::slice;  // needed for tests
+    #[cfg(test)] pub use realstd::vec;    // needed for vec![]
 }

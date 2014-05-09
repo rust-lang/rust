@@ -35,6 +35,7 @@ fn roundtrip(id: int, tx: Sender<int>, rx: Receiver<int>) {
 
 fn main() {
     let args = std::os::args();
+    let args = args.as_slice();
     let token = if std::os::getenv("RUST_BENCH").is_some() {
         2000000
     } else {
