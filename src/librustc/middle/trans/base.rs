@@ -478,7 +478,7 @@ pub fn note_unique_llvm_symbol(ccx: &CrateContext, sym: ~str) {
 pub fn get_res_dtor(ccx: &CrateContext,
                     did: ast::DefId,
                     parent_id: ast::DefId,
-                    substs: &[ty::t])
+                    substs: &ty::substs)
                  -> ValueRef {
     let _icx = push_ctxt("trans_res_dtor");
     let did = if did.krate != ast::LOCAL_CRATE {
@@ -486,16 +486,12 @@ pub fn get_res_dtor(ccx: &CrateContext,
     } else {
         did
     };
-    if !substs.is_empty() {
-        assert_eq!(did.krate, ast::LOCAL_CRATE);
-        let tsubsts = ty::substs {
-            regions: ty::ErasedRegions,
-            self_ty: None,
-            tps: Vec::from_slice(substs),
-        };
 
-        let vtables = typeck::check::vtable::trans_resolve_method(ccx.tcx(), did.node, &tsubsts);
-        let (val, _) = monomorphize::monomorphic_fn(ccx, did, &tsubsts, vtables, None, None);
+    if !substs.tps.is_empty() || !substs.self_ty.is_none() {
+        assert_eq!(did.krate, ast::LOCAL_CRATE);
+
+        let vtables = typeck::check::vtable::trans_resolve_method(ccx.tcx(), did.node, substs);
+        let (val, _) = monomorphize::monomorphic_fn(ccx, did, substs, vtables, None, None);
 
         val
     } else if did.krate == ast::LOCAL_CRATE {
@@ -503,10 +499,8 @@ pub fn get_res_dtor(ccx: &CrateContext,
     } else {
         let tcx = ccx.tcx();
         let name = csearch::get_symbol(&ccx.sess().cstore, did);
-        let class_ty = ty::subst_tps(tcx,
-                                     substs,
-                                     None,
-                                     ty::lookup_item_type(tcx, parent_id).ty);
+        let class_ty = ty::subst(tcx, substs,
+                                 ty::lookup_item_type(tcx, parent_id).ty);
         let llty = type_of_dtor(ccx, class_ty);
 
         get_extern_fn(&mut *ccx.externs.borrow_mut(), ccx.llmod, name,
@@ -670,7 +664,7 @@ pub fn iter_structural_ty<'r,
                     repr: &adt::Repr,
                     av: ValueRef,
                     variant: &ty::VariantInfo,
-                    tps: &[ty::t],
+                    substs: &ty::substs,
                     f: val_and_ty_fn<'r,'b>)
                     -> &'b Block<'b> {
         let _icx = push_ctxt("iter_variant");
@@ -680,7 +674,7 @@ pub fn iter_structural_ty<'r,
         for (i, &arg) in variant.args.iter().enumerate() {
             cx = f(cx,
                    adt::trans_field_ptr(cx, repr, av, variant.disr_val, i),
-                   ty::subst_tps(tcx, tps, None, arg));
+                   ty::subst(tcx, substs, arg));
         }
         return cx;
     }
@@ -722,7 +716,7 @@ pub fn iter_structural_ty<'r,
           match adt::trans_switch(cx, &*repr, av) {
               (_match::single, None) => {
                   cx = iter_variant(cx, &*repr, av, &**variants.get(0),
-                                    substs.tps.as_slice(), f);
+                                    substs, f);
               }
               (_match::switch, Some(lldiscrim_a)) => {
                   cx = f(cx, lldiscrim_a, ty::mk_int());
@@ -748,7 +742,7 @@ pub fn iter_structural_ty<'r,
                                        &*repr,
                                        av,
                                        &**variant,
-                                       substs.tps.as_slice(),
+                                       substs,
                                        |x,y,z| f(x,y,z));
                       Br(variant_cx, next_cx.llbb);
                   }
@@ -1153,15 +1147,7 @@ pub fn new_fn_ctxt<'a>(ccx: &'a CrateContext,
            },
            id, param_substs.map(|s| s.repr(ccx.tcx())));
 
-    let substd_output_type = match param_substs {
-        None => output_type,
-        Some(substs) => {
-            ty::subst_tps(ccx.tcx(),
-                          substs.tys.as_slice(),
-                          substs.self_ty,
-                          output_type)
-        }
-    };
+    let substd_output_type = output_type.substp(ccx.tcx(), param_substs);
     let uses_outptr = type_of::return_uses_outptr(ccx, substd_output_type);
     let debug_context = debuginfo::create_function_debug_context(ccx, id, param_substs, llfndecl);
 
@@ -1213,15 +1199,7 @@ pub fn init_function<'a>(fcx: &'a FunctionContext<'a>,
 
     // This shouldn't need to recompute the return type,
     // as new_fn_ctxt did it already.
-    let substd_output_type = match fcx.param_substs {
-        None => output_type,
-        Some(substs) => {
-            ty::subst_tps(fcx.ccx.tcx(),
-                          substs.tys.as_slice(),
-                          substs.self_ty,
-                          output_type)
-        }
-    };
+    let substd_output_type = output_type.substp(fcx.ccx.tcx(), fcx.param_substs);
 
     if !return_type_is_void(fcx.ccx, substd_output_type) {
         // If the function returns nil/bot, there is no real return
@@ -1508,18 +1486,8 @@ fn trans_enum_variant_or_tuple_like_struct(ccx: &CrateContext,
                                            disr: ty::Disr,
                                            param_substs: Option<&param_substs>,
                                            llfndecl: ValueRef) {
-    let ctor_ty = {
-        let no_substs: &[ty::t] = [];
-        let ty_param_substs: &[ty::t] = match param_substs {
-            Some(substs) => substs.tys.as_slice(),
-            None => no_substs
-        };
-
-        ty::subst_tps(ccx.tcx(),
-                      ty_param_substs,
-                      None,
-                      ty::node_id_to_type(ccx.tcx(), ctor_id))
-    };
+    let ctor_ty = ty::node_id_to_type(ccx.tcx(), ctor_id);
+    let ctor_ty = ctor_ty.substp(ccx.tcx(), param_substs);
 
     let result_ty = match ty::get(ctor_ty).sty {
         ty::ty_bare_fn(ref bft) => bft.sig.output,

@@ -85,9 +85,8 @@ pub fn monomorphic_fn(ccx: &CrateContext,
     }
 
     let psubsts = param_substs {
-        tys: real_substs.tps.clone(),
+        substs: (*real_substs).clone(),
         vtables: vtables,
-        self_ty: real_substs.self_ty.clone(),
         self_vtables: self_vtables
     };
 
@@ -139,8 +138,7 @@ pub fn monomorphic_fn(ccx: &CrateContext,
 
     debug!("monomorphic_fn about to subst into {}", llitem_ty.repr(ccx.tcx()));
     let mono_ty = match is_static_provided {
-        None => ty::subst_tps(ccx.tcx(), real_substs.tps.as_slice(),
-                              real_substs.self_ty, llitem_ty),
+        None => ty::subst(ccx.tcx(), real_substs, llitem_ty),
         Some(num_method_ty_params) => {
             // Static default methods are a little unfortunate, in
             // that the "internal" and "external" type of them differ.
@@ -157,13 +155,19 @@ pub fn monomorphic_fn(ccx: &CrateContext,
             // This is a bit unfortunate.
 
             let idx = real_substs.tps.len() - num_method_ty_params;
-            let substs = Vec::from_slice(real_substs.tps.slice(0, idx))
-                         .append([real_substs.self_ty.unwrap()])
-                         .append(real_substs.tps.tailn(idx));
+            let mut tps = Vec::new();
+            tps.push_all(real_substs.tps.slice(0, idx));
+            tps.push(real_substs.self_ty.unwrap());
+            tps.push_all(real_substs.tps.tailn(idx));
+
+            let substs = ty::substs { regions: ty::ErasedRegions,
+                                      self_ty: None,
+                                      tps: tps };
+
             debug!("static default: changed substitution to {}",
                    substs.repr(ccx.tcx()));
 
-            ty::subst_tps(ccx.tcx(), substs.as_slice(), None, llitem_ty)
+            ty::subst(ccx.tcx(), &substs, llitem_ty)
         }
     };
 
@@ -334,7 +338,10 @@ pub fn make_vtable_id(ccx: &CrateContext,
         &typeck::vtable_static(impl_id, ref substs, ref sub_vtables) => {
             MonoId {
                 def: impl_id,
-                params: sub_vtables.iter().zip(substs.iter()).map(|(vtable, subst)| {
+                // FIXME(NDM) -- this is pretty bogus. It ignores self-type,
+                // and vtables are not necessary, AND they are not guaranteed
+                // to be same length as the number of TPS ANYHOW!
+                params: sub_vtables.iter().zip(substs.tps.iter()).map(|(vtable, subst)| {
                     MonoParamId {
                         subst: *subst,
                         // Do we really need the vtables to be hashed? Isn't the type enough?

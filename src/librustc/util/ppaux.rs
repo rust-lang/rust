@@ -561,6 +561,12 @@ impl Repr for ty::substs {
     }
 }
 
+impl Repr for ty::ItemSubsts {
+    fn repr(&self, tcx: &ctxt) -> ~str {
+        format!("ItemSubsts({})", self.substs.repr(tcx))
+    }
+}
+
 impl Repr for ty::RegionSubsts {
     fn repr(&self, tcx: &ctxt) -> ~str {
         match *self {

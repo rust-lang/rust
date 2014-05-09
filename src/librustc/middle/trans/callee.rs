@@ -159,36 +159,36 @@ fn trans<'a>(bcx: &'a Block<'a>, expr: &ast::Expr) -> Callee<'a> {
 
 pub fn trans_fn_ref(bcx: &Block, def_id: ast::DefId, node: ExprOrMethodCall) -> ValueRef {
     /*!
-     *
      * Translates a reference (with id `ref_id`) to the fn/method
      * with id `def_id` into a function pointer.  This may require
-     * monomorphization or inlining. */
+     * monomorphization or inlining.
+     */
 
     let _icx = push_ctxt("trans_fn_ref");
 
-    let type_params = node_id_type_params(bcx, node);
+    let substs = node_id_substs(bcx, node);
     let vtable_key = match node {
         ExprId(id) => MethodCall::expr(id),
         MethodCall(method_call) => method_call
     };
     let vtables = node_vtables(bcx, vtable_key);
-    debug!("trans_fn_ref(def_id={}, node={:?}, type_params={}, vtables={})",
-           def_id.repr(bcx.tcx()), node, type_params.repr(bcx.tcx()),
+    debug!("trans_fn_ref(def_id={}, node={:?}, substs={}, vtables={})",
+           def_id.repr(bcx.tcx()),
+           node,
+           substs.repr(bcx.tcx()),
            vtables.repr(bcx.tcx()));
-    trans_fn_ref_with_vtables(bcx, def_id, node,
-                              type_params,
-                              vtables)
+    trans_fn_ref_with_vtables(bcx, def_id, node, substs, vtables)
 }
 
 fn trans_fn_ref_with_vtables_to_callee<'a>(bcx: &'a Block<'a>,
                                            def_id: ast::DefId,
                                            ref_id: ast::NodeId,
-                                           type_params: Vec<ty::t>,
+                                           substs: ty::substs,
                                            vtables: Option<typeck::vtable_res>)
                                            -> Callee<'a> {
     Callee {bcx: bcx,
             data: Fn(trans_fn_ref_with_vtables(bcx, def_id, ExprId(ref_id),
-                                               type_params, vtables))}
+                                               substs, vtables))}
 }
 
 fn resolve_default_method_vtables(bcx: &Block,
@@ -204,8 +204,7 @@ fn resolve_default_method_vtables(bcx: &Block,
     // Build up a param_substs that we are going to resolve the
     // trait_vtables under.
     let param_substs = param_substs {
-        tys: substs.tps.clone(),
-        self_ty: substs.self_ty,
+        substs: (*substs).clone(),
         vtables: impl_vtables.clone(),
         self_vtables: None
     };
@@ -241,7 +240,7 @@ pub fn trans_fn_ref_with_vtables(
         bcx: &Block,       //
         def_id: ast::DefId,   // def id of fn
         node: ExprOrMethodCall,  // node id of use of fn; may be zero if N/A
-        type_params: Vec<ty::t>, // values for fn's ty params
+        substs: ty::substs, // values for fn's ty params
         vtables: Option<typeck::vtable_res>) // vtables for the call
      -> ValueRef {
     /*!
@@ -255,7 +254,7 @@ pub fn trans_fn_ref_with_vtables(
      * - `node`: node id of the reference to the fn/method, if applicable.
      *   This parameter may be zero; but, if so, the resulting value may not
      *   have the right type, so it must be cast before being used.
-     * - `type_params`: values for each of the fn/method's type parameters
+     * - `substs`: values for each of the fn/method's parameters
      * - `vtables`: values for each bound on each of the type parameters
      */
 
@@ -264,23 +263,17 @@ pub fn trans_fn_ref_with_vtables(
     let tcx = bcx.tcx();
 
     debug!("trans_fn_ref_with_vtables(bcx={}, def_id={}, node={:?}, \
-            type_params={}, vtables={})",
+            substs={}, vtables={})",
            bcx.to_str(),
            def_id.repr(tcx),
            node,
-           type_params.repr(tcx),
+           substs.repr(tcx),
            vtables.repr(tcx));
 
-    assert!(type_params.iter().all(|t| !ty::type_needs_infer(*t)));
+    assert!(substs.tps.iter().all(|t| !ty::type_needs_infer(*t)));
 
     // Polytype of the function item (may have type params)
     let fn_tpt = ty::lookup_item_type(tcx, def_id);
-
-    let substs = ty::substs {
-        regions: ty::ErasedRegions,
-        self_ty: None,
-        tps: type_params
-    };
 
     // Load the info for the appropriate trait if necessary.
     match ty::trait_of_method(tcx, def_id) {
@@ -510,7 +503,7 @@ pub fn trans_lang_call<'a>(
                                 trans_fn_ref_with_vtables_to_callee(bcx,
                                                                     did,
                                                                     0,
-                                                                    vec!(),
+                                                                    ty::substs::empty(),
                                                                     None)
                              },
                              ArgVals(args),

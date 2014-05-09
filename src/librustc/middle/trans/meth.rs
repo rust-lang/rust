@@ -198,7 +198,7 @@ pub fn trans_static_method_callee(bcx: &Block,
 
     match vtbls.move_iter().nth(bound_index).unwrap().move_iter().nth(0).unwrap() {
         typeck::vtable_static(impl_did, rcvr_substs, rcvr_origins) => {
-            assert!(rcvr_substs.iter().all(|t| !ty::type_needs_infer(*t)));
+            assert!(rcvr_substs.tps.iter().all(|t| !ty::type_needs_infer(*t)));
 
             let mth_id = method_with_name(ccx, impl_did, mname);
             let (callee_substs, callee_origins) =
@@ -277,39 +277,41 @@ fn trans_monomorphized_callee<'a>(bcx: &'a Block<'a>,
 fn combine_impl_and_methods_tps(bcx: &Block,
                                 mth_did: ast::DefId,
                                 node: ExprOrMethodCall,
-                                rcvr_substs: Vec<ty::t>,
+                                rcvr_substs: ty::substs,
                                 rcvr_origins: typeck::vtable_res)
-                                -> (Vec<ty::t>, typeck::vtable_res) {
+                                -> (ty::substs, typeck::vtable_res)
+{
     /*!
-    *
-    * Creates a concatenated set of substitutions which includes
-    * those from the impl and those from the method.  This are
-    * some subtle complications here.  Statically, we have a list
-    * of type parameters like `[T0, T1, T2, M1, M2, M3]` where
-    * `Tn` are type parameters that appear on the receiver.  For
-    * example, if the receiver is a method parameter `A` with a
-    * bound like `trait<B,C,D>` then `Tn` would be `[B,C,D]`.
-    *
-    * The weird part is that the type `A` might now be bound to
-    * any other type, such as `foo<X>`.  In that case, the vector
-    * we want is: `[X, M1, M2, M3]`.  Therefore, what we do now is
-    * to slice off the method type parameters and append them to
-    * the type parameters from the type that the receiver is
-    * mapped to. */
+     * Creates a concatenated set of substitutions which includes
+     * those from the impl and those from the method.  This are
+     * some subtle complications here.  Statically, we have a list
+     * of type parameters like `[T0, T1, T2, M1, M2, M3]` where
+     * `Tn` are type parameters that appear on the receiver.  For
+     * example, if the receiver is a method parameter `A` with a
+     * bound like `trait<B,C,D>` then `Tn` would be `[B,C,D]`.
+     *
+     * The weird part is that the type `A` might now be bound to
+     * any other type, such as `foo<X>`.  In that case, the vector
+     * we want is: `[X, M1, M2, M3]`.  Therefore, what we do now is
+     * to slice off the method type parameters and append them to
+     * the type parameters from the type that the receiver is
+     * mapped to.
+     */
 
     let ccx = bcx.ccx();
     let method = ty::method(ccx.tcx(), mth_did);
     let n_m_tps = method.generics.type_param_defs().len();
-    let node_substs = node_id_type_params(bcx, node);
+    let node_substs = node_id_substs(bcx, node);
     debug!("rcvr_substs={:?}", rcvr_substs.repr(ccx.tcx()));
     debug!("node_substs={:?}", node_substs.repr(ccx.tcx()));
-    let mut ty_substs = rcvr_substs;
+    let rcvr_self_ty = rcvr_substs.self_ty;
+    let mut tps = rcvr_substs.tps;
     {
-        let start = node_substs.len() - n_m_tps;
-        ty_substs.extend(node_substs.move_iter().skip(start));
+        let start = node_substs.tps.len() - n_m_tps;
+        tps.extend(node_substs.tps.move_iter().skip(start));
     }
     debug!("n_m_tps={:?}", n_m_tps);
-    debug!("ty_substs={:?}", ty_substs.repr(ccx.tcx()));
+    debug!("tps={}", tps.repr(ccx.tcx()));
 
 
     // Now, do the same work for the vtables.  The vtables might not
@@ -332,6 +334,12 @@ fn combine_impl_and_methods_tps(bcx: &Block,
             ));
         }
     }
+
+    let ty_substs = ty::substs {
+        tps: tps,
+        regions: ty::ErasedRegions,
+        self_ty: rcvr_self_ty
+    };
 
     (ty_substs, vtables)
 }
@@ -485,7 +493,7 @@ pub fn make_vtable<I: Iterator<ValueRef>>(ccx: &CrateContext,
 
 fn emit_vtable_methods(bcx: &Block,
                        impl_id: ast::DefId,
-                       substs: Vec<ty::t>,
+                       substs: ty::substs,
                        vtables: typeck::vtable_res)
                        -> Vec<ValueRef> {
     let ccx = bcx.ccx();
