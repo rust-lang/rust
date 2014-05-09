@@ -25,6 +25,7 @@ use middle::trans::datum::{Datum, Lvalue};
 use middle::trans::debuginfo;
 use middle::trans::type_::Type;
 use middle::ty;
+use middle::subst::Subst;
 use middle::typeck;
 use util::ppaux::Repr;
 use util::nodemap::NodeMap;
@@ -177,28 +178,48 @@ pub type ExternMap = HashMap<~str, ValueRef>;
 // Here `self_ty` is the real type of the self parameter to this method. It
 // will only be set in the case of default methods.
 pub struct param_substs {
-    pub tys: Vec<ty::t> ,
-    pub self_ty: Option<ty::t>,
+    pub substs: ty::substs,
     pub vtables: Option<typeck::vtable_res>,
     pub self_vtables: Option<typeck::vtable_param_res>
 }
 
 impl param_substs {
     pub fn validate(&self) {
-        for t in self.tys.iter() { assert!(!ty::type_needs_infer(*t)); }
-        for t in self.self_ty.iter() { assert!(!ty::type_needs_infer(*t)); }
+        for t in self.substs.tps.iter() {
+            assert!(!ty::type_needs_infer(*t));
+        }
+        for t in self.substs.self_ty.iter() {
+            assert!(!ty::type_needs_infer(*t));
+        }
     }
 }
 
 fn param_substs_to_str(this: &param_substs, tcx: &ty::ctxt) -> ~str {
-    format!("param_substs \\{tys:{}, vtables:{}\\}",
-         this.tys.repr(tcx),
-         this.vtables.repr(tcx))
+    format!("param_substs({})", this.substs.repr(tcx))
 }
 
 impl Repr for param_substs {
     fn repr(&self, tcx: &ty::ctxt) -> ~str {
         param_substs_to_str(self, tcx)
+    }
+}
+
+pub trait SubstP {
+    fn substp(&self, tcx: &ty::ctxt, param_substs: Option<&param_substs>)
+              -> Self;
+}
+
+impl<T:Subst+Clone> SubstP for T {
+    fn substp(&self, tcx: &ty::ctxt, param_substs: Option<&param_substs>)
+              -> T {
+        match param_substs {
+            Some(substs) => {
+                self.subst(tcx, &substs.substs)
+            }
+            None => {
+                (*self).clone()
+            }
+        }
     }
 }
 
@@ -676,7 +697,7 @@ pub fn is_null(val: ValueRef) -> bool {
 pub fn monomorphize_type(bcx: &Block, t: ty::t) -> ty::t {
     match bcx.fcx.param_substs {
         Some(ref substs) => {
-            ty::subst_tps(bcx.tcx(), substs.tys.as_slice(), substs.self_ty, t)
+            ty::subst(bcx.tcx(), &substs.substs, t)
         }
         _ => {
             assert!(!ty::type_has_params(t));
@@ -710,32 +731,28 @@ pub enum ExprOrMethodCall {
     MethodCall(typeck::MethodCall)
 }
 
-pub fn node_id_type_params(bcx: &Block, node: ExprOrMethodCall) -> Vec<ty::t> {
+pub fn node_id_substs(bcx: &Block,
+                      node: ExprOrMethodCall)
+                      -> ty::substs {
     let tcx = bcx.tcx();
-    let params = match node {
-        ExprId(id) => ty::node_id_to_type_params(tcx, id),
+
+    let substs = match node {
+        ExprId(id) => {
+            ty::node_id_item_substs(tcx, id).substs
+        }
         MethodCall(method_call) => {
-            tcx.method_map.borrow().get(&method_call).substs.tps.clone()
+            tcx.method_map.borrow().get(&method_call).substs.clone()
         }
     };
 
-    if !params.iter().all(|t| !ty::type_needs_infer(*t)) {
+    if !substs.tps.iter().all(|t| !ty::type_needs_infer(*t)) {
         bcx.sess().bug(
             format!("type parameters for node {:?} include inference types: {}",
-                 node, params.iter()
-                             .map(|t| bcx.ty_to_str(*t))
-                             .collect::<Vec<~str>>()
-                             .connect(",")));
+                    node,
+                    substs.repr(bcx.tcx())));
     }
 
-    match bcx.fcx.param_substs {
-        Some(ref substs) => {
-            params.iter().map(|t| {
-                ty::subst_tps(tcx, substs.tys.as_slice(), substs.self_ty, *t)
-            }).collect()
-        }
-        _ => params
-    }
+    substs.substp(tcx, bcx.fcx.param_substs)
 }
 
 pub fn node_vtables(bcx: &Block, id: typeck::MethodCall)
@@ -785,20 +802,10 @@ pub fn resolve_vtable_under_param_substs(tcx: &ty::ctxt,
                                          vt: &typeck::vtable_origin)
                                          -> typeck::vtable_origin {
     match *vt {
-        typeck::vtable_static(trait_id, ref tys, ref sub) => {
-            let tys = match param_substs {
-                Some(substs) => {
-                    tys.iter().map(|t| {
-                        ty::subst_tps(tcx,
-                                      substs.tys.as_slice(),
-                                      substs.self_ty,
-                                      *t)
-                    }).collect()
-                }
-                _ => Vec::from_slice(tys.as_slice())
-            };
+        typeck::vtable_static(trait_id, ref vtable_substs, ref sub) => {
+            let vtable_substs = vtable_substs.substp(tcx, param_substs);
             typeck::vtable_static(
-                trait_id, tys,
+                trait_id, vtable_substs,
                 resolve_vtables_under_param_substs(tcx, param_substs, sub.as_slice()))
         }
         typeck::vtable_param(n_param, n_bound) => {
