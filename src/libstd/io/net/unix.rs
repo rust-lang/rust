@@ -97,6 +97,7 @@ impl UnixStream {
     /// Sets the read/write timeout for this socket.
     ///
     /// For more information, see `TcpStream::set_timeout`
+    #[experimental = "the timeout argument may change in type and value"]
     pub fn set_timeout(&mut self, timeout_ms: Option<u64>) {
         self.obj.set_timeout(timeout_ms)
     }
@@ -104,6 +105,7 @@ impl UnixStream {
     /// Sets the read timeout for this socket.
     ///
     /// For more information, see `TcpStream::set_timeout`
+    #[experimental = "the timeout argument may change in type and value"]
     pub fn set_read_timeout(&mut self, timeout_ms: Option<u64>) {
         self.obj.set_read_timeout(timeout_ms)
     }
@@ -111,6 +113,7 @@ impl UnixStream {
     /// Sets the write timeout for this socket.
     ///
     /// For more information, see `TcpStream::set_timeout`
+    #[experimental = "the timeout argument may change in type and value"]
     pub fn set_write_timeout(&mut self, timeout_ms: Option<u64>) {
         self.obj.set_write_timeout(timeout_ms)
     }
