@@ -1620,18 +1620,20 @@ impl<'a> Resolver<'a> {
 
         match def {
           DefMod(_) | DefForeignMod(_) => {}
-          DefVariant(_, variant_id, is_struct) => {
+          DefVariant(enum_did, variant_id, is_struct) => {
             debug!("(building reduced graph for external crate) building \
                     variant {}",
                    final_ident);
-            // We assume the parent is visible, or else we wouldn't have seen
-            // it. Also variants are public-by-default if the parent was also
-            // public.
+            // If this variant is public, then it was publicly reexported,
+            // otherwise we need to inherit the visibility of the enum
+            // definition.
+            let is_exported = is_public ||
+                              self.external_exports.contains(&enum_did);
             if is_struct {
-                child_name_bindings.define_type(def, DUMMY_SP, true);
+                child_name_bindings.define_type(def, DUMMY_SP, is_exported);
                 self.structs.insert(variant_id);
             } else {
-                child_name_bindings.define_value(def, DUMMY_SP, true);
+                child_name_bindings.define_value(def, DUMMY_SP, is_exported);
             }
           }
           DefFn(..) | DefStaticMethod(..) | DefStatic(..) => {
