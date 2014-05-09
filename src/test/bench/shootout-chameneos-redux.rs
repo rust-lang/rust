@@ -194,7 +194,7 @@ fn main() {
     let nn = if std::os::getenv("RUST_BENCH").is_some() {
         200000
     } else {
-        std::os::args().get(1).and_then(|arg| from_str(*arg)).unwrap_or(600)
+        std::os::args().as_slice().get(1).and_then(|arg| from_str(*arg)).unwrap_or(600)
     };
 
     print_complements();

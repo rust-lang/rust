@@ -67,7 +67,7 @@ impl Process {
     ///     os pipe instead. This process takes ownership of these file
     ///     descriptors, closing them upon destruction of the process.
     pub fn spawn(config: p::ProcessConfig)
-        -> Result<(Process, ~[Option<file::FileDesc>]), io::IoError>
+        -> Result<(Process, Vec<Option<file::FileDesc>>), io::IoError>
     {
         // right now we only handle stdin/stdout/stderr.
         if config.extra_io.len() > 0 {
@@ -117,7 +117,7 @@ impl Process {
                         exit_code: None,
                         exit_signal: None,
                     },
-                    ret_io.move_iter().collect()))
+                    ret_io))
             }
             Err(e) => Err(e)
         }

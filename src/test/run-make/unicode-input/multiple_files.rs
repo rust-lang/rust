@@ -36,8 +36,8 @@ fn random_char() -> char {
 
 fn main() {
     let args = os::args();
-    let rustc = args[1].as_slice();
-    let tmpdir = Path::new(args[2].as_slice());
+    let rustc = args.get(1).as_slice();
+    let tmpdir = Path::new(args.get(2).as_slice());
 
     let main_file = tmpdir.join("unicode_input_multiple_files_main.rs");
     let main_file_str = main_file.as_str().unwrap();

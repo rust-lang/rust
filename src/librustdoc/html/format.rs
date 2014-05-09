@@ -380,7 +380,7 @@ impl fmt::Show for clean::Type {
                            "".to_owned()
                        } else {
                            let mut m = decl.bounds.iter().map(|s| s.to_str());
-                           ": " + m.collect::<~[~str]>().connect(" + ")
+                           ": " + m.collect::<Vec<~str>>().connect(" + ")
                        },
                        arrow = match decl.decl.output { clean::Unit => "no", _ => "yes" },
                        ret = decl.decl.output)

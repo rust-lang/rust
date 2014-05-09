@@ -226,7 +226,8 @@ fn get_extern_rust_fn(ccx: &CrateContext, inputs: &[ty::t], output: ty::t,
 
     let f = decl_rust_fn(ccx, false, inputs, output, name);
     csearch::get_item_attrs(&ccx.sess().cstore, did, |meta_items| {
-        set_llvm_fn_attrs(meta_items.iter().map(|&x| attr::mk_attr(x)).collect::<~[_]>(), f)
+        set_llvm_fn_attrs(meta_items.iter().map(|&x| attr::mk_attr(x))
+                                    .collect::<Vec<_>>().as_slice(), f)
     });
 
     ccx.externs.borrow_mut().insert(name.to_owned(), f);
@@ -2109,12 +2110,12 @@ pub fn write_metadata(cx: &CrateContext, krate: &ast::Crate) -> Vec<u8> {
 
     let encode_parms = crate_ctxt_to_encode_parms(cx, encode_inlined_item);
     let metadata = encoder::encode_metadata(encode_parms, krate);
-    let compressed = encoder::metadata_encoding_version +
-                        match flate::deflate_bytes(metadata.as_slice()) {
-                            Some(compressed) => compressed,
-                            None => cx.sess().fatal(format!("failed to compress metadata", ))
-                        }.as_slice();
-    let llmeta = C_bytes(cx, compressed);
+    let compressed = Vec::from_slice(encoder::metadata_encoding_version)
+                     .append(match flate::deflate_bytes(metadata.as_slice()) {
+                         Some(compressed) => compressed,
+                         None => cx.sess().fatal(format!("failed to compress metadata"))
+                     }.as_slice());
+    let llmeta = C_bytes(cx, compressed.as_slice());
     let llconst = C_struct(cx, [llmeta], false);
     let name = format!("rust_metadata_{}_{}_{}", cx.link_meta.crateid.name,
                        cx.link_meta.crateid.version_or_default(), cx.link_meta.crate_hash);

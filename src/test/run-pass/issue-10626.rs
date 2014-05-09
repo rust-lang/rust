@@ -17,6 +17,7 @@ use std::io::process;
 
 pub fn main () {
     let args = os::args();
+    let args = args.as_slice();
     if args.len() > 1 && args[1] == "child".to_owned() {
         for _ in range(0, 1000) {
             println!("hello?");

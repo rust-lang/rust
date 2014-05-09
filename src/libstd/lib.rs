@@ -278,4 +278,7 @@ mod std {
     pub use ty;
     pub use unstable;
     pub use vec;
+
+    // The test runner requires std::slice::Vector, so re-export std::slice just for it.
+    #[cfg(test)] pub use slice;
 }

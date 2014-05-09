@@ -155,6 +155,7 @@ fn empty_results() -> Results {
 
 fn main() {
     let args = os::args();
+    let args = args.as_slice();
     let num_keys = {
         if args.len() == 2 {
             from_str::<uint>(args[1]).unwrap()

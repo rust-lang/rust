@@ -18,13 +18,16 @@ A simple wrapper over the platform's dynamic library facilities
 
 use c_str::ToCStr;
 use cast;
+use iter::Iterator;
 use ops::*;
 use option::*;
 use os;
 use path::GenericPath;
 use path;
 use result::*;
+use slice::{Vector,OwnedVector};
 use str;
+use vec::Vec;
 
 pub struct DynamicLibrary { handle: *u8}
 
@@ -73,8 +76,10 @@ impl DynamicLibrary {
             ("LD_LIBRARY_PATH", ':' as u8)
         };
         let newenv = os::getenv_as_bytes(envvar).unwrap_or(box []);
-        let newenv = newenv + &[sep] + path.as_vec();
-        os::setenv(envvar, str::from_utf8(newenv).unwrap());
+        let mut newenv = newenv.move_iter().collect::<Vec<_>>();
+        newenv.push_all(&[sep]);
+        newenv.push_all(path.as_vec());
+        os::setenv(envvar, str::from_utf8(newenv.as_slice()).unwrap());
     }
 
     /// Access the value at the symbol of the dynamic library

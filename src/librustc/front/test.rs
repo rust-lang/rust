@@ -282,7 +282,7 @@ mod __test {
   #![!resolve_unexported]
   extern crate test (name = "test", vers = "...");
   fn main() {
-    test::test_main_static(::os::args(), tests)
+    test::test_main_static(::os::args().as_slice(), tests)
   }
 
   static tests : &'static [test::TestDescAndFn] = &[
@@ -326,8 +326,8 @@ fn mk_test_module(cx: &TestCtxt) -> @ast::Item {
     let mainfn = (quote_item!(&cx.ext_cx,
         pub fn main() {
             #![main]
-            #![allow(deprecated_owned_vector)]
-            test::test_main_static(::std::os::args(), TESTS);
+            use std::slice::Vector;
+            test::test_main_static(::std::os::args().as_slice(), TESTS);
         }
     )).unwrap();
 

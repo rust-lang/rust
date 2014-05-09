@@ -94,6 +94,7 @@ fn mult_AtAv(v: Arc<RWLock<Vec<f64>>>, out: Arc<RWLock<Vec<f64>>>,
 
 fn main() {
     let args = os::args();
+    let args = args.as_slice();
     let n = if os::getenv("RUST_BENCH").is_some() {
         5500
     } else if args.len() < 2 {

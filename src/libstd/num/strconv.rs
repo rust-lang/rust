@@ -19,11 +19,10 @@ use num::{Float, FPNaN, FPInfinite, ToPrimitive};
 use num;
 use ops::{Add, Sub, Mul, Div, Rem, Neg};
 use option::{None, Option, Some};
-use slice::OwnedVector;
 use slice::{CloneableVector, ImmutableVector, MutableVector};
 use std::cmp::{Ord, Eq};
-use str::{StrSlice};
-use str;
+use str::{StrAllocating, StrSlice};
+use strbuf::StrBuf;
 use vec::Vec;
 
 /// A flag that specifies whether to use exponential (scientific) notation.
@@ -262,7 +261,7 @@ pub fn float_to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Float+
                                   Div<T,T>+Neg<T>+Rem<T,T>+Mul<T,T>>(
         num: T, radix: uint, negative_zero: bool,
         sign: SignFormat, digits: SignificantDigits, exp_format: ExponentFormat, exp_upper: bool
-        ) -> (~[u8], bool) {
+        ) -> (Vec<u8>, bool) {
     assert!(2 <= radix && radix <= 36);
     match exp_format {
         ExpDec if radix >= DIGIT_E_RADIX       // decimal exponent 'e'
@@ -278,17 +277,17 @@ pub fn float_to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Float+
     let _1: T = One::one();
 
     match num.classify() {
-        FPNaN => { return ("NaN".as_bytes().to_owned(), true); }
+        FPNaN => { return (Vec::from_slice("NaN".as_bytes()), true); }
         FPInfinite if num > _0 => {
             return match sign {
-                SignAll => ("+inf".as_bytes().to_owned(), true),
-                _       => ("inf".as_bytes().to_owned(), true)
+                SignAll => (Vec::from_slice("+inf".as_bytes()), true),
+                _       => (Vec::from_slice("inf".as_bytes()), true)
             };
         }
         FPInfinite if num < _0 => {
             return match sign {
-                SignNone => ("inf".as_bytes().to_owned(), true),
-                _        => ("-inf".as_bytes().to_owned(), true),
+                SignNone => (Vec::from_slice("inf".as_bytes()), true),
+                _        => (Vec::from_slice("-inf".as_bytes()), true),
             };
         }
         _ => {}
@@ -483,7 +482,7 @@ pub fn float_to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Float+
         }
     }
 
-    (buf.move_iter().collect(), false)
+    (buf, false)
 }
 
 /**
@@ -498,7 +497,7 @@ pub fn float_to_str_common<T:NumCast+Zero+One+Eq+Ord+NumStrConv+Float+
         ) -> (~str, bool) {
     let (bytes, special) = float_to_str_bytes_common(num, radix,
                                negative_zero, sign, digits, exp_format, exp_capital);
-    (str::from_utf8_owned(bytes).unwrap(), special)
+    (StrBuf::from_utf8(bytes).unwrap().into_owned(), special)
 }
 
 // Some constants for from_str_bytes_common's input validation,

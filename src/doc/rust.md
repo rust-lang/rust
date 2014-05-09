@@ -3598,18 +3598,18 @@ and the cast expression in `main`.
 Within the body of an item that has type parameter declarations, the names of its type parameters are types:
 
 ~~~~
-fn map<A: Clone, B: Clone>(f: |A| -> B, xs: &[A]) -> ~[B] {
+fn map<A: Clone, B: Clone>(f: |A| -> B, xs: &[A]) -> Vec<B> {
     if xs.len() == 0 {
-       return ~[];
+       return vec![];
     }
     let first: B = f(xs[0].clone());
-    let rest: ~[B] = map(f, xs.slice(1, xs.len()));
-    return ~[first] + rest;
+    let rest: Vec<B> = map(f, xs.slice(1, xs.len()));
+    return vec![first].append(rest.as_slice());
 }
 ~~~~
 
 Here, `first` has type `B`, referring to `map`'s `B` type parameter;
-and `rest` has type `~[B]`, a vector type with element type `B`.
+and `rest` has type `Vec<B>`, a vector type with element type `B`.
 
 ### Self types
 

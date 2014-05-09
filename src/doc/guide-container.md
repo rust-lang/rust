@@ -266,8 +266,8 @@ Iterators offer generic conversion to containers with the `collect` adaptor:
 
 ~~~
 let xs = [0, 1, 1, 2, 3, 5, 8];
-let ys = xs.iter().rev().skip(1).map(|&x| x * 2).collect::<~[int]>();
-assert_eq!(ys, ~[10, 6, 4, 2, 2, 0]);
+let ys = xs.iter().rev().skip(1).map(|&x| x * 2).collect::<Vec<int>>();
+assert_eq!(ys, vec![10, 6, 4, 2, 2, 0]);
 ~~~
 
 The method requires a type hint for the container type, if the surrounding code
@@ -278,14 +278,14 @@ implementing the `FromIterator` trait. For example, the implementation for
 vectors is as follows:
 
 ~~~ {.ignore}
-impl<A> FromIterator<A> for ~[A] {
-    pub fn from_iter<T: Iterator<A>>(iterator: &mut T) -> ~[A] {
+impl<T> FromIterator<T> for Vec<T> {
+    fn from_iter<I:Iterator<A>>(mut iterator: I) -> Vec<T> {
         let (lower, _) = iterator.size_hint();
-        let mut xs = with_capacity(lower);
-        for x in iterator {
-            xs.push(x);
+        let mut vector = Vec::with_capacity(lower);
+        for element in iterator {
+            vector.push(element);
         }
-        xs
+        vector
     }
 }
 ~~~

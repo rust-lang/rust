@@ -10,6 +10,7 @@
 
 fn parse_args() -> ~str {
     let args = ::std::os::args();
+    let args = args.as_slice();
     let mut n = 0;
 
     while n < args.len() {

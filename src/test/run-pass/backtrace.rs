@@ -100,6 +100,7 @@ fn runtest(me: &str) {
 
 fn main() {
     let args = os::args();
+    let args = args.as_slice();
     if args.len() >= 2 && args[1].as_slice() == "fail" {
         foo();
     } else if args.len() >= 2 && args[1].as_slice() == "double-fail" {

@@ -13,7 +13,7 @@
 use to_str::{IntoStr};
 use str;
 use str::Str;
-use str::StrSlice;
+use str::{StrAllocating, StrSlice};
 use str::OwnedStr;
 use container::Container;
 use cast;
@@ -217,14 +217,14 @@ pub trait OwnedAsciiCast {
 
     /// Take ownership and cast to an ascii vector. Fail on non-ASCII input.
     #[inline]
-    fn into_ascii(self) -> ~[Ascii] {
+    fn into_ascii(self) -> Vec<Ascii> {
         assert!(self.is_ascii());
         unsafe {self.into_ascii_nocheck()}
     }
 
     /// Take ownership and cast to an ascii vector. Return None on non-ASCII input.
     #[inline]
-    fn into_ascii_opt(self) -> Option<~[Ascii]> {
+    fn into_ascii_opt(self) -> Option<Vec<Ascii>> {
         if self.is_ascii() {
             Some(unsafe { self.into_ascii_nocheck() })
         } else {
@@ -234,7 +234,7 @@ pub trait OwnedAsciiCast {
 
     /// Take ownership and cast to an ascii vector.
     /// Does not perform validation checks.
-    unsafe fn into_ascii_nocheck(self) -> ~[Ascii];
+    unsafe fn into_ascii_nocheck(self) -> Vec<Ascii>;
 }
 
 impl OwnedAsciiCast for ~[u8] {
@@ -244,8 +244,8 @@ impl OwnedAsciiCast for ~[u8] {
     }
 
     #[inline]
-    unsafe fn into_ascii_nocheck(self) -> ~[Ascii] {
-        cast::transmute(self)
+    unsafe fn into_ascii_nocheck(self) -> Vec<Ascii> {
+        cast::transmute(Vec::from_slice(self.as_slice()))
     }
 }
 
@@ -256,7 +256,20 @@ impl OwnedAsciiCast for ~str {
     }
 
     #[inline]
-    unsafe fn into_ascii_nocheck(self) -> ~[Ascii] {
+    unsafe fn into_ascii_nocheck(self) -> Vec<Ascii> {
+        let v: ~[u8] = cast::transmute(self);
+        v.into_ascii_nocheck()
+    }
+}
+
+impl OwnedAsciiCast for Vec<u8> {
+    #[inline]
+    fn is_ascii(&self) -> bool {
+        self.as_slice().is_ascii()
+    }
+
+    #[inline]
+    unsafe fn into_ascii_nocheck(self) -> Vec<Ascii> {
         cast::transmute(self)
     }
 }
@@ -268,10 +281,10 @@ pub trait AsciiStr {
     fn as_str_ascii<'a>(&'a self) -> &'a str;
 
     /// Convert to vector representing a lower cased ascii string.
-    fn to_lower(&self) -> ~[Ascii];
+    fn to_lower(&self) -> Vec<Ascii>;
 
     /// Convert to vector representing a upper cased ascii string.
-    fn to_upper(&self) -> ~[Ascii];
+    fn to_upper(&self) -> Vec<Ascii>;
 
     /// Compares two Ascii strings ignoring case.
     fn eq_ignore_case(self, other: &[Ascii]) -> bool;
@@ -284,12 +297,12 @@ impl<'a> AsciiStr for &'a [Ascii] {
     }
 
     #[inline]
-    fn to_lower(&self) -> ~[Ascii] {
+    fn to_lower(&self) -> Vec<Ascii> {
         self.iter().map(|a| a.to_lower()).collect()
     }
 
     #[inline]
-    fn to_upper(&self) -> ~[Ascii] {
+    fn to_upper(&self) -> Vec<Ascii> {
         self.iter().map(|a| a.to_upper()).collect()
     }
 
@@ -309,19 +322,21 @@ impl IntoStr for ~[Ascii] {
 impl IntoStr for Vec<Ascii> {
     #[inline]
     fn into_str(self) -> ~str {
-        let v: ~[Ascii] = self.move_iter().collect();
-        unsafe { cast::transmute(v) }
+        unsafe {
+            let s: &str = cast::transmute(self.as_slice());
+            s.to_owned()
+        }
     }
 }
 
-/// Trait to convert to an owned byte array by consuming self
+/// Trait to convert to an owned byte vector by consuming self
 pub trait IntoBytes {
-    /// Converts to an owned byte array by consuming self
-    fn into_bytes(self) -> ~[u8];
+    /// Converts to an owned byte vector by consuming self
+    fn into_bytes(self) -> Vec<u8>;
 }
 
-impl IntoBytes for ~[Ascii] {
-    fn into_bytes(self) -> ~[u8] {
+impl IntoBytes for Vec<Ascii> {
+    fn into_bytes(self) -> Vec<u8> {
         unsafe { cast::transmute(self) }
     }
 }
@@ -404,9 +419,11 @@ unsafe fn str_map_bytes(string: ~str, map: &'static [u8]) -> ~str {
 
 #[inline]
 unsafe fn str_copy_map_bytes(string: &str, map: &'static [u8]) -> ~str {
-    let bytes = string.bytes().map(|b| map[b as uint]).collect::<~[_]>();
-
-    str::raw::from_utf8_owned(bytes)
+    let mut s = string.to_owned();
+    for b in str::raw::as_owned_vec(&mut s).mut_iter() {
+        *b = map[*b as uint];
+    }
+    s
 }
 
 static ASCII_LOWER_MAP: &'static [u8] = &[
@@ -492,7 +509,6 @@ mod tests {
     macro_rules! v2ascii (
         ( [$($e:expr),*]) => (&[$(Ascii{chr:$e}),*]);
         (&[$($e:expr),*]) => (&[$(Ascii{chr:$e}),*]);
-        (~[$($e:expr),*]) => (box [$(Ascii{chr:$e}),*]);
     )
 
     macro_rules! vec2ascii (
@@ -556,20 +572,17 @@ mod tests {
 
     #[test]
     fn test_ascii_vec_ng() {
-        assert_eq!(Vec::from_slice("abCDef&?#".to_ascii().to_lower()).into_str(),
-                   "abcdef&?#".to_owned());
-        assert_eq!(Vec::from_slice("abCDef&?#".to_ascii().to_upper()).into_str(),
-                   "ABCDEF&?#".to_owned());
-        assert_eq!(Vec::from_slice("".to_ascii().to_lower()).into_str(), "".to_owned());
-        assert_eq!(Vec::from_slice("YMCA".to_ascii().to_lower()).into_str(), "ymca".to_owned());
-        assert_eq!(Vec::from_slice("abcDEFxyz:.;".to_ascii().to_upper()).into_str(),
-                   "ABCDEFXYZ:.;".to_owned());
+        assert_eq!("abCDef&?#".to_ascii().to_lower().into_str(), "abcdef&?#".to_owned());
+        assert_eq!("abCDef&?#".to_ascii().to_upper().into_str(), "ABCDEF&?#".to_owned());
+        assert_eq!("".to_ascii().to_lower().into_str(), "".to_owned());
+        assert_eq!("YMCA".to_ascii().to_lower().into_str(), "ymca".to_owned());
+        assert_eq!("abcDEFxyz:.;".to_ascii().to_upper().into_str(), "ABCDEFXYZ:.;".to_owned());
     }
 
     #[test]
     fn test_owned_ascii_vec() {
-        assert_eq!(("( ;".to_owned()).into_ascii(), v2ascii!(~[40, 32, 59]));
-        assert_eq!((box [40u8, 32u8, 59u8]).into_ascii(), v2ascii!(~[40, 32, 59]));
+        assert_eq!(("( ;".to_owned()).into_ascii(), vec2ascii![40, 32, 59]);
+        assert_eq!((box [40u8, 32u8, 59u8]).into_ascii(), vec2ascii![40, 32, 59]);
     }
 
     #[test]
@@ -580,13 +593,13 @@ mod tests {
 
     #[test]
     fn test_ascii_into_str() {
-        assert_eq!(v2ascii!(~[40, 32, 59]).into_str(), "( ;".to_owned());
+        assert_eq!(vec2ascii![40, 32, 59].into_str(), "( ;".to_owned());
         assert_eq!(vec2ascii!(40, 32, 59).into_str(), "( ;".to_owned());
     }
 
     #[test]
     fn test_ascii_to_bytes() {
-        assert_eq!(v2ascii!(~[40, 32, 59]).into_bytes(), box [40u8, 32u8, 59u8]);
+        assert_eq!(vec2ascii![40, 32, 59].into_bytes(), vec![40u8, 32u8, 59u8]);
     }
 
     #[test] #[should_fail]
@@ -625,10 +638,10 @@ mod tests {
         assert_eq!(v.to_ascii_opt(), Some(v2));
         assert_eq!("zoä华".to_ascii_opt(), None);
 
-        assert_eq!((box [40u8, 32u8, 59u8]).into_ascii_opt(), Some(v2ascii!(~[40, 32, 59])));
-        assert_eq!((box [127u8, 128u8, 255u8]).into_ascii_opt(), None);
+        assert_eq!((vec![40u8, 32u8, 59u8]).into_ascii_opt(), Some(vec2ascii![40, 32, 59]));
+        assert_eq!((vec![127u8, 128u8, 255u8]).into_ascii_opt(), None);
 
-        assert_eq!(("( ;".to_owned()).into_ascii_opt(), Some(v2ascii!(~[40, 32, 59])));
+        assert_eq!(("( ;".to_owned()).into_ascii_opt(), Some(vec2ascii![40, 32, 59]));
         assert_eq!(("zoä华".to_owned()).into_ascii_opt(), None);
     }
 

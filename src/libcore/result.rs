@@ -653,20 +653,20 @@ mod tests {
 
     #[test]
     fn test_collect() {
-        let v: Result<~[int], ()> = collect(range(0, 0).map(|_| Ok::<int, ()>(0)));
-        assert_eq!(v, Ok(box []));
+        let v: Result<Vec<int>, ()> = collect(range(0, 0).map(|_| Ok::<int, ()>(0)));
+        assert_eq!(v, Ok(vec![]));
 
-        let v: Result<~[int], ()> = collect(range(0, 3).map(|x| Ok::<int, ()>(x)));
-        assert_eq!(v, Ok(box [0, 1, 2]));
+        let v: Result<Vec<int>, ()> = collect(range(0, 3).map(|x| Ok::<int, ()>(x)));
+        assert_eq!(v, Ok(vec![0, 1, 2]));
 
-        let v: Result<~[int], int> = collect(range(0, 3)
-                                             .map(|x| if x > 1 { Err(x) } else { Ok(x) }));
+        let v: Result<Vec<int>, int> = collect(range(0, 3)
+                                               .map(|x| if x > 1 { Err(x) } else { Ok(x) }));
         assert_eq!(v, Err(2));
 
         // test that it does not take more elements than it needs
         let mut functions = [|| Ok(()), || Err(1), || fail!()];
 
-        let v: Result<~[()], int> = collect(functions.mut_iter().map(|f| (*f)()));
+        let v: Result<Vec<()>, int> = collect(functions.mut_iter().map(|f| (*f)()));
         assert_eq!(v, Err(1));
     }
 
