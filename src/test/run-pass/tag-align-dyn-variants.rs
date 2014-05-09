@@ -11,7 +11,7 @@
 // ignore-linux #7340 fails on 32-bit linux
 // ignore-macos #7340 fails on 32-bit macos
 
-use std::cast;
+use std::mem;
 
 enum Tag<A,B> {
     VarA(A),
@@ -30,7 +30,7 @@ fn mk_rec<A,B>(a: A, b: B) -> Rec<A,B> {
 }
 
 fn is_aligned<A>(amnt: uint, u: &A) -> bool {
-    let p: uint = unsafe { cast::transmute(u) };
+    let p: uint = unsafe { mem::transmute(u) };
     return (p & (amnt-1u)) == 0u;
 }
 

@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use cast;
 use char::Char;
 use clone::Clone;
 use container::Container;
@@ -73,7 +72,7 @@ impl Default for ~str {
             (*ptr).fill = 0;
             (*ptr).alloc = 0;
 
-            cast::transmute(ptr)
+            mem::transmute(ptr)
         }
     }
 }
@@ -91,7 +90,7 @@ impl Clone for ~str {
             (*ptr).fill = len;
             (*ptr).alloc = len;
 
-            cast::transmute(ptr)
+            mem::transmute(ptr)
         }
     }
 }
@@ -106,7 +105,7 @@ impl FromIterator<char> for ~str {
 
         unsafe {
             let mut ptr = alloc(cap) as *mut Vec<u8>;
-            let mut ret = cast::transmute(ptr);
+            let mut ret = mem::transmute(ptr);
             for ch in iterator {
                 let amt = ch.encode_utf8(tmp);
 
@@ -121,8 +120,8 @@ impl FromIterator<char> for ~str {
                                                     len);
                     // FIXME: #13994: port to the sized deallocation API when available
                     rust_free(ptr as *u8, 0, 8);
-                    cast::forget(ret);
-                    ret = cast::transmute(ptr2);
+                    mem::forget(ret);
+                    ret = mem::transmute(ptr2);
                     ptr = ptr2;
                 }
 
@@ -155,7 +154,7 @@ impl<'a> Add<&'a str,~str> for &'a str {
                                             rhs.len());
             (*ptr).fill = amt;
             (*ptr).alloc = amt;
-            cast::transmute(ptr)
+            mem::transmute(ptr)
         }
     }
 }
@@ -192,7 +191,7 @@ impl<A: Clone> Clone for ~[A] {
                     }
                     rust_free(ret as *u8, 0, 8);
                 });
-            cast::transmute(ret)
+            mem::transmute(ret)
         }
     }
 }

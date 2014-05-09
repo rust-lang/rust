@@ -18,7 +18,7 @@
 //!
 //! Their definition should always match the ABI defined in `rustc::back::abi`.
 
-use cast;
+use mem;
 
 /// The representation of a Rust managed box
 pub struct Box<T> {
@@ -74,7 +74,7 @@ pub trait Repr<T> {
     /// for the struct. This is a safe method because by default it does not
     /// enable write-access to the fields of the return value in safe code.
     #[inline]
-    fn repr(&self) -> T { unsafe { cast::transmute_copy(self) } }
+    fn repr(&self) -> T { unsafe { mem::transmute_copy(self) } }
 }
 
 impl<'a, T> Repr<Slice<T>> for &'a [T] {}
@@ -87,7 +87,7 @@ impl Repr<*String> for ~str {}
 mod tests {
     use super::*;
 
-    use cast;
+    use mem;
 
     #[test]
     fn synthesize_closure() {
@@ -97,7 +97,7 @@ mod tests {
 
             assert_eq!(f(20), 30);
 
-            let original_closure: Closure = cast::transmute(f);
+            let original_closure: Closure = mem::transmute(f);
 
             let actual_function_pointer = original_closure.code;
             let environment = original_closure.env;
@@ -107,7 +107,7 @@ mod tests {
                 env: environment
             };
 
-            let new_f: |int| -> int = cast::transmute(new_closure);
+            let new_f: |int| -> int = mem::transmute(new_closure);
             assert_eq!(new_f(20), 30);
         }
     }

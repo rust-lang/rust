@@ -13,7 +13,7 @@
  * between tasks.
  */
 
-use std::cast;
+use std::mem;
 use std::ptr;
 use std::rt::heap::exchange_free;
 use std::sync::atomics;
@@ -76,7 +76,7 @@ impl<T: Share + Send> Arc<T> {
             weak: atomics::AtomicUint::new(1),
             data: data,
         };
-        Arc { x: unsafe { cast::transmute(x) } }
+        Arc { x: unsafe { mem::transmute(x) } }
     }
 
     #[inline]
@@ -149,7 +149,7 @@ impl<T: Send + Share + Clone> Arc<T> {
         // reference count is guaranteed to be 1 at this point, and we required
         // the Arc itself to be `mut`, so we're returning the only possible
         // reference to the inner data.
-        unsafe { cast::transmute::<&_, &mut _>(self.deref()) }
+        unsafe { mem::transmute::<&_, &mut _>(self.deref()) }
     }
 }
 

@@ -149,7 +149,7 @@ pub fn main() {
     // make sure that format! doesn't cause spurious unused-unsafe warnings when
     // it's inside of an outer unsafe block
     unsafe {
-        let a: int = ::std::cast::transmute(3u);
+        let a: int = ::std::mem::transmute(3u);
         format!("{}", a);
     }
 

@@ -10,23 +10,21 @@
 
 //! An owned, growable vector.
 
-use cast::{forget, transmute};
+use RawVec = raw::Vec;
 use clone::Clone;
 use cmp::{Ord, Eq, Ordering, TotalEq, TotalOrd, max};
 use container::{Container, Mutable};
 use default::Default;
 use fmt;
 use iter::{DoubleEndedIterator, FromIterator, Extendable, Iterator, range};
-use mem::{min_align_of, move_val_init, size_of};
 use mem;
-use num;
 use num::{CheckedMul, CheckedAdd};
+use num;
 use ops::{Add, Drop};
 use option::{None, Option, Some, Expect};
 use ptr::RawPtr;
 use ptr;
 use raw::Slice;
-use RawVec = raw::Vec;
 use rt::heap::{allocate, reallocate, deallocate};
 use slice::{ImmutableEqVector, ImmutableVector, Items, MutItems, MutableVector};
 use slice::{MutableTotalOrdVector, OwnedVector, Vector};
@@ -91,12 +89,14 @@ impl<T> Vec<T> {
     /// let vec: Vec<int> = Vec::with_capacity(10);
     /// ```
     pub fn with_capacity(capacity: uint) -> Vec<T> {
-        if size_of::<T>() == 0 { return Vec { len: 0, cap: ::uint::MAX, ptr: 0 as *mut T } }
-        if capacity == 0 {
+        if mem::size_of::<T>() == 0 {
+            Vec { len: 0, cap: ::uint::MAX, ptr: 0 as *mut T }
+        } else if capacity == 0 {
             Vec::new()
         } else {
-            let size = capacity.checked_mul(&size_of::<T>()).expect("capacity overflow");
-            let ptr = unsafe { allocate(size, min_align_of::<T>()) };
+            let size = capacity.checked_mul(&mem::size_of::<T>())
+                               .expect("capacity overflow");
+            let ptr = unsafe { allocate(size, mem::min_align_of::<T>()) };
             Vec { len: 0, cap: capacity, ptr: ptr as *mut T }
         }
     }
@@ -117,7 +117,8 @@ impl<T> Vec<T> {
         unsafe {
             let mut xs = Vec::with_capacity(length);
             while xs.len < length {
-                move_val_init(xs.as_mut_slice().unsafe_mut_ref(xs.len), op(xs.len));
+                mem::move_val_init(xs.as_mut_slice().unsafe_mut_ref(xs.len),
+                                   op(xs.len));
                 xs.len += 1;
             }
             xs
@@ -133,7 +134,8 @@ impl<T> Vec<T> {
     /// - there must be `length` valid instances of type `T` at the
     ///   beginning of that allocation
     /// - `ptr` must be allocated by the default `Vec` allocator
-    pub unsafe fn from_raw_parts(length: uint, capacity: uint, ptr: *mut T) -> Vec<T> {
+    pub unsafe fn from_raw_parts(length: uint, capacity: uint,
+                                 ptr: *mut T) -> Vec<T> {
         Vec { len: length, cap: capacity, ptr: ptr }
     }
 
@@ -212,7 +214,8 @@ impl<T: Clone> Vec<T> {
         unsafe {
             let mut xs = Vec::with_capacity(length);
             while xs.len < length {
-                move_val_init(xs.as_mut_slice().unsafe_mut_ref(xs.len), value.clone());
+                mem::move_val_init(xs.as_mut_slice().unsafe_mut_ref(xs.len),
+                                   value.clone());
                 xs.len += 1;
             }
             xs
@@ -405,16 +408,19 @@ impl<T> Container for Vec<T> {
 #[inline(never)]
 unsafe fn alloc_or_realloc<T>(ptr: *mut T, size: uint, old_size: uint) -> *mut T {
     if old_size == 0 {
-        allocate(size, min_align_of::<T>()) as *mut T
+        allocate(size, mem::min_align_of::<T>()) as *mut T
     } else {
-        reallocate(ptr as *mut u8, size, min_align_of::<T>(), old_size) as *mut T
+        reallocate(ptr as *mut u8, size,
+                   mem::min_align_of::<T>(), old_size) as *mut T
     }
 }
 
 #[inline]
 unsafe fn dealloc<T>(ptr: *mut T, len: uint) {
-    if size_of::<T>() != 0 {
-        deallocate(ptr as *mut u8, len * size_of::<T>(), min_align_of::<T>())
+    if mem::size_of::<T>() != 0 {
+        deallocate(ptr as *mut u8,
+                   len * mem::size_of::<T>(),
+                   mem::min_align_of::<T>())
     }
 }
 
@@ -494,11 +500,14 @@ impl<T> Vec<T> {
     /// assert_eq!(vec.capacity(), 11);
     /// ```
     pub fn reserve_exact(&mut self, capacity: uint) {
-        if size_of::<T>() == 0 { return }
+        if mem::size_of::<T>() == 0 { return }
+
         if capacity > self.cap {
-            let size = capacity.checked_mul(&size_of::<T>()).expect("capacity overflow");
+            let size = capacity.checked_mul(&mem::size_of::<T>())
+                               .expect("capacity overflow");
             unsafe {
-                self.ptr = alloc_or_realloc(self.ptr, size, self.cap * size_of::<T>());
+                self.ptr = alloc_or_realloc(self.ptr, size,
+                                            self.cap * mem::size_of::<T>());
             }
             self.cap = capacity;
         }
@@ -513,7 +522,8 @@ impl<T> Vec<T> {
     /// vec.shrink_to_fit();
     /// ```
     pub fn shrink_to_fit(&mut self) {
-        if size_of::<T>() == 0 { return }
+        if mem::size_of::<T>() == 0 { return }
+
         if self.len == 0 {
             if self.cap != 0 {
                 unsafe {
@@ -523,9 +533,12 @@ impl<T> Vec<T> {
             }
         } else {
             unsafe {
-                // Overflow check is unnecessary as the vector is already at least this large.
-                self.ptr = reallocate(self.ptr as *mut u8, self.len * size_of::<T>(),
-                                      min_align_of::<T>(), self.cap * size_of::<T>()) as *mut T;
+                // Overflow check is unnecessary as the vector is already at
+                // least this large.
+                self.ptr = reallocate(self.ptr as *mut u8,
+                                      self.len * mem::size_of::<T>(),
+                                      mem::min_align_of::<T>(),
+                                      self.cap * mem::size_of::<T>()) as *mut T;
             }
             self.cap = self.len;
         }
@@ -568,25 +581,26 @@ impl<T> Vec<T> {
     /// ```
     #[inline]
     pub fn push(&mut self, value: T) {
-        if size_of::<T>() == 0 {
+        if mem::size_of::<T>() == 0 {
             // zero-size types consume no memory, so we can't rely on the address space running out
             self.len = self.len.checked_add(&1).expect("length overflow");
-            unsafe { forget(value); }
+            unsafe { mem::forget(value); }
             return
         }
         if self.len == self.cap {
-            let old_size = self.cap * size_of::<T>();
-            let size = max(old_size, 2 * size_of::<T>()) * 2;
+            let old_size = self.cap * mem::size_of::<T>();
+            let size = max(old_size, 2 * mem::size_of::<T>()) * 2;
             if old_size > size { fail!("capacity overflow") }
             unsafe {
-                self.ptr = alloc_or_realloc(self.ptr, size, self.cap * size_of::<T>());
+                self.ptr = alloc_or_realloc(self.ptr, size,
+                                            self.cap * mem::size_of::<T>());
             }
             self.cap = max(self.cap, 2) * 2;
         }
 
         unsafe {
             let end = (self.ptr as *T).offset(self.len as int) as *mut T;
-            move_val_init(&mut *end, value);
+            mem::move_val_init(&mut *end, value);
             self.len += 1;
         }
     }
@@ -644,7 +658,7 @@ impl<T> Vec<T> {
     #[inline]
     pub fn as_mut_slice<'a>(&'a mut self) -> &'a mut [T] {
         unsafe {
-            transmute(Slice { data: self.as_mut_ptr() as *T, len: self.len })
+            mem::transmute(Slice { data: self.as_mut_ptr() as *T, len: self.len })
         }
     }
 
@@ -664,10 +678,10 @@ impl<T> Vec<T> {
     #[inline]
     pub fn move_iter(self) -> MoveItems<T> {
         unsafe {
-            let iter = transmute(self.as_slice().iter());
+            let iter = mem::transmute(self.as_slice().iter());
             let ptr = self.ptr;
             let cap = self.cap;
-            forget(self);
+            mem::forget(self);
             MoveItems { allocation: ptr, cap: cap, iter: iter }
         }
     }
@@ -949,7 +963,7 @@ impl<T> Vec<T> {
                 ptr::copy_memory(p.offset(1), &*p, len - index);
                 // Write it in, overwriting the first copy of the `index`th
                 // element.
-                move_val_init(&mut *p, element);
+                mem::move_val_init(&mut *p, element);
             }
             self.set_len(len + 1);
         }
@@ -1395,7 +1409,7 @@ impl<T> Vector<T> for Vec<T> {
     /// ```
     #[inline]
     fn as_slice<'a>(&'a self) -> &'a [T] {
-        unsafe { transmute(Slice { data: self.as_ptr(), len: self.len }) }
+        unsafe { mem::transmute(Slice { data: self.as_ptr(), len: self.len }) }
     }
 }
 
@@ -1538,7 +1552,7 @@ impl<T> FromVec<T> for ~[T] {
             // as it still needs to free its own allocation.
             v.set_len(0);
 
-            transmute(ret)
+            mem::transmute(ret)
         }
     }
 }

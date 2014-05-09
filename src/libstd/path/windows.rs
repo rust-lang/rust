@@ -12,13 +12,13 @@
 
 use ascii::AsciiCast;
 use c_str::{CString, ToCStr};
-use cast;
 use clone::Clone;
-use container::Container;
 use cmp::{Eq, TotalEq};
+use container::Container;
 use from_str::FromStr;
 use io::Writer;
 use iter::{AdditiveIterator, DoubleEndedIterator, Extendable, Rev, Iterator, Map};
+use mem;
 use option::{Option, Some, None};
 use slice::{Vector, OwnedVector, ImmutableVector};
 use str::{CharSplits, Str, StrAllocating, StrVector, StrSlice};
@@ -389,13 +389,13 @@ impl GenericPath for Path {
     #[inline]
     fn filestem_str<'a>(&'a self) -> Option<&'a str> {
         // filestem() returns a byte vector that's guaranteed valid UTF-8
-        self.filestem().map(|t| unsafe { cast::transmute(t) })
+        self.filestem().map(|t| unsafe { mem::transmute(t) })
     }
 
     #[inline]
     fn extension_str<'a>(&'a self) -> Option<&'a str> {
         // extension() returns a byte vector that's guaranteed valid UTF-8
-        self.extension().map(|t| unsafe { cast::transmute(t) })
+        self.extension().map(|t| unsafe { mem::transmute(t) })
     }
 
     fn dir_path(&self) -> Path {

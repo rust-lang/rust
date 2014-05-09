@@ -14,7 +14,6 @@
 //! to implement this.
 
 use any::AnyOwnExt;
-use cast;
 use cleanup;
 use clone::Clone;
 use comm::Sender;
@@ -22,6 +21,7 @@ use io::Writer;
 use iter::{Iterator, Take};
 use kinds::Send;
 use local_data;
+use mem;
 use ops::Drop;
 use option::{Option, Some, None};
 use owned::Box;
@@ -116,7 +116,7 @@ impl Task {
         // Unsafely get a handle to the task so we can continue to use it after
         // putting it in tls (so we can invoke the unwinder).
         let handle: *mut Task = unsafe {
-            *cast::transmute::<&Box<Task>, &*mut Task>(&self)
+            *mem::transmute::<&Box<Task>, &*mut Task>(&self)
         };
         Local::put(self);
 
@@ -222,13 +222,13 @@ impl Task {
         //      crops up.
         unsafe {
             let imp = self.imp.take_unwrap();
-            let &(vtable, _): &(uint, uint) = cast::transmute(&imp);
+            let &(vtable, _): &(uint, uint) = mem::transmute(&imp);
             match imp.wrap().move::<T>() {
                 Ok(t) => Some(t),
                 Err(t) => {
-                    let (_, obj): (uint, uint) = cast::transmute(t);
+                    let (_, obj): (uint, uint) = mem::transmute(t);
                     let obj: Box<Runtime:Send> =
-                        cast::transmute((vtable, obj));
+                        mem::transmute((vtable, obj));
                     self.put_runtime(obj);
                     None
                 }
@@ -317,7 +317,7 @@ impl BlockedTask {
             Shared(arc) => unsafe {
                 match (*arc.get()).swap(0, SeqCst) {
                     0 => None,
-                    n => Some(cast::transmute(n)),
+                    n => Some(mem::transmute(n)),
                 }
             }
         }
@@ -343,7 +343,7 @@ impl BlockedTask {
     pub fn make_selectable(self, num_handles: uint) -> Take<BlockedTasks> {
         let arc = match self {
             Owned(task) => {
-                let flag = unsafe { AtomicUint::new(cast::transmute(task)) };
+                let flag = unsafe { AtomicUint::new(mem::transmute(task)) };
                 UnsafeArc::new(flag)
             }
             Shared(arc) => arc.clone(),
@@ -357,12 +357,12 @@ impl BlockedTask {
     pub unsafe fn cast_to_uint(self) -> uint {
         match self {
             Owned(task) => {
-                let blocked_task_ptr: uint = cast::transmute(task);
+                let blocked_task_ptr: uint = mem::transmute(task);
                 rtassert!(blocked_task_ptr & 0x1 == 0);
                 blocked_task_ptr
             }
             Shared(arc) => {
-                let blocked_task_ptr: uint = cast::transmute(box arc);
+                let blocked_task_ptr: uint = mem::transmute(box arc);
                 rtassert!(blocked_task_ptr & 0x1 == 0);
                 blocked_task_ptr | 0x1
             }
@@ -374,10 +374,10 @@ impl BlockedTask {
     #[inline]
     pub unsafe fn cast_from_uint(blocked_task_ptr: uint) -> BlockedTask {
         if blocked_task_ptr & 0x1 == 0 {
-            Owned(cast::transmute(blocked_task_ptr))
+            Owned(mem::transmute(blocked_task_ptr))
         } else {
             let ptr: Box<UnsafeArc<AtomicUint>> =
-                cast::transmute(blocked_task_ptr & !1);
+                mem::transmute(blocked_task_ptr & !1);
             Shared(*ptr)
         }
     }

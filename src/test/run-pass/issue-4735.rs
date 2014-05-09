@@ -12,7 +12,7 @@
 
 extern crate libc;
 
-use std::cast::transmute;
+use std::mem::transmute;
 use libc::c_void;
 
 struct NonCopyable(*c_void);

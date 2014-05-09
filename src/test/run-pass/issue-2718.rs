@@ -14,9 +14,9 @@ pub type Task = int;
 // tjc: I don't know why
 pub mod pipes {
     use super::Task;
-    use std::cast::{forget, transmute};
-    use std::cast;
+    use std::mem::{forget, transmute};
     use std::mem::{replace, swap};
+    use std::mem;
     use std::task;
 
     pub struct Stuff<T> {
@@ -42,7 +42,7 @@ pub mod pipes {
 
     pub fn packet<T:Send>() -> *packet<T> {
         unsafe {
-            let p: *packet<T> = cast::transmute(box Stuff{
+            let p: *packet<T> = mem::transmute(box Stuff{
                 state: empty,
                 blocked_task: None::<Task>,
                 payload: None::<T>
@@ -60,7 +60,7 @@ pub mod pipes {
     // We should consider moving this to ::std::unsafe, although I
     // suspect graydon would want us to use void pointers instead.
     pub unsafe fn uniquify<T>(x: *T) -> Box<T> {
-        cast::transmute(x)
+        mem::transmute(x)
     }
 
     pub fn swap_state_acq(dst: &mut state, src: state) -> state {
@@ -165,7 +165,7 @@ pub mod pipes {
             unsafe {
                 if self.p != None {
                     let self_p: &mut Option<*packet<T>> =
-                        cast::transmute(&self.p);
+                        mem::transmute(&self.p);
                     let p = replace(self_p, None);
                     sender_terminate(p.unwrap())
                 }
@@ -195,7 +195,7 @@ pub mod pipes {
             unsafe {
                 if self.p != None {
                     let self_p: &mut Option<*packet<T>> =
-                        cast::transmute(&self.p);
+                        mem::transmute(&self.p);
                     let p = replace(self_p, None);
                     receiver_terminate(p.unwrap())
                 }
@@ -222,7 +222,7 @@ pub mod pipes {
 }
 
 pub mod pingpong {
-    use std::cast;
+    use std::mem;
 
     pub struct ping(::pipes::send_packet<pong>);
     pub struct pong(::pipes::send_packet<ping>);
@@ -230,7 +230,7 @@ pub mod pingpong {
     pub fn liberate_ping(p: ping) -> ::pipes::send_packet<pong> {
         unsafe {
             let _addr : *::pipes::send_packet<pong> = match &p {
-              &ping(ref x) => { cast::transmute(x) }
+              &ping(ref x) => { mem::transmute(x) }
             };
             fail!()
         }
@@ -239,7 +239,7 @@ pub mod pingpong {
     pub fn liberate_pong(p: pong) -> ::pipes::send_packet<ping> {
         unsafe {
             let _addr : *::pipes::send_packet<ping> = match &p {
-              &pong(ref x) => { cast::transmute(x) }
+              &pong(ref x) => { mem::transmute(x) }
             };
             fail!()
         }

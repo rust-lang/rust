@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use libc::c_int;
-use std::cast;
 use std::io::IoResult;
 use std::mem;
 use std::rt::task::BlockedTask;
@@ -127,7 +126,7 @@ impl AccessTimeout {
             };
             unsafe {
                 timer.set_data(&*cx);
-                cast::forget(cx);
+                mem::forget(cx);
             }
             self.timer = Some(timer);
         }
@@ -199,7 +198,7 @@ impl Drop for AccessTimeout {
         match self.timer {
             Some(ref timer) => unsafe {
                 let data = uvll::get_data_for_uv_handle(timer.handle);
-                let _data: Box<TimerContext> = cast::transmute(data);
+                let _data: Box<TimerContext> = mem::transmute(data);
             },
             None => {}
         }

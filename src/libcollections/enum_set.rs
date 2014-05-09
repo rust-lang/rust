@@ -137,7 +137,7 @@ impl<E:CLike> Iterator<E> for Items<E> {
 #[cfg(test)]
 mod test {
 
-    use std::cast;
+    use std::mem;
 
     use enum_set::{EnumSet, CLike};
 
@@ -153,7 +153,7 @@ mod test {
         }
 
         fn from_uint(v: uint) -> Foo {
-            unsafe { cast::transmute(v) }
+            unsafe { mem::transmute(v) }
         }
     }
 

@@ -12,8 +12,7 @@
 //!
 //! For more details `std::slice`.
 
-use cast;
-use cast::transmute;
+use mem::transmute;
 use clone::Clone;
 use container::Container;
 use cmp::{Eq, TotalOrd, Ordering, Less, Equal, Greater};
@@ -1012,7 +1011,7 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
     fn mut_split_at(self, mid: uint) -> (&'a mut [T], &'a mut [T]) {
         unsafe {
             let len = self.len();
-            let self2: &'a mut [T] = cast::transmute_copy(&self);
+            let self2: &'a mut [T] = mem::transmute_copy(&self);
             (self.mut_slice(0, mid), self2.mut_slice(mid, len))
         }
     }
@@ -1162,7 +1161,7 @@ impl<'a, T:Clone> MutableCloneableVector<T> for &'a mut [T] {
 
 /// Unsafe operations
 pub mod raw {
-    use cast::transmute;
+    use mem::transmute;
     use iter::Iterator;
     use ptr::RawPtr;
     use raw::Slice;

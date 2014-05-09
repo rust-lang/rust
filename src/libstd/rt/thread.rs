@@ -17,9 +17,9 @@
 #![allow(non_camel_case_types)]
 #![allow(unsigned_negate)]
 
-use cast;
 use kinds::Send;
 use libc;
+use mem;
 use ops::Drop;
 use option::{Option, Some, None};
 use owned::Box;
@@ -46,9 +46,9 @@ extern fn thread_start(main: *libc::c_void) -> imp::rust_thread_return {
     use rt::stack;
     unsafe {
         stack::record_stack_bounds(0, uint::MAX);
-        let f: Box<proc()> = cast::transmute(main);
+        let f: Box<proc()> = mem::transmute(main);
         (*f)();
-        cast::transmute(0 as imp::rust_thread_return)
+        mem::transmute(0 as imp::rust_thread_return)
     }
 }
 
@@ -83,7 +83,7 @@ impl Thread<()> {
         // so.
         let packet = box None;
         let packet2: *mut Option<T> = unsafe {
-            *cast::transmute::<&Box<Option<T>>, **mut Option<T>>(&packet)
+            *mem::transmute::<&Box<Option<T>>, **mut Option<T>>(&packet)
         };
         let main = proc() unsafe { *packet2 = Some(main()); };
         let native = unsafe { imp::create(stack, box main) };
@@ -146,7 +146,7 @@ impl<T: Send> Drop for Thread<T> {
 
 #[cfg(windows)]
 mod imp {
-    use cast;
+    use mem;
     use cmp;
     use kinds::Send;
     use libc;
@@ -161,7 +161,7 @@ mod imp {
     pub type rust_thread_return = DWORD;
 
     pub unsafe fn create(stack: uint, p: Box<proc():Send>) -> rust_thread {
-        let arg: *mut libc::c_void = cast::transmute(p);
+        let arg: *mut libc::c_void = mem::transmute(p);
         // FIXME On UNIX, we guard against stack sizes that are too small but
         // that's because pthreads enforces that stacks are at least
         // PTHREAD_STACK_MIN bytes big.  Windows has no such lower limit, it's
@@ -177,7 +177,7 @@ mod imp {
 
         if ret as uint == 0 {
             // be sure to not leak the closure
-            let _p: Box<proc():Send> = cast::transmute(arg);
+            let _p: Box<proc():Send> = mem::transmute(arg);
             fail!("failed to spawn native thread: {}", os::last_os_error());
         }
         return ret;
@@ -213,7 +213,6 @@ mod imp {
 
 #[cfg(unix)]
 mod imp {
-    use cast;
     use cmp;
     use kinds::Send;
     use libc::consts::os::posix01::{PTHREAD_CREATE_JOINABLE, PTHREAD_STACK_MIN};
@@ -254,13 +253,13 @@ mod imp {
             },
         };
 
-        let arg: *libc::c_void = cast::transmute(p);
+        let arg: *libc::c_void = mem::transmute(p);
         let ret = pthread_create(&mut native, &attr, super::thread_start, arg);
         assert_eq!(pthread_attr_destroy(&mut attr), 0);
 
         if ret != 0 {
             // be sure to not leak the closure
-            let _p: Box<proc():Send> = cast::transmute(arg);
+            let _p: Box<proc():Send> = mem::transmute(arg);
             fail!("failed to spawn native thread: {}", os::last_os_error());
         }
         native
@@ -302,7 +301,7 @@ mod imp {
         if __pthread_get_minstack.is_null() {
             PTHREAD_STACK_MIN
         } else {
-            unsafe { cast::transmute::<*(), F>(__pthread_get_minstack)(attr) }
+            unsafe { mem::transmute::<*(), F>(__pthread_get_minstack)(attr) }
         }
     }
 

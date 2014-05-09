@@ -74,23 +74,23 @@ The actual representation of strings have direct mappings to vectors:
 
 */
 
-use cast;
-use cast::transmute;
-use char;
 use char::Char;
+use char;
 use clone::Clone;
 use cmp::{Eq, TotalEq, Ord, TotalOrd, Equiv, Ordering};
 use container::Container;
+use default::Default;
 use fmt;
+use from_str::FromStr;
 use io::Writer;
 use iter::{Iterator, range, AdditiveIterator};
+use mem::transmute;
+use mem;
 use option::{None, Option, Some};
-use from_str::FromStr;
-use slice::{ImmutableVector, MutableVector, CloneableVector};
 use slice::Vector;
-use vec::Vec;
-use default::Default;
+use slice::{ImmutableVector, MutableVector, CloneableVector};
 use strbuf::StrBuf;
+use vec::Vec;
 
 pub use core::str::{from_utf8, CharEq, Chars, CharOffsets, RevChars};
 pub use core::str::{RevCharOffsets, Bytes, RevBytes, CharSplits, RevCharSplits};
@@ -126,7 +126,7 @@ impl FromStr for ~str {
 /// Fails if invalid UTF-8
 pub fn from_byte(b: u8) -> ~str {
     assert!(b < 128u8);
-    unsafe { ::cast::transmute(box [b]) }
+    unsafe { ::mem::transmute(box [b]) }
 }
 
 /// Convert a char to a string
@@ -403,7 +403,7 @@ static TAG_CONT_U8: u8 = 128u8;
 /// ```
 pub fn from_utf8_lossy<'a>(v: &'a [u8]) -> MaybeOwned<'a> {
     if is_utf8(v) {
-        return Slice(unsafe { cast::transmute(v) })
+        return Slice(unsafe { mem::transmute(v) })
     }
 
     static REPLACEMENT: &'static [u8] = bytes!(0xEF, 0xBF, 0xBD); // U+FFFD in UTF-8
@@ -666,8 +666,8 @@ impl<'a> fmt::Show for MaybeOwned<'a> {
 
 /// Unsafe operations
 pub mod raw {
-    use cast;
     use libc;
+    use mem;
     use ptr::RawPtr;
     use raw::Slice;
     use slice::CloneableVector;
@@ -679,9 +679,9 @@ pub mod raw {
     /// Create a Rust string from a *u8 buffer of the given length
     pub unsafe fn from_buf_len(buf: *u8, len: uint) -> ~str {
         let v = Slice { data: buf, len: len };
-        let bytes: &[u8] = ::cast::transmute(v);
+        let bytes: &[u8] = ::mem::transmute(v);
         assert!(is_utf8(bytes));
-        let s: &str = ::cast::transmute(bytes);
+        let s: &str = ::mem::transmute(bytes);
         s.to_owned()
     }
 
@@ -707,7 +707,7 @@ pub mod raw {
     /// that the utf-8-ness of the vector has already been validated
     #[inline]
     pub unsafe fn from_utf8_owned(v: ~[u8]) -> ~str {
-        cast::transmute(v)
+        mem::transmute(v)
     }
 
     /// Converts a byte to a string.
@@ -717,7 +717,7 @@ pub mod raw {
     /// The caller must preserve the valid UTF-8 property when modifying.
     #[inline]
     pub unsafe fn as_owned_vec<'a>(s: &'a mut ~str) -> &'a mut ~[u8] {
-        cast::transmute(s)
+        mem::transmute(s)
     }
 
     /// Sets the length of a string
@@ -823,7 +823,7 @@ pub trait StrAllocating: Str {
         use slice::Vector;
 
         unsafe {
-            ::cast::transmute(self.as_slice().as_bytes().to_owned())
+            ::mem::transmute(self.as_slice().as_bytes().to_owned())
         }
     }
 
@@ -933,7 +933,7 @@ pub trait OwnedStr {
 impl OwnedStr for ~str {
     #[inline]
     fn into_bytes(self) -> ~[u8] {
-        unsafe { cast::transmute(self) }
+        unsafe { mem::transmute(self) }
     }
 
     #[inline]

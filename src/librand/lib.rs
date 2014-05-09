@@ -76,9 +76,9 @@ println!("{:?}", tuple_ptr)
 #[cfg(test)]
 #[phase(syntax, link)] extern crate log;
 
-use std::cast;
 use std::io::IoResult;
 use std::kinds::marker;
+use std::mem;
 use std::strbuf::StrBuf;
 
 pub use isaac::{IsaacRng, Isaac64Rng};
@@ -454,11 +454,11 @@ impl<'a> SeedableRng<&'a [uint]> for StdRng {
     fn reseed(&mut self, seed: &'a [uint]) {
         // the internal RNG can just be seeded from the above
         // randomness.
-        self.rng.reseed(unsafe {cast::transmute(seed)})
+        self.rng.reseed(unsafe {mem::transmute(seed)})
     }
 
     fn from_seed(seed: &'a [uint]) -> StdRng {
-        StdRng { rng: SeedableRng::from_seed(unsafe {cast::transmute(seed)}) }
+        StdRng { rng: SeedableRng::from_seed(unsafe {mem::transmute(seed)}) }
     }
 }
 
@@ -547,7 +547,7 @@ impl XorShiftRng {
                 break;
             }
         }
-        let s: [u32, ..4] = unsafe { cast::transmute(s) };
+        let s: [u32, ..4] = unsafe { mem::transmute(s) };
         Ok(SeedableRng::from_seed(s))
     }
 }

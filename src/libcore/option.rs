@@ -604,10 +604,10 @@ mod tests {
     fn test_get_ptr() {
         unsafe {
             let x = box 0;
-            let addr_x: *int = ::cast::transmute(&*x);
+            let addr_x: *int = ::mem::transmute(&*x);
             let opt = Some(x);
             let y = opt.unwrap();
-            let addr_y: *int = ::cast::transmute(&*y);
+            let addr_y: *int = ::mem::transmute(&*y);
             assert_eq!(addr_x, addr_y);
         }
     }

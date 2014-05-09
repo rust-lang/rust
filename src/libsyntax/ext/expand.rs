@@ -29,9 +29,9 @@ use visit;
 use visit::Visitor;
 use util::small_vector::SmallVector;
 
-use std::cast;
-use std::unstable::dynamic_lib::DynamicLibrary;
+use std::mem;
 use std::os;
+use std::unstable::dynamic_lib::DynamicLibrary;
 
 pub fn expand_expr(e: @ast::Expr, fld: &mut MacroExpander) -> @ast::Expr {
     match e.node {
@@ -544,7 +544,7 @@ fn load_extern_macros(krate: &ast::ViewItem, fld: &mut MacroExpander) {
         // Intentionally leak the dynamic library. We can't ever unload it
         // since the library can do things that will outlive the expansion
         // phase (e.g. make an @-box cycle or launch a task).
-        cast::forget(lib);
+        mem::forget(lib);
     }
 }
 

@@ -108,11 +108,11 @@
 #![allow(missing_doc)]
 
 use intrinsics;
-use cast;
-use std::kinds::marker;
-use option::{Option,Some,None};
+use mem;
 use ops::Drop;
+use option::{Option,Some,None};
 use owned::Box;
+use std::kinds::marker;
 use ty::Unsafe;
 
 /// An atomic boolean type.
@@ -665,7 +665,7 @@ impl<T> AtomicPtr<T> {
 impl<T> AtomicOption<T> {
     /// Create a new `AtomicOption`
     pub fn new(p: Box<T>) -> AtomicOption<T> {
-        unsafe { AtomicOption { p: Unsafe::new(cast::transmute(p)) } }
+        unsafe { AtomicOption { p: Unsafe::new(mem::transmute(p)) } }
     }
 
     /// Create a new `AtomicOption` that doesn't contain a value
@@ -675,13 +675,13 @@ impl<T> AtomicOption<T> {
     #[inline]
     pub fn swap(&self, val: Box<T>, order: Ordering) -> Option<Box<T>> {
         unsafe {
-            let val = cast::transmute(val);
+            let val = mem::transmute(val);
 
             let p = atomic_swap(self.p.get(), val, order);
             if p as uint == 0 {
                 None
             } else {
-                Some(cast::transmute(p))
+                Some(mem::transmute(p))
             }
         }
     }
@@ -689,7 +689,7 @@ impl<T> AtomicOption<T> {
     /// Remove the value, leaving the `AtomicOption` empty.
     #[inline]
     pub fn take(&self, order: Ordering) -> Option<Box<T>> {
-        unsafe { self.swap(cast::transmute(0), order) }
+        unsafe { self.swap(mem::transmute(0), order) }
     }
 
     /// Replace an empty value with a non-empty value.
@@ -700,13 +700,13 @@ impl<T> AtomicOption<T> {
     #[inline]
     pub fn fill(&self, val: Box<T>, order: Ordering) -> Option<Box<T>> {
         unsafe {
-            let val = cast::transmute(val);
-            let expected = cast::transmute(0);
+            let val = mem::transmute(val);
+            let expected = mem::transmute(0);
             let oldval = atomic_compare_and_swap(self.p.get(), expected, val, order);
             if oldval == expected {
                 None
             } else {
-                Some(cast::transmute(val))
+                Some(mem::transmute(val))
             }
         }
     }

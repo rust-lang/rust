@@ -484,26 +484,26 @@ will look like `"\\{"`.
 */
 
 use any;
-use cast;
 use cell::Cell;
 use char::Char;
 use cmp;
 use container::Container;
+use intrinsics::TypeId;
 use io::MemWriter;
 use io;
-use iter;
 use iter::{Iterator, range};
+use iter;
 use kinds::Copy;
+use mem;
 use num::Signed;
 use option::{Option, Some, None};
 use owned::Box;
 use repr;
 use result::{Ok, Err, ResultUnwrap};
-use str::{StrSlice, StrAllocating, UTF16Item, ScalarValue, LoneSurrogate};
-use str;
 use slice::{Vector, ImmutableVector};
 use slice;
-use intrinsics::TypeId;
+use str::{StrSlice, StrAllocating, UTF16Item, ScalarValue, LoneSurrogate};
+use str;
 
 pub use self::num::radix;
 pub use self::num::Radix;
@@ -552,7 +552,7 @@ impl<'a> Arguments<'a> {
     #[doc(hidden)] #[inline]
     pub unsafe fn new<'a>(fmt: &'static [rt::Piece<'static>],
                           args: &'a [Argument<'a>]) -> Arguments<'a> {
-        Arguments{ fmt: cast::transmute(fmt), args: args }
+        Arguments{ fmt: mem::transmute(fmt), args: args }
     }
 }
 
@@ -870,7 +870,7 @@ impl<'a> Formatter<'a> {
             rt::Plural(offset, ref selectors, ref default) => {
                 // This is validated at compile-time to be a pointer to a
                 // '&uint' value.
-                let value: &uint = unsafe { cast::transmute(arg.value) };
+                let value: &uint = unsafe { mem::transmute(arg.value) };
                 let value = *value;
 
                 // First, attempt to match against explicit values without the
@@ -913,7 +913,7 @@ impl<'a> Formatter<'a> {
             rt::Select(ref selectors, ref default) => {
                 // This is validated at compile-time to be a pointer to a
                 // string slice,
-                let value: & &str = unsafe { cast::transmute(arg.value) };
+                let value: & &str = unsafe { mem::transmute(arg.value) };
                 let value = *value;
 
                 for s in selectors.iter() {
@@ -1093,8 +1093,8 @@ pub fn argument<'a, T>(f: extern "Rust" fn(&T, &mut Formatter) -> Result,
                        t: &'a T) -> Argument<'a> {
     unsafe {
         Argument {
-            formatter: cast::transmute(f),
-            value: cast::transmute(t)
+            formatter: mem::transmute(f),
+            value: mem::transmute(t)
         }
     }
 }
@@ -1141,7 +1141,7 @@ impl Char for char {
     fn fmt(&self, f: &mut Formatter) -> Result {
         let mut utf8 = [0u8, ..4];
         let amt = self.encode_utf8(utf8);
-        let s: &str = unsafe { cast::transmute(utf8.slice_to(amt)) };
+        let s: &str = unsafe { mem::transmute(utf8.slice_to(amt)) };
         secret_string(&s, f)
     }
 }
