@@ -20,7 +20,7 @@ use syntax;
 
 use std::cell::RefCell;
 use std::os;
-use collections::HashSet;
+use collections::{HashSet, HashMap};
 
 use visit_ast::RustdocVisitor;
 use clean;
@@ -31,10 +31,14 @@ pub enum MaybeTyped {
     NotTyped(driver::session::Session)
 }
 
+pub type ExternalPaths = RefCell<Option<HashMap<ast::DefId,
+                                                (Vec<~str>, clean::TypeKind)>>>;
+
 pub struct DocContext {
     pub krate: ast::Crate,
     pub maybe_typed: MaybeTyped,
     pub src: Path,
+    pub external_paths: ExternalPaths,
 }
 
 impl DocContext {
@@ -49,6 +53,7 @@ impl DocContext {
 pub struct CrateAnalysis {
     pub exported_items: privacy::ExportedItems,
     pub public_items: privacy::PublicItems,
+    pub external_paths: ExternalPaths,
 }
 
 /// Parses, resolves, and typechecks the given crate
@@ -98,9 +103,11 @@ fn get_ast_and_resolve(cpath: &Path, libs: HashSet<Path>, cfgs: Vec<~str>)
         krate: krate,
         maybe_typed: Typed(ty_cx),
         src: cpath.clone(),
+        external_paths: RefCell::new(Some(HashMap::new())),
     }, CrateAnalysis {
         exported_items: exported_items,
         public_items: public_items,
+        external_paths: RefCell::new(None),
     })
 }
 
@@ -116,5 +123,7 @@ pub fn run_core(libs: HashSet<Path>, cfgs: Vec<~str>, path: &Path)
         v.clean()
     };
 
+    let external_paths = ctxt.external_paths.borrow_mut().take();
+    *analysis.external_paths.borrow_mut() = external_paths;
     (krate, analysis)
 }
