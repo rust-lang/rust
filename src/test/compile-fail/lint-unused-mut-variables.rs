@@ -28,6 +28,13 @@ fn main() {
     match 30 {
         mut x => {} //~ ERROR: variable does not need to be mutable
     }
+    match (30, 2) {
+      (mut x, 1) | //~ ERROR: variable does not need to be mutable
+      (mut x, 2) |
+      (mut x, 3) => {
+      }
+      _ => {}
+    }
 
     let x = |mut y: int| 10; //~ ERROR: variable does not need to be mutable
     fn what(mut foo: int) {} //~ ERROR: variable does not need to be mutable
@@ -48,6 +55,15 @@ fn main() {
         mut x => {
             x = 21;
         }
+    }
+
+    match (30, 2) {
+      (mut x, 1) |
+      (mut x, 2) |
+      (mut x, 3) => {
+        x = 21
+      }
+      _ => {}
     }
 
     let x = |mut y: int| y = 32;
