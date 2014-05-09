@@ -12,6 +12,9 @@
 
 #![doc(primitive = "int")]
 
+#[cfg(not(stage0))]
+use kinds::{Share, Send, Copy};
+
 #[cfg(target_word_size = "32")] int_module!(int, 32)
 #[cfg(target_word_size = "64")] int_module!(int, 64)
 

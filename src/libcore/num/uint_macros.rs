@@ -19,6 +19,15 @@ pub static BYTES : uint = ($bits / 8);
 pub static MIN: $T = 0 as $T;
 pub static MAX: $T = 0 as $T - 1 as $T;
 
+#[cfg(not(stage0))]
+impl Send for $T { }
+
+#[cfg(not(stage0))]
+impl Share for $T { }
+
+#[cfg(not(stage0))]
+impl Copy for $T { }
+
 #[cfg(test)]
 mod tests {
     use prelude::*;

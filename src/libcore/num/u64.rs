@@ -12,5 +12,8 @@
 
 #![doc(primitive = "u64")]
 
+#[cfg(not(stage0))]
+use kinds::{Share, Send, Copy};
+
 uint_module!(u64, i64, 64)
 

@@ -12,5 +12,8 @@
 
 #![doc(primitive = "i64")]
 
+#[cfg(not(stage0))]
+use kinds::{Share, Send, Copy};
+
 int_module!(i64, 64)
 

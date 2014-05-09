@@ -12,5 +12,8 @@
 
 #![doc(primitive = "u8")]
 
+#[cfg(not(stage0))]
+use kinds::{Share, Send, Copy};
+
 uint_module!(u8, i8, 8)
 

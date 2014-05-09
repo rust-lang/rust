@@ -12,5 +12,8 @@
 
 #![doc(primitive = "uint")]
 
+#[cfg(not(stage0))]
+use kinds::{Share, Send, Copy};
+
 uint_module!(uint, int, ::int::BITS)
 

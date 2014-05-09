@@ -12,5 +12,8 @@
 
 #![doc(primitive = "u32")]
 
+#[cfg(not(stage0))]
+use kinds::{Share, Send, Copy};
+
 uint_module!(u32, i32, 32)
 

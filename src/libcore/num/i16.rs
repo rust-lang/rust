@@ -10,7 +10,12 @@
 
 //! Operations and constants for signed 16-bits integers (`i16` type)
 
+<<<<<<< HEAD
 #![doc(primitive = "i16")]
+=======
+#[cfg(not(stage0))]
+use kinds::{Share, Send, Copy};
+>>>>>>> core: Move impls to libcore
 
 int_module!(i16, 16)
 
