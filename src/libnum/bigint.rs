@@ -74,7 +74,7 @@ pub mod BigDigit {
 /**
 A big unsigned integer type.
 
-A `BigUint`-typed value `BigUint { data: ~[a, b, c] }` represents a number
+A `BigUint`-typed value `BigUint { data: vec!(a, b, c) }` represents a number
 `(a + b * BigDigit::base + c * BigDigit::base^2)`.
 */
 #[deriving(Clone)]
