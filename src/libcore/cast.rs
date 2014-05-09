@@ -14,32 +14,6 @@ use mem;
 use intrinsics;
 use ptr::copy_nonoverlapping_memory;
 
-/// Casts the value at `src` to U. The two types must have the same length.
-#[inline]
-pub unsafe fn transmute_copy<T, U>(src: &T) -> U {
-    let mut dest: U = mem::uninit();
-    let dest_ptr: *mut u8 = transmute(&mut dest);
-    let src_ptr: *u8 = transmute(src);
-    copy_nonoverlapping_memory(dest_ptr, src_ptr, mem::size_of::<U>());
-    dest
-}
-
-/**
- * Move a thing into the void
- *
- * The forget function will take ownership of the provided value but neglect
- * to run any required cleanup or memory-management operations on it.
- */
-#[inline]
-pub unsafe fn forget<T>(thing: T) { intrinsics::forget(thing); }
-
-/**
- * Force-increment the reference count on a shared box. If used
- * carelessly, this can leak the box.
- */
-#[inline]
-pub unsafe fn bump_box_refcount<T>(t: @T) { forget(t); }
-
 /**
  * Transform a value of one type into a value of another type.
  * Both types must have the same size and alignment.
@@ -54,8 +28,27 @@ pub unsafe fn bump_box_refcount<T>(t: @T) { forget(t); }
  * ```
  */
 #[inline]
-pub unsafe fn transmute<L, G>(thing: L) -> G {
+pub unsafe fn transmute<T, U>(thing: T) -> U {
     intrinsics::transmute(thing)
+}
+
+/**
+ * Move a thing into the void
+ *
+ * The forget function will take ownership of the provided value but neglect
+ * to run any required cleanup or memory-management operations on it.
+ */
+#[inline]
+pub unsafe fn forget<T>(thing: T) { intrinsics::forget(thing); }
+
+/// Casts the value at `src` to U. The two types must have the same length.
+#[inline]
+pub unsafe fn transmute_copy<T, U>(src: &T) -> U {
+    let mut dest: U = mem::uninit();
+    let dest_ptr: *mut u8 = transmute(&mut dest);
+    let src_ptr: *u8 = transmute(src);
+    copy_nonoverlapping_memory(dest_ptr, src_ptr, mem::size_of::<U>());
+    dest
 }
 
 /// Coerce an immutable reference to be mutable.
@@ -106,28 +99,13 @@ pub unsafe fn copy_lifetime_vec<'a,S,T>(_ptr: &'a [S], ptr: &T) -> &'a T {
 
 #[cfg(test)]
 mod tests {
-    use cast::{bump_box_refcount, transmute};
+    use cast::transmute;
     use raw;
     use realstd::str::StrAllocating;
 
     #[test]
     fn test_transmute_copy() {
         assert_eq!(1u, unsafe { ::cast::transmute_copy(&1) });
-    }
-
-    #[test]
-    fn test_bump_managed_refcount() {
-        unsafe {
-            let managed = @"box box box".to_owned();      // refcount 1
-            bump_box_refcount(managed);     // refcount 2
-            let ptr: *int = transmute(managed); // refcount 2
-            let _box1: @~str = ::cast::transmute_copy(&ptr);
-            let _box2: @~str = ::cast::transmute_copy(&ptr);
-            assert!(*_box1 == "box box box".to_owned());
-            assert!(*_box2 == "box box box".to_owned());
-            // Will destroy _box1 and _box2. Without the bump, this would
-            // use-after-free. With too many bumps, it would leak.
-        }
     }
 
     #[test]
