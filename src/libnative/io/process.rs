@@ -19,7 +19,7 @@ use p = std::io::process;
 use super::IoResult;
 use super::file;
 
-#[cfg(windows)] use std::cast;
+#[cfg(windows)] use std::mem;
 #[cfg(windows)] use std::strbuf::StrBuf;
 #[cfg(not(windows))] use super::retry;
 
@@ -326,7 +326,7 @@ fn spawn_process_os(config: p::ProcessConfig,
         with_envp(env, |envp| {
             with_dirp(dir, |dirp| {
                 cmd.with_c_str(|cmdp| {
-                    let created = CreateProcessA(ptr::null(), cast::transmute(cmdp),
+                    let created = CreateProcessA(ptr::null(), mem::transmute(cmdp),
                                                  ptr::mut_null(), ptr::mut_null(), TRUE,
                                                  flags, envp, dirp, &mut si,
                                                  &mut pi);
@@ -714,7 +714,7 @@ fn with_dirp<T>(d: Option<&Path>, cb: |*libc::c_char| -> T) -> T {
 #[cfg(windows)]
 fn free_handle(handle: *()) {
     assert!(unsafe {
-        libc::CloseHandle(cast::transmute(handle)) != 0
+        libc::CloseHandle(mem::transmute(handle)) != 0
     })
 }
 

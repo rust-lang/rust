@@ -143,7 +143,6 @@ extern crate core;
 
 pub use core::any;
 pub use core::bool;
-pub use core::cast;
 pub use core::cell;
 pub use core::char;
 pub use core::clone;

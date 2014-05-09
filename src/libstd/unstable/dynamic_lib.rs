@@ -17,8 +17,8 @@ A simple wrapper over the platform's dynamic library facilities
 */
 
 use c_str::ToCStr;
-use cast;
 use iter::Iterator;
+use mem;
 use ops::*;
 use option::*;
 use os;
@@ -97,7 +97,7 @@ impl DynamicLibrary {
         // the destructor does not run.
         match maybe_symbol_value {
             Err(err) => Err(err),
-            Ok(symbol_value) => Ok(cast::transmute(symbol_value))
+            Ok(symbol_value) => Ok(mem::transmute(symbol_value))
         }
     }
 }

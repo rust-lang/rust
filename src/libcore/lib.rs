@@ -63,7 +63,6 @@ pub mod prelude;
 
 /* Core modules for ownership management */
 
-pub mod cast;
 pub mod intrinsics;
 pub mod mem;
 pub mod ptr;

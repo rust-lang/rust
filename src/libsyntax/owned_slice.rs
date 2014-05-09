@@ -10,7 +10,7 @@
 
 use std::default::Default;
 use std::hash::Hash;
-use std::{cast, mem, raw, ptr, slice};
+use std::{mem, raw, ptr, slice};
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 
 /// A non-growable owned slice. This would preferably become `~[T]`
@@ -48,7 +48,7 @@ impl<T> OwnedSlice<T> {
         } else {
             let p = v.as_mut_ptr();
             // we own the allocation now
-            unsafe {cast::forget(v)}
+            unsafe {mem::forget(v)}
 
             OwnedSlice { data: p, len: len }
         }
@@ -60,7 +60,7 @@ impl<T> OwnedSlice<T> {
         unsafe {
             let ret = Vec::from_raw_parts(self.len, self.len, self.data);
             // the vector owns the allocation now
-            cast::forget(self);
+            mem::forget(self);
             ret
         }
     }
@@ -74,7 +74,7 @@ impl<T> OwnedSlice<T> {
             self.data as *T
         };
 
-        let slice: &[T] = unsafe {cast::transmute(raw::Slice {
+        let slice: &[T] = unsafe {mem::transmute(raw::Slice {
             data: ptr,
             len: self.len
         })};

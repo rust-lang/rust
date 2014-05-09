@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::cast;
 use std::mem;
 
 fn addr_of<T>(ptr: &T) -> uint {
@@ -17,7 +16,7 @@ fn addr_of<T>(ptr: &T) -> uint {
 
 fn is_aligned<T>(ptr: &T) -> bool {
     unsafe {
-        let addr: uint = cast::transmute(ptr);
+        let addr: uint = mem::transmute(ptr);
         (addr % mem::min_align_of::<T>()) == 0
     }
 }

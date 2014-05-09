@@ -10,7 +10,7 @@
 
 extern crate libc;
 
-use std::cast;
+use std::mem;
 use std::unstable::run_in_bare_thread;
 
 #[link(name = "rustrt")]
@@ -23,14 +23,14 @@ pub fn main() {
     unsafe {
         run_in_bare_thread(proc() {
             let i = &100;
-            rust_dbg_call(callback, cast::transmute(i));
+            rust_dbg_call(callback, mem::transmute(i));
         });
     }
 }
 
 extern fn callback(data: libc::uintptr_t) {
     unsafe {
-        let data: *int = cast::transmute(data);
+        let data: *int = mem::transmute(data);
         assert_eq!(*data, 100);
     }
 }

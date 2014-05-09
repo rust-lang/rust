@@ -8,16 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::c_str::CString;
-use std::c_str;
-use std::cast::transmute;
-use std::cast;
 use libc::{c_int, c_char, c_void, ssize_t};
 use libc;
-use std::rt::task::BlockedTask;
+use std::c_str::CString;
+use std::c_str;
 use std::io::{FileStat, IoError};
 use std::io;
+use std::mem;
 use std::rt::rtio;
+use std::rt::task::BlockedTask;
 
 use homing::{HomingIO, HomeHandle};
 use super::{Loop, UvError, uv_error_to_io_error, wait_until_woken_after, wakeup};
@@ -341,7 +340,7 @@ fn execute(f: |*uvll::uv_fs_t, uvll::uv_fs_cb| -> c_int)
 
     extern fn fs_cb(req: *uvll::uv_fs_t) {
         let slot: &mut Option<BlockedTask> = unsafe {
-            cast::transmute(uvll::get_data_for_req(req))
+            mem::transmute(uvll::get_data_for_req(req))
         };
         wakeup(slot);
     }
@@ -448,7 +447,7 @@ impl rtio::RtioFileStream for FileWatcher {
         use libc::SEEK_CUR;
         // this is temporary
         // FIXME #13933: Remove/justify all `&T` to `&mut T` transmutes
-        let self_ = unsafe { cast::transmute::<&_, &mut FileWatcher>(self) };
+        let self_ = unsafe { mem::transmute::<&_, &mut FileWatcher>(self) };
         self_.seek_common(0, SEEK_CUR)
     }
     fn fsync(&mut self) -> Result<(), IoError> {

@@ -15,7 +15,7 @@
 
 // error-pattern: transmute called on types with different size
 
-use std::cast;
+use std::mem;
 
 #[packed]
 struct Foo {
@@ -31,7 +31,7 @@ struct Oof {
 fn main() {
     let foo = Foo { bar: 1, baz: 10 };
     unsafe {
-        let oof: Oof = cast::transmute(foo);
+        let oof: Oof = mem::transmute(foo);
         println!("{:?}", oof);
     }
 }

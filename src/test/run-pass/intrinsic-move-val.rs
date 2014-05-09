@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::cast::transmute;
+use std::mem::transmute;
 
 mod rusti {
     extern "rust-intrinsic" {

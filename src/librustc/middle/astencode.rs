@@ -34,9 +34,9 @@ use syntax::parse::token;
 use syntax;
 
 use libc;
-use std::cast;
 use std::io::Seek;
 use std::io::MemWriter;
+use std::mem;
 use std::rc::Rc;
 use std::strbuf::StrBuf;
 
@@ -913,7 +913,7 @@ impl<'a,'b> ast_util::IdVisitingOperation for
         };
         // See above
         let ecx: &e::EncodeContext = unsafe {
-            cast::transmute(self.ecx_ptr)
+            mem::transmute(self.ecx_ptr)
         };
         encode_side_tables_for_id(ecx, &mut new_ebml_w, id)
     }
@@ -932,7 +932,7 @@ fn encode_side_tables_for_ii(ecx: &e::EncodeContext,
     // tied to the CrateContext that lives throughout this entire section.
     ast_util::visit_ids_for_inlined_item(ii, &SideTableEncodingIdVisitor {
         ecx_ptr: unsafe {
-            cast::transmute(ecx)
+            mem::transmute(ecx)
         },
         new_ebml_w: &mut new_ebml_w,
     });

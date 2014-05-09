@@ -10,7 +10,7 @@
 
 #![allow(non_camel_case_types)]
 
-use std::cast;
+use std::mem;
 use syntax::crateid::CrateId;
 use back::svh::Svh;
 
@@ -147,7 +147,7 @@ impl astencode_tag {
     pub fn from_uint(value : uint) -> Option<astencode_tag> {
         let is_a_tag = first_astencode_tag <= value && value <= last_astencode_tag;
         if !is_a_tag { None } else {
-            Some(unsafe { cast::transmute(value) })
+            Some(unsafe { mem::transmute(value) })
         }
     }
 }

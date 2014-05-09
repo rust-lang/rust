@@ -48,7 +48,6 @@
 // FIXME: all atomic operations in this module use a SeqCst ordering. That is
 //      probably overkill
 
-use cast;
 use clone::Clone;
 use iter::{range, Iterator};
 use kinds::Send;
@@ -57,12 +56,12 @@ use mem;
 use ops::Drop;
 use option::{Option, Some, None};
 use owned::Box;
-use ptr;
 use ptr::RawPtr;
+use ptr;
+use slice::ImmutableVector;
 use sync::arc::UnsafeArc;
 use sync::atomics::{AtomicInt, AtomicPtr, SeqCst};
 use unstable::sync::Exclusive;
-use slice::ImmutableVector;
 use vec::Vec;
 
 // Once the queue is less than 1/K full, then it will be downsized. Note that
@@ -230,7 +229,7 @@ impl<T: Send> Deque<T> {
         Deque {
             bottom: AtomicInt::new(0),
             top: AtomicInt::new(0),
-            array: AtomicPtr::new(unsafe { cast::transmute(buf) }),
+            array: AtomicPtr::new(unsafe { mem::transmute(buf) }),
             pool: pool,
         }
     }
@@ -272,7 +271,7 @@ impl<T: Send> Deque<T> {
             return Some(data);
         } else {
             self.bottom.store(t + 1, SeqCst);
-            cast::forget(data); // someone else stole this value
+            mem::forget(data); // someone else stole this value
             return None;
         }
     }
@@ -294,7 +293,7 @@ impl<T: Send> Deque<T> {
         if self.top.compare_and_swap(t, t + 1, SeqCst) == t {
             Data(data)
         } else {
-            cast::forget(data); // someone else stole this value
+            mem::forget(data); // someone else stole this value
             Abort
         }
     }
@@ -315,7 +314,7 @@ impl<T: Send> Deque<T> {
     // continue to be read after we flag this buffer for reclamation.
     unsafe fn swap_buffer(&mut self, b: int, old: *mut Buffer<T>,
                           buf: Buffer<T>) -> *mut Buffer<T> {
-        let newbuf: *mut Buffer<T> = cast::transmute(box buf);
+        let newbuf: *mut Buffer<T> = mem::transmute(box buf);
         self.array.store(newbuf, SeqCst);
         let ss = (*newbuf).size();
         self.bottom.store(b + ss, SeqCst);
@@ -323,7 +322,7 @@ impl<T: Send> Deque<T> {
         if self.top.compare_and_swap(t, t + ss, SeqCst) != t {
             self.bottom.store(b, SeqCst);
         }
-        self.pool.free(cast::transmute(old));
+        self.pool.free(mem::transmute(old));
         return newbuf;
     }
 }
@@ -340,7 +339,7 @@ impl<T: Send> Drop for Deque<T> {
         for i in range(t, b) {
             let _: T = unsafe { (*a).get(i) };
         }
-        self.pool.free(unsafe { cast::transmute(a) });
+        self.pool.free(unsafe { mem::transmute(a) });
     }
 }
 
@@ -373,7 +372,7 @@ impl<T: Send> Buffer<T> {
     unsafe fn put(&mut self, i: int, t: T) {
         let ptr = self.storage.offset(i & self.mask());
         ptr::copy_nonoverlapping_memory(ptr as *mut T, &t as *T, 1);
-        cast::forget(t);
+        mem::forget(t);
     }
 
     // Again, unsafe because this has incredibly dubious ownership violations.
@@ -400,7 +399,7 @@ mod tests {
     use prelude::*;
     use super::{Data, BufferPool, Abort, Empty, Worker, Stealer};
 
-    use cast;
+    use mem;
     use owned::Box;
     use rt::thread::Thread;
     use rand;
@@ -607,7 +606,7 @@ mod tests {
             let s = s.clone();
             let unique_box = box AtomicUint::new(0);
             let thread_box = unsafe {
-                *cast::transmute::<&Box<AtomicUint>,
+                *mem::transmute::<&Box<AtomicUint>,
                                    **mut AtomicUint>(&unique_box)
             };
             (Thread::start(proc() {

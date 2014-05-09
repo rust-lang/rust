@@ -13,6 +13,6 @@
 
 pub fn main() {
     unsafe {
-        ::std::cast::transmute::<[int,..1],int>([1])
+        ::std::mem::transmute::<[int,..1],int>([1])
     };
 }

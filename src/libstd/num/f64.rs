@@ -14,13 +14,13 @@
 
 use prelude::*;
 
-use cast;
 use from_str::FromStr;
+use intrinsics;
 use libc::{c_int};
+use mem;
 use num::{FPCategory, FPNaN, FPInfinite , FPZero, FPSubnormal, FPNormal};
 use num::{strconv};
 use num;
-use intrinsics;
 
 pub use core::f64::{RADIX, MANTISSA_DIGITS, DIGITS, EPSILON, MIN_VALUE};
 pub use core::f64::{MIN_POS_VALUE, MAX_VALUE, MIN_EXP, MAX_EXP, MIN_10_EXP};
@@ -119,7 +119,7 @@ impl Float for f64 {
         static EXP_MASK: u64 = 0x7ff0000000000000;
         static MAN_MASK: u64 = 0x000fffffffffffff;
 
-        let bits: u64 = unsafe { cast::transmute(self) };
+        let bits: u64 = unsafe { mem::transmute(self) };
         match (bits & MAN_MASK, bits & EXP_MASK) {
             (0, 0)        => FPZero,
             (_, 0)        => FPSubnormal,
@@ -176,7 +176,7 @@ impl Float for f64 {
 
     /// Returns the mantissa, exponent and sign as integers.
     fn integer_decode(self) -> (u64, i16, i8) {
-        let bits: u64 = unsafe { cast::transmute(self) };
+        let bits: u64 = unsafe { mem::transmute(self) };
         let sign: i8 = if bits >> 63 == 0 { 1 } else { -1 };
         let mut exponent: i16 = ((bits >> 52) & 0x7ff) as i16;
         let mantissa = if exponent == 0 {

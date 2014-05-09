@@ -18,7 +18,7 @@ use distributions::{ziggurat, ziggurat_tables, Sample, IndependentSample};
 ///
 /// See `Exp` for the general exponential distribution.Note that this
  // has to be unwrapped before use as an `f64` (using either
-/// `*` or `cast::transmute` is safe).
+/// `*` or `mem::transmute` is safe).
 ///
 /// Implemented via the ZIGNOR variant[1] of the Ziggurat method. The
 /// exact description in the paper was adjusted to use tables for the

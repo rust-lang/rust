@@ -32,8 +32,8 @@ enum AnotherNilEnum {}
 // 2. That gdb prints the string "{<No data fields>}" for empty structs (which may change some time)
 fn main() {
     unsafe {
-        let first: ANilEnum = std::cast::transmute(());
-        let second: AnotherNilEnum = std::cast::transmute(());
+        let first: ANilEnum = std::mem::transmute(());
+        let second: AnotherNilEnum = std::mem::transmute(());
 
         zzz();
     }

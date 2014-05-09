@@ -33,8 +33,8 @@
 //! concurrently between two tasks. This data structure is safe to use and
 //! enforces the semantics that there is one pusher and one popper.
 
-use cast;
 use kinds::Send;
+use mem;
 use ops::Drop;
 use option::{Some, None, Option};
 use owned::Box;
@@ -74,7 +74,7 @@ pub struct Queue<T> {
 impl<T: Send> Node<T> {
     fn new() -> *mut Node<T> {
         unsafe {
-            cast::transmute(box Node {
+            mem::transmute(box Node {
                 value: None,
                 next: AtomicPtr::new(0 as *mut Node<T>),
             })
@@ -188,7 +188,7 @@ impl<T: Send> Queue<T> {
                     (*self.tail_prev.load(Relaxed)).next.store(next, Relaxed);
                     // We have successfully erased all references to 'tail', so
                     // now we can safely drop it.
-                    let _: Box<Node<T>> = cast::transmute(tail);
+                    let _: Box<Node<T>> = mem::transmute(tail);
                 }
             }
             return ret;
@@ -216,7 +216,7 @@ impl<T: Send> Drop for Queue<T> {
             let mut cur = self.first;
             while !cur.is_null() {
                 let next = (*cur).next.load(Relaxed);
-                let _n: Box<Node<T>> = cast::transmute(cur);
+                let _n: Box<Node<T>> = mem::transmute(cur);
                 cur = next;
             }
         }

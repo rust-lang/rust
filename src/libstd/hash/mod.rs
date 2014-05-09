@@ -307,7 +307,7 @@ impl<S: Writer, T: Hash<S>, U: Hash<S>> Hash<S> for Result<T, U> {
 
 #[cfg(test)]
 mod tests {
-    use cast;
+    use mem;
     use io::{IoResult, Writer};
     use iter::{Iterator};
     use option::{Some, None};
@@ -367,12 +367,12 @@ mod tests {
         assert_eq!(hasher.hash(& &[1u8, 2u8, 3u8]), 9);
 
         unsafe {
-            let ptr: *int = cast::transmute(5);
+            let ptr: *int = mem::transmute(5);
             assert_eq!(hasher.hash(&ptr), 5);
         }
 
         unsafe {
-            let ptr: *mut int = cast::transmute(5);
+            let ptr: *mut int = mem::transmute(5);
             assert_eq!(hasher.hash(&ptr), 5);
         }
     }

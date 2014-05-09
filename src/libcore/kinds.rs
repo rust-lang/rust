@@ -112,12 +112,12 @@ pub mod marker {
     /// but does not actually *reference* that type parameter:
     ///
     /// ```ignore
-    /// use std::cast;
+    /// use std::mem;
     ///
     /// struct S<T> { x: *() }
     /// fn get<T>(s: &S<T>) -> T {
     ///    unsafe {
-    ///        let x: *T = cast::transmute(s.x);
+    ///        let x: *T = mem::transmute(s.x);
     ///        *x
     ///    }
     /// }
@@ -153,12 +153,12 @@ pub mod marker {
     /// but does not actually *reference* that type parameter:
     ///
     /// ```
-    /// use std::cast;
+    /// use std::mem;
     ///
     /// struct S<T> { x: *() }
     /// fn get<T>(s: &S<T>, v: T) {
     ///    unsafe {
-    ///        let x: fn(T) = cast::transmute(s.x);
+    ///        let x: fn(T) = mem::transmute(s.x);
     ///        x(v)
     ///    }
     /// }

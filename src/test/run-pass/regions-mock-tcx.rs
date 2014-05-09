@@ -21,7 +21,6 @@ extern crate libc;
 
 use arena::Arena;
 use collections::HashMap;
-use std::cast;
 use std::mem;
 
 type Type<'tcx> = &'tcx TypeStructure<'tcx>;
