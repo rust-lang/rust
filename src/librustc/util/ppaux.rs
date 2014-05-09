@@ -889,13 +889,7 @@ impl<A:UserString> UserString for Rc<A> {
 
 impl UserString for ty::BuiltinBounds {
     fn user_string(&self, tcx: &ctxt) -> ~str {
-        if self.is_empty() { "<no-bounds>".to_owned() } else {
-            let mut result = Vec::new();
-            for bb in self.iter() {
-                result.push(bb.user_string(tcx));
-            }
-            result.connect("+")
-        }
+        self.iter().map(|bb| bb.user_string(tcx)).collect::<Vec<~str>>().connect("+")
     }
 }
 
