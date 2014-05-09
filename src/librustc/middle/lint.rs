@@ -1367,28 +1367,38 @@ fn check_unsafe_block(cx: &Context, e: &ast::Expr) {
     }
 }
 
-fn check_unused_mut_pat(cx: &Context, p: &ast::Pat) {
-    match p.node {
-        ast::PatIdent(ast::BindByValue(ast::MutMutable),
-                      ref path, _) if pat_util::pat_is_binding(&cx.tcx.def_map, p) => {
-            // `let mut _a = 1;` doesn't need a warning.
-            let initial_underscore = if path.segments.len() == 1 {
-                token::get_ident(path.segments
-                                     .get(0)
-                                     .identifier).get().starts_with("_")
-            } else {
-                cx.tcx.sess.span_bug(p.span,
-                                     "mutable binding that doesn't consist \
-                                      of exactly one segment")
-            };
-
-            if !initial_underscore &&
-               !cx.tcx.used_mut_nodes.borrow().contains(&p.id) {
-                cx.span_lint(UnusedMut, p.span,
-                             "variable does not need to be mutable");
+fn check_unused_mut_pat(cx: &Context, pats: &[@ast::Pat]) {
+    // collect all mutable pattern and group their NodeIDs by their Identifier to
+    // avoid false warnings in match arms with multiple patterns
+    let mut mutables = HashMap::new();
+    for &p in pats.iter() {
+        pat_util::pat_bindings(&cx.tcx.def_map, p, |mode, id, _, path| {
+            match mode {
+                ast::BindByValue(ast::MutMutable) => {
+                    if path.segments.len() != 1 {
+                        cx.tcx.sess.span_bug(p.span,
+                                             "mutable binding that doesn't consist \
+                                              of exactly one segment");
+                    }
+                    let ident = path.segments.get(0).identifier;
+                    if !token::get_ident(ident).get().starts_with("_") {
+                        mutables.insert_or_update_with(ident.name as uint, vec!(id), |_, old| {
+                            old.push(id);
+                        });
+                    }
+                }
+                _ => {
+                }
             }
+        });
+    }
+
+    let used_mutables = cx.tcx.used_mut_nodes.borrow();
+    for (_, v) in mutables.iter() {
+        if !v.iter().any(|e| used_mutables.contains(e)) {
+            cx.span_lint(UnusedMut, cx.tcx.map.span(*v.get(0)),
+                         "variable does not need to be mutable");
         }
-        _ => ()
     }
 }
 
@@ -1684,7 +1694,6 @@ impl<'a> Visitor<()> for Context<'a> {
     fn visit_pat(&mut self, p: &ast::Pat, _: ()) {
         check_pat_non_uppercase_statics(self, p);
         check_pat_uppercase_variable(self, p);
-        check_unused_mut_pat(self, p);
 
         visit::walk_pat(self, p, ());
     }
@@ -1699,6 +1708,11 @@ impl<'a> Visitor<()> for Context<'a> {
             },
             ast::ExprParen(expr) => if self.negated_expr_id == e.id {
                 self.negated_expr_id = expr.id
+            },
+            ast::ExprMatch(_, ref arms) => {
+                for a in arms.iter() {
+                    check_unused_mut_pat(self, a.pats.as_slice());
+                }
             },
             _ => ()
         };
@@ -1723,6 +1737,18 @@ impl<'a> Visitor<()> for Context<'a> {
         check_unused_result(self, s);
         check_unnecessary_parens_stmt(self, s);
 
+        match s.node {
+            ast::StmtDecl(d, _) => {
+                match d.node {
+                    ast::DeclLocal(l) => {
+                        check_unused_mut_pat(self, &[l.pat]);
+                    },
+                    _ => {}
+                }
+            },
+            _ => {}
+        }
+
         visit::walk_stmt(self, s, ());
     }
 
@@ -1731,6 +1757,10 @@ impl<'a> Visitor<()> for Context<'a> {
         let recurse = |this: &mut Context| {
             visit::walk_fn(this, fk, decl, body, span, id, ());
         };
+
+        for a in decl.inputs.iter(){
+            check_unused_mut_pat(self, &[a.pat]);
+        }
 
         match *fk {
             visit::FkMethod(_, _, m) => {
