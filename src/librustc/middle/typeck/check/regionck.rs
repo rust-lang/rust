@@ -299,7 +299,7 @@ pub fn regionck_expr(fcx: &FnCtxt, e: &ast::Expr) {
         // regionck assumes typeck succeeded
         rcx.visit_expr(e, ());
     }
-    fcx.infcx().resolve_regions();
+    fcx.infcx().resolve_regions_and_report_errors();
 }
 
 pub fn regionck_fn(fcx: &FnCtxt, blk: &ast::Block) {
@@ -309,7 +309,7 @@ pub fn regionck_fn(fcx: &FnCtxt, blk: &ast::Block) {
         // regionck assumes typeck succeeded
         rcx.visit_block(blk, ());
     }
-    fcx.infcx().resolve_regions();
+    fcx.infcx().resolve_regions_and_report_errors();
 }
 
 impl<'a> Visitor<()> for Rcx<'a> {

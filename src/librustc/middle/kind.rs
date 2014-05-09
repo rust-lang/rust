@@ -245,10 +245,10 @@ pub fn check_expr(cx: &mut Context, e: &Expr) {
     {
         let method_map = cx.tcx.method_map.borrow();
         let method = method_map.find(&typeck::MethodCall::expr(e.id));
-        let node_type_substs = cx.tcx.node_type_substs.borrow();
+        let item_substs = cx.tcx.item_substs.borrow();
         let r = match method {
             Some(method) => Some(&method.substs.tps),
-            None => node_type_substs.find(&e.id)
+            None => item_substs.find(&e.id).map(|s| &s.substs.tps)
         };
         for ts in r.iter() {
             let def_map = cx.tcx.def_map.borrow();
@@ -341,15 +341,19 @@ fn check_trait_cast(cx: &mut Context, source_ty: ty::t, target_ty: ty::t, span: 
 fn check_ty(cx: &mut Context, aty: &Ty) {
     match aty.node {
         TyPath(_, _, id) => {
-            let node_type_substs = cx.tcx.node_type_substs.borrow();
-            let r = node_type_substs.find(&id);
-            for ts in r.iter() {
-                let def_map = cx.tcx.def_map.borrow();
-                let did = ast_util::def_id_of_def(def_map.get_copy(&id));
-                let generics = ty::lookup_item_type(cx.tcx, did).generics;
-                let type_param_defs = generics.type_param_defs();
-                for (&ty, type_param_def) in ts.iter().zip(type_param_defs.iter()) {
-                    check_typaram_bounds(cx, aty.span, ty, type_param_def)
+            match cx.tcx.item_substs.borrow().find(&id) {
+                None => { }
+                Some(ref item_substs) => {
+                    let def_map = cx.tcx.def_map.borrow();
+                    let did = ast_util::def_id_of_def(def_map.get_copy(&id));
+                    let generics = ty::lookup_item_type(cx.tcx, did).generics;
+                    let type_param_defs = generics.type_param_defs();
+                    for (&ty, type_param_def) in
+                        item_substs.substs.tps.iter().zip(
+                            type_param_defs.iter())
+                    {
+                        check_typaram_bounds(cx, aty.span, ty, type_param_def)
+                    }
                 }
             }
         }

@@ -52,7 +52,7 @@ can be broken down into several distinct phases:
 
 While type checking a function, the intermediate types for the
 expressions, blocks, and so forth contained within the function are
-stored in `fcx.node_types` and `fcx.node_type_substs`.  These types
+stored in `fcx.node_types` and `fcx.item_substs`.  These types
 may contain unresolved type variables.  After type checking is
 complete, the functions in the writeback module are used to take the
 types from this table, resolve them, and then write them into their
@@ -161,7 +161,7 @@ pub struct Inherited<'a> {
 
     // Temporary tables:
     node_types: RefCell<NodeMap<ty::t>>,
-    node_type_substs: RefCell<NodeMap<ty::substs>>,
+    item_substs: RefCell<NodeMap<ty::ItemSubsts>>,
     adjustments: RefCell<NodeMap<ty::AutoAdjustment>>,
     method_map: MethodMap,
     vtable_map: vtable_map,
@@ -268,7 +268,7 @@ impl<'a> Inherited<'a> {
             locals: RefCell::new(NodeMap::new()),
             param_env: param_env,
             node_types: RefCell::new(NodeMap::new()),
-            node_type_substs: RefCell::new(NodeMap::new()),
+            item_substs: RefCell::new(NodeMap::new()),
             adjustments: RefCell::new(NodeMap::new()),
             method_map: RefCell::new(FnvHashMap::new()),
             vtable_map: RefCell::new(FnvHashMap::new()),
@@ -1111,22 +1111,22 @@ impl<'a> FnCtxt<'a> {
         self.inh.node_types.borrow_mut().insert(node_id, ty);
     }
 
-    pub fn write_substs(&self, node_id: ast::NodeId, substs: ty::substs) {
-        if !ty::substs_is_noop(&substs) {
+    pub fn write_substs(&self, node_id: ast::NodeId, substs: ty::ItemSubsts) {
+        if !ty::substs_is_noop(&substs.substs) {
             debug!("write_substs({}, {}) in fcx {}",
                    node_id,
-                   ty::substs_to_str(self.tcx(), &substs),
+                   substs.repr(self.tcx()),
                    self.tag());
 
-            self.inh.node_type_substs.borrow_mut().insert(node_id, substs);
+            self.inh.item_substs.borrow_mut().insert(node_id, substs);
         }
     }
 
     pub fn write_ty_substs(&self,
                            node_id: ast::NodeId,
                            ty: ty::t,
-                           substs: ty::substs) {
-        let ty = ty::subst(self.tcx(), &substs, ty);
+                           substs: ty::ItemSubsts) {
+        let ty = ty::subst(self.tcx(), &substs.substs, ty);
         self.write_ty(node_id, ty);
         self.write_substs(node_id, substs);
     }
@@ -1204,8 +1204,8 @@ impl<'a> FnCtxt<'a> {
 
     pub fn opt_node_ty_substs(&self,
                               id: ast::NodeId,
-                              f: |&ty::substs|) {
-        match self.inh.node_type_substs.borrow().find(&id) {
+                              f: |&ty::ItemSubsts|) {
+        match self.inh.item_substs.borrow().find(&id) {
             Some(s) => { f(s) }
             None => { }
         }
@@ -3963,10 +3963,10 @@ pub fn instantiate_path(fcx: &FnCtxt,
         (tps, regions)
     };
 
-    fcx.write_ty_substs(node_id, tpt.ty, substs {
-        regions: regions,
-        self_ty: None,
-        tps: tps
+    fcx.write_ty_substs(node_id, tpt.ty, ty::ItemSubsts {
+        substs: substs { regions: regions,
+                         self_ty: None,
+                         tps: tps }
     });
 
     debug!("<<<");

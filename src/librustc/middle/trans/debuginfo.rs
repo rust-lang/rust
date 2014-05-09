@@ -793,16 +793,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
                 assert_type_for_node_id(cx, fn_ast_id, error_span);
 
                 let return_type = ty::node_id_to_type(cx.tcx(), fn_ast_id);
-                let return_type = match param_substs {
-                    None => return_type,
-                    Some(substs) => {
-                        ty::subst_tps(cx.tcx(),
-                                      substs.tys.as_slice(),
-                                      substs.self_ty,
-                                      return_type)
-                    }
-                };
-
+                let return_type = return_type.substp(cx.tcx(), param_substs);
                 signature.push(type_metadata(cx, return_type, codemap::DUMMY_SP));
             }
         }
@@ -811,16 +802,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
         for arg in fn_decl.inputs.iter() {
             assert_type_for_node_id(cx, arg.pat.id, arg.pat.span);
             let arg_type = ty::node_id_to_type(cx.tcx(), arg.pat.id);
-            let arg_type = match param_substs {
-                None => arg_type,
-                Some(substs) => {
-                    ty::subst_tps(cx.tcx(),
-                                  substs.tys.as_slice(),
-                                  substs.self_ty,
-                                  arg_type)
-                }
-            };
-
+            let arg_type = arg_type.substp(cx.tcx(), param_substs);
             signature.push(type_metadata(cx, arg_type, codemap::DUMMY_SP));
         }
 
@@ -834,7 +816,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
                                name_to_append_suffix_to: &mut StrBuf)
                                -> DIArray {
         let self_type = match param_substs {
-            Some(param_substs) => param_substs.self_ty,
+            Some(param_substs) => param_substs.substs.self_ty,
             _ => None
         };
 
@@ -890,7 +872,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
 
         // Handle other generic parameters
         let actual_types = match param_substs {
-            Some(param_substs) => &param_substs.tys,
+            Some(param_substs) => &param_substs.substs.tps,
             None => {
                 return create_DIArray(DIB(cx), template_params.as_slice());
             }
