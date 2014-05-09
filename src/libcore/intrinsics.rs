@@ -137,7 +137,7 @@ pub trait TyVisitor {
                        sz: uint, align: uint) -> bool;
 
     fn visit_enter_enum(&mut self, n_variants: uint,
-                        get_disr: extern unsafe fn(ptr: *Opaque) -> Disr,
+                        get_disr: unsafe extern fn(ptr: *Opaque) -> Disr,
                         sz: uint, align: uint) -> bool;
     fn visit_enter_enum_variant(&mut self, variant: uint,
                                 disr_val: Disr,
@@ -149,7 +149,7 @@ pub trait TyVisitor {
                                 n_fields: uint,
                                 name: &str) -> bool;
     fn visit_leave_enum(&mut self, n_variants: uint,
-                        get_disr: extern unsafe fn(ptr: *Opaque) -> Disr,
+                        get_disr: unsafe extern fn(ptr: *Opaque) -> Disr,
                         sz: uint, align: uint) -> bool;
 
     fn visit_enter_fn(&mut self, purity: uint, proto: uint,

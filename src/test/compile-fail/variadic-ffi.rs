@@ -23,13 +23,13 @@ fn main() {
         foo(); //~ ERROR: this function takes at least 2 parameters but 0 parameters were supplied
         foo(1); //~ ERROR: this function takes at least 2 parameters but 1 parameter was supplied
 
-        let x: extern "C" unsafe fn(f: int, x: u8) = foo;
-        //~^ ERROR: mismatched types: expected `extern "C" unsafe fn(int, u8)`
-        //          but found `extern "C" unsafe fn(int, u8, ...)`
+        let x: unsafe extern "C" fn(f: int, x: u8) = foo;
+        //~^ ERROR: mismatched types: expected `unsafe extern "C" fn(int, u8)`
+        //          but found `unsafe extern "C" fn(int, u8, ...)`
         //          (expected non-variadic fn but found variadic function)
 
-        let y: extern "C" unsafe fn(f: int, x: u8, ...) = bar;
-        //~^ ERROR: mismatched types: expected `extern "C" unsafe fn(int, u8, ...)`
+        let y: unsafe extern "C" fn(f: int, x: u8, ...) = bar;
+        //~^ ERROR: mismatched types: expected `unsafe extern "C" fn(int, u8, ...)`
         //          but found `extern "C" extern fn(int, u8)`
         //          (expected variadic fn but found non-variadic function)
 

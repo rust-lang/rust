@@ -367,7 +367,7 @@ impl<V:TyVisitor + MovePtr> TyVisitor for MovePtrAdaptor<V> {
     }
 
     fn visit_enter_enum(&mut self, n_variants: uint,
-                        get_disr: extern unsafe fn(ptr: *Opaque) -> Disr,
+                        get_disr: unsafe extern fn(ptr: *Opaque) -> Disr,
                         sz: uint, align: uint)
                      -> bool {
         self.align(align);
@@ -408,7 +408,7 @@ impl<V:TyVisitor + MovePtr> TyVisitor for MovePtrAdaptor<V> {
     }
 
     fn visit_leave_enum(&mut self, n_variants: uint,
-                        get_disr: extern unsafe fn(ptr: *Opaque) -> Disr,
+                        get_disr: unsafe extern fn(ptr: *Opaque) -> Disr,
                         sz: uint, align: uint) -> bool {
         if ! self.inner.visit_leave_enum(n_variants, get_disr, sz, align) {
             return false;

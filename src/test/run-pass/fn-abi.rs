@@ -17,5 +17,5 @@ extern {
 
 pub fn main() {
     // Will only type check if the type of _p and the decl of printf use the same ABI
-    let _p: extern unsafe fn() = printf;
+    let _p: unsafe extern fn() = printf;
 }

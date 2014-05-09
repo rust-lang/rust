@@ -512,32 +512,6 @@ pub use self::num::RadixFmt;
 mod num;
 pub mod rt;
 
-#[cfg(stage0)]
-#[allow(missing_doc)]
-pub mod parse {
-    #[deriving(Eq)]
-    pub enum Alignment {
-        AlignLeft,
-        AlignRight,
-        AlignUnknown,
-    }
-
-    pub enum PluralKeyword {
-        Zero,
-        One,
-        Two,
-        Few,
-        Many,
-    }
-
-    pub enum Flag {
-        FlagSignPlus,
-        FlagSignMinus,
-        FlagAlternate,
-        FlagSignAwareZeroPad,
-    }
-}
-
 pub type Result = io::IoResult<()>;
 
 /// A struct to represent both where to emit formatting strings to and how they

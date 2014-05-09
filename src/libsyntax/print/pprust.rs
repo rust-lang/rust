@@ -2087,13 +2087,13 @@ impl<'a> State<'a> {
         if opt_sigil == Some('~') && onceness == ast::Once {
             try!(word(&mut self.s, "proc"));
         } else if opt_sigil == Some('&') {
-            try!(self.print_extern_opt_abi(opt_abi));
             try!(self.print_fn_style(fn_style));
+            try!(self.print_extern_opt_abi(opt_abi));
             try!(self.print_onceness(onceness));
         } else {
             assert!(opt_sigil.is_none());
-            try!(self.print_opt_abi_and_extern_if_nondefault(opt_abi));
             try!(self.print_fn_style(fn_style));
+            try!(self.print_opt_abi_and_extern_if_nondefault(opt_abi));
             try!(self.print_onceness(onceness));
             try!(word(&mut self.s, "fn"));
         }

@@ -236,18 +236,17 @@ pub fn ty_to_str(cx: &ctxt, typ: t) -> ~str {
                       ident: Option<ast::Ident>,
                       sig: &ty::FnSig)
                       -> ~str {
-        let mut s = if abi == abi::Rust {
-            StrBuf::new()
-        } else {
-            StrBuf::from_owned_str(format!("extern {} ", abi.to_str()))
-        };
-
+        let mut s = StrBuf::new();
         match fn_style {
             ast::NormalFn => {}
             _ => {
                 s.push_str(fn_style.to_str());
                 s.push_char(' ');
             }
+        };
+
+        if abi != abi::Rust {
+            s.push_str(format!("extern {} ", abi.to_str()));
         };
 
         s.push_str("fn");
