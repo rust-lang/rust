@@ -157,12 +157,13 @@ pub fn monomorphic_fn(ccx: &CrateContext,
             // This is a bit unfortunate.
 
             let idx = real_substs.tps.len() - num_method_ty_params;
-            let substs = real_substs.tps.slice(0, idx) +
-            &[real_substs.self_ty.unwrap()] + real_substs.tps.tailn(idx);
+            let substs = Vec::from_slice(real_substs.tps.slice(0, idx))
+                         .append([real_substs.self_ty.unwrap()])
+                         .append(real_substs.tps.tailn(idx));
             debug!("static default: changed substitution to {}",
                    substs.repr(ccx.tcx()));
 
-            ty::subst_tps(ccx.tcx(), substs, None, llitem_ty)
+            ty::subst_tps(ccx.tcx(), substs.as_slice(), None, llitem_ty)
         }
     };
 

@@ -24,7 +24,7 @@ use io::IoResult;
 use io::net::ip::{SocketAddr, IpAddr};
 use option::{Option, Some, None};
 use rt::rtio::{IoFactory, LocalIo};
-use slice::OwnedVector;
+use vec::Vec;
 
 /// Hints to the types of sockets that are desired when looking up hosts
 pub enum SocketType {
@@ -73,7 +73,7 @@ pub struct Info {
 
 /// Easy name resolution. Given a hostname, returns the list of IP addresses for
 /// that hostname.
-pub fn get_host_addresses(host: &str) -> IoResult<~[IpAddr]> {
+pub fn get_host_addresses(host: &str) -> IoResult<Vec<IpAddr>> {
     lookup(Some(host), None, None).map(|a| a.move_iter().map(|i| i.address.ip).collect())
 }
 
@@ -90,7 +90,7 @@ pub fn get_host_addresses(host: &str) -> IoResult<~[IpAddr]> {
 /// FIXME: this is not public because the `Hint` structure is not ready for public
 ///      consumption just yet.
 fn lookup(hostname: Option<&str>, servname: Option<&str>, hint: Option<Hint>)
-          -> IoResult<~[Info]> {
+          -> IoResult<Vec<Info>> {
     LocalIo::maybe_raise(|io| io.get_host_addresses(hostname, servname, hint))
 }
 

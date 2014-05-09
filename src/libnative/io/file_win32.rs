@@ -22,7 +22,7 @@ use std::ptr;
 use std::rt::rtio;
 use std::str;
 use std::sync::arc::UnsafeArc;
-use std::slice;
+use std::vec;
 
 use io::IoResult;
 
@@ -368,8 +368,8 @@ pub fn readdir(p: &CString) -> IoResult<Vec<Path>> {
                 if fp_buf as uint == 0 {
                     fail!("os::list_dir() failure: got null ptr from wfd");
                 } else {
-                    let fp_vec = slice::from_buf(fp_buf, libc::wcslen(fp_buf) as uint);
-                    let fp_trimmed = str::truncate_utf16_at_nul(fp_vec);
+                    let fp_vec = vec::raw::from_buf(fp_buf, libc::wcslen(fp_buf) as uint);
+                    let fp_trimmed = str::truncate_utf16_at_nul(fp_vec.as_slice());
                     let fp_str = str::from_utf16(fp_trimmed)
                             .expect("rust_list_dir_wfd_fp_buf returned invalid UTF-16");
                     paths.push(Path::new(fp_str));

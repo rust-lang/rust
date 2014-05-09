@@ -997,7 +997,7 @@ fn make_lib_name(config: &config, auxfile: &Path, testfile: &Path) -> Path {
 fn make_exe_name(config: &config, testfile: &Path) -> Path {
     let mut f = output_base_name(config, testfile);
     if !os::consts::EXE_SUFFIX.is_empty() {
-        match f.filename().map(|s| s + os::consts::EXE_SUFFIX.as_bytes()) {
+        match f.filename().map(|s| Vec::from_slice(s).append(os::consts::EXE_SUFFIX.as_bytes())) {
             Some(v) => f.set_filename(v),
             None => ()
         }
@@ -1091,7 +1091,7 @@ fn make_out_name(config: &config, testfile: &Path, extension: &str) -> Path {
 
 fn aux_output_dir_name(config: &config, testfile: &Path) -> Path {
     let mut f = output_base_name(config, testfile);
-    match f.filename().map(|s| s + bytes!(".libaux")) {
+    match f.filename().map(|s| Vec::from_slice(s).append(bytes!(".libaux"))) {
         Some(v) => f.set_filename(v),
         None => ()
     }
@@ -1273,7 +1273,7 @@ fn append_suffix_to_stem(p: &Path, suffix: &str) -> Path {
         (*p).clone()
     } else {
         let stem = p.filestem().unwrap();
-        p.with_filename(stem + bytes!("-") + suffix.as_bytes())
+        p.with_filename(Vec::from_slice(stem).append(bytes!("-")).append(suffix.as_bytes()))
     }
 }
 

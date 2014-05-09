@@ -45,9 +45,9 @@ pub fn get_rpath_flags(sess: &Session, out_filename: &Path) -> Vec<~str> {
     let libs = sess.cstore.get_used_crates(cstore::RequireDynamic);
     let libs = libs.move_iter().filter_map(|(_, l)| {
         l.map(|p| p.clone())
-    }).collect::<~[_]>();
+    }).collect::<Vec<_>>();
 
-    let rpaths = get_rpaths(os, sysroot, output, libs,
+    let rpaths = get_rpaths(os, sysroot, output, libs.as_slice(),
                             sess.opts.target_triple);
     flags.push_all(rpaths_to_flags(rpaths.as_slice()).as_slice());
     flags

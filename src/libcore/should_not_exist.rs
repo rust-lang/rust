@@ -13,8 +13,9 @@ use char::Char;
 use clone::Clone;
 use container::Container;
 use default::Default;
+use finally::try_finally;
 use intrinsics;
-use iter::{Iterator, FromIterator};
+use iter::{range, Iterator, FromIterator};
 use mem;
 use num::{CheckedMul, CheckedAdd};
 use option::{Some, None};
@@ -25,7 +26,6 @@ use slice::ImmutableVector;
 use str::StrSlice;
 
 #[cfg(not(test))] use ops::Add;
-#[cfg(not(test))] use slice::Vector;
 
 #[allow(ctypes)]
 extern {
@@ -147,56 +147,34 @@ impl<'a> Add<&'a str,~str> for &'a str {
 impl<A: Clone> Clone for ~[A] {
     #[inline]
     fn clone(&self) -> ~[A] {
-        self.iter().map(|a| a.clone()).collect()
-    }
-}
-
-impl<A> FromIterator<A> for ~[A] {
-    fn from_iter<T: Iterator<A>>(mut iterator: T) -> ~[A] {
-        let (lower, _) = iterator.size_hint();
-        let cap = if lower == 0 {16} else {lower};
-        let mut cap = cap.checked_mul(&mem::size_of::<A>()).unwrap();
-        let mut len = 0;
+        let len = self.len();
+        let data_size = len.checked_mul(&mem::size_of::<A>()).unwrap();
+        let size = mem::size_of::<Vec<()>>().checked_add(&data_size).unwrap();
 
         unsafe {
-            let mut ptr = alloc(cap) as *mut Vec<A>;
-            let mut ret = cast::transmute(ptr);
-            for elt in iterator {
-                if len * mem::size_of::<A>() >= cap {
-                    cap = cap.checked_mul(&2).unwrap();
-                    let ptr2 = alloc(cap) as *mut Vec<A>;
-                    ptr::copy_nonoverlapping_memory(&mut (*ptr2).data,
-                                                    &(*ptr).data,
-                                                    len);
-                    free(ptr as *u8);
-                    cast::forget(ret);
-                    ret = cast::transmute(ptr2);
-                    ptr = ptr2;
-                }
+            let ret = alloc(size) as *mut Vec<A>;
 
-                let base = &mut (*ptr).data as *mut A;
-                intrinsics::move_val_init(&mut *base.offset(len as int), elt);
-                len += 1;
-                (*ptr).fill = len * mem::nonzero_size_of::<A>();
-            }
-            ret
+            (*ret).fill = len * mem::nonzero_size_of::<A>();
+            (*ret).alloc = len * mem::nonzero_size_of::<A>();
+
+            let mut i = 0;
+            let p = &mut (*ret).data as *mut _ as *mut A;
+            try_finally(
+                &mut i, (),
+                |i, ()| while *i < len {
+                    mem::move_val_init(
+                        &mut(*p.offset(*i as int)),
+                        self.unsafe_ref(*i).clone());
+                    *i += 1;
+                },
+                |i| if *i < len {
+                    // we must be failing, clean up after ourselves
+                    for j in range(0, *i as int) {
+                        ptr::read(&*p.offset(j));
+                    }
+                    free(ret as *u8);
+                });
+            cast::transmute(ret)
         }
-    }
-}
-
-#[cfg(not(test))]
-impl<'a,T:Clone, V: Vector<T>> Add<V, ~[T]> for &'a [T] {
-    #[inline]
-    fn add(&self, rhs: &V) -> ~[T] {
-        let first = self.iter().map(|t| t.clone());
-        first.chain(rhs.as_slice().iter().map(|t| t.clone())).collect()
-    }
-}
-
-#[cfg(not(test))]
-impl<T:Clone, V: Vector<T>> Add<V, ~[T]> for ~[T] {
-    #[inline]
-    fn add(&self, rhs: &V) -> ~[T] {
-        self.as_slice() + rhs.as_slice()
     }
 }
