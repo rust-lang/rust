@@ -54,13 +54,13 @@ use syntax::ast;
 
 #[deriving(Clone, Eq)]
 pub struct Svh {
-    hash: ~str,
+    hash: StrBuf,
 }
 
 impl Svh {
     pub fn new(hash: &str) -> Svh {
         assert!(hash.len() == 16);
-        Svh { hash: hash.to_owned() }
+        Svh { hash: hash.to_strbuf() }
     }
 
     pub fn as_str<'a>(&'a self) -> &'a str {

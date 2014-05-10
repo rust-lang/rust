@@ -1332,16 +1332,28 @@ impl<'a> RegionVarBindings<'a> {
 }
 
 impl Repr for Constraint {
-    fn repr(&self, tcx: &ty::ctxt) -> ~str {
+    fn repr(&self, tcx: &ty::ctxt) -> StrBuf {
         match *self {
-            ConstrainVarSubVar(a, b) => format!("ConstrainVarSubVar({}, {})",
-                                             a.repr(tcx), b.repr(tcx)),
-            ConstrainRegSubVar(a, b) => format!("ConstrainRegSubVar({}, {})",
-                                             a.repr(tcx), b.repr(tcx)),
-            ConstrainVarSubReg(a, b) => format!("ConstrainVarSubReg({}, {})",
-                                             a.repr(tcx), b.repr(tcx)),
-            ConstrainRegSubReg(a, b) => format!("ConstrainRegSubReg({}, {})",
-                                             a.repr(tcx), b.repr(tcx)),
+            ConstrainVarSubVar(a, b) => {
+                format_strbuf!("ConstrainVarSubVar({}, {})",
+                               a.repr(tcx),
+                               b.repr(tcx))
+            }
+            ConstrainRegSubVar(a, b) => {
+                format_strbuf!("ConstrainRegSubVar({}, {})",
+                               a.repr(tcx),
+                               b.repr(tcx))
+            }
+            ConstrainVarSubReg(a, b) => {
+                format_strbuf!("ConstrainVarSubReg({}, {})",
+                               a.repr(tcx),
+                               b.repr(tcx))
+            }
+            ConstrainRegSubReg(a, b) => {
+                format_strbuf!("ConstrainRegSubReg({}, {})",
+                               a.repr(tcx),
+                               b.repr(tcx))
+            }
         }
     }
 }

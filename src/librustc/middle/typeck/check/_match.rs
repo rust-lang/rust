@@ -166,11 +166,15 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: &ast::Pat, path: &ast::Path,
                     // See [Note-Type-error-reporting] in middle/typeck/infer/mod.rs
                     fcx.infcx().type_error_message_str_with_expected(pat.span,
                                                        |expected, actual| {
-                                                       expected.map_or("".to_owned(), |e| {
-                        format!("mismatched types: expected `{}` but found {}",
-                             e, actual)})},
-                             Some(expected), "a structure pattern".to_owned(),
-                             None);
+                       expected.map_or("".to_strbuf(), |e| {
+                        format_strbuf!("mismatched types: expected `{}` but \
+                                        found {}",
+                                       e,
+                                       actual)
+                        })},
+                        Some(expected),
+                        "a structure pattern".to_strbuf(),
+                        None);
                     fcx.write_error(pat.id);
                     kind_name = "[error]";
                     arg_types = subpats.clone()
@@ -217,11 +221,17 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: &ast::Pat, path: &ast::Path,
             // See [Note-Type-error-reporting] in middle/typeck/infer/mod.rs
             fcx.infcx().type_error_message_str_with_expected(pat.span,
                                                |expected, actual| {
-                                               expected.map_or("".to_owned(), |e| {
-                    format!("mismatched types: expected `{}` but found {}",
-                         e, actual)})},
-                    Some(expected), "an enum or structure pattern".to_owned(),
-                    None);
+                                               expected.map_or("".to_strbuf(),
+                                                              |e| {
+                        format_strbuf!("mismatched types: expected `{}` but \
+                                        found {}",
+                                       e,
+                                       actual)
+                    })
+                },
+                Some(expected),
+                "an enum or structure pattern".to_strbuf(),
+                None);
             fcx.write_error(pat.id);
             kind_name = "[error]";
             arg_types = subpats.clone()
@@ -446,7 +456,7 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
         debug!("pat_range ending type: {:?}", e_ty);
         if !require_same_types(
             tcx, Some(fcx.infcx()), false, pat.span, b_ty, e_ty,
-            || "mismatched types in range".to_owned())
+            || "mismatched types in range".to_strbuf())
         {
             // no-op
         } else if !ty::type_is_numeric(b_ty) && !ty::type_is_char(b_ty) {
@@ -540,11 +550,16 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
                // See [Note-Type-error-reporting] in middle/typeck/infer/mod.rs
                 fcx.infcx().type_error_message_str_with_expected(pat.span,
                                                                 |expected, actual| {
-                            expected.map_or("".to_owned(), |e| {
-                                    format!("mismatched types: expected `{}` but found {}",
-                                         e, actual)})},
-                                         Some(expected), "a structure pattern".to_owned(),
-                                         None);
+                            expected.map_or("".to_strbuf(),
+                                            |e| {
+                                format_strbuf!("mismatched types: expected \
+                                                `{}` but found {}",
+                                               e,
+                                               actual)
+                            })},
+                            Some(expected),
+                            "a structure pattern".to_strbuf(),
+                            None);
                 match tcx.def_map.borrow().find(&pat.id) {
                     Some(&ast::DefStruct(supplied_def_id)) => {
                          check_struct_pat(pcx,
@@ -590,17 +605,28 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
                 }
                 // use terr_tuple_size if both types are tuples
                 let type_error = match *s {
-                    ty::ty_tup(ref ex_elts) =>
-                        ty::terr_tuple_size(ty::expected_found{expected: ex_elts.len(),
-                                                           found: e_count}),
+                    ty::ty_tup(ref ex_elts) => {
+                        ty::terr_tuple_size(ty::expected_found {
+                            expected: ex_elts.len(),
+                            found: e_count
+                        })
+                    }
                     _ => ty::terr_mismatch
                 };
                 // See [Note-Type-error-reporting] in middle/typeck/infer/mod.rs
-                fcx.infcx().type_error_message_str_with_expected(pat.span, |expected, actual| {
-                        expected.map_or("".to_owned(), |e| {
-                            format!("mismatched types: expected `{}` but found {}",
-                                             e, actual)})},
-                    Some(expected), "tuple".to_owned(), Some(&type_error));
+                fcx.infcx().type_error_message_str_with_expected(pat.span,
+                                                                 |expected,
+                                                                  actual| {
+                        expected.map_or("".to_strbuf(), |e| {
+                            format_strbuf!("mismatched types: expected `{}` \
+                                            but found {}",
+                                           e,
+                                           actual)
+                        }
+                    )},
+                    Some(expected),
+                    "tuple".to_strbuf(),
+                    Some(&type_error));
                 fcx.write_error(pat.id);
             }
         }
@@ -630,11 +656,16 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
             fcx.infcx().type_error_message_str_with_expected(
                 pat.span,
                 |expected, actual| {
-                    expected.map_or("".to_owned(), |e| {
-                        format!("mismatched types: expected `{}` but found {}",
-                             e, actual)})},
+                    expected.map_or("".to_strbuf(),
+                                    |e| {
+                        format_strbuf!("mismatched types: expected `{}` but \
+                                        found {}",
+                                       e,
+                                       actual)
+                    })
+                },
                 Some(expected),
-                "a vector pattern".to_owned(),
+                "a vector pattern".to_strbuf(),
                 None);
             fcx.write_error(pat.id);
         };
@@ -648,7 +679,7 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
                   fcx.type_error_message(pat.span,
                                          |_| {
                                             "unique vector patterns are no \
-                                             longer supported".to_owned()
+                                             longer supported".to_strbuf()
                                          },
                                          expected,
                                          None);
@@ -716,13 +747,17 @@ pub fn check_pointer_pat(pcx: &pat_ctxt,
             fcx.infcx().type_error_message_str_with_expected(
                 span,
                 |expected, actual| {
-                    expected.map_or("".to_owned(), |e| {
-                        format!("mismatched types: expected `{}` but found {}",
-                             e, actual)})},
+                    expected.map_or("".to_strbuf(), |e| {
+                        format_strbuf!("mismatched types: expected `{}` but \
+                                        found {}",
+                                       e,
+                                       actual)
+                    })
+                },
                 Some(expected),
-                format!("{} pattern", match pointer_kind {
+                format_strbuf!("{} pattern", match pointer_kind {
                     Send => "a box",
-                    Borrowed => "an `&`-pointer"
+                    Borrowed => "an `&`-pointer",
                 }),
                 None);
             fcx.write_error(pat_id);
@@ -731,4 +766,8 @@ pub fn check_pointer_pat(pcx: &pat_ctxt,
 }
 
 #[deriving(Eq)]
-pub enum PointerKind { Send, Borrowed }
+pub enum PointerKind {
+    Send,
+    Borrowed,
+}
+

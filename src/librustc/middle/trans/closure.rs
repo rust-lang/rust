@@ -104,8 +104,8 @@ pub struct EnvValue {
 }
 
 impl EnvValue {
-    pub fn to_str(&self, ccx: &CrateContext) -> ~str {
-        format!("{}({})", self.action, self.datum.to_str(ccx))
+    pub fn to_str(&self, ccx: &CrateContext) -> StrBuf {
+        format_strbuf!("{}({})", self.action, self.datum.to_str(ccx))
     }
 }
 
@@ -354,7 +354,7 @@ pub fn trans_expr_fn<'a>(
                                      true,
                                      f.sig.inputs.as_slice(),
                                      f.sig.output,
-                                     s);
+                                     s.as_slice());
 
     // set an inline hint for all closures
     set_inline_hint(llfn);
@@ -417,9 +417,13 @@ pub fn get_wrapper_for_bare_fn(ccx: &CrateContext,
                               true,
                               f.sig.inputs.as_slice(),
                               f.sig.output,
-                              name)
+                              name.as_slice())
     } else {
-        decl_rust_fn(ccx, true, f.sig.inputs.as_slice(), f.sig.output, name)
+        decl_rust_fn(ccx,
+                     true,
+                     f.sig.inputs.as_slice(),
+                     f.sig.output,
+                     name.as_slice())
     };
 
     ccx.closure_bare_wrapper_cache.borrow_mut().insert(fn_ptr, llfn);

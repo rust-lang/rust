@@ -203,7 +203,7 @@ fn make_visit_glue<'a>(bcx: &'a Block<'a>, v: ValueRef, t: ty::t)
                                                                  ty::ReStatic) {
         Ok(pair) => pair,
         Err(s) => {
-            bcx.tcx().sess.fatal(s);
+            bcx.tcx().sess.fatal(s.as_slice());
         }
     };
     let v = PointerCast(bcx, v, type_of(bcx.ccx(), object_ty).ptr_to());
@@ -413,14 +413,15 @@ pub fn declare_tydesc(ccx: &CrateContext, t: ty::t) -> tydesc_info {
     let llalign = llalign_of(ccx, llty);
     let name = mangle_internal_name_by_type_and_seq(ccx, t, "tydesc");
     debug!("+++ declare_tydesc {} {}", ppaux::ty_to_str(ccx.tcx(), t), name);
-    let gvar = name.with_c_str(|buf| {
+    let gvar = name.as_slice().with_c_str(|buf| {
         unsafe {
             llvm::LLVMAddGlobal(ccx.llmod, ccx.tydesc_type().to_ref(), buf)
         }
     });
     note_unique_llvm_symbol(ccx, name);
 
-    let ty_name = token::intern_and_get_ident(ppaux::ty_to_str(ccx.tcx(), t));
+    let ty_name = token::intern_and_get_ident(
+        ppaux::ty_to_str(ccx.tcx(), t).as_slice());
     let ty_name = C_str_slice(ccx, ty_name);
 
     debug!("--- declare_tydesc {}", ppaux::ty_to_str(ccx.tcx(), t));
@@ -439,7 +440,10 @@ fn declare_generic_glue(ccx: &CrateContext, t: ty::t, llfnty: Type,
     let _icx = push_ctxt("declare_generic_glue");
     let fn_nm = mangle_internal_name_by_type_and_seq(ccx, t, "glue_".to_owned() + name);
     debug!("{} is for type {}", fn_nm, ppaux::ty_to_str(ccx.tcx(), t));
-    let llfn = decl_cdecl_fn(ccx.llmod, fn_nm, llfnty, ty::mk_nil());
+    let llfn = decl_cdecl_fn(ccx.llmod,
+                             fn_nm.as_slice(),
+                             llfnty,
+                             ty::mk_nil());
     note_unique_llvm_symbol(ccx, fn_nm);
     return llfn;
 }
@@ -452,7 +456,9 @@ fn make_generic_glue(ccx: &CrateContext,
                      name: &str)
                      -> ValueRef {
     let _icx = push_ctxt("make_generic_glue");
-    let glue_name = format!("glue {} {}", name, ty_to_short_str(ccx.tcx(), t));
+    let glue_name = format_strbuf!("glue {} {}",
+                                   name,
+                                   ty_to_short_str(ccx.tcx(), t));
     let _s = StatRecorder::new(ccx, glue_name);
 
     let arena = TypedArena::new();

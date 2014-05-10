@@ -278,7 +278,7 @@ pub struct ctxt {
     pub freevars: RefCell<freevars::freevar_map>,
     pub tcache: type_cache,
     pub rcache: creader_cache,
-    pub short_names_cache: RefCell<HashMap<t, ~str>>,
+    pub short_names_cache: RefCell<HashMap<t, StrBuf>>,
     pub needs_unwind_cleanup_cache: RefCell<HashMap<t, bool>>,
     pub tc_cache: RefCell<HashMap<uint, TypeContents>>,
     pub ast_ty_to_ty_cache: RefCell<NodeMap<ast_ty_to_ty_cache_entry>>,
@@ -1538,7 +1538,7 @@ pub fn substs_is_noop(substs: &substs) -> bool {
         substs.self_ty.is_none()
 }
 
-pub fn substs_to_str(cx: &ctxt, substs: &substs) -> ~str {
+pub fn substs_to_str(cx: &ctxt, substs: &substs) -> StrBuf {
     substs.repr(cx)
 }
 
@@ -3189,7 +3189,9 @@ pub fn field_idx_strict(tcx: &ctxt, name: ast::Name, fields: &[field])
     tcx.sess.bug(format!(
         "no field named `{}` found in the list of fields `{:?}`",
         token::get_name(name),
-        fields.iter().map(|f| token::get_ident(f.ident).get().to_str()).collect::<Vec<~str>>()));
+        fields.iter()
+              .map(|f| token::get_ident(f.ident).get().to_strbuf())
+              .collect::<Vec<StrBuf>>()));
 }
 
 pub fn method_idx(id: ast::Ident, meths: &[Rc<Method>]) -> Option<uint> {
@@ -3212,34 +3214,38 @@ pub fn param_tys_in_type(ty: t) -> Vec<param_ty> {
     rslt
 }
 
-pub fn ty_sort_str(cx: &ctxt, t: t) -> ~str {
+pub fn ty_sort_str(cx: &ctxt, t: t) -> StrBuf {
     match get(t).sty {
         ty_nil | ty_bot | ty_bool | ty_char | ty_int(_) |
         ty_uint(_) | ty_float(_) | ty_str => {
             ::util::ppaux::ty_to_str(cx, t)
         }
 
-        ty_enum(id, _) => format!("enum {}", item_path_str(cx, id)),
-        ty_box(_) => "@-ptr".to_owned(),
-        ty_uniq(_) => "box".to_owned(),
-        ty_vec(_, _) => "vector".to_owned(),
-        ty_ptr(_) => "*-ptr".to_owned(),
-        ty_rptr(_, _) => "&-ptr".to_owned(),
-        ty_bare_fn(_) => "extern fn".to_owned(),
-        ty_closure(_) => "fn".to_owned(),
-        ty_trait(ref inner) => format!("trait {}", item_path_str(cx, inner.def_id)),
-        ty_struct(id, _) => format!("struct {}", item_path_str(cx, id)),
-        ty_tup(_) => "tuple".to_owned(),
-        ty_infer(TyVar(_)) => "inferred type".to_owned(),
-        ty_infer(IntVar(_)) => "integral variable".to_owned(),
-        ty_infer(FloatVar(_)) => "floating-point variable".to_owned(),
-        ty_param(_) => "type parameter".to_owned(),
-        ty_self(_) => "self".to_owned(),
-        ty_err => "type error".to_owned()
+        ty_enum(id, _) => format_strbuf!("enum {}", item_path_str(cx, id)),
+        ty_box(_) => "@-ptr".to_strbuf(),
+        ty_uniq(_) => "box".to_strbuf(),
+        ty_vec(_, _) => "vector".to_strbuf(),
+        ty_ptr(_) => "*-ptr".to_strbuf(),
+        ty_rptr(_, _) => "&-ptr".to_strbuf(),
+        ty_bare_fn(_) => "extern fn".to_strbuf(),
+        ty_closure(_) => "fn".to_strbuf(),
+        ty_trait(ref inner) => {
+            format_strbuf!("trait {}", item_path_str(cx, inner.def_id))
+        }
+        ty_struct(id, _) => {
+            format_strbuf!("struct {}", item_path_str(cx, id))
+        }
+        ty_tup(_) => "tuple".to_strbuf(),
+        ty_infer(TyVar(_)) => "inferred type".to_strbuf(),
+        ty_infer(IntVar(_)) => "integral variable".to_strbuf(),
+        ty_infer(FloatVar(_)) => "floating-point variable".to_strbuf(),
+        ty_param(_) => "type parameter".to_strbuf(),
+        ty_self(_) => "self".to_strbuf(),
+        ty_err => "type error".to_strbuf(),
     }
 }
 
-pub fn type_err_to_str(cx: &ctxt, err: &type_err) -> ~str {
+pub fn type_err_to_str(cx: &ctxt, err: &type_err) -> StrBuf {
     /*!
      *
      * Explains the source of a type err in a short,
@@ -3249,126 +3255,145 @@ pub fn type_err_to_str(cx: &ctxt, err: &type_err) -> ~str {
      * to present additional details, particularly when
      * it comes to lifetime-related errors. */
 
-    fn tstore_to_closure(s: &TraitStore) -> ~str {
+    fn tstore_to_closure(s: &TraitStore) -> StrBuf {
         match s {
-            &UniqTraitStore => "proc".to_owned(),
-            &RegionTraitStore(..) => "closure".to_owned()
+            &UniqTraitStore => "proc".to_strbuf(),
+            &RegionTraitStore(..) => "closure".to_strbuf()
         }
     }
 
     match *err {
-        terr_mismatch => "types differ".to_owned(),
+        terr_mismatch => "types differ".to_strbuf(),
         terr_fn_style_mismatch(values) => {
-            format!("expected {} fn but found {} fn",
-                 values.expected.to_str(), values.found.to_str())
+            format_strbuf!("expected {} fn but found {} fn",
+                           values.expected.to_str(),
+                           values.found.to_str())
         }
         terr_abi_mismatch(values) => {
-            format!("expected {} fn but found {} fn",
-                 values.expected.to_str(), values.found.to_str())
+            format_strbuf!("expected {} fn but found {} fn",
+                           values.expected.to_str(),
+                           values.found.to_str())
         }
         terr_onceness_mismatch(values) => {
-            format!("expected {} fn but found {} fn",
-                 values.expected.to_str(), values.found.to_str())
+            format_strbuf!("expected {} fn but found {} fn",
+                           values.expected.to_str(),
+                           values.found.to_str())
         }
         terr_sigil_mismatch(values) => {
-            format!("expected {}, found {}",
-                    tstore_to_closure(&values.expected),
-                    tstore_to_closure(&values.found))
+            format_strbuf!("expected {}, found {}",
+                           tstore_to_closure(&values.expected),
+                           tstore_to_closure(&values.found))
         }
-        terr_mutability => "values differ in mutability".to_owned(),
-        terr_box_mutability => "boxed values differ in mutability".to_owned(),
-        terr_vec_mutability => "vectors differ in mutability".to_owned(),
-        terr_ptr_mutability => "pointers differ in mutability".to_owned(),
-        terr_ref_mutability => "references differ in mutability".to_owned(),
+        terr_mutability => "values differ in mutability".to_strbuf(),
+        terr_box_mutability => {
+            "boxed values differ in mutability".to_strbuf()
+        }
+        terr_vec_mutability => "vectors differ in mutability".to_strbuf(),
+        terr_ptr_mutability => "pointers differ in mutability".to_strbuf(),
+        terr_ref_mutability => "references differ in mutability".to_strbuf(),
         terr_ty_param_size(values) => {
-            format!("expected a type with {} type params \
-                  but found one with {} type params",
-                 values.expected, values.found)
+            format_strbuf!("expected a type with {} type params \
+                            but found one with {} type params",
+                           values.expected,
+                           values.found)
         }
         terr_tuple_size(values) => {
-            format!("expected a tuple with {} elements \
-                  but found one with {} elements",
-                 values.expected, values.found)
+            format_strbuf!("expected a tuple with {} elements \
+                            but found one with {} elements",
+                           values.expected,
+                           values.found)
         }
         terr_record_size(values) => {
-            format!("expected a record with {} fields \
-                  but found one with {} fields",
-                 values.expected, values.found)
+            format_strbuf!("expected a record with {} fields \
+                            but found one with {} fields",
+                           values.expected,
+                           values.found)
         }
         terr_record_mutability => {
-            "record elements differ in mutability".to_owned()
+            "record elements differ in mutability".to_strbuf()
         }
         terr_record_fields(values) => {
-            format!("expected a record with field `{}` but found one with field \
-                  `{}`",
-                 token::get_ident(values.expected),
-                 token::get_ident(values.found))
+            format_strbuf!("expected a record with field `{}` but found one \
+                            with field `{}`",
+                           token::get_ident(values.expected),
+                           token::get_ident(values.found))
         }
-        terr_arg_count => "incorrect number of function parameters".to_owned(),
+        terr_arg_count => {
+            "incorrect number of function parameters".to_strbuf()
+        }
         terr_regions_does_not_outlive(..) => {
-            format!("lifetime mismatch")
+            "lifetime mismatch".to_strbuf()
         }
         terr_regions_not_same(..) => {
-            format!("lifetimes are not the same")
+            "lifetimes are not the same".to_strbuf()
         }
         terr_regions_no_overlap(..) => {
-            format!("lifetimes do not intersect")
+            "lifetimes do not intersect".to_strbuf()
         }
         terr_regions_insufficiently_polymorphic(br, _) => {
-            format!("expected bound lifetime parameter {}, \
-                  but found concrete lifetime",
-                 bound_region_ptr_to_str(cx, br))
+            format_strbuf!("expected bound lifetime parameter {}, \
+                            but found concrete lifetime",
+                           bound_region_ptr_to_str(cx, br))
         }
         terr_regions_overly_polymorphic(br, _) => {
-            format!("expected concrete lifetime, \
-                  but found bound lifetime parameter {}",
-                 bound_region_ptr_to_str(cx, br))
+            format_strbuf!("expected concrete lifetime, \
+                            but found bound lifetime parameter {}",
+                           bound_region_ptr_to_str(cx, br))
         }
         terr_trait_stores_differ(_, ref values) => {
-            format!("trait storage differs: expected `{}` but found `{}`",
-                 trait_store_to_str(cx, (*values).expected),
-                 trait_store_to_str(cx, (*values).found))
+            format_strbuf!("trait storage differs: expected `{}` but found \
+                            `{}`",
+                           trait_store_to_str(cx, (*values).expected),
+                           trait_store_to_str(cx, (*values).found))
         }
         terr_sorts(values) => {
-            format!("expected {} but found {}",
-                 ty_sort_str(cx, values.expected),
-                 ty_sort_str(cx, values.found))
+            format_strbuf!("expected {} but found {}",
+                           ty_sort_str(cx, values.expected),
+                           ty_sort_str(cx, values.found))
         }
         terr_traits(values) => {
-            format!("expected trait `{}` but found trait `{}`",
-                 item_path_str(cx, values.expected),
-                 item_path_str(cx, values.found))
+            format_strbuf!("expected trait `{}` but found trait `{}`",
+                           item_path_str(cx, values.expected),
+                           item_path_str(cx, values.found))
         }
         terr_builtin_bounds(values) => {
             if values.expected.is_empty() {
-                format!("expected no bounds but found `{}`",
-                     values.found.user_string(cx))
+                format_strbuf!("expected no bounds but found `{}`",
+                               values.found.user_string(cx))
             } else if values.found.is_empty() {
-                format!("expected bounds `{}` but found no bounds",
-                     values.expected.user_string(cx))
+                format_strbuf!("expected bounds `{}` but found no bounds",
+                               values.expected.user_string(cx))
             } else {
-                format!("expected bounds `{}` but found bounds `{}`",
-                     values.expected.user_string(cx),
-                     values.found.user_string(cx))
+                format_strbuf!("expected bounds `{}` but found bounds `{}`",
+                               values.expected.user_string(cx),
+                               values.found.user_string(cx))
             }
         }
         terr_integer_as_char => {
-            format!("expected an integral type but found `char`")
+            "expected an integral type but found `char`".to_strbuf()
         }
         terr_int_mismatch(ref values) => {
-            format!("expected `{}` but found `{}`",
-                 values.expected.to_str(),
-                 values.found.to_str())
+            format_strbuf!("expected `{}` but found `{}`",
+                           values.expected.to_str(),
+                           values.found.to_str())
         }
         terr_float_mismatch(ref values) => {
-            format!("expected `{}` but found `{}`",
-                 values.expected.to_str(),
-                 values.found.to_str())
+            format_strbuf!("expected `{}` but found `{}`",
+                           values.expected.to_str(),
+                           values.found.to_str())
         }
         terr_variadic_mismatch(ref values) => {
-            format!("expected {} fn but found {} function",
-                    if values.expected { "variadic" } else { "non-variadic" },
-                    if values.found { "variadic" } else { "non-variadic" })
+            format_strbuf!("expected {} fn but found {} function",
+                           if values.expected {
+                                "variadic"
+                           } else {
+                                "non-variadic"
+                           },
+                           if values.found {
+                               "variadic"
+                           } else {
+                               "non-variadic"
+                           })
         }
     }
 }
@@ -3665,8 +3690,8 @@ pub fn substd_enum_variants(cx: &ctxt,
     }).collect()
 }
 
-pub fn item_path_str(cx: &ctxt, id: ast::DefId) -> ~str {
-    with_path(cx, id, |path| ast_map::path_to_str(path)).to_owned()
+pub fn item_path_str(cx: &ctxt, id: ast::DefId) -> StrBuf {
+    with_path(cx, id, |path| ast_map::path_to_str(path)).to_strbuf()
 }
 
 pub enum DtorKind {
@@ -4231,14 +4256,14 @@ pub fn each_bound_trait_and_supertraits(tcx: &ctxt,
     return true;
 }
 
-pub fn get_tydesc_ty(tcx: &ctxt) -> Result<t, ~str> {
+pub fn get_tydesc_ty(tcx: &ctxt) -> Result<t, StrBuf> {
     tcx.lang_items.require(TyDescStructLangItem).map(|tydesc_lang_item| {
         tcx.intrinsic_defs.borrow().find_copy(&tydesc_lang_item)
             .expect("Failed to resolve TyDesc")
     })
 }
 
-pub fn get_opaque_ty(tcx: &ctxt) -> Result<t, ~str> {
+pub fn get_opaque_ty(tcx: &ctxt) -> Result<t, StrBuf> {
     tcx.lang_items.require(OpaqueStructLangItem).map(|opaque_lang_item| {
         tcx.intrinsic_defs.borrow().find_copy(&opaque_lang_item)
             .expect("Failed to resolve Opaque")
@@ -4246,7 +4271,7 @@ pub fn get_opaque_ty(tcx: &ctxt) -> Result<t, ~str> {
 }
 
 pub fn visitor_object_ty(tcx: &ctxt,
-                         region: ty::Region) -> Result<(Rc<TraitRef>, t), ~str> {
+                         region: ty::Region) -> Result<(Rc<TraitRef>, t), StrBuf> {
     let trait_lang_item = match tcx.lang_items.require(TyVisitorTraitLangItem) {
         Ok(id) => id,
         Err(s) => { return Err(s); }

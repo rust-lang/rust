@@ -81,8 +81,7 @@ impl<'a> Builder<'a> {
                 s.push_char('/');
                 s.push_str(category);
 
-                let s = s.into_owned();
-                let n = match h.find_equiv(&s) {
+                let n = match h.find(&s) {
                     Some(&n) => n,
                     _ => 0u
                 };
@@ -805,7 +804,7 @@ impl<'a> Builder<'a> {
                self.ccx.tn.val_to_str(llfn),
                args.iter()
                    .map(|&v| self.ccx.tn.val_to_str(v))
-                   .collect::<Vec<~str>>()
+                   .collect::<Vec<StrBuf>>()
                    .connect(", "));
 
         unsafe {

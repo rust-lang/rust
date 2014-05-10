@@ -178,7 +178,7 @@ pub struct CrateDebugContext {
     llcontext: ContextRef,
     builder: DIBuilderRef,
     current_debug_location: Cell<DebugLocation>,
-    created_files: RefCell<HashMap<~str, DIFile>>,
+    created_files: RefCell<HashMap<StrBuf, DIFile>>,
     created_types: RefCell<HashMap<uint, DIType>>,
     created_enum_disr_types: RefCell<HashMap<ast::DefId, DIType>>,
     namespace_map: RefCell<HashMap<Vec<ast::Name>, Rc<NamespaceTreeNode>>>,
@@ -343,8 +343,8 @@ pub fn create_global_var_metadata(cx: &CrateContext,
     let linkage_name = namespace_node.mangled_name_of_contained_item(var_name);
     let var_scope = namespace_node.scope;
 
-    var_name.with_c_str(|var_name| {
-        linkage_name.with_c_str(|linkage_name| {
+    var_name.as_slice().with_c_str(|var_name| {
+        linkage_name.as_slice().with_c_str(|linkage_name| {
             unsafe {
                 llvm::LLVMDIBuilderCreateStaticVariable(DIB(cx),
                                                         var_scope,
@@ -725,7 +725,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
         let containing_scope = namespace_node.scope;
         (linkage_name, containing_scope)
     } else {
-        (function_name.as_slice().to_owned(), file_metadata)
+        (function_name.as_slice().to_strbuf(), file_metadata)
     };
 
     // Clang sets this parameter to the opening brace of the function's block, so let's do this too.
@@ -734,7 +734,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
     let is_local_to_unit = is_node_local_to_unit(cx, fn_ast_id);
 
     let fn_metadata = function_name.as_slice().with_c_str(|function_name| {
-                          linkage_name.with_c_str(|linkage_name| {
+                          linkage_name.as_slice().with_c_str(|linkage_name| {
             unsafe {
                 llvm::LLVMDIBuilderCreateFunction(
                     DIB(cx),
@@ -838,7 +838,8 @@ pub fn create_function_debug_context(cx: &CrateContext,
             let actual_self_type = self_type.unwrap();
             // Add self type name to <...> clause of function name
             let actual_self_type_name = ppaux::ty_to_str(cx.tcx(), actual_self_type);
-            name_to_append_suffix_to.push_str(actual_self_type_name);
+            name_to_append_suffix_to.push_str(
+                actual_self_type_name.as_slice());
 
             if generics.is_type_parameterized() {
                 name_to_append_suffix_to.push_str(",");
@@ -882,7 +883,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
             let actual_type = *actual_types.get(index);
             // Add actual type name to <...> clause of function name
             let actual_type_name = ppaux::ty_to_str(cx.tcx(), actual_type);
-            name_to_append_suffix_to.push_str(actual_type_name);
+            name_to_append_suffix_to.push_str(actual_type_name.as_slice());
 
             if index != generics.ty_params.len() - 1 {
                 name_to_append_suffix_to.push_str(",");
@@ -1107,7 +1108,7 @@ fn file_metadata(cx: &CrateContext, full_path: &str) -> DIFile {
         });
 
     let mut created_files = debug_context(cx).created_files.borrow_mut();
-    created_files.insert(full_path.to_owned(), file_metadata);
+    created_files.insert(full_path.to_strbuf(), file_metadata);
     return file_metadata;
 }
 
@@ -1182,7 +1183,7 @@ fn pointer_type_metadata(cx: &CrateContext,
     let pointer_llvm_type = type_of::type_of(cx, pointer_type);
     let (pointer_size, pointer_align) = size_and_align_of(cx, pointer_llvm_type);
     let name = ppaux::ty_to_str(cx.tcx(), pointer_type);
-    let ptr_metadata = name.with_c_str(|name| {
+    let ptr_metadata = name.as_slice().with_c_str(|name| {
         unsafe {
             llvm::LLVMDIBuilderCreatePointerType(
                 DIB(cx),
@@ -1232,9 +1233,9 @@ impl StructMemberDescriptionFactory {
                                   -> Vec<MemberDescription> {
         self.fields.iter().map(|field| {
             let name = if field.ident.name == special_idents::unnamed_field.name {
-                "".to_owned()
+                "".to_strbuf()
             } else {
-                token::get_ident(field.ident).get().to_str()
+                token::get_ident(field.ident).get().to_strbuf()
             };
 
             MemberDescription {
@@ -1263,7 +1264,7 @@ fn prepare_struct_metadata(cx: &CrateContext,
 
     let struct_metadata_stub = create_struct_stub(cx,
                                                   struct_llvm_type,
-                                                  struct_name,
+                                                  struct_name.as_slice(),
                                                   containing_scope,
                                                   file_metadata,
                                                   definition_span);
@@ -1335,7 +1336,7 @@ impl TupleMemberDescriptionFactory {
                                   -> Vec<MemberDescription> {
         self.component_types.iter().map(|&component_type| {
             MemberDescription {
-                name: "".to_owned(),
+                name: "".to_strbuf(),
                 llvm_type: type_of::type_of(cx, component_type),
                 type_metadata: type_metadata(cx, component_type, self.span),
                 offset: ComputedMemberOffset,
@@ -1359,7 +1360,7 @@ fn prepare_tuple_metadata(cx: &CrateContext,
         cache_id: cache_id_for_type(tuple_type),
         metadata_stub: create_struct_stub(cx,
                                           tuple_llvm_type,
-                                          tuple_name,
+                                          tuple_name.as_slice(),
                                           file_metadata,
                                           file_metadata,
                                           span),
@@ -1413,7 +1414,7 @@ impl GeneralMemberDescriptionFactory {
                                               self.file_metadata,
                                               codemap::DUMMY_SP);
                 MemberDescription {
-                    name: "".to_owned(),
+                    name: "".to_strbuf(),
                     llvm_type: variant_llvm_type,
                     type_metadata: variant_type_metadata,
                     offset: FixedMemberOffset { bytes: 0 },
@@ -1423,7 +1424,7 @@ impl GeneralMemberDescriptionFactory {
 }
 
 struct EnumVariantMemberDescriptionFactory {
-    args: Vec<(~str, ty::t)> ,
+    args: Vec<(StrBuf, ty::t)> ,
     discriminant_type_metadata: Option<DIType>,
     span: Span,
 }
@@ -1433,7 +1434,7 @@ impl EnumVariantMemberDescriptionFactory {
                                   -> Vec<MemberDescription> {
         self.args.iter().enumerate().map(|(i, &(ref name, ty))| {
             MemberDescription {
-                name: name.to_str(),
+                name: name.to_strbuf(),
                 llvm_type: type_of::type_of(cx, ty),
                 type_metadata: match self.discriminant_type_metadata {
                     Some(metadata) if i == 0 => metadata,
@@ -1491,9 +1492,9 @@ fn describe_enum_variant(cx: &CrateContext,
     }
 
     // Build an array of (field name, field type) pairs to be captured in the factory closure.
-    let args: Vec<(~str, ty::t)> = arg_names.iter()
+    let args: Vec<(StrBuf, ty::t)> = arg_names.iter()
         .zip(struct_def.fields.iter())
-        .map(|(s, &t)| (s.to_str(), t))
+        .map(|(s, &t)| (s.to_strbuf(), t))
         .collect();
 
     let member_description_factory =
@@ -1520,13 +1521,14 @@ fn prepare_enum_metadata(cx: &CrateContext,
     // For empty enums there is an early exit. Just describe it as an empty struct with the
     // appropriate type name
     if ty::type_is_empty(cx.tcx(), enum_type) {
-        let empty_type_metadata = composite_type_metadata(cx,
-                                                          Type::nil(cx),
-                                                          enum_name,
-                                                          [],
-                                                          containing_scope,
-                                                          file_metadata,
-                                                          definition_span);
+        let empty_type_metadata = composite_type_metadata(
+            cx,
+            Type::nil(cx),
+            enum_name.as_slice(),
+            [],
+            containing_scope,
+            file_metadata,
+            definition_span);
 
         return FinalMetadata(empty_type_metadata);
     }
@@ -1621,8 +1623,8 @@ fn prepare_enum_metadata(cx: &CrateContext,
             let (enum_type_size, enum_type_align) = size_and_align_of(cx, enum_llvm_type);
             let unique_id = generate_unique_type_id("DI_ENUM_");
 
-            let enum_metadata = enum_name.with_c_str(|enum_name| {
-                unique_id.with_c_str(|unique_id| {
+            let enum_metadata = enum_name.as_slice().with_c_str(|enum_name| {
+                unique_id.as_slice().with_c_str(|unique_id| {
                     unsafe {
                         llvm::LLVMDIBuilderCreateUnionType(
                         DIB(cx),
@@ -1694,7 +1696,7 @@ enum MemberOffset {
 }
 
 struct MemberDescription {
-    name: ~str,
+    name: StrBuf,
     llvm_type: Type,
     type_metadata: DIType,
     offset: MemberOffset,
@@ -1764,7 +1766,7 @@ fn set_members_of_composite_type(cx: &CrateContext,
                 ComputedMemberOffset => machine::llelement_offset(cx, composite_llvm_type, i)
             };
 
-            member_description.name.with_c_str(|member_name| {
+            member_description.name.as_slice().with_c_str(|member_name| {
                 unsafe {
                     llvm::LLVMDIBuilderCreateMemberType(
                         DIB(cx),
@@ -1806,7 +1808,7 @@ fn create_struct_stub(cx: &CrateContext,
 
     return unsafe {
         struct_type_name.with_c_str(|name| {
-            unique_id.with_c_str(|unique_id| {
+            unique_id.as_slice().with_c_str(|unique_id| {
                 // LLVMDIBuilderCreateStructType() wants an empty array. A null pointer will lead to
                 // hard to trace and debug LLVM assertions later on in llvm/lib/IR/Value.cpp
                 let empty_array = create_DIArray(DIB(cx), []);
@@ -1853,31 +1855,31 @@ fn boxed_type_metadata(cx: &CrateContext,
 
     let member_descriptions = [
         MemberDescription {
-            name: "refcnt".to_owned(),
+            name: "refcnt".to_strbuf(),
             llvm_type: *member_llvm_types.get(0),
             type_metadata: type_metadata(cx, int_type, codemap::DUMMY_SP),
             offset: ComputedMemberOffset,
         },
         MemberDescription {
-            name: "drop_glue".to_owned(),
+            name: "drop_glue".to_strbuf(),
             llvm_type: *member_llvm_types.get(1),
             type_metadata: nil_pointer_type_metadata,
             offset: ComputedMemberOffset,
         },
         MemberDescription {
-            name: "prev".to_owned(),
+            name: "prev".to_strbuf(),
             llvm_type: *member_llvm_types.get(2),
             type_metadata: nil_pointer_type_metadata,
             offset: ComputedMemberOffset,
         },
         MemberDescription {
-            name: "next".to_owned(),
+            name: "next".to_strbuf(),
             llvm_type: *member_llvm_types.get(3),
             type_metadata: nil_pointer_type_metadata,
             offset: ComputedMemberOffset,
         },
         MemberDescription {
-            name: "val".to_owned(),
+            name: "val".to_strbuf(),
             llvm_type: *member_llvm_types.get(4),
             type_metadata: content_type_metadata,
             offset: ComputedMemberOffset,
@@ -1964,19 +1966,19 @@ fn vec_metadata(cx: &CrateContext,
 
     let member_descriptions = [
         MemberDescription {
-            name: "fill".to_owned(),
+            name: "fill".to_strbuf(),
             llvm_type: *member_llvm_types.get(0),
             type_metadata: int_type_metadata,
             offset: ComputedMemberOffset,
         },
         MemberDescription {
-            name: "alloc".to_owned(),
+            name: "alloc".to_strbuf(),
             llvm_type: *member_llvm_types.get(1),
             type_metadata: int_type_metadata,
             offset: ComputedMemberOffset,
         },
         MemberDescription {
-            name: "elements".to_owned(),
+            name: "elements".to_strbuf(),
             llvm_type: *member_llvm_types.get(2),
             type_metadata: array_type_metadata,
             offset: ComputedMemberOffset,
@@ -2021,13 +2023,13 @@ fn vec_slice_metadata(cx: &CrateContext,
 
     let member_descriptions = [
         MemberDescription {
-            name: "data_ptr".to_owned(),
+            name: "data_ptr".to_strbuf(),
             llvm_type: *member_llvm_types.get(0),
             type_metadata: type_metadata(cx, data_ptr_type, span),
             offset: ComputedMemberOffset,
         },
         MemberDescription {
-            name: "length".to_owned(),
+            name: "length".to_strbuf(),
             llvm_type: *member_llvm_types.get(1),
             type_metadata: type_metadata(cx, ty::mk_uint(), span),
             offset: ComputedMemberOffset,
@@ -2042,7 +2044,7 @@ fn vec_slice_metadata(cx: &CrateContext,
     return composite_type_metadata(
         cx,
         slice_llvm_type,
-        slice_type_name,
+        slice_type_name.as_slice(),
         member_descriptions,
         file_metadata,
         file_metadata,
@@ -2099,11 +2101,15 @@ fn trait_metadata(cx: &CrateContext,
     // the trait's methods.
     let last = ty::with_path(cx.tcx(), def_id, |mut path| path.last().unwrap());
     let ident_string = token::get_name(last.name());
-    let name = ppaux::trait_store_to_str(cx.tcx(), trait_store) +
-               ident_string.get();
+    let mut name = ppaux::trait_store_to_str(cx.tcx(), trait_store);
+    name.push_str(ident_string.get());
     // Add type and region parameters
-    let name = ppaux::parameterized(cx.tcx(), name, &substs.regions,
-                                    substs.tps.as_slice(), def_id, true);
+    let name = ppaux::parameterized(cx.tcx(),
+                                    name.as_slice(),
+                                    &substs.regions,
+                                    substs.tps.as_slice(),
+                                    def_id,
+                                    true);
 
     let (containing_scope, definition_span) = get_namespace_and_span_for_item(cx, def_id);
 
@@ -2114,7 +2120,7 @@ fn trait_metadata(cx: &CrateContext,
 
     composite_type_metadata(cx,
                             trait_llvm_type,
-                            name,
+                            name.as_slice(),
                             [],
                             containing_scope,
                             file_metadata,
@@ -2136,7 +2142,8 @@ fn type_metadata(cx: &CrateContext,
                                       pointer_type: ty::t,
                                       type_in_box: ty::t)
                                    -> DIType {
-        let content_type_name: &str = ppaux::ty_to_str(cx.tcx(), type_in_box);
+        let content_type_name = ppaux::ty_to_str(cx.tcx(), type_in_box);
+        let content_type_name = content_type_name.as_slice();
         let content_llvm_type = type_of::type_of(cx, type_in_box);
         let content_type_metadata = type_metadata(
             cx,
@@ -2296,10 +2303,12 @@ fn cache_id_for_type(t: ty::t) -> uint {
 
 // Used to avoid LLVM metadata uniquing problems. See `create_struct_stub()` and
 // `prepare_enum_metadata()`.
-fn generate_unique_type_id(prefix: &'static str) -> ~str {
+fn generate_unique_type_id(prefix: &'static str) -> StrBuf {
     unsafe {
         static mut unique_id_counter: atomics::AtomicUint = atomics::INIT_ATOMIC_UINT;
-        format!("{}{}", prefix, unique_id_counter.fetch_add(1, atomics::SeqCst))
+        format_strbuf!("{}{}",
+                       prefix,
+                       unique_id_counter.fetch_add(1, atomics::SeqCst))
     }
 }
 
@@ -2796,7 +2805,7 @@ fn populate_scope_map(cx: &CrateContext,
             ast::ExprInlineAsm(ast::InlineAsm { inputs: ref inputs,
                                                 outputs: ref outputs,
                                                 .. }) => {
-                // inputs, outputs: ~[(~str, @expr)]
+                // inputs, outputs: ~[(StrBuf, @expr)]
                 for &(_, exp) in inputs.iter() {
                     walk_expr(cx, exp, scope_stack, scope_map);
                 }
@@ -2821,7 +2830,7 @@ struct NamespaceTreeNode {
 }
 
 impl NamespaceTreeNode {
-    fn mangled_name_of_contained_item(&self, item_name: &str) -> ~str {
+    fn mangled_name_of_contained_item(&self, item_name: &str) -> StrBuf {
         fn fill_nested(node: &NamespaceTreeNode, output: &mut StrBuf) {
             match node.parent {
                 Some(ref parent) => fill_nested(&*parent.upgrade().unwrap(), output),
@@ -2837,7 +2846,7 @@ impl NamespaceTreeNode {
         name.push_str(format!("{}", item_name.len()));
         name.push_str(item_name);
         name.push_char('E');
-        name.into_owned()
+        name
     }
 }
 
