@@ -1,3 +1,13 @@
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// file at the top-level directory of this distribution and at
+// http://rust-lang.org/COPYRIGHT.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+
 use std::mem;
 use std::num;
 use std::str;
@@ -510,9 +520,9 @@ mod test {
 
     #[test]
     fn results() {
-        // Result<A, B> doesn't implement the Hash trait, so these tests
-        // depends on the order of shrunk results. Ug.
-        // TODO: Fix this.
+        // FIXME #14097: Result<A, B> doesn't implement the Hash
+        // trait, so these tests depends on the order of shrunk
+        // results. Ug.
         ordered_eq(Ok::<bool, ()>(true), vec!(Ok(false)));
         ordered_eq(Err::<(), bool>(true), vec!(Err(false)));
     }
@@ -534,7 +544,7 @@ mod test {
 
     #[test]
     fn ints() {
-        // TODO: Test overflow?
+        // FIXME #14097: Test overflow?
         eq(5i, vec!(0, 3, 4));
         eq(-5i, vec!(5, 0, -3, -4));
         eq(0i, vec!());
