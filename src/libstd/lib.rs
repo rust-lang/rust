@@ -16,11 +16,11 @@
 //!
 //! ## Intrinsic types and operations
 //!
-//! The [`ptr`](ptr/index.html), [`mem`](mem/index.html),
-//! and [`cast`](cast/index.html) modules deal with unsafe pointers,
+//! The [`ptr`](../core/ptr/index.html), [`mem`](../core/mem/index.html),
+//! and [`cast`](../core/cast/index.html) modules deal with unsafe pointers,
 //! memory manipulation, and coercion.
-//! [`kinds`](kinds/index.html) defines the special built-in traits,
-//! and [`raw`](raw/index.html) the runtime representation of Rust types.
+//! [`kinds`](../core/kinds/index.html) defines the special built-in traits,
+//! and [`raw`](../core/raw/index.html) the runtime representation of Rust types.
 //! These are some of the lowest-level building blocks of Rust
 //! abstractions.
 //!
@@ -35,9 +35,9 @@
 //!
 //! The [`option`](option/index.html) and [`result`](result/index.html)
 //! modules define optional and error-handling types, `Option` and `Result`.
-//! [`iter`](iter/index.html) defines Rust's iterator protocol
+//! [`iter`](../core/iter/index.html) defines Rust's iterator protocol
 //! along with a wide variety of iterators.
-//! [`Cell` and `RefCell`](cell/index.html) are for creating types that
+//! [`Cell` and `RefCell`](../core/cell/index.html) are for creating types that
 //! manage their own mutability.
 //!
 //! ## Vectors, slices and strings

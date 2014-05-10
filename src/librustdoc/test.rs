@@ -16,7 +16,7 @@ use std::os;
 use std::str;
 use std::strbuf::StrBuf;
 
-use collections::HashSet;
+use collections::{HashSet, HashMap};
 use testing;
 use rustc::back::link;
 use rustc::driver::driver;
@@ -73,6 +73,7 @@ pub fn run(input: &str,
         krate: krate,
         maybe_typed: core::NotTyped(sess),
         src: input_path,
+        external_paths: RefCell::new(Some(HashMap::new())),
     };
     super::ctxtkey.replace(Some(ctx));
 
