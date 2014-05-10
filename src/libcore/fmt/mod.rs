@@ -43,32 +43,6 @@ mod num;
 mod float;
 pub mod rt;
 
-#[cfg(stage0)]
-#[allow(missing_doc)]
-pub mod parse {
-    #[deriving(Eq)]
-    pub enum Alignment {
-        AlignLeft,
-        AlignRight,
-        AlignUnknown,
-    }
-
-    pub enum PluralKeyword {
-        Zero,
-        One,
-        Two,
-        Few,
-        Many,
-    }
-
-    pub enum Flag {
-        FlagSignPlus,
-        FlagSignMinus,
-        FlagAlternate,
-        FlagSignAwareZeroPad,
-    }
-}
-
 pub type Result = result::Result<(), FormatError>;
 
 /// dox
@@ -98,7 +72,7 @@ pub struct Formatter<'a> {
     /// Optionally specified precision for numeric types
     pub precision: Option<uint>,
 
-    /// dox
+    #[allow(missing_doc)]
     #[cfg(stage0)]
     pub buf: &'a mut FormatWriter,
     #[cfg(not(stage0))]

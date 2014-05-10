@@ -734,18 +734,18 @@ mod tests {
         // are supported in floating-point literals
         let f1: f64 = from_str_hex("1p-123").unwrap();
         let f2: f64 = from_str_hex("1p-111").unwrap();
-        assert_eq!(Float::ldexp(1f64, -123), f1);
-        assert_eq!(Float::ldexp(1f64, -111), f2);
+        assert_eq!(FloatMath::ldexp(1f64, -123), f1);
+        assert_eq!(FloatMath::ldexp(1f64, -111), f2);
 
-        assert_eq!(Float::ldexp(0f64, -123), 0f64);
-        assert_eq!(Float::ldexp(-0f64, -123), -0f64);
+        assert_eq!(FloatMath::ldexp(0f64, -123), 0f64);
+        assert_eq!(FloatMath::ldexp(-0f64, -123), -0f64);
 
         let inf: f64 = Float::infinity();
         let neg_inf: f64 = Float::neg_infinity();
         let nan: f64 = Float::nan();
-        assert_eq!(Float::ldexp(inf, -123), inf);
-        assert_eq!(Float::ldexp(neg_inf, -123), neg_inf);
-        assert!(Float::ldexp(nan, -123).is_nan());
+        assert_eq!(FloatMath::ldexp(inf, -123), inf);
+        assert_eq!(FloatMath::ldexp(neg_inf, -123), neg_inf);
+        assert!(FloatMath::ldexp(nan, -123).is_nan());
     }
 
     #[test]
@@ -758,8 +758,8 @@ mod tests {
         let (x2, exp2) = f2.frexp();
         assert_eq!((x1, exp1), (0.5f64, -122));
         assert_eq!((x2, exp2), (0.5f64, -110));
-        assert_eq!(Float::ldexp(x1, exp1), f1);
-        assert_eq!(Float::ldexp(x2, exp2), f2);
+        assert_eq!(FloatMath::ldexp(x1, exp1), f1);
+        assert_eq!(FloatMath::ldexp(x2, exp2), f2);
 
         assert_eq!(0f64.frexp(), (0f64, 0));
         assert_eq!((-0f64).frexp(), (-0f64, 0));
