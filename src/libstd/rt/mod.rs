@@ -26,7 +26,7 @@ language and an implementation must be provided regardless of the
 execution environment.
 
 Of foremost importance is the global exchange heap, in the module
-`global_heap`. Very little practical Rust code can be written without
+`heap`. Very little practical Rust code can be written without
 access to the global heap. Unlike most of `rt` the global heap is
 truly a global resource and generally operates independently of the
 rest of the runtime.
@@ -86,8 +86,8 @@ pub mod shouldnt_be_public {
 // Internal macros used by the runtime.
 mod macros;
 
-// The global (exchange) heap.
-pub mod global_heap;
+/// Wrappers around malloc / realloc aborting on out-of-memory.
+pub mod libc_heap;
 
 /// The low-level memory allocation API.
 pub mod heap;
