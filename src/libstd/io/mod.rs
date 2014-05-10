@@ -964,6 +964,42 @@ pub trait Writer {
     /// decide whether their stream needs to be buffered or not.
     fn flush(&mut self) -> IoResult<()> { Ok(()) }
 
+    /// Writes a formatted string into this writer, returning any error
+    /// encountered.
+    ///
+    /// This method is primarily used to interface with the `format_args!`
+    /// macro, but it is rare that this should explicitly be called. The
+    /// `write!` macro should be favored to invoke this method instead.
+    ///
+    /// # Errors
+    ///
+    /// This function will return any I/O error reported while formatting.
+    fn write_fmt(&mut self, fmt: &fmt::Arguments) -> IoResult<()> {
+        // Create a shim which translates a Writer to a FormatWriter and saves
+        // off I/O errors. instead of discarding them
+        struct Adaptor<'a, T> {
+            inner: &'a mut T,
+            error: IoResult<()>,
+        }
+        impl<'a, T: Writer> fmt::FormatWriter for Adaptor<'a, T> {
+            fn write(&mut self, bytes: &[u8]) -> fmt::Result {
+                match self.inner.write(bytes) {
+                    Ok(()) => Ok(()),
+                    Err(e) => {
+                        self.error = Err(e);
+                        Err(fmt::WriteError)
+                    }
+                }
+            }
+        }
+
+        let mut output = Adaptor { inner: self, error: Ok(()) };
+        match fmt::write(&mut output, fmt) {
+            Ok(()) => Ok(()),
+            Err(..) => output.error
+        }
+    }
+
     /// Write a rust string into this sink.
     ///
     /// The bytes written will be the UTF-8 encoded version of the input string.
