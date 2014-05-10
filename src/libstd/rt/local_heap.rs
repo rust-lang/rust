@@ -18,7 +18,7 @@ use ops::Drop;
 use option::{Option, None, Some};
 use ptr;
 use ptr::RawPtr;
-use rt::global_heap;
+use rt::libc_heap;
 use rt::local::Local;
 use rt::task::Task;
 use raw;
@@ -188,7 +188,7 @@ impl MemoryRegion {
     fn malloc(&mut self, size: uint) -> *mut Box {
         let total_size = size + AllocHeader::size();
         let alloc: *AllocHeader = unsafe {
-            global_heap::malloc_raw(total_size) as *AllocHeader
+            libc_heap::malloc_raw(total_size) as *AllocHeader
         };
 
         let alloc: &mut AllocHeader = unsafe { cast::transmute(alloc) };
@@ -207,8 +207,7 @@ impl MemoryRegion {
 
         let total_size = size + AllocHeader::size();
         let alloc: *AllocHeader = unsafe {
-            global_heap::realloc_raw(orig_alloc as *mut u8,
-                                     total_size) as *AllocHeader
+            libc_heap::realloc_raw(orig_alloc as *mut u8, total_size) as *AllocHeader
         };
 
         let alloc: &mut AllocHeader = unsafe { cast::transmute(alloc) };
