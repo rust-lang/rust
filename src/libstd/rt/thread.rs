@@ -294,7 +294,7 @@ mod imp {
     #[cfg(target_os = "linux")]
     fn min_stack_size(attr: *libc::pthread_attr_t) -> libc::size_t {
         use ptr::RawPtr;
-        type F = extern "C" unsafe fn(*libc::pthread_attr_t) -> libc::size_t;
+        type F = unsafe extern "C" fn(*libc::pthread_attr_t) -> libc::size_t;
         extern {
             #[linkage = "extern_weak"]
             static __pthread_get_minstack: *();
