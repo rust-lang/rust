@@ -500,7 +500,7 @@ pub use core::fmt::{Show, Bool, Char, Signed, Unsigned, Octal, Binary};
 pub use core::fmt::{LowerHex, UpperHex, String, Pointer};
 pub use core::fmt::{Float, LowerExp, UpperExp};
 pub use core::fmt::{FormatError, WriteError};
-pub use core::fmt::{Argument, Arguments, write};
+pub use core::fmt::{Argument, Arguments, write, radix, Radix, RadixFmt};
 
 #[doc(hidden)]
 pub use core::fmt::{argument, argumentstr, argumentuint};
