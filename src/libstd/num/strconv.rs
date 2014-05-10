@@ -820,7 +820,6 @@ mod bench {
         use super::test::Bencher;
         use rand::{XorShiftRng, Rng};
         use num::ToStrRadix;
-        use realstd::result::ResultUnwrap;
 
         #[bench]
         fn to_str_bin(b: &mut Bencher) {
@@ -857,7 +856,6 @@ mod bench {
         use super::test::Bencher;
         use rand::{XorShiftRng, Rng};
         use num::ToStrRadix;
-        use realstd::result::ResultUnwrap;
 
         #[bench]
         fn to_str_bin(b: &mut Bencher) {
@@ -894,7 +892,6 @@ mod bench {
         use super::test::Bencher;
         use rand::{XorShiftRng, Rng};
         use f64;
-        use realstd::result::ResultUnwrap;
 
         #[bench]
         fn float_to_str(b: &mut Bencher) {

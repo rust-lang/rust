@@ -549,7 +549,7 @@ pub trait Poly {
 /// ```
 pub fn format(args: &Arguments) -> ~str {
     let mut output = io::MemWriter::new();
-    output.write_fmt(args).unwrap();
+    let _ = write!(&mut output, "{}", args);
     str::from_utf8(output.unwrap().as_slice()).unwrap().to_owned()
 }
 

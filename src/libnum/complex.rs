@@ -171,9 +171,9 @@ impl<T: Clone + Num> One for Complex<T> {
 impl<T: fmt::Show + Num + Ord> fmt::Show for Complex<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if self.im < Zero::zero() {
-            write!(f.buf, "{}-{}i", self.re, -self.im)
+            write!(f, "{}-{}i", self.re, -self.im)
         } else {
-            write!(f.buf, "{}+{}i", self.re, self.im)
+            write!(f, "{}+{}i", self.re, self.im)
         }
     }
 }

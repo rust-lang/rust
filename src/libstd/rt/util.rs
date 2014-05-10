@@ -110,8 +110,9 @@ impl io::Writer for Stdio {
 }
 
 pub fn dumb_println(args: &fmt::Arguments) {
+    use io::Writer;
     let mut w = Stderr;
-    let _ = fmt::writeln(&mut w as &mut io::Writer, args);
+    let _ = writeln!(&mut w, "{}", args);
 }
 
 pub fn abort(msg: &str) -> ! {

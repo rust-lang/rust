@@ -388,7 +388,7 @@ pub struct t { inner: *t_opaque }
 
 impl fmt::Show for t {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.buf.write_str("*t_opaque")
+        "*t_opaque".fmt(f)
     }
 }
 
@@ -912,7 +912,7 @@ impl Vid for TyVid {
 
 impl fmt::Show for TyVid {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result{
-        write!(f.buf, "<generic \\#{}>", self.to_uint())
+        write!(f, "<generic \\#{}>", self.to_uint())
     }
 }
 
@@ -922,7 +922,7 @@ impl Vid for IntVid {
 
 impl fmt::Show for IntVid {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f.buf, "<generic integer \\#{}>", self.to_uint())
+        write!(f, "<generic integer \\#{}>", self.to_uint())
     }
 }
 
@@ -932,7 +932,7 @@ impl Vid for FloatVid {
 
 impl fmt::Show for FloatVid {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f.buf, "<generic float \\#{}>", self.to_uint())
+        write!(f, "<generic float \\#{}>", self.to_uint())
     }
 }
 
@@ -949,7 +949,7 @@ impl fmt::Show for RegionVid {
 impl fmt::Show for FnSig {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // grr, without tcx not much we can do.
-        write!(f.buf, "(...)")
+        write!(f, "(...)")
     }
 }
 
@@ -1987,7 +1987,7 @@ impl ops::Sub<TypeContents,TypeContents> for TypeContents {
 
 impl fmt::Show for TypeContents {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f.buf, "TypeContents({:t})", self.bits)
+        write!(f, "TypeContents({:t})", self.bits)
     }
 }
 

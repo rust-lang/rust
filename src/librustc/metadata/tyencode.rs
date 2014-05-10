@@ -15,9 +15,7 @@
 
 use std::cell::RefCell;
 use collections::HashMap;
-use std::io;
 use std::io::MemWriter;
-use std::fmt;
 
 use middle::ty::param_ty;
 use middle::ty;
@@ -28,9 +26,7 @@ use syntax::ast::*;
 use syntax::diagnostic::SpanHandler;
 use syntax::parse::token;
 
-macro_rules! mywrite( ($wr:expr, $($arg:tt)*) => (
-    format_args!(|a| { mywrite($wr, a) }, $($arg)*)
-) )
+macro_rules! mywrite( ($($arg:tt)*) => ({ write!($($arg)*); }) )
 
 pub struct ctxt<'a> {
     pub diag: &'a SpanHandler,
@@ -51,10 +47,6 @@ pub struct ty_abbrev {
 }
 
 pub type abbrev_map = RefCell<HashMap<ty::t, ty_abbrev>>;
-
-fn mywrite(w: &mut MemWriter, fmt: &fmt::Arguments) {
-    fmt::write(&mut *w as &mut io::Writer, fmt);
-}
 
 pub fn enc_ty(w: &mut MemWriter, cx: &ctxt, t: ty::t) {
     match cx.abbrevs.borrow_mut().find(&t) {

@@ -594,7 +594,7 @@ impl BytesContainer for InternedString {
 
 impl fmt::Show for InternedString {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f.buf, "{}", self.string.as_slice())
+        write!(f, "{}", self.string.as_slice())
     }
 }
 

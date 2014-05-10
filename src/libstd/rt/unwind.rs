@@ -390,9 +390,9 @@ fn begin_unwind_inner(msg: Box<Any:Send>,
                 Some(mut stderr) => {
                     Local::put(task);
                     // FIXME: what to do when the task printing fails?
-                    let _err = format_args!(|args| ::fmt::writeln(stderr, args),
-                                            "task '{}' failed at '{}', {}:{}",
-                                            n, msg_s, file, line);
+                    let _err = write!(stderr,
+                                      "task '{}' failed at '{}', {}:{}\n",
+                                      n, msg_s, file, line);
                     if backtrace::log_enabled() {
                         let _err = backtrace::write(stderr);
                     }

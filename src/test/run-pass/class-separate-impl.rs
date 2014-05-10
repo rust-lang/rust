@@ -53,7 +53,7 @@ fn cat(in_x : uint, in_y : int, in_name: StrBuf) -> cat {
 
 impl fmt::Show for cat {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f.buf, "{}", self.name)
+        write!(f, "{}", self.name)
     }
 }
 
