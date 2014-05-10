@@ -14,11 +14,29 @@
 #[macro_export]
 macro_rules! fail(
     () => (
-        fail!("explicit failure")
+        fail!("{}", "explicit failure")
     );
     ($msg:expr) => (
-        ::core::failure::begin_unwind($msg, file!(), line!())
+        fail!("{}", $msg)
     );
+    ($fmt:expr, $($arg:tt)*) => ({
+        // a closure can't have return type !, so we need a full
+        // function to pass to format_args!, *and* we need the
+        // file and line numbers right here; so an inner bare fn
+        // is our only choice.
+        //
+        // LLVM doesn't tend to inline this, presumably because begin_unwind_fmt
+        // is #[cold] and #[inline(never)] and because this is flagged as cold
+        // as returning !. We really do want this to be inlined, however,
+        // because it's just a tiny wrapper. Small wins (156K to 149K in size)
+        // were seen when forcing this to be inlined, and that number just goes
+        // up with the number of calls to fail!()
+        #[inline(always)]
+        fn run_fmt(fmt: &::std::fmt::Arguments) -> ! {
+            ::core::failure::begin_unwind(fmt, file!(), line!())
+        }
+        format_args!(run_fmt, $fmt, $($arg)*)
+    });
 )
 
 /// Runtime assertion, for details see std::macros
@@ -27,6 +45,11 @@ macro_rules! assert(
     ($cond:expr) => (
         if !$cond {
             fail!(concat!("assertion failed: ", stringify!($cond)))
+        }
+    );
+    ($cond:expr, $($arg:tt)*) => (
+        if !$cond {
+            fail!($($arg)*)
         }
     );
 )
