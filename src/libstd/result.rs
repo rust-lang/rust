@@ -226,8 +226,8 @@
 //! similar and complementary: they are often employed to indicate a
 //! lack of a return value; and they are trivially converted between
 //! each other, so `Result`s are often handled by first converting to
-//! `Option` with the [`ok`](enum.Result.html#method.ok) and
-//! [`err`](enum.Result.html#method.ok) methods.
+//! `Option` with the [`ok`](../../core/result/enum.Result.html#method.ok) and
+//! [`err`](../../core/result/enum.Result.html#method.ok) methods.
 //!
 //! Whereas `Option` only indicates the lack of a value, `Result` is
 //! specifically for error reporting, and carries with it an error

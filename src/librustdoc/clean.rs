@@ -670,15 +670,7 @@ pub enum Type {
     ResolvedPath {
         pub path: Path,
         pub typarams: Option<Vec<TyParamBound>>,
-        pub id: ast::NodeId,
-    },
-    /// Same as above, but only external variants
-    ExternalPath {
-        pub path: Path,
-        pub typarams: Option<Vec<TyParamBound>>,
-        pub fqn: Vec<~str>,
-        pub kind: TypeKind,
-        pub krate: ast::CrateNum,
+        pub did: ast::DefId,
     },
     // I have no idea how to usefully use this.
     TyParamBinder(ast::NodeId),
@@ -715,19 +707,18 @@ pub enum Type {
 
 #[deriving(Clone, Encodable, Decodable)]
 pub enum TypeKind {
-    TypeStruct,
     TypeEnum,
-    TypeTrait,
     TypeFunction,
+    TypeModule,
+    TypeStatic,
+    TypeStruct,
+    TypeTrait,
+    TypeVariant,
 }
 
 impl Clean<Type> for ast::Ty {
     fn clean(&self) -> Type {
         use syntax::ast::*;
-        debug!("cleaning type `{:?}`", self);
-        let ctxt = super::ctxtkey.get().unwrap();
-        let codemap = ctxt.sess().codemap();
-        debug!("span corresponds to `{}`", codemap.span_to_str(self.span));
         match self.node {
             TyNil => Unit,
             TyPtr(ref m) => RawPointer(m.mutbl.clean(), box m.ty.clean()),
@@ -1153,7 +1144,7 @@ pub enum ViewPath {
     // use source::*;
     GlobImport(ImportSource),
     // use source::{a, b, c};
-    ImportList(ImportSource, Vec<ViewListIdent> ),
+    ImportList(ImportSource, Vec<ViewListIdent>),
 }
 
 #[deriving(Clone, Encodable, Decodable)]
@@ -1298,48 +1289,47 @@ fn resolve_type(path: Path, tpbs: Option<Vec<TyParamBound> >,
         core::NotTyped(_) => return Bool
     };
     debug!("searching for {:?} in defmap", id);
-    let d = match tycx.def_map.borrow().find(&id) {
+    let def = match tycx.def_map.borrow().find(&id) {
         Some(&k) => k,
-        None => {
-            debug!("could not find {:?} in defmap (`{}`)", id, tycx.map.node_to_str(id));
-            fail!("Unexpected failure: unresolved id not in defmap (this is a bug!)")
-        }
+        None => fail!("unresolved id not in defmap")
     };
 
-    let (def_id, kind) = match d {
-        ast::DefFn(i, _) => (i, TypeFunction),
+    match def {
         ast::DefSelfTy(i) => return Self(i),
-        ast::DefTy(i) => (i, TypeEnum),
-        ast::DefTrait(i) => {
-            debug!("saw DefTrait in def_to_id");
-            (i, TypeTrait)
-        },
         ast::DefPrimTy(p) => match p {
             ast::TyStr => return String,
             ast::TyBool => return Bool,
             _ => return Primitive(p)
         },
         ast::DefTyParam(i, _) => return Generic(i.node),
-        ast::DefStruct(i) => (i, TypeStruct),
-        ast::DefTyParamBinder(i) => {
-            debug!("found a typaram_binder, what is it? {}", i);
-            return TyParamBinder(i);
-        },
-        x => fail!("resolved type maps to a weird def {:?}", x),
+        ast::DefTyParamBinder(i) => return TyParamBinder(i),
+        _ => {}
     };
-    if ast_util::is_local(def_id) {
-        ResolvedPath{ path: path, typarams: tpbs, id: def_id.node }
-    } else {
-        let fqn = csearch::get_item_path(tycx, def_id);
-        let fqn = fqn.move_iter().map(|i| i.to_str()).collect();
-        ExternalPath {
-            path: path,
-            typarams: tpbs,
-            fqn: fqn,
-            kind: kind,
-            krate: def_id.krate,
-        }
-    }
+    let did = register_def(&**cx, def);
+    ResolvedPath { path: path, typarams: tpbs, did: did }
+}
+
+fn register_def(cx: &core::DocContext, def: ast::Def) -> ast::DefId {
+    let (did, kind) = match def {
+        ast::DefFn(i, _) => (i, TypeFunction),
+        ast::DefTy(i) => (i, TypeEnum),
+        ast::DefTrait(i) => (i, TypeTrait),
+        ast::DefStruct(i) => (i, TypeStruct),
+        ast::DefMod(i) => (i, TypeModule),
+        ast::DefStatic(i, _) => (i, TypeStatic),
+        ast::DefVariant(i, _, _) => (i, TypeEnum),
+        _ => return ast_util::def_id_of_def(def),
+    };
+    if ast_util::is_local(did) { return did }
+    let tcx = match cx.maybe_typed {
+        core::Typed(ref t) => t,
+        core::NotTyped(_) => return did
+    };
+    let fqn = csearch::get_item_path(tcx, did);
+    let fqn = fqn.move_iter().map(|i| i.to_str()).collect();
+    debug!("recording {} => {}", did, fqn);
+    cx.external_paths.borrow_mut().get_mut_ref().insert(did, (fqn, kind));
+    return did;
 }
 
 fn resolve_use_source(path: Path, id: ast::NodeId) -> ImportSource {
@@ -1353,7 +1343,7 @@ fn resolve_def(id: ast::NodeId) -> Option<ast::DefId> {
     let cx = super::ctxtkey.get().unwrap();
     match cx.maybe_typed {
         core::Typed(ref tcx) => {
-            tcx.def_map.borrow().find(&id).map(|&d| ast_util::def_id_of_def(d))
+            tcx.def_map.borrow().find(&id).map(|&def| register_def(&**cx, def))
         }
         core::NotTyped(_) => None
     }

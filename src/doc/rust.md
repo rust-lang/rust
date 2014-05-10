@@ -17,14 +17,13 @@ This document does not serve as a tutorial introduction to the
 language. Background familiarity with the language is assumed. A separate
 [tutorial] document is available to help acquire such background familiarity.
 
-This document also does not serve as a reference to the [standard] or [extra]
-libraries included in the language distribution. Those libraries are
+This document also does not serve as a reference to the [standard]
+library included in the language distribution. Those libraries are
 documented separately by extracting documentation attributes from their
 source code.
 
 [tutorial]: tutorial.html
 [standard]: std/index.html
-[extra]: extra/index.html
 
 ## Disclaimer
 
