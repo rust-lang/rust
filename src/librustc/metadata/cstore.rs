@@ -38,7 +38,7 @@ pub enum MetadataBlob {
 }
 
 pub struct crate_metadata {
-    pub name: ~str,
+    pub name: StrBuf,
     pub data: MetadataBlob,
     pub cnum_map: cnum_map,
     pub cnum: ast::CrateNum,
@@ -71,8 +71,8 @@ pub struct CStore {
     metas: RefCell<HashMap<ast::CrateNum, Rc<crate_metadata>>>,
     extern_mod_crate_map: RefCell<extern_mod_crate_map>,
     used_crate_sources: RefCell<Vec<CrateSource>>,
-    used_libraries: RefCell<Vec<(~str, NativeLibaryKind)>>,
-    used_link_args: RefCell<Vec<~str>>,
+    used_libraries: RefCell<Vec<(StrBuf, NativeLibaryKind)>>,
+    used_link_args: RefCell<Vec<StrBuf>>,
     pub intr: Rc<IdentInterner>,
 }
 
@@ -178,23 +178,23 @@ impl CStore {
         libs
     }
 
-    pub fn add_used_library(&self, lib: ~str, kind: NativeLibaryKind) {
+    pub fn add_used_library(&self, lib: StrBuf, kind: NativeLibaryKind) {
         assert!(!lib.is_empty());
         self.used_libraries.borrow_mut().push((lib, kind));
     }
 
     pub fn get_used_libraries<'a>(&'a self)
-                              -> &'a RefCell<Vec<(~str, NativeLibaryKind)> > {
+                              -> &'a RefCell<Vec<(StrBuf, NativeLibaryKind)> > {
         &self.used_libraries
     }
 
     pub fn add_used_link_args(&self, args: &str) {
         for s in args.split(' ') {
-            self.used_link_args.borrow_mut().push(s.to_owned());
+            self.used_link_args.borrow_mut().push(s.to_strbuf());
         }
     }
 
-    pub fn get_used_link_args<'a>(&'a self) -> &'a RefCell<Vec<~str> > {
+    pub fn get_used_link_args<'a>(&'a self) -> &'a RefCell<Vec<StrBuf> > {
         &self.used_link_args
     }
 

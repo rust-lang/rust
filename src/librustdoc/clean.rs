@@ -90,7 +90,7 @@ impl<'a> Clean<Crate> for visit_ast::RustdocVisitor<'a> {
                                                        self.attrs.as_slice(),
                                                        cx.sess());
         let id = link::find_crate_id(self.attrs.as_slice(),
-                                     t_outputs.out_filestem);
+                                     t_outputs.out_filestem.as_slice());
         Crate {
             name: id.name.to_owned(),
             module: Some(self.module.clean()),

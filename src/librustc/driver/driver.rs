@@ -71,9 +71,9 @@ pub fn compile_input(sess: Session,
                                                  &sess);
             let loader = &mut Loader::new(&sess);
             let id = link::find_crate_id(krate.attrs.as_slice(),
-                                         outputs.out_filestem);
-            let (expanded_crate, ast_map) = phase_2_configure_and_expand(&sess, loader,
-                                                                         krate, &id);
+                                         outputs.out_filestem.as_slice());
+            let (expanded_crate, ast_map) =
+                phase_2_configure_and_expand(&sess, loader, krate, &id);
             (outputs, expanded_crate, ast_map)
         };
         write_out_deps(&sess, input, &outputs, &expanded_crate);
@@ -99,14 +99,14 @@ pub fn compile_input(sess: Session,
  * The name used for source code that doesn't originate in a file
  * (e.g. source from stdin or a string)
  */
-pub fn anon_src() -> ~str {
-    "<anon>".to_str()
+pub fn anon_src() -> StrBuf {
+    "<anon>".to_strbuf()
 }
 
-pub fn source_name(input: &Input) -> ~str {
+pub fn source_name(input: &Input) -> StrBuf {
     match *input {
         // FIXME (#9639): This needs to handle non-utf8 paths
-        FileInput(ref ifile) => ifile.as_str().unwrap().to_str(),
+        FileInput(ref ifile) => ifile.as_str().unwrap().to_strbuf(),
         StrInput(_) => anon_src()
     }
 }
@@ -115,14 +115,14 @@ pub enum Input {
     /// Load source from file
     FileInput(Path),
     /// The string is the source
-    StrInput(~str)
+    StrInput(StrBuf)
 }
 
 impl Input {
-    fn filestem(&self) -> ~str {
+    fn filestem(&self) -> StrBuf {
         match *self {
-            FileInput(ref ifile) => ifile.filestem_str().unwrap().to_str(),
-            StrInput(_) => "rust_out".to_owned(),
+            FileInput(ref ifile) => ifile.filestem_str().unwrap().to_strbuf(),
+            StrInput(_) => "rust_out".to_strbuf(),
         }
     }
 }
@@ -354,7 +354,7 @@ pub struct CrateTranslation {
     pub metadata_module: ModuleRef,
     pub link: LinkMeta,
     pub metadata: Vec<u8>,
-    pub reachable: Vec<~str>,
+    pub reachable: Vec<StrBuf>,
     pub crate_formats: dependency_format::Dependencies,
 }
 
@@ -450,7 +450,8 @@ fn write_out_deps(sess: &Session,
                   input: &Input,
                   outputs: &OutputFilenames,
                   krate: &ast::Crate) {
-    let id = link::find_crate_id(krate.attrs.as_slice(), outputs.out_filestem);
+    let id = link::find_crate_id(krate.attrs.as_slice(),
+                                 outputs.out_filestem.as_slice());
 
     let mut out_filenames = Vec::new();
     for output_type in sess.opts.output_types.iter() {
@@ -487,9 +488,9 @@ fn write_out_deps(sess: &Session,
     let result = (|| {
         // Build a list of files used to compile the output and
         // write Makefile-compatible dependency rules
-        let files: Vec<~str> = sess.codemap().files.borrow()
+        let files: Vec<StrBuf> = sess.codemap().files.borrow()
                                    .iter().filter(|fmap| fmap.is_real_file())
-                                   .map(|fmap| fmap.name.to_owned())
+                                   .map(|fmap| fmap.name.to_strbuf())
                                    .collect();
         let mut file = try!(io::File::create(&deps_filename));
         for path in out_filenames.iter() {
@@ -567,7 +568,9 @@ impl pprust::PpAnn for TypedAnnotation {
                 try!(pp::word(&mut s.s, "as"));
                 try!(pp::space(&mut s.s));
                 try!(pp::word(&mut s.s,
-                                ppaux::ty_to_str(tcx, ty::expr_ty(tcx, expr))));
+                              ppaux::ty_to_str(
+                                  tcx,
+                                  ty::expr_ty(tcx, expr)).as_slice()));
                 s.pclose()
             }
             _ => Ok(())
@@ -581,20 +584,26 @@ pub fn pretty_print_input(sess: Session,
                           ppm: ::driver::PpMode,
                           ofile: Option<Path>) {
     let krate = phase_1_parse_input(&sess, cfg, input);
-    let id = link::find_crate_id(krate.attrs.as_slice(), input.filestem());
+    let id = link::find_crate_id(krate.attrs.as_slice(),
+                                 input.filestem().as_slice());
 
     let (krate, ast_map, is_expanded) = match ppm {
         PpmExpanded | PpmExpandedIdentified | PpmTyped => {
             let loader = &mut Loader::new(&sess);
-            let (krate, ast_map) = phase_2_configure_and_expand(&sess, loader,
-                                                                krate, &id);
+            let (krate, ast_map) = phase_2_configure_and_expand(&sess,
+                                                                loader,
+                                                                krate,
+                                                                &id);
             (krate, Some(ast_map), true)
         }
         _ => (krate, None, false)
     };
 
     let src_name = source_name(input);
-    let src = Vec::from_slice(sess.codemap().get_filemap(src_name).src.as_bytes());
+    let src = Vec::from_slice(sess.codemap()
+                                  .get_filemap(src_name.as_slice())
+                                  .src
+                                  .as_bytes());
     let mut rdr = MemReader::new(src);
 
     let out = match ofile {
@@ -666,8 +675,12 @@ pub fn collect_crate_types(session: &Session,
         let iter = attrs.iter().filter_map(|a| {
             if a.name().equiv(&("crate_type")) {
                 match a.value_str() {
-                    Some(ref n) if n.equiv(&("rlib")) => Some(config::CrateTypeRlib),
-                    Some(ref n) if n.equiv(&("dylib")) => Some(config::CrateTypeDylib),
+                    Some(ref n) if n.equiv(&("rlib")) => {
+                        Some(config::CrateTypeRlib)
+                    }
+                    Some(ref n) if n.equiv(&("dylib")) => {
+                        Some(config::CrateTypeDylib)
+                    }
                     Some(ref n) if n.equiv(&("lib")) => {
                         Some(config::default_lib_output())
                     }
@@ -679,12 +692,16 @@ pub fn collect_crate_types(session: &Session,
                         session.add_lint(lint::UnknownCrateType,
                                          ast::CRATE_NODE_ID,
                                          a.span,
-                                         "invalid `crate_type` value".to_owned());
+                                         "invalid `crate_type` \
+                                          value".to_strbuf());
                         None
                     }
                     _ => {
-                        session.add_lint(lint::UnknownCrateType, ast::CRATE_NODE_ID,
-                                        a.span, "`crate_type` requires a value".to_owned());
+                        session.add_lint(lint::UnknownCrateType,
+                                         ast::CRATE_NODE_ID,
+                                         a.span,
+                                         "`crate_type` requires a \
+                                          value".to_strbuf());
                         None
                     }
                 }
@@ -704,7 +721,7 @@ pub fn collect_crate_types(session: &Session,
 
 pub struct OutputFilenames {
     pub out_directory: Path,
-    pub out_filestem: ~str,
+    pub out_filestem: StrBuf,
     pub single_output_file: Option<Path>,
 }
 
@@ -756,7 +773,7 @@ pub fn build_output_filenames(input: &Input,
             let crateid = attr::find_crateid(attrs);
             match crateid {
                 None => {}
-                Some(crateid) => stem = crateid.name.to_str(),
+                Some(crateid) => stem = crateid.name.to_strbuf(),
             }
             OutputFilenames {
                 out_directory: dirpath,
@@ -778,7 +795,7 @@ pub fn build_output_filenames(input: &Input,
             }
             OutputFilenames {
                 out_directory: out_file.dir_path(),
-                out_filestem: out_file.filestem_str().unwrap().to_str(),
+                out_filestem: out_file.filestem_str().unwrap().to_strbuf(),
                 single_output_file: ofile,
             }
         }

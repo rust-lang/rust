@@ -76,7 +76,7 @@ pub struct Options {
     // this.
     pub addl_lib_search_paths: RefCell<HashSet<Path>>,
     pub maybe_sysroot: Option<Path>,
-    pub target_triple: ~str,
+    pub target_triple: StrBuf,
     // User-specified cfg meta items. The compiler itself will add additional
     // items to the crate config, and during parsing the entire crate config
     // will be added to the crate AST node.  This should not be used for
@@ -105,7 +105,7 @@ pub fn basic_options() -> Options {
         output_types: Vec::new(),
         addl_lib_search_paths: RefCell::new(HashSet::new()),
         maybe_sysroot: None,
-        target_triple: driver::host_triple().to_owned(),
+        target_triple: driver::host_triple().to_strbuf(),
         cfg: Vec::new(),
         test: false,
         parse_only: false,
@@ -247,26 +247,26 @@ macro_rules! cgoptions(
             }
         }
 
-        fn parse_opt_string(slot: &mut Option<~str>, v: Option<&str>) -> bool {
+        fn parse_opt_string(slot: &mut Option<StrBuf>, v: Option<&str>) -> bool {
             match v {
-                Some(s) => { *slot = Some(s.to_owned()); true },
+                Some(s) => { *slot = Some(s.to_strbuf()); true },
                 None => false,
             }
         }
 
-        fn parse_string(slot: &mut ~str, v: Option<&str>) -> bool {
+        fn parse_string(slot: &mut StrBuf, v: Option<&str>) -> bool {
             match v {
-                Some(s) => { *slot = s.to_owned(); true },
+                Some(s) => { *slot = s.to_strbuf(); true },
                 None => false,
             }
         }
 
-        fn parse_list(slot: &mut Vec<~str>, v: Option<&str>)
+        fn parse_list(slot: &mut Vec<StrBuf>, v: Option<&str>)
                       -> bool {
             match v {
                 Some(s) => {
                     for s in s.words() {
-                        slot.push(s.to_owned());
+                        slot.push(s.to_strbuf());
                     }
                     true
                 },
@@ -278,23 +278,23 @@ macro_rules! cgoptions(
 ) )
 
 cgoptions!(
-    ar: Option<~str> = (None, parse_opt_string,
+    ar: Option<StrBuf> = (None, parse_opt_string,
         "tool to assemble archives with"),
-    linker: Option<~str> = (None, parse_opt_string,
+    linker: Option<StrBuf> = (None, parse_opt_string,
         "system linker to link outputs with"),
-    link_args: Vec<~str> = (Vec::new(), parse_list,
+    link_args: Vec<StrBuf> = (Vec::new(), parse_list,
         "extra arguments to pass to the linker (space separated)"),
-    target_cpu: ~str = ("generic".to_owned(), parse_string,
+    target_cpu: StrBuf = ("generic".to_strbuf(), parse_string,
         "select target processor (llc -mcpu=help for details)"),
-    target_feature: ~str = ("".to_owned(), parse_string,
+    target_feature: StrBuf = ("".to_strbuf(), parse_string,
         "target specific attributes (llc -mattr=help for details)"),
-    passes: Vec<~str> = (Vec::new(), parse_list,
+    passes: Vec<StrBuf> = (Vec::new(), parse_list,
         "a list of extra LLVM passes to run (space separated)"),
-    llvm_args: Vec<~str> = (Vec::new(), parse_list,
+    llvm_args: Vec<StrBuf> = (Vec::new(), parse_list,
         "a list of arguments to pass to llvm (space separated)"),
     save_temps: bool = (false, parse_bool,
         "save all temporary output files during compilation"),
-    android_cross_path: Option<~str> = (None, parse_opt_string,
+    android_cross_path: Option<StrBuf> = (None, parse_opt_string,
         "the path to the Android NDK"),
     no_rpath: bool = (false, parse_bool,
         "disables setting the rpath in libs/exes"),
@@ -310,7 +310,7 @@ cgoptions!(
         "prefer dynamic linking to static linking"),
     no_integrated_as: bool = (false, parse_bool,
         "use an external assembler rather than LLVM's integrated one"),
-    relocation_model: ~str = ("pic".to_owned(), parse_string,
+    relocation_model: StrBuf = ("pic".to_strbuf(), parse_string,
          "choose the relocation model to use (llc -relocation-model for details)"),
 )
 
@@ -456,13 +456,16 @@ static architecture_abis : &'static [(&'static str, abi::Architecture)] = &'stat
     ("mips",   abi::Mips)];
 
 pub fn build_target_config(sopts: &Options) -> Config {
-    let os = match get_os(sopts.target_triple) {
+    let os = match get_os(sopts.target_triple.as_slice()) {
       Some(os) => os,
       None => early_error("unknown operating system")
     };
-    let arch = match get_arch(sopts.target_triple) {
+    let arch = match get_arch(sopts.target_triple.as_slice()) {
       Some(arch) => arch,
-      None => early_error("unknown architecture: " + sopts.target_triple)
+      None => {
+          early_error("unknown architecture: " +
+                      sopts.target_triple.as_slice())
+      }
     };
     let (int_type, uint_type) = match arch {
       abi::X86 => (ast::TyI32, ast::TyU32),
@@ -541,7 +544,7 @@ pub fn optgroups() -> Vec<getopts::OptGroup> {
 
 
 // Convert strings provided as --cfg [cfgspec] into a crate_cfg
-fn parse_cfgspecs(cfgspecs: Vec<~str> ) -> ast::CrateConfig {
+fn parse_cfgspecs(cfgspecs: Vec<StrBuf> ) -> ast::CrateConfig {
     cfgspecs.move_iter().map(|s| {
         parse::parse_meta_from_source_str("cfgspec".to_strbuf(),
                                           s.to_strbuf(),
@@ -639,7 +642,10 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     }
 
     let sysroot_opt = matches.opt_str("sysroot").map(|m| Path::new(m));
-    let target = matches.opt_str("target").unwrap_or(driver::host_triple().to_owned());
+    let target = match matches.opt_str("target") {
+        Some(supplied_target) => supplied_target.to_strbuf(),
+        None => driver::host_triple().to_strbuf(),
+    };
     let opt_level = {
         if (debugging_opts & NO_OPT) != 0 {
             No
@@ -689,10 +695,14 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         Path::new(s.as_slice())
     }).collect();
 
-    let cfg = parse_cfgspecs(matches.opt_strs("cfg").move_iter().collect());
+    let cfg = parse_cfgspecs(matches.opt_strs("cfg")
+                                    .move_iter()
+                                    .map(|x| x.to_strbuf())
+                                    .collect());
     let test = matches.opt_present("test");
     let write_dependency_info = (matches.opt_present("dep-info"),
-                                 matches.opt_str("dep-info").map(|p| Path::new(p)));
+                                 matches.opt_str("dep-info")
+                                        .map(|p| Path::new(p)));
 
     let print_metas = (matches.opt_present("crate-id"),
                        matches.opt_present("crate-name"),

@@ -129,12 +129,12 @@ impl<'a> Archive<'a> {
     }
 
     /// Lists all files in an archive
-    pub fn files(&self) -> Vec<~str> {
+    pub fn files(&self) -> Vec<StrBuf> {
         let output = run_ar(self.sess, "t", None, [&self.dst]);
         let output = str::from_utf8(output.output.as_slice()).unwrap();
         // use lines_any because windows delimits output with `\r\n` instead of
         // just `\n`
-        output.lines_any().map(|s| s.to_owned()).collect()
+        output.lines_any().map(|s| s.to_strbuf()).collect()
     }
 
     fn add_archive(&mut self, archive: &Path, name: &str,

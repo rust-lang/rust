@@ -173,7 +173,7 @@ pub fn BuilderRef_res(b: BuilderRef) -> BuilderRef_res {
     }
 }
 
-pub type ExternMap = HashMap<~str, ValueRef>;
+pub type ExternMap = HashMap<StrBuf, ValueRef>;
 
 // Here `self_ty` is the real type of the self parameter to this method. It
 // will only be set in the case of default methods.
@@ -194,12 +194,12 @@ impl param_substs {
     }
 }
 
-fn param_substs_to_str(this: &param_substs, tcx: &ty::ctxt) -> ~str {
-    format!("param_substs({})", this.substs.repr(tcx))
+fn param_substs_to_str(this: &param_substs, tcx: &ty::ctxt) -> StrBuf {
+    format_strbuf!("param_substs({})", this.substs.repr(tcx))
 }
 
 impl Repr for param_substs {
-    fn repr(&self, tcx: &ty::ctxt) -> ~str {
+    fn repr(&self, tcx: &ty::ctxt) -> StrBuf {
         param_substs_to_str(self, tcx)
     }
 }
@@ -442,15 +442,15 @@ impl<'a> Block<'a> {
     }
     pub fn sess(&self) -> &'a Session { self.fcx.ccx.sess() }
 
-    pub fn ident(&self, ident: Ident) -> ~str {
-        token::get_ident(ident).get().to_str()
+    pub fn ident(&self, ident: Ident) -> StrBuf {
+        token::get_ident(ident).get().to_strbuf()
     }
 
-    pub fn node_id_to_str(&self, id: ast::NodeId) -> ~str {
-        self.tcx().map.node_to_str(id).to_owned()
+    pub fn node_id_to_str(&self, id: ast::NodeId) -> StrBuf {
+        self.tcx().map.node_to_str(id).to_strbuf()
     }
 
-    pub fn expr_to_str(&self, e: &ast::Expr) -> ~str {
+    pub fn expr_to_str(&self, e: &ast::Expr) -> StrBuf {
         e.repr(self.tcx())
     }
 
@@ -464,21 +464,21 @@ impl<'a> Block<'a> {
         }
     }
 
-    pub fn val_to_str(&self, val: ValueRef) -> ~str {
+    pub fn val_to_str(&self, val: ValueRef) -> StrBuf {
         self.ccx().tn.val_to_str(val)
     }
 
-    pub fn llty_str(&self, ty: Type) -> ~str {
+    pub fn llty_str(&self, ty: Type) -> StrBuf {
         self.ccx().tn.type_to_str(ty)
     }
 
-    pub fn ty_to_str(&self, t: ty::t) -> ~str {
+    pub fn ty_to_str(&self, t: ty::t) -> StrBuf {
         t.repr(self.tcx())
     }
 
-    pub fn to_str(&self) -> ~str {
+    pub fn to_str(&self) -> StrBuf {
         let blk: *Block = self;
-        format!("[block {}]", blk)
+        format_strbuf!("[block {}]", blk)
     }
 }
 

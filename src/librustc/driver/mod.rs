@@ -56,7 +56,8 @@ fn run_compiler(args: &[~str]) {
             let ifile = matches.free.get(0).as_slice();
             if ifile == "-" {
                 let contents = io::stdin().read_to_end().unwrap();
-                let src = str::from_utf8(contents.as_slice()).unwrap().to_owned();
+                let src = str::from_utf8(contents.as_slice()).unwrap()
+                                                             .to_strbuf();
                 (StrInput(src), None)
             } else {
                 (FileInput(Path::new(ifile)), Some(Path::new(ifile)))
@@ -249,9 +250,13 @@ fn print_crate_info(sess: &Session,
     // these nasty nested conditions are to avoid doing extra work
     if crate_id || crate_name || crate_file_name {
         let attrs = parse_crate_attrs(sess, input);
-        let t_outputs = driver::build_output_filenames(input, odir, ofile,
-                                                       attrs.as_slice(), sess);
-        let id = link::find_crate_id(attrs.as_slice(), t_outputs.out_filestem);
+        let t_outputs = driver::build_output_filenames(input,
+                                                       odir,
+                                                       ofile,
+                                                       attrs.as_slice(),
+                                                       sess);
+        let id = link::find_crate_id(attrs.as_slice(),
+                                     t_outputs.out_filestem.as_slice());
 
         if crate_id {
             println!("{}", id.to_str());

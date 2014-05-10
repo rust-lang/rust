@@ -150,13 +150,19 @@ enum LiveNodeKind {
     ExitNode
 }
 
-fn live_node_kind_to_str(lnk: LiveNodeKind, cx: &ty::ctxt) -> ~str {
+fn live_node_kind_to_str(lnk: LiveNodeKind, cx: &ty::ctxt) -> StrBuf {
     let cm = cx.sess.codemap();
     match lnk {
-        FreeVarNode(s) => format!("Free var node [{}]", cm.span_to_str(s)),
-        ExprNode(s)    => format!("Expr node [{}]", cm.span_to_str(s)),
-        VarDefNode(s)  => format!("Var def node [{}]", cm.span_to_str(s)),
-        ExitNode       => "Exit node".to_owned()
+        FreeVarNode(s) => {
+            format_strbuf!("Free var node [{}]", cm.span_to_str(s))
+        }
+        ExprNode(s) => {
+            format_strbuf!("Expr node [{}]", cm.span_to_str(s))
+        }
+        VarDefNode(s) => {
+            format_strbuf!("Var def node [{}]", cm.span_to_str(s))
+        }
+        ExitNode => "Exit node".to_strbuf(),
     }
 }
 
@@ -308,18 +314,20 @@ impl<'a> IrMaps<'a> {
         match self.variable_map.find(&node_id) {
           Some(&var) => var,
           None => {
-            self.tcx.sess.span_bug(
-                span, format!("no variable registered for id {}", node_id));
+            self.tcx
+                .sess
+                .span_bug(span, format!("no variable registered for id {}",
+                                        node_id));
           }
         }
     }
 
-    fn variable_name(&self, var: Variable) -> ~str {
+    fn variable_name(&self, var: Variable) -> StrBuf {
         match self.var_kinds.get(var.get()) {
             &Local(LocalInfo { ident: nm, .. }) | &Arg(_, nm) => {
-                token::get_ident(nm).get().to_str()
+                token::get_ident(nm).get().to_str().to_strbuf()
             },
-            &ImplicitRet => "<implicit-ret>".to_owned()
+            &ImplicitRet => "<implicit-ret>".to_strbuf()
         }
     }
 
@@ -741,7 +749,7 @@ impl<'a> Liveness<'a> {
     }
 
     #[allow(unused_must_use)]
-    fn ln_str(&self, ln: LiveNode) -> ~str {
+    fn ln_str(&self, ln: LiveNode) -> StrBuf {
         let mut wr = io::MemWriter::new();
         {
             let wr = &mut wr as &mut io::Writer;
@@ -751,7 +759,7 @@ impl<'a> Liveness<'a> {
             self.write_vars(wr, ln, |idx| self.users.get(idx).writer);
             write!(wr, "  precedes {}]", self.successors.get(ln.get()).to_str());
         }
-        str::from_utf8(wr.unwrap().as_slice()).unwrap().to_owned()
+        str::from_utf8(wr.unwrap().as_slice()).unwrap().to_strbuf()
     }
 
     fn init_empty(&mut self, ln: LiveNode, succ_ln: LiveNode) {
@@ -1532,9 +1540,13 @@ impl<'a> Liveness<'a> {
        }
     }
 
-    fn should_warn(&self, var: Variable) -> Option<~str> {
+    fn should_warn(&self, var: Variable) -> Option<StrBuf> {
         let name = self.ir.variable_name(var);
-        if name.len() == 0 || name[0] == ('_' as u8) { None } else { Some(name) }
+        if name.len() == 0 || name.as_slice()[0] == ('_' as u8) {
+            None
+        } else {
+            Some(name)
+        }
     }
 
     fn warn_about_unused_args(&self, decl: &FnDecl, entry_ln: LiveNode) {
@@ -1581,11 +1593,12 @@ impl<'a> Liveness<'a> {
 
                 if is_assigned {
                     self.ir.tcx.sess.add_lint(UnusedVariable, id, sp,
-                        format!("variable `{}` is assigned to, \
-                                  but never used", *name));
+                        format_strbuf!("variable `{}` is assigned to, \
+                                        but never used",
+                                       *name));
                 } else {
                     self.ir.tcx.sess.add_lint(UnusedVariable, id, sp,
-                        format!("unused variable: `{}`", *name));
+                        format_strbuf!("unused variable: `{}`", *name));
                 }
             }
             true
@@ -1603,7 +1616,8 @@ impl<'a> Liveness<'a> {
             let r = self.should_warn(var);
             for name in r.iter() {
                 self.ir.tcx.sess.add_lint(DeadAssignment, id, sp,
-                    format!("value assigned to `{}` is never read", *name));
+                    format_strbuf!("value assigned to `{}` is never read",
+                                   *name));
             }
         }
     }
