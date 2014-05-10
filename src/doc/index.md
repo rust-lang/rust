@@ -40,6 +40,7 @@ li {list-style-type: none; }
 * [The `libc` bindings](libc/index.html)
 * [The `native` 1:1 threading runtime](native/index.html)
 * [The `num` arbitrary precision numerics library](num/index.html)
+* [The `quickcheck` crate for intelligent random testing](quickcheck/index.html)
 * [The `rand` library for random numbers and distributions](rand/index.html)
 * [The `regex` library for regular expressions](regex/index.html)
 * [The `rustc` compiler](rustc/index.html)
