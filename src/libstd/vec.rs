@@ -411,6 +411,13 @@ unsafe fn alloc_or_realloc<T>(ptr: *mut T, size: uint, old_size: uint) -> *mut T
     }
 }
 
+#[inline]
+unsafe fn dealloc<T>(ptr: *mut T, len: uint) {
+    if size_of::<T>() != 0 {
+        deallocate(ptr as *mut u8, len * size_of::<T>(), min_align_of::<T>())
+    }
+}
+
 impl<T> Vec<T> {
     /// Returns the number of elements the vector can hold without
     /// reallocating.
@@ -510,7 +517,7 @@ impl<T> Vec<T> {
         if self.len == 0 {
             if self.cap != 0 {
                 unsafe {
-                    deallocate(self.ptr as *mut u8, self.cap * size_of::<T>(), min_align_of::<T>())
+                    dealloc(self.ptr, self.cap)
                 }
                 self.cap = 0;
             }
@@ -658,7 +665,7 @@ impl<T> Vec<T> {
     pub fn move_iter(self) -> MoveItems<T> {
         unsafe {
             let iter = transmute(self.as_slice().iter());
-            let ptr = self.ptr as *mut u8;
+            let ptr = self.ptr;
             let cap = self.cap;
             forget(self);
             MoveItems { allocation: ptr, cap: cap, iter: iter }
@@ -1412,9 +1419,7 @@ impl<T> Drop for Vec<T> {
                 for x in self.as_mut_slice().iter() {
                     ptr::read(x);
                 }
-                if size_of::<T>() != 0 {
-                    deallocate(self.ptr as *mut u8, self.cap * size_of::<T>(), min_align_of::<T>())
-                }
+                dealloc(self.ptr, self.cap)
             }
         }
     }
@@ -1434,7 +1439,7 @@ impl<T:fmt::Show> fmt::Show for Vec<T> {
 
 /// An iterator that moves out of a vector.
 pub struct MoveItems<T> {
-    allocation: *mut u8, // the block of memory allocated for the vector
+    allocation: *mut T, // the block of memory allocated for the vector
     cap: uint, // the capacity of the vector
     iter: Items<'static, T>
 }
@@ -1469,9 +1474,7 @@ impl<T> Drop for MoveItems<T> {
         if self.cap != 0 {
             for _x in *self {}
             unsafe {
-                if size_of::<T>() != 0 {
-                    deallocate(self.allocation, self.cap * size_of::<T>(), min_align_of::<T>())
-                }
+                dealloc(self.allocation, self.cap);
             }
         }
     }
