@@ -38,7 +38,7 @@ fn local_sort<T: Float>(v: &mut [T]) {
 }
 
 /// Trait that provides simple descriptive statistics on a univariate set of numeric samples.
-pub trait Stats <T: Float + FromPrimitive>{
+pub trait Stats <T: FloatMath + FromPrimitive>{
 
     /// Sum of the samples.
     ///
@@ -143,7 +143,7 @@ pub struct Summary<T> {
     pub iqr: T,
 }
 
-impl<T: Float + FromPrimitive> Summary<T> {
+impl<T: FloatMath + FromPrimitive> Summary<T> {
 
     /// Construct a new summary of a sample set.
     pub fn new(samples: &[T]) -> Summary<T> {
@@ -164,7 +164,7 @@ impl<T: Float + FromPrimitive> Summary<T> {
     }
 }
 
-impl<'a,T: Float + FromPrimitive> Stats<T> for &'a [T] {
+impl<'a,T: FloatMath + FromPrimitive> Stats<T> for &'a [T] {
 
     // FIXME #11059 handle NaN, inf and overflow
     #[allow(deprecated_owned_vector)]

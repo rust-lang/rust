@@ -874,3 +874,157 @@ pub fn test_num<T:Num + NumCast + ::std::fmt::Show>(ten: T, two: T) {
     assert_eq!(ten.div(&two),  ten / two);
     assert_eq!(ten.rem(&two),  ten % two);
 }
+
+/// Used for representing the classification of floating point numbers
+#[deriving(Eq, Show)]
+pub enum FPCategory {
+    /// "Not a Number", often obtained by dividing by zero
+    FPNaN,
+    /// Positive or negative infinity
+    FPInfinite ,
+    /// Positive or negative zero
+    FPZero,
+    /// De-normalized floating point representation (less precise than `FPNormal`)
+    FPSubnormal,
+    /// A regular floating point number
+    FPNormal,
+}
+
+/// Operations on primitive floating point numbers.
+// FIXME(#5527): In a future version of Rust, many of these functions will
+//               become constants.
+//
+// FIXME(#8888): Several of these functions have a parameter named
+//               `unused_self`. Removing it requires #8888 to be fixed.
+pub trait Float: Signed + Primitive {
+    /// Returns the NaN value.
+    fn nan() -> Self;
+    /// Returns the infinite value.
+    fn infinity() -> Self;
+    /// Returns the negative infinite value.
+    fn neg_infinity() -> Self;
+    /// Returns -0.0.
+    fn neg_zero() -> Self;
+
+    /// Returns true if this value is NaN and false otherwise.
+    fn is_nan(self) -> bool;
+    /// Returns true if this value is positive infinity or negative infinity and
+    /// false otherwise.
+    fn is_infinite(self) -> bool;
+    /// Returns true if this number is neither infinite nor NaN.
+    fn is_finite(self) -> bool;
+    /// Returns true if this number is neither zero, infinite, denormal, or NaN.
+    fn is_normal(self) -> bool;
+    /// Returns the category that this number falls into.
+    fn classify(self) -> FPCategory;
+
+    // FIXME (#5527): These should be associated constants
+
+    /// Returns the number of binary digits of mantissa that this type supports.
+    fn mantissa_digits(unused_self: Option<Self>) -> uint;
+    /// Returns the number of base-10 digits of precision that this type supports.
+    fn digits(unused_self: Option<Self>) -> uint;
+    /// Returns the difference between 1.0 and the smallest representable number larger than 1.0.
+    fn epsilon() -> Self;
+    /// Returns the minimum binary exponent that this type can represent.
+    fn min_exp(unused_self: Option<Self>) -> int;
+    /// Returns the maximum binary exponent that this type can represent.
+    fn max_exp(unused_self: Option<Self>) -> int;
+    /// Returns the minimum base-10 exponent that this type can represent.
+    fn min_10_exp(unused_self: Option<Self>) -> int;
+    /// Returns the maximum base-10 exponent that this type can represent.
+    fn max_10_exp(unused_self: Option<Self>) -> int;
+    /// Returns the smallest normalized positive number that this type can represent.
+    fn min_pos_value(unused_self: Option<Self>) -> Self;
+
+    /// Returns the mantissa, exponent and sign as integers, respectively.
+    fn integer_decode(self) -> (u64, i16, i8);
+
+    /// Return the largest integer less than or equal to a number.
+    fn floor(self) -> Self;
+    /// Return the smallest integer greater than or equal to a number.
+    fn ceil(self) -> Self;
+    /// Return the nearest integer to a number. Round half-way cases away from
+    /// `0.0`.
+    fn round(self) -> Self;
+    /// Return the integer part of a number.
+    fn trunc(self) -> Self;
+    /// Return the fractional part of a number.
+    fn fract(self) -> Self;
+
+    /// Fused multiply-add. Computes `(self * a) + b` with only one rounding
+    /// error. This produces a more accurate result with better performance than
+    /// a separate multiplication operation followed by an add.
+    fn mul_add(self, a: Self, b: Self) -> Self;
+    /// Take the reciprocal (inverse) of a number, `1/x`.
+    fn recip(self) -> Self;
+
+    /// Raise a number to an integer power.
+    ///
+    /// Using this function is generally faster than using `powf`
+    fn powi(self, n: i32) -> Self;
+    /// Raise a number to a floating point power.
+    fn powf(self, n: Self) -> Self;
+
+    /// sqrt(2.0).
+    fn sqrt2() -> Self;
+    /// 1.0 / sqrt(2.0).
+    fn frac_1_sqrt2() -> Self;
+
+    /// Take the square root of a number.
+    fn sqrt(self) -> Self;
+    /// Take the reciprocal (inverse) square root of a number, `1/sqrt(x)`.
+    fn rsqrt(self) -> Self;
+
+    // FIXME (#5527): These should be associated constants
+
+    /// Archimedes' constant.
+    fn pi() -> Self;
+    /// 2.0 * pi.
+    fn two_pi() -> Self;
+    /// pi / 2.0.
+    fn frac_pi_2() -> Self;
+    /// pi / 3.0.
+    fn frac_pi_3() -> Self;
+    /// pi / 4.0.
+    fn frac_pi_4() -> Self;
+    /// pi / 6.0.
+    fn frac_pi_6() -> Self;
+    /// pi / 8.0.
+    fn frac_pi_8() -> Self;
+    /// 1.0 / pi.
+    fn frac_1_pi() -> Self;
+    /// 2.0 / pi.
+    fn frac_2_pi() -> Self;
+    /// 2.0 / sqrt(pi).
+    fn frac_2_sqrtpi() -> Self;
+
+    /// Euler's number.
+    fn e() -> Self;
+    /// log2(e).
+    fn log2_e() -> Self;
+    /// log10(e).
+    fn log10_e() -> Self;
+    /// ln(2.0).
+    fn ln_2() -> Self;
+    /// ln(10.0).
+    fn ln_10() -> Self;
+
+    /// Returns `e^(self)`, (the exponential function).
+    fn exp(self) -> Self;
+    /// Returns 2 raised to the power of the number, `2^(self)`.
+    fn exp2(self) -> Self;
+    /// Returns the natural logarithm of the number.
+    fn ln(self) -> Self;
+    /// Returns the logarithm of the number with respect to an arbitrary base.
+    fn log(self, base: Self) -> Self;
+    /// Returns the base 2 logarithm of the number.
+    fn log2(self) -> Self;
+    /// Returns the base 10 logarithm of the number.
+    fn log10(self) -> Self;
+
+    /// Convert radians to degrees.
+    fn to_degrees(self) -> Self;
+    /// Convert degrees to radians.
+    fn to_radians(self) -> Self;
+}
