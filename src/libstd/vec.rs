@@ -403,11 +403,11 @@ impl<T> Container for Vec<T> {
 
 // FIXME: #13996: need a way to mark the return value as `noalias`
 #[inline(never)]
-unsafe fn alloc_or_realloc(ptr: *mut u8, size: uint, align: uint, old_size: uint) -> *mut u8 {
+unsafe fn alloc_or_realloc<T>(ptr: *mut T, size: uint, old_size: uint) -> *mut T {
     if old_size == 0 {
-        allocate(size, align)
+        allocate(size, min_align_of::<T>()) as *mut T
     } else {
-        reallocate(ptr, size, align, old_size)
+        reallocate(ptr as *mut u8, size, min_align_of::<T>(), old_size) as *mut T
     }
 }
 
@@ -491,8 +491,7 @@ impl<T> Vec<T> {
         if capacity > self.cap {
             let size = capacity.checked_mul(&size_of::<T>()).expect("capacity overflow");
             unsafe {
-                self.ptr = alloc_or_realloc(self.ptr as *mut u8, size, min_align_of::<T>(),
-                                            self.cap * size_of::<T>()) as *mut T;
+                self.ptr = alloc_or_realloc(self.ptr, size, self.cap * size_of::<T>());
             }
             self.cap = capacity;
         }
@@ -573,8 +572,7 @@ impl<T> Vec<T> {
             let size = max(old_size, 2 * size_of::<T>()) * 2;
             if old_size > size { fail!("capacity overflow") }
             unsafe {
-                self.ptr = alloc_or_realloc(self.ptr as *mut u8, size, min_align_of::<T>(),
-                                            self.cap * size_of::<T>()) as *mut u8 as *mut T;
+                self.ptr = alloc_or_realloc(self.ptr, size, self.cap * size_of::<T>());
             }
             self.cap = max(self.cap, 2) * 2;
         }
