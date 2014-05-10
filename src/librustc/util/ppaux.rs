@@ -584,7 +584,7 @@ impl Repr for ty::ParamBounds {
                 ty::BoundStatic => "'static".to_owned(),
                 ty::BoundSend => "Send".to_owned(),
                 ty::BoundSized => "Sized".to_owned(),
-                ty::BoundCopy => "Pod".to_owned(),
+                ty::BoundCopy => "Copy".to_owned(),
                 ty::BoundShare => "Share".to_owned(),
             });
         }
@@ -862,7 +862,7 @@ impl UserString for ty::BuiltinBound {
             ty::BoundStatic => "'static".to_owned(),
             ty::BoundSend => "Send".to_owned(),
             ty::BoundSized => "Sized".to_owned(),
-            ty::BoundCopy => "Pod".to_owned(),
+            ty::BoundCopy => "Copy".to_owned(),
             ty::BoundShare => "Share".to_owned(),
         }
     }
