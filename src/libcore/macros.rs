@@ -59,3 +59,9 @@ macro_rules! assert(
 macro_rules! debug_assert(
     ($($arg:tt)*) => (if cfg!(not(ndebug)) { assert!($($arg)*); })
 )
+
+/// Short circuiting evaluation on Err
+#[macro_export]
+macro_rules! try(
+    ($e:expr) => (match $e { Ok(e) => e, Err(e) => return Err(e) })
+)
