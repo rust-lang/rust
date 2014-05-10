@@ -148,7 +148,7 @@ use mem;
 use slice;
 
 /// The `Option`
-#[deriving(Clone, Eq, Ord, TotalEq, TotalOrd)]
+#[deriving(Clone, Eq, Ord, TotalEq, TotalOrd, Show)]
 pub enum Option<T> {
     /// No value
     None,

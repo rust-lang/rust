@@ -82,7 +82,7 @@ pub trait TotalEq: Eq {
 }
 
 /// An ordering is, e.g, a result of a comparison between two values.
-#[deriving(Clone, Eq)]
+#[deriving(Clone, Eq, Show)]
 pub enum Ordering {
    /// An ordering where a compared value is less [than another].
    Less = -1,
