@@ -117,6 +117,7 @@ pub mod result;
 pub mod slice;
 pub mod str;
 pub mod tuple;
+pub mod fmt;
 
 // FIXME: this module should not exist. Once owned allocations are no longer a
 //        language type, this module can move outside to the owned allocation
@@ -130,7 +131,9 @@ mod core {
 mod std {
     pub use clone;
     pub use cmp;
+    pub use fmt;
     pub use kinds;
+    pub use option;
 
     #[cfg(test)] pub use realstd::fmt;    // needed for fail!()
     #[cfg(test)] pub use realstd::rt;     // needed for fail!()
