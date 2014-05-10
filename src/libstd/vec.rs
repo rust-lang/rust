@@ -91,6 +91,7 @@ impl<T> Vec<T> {
     /// let vec: Vec<int> = Vec::with_capacity(10);
     /// ```
     pub fn with_capacity(capacity: uint) -> Vec<T> {
+        if size_of::<T>() == 0 { return Vec { len: 0, cap: ::uint::MAX, ptr: 0 as *mut T } }
         if capacity == 0 {
             Vec::new()
         } else {
@@ -486,6 +487,7 @@ impl<T> Vec<T> {
     /// assert_eq!(vec.capacity(), 11);
     /// ```
     pub fn reserve_exact(&mut self, capacity: uint) {
+        if size_of::<T>() == 0 { return }
         if capacity > self.cap {
             let size = capacity.checked_mul(&size_of::<T>()).expect("capacity overflow");
             unsafe {
@@ -505,6 +507,7 @@ impl<T> Vec<T> {
     /// vec.shrink_to_fit();
     /// ```
     pub fn shrink_to_fit(&mut self) {
+        if size_of::<T>() == 0 { return }
         if self.len == 0 {
             if self.cap != 0 {
                 unsafe {
@@ -559,6 +562,12 @@ impl<T> Vec<T> {
     /// ```
     #[inline]
     pub fn push(&mut self, value: T) {
+        if size_of::<T>() == 0 {
+            // zero-size types consume no memory, so we can't rely on the address space running out
+            self.len = self.len.checked_add(&1).expect("length overflow");
+            unsafe { forget(value); }
+            return
+        }
         if self.len == self.cap {
             let old_size = self.cap * size_of::<T>();
             let size = max(old_size, 2 * size_of::<T>()) * 2;
@@ -1405,7 +1414,9 @@ impl<T> Drop for Vec<T> {
                 for x in self.as_mut_slice().iter() {
                     ptr::read(x);
                 }
-                deallocate(self.ptr as *mut u8, self.cap * size_of::<T>(), min_align_of::<T>())
+                if size_of::<T>() != 0 {
+                    deallocate(self.ptr as *mut u8, self.cap * size_of::<T>(), min_align_of::<T>())
+                }
             }
         }
     }
@@ -1460,7 +1471,9 @@ impl<T> Drop for MoveItems<T> {
         if self.cap != 0 {
             for _x in *self {}
             unsafe {
-                deallocate(self.allocation, self.cap * size_of::<T>(), min_align_of::<T>())
+                if size_of::<T>() != 0 {
+                    deallocate(self.allocation, self.cap * size_of::<T>(), min_align_of::<T>())
+                }
             }
         }
     }
