@@ -92,8 +92,8 @@ pub use types::os::common::bsd44::{addrinfo, in_addr, in6_addr, sockaddr_storage
 pub use types::os::common::bsd44::{ip_mreq, ip6_mreq, sockaddr, sockaddr_un};
 pub use types::os::common::bsd44::{sa_family_t, sockaddr_in, sockaddr_in6, socklen_t};
 pub use types::os::arch::c95::{c_char, c_double, c_float, c_int, c_uint};
-pub use types::os::arch::c95::{c_long, c_short, c_uchar, c_ulong};
-pub use types::os::arch::c95::{c_ushort, clock_t, ptrdiff_t};
+pub use types::os::arch::c95::{c_long, c_short, c_uchar, c_ulong, wchar_t};
+pub use types::os::arch::c95::{c_ushort, clock_t, ptrdiff_t, c_schar};
 pub use types::os::arch::c95::{size_t, time_t, suseconds_t};
 pub use types::os::arch::c99::{c_longlong, c_ulonglong};
 pub use types::os::arch::c99::{intptr_t, uintptr_t};
