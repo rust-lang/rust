@@ -217,7 +217,7 @@
       1 font-lock-preprocessor-face)
 
      ;; Syntax extension invocations like `foo!`, highlight including the !
-     (,(concat (rust-re-grab (concat rust-re-ident "!")) "[({[:space:]]")
+     (,(concat (rust-re-grab (concat rust-re-ident "!")) "[({[:space:][]")
       1 font-lock-preprocessor-face)
 
      ;; Field names like `foo:`, highlight excluding the :
