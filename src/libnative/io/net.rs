@@ -149,7 +149,7 @@ fn last_error() -> io::IoError {
 #[cfg(unix)]    unsafe fn close(sock: sock_t) { let _ = libc::close(sock); }
 
 fn sockname(fd: sock_t,
-            f: extern "system" unsafe fn(sock_t, *mut libc::sockaddr,
+            f: unsafe extern "system" fn(sock_t, *mut libc::sockaddr,
                                          *mut libc::socklen_t) -> libc::c_int)
     -> IoResult<ip::SocketAddr>
 {

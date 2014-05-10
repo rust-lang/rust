@@ -106,7 +106,7 @@ impl TyVisitor for MyVisitor {
                        _sz: uint, _align: uint) -> bool { true }
 
     fn visit_enter_enum(&mut self, _n_variants: uint,
-                        _get_disr: extern unsafe fn(ptr: *Opaque) -> Disr,
+                        _get_disr: unsafe extern fn(ptr: *Opaque) -> Disr,
                         _sz: uint, _align: uint) -> bool { true }
     fn visit_enter_enum_variant(&mut self,
                                 _variant: uint,
@@ -122,7 +122,7 @@ impl TyVisitor for MyVisitor {
                                 _name: &str) -> bool { true }
     fn visit_leave_enum(&mut self,
                         _n_variants: uint,
-                        _get_disr: extern unsafe fn(ptr: *Opaque) -> Disr,
+                        _get_disr: unsafe extern fn(ptr: *Opaque) -> Disr,
                         _sz: uint, _align: uint) -> bool { true }
 
     fn visit_enter_fn(&mut self, _purity: uint, _proto: uint,
