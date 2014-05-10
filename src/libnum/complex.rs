@@ -78,7 +78,7 @@ impl<T: Clone + Num> Complex<T> {
     }
 }
 
-impl<T: Clone + Float> Complex<T> {
+impl<T: Clone + FloatMath> Complex<T> {
     /// Calculate |self|
     #[inline]
     pub fn norm(&self) -> T {
@@ -86,7 +86,7 @@ impl<T: Clone + Float> Complex<T> {
     }
 }
 
-impl<T: Clone + Float> Complex<T> {
+impl<T: Clone + FloatMath> Complex<T> {
     /// Calculate the principal Arg of self.
     #[inline]
     pub fn arg(&self) -> T {
