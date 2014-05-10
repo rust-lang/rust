@@ -492,9 +492,6 @@ use str::{StrAllocating};
 use str;
 use slice::Vector;
 
-#[cfg(stage0)]
-pub use core::fmt::parse;
-
 pub use core::fmt::{Formatter, Result, FormatWriter, Show, rt};
 pub use core::fmt::{Show, Bool, Char, Signed, Unsigned, Octal, Binary};
 pub use core::fmt::{LowerHex, UpperHex, String, Pointer};
