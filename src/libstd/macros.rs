@@ -269,10 +269,9 @@ macro_rules! write(
 /// the message is written.
 #[macro_export]
 macro_rules! writeln(
-    ($dst:expr, $fmt:expr $($arg:tt)*) => ({
-        format_args!(|args| { $dst.write_fmt(args) },
-                     concat!($fmt, "\n") $($arg)*)
-    })
+    ($dst:expr, $fmt:expr $($arg:tt)*) => (
+        write!($dst, concat!($fmt, "\n") $($arg)*)
+    )
 )
 
 /// Equivalent to the `println!` macro except that a newline is not printed at

@@ -276,7 +276,7 @@ impl<T: Clone + Integer + Ord>
 impl<T: fmt::Show> fmt::Show for Ratio<T> {
     /// Renders as `numer/denom`.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f.buf, "{}/{}", self.numer, self.denom)
+        write!(f, "{}/{}", self.numer, self.denom)
     }
 }
 impl<T: ToStrRadix> ToStrRadix for Ratio<T> {

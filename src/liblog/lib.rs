@@ -188,7 +188,7 @@ impl fmt::Show for LogLevel {
 impl fmt::Signed for LogLevel {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let LogLevel(level) = *self;
-        write!(fmt.buf, "{}", level)
+        write!(fmt, "{}", level)
     }
 }
 

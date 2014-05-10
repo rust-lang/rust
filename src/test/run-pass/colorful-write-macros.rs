@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![allow(unused_must_use, dead_code)]
+#![feature(macro_rules)]
 
 use std::io::MemWriter;
 

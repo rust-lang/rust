@@ -17,7 +17,7 @@ struct Thingy {
 
 impl fmt::Show for Thingy {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f.buf, "\\{ x: {}, y: {} \\}", self.x, self.y)
+        write!(f, "\\{ x: {}, y: {} \\}", self.x, self.y)
     }
 }
 
@@ -27,7 +27,7 @@ struct PolymorphicThingy<T> {
 
 impl<T:fmt::Show> fmt::Show for PolymorphicThingy<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f.buf, "{}", self.x)
+        write!(f, "{}", self.x)
     }
 }
 

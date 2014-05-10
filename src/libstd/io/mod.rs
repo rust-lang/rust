@@ -381,9 +381,9 @@ impl IoError {
 
 impl fmt::Show for IoError {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        try!(fmt.buf.write_str(self.desc));
+        try!(write!(fmt, "{}", self.desc));
         match self.detail {
-            Some(ref s) => write!(fmt.buf, " ({})", *s),
+            Some(ref s) => write!(fmt, " ({})", *s),
             None => Ok(())
         }
     }

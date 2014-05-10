@@ -106,7 +106,7 @@ impl fmt::Show for AsciiArt {
                               .collect::<Vec<StrBuf>>();
 
         // Concatenate the lines together using a new-line.
-        write!(f.buf, "{}", lines.connect("\n"))
+        write!(f, "{}", lines.connect("\n"))
     }
 }
 

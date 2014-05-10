@@ -183,13 +183,13 @@ pub fn check_crate(tcx: &ty::ctxt,
 
 impl fmt::Show for LiveNode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f.buf, "ln({})", self.get())
+        write!(f, "ln({})", self.get())
     }
 }
 
 impl fmt::Show for Variable {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f.buf, "v({})", self.get())
+        write!(f, "v({})", self.get())
     }
 }
 

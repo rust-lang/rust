@@ -587,7 +587,7 @@ impl<'a> SourceCollector<'a> {
             root_path: root_path.as_slice(),
         };
         try!(layout::render(&mut w as &mut Writer, &self.cx.layout,
-                              &page, &(""), &Source(contents)));
+                            &page, &(""), &Source(contents)));
         try!(w.flush());
         return Ok(());
     }
@@ -925,8 +925,8 @@ impl Context {
             // write sycall all the time.
             let mut writer = BufferedWriter::new(w);
             try!(layout::render(&mut writer as &mut Writer, &cx.layout, &page,
-                                  &Sidebar{ cx: cx, item: it },
-                                  &Item{ cx: cx, item: it }));
+                                &Sidebar{ cx: cx, item: it },
+                                &Item{ cx: cx, item: it }));
             writer.flush()
         }
 
@@ -997,17 +997,17 @@ impl<'a> Item<'a> {
 impl<'a> fmt::Show for Item<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         // Write the breadcrumb trail header for the top
-        try!(write!(fmt.buf, "\n<h1 class='fqn'>"));
+        try!(write!(fmt, "\n<h1 class='fqn'>"));
         match self.item.inner {
             clean::ModuleItem(ref m) => if m.is_crate {
-                    try!(write!(fmt.buf, "Crate "));
+                    try!(write!(fmt, "Crate "));
                 } else {
-                    try!(write!(fmt.buf, "Module "));
+                    try!(write!(fmt, "Module "));
                 },
-            clean::FunctionItem(..) => try!(write!(fmt.buf, "Function ")),
-            clean::TraitItem(..) => try!(write!(fmt.buf, "Trait ")),
-            clean::StructItem(..) => try!(write!(fmt.buf, "Struct ")),
-            clean::EnumItem(..) => try!(write!(fmt.buf, "Enum ")),
+            clean::FunctionItem(..) => try!(write!(fmt, "Function ")),
+            clean::TraitItem(..) => try!(write!(fmt, "Trait ")),
+            clean::StructItem(..) => try!(write!(fmt, "Struct ")),
+            clean::EnumItem(..) => try!(write!(fmt, "Enum ")),
             _ => {}
         }
         let cur = self.cx.current.as_slice();
@@ -1017,16 +1017,16 @@ impl<'a> fmt::Show for Item<'a> {
             for _ in range(0, cur.len() - i - 1) {
                 trail.push_str("../");
             }
-            try!(write!(fmt.buf, "<a href='{}index.html'>{}</a>::",
-                          trail, component.as_slice()));
+            try!(write!(fmt, "<a href='{}index.html'>{}</a>::",
+                        trail, component.as_slice()));
         }
-        try!(write!(fmt.buf, "<a class='{}' href=''>{}</a>",
-                      shortty(self.item), self.item.name.get_ref().as_slice()));
+        try!(write!(fmt, "<a class='{}' href=''>{}</a>",
+                    shortty(self.item), self.item.name.get_ref().as_slice()));
 
         // Write stability attributes
         match attr::find_stability(self.item.attrs.iter()) {
             Some(ref stability) => {
-                try!(write!(fmt.buf,
+                try!(write!(fmt,
                        "<a class='stability {lvl}' title='{reason}'>{lvl}</a>",
                        lvl = stability.level.to_str(),
                        reason = match stability.text {
@@ -1039,22 +1039,22 @@ impl<'a> fmt::Show for Item<'a> {
 
         // Write `src` tag
         if self.cx.include_sources {
-            try!(write!(fmt.buf, "<a class='source' href='{}'>[src]</a>",
+            try!(write!(fmt, "<a class='source' href='{}'>[src]</a>",
                         self.link()));
         }
-        try!(write!(fmt.buf, "</h1>\n"));
+        try!(write!(fmt, "</h1>\n"));
 
         match self.item.inner {
             clean::ModuleItem(ref m) => {
-                item_module(fmt.buf, self.cx, self.item, m.items.as_slice())
+                item_module(fmt, self.cx, self.item, m.items.as_slice())
             }
             clean::FunctionItem(ref f) | clean::ForeignFunctionItem(ref f) =>
-                item_function(fmt.buf, self.item, f),
-            clean::TraitItem(ref t) => item_trait(fmt.buf, self.item, t),
-            clean::StructItem(ref s) => item_struct(fmt.buf, self.item, s),
-            clean::EnumItem(ref e) => item_enum(fmt.buf, self.item, e),
-            clean::TypedefItem(ref t) => item_typedef(fmt.buf, self.item, t),
-            clean::MacroItem(ref m) => item_macro(fmt.buf, self.item, m),
+                item_function(fmt, self.item, f),
+            clean::TraitItem(ref t) => item_trait(fmt, self.item, t),
+            clean::StructItem(ref s) => item_struct(fmt, self.item, s),
+            clean::EnumItem(ref e) => item_enum(fmt, self.item, e),
+            clean::TypedefItem(ref t) => item_typedef(fmt, self.item, t),
+            clean::MacroItem(ref m) => item_macro(fmt, self.item, m),
             _ => Ok(())
         }
     }
@@ -1097,7 +1097,7 @@ fn shorter<'a>(s: Option<&'a str>) -> &'a str {
     }
 }
 
-fn document(w: &mut Writer, item: &clean::Item) -> fmt::Result {
+fn document(w: &mut fmt::Formatter, item: &clean::Item) -> fmt::Result {
     match item.doc_value() {
         Some(s) => {
             try!(write!(w, "<div class='docblock'>{}</div>", Markdown(s)));
@@ -1107,7 +1107,7 @@ fn document(w: &mut Writer, item: &clean::Item) -> fmt::Result {
     Ok(())
 }
 
-fn item_module(w: &mut Writer, cx: &Context,
+fn item_module(w: &mut fmt::Formatter, cx: &Context,
                item: &clean::Item, items: &[clean::Item]) -> fmt::Result {
     try!(document(w, item));
     debug!("{:?}", items);
@@ -1196,13 +1196,12 @@ fn item_module(w: &mut Writer, cx: &Context,
                     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
                         let Initializer(s, item) = *self;
                         if s.len() == 0 { return Ok(()); }
-                        try!(write!(f.buf, "<code> = </code>"));
+                        try!(write!(f, "<code> = </code>"));
                         if s.contains("\n") {
-                            write!(f.buf,
-                                   "<a href='{}'>[definition]</a>",
+                            write!(f, "<a href='{}'>[definition]</a>",
                                    item.link())
                         } else {
-                            write!(f.buf, "<code>{}</code>", s.as_slice())
+                            write!(f, "<code>{}</code>", s.as_slice())
                         }
                     }
                 }
@@ -1262,7 +1261,7 @@ fn item_module(w: &mut Writer, cx: &Context,
     write!(w, "</table>")
 }
 
-fn item_function(w: &mut Writer, it: &clean::Item,
+fn item_function(w: &mut fmt::Formatter, it: &clean::Item,
                  f: &clean::Function) -> fmt::Result {
     try!(write!(w, "<pre class='rust fn'>{vis}{fn_style}fn \
                     {name}{generics}{decl}</pre>",
@@ -1274,7 +1273,7 @@ fn item_function(w: &mut Writer, it: &clean::Item,
     document(w, it)
 }
 
-fn item_trait(w: &mut Writer, it: &clean::Item,
+fn item_trait(w: &mut fmt::Formatter, it: &clean::Item,
               t: &clean::Trait) -> fmt::Result {
     let mut parents = StrBuf::new();
     if t.parents.len() > 0 {
@@ -1318,7 +1317,7 @@ fn item_trait(w: &mut Writer, it: &clean::Item,
     // Trait documentation
     try!(document(w, it));
 
-    fn meth(w: &mut Writer, m: &clean::TraitMethod) -> fmt::Result {
+    fn meth(w: &mut fmt::Formatter, m: &clean::TraitMethod) -> fmt::Result {
         try!(write!(w, "<h3 id='{}.{}' class='method'><code>",
                       shortty(m.item()),
                       *m.item().name.get_ref()));
@@ -1374,8 +1373,8 @@ fn item_trait(w: &mut Writer, it: &clean::Item,
     Ok(())
 }
 
-fn render_method(w: &mut Writer, meth: &clean::Item) -> fmt::Result {
-    fn fun(w: &mut Writer, it: &clean::Item, fn_style: ast::FnStyle,
+fn render_method(w: &mut fmt::Formatter, meth: &clean::Item) -> fmt::Result {
+    fn fun(w: &mut fmt::Formatter, it: &clean::Item, fn_style: ast::FnStyle,
            g: &clean::Generics, selfty: &clean::SelfTy,
            d: &clean::FnDecl) -> fmt::Result {
         write!(w, "{}fn <a href='\\#{ty}.{name}' class='fnname'>{name}</a>\
@@ -1400,7 +1399,7 @@ fn render_method(w: &mut Writer, meth: &clean::Item) -> fmt::Result {
     }
 }
 
-fn item_struct(w: &mut Writer, it: &clean::Item,
+fn item_struct(w: &mut fmt::Formatter, it: &clean::Item,
                s: &clean::Struct) -> fmt::Result {
     try!(write!(w, "<pre class='rust struct'>"));
     try!(render_struct(w,
@@ -1437,7 +1436,8 @@ fn item_struct(w: &mut Writer, it: &clean::Item,
     render_methods(w, it)
 }
 
-fn item_enum(w: &mut Writer, it: &clean::Item, e: &clean::Enum) -> fmt::Result {
+fn item_enum(w: &mut fmt::Formatter, it: &clean::Item,
+             e: &clean::Enum) -> fmt::Result {
     try!(write!(w, "<pre class='rust enum'>{}enum {}{}",
                   VisSpace(it.visibility),
                   it.name.get_ref().as_slice(),
@@ -1533,7 +1533,7 @@ fn item_enum(w: &mut Writer, it: &clean::Item, e: &clean::Enum) -> fmt::Result {
     Ok(())
 }
 
-fn render_struct(w: &mut Writer, it: &clean::Item,
+fn render_struct(w: &mut fmt::Formatter, it: &clean::Item,
                  g: Option<&clean::Generics>,
                  ty: doctree::StructType,
                  fields: &[clean::Item],
@@ -1597,7 +1597,7 @@ fn render_struct(w: &mut Writer, it: &clean::Item,
     Ok(())
 }
 
-fn render_methods(w: &mut Writer, it: &clean::Item) -> fmt::Result {
+fn render_methods(w: &mut fmt::Formatter, it: &clean::Item) -> fmt::Result {
     match cache_key.get().unwrap().impls.find(&it.id) {
         Some(v) => {
             let mut non_trait = v.iter().filter(|p| {
@@ -1642,7 +1642,7 @@ fn render_methods(w: &mut Writer, it: &clean::Item) -> fmt::Result {
     Ok(())
 }
 
-fn render_impl(w: &mut Writer, i: &clean::Impl,
+fn render_impl(w: &mut fmt::Formatter, i: &clean::Impl,
                dox: &Option<StrBuf>) -> fmt::Result {
     try!(write!(w, "<h3 class='impl'><code>impl{} ", i.generics));
     let trait_id = match i.trait_ {
@@ -1664,8 +1664,8 @@ fn render_impl(w: &mut Writer, i: &clean::Impl,
         None => {}
     }
 
-    fn docmeth(w: &mut Writer, item: &clean::Item,
-               dox: bool) -> io::IoResult<()> {
+    fn docmeth(w: &mut fmt::Formatter, item: &clean::Item,
+               dox: bool) -> fmt::Result {
         try!(write!(w, "<h4 id='method.{}' class='method'><code>",
                       *item.name.get_ref()));
         try!(render_method(w, item));
@@ -1714,7 +1714,7 @@ fn render_impl(w: &mut Writer, i: &clean::Impl,
     Ok(())
 }
 
-fn item_typedef(w: &mut Writer, it: &clean::Item,
+fn item_typedef(w: &mut fmt::Formatter, it: &clean::Item,
                 t: &clean::Typedef) -> fmt::Result {
     try!(write!(w, "<pre class='rust typedef'>type {}{} = {};</pre>",
                   it.name.get_ref().as_slice(),
@@ -1728,21 +1728,21 @@ impl<'a> fmt::Show for Sidebar<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let cx = self.cx;
         let it = self.item;
-        try!(write!(fmt.buf, "<p class='location'>"));
+        try!(write!(fmt, "<p class='location'>"));
         let len = cx.current.len() - if it.is_mod() {1} else {0};
         for (i, name) in cx.current.iter().take(len).enumerate() {
             if i > 0 {
-                try!(write!(fmt.buf, "&\\#8203;::"));
+                try!(write!(fmt, "&\\#8203;::"));
             }
-            try!(write!(fmt.buf, "<a href='{}index.html'>{}</a>",
+            try!(write!(fmt, "<a href='{}index.html'>{}</a>",
                           cx.root_path
                             .as_slice()
                             .slice_to((cx.current.len() - i - 1) * 3),
                           *name));
         }
-        try!(write!(fmt.buf, "</p>"));
+        try!(write!(fmt, "</p>"));
 
-        fn block(w: &mut Writer, short: &str, longty: &str,
+        fn block(w: &mut fmt::Formatter, short: &str, longty: &str,
                  cur: &clean::Item, cx: &Context) -> fmt::Result {
             let items = match cx.sidebar.find_equiv(&short) {
                 Some(items) => items.as_slice(),
@@ -1770,12 +1770,12 @@ impl<'a> fmt::Show for Sidebar<'a> {
             Ok(())
         }
 
-        try!(block(fmt.buf, "mod", "Modules", it, cx));
-        try!(block(fmt.buf, "struct", "Structs", it, cx));
-        try!(block(fmt.buf, "enum", "Enums", it, cx));
-        try!(block(fmt.buf, "trait", "Traits", it, cx));
-        try!(block(fmt.buf, "fn", "Functions", it, cx));
-        try!(block(fmt.buf, "macro", "Macros", it, cx));
+        try!(block(fmt, "mod", "Modules", it, cx));
+        try!(block(fmt, "struct", "Structs", it, cx));
+        try!(block(fmt, "enum", "Enums", it, cx));
+        try!(block(fmt, "trait", "Traits", it, cx));
+        try!(block(fmt, "fn", "Functions", it, cx));
+        try!(block(fmt, "macro", "Macros", it, cx));
         Ok(())
     }
 }
@@ -1808,19 +1808,18 @@ impl<'a> fmt::Show for Source<'a> {
             cols += 1;
             tmp /= 10;
         }
-        try!(write!(fmt.buf, "<pre class='line-numbers'>"));
+        try!(write!(fmt, "<pre class='line-numbers'>"));
         for i in range(1, lines + 1) {
-            try!(write!(fmt.buf, "<span id='{0:u}'>{0:1$u}</span>\n", i, cols));
+            try!(write!(fmt, "<span id='{0:u}'>{0:1$u}</span>\n", i, cols));
         }
-        try!(write!(fmt.buf, "</pre>"));
-        try!(write!(fmt.buf, "{}", highlight::highlight(s.as_slice(), None)));
+        try!(write!(fmt, "</pre>"));
+        try!(write!(fmt, "{}", highlight::highlight(s.as_slice(), None)));
         Ok(())
     }
 }
 
-fn item_macro(w: &mut Writer, it: &clean::Item,
+fn item_macro(w: &mut fmt::Formatter, it: &clean::Item,
               t: &clean::Macro) -> fmt::Result {
-    try!(w.write_str(highlight::highlight(t.source.as_slice(),
-                                          Some("macro")).as_slice()));
+    try!(w.write(highlight::highlight(t.source.as_slice(), Some("macro")).as_bytes()));
     document(w, it)
 }

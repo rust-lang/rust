@@ -1418,14 +1418,14 @@ impl<K: TotalEq + Hash<S>, V: Eq, S, H: Hasher<S>> Eq for HashMap<K, V, H> {
 
 impl<K: TotalEq + Hash<S> + Show, V: Show, S, H: Hasher<S>> Show for HashMap<K, V, H> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f.buf, r"\{"));
+        try!(write!(f, r"\{"));
 
         for (i, (k, v)) in self.iter().enumerate() {
-            if i != 0 { try!(write!(f.buf, ", ")); }
-            try!(write!(f.buf, "{}: {}", *k, *v));
+            if i != 0 { try!(write!(f, ", ")); }
+            try!(write!(f, "{}: {}", *k, *v));
         }
 
-        write!(f.buf, r"\}")
+        write!(f, r"\}")
     }
 }
 
@@ -1605,14 +1605,14 @@ impl<T: TotalEq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
 
 impl<T: TotalEq + Hash<S> + fmt::Show, S, H: Hasher<S>> fmt::Show for HashSet<T, H> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f.buf, r"\{"));
+        try!(write!(f, r"\{"));
 
         for (i, x) in self.iter().enumerate() {
-            if i != 0 { try!(write!(f.buf, ", ")); }
-            try!(write!(f.buf, "{}", *x));
+            if i != 0 { try!(write!(f, ", ")); }
+            try!(write!(f, "{}", *x));
         }
 
-        write!(f.buf, r"\}")
+        write!(f, r"\}")
     }
 }
 

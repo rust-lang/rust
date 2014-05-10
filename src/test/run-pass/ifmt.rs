@@ -25,12 +25,12 @@ struct B;
 
 impl fmt::Signed for A {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.buf.write("aloha".as_bytes())
+        f.write("aloha".as_bytes())
     }
 }
 impl fmt::Signed for B {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.buf.write("adios".as_bytes())
+        f.write("adios".as_bytes())
     }
 }
 
@@ -195,9 +195,9 @@ fn test_format_args() {
     let mut buf = MemWriter::new();
     {
         let w = &mut buf as &mut io::Writer;
-        format_args!(|args| { fmt::write(w, args); }, "{}", 1);
-        format_args!(|args| { fmt::write(w, args); }, "test");
-        format_args!(|args| { fmt::write(w, args); }, "{test}", test=3);
+        format_args!(|args| { write!(w, "{}", args); }, "{}", 1);
+        format_args!(|args| { write!(w, "{}", args); }, "test");
+        format_args!(|args| { write!(w, "{}", args); }, "{test}", test=3);
     }
     let s = str::from_utf8(buf.unwrap().as_slice()).unwrap().to_owned();
     t!(s, "1test3");

@@ -18,7 +18,7 @@ struct Number {
 
 impl fmt::Show for Number {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f.buf, "{}", self.n)
+        write!(f, "{}", self.n)
     }
 }
 

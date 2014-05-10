@@ -35,7 +35,7 @@ pub use iter::{FromIterator, Extendable};
 pub use iter::{Iterator, DoubleEndedIterator, RandomAccessIterator, CloneableIterator};
 pub use iter::{OrdIterator, MutableDoubleEndedIterator, ExactSize};
 pub use num::{Num, NumCast, CheckedAdd, CheckedSub, CheckedMul};
-pub use num::{Signed, Unsigned};
+pub use num::{Signed, Unsigned, Float};
 pub use num::{Primitive, Int, ToPrimitive, FromPrimitive};
 pub use ptr::RawPtr;
 pub use str::{Str, StrSlice};

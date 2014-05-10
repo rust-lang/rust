@@ -51,11 +51,9 @@ macro_rules! rtabort (
 )
 
 pub fn dumb_println(args: &fmt::Arguments) {
-    use std::io;
     use std::rt;
-
     let mut w = rt::Stderr;
-    let _ = fmt::writeln(&mut w as &mut io::Writer, args);
+    let _ = writeln!(&mut w, "{}", args);
 }
 
 pub fn abort(msg: &str) -> ! {

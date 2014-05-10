@@ -69,8 +69,8 @@ impl fmt::Show for FromHexError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             InvalidHexCharacter(ch, idx) =>
-                write!(f.buf, "Invalid character '{}' at position {}", ch, idx),
-            InvalidHexLength => write!(f.buf, "Invalid input length"),
+                write!(f, "Invalid character '{}' at position {}", ch, idx),
+            InvalidHexLength => write!(f, "Invalid input length"),
         }
     }
 }
