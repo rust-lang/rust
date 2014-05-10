@@ -65,9 +65,10 @@ pub fn strip_hidden(krate: clean::Crate) -> plugins::PluginResult {
         impl<'a> fold::DocFolder for ImplStripper<'a> {
             fn fold_item(&mut self, i: Item) -> Option<Item> {
                 match i.inner {
-                    clean::ImplItem(clean::Impl{ for_: clean::ResolvedPath{ id: for_id, .. },
-                                                 .. }) => {
-                        if self.stripped.contains(&for_id) {
+                    clean::ImplItem(clean::Impl{
+                        for_: clean::ResolvedPath{ did, .. }, ..
+                    }) => {
+                        if self.stripped.contains(&did.node) {
                             return None;
                         }
                     }
@@ -146,8 +147,10 @@ impl<'a> fold::DocFolder for Stripper<'a> {
             clean::ModuleItem(..) => {}
 
             // trait impls for private items should be stripped
-            clean::ImplItem(clean::Impl{ for_: clean::ResolvedPath{ id: ref for_id, .. }, .. }) => {
-                if !self.exported_items.contains(for_id) {
+            clean::ImplItem(clean::Impl{
+                for_: clean::ResolvedPath{ did, .. }, ..
+            }) => {
+                if !self.exported_items.contains(&did.node) {
                     return None;
                 }
             }
@@ -201,9 +204,9 @@ impl<'a> fold::DocFolder for ImplStripper<'a> {
         match i.inner {
             clean::ImplItem(ref imp) => {
                 match imp.trait_ {
-                    Some(clean::ResolvedPath{ id, .. }) => {
+                    Some(clean::ResolvedPath{ did, .. }) => {
                         let ImplStripper(s) = *self;
-                        if !s.contains(&id) {
+                        if !s.contains(&did.node) {
                             return None;
                         }
                     }
