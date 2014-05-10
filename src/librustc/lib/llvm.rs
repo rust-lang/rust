@@ -398,8 +398,7 @@ pub mod llvm {
         pub fn LLVMIsPackedStruct(StructTy: TypeRef) -> Bool;
 
         /* Operations on array, pointer, and vector types (sequence types) */
-        pub fn LLVMArrayType(ElementType: TypeRef, ElementCount: c_uint)
-                             -> TypeRef;
+        pub fn LLVMRustArrayType(ElementType: TypeRef, ElementCount: u64) -> TypeRef;
         pub fn LLVMPointerType(ElementType: TypeRef, AddressSpace: c_uint)
                                -> TypeRef;
         pub fn LLVMVectorType(ElementType: TypeRef, ElementCount: c_uint)

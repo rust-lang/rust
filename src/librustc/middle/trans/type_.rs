@@ -207,7 +207,7 @@ impl Type {
     }
 
     pub fn array(ty: &Type, len: u64) -> Type {
-        ty!(llvm::LLVMArrayType(ty.to_ref(), len as c_uint))
+        ty!(llvm::LLVMRustArrayType(ty.to_ref(), len))
     }
 
     pub fn vector(ty: &Type, len: u64) -> Type {
