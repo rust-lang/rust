@@ -43,6 +43,11 @@ pub struct StdGen<R> {
 
 impl<R: Rng> Rng for StdGen<R> {
     fn next_u32(&mut self) -> u32 { self.rng.next_u32() }
+
+    // some RNGs implement these more efficiently than the default, so
+    // we might as well defer to them.
+    fn next_u64(&mut self) -> u64 { self.rng.next_u64() }
+    fn fill_bytes(&mut self, dest: &mut [u8]) { self.rng.fill_bytes(dest) }
 }
 
 impl<R: Rng> Gen for StdGen<R> {
@@ -259,6 +264,19 @@ impl<A: Arbitrary> Arbitrary for Vec<A> {
             }
         }
         box xs.move_iter() as Box<Shrinker<Vec<A>>>
+    }
+}
+
+impl Arbitrary for StrBuf {
+    fn arbitrary<G: Gen>(g: &mut G) -> StrBuf {
+        let size = { let s = g.size(); g.gen_range(0, s) };
+        g.gen_ascii_str(size).to_strbuf()
+    }
+
+    fn shrink(&self) -> Box<Shrinker<StrBuf>> {
+        // Shrink a string by shrinking a vector of its characters.
+        let chars: Vec<char> = self.as_slice().chars().collect();
+        box chars.shrink().map(|x| x.move_iter().collect::<StrBuf>()) as Box<Shrinker<StrBuf>>
     }
 }
 

@@ -499,8 +499,8 @@ mod tester {
     #[deriving(Clone, Show)]
     pub struct TestResult {
         status: Status,
-        arguments: Vec<~str>,
-        err: ~str,
+        arguments: Vec<StrBuf>,
+        err: StrBuf,
     }
 
     /// Whether a test has passed, failed or been discarded.
@@ -518,7 +518,7 @@ mod tester {
         /// error.
         pub fn error(msg: &str) -> TestResult {
             let mut r = TestResult::from_bool(false);
-            r.err = msg.to_owned();
+            r.err = msg.to_strbuf();
             r
         }
 
@@ -527,7 +527,7 @@ mod tester {
         /// When a test is discarded, `quickcheck` will replace it with a
         /// fresh one (up to a certain limit).
         pub fn discard() -> TestResult {
-            TestResult { status: Discard, arguments: vec!(), err: "".to_owned(), }
+            TestResult { status: Discard, arguments: vec!(), err: "".to_strbuf(), }
         }
 
         /// Converts a `bool` to a `TestResult`. A `true` value indicates that
@@ -537,7 +537,7 @@ mod tester {
             TestResult {
                 status: if b { Pass } else { Fail },
                 arguments: vec!(),
-                err: "".to_owned(),
+                err: "".to_strbuf(),
             }
         }
 
@@ -649,7 +649,7 @@ mod tester {
                     let oa = box a.clone();
                     let mut r = safe(proc() { f(*oa) }).result(g);
                     if r.is_failure() {
-                        r.arguments = vec!(a.to_str());
+                        r.arguments = vec!(a.to_str().to_strbuf());
                     }
                     r
                 },
@@ -658,7 +658,8 @@ mod tester {
                     let (oa, ob) = (box a.clone(), box b.clone());
                     let mut r = safe(proc() { f(*oa, *ob) }).result(g);
                     if r.is_failure() {
-                        r.arguments = vec!(a.to_str(), b.to_str());
+                        r.arguments = vec!(a.to_str().to_strbuf(),
+                                           b.to_str().to_strbuf());
                     }
                     r
                 },
@@ -667,7 +668,9 @@ mod tester {
                     let (oa, ob, oc) = (box a.clone(), box b.clone(), box c.clone());
                     let mut r = safe(proc() { f(*oa, *ob, *oc) }).result(g);
                     if r.is_failure() {
-                        r.arguments = vec!(a.to_str(), b.to_str(), c.to_str());
+                        r.arguments = vec!(a.to_str().to_strbuf(),
+                                           b.to_str().to_strbuf(),
+                                           c.to_str().to_strbuf());
                     }
                     r
                 },
