@@ -9,21 +9,28 @@
 // except according to those terms.
 
 //! Failure support for libcore
+//!
+//! The core library cannot define failure, but it does *declare* failure. This
+//! means that the functions inside of libcore are allowed to fail, but to be
+//! useful an upstream crate must define failure for libcore to use. The current
+//! interface for failure is:
+//!
+//!     fn begin_unwind(fmt: &fmt::Arguments, file: &str, line: uint) -> !;
+//!
+//! This definition allows for failing with any general message, but it does not
+//! allow for failing with a `~Any` value. The reason for this is that libcore
+//! is not allowed to allocate.
+//!
+//! This module contains a few other failure functions, but these are just the
+//! necessary lang items for the compiler. All failure is funneled through this
+//! one function. Currently, the actual symbol is declared in the standard
+//! library, but the location of this may change over time.
 
 #![allow(dead_code, missing_doc)]
 
 #[cfg(not(test))]
 use str::raw::c_str_to_static_slice;
-
-// FIXME: Once std::fmt is in libcore, all of these functions should delegate
-//        to a common failure function with this signature:
-//
-//          extern {
-//              fn rust_unwind(f: &fmt::Arguments, file: &str, line: uint) -> !;
-//          }
-//
-//        Each of these functions can create a temporary fmt::Arguments
-//        structure to pass to this function.
+use fmt;
 
 #[cold] #[inline(never)] // this is the slow path, always
 #[lang="fail_"]
@@ -32,7 +39,11 @@ fn fail_(expr: *u8, file: *u8, line: uint) -> ! {
     unsafe {
         let expr = c_str_to_static_slice(expr as *i8);
         let file = c_str_to_static_slice(file as *i8);
-        begin_unwind(expr, file, line)
+        format_args!(|args| -> () {
+            begin_unwind(args, file, line);
+        }, "{}", expr);
+
+        loop {}
     }
 }
 
@@ -40,16 +51,19 @@ fn fail_(expr: *u8, file: *u8, line: uint) -> ! {
 #[lang="fail_bounds_check"]
 #[cfg(not(test))]
 fn fail_bounds_check(file: *u8, line: uint, index: uint, len: uint) -> ! {
-    #[allow(ctypes)]
-    extern { fn rust_fail_bounds_check(file: *u8, line: uint,
-                                       index: uint, len: uint,) -> !; }
-    unsafe { rust_fail_bounds_check(file, line, index, len) }
+    let file = unsafe { c_str_to_static_slice(file as *i8) };
+    format_args!(|args| -> () {
+        begin_unwind(args, file, line);
+    }, "index out of bounds: the len is {} but the index is {}", len, index);
+    loop {}
 }
 
 #[cold]
-pub fn begin_unwind(msg: &str, file: &'static str, line: uint) -> ! {
+pub fn begin_unwind(fmt: &fmt::Arguments, file: &'static str, line: uint) -> ! {
+    // FIXME: this should be a proper lang item, it should not just be some
+    //        undefined symbol sitting in the middle of nowhere.
     #[allow(ctypes)]
-    extern { fn rust_begin_unwind(msg: &str, file: &'static str,
+    extern { fn rust_begin_unwind(fmt: &fmt::Arguments, file: &'static str,
                                   line: uint) -> !; }
-    unsafe { rust_begin_unwind(msg, file, line) }
+    unsafe { rust_begin_unwind(fmt, file, line) }
 }
