@@ -382,7 +382,7 @@ extern crate collections;
 #[phase(syntax, link)] extern crate log;
 extern crate rand;
 
-pub use arbitrary::{Arbitrary, Gen, StdGen, Shrinker, gen, empty_shrinker, single_shrinker};
+pub use arbitrary::{Arbitrary, Gen, StdGen, Shrinker, EmptyShrinker, SingleShrinker};
 pub use tester::{Testable, TestResult, Config};
 pub use tester::{quickcheck, quickcheck_config, quicktest, quicktest_config};
 pub use tester::{DEFAULT_CONFIG, DEFAULT_SIZE};
@@ -393,7 +393,7 @@ mod tester {
     use std::fmt::Show;
     use std::iter;
     use rand::task_rng;
-    use super::{Arbitrary, Gen, Shrinker, gen};
+    use super::{Arbitrary, Gen, Shrinker, StdGen};
     use tester::trap::safe;
 
     /// Default size hint used in `quickcheck` for sampling from a random
@@ -436,7 +436,7 @@ mod tester {
     /// test failure. The failure message will include a witness to the
     /// failure.
     pub fn quickcheck<A: Testable>(f: A) {
-        let g = &mut gen(task_rng(), DEFAULT_SIZE);
+        let g = &mut StdGen::new(task_rng(), DEFAULT_SIZE);
         quickcheck_config(DEFAULT_CONFIG, g, f)
     }
 
@@ -452,7 +452,7 @@ mod tester {
     /// Like `quickcheck`, but returns either the number of tests passed
     /// or a witness of failure.
     pub fn quicktest<A: Testable>(f: A) -> Result<uint, TestResult> {
-        let g = &mut gen(task_rng(), DEFAULT_SIZE);
+        let g = &mut StdGen::new(task_rng(), DEFAULT_SIZE);
         quicktest_config(DEFAULT_CONFIG, g, f)
     }
 
@@ -772,7 +772,7 @@ mod test {
     use std::cmp::TotalOrd;
     use std::iter;
     use rand::task_rng;
-    use super::{Config, Testable, TestResult, gen};
+    use super::{Config, Testable, TestResult, StdGen};
     use super::{quickcheck_config, quicktest_config};
 
     static SIZE: uint = 100;
@@ -782,11 +782,11 @@ mod test {
     };
 
     fn qcheck<A: Testable>(f: A) {
-        quickcheck_config(CONFIG, &mut gen(task_rng(), SIZE), f)
+        quickcheck_config(CONFIG, &mut StdGen::new(task_rng(), SIZE), f)
     }
 
     fn qtest<A: Testable>(f: A) -> Result<uint, TestResult> {
-        quicktest_config(CONFIG, &mut gen(task_rng(), SIZE), f)
+        quicktest_config(CONFIG, &mut StdGen::new(task_rng(), SIZE), f)
     }
 
     #[test]

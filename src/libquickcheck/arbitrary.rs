@@ -8,20 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::mem;
 use std::num;
 use std::str;
 use rand::Rng;
-
-/// Returns a `Gen` with the given configuration using any random number
-/// generator.
-///
-/// The `size` parameter controls the size of random values generated.
-/// For example, it specifies the maximum length of a randomly generator vector
-/// and also will specify the maximum magnitude of a randomly generated number.
-pub fn gen<R: Rng>(rng: R, size: uint) -> StdGen<R> {
-    StdGen{rng: rng, size: size}
-}
 
 /// `Gen` wraps a `rand::Rng` with parameters to control the distribution of
 /// random values.
@@ -39,6 +28,18 @@ pub trait Gen : Rng {
 pub struct StdGen<R> {
     rng: R,
     size: uint,
+}
+
+impl<R: Rng> StdGen<R> {
+    /// Returns a `Gen` with the given configuration using any random number
+    /// generator.
+    ///
+    /// The `size` parameter controls the size of random values generated.
+    /// For example, it specifies the maximum length of a randomly generator vector
+    /// and also will specify the maximum magnitude of a randomly generated number.
+    pub fn new(rng: R, size: uint) -> StdGen<R> {
+        StdGen { rng: rng, size: size }
+    }
 }
 
 impl<R: Rng> Rng for StdGen<R> {
@@ -76,30 +77,34 @@ impl<T, A: Iterator<T>> Shrinker<T> for A {
     fn next_shrink(&mut self) -> Option<T> { self.next() }
 }
 
-struct EmptyShrinker<A>;
+/// A shrinker than yields no values.
+pub struct EmptyShrinker<A>;
+
+impl<A> EmptyShrinker<A> {
+    /// Creates a shrinker with zero elements.
+    pub fn new() -> Box<Shrinker<A>> {
+        box EmptyShrinker::<A> as Box<Shrinker<A>>
+    }
+}
 
 impl<A> Iterator<A> for EmptyShrinker<A> {
     fn next(&mut self) -> Option<A> { None }
 }
 
-/// Creates a shrinker with zero elements.
-pub fn empty_shrinker<A>() -> Box<Shrinker<A>> {
-    let zero: EmptyShrinker<A> = EmptyShrinker;
-    box zero as Box<Shrinker<A>>
-}
-
-struct SingleShrinker<A> {
+/// A shrinker than yields a single value.
+pub struct SingleShrinker<A> {
     value: Option<A>
 }
 
-impl<A> Iterator<A> for SingleShrinker<A> {
-    fn next(&mut self) -> Option<A> { mem::replace(&mut self.value, None) }
+impl<A> SingleShrinker<A> {
+    /// Creates a shrinker with a single element.
+    pub fn new(value: A) -> Box<Shrinker<A>> {
+        box SingleShrinker { value: Some(value) } as Box<Shrinker<A>>
+    }
 }
 
-/// Creates a shrinker with a single element.
-pub fn single_shrinker<A>(value: A) -> Box<Shrinker<A>> {
-    let one: SingleShrinker<A> = SingleShrinker { value: Some(value) };
-    box one as Box<Shrinker<A>>
+impl<A> Iterator<A> for SingleShrinker<A> {
+    fn next(&mut self) -> Option<A> { self.value.take() }
 }
 
 /// `Arbitrary` describes types whose values can be randomly generated and
@@ -116,7 +121,7 @@ pub fn single_shrinker<A>(value: A) -> Box<Shrinker<A>> {
 pub trait Arbitrary : Clone + Send {
     fn arbitrary<G: Gen>(g: &mut G) -> Self;
     fn shrink(&self) -> Box<Shrinker<Self>> {
-        empty_shrinker()
+        EmptyShrinker::new()
     }
 }
 
@@ -128,8 +133,8 @@ impl Arbitrary for bool {
     fn arbitrary<G: Gen>(g: &mut G) -> bool { g.gen() }
     fn shrink(&self) -> Box<Shrinker<bool>> {
         match *self {
-            true => single_shrinker(false),
-            false => empty_shrinker(),
+            true => SingleShrinker::new(false),
+            false => EmptyShrinker::new(),
         }
     }
 }
@@ -146,10 +151,10 @@ impl<A: Arbitrary> Arbitrary for Option<A> {
     fn shrink(&self)  -> Box<Shrinker<Option<A>>> {
         match *self {
             None => {
-                empty_shrinker()
+                EmptyShrinker::new()
             }
             Some(ref x) => {
-                let chain = single_shrinker(None).chain(x.shrink().map(Some));
+                let chain = SingleShrinker::new(None).chain(x.shrink().map(Some));
                 box chain as Box<Shrinker<Option<A>>>
             }
         }
@@ -239,7 +244,7 @@ impl<A: Arbitrary> Arbitrary for Vec<A> {
 
     fn shrink(&self) -> Box<Shrinker<Vec<A>>> {
         if self.len() == 0 {
-            return empty_shrinker()
+            return EmptyShrinker::new()
         }
 
         // Start the shrunk values with an empty vector.
@@ -302,7 +307,7 @@ impl Arbitrary for char {
 
     fn shrink(&self) -> Box<Shrinker<char>> {
         // No char shrinking for now.
-        empty_shrinker()
+        EmptyShrinker::new()
     }
 }
 
@@ -508,7 +513,7 @@ mod test {
     }
 
     fn gen() -> super::StdGen<rand::TaskRng> {
-        super::gen(rand::task_rng(), 5)
+        super::StdGen::new(rand::task_rng(), 5)
     }
 
     fn rep(f: ||) {
