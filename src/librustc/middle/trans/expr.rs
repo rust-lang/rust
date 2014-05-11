@@ -67,7 +67,7 @@ use middle::typeck::MethodCall;
 use util::common::indenter;
 use util::ppaux::Repr;
 use util::nodemap::NodeMap;
-use middle::trans::machine::{llsize_of, llsize_of_alloc};
+use middle::trans::machine::{llalign_of_min, llsize_of, llsize_of_alloc};
 use middle::trans::type_::Type;
 
 use syntax::ast;
@@ -1170,10 +1170,11 @@ fn trans_uniq_expr<'a>(bcx: &'a Block<'a>,
     let fcx = bcx.fcx;
     let llty = type_of::type_of(bcx.ccx(), contents_ty);
     let size = llsize_of(bcx.ccx(), llty);
+    let align = C_uint(bcx.ccx(), llalign_of_min(bcx.ccx(), llty) as uint);
     // We need to a make a pointer type because box_ty is ty_bot
     // if content_ty is, e.g. box fail!().
     let real_box_ty = ty::mk_uniq(bcx.tcx(), contents_ty);
-    let Result { bcx, val } = malloc_raw_dyn(bcx, real_box_ty, size);
+    let Result { bcx, val } = malloc_raw_dyn(bcx, real_box_ty, size, align);
     // Unique boxes do not allocate for zero-size types. The standard library
     // may assume that `free` is never called on the pointer returned for
     // `Box<ZeroSizeType>`.

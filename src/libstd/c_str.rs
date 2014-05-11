@@ -81,7 +81,7 @@ use str::StrSlice;
 use str;
 use slice::{ImmutableVector, MutableVector};
 use slice;
-use rt::global_heap::malloc_raw;
+use rt::libc_heap::malloc_raw;
 use raw::Slice;
 
 /// The representation of a C String.

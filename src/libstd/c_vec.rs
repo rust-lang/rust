@@ -160,7 +160,7 @@ mod tests {
     use super::CVec;
     use libc;
     use ptr;
-    use rt::global_heap::malloc_raw;
+    use rt::libc_heap::malloc_raw;
 
     fn malloc(n: uint) -> CVec<u8> {
         unsafe {

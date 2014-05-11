@@ -240,6 +240,7 @@ ALL_HS := $(filter-out $(S)src/rt/vg/valgrind.h \
 tidy:
 		@$(call E, check: formatting)
 		$(Q)find $(S)src -name '*.r[sc]' \
+		| grep '^$(S)src/jemalloc' -v \
 		| grep '^$(S)src/libuv' -v \
 		| grep '^$(S)src/llvm' -v \
 		| grep '^$(S)src/gyp' -v \
@@ -264,8 +265,9 @@ tidy:
 		$(Q)find $(S)src -type f -perm +111 \
 		    -not -name '*.rs' -and -not -name '*.py' \
 		    -and -not -name '*.sh' \
-		| grep '^$(S)src/llvm' -v \
+		| grep '^$(S)src/jemalloc' -v \
 		| grep '^$(S)src/libuv' -v \
+		| grep '^$(S)src/llvm' -v \
 		| grep '^$(S)src/rt/hoedown' -v \
 		| grep '^$(S)src/gyp' -v \
 		| grep '^$(S)src/etc' -v \
