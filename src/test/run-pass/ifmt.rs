@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// no-pretty-expanded unnecessary unsafe block generated
+
 #![feature(macro_rules, managed_boxes)]
 #![deny(warnings)]
 #![allow(unused_must_use)]
