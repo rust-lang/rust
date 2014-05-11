@@ -609,79 +609,94 @@ mod tester {
 
     impl<T: Testable> Testable for fn() -> T {
         fn result<G: Gen>(&self, g: &mut G) -> TestResult {
-            shrink(g, Zero::<(), (), (), T>(*self))
+            shrink::<G, (), (), (), T, fn() -> T>(g, self)
         }
     }
 
     impl<A: AShow, T: Testable> Testable for fn(A) -> T {
         fn result<G: Gen>(&self, g: &mut G) -> TestResult {
-            shrink(g, One::<A, (), (), T>(*self))
+            shrink::<G, A, (), (), T, fn(A) -> T>(g, self)
         }
     }
 
     impl<A: AShow, B: AShow, T: Testable> Testable for fn(A, B) -> T {
         fn result<G: Gen>(&self, g: &mut G) -> TestResult {
-            shrink(g, Two::<A, B, (), T>(*self))
+            shrink::<G, A, B, (), T, fn(A, B) -> T>(g, self)
         }
     }
 
     impl<A: AShow, B: AShow, C: AShow, T: Testable>
         Testable for fn(A, B, C) -> T {
         fn result<G: Gen>(&self, g: &mut G) -> TestResult {
-            shrink(g, Three::<A, B, C, T>(*self))
+            shrink::<G, A, B, C, T, fn(A, B, C) -> T>(g, self)
         }
     }
 
-    enum Fun<A, B, C, T> {
-        Zero(fn() -> T),
-        One(fn(A) -> T),
-        Two(fn(A, B) -> T),
-        Three(fn(A, B, C) -> T),
+    trait Fun<A, B, C, T> {
+        fn call<G: Gen>(&self, g: &mut G,
+                        a: Option<&A>, b: Option<&B>, c: Option<&C>)
+                       -> TestResult;
     }
 
-    impl<A: AShow, B: AShow, C: AShow, T: Testable> Fun<A, B, C, T> {
-        fn call<G: Gen>(self, g: &mut G,
+    impl<A: AShow, B: AShow, C: AShow, T: Testable> Fun<A, B, C, T> for fn() -> T {
+        fn call<G: Gen>(&self, g: &mut G,
+                        _: Option<&A>, _: Option<&B>, _: Option<&C>)
+                       -> TestResult {
+            let f = *self;
+            safe(proc() { f() }).result(g)
+        }
+    }
+
+    impl<A: AShow, B: AShow, C: AShow, T: Testable> Fun<A, B, C, T> for fn(A) -> T {
+        fn call<G: Gen>(&self, g: &mut G,
+                        a: Option<&A>, _: Option<&B>, _: Option<&C>)
+                       -> TestResult {
+            let a = a.unwrap();
+            let oa = box a.clone();
+            let f = *self;
+            let mut r = safe(proc() { f(*oa) }).result(g);
+            if r.is_failure() {
+                r.arguments = vec!(a.to_str().to_strbuf());
+            }
+            r
+        }
+    }
+
+    impl<A: AShow, B: AShow, C: AShow, T: Testable> Fun<A, B, C, T> for fn(A, B) -> T {
+        fn call<G: Gen>(&self, g: &mut G,
+                        a: Option<&A>, b: Option<&B>, _: Option<&C>)
+                       -> TestResult {
+            let (a, b) = (a.unwrap(), b.unwrap());
+            let (oa, ob) = (box a.clone(), box b.clone());
+            let f = *self;
+            let mut r = safe(proc() { f(*oa, *ob) }).result(g);
+            if r.is_failure() {
+                r.arguments = vec!(a.to_str().to_strbuf(), b.to_str().to_strbuf());
+            }
+            r
+        }
+    }
+
+    impl<A: AShow, B: AShow, C: AShow, T: Testable> Fun<A, B, C, T> for fn(A, B, C) -> T {
+        fn call<G: Gen>(&self, g: &mut G,
                         a: Option<&A>, b: Option<&B>, c: Option<&C>)
                        -> TestResult {
-            match self {
-                Zero(f) => safe(proc() { f() }).result(g),
-                One(f) => {
-                    let a = a.unwrap();
-                    let oa = box a.clone();
-                    let mut r = safe(proc() { f(*oa) }).result(g);
-                    if r.is_failure() {
-                        r.arguments = vec!(a.to_str().to_strbuf());
-                    }
-                    r
-                },
-                Two(f) => {
-                    let (a, b) = (a.unwrap(), b.unwrap());
-                    let (oa, ob) = (box a.clone(), box b.clone());
-                    let mut r = safe(proc() { f(*oa, *ob) }).result(g);
-                    if r.is_failure() {
-                        r.arguments = vec!(a.to_str().to_strbuf(),
-                                           b.to_str().to_strbuf());
-                    }
-                    r
-                },
-                Three(f) => {
-                    let (a, b, c) = (a.unwrap(), b.unwrap(), c.unwrap());
-                    let (oa, ob, oc) = (box a.clone(), box b.clone(), box c.clone());
-                    let mut r = safe(proc() { f(*oa, *ob, *oc) }).result(g);
-                    if r.is_failure() {
-                        r.arguments = vec!(a.to_str().to_strbuf(),
-                                           b.to_str().to_strbuf(),
-                                           c.to_str().to_strbuf());
-                    }
-                    r
-                },
+            let (a, b, c) = (a.unwrap(), b.unwrap(), c.unwrap());
+            let (oa, ob, oc) = (box a.clone(), box b.clone(), box c.clone());
+            let f = *self;
+            let mut r = safe(proc() { f(*oa, *ob, *oc) }).result(g);
+            if r.is_failure() {
+                r.arguments = vec!(a.to_str().to_strbuf(),
+                                   b.to_str().to_strbuf(),
+                                   c.to_str().to_strbuf());
             }
+            r
         }
     }
 
-    fn shrink<G: Gen, A: AShow, B: AShow, C: AShow, T: Testable>
-             (g: &mut G, fun: Fun<A, B, C, T>)
-             -> TestResult {
+    fn shrink<G: Gen, A: AShow, B: AShow, C: AShow, T: Testable,
+              F: Fun<A, B, C, T>>
+             (g: &mut G, fun: &F) -> TestResult {
         let (a, b, c): (A, B, C) = arby(g);
         let r = fun.call(g, Some(&a), Some(&b), Some(&c));
         match r.status {
@@ -690,9 +705,9 @@ mod tester {
         }
     }
 
-    fn shrink_failure<G: Gen, A: AShow, B: AShow, C: AShow, T: Testable>
-                     (g: &mut G, mut shrinker: Box<Shrinker<(A, B, C)>>,
-                      fun: Fun<A, B, C, T>)
+    fn shrink_failure<G: Gen, A: AShow, B: AShow, C: AShow, T: Testable,
+                      F: Fun<A, B, C, T>>
+                     (g: &mut G, mut shrinker: Box<Shrinker<(A, B, C)>>, fun: &F)
                      -> Option<TestResult> {
         for (a, b, c) in shrinker {
             let r = fun.call(g, Some(&a), Some(&b), Some(&c));
