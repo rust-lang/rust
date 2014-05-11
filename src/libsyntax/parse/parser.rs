@@ -2241,9 +2241,6 @@ impl<'a> Parser<'a> {
               ExprVec(..) if m == MutImmutable => {
                 ExprVstore(e, ExprVstoreSlice)
               }
-              ExprLit(lit) if lit_is_str(lit) && m == MutImmutable => {
-                ExprVstore(e, ExprVstoreSlice)
-              }
               ExprVec(..) if m == MutMutable => {
                 ExprVstore(e, ExprVstoreMutSlice)
               }

@@ -29,7 +29,7 @@ use std::io::fs;
 use std::from_str::FromStr;
 use getopts::{optopt, optflag, reqopt};
 use common::Config;
-use common::{Pretty, DebugInfo, Codegen};
+use common::{Pretty, DebugInfoGdb, Codegen};
 use util::logv;
 
 pub mod procsrv;
@@ -199,7 +199,7 @@ pub fn opt_str2(maybestr: Option<~str>) -> ~str {
 }
 
 pub fn run_tests(config: &Config) {
-    if config.target == ~"arm-linux-androideabi" {
+    if config.target == "arm-linux-androideabi".to_owned() {
         match config.mode {
             DebugInfoGdb => {
                 println!("arm-linux-androideabi debug-info \
