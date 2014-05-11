@@ -363,9 +363,10 @@
 //! representation. The insistence on this point has resulted in the
 //! use of an existential type.
 //!
-//! Note though that the shrinkers for lists and integers are not lazy. Their
-//! algorithms are more complex, so it will take a bit more work to get them to
-//! use iterators like the rest of the shrinking strategies.
+//! Note though that the shrinker for vectors is not yet lazy. Its
+//! algorithm is relatively complex, so it will take a bit more work
+//! to get it to use iterators like the rest of the shrinking
+//! strategies.
 
 #![crate_id = "quickcheck#0.11-pre"]
 #![license = "MIT/ASL2"]
