@@ -26,8 +26,6 @@
 
 extern crate collections;
 
-use std::cast::{transmute, transmute_mut_lifetime};
-use std::cast;
 use std::cell::{Cell, RefCell};
 use std::cmp;
 use std::intrinsics::{TyDesc, get_tydesc};
@@ -137,7 +135,7 @@ unsafe fn destroy_chunk(chunk: &Chunk) {
     let fill = chunk.fill.get();
 
     while idx < fill {
-        let tydesc_data: *uint = transmute(buf.offset(idx as int));
+        let tydesc_data: *uint = mem::transmute(buf.offset(idx as int));
         let (tydesc, is_done) = un_bitpack_tydesc_ptr(*tydesc_data);
         let (size, align) = ((*tydesc).size, (*tydesc).align);
 
@@ -187,18 +185,17 @@ impl Arena {
     #[inline]
     fn alloc_copy_inner(&mut self, n_bytes: uint, align: uint) -> *u8 {
         unsafe {
-            let this = transmute_mut_lifetime(self);
-            let start = round_up(this.copy_head.fill.get(), align);
+            let start = round_up(self.copy_head.fill.get(), align);
             let end = start + n_bytes;
             if end > self.chunk_size() {
-                return this.alloc_copy_grow(n_bytes, align);
+                return self.alloc_copy_grow(n_bytes, align);
             }
-            this.copy_head.fill.set(end);
+            self.copy_head.fill.set(end);
 
             //debug!("idx = {}, size = {}, align = {}, fill = {}",
             //       start, n_bytes, align, head.fill.get());
 
-            this.copy_head.as_ptr().offset(start as int)
+            self.copy_head.as_ptr().offset(start as int)
         }
     }
 
@@ -206,9 +203,9 @@ impl Arena {
     fn alloc_copy<'a, T>(&'a mut self, op: || -> T) -> &'a T {
         unsafe {
             let ptr = self.alloc_copy_inner(mem::size_of::<T>(), min_align_of::<T>());
-            let ptr: *mut T = transmute(ptr);
+            let ptr = ptr as *mut T;
             mem::move_val_init(&mut (*ptr), op());
-            return transmute(ptr);
+            return &*ptr;
         }
     }
 
@@ -228,26 +225,16 @@ impl Arena {
     fn alloc_noncopy_inner(&mut self, n_bytes: uint, align: uint)
                           -> (*u8, *u8) {
         unsafe {
-            let start;
-            let end;
-            let tydesc_start;
-            let after_tydesc;
-
-            {
-                let head = transmute_mut_lifetime(&mut self.head);
-
-                tydesc_start = head.fill.get();
-                after_tydesc = head.fill.get() + mem::size_of::<*TyDesc>();
-                start = round_up(after_tydesc, align);
-                end = start + n_bytes;
-            }
+            let tydesc_start = self.head.fill.get();
+            let after_tydesc = self.head.fill.get() + mem::size_of::<*TyDesc>();
+            let start = round_up(after_tydesc, align);
+            let end = start + n_bytes;
 
             if end > self.head.capacity() {
                 return self.alloc_noncopy_grow(n_bytes, align);
             }
 
-            let head = transmute_mut_lifetime(&mut self.head);
-            head.fill.set(round_up(end, mem::pref_align_of::<*TyDesc>()));
+            self.head.fill.set(round_up(end, mem::pref_align_of::<*TyDesc>()));
 
             //debug!("idx = {}, size = {}, align = {}, fill = {}",
             //       start, n_bytes, align, head.fill);
@@ -263,18 +250,18 @@ impl Arena {
             let tydesc = get_tydesc::<T>();
             let (ty_ptr, ptr) =
                 self.alloc_noncopy_inner(mem::size_of::<T>(), min_align_of::<T>());
-            let ty_ptr: *mut uint = transmute(ty_ptr);
-            let ptr: *mut T = transmute(ptr);
+            let ty_ptr = ty_ptr as *mut uint;
+            let ptr = ptr as *mut T;
             // Write in our tydesc along with a bit indicating that it
             // has *not* been initialized yet.
-            *ty_ptr = transmute(tydesc);
+            *ty_ptr = mem::transmute(tydesc);
             // Actually initialize it
             mem::move_val_init(&mut(*ptr), op());
             // Now that we are done, update the tydesc to indicate that
             // the object is there.
             *ty_ptr = bitpack_tydesc_ptr(tydesc, true);
 
-            return transmute(ptr);
+            return &*ptr;
         }
     }
 
@@ -283,7 +270,7 @@ impl Arena {
     pub fn alloc<'a, T>(&'a self, op: || -> T) -> &'a T {
         unsafe {
             // FIXME #13933: Remove/justify all `&T` to `&mut T` transmutes
-            let this: &mut Arena = transmute::<&_, &mut _>(self);
+            let this: &mut Arena = mem::transmute::<&_, &mut _>(self);
             if intrinsics::needs_drop::<T>() {
                 this.alloc_noncopy(op)
             } else {
@@ -366,7 +353,7 @@ impl<T> TypedArenaChunk<T> {
 
         let mut chunk = unsafe {
             let chunk = exchange_malloc(size);
-            let mut chunk: Box<TypedArenaChunk<T>> = cast::transmute(chunk);
+            let mut chunk: Box<TypedArenaChunk<T>> = mem::transmute(chunk);
             mem::move_val_init(&mut chunk.next, next);
             chunk
         };
@@ -387,7 +374,7 @@ impl<T> TypedArenaChunk<T> {
 
         let mut chunk = unsafe {
             let chunk = exchange_malloc(size, min_align_of::<TypedArenaChunk<T>>());
-            let mut chunk: Box<TypedArenaChunk<T>> = cast::transmute(chunk);
+            let mut chunk: Box<TypedArenaChunk<T>> = mem::transmute(chunk);
             mem::move_val_init(&mut chunk.next, next);
             chunk
         };
@@ -425,7 +412,7 @@ impl<T> TypedArenaChunk<T> {
     fn start(&self) -> *u8 {
         let this: *TypedArenaChunk<T> = self;
         unsafe {
-            cast::transmute(round_up(this.offset(1) as uint, min_align_of::<T>()))
+            mem::transmute(round_up(this.offset(1) as uint, min_align_of::<T>()))
         }
     }
 
@@ -463,12 +450,12 @@ impl<T> TypedArena<T> {
     pub fn alloc<'a>(&'a self, object: T) -> &'a T {
         unsafe {
             // FIXME #13933: Remove/justify all `&T` to `&mut T` transmutes
-            let this: &mut TypedArena<T> = cast::transmute::<&_, &mut _>(self);
+            let this: &mut TypedArena<T> = mem::transmute::<&_, &mut _>(self);
             if this.ptr == this.end {
                 this.grow()
             }
 
-            let ptr: &'a mut T = cast::transmute(this.ptr);
+            let ptr: &'a mut T = mem::transmute(this.ptr);
             mem::move_val_init(ptr, object);
             this.ptr = this.ptr.offset(1);
             let ptr: &'a T = ptr;

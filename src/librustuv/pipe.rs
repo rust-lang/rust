@@ -10,9 +10,9 @@
 
 use libc;
 use std::c_str::CString;
-use std::cast;
 use std::io::IoError;
 use std::io;
+use std::mem;
 use std::rt::rtio::{RtioPipe, RtioUnixListener, RtioUnixAcceptor};
 use std::rt::task::BlockedTask;
 
@@ -185,7 +185,7 @@ impl RtioPipe for PipeWatcher {
                                      &self.stream as *_ as uint);
 
         fn cancel_read(stream: uint) -> Option<BlockedTask> {
-            let stream: &mut StreamWatcher = unsafe { cast::transmute(stream) };
+            let stream: &mut StreamWatcher = unsafe { mem::transmute(stream) };
             stream.cancel_read(uvll::ECANCELED as libc::ssize_t)
         }
     }
@@ -197,7 +197,7 @@ impl RtioPipe for PipeWatcher {
                                       &self.stream as *_ as uint);
 
         fn cancel_write(stream: uint) -> Option<BlockedTask> {
-            let stream: &mut StreamWatcher = unsafe { cast::transmute(stream) };
+            let stream: &mut StreamWatcher = unsafe { mem::transmute(stream) };
             stream.cancel_write()
         }
     }

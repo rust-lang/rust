@@ -12,7 +12,7 @@
 //! scheduler pool and then interacting with it.
 
 use std::any::Any;
-use std::cast;
+use std::mem;
 use std::rt::Runtime;
 use std::rt::local::Local;
 use std::rt::rtio;
@@ -48,10 +48,10 @@ impl Runtime for SimpleTask {
                         guard.wait();
                     }
                 }
-                Err(task) => { cast::forget(task.wake()); }
+                Err(task) => { mem::forget(task.wake()); }
             }
             drop(guard);
-            cur_task = cast::transmute(cur_dupe);
+            cur_task = mem::transmute(cur_dupe);
         }
         Local::put(cur_task);
     }
@@ -59,7 +59,7 @@ impl Runtime for SimpleTask {
         let me = &mut *self as *mut SimpleTask;
         to_wake.put_runtime(self);
         unsafe {
-            cast::forget(to_wake);
+            mem::forget(to_wake);
             let guard = (*me).lock.lock();
             (*me).awoken = true;
             guard.signal();

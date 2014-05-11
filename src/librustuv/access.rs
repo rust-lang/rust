@@ -14,7 +14,7 @@
 /// It is assumed that all invocations of this struct happen on the same thread
 /// (the uv event loop).
 
-use std::cast;
+use std::mem;
 use std::rt::local::Local;
 use std::rt::task::{BlockedTask, Task};
 use std::sync::arc::UnsafeArc;
@@ -110,7 +110,7 @@ impl<'a> Drop for Guard<'a> {
         // on the same I/O event loop, so this unsafety should be ok.
         assert!(self.missile.is_some());
         let inner: &mut Inner = unsafe {
-            cast::transmute(self.access.inner.get())
+            mem::transmute(self.access.inner.get())
         };
 
         match inner.queue.shift() {

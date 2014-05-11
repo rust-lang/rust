@@ -73,9 +73,9 @@ static OS_DEFAULT_STACK_ESTIMATE: uint = 2 * (1 << 20);
 #[lang = "start"]
 #[cfg(not(test))]
 pub fn lang_start(main: *u8, argc: int, argv: **u8) -> int {
-    use std::cast;
+    use std::mem;
     start(argc, argv, proc() {
-        let main: extern "Rust" fn() = unsafe { cast::transmute(main) };
+        let main: extern "Rust" fn() = unsafe { mem::transmute(main) };
         main();
     })
 }

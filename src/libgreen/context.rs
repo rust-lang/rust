@@ -10,7 +10,7 @@
 
 use stack::Stack;
 use std::uint;
-use std::cast::{transmute, transmute_mut_unsafe};
+use std::mem::transmute;
 use std::rt::stack;
 use std::raw;
 
@@ -50,7 +50,7 @@ impl Context {
                stack: &mut Stack) -> Context {
 
         let sp: *uint = stack.end();
-        let sp: *mut uint = unsafe { transmute_mut_unsafe(sp) };
+        let sp: *mut uint = sp as *mut uint;
         // Save and then immediately load the current context,
         // which we will then modify to call the given function when restored
         let mut regs = new_regs();

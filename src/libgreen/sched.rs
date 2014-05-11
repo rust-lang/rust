@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::cast;
+use std::mem;
 use std::rt::local::Local;
 use std::rt::rtio::{RemoteCallback, PausableIdleCallback, Callback, EventLoop};
 use std::rt::task::BlockedTask;
@@ -633,7 +633,7 @@ impl Scheduler {
         unsafe {
 
             let sched: &mut Scheduler =
-                cast::transmute_mut_lifetime(*next_task.sched.get_mut_ref());
+                mem::transmute(&**next_task.sched.get_mut_ref());
 
             let current_task: &mut GreenTask = match sched.cleanup_job {
                 Some(CleanupJob { task: ref mut task, .. }) => &mut **task,
@@ -647,7 +647,7 @@ impl Scheduler {
             // works because due to transmute the borrow checker
             // believes that we have no internal pointers to
             // next_task.
-            cast::forget(next_task);
+            mem::forget(next_task);
 
             // The raw context swap operation. The next action taken
             // will be running the cleanup job from the context of the
@@ -659,7 +659,7 @@ impl Scheduler {
         // run the cleanup job, as expected by the previously called
         // swap_contexts function.
         let mut current_task: Box<GreenTask> = unsafe {
-            cast::transmute(current_task_dupe)
+            mem::transmute(current_task_dupe)
         };
         current_task.sched.get_mut_ref().run_cleanup_job();
 
@@ -677,15 +677,17 @@ impl Scheduler {
     // references to keep even when we don't own the tasks. It looks
     // kinda safe because we are doing transmutes before passing in
     // the arguments.
-    pub fn get_contexts<'a>(current_task: &mut GreenTask, next_task: &mut GreenTask) ->
-        (&'a mut Context, &'a mut Context) {
+    pub fn get_contexts<'a>(current_task: &mut GreenTask,
+                            next_task: &mut GreenTask)
+        -> (&'a mut Context, &'a mut Context)
+    {
         let current_task_context =
             &mut current_task.coroutine.get_mut_ref().saved_context;
         let next_task_context =
                 &mut next_task.coroutine.get_mut_ref().saved_context;
         unsafe {
-            (cast::transmute_mut_lifetime(current_task_context),
-             cast::transmute_mut_lifetime(next_task_context))
+            (mem::transmute(current_task_context),
+             mem::transmute(next_task_context))
         }
     }
 
@@ -961,10 +963,10 @@ trait ClosureConverter {
 }
 impl ClosureConverter for UnsafeTaskReceiver {
     fn from_fn(f: |&mut Scheduler, Box<GreenTask>|) -> UnsafeTaskReceiver {
-        unsafe { cast::transmute(f) }
+        unsafe { mem::transmute(f) }
     }
     fn to_fn(self) -> |&mut Scheduler, Box<GreenTask>| {
-        unsafe { cast::transmute(self) }
+        unsafe { mem::transmute(self) }
     }
 }
 

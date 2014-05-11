@@ -27,7 +27,7 @@ use middle;
 use util::nodemap::{NodeMap, NodeSet};
 
 use serialize::Encodable;
-use std::cast;
+use std::mem;
 use std::cell::RefCell;
 use std::hash;
 use std::hash::Hash;
@@ -1247,7 +1247,7 @@ fn my_visit_item(i: &Item,
                  index: &mut Vec<entry<i64>>) {
     let mut ebml_w = unsafe { ebml_w.unsafe_clone() };
     // See above
-    let ecx: &EncodeContext = unsafe { cast::transmute(ecx_ptr) };
+    let ecx: &EncodeContext = unsafe { mem::transmute(ecx_ptr) };
     ecx.tcx.map.with_path(i.id, |path| {
         encode_info_for_item(ecx, &mut ebml_w, i, index, path, i.vis);
     });
@@ -1258,7 +1258,7 @@ fn my_visit_foreign_item(ni: &ForeignItem,
                          ecx_ptr:*int,
                          index: &mut Vec<entry<i64>>) {
     // See above
-    let ecx: &EncodeContext = unsafe { cast::transmute(ecx_ptr) };
+    let ecx: &EncodeContext = unsafe { mem::transmute(ecx_ptr) };
     debug!("writing foreign item {}::{}",
             ecx.tcx.map.path_to_str(ni.id),
             token::get_ident(ni.ident));
@@ -1320,7 +1320,7 @@ fn encode_info_for_items(ecx: &EncodeContext,
                         Public);
 
     // See comment in `encode_side_tables_for_ii` in astencode
-    let ecx_ptr: *int = unsafe { cast::transmute(ecx) };
+    let ecx_ptr: *int = unsafe { mem::transmute(ecx) };
     visit::walk_crate(&mut EncodeVisitor {
         index: &mut index,
         ecx_ptr: ecx_ptr,

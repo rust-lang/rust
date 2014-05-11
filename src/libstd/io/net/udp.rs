@@ -226,6 +226,7 @@ impl Writer for UdpStream {
 }
 
 #[cfg(test)]
+#[allow(experimental)]
 mod test {
     use super::*;
     use io::net::ip::{SocketAddr};

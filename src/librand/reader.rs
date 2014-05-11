@@ -72,14 +72,14 @@ impl<R: Reader> Rng for ReaderRng<R> {
 mod test {
     use super::ReaderRng;
     use std::io::MemReader;
-    use std::cast;
+    use std::mem;
     use Rng;
 
     #[test]
     fn test_reader_rng_u64() {
         // transmute from the target to avoid endianness concerns.
         let v = box [1u64, 2u64, 3u64];
-        let bytes: ~[u8] = unsafe {cast::transmute(v)};
+        let bytes: ~[u8] = unsafe {mem::transmute(v)};
         let mut rng = ReaderRng::new(MemReader::new(bytes.move_iter().collect()));
 
         assert_eq!(rng.next_u64(), 1);
@@ -90,7 +90,7 @@ mod test {
     fn test_reader_rng_u32() {
         // transmute from the target to avoid endianness concerns.
         let v = box [1u32, 2u32, 3u32];
-        let bytes: ~[u8] = unsafe {cast::transmute(v)};
+        let bytes: ~[u8] = unsafe {mem::transmute(v)};
         let mut rng = ReaderRng::new(MemReader::new(bytes.move_iter().collect()));
 
         assert_eq!(rng.next_u32(), 1);

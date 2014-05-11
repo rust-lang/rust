@@ -23,7 +23,7 @@ pointers, and then storing the parent pointers as `Weak` pointers.
 
 */
 
-use cast::transmute;
+use mem::transmute;
 use cell::Cell;
 use clone::Clone;
 use cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering};

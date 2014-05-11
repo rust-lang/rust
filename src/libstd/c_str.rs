@@ -65,24 +65,23 @@ fn main() {
 
 */
 
-use cast;
+use clone::Clone;
+use cmp::Eq;
 use container::Container;
 use iter::{Iterator, range};
-use libc;
 use kinds::marker;
-use ops::Drop;
-use cmp::Eq;
-use clone::Clone;
+use libc;
 use mem;
+use ops::Drop;
 use option::{Option, Some, None};
 use ptr::RawPtr;
 use ptr;
-use str::StrSlice;
-use str;
+use raw::Slice;
+use rt::libc_heap::malloc_raw;
 use slice::{ImmutableVector, MutableVector};
 use slice;
-use rt::libc_heap::malloc_raw;
-use raw::Slice;
+use str::StrSlice;
+use str;
 
 /// The representation of a C String.
 ///
@@ -154,7 +153,7 @@ impl CString {
     /// Fails if the CString is null.
     pub fn with_mut_ref<T>(&mut self, f: |*mut libc::c_char| -> T) -> T {
         if self.buf.is_null() { fail!("CString is null!"); }
-        f(unsafe { cast::transmute_mut_unsafe(self.buf) })
+        f(self.buf as *mut libc::c_char)
     }
 
     /// Returns true if the CString is a null.
@@ -182,7 +181,7 @@ impl CString {
     pub fn as_bytes<'a>(&'a self) -> &'a [u8] {
         if self.buf.is_null() { fail!("CString is null!"); }
         unsafe {
-            cast::transmute(Slice { data: self.buf, len: self.len() + 1 })
+            mem::transmute(Slice { data: self.buf, len: self.len() + 1 })
         }
     }
 
@@ -196,7 +195,7 @@ impl CString {
     pub fn as_bytes_no_nul<'a>(&'a self) -> &'a [u8] {
         if self.buf.is_null() { fail!("CString is null!"); }
         unsafe {
-            cast::transmute(Slice { data: self.buf, len: self.len() })
+            mem::transmute(Slice { data: self.buf, len: self.len() })
         }
     }
 

@@ -58,8 +58,8 @@
 // Currently Rust uses unwind runtime provided by libgcc.
 
 use any::{Any, AnyRefExt};
-use cast;
 use fmt;
+use intrinsics;
 use kinds::Send;
 use mem;
 use option::{Some, None, Option};
@@ -72,7 +72,6 @@ use rt::local::Local;
 use rt::task::Task;
 use str::Str;
 use task::TaskResult;
-use intrinsics;
 
 use uw = rt::libunwind;
 
@@ -98,7 +97,7 @@ impl Unwinder {
         use libc::{c_void};
 
         unsafe {
-            let closure: Closure = cast::transmute(f);
+            let closure: Closure = mem::transmute(f);
             let ep = rust_try(try_fn, closure.code as *c_void,
                               closure.env as *c_void);
             if !ep.is_null() {
@@ -109,7 +108,7 @@ impl Unwinder {
 
         extern fn try_fn(code: *c_void, env: *c_void) {
             unsafe {
-                let closure: || = cast::transmute(Closure {
+                let closure: || = mem::transmute(Closure {
                     code: code as *(),
                     env: env as *(),
                 });
@@ -146,7 +145,7 @@ impl Unwinder {
                     exception_cleanup: exception_cleanup,
                     private: [0, ..uw::unwinder_private_data_size],
                 };
-                let error = uw::_Unwind_RaiseException(cast::transmute(exception));
+                let error = uw::_Unwind_RaiseException(mem::transmute(exception));
                 rtabort!("Could not unwind stack, error = {}", error as int)
             }
 
@@ -155,7 +154,7 @@ impl Unwinder {
                 rtdebug!("exception_cleanup()");
                 unsafe {
                     let _: Box<uw::_Unwind_Exception> =
-                        cast::transmute(exception);
+                        mem::transmute(exception);
                 }
             }
         }

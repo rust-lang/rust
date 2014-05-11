@@ -12,8 +12,7 @@
 //!
 //! For more details, see std::str
 
-use cast::transmute;
-use cast;
+use mem;
 use char;
 use clone::Clone;
 use cmp::{Eq, TotalEq};
@@ -572,7 +571,7 @@ impl<'a> Iterator<UTF16Item> for UTF16Items<'a> {
 
         if u < 0xD800 || 0xDFFF < u {
             // not a surrogate
-            Some(ScalarValue(unsafe {cast::transmute(u as u32)}))
+            Some(ScalarValue(unsafe {mem::transmute(u as u32)}))
         } else if u >= 0xDC00 {
             // a trailing surrogate
             Some(LoneSurrogate(u))
@@ -594,7 +593,7 @@ impl<'a> Iterator<UTF16Item> for UTF16Items<'a> {
 
             // all ok, so lets decode it.
             let c = ((u - 0xD800) as u32 << 10 | (u2 - 0xDC00) as u32) + 0x1_0000;
-            Some(ScalarValue(unsafe {cast::transmute(c)}))
+            Some(ScalarValue(unsafe {mem::transmute(c)}))
         }
     }
 
@@ -710,7 +709,7 @@ static TAG_CONT_U8: u8 = 128u8;
 
 /// Unsafe operations
 pub mod raw {
-    use cast;
+    use mem;
     use container::Container;
     use iter::Iterator;
     use ptr::RawPtr;
@@ -721,7 +720,7 @@ pub mod raw {
     /// Converts a slice of bytes to a string slice without checking
     /// that the string contains valid UTF-8.
     pub unsafe fn from_utf8<'a>(v: &'a [u8]) -> &'a str {
-        cast::transmute(v)
+        mem::transmute(v)
     }
 
     /// Form a slice from a C string. Unsafe because the caller must ensure the
@@ -736,8 +735,8 @@ pub mod raw {
             curr = s.offset(len as int);
         }
         let v = Slice { data: s, len: len };
-        assert!(is_utf8(::cast::transmute(v)));
-        ::cast::transmute(v)
+        assert!(is_utf8(::mem::transmute(v)));
+        ::mem::transmute(v)
     }
 
     /// Takes a bytewise (not UTF-8) slice from a string.
@@ -762,7 +761,7 @@ pub mod raw {
     /// Caller must check slice boundaries!
     #[inline]
     pub unsafe fn slice_unchecked<'a>(s: &'a str, begin: uint, end: uint) -> &'a str {
-        cast::transmute(Slice {
+        mem::transmute(Slice {
                 data: s.as_ptr().offset(begin as int),
                 len: end - begin,
             })
@@ -1747,7 +1746,7 @@ impl<'a> StrSlice<'a> for &'a str {
             if w > 2 { val = utf8_acc_cont_byte!(val, s[i + 2]); }
             if w > 3 { val = utf8_acc_cont_byte!(val, s[i + 3]); }
 
-            return CharRange {ch: unsafe { transmute(val) }, next: i + w};
+            return CharRange {ch: unsafe { mem::transmute(val) }, next: i + w};
         }
 
         return multibyte_char_range_at(*self, i);
@@ -1776,7 +1775,7 @@ impl<'a> StrSlice<'a> for &'a str {
             if w > 2 { val = utf8_acc_cont_byte!(val, s[i + 2]); }
             if w > 3 { val = utf8_acc_cont_byte!(val, s[i + 3]); }
 
-            return CharRange {ch: unsafe { transmute(val) }, next: i};
+            return CharRange {ch: unsafe { mem::transmute(val) }, next: i};
         }
 
         return multibyte_char_range_at_reverse(*self, prev);
@@ -1794,7 +1793,7 @@ impl<'a> StrSlice<'a> for &'a str {
 
     #[inline]
     fn as_bytes(&self) -> &'a [u8] {
-        unsafe { cast::transmute(*self) }
+        unsafe { mem::transmute(*self) }
     }
 
     fn find<C: CharEq>(&self, mut search: C) -> Option<uint> {

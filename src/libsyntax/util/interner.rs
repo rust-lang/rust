@@ -15,11 +15,11 @@
 use ast::Name;
 
 use collections::HashMap;
-use std::cast;
 use std::cell::RefCell;
 use std::cmp::Equiv;
 use std::fmt;
 use std::hash::Hash;
+use std::mem;
 use std::rc::Rc;
 
 pub struct Interner<T> {
@@ -198,7 +198,7 @@ impl StrInterner {
         let vect = self.vect.borrow();
         let s: &str = vect.get(idx as uint).as_slice();
         unsafe {
-            cast::transmute(s)
+            mem::transmute(s)
         }
     }
 

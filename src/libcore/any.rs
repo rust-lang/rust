@@ -20,7 +20,7 @@
 //! value. `Box<Any>` adds the `move` method, which will unwrap a `Box<T>` from the object.  See
 //! the extension traits (`*Ext`) for the full details.
 
-use cast::{transmute, transmute_copy};
+use mem::{transmute, transmute_copy};
 use option::{Option, Some, None};
 use owned::Box;
 use raw::TraitObject;

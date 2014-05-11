@@ -10,18 +10,18 @@
 
 //! Operations on ASCII strings and characters
 
-use to_str::{IntoStr};
-use str;
-use str::Str;
-use str::{StrAllocating, StrSlice};
-use str::OwnedStr;
 use container::Container;
-use cast;
 use fmt;
 use iter::Iterator;
-use slice::{ImmutableVector, MutableVector, Vector};
-use vec::Vec;
+use mem;
 use option::{Option, Some, None};
+use slice::{ImmutableVector, MutableVector, Vector};
+use str::OwnedStr;
+use str::Str;
+use str::{StrAllocating, StrSlice};
+use str;
+use to_str::{IntoStr};
+use vec::Vec;
 
 /// Datatype to hold one ascii character. It wraps a `u8`, with the highest bit always zero.
 #[deriving(Clone, Eq, Ord, TotalOrd, TotalEq, Hash)]
@@ -162,7 +162,7 @@ pub trait AsciiCast<T> {
 impl<'a> AsciiCast<&'a[Ascii]> for &'a [u8] {
     #[inline]
     unsafe fn to_ascii_nocheck(&self) -> &'a[Ascii] {
-        cast::transmute(*self)
+        mem::transmute(*self)
     }
 
     #[inline]
@@ -177,7 +177,7 @@ impl<'a> AsciiCast<&'a[Ascii]> for &'a [u8] {
 impl<'a> AsciiCast<&'a [Ascii]> for &'a str {
     #[inline]
     unsafe fn to_ascii_nocheck(&self) -> &'a [Ascii] {
-        cast::transmute(*self)
+        mem::transmute(*self)
     }
 
     #[inline]
@@ -245,7 +245,7 @@ impl OwnedAsciiCast for ~[u8] {
 
     #[inline]
     unsafe fn into_ascii_nocheck(self) -> Vec<Ascii> {
-        cast::transmute(Vec::from_slice(self.as_slice()))
+        mem::transmute(Vec::from_slice(self.as_slice()))
     }
 }
 
@@ -257,7 +257,7 @@ impl OwnedAsciiCast for ~str {
 
     #[inline]
     unsafe fn into_ascii_nocheck(self) -> Vec<Ascii> {
-        let v: ~[u8] = cast::transmute(self);
+        let v: ~[u8] = mem::transmute(self);
         v.into_ascii_nocheck()
     }
 }
@@ -270,7 +270,7 @@ impl OwnedAsciiCast for Vec<u8> {
 
     #[inline]
     unsafe fn into_ascii_nocheck(self) -> Vec<Ascii> {
-        cast::transmute(self)
+        mem::transmute(self)
     }
 }
 
@@ -293,7 +293,7 @@ pub trait AsciiStr {
 impl<'a> AsciiStr for &'a [Ascii] {
     #[inline]
     fn as_str_ascii<'a>(&'a self) -> &'a str {
-        unsafe { cast::transmute(*self) }
+        unsafe { mem::transmute(*self) }
     }
 
     #[inline]
@@ -315,7 +315,7 @@ impl<'a> AsciiStr for &'a [Ascii] {
 impl IntoStr for ~[Ascii] {
     #[inline]
     fn into_str(self) -> ~str {
-        unsafe { cast::transmute(self) }
+        unsafe { mem::transmute(self) }
     }
 }
 
@@ -323,7 +323,7 @@ impl IntoStr for Vec<Ascii> {
     #[inline]
     fn into_str(self) -> ~str {
         unsafe {
-            let s: &str = cast::transmute(self.as_slice());
+            let s: &str = mem::transmute(self.as_slice());
             s.to_owned()
         }
     }
@@ -337,7 +337,7 @@ pub trait IntoBytes {
 
 impl IntoBytes for Vec<Ascii> {
     fn into_bytes(self) -> Vec<u8> {
-        unsafe { cast::transmute(self) }
+        unsafe { mem::transmute(self) }
     }
 }
 

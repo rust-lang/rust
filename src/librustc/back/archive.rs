@@ -15,14 +15,14 @@ use driver::session::Session;
 use metadata::filesearch;
 use lib::llvm::{ArchiveRef, llvm};
 
-use std::cast;
-use std::io;
-use std::io::{fs, TempDir};
 use libc;
-use std::os;
 use std::io::process::{ProcessConfig, Process, ProcessOutput};
-use std::str;
+use std::io::{fs, TempDir};
+use std::io;
+use std::mem;
+use std::os;
 use std::raw;
+use std::str;
 use syntax::abi;
 
 pub static METADATA_FILENAME: &'static str = "rust.metadata.bin";
@@ -230,7 +230,7 @@ impl ArchiveRO {
             if ptr.is_null() {
                 None
             } else {
-                Some(cast::transmute(raw::Slice {
+                Some(mem::transmute(raw::Slice {
                     data: ptr,
                     len: size as uint,
                 }))

@@ -11,6 +11,6 @@
 #![crate_type = "dylib"]
 extern crate both;
 
-use std::cast;
+use std::mem;
 
-pub fn addr() -> uint { unsafe { cast::transmute(&both::foo) } }
+pub fn addr() -> uint { unsafe { mem::transmute(&both::foo) } }

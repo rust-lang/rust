@@ -26,9 +26,9 @@ use print::pp::{break_offset, word, space, zerobreak, hardbreak};
 use print::pp::{Breaks, Consistent, Inconsistent, eof};
 use print::pp;
 
-use std::cast;
 use std::io::{IoResult, MemWriter};
 use std::io;
+use std::mem;
 use std::rc::Rc;
 use std::str;
 use std::strbuf::StrBuf;
@@ -140,9 +140,9 @@ pub fn to_str(f: |&mut State| -> IoResult<()>) -> StrBuf {
         // FIXME(pcwalton): A nasty function to extract the string from an `io::Writer`
         // that we "know" to be a `MemWriter` that works around the lack of checked
         // downcasts.
-        let (_, wr): (uint, Box<MemWriter>) = cast::transmute_copy(&s.s.out);
+        let (_, wr): (uint, Box<MemWriter>) = mem::transmute_copy(&s.s.out);
         let result = str::from_utf8_owned(wr.get_ref().to_owned()).unwrap();
-        cast::forget(wr);
+        mem::forget(wr);
         result.to_strbuf()
     }
 }

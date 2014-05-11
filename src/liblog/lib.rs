@@ -118,10 +118,10 @@ if logging is disabled, none of the components of the log will be executed.
 
 extern crate sync;
 
-use std::cast;
 use std::fmt;
 use std::io::LineBufferedWriter;
 use std::io;
+use std::mem;
 use std::os;
 use std::rt;
 use std::slice;
@@ -343,13 +343,13 @@ fn init() {
         LOG_LEVEL = max_level;
 
         assert!(DIRECTIVES.is_null());
-        DIRECTIVES = cast::transmute(box directives);
+        DIRECTIVES = mem::transmute(box directives);
 
         // Schedule the cleanup for this global for when the runtime exits.
         rt::at_exit(proc() {
             assert!(!DIRECTIVES.is_null());
             let _directives: Box<Vec<directive::LogDirective>> =
-                cast::transmute(DIRECTIVES);
+                mem::transmute(DIRECTIVES);
             DIRECTIVES = 0 as *Vec<directive::LogDirective>;
         });
     }

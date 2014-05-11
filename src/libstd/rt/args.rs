@@ -40,7 +40,7 @@ pub unsafe fn init(argc: int, argv: **u8) { realargs::init(argc, argv) }
 #[cfg(not(test))] pub fn take() -> Option<Vec<~[u8]>> { imp::take() }
 #[cfg(test)]      pub fn take() -> Option<Vec<~[u8]>> {
     match realargs::take() {
-        realstd::option::Some(v) => Some(unsafe{ ::cast::transmute(v) }),
+        realstd::option::Some(v) => Some(unsafe{ ::mem::transmute(v) }),
         realstd::option::None => None,
     }
 }
@@ -49,13 +49,13 @@ pub unsafe fn init(argc: int, argv: **u8) { realargs::init(argc, argv) }
 ///
 /// It is an error if the arguments already exist.
 #[cfg(not(test))] pub fn put(args: Vec<~[u8]>) { imp::put(args) }
-#[cfg(test)]      pub fn put(args: Vec<~[u8]>) { realargs::put(unsafe { ::cast::transmute(args) }) }
+#[cfg(test)]      pub fn put(args: Vec<~[u8]>) { realargs::put(unsafe { ::mem::transmute(args) }) }
 
 /// Make a clone of the global arguments.
 #[cfg(not(test))] pub fn clone() -> Option<Vec<~[u8]>> { imp::clone() }
 #[cfg(test)]      pub fn clone() -> Option<Vec<~[u8]>> {
     match realargs::clone() {
-        realstd::option::Some(v) => Some(unsafe { ::cast::transmute(v) }),
+        realstd::option::Some(v) => Some(unsafe { ::mem::transmute(v) }),
         realstd::option::None => None,
     }
 }
@@ -64,10 +64,9 @@ pub unsafe fn init(argc: int, argv: **u8) { realargs::init(argc, argv) }
 #[cfg(target_os = "android")]
 #[cfg(target_os = "freebsd")]
 mod imp {
-    use cast;
     use clone::Clone;
-    use option::{Option, Some, None};
     use iter::Iterator;
+    use option::{Option, Some, None};
     use owned::Box;
     use unstable::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
     use mem;
@@ -120,7 +119,7 @@ mod imp {
     }
 
     fn get_global_ptr() -> *mut Option<Box<Vec<~[u8]>>> {
-        unsafe { cast::transmute(&global_args_ptr) }
+        unsafe { mem::transmute(&global_args_ptr) }
     }
 
     // Copied from `os`.
