@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-pretty very bad with line comments
+
 extern crate sync;
 
 use std::io;

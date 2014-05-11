@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-pretty -- comments are unfaithfully preserved
-
 fn main() {
     let mut x: Option<int> = None;
     match x {

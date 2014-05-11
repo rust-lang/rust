@@ -168,7 +168,7 @@ pub fn tt_to_str(tt: &ast::TokenTree) -> StrBuf {
 }
 
 pub fn tts_to_str(tts: &[ast::TokenTree]) -> StrBuf {
-    to_str(|s| s.print_tts(&tts))
+    to_str(|s| s.print_tts(tts))
 }
 
 pub fn stmt_to_str(stmt: &ast::Stmt) -> StrBuf {
@@ -1258,28 +1258,7 @@ impl<'a> State<'a> {
             }
             ast::ExprAddrOf(m, expr) => {
                 try!(word(&mut self.s, "&"));
-
-                // `ExprAddrOf(ExprLit("str"))` should be `&&"str"` instead of `&"str"`
-                // since `&"str"` is `ExprVstore(ExprLit("str"))` which has same meaning to
-                // `"str"`.
-                // In many cases adding parentheses (`&("str")`) would help, but it become invalid
-                // if expr is in `PatLit()`.
-                let needs_extra_amp = match expr.node {
-                    ast::ExprLit(lit) => {
-                        match lit.node {
-                            ast::LitStr(..) => true,
-                            _ => false,
-                        }
-                    }
-                    ast::ExprVec(..) => true,
-                    _ => false,
-                };
-                if needs_extra_amp {
-                    try!(word(&mut self.s, "&"));
-                }
-
                 try!(self.print_mutability(m));
-
                 try!(self.print_expr_maybe_paren(expr));
             }
             ast::ExprLit(lit) => try!(self.print_literal(lit)),

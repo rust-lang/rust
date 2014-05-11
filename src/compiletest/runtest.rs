@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use common::Config;
-use common::{CompileFail, Pretty, RunFail, RunPass};
+use common::{CompileFail, Pretty, RunFail, RunPass, DebugInfoGdb, DebugInfoLldb};
 use errors;
 use header::TestProps;
 use header;
@@ -64,7 +64,7 @@ pub fn run_metrics(config: Config, testfile: ~str, mm: &mut MetricMap) {
       Pretty => run_pretty_test(&config, &props, &testfile),
       DebugInfoGdb => run_debuginfo_gdb_test(&config, &props, &testfile),
       DebugInfoLldb => run_debuginfo_lldb_test(&config, &props, &testfile),
-      Codegen => run_codegen_test(&config, &props, &testfile, mm)
+      Codegen => run_codegen_test(&config, &props, &testfile, mm),
     }
 }
 
@@ -194,6 +194,7 @@ fn run_pretty_test(config: &Config, props: &TestProps, testfile: &Path) {
     if !proc_res.status.success() {
         fatal_ProcRes("pretty-printed source does not typecheck".to_owned(), &proc_res);
     }
+    if props.no_pretty_expanded { return }
 
     // additionally, run `--pretty expanded` and try to build it.
     let proc_res = print_source(config, props, testfile, (*srcs.get(round)).clone(), "expanded");
@@ -219,10 +220,17 @@ fn run_pretty_test(config: &Config, props: &TestProps, testfile: &Path) {
                         Vec::new(), config.compile_lib_path, Some(src))
     }
 
-    fn make_pp_args(config: &Config, _testfile: &Path) -> ProcArgs {
-        let args = vec!("-".to_owned(), "--pretty".to_owned(), "normal".to_owned(),
-                     "--target=".to_owned() + config.target);
+    fn make_pp_args(config: &Config,
+                    props: &TestProps,
+                    testfile: &Path,
+                    pretty_type: ~str) -> ProcArgs {
+        let aux_dir = aux_output_dir_name(config, testfile);
         // FIXME (#9639): This needs to handle non-utf8 paths
+        let mut args = vec!("-".to_owned(), "--pretty".to_owned(), pretty_type,
+                            "--target=".to_owned() + config.target,
+                            "-L".to_owned(), aux_dir.as_str().unwrap().to_owned());
+        args.push_all_move(split_maybe_args(&config.target_rustcflags));
+        args.push_all_move(split_maybe_args(&props.compile_flags));
         return ProcArgs {prog: config.rustc_path.as_str().unwrap().to_owned(), args: args};
     }
 
@@ -419,14 +427,14 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
     check_debugger_output(&debugger_run_result, check_lines.as_slice());
 }
 
-fn run_debuginfo_lldb_test(config: &config, props: &TestProps, testfile: &Path) {
+fn run_debuginfo_lldb_test(config: &Config, props: &TestProps, testfile: &Path) {
     use std::io::process::{Process, ProcessConfig, ProcessOutput};
 
     if config.lldb_python_dir.is_none() {
         fatal("Can't run LLDB test because LLDB's python path is not set.".to_owned());
     }
 
-    let mut config = config {
+    let mut config = Config {
         target_rustcflags: cleanup_debug_info_options(&config.target_rustcflags),
         host_rustcflags: cleanup_debug_info_options(&config.host_rustcflags),
         .. config.clone()
@@ -481,7 +489,7 @@ fn run_debuginfo_lldb_test(config: &config, props: &TestProps, testfile: &Path) 
 
     check_debugger_output(&debugger_run_result, check_lines.as_slice());
 
-    fn run_lldb(config: &config, test_executable: &Path, debugger_script: &Path) -> ProcRes {
+    fn run_lldb(config: &Config, test_executable: &Path, debugger_script: &Path) -> ProcRes {
         // Prepare the lldb_batchmode which executes the debugger script
         let lldb_batchmode_script = "./src/etc/lldb_batchmode.py".to_owned();
         let test_executable_str = test_executable.as_str().unwrap().to_owned();
