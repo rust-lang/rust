@@ -51,8 +51,7 @@
 use clone::Clone;
 use iter::{range, Iterator};
 use kinds::Send;
-use libc;
-use mem;
+use mem::{forget, min_align_of, size_of, transmute};
 use ops::Drop;
 use option::{Option, Some, None};
 use owned::Box;
@@ -62,6 +61,7 @@ use slice::ImmutableVector;
 use sync::arc::UnsafeArc;
 use sync::atomics::{AtomicInt, AtomicPtr, SeqCst};
 use unstable::sync::Exclusive;
+use rt::heap::{allocate, deallocate};
 use vec::Vec;
 
 // Once the queue is less than 1/K full, then it will be downsized. Note that
@@ -229,7 +229,7 @@ impl<T: Send> Deque<T> {
         Deque {
             bottom: AtomicInt::new(0),
             top: AtomicInt::new(0),
-            array: AtomicPtr::new(unsafe { mem::transmute(buf) }),
+            array: AtomicPtr::new(unsafe { transmute(buf) }),
             pool: pool,
         }
     }
@@ -271,7 +271,7 @@ impl<T: Send> Deque<T> {
             return Some(data);
         } else {
             self.bottom.store(t + 1, SeqCst);
-            mem::forget(data); // someone else stole this value
+            forget(data); // someone else stole this value
             return None;
         }
     }
@@ -293,7 +293,7 @@ impl<T: Send> Deque<T> {
         if self.top.compare_and_swap(t, t + 1, SeqCst) == t {
             Data(data)
         } else {
-            mem::forget(data); // someone else stole this value
+            forget(data); // someone else stole this value
             Abort
         }
     }
@@ -314,7 +314,7 @@ impl<T: Send> Deque<T> {
     // continue to be read after we flag this buffer for reclamation.
     unsafe fn swap_buffer(&mut self, b: int, old: *mut Buffer<T>,
                           buf: Buffer<T>) -> *mut Buffer<T> {
-        let newbuf: *mut Buffer<T> = mem::transmute(box buf);
+        let newbuf: *mut Buffer<T> = transmute(box buf);
         self.array.store(newbuf, SeqCst);
         let ss = (*newbuf).size();
         self.bottom.store(b + ss, SeqCst);
@@ -322,7 +322,7 @@ impl<T: Send> Deque<T> {
         if self.top.compare_and_swap(t, t + ss, SeqCst) != t {
             self.bottom.store(b, SeqCst);
         }
-        self.pool.free(mem::transmute(old));
+        self.pool.free(transmute(old));
         return newbuf;
     }
 }
@@ -339,15 +339,19 @@ impl<T: Send> Drop for Deque<T> {
         for i in range(t, b) {
             let _: T = unsafe { (*a).get(i) };
         }
-        self.pool.free(unsafe { mem::transmute(a) });
+        self.pool.free(unsafe { transmute(a) });
     }
+}
+
+#[inline]
+fn buffer_alloc_size<T>(log_size: int) -> uint {
+    (1 << log_size) * size_of::<T>()
 }
 
 impl<T: Send> Buffer<T> {
     unsafe fn new(log_size: int) -> Buffer<T> {
-        let size = (1 << log_size) * mem::size_of::<T>();
-        let buffer = libc::malloc(size as libc::size_t);
-        assert!(!buffer.is_null());
+        let size = buffer_alloc_size::<T>(log_size);
+        let buffer = allocate(size, min_align_of::<T>());
         Buffer {
             storage: buffer as *T,
             log_size: log_size,
@@ -372,7 +376,7 @@ impl<T: Send> Buffer<T> {
     unsafe fn put(&mut self, i: int, t: T) {
         let ptr = self.storage.offset(i & self.mask());
         ptr::copy_nonoverlapping_memory(ptr as *mut T, &t as *T, 1);
-        mem::forget(t);
+        forget(t);
     }
 
     // Again, unsafe because this has incredibly dubious ownership violations.
@@ -390,7 +394,8 @@ impl<T: Send> Buffer<T> {
 impl<T: Send> Drop for Buffer<T> {
     fn drop(&mut self) {
         // It is assumed that all buffers are empty on drop.
-        unsafe { libc::free(self.storage as *mut libc::c_void) }
+        let size = buffer_alloc_size::<T>(self.log_size);
+        unsafe { deallocate(self.storage as *mut u8, size, min_align_of::<T>()) }
     }
 }
 
@@ -606,8 +611,7 @@ mod tests {
             let s = s.clone();
             let unique_box = box AtomicUint::new(0);
             let thread_box = unsafe {
-                *mem::transmute::<&Box<AtomicUint>,
-                                   **mut AtomicUint>(&unique_box)
+                *mem::transmute::<&Box<AtomicUint>, **mut AtomicUint>(&unique_box)
             };
             (Thread::start(proc() {
                 unsafe {
