@@ -15,7 +15,7 @@
 
 use std::mem;
 use std::ptr;
-use std::rt::heap::exchange_free;
+use std::rt::heap::deallocate;
 use std::sync::atomics;
 use std::mem::{min_align_of, size_of};
 
@@ -191,8 +191,8 @@ impl<T: Share + Send> Drop for Arc<T> {
 
         if self.inner().weak.fetch_sub(1, atomics::Release) == 1 {
             atomics::fence(atomics::Acquire);
-            unsafe { exchange_free(self.x as *mut u8, size_of::<ArcInner<T>>(),
-                                   min_align_of::<ArcInner<T>>()) }
+            unsafe { deallocate(self.x as *mut u8, size_of::<ArcInner<T>>(),
+                                min_align_of::<ArcInner<T>>()) }
         }
     }
 }
@@ -242,8 +242,8 @@ impl<T: Share + Send> Drop for Weak<T> {
         // the memory orderings
         if self.inner().weak.fetch_sub(1, atomics::Release) == 1 {
             atomics::fence(atomics::Acquire);
-            unsafe { exchange_free(self.x as *mut u8, size_of::<ArcInner<T>>(),
-                                   min_align_of::<ArcInner<T>>()) }
+            unsafe { deallocate(self.x as *mut u8, size_of::<ArcInner<T>>(),
+                                min_align_of::<ArcInner<T>>()) }
         }
     }
 }

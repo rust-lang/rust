@@ -165,13 +165,8 @@ pub unsafe fn exchange_malloc(size: uint, align: uint) -> *mut u8 {
 #[lang="exchange_free"]
 #[inline]
 // FIXME: #13994 (rustc should pass align and size here)
-pub unsafe fn exchange_free_(ptr: *mut u8) {
-    exchange_free(ptr, 0, 8)
-}
-
-#[inline]
-pub unsafe fn exchange_free(ptr: *mut u8, size: uint, align: uint) {
-    deallocate(ptr, size, align);
+unsafe fn exchange_free(ptr: *mut u8) {
+    deallocate(ptr, 0, 8);
 }
 
 // FIXME: #7496
@@ -212,7 +207,7 @@ pub unsafe extern "C" fn rust_malloc(size: uint, align: uint) -> *mut u8 {
 #[deprecated]
 #[cfg(not(test))]
 pub unsafe extern "C" fn rust_free(ptr: *mut u8, size: uint, align: uint) {
-    exchange_free(ptr, size, align)
+    deallocate(ptr, size, align)
 }
 
 #[cfg(test)]
