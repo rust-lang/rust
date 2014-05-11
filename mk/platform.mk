@@ -145,6 +145,7 @@ CFG_LIB_NAME_x86_64-unknown-linux-gnu=lib$(1).so
 CFG_STATIC_LIB_NAME_x86_64-unknown-linux-gnu=lib$(1).a
 CFG_LIB_GLOB_x86_64-unknown-linux-gnu=lib$(1)-*.so
 CFG_LIB_DSYM_GLOB_x86_64-unknown-linux-gnu=lib$(1)-*.dylib.dSYM
+CFG_CFLAGS_x86_64-unknown-linux-gnu := -m64
 CFG_GCCISH_CFLAGS_x86_64-unknown-linux-gnu := -Wall -Werror -g -fPIC -m64
 CFG_GCCISH_CXXFLAGS_x86_64-unknown-linux-gnu := -fno-rtti
 CFG_GCCISH_LINK_FLAGS_x86_64-unknown-linux-gnu := -shared -fPIC -ldl -pthread  -lrt -g -m64
@@ -172,6 +173,7 @@ CFG_LIB_NAME_i686-unknown-linux-gnu=lib$(1).so
 CFG_STATIC_LIB_NAME_i686-unknown-linux-gnu=lib$(1).a
 CFG_LIB_GLOB_i686-unknown-linux-gnu=lib$(1)-*.so
 CFG_LIB_DSYM_GLOB_i686-unknown-linux-gnu=lib$(1)-*.dylib.dSYM
+CFG_CFLAGS_i686-unknown-linux-gnu := -m32
 CFG_GCCISH_CFLAGS_i686-unknown-linux-gnu := -Wall -Werror -g -fPIC -m32
 CFG_GCCISH_CXXFLAGS_i686-unknown-linux-gnu := -fno-rtti
 CFG_GCCISH_LINK_FLAGS_i686-unknown-linux-gnu := -shared -fPIC -ldl -pthread  -lrt -g -m32
@@ -201,6 +203,7 @@ AR_arm-apple-darwin = $(shell xcrun -find -sdk iphoneos ar)
 CFG_LIB_NAME_arm-apple-darwin = lib$(1).dylib
 CFG_LIB_GLOB_arm-apple-darwin = lib$(1)-*.dylib
 CFG_LIB_DSYM_GLOB_arm-apple-darwin = lib$(1)-*.dylib.dSYM
+CFG_CFLAGS_arm-apple-darwin := $(CFG_IOS_FLAGS)
 CFG_GCCISH_CFLAGS_arm-apple-darwin := -Wall -Werror -g -fPIC $(CFG_IOS_FLAGS)
 CFG_GCCISH_CXXFLAGS_arm-apple-darwin := -fno-rtti $(CFG_IOS_FLAGS)
 CFG_GCCISH_LINK_FLAGS_arm-apple-darwin := -dynamiclib -lpthread -framework CoreServices -Wl,-no_compact_unwind
@@ -229,6 +232,7 @@ CFG_LIB_NAME_x86_64-apple-darwin=lib$(1).dylib
 CFG_STATIC_LIB_NAME_x86_64-apple-darwin=lib$(1).a
 CFG_LIB_GLOB_x86_64-apple-darwin=lib$(1)-*.dylib
 CFG_LIB_DSYM_GLOB_x86_64-apple-darwin=lib$(1)-*.dylib.dSYM
+CFG_CFLAGS_x86_64-apple-darwin := -m64 -arch x86_64
 CFG_GCCISH_CFLAGS_x86_64-apple-darwin := -Wall -Werror -g -fPIC -m64 -arch x86_64
 CFG_GCCISH_CXXFLAGS_x86_64-apple-darwin := -fno-rtti
 CFG_GCCISH_LINK_FLAGS_x86_64-apple-darwin := -dynamiclib -pthread  -framework CoreServices -m64
@@ -256,6 +260,7 @@ CFG_LIB_NAME_i686-apple-darwin=lib$(1).dylib
 CFG_STATIC_LIB_NAME_i686-apple-darwin=lib$(1).a
 CFG_LIB_GLOB_i686-apple-darwin=lib$(1)-*.dylib
 CFG_LIB_DSYM_GLOB_i686-apple-darwin=lib$(1)-*.dylib.dSYM
+CFG_CFLAGS_i686-apple-darwin := -m32 -arch i386
 CFG_GCCISH_CFLAGS_i686-apple-darwin := -Wall -Werror -g -fPIC -m32 -arch i386
 CFG_GCCISH_CXXFLAGS_i686-apple-darwin := -fno-rtti
 CFG_GCCISH_LINK_FLAGS_i686-apple-darwin := -dynamiclib -pthread  -framework CoreServices -m32
@@ -283,6 +288,7 @@ CFG_LIB_NAME_arm-linux-androideabi=lib$(1).so
 CFG_STATIC_LIB_NAME_arm-linux-androideabi=lib$(1).a
 CFG_LIB_GLOB_arm-linux-androideabi=lib$(1)-*.so
 CFG_LIB_DSYM_GLOB_arm-linux-androideabi=lib$(1)-*.dylib.dSYM
+CFG_CFLAGS_arm-linux-androideabi := -D__arm__ -DANDROID -D__ANDROID__
 CFG_GCCISH_CFLAGS_arm-linux-androideabi := -Wall -g -fPIC -D__arm__ -DANDROID -D__ANDROID__
 CFG_GCCISH_CXXFLAGS_arm-linux-androideabi := -fno-rtti
 CFG_GCCISH_LINK_FLAGS_arm-linux-androideabi := -shared -fPIC -ldl -g -lm -lsupc++
@@ -313,6 +319,7 @@ CFG_LIB_NAME_arm-unknown-linux-gnueabihf=lib$(1).so
 CFG_STATIC_LIB_NAME_arm-unknown-linux-gnueabihf=lib$(1).a
 CFG_LIB_GLOB_arm-unknown-linux-gnueabihf=lib$(1)-*.so
 CFG_LIB_DSYM_GLOB_arm-unknown-linux-gnueabihf=lib$(1)-*.dylib.dSYM
+CFG_CFLAGS_arm-unknown-linux-gnueabihf := -D__arm__
 CFG_GCCISH_CFLAGS_arm-unknown-linux-gnueabihf := -Wall -g -fPIC -D__arm__
 CFG_GCCISH_CXXFLAGS_arm-unknown-linux-gnueabihf := -fno-rtti
 CFG_GCCISH_LINK_FLAGS_arm-unknown-linux-gnueabihf := -shared -fPIC -g
@@ -343,6 +350,7 @@ CFG_LIB_NAME_arm-unknown-linux-gnueabi=lib$(1).so
 CFG_STATIC_LIB_NAME_arm-unknown-linux-gnueabi=lib$(1).a
 CFG_LIB_GLOB_arm-unknown-linux-gnueabi=lib$(1)-*.so
 CFG_LIB_DSYM_GLOB_arm-unknown-linux-gnueabi=lib$(1)-*.dylib.dSYM
+CFG_CFLAGS_arm-unknown-linux-gnueabi := -D__arm__ -mfpu=vfp
 CFG_GCCISH_CFLAGS_arm-unknown-linux-gnueabi := -Wall -g -fPIC -D__arm__ -mfpu=vfp
 CFG_GCCISH_CXXFLAGS_arm-unknown-linux-gnueabi := -fno-rtti
 CFG_GCCISH_LINK_FLAGS_arm-unknown-linux-gnueabi := -shared -fPIC -g
@@ -372,6 +380,7 @@ CFG_LIB_NAME_mips-unknown-linux-gnu=lib$(1).so
 CFG_STATIC_LIB_NAME_mips-unknown-linux-gnu=lib$(1).a
 CFG_LIB_GLOB_mips-unknown-linux-gnu=lib$(1)-*.so
 CFG_LIB_DSYM_GLOB_mips-unknown-linux-gnu=lib$(1)-*.dylib.dSYM
+CFG_CFLAGS_mips-unknown-linux-gnu := -mips32r2 -msoft-float -mabi=32 -mno-compact-eh
 CFG_GCCISH_CFLAGS_mips-unknown-linux-gnu := -Wall -g -fPIC -mips32r2 -msoft-float -mabi=32 -mno-compact-eh
 CFG_GCCISH_CXXFLAGS_mips-unknown-linux-gnu := -fno-rtti
 CFG_GCCISH_LINK_FLAGS_mips-unknown-linux-gnu := -shared -fPIC -g -mips32r2 -msoft-float -mabi=32
@@ -400,6 +409,7 @@ CFG_LIB_NAME_i686-pc-mingw32=$(1).dll
 CFG_STATIC_LIB_NAME_i686-pc-mingw32=$(1).lib
 CFG_LIB_GLOB_i686-pc-mingw32=$(1)-*.dll
 CFG_LIB_DSYM_GLOB_i686-pc-mingw32=$(1)-*.dylib.dSYM
+CFG_CFLAGS_mips-i686-pc-mingw32 := -m32 -march=i686 -D_WIN32_WINNT=0x0600
 CFG_GCCISH_CFLAGS_i686-pc-mingw32 := -Wall -Werror -g -m32 -march=i686 -D_WIN32_WINNT=0x0600 -I$(CFG_SRC_DIR)src/etc/mingw-fix-include
 CFG_GCCISH_CXXFLAGS_i686-pc-mingw32 := -fno-rtti
 CFG_GCCISH_LINK_FLAGS_i686-pc-mingw32 := -shared -fPIC -g -m32
@@ -428,6 +438,7 @@ CFG_LIB_NAME_i586-mingw32msvc=$(1).dll
 CFG_STATIC_LIB_NAME_i586-mingw32msvc=$(1).lib
 CFG_LIB_GLOB_i586-mingw32msvc=$(1)-*.dll
 CFG_LIB_DSYM_GLOB_i586-mingw32msvc=$(1)-*.dylib.dSYM
+CFG_CFLAGS_i586-mingw32msvc := -march=i586 -m32
 CFG_GCCISH_CFLAGS_i586-mingw32msvc := -Wall -Werror -g -march=i586 -m32
 CFG_GCCISH_CXXFLAGS_i586-mingw32msvc := -fno-rtti
 CFG_GCCISH_LINK_FLAGS_i586-mingw32msvc := -shared -g -m32
@@ -458,6 +469,7 @@ CFG_LIB_NAME_i686-w64-mingw32=$(1).dll
 CFG_STATIC_LIB_NAME_i686-w64-mingw32=$(1).lib
 CFG_LIB_GLOB_i686-w64-mingw32=$(1)-*.dll
 CFG_LIB_DSYM_GLOB_i686-w64-mingw32=$(1)-*.dylib.dSYM
+CFG_CFLAGS_i586-w64-mingw32 := -march=i586 -m32 -D_WIN32_WINNT=0x0600
 CFG_GCCISH_CFLAGS_i686-w64-mingw32 := -Wall -Werror -g -m32 -D_WIN32_WINNT=0x0600
 CFG_GCCISH_CXXFLAGS_i686-w64-mingw32 := -fno-rtti
 CFG_GCCISH_LINK_FLAGS_i686-w64-mingw32 := -shared -g -m32
@@ -487,6 +499,7 @@ CFG_LIB_NAME_x86_64-w64-mingw32=$(1).dll
 CFG_STATIC_LIB_NAME_x86_64-w64-mingw32=$(1).lib
 CFG_LIB_GLOB_x86_64-w64-mingw32=$(1)-*.dll
 CFG_LIB_DSYM_GLOB_x86_64-w64-mingw32=$(1)-*.dylib.dSYM
+CFG_CFLAGS_x86_64-w64-mingw32 := -m64 -D_WIN32_WINNT=0x0600
 CFG_GCCISH_CFLAGS_x86_64-w64-mingw32 := -Wall -Werror -g -m64 -D_WIN32_WINNT=0x0600
 CFG_GCCISH_CXXFLAGS_x86_64-w64-mingw32 := -fno-rtti
 CFG_GCCISH_LINK_FLAGS_x86_64-w64-mingw32 := -shared -g -m64
@@ -515,6 +528,7 @@ CFG_LIB_NAME_x86_64-unknown-freebsd=lib$(1).so
 CFG_STATIC_LIB_NAME_x86_64-unknown-freebsd=lib$(1).a
 CFG_LIB_GLOB_x86_64-unknown-freebsd=lib$(1)-*.so
 CFG_LIB_DSYM_GLOB_x86_64-unknown-freebsd=$(1)-*.dylib.dSYM
+CFG_CFLAGS_x86_64-unknown-freebsd := -I/usr/local/include
 CFG_GCCISH_CFLAGS_x86_64-unknown-freebsd := -Wall -Werror -g -fPIC -I/usr/local/include
 CFG_GCCISH_LINK_FLAGS_x86_64-unknown-freebsd := -shared -fPIC -g -pthread  -lrt
 CFG_GCCISH_DEF_FLAG_x86_64-unknown-freebsd := -Wl,--export-dynamic,--dynamic-list=
