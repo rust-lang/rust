@@ -37,11 +37,9 @@ fn main() {
         unsafe { libc::exit(1) }
     });
 
-    let host = "127.0.0.1";
-    let port = 0;
     let (tx, rx) = channel();
     spawn(proc() {
-        let mut listener = TcpListener::bind(host, port).unwrap();
+        let mut listener = TcpListener::bind("127.0.0.1", 0).unwrap();
         tx.send(listener.socket_name().unwrap());
         let mut acceptor = listener.listen();
         loop {
@@ -57,8 +55,6 @@ fn main() {
         }
     });
     let addr = rx.recv();
-    let host = addr.ip.to_str();
-    let port = addr.port;
 
     let (tx, rx) = channel();
     for _ in range(0, 1000) {
@@ -66,6 +62,8 @@ fn main() {
         let mut builder = TaskBuilder::new();
         builder.opts.stack_size = Some(32 * 1024);
         builder.spawn(proc() {
+            let host = addr.ip.to_str();
+            let port = addr.port;
             match TcpStream::connect(host, port) {
                 Ok(stream) => {
                     let mut stream = stream;
