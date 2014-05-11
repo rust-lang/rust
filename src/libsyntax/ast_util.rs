@@ -153,6 +153,9 @@ pub fn int_ty_to_str(t: IntTy, val: Option<i64>, mode: SuffixMode) -> StrBuf {
     };
 
     match val {
+        // cast to a u64 so we can correctly print INT64_MIN. All integral types
+        // are parsed as u64, so we wouldn't want to print an extra negative
+        // sign.
         Some(n) => format!("{}{}", n as u64, s).to_strbuf(),
         None => s.to_strbuf()
     }
