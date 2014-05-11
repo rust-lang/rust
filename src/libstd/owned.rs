@@ -14,6 +14,7 @@ use any::{Any, AnyRefExt};
 use clone::Clone;
 use cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering};
 use default::Default;
+use fmt;
 use intrinsics;
 use mem;
 use raw::TraitObject;
@@ -97,5 +98,18 @@ impl AnyOwnExt for Box<Any> {
         } else {
             Err(self)
         }
+    }
+}
+
+impl<T: fmt::Show> fmt::Show for Box<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        (**self).fmt(f)
+    }
+}
+
+#[cfg(not(stage0))]
+impl fmt::Show for Box<Any> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad("Box<Any>")
     }
 }

@@ -290,7 +290,7 @@ impl fmt::Show for clean::Type {
             }
             clean::ResolvedPath{ did, ref typarams, ref path} => {
                 try!(resolved_path(f, did, path, false));
-                tybounds(f.buf, typarams)
+                tybounds(f, typarams)
             }
             clean::Self(..) => f.write("Self".as_bytes()),
             clean::Primitive(prim) => {

@@ -54,6 +54,17 @@ macro_rules! assert(
     );
 )
 
+/// Runtime assertion for equality, for details see std::macros
+macro_rules! assert_eq(
+    ($cond1:expr, $cond2:expr) => ({
+        let c1 = $cond1;
+        let c2 = $cond2;
+        if c1 != c2 || c2 != c1 {
+            fail!("expressions not equal, left: {}, right: {}", c1, c2);
+        }
+    })
+)
+
 /// Runtime assertion, disableable at compile time
 #[macro_export]
 macro_rules! debug_assert(
@@ -65,3 +76,13 @@ macro_rules! debug_assert(
 macro_rules! try(
     ($e:expr) => (match $e { Ok(e) => e, Err(e) => return Err(e) })
 )
+
+#[cfg(test)]
+macro_rules! vec( ($($e:expr),*) => ({
+    let mut _v = ::std::vec::Vec::new();
+    $(_v.push($e);)*
+    _v
+}) )
+
+#[cfg(test)]
+macro_rules! format( ($($arg:tt)*) => (format_args!(::fmt::format, $($arg)*)) )

@@ -268,7 +268,7 @@
 
 use clone::Clone;
 use cmp::Eq;
-use fmt::Show;
+use std::fmt::Show;
 use iter::{Iterator, FromIterator};
 use option::{None, Option, Some};
 
@@ -621,9 +621,12 @@ pub fn fold_<T,E,Iter:Iterator<Result<T,E>>>(iterator: Iter) -> Result<(),E> {
 
 #[cfg(test)]
 mod tests {
-    use realstd::result::{collect, fold, fold_};
-    use realstd::prelude::*;
-    use realstd::iter::range;
+    use realstd::vec::Vec;
+    use realstd::str::StrAllocating;
+
+    use result::{collect, fold, fold_};
+    use prelude::*;
+    use iter::range;
 
     pub fn op1() -> Result<int, ~str> { Ok(666) }
     pub fn op2() -> Result<int, ~str> { Err("sadface".to_owned()) }
@@ -670,33 +673,37 @@ mod tests {
 
     #[test]
     pub fn test_impl_map() {
-        assert_eq!(Ok::<~str, ~str>("a".to_owned()).map(|x| x + "b"), Ok("ab".to_owned()));
-        assert_eq!(Err::<~str, ~str>("a".to_owned()).map(|x| x + "b"), Err("a".to_owned()));
+        assert_eq!(Ok::<~str, ~str>("a".to_owned()).map(|x| x + "b"),
+                   Ok("ab".to_owned()));
+        assert_eq!(Err::<~str, ~str>("a".to_owned()).map(|x| x + "b"),
+                   Err("a".to_owned()));
     }
 
     #[test]
     pub fn test_impl_map_err() {
-        assert_eq!(Ok::<~str, ~str>("a".to_owned()).map_err(|x| x + "b"), Ok("a".to_owned()));
-        assert_eq!(Err::<~str, ~str>("a".to_owned()).map_err(|x| x + "b"), Err("ab".to_owned()));
+        assert_eq!(Ok::<~str, ~str>("a".to_owned()).map_err(|x| x + "b"),
+                   Ok("a".to_owned()));
+        assert_eq!(Err::<~str, ~str>("a".to_owned()).map_err(|x| x + "b"),
+                   Err("ab".to_owned()));
     }
 
     #[test]
     fn test_collect() {
         let v: Result<Vec<int>, ()> = collect(range(0, 0).map(|_| Ok::<int, ()>(0)));
-        assert_eq!(v, Ok(vec![]));
+        assert!(v == Ok(vec![]));
 
         let v: Result<Vec<int>, ()> = collect(range(0, 3).map(|x| Ok::<int, ()>(x)));
-        assert_eq!(v, Ok(vec![0, 1, 2]));
+        assert!(v == Ok(vec![0, 1, 2]));
 
         let v: Result<Vec<int>, int> = collect(range(0, 3)
                                                .map(|x| if x > 1 { Err(x) } else { Ok(x) }));
-        assert_eq!(v, Err(2));
+        assert!(v == Err(2));
 
         // test that it does not take more elements than it needs
         let mut functions = [|| Ok(()), || Err(1), || fail!()];
 
         let v: Result<Vec<()>, int> = collect(functions.mut_iter().map(|f| (*f)()));
-        assert_eq!(v, Err(1));
+        assert!(v == Err(1));
     }
 
     #[test]
@@ -718,15 +725,6 @@ mod tests {
         assert_eq!(fold_(functions.mut_iter()
                         .map(|f| (*f)())),
                    Err(1));
-    }
-
-    #[test]
-    pub fn test_to_str() {
-        let ok: Result<int, ~str> = Ok(100);
-        let err: Result<int, ~str> = Err("Err".to_owned());
-
-        assert_eq!(ok.to_str(), "Ok(100)".to_owned());
-        assert_eq!(err.to_str(), "Err(Err)".to_owned());
     }
 
     #[test]

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// no-pretty-expanded
+
 #![feature(phase)]
 #[phase(syntax)] extern crate green;
 
@@ -33,7 +35,7 @@ impl fmt::Show for Color {
             Yellow => "yellow",
             Blue => "blue",
         };
-        f.buf.write(str.as_bytes())
+        write!(f, "{}", str)
     }
 }
 
@@ -82,7 +84,7 @@ impl fmt::Show for Number {
         }
 
         for s in out.iter().rev() {
-            try!(f.buf.write(s.as_bytes()));
+            try!(write!(f, "{}", s))
         }
         Ok(())
     }

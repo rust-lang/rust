@@ -15,6 +15,7 @@
 use prelude::*;
 
 use from_str::FromStr;
+use intrinsics;
 use libc::c_int;
 use num::strconv;
 use num;

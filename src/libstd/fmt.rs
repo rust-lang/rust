@@ -285,10 +285,10 @@ use std::io;
 format_args!(fmt::format, "this returns {}", "~str");
 
 let some_writer: &mut io::Writer = &mut io::stdout();
-format_args!(|args| { fmt::write(some_writer, args) }, "print with a {}", "closure");
+format_args!(|args| { write!(some_writer, "{}", args) }, "print with a {}", "closure");
 
 fn my_fmt_fn(args: &fmt::Arguments) {
-    fmt::write(&mut io::stdout(), args);
+    write!(&mut io::stdout(), "{}", args);
 }
 format_args!(my_fmt_fn, "or a {} too", "function");
 # }
@@ -490,6 +490,7 @@ use repr;
 use result::{Ok, Err};
 use str::{StrAllocating};
 use str;
+use strbuf::StrBuf;
 use slice::Vector;
 
 pub use core::fmt::{Formatter, Result, FormatWriter, Show, rt};
@@ -548,6 +549,13 @@ pub fn format(args: &Arguments) -> ~str {
     let mut output = io::MemWriter::new();
     let _ = write!(&mut output, "{}", args);
     str::from_utf8(output.unwrap().as_slice()).unwrap().to_owned()
+}
+
+/// Temporary transition utility
+pub fn format_strbuf(args: &Arguments) -> StrBuf {
+    let mut output = io::MemWriter::new();
+    let _ = write!(&mut output, "{}", args);
+    str::from_utf8(output.unwrap().as_slice()).unwrap().into_strbuf()
 }
 
 impl<T> Poly for T {

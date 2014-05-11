@@ -11,7 +11,7 @@
 //! The Rust core library
 //!
 //! This library is meant to represent the core functionality of rust that is
-//! maximally portable to other platforms. To that exent, this library has no
+//! maximally portable to other platforms. To that extent, this library has no
 //! knowledge of things like allocation, threads, I/O, etc. This library is
 //! built on the assumption of a few existing symbols:
 //!
@@ -48,15 +48,14 @@
 #[cfg(test)] extern crate realcore = "core";
 #[cfg(test)] extern crate libc;
 #[cfg(test)] extern crate native;
-#[phase(syntax, link)] #[cfg(test)] extern crate realstd = "std";
-#[phase(syntax, link)] #[cfg(test)] extern crate log;
+#[cfg(test)] extern crate rand;
+#[cfg(test)] extern crate realstd = "std";
 
 #[cfg(test)] pub use cmp = realcore::cmp;
 #[cfg(test)] pub use kinds = realcore::kinds;
 #[cfg(test)] pub use ops = realcore::ops;
 #[cfg(test)] pub use ty = realcore::ty;
 
-#[cfg(not(test))]
 mod macros;
 
 #[path = "num/float_macros.rs"] mod float_macros;
@@ -131,13 +130,13 @@ mod core {
 mod std {
     pub use clone;
     pub use cmp;
-    pub use fmt;
     pub use kinds;
     pub use option;
+    pub use fmt;
 
-    #[cfg(test)] pub use realstd::fmt;    // needed for fail!()
     #[cfg(test)] pub use realstd::rt;     // needed for fail!()
-    #[cfg(test)] pub use realstd::option; // needed for assert!()
+    // #[cfg(test)] pub use realstd::option; // needed for fail!()
+    // #[cfg(test)] pub use realstd::fmt;    // needed for fail!()
     #[cfg(test)] pub use realstd::os;     // needed for tests
     #[cfg(test)] pub use realstd::slice;  // needed for tests
     #[cfg(test)] pub use realstd::vec;    // needed for vec![]
