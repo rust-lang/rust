@@ -30,8 +30,6 @@ use std::result::{Ok, Err};
 use std::slice::ImmutableVector;
 
 mod table {
-    extern crate libc;
-
     use std::clone::Clone;
     use std::cmp;
     use std::cmp::Eq;
@@ -42,10 +40,10 @@ mod table {
     use std::prelude::Drop;
     use std::ptr;
     use std::ptr::RawPtr;
-    use std::rt::libc_heap;
-    use std::intrinsics::{size_of, min_align_of, transmute};
-    use std::intrinsics::{move_val_init, set_memory};
+    use std::mem::{min_align_of, size_of};
+    use std::intrinsics::{move_val_init, set_memory, transmute};
     use std::iter::{Iterator, range_step_inclusive};
+    use std::rt::heap::{allocate, deallocate};
 
     static EMPTY_BUCKET: u64 = 0u64;
 
@@ -185,10 +183,6 @@ mod table {
         assert_eq!(round_up_to_next(5, 4), 8);
     }
 
-    fn has_alignment(n: uint, alignment: uint) -> bool {
-        round_up_to_next(n, alignment) == n
-    }
-
     // Returns a tuple of (minimum required malloc alignment, hash_offset,
     // key_offset, val_offset, array_size), from the start of a mallocated array.
     fn calculate_offsets(
@@ -243,12 +237,7 @@ mod table {
                     keys_size,   min_align_of::< K >(),
                     vals_size,   min_align_of::< V >());
 
-            let buffer = libc_heap::malloc_raw(size) as *mut u8;
-
-            // FIXME #13094: If malloc was not at as aligned as we expected,
-            // our offset calculations are just plain wrong. We could support
-            // any alignment if we switched from `malloc` to `posix_memalign`.
-            assert!(has_alignment(buffer as uint, malloc_alignment));
+            let buffer = allocate(size, malloc_alignment);
 
             let hashes = buffer.offset(hash_offset as int) as *mut u64;
             let keys   = buffer.offset(keys_offset as int) as *mut K;
@@ -418,7 +407,7 @@ mod table {
     // modified to no longer assume this.
     #[test]
     fn can_alias_safehash_as_u64() {
-        unsafe { assert_eq!(size_of::<SafeHash>(), size_of::<u64>()) };
+        assert_eq!(size_of::<SafeHash>(), size_of::<u64>())
     }
 
     pub struct Entries<'a, K, V> {
@@ -560,8 +549,15 @@ mod table {
 
             assert_eq!(self.size, 0);
 
+            let hashes_size = self.capacity * size_of::<u64>();
+            let keys_size = self.capacity * size_of::<K>();
+            let vals_size = self.capacity * size_of::<V>();
+            let (align, _, _, _, size) = calculate_offsets(hashes_size, min_align_of::<u64>(),
+                                                           keys_size, min_align_of::<K>(),
+                                                           vals_size, min_align_of::<V>());
+
             unsafe {
-                libc::free(self.hashes as *mut libc::c_void);
+                deallocate(self.hashes as *mut u8, size, align);
                 // Remember how everything was allocated out of one buffer
                 // during initialization? We only need one call to free here.
             }
