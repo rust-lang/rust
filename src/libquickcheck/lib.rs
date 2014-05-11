@@ -53,6 +53,35 @@
 //! }
 //! ```
 //!
+//! # The `#[quickcheck]` attribute
+//!
+//! To make it easier to write QuickCheck tests, the `#[quickcheck]` attribute
+//! will convert a property function into a `#[test]` function.
+//!
+//! To use the `#[quickcheck]` attribute, you must enable the `phase` feature and
+//! import the `quickcheck_macros` crate as a syntax extension:
+//!
+//! ```rust
+//! #![feature(phase)]
+//! #[phase(syntax)]
+//! extern crate quickcheck_macros;
+//! extern crate quickcheck;
+//!
+//! # fn main() {}
+//! # pub fn reverse<T: Clone>(xs: &[T]) -> Vec<T> {
+//! #     let mut rev = vec!();
+//! #     for x in xs.iter() { rev.unshift(x.clone()) }
+//! #     rev
+//! # }
+//! #[quickcheck]
+//! fn double_reversal_is_identity(xs: Vec<int>) -> bool {
+//!     xs == reverse(reverse(xs.as_slice()).as_slice())
+//! }
+//! ```
+//!
+//! The `#[quickcheck]` attribute also works with static items. The reason will
+//! be apparent in the next section.
+//!
 //! # Discarding test results (or, properties are polymorphic!)
 //!
 //! Sometimes you want to test a property that only holds for a *subset* of the
@@ -382,6 +411,11 @@
 extern crate collections;
 #[phase(syntax, link)] extern crate log;
 extern crate rand;
+
+// During tests, this links with the `quickcheck` crate so that the
+// `#[quickcheck]` attribute can be tested.
+#[cfg(test)]
+extern crate quickcheck;
 
 pub use arbitrary::{Arbitrary, Gen, StdGen, Shrinker, EmptyShrinker, SingleShrinker};
 pub use tester::{Testable, TestResult, Config};
@@ -927,5 +961,40 @@ mod test {
             return true
         }
         qcheck(prop);
+    }
+
+    #[cfg(not(stage1))]
+    mod attrib {
+        #[phase(syntax)]
+        extern crate quickcheck_macros;
+
+        use quickcheck::TestResult;
+
+        #[quickcheck]
+        fn min(x: int, y: int) -> TestResult {
+            if x < y {
+                return TestResult::discard()
+            } else {
+                return TestResult::from_bool(::std::cmp::min(x, y) == y)
+            }
+        }
+
+        #[quickcheck]
+        #[should_fail]
+        fn fail_fn() -> bool { false }
+
+        #[quickcheck]
+        static static_bool: bool = true;
+
+        #[quickcheck]
+        #[should_fail]
+        static fail_static_bool: bool = false;
+
+        // If static_bool wasn't turned into a test function, then this should
+        // result in a compiler error.
+        #[test]
+        fn static_bool_test_is_function() {
+            static_bool()
+        }
     }
 }
