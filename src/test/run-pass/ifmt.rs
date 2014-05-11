@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-pretty: `--pretty expand` creates unnecessary `unsafe` block
-
 #![feature(macro_rules, managed_boxes)]
 #![deny(warnings)]
 #![allow(unused_must_use)]
@@ -77,6 +75,7 @@ pub fn main() {
     t!(format!("{foo} {1} {bar} {0}", 0, 1, foo=2, bar=3), "2 1 3 0");
     t!(format!("{} {0}", "a"), "a a");
     t!(format!("{foo_bar}", foo_bar=1), "1");
+    t!(format!("{:d}", 5 + 5), "10");
 
     // Methods should probably work
     t!(format!("{0, plural, =1{a#} =2{b#} zero{c#} other{d#}}", 0u), "c0");
