@@ -68,11 +68,7 @@ pub fn to_str_bytes<U>(n: $T, radix: uint, f: |v: &[u8]| -> U) -> U {
     let mut buf = [0u8, ..65];
     let amt = {
         let mut wr = ::io::BufWriter::new(buf);
-        if radix == 10 {
-            (write!(&mut wr, "{}", n)).unwrap()
-        } else {
-            (write!(&mut wr, "{}", ::fmt::radix(n, radix as u8))).unwrap()
-        }
+        (write!(&mut wr, "{}", ::fmt::radix(n, radix as u8))).unwrap();
         wr.tell().unwrap() as uint
     };
     f(buf.slice(0, amt))
@@ -82,11 +78,7 @@ impl ToStrRadix for $T {
     /// Convert to a string in a given base.
     #[inline]
     fn to_str_radix(&self, radix: uint) -> ~str {
-        if radix == 10 {
-            format!("{}", *self)
-        } else {
-            format!("{}", ::fmt::radix(*self, radix as u8))
-        }
+        format!("{}", ::fmt::radix(*self, radix as u8))
     }
 }
 

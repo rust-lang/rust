@@ -19,7 +19,6 @@ use from_str::FromStr;
 use intrinsics;
 use libc::c_int;
 use num::strconv;
-use num::{FPCategory, FPNaN, FPInfinite , FPZero, FPSubnormal, FPNormal};
 use num;
 
 pub use core::f32::{RADIX, MANTISSA_DIGITS, DIGITS, EPSILON, MIN_VALUE};

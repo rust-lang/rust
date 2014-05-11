@@ -13,16 +13,15 @@
 #![allow(unused_variable)]
 
 use any;
-use cast;
 use cell::Cell;
 use char::Char;
 use container::Container;
 use iter::{Iterator, range};
 use kinds::Copy;
+use mem;
 use option::{Option, Some, None};
-use owned::Box;
-use result;
 use result::{Ok, Err};
+use result;
 use slice::{Vector, ImmutableVector};
 use slice;
 use str::StrSlice;
@@ -34,8 +33,7 @@ pub use self::num::RadixFmt;
 
 macro_rules! write(
     ($dst:expr, $($arg:tt)*) => ({
-        let dst: &mut ::fmt::FormatWriter = $dst;
-        format_args!(|args| { ::std::fmt::write(dst, args) }, $($arg)*)
+        format_args!(|args| { $dst.write_fmt(args) }, $($arg)*)
     })
 )
 
@@ -104,7 +102,7 @@ impl<'a> Arguments<'a> {
     #[doc(hidden)] #[inline]
     pub unsafe fn new<'a>(fmt: &'static [rt::Piece<'static>],
                           args: &'a [Argument<'a>]) -> Arguments<'a> {
-        Arguments{ fmt: cast::transmute(fmt), args: args }
+        Arguments{ fmt: mem::transmute(fmt), args: args }
     }
 }
 
@@ -329,7 +327,7 @@ impl<'a> Formatter<'a> {
             rt::Plural(offset, ref selectors, ref default) => {
                 // This is validated at compile-time to be a pointer to a
                 // '&uint' value.
-                let value: &uint = unsafe { cast::transmute(arg.value) };
+                let value: &uint = unsafe { mem::transmute(arg.value) };
                 let value = *value;
 
                 // First, attempt to match against explicit values without the
@@ -372,7 +370,7 @@ impl<'a> Formatter<'a> {
             rt::Select(ref selectors, ref default) => {
                 // This is validated at compile-time to be a pointer to a
                 // string slice,
-                let value: & &str = unsafe { cast::transmute(arg.value) };
+                let value: & &str = unsafe { mem::transmute(arg.value) };
                 let value = *value;
 
                 for s in selectors.iter() {
@@ -565,10 +563,33 @@ pub fn argument<'a, T>(f: extern "Rust" fn(&T, &mut Formatter) -> Result,
                        t: &'a T) -> Argument<'a> {
     unsafe {
         Argument {
-            formatter: cast::transmute(f),
-            value: cast::transmute(t)
+            formatter: mem::transmute(f),
+            value: mem::transmute(t)
         }
     }
+}
+
+#[cfg(test)]
+pub fn format(args: &Arguments) -> ~str {
+    use str;
+    use realstd::str::StrAllocating;
+    use realstd::io::MemWriter;
+
+    fn mywrite<T: ::realstd::io::Writer>(t: &mut T, b: &[u8]) {
+        use realstd::io::Writer;
+        let _ = t.write(b);
+    }
+
+    impl FormatWriter for MemWriter {
+        fn write(&mut self, bytes: &[u8]) -> Result {
+            mywrite(self, bytes);
+            Ok(())
+        }
+    }
+
+    let mut i = MemWriter::new();
+    let _ = write(&mut i, args);
+    str::from_utf8(i.get_ref()).unwrap().to_owned()
 }
 
 /// When the compiler determines that the type of an argument *must* be a string
@@ -590,11 +611,11 @@ pub fn argumentuint<'a>(s: &'a uint) -> Argument<'a> {
 impl<T: Show> Show for @T {
     fn fmt(&self, f: &mut Formatter) -> Result { secret_show(&**self, f) }
 }
-impl<T: Show> Show for Box<T> {
-    fn fmt(&self, f: &mut Formatter) -> Result { secret_show(&**self, f) }
-}
 impl<'a, T: Show> Show for &'a T {
     fn fmt(&self, f: &mut Formatter) -> Result { secret_show(*self, f) }
+}
+impl<'a, T: Show> Show for &'a mut T {
+    fn fmt(&self, f: &mut Formatter) -> Result { secret_show(&**self, f) }
 }
 
 impl Bool for bool {
@@ -613,7 +634,7 @@ impl Char for char {
     fn fmt(&self, f: &mut Formatter) -> Result {
         let mut utf8 = [0u8, ..4];
         let amt = self.encode_utf8(utf8);
-        let s: &str = unsafe { cast::transmute(utf8.slice_to(amt)) };
+        let s: &str = unsafe { mem::transmute(utf8.slice_to(amt)) };
         secret_string(&s, f)
     }
 }
@@ -738,20 +759,20 @@ macro_rules! tuple (
         impl<$($name:Show),*> Show for ($($name,)*) {
             #[allow(uppercase_variables, dead_assignment)]
             fn fmt(&self, f: &mut Formatter) -> Result {
-                try!(write!(f.buf, "("));
+                try!(write!(f, "("));
                 let ($(ref $name,)*) = *self;
                 let mut n = 0;
                 $(
                     if n > 0 {
-                        try!(write!(f.buf, ", "));
+                        try!(write!(f, ", "));
                     }
-                    try!(write!(f.buf, "{}", *$name));
+                    try!(write!(f, "{}", *$name));
                     n += 1;
                 )*
                 if n == 1 {
-                    try!(write!(f.buf, ","));
+                    try!(write!(f, ","));
                 }
-                write!(f.buf, ")")
+                write!(f, ")")
             }
         }
         peel!($($name,)*)
@@ -760,10 +781,6 @@ macro_rules! tuple (
 
 tuple! { T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, }
 
-impl Show for Box<any::Any> {
-    fn fmt(&self, f: &mut Formatter) -> Result { f.pad("Box<Any>") }
-}
-
 impl<'a> Show for &'a any::Any {
     fn fmt(&self, f: &mut Formatter) -> Result { f.pad("&Any") }
 }
@@ -771,19 +788,19 @@ impl<'a> Show for &'a any::Any {
 impl<'a, T: Show> Show for &'a [T] {
     fn fmt(&self, f: &mut Formatter) -> Result {
         if f.flags & (1 << (rt::FlagAlternate as uint)) == 0 {
-            try!(write!(f.buf, "["));
+            try!(write!(f, "["));
         }
         let mut is_first = true;
         for x in self.iter() {
             if is_first {
                 is_first = false;
             } else {
-                try!(write!(f.buf, ", "));
+                try!(write!(f, ", "));
             }
-            try!(write!(f.buf, "{}", *x))
+            try!(write!(f, "{}", *x))
         }
         if f.flags & (1 << (rt::FlagAlternate as uint)) == 0 {
-            try!(write!(f.buf, "]"));
+            try!(write!(f, "]"));
         }
         Ok(())
     }
@@ -809,7 +826,7 @@ impl Show for () {
 
 impl<T: Copy + Show> Show for Cell<T> {
     fn fmt(&self, f: &mut Formatter) -> Result {
-        write!(f.buf, r"Cell \{ value: {} \}", self.get())
+        write!(f, r"Cell \{ value: {} \}", self.get())
     }
 }
 

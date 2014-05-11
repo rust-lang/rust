@@ -131,7 +131,7 @@ mod test {
     fn test_owned_clone() {
         let a = box 5i;
         let b: Box<int> = realclone(&a);
-        assert_eq!(a, b);
+        assert!(a == b);
     }
 
     #[test]
