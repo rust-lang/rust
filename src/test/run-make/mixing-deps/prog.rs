@@ -11,9 +11,9 @@
 extern crate dylib;
 extern crate both;
 
-use std::cast;
+use std::mem;
 
 fn main() {
-    assert_eq!(unsafe { cast::transmute::<&int, uint>(&both::foo) },
+    assert_eq!(unsafe { mem::transmute::<&int, uint>(&both::foo) },
                dylib::addr());
 }

@@ -66,11 +66,11 @@ restrictions is undefined behaviour. For example, the following
 creates two aliasing `&mut` pointers, and is invalid.
 
 ```
-use std::cast;
+use std::mem;
 let mut x: u8 = 1;
 
 let ref_1: &mut u8 = &mut x;
-let ref_2: &mut u8 = unsafe { cast::transmute_mut_lifetime(ref_1) };
+let ref_2: &mut u8 = unsafe { mem::transmute(&mut *ref_1) };
 
 // oops, ref_1 and ref_2 point to the same piece of data (x) and are
 // both usable

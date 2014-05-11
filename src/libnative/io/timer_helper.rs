@@ -20,7 +20,7 @@
 //! can be created in the future and there must be no active timers at that
 //! time.
 
-use std::cast;
+use std::mem;
 use std::rt::bookkeeping;
 use std::rt;
 use std::unstable::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
@@ -48,7 +48,7 @@ pub fn boot(helper: fn(imp::signal, Receiver<Req>)) {
             let (tx, rx) = channel();
             // promote this to a shared channel
             drop(tx.clone());
-            HELPER_CHAN = cast::transmute(box tx);
+            HELPER_CHAN = mem::transmute(box tx);
             let (receive, send) = imp::new();
             HELPER_SIGNAL = send;
 
@@ -86,7 +86,7 @@ fn shutdown() {
     // Clean up after ther helper thread
     unsafe {
         imp::close(HELPER_SIGNAL);
-        let _chan: Box<Sender<Req>> = cast::transmute(HELPER_CHAN);
+        let _chan: Box<Sender<Req>> = mem::transmute(HELPER_CHAN);
         HELPER_CHAN = 0 as *mut Sender<Req>;
         HELPER_SIGNAL = 0 as imp::signal;
     }

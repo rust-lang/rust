@@ -33,7 +33,7 @@
 
 #![allow(dead_code)]
 
-use std::cast;
+use std::mem;
 use std::rt::local::Local;
 use std::rt::rtio::LocalIo;
 use std::rt::task::{Task, BlockedTask};
@@ -77,7 +77,7 @@ pub fn local_id() -> uint {
     };
     let io = io.get();
     unsafe {
-        let (_vtable, ptr): (uint, uint) = cast::transmute(io);
+        let (_vtable, ptr): (uint, uint) = mem::transmute(io);
         return ptr;
     }
 }

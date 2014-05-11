@@ -71,7 +71,7 @@ extern crate test;
 extern crate rand;
 extern crate serialize;
 
-use std::cast::{transmute,transmute_copy};
+use std::mem::{transmute,transmute_copy};
 use std::char::Char;
 use std::default::Default;
 use std::fmt;

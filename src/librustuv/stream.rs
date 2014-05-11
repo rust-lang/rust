@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::cast;
 use libc::{c_int, size_t, ssize_t};
+use std::mem;
 use std::ptr;
 use std::rt::task::BlockedTask;
 
@@ -212,7 +212,7 @@ impl StreamWatcher {
                 };
                 unsafe {
                     req.set_data(&*new_wcx);
-                    cast::forget(new_wcx);
+                    mem::forget(new_wcx);
                 }
                 Err(UvError(wcx.result))
             }
@@ -232,7 +232,7 @@ extern fn alloc_cb(stream: *uvll::uv_stream_t, _hint: size_t, buf: *mut Buf) {
     uvdebug!("alloc_cb");
     unsafe {
         let rcx: &mut ReadContext =
-            cast::transmute(uvll::get_data_for_uv_handle(stream));
+            mem::transmute(uvll::get_data_for_uv_handle(stream));
         *buf = rcx.buf.take().expect("stream alloc_cb called more than once");
     }
 }
@@ -243,7 +243,7 @@ extern fn read_cb(handle: *uvll::uv_stream_t, nread: ssize_t, _buf: *Buf) {
     uvdebug!("read_cb {}", nread);
     assert!(nread != uvll::ECANCELED as ssize_t);
     let rcx: &mut ReadContext = unsafe {
-        cast::transmute(uvll::get_data_for_uv_handle(handle))
+        mem::transmute(uvll::get_data_for_uv_handle(handle))
     };
     // Stop reading so that no read callbacks are
     // triggered before the user calls `read` again.
@@ -272,6 +272,6 @@ extern fn write_cb(req: *uvll::uv_write_t, status: c_int) {
         let stream: &mut StreamWatcher = unsafe { &mut *wcx.stream };
         wakeup(&mut stream.blocked_writer);
     } else {
-        let _wcx: Box<WriteContext> = unsafe { cast::transmute(wcx) };
+        let _wcx: Box<WriteContext> = unsafe { mem::transmute(wcx) };
     }
 }

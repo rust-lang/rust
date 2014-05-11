@@ -11,7 +11,7 @@
 // ignore-linux #7340 fails on 32-bit linux
 // ignore-macos #7340 fails on 32-bit macos
 
-use std::cast;
+use std::mem;
 
 enum Tag {
     Tag(u64)
@@ -27,7 +27,7 @@ fn mk_rec() -> Rec {
 }
 
 fn is_8_byte_aligned(u: &Tag) -> bool {
-    let p: uint = unsafe { cast::transmute(u) };
+    let p: uint = unsafe { mem::transmute(u) };
     return (p & 7u) == 0u;
 }
 

@@ -33,7 +33,6 @@
 /// of a synchronous channel. There are a few branches for the unbuffered case,
 /// but they're mostly just relevant to blocking senders.
 
-use cast;
 use container::Container;
 use iter::Iterator;
 use kinds::Send;
@@ -187,7 +186,7 @@ impl<T: Send> Packet<T> {
             NoneBlocked if state.cap == 0 => {
                 let mut canceled = false;
                 assert!(state.canceled.is_none());
-                state.canceled = Some(unsafe { cast::transmute(&mut canceled) });
+                state.canceled = Some(unsafe { mem::transmute(&mut canceled) });
                 wait(&mut state.blocker, BlockedSender, &self.lock);
                 if canceled {Err(state.buf.dequeue())} else {Ok(())}
             }

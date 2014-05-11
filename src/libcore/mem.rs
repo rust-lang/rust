@@ -13,7 +13,6 @@
 //! This module contains functions for querying the size and alignment of
 //! types, initializing and manipulating memory.
 
-use cast;
 use ptr;
 use intrinsics;
 use intrinsics::{bswap16, bswap32, bswap64};
@@ -239,7 +238,7 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
 
         // y and t now point to the same thing, but we need to completely forget `t`
         // because it's no longer relevant.
-        cast::forget(t);
+        forget(t);
     }
 }
 
@@ -286,14 +285,103 @@ pub fn replace<T>(dest: &mut T, mut src: T) -> T {
 }
 
 /// Disposes of a value.
+///
+/// This function can be used to destroy any value by allowing `drop` to take
+/// ownership of its argument.
+///
+/// # Example
+///
+/// ```
+/// use std::cell::RefCell;
+///
+/// let x = RefCell::new(1);
+///
+/// let mut mutable_borrow = x.borrow_mut();
+/// *mutable_borrow = 1;
+/// drop(mutable_borrow); // relinquish the mutable borrow on this slot
+///
+/// let borrow = x.borrow();
+/// println!("{}", *borrow);
+/// ```
 #[inline]
 pub fn drop<T>(_x: T) { }
+
+/// Moves a thing into the void.
+///
+/// The forget function will take ownership of the provided value but neglect
+/// to run any required cleanup or memory management operations on it.
+///
+/// This function is the unsafe version of the `drop` function because it does
+/// not run any destructors.
+#[inline]
+#[stable]
+pub unsafe fn forget<T>(thing: T) { intrinsics::forget(thing) }
+
+/// Unsafely transforms a value of one type into a value of another type.
+///
+/// Both types must have the same size and alignment, and this guarantee is
+/// enforced at compile-time.
+///
+/// # Example
+///
+/// ```rust
+/// use std::mem;
+///
+/// let v: &[u8] = unsafe { mem::transmute("L") };
+/// assert!(v == [76u8]);
+/// ```
+#[inline]
+#[unstable = "this function will be modified to reject invocations of it which \
+              cannot statically prove that T and U are the same size. For \
+              example, this function, as written today, will be rejected in \
+              the future because the size of T and U cannot be statically \
+              known to be the same"]
+pub unsafe fn transmute<T, U>(thing: T) -> U {
+    intrinsics::transmute(thing)
+}
+
+/// Interprets `src` as `&U`, and then reads `src` without moving the contained
+/// value.
+///
+/// This function will unsafely assume the pointer `src` is valid for
+/// `sizeof(U)` bytes by transmuting `&T` to `&U` and then reading the `&U`. It
+/// will also unsafely create a copy of the contained value instead of moving
+/// out of `src`.
+///
+/// It is not a compile-time error if `T` and `U` have different sizes, but it
+/// is highly encouraged to only invoke this function where `T` and `U` have the
+/// same size. This function triggers undefined behavior if `U` is larger than
+/// `T`.
+#[inline]
+#[stable]
+pub unsafe fn transmute_copy<T, U>(src: &T) -> U {
+    ptr::read(src as *T as *U)
+}
+
+/// Transforms lifetime of the second pointer to match the first.
+#[inline]
+#[unstable = "this function may be removed in the future due to its \
+              questionable utility"]
+pub unsafe fn copy_lifetime<'a, S, T>(_ptr: &'a S, ptr: &T) -> &'a T {
+    transmute(ptr)
+}
+
+/// Transforms lifetime of the second mutable pointer to match the first.
+#[inline]
+#[unstable = "this function may be removed in the future due to its \
+              questionable utility"]
+pub unsafe fn copy_mut_lifetime<'a, S, T>(_ptr: &'a mut S,
+                                          ptr: &mut T) -> &'a mut T {
+    transmute(ptr)
+}
 
 #[cfg(test)]
 mod tests {
     use mem::*;
     use option::{Some,None};
     use realstd::str::StrAllocating;
+    use owned::Box;
+    use raw;
 
     #[test]
     fn size_of_basic() {
@@ -388,6 +476,28 @@ mod tests {
         let y = replace(&mut x, None);
         assert!(x.is_none());
         assert!(y.is_some());
+    }
+
+    #[test]
+    fn test_transmute_copy() {
+        assert_eq!(1u, unsafe { ::mem::transmute_copy(&1) });
+    }
+
+    #[test]
+    fn test_transmute() {
+        trait Foo {}
+        impl Foo for int {}
+
+        let a = box 100 as Box<Foo>;
+        unsafe {
+            let x: raw::TraitObject = transmute(a);
+            assert!(*(x.data as *int) == 100);
+            let _x: Box<Foo> = transmute(x);
+        }
+
+        unsafe {
+            assert_eq!(box [76u8], transmute("L".to_owned()));
+        }
     }
 }
 

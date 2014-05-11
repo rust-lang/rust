@@ -217,24 +217,24 @@ responding to errors that may occur while attempting to read the numbers.
 
 #![deny(unused_must_use)]
 
-use cast;
 use char::Char;
 use container::Container;
 use fmt;
 use int;
 use iter::Iterator;
 use libc;
+use mem::transmute;
 use ops::{BitOr, BitAnd, Sub};
-use os;
 use option::{Option, Some, None};
+use os;
 use owned::Box;
 use path::Path;
 use result::{Ok, Err, Result};
+use slice::{Vector, MutableVector, ImmutableVector};
 use str::{StrSlice, StrAllocating};
 use str;
 use uint;
 use unstable::finally::try_finally;
-use slice::{Vector, MutableVector, ImmutableVector};
 use vec::Vec;
 
 // Reexports
@@ -729,7 +729,7 @@ pub trait Reader {
     /// `f64`s are 8 byte, IEEE754 double-precision floating point numbers.
     fn read_be_f64(&mut self) -> IoResult<f64> {
         self.read_be_u64().map(|i| unsafe {
-            cast::transmute::<u64, f64>(i)
+            transmute::<u64, f64>(i)
         })
     }
 
@@ -738,7 +738,7 @@ pub trait Reader {
     /// `f32`s are 4 byte, IEEE754 single-precision floating point numbers.
     fn read_be_f32(&mut self) -> IoResult<f32> {
         self.read_be_u32().map(|i| unsafe {
-            cast::transmute::<u32, f32>(i)
+            transmute::<u32, f32>(i)
         })
     }
 
@@ -789,7 +789,7 @@ pub trait Reader {
     /// `f64`s are 8 byte, IEEE754 double-precision floating point numbers.
     fn read_le_f64(&mut self) -> IoResult<f64> {
         self.read_le_u64().map(|i| unsafe {
-            cast::transmute::<u64, f64>(i)
+            transmute::<u64, f64>(i)
         })
     }
 
@@ -798,7 +798,7 @@ pub trait Reader {
     /// `f32`s are 4 byte, IEEE754 single-precision floating point numbers.
     fn read_le_f32(&mut self) -> IoResult<f32> {
         self.read_le_u32().map(|i| unsafe {
-            cast::transmute::<u32, f32>(i)
+            transmute::<u32, f32>(i)
         })
     }
 
@@ -995,14 +995,14 @@ pub trait Writer {
     /// Write a big-endian IEEE754 double-precision floating-point (8 bytes).
     fn write_be_f64(&mut self, f: f64) -> IoResult<()> {
         unsafe {
-            self.write_be_u64(cast::transmute(f))
+            self.write_be_u64(transmute(f))
         }
     }
 
     /// Write a big-endian IEEE754 single-precision floating-point (4 bytes).
     fn write_be_f32(&mut self, f: f32) -> IoResult<()> {
         unsafe {
-            self.write_be_u32(cast::transmute(f))
+            self.write_be_u32(transmute(f))
         }
     }
 
@@ -1040,7 +1040,7 @@ pub trait Writer {
     /// (8 bytes).
     fn write_le_f64(&mut self, f: f64) -> IoResult<()> {
         unsafe {
-            self.write_le_u64(cast::transmute(f))
+            self.write_le_u64(transmute(f))
         }
     }
 
@@ -1048,7 +1048,7 @@ pub trait Writer {
     /// (4 bytes).
     fn write_le_f32(&mut self, f: f32) -> IoResult<()> {
         unsafe {
-            self.write_le_u32(cast::transmute(f))
+            self.write_le_u32(transmute(f))
         }
     }
 

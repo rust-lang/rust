@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::cast;
+use std::mem;
 
 #[packed]
 struct S4(u8,[u8, .. 3]);
@@ -19,11 +19,11 @@ struct S5(u8,u32);
 pub fn main() {
     unsafe {
         let s4 = S4(1, [2,3,4]);
-        let transd : [u8, .. 4] = cast::transmute(s4);
+        let transd : [u8, .. 4] = mem::transmute(s4);
         assert!(transd == [1, 2, 3, 4]);
 
         let s5 = S5(1, 0xff_00_00_ff);
-        let transd : [u8, .. 5] = cast::transmute(s5);
+        let transd : [u8, .. 5] = mem::transmute(s5);
         // Don't worry about endianness, the u32 is palindromic.
         assert!(transd == [1, 0xff, 0, 0, 0xff]);
     }

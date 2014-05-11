@@ -10,7 +10,6 @@
 
 use libc;
 use std::c_str::CString;
-use std::cast;
 use std::intrinsics;
 use std::io;
 use std::mem;
@@ -36,7 +35,7 @@ fn addr_to_sockaddr_un(addr: &CString) -> IoResult<(libc::sockaddr_storage, uint
     assert!(mem::size_of::<libc::sockaddr_storage>() >=
             mem::size_of::<libc::sockaddr_un>());
     let mut storage: libc::sockaddr_storage = unsafe { intrinsics::init() };
-    let s: &mut libc::sockaddr_un = unsafe { cast::transmute(&mut storage) };
+    let s: &mut libc::sockaddr_un = unsafe { mem::transmute(&mut storage) };
 
     let len = addr.len();
     if len > s.sun_path.len() - 1 {

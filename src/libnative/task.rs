@@ -15,7 +15,7 @@
 //! in order to spawn new tasks and deschedule the current task.
 
 use std::any::Any;
-use std::cast;
+use std::mem;
 use std::rt::bookkeeping;
 use std::rt::env;
 use std::rt::local::Local;
@@ -169,7 +169,7 @@ impl rt::Runtime for Ops {
     // for both tasks because these operations are all done inside of a mutex.
     //
     // You'll also find that if blocking fails (the `f` function hands the
-    // BlockedTask back to us), we will `cast::forget` the handles. The
+    // BlockedTask back to us), we will `mem::forget` the handles. The
     // reasoning for this is the same logic as above in that the task silently
     // transfers ownership via the `uint`, not through normal compiler
     // semantics.
@@ -198,7 +198,7 @@ impl rt::Runtime for Ops {
                             guard.wait();
                         }
                     }
-                    Err(task) => { cast::forget(task.wake()); }
+                    Err(task) => { mem::forget(task.wake()); }
                 }
             } else {
                 let iter = task.make_selectable(times);
@@ -217,7 +217,7 @@ impl rt::Runtime for Ops {
                     Some(task) => {
                         match task.wake() {
                             Some(task) => {
-                                cast::forget(task);
+                                mem::forget(task);
                                 (*me).awoken = true;
                             }
                             None => {}
@@ -229,7 +229,7 @@ impl rt::Runtime for Ops {
                 }
             }
             // re-acquire ownership of the task
-            cur_task = cast::transmute(cur_task_dupe);
+            cur_task = mem::transmute(cur_task_dupe);
         }
 
         // put the task back in TLS, and everything is as it once was.
@@ -242,7 +242,7 @@ impl rt::Runtime for Ops {
         unsafe {
             let me = &mut *self as *mut Ops;
             to_wake.put_runtime(self);
-            cast::forget(to_wake);
+            mem::forget(to_wake);
             let guard = (*me).lock.lock();
             (*me).awoken = true;
             guard.signal();

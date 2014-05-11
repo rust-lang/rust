@@ -10,7 +10,6 @@
 
 use libc::{size_t, ssize_t, c_int, c_void, c_uint};
 use libc;
-use std::cast;
 use std::io;
 use std::io::IoError;
 use std::io::net::ip;
@@ -42,7 +41,7 @@ pub fn sockaddr_to_addr(storage: &libc::sockaddr_storage,
         libc::AF_INET => {
             assert!(len as uint >= mem::size_of::<libc::sockaddr_in>());
             let storage: &libc::sockaddr_in = unsafe {
-                cast::transmute(storage)
+                mem::transmute(storage)
             };
             let addr = storage.sin_addr.s_addr as u32;
             let a = (addr >>  0) as u8;
@@ -57,7 +56,7 @@ pub fn sockaddr_to_addr(storage: &libc::sockaddr_storage,
         libc::AF_INET6 => {
             assert!(len as uint >= mem::size_of::<libc::sockaddr_in6>());
             let storage: &libc::sockaddr_in6 = unsafe {
-                cast::transmute(storage)
+                mem::transmute(storage)
             };
             let a = ntohs(storage.sin6_addr.s6_addr[0]);
             let b = ntohs(storage.sin6_addr.s6_addr[1]);
@@ -84,7 +83,7 @@ fn addr_to_sockaddr(addr: ip::SocketAddr) -> (libc::sockaddr_storage, uint) {
         let len = match addr.ip {
             ip::Ipv4Addr(a, b, c, d) => {
                 let storage: &mut libc::sockaddr_in =
-                    cast::transmute(&mut storage);
+                    mem::transmute(&mut storage);
                 (*storage).sin_family = libc::AF_INET as libc::sa_family_t;
                 (*storage).sin_port = htons(addr.port);
                 (*storage).sin_addr = libc::in_addr {
@@ -97,7 +96,7 @@ fn addr_to_sockaddr(addr: ip::SocketAddr) -> (libc::sockaddr_storage, uint) {
             }
             ip::Ipv6Addr(a, b, c, d, e, f, g, h) => {
                 let storage: &mut libc::sockaddr_in6 =
-                    cast::transmute(&mut storage);
+                    mem::transmute(&mut storage);
                 storage.sin6_family = libc::AF_INET6 as libc::sa_family_t;
                 storage.sin6_port = htons(addr.port);
                 storage.sin6_addr = libc::in6_addr {
@@ -316,7 +315,7 @@ impl rtio::RtioTcpStream for TcpWatcher {
                                      &self.stream as *_ as uint);
 
         fn cancel_read(stream: uint) -> Option<BlockedTask> {
-            let stream: &mut StreamWatcher = unsafe { cast::transmute(stream) };
+            let stream: &mut StreamWatcher = unsafe { mem::transmute(stream) };
             stream.cancel_read(uvll::ECANCELED as ssize_t)
         }
     }
@@ -328,7 +327,7 @@ impl rtio::RtioTcpStream for TcpWatcher {
                                       &self.stream as *_ as uint);
 
         fn cancel_write(stream: uint) -> Option<BlockedTask> {
-            let stream: &mut StreamWatcher = unsafe { cast::transmute(stream) };
+            let stream: &mut StreamWatcher = unsafe { mem::transmute(stream) };
             stream.cancel_write()
         }
     }
@@ -602,7 +601,7 @@ impl rtio::RtioUdpSocket for UdpWatcher {
                 None
             } else {
                 let len = mem::size_of::<libc::sockaddr_storage>();
-                Some(sockaddr_to_addr(unsafe { cast::transmute(addr) }, len))
+                Some(sockaddr_to_addr(unsafe { mem::transmute(addr) }, len))
             };
             cx.result = Some((nread, addr));
             wakeup(&mut cx.task);
@@ -652,7 +651,7 @@ impl rtio::RtioUdpSocket for UdpWatcher {
                 };
                 unsafe {
                     req.set_data(&*new_cx);
-                    cast::forget(new_cx);
+                    mem::forget(new_cx);
                 }
                 Err(uv_error_to_io_error(UvError(cx.result)))
             }
@@ -670,7 +669,7 @@ impl rtio::RtioUdpSocket for UdpWatcher {
                 let udp: &mut UdpWatcher = unsafe { &mut *cx.udp };
                 wakeup(&mut udp.blocked_sender);
             } else {
-                let _cx: Box<UdpSendCtx> = unsafe { cast::transmute(cx) };
+                let _cx: Box<UdpSendCtx> = unsafe { mem::transmute(cx) };
             }
         }
     }
@@ -789,7 +788,7 @@ impl rtio::RtioUdpSocket for UdpWatcher {
                                       self as *mut _ as uint);
 
         fn cancel_write(stream: uint) -> Option<BlockedTask> {
-            let stream: &mut UdpWatcher = unsafe { cast::transmute(stream) };
+            let stream: &mut UdpWatcher = unsafe { mem::transmute(stream) };
             stream.blocked_sender.take()
         }
     }

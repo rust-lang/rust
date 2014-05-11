@@ -95,7 +95,7 @@ extern "system" {
 
 #[test]
 fn tls_smoke_test() {
-    use cast::transmute;
+    use mem::transmute;
     unsafe {
         let mut key = 0;
         let value = box 20;

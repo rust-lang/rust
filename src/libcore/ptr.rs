@@ -52,18 +52,18 @@
 //! though unsafely, transformed from one type to the other.
 //!
 //! ```
-//! use std::cast;
+//! use std::mem;
 //!
 //! unsafe {
 //!     let my_num: Box<int> = box 10;
-//!     let my_num: *int = cast::transmute(my_num);
+//!     let my_num: *int = mem::transmute(my_num);
 //!     let my_speed: Box<int> = box 88;
-//!     let my_speed: *mut int = cast::transmute(my_speed);
+//!     let my_speed: *mut int = mem::transmute(my_speed);
 //!
 //!     // By taking ownership of the original `Box<T>` though
 //!     // we are obligated to transmute it back later to be destroyed.
-//!     drop(cast::transmute::<_, Box<int>>(my_speed));
-//!     drop(cast::transmute::<_, Box<int>>(my_num));
+//!     drop(mem::transmute::<_, Box<int>>(my_speed));
+//!     drop(mem::transmute::<_, Box<int>>(my_num));
 //! }
 //! ```
 //!
@@ -92,11 +92,10 @@
 //! but C APIs hand out a lot of pointers generally, so are a common source
 //! of unsafe pointers in Rust.
 
-use cast;
+use mem;
 use clone::Clone;
 use intrinsics;
 use iter::{range, Iterator};
-use mem;
 use option::{Some, None, Option};
 
 #[cfg(not(test))] use cmp::{Eq, TotalEq, Ord, Equiv};
@@ -196,7 +195,6 @@ pub unsafe fn copy_memory<T>(dst: *mut T, src: *T, count: uint) {
 /// A safe swap function:
 ///
 /// ```
-/// use std::cast;
 /// use std::mem;
 /// use std::ptr;
 ///
@@ -212,7 +210,7 @@ pub unsafe fn copy_memory<T>(dst: *mut T, src: *T, count: uint) {
 ///
 ///         // y and t now point to the same thing, but we need to completely forget `tmp`
 ///         // because it's no longer relevant.
-///         cast::forget(t);
+///         mem::forget(t);
 ///     }
 /// }
 /// ```
@@ -256,14 +254,14 @@ pub unsafe fn swap<T>(x: *mut T, y: *mut T) {
 
     // y and t now point to the same thing, but we need to completely forget `tmp`
     // because it's no longer relevant.
-    cast::forget(tmp);
+    mem::forget(tmp);
 }
 
 /// Replace the value at a mutable location with a new one, returning the old
 /// value, without deinitialising either.
 #[inline]
 pub unsafe fn replace<T>(dest: *mut T, mut src: T) -> T {
-    mem::swap(cast::transmute(dest), &mut src); // cannot overlap
+    mem::swap(mem::transmute(dest), &mut src); // cannot overlap
     src
 }
 
@@ -361,7 +359,7 @@ impl<T> RawPtr<T> for *T {
         if self.is_null() {
             None
         } else {
-            Some(cast::transmute(*self))
+            Some(mem::transmute(*self))
         }
     }
 }
@@ -386,7 +384,7 @@ impl<T> RawPtr<T> for *mut T {
         if self.is_null() {
             None
         } else {
-            Some(cast::transmute(*self))
+            Some(mem::transmute(*self))
         }
     }
 }
@@ -436,14 +434,14 @@ impl<T> Equiv<*T> for *mut T {
 // Equality for extern "C" fn pointers
 #[cfg(not(test))]
 mod externfnpointers {
-    use cast;
+    use mem;
     use cmp::Eq;
 
     impl<_R> Eq for extern "C" fn() -> _R {
         #[inline]
         fn eq(&self, other: &extern "C" fn() -> _R) -> bool {
-            let self_: *() = unsafe { cast::transmute(*self) };
-            let other_: *() = unsafe { cast::transmute(*other) };
+            let self_: *() = unsafe { mem::transmute(*self) };
+            let other_: *() = unsafe { mem::transmute(*other) };
             self_ == other_
         }
     }
@@ -452,8 +450,8 @@ mod externfnpointers {
             impl<_R,$($p),*> Eq for extern "C" fn($($p),*) -> _R {
                 #[inline]
                 fn eq(&self, other: &extern "C" fn($($p),*) -> _R) -> bool {
-                    let self_: *() = unsafe { cast::transmute(*self) };
-                    let other_: *() = unsafe { cast::transmute(*other) };
+                    let self_: *() = unsafe { mem::transmute(*self) };
+                    let other_: *() = unsafe { mem::transmute(*other) };
                     self_ == other_
                 }
             }
@@ -485,7 +483,7 @@ pub mod ptr_tests {
     use realstd::prelude::*;
 
     use realstd::c_str::ToCStr;
-    use cast;
+    use mem;
     use libc;
     use realstd::str;
     use slice::{ImmutableVector, MutableVector};
@@ -499,7 +497,7 @@ pub mod ptr_tests {
             };
             let mut p = Pair {fst: 10, snd: 20};
             let pptr: *mut Pair = &mut p;
-            let iptr: *mut int = cast::transmute(pptr);
+            let iptr: *mut int = mem::transmute(pptr);
             assert_eq!(*iptr, 10);
             *iptr = 30;
             assert_eq!(*iptr, 30);

@@ -10,7 +10,6 @@
 
 //! Types dealing with unsafe actions.
 
-use cast;
 use kinds::marker;
 
 /// Unsafe type that wraps a type T and indicates unsafe interior operations on the
@@ -63,7 +62,7 @@ impl<T> Unsafe<T> {
 
     /// Gets a mutable pointer to the wrapped value
     #[inline]
-    pub unsafe fn get(&self) -> *mut T { cast::transmute_mut_unsafe(&self.value) }
+    pub unsafe fn get(&self) -> *mut T { &self.value as *T as *mut T }
 
     /// Unwraps the value
     #[inline]

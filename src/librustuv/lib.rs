@@ -48,10 +48,10 @@ via `close` and `delete` methods.
 extern crate libc;
 
 use libc::{c_int, c_void};
-use std::cast;
 use std::fmt;
 use std::io::IoError;
 use std::io;
+use std::mem;
 use std::ptr::null;
 use std::ptr;
 use std::rt::local::Local;
@@ -147,12 +147,12 @@ pub trait UvHandle<T> {
     }
 
     unsafe fn from_uv_handle<'a>(h: &'a *T) -> &'a mut Self {
-        cast::transmute(uvll::get_data_for_uv_handle(*h))
+        mem::transmute(uvll::get_data_for_uv_handle(*h))
     }
 
     fn install(~self) -> Box<Self> {
         unsafe {
-            let myptr = cast::transmute::<&Box<Self>, &*u8>(&self);
+            let myptr = mem::transmute::<&Box<Self>, &*u8>(&self);
             uvll::set_data_for_uv_handle(self.uv_handle(), *myptr);
         }
         self
@@ -188,7 +188,7 @@ pub trait UvHandle<T> {
                 let data = uvll::get_data_for_uv_handle(handle);
                 uvll::free_handle(handle);
                 if data == ptr::null() { return }
-                let slot: &mut Option<BlockedTask> = cast::transmute(data);
+                let slot: &mut Option<BlockedTask> = mem::transmute(data);
                 wakeup(slot);
             }
         }
@@ -284,7 +284,7 @@ impl Request {
     pub unsafe fn get_data<T>(&self) -> &'static mut T {
         let data = uvll::get_data_for_req(self.handle);
         assert!(data != null());
-        cast::transmute(data)
+        mem::transmute(data)
     }
 
     // This function should be used when the request handle has been given to an
@@ -459,11 +459,11 @@ pub fn slice_to_uv_buf(v: &[u8]) -> Buf {
 #[cfg(test)]
 fn local_loop() -> &'static mut uvio::UvIoFactory {
     unsafe {
-        cast::transmute({
+        mem::transmute({
             let mut task = Local::borrow(None::<Task>);
             let mut io = task.local_io().unwrap();
             let (_vtable, uvio): (uint, &'static mut uvio::UvIoFactory) =
-                cast::transmute(io.get());
+                mem::transmute(io.get());
             uvio
         })
     }
@@ -471,7 +471,7 @@ fn local_loop() -> &'static mut uvio::UvIoFactory {
 
 #[cfg(test)]
 mod test {
-    use std::cast::transmute;
+    use std::mem::transmute;
     use std::unstable::run_in_bare_thread;
 
     use super::{slice_to_uv_buf, Loop};
