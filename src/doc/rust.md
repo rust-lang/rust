@@ -1402,7 +1402,7 @@ to pointers to the trait name, used as a type.
 let myshape: Box<Shape> = box mycircle as Box<Shape>;
 ~~~~
 
-The resulting value is a managed box containing the value that was cast,
+The resulting value is a box containing the value that was cast,
 along with information that identifies the methods of the implementation that was used.
 Values with a trait type can have [methods called](#method-call-expressions) on them,
 for any method in the trait,
