@@ -2385,7 +2385,7 @@ fn print_all<T: Printable>(printable_things: ~[T]) {
 Declaring `T` as conforming to the `Printable` trait (as we earlier
 did with `Clone`) makes it possible to call methods from that trait
 on values of type `T` inside the function. It will also cause a
-compile-time error when anyone tries to call `print_all` on an array
+compile-time error when anyone tries to call `print_all` on a vector
 whose element type does not have a `Printable` implementation.
 
 Type parameters can have multiple bounds by separating them with `+`,
@@ -2428,9 +2428,9 @@ fn draw_all<T: Drawable>(shapes: ~[T]) {
 # draw_all(~[c]);
 ~~~~
 
-You can call that on an array of circles, or an array of rectangles
+You can call that on a vector of circles, or a vector of rectangles
 (assuming those have suitable `Drawable` traits defined), but not on
-an array containing both circles and rectangles. When such behavior is
+a vector containing both circles and rectangles. When such behavior is
 needed, a trait name can alternately be used as a type, called
 an _object_.
 
