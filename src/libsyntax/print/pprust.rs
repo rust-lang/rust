@@ -841,7 +841,13 @@ impl<'a> State<'a> {
         match *tt {
             ast::TTDelim(ref tts) => self.print_tts(tts.as_slice()),
             ast::TTTok(_, ref tk) => {
-                word(&mut self.s, parse::token::to_str(tk).as_slice())
+                try!(word(&mut self.s, parse::token::to_str(tk).as_slice()));
+                match *tk {
+                    parse::token::DOC_COMMENT(..) => {
+                        hardbreak(&mut self.s)
+                    }
+                    _ => Ok(())
+                }
             }
             ast::TTSeq(_, ref tts, ref sep, zerok) => {
                 try!(word(&mut self.s, "$("));
@@ -2238,7 +2244,7 @@ impl<'a> State<'a> {
             ast::LitUint(u, t) => {
                 word(&mut self.s,
                      ast_util::uint_ty_to_str(t, Some(u),
-                                              ast_util::AutoSuffix).as_slice())
+                                              ast_util::ForceSuffix).as_slice())
             }
             ast::LitIntUnsuffixed(i) => {
                 word(&mut self.s, format!("{}", i))
