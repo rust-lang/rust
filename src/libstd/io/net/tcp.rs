@@ -63,7 +63,10 @@ impl TcpStream {
     /// `host` can be a hostname or IP address string. If no error is
     /// encountered, then `Ok(stream)` is returned.
     pub fn connect(host: &str, port: u16) -> IoResult<TcpStream> {
-        let addresses = try!(get_host_addresses(host));
+        let addresses = match FromStr::from_str(host) {
+            Some(addr) => vec!(addr),
+            None => try!(get_host_addresses(host))
+        };
         let mut err = IoError{
             kind: ConnectionFailed,
             desc: "no addresses found for hostname",
