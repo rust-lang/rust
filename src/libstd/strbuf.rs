@@ -12,7 +12,7 @@
 
 use c_vec::CVec;
 use char::Char;
-use container::Container;
+use container::{Container, Mutable};
 use fmt;
 use io::Writer;
 use iter::{Extendable, FromIterator, Iterator, range};
@@ -245,6 +245,13 @@ impl Container for StrBuf {
     }
 }
 
+impl Mutable for StrBuf {
+    #[inline]
+    fn clear(&mut self) {
+        self.vec.clear()
+    }
+}
+
 impl FromIterator<char> for StrBuf {
     fn from_iter<I:Iterator<char>>(iterator: I) -> StrBuf {
         let mut buf = StrBuf::new();
@@ -298,6 +305,7 @@ impl<H:Writer> ::hash::Hash<H> for StrBuf {
 #[cfg(test)]
 mod tests {
     extern crate test;
+    use container::{Container, Mutable};
     use self::test::Bencher;
     use str::{Str, StrSlice};
     use super::StrBuf;
@@ -379,5 +387,13 @@ mod tests {
     fn test_str_truncate_split_codepoint() {
         let mut s = StrBuf::from_str("\u00FC"); // ü
         s.truncate(1);
+    }
+
+    #[test]
+    fn test_str_clear() {
+        let mut s = StrBuf::from_str("12345");
+        s.clear();
+        assert_eq!(s.len(), 0);
+        assert_eq!(s.as_slice(), "");
     }
 }
