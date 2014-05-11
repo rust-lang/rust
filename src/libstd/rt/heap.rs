@@ -25,7 +25,7 @@ extern {
 }
 
 // -lpthread needs to occur after -ljemalloc, the earlier argument isn't enough
-#[cfg(not(windows))]
+#[cfg(not(windows), not(target_os = "android"))]
 #[link(name = "pthread")]
 extern {}
 
