@@ -110,7 +110,7 @@ use ops::Drop;
 use option::{None, Option, Some};
 use ptr::RawPtr;
 use ptr;
-use rt::global_heap::{exchange_free};
+use rt::heap::{exchange_malloc, exchange_free};
 use unstable::finally::try_finally;
 use vec::Vec;
 
@@ -292,9 +292,9 @@ pub trait CloneableVector<T> {
 impl<'a, T: Clone> CloneableVector<T> for &'a [T] {
     /// Returns a copy of `v`.
     #[inline]
+    #[cfg(stage0)]
     fn to_owned(&self) -> ~[T] {
         use RawVec = core::raw::Vec;
-        use rt::global_heap::{malloc_raw, exchange_free};
         use num::{CheckedAdd, CheckedMul};
         use option::Expect;
 
@@ -305,7 +305,8 @@ impl<'a, T: Clone> CloneableVector<T> for &'a [T] {
         let size = size.expect("overflow in to_owned()");
 
         unsafe {
-            let ret = malloc_raw(size) as *mut RawVec<()>;
+            // this should pass the real required alignment
+            let ret = exchange_malloc(size) as *mut RawVec<()>;
 
             (*ret).fill = len * mem::nonzero_size_of::<T>();
             (*ret).alloc = len * mem::nonzero_size_of::<T>();
@@ -329,7 +330,55 @@ impl<'a, T: Clone> CloneableVector<T> for &'a [T] {
                     for j in range(0, *i as int) {
                         ptr::read(&*p.offset(j));
                     }
-                    exchange_free(ret as *u8);
+                    // FIXME: #13994 (should pass align and size here)
+                    exchange_free(ret as *mut u8, 0, 8);
+                });
+            cast::transmute(ret)
+        }
+    }
+
+    /// Returns a copy of `v`.
+    #[inline]
+    #[cfg(not(stage0))]
+    fn to_owned(&self) -> ~[T] {
+        use RawVec = core::raw::Vec;
+        use num::{CheckedAdd, CheckedMul};
+        use option::Expect;
+
+        let len = self.len();
+        let data_size = len.checked_mul(&mem::size_of::<T>());
+        let data_size = data_size.expect("overflow in to_owned()");
+        let size = mem::size_of::<RawVec<()>>().checked_add(&data_size);
+        let size = size.expect("overflow in to_owned()");
+
+        unsafe {
+            // this should pass the real required alignment
+            let ret = exchange_malloc(size, 8) as *mut RawVec<()>;
+
+            (*ret).fill = len * mem::nonzero_size_of::<T>();
+            (*ret).alloc = len * mem::nonzero_size_of::<T>();
+
+            // Be careful with the following loop. We want it to be optimized
+            // to a memcpy (or something similarly fast) when T is Copy. LLVM
+            // is easily confused, so any extra operations during the loop can
+            // prevent this optimization.
+            let mut i = 0;
+            let p = &mut (*ret).data as *mut _ as *mut T;
+            try_finally(
+                &mut i, (),
+                |i, ()| while *i < len {
+                    mem::move_val_init(
+                        &mut(*p.offset(*i as int)),
+                        self.unsafe_ref(*i).clone());
+                    *i += 1;
+                },
+                |i| if *i < len {
+                    // we must be failing, clean up after ourselves
+                    for j in range(0, *i as int) {
+                        ptr::read(&*p.offset(j));
+                    }
+                    // FIXME: #13994 (should pass align and size here)
+                    exchange_free(ret as *mut u8, 0, 8);
                 });
             cast::transmute(ret)
         }
@@ -768,7 +817,8 @@ impl<T> Drop for MoveItems<T> {
         // destroy the remaining elements
         for _x in *self {}
         unsafe {
-            exchange_free(self.allocation as *u8)
+            // FIXME: #13994 (should pass align and size here)
+            exchange_free(self.allocation, 0, 8)
         }
     }
 }
