@@ -15,8 +15,7 @@
 //! This implementation is also used as the fallback implementation of an event
 //! loop if no other one is provided (and M:N scheduling is desired).
 
-use std::cast;
-use std::mem::replace;
+use std::mem;
 use std::rt::rtio::{EventLoop, IoFactory, RemoteCallback};
 use std::rt::rtio::{PausableIdleCallback, Callback};
 use std::unstable::sync::Exclusive;
@@ -50,7 +49,7 @@ impl BasicLoop {
     /// Process everything in the work queue (continually)
     fn work(&mut self) {
         while self.work.len() > 0 {
-            for work in replace(&mut self.work, vec![]).move_iter() {
+            for work in mem::replace(&mut self.work, vec![]).move_iter() {
                 work();
             }
         }
@@ -60,7 +59,7 @@ impl BasicLoop {
         let messages = unsafe {
             self.messages.with(|messages| {
                 if messages.len() > 0 {
-                    Some(replace(messages, vec![]))
+                    Some(mem::replace(messages, vec![]))
                 } else {
                     None
                 }
@@ -145,7 +144,7 @@ impl EventLoop for BasicLoop {
         let callback = box BasicPausable::new(self, cb);
         rtassert!(self.idle.is_none());
         unsafe {
-            let cb_ptr: &*mut BasicPausable = cast::transmute(&callback);
+            let cb_ptr: &*mut BasicPausable = mem::transmute(&callback);
             self.idle = Some(*cb_ptr);
         }
         callback as Box<PausableIdleCallback:Send>

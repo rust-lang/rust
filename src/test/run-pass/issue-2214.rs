@@ -11,12 +11,12 @@
 
 extern crate libc;
 
-use std::cast;
+use std::mem;
 use libc::{c_double, c_int};
 
 fn to_c_int(v: &mut int) -> &mut c_int {
     unsafe {
-        cast::transmute_copy(&v)
+        mem::transmute_copy(&v)
     }
 }
 

@@ -12,15 +12,14 @@
 //!
 //! Documentation can be found on the `rt::at_exit` function.
 
-use cast;
 use iter::Iterator;
 use kinds::Send;
 use mem;
 use option::{Some, None};
 use owned::Box;
 use ptr::RawPtr;
-use unstable::sync::Exclusive;
 use slice::OwnedVector;
+use unstable::sync::Exclusive;
 use vec::Vec;
 
 type Queue = Exclusive<Vec<proc():Send>>;
@@ -38,7 +37,7 @@ pub fn init() {
         rtassert!(!RUNNING);
         rtassert!(QUEUE.is_null());
         let state: Box<Queue> = box Exclusive::new(vec!());
-        QUEUE = cast::transmute(state);
+        QUEUE = mem::transmute(state);
     }
 }
 
@@ -46,7 +45,7 @@ pub fn push(f: proc():Send) {
     unsafe {
         rtassert!(!RUNNING);
         rtassert!(!QUEUE.is_null());
-        let state: &mut Queue = cast::transmute(QUEUE);
+        let state: &mut Queue = mem::transmute(QUEUE);
         let mut f = Some(f);
         state.with(|arr|  {
             arr.push(f.take_unwrap());
@@ -59,7 +58,7 @@ pub fn run() {
         rtassert!(!RUNNING);
         rtassert!(!QUEUE.is_null());
         RUNNING = true;
-        let state: Box<Queue> = cast::transmute(QUEUE);
+        let state: Box<Queue> = mem::transmute(QUEUE);
         QUEUE = 0 as *mut Queue;
         let mut vec = None;
         state.with(|arr| {

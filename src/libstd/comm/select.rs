@@ -45,11 +45,11 @@
 
 #![allow(dead_code)]
 
-use cast;
 use cell::Cell;
 use iter::Iterator;
-use kinds::marker;
 use kinds::Send;
+use kinds::marker;
+use mem;
 use ops::Drop;
 use option::{Some, None, Option};
 use owned::Box;
@@ -247,8 +247,8 @@ impl<'rx, T: Send> Handle<'rx, T> {
     /// while it is added to the `Select` set.
     pub unsafe fn add(&mut self) {
         if self.added { return }
-        let selector: &mut Select = cast::transmute(&*self.selector);
-        let me: *mut Handle<'static, ()> = cast::transmute(&*self);
+        let selector: &mut Select = mem::transmute(&*self.selector);
+        let me: *mut Handle<'static, ()> = mem::transmute(&*self);
 
         if selector.head.is_null() {
             selector.head = me;
@@ -268,8 +268,8 @@ impl<'rx, T: Send> Handle<'rx, T> {
     pub unsafe fn remove(&mut self) {
         if !self.added { return }
 
-        let selector: &mut Select = cast::transmute(&*self.selector);
-        let me: *mut Handle<'static, ()> = cast::transmute(&*self);
+        let selector: &mut Select = mem::transmute(&*self.selector);
+        let me: *mut Handle<'static, ()> = mem::transmute(&*self);
 
         if self.prev.is_null() {
             assert_eq!(selector.head, me);

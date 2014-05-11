@@ -16,7 +16,7 @@ More runtime type reflection
 
 #![allow(missing_doc)]
 
-use cast::transmute;
+use mem::transmute;
 use char;
 use container::Container;
 use io;
@@ -157,7 +157,7 @@ impl<'a> ReprVisitor<'a> {
                 ptr: ptr,
                 ptr_stk: vec!(),
                 var_stk: vec!(),
-                writer: ::cast::transmute_copy(&self.writer),
+                writer: ::mem::transmute_copy(&self.writer),
                 last_err: None,
             };
             let mut v = reflect::MovePtrAdaptor(u);

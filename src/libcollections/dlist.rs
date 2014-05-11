@@ -21,10 +21,9 @@
 // Backlinks over DList::prev are raw pointers that form a full chain in
 // the reverse direction.
 
-use std::cast;
 use std::iter::Rev;
 use std::iter;
-use std::mem::{replace, swap};
+use std::mem;
 use std::ptr;
 
 use deque::Deque;
@@ -93,13 +92,13 @@ impl<T> Rawlink<T> {
         if self.p.is_null() {
             None
         } else {
-            Some(unsafe { cast::transmute(self.p) })
+            Some(unsafe { mem::transmute(self.p) })
         }
     }
 
     /// Return the `Rawlink` and replace with `Rawlink::none()`
     fn take(&mut self) -> Rawlink<T> {
-        replace(self, Rawlink::none())
+        mem::replace(self, Rawlink::none())
     }
 }
 
@@ -159,7 +158,7 @@ impl<T> DList<T> {
             Some(ref mut head) => {
                 new_head.prev = Rawlink::none();
                 head.prev = Rawlink::some(new_head);
-                swap(head, &mut new_head);
+                mem::swap(head, &mut new_head);
                 head.next = Some(new_head);
             }
         }
@@ -317,7 +316,7 @@ impl<T> DList<T> {
     /// O(1)
     #[inline]
     pub fn prepend(&mut self, mut other: DList<T>) {
-        swap(self, &mut other);
+        mem::swap(self, &mut other);
         self.append(other);
     }
 

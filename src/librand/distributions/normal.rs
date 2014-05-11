@@ -19,7 +19,7 @@ use distributions::{ziggurat, ziggurat_tables, Sample, IndependentSample};
 ///
 /// See `Normal` for the general normal distribution. That this has to
 /// be unwrapped before use as an `f64` (using either `*` or
-/// `cast::transmute` is safe).
+/// `mem::transmute` is safe).
 ///
 /// Implemented via the ZIGNOR variant[1] of the Ziggurat method.
 ///

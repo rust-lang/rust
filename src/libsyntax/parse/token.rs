@@ -17,9 +17,9 @@ use util::interner::{RcStr, StrInterner};
 use util::interner;
 
 use serialize::{Decodable, Decoder, Encodable, Encoder};
-use std::cast;
 use std::fmt;
 use std::path::BytesContainer;
+use std::mem;
 use std::rc::Rc;
 use std::strbuf::StrBuf;
 
@@ -585,7 +585,7 @@ impl BytesContainer for InternedString {
         // DST.
         unsafe {
             let this = self.get();
-            cast::transmute(this.container_as_bytes())
+            mem::transmute(this.container_as_bytes())
         }
     }
 }

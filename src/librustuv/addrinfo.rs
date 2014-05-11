@@ -9,9 +9,9 @@
 // except according to those terms.
 
 use ai = std::io::net::addrinfo;
-use std::cast;
-use libc;
 use libc::c_int;
+use libc;
+use std::mem;
 use std::ptr::null;
 use std::rt::task::BlockedTask;
 
@@ -140,7 +140,7 @@ pub fn accum_addrinfo(addr: &Addrinfo) -> Vec<ai::Info> {
 
         let mut addrs = Vec::new();
         loop {
-            let rustaddr = net::sockaddr_to_addr(cast::transmute((*addr).ai_addr),
+            let rustaddr = net::sockaddr_to_addr(mem::transmute((*addr).ai_addr),
                                                  (*addr).ai_addrlen as uint);
 
             let mut flags = 0;

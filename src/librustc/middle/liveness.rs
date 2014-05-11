@@ -109,7 +109,7 @@ use middle::pat_util;
 use middle::ty;
 use util::nodemap::NodeMap;
 
-use std::cast::transmute;
+use std::mem::transmute;
 use std::fmt;
 use std::io;
 use std::rc::Rc;

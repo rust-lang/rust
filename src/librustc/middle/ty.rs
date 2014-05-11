@@ -34,13 +34,13 @@ use util::ppaux::{Repr, UserString};
 use util::common::{indenter};
 use util::nodemap::{NodeMap, NodeSet, DefIdMap, DefIdSet, FnvHashMap};
 
-use std::cast;
 use std::cell::{Cell, RefCell};
 use std::cmp;
 use std::fmt::Show;
 use std::fmt;
 use std::hash::{Hash, sip};
 use std::iter::AdditiveIterator;
+use std::mem;
 use std::ops;
 use std::rc::Rc;
 use collections::{HashMap, HashSet};
@@ -394,7 +394,7 @@ impl fmt::Show for t {
 
 pub fn get(t: t) -> t_box {
     unsafe {
-        let t2: t_box = cast::transmute(t);
+        let t2: t_box = mem::transmute(t);
         t2
     }
 }
@@ -854,7 +854,7 @@ impl CLike for BuiltinBound {
         *self as uint
     }
     fn from_uint(v: uint) -> BuiltinBound {
-        unsafe { cast::transmute(v) }
+        unsafe { mem::transmute(v) }
     }
 }
 
@@ -1158,7 +1158,7 @@ pub fn mk_t(cx: &ctxt, st: sty) -> t {
     let key = intern_key { sty: &st };
 
     match cx.interner.borrow().find(&key) {
-        Some(t) => unsafe { return cast::transmute(&t.sty); },
+        Some(t) => unsafe { return mem::transmute(&t.sty); },
         _ => ()
     }
 
@@ -1259,14 +1259,14 @@ pub fn mk_t(cx: &ctxt, st: sty) -> t {
     cx.next_id.set(cx.next_id.get() + 1);
 
     unsafe {
-        cast::transmute::<*sty, t>(sty_ptr)
+        mem::transmute::<*sty, t>(sty_ptr)
     }
 }
 
 #[inline]
 pub fn mk_prim_t(primitive: &'static t_box_) -> t {
     unsafe {
-        cast::transmute::<&'static t_box_, t>(primitive)
+        mem::transmute::<&'static t_box_, t>(primitive)
     }
 }
 

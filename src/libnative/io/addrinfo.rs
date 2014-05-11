@@ -9,11 +9,11 @@
 // except according to those terms.
 
 use ai = std::io::net::addrinfo;
-use std::c_str::CString;
-use std::cast;
-use std::io::IoError;
-use libc;
 use libc::{c_char, c_int};
+use libc;
+use std::c_str::CString;
+use std::io::IoError;
+use std::mem;
 use std::ptr::{null, mut_null};
 
 use super::net::sockaddr_to_addr;
@@ -61,7 +61,7 @@ impl GetAddrInfoRequest {
         let mut rp = res;
         while rp.is_not_null() {
             unsafe {
-                let addr = match sockaddr_to_addr(cast::transmute((*rp).ai_addr),
+                let addr = match sockaddr_to_addr(mem::transmute((*rp).ai_addr),
                                                   (*rp).ai_addrlen as uint) {
                     Ok(a) => a,
                     Err(e) => return Err(e)

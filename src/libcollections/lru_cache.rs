@@ -37,7 +37,6 @@
 //! assert!(cache.get(&2).is_none());
 //! ```
 
-use std::cast;
 use std::container::Container;
 use std::hash::Hash;
 use std::fmt;
@@ -93,7 +92,7 @@ impl<K: Hash + TotalEq, V> LruCache<K, V> {
         let cache = LruCache {
             map: HashMap::new(),
             max_size: capacity,
-            head: unsafe{ cast::transmute(box mem::uninit::<LruEntry<K, V>>()) },
+            head: unsafe{ mem::transmute(box mem::uninit::<LruEntry<K, V>>()) },
         };
         unsafe {
             (*cache.head).next = cache.head;
@@ -241,11 +240,11 @@ impl<K: Hash + TotalEq, V> Mutable for LruCache<K, V> {
 impl<K, V> Drop for LruCache<K, V> {
     fn drop(&mut self) {
         unsafe {
-            let node: Box<LruEntry<K, V>> = cast::transmute(self.head);
+            let node: Box<LruEntry<K, V>> = mem::transmute(self.head);
             // Prevent compiler from trying to drop the un-initialized field in the sigil node.
             let box LruEntry { key: k, value: v, .. } = node;
-            cast::forget(k);
-            cast::forget(v);
+            mem::forget(k);
+            mem::forget(v);
         }
     }
 }

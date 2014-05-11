@@ -21,10 +21,10 @@
 //! the underlying data will remain valid (not free'd) so long as the reference
 //! count is greater than one.
 
-use cast;
 use clone::Clone;
 use iter::Iterator;
 use kinds::Send;
+use mem;
 use ops::Drop;
 use owned::Box;
 use ptr::RawPtr;
@@ -50,7 +50,7 @@ unsafe fn new_inner<T: Send>(data: T, refcount: uint) -> *mut ArcData<T> {
                     count: AtomicUint::new(refcount),
                     data: Unsafe::new(data)
                  };
-    cast::transmute(data)
+    mem::transmute(data)
 }
 
 impl<T: Send> UnsafeArc<T> {
@@ -158,7 +158,7 @@ impl<T> Drop for UnsafeArc<T>{
                 //  happened before), and an "acquire" operation before deleting the object.
                 // [1]: (www.boost.org/doc/libs/1_55_0/doc/html/atomic/usage_examples.html)
                 fence(Acquire);
-                let _: Box<ArcData<T>> = cast::transmute(self.data);
+                let _: Box<ArcData<T>> = mem::transmute(self.data);
             }
         }
     }

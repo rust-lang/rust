@@ -25,9 +25,9 @@ use syntax::attr::AttrMetaMethods;
 use util::fs;
 
 use std::c_str::ToCStr;
-use std::cast;
 use std::cmp;
 use std::io;
+use std::mem;
 use std::ptr;
 use std::slice;
 use std::str;
@@ -469,7 +469,7 @@ impl ArchiveMetadata {
             // Hence, we're guaranteed that the buffer will never be used after
             // this object is dead, so this is a safe operation to transmute and
             // store the data as a static buffer.
-            unsafe { cast::transmute(data) }
+            unsafe { mem::transmute(data) }
         };
         Some(ArchiveMetadata {
             archive: ar,
@@ -532,7 +532,7 @@ fn get_metadata_section_imp(os: Os, filename: &Path) -> Result<MetadataBlob, ~st
                 let cbuf = llvm::LLVMGetSectionContents(si.llsi);
                 let csz = llvm::LLVMGetSectionSize(si.llsi) as uint;
                 let mut found = Err(format!("metadata not found: '{}'", filename.display()));
-                let cvbuf: *u8 = cast::transmute(cbuf);
+                let cvbuf: *u8 = mem::transmute(cbuf);
                 let vlen = encoder::metadata_encoding_version.len();
                 debug!("checking {} bytes of metadata-version stamp",
                        vlen);

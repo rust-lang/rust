@@ -33,9 +33,9 @@
 //! handled correctly, i.e. that allocated memory is eventually freed
 //! if necessary.
 
-use cast;
 use container::Container;
 use kinds::Send;
+use mem;
 use ops::Drop;
 use option::{Option, Some, None};
 use ptr::RawPtr;
@@ -102,14 +102,14 @@ impl<T> CVec<T> {
     /// View the stored data as a slice.
     pub fn as_slice<'a>(&'a self) -> &'a [T] {
         unsafe {
-            cast::transmute(raw::Slice { data: self.base as *T, len: self.len })
+            mem::transmute(raw::Slice { data: self.base as *T, len: self.len })
         }
     }
 
     /// View the stored data as a mutable slice.
     pub fn as_mut_slice<'a>(&'a mut self) -> &'a mut [T] {
         unsafe {
-            cast::transmute(raw::Slice { data: self.base as *T, len: self.len })
+            mem::transmute(raw::Slice { data: self.base as *T, len: self.len })
         }
     }
 

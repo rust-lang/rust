@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::cast;
+use std::mem;
 
 fn main() {
-    cast::transmute(0);  //~ ERROR: cannot determine a type for this expression: unconstrained type
+    mem::transmute(0);  //~ ERROR: cannot determine a type for this expression: unconstrained type
 }

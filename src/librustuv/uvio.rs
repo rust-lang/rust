@@ -11,7 +11,6 @@
 //! The implementation of `rtio` for libuv
 
 use std::c_str::CString;
-use std::cast;
 use std::io::IoError;
 use std::io::net::ip::SocketAddr;
 use std::io::process::ProcessConfig;
@@ -19,6 +18,7 @@ use std::io::signal::Signum;
 use std::io::{FileMode, FileAccess, Open, Append, Truncate, Read, Write,
               ReadWrite, FileStat};
 use std::io;
+use std::mem;
 use libc::c_int;
 use libc::{O_CREAT, O_APPEND, O_TRUNC, O_RDWR, O_RDONLY, O_WRONLY, S_IRUSR,
                 S_IWUSR};
@@ -140,7 +140,7 @@ impl UvIoFactory {
     pub fn make_handle(&mut self) -> HomeHandle {
         // It's understood by the homing code that the "local id" is just the
         // pointer of the local I/O factory cast to a uint.
-        let id: uint = unsafe { cast::transmute_copy(&self) };
+        let id: uint = unsafe { mem::transmute_copy(&self) };
         HomeHandle::new(id, &mut **self.handle_pool.get_mut_ref())
     }
 }

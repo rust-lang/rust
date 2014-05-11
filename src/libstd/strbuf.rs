@@ -11,12 +11,12 @@
 //! An owned, growable string that enforces that its contents are valid UTF-8.
 
 use c_vec::CVec;
-use cast;
 use char::Char;
 use container::Container;
 use fmt;
 use io::Writer;
 use iter::{Extendable, FromIterator, Iterator, range};
+use mem;
 use option::{None, Option, Some};
 use ptr::RawPtr;
 use slice::{OwnedVector, Vector, CloneableVector};
@@ -265,7 +265,7 @@ impl Str for StrBuf {
     #[inline]
     fn as_slice<'a>(&'a self) -> &'a str {
         unsafe {
-            cast::transmute(self.vec.as_slice())
+            mem::transmute(self.vec.as_slice())
         }
     }
 }
@@ -274,7 +274,7 @@ impl StrAllocating for StrBuf {
     #[inline]
     fn into_owned(self) -> ~str {
         unsafe {
-            cast::transmute(self.vec.as_slice().to_owned())
+            mem::transmute(self.vec.as_slice().to_owned())
         }
     }
 

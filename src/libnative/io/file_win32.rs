@@ -11,7 +11,6 @@
 //! Blocking win32-based file I/O
 
 use std::c_str::CString;
-use std::cast;
 use std::io::IoError;
 use std::io;
 use libc::{c_int, c_void};
@@ -175,7 +174,7 @@ impl rtio::RtioFileStream for FileDesc {
         // This transmute is fine because our seek implementation doesn't
         // actually use the mutable self at all.
         // FIXME #13933: Remove/justify all `&T` to `&mut T` transmutes
-        unsafe { cast::transmute::<&_, &mut FileDesc>(self).seek(0, io::SeekCur) }
+        unsafe { mem::transmute::<&_, &mut FileDesc>(self).seek(0, io::SeekCur) }
     }
 
     fn fsync(&mut self) -> Result<(), IoError> {

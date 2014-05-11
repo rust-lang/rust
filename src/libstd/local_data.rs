@@ -38,11 +38,11 @@ assert_eq!(*key_vector.get().unwrap(), ~[4]);
 // Casting 'Arcane Sight' reveals an overwhelming aura of Transmutation
 // magic.
 
-use cast;
 use iter::{Iterator};
 use kinds::Send;
 use kinds::marker;
 use mem::replace;
+use mem;
 use ops::{Drop, Deref};
 use option::{None, Option, Some};
 use owned::Box;
@@ -172,7 +172,7 @@ impl<T: 'static> KeyValue<T> {
         // anything.
         let newval = data.map(|d| {
             let d = box d as Box<LocalData>;
-            let d: Box<LocalData:Send> = unsafe { cast::transmute(d) };
+            let d: Box<LocalData:Send> = unsafe { mem::transmute(d) };
             (keyval, d, 0)
         });
 
@@ -188,8 +188,8 @@ impl<T: 'static> KeyValue<T> {
                 replace(map.get_mut(i), newval).map(|(_, data, _)| {
                     // Move `data` into transmute to get out the memory that it
                     // owns, we must free it manually later.
-                    let t: raw::TraitObject = unsafe { cast::transmute(data) };
-                    let alloc: Box<T> = unsafe { cast::transmute(t.data) };
+                    let t: raw::TraitObject = unsafe { mem::transmute(data) };
+                    let alloc: Box<T> = unsafe { mem::transmute(t.data) };
 
                     // Now that we own `alloc`, we can just move out of it as we
                     // would with any other data.

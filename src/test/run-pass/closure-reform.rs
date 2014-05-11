@@ -11,7 +11,7 @@
 /* Any copyright is dedicated to the Public Domain.
  * http://creativecommons.org/publicdomain/zero/1.0/ */
 
-use std::cast;
+use std::mem;
 use std::io::stdio::println;
 
 fn call_it(f: proc(~str) -> ~str) {
@@ -74,7 +74,7 @@ pub fn main() {
 
     call_cramped(|| 1, || unsafe {
         static a: uint = 100;
-        cast::transmute(&a)
+        mem::transmute(&a)
     });
 
     // External functions

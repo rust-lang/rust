@@ -77,7 +77,7 @@ impl<'r, R: Reader> Iterator<IoResult<u8>> for Bytes<'r, R> {
 /// This function returns the value returned by the callback, for convenience.
 pub fn u64_to_le_bytes<T>(n: u64, size: uint, f: |v: &[u8]| -> T) -> T {
     use mem::{to_le16, to_le32, to_le64};
-    use cast::transmute;
+    use mem::transmute;
 
     // LLVM fails to properly optimize this when using shifts instead of the to_le* intrinsics
     assert!(size <= 8u);
@@ -117,7 +117,7 @@ pub fn u64_to_le_bytes<T>(n: u64, size: uint, f: |v: &[u8]| -> T) -> T {
 /// This function returns the value returned by the callback, for convenience.
 pub fn u64_to_be_bytes<T>(n: u64, size: uint, f: |v: &[u8]| -> T) -> T {
     use mem::{to_be16, to_be32, to_be64};
-    use cast::transmute;
+    use mem::transmute;
 
     // LLVM fails to properly optimize this when using shifts instead of the to_be* intrinsics
     assert!(size <= 8u);

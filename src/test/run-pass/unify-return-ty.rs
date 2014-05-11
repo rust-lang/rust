@@ -12,11 +12,11 @@
 // unified with the type *T, and so the type variable
 // in that type gets resolved.
 
-use std::cast;
+use std::mem;
 
 fn null<T>() -> *T {
     unsafe {
-        cast::transmute(0)
+        mem::transmute(0)
     }
 }
 

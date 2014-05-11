@@ -11,11 +11,11 @@
 //! The EventLoop and internal synchronous I/O interface.
 
 use c_str::CString;
-use cast;
 use comm::{Sender, Receiver};
+use kinds::Send;
 use libc::c_int;
 use libc;
-use kinds::Send;
+use mem;
 use ops::Drop;
 use option::{Option, Some, None};
 use owned::Box;
@@ -118,7 +118,7 @@ impl<'a> LocalIo<'a> {
         // in order to have what is likely a static lifetime (bad).
         let mut t: Box<Task> = Local::take();
         let ret = t.local_io().map(|t| {
-            unsafe { cast::transmute_copy(&t) }
+            unsafe { mem::transmute_copy(&t) }
         });
         Local::put(t);
         return ret;
@@ -143,7 +143,7 @@ impl<'a> LocalIo<'a> {
         // FIXME(pcwalton): I think this is actually sound? Could borrow check
         // allow this safely?
         unsafe {
-            cast::transmute_copy(&self.factory)
+            mem::transmute_copy(&self.factory)
         }
     }
 }

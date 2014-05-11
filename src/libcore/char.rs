@@ -24,7 +24,7 @@
 //! and, as such, should be performed via the `from_u32` function..
 
 
-use cast::transmute;
+use mem::transmute;
 use option::{None, Option, Some};
 use iter::{Iterator, range_step};
 use unicode::{derived_property, property, general_category, decompose, conversions};

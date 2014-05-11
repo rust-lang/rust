@@ -69,21 +69,21 @@ struct NamedFieldsRepr<'a> {
 
 fn main() {
 
-    let some: Option<&u32> = Some(unsafe { std::cast::transmute(0x12345678) });
+    let some: Option<&u32> = Some(unsafe { std::mem::transmute(0x12345678) });
     let none: Option<&u32> = None;
 
-    let full = Full(454545, unsafe { std::cast::transmute(0x87654321) }, 9988);
+    let full = Full(454545, unsafe { std::mem::transmute(0x87654321) }, 9988);
 
     let int_val = 0;
-    let empty: &MoreFieldsRepr = unsafe { std::cast::transmute(&Empty) };
+    let empty: &MoreFieldsRepr = unsafe { std::mem::transmute(&Empty) };
 
     let droid = Droid {
         id: 675675,
         range: 10000001,
-        internals: unsafe { std::cast::transmute(0x43218765) }
+        internals: unsafe { std::mem::transmute(0x43218765) }
     };
 
-    let void_droid: &NamedFieldsRepr = unsafe { std::cast::transmute(&Void) };
+    let void_droid: &NamedFieldsRepr = unsafe { std::mem::transmute(&Void) };
 
     zzz();
 }

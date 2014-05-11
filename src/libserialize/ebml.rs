@@ -88,7 +88,7 @@ pub enum Error {
 pub mod reader {
     use std::char;
 
-    use std::cast::transmute;
+    use std::mem::transmute;
     use std::int;
     use std::option::{None, Option, Some};
     use std::io::extensions::u64_from_be_bytes;
@@ -617,11 +617,11 @@ pub mod reader {
 }
 
 pub mod writer {
-    use std::cast;
     use std::clone::Clone;
-    use std::io;
-    use std::io::{Writer, Seek};
     use std::io::extensions::u64_to_be_bytes;
+    use std::io::{Writer, Seek};
+    use std::io;
+    use std::mem;
 
     use super::{ EsVec, EsMap, EsEnum, EsVecLen, EsVecElt, EsMapLen, EsMapKey,
         EsEnumVid, EsU64, EsU32, EsU16, EsU8, EsInt, EsI64, EsI32, EsI16, EsI8,
@@ -679,7 +679,7 @@ pub mod writer {
         /// FIXME(pcwalton): Workaround for badness in trans. DO NOT USE ME.
         pub unsafe fn unsafe_clone(&self) -> Encoder<'a, W> {
             Encoder {
-                writer: cast::transmute_copy(&self.writer),
+                writer: mem::transmute_copy(&self.writer),
                 size_positions: self.size_positions.clone(),
             }
         }
@@ -853,11 +853,11 @@ pub mod writer {
         }
 
         fn emit_f64(&mut self, v: f64) -> EncodeResult {
-            let bits = unsafe { cast::transmute(v) };
+            let bits = unsafe { mem::transmute(v) };
             self.wr_tagged_u64(EsF64 as uint, bits)
         }
         fn emit_f32(&mut self, v: f32) -> EncodeResult {
-            let bits = unsafe { cast::transmute(v) };
+            let bits = unsafe { mem::transmute(v) };
             self.wr_tagged_u32(EsF32 as uint, bits)
         }
         fn emit_char(&mut self, v: char) -> EncodeResult {

@@ -19,7 +19,7 @@
 //! values.
 
 use std::any::Any;
-use std::cast;
+use std::mem;
 use std::raw;
 use std::rt::Runtime;
 use std::rt::env;
@@ -93,11 +93,11 @@ pub enum Home {
 extern fn bootstrap_green_task(task: uint, code: *(), env: *()) -> ! {
     // Acquire ownership of the `proc()`
     let start: proc() = unsafe {
-        cast::transmute(raw::Procedure { code: code, env: env })
+        mem::transmute(raw::Procedure { code: code, env: env })
     };
 
     // Acquire ownership of the `Box<GreenTask>`
-    let mut task: Box<GreenTask> = unsafe { cast::transmute(task) };
+    let mut task: Box<GreenTask> = unsafe { mem::transmute(task) };
 
     // First code after swap to this new context. Run our cleanup job
     task.pool_id = {
@@ -271,7 +271,7 @@ impl GreenTask {
     }
 
     pub unsafe fn from_uint(val: uint) -> Box<GreenTask> {
-        cast::transmute(val)
+        mem::transmute(val)
     }
 
     // Runtime glue functions and helpers

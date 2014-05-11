@@ -237,9 +237,9 @@ fn demangle(writer: &mut Writer, s: &str) -> IoResult<()> {
 #[cfg(unix)]
 mod imp {
     use c_str::CString;
-    use cast;
     use io::{IoResult, IoError, Writer};
     use libc;
+    use mem;
     use option::{Some, None, Option};
     use result::{Ok, Err};
     use unstable::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
@@ -280,7 +280,7 @@ mod imp {
 
         extern fn trace_fn(ctx: *uw::_Unwind_Context,
                            arg: *libc::c_void) -> uw::_Unwind_Reason_Code {
-            let cx: &mut Context = unsafe { cast::transmute(arg) };
+            let cx: &mut Context = unsafe { mem::transmute(arg) };
             let ip = unsafe { uw::_Unwind_GetIP(ctx) as *libc::c_void };
             // dladdr() on osx gets whiny when we use FindEnclosingFunction, and
             // it appears to work fine without it, so we only use

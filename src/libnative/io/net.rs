@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use libc;
-use std::cast;
 use std::io::net::ip;
 use std::io;
 use std::mem;
@@ -72,14 +71,14 @@ fn addr_to_sockaddr(addr: ip::SocketAddr) -> (libc::sockaddr_storage, uint) {
         let storage: libc::sockaddr_storage = mem::init();
         let len = match ip_to_inaddr(addr.ip) {
             InAddr(inaddr) => {
-                let storage: *mut libc::sockaddr_in = cast::transmute(&storage);
+                let storage: *mut libc::sockaddr_in = mem::transmute(&storage);
                 (*storage).sin_family = libc::AF_INET as libc::sa_family_t;
                 (*storage).sin_port = htons(addr.port);
                 (*storage).sin_addr = inaddr;
                 mem::size_of::<libc::sockaddr_in>()
             }
             In6Addr(inaddr) => {
-                let storage: *mut libc::sockaddr_in6 = cast::transmute(&storage);
+                let storage: *mut libc::sockaddr_in6 = mem::transmute(&storage);
                 (*storage).sin6_family = libc::AF_INET6 as libc::sa_family_t;
                 (*storage).sin6_port = htons(addr.port);
                 (*storage).sin6_addr = inaddr;
@@ -173,7 +172,7 @@ pub fn sockaddr_to_addr(storage: &libc::sockaddr_storage,
         libc::AF_INET => {
             assert!(len as uint >= mem::size_of::<libc::sockaddr_in>());
             let storage: &libc::sockaddr_in = unsafe {
-                cast::transmute(storage)
+                mem::transmute(storage)
             };
             let addr = storage.sin_addr.s_addr as u32;
             let a = (addr >>  0) as u8;
@@ -188,7 +187,7 @@ pub fn sockaddr_to_addr(storage: &libc::sockaddr_storage,
         libc::AF_INET6 => {
             assert!(len as uint >= mem::size_of::<libc::sockaddr_in6>());
             let storage: &libc::sockaddr_in6 = unsafe {
-                cast::transmute(storage)
+                mem::transmute(storage)
             };
             let a = ntohs(storage.sin6_addr.s6_addr[0]);
             let b = ntohs(storage.sin6_addr.s6_addr[1]);

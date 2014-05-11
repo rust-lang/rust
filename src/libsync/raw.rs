@@ -15,9 +15,8 @@
 //! `sync` crate which wrap values directly and provide safer abstractions for
 //! containing data.
 
-use std::cast;
 use std::kinds::marker;
-use std::mem::replace;
+use std::mem;
 use std::sync::atomics;
 use std::unstable::finally::Finally;
 
@@ -109,7 +108,7 @@ struct SemGuard<'a, Q> {
 impl<Q: Send> Sem<Q> {
     fn new(count: int, q: Q) -> Sem<Q> {
         let inner = unsafe {
-            cast::transmute(box SemInner {
+            mem::transmute(box SemInner {
                 waiters: WaitQueue::new(),
                 count: count,
                 blocked: q,
@@ -168,7 +167,7 @@ impl<Q: Send> Sem<Q> {
 impl<Q: Send> Drop for Sem<Q> {
     fn drop(&mut self) {
         let _waiters: Box<SemInner<Q>> = unsafe {
-            cast::transmute(self.inner)
+            mem::transmute(self.inner)
         };
         self.inner = 0 as *();
     }
@@ -317,8 +316,8 @@ impl<'a> Condvar<'a> {
                     // To avoid :broadcast_heavy, we make a new waitqueue,
                     // swap it out with the old one, and broadcast on the
                     // old one outside of the little-lock.
-                    queue = Some(replace(state.blocked.get_mut(condvar_id),
-                                               WaitQueue::new()));
+                    queue = Some(mem::replace(state.blocked.get_mut(condvar_id),
+                                              WaitQueue::new()));
                 } else {
                     out_of_bounds = Some(state.blocked.len());
                 }
@@ -578,7 +577,7 @@ impl<'a> RWLockWriteGuard<'a> {
         let lock = self.lock;
         // Don't run the destructor of the write guard, we're in charge of
         // things from now on
-        unsafe { cast::forget(self) }
+        unsafe { mem::forget(self) }
 
         let old_count = lock.read_count.fetch_add(1, atomics::Release);
         // If another reader was already blocking, we need to hand-off
@@ -626,7 +625,7 @@ mod tests {
     use arc::Arc;
     use super::{Semaphore, Mutex, RWLock, Condvar};
 
-    use std::cast;
+    use std::mem;
     use std::result;
     use std::task;
 
@@ -902,7 +901,7 @@ mod tests {
             let ptr: *int = &*sharedstate;
             task::spawn(proc() {
                 let sharedstate: &mut int =
-                    unsafe { cast::transmute(ptr) };
+                    unsafe { mem::transmute(ptr) };
                 access_shared(sharedstate, &x2, mode1, 10);
                 tx.send(());
             });

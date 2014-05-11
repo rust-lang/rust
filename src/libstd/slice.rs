@@ -97,8 +97,7 @@ There are a number of free functions that create or take vectors, for example:
 
 */
 
-use cast::transmute;
-use cast;
+use mem::transmute;
 use clone::Clone;
 use cmp::{TotalOrd, Ordering, Less, Greater};
 use cmp;
@@ -333,7 +332,7 @@ impl<'a, T: Clone> CloneableVector<T> for &'a [T] {
                     // FIXME: #13994 (should pass align and size here)
                     exchange_free(ret as *mut u8, 0, 8);
                 });
-            cast::transmute(ret)
+            mem::transmute(ret)
         }
     }
 
@@ -380,7 +379,7 @@ impl<'a, T: Clone> CloneableVector<T> for &'a [T] {
                     // FIXME: #13994 (should pass align and size here)
                     exchange_free(ret as *mut u8, 0, 8);
                 });
-            cast::transmute(ret)
+            mem::transmute(ret)
         }
     }
 
@@ -531,7 +530,7 @@ fn insertion_sort<T>(v: &mut [T], compare: |&T, &T| -> Ordering) {
                 ptr::copy_nonoverlapping_memory(buf_v.offset(j),
                                                 &tmp as *T,
                                                 1);
-                cast::forget(tmp);
+                mem::forget(tmp);
             }
         }
     }
