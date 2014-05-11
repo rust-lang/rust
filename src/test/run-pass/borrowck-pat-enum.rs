@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-pretty
+
 fn match_ref(v: Option<int>) -> int {
     match v {
       Some(ref i) => {
