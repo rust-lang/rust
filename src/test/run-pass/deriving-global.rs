@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate serialize; // {En,De}codable
-extern crate rand; // Rand
+extern crate serialize;
+extern crate rand;
 
 mod submod {
     // if any of these are implemented without global calls for any
