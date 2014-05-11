@@ -12,8 +12,9 @@
 // FIXME: #13996: need a way to mark the `allocate` and `reallocate` return values as `noalias`
 
 use intrinsics::{abort, cttz32};
-use libc::{c_int, c_void, size_t};
-use ptr::RawPtr;
+use libc::{c_char, c_int, c_void, size_t};
+use ptr::{RawPtr, mut_null, null};
+use option::{None, Option};
 
 #[link(name = "jemalloc", kind = "static")]
 extern {
@@ -22,6 +23,9 @@ extern {
     fn je_xallocx(ptr: *mut c_void, size: size_t, extra: size_t, flags: c_int) -> size_t;
     fn je_dallocx(ptr: *mut c_void, flags: c_int);
     fn je_nallocx(size: size_t, flags: c_int) -> size_t;
+    fn je_malloc_stats_print(write_cb: Option<extern "C" fn(cbopaque: *mut c_void, *c_char)>,
+                             cbopaque: *mut c_void,
+                             opts: *c_char);
 }
 
 // -lpthread needs to occur after -ljemalloc, the earlier argument isn't enough
@@ -97,6 +101,16 @@ pub unsafe fn deallocate(ptr: *mut u8, size: uint, align: uint) {
 #[inline]
 pub fn usable_size(size: uint, align: uint) -> uint {
     unsafe { je_nallocx(size as size_t, mallocx_align(align)) as uint }
+}
+
+/// Print implementation-defined allocator statistics.
+///
+/// These statistics may be inconsistent if other threads use the allocator during the call.
+#[unstable]
+pub fn stats_print() {
+    unsafe {
+        je_malloc_stats_print(None, mut_null(), null())
+    }
 }
 
 /// The allocator for unique pointers.
@@ -179,8 +193,8 @@ unsafe fn closure_exchange_malloc(drop_glue: fn(*mut u8), size: uint, align: uin
 #[doc(hidden)]
 #[deprecated]
 #[cfg(stage0, not(test))]
-pub extern "C" fn rust_malloc(size: uint) -> *mut u8 {
-    unsafe { exchange_malloc(size) }
+pub unsafe extern "C" fn rust_malloc(size: uint) -> *mut u8 {
+    exchange_malloc(size)
 }
 
 // hack for libcore
@@ -188,8 +202,8 @@ pub extern "C" fn rust_malloc(size: uint) -> *mut u8 {
 #[doc(hidden)]
 #[deprecated]
 #[cfg(not(stage0), not(test))]
-pub extern "C" fn rust_malloc(size: uint, align: uint) -> *mut u8 {
-    unsafe { exchange_malloc(size, align) }
+pub unsafe extern "C" fn rust_malloc(size: uint, align: uint) -> *mut u8 {
+    exchange_malloc(size, align)
 }
 
 // hack for libcore
@@ -197,8 +211,8 @@ pub extern "C" fn rust_malloc(size: uint, align: uint) -> *mut u8 {
 #[doc(hidden)]
 #[deprecated]
 #[cfg(not(test))]
-pub extern "C" fn rust_free(ptr: *mut u8, size: uint, align: uint) {
-    unsafe { exchange_free(ptr, size, align) }
+pub unsafe extern "C" fn rust_free(ptr: *mut u8, size: uint, align: uint) {
+    exchange_free(ptr, size, align)
 }
 
 #[cfg(test)]
