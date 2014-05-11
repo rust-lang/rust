@@ -125,7 +125,11 @@ enum ItemOrViewItem {
     IoviViewItem(ViewItem)
 }
 
-/* The expr situation is not as complex as I thought it would be.
+
+// Possibly accept an `INTERPOLATED` expression (a pre-parsed expression
+// dropped into the token stream, which happens while parsing the
+// result of macro expansion)
+/* Placement of these is not as complex as I feared it would be.
 The important thing is to make sure that lookahead doesn't balk
 at INTERPOLATED tokens */
 macro_rules! maybe_whole_expr (
@@ -156,6 +160,7 @@ macro_rules! maybe_whole_expr (
     )
 )
 
+// As above, but for things other than expressions
 macro_rules! maybe_whole (
     ($p:expr, $constructor:ident) => (
         {
