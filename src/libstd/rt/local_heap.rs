@@ -12,12 +12,13 @@
 
 use cast;
 use iter::Iterator;
+use libc::{c_void, free};
 use mem;
 use ops::Drop;
 use option::{Option, None, Some};
 use ptr;
 use ptr::RawPtr;
-use rt::global_heap;
+use rt::libc_heap;
 use rt::local::Local;
 use rt::task::Task;
 use raw;
@@ -58,7 +59,7 @@ impl LocalHeap {
 
     #[inline]
     pub fn alloc(&mut self, drop_glue: fn(*mut u8), size: uint, align: uint) -> *mut Box {
-        let total_size = global_heap::get_box_size(size, align);
+        let total_size = ::rt::util::get_box_size(size, align);
         let alloc = self.memory_region.malloc(total_size);
         {
             // Make sure that we can't use `mybox` outside of this scope
@@ -187,7 +188,7 @@ impl MemoryRegion {
     fn malloc(&mut self, size: uint) -> *mut Box {
         let total_size = size + AllocHeader::size();
         let alloc: *AllocHeader = unsafe {
-            global_heap::malloc_raw(total_size) as *AllocHeader
+            libc_heap::malloc_raw(total_size) as *AllocHeader
         };
 
         let alloc: &mut AllocHeader = unsafe { cast::transmute(alloc) };
@@ -206,8 +207,7 @@ impl MemoryRegion {
 
         let total_size = size + AllocHeader::size();
         let alloc: *AllocHeader = unsafe {
-            global_heap::realloc_raw(orig_alloc as *mut u8,
-                                     total_size) as *AllocHeader
+            libc_heap::realloc_raw(orig_alloc as *mut u8, total_size) as *AllocHeader
         };
 
         let alloc: &mut AllocHeader = unsafe { cast::transmute(alloc) };
@@ -226,7 +226,7 @@ impl MemoryRegion {
             self.release(cast::transmute(alloc));
             rtassert!(self.live_allocations > 0);
             self.live_allocations -= 1;
-            global_heap::exchange_free(alloc as *u8)
+            free(alloc as *mut c_void)
         }
     }
 

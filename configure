@@ -782,6 +782,7 @@ do
   for s in 0 1 2 3
   do
     make_dir $t/rt/stage$s
+    make_dir $t/rt/jemalloc
     make_dir $t/rt/libuv
     make_dir $t/rt/libuv/src/ares
     make_dir $t/rt/libuv/src/eio

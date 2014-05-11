@@ -32,7 +32,7 @@
 use libc::{size_t, c_int, c_uint, c_void, c_char, c_double};
 use libc::{ssize_t, sockaddr, free, addrinfo};
 use libc;
-use std::rt::global_heap::malloc_raw;
+use std::rt::libc_heap::malloc_raw;
 
 #[cfg(test)]
 use libc::uintptr_t;

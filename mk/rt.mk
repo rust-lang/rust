@@ -122,10 +122,13 @@ $(foreach lib,$(NATIVE_LIBS),					    \
 ################################################################################
 # Building third-party targets with external build systems
 #
-# The only current member of this section is libuv, but long ago this used to
-# also be occupied by jemalloc. This location is meant for dependencies which
-# have external build systems. It is still assumed that the output of each of
-# these steps is a static library in the correct location.
+# This location is meant for dependencies which have external build systems. It
+# is still assumed that the output of each of these steps is a static library
+# in the correct location.
+################################################################################
+
+################################################################################
+# libuv
 ################################################################################
 
 define DEF_LIBUV_ARCH_VAR
@@ -154,6 +157,11 @@ define DEF_THIRD_PARTY_TARGETS
 
 ifeq ($$(CFG_WINDOWSY_$(1)), 1)
   LIBUV_OSTYPE_$(1) := win
+  # This isn't necessarily a desired option, but it's harmless and works around
+  # what appears to be a mingw-w64 bug.
+  #
+  # https://sourceforge.net/p/mingw-w64/bugs/395/
+  JEMALLOC_ARGS_$(1) := --enable-lazy-lock
 else ifeq ($(OSTYPE_$(1)), apple-darwin)
   LIBUV_OSTYPE_$(1) := mac
 else ifeq ($(OSTYPE_$(1)), unknown-freebsd)
@@ -161,6 +169,7 @@ else ifeq ($(OSTYPE_$(1)), unknown-freebsd)
 else ifeq ($(OSTYPE_$(1)), linux-androideabi)
   LIBUV_OSTYPE_$(1) := android
   LIBUV_ARGS_$(1) := PLATFORM=android host=android OS=linux
+  JEMALLOC_ARGS_$(1) := --disable-tls
 else
   LIBUV_OSTYPE_$(1) := linux
 endif
@@ -219,6 +228,41 @@ $$(LIBUV_DIR_$(1))/Release/libuv.a: $$(LIBUV_DEPS) $$(LIBUV_MAKEFILE_$(1)) \
 	$$(Q)touch $$@
 
 endif
+
+################################################################################
+# jemalloc
+################################################################################
+
+ifdef CFG_ENABLE_FAST_MAKE
+JEMALLOC_DEPS := $(S)/.gitmodules
+else
+JEMALLOC_DEPS := $(wildcard \
+		   $(S)src/jemalloc/* \
+		   $(S)src/jemalloc/*/* \
+		   $(S)src/jemalloc/*/*/* \
+		   $(S)src/jemalloc/*/*/*/*)
+endif
+
+JEMALLOC_NAME_$(1) := $$(call CFG_STATIC_LIB_NAME_$(1),jemalloc)
+ifeq ($$(CFG_WINDOWSY_$(1)),1)
+  JEMALLOC_REAL_NAME_$(1) := $$(call CFG_STATIC_LIB_NAME_$(1),jemalloc_s)
+else
+  JEMALLOC_REAL_NAME_$(1) := $$(call CFG_STATIC_LIB_NAME_$(1),jemalloc_pic)
+endif
+JEMALLOC_LIB_$(1) := $$(RT_OUTPUT_DIR_$(1))/$$(JEMALLOC_NAME_$(1))
+JEMALLOC_BUILD_DIR_$(1) := $$(RT_OUTPUT_DIR_$(1))/jemalloc
+
+$$(JEMALLOC_LIB_$(1)): $$(JEMALLOC_DEPS) $$(MKFILE_DEPS)
+	@$$(call E, make: jemalloc)
+	cd "$$(JEMALLOC_BUILD_DIR_$(1))"; "$(S)src/jemalloc/configure" \
+		$$(JEMALLOC_ARGS_$(1)) --enable-cc-silence --with-jemalloc-prefix=je_ \
+		--disable-experimental --build=$(CFG_BUILD) --host=$(1) \
+		CC="$$(CC_$(1))" \
+		AR="$$(AR_$(1))" \
+		RANLIB="$$(AR_$(1)) s" \
+		EXTRA_CFLAGS="$$(CFG_CFLAGS_$(1))"
+	$$(Q)$$(MAKE) -C "$$(JEMALLOC_BUILD_DIR_$(1))" build_lib_static
+	$$(Q)cp $$(JEMALLOC_BUILD_DIR_$(1))/lib/$$(JEMALLOC_REAL_NAME_$(1)) $$(JEMALLOC_LIB_$(1))
 
 ################################################################################
 # compiler-rt

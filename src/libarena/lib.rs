@@ -33,10 +33,11 @@ use std::cmp;
 use std::intrinsics::{TyDesc, get_tydesc};
 use std::intrinsics;
 use std::mem;
+use std::mem::min_align_of;
 use std::num;
 use std::ptr::read;
 use std::rc::Rc;
-use std::rt::global_heap;
+use std::rt::heap::exchange_malloc;
 
 // The way arena uses arrays is really deeply awful. The arrays are
 // allocated, and have capacities reserved, but the fill for the array
@@ -204,7 +205,7 @@ impl Arena {
     #[inline]
     fn alloc_copy<'a, T>(&'a mut self, op: || -> T) -> &'a T {
         unsafe {
-            let ptr = self.alloc_copy_inner(mem::size_of::<T>(), mem::min_align_of::<T>());
+            let ptr = self.alloc_copy_inner(mem::size_of::<T>(), min_align_of::<T>());
             let ptr: *mut T = transmute(ptr);
             mem::move_val_init(&mut (*ptr), op());
             return transmute(ptr);
@@ -261,7 +262,7 @@ impl Arena {
         unsafe {
             let tydesc = get_tydesc::<T>();
             let (ty_ptr, ptr) =
-                self.alloc_noncopy_inner(mem::size_of::<T>(), mem::min_align_of::<T>());
+                self.alloc_noncopy_inner(mem::size_of::<T>(), min_align_of::<T>());
             let ty_ptr: *mut uint = transmute(ty_ptr);
             let ptr: *mut T = transmute(ptr);
             // Write in our tydesc along with a bit indicating that it
@@ -353,7 +354,29 @@ struct TypedArenaChunk<T> {
 }
 
 impl<T> TypedArenaChunk<T> {
+    #[cfg(stage0)]
     #[inline]
+    fn new(next: Option<Box<TypedArenaChunk<T>>>, capacity: uint)
+           -> Box<TypedArenaChunk<T>> {
+        let mut size = mem::size_of::<TypedArenaChunk<T>>();
+        size = round_up(size, min_align_of::<T>());
+        let elem_size = mem::size_of::<T>();
+        let elems_size = elem_size.checked_mul(&capacity).unwrap();
+        size = size.checked_add(&elems_size).unwrap();
+
+        let mut chunk = unsafe {
+            let chunk = exchange_malloc(size);
+            let mut chunk: Box<TypedArenaChunk<T>> = cast::transmute(chunk);
+            mem::move_val_init(&mut chunk.next, next);
+            chunk
+        };
+
+        chunk.capacity = capacity;
+        chunk
+    }
+
+    #[inline]
+    #[cfg(not(stage0))]
     fn new(next: Option<Box<TypedArenaChunk<T>>>, capacity: uint)
            -> Box<TypedArenaChunk<T>> {
         let mut size = mem::size_of::<TypedArenaChunk<T>>();
@@ -363,7 +386,7 @@ impl<T> TypedArenaChunk<T> {
         size = size.checked_add(&elems_size).unwrap();
 
         let mut chunk = unsafe {
-            let chunk = global_heap::exchange_malloc(size);
+            let chunk = exchange_malloc(size, min_align_of::<TypedArenaChunk<T>>());
             let mut chunk: Box<TypedArenaChunk<T>> = cast::transmute(chunk);
             mem::move_val_init(&mut chunk.next, next);
             chunk
@@ -402,7 +425,7 @@ impl<T> TypedArenaChunk<T> {
     fn start(&self) -> *u8 {
         let this: *TypedArenaChunk<T> = self;
         unsafe {
-            cast::transmute(round_up(this.offset(1) as uint, mem::min_align_of::<T>()))
+            cast::transmute(round_up(this.offset(1) as uint, min_align_of::<T>()))
         }
     }
 

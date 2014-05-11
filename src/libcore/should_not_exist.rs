@@ -29,13 +29,30 @@ use str::StrSlice;
 
 #[allow(ctypes)]
 extern {
-    fn malloc(size: uint) -> *u8;
-    fn free(ptr: *u8);
+    #[cfg(stage0)]
+    fn rust_malloc(size: uint) -> *u8;
+    #[cfg(not(stage0))]
+    fn rust_malloc(size: uint, align: uint) -> *u8;
+    fn rust_free(ptr: *u8, size: uint, align: uint);
 }
 
+#[cfg(stage0)]
 unsafe fn alloc(cap: uint) -> *mut Vec<()> {
     let cap = cap.checked_add(&mem::size_of::<Vec<()>>()).unwrap();
-    let ret = malloc(cap) as *mut Vec<()>;
+    let ret = rust_malloc(cap) as *mut Vec<()>;
+    if ret.is_null() {
+        intrinsics::abort();
+    }
+    (*ret).fill = 0;
+    (*ret).alloc = cap;
+    ret
+}
+
+#[cfg(not(stage0))]
+unsafe fn alloc(cap: uint) -> *mut Vec<()> {
+    let cap = cap.checked_add(&mem::size_of::<Vec<()>>()).unwrap();
+    // this should use the real alignment, but the new representation will take care of that
+    let ret = rust_malloc(cap, 8) as *mut Vec<()>;
     if ret.is_null() {
         intrinsics::abort();
     }
@@ -102,7 +119,8 @@ impl FromIterator<char> for ~str {
                     ptr::copy_nonoverlapping_memory(&mut (*ptr2).data,
                                                     &(*ptr).data,
                                                     len);
-                    free(ptr as *u8);
+                    // FIXME: #13994: port to the sized deallocation API when available
+                    rust_free(ptr as *u8, 0, 8);
                     cast::forget(ret);
                     ret = cast::transmute(ptr2);
                     ptr = ptr2;
@@ -172,7 +190,7 @@ impl<A: Clone> Clone for ~[A] {
                     for j in range(0, *i as int) {
                         ptr::read(&*p.offset(j));
                     }
-                    free(ret as *u8);
+                    rust_free(ret as *u8, 0, 8);
                 });
             cast::transmute(ret)
         }

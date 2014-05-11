@@ -42,7 +42,7 @@ mod table {
     use std::prelude::Drop;
     use std::ptr;
     use std::ptr::RawPtr;
-    use std::rt::global_heap;
+    use std::rt::libc_heap;
     use std::intrinsics::{size_of, min_align_of, transmute};
     use std::intrinsics::{move_val_init, set_memory};
     use std::iter::{Iterator, range_step_inclusive};
@@ -243,7 +243,7 @@ mod table {
                     keys_size,   min_align_of::< K >(),
                     vals_size,   min_align_of::< V >());
 
-            let buffer = global_heap::malloc_raw(size) as *mut u8;
+            let buffer = libc_heap::malloc_raw(size) as *mut u8;
 
             // FIXME #13094: If malloc was not at as aligned as we expected,
             // our offset calculations are just plain wrong. We could support
