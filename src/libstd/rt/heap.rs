@@ -179,8 +179,8 @@ unsafe fn closure_exchange_malloc(drop_glue: fn(*mut u8), size: uint, align: uin
 #[doc(hidden)]
 #[deprecated]
 #[cfg(stage0, not(test))]
-pub extern "C" fn rust_malloc(size: uint) -> *mut u8 {
-    unsafe { exchange_malloc(size) }
+pub unsafe extern "C" fn rust_malloc(size: uint) -> *mut u8 {
+    exchange_malloc(size)
 }
 
 // hack for libcore
@@ -188,8 +188,8 @@ pub extern "C" fn rust_malloc(size: uint) -> *mut u8 {
 #[doc(hidden)]
 #[deprecated]
 #[cfg(not(stage0), not(test))]
-pub extern "C" fn rust_malloc(size: uint, align: uint) -> *mut u8 {
-    unsafe { exchange_malloc(size, align) }
+pub unsafe extern "C" fn rust_malloc(size: uint, align: uint) -> *mut u8 {
+    exchange_malloc(size, align)
 }
 
 // hack for libcore
@@ -197,8 +197,8 @@ pub extern "C" fn rust_malloc(size: uint, align: uint) -> *mut u8 {
 #[doc(hidden)]
 #[deprecated]
 #[cfg(not(test))]
-pub extern "C" fn rust_free(ptr: *mut u8, size: uint, align: uint) {
-    unsafe { exchange_free(ptr, size, align) }
+pub unsafe extern "C" fn rust_free(ptr: *mut u8, size: uint, align: uint) {
+    exchange_free(ptr, size, align)
 }
 
 #[cfg(test)]
