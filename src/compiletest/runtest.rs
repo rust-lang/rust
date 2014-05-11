@@ -217,7 +217,7 @@ fn run_pretty_test(config: &Config, props: &TestProps, testfile: &Path) {
                     pretty_type: &str) -> ProcRes {
         compose_and_run(config, testfile,
                         make_pp_args(config, props, testfile, pretty_type.to_owned()),
-                        Vec::new(), config.compile_lib_path, Some(src))
+                        props.exec_env.clone(), config.compile_lib_path, Some(src))
     }
 
     fn make_pp_args(config: &Config,
