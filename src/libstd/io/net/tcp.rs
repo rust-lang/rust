@@ -95,6 +95,9 @@ impl TcpStream {
     /// This is the same as the `connect` method, except that if the timeout
     /// specified (in milliseconds) elapses before a connection is made an error
     /// will be returned. The error's kind will be `TimedOut`.
+    ///
+    /// Note that the `addr` argument may one day be split into a separate host
+    /// and port, similar to the API seen in `connect`.
     #[experimental = "the timeout argument may eventually change types"]
     pub fn connect_timeout(addr: SocketAddr,
                            timeout_ms: u64) -> IoResult<TcpStream> {
