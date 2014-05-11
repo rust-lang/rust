@@ -8,6 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// exec-env:RUST_MIN_STACK=8000000
+//
+// Big stack is needed for pretty printing, a little sad...
+
 static a: int =
 (((((((((((((((((((((((((((((((((((((((((((((((((((
 (((((((((((((((((((((((((((((((((((((((((((((((((((
