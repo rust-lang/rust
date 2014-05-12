@@ -28,26 +28,10 @@ use str::StrSlice;
 
 #[allow(ctypes)]
 extern {
-    #[cfg(stage0)]
-    fn rust_malloc(size: uint) -> *u8;
-    #[cfg(not(stage0))]
     fn rust_malloc(size: uint, align: uint) -> *u8;
     fn rust_free(ptr: *u8, size: uint, align: uint);
 }
 
-#[cfg(stage0)]
-unsafe fn alloc(cap: uint) -> *mut Vec<()> {
-    let cap = cap.checked_add(&mem::size_of::<Vec<()>>()).unwrap();
-    let ret = rust_malloc(cap) as *mut Vec<()>;
-    if ret.is_null() {
-        intrinsics::abort();
-    }
-    (*ret).fill = 0;
-    (*ret).alloc = cap;
-    ret
-}
-
-#[cfg(not(stage0))]
 unsafe fn alloc(cap: uint) -> *mut Vec<()> {
     let cap = cap.checked_add(&mem::size_of::<Vec<()>>()).unwrap();
     // this should use the real alignment, but the new representation will take care of that
