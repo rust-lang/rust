@@ -22,12 +22,12 @@
 //! extern crate term;
 //!
 //! fn main() {
-//!     let mut t = term::stdout();
-//!     t.fg(term::color::GREEN);
+//!     let mut t = term::stdout().unwrap();
+//!     t.fg(term::color::GREEN).unwrap();
 //!     println!("hello, ");
-//!     t.fg(term::color::RED);
+//!     t.fg(term::color::RED).unwrap();
 //!     println!("world!");
-//!     t.reset();
+//!     t.reset().unwrap();
 //! }
 //! ```
 //!
