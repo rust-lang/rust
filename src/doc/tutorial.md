@@ -455,7 +455,7 @@ against each pattern in order until one matches. The matching pattern
 executes its corresponding arm.
 
 ~~~~
-# let my_number = 1;
+let my_number = 1;
 match my_number {
   0     => println!("zero"),
   1 | 2 => println!("one or two"),
